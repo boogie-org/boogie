@@ -106,6 +106,7 @@ namespace Microsoft.Boogie.ModelViewer
     public virtual string CanonicalName(Model.Element elt)
     {
       string res;
+      if (elt == null) return "?";
       if (canonicalName.TryGetValue(elt, out res)) return res;
       NameSeqSuffix suff;
       var baseName = CanonicalBaseName(elt, out suff);
@@ -158,7 +159,13 @@ namespace Microsoft.Boogie.ModelViewer
 
       Action<IEnumerable<IDisplayNode>> addList = (IEnumerable<IDisplayNode> nodes) =>
       {
-        var ch = nodes.ToDictionary(x => x.Name);
+        var ch = new Dictionary<string, IDisplayNode>();
+        foreach (var x in nodes) {
+          if (ch.ContainsKey(x.Name)) {
+            // throw new System.InvalidOperationException("duplicated model entry: " + x.Name);
+          }
+          ch[x.Name] = x;
+        }
         foreach (var k in SortFields(nodes))
           workList.Enqueue(ch[k]);
       };
@@ -204,12 +211,15 @@ namespace Microsoft.Boogie.ModelViewer
 
     static ulong GetNumber(string s, int beg)
     {
-      var end = beg;
-      while (end < s.Length && char.IsDigit(s[end]))
-        end++;
-      ulong res;
-      if (!ulong.TryParse(s.Substring(beg, end - beg), out res))
-        return 0;
+      ulong res = 0;
+      while (beg < s.Length) {
+        var c = s[beg];
+        if ('0' <= c && c <= '9') {
+          res *= 10;
+          res += (uint)c - (uint)'0';
+        }
+        beg++;
+      }
       return res;
     }
 
@@ -225,11 +235,13 @@ namespace Microsoft.Boogie.ModelViewer
       var len = Math.Min(f1.Length, f2.Length);
       var numberPos = -1;
       for (int i = 0; i < len; ++i) {
-        if (char.IsDigit(f1[i]) && char.IsDigit(f2[i])) {
+        var c1 = f1[i];
+        var c2 = f2[i];
+        if ('0' <= c1 && c1 <= '9' && '0' <= c2 && c2 <= '9') {
           numberPos = i;
           break;
         }
-        if (f1[i] != f2[i])
+        if (c1 != c2)
           break;
       }
 
@@ -387,9 +399,13 @@ namespace Microsoft.Boogie.ModelViewer
         positions.Sort();
 
         string content = "";
-        try {
-          content = System.IO.File.ReadAllText(kv.Key);
-        } catch {
+        if (System.IO.File.Exists(kv.Key)) {
+          try {
+            content = System.IO.File.ReadAllText(kv.Key);
+          } catch {
+            continue;
+          }
+        } else {
           continue;
         }
 
@@ -473,6 +489,7 @@ namespace Microsoft.Boogie.ModelViewer
 
     ILanguageSpecificModel langModel;
     string format;
+    string cachedName;
     Model.Element[] args;
 
     public EdgeName(ILanguageSpecificModel n, string format, params Model.Element[] args)
@@ -489,7 +506,10 @@ namespace Microsoft.Boogie.ModelViewer
 
     public override string ToString()
     {
-      return Format();
+      if (cachedName != null)
+        return cachedName;
+      cachedName = Format();
+      return cachedName;
     }
 
     public override int GetHashCode()
@@ -517,7 +537,7 @@ namespace Microsoft.Boogie.ModelViewer
 
     protected virtual string Format()
     {
-      if (args.Length == 0)
+      if (args == null || args.Length == 0)
         return format;
 
       var res = new StringBuilder(format.Length);

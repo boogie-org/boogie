@@ -8,7 +8,7 @@ class Node {
     (next != null  ==>  next.IsList(r - {this}))
   }
 
-  method Test(n: Node, nodes: set<Node>) 
+  method Test(n: Node, nodes: set<Node>)
   {
     assume nodes == nodes - {n};
     // the next line needs the Set extensionality axiom, the antecedent of
@@ -144,7 +144,7 @@ class Modifies {
   method F(s: set<Modifies>)
     modifies s;
   {
-    foreach (m in s | 2 <= m.x) {
+    parallel (m | m in s && m != null && 2 <= m.x) {
       m.x := m.x + 1;
     }
     if (this in s) {
@@ -157,17 +157,17 @@ class Modifies {
   {
     var m := 3;  // this is a different m
 
-    foreach (m in s | m == this) {
+    parallel (m | m in s && m == this) {
       m.x := m.x + 1;
     }
     if (s <= {this}) {
-      foreach (m in s) {
+      parallel (m | m in s) {
         m.x := m.x + 1;
       }
       F(s);
     }
-    foreach (m in s) {
-      assert m.x < m.x + 10;  // nothing wrong with asserting something
+    parallel (m | m in s) ensures true; { assert m == null || m.x < m.x + 10; }
+    parallel (m | m != null && m in s) {
       m.x := m.x + 1;  // error: may violate modifies clause
     }
   }
@@ -189,7 +189,7 @@ class AllocatedTests {
   method M(r: AllocatedTests, k: Node, S: set<Node>, d: Lindgren)
   {
     assert allocated(r);
-    
+
     var n := new Node;
     var t := S + {n};
     assert allocated(t);
@@ -322,10 +322,10 @@ class SomeType
 {
   var x: int;
   method DoIt(stack: seq<SomeType>)
+    requires null !in stack;
     modifies stack;
   {
-    // the following line once gave rise to a crash in the translation
-    foreach (n in stack) {
+    parallel (n | n in stack) {
       n.x := 10;
     }
   }
@@ -345,4 +345,193 @@ method TestSequences0()
     assert exists n :: n in s && -3 <= n && n < 2;
   }
   assert 7 in s;  // error
+}
+
+// ----------------------- test attributes on methods and constructors --------
+
+method test0()
+{
+  assert false;  // error
+}
+
+method {:verify false} test1()
+{
+  assert false;
+}
+
+function test2() : bool
+{
+  !test2()  // error
+}
+
+function {:verify false} test3() : bool
+{
+  !test3()
+}
+
+class Test {
+
+  method test0()
+  {
+    assert false;  // error
+  }
+
+  method {:verify false} test1()
+  {
+    assert false;
+  }
+
+  constructor init0()
+  {
+    assert false;  // error
+  }
+
+  constructor {:verify false} init1()
+  {
+    assert false;
+  }
+
+  function test2() : bool
+  {
+    !test2()  // error
+  }
+
+  function {:verify false} test3() : bool
+  {
+    !test3()
+  }
+
+}
+
+// ------ an if-then-else regression test
+
+function F(b: bool): int
+  // The if-then-else in the following line was once translated incorrectly,
+  // incorrectly causing the postcondition to verify
+  ensures if b then F(b) == 5 else F(b) == 6;
+{
+  5
+}
+
+// ----------------------- test attributes on method specification constructs (assert, ensures, modifies, decreases, invariant) --------
+
+class AttributeTests {
+  var f: int;
+
+  method m0()
+  {
+
+  }
+
+  method m1() returns (r: bool)
+  {
+    r := false;
+  }
+
+  function method m2() : bool
+  {
+    true
+  }
+
+  constructor C()
+  {
+
+  }
+
+  method testAttributes0() returns (r: AttributeTests)
+    ensures {:boolAttr true} true;
+    ensures {:boolAttr false} true;
+    ensures {:intAttr 0} true;
+    ensures {:intAttr 1} true;
+    free ensures {:boolAttr true} true;
+    free ensures {:boolAttr false} true;
+    free ensures {:intAttr 0} true;
+    free ensures {:intAttr 1} true;
+    modifies {:boolAttr true} this`f;
+    modifies {:boolAttr false} this`f;
+    modifies {:intAttr 0} this`f;
+    modifies {:intAttr 1} this`f;
+    modifies {:boolAttr true} this;
+    modifies {:boolAttr false} this;
+    modifies {:intAttr 0} this;
+    modifies {:intAttr 1} this;
+    decreases {:boolAttr true} f;
+    decreases {:boolAttr false} f;
+    decreases {:intAttr 0} f;
+    decreases {:intAttr 1} f;
+  {
+    assert {:boolAttr true} true;
+    assert {:boolAttr false} true;
+    assert {:intAttr 0} true;
+    assert {:intAttr 1} true;
+
+    while (false)
+      invariant {:boolAttr true} true;
+      invariant {:boolAttr false} true;
+      invariant {:intAttr 0} true;
+      invariant {:intAttr 1} true;
+      free invariant {:boolAttr true} true;
+      free invariant {:boolAttr false} true;
+      free invariant {:intAttr 0} true;
+      free invariant {:intAttr 1} true;
+      modifies {:boolAttr true} this`f;
+      modifies {:boolAttr false} this`f;
+      modifies {:intAttr 0} this`f;
+      modifies {:intAttr 1} this`f;
+      decreases {:boolAttr true} f;
+      decreases {:boolAttr false} f;
+      decreases {:intAttr 0} f;
+      decreases {:intAttr 1} f;
+    {
+
+    }
+
+    m0() {:boolAttr true};
+    m0() {:boolAttr false};
+    m0() {:intAttr 0};
+    m0() {:intAttr 1};
+
+    this.m0() {:boolAttr true};
+    this.m0() {:boolAttr false};
+    this.m0() {:intAttr 0};
+    this.m0() {:intAttr 1};
+
+    var b1 := m1() {:boolAttr true};
+    b1 := m1() {:boolAttr false};
+    b1 := m1() {:intAttr 0};
+    b1 := m1() {:intAttr 1};
+
+    var b2, b2' := m2() {:boolAttr true}, m2() {:boolAttr true};
+    b2, b2' := m2() {:boolAttr false}, m2() {:boolAttr false};
+    b2, b2' := m2() {:intAttr 0}, m2() {:boolAttr false};
+    b2, b2' := m2() {:intAttr 1}, m2() {:boolAttr false};
+
+    var c := new AttributeTests.C() {:boolAttr true};
+    c := new AttributeTests.C() {:boolAttr false};
+    c := new AttributeTests.C() {:intAttr 0};
+    c := new AttributeTests.C() {:intAttr 1};
+
+    if (*) {
+      return new AttributeTests.C() {:boolAttr true};
+    } else {
+      return new AttributeTests.C() {:intAttr 0};
+    }
+  }
+}
+
+// ----------------------- Pretty printing of !(!expr) --------
+
+static method TestNotNot()
+{
+  assert !(!true);  // Shouldn't pretty print as "!!true".
+
+  assert !(true == false);
+
+  assert !(if true then false else false);
+
+  assert !if true then false else false;
+
+  assert !if !(!true) then false else false;
+
+  assert true == !(!true);
 }

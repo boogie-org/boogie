@@ -15,21 +15,20 @@ using AI = Microsoft.AbstractInterpretationFramework;
 using System.Diagnostics.Contracts;
 using Microsoft.Basetypes;
 using Microsoft.Boogie.VCExprAST;
+using Set = Microsoft.Boogie.GSet<object>;
 
 namespace Microsoft.Boogie {
+
   public class CalleeCounterexampleInfo {
     public Counterexample counterexample;
     public List<Model.Element>/*!>!*/ args;
 
     [ContractInvariantMethod]
     void ObjectInvariant() {
-      Contract.Invariant(counterexample != null);
       Contract.Invariant(cce.NonNullElements(args));
     }
 
-
     public CalleeCounterexampleInfo(Counterexample cex, List<Model.Element/*!>!*/> x) {
-      Contract.Requires(cex != null);
       Contract.Requires(cce.NonNullElements(x));
       counterexample = cex;
       args = x;
@@ -187,12 +186,12 @@ namespace Microsoft.Boogie {
       }
     }
 
-    static bool firstModelFile = true;
+    public static bool firstModelFile = true;
 
     public void PrintModel()
     {
       var filename = CommandLineOptions.Clo.ModelViewFile;
-      if (Model == null || filename == null) return;
+      if (Model == null || filename == null || CommandLineOptions.Clo.StratifiedInlining > 0) return;
 
       var m = this.GetModelWithStates();
 
@@ -217,7 +216,7 @@ namespace Microsoft.Boogie {
       if (MvInfo == null || mvstates == null)
         return m;
 
-      Contract.Assert(mvstates.Arity == 1);
+      Contract.Assert(mvstates.Arity == 2);
 
       foreach (Variable v in MvInfo.AllVariables) {
         m.InitialState.AddBinding(v.Name, GetModelValue(m, v));
@@ -225,7 +224,7 @@ namespace Microsoft.Boogie {
 
       var states = new List<int>();
       foreach (var t in mvstates.Apps)
-        states.Add(t.Args[0].AsInt());
+        states.Add(t.Args[1].AsInt());
 
       states.Sort();
 
@@ -479,6 +478,8 @@ namespace VC {
       Contract.Invariant(cce.NonNullDictionaryAndValues(incarnationOriginMap));
       Contract.Invariant(program != null);
     }
+
+    public int CumulativeAssertionCount;  // for statistics
 
     protected readonly List<Checker>/*!>!*/ checkers = new List<Checker>();
     protected VariableSeq CurrentLocalVariables = null;
@@ -895,7 +896,7 @@ namespace VC {
       string log = logFilePath;
       if (log != null && !log.Contains("@PROC@") && checkers.Count > 0)
         log = log + "." + checkers.Count;
-      Checker ch = new Checker(this, program, log, appendLogFile, impl, timeout);
+      Checker ch = new Checker(this, program, log, appendLogFile, timeout);
       Contract.Assert(ch != null);
       checkers.Add(ch);
       return ch;
@@ -910,7 +911,7 @@ namespace VC {
     }
 
 
-    protected class CounterexampleCollector : VerifierCallback {
+    public class CounterexampleCollector : VerifierCallback {
       [ContractInvariantMethod]
       void ObjectInvariant() {
         Contract.Invariant(cce.NonNullElements(examples));
@@ -984,29 +985,7 @@ namespace VC {
       #endregion
     }
 
-    /// <summary>
-    /// Helperfunction to restore the predecessor relations after loop unrolling
-    /// </summary>
-    protected void ComputePredecessors(List<Block>/*!>!*/ blocks) {
-      Contract.Requires(cce.NonNullElements(blocks));
-      #region Compute and store the Predecessor Relation on the blocks
-      // This code just here to try things out.
-      // Compute the predecessor relation for each block
-      // Store it in the Predecessors field within each block
-      foreach (Block b in blocks) {
-        GotoCmd gtc = b.TransferCmd as GotoCmd;
-        if (gtc != null) {
-          Contract.Assume(gtc.labelTargets != null);
-          foreach (Block dest in gtc.labelTargets) {
-            Contract.Assert(dest != null);
-            dest.Predecessors.Add(b);
-          }
-        }
-      }
-      #endregion Compute and store the Predecessor Relation on the blocks
-    }
-
-    protected static void ResetPredecessors(List<Block/*!>!*/> blocks) {
+    protected static void ResetPredecessors(List<Block> blocks) {
       Contract.Requires(blocks != null);
       foreach (Block b in blocks) {
         Contract.Assert(b != null);
@@ -1224,14 +1203,7 @@ namespace VC {
       Contract.Assert(sortedNodes != null);
       #endregion
 
-      // Create substitution for old expressions
-      Hashtable/*Variable!->Expr!*/ oldFrameMap = new Hashtable();
-      foreach (IdentifierExpr ie in modifies) {
-        Contract.Assert(ie != null);
-        if (!oldFrameMap.Contains(cce.NonNull(ie.Decl)))
-          oldFrameMap.Add(ie.Decl, ie);
-      }
-      Substitution oldFrameSubst = Substituter.SubstitutionFromHashtable(oldFrameMap);
+      Substitution oldFrameSubst = ComputeOldExpressionSubstitution(modifies);
 
       // Now we can process the nodes in an order so that we're guaranteed to have
       // processed all of a node's predecessors before we process the node.
@@ -1280,6 +1252,21 @@ namespace VC {
     }
 
     /// <summary>
+    /// Compute the substitution for old expressions.
+    /// </summary>
+    protected static Substitution ComputeOldExpressionSubstitution(IdentifierExprSeq modifies)
+    {
+      Hashtable/*Variable!->Expr!*/ oldFrameMap = new Hashtable();
+      foreach (IdentifierExpr ie in modifies)
+      {
+        Contract.Assert(ie != null);
+        if (!oldFrameMap.Contains(cce.NonNull(ie.Decl)))
+          oldFrameMap.Add(ie.Decl, ie);
+      }
+      return Substituter.SubstitutionFromHashtable(oldFrameMap);
+    }
+
+    /// <summary>
     /// Turn a command into a passive command, and it remembers the previous step, to see if it is a havoc or not. In the case, it remembers the incarnation map BEFORE the havoc
     /// Meanwhile, record any information needed to later reconstruct a model view.
     /// </summary>
@@ -1301,7 +1288,7 @@ namespace VC {
         if (CommandLineOptions.Clo.ModelViewFile != null && pc is AssumeCmd) {
           string description = QKeyValue.FindStringAttribute(pc.Attributes, "captureState");
           if (description != null) {
-            Expr mv = new NAryExpr(pc.tok, new FunctionCall(ModelViewInfo.MVState_FunctionDef), new ExprSeq(Bpl.Expr.Literal(mvInfo.CapturePoints.Count)));
+            Expr mv = new NAryExpr(pc.tok, new FunctionCall(ModelViewInfo.MVState_FunctionDef), new ExprSeq(Bpl.Expr.Ident(ModelViewInfo.MVState_ConstantDef), Bpl.Expr.Literal(mvInfo.CapturePoints.Count)));
             copy = Bpl.Expr.And(mv, copy);
             mvInfo.CapturePoints.Add(new ModelViewInfo.Mapping(description, (Hashtable)incarnationMap.Clone()));
           }
@@ -1553,8 +1540,10 @@ namespace VC {
     public readonly List<Variable> AllVariables = new List<Variable>();
     public readonly List<Mapping> CapturePoints = new List<Mapping>();
     public static readonly Function MVState_FunctionDef = new Function(Token.NoToken, "@MV_state",
-      new VariableSeq(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, TypedIdent.NoName, Bpl.Type.Int), true)),
+      new VariableSeq(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, TypedIdent.NoName, Bpl.Type.Int), true),
+                      new Formal(Token.NoToken, new TypedIdent(Token.NoToken, TypedIdent.NoName, Bpl.Type.Int), true)),
       new Formal(Token.NoToken, new TypedIdent(Token.NoToken, TypedIdent.NoName, Bpl.Type.Bool), false));
+    public static readonly Constant MVState_ConstantDef = new Constant(Token.NoToken, new TypedIdent(Token.NoToken, "@MV_state_const", Bpl.Type.Int));
 
     public ModelViewInfo(Program program, Implementation impl) {
       Contract.Requires(program != null);

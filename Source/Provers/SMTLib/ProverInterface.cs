@@ -22,11 +22,12 @@ using System.Text;
 
 namespace Microsoft.Boogie.SMTLib
 {
-  public class SMTLibProcessTheoremProver : ProverInterface
+  public class SMTLibProcessTheoremProver : ApiProverInterface
   {
     private readonly SMTLibProverContext ctx;
     private readonly VCExpressionGenerator gen;
     private readonly SMTLibProverOptions options;
+    private bool usingUnsatCore;
 
     [ContractInvariantMethod]
     void ObjectInvariant()
@@ -54,6 +55,7 @@ namespace Microsoft.Boogie.SMTLib
       this.options = (SMTLibProverOptions)options;
       this.ctx = ctx;
       this.gen = gen;
+      this.usingUnsatCore = false;
 
       TypeAxiomBuilder axBuilder;
       switch (CommandLineOptions.Clo.TypeEncodingMethod) {
@@ -75,10 +77,49 @@ namespace Microsoft.Boogie.SMTLib
       ctx.parent = this;
       this.DeclCollector = new TypeDeclCollector((SMTLibProverOptions)options, Namer);
 
-      if (this.options.UseZ3) {
-        var psi = SMTLibProcess.ComputerProcessStartInfo(Z3.ExecutablePath(), "AUTO_CONFIG=false -smt2 -in");
-        Process = new SMTLibProcess(psi, this.options);
-        Process.ErrorHandler += this.HandleProverError;
+      SetupProcess();
+
+      if (CommandLineOptions.Clo.StratifiedInlining > 0)
+      {
+          // Prepare for ApiChecker usage
+          if (options.LogFilename != null && currentLogFile == null)
+          {
+              currentLogFile = OpenOutputFile("");
+          }
+          if (CommandLineOptions.Clo.ProcedureCopyBound > 0 || CommandLineOptions.Clo.UseUnsatCoreForInlining)
+          {
+              SendThisVC("(set-option :produce-unsat-cores true)");
+              this.usingUnsatCore = true;
+          }
+          PrepareCommon();
+      }
+      prevOutcomeAvailable = false;
+      pendingPop = false;
+    }
+
+    void SetupProcess()
+    {
+      if (!this.options.UseZ3)
+        return;
+
+      if (Process != null) return;
+
+      var path = this.options.ProverPath;
+      if (path == null)
+        path = Z3.ExecutablePath();
+      var psi = SMTLibProcess.ComputerProcessStartInfo(path, "AUTO_CONFIG=false -smt2 -in");
+      Process = new SMTLibProcess(psi, this.options);
+      Process.ErrorHandler += this.HandleProverError;
+    }
+
+
+    void PossiblyRestart()
+    {
+      if (Process != null && Process.NeedsRestart) {
+        Process.Close();
+        Process = null;
+        SetupProcess();
+        Process.Send(common.ToString());
       }
     }
 
@@ -95,7 +136,7 @@ namespace Microsoft.Boogie.SMTLib
     internal readonly TypeAxiomBuilder AxBuilder;
     internal readonly UniqueNamer Namer;
     readonly TypeDeclCollector DeclCollector;
-    readonly SMTLibProcess Process;
+    SMTLibProcess Process;
     readonly List<string> proverErrors = new List<string>();
     readonly List<string> proverWarnings = new List<string>();
     readonly StringBuilder common = new StringBuilder();
@@ -146,7 +187,7 @@ namespace Microsoft.Boogie.SMTLib
       if (common.Length == 0) {
         SendCommon("(set-option :print-success false)");
         SendCommon("(set-info :smt-lib-version 2.0)");
-        if (options.ExpectingModel())
+        if (options.ProduceModel())
           SendCommon("(set-option :produce-models true)");
         foreach (var opt in options.SmtOptions) {
           SendCommon("(set-option :" + opt.Option + " " + opt.Value + ")");
@@ -158,6 +199,34 @@ namespace Microsoft.Boogie.SMTLib
 
         SendCommon("; done setting options\n");
         SendCommon(_backgroundPredicates);
+
+        
+        if (ctx.KnownDatatypeConstructors.Count > 0) {
+          string datatypeString = "";
+          foreach (CtorType datatype in ctx.KnownDatatypeConstructors.Keys) {
+            datatypeString += "(" + SMTLibExprLineariser.TypeToString(datatype) + " ";
+            foreach (Function f in ctx.KnownDatatypeConstructors[datatype]) {
+              string quotedConstructorName = Namer.GetQuotedName(f, f.Name);
+              if (f.InParams.Length == 0) {
+                datatypeString += quotedConstructorName + " ";
+              }
+              else {
+                datatypeString += "(" + quotedConstructorName + " ";
+                foreach (Variable v in f.InParams) {
+                  string quotedSelectorName = Namer.GetQuotedName(v, v.Name + "#" + f.Name);
+                  datatypeString += "(" + quotedSelectorName + " " + DeclCollector.TypeToStringReg(v.TypedIdent.Type) + ") ";
+                }
+                datatypeString += ") ";
+              }
+            }
+            datatypeString += ") ";
+          }
+          List<string> decls = DeclCollector.GetNewDeclarations();
+          foreach (string decl in decls) {
+            SendCommon(decl);
+          }
+          SendCommon("(declare-datatypes () (" + datatypeString + "))");
+        }
       }
 
       if (!AxiomsAreSetup) {
@@ -190,7 +259,7 @@ namespace Microsoft.Boogie.SMTLib
           SendCommon("(assert " + s + ")");
       }
       Axioms.Clear();
-      FlushPushedAssertions();
+      //FlushPushedAssertions();
     }
 
     private void CloseLogFile()
@@ -216,6 +285,15 @@ namespace Microsoft.Boogie.SMTLib
         Process.Close();
     }
 
+    string controlFlowVariable;
+
+    private VCExpr ArgumentZero(VCExpr vc) {
+      VCExprNAry naryExpr = vc as VCExprNAry;
+      if (naryExpr == null)
+        return null;
+      return naryExpr[0];
+    }
+
     public override void BeginCheck(string descriptiveName, VCExpr vc, ErrorHandler handler)
     {
       //Contract.Requires(descriptiveName != null);
@@ -229,17 +307,26 @@ namespace Microsoft.Boogie.SMTLib
         currentLogFile.Write(common.ToString());
       }
 
+      if (!CommandLineOptions.Clo.UseLabels)
+        controlFlowVariable = VCExpr2String(ArgumentZero(ArgumentZero(ArgumentZero(vc))),1);
+
       PrepareCommon();
       string vcString = "(assert (not\n" + VCExpr2String(vc, 1) + "\n))";
       FlushAxioms();
+
+      PossiblyRestart();
 
       SendThisVC("(push 1)");
       SendThisVC("(set-info :boogie-vc-id " + SMTLibNamer.QuoteId(descriptiveName) + ")");
       SendThisVC(vcString);
       FlushLogFile();
 
-      if (Process != null)
+      if (Process != null) {
         Process.PingPong(); // flush any errors
+
+        if (Process.Inspector != null)
+          Process.Inspector.NewProblem(descriptiveName, vc, handler);
+      }
 
       SendThisVC("(check-sat)");
       FlushLogFile();
@@ -352,8 +439,20 @@ namespace Microsoft.Boogie.SMTLib
           }
         }
 
-        SendThisVC("(pop 1)");
+        if (CommandLineOptions.Clo.StratifiedInlining == 0)
+        {
+            SendThisVC("(pop 1)");
+        }
+        else if (CommandLineOptions.Clo.StratifiedInlining > 0 && pendingPop)
+        {
+            pendingPop = false;
+            SendThisVC("(pop 1)");
+        }
+
         FlushLogFile();
+
+        if (CommandLineOptions.Clo.RestartProverPerVC && Process != null)
+          Process.NeedsRestart = true;
 
         return globalResult;
 
@@ -362,9 +461,38 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
+    private string[] CalculatePath() {
+      SendThisVC("(get-value ((ControlFlow " + controlFlowVariable + " 0)))");
+      var path = new List<string>();
+      while (true) {
+        var resp = Process.GetProverResponse();
+        if (resp == null)
+          break;
+        if (!(resp.Name == "" && resp.ArgCount == 1)) break;
+        resp = resp.Arguments[0];
+        if (!(resp.Name == "" && resp.ArgCount == 2)) break;
+        resp = resp.Arguments[1];
+        var v = resp.Name;
+        if (v == "-" && resp.ArgCount == 1) 
+          v += resp.Arguments[0].Name;
+        else if (resp.ArgCount != 0) 
+          break;
+        if (v.StartsWith("-")) {
+          path.Add("@" + v.Substring(1));
+          break;
+        }
+        else {
+          path.Add("+" + v);
+        }
+        SendThisVC("(get-value ((ControlFlow " + controlFlowVariable + " " + v + ")))");
+      }
+      return path.ToArray();
+    }
+
     private string[] GetLabelsInfo(ErrorHandler handler)
     {
-      SendThisVC("(labels)");
+      if (CommandLineOptions.Clo.UseLabels)
+        SendThisVC("(labels)");
       if (options.ExpectingModel())
         SendThisVC("(get-model)");
       Process.Ping();
@@ -412,6 +540,14 @@ namespace Microsoft.Boogie.SMTLib
         }
       }
 
+      if (!CommandLineOptions.Clo.UseLabels) {
+        res = CalculatePath();
+        if (res.Length == 0) 
+          res = null;
+        else
+          labelNums = res.Select(a => a.Replace("@", "").Replace("+", "")).ToList();
+      }
+
       if (labelNums != null) {
         ErrorModel m = null;
         if (theModel != null)
@@ -424,6 +560,13 @@ namespace Microsoft.Boogie.SMTLib
 
     private Outcome GetResponse()
     {
+      if (prevOutcomeAvailable)
+      {
+          Contract.Assert(CommandLineOptions.Clo.StratifiedInlining > 0);
+          prevOutcomeAvailable = false;
+          return prevOutcome;
+      }
+
       var result = Outcome.Undetermined;
       var wasUnknown = false;
 
@@ -463,9 +606,12 @@ namespace Microsoft.Boogie.SMTLib
           if (resp.ArgCount == 1 && resp.Name == ":reason-unknown") {
             switch (resp[0].Name) {
               case "memout":
+                currentErrorHandler.OnResourceExceeded("memory");
                 result = Outcome.OutOfMemory;
+                Process.NeedsRestart = true;
                 break;
               case "timeout":
+                currentErrorHandler.OnResourceExceeded("timeout");
                 result = Outcome.TimeOut;
                 break;
               default:
@@ -486,7 +632,7 @@ namespace Microsoft.Boogie.SMTLib
       Contract.Requires(expr != null);
       Contract.Ensures(Contract.Result<string>() != null);
 
-      DateTime start = DateTime.Now;
+      DateTime start = DateTime.UtcNow;
       //if (CommandLineOptions.Clo.Trace)
       //  Console.Write("Linearising ... ");
 
@@ -517,12 +663,14 @@ namespace Microsoft.Boogie.SMTLib
       DeclCollector.Collect(sortedExpr);
       FeedTypeDeclsToProver();
 
+      
+
       AddAxiom(SMTLibExprLineariser.ToString(sortedAxioms, Namer, options));
       string res = SMTLibExprLineariser.ToString(sortedExpr, Namer, options);
       Contract.Assert(res != null);
 
       if (CommandLineOptions.Clo.Trace) {
-        DateTime end = DateTime.Now;
+        DateTime end = DateTime.UtcNow;
         TimeSpan elapsed = end - start;
         if (elapsed.TotalSeconds > 0.5)
           Console.WriteLine("Linearising   [{0} s]", elapsed.TotalSeconds);
@@ -588,8 +736,9 @@ namespace Microsoft.Boogie.SMTLib
     }
 
     //// Push/pop interface
-    List<string> pushedAssertions = new List<string>();
-    int numRealPushes;
+
+    //List<string> pushedAssertions = new List<string>();
+    //int numRealPushes;
     public override string VCExpressionToString(VCExpr vc)
     {
       return VCExpr2String(vc, 1);
@@ -597,39 +746,123 @@ namespace Microsoft.Boogie.SMTLib
 
     public override void PushVCExpression(VCExpr vc)
     {
-      pushedAssertions.Add(VCExpressionToString(vc));
+        throw new NotImplementedException();
+
     }
 
     public override void Pop()
     {
-      if (pushedAssertions.Count > 0) {
-        pushedAssertions.RemoveRange(pushedAssertions.Count - 1, 1);
-      } else {
-        Contract.Assert(numRealPushes > 0);
-        numRealPushes--;
-        SendThisVC("(pop 1)");
-      }
+      SendThisVC("(pop 1)");
+      DeclCollector.Pop();
     }
 
     public override int NumAxiomsPushed()
     {
-      return numRealPushes + pushedAssertions.Count;
+        throw new NotImplementedException();
+        //return numRealPushes + pushedAssertions.Count;
     }
 
     private void FlushPushedAssertions()
     {
-      foreach (var a in pushedAssertions) {
-        SendThisVC("(push 1)");
-        SendThisVC("(assert " + a + ")");
-        numRealPushes++;
-      }
-      pushedAssertions.Clear();
+        throw new NotImplementedException();
     }
+
+    // For implementing ApiProverInterface
+    public override void Assert(VCExpr vc, bool polarity)
+    {
+        string a = "";
+        if (polarity)
+        {
+            a = "(assert " + VCExpr2String(vc, 1) + ")";
+        }
+        else
+        {
+            a = "(assert (not\n" + VCExpr2String(vc, 1) + "\n))";
+        }
+        AssertAxioms();
+        SendThisVC(a);
+    }
+
+    public override void AssertAxioms()
+    {
+        FlushAxioms();
+    }
+
+    public override void Check()
+    {
+        Contract.Assert(pendingPop == false && prevOutcomeAvailable == false);
+
+        PrepareCommon();
+        SendThisVC("(check-sat)");
+        FlushLogFile();
+    }
+
+    public override void SetTimeOut(int ms)
+    {
+        SendThisVC("(set-option :SOFT_TIMEOUT " + ms.ToString() + ")\n");
+    }
+
+    /// <summary>
+    /// Extra state for ApiChecker (used by stratifiedInlining)
+    /// </summary>
+    bool prevOutcomeAvailable;
+    bool pendingPop;
+    Outcome prevOutcome;
+    static int nameCounter = 0;
+
+    public override void CheckAssumptions(List<VCExpr> assumptions, out List<int> unsatCore)
+    {
+        Contract.Assert(pendingPop == false && prevOutcomeAvailable == false);
+
+        Push();
+        unsatCore = new List<int>();
+
+        // Name the assumptions
+        var nameToAssumption = new Dictionary<string, int>();
+        int i = 0;
+        foreach (var vc in assumptions)
+        {
+            var name = "a" + nameCounter.ToString();
+            nameCounter++;
+            nameToAssumption.Add(name, i);
+
+            SendThisVC(string.Format("(assert (! {0} :named {1}))", VCExpr2String(vc, 1), name));
+            i++;
+        }
+        Check();
+
+        prevOutcome = GetResponse();
+        prevOutcomeAvailable = true;
+        if (prevOutcome != Outcome.Valid)
+        {
+            pendingPop = true;
+            return;
+        }
+        Contract.Assert(usingUnsatCore, "SMTLib prover not setup for computing unsat cores");
+        SendThisVC("(get-unsat-core)");
+        var resp = Process.GetProverResponse();
+        unsatCore = new List<int>();
+        if(resp.Name != "") unsatCore.Add(nameToAssumption[resp.Name]);
+        foreach (var s in resp.Arguments) unsatCore.Add(nameToAssumption[s.Name]);
+
+        Pop();
+
+        FlushLogFile();
+    }
+
+    public override void Push()
+    {
+        SendThisVC("(push 1)");
+        DeclCollector.Push();
+    }
+
   }
 
   public class SMTLibProverContext : DeclFreeProverContext
   {
     internal SMTLibProcessTheoremProver parent;
+
+    public readonly Dictionary<CtorType, List<Function>> KnownDatatypeConstructors = new Dictionary<CtorType, List<Function>>();
 
     public SMTLibProverContext(VCExpressionGenerator gen,
                                VCGenerationOptions genOptions)
@@ -655,6 +888,16 @@ namespace Microsoft.Boogie.SMTLib
       }
       return parent.Namer.Lookup(var);
     }
+
+    public override void DeclareFunction(Function f, string attributes) {
+      if (f is DatatypeConstructor) {
+        CtorType datatype = (CtorType) f.OutParams[0].TypedIdent.Type;
+        if (!KnownDatatypeConstructors.ContainsKey(datatype))
+          KnownDatatypeConstructors[datatype] = new List<Function>();
+        KnownDatatypeConstructors[datatype].Add(f);
+      }
+      base.DeclareFunction(f, attributes);
+    }
   }
 
   public class Factory : ProverFactory
@@ -677,11 +920,12 @@ namespace Microsoft.Boogie.SMTLib
 
       VCExpressionGenerator gen = new VCExpressionGenerator();
       List<string>/*!>!*/ proverCommands = new List<string/*!*/>();
-      proverCommands.Add("all");
       proverCommands.Add("smtlib");
       var opts = (SMTLibProverOptions)options ;
       if (opts.UseZ3)
         proverCommands.Add("z3");
+      else
+        proverCommands.Add("external");
       VCGenerationOptions genOptions = new VCGenerationOptions(proverCommands);
       return new SMTLibProverContext(gen, genOptions);
     }

@@ -190,5 +190,23 @@ namespace RegressionTestInput {
       }
     }
   }
+  public class TestForClassesDifferingOnlyInBeingGeneric {
+    public int x;
+  }
+
+  public class TestForClassesDifferingOnlyInBeingGeneric<T> {
+    public int x;
+  }
+
+  public struct StructContainingStruct {
+    public double d;
+    public S s;
+
+    public StructContainingStruct ReturnCopy(StructContainingStruct s) {
+      StructContainingStruct t = s;
+      return t;
+    }
+
+  }
 
 }

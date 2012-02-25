@@ -32,7 +32,7 @@ procedure {:inline 1} incdec(x: int, y: int) returns (z: int);
 
 
 
-implementation incdec(x: int, y: int) returns (z: int)
+implementation {:inline 1} incdec(x: int, y: int) returns (z: int)
 {
 
   anon0:
@@ -49,7 +49,7 @@ procedure {:inline 1} inc(x: int, i: int) returns (y: int);
 
 
 
-implementation inc(x: int, i: int) returns (y: int)
+implementation {:inline 1} inc(x: int, i: int) returns (y: int)
 {
 
   anon0:
@@ -65,7 +65,7 @@ procedure {:inline 1} dec(x: int, i: int) returns (y: int);
 
 
 
-implementation dec(x: int, i: int) returns (y: int)
+implementation {:inline 1} dec(x: int, i: int) returns (y: int)
 {
 
   anon0:
@@ -160,7 +160,7 @@ procedure {:inline 1} incdec(x: int, y: int) returns (z: int);
   ensures z == x + 1 - y;
 
 
-implementation incdec(x: int, y: int) returns (z: int)
+implementation {:inline 1} incdec(x: int, y: int) returns (z: int)
 {
   var inline$dec$0$x: int;
   var inline$dec$0$i: int;
@@ -220,7 +220,7 @@ procedure {:inline 1} increase(i: int) returns (k: int);
 
 
 
-implementation increase(i: int) returns (k: int)
+implementation {:inline 1} increase(i: int) returns (k: int)
 {
   var j: int;
 
@@ -298,7 +298,7 @@ procedure {:inline 3} recursive(x: int) returns (y: int);
 
 
 
-implementation recursive(x: int) returns (y: int)
+implementation {:inline 3} recursive(x: int) returns (y: int)
 {
   var k: int;
 
@@ -421,7 +421,7 @@ after inlining procedure calls
 procedure {:inline 3} recursive(x: int) returns (y: int);
 
 
-implementation recursive(x: int) returns (y: int)
+implementation {:inline 3} recursive(x: int) returns (y: int)
 {
   var k: int;
   var inline$recursive$0$k: int;
@@ -560,7 +560,7 @@ procedure {:inline 1} find(A: [int]int, size: int, x: int) returns (ret: int, fo
 
 
 
-implementation find(A: [int]int, size: int, x: int) returns (ret: int, found: bool)
+implementation {:inline 1} find(A: [int]int, size: int, x: int) returns (ret: int, found: bool)
 {
   var i: int;
   var b: bool;
@@ -591,7 +591,7 @@ implementation find(A: [int]int, size: int, x: int) returns (ret: int, found: bo
     goto anon4_LoopHead;
 
   anon4_LoopDone:
-    assume i >= size;
+    assume size <= i;
     goto anon3;
 
   anon3:
@@ -606,7 +606,7 @@ procedure {:inline 3} check(A: [int]int, i: int, c: int) returns (ret: bool);
 
 
 
-implementation check(A: [int]int, i: int, c: int) returns (ret: bool)
+implementation {:inline 3} check(A: [int]int, i: int, c: int) returns (ret: bool)
 {
 
   anon0:
@@ -714,7 +714,7 @@ implementation main(x: int)
     goto inline$find$0$anon4_LoopHead;
 
   inline$find$0$anon4_LoopDone:
-    assume inline$find$0$i >= inline$find$0$size;
+    assume inline$find$0$size <= inline$find$0$i;
     goto inline$find$0$anon3;
 
   inline$find$0$anon3:
@@ -746,7 +746,7 @@ after inlining procedure calls
 procedure {:inline 1} find(A: [int]int, size: int, x: int) returns (ret: int, found: bool);
 
 
-implementation find(A: [int]int, size: int, x: int) returns (ret: int, found: bool)
+implementation {:inline 1} find(A: [int]int, size: int, x: int) returns (ret: int, found: bool)
 {
   var i: int;
   var b: bool;
@@ -811,7 +811,7 @@ implementation find(A: [int]int, size: int, x: int) returns (ret: int, found: bo
     goto anon4_LoopHead;
 
   anon4_LoopDone:
-    assume i >= size;
+    assume size <= i;
     goto anon3;
 
   anon3:
@@ -866,7 +866,7 @@ procedure {:inline 2} foo();
 
 
 
-implementation foo()
+implementation {:inline 2} foo()
 {
 
   anon0:
@@ -882,7 +882,7 @@ procedure {:inline 2} foo1();
 
 
 
-implementation foo1()
+implementation {:inline 2} foo1()
 {
 
   anon0:
@@ -898,7 +898,7 @@ procedure {:inline 2} foo2();
 
 
 
-implementation foo2()
+implementation {:inline 2} foo2()
 {
 
   anon0:
@@ -914,7 +914,7 @@ procedure {:inline 2} foo3();
 
 
 
-implementation foo3()
+implementation {:inline 2} foo3()
 {
 
   anon0:
@@ -947,7 +947,7 @@ procedure {:inline 2} foo();
   modifies x;
 
 
-implementation foo()
+implementation {:inline 2} foo()
 {
   var inline$foo$0$x: int;
   var inline$foo$1$x: int;
@@ -992,7 +992,7 @@ procedure {:inline 2} foo1();
   modifies x;
 
 
-implementation foo1()
+implementation {:inline 2} foo1()
 {
   var inline$foo2$0$x: int;
   var inline$foo3$0$x: int;
@@ -1097,7 +1097,7 @@ procedure {:inline 2} foo2();
   modifies x;
 
 
-implementation foo2()
+implementation {:inline 2} foo2()
 {
   var inline$foo3$0$x: int;
   var inline$foo1$0$x: int;
@@ -1202,7 +1202,7 @@ procedure {:inline 2} foo3();
   modifies x;
 
 
-implementation foo3()
+implementation {:inline 2} foo3()
 {
   var inline$foo1$0$x: int;
   var inline$foo2$0$x: int;
@@ -1448,26 +1448,15 @@ Execution trace:
     test5.bpl(34,10): anon0$2
 
 Boogie program verifier finished with 4 verified, 1 error
--------------------- expansion.bpl --------------------
-expansion.bpl(29,14): Error: invalid type for argument 0 in application of foo1: bool (expected: int)
-expansion.bpl(13,16): Error: expansion: {:inline ...} expects either true or false as the argument
-expansion.bpl(14,22): Error: expansion: identifier was not quantified over
-expansion.bpl(15,22): Error: expansion: identifier was not quantified over
-expansion.bpl(16,22): Error: expansion: more variables quantified over, than used in function
-expansion.bpl(18,21): Error: expansion: axiom to be expanded must have form (forall VARS :: f(VARS) == expr(VARS))
-expansion.bpl(19,53): Error: expansion: only identifiers supported as function arguments
-expansion.bpl(33,22): Error: expansion: an identifier was used more than once
-8 type checking errors detected in expansion.bpl
 -------------------- expansion3.bpl --------------------
 *** detected expansion loop on foo3
 *** detected expansion loop on foo3
 *** detected expansion loop on foo3
-*** more than one possible expansion for x1
-expansion3.bpl(18,3): Error BP5001: This assertion might not hold.
-Execution trace:
-    expansion3.bpl(18,3): anon0
 
-Boogie program verifier finished with 1 verified, 1 error
+Boogie program verifier finished with 1 verified, 0 errors
+-------------------- expansion4.bpl --------------------
+
+Boogie program verifier finished with 1 verified, 0 errors
 -------------------- Elevator.bpl --------------------
 Elevator.bpl(17,5): Error BP5005: This loop invariant might not be maintained by the loop.
 Execution trace:

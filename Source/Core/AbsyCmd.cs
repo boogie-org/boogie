@@ -15,6 +15,7 @@ namespace Microsoft.Boogie {
   using Microsoft.Boogie.AbstractInterpretation;
   using AI = Microsoft.AbstractInterpretationFramework;
   using System.Diagnostics.Contracts;
+  using Set = GSet<object>;
 
 
   //---------------------------------------------------------------------
@@ -800,6 +801,7 @@ namespace Microsoft.Boogie {
     };     // used by WidenPoints.Compute
     public VisitState TraversingStatus;
 
+    public int aiId;  // block ID used by the abstract interpreter, which may change these numbers with each AI run
     public bool widenBlock;
     public int iterations;         // Count the number of time we visited the block during fixpoint computation. Used to decide if we widen or not
 
@@ -1469,6 +1471,7 @@ namespace Microsoft.Boogie {
         NAryExpr/*!*/ res = Expr.Select(Map.AsExpr, Indexes);
         Contract.Assert(res != null);
         res.TypeParameters = this.TypeParameters;
+        res.Type = Map.AsExpr.Type.AsMap.Result;
         return res;
       }
     }
@@ -1481,6 +1484,7 @@ namespace Microsoft.Boogie {
       NAryExpr/*!*/ newRhs = Expr.Store(Map.AsExpr, Indexes, rhs);
       Contract.Assert(newRhs != null);
       newRhs.TypeParameters = this.TypeParameters;
+      newRhs.Type = Map.Type;
       Map.AsSimpleAssignment(newRhs, out simpleLhs, out simpleRhs);
     }
 
@@ -1623,6 +1627,16 @@ namespace Microsoft.Boogie {
   public abstract class CallCommonality : SugaredCmd {
     public QKeyValue Attributes;
 
+    private bool isFree = false;
+    public bool IsFree {
+      get {
+        return isFree;
+      }
+      set {
+        isFree = value;
+      }
+    }
+
     protected CallCommonality(IToken tok, QKeyValue kv)
       : base(tok) {
       Contract.Requires(tok != null);
@@ -1751,7 +1765,11 @@ namespace Microsoft.Boogie {
 
     public override void Emit(TokenTextWriter stream, int level) {
       //Contract.Requires(stream != null);
-      stream.Write(this, level, "call ");
+      stream.Write(this, level, "");
+      if (IsFree) {
+        stream.Write("free ");
+      }
+      stream.Write("call ");
       EmitAttributes(stream, Attributes);
       string sep = "";
       if (Outs.Count > 0) {
@@ -1914,7 +1932,10 @@ namespace Microsoft.Boogie {
       }
 
       if (QKeyValue.FindBoolAttribute(this.Attributes, "async") && Outs.Count > 0) {
-        Type returnType = cce.NonNull(Outs[0]).ShallowType;
+        Type returnType = null;
+        if (Outs[0] == null && Proc.OutParams.Length > 0) returnType = Proc.OutParams[0].TypedIdent.Type;
+        else returnType = Outs[0].ShallowType;
+        //Type returnType = cce.NonNull(Outs[0]).ShallowType;
         if (!returnType.Equals(Type.Int) && !returnType.Equals(Type.GetBvType(32))) {
           tc.Error(this.tok, "the return from an asynchronous call should be either int or bv32");
           return;
@@ -2024,7 +2045,7 @@ namespace Microsoft.Boogie {
       Expr preConjunction = null;
       for (int i = 0; i < this.Proc.Requires.Length; i++) {
         Requires/*!*/ req = cce.NonNull(this.Proc.Requires[i]);
-        if (!req.Free) {
+        if (!req.Free && !IsFree) {
           if (hasWildcard) {
             Expr pre = Substituter.Apply(s, req.Condition);
             if (preConjunction == null) {
@@ -2142,6 +2163,11 @@ namespace Microsoft.Boogie {
         {
             assume.Attributes = Attributes;
         }
+        if (QKeyValue.FindBoolAttribute(e.Attributes, "candidate"))
+        {
+            assume.Attributes = new QKeyValue(Token.NoToken, "candidate", new List<object>(), assume.Attributes);
+            assume.Attributes.Params.Add(this.callee);
+        }
         #endregion
         newBlockBody.Add(assume);
       }
@@ -2206,7 +2232,11 @@ namespace Microsoft.Boogie {
     }
     public override void Emit(TokenTextWriter stream, int level) {
       //Contract.Requires(stream != null);
-      stream.Write(this, level, "call ");
+      stream.Write(this, level, "");
+      if (IsFree) {
+        stream.Write("free ");
+      }
+      stream.Write("call ");
       EmitAttributes(stream, Attributes);
       stream.Write("forall ");
       stream.Write(TokenTextWriter.SanitizeIdentifier(callee));
@@ -2350,7 +2380,7 @@ namespace Microsoft.Boogie {
       Expr preConjunction = null;
       for (int i = 0; i < this.Proc.Requires.Length; i++) {
         Requires/*!*/ req = cce.NonNull(this.Proc.Requires[i]);
-        if (!req.Free) {
+        if (!req.Free && !IsFree) {
           Expr pre = Substituter.Apply(s, req.Condition);
           if (preConjunction == null) {
             preConjunction = pre;

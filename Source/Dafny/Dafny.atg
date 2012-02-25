@@ -19,7 +19,7 @@ static BuiltIns theBuiltIns;
 static Expression/*!*/ dummyExpr = new LiteralExpr(Token.NoToken);
 static FrameExpression/*!*/ dummyFrameExpr = new FrameExpression(dummyExpr, null);
 static Statement/*!*/ dummyStmt = new ReturnStmt(Token.NoToken, null);
-static Attributes.Argument/*!*/ dummyAttrArg = new Attributes.Argument("dummyAttrArg");
+static Attributes.Argument/*!*/ dummyAttrArg = new Attributes.Argument(Token.NoToken, "dummyAttrArg");
 static int anonymousIds = 0;
 struct MemberModifiers {
   public bool IsGhost;
@@ -27,16 +27,6 @@ struct MemberModifiers {
   public bool IsUnlimited;
 }
 // helper routine for parsing call statements
-private static Expression/*!*/ ConvertToLocal(Expression/*!*/ e)
-{
-Contract.Requires(e != null);
-Contract.Ensures(Contract.Result<Expression>() != null);
-  FieldSelectExpr fse = e as FieldSelectExpr;
-  if (fse != null && fse.Obj is ImplicitThisExpr) {
-    return new IdentifierExpr(fse.tok, fse.FieldName);
-  }
-  return e;  // cannot convert to IdentifierExpr (or is already an IdentifierExpr)
-}
 ///<summary>
 /// Parses top-level things (modules, classes, datatypes, class members) from "filename"
 /// and appends them in appropriate form to "modules".
@@ -95,6 +85,10 @@ public static int Parse (string/*!*/ s, string/*!*/ filename, List<ModuleDecl/*!
   theBuiltIns = oldBuiltIns;
   return parser.errors.count;
 }
+bool IsAttribute() {
+  Token x = scanner.Peek();
+  return la.kind == _lbrace && x.kind == _colon;
+}
 /*--------------------------------------------------------------------------*/
 CHARACTERS
   letter = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz".
@@ -128,15 +122,19 @@ TOKENS
   digits = digit {digit}.
   arrayToken = 'a' 'r' 'r' 'a' 'y' [posDigit {digit}].
   string = quote {nonquote} quote.
+  colon = ':'.
+  lbrace = '{'.
+  rbrace = '}'.
 COMMENTS FROM "/*" TO "*/" NESTED
 COMMENTS FROM "//" TO lf
 IGNORE cr + lf + tab
 /*------------------------------------------------------------------------*/
 PRODUCTIONS
 Dafny
-= (. ClassDecl/*!*/ c; DatatypeDecl/*!*/ dt;
+= (. ClassDecl/*!*/ c; DatatypeDecl/*!*/ dt; ArbitraryTypeDecl at;
      Attributes attrs;  IToken/*!*/ id;  List<string/*!*/> theImports;
      List<MemberDecl/*!*/> membersDefaultClass = new List<MemberDecl/*!*/>();
+     List<MemberDecl/*!*/> namedModuleDefaultClassMembers;
      ModuleDecl module;
      // to support multiple files, create a default module only if theModules doesn't already contain one
      DefaultModuleDecl defaultModule = null;
@@ -149,19 +147,27 @@ Dafny
        defaultModuleCreatedHere = true;
        defaultModule = new DefaultModuleDecl();
      }
+     IToken idRefined;
   .)
-  { "module"                             (. attrs = null;  theImports = new List<string/*!*/>(); .)
+  { "module"                             (. attrs = null;  idRefined = null;  theImports = new List<string/*!*/>();
+                                            namedModuleDefaultClassMembers = new List<MemberDecl>();
+                                         .)
     { Attribute<ref attrs> }
-    Ident<out id>
-    [ "imports" Idents<theImports> ]     (. module = new ModuleDecl(id, id.val, theImports, attrs); .)
+    Ident<out id>                        (. defaultModule.ImportNames.Add(id.val); .)
+    [ "refines" Ident<out idRefined> ]
+    [ "imports" Idents<theImports> ]     (. module = new ModuleDecl(id, id.val, idRefined == null ? null : idRefined.val, theImports, attrs); .)
     "{"                                  (. module.BodyStartTok = t; .)
       { ClassDecl<module, out c>         (. module.TopLevelDecls.Add(c); .)
       | DatatypeDecl<module, out dt>     (. module.TopLevelDecls.Add(dt); .)
+      | ArbitraryTypeDecl<module, out at>(. module.TopLevelDecls.Add(at); .)
+      | ClassMemberDecl<namedModuleDefaultClassMembers, false>
       }
     "}"                                  (. module.BodyEndTok = t;
+                                            module.TopLevelDecls.Add(new DefaultClassDecl(module, namedModuleDefaultClassMembers));
                                             theModules.Add(module); .)
-  | ClassDecl<defaultModule, out c>      (. defaultModule.TopLevelDecls.Add(c); .)
-  | DatatypeDecl<defaultModule, out dt>  (. defaultModule.TopLevelDecls.Add(dt); .)
+  | ClassDecl<defaultModule, out c>           (. defaultModule.TopLevelDecls.Add(c); .)
+  | DatatypeDecl<defaultModule, out dt>       (. defaultModule.TopLevelDecls.Add(dt); .)
+  | ArbitraryTypeDecl<defaultModule, out at>  (. defaultModule.TopLevelDecls.Add(at); .)
   | ClassMemberDecl<membersDefaultClass, false>
   }
   (. if (defaultModuleCreatedHere) {
@@ -186,25 +192,19 @@ ClassDecl<ModuleDecl/*!*/ module, out ClassDecl/*!*/ c>
      IToken/*!*/ id;
      Attributes attrs = null;
      List<TypeParameter/*!*/> typeArgs = new List<TypeParameter/*!*/>();
-     IToken/*!*/ idRefined;
-     IToken optionalId = null;
      List<MemberDecl/*!*/> members = new List<MemberDecl/*!*/>();
      IToken bodyStart;
   .)
+  SYNC
   "class"
   { Attribute<ref attrs> }
   Ident<out id>
   [ GenericParameters<typeArgs> ]
-  [ "refines" Ident<out idRefined>               (. optionalId = idRefined; .)
-  ]
   "{"                                            (. bodyStart = t; .)
   { ClassMemberDecl<members, true>
   }
   "}"
-  (. if (optionalId == null)
-       c = new ClassDecl(id, id.val, module, typeArgs, members, attrs);
-     else
-       c = new ClassRefinementDecl(id, id.val, module, typeArgs, members, attrs, optionalId);
+  (. c = new ClassDecl(id, id.val, module, typeArgs, members, attrs);
      c.BodyStartTok = bodyStart;
      c.BodyEndTok = t;
   .)
@@ -222,7 +222,6 @@ ClassMemberDecl<.List<MemberDecl/*!*/>/*!*/ mm, bool allowConstructors.>
   ( FieldDecl<mmod, mm>
   | FunctionDecl<mmod, out f>                   (. mm.Add(f); .)
   | MethodDecl<mmod, allowConstructors, out m>  (. mm.Add(m); .)
-  | CouplingInvDecl<mmod, mm>
   )
   .
 DatatypeDecl<ModuleDecl/*!*/ module, out DatatypeDecl/*!*/ dt>
@@ -234,6 +233,7 @@ DatatypeDecl<ModuleDecl/*!*/ module, out DatatypeDecl/*!*/ dt>
      List<DatatypeCtor/*!*/> ctors = new List<DatatypeCtor/*!*/>();
      IToken bodyStart = Token.NoToken;  // dummy assignment
   .)
+  SYNC
   "datatype"
   { Attribute<ref attrs> }
   Ident<out id>
@@ -241,7 +241,7 @@ DatatypeDecl<ModuleDecl/*!*/ module, out DatatypeDecl/*!*/ dt>
   "="                                      (. bodyStart = t; .)
   DatatypeMemberDecl<ctors>
   { "|" DatatypeMemberDecl<ctors> }
-  ";"
+  SYNC ";"
   (. dt = new DatatypeDecl(id, id.val, module, typeArgs, ctors, attrs);
      dt.BodyStartTok = bodyStart;
      dt.BodyEndTok = t;
@@ -263,6 +263,7 @@ FieldDecl<.MemberModifiers mmod, List<MemberDecl/*!*/>/*!*/ mm.>
      Attributes attrs = null;
      IToken/*!*/ id;  Type/*!*/ ty;
   .)
+  SYNC
   "var"
   (. if (mmod.IsUnlimited) { SemErr(t, "fields cannot be declared 'unlimited'"); }
      if (mmod.IsStatic) { SemErr(t, "fields cannot be declared 'static'"); }
@@ -271,28 +272,16 @@ FieldDecl<.MemberModifiers mmod, List<MemberDecl/*!*/>/*!*/ mm.>
   IdentType<out id, out ty>                         (. mm.Add(new Field(id, id.val, mmod.IsGhost, ty, attrs)); .)
   { "," IdentType<out id, out ty>                   (. mm.Add(new Field(id, id.val, mmod.IsGhost, ty, attrs)); .)
   }
-  ";"
+  SYNC ";"
   .
-CouplingInvDecl<.MemberModifiers mmod, List<MemberDecl/*!*/>/*!*/ mm.>
-= (. Contract.Requires(cce.NonNullElements(mm));
+ArbitraryTypeDecl<ModuleDecl/*!*/ module, out ArbitraryTypeDecl at>
+= (. IToken/*!*/ id;
      Attributes attrs = null;
-     List<IToken/*!*/> ids = new List<IToken/*!*/>();;
-     IToken/*!*/ id;
-     Expression/*!*/ e;
   .)
-  "replaces"
-  (. if (mmod.IsUnlimited) { SemErr(t, "coupling invariants cannot be declared 'unlimited'"); }
-     if (mmod.IsStatic) { SemErr(t, "coupling invariants cannot be declared 'static'"); }
-     if (mmod.IsGhost) { SemErr(t, "coupling invariants cannot be declared 'ghost'"); }
-  .)
+  "type"
   { Attribute<ref attrs> }
-  Ident<out id>                                     (. ids.Add(id); .)
-  { "," Ident<out id>                               (. ids.Add(id); .)
-  }
-  "by"
-  Expression<out e>
-  ";"
-  (. mm.Add(new CouplingInvariant(ids, e, attrs)); .)
+  Ident<out id>               (. at = new ArbitraryTypeDecl(id, id.val, module, attrs); .)
+  SYNC ";"
   .
 GIdentType<bool allowGhostKeyword, out IToken/*!*/ id, out Type/*!*/ ty, out bool isGhost>
 /* isGhost always returns as false if allowGhostKeyword is false */
@@ -367,18 +356,22 @@ MethodDecl<MemberModifiers mmod, bool allowConstructor, out Method/*!*/ m>
      IToken/*!*/ id;
      Attributes attrs = null;
      List<TypeParameter/*!*/>/*!*/ typeArgs = new List<TypeParameter/*!*/>();
+     IToken openParen;
      List<Formal/*!*/> ins = new List<Formal/*!*/>();
      List<Formal/*!*/> outs = new List<Formal/*!*/>();
      List<MaybeFreeExpression/*!*/> req = new List<MaybeFreeExpression/*!*/>();
      List<FrameExpression/*!*/> mod = new List<FrameExpression/*!*/>();
      List<MaybeFreeExpression/*!*/> ens = new List<MaybeFreeExpression/*!*/>();
      List<Expression/*!*/> dec = new List<Expression/*!*/>();
+     Attributes decAttrs = null;
+     Attributes modAttrs = null;
      Statement/*!*/ bb;  BlockStmt body = null;
      bool isConstructor = false;
-     bool isRefinement = false;
+     bool signatureOmitted = false;
      IToken bodyStart = Token.NoToken;
      IToken bodyEnd = Token.NoToken;
   .)
+  SYNC
   ( "method"
   | "constructor"                   (. if (allowConstructor) {
                                          isConstructor = true;
@@ -386,7 +379,6 @@ MethodDecl<MemberModifiers mmod, bool allowConstructor, out Method/*!*/ m>
                                          SemErr(t, "constructors are only allowed in classes");
                                        }
                                     .)
-  | "refines"                       (. isRefinement = true; .)
   )
   (. if (mmod.IsUnlimited) { SemErr(t, "methods cannot be declared 'unlimited'"); }
      if (isConstructor) {
@@ -400,44 +392,50 @@ MethodDecl<MemberModifiers mmod, bool allowConstructor, out Method/*!*/ m>
   .)
   { Attribute<ref attrs> }
   Ident<out id>
-  [ GenericParameters<typeArgs> ]
-  Formals<true, !mmod.IsGhost, ins>
-  [ "returns"                                 (. if (isConstructor) { SemErr(t, "constructors cannot have out-parameters"); } .)
-    Formals<false, !mmod.IsGhost, outs>
-  ]
-  { MethodSpec<req, mod, ens, dec> }
+  (
+    [ GenericParameters<typeArgs> ]
+    Formals<true, !mmod.IsGhost, ins, out openParen>
+    [ "returns"                                 (. if (isConstructor) { SemErr(t, "constructors cannot have out-parameters"); } .)
+      Formals<false, !mmod.IsGhost, outs, out openParen>
+    ]
+  | "..."                                       (. signatureOmitted = true; openParen = Token.NoToken; .)
+  )
+  { MethodSpec<req, mod, ens, dec, ref decAttrs, ref modAttrs> }
   [ BlockStmt<out bb, out bodyStart, out bodyEnd>    (. body = (BlockStmt)bb; .)
   ]
-  (. if (isRefinement)
-       m = new MethodRefinement(id, id.val, mmod.IsStatic, mmod.IsGhost, typeArgs, ins, outs, req, mod, ens, dec, body, attrs);
-     else if (isConstructor)
-       m = new Constructor(id, id.val, typeArgs, ins, req, mod, ens, dec, body, attrs);
-     else
-       m = new Method(id, id.val, mmod.IsStatic, mmod.IsGhost, typeArgs, ins, outs, req, mod, ens, dec, body, attrs);
+  (. if (isConstructor) {
+       m = new Constructor(id, id.val, typeArgs, ins,
+                           req, new Specification<FrameExpression>(mod, modAttrs), ens, new Specification<Expression>(dec, decAttrs), body, attrs, signatureOmitted);
+     } else {
+       m = new Method(id, id.val, mmod.IsStatic, mmod.IsGhost, typeArgs, ins, outs,
+                      req, new Specification<FrameExpression>(mod, modAttrs), ens, new Specification<Expression>(dec, decAttrs), body, attrs, signatureOmitted);
+     }
      m.BodyStartTok = bodyStart;
      m.BodyEndTok = bodyEnd;
  .)
   .
 MethodSpec<.List<MaybeFreeExpression/*!*/>/*!*/ req, List<FrameExpression/*!*/>/*!*/ mod, List<MaybeFreeExpression/*!*/>/*!*/ ens,
-           List<Expression/*!*/>/*!*/ decreases.>
+           List<Expression/*!*/>/*!*/ decreases, ref Attributes decAttrs, ref Attributes modAttrs.>
 = (. Contract.Requires(cce.NonNullElements(req)); Contract.Requires(cce.NonNullElements(mod)); Contract.Requires(cce.NonNullElements(ens)); Contract.Requires(cce.NonNullElements(decreases));
-     Expression/*!*/ e;  FrameExpression/*!*/ fe;  bool isFree = false;
+     Expression/*!*/ e;  FrameExpression/*!*/ fe;  bool isFree = false; Attributes ensAttrs = null;
   .)
-  ( "modifies" [ FrameExpression<out fe>                     (. mod.Add(fe); .)
+  SYNC
+  ( "modifies" { IF(IsAttribute()) Attribute<ref modAttrs> }
+               [ FrameExpression<out fe>                     (. mod.Add(fe); .)
                  { "," FrameExpression<out fe>               (. mod.Add(fe); .)
                  }
-               ] ";"
+               ] SYNC ";"
   | [ "free"                                                 (. isFree = true; .)
     ]
-    ( "requires" Expression<out e> ";"                       (. req.Add(new MaybeFreeExpression(e, isFree)); .)
-    | "ensures" Expression<out e> ";"                        (. ens.Add(new MaybeFreeExpression(e, isFree)); .)
+    ( "requires" Expression<out e> SYNC ";"                       (. req.Add(new MaybeFreeExpression(e, isFree)); .)
+    | "ensures" { IF(IsAttribute()) Attribute<ref ensAttrs> } Expression<out e> SYNC ";"          (. ens.Add(new MaybeFreeExpression(e, isFree, ensAttrs)); .)
     )
-  | "decreases" DecreasesList<decreases, false> ";"
+  | "decreases" { IF(IsAttribute()) Attribute<ref decAttrs> } DecreasesList<decreases, false> SYNC ";"
   )
   .
-Formals<.bool incoming, bool allowGhostKeyword, List<Formal/*!*/>/*!*/ formals.>
+Formals<.bool incoming, bool allowGhostKeyword, List<Formal/*!*/>/*!*/ formals, out IToken openParen.>
 = (. Contract.Requires(cce.NonNullElements(formals)); IToken/*!*/ id;  Type/*!*/ ty;  bool isGhost; .)
-  "("
+  "("                                                                  (. openParen = t; .)
   [
     GIdentType<allowGhostKeyword, out id, out ty, out isGhost>         (. formals.Add(new Formal(id, id.val, ty, incoming, isGhost)); .)
     { "," GIdentType<allowGhostKeyword, out id, out ty, out isGhost>   (. formals.Add(new Formal(id, id.val, ty, incoming, isGhost)); .)
@@ -520,34 +518,68 @@ GenericInstantiation<.List<Type/*!*/>/*!*/ gt.>
 FunctionDecl<MemberModifiers mmod, out Function/*!*/ f>
 = (. Contract.Ensures(Contract.ValueAtReturn(out f)!=null);
      Attributes attrs = null;
-     IToken/*!*/ id;
+     IToken/*!*/ id = Token.NoToken;  // to please compiler
      List<TypeParameter/*!*/> typeArgs = new List<TypeParameter/*!*/>();
      List<Formal/*!*/> formals = new List<Formal/*!*/>();
-     Type/*!*/ returnType;
+     Type/*!*/ returnType = new BoolType();
      List<Expression/*!*/> reqs = new List<Expression/*!*/>();
      List<Expression/*!*/> ens = new List<Expression/*!*/>();
      List<FrameExpression/*!*/> reads = new List<FrameExpression/*!*/>();
      List<Expression/*!*/> decreases = new List<Expression/*!*/>();
      Expression/*!*/ bb;  Expression body = null;
+     bool isPredicate = false;
      bool isFunctionMethod = false;
+     IToken openParen = null;
      IToken bodyStart = Token.NoToken;
      IToken bodyEnd = Token.NoToken;
+     bool signatureOmitted = false;
   .)
-  "function"
-  [ "method"                 (. isFunctionMethod = true; .)
-  ]
-  (. if (mmod.IsGhost) { SemErr(t, "functions cannot be declared 'ghost' (they are ghost by default)"); }
-  .)
-  { Attribute<ref attrs> }
-  Ident<out id>
-  [ GenericParameters<typeArgs> ]
-  Formals<true, isFunctionMethod, formals>
-  ":"
-  Type<out returnType>
+  /* ----- function ----- */
+  ( "function"
+    [ "method"                 (. isFunctionMethod = true; .)
+    ]
+    (. if (mmod.IsGhost) { SemErr(t, "functions cannot be declared 'ghost' (they are ghost by default)"); }
+    .)
+    { Attribute<ref attrs> }
+    Ident<out id>
+    (
+      [ GenericParameters<typeArgs> ]
+      Formals<true, isFunctionMethod, formals, out openParen>
+      ":"
+      Type<out returnType>
+    | "..."                    (. signatureOmitted = true;
+                                  openParen = Token.NoToken; .)
+    )
+
+  /* ----- predicate ----- */
+  | "predicate"                (. isPredicate = true; .)
+    [ "method"                 (. isFunctionMethod = true; .)
+    ]
+    (. if (mmod.IsGhost) { SemErr(t, "predicates cannot be declared 'ghost' (they are ghost by default)"); }
+    .)
+    { Attribute<ref attrs> }
+    Ident<out id>
+    (
+      [ GenericParameters<typeArgs> ]
+      [ Formals<true, isFunctionMethod, formals, out openParen>
+        [ ":"                  (. SemErr(t, "predicates do not have an explicitly declared return type; it is always bool"); .)
+        ]
+      ]
+    | "..."                    (. signatureOmitted = true;
+                                  openParen = Token.NoToken; .)
+    )
+  )
+
   { FunctionSpec<reqs, reads, ens, decreases> }
   [ FunctionBody<out bb, out bodyStart, out bodyEnd>  (. body = bb; .)
   ]
-  (. f = new Function(id, id.val, mmod.IsStatic, !isFunctionMethod, mmod.IsUnlimited, typeArgs, formals, returnType, reqs, reads, ens, decreases, body, attrs);
+  (. if (isPredicate) {
+        f = new Predicate(id, id.val, mmod.IsStatic, !isFunctionMethod, mmod.IsUnlimited, typeArgs, openParen, formals,
+                          reqs, reads, ens, new Specification<Expression>(decreases, null), body, false, attrs, signatureOmitted);
+     } else {
+        f = new Function(id, id.val, mmod.IsStatic, !isFunctionMethod, mmod.IsUnlimited, typeArgs, openParen, formals, returnType,
+                         reqs, reads, ens, new Specification<Expression>(decreases, null), body, attrs, signatureOmitted);
+     }
      f.BodyStartTok = bodyStart;
      f.BodyEndTok = bodyEnd;
   .)
@@ -555,13 +587,15 @@ FunctionDecl<MemberModifiers mmod, out Function/*!*/ f>
 FunctionSpec<.List<Expression/*!*/>/*!*/ reqs, List<FrameExpression/*!*/>/*!*/ reads, List<Expression/*!*/>/*!*/ ens, List<Expression/*!*/>/*!*/ decreases.>
 = (. Contract.Requires(cce.NonNullElements(reqs)); Contract.Requires(cce.NonNullElements(reads)); Contract.Requires(cce.NonNullElements(decreases));
      Expression/*!*/ e;  FrameExpression/*!*/ fe; .)
-  ( "requires" Expression<out e> ";"      (. reqs.Add(e); .)
+  (
+    SYNC
+    "requires" Expression<out e> SYNC ";"      (. reqs.Add(e); .)
   | "reads" [ PossiblyWildFrameExpression<out fe>              (. reads.Add(fe); .)
               { "," PossiblyWildFrameExpression<out fe>        (. reads.Add(fe); .)
               }
-            ] ";"
-  | "ensures" Expression<out e> ";"      (. ens.Add(e); .)
-  | "decreases" DecreasesList<decreases, false> ";"
+            ] SYNC ";"
+  | "ensures" Expression<out e> SYNC ";"      (. ens.Add(e); .)
+  | "decreases" DecreasesList<decreases, false> SYNC ";"
   )
   .
 PossiblyWildExpression<out Expression/*!*/ e>
@@ -621,7 +655,7 @@ OneStmt<out Statement/*!*/ s>
      IToken bodyStart, bodyEnd;
      int breakCount;
   .)
-  /* This list does not contain BlockStmt, see comment above in Stmt production. */
+  SYNC
   ( BlockStmt<out s, out bodyStart, out bodyEnd>
   | AssertStmt<out s>
   | AssumeStmt<out s>
@@ -631,7 +665,7 @@ OneStmt<out Statement/*!*/ s>
   | IfStmt<out s>
   | WhileStmt<out s>
   | MatchStmt<out s>
-  | ForeachStmt<out s>
+  | ParallelStmt<out s>
   | "label"                            (. x = t; .)
     Ident<out id> ":"
     OneStmt<out s>                     (. s.Labels = new LabelNode(x, id.val, s.Labels); .)
@@ -640,8 +674,11 @@ OneStmt<out Statement/*!*/ s>
     | { "break"                        (. breakCount++; .)
       }
     )
+    SYNC
     ";"                                (. s = label != null ? new BreakStmt(x, label) : new BreakStmt(x, breakCount); .)
   | ReturnStmt<out s>
+  | "..."                              (. s = new SkeletonStatement(t); .)
+    ";"
   )
   .
 ReturnStmt<out Statement/*!*/ s>
@@ -664,9 +701,11 @@ UpdateStmt<out Statement/*!*/ s>
      Expression e;  AssignmentRhs r;
      Expression lhs0;
      IToken x;
+     Attributes attrs = null;
   .)
   Lhs<out e>                       (. x = e.tok; .)
-  ( ";"                            (. rhss.Add(new ExprRhs(e)); .)
+  ( { Attribute<ref attrs> }
+    ";"                            (. rhss.Add(new ExprRhs(e, attrs)); .)
   |                                (. lhss.Add(e);  lhs0 = e; .)
     { "," Lhs<out e>               (. lhss.Add(e); .)
     }
@@ -686,6 +725,7 @@ Rhs<out AssignmentRhs r, Expression receiverForInitCall>
      CallStmt initCall = null;
      List<Expression> args;
      r = null;  // to please compiler
+     Attributes attrs = null;
   .)
   ( "new"                              (. newToken = t; .)
     TypeAndToken<out x, out ty>
@@ -712,11 +752,12 @@ Rhs<out AssignmentRhs r, Expression receiverForInitCall>
   | "*"                                (. r = new HavocRhs(t); .)
   | Expression<out e>                  (. r = new ExprRhs(e); .)
   )
+  { Attribute<ref attrs> }             (. r.Attributes = attrs; .)
   .
 VarDeclStatement<.out Statement/*!*/ s.>
 = (. IToken x = null, assignTok = null;  bool isGhost = false;
      VarDecl/*!*/ d;
-     AssignmentRhs r;  Expression lhs0;
+     AssignmentRhs r;  IdentifierExpr lhs0;
      List<VarDecl> lhss = new List<VarDecl>();
      List<AssignmentRhs> rhss = new List<AssignmentRhs>();
   .)
@@ -727,7 +768,10 @@ VarDeclStatement<.out Statement/*!*/ s.>
   { ","
     LocalIdentTypeOptional<out d, isGhost>  (. lhss.Add(d); .)
   }
-  [ ":="                           (. assignTok = t;  lhs0 = new IdentifierExpr(lhss[0].Tok, lhss[0].Name); .)
+  [ ":="                           (. assignTok = t;
+                                      lhs0 = new IdentifierExpr(lhss[0].Tok, lhss[0].Name);
+                                      lhs0.Var = lhss[0];  lhs0.Type = lhss[0].OptionalType;  // resolve here
+                                   .)
     Rhs<out r, lhs0>               (. rhss.Add(r); .)
     { "," Rhs<out r, lhs0>         (. rhss.Add(r); .)
     }
@@ -748,7 +792,7 @@ VarDeclStatement<.out Statement/*!*/ s.>
   .
 IfStmt<out Statement/*!*/ ifStmt>
 = (. Contract.Ensures(Contract.ValueAtReturn(out ifStmt) != null); IToken/*!*/ x;
-     Expression guard;
+     Expression guard = null;  bool guardOmitted = false;
      Statement/*!*/ thn;
      Statement/*!*/ s;
      Statement els = null;
@@ -758,14 +802,21 @@ IfStmt<out Statement/*!*/ ifStmt>
   .)
   "if"                       (. x = t; .)
   (
-    Guard<out guard>
+    ( Guard<out guard>
+    | "..."                  (. guardOmitted = true; .)
+    )
     BlockStmt<out thn, out bodyStart, out bodyEnd>
     [ "else"
       ( IfStmt<out s>                                 (. els = s; .)
       | BlockStmt<out s, out bodyStart, out bodyEnd>  (. els = s; .)
       )
     ]
-    (. ifStmt = new IfStmt(x, guard, thn, els); .)
+    (. if (guardOmitted) {
+         ifStmt = new SkeletonStatement(new IfStmt(x, guard, thn, els), true, false);
+       } else {
+         ifStmt = new IfStmt(x, guard, thn, els);
+       }
+    .)
   |
     AlternativeBlock<out alternatives>
     (. ifStmt = new AlternativeStmt(x, alternatives); .)
@@ -789,46 +840,75 @@ AlternativeBlock<.out List<GuardedAlternative> alternatives.>
   .
 WhileStmt<out Statement/*!*/ stmt>
 = (. Contract.Ensures(Contract.ValueAtReturn(out stmt) != null); IToken/*!*/ x;
-     Expression guard;
+     Expression guard = null;  bool guardOmitted = false;
      List<MaybeFreeExpression/*!*/> invariants = new List<MaybeFreeExpression/*!*/>();
      List<Expression/*!*/> decreases = new List<Expression/*!*/>();
+     Attributes decAttrs = null;
+     Attributes modAttrs = null;
      List<FrameExpression/*!*/> mod = null;
-     Statement/*!*/ body;
-     IToken bodyStart, bodyEnd;
+     Statement/*!*/ body = null;  bool bodyOmitted = false;
+     IToken bodyStart = null, bodyEnd = null;
      List<GuardedAlternative> alternatives;
      stmt = dummyStmt;  // to please the compiler
   .)
   "while"                    (. x = t; .)
   (
-    Guard<out guard>           (. Contract.Assume(guard == null || cce.Owner.None(guard)); .)
-    LoopSpec<out invariants, out decreases, out mod>
-    BlockStmt<out body, out bodyStart, out bodyEnd>
-    (. stmt = new WhileStmt(x, guard, invariants, decreases, mod, body); .)
+    ( Guard<out guard>           (. Contract.Assume(guard == null || cce.Owner.None(guard)); .)
+    | "..."                      (. guardOmitted = true; .)
+    )
+    LoopSpec<out invariants, out decreases, out mod, ref decAttrs, ref modAttrs>
+    ( BlockStmt<out body, out bodyStart, out bodyEnd>
+    | "..."                      (. bodyOmitted = true; .)
+    )
+    (.
+      if (guardOmitted || bodyOmitted) {
+        if (decreases.Count != 0) {
+          SemErr(decreases[0].tok, "'decreases' clauses are not allowed on refining loops");
+        }
+        if (mod != null) {
+          SemErr(mod[0].E.tok, "'modifies' clauses are not allowed on refining loops");
+        }
+        if (body == null) {
+          body = new AssertStmt(x, new LiteralExpr(x, true), null);
+        }
+        stmt = new WhileStmt(x, guard, invariants, new Specification<Expression>(null, null), new Specification<FrameExpression>(null, null), body);
+        stmt = new SkeletonStatement(stmt, guardOmitted, bodyOmitted);
+      } else {
+        stmt = new WhileStmt(x, guard, invariants, new Specification<Expression>(decreases, decAttrs), new Specification<FrameExpression>(mod, modAttrs), body);
+      }
+    .)
   |
-    LoopSpec<out invariants, out decreases, out mod>
+    LoopSpec<out invariants, out decreases, out mod, ref decAttrs, ref modAttrs>
     AlternativeBlock<out alternatives>
-    (. stmt = new AlternativeLoopStmt(x, invariants, decreases, mod, alternatives); .)
+    (. stmt = new AlternativeLoopStmt(x, invariants, new Specification<Expression>(decreases, decAttrs), new Specification<FrameExpression>(mod, modAttrs), alternatives); .)
   )
   .
-LoopSpec<.out List<MaybeFreeExpression/*!*/> invariants, out List<Expression/*!*/> decreases, out List<FrameExpression/*!*/> mod.>
-= (. bool isFree;  Expression/*!*/ e; FrameExpression/*!*/ fe;
+LoopSpec<.out List<MaybeFreeExpression/*!*/> invariants, out List<Expression/*!*/> decreases, out List<FrameExpression/*!*/> mod, ref Attributes decAttrs, ref Attributes modAttrs.>
+= (. FrameExpression/*!*/ fe;
      invariants = new List<MaybeFreeExpression/*!*/>();
+     MaybeFreeExpression invariant = null;
      decreases = new List<Expression/*!*/>();
      mod = null;
   .)
-  {                         (. isFree = false; .)
-    [ "free"                (. isFree = true; .)
-    ]
-    "invariant"
-    Expression<out e>       (. invariants.Add(new MaybeFreeExpression(e, isFree)); .)
-    ";"
-  | "decreases" DecreasesList<decreases, true> ";"
-  | "modifies" (. mod = mod ?? new List<FrameExpression>(); .)
-               [ FrameExpression<out fe>                     (. mod.Add(fe); .)
-                 { "," FrameExpression<out fe>               (. mod.Add(fe); .)
-                 }
-               ] ";"
+  {
+    Invariant<out invariant> SYNC ";"   (. invariants.Add(invariant); .)
+  | SYNC "decreases"
+    { IF(IsAttribute()) Attribute<ref decAttrs> }
+    DecreasesList<decreases, true> SYNC ";"
+  | SYNC "modifies"
+    { IF(IsAttribute()) Attribute<ref modAttrs> } (. mod = mod ?? new List<FrameExpression>(); .)
+    [ FrameExpression<out fe>                     (. mod.Add(fe); .)
+      { "," FrameExpression<out fe>               (. mod.Add(fe); .)
+      }
+    ] SYNC ";"
   }
+  .
+Invariant<out MaybeFreeExpression/*!*/ invariant>
+= (. bool isFree = false; Expression/*!*/ e; List<string> ids = new List<string>(); invariant = null; Attributes attrs = null; .)
+    SYNC
+    ["free"                                 (. isFree = true; .)
+    ]
+    "invariant" { IF(IsAttribute()) Attribute<ref attrs> } Expression<out e>           (. invariant = new MaybeFreeExpression(e, isFree, attrs); .)
   .
 DecreasesList<.List<Expression/*!*/> decreases, bool allowWildcard.>
 = (. Expression/*!*/ e; .)
@@ -868,15 +948,16 @@ MatchStmt<out Statement/*!*/ s>
   .
 CaseStatement<out MatchCaseStmt/*!*/ c>
 = (. Contract.Ensures(Contract.ValueAtReturn(out c) != null);
-     IToken/*!*/ x, id, arg;
+     IToken/*!*/ x, id;
      List<BoundVar/*!*/> arguments = new List<BoundVar/*!*/>();
+     BoundVar/*!*/ bv;
      List<Statement/*!*/> body = new List<Statement/*!*/>();
   .)
   "case"                      (. x = t; .)
   Ident<out id>
   [ "("
-    Ident<out arg>            (. arguments.Add(new BoundVar(arg, arg.val, new InferredTypeProxy())); .)
-    { "," Ident<out arg>      (. arguments.Add(new BoundVar(arg, arg.val, new InferredTypeProxy())); .)
+    IdentTypeOptional<out bv>        (. arguments.Add(bv); .)
+    { "," IdentTypeOptional<out bv>  (. arguments.Add(bv); .)
     }
   ")" ]
   "=>"
@@ -884,40 +965,22 @@ CaseStatement<out MatchCaseStmt/*!*/ c>
   (. c = new MatchCaseStmt(x, id.val, arguments, body); .)
   .
 /*------------------------------------------------------------------------*/
-ForeachStmt<out Statement/*!*/ s>
-= (. Contract.Ensures(Contract.ValueAtReturn(out s) != null);
-     IToken/*!*/ x, boundVar;
-     Type/*!*/ ty;
-     Expression/*!*/ collection;
-     Expression/*!*/ range;
-     List<PredicateStmt/*!*/> bodyPrefix = new List<PredicateStmt/*!*/>();
-     Statement bodyAssign = null;
-  .)
-  "foreach"                                    (. x = t;
-                                                  range = new LiteralExpr(x, true);
-                                                  ty = new InferredTypeProxy();
-                                               .)
-  "(" Ident<out boundVar>
-      [ ":" Type<out ty> ]
-      "in" Expression<out collection>
-      [ "|" Expression<out range> ]
-  ")"
-  "{"
-    { AssertStmt<out s>                        (. if (s is PredicateStmt) { bodyPrefix.Add((PredicateStmt)s); } .)
-    | AssumeStmt<out s>                        (. if (s is PredicateStmt) { bodyPrefix.Add((PredicateStmt)s); } .)
-    }
-    UpdateStmt<out s>                          (. bodyAssign = s; .)
-  "}"                                          (. if (bodyAssign != null) {
-                                                    s = new ForeachStmt(x, new BoundVar(boundVar, boundVar.val, ty), collection, range, bodyPrefix, bodyAssign);
-                                                  } else {
-                                                    s = dummyStmt;  // some error occurred in parsing the bodyAssign
-                                                  }
-                                               .)
-  .
 AssertStmt<out Statement/*!*/ s>
-= (. Contract.Ensures(Contract.ValueAtReturn(out s) != null); IToken/*!*/ x;  Expression/*!*/ e; .)
-  "assert"                                     (. x = t; .)
-  Expression<out e> ";"                        (. s = new AssertStmt(x, e); .)
+= (. Contract.Ensures(Contract.ValueAtReturn(out s) != null); IToken/*!*/ x;
+     Expression/*!*/ e = null; Attributes attrs = null;
+  .)
+  "assert"                                     (. x = t; s = null;.)
+  { IF(IsAttribute()) Attribute<ref attrs> }
+  ( Expression<out e>                 
+  | "..."
+  )
+  ";"
+  (. if (e == null) {
+       s = new SkeletonStatement(new AssertStmt(x, new LiteralExpr(x, true), attrs), true, false);
+     } else {
+       s = new AssertStmt(x, e, attrs);
+     }
+  .)
   .
 AssumeStmt<out Statement/*!*/ s>
 = (. Contract.Ensures(Contract.ValueAtReturn(out s) != null); IToken/*!*/ x;  Expression/*!*/ e; .)
@@ -933,6 +996,38 @@ PrintStmt<out Statement/*!*/ s>
   { "," AttributeArg<out arg>                  (. args.Add(arg); .)
   }
   ";"                                          (. s = new PrintStmt(x, args); .)
+  .
+
+ParallelStmt<out Statement/*!*/ s>
+= (. Contract.Ensures(Contract.ValueAtReturn(out s) != null);
+     IToken/*!*/ x;
+     List<BoundVar/*!*/> bvars = null;
+     Attributes attrs = null;
+     Expression range = null;
+     var ens = new List<MaybeFreeExpression/*!*/>();
+     bool isFree;
+     Expression/*!*/ e;
+     Statement/*!*/ block;
+     IToken bodyStart, bodyEnd;
+  .)
+  "parallel"                                (. x = t; .)
+  "("
+  [                                         (. List<BoundVar/*!*/> bvarsX;  Attributes attrsX;  Expression rangeX; .)
+    QuantifierDomain<out bvarsX, out attrsX, out rangeX>
+                                            (. bvars = bvarsX; attrs = attrsX; range = rangeX;
+                                            .)
+  ]
+                                            (. if (bvars == null) { bvars = new List<BoundVar>(); }
+                                               if (range == null) { range = new LiteralExpr(x, true); }
+                                            .)
+  ")"
+  {                                         (. isFree = false; .)
+    [ "free"                                (. isFree = true; .)
+    ]
+    "ensures" Expression<out e> ";"         (. ens.Add(new MaybeFreeExpression(e, isFree)); .)
+  }
+  BlockStmt<out block, out bodyStart, out bodyEnd>
+  (. s = new ParallelStmt(x, bvars, attrs, range, ens, block); .)
   .
 /*------------------------------------------------------------------------*/
 Expression<out Expression/*!*/ e>
@@ -1059,7 +1154,10 @@ RelationalExpression<out Expression/*!*/ e>
   .)
   .
 RelOp<out IToken/*!*/ x, out BinaryExpr.Opcode op>
-= (. Contract.Ensures(Contract.ValueAtReturn(out x) != null); x = Token.NoToken;  op = BinaryExpr.Opcode.Add/*(dummy)*/; .)
+= (. Contract.Ensures(Contract.ValueAtReturn(out x) != null);
+     x = Token.NoToken;  op = BinaryExpr.Opcode.Add/*(dummy)*/;
+     IToken y;
+  .)
   ( "=="           (. x = t;  op = BinaryExpr.Opcode.Eq; .)
   | "<"            (. x = t;  op = BinaryExpr.Opcode.Lt; .)
   | ">"            (. x = t;  op = BinaryExpr.Opcode.Gt; .)
@@ -1068,7 +1166,20 @@ RelOp<out IToken/*!*/ x, out BinaryExpr.Opcode op>
   | "!="           (. x = t;  op = BinaryExpr.Opcode.Neq; .)
   | "!!"           (. x = t;  op = BinaryExpr.Opcode.Disjoint; .)
   | "in"           (. x = t;  op = BinaryExpr.Opcode.In; .)
-  | "!in"          (. x = t;  op = BinaryExpr.Opcode.NotIn; .)
+  | /* The next operator is "!in", but Coco evidently parses "!in" even when it is a prefix of, say, "!initialized".
+     * The reason for this seems to be that the first character of "!in" is not a letter.  So, here is the workaround:
+     */
+    "!"            (. x = t;  y = Token.NoToken; .)
+    [ "in"         (. y = t; .)
+    ]              (. if (y == Token.NoToken) {
+                        SemErr(x, "invalid RelOp");
+                      } else if (y.pos != x.pos + 1) {
+                        SemErr(x, "invalid RelOp (perhaps you intended \"!in\" with no intervening whitespace?)");
+                      } else {
+                        x.val = "!in";
+                        op = BinaryExpr.Opcode.NotIn;
+                      }
+                   .)
   | '\u2260'       (. x = t;  op = BinaryExpr.Opcode.Neq; .)
   | '\u2264'       (. x = t;  op = BinaryExpr.Opcode.Le; .)
   | '\u2265'       (. x = t;  op = BinaryExpr.Opcode.Ge; .)
@@ -1190,14 +1301,34 @@ EndlessExpression<out Expression e>
 = (. IToken/*!*/ x;
      Expression e0, e1;
      e = dummyExpr;
+     BoundVar d;
+     List<BoundVar> letVars;  List<Expression> letRHSs;
   .)
-  ( "if"                                       (. x = t; .)
+  ( "if"                            (. x = t; .)
     Expression<out e>
     "then" Expression<out e0>
-    "else" Expression<out e1>                  (. e = new ITEExpr(x, e, e0, e1); .)
+    "else" Expression<out e1>       (. e = new ITEExpr(x, e, e0, e1); .)
   | MatchExpression<out e>
   | QuantifierGuts<out e>
   | ComprehensionExpr<out e>
+  | "assert"                        (. x = t; .)
+    Expression<out e0> ";"
+    Expression<out e1>              (. e = new AssertExpr(x, e0, e1); .)
+  | "assume"                        (. x = t; .)
+    Expression<out e0> ";"
+    Expression<out e1>              (. e = new AssumeExpr(x, e0, e1); .)
+  | "var"                           (. x = t;
+                                       letVars = new List<BoundVar>();
+                                       letRHSs = new List<Expression>(); .)
+    IdentTypeOptional<out d>        (. letVars.Add(d); .)
+    { "," IdentTypeOptional<out d>  (. letVars.Add(d); .)
+    }
+    ":="
+    Expression<out e>               (. letRHSs.Add(e); .)
+    { "," Expression<out e>         (. letRHSs.Add(e); .)
+    }
+    ";"
+    Expression<out e>               (. e = new LetExpr(x, letVars, letRHSs, e); .)
   )
   .
 MatchExpression<out Expression/*!*/ e>
@@ -1214,15 +1345,16 @@ MatchExpression<out Expression/*!*/ e>
   (. e = new MatchExpr(x, e, cases); .)
   .
 CaseExpression<out MatchCaseExpr/*!*/ c>
-= (. Contract.Ensures(Contract.ValueAtReturn(out c) != null); IToken/*!*/ x, id, arg;
+= (. Contract.Ensures(Contract.ValueAtReturn(out c) != null); IToken/*!*/ x, id;
      List<BoundVar/*!*/> arguments = new List<BoundVar/*!*/>();
+     BoundVar/*!*/ bv;
      Expression/*!*/ body;
   .)
   "case"                      (. x = t; .)
   Ident<out id>
   [ "("
-    Ident<out arg>            (. arguments.Add(new BoundVar(arg, arg.val, new InferredTypeProxy())); .)
-    { "," Ident<out arg>      (. arguments.Add(new BoundVar(arg, arg.val, new InferredTypeProxy())); .)
+    IdentTypeOptional<out bv>        (. arguments.Add(bv); .)
+    { "," IdentTypeOptional<out bv>  (. arguments.Add(bv); .)
     }
   ")" ]
   "=>"
@@ -1252,10 +1384,10 @@ Suffix<ref Expression/*!*/ e>
   .)
   ( "."
     Ident<out id>
-    [ "("                                      (. args = new List<Expression/*!*/>();  func = true; .)
+    [ "("                                      (. IToken openParen = t;  args = new List<Expression/*!*/>();  func = true; .)
         [ Expressions<args> ]
-      ")"                                      (. e = new FunctionCallExpr(id, id.val, e, args); .)
-    ]                                          (. if (!func) { e = new FieldSelectExpr(id, e, id.val); } .)
+      ")"                                      (. e = new FunctionCallExpr(id, id.val, e, openParen, args); .)
+    ]                                          (. if (!func) { e = new ExprDotName(id, e, id.val); } .)
   | "["                                        (. x = t; .)
       ( Expression<out ee>                     (. e0 = ee; .)
         ( ".."                                 (. anyDots = true; .)
@@ -1272,8 +1404,8 @@ Suffix<ref Expression/*!*/ e>
           }
         )
       | ".."                                   (. anyDots = true; .)
-	    [ Expression<out ee>                   (. e1 = ee; .)
-	    ]
+        [ Expression<out ee>                   (. e1 = ee; .)
+        ]
       )
       (. if (multipleIndices != null) {
            e = new MultiSelectExpr(x, e, multipleIndices);
@@ -1304,36 +1436,46 @@ Suffix<ref Expression/*!*/ e>
 QuantifierGuts<out Expression/*!*/ q>
 = (. Contract.Ensures(Contract.ValueAtReturn(out q) != null); IToken/*!*/ x = Token.NoToken;
      bool univ = false;
-     BoundVar/*!*/ bv;
-     List<BoundVar/*!*/> bvars = new List<BoundVar/*!*/>();
-     Attributes attrs = null;
-     Triggers trigs = null;
-     Expression range = null;
+     List<BoundVar/*!*/> bvars;
+     Attributes attrs;
+     Expression range;
      Expression/*!*/ body;
   .)
   ( Forall                                     (. x = t;  univ = true; .)
   | Exists                                     (. x = t; .)
   )
+  QuantifierDomain<out bvars, out attrs, out range>
+  QSep
+  Expression<out body>
+  (. if (univ) {
+       q = new ForallExpr(x, bvars, range, body, attrs);
+     } else {
+       q = new ExistsExpr(x, bvars, range, body, attrs);
+     }
+  .)
+  .
+
+Forall = "forall" | '\u2200'.
+Exists = "exists" | '\u2203'.
+QSep = "::" | '\u2022'.
+
+QuantifierDomain<.out List<BoundVar/*!*/> bvars, out Attributes attrs, out Expression range.>
+= (.
+     bvars = new List<BoundVar/*!*/>();
+     BoundVar/*!*/ bv;
+     attrs = null;
+     range = null;
+  .)
   IdentTypeOptional<out bv>                    (. bvars.Add(bv); .)
   { ","
     IdentTypeOptional<out bv>                  (. bvars.Add(bv); .)
   }
-  { AttributeOrTrigger<ref attrs, ref trigs> }
+  { Attribute<ref attrs> }
   [ "|"
     Expression<out range>
   ]
-  QSep
-  Expression<out body>
-  (. if (univ) {
-       q = new ForallExpr(x, bvars, range, body, trigs, attrs);
-     } else {
-       q = new ExistsExpr(x, bvars, range, body, trigs, attrs);
-     }
-  .)
   .
-Forall = "forall" | '\u2200'.
-Exists = "exists" | '\u2203'.
-QSep = "::" | '\u2022'.
+
 ComprehensionExpr<out Expression/*!*/ q>
 = (. Contract.Ensures(Contract.ValueAtReturn(out q) != null);
      IToken/*!*/ x = Token.NoToken;
@@ -1381,19 +1523,9 @@ AttributeBody<ref Attributes attrs>
   .
 AttributeArg<out Attributes.Argument/*!*/ arg>
 = (. Contract.Ensures(Contract.ValueAtReturn(out arg) != null); Expression/*!*/ e;  arg = dummyAttrArg; .)
-  ( string                             (. arg = new Attributes.Argument(t.val.Substring(1, t.val.Length-2)); .)
-  | Expression<out e>                  (. arg = new Attributes.Argument(e); .)
+  ( string                             (. arg = new Attributes.Argument(t, t.val.Substring(1, t.val.Length-2)); .)
+  | Expression<out e>                  (. arg = new Attributes.Argument(t, e); .)
   )
-  .
-AttributeOrTrigger<ref Attributes attrs, ref Triggers trigs>
-= (. List<Expression/*!*/> es = new List<Expression/*!*/>();
-  .)
-  "{"
-    ( AttributeBody<ref attrs>
-    |                                  (. es = new List<Expression/*!*/>(); .)
-      Expressions<es>                  (. trigs = new Triggers(es, trigs); .)
-    )
-  "}"
   .
 /*------------------------------------------------------------------------*/
 Idents<.List<string/*!*/>/*!*/ ids.>

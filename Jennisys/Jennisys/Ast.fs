@@ -19,7 +19,7 @@ type Type =
   | InstantiatedType of string * Type list (* type parameters *)
 
 type VarDecl =
-  | Var of string * Type option
+  | Var of string * Type option * (* isOld *) bool 
 
 (* 
    the difference between IdLiteral and VarLiteral is that the VarLiteral is more specific, 
@@ -31,12 +31,15 @@ type VarDecl =
 type Expr =
   | IntLiteral of int
   | BoolLiteral of bool
+  | BoxLiteral of string
   | VarLiteral of string  
   | IdLiteral of string 
   | ObjLiteral of string 
   | Star
   | Dot of Expr * string
   | UnaryExpr of string * Expr
+  | OldExpr of Expr
+  | LCIntervalExpr of Expr
   | BinaryExpr of int * string * Expr * Expr
   | IteExpr of (* cond *) Expr * (* thenExpr *) Expr * (* elseExpr *) Expr
   | SelectExpr of Expr * Expr
@@ -45,10 +48,16 @@ type Expr =
   | SeqLength of Expr
   | SetExpr of Expr list //TODO: maybe this should really be a set instead of a list
   | ForallExpr of VarDecl list * Expr
-  | MethodCall of (* receiver *) Expr * (* name *) string * (* actual parameters *) Expr list
+  | MethodCall of (* receiver *) Expr * (* component name *) string * (* method name *) string * (* actual parameters *) Expr list
+  | MethodOutSelect of (* method *) Expr * (* out param name *) string
+  | VarDeclExpr of (* var list *) VarDecl list * (* declareAlso *) bool
+  | AssertExpr of Expr
+  | AssumeExpr of Expr
+
 type Const = 
   | IntConst   of int
   | BoolConst  of bool
+  | BoxConst   of string
   | SetConst   of Set<Const>
   | SeqConst   of Const list
   | NullConst
@@ -60,6 +69,7 @@ type Const =
 
 type Stmt =
   | Block of Stmt list
+  | ExprStmt of Expr
   | Assign of Expr * Expr
 
 type Signature =
@@ -71,15 +81,15 @@ type Member =
   | Invariant of Expr list
 
 type TopLevelDecl =
-  | Class of string * string list * Member list
-  | Model of string * string list * VarDecl list * (* frame *) Expr list * (* invariant *) Expr
+  | Interface of string * string list * Member list
+  | DataModel of string * string list * VarDecl list * (* frame *) Expr list * (* invariant *) Expr
   | Code of string * string list
 
 type SyntacticProgram =
   | SProgram of TopLevelDecl list
 
 type Component =
-  | Component of (*class*)TopLevelDecl * (*model*)TopLevelDecl * (*code*)TopLevelDecl
+  | Component of (*interface*)TopLevelDecl * (*datamodel*)TopLevelDecl * (*code*)TopLevelDecl
 
 type Program =
   | Program of Component list

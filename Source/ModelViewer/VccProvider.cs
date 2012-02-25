@@ -37,18 +37,24 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
     public readonly Model.Func f_ptr_to, f_phys_ptr_cast, f_spec_ptr_cast, f_mathint, f_local_value_is, f_spec_ptr_to, f_heap, f_select_field,
                                f_select_value, f_field, f_field_type, f_int_to_ptr, f_ptr_to_int, f_ptr, f_map_t, f_select_ptr,
                                f_owners, f_closed, f_roots, f_timestamps, f_select_bool, f_select_int, f_is_null, f_good_state,
-                               f_int_to_version, f_int_to_ptrset, f_set_in0, f_is_ghost_field, f_is_phys_field, f_idx, f_field_plus,
-                               f_is_sequential_field, f_is_volatile_field, f_type_project_0, f_array;
+                               f_int_to_version, f_int_to_ptrset, f_set_in0, f_is_ghost_field, f_is_phys_field, f_idx, 
+                               f_is_sequential_field, f_is_volatile_field, f_type_project_0, f_array, f_active_option, f_int_to_field,
+                               f_blob_type, f_array_emb, f_addr, f_address_root, f_base, f_field_arr_size, f_field_arr_root, f_field_arr_index,
+                               f_dot, f_prim_emb;
     public readonly Model.Element tp_object, tp_mathint, tp_bool, tp_state, tp_ptrset, tp_heaptp;
     public readonly Model.Element elt_me, elt_null;
     Dictionary<Model.Element, string> typeName = new Dictionary<Model.Element, string>();
     Dictionary<Model.Element, string> literalName = new Dictionary<Model.Element, string>();
+    Dictionary<Model.Element, Model.Element> guessedType = new Dictionary<Model.Element,Model.Element>();
     public List<StateNode> states = new List<StateNode>();
     public Dictionary<string, string> localVariableNames = new Dictionary<string, string>();
+
+    Dictionary<Model.Element, string> datatypeLongName = new Dictionary<Model.Element, string>();
 
     Dictionary<int, string> fileNameMapping = new Dictionary<int, string>();
 
     public const string selfMarker = "\\self";
+    public const int maxDatatypeNameLength = 5;
 
     public VccModel(Model m, ViewOptions opts)
       : base(m, opts)
@@ -69,25 +75,36 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       f_closed = m.MkFunc("$f_closed", 1);
       f_roots = m.MkFunc("$roots", 1);
       f_timestamps = m.MkFunc("$f_timestamp", 1);
+      f_active_option = m.MkFunc("$f_active_option", 1);
       f_field = m.MkFunc("$field", 1);
       f_field_type = m.MkFunc("$field_type", 1);
       f_int_to_ptr = m.MkFunc("$int_to_ptr", 1);
       f_ptr_to_int = m.MkFunc("$ptr_to_int", 1);
       f_ptr = m.MkFunc("$ptr", 2);
+      f_dot = m.MkFunc("$dot", 2);
       f_map_t = m.MkFunc("$map_t", 2);
       f_is_null = m.MkFunc("$is_null", 1);
       f_good_state = m.MkFunc("$good_state", 1);
       f_int_to_version = m.MkFunc("$int_to_version", 1);
       f_int_to_ptrset = m.MkFunc("$int_to_ptrset", 1);
+      f_int_to_field = m.MkFunc("$int_to_field", 1);
       f_set_in0 = m.MkFunc("$set_in0", 2);
       f_is_ghost_field = m.MkFunc("$is_ghost_field", 1);
       f_is_phys_field = m.MkFunc("$is_phys_field", 1);
       f_idx = m.MkFunc("$idx", 2);
-      f_field_plus = m.MkFunc("$field_plus", 2);
       f_is_sequential_field = m.MkFunc("$is_sequential_field", 1);
       f_is_volatile_field = m.MkFunc("$is_volatile_field", 1);
       f_type_project_0 = m.MkFunc("$type_project_0", 1);
       f_array = m.MkFunc("$array", 2);
+      f_blob_type = m.MkFunc("$blob_type", 1);
+      f_array_emb = m.MkFunc("$array_emb", 2);
+      f_addr = m.MkFunc("$addr", 1);
+      f_base = m.MkFunc("$base", 1);
+      f_prim_emb = m.MkFunc("$prim_emb", 1);
+      f_address_root = m.MkFunc("$address_root", 2);
+      f_field_arr_index = m.MkFunc("$field_arr_index", 1);
+      f_field_arr_size = m.MkFunc("$field_arr_size", 1);
+      f_field_arr_root = m.MkFunc("$field_arr_root", 1);
 
       tp_bool = m.GetFunc("^^bool").GetConstant();
       tp_mathint = m.GetFunc("^^mathint").GetConstant();
@@ -123,7 +140,11 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
         sn.SetupVars();
         states.Add(sn);
       }
+
       var allStates = states.ToArray();
+      if (allStates.Length == 1 && allStates[0].vars.Count == 0) {
+        throw new Exception("This VCC model doesn't contain any variables. Was it saved with the -bvd option?");
+      }
       states.Clear();
       var i = 0;
       while (i < allStates.Length) {
@@ -225,7 +246,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
 
     static string[][] totals = new string[][] {
       new string[] {
-      "$addr", "$current_timestamp", 
+      "$current_timestamp", 
       "$full_stop", "$function_entry", "$ptr_to_i4",
       "$ptr_to_i8", "$ptr_to_u4", "$ptr_to_u8", 
       "$span", "$sizeof", "$in_domain", 
@@ -238,7 +259,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       },
 
       new string[] {
-      "$dot", "$emb0", "$fetch_from_domain", "$in_range_phys_ptr",
+      "$addr", "$dot", "$emb0", "$fetch_from_domain", "$in_range_phys_ptr",
       "$in_range_spec_ptr", "$is_sequential_field", "$is_volatile_field",
       "$is_ghost_field", "$is_phys_field", "$is_math_type", "$invok_state",
       "$is_primitive",
@@ -291,6 +312,8 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
         res = 1;
       else if (name.EndsWith("#frame"))
         res = 2;
+      else if (name.Contains("#limited#"))
+        res = 2;
       else {
         for (int i = 0; i < prefixes.Length; ++i)
           foreach (var p in prefixes[i])
@@ -298,7 +321,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
               res = i;
               //goto stop;
             }
-      //stop: ;
+        //stop: ;
       }
 
       if (res == -1)
@@ -379,6 +402,11 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
         return name.Substring(2);
       }
 
+      if (name.StartsWith("OP#")) {
+        kind = "out-param";
+        return name.Substring(3);
+      }
+
       if (name.StartsWith("SL#")) {
         kind = "spec local";
         return name.Substring(3);
@@ -399,6 +427,11 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
         return name.Substring(5);
       }
 
+      if (name == "$result") {
+        kind = "function return value";
+        return "\\result";
+      }
+
       if (name.StartsWith("res__") && viewOpts.ViewLevel >= 1) {
         kind = "call result";
         return name; 
@@ -412,7 +445,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       kind = null;
       return null;
     }
-    
+
 
     private string LiteralName(Model.Element elt)
     {
@@ -430,6 +463,10 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       var i = elt as Model.Integer;
       if (i != null)
         return AsPow2(i);
+
+      var bv = elt as Model.BitVector;
+      if (bv != null)
+        return bv.Numeral + "bv" + bv.Size.ToString();
 
       return null;
     }
@@ -470,6 +507,9 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       deref = Image(elt, f_spec_ptr_to);
       if (deref != null)
         return TypeName(deref) + "^";
+      deref = Image(elt, f_blob_type);
+      if (deref != null)
+        return "_(blob " + CanonicalName(deref) + ")";
       var mapt = f_map_t.AppWithResult(elt);
       if (mapt != null)
         return string.Format("{1}[{0}]", TypeName(mapt.Args[0]), TypeName(mapt.Args[1]));
@@ -481,7 +521,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
 
       foreach (var app in elt.Names)
         if (app.Func.Arity == 0 && app.Func.Name.StartsWith("^")) {
-          var n = app.Func.Name.Substring(1); 
+          var n = app.Func.Name.Substring(1);
           switch (n) {
             case "^i1": return "int8_t";
             case "^u1": return "uint8_t";
@@ -492,8 +532,11 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
             case "^i8": return "int64_t";
             case "^u8": return "uint64_t";
             case "^bool": return "bool";
-            default: return n;
-          }          
+            default:
+              var pref = "_vcc_math_type_";
+              if (n.StartsWith(pref)) n = n.Substring(pref.Length);
+              return n;
+          }
         }
 
       return null;
@@ -518,7 +561,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       return res;
     }
 
-    public static readonly string[] synthethic_fields = new string[] { "$f_owns", "$f_ref_cnt", "$f_vol_version", "$f_root", "$f_group_root" };
+    public static readonly string[] synthethic_fields = new string[] { "$f_owns", "$f_ref_cnt", "$f_vol_version", "$f_root", "$f_group_root", "$f_active_option" };
 
     public string ConstantFieldName(Model.Element elt)
     {
@@ -550,8 +593,11 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
             name = name.Substring(dotIdx + 1);
           }
           if (name.Contains('#')) score -= 1;
-        } else if (synthethic_fields.Contains(t.Func.Name)) {
-          name = string.Format("{0}<{1}>", t.Func.Name.Substring(3), TypeName(t.Args[0]));
+        } else if (t.Func.Name.StartsWith("$f_") && synthethic_fields.Contains(t.Func.Name)) {
+          name = string.Format("{0}<{1}>", t.Func.Name.Substring(3).Replace("root", "alloc_root"), TypeName(t.Args[0]));
+          score = 6;
+        } else if (t.Func == f_array_emb) {
+          name = string.Format("[0] (of {0}[{1}])", TypeName(t.Args[0]), t.Args[1].ToString());
           score = 5;
         }
         if (score > bestScore) {
@@ -576,6 +622,16 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
     }
 
     Model.Element GuessType(Model.Element element)
+    {
+      Model.Element res;
+      if (!guessedType.TryGetValue(element, out res)) {
+        res = GuessTypeCore(element);
+        guessedType[element] = res;
+      }
+      return res;
+    }
+
+    Model.Element GuessTypeCore(Model.Element element)
     {
       if (element is Model.Boolean)
         return tp_bool;
@@ -613,16 +669,45 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
           else if (tpl.Args[1] == element)
             return tp_object;
 
-        if (tpl.Args.Length == 2 && tpl.Args[0] == element && tpl.Func.Name.StartsWith("$select.$map_t")) {
+        var fname = tpl.Func.Name;
+
+        if (tpl.Args.Length == 2 && tpl.Args[0] == element && fname.StartsWith("$select.$map_t")) {
+          var mt = model.TryGetFunc("MT#" + fname);
+          if (mt != null && mt.Arity == 0)
+            return mt.GetConstant();
           var t1 = GuessType(tpl.Args[1]);
           var t2 = GuessType(tpl.Result);
           var t = f_map_t.TryEval(t1, t2);
           if (t != null)
             return t;
         }
+
+        var tpName = DataTypeName(element, tpl);
+        if (tpName != null) {
+          var tp = model.TryGetFunc("^$#" + tpName);
+          if (tp != null)
+            return tp.GetConstant();
+        }
       }
 
       return tp_mathint;
+    }
+
+    string DataTypeName(Model.Element elt, Model.FuncTuple tpl)
+    {
+      var fname = tpl.Func.Name;
+      if (tpl.Args.Length == 1 && tpl.Args[0] == elt && fname.StartsWith("RF#")) {
+        var fldName = tpl.Func.Name.Substring(3);
+        var idx = fldName.LastIndexOf('.');
+        if (idx > 0) {
+          return fldName.Substring(0, idx).Replace("_vcc_math_type_", "");
+        }
+      }
+
+      if (tpl.Args.Length == 1 && tpl.Args[0] == elt && (fname.StartsWith("DSZ#") || fname.StartsWith("RSZ#") || fname.StartsWith("DGH#"))) {
+        return fname.Substring(4).Replace("_vcc_math_type_", "");
+      }
+      return null;
     }
 
     public DataKind GetKind(Model.Element tp, out Model.FuncTuple tpl)
@@ -656,7 +741,20 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       Model.FuncTuple tpl;
       var kind = GetKind(tp, out tpl);
 
-      if (kind == DataKind.Flat) return elt;
+      if (kind == DataKind.Flat) {
+        if (elt.Kind == Model.ElementKind.Integer) {
+          var tpname = TypeName(tp);
+          if(tpname.StartsWith("$")) tpname = tpname.Substring(1);
+          if (tpname.StartsWith("#")) {
+            foreach (var tupl in elt.References) {
+              if (tupl.Args.Length == 1 && tupl.Args[0] == elt && tupl.Func.Name.StartsWith("$int_to_") && tupl.Func.Name.EndsWith(tpname)) {
+                return tupl.Result;
+              }
+            }
+          }
+        }
+        return elt;
+      }
 
       if (kind == DataKind.Map) {
         if (elt.Kind == Model.ElementKind.Integer) {
@@ -724,6 +822,16 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
         if (val != null) {
           res.Add(new FieldNode(state, new EdgeName(name), val, tp) { Category = NodeCategory.MethodologyProperty });
         }
+      }
+    }
+
+    void AddPointerFunction(StateNode state, Model.Element elt, List<ElementNode> res, string name, Model.Func fn, Model.Element tp)
+    {
+      if (elt == null) return;
+
+      var val = fn.TryEval(elt);
+      if (val != null) {
+        res.Add(new FieldNode(state, new EdgeName(name), val, tp) { Category = NodeCategory.MethodologyProperty });
       }
     }
 
@@ -831,6 +939,8 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       List<ElementNode> result = new List<ElementNode>();
       Model.FuncTuple tpl;
 
+      if (elt == null) return result;
+
       var kind = GetKind(tp, out tpl);
       if (kind == DataKind.PhysPtr || kind == DataKind.SpecPtr || kind == DataKind.Object) {
         var heap = state.State.TryGet("$s");
@@ -839,32 +949,37 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
         var addresses = new HashSet<Model.Element>();
 
         if (heap != null) {
+          var basePtr = f_base.TryEval(elt);
           foreach (var fld in f_select_field.AppsWithArg(0, heap)) {
             var val = f_select_value.TryEval(fld.Result, elt);
             if (val != null) {
               var field = fld.Args[1];
               if (!IsConstantField(field) && viewOpts.ViewLevel <= 2)
-                continue;              
-              var addr = f_ptr.TryEval(field, elt);
+                continue;
+              var addr = f_dot.TryEval(elt, field);
               if (addr != null) addresses.Add(addr);
-              BuildFieldNode(result, state, addr, field, val, addr);
+              var node = ComputeUnionActiveOption(state, elt, val, field);
+              if (node != null)
+                result.Add(node);
+              else
+                BuildFieldNode(result, state, addr, field, val, addr);
             }
           }
           //result.Sort(CompareFields);
         }
 
-        if (elt != null) {
+        {
           foreach (var app in f_idx.AppsWithArg(0, elt)) {
             var addr = app.Result;
             Model.Element val = null, atp = tp;
 
-            addresses.Add(app.Result);
+            addresses.Add(addr);
 
-            foreach (var papp in f_ptr.AppsWithResult(addr)) {
-              var tmp = f_select_value.OptEval(f_select_field.OptEval(heap, papp.Args[0]), papp.Args[1]);
+            foreach (var papp in f_dot.AppsWithResult(addr)) {
+              var tmp = f_select_value.OptEval(f_select_field.OptEval(heap, papp.Args[1]), papp.Args[0]);
               if (tmp != null) {
                 val = tmp;
-                var tt = f_field_type.TryEval(papp.Args[0]);
+                var tt = f_field_type.TryEval(papp.Args[1]);
                 if (tt != null) atp = tt;
               }
             }
@@ -877,20 +992,26 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
           }
         }
 
-        if (elt != null) {
-          foreach (var ptr in f_ptr.AppsWithArg(1, elt)) {
-            if (addresses.Contains(ptr.Result)) continue;
-            if (!IsConstantField(ptr.Args[0])) continue;
-            BuildFieldNode(result, state, ptr.Result, ptr.Args[0], null, ptr.Result);
+        foreach (var ptr in f_dot.AppsWithArg(0, elt)) {
+          if (addresses.Contains(ptr.Result)) continue;
+          var fld = ptr.Args[1];
+          var idx = f_field_arr_index.TryEval(fld);
+          if (idx != null) {
+            var xtp = f_field_type.TryEval(fld);
+            result.Add(new MapletNode(state, new EdgeName(this, "&[%0] of %1", idx, f_field_arr_size.TryEval(fld)), ptr.Result, GuessPtrTo(xtp)) { Category = NodeCategory.Maplet });
           }
+          if (!IsConstantField(ptr.Args[1])) continue;
+          BuildFieldNode(result, state, ptr.Result, ptr.Args[1], null, ptr.Result);
         }
 
         AddSpecialField(state, elt, result, "\\closed", f_closed);
         AddSpecialField(state, elt, result, "\\owner", f_owners);
         AddSpecialField(state, elt, result, "\\root", f_roots);
         AddSpecialField(state, elt, result, "\\timestamp", f_timestamps);
+        AddPointerFunction(state, elt, result, "\\embedding", f_prim_emb, tp_object);
+        AddPointerFunction(state, elt, result, "\\addr", f_addr, tp_mathint);
 
-        if (viewOpts.ViewLevel >= 1 && elt != null) {
+        if (viewOpts.ViewLevel >= 1) {
           AddPtrType(state, elt, result);
           AddCasts(state, elt, result);
           var sets = new SetsNode(state, elt);
@@ -913,18 +1034,49 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
           var edgname = new EdgeName(this, "[%0]", sel.Args[1]);
           result.Add(new MapletNode(state, edgname, sel.Result, tp_bool) { Category = NodeCategory.Maplet });
         }
+      } else if (kind == DataKind.Flat) {
+        foreach (var tupl in elt.References) {
+          if (tupl.Args.Length == 1 && tupl.Args[0] == elt) {
+            var fname = tupl.Func.Name;
+            var idx = fname.LastIndexOf('.');
+            if (fname.StartsWith("RF#") && idx > 0) {
+              fname = fname.Substring(idx + 1);
+            } else if (fname.StartsWith("DP#p")) {
+              fname = fname.Substring(4);
+              idx = fname.IndexOf('#');
+              if (idx > 0)
+                fname = fname.Substring(idx + 1) + "#" + fname.Substring(0, idx);
+            } else {
+              fname = null;
+            }
+
+            if (fname != null)
+              result.Add(new FieldNode(state, new EdgeName(fname), tupl.Result, GuessType(tupl.Result)) { Category = NodeCategory.SpecField });
+          }
+        }
       }
 
-      if (elt != null && !(elt is Model.Boolean)) {
+      if (!(elt is Model.Boolean)) {
         var curState = state.State.TryGet("$s");
 
         foreach (var tupl in elt.References) {
-          if (!tupl.Args.Contains(elt)) continue; // not looking for aliases (maybe we should?)
-          if (tupl.Args.Any(IsSomeState) && !tupl.Args.Any(s => IsThisState(curState, s)))
-            continue;
+          {
+            var seenSelf = false;
+            var seenState = false;
+            var seenThisState = false;
+            var args = tupl.Args;
+            for (int i = 0; i < args.Length; ++i) {
+              if (args[i] == elt) seenSelf = true;
+              if (IsThisState(curState, args[i])) seenThisState = true;
+              else if (IsSomeState(args[i])) seenState = true;
+            }
+            if (!seenSelf) continue; // not looking for aliases (maybe we should?)
+            if (seenState && !seenThisState) continue;
+          }
+
           var argsFmt = new StringBuilder();
           var name = tupl.Func.Name;
-          
+
           var score = FunctionScore(name);
           if (score >= viewOpts.ViewLevel)
             continue;
@@ -935,6 +1087,11 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
           var cat = NodeCategory.MethodologyProperty;
           if (name.StartsWith("F#")) {
             name = name.Substring(2);
+            cat = NodeCategory.UserFunction;
+          }
+
+          if (name.StartsWith("DF#")) {
+            name = name.Substring(3);
             cat = NodeCategory.UserFunction;
           }
 
@@ -952,26 +1109,42 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
             }
           }
 
-          argsFmt.Append(name).Append("(");
-          var args = new List<Model.Element>();
-          foreach (var a in tupl.Args) {
-            if (IsThisState(curState, a))
-              argsFmt.Append("\\now, ");
-            else if (a == elt)
-              argsFmt.Append(selfMarker + ", ");
-            else {
-              argsFmt.AppendFormat("%{0}, ", args.Count);
-              args.Add(a);
+          {
+            argsFmt.Append(name).Append("(");
+            var args = new List<Model.Element>();
+            foreach (var a in tupl.Args) {
+              if (IsThisState(curState, a))
+                argsFmt.Append("\\now, ");
+              else if (a == elt)
+                argsFmt.Append(selfMarker + ", ");
+              else {
+                argsFmt.AppendFormat("%{0}, ", args.Count);
+                args.Add(a);
+              }
             }
+            argsFmt.Length -= 2;
+            argsFmt.Append(")");
+            var edgeName = new EdgeName(this, argsFmt.ToString(), args.ToArray());
+            result.Add(new MapletNode(state, edgeName, retVal, retTp) { ViewLevel = score, Category = cat });
           }
-          argsFmt.Length -= 2;
-          argsFmt.Append(")");
-          var edgeName = new EdgeName(this, argsFmt.ToString(), args.ToArray());
-          result.Add(new MapletNode(state, edgeName, retVal, retTp) { ViewLevel = score, Category = cat });
+
         }
       }
 
       return result;
+    }
+
+    private FieldNode ComputeUnionActiveOption(StateNode state, Model.Element elt, Model.Element val, Model.Element field)
+    {
+      if (f_active_option.AppsWithResult(field).FirstOrDefault() != null) {
+        var activeOpt = f_dot.OptEval(elt, f_int_to_field.OptEval(val));
+        if (activeOpt != null) {
+          var nm = ConstantFieldName(field);
+          var fieldNode = new FieldNode(state, new EdgeName(nm), activeOpt, GuessType(activeOpt)) { Category = NodeCategory.MethodologyProperty };
+          return fieldNode;
+        }
+      }
+      return null;
     }
 
     private void AddCasts(StateNode state, Model.Element elt, List<ElementNode> result)
@@ -983,6 +1156,15 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       foreach (var app in f_spec_ptr_cast.AppsWithArg(0, elt)) {
         if (app.Result != elt)
           result.Add(new MapletNode(state, new EdgeName(this, "(" + TypeName(app.Args[1]) + "^)..."), app.Result, PtrTo(app.Args[1], f_spec_ptr_to)));
+      }
+      var addr = f_addr.TryEval(elt);
+      if (addr != null) {
+        foreach (var app in f_blob_type.Apps) {
+          var blob = f_address_root.TryEval(addr, app.Result);
+          if (blob != null) {
+            result.Add(new MapletNode(state, new EdgeName(this, TypeName(app.Result) + "..."), blob, app.Result));
+          }
+        }
       }
     }
 
@@ -1023,7 +1205,58 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       }
     }
 
-    private string CanonicalBaseNameCore(string name, Model.Element elt)
+    private int DataTypeToString(StringBuilder sb, int level, Model.Element elt)
+    {
+      Model.FuncTuple ctor = null;
+      int len = 1;
+      string dataTypeType = null;
+      foreach (var app in elt.References) {
+        var n = app.Func.Name;
+        if (app.Result == elt && n.StartsWith("DF#")) {
+          ctor = app;
+        }
+        var tmp = DataTypeName(elt, app);
+        if (tmp != null) dataTypeType = tmp;
+      }
+
+      if (dataTypeType != null) {
+        if (ctor != null)
+          sb.Append(ctor.Func.Name.Substring(3));
+        else
+          sb.Append(DataTypeShortName(elt, dataTypeType));
+        if (ctor != null && ctor.Args.Length > 0) {
+          if (level <= 0) sb.Append("(...)");
+          else {
+            sb.Append("(");
+            for (int i = 0; i < ctor.Args.Length; ++i) {
+              if (i != 0) sb.Append(", ");
+              len += DataTypeToString(sb, level - 1, ctor.Args[i]);
+            }
+            sb.Append(")");
+          }
+        }
+      } else  {
+        sb.Append(CanonicalName(elt));
+      }
+      return len;
+    }
+
+    private string DataTypeShortName(Model.Element elt, string tp)
+    {
+      var baseName = tp;
+
+      var hd = model.MkFunc("DGH#" + tp, 1).TryEval(elt);
+      if (hd != null) {
+        foreach (var nm in hd.References) {
+          if (nm.Func.Arity == 0 && nm.Func.Name.StartsWith("DH#"))
+            baseName = nm.Func.Name.Substring(3);
+        }
+      }
+
+      return baseName;
+    }
+
+    private string CanonicalBaseNameCore(string name, Model.Element elt, bool doDatatypes, ref NameSeqSuffix suff)
     {
       var vm = this;
 
@@ -1050,8 +1283,25 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
           if (fn == f_int_to_version)
             return "version";
 
-        if (fn == f_is_null && tpl.Result == model.True) 
+        if (fn == f_is_null && tpl.Result == model.True)
           isNull = true;
+
+        var dtpName = DataTypeName(elt, tpl);
+        if (dtpName != null) {
+          var sb = new StringBuilder();
+          string prev = null;
+          datatypeLongName[elt] = "*SELF*"; // in case we recurse (but this shouldn't happen)
+          for (int lev = 0; lev < 10; lev++) {
+            sb.Length = 0;
+            var len = DataTypeToString(sb, lev, elt);
+            if (prev == null || len <= maxDatatypeNameLength)
+              prev = sb.ToString();
+          }
+
+          datatypeLongName[elt] = prev;
+          suff = NameSeqSuffix.WhenNonZero;
+          return prev;
+        }
       }
 
       var fld = vm.f_field.TryEval(elt);
@@ -1077,9 +1327,13 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
         suff = NameSeqSuffix.None;
         return lit;
       }
+      if (datatypeLongName.TryGetValue(elt, out lit)) {
+        suff = NameSeqSuffix.WhenNonZero;
+        return lit;
+      }
       
       var name = base.CanonicalBaseName(elt, out suff);
-      name = CanonicalBaseNameCore(name, elt);
+      name = CanonicalBaseNameCore(name, elt, true, ref suff);
      
       return name;
     }

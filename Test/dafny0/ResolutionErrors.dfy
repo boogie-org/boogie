@@ -24,6 +24,15 @@ method ManyIndices<T>(a: array3<T>, b: array<T>, m: int, n: int)
   var z := b[m, n, m, n];  // error
 }
 
+method SB(b: array2<int>, s: int) returns (x: int, y: int)
+  requires b != null;
+{
+  while
+  {
+    case b[x,y] == s =>
+  }
+}
+
 // -------- name resolution
 
 class Global {
@@ -283,7 +292,7 @@ method ConstructorTests()
 
 // ------------------- datatype destructors ---------------------------------------
 
-datatype DTD_List = DTD_Nil | DTD_Cons(Car: int, Cdr: DTD_List);
+datatype DTD_List = DTD_Nil | DTD_Cons(Car: int, Cdr: DTD_List, ghost g: int);
 
 method DatatypeDestructors(d: DTD_List) {
   if {
@@ -295,6 +304,53 @@ method DatatypeDestructors(d: DTD_List) {
       assert hd == d.Cdr;  // type error
       assert tl == d.Car;  // type error
       assert d.DTD_Cons? == d.Car;  // type error
-      assert d == DTD_Cons(hd, tl);
+      assert d == DTD_Cons(hd, tl, 5);
+      ghost var g0 := d.g;  // fine
+      var g1 := d.g;  // error: cannot use ghost member in non-ghost code
   }
+}
+
+// ------------------- print statements ---------------------------------------
+
+method PrintOnlyNonGhosts(a: int, ghost b: int)
+{
+  print "a: ", a, "\n";
+  print "b: ", b, "\n";  // error: print statement cannot take ghosts
+}
+
+// ------------------- auto-added type arguments ------------------------------
+
+class GenericClass<T> { var data: T; }
+
+method MG0(a: GenericClass, b: GenericClass)
+  requires a != null && b != null;
+  modifies a;
+{
+  a.data := b.data;  // allowed, since both a and b get the same auto type argument
+}
+
+method G_Caller()
+{
+  var x := new GenericClass;
+  MG0(x, x);  // fine
+  var y := new GenericClass;
+  MG0(x, y);  // also fine (and now y's type argument is constrained to be that of x's)
+  var z := new GenericClass<int>;
+  y.data := z.data;  // this will have the effect of unifying all type args so far to be 'int'
+  assert x.data == 5;  // this is type correct
+
+  var w := new GenericClass<bool>;
+  MG0(x, w);  // error: types don't match up
+}
+
+datatype GList<T> = GNil | GCons(hd: T, tl: GList);
+
+method MG1(l: GList, n: nat)
+{
+  if (n != 0) {
+    MG1(l, n-1);
+    MG1(GCons(12, GCons(20, GNil)), n-1);
+  }
+  var t := GCons(100, GNil);
+  t := GCons(120, l);  // error: types don't match up (List<T$0> versus List<int>)
 }

@@ -226,10 +226,21 @@ object Resolver {
              ResolveExpr(e, ctx, false, true)(true);
              if(!e.typ.IsBool) context.Error(e.pos, "predicate requires a boolean expression (found " + e.typ.FullName + ")")
            case f@Function(id, ins, out, spec, definition) =>
-              // TODO: disallow credit(...) expressions in function specifications
+             def hasCredit(e: Expression) = {
+               var b = false
+               e transform {
+                 case _:Credit => b = true; None
+                 case _ => None
+               }
+               b
+             }
              spec foreach {
-               case Precondition(e) => ResolveExpr(e, context, false, true)(false)
-               case Postcondition(e) => ResolveExpr(e, context, false, true)(false)
+               case p@Precondition(e) =>
+                 ResolveExpr(e, context, false, true)(false)
+                 if (hasCredit(e)) context.Error(p.pos, "the specification of functions cannot contain credit expressions") 
+               case p@Postcondition(e) =>
+                 ResolveExpr(e, context, false, true)(false)
+                 if (hasCredit(e)) context.Error(p.pos, "the specification of functions cannot contain credit expressions") 
                case lc : LockChange => context.Error(lc.pos, "lockchange not allowed on function") 
              }
 
@@ -1314,15 +1325,17 @@ object Resolver {
      CheckRunSpecification(e, context, allowMaxLock)
  }
 
- def ResolveTransform(mt: MethodTransform, context: ProgramContext) {
+ def ResolveTransform(mt: MethodTransform, baseContext: ProgramContext) {
+   val context = baseContext.SetClass(mt.Parent).SetMember(mt);
+
    mt.spec foreach {
      case Precondition(e) =>
        context.Error(e.pos, "Method refinement cannot add a pre-condition")
      case Postcondition(e) =>
-       ResolveExpr(e, context.SetClass(mt.Parent).SetMember(mt), true, true)(false)
+       ResolveExpr(e, context, true, true)(false)
      case _ : LockChange => throw new NotSupportedException("not implemented")
    }
-   if (mt.ins != mt.refines.Ins) context.Error(mt.pos, "Refinement must have same input arguments")
+   if (mt.ins != mt.refines.Ins) context.Error(mt.pos, "Refinement must have the same input arguments")
    if (! mt.outs.startsWith(mt.refines.Outs)) context.Error(mt.pos, "Refinement must declare all abstract output variables")
 
    mt.body = AST.refine(mt.refines.Body, mt.trans) match {
@@ -1330,18 +1343,29 @@ object Resolver {
      case AST.Unmatched(t) => context.Error(mt.pos, "Cannot match transform around " + t.pos); Nil
    }
                                 
-   def resolveBody(ss: List[Statement], con: ProgramContext, abs: List[Variable]) {
-     var ctx = con;
-     var locals = abs;
-     for (s <- ss) {
+   /**
+    * We thread two contexts for the concrete and abstract versions.
+    */
+   def resolveBody(ss: List[Statement], 
+     concreteContext: ProgramContext,
+     abstractContext: List[Variable]) {
+     var ctx = concreteContext;
+     var locals = abstractContext;
+     for (s <- ss) { 
        s match {
          case r @ RefinementBlock(c, a) =>
            // abstract globals available at this point in the program
-           r.before = locals
+           r.before = locals;
+
+           // resolve concrete version
            ResolveStmt(BlockStmt(c), ctx)
+
+           // compare declared local variables
            val vs = c flatMap {s => s.Declares};
-           for (v <- a flatMap {s => s.Declares}; if (! vs.contains(v)))
-             ctx.Error(r.pos, "Refinement block must declare a local variable from abstract program: " + v.id)
+           for (s <- a;
+                v <- s.Declares; 
+                if (! vs.contains(v)))
+             ctx.Error(r.pos, "Refinement block must declare a local variable from the abstract program: " + v.id)
          case w @ WhileStmt(guard, oi, ni, lks, body) =>
            for (inv <- ni) {
              ResolveExpr(inv, ctx, true, true)(false)
@@ -1356,8 +1380,9 @@ object Resolver {
            resolveBody(List(els), ctx, locals)
          case BlockStmt(ss) =>
            resolveBody(ss, ctx, locals)
-         case _ =>
+         case _ =>   
        }
+
        // declare concrete and abstract locals
        for (v <- s.Declares) ctx = ctx.AddVariable(v);
        s match {
@@ -1366,7 +1391,8 @@ object Resolver {
        }
      }
    }
-   resolveBody(mt.body, context.SetClass(mt.Parent).SetMember(mt), Nil)
+
+   resolveBody(mt.body, context, mt.refines.Ins ++ mt.refines.Outs)
  }
 
  def ResolveCouplingInvariant(ci: CouplingInvariant, cl: Class, context: ProgramContext) {

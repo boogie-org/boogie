@@ -91,21 +91,6 @@ namespace VC {
     }
     private const string _copyPrefix = "CPY__";
 
-    /// <summary>
-    /// Helperfunction to restore the predecessor relations after loop unrolling
-    /// </summary> 
-    private void ClearPredecessors(List<Block>/*!>!*/ blocks)
-    {
-        Contract.Requires(cce.NonNullElements(blocks));
-        // This code just here to try things out.
-        // Compute the predecessor relation for each block
-        // Store it in the Predecessors field within each block
-        foreach (Block b in blocks)
-        {
-            b.Predecessors = new BlockSeq();
-        }
-    }
-
     private List<Block> m_UncheckableBlocks = null;
 
       /// <summary>
@@ -136,7 +121,9 @@ namespace VC {
     
       Checker checker = FindCheckerFor(impl, 1000);
       Contract.Assert(checker != null);
-      DoomCheck dc = new DoomCheck(impl, this.exitBlock, checker, m_UncheckableBlocks);
+      int assertionCount;
+      DoomCheck dc = new DoomCheck(impl, this.exitBlock, checker, m_UncheckableBlocks, out assertionCount);
+      CumulativeAssertionCount += assertionCount;
 
       //EmitImpl(impl, false);
       
@@ -715,16 +702,14 @@ namespace VC {
 
         impl.PruneUnreachableBlocks();
         AddBlocksBetween(impl.Blocks);
-        ClearPredecessors(impl.Blocks);
-        ComputePredecessors(impl.Blocks);        
+        ResetPredecessors(impl.Blocks);        
 
         GraphAnalyzer ga = new GraphAnalyzer(impl.Blocks);
         LoopRemover lr = new LoopRemover(ga);
         lr.AbstractLoopUnrolling();
 
         impl.Blocks = ga.ToImplementation(out m_UncheckableBlocks);
-        ClearPredecessors(impl.Blocks);
-        ComputePredecessors(impl.Blocks);
+        ResetPredecessors(impl.Blocks);
 
         // Check for the "BlocksBetween" if all their successors are in m_UncheckableBlocks
         List<Block> oldblocks = new List<Block>();
@@ -760,8 +745,7 @@ namespace VC {
         //    test.Cmds.AddRange(cs);
         //}
         
-        ClearPredecessors(impl.Blocks);
-        ComputePredecessors(impl.Blocks);
+        ResetPredecessors(impl.Blocks);
         //EmitImpl(impl,false);
 
         Hashtable/*Variable->Expr*/ htbl = PassifyProgram(impl, new ModelViewInfo(program, impl));

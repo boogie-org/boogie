@@ -30,9 +30,9 @@
 ]\\)*" . font-lock-comment-face)
 
    `(,(jennisys-regexp-opt '(
-        "class" "model" "code"
+        "interface" "datamodel" "code"
         "var" "constructor" "method"
-        "frame" "invariant" "returns" "requires"
+        "frame" "invariant" "returns" "requires" "ensures"
         )) . font-lock-builtin-face)
    `(,(jennisys-regexp-opt '(
         "if" "then" "else"

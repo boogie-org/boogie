@@ -61,7 +61,7 @@ namespace TranslationTest {
     #endregion
 
     private string ExecuteTest(string assemblyName, HeapFactory heapFactory) {
-      BCT.TranslateAssembly(new List<string>{assemblyName}, heapFactory, null, null, false);
+      BCT.TranslateAssemblyAndWriteOutput(new List<string> { assemblyName }, heapFactory, new Options(), null, false);
       var fileName = Path.ChangeExtension(assemblyName, "bpl");
       var s = File.ReadAllText(fileName);
       return s;
@@ -78,7 +78,8 @@ namespace TranslationTest {
       if (result != expected) {
         string resultFile = Path.GetFullPath("SplitFieldsHeapOutput.txt");
         File.WriteAllText(resultFile, result);
-        Assert.Fail("Output didn't match SplitFieldsHeapInput.txt: " + resultFile);
+        var msg = String.Format("Output didn't match: SplitFieldsHeapInput.txt \"{0}\"", resultFile);
+        Assert.Fail(msg);
       }
     }
 
@@ -93,7 +94,8 @@ namespace TranslationTest {
       if (result != expected) {
         string resultFile = Path.GetFullPath("GeneralHeapOutput.txt");
         File.WriteAllText(resultFile, result);
-        Assert.Fail("Output didn't match GeneralHeapInput.txt: " + resultFile);
+        var msg = String.Format("Output didn't match: GeneralHeapInput.txt \"{0}\"", resultFile);
+        Assert.Fail(msg);
       }
     }
 

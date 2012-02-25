@@ -193,3 +193,57 @@ method InjectivityTests(d: XList)
       assert d == XCons(d.Car, d.Cdr);
   }
 }
+
+method MatchingDestructor(d: XList) returns (r: XList)
+  ensures r.Car == 5;  // error: specification is not well-formed (since r might not be an XCons)
+{
+  if (*) {
+    var x0 := d.Car;  // error: d might not be an XCons
+  } else if (d.XCons?) {
+    var x1 := d.Car;
+  }
+  r := XCons(5, XNil);
+}
+
+datatype Triple = T(a: int, b: int, c: int);  // just one constructor
+datatype TripleAndMore = T'(a: int, b: int, c: int) | NotATriple;
+
+method Rotate0(t: Triple) returns (u: Triple)
+{
+  u := T(t.c, t.a, t.b);
+}
+
+method Rotate1(t: TripleAndMore) returns (u: TripleAndMore)
+{
+  if {
+    case t.T'? =>
+      u := T'(t.c, t.a, t.b);
+    case true =>
+      u := T'(t.c, t.a, t.b);  // error: t may be NotATriple
+  }
+}
+
+// -------------
+
+method FwdBug(f: Fwd, initialized: bool)
+  requires !f.FwdCons?;
+{
+  match (f) {
+    case FwdNil =>
+    // Syntactically, there is a missing case here, but the verifier checks that this is still cool.
+    // There was once a bug in Dafny, where this had caused an ill-defined Boogie program.
+  }
+  if (!initialized) {  // There was once a Dafny parsing bug with this line
+  }
+}
+
+function FwdBugFunction(f: Fwd): bool
+  requires !f.FwdCons?;
+{
+  match f
+  case FwdNil => true
+  // Syntactically, there is a missing case here, but the verifier checks that this is still cool.
+  // There was once a bug in Dafny, where this had caused an ill-defined Boogie program.
+}
+
+datatype Fwd = FwdNil | FwdCons(int, Fwd);

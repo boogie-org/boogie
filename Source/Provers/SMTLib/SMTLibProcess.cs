@@ -18,11 +18,15 @@ namespace Microsoft.Boogie.SMTLib
   public class SMTLibProcess
   {
     readonly Process prover;
+    readonly Inspector inspector;
     readonly SMTLibProverOptions options;
     readonly Queue<string> proverOutput = new Queue<string>();
     readonly Queue<string> proverErrors = new Queue<string>();
     readonly TextWriter toProver;
+    readonly int smtProcessId;
+    static int smtProcessIdSeq = 0;
     ConsoleCancelEventHandler cancelEvent;
+    public bool NeedsRestart;
 
     public static ProcessStartInfo ComputerProcessStartInfo(string executable, string options)
     {
@@ -39,6 +43,11 @@ namespace Microsoft.Boogie.SMTLib
     public SMTLibProcess(ProcessStartInfo psi, SMTLibProverOptions options)
     {
       this.options = options;
+      this.smtProcessId = smtProcessIdSeq++;
+
+      if (options.Inspector != null) {
+        this.inspector = new Inspector(options);
+      }
 
       foreach (var arg in options.SolverArguments)
         psi.Arguments += " " + arg;
@@ -47,6 +56,11 @@ namespace Microsoft.Boogie.SMTLib
         cancelEvent = new ConsoleCancelEventHandler(ControlCHandler);
         Console.CancelKeyPress += cancelEvent;
       }
+
+      if (options.Verbosity >= 1) {
+        Console.WriteLine("[SMT-{0}] Starting {1} {2}", smtProcessId, psi.FileName, psi.Arguments);
+      }
+
 
       try {
         prover = Process.Start(psi);
@@ -75,7 +89,7 @@ namespace Microsoft.Boogie.SMTLib
         if (log.Length > 50)
           log = log.Substring(0, 50) + "...";
         log = log.Replace("\r", "").Replace("\n", " ");
-        Console.WriteLine("[SMT-INP] {0}", log);
+        Console.WriteLine("[SMT-INP-{0}] {1}", smtProcessId, log);
       }
       toProver.WriteLine(cmd);
     }
@@ -97,15 +111,21 @@ namespace Microsoft.Boogie.SMTLib
       while (true) {
         var sx = GetProverResponse();
         if (sx == null) {
-          ErrorHandler("Prover died");
+          this.NeedsRestart = true;
+          HandleError("Prover died");
           return;
         }
 
         if (IsPong(sx))
           return;
         else
-          ErrorHandler("Invalid PING response from the prover: " + sx.ToString());
+          HandleError("Invalid PING response from the prover: " + sx.ToString());
       }
+    }
+
+    internal Inspector Inspector
+    {
+      get { return inspector; }
     }
 
     public SExpr GetProverResponse()
@@ -120,11 +140,31 @@ namespace Microsoft.Boogie.SMTLib
         var resp = exprs[0];
         if (resp.Name == "error") {
           if (resp.Arguments.Length == 1 && resp.Arguments[0].IsId)
-            ErrorHandler(resp.Arguments[0].Name);
+            HandleError(resp.Arguments[0].Name);
           else
-            ErrorHandler(resp.ToString());
-        } else
+            HandleError(resp.ToString());
+        } else if (resp.Name == "progress") {
+          if (inspector != null) {
+            var sb = new StringBuilder();
+            foreach (var a in resp.Arguments) {
+              if (a.Name == "labels") {
+                sb.Append("STATS LABELS");
+                foreach (var x in a.Arguments)
+                  sb.Append(" ").Append(x.Name);
+              } else if (a.Name.StartsWith(":")) {
+                sb.Append("STATS NAMED_VALUES ").Append(a.Name);
+                foreach (var x in a.Arguments)
+                  sb.Append(" ").Append(x.Name);
+              } else {
+                continue;
+              }
+              inspector.StatsLine(sb.ToString());
+              sb.Clear();
+            }
+          }
+        } else {
           return resp;
+        }
       }
     }
 
@@ -139,6 +179,14 @@ namespace Microsoft.Boogie.SMTLib
 
     public event Action<string> ErrorHandler;
     int errorCnt;
+
+    private void HandleError(string msg)
+    {
+      if (options.Verbosity >= 2)
+        Console.WriteLine("[SMT-ERR-{0}] Handling error: {1}", smtProcessId, msg);
+      if (ErrorHandler != null)
+        ErrorHandler(msg);
+    }
 
     #region SExpr parsing
     int linePos;
@@ -209,7 +257,7 @@ namespace Microsoft.Boogie.SMTLib
 
     void ParseError(string msg)
     {
-      ErrorHandler("Error parsing prover output: " + msg);
+      HandleError("Error parsing prover output: " + msg);
     }
 
     IEnumerable<SExpr> ParseSExprs(bool top)
@@ -264,7 +312,7 @@ namespace Microsoft.Boogie.SMTLib
       string error = null;
       while (true) {
         if (error != null) {
-          ErrorHandler(error);
+          HandleError(error);
           errorCnt++;
           error = null;
         }
@@ -304,7 +352,7 @@ namespace Microsoft.Boogie.SMTLib
       lock (this) {
         if (e.Data != null) {
           if (options.Verbosity >= 2 || (options.Verbosity >= 1 && !e.Data.StartsWith("(:name "))) {
-            Console.WriteLine("[SMT-OUT] {0}", e.Data);
+            Console.WriteLine("[SMT-OUT-{0}] {1}", smtProcessId, e.Data);
           }
           proverOutput.Enqueue(e.Data);
           Monitor.Pulse(this);
@@ -317,7 +365,7 @@ namespace Microsoft.Boogie.SMTLib
       lock (this) {
         if (e.Data != null) {
           if (options.Verbosity >= 1)
-            Console.WriteLine("[SMT-ERR] {0}", e.Data);
+            Console.WriteLine("[SMT-ERR-{0}] {1}", smtProcessId, e.Data);
           proverErrors.Enqueue(e.Data);
           Monitor.Pulse(this);
         }

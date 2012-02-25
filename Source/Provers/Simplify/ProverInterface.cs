@@ -848,9 +848,7 @@ namespace Microsoft.Boogie.Simplify {
       Contract.Assert(gen != null);
       List<string>/*!>!*/ proverCommands = new List<string> ();
       Contract.Assert(cce.NonNullElements(proverCommands));
-      proverCommands.Add("all");
       proverCommands.Add("simplify");
-      proverCommands.Add("simplifyLike");
       return new DeclFreeProverContext(gen, new VCGenerationOptions(proverCommands));
     }
 

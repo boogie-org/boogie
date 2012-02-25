@@ -213,6 +213,9 @@ object Boogie {
        val r = assert.pos.line;
        val c = assert.pos.column;
        r + "," + c + "," + r + "," + (c+5) + ":"
+     } else if (Chalice.rise4funMode) {
+       val (r,c) = (assert.pos.line, assert.pos.column)
+       Chalice.InputFilename + "(" + r + "," + c + "): Error: "
      } else {
        "  " + assert.pos + ": "
      }

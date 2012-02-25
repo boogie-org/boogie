@@ -23,7 +23,7 @@ using BytecodeTranslator.Phone;
 
 namespace BytecodeTranslator
 {
-  public class ExpressionTraverser : BaseCodeTraverser
+  public class ExpressionTraverser : CodeTraverser
   {
     public readonly Stack<Bpl.Expr> TranslatedExpressions;
 
@@ -32,6 +32,36 @@ namespace BytecodeTranslator
     protected readonly StatementTraverser StmtTraverser;
 
     private bool contractContext;
+
+    private Bpl.Expr FindOrCreateTypeReferenceInCodeContext(ITypeReference typeReference) {
+      return this.sink.FindOrCreateTypeReference(typeReference, true);
+
+      IGenericTypeParameter gtp = typeReference as IGenericTypeParameter;
+      if (gtp != null) {
+        var selectorName = gtp.Name.Value;
+        selectorName = TranslationHelper.TurnStringIntoValidIdentifier(selectorName);
+        var typeName = TypeHelper.GetTypeName(gtp.DefiningType, NameFormattingOptions.DocumentationId);
+        typeName = TranslationHelper.TurnStringIntoValidIdentifier(typeName);
+        var funcName = String.Format("{0}#{1}", selectorName, typeName);
+        Bpl.IToken tok = Bpl.Token.NoToken;
+        var identExpr = Bpl.Expr.Ident(new Bpl.LocalVariable(tok, new Bpl.TypedIdent(tok, funcName, this.sink.Heap.TypeType)));
+        var funcCall = new Bpl.FunctionCall(identExpr);
+        var thisArg = new Bpl.IdentifierExpr(tok, this.sink.ThisVariable);
+        var dynType = this.sink.Heap.DynamicType(thisArg);
+        var nary = new Bpl.NAryExpr(Bpl.Token.NoToken, funcCall, new Bpl.ExprSeq(dynType));
+        return nary;
+      }
+      return this.sink.FindOrCreateTypeReference(typeReference);
+    }
+
+    private static IMethodDefinition ResolveUnspecializedMethodOrThrow(IMethodReference methodReference) {
+      var resolvedMethod = Sink.Unspecialize(methodReference).ResolvedMethod;
+      if (resolvedMethod == Dummy.Method) { // avoid downstream errors, fail early
+        throw new TranslationException(ExceptionType.UnresolvedMethod, MemberHelper.GetMethodSignature(methodReference, NameFormattingOptions.None));
+      }
+      return resolvedMethod;
+    }
+
 
     #region Constructors
 
@@ -65,7 +95,7 @@ namespace BytecodeTranslator
     /// </summary>
     /// <param name="addressableExpression"></param>
     /// <remarks>still a stub</remarks>
-    public override void Visit(IAddressableExpression addressableExpression)
+    public override void TraverseChildren(IAddressableExpression addressableExpression)
     {
       ILocalDefinition/*?*/ local = addressableExpression.Definition as ILocalDefinition;
       if (local != null)
@@ -86,7 +116,7 @@ namespace BytecodeTranslator
         if (instance == null) {
           TranslatedExpressions.Push(f);
         } else {
-          this.Visit(instance);
+          this.Traverse(instance);
           Bpl.Expr instanceExpr = TranslatedExpressions.Pop();
           Bpl.IdentifierExpr temp = Bpl.Expr.Ident(this.sink.CreateFreshLocal(field.ResolvedField.Type));
           this.StmtTraverser.StmtBuilder.Add(TranslationHelper.BuildAssignCmd(temp, this.sink.Heap.ReadHeap(instanceExpr, f, field.ContainingType.ResolvedType.IsStruct ? AccessType.Struct : AccessType.Heap, temp.Type)));
@@ -97,18 +127,18 @@ namespace BytecodeTranslator
       IArrayIndexer/*?*/ arrayIndexer = addressableExpression.Definition as IArrayIndexer;
       if (arrayIndexer != null)
       {
-        this.Visit(arrayIndexer);
+        this.Traverse(arrayIndexer);
         return;
       }
       IAddressDereference/*?*/ addressDereference = addressableExpression.Definition as IAddressDereference;
       if (addressDereference != null)
       {
-        this.Visit(addressDereference);
+        this.Traverse(addressDereference);
         return;
       }
       IBlockExpression block = addressableExpression.Definition as IBlockExpression;
       if (block != null) {
-        this.Visit(block);
+        this.Traverse(block);
         return;
       }
       IMethodReference/*?*/ method = addressableExpression.Definition as IMethodReference;
@@ -121,7 +151,7 @@ namespace BytecodeTranslator
       Contract.Assert(addressableExpression.Definition is IThisReference);
     }
 
-    public override void Visit(IAddressDereference addressDereference)
+    public override void TraverseChildren(IAddressDereference addressDereference)
     {
       IBoundExpression be = addressDereference.Address as IBoundExpression;
       if (be != null)
@@ -134,22 +164,22 @@ namespace BytecodeTranslator
           return;
         }
       }
-      this.Visit(addressDereference.Address);
+      this.Traverse(addressDereference.Address);
       return;
     }
 
-    public override void Visit(IArrayIndexer arrayIndexer) {
+    public override void TraverseChildren(IArrayIndexer arrayIndexer) {
 
       if (!IsAtomicInstance(arrayIndexer.IndexedObject)) {
         // Simplify the BE so that all nested dereferences and method calls are broken up into separate assignments to locals.
         var se = ExpressionSimplifier.Simplify(this.sink, arrayIndexer);
-        this.Visit(se);
+        this.Traverse(se);
         return;
       }
 
-      this.Visit(arrayIndexer.IndexedObject);
+      this.Traverse(arrayIndexer.IndexedObject);
       Bpl.Expr arrayExpr = TranslatedExpressions.Pop();
-      this.Visit(arrayIndexer.Indices);
+      this.Traverse(arrayIndexer.Indices);
       int count = arrayIndexer.Indices.Count();
       Bpl.Expr[] indexExprs = new Bpl.Expr[count];
       for (int i = count; i > 0; i--) {
@@ -167,24 +197,24 @@ namespace BytecodeTranslator
       this.TranslatedExpressions.Push(this.sink.Heap.ReadHeap(arrayExpr, indexExpr, AccessType.Array, this.sink.CciTypeToBoogie(arrayIndexer.Type)));
     }
 
-    public override void Visit(ITargetExpression targetExpression)
+    public override void TraverseChildren(ITargetExpression targetExpression)
     {
       Contract.Assume(false, "The expression containing this as a subexpression should never allow a call to this routine.");
     }
 
-    public override void Visit(IThisReference thisReference)
+    public override void TraverseChildren(IThisReference thisReference)
     {
       TranslatedExpressions.Push(new Bpl.IdentifierExpr(thisReference.Token(),
         this.sink.ThisVariable));
     }
 
-    public override void Visit(IBoundExpression boundExpression)
+    public override void TraverseChildren(IBoundExpression boundExpression)
     {
 
       if (boundExpression.Instance != null && !IsAtomicInstance(boundExpression.Instance)) {
         // Simplify the BE so that all nested dereferences and method calls are broken up into separate assignments to locals.
         var se = ExpressionSimplifier.Simplify(this.sink, boundExpression);
-        this.Visit(se);
+        this.Traverse(se);
         return;
       }
 
@@ -214,7 +244,7 @@ namespace BytecodeTranslator
         if (instance == null) {
           TranslatedExpressions.Push(f);
         } else {
-          this.Visit(instance);
+          this.Traverse(instance);
           Bpl.Expr instanceExpr = TranslatedExpressions.Pop();
           var bplType = this.sink.CciTypeToBoogie(field.Type);
           var e = this.sink.Heap.ReadHeap(instanceExpr, f, field.ContainingType.ResolvedType.IsStruct ? AccessType.Struct : AccessType.Heap, bplType);
@@ -228,7 +258,7 @@ namespace BytecodeTranslator
       IArrayIndexer/*?*/ indexer = boundExpression.Definition as IArrayIndexer;
       if (indexer != null)
       {
-        Visit(indexer);
+        this.Traverse(indexer);
         return;
       }
       #endregion
@@ -240,18 +270,18 @@ namespace BytecodeTranslator
         IAddressOf/*?*/ addressOf = deref.Address as IAddressOf;
         if (addressOf != null)
         {
-          this.Visit(addressOf.Expression);
+          this.Traverse(addressOf.Expression);
           return;
         }
         if (boundExpression.Instance != null)
         {
           // TODO
-          this.Visit(boundExpression.Instance);
+          this.Traverse(boundExpression.Instance);
           Console.Write("->");
         }
         else if (deref.Address.Type is IPointerTypeReference)
           Console.Write("*");
-        this.Visit(deref.Address);
+        this.Traverse(deref.Address);
         return;
       }
       else
@@ -279,26 +309,42 @@ namespace BytecodeTranslator
       return be.Instance == null;
     }
 
-    public override void Visit(IPopValue popValue) {
+    public override void TraverseChildren(IPopValue popValue) {
       var locExpr = this.StmtTraverser.operandStack.Pop();
-      this.Visit(locExpr);
+      this.Traverse(locExpr);
       this.TranslatedExpressions.Push(this.TranslatedExpressions.Pop());
     }
 
     /// <summary>
-    /// If the expression is a struct, then this returns a "boxed" struct.
-    /// Otherwise it just translates the expression and skips the address-of
-    /// operation.
+    /// If the expression's type is a generic parameter (either method or type),
+    /// then this returns a "unboxed" expression, i.e., the value as a ref.
+    /// Otherwise it just translates the underlying expression and boxes it.
     /// </summary>
-    public override void Visit(IAddressOf addressOf)
+    public override void TraverseChildren(IAddressOf addressOf)
     {
-      Visit(addressOf.Expression);
+      var t = addressOf.Expression.Type;
+      var boogieT = this.sink.CciTypeToBoogie(t);
+
+      if (t is IGenericParameterReference) {
+        if (boogieT == this.sink.Heap.UnionType) {
+          // then the expression will be represented by something of type Box
+          // but the address of it must be a ref, so do the conversion
+          this.Traverse(addressOf.Expression);
+          var e = this.TranslatedExpressions.Pop();
+          this.TranslatedExpressions.Push(this.sink.Heap.FromUnion(addressOf.Token(), this.sink.Heap.RefType, e));
+        } else {
+          this.Traverse(addressOf.Expression);
+        }
+      } else {
+        this.Traverse(addressOf.Expression);
+        return;
+      }
     }
     #endregion
 
     #region Translate Constant Access
 
-    public override void Visit(ICompileTimeConstant constant) {
+    public override void TraverseChildren(ICompileTimeConstant constant) {
       if (constant.Value == null) {
         var bplType = sink.CciTypeToBoogie(constant.Type);
         if (bplType == Bpl.Type.Int) {
@@ -406,45 +452,13 @@ namespace BytecodeTranslator
       return;
     }
 
-    public override void Visit(IDefaultValue defaultValue) {
-
+    public override void TraverseChildren(IDefaultValue defaultValue) {
       var typ = defaultValue.Type;
 
-      #region Struct
       if (TranslationHelper.IsStruct(typ)) {
-        // then it is a struct and gets special treatment
-        // translate it as if it were a call to the nullary ctor for the struct type
-        // (which doesn't actually exist, but gets generated for each struct type
-        // encountered during translation)
-
-        var tok = defaultValue.Token();
-
-        var loc = this.sink.CreateFreshLocal(typ);
-        var locExpr = Bpl.Expr.Ident(loc);
-
-        // First generate an Alloc() call
-        this.StmtTraverser.StmtBuilder.Add(new Bpl.CallCmd(tok, this.sink.AllocationMethodName, new Bpl.ExprSeq(), new Bpl.IdentifierExprSeq(locExpr)));
-
-        // Second, generate the call to the appropriate ctor
-        var proc = this.sink.FindOrCreateProcedureForDefaultStructCtor(typ);
-        var invars = new List<Bpl.Expr>();
-        invars.Add(locExpr);
-        this.StmtTraverser.StmtBuilder.Add(new Bpl.CallCmd(tok, proc.Name, invars, new List<Bpl.IdentifierExpr>()));
-
-        // Generate an assumption about the dynamic type of the just allocated object
-        this.StmtTraverser.StmtBuilder.Add(
-            new Bpl.AssumeCmd(tok,
-              Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Eq,
-              this.sink.Heap.DynamicType(locExpr),
-              this.sink.FindOrCreateType(typ)
-              )
-              )
-            );
-
-        this.TranslatedExpressions.Push(locExpr);
+        translateStructDefaultValue(defaultValue, typ);
         return;
       }
-      #endregion
 
       Bpl.Expr e;
       var bplType = this.sink.CciTypeToBoogie(typ);
@@ -458,8 +472,8 @@ namespace BytecodeTranslator
         e = lit;
       } else if (bplType == this.sink.Heap.RefType) {
         e = Bpl.Expr.Ident(this.sink.Heap.NullRef);
-      } else if (bplType == this.sink.Heap.BoxType) {
-        e = Bpl.Expr.Ident(this.sink.Heap.DefaultBox);
+      } else if (bplType == this.sink.Heap.UnionType) {
+        e = Bpl.Expr.Ident(this.sink.Heap.DefaultHeapValue);
       } else if (bplType == this.sink.Heap.RealType) {
         e = Bpl.Expr.Ident(this.sink.Heap.DefaultReal);
       } else {
@@ -470,6 +484,39 @@ namespace BytecodeTranslator
       return;
     }
 
+    private void translateStructDefaultValue(IDefaultValue defaultValue, ITypeReference typ) {
+      // then it is a struct and gets special treatment
+      // translate it as if it were a call to the nullary ctor for the struct type
+      // (which doesn't actually exist, but gets generated for each struct type
+      // encountered during translation)
+
+      var tok = defaultValue.Token();
+
+      var loc = this.sink.CreateFreshLocal(typ);
+      var locExpr = Bpl.Expr.Ident(loc);
+
+      // First generate an Alloc() call
+      this.StmtTraverser.StmtBuilder.Add(new Bpl.CallCmd(tok, this.sink.AllocationMethodName, new Bpl.ExprSeq(), new Bpl.IdentifierExprSeq(locExpr)));
+
+      // Second, generate the call to the appropriate ctor
+      var proc = this.sink.FindOrCreateProcedureForDefaultStructCtor(typ);
+      var invars = new List<Bpl.Expr>();
+      invars.Add(locExpr);
+      this.StmtTraverser.StmtBuilder.Add(new Bpl.CallCmd(tok, proc.Name, invars, new List<Bpl.IdentifierExpr>()));
+
+      // Generate an assumption about the dynamic type of the just allocated object
+      this.StmtTraverser.StmtBuilder.Add(
+          new Bpl.AssumeCmd(tok,
+            Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Eq,
+            this.sink.Heap.DynamicType(locExpr),
+            this.FindOrCreateTypeReferenceInCodeContext(typ)
+            )
+            )
+          );
+
+      this.TranslatedExpressions.Push(locExpr);
+    }
+
     #endregion
 
     #region Translate Method Calls
@@ -478,19 +525,27 @@ namespace BytecodeTranslator
     /// </summary>
     /// <param name="methodCall"></param>
     /// <remarks>Stub, This one really needs comments!</remarks>
-    public override void Visit(IMethodCall methodCall) {
-      var resolvedMethod = Sink.Unspecialize(methodCall.MethodToCall).ResolvedMethod;
-      if (resolvedMethod == Dummy.Method) {
-        throw new TranslationException(
-          ExceptionType.UnresolvedMethod,
-          MemberHelper.GetMethodSignature(methodCall.MethodToCall, NameFormattingOptions.None));
-      }
+    public override void TraverseChildren(IMethodCall methodCall) {
+      var resolvedMethod = ResolveUnspecializedMethodOrThrow(methodCall.MethodToCall);
 
       Bpl.IToken methodCallToken = methodCall.Token();
+
+      if (this.sink.Options.getMeHere) {
+        // TODO: Get a method reference so this isn't a string comparison?
+        var methodName = MemberHelper.GetMethodSignature(methodCall.MethodToCall, NameFormattingOptions.None);
+        if (methodName.Equals("GetMeHere.GetMeHere.Assert")) {
+          // for now, just translate it as "assert e"
+          this.Traverse(methodCall.Arguments.First());
+          Bpl.Expr e = this.TranslatedExpressions.Pop();
+          this.StmtTraverser.StmtBuilder.Add(new Bpl.AssertCmd(methodCallToken, e));
+          return;
+        }
+      }
+
       List<Bpl.Expr> inexpr;
       List<Bpl.IdentifierExpr> outvars;
       Bpl.IdentifierExpr thisExpr;
-      Dictionary<Bpl.IdentifierExpr, Bpl.IdentifierExpr> toBoxed;
+      Dictionary<Bpl.IdentifierExpr, Tuple<Bpl.IdentifierExpr,bool>> toBoxed;
       var proc = TranslateArgumentsAndReturnProcedure(methodCallToken, methodCall.MethodToCall, resolvedMethod, methodCall.IsStaticCall ? null : methodCall.ThisArgument, methodCall.Arguments, out inexpr, out outvars, out thisExpr, out toBoxed);
       string methodname = proc.Name;
       var translateAsFunctionCall = proc is Bpl.Function;
@@ -506,7 +561,12 @@ namespace BytecodeTranslator
           }
         }
 
-        if (resolvedMethod.IsConstructor && resolvedMethod.ContainingTypeDefinition.IsStruct) {
+        var deferringCtorCall = resolvedMethod.IsConstructor && methodCall.ThisArgument is IThisReference;
+        // REVIEW!! Ask Herman: is the above test enough? The following test is used in FindCtorCall.IsDeferringCtor,
+        // but it doesn't work when the type is a struct S because then "this" has a type of "&S".
+          //&& TypeHelper.TypesAreEquivalent(resolvedMethod.ContainingType, methodCall.ThisArgument.Type);
+
+        if (resolvedMethod.IsConstructor && resolvedMethod.ContainingTypeDefinition.IsStruct && !deferringCtorCall) {
           handleStructConstructorCall(methodCall, methodCallToken, inexpr, outvars, thisExpr, proc);
           return;
         }
@@ -527,6 +587,7 @@ namespace BytecodeTranslator
             this.TranslatedExpressions.Push(callFunction);
             return;
           } else {
+            EmitLineDirective(methodCallToken);
             if (attrib != null)
               call = new Bpl.CallCmd(methodCallToken, methodname, inexpr, outvars, attrib);
             else
@@ -535,8 +596,20 @@ namespace BytecodeTranslator
           }
         }
 
-        foreach (KeyValuePair<Bpl.IdentifierExpr, Bpl.IdentifierExpr> kv in toBoxed) {
-          this.StmtTraverser.StmtBuilder.Add(TranslationHelper.BuildAssignCmd(kv.Key, this.sink.Heap.Unbox(Bpl.Token.NoToken, kv.Key.Type, kv.Value)));
+        foreach (KeyValuePair<Bpl.IdentifierExpr, Tuple<Bpl.IdentifierExpr,bool>> kv in toBoxed) {
+          var lhs = kv.Key;
+          var tuple = kv.Value;
+          var rhs = tuple.Item1;
+          Bpl.Expr fromUnion;
+          if (tuple.Item2) {
+            // Since both structs and objects are represented by "Ref", need to make a distinction here.
+            // Review: Introduce an explicit type "Struct"?
+            fromUnion = new Bpl.NAryExpr(Bpl.Token.NoToken, new Bpl.FunctionCall(this.sink.Heap.Union2Struct), new Bpl.ExprSeq(rhs));
+          } else {
+            fromUnion = this.sink.Heap.FromUnion(Bpl.Token.NoToken, lhs.Type, rhs);
+            //this.StmtTraverser.StmtBuilder.Add(TranslationHelper.BuildAssignCmd(lhs, this.sink.Heap.FromUnion(Bpl.Token.NoToken, lhs.Type, rhs)));
+          }
+          this.StmtTraverser.StmtBuilder.Add(TranslationHelper.BuildAssignCmd(lhs, fromUnion));
         }
 
         Bpl.Expr expr = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Neq, Bpl.Expr.Ident(this.sink.Heap.ExceptionVariable), Bpl.Expr.Ident(this.sink.Heap.NullRef));
@@ -555,10 +628,20 @@ namespace BytecodeTranslator
             if (PhoneCodeHelper.instance().isMethodKnownUIChanger(methodCall)) {
               Bpl.AssumeCmd assumeFalse = new Bpl.AssumeCmd(Bpl.Token.NoToken, Bpl.LiteralExpr.False);
               this.StmtTraverser.StmtBuilder.Add(assumeFalse);
-              // FEEDBACK TODO make sure that the call to this method (not the called one but the one in context) is inlined (how?)
             }
           }
         }
+      }
+    }
+
+    private void EmitLineDirective(Bpl.IToken methodCallToken) {
+      var sloc = this.StmtTraverser.lastSourceLocation;
+      if (sloc != null) {
+        var fileName = sloc.Document.Location;
+        var lineNumber = sloc.StartLine;
+        var attrib = new Bpl.QKeyValue(methodCallToken, "sourceLine", new List<object> { Bpl.Expr.Literal((int)lineNumber) }, null);
+        attrib = new Bpl.QKeyValue(methodCallToken, "sourceFile", new List<object> { fileName }, attrib);
+        this.StmtTraverser.StmtBuilder.Add(new Bpl.AssertCmd(methodCallToken, Bpl.Expr.True, attrib));
       }
     }
 
@@ -602,6 +685,7 @@ namespace BytecodeTranslator
       this.StmtTraverser.StmtBuilder.Add(new Bpl.CallCmd(methodCallToken, this.sink.AllocationMethodName, new Bpl.ExprSeq(), new Bpl.IdentifierExprSeq(thisExpr)));
 
       // Second, generate the call to the appropriate ctor
+      EmitLineDirective(methodCallToken);
       this.StmtTraverser.StmtBuilder.Add(new Bpl.CallCmd(methodCallToken, proc.Name, inexpr, outvars));
 
       // Generate an assumption about the dynamic type of the just allocated object
@@ -609,57 +693,110 @@ namespace BytecodeTranslator
           new Bpl.AssumeCmd(methodCallToken,
             Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Eq,
             this.sink.Heap.DynamicType(thisExpr),
-            this.sink.FindOrCreateType(methodCall.MethodToCall.ResolvedMethod.ContainingTypeDefinition)
+            this.FindOrCreateTypeReferenceInCodeContext(methodCall.MethodToCall.ResolvedMethod.ContainingTypeDefinition)
             )
             )
           );
     }
 
     // REVIEW: Does "thisExpr" really need to come back as an identifier? Can't it be a general expression?
-    protected Bpl.DeclWithFormals TranslateArgumentsAndReturnProcedure(Bpl.IToken token, IMethodReference methodToCall, IMethodDefinition resolvedMethod, IExpression/*?*/ thisArg, IEnumerable<IExpression> arguments, out List<Bpl.Expr> inexpr, out List<Bpl.IdentifierExpr> outvars, out Bpl.IdentifierExpr thisExpr, out Dictionary<Bpl.IdentifierExpr, Bpl.IdentifierExpr> toBoxed) {
+    protected Bpl.DeclWithFormals TranslateArgumentsAndReturnProcedure(Bpl.IToken token, IMethodReference methodToCall, IMethodDefinition resolvedMethod, IExpression/*?*/ thisArg, IEnumerable<IExpression> arguments, out List<Bpl.Expr> inexpr, out List<Bpl.IdentifierExpr> outvars, out Bpl.IdentifierExpr thisExpr, out Dictionary<Bpl.IdentifierExpr, Tuple<Bpl.IdentifierExpr,bool>> toUnioned) {
       inexpr = new List<Bpl.Expr>();
       outvars = new List<Bpl.IdentifierExpr>();
 
       #region Create the 'this' argument for the function call
       thisExpr = null;
       if (thisArg != null) {
-        this.Visit(thisArg);
+
+        // Special case! thisArg is going to be an AddressOf expression if the receiver is a value-type
+        // But if the method's containing type is something that doesn't get translated as a Ref, then
+        // the AddressOf node should be ignored.
+        var addrOf = thisArg as IAddressOf;
+        var boogieType = this.sink.CciTypeToBoogie(methodToCall.ContainingType);
+        if (addrOf != null && boogieType != this.sink.Heap.RefType) {
+          thisArg = addrOf.Expression;
+        }
+
+        this.Traverse(thisArg);
 
         var e = this.TranslatedExpressions.Pop();
         var identifierExpr = e as Bpl.IdentifierExpr;
         if (identifierExpr == null) {
-          var newLocal = Bpl.Expr.Ident(this.sink.CreateFreshLocal(thisArg.Type));
+          var newLocal = Bpl.Expr.Ident(this.sink.CreateFreshLocal(methodToCall.ContainingType));
           var cmd = Bpl.Cmd.SimpleAssign(token, newLocal, e);
           this.StmtTraverser.StmtBuilder.Add(cmd);
           e = newLocal;
+        } else {
+
         }
         inexpr.Add(e);
         thisExpr = (Bpl.IdentifierExpr) e;
       }
       #endregion
 
-      toBoxed = new Dictionary<Bpl.IdentifierExpr, Bpl.IdentifierExpr>();
+      toUnioned = new Dictionary<Bpl.IdentifierExpr, Tuple<Bpl.IdentifierExpr,bool>>();
       IEnumerator<IParameterDefinition> penum = resolvedMethod.Parameters.GetEnumerator();
       penum.MoveNext();
       foreach (IExpression exp in arguments) {
         if (penum.Current == null) {
           throw new TranslationException("More arguments than parameters in method call");
         }
-        this.Visit(exp);
+
+        var expressionToTraverse = exp;
+        Bpl.Type boogieTypeOfExpression;
+
+        // Special case! exp can be an AddressOf expression if it is a value type being passed by reference.
+        // But since we pass reference parameters by in-out value passing, need to short-circuit the
+        // AddressOf node if the underlying type is not a Ref.
+        var addrOf = exp as IAddressOf;
+        if (addrOf != null) {
+          boogieTypeOfExpression = this.sink.CciTypeToBoogie(addrOf.Expression.Type);
+          if (boogieTypeOfExpression != this.sink.Heap.RefType) {
+            expressionToTraverse = addrOf.Expression;
+          }
+        }
+
+        boogieTypeOfExpression = this.sink.CciTypeToBoogie(expressionToTraverse.Type);
+        this.Traverse(expressionToTraverse);
+
         Bpl.Expr e = this.TranslatedExpressions.Pop();
-        if (penum.Current.Type is IGenericTypeParameter || penum.Current.Type is IGenericMethodParameter)
-          inexpr.Add(sink.Heap.Box(token, this.sink.CciTypeToBoogie(exp.Type), e));
-        else
+        var currentType = penum.Current.Type;
+
+        // If the argument is a struct, then make a copy of it to pass to the procedure.
+        if (TranslationHelper.IsStruct(exp.Type)) {
+          var proc = this.sink.FindOrCreateProcedureForStructCopy(exp.Type);
+          var bplLocal = Bpl.Expr.Ident(this.sink.CreateFreshLocal(exp.Type));
+          var cmd = new Bpl.CallCmd(token, proc.Name, new List<Bpl.Expr> { e, }, new List<Bpl.IdentifierExpr> { bplLocal, });
+          this.StmtTraverser.StmtBuilder.Add(cmd);
+          e = bplLocal;
+        }
+
+        if (currentType is IGenericParameterReference && this.sink.CciTypeToBoogie(currentType) == this.sink.Heap.UnionType) {
+          if (TranslationHelper.IsStruct(expressionToTraverse.Type)) {
+            // Since both structs and objects are represented by "Ref", need to make a distinction here.
+            // Review: Introduce an explicit type "Struct"?
+            var toUnion = new Bpl.NAryExpr(token, new Bpl.FunctionCall(this.sink.Heap.Struct2Union), new Bpl.ExprSeq(e));
+            inexpr.Add(toUnion);
+          } else {
+            inexpr.Add(sink.Heap.ToUnion(token, this.sink.CciTypeToBoogie(expressionToTraverse.Type), e));
+          }
+        } else {
           inexpr.Add(e);
+        }
         if (penum.Current.IsByReference) {
           Bpl.IdentifierExpr unboxed = e as Bpl.IdentifierExpr;
           if (unboxed == null) {
             throw new TranslationException("Trying to pass a complex expression for an out or ref parameter");
           }
-          if (penum.Current.Type is IGenericTypeParameter || penum.Current.Type is IGenericMethodParameter) {
-            Bpl.IdentifierExpr boxed = Bpl.Expr.Ident(sink.CreateFreshLocal(this.sink.Heap.BoxType));
-            toBoxed[unboxed] = boxed;
-            outvars.Add(boxed);
+          if (penum.Current.Type is IGenericParameterReference) {
+            var boogieType = this.sink.CciTypeToBoogie(penum.Current.Type);
+            if (boogieType == this.sink.Heap.UnionType) {
+              Bpl.IdentifierExpr boxed = Bpl.Expr.Ident(sink.CreateFreshLocal(this.sink.Heap.UnionType));
+              toUnioned[unboxed] = Tuple.Create(boxed,false);
+              outvars.Add(boxed);
+            } else {
+              outvars.Add(unboxed);
+            }
           } else {
             outvars.Add(unboxed);
           }
@@ -671,13 +808,13 @@ namespace BytecodeTranslator
         List<ITypeReference> consolidatedTypeArguments = new List<ITypeReference>();
         Sink.GetConsolidatedTypeArguments(consolidatedTypeArguments, methodToCall.ContainingType);
         foreach (ITypeReference typeReference in consolidatedTypeArguments) {
-          inexpr.Add(sink.FindOrCreateType(typeReference));
+          inexpr.Add(this.FindOrCreateTypeReferenceInCodeContext(typeReference));
         }
       }
       IGenericMethodInstanceReference methodInstanceReference = methodToCall as IGenericMethodInstanceReference;
       if (methodInstanceReference != null) {
         foreach (ITypeReference typeReference in methodInstanceReference.GenericArguments) {
-          inexpr.Add(sink.FindOrCreateType(typeReference));
+          inexpr.Add(this.FindOrCreateTypeReferenceInCodeContext(typeReference));
         }
       }
 
@@ -686,15 +823,20 @@ namespace BytecodeTranslator
       if (!translateAsFunctionCall) {
         if (resolvedMethod.Type.ResolvedType.TypeCode != PrimitiveTypeCode.Void) {
           Bpl.Variable v = this.sink.CreateFreshLocal(methodToCall.ResolvedMethod.Type.ResolvedType);
-          Bpl.IdentifierExpr unboxed = new Bpl.IdentifierExpr(token, v);
-          if (resolvedMethod.Type is IGenericTypeParameter || resolvedMethod.Type is IGenericMethodParameter) {
-            Bpl.IdentifierExpr boxed = Bpl.Expr.Ident(this.sink.CreateFreshLocal(this.sink.Heap.BoxType));
-            toBoxed[unboxed] = boxed;
-            outvars.Add(boxed);
+          Bpl.IdentifierExpr unUnioned = new Bpl.IdentifierExpr(token, v);
+          if (resolvedMethod.Type is IGenericParameterReference) {
+            var boogieType = this.sink.CciTypeToBoogie(resolvedMethod.Type);
+            if (boogieType == this.sink.Heap.UnionType) {
+              Bpl.IdentifierExpr unioned = Bpl.Expr.Ident(this.sink.CreateFreshLocal(this.sink.Heap.UnionType));
+              toUnioned[unUnioned] = Tuple.Create(unioned, TranslationHelper.IsStruct(methodToCall.ResolvedMethod.Type.ResolvedType));
+              outvars.Add(unioned);
+            } else {
+              outvars.Add(unUnioned);
+            }
           } else {
-            outvars.Add(unboxed);
+            outvars.Add(unUnioned);
           }
-          TranslatedExpressions.Push(unboxed);
+          TranslatedExpressions.Push(unUnioned);
         }
       }
 
@@ -710,19 +852,28 @@ namespace BytecodeTranslator
     /// </summary>
     /// <remarks>(mschaef) Works, but still a stub </remarks>
     /// <param name="assignment"></param>
-    public override void Visit(IAssignment assignment) {
+    public override void TraverseChildren(IAssignment assignment) {
       Contract.Assert(TranslatedExpressions.Count == 0);
       var tok = assignment.Token();
 
+      bool translationIntercepted= false;
       ICompileTimeConstant constant= assignment.Source as ICompileTimeConstant;
       // TODO move away phone related code from the translation, it would be better to have 2 or more translation phases
-      if (PhoneCodeHelper.instance().PhonePlugin != null && PhoneCodeHelper.instance().PhoneNavigationToggled &&
-          constant != null && constant.Type == sink.host.PlatformType.SystemString &&
-          constant.Value != null && constant.Value.Equals(PhoneCodeHelper.BOOGIE_DO_HAVOC_CURRENTURI)) {
-        TranslateHavocCurrentURI();
-      } else {
-        TranslateAssignment(tok, assignment.Target.Definition, assignment.Target.Instance, assignment.Source);
+      // NAVIGATION TODO maybe this will go away if I can handle it with stubs
+      if (PhoneCodeHelper.instance().PhonePlugin != null && PhoneCodeHelper.instance().PhoneNavigationToggled) {
+        IFieldReference target = assignment.Target.Definition as IFieldReference;
+        if (target != null && target.Name.Value == PhoneCodeHelper.IL_CURRENT_NAVIGATION_URI_VARIABLE) {
+          if (constant != null && constant.Type == sink.host.PlatformType.SystemString && constant.Value != null &&
+              constant.Value.Equals(PhoneCodeHelper.BOOGIE_DO_HAVOC_CURRENTURI)) {
+            TranslateHavocCurrentURI();
+            translationIntercepted = true;
+          }
+          StmtTraverser.StmtBuilder.Add(PhoneCodeHelper.instance().getAddNavigationCheck(sink));
+        }
       }
+
+      if (!translationIntercepted)
+        TranslateAssignment(tok, assignment.Target.Definition, assignment.Target.Instance, assignment.Source);
     }
 
     /// <summary>
@@ -730,7 +881,9 @@ namespace BytecodeTranslator
     /// </summary>
     private void TranslateHavocCurrentURI() {
       // TODO move away phone related code from the translation, it would be better to have 2 or more translation phases
-      Bpl.CallCmd havocCall = new Bpl.CallCmd(Bpl.Token.NoToken, PhoneCodeHelper.BOOGIE_DO_HAVOC_CURRENTURI, new List<Bpl.Expr>(), new List<Bpl.IdentifierExpr>());
+      IMethodReference havocMethod= PhoneCodeHelper.instance().getUriHavocerMethod(sink);
+      Sink.ProcedureInfo procInfo= sink.FindOrCreateProcedure(havocMethod.ResolvedMethod);
+      Bpl.CallCmd havocCall = new Bpl.CallCmd(Bpl.Token.NoToken, procInfo.Decl.Name, new List<Bpl.Expr>(), new List<Bpl.IdentifierExpr>());
       StmtTraverser.StmtBuilder.Add(havocCall);
     }
 
@@ -752,14 +905,16 @@ namespace BytecodeTranslator
       }
       Bpl.Cmd cmd;
 
+      EmitLineDirective(tok);
+
       var/*?*/ local = container as ILocalDefinition;
       if (local != null) {
         Contract.Assume(instance == null);
-        this.Visit(source);
+        this.Traverse(source);
         var e = this.TranslatedExpressions.Pop();
         var bplLocal = Bpl.Expr.Ident(this.sink.FindOrCreateLocalVariable(local));
         if (structCopy) {
-          cmd = new Bpl.CallCmd(tok, proc.Name, new List<Bpl.Expr>{ e, bplLocal, }, new List<Bpl.IdentifierExpr>());
+          cmd = new Bpl.CallCmd(tok, proc.Name, new List<Bpl.Expr>{ e, }, new List<Bpl.IdentifierExpr>{ bplLocal, });
         } else {
           cmd = Bpl.Cmd.SimpleAssign(tok, bplLocal, e);
         }
@@ -770,7 +925,7 @@ namespace BytecodeTranslator
       var/*?*/ parameter = container as IParameterDefinition;
       if (parameter != null) {
         Contract.Assume(instance == null);
-        this.Visit(source);
+        this.Traverse(source);
         var e = this.TranslatedExpressions.Pop();
         var bplParam = Bpl.Expr.Ident(this.sink.FindParameterVariable(parameter, this.contractContext));
         if (structCopy) {
@@ -784,7 +939,7 @@ namespace BytecodeTranslator
 
       var/*?*/ field = container as IFieldReference;
       if (field != null) {
-        this.Visit(source);
+        this.Traverse(source);
         var e = this.TranslatedExpressions.Pop();
         var f = Bpl.Expr.Ident(this.sink.FindOrCreateFieldVariable(field));
         if (instance == null) {
@@ -792,7 +947,7 @@ namespace BytecodeTranslator
           StmtTraverser.StmtBuilder.Add(Bpl.Cmd.SimpleAssign(tok, f, e));
         }
         else {
-          this.Visit(instance);
+          this.Traverse(instance);
           var x = this.TranslatedExpressions.Pop();
           var boogieType = sink.CciTypeToBoogie(field.Type);
           StmtTraverser.StmtBuilder.Add(this.sink.Heap.WriteHeap(tok, x, f, e,
@@ -804,11 +959,11 @@ namespace BytecodeTranslator
 
       var/*?*/ arrayIndexer = container as IArrayIndexer;
       if (arrayIndexer != null) {
-        this.Visit(instance);
+        this.Traverse(instance);
         var x = this.TranslatedExpressions.Pop();
-        this.Visit(arrayIndexer.Indices);
+        this.Traverse(arrayIndexer.Indices);
         var indices_prime = this.TranslatedExpressions.Pop();
-        this.Visit(source);
+        this.Traverse(source);
         var e = this.TranslatedExpressions.Pop();
         StmtTraverser.StmtBuilder.Add(sink.Heap.WriteHeap(Bpl.Token.NoToken, x, indices_prime, e, AccessType.Array, sink.CciTypeToBoogie(arrayIndexer.Type)));
         return;
@@ -847,7 +1002,7 @@ namespace BytecodeTranslator
           // ctor (probably only ever done in a different ctor for the
           // struct). The assignment actually looks like "*this := DefaultValue(S)"
           Contract.Assume(instance == null);
-          this.Visit(source);
+          this.Traverse(source);
           var e = this.TranslatedExpressions.Pop();
           var bplLocal = Bpl.Expr.Ident(this.sink.ThisVariable);
           cmd = Bpl.Cmd.SimpleAssign(tok, bplLocal, e);
@@ -867,10 +1022,11 @@ namespace BytecodeTranslator
     /// For "new A(...)" generate "{ A a = Alloc(); A..ctor(a); return a; }" where
     /// "a" is a fresh local.
     /// </summary>
-    public override void Visit(ICreateObjectInstance createObjectInstance)
+    public override void TraverseChildren(ICreateObjectInstance createObjectInstance)
     {
       var ctor = createObjectInstance.MethodToCall;
-      var resolvedMethod = Sink.Unspecialize(ctor).ResolvedMethod;
+      var resolvedMethod = ResolveUnspecializedMethodOrThrow(ctor);
+
       Bpl.IToken token = createObjectInstance.Token();
 
       var a = this.sink.CreateFreshLocal(createObjectInstance.Type);
@@ -879,7 +1035,7 @@ namespace BytecodeTranslator
           createObjectInstance.Type.TypeCode == PrimitiveTypeCode.UIntPtr) {
         List<Bpl.Expr> args = new List<Bpl.Expr>();
         foreach (IExpression e in createObjectInstance.Arguments) {
-          this.Visit(e);
+          this.Traverse(e);
           args.Add(TranslatedExpressions.Pop());
         }
         System.Diagnostics.Debug.Assert(args.Count == 1);
@@ -894,9 +1050,12 @@ namespace BytecodeTranslator
         List<Bpl.Expr> inexpr;
         List<Bpl.IdentifierExpr> outvars;
         Bpl.IdentifierExpr thisExpr;
-        Dictionary<Bpl.IdentifierExpr, Bpl.IdentifierExpr> toBoxed;
+        Dictionary<Bpl.IdentifierExpr, Tuple<Bpl.IdentifierExpr,bool>> toBoxed;
         var proc = TranslateArgumentsAndReturnProcedure(token, ctor, resolvedMethod, null, createObjectInstance.Arguments, out inexpr, out outvars, out thisExpr, out toBoxed);
         inexpr.Insert(0, Bpl.Expr.Ident(a));
+
+        EmitLineDirective(token);
+
         this.StmtTraverser.StmtBuilder.Add(new Bpl.CallCmd(token, proc.Name, inexpr, outvars));
 
         // Generate an assumption about the dynamic type of the just allocated object
@@ -904,7 +1063,7 @@ namespace BytecodeTranslator
             new Bpl.AssumeCmd(token,
               Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Eq,
               this.sink.Heap.DynamicType(Bpl.Expr.Ident(a)),
-              this.sink.FindOrCreateType(createObjectInstance.Type)
+              this.FindOrCreateTypeReferenceInCodeContext(createObjectInstance.Type)
               )
               )
             );
@@ -912,7 +1071,7 @@ namespace BytecodeTranslator
       TranslatedExpressions.Push(Bpl.Expr.Ident(a));
     }
 
-    public override void Visit(ICreateArray createArrayInstance)
+    public override void TraverseChildren(ICreateArray createArrayInstance)
     {
       Bpl.IToken cloc = createArrayInstance.Token();
       var a = this.sink.CreateFreshLocal(createArrayInstance.Type);
@@ -920,7 +1079,7 @@ namespace BytecodeTranslator
       Debug.Assert(createArrayInstance.Rank > 0); 
       Bpl.Expr lengthExpr = Bpl.Expr.Literal(1);
       foreach (IExpression expr in createArrayInstance.Sizes) {
-        this.Visit(expr);
+        this.Traverse(expr);
         lengthExpr = Bpl.Expr.Mul(lengthExpr, TranslatedExpressions.Pop());
       }
       
@@ -930,14 +1089,14 @@ namespace BytecodeTranslator
       this.StmtTraverser.StmtBuilder.Add(new Bpl.AssumeCmd(cloc, assumeExpr));
       TranslatedExpressions.Push(Bpl.Expr.Ident(a));
     }
-    
-    public override void Visit(ICreateDelegateInstance createDelegateInstance)
+
+    public override void TraverseChildren(ICreateDelegateInstance createDelegateInstance)
     {
       if (createDelegateInstance.Instance == null) {
         TranslatedExpressions.Push(Bpl.Expr.Literal(0));
       }
       else {
-        this.Visit(createDelegateInstance.Instance);
+        this.Traverse(createDelegateInstance.Instance);
       }
 
       TranslateDelegateCreation(createDelegateInstance.MethodToCallViaDelegate, createDelegateInstance.Type, createDelegateInstance);
@@ -948,14 +1107,36 @@ namespace BytecodeTranslator
       Bpl.IToken cloc = creationAST.Token();
       var a = this.sink.CreateFreshLocal(creationAST.Type);
 
-      sink.AddDelegate(type.ResolvedType, methodToCall.ResolvedMethod);
-      Bpl.Constant constant = sink.FindOrCreateDelegateMethodConstant(methodToCall.ResolvedMethod);
+      ITypeDefinition unspecializedType = Microsoft.Cci.MutableContracts.ContractHelper.Unspecialized(type.ResolvedType).ResolvedType;
+      IMethodDefinition unspecializedMethod = ResolveUnspecializedMethodOrThrow(methodToCall);
+      sink.AddDelegate(unspecializedType, unspecializedMethod);
+      Bpl.Constant constant = sink.FindOrCreateDelegateMethodConstant(unspecializedMethod);
       Bpl.Expr methodExpr = Bpl.Expr.Ident(constant);
       Bpl.Expr instanceExpr = TranslatedExpressions.Pop();
 
-      this.StmtTraverser.StmtBuilder.Add(new Bpl.CallCmd(cloc, this.sink.DelegateAddHelperName,
-                                                         new Bpl.ExprSeq(Bpl.Expr.Ident(this.sink.Heap.NullRef), Bpl.Expr.Ident(constant), instanceExpr), 
-                                                         new Bpl.IdentifierExprSeq(Bpl.Expr.Ident(a))));
+      Bpl.ExprSeq typeParameterExprs = new Bpl.ExprSeq();
+
+      if (unspecializedMethod.IsStatic) {
+        List<ITypeReference> consolidatedTypeArguments = new List<ITypeReference>();
+        Sink.GetConsolidatedTypeArguments(consolidatedTypeArguments, methodToCall.ContainingType);
+        foreach (ITypeReference typeReference in consolidatedTypeArguments) {
+          typeParameterExprs.Add(this.FindOrCreateTypeReferenceInCodeContext(typeReference));
+        }
+      }
+      IGenericMethodInstanceReference methodInstanceReference = methodToCall as IGenericMethodInstanceReference;
+      if (methodInstanceReference != null) {
+        foreach (ITypeReference typeReference in methodInstanceReference.GenericArguments) {
+          typeParameterExprs.Add(this.FindOrCreateTypeReferenceInCodeContext(typeReference));
+        }
+      }
+      Bpl.Expr typeParameterExpr =
+        new Bpl.NAryExpr(Bpl.Token.NoToken,
+                         new Bpl.FunctionCall(this.sink.FindOrCreateNaryTypeFunction(typeParameterExprs.Length)),
+                         typeParameterExprs);
+      this.StmtTraverser.StmtBuilder.Add(
+        new Bpl.CallCmd(cloc, this.sink.DelegateCreateName,
+                        new Bpl.ExprSeq(this.sink.CreateDelegate(methodExpr, instanceExpr, typeParameterExpr)), 
+                        new Bpl.IdentifierExprSeq(Bpl.Expr.Ident(a))));
       TranslatedExpressions.Push(Bpl.Expr.Ident(a));
     }
     
@@ -963,9 +1144,9 @@ namespace BytecodeTranslator
 
     #region Translate Binary Operators
 
-    public override void Visit(IAddition addition)
+    public override void TraverseChildren(IAddition addition)
     {
-      base.Visit(addition);
+      base.TraverseChildren(addition);
       Bpl.Expr rexp = TranslatedExpressions.Pop();
       Bpl.Expr lexp = TranslatedExpressions.Pop();
       Bpl.Expr e;
@@ -985,8 +1166,8 @@ namespace BytecodeTranslator
       TranslatedExpressions.Push(e);
     }
 
-    public override void Visit(IBitwiseAnd bitwiseAnd) {
-      base.Visit(bitwiseAnd);
+    public override void TraverseChildren(IBitwiseAnd bitwiseAnd) {
+      base.TraverseChildren(bitwiseAnd);
       Bpl.Expr rexp = TranslatedExpressions.Pop();
       Bpl.Expr lexp = TranslatedExpressions.Pop();
       Bpl.Expr e;
@@ -1003,8 +1184,8 @@ namespace BytecodeTranslator
       TranslatedExpressions.Push(e);
     }
 
-    public override void Visit(IBitwiseOr bitwiseOr) {
-      base.Visit(bitwiseOr);
+    public override void TraverseChildren(IBitwiseOr bitwiseOr) {
+      base.TraverseChildren(bitwiseOr);
       Bpl.Expr rexp = TranslatedExpressions.Pop();
       Bpl.Expr lexp = TranslatedExpressions.Pop();
       Bpl.Expr e;
@@ -1021,9 +1202,30 @@ namespace BytecodeTranslator
       TranslatedExpressions.Push(e);
     }
 
-    public override void Visit(IDivision division)
+    public override void TraverseChildren(IModulus modulus) {
+      base.TraverseChildren(modulus);
+      Bpl.Expr rexp = TranslatedExpressions.Pop();
+      Bpl.Expr lexp = TranslatedExpressions.Pop();
+      Bpl.Expr e;
+      switch (modulus.Type.TypeCode) {
+        case PrimitiveTypeCode.Float32:
+        case PrimitiveTypeCode.Float64:
+          e = new Bpl.NAryExpr(
+            modulus.Token(),
+            new Bpl.FunctionCall(this.sink.Heap.RealModulus),
+            new Bpl.ExprSeq(lexp, rexp)
+            );
+          break;
+        default:
+          e = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Mod, lexp, rexp);
+          break;
+      }
+      TranslatedExpressions.Push(e);
+    }
+
+    public override void TraverseChildren(IDivision division)
     {
-      base.Visit(division);
+      base.TraverseChildren(division);
       Bpl.Expr rexp = TranslatedExpressions.Pop();
       Bpl.Expr lexp = TranslatedExpressions.Pop();
       Bpl.Expr e;
@@ -1043,8 +1245,8 @@ namespace BytecodeTranslator
       TranslatedExpressions.Push(e);
     }
 
-    public override void Visit(IExclusiveOr exclusiveOr) {
-      base.Visit(exclusiveOr);
+    public override void TraverseChildren(IExclusiveOr exclusiveOr) {
+      base.TraverseChildren(exclusiveOr);
       Bpl.Expr rexp = TranslatedExpressions.Pop();
       Bpl.Expr lexp = TranslatedExpressions.Pop();
       var e = new Bpl.NAryExpr(
@@ -1055,9 +1257,9 @@ namespace BytecodeTranslator
       TranslatedExpressions.Push(e);
     }
 
-    public override void Visit(ISubtraction subtraction)
+    public override void TraverseChildren(ISubtraction subtraction)
     {
-      base.Visit(subtraction);
+      base.TraverseChildren(subtraction);
       Bpl.Expr rexp = TranslatedExpressions.Pop();
       Bpl.Expr lexp = TranslatedExpressions.Pop();
       Bpl.Expr e;
@@ -1077,9 +1279,9 @@ namespace BytecodeTranslator
       TranslatedExpressions.Push(e);
     }
 
-    public override void Visit(IMultiplication multiplication)
+    public override void TraverseChildren(IMultiplication multiplication)
     {
-      base.Visit(multiplication);
+      base.TraverseChildren(multiplication);
       Bpl.Expr rexp = TranslatedExpressions.Pop();
       Bpl.Expr lexp = TranslatedExpressions.Pop();
       Bpl.Expr e;
@@ -1099,17 +1301,9 @@ namespace BytecodeTranslator
       TranslatedExpressions.Push(e);
     }
 
-    public override void Visit(IModulus modulus)
+    public override void TraverseChildren(IGreaterThan greaterThan)
     {
-      base.Visit(modulus);
-      Bpl.Expr rexp = TranslatedExpressions.Pop();
-      Bpl.Expr lexp = TranslatedExpressions.Pop();
-      TranslatedExpressions.Push(Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Mod, lexp, rexp));
-    }
-
-    public override void Visit(IGreaterThan greaterThan)
-    {
-      base.Visit(greaterThan);
+      base.TraverseChildren(greaterThan);
       Bpl.Expr rexp = TranslatedExpressions.Pop();
       Bpl.Expr lexp = TranslatedExpressions.Pop();
 
@@ -1131,9 +1325,9 @@ namespace BytecodeTranslator
       TranslatedExpressions.Push(e);
     }
 
-    public override void Visit(IGreaterThanOrEqual greaterEqual)
+    public override void TraverseChildren(IGreaterThanOrEqual greaterEqual)
     {
-      base.Visit(greaterEqual);
+      base.TraverseChildren(greaterEqual);
       Bpl.Expr rexp = TranslatedExpressions.Pop();
       Bpl.Expr lexp = TranslatedExpressions.Pop();
 
@@ -1155,9 +1349,9 @@ namespace BytecodeTranslator
       TranslatedExpressions.Push(e);
     }
 
-    public override void Visit(ILessThan lessThan)
+    public override void TraverseChildren(ILessThan lessThan)
     {
-      base.Visit(lessThan);
+      base.TraverseChildren(lessThan);
       Bpl.Expr rexp = TranslatedExpressions.Pop();
       Bpl.Expr lexp = TranslatedExpressions.Pop();
 
@@ -1179,9 +1373,9 @@ namespace BytecodeTranslator
       TranslatedExpressions.Push(e);
     }
 
-    public override void Visit(ILessThanOrEqual lessEqual)
+    public override void TraverseChildren(ILessThanOrEqual lessEqual)
     {
-      base.Visit(lessEqual);
+      base.TraverseChildren(lessEqual);
       Bpl.Expr rexp = TranslatedExpressions.Pop();
       Bpl.Expr lexp = TranslatedExpressions.Pop();
 
@@ -1203,24 +1397,24 @@ namespace BytecodeTranslator
       TranslatedExpressions.Push(e);
     }
 
-    public override void Visit(IEquality equal)
+    public override void TraverseChildren(IEquality equal)
     {
-      base.Visit(equal);
+      base.TraverseChildren(equal);
       Bpl.Expr rexp = TranslatedExpressions.Pop();
       Bpl.Expr lexp = TranslatedExpressions.Pop();
       TranslatedExpressions.Push(Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Eq, lexp, rexp));
     }
 
-    public override void Visit(INotEquality nonEqual)
+    public override void TraverseChildren(INotEquality nonEqual)
     {
-      base.Visit(nonEqual);
+      base.TraverseChildren(nonEqual);
       Bpl.Expr rexp = TranslatedExpressions.Pop();
       Bpl.Expr lexp = TranslatedExpressions.Pop();
       TranslatedExpressions.Push(Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Neq, lexp, rexp));
     }
 
-    public override void Visit(IRightShift rightShift) {
-      base.Visit(rightShift);
+    public override void TraverseChildren(IRightShift rightShift) {
+      base.TraverseChildren(rightShift);
       Bpl.Expr rexp = TranslatedExpressions.Pop();
       Bpl.Expr lexp = TranslatedExpressions.Pop();
       Bpl.Expr e = new Bpl.NAryExpr(
@@ -1231,8 +1425,8 @@ namespace BytecodeTranslator
       TranslatedExpressions.Push(e);
     }
 
-    public override void Visit(ILeftShift leftShift) {
-      base.Visit(leftShift);
+    public override void TraverseChildren(ILeftShift leftShift) {
+      base.TraverseChildren(leftShift);
       Bpl.Expr rexp = TranslatedExpressions.Pop();
       Bpl.Expr lexp = TranslatedExpressions.Pop();
       Bpl.Expr e = new Bpl.NAryExpr(
@@ -1249,7 +1443,7 @@ namespace BytecodeTranslator
     /// TODO:
     /// If it isn't either of these short forms then emit the proper expression!
     /// </summary>
-    public override void Visit(IConditional conditional) {
+    public override void TraverseChildren(IConditional conditional) {
       /*
       #region Try and reconstruct And, Or, Not expressions
       if (conditional.Type.TypeCode == PrimitiveTypeCode.Boolean) {
@@ -1317,14 +1511,16 @@ namespace BytecodeTranslator
       #endregion
       */
 
+
+      // TODO is this code actually needed at all? It seems that all this is already being done in the Statement traverser for the conditional
       StatementTraverser thenStmtTraverser = this.StmtTraverser.factory.MakeStatementTraverser(this.sink, this.StmtTraverser.PdbReader, this.contractContext);
       StatementTraverser elseStmtTraverser = this.StmtTraverser.factory.MakeStatementTraverser(this.sink, this.StmtTraverser.PdbReader, this.contractContext);
       ExpressionTraverser thenExprTraverser = this.StmtTraverser.factory.MakeExpressionTraverser(this.sink, thenStmtTraverser, this.contractContext);
       ExpressionTraverser elseExprTraverser = this.StmtTraverser.factory.MakeExpressionTraverser(this.sink, elseStmtTraverser, this.contractContext);
-      thenExprTraverser.Visit(conditional.ResultIfTrue);
-      elseExprTraverser.Visit(conditional.ResultIfFalse);
+      thenExprTraverser.Traverse(conditional.ResultIfTrue);
+      elseExprTraverser.Traverse(conditional.ResultIfFalse);
 
-      this.Visit(conditional.Condition);
+      this.Traverse(conditional.Condition);
       Bpl.Expr conditionExpr = this.TranslatedExpressions.Pop();
 
       Bpl.IfCmd ifcmd = new Bpl.IfCmd(conditional.Token(),
@@ -1367,10 +1563,10 @@ namespace BytecodeTranslator
 
     #region Translate Unary Operators
 
-    public override void Visit(ICastIfPossible castIfPossible) {
-      base.Visit(castIfPossible.ValueToCast);
+    public override void TraverseChildren(ICastIfPossible castIfPossible) {
+      base.Traverse(castIfPossible.ValueToCast);
       var exp = TranslatedExpressions.Pop();
-      var e = this.sink.FindOrCreateType(castIfPossible.TargetType);
+      var e = this.FindOrCreateTypeReferenceInCodeContext(castIfPossible.TargetType);
       var callAs = new Bpl.NAryExpr(
         castIfPossible.Token(),
         new Bpl.FunctionCall(this.sink.Heap.AsFunction),
@@ -1379,14 +1575,14 @@ namespace BytecodeTranslator
       TranslatedExpressions.Push(callAs);
       return;
     }
-    public override void Visit(ICheckIfInstance checkIfInstance) {
-      var e = this.sink.FindOrCreateType(checkIfInstance.TypeToCheck);
+    public override void TraverseChildren(ICheckIfInstance checkIfInstance) {
+      var e = this.FindOrCreateTypeReferenceInCodeContext(checkIfInstance.TypeToCheck);
       //var callTypeOf = new Bpl.NAryExpr(
       //  checkIfInstance.Token(),
       //  new Bpl.FunctionCall(this.sink.Heap.TypeOfFunction),
       //  new Bpl.ExprSeq(new Bpl.IdentifierExpr(checkIfInstance.Token(), v))
       //  );
-      base.Visit(checkIfInstance.Operand);
+      base.Traverse(checkIfInstance.Operand);
       var exp = TranslatedExpressions.Pop();
       var dynTypeOfOperand = this.sink.Heap.DynamicType(exp);
       //var subtype = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Subtype, dynTypeOfOperand, e);
@@ -1401,12 +1597,13 @@ namespace BytecodeTranslator
       return;
     }
 
-    public override void Visit(IConversion conversion) {
+    public override void TraverseChildren(IConversion conversion) {
       var tok = conversion.ValueToConvert.Token();
-      Visit(conversion.ValueToConvert);
+      this.Traverse(conversion.ValueToConvert);
       var boogieTypeOfValue = this.sink.CciTypeToBoogie(conversion.ValueToConvert.Type);
       var boogieTypeToBeConvertedTo = this.sink.CciTypeToBoogie(conversion.TypeAfterConversion);
-      if (boogieTypeOfValue == boogieTypeToBeConvertedTo) {
+      if (boogieTypeOfValue == boogieTypeToBeConvertedTo && !TranslationHelper.IsStruct(conversion.ValueToConvert.Type)
+        && !TranslationHelper.IsStruct(conversion.TypeAfterConversion)) {
         // then this conversion is a nop, just ignore it
         return;
       }
@@ -1416,20 +1613,44 @@ namespace BytecodeTranslator
 
       var exp = TranslatedExpressions.Pop();
 
+      if (boogieTypeOfValue == this.sink.Heap.UnionType && boogieTypeToBeConvertedTo != this.sink.Heap.RefType) {
+        var e = this.sink.Heap.FromUnion(tok, boogieTypeToBeConvertedTo, exp);
+        TranslatedExpressions.Push(e);
+        return;
+      }
+      if (boogieTypeToBeConvertedTo == this.sink.Heap.UnionType) {
+        Bpl.Expr e;
+        if (boogieTypeOfValue == this.sink.Heap.RefType)
+          e = new Bpl.NAryExpr(Bpl.Token.NoToken, new Bpl.FunctionCall(this.sink.Heap.Unbox2Union), new Bpl.ExprSeq(exp));
+        else
+          e = this.sink.Heap.ToUnion(tok, boogieTypeOfValue, exp);
+        TranslatedExpressions.Push(e);
+        return;
+      }
+
+      if (boogieTypeToBeConvertedTo == this.sink.Heap.RefType &&
+        TranslationHelper.IsStruct(conversion.TypeAfterConversion) &&
+        boogieTypeOfValue == this.sink.Heap.RefType) {
+        // REVIEW: This also applies to conversions from one struct type to another!
+        var e = new Bpl.NAryExpr(Bpl.Token.NoToken, new Bpl.FunctionCall(this.sink.Heap.Unbox2Struct), new Bpl.ExprSeq(exp));
+        TranslatedExpressions.Push(e);
+        return;
+      }
+
       if (boogieTypeToBeConvertedTo == Bpl.Type.Bool) {
         Bpl.Expr expr;
         if (boogieTypeOfValue == Bpl.Type.Int) {
           expr = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Neq, exp, Bpl.Expr.Literal(0));
         }
         else if (boogieTypeOfValue == this.sink.Heap.RefType) {
-          expr = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Neq, exp, Bpl.Expr.Ident(this.sink.Heap.NullRef));
+          expr = new Bpl.NAryExpr(Bpl.Token.NoToken, new Bpl.FunctionCall(this.sink.Heap.Unbox2Bool), new Bpl.ExprSeq(exp));
         }
         else if (boogieTypeOfValue == this.sink.Heap.RealType) {
           expr = new Bpl.NAryExpr(Bpl.Token.NoToken, new Bpl.FunctionCall(this.sink.Heap.Real2Int), new Bpl.ExprSeq(exp));
           expr = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Neq, expr, Bpl.Expr.Literal(0));
         }
-        else if (boogieTypeOfValue == this.sink.Heap.BoxType) {
-          expr = new Bpl.NAryExpr(Bpl.Token.NoToken, new Bpl.FunctionCall(this.sink.Heap.Box2Bool), new Bpl.ExprSeq(exp));
+        else if (boogieTypeOfValue == this.sink.Heap.UnionType) {
+          expr = this.sink.Heap.FromUnion(tok, Bpl.Type.Bool, exp);
         }
         else {
           throw new NotImplementedException(msg);
@@ -1444,13 +1665,13 @@ namespace BytecodeTranslator
           expr = new Bpl.NAryExpr(tok, new Bpl.IfThenElse(tok), new Bpl.ExprSeq(exp, Bpl.Expr.Literal(1), Bpl.Expr.Literal(0)));
         }
         else if (boogieTypeOfValue == this.sink.Heap.RefType) {
-          expr = this.sink.Heap.ReadHeap(exp, Bpl.Expr.Ident(this.sink.Heap.BoxField), AccessType.Heap, Bpl.Type.Int);
+          expr = new Bpl.NAryExpr(Bpl.Token.NoToken, new Bpl.FunctionCall(this.sink.Heap.Unbox2Int), new Bpl.ExprSeq(exp));
         }
         else if (boogieTypeOfValue == this.sink.Heap.RealType) {
           expr = new Bpl.NAryExpr(Bpl.Token.NoToken, new Bpl.FunctionCall(this.sink.Heap.Real2Int), new Bpl.ExprSeq(exp));
         }
-        else if (boogieTypeOfValue == this.sink.Heap.BoxType) {
-          expr = new Bpl.NAryExpr(Bpl.Token.NoToken, new Bpl.FunctionCall(this.sink.Heap.Box2Int), new Bpl.ExprSeq(exp));
+        else if (boogieTypeOfValue == this.sink.Heap.UnionType) {
+          expr = this.sink.Heap.FromUnion(Bpl.Token.NoToken, Bpl.Type.Int, exp);
         }
         else {
           throw new NotImplementedException(msg);
@@ -1460,9 +1681,32 @@ namespace BytecodeTranslator
       }
 
       if (boogieTypeToBeConvertedTo == this.sink.Heap.RefType) {
+        // var a = BoxFromXXX(exp);
         Bpl.Variable a = this.sink.CreateFreshLocal(conversion.TypeAfterConversion);
-        this.StmtTraverser.StmtBuilder.Add(new Bpl.CallCmd(Bpl.Token.NoToken, this.sink.AllocationMethodName, new Bpl.ExprSeq(), new Bpl.IdentifierExprSeq(Bpl.Expr.Ident(a))));
-        this.StmtTraverser.StmtBuilder.Add(this.sink.Heap.WriteHeap(Bpl.Token.NoToken, Bpl.Expr.Ident(a), Bpl.Expr.Ident(this.sink.Heap.BoxField), exp, AccessType.Heap, boogieTypeOfValue));
+        Bpl.Procedure boxOperator;
+        if (boogieTypeOfValue == Bpl.Type.Bool)
+          boxOperator = this.sink.Heap.BoxFromBool;
+        else if (boogieTypeOfValue == Bpl.Type.Int)
+          boxOperator = this.sink.Heap.BoxFromInt;
+        else if (boogieTypeOfValue == this.sink.Heap.RealType)
+          boxOperator = this.sink.Heap.BoxFromReal;
+        else if (TranslationHelper.IsStruct(conversion.ValueToConvert.Type)) {
+          // Boxing a struct implicitly makes a copy of the struct
+          var typeOfValue = conversion.ValueToConvert.Type;
+          var proc = this.sink.FindOrCreateProcedureForStructCopy(typeOfValue);
+          var bplLocal = Bpl.Expr.Ident(this.sink.CreateFreshLocal(typeOfValue));
+          var cmd = new Bpl.CallCmd(tok, proc.Name, new List<Bpl.Expr> { exp, }, new List<Bpl.IdentifierExpr> { bplLocal, });
+          this.StmtTraverser.StmtBuilder.Add(cmd);
+          exp = bplLocal;
+          boxOperator = this.sink.Heap.BoxFromStruct;
+        }  else {
+          if (boogieTypeOfValue != this.sink.Heap.UnionType)
+            throw new NotImplementedException(msg);
+          boxOperator = this.sink.Heap.BoxFromUnion;
+        }
+        var name = boxOperator.Name;
+
+        this.StmtTraverser.StmtBuilder.Add(new Bpl.CallCmd(Bpl.Token.NoToken, name, new Bpl.ExprSeq(exp), new Bpl.IdentifierExprSeq(Bpl.Expr.Ident(a))));
         TranslatedExpressions.Push(Bpl.Expr.Ident(a));
         return;
       }
@@ -1477,10 +1721,10 @@ namespace BytecodeTranslator
           expr = new Bpl.NAryExpr(Bpl.Token.NoToken, new Bpl.FunctionCall(this.sink.Heap.Int2Real), new Bpl.ExprSeq(exp));
         }
         else if (boogieTypeOfValue == this.sink.Heap.RefType) {
-          expr = this.sink.Heap.ReadHeap(exp, Bpl.Expr.Ident(this.sink.Heap.BoxField), AccessType.Heap, this.sink.Heap.RealType);
+          expr = new Bpl.NAryExpr(Bpl.Token.NoToken, new Bpl.FunctionCall(this.sink.Heap.Unbox2Real), new Bpl.ExprSeq(exp));
         }
-        else if (boogieTypeOfValue == this.sink.Heap.BoxType) {
-          expr = new Bpl.NAryExpr(Bpl.Token.NoToken, new Bpl.FunctionCall(this.sink.Heap.Box2Real), new Bpl.ExprSeq(exp));
+        else if (boogieTypeOfValue == this.sink.Heap.UnionType) {
+          expr = this.sink.Heap.FromUnion(tok, this.sink.Heap.RealType, exp);
         }
         else {
           throw new NotImplementedException(msg);
@@ -1489,31 +1733,31 @@ namespace BytecodeTranslator
         return;
       }
       
-      if (boogieTypeToBeConvertedTo == this.sink.Heap.BoxType) {
-        Bpl.Function func;
-        if (boogieTypeOfValue == Bpl.Type.Bool) {
-          func = this.sink.Heap.Bool2Box;
-        }
-        else if (boogieTypeOfValue == Bpl.Type.Int) {
-          func = this.sink.Heap.Int2Box;
-        }
-        else if (boogieTypeOfValue == this.sink.Heap.RefType) {
-          func = this.sink.Heap.Ref2Box;
-        }
-        else if (boogieTypeOfValue == this.sink.Heap.RealType) {
-          func = this.sink.Heap.Real2Box;
-        }
-        else {
-          throw new NotImplementedException(msg);
-        }
-        var boxExpr = new Bpl.NAryExpr(conversion.Token(), new Bpl.FunctionCall(func), new Bpl.ExprSeq(exp));
-        TranslatedExpressions.Push(boxExpr);
-        return;
-      }
+      //if (boogieTypeToBeConvertedTo == this.sink.Heap.UnionType) {
+      //  Bpl.Function func;
+      //  if (boogieTypeOfValue == Bpl.Type.Bool) {
+      //    func = this.sink.Heap.Bool2Union;
+      //  }
+      //  else if (boogieTypeOfValue == Bpl.Type.Int) {
+      //    func = this.sink.Heap.Int2Union;
+      //  }
+      //  else if (boogieTypeOfValue == this.sink.Heap.RefType) {
+      //    func = this.sink.Heap.Ref2Union;
+      //  }
+      //  else if (boogieTypeOfValue == this.sink.Heap.RealType) {
+      //    func = this.sink.Heap.Real2Union;
+      //  }
+      //  else {
+      //    throw new NotImplementedException(msg);
+      //  }
+      //  var boxExpr = new Bpl.NAryExpr(conversion.Token(), new Bpl.FunctionCall(func), new Bpl.ExprSeq(exp));
+      //  TranslatedExpressions.Push(boxExpr);
+      //  return;
+      //}
     }
 
-    public override void Visit(IOnesComplement onesComplement) {
-      base.Visit(onesComplement);
+    public override void TraverseChildren(IOnesComplement onesComplement) {
+      base.TraverseChildren(onesComplement);
       var exp = TranslatedExpressions.Pop();
       var e = new Bpl.NAryExpr(
         onesComplement.Token(),
@@ -1523,9 +1767,9 @@ namespace BytecodeTranslator
       TranslatedExpressions.Push(e);
     }
 
-    public override void Visit(IUnaryNegation unaryNegation)
+    public override void TraverseChildren(IUnaryNegation unaryNegation)
     {
-      base.Visit(unaryNegation);
+      base.TraverseChildren(unaryNegation);
       Bpl.Expr exp = TranslatedExpressions.Pop();
       Bpl.Expr e, zero, realZero;
       zero = Bpl.Expr.Literal(0);
@@ -1546,9 +1790,9 @@ namespace BytecodeTranslator
       TranslatedExpressions.Push(e);
     }
 
-    public override void Visit(ILogicalNot logicalNot)
+    public override void TraverseChildren(ILogicalNot logicalNot)
     {
-      base.Visit(logicalNot.Operand);
+      base.Traverse(logicalNot.Operand);
       Bpl.Expr exp = TranslatedExpressions.Pop();
       Bpl.Type operandType = this.sink.CciTypeToBoogie(logicalNot.Operand.Type);
       if (operandType == this.sink.Heap.RefType) {
@@ -1565,8 +1809,8 @@ namespace BytecodeTranslator
           Bpl.UnaryOperator.Opcode.Not, exp));
     }
 
-    public override void Visit(ITypeOf typeOf) {
-      var e = this.sink.FindOrCreateType(typeOf.TypeToGet);
+    public override void TraverseChildren(ITypeOf typeOf) {
+      var e = this.FindOrCreateTypeReferenceInCodeContext(typeOf.TypeToGet);
       var callTypeOf = new Bpl.NAryExpr(
         typeOf.Token(),
         new Bpl.FunctionCall(this.sink.Heap.TypeOfFunction),
@@ -1575,8 +1819,8 @@ namespace BytecodeTranslator
       TranslatedExpressions.Push(callTypeOf);
     }
 
-    public override void Visit(IVectorLength vectorLength) {
-      base.Visit(vectorLength.Vector);
+    public override void TraverseChildren(IVectorLength vectorLength) {
+      base.Traverse(vectorLength.Vector);
       var e = TranslatedExpressions.Pop();
       TranslatedExpressions.Push(new Bpl.NAryExpr(vectorLength.Token(), new Bpl.FunctionCall(this.sink.Heap.ArrayLengthFunction), new Bpl.ExprSeq(e)));
     }
@@ -1584,14 +1828,14 @@ namespace BytecodeTranslator
     #endregion
 
     #region CodeContract Expressions
-    public override void Visit(IOldValue oldValue)
+    public override void TraverseChildren(IOldValue oldValue)
     {
-      base.Visit(oldValue);
+      base.TraverseChildren(oldValue);
       TranslatedExpressions.Push(new Bpl.OldExpr(oldValue.Token(),
         TranslatedExpressions.Pop()));
     }
 
-    public override void Visit(IReturnValue returnValue)
+    public override void TraverseChildren(IReturnValue returnValue)
     {
       if (this.sink.ReturnVariable == null)
       {
@@ -1603,9 +1847,9 @@ namespace BytecodeTranslator
     }
     #endregion
 
-    public override void Visit(IBlockExpression blockExpression) {
-      this.StmtTraverser.Visit(blockExpression.BlockStatement);
-      this.Visit(blockExpression.Expression);
+    public override void TraverseChildren(IBlockExpression blockExpression) {
+      this.StmtTraverser.Traverse(blockExpression.BlockStatement);
+      this.Traverse(blockExpression.Expression);
     }
 
     /// <summary>

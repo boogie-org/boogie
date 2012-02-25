@@ -17,6 +17,7 @@ namespace Microsoft.Boogie {
   using System.Diagnostics.Contracts;
   using Microsoft.Basetypes;
 
+  using Set = GSet<object>;
 
   //---------------------------------------------------------------------
   // Quantifiers and general binders
@@ -533,6 +534,13 @@ namespace Microsoft.Boogie {
         return l.asBigNum.ToIntSafe;
       return defl;
     }
+
+    public override Absy Clone() {
+      List<object> newParams = new List<object>();
+      foreach (object o in Params)
+        newParams.Add(o);
+      return new QKeyValue(tok, Key, newParams, (Next == null) ? null : (QKeyValue)Next.Clone());
+    }
   }
 
   public class Trigger : Absy {
@@ -545,7 +553,6 @@ namespace Microsoft.Boogie {
       Contract.Invariant(1 <= Tr.Length);
       Contract.Invariant(Pos || Tr.Length == 1);
     }
-
 
     public Trigger Next;
 

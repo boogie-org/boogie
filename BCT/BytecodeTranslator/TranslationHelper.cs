@@ -15,7 +15,8 @@ using Microsoft.Cci.Contracts;
 using Microsoft.Cci.ILToCodeModel;
 
 using Bpl = Microsoft.Boogie;
-
+using System.Text.RegularExpressions;
+using System.Diagnostics.Contracts;
 
 namespace BytecodeTranslator {
 
@@ -42,6 +43,7 @@ namespace BytecodeTranslator {
       var parameterToken = parameterDefinition.Token();
       var typeToken = parameterDefinition.Type.Token();
       var parameterName = TranslationHelper.TurnStringIntoValidIdentifier(parameterDefinition.Name.Value);
+      if (String.IsNullOrWhiteSpace(parameterName)) parameterName = "P" + parameterDefinition.Index.ToString();
 
       this.inParameterCopy = new Bpl.Formal(parameterToken, new Bpl.TypedIdent(typeToken, parameterName + "$in", ptype), true);
       if (parameterDefinition.IsByReference) {
@@ -90,6 +92,15 @@ namespace BytecodeTranslator {
       return new Bpl.AssignCmd(lhs.tok, lhss, rhss);
     }
 
+    public static Bpl.AssignCmd BuildAssignCmd(List<Bpl.IdentifierExpr> lexprs, List<Bpl.Expr> rexprs) {
+      List<Bpl.AssignLhs> lhss = new List<Bpl.AssignLhs>();
+      foreach (Bpl.IdentifierExpr lexpr in lexprs) {
+        lhss.Add(new Bpl.SimpleAssignLhs(lexpr.tok, lexpr));
+      }
+      List<Bpl.Expr> rhss = new List<Bpl.Expr>();
+      return new Bpl.AssignCmd(Bpl.Token.NoToken, lhss, rexprs);
+    }
+
     public static Bpl.IToken Token(this IObjectWithLocations objectWithLocations) {
       //TODO: use objectWithLocations.Locations!
       Bpl.IToken tok = Bpl.Token.NoToken;
@@ -111,6 +122,31 @@ namespace BytecodeTranslator {
       return "finally" + (finallyClauseCounter++).ToString();
     }
 
+    public static List<IGenericTypeParameter> ConsolidatedGenericParameters(ITypeReference typeReference) {
+      Contract.Requires(typeReference != null);
+
+      var typeDefinition = typeReference.ResolvedType;
+      var totalParameters = new List<IGenericTypeParameter>();
+      ConsolidatedGenericParameters(typeDefinition, totalParameters);
+      return totalParameters;
+
+      //var nestedTypeDefinition = typeDefinition as INestedTypeDefinition;
+      //while (nestedTypeDefinition != null) {
+      //  var containingType = nestedTypeDefinition.ContainingType.ResolvedType;
+      //  totalParameters.AddRange(containingType.GenericParameters);
+      //  nestedTypeDefinition = containingType as INestedTypeDefinition;
+      //}
+      //totalParameters.AddRange(typeDefinition.GenericParameters);
+      //return totalParameters;
+    }
+    private static void ConsolidatedGenericParameters(ITypeDefinition typeDefinition, List<IGenericTypeParameter> consolidatedParameters){
+      var nestedTypeDefinition = typeDefinition as INestedTypeDefinition;
+      if (nestedTypeDefinition != null){
+        ConsolidatedGenericParameters(nestedTypeDefinition.ContainingTypeDefinition, consolidatedParameters);
+      }
+      consolidatedParameters.AddRange(typeDefinition.GenericParameters);
+    }
+
     public static string CreateUniqueMethodName(IMethodReference method) {
       var containingTypeName = TypeHelper.GetTypeName(method.ContainingType, NameFormattingOptions.None);
       var s = MemberHelper.GetMethodSignature(method, NameFormattingOptions.DocumentationId);
@@ -121,39 +157,26 @@ namespace BytecodeTranslator {
     }
 
     public static string TurnStringIntoValidIdentifier(string s) {
+
+      // Do this specially just to make the resulting string a little bit more readable.
+      // REVIEW: Just let the main replacement take care of it?
       s = s.Replace("[0:,0:]", "2DArray"); // TODO: Do this programmatically to handle arbitrary arity
       s = s.Replace("[0:,0:,0:]", "3DArray");
       s = s.Replace("[0:,0:,0:,0:]", "4DArray");
       s = s.Replace("[0:,0:,0:,0:,0:]", "5DArray");
-      s = s.Replace('!', '$');
-      s = s.Replace('*', '$');
-      s = s.Replace('+', '$');
-      s = s.Replace('(', '$');
-      s = s.Replace(')', '$');
-      s = s.Replace(',', '$');
       s = s.Replace("[]", "array");
-      s = s.Replace('<', '$');
-      s = s.Replace('>', '$');
-      s = s.Replace(':', '$');
-      s = s.Replace(' ', '$');
-      s = s.Replace('{', '$');
-      s = s.Replace('}', '$');
-      s = s.Replace('-', '$');
-      s = s.Replace(' ', '$');
-      s = s.Replace('\t', '$');
-      s = s.Replace('\r', '$');
-      s = s.Replace('\n', '$');
-      s = s.Replace('/', '$');
-      s = s.Replace('\\', '$');
-      s = s.Replace('=', '$');
-      s = s.Replace('@', '$');
-      s = s.Replace(';', '$');
-      s = s.Replace('%', '$');
-      s = s.Replace('&', '$');
-      s = s.Replace('"', '$');
-      s = s.Replace('[', '$');
-      s = s.Replace(']', '$');
-      s = s.Replace('|', '$');
+
+      // The definition of a Boogie identifier is from BoogiePL.atg.
+      // Just negate that to get which characters should be replaced with a dollar sign.
+
+      // letter = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz".
+      // digit = "0123456789".
+      // special = "'~#$^_.?`".
+      // nondigit = letter + special.
+      // ident =  [ '\\' ] nondigit {nondigit | digit}.
+
+      s = Regex.Replace(s, "[^A-Za-z0-9'~#$^_.?`]", "$");
+      
       s = GetRidOfSurrogateCharacters(s);
       return s;
     }
@@ -163,6 +186,7 @@ namespace BytecodeTranslator {
     /// http://msdn.microsoft.com/en-us/library/dd374069(v=VS.85).aspx
     /// </summary>
     private static string GetRidOfSurrogateCharacters(string s) {
+      //  TODO this is not enough! Actually Boogie cannot support UTF8
       var cs = s.ToCharArray();
       var okayChars = new char[cs.Length];
       for (int i = 0, j = 0; i < cs.Length; i++) {

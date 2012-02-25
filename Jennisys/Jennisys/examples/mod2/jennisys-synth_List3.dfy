@@ -33,13 +33,19 @@ class IntList {
     ensures fresh(Repr - {this});
     ensures Valid();
     ensures list == [p] + [q];
+    ensures list[0] == p;
+    ensures list[1] == q;
+    ensures |list| == 2;
   {
-    var gensym68 := new IntNode;
-    gensym68._synth_IntList_Double_gensym68(p, q);
+    var gensym79 := new IntNode;
+    gensym79._synth_IntList_Double_gensym79(p, q);
     this.list := [p] + [q];
-    this.root := gensym68;
+    this.root := gensym79;
+
     // repr stuff
     this.Repr := {this} + this.root.Repr;
+    // assert repr objects are valid (helps verification)
+    assert gensym79.Valid();
   }
 
 
@@ -48,9 +54,11 @@ class IntList {
     ensures fresh(Repr - {this});
     ensures Valid();
     ensures list == [];
+    ensures |list| == 0;
   {
     this.list := [];
     this.root := null;
+
     // repr stuff
     this.Repr := {this};
   }
@@ -61,13 +69,11 @@ class IntList {
     ensures fresh(Repr - {this});
     ensures Valid();
     ensures list == [1, 2];
+    ensures list[0] == 1;
+    ensures list[1] == 2;
+    ensures |list| == 2;
   {
-    var gensym65 := new IntNode;
-    gensym65._synth_IntList_OneTwo_gensym65();
-    this.list := [1, 2];
-    this.root := gensym65;
-    // repr stuff
-    this.Repr := {this} + this.root.Repr;
+    this.Double(1, 2);
   }
 
 
@@ -76,13 +82,18 @@ class IntList {
     ensures fresh(Repr - {this});
     ensures Valid();
     ensures list == [p];
+    ensures list[0] == p;
+    ensures |list| == 1;
   {
-    var gensym67 := new IntNode;
-    gensym67._synth_IntList_Singleton_gensym67(p);
+    var gensym77 := new IntNode;
+    gensym77._synth_IntList_Singleton_gensym77(p);
     this.list := [p];
-    this.root := gensym67;
+    this.root := gensym77;
+
     // repr stuff
     this.Repr := {this} + this.root.Repr;
+    // assert repr objects are valid (helps verification)
+    assert gensym77.Valid();
   }
 
 
@@ -91,13 +102,10 @@ class IntList {
     ensures fresh(Repr - {this});
     ensures Valid();
     ensures list == [2];
+    ensures list[0] == 2;
+    ensures |list| == 1;
   {
-    var gensym66 := new IntNode;
-    gensym66._synth_IntList_SingletonTwo_gensym66();
-    this.list := [2];
-    this.root := gensym66;
-    // repr stuff
-    this.Repr := {this} + this.root.Repr;
+    this.Singleton(2);
   }
 
 
@@ -106,13 +114,10 @@ class IntList {
     ensures fresh(Repr - {this});
     ensures Valid();
     ensures list == [p + q];
+    ensures list[0] == p + q;
+    ensures |list| == 1;
   {
-    var gensym68 := new IntNode;
-    gensym68._synth_IntList_Sum_gensym68(p, q);
-    this.list := [p + q];
-    this.root := gensym68;
-    // repr stuff
-    this.Repr := {this} + this.root.Repr;
+    this.Singleton(p + q);
   }
 
 
@@ -121,13 +126,11 @@ class IntList {
     ensures fresh(Repr - {this});
     ensures Valid();
     ensures list == [p] + [p + 1];
+    ensures list[0] == p;
+    ensures list[1] == p + 1;
+    ensures |list| == 2;
   {
-    var gensym67 := new IntNode;
-    gensym67._synth_IntList_TwoConsecutive_gensym67(p);
-    this.list := [p] + [p + 1];
-    this.root := gensym67;
-    // repr stuff
-    this.Repr := {this} + this.root.Repr;
+    this.Double(p, p + 1);
   }
 
 }
@@ -158,8 +161,10 @@ class IntNode {
 
   function Valid(): bool
     reads *;
+    decreases Repr;
   {
     this.Valid_self() &&
+    (next != null ==> next.Valid()) &&
     (next != null ==> next.Valid_self()) &&
     (next != null && next.next != null ==> next.next.Valid_self())
   }
@@ -174,6 +179,7 @@ class IntNode {
     this.data := p;
     this.next := null;
     this.succ := [];
+
     // repr stuff
     this.Repr := {this};
   }
@@ -185,128 +191,7 @@ class IntNode {
     ensures Valid();
     ensures data == p + 1;
   {
-    this.data := p + 1;
-    this.next := null;
-    this.succ := [];
-    // repr stuff
-    this.Repr := {this};
-  }
-
-
-  method Zero()
-    modifies this;
-    ensures fresh(Repr - {this});
-    ensures Valid();
-    ensures data == 0;
-    ensures succ == [];
-  {
-    this.data := 0;
-    this.next := null;
-    this.succ := [];
-    // repr stuff
-    this.Repr := {this};
-  }
-
-
-  method _synth_IntList_Double_gensym68(p: int, q: int)
-    modifies this;
-    ensures fresh(Repr - {this});
-    ensures Valid();
-    ensures data == p;
-    ensures |succ| == 1;
-    ensures succ[0].data == q;
-    ensures succ[0].succ == [];
-  {
-    var gensym80 := new IntNode;
-    gensym80._synth_IntNode__synth_IntList_Double_gensym68_gensym80(q);
-    this.data := p;
-    this.next := gensym80;
-    this.succ := [gensym80];
-    // repr stuff
-    this.Repr := {this} + this.next.Repr;
-  }
-
-
-  method _synth_IntList_OneTwo_gensym65()
-    modifies this;
-    ensures fresh(Repr - {this});
-    ensures Valid();
-    ensures data == 1;
-    ensures |succ| == 1;
-    ensures succ[0].data == 2;
-    ensures succ[0].succ == [];
-  {
-    var gensym78 := new IntNode;
-    gensym78._synth_IntNode__synth_IntList_OneTwo_gensym65_gensym78();
-    this.data := 1;
-    this.next := gensym78;
-    this.succ := [gensym78];
-    // repr stuff
-    this.Repr := {this} + this.next.Repr;
-  }
-
-
-  method _synth_IntList_SingletonTwo_gensym66()
-    modifies this;
-    ensures fresh(Repr - {this});
-    ensures Valid();
-    ensures data == 2;
-    ensures |succ| == 0;
-  {
-    this.data := 2;
-    this.next := null;
-    this.succ := [];
-    // repr stuff
-    this.Repr := {this};
-  }
-
-
-  method _synth_IntList_Singleton_gensym67(p: int)
-    modifies this;
-    ensures fresh(Repr - {this});
-    ensures Valid();
-    ensures data == p;
-    ensures |succ| == 0;
-  {
-    this.data := p;
-    this.next := null;
-    this.succ := [];
-    // repr stuff
-    this.Repr := {this};
-  }
-
-
-  method _synth_IntList_Sum_gensym68(p: int, q: int)
-    modifies this;
-    ensures fresh(Repr - {this});
-    ensures Valid();
-    ensures data == p + q;
-    ensures |succ| == 0;
-  {
-    this.data := p + q;
-    this.next := null;
-    this.succ := [];
-    // repr stuff
-    this.Repr := {this};
-  }
-
-
-  method _synth_IntList_TwoConsecutive_gensym67(p: int)
-    modifies this;
-    ensures fresh(Repr - {this});
-    ensures Valid();
-    ensures data == p;
-    ensures |succ| == 1;
-    ensures succ[0].data == p + 1;
-    ensures succ[0].succ == [];
-  {
-    var gensym79 := new IntNode;
-    gensym79._synth_IntNode__synth_IntList_TwoConsecutive_gensym67_gensym79(p);
-    this.data := p;
-    this.next := gensym79;
-    this.succ := [gensym79];
-    // repr stuff
-    this.Repr := {this} + this.next.Repr;
+    this.Init(p + 1);
   }
 
 
@@ -319,17 +204,76 @@ class IntNode {
     ensures succ[0] != null;
     ensures succ[0].data == 2;
   {
-    var gensym73 := new IntNode;
-    gensym73._synth_IntNode_OneTwo_gensym73();
+    var gensym83 := new IntNode;
+    gensym83._synth_IntNode_OneTwo_gensym83();
     this.data := 1;
-    this.next := gensym73;
-    this.succ := [gensym73];
+    this.next := gensym83;
+    this.succ := [gensym83];
+
     // repr stuff
     this.Repr := {this} + this.next.Repr;
+    // assert repr objects are valid (helps verification)
+    assert gensym83.Valid();
   }
 
 
-  method _synth_IntNode_OneTwo_gensym73()
+  method Zero()
+    modifies this;
+    ensures fresh(Repr - {this});
+    ensures Valid();
+    ensures data == 0;
+    ensures succ == [];
+    ensures |succ| == 0;
+  {
+    this.data := 0;
+    this.next := null;
+    this.succ := [];
+
+    // repr stuff
+    this.Repr := {this};
+  }
+
+
+  method _synth_IntList_Double_gensym79(p: int, q: int)
+    modifies this;
+    ensures fresh(Repr - {this});
+    ensures Valid();
+    ensures data == p;
+    ensures |succ| == 1;
+    ensures succ[0].data == q;
+    ensures succ[0].succ == [];
+    ensures |succ[0].succ| == 0;
+  {
+    var gensym93 := new IntNode;
+    gensym93._synth_IntNode__synth_IntList_Double_gensym79_gensym93(q);
+    this.data := p;
+    this.next := gensym93;
+    this.succ := [gensym93];
+
+    // repr stuff
+    this.Repr := {this} + this.next.Repr;
+    // assert repr objects are valid (helps verification)
+    assert gensym93.Valid();
+  }
+
+
+  method _synth_IntList_Singleton_gensym77(p: int)
+    modifies this;
+    ensures fresh(Repr - {this});
+    ensures Valid();
+    ensures data == p;
+    ensures |succ| == 0;
+  {
+    this.data := p;
+    this.next := null;
+    this.succ := [];
+
+    // repr stuff
+    this.Repr := {this};
+  }
+
+
+  method _synth_IntNode_OneTwo_gensym83()
     modifies this;
     ensures fresh(Repr - {this});
     ensures Valid();
@@ -339,12 +283,13 @@ class IntNode {
     this.data := 2;
     this.next := null;
     this.succ := [];
+
     // repr stuff
     this.Repr := {this};
   }
 
 
-  method _synth_IntNode__synth_IntList_Double_gensym68_gensym80(q: int)
+  method _synth_IntNode__synth_IntList_Double_gensym79_gensym93(q: int)
     modifies this;
     ensures fresh(Repr - {this});
     ensures Valid();
@@ -354,36 +299,7 @@ class IntNode {
     this.data := q;
     this.next := null;
     this.succ := [];
-    // repr stuff
-    this.Repr := {this};
-  }
 
-
-  method _synth_IntNode__synth_IntList_OneTwo_gensym65_gensym78()
-    modifies this;
-    ensures fresh(Repr - {this});
-    ensures Valid();
-    ensures data == 2;
-    ensures |succ| == 0;
-  {
-    this.data := 2;
-    this.next := null;
-    this.succ := [];
-    // repr stuff
-    this.Repr := {this};
-  }
-
-
-  method _synth_IntNode__synth_IntList_TwoConsecutive_gensym67_gensym79(p: int)
-    modifies this;
-    ensures fresh(Repr - {this});
-    ensures Valid();
-    ensures data == p + 1;
-    ensures |succ| == 0;
-  {
-    this.data := p + 1;
-    this.next := null;
-    this.succ := [];
     // repr stuff
     this.Repr := {this};
   }

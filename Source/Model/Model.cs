@@ -34,6 +34,8 @@ using System;
 using System.Linq;
 using System.Collections.Generic;
 using System.Text;
+using System.Diagnostics;
+using System.Text.RegularExpressions;
 
 namespace Microsoft.Boogie
 {
@@ -46,7 +48,8 @@ namespace Microsoft.Boogie
       BitVector,
       Boolean,
       Uninterpreted,
-      Array
+      Array,
+      DataValue
     }
 
     abstract public class Element
@@ -119,6 +122,30 @@ namespace Microsoft.Boogie
       internal Array(Model p, Func v) : base(p) { Value = v; }
       public override ElementKind Kind { get { return ElementKind.Array; } }
       public override string ToString() { return string.Format("as-array[{0}]", Value.Name); }
+    }
+
+    public class DatatypeValue : Element 
+    {
+      public readonly string ConstructorName;
+      public readonly Element[] Arguments;
+      internal DatatypeValue(Model p, string name, List<Element> args) : base(p) { 
+        ConstructorName = name; 
+        Arguments = args.ToArray(); 
+      }
+      public override ElementKind Kind { get { return ElementKind.DataValue; } }
+      public override string ToString() {
+        StringBuilder builder = new StringBuilder();
+        builder.Append(ConstructorName + "(");
+        int count = 0;
+        foreach (DatatypeValue arg in Arguments) {
+          count++;
+          builder.Append(arg);
+          if (count < Arguments.Length)
+            builder.Append(", ");
+        }
+        builder.Append(")");
+        return builder.ToString();
+      }
     }
     #endregion
 
@@ -241,6 +268,31 @@ namespace Microsoft.Boogie
       /// </summary>
       public Element TryEval(params Element[] args)
       {
+        for (int i = 0; i < args.Length; ++i)
+          if(args[i]==null)
+            throw new ArgumentException();
+
+        if (apps.Count > 10) {
+          var best = apps;
+          for (int i = 0; i < args.Length; ++i)
+            if (args[i].references.Count < best.Count)
+              best = args[i].references;
+          if (best != apps) {
+            foreach (var tpl in best) {
+              bool same = true;
+              if (tpl.Func != this)
+                continue;
+              for (int i = 0; i < args.Length; ++i)
+                if (tpl.Args[i] != args[i]) {
+                  same = false;
+                  break;
+                }
+              if (same) return tpl.Result;
+            }
+            return null;
+          }
+        }
+
         foreach (var tpl in apps) {
           bool same = true;
           for (int i = 0; i < args.Length; ++i)
@@ -391,7 +443,7 @@ namespace Microsoft.Boogie
         var fnName = name.Substring(9, name.Length - 10);
         return new Array(this, MkFunc(fnName, 1));
       } else {
-        return null;
+        return new DatatypeValue(this, name, new List<Element>());
       }
     }
 
@@ -443,7 +495,8 @@ namespace Microsoft.Boogie
       List<string> vars = new List<string>();
       Dictionary<string, Element> valuations = new Dictionary<string, Element>();
       readonly CapturedState previous;
-      public readonly string Name;
+      // AL: Dropping "readonly" for corral
+      public /* readonly */ string Name { get; private set; }
 
       public IEnumerable<string> Variables { get { return vars; } }
       public IEnumerable<string> AllVariables { 
@@ -477,6 +530,35 @@ namespace Microsoft.Boogie
         valuations.Add(varname, value);
       }
 
+      // Change name of the state
+      public void ChangeName(string newName)
+      {
+          Name = newName;
+      }
+
+      // Change names of variables in this state
+      // (Used by corral)
+      internal void ChangeVariableNames(Dictionary<string, string> varNameMap)
+      {
+          var oldVars = vars;
+          var oldValuations = valuations;
+
+          vars = new List<string>();
+          valuations = new Dictionary<string, Element>();
+
+          foreach (var v in oldVars)
+          {
+              if (varNameMap.ContainsKey(v)) vars.Add(varNameMap[v]);
+              else vars.Add(v);
+          }
+
+          foreach (var kvp in oldValuations)
+          {
+              if (varNameMap.ContainsKey(kvp.Key)) valuations.Add(varNameMap[kvp.Key], kvp.Value);
+              else valuations.Add(kvp.Key, kvp.Value);
+          }
+      }
+
       internal CapturedState(string name, CapturedState prev)
       {
         Name = name;
@@ -491,6 +573,17 @@ namespace Microsoft.Boogie
       states.Add(s);
       return s;
     }
+
+    // Change names of variables in all captured states
+    // (Used by corral)
+    public void ChangeVariableNames(Dictionary<string, string> varNameMap)
+    {
+        foreach (var s in states)
+        {
+            s.ChangeVariableNames(varNameMap);
+        }
+    }
+
     #endregion
 
     public Model()
@@ -588,8 +681,6 @@ namespace Microsoft.Boogie
       internal System.IO.TextReader rd;
       string lastLine = "";
       int lineNo;
-      bool v1model = false;
-      Dictionary<string, Element> partitionMapping = new Dictionary<string, Element>(); // only used when v1model is true
       internal List<Model> resModels = new List<Model>();
       Model currModel;
 
@@ -599,6 +690,68 @@ namespace Microsoft.Boogie
       }
 
       static char[] seps = new char[] { ' ' };
+
+      int CountOpenParentheses(string s, int n) {
+        int f = n;
+        foreach (char c in s) {
+          if (c == '(')
+            f++;
+          else if (c == ')')
+            f--;
+        }
+        if (f < 0) BadModel("mismatched parentheses in datatype term");
+        return f;
+      }
+     
+      static Regex bv = new Regex(@"\(_ BitVec (\d+)\)");
+
+      List<object> GetFunctionTuple(string newLine) {
+        if (newLine == null)
+          return null;
+        newLine = bv.Replace(newLine, "bv${1}");
+        string line = newLine;
+        int openParenCounter = CountOpenParentheses(newLine, 0);
+        if (!newLine.Contains("}")) {
+          while (openParenCounter > 0) {
+            newLine = ReadLine();
+            if (newLine == null) {
+              return null;
+            }
+            line += newLine;
+            openParenCounter = CountOpenParentheses(newLine, openParenCounter);
+          }
+        }
+
+        line = line.Replace("(", " ( ");
+        line = line.Replace(")", " ) ");
+        var tuple = line.Split(seps, StringSplitOptions.RemoveEmptyEntries);
+
+        List<object> newTuple = new List<object>();
+        Stack<List<object>> wordStack = new Stack<List<object>>();
+        for (int i = 0; i < tuple.Length; i++) {
+          string elem = tuple[i];
+          if (elem == "(") {
+            List<object> ls = new List<object>();
+            wordStack.Push(ls);
+          }
+          else if (elem == ")") {
+            List<object> ls = wordStack.Pop();
+            if (wordStack.Count > 0) {
+              wordStack.Peek().Add(ls);
+            }
+            else {
+              newTuple.Add(ls);
+            }
+          }
+          else if (wordStack.Count > 0) {
+            wordStack.Peek().Add(elem);
+          }
+          else {
+            newTuple.Add(elem);
+          }
+        }
+        return newTuple;
+      }
 
       string[] GetWords(string line)
       {
@@ -618,26 +771,27 @@ namespace Microsoft.Boogie
         return l;
       }
 
-      Element GetElt(string name)
-      {
-        Element ret;
-
-        if (v1model) {
-          if (!partitionMapping.TryGetValue(name, out ret))
-            BadModel("undefined partition " + name);
-        } else {
-          ret = currModel.TryMkElement(name);
-          if (ret == null)
-            BadModel("invalid element name " + name);
+      Element GetElt(object o) {
+        string s = o as string;
+        if (s != null)
+          return GetElt(s);
+        List<object> os = (List<object>)o;
+        List<Element> args = new List<Element>();
+        for (int i = 1; i < os.Count; i++) {
+          args.Add(GetElt(os[i]));
         }
+        return new DatatypeValue(currModel, (string)os[0], args);
+      }
 
+      Element GetElt(string name) {
+        Element ret = currModel.TryMkElement(name);
+        if (ret == null)
+          BadModel("invalid element name " + name);
         return ret;
       }
 
       void NewModel()
       {
-        v1model = false;
-        partitionMapping.Clear();
         lastLine = "";
         currModel = new Model();
         resModels.Add(currModel);
@@ -658,14 +812,10 @@ namespace Microsoft.Boogie
             continue;
           if (line == "END_OF_MODEL" || line == "." || line == "*** END_MODEL")
             continue;
-          if (line == "partitions:" || line == "function interpretations:") {
-            v1model = true;
-            continue;
-          }
 
-          var words = GetWords(line);
-          if (words.Length == 0) continue;
-          var lastWord = words[words.Length - 1];
+          var words = GetFunctionTuple(line);
+          if (words.Count == 0) continue;
+          var lastWord = words[words.Count - 1];
 
           if (currModel == null)
             BadModel("model begin marker not found");
@@ -689,70 +839,36 @@ namespace Microsoft.Boogie
             continue;
           }
 
-          if (v1model && words[0][0] == '*') {
-            var partName = words[0];
-            var len = words.Length;
-            Element elt;
-            if (len >= 3 && words[len - 2] == "->") {
-              elt = currModel.TryMkElement(lastWord);
-              if (elt == null) BadModel("bad parition value " + lastWord);
-              len -= 2;
-            } else {
-              elt = currModel.MkElement(words[0]);
-            }
-            partitionMapping.Add(partName, elt);
-            for (int i = 1; i < len; ++i) {
-              var name = words[i];
-              if (i == 1 && name[0] == '{')
-                name = name.Substring(1);
-              if (i == len - 1 && name.EndsWith("}"))
-                name = name.Substring(0, name.Length - 1);
-              var cnst = currModel.MkFunc(name, 0);
-              cnst.SetConstant(elt);
-            }
-
-          } else if (words.Length == 3 && words[1] == "->") {
+          if (words.Count == 3 && words[1] is string && ((string) words[1]) == "->") {
+            var funName = (string) words[0];
             Func fn = null;
-            var funName = words[0];
 
-            if (lastWord == "{") {
-              for (; ; ) {
-                var tuple = GetWords(ReadLine());
+            if (lastWord is string && ((string) lastWord) == "{") {
+              fn = currModel.TryGetFunc(funName);
+              for ( ; ; ) {
+                var tuple = GetFunctionTuple(ReadLine());
                 if (tuple == null) BadModel("EOF in function table");
-                if (tuple.Length == 0) continue;
-                if (tuple.Length == 1 && tuple[0] == "}") break;
-
-                var resultName = tuple[tuple.Length - 1];
-                var isElse = false;
-
-                if (tuple.Length == 1 && fn == null)
-                  isElse = true;
-
-                if (!isElse && (tuple.Length < 3 || tuple[tuple.Length - 2] != "->")) BadModel("invalid function tuple definition");
-
-                if (isElse || tuple[0] == "else") {
-                  var hasBrace = false;
-                  if (resultName.EndsWith("}")) {
-                    hasBrace = true;
-                    resultName = resultName.Substring(0, resultName.Length - 1);
+                if (tuple.Count == 0) continue;
+                string tuple0 = tuple[0] as string;
+                if (tuple.Count == 1) {
+                  if (fn == null)
+                    fn = currModel.MkFunc(funName, 1);
+                  if (tuple0 == "}") break;
+                  fn.Else = GetElt(tuple[0]);
+                  continue;
+                }
+                string tuplePenultimate = tuple[tuple.Count - 2] as string;
+                if (tuplePenultimate != "->") BadModel("invalid function tuple definition");
+                var resultName = tuple[tuple.Count - 1];
+                if (tuple0 == "else") {
+                  if (fn != null && !(resultName is string && ((string)resultName) == "#unspecified")) {
+                    fn.Else = GetElt(resultName);
                   }
-                  if (!resultName.StartsWith("#unspec")) {
-                    if (fn == null)
-                      fn = currModel.TryGetFunc(funName);
-                    // if it's still null, we don't know the arity, so just skip it
-                    if (fn != null) {
-                      fn.Else = GetElt(resultName);
-                    }
-                  }
-
-                  if (hasBrace)                  
-                    break;
-                  else
-                    continue;
+                  continue;
                 }
 
                 if (fn == null)
-                  fn = currModel.MkFunc(funName, tuple.Length - 2);
+                  fn = currModel.MkFunc(funName, tuple.Count - 2);
                 var args = new Element[fn.Arity];
                 for (int i = 0; i < fn.Arity; ++i)
                   args[i] = GetElt(tuple[i]);

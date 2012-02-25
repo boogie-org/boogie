@@ -39,6 +39,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ParserHelper", "ParserHelpe
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TPTP", "Provers\TPTP\TPTP.csproj", "{A598ED5A-93AD-4125-A555-3921A2F936FA}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Houdini", "Houdini\Houdini.csproj", "{CF41E903-78EB-43BA-A355-E5FEB5ECECD4}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Checked|.NET = Checked|.NET
@@ -495,6 +497,30 @@ Global
 		{A598ED5A-93AD-4125-A555-3921A2F936FA}.z3apidebug|Mixed Platforms.ActiveCfg = Release|Any CPU
 		{A598ED5A-93AD-4125-A555-3921A2F936FA}.z3apidebug|Mixed Platforms.Build.0 = Release|Any CPU
 		{A598ED5A-93AD-4125-A555-3921A2F936FA}.z3apidebug|x86.ActiveCfg = Release|Any CPU
+		{CF41E903-78EB-43BA-A355-E5FEB5ECECD4}.Checked|.NET.ActiveCfg = Release|Any CPU
+		{CF41E903-78EB-43BA-A355-E5FEB5ECECD4}.Checked|Any CPU.ActiveCfg = Release|Any CPU
+		{CF41E903-78EB-43BA-A355-E5FEB5ECECD4}.Checked|Any CPU.Build.0 = Release|Any CPU
+		{CF41E903-78EB-43BA-A355-E5FEB5ECECD4}.Checked|Mixed Platforms.ActiveCfg = Checked|Any CPU
+		{CF41E903-78EB-43BA-A355-E5FEB5ECECD4}.Checked|Mixed Platforms.Build.0 = Checked|Any CPU
+		{CF41E903-78EB-43BA-A355-E5FEB5ECECD4}.Checked|x86.ActiveCfg = Release|Any CPU
+		{CF41E903-78EB-43BA-A355-E5FEB5ECECD4}.Debug|.NET.ActiveCfg = Debug|Any CPU
+		{CF41E903-78EB-43BA-A355-E5FEB5ECECD4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CF41E903-78EB-43BA-A355-E5FEB5ECECD4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CF41E903-78EB-43BA-A355-E5FEB5ECECD4}.Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU
+		{CF41E903-78EB-43BA-A355-E5FEB5ECECD4}.Debug|Mixed Platforms.Build.0 = Debug|Any CPU
+		{CF41E903-78EB-43BA-A355-E5FEB5ECECD4}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{CF41E903-78EB-43BA-A355-E5FEB5ECECD4}.Release|.NET.ActiveCfg = Release|Any CPU
+		{CF41E903-78EB-43BA-A355-E5FEB5ECECD4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CF41E903-78EB-43BA-A355-E5FEB5ECECD4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CF41E903-78EB-43BA-A355-E5FEB5ECECD4}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
+		{CF41E903-78EB-43BA-A355-E5FEB5ECECD4}.Release|Mixed Platforms.Build.0 = Release|Any CPU
+		{CF41E903-78EB-43BA-A355-E5FEB5ECECD4}.Release|x86.ActiveCfg = Release|Any CPU
+		{CF41E903-78EB-43BA-A355-E5FEB5ECECD4}.z3apidebug|.NET.ActiveCfg = Release|Any CPU
+		{CF41E903-78EB-43BA-A355-E5FEB5ECECD4}.z3apidebug|Any CPU.ActiveCfg = Release|Any CPU
+		{CF41E903-78EB-43BA-A355-E5FEB5ECECD4}.z3apidebug|Any CPU.Build.0 = Release|Any CPU
+		{CF41E903-78EB-43BA-A355-E5FEB5ECECD4}.z3apidebug|Mixed Platforms.ActiveCfg = Debug|Any CPU
+		{CF41E903-78EB-43BA-A355-E5FEB5ECECD4}.z3apidebug|Mixed Platforms.Build.0 = Debug|Any CPU
+		{CF41E903-78EB-43BA-A355-E5FEB5ECECD4}.z3apidebug|x86.ActiveCfg = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

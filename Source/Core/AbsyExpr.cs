@@ -18,6 +18,8 @@ namespace Microsoft.Boogie {
   using System.Diagnostics.Contracts;
   using Microsoft.Basetypes;
 
+  using Set = GSet<object>; // not that the set used is not a set of Variable only, as it also contains TypeVariables
+
 
   //---------------------------------------------------------------------
   // Expressions
@@ -195,13 +197,13 @@ namespace Microsoft.Boogie {
           } else if (op.Op == BinaryOperator.Opcode.Neq) {
             return Eq(arg0, arg1);
           } else if (op.Op == BinaryOperator.Opcode.Lt) {
-            return Ge(arg0, arg1);
+            return Le(arg1, arg0);
           } else if (op.Op == BinaryOperator.Opcode.Le) {
-            return Gt(arg0, arg1);
+            return Lt(arg1, arg0);
           } else if (op.Op == BinaryOperator.Opcode.Ge) {
-            return Lt(arg0, arg1);
+            return Gt(arg1, arg0);
           } else if (op.Op == BinaryOperator.Opcode.Gt) {
-            return Le(arg0, arg1);
+            return Ge(arg1, arg0);
           }
         }
       }
@@ -438,6 +440,7 @@ namespace Microsoft.Boogie {
       : base(tok) {
       Contract.Requires(tok != null);
       Val = b;
+      Type = Type.Bool;
     }
     /// <summary>
     /// Creates a literal expression for the integer value "v".
@@ -448,6 +451,7 @@ namespace Microsoft.Boogie {
       : base(tok) {
       Contract.Requires(tok != null);
       Val = v;
+      Type = Type.Int;
     }
 
     /// <summary>
@@ -456,7 +460,9 @@ namespace Microsoft.Boogie {
     public LiteralExpr(IToken/*!*/ tok, BigNum v, int b)
       : base(tok) {
       Contract.Requires(tok != null);
+      Contract.Requires(0 <= b);
       Val = new BvConst(v, b);
+      Type = Type.GetBvType(b);
     }
 
     [Pure]
@@ -494,8 +500,6 @@ namespace Microsoft.Boogie {
 
     public override void Typecheck(TypecheckingContext tc) {
       //Contract.Requires(tc != null);
-      if (Val is BvConst && CommandLineOptions.Clo.Verify && CommandLineOptions.Clo.Bitvectors == CommandLineOptions.BvHandling.None)
-        tc.Error(this, "no bitvector handling specified, please use /bv:i or /bv:z flag");
       this.Type = ShallowType;
     }
 
@@ -2241,9 +2245,6 @@ namespace Microsoft.Boogie {
                TypeParameters == null) {
         TypeParamInstantiation tpInsts;
         Type = Fun.Typecheck(ref Args, out tpInsts, tc);
-        if (Type != null && Type.IsBv && CommandLineOptions.Clo.Verify && CommandLineOptions.Clo.Bitvectors == CommandLineOptions.BvHandling.None) {
-          tc.Error(this, "no bitvector handling specified, please use /bv:i or /bv:z flag");
-        }
         TypeParameters = tpInsts;
       }
       IOverloadedAppliable oa = Fun as IOverloadedAppliable;

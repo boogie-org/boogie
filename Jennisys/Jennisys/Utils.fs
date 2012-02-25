@@ -22,6 +22,14 @@ let BoolToOption b =
 //  =====================================
 /// ensures: ret = (opt == Some(_))
 //  =====================================
+let OptionToBool opt = 
+  match opt with
+  | Some(_) -> true
+  | None -> false
+
+//  =====================================
+/// ensures: ret = (opt == Some(_))
+//  =====================================
 let IsSomeOption opt = 
   match opt with
   | Some(_) -> true
@@ -74,6 +82,33 @@ let ListToOptionMsg  lst errMsg =
 
 let ListToOption lst = ListToOptionMsg lst "given list contains more than one element"
 
+let ListDeduplicate lst = 
+  let rec __Dedup lst (visitedSet: System.Collections.Generic.HashSet<_>) acc = 
+    match lst with
+    | fs :: rest ->  
+        let newAcc = 
+          if visitedSet.Add(fs) then
+            acc @ [fs]
+          else
+            acc
+        __Dedup rest visitedSet newAcc
+    | _ -> acc
+  __Dedup lst (new System.Collections.Generic.HashSet<_>()) []
+
+let rec ListCombine combinerFunc lst1 lst2 = 
+  match lst1 with
+  | e1 :: rest ->
+      let resLst1 = lst2 |> List.fold (fun acc e2 -> acc @ [combinerFunc e1 e2]) []
+      List.concat [resLst1; ListCombine combinerFunc rest lst2]
+  | [] -> []
+
+let rec ListCombineMult combinerFunc lst1 lst2 = 
+  match lst1 with
+  | e1 :: rest ->
+      let resLst1 = lst2 |> List.fold (fun acc e2 -> acc @ combinerFunc e1 e2) []
+      List.concat [resLst1; ListCombineMult combinerFunc rest lst2]
+  | [] -> []
+        
 //  =============================================================
 /// ensures: forall i :: 0 <= i < |lst| ==> ret[i] = Some(lst[i])
 //  =============================================================
@@ -136,7 +171,7 @@ let rec GenList n e =
 ///              ret[i] = lst[i]
 //  =======================================
 let ListReplace oldElem newElem lst = 
-  lst |> List.choose (fun e -> if e = oldElem then Some(newElem) else Some(e))
+  lst |> List.map (fun e -> if e = oldElem then newElem else e)
 
 //  =================================================
 /// if (exists (k,v) :: (k,v) in lst && k = key) then
@@ -158,8 +193,7 @@ let ListMapTryFind key lst =
 let rec ListMapAdd key value lst = 
   match lst with
   | (k,v) :: rest -> if k = key then (k, value) :: rest else (k,v) :: (ListMapAdd key value rest)
-  | [] -> [(key,value)]
-  
+  | [] -> [(key,value)]                                           
 
 //  ==========================
 /// ensures: ret = elem in lst
@@ -172,6 +206,12 @@ let ListContains elem lst =
 //  ====================================================
 let ListRemove elem lst = 
   lst |> List.choose (fun e -> if e = elem then None else Some(e))
+
+let rec ListRemoveIdx idx lst = 
+  if idx = 0 then
+    List.tail lst
+  else 
+    List.head lst :: ListRemoveIdx (idx - 1) (List.tail lst)  
 
 //  ===============================================================
 /// ensures: |ret| = max(|lst| - cnt, 0)
@@ -259,6 +299,9 @@ let MapSingleton key value =
 
 let MapKeys map = 
   map |> Map.toList |> List.map (fun (k,v) -> k)
+
+let MapReplaceKey oldKey newKey newVal map = 
+  map |> Map.toList |> List.fold (fun acc (k,v) -> if k = oldKey then acc |> Map.add newKey newVal else acc |> Map.add k v) Map.empty
 
 // -------------------------------------------
 // ------------ algorithms -------------------

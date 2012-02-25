@@ -2,56 +2,49 @@
 -------------------- NullInModel --------------------
 Z3 error model: 
 partitions:
-*0 -> true
-*1 -> false
-*2 {@true} -> 3:int
-*3 {@false} -> 4:int
+*0 {%lbl%+24 %lbl%+37} -> true
+*1 {%lbl%@47} -> false
+*2 {s null} 
+*3 {refType} 
 *4 {intType} 
 *5 {boolType} 
-*6 {refType} 
-*7 {s null} 
-*8 -> 0:int
-*9 -> 1:int
-*10 -> 2:int
-*11 
+*6 -> 0:int
+*7 -> 1:int
+*8 -> 2:int
+*9 
 function interpretations:
-$pow2 -> {
-  *8 -> *9
-  else -> #unspecified
-}
 tickleBool -> {
-  *1 -> *0
   *0 -> *0
-  else -> #unspecified
-}
-Ctor -> {
-  *4 -> *8
-  *5 -> *9
-  *6 -> *10
+  *1 -> *0
   else -> #unspecified
 }
 type -> {
-  *7 -> *6
+  *2 -> *3
+  else -> #unspecified
+}
+Ctor -> {
+  *4 -> *6
+  *5 -> *7
+  *3 -> *8
   else -> #unspecified
 }
 END_OF_MODEL
 .
 identifierToPartition:
-@true : *2
-@false : *3
+%lbl%+24 : *0
+%lbl%+37 : *0
+%lbl%@47 : *1
+s : *2
+null : *2
+refType : *3
 intType : *4
 boolType : *5
-refType : *6
-s : *7
-null : *7
 valueToPartition:
 True : *0
 False : *1
-3 : *2
-4 : *3
-0 : *8
-1 : *9
-2 : *10
+0 : *6
+1 : *7
+2 : *8
 End of model.
 NullInModel.bpl(2,3): Error BP5001: This assertion might not hold.
 Execution trace:
@@ -62,45 +55,38 @@ Boogie program verifier finished with 0 verified, 1 error
 -------------------- IntInModel --------------------
 Z3 error model: 
 partitions:
-*0 -> true
-*1 -> false
-*2 {@true} -> 2:int
-*3 {@false} -> 3:int
-*4 {intType} 
-*5 {boolType} 
-*6 {i} -> 0:int
-*7 -> 1:int
-*8 
+*0 {%lbl%+29 %lbl%+23} -> true
+*1 {%lbl%@39} -> false
+*2 {intType} 
+*3 {boolType} 
+*4 {i} -> 0:int
+*5 -> 1:int
+*6 
 function interpretations:
-$pow2 -> {
-  *6 -> *7
-  else -> #unspecified
-}
 tickleBool -> {
-  *1 -> *0
   *0 -> *0
+  *1 -> *0
   else -> #unspecified
 }
 Ctor -> {
-  *4 -> *6
-  *5 -> *7
+  *2 -> *4
+  *3 -> *5
   else -> #unspecified
 }
 END_OF_MODEL
 .
 identifierToPartition:
-@true : *2
-@false : *3
-intType : *4
-boolType : *5
-i : *6
+%lbl%+29 : *0
+%lbl%+23 : *0
+%lbl%@39 : *1
+intType : *2
+boolType : *3
+i : *4
 valueToPartition:
 True : *0
 False : *1
-2 : *2
-3 : *3
-0 : *6
-1 : *7
+0 : *4
+1 : *5
 End of model.
 IntInModel.bpl(2,3): Error BP5001: This assertion might not hold.
 Execution trace:
@@ -111,66 +97,59 @@ Boogie program verifier finished with 0 verified, 1 error
 -------------------- ModelTest --------------------
 Z3 error model: 
 partitions:
-*0 -> true
-*1 -> false
-*2 {@true} -> 5:int
-*3 {@false} -> 6:int
-*4 {intType} 
-*5 {boolType} 
+*0 {%lbl%+64 %lbl%+119} -> true
+*1 {%lbl%@182} -> false
+*2 {s} 
+*3 {j@2} -> 4:int
+*4 {boolType} 
+*5 {intType} 
 *6 {refType} 
-*7 {s} 
-*8 {r} 
-*9 {i@0} -> 1:int
-*10 {j@0} -> 2:int
-*11 {j@1} -> 3:int
-*12 {j@2} -> 4:int
-*13 -> 0:int
-*14 
+*7 {i@0} -> 1:int
+*8 {j@0} -> 2:int
+*9 {j@1} -> 3:int
+*10 {r} 
+*11 -> 0:int
+*12 
 function interpretations:
-$pow2 -> {
-  *13 -> *9
-  else -> #unspecified
-}
 tickleBool -> {
-  *1 -> *0
   *0 -> *0
-  else -> #unspecified
-}
-Ctor -> {
-  *4 -> *13
-  *5 -> *9
-  *6 -> *10
+  *1 -> *0
   else -> #unspecified
 }
 type -> {
-  *7 -> *6
-  *8 -> *6
+  *2 -> *6
+  *10 -> *6
+  else -> #unspecified
+}
+Ctor -> {
+  *5 -> *11
+  *4 -> *7
+  *6 -> *8
   else -> #unspecified
 }
 END_OF_MODEL
 .
 identifierToPartition:
-@true : *2
-@false : *3
-intType : *4
-boolType : *5
+%lbl%+64 : *0
+%lbl%+119 : *0
+%lbl%@182 : *1
+s : *2
+j@2 : *3
+boolType : *4
+intType : *5
 refType : *6
-s : *7
-r : *8
-i@0 : *9
-j@0 : *10
-j@1 : *11
-j@2 : *12
+i@0 : *7
+j@0 : *8
+j@1 : *9
+r : *10
 valueToPartition:
 True : *0
 False : *1
-5 : *2
-6 : *3
-1 : *9
-2 : *10
-3 : *11
-4 : *12
-0 : *13
+4 : *3
+1 : *7
+2 : *8
+3 : *9
+0 : *11
 End of model.
 ModelTest.bpl(7,3): Error BP5001: This assertion might not hold.
 Execution trace:
@@ -199,85 +178,85 @@ Execution trace:
     CaptureState.bpl(16,5): anon4_Then
     CaptureState.bpl(24,5): anon3
 *** MODEL
-@true -> 6
-@false -> 7
+%lbl%+112 -> true
+%lbl%+116 -> true
+%lbl%+110 -> true
+%lbl%+189 -> true
+%lbl%@334 -> false
+m@3 -> -1
+m@2 -> -1
+this -> *3
 intType -> *4
-boolType -> *5
-RefType -> *6
-FieldNameType -> *7
-Heap -> *8
-this -> *9
-F -> *10
+Heap -> *5
+FieldNameType -> *6
 m@0 -> -2
 r@0 -> -2
+boolType -> *8
+RefType -> *9
+F -> *10
+@MV_state_const -> 6
 x@@4 -> 797
-m@2 -> -1
-m@3 -> -1
 y@@1 -> **y@@1
 r -> **r
 m -> **m
-$pow2 -> {
-  0 -> 1
-  else -> *22
-}
 tickleBool -> {
-  false -> true
   true -> true
-  else -> *22
+  false -> true
+  else -> true
+}
+type -> {
+  *5 -> *13
+  *3 -> *9
+  *10 -> *6
+  -2 -> *4
+  else -> *13
 }
 Ctor -> {
   *4 -> 0
-  *5 -> 1
-  *6 -> 3
-  *7 -> 4
-  *18 -> 2
-  else -> *22
-}
-type -> {
-  *8 -> *18
-  *9 -> *6
-  *10 -> *7
-  -2 -> *4
-  else -> *22
-}
-MapType0Type -> {
-  *6 *7 *4 -> *18
-  else -> *22
-}
-MapType0TypeInv2 -> {
-  *18 -> *4
-  else -> *22
-}
-MapType0TypeInv1 -> {
-  *18 -> *7
-  else -> *22
-}
-MapType0TypeInv0 -> {
-  *18 -> *6
-  else -> *22
+  *8 -> 1
+  *9 -> 3
+  *6 -> 4
+  *13 -> 2
+  else -> 0
 }
 @MV_state -> {
-  0 -> true
-  3 -> true
-  4 -> true
-  5 -> true
-  else -> *22
+  6 0 -> true
+  6 3 -> true
+  6 4 -> true
+  6 5 -> true
+  else -> true
 }
 [3] -> {
-  *8 *9 *10 -> -2
-  else -> *22
+  *5 *3 *10 -> -2
+  else -> -2
 }
 U_2_int -> {
   -2 -> -2
-  else -> *22
+  else -> -2
+}
+MapType0TypeInv1 -> {
+  *13 -> *6
+  else -> *6
+}
+MapType0Type -> {
+  *9 *6 *4 -> *13
+  else -> *13
+}
+MapType0TypeInv2 -> {
+  *13 -> *4
+  else -> *4
+}
+MapType0TypeInv0 -> {
+  *13 -> *9
+  else -> *9
 }
 int_2_U -> {
   -2 -> -2
-  else -> *22
+  else -> -2
 }
 *** STATE <initial>
-  Heap -> *8
-  this -> *9
+  Heap -> *5
+  this -> *3
   x -> 797
   y -> **y@@1
   r -> **r

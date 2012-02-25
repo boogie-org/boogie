@@ -9,17 +9,21 @@ module Options
 open Utils
 
 type Config = {
-   help: bool;
-   inputFilename: string;
-   methodToSynth: string;
-   inferConditionals: bool;
-   verifyPartialSolutions: bool;
-   verifySolutions: bool;
-   checkUnifications: bool;
-   genRepr: bool;
-   genMod: bool;
-   timeout: int;
-   numLoopUnrolls: int;
+   help                      : bool;
+   inputFilename             : string;
+   methodToSynth             : string;
+   constructorsOnly          : bool;
+   inferConditionals         : bool;
+   verifyPartialSolutions    : bool;
+   verifySolutions           : bool;
+   checkUnifications         : bool;
+   genRepr                   : bool;
+   genMod                    : bool;
+   timeout                   : int;
+   numLoopUnrolls            : int;
+   recursiveValid            : bool;
+   breakIntoDebugger         : bool;
+   minimizeGuards            : bool; 
 }
 
 type CfgOption<'a> = {
@@ -31,7 +35,7 @@ type CfgOption<'a> = {
 
 exception InvalidCmdLineArg of string
 exception InvalidCmdLineOption of string
-
+ 
 let CheckNonEmpty value optName =
   if value = "" then raise (InvalidCmdLineArg("A value for option " + optName + " must not be empty")) else value
 
@@ -51,22 +55,28 @@ let CheckBool value optName =
       | ex -> raise (InvalidCmdLineArg("A value for option " + optName + " must be an integer"))
 
 let cfgOptions = [
-  { optionName = "help";            optionType = "bool";   optionSetter = (fun v (cfg: Config) -> {cfg with help                   =      CheckBool v "help"});           descr = "description not available"; }
-  { optionName = "method";          optionType = "string"; optionSetter = (fun v (cfg: Config) -> {cfg with methodToSynth          = CheckNonEmpty v "method"});          descr = "description not available"; }
-  { optionName = "inferConds";      optionType = "bool";   optionSetter = (fun v (cfg: Config) -> {cfg with inferConditionals      =      CheckBool v "inferConds"});     descr = "description not available"; }
-  { optionName = "noInferConds";    optionType = "bool";   optionSetter = (fun v (cfg: Config) -> {cfg with inferConditionals      = not (CheckBool v "inferConds")});    descr = "description not available"; }
-  { optionName = "verifyParSol";    optionType = "bool";   optionSetter = (fun v (cfg: Config) -> {cfg with verifyPartialSolutions =      CheckBool v "verifyParSol"});   descr = "description not available"; }
-  { optionName = "noVerifyParSol";  optionType = "bool";   optionSetter = (fun v (cfg: Config) -> {cfg with verifyPartialSolutions = not (CheckBool v "verifyParSol")});  descr = "description not available"; }
-  { optionName = "verifySol";       optionType = "bool";   optionSetter = (fun v (cfg: Config) -> {cfg with verifySolutions        =      CheckBool v "verifySol"});      descr = "description not available"; }
-  { optionName = "noVerifySol";     optionType = "bool";   optionSetter = (fun v (cfg: Config) -> {cfg with verifySolutions        = not (CheckBool v "verifySol")});     descr = "description not available"; } 
-  { optionName = "checkUnifs";      optionType = "bool";   optionSetter = (fun v (cfg: Config) -> {cfg with checkUnifications      =      CheckBool v "checkUnifs"});     descr = "description not available"; } 
-  { optionName = "noCheckUnifs";    optionType = "bool";   optionSetter = (fun v (cfg: Config) -> {cfg with checkUnifications      = not (CheckBool v "noCheckUnifs")});  descr = "description not available"; }
-  { optionName = "genRepr";         optionType = "bool";   optionSetter = (fun v (cfg: Config) -> {cfg with genRepr                =      CheckBool v "genRepr"});        descr = "description not available"; }
-  { optionName = "noGenRepr";       optionType = "bool";   optionSetter = (fun v (cfg: Config) -> {cfg with genRepr                = not (CheckBool v "noGenRepr")});     descr = "description not available"; }
-  { optionName = "genMod";          optionType = "bool";   optionSetter = (fun v (cfg: Config) -> {cfg with genMod                 =      CheckBool v "genMod"});         descr = "description not available"; }
-  { optionName = "noGenMod";        optionType = "bool";   optionSetter = (fun v (cfg: Config) -> {cfg with genMod                 = not (CheckBool v "noGenMod")});      descr = "description not available"; }
-  { optionName = "timeout";         optionType = "int";    optionSetter = (fun v (cfg: Config) -> {cfg with timeout                =      CheckInt v "timeout"});         descr = "description not available"; }
-  { optionName = "unrolls";         optionType = "int";    optionSetter = (fun v (cfg: Config) -> {cfg with numLoopUnrolls         =      CheckInt v "unrolls"});         descr = "description not available"; }
+  { optionName = "help";            optionType = "bool";   optionSetter = (fun v (cfg: Config) -> {cfg with help                   =      CheckBool v "help"});           descr = "prints out the available switches"; }
+  { optionName = "method";          optionType = "string"; optionSetter = (fun v (cfg: Config) -> {cfg with methodToSynth          = CheckNonEmpty v "method"});          descr = "select methods to synthesize; method names are in the form <ClassName>.<MethodName>; multiple methods can be given as a list of comma separated values"; }
+  { optionName = "constrOnly";      optionType = "bool";   optionSetter = (fun v (cfg: Config) -> {cfg with constructorsOnly       =      CheckBool v "constrOnly"});     descr = "synthesize constructors only"; }
+  { optionName = "inferConds";      optionType = "bool";   optionSetter = (fun v (cfg: Config) -> {cfg with inferConditionals      =      CheckBool v "inferConds"});     descr = "try to infer conditions"; }
+  { optionName = "noInferConds";    optionType = "bool";   optionSetter = (fun v (cfg: Config) -> {cfg with inferConditionals      = not (CheckBool v "inferConds")});    descr = "don't try to infer conditions"; }
+  { optionName = "verifyParSol";    optionType = "bool";   optionSetter = (fun v (cfg: Config) -> {cfg with verifyPartialSolutions =      CheckBool v "verifyParSol"});   descr = "verify partial solutions"; }
+  { optionName = "noVerifyParSol";  optionType = "bool";   optionSetter = (fun v (cfg: Config) -> {cfg with verifyPartialSolutions = not (CheckBool v "verifyParSol")});  descr = "don't verify partial solutions"; }
+  { optionName = "verifySol";       optionType = "bool";   optionSetter = (fun v (cfg: Config) -> {cfg with verifySolutions        =      CheckBool v "verifySol"});      descr = "verify final solution"; }
+  { optionName = "noVerifySol";     optionType = "bool";   optionSetter = (fun v (cfg: Config) -> {cfg with verifySolutions        = not (CheckBool v "verifySol")});     descr = "don't verify final solution"; } 
+  { optionName = "checkUnifs";      optionType = "bool";   optionSetter = (fun v (cfg: Config) -> {cfg with checkUnifications      =      CheckBool v "checkUnifs"});     descr = "verify unifications"; } 
+  { optionName = "noCheckUnifs";    optionType = "bool";   optionSetter = (fun v (cfg: Config) -> {cfg with checkUnifications      = not (CheckBool v "noCheckUnifs")});  descr = "don't verify unifications"; }
+  { optionName = "genRepr";         optionType = "bool";   optionSetter = (fun v (cfg: Config) -> {cfg with genRepr                =      CheckBool v "genRepr"});        descr = "generate Repr field"; }
+  { optionName = "noGenRepr";       optionType = "bool";   optionSetter = (fun v (cfg: Config) -> {cfg with genRepr                = not (CheckBool v "noGenRepr")});     descr = "don't generate Repr field"; }
+  { optionName = "genMod";          optionType = "bool";   optionSetter = (fun v (cfg: Config) -> {cfg with genMod                 =      CheckBool v "genMod"});         descr = "generate modular code (delegate to methods)"; }
+  { optionName = "noGenMod";        optionType = "bool";   optionSetter = (fun v (cfg: Config) -> {cfg with genMod                 = not (CheckBool v "noGenMod")});      descr = "dont generate modular code (delegate to methods)"; }
+  { optionName = "timeout";         optionType = "int";    optionSetter = (fun v (cfg: Config) -> {cfg with timeout                =      CheckInt v "timeout"});         descr = "timeout"; }
+  { optionName = "unrolls";         optionType = "int";    optionSetter = (fun v (cfg: Config) -> {cfg with numLoopUnrolls         =      CheckInt v "unrolls"});         descr = "number of unrolls of the Valid() function"; }
+  { optionName = "recValid";        optionType = "bool";   optionSetter = (fun v (cfg: Config) -> {cfg with recursiveValid         =      CheckBool v "recValid"});       descr = "generate recursive Valid() function"; }
+  { optionName = "noRecValid";      optionType = "bool";   optionSetter = (fun v (cfg: Config) -> {cfg with recursiveValid         = not (CheckBool v "noRecValid")});    descr = "unroll Valid() function"; }
+  { optionName = "break";           optionType = "bool";   optionSetter = (fun v (cfg: Config) -> {cfg with breakIntoDebugger      =      CheckBool v "break"});          descr = "launches debugger upon start-up"; }
+  { optionName = "minGuards";       optionType = "bool";   optionSetter = (fun v (cfg: Config) -> {cfg with minimizeGuards         =      CheckBool v "minGuards"});      descr = "tries to remove unnecessary clauses from the inferred guards"; }
+  { optionName = "noMinGuards";     optionType = "bool";   optionSetter = (fun v (cfg: Config) -> {cfg with minimizeGuards         = not (CheckBool v "noMinGuards")});   descr = "don't minimize guards"; }
 ]
 
 let cfgOptMap = cfgOptions |> List.fold (fun acc o -> acc |> Map.add o.optionName o) Map.empty
@@ -95,13 +105,17 @@ let defaultConfig: Config = {
   inputFilename     = "";
   inferConditionals = true;
   methodToSynth     = "*";
+  constructorsOnly  = false;
   verifyPartialSolutions = true;
   verifySolutions   = true;
   checkUnifications = false;
-  genRepr           = false;
-  genMod            = false;
+  genRepr           = true;
+  genMod            = true;
   timeout           = 0;
   numLoopUnrolls    = 2;
+  recursiveValid    = true;
+  breakIntoDebugger = false;
+  minimizeGuards    = true;
 }
 
 /// Should not be mutated outside the ParseCmdLineArgs method, which is 

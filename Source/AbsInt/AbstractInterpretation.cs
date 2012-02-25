@@ -70,7 +70,7 @@ namespace Microsoft.Boogie.AbstractInterpretation {
       this.callReturnWorkItems = new Queue();
     }
 
-    private Dictionary<Procedure, Implementation[]> ComputeProcImplMap(Program program) {
+    public static Dictionary<Procedure, Implementation[]> ComputeProcImplMap(Program program) {
       Contract.Requires(program != null);
       // Since implementations call procedures (impl. signatures) 
       // rather than directly calling other implementations, we first
@@ -152,15 +152,6 @@ namespace Microsoft.Boogie.AbstractInterpretation {
 
       return this.lattice.Meet(atReturn, knownAtCallSite);
     }
-
-      /*
-    private Cci.IGraphNavigator callGraph;
-    public Cci.IGraphNavigator CallGraph {
-      get {
-        return this.callGraph;
-      }
-    }
-      */
 
     /// <summary>
     /// Compute the invariants for the program using the underlying abstract domain
@@ -550,20 +541,18 @@ namespace Microsoft.Boogie.AbstractInterpretation {
     }
 
     /// <summary>
-    /// Flat an expresion in the form P AND Q ... AND R into a list [P, Q, ..., R]
+    /// Flatten an expresion in the form P AND Q ... AND R into a list [P, Q, ..., R]
     /// </summary>
     private List<Expr/*!>!*/> flatConjunction(Expr embeddedExpr) {
       Contract.Requires(embeddedExpr != null);
       Contract.Ensures(cce.NonNullElements(Contract.Result<List<Expr>>()));
 
-
-      List<Expr/*!>!*/> retValue = new List<Expr/*!*/>();//No asserts necessarry.  It is the return value, and thus will be subject to the postcondition
+      var retValue = new List<Expr/*!*/>();
       NAryExpr e = embeddedExpr as NAryExpr;
       if (e != null && e.Fun.FunctionName.CompareTo("&&") == 0) {    // if it is a conjunction
         foreach (Expr arg in e.Args) {
           Contract.Assert(arg != null);
-          List<Expr/*!*/>/*!*/  newConjuncts = flatConjunction(arg);
-          Contract.Assert(cce.NonNullElements(newConjuncts));
+          var newConjuncts = flatConjunction(arg);
           retValue.AddRange(newConjuncts);
         }
       } else {
@@ -695,7 +684,7 @@ namespace Microsoft.Boogie.AbstractInterpretation {
     static public AbstractAlgebra BuildIntervalsAbstractDomain() {
       Contract.Ensures(Contract.Result<AbstractAlgebra>() != null);
 
-      AI.IQuantPropExprFactory propfactory = new BoogiePropFactory();
+      AI.IPropExprFactory propfactory = new BoogiePropFactory();
       AI.ILinearExprFactory linearfactory = new BoogieLinearFactory();
       AI.IValueExprFactory valuefactory = new BoogieValueFactory();
       IComparer variableComparer = new VariableComparer();
@@ -718,7 +707,7 @@ namespace Microsoft.Boogie.AbstractInterpretation {
 
       AI.Lattice returnLattice;
 
-      AI.IQuantPropExprFactory propfactory = new BoogiePropFactory();
+      AI.IPropExprFactory propfactory = new BoogiePropFactory();
       AI.ILinearExprFactory linearfactory = new BoogieLinearFactory();
       AI.IIntExprFactory intfactory = new BoogieIntFactory();
       AI.IValueExprFactory valuefactory = new BoogieValueFactory();
@@ -781,7 +770,7 @@ namespace Microsoft.Boogie.AbstractInterpretation {
     [Peer]
     private AI.Lattice lattice;
     [Peer]
-    private AI.IQuantPropExprFactory propFactory;
+    private AI.IPropExprFactory propFactory;
     [Peer]
     private AI.ILinearExprFactory linearFactory;
     [Peer]
@@ -806,7 +795,7 @@ namespace Microsoft.Boogie.AbstractInterpretation {
       }
     }
 
-    public AI.IQuantPropExprFactory PropositionFactory {
+    public AI.IPropExprFactory PropositionFactory {
       get {
         return this.propFactory;
       }
@@ -844,7 +833,7 @@ namespace Microsoft.Boogie.AbstractInterpretation {
 
     [Captured]
     public AbstractAlgebra(AI.Lattice lattice,
-                          AI.IQuantPropExprFactory propFactory,
+                          AI.IPropExprFactory propFactory,
                           AI.ILinearExprFactory linearFactory,
                           AI.IIntExprFactory intFactory,
                           AI.IValueExprFactory valueFactory,
@@ -885,7 +874,7 @@ namespace Microsoft.Boogie.AbstractInterpretation {
         if (CommandLineOptions.Clo.Trace) {
           Console.WriteLine();
           Console.WriteLine("Running abstract interpretation...");
-          start = DateTime.Now;
+          start = DateTime.UtcNow;
         }
 
         WidenPoints.Compute(program);
@@ -908,7 +897,7 @@ namespace Microsoft.Boogie.AbstractInterpretation {
         program.InstrumentWithInvariants();
 
         if (CommandLineOptions.Clo.Trace) {
-          DateTime end = DateTime.Now;
+          DateTime end = DateTime.UtcNow;
           TimeSpan elapsed = end - start;
           Console.WriteLine("  [{0} s]", elapsed.TotalSeconds);
           Console.Out.Flush();

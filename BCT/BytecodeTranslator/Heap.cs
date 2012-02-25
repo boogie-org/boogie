@@ -29,15 +29,6 @@ namespace BytecodeTranslator {
   /// </summary>
   public class SplitFieldsHeap : Heap {
 
-    #region "Boxing" as done in the CLR
-    /// <summary>
-    /// Used to represent "boxing" as it is done in the CLR.
-    /// </summary>
-    [RepresentationFor("$BoxField", "var $BoxField: [Ref]Box;")]
-    private Bpl.GlobalVariable boxField = null;
-    public override Bpl.Variable BoxField { get { return boxField; } }
-    #endregion
-
     /// <summary>
     /// Prelude text for which access to the ASTs is not needed
     /// </summary>
@@ -52,7 +43,9 @@ namespace BytecodeTranslator {
       string prelude = this.InitialPreludeText + this.CommonText;
       var b = RepresentationFor.ParsePrelude(prelude, this, out program);
       if (b) {
-        this.BoxType = new Bpl.CtorType(this.BoxTypeDecl.tok, this.BoxTypeDecl, new Bpl.TypeSeq());
+        this.UnionType = new Bpl.CtorType(this.UnionTypeDecl.tok, this.UnionTypeDecl, new Bpl.TypeSeq());
+        this.DelegateType = new Bpl.CtorType(this.DelegateTypeDecl.tok, this.DelegateTypeDecl, new Bpl.TypeSeq());
+        this.DelegateMultisetType = new Bpl.TypeSynonymAnnotation(this.DelegateMultisetTypeDecl.tok, this.DelegateMultisetTypeDecl, new Bpl.TypeSeq());
         this.FieldType = new Bpl.CtorType(this.FieldTypeDecl.tok, this.FieldTypeDecl, new Bpl.TypeSeq());
         this.TypeType = new Bpl.CtorType(this.TypeTypeDecl.tok, this.TypeTypeDecl, new Bpl.TypeSeq());
         this.RefType = new Bpl.CtorType(this.RefTypeDecl.tok, this.RefTypeDecl, new Bpl.TypeSeq());
@@ -67,12 +60,13 @@ namespace BytecodeTranslator {
     /// </summary>
     public override Bpl.Variable CreateFieldVariable(IFieldReference field) {
       Bpl.Variable v;
-      string fieldname = TypeHelper.GetTypeName(field.ContainingType) + "." + field.Name.Value;
+      string fieldname = MemberHelper.GetMemberSignature(field, NameFormattingOptions.DocumentationId);
+      
       fieldname = TranslationHelper.TurnStringIntoValidIdentifier(fieldname);
       Bpl.IToken tok = field.Token();
       Bpl.Type t = this.sink.CciTypeToBoogie(field.Type.ResolvedType);
 
-      if (field.IsStatic) {
+      if (field.ResolvedField.IsStatic) {
         Bpl.TypedIdent tident = new Bpl.TypedIdent(tok, fieldname, t);
         v = new Bpl.GlobalVariable(tok, tident);
       }
@@ -86,18 +80,22 @@ namespace BytecodeTranslator {
 
     public override Bpl.Variable CreateEventVariable(IEventDefinition e) {
       Bpl.Variable v;
-      string eventName = TypeHelper.GetTypeName(e.ContainingType) + "." + e.Name.Value;
-      eventName = TranslationHelper.TurnStringIntoValidIdentifier(eventName);
+      string fieldName = MemberHelper.GetMemberSignature(e, NameFormattingOptions.DocumentationId);
+
+      // HACK
+      fieldName = fieldName.Replace("E:", "F:");
+
+      fieldName = TranslationHelper.TurnStringIntoValidIdentifier(fieldName);
       Bpl.IToken tok = e.Token();
       Bpl.Type t = this.sink.CciTypeToBoogie(e.Type.ResolvedType);
 
       if (e.Adder.ResolvedMethod.IsStatic) {
-        Bpl.TypedIdent tident = new Bpl.TypedIdent(tok, eventName, t);
+        Bpl.TypedIdent tident = new Bpl.TypedIdent(tok, fieldName, t);
         v = new Bpl.GlobalVariable(tok, tident);
       }
       else {
         Bpl.Type mt = new Bpl.MapType(tok, new Bpl.TypeVariableSeq(), new Bpl.TypeSeq(this.RefType), t);
-        Bpl.TypedIdent tident = new Bpl.TypedIdent(tok, eventName, mt);
+        Bpl.TypedIdent tident = new Bpl.TypedIdent(tok, fieldName, mt);
         v = new Bpl.GlobalVariable(tok, tident);
       }
       return v;
@@ -115,13 +113,10 @@ namespace BytecodeTranslator {
       if (accessType == AccessType.Struct || accessType == AccessType.Heap) {
         Bpl.IdentifierExpr field = f as Bpl.IdentifierExpr;
         Debug.Assert(field != null);
-        if (field.Decl == this.BoxField)
-          return Unbox(f.tok, unboxType, Bpl.Expr.Select(field, o));
-        else
-          return Bpl.Expr.Select(field, o);
+        return Bpl.Expr.Select(field, o);
       }
       else
-        return Unbox(f.tok, unboxType, Bpl.Expr.Select(Bpl.Expr.Select(Bpl.Expr.Ident(ArrayContentsVariable), o), f));
+        return FromUnion(f.tok, unboxType, Bpl.Expr.Select(Bpl.Expr.Select(Bpl.Expr.Ident(ArrayContentsVariable), o), f));
     }
 
     /// <summary>
@@ -133,13 +128,10 @@ namespace BytecodeTranslator {
       if (accessType == AccessType.Struct || accessType == AccessType.Heap) {
         Bpl.IdentifierExpr field = f as Bpl.IdentifierExpr;
         Debug.Assert(field != null);
-        if (field.Decl == this.BoxField)
-          return Bpl.Cmd.MapAssign(tok, field, o, Box(tok, boxType, value));
-        else
-          return Bpl.Cmd.MapAssign(tok, field, o, value);
+        return Bpl.Cmd.MapAssign(tok, field, o, value);
       }
       else {
-        return TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(ArrayContentsVariable), Bpl.Expr.Store(Bpl.Expr.Ident(ArrayContentsVariable), o, Bpl.Expr.Store(Bpl.Expr.Select(Bpl.Expr.Ident(ArrayContentsVariable), o), f, Box(f.tok, boxType, value))));
+        return TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(ArrayContentsVariable), Bpl.Expr.Store(Bpl.Expr.Ident(ArrayContentsVariable), o, Bpl.Expr.Store(Bpl.Expr.Select(Bpl.Expr.Ident(ArrayContentsVariable), o), f, ToUnion(f.tok, boxType, value))));
       }
     }
 
@@ -152,31 +144,22 @@ namespace BytecodeTranslator {
   /// </summary>
   public class GeneralHeap : Heap {
 
-    #region "Boxing" as done in the CLR
-    /// <summary>
-    /// Used to represent "boxing" as it is done in the CLR.
-    /// </summary>
-    [RepresentationFor("$BoxField", "const unique $BoxField: Field;")]
-    private Bpl.Constant boxField = null;
-    public override Bpl.Variable BoxField { get { return boxField; } }
-    #endregion
-
     #region Fields
 
     [RepresentationFor("$Heap", "var $Heap: HeapType;", true)]
     private Bpl.Variable HeapVariable = null;
     
-    [RepresentationFor("Read", "function {:inline true} Read(H:HeapType, o:Ref, f:Field): Box { H[o][f] }")]
+    [RepresentationFor("Read", "function {:inline true} Read(H:HeapType, o:Ref, f:Field): Union { H[o][f] }")]
     private Bpl.Function Read = null;
 
-    [RepresentationFor("Write", "function {:inline true} Write(H:HeapType, o:Ref, f:Field, v:Box): HeapType { H[o := H[o][f := v]] }")]
+    [RepresentationFor("Write", "function {:inline true} Write(H:HeapType, o:Ref, f:Field, v:Union): HeapType { H[o := H[o][f := v]] }")]
     private Bpl.Function Write = null;
 
     /// <summary>
     /// Prelude text for which access to the ASTs is not needed
     /// </summary>
     private readonly string InitialPreludeText =
-      @"type HeapType = [Ref][Field]Box;
+      @"type HeapType = [Ref][Field]Union;
 
 ";
     private Sink sink;
@@ -190,7 +173,9 @@ namespace BytecodeTranslator {
       string prelude = this.InitialPreludeText + this.CommonText;
       var b = RepresentationFor.ParsePrelude(prelude, this, out program);
       if (b) {
-        this.BoxType = new Bpl.CtorType(this.BoxTypeDecl.tok, this.BoxTypeDecl, new Bpl.TypeSeq());
+        this.UnionType = new Bpl.CtorType(this.UnionTypeDecl.tok, this.UnionTypeDecl, new Bpl.TypeSeq());
+        this.DelegateType = new Bpl.CtorType(this.DelegateTypeDecl.tok, this.DelegateTypeDecl, new Bpl.TypeSeq());
+        this.DelegateMultisetType = new Bpl.TypeSynonymAnnotation(this.DelegateMultisetTypeDecl.tok, this.DelegateMultisetTypeDecl, new Bpl.TypeSeq());
         this.FieldType = new Bpl.CtorType(this.FieldTypeDecl.tok, this.FieldTypeDecl, new Bpl.TypeSeq());
         this.TypeType = new Bpl.CtorType(this.TypeTypeDecl.tok, this.TypeTypeDecl, new Bpl.TypeSeq());
         this.RefType = new Bpl.CtorType(this.RefTypeDecl.tok, this.RefTypeDecl, new Bpl.TypeSeq());
@@ -205,14 +190,11 @@ namespace BytecodeTranslator {
     /// </summary>
     public override Bpl.Variable CreateFieldVariable(IFieldReference field) {
       Bpl.Variable v;
-      string fieldname = TypeHelper.GetTypeName(field.ContainingType) + "." + field.Name.Value;
+      string fieldname = MemberHelper.GetMemberSignature(field, NameFormattingOptions.DocumentationId);
       fieldname = TranslationHelper.TurnStringIntoValidIdentifier(fieldname);
-      // Need to append something to the name to avoid name clashes with other members (of a different
-      // type) that have the same name.
-      fieldname += "$field";
       Bpl.IToken tok = field.Token();
 
-      if (field.IsStatic) {
+      if (field.ResolvedField.IsStatic) {
         Bpl.Type t = this.sink.CciTypeToBoogie(field.Type.ResolvedType);
         Bpl.TypedIdent tident = new Bpl.TypedIdent(tok, fieldname, t);
         v = new Bpl.GlobalVariable(tok, tident);
@@ -227,7 +209,7 @@ namespace BytecodeTranslator {
 
     public override Bpl.Variable CreateEventVariable(IEventDefinition e) {
       Bpl.Variable v;
-      string fieldname = TypeHelper.GetTypeName(e.ContainingType) + "." + e.Name.Value;
+      string fieldname = MemberHelper.GetMemberSignature(e, NameFormattingOptions.DocumentationId);
       fieldname = TranslationHelper.TurnStringIntoValidIdentifier(fieldname);
       Bpl.IToken tok = e.Token();
 
@@ -262,7 +244,7 @@ namespace BytecodeTranslator {
         callRead = Bpl.Expr.Select(Bpl.Expr.Select(Bpl.Expr.Ident(ArrayContentsVariable), o), f);
 
       // wrap it in the right conversion function
-      var callExpr = Unbox(f.tok, unboxType, callRead);
+      var callExpr = FromUnion(f.tok, unboxType, callRead);
       return callExpr;
     }
 
@@ -275,7 +257,7 @@ namespace BytecodeTranslator {
 
       Bpl.IdentifierExpr h;
       Bpl.NAryExpr callWrite;
-      var callConversion = Box(f.tok, boxType, value);
+      var callConversion = ToUnion(f.tok, boxType, value);
 
       if (accessType == AccessType.Struct || accessType == AccessType.Heap) {
         h = Bpl.Expr.Ident(HeapVariable);

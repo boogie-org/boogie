@@ -26,6 +26,8 @@ namespace Microsoft.Boogie {
 
     protected Dictionary<string/*!*/, int>/*!*/ /* Procedure.Name -> int */ inlinedProcLblMap;
 
+    protected int inlineDepth;
+
     [ContractInvariantMethod]
     void ObjectInvariant() {
       Contract.Invariant(codeCopier != null);
@@ -64,18 +66,18 @@ namespace Microsoft.Boogie {
       return prefix + "$" + formalName;
     }
 
-    protected Inliner(InlineCallback cb) {
-      inlinedProcLblMap = new Dictionary<string/*!*/, int>();
-      recursiveProcUnrollMap = new Dictionary<string/*!*/, int>();
-      codeCopier = new CodeCopier();
-      inlineCallback = cb;
+    protected Inliner(InlineCallback cb, int inlineDepth) {
+      this.inlinedProcLblMap = new Dictionary<string/*!*/, int>();
+      this.recursiveProcUnrollMap = new Dictionary<string/*!*/, int>();
+      this.inlineDepth = inlineDepth;
+      this.codeCopier = new CodeCopier();
+      this.inlineCallback = cb;
     }
 
-    public static void ProcessImplementation(Program program, Implementation impl, InlineCallback cb) {
+    private static void ProcessImplementation(Program program, Implementation impl, Inliner inliner) {
       Contract.Requires(impl != null);
       Contract.Requires(program != null);
       Contract.Requires(impl.Proc != null);
-      Inliner inliner = new Inliner(cb);
 
       VariableSeq/*!*/ newInParams = new VariableSeq(impl.InParams);
       Contract.Assert(newInParams != null);
@@ -87,7 +89,7 @@ namespace Microsoft.Boogie {
       Contract.Assert(newModifies != null);
 
       bool inlined = false;
-      List<Block/*!*/>/*!*/ newBlocks = inliner.DoInline(impl.Blocks, program, newLocalVars, newModifies, out inlined);
+      List<Block> newBlocks = inliner.DoInlineBlocks(impl.Blocks, program, newLocalVars, newModifies, ref inlined);
       Contract.Assert(cce.NonNullElements(newBlocks));
 
       if (!inlined)
@@ -109,12 +111,18 @@ namespace Microsoft.Boogie {
       }
     }
 
+    public static void ProcessImplementationForHoudini(Program program, Implementation impl) {
+      Contract.Requires(impl != null);
+      Contract.Requires(program != null);
+      Contract.Requires(impl.Proc != null);
+      ProcessImplementation(program, impl, new Inliner(null, CommandLineOptions.Clo.InlineDepth));
+    }
 
     public static void ProcessImplementation(Program program, Implementation impl) {
       Contract.Requires(impl != null);
       Contract.Requires(program != null);
       Contract.Requires(impl.Proc != null);
-      ProcessImplementation(program, impl, null);
+      ProcessImplementation(program, impl, new Inliner(null, -1));
     }
 
     protected void EmitImpl(Implementation impl) {
@@ -159,6 +167,8 @@ namespace Microsoft.Boogie {
     // otherwise, the procedure is not inlined at the call site
     protected int GetInlineCount(Implementation impl) {
       Contract.Requires(impl != null);
+      Contract.Requires(impl.Proc != null);
+
       string/*!*/ procName = impl.Name;
       Contract.Assert(procName != null);
       int c;
@@ -169,9 +179,7 @@ namespace Microsoft.Boogie {
       c = -1; // TryGetValue above always overwrites c
       impl.CheckIntAttribute("inline", ref c);
       // procedure attribute overrides implementation
-      if (impl.Proc != null) {
-        impl.Proc.CheckIntAttribute("inline", ref c);
-      }
+      impl.Proc.CheckIntAttribute("inline", ref c);
 
       recursiveProcUnrollMap[procName] = c;
       return c;
@@ -194,9 +202,9 @@ namespace Microsoft.Boogie {
       }
     }
 
-    private List<Block/*!*/>/*!*/ DoInlineBlocks(Stack<Procedure/*!*/>/*!*/ callStack, List<Block/*!*/>/*!*/ blocks, Program/*!*/ program,
-                                         VariableSeq/*!*/ newLocalVars, IdentifierExprSeq/*!*/ newModifies, ref bool inlinedSomething) {
-      Contract.Requires(cce.NonNullElements(callStack));
+    private List<Block/*!*/>/*!*/ DoInlineBlocks(List<Block/*!*/>/*!*/ blocks, Program/*!*/ program,
+                                                 VariableSeq/*!*/ newLocalVars, IdentifierExprSeq/*!*/ newModifies, 
+                                                 ref bool inlinedSomething) {
       Contract.Requires(cce.NonNullElements(blocks));
       Contract.Requires(program != null);
       Contract.Requires(newLocalVars != null);
@@ -204,7 +212,6 @@ namespace Microsoft.Boogie {
       Contract.Ensures(cce.NonNullElements(Contract.Result<List<Block>>()));
       List<Block/*!*/>/*!*/ newBlocks = new List<Block/*!*/>();
       
-
       foreach (Block block in blocks) {
         TransferCmd/*!*/ transferCmd = cce.NonNull(block.TransferCmd);
         CmdSeq cmds = block.Cmds;
@@ -223,12 +230,14 @@ namespace Microsoft.Boogie {
           } else {
             Contract.Assert(callCmd.Proc != null);
             Procedure proc = callCmd.Proc;
-            int inline = -1;
 
             Implementation impl = FindProcImpl(program, proc);
-            if (impl != null) {
-              inline = GetInlineCount(impl);
+            if (impl == null) {
+              newCmds.Add(codeCopier.CopyCmd(cmd));
+              continue;
             }
+
+            int inline = inlineDepth >= 0 ? inlineDepth : GetInlineCount(impl);
 
             if (inline > 0) { // at least one block should exist
               Contract.Assume(impl != null);
@@ -247,18 +256,29 @@ namespace Microsoft.Boogie {
               // increment the counter for the procedure to be used in constructing the locals and formals
               NextInlinedProcLabel(proc.Name);
 
-              BeginInline(newLocalVars, newModifies, proc, impl);
+              BeginInline(newLocalVars, newModifies, impl);
 
-              List<Block/*!*/>/*!*/ inlinedBlocks = CreateInlinedBlocks(callCmd, proc, impl, nextBlockLabel);
+              List<Block/*!*/>/*!*/ inlinedBlocks = CreateInlinedBlocks(callCmd, impl, nextBlockLabel);
               Contract.Assert(cce.NonNullElements(inlinedBlocks));
 
               EndInline();
 
-              recursiveProcUnrollMap[impl.Name] = recursiveProcUnrollMap[impl.Name] - 1;
-              callStack.Push(cce.NonNull(impl.Proc));
-              inlinedBlocks = DoInlineBlocks(callStack, inlinedBlocks, program, newLocalVars, newModifies, ref inlinedSomething);
-              callStack.Pop();
-              recursiveProcUnrollMap[impl.Name] = recursiveProcUnrollMap[impl.Name] + 1;
+              if (inlineDepth >= 0) {
+                Debug.Assert(inlineDepth > 0);
+                inlineDepth = inlineDepth - 1;
+              }
+              else {
+                recursiveProcUnrollMap[impl.Name] = recursiveProcUnrollMap[impl.Name] - 1;
+              }
+
+              inlinedBlocks = DoInlineBlocks(inlinedBlocks, program, newLocalVars, newModifies, ref inlinedSomething);
+
+              if (inlineDepth >= 0) {
+                inlineDepth = inlineDepth + 1;
+              }
+              else {
+                recursiveProcUnrollMap[impl.Name] = recursiveProcUnrollMap[impl.Name] + 1;
+              }
 
               Block/*!*/ startBlock = inlinedBlocks[0];
               Contract.Assert(startBlock != null);
@@ -296,25 +316,14 @@ namespace Microsoft.Boogie {
       return newBlocks;
     }
 
-    protected List<Block/*!*/>/*!*/ DoInline(List<Block/*!*/>/*!*/ blocks, Program program, VariableSeq newLocalVars, IdentifierExprSeq newModifies, out bool inlined) {
-      Contract.Requires(newModifies != null);
-      Contract.Requires(newLocalVars != null);
-      Contract.Requires(program != null);
-      Contract.Requires(cce.NonNullElements(blocks));
-      Contract.Ensures(cce.NonNullElements(Contract.Result<List<Block>>()));
-      inlinedProcLblMap.Clear();
-      recursiveProcUnrollMap.Clear();
-
-      inlined = false;
-      return DoInlineBlocks(new Stack<Procedure/*!*/>(), blocks, program, newLocalVars, newModifies, ref inlined);
-    }
-
-    protected void BeginInline(VariableSeq newLocalVars, IdentifierExprSeq newModifies, Procedure proc, Implementation impl) {
+    protected void BeginInline(VariableSeq newLocalVars, IdentifierExprSeq newModifies, Implementation impl) {
       Contract.Requires(impl != null);
-      Contract.Requires(proc != null);
+      Contract.Requires(impl.Proc != null);
       Contract.Requires(newModifies != null);
       Contract.Requires(newLocalVars != null);
+      
       Hashtable substMap = new Hashtable();
+      Procedure proc = impl.Proc;
 
       foreach (Variable/*!*/ locVar in cce.NonNull(impl.OriginalLocVars)) {
         Contract.Assert(locVar != null);
@@ -375,20 +384,52 @@ namespace Microsoft.Boogie {
       codeCopier.OldSubst = null;
     }
 
+    private Cmd InlinedRequires(Implementation impl, CallCmd callCmd, Requires req) {
+      Requires/*!*/ reqCopy = (Requires/*!*/)cce.NonNull(req.Clone());
+      if (req.Free)
+        reqCopy.Condition = Expr.True;
+      else 
+        reqCopy.Condition = codeCopier.CopyExpr(req.Condition);
+      AssertCmd/*!*/ a = new AssertRequiresCmd(callCmd, reqCopy);
+      a.ErrorDataEnhanced = reqCopy.ErrorDataEnhanced;
+      return a;
+    }
+
+    private Cmd InlinedEnsures(Implementation impl, CallCmd callCmd, Ensures ens) {
+      if (impl.FindExprAttribute("inline") != null && !ens.Free) {
+        Ensures/*!*/ ensCopy = (Ensures/*!*/)cce.NonNull(ens.Clone());
+        ensCopy.Condition = codeCopier.CopyExpr(ens.Condition);
+        return new AssertEnsuresCmd(ensCopy);
+      }
+      else {
+        return new AssumeCmd(ens.tok, codeCopier.CopyExpr(ens.Condition));
+      }
+    }
+
+    private CmdSeq RemoveAsserts(CmdSeq cmds) {
+      CmdSeq newCmdSeq = new CmdSeq();
+      for (int i = 0; i < cmds.Length; i++) {
+        Cmd cmd = cmds[i];
+        if (cmd is AssertCmd) continue;
+        newCmdSeq.Add(cmd);
+      }
+      return newCmdSeq;
+    }
 
     // result[0] is the entry block
-    protected List<Block/*!*/>/*!*/ CreateInlinedBlocks(CallCmd callCmd, Procedure proc, Implementation impl, string nextBlockLabel) {
+    protected List<Block/*!*/>/*!*/ CreateInlinedBlocks(CallCmd callCmd, Implementation impl, string nextBlockLabel) {
       Contract.Requires(nextBlockLabel != null);
       Contract.Requires(impl != null);
-      Contract.Requires(proc != null);
+      Contract.Requires(impl.Proc != null);
       Contract.Requires(callCmd != null);
-      Contract.Requires(((codeCopier.Subst != null)));
+      Contract.Requires(codeCopier.Subst != null);
 
-      Contract.Requires((codeCopier.OldSubst != null));
+      Contract.Requires(codeCopier.OldSubst != null);
       Contract.Ensures(cce.NonNullElements(Contract.Result<List<Block>>()));
       List<Block/*!*/>/*!*/ implBlocks = cce.NonNull(impl.OriginalBlocks);
       Contract.Assert(implBlocks.Count > 0);
 
+      Procedure proc = impl.Proc;
       string startLabel = implBlocks[0].Label;
 
       List<Block/*!*/>/*!*/ inlinedBlocks = new List<Block/*!*/>();
@@ -404,17 +445,10 @@ namespace Microsoft.Boogie {
         inCmds.Add(cmd);
       }
 
-      // inject non-free requires
+      // inject requires
       for (int i = 0; i < proc.Requires.Length; i++) {
         Requires/*!*/ req = cce.NonNull(proc.Requires[i]);
-        if (!req.Free) {
-          Requires/*!*/ reqCopy = (Requires/*!*/)cce.NonNull(req.Clone());
-          reqCopy.Condition = codeCopier.CopyExpr(req.Condition);
-          AssertCmd/*!*/ a = new AssertRequiresCmd(callCmd, reqCopy);
-          Contract.Assert(a != null);
-          a.ErrorDataEnhanced = reqCopy.ErrorDataEnhanced;
-          inCmds.Add(a);
-        }
+        inCmds.Add(InlinedRequires(impl, callCmd, req));
       }
 
       VariableSeq locVars = cce.NonNull(impl.OriginalLocVars);
@@ -461,6 +495,9 @@ namespace Microsoft.Boogie {
       Block intBlock;
       foreach (Block block in implBlocks) {
         CmdSeq copyCmds = codeCopier.CopyCmdSeq(block.Cmds);
+        if (0 <= inlineDepth) {
+          copyCmds = RemoveAsserts(copyCmds);
+        }
         TransferCmd transferCmd = CreateInlinedTransferCmd(cce.NonNull(block.TransferCmd), GetInlinedProcLabel(proc.Name));
         intBlock = new Block(block.tok, GetInlinedProcLabel(proc.Name) + "$" + block.Label, copyCmds, transferCmd);
         inlinedBlocks.Add(intBlock);
@@ -469,16 +506,10 @@ namespace Microsoft.Boogie {
       // create out block
       CmdSeq outCmds = new CmdSeq();
 
-      // inject non-free ensures
+      // inject ensures
       for (int i = 0; i < proc.Ensures.Length; i++) {
         Ensures/*!*/ ens = cce.NonNull(proc.Ensures[i]);
-        if (!ens.Free) {
-          Ensures/*!*/ ensCopy = (Ensures/*!*/)cce.NonNull(ens.Clone());
-          ensCopy.Condition = codeCopier.CopyExpr(ens.Condition);
-          AssertCmd/*!*/ a = new AssertEnsuresCmd(ensCopy);
-          Contract.Assert(a != null);
-          outCmds.Add(a);
-        }
+        outCmds.Add(InlinedEnsures(impl, callCmd, ens));
       }
 
       // assign out params
@@ -601,140 +632,4 @@ namespace Microsoft.Boogie {
       }
     }
   } // end class CodeCopier
-
-
-  public class AxiomExpander : Duplicator {
-    readonly Program/*!*/ program;
-    readonly TypecheckingContext/*!*/ tc;
-    [ContractInvariantMethod]
-    void ObjectInvariant() {
-      Contract.Invariant(program != null);
-      Contract.Invariant(tc != null);
-    }
-
-
-    public AxiomExpander(Program prog, TypecheckingContext t) {
-      Contract.Requires(t != null);
-      Contract.Requires(prog != null);
-      program = prog;
-      tc = t;
-    }
-
-    public void CollectExpansions() {
-      foreach (Declaration/*!*/ decl in program.TopLevelDeclarations) {
-        Contract.Assert(decl != null);
-        Axiom ax = decl as Axiom;
-        if (ax != null) {
-          bool expand = false;
-          if (!ax.CheckBooleanAttribute("inline", ref expand)) {
-            Error(decl.tok, "{:inline ...} expects either true or false as the argument");
-          }
-          if (expand) {
-            AddExpansion(ax.Expr, ax.FindStringAttribute("ignore"));
-          }
-        }
-        Function f = decl as Function;
-        if (f != null && f.Body != null) {
-          Variable[]/*!*/ formals = new Variable[f.InParams.Length];
-          Contract.Assert(formals != null);
-          for (int i = 0; i < formals.Length; ++i)
-            formals[i] = f.InParams[i];
-          AddExpansion(f, new Expansion(null, f.Body,
-                                        new TypeVariableSeq(f.TypeParameters),
-                                        formals));
-        }
-      }
-    }
-
-    void Error(IToken tok, string msg) {
-      Contract.Requires(tok != null);
-      tc.Error(tok, "expansion: " + msg);
-    }
-
-    void AddExpansion(Expr axiomBody, string ignore) {
-      Contract.Requires(axiomBody != null);
-      // it would be sooooooooo much easier with pattern matching
-      ForallExpr all = axiomBody as ForallExpr;
-      if (all != null) {
-        NAryExpr nary = all.Body as NAryExpr;
-        BinaryOperator bin = nary == null ? null : nary.Fun as BinaryOperator;
-        //System.Console.WriteLine("{0} {1} {2}", nary==null, bin==null, bin==null?0 : bin.Op);
-        if (nary != null && bin != null && (bin.Op == BinaryOperator.Opcode.Eq || bin.Op == BinaryOperator.Opcode.Iff)) {
-
-          NAryExpr func = nary.Args[0] as NAryExpr;
-          //System.Console.WriteLine("{0} {1}", func == null, func == null ? null : func.Fun.GetType());
-          while (func != null && func.Fun is TypeCoercion)
-            func = func.Args[0] as NAryExpr;
-          if (func != null && func.Fun is FunctionCall) {
-            Function fn = cce.NonNull((FunctionCall)func.Fun).Func;
-            Expansion exp = new Expansion(ignore, cce.NonNull(nary.Args[1]),
-                                          new TypeVariableSeq(),
-                                          new Variable[func.Args.Length]);
-            int pos = 0;
-            HashSet<Declaration> parms = new HashSet<Declaration>();
-            foreach (Expr/*!*/ e in func.Args) {
-              Contract.Assert(e != null);
-              IdentifierExpr id = e as IdentifierExpr;
-              if (id == null) {
-                Error(e.tok, "only identifiers supported as function arguments");
-                return;
-              }
-              exp.formals[pos++] = id.Decl;
-              if (parms.Contains(id.Decl)) {
-                Error(all.tok, "an identifier was used more than once");
-                return;
-              }
-              parms.Add(id.Decl);
-              if (!all.Dummies.Has(id.Decl)) {
-                Error(all.tok, "identifier was not quantified over");
-                return;
-              }
-            }
-            if (func.Args.Length != all.Dummies.Length) {
-              Error(all.tok, "more variables quantified over, than used in function");
-              return;
-            }
-
-            HashSet<TypeVariable/*!*/> typeVars = new HashSet<TypeVariable/*!*/>();
-            foreach (TypeVariable/*!*/ v in cce.NonNull(func.TypeParameters).FormalTypeParams) {
-              Contract.Assert(v != null);
-              if (!func.TypeParameters[v].IsVariable) {
-                Error(all.tok, "only identifiers supported as type parameters");
-                return;
-              }
-              TypeVariable/*!*/ formal = func.TypeParameters[v].AsVariable;
-              Contract.Assert(formal != null);
-              exp.TypeParameters.Add(formal);
-              if (typeVars.Contains(formal)) {
-                Error(all.tok, "an identifier was used more than once");
-                return;
-              }
-              typeVars.Add(formal);
-              if (!all.TypeParameters.Has(formal)) {
-                Error(all.tok, "identifier was not quantified over");
-                return;
-              }
-            }
-            if (((FunctionCall)func.Fun).Func.TypeParameters.Length != all.TypeParameters.Length) {
-              Error(all.tok, "more variables quantified over, than used in function");
-              return;
-            }
-            AddExpansion(fn, exp);
-            return;
-          }
-        }
-      }
-
-      Error(axiomBody.tok, "axiom to be expanded must have form (forall VARS :: f(VARS) == expr(VARS))");
-    }
-
-    void AddExpansion(Function fn, Expansion x) {
-      Contract.Requires(x != null);
-      Contract.Requires(fn != null);
-      if (fn.expansions == null) {
-        fn.expansions = new List<Expansion/*!*/>();
-      }
-      fn.expansions.Add(x);
-    }
-  }
 } // end namespace

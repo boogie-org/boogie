@@ -12,18 +12,19 @@ namespace Demo
         #region 1. Terminals
         NumberLiteral n = TerminalFactory.CreateCSharpNumber("number");
 
-        IdentifierTerminal ident = new IdentifierTerminal("Identifier");
+        IdentifierTerminal ident = new IdentifierTerminal("Identifier", "'_?", "'_?");
+
         StringLiteral stringLiteral = TerminalFactory.CreateCSharpString("String");
 
         this.MarkReservedWords(  // NOTE: these keywords must also appear once more below
-          "class", "ghost", "static", "var", "method", "constructor", "datatype",
-          "assert", "assume", "new", "this", "object", "refines", "replaces", "by",
+          "class", "ghost", "static", "var", "method", "constructor", "datatype", "type",
+          "assert", "assume", "new", "this", "object", "refines",
           "unlimited", "module", "imports",
           "if", "then", "else", "while", "invariant",
-          "break", "label", "return", "foreach", "havoc", "print",
+          "break", "label", "return", "parallel", "havoc", "print",
           "returns", "requires", "ensures", "modifies", "reads", "decreases",
           "bool", "nat", "int", "false", "true", "null",
-          "function", "free",
+          "function", "predicate", "free",
           "in", "forall", "exists",
           "seq", "set", "multiset", "array", "array2", "array3",
           "match", "case",
@@ -238,7 +239,6 @@ namespace Demo
                         | "if" + Condition + Statement + PreferShiftHere() + "else" + Statement
                         | "while" + Condition + loopSpec.Star() + Statement
                         | "for" + LParen + expression.Q() + Semi + expression.Q() + Semi + expression.Q() + RParen + Statement
-                        | "foreach" + LParen + ident + "in" + expression + RParen + Statement
                         | blockStatement
                         | expression + Semi
                         | "break" + Semi
@@ -267,14 +267,13 @@ namespace Demo
           | "method"
           | "constructor"
           | "datatype"
+          | "type"
           | "assert"
           | "assume"
           | "new"
           | "this"
           | "object"
           | "refines"
-          | "replaces"
-          | "by"
           | "unlimited"
           | "module"
           | "imports"
@@ -286,7 +285,7 @@ namespace Demo
           | "break"
           | "label"
           | "return"
-          | "foreach"
+          | "parallel"
           | "havoc"
           | "print"
           | "returns"
@@ -302,6 +301,7 @@ namespace Demo
           | "true"
           | "null"
           | "function"
+          | "predicate"
           | "free"
           | "in"
           | "forall"

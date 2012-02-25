@@ -85,6 +85,7 @@ Contract.Requires(cce.NonNullElements(defines,true));
     if (parser.errors.count == 0)
     {
       program = Pgm;
+      program.ProcessDatatypeConstructors();
       return 0;
     }
     else
@@ -116,7 +117,7 @@ private class BvBounds : Expr {
     Contract.Requires(stream != null);
     {Contract.Assert(false);throw new cce.UnreachableException();}
   }
-  public override void ComputeFreeVariables(Set/*!*/ freeVars) {Contract.Requires(freeVars != null); {Contract.Assert(false);throw new cce.UnreachableException();} }
+  public override void ComputeFreeVariables(GSet<object>/*!*/ freeVars) {Contract.Requires(freeVars != null); {Contract.Assert(false);throw new cce.UnreachableException();} }
   public override AI.IExpr/*!*/ IExpr { get { Contract.Ensures(Contract.Result<AI.IExpr>()!=null); {Contract.Assert(false);throw new cce.UnreachableException();} } }
 }
 
@@ -503,7 +504,7 @@ private class BvBounds : Expr {
 			}
 			ImplBody(out locals, out stmtList);
 			impl = new Implementation(x, x.val, typeParams,
-			                         Formal.StripWhereClauses(ins), Formal.StripWhereClauses(outs), locals, stmtList, null, this.errors);
+			                         Formal.StripWhereClauses(ins), Formal.StripWhereClauses(outs), locals, stmtList, kv == null ? null : (QKeyValue)kv.Clone(), this.errors);
 			
 		} else SynErr(91);
 		proc = new Procedure(x, x.val, typeParams, ins, outs, pre, mods, post, kv); 
@@ -1013,7 +1014,7 @@ out VariableSeq/*!*/ ins, out VariableSeq/*!*/ outs, out QKeyValue kv) {
 			}
 			c = new HavocCmd(x,ids);
 			
-		} else if (la.kind == 48) {
+		} else if (la.kind == 33 || la.kind == 48) {
 			CallCmd(out cn);
 			Expect(7);
 			c = cn; 
@@ -1194,7 +1195,12 @@ out VariableSeq/*!*/ ins, out VariableSeq/*!*/ outs, out QKeyValue kv) {
 		QKeyValue kv = null;
 		Expr en;  List<Expr> args;
 		c = dummyCmd;
+		bool isFree = false;
 		
+		if (la.kind == 33) {
+			Get();
+			isFree = true;  
+		}
 		Expect(48);
 		x = t; 
 		while (la.kind == 25) {
@@ -1214,7 +1220,7 @@ out VariableSeq/*!*/ ins, out VariableSeq/*!*/ outs, out QKeyValue kv) {
 					}
 				}
 				Expect(9);
-				c = new CallCmd(x, first.val, es, ids, kv); 
+				c = new CallCmd(x, first.val, es, ids, kv); ((CallCmd) c).IsFree = isFree; 
 			} else if (la.kind == 11 || la.kind == 47) {
 				ids.Add(new IdentifierExpr(first, first.val)); 
 				if (la.kind == 11) {
@@ -1250,7 +1256,7 @@ out VariableSeq/*!*/ ins, out VariableSeq/*!*/ outs, out QKeyValue kv) {
 					}
 				}
 				Expect(9);
-				c = new CallCmd(x, first.val, es, ids, kv); 
+				c = new CallCmd(x, first.val, es, ids, kv); ((CallCmd) c).IsFree = isFree; 
 			} else SynErr(103);
 		} else if (la.kind == 49) {
 			Get();
@@ -1267,7 +1273,7 @@ out VariableSeq/*!*/ ins, out VariableSeq/*!*/ outs, out QKeyValue kv) {
 				}
 			}
 			Expect(9);
-			c = new CallForallCmd(x, first.val, args, kv); 
+			c = new CallForallCmd(x, first.val, args, kv); ((CallForallCmd) c).IsFree = isFree; 
 		} else if (la.kind == 42) {
 			Get();
 			ids.Add(null); 
@@ -1304,7 +1310,7 @@ out VariableSeq/*!*/ ins, out VariableSeq/*!*/ outs, out QKeyValue kv) {
 				}
 			}
 			Expect(9);
-			c = new CallCmd(x, first.val, es, ids, kv); 
+			c = new CallCmd(x, first.val, es, ids, kv); ((CallCmd) c).IsFree = isFree; 
 		} else SynErr(104);
 	}
 
@@ -2028,8 +2034,8 @@ out QKeyValue kv, out Trigger trig, out Expr/*!*/ body) {
 		{x,T,x,x, x,x,x,x, T,x,x,x, x,T,T,T, x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x},
 		{x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, T,T,T,T, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x},
 		{x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,T,x,x, x,x,x,x, T,T,T,T, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x},
-		{x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, T,T,T,x, T,x,x,T, T,T,T,x, T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x},
-		{x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, T,T,T,x, T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x},
+		{x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,T,x,x, T,T,T,x, T,x,x,T, T,T,T,x, T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x},
+		{x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,T,x,x, x,x,x,x, x,x,x,x, T,T,T,x, T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x},
 		{x,T,T,T, x,x,x,x, T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,T,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,T,x, x,T,T,T, T,T,T,x, x,x,x,x, x,x,x,x, x,x},
 		{x,T,T,T, x,x,x,x, T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,T,x, x,x,T,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,T,x, x,T,T,T, T,T,T,x, x,x,x,x, x,x,x,x, x,x},
 		{x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, T,T,T,T, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x},

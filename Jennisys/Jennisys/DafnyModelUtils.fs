@@ -20,6 +20,7 @@ module DafnyModelUtils
 *)
 
 open Ast
+open Getters
 open AstUtils
 open Utils
 
@@ -38,16 +39,6 @@ let GetElemFullName (elem: Model.Element) =
   elem.Names |> Seq.filter (fun ft -> ft.Func.Arity = 0)
              |> Seq.choose (fun ft -> Some(ft.Func.Name))
              |> Utils.SeqToOption
-           
-let GetElemName (elem: Model.Element) = 
-  let fullNameOpt = GetElemFullName elem
-  match fullNameOpt with
-  | Some(fullName) ->
-      let dotIdx = fullName.LastIndexOf(".")
-      let fldName = fullName.Substring(dotIdx + 1)
-      let clsName = if dotIdx = -1 then "" else fullName.Substring(0, dotIdx)
-      Some(clsName, fldName)
-  | None -> None
                                                    
 let GetRefName (ref: Model.Element) = 
   match ref with
@@ -72,13 +63,20 @@ let GetBool (elem: Model.Element) =
   | :? Model.Boolean as bval -> bval.Value
   | _ -> failwith ("not a bool element: " + elem.ToString())
 
+let LastDotSplit (str: string) = 
+  let dotIdx = str.LastIndexOf(".")
+  let s1 = if dotIdx = -1 then "" else str.Substring(0, dotIdx)
+  let s2 = str.Substring(dotIdx + 1)
+  s1,s2
+
 let GetType (e: Model.Element) prog = 
   let fNameOpt = GetElemFullName e
   match fNameOpt with
   | Some(fname) -> match fname with
                    | "intType"               -> Some(IntType)
                    | Prefix "class." clsName -> 
-                       match FindComponent prog clsName with
+                       let _,shortClsName = LastDotSplit clsName
+                       match FindComponent prog shortClsName with
                        | Some(comp) -> Some(GetClassType comp)
                        | None -> None
                    | _ -> None
@@ -86,6 +84,16 @@ let GetType (e: Model.Element) prog =
 
 let GetLoc (e: Model.Element) =
   Unresolved(GetRefName e)
+
+let FindOrCreateSeq env key len =
+  match Map.tryFind key env with
+  | Some(SeqConst(lst)) -> lst,env
+  | None -> 
+      let emptyList = Utils.GenList len NoneConst
+      let newSeq = SeqConst(emptyList)
+      let newMap = env |> Map.add key newSeq
+      emptyList,newMap
+  | Some(_) as x-> failwith ("not a SeqConst but: " + x.ToString())
 
 let FindSeqInEnv env key =
   match Map.find key env with
@@ -144,20 +152,23 @@ let ReadHeap (model: Microsoft.Boogie.Model) prog =
                         let fld = ft.Args.[2]
                         assert (Seq.length fld.Names = 1)
                         let fldFullName = (Seq.nth 0 fld.Names).Func.Name
-                        let dotIdx = fldFullName.LastIndexOf(".")
-                        let fldName = fldFullName.Substring(dotIdx + 1)
-                        let clsName = if dotIdx = -1 then "" else fldFullName.Substring(0, dotIdx)
+                        let pfix,fldName = LastDotSplit fldFullName
+                        let _,clsName = LastDotSplit pfix
                         let refVal = ft.Result
                         let refObj = Unresolved(GetRefName ref)
                         let nonebuilder = CascadingBuilder<_>(None)
                         let fldVarOpt = nonebuilder {
                           let! comp = FindComponent prog clsName
-                          return FindVar comp fldName
+                          if fldName.StartsWith("old_") then
+                            let fn = RenameFromOld fldName 
+                            let! var = FindVar comp fn
+                            return Some(MakeOldVar var)
+                          else
+                            return FindVar comp fldName
                         }
                         match fldVarOpt with
                         | Some(fldVar) ->
-                            let fldType = match fldVar with 
-                                          | Var(_,t) -> t
+                            let fldType = GetVarType fldVar 
                             let fldVal = ConvertValue model refVal
                             acc |> Map.add (refObj, fldVar) fldVal
                         | None -> acc
@@ -170,7 +181,8 @@ let ReadHeap (model: Microsoft.Boogie.Model) prog =
 //  ====================================================================
 let rec ReadArgValues (model: Microsoft.Boogie.Model) args = 
   match args with 
-  | Var(name,_) as v :: rest -> 
+  | v :: rest ->
+      let name = GetVarName v 
       let farg = model.Functions |> Seq.filter (fun f -> f.Arity = 0 && f.Name.StartsWith(name + "#")) |> Utils.SeqToOption
       match farg with
       | Some(func) -> 
@@ -204,8 +216,8 @@ let ReadSeq (model: Microsoft.Boogie.Model) (envMap,ctx) =
     match idx_tuples with
     | ft :: rest -> 
         let srcLstKey = GetLoc ft.Args.[0]
-        let oldLst = FindSeqInEnv envMap srcLstKey
         let idx = GetInt ft.Args.[1]
+        let oldLst,envMap = FindOrCreateSeq envMap srcLstKey (idx+1)        
         let lstElem = UnboxIfNeeded model ft.Result
         let newLst = Utils.ListSet idx lstElem oldLst
         let newCtx = UpdateContext oldLst newLst ctx
@@ -213,19 +225,16 @@ let ReadSeq (model: Microsoft.Boogie.Model) (envMap,ctx) =
         __ReadSeqIndex model rest (newEnv,newCtx)
     | _ -> (envMap,ctx)
 
-  //TODO: This has become obsolete now, as the Seq#Build function has a different meaning now.
-  //      On the plus site, it might be that it is not necessary to read the model for this function anymore.
   // reads stuff from Seq#Build
   let rec __ReadSeqBuild (model: Microsoft.Boogie.Model) (bld_tuples: Model.FuncTuple list) (envMap,ctx) = 
     match bld_tuples with
     | ft :: rest -> 
         let srcLstLoc = GetLoc ft.Args.[0]
+        let lstElemVal = UnboxIfNeeded model ft.Args.[1]
         let dstLstLoc = GetLoc ft.Result
-        let oldLst = FindSeqInEnv envMap srcLstLoc
-        let idx = GetInt ft.Args.[1]
-        let lstElemVal = UnboxIfNeeded model ft.Args.[2]
+        let oldLst = FindSeqInEnv envMap srcLstLoc        
         let dstLst = FindSeqInEnv envMap dstLstLoc
-        let newLst = Utils.ListBuild oldLst idx lstElemVal dstLst
+        let newLst = oldLst @ [lstElemVal]
         let newCtx = UpdateContext dstLst newLst ctx
         let newEnv = envMap |> Map.add dstLstLoc (SeqConst(newLst))
         __ReadSeqBuild model rest (newEnv,newCtx)
@@ -241,20 +250,30 @@ let ReadSeq (model: Microsoft.Boogie.Model) (envMap,ctx) =
         let oldLst1 = FindSeqInEnv envMap srcLst1Loc
         let oldLst2 = FindSeqInEnv envMap srcLst2Loc
         let dstLst = FindSeqInEnv envMap dstLstLoc
-        let newLst = List.append oldLst1 oldLst2
+        let newLst = oldLst1 @ oldLst2
         let newCtx = UpdateContext dstLst newLst ctx
         let newEnv = envMap |> Map.add dstLstLoc (SeqConst(newLst))
         __ReadSeqAppend model rest (newEnv,newCtx)
     | _ -> (envMap,ctx)  
 
+  // keeps reading from Seq#Build and Seq#Append until fixpoint
+  let rec __ReadUntilFixpoint hmodel = 
+    let f_seq_bld = model.MkFunc("Seq#Build", 2)
+    let f_seq_app = model.MkFunc("Seq#Append", 2)
+    let hmodel' = hmodel |> __ReadSeqBuild model (List.ofSeq f_seq_bld.Apps)
+                       |> __ReadSeqAppend model (List.ofSeq f_seq_app.Apps)               
+    if hmodel' = hmodel then
+      hmodel'
+    else
+      __ReadUntilFixpoint hmodel'
+
   let f_seq_len = model.MkFunc("Seq#Length", 1)
   let f_seq_idx = model.MkFunc("Seq#Index", 2)
-  //let f_seq_bld = model.MkFunc("Seq#Build", 4)
-  let f_seq_app = model.MkFunc("Seq#Append", 2)
-  (envMap,ctx) |> __ReadSeqLen model (List.ofSeq f_seq_len.Apps)
-               |> __ReadSeqIndex model (List.ofSeq f_seq_idx.Apps)
-             //  |> __ReadSeqBuild model (List.ofSeq f_seq_bld.Apps)
-               |> __ReadSeqAppend model (List.ofSeq f_seq_app.Apps)
+  let hmodel = (envMap,ctx)
+  let hmodel' = hmodel |> __ReadSeqLen model (List.ofSeq f_seq_len.Apps)
+                       |> __ReadSeqIndex model (List.ofSeq f_seq_idx.Apps)
+  __ReadUntilFixpoint hmodel'  
+  
 
 
 //  =====================================================

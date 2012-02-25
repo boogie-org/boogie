@@ -238,13 +238,16 @@ case class LockChange(ee: List[Expression]) extends Specification
 
 case class CouplingInvariant(ids: List[String], e: Expression) extends Member {
   assert(ids.size > 0)
-  var fields = Nil:List[Field]
+  var fields: List[Field] = Nil
   /* Distribute 100 between fields */
-  def fraction(field: Field) = {
+  def fraction(field: Field): Permission = {
     val k = fields.indexOf(field)
     assert (0 <= k && k < fields.size)
     val part: Int = 100 / fields.size
-    if (k == fields.size - 1) IntLiteral(100 - part * k) else IntLiteral(part)          
+    if (k == fields.size - 1) 
+      Frac(IntLiteral(100 - part * k)) 
+    else 
+      Frac(IntLiteral(part)          )
   }
 }
 case class MethodTransform(id: String, ins: List[Variable], outs: List[Variable], spec: List[Specification], trans: Transform) extends Callable(id) {

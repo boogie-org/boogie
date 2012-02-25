@@ -17,12 +17,17 @@ for %%f in (examples permission-model general-tests regressions predicates) do (
   cd %%f
   set tt=0
   for %%f in (*.chalice) do set /A tt+=1
-  call reg_test_all.bat -no-summary
+  call reg_test_all.bat -no-summary %1 %2 %3 %4 %5
   set /A c=!c!+!errorlevel!
   set /A t=!t!+!tt!
   cd ..
   echo ------------------------------------------------------
 )
+
+REM Run refinement regression tests
+cd refinements
+call test.bat
+cd ..
 
 if !nosummary!==0 (
     echo.

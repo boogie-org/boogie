@@ -1,30 +1,56 @@
+// Simple refinements
 class A {
   var x:int;
   function f():int {1}
   method m(i:int) returns (j:int) {
     var j [j > 0];    
   }
+
+  method n() returns (c: bool)
+  {
+    c := true;
+  }
+
+  method o() returns ()
+  {
+    var k := 1;
+    var j := 0;
+    spec j [j > 0];
+  }
+
+  method p(b: bool) returns ()
+  {
+    var k := 1;
+    if (b) {
+    } else {
+    }
+  }
 }
 
-class B refines C {}
-class C refines D {}
-class D refines A {
+class B refines A {
+  // correct
   transforms m(i:int) returns (j:int, k:int) 
   {
   *
   } 
-}
 
-class X {
-  method m() returns (c: bool) 
-  {
-    c := true;
-  }
-}
-
-class Y refines X {
-  refines m() returns (c: bool, d: bool)
+  // broken: c
+  refines n() returns (c: bool) 
   {
     c := false;
   }
+
+  // broken: spec stmt frame, k
+  transforms o() returns () {
+    _
+    replaces j by { j := 1; k := 0 }
+  }
+
+  // broken: k
+  transforms p(b: bool) returns () {
+    _
+    if {k := 2} else {*}
+  } 
 }
+
+

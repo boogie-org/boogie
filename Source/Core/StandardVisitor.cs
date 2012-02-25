@@ -48,7 +48,7 @@ namespace Microsoft.Boogie {
   }
 
   /// <summary>
-  /// Walks an IR, mutuating it into a new form
+  /// Walks an IR, mutating it into a new form
   /// </summary>   
   public abstract class StandardVisitor : Visitor {
     public Visitor callingVisitor;

@@ -201,7 +201,7 @@ USE_PREDICATES=<bool>     Try to use SMT predicates for functions returning bool
       Contract.Requires(expr != null);
       Contract.Ensures(Contract.Result<string>() != null);
 
-      DateTime start = DateTime.Now;
+      DateTime start = DateTime.UtcNow;
       if (CommandLineOptions.Clo.Trace)
         Console.Write("Linearising ... ");
 
@@ -238,9 +238,9 @@ USE_PREDICATES=<bool>     Try to use SMT predicates for functions returning bool
       Contract.Assert(res != null);
 
       if (CommandLineOptions.Clo.Trace) {
-        DateTime end = DateTime.Now;
+        DateTime end = DateTime.UtcNow;
         TimeSpan elapsed = end - start;
-        Console.WriteLine("finished   [{0} s]  ", elapsed.TotalSeconds);
+        Console.WriteLine("finished   [{0} s]", elapsed.TotalSeconds);
       }
       return res;
     }
@@ -323,10 +323,8 @@ USE_PREDICATES=<bool>     Try to use SMT predicates for functions returning bool
 
       VCExpressionGenerator gen = new VCExpressionGenerator();
       List<string>/*!>!*/ proverCommands = new List<string/*!*/>();
-      // TODO: what is supported?
-      //      proverCommands.Add("all");
-      //      proverCommands.Add("simplify");
-      //      proverCommands.Add("simplifyLike");
+      proverCommands.Add("tptp");
+      proverCommands.Add("external");
       VCGenerationOptions genOptions = new VCGenerationOptions(proverCommands);
       Contract.Assert(genOptions != null);
 

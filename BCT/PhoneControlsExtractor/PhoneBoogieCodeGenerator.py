@@ -5,7 +5,7 @@ from xml.dom import minidom
 from itertools import product
 import xml.dom
 
-CONTROL_NAMES= ["Button", "CheckBox", "RadioButton"]
+CONTROL_NAMES= ["Button", "CheckBox", "RadioButton", "ApplicationBarIconButton", "Pivot"]
 CONTAINER_CONTROL_NAMES= ["Canvas", "Grid", "StackPanel"]
 
 # TODO externalize strings, share with C# code
@@ -20,16 +20,27 @@ originalPageVars= []
 boogiePageVars= []
 boogiePageClasses= []
 dummyPageVar= "dummyBoogieStringPageName"
+anonymousControlCount= 0;
+ANONYMOUS_CONTROL_PREFIX= "__BOOGIE_ANONYMOUS_CONTROL_"
+unrolls= 0
 
 def showUsage():
   print "PhoneBoogieCodeGenerator -- create boilerplate code for Boogie verification of Phone apps"
   print "Usage:"
-  print "\tPhoneBoogieCodeGenerator --controls <app_control_info_file> --output <code_output_file>\n"
+  print "\tPhoneBoogieCodeGenerator --staticUnroll <n> --controls <app_control_info_file> --output <code_output_file>\n"
   print "Options:"
+  print "\t--staticUnroll <n>: Do not generate loops, unroll up to n times. If not set generates loops (default). Short form: -u"
   print "\t--controls <app_control_info_file>: Phone app control info. See PhoneControlsExtractor. Short form: -c"
   print "\t--output <code_output_file>: file to write with boilerplate code. Short form: -o\n"
 
-def loadControlInfo(infoMap, controlClass, controlName, enabled, visible, clickHandler, checkedHandler, uncheckedHandler, bplName):
+def isAnonymousControl(control):
+  name= control["bplName"]
+  return name.find(ANONYMOUS_CONTROL_PREFIX) != -1
+
+def loadControlInfo(infoMap, controlClass, controlName, enabled, visible, clickHandler, checkedHandler, uncheckedHandler, selectionChangedHandler, bplName):
+  global anonymousControlCount
+  global ANONYMOUS_CONTROL_PREFIX
+
   newControl={}
   newControl["class"]= controlClass
   newControl["enabled"]= enabled
@@ -37,6 +48,11 @@ def loadControlInfo(infoMap, controlClass, controlName, enabled, visible, clickH
   newControl["clickHandler"]= clickHandler
   newControl["checkedHandler"]= checkedHandler
   newControl["uncheckedHandler"]= uncheckedHandler
+  newControl["selectionChangedHandler"]= selectionChangedHandler
+  if (bplName == ""):
+    # anonymous control, need a dummy boogie var, but we cannot know how it got initialized
+    bplName= ANONYMOUS_CONTROL_PREFIX + str(anonymousControlCount)
+    anonymousControlCount= anonymousControlCount+1
   newControl["bplName"]=bplName
   infoMap[controlName]= newControl
 
@@ -79,11 +95,15 @@ def outputMainProcedures(file, batFile):
       file.write("\tcall " + boogiePageClasses[k] + ".#ctor(" + boogiePageVars[k]["name"] + ");\n")
 
     file.write("\t//TODO still need to call Loaded handler on main page.\n")
-    file.write("\thavoc $doWork;\n")
-    file.write("\twhile ($doWork) {\n")
-    file.write("\t\tcall DriveControls();\n")
-    file.write("\t\thavoc $doWork;\n")
-    file.write("\t}\n")
+    if (unrolls == 0):
+      file.write("\thavoc $doWork;\n")
+      file.write("\twhile ($doWork) {\n")
+      file.write("\t\tcall DriveControls();\n")
+      file.write("\t\thavoc $doWork;\n")
+      file.write("\t}\n")
+    else:
+      for unr in range(unrolls):
+        file.write("\t\tcall DriveControls();\n")
 
     file.write("\tassume " + currentNavigationVariable + " == " + boogiePageVars[i]["boogieStringName"] + ";\n")
     file.write("\tcall DriveControls();\n")
@@ -109,13 +129,14 @@ def outputPageControlDriver(file, originalPageName, boogiePageName):
 
   file.write("\t" + CONTINUEONPAGE_VAR +":=true;\n")
   file.write("\thavoc $activeControl;\n")
+
   file.write("\twhile (" + CONTINUEONPAGE_VAR + ") {\n")
   activeControl=0
   ifInitialized= False
   for entry in staticControlsMap[originalPageName]["controls"].keys():
     controlInfo= staticControlsMap[originalPageName]["controls"][entry]
     if controlInfo["bplName"] == "":
-      continue
+      continue;
     if not ifInitialized:
       file.write("\t\tif ($activeControl == " + str(activeControl) + ") {\n")
       ifInitialized= True
@@ -138,6 +159,10 @@ def outputPageControlDriver(file, originalPageName, boogiePageName):
     if not controlInfo["uncheckedHandler"] == "":
       file.write("\t\t\t\tif ($handlerToActivate == 2) {\n")
       file.write("\t\t\t\t\tcall " + staticControlsMap[originalPageName]["class"] + "." + controlInfo["uncheckedHandler"] + "$System.Object$System.Windows.RoutedEventArgs(" + controlInfo["bplName"] + "[" + boogiePageName + "],null,null);\n")
+      file.write("\t\t\t\t}\n")
+    if not controlInfo["selectionChangedHandler"] == "":
+      file.write("\t\t\t\tif ($handlerToActivate == 3) {\n")
+      file.write("\t\t\t\t\tcall " + staticControlsMap[originalPageName]["class"] + "." + controlInfo["selectionChangedHandler"] + "$System.Object$System.Windows.RoutedEventArgs(" + controlInfo["bplName"] + "[" + boogiePageName + "],null,null);\n")
       file.write("\t\t\t\t}\n")
 
     file.write("\t\t\t}\n")
@@ -178,7 +203,7 @@ def outputControlDrivers(file, batFile):
 def outputURIHavocProcedure(file):
   file.write("procedure {:inline 1} __BOOGIE_Havoc_CurrentURI__();\n")
   file.write("implementation __BOOGIE_Havoc_CurrentURI__() {\n")
-  file.write("\thavoc " + currentNavigationVariable + ";\n")
+  # file.write("\thavoc " + currentNavigationVariable + ";\n")
   file.write("// TODO write assume statements to filter havoc'd variable to either of all pages\n")
   # file.write("\tassume )
   file.write("}\n")
@@ -203,14 +228,14 @@ def buildControlInfo(controlInfoFileName):
 
   file = open(controlInfoFileName, "r")
   # Info file format is first line containing only the main page, another line with boogie's current navigation variable and then one line per
-  # <pageClassName>,<page.xaml file>,<xaml boogie string representation>,<controlClassName>,<controlName (as in field name)>,<IsEnabledValue>,<VisibilityValue>,<ClickValue>,<CheckedValue>,<UncheckedValue>,<BoogieName>
+  # <pageClassName>,<page.xaml file>,<xaml boogie string representation>,<controlClassName>,<controlName (as in field name)>,<IsEnabledValue>,<VisibilityValue>,<ClickValue>,<CheckedValue>,<UncheckedValue>,<SelectionChangedValue>,<BoogieName>
   mainPageXAML= file.readline().strip()
   currentNavigationVariable= file.readline().strip()
   mainAppClassname= file.readline().strip()
 
   infoLine= file.readline().strip()
   while not infoLine == "":
-    pageClass, pageName, pageBoogieStringName, controlClass, controlName, enabled, visible, clickHandler, checkedHandler, uncheckedHandler, bplName= infoLine.split(",")
+    pageClass, pageName, pageBoogieStringName, controlClass, controlName, enabled, visible, clickHandler, checkedHandler, uncheckedHandler, selectionChangedHandler, bplName= infoLine.split(",")
     pageInfo={}
     pageInfo["class"]=pageClass
     try:
@@ -224,7 +249,7 @@ def buildControlInfo(controlInfoFileName):
       pageControlInfo= pageInfo["controls"]
     except KeyError:
       pageInfo["controls"]=pageControlInfo
-    loadControlInfo(pageControlInfo, controlClass, controlName, enabled, visible, clickHandler, checkedHandler, uncheckedHandler, bplName)
+    loadControlInfo(pageControlInfo, controlClass, controlName, enabled, visible, clickHandler, checkedHandler, uncheckedHandler, selectionChangedHandler, bplName)
     pageInfo["controls"]= pageControlInfo
     staticControlsMap[pageName]=pageInfo
 
@@ -232,16 +257,18 @@ def buildControlInfo(controlInfoFileName):
   file.close()
 
 def main():
+  global unrolls
   controlFile= ""
   outputFile= ""
+
   try:
-    opts, args= getopt.getopt(sys.argv[1:], "c:o:", ["controls=","output="])
-  except geopt.error, msg:
+    opts, args= getopt.getopt(sys.argv[1:], "c:o:u:", ["controls=","output=","staticUnroll="])
+  except getopt.error, msg:
     print msg
     showUsage()
     sys.exit(2)
 
-  if not len(opts) == 2:
+  if not len(opts) >= 2:
     print "Missing options"
     showUsage()
     sys.exit(2)
@@ -251,6 +278,8 @@ def main():
       controlFile= a
     if o in ["-o", "--output"]:
       outputFile= a
+    if o in ["-u", "--staticUnroll"]:
+      unrolls= int(a)
 
   buildControlInfo(controlFile)
   outputBoilerplate(outputFile, outputFile + ".bat")

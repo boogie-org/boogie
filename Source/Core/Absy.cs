@@ -95,6 +95,7 @@ namespace Microsoft.Boogie {
   using Microsoft.Boogie.AbstractInterpretation;
   using AI = Microsoft.AbstractInterpretationFramework;
   using Graphing;
+  using Set = GSet<object>;
 
   [ContractClass(typeof(AbsyContracts))]
   public abstract class Absy {
@@ -211,6 +212,35 @@ namespace Microsoft.Boogie {
       stream.SetToken(this);
       Emitter.Declarations(this.TopLevelDeclarations, stream);
     }
+
+    public void ProcessDatatypeConstructors() {
+      Dictionary<string, DatatypeConstructor> constructors = new Dictionary<string, DatatypeConstructor>();
+      List<Declaration> prunedTopLevelDeclarations = new List<Declaration>();
+      foreach (Declaration decl in TopLevelDeclarations) {
+        Function func = decl as Function;
+        if (func == null || !QKeyValue.FindBoolAttribute(decl.Attributes, "constructor")) {
+          prunedTopLevelDeclarations.Add(decl);
+          continue;
+        }
+        if (constructors.ContainsKey(func.Name)) continue;
+        DatatypeConstructor constructor = new DatatypeConstructor(func);
+        constructors.Add(func.Name, constructor);
+        prunedTopLevelDeclarations.Add(constructor);
+      }
+      TopLevelDeclarations = prunedTopLevelDeclarations;
+    
+      foreach (DatatypeConstructor f in constructors.Values) {
+        for (int i = 0; i < f.InParams.Length; i++) {
+          DatatypeSelector selector = new DatatypeSelector(f, i);
+          f.selectors.Add(selector);
+          TopLevelDeclarations.Add(selector);
+        }
+        DatatypeMembership membership = new DatatypeMembership(f);
+        f.membership = membership;
+        TopLevelDeclarations.Add(membership);
+      }
+    }
+
     /// <summary>
     /// Returns the number of name resolution errors.
     /// </summary>
@@ -264,12 +294,11 @@ namespace Microsoft.Boogie {
       }
     }
 
-
     private void ResolveTypes(ResolutionContext rc) {
       Contract.Requires(rc != null);
       // first resolve type constructors
       foreach (Declaration d in TopLevelDeclarations) {
-        if (d is TypeCtorDecl)
+        if (d is TypeCtorDecl && !QKeyValue.FindBoolAttribute(d.Attributes, "ignore"))
           d.Resolve(rc);
       }
 
@@ -277,7 +306,7 @@ namespace Microsoft.Boogie {
       List<TypeSynonymDecl/*!*/>/*!*/ synonymDecls = new List<TypeSynonymDecl/*!*/>();
       foreach (Declaration d in TopLevelDeclarations) {
         Contract.Assert(d != null);
-        if (d is TypeSynonymDecl)
+        if (d is TypeSynonymDecl && !QKeyValue.FindBoolAttribute(d.Attributes, "ignore"))
           synonymDecls.Add((TypeSynonymDecl)d);
       }
 
@@ -312,9 +341,6 @@ namespace Microsoft.Boogie {
           seeker.Visit(d);
         }
       }
-
-      AxiomExpander expander = new AxiomExpander(this, tc);
-      expander.CollectExpansions();
     }
 
     public void ComputeStronglyConnectedComponents() {
@@ -355,20 +381,20 @@ namespace Microsoft.Boogie {
       }
     }
 
-    void CreateProceduresForLoops(Implementation impl, Graph<Block/*!*/>/*!*/ g, 
-                                  List<Implementation/*!*/>/*!*/ loopImpls, 
+    void CreateProceduresForLoops(Implementation impl, Graph<Block/*!*/>/*!*/ g,
+                                  List<Implementation/*!*/>/*!*/ loopImpls,
                                   Dictionary<string, Dictionary<string, Block>> fullMap) {
       Contract.Requires(impl != null);
       Contract.Requires(cce.NonNullElements(loopImpls));
-      // Enumerate the headers 
+      // Enumerate the headers
       // for each header h:
-      //   create implementation p_h with 
+      //   create implementation p_h with
       //     inputs = inputs, outputs, and locals of impl
       //     outputs = outputs and locals of impl
       //     locals = empty set
       //   add call o := p_h(i) at the beginning of the header block
       //   break the back edges whose target is h
-      // Enumerate the headers again to create the bodies of p_h 
+      // Enumerate the headers again to create the bodies of p_h
       // for each header h:
       //   compute the loop corresponding to h
       //   make copies of all blocks in the loop for h
@@ -697,28 +723,111 @@ namespace Microsoft.Boogie {
       }
       return g;
     }
-    
-    public Dictionary<string, Dictionary<string, Block>> ExtractLoops() {
-      List<Implementation/*!*/>/*!*/ loopImpls = new List<Implementation/*!*/>();
-      Dictionary<string, Dictionary<string, Block>> fullMap = new Dictionary<string, Dictionary<string, Block>>();
-      foreach (Declaration d in this.TopLevelDeclarations) {
-        Implementation impl = d as Implementation;
-        if (impl != null && impl.Blocks != null && impl.Blocks.Count > 0) {
-          impl.PruneUnreachableBlocks();
-          Graph<Block/*!*/>/*!*/ g = GraphFromImpl(impl);
-          g.ComputeLoops();
-          if (!g.Reducible) {
-            throw new Exception("Irreducible flow graphs are unsupported.");
-          }
-          CreateProceduresForLoops(impl, g, loopImpls, fullMap);
+
+    public class IrreducibleLoopException : Exception {}
+
+    public Graph<Block> ProcessLoops(Implementation impl) {
+      while (true) {
+        impl.PruneUnreachableBlocks();
+        impl.ComputePredecessorsForBlocks();
+        Graph<Block/*!*/>/*!*/ g = GraphFromImpl(impl);
+        g.ComputeLoops();
+        if (g.Reducible) {
+          return g;
         }
+        throw new IrreducibleLoopException();
+#if USED_CODE
+        System.Diagnostics.Debug.Assert(g.SplitCandidates.Count > 0);
+        Block splitCandidate = null;
+        foreach (Block b in g.SplitCandidates) {
+          if (b.Predecessors.Length > 1) {
+            splitCandidate = b;
+            break;
+          }
+        }
+        System.Diagnostics.Debug.Assert(splitCandidate != null);
+        int count = 0;
+        foreach (Block b in splitCandidate.Predecessors) {
+          GotoCmd gotoCmd = (GotoCmd)b.TransferCmd;
+          gotoCmd.labelNames.Remove(splitCandidate.Label);
+          gotoCmd.labelTargets.Remove(splitCandidate);
+
+          CodeCopier codeCopier = new CodeCopier(new Hashtable(), new Hashtable());
+          CmdSeq newCmdSeq = codeCopier.CopyCmdSeq(splitCandidate.Cmds);
+          TransferCmd newTransferCmd;
+          GotoCmd splitGotoCmd = splitCandidate.TransferCmd as GotoCmd;
+          if (splitGotoCmd == null) {
+            newTransferCmd = new ReturnCmd(splitCandidate.tok);
+          }
+          else {
+            StringSeq newLabelNames = new StringSeq();
+            newLabelNames.AddRange(splitGotoCmd.labelNames);
+            BlockSeq newLabelTargets = new BlockSeq();
+            newLabelTargets.AddRange(splitGotoCmd.labelTargets);
+            newTransferCmd = new GotoCmd(splitCandidate.tok, newLabelNames, newLabelTargets);
+          }
+          Block copy = new Block(splitCandidate.tok, splitCandidate.Label + count++, newCmdSeq, newTransferCmd);
+
+          impl.Blocks.Add(copy);
+          gotoCmd.AddTarget(copy);
+        }
+#endif
       }
-      foreach (Implementation/*!*/ loopImpl in loopImpls) {
-        Contract.Assert(loopImpl != null);
-        TopLevelDeclarations.Add(loopImpl);
-        TopLevelDeclarations.Add(loopImpl.Proc);
-      }
-      return fullMap;
+    }
+
+    public Dictionary<string, Dictionary<string, Block>> ExtractLoops()
+    {
+        List<Implementation/*!*/>/*!*/ loopImpls = new List<Implementation/*!*/>();
+        Dictionary<string, Dictionary<string, Block>> fullMap = new Dictionary<string, Dictionary<string, Block>>();
+        foreach (Declaration d in this.TopLevelDeclarations)
+        {
+            Implementation impl = d as Implementation;
+            if (impl != null && impl.Blocks != null && impl.Blocks.Count > 0)
+            {
+                try
+                {
+                    Graph<Block> g = ProcessLoops(impl);
+                    CreateProceduresForLoops(impl, g, loopImpls, fullMap);
+                }
+                catch (IrreducibleLoopException)
+                {
+                    System.Diagnostics.Debug.Assert(!fullMap.ContainsKey(impl.Name));
+                    fullMap[impl.Name] = null;
+
+                    // statically unroll loops in this procedure
+
+                    // First, build a map of the current blocks
+                    var origBlocks = new Dictionary<string, Block>();
+                    foreach (var blk in impl.Blocks) origBlocks.Add(blk.Label, blk);
+
+                    // unroll
+                    Block start = impl.Blocks[0];
+                    impl.Blocks = LoopUnroll.UnrollLoops(start, CommandLineOptions.Clo.RecursionBound);
+
+                    // Now construct the "map back" information
+                    // Resulting block label -> original block
+                    var blockMap = new Dictionary<string, Block>();
+                    foreach (var blk in impl.Blocks)
+                    {
+                        var sl = LoopUnroll.sanitizeLabel(blk.Label);
+                        if (sl == blk.Label) blockMap.Add(blk.Label, blk);
+                        else
+                        {
+                            Contract.Assert(origBlocks.ContainsKey(sl));
+                            blockMap.Add(blk.Label, origBlocks[sl]);
+                        }
+                    }
+                    fullMap[impl.Name] = blockMap;
+                }
+            }
+        }
+        foreach (Implementation/*!*/ loopImpl in loopImpls)
+        {
+            Contract.Assert(loopImpl != null);
+            TopLevelDeclarations.Add(loopImpl);
+            TopLevelDeclarations.Add(loopImpl.Proc);
+        }
+        return fullMap;
     }
 
     public override Absy StdDispatch(StandardVisitor visitor) {
@@ -927,7 +1036,7 @@ namespace Microsoft.Boogie {
     }
     public override void Register(ResolutionContext rc) {
       //Contract.Requires(rc != null);
-      // nothing to register
+      rc.AddAxiom(this);
     }
     public override void Resolve(ResolutionContext rc) {
       //Contract.Requires(rc != null);
@@ -1316,7 +1425,7 @@ namespace Microsoft.Boogie {
       : base(tok, typedIdent) {
       Contract.Requires(tok != null);
       Contract.Requires(typedIdent != null);
-      Contract.Requires(typedIdent.Name != null && typedIdent.Name.Length > 0);
+      Contract.Requires(typedIdent.Name != null && (!typedIdent.HasName || typedIdent.Name.Length > 0));
       Contract.Requires(typedIdent.WhereExpr == null);
       // base(tok, typedIdent);
       this.Unique = true;
@@ -1685,28 +1794,43 @@ namespace Microsoft.Boogie {
     }
   }
 
-  public class Expansion {
-    public string ignore; // when to ignore
-    public Expr/*!*/ body;
-    public TypeVariableSeq/*!*/ TypeParameters;
-    public Variable[]/*!*/ formals;
-    [ContractInvariantMethod]
-    void ObjectInvariant() {
-      Contract.Invariant(body != null);
-      Contract.Invariant(TypeParameters != null);
-      Contract.Invariant(formals != null);
+  public class DatatypeConstructor : Function {
+    public List<DatatypeSelector> selectors;
+    public DatatypeMembership membership;
+
+    public DatatypeConstructor(Function func) 
+    : base(func.tok, func.Name, func.TypeParameters, func.InParams, func.OutParams[0], func.Comment, func.Attributes)
+    {
+      selectors = new List<DatatypeSelector>();
     }
+  }
 
+  public class DatatypeSelector : Function {
+    public Function constructor;
+    public int index;
+    public DatatypeSelector(Function constructor, int index)
+      : base(constructor.tok, 
+             constructor.InParams[index].Name + "#" + constructor.Name,
+             new VariableSeq(new Formal(constructor.tok, new TypedIdent(constructor.tok, "", constructor.OutParams[0].TypedIdent.Type), true)),
+             new Formal(constructor.tok, new TypedIdent(constructor.tok, "", constructor.InParams[index].TypedIdent.Type), false)) 
+    {
+      this.constructor = constructor;
+      this.index = index;
+    }
+    public override void Emit(TokenTextWriter stream, int level) { }
+  }
 
-    public Expansion(string ignore, Expr body,
-                     TypeVariableSeq/*!*/ typeParams, Variable[] formals) {
-      Contract.Requires(typeParams != null);
-      Contract.Requires(formals != null);
-      Contract.Requires(body != null);
-      this.ignore = ignore;
-      this.body = body;
-      this.TypeParameters = typeParams;
-      this.formals = formals;
+  public class DatatypeMembership : Function {
+    public Function constructor;
+    public DatatypeMembership(Function constructor)
+      : base(constructor.tok, 
+             "is#" + constructor.Name,
+             new VariableSeq(new Formal(constructor.tok, new TypedIdent(constructor.tok, "", constructor.OutParams[0].TypedIdent.Type), true)),
+             new Formal(constructor.tok, new TypedIdent(constructor.tok, "", Type.Bool), false)) 
+    {
+      this.constructor = constructor;
+    }
+    public override void Emit(TokenTextWriter stream, int level) {
     }
   }
 
@@ -1715,13 +1839,7 @@ namespace Microsoft.Boogie {
 
     // the body is only set if the function is declared with {:inline}
     public Expr Body;
-    public List<Expansion/*!*/> expansions;
     public bool doingExpansion;
-    [ContractInvariantMethod]
-    void ObjectInvariant() {
-      Contract.Invariant(cce.NonNullElements(expansions, true));
-    }
-
 
     private bool neverTrigger;
     private bool neverTriggerComputed;
@@ -1929,6 +2047,7 @@ namespace Microsoft.Boogie {
         stream.WriteLine(this, level, "// " + Comment);
       }
       stream.Write(this, level, "{0}requires ", Free ? "free " : "");
+      Cmd.EmitAttributes(stream, Attributes);
       this.Condition.Emit(stream);
       stream.WriteLine(";");
     }
@@ -2024,6 +2143,7 @@ namespace Microsoft.Boogie {
         stream.WriteLine(this, level, "// " + Comment);
       }
       stream.Write(this, level, "{0}ensures ", Free ? "free " : "");
+      Cmd.EmitAttributes(stream, Attributes);
       this.Condition.Emit(stream);
       stream.WriteLine(";");
     }
@@ -2295,6 +2415,18 @@ namespace Microsoft.Boogie {
 
         return false;
       }
+    }
+
+    public Implementation(IToken tok, string name, TypeVariableSeq typeParams, VariableSeq inParams, VariableSeq outParams, VariableSeq localVariables, [Captured] StmtList structuredStmts, QKeyValue kv)
+      : this(tok, name, typeParams, inParams, outParams, localVariables, structuredStmts, kv, new Errors()) {
+      Contract.Requires(structuredStmts != null);
+      Contract.Requires(localVariables != null);
+      Contract.Requires(outParams != null);
+      Contract.Requires(inParams != null);
+      Contract.Requires(typeParams != null);
+      Contract.Requires(name != null);
+      Contract.Requires(tok != null);
+      //:this(tok, name, typeParams, inParams, outParams, localVariables, structuredStmts, null, new Errors());
     }
 
     public Implementation(IToken tok, string name, TypeVariableSeq typeParams, VariableSeq inParams, VariableSeq outParams, VariableSeq localVariables, [Captured] StmtList structuredStmts)
@@ -2644,13 +2776,15 @@ namespace Microsoft.Boogie {
             CmdSeq newCommands = new CmdSeq();
             if (instrumentEntry) {
               Expr inv = (Expr)b.Lattice.ToPredicate(b.PreInvariant); /*b.PreInvariantBuckets.GetDisjunction(b.Lattice);*/
-              PredicateCmd cmd = CommandLineOptions.Clo.InstrumentWithAsserts ? (PredicateCmd)new AssertCmd(Token.NoToken, inv) : (PredicateCmd)new AssumeCmd(Token.NoToken, inv);
+              var kv = new QKeyValue(Token.NoToken, "inferred", new List<object>(), null);
+              PredicateCmd cmd = CommandLineOptions.Clo.InstrumentWithAsserts ? (PredicateCmd)new AssertCmd(Token.NoToken, inv, kv) : (PredicateCmd)new AssumeCmd(Token.NoToken, inv, kv);
               newCommands.Add(cmd);
             }
             newCommands.AddRange(b.Cmds);
             if (instrumentExit) {
               Expr inv = (Expr)b.Lattice.ToPredicate(b.PostInvariant);
-              PredicateCmd cmd = CommandLineOptions.Clo.InstrumentWithAsserts ? (PredicateCmd)new AssertCmd(Token.NoToken, inv) : (PredicateCmd)new AssumeCmd(Token.NoToken, inv);
+              var kv = new QKeyValue(Token.NoToken, "inferred", new List<object>(), null);
+              PredicateCmd cmd = CommandLineOptions.Clo.InstrumentWithAsserts ? (PredicateCmd)new AssertCmd(Token.NoToken, inv, kv) : (PredicateCmd)new AssumeCmd(Token.NoToken, inv, kv);
               newCommands.Add(cmd);
             }
             b.Cmds = newCommands;
@@ -2697,7 +2831,7 @@ namespace Microsoft.Boogie {
     /// </summary>
     override public void ComputeStronglyConnectedComponents() {
       if (!this.BlockPredecessorsComputed)
-        ComputedPredecessorsForBlocks();
+        ComputePredecessorsForBlocks();
 
       Adjacency<Block/*!*/> next = new Adjacency<Block/*!*/>(Successors);
       Adjacency<Block/*!*/> prev = new Adjacency<Block/*!*/>(Predecessors);
@@ -2759,7 +2893,10 @@ namespace Microsoft.Boogie {
     /// <summary>
     /// Compute the predecessor informations for the blocks
     /// </summary>
-    private void ComputedPredecessorsForBlocks() {
+    public void ComputePredecessorsForBlocks() {
+      foreach (Block b in this.Blocks) {
+        b.Predecessors = new BlockSeq();
+      }
       foreach (Block b in this.Blocks) {
         GotoCmd gtc = b.TransferCmd as GotoCmd;
         if (gtc != null) {
@@ -3148,11 +3285,11 @@ namespace Microsoft.Boogie {
       Contract.Requires(varSeq != null);
     }
     /*  PR: the following two constructors cause Spec# crashes
-        public TypeVariableSeq(TypeVariable! var) 
+        public TypeVariableSeq(TypeVariable! var)
           : base(new TypeVariable! [] { var })
         {
         }
-        public TypeVariableSeq() 
+        public TypeVariableSeq()
           : base(new TypeVariable![0])
         {
         } */
@@ -3431,12 +3568,6 @@ namespace Microsoft.Boogie {
           stream.WriteLine();
         }
         d.Emit(stream, 0);
-      }
-    }
-    public void InstrumentWithInvariants() {
-      foreach (Declaration/*!*/ d in this) {
-        Contract.Assert(d != null);
-        d.InstrumentWithInvariants();
       }
     }
   }

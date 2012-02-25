@@ -1,0 +1,14 @@
+
+-------------------- t1.bpl --------------------
+t1.bpl(23,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    t1.bpl(16,3): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+
+-------------------- t2.bpl --------------------
+t2.bpl(23,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    t2.bpl(16,3): anon0
+
+Boogie program verifier finished with 0 verified, 1 error

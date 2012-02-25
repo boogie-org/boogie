@@ -30,16 +30,16 @@
 ]\\)*" . font-lock-comment-face)
 
    `(,(dafny-regexp-opt '(
-        "class" "datatype" "function" "ghost" "var" "method" "constructor" "unlimited"
-        "module" "imports" "static" "refines" "replaces" "by"
+        "class" "datatype" "type" "function" "predicate" "ghost" "var" "method" "constructor" "unlimited"
+        "module" "imports" "static" "refines"
         "returns" "requires" "ensures" "modifies" "reads" "free"
         "invariant" "decreases"
         )) . font-lock-builtin-face)
    `(,(dafny-regexp-opt '(
         "assert" "assume" "break" "choose" "then" "else" "havoc" "if" "label" "return" "while" "print"
-        "old" "forall" "exists" "new" "foreach" "in" "this" "fresh" "allocated"
+        "old" "forall" "exists" "new" "parallel" "in" "this" "fresh" "allocated"
         "match" "case" "false" "true" "null")) . font-lock-keyword-face)
-   `(,(dafny-regexp-opt '("array" "array2" "array3" "bool" "nat" "int" "object" "set" "seq")) . font-lock-type-face)
+   `(,(dafny-regexp-opt '("array" "array2" "array3" "bool" "multiset" "nat" "int" "object" "set" "seq")) . font-lock-type-face)
    )
   "Minimal highlighting for Dafny mode")
 

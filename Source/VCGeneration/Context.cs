@@ -158,11 +158,6 @@ public abstract class ProverContextContracts:ProverContext{
     public override void AddAxiom(Axiom ax, string attributes) {//Contract.Requires(ax != null);
       base.AddAxiom(ax, attributes);
 
-      string ignore = ax.FindStringAttribute("ignore");
-      if (ignore != null && genOptions.IsAnyProverCommandSupported(ignore)) {
-        return;
-      }
-
       axiomConjuncts.Add(translator.Translate(ax.Expr));
     }
 

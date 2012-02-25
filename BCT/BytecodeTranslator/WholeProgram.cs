@@ -15,6 +15,11 @@ using System.Diagnostics.Contracts;
 namespace BytecodeTranslator {
   class WholeProgram : TraverserFactory {
 
+    public override TranslationPlugins.Translator getTranslator(Sink sink, IDictionary<IUnit, IContractProvider> contractProviders, IDictionary<IUnit, PdbReader> pdbReaders) {
+      BaseTranslator translator = new BaseTranslator(this, sink, contractProviders, pdbReaders);
+      return translator;
+    }
+
     /// <summary>
     /// Table to be filled by the metadata traverser before visiting any assemblies.
     /// 
@@ -24,21 +29,21 @@ namespace BytecodeTranslator {
     /// </summary>
     readonly public Dictionary<ITypeReference, List<ITypeReference>> subTypes = new Dictionary<ITypeReference, List<ITypeReference>>();
 
-    public override MetadataTraverser MakeMetadataTraverser(Sink sink,
+    public override BCTMetadataTraverser MakeMetadataTraverser(Sink sink,
       IDictionary<IUnit, IContractProvider> contractProviders, // TODO: remove this parameter?
       IDictionary<IUnit, PdbReader> pdbReaders) {
-      return new WholeProgramMetadataSemantics(this, sink, pdbReaders);
+      return new WholeProgramMetadataSemantics(this, sink, pdbReaders, this);
     }
 
-    public class WholeProgramMetadataSemantics : MetadataTraverser {
+    public class WholeProgramMetadataSemantics : BCTMetadataTraverser {
 
       readonly WholeProgram parent;
       readonly Sink sink;
 
       readonly Dictionary<IUnit, bool> codeUnderAnalysis = new Dictionary<IUnit, bool>();
 
-      public WholeProgramMetadataSemantics(WholeProgram parent, Sink sink, IDictionary<IUnit, PdbReader> pdbReaders)
-        : base(sink, pdbReaders) {
+      public WholeProgramMetadataSemantics(WholeProgram parent, Sink sink, IDictionary<IUnit, PdbReader> pdbReaders, TraverserFactory factory)
+        : base(sink, pdbReaders, factory) {
         this.parent = parent;
         this.sink = sink;
       }
@@ -48,13 +53,13 @@ namespace BytecodeTranslator {
         var typeRecorder = new RecordSubtypes(this.parent.subTypes);
         foreach (var a in assemblies) {
           this.codeUnderAnalysis.Add(a, true);
-          typeRecorder.Visit(a);
+          typeRecorder.Traverse((IAssembly)a);
         }
         #endregion
         base.TranslateAssemblies(assemblies);
       }
       
-      class RecordSubtypes : BaseMetadataTraverser {
+      class RecordSubtypes : MetadataTraverser {
 
         Dictionary<ITypeReference, List<ITypeReference>> subTypes;
 
@@ -62,14 +67,14 @@ namespace BytecodeTranslator {
           this.subTypes = subTypes;
         }
 
-        public override void Visit(ITypeDefinition typeDefinition) {
+        public override void TraverseChildren(ITypeDefinition typeDefinition) {
           foreach (var baseClass in typeDefinition.BaseClasses) {
             if (!this.subTypes.ContainsKey(baseClass)) {
               this.subTypes[baseClass] = new List<ITypeReference>();
             }
             this.subTypes[baseClass].Add(typeDefinition);
           }
-          base.Visit(typeDefinition);
+          base.TraverseChildren(typeDefinition);
         }
       }
 
@@ -95,25 +100,38 @@ namespace BytecodeTranslator {
         this.subTypes = parent.subTypes;
       }
 
-      public override void Visit(IMethodCall methodCall) {
+      public override void TraverseChildren(IMethodCall methodCall) {
+        var resolvedMethod = Sink.Unspecialize(methodCall.MethodToCall).ResolvedMethod;
+
+        bool isEventAdd = resolvedMethod.IsSpecialName && resolvedMethod.Name.Value.StartsWith("add_");
+        bool isEventRemove = resolvedMethod.IsSpecialName && resolvedMethod.Name.Value.StartsWith("remove_");
+        if (isEventAdd || isEventRemove) {
+          base.TraverseChildren(methodCall);
+          return;
+        }
 
         if (!methodCall.IsVirtualCall) {
-          base.Visit(methodCall);
+          base.TraverseChildren(methodCall);
           return;
         }
         var containingType = methodCall.MethodToCall.ContainingType;
         List<ITypeReference> subTypesOfContainingType;
         if (!this.subTypes.TryGetValue(containingType, out subTypesOfContainingType)) {
-          base.Visit(methodCall);
+          base.TraverseChildren(methodCall);
           return;
         }
         Contract.Assert(0 < subTypesOfContainingType.Count);
         Contract.Assert(!methodCall.IsStaticCall);
-        var resolvedMethod = methodCall.MethodToCall.ResolvedMethod;
         Contract.Assert(!resolvedMethod.IsConstructor);
         var overrides = FindOverrides(containingType, resolvedMethod);
-        if (0 == overrides.Count) {
-          base.Visit(methodCall);
+        bool same = true;
+        foreach (var o in overrides) {
+          IMethodDefinition resolvedOverride = Sink.Unspecialize(o.Item2).ResolvedMethod;
+          if (resolvedOverride != resolvedMethod)
+            same = false;
+        }
+        if (0 == overrides.Count || same) {
+          base.TraverseChildren(methodCall);
           return;
         }
 
@@ -122,7 +140,7 @@ namespace BytecodeTranslator {
         List<Bpl.Expr> inexpr;
         List<Bpl.IdentifierExpr> outvars;
         Bpl.IdentifierExpr thisExpr;
-        Dictionary<Bpl.IdentifierExpr, Bpl.IdentifierExpr> toBoxed;
+        Dictionary<Bpl.IdentifierExpr, Tuple<Bpl.IdentifierExpr,bool>> toBoxed;
         var proc = TranslateArgumentsAndReturnProcedure(token, methodCall.MethodToCall, resolvedMethod, methodCall.IsStaticCall ? null : methodCall.ThisArgument, methodCall.Arguments, out inexpr, out outvars, out thisExpr, out toBoxed);
 
 
@@ -151,6 +169,19 @@ namespace BytecodeTranslator {
         foreach (var typeMethodPair in overrides) {
           var t = typeMethodPair.Item1;
           var m = typeMethodPair.Item2;
+
+          // guard: is#T($DynamicType(local_variable))
+          var typeFunction = this.sink.FindOrDefineType(t.ResolvedType);
+          if (typeFunction == null) {
+            // BUGBUG!! This just silently skips the branch that would dispatch to t's implementation of the method!
+            continue;
+          }
+          var funcName = String.Format("is#{0}", typeFunction.Name);
+          var identExpr = Bpl.Expr.Ident(new Bpl.LocalVariable(token, new Bpl.TypedIdent(token, funcName, Bpl.Type.Bool)));
+          var funcCall = new Bpl.FunctionCall(identExpr);
+          var exprs = new Bpl.ExprSeq(this.sink.Heap.DynamicType(inexpr[0]));
+          var guard = new Bpl.NAryExpr(token, funcCall, exprs);
+
           var thenBranch = new Bpl.StmtListBuilder();
           methodname = TranslationHelper.CreateUniqueMethodName(m); // REVIEW: Shouldn't this be call to FindOrCreateProcedure?
           if (attrib != null)
@@ -158,17 +189,23 @@ namespace BytecodeTranslator {
           else
             call = new Bpl.CallCmd(token, methodname, inexpr, outvars);
           thenBranch.Add(call);
+
           ifcmd = new Bpl.IfCmd(token,
-            Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Eq,
-            this.sink.Heap.DynamicType(inexpr[0]),
-            this.sink.FindOrCreateType(t)
-            ),
+            guard,
             thenBranch.Collect(token),
             null,
             elseBranch.Collect(token)
             );
           elseBranch = new Bpl.StmtListBuilder();
           elseBranch.Add(ifcmd);
+        }
+
+        if (ifcmd == null) {
+          // BUGBUG: then no override made it into the if-statement.
+          // currently that happens when all types are generic.
+          // Should be able to remove this when that is fixed.
+          base.Traverse(methodCall);
+          return;
         }
 
         this.StmtTraverser.StmtBuilder.Add(ifcmd);

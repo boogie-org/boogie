@@ -408,37 +408,44 @@ class Translator {
     }
   }
 
-  // TODO: This method has not yet been updated to the new permission model
   def translateMethodTransform(mt: MethodTransform): List[Decl] = {
-    // extract coupling invariants
-    def Invariants(e: Expression): Expression = desugar(e) match {
-      case And(a,b) => And(Invariants(a), Invariants(b))
-      case Implies(a,b) => Implies(a, Invariants(b))
+    // extract coupling invariants from the class pool of invariants
+    val pool = mt.Parent.CouplingInvariants
+
+    def extractInv(e: Expression): Expression = desugar(e) match {
+      case And(a,b) => And(extractInv(a), extractInv(b))
+      case Implies(a,b) => Implies(a, extractInv(b))
       case Access(ma, Full) if ! ma.isPredicate =>
-        val cis = for (ci <- mt.Parent.CouplingInvariants; if (ci.fields.contains(ma.f))) yield FractionOf(ci.e, ci.fraction(ma.f));
-        cis.foldLeft(BoolLiteral(true):Expression)(And(_,_))
+        {for (ci <- pool; 
+          if (ci.fields.contains(ma.f))) 
+          yield scaleExpressionByPermission(ci.e, ci.fraction(ma.f), ma.pos)}.foldLeft(BoolLiteral(true):Expression)(And(_,_))
       case _: PermissionExpr => throw new NotSupportedException("not supported")
       case _ => BoolLiteral(true)
     }
 
-    val preCI = if (mt.Parent.CouplingInvariants.size > 0) Preconditions(mt.Spec).map(Invariants) else Nil
-    val postCI = if (mt.Parent.CouplingInvariants.size > 0) Postconditions(mt.refines.Spec).map(Invariants) else Nil
+    val preCI = Preconditions(mt.Spec).map(extractInv)
+    val postCI = Postconditions(mt.refines.Spec).map(extractInv)
 
+    // pick new k for this method, that represents the fraction for read permissions
+    val (methodKV, methodK) = Boogie.NewBVar("methodK", tint, true)
+    val methodKStmts = BLocal(methodKV) :: bassume(0 < methodK && 1000*methodK < permissionOnePercent)
+ 
     // check definedness of refinement specifications
     Proc(mt.FullName + "$checkDefinedness",
       NewBVarWhere("this", new Type(currentClass)) :: (mt.Ins map {i => Variable2BVarWhere(i)}),
       mt.Outs map {i => Variable2BVarWhere(i)},
       GlobalNames,
       DefaultPrecondition(),
+        methodKStmts :::
         DefinePreInitialState :::
         bassume(CanAssumeFunctionDefs) ::
         // check precondition
-        InhaleWithChecking(Preconditions(mt.Spec) ::: preCI, "precondition", todoiparam) :::
+        InhaleWithChecking(Preconditions(mt.Spec) ::: preCI, "precondition", methodK) :::
         DefineInitialState :::
         resetState(etran) :::
         // check postcondition
-        InhaleWithChecking(Postconditions(mt.refines.Spec), "postcondition", todoiparam) :::
-        tag(InhaleWithChecking(postCI ::: Postconditions(mt.spec), "postcondition", todoiparam), keepTag)
+        InhaleWithChecking(Postconditions(mt.refines.Spec), "postcondition", methodK) :::
+        tag(InhaleWithChecking(postCI ::: Postconditions(mt.spec), "postcondition", methodK), keepTag)
       ) ::
     // check correctness of refinement
     Proc(mt.FullName,
@@ -446,17 +453,18 @@ class Translator {
       mt.Outs map {i => Variable2BVarWhere(i)},
       GlobalNames,
       DefaultPrecondition(),
+        methodKStmts ::: 
         assert2assume {
           bassume(CurrentModule ==@ Boogie.VarExpr(ModuleName(currentClass))) ::
           bassume(CanAssumeFunctionDefs) ::
           DefinePreInitialState :::
-          Inhale(Preconditions(mt.Spec) ::: preCI, "precondition", todoiparam) :::
+          Inhale(Preconditions(mt.Spec) ::: preCI, "precondition", methodK) :::
           DefineInitialState :::
-          translateStatements(mt.body, todoiparam) :::
-          Exhale(Postconditions(mt.refines.Spec) map {p => (p, ErrorMessage(p.pos, "The postcondition at " + p.pos + " might not hold."))}, "postcondition", todoiparam, todobparam) :::
+          translateStatements(mt.body, methodK) :::
+          Exhale(Postconditions(mt.refines.Spec) map {p => (p, ErrorMessage(p.pos, "The postcondition at " + p.pos + " might not hold."))}, "postcondition", methodK, true) :::
           tag(Exhale(
             (postCI map {p => (p, ErrorMessage(mt.pos, "The coupling invariant might not be preserved."))}) :::
-            (Postconditions(mt.spec) map {p => (p, ErrorMessage(p.pos, "The postcondition at " + p.pos + " might not hold."))}), "postcondition", todoiparam, todobparam), keepTag)
+            (Postconditions(mt.spec) map {p => (p, ErrorMessage(p.pos, "The postcondition at " + p.pos + " might not hold."))}), "postcondition", methodK, true), keepTag)
         }
       )
 
@@ -572,7 +580,7 @@ class Translator {
           //update the local, provided a rhs was provided
           case None => Nil
           case Some(rhs) => translateStatement(Assign(new VariableExpr(lv.v), rhs), methodK) }}
-      case s: SpecStmt => translateSpecStmt(s)
+      case s: SpecStmt => translateSpecStmt(s, methodK)
       case c: Call => translateCall(c, methodK)
       case Install(obj, lowerBounds, upperBounds) =>
         Comment("install") ::
@@ -885,7 +893,7 @@ class Translator {
         // decrease credits
         new Boogie.MapUpdate(etran.Credits, TrExpr(ch), new Boogie.MapSelect(etran.Credits, TrExpr(ch)) - 1)
       case r: RefinementBlock =>
-        translateRefinement(r)
+        translateRefinement(r, methodK)
       case _: Signal => throw new NotSupportedException("not implemented")
       case _: Wait => throw new NotSupportedException("not implemented")      
     }
@@ -1009,10 +1017,14 @@ class Translator {
     etran.Heap.store(o, "rdheld", false)
   }
 
-  // TODO: This method has not yet been updated to the new permission model
-  def translateSpecStmt(s: SpecStmt): List[Stmt] = {
+  def translateSpecStmt(s: SpecStmt, methodK: Expr): List[Stmt] = {
     val (preGlobalsV, preGlobals) = etran.FreshGlobals("pre")
 
+    // pick new k for the spec stmt
+    val (specKV, specK) = Boogie.NewBVar("specStmtK", tint, true)
+
+    BLocal(specKV) ::
+    bassume(0 < specK && 1000*specK < percentPermission(1) && 1000*specK < methodK) ::
     // declare new local variables
     s.locals.flatMap(v => translateLocalVarDecl(v, true)) :::
     Comment("spec statement") ::
@@ -1020,11 +1032,11 @@ class Translator {
     // remember values of globals
     copyState(preGlobals, etran) :::
     // exhale preconditions
-    etran.Exhale(List((s.pre, ErrorMessage(s.pos, "The specification statement precondition at " + s.pos + " might not hold."))), "spec stmt precondition", true, todoiparam, todobparam) :::
+    etran.Exhale(List((s.pre, ErrorMessage(s.pos, "The specification statement precondition at " + s.pos + " might not hold."))), "spec stmt precondition", true, specK, false) :::
     // havoc locals
     (s.lhs.map(l => Boogie.Havoc(l))) :::
     // inhale postconditions (using the state before the call as the "old" state)
-    etran.FromPreGlobals(preGlobals).Inhale(List(s.post), "spec stmt postcondition", true, todoiparam)
+    etran.FromPreGlobals(preGlobals).Inhale(List(s.post), "spec stmt postcondition", false, specK)
   }
 
   def translateCall(c: Call, methodK: Expr): List[Stmt] = {
@@ -1147,7 +1159,7 @@ class Translator {
       // check invariant
       Exhale(w.oldInvs map { inv => (inv, ErrorMessage(inv.pos, "The loop invariant at " + inv.pos + " might not be preserved by the loop."))}, "loop invariant, maintained", whileK, true) :::
       tag(Exhale(w.newInvs map { inv => (inv, ErrorMessage(inv.pos, "The loop invariant at " + inv.pos + " might not be preserved by the loop."))}, "loop invariant, maintained", whileK, true), keepTag) :::
-      isLeaking(w.pos, "The loop might leak refereces.") :::
+      isLeaking(w.pos, "The loop might leak references.") :::
       // check lockchange after loop iteration
       Comment("check lockchange after loop iteration") ::
         (bassert(LockFrame(lkch, etran), w.pos, "The loop might lock/unlock more than the lockchange clause allows.")) ::
@@ -1164,20 +1176,19 @@ class Translator {
      bassume(!guard)}))
   }
 
-  // TODO: This method has not yet been updated to the new permission model
-  def translateRefinement(r: RefinementBlock): List[Stmt] = {
+  def translateRefinement(r: RefinementBlock, methodK: Expr): List[Stmt] = {
     // abstract expression translator
     val absTran = etran;
     // concrete expression translate
     val (conGlobalsV, conGlobals) = etran.FreshGlobals("concrete")
     val conTran = new ExpressionTranslator(conGlobals, etran.oldEtran.globals, currentClass); // TODO: what about FoldedPredicateInfo?
-    // shared locals before block (excluding immutable)
+    // shared locals existing before the block (excluding immutable)
     val before = for (v <- r.before; if (! v.isImmutable)) yield v;
-    // shared locals in block
+    // shared locals declared in the block
     val (duringA, duringC) = r.during;
-    // save locals before (to restore for abstract block)
+    // variables for locals before (to restore for the abstract version)
     val beforeV = for (v <- before) yield new Variable(v.id, v.t)
-    // save locals after (to compare with abstract block)
+    // variables for locals after (to compare with the abstract version)
     val afterV = for (v <- before) yield new Variable(v.id, v.t)
 
     Comment("refinement block") ::
@@ -1190,25 +1201,25 @@ class Translator {
     // run concrete C on the fresh heap
     {
       etran = conTran;
-      Comment("run concrete program:") ::
-      tag(translateStatements(r.con, todoiparam), keepTag)
+      Comment("concrete program:") ::
+      tag(translateStatements(r.con, methodK), keepTag)
     } :::
     // run angelically A on the old heap
-    Comment("run abstract program:") ::
+    Comment("abstract program:") ::
     { etran = absTran;
     r.abs match {
       case List(s: SpecStmt) =>
         var (m, me) = NewBVar("specMask", tmask, true)
         var (sm, sme) = NewBVar("specSecMask", tmask, true)
         tag(
-          Comment("give witnesses to declared local variables") ::
+          Comment("give witnesses to the declared local variables") ::
           (for (v <- duringA) yield BLocal(Variable2BVarWhere(v))) :::
           (for ((v, w) <- duringA zip duringC) yield (new VariableExpr(v) := new VariableExpr(w))) :::
           BLocal(m) :: BLocal(sm) ::
           (me := absTran.Mask) :: (sme := absTran.SecMask) ::
-          absTran.Exhale(me, sme, List((s.post,ErrorMessage(r.pos, "Refinement may fail to satisfy specification statement post-condition."))), "SpecStmt", false, todoiparam, todobparam) :::
+          absTran.Exhale(s.post, me, absTran.Heap, ErrorMessage(r.pos, "Refinement may fail to satisfy the specification statement post-condition."), false, methodK, false, false) :::
           (for ((v, w) <- beforeV zip before; if (! s.lhs.exists(ve => ve.v == w))) yield
-             bassert(new VariableExpr(v) ==@ new VariableExpr(w), r.pos, "Refinement may change a variable not in frame of the specification statement: " + v.id)),
+             bassert(new VariableExpr(v) ==@ new VariableExpr(w), r.pos, "Refinement may change a variable outside of the frame of the specification statement: " + v.id)),
           keepTag)
       case _ =>
         // save locals after
@@ -1216,13 +1227,13 @@ class Translator {
         (for ((v, w) <- afterV zip before) yield (new VariableExpr(v) := new VariableExpr(w))) :::
         // restore locals before
         (for ((v, w) <- before zip beforeV) yield (new VariableExpr(v) := new VariableExpr(w))) :::
-        translateStatements(r.abs, todoiparam) :::
+        translateStatements(r.abs, methodK) :::
         // assert equality on shared locals
         tag(
           (for ((v, w) <- afterV zip before) yield
-            bassert(new VariableExpr(v) ==@ new VariableExpr(w), r.pos, "Refinement may produce different value for pre-state local variable: " + v.id)) :::
+            bassert(new VariableExpr(v) ==@ new VariableExpr(w), r.pos, "Refinement may produce a different value for the pre-state local variable: " + v.id)) :::
           (for ((v, w) <- duringA zip duringC) yield
-            bassert(new VariableExpr(v) ==@ new VariableExpr(w), r.pos, "Refinement may produce different value for a declared local variable: " + v.id)),
+            bassert(new VariableExpr(v) ==@ new VariableExpr(w), r.pos, "Refinement may produce a different value for the declared variable: " + v.id)),
           keepTag)
     }} :::
     {
@@ -1245,10 +1256,10 @@ class Translator {
       // assert equality on shared globals (except those that are replaced)
       tag(
         for (f <- currentClass.refines.Fields; if ! currentClass.CouplingInvariants.exists(_.fields.contains(f)))
-          yield bassert((absTran.Heap.select(ve, f.FullName) ==@ conTran.Heap.select(ve, f.FullName)).forall(v), r.pos, "Refinement may change value of field " + f.FullName),
+          yield bassert((absTran.Heap.select(ve, f.FullName) ==@ conTran.Heap.select(ve, f.FullName)).forall(v), r.pos, "Refinement may change the value of the field " + f.FullName),
         keepTag)            
     } :::
-    Comment("end of refinement block")
+    Comment("end of the refinement block")
   }
 
   def UpdateMu(o: Expr, allowOnlyFromBottom: Boolean, justAssumeValue: Boolean,
@@ -2656,9 +2667,6 @@ object TranslationHelper {
   }
   
   // prelude definitions
-
-  def todoiparam: Expr = IntLiteral(-1); // This value is used as parameter at places where Chalice has not been updated to the new permission model.
-  def todobparam: Boolean = true; // This value is used as parameter at places where Chalice has not been updated to the new permission model.
   
   def ModuleType = NamedType("ModuleName");
   def ModuleName(cl: Class) = "module#" + cl.module.id;
@@ -2811,11 +2819,6 @@ object TranslationHelper {
       case (p1,p2) => PermTimes(p1,p2)
     }
     result
-  }
-  
-  // TODO: this method is used by the method tranform extension, which has not yet been updated to the new permission model
-  def FractionOf(expr: Expression, fraction: Expression) : Expression = {
-    throw new NotSupportedException("Not supported")
   }
 
   def TypeInformation(e: Boogie.Expr, cl: Class): Boogie.Expr = {

@@ -23,7 +23,7 @@
     <WarningLevel>3</WarningLevel>
     <PlatformTarget>x86</PlatformTarget>
     <DocumentationFile>bin\Debug\Language.XML</DocumentationFile>
-    <StartArguments>examples/Set.jen /method:SetNode.Triple /genRepr  /genMod</StartArguments>
+    <StartArguments>examples/DList.jen /method:DNode.Init /noGenMod</StartArguments>
     <StartWorkingDirectory>C:\boogie\Jennisys\Jennisys\</StartWorkingDirectory>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x86' ">
@@ -43,11 +43,13 @@
     <FsYaccOutputFolder>$(IntermediateOutputPath)</FsYaccOutputFolder>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="SymGen.fs" />
     <Compile Include="Logger.fs" />
     <Compile Include="Utils.fs" />
     <Compile Include="Options.fs" />
     <Compile Include="PipelineUtils.fs" />
     <Compile Include="Ast.fs" />
+    <Compile Include="Getters.fs" />
     <Compile Include="AstUtils.fs" />
     <Compile Include="$(IntermediateOutputPath)\Parser.fs">
       <Visible>false</Visible>
@@ -65,10 +67,12 @@
     <FsLex Include="Lexer.fsl">
       <OtherFlags>--unicode</OtherFlags>
     </FsLex>
+    <Compile Include="PrintUtils.fs" />
     <Compile Include="Printer.fs" />
     <Compile Include="DafnyPrinter.fs" />
     <Compile Include="TypeChecker.fs" />
     <Compile Include="Resolver.fs" />
+    <Compile Include="FixpointSolver.fs" />
     <Compile Include="MethodUnifier.fs" />
     <Compile Include="Modularizer.fs" />
     <Compile Include="CodeGen.fs" />
@@ -76,6 +80,9 @@
     <Compile Include="Jennisys.fs" />
   </ItemGroup>
   <ItemGroup>
+    <Reference Include="Boogie">
+      <HintPath>..\..\Binaries\Boogie.exe</HintPath>
+    </Reference>
     <Reference Include="FSharp.PowerPack">
       <HintPath>C:\Program Files\FSharpPowerPack-1.9.9.9\bin\FSharp.PowerPack.dll</HintPath>
     </Reference>

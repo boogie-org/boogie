@@ -1,198 +1,192 @@
-// Concrete language syntax for a Dafny extension with refinement. 
-// IntegerCounter example.
-// 6/28/2010
-
-class A { 
-  var n : int;
-    
-  method Init() modifies this; 
-  { n := 0;}
-
-  method Inc() modifies this; 
-  { n := n + 1;}
-
-  method Dec() 
-    modifies this;
-    requires n > 0; 
-  { n := n - 1;}  
-  
-  method Test1(p: int) returns (i: int) 
-  {   
-    i := p;
-  }
-
-  method Test2() returns (o: object)
-  { o := this; }
-}
-
-class B refines A {
-  var inc : int, dec : int;
-    
-  replaces n by n == inc - dec;
-  // transforms n into inc - dec;
-    
-  refines Init() modifies this;
-  { inc := 0; dec := 0;}
-    
-  refines Inc() modifies this;
-  { inc := inc + 1; }  
-  
-  refines Dec() 
-    modifies this;
-    requires inc > dec; 
-  { dec := dec + 1; }
-
-  refines Test1(p: int) returns (i: int) 
-  {
-    i := p;
+module A {
+  class X { }
+  class T {
+    method M(x: int) returns (y: int)
+      requires 0 <= x;
+      ensures 0 <= y;
+    {
+      y := 2 * x;
+    }
+    method Q() returns (q: int, r: int, s: int)
+      ensures 0 <= q && 0 <= r && 0 <= s;
+    {  // error: failure to establish postcondition about q
+      r, s := 100, 200;
+    }
   }
 }
 
-// Carrol Morgan's calculator
-// 7/2/2010 Kuat
-
-class Util {
-  static function method seqsum(x:seq<int>) : int
-    decreases x;
-  {
-    if (x == []) then 0 else x[0] + seqsum(x[1..])
+module B refines A {
+  class C { }
+  datatype Dt = Ax | Bx;
+  class T {
+    method P() returns (p: int)
+    {
+      p := 18;
+    }
+    method M(x: int) returns (y: int)
+      ensures y % 2 == 0;  // add a postcondition
+    method Q ...
+      ensures 12 <= r;
+      ensures 1200 <= s;  // error: postcondition is not established by
+                          // inherited method body
   }
 }
 
+// ------------------------------------------------
 
-class ACalc {
-  var util: Util;
-  var vals: seq<int>;
-  
-  method reset() 
+module A_AnonymousClass {
+  var x: int;
+  method Increment(d: int)
     modifies this;
   {
-    vals := [];
-  }
-  
-  method add(x: int) 
-    modifies this;
-  {
-    vals := [x] + vals;
-  }
-  
-  method mean() returns (m: int)     
-    requires |vals| > 0;
-  {
-    m := util.seqsum(vals)/|vals|;
+    x := x + d;
   }
 }
 
+module B_AnonymousClass refines A_AnonymousClass {
+  method Increment...
+    ensures x <= old(x) + d;
+}
 
-
-class CCalc refines ACalc {
-  var util2: Util;
-  var sum: int;
-  var num: int;
-  replaces vals by sum == util2.seqsum(vals) && num == |vals|;
-
-  refines reset() 
+module C_AnonymousClass refines B_AnonymousClass {
+  method Increment(d: int)
+    ensures old(x) + d <= x;
+  method Main()
     modifies this;
   {
-    sum := 0;
-    num := 0;
-  }
-
-  refines add(x: int)
-    modifies this;
-  {
-    sum := sum + x;
-    num := num + 1;
-  }
-
-  refines mean() returns (m: int)
-    requires num > 0;
-  {
-    m := sum/num;
+    x := 25;
+    Increment(30);
+    assert x == 55;
+    Increment(12);
+    assert x == 66;  // error: it's 67
   }
 }
 
-// Sequence refined to a singly linked list
-// 6/22/2010: Kuat Yessenov
+// ------------------------------------------------
 
-class List<T> {
-  var rep: seq<T>;
-  method Clear() 
-    modifies this;
-  {
-    rep := [];
+module BodyFree {
+  function F(x: int): int
+    ensures 0 <= F(x);
+  method TestF() {
+    assert F(6) == F(7);  // error: no information about F so far
   }
-  
-  method Append(x: T) 
-    modifies this; 
-  {
-    rep := rep + [x];
+  method M() returns (a: int, b: int)
+    ensures a == b;
+}
+
+module SomeBody refines BodyFree {
+  function F(x: int): int
+  { if x < 0 then 2 else 3 }
+  method TestFAgain() {
+    assert F(6) == F(7);
   }
-  
-  method Prepend(x: T) 
-    modifies this; 
+  method M() returns (a: int, b: int)
   {
-    rep := [x] + rep;
-  }
-  
-  method Insert(i: int, x: T) 
-    requires 0 <= i && i < |rep|;
-    modifies this;
-  {
-    rep := rep[i:=x];
+    a := b;  // good
   }
 }
 
-class Node<T> {
-  var data: T;
-  var next: Node<T>;
-}   
-
-class LinkedList refines List {
-  var first: Node<T>;
-  ghost var nodes: set<Node<T>>;
-    
-  function Abstraction(n: Node<T>, nodes: set<Node<T>>, rep: seq<T>) : bool
-  decreases nodes;
-  reads n, nodes;
-  {
-    if (n == null) then 
-            rep == [] &&
-            nodes == {}
-        else 
-            |rep| >= 1 &&
-            n.data == rep[0] &&
-            n in nodes &&
-            n.next in nodes + {null} &&
-            Abstraction(n.next, nodes - {n}, rep[1..])
+module FullBodied refines BodyFree {
+  function F(x: int): int
+  { x } // error: does not meet the inherited postcondition
+  method M() returns (a: int, b: int)
+  {  // error: does not establish postcondition
+    a := b + 1;
   }
+}
 
-  replaces rep by Abstraction(first, nodes, rep);     
+// ------------------------------------------------
 
-  refines Clear() 
-    modifies this;
-  {
-    first := null;
-    nodes := {};
+module Abstract {
+  class MyNumber {
+    ghost var N: int;
+    ghost var Repr: set<object>;
+    predicate Valid
+      reads this, Repr;
+    {
+      this in Repr && null !in Repr
+    }
+    constructor Init()
+      modifies this;
+      ensures N == 0;
+      ensures Valid && fresh(Repr - {this});
+    {
+      N, Repr := 0, {this};
+    }
+    method Inc()
+      requires Valid;
+      modifies Repr;
+      ensures N == old(N) + 1;
+      ensures Valid && fresh(Repr - old(Repr));
+    {
+      N := N + 1;
+    }
+    method Get() returns (n: int)
+      requires Valid;
+      ensures n == N;
+    {
+      var k;  assume k == N;
+      n := k;
+    }
   }
+}
 
-  refines Prepend(x: T) 
-    modifies this;
-  {
-    var n := new Node<T>;
-    n.data := x;
-    n.next := first;
-    first := n;
-    nodes := {n} + nodes;
-    assert nodes - {n} == old(nodes); //set extensionality
+module Concrete refines Abstract {
+  class MyNumber {
+    var a: int;
+    var b: int;
+    predicate Valid
+    {
+      N == a - b
+    }
+    constructor Init()
+    {
+      a := b;
+    }
+    method Inc()
+    {
+      if (*) { a := a + 1; } else { b := b - 1; }
+    }
+    method Get() returns (n: int)
+    {
+      var k := a - b;
+      assert ...;
+    }
   }
-} 
+}
 
+module Client imports Concrete {
+  class TheClient {
+    method Main() {
+      var n := new MyNumber.Init();
+      n.Inc();
+      n.Inc();
+      var k := n.Get();
+      assert k == 2;
+    }
+  }
+}
 
-
-
-
-
-
-    
-    
+module IncorrectConcrete refines Abstract {
+  class MyNumber {
+    var a: int;
+    var b: int;
+    predicate Valid
+    {
+      N == 2*a - b
+    }
+    constructor Init()
+    {  // error: postcondition violation
+      a := b;
+    }
+    method Inc()
+    {  // error: postcondition violation
+      if (*) { a := a + 1; } else { b := b - 1; }
+    }
+    method Get() returns (n: int)
+    {
+      var k := a - b;
+      assert ...;  // error: assertion violation
+    }
+  }
+}

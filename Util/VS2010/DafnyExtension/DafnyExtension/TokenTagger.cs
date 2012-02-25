@@ -239,7 +239,6 @@ namespace DafnyLanguage
                 case "assume":
                 case "bool":
                 case "break":
-                case "by":
                 case "case":
                 case "choose":
                 case "class":
@@ -251,7 +250,6 @@ namespace DafnyLanguage
                 case "exists":
                 case "false":
                 case "forall":
-                case "foreach":
                 case "free":
                 case "fresh":
                 case "function":
@@ -267,15 +265,17 @@ namespace DafnyLanguage
                 case "method":
                 case "modifies":
                 case "module":
+                case "multiset":
                 case "nat":
                 case "new":
                 case "null":
                 case "object":
                 case "old":
+                case "parallel":
+                case "predicate":
                 case "print":
                 case "reads":
                 case "refines":
-                case "replaces":
                 case "requires":
                 case "result":
                 case "return":
@@ -286,6 +286,7 @@ namespace DafnyLanguage
                 case "then":
                 case "this":
                 case "true":
+                case "type":
                 case "unlimited":
                 case "var":
                 case "while":

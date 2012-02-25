@@ -23,7 +23,7 @@ namespace BytecodeTranslator.Phone {
   /// <summary>
   /// Traverse code looking for phone specific points of interest, possibly injecting necessary code in-between
   /// </summary>
-  public class PhoneInitializationCodeTraverser : BaseCodeTraverser {
+  public class PhoneInitializationCodeTraverser : CodeTraverser {
     private readonly IMethodDefinition methodBeingTraversed;
     private static bool initializationFound= false;
     private MetadataReaderHost host;
@@ -31,7 +31,9 @@ namespace BytecodeTranslator.Phone {
     private IAssemblyReference coreAssemblyRef;
     private IAssemblyReference phoneAssembly;
     private IAssemblyReference phoneSystemWindowsAssembly;
+    private IAssemblyReference MSPhoneControlsAssembly;
     private INamespaceTypeReference appBarIconButtonType;
+    private INamespaceTypeReference appBarMenuItemType;
     private INamespaceTypeReference checkBoxType;
     private INamespaceTypeReference radioButtonType;
     private INamespaceTypeReference buttonType;
@@ -39,6 +41,8 @@ namespace BytecodeTranslator.Phone {
     private INamespaceTypeReference toggleButtonType;
     private INamespaceTypeReference controlType;
     private INamespaceTypeReference uiElementType;
+    private INamespaceTypeReference pivotType;
+    private INamespaceTypeReference listBoxType;
 
     private CompileTimeConstant trueConstant;
     private CompileTimeConstant falseConstant;
@@ -65,8 +69,15 @@ namespace BytecodeTranslator.Phone {
         return checkBoxType;
       } else if (classname == "ApplicationBarIconButton") {
         return appBarIconButtonType;
+      } else if (classname == "ApplicationBarMenuItem") {
+        return appBarMenuItemType;
+      } else if (classname == "Pivot") {
+        return pivotType;
+      } else if (classname == "ListBox") {
+        return listBoxType;
       } else if (classname == "DummyType") {
-        return Dummy.Type;
+        // return Dummy.Type;
+        return host.PlatformType.SystemObject;
       } else {
         // TODO avoid throwing exceptions, just log
         throw new NotImplementedException("Type " + classname + " is not being monitored yet for phone controls");
@@ -87,22 +98,55 @@ namespace BytecodeTranslator.Phone {
       AssemblyIdentity MSPhoneAssemblyId =
           new AssemblyIdentity(host.NameTable.GetNameFor("Microsoft.Phone"), "", new Version("7.0.0.0"),
                                new byte[] { 0x24, 0xEE, 0xC0, 0xD8, 0xC8, 0x6C, 0xDA, 0x1E }, "");
+      AssemblyIdentity MSPhoneControlsAssemblyId=
+          new AssemblyIdentity(host.NameTable.GetNameFor("Microsoft.Phone.Controls"), "", new Version("7.0.0.0"),
+                               new byte[] { 0x24, 0xEE, 0xC0, 0xD8, 0xC8, 0x6C, 0xDA, 0x1E }, "");
+
       AssemblyIdentity MSPhoneSystemWindowsAssemblyId =
           new AssemblyIdentity(host.NameTable.GetNameFor("System.Windows"), coreAssemblyRef.Culture, coreAssemblyRef.Version,
                                coreAssemblyRef.PublicKeyToken, "");
 
       phoneAssembly = host.FindAssembly(MSPhoneAssemblyId);
       phoneSystemWindowsAssembly = host.FindAssembly(MSPhoneSystemWindowsAssemblyId);
+      MSPhoneControlsAssembly= host.FindAssembly(MSPhoneControlsAssemblyId);
+      // TODO BUG / XAML DEPENDENCE If a control is declared in XAML, it may be one from a library *not* linked! So, assemblies could be dummy here
 
       // TODO determine the needed types dynamically
-      appBarIconButtonType= platform.CreateReference(phoneAssembly, "Microsoft", "Phone", "Shell", "ApplicationBarIconButton");
-      checkBoxType = platform.CreateReference(phoneSystemWindowsAssembly, "System", "Windows", "Controls", "CheckBox");
-      radioButtonType = platform.CreateReference(phoneSystemWindowsAssembly, "System", "Windows", "Controls", "RadioButton");
-      buttonType = platform.CreateReference(phoneSystemWindowsAssembly, "System", "Windows", "Controls", "Button");
-      buttonBaseType = platform.CreateReference(phoneSystemWindowsAssembly, "System", "Windows", "Controls", "Primitives", "ButtonBase");
-      toggleButtonType = platform.CreateReference(phoneSystemWindowsAssembly, "System", "Windows", "Controls", "Primitives", "ToggleButton");
-      controlType = platform.CreateReference(phoneSystemWindowsAssembly, "System", "Windows", "Controls", "Control");
-      uiElementType = platform.CreateReference(phoneSystemWindowsAssembly, "System", "Windows", "UIElement");
+      if (phoneAssembly != Dummy.Assembly) {
+        appBarIconButtonType = platform.CreateReference(phoneAssembly, "Microsoft", "Phone", "Shell", "ApplicationBarIconButton");
+        appBarMenuItemType = platform.CreateReference(phoneAssembly, "Microsoft", "Phone", "Shell", "ApplicationBarMenuItem");
+      } else {
+        appBarIconButtonType = host.PlatformType.SystemObject;
+        appBarMenuItemType = host.PlatformType.SystemObject;
+      }
+
+      if (phoneSystemWindowsAssembly != Dummy.Assembly) {
+        checkBoxType = platform.CreateReference(phoneSystemWindowsAssembly, "System", "Windows", "Controls", "CheckBox");
+        radioButtonType = platform.CreateReference(phoneSystemWindowsAssembly, "System", "Windows", "Controls", "RadioButton");
+        buttonType = platform.CreateReference(phoneSystemWindowsAssembly, "System", "Windows", "Controls", "Button");
+        buttonBaseType = platform.CreateReference(phoneSystemWindowsAssembly, "System", "Windows", "Controls", "Primitives", "ButtonBase");
+        toggleButtonType = platform.CreateReference(phoneSystemWindowsAssembly, "System", "Windows", "Controls", "Primitives", "ToggleButton");
+        controlType = platform.CreateReference(phoneSystemWindowsAssembly, "System", "Windows", "Controls", "Control");
+        uiElementType = platform.CreateReference(phoneSystemWindowsAssembly, "System", "Windows", "UIElement");
+        listBoxType = platform.CreateReference(phoneSystemWindowsAssembly, "System", "Windows", "Controls", "ListBox");
+      } else {
+        checkBoxType = host.PlatformType.SystemObject;
+        radioButtonType = host.PlatformType.SystemObject;
+        buttonType = host.PlatformType.SystemObject;
+        buttonBaseType = host.PlatformType.SystemObject;
+        toggleButtonType = host.PlatformType.SystemObject;
+        controlType = host.PlatformType.SystemObject;
+        uiElementType = host.PlatformType.SystemObject;
+        listBoxType = host.PlatformType.SystemObject;
+      }
+
+      if (MSPhoneControlsAssembly != Dummy.Assembly) {
+        pivotType = platform.CreateReference(MSPhoneControlsAssembly, "Microsoft", "Phone", "Controls", "Pivot");
+      } else {
+        pivotType = host.PlatformType.SystemObject;
+      }
+
+      
 
       trueConstant = new CompileTimeConstant() {
         Type = platform.SystemBoolean,
@@ -141,7 +185,7 @@ namespace BytecodeTranslator.Phone {
     }
 
     public void injectPhoneControlsCode(BlockStatement block) {
-      this.Visit(block);
+      this.Traverse(block);
     }
 
     private void injectPhoneInitializationCode(BlockStatement block, Statement statementAfter) {
@@ -256,9 +300,9 @@ namespace BytecodeTranslator.Phone {
       return new List<IStatement>();
     }
 
-    public override void Visit(IBlockStatement block) {
+    public override void TraverseChildren(IBlockStatement block) {
       foreach (IStatement statement in block.Statements) {
-        this.Visit(statement);
+        this.Traverse(statement);
         if (initializationFound) {
           injectPhoneInitializationCode(block as BlockStatement, statement as Statement);
           initializationFound = false;
@@ -267,7 +311,7 @@ namespace BytecodeTranslator.Phone {
       }
     }
 
-    public override void Visit(IMethodCall methodCall) {
+    public override void TraverseChildren(IMethodCall methodCall) {
       if (methodCall.IsStaticCall ||
           !methodCall.MethodToCall.ContainingType.ResolvedType.Equals(methodBeingTraversed.Container) ||
           methodCall.MethodToCall.Name.Value != "InitializeComponent" ||
@@ -281,7 +325,7 @@ namespace BytecodeTranslator.Phone {
   /// <summary>
   /// Traverse metadata looking only for PhoneApplicationPage's constructors
   /// </summary>
-  public class PhoneInitializationMetadataTraverser : BaseMetadataTraverser {
+  public class PhoneInitializationMetadataTraverser : MetadataTraverser {
     private MetadataReaderHost host;
 
     public PhoneInitializationMetadataTraverser(MetadataReaderHost host)
@@ -289,30 +333,30 @@ namespace BytecodeTranslator.Phone {
         this.host = host;
     }
 
-    public override void Visit(IModule module) {
-      base.Visit(module);
+    public override void TraverseChildren(IModule module) {
+      base.TraverseChildren(module);
     }
 
-    public override void Visit(IAssembly assembly) {
-      base.Visit(assembly);
+    public override void TraverseChildren(IAssembly assembly) {
+      base.TraverseChildren(assembly);
     }
 
     /// <summary>
     /// Check if the type being defined is a PhoneApplicationPage, uninteresting otherwise
     /// </summary>
     /// 
-    public override void Visit(ITypeDefinition typeDefinition) {
+    public override void TraverseChildren(ITypeDefinition typeDefinition) {
       if (typeDefinition.isPhoneApplicationClass(host)) {
         PhoneCodeHelper.instance().setMainAppTypeReference(typeDefinition);
       } else if (typeDefinition.isPhoneApplicationPageClass(host)) {
-        base.Visit(typeDefinition);
+        base.TraverseChildren(typeDefinition);
       }
     }
 
     /// <summary>
     /// Check if it is traversing a constructor. If so, place necessary code after InitializeComponent() call
     /// </summary>
-    public override void Visit(IMethodDefinition method) {
+    public override void TraverseChildren(IMethodDefinition method) {
       if (!method.IsConstructor)
         return;
 
@@ -326,7 +370,7 @@ namespace BytecodeTranslator.Phone {
 
     public void InjectPhoneCodeAssemblies(IEnumerable<IUnit> assemblies) {
       foreach (var a in assemblies) {
-        a.Dispatch(this);
+        this.Traverse((IAssembly)a);
       }
     }
   }

@@ -16,9 +16,9 @@ class Test {
     requires acc(x);
   {
     x := 0;
-    const y [acc(x), rd(x) && x == old(x) + 1 && y == x];
+    const y [acc(x), acc(x) && x == old(x) + 1 && y == x];
     assert y == 1;
-    const v [rd(x), rd(x) && v == old(x) + 1];
+    const v [acc(x), acc(x) && v == old(x) + 1];
     assert v == 2;
     const z [z == 1];
     ghost var t [z == 1, true];     

@@ -7,7 +7,7 @@ using System.IO;
 namespace TranslationPlugins {
   public enum Visibility { Visible, Collapsed };
 
-  public enum Event { Click, Checked, Unchecked };
+  public enum Event { Click, Checked, Unchecked, SelectionChanged };
 
   public class HandlerSignature {
     public static string[] getParameterTypesForHandler(Event controlEvent) {
@@ -15,6 +15,7 @@ namespace TranslationPlugins {
         case Event.Checked:
         case Event.Unchecked:
         case Event.Click:
+        case Event.SelectionChanged:
           return new string[] { "object", "System.WindowsRoutedventArgs" };
         default:
           throw new NotImplementedException("Handlers for event: " + controlEvent + " not supported yet");
@@ -94,7 +95,7 @@ namespace TranslationPlugins {
   public class PhoneControlsPlugin : TranslationPlugin {
     // TODO this will probably need a complete rewrite once it is event based, and make it more push than pull
     // TODO but it doesn't make sense right now to make it BCT or CCI aware
-    private static int CONFIG_LINE_FIELDS= 11;
+    private static int CONFIG_LINE_FIELDS= 12;
     private static int PAGE_CLASS_FIELD= 0;
     private static int PAGE_XAML_FIELD= 1;
     private static int PAGE_BOOGIE_STRING_FIELD = 2;
@@ -105,33 +106,14 @@ namespace TranslationPlugins {
     private static int CLICK_HANDLER_FIELD= 7;
     private static int CHECKED_HANDLER_FIELD= 8;
     private static int UNCHECKED_HANDLER_FIELD = 9;
-    private static int BPL_NAME_FIELD = 10;
+    private static int SELECTIONCHANGED_HANDLER_FIELD = 10;
+    private static int BPL_NAME_FIELD = 11;
+
+    public const string BOOGIE_DUMMY_CONTROL = "__BOOGIE_DUMMY_CONTROLNAME_";
 
     private IDictionary<string, PageStructure> pageStructureInfo;
 
     public static string getURILastPath(string uri) {
-      // I need to build an absolute URI just to call getComponents() ...
-      Uri mockBaseUri = new Uri("mock://mock/", UriKind.RelativeOrAbsolute);
-      Uri realUri;
-      try {
-        realUri = new Uri(uri, UriKind.Absolute);
-      } catch (UriFormatException) {
-        // uri string is relative
-        realUri = new Uri(mockBaseUri, uri);
-      }
-
-      string str = realUri.GetComponents(UriComponents.Path | UriComponents.StrongAuthority | UriComponents.Scheme, UriFormat.UriEscaped);
-      Uri mockStrippedUri = new Uri(str);
-      return mockBaseUri.MakeRelativeUri(mockStrippedUri).ToString();
-    }
-
-    /// <summary>
-    /// uri is a valid URI but possibly partial (incomplete ?arg= values) and overspecified (complete ?arg=values)
-    /// This method returns a base URI
-    /// </summary>
-    /// <param name="uri"></param>
-    /// <returns></returns>
-    public static string getURIBase(string uri) {
       // I need to build an absolute URI just to call getComponents() ...
       Uri mockBaseUri = new Uri("mock://mock/", UriKind.RelativeOrAbsolute);
       Uri realUri;
@@ -190,6 +172,7 @@ namespace TranslationPlugins {
     }
 
     private void setPageAsMainPage(string pageXAML) {
+      pageXAML = pageXAML.ToLower();
       int lastDirPos= pageXAML.LastIndexOf('/');
       if (lastDirPos != -1)
         pageXAML = pageXAML.Substring(lastDirPos+1);
@@ -212,14 +195,15 @@ namespace TranslationPlugins {
 
     public void DumpControlStructure(StreamWriter outputStream) {
       // maintain same format as input format
-      string pageClass, pageXAML, pageBoogieStringName, controlClass, controlName, enabled, visibility, clickHandler, checkedHandler, uncheckedHandler, bplName;
+      string pageClass, pageXAML, pageBoogieStringName, controlClass, controlName, enabled, visibility, clickHandler,
+             checkedHandler, uncheckedHandler, selectionChangedHandler, bplName;
       outputStream.WriteLine(getMainPageXAML());
       outputStream.WriteLine(getBoogieNavigationVariable());
       outputStream.WriteLine(getMainAppTypeName());
 
       foreach (KeyValuePair<string, PageStructure> entry in this.pageStructureInfo) {
         pageClass = entry.Key;
-        pageXAML = entry.Value.PageXAML;
+        pageXAML = entry.Value.PageXAML.ToLower();
         pageBoogieStringName = entry.Value.PageBoogieName;
         foreach (ControlInfoStructure controlInfo in entry.Value.getAllControlsInfo()) {
           controlClass= controlInfo.ClassName;
@@ -253,8 +237,17 @@ namespace TranslationPlugins {
           } else {
             uncheckedHandler = "";
           }
+
+          handlers = controlInfo.getHandlers(Event.SelectionChanged);
+          if (handlers.Any()) {
+            selectionChangedHandler= handlers.First().Name;
+          } else {
+            selectionChangedHandler = "";
+          }
           bplName = controlInfo.BplName;
-          outputStream.WriteLine(pageClass + "," + pageXAML + "," + pageBoogieStringName + "," + controlClass + "," + controlName + "," + enabled + "," + visibility + "," + clickHandler + "," + checkedHandler + "," + uncheckedHandler + "," + bplName);
+          outputStream.WriteLine(pageClass + "," + pageXAML.ToLower() + "," + pageBoogieStringName + "," + controlClass + "," + controlName + "," + enabled + "," +
+                                 visibility + "," + clickHandler + "," + checkedHandler + "," + uncheckedHandler + "," + selectionChangedHandler + "," +
+                                 bplName);
         }
       }
     }
@@ -276,14 +269,15 @@ namespace TranslationPlugins {
       // TODO the page.xaml value is saved with no directory information: if two pages exist with same name but different directories it will treat them as the same
       // TODO I'm not handling this for now, and I won't be handling relative/absolute URI either for now
 
-      string pageClass, pageXAML, pageBoogieStringName, controlClass, controlName, enabled, visibility, clickHandler, checkedHandler, uncheckedHandler, bplName;
+      string pageClass, pageXAML, pageBoogieStringName, controlClass, controlName, enabled, visibility, clickHandler, checkedHandler,
+             uncheckedHandler, selectionChangedHandler, bplName;
       string configLine = configStream.ReadLine();
       string[] inputLine;
       PageStructure pageStr;
       ControlInfoStructure controlInfoStr;
 
       // first line just states the main page xaml
-      string mainPageXAML= configLine.Trim();
+      string mainPageXAML= configLine.Trim().ToLower();
       configLine = configStream.ReadLine();
 
       // second line states boogie current nav variable, possibly dummy value
@@ -305,18 +299,19 @@ namespace TranslationPlugins {
           throw new ArgumentException("Config input line contains wrong number of fields: " + inputLine.Length + ", expected " + CONFIG_LINE_FIELDS);
 
         pageClass = inputLine[PAGE_CLASS_FIELD].Trim();
-        pageXAML = inputLine[PAGE_XAML_FIELD].Trim();
+        pageXAML = inputLine[PAGE_XAML_FIELD].Trim().ToLower();
         pageBoogieStringName = inputLine[PAGE_BOOGIE_STRING_FIELD].Trim();
         controlClass = inputLine[CONTROL_CLASS_FIELD].Trim();
         controlName = inputLine[CONTROL_NAME_FIELD].Trim();
         if (string.IsNullOrEmpty(controlName))
-          controlName = "__BOOGIE_DUMMY_CONTROLNAME_" + dummyControlNameIndex++;
+          controlName = BOOGIE_DUMMY_CONTROL + dummyControlNameIndex++;
 
         enabled = inputLine[ENABLED_FIELD].Trim();
         visibility = inputLine[VISIBILITY_FIELD].Trim();
         clickHandler = inputLine[CLICK_HANDLER_FIELD].Trim();
         checkedHandler = inputLine[CHECKED_HANDLER_FIELD].Trim();
         uncheckedHandler = inputLine[UNCHECKED_HANDLER_FIELD].Trim();
+        selectionChangedHandler = inputLine[SELECTIONCHANGED_HANDLER_FIELD].Trim();
         bplName = inputLine[BPL_NAME_FIELD].Trim();
 
         try {
@@ -336,11 +331,12 @@ namespace TranslationPlugins {
           controlInfoStr.ClassName = controlClass;
           controlInfoStr.BplName = bplName;
         }
-        controlInfoStr.IsEnabled = Boolean.Parse(enabled);
+        controlInfoStr.IsEnabled = enabled.ToLower() == "false" ? false : true;
         controlInfoStr.Visible = visibility == "Collapsed" ? Visibility.Collapsed : Visibility.Visible;
         controlInfoStr.setHandler(Event.Click, clickHandler);
         controlInfoStr.setHandler(Event.Checked, checkedHandler);
         controlInfoStr.setHandler(Event.Unchecked, uncheckedHandler);
+        controlInfoStr.setHandler(Event.SelectionChanged, selectionChangedHandler);
 
         pageStr.setControlInfo(controlName, controlInfoStr);
         pageStructureInfo[pageClass] = pageStr;
@@ -393,6 +389,16 @@ namespace TranslationPlugins {
       } catch (KeyNotFoundException) {
         return null;
       }
+    }
+
+    public IEnumerable<string> getPageXAMLFilenames() {
+      HashSet<string> pageXAMLs = new HashSet<string>();
+      foreach (string name in this.pageStructureInfo.Keys) {
+        if (!name.EndsWith("__dummy"))
+          pageXAMLs.Add(pageStructureInfo[name].PageXAML);
+      }
+
+      return pageXAMLs;
     }
   }
 }

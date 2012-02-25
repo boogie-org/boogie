@@ -97,7 +97,7 @@ private class BvBounds : Expr {
     Contract.Requires(stream != null);
     {Contract.Assert(false);throw new cce.UnreachableException();}
   }
-  public override void ComputeFreeVariables(Set/*!*/ freeVars) {Contract.Requires(freeVars != null); {Contract.Assert(false);throw new cce.UnreachableException();} }
+  public override void ComputeFreeVariables(GSet<object>/*!*/ freeVars) {Contract.Requires(freeVars != null); {Contract.Assert(false);throw new cce.UnreachableException();} }
   public override AI.IExpr/*!*/ IExpr { get { Contract.Ensures(Contract.Result<AI.IExpr>()!=null); {Contract.Assert(false);throw new cce.UnreachableException();} } }
 }
 
@@ -585,9 +585,8 @@ Procedure<out Procedure/*!*/ proc, out /*maybe null*/ Implementation impl>
   | { Spec<pre, mods, post> }
     ImplBody<out locals, out stmtList>
     (.
-      // here we attach kv only to the Procedure, not its implementation
       impl = new Implementation(x, x.val, typeParams,
-                                Formal.StripWhereClauses(ins), Formal.StripWhereClauses(outs), locals, stmtList, null, this.errors);
+                                Formal.StripWhereClauses(ins), Formal.StripWhereClauses(outs), locals, stmtList, kv == null ? null : (QKeyValue)kv.Clone(), this.errors);
     .)
   )
   (. proc = new Procedure(x, x.val, typeParams, ins, outs, pre, mods, post, kv); .)
@@ -905,7 +904,10 @@ CallCmd<out Cmd/*!*/ c>
      QKeyValue kv = null;
      Expr en;  List<Expr> args;
      c = dummyCmd;
+     bool isFree = false;
   .)
+  [ "free"          (. isFree = true;  .)
+  ]
   "call"                          (. x = t; .)
   { Attribute<ref kv> }
   ( Ident<out first>
@@ -914,7 +916,7 @@ CallCmd<out Cmd/*!*/ c>
         { "," CallForallArg<out en> (. es.Add(en); .)
         }
       ]
-      ")"                         (. c = new CallCmd(x, first.val, es, ids, kv); .)
+      ")"                         (. c = new CallCmd(x, first.val, es, ids, kv); ((CallCmd) c).IsFree = isFree; .)
     |
                                   (. ids.Add(new IdentifierExpr(first, first.val)); .)
       [ "," CallOutIdent<out p>  (.
@@ -938,7 +940,7 @@ CallCmd<out Cmd/*!*/ c>
         { "," CallForallArg<out en> (. es.Add(en); .)
         }
       ]
-      ")"                         (. c = new CallCmd(x, first.val, es, ids, kv); .)
+      ")"                         (. c = new CallCmd(x, first.val, es, ids, kv); ((CallCmd) c).IsFree = isFree; .)
     )
   | "forall"
     Ident<out first> "("              (. args = new List<Expr>(); .)
@@ -946,7 +948,7 @@ CallCmd<out Cmd/*!*/ c>
       { "," CallForallArg<out en> (. args.Add(en); .)
       }
     ]
-    ")"                           (. c = new CallForallCmd(x, first.val, args, kv); .)
+    ")"                           (. c = new CallForallCmd(x, first.val, args, kv); ((CallForallCmd) c).IsFree = isFree; .)
   | "*"
                                   (. ids.Add(null); .)
       [ "," CallOutIdent<out p>  (.
@@ -970,7 +972,7 @@ CallCmd<out Cmd/*!*/ c>
         { "," CallForallArg<out en> (. es.Add(en); .)
         }
       ]
-      ")"                         (. c = new CallCmd(x, first.val, es, ids, kv); .)
+      ")"                         (. c = new CallCmd(x, first.val, es, ids, kv); ((CallCmd) c).IsFree = isFree; .)
   )
   .
 

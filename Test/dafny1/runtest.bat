@@ -21,16 +21,10 @@ for %%f in (Queue.dfy PriorityQueue.dfy ExtensibleArray.dfy
             SchorrWaite.dfy
             Cubes.dfy SumOfCubes.dfy FindZero.dfy
             TerminationDemos.dfy Substitution.dfy TreeDatatype.dfy KatzManna.dfy
-            Induction.dfy Rippling.dfy
+            Induction.dfy Rippling.dfy MoreInduction.dfy
             Celebrity.dfy
             UltraFilter.dfy) do (
   echo.
   echo -------------------- %%f --------------------
-
-  REM The following line will just run the verifier
-  IF "%COMPILEDAFNY%"=="" %DAFNY_EXE% /compile:0 %* %%f
-
-  REM Alternatively, the following lines also produce C# code and compile it
-  IF NOT "%COMPILEDAFNY%"=="" %DAFNY_EXE% %* %%f
-  IF NOT "%COMPILEDAFNY%"=="" %CSC% /nologo /debug /t:library /out:out.dll /r:System.Numerics.dll out.cs
+  %DAFNY_EXE% /compile:0 /dprint:out.dfy.tmp %* %%f
 )

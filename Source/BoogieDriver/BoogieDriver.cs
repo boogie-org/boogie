@@ -35,8 +35,10 @@ namespace Microsoft.Boogie {
 
     public static void Main(string[] args) {
       Contract.Requires(cce.NonNullElements(args));
+      CommandLineOptions.Install(new CommandLineOptions());
+
       CommandLineOptions.Clo.RunningBoogieFromCommandLine = true;
-      if (CommandLineOptions.Clo.Parse(args) != 1) {
+      if (!CommandLineOptions.Clo.Parse(args)) {
         goto END;
       }
       if (CommandLineOptions.Clo.Files.Count == 0) {
@@ -65,7 +67,22 @@ namespace Microsoft.Boogie {
 
       Helpers.ExtraTraceInformation("Becoming sentient");
 
+      List<string> fileList = new List<string>();
       foreach (string file in CommandLineOptions.Clo.Files) {
+        string extension = Path.GetExtension(file);
+        if (extension != null) {
+          extension = extension.ToLower();
+        }
+        if (extension == ".txt") {
+          StreamReader stream = new StreamReader(file);
+          string s = stream.ReadToEnd();
+          fileList.AddRange(s.Split(new char[3] {' ', '\n', '\r'}, StringSplitOptions.RemoveEmptyEntries));
+        }
+        else {
+          fileList.Add(file);
+        }
+      }
+      foreach (string file in fileList) {
         Contract.Assert(file != null);
         string extension = Path.GetExtension(file);
         if (extension != null) {
@@ -77,8 +94,7 @@ namespace Microsoft.Boogie {
           goto END;
         }
       }
-      CommandLineOptions.Clo.RunningBoogieOnSsc = false;
-      ProcessFiles(CommandLineOptions.Clo.Files);
+      ProcessFiles(fileList);
 
     END:
       if (CommandLineOptions.Clo.XmlSink != null) {
@@ -155,8 +171,14 @@ namespace Microsoft.Boogie {
           return;
         //BoogiePL.Errors.count = 0;
 
-        oc = EliminateDeadVariablesAndInline(program);
-        //BoogiePL.Errors.count = 0;
+        // Do bitvector analysis
+        if (CommandLineOptions.Clo.DoBitVectorAnalysis) {
+          Microsoft.Boogie.BitVectorAnalysis.DoBitVectorAnalysis(program);
+          PrintBplFile(CommandLineOptions.Clo.BitVectorAnalysisOutputBplFile, program, false);
+          return;
+        }
+
+        EliminateDeadVariablesAndInline(program);
 
         int errorCount, verified, inconclusives, timeOuts, outOfMemories;
         oc = InferAndVerify(program, out errorCount, out verified, out inconclusives, out timeOuts, out outOfMemories);
@@ -216,9 +238,9 @@ namespace Microsoft.Boogie {
       Contract.Requires(0 <= errors && 0 <= inconclusives && 0 <= timeOuts && 0 <= outOfMemories);
       Console.WriteLine();
       if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Doomed) {
-        Console.Write("{0} finished with {1} credible, {2} doomed{3}", CommandLineOptions.Clo.ToolName, verified, errors, errors == 1 ? "" : "s");
+        Console.Write("{0} finished with {1} credible, {2} doomed{3}", CommandLineOptions.Clo.DescriptiveToolName, verified, errors, errors == 1 ? "" : "s");
       } else {
-        Console.Write("{0} finished with {1} verified, {2} error{3}", CommandLineOptions.Clo.ToolName, verified, errors, errors == 1 ? "" : "s");
+        Console.Write("{0} finished with {1} verified, {2} error{3}", CommandLineOptions.Clo.DescriptiveToolName, verified, errors, errors == 1 ? "" : "s");
       }
       if (inconclusives != 0) {
         Console.Write(", {0} inconclusive{1}", inconclusives, inconclusives == 1 ? "" : "s");
@@ -355,7 +377,7 @@ namespace Microsoft.Boogie {
       return PipelineOutcome.ResolvedAndTypeChecked;
     }
 
-    static PipelineOutcome EliminateDeadVariablesAndInline(Program program) {
+    static void EliminateDeadVariablesAndInline(Program program) {
       Contract.Requires(program != null);
       // Eliminate dead variables
       Microsoft.Boogie.UnusedVarEliminator.Eliminate(program);
@@ -367,38 +389,37 @@ namespace Microsoft.Boogie {
 
       // Coalesce blocks
       if (CommandLineOptions.Clo.CoalesceBlocks) {
+        if (CommandLineOptions.Clo.Trace)
+          Console.WriteLine("Coalescing blocks...");
         Microsoft.Boogie.BlockCoalescer.CoalesceBlocks(program);
       }
 
       // Inline
-      // In Spec#, there was no run-time test. The type was just List<Declaration!>
-      List<Declaration> TopLevelDeclarations = cce.NonNull(program.TopLevelDeclarations);
-      
+      var TopLevelDeclarations = cce.NonNull(program.TopLevelDeclarations);
       
       if (CommandLineOptions.Clo.ProcedureInlining != CommandLineOptions.Inlining.None) {
         bool inline = false;
-        foreach (Declaration d in TopLevelDeclarations) {
+        foreach (var d in TopLevelDeclarations) {
           if (d.FindExprAttribute("inline") != null) {
             inline = true;
           }
         }
-        if (inline && CommandLineOptions.Clo.LazyInlining == 0 &&
-          CommandLineOptions.Clo.StratifiedInlining == 0) {
-          foreach (Declaration d in TopLevelDeclarations) {
-            Implementation impl = d as Implementation;
+        if (inline && CommandLineOptions.Clo.LazyInlining == 0 && CommandLineOptions.Clo.StratifiedInlining == 0) {
+          foreach (var d in TopLevelDeclarations) {
+            var impl = d as Implementation;
             if (impl != null) {
               impl.OriginalBlocks = impl.Blocks;
               impl.OriginalLocVars = impl.LocVars;
             }
           }
-          foreach (Declaration d in TopLevelDeclarations) {
-            Implementation impl = d as Implementation;
+          foreach (var d in TopLevelDeclarations) {
+            var impl = d as Implementation;
             if (impl != null && !impl.SkipVerification) {
               Inliner.ProcessImplementation(program, impl);
             }
           }
-          foreach (Declaration d in TopLevelDeclarations) {
-            Implementation impl = d as Implementation;
+          foreach (var d in TopLevelDeclarations) {
+            var impl = d as Implementation;
             if (impl != null) {
               impl.OriginalBlocks = null;
               impl.OriginalLocVars = null;
@@ -406,7 +427,6 @@ namespace Microsoft.Boogie {
           }
         }
       }
-      return PipelineOutcome.Done;
     }
 
     /// <summary>
@@ -423,11 +443,44 @@ namespace Microsoft.Boogie {
       Contract.Ensures(0 <= Contract.ValueAtReturn(out inconclusives) && 0 <= Contract.ValueAtReturn(out timeOuts));
 
       errorCount = verified = inconclusives = timeOuts = outOfMemories = 0;
+      CommandLineOptions.Clo.UseLabels =
+        CommandLineOptions.Clo.UseLabels ||
+        CommandLineOptions.Clo.SoundnessSmokeTest ||
+        !(CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Dag ||
+          CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.DagIterative);
 
       // ---------- Infer invariants --------------------------------------------------------
 
       // Abstract interpretation -> Always use (at least) intervals, if not specified otherwise (e.g. with the "/noinfer" switch)
-      Microsoft.Boogie.AbstractInterpretation.AbstractInterpretation.RunAbstractInterpretation(program);
+      if (CommandLineOptions.Clo.Ai.J_Intervals || CommandLineOptions.Clo.Ai.J_Trivial) {
+        Microsoft.Boogie.AbstractInterpretation.NativeAbstractInterpretation.RunAbstractInterpretation(program);
+      } else {
+        Microsoft.Boogie.AbstractInterpretation.AbstractInterpretation.RunAbstractInterpretation(program);
+      }
+
+      if (CommandLineOptions.Clo.ContractInfer) {
+        Houdini.Houdini houdini = new Houdini.Houdini(program, true);
+        Houdini.HoudiniOutcome outcome = houdini.PerformHoudiniInference();
+        int numTrueAssigns = 0;
+        Console.WriteLine("Assignment computed by Houdini:");
+        foreach (var x in outcome.assignment) {
+          Console.WriteLine(x.Key + " = " + x.Value);
+          if (x.Value)
+            numTrueAssigns++;
+        }
+        if (CommandLineOptions.Clo.Trace) {
+          Console.WriteLine("Number of true assignments = " + numTrueAssigns);
+          Console.WriteLine("Number of false assignments = " + (outcome.assignment.Count - numTrueAssigns));
+          Console.WriteLine("Prover time = " + Houdini.HoudiniSession.proverTime);
+          Console.WriteLine("Number of prover queries = " + Houdini.HoudiniSession.numProverQueries);
+        }
+        errorCount = outcome.ErrorCount;
+        verified = outcome.Verified;
+        inconclusives = outcome.Inconclusives;
+        timeOuts = outcome.TimeOuts;
+        outOfMemories = 0;
+        return PipelineOutcome.Done;
+      }
 
       if (CommandLineOptions.Clo.LoopUnrollCount != -1) {
         program.UnrollLoops(CommandLineOptions.Clo.LoopUnrollCount);
@@ -468,7 +521,7 @@ namespace Microsoft.Boogie {
         if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Doomed) {
           vcgen = new DCGen(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend);
         } else if(CommandLineOptions.Clo.StratifiedInlining > 0) {
-            vcgen = new StratifiedVCGen(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend);
+          vcgen = new StratifiedVCGen(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend);
         } else {
           vcgen = new VCGen(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend);
         }
@@ -481,13 +534,14 @@ namespace Microsoft.Boogie {
       var decls = program.TopLevelDeclarations.ToArray();
       foreach (Declaration decl in decls) {
         Contract.Assert(decl != null);
+        int prevAssertionCount = vcgen.CumulativeAssertionCount;
         Implementation impl = decl as Implementation;
         if (impl != null && CommandLineOptions.Clo.UserWantsToCheckRoutine(cce.NonNull(impl.Name)) && !impl.SkipVerification) {
           List<Counterexample/*!*/>/*?*/ errors;
 
           DateTime start = new DateTime();  // to please compiler's definite assignment rules
           if (CommandLineOptions.Clo.Trace || CommandLineOptions.Clo.XmlSink != null) {
-            start = DateTime.Now;
+            start = DateTime.UtcNow;
             if (CommandLineOptions.Clo.Trace) {
               Console.WriteLine();
               Console.WriteLine("Verifying {0} ...", impl.Name);
@@ -502,7 +556,7 @@ namespace Microsoft.Boogie {
               if (CommandLineOptions.Clo.inferLeastForUnsat != null)
               {
                   var svcgen = vcgen as VC.StratifiedVCGen;
-                  Debug.Assert(svcgen != null);
+                  Contract.Assert(svcgen != null);
                   var ss = new HashSet<string>();
                   foreach (var tdecl in program.TopLevelDeclarations)
                   {
@@ -535,11 +589,12 @@ namespace Microsoft.Boogie {
 
           string timeIndication = "";
 
-          DateTime end = DateTime.Now;
+          DateTime end = DateTime.UtcNow;
           TimeSpan elapsed = end - start;
           if (CommandLineOptions.Clo.Trace || CommandLineOptions.Clo.XmlSink != null) {
             if (CommandLineOptions.Clo.Trace) {
-              timeIndication = string.Format("  [{0} s]  ", elapsed.TotalSeconds);
+              int poCount = vcgen.CumulativeAssertionCount - prevAssertionCount;
+              timeIndication = string.Format("  [{0} s, {1} proof obligation{2}]  ", elapsed.TotalSeconds, poCount, poCount == 1 ? "" : "s");
             }
           }
 

@@ -333,6 +333,7 @@ namespace Graphing {
     private HashSet<Node> headers;
     private Dictionary<Node, HashSet<Node>> backEdgeNodes;
     private Dictionary<Tuple<Node/*!*/, Node/*!*/>, HashSet<Node>> naturalLoops;
+    private HashSet<Node> splitCandidates;
 
     private DomRelation<Node> dominatorMap = null;
     private Dictionary<Node, HashSet<Node>> predCache = new Dictionary<Node, HashSet<Node>>();
@@ -343,7 +344,6 @@ namespace Graphing {
       Contract.Invariant(es == null || Contract.ForAll(es, p => p.Item1 != null && p.Item2 != null));
       Contract.Invariant(naturalLoops == null || Contract.ForAll(naturalLoops.Keys, p => p.Item2 != null && p.Item1 != null));
     }
-
 
     private class PreHeader {
       Node/*!*/ myHeader;
@@ -464,7 +464,7 @@ namespace Graphing {
       }
     }
 
-    internal IEnumerable<Node> Predecessors(Node n) {
+    public IEnumerable<Node> Predecessors(Node n) {
       // original A#
       //Set<Node> result = Set{ x : x in Nodes, Edge(x,n) };
 
@@ -472,9 +472,17 @@ namespace Graphing {
       return predCache[n];
     }
 
-    internal IEnumerable<Node> Successors(Node n) {
+    public IEnumerable<Node> Successors(Node n) {
       ComputePredSuccCaches();
       return succCache[n];
+    }
+
+    public List<Node> SuccessorsAsList(Node n) {
+      ComputePredSuccCaches();
+      List<Node> ret = new List<Node>();
+      foreach (Node s in succCache[n])
+        ret.Add(s);
+      return ret;
     }
 
     internal DomRelation<Node> /*Map<Node,Set<Node>>*/ DominatorMap {
@@ -651,18 +659,20 @@ namespace Graphing {
       internal HashSet<Node> headers;
       internal Dictionary<Node, HashSet<Node>> backEdgeNodes;
       internal Dictionary<Tuple<Node/*!*/, Node/*!*/>, HashSet<Node>> naturalLoops;
+      internal HashSet<Node> splitCandidates;
       [ContractInvariantMethod]
       void ObjectInvariant() {
         Contract.Invariant(Contract.ForAll(naturalLoops.Keys, p => p.Item1 != null && p.Item2 != null));
       }
 
-      internal ReducibleResult(bool b, HashSet<Node> headers, Dictionary<Node, HashSet<Node>> backEdgeNodes, Dictionary<Tuple<Node/*!*/, Node/*!*/>, HashSet<Node>> naturalLoops)
+      internal ReducibleResult(bool b, HashSet<Node> headers, Dictionary<Node, HashSet<Node>> backEdgeNodes, Dictionary<Tuple<Node/*!*/, Node/*!*/>, HashSet<Node>> naturalLoops, HashSet<Node> splitCandidates)
       {
         Contract.Requires(naturalLoops == null || Contract.ForAll(naturalLoops.Keys, Key => Key.Item1 != null && Key.Item2 != null));
         this.reducible = b;
         this.headers = headers;
         this.backEdgeNodes = backEdgeNodes;
         this.naturalLoops = naturalLoops;
+        this.splitCandidates = splitCandidates;
       }
 
     }
@@ -672,6 +682,41 @@ namespace Graphing {
       // first, compute the dom relation
       DomRelation<Node> /*Map<Node,Set<Node>>*/ D = g.DominatorMap;
       return ComputeReducible(g, source, D);
+    }
+
+    static HashSet<Node> FindCycle(Graph<Node> g, Node source) {
+      Stack<Tuple<Node, List<Node>>> stack = new Stack<Tuple<Node, List<Node>>>();
+      HashSet<Node> stackAsSet = new HashSet<Node>();
+      HashSet<Node> visited = new HashSet<Node>();
+      stack.Push(new Tuple<Node, List<Node>>(source, g.SuccessorsAsList(source)));
+      stackAsSet.Add(source);
+      while (stack.Count > 0) {
+        Tuple<Node, List<Node>> tuple = stack.Peek();
+        List<Node> children = tuple.Item2;
+        if (children.Count == 0) {
+          stack.Pop();
+          stackAsSet.Remove(tuple.Item1);
+          continue;
+        }
+        Node n = children[0];
+        children.RemoveAt(0);
+        if (stackAsSet.Contains(n)) {
+          HashSet<Node> ret = new HashSet<Node>();
+          ret.Add(n);
+          while (true) {
+            Node x = stack.Pop().Item1;
+            if (x.Equals(n))
+              return ret;
+          }
+        }
+        if (visited.Contains(n)) 
+          continue;
+        stack.Push(new Tuple<Node, List<Node>>(n, g.SuccessorsAsList(n)));
+        visited.Add(n);
+        stackAsSet.Add(n);
+        System.Diagnostics.Debug.Assert(stack.Count == stackAsSet.Count);
+      }
+      return new HashSet<Node>();
     }
 
     // [Dragon, p. 606]
@@ -696,11 +741,13 @@ namespace Graphing {
           nonBackEdges.Add(e);
         }
       }
-      if (!Acyclic(new Graph<Node>(nonBackEdges), source)) {
+      Graph<Node> withoutBackEdges = new Graph<Node>(nonBackEdges);
+      if (!Acyclic(withoutBackEdges, source)) {
         return new ReducibleResult(false,
                                    new HashSet<Node>(),
                                    new Dictionary<Node, HashSet<Node>>(),
-                                   new Dictionary<Tuple<Node/*!*/, Node/*!*/>, HashSet<Node>>());
+                                   new Dictionary<Tuple<Node/*!*/, Node/*!*/>, HashSet<Node>>(),
+                                   FindCycle(withoutBackEdges, source));
       } else {
         // original A#:
         //Set<Node> headers = Set{ d : <n,d> in backEdges };
@@ -736,7 +783,7 @@ namespace Graphing {
         }
 
         //Console.WriteLine("[" + DateTime.Now +"]: end ComputeReducible");
-        return new ReducibleResult(true, headers, backEdgeNodes, naturalLoops);
+        return new ReducibleResult(true, headers, backEdgeNodes, naturalLoops, new HashSet<Node>());
       }
     }
 
@@ -762,13 +809,18 @@ namespace Graphing {
       Tuple<Node/*!*/, Node/*!*/> e = new Tuple<Node/*!*/, Node/*!*/>(backEdgeNode, header);
       return naturalLoops.ContainsKey(e) ? naturalLoops[e] : (IEnumerable<Node>)new List<Node>();
     }
-
+    public HashSet<Node> SplitCandidates {
+      get {
+        return splitCandidates;
+      }
+    }
     public void ComputeLoops() {
       ReducibleResult r = ComputeReducible(this, this.source);
       this.reducible = r.reducible;
       this.headers = r.headers;
       this.backEdgeNodes = r.backEdgeNodes;
       this.naturalLoops = r.naturalLoops;
+      this.splitCandidates = r.splitCandidates;
       return;
     }
 

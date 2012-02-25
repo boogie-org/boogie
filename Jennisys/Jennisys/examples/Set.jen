@@ -1,8 +1,11 @@
-class Set {
+interface Set {
   var elems: set[int]
 
   constructor Empty()
     ensures elems = {}
+
+  constructor SingletonZero()
+    ensures elems = {0}
 
   constructor Singleton(t: int)
     ensures elems = {t}
@@ -14,12 +17,9 @@ class Set {
     requires p != q
     ensures elems = {p q}
 
-  constructor Triple(p: int, q: int, r: int)
-    requires p != q && q != r && r != p
-    ensures elems = {p q r}
 }
 
-model Set {
+datamodel Set {
   var root: SetNode
 
   frame
@@ -30,15 +30,15 @@ model Set {
     root != null ==> elems = root.elems
 }
 
-class SetNode {
+interface SetNode {
   var elems: set[int]
 
   constructor Init(x: int)
     ensures elems = {x}
 
-  constructor Double(x: int, y: int)
-    requires x != y
-    ensures elems = {x y}
+  constructor Double(a: int, b: int)
+    requires a != b
+    ensures elems = {a b}
 
   constructor DoubleBase(x: int, y: int)
     requires x > y
@@ -51,9 +51,13 @@ class SetNode {
   constructor TripleBase(x: int, y: int, z: int)
     requires x < y && y < z
     ensures elems = {x y z}
+	
+  method Find(n: int) returns (ret: bool)
+    ensures ret = (n in elems)
+	
 }
 
-model SetNode {
+datamodel SetNode {
   var data: int
   var left: SetNode
   var right: SetNode
