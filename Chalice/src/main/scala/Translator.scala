@@ -122,9 +122,9 @@ class Translator {
         methodKStmts :::
         BLocal(h0V) :: BLocal(m0V) :: BLocal(sm0V) :: BLocal(c0V) :: BLocal(h1V) :: BLocal(m1V) :: BLocal(sm1V) :: BLocal(c1V) :: BLocal(lkV) ::
         bassume(wf(h0, m0, sm0)) :: bassume(wf(h1, m1, sm1)) ::
-        (oldTranslator.Mask := ZeroMask) :: (oldTranslator.Credits := ZeroCredits) ::
+        (oldTranslator.Mask := ZeroMask) :: (oldTranslator.SecMask := ZeroMask) :: (oldTranslator.Credits := ZeroCredits) ::
         oldTranslator.Inhale(invs map { mi => mi.e}, "monitor invariant", false, methodK) :::
-        (etran.Mask := ZeroMask) :: (etran.Credits := ZeroCredits) ::
+        (etran.Mask := ZeroMask) :: (etran.SecMask := ZeroMask) :: (etran.Credits := ZeroCredits) ::
         Havoc(etran.Heap) ::
         // check that invariant is well-defined
         etran.WhereOldIs(h1, m1, sm1, c1).Inhale(invs map { mi => mi.e}, "monitor invariant", true, methodK) :::
@@ -366,7 +366,7 @@ class Translator {
         // check precondition
         InhaleWithChecking(Preconditions(method.spec), "precondition", methodK) :::
         DefineInitialState :::
-        (etran.Mask := ZeroMask) :: (etran.Credits := ZeroCredits) ::
+        (etran.Mask := ZeroMask) :: (etran.SecMask := ZeroMask) :: (etran.Credits := ZeroCredits) ::
         Havoc(etran.Heap) ::
         // check postcondition
         InhaleWithChecking(Postconditions(method.spec), "postcondition", methodK) :::
@@ -418,7 +418,7 @@ class Translator {
         // check precondition
         InhaleWithChecking(Preconditions(mt.Spec) ::: preCI, "precondition", todoiparam) :::
         DefineInitialState :::
-        (etran.Mask := ZeroMask) :: (etran.Credits := ZeroCredits) ::
+        (etran.Mask := ZeroMask) :: (etran.SecMask := ZeroMask) :: (etran.Credits := ZeroCredits) ::
         Havoc(etran.Heap) ::
         // check postcondition
         InhaleWithChecking(Postconditions(mt.refines.Spec), "postcondition", todoiparam) :::
