@@ -2105,7 +2105,12 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
       Nil) :: Nil
   }
   /** Most general form of exhale; implements all the specific versions above */
-  // Assumption: if isUpdatingSecMask==true, then the exhale heap is not used at
+  // Note: If isUpdatingSecMask, then m is actually a secondary mask, and at the
+  // moment we do not want an assumption IsGoodMask(SecMask). Therefore, we omit
+  // those if isUpdatingSecMask.
+
+  //
+  // Assumption 1: if isUpdatingSecMask==true, then the exhale heap is not used at
   // all, and the regular heap is not changed.
   // Assumption 2: If isUpdatingSecMask is false, then recurseOnPredicatesDepth
   // is meaningless (and should be -1 by convention). Only if isUpdatingSecMask
@@ -2139,7 +2144,7 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
       bassume(IsGoodExhaleState(eh, Heap, m, sm)) ::
       (Heap := eh) :: Nil
     else Nil) :::
-    bassume(AreGoodMasks(m, sm)) ::
+    (if (isUpdatingSecMask) Nil else bassume(AreGoodMasks(m, sm)) :: Nil) :::
     bassume(wf(Heap, m, sm)) ::
     Comment("end exhale")
   }
@@ -2236,7 +2241,7 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
             }),
             Nil) :: Nil
         else Nil) :::
-        bassume(AreGoodMasks(m, sm)) ::
+        (if (isUpdatingSecMask) Nil else bassume(AreGoodMasks(m, sm)) :: Nil) :::
         bassume(wf(Heap, m, sm))
       }
     case acc @ AccessSeq(s, Some(member), perm) =>
@@ -2287,7 +2292,7 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
               Lambda(List(), List(pcV), (pc ==@ "perm$R").thenElse(mr - r, mn - n)),
               m(ref, f))))
         } :::
-        bassume(AreGoodMasks(m, sm)) ::
+        (if (isUpdatingSecMask) Nil else bassume(AreGoodMasks(m, sm)) :: Nil) :::
         bassume(wf(Heap, m, sm))
       }
     case cr@Credit(ch, n) if !onlyExactCheckingPermissions =>
@@ -2315,7 +2320,7 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
       bassert(nonNull(Tr(e)), error.pos, error.message + " The target of the holds predicate at " + holds.pos + " might be null.") :: Nil else Nil) :::
       bassert(0 < new Boogie.MapSelect(Heap, Tr(e), "held"), error.pos, error.message + " The current thread might not hold lock at " + holds.pos + ".") ::
       bassert(! new Boogie.MapSelect(Heap, Tr(e), "rdheld"), error.pos, error.message + " The current thread might hold the read lock at " + holds.pos + ".") ::
-      bassume(AreGoodMasks(m, sm)) ::
+      (if (isUpdatingSecMask) Nil else bassume(AreGoodMasks(m, sm)) :: Nil) :::
       bassume(wf(Heap, m, sm))
     case Eval(h, e) if !onlyExactCheckingPermissions =>
       val (evalHeap, evalMask, evalSecMask, evalCredits, checks, proofOrAssume) = fromEvalState(h);
@@ -2324,7 +2329,7 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
       BLocals(preGlobalsV) :::
       copyState(preGlobals, Globals(evalHeap, evalMask, evalSecMask, evalCredits)) :::
       (if(check) checks else Nil) :::
-      bassume(AreGoodMasks(preEtran.Mask, preEtran.SecMask)) ::
+      (if (isUpdatingSecMask) Nil else bassume(AreGoodMasks(preEtran.Mask, preEtran.SecMask)) :: Nil) :::
       bassume(wf(preEtran.Heap, preEtran.Mask, preEtran.SecMask)) ::
       bassert(proofOrAssume, p.pos, "Arguments for joinable might not match up.") ::
       preEtran.Exhale(List((e, error)), "eval", check, currentK, exactchecking)
