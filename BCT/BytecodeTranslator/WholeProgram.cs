@@ -74,14 +74,20 @@ namespace BytecodeTranslator {
             }
             this.subTypes[baseClass].Add(typeDefinition);
           }
+          foreach (var iface in typeDefinition.Interfaces) {
+            if (!this.subTypes.ContainsKey(iface)) {
+              this.subTypes[iface] = new List<ITypeReference>();
+            }
+            this.subTypes[iface].Add(typeDefinition);
+          }
           base.TraverseChildren(typeDefinition);
         }
       }
 
     }
 
-    public override ExpressionTraverser MakeExpressionTraverser(Sink sink, StatementTraverser/*?*/ statementTraverser, bool contractContext) {
-      return new WholeProgramExpressionSemantics(this, sink, statementTraverser, contractContext);
+    public override ExpressionTraverser MakeExpressionTraverser(Sink sink, StatementTraverser/*?*/ statementTraverser, bool contractContext, bool expressionIsStatement) {
+      return new WholeProgramExpressionSemantics(this, sink, statementTraverser, contractContext, expressionIsStatement);
     }
 
     /// <summary>
@@ -94,8 +100,8 @@ namespace BytecodeTranslator {
       readonly WholeProgram parent;
       readonly public Dictionary<ITypeReference, List<ITypeReference>> subTypes;
 
-      public WholeProgramExpressionSemantics(WholeProgram parent, Sink sink, StatementTraverser/*?*/ statementTraverser, bool contractContext)
-        : base(sink, statementTraverser, contractContext) {
+      public WholeProgramExpressionSemantics(WholeProgram parent, Sink sink, StatementTraverser/*?*/ statementTraverser, bool contractContext, bool expressionIsStatement)
+        : base(sink, statementTraverser, contractContext, expressionIsStatement) {
         this.parent = parent;
         this.subTypes = parent.subTypes;
       }
@@ -130,7 +136,7 @@ namespace BytecodeTranslator {
           if (resolvedOverride != resolvedMethod)
             same = false;
         }
-        if (0 == overrides.Count || same) {
+        if (!(containingType.ResolvedType.IsInterface) && (0 == overrides.Count || same)) {
           base.TraverseChildren(methodCall);
           return;
         }
