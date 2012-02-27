@@ -102,7 +102,7 @@ namespace VC {
 
         this.impl = impl;
         this.uniqueId = uniqueId;
-        this.controlFlowVariable = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "cfc", Microsoft.Boogie.Type.Int));
+        this.controlFlowVariable = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "@cfc", Microsoft.Boogie.Type.Int));
         impl.LocVars.Add(controlFlowVariable);
 
         List<Variable> interfaceVars = new List<Variable>();

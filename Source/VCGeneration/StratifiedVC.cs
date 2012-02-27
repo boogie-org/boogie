@@ -87,7 +87,6 @@ namespace VC
             {
                 Contract.Invariant(cce.NonNullElements(privateVars));
                 Contract.Invariant(cce.NonNullElements(interfaceExprVars));
-                Contract.Invariant(cce.NonNullElements(interfaceExprVars));
             }
 
             public bool initialized;
@@ -127,9 +126,6 @@ namespace VC
                 {
                     StratifiedInliningInfo info = new StratifiedInliningInfo(impl, program, checker.TheoremProver.Context, QuantifierExpr.GetNextSkolemId());
                     implName2StratifiedInliningInfo[impl.Name] = info;
-                    // We don't need controlFlowVariable for stratified Inlining
-                    //impl.LocVars.Add(info.controlFlowVariable);
-                    
 
                     ExprSeq exprs = new ExprSeq();
                     foreach (Variable v in program.GlobalVariables())
@@ -209,10 +205,16 @@ namespace VC
             VCExpressionGenerator gen = checker.VCExprGen;
             Contract.Assert(gen != null);
 
-
-            VCExpr vcexpr = gen.Not(GenerateVC(impl, null, out label2absy, checker));
+            VCExpr vcexpr = gen.Not(GenerateVC(impl, info.controlFlowVariable, out label2absy, checker));
             Contract.Assert(vcexpr != null);
-          
+            if (!CommandLineOptions.Clo.UseLabels) {
+              var ctx = checker.TheoremProver.Context;
+              var bet = ctx.BoogieExprTranslator;
+              VCExpr controlFlowVariableExpr = bet.LookupVariable(info.controlFlowVariable);
+              VCExpr controlFlowFunctionAppl = ctx.ExprGen.ControlFlowFunctionApplication(controlFlowVariableExpr, ctx.ExprGen.Integer(BigNum.ZERO));
+              VCExpr eqExpr = ctx.ExprGen.Eq(controlFlowFunctionAppl, ctx.ExprGen.Integer(BigNum.FromInt(impl.Blocks[0].UniqueId)));
+              vcexpr = ctx.ExprGen.And(eqExpr, vcexpr);
+            }
           
             info.label2absy = label2absy;
             info.mvInfo = mvInfo;
@@ -2460,6 +2462,14 @@ namespace VC
                 }
                 //Console.WriteLine("Inlining {0}", procName);
                 VCExpr expansion = cce.NonNull(info.vcexpr);
+                
+                if (!CommandLineOptions.Clo.UseLabels) {
+                  var ctx = checker.TheoremProver.Context;
+                  var bet = ctx.BoogieExprTranslator;
+                  VCExpr controlFlowVariableExpr = bet.LookupVariable(info.controlFlowVariable);
+                  VCExpr eqExpr = ctx.ExprGen.Eq(controlFlowVariableExpr, ctx.ExprGen.Integer(BigNum.FromInt(id)));
+                  expansion = ctx.ExprGen.And(eqExpr, expansion);
+                }
 
                 // Instantiate the "forall" variables
                 Dictionary<VCExprVar, VCExpr> substForallDict = new Dictionary<VCExprVar, VCExpr>();
@@ -3591,9 +3601,7 @@ namespace VC
                           NAryExpr mvStateExpr = expr as NAryExpr;
                           if (mvStateExpr != null && mvStateExpr.Fun.FunctionName == ModelViewInfo.MVState_FunctionDef.Name) {
                             LiteralExpr x = mvStateExpr.Args[1] as LiteralExpr;
-                            Debug.Assert(x != null);
-                            int foo = x.asBigNum.ToInt;
-                            orderedStateIds.Add(new Tuple<int, int>(candidateId, foo));
+                            orderedStateIds.Add(new Tuple<int, int>(candidateId, x.asBigNum.ToInt));
                           }
                         }
 
