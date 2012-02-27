@@ -53,7 +53,7 @@ namespace BytecodeTranslator
 
     public readonly Bpl.StmtListBuilder StmtBuilder = new Bpl.StmtListBuilder();
     private bool contractContext;
-    internal readonly Stack<IExpression> operandStack = new Stack<IExpression>();
+    internal readonly Stack<Bpl.Expr> operandStack = new Stack<Bpl.Expr>();
     private bool captureState;
     private static int captureStateCounter = 0;
 
@@ -251,7 +251,13 @@ namespace BytecodeTranslator
     /// <param name="expressionStatement"></param>
     /// <remarks> TODO: might be wrong for the general case</remarks>
     public override void TraverseChildren(IExpressionStatement expressionStatement) {
-      ExpressionTraverser etrav = this.factory.MakeExpressionTraverser(this.sink, this, this.contractContext);
+
+      var expressionIsOpAssignStatement = false;
+      var binOp = expressionStatement.Expression as IBinaryOperation;
+      if (binOp != null && binOp.LeftOperand is ITargetExpression)
+          expressionIsOpAssignStatement = true;
+
+      ExpressionTraverser etrav = this.factory.MakeExpressionTraverser(this.sink, this, this.contractContext, expressionIsOpAssignStatement);
       etrav.Traverse(expressionStatement.Expression);
     }
 
@@ -363,13 +369,7 @@ namespace BytecodeTranslator
     public override void TraverseChildren(IPushStatement pushStatement) {
       var tok = pushStatement.Token();
       var val = pushStatement.ValueToPush;
-      var dup = val as IDupValue;
-      IExpression e;
-      if (dup != null) {
-        e = this.operandStack.Peek();
-      } else {
-        e = val;
-      }
+      var e = ExpressionFor(val);
       this.operandStack.Push(e);
       return;
     }
@@ -377,8 +377,6 @@ namespace BytecodeTranslator
     /// <summary>
     /// 
     /// </summary>
-    /// <remarks>(mschaef) not implemented</remarks>
-    /// <param name="returnStatement"></param>
     public override void TraverseChildren(IReturnStatement returnStatement) {
       Bpl.IToken tok = returnStatement.Token();
 

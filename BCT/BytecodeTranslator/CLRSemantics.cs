@@ -26,15 +26,15 @@ namespace BytecodeTranslator {
       return translator;
     }
 
-    public override ExpressionTraverser MakeExpressionTraverser(Sink sink, StatementTraverser/*?*/ statementTraverser, bool contractContext) {
-      return new CLRExpressionSemantics(sink, statementTraverser, contractContext);
+    public override ExpressionTraverser MakeExpressionTraverser(Sink sink, StatementTraverser/*?*/ statementTraverser, bool contractContext, bool expressionIsStatement) {
+      return new CLRExpressionSemantics(sink, statementTraverser, contractContext, expressionIsStatement);
     }
 
 
     public class CLRExpressionSemantics : ExpressionTraverser {
 
-      public CLRExpressionSemantics(Sink sink, StatementTraverser/*?*/ statementTraverser, bool contractContext)
-        : base(sink, statementTraverser, contractContext) { }
+      public CLRExpressionSemantics(Sink sink, StatementTraverser/*?*/ statementTraverser, bool contractContext, bool expressionIsStatement)
+        : base(sink, statementTraverser, contractContext, expressionIsStatement) { }
       
     }
   }
