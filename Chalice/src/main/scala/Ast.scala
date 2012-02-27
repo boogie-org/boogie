@@ -413,6 +413,7 @@ case class Init(id: String, e: Expression) extends ASTNode {
 sealed abstract class Expression extends RValue {
   def transform(f: Expression => Option[Expression]) = AST.transform(this, f)
   def visit(f: RValue => Unit) = AST.visit(this, f)
+  def visitOpt(f: RValue => Boolean) = AST.visitOpt(this, f)
 }
 sealed abstract class Literal extends Expression
 case class IntLiteral(n: Int) extends Literal
@@ -868,8 +869,10 @@ object AST {
   }
 
   // Applies recursively the function f first to the expression and then to its subexpressions (that is members of type RValue)  
-  def visit(expr: RValue, f: RValue => Unit) {
-    f(expr);
+  def visit(expr: RValue, f: RValue => Unit) = visitOpt(expr, r => {f(r); true})
+  // Applies recursively the function f first to the expression and, if f returns true, then to its subexpressions
+  def visitOpt(expr: RValue, f: RValue => Boolean) {
+    if (f(expr)) {
     expr match {
      case _:Literal => ;
      case _:ThisExpr => ;
@@ -877,67 +880,68 @@ object AST {
      case _:VariableExpr => ;
      case _:BoogieExpr => ;
      case MemberAccess(e, _) =>
-       visit(e, f);
+       visitOpt(e, f);
 
-     case Frac(p) => visit(p, f);
-     case Epsilons(p) => visit(p, f);
+     case Frac(p) => visitOpt(p, f);
+     case Epsilons(p) => visitOpt(p, f);
      case Full | Epsilon | Star | MethodEpsilon =>;
      case ChannelEpsilon(None) | PredicateEpsilon(None) | MonitorEpsilon(None) =>;
-     case ChannelEpsilon(Some(e)) => visit(e, f);
-     case PredicateEpsilon(Some(e)) => visit(e, f);
-     case MonitorEpsilon(Some(e)) => visit(e, f);
-     case ForkEpsilon(tk) => visit(tk, f);
+     case ChannelEpsilon(Some(e)) => visitOpt(e, f);
+     case PredicateEpsilon(Some(e)) => visitOpt(e, f);
+     case MonitorEpsilon(Some(e)) => visitOpt(e, f);
+     case ForkEpsilon(tk) => visitOpt(tk, f);
      case IntPermTimes(n, p) =>
-       visit(n, f); visit(p, f);
+       visitOpt(n, f); visitOpt(p, f);
      case PermTimes(e0, e1) =>
-       visit(e0, f); visit(e1, f);
+       visitOpt(e0, f); visitOpt(e1, f);
      case PermPlus(e0, e1) =>
-       visit(e0, f); visit(e1, f);
+       visitOpt(e0, f); visitOpt(e1, f);
      case PermMinus(e0, e1) =>
-       visit(e0, f); visit(e1, f);
+       visitOpt(e0, f); visitOpt(e1, f);
      case Access(e, perm) =>
-       visit(e, f); visit(perm, f);
+       visitOpt(e, f); visitOpt(perm, f);
      case AccessAll(obj, perm) =>
-       visit(obj, f); visit(perm, f);
+       visitOpt(obj, f); visitOpt(perm, f);
      case AccessSeq(s, _, perm) =>
-       visit(s, f); visit(perm, f);
+       visitOpt(s, f); visitOpt(perm, f);
 
      case Credit(e, n) =>
-       visit(e, f); n match { case Some(n) => visit(n, f); case _ => }
-     case Holds(e) => visit(e, f);
-     case RdHolds(e) => visit(e, f);
+       visitOpt(e, f); n match { case Some(n) => visitOpt(n, f); case _ => }
+     case Holds(e) => visitOpt(e, f);
+     case RdHolds(e) => visitOpt(e, f);
 
      case e: BinaryExpr =>
-       visit(e.E0, f); visit(e.E1, f);
+       visitOpt(e.E0, f); visitOpt(e.E1, f);
      case Range(min, max) =>
-       visit(min, f); visit(max, f);
+       visitOpt(min, f); visitOpt(max, f);
      case e: Assigned => e
-     case Old(e) => visit(e, f);
-     case IfThenElse(con, then, els) => visit(con, f); visit(then, f); visit(els, f);
-     case Not(e) => visit(e, f);
+     case Old(e) => visitOpt(e, f);
+     case IfThenElse(con, then, els) => visitOpt(con, f); visitOpt(then, f); visitOpt(els, f);
+     case Not(e) => visitOpt(e, f);
      case funapp@FunctionApplication(obj, id, args) =>
-       visit(obj, f); args foreach { arg => visit(arg, f) };
+       visitOpt(obj, f); args foreach { arg => visitOpt(arg, f) };
      case Unfolding(pred, e) =>
-       visit(pred, f); visit(e, f);
+       visitOpt(pred, f); visitOpt(e, f);
 
-     case SeqQuantification(_, _, seq, e) => visit(seq, f); visit(e, f);
-     case TypeQuantification(_, _, _, e, (min,max)) => visit(e, f); visit(min, f); visit(max, f);
-     case TypeQuantification(_, _, _, e, _) => visit(e, f);
+     case SeqQuantification(_, _, seq, e) => visitOpt(seq, f); visitOpt(e, f);
+     case TypeQuantification(_, _, _, e, (min,max)) => visitOpt(e, f); visitOpt(min, f); visitOpt(max, f);
+     case TypeQuantification(_, _, _, e, _) => visitOpt(e, f);
      case ExplicitSeq(es) =>
-       es foreach { e => visit(e, f) }
+       es foreach { e => visitOpt(e, f) }
      case Length(e) =>
-       visit(e, f)
+       visitOpt(e, f)
      case Eval(h, e) =>
        h match {
-         case AcquireState(obj) => visit(obj, f);
-         case ReleaseState(obj) => visit(obj, f);
+         case AcquireState(obj) => visitOpt(obj, f);
+         case ReleaseState(obj) => visitOpt(obj, f);
          case CallState(token, obj, id, args) =>
-           visit(token, f); visit(obj, f); args foreach {a : Expression => visit(a, f)};
+           visitOpt(token, f); visitOpt(obj, f); args foreach {a : Expression => visitOpt(a, f)};
        }
-       visit(e, f);
+       visitOpt(e, f);
      case NewRhs(_, init, lowerBounds, upperBounds) =>
-       lowerBounds foreach { e => visit(e, f)};
-       upperBounds foreach { e => visit(e, f)};
+       lowerBounds foreach { e => visitOpt(e, f)};
+       upperBounds foreach { e => visitOpt(e, f)};
+   }
    }
  }
 }

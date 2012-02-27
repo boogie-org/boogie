@@ -2849,11 +2849,15 @@ object TranslationHelper {
         combine(functionDependencies(e0, etran), functionDependencies(e1, etran))
       case IfThenElse(con, then, els) =>
         heapFragment(Boogie.Ite(etran.Tr(con), functionDependencies(then, etran), functionDependencies(els, etran)))
-      case Unfolding(acc@Access(pred@MemberAccess(obj, f), perm), e) =>
-        combine(heapFragment(new Boogie.MapSelect(etran.Heap, etran.Tr(pred.e), pred.predicate.FullName)), functionDependencies(e, etran))
-      case _: PermissionExpr => throw new InternalErrorException("unexpected permission expression")
+      case Unfolding(_, _) =>
+        emptyPartialHeap // the predicate of the unfolding expression needs to have been mentioned already (framing check), so we can safely ignore it now
+      case p: PermissionExpr => println(p); throw new InternalErrorException("unexpected permission expression")
       case e =>
-        e visit {_ match { case _ : PermissionExpr => throw new InternalErrorException("unexpected permission expression"); case _ =>}}
+        e visitOpt {_ match {
+            case Unfolding(_, _) => false
+            case _ : PermissionExpr => throw new InternalErrorException("unexpected permission expression")
+            case _ => true }
+        }
         emptyPartialHeap
     }
   }
@@ -2885,11 +2889,15 @@ object TranslationHelper {
         functionDependenciesEqual(e0, etran1, etran2) && functionDependenciesEqual(e1, etran1, etran2)
       case IfThenElse(con, then, els) =>
         functionDependenciesEqual(then, etran1, etran2) && functionDependenciesEqual(els, etran1, etran2)
-      case Unfolding(acc@Access(pred@MemberAccess(obj, f), perm), e) =>
-        (etran1.Heap.select(etran1.Tr(pred.e), pred.predicate.FullName) ==@ etran2.Heap.select(etran2.Tr(pred.e), pred.predicate.FullName)) && functionDependenciesEqual(e, etran1, etran2)
+      case Unfolding(_, _) =>
+        Boogie.BoolLiteral(true) // the predicate of the unfolding expression needs to have been mentioned already (framing check), so we can safely ignore it now
       case _: PermissionExpr => throw new InternalErrorException("unexpected permission expression")
       case e =>
-        e visit {_ match { case _ : PermissionExpr => throw new InternalErrorException("unexpected permission expression"); case _ =>}}
+        e visitOpt {_ match {
+            case Unfolding(_, _) => false
+            case _ : PermissionExpr => throw new InternalErrorException("unexpected permission expression")
+            case _ => true }
+        }
         Boogie.BoolLiteral(true)
     }
   }
