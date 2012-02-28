@@ -1209,7 +1209,7 @@ namespace VC
 
             TheoremProver.AssertAxioms();
             TheoremProver.Check();
-            ProverInterface.Outcome outcome = TheoremProver.CheckOutcome(reporter);
+            ProverInterface.Outcome outcome = TheoremProver.CheckOutcomeCore(reporter);
             numQueries++;
 
             switch (outcome) {
@@ -1256,11 +1256,11 @@ namespace VC
               return CheckVC();
             }
 
-            //TheoremProver.Push();
+            TheoremProver.Push();
             TheoremProver.AssertAxioms();
             TheoremProver.CheckAssumptions(assumptions, out unsatCore);
-            ProverInterface.Outcome outcome = TheoremProver.CheckOutcome(reporter);
-            //TheoremProver.Pop();
+            ProverInterface.Outcome outcome = TheoremProver.CheckOutcomeCore(reporter);
+            TheoremProver.Pop();
             numQueries++;
 
             switch (outcome) {
