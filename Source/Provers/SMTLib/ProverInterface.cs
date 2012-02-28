@@ -93,7 +93,6 @@ namespace Microsoft.Boogie.SMTLib
           PrepareCommon();
       }
       prevOutcomeAvailable = false;
-      pendingPop = false;
     }
 
     void SetupProcess()
@@ -382,6 +381,18 @@ namespace Microsoft.Boogie.SMTLib
 
     [NoDefaultContract]
     public override Outcome CheckOutcome(ErrorHandler handler)
+    {
+      Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
+
+      var result = CheckOutcomeCore(handler);
+      SendThisVC("(pop 1)");
+      FlushLogFile();
+
+      return result;
+    }
+
+    [NoDefaultContract]
+    public override Outcome CheckOutcomeCore(ErrorHandler handler)
     {  
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
       
@@ -441,16 +452,6 @@ namespace Microsoft.Boogie.SMTLib
             SendThisVC("(assert (not (= (ControlFlow 0 " + source + ") (- " + target + "))))");
             SendThisVC("(check-sat)");
           }
-        }
-
-        if (CommandLineOptions.Clo.StratifiedInlining == 0)
-        {
-            SendThisVC("(pop 1)");
-        }
-        else if (CommandLineOptions.Clo.StratifiedInlining > 0 && pendingPop)
-        {
-            pendingPop = false;
-            SendThisVC("(pop 1)");
         }
 
         FlushLogFile();
@@ -785,7 +786,7 @@ namespace Microsoft.Boogie.SMTLib
 
     public override void Check()
     {
-        Contract.Assert(pendingPop == false && prevOutcomeAvailable == false);
+        Contract.Assert(prevOutcomeAvailable == false);
 
         PrepareCommon();
         SendThisVC("(check-sat)");
@@ -801,15 +802,13 @@ namespace Microsoft.Boogie.SMTLib
     /// Extra state for ApiChecker (used by stratifiedInlining)
     /// </summary>
     bool prevOutcomeAvailable;
-    bool pendingPop;
     Outcome prevOutcome;
     static int nameCounter = 0;
 
     public override void CheckAssumptions(List<VCExpr> assumptions, out List<int> unsatCore)
     {
-        Contract.Assert(pendingPop == false && prevOutcomeAvailable == false);
+        Contract.Assert(prevOutcomeAvailable == false);
 
-        Push();
         unsatCore = new List<int>();
 
         // Name the assumptions
@@ -830,7 +829,6 @@ namespace Microsoft.Boogie.SMTLib
         prevOutcomeAvailable = true;
         if (prevOutcome != Outcome.Valid)
         {
-            pendingPop = true;
             return;
         }
         Contract.Assert(usingUnsatCore, "SMTLib prover not setup for computing unsat cores");
@@ -839,8 +837,6 @@ namespace Microsoft.Boogie.SMTLib
         unsatCore = new List<int>();
         if(resp.Name != "") unsatCore.Add(nameToAssumption[resp.Name]);
         foreach (var s in resp.Arguments) unsatCore.Add(nameToAssumption[s.Name]);
-
-        Pop();
 
         FlushLogFile();
     }
