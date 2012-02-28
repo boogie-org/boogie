@@ -734,10 +734,6 @@ namespace Microsoft.Boogie {
       Undetermined
     }
     public class ErrorHandler {
-      public virtual void OnModel(Dictionary<int, IList<string>> labels, ErrorModel errModel) {
-
-      }
-
       public virtual void OnModel(IList<string> labels, ErrorModel errModel) {
         Contract.Requires(cce.NonNullElements(labels));
       }
@@ -774,7 +770,7 @@ namespace Microsoft.Boogie {
     public abstract void BeginCheck(string descriptiveName, VCExpr vc, ErrorHandler handler);
     [NoDefaultContract]
     public abstract Outcome CheckOutcome(ErrorHandler handler);
-    public virtual Outcome CheckOutcome(ErrorHandler handler, IEnumerable<int> controlFlowConstants) {
+    public virtual string[] CalculatePath(int controlFlowConstant) {
       throw new System.NotImplementedException();
     }
     public virtual void LogComment(string comment) {
@@ -852,6 +848,7 @@ namespace Microsoft.Boogie {
       public abstract void AssertAxioms();
       public abstract void Check();
       public abstract void CheckAssumptions(List<VCExpr> assumptions, out List<int> unsatCore);
+      public abstract Outcome CheckOutcomeCore(ErrorHandler handler);
       public abstract void Push();
       public virtual void SetTimeOut(int ms) { }
   }
