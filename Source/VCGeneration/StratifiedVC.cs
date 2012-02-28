@@ -3449,16 +3449,17 @@ namespace VC
               Dictionary<int, List<Absy>> id2AbsyList = new Dictionary<int, List<Absy>>();
               foreach (var controlFlowConstant in labels.Keys) {
                 IList<string> labelPath = labels[controlFlowConstant];
-                List<Absy> blockPath = new List<Absy>();
+                List<Absy> absyList = new List<Absy>();
                 foreach (var label in labelPath) {
                   if (controlFlowConstant == 0) {
-                    blockPath.Add(Label2Absy(label));
+                    absyList.Add(Label2Absy(label));
                   } else {
                     VCExprNAry expr = calls.id2Candidate[controlFlowConstant];
                     string procName = (cce.NonNull(expr.Op as VCExprBoogieFunctionOp)).Func.Name;
-                    blockPath.Add(Label2Absy(procName, label));
+                    absyList.Add(Label2Absy(procName, label));
                   }
                 }
+                id2AbsyList[controlFlowConstant] = absyList;
               }
 
               candidatesToExpand = new List<int>();
