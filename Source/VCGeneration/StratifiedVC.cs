@@ -3469,6 +3469,13 @@ namespace VC
             }
 
             public override void OnModel(IList<string> labels, ErrorModel errModel) {
+              if (CommandLineOptions.Clo.UseLabels)
+                OnModelOld(labels, errModel);
+              else
+                OnModelNew(labels, errModel);
+            }
+
+            private void OnModelNew(IList<string> labels, ErrorModel errModel) {
               List<Absy> absyList = new List<Absy>();
               foreach (var label in labels) {
                 absyList.Add(Label2Absy(label));
