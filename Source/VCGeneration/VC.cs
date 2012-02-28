@@ -615,7 +615,7 @@ namespace VC {
         Contract.Assert(vc != null);
 
         if (!CommandLineOptions.Clo.UseLabels) {
-          VCExpr controlFlowFunctionAppl = exprGen.ControlFlowFunctionApplication(controlFlowVariableExpr, exprGen.Integer(BigNum.ZERO));
+          VCExpr controlFlowFunctionAppl = exprGen.ControlFlowFunctionApplication(exprGen.Integer(BigNum.ZERO), exprGen.Integer(BigNum.ZERO));
           VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl, exprGen.Integer(BigNum.FromInt(impl.Blocks[0].UniqueId)));
           vc = exprGen.Implies(eqExpr, vc);
         }
@@ -1554,7 +1554,7 @@ namespace VC {
         Contract.Assert(vc != null);
 
         if (!CommandLineOptions.Clo.UseLabels) {
-          VCExpr controlFlowFunctionAppl = exprGen.ControlFlowFunctionApplication(controlFlowVariableExpr, exprGen.Integer(BigNum.ZERO));
+          VCExpr controlFlowFunctionAppl = exprGen.ControlFlowFunctionApplication(exprGen.Integer(BigNum.ZERO), exprGen.Integer(BigNum.ZERO));
           VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl, exprGen.Integer(BigNum.FromInt(impl.Blocks[0].UniqueId)));
           vc = exprGen.Implies(eqExpr, vc);
         }

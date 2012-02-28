@@ -206,15 +206,16 @@ namespace VC
             Contract.Assert(gen != null);
 
             var ctx = checker.TheoremProver.Context;
+            var exprGen = ctx.ExprGen;
             var bet = ctx.BoogieExprTranslator;
             VCExpr controlFlowVariableExpr = CommandLineOptions.Clo.UseLabels ? null : bet.LookupVariable(info.controlFlowVariable);
 
             VCExpr vcexpr = gen.Not(GenerateVC(impl, controlFlowVariableExpr, out label2absy, checker));
             Contract.Assert(vcexpr != null);
             if (!CommandLineOptions.Clo.UseLabels) {
-              VCExpr controlFlowFunctionAppl = ctx.ExprGen.ControlFlowFunctionApplication(controlFlowVariableExpr, ctx.ExprGen.Integer(BigNum.ZERO));
-              VCExpr eqExpr = ctx.ExprGen.Eq(controlFlowFunctionAppl, ctx.ExprGen.Integer(BigNum.FromInt(impl.Blocks[0].UniqueId)));
-              vcexpr = ctx.ExprGen.And(eqExpr, vcexpr);
+              VCExpr controlFlowFunctionAppl = exprGen.ControlFlowFunctionApplication(controlFlowVariableExpr, exprGen.Integer(BigNum.ZERO));
+              VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl, exprGen.Integer(BigNum.FromInt(impl.Blocks[0].UniqueId)));
+              vcexpr = exprGen.And(eqExpr, vcexpr);
             }
           
             info.label2absy = label2absy;
@@ -1372,7 +1373,14 @@ namespace VC
 
             ConvertCFG2DAG(impl, program);
             Hashtable/*TransferCmd->ReturnCmd*/ gotoCmdOrigins = PassifyImpl(impl, program, out mvInfo);
+            var exprGen = checker.TheoremProver.Context.ExprGen;
+            VCExpr controlFlowVariableExpr = CommandLineOptions.Clo.UseLabels ? null : exprGen.Integer(BigNum.ZERO); 
             vcMain = GenerateVC(impl, null, out mainLabel2absy, checker);
+            if (!CommandLineOptions.Clo.UseLabels) {
+              VCExpr controlFlowFunctionAppl = exprGen.ControlFlowFunctionApplication(exprGen.Integer(BigNum.ZERO), exprGen.Integer(BigNum.ZERO));
+              VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl, exprGen.Integer(BigNum.FromInt(impl.Blocks[0].UniqueId)));
+              vcMain = exprGen.Implies(eqExpr, vcMain);
+            }
 
             // Find all procedure calls in vc and put labels on them      
             FCallHandler calls = new FCallHandler(checker.VCExprGen, implName2StratifiedInliningInfo, impl.Name, mainLabel2absy);
@@ -2644,7 +2652,8 @@ namespace VC
             vc = GenerateVC(impl, controlFlowVariableExpr, out label2absy, checker);
 
             if (!CommandLineOptions.Clo.UseLabels) {
-              VCExpr eqExpr = exprGen.Eq(controlFlowVariableExpr, exprGen.Integer(BigNum.FromInt(impl.Blocks[0].UniqueId)));
+              VCExpr controlFlowFunctionAppl = exprGen.ControlFlowFunctionApplication(exprGen.Integer(BigNum.ZERO), exprGen.Integer(BigNum.ZERO));
+              VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl, exprGen.Integer(BigNum.FromInt(impl.Blocks[0].UniqueId)));
               vc = exprGen.Implies(eqExpr, vc);
             }
 
