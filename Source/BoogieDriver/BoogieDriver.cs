@@ -504,13 +504,6 @@ namespace Microsoft.Boogie {
 
       #region Verify each implementation
 
-#if ROB_DEBUG
-      string now = DateTime.Now.ToString().Replace(' ','-').Replace('/','-').Replace(':','-');
-      System.IO.StreamWriter w = new System.IO.StreamWriter(@"\temp\batch_"+now+".bpl");
-      program.Emit(new TokenTextWriter(w));
-      w.Close();
-#endif
-
       ConditionGeneration vcgen = null;
       try {
         if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Doomed) {

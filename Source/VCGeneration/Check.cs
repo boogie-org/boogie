@@ -734,7 +734,11 @@ namespace Microsoft.Boogie {
       Undetermined
     }
     public class ErrorHandler {
-      public virtual void OnModel(IList<string>/*!>!*/ labels, ErrorModel errModel) {
+      public virtual void OnModel(Dictionary<int, IList<string>> labels, ErrorModel errModel) {
+
+      }
+
+      public virtual void OnModel(IList<string> labels, ErrorModel errModel) {
         Contract.Requires(cce.NonNullElements(labels));
       }
 
@@ -743,7 +747,6 @@ namespace Microsoft.Boogie {
       }
 
       public virtual void OnProverWarning(string message)
-        //modifies Console.Out.*, Console.Error.*;
       {
         Contract.Requires(message != null);
         switch (CommandLineOptions.Clo.PrintProverWarnings) {
@@ -761,7 +764,6 @@ namespace Microsoft.Boogie {
         }
       }
 
-
       public virtual Absy Label2Absy(string label) {
         Contract.Requires(label != null);
         Contract.Ensures(Contract.Result<Absy>() != null);
@@ -772,6 +774,9 @@ namespace Microsoft.Boogie {
     public abstract void BeginCheck(string descriptiveName, VCExpr vc, ErrorHandler handler);
     [NoDefaultContract]
     public abstract Outcome CheckOutcome(ErrorHandler handler);
+    public virtual Outcome CheckOutcome(ErrorHandler handler, IEnumerable<int> controlFlowConstants) {
+      throw new System.NotImplementedException();
+    }
     public virtual void LogComment(string comment) {
       Contract.Requires(comment != null);
     }

@@ -101,7 +101,18 @@ namespace Microsoft.Dafny {
       Prev = prev;
     }
 
-    public class Argument {
+    public static bool Contains(Attributes attrs, string nm) {
+      Contract.Requires(nm != null);
+      for (; attrs != null; attrs = attrs.Prev) {
+        if (attrs.Name == nm) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    public class Argument
+    {
       public readonly IToken Tok;
       public readonly string S;
       public readonly Expression E;
@@ -1056,6 +1067,7 @@ namespace Microsoft.Dafny {
     public readonly List<Expression/*!*/>/*!*/ Ens;
     public readonly Specification<Expression>/*!*/ Decreases;
     public readonly Expression Body;  // an extended expression
+    public readonly bool SignatureIsOmitted;  // is "false" for all Function objects that survive into resolution
     [ContractInvariantMethod]
     void ObjectInvariant() {
       Contract.Invariant(cce.NonNullElements(TypeArgs));
@@ -1070,7 +1082,7 @@ namespace Microsoft.Dafny {
     public Function(IToken tok, string name, bool isStatic, bool isGhost, bool isUnlimited,
                     List<TypeParameter> typeArgs, IToken openParen, List<Formal> formals, Type resultType,
                     List<Expression> req, List<FrameExpression> reads, List<Expression> ens, Specification<Expression> decreases,
-                    Expression body, Attributes attributes)
+                    Expression body, Attributes attributes, bool signatureOmitted)
       : base(tok, name, isStatic, attributes) {
 
       Contract.Requires(tok != null);
@@ -1093,6 +1105,7 @@ namespace Microsoft.Dafny {
       this.Ens = ens;
       this.Decreases = decreases;
       this.Body = body;
+      this.SignatureIsOmitted = signatureOmitted;
     }
   }
 
@@ -1102,8 +1115,8 @@ namespace Microsoft.Dafny {
     public Predicate(IToken tok, string name, bool isStatic, bool isGhost, bool isUnlimited,
                      List<TypeParameter> typeArgs, IToken openParen, List<Formal> formals,
                      List<Expression> req, List<FrameExpression> reads, List<Expression> ens, Specification<Expression> decreases,
-                     Expression body, bool bodyIsExtended, Attributes attributes)
-      : base(tok, name, isStatic, isGhost, isUnlimited, typeArgs, openParen, formals, new BoolType(), req, reads, ens, decreases, body, attributes) {
+                     Expression body, bool bodyIsExtended, Attributes attributes, bool signatureOmitted)
+      : base(tok, name, isStatic, isGhost, isUnlimited, typeArgs, openParen, formals, new BoolType(), req, reads, ens, decreases, body, attributes, signatureOmitted) {
       Contract.Requires(!bodyIsExtended || body != null);
       BodyIsExtended = bodyIsExtended;
     }
@@ -1112,6 +1125,7 @@ namespace Microsoft.Dafny {
   public class Method : MemberDecl, TypeParameter.ParentType
   {
     public readonly bool IsGhost;
+    public readonly bool SignatureIsOmitted;
     public readonly List<TypeParameter/*!*/>/*!*/ TypeArgs;
     public readonly List<Formal/*!*/>/*!*/ Ins;
     public readonly List<Formal/*!*/>/*!*/ Outs;
@@ -1140,7 +1154,7 @@ namespace Microsoft.Dafny {
                   [Captured] List<MaybeFreeExpression/*!*/>/*!*/ ens,
                   [Captured] Specification<Expression>/*!*/ decreases,
                   [Captured] BlockStmt body,
-                  Attributes attributes)
+                  Attributes attributes, bool signatureOmitted)
       : base(tok, name, isStatic, attributes) {
       Contract.Requires(tok != null);
       Contract.Requires(name != null);
@@ -1160,6 +1174,7 @@ namespace Microsoft.Dafny {
       this.Ens = ens;
       this.Decreases = decreases;
       this.Body = body;
+      this.SignatureIsOmitted = signatureOmitted;
     }
   }
 
@@ -1172,8 +1187,8 @@ namespace Microsoft.Dafny {
                   [Captured] List<MaybeFreeExpression/*!*/>/*!*/ ens,
                   [Captured] Specification<Expression>/*!*/ decreases,
                   [Captured] BlockStmt body,
-                  Attributes attributes)
-      : base(tok, name, false, false, typeArgs, ins, new List<Formal>(), req, mod, ens, decreases, body, attributes) {
+                  Attributes attributes, bool signatureOmitted)
+      : base(tok, name, false, false, typeArgs, ins, new List<Formal>(), req, mod, ens, decreases, body, attributes, signatureOmitted) {
       Contract.Requires(tok != null);
       Contract.Requires(name != null);
       Contract.Requires(cce.NonNullElements(typeArgs));
@@ -1908,6 +1923,40 @@ namespace Microsoft.Dafny {
       Contract.Requires(cce.NonNullElements(arguments));
       Contract.Requires(cce.NonNullElements(body));
       this.Body = body;
+    }
+  }
+
+  /// <summary>
+  /// The class represents several possible scenarios:
+  /// * ...;
+  ///   S == null
+  /// * assert ...
+  ///   ConditionOmitted == true
+  /// * if ... { Stmt }
+  ///   if ... { Stmt } else ElseStmt
+  ///   ConditionOmitted == true
+  /// * while ... invariant J;
+  ///   ConditionOmitted == true && BodyOmitted == true
+  /// * while ... invariant J; { Stmt }
+  ///   ConditionOmitted == true && BodyOmitted == false
+  /// </summary>
+  public class SkeletonStatement : Statement
+  {
+    public readonly Statement S;
+    public readonly bool ConditionOmitted;
+    public readonly bool BodyOmitted;
+    public SkeletonStatement(IToken tok)
+      : base(tok)
+    {
+      Contract.Requires(tok != null);
+    }
+    public SkeletonStatement(Statement s, bool conditionOmitted, bool bodyOmitted)
+      : base(s.Tok)
+    {
+      Contract.Requires(s != null);
+      S = s;
+      ConditionOmitted = conditionOmitted;
+      BodyOmitted = bodyOmitted;
     }
   }
 

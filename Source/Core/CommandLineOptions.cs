@@ -447,6 +447,7 @@ namespace Microsoft.Boogie {
     public int EnhancedErrorMessages = 0;
     public bool ForceBplErrors = false; // if true, boogie error is shown even if "msg" attribute is present
     public bool UseArrayTheory = false;
+    public bool UseLabels = true;
     public bool MonomorphicArrays {
       get {
         return UseArrayTheory || TypeEncodingMethod == TypeEncoding.Monomorphic;
@@ -561,6 +562,7 @@ namespace Microsoft.Boogie {
     public int StratifiedInlining = 0;
     public int StratifiedInliningOption = 0;
     public bool StratifiedInliningWithoutModels = false; // disable model generation for SI
+    public int StratifiedInliningVerbose = 0; // verbosity level
     public bool UseUnsatCoreForInlining = false;
     public int RecursionBound = 500;
     public string inferLeastForUnsat = null;
@@ -1222,7 +1224,8 @@ namespace Microsoft.Boogie {
               ps.CheckBooleanFlag("z3multipleErrors", ref z3AtFlag, false) ||
               ps.CheckBooleanFlag("monomorphize", ref Monomorphize) ||
               ps.CheckBooleanFlag("useArrayTheory", ref UseArrayTheory) ||
-              ps.CheckBooleanFlag("doModSetAnalysis", ref DoModSetAnalysis)
+              ps.CheckBooleanFlag("doModSetAnalysis", ref DoModSetAnalysis) ||
+              ps.CheckBooleanFlag("doNotUseLabels", ref UseLabels, false)
               ) {
             // one of the boolean flags matched
             return true;

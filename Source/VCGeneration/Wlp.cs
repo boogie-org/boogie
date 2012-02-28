@@ -22,7 +22,7 @@ namespace VC {
 
     [Rep] public readonly Hashtable/*<int, Absy!>*/ Label2absy;
     [Rep] public readonly ProverContext Ctxt;
-    public readonly Variable ControlFlowVariable;
+    public readonly VCExpr ControlFlowVariableExpr;
     public int AssertionCount;  // counts the number of assertions for which Wlp has been computed
     
     public VCContext(Hashtable/*<int, Absy!>*/ label2absy, ProverContext ctxt)
@@ -33,12 +33,12 @@ namespace VC {
       // base();
     }
     
-    public VCContext(Hashtable/*<int, Absy!>*/ label2absy, ProverContext ctxt, Variable controlFlowVariable)
+    public VCContext(Hashtable/*<int, Absy!>*/ label2absy, ProverContext ctxt, VCExpr controlFlowVariableExpr)
     {
       Contract.Requires(ctxt != null);
       this.Label2absy = label2absy;
       this.Ctxt = ctxt;
-      this.ControlFlowVariable = controlFlowVariable;
+      this.ControlFlowVariableExpr = controlFlowVariableExpr;
     }
     
   }
@@ -126,19 +126,17 @@ namespace VC {
             return gen.Implies(C, N);
 
           ctxt.AssertionCount++;
-          if (ctxt.ControlFlowVariable == null) {
+          if (ctxt.ControlFlowVariableExpr == null) {
             Contract.Assert(ctxt.Label2absy != null);
             return gen.AndSimp(gen.LabelNeg(cce.NonNull(id.ToString()), C), N);
           } else {
-            VCExpr controlFlowVariableExpr = ctxt.Ctxt.BoogieExprTranslator.LookupVariable(ctxt.ControlFlowVariable);
-            Contract.Assert(controlFlowVariableExpr != null);
-            VCExpr controlFlowFunctionAppl = gen.ControlFlowFunctionApplication(controlFlowVariableExpr, gen.Integer(BigNum.FromInt(b.UniqueId)));
+            VCExpr controlFlowFunctionAppl = gen.ControlFlowFunctionApplication(ctxt.ControlFlowVariableExpr, gen.Integer(BigNum.FromInt(b.UniqueId)));
             Contract.Assert(controlFlowFunctionAppl != null);
-            VCExpr assertFailure = gen.Eq(controlFlowFunctionAppl, gen.Integer(BigNum.FromInt(ac.UniqueId)));
+            VCExpr assertFailure = gen.Eq(controlFlowFunctionAppl, gen.Integer(BigNum.FromInt(-ac.UniqueId)));
             if (ctxt.Label2absy == null) {
-              return gen.AndSimp(gen.Implies(assertFailure, C), gen.Implies(C, N));
+              return gen.AndSimp(gen.Implies(assertFailure, C), N);
             } else {
-              return gen.AndSimp(gen.LabelNeg(cce.NonNull(id.ToString()), gen.Implies(assertFailure, C)), gen.Implies(C, N));
+              return gen.AndSimp(gen.LabelNeg(cce.NonNull(id.ToString()), gen.Implies(assertFailure, C)), N);
             }
           }
         }

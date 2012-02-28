@@ -8,9 +8,7 @@ using System.Diagnostics.Contracts;
 using System.Collections.Generic;
 using Microsoft.Boogie;
 using Microsoft.Boogie.VCExprAST;
-using Microsoft.Boogie.Simplify;
-using Microsoft.Boogie.Z3;
-using Microsoft.Boogie.SMTLib;
+using Microsoft.Basetypes;
 using System.Collections;
 using System.IO;
 using System.Threading;
@@ -29,16 +27,22 @@ namespace Microsoft.Boogie.Houdini {
       descriptiveName = impl.Name;
       collector = new ConditionGeneration.CounterexampleCollector();
       collector.OnProgress("HdnVCGen", 0, 0, 0.0);
-      if (CommandLineOptions.Clo.SoundnessSmokeTest) {
-        throw new Exception("HoudiniVCGen does not support Soundness smoke test.");
-      }
 
       vcgen.ConvertCFG2DAG(impl, program);
       ModelViewInfo mvInfo;
       Hashtable/*TransferCmd->ReturnCmd*/ gotoCmdOrigins = vcgen.PassifyImpl(impl, program, out mvInfo);
       Hashtable/*<int, Absy!>*/ label2absy;
+
+      var exprGen = checker.TheoremProver.Context.ExprGen;
+      VCExpr controlFlowVariableExpr = CommandLineOptions.Clo.UseLabels ? null : exprGen.Integer(BigNum.ZERO);
       
-      conjecture = vcgen.GenerateVC(impl, null, out label2absy, checker);
+      conjecture = vcgen.GenerateVC(impl, controlFlowVariableExpr, out label2absy, checker);
+
+      if (!CommandLineOptions.Clo.UseLabels) {
+        VCExpr controlFlowFunctionAppl = exprGen.ControlFlowFunctionApplication(exprGen.Integer(BigNum.ZERO), exprGen.Integer(BigNum.ZERO));
+        VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl, exprGen.Integer(BigNum.FromInt(impl.Blocks[0].UniqueId)));
+        conjecture = exprGen.Implies(eqExpr, conjecture);
+      }
 
       if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Local) {
         handler = new VCGen.ErrorReporterLocal(gotoCmdOrigins, label2absy, impl.Blocks, vcgen.incarnationOriginMap, collector, mvInfo, vcgen.implName2LazyInliningInfo, checker.TheoremProver.Context, program);

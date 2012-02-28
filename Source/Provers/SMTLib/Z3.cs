@@ -44,7 +44,9 @@ namespace Microsoft.Boogie.SMTLib
         string firstTry = _proverPath;
 
         if (File.Exists(firstTry)) {
-          Console.WriteLine("[TRACE] Using prover: " + _proverPath);
+          if (CommandLineOptions.Clo.Trace) {
+            Console.WriteLine("[TRACE] Using prover: " + _proverPath);
+          }
           return;
         }
 

@@ -535,10 +535,10 @@ namespace Microsoft.Dafny {
 
       if (f is Predicate) {
         return new Predicate(tok, f.Name, f.IsStatic, isGhost, f.IsUnlimited, tps, f.OpenParen, formals,
-          req, reads, ens, decreases, body, moreBody != null, null);
+          req, reads, ens, decreases, body, moreBody != null, null, false);
       } else {
         return new Function(tok, f.Name, f.IsStatic, isGhost, f.IsUnlimited, tps, f.OpenParen, formals, CloneType(f.ResultType),
-          req, reads, ens, decreases, body, null);
+          req, reads, ens, decreases, body, null, false);
       }
     }
 
@@ -562,10 +562,10 @@ namespace Microsoft.Dafny {
       var body = replacementBody ?? CloneBlockStmt(m.Body);
       if (m is Constructor) {
         return new Constructor(Tok(m.tok), m.Name, tps, ins,
-          req, mod, ens, decreases, body, null);
+          req, mod, ens, decreases, body, null, false);
       } else {
         return new Method(Tok(m.tok), m.Name, m.IsStatic, m.IsGhost, tps, ins, m.Outs.ConvertAll(CloneFormal),
-          req, mod, ens, decreases, body, null);
+          req, mod, ens, decreases, body, null, false);
       }
     }
 
@@ -620,10 +620,15 @@ namespace Microsoft.Dafny {
               } else if (prevFunction.IsGhost && !f.IsGhost && prevFunction.Body != null) {
                 reporter.Error(f, "a function can be changed into a function method in a refining module only if the function has not yet been given a body: {0}", f.Name);
               }
-              CheckAgreement_TypeParameters(f.tok, prevFunction.TypeArgs, f.TypeArgs, f.Name, "function");
-              CheckAgreement_Parameters(f.tok, prevFunction.Formals, f.Formals, f.Name, "function", "parameter");
-              if (!TypesAreEqual(prevFunction.ResultType, f.ResultType)) {
-                reporter.Error(f, "the result type of function '{0}' ({1}) differs from the result type of the corresponding function in the module it refines ({2})", f.Name, f.ResultType, prevFunction.ResultType);
+              if (f.SignatureIsOmitted) {
+                Contract.Assert(f.TypeArgs.Count == 0);
+                Contract.Assert(f.Formals.Count == 0);
+              } else {
+                CheckAgreement_TypeParameters(f.tok, prevFunction.TypeArgs, f.TypeArgs, f.Name, "function");
+                CheckAgreement_Parameters(f.tok, prevFunction.Formals, f.Formals, f.Name, "function", "parameter");
+                if (!TypesAreEqual(prevFunction.ResultType, f.ResultType)) {
+                  reporter.Error(f, "the result type of function '{0}' ({1}) differs from the result type of the corresponding function in the module it refines ({2})", f.Name, f.ResultType, prevFunction.ResultType);
+                }
               }
 
               Expression moreBody = null;
@@ -662,17 +667,22 @@ namespace Microsoft.Dafny {
               } else if (!prevMethod.IsGhost && m.IsGhost) {
                 reporter.Error(m, "a ghost method cannot be changed into a non-ghost method in a refining module: {0}", m.Name);
               }
-              CheckAgreement_TypeParameters(m.tok, prevMethod.TypeArgs, m.TypeArgs, m.Name, "method");
-              CheckAgreement_Parameters(m.tok, prevMethod.Ins, m.Ins, m.Name, "method", "in-parameter");
-              CheckAgreement_Parameters(m.tok, prevMethod.Outs, m.Outs, m.Name, "method", "out-parameter");
+              if (m.SignatureIsOmitted) {
+                Contract.Assert(m.TypeArgs.Count == 0);
+                Contract.Assert(m.Ins.Count == 0);
+                Contract.Assert(m.Outs.Count == 0);
+              } else {
+                CheckAgreement_TypeParameters(m.tok, prevMethod.TypeArgs, m.TypeArgs, m.Name, "method");
+                CheckAgreement_Parameters(m.tok, prevMethod.Ins, m.Ins, m.Name, "method", "in-parameter");
+                CheckAgreement_Parameters(m.tok, prevMethod.Outs, m.Outs, m.Name, "method", "out-parameter");
+              }
 
               var replacementBody = m.Body;
               if (replacementBody != null) {
                 if (prevMethod.Body == null) {
                   // cool
                 } else {
-                  reporter.Error(m, "body of refining method is not yet supported");  // TODO (merge the new body into the old)
-                  replacementBody = null;
+                  replacementBody = MergeBlockStmt(replacementBody, prevMethod.Body);
                 }
               }
               nw.Members[index] = CloneMethod(prevMethod, m.Ens, replacementBody);
@@ -733,6 +743,107 @@ namespace Microsoft.Dafny {
       Contract.Requires(t != null);
       Contract.Requires(u != null);
       return t.ToString() == u.ToString();
+    }
+
+    BlockStmt MergeBlockStmt(BlockStmt skeleton, BlockStmt oldStmt) {
+      Contract.Requires(skeleton != null);
+      Contract.Requires(oldStmt != null);
+
+      var body = new List<Statement>();
+      int i = 0, j = 0;
+      while (i < skeleton.Body.Count) {
+        var cur = skeleton.Body[i];
+        if (j == oldStmt.Body.Count) {
+          if (!(cur is SkeletonStatement)) {
+            MergeAddStatement(cur, body);
+          } else if (((SkeletonStatement)cur).S == null) {
+            // the "..." matches the empty statement sequence
+          } else {
+            reporter.Error(cur.Tok, "skeleton statement does not match old statement");
+          }
+          i++;
+        } else {
+          var oldS = oldStmt.Body[j];
+          /* See how the two statements match up.
+           *   cur                         oldS                         result
+           *   ------                      ------                       ------
+           *   assert ...;                 assume E;                    assert E;
+           *   assert ...;                 assert E;                    assert E;
+           *   assert E;                                                assert E;
+           *   
+           *   var x:=E;                   var x;                       var x:=E;
+           *   var VarProduction;                                       var VarProduction;
+           *   
+           *   if ... Then else Else       if (G) Then' else Else'      if (G) Merge(Then,Then') else Merge(Else,Else')
+           *   if (G) Then else Else       if (*) Then' else Else'      if (G) Merge(Then,Then') else Merge(Else,Else')
+           *
+           *   while ... LoopSpec ...      while (G) LoopSpec' Body     while (G) Merge(LoopSpec,LoopSpec') Body
+           *   while ... LoopSpec Body     while (G) LoopSpec' Body'    while (G) Merge(LoopSpec,LoopSpec') Merge(Body,Body')
+           *   while (G) LoopSpec ...      while (*) LoopSpec' Body     while (G) Merge(LoopSpec,LoopSpec') Body
+           *   while (G) LoopSpec Body     while (*) LoopSpec' Body'    while (G) Merge(LoopSpec,LoopSpec') Merge(Body,Body')
+           *   
+           *   ...; S                      StmtThatDoesNotMatchS; S'    StatementThatDoesNotMatchS; Merge( ...;S , S')
+           * 
+           * Note, LoopSpec must contain only invariant declarations (as the parser ensures for the first three cases).
+           * Note, there is an implicit "...;" at the end of every block in a skeleton.
+           *   
+           * TODO:  should also handle labels and some form of new "replace" statement
+           */
+          if (cur is SkeletonStatement) {
+            var ass = ((SkeletonStatement)cur).S as AssertStmt;
+            if (ass != null) {
+              Contract.Assert(((SkeletonStatement)cur).ConditionOmitted);
+              var oldAssume = oldS as PredicateStmt;
+              if (oldAssume == null) {
+                reporter.Error(cur.Tok, "assert template does not match old statement");
+              } else {
+                // Clone the expression, but among the new assert's attributes, indicate
+                // that this assertion is supposed to be translated into a check.  That is,
+                // it is not allowed to be just assumed in the translation, despite the fact
+                // that the condition is inherited.
+                var e = CloneExpr(oldAssume.Expr);
+                body.Add(new AssertStmt(ass.Tok, e, new Attributes("prependAssertToken", new List<Attributes.Argument>(), null)));
+              }
+              i++; j++;
+            } else {
+              reporter.Error(cur.Tok, "sorry, this skeleton statement is not yet supported");
+              i++;
+            }
+          } else {
+            var cNew = cur as VarDeclStmt;
+            var cOld = oldS as VarDeclStmt;
+            if (cNew != null && cOld != null && cNew.Lhss.Count == 1 && cOld.Lhss.Count == 1 &&
+              cNew.Lhss[0].Name == cOld.Lhss[0].Name && cOld.Update == null) {
+              body.Add(cNew);  // TODO:  there should perhaps be some more validity checks here first
+              i++; j++;
+            } else {
+              MergeAddStatement(cur, body);
+              i++;
+            }
+          }
+        }
+      }
+      // implement the implicit "...;" at the end of each block statement skeleton
+      for (; j < oldStmt.Body.Count; j++) {
+        MergeAddStatement(CloneStmt(oldStmt.Body[j]), body);
+      }
+      return new BlockStmt(skeleton.Tok, body);
+    }
+
+    /// <summary>
+    /// Add "s" to "stmtList", but complain if "s" contains further occurrences of "..." or if "s" assigns to a
+    /// variable that was not declared in the refining module.
+    /// TODO: and what about new control flow?
+    /// </summary>
+    void MergeAddStatement(Statement s, List<Statement> stmtList) {
+      Contract.Requires(s != null);
+      Contract.Requires(stmtList != null);
+      if (s is AssertStmt) {
+        // this is fine to add
+      } else {
+        // TODO: validity checks
+      }
+      stmtList.Add(s);
     }
 
     // ---------------------- additional methods -----------------------------------------------------------------------------

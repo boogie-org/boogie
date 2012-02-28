@@ -36,6 +36,12 @@ namespace Microsoft.Boogie.SMTLib
       "bvsge", "bvslt", "bvugt", "bvsgt", "bvxor", "bvnand", "bvnor", "bvxnor", "sign_extend", "zero_extend", 
       "repeat", "bvredor", "bvredand", "bvcomp", "bvumul_noovfl", "bvsmul_noovfl", "bvsmul_noudfl", "bvashr",
       "rotate_left", "rotate_right", "ext_rotate_left", "ext_rotate_right", "int2bv", "bv2int",
+      // floating point
+      "plusInfinity", "minusInfinity", "NaN", 
+      "roundNearestTiesToEven", "roundNearestTiesToAway", "roundTowardPositive", "roundTowardNegative", "roundTowardZero", 
+      "+", "-", "/", "*", "==", "<", ">", "<=", ">=", 
+      "abs", "remainder", "fusedMA", "squareRoot", "roundToIntegral", 
+      "isZero", "isNZero", "isPZero", "isSignMinus", "min", "max", "asFloat", 
       // SMT v1 stuff
       "flet", "implies", "!=", "if_then_else",
       // Z3 extensions

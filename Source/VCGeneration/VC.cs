@@ -102,7 +102,7 @@ namespace VC {
 
         this.impl = impl;
         this.uniqueId = uniqueId;
-        this.controlFlowVariable = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "cfc", Microsoft.Boogie.Type.Int));
+        this.controlFlowVariable = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "@cfc", Microsoft.Boogie.Type.Int));
         impl.LocVars.Add(controlFlowVariable);
 
         List<Variable> interfaceVars = new List<Variable>();
@@ -272,7 +272,7 @@ namespace VC {
       TypecheckingContext tc = new TypecheckingContext(null);
       impl.Typecheck(tc);
       int assertionCount;
-      VCExpr vcexpr = gen.Not(LetVC(impl.Blocks[0], info.controlFlowVariable, null, checker.TheoremProver.Context, out assertionCount));
+      VCExpr vcexpr = gen.Not(LetVC(impl.Blocks[0], translator.LookupVariable(info.controlFlowVariable), null, checker.TheoremProver.Context, out assertionCount));
       CumulativeAssertionCount += assertionCount;
       Contract.Assert(vcexpr != null);
       ResetPredecessors(impl.Blocks);
@@ -607,8 +607,19 @@ namespace VC {
         Hashtable label2Absy;
         Checker ch = parent.FindCheckerFor(impl, CommandLineOptions.Clo.SmokeTimeout);
         Contract.Assert(ch != null);
-        VCExpr vc = parent.GenerateVC(impl, null, out label2Absy, ch);
+
+        var exprGen = ch.TheoremProver.Context.ExprGen;
+        VCExpr controlFlowVariableExpr = CommandLineOptions.Clo.UseLabels ? null : exprGen.Integer(BigNum.ZERO);
+
+        VCExpr vc = parent.GenerateVC(impl, controlFlowVariableExpr, out label2Absy, ch);
         Contract.Assert(vc != null);
+
+        if (!CommandLineOptions.Clo.UseLabels) {
+          VCExpr controlFlowFunctionAppl = exprGen.ControlFlowFunctionApplication(exprGen.Integer(BigNum.ZERO), exprGen.Integer(BigNum.ZERO));
+          VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl, exprGen.Integer(BigNum.FromInt(impl.Blocks[0].UniqueId)));
+          vc = exprGen.Implies(eqExpr, vc);
+        }
+
         impl.Blocks = backup;
 
         if (CommandLineOptions.Clo.TraceVerify) {
@@ -1329,7 +1340,7 @@ namespace VC {
           foreach (Cmd c in b.Cmds) {
             Contract.Assert(c != null);
             if (c is AssertCmd) {
-              return AssertCmdToCounterexample((AssertCmd)c, cce.NonNull(b.TransferCmd), trace, null, null, context, new Dictionary<Incarnation, Absy>());
+              return AssertCmdToCounterexample((AssertCmd)c, cce.NonNull(b.TransferCmd), trace, null, null, context);
             }
           }
         }
@@ -1536,9 +1547,18 @@ namespace VC {
           }
 		  ));
 
-        VCExpr vc = parent.GenerateVCAux(impl, null, label2absy, checker);
+        var exprGen = ctx.ExprGen;
+        VCExpr controlFlowVariableExpr = CommandLineOptions.Clo.UseLabels ? null : exprGen.Integer(BigNum.ZERO);
+
+        VCExpr vc = parent.GenerateVCAux(impl, controlFlowVariableExpr, label2absy, checker);
         Contract.Assert(vc != null);
 
+        if (!CommandLineOptions.Clo.UseLabels) {
+          VCExpr controlFlowFunctionAppl = exprGen.ControlFlowFunctionApplication(exprGen.Integer(BigNum.ZERO), exprGen.Integer(BigNum.ZERO));
+          VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl, exprGen.Integer(BigNum.FromInt(impl.Blocks[0].UniqueId)));
+          vc = exprGen.Implies(eqExpr, vc);
+        }
+        
         if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Local) {
           reporter = new ErrorReporterLocal(gotoCmdOrigins, label2absy, impl.Blocks, parent.incarnationOriginMap, callback, mvInfo, parent.implName2LazyInliningInfo, cce.NonNull(this.Checker.TheoremProver.Context), parent.program);
         } else {
@@ -1610,7 +1630,7 @@ namespace VC {
     }
     #endregion
 
-    public VCExpr GenerateVC(Implementation/*!*/ impl, Variable controlFlowVariable, out Hashtable/*<int, Absy!>*//*!*/ label2absy, Checker/*!*/ ch)
+    public VCExpr GenerateVC(Implementation/*!*/ impl, VCExpr controlFlowVariableExpr, out Hashtable/*<int, Absy!>*//*!*/ label2absy, Checker/*!*/ ch)
     {
       Contract.Requires(impl != null);
       Contract.Requires(ch != null);
@@ -1618,10 +1638,10 @@ namespace VC {
       Contract.Ensures(Contract.Result<VCExpr>() != null);
 
       label2absy = new Hashtable/*<int, Absy!>*/();
-      return GenerateVCAux(impl, controlFlowVariable, label2absy, ch);
+      return GenerateVCAux(impl, controlFlowVariableExpr, label2absy, ch);
     }
 
-    protected VCExpr GenerateVCAux(Implementation/*!*/ impl, Variable controlFlowVariable, Hashtable/*<int, Absy!>*//*!*/ label2absy, Checker/*!*/ ch) {
+    protected VCExpr GenerateVCAux(Implementation/*!*/ impl, VCExpr controlFlowVariableExpr, Hashtable/*<int, Absy!>*//*!*/ label2absy, Checker/*!*/ ch) {
       Contract.Requires(impl != null);
       Contract.Requires(ch != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
@@ -1652,13 +1672,13 @@ namespace VC {
           break;
         case CommandLineOptions.VCVariety.Dag:
           if (cce.NonNull(CommandLineOptions.Clo.TheProverFactory).SupportsDags) {
-            vc = DagVC(cce.NonNull(impl.Blocks[0]), label2absy, new Hashtable/*<Block, VCExpr!>*/(), ch.TheoremProver.Context, out assertionCount);
+            vc = DagVC(cce.NonNull(impl.Blocks[0]), controlFlowVariableExpr, label2absy, new Hashtable/*<Block, VCExpr!>*/(), ch.TheoremProver.Context, out assertionCount);
           } else {
-            vc = LetVC(cce.NonNull(impl.Blocks[0]), controlFlowVariable, label2absy, ch.TheoremProver.Context, out assertionCount);
+            vc = LetVC(cce.NonNull(impl.Blocks[0]), controlFlowVariableExpr, label2absy, ch.TheoremProver.Context, out assertionCount);
           }
           break;
         case CommandLineOptions.VCVariety.DagIterative:
-          vc = LetVCIterative(impl.Blocks, controlFlowVariable, label2absy, ch.TheoremProver.Context, out assertionCount);
+          vc = LetVCIterative(impl.Blocks, controlFlowVariableExpr, label2absy, ch.TheoremProver.Context, out assertionCount);
           break;
         case CommandLineOptions.VCVariety.Doomed:
           vc = FlatBlockVC(impl, label2absy, false, false, true, ch.TheoremProver.Context, out assertionCount);
@@ -2050,7 +2070,7 @@ namespace VC {
             if (b.Cmds.Has(a)) {
               BlockSeq trace = new BlockSeq();
               trace.Add(b);
-              Counterexample newCounterexample = AssertCmdToCounterexample(a, cce.NonNull(b.TransferCmd), trace, errModel == null ? null : errModel.ToModel(), MvInfo, context, incarnationOriginMap);
+              Counterexample newCounterexample = AssertCmdToCounterexample(a, cce.NonNull(b.TransferCmd), trace, errModel == null ? null : errModel.ToModel(), MvInfo, context);
               callback.OnCounterexample(newCounterexample, null);
               goto NEXT_ASSERT;
             }
@@ -2701,7 +2721,7 @@ namespace VC {
           if (assertCmd != null && controlFlowFunction.TryEval(cfcValue, errModel.MkIntElement(b.UniqueId)).AsInt() == assertCmd.UniqueId)
           {
             Counterexample newCounterexample;
-            newCounterexample = AssertCmdToCounterexample(assertCmd, transferCmd, trace, errModel, mvInfo, context, cce.NonNull(info.incarnationOriginMap));
+            newCounterexample = AssertCmdToCounterexample(assertCmd, transferCmd, trace, errModel, mvInfo, context);
             newCounterexample.AddCalleeCounterexample(calleeCounterexamples);
             return newCounterexample;
           }
@@ -2839,7 +2859,7 @@ namespace VC {
         // Skip if 'cmd' not contained in the trace or not an assert
         if (cmd is AssertCmd && traceNodes.Contains(cmd))
         {
-          Counterexample newCounterexample = AssertCmdToCounterexample((AssertCmd)cmd, transferCmd, trace, errModel, mvInfo, context, incarnationOriginMap);
+          Counterexample newCounterexample = AssertCmdToCounterexample((AssertCmd)cmd, transferCmd, trace, errModel, mvInfo, context);
           Contract.Assert(newCounterexample != null);
           newCounterexample.AddCalleeCounterexample(calleeCounterexamples);
           return newCounterexample;
@@ -3384,14 +3404,12 @@ namespace VC {
       }
     }
 
-    protected static Counterexample AssertCmdToCounterexample(AssertCmd cmd, TransferCmd transferCmd, BlockSeq trace, Model errModel, ModelViewInfo mvInfo, ProverContext context,
-      Dictionary<Incarnation, Absy> incarnationOriginMap) 
+    protected static Counterexample AssertCmdToCounterexample(AssertCmd cmd, TransferCmd transferCmd, BlockSeq trace, Model errModel, ModelViewInfo mvInfo, ProverContext context) 
     {
       Contract.Requires(cmd != null);
       Contract.Requires(transferCmd != null);
       Contract.Requires(trace != null);
       Contract.Requires(context != null);
-      Contract.Requires(cce.NonNullDictionaryAndValues(incarnationOriginMap));
       Contract.Ensures(Contract.Result<Counterexample>() != null);
 
       List<string> relatedInformation = new List<string>();
@@ -3423,7 +3441,7 @@ namespace VC {
     }
 
     static VCExpr LetVC(Block startBlock,
-                        Variable controlFlowVariable,
+                        VCExpr controlFlowVariableExpr,
                         Hashtable/*<int, Absy!>*/ label2absy,
                         ProverContext proverCtxt,
                         out int assertionCount) {
@@ -3434,12 +3452,12 @@ namespace VC {
 
       Hashtable/*<Block, LetVariable!>*/ blockVariables = new Hashtable/*<Block, LetVariable!!>*/();
       List<VCExprLetBinding> bindings = new List<VCExprLetBinding>();
-      VCExpr startCorrect = LetVC(startBlock, controlFlowVariable, label2absy, blockVariables, bindings, proverCtxt, out assertionCount);
+      VCExpr startCorrect = LetVC(startBlock, controlFlowVariableExpr, label2absy, blockVariables, bindings, proverCtxt, out assertionCount);
       return proverCtxt.ExprGen.Let(bindings, startCorrect);
     }
 
     static VCExpr LetVCIterative(List<Block> blocks,
-                                 Variable controlFlowVariable,
+                                 VCExpr controlFlowVariableExpr,
                                  Hashtable label2absy,
                                  ProverContext proverCtxt,
                                  out int assertionCount) {
@@ -3486,8 +3504,7 @@ namespace VC {
           foreach (Block successor in gotocmd.labelTargets) {
             Contract.Assert(successor != null);
             VCExpr s = blockVariables[successor];
-            if (controlFlowVariable != null) {
-              VCExprVar controlFlowVariableExpr = proverCtxt.BoogieExprTranslator.LookupVariable(controlFlowVariable);
+            if (controlFlowVariableExpr != null) {
               VCExpr controlFlowFunctionAppl = gen.ControlFlowFunctionApplication(controlFlowVariableExpr, gen.Integer(BigNum.FromInt(block.UniqueId)));
               VCExpr controlTransferExpr = gen.Eq(controlFlowFunctionAppl, gen.Integer(BigNum.FromInt(successor.UniqueId)));
               s = gen.Implies(controlTransferExpr, s);
@@ -3497,7 +3514,7 @@ namespace VC {
           SuccCorrect = gen.NAry(VCExpressionGenerator.AndOp, SuccCorrectVars);
         }
 
-        VCContext context = new VCContext(label2absy, proverCtxt, controlFlowVariable);
+        VCContext context = new VCContext(label2absy, proverCtxt, controlFlowVariableExpr);
         VCExpr vc = Wlp.Block(block, SuccCorrect, context);
         assertionCount += context.AssertionCount;
 
@@ -3510,7 +3527,7 @@ namespace VC {
     }
 
     static VCExpr LetVC(Block block,
-                        Variable controlFlowVariable,
+                        VCExpr controlFlowVariableExpr,
                         Hashtable/*<int, Absy!>*/ label2absy,
                         Hashtable/*<Block, VCExprVar!>*/ blockVariables,
                         List<VCExprLetBinding/*!*/>/*!*/ bindings,
@@ -3551,11 +3568,10 @@ namespace VC {
           foreach (Block successor in gotocmd.labelTargets) {
             Contract.Assert(successor != null);
             int ac;
-            VCExpr s = LetVC(successor, controlFlowVariable, label2absy, blockVariables, bindings, proverCtxt, out ac);
+            VCExpr s = LetVC(successor, controlFlowVariableExpr, label2absy, blockVariables, bindings, proverCtxt, out ac);
             assertionCount += ac;
-            if (controlFlowVariable != null) 
+            if (controlFlowVariableExpr != null) 
             {
-              VCExprVar controlFlowVariableExpr = proverCtxt.BoogieExprTranslator.LookupVariable(controlFlowVariable);
               VCExpr controlFlowFunctionAppl = gen.ControlFlowFunctionApplication(controlFlowVariableExpr, gen.Integer(BigNum.FromInt(block.UniqueId)));
               VCExpr controlTransferExpr = gen.Eq(controlFlowFunctionAppl, gen.Integer(BigNum.FromInt(successor.UniqueId)));
               s = gen.Implies(controlTransferExpr, s);
@@ -3566,7 +3582,7 @@ namespace VC {
         }
 
         
-        VCContext context = new VCContext(label2absy, proverCtxt, controlFlowVariable);
+        VCContext context = new VCContext(label2absy, proverCtxt, controlFlowVariableExpr);
         VCExpr vc = Wlp.Block(block, SuccCorrect, context);
         assertionCount += context.AssertionCount;
         
@@ -3578,6 +3594,7 @@ namespace VC {
     }
 
     static VCExpr DagVC(Block block,
+                         VCExpr controlFlowVariableExpr,
                          Hashtable/*<int, Absy!>*/ label2absy,
                          Hashtable/*<Block, VCExpr!>*/ blockEquations,
                          ProverContext proverCtxt,
@@ -3608,8 +3625,13 @@ namespace VC {
         foreach (Block successor in cce.NonNull(gotocmd.labelTargets)) {
           Contract.Assert(successor != null);
           int ac;
-          VCExpr c = DagVC(successor, label2absy, blockEquations, proverCtxt, out ac);
+          VCExpr c = DagVC(successor, controlFlowVariableExpr, label2absy, blockEquations, proverCtxt, out ac);
           assertionCount += ac;
+          if (controlFlowVariableExpr != null) {
+            VCExpr controlFlowFunctionAppl = gen.ControlFlowFunctionApplication(controlFlowVariableExpr, gen.Integer(BigNum.FromInt(block.UniqueId)));
+            VCExpr controlTransferExpr = gen.Eq(controlFlowFunctionAppl, gen.Integer(BigNum.FromInt(successor.UniqueId)));
+            c = gen.Implies(controlTransferExpr, c);
+          }  
           SuccCorrect = SuccCorrect == null ? c : gen.And(SuccCorrect, c);
         }
       }
@@ -3617,7 +3639,7 @@ namespace VC {
         SuccCorrect = VCExpressionGenerator.True;
       }
 
-      VCContext context = new VCContext(label2absy, proverCtxt);
+      VCContext context = new VCContext(label2absy, proverCtxt, controlFlowVariableExpr);
       vc = Wlp.Block(block, SuccCorrect, context);
       assertionCount += context.AssertionCount;
       
