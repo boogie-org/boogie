@@ -205,12 +205,13 @@ namespace VC
             VCExpressionGenerator gen = checker.VCExprGen;
             Contract.Assert(gen != null);
 
-            VCExpr vcexpr = gen.Not(GenerateVC(impl, info.controlFlowVariable, out label2absy, checker));
+            var ctx = checker.TheoremProver.Context;
+            var bet = ctx.BoogieExprTranslator;
+            VCExpr controlFlowVariableExpr = CommandLineOptions.Clo.UseLabels ? null : bet.LookupVariable(info.controlFlowVariable);
+
+            VCExpr vcexpr = gen.Not(GenerateVC(impl, controlFlowVariableExpr, out label2absy, checker));
             Contract.Assert(vcexpr != null);
             if (!CommandLineOptions.Clo.UseLabels) {
-              var ctx = checker.TheoremProver.Context;
-              var bet = ctx.BoogieExprTranslator;
-              VCExpr controlFlowVariableExpr = bet.LookupVariable(info.controlFlowVariable);
               VCExpr controlFlowFunctionAppl = ctx.ExprGen.ControlFlowFunctionApplication(controlFlowVariableExpr, ctx.ExprGen.Integer(BigNum.ZERO));
               VCExpr eqExpr = ctx.ExprGen.Eq(controlFlowFunctionAppl, ctx.ExprGen.Integer(BigNum.FromInt(impl.Blocks[0].UniqueId)));
               vcexpr = ctx.ExprGen.And(eqExpr, vcexpr);
@@ -1637,9 +1638,6 @@ namespace VC
             Hashtable/*<int, Absy!>*/ mainLabel2absy;
             GetVC(impl, program, callback, out vc, out mainLabel2absy, out reporter);
 
-            if (CommandLineOptions.Clo.ProcedureCopyBound > 0) {
-              return SuperAwesomeMethod(checker, impl, vc);
-            }
       
             // Find all procedure calls in vc and put labels on them      
             FCallHandler calls = new FCallHandler(checker.VCExprGen, implName2StratifiedInliningInfo, impl.Name, mainLabel2absy);
@@ -2639,8 +2637,16 @@ namespace VC
             Hashtable/*TransferCmd->ReturnCmd*/ gotoCmdOrigins = PassifyImpl(impl, program, out mvInfo);
             Checker checker = FindCheckerFor(impl, CommandLineOptions.Clo.ProverKillTime);
             Contract.Assert(checker != null);
-            
-            vc = GenerateVC(impl, null, out label2absy, checker);
+
+            var exprGen = checker.TheoremProver.Context.ExprGen;
+            VCExpr controlFlowVariableExpr = CommandLineOptions.Clo.UseLabels ? null : exprGen.Integer(BigNum.ZERO);
+
+            vc = GenerateVC(impl, controlFlowVariableExpr, out label2absy, checker);
+
+            if (!CommandLineOptions.Clo.UseLabels) {
+              VCExpr eqExpr = exprGen.Eq(controlFlowVariableExpr, exprGen.Integer(BigNum.FromInt(impl.Blocks[0].UniqueId)));
+              vc = exprGen.Implies(eqExpr, vc);
+            }
 
             reporter = new StratifiedInliningErrorReporter(
                cce.NonNull(implName2StratifiedInliningInfo), checker.TheoremProver, callback, mvInfo,
@@ -3462,6 +3468,7 @@ namespace VC
                 id2AbsyList[controlFlowConstant] = absyList;
               }
 
+              orderedStateIds = new List<Tuple<int, int>>();
               candidatesToExpand = new List<int>();
 
               Model model = null;
@@ -3490,8 +3497,8 @@ namespace VC
                 Block b = absy as Block;
                 if (b == null) {
                   Counterexample newCounterexample = AssertCmdToCounterexample((AssertCmd)absy, transferCmd, trace, model, mvInfo, context);
+                  newCounterexample.AddCalleeCounterexample(calleeCounterexamples); 
                   return newCounterexample;
-
                 }
                 transferCmd = b.TransferCmd;
                 trace.Add(b);
@@ -3505,9 +3512,61 @@ namespace VC
                   string calleeName = naryExpr.Fun.FunctionName;
                   Contract.Assert(calleeName != null);
 
+                  BinaryOperator binOp = naryExpr.Fun as BinaryOperator;
+                  if (binOp != null && binOp.Op == BinaryOperator.Opcode.And) {
+                    Expr expr = naryExpr.Args[0];
+                    NAryExpr mvStateExpr = expr as NAryExpr;
+                    if (mvStateExpr != null && mvStateExpr.Fun.FunctionName == ModelViewInfo.MVState_FunctionDef.Name) {
+                      LiteralExpr x = mvStateExpr.Args[1] as LiteralExpr;
+                      orderedStateIds.Add(new Tuple<int, int>(candidateId, x.asBigNum.ToInt));
+                    }
+                  }
+
+                  if (calleeName.StartsWith(recordProcName) && model != null) {
+                    var expr = calls.recordExpr2Var[new BoogieCallExpr(naryExpr, candidateId)];
+
+                    // Record concrete value of the argument to this procedure
+                    var args = new List<Model.Element>();
+                    if (expr is VCExprIntLit) {
+                      args.Add(model.MkElement((expr as VCExprIntLit).Val.ToString()));
+                    }
+                    else if (expr == VCExpressionGenerator.True) {
+                      args.Add(model.MkElement("true"));
+                    }
+                    else if (expr == VCExpressionGenerator.False) {
+                      args.Add(model.MkElement("false"));
+                    }
+                    else if (expr is VCExprVar) {
+                      var idExpr = expr as VCExprVar;
+                      string name = context.Lookup(idExpr);
+                      Contract.Assert(name != null);
+                      Model.Func f = model.TryGetFunc(name);
+                      if (f != null) {
+                        args.Add(f.GetConstant());
+                      }
+                    }
+                    else {
+                      Contract.Assert(false);
+                    }
+                    calleeCounterexamples[new TraceLocation(trace.Length - 1, i)] =
+                         new CalleeCounterexampleInfo(null, args);
+                    continue;
+                  }
+
+                  if (!implName2StratifiedInliningInfo.ContainsKey(calleeName))
+                    continue;
+
                   int calleeId = calls.boogieExpr2Id[new BoogieCallExpr(naryExpr, candidateId)];
-                  calleeCounterexamples[new TraceLocation(trace.Length - 1, i)] =
-                                  new CalleeCounterexampleInfo(NewTrace(calleeId, id2AbsyList, model), new List<Model.Element>());
+
+                  if (calls.currCandidates.Contains(calleeId)) {
+                    candidatesToExpand.Add(calleeId);
+                  }
+                  else {
+                    orderedStateIds.Add(new Tuple<int, int>(calleeId, StratifiedInliningErrorReporter.CALL));
+                    calleeCounterexamples[new TraceLocation(trace.Length - 1, i)] =
+                      new CalleeCounterexampleInfo(NewTrace(calleeId, id2AbsyList, model), new List<Model.Element>());
+                    orderedStateIds.Add(new Tuple<int, int>(candidateId, StratifiedInliningErrorReporter.RETURN));
+                  }
                 }
               }
               throw new Exception("Error in creating interprocedural counterexample");
@@ -3551,7 +3610,7 @@ namespace VC
 
                 orderedStateIds = new List<Tuple<int,int>>();
                 Counterexample newCounterexample =
-                  GenerateTrace(labels, errModel, 0, orderedStateIds, mainImpl);
+                  GenerateTrace(labels, errModel, 0, mainImpl);
 
                 if (newCounterexample == null)
                     return null;
@@ -3578,7 +3637,7 @@ namespace VC
             }
 
             private Counterexample GenerateTrace(IList<string/*!*/>/*!*/ labels, Model/*!*/ errModel,
-                                                 int candidateId, List<Tuple<int,int>> orderedStateIds, Implementation procImpl)
+                                                 int candidateId, Implementation procImpl)
             {
                 Contract.Requires(cce.NonNullElements(labels));
                 Contract.Requires(procImpl != null);
@@ -3618,14 +3677,14 @@ namespace VC
                 trace.Add(entryBlock);
               
                 var calleeCounterexamples = new Dictionary<TraceLocation, CalleeCounterexampleInfo>();
-                Counterexample newCounterexample = GenerateTraceRec(labels, errModel, mvInfo, candidateId, orderedStateIds, entryBlock, traceNodes, trace, calleeCounterexamples);
+                Counterexample newCounterexample = GenerateTraceRec(labels, errModel, mvInfo, candidateId, entryBlock, traceNodes, trace, calleeCounterexamples);
 
                 return newCounterexample;
             }
 
             private Counterexample GenerateTraceRec(
                                   IList<string/*!*/>/*!*/ labels, Model/*!*/ errModel, ModelViewInfo mvInfo, 
-                                  int candidateId, List<Tuple<int,int>> orderedStateIds,
+                                  int candidateId,
                                   Block/*!*/ b, Hashtable/*!*/ traceNodes, BlockSeq/*!*/ trace,
                                   Dictionary<TraceLocation/*!*/, CalleeCounterexampleInfo/*!*/>/*!*/ calleeCounterexamples)
             {
@@ -3726,7 +3785,7 @@ namespace VC
                             orderedStateIds.Add(new Tuple<int, int>(actualId, StratifiedInliningErrorReporter.CALL));
                             calleeCounterexamples[new TraceLocation(trace.Length - 1, i)] =
                                 new CalleeCounterexampleInfo(
-                                    cce.NonNull(GenerateTrace(labels, errModel, actualId, orderedStateIds, implName2StratifiedInliningInfo[calleeName].impl)),
+                                    cce.NonNull(GenerateTrace(labels, errModel, actualId, implName2StratifiedInliningInfo[calleeName].impl)),
                                     new List<Model.Element>());
                             orderedStateIds.Add(new Tuple<int, int>(candidateId, StratifiedInliningErrorReporter.RETURN));
                         }
@@ -3744,7 +3803,7 @@ namespace VC
                                 orderedStateIds.Add(new Tuple<int, int>(actualId, StratifiedInliningErrorReporter.CALL));
                                 calleeCounterexamples[new TraceLocation(trace.Length - 1, i)] =
                                     new CalleeCounterexampleInfo(
-                                        cce.NonNull(GenerateTrace(labels, errModel, actualId, orderedStateIds, implName2StratifiedInliningInfo[calleeName].impl)),
+                                        cce.NonNull(GenerateTrace(labels, errModel, actualId, implName2StratifiedInliningInfo[calleeName].impl)),
                                         new List<Model.Element>());
                                 orderedStateIds.Add(new Tuple<int, int>(candidateId, StratifiedInliningErrorReporter.RETURN));
                               }
@@ -3756,7 +3815,7 @@ namespace VC
                               orderedStateIds.Add(new Tuple<int, int>(calleeId, StratifiedInliningErrorReporter.CALL));
                               calleeCounterexamples[new TraceLocation(trace.Length - 1, i)] =
                                   new CalleeCounterexampleInfo(
-                                      cce.NonNull(GenerateTrace(labels, errModel, calleeId, orderedStateIds, implName2StratifiedInliningInfo[calleeName].impl)),
+                                      cce.NonNull(GenerateTrace(labels, errModel, calleeId, implName2StratifiedInliningInfo[calleeName].impl)),
                                       new List<Model.Element>());
                               orderedStateIds.Add(new Tuple<int, int>(candidateId, StratifiedInliningErrorReporter.RETURN));
                             }
