@@ -2138,7 +2138,11 @@ namespace GPUVerify
 
             if (bb.ec is WhileCmd)
             {
-                result.ec = new WhileCmd(bb.ec.tok, Expr.Or(new VariableDualiser(1).VisitExpr((bb.ec as WhileCmd).Guard), new VariableDualiser(2).VisitExpr((bb.ec as WhileCmd).Guard)), (bb.ec as WhileCmd).Invariants, MakeDual((bb.ec as WhileCmd).Body, HalfDualise));
+                result.ec = new WhileCmd(bb.ec.tok, 
+                    Expr.Or(new VariableDualiser(1).VisitExpr((bb.ec as WhileCmd).Guard), 
+                            new VariableDualiser(2).VisitExpr((bb.ec as WhileCmd).Guard)
+                    ),
+                    MakeDualInvariants((bb.ec as WhileCmd).Invariants), MakeDual((bb.ec as WhileCmd).Body, HalfDualise));
             }
             else
             {
@@ -2147,6 +2151,18 @@ namespace GPUVerify
 
             return result;
 
+        }
+
+        private List<PredicateCmd> MakeDualInvariants(List<PredicateCmd> originalInvariants)
+        {
+            List<PredicateCmd> result = new List<PredicateCmd>();
+            foreach(PredicateCmd p in originalInvariants)
+            {
+                result.Add(new AssertCmd(p.tok, new VariableDualiser(1).VisitExpr(p.Expr.Clone() as Expr)));
+                result.Add(new AssertCmd(p.tok, new VariableDualiser(2).VisitExpr(p.Expr.Clone() as Expr)));
+            }
+
+            return result;
         }
 
         private void MakeDualLocalVariables(Implementation impl, bool HalfDualise)
@@ -2222,83 +2238,72 @@ namespace GPUVerify
                 MissingKernelAttributeError("Kernel", GROUP_ID_X_STRING);
             }
 
-            if (KernelHasIdY() || KernelHasGroupSizeY() || KernelHasNumGroupsY() || KernelHasGroupIdY())
+            if (!KernelHasIdY())
             {
-
-                if (!KernelHasIdY())
-                {
-                    MissingKernelAttributeError("2D kernel", LOCAL_ID_Y_STRING);
-                }
-
-                if (!KernelHasGroupSizeY())
-                {
-                    MissingKernelAttributeError("2D kernel", GROUP_SIZE_Y_STRING);
-                }
-
-                if (!KernelHasNumGroupsY())
-                {
-                    MissingKernelAttributeError("2D kernel", NUM_GROUPS_Y_STRING);
-                }
-
-                if (!KernelHasGroupIdY())
-                {
-                    MissingKernelAttributeError("2D kernel", GROUP_ID_Y_STRING);
-                }
-
+                MissingKernelAttributeError("Kernel", LOCAL_ID_Y_STRING);
             }
 
-            if (KernelHasIdZ() || KernelHasGroupSizeZ() || KernelHasNumGroupsZ() || KernelHasGroupIdZ())
+            if (!KernelHasGroupSizeY())
             {
+                MissingKernelAttributeError("2D kernel", GROUP_SIZE_Y_STRING);
+            }
 
-                if (!KernelHasIdY())
-                {
-                    MissingKernelAttributeError("3D kernel", LOCAL_ID_Y_STRING);
-                }
+            if (!KernelHasNumGroupsY())
+            {
+                MissingKernelAttributeError("2D kernel", NUM_GROUPS_Y_STRING);
+            }
 
-                if (!KernelHasGroupSizeY())
-                {
-                    MissingKernelAttributeError("3D kernel", GROUP_SIZE_Y_STRING);
-                }
+            if (!KernelHasGroupIdY())
+            {
+                MissingKernelAttributeError(GROUP_ID_Y_STRING);
+            }
 
-                if (!KernelHasNumGroupsY())
-                {
-                    MissingKernelAttributeError("3D kernel", NUM_GROUPS_Y_STRING);
-                }
+            if (!KernelHasIdY())
+            {
+                MissingKernelAttributeError("3D kernel", LOCAL_ID_Y_STRING);
+            }
 
-                if (!KernelHasGroupIdY())
-                {
-                    MissingKernelAttributeError("3D kernel", GROUP_ID_Y_STRING);
-                }
+            if (!KernelHasGroupSizeY())
+            {
+                MissingKernelAttributeError(GROUP_SIZE_Y_STRING);
+            }
 
-                if (!KernelHasIdZ())
-                {
-                    MissingKernelAttributeError("3D kernel", LOCAL_ID_Z_STRING);
-                }
+            if (!KernelHasNumGroupsY())
+            {
+                MissingKernelAttributeError(NUM_GROUPS_Y_STRING);
+            }
 
-                if (!KernelHasGroupSizeZ())
-                {
-                    MissingKernelAttributeError("3D kernel", GROUP_SIZE_Z_STRING);
-                }
+            if (!KernelHasGroupIdY())
+            {
+                MissingKernelAttributeError(GROUP_ID_Y_STRING);
+            }
 
-                if (!KernelHasNumGroupsZ())
-                {
-                    MissingKernelAttributeError("3D kernel", NUM_GROUPS_Z_STRING);
-                }
+            if (!KernelHasIdZ())
+            {
+                MissingKernelAttributeError(LOCAL_ID_Z_STRING);
+            }
 
-                if (!KernelHasGroupIdZ())
-                {
-                    MissingKernelAttributeError("3D kernel", GROUP_ID_Z_STRING);
-                }
+            if (!KernelHasGroupSizeZ())
+            {
+                MissingKernelAttributeError(GROUP_SIZE_Z_STRING);
+            }
 
+            if (!KernelHasNumGroupsZ())
+            {
+                MissingKernelAttributeError(NUM_GROUPS_Z_STRING);
+            }
 
+            if (!KernelHasGroupIdZ())
+            {
+                MissingKernelAttributeError(GROUP_ID_Z_STRING);
             }
 
             return ErrorCount;
         }
 
-        private void MissingKernelAttributeError(string kindOfKernel, string attribute)
+        private void MissingKernelAttributeError(string attribute)
         {
-            Error(KernelProcedure.tok, kindOfKernel + " must declare global constant marked with attribute ':" + attribute + "'");
+            Error(KernelProcedure.tok, "Kernel must declare global constant marked with attribute ':" + attribute + "'");
         }
 
         public static bool IsThreadLocalIdConstant(Variable variable)
