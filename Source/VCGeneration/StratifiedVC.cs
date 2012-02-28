@@ -1082,13 +1082,15 @@ namespace VC
             public Checker checker;
             // stores the number of axioms pushed since pervious backtracking point
             private List<int> numAxiomsPushed;
+            private FCallHandler calls;
 
-            public NormalChecker(VCExpr vcMain, ProverInterface.ErrorHandler reporter, Checker checker)
+            public NormalChecker(VCExpr vcMain, ProverInterface.ErrorHandler reporter, Checker checker, FCallHandler calls)
             {
                 this.vcMain = vcMain;
                 this.reporter = reporter;
                 this.checker = checker;
                 this.underlyingChecker = checker;
+                this.calls = calls;
                 numAxiomsPushed = new List<int>();
                 numQueries = 0;
             }
@@ -1181,12 +1183,14 @@ namespace VC
           private ApiProverInterface TheoremProver;
           // Use checkAssumptions?
           public static bool UseCheckAssumptions = true;
+          private FCallHandler calls;
 
-          public ApiChecker(VCExpr vcMain, ProverInterface.ErrorHandler reporter, Checker checker) {
+          public ApiChecker(VCExpr vcMain, ProverInterface.ErrorHandler reporter, Checker checker, FCallHandler calls) {
             this.vcMain = vcMain;
             this.reporter = reporter;
             this.checker = checker;
             this.underlyingChecker = checker;
+            this.calls = calls;
             numAxiomsPushed = new List<int>();
             numQueries = 0;
             TheoremProver = checker.TheoremProver as ApiProverInterface;
@@ -1317,15 +1321,15 @@ namespace VC
                 this.reporter = reporter;
                 if (checker.TheoremProver is ApiProverInterface)
                 {
-                    this.checker = new ApiChecker(vcMain, reporter , checker);
+                    this.checker = new ApiChecker(vcMain, reporter, checker, calls);
                     if(checker2 != null)
-                      this.checker2 = new ApiChecker(VCExpressionGenerator.False, new EmptyErrorHandler(), checker2); 
+                      this.checker2 = new ApiChecker(VCExpressionGenerator.False, new EmptyErrorHandler(), checker2, calls); 
                 }
                 else
                 {
-                    this.checker = new NormalChecker(vcMain, reporter, checker);
+                    this.checker = new NormalChecker(vcMain, reporter, checker, calls);
                     if(checker2 != null)
-                      this.checker2 = new NormalChecker(VCExpressionGenerator.False, new EmptyErrorHandler(), checker2); 
+                      this.checker2 = new NormalChecker(VCExpressionGenerator.False, new EmptyErrorHandler(), checker2, calls); 
                 }
                 vcSize = 0;
                 expansionCount = 0;
@@ -2229,7 +2233,7 @@ namespace VC
           var Gen = underlyingChecker.VCExprGen;
           PCBErrorReporter reporter = new PCBErrorReporter(impl);
           StratifiedCheckerInterface checker;
-          checker = new ApiChecker(VCExpressionGenerator.False, reporter, underlyingChecker);
+          checker = new ApiChecker(VCExpressionGenerator.False, reporter, underlyingChecker, null);
           CreateProcedureCopies(impl, program, checker, vcMain);
 
           int iter = 0;
@@ -3184,6 +3188,10 @@ namespace VC
                 summaryTemp.Clear();
             }
 
+            public IEnumerable<int> getInlinedCandidates() {
+              return candidateParent.Keys.Except(currCandidates).Union(new int[] { 0 });
+            }
+
         } // end FCallHandler
 
         // Collects the set of all VCExprVar in a given VCExpr
@@ -3460,21 +3468,10 @@ namespace VC
               return;
             }
 
-            public override void OnModel(Dictionary<int, IList<string>> labels, ErrorModel errModel) {
-              Dictionary<int, List<Absy>> id2AbsyList = new Dictionary<int, List<Absy>>();
-              foreach (var controlFlowConstant in labels.Keys) {
-                IList<string> labelPath = labels[controlFlowConstant];
-                List<Absy> absyList = new List<Absy>();
-                foreach (var label in labelPath) {
-                  if (controlFlowConstant == 0) {
-                    absyList.Add(Label2Absy(label));
-                  } else {
-                    VCExprNAry expr = calls.id2Candidate[controlFlowConstant];
-                    string procName = (cce.NonNull(expr.Op as VCExprBoogieFunctionOp)).Func.Name;
-                    absyList.Add(Label2Absy(procName, label));
-                  }
-                }
-                id2AbsyList[controlFlowConstant] = absyList;
+            public override void OnModel(IList<string> labels, ErrorModel errModel) {
+              List<Absy> absyList = new List<Absy>();
+              foreach (var label in labels) {
+                absyList.Add(Label2Absy(label));
               }
 
               orderedStateIds = new List<Tuple<int, int>>();
@@ -3484,7 +3481,7 @@ namespace VC
               if (errModel != null) model = errModel.ToModel();
 
               if (underapproximationMode) {
-                var cex = NewTrace(0, id2AbsyList, model);
+                var cex = NewTrace(0, absyList, model);
                 Debug.Assert(candidatesToExpand.Count == 0);
                 if (cex != null) {
                   GetModelWithStates(model);
@@ -3494,26 +3491,21 @@ namespace VC
                 return;
               }
 
-              NewTrace(0, id2AbsyList, model);
+              NewTrace(0, absyList, model);
             }
 
-            private Counterexample NewTrace(int candidateId, Dictionary<int, List<Absy>> id2AbsyList, Model model) {
-              List<Absy> absyList = id2AbsyList[candidateId];
+            private Counterexample NewTrace(int candidateId, List<Absy> absyList, Model model) {
+              AssertCmd assertCmd = (AssertCmd)absyList[absyList.Count - 1];
               BlockSeq trace = new BlockSeq();
-              TransferCmd transferCmd = null;
               var calleeCounterexamples = new Dictionary<TraceLocation, CalleeCounterexampleInfo>();
-              foreach (Absy absy in absyList) {
-                Block b = absy as Block;
-                if (b == null) {
-                  Counterexample newCounterexample = AssertCmdToCounterexample((AssertCmd)absy, transferCmd, trace, model, mvInfo, context);
-                  newCounterexample.AddCalleeCounterexample(calleeCounterexamples); 
-                  return newCounterexample;
-                }
-                transferCmd = b.TransferCmd;
+              for (int j = 0; j < absyList.Count - 1; j++) {
+                Block b = (Block)absyList[j];
                 trace.Add(b);
                 CmdSeq cmdSeq = b.Cmds;
                 for (int i = 0; i < cmdSeq.Length; i++) {
-                  AssumeCmd assumeCmd = cmdSeq[i] as AssumeCmd;
+                  Cmd cmd = cmdSeq[i];
+                  if (cmd == assertCmd) break;
+                  AssumeCmd assumeCmd = cmd as AssumeCmd;
                   if (assumeCmd == null) continue;
                   NAryExpr naryExpr = assumeCmd.Expr as NAryExpr;
                   if (naryExpr == null)
@@ -3572,16 +3564,27 @@ namespace VC
                   }
                   else {
                     orderedStateIds.Add(new Tuple<int, int>(calleeId, StratifiedInliningErrorReporter.CALL));
+                    string[] labels = theoremProver.CalculatePath(calleeId);
+                    List<Absy> calleeAbsyList = new List<Absy>();
+                    foreach (string label in labels) {
+                      VCExprNAry expr = calls.id2Candidate[calleeId];
+                      string procName = (cce.NonNull(expr.Op as VCExprBoogieFunctionOp)).Func.Name;
+                      calleeAbsyList.Add(Label2Absy(procName, label));
+                    }
                     calleeCounterexamples[new TraceLocation(trace.Length - 1, i)] =
-                      new CalleeCounterexampleInfo(NewTrace(calleeId, id2AbsyList, model), new List<Model.Element>());
+                      new CalleeCounterexampleInfo(NewTrace(calleeId, calleeAbsyList, model), new List<Model.Element>());
                     orderedStateIds.Add(new Tuple<int, int>(candidateId, StratifiedInliningErrorReporter.RETURN));
                   }
                 }
               }
-              throw new Exception("Error in creating interprocedural counterexample");
+
+              Block lastBlock = (Block)absyList[absyList.Count - 2];
+              Counterexample newCounterexample = AssertCmdToCounterexample(assertCmd, lastBlock.TransferCmd, trace, model, mvInfo, context);
+              newCounterexample.AddCalleeCounterexample(calleeCounterexamples);
+              return newCounterexample;
             }
 
-            public override void OnModel(IList<string/*!*/>/*!*/ labels, ErrorModel errModel)
+            public void OnModelOld(IList<string/*!*/>/*!*/ labels, ErrorModel errModel)
             {
                 Contract.Assert(CommandLineOptions.Clo.StratifiedInliningWithoutModels || errModel != null);
 
