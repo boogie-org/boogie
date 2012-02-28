@@ -15,8 +15,8 @@ if not %ERRORLEVEL%==0 (
 set SCALA_DIR=scala-2.8.1
 
 REM Set classpath elements
-set __CP.SCALA_LIB=%ROOT_DIR%project\boot\%SCALA_DIR%\lib\scala-library.jar
-set __CP.CHALICE=%ROOT_DIR%target\%SCALA_DIR%.final\classes
+set __CP.SCALA_LIB="%ROOT_DIR%project\boot\%SCALA_DIR%\lib\scala-library.jar"
+set __CP.CHALICE="%ROOT_DIR%target\%SCALA_DIR%.final\classes"
 
 REM Assemble classpath and check if all classpath elements exist
 set CP=
