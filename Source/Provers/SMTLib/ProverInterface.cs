@@ -384,12 +384,7 @@ namespace Microsoft.Boogie.SMTLib
     {
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
 
-      var result = Outcome.Undetermined;
-
-      if (Process == null)
-        return result;
-
-      result = CheckOutcomeCore(handler);
+      var result = CheckOutcomeCore(handler);
       SendThisVC("(pop 1)");
       FlushLogFile();
 
