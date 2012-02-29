@@ -21,7 +21,7 @@ using System.Text;
 
 namespace Microsoft.Boogie.SMTLib
 {
-  public class SMTLibProcessTheoremProver : ApiProverInterface
+  public class SMTLibProcessTheoremProver : ProverInterface
   {
     private readonly SMTLibProverContext ctx;
     private readonly VCExpressionGenerator gen;
@@ -763,7 +763,6 @@ namespace Microsoft.Boogie.SMTLib
         throw new NotImplementedException();
     }
 
-    // For implementing ApiProverInterface
     public override void Assert(VCExpr vc, bool polarity)
     {
         string a = "";

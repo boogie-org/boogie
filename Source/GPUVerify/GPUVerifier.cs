@@ -2220,37 +2220,37 @@ namespace GPUVerify
 
             if (!KernelHasIdX())
             {
-                MissingKernelAttributeError("Kernel", LOCAL_ID_X_STRING);
+                MissingKernelAttributeError(LOCAL_ID_X_STRING);
             }
 
             if (!KernelHasGroupSizeX())
             {
-                MissingKernelAttributeError("Kernel", GROUP_SIZE_X_STRING);
+                MissingKernelAttributeError(GROUP_SIZE_X_STRING);
             }
 
             if (!KernelHasNumGroupsX())
             {
-                MissingKernelAttributeError("Kernel", NUM_GROUPS_X_STRING);
+                MissingKernelAttributeError(NUM_GROUPS_X_STRING);
             }
 
             if (!KernelHasGroupIdX())
             {
-                MissingKernelAttributeError("Kernel", GROUP_ID_X_STRING);
+                MissingKernelAttributeError(GROUP_ID_X_STRING);
             }
 
             if (!KernelHasIdY())
             {
-                MissingKernelAttributeError("Kernel", LOCAL_ID_Y_STRING);
+                MissingKernelAttributeError(LOCAL_ID_Y_STRING);
             }
 
             if (!KernelHasGroupSizeY())
             {
-                MissingKernelAttributeError("2D kernel", GROUP_SIZE_Y_STRING);
+                MissingKernelAttributeError(GROUP_SIZE_Y_STRING);
             }
 
             if (!KernelHasNumGroupsY())
             {
-                MissingKernelAttributeError("2D kernel", NUM_GROUPS_Y_STRING);
+                MissingKernelAttributeError(NUM_GROUPS_Y_STRING);
             }
 
             if (!KernelHasGroupIdY())
@@ -2260,7 +2260,7 @@ namespace GPUVerify
 
             if (!KernelHasIdY())
             {
-                MissingKernelAttributeError("3D kernel", LOCAL_ID_Y_STRING);
+                MissingKernelAttributeError(LOCAL_ID_Y_STRING);
             }
 
             if (!KernelHasGroupSizeY())
