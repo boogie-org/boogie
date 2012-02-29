@@ -1007,7 +1007,11 @@ namespace Microsoft.Boogie {
             }
           }
           return true;
-
+        case "siVerbose":
+          if (ps.ConfirmArgumentCount(1)) {
+            StratifiedInliningVerbose = Int32.Parse(cce.NonNull(args[ps.i]));
+          }
+          return true;
         case "recursionBound":
           if (ps.ConfirmArgumentCount(1)) {
             RecursionBound = Int32.Parse(cce.NonNull(args[ps.i]));
