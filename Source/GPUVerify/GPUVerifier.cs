@@ -336,6 +336,13 @@ namespace GPUVerify
                 emitProgram(outputFilename + "_dualised");
             }
 
+            ProcessCrossThreadInvariants();
+
+            if (CommandLineOptions.ShowStages)
+            {
+                emitProgram(outputFilename + "_cross_thread_invariants");
+            }
+
             if (CommandLineOptions.Eager)
             {
                 AddEagerRaceChecking();
@@ -397,6 +404,35 @@ namespace GPUVerify
                
             }
 
+        }
+
+        private void ProcessCrossThreadInvariants()
+        {
+            foreach (Declaration d in Program.TopLevelDeclarations)
+            {
+                if (d is Procedure)
+                {
+                    // TODO: requires and ensures
+                }
+                if (d is Implementation)
+                {
+                    Implementation i = d as Implementation;
+                    List<Block> newBlocks = new List<Block>();
+                    foreach (Block b in i.Blocks)
+                    {
+                        Console.WriteLine("Before");
+                        Console.WriteLine(b.Cmds);
+                        Block newBlock = new CrossThreadInvariantProcessor().VisitBlock(b);
+                        Console.WriteLine("After");
+                        Console.WriteLine(newBlock.Cmds);
+
+
+                        newBlocks.Add(newBlock);
+                    }
+                    i.Blocks = newBlocks;
+                }
+
+            }
         }
 
         private void emitProgram(string filename)

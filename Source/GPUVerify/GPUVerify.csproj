@@ -105,6 +105,8 @@
   <ItemGroup>
     <Compile Include="AccessCollector.cs" />
     <Compile Include="AccessRecord.cs" />
+    <Compile Include="CrossThreadInvariantProcessor.cs" />
+    <Compile Include="EnabledToPredicateVisitor.cs" />
     <Compile Include="CommandLineOptions.cs" />
     <Compile Include="ElementEncodingraceInstrumenter.cs" />
     <Compile Include="GPUVerifier.cs" />

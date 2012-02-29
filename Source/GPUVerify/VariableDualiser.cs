@@ -49,6 +49,28 @@ namespace GPUVerify
             return base.VisitVariable(node);
         }
 
+
+        public override Expr VisitNAryExpr(NAryExpr node)
+        {
+            // The point of this override is to avoid dualisation of certain special
+            // intrinsics that are cross-thread
+
+            if (node.Fun is FunctionCall)
+            {
+                FunctionCall call = node.Fun as FunctionCall;
+
+                if (call.Func.Name.Equals("__uniform_bv32") || call.Func.Name.Equals("__uniform_bool") ||
+                    call.Func.Name.Equals("__distinct_bv32") || call.Func.Name.Equals("__distinct_bool"))
+                {
+                    return node;
+                }
+
+            }
+
+            return base.VisitNAryExpr(node);
+        }
+
+
     }
 
 }

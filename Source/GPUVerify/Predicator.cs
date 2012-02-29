@@ -158,7 +158,9 @@ namespace GPUVerify
                 string LoopPredicate = "_LC" + WhileLoopCounter;
                 WhileLoopCounter++;
 
-                IdentifierExpr PredicateExpr = new IdentifierExpr(b.ec.tok, new LocalVariable(b.ec.tok, new TypedIdent(b.ec.tok, LoopPredicate, Microsoft.Boogie.Type.Bool)));
+                TypedIdent LoopPredicateTypedIdent = new TypedIdent(b.ec.tok, LoopPredicate, Microsoft.Boogie.Type.Bool);
+
+                IdentifierExpr PredicateExpr = new IdentifierExpr(b.ec.tok, new LocalVariable(b.ec.tok, LoopPredicateTypedIdent));
                 Expr GuardExpr = (b.ec as WhileCmd).Guard;
 
                 List<AssignLhs> WhilePredicateLhss = new List<AssignLhs>();
@@ -169,7 +171,9 @@ namespace GPUVerify
 
                 firstBigBlock.simpleCmds.Add(new AssignCmd(b.ec.tok, WhilePredicateLhss, WhilePredicateRhss));
 
-                WhileCmd NewWhile = new WhileCmd(b.ec.tok, PredicateExpr, (b.ec as WhileCmd).Invariants, MakePredicated((b.ec as WhileCmd).Body, PredicateExpr, PredicateExpr));
+                WhileCmd NewWhile = new WhileCmd(b.ec.tok, PredicateExpr, 
+                    ProcessEnabledIntrinsics((b.ec as WhileCmd).Invariants, LoopPredicateTypedIdent), 
+                    MakePredicated((b.ec as WhileCmd).Body, PredicateExpr, PredicateExpr));
 
                 List<Expr> UpdatePredicateRhss = new List<Expr>();
                 UpdatePredicateRhss.Add(Expr.And(PredicateExpr, GuardExpr));
@@ -240,6 +244,23 @@ namespace GPUVerify
             }
 
             return result;
+        }
+
+        private List<PredicateCmd> ProcessEnabledIntrinsics(List<PredicateCmd> invariants, TypedIdent currentPredicate)
+        {
+            List<PredicateCmd> result = new List<PredicateCmd>();
+
+            foreach (PredicateCmd cmd in invariants)
+            {
+                result.Add(new AssertCmd(cmd.tok, ProcessEnabledIntrinsics(cmd.Expr, currentPredicate)));
+            }
+
+            return result;
+        }
+
+        private Expr ProcessEnabledIntrinsics(Expr expr, TypedIdent currentPredicate)
+        {
+            return new EnabledToPredicateVisitor(currentPredicate).VisitExpr(expr);
         }
 
 
