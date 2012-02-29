@@ -276,7 +276,7 @@ namespace VC
         Dictionary<string, List<CallSite>> calleeToCallSites;
         Dictionary<string, List<CallSite>> callerToCallSites;
 
-        private void CreateProcedureCopies(Implementation impl, Program program, StratifiedCheckerInterface checker, VCExpr vcMain) {
+        private void CreateProcedureCopies(Implementation impl, Program program, ApiChecker checker, VCExpr vcMain) {
           interfaceVarCopies = new Dictionary<string, List<VCExprVar>>();
           privateVarCopies = new Dictionary<string, List<VCExprVar>>();
           procVcCopies = new Dictionary<string, VCExpr>();
@@ -560,14 +560,14 @@ namespace VC
         }
 
         public class BoundingVCMutator : MutatingVCExprVisitor<bool> {
-          StratifiedCheckerInterface checker;
+          ApiChecker checker;
           string implName;
           Dictionary<string, List<VCExprVar>> interfaceVarCopies;
           Dictionary<string, List<CallSite>> calleeToCallSites;
           Dictionary<string, List<CallSite>> callerToCallSites;
 
           public BoundingVCMutator(
-              StratifiedCheckerInterface checker,
+              ApiChecker checker,
               string implName,
               Dictionary<string, List<VCExprVar>> interfaceVarCopies,
               Dictionary<string, List<CallSite>> calleeToCallSites,
@@ -630,7 +630,8 @@ namespace VC
 
         } // end BoundingVCMutator
 
-        private void CreateProcedureCopy(StratifiedInliningInfo info, StratifiedCheckerInterface checker) {
+        private void CreateProcedureCopy(StratifiedInliningInfo info, ApiChecker checker)
+        {
           var translator = checker.underlyingChecker.TheoremProver.Context.BoogieExprTranslator;
           var Gen = checker.underlyingChecker.VCExprGen;
           var expr = info.vcexpr;
@@ -1027,150 +1028,7 @@ namespace VC
 
         }
 
-        // Unifies the interface between standard checker and z3api-based checker
-        abstract public class StratifiedCheckerInterface
-        {
-            // Underlying checker
-            public Checker underlyingChecker;
-            // Statistics
-            public int numQueries;
-
-            abstract public Outcome CheckVC();
-            abstract public void Push();
-            abstract public void Pop();
-            abstract public void AddAxiom(VCExpr vc);
-            abstract public void LogComment(string str);
-            abstract public void updateMainVC(VCExpr vcMain);
-            virtual public Outcome CheckAssumptions(List<VCExpr> assumptions, out List<int> unsatCore)
-            {
-                Outcome ret;
-
-                unsatCore = new List<int>();
-                for (int i = 0; i < assumptions.Count; i++)
-                    unsatCore.Add(i);
-
-                if (assumptions.Count == 0)
-                {
-                    return CheckVC();
-                }
-
-                Push();
-
-                foreach (var a in assumptions)
-                {
-                    AddAxiom(a);
-                }
-                ret = CheckVC();
-
-                Pop();
-
-                return ret;
-            }
-            virtual public void SetTimeOut(int msec)
-            {
-                // default behavior is to ignore this timeout
-            }
-        }
-
-        public class NormalChecker : StratifiedCheckerInterface
-        {
-            // The VC of main
-            public VCExpr vcMain;
-            // Error reporter (stores models)
-            public ProverInterface.ErrorHandler reporter;
-            // The theorem prover interface
-            public Checker checker;
-            // stores the number of axioms pushed since pervious backtracking point
-            private List<int> numAxiomsPushed;
-            private FCallHandler calls;
-
-            public NormalChecker(VCExpr vcMain, ProverInterface.ErrorHandler reporter, Checker checker, FCallHandler calls)
-            {
-                this.vcMain = vcMain;
-                this.reporter = reporter;
-                this.checker = checker;
-                this.underlyingChecker = checker;
-                this.calls = calls;
-                numAxiomsPushed = new List<int>();
-                numQueries = 0;
-            }
-
-            public override void updateMainVC(VCExpr vcMain)
-            {
-                this.vcMain = vcMain;
-            }
-
-            public override Outcome CheckVC()
-            {
-                Contract.Requires(vcMain != null);
-                Contract.Requires(reporter != null);
-                Contract.Requires(checker != null);
-                Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
-
-                checker.TheoremProver.FlushAxiomsToTheoremProver();
-                checker.BeginCheck("the_main", vcMain, reporter);
-                checker.ProverDone.WaitOne();
-
-                ProverInterface.Outcome outcome = (checker).ReadOutcome();
-                numQueries++;
-
-                switch (outcome)
-                {
-                    case ProverInterface.Outcome.Valid:
-                        return Outcome.Correct;
-                    case ProverInterface.Outcome.Invalid:
-                        return Outcome.Errors;
-                    case ProverInterface.Outcome.OutOfMemory:
-                        return Outcome.OutOfMemory;
-                    case ProverInterface.Outcome.TimeOut:
-                        return Outcome.TimedOut;
-                    case ProverInterface.Outcome.Undetermined:
-                        return Outcome.Inconclusive;
-                    default:
-                        Contract.Assert(false);
-                        throw new cce.UnreachableException();
-                }
-
-            }
-
-            public override void Push()
-            {
-                numAxiomsPushed.Add(0);
-            }
-
-            public override void Pop()
-            {
-                Debug.Assert(numAxiomsPushed.Count > 0);
-                checker.TheoremProver.FlushAxiomsToTheoremProver();
-                var n = numAxiomsPushed.Last();
-                numAxiomsPushed.RemoveAt(numAxiomsPushed.Count - 1);
-
-                for (int i = 0; i < n; i++)
-                {
-                    checker.TheoremProver.Pop();
-                }
-            }
-
-            public override void AddAxiom(VCExpr vc)
-            {
-                Debug.Assert(numAxiomsPushed.Count > 0);
-                int oldnum = checker.TheoremProver.NumAxiomsPushed();
-                
-                checker.TheoremProver.PushVCExpression(vc);
-
-                int newnum = checker.TheoremProver.NumAxiomsPushed();
-                numAxiomsPushed[numAxiomsPushed.Count - 1] += (newnum - oldnum);
-            }
-
-            public override void LogComment(string str)
-            {
-                checker.TheoremProver.LogComment(str);
-            }
-
-        }
-
-
-        public class ApiChecker : StratifiedCheckerInterface {
+        public class ApiChecker {
           // The VC of main
           private VCExpr vcMain;
           // Error reporter (stores models)
@@ -1180,10 +1038,14 @@ namespace VC
           // stores the number of axioms pushed since pervious backtracking point
           private List<int> numAxiomsPushed;
           // Api-based theorem prover
-          private ApiProverInterface TheoremProver;
+          private ProverInterface TheoremProver;
           // Use checkAssumptions?
           public static bool UseCheckAssumptions = true;
           private FCallHandler calls;
+          // Underlying checker
+          public Checker underlyingChecker;
+          // Statistics
+          public int numQueries;
 
           public ApiChecker(VCExpr vcMain, ProverInterface.ErrorHandler reporter, Checker checker, FCallHandler calls) {
             this.vcMain = vcMain;
@@ -1193,18 +1055,18 @@ namespace VC
             this.calls = calls;
             numAxiomsPushed = new List<int>();
             numQueries = 0;
-            TheoremProver = checker.TheoremProver as ApiProverInterface;
+            TheoremProver = checker.TheoremProver;
             Debug.Assert(TheoremProver != null);
 
             // Add main to the TP stack
             TheoremProver.Assert(vcMain, false);
           }
 
-          public override void updateMainVC(VCExpr vcMain) {
+          public void updateMainVC(VCExpr vcMain) {
             throw new NotImplementedException("Stratified non-incremental search is not yet supported with z3api");
           }
 
-          public override Outcome CheckVC() {
+          public Outcome CheckVC() {
             Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
 
             TheoremProver.AssertAxioms();
@@ -1229,26 +1091,48 @@ namespace VC
             }
           }
 
-          public override void Push() {
+          public void Push() {
             TheoremProver.Push();
           }
 
-          public override void Pop() {
+          public void Pop() {
             TheoremProver.AssertAxioms();
             TheoremProver.Pop();
           }
 
-          public override void AddAxiom(VCExpr vc) {
+          public void AddAxiom(VCExpr vc) {
             TheoremProver.Assert(vc, true);
           }
 
-          public override void LogComment(string str) {
+          public void LogComment(string str) {
             checker.TheoremProver.LogComment(str);
           }
 
-          public override Outcome CheckAssumptions(List<VCExpr> assumptions, out List<int> unsatCore) {
+          public Outcome CheckAssumptions(List<VCExpr> assumptions, out List<int> unsatCore) {
             if (!UseCheckAssumptions) {
-              return base.CheckAssumptions(assumptions, out unsatCore);
+                Outcome ret;
+
+                unsatCore = new List<int>();
+                for (int i = 0; i < assumptions.Count; i++)
+                    unsatCore.Add(i);
+
+                if (assumptions.Count == 0)
+                {
+                    return CheckVC();
+                }
+
+                Push();
+
+                foreach (var a in assumptions)
+                {
+                    AddAxiom(a);
+                }
+                ret = CheckVC();
+
+                Pop();
+
+                return ret;
+
             }
             
             if (assumptions.Count == 0) {
@@ -1280,7 +1164,7 @@ namespace VC
             }
           }
 
-          public override void SetTimeOut(int msec)
+          public void SetTimeOut(int msec)
           {
               TheoremProver.SetTimeOut(msec);
           }
@@ -1297,7 +1181,7 @@ namespace VC
             public ProverInterface.ErrorHandler reporter;
             // The theorem prover interface
             //public Checker checker;
-            public StratifiedCheckerInterface checker;
+            public ApiChecker checker;
             // The coverage graph reporter
             public CoverageGraphManager coverageManager;
             // For statistics
@@ -1311,7 +1195,7 @@ namespace VC
                 }
             }
             // For making summary queries on the side
-            public StratifiedCheckerInterface checker2;
+            public ApiChecker checker2;
 
             public VerificationState(VCExpr vcMain, FCallHandler calls,
                 ProverInterface.ErrorHandler reporter, Checker checker, Checker checker2)
@@ -1319,18 +1203,10 @@ namespace VC
                 this.vcMain = vcMain;
                 this.calls = calls;
                 this.reporter = reporter;
-                if (checker.TheoremProver is ApiProverInterface)
-                {
+
                     this.checker = new ApiChecker(vcMain, reporter, checker, calls);
                     if(checker2 != null)
                       this.checker2 = new ApiChecker(VCExpressionGenerator.False, new EmptyErrorHandler(), checker2, calls); 
-                }
-                else
-                {
-                    this.checker = new NormalChecker(vcMain, reporter, checker, calls);
-                    if(checker2 != null)
-                      this.checker2 = new NormalChecker(VCExpressionGenerator.False, new EmptyErrorHandler(), checker2, calls); 
-                }
                 vcSize = 0;
                 expansionCount = 0;
                 
@@ -1439,7 +1315,7 @@ namespace VC
             return Outcome.Correct;
         }
 
-        private HashSet<VCExprVar> refinementLoop(StratifiedCheckerInterface apiChecker, HashSet<VCExprVar> trackedVars, HashSet<VCExprVar> trackedVarsUpperBound, HashSet<VCExprVar> allVars)
+        private HashSet<VCExprVar> refinementLoop(ApiChecker apiChecker, HashSet<VCExprVar> trackedVars, HashSet<VCExprVar> trackedVarsUpperBound, HashSet<VCExprVar> allVars)
         {
             Debug.Assert(trackedVars.IsSubsetOf(trackedVarsUpperBound));
 
@@ -1481,7 +1357,7 @@ namespace VC
         Dictionary<int, List<HashSet<string>>> satQueryCache;
         Dictionary<int, List<HashSet<string>>> unsatQueryCache;
 
-        private bool refinementLoopCheckPath(StratifiedCheckerInterface apiChecker, HashSet<VCExprVar> varsToSet, HashSet<VCExprVar> allVars)
+        private bool refinementLoopCheckPath(ApiChecker apiChecker, HashSet<VCExprVar> varsToSet, HashSet<VCExprVar> allVars)
         {
             var assumptions = new List<VCExpr>();
             List<int> temp = null;
@@ -1975,7 +1851,8 @@ namespace VC
 
         } // end PCBInliner
 
-        private void InlineCallSite(CallSite cs, StratifiedCheckerInterface checker) {
+        private void InlineCallSite(CallSite cs, ApiChecker checker)
+        {
           var Gen = checker.underlyingChecker.VCExprGen;
           var callee = cs.calleeName;
           var caller = cs.callerName;
@@ -2035,7 +1912,8 @@ namespace VC
           calleeToCallSites[callee].Remove(cs);
         }
 
-        private Outcome FindUnsatCoreInMainCallees(Implementation impl, StratifiedCheckerInterface checker, VCExpressionGenerator Gen, PCBErrorReporter reporter, List<VCExpr> assumptions, out HashSet<VCExprVar> unsatCore) {
+        private Outcome FindUnsatCoreInMainCallees(Implementation impl, ApiChecker checker, VCExpressionGenerator Gen, PCBErrorReporter reporter, List<VCExpr> assumptions, out HashSet<VCExprVar> unsatCore)
+        {
           Debug.Assert(checker is ApiChecker);
           unsatCore = null;
           List<int> unsatCoreIndices;
@@ -2056,7 +1934,8 @@ namespace VC
           return Outcome.Correct;
         }
 
-        private Outcome FindUnsatCore(Implementation impl, StratifiedCheckerInterface checker, VCExpressionGenerator Gen, PCBErrorReporter reporter, List<VCExpr> assumptions, out HashSet<VCExprVar> unsatCore) {
+        private Outcome FindUnsatCore(Implementation impl, ApiChecker checker, VCExpressionGenerator Gen, PCBErrorReporter reporter, List<VCExpr> assumptions, out HashSet<VCExprVar> unsatCore)
+        {
           Helpers.ExtraTraceInformation("Number of assumptions = " + assumptions.Count);
           unsatCore = null;
           List<int> unsatCoreIndices;
@@ -2187,7 +2066,8 @@ namespace VC
           return verified;
         }
 
-        private void InlineBottomUp(StratifiedCheckerInterface checker, HashSet<VCExprVar> unsatCore) {
+        private void InlineBottomUp(ApiChecker checker, HashSet<VCExprVar> unsatCore)
+        {
           Graph<string> callGraph = new Graph<string>();
           foreach (string name in calleeToCallSites.Keys) {
             callGraph.AddSource(name);
@@ -2209,7 +2089,8 @@ namespace VC
           }
         }
 
-        private void InlineIntoMain(StratifiedCheckerInterface checker, Implementation impl, HashSet<VCExprVar> unsatCore) {
+        private void InlineIntoMain(ApiChecker checker, Implementation impl, HashSet<VCExprVar> unsatCore)
+        {
           HashSet<CallSite> toBeInlined = new HashSet<CallSite>();
           foreach (CallSite cs in callerToCallSites[impl.Name]) {
             if (unsatCore.Contains(cs.callSiteConstant)) {
@@ -2232,7 +2113,7 @@ namespace VC
 
           var Gen = underlyingChecker.VCExprGen;
           PCBErrorReporter reporter = new PCBErrorReporter(impl);
-          StratifiedCheckerInterface checker;
+          ApiChecker checker;
           checker = new ApiChecker(VCExpressionGenerator.False, reporter, underlyingChecker, null);
           CreateProcedureCopies(impl, program, checker, vcMain);
 
