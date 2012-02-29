@@ -19,7 +19,7 @@ using PatternAst = System.IntPtr;
 
 namespace Microsoft.Boogie.Z3
 {
-    public class Z3apiProcessTheoremProver : ApiProverInterface
+    public class Z3apiProcessTheoremProver : ProverInterface
     {
         public Z3apiProcessTheoremProver(Z3InstanceOptions opts, DeclFreeProverContext ctxt)
         {
