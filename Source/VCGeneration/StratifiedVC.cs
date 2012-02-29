@@ -1594,9 +1594,9 @@ namespace VC
             #endregion
 
             #region Coverage reporter
-            if (CommandLineOptions.Clo.CoverageReporterPath == "Console")
+            if (CommandLineOptions.Clo.StratifiedInliningVerbose > 0)
             {
-                Console.WriteLine("Stratified Inlining: Size of VC after eager inlining: {0}", vState.vcSize);
+                Console.WriteLine(">> SI: Size of VC after eager inlining: {0}", vState.vcSize);
             }
             #endregion
 
@@ -1784,13 +1784,13 @@ namespace VC
             vState.checker.Pop();
 
             #region Coverage reporter
-            if (CommandLineOptions.Clo.CoverageReporterPath == "Console")
+            if (CommandLineOptions.Clo.StratifiedInliningVerbose > 0)
             {
-                Console.WriteLine("Stratified Inlining: Calls to Z3: {0}", vState.numQueries);
-                Console.WriteLine("Stratified Inlining: Expansions performed: {0}", vState.expansionCount);
-                Console.WriteLine("Stratified Inlining: Candidates left: {0}", calls.currCandidates.Count);
-                Console.WriteLine("Stratified Inlining: Nontrivial Candidates left: {0}", calls.numNonTrivialCandidates());
-                Console.WriteLine("Stratified Inlining: VC Size: {0}", vState.vcSize);
+                Console.WriteLine(">> SI: Calls to Z3: {0}", vState.numQueries);
+                Console.WriteLine(">> SI: Expansions performed: {0}", vState.expansionCount);
+                Console.WriteLine(">> SI: Candidates left: {0}", calls.currCandidates.Count);
+                Console.WriteLine(">> SI: Nontrivial Candidates left: {0}", calls.numNonTrivialCandidates());
+                Console.WriteLine(">> SI: VC Size: {0}", vState.vcSize);
             }
             #endregion
             coverageManager.stop();
