@@ -104,7 +104,9 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AccessCollector.cs" />
+    <Compile Include="AccessInvariantProcessor.cs" />
     <Compile Include="AccessRecord.cs" />
+    <Compile Include="AsymmetricExpressionFinder.cs" />
     <Compile Include="CrossThreadInvariantProcessor.cs" />
     <Compile Include="EnabledToPredicateVisitor.cs" />
     <Compile Include="CommandLineOptions.cs" />
