@@ -1,15 +1,15 @@
-# Aste started: 2012-02-29 07:00:09
+# Aste started: 2012-03-01 07:00:05
 # Host id: Boogiebox
 # Configuration: boogie.cfg
 # Task: aste.tasks.boogie.FullBuild
-# [2012-02-29 07:04:40] SpecSharp revision: a71fa2db5dce
-# [2012-02-29 07:04:40] SscBoogie revision: a71fa2db5dce
-# [2012-02-29 07:06:37] Boogie revision: 657ab7319291
-[2012-02-29 07:08:19] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com SpecSharp.sln /Project "Checkin Tests" /Build
+# [2012-03-01 07:02:56] SpecSharp revision: efcb0d478c80
+# [2012-03-01 07:02:56] SscBoogie revision: efcb0d478c80
+# [2012-03-01 07:04:55] Boogie revision: 755664b13a88
+[2012-03-01 07:06:33] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com SpecSharp.sln /Project "Checkin Tests" /Build
 
     1>corflags : warning CF011: The specified file is strong name signed.  Using /Force will invalidate the signature of this image and will require the assembly to be resigned.
     warning CF011: The specified file is strong name signed.  Using /Force will invalidate the signature of this image and will require the assembly to be resigned.
-[2012-02-29 07:09:40] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Boogie.sln /Rebuild Checked
+[2012-03-01 07:07:54] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Boogie.sln /Rebuild Checked
 
     D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(823,16): warning CS0659: 'Microsoft.Boogie.BasicType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
     D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(2802,16): warning CS0659: 'Microsoft.Boogie.CtorType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
@@ -24,7 +24,6 @@
     D:\Temp\aste\Boogie\Source\AbsInt\IntervalDomain.cs(49,9): warning CC1036: Detected call to method 'Microsoft.Boogie.AbstractInterpretation.NativeIntervallDomain+Node.StrictlyBefore(Microsoft.Boogie.Variable,Microsoft.Boogie.Variable)' without [Pure] in contracts of method 'Microsoft.Boogie.AbstractInterpretation.NativeIntervallDomain+Node.#ctor(Microsoft.Boogie.Variable,System.Nullable`1<System.Numerics.BigInteger>,System.Nullable`1<System.Numerics.BigInteger>,Microsoft.Boogie.AbstractInterpretation.NativeIntervallDomain+Node)'.
     D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(1717,11): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(1878,11): warning CS0162: Unreachable code detected
-    D:\Temp\aste\Boogie\Source\VCGeneration\StratifiedVC.cs(1105,17): warning CC1032: Method 'VC.StratifiedVCGen+NormalChecker.CheckVC' overrides 'VC.StratifiedVCGen+StratifiedCheckerInterface.CheckVC', thus cannot add Requires.
     EXEC : warning CC1032: Method 'Microsoft.Boogie.Houdini.InlineRequiresVisitor.VisitCmdSeq(Microsoft.Boogie.CmdSeq)' overrides 'Microsoft.Boogie.StandardVisitor.VisitCmdSeq(Microsoft.Boogie.CmdSeq)', thus cannot add Requires.
     EXEC : warning CC1032: Method 'Microsoft.Boogie.Houdini.FreeRequiresVisitor.VisitAssertRequiresCmd(Microsoft.Boogie.AssertRequiresCmd)' overrides 'Microsoft.Boogie.StandardVisitor.VisitAssertRequiresCmd(Microsoft.Boogie.AssertRequiresCmd)', thus cannot add Requires.
     warning CS0659: 'Microsoft.Boogie.BasicType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
@@ -40,8 +39,7 @@
     warning CC1036: Detected call to method 'Microsoft.Boogie.AbstractInterpretation.NativeIntervallDomain+Node.StrictlyBefore(Microsoft.Boogie.Variable,Microsoft.Boogie.Variable)' without [Pure] in contracts of method 'Microsoft.Boogie.AbstractInterpretation.NativeIntervallDomain+Node.#ctor(Microsoft.Boogie.Variable,System.Nullable`1<System.Numerics.BigInteger>,System.Nullable`1<System.Numerics.BigInteger>,Microsoft.Boogie.AbstractInterpretation.NativeIntervallDomain+Node)'.
     warning CS0162: Unreachable code detected
     warning CS0162: Unreachable code detected
-    warning CC1032: Method 'VC.StratifiedVCGen+NormalChecker.CheckVC' overrides 'VC.StratifiedVCGen+StratifiedCheckerInterface.CheckVC', thus cannot add Requires.
     warning CC1032: Method 'Microsoft.Boogie.Houdini.InlineRequiresVisitor.VisitCmdSeq(Microsoft.Boogie.CmdSeq)' overrides 'Microsoft.Boogie.StandardVisitor.VisitCmdSeq(Microsoft.Boogie.CmdSeq)', thus cannot add Requires.
     warning CC1032: Method 'Microsoft.Boogie.Houdini.FreeRequiresVisitor.VisitAssertRequiresCmd(Microsoft.Boogie.AssertRequiresCmd)' overrides 'Microsoft.Boogie.StandardVisitor.VisitAssertRequiresCmd(Microsoft.Boogie.AssertRequiresCmd)', thus cannot add Requires.
-[2012-02-29 08:06:41] 0 out of 33 test(s) in D:\Temp\aste\Boogie\Test\alltests.txt failed
-# [2012-02-29 08:07:46] Released nightly of Boogie
+[2012-03-01 08:04:53] 0 out of 33 test(s) in D:\Temp\aste\Boogie\Test\alltests.txt failed
+# [2012-03-01 08:05:34] Released nightly of Boogie
