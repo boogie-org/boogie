@@ -330,6 +330,7 @@ namespace BytecodeTranslator {
         var name = "$string_literal_" + TranslationHelper.TurnStringIntoValidIdentifier(str) + "_" + declaredStringConstants.Count;
         var tident = new Bpl.TypedIdent(tok, name, t);
         c = new Bpl.Constant(tok, tident, true);
+        str = str.Replace("\n", "\\n");
         var attrib = new Bpl.QKeyValue(Bpl.Token.NoToken, "value", new List<object> { str, }, null);
         c.Attributes = attrib;
         this.declaredStringConstants.Add(str, c);
