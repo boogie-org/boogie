@@ -9,6 +9,10 @@ Boogie program verifier finished with 1 verified, 0 errors
 Assignment computed by Houdini:
 b1 = False
 b2 = True
+houd2.bpl(12,1): Error BP5003: A postcondition might not hold on this return path.
+houd2.bpl(9,1): Related location: This is the postcondition that might not hold.
+Execution trace:
+    houd2.bpl(11,3): anon0
 
 Boogie program verifier finished with 1 verified, 1 error
 
@@ -72,6 +76,9 @@ Assignment computed by Houdini:
 b1 = True
 b2 = True
 b3 = True
+houd9.bpl(19,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    houd9.bpl(18,9): anon0
 
 Boogie program verifier finished with 0 verified, 1 error
 
@@ -80,11 +87,18 @@ Assignment computed by Houdini:
 b1 = True
 b2 = True
 b3 = True
+houd10.bpl(15,3): Error BP5002: A precondition for this call might not hold.
+houd10.bpl(20,1): Related location: This is the precondition that might not hold.
+Execution trace:
+    houd10.bpl(14,9): anon0
 
 Boogie program verifier finished with 0 verified, 1 error
 
 -------------------- houd11.bpl --------------------
 Assignment computed by Houdini:
+houd11.bpl(8,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    houd11.bpl(7,9): anon0
 
 Boogie program verifier finished with 0 verified, 1 error
 
