@@ -698,6 +698,11 @@ namespace Microsoft.Boogie {
             }
             else {
               outcome = vcgen.VerifyImplementation(impl, program, out errors);
+              if (CommandLineOptions.Clo.ExtractLoops && vcgen is VCGen && errors != null) {
+                for (int i = 0; i < errors.Count; i++) {
+                  errors[i] = (vcgen as VCGen).extractLoopTrace(errors[i], impl.Name, program, extractLoopMappingInfo);
+                }
+              }
             }
           }
           catch (VCGenException e) {
@@ -719,12 +724,6 @@ namespace Microsoft.Boogie {
               int poCount = vcgen.CumulativeAssertionCount - prevAssertionCount;
               timeIndication = string.Format("  [{0} s, {1} proof obligation{2}]  ", elapsed.TotalSeconds, poCount, poCount == 1 ? "" : "s");
             }
-          }
-
-          if (CommandLineOptions.Clo.ExtractLoops && (vcgen is VCGen)) {
-              for (int i = 0; i < errors.Count; i++) {
-                errors[i] = (vcgen as VCGen).extractLoopTrace(errors[i], impl.Name, program, extractLoopMappingInfo);
-              }
           }
 
           ProcessOutcome(outcome, errors, timeIndication, ref errorCount, ref verified, ref inconclusives, ref timeOuts, ref outOfMemories);
