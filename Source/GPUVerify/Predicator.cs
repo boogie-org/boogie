@@ -258,7 +258,7 @@ namespace GPUVerify
             return result;
         }
 
-        private Expr ProcessEnabledIntrinsics(Expr expr, TypedIdent currentPredicate)
+        internal static Expr ProcessEnabledIntrinsics(Expr expr, TypedIdent currentPredicate)
         {
             return new EnabledToPredicateVisitor(currentPredicate).VisitExpr(expr);
         }

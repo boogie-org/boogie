@@ -429,6 +429,134 @@ namespace Microsoft.Boogie {
       }
     }
 
+    static void ProcessOutcome(VC.VCGen.Outcome outcome, List<Counterexample> errors, string timeIndication,
+                       ref int errorCount, ref int verified, ref int inconclusives, ref int timeOuts, ref int outOfMemories) {
+      switch (outcome) {
+        default:
+          Contract.Assert(false);  // unexpected outcome
+          throw new cce.UnreachableException();
+        case VCGen.Outcome.ReachedBound:
+          Inform(String.Format("{0}verified", timeIndication));
+          Console.WriteLine(string.Format("Stratified Inlining: Reached recursion bound of {0}", CommandLineOptions.Clo.RecursionBound));
+          verified++;
+          break;
+        case VCGen.Outcome.Correct:
+          if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Doomed) {
+            Inform(String.Format("{0}credible", timeIndication));
+            verified++;
+          }
+          else {
+            Inform(String.Format("{0}verified", timeIndication));
+            verified++;
+          }
+          break;
+        case VCGen.Outcome.TimedOut:
+          timeOuts++;
+          Inform(String.Format("{0}timed out", timeIndication));
+          break;
+        case VCGen.Outcome.OutOfMemory:
+          outOfMemories++;
+          Inform(String.Format("{0}out of memory", timeIndication));
+          break;
+        case VCGen.Outcome.Inconclusive:
+          inconclusives++;
+          Inform(String.Format("{0}inconclusive", timeIndication));
+          break;
+        case VCGen.Outcome.Errors:
+          if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Doomed) {
+            Inform(String.Format("{0}doomed", timeIndication));
+            errorCount++;
+          } //else {
+          Contract.Assert(errors != null);  // guaranteed by postcondition of VerifyImplementation
+
+              {
+            // BP1xxx: Parsing errors
+            // BP2xxx: Name resolution errors
+            // BP3xxx: Typechecking errors
+            // BP4xxx: Abstract interpretation errors (Is there such a thing?)
+            // BP5xxx: Verification errors
+
+            errors.Sort(new CounterexampleComparer());
+            foreach (Counterexample error in errors) {
+              if (error is CallCounterexample) {
+                CallCounterexample err = (CallCounterexample)error;
+                if (!CommandLineOptions.Clo.ForceBplErrors && err.FailingRequires.ErrorMessage != null) {
+                  ReportBplError(err.FailingRequires, err.FailingRequires.ErrorMessage, true, false);
+                }
+                else {
+                  ReportBplError(err.FailingCall, "Error BP5002: A precondition for this call might not hold.", true, true);
+                  ReportBplError(err.FailingRequires, "Related location: This is the precondition that might not hold.", false, true);
+                }
+                if (CommandLineOptions.Clo.XmlSink != null) {
+                  CommandLineOptions.Clo.XmlSink.WriteError("precondition violation", err.FailingCall.tok, err.FailingRequires.tok, error.Trace);
+                }
+              }
+              else if (error is ReturnCounterexample) {
+                ReturnCounterexample err = (ReturnCounterexample)error;
+                if (!CommandLineOptions.Clo.ForceBplErrors && err.FailingEnsures.ErrorMessage != null) {
+                  ReportBplError(err.FailingEnsures, err.FailingEnsures.ErrorMessage, true, false);
+                }
+                else {
+                  ReportBplError(err.FailingReturn, "Error BP5003: A postcondition might not hold on this return path.", true, true);
+                  ReportBplError(err.FailingEnsures, "Related location: This is the postcondition that might not hold.", false, true);
+                }
+                if (CommandLineOptions.Clo.XmlSink != null) {
+                  CommandLineOptions.Clo.XmlSink.WriteError("postcondition violation", err.FailingReturn.tok, err.FailingEnsures.tok, error.Trace);
+                }
+              }
+              else // error is AssertCounterexample
+                    {
+                AssertCounterexample err = (AssertCounterexample)error;
+                if (err.FailingAssert is LoopInitAssertCmd) {
+                  ReportBplError(err.FailingAssert, "Error BP5004: This loop invariant might not hold on entry.", true, true);
+                  if (CommandLineOptions.Clo.XmlSink != null) {
+                    CommandLineOptions.Clo.XmlSink.WriteError("loop invariant entry violation", err.FailingAssert.tok, null, error.Trace);
+                  }
+                }
+                else if (err.FailingAssert is LoopInvMaintainedAssertCmd) {
+                  // this assertion is a loop invariant which is not maintained
+                  ReportBplError(err.FailingAssert, "Error BP5005: This loop invariant might not be maintained by the loop.", true, true);
+                  if (CommandLineOptions.Clo.XmlSink != null) {
+                    CommandLineOptions.Clo.XmlSink.WriteError("loop invariant maintenance violation", err.FailingAssert.tok, null, error.Trace);
+                  }
+                }
+                else {
+                  if (!CommandLineOptions.Clo.ForceBplErrors && err.FailingAssert.ErrorMessage != null) {
+                    ReportBplError(err.FailingAssert, err.FailingAssert.ErrorMessage, true, false);
+                  }
+                  else if (err.FailingAssert.ErrorData is string) {
+                    ReportBplError(err.FailingAssert, (string)err.FailingAssert.ErrorData, true, true);
+                  }
+                  else {
+                    ReportBplError(err.FailingAssert, "Error BP5001: This assertion might not hold.", true, true);
+                  }
+                  if (CommandLineOptions.Clo.XmlSink != null) {
+                    CommandLineOptions.Clo.XmlSink.WriteError("assertion violation", err.FailingAssert.tok, null, error.Trace);
+                  }
+                }
+              }
+              if (CommandLineOptions.Clo.EnhancedErrorMessages == 1) {
+                foreach (string info in error.relatedInformation) {
+                  Contract.Assert(info != null);
+                  Console.WriteLine("       " + info);
+                }
+              }
+              if (CommandLineOptions.Clo.ErrorTrace > 0) {
+                Console.WriteLine("Execution trace:");
+                error.Print(4);
+              }
+              if (CommandLineOptions.Clo.ModelViewFile != null) {
+                error.PrintModel();
+              }
+              errorCount++;
+            }
+            //}
+            Inform(String.Format("{0}error{1}", timeIndication, errors.Count == 1 ? "" : "s"));
+          }
+              break;
+      }
+    }
+
     /// <summary>
     /// Given a resolved and type checked Boogie program, infers invariants for the program
     /// and then attempts to verify it.  Returns:
@@ -451,30 +579,6 @@ namespace Microsoft.Boogie {
         Microsoft.Boogie.AbstractInterpretation.NativeAbstractInterpretation.RunAbstractInterpretation(program);
       } else {
         Microsoft.Boogie.AbstractInterpretation.AbstractInterpretation.RunAbstractInterpretation(program);
-      }
-
-      if (CommandLineOptions.Clo.ContractInfer) {
-        Houdini.Houdini houdini = new Houdini.Houdini(program, true);
-        Houdini.HoudiniOutcome outcome = houdini.PerformHoudiniInference();
-        int numTrueAssigns = 0;
-        Console.WriteLine("Assignment computed by Houdini:");
-        foreach (var x in outcome.assignment) {
-          Console.WriteLine(x.Key + " = " + x.Value);
-          if (x.Value)
-            numTrueAssigns++;
-        }
-        if (CommandLineOptions.Clo.Trace) {
-          Console.WriteLine("Number of true assignments = " + numTrueAssigns);
-          Console.WriteLine("Number of false assignments = " + (outcome.assignment.Count - numTrueAssigns));
-          Console.WriteLine("Prover time = " + Houdini.HoudiniSession.proverTime);
-          Console.WriteLine("Number of prover queries = " + Houdini.HoudiniSession.numProverQueries);
-        }
-        errorCount = outcome.ErrorCount;
-        verified = outcome.Verified;
-        inconclusives = outcome.Inconclusives;
-        timeOuts = outcome.TimeOuts;
-        outOfMemories = 0;
-        return PipelineOutcome.Done;
       }
 
       if (CommandLineOptions.Clo.LoopUnrollCount != -1) {
@@ -501,6 +605,40 @@ namespace Microsoft.Boogie {
       if (!CommandLineOptions.Clo.Verify) {
         return PipelineOutcome.Done;
       }
+
+      #region Run Houdini and verify
+      if (CommandLineOptions.Clo.ContractInfer) {
+        Houdini.Houdini houdini = new Houdini.Houdini(program, true);
+        Houdini.HoudiniOutcome outcome = houdini.PerformHoudiniInference();
+        if (CommandLineOptions.Clo.PrintAssignment) {
+          Console.WriteLine("Assignment computed by Houdini:");
+          foreach (var x in outcome.assignment) {
+            Console.WriteLine(x.Key + " = " + x.Value);
+          }
+        }
+        if (CommandLineOptions.Clo.Trace) {
+          int numTrueAssigns = 0;
+          foreach (var x in outcome.assignment) {
+            if (x.Value)
+              numTrueAssigns++;
+          }
+          Console.WriteLine("Number of true assignments = " + numTrueAssigns);
+          Console.WriteLine("Number of false assignments = " + (outcome.assignment.Count - numTrueAssigns));
+          Console.WriteLine("Prover time = " + Houdini.HoudiniSession.proverTime);
+          Console.WriteLine("Number of prover queries = " + Houdini.HoudiniSession.numProverQueries);
+        }
+
+        foreach (Houdini.VCGenOutcome x in outcome.implementationOutcomes.Values) {
+          ProcessOutcome(x.outcome, x.errors, "", ref errorCount, ref verified, ref inconclusives, ref timeOuts, ref outOfMemories);
+        }
+        //errorCount = outcome.ErrorCount;
+        //verified = outcome.Verified;
+        //inconclusives = outcome.Inconclusives;
+        //timeOuts = outcome.TimeOuts;
+        //outOfMemories = 0;
+        return PipelineOutcome.Done;
+      }
+      #endregion
 
       #region Verify each implementation
 
@@ -541,42 +679,44 @@ namespace Microsoft.Boogie {
 
           VCGen.Outcome outcome;
           try {
-              if (CommandLineOptions.Clo.inferLeastForUnsat != null)
-              {
-                  var svcgen = vcgen as VC.StratifiedVCGen;
-                  Contract.Assert(svcgen != null);
-                  var ss = new HashSet<string>();
-                  foreach (var tdecl in program.TopLevelDeclarations)
-                  {
-                      var c = tdecl as Constant;
-                      if (c == null || !c.Name.StartsWith(CommandLineOptions.Clo.inferLeastForUnsat)) continue;
-                      ss.Add(c.Name);
-                  }
-                  outcome = svcgen.FindLeastToVerify(impl, program, ref ss);
-                  errors = new List<Counterexample>();
-                  Console.Write("Result: ");
-                  foreach (var s in ss)
-                  {
-                      Console.Write("{0} ", s);
-                  }
-                  Console.WriteLine();
+            if (CommandLineOptions.Clo.inferLeastForUnsat != null) {
+              var svcgen = vcgen as VC.StratifiedVCGen;
+              Contract.Assert(svcgen != null);
+              var ss = new HashSet<string>();
+              foreach (var tdecl in program.TopLevelDeclarations) {
+                var c = tdecl as Constant;
+                if (c == null || !c.Name.StartsWith(CommandLineOptions.Clo.inferLeastForUnsat)) continue;
+                ss.Add(c.Name);
               }
-              else
-              {
-                  outcome = vcgen.VerifyImplementation(impl, program, out errors);
+              outcome = svcgen.FindLeastToVerify(impl, program, ref ss);
+              errors = new List<Counterexample>();
+              Console.Write("Result: ");
+              foreach (var s in ss) {
+                Console.Write("{0} ", s);
               }
-          } catch (VCGenException e) {
+              Console.WriteLine();
+            }
+            else {
+              outcome = vcgen.VerifyImplementation(impl, program, out errors);
+              if (CommandLineOptions.Clo.ExtractLoops && vcgen is VCGen && errors != null) {
+                for (int i = 0; i < errors.Count; i++) {
+                  errors[i] = (vcgen as VCGen).extractLoopTrace(errors[i], impl.Name, program, extractLoopMappingInfo);
+                }
+              }
+            }
+          }
+          catch (VCGenException e) {
             ReportBplError(impl, String.Format("Error BP5010: {0}  Encountered in implementation {1}.", e.Message, impl.Name), true, true);
             errors = null;
             outcome = VCGen.Outcome.Inconclusive;
-          } catch (UnexpectedProverOutputException upo) {
+          }
+          catch (UnexpectedProverOutputException upo) {
             AdvisoryWriteLine("Advisory: {0} SKIPPED because of internal error: unexpected prover output: {1}", impl.Name, upo.Message);
             errors = null;
             outcome = VCGen.Outcome.Inconclusive;
           }
 
           string timeIndication = "";
-
           DateTime end = DateTime.UtcNow;
           TimeSpan elapsed = end - start;
           if (CommandLineOptions.Clo.Trace || CommandLineOptions.Clo.XmlSink != null) {
@@ -586,130 +726,8 @@ namespace Microsoft.Boogie {
             }
           }
 
+          ProcessOutcome(outcome, errors, timeIndication, ref errorCount, ref verified, ref inconclusives, ref timeOuts, ref outOfMemories);
 
-          switch (outcome) {
-            default:
-              Contract.Assert(false);  // unexpected outcome
-              throw new cce.UnreachableException();
-            case VCGen.Outcome.ReachedBound:
-              Inform(String.Format("{0}verified", timeIndication));
-              Console.WriteLine(string.Format("Stratified Inlining: Reached recursion bound of {0}", CommandLineOptions.Clo.RecursionBound));
-              verified++;
-              break;
-            case VCGen.Outcome.Correct:
-              if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Doomed) {
-                Inform(String.Format("{0}credible", timeIndication));
-                verified++;
-              } else {
-                Inform(String.Format("{0}verified", timeIndication));
-                verified++;
-              }
-              break;
-            case VCGen.Outcome.TimedOut:
-              timeOuts++;
-              Inform(String.Format("{0}timed out", timeIndication));
-              break;
-            case VCGen.Outcome.OutOfMemory:
-              outOfMemories++;
-              Inform(String.Format("{0}out of memory", timeIndication));
-              break;
-            case VCGen.Outcome.Inconclusive:
-              inconclusives++;
-              Inform(String.Format("{0}inconclusive", timeIndication));
-              break;
-            case VCGen.Outcome.Errors:
-              if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Doomed) {
-                Inform(String.Format("{0}doomed", timeIndication));
-                errorCount++;
-              } //else {
-              Contract.Assert(errors != null);  // guaranteed by postcondition of VerifyImplementation
-
-              {
-                // BP1xxx: Parsing errors
-                // BP2xxx: Name resolution errors
-                // BP3xxx: Typechecking errors
-                // BP4xxx: Abstract interpretation errors (Is there such a thing?)
-                // BP5xxx: Verification errors
-
-                if (CommandLineOptions.Clo.ExtractLoops && (vcgen is VCGen))
-                {
-                    for (int i = 0; i < errors.Count; i++)
-                    {
-                        errors[i] = (vcgen as VCGen).extractLoopTrace(errors[i], impl.Name, program, extractLoopMappingInfo);
-                    }
-                }
-
-                errors.Sort(new CounterexampleComparer());
-                foreach (Counterexample error in errors) {
-                  if (error is CallCounterexample) {
-                    CallCounterexample err = (CallCounterexample)error;
-                    if (!CommandLineOptions.Clo.ForceBplErrors && err.FailingRequires.ErrorMessage != null) {
-                      ReportBplError(err.FailingRequires, err.FailingRequires.ErrorMessage, true, false);
-                    } else {
-                      ReportBplError(err.FailingCall, "Error BP5002: A precondition for this call might not hold.", true, true);
-                      ReportBplError(err.FailingRequires, "Related location: This is the precondition that might not hold.", false, true);
-                    }
-                    if (CommandLineOptions.Clo.XmlSink != null) {
-                      CommandLineOptions.Clo.XmlSink.WriteError("precondition violation", err.FailingCall.tok, err.FailingRequires.tok, error.Trace);
-                    }
-                  } else if (error is ReturnCounterexample) {
-                    ReturnCounterexample err = (ReturnCounterexample)error;
-                    if (!CommandLineOptions.Clo.ForceBplErrors && err.FailingEnsures.ErrorMessage != null) {
-                      ReportBplError(err.FailingEnsures, err.FailingEnsures.ErrorMessage, true, false);
-                    } else {
-                      ReportBplError(err.FailingReturn, "Error BP5003: A postcondition might not hold on this return path.", true, true);
-                      ReportBplError(err.FailingEnsures, "Related location: This is the postcondition that might not hold.", false, true);
-                    }
-                    if (CommandLineOptions.Clo.XmlSink != null) {
-                      CommandLineOptions.Clo.XmlSink.WriteError("postcondition violation", err.FailingReturn.tok, err.FailingEnsures.tok, error.Trace);
-                    }
-                  } else // error is AssertCounterexample
-                    {
-                    AssertCounterexample err = (AssertCounterexample)error;
-                    if (err.FailingAssert is LoopInitAssertCmd) {
-                      ReportBplError(err.FailingAssert, "Error BP5004: This loop invariant might not hold on entry.", true, true);
-                      if (CommandLineOptions.Clo.XmlSink != null) {
-                        CommandLineOptions.Clo.XmlSink.WriteError("loop invariant entry violation", err.FailingAssert.tok, null, error.Trace);
-                      }
-                    } else if (err.FailingAssert is LoopInvMaintainedAssertCmd) {
-                      // this assertion is a loop invariant which is not maintained
-                      ReportBplError(err.FailingAssert, "Error BP5005: This loop invariant might not be maintained by the loop.", true, true);
-                      if (CommandLineOptions.Clo.XmlSink != null) {
-                        CommandLineOptions.Clo.XmlSink.WriteError("loop invariant maintenance violation", err.FailingAssert.tok, null, error.Trace);
-                      }
-                    } else {
-                      if (!CommandLineOptions.Clo.ForceBplErrors && err.FailingAssert.ErrorMessage != null) {
-                        ReportBplError(err.FailingAssert, err.FailingAssert.ErrorMessage, true, false);
-                      } else if (err.FailingAssert.ErrorData is string) {
-                        ReportBplError(err.FailingAssert, (string)err.FailingAssert.ErrorData, true, true);
-                      } else {
-                        ReportBplError(err.FailingAssert, "Error BP5001: This assertion might not hold.", true, true);
-                      }
-                      if (CommandLineOptions.Clo.XmlSink != null) {
-                        CommandLineOptions.Clo.XmlSink.WriteError("assertion violation", err.FailingAssert.tok, null, error.Trace);
-                      }
-                    }
-                  }
-                  if (CommandLineOptions.Clo.EnhancedErrorMessages == 1) {
-                    foreach (string info in error.relatedInformation) {
-                      Contract.Assert(info != null);
-                      Console.WriteLine("       " + info);
-                    }
-                  }
-                  if (CommandLineOptions.Clo.ErrorTrace > 0) {
-                    Console.WriteLine("Execution trace:");
-                    error.Print(4);
-                  }
-                  if (CommandLineOptions.Clo.ModelViewFile != null) {
-                    error.PrintModel();
-                  }
-                  errorCount++;
-                }
-                //}
-                Inform(String.Format("{0}error{1}", timeIndication, errors.Count == 1 ? "" : "s"));
-              }
-              break;
-          }
           if (CommandLineOptions.Clo.XmlSink != null) {
             CommandLineOptions.Clo.XmlSink.WriteEndMethod(outcome.ToString().ToLowerInvariant(), end, elapsed);
           }
@@ -718,6 +736,7 @@ namespace Microsoft.Boogie {
           }
         }
       }
+        
       vcgen.Close();
       cce.NonNull(CommandLineOptions.Clo.TheProverFactory).Close();
 
@@ -726,6 +745,5 @@ namespace Microsoft.Boogie {
 
       return PipelineOutcome.VerificationCompleted;
     }
-
   }
 }

@@ -19,10 +19,8 @@ namespace GPUVerify
 
                 if (call.Func.Name.Equals("__uniform_bv32") || call.Func.Name.Equals("__uniform_bool"))
                 {
-                    return Expr.True;
-/*                    Debug.Assert(false);
                     return Expr.Eq(new VariableDualiser(1).VisitExpr(node.Args[0].Clone() as Expr),
-                                   new VariableDualiser(2).VisitExpr(node.Args[0].Clone() as Expr));*/
+                                   new VariableDualiser(2).VisitExpr(node.Args[0].Clone() as Expr));
                 }
 
                 if (call.Func.Name.Equals("__distinct_bv32") || call.Func.Name.Equals("__distinct_bool"))
