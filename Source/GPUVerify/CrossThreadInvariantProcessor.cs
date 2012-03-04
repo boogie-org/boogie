@@ -29,6 +29,19 @@ namespace GPUVerify
                                    new VariableDualiser(2).VisitExpr(node.Args[0].Clone() as Expr));
                 }
 
+                if (call.Func.Name.Equals("__all"))
+                {
+                    return Expr.And(new VariableDualiser(1).VisitExpr(node.Args[0].Clone() as Expr),
+                                   new VariableDualiser(2).VisitExpr(node.Args[0].Clone() as Expr));
+                }
+
+                if (call.Func.Name.Equals("__at_most_one"))
+                {
+                    return Expr.Not(Expr.And(new VariableDualiser(1).VisitExpr(node.Args[0].Clone() as Expr),
+                                   new VariableDualiser(2).VisitExpr(node.Args[0].Clone() as Expr)));
+                }
+
+
             }
 
             return base.VisitNAryExpr(node);

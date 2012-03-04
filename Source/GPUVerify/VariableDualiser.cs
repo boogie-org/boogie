@@ -60,7 +60,8 @@ namespace GPUVerify
                 FunctionCall call = node.Fun as FunctionCall;
 
                 if (call.Func.Name.Equals("__uniform_bv32") || call.Func.Name.Equals("__uniform_bool") ||
-                    call.Func.Name.Equals("__distinct_bv32") || call.Func.Name.Equals("__distinct_bool"))
+                    call.Func.Name.Equals("__distinct_bv32") || call.Func.Name.Equals("__distinct_bool") ||
+                    call.Func.Name.Equals("__all") || call.Func.Name.Equals("__at_most_one"))
                 {
                     return node;
                 }

@@ -555,6 +555,26 @@ namespace GPUVerify
 
         private void ProcessCrossThreadInvariants(BigBlock bb)
         {
+            CmdSeq newCommands = new CmdSeq();
+
+            foreach (Cmd c in bb.simpleCmds)
+            {
+                if (c is AssertCmd)
+                {
+                    newCommands.Add(new AssertCmd(c.tok, new CrossThreadInvariantProcessor().VisitExpr((c as AssertCmd).Expr.Clone() as Expr)));
+                }
+                else if (c is AssumeCmd)
+                {
+                    newCommands.Add(new AssumeCmd(c.tok, new CrossThreadInvariantProcessor().VisitExpr((c as AssumeCmd).Expr.Clone() as Expr)));
+                }
+                else
+                {
+                    newCommands.Add(c);
+                }
+            }
+
+            bb.simpleCmds = newCommands;
+
             if (bb.ec is WhileCmd)
             {
                 WhileCmd whileCmd = bb.ec as WhileCmd;
