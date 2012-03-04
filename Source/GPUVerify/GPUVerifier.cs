@@ -438,6 +438,26 @@ namespace GPUVerify
 
         private void ProcessAccessInvariants(BigBlock bb)
         {
+            CmdSeq newCommands = new CmdSeq();
+
+            foreach (Cmd c in bb.simpleCmds)
+            {
+                if (c is AssertCmd)
+                {
+                    newCommands.Add(new AssertCmd(c.tok, new AccessInvariantProcessor().VisitExpr((c as AssertCmd).Expr.Clone() as Expr)));
+                }
+                else if (c is AssumeCmd)
+                {
+                    newCommands.Add(new AssumeCmd(c.tok, new AccessInvariantProcessor().VisitExpr((c as AssumeCmd).Expr.Clone() as Expr)));
+                }
+                else
+                {
+                    newCommands.Add(c);
+                }
+            }
+
+            bb.simpleCmds = newCommands;
+
             if (bb.ec is WhileCmd)
             {
                 WhileCmd whileCmd = bb.ec as WhileCmd;
@@ -2314,7 +2334,7 @@ namespace GPUVerify
                 else if (c is AssertCmd)
                 {
                     AssertCmd ass = c as AssertCmd;
-                    if (HalfDualise)
+                    if (HalfDualise || ContainsAsymmetricExpression(ass.Expr))
                     {
                         result.simpleCmds.Add(new AssertCmd(c.tok, new VariableDualiser(1).VisitExpr(ass.Expr.Clone() as Expr)));
                     }
@@ -2326,7 +2346,7 @@ namespace GPUVerify
                 else if (c is AssumeCmd)
                 {
                     AssumeCmd ass = c as AssumeCmd;
-                    if (HalfDualise)
+                    if (HalfDualise || ContainsAsymmetricExpression(ass.Expr))
                     {
                         result.simpleCmds.Add(new AssumeCmd(c.tok, new VariableDualiser(1).VisitExpr(ass.Expr.Clone() as Expr)));
                     }
