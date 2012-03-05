@@ -206,7 +206,7 @@ namespace GPUVerify
 
         }
 
-        public override void CheckForRaces(IToken tok, BigBlock bb, Variable v, bool ReadWriteOnly)
+        public override void CheckForRaces(BigBlock bb, Variable v, bool ReadWriteOnly)
         {
             if (!ReadWriteOnly)
             {
@@ -257,14 +257,21 @@ namespace GPUVerify
             return mt3.Arguments[0];
         }
 
-        private static void AddRaceCheck(BigBlock bb, Variable v, String Access1, String Access2)
+        private void AddRaceCheck(BigBlock bb, Variable v, String Access1, String Access2)
+        {
+            Expr AssertExpr = GenerateRaceCondition(v, Access1, Access2);
+
+            bb.simpleCmds.Add(new AssertCmd(v.tok, AssertExpr));
+        }
+
+        protected override Expr GenerateRaceCondition(Variable v, String Access1, String Access2)
         {
             VariableSeq DummyVars1;
             Expr SetExpr1 = AccessExpr(v, Access1, 1, out DummyVars1);
 
             VariableSeq DummyVars2;
             Expr SetExpr2 = AccessExpr(v, Access2, 2, out DummyVars2);
-            
+
             Debug.Assert(DummyVars1.Length == DummyVars2.Length);
             for (int i = 0; i < DummyVars1.Length; i++)
             {
@@ -294,8 +301,7 @@ namespace GPUVerify
             {
                 AssertExpr = new ForallExpr(v.tok, DummyVars1, AssertExpr);
             }
-
-            bb.simpleCmds.Add(new AssertCmd(v.tok, AssertExpr));
+            return AssertExpr;
         }
 
         private static void SetNameDeep(IdentifierExpr e, string name)

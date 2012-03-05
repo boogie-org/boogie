@@ -191,46 +191,46 @@ namespace GPUVerify
             bb.simpleCmds.Add(new AssignCmd(tok, lhss, rhss));
         }
 
-        public override void CheckForRaces(IToken tok, BigBlock bb, Variable v, bool ReadWriteOnly)
+        public override void CheckForRaces(BigBlock bb, Variable v, bool ReadWriteOnly)
         {
             if (!ReadWriteOnly)
             {
-                bb.simpleCmds.Add(new AssertCmd(tok, Expr.Not(GenerateRaceCondition(tok, v, "WRITE", "WRITE"))));
+                bb.simpleCmds.Add(new AssertCmd(v.tok, Expr.Not(GenerateRaceCondition(v, "WRITE", "WRITE"))));
             }
-            bb.simpleCmds.Add(new AssertCmd(tok, Expr.Not(GenerateRaceCondition(tok, v, "READ", "WRITE"))));
+            bb.simpleCmds.Add(new AssertCmd(v.tok, Expr.Not(GenerateRaceCondition(v, "READ", "WRITE"))));
             if (!CommandLineOptions.Symmetry)
             {
-                bb.simpleCmds.Add(new AssertCmd(tok, Expr.Not(GenerateRaceCondition(tok, v, "WRITE", "READ"))));
+                bb.simpleCmds.Add(new AssertCmd(v.tok, Expr.Not(GenerateRaceCondition(v, "WRITE", "READ"))));
             }
         }
 
-        private static Expr GenerateRaceCondition(IToken tok, Variable v, string FirstAccessType, string SecondAccessType)
+        protected override Expr GenerateRaceCondition(Variable v, string FirstAccessType, string SecondAccessType)
         {
             Expr RaceCondition = Expr.And(
-                new IdentifierExpr(tok, new VariableDualiser(1).VisitVariable(MakeReadOrWriteHasOccurredVariable(v, FirstAccessType))),
-                new IdentifierExpr(tok, new VariableDualiser(2).VisitVariable(MakeReadOrWriteHasOccurredVariable(v, SecondAccessType))));
+                new IdentifierExpr(v.tok, new VariableDualiser(1).VisitVariable(MakeReadOrWriteHasOccurredVariable(v, FirstAccessType))),
+                new IdentifierExpr(v.tok, new VariableDualiser(2).VisitVariable(MakeReadOrWriteHasOccurredVariable(v, SecondAccessType))));
 
             if (GPUVerifier.HasXDimension(v))
             {
                 RaceCondition = Expr.And(RaceCondition, Expr.Eq(
-                    new IdentifierExpr(tok, new VariableDualiser(1).VisitVariable(GPUVerifier.MakeOffsetXVariable(v, FirstAccessType))),
-                    new IdentifierExpr(tok, new VariableDualiser(2).VisitVariable(GPUVerifier.MakeOffsetXVariable(v, SecondAccessType)))
+                    new IdentifierExpr(v.tok, new VariableDualiser(1).VisitVariable(GPUVerifier.MakeOffsetXVariable(v, FirstAccessType))),
+                    new IdentifierExpr(v.tok, new VariableDualiser(2).VisitVariable(GPUVerifier.MakeOffsetXVariable(v, SecondAccessType)))
                 ));
             }
 
             if (GPUVerifier.HasYDimension(v))
             {
                 RaceCondition = Expr.And(RaceCondition, Expr.Eq(
-                    new IdentifierExpr(tok, new VariableDualiser(1).VisitVariable(GPUVerifier.MakeOffsetYVariable(v, FirstAccessType))),
-                    new IdentifierExpr(tok, new VariableDualiser(2).VisitVariable(GPUVerifier.MakeOffsetYVariable(v, SecondAccessType)))
+                    new IdentifierExpr(v.tok, new VariableDualiser(1).VisitVariable(GPUVerifier.MakeOffsetYVariable(v, FirstAccessType))),
+                    new IdentifierExpr(v.tok, new VariableDualiser(2).VisitVariable(GPUVerifier.MakeOffsetYVariable(v, SecondAccessType)))
                     ));
             }
 
             if (GPUVerifier.HasZDimension(v))
             {
                 RaceCondition = Expr.And(RaceCondition, Expr.Eq(
-                    new IdentifierExpr(tok, new VariableDualiser(1).VisitVariable(GPUVerifier.MakeOffsetZVariable(v, FirstAccessType))),
-                    new IdentifierExpr(tok, new VariableDualiser(2).VisitVariable(GPUVerifier.MakeOffsetZVariable(v, SecondAccessType)))
+                    new IdentifierExpr(v.tok, new VariableDualiser(1).VisitVariable(GPUVerifier.MakeOffsetZVariable(v, FirstAccessType))),
+                    new IdentifierExpr(v.tok, new VariableDualiser(2).VisitVariable(GPUVerifier.MakeOffsetZVariable(v, SecondAccessType)))
                     ));
             }
 

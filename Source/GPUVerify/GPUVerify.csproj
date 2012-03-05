@@ -107,6 +107,7 @@
     <Compile Include="AccessInvariantProcessor.cs" />
     <Compile Include="AccessRecord.cs" />
     <Compile Include="AsymmetricExpressionFinder.cs" />
+    <Compile Include="StructuredProgramVisitor.cs" />
     <Compile Include="CrossThreadInvariantProcessor.cs" />
     <Compile Include="EnabledToPredicateVisitor.cs" />
     <Compile Include="CommandLineOptions.cs" />

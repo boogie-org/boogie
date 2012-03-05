@@ -353,7 +353,7 @@ namespace GPUVerify
             {
                 foreach (Variable v in NonLocalStateToCheck.getAllNonLocalVariables())
                 {
-                    CheckForRaces(tok, checkForRaces, v, false);
+                    CheckForRaces(checkForRaces, v, false);
                 }
             }
 
@@ -372,7 +372,7 @@ namespace GPUVerify
 
         protected abstract void SetNoAccessOccurred(IToken tok, BigBlock bb, Variable v, string AccessType);
 
-        public abstract void CheckForRaces(IToken tok, BigBlock bb, Variable v, bool ReadWriteOnly);
+        public abstract void CheckForRaces(BigBlock bb, Variable v, bool ReadWriteOnly);
 
         protected void MakeLogAccessProcedureHeader(Variable v, string ReadOrWrite, out Variable XParameterVariable, out Variable YParameterVariable, out Variable ZParameterVariable, out Procedure LogReadOrWriteProcedure)
         {
@@ -462,6 +462,74 @@ namespace GPUVerify
         protected abstract Expr NoReadOrWriteExpr(Variable v, string ReadOrWrite, string OneOrTwo);
 
 
+        public void AddNoRaceContract(Procedure proc)
+        {
+            foreach (Variable v in NonLocalStateToCheck.getAllNonLocalVariables())
+            {
+                proc.Requires.Add(new Requires(false, Expr.Not(GenerateRaceCondition(v, "WRITE", "WRITE"))));
+                proc.Requires.Add(new Requires(false, Expr.Not(GenerateRaceCondition(v, "READ", "WRITE"))));
+                if (!CommandLineOptions.Symmetry)
+                {
+                    proc.Requires.Add(new Requires(false, Expr.Not(GenerateRaceCondition(v, "WRITE", "READ"))));
+                }
+
+                proc.Ensures.Add(new Ensures(false, Expr.Not(GenerateRaceCondition(v, "WRITE", "WRITE"))));
+                proc.Ensures.Add(new Ensures(false, Expr.Not(GenerateRaceCondition(v, "READ", "WRITE"))));
+                if (!CommandLineOptions.Symmetry)
+                {
+                    proc.Ensures.Add(new Ensures(false, Expr.Not(GenerateRaceCondition(v, "WRITE", "READ"))));
+                }
+            
+            }
+        }
+
+        public void AddNoRaceInvariants(Implementation impl)
+        {
+            AddNoRaceInvariants(impl.StructuredStmts);
+        }
+
+        private void AddNoRaceInvariants(StmtList stmtList)
+        {
+            foreach (BigBlock bb in stmtList.BigBlocks)
+            {
+                AddNoRaceInvariants(bb);
+            }
+        }
+
+        private void AddNoRaceInvariants(BigBlock bb)
+        {
+            if (bb.ec is WhileCmd)
+            {
+                WhileCmd wc = bb.ec as WhileCmd;
+                foreach (Variable v in NonLocalStateToCheck.getAllNonLocalVariables())
+                {
+                    wc.Invariants.Add(new AssertCmd(v.tok, Expr.Not(GenerateRaceCondition(v, "WRITE", "WRITE"))));
+                    wc.Invariants.Add(new AssertCmd(v.tok, Expr.Not(GenerateRaceCondition(v, "READ", "WRITE"))));
+                    if (!CommandLineOptions.Symmetry)
+                    {
+                        wc.Invariants.Add(new AssertCmd(v.tok, Expr.Not(GenerateRaceCondition(v, "WRITE", "READ"))));
+                    }
+                }
+
+                AddNoRaceInvariants(wc.Body);
+
+            }
+            else if (bb.ec is IfCmd)
+            {
+                AddNoRaceInvariants((bb.ec as IfCmd).thn);
+                if ((bb.ec as IfCmd).elseBlock != null)
+                {
+                    AddNoRaceInvariants((bb.ec as IfCmd).elseBlock);
+                }
+            }
+            else
+            {
+                Debug.Assert(bb.ec == null);
+            }
+        }
+
+
+        protected abstract Expr GenerateRaceCondition(Variable v, string FirstAccessType, string SecondAccessType);
 
     }
 }

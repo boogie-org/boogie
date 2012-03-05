@@ -7,12 +7,15 @@ using Microsoft.Boogie;
 
 namespace GPUVerify
 {
-    class Predicator
+    class Predicator : StructuredProgramVisitor
     {
         private bool AddPredicateParameter;
         private int WhileLoopCounter;
         private int IfCounter;
         private static HashSet<Microsoft.Boogie.Type> RequiredHavocVariables;
+
+        private Stack<Expr> predicate;
+        private Stack<IdentifierExpr> enclosingLoopPredicate;
 
         internal Predicator(bool AddPredicateParameter)
         {
@@ -20,6 +23,8 @@ namespace GPUVerify
             WhileLoopCounter = 0;
             IfCounter = 0;
             RequiredHavocVariables = new HashSet<Microsoft.Boogie.Type>();
+            predicate = new Stack<Expr>();
+            enclosingLoopPredicate = new Stack<IdentifierExpr>();
         }
 
         internal void transform(Implementation impl)
@@ -43,216 +48,228 @@ namespace GPUVerify
                 Predicate = Expr.True;
             }
 
-            impl.StructuredStmts = MakePredicated(impl.StructuredStmts, Predicate, null);
+            predicate.Push(Predicate);
+            enclosingLoopPredicate.Push(null);
+
+            impl.StructuredStmts = VisitStmtList(impl.StructuredStmts);
+
             AddPredicateLocalVariables(impl);            
         }
 
-
-        private StmtList MakePredicated(StmtList sl, Expr predicate, IdentifierExpr EnclosingLoopPredicate)
+        public override CmdSeq VisitCmd(Cmd c)
         {
-            StmtList result = new StmtList(new List<BigBlock>(), sl.EndCurly);
-
-            foreach (BigBlock bodyBlock in sl.BigBlocks)
+            if (c is CallCmd || !predicate.Peek().Equals(Expr.True))
             {
-                List<BigBlock> newBigBlocks = MakePredicated(bodyBlock, predicate, EnclosingLoopPredicate);
-                foreach (BigBlock newBigBlock in newBigBlocks)
-                {
-                    result.BigBlocks.Add(newBigBlock);
-                }
+                return base.VisitCmd(c);
             }
+
+            return new CmdSeq(new Cmd[] { c });
+
+        }
+
+        public override CmdSeq VisitCallCmd(CallCmd Call)
+        {
+            List<Expr> NewIns = new List<Expr>();
+            NewIns.Add(predicate.Peek());
+
+            foreach (Expr e in Call.Ins)
+            {
+                NewIns.Add(e);
+            }
+
+            return new CmdSeq(
+                new Cmd[] { new CallCmd(Call.tok, Call.callee, NewIns, Call.Outs) });
+
+        }
+
+        public override CmdSeq VisitAssignCmd(AssignCmd assign)
+        {
+            Debug.Assert(assign.Lhss.Count == 1 && assign.Rhss.Count == 1);
+
+            ExprSeq iteArgs = new ExprSeq();
+            iteArgs.Add(predicate.Peek());
+            iteArgs.Add(assign.Rhss.ElementAt(0));
+            iteArgs.Add(assign.Lhss.ElementAt(0).AsExpr);
+            NAryExpr ite = new NAryExpr(assign.tok, new IfThenElse(assign.tok), iteArgs);
+
+            List<Expr> newRhs = new List<Expr>();
+            newRhs.Add(ite);
+
+            return new CmdSeq(new Cmd[] { new AssignCmd(assign.tok, assign.Lhss, newRhs) });
+
+        }
+
+        public override CmdSeq VisitHavocCmd(HavocCmd havoc)
+        {
+            CmdSeq result = new CmdSeq();
+
+            Debug.Assert(havoc.Vars.Length == 1);
+
+            Microsoft.Boogie.Type type = havoc.Vars[0].Decl.TypedIdent.Type;
+            Debug.Assert(type != null);
+
+            RequiredHavocVariables.Add(type);
+
+            IdentifierExpr HavocTempExpr = new IdentifierExpr(havoc.tok, new LocalVariable(havoc.tok, new TypedIdent(havoc.tok, "_HAVOC_" + type.ToString(), type)));
+            result.Add(new HavocCmd(havoc.tok, new IdentifierExprSeq(new IdentifierExpr[] { 
+                        HavocTempExpr 
+                    })));
+
+            List<AssignLhs> lhss = new List<AssignLhs>();
+            lhss.Add(new SimpleAssignLhs(havoc.tok, havoc.Vars[0]));
+
+            List<Expr> rhss = new List<Expr>();
+            rhss.Add(new NAryExpr(havoc.tok, new IfThenElse(havoc.tok), new ExprSeq(
+                new Expr[] { predicate.Peek(), HavocTempExpr, havoc.Vars[0] })));
+
+            result.Add(new AssignCmd(havoc.tok, lhss, rhss));
 
             return result;
 
         }
 
-        private List<BigBlock> MakePredicated(BigBlock b, Expr IncomingPredicate, IdentifierExpr EnclosingLoopPredicate)
+        public override CmdSeq VisitAssertCmd(AssertCmd assert)
         {
-            // Not sure what to do about the transfer command
+            return new CmdSeq(new Cmd[] {
+                new AssertCmd(assert.tok, Expr.Imp(predicate.Peek(), assert.Expr))
+            });
+        }
+
+        public override CmdSeq VisitAssumeCmd(AssumeCmd assume)
+        {
+            return new CmdSeq(new Cmd[] {
+                new AssumeCmd(assume.tok, Expr.Imp(predicate.Peek(), assume.Expr))
+            });
+        }
+
+        public override List<BigBlock> VisitBigBlock(BigBlock bb)
+        {
+            BigBlock firstBigBlock = new BigBlock(bb.tok, bb.LabelName, new CmdSeq(), null, bb.tc);
 
             List<BigBlock> result = new List<BigBlock>();
-
-            BigBlock firstBigBlock = new BigBlock(b.tok, b.LabelName, new CmdSeq(), null, b.tc);
             result.Add(firstBigBlock);
 
-            foreach (Cmd c in b.simpleCmds)
+            firstBigBlock.simpleCmds = VisitCmdSeq(bb.simpleCmds);
+
+            if (bb.ec is WhileCmd)
             {
-                if (c is CallCmd)
-                {
+                WhileCmd whileCmd = bb.ec as WhileCmd;
 
-                    CallCmd Call = c as CallCmd;
-
-                    List<Expr> NewIns = new List<Expr>();
-                    NewIns.Add(IncomingPredicate);
-
-                    foreach (Expr e in Call.Ins)
-                    {
-                        NewIns.Add(e);
-                    }
-
-                    CallCmd NewCallCmd = new CallCmd(Call.tok, Call.callee, NewIns, Call.Outs);
-
-                    firstBigBlock.simpleCmds.Add(NewCallCmd);
-                }
-                else if (IncomingPredicate.Equals(Expr.True))
-                {
-                    firstBigBlock.simpleCmds.Add(c);
-                }
-                else if (c is AssignCmd)
-                {
-                    AssignCmd assign = c as AssignCmd;
-                    Debug.Assert(assign.Lhss.Count == 1 && assign.Rhss.Count == 1);
-
-                    ExprSeq iteArgs = new ExprSeq();
-                    iteArgs.Add(IncomingPredicate);
-                    iteArgs.Add(assign.Rhss.ElementAt(0));
-                    iteArgs.Add(assign.Lhss.ElementAt(0).AsExpr);
-                    NAryExpr ite = new NAryExpr(assign.tok, new IfThenElse(assign.tok), iteArgs);
-
-                    List<Expr> newRhs = new List<Expr>();
-                    newRhs.Add(ite);
-
-                    AssignCmd newAssign = new AssignCmd(assign.tok, assign.Lhss, newRhs);
-
-                    firstBigBlock.simpleCmds.Add(newAssign);
-                }
-                else if (c is HavocCmd)
-                {
-                    HavocCmd havoc = c as HavocCmd;
-                    Debug.Assert(havoc.Vars.Length == 1);
-
-                    Microsoft.Boogie.Type type = havoc.Vars[0].Decl.TypedIdent.Type;
-                    Debug.Assert(type != null);
-
-                    RequiredHavocVariables.Add(type);
-
-                    IdentifierExpr HavocTempExpr = new IdentifierExpr(havoc.tok, new LocalVariable(havoc.tok, new TypedIdent(havoc.tok, "_HAVOC_" + type.ToString(), type)));
-                    firstBigBlock.simpleCmds.Add(new HavocCmd(havoc.tok, new IdentifierExprSeq(new IdentifierExpr[] { 
-                        HavocTempExpr 
-                    })));
-
-                    List<AssignLhs> lhss = new List<AssignLhs>();
-                    lhss.Add(new SimpleAssignLhs(havoc.tok, havoc.Vars[0]));
-
-                    List<Expr> rhss = new List<Expr>();
-                    rhss.Add(new NAryExpr(havoc.tok, new IfThenElse(havoc.tok), new ExprSeq(new Expr[] { IncomingPredicate, HavocTempExpr, havoc.Vars[0] })));
-
-                    firstBigBlock.simpleCmds.Add(new AssignCmd(havoc.tok, lhss, rhss));
-
-                }
-                else if (c is AssertCmd)
-                {
-                    firstBigBlock.simpleCmds.Add(new AssertCmd(c.tok, Expr.Imp(IncomingPredicate, (c as AssertCmd).Expr)));
-                }
-                else if (c is AssumeCmd)
-                {
-                    firstBigBlock.simpleCmds.Add(new AssumeCmd(c.tok, Expr.Imp(IncomingPredicate, (c as AssumeCmd).Expr)));
-                }
-                else
-                {
-                    Debug.Assert(false);
-                }
-            }
-
-            if (b.ec is WhileCmd)
-            {
                 string LoopPredicate = "_LC" + WhileLoopCounter;
                 WhileLoopCounter++;
 
-                TypedIdent LoopPredicateTypedIdent = new TypedIdent(b.ec.tok, LoopPredicate, Microsoft.Boogie.Type.Bool);
+                TypedIdent LoopPredicateTypedIdent = new TypedIdent(whileCmd.tok, LoopPredicate, Microsoft.Boogie.Type.Bool);
 
-                IdentifierExpr PredicateExpr = new IdentifierExpr(b.ec.tok, new LocalVariable(b.ec.tok, LoopPredicateTypedIdent));
-                Expr GuardExpr = (b.ec as WhileCmd).Guard;
+                IdentifierExpr PredicateExpr = new IdentifierExpr(whileCmd.tok, new LocalVariable(whileCmd.tok, LoopPredicateTypedIdent));
+                Expr GuardExpr = whileCmd.Guard;
 
                 List<AssignLhs> WhilePredicateLhss = new List<AssignLhs>();
-                WhilePredicateLhss.Add(new SimpleAssignLhs(b.ec.tok, PredicateExpr));
+                WhilePredicateLhss.Add(new SimpleAssignLhs(whileCmd.tok, PredicateExpr));
 
                 List<Expr> WhilePredicateRhss = new List<Expr>();
-                WhilePredicateRhss.Add(IncomingPredicate.Equals(Expr.True) ? GuardExpr : Expr.And(IncomingPredicate, GuardExpr));
+                WhilePredicateRhss.Add(predicate.Peek().Equals(Expr.True) ? GuardExpr : Expr.And(predicate.Peek(), GuardExpr));
 
-                firstBigBlock.simpleCmds.Add(new AssignCmd(b.ec.tok, WhilePredicateLhss, WhilePredicateRhss));
+                firstBigBlock.simpleCmds.Add(new AssignCmd(whileCmd.tok, WhilePredicateLhss, WhilePredicateRhss));
 
-                WhileCmd NewWhile = new WhileCmd(b.ec.tok, PredicateExpr, 
-                    ProcessEnabledIntrinsics((b.ec as WhileCmd).Invariants, LoopPredicateTypedIdent), 
-                    MakePredicated((b.ec as WhileCmd).Body, PredicateExpr, PredicateExpr));
+                predicate.Push(PredicateExpr);
+                enclosingLoopPredicate.Push(PredicateExpr);
+                WhileCmd NewWhile = new WhileCmd(whileCmd.tok, PredicateExpr,
+                    VisitWhileInvariants(whileCmd.Invariants),
+                    VisitStmtList(whileCmd.Body));
+                enclosingLoopPredicate.Pop();
+                predicate.Pop();
 
                 List<Expr> UpdatePredicateRhss = new List<Expr>();
                 UpdatePredicateRhss.Add(Expr.And(PredicateExpr, GuardExpr));
 
                 CmdSeq updateCmd = new CmdSeq();
-                updateCmd.Add(new AssignCmd(b.ec.tok, WhilePredicateLhss, UpdatePredicateRhss));
+                updateCmd.Add(new AssignCmd(whileCmd.tok, WhilePredicateLhss, UpdatePredicateRhss));
 
-                NewWhile.Body.BigBlocks.Add(new BigBlock(b.ec.tok, "update_" + LoopPredicate, updateCmd, null, null));
+                NewWhile.Body.BigBlocks.Add(new BigBlock(whileCmd.tok, "update_" + LoopPredicate, updateCmd, null, null));
 
                 firstBigBlock.ec = NewWhile;
 
             }
-            else if (b.ec is IfCmd)
+            else if (bb.ec is IfCmd)
             {
-                IfCmd IfCommand = b.ec as IfCmd;
+                IfCmd IfCommand = bb.ec as IfCmd;
 
                 string IfPredicate = "_P" + IfCounter;
                 IfCounter++;
 
-                IdentifierExpr PredicateExpr = new IdentifierExpr(b.ec.tok, new LocalVariable(b.ec.tok, new TypedIdent(b.ec.tok, IfPredicate, Microsoft.Boogie.Type.Bool)));
+                IdentifierExpr PredicateExpr = new IdentifierExpr(IfCommand.tok,
+                    new LocalVariable(IfCommand.tok, new TypedIdent(IfCommand.tok, IfPredicate, Microsoft.Boogie.Type.Bool)));
                 Expr GuardExpr = IfCommand.Guard;
 
                 List<AssignLhs> IfPredicateLhss = new List<AssignLhs>();
-                IfPredicateLhss.Add(new SimpleAssignLhs(b.ec.tok, PredicateExpr));
+                IfPredicateLhss.Add(new SimpleAssignLhs(IfCommand.tok, PredicateExpr));
 
                 List<Expr> IfPredicateRhss = new List<Expr>();
                 IfPredicateRhss.Add(GuardExpr);
 
-                firstBigBlock.simpleCmds.Add(new AssignCmd(b.ec.tok, IfPredicateLhss, IfPredicateRhss));
+                firstBigBlock.simpleCmds.Add(new AssignCmd(IfCommand.tok, IfPredicateLhss, IfPredicateRhss));
 
                 Debug.Assert(IfCommand.elseIf == null); // We need to preprocess these away
 
-                StmtList PredicatedThen = MakePredicated(IfCommand.thn, Expr.And(IncomingPredicate, PredicateExpr), EnclosingLoopPredicate);
+                predicate.Push(Expr.And(predicate.Peek(), PredicateExpr));
+                StmtList PredicatedThen = VisitStmtList(IfCommand.thn);
+                predicate.Pop();
+                result.AddRange(PredicatedThen.BigBlocks);
 
-                foreach (BigBlock bb in PredicatedThen.BigBlocks)
+                if(IfCommand.elseIf != null)
                 {
-                    result.Add(bb);
+                    throw new InvalidOperationException();
                 }
 
                 if (IfCommand.elseBlock != null)
                 {
-                    StmtList PredicatedElse = MakePredicated(IfCommand.elseBlock, Expr.And(IncomingPredicate, Expr.Not(PredicateExpr)), EnclosingLoopPredicate);
-
-                    foreach (BigBlock bb in PredicatedElse.BigBlocks)
-                    {
-                        result.Add(bb);
-                    }
+                    predicate.Push(Expr.And(predicate.Peek(), Expr.Not(PredicateExpr)));
+                    StmtList PredicatedElse = VisitStmtList(IfCommand.elseBlock);
+                    predicate.Pop();
+                    result.AddRange(PredicatedElse.BigBlocks);
                 }
 
-
-
-
             }
-            else if (b.ec is BreakCmd)
+            else if (bb.ec is BreakCmd)
             {
-
-
-                firstBigBlock.simpleCmds.Add(new AssignCmd(b.tok,
-                    new List<AssignLhs>(new AssignLhs[] { new SimpleAssignLhs(b.tok, EnclosingLoopPredicate) }),
-                    new List<Expr>(new Expr[] { new NAryExpr(b.tok, new IfThenElse(b.tok), new ExprSeq(new Expr[] { IncomingPredicate, Expr.False, EnclosingLoopPredicate })) })
+                firstBigBlock.simpleCmds.Add(new AssignCmd(bb.tok,
+                    new List<AssignLhs>(new AssignLhs[] { new SimpleAssignLhs(bb.tok, enclosingLoopPredicate.Peek()) }),
+                    new List<Expr>(new Expr[] { new NAryExpr(bb.tok, new IfThenElse(bb.tok), new ExprSeq(
+                        new Expr[] { predicate.Peek(), Expr.False, enclosingLoopPredicate.Peek() })) })
                     ));
                 firstBigBlock.ec = null;
-
             }
-            else
+            else if (bb.ec != null)
             {
-                Debug.Assert(b.ec == null);
+                throw new InvalidOperationException();
             }
 
             return result;
+
         }
 
-        private List<PredicateCmd> ProcessEnabledIntrinsics(List<PredicateCmd> invariants, TypedIdent currentPredicate)
+        public override IfCmd VisitIfCmd(IfCmd ifCmd)
+        {
+            throw new InvalidOperationException();
+        }
+
+        public override WhileCmd VisitWhileCmd(WhileCmd whileCmd)
+        {
+            throw new InvalidOperationException();
+        }
+
+        public override BreakCmd VisitBreakCmd(BreakCmd breakCmd)
+        {
+            throw new InvalidOperationException();
+        }
+
+        public override List<PredicateCmd> VisitWhileInvariants(List<PredicateCmd> invariants)
         {
             List<PredicateCmd> result = new List<PredicateCmd>();
 
             foreach (PredicateCmd cmd in invariants)
             {
-                result.Add(new AssertCmd(cmd.tok, ProcessEnabledIntrinsics(cmd.Expr, currentPredicate)));
+                result.Add(new AssertCmd(cmd.tok, ProcessEnabledIntrinsics(cmd.Expr, enclosingLoopPredicate.Peek().Decl.TypedIdent)));
             }
 
             return result;

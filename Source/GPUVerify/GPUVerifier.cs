@@ -352,7 +352,7 @@ namespace GPUVerify
 
             GenerateBarrierImplementation();
 
-            GenerateKernelPrecondition();
+            GenerateStandardKernelContract();
 
             if (CommandLineOptions.ShowStages)
             {
@@ -612,7 +612,7 @@ namespace GPUVerify
                     if (impl.Name.Equals("_LOG_READ_" + v.Name) || impl.Name.Equals("_LOG_WRITE_" + v.Name))
                     {
                         BigBlock bb = new BigBlock(v.tok, "__CheckForRaces", new CmdSeq(), null, null);
-                        RaceInstrumenter.CheckForRaces(v.tok, bb, v, impl.Name.Equals("_LOG_READ_" + v.Name));
+                        RaceInstrumenter.CheckForRaces(bb, v, impl.Name.Equals("_LOG_READ_" + v.Name));
                         StmtList newStatements = new StmtList(new List<BigBlock>(), v.tok);
                         
                         foreach(BigBlock bb2 in impl.StructuredStmts.BigBlocks)
@@ -1125,18 +1125,6 @@ namespace GPUVerify
             return _GROUP_SIZE_Z != null;
         }
 
-        public bool KernelHasId(string dimension)
-        {
-            Contract.Requires(dimension.Equals("X") || dimension.Equals("Y") || dimension.Equals("Z"));
-            if (dimension.Equals("X")) return KernelHasIdX();
-            if (dimension.Equals("Y")) return KernelHasIdY();
-            if (dimension.Equals("Z")) return KernelHasIdZ();
-            Debug.Assert(false);
-            return false;
-        }
-
-        
-
         public void AddCandidateInvariant(WhileCmd wc, Expr e)
         {
             Constant ExistentialBooleanConstant = MakeExistentialBoolean(wc.tok);
@@ -1178,7 +1166,7 @@ namespace GPUVerify
             KernelImplementation.StructuredStmts.BigBlocks.Add(bb);
         }
 
-        private void GenerateKernelPrecondition()
+        private void GenerateStandardKernelContract()
         {
             RaceInstrumenter.AddKernelPrecondition();
 
@@ -1208,6 +1196,12 @@ namespace GPUVerify
 
                     Proc.Requires.Add(new Requires(false, AssumeDistinctThreads));
                     Proc.Requires.Add(new Requires(false, AssumeThreadIdsInRange));
+
+                    if (Proc != KernelProcedure)
+                    {
+                        RaceInstrumenter.AddNoRaceContract(Proc);
+                    }
+
                 }
             }
             else
@@ -1222,6 +1216,9 @@ namespace GPUVerify
                     continue;
                 }
                 Implementation Impl = D as Implementation;
+
+                RaceInstrumenter.AddNoRaceInvariants(Impl);
+
                 if (QKeyValue.FindIntAttribute(Impl.Proc.Attributes, "inline", -1) == 1)
                 {
                     continue;
@@ -1327,68 +1324,65 @@ namespace GPUVerify
 
         private void GeneratePreconditionsForDimension(ref Expr AssumeDistinctThreads, ref Expr AssumeThreadIdsInRange, IToken tok, String dimension)
         {
-            if (KernelHasId(dimension))
+            foreach (Declaration D in Program.TopLevelDeclarations)
             {
-                foreach (Declaration D in Program.TopLevelDeclarations)
+                if (!(D is Procedure))
                 {
-                    if (!(D is Procedure))
-                    {
-                        continue;
-                    }
-                    Procedure Proc = D as Procedure;
-                    if (QKeyValue.FindIntAttribute(Proc.Attributes, "inline", -1) == 1)
-                    {
-                        continue;
-                    }
-
-                    if (GetTypeOfId(dimension).Equals(Microsoft.Boogie.Type.GetBvType(32)))
-                    {
-                        Proc.Requires.Add(new Requires(false, MakeBitVectorBinaryBoolean("BV32_GT", new IdentifierExpr(tok, GetGroupSize(dimension)), ZeroBV(tok))));
-                        Proc.Requires.Add(new Requires(false, MakeBitVectorBinaryBoolean("BV32_GT", new IdentifierExpr(tok, GetNumGroups(dimension)), ZeroBV(tok))));
-                        Proc.Requires.Add(new Requires(false, MakeBitVectorBinaryBoolean("BV32_GEQ", new IdentifierExpr(tok, GetGroupId(dimension)), ZeroBV(tok))));
-                        Proc.Requires.Add(new Requires(false, MakeBitVectorBinaryBoolean("BV32_LT", new IdentifierExpr(tok, GetGroupId(dimension)), new IdentifierExpr(tok, GetNumGroups(dimension)))));
-                    }
-                    else
-                    {
-                        Proc.Requires.Add(new Requires(false, Expr.Gt(new IdentifierExpr(tok, GetGroupSize(dimension)), Zero(tok))));
-                        Proc.Requires.Add(new Requires(false, Expr.Gt(new IdentifierExpr(tok, GetNumGroups(dimension)), Zero(tok))));
-                        Proc.Requires.Add(new Requires(false, Expr.Ge(new IdentifierExpr(tok, GetGroupId(dimension)), Zero(tok))));
-                        Proc.Requires.Add(new Requires(false, Expr.Lt(new IdentifierExpr(tok, GetGroupId(dimension)), new IdentifierExpr(tok, GetNumGroups(dimension)))));
-                    }
+                    continue;
+                }
+                Procedure Proc = D as Procedure;
+                if (QKeyValue.FindIntAttribute(Proc.Attributes, "inline", -1) == 1)
+                {
+                    continue;
                 }
 
-                Expr AssumeThreadsDistinctInDimension =
-                        Expr.Neq(
-                        new IdentifierExpr(tok, MakeThreadId(tok, dimension, 1)),
-                        new IdentifierExpr(tok, MakeThreadId(tok, dimension, 2))
-                        );
-
-                AssumeDistinctThreads = (null == AssumeDistinctThreads) ? AssumeThreadsDistinctInDimension : Expr.Or(AssumeDistinctThreads, AssumeThreadsDistinctInDimension);
-
-                Expr AssumeThreadIdsInRangeInDimension =
-                    GetTypeOfId(dimension).Equals(Microsoft.Boogie.Type.GetBvType(32)) ?
-                        Expr.And(
-                            Expr.And(
-                            MakeBitVectorBinaryBoolean("BV32_GEQ", new IdentifierExpr(tok, MakeThreadId(tok, dimension, 1)), ZeroBV(tok)),
-                            MakeBitVectorBinaryBoolean("BV32_GEQ", new IdentifierExpr(tok, MakeThreadId(tok, dimension, 2)), ZeroBV(tok))
-                            ),
-                            Expr.And(
-                            MakeBitVectorBinaryBoolean("BV32_LT", new IdentifierExpr(tok, MakeThreadId(tok, dimension, 1)), new IdentifierExpr(tok, GetGroupSize(dimension))),
-                            MakeBitVectorBinaryBoolean("BV32_LT", new IdentifierExpr(tok, MakeThreadId(tok, dimension, 2)), new IdentifierExpr(tok, GetGroupSize(dimension)))
-                            ))
-                    :
-                        Expr.And(
-                            Expr.And(
-                            Expr.Ge(new IdentifierExpr(tok, MakeThreadId(tok, dimension, 1)), Zero(tok)),
-                            Expr.Ge(new IdentifierExpr(tok, MakeThreadId(tok, dimension, 2)), Zero(tok))
-                            ),
-                            Expr.And(
-                            Expr.Lt(new IdentifierExpr(tok, MakeThreadId(tok, dimension, 1)), new IdentifierExpr(tok, GetGroupSize(dimension))),
-                            Expr.Lt(new IdentifierExpr(tok, MakeThreadId(tok, dimension, 2)), new IdentifierExpr(tok, GetGroupSize(dimension)))
-                            ));
-
-                AssumeThreadIdsInRange = (null == AssumeThreadIdsInRange) ? AssumeThreadIdsInRangeInDimension : Expr.And(AssumeThreadIdsInRange, AssumeThreadIdsInRangeInDimension);
+                if (GetTypeOfId(dimension).Equals(Microsoft.Boogie.Type.GetBvType(32)))
+                {
+                    Proc.Requires.Add(new Requires(false, MakeBitVectorBinaryBoolean("BV32_GT", new IdentifierExpr(tok, GetGroupSize(dimension)), ZeroBV(tok))));
+                    Proc.Requires.Add(new Requires(false, MakeBitVectorBinaryBoolean("BV32_GT", new IdentifierExpr(tok, GetNumGroups(dimension)), ZeroBV(tok))));
+                    Proc.Requires.Add(new Requires(false, MakeBitVectorBinaryBoolean("BV32_GEQ", new IdentifierExpr(tok, GetGroupId(dimension)), ZeroBV(tok))));
+                    Proc.Requires.Add(new Requires(false, MakeBitVectorBinaryBoolean("BV32_LT", new IdentifierExpr(tok, GetGroupId(dimension)), new IdentifierExpr(tok, GetNumGroups(dimension)))));
+                }
+                else
+                {
+                    Proc.Requires.Add(new Requires(false, Expr.Gt(new IdentifierExpr(tok, GetGroupSize(dimension)), Zero(tok))));
+                    Proc.Requires.Add(new Requires(false, Expr.Gt(new IdentifierExpr(tok, GetNumGroups(dimension)), Zero(tok))));
+                    Proc.Requires.Add(new Requires(false, Expr.Ge(new IdentifierExpr(tok, GetGroupId(dimension)), Zero(tok))));
+                    Proc.Requires.Add(new Requires(false, Expr.Lt(new IdentifierExpr(tok, GetGroupId(dimension)), new IdentifierExpr(tok, GetNumGroups(dimension)))));
+                }
             }
+
+            Expr AssumeThreadsDistinctInDimension =
+                    Expr.Neq(
+                    new IdentifierExpr(tok, MakeThreadId(tok, dimension, 1)),
+                    new IdentifierExpr(tok, MakeThreadId(tok, dimension, 2))
+                    );
+
+            AssumeDistinctThreads = (null == AssumeDistinctThreads) ? AssumeThreadsDistinctInDimension : Expr.Or(AssumeDistinctThreads, AssumeThreadsDistinctInDimension);
+
+            Expr AssumeThreadIdsInRangeInDimension =
+                GetTypeOfId(dimension).Equals(Microsoft.Boogie.Type.GetBvType(32)) ?
+                    Expr.And(
+                        Expr.And(
+                        MakeBitVectorBinaryBoolean("BV32_GEQ", new IdentifierExpr(tok, MakeThreadId(tok, dimension, 1)), ZeroBV(tok)),
+                        MakeBitVectorBinaryBoolean("BV32_GEQ", new IdentifierExpr(tok, MakeThreadId(tok, dimension, 2)), ZeroBV(tok))
+                        ),
+                        Expr.And(
+                        MakeBitVectorBinaryBoolean("BV32_LT", new IdentifierExpr(tok, MakeThreadId(tok, dimension, 1)), new IdentifierExpr(tok, GetGroupSize(dimension))),
+                        MakeBitVectorBinaryBoolean("BV32_LT", new IdentifierExpr(tok, MakeThreadId(tok, dimension, 2)), new IdentifierExpr(tok, GetGroupSize(dimension)))
+                        ))
+                :
+                    Expr.And(
+                        Expr.And(
+                        Expr.Ge(new IdentifierExpr(tok, MakeThreadId(tok, dimension, 1)), Zero(tok)),
+                        Expr.Ge(new IdentifierExpr(tok, MakeThreadId(tok, dimension, 2)), Zero(tok))
+                        ),
+                        Expr.And(
+                        Expr.Lt(new IdentifierExpr(tok, MakeThreadId(tok, dimension, 1)), new IdentifierExpr(tok, GetGroupSize(dimension))),
+                        Expr.Lt(new IdentifierExpr(tok, MakeThreadId(tok, dimension, 2)), new IdentifierExpr(tok, GetGroupSize(dimension)))
+                        ));
+
+            AssumeThreadIdsInRange = (null == AssumeThreadIdsInRange) ? AssumeThreadIdsInRangeInDimension : Expr.And(AssumeThreadIdsInRange, AssumeThreadIdsInRangeInDimension);
         }
 
         private Expr MakeBitVectorBinaryBoolean(string functionName, Expr lhs, Expr rhs)
