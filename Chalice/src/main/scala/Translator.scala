@@ -2710,7 +2710,7 @@ object TranslationHelper {
   }
 
   def SubstRd(e: Expression): Expression = e match {
-    case Access(e, _:Permission) =>
+    case Access(e, p: Permission) if p != Star =>
       //val r = Access(e,MonitorEpsilon(None)); r.pos = e.pos; r.typ = BoolClass; r
       val r = Access(e,Epsilons(IntLiteral(1))); r.pos = e.pos; r.typ = BoolClass; r
     case Implies(e0,e1) =>
