@@ -56,12 +56,19 @@ namespace Microsoft.Boogie.Houdini {
       collector.examples.Clear();
       VCExpr vc = checker.VCExprGen.Implies(axiom, conjecture);
 
+      if (CommandLineOptions.Clo.Trace) {
+        Console.WriteLine("Verifying " + descriptiveName);
+      }
       DateTime now = DateTime.UtcNow;
       checker.BeginCheck(descriptiveName, vc, handler);
       WaitHandle.WaitAny(new WaitHandle[] { checker.ProverDone });
       ProverInterface.Outcome proverOutcome = checker.ReadOutcome();
-      proverTime += (DateTime.UtcNow - now).TotalSeconds;
+      double queryTime = (DateTime.UtcNow - now).TotalSeconds;
+      proverTime += queryTime;
       numProverQueries++;
+      if (CommandLineOptions.Clo.Trace) {
+        Console.WriteLine("Time taken = " + queryTime);
+      }
 
       if (proverOutcome == ProverInterface.Outcome.Invalid) {
         Contract.Assume(collector.examples != null);

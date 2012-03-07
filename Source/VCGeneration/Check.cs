@@ -734,10 +734,6 @@ namespace Microsoft.Boogie {
       Undetermined
     }
     public class ErrorHandler {
-      public virtual void OnModel(Dictionary<int, IList<string>> labels, ErrorModel errModel) {
-
-      }
-
       public virtual void OnModel(IList<string> labels, ErrorModel errModel) {
         Contract.Requires(cce.NonNullElements(labels));
       }
@@ -774,7 +770,7 @@ namespace Microsoft.Boogie {
     public abstract void BeginCheck(string descriptiveName, VCExpr vc, ErrorHandler handler);
     [NoDefaultContract]
     public abstract Outcome CheckOutcome(ErrorHandler handler);
-    public virtual Outcome CheckOutcome(ErrorHandler handler, IEnumerable<int> controlFlowConstants) {
+    public virtual string[] CalculatePath(int controlFlowConstant) {
       throw new System.NotImplementedException();
     }
     public virtual void LogComment(string comment) {
@@ -809,6 +805,44 @@ namespace Microsoft.Boogie {
       throw new NotImplementedException();
     }
 
+    // (assert vc)
+    public virtual void Assert(VCExpr vc, bool polarity)
+    {
+        throw new NotImplementedException();
+    }
+
+    // (assert implicit-axioms)
+    public virtual void AssertAxioms()
+    {
+        throw new NotImplementedException();
+    }
+
+    // (check-sat)
+    public virtual void Check()
+    {
+        throw new NotImplementedException();
+    }
+
+    // (check-sat + get-unsat-core)
+    public virtual void CheckAssumptions(List<VCExpr> assumptions, out List<int> unsatCore)
+    {
+        throw new NotImplementedException();
+    }
+
+    public virtual Outcome CheckOutcomeCore(ErrorHandler handler)
+    {
+        throw new NotImplementedException();
+    }
+
+    // (push 1)
+    public virtual void Push()
+    {
+        throw new NotImplementedException();
+    }
+
+    // Set theorem prover timeout for the next "check-sat"
+    public virtual void SetTimeOut(int ms)
+    { }
 
     public abstract ProverContext Context {
       get;
@@ -817,6 +851,7 @@ namespace Microsoft.Boogie {
       get;
     }
   }
+
   public class ProverInterfaceContracts : ProverInterface {
     public override ProverContext Context {
       get {
@@ -843,17 +878,6 @@ namespace Microsoft.Boogie {
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
       throw new NotImplementedException();
     }
-  }
-
-  // Exposes an api in line with z3's api
-  public abstract class ApiProverInterface : ProverInterface
-  {
-      public abstract void Assert(VCExpr vc, bool polarity);
-      public abstract void AssertAxioms();
-      public abstract void Check();
-      public abstract void CheckAssumptions(List<VCExpr> assumptions, out List<int> unsatCore);
-      public abstract void Push();
-      public virtual void SetTimeOut(int ms) { }
   }
 
   public class ProverException : Exception {

@@ -21,7 +21,7 @@ using System.Text;
 
 namespace Microsoft.Boogie.SMTLib
 {
-  public class SMTLibProcessTheoremProver : ApiProverInterface
+  public class SMTLibProcessTheoremProver : ProverInterface
   {
     private readonly SMTLibProverContext ctx;
     private readonly VCExpressionGenerator gen;
@@ -93,7 +93,6 @@ namespace Microsoft.Boogie.SMTLib
           PrepareCommon();
       }
       prevOutcomeAvailable = false;
-      pendingPop = false;
     }
 
     void SetupProcess()
@@ -380,71 +379,20 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
-    public override ProverInterface.Outcome CheckOutcome(ProverInterface.ErrorHandler handler, IEnumerable<int> controlFlowConstants) {
-      var result = Outcome.Undetermined;
-      if (Process == null)
-        return result;
+    [NoDefaultContract]
+    public override Outcome CheckOutcome(ErrorHandler handler)
+    {
+      Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
 
-      Contract.Assume(controlFlowConstants == null);
-      try {
-        currentErrorHandler = handler;
-        FlushProverWarnings();
+      var result = CheckOutcomeCore(handler);
+      SendThisVC("(pop 1)");
+      FlushLogFile();
 
-        var errorsLeft = CommandLineOptions.Clo.ProverCCLimit;
-        if (errorsLeft < 1)
-          errorsLeft = 1;
-
-        var globalResult = Outcome.Undetermined;
-
-        while (true) {
-          errorsLeft--;
-          Dictionary<int, string[]> paths = null;
-
-          result = GetResponse();
-          if (globalResult == Outcome.Undetermined)
-            globalResult = result;
-
-          if (result == Outcome.Invalid) {
-            paths = CalculatePath(controlFlowConstants);
-            ErrorModel errorModel = GetErrorModel();
-            Dictionary<int, IList<string>> paths1 = new Dictionary<int, IList<string>>();
-            foreach (int x in paths.Keys) {
-              paths1[x] = paths[x].ToList();
-            }
-            handler.OnModel(paths1, errorModel);
-          }
-
-          if (paths == null || errorsLeft == 0) break;
-
-          string[] path = paths[0];
-          string source = path[path.Length - 2];
-          string target = path[path.Length - 1];
-          SendThisVC("(assert (not (= (ControlFlow 0 " + source + ") (- " + target + ")))");
-          SendThisVC("(check-sat)");
-        }
-
-        if (CommandLineOptions.Clo.StratifiedInlining == 0) {
-          SendThisVC("(pop 1)");
-        }
-        else if (CommandLineOptions.Clo.StratifiedInlining > 0 && pendingPop) {
-          pendingPop = false;
-          SendThisVC("(pop 1)");
-        }
-
-        FlushLogFile();
-
-        if (CommandLineOptions.Clo.RestartProverPerVC && Process != null)
-          Process.NeedsRestart = true;
-
-        return globalResult;
-      }
-      finally {
-        currentErrorHandler = null;
-      }
+      return result;
     }
 
     [NoDefaultContract]
-    public override Outcome CheckOutcome(ErrorHandler handler)
+    public override Outcome CheckOutcomeCore(ErrorHandler handler)
     {  
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
       
@@ -478,7 +426,7 @@ namespace Microsoft.Boogie.SMTLib
               xlabels = labels.Select(a => a.Replace("@", "").Replace("+", "")).ToList();
             }
             else {
-              labels = CalculatePath();
+              labels = CalculatePath(0);
               xlabels = labels;
             }
             ErrorModel errorModel = GetErrorModel();
@@ -501,19 +449,9 @@ namespace Microsoft.Boogie.SMTLib
           else {
             string source = labels[labels.Length - 2];
             string target = labels[labels.Length - 1];
-            SendThisVC("(assert (not (= (ControlFlow 0 " + source + ") " + target + ")))");
+            SendThisVC("(assert (not (= (ControlFlow 0 " + source + ") (- " + target + "))))");
             SendThisVC("(check-sat)");
           }
-        }
-
-        if (CommandLineOptions.Clo.StratifiedInlining == 0)
-        {
-            SendThisVC("(pop 1)");
-        }
-        else if (CommandLineOptions.Clo.StratifiedInlining > 0 && pendingPop)
-        {
-            pendingPop = false;
-            SendThisVC("(pop 1)");
         }
 
         FlushLogFile();
@@ -528,37 +466,28 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
-    private string[] CalculatePath() {
-      Dictionary<int, string[]> dict = CalculatePath(new int[] { 0 });
-      return dict[0];
-    }
-
-    private Dictionary<int, string[]> CalculatePath(IEnumerable<int> controlFlowConstants) {
-      Dictionary<int, string[]> ret = new Dictionary<int, string[]>();
-      foreach (var controlFlowConstant in controlFlowConstants) {
-        SendThisVC("(get-value ((ControlFlow " + controlFlowConstant + " 0)))");
-        var path = new List<string>();
-        while (true) {
-          var resp = Process.GetProverResponse();
-          if (resp == null) break;
-          if (!(resp.Name == "" && resp.ArgCount == 1)) break;
-          resp = resp.Arguments[0];
-          if (!(resp.Name == "" && resp.ArgCount == 2)) break;
-          resp = resp.Arguments[1];
-          var v = resp.Name;
-          if (v == "-" && resp.ArgCount == 1) {
-            v = resp.Arguments[0].Name;
-            path.Add(v);
-            break;
-          }
-          else if (resp.ArgCount != 0)
-            break;
+    public override string[] CalculatePath(int controlFlowConstant) {
+      SendThisVC("(get-value ((ControlFlow " + controlFlowConstant + " 0)))");
+      var path = new List<string>();
+      while (true) {
+        var resp = Process.GetProverResponse();
+        if (resp == null) break;
+        if (!(resp.Name == "" && resp.ArgCount == 1)) break;
+        resp = resp.Arguments[0];
+        if (!(resp.Name == "" && resp.ArgCount == 2)) break;
+        resp = resp.Arguments[1];
+        var v = resp.Name;
+        if (v == "-" && resp.ArgCount == 1) {
+          v = resp.Arguments[0].Name;
           path.Add(v);
-          SendThisVC("(get-value ((ControlFlow " + controlFlowConstant + " " + v + ")))");
+          break;
         }
-        ret[controlFlowConstant] = path.ToArray();
+        else if (resp.ArgCount != 0)
+          break;
+        path.Add(v);
+        SendThisVC("(get-value ((ControlFlow " + controlFlowConstant + " " + v + ")))");
       }
-      return ret;
+      return path.ToArray();
     }
 
     private ErrorModel GetErrorModel() {
@@ -834,7 +763,6 @@ namespace Microsoft.Boogie.SMTLib
         throw new NotImplementedException();
     }
 
-    // For implementing ApiProverInterface
     public override void Assert(VCExpr vc, bool polarity)
     {
         string a = "";
@@ -857,7 +785,7 @@ namespace Microsoft.Boogie.SMTLib
 
     public override void Check()
     {
-        Contract.Assert(pendingPop == false && prevOutcomeAvailable == false);
+        Contract.Assert(prevOutcomeAvailable == false);
 
         PrepareCommon();
         SendThisVC("(check-sat)");
@@ -873,15 +801,13 @@ namespace Microsoft.Boogie.SMTLib
     /// Extra state for ApiChecker (used by stratifiedInlining)
     /// </summary>
     bool prevOutcomeAvailable;
-    bool pendingPop;
     Outcome prevOutcome;
     static int nameCounter = 0;
 
     public override void CheckAssumptions(List<VCExpr> assumptions, out List<int> unsatCore)
     {
-        Contract.Assert(pendingPop == false && prevOutcomeAvailable == false);
+        Contract.Assert(prevOutcomeAvailable == false);
 
-        Push();
         unsatCore = new List<int>();
 
         // Name the assumptions
@@ -902,7 +828,6 @@ namespace Microsoft.Boogie.SMTLib
         prevOutcomeAvailable = true;
         if (prevOutcome != Outcome.Valid)
         {
-            pendingPop = true;
             return;
         }
         Contract.Assert(usingUnsatCore, "SMTLib prover not setup for computing unsat cores");
@@ -911,8 +836,6 @@ namespace Microsoft.Boogie.SMTLib
         unsatCore = new List<int>();
         if(resp.Name != "") unsatCore.Add(nameToAssumption[resp.Name]);
         foreach (var s in resp.Arguments) unsatCore.Add(nameToAssumption[s.Name]);
-
-        Pop();
 
         FlushLogFile();
     }
