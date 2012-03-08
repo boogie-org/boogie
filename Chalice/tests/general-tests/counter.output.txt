@@ -1,17 +1,17 @@
 Verification of counter.chalice using parameters="" 
 
-  69.5: Monitor invariant might hot hold. The expression at 4.27 might not evaluate to true.
-  80.5: Assertion might not hold. The expression at 80.12 might not evaluate to true.
-  119.5: The target of the release statement might not be locked by the current thread.
-  128.7: The mu field of the target of the acquire statement might not be above waitlevel.
-  136.7: The mu field of the target of the acquire statement might not be above waitlevel.
-  145.5: The target of the release statement might not be locked by the current thread.
+  70.5: Monitor invariant might hot hold. The expression at 4.27 might not evaluate to true.
+  81.5: Assertion might not hold. The expression at 81.12 might not evaluate to true.
+  120.5: The target of the release statement might not be locked by the current thread.
+  129.7: The mu field of the target of the acquire statement might not be above waitlevel.
+  137.7: The mu field of the target of the acquire statement might not be above waitlevel.
+  146.5: The target of the release statement might not be locked by the current thread.
 
 The program did not fully verify; the smoke warnings might be misleading if contradictions are introduced by failing proof attempts of the verification.
-  62.3: The end of method main4 is unreachable.
-  116.3: The end of method nestedBad0 is unreachable.
-  128.7: The statements after the acquire statement are unreachable.
-  136.7: The begging of the lock-block is unreachable.
-  141.3: The end of method nestedBad3 is unreachable.
+  63.3: The end of method main4 is unreachable.
+  117.3: The end of method nestedBad0 is unreachable.
+  129.7: The statements after the acquire statement are unreachable.
+  137.7: The begging of the lock-block is unreachable.
+  142.3: The end of method nestedBad3 is unreachable.
 
 Boogie program verifier finished with 6 errors and 5 smoke test warnings.
