@@ -1935,7 +1935,6 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
       (if(check) isDefined(e.e)(true) ::: isDefined(perm)(true)
       else Nil) :::
       bassume(nonNull(trE)) ::
-      new MapUpdate(Heap, trE, VarExpr(memberName), new Boogie.MapSelect(ih, trE, memberName)) ::
       bassume(wf(Heap, Mask, SecMask)) ::
       (if(e.isPredicate) Nil else List(bassume(TypeInformation(new Boogie.MapSelect(Heap, trE, memberName), e.f.typ.typ)))) :::
       InhalePermission(perm, trE, memberName, currentK, (if (transferToSecMask) SecMask else Mask)) :::
