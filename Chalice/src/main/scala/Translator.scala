@@ -1737,8 +1737,9 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
     case _:PermissionExpr => throw new InternalErrorException("permission expression unexpected here: " + e.pos)
     case _:Credit => throw new InternalErrorException("credit expression unexpected here")
     case Holds(e) =>
-      (0 < Heap.select(trrecursive(e), "held")) &&
-      !Heap.select(trrecursive(e), "rdheld")
+      var ee = trrecursive(e)
+      (0 < Heap.select(ee, "held")) &&
+      !Heap.select(ee, "rdheld")
     case RdHolds(e) =>
       Heap.select(trrecursive(e), "rdheld")
     case a: Assigned =>
@@ -2018,6 +2019,7 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
                       new Boogie.MapSelect(ih, trE, "held")) ::
       bassume(0 < new Boogie.MapSelect(ih, trE, "held")) ::
       bassume(! new Boogie.MapSelect(ih, trE, "rdheld")) ::
+      bassume(new Boogie.MapSelect(ih, trE, "mu") !=@ bLockBottom) ::
       bassume(wf(Heap, Mask, SecMask)) ::
       bassume(AreGoodMasks(Mask, SecMask)) ::
       bassume(IsGoodState(heapFragment(new Boogie.MapSelect(ih, trE, "held")))) ::
