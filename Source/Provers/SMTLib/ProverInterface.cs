@@ -17,12 +17,11 @@ using Microsoft.Boogie;
 using Microsoft.Boogie.VCExprAST;
 using Microsoft.Boogie.Clustering;
 using Microsoft.Boogie.TypeErasure;
-using Microsoft.Boogie.Simplify;
 using System.Text;
 
 namespace Microsoft.Boogie.SMTLib
 {
-  public class SMTLibProcessTheoremProver : ApiProverInterface
+  public class SMTLibProcessTheoremProver : ProverInterface
   {
     private readonly SMTLibProverContext ctx;
     private readonly VCExpressionGenerator gen;
@@ -94,7 +93,6 @@ namespace Microsoft.Boogie.SMTLib
           PrepareCommon();
       }
       prevOutcomeAvailable = false;
-      pendingPop = false;
     }
 
     void SetupProcess()
@@ -285,15 +283,6 @@ namespace Microsoft.Boogie.SMTLib
         Process.Close();
     }
 
-    string controlFlowVariable;
-
-    private VCExpr ArgumentZero(VCExpr vc) {
-      VCExprNAry naryExpr = vc as VCExprNAry;
-      if (naryExpr == null)
-        return null;
-      return naryExpr[0];
-    }
-
     public override void BeginCheck(string descriptiveName, VCExpr vc, ErrorHandler handler)
     {
       //Contract.Requires(descriptiveName != null);
@@ -306,9 +295,6 @@ namespace Microsoft.Boogie.SMTLib
         currentLogFile = OpenOutputFile(descriptiveName);
         currentLogFile.Write(common.ToString());
       }
-
-      if (!CommandLineOptions.Clo.UseLabels)
-        controlFlowVariable = VCExpr2String(ArgumentZero(ArgumentZero(ArgumentZero(vc))),1);
 
       PrepareCommon();
       string vcString = "(assert (not\n" + VCExpr2String(vc, 1) + "\n))";
@@ -395,7 +381,19 @@ namespace Microsoft.Boogie.SMTLib
 
     [NoDefaultContract]
     public override Outcome CheckOutcome(ErrorHandler handler)
-    {  //Contract.Requires(handler != null);
+    {
+      Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
+
+      var result = CheckOutcomeCore(handler);
+      SendThisVC("(pop 1)");
+      FlushLogFile();
+
+      return result;
+    }
+
+    [NoDefaultContract]
+    public override Outcome CheckOutcomeCore(ErrorHandler handler)
+    {  
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
       
       var result = Outcome.Undetermined;
@@ -413,40 +411,47 @@ namespace Microsoft.Boogie.SMTLib
 
         var globalResult = Outcome.Undetermined;
 
-        while (errorsLeft-- > 0) {
+        while (true) {
+          errorsLeft--;
           string[] labels = null;
 
           result = GetResponse();
           if (globalResult == Outcome.Undetermined)
             globalResult = result;
 
-          if (result == Outcome.Invalid && options.UseZ3) {
-            labels = GetLabelsInfo(handler);
+          if (result == Outcome.Invalid) {
+            IList<string> xlabels;
+            if (CommandLineOptions.Clo.UseLabels) {
+              labels = GetLabelsInfo();
+              xlabels = labels.Select(a => a.Replace("@", "").Replace("+", "")).ToList();
+            }
+            else {
+              labels = CalculatePath(0);
+              xlabels = labels;
+            }
+            ErrorModel errorModel = GetErrorModel();
+            handler.OnModel(xlabels, errorModel);
           }
 
-          if (labels == null) break;
+          if (labels == null || errorsLeft == 0) break;
 
-          var negLabels = labels.Where(l => l.StartsWith("@")).ToArray();
-          var posLabels = labels.Where(l => !l.StartsWith("@"));
-          Func<string, string> lbl = (s) => SMTLibNamer.QuoteId(SMTLibNamer.LabelVar(s));
-          if (!options.MultiTraces)
-            posLabels = Enumerable.Empty<string>();
-          var conjuncts = posLabels.Select(s => "(not " + lbl(s) + ")").Concat(negLabels.Select(lbl)).ToArray();
-          var expr = conjuncts.Length == 1 ? conjuncts[0] : ("(or " + conjuncts.Concat(" ") + ")");
-          if (errorsLeft > 0) {
+          if (CommandLineOptions.Clo.UseLabels) {
+            var negLabels = labels.Where(l => l.StartsWith("@")).ToArray();
+            var posLabels = labels.Where(l => !l.StartsWith("@"));
+            Func<string, string> lbl = (s) => SMTLibNamer.QuoteId(SMTLibNamer.LabelVar(s));
+            if (!options.MultiTraces)
+              posLabels = Enumerable.Empty<string>();
+            var conjuncts = posLabels.Select(s => "(not " + lbl(s) + ")").Concat(negLabels.Select(lbl)).ToArray();
+            var expr = conjuncts.Length == 1 ? conjuncts[0] : ("(or " + conjuncts.Concat(" ") + ")");
             SendThisVC("(assert " + expr + ")");
             SendThisVC("(check-sat)");
           }
-        }
-
-        if (CommandLineOptions.Clo.StratifiedInlining == 0)
-        {
-            SendThisVC("(pop 1)");
-        }
-        else if (CommandLineOptions.Clo.StratifiedInlining > 0 && pendingPop)
-        {
-            pendingPop = false;
-            SendThisVC("(pop 1)");
+          else {
+            string source = labels[labels.Length - 2];
+            string target = labels[labels.Length - 1];
+            SendThisVC("(assert (not (= (ControlFlow 0 " + source + ") (- " + target + "))))");
+            SendThisVC("(check-sat)");
+          }
         }
 
         FlushLogFile();
@@ -461,100 +466,91 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
-    private string[] CalculatePath() {
-      SendThisVC("(get-value ((ControlFlow " + controlFlowVariable + " 0)))");
+    public override string[] CalculatePath(int controlFlowConstant) {
+      SendThisVC("(get-value ((ControlFlow " + controlFlowConstant + " 0)))");
       var path = new List<string>();
       while (true) {
         var resp = Process.GetProverResponse();
-        if (resp == null)
-          break;
+        if (resp == null) break;
         if (!(resp.Name == "" && resp.ArgCount == 1)) break;
         resp = resp.Arguments[0];
         if (!(resp.Name == "" && resp.ArgCount == 2)) break;
         resp = resp.Arguments[1];
         var v = resp.Name;
-        if (v == "-" && resp.ArgCount == 1) 
-          v += resp.Arguments[0].Name;
-        else if (resp.ArgCount != 0) 
-          break;
-        if (v.StartsWith("-")) {
-          path.Add("@" + v.Substring(1));
+        if (v == "-" && resp.ArgCount == 1) {
+          v = resp.Arguments[0].Name;
+          path.Add(v);
           break;
         }
-        else {
-          path.Add("+" + v);
-        }
-        SendThisVC("(get-value ((ControlFlow " + controlFlowVariable + " " + v + ")))");
+        else if (resp.ArgCount != 0)
+          break;
+        path.Add(v);
+        SendThisVC("(get-value ((ControlFlow " + controlFlowConstant + " " + v + ")))");
       }
       return path.ToArray();
     }
 
-    private string[] GetLabelsInfo(ErrorHandler handler)
-    {
-      if (CommandLineOptions.Clo.UseLabels)
-        SendThisVC("(labels)");
-      if (options.ExpectingModel())
-        SendThisVC("(get-model)");
+    private ErrorModel GetErrorModel() {
+      if (!options.ExpectingModel())
+        return null;
+      SendThisVC("(get-model)");
       Process.Ping();
-
-      List<string> labelNums = null;
       Model theModel = null;
-      string[] res = null;
-
       while (true) {
         var resp = Process.GetProverResponse();
         if (resp == null || Process.IsPong(resp))
           break;
+        if (theModel != null)
+          HandleProverError("Expecting only one model but got many");
+        
+        string modelStr = null;
+        if (resp.Name == "model" && resp.ArgCount >= 1) {
+          modelStr = resp[0].Name;
+        }
+        else if (resp.ArgCount == 0 && resp.Name.Contains("->")) {
+          modelStr = resp.Name;
+        }
+        else {
+          HandleProverError("Unexpected prover response getting model: " + resp.ToString());
+        }
+        List<Model> models = null;
+        try {
+          models = Model.ParseModels(new StringReader("Z3 error model: \n" + modelStr));
+        }
+        catch (ArgumentException exn) {
+          HandleProverError("Model parsing error: " + exn.Message);
+        }
+        if (models == null)
+          HandleProverError("Could not parse any models");
+        else if (models.Count == 0)
+          HandleProverError("Could not parse any models");
+        else if (models.Count > 1)
+          HandleProverError("Expecting only one model but got many");
+        else
+          theModel = models[0];
+      }
+      return new ErrorModel(theModel);
+    }
+
+    private string[] GetLabelsInfo()
+    {
+      SendThisVC("(labels)");
+      Process.Ping();
+
+      string[] res = null;
+      while (true) {
+        var resp = Process.GetProverResponse();
+        if (resp == null || Process.IsPong(resp))
+          break;
+        if (res != null)
+          HandleProverError("Expecting only one sequence of labels but got many");
         if (resp.Name == "labels" && resp.ArgCount >= 1) {
-          var labels = resp.Arguments.Select(a => a.Name.Replace("|", "")).ToArray();
-          res = labels;
-          if (labelNums != null) HandleProverError("Got multiple :labels responses");
-          labelNums = labels.Select(a => a.Replace("@", "").Replace("+", "")).ToList();
-        } else {
-          string modelStr = null;
-          if (resp.Name == "model" && resp.ArgCount >= 1) {
-            modelStr = resp[0].Name;
-          } else if (resp.ArgCount == 0 && resp.Name.Contains("->")) {
-            modelStr = resp.Name;
-          }
-
-          if (modelStr != null) {
-            List<Model> models = null;
-            try {
-              models = Model.ParseModels(new StringReader("Z3 error model: \n" + modelStr));
-            } catch (ArgumentException exn) {
-              HandleProverError("Model parsing error: " + exn.Message);
-            }
-
-            if (models != null) {
-              if (models.Count == 0) HandleProverError("Could not parse any models");
-              else {
-                if (models.Count > 1) HandleProverError("Expecting only one model, got multiple");
-                if (theModel != null) HandleProverError("Got multiple :model responses");
-                theModel = models[0];
-              }
-            }
-          } else {
-            HandleProverError("Unexpected prover response (getting labels/model): " + resp.ToString());
-          }
+          res = resp.Arguments.Select(a => a.Name.Replace("|", "")).ToArray();
+        }
+        else {
+          HandleProverError("Unexpected prover response getting labels: " + resp.ToString());
         }
       }
-
-      if (!CommandLineOptions.Clo.UseLabels) {
-        res = CalculatePath();
-        if (res.Length == 0) 
-          res = null;
-        else
-          labelNums = res.Select(a => a.Replace("@", "").Replace("+", "")).ToList();
-      }
-
-      if (labelNums != null) {
-        ErrorModel m = null;
-        if (theModel != null)
-          m = new ErrorModel(theModel);
-        handler.OnModel(labelNums, m);
-      }
-
       return res;
     }
 
@@ -767,7 +763,6 @@ namespace Microsoft.Boogie.SMTLib
         throw new NotImplementedException();
     }
 
-    // For implementing ApiProverInterface
     public override void Assert(VCExpr vc, bool polarity)
     {
         string a = "";
@@ -790,7 +785,7 @@ namespace Microsoft.Boogie.SMTLib
 
     public override void Check()
     {
-        Contract.Assert(pendingPop == false && prevOutcomeAvailable == false);
+        Contract.Assert(prevOutcomeAvailable == false);
 
         PrepareCommon();
         SendThisVC("(check-sat)");
@@ -806,15 +801,13 @@ namespace Microsoft.Boogie.SMTLib
     /// Extra state for ApiChecker (used by stratifiedInlining)
     /// </summary>
     bool prevOutcomeAvailable;
-    bool pendingPop;
     Outcome prevOutcome;
     static int nameCounter = 0;
 
     public override void CheckAssumptions(List<VCExpr> assumptions, out List<int> unsatCore)
     {
-        Contract.Assert(pendingPop == false && prevOutcomeAvailable == false);
+        Contract.Assert(prevOutcomeAvailable == false);
 
-        Push();
         unsatCore = new List<int>();
 
         // Name the assumptions
@@ -835,7 +828,6 @@ namespace Microsoft.Boogie.SMTLib
         prevOutcomeAvailable = true;
         if (prevOutcome != Outcome.Valid)
         {
-            pendingPop = true;
             return;
         }
         Contract.Assert(usingUnsatCore, "SMTLib prover not setup for computing unsat cores");
@@ -844,8 +836,6 @@ namespace Microsoft.Boogie.SMTLib
         unsatCore = new List<int>();
         if(resp.Name != "") unsatCore.Add(nameToAssumption[resp.Name]);
         foreach (var s in resp.Arguments) unsatCore.Add(nameToAssumption[s.Name]);
-
-        Pop();
 
         FlushLogFile();
     }

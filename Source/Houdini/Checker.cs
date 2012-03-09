@@ -8,9 +8,7 @@ using System.Diagnostics.Contracts;
 using System.Collections.Generic;
 using Microsoft.Boogie;
 using Microsoft.Boogie.VCExprAST;
-using Microsoft.Boogie.Simplify;
-using Microsoft.Boogie.Z3;
-using Microsoft.Boogie.SMTLib;
+using Microsoft.Basetypes;
 using System.Collections;
 using System.IO;
 using System.Threading;
@@ -24,29 +22,27 @@ namespace Microsoft.Boogie.Houdini {
     private VCExpr conjecture;
     private ProverInterface.ErrorHandler handler;
     ConditionGeneration.CounterexampleCollector collector;
-    LocalVariable controlFlowVariable;
-    int entryBlockId;
 
     public HoudiniSession(VCGen vcgen, Checker checker, Program program, Implementation impl) {
       descriptiveName = impl.Name;
       collector = new ConditionGeneration.CounterexampleCollector();
       collector.OnProgress("HdnVCGen", 0, 0, 0.0);
-      if (CommandLineOptions.Clo.SoundnessSmokeTest) {
-        throw new Exception("HoudiniVCGen does not support Soundness smoke test.");
-      }
 
       vcgen.ConvertCFG2DAG(impl, program);
       ModelViewInfo mvInfo;
       Hashtable/*TransferCmd->ReturnCmd*/ gotoCmdOrigins = vcgen.PassifyImpl(impl, program, out mvInfo);
       Hashtable/*<int, Absy!>*/ label2absy;
 
-      if (!CommandLineOptions.Clo.UseLabels) {
-        controlFlowVariable = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "@cfc", Microsoft.Boogie.Type.Int));
-        impl.LocVars.Add(controlFlowVariable);
-        entryBlockId = impl.Blocks[0].UniqueId;
-      }
+      var exprGen = checker.TheoremProver.Context.ExprGen;
+      VCExpr controlFlowVariableExpr = CommandLineOptions.Clo.UseLabels ? null : exprGen.Integer(BigNum.ZERO);
       
-      conjecture = vcgen.GenerateVC(impl, controlFlowVariable, out label2absy, checker);
+      conjecture = vcgen.GenerateVC(impl, controlFlowVariableExpr, out label2absy, checker);
+
+      if (!CommandLineOptions.Clo.UseLabels) {
+        VCExpr controlFlowFunctionAppl = exprGen.ControlFlowFunctionApplication(exprGen.Integer(BigNum.ZERO), exprGen.Integer(BigNum.ZERO));
+        VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl, exprGen.Integer(BigNum.FromInt(impl.Blocks[0].UniqueId)));
+        conjecture = exprGen.Implies(eqExpr, conjecture);
+      }
 
       if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Local) {
         handler = new VCGen.ErrorReporterLocal(gotoCmdOrigins, label2absy, impl.Blocks, vcgen.incarnationOriginMap, collector, mvInfo, vcgen.implName2LazyInliningInfo, checker.TheoremProver.Context, program);
@@ -60,22 +56,19 @@ namespace Microsoft.Boogie.Houdini {
       collector.examples.Clear();
       VCExpr vc = checker.VCExprGen.Implies(axiom, conjecture);
 
-      if (!CommandLineOptions.Clo.UseLabels) {
-        var ctx = checker.TheoremProver.Context;
-        var bet = ctx.BoogieExprTranslator;
-        VCExpr controlFlowVariableExpr = bet.LookupVariable(controlFlowVariable);
-        Contract.Assert(controlFlowVariableExpr != null);
-        VCExpr controlFlowFunctionAppl = ctx.ExprGen.ControlFlowFunctionApplication(controlFlowVariableExpr, ctx.ExprGen.Integer(Microsoft.Basetypes.BigNum.ZERO));
-        Contract.Assert(controlFlowFunctionAppl != null);
-        vc = ctx.ExprGen.Implies(ctx.ExprGen.Eq(controlFlowFunctionAppl, ctx.ExprGen.Integer(Microsoft.Basetypes.BigNum.FromInt(entryBlockId))), vc);
+      if (CommandLineOptions.Clo.Trace) {
+        Console.WriteLine("Verifying " + descriptiveName);
       }
-
       DateTime now = DateTime.UtcNow;
       checker.BeginCheck(descriptiveName, vc, handler);
       WaitHandle.WaitAny(new WaitHandle[] { checker.ProverDone });
       ProverInterface.Outcome proverOutcome = checker.ReadOutcome();
-      proverTime += (DateTime.UtcNow - now).TotalSeconds;
+      double queryTime = (DateTime.UtcNow - now).TotalSeconds;
+      proverTime += queryTime;
       numProverQueries++;
+      if (CommandLineOptions.Clo.Trace) {
+        Console.WriteLine("Time taken = " + queryTime);
+      }
 
       if (proverOutcome == ProverInterface.Outcome.Invalid) {
         Contract.Assume(collector.examples != null);

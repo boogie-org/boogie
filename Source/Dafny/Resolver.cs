@@ -170,19 +170,21 @@ namespace Microsoft.Dafny {
       }
 
       // register top-level declarations
+      Rewriter rewriter = new AutoContractsRewriter();
       var systemNameInfo = RegisterTopLevelDecls(prog.BuiltIns.SystemModule.TopLevelDecls);
       var moduleNameInfo = new ModuleNameInformation[h];
+      var datatypeDependencies = new Graph<DatatypeDecl>();
       foreach (var m in mm) {
+        rewriter.PreResolve(m);
         if (m.RefinementBase != null) {
           var transformer = new RefinementTransformer(this);
           transformer.Construct(m);
         }
         moduleNameInfo[m.Height] = RegisterTopLevelDecls(m.TopLevelDecls);
-      }
+//      }
 
       // resolve top-level declarations
-      Graph<DatatypeDecl> datatypeDependencies = new Graph<DatatypeDecl>();
-      foreach (ModuleDecl m in mm) {
+//      foreach (ModuleDecl m in mm) {
         // set up environment
         ModuleNameInformation info = ModuleNameInformation.Merge(m, systemNameInfo, moduleNameInfo);
         classes = info.Classes;
@@ -193,6 +195,8 @@ namespace Microsoft.Dafny {
         // tear down
         classes = null;
         allDatatypeCtors = null;
+        // give rewriter a chance to do processing
+        rewriter.PostResolve(m);
       }
 
       // compute IsRecursive bit for mutually recursive functions
@@ -1733,8 +1737,7 @@ namespace Microsoft.Dafny {
           if (arrayRangeLhs == null && !sse.SelectOne) {
             arrayRangeLhs = sse;
           }
-        }
-        else {
+        } else {
           ResolveExpression(lhs, true);
         }
       }

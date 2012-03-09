@@ -11,7 +11,6 @@ using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 //using util;
 using Microsoft.Boogie;
-using Microsoft.Boogie.Simplify;
 using Microsoft.Basetypes;
 using Microsoft.Boogie.VCExprAST;
 

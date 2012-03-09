@@ -389,6 +389,7 @@ namespace Microsoft.Boogie {
     public int /*(0:3)*/ ErrorTrace = 1;
     public bool IntraproceduralInfer = true;
     public bool ContractInfer = false;
+    public bool PrintAssignment = false;
     public int InlineDepth = -1;
     public bool UseUncheckedContracts = false;
     public bool SimplifyLogFileAppend = false;
@@ -830,10 +831,6 @@ namespace Microsoft.Boogie {
           ps.GetNumericArgument(ref EnhancedErrorMessages, 2);
           return true;
 
-        case "contractInfer":
-          ContractInfer = true;
-          return true;
-
         case "inlineDepth":
           ps.GetNumericArgument(ref InlineDepth);
           return true;
@@ -1007,7 +1004,11 @@ namespace Microsoft.Boogie {
             }
           }
           return true;
-
+        case "siVerbose":
+          if (ps.ConfirmArgumentCount(1)) {
+            StratifiedInliningVerbose = Int32.Parse(cce.NonNull(args[ps.i]));
+          }
+          return true;
         case "recursionBound":
           if (ps.ConfirmArgumentCount(1)) {
             RecursionBound = Int32.Parse(cce.NonNull(args[ps.i]));
@@ -1225,7 +1226,9 @@ namespace Microsoft.Boogie {
               ps.CheckBooleanFlag("monomorphize", ref Monomorphize) ||
               ps.CheckBooleanFlag("useArrayTheory", ref UseArrayTheory) ||
               ps.CheckBooleanFlag("doModSetAnalysis", ref DoModSetAnalysis) ||
-              ps.CheckBooleanFlag("doNotUseLabels", ref UseLabels, false)
+              ps.CheckBooleanFlag("doNotUseLabels", ref UseLabels, false) ||
+              ps.CheckBooleanFlag("contractInfer", ref ContractInfer) ||
+              ps.CheckBooleanFlag("printAssignment", ref PrintAssignment)
               ) {
             // one of the boolean flags matched
             return true;

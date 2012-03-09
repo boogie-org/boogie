@@ -19,7 +19,7 @@ namespace GPUVerify
             
         }
 
-        public void CheckForRaces(IToken tok, BigBlock bb, Variable v, bool ReadWriteOnly)
+        public void CheckForRaces(BigBlock bb, Variable v, bool ReadWriteOnly)
         {
         }
 
@@ -42,6 +42,17 @@ namespace GPUVerify
         {
 
         }
-    
+
+
+        public void AddNoRaceContract(Procedure proc)
+        {
+
+        }
+
+        public void AddNoRaceInvariants(Implementation impl)
+        {
+
+        }
+
     }
 }

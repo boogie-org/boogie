@@ -310,6 +310,8 @@ namespace GPUVerify
                 return;
             }
 
+            ProcessAccessInvariants();
+
             if (CommandLineOptions.ShowStages)
             {
                 emitProgram(outputFilename + "_instrumented");
@@ -336,6 +338,13 @@ namespace GPUVerify
                 emitProgram(outputFilename + "_dualised");
             }
 
+            ProcessCrossThreadInvariants();
+
+            if (CommandLineOptions.ShowStages)
+            {
+                emitProgram(outputFilename + "_cross_thread_invariants");
+            }
+
             if (CommandLineOptions.Eager)
             {
                 AddEagerRaceChecking();
@@ -343,7 +352,7 @@ namespace GPUVerify
 
             GenerateBarrierImplementation();
 
-            GenerateKernelPrecondition();
+            GenerateStandardKernelContract();
 
             if (CommandLineOptions.ShowStages)
             {
@@ -399,6 +408,186 @@ namespace GPUVerify
 
         }
 
+        private void ProcessAccessInvariants()
+        {
+            foreach (Declaration d in Program.TopLevelDeclarations)
+            {
+                if (d is Procedure)
+                {
+                    Procedure p = d as Procedure;
+                    p.Requires = ProcessAccessInvariants(p.Requires);
+                    p.Ensures = ProcessAccessInvariants(p.Ensures);
+                }
+
+                if (d is Implementation)
+                {
+                    Implementation i = d as Implementation;
+                    ProcessAccessInvariants(i.StructuredStmts);
+                }
+            }
+        }
+
+        private void ProcessAccessInvariants(StmtList stmtList)
+        {
+            
+            foreach (BigBlock bb in stmtList.BigBlocks)
+            {
+                ProcessAccessInvariants(bb);
+            }
+        }
+
+        private void ProcessAccessInvariants(BigBlock bb)
+        {
+            CmdSeq newCommands = new CmdSeq();
+
+            foreach (Cmd c in bb.simpleCmds)
+            {
+                if (c is AssertCmd)
+                {
+                    newCommands.Add(new AssertCmd(c.tok, new AccessInvariantProcessor().VisitExpr((c as AssertCmd).Expr.Clone() as Expr)));
+                }
+                else if (c is AssumeCmd)
+                {
+                    newCommands.Add(new AssumeCmd(c.tok, new AccessInvariantProcessor().VisitExpr((c as AssumeCmd).Expr.Clone() as Expr)));
+                }
+                else
+                {
+                    newCommands.Add(c);
+                }
+            }
+
+            bb.simpleCmds = newCommands;
+
+            if (bb.ec is WhileCmd)
+            {
+                WhileCmd whileCmd = bb.ec as WhileCmd;
+                whileCmd.Invariants = ProcessAccessInvariants(whileCmd.Invariants);
+                ProcessAccessInvariants(whileCmd.Body);
+            }
+            else if (bb.ec is IfCmd)
+            {
+                ProcessAccessInvariants((bb.ec as IfCmd).thn);
+                if ((bb.ec as IfCmd).elseBlock != null)
+                {
+                    ProcessAccessInvariants((bb.ec as IfCmd).elseBlock);
+                }
+            }
+        }
+
+        private List<PredicateCmd> ProcessAccessInvariants(List<PredicateCmd> invariants)
+        {
+            List<PredicateCmd> result = new List<PredicateCmd>();
+
+            foreach (PredicateCmd p in invariants)
+            {
+                result.Add(new AssertCmd(p.tok, new AccessInvariantProcessor().VisitExpr(p.Expr.Clone() as Expr)));
+            }
+
+            return result;
+        }
+
+        private EnsuresSeq ProcessAccessInvariants(EnsuresSeq ensuresSeq)
+        {
+            EnsuresSeq result = new EnsuresSeq();
+            foreach (Ensures e in ensuresSeq)
+            {
+                result.Add(new Ensures(e.Free, new AccessInvariantProcessor().VisitExpr(e.Condition.Clone() as Expr)));
+            }
+            return result;
+        }
+
+        private RequiresSeq ProcessAccessInvariants(RequiresSeq requiresSeq)
+        {
+            RequiresSeq result = new RequiresSeq();
+            foreach (Requires r in requiresSeq)
+            {
+                result.Add(new Requires(r.Free, new AccessInvariantProcessor().VisitExpr(r.Condition.Clone() as Expr)));
+            }
+            return result;
+        }
+
+        private void ProcessCrossThreadInvariants()
+        {
+            foreach (Declaration d in Program.TopLevelDeclarations)
+            {
+                if (d is Procedure)
+                {
+                    Procedure p = d as Procedure;
+                    p.Requires = ProcessCrossThreadInvariants(p.Requires);
+                    p.Ensures = ProcessCrossThreadInvariants(p.Ensures);
+                }
+                if (d is Implementation)
+                {
+                    Implementation i = d as Implementation;
+                    ProcessCrossThreadInvariants(i.StructuredStmts);
+                }
+
+            }
+        }
+
+        private EnsuresSeq ProcessCrossThreadInvariants(EnsuresSeq ensuresSeq)
+        {
+            EnsuresSeq result = new EnsuresSeq();
+            foreach (Ensures e in ensuresSeq)
+            {
+                result.Add(new Ensures(e.Free, new CrossThreadInvariantProcessor().VisitExpr(e.Condition.Clone() as Expr)));
+            }
+            return result;
+        }
+
+        private RequiresSeq ProcessCrossThreadInvariants(RequiresSeq requiresSeq)
+        {
+            RequiresSeq result = new RequiresSeq();
+            foreach (Requires r in requiresSeq)
+            {
+                result.Add(new Requires(r.Free, new CrossThreadInvariantProcessor().VisitExpr(r.Condition.Clone() as Expr)));
+            }
+            return result;
+        }
+
+        private void ProcessCrossThreadInvariants(StmtList stmtList)
+        {
+            foreach (BigBlock bb in stmtList.BigBlocks)
+            {
+                ProcessCrossThreadInvariants(bb);
+            }
+        }
+
+        private void ProcessCrossThreadInvariants(BigBlock bb)
+        {
+            CmdSeq newCommands = new CmdSeq();
+
+            foreach (Cmd c in bb.simpleCmds)
+            {
+                if (c is AssertCmd)
+                {
+                    newCommands.Add(new AssertCmd(c.tok, new CrossThreadInvariantProcessor().VisitExpr((c as AssertCmd).Expr.Clone() as Expr)));
+                }
+                else if (c is AssumeCmd)
+                {
+                    newCommands.Add(new AssumeCmd(c.tok, new CrossThreadInvariantProcessor().VisitExpr((c as AssumeCmd).Expr.Clone() as Expr)));
+                }
+                else
+                {
+                    newCommands.Add(c);
+                }
+            }
+
+            bb.simpleCmds = newCommands;
+
+            if (bb.ec is WhileCmd)
+            {
+                WhileCmd whileCmd = bb.ec as WhileCmd;
+                List<PredicateCmd> newInvariants = new List<PredicateCmd>();
+                foreach(PredicateCmd p in whileCmd.Invariants)
+                {
+                    newInvariants.Add(new AssertCmd(p.tok, new CrossThreadInvariantProcessor().VisitExpr(p.Expr)));
+                }
+                whileCmd.Invariants = newInvariants;
+                ProcessCrossThreadInvariants(whileCmd.Body);
+            }
+        }
+
         private void emitProgram(string filename)
         {
             using (TokenTextWriter writer = new TokenTextWriter(filename + ".bpl"))
@@ -423,7 +612,7 @@ namespace GPUVerify
                     if (impl.Name.Equals("_LOG_READ_" + v.Name) || impl.Name.Equals("_LOG_WRITE_" + v.Name))
                     {
                         BigBlock bb = new BigBlock(v.tok, "__CheckForRaces", new CmdSeq(), null, null);
-                        RaceInstrumenter.CheckForRaces(v.tok, bb, v, impl.Name.Equals("_LOG_READ_" + v.Name));
+                        RaceInstrumenter.CheckForRaces(bb, v, impl.Name.Equals("_LOG_READ_" + v.Name));
                         StmtList newStatements = new StmtList(new List<BigBlock>(), v.tok);
                         
                         foreach(BigBlock bb2 in impl.StructuredStmts.BigBlocks)
@@ -936,18 +1125,6 @@ namespace GPUVerify
             return _GROUP_SIZE_Z != null;
         }
 
-        public bool KernelHasId(string dimension)
-        {
-            Contract.Requires(dimension.Equals("X") || dimension.Equals("Y") || dimension.Equals("Z"));
-            if (dimension.Equals("X")) return KernelHasIdX();
-            if (dimension.Equals("Y")) return KernelHasIdY();
-            if (dimension.Equals("Z")) return KernelHasIdZ();
-            Debug.Assert(false);
-            return false;
-        }
-
-        
-
         public void AddCandidateInvariant(WhileCmd wc, Expr e)
         {
             Constant ExistentialBooleanConstant = MakeExistentialBoolean(wc.tok);
@@ -989,7 +1166,7 @@ namespace GPUVerify
             KernelImplementation.StructuredStmts.BigBlocks.Add(bb);
         }
 
-        private void GenerateKernelPrecondition()
+        private void GenerateStandardKernelContract()
         {
             RaceInstrumenter.AddKernelPrecondition();
 
@@ -1019,6 +1196,12 @@ namespace GPUVerify
 
                     Proc.Requires.Add(new Requires(false, AssumeDistinctThreads));
                     Proc.Requires.Add(new Requires(false, AssumeThreadIdsInRange));
+
+                    if (Proc != KernelProcedure)
+                    {
+                        RaceInstrumenter.AddNoRaceContract(Proc);
+                    }
+
                 }
             }
             else
@@ -1033,6 +1216,9 @@ namespace GPUVerify
                     continue;
                 }
                 Implementation Impl = D as Implementation;
+
+                RaceInstrumenter.AddNoRaceInvariants(Impl);
+
                 if (QKeyValue.FindIntAttribute(Impl.Proc.Attributes, "inline", -1) == 1)
                 {
                     continue;
@@ -1138,68 +1324,65 @@ namespace GPUVerify
 
         private void GeneratePreconditionsForDimension(ref Expr AssumeDistinctThreads, ref Expr AssumeThreadIdsInRange, IToken tok, String dimension)
         {
-            if (KernelHasId(dimension))
+            foreach (Declaration D in Program.TopLevelDeclarations)
             {
-                foreach (Declaration D in Program.TopLevelDeclarations)
+                if (!(D is Procedure))
                 {
-                    if (!(D is Procedure))
-                    {
-                        continue;
-                    }
-                    Procedure Proc = D as Procedure;
-                    if (QKeyValue.FindIntAttribute(Proc.Attributes, "inline", -1) == 1)
-                    {
-                        continue;
-                    }
-
-                    if (GetTypeOfId(dimension).Equals(Microsoft.Boogie.Type.GetBvType(32)))
-                    {
-                        Proc.Requires.Add(new Requires(false, MakeBitVectorBinaryBoolean("BV32_GT", new IdentifierExpr(tok, GetGroupSize(dimension)), ZeroBV(tok))));
-                        Proc.Requires.Add(new Requires(false, MakeBitVectorBinaryBoolean("BV32_GT", new IdentifierExpr(tok, GetNumGroups(dimension)), ZeroBV(tok))));
-                        Proc.Requires.Add(new Requires(false, MakeBitVectorBinaryBoolean("BV32_GEQ", new IdentifierExpr(tok, GetGroupId(dimension)), ZeroBV(tok))));
-                        Proc.Requires.Add(new Requires(false, MakeBitVectorBinaryBoolean("BV32_LT", new IdentifierExpr(tok, GetGroupId(dimension)), new IdentifierExpr(tok, GetNumGroups(dimension)))));
-                    }
-                    else
-                    {
-                        Proc.Requires.Add(new Requires(false, Expr.Gt(new IdentifierExpr(tok, GetGroupSize(dimension)), Zero(tok))));
-                        Proc.Requires.Add(new Requires(false, Expr.Gt(new IdentifierExpr(tok, GetNumGroups(dimension)), Zero(tok))));
-                        Proc.Requires.Add(new Requires(false, Expr.Ge(new IdentifierExpr(tok, GetGroupId(dimension)), Zero(tok))));
-                        Proc.Requires.Add(new Requires(false, Expr.Lt(new IdentifierExpr(tok, GetGroupId(dimension)), new IdentifierExpr(tok, GetNumGroups(dimension)))));
-                    }
+                    continue;
+                }
+                Procedure Proc = D as Procedure;
+                if (QKeyValue.FindIntAttribute(Proc.Attributes, "inline", -1) == 1)
+                {
+                    continue;
                 }
 
-                Expr AssumeThreadsDistinctInDimension =
-                        Expr.Neq(
-                        new IdentifierExpr(tok, MakeThreadId(tok, dimension, 1)),
-                        new IdentifierExpr(tok, MakeThreadId(tok, dimension, 2))
-                        );
-
-                AssumeDistinctThreads = (null == AssumeDistinctThreads) ? AssumeThreadsDistinctInDimension : Expr.Or(AssumeDistinctThreads, AssumeThreadsDistinctInDimension);
-
-                Expr AssumeThreadIdsInRangeInDimension =
-                    GetTypeOfId(dimension).Equals(Microsoft.Boogie.Type.GetBvType(32)) ?
-                        Expr.And(
-                            Expr.And(
-                            MakeBitVectorBinaryBoolean("BV32_GEQ", new IdentifierExpr(tok, MakeThreadId(tok, dimension, 1)), ZeroBV(tok)),
-                            MakeBitVectorBinaryBoolean("BV32_GEQ", new IdentifierExpr(tok, MakeThreadId(tok, dimension, 2)), ZeroBV(tok))
-                            ),
-                            Expr.And(
-                            MakeBitVectorBinaryBoolean("BV32_LT", new IdentifierExpr(tok, MakeThreadId(tok, dimension, 1)), new IdentifierExpr(tok, GetGroupSize(dimension))),
-                            MakeBitVectorBinaryBoolean("BV32_LT", new IdentifierExpr(tok, MakeThreadId(tok, dimension, 2)), new IdentifierExpr(tok, GetGroupSize(dimension)))
-                            ))
-                    :
-                        Expr.And(
-                            Expr.And(
-                            Expr.Ge(new IdentifierExpr(tok, MakeThreadId(tok, dimension, 1)), Zero(tok)),
-                            Expr.Ge(new IdentifierExpr(tok, MakeThreadId(tok, dimension, 2)), Zero(tok))
-                            ),
-                            Expr.And(
-                            Expr.Lt(new IdentifierExpr(tok, MakeThreadId(tok, dimension, 1)), new IdentifierExpr(tok, GetGroupSize(dimension))),
-                            Expr.Lt(new IdentifierExpr(tok, MakeThreadId(tok, dimension, 2)), new IdentifierExpr(tok, GetGroupSize(dimension)))
-                            ));
-
-                AssumeThreadIdsInRange = (null == AssumeThreadIdsInRange) ? AssumeThreadIdsInRangeInDimension : Expr.And(AssumeThreadIdsInRange, AssumeThreadIdsInRangeInDimension);
+                if (GetTypeOfId(dimension).Equals(Microsoft.Boogie.Type.GetBvType(32)))
+                {
+                    Proc.Requires.Add(new Requires(false, MakeBitVectorBinaryBoolean("BV32_GT", new IdentifierExpr(tok, GetGroupSize(dimension)), ZeroBV(tok))));
+                    Proc.Requires.Add(new Requires(false, MakeBitVectorBinaryBoolean("BV32_GT", new IdentifierExpr(tok, GetNumGroups(dimension)), ZeroBV(tok))));
+                    Proc.Requires.Add(new Requires(false, MakeBitVectorBinaryBoolean("BV32_GEQ", new IdentifierExpr(tok, GetGroupId(dimension)), ZeroBV(tok))));
+                    Proc.Requires.Add(new Requires(false, MakeBitVectorBinaryBoolean("BV32_LT", new IdentifierExpr(tok, GetGroupId(dimension)), new IdentifierExpr(tok, GetNumGroups(dimension)))));
+                }
+                else
+                {
+                    Proc.Requires.Add(new Requires(false, Expr.Gt(new IdentifierExpr(tok, GetGroupSize(dimension)), Zero(tok))));
+                    Proc.Requires.Add(new Requires(false, Expr.Gt(new IdentifierExpr(tok, GetNumGroups(dimension)), Zero(tok))));
+                    Proc.Requires.Add(new Requires(false, Expr.Ge(new IdentifierExpr(tok, GetGroupId(dimension)), Zero(tok))));
+                    Proc.Requires.Add(new Requires(false, Expr.Lt(new IdentifierExpr(tok, GetGroupId(dimension)), new IdentifierExpr(tok, GetNumGroups(dimension)))));
+                }
             }
+
+            Expr AssumeThreadsDistinctInDimension =
+                    Expr.Neq(
+                    new IdentifierExpr(tok, MakeThreadId(tok, dimension, 1)),
+                    new IdentifierExpr(tok, MakeThreadId(tok, dimension, 2))
+                    );
+
+            AssumeDistinctThreads = (null == AssumeDistinctThreads) ? AssumeThreadsDistinctInDimension : Expr.Or(AssumeDistinctThreads, AssumeThreadsDistinctInDimension);
+
+            Expr AssumeThreadIdsInRangeInDimension =
+                GetTypeOfId(dimension).Equals(Microsoft.Boogie.Type.GetBvType(32)) ?
+                    Expr.And(
+                        Expr.And(
+                        MakeBitVectorBinaryBoolean("BV32_GEQ", new IdentifierExpr(tok, MakeThreadId(tok, dimension, 1)), ZeroBV(tok)),
+                        MakeBitVectorBinaryBoolean("BV32_GEQ", new IdentifierExpr(tok, MakeThreadId(tok, dimension, 2)), ZeroBV(tok))
+                        ),
+                        Expr.And(
+                        MakeBitVectorBinaryBoolean("BV32_LT", new IdentifierExpr(tok, MakeThreadId(tok, dimension, 1)), new IdentifierExpr(tok, GetGroupSize(dimension))),
+                        MakeBitVectorBinaryBoolean("BV32_LT", new IdentifierExpr(tok, MakeThreadId(tok, dimension, 2)), new IdentifierExpr(tok, GetGroupSize(dimension)))
+                        ))
+                :
+                    Expr.And(
+                        Expr.And(
+                        Expr.Ge(new IdentifierExpr(tok, MakeThreadId(tok, dimension, 1)), Zero(tok)),
+                        Expr.Ge(new IdentifierExpr(tok, MakeThreadId(tok, dimension, 2)), Zero(tok))
+                        ),
+                        Expr.And(
+                        Expr.Lt(new IdentifierExpr(tok, MakeThreadId(tok, dimension, 1)), new IdentifierExpr(tok, GetGroupSize(dimension))),
+                        Expr.Lt(new IdentifierExpr(tok, MakeThreadId(tok, dimension, 2)), new IdentifierExpr(tok, GetGroupSize(dimension)))
+                        ));
+
+            AssumeThreadIdsInRange = (null == AssumeThreadIdsInRange) ? AssumeThreadIdsInRangeInDimension : Expr.And(AssumeThreadIdsInRange, AssumeThreadIdsInRangeInDimension);
         }
 
         private Expr MakeBitVectorBinaryBoolean(string functionName, Expr lhs, Expr rhs)
@@ -1888,6 +2071,9 @@ namespace GPUVerify
 
                     bool HalfDualise = HalfDualisedProcedureNames.Contains(proc.Name);
 
+                    proc.Requires = DualiseRequires(proc.Requires);
+                    proc.Ensures = DualiseEnsures(proc.Ensures);
+
                     proc.InParams = DualiseVariableSequence(proc.InParams, HalfDualise);
                     proc.OutParams = DualiseVariableSequence(proc.OutParams, HalfDualise);
                     IdentifierExprSeq NewModifies = new IdentifierExprSeq();
@@ -1952,6 +2138,42 @@ namespace GPUVerify
 
         }
 
+        private EnsuresSeq DualiseEnsures(EnsuresSeq ensuresSeq)
+        {
+            EnsuresSeq newEnsures = new EnsuresSeq();
+            foreach (Ensures e in ensuresSeq)
+            {
+                newEnsures.Add(new Ensures(e.Free, new VariableDualiser(1).VisitExpr(e.Condition.Clone() as Expr)));
+                if (!CommandLineOptions.Symmetry || !ContainsAsymmetricExpression(e.Condition))
+                {
+                    newEnsures.Add(new Ensures(e.Free, new VariableDualiser(2).VisitExpr(e.Condition.Clone() as Expr)));
+                }
+            }
+            return newEnsures;
+        }
+
+        private RequiresSeq DualiseRequires(RequiresSeq requiresSeq)
+        {
+            RequiresSeq newRequires = new RequiresSeq();
+            foreach (Requires r in requiresSeq)
+            {
+                newRequires.Add(new Requires(r.Free, new VariableDualiser(1).VisitExpr(r.Condition.Clone() as Expr)));
+
+                if (!CommandLineOptions.Symmetry || !ContainsAsymmetricExpression(r.Condition))
+                {
+                    newRequires.Add(new Requires(r.Free, new VariableDualiser(2).VisitExpr(r.Condition.Clone() as Expr)));
+                }
+            }
+            return newRequires;
+        }
+
+        private bool ContainsAsymmetricExpression(Expr expr)
+        {
+            AsymmetricExpressionFinder finder = new AsymmetricExpressionFinder();
+            finder.VisitExpr(expr);
+            return finder.foundAsymmetricExpr();
+        }
+
         private static VariableSeq DualiseVariableSequence(VariableSeq seq, bool HalfDualise)
         {
             VariableSeq result = new VariableSeq();
@@ -1981,12 +2203,29 @@ namespace GPUVerify
                         // Add predicate to start of parameter list
                         Procedure proc = d as Procedure;
                         VariableSeq NewIns = new VariableSeq();
-                        NewIns.Add(new LocalVariable(proc.tok, new TypedIdent(proc.tok, "_P", Microsoft.Boogie.Type.Bool)));
+                        TypedIdent enabled = new TypedIdent(proc.tok, "_P", Microsoft.Boogie.Type.Bool);
+                        NewIns.Add(new LocalVariable(proc.tok, enabled));
                         foreach (Variable v in proc.InParams)
                         {
                             NewIns.Add(v);
                         }
                         proc.InParams = NewIns;
+
+                        RequiresSeq newRequires = new RequiresSeq();
+                        foreach (Requires r in proc.Requires)
+                        {
+                            newRequires.Add(new Requires(r.Free, Predicator.ProcessEnabledIntrinsics(r.Condition, enabled)));
+                        }
+                        proc.Requires = newRequires;
+
+                        EnsuresSeq newEnsures = new EnsuresSeq();
+                        foreach (Ensures e in proc.Ensures)
+                        {
+                            newEnsures.Add(new Ensures(e.Free, Predicator.ProcessEnabledIntrinsics(e.Condition, enabled)));
+                        }
+                        proc.Ensures = newEnsures;
+
+
                     }
 
                 }
@@ -2109,7 +2348,7 @@ namespace GPUVerify
                 else if (c is AssertCmd)
                 {
                     AssertCmd ass = c as AssertCmd;
-                    if (HalfDualise)
+                    if (HalfDualise || ContainsAsymmetricExpression(ass.Expr))
                     {
                         result.simpleCmds.Add(new AssertCmd(c.tok, new VariableDualiser(1).VisitExpr(ass.Expr.Clone() as Expr)));
                     }
@@ -2121,7 +2360,7 @@ namespace GPUVerify
                 else if (c is AssumeCmd)
                 {
                     AssumeCmd ass = c as AssumeCmd;
-                    if (HalfDualise)
+                    if (HalfDualise || ContainsAsymmetricExpression(ass.Expr))
                     {
                         result.simpleCmds.Add(new AssumeCmd(c.tok, new VariableDualiser(1).VisitExpr(ass.Expr.Clone() as Expr)));
                     }
@@ -2138,7 +2377,11 @@ namespace GPUVerify
 
             if (bb.ec is WhileCmd)
             {
-                result.ec = new WhileCmd(bb.ec.tok, Expr.Or(new VariableDualiser(1).VisitExpr((bb.ec as WhileCmd).Guard), new VariableDualiser(2).VisitExpr((bb.ec as WhileCmd).Guard)), (bb.ec as WhileCmd).Invariants, MakeDual((bb.ec as WhileCmd).Body, HalfDualise));
+                result.ec = new WhileCmd(bb.ec.tok, 
+                    Expr.Or(new VariableDualiser(1).VisitExpr((bb.ec as WhileCmd).Guard), 
+                            new VariableDualiser(2).VisitExpr((bb.ec as WhileCmd).Guard)
+                    ),
+                    MakeDualInvariants((bb.ec as WhileCmd).Invariants), MakeDual((bb.ec as WhileCmd).Body, HalfDualise));
             }
             else
             {
@@ -2147,6 +2390,21 @@ namespace GPUVerify
 
             return result;
 
+        }
+
+        private List<PredicateCmd> MakeDualInvariants(List<PredicateCmd> originalInvariants)
+        {
+            List<PredicateCmd> result = new List<PredicateCmd>();
+            foreach(PredicateCmd p in originalInvariants)
+            {
+                result.Add(new AssertCmd(p.tok, new VariableDualiser(1).VisitExpr(p.Expr.Clone() as Expr)));
+                if (!CommandLineOptions.Symmetry || !ContainsAsymmetricExpression(p.Expr))
+                {
+                    result.Add(new AssertCmd(p.tok, new VariableDualiser(2).VisitExpr(p.Expr.Clone() as Expr)));
+                }
+            }
+
+            return result;
         }
 
         private void MakeDualLocalVariables(Implementation impl, bool HalfDualise)
@@ -2204,101 +2462,90 @@ namespace GPUVerify
 
             if (!KernelHasIdX())
             {
-                MissingKernelAttributeError("Kernel", LOCAL_ID_X_STRING);
+                MissingKernelAttributeError(LOCAL_ID_X_STRING);
             }
 
             if (!KernelHasGroupSizeX())
             {
-                MissingKernelAttributeError("Kernel", GROUP_SIZE_X_STRING);
+                MissingKernelAttributeError(GROUP_SIZE_X_STRING);
             }
 
             if (!KernelHasNumGroupsX())
             {
-                MissingKernelAttributeError("Kernel", NUM_GROUPS_X_STRING);
+                MissingKernelAttributeError(NUM_GROUPS_X_STRING);
             }
 
             if (!KernelHasGroupIdX())
             {
-                MissingKernelAttributeError("Kernel", GROUP_ID_X_STRING);
+                MissingKernelAttributeError(GROUP_ID_X_STRING);
             }
 
-            if (KernelHasIdY() || KernelHasGroupSizeY() || KernelHasNumGroupsY() || KernelHasGroupIdY())
+            if (!KernelHasIdY())
             {
-
-                if (!KernelHasIdY())
-                {
-                    MissingKernelAttributeError("2D kernel", LOCAL_ID_Y_STRING);
-                }
-
-                if (!KernelHasGroupSizeY())
-                {
-                    MissingKernelAttributeError("2D kernel", GROUP_SIZE_Y_STRING);
-                }
-
-                if (!KernelHasNumGroupsY())
-                {
-                    MissingKernelAttributeError("2D kernel", NUM_GROUPS_Y_STRING);
-                }
-
-                if (!KernelHasGroupIdY())
-                {
-                    MissingKernelAttributeError("2D kernel", GROUP_ID_Y_STRING);
-                }
-
+                MissingKernelAttributeError(LOCAL_ID_Y_STRING);
             }
 
-            if (KernelHasIdZ() || KernelHasGroupSizeZ() || KernelHasNumGroupsZ() || KernelHasGroupIdZ())
+            if (!KernelHasGroupSizeY())
             {
+                MissingKernelAttributeError(GROUP_SIZE_Y_STRING);
+            }
 
-                if (!KernelHasIdY())
-                {
-                    MissingKernelAttributeError("3D kernel", LOCAL_ID_Y_STRING);
-                }
+            if (!KernelHasNumGroupsY())
+            {
+                MissingKernelAttributeError(NUM_GROUPS_Y_STRING);
+            }
 
-                if (!KernelHasGroupSizeY())
-                {
-                    MissingKernelAttributeError("3D kernel", GROUP_SIZE_Y_STRING);
-                }
+            if (!KernelHasGroupIdY())
+            {
+                MissingKernelAttributeError(GROUP_ID_Y_STRING);
+            }
 
-                if (!KernelHasNumGroupsY())
-                {
-                    MissingKernelAttributeError("3D kernel", NUM_GROUPS_Y_STRING);
-                }
+            if (!KernelHasIdY())
+            {
+                MissingKernelAttributeError(LOCAL_ID_Y_STRING);
+            }
 
-                if (!KernelHasGroupIdY())
-                {
-                    MissingKernelAttributeError("3D kernel", GROUP_ID_Y_STRING);
-                }
+            if (!KernelHasGroupSizeY())
+            {
+                MissingKernelAttributeError(GROUP_SIZE_Y_STRING);
+            }
 
-                if (!KernelHasIdZ())
-                {
-                    MissingKernelAttributeError("3D kernel", LOCAL_ID_Z_STRING);
-                }
+            if (!KernelHasNumGroupsY())
+            {
+                MissingKernelAttributeError(NUM_GROUPS_Y_STRING);
+            }
 
-                if (!KernelHasGroupSizeZ())
-                {
-                    MissingKernelAttributeError("3D kernel", GROUP_SIZE_Z_STRING);
-                }
+            if (!KernelHasGroupIdY())
+            {
+                MissingKernelAttributeError(GROUP_ID_Y_STRING);
+            }
 
-                if (!KernelHasNumGroupsZ())
-                {
-                    MissingKernelAttributeError("3D kernel", NUM_GROUPS_Z_STRING);
-                }
+            if (!KernelHasIdZ())
+            {
+                MissingKernelAttributeError(LOCAL_ID_Z_STRING);
+            }
 
-                if (!KernelHasGroupIdZ())
-                {
-                    MissingKernelAttributeError("3D kernel", GROUP_ID_Z_STRING);
-                }
+            if (!KernelHasGroupSizeZ())
+            {
+                MissingKernelAttributeError(GROUP_SIZE_Z_STRING);
+            }
 
+            if (!KernelHasNumGroupsZ())
+            {
+                MissingKernelAttributeError(NUM_GROUPS_Z_STRING);
+            }
 
+            if (!KernelHasGroupIdZ())
+            {
+                MissingKernelAttributeError(GROUP_ID_Z_STRING);
             }
 
             return ErrorCount;
         }
 
-        private void MissingKernelAttributeError(string kindOfKernel, string attribute)
+        private void MissingKernelAttributeError(string attribute)
         {
-            Error(KernelProcedure.tok, kindOfKernel + " must declare global constant marked with attribute ':" + attribute + "'");
+            Error(KernelProcedure.tok, "Kernel must declare global constant marked with attribute ':" + attribute + "'");
         }
 
         public static bool IsThreadLocalIdConstant(Variable variable)

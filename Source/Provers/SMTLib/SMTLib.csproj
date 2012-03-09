@@ -191,10 +191,6 @@
       <Project>{E1F10180-C7B9-4147-B51F-FA1B701966DC}</Project>
       <Name>VCGeneration</Name>
     </ProjectReference>
-    <ProjectReference Include="..\Simplify\Simplify.csproj">
-      <Project>{FEE9F01B-9722-4A76-A24B-72A4016DFA8E}</Project>
-      <Name>Simplify</Name>
-    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Properties\" />
