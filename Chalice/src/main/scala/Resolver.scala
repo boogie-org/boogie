@@ -54,6 +54,15 @@ object Resolver {
  }
 
  def Resolve(prog: List[TopLevelDecl]): ResolverOutcome = {
+ 
+   // check for deprecates and/or unsupported constructs
+   var refinements = false
+   prog map (_ match {
+     case c: Class => if (c.IsRefinement) refinements = true
+     case _ => }
+   )
+   if (refinements) throw new NotSupportedException("stepwise refinements are currently not supported")
+ 
    // register the channels as well as the classes and their members
    var decls = Map[String,TopLevelDecl]()
    for (decl <- BoolClass :: IntClass :: RootClass :: NullClass :: StringClass :: MuClass :: prog) {
