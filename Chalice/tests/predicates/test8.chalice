@@ -1,0 +1,55 @@
+// fold/unfold in various combinations
+class FUFU
+{
+  var value:int;
+  var next:FUFU;
+  
+  predicate inv { acc(value) }
+  
+  predicate tinv { acc(value) && acc(next) && (next!=null ==> next.tinv) }
+  
+  function get():int
+    requires tinv;
+  { unfolding tinv in value }
+
+  method fufu()
+    requires acc(value);
+  {
+    fold inv;
+    unfold inv;
+    fold inv;
+    unfold inv;
+  }
+  
+  method fuf()
+    requires acc(value);
+  {
+    fold inv;
+    unfold inv;
+    fold inv;
+  }  
+  
+  method uf()
+    requires inv;
+  {
+    unfold inv;
+    fold inv;
+  }
+  
+  method fu()
+    requires acc(value);
+  {
+    fold inv;
+    unfold inv;
+  }
+  
+  method t()
+    requires tinv && unfolding tinv in next!=null;
+    ensures tinv && unfolding tinv in next!=null;
+  {
+    unfold tinv;
+    unfold next.tinv;
+    fold next.tinv;
+    fold tinv;
+  }
+}

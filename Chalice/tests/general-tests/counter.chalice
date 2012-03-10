@@ -53,9 +53,10 @@ class Program {
   }
 
   method doRelease(c: Counter, i: int)
-    requires c!=null && holds(c) && acc(c.value) && eval(c.acquire, acc(c.value) && i<=c.value);
+    requires c!=null && holds(c) && acc(c.value) && eval(c.acquire, acc(c.value) && c.value <= i);
     lockchange c;
   {
+    c.value := i+1
     release c; // ok, because of atAcquire conjunct in the precondition
   }
 
