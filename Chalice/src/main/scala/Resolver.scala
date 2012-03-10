@@ -54,6 +54,15 @@ object Resolver {
  }
 
  def Resolve(prog: List[TopLevelDecl]): ResolverOutcome = {
+ 
+   // check for deprecates and/or unsupported constructs
+   var refinements = false
+   prog map (_ match {
+     case c: Class => if (c.IsRefinement) refinements = true
+     case _ => }
+   )
+   if (refinements) throw new NotSupportedException("stepwise refinements are currently not supported")
+ 
    // register the channels as well as the classes and their members
    var decls = Map[String,TopLevelDecl]()
    for (decl <- BoolClass :: IntClass :: RootClass :: NullClass :: StringClass :: MuClass :: prog) {
@@ -900,6 +909,8 @@ object Resolver {
      mx.typ = MuClass
    case mx:LockBottomLiteral =>
      mx.typ = MuClass
+   case _:BoogieExpr =>
+     throw new InternalErrorException("boogie expression unexpected here")
    case r:Result =>
      assert(context.currentMember!=null);
      r.typ = IntClass
@@ -1237,6 +1248,7 @@ object Resolver {
    case _:VariableExpr =>
    case _:ThisExpr =>
    case _:Result =>
+   case _:BoogieExpr =>
    case MemberAccess(e, id) =>
      CheckRunSpecification(e, context, false)
    case Frac(perm) => CheckRunSpecification(perm, context, false)

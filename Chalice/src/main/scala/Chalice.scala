@@ -274,43 +274,96 @@ object Chalice {
       case Some(p) => p
       case None => return //invalid arguments, help has been displayed
     }
-
-    val program = parsePrograms(params) match {
-      case Some(p) => p
-      case None => return //illegal program, errors have already been displayed
-    }
-
-    if(!params.doTypecheck || !typecheckProgram(params, program))
-      return ;
     
-    if (params.printProgram) {
-      Console.out.println("Program after type checking: ");
-      PrintProgram.P(program)
-    }
-    
-    if(!params.doTranslate)
-      return;
-    
-    // checking if Boogie.exe exists (on non-Linux machine)
-    val boogieFile = new File(params.boogiePath);
-    if(! boogieFile.exists() || ! boogieFile.isFile()
-            && (System.getProperty("os.name") != "Linux")) {
-      CommandLineError("Boogie.exe not found at " + params.boogiePath, params.getHelp()); 
-      return;
-    }
-    
-    val showFullStackTrace = params.showFullStackTrace
-    val boogiePath = params.boogiePath
-    val boogieArgs = params.boogieArgs
-    
-    // translate program to Boogie
-    val translator = new Translator();
-    var bplProg: List[Boogie.Decl] = Nil
     try {
+
+      val program = parsePrograms(params) match {
+        case Some(p) => p
+        case None => return //illegal program, errors have already been displayed
+      }
+      
+      if(!params.doTypecheck || !typecheckProgram(params, program))
+        return ;
+      
+      if (params.printProgram) {
+        Console.out.println("Program after type checking: ");
+        PrintProgram.P(program)
+      }
+      
+      if(!params.doTranslate)
+        return;
+      
+      // checking if Boogie.exe exists (on non-Linux machine)
+      val boogieFile = new File(params.boogiePath);
+      if(! boogieFile.exists() || ! boogieFile.isFile()
+              && (System.getProperty("os.name") != "Linux")) {
+        CommandLineError("Boogie.exe not found at " + params.boogiePath, params.getHelp()); 
+        return;
+      }
+      
+      val boogiePath = params.boogiePath
+      val boogieArgs = params.boogieArgs
+      
+      // translate program to Boogie
+      val translator = new Translator();
+      var bplProg: List[Boogie.Decl] = Nil
       bplProg = translator.translateProgram(program);
+      
+      // write to out.bpl
+      val bplText = TranslatorPrelude.P + (bplProg map Boogie.Print).foldLeft(""){ (a, b) => a + b };
+      val bplFilename = if (vsMode) "c:\\tmp\\out.bpl" else "out.bpl"
+      writeFile(bplFilename, bplText);
+      // run Boogie.exe on out.bpl
+      val boogie = Runtime.getRuntime.exec(boogiePath + " /errorTrace:0 " + boogieArgs + bplFilename);
+      // terminate boogie if interrupted
+      Runtime.getRuntime.addShutdownHook(new Thread(new Runnable() {
+        def run {
+          try {
+            val kill = Runtime.getRuntime.exec("taskkill /T /F /IM Boogie.exe");
+            kill.waitFor;
+          } catch {case _ => }
+          // just to be sure
+          boogie.destroy
+        }
+      }))
+      // the process blocks until we exhaust input and error streams
+      new Thread(new Runnable() {
+        def run {
+          val err = new BufferedReader(new InputStreamReader(boogie.getErrorStream));
+          var line = err.readLine;
+          while(line!=null) {Console.err.println(line); Console.err.flush}
+        }
+      }).start;
+      val input = new BufferedReader(new InputStreamReader(boogie.getInputStream));
+      var line = input.readLine();
+      var previous_line = null: String;
+      val boogieOutput: ListBuffer[String] = new ListBuffer()
+      while (line!=null){
+        if (!smoke) {
+          Console.out.println(line);
+          Console.out.flush;
+        }
+        boogieOutput += line
+        previous_line = line;
+        line = input.readLine();
+      }
+      boogie.waitFor;
+      input.close;
+      
+      // smoke test output
+      if (smoke) {
+        val output = SmokeTest.processBoogieOutput(boogieOutput.toList)
+        Console.out.println(output);
+        Console.out.flush;
+      }
+      
+      // generate code
+      if(params.gen && (previous_line != null) && previous_line.endsWith(" 0 errors")) { // hack
+        generateCSharpCode(params, program)
+      }
     } catch {
       case e:InternalErrorException => {
-        if (showFullStackTrace) {
+        if (params.showFullStackTrace) {
           e.printStackTrace()
           Console.err.println()
           Console.err.println()
@@ -319,7 +372,7 @@ object Chalice {
         return
       }
       case e:NotSupportedException => {
-        if (showFullStackTrace) {
+        if (params.showFullStackTrace) {
           e.printStackTrace()
           Console.err.println()
           Console.err.println()
@@ -327,60 +380,6 @@ object Chalice {
         CommandLineError("Not supported: " + e.msg, params.getHelp())
         return
       }
-    }
-    
-    
-    // write to out.bpl
-    val bplText = TranslatorPrelude.P + (bplProg map Boogie.Print).foldLeft(""){ (a, b) => a + b };
-    val bplFilename = if (vsMode) "c:\\tmp\\out.bpl" else "out.bpl"
-    writeFile(bplFilename, bplText);
-    // run Boogie.exe on out.bpl
-    val boogie = Runtime.getRuntime.exec(boogiePath + " /errorTrace:0 " + boogieArgs + bplFilename);
-    // terminate boogie if interrupted
-    Runtime.getRuntime.addShutdownHook(new Thread(new Runnable() {
-      def run {
-        try {
-          val kill = Runtime.getRuntime.exec("taskkill /T /F /IM Boogie.exe");
-          kill.waitFor;
-        } catch {case _ => }
-        // just to be sure
-        boogie.destroy
-      }
-    }))
-    // the process blocks until we exhaust input and error streams
-    new Thread(new Runnable() {
-      def run {
-        val err = new BufferedReader(new InputStreamReader(boogie.getErrorStream));
-        var line = err.readLine;
-        while(line!=null) {Console.err.println(line); Console.err.flush}
-      }
-    }).start;
-    val input = new BufferedReader(new InputStreamReader(boogie.getInputStream));
-    var line = input.readLine();
-    var previous_line = null: String;
-    val boogieOutput: ListBuffer[String] = new ListBuffer()
-    while (line!=null){
-      if (!smoke) {
-        Console.out.println(line);
-        Console.out.flush;
-      }
-      boogieOutput += line
-      previous_line = line;
-      line = input.readLine();
-    }
-    boogie.waitFor;
-    input.close;
-    
-    // smoke test output
-    if (smoke) {
-      val output = SmokeTest.processBoogieOutput(boogieOutput.toList)
-      Console.out.println(output);
-      Console.out.flush;
-    }
-   
-    // generate code
-    if(params.gen && (previous_line != null) && previous_line.endsWith(" 0 errors")) { // hack
-      generateCSharpCode(params, program)
     }
   }
   
