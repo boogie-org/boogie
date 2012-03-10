@@ -55,6 +55,7 @@ object Chalice {
     val boogieArgs: String 
     val gen: Boolean
     val showFullStackTrace: Boolean
+    val noBplFile: Boolean
     def getHelp(): String
   }
   
@@ -68,6 +69,7 @@ object Chalice {
     var aPrintProgram = false
     var aDoTypecheck = true
     var aDoTranslate = true
+    var aNoBplFile = false
     var aBoogieArgs = " ";
     var aGen = false;
     var aShowFullStackTrace = false
@@ -92,6 +94,9 @@ object Chalice {
      "checkLeaks" -> (
        {() => checkLeaks = true},
        "(no description available)"),
+     "noBplFile" -> (
+       {() => aNoBplFile = true},
+       "Do not generate a .bpl file, but pass the intermediate program directly to Boogie."),
      "noDeadlockChecks" -> (
        {() => skipDeadlockChecks = true},
        "skip all lock ordering checks"),
@@ -216,6 +221,7 @@ object Chalice {
         val boogieArgs = aBoogieArgs 
         val gen = aGen 
         val showFullStackTrace = aShowFullStackTrace
+        val noBplFile = aNoBplFile
         def getHelp(): String = help
     })
   }
@@ -311,18 +317,18 @@ object Chalice {
       
       // write to out.bpl
       val bplText = TranslatorPrelude.P + (bplProg map Boogie.Print).foldLeft(""){ (a, b) => a + b };
-      val bplFilename = if (vsMode) "c:\\tmp\\out.bpl" else "out.bpl"
-      writeFile(bplFilename, bplText);
+      val bplFilename = if (vsMode) "c:\\tmp\\out.bpl" else (if (params.noBplFile) "stdin.bpl" else "out.bpl")
+      if (!params.noBplFile) writeFile(bplFilename, bplText);
       // run Boogie.exe on out.bpl
       val boogie = Runtime.getRuntime.exec(boogiePath + " /errorTrace:0 " + boogieArgs + bplFilename);
+      if (params.noBplFile) {
+        val output = boogie.getOutputStream()
+        output.write(bplText.getBytes)
+        output.close
+      }
       // terminate boogie if interrupted
       Runtime.getRuntime.addShutdownHook(new Thread(new Runnable() {
         def run {
-          try {
-            val kill = Runtime.getRuntime.exec("taskkill /T /F /IM Boogie.exe");
-            kill.waitFor;
-          } catch {case _ => }
-          // just to be sure
           boogie.destroy
         }
       }))
