@@ -1612,6 +1612,9 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
         // pick new k
         val (unfoldingKV, unfoldingK) = Boogie.NewBVar("unfoldingK", tint, true)
         
+        // record folded predicate
+        etran.fpi.addFoldedPredicate()
+        
         Comment("unfolding") ::
         BLocal(unfoldingKV) :: bassume(0 < unfoldingK && 1000*unfoldingK < percentPermission(1)) ::
         // check definedness
@@ -1623,6 +1626,9 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
         tmpTranslator.ExhaleDuringUnfold(List((acc, ErrorMessage(unfolding.pos, "Unfolding might fail."))), "unfolding", false, unfoldingK, false) :::
         // inhale the definition of the predicate
         tmpTranslator.Inhale(List(definition), "unfolding", false, unfoldingK) :::
+        // remove secondary permissions (if any), and add them again
+        etran.UpdateSecMaskDuringUnfold(pred.predicate, Tr(obj), etran.Heap.select(Tr(obj), pred.predicate.FullName), perm, unfoldingK) :::
+        TransferPermissionToSecMask(pred.predicate, obj, perm, unfolding.pos) :::
         // check definedness of e in state where the predicate is unfolded
         tmpTranslator.isDefined(e)
       case Iff(e0,e1) =>
@@ -2048,8 +2054,11 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
       BLocal(flagV) :: (flag := true) ::
       functionTrigger(o, pred.predicate) ::
       BLocal(versionV) :: (version := etran.Heap.select(o, pred.predicate.FullName)) ::
-      (if(check) isDefined(uf)(true) else Nil) :::
-      TransferPermissionToSecMask(pred.predicate, BoogieExpr(receiver), perm, uf.pos) :::
+      (if(check) isDefined(uf)(true) else
+        // remove secondary permissions (if any), and add them again
+        etran.UpdateSecMaskDuringUnfold(pred.predicate, o, etran.Heap.select(o, pred.predicate.FullName), perm, currentK) :::
+        TransferPermissionToSecMask(pred.predicate, BoogieExpr(receiver), perm, uf.pos)
+      ) :::
       bassume(Tr(uf))
       
       // record folded predicate
