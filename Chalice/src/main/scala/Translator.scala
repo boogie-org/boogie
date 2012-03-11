@@ -522,14 +522,10 @@ class Translator {
         translateStatements(ss, methodK)
       case IfStmt(guard, then, els) =>
         val (condV, cond) = Boogie.NewBVar("cond", tbool, true)
-        val oldConditions = etran.fpi.currentConditions
-        etran.fpi.currentConditions += ((cond, true))
         val tt = translateStatement(then, methodK)
         val et = els match {
           case None => Nil
           case Some(els) =>
-            etran.fpi.currentConditions = oldConditions
-            etran.fpi.currentConditions += ((cond, false))
             translateStatement(els, methodK)
         }
         Comment("if") ::
@@ -704,7 +700,7 @@ class Translator {
         bassume(wf(etran.Heap, etran.Mask, etran.SecMask))
         
         // record folded predicate
-        etran.fpi.addFoldedPredicate(FoldedPredicate(pred.predicate, receiver, version, etran.fpi.currentConditions, flag))
+        etran.fpi.addFoldedPredicate()
         
         stmts
       case unfld@Unfold(acc@Access(pred@MemberAccess(e, f), perm:Permission)) =>
@@ -1456,28 +1452,21 @@ case class FoldedPredicate(predicate: Predicate, receiver: Expr, version: Expr, 
 /** All information that we need to keep track of about folded predicates. */
 class FoldedPredicatesInfo {
   
-  private var foldedPredicates: List[FoldedPredicate] = List()
-  var currentConditions: Set[(VarExpr,Boolean)] = Set()
+  private var depth = 0
   
   /** Add a predicate that we have folded */
-  def addFoldedPredicate(predicate: FoldedPredicate) {
-    foldedPredicates ::= predicate
+  def addFoldedPredicate() {
+    depth += 1
   }
   
   /** Start again with the empty information about folded predicates. */
   def reset {
-    foldedPredicates = List()
-    currentConditions = Set()
-  }
-  
-  /** return a list of folded predicates that might match for predicate */
-  def getFoldedPredicates(predicate: Predicate): List[FoldedPredicate] = {
-    foldedPredicates filter (fp => fp.predicate.FullName == predicate.FullName)
+    depth = 0
   }
   
   /** get an upper bound on the recursion depth when updating the secondary mask */
-  def getRecursionBound(predicate: Predicate): Int = {
-    foldedPredicates length
+  def getRecursionBound(): Int = {
+    depth
   }
   
 }
@@ -2064,7 +2053,7 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
       bassume(Tr(uf))
       
       // record folded predicate
-      etran.fpi.addFoldedPredicate(FoldedPredicate(pred.predicate, receiver, version, etran.fpi.currentConditions, flag))
+      etran.fpi.addFoldedPredicate()
       
       stmts
     case e =>
@@ -2111,28 +2100,26 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
    * would get generated. Recursion is bouded by the parameter depth.
    */
   def UpdateSecMask(predicate: Predicate, receiver: Expr, version: Expr, perm: Permission, currentK: Expr): List[Stmt] = {
-    val depth = etran.fpi.getRecursionBound(predicate)
+    val depth = etran.fpi.getRecursionBound()
     UpdateSecMask(predicate, receiver, version, perm, currentK, depth, Map())
   }
   def UpdateSecMaskDuringUnfold(predicate: Predicate, receiver: Expr, version: Expr, perm: Permission, currentK: Expr): List[Stmt] = {
-    UpdateSecMask(predicate, receiver, version, perm, currentK, 1, Map())
+    UpdateSecMask(predicate, receiver, version, perm, currentK, 1, Map(), true)
   }
-  def UpdateSecMask(predicate: Predicate, receiver: Expr, version: Expr, perm: Permission, currentK: Expr, depth: Int, previousReceivers: Map[String,List[Expr]]): List[Stmt] = {
+  def UpdateSecMask(predicate: Predicate, receiver: Expr, version: Expr, perm: Permission, currentK: Expr, depth: Int, previousReceivers: Map[String,List[Expr]]): List[Stmt] = UpdateSecMask(predicate, receiver, version, perm, currentK, depth, previousReceivers, false)
+  def UpdateSecMask(predicate: Predicate, receiver: Expr, version: Expr, perm: Permission, currentK: Expr, depth: Int, previousReceivers: Map[String,List[Expr]], duringUnfold: Boolean): List[Stmt] = {
     assert (depth >= 0)
     if (depth <= 0) return Nil
     
     val definition = scaleExpressionByPermission(SubstThis(DefinitionOf(predicate), BoogieExpr(receiver)), perm, NoPosition)
     val occasion = "update SecMask"
     
-    // condition: if any folded predicate matches (both receiver and version), update the secondary map
-    val disj = (for (fp <- etran.fpi.getFoldedPredicates(predicate)) yield {
-        val conditions = (fp.conditions map (c => if (c._2) c._1 else !c._1)).foldLeft(true: Expr){ (a: Expr, b: Expr) => a && b }
-        val b = fp.version ==@ version && fp.receiver ==@ receiver && conditions && fp.flag
-        (b, fp.flag)
-      })
-    val b = (disj map (a => a._1)).foldLeft(false: Expr){ (a: Expr, b: Expr) => a || b }
+    // recursively update if there is secondary permission available
+    val b = if (etran.fpi.getRecursionBound() == depth || duringUnfold) Boogie.BoolLiteral(true) else CanReadForSure2(receiver, predicate.FullName)
     
     // add receiver to list of previous receivers
+    // TODO remove previous receiver
+    // TODO make conditioanls simple again
     val newPreviousReceivers = previousReceivers + (predicate.FullName -> (receiver :: previousReceivers.getOrElse(predicate.FullName, Nil)))
 
     // assumption that the current receiver is different from all previous ones
@@ -2143,7 +2130,6 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
     Boogie.If(b,
       // remove correct predicate from the auxiliary information by setting
       // its flag to false
-      (disj.foldLeft(Nil: List[Stmt]){ (a: List[Stmt], b: (Expr, Expr)) => Boogie.If(b._1,/*(b._2 := false) :: */Nil,a) :: Nil }) :::
       // asserts are converted to assumes, so error messages do not matter
       assert2assume(Exhale(SecMask, SecMask, List((definition, ErrorMessage(NoPosition, ""))), occasion, false, currentK, false /* it should not important what we pass here */, false, depth-1, true, newPreviousReceivers, false)),
       Nil) :: Nil
@@ -2206,13 +2192,16 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
     (perm.permissionType match {
       case PermissionType.Mixed =>
         bassert(f > 0 || (f == 0 && n > 0), error.pos, error.message + " The permission at " + pos + " might not be positive.") ::
-        DecPermissionBoth(obj, memberName, f, n, em, error, pos, exactchecking)
+        (if (isUpdatingSecMask) DecPermissionBoth2(obj, memberName, f, n, em, error, pos, exactchecking)
+        else DecPermissionBoth(obj, memberName, f, n, em, error, pos, exactchecking))
       case PermissionType.Epsilons =>
         bassert(n > 0, error.pos, error.message + " The permission at " + pos + " might not be positive.") ::
-        DecPermissionEpsilon(obj, memberName, n, em, error, pos)
+        (if (isUpdatingSecMask) DecPermissionEpsilon2(obj, memberName, n, em, error, pos)
+        else DecPermissionEpsilon(obj, memberName, n, em, error, pos))
       case PermissionType.Fraction =>
         bassert(f > 0, error.pos, error.message + " The permission at " + pos + " might not be positive.") ::
-        DecPermission(obj, memberName, f, em, error, pos, exactchecking)
+        (if (isUpdatingSecMask) DecPermission2(obj, memberName, f, em, error, pos, exactchecking)
+        else DecPermission(obj, memberName, f, em, error, pos, exactchecking))
     })
     
     if (isUpdatingSecMask)
@@ -2268,11 +2257,6 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
                    bassert(nonNull(Tr(e.e)), error.pos, error.message + " The target of the acc predicate at " + acc.pos + " might be null.") else Nil) :::
         // if the mask does not contain sufficient permissions, try folding acc(e, fraction)
         // TODO: include automagic again
-        // check that the necessary permissions are there and remove them from the mask
-        ExhalePermission(perm, trE, memberName, currentK, acc.pos, error, m, ec, isUpdatingSecMask) :::
-        // transfer permission to secondary mask if necessary
-        (if (transferPermissionToSecMask) InhalePermission(perm, trE, memberName, currentK, sm)
-        else Nil) :::
         // give up secondary permission to locations of the body of the predicate (also recursively)
         (if (e.isPredicate && !transferPermissionToSecMask)
           (if (isUpdatingSecMask)
@@ -2284,6 +2268,11 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
               UpdateSecMask(e.predicate, trE, Heap.select(trE, memberName), perm, currentK)
             )
           )
+        else Nil) :::
+        // check that the necessary permissions are there and remove them from the mask
+        ExhalePermission(perm, trE, memberName, currentK, acc.pos, error, m, ec, isUpdatingSecMask) :::
+        // transfer permission to secondary mask if necessary
+        (if (transferPermissionToSecMask) InhalePermission(perm, trE, memberName, currentK, sm)
         else Nil) :::
         // update version number (if necessary)
         (if (e.isPredicate && !isUpdatingSecMask)
@@ -2503,6 +2492,7 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
   def CanRead(obj: Boogie.Expr, field: Boogie.Expr): Boogie.Expr = new Boogie.FunctionApp("CanRead", List(Mask, SecMask, obj, field))
   def CanRead(obj: Boogie.Expr, field: String): Boogie.Expr = CanRead(obj, new Boogie.VarExpr(field))
   def CanReadForSure(obj: Boogie.Expr, field: Boogie.Expr): Boogie.Expr = new Boogie.FunctionApp("CanReadForSure", List(Mask, obj, field))
+  def CanReadForSure2(obj: Boogie.Expr, field: Boogie.Expr): Boogie.Expr = new Boogie.FunctionApp("CanReadForSure", List(SecMask, obj, field))
   def CanReadForSure(obj: Boogie.Expr, field: String): Boogie.Expr = CanReadForSure(obj, new Boogie.VarExpr(field))
   def CanWrite(obj: Boogie.Expr, field: Boogie.Expr): Boogie.Expr = new Boogie.FunctionApp("CanWrite", Mask, obj, field)
   def CanWrite(obj: Boogie.Expr, field: String): Boogie.Expr = CanWrite(obj, new Boogie.VarExpr(field))
@@ -2545,6 +2535,41 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
     else bassert(fP > 0, error.pos, error.message + " Insufficient permission at " + pos + " for " + field + ".") :: bassume(howMuch < fP)) :::
     MapUpdate3(mask, obj, field, "perm$N", fC - epsilons) ::
     MapUpdate3(mask, obj, field, "perm$R", fP - howMuch) ::
+    bassume(wf(Heap, Mask, SecMask)) :: Nil
+  }
+  def DecPermission2(obj: Boogie.Expr, field: String, howMuch: Boogie.Expr, mask: Boogie.Expr, error: ErrorMessage, pos: Position, exactchecking: Boolean): List[Boogie.Stmt] = {
+    val fP: Boogie.Expr = new Boogie.MapSelect(mask, obj, field, "perm$R")
+    val fC: Boogie.Expr = new Boogie.MapSelect(mask, obj, field, "perm$N")
+    (if (exactchecking) bassert(howMuch <= fP && (howMuch ==@ fP ==> 0 <= fC), error.pos, error.message + " Insufficient fraction at " + pos + " for " + field + ".") :: Nil
+    else bassert(fP > 0, error.pos, error.message + " Insufficient fraction at " + pos + " for " + field + ".") :: Nil) :::
+    MapUpdate3(mask, obj, field, "perm$R", new Boogie.MapSelect(mask, obj, field, "perm$R") - howMuch) ::
+    Boogie.If(new Boogie.MapSelect(mask, obj, field, "perm$R") < 0,
+        MapUpdate3(mask, obj, field, "perm$R", 0),
+        Nil)
+  }
+  def DecPermissionEpsilon2(obj: Boogie.Expr, field: String, epsilons: Boogie.Expr, mask: Boogie.Expr, error: ErrorMessage, pos: Position): List[Boogie.Stmt] = {
+    val xyz = new Boogie.MapSelect(mask, obj, field, "perm$N")
+    bassert((new Boogie.MapSelect(mask, obj, field, "perm$R") ==@ Boogie.IntLiteral(0)) ==> (epsilons <= xyz), error.pos, error.message + " Insufficient epsilons at " + pos + "  for " + field + ".") ::
+    MapUpdate3(mask, obj, field, "perm$N", new Boogie.MapSelect(mask, obj, field, "perm$N") - epsilons) ::
+    bassume(wf(Heap, Mask, SecMask)) ::
+    Boogie.If(new Boogie.MapSelect(mask, obj, field, "perm$N") < 0,
+        MapUpdate3(mask, obj, field, "perm$N", 0),
+        Nil)
+  }
+  def DecPermissionBoth2(obj: Boogie.Expr, field: String, howMuch: Boogie.Expr, epsilons: Boogie.Expr, mask: Boogie.Expr, error: ErrorMessage, pos: Position, exactchecking: Boolean): List[Boogie.Stmt] = {
+    val fP: Boogie.Expr = new Boogie.MapSelect(mask, obj, field, "perm$R")
+    val fC: Boogie.Expr = new Boogie.MapSelect(mask, obj, field, "perm$N")
+
+    (if (exactchecking) bassert(howMuch <= fP && (howMuch ==@ fP ==> epsilons <= fC), error.pos, error.message + " Insufficient permission at " + pos + " for " + field + ".") :: Nil
+    else bassert(fP > 0, error.pos, error.message + " Insufficient permission at " + pos + " for " + field + ".") :: bassume(howMuch < fP)) :::
+    MapUpdate3(mask, obj, field, "perm$N", fC - epsilons) ::
+    MapUpdate3(mask, obj, field, "perm$R", fP - howMuch) ::
+    Boogie.If(new Boogie.MapSelect(mask, obj, field, "perm$R") < 0,
+        MapUpdate3(mask, obj, field, "perm$R", 0),
+        Nil) ::
+    Boogie.If(new Boogie.MapSelect(mask, obj, field, "perm$N") < 0,
+        MapUpdate3(mask, obj, field, "perm$N", 0),
+        Nil) ::
     bassume(wf(Heap, Mask, SecMask)) :: Nil
   }
 
