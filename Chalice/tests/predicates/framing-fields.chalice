@@ -1,0 +1,24 @@
+class List
+{
+  var value:int;
+  var next:List;
+  predicate valid { acc(value) && acc(next) && (next!=null ==> next.valid) }
+ 
+  method set(x:int, y:int) requires valid; ensures valid; {}
+}
+
+class C
+{
+  method M (x:List, y:List)
+    requires x!=null && y!=null && x!=y && x.valid && y.valid;
+    requires unfolding x.valid in x.next!=y;
+    requires unfolding y.valid in y.next!=x;
+      // the two requirements above are needed, otherwise Chalice cannot prove that the two lists are disjoint
+  {
+    var i: int := unfolding x.valid in x.value;
+    var j: int := unfolding y.valid in y.value;
+    call y.set(0,10);
+    assert unfolding x.valid in (i == x.value); // succeeds
+    assert unfolding y.valid in (j == y.value); // correctly fails to verify
+ }
+}
