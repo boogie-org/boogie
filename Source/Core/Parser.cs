@@ -89,6 +89,7 @@ public static int Parse (string s, string/*!*/ filename, out /*maybe null*/ Prog
     if (parser.errors.count == 0)
     {
       program = Pgm;
+      program.ProcessDatatypeConstructors();
       return 0;
     }
     else
