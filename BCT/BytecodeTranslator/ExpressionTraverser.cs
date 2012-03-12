@@ -1192,7 +1192,7 @@ namespace BytecodeTranslator
       }
       IArrayIndexer/*?*/ arrayIndexer = container as IArrayIndexer;
       if (arrayIndexer != null) {
-        //if (source is IDefaultValue && !arrayIndexer.Type.ResolvedType.IsReferenceType) {
+        if (source is IDefaultValue && !arrayIndexer.Type.ResolvedType.IsReferenceType) {
         //  this.LoadAddressOf(arrayIndexer, target.Instance);
         //  if (!treatAsStatement) {
         //    this.generator.Emit(OperationCode.Dup);
@@ -1203,44 +1203,47 @@ namespace BytecodeTranslator
         //    this.generator.Emit(OperationCode.Ldobj, arrayIndexer.Type);
         //  else
         //    this.StackSize--;
-        //} else {
-        //  ILocalDefinition/*?*/ temp = null;
-        //  IArrayTypeReference arrayType = (IArrayTypeReference)target.Instance.Type;
-        //  this.Traverse(target.Instance);
-        //  this.Traverse(arrayIndexer.Indices);
-        //  if (pushTargetRValue) {
-        //    if (arrayType.IsVector)
-        //      this.generator.Emit(OperationCode.Ldelema);
-        //    else
-        //      this.generator.Emit(OperationCode.Array_Addr, arrayType);
-        //    this.generator.Emit(OperationCode.Dup);
-        //    this.LoadIndirect(arrayType.ElementType);
-        //    if (!treatAsStatement && resultIsInitialTargetRValue) {
-        //      this.generator.Emit(OperationCode.Dup);
-        //      this.StackSize++;
-        //      temp = new TemporaryVariable(source.Type, this.method);
-        //      this.VisitAssignmentTo(temp);
-        //    }
-        //  }
-        //  sourceTraverser(source);
-        //  if (!treatAsStatement && !resultIsInitialTargetRValue) {
-        //    this.generator.Emit(OperationCode.Dup);
-        //    this.StackSize++;
-        //    temp = new TemporaryVariable(source.Type, this.method);
-        //    this.VisitAssignmentTo(temp);
-        //  }
-        //  if (pushTargetRValue) {
-        //    this.StoreIndirect(arrayType.ElementType);
-        //  } else {
-        //    if (arrayType.IsVector)
-        //      this.StoreVectorElement(arrayType.ElementType);
-        //    else
-        //      this.generator.Emit(OperationCode.Array_Set, arrayType);
-        //  }
+        } else {
+          Bpl.IdentifierExpr/*?*/ temp = null;
+          IArrayTypeReference arrayType = (IArrayTypeReference)target.Instance.Type;
+          this.Traverse(target.Instance);
+          var arrayExpr = this.TranslatedExpressions.Pop();
+          this.Traverse(arrayIndexer.Indices);
+          var indexExpr = this.TranslatedExpressions.Pop();
+          if (pushTargetRValue) {
+            var e2 = this.sink.Heap.ReadHeap(arrayExpr, indexExpr, AccessType.Array, this.sink.CciTypeToBoogie(arrayIndexer.Type));
+            this.TranslatedExpressions.Push(e2);
+
+            if (!treatAsStatement && resultIsInitialTargetRValue) {
+                var loc = this.sink.CreateFreshLocal(source.Type);
+                temp = Bpl.Expr.Ident(loc);
+                var e3 = this.TranslatedExpressions.Pop();
+                var cmd = Bpl.Cmd.SimpleAssign(tok, temp, e3);
+                this.StmtTraverser.StmtBuilder.Add(cmd);
+                this.TranslatedExpressions.Push(temp);
+            }
+          }
+          sourceTraverser(source);
+          if (!treatAsStatement && !resultIsInitialTargetRValue) {
+            var loc = this.sink.CreateFreshLocal(source.Type);
+            temp = Bpl.Expr.Ident(loc);
+            var e3 = this.TranslatedExpressions.Pop();
+            var cmd = Bpl.Cmd.SimpleAssign(tok, temp, e3);
+            this.StmtTraverser.StmtBuilder.Add(cmd);
+            this.TranslatedExpressions.Push(temp);
+          }
+          //if (pushTargetRValue) {
+          //  this.StoreIndirect(arrayType.ElementType);
+          //} else {
+          //  if (arrayType.IsVector)
+          //    this.StoreVectorElement(arrayType.ElementType);
+          //  else
+          //    this.generator.Emit(OperationCode.Array_Set, arrayType);
+          //}
         //  this.StackSize -= (ushort)(IteratorHelper.EnumerableCount(arrayIndexer.Indices) + 2);
         //  if (temp != null) this.LoadLocal(temp);
-        //}
-        //return;
+        }
+        return;
       }
       IAddressDereference/*?*/ addressDereference = container as IAddressDereference;
       if (addressDereference != null) {
