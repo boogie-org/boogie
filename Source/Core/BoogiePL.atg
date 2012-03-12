@@ -70,6 +70,7 @@ public static int Parse (string s, string/*!*/ filename, out /*maybe null*/ Prog
     if (parser.errors.count == 0)
     {
       program = Pgm;
+      program.ProcessDatatypeConstructors();
       return 0;
     }
     else
@@ -115,9 +116,14 @@ CHARACTERS
   cr        = '\r'.
   lf        = '\n'.
   tab       = '\t'.
-
+  
   space = ' '.
   quote = '"'.
+
+  newLine = cr + lf.
+  hexDigit = digit + "ABCDEFabcdef".
+  /* Rustan's original suggestion: regularStringChar = ANY - quote - '\\' - newLine. */
+  regularStringChar = ANY - quote - newLine.
 
   nondigit = letter + special.
   nonquote = letter + digit + space + glyph.
@@ -128,7 +134,16 @@ TOKENS
   ident =  [ '\\' ] nondigit {nondigit | digit}.
   bvlit = digit {digit} 'b' 'v' digit {digit}.
   digits = digit {digit}.
-  string = quote {nonquote} quote.
+
+  string =
+    quote { regularStringChar
+       | "\\\'" | "\\\"" | "\\\\" | "\\0" | "\\a" | "\\b" | "\\f" | "\\n" | "\\r" | "\\t" | "\\v"
+       | "\\x" hexDigit [hexDigit] [hexDigit] [hexDigit]
+       | "\\u" hexDigit hexDigit hexDigit hexDigit
+       | "\\U" hexDigit hexDigit hexDigit hexDigit hexDigit hexDigit hexDigit hexDigit
+       } 
+    quote.
+
   float = digit {digit} '.' {digit}.
 
 COMMENTS FROM "/*" TO "*/" NESTED
