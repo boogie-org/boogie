@@ -21,7 +21,7 @@ prover           Use    Tests checking various prover options
 test17           Postponed    Tests inference of parameterized contracts
 z3api            Postponed    Test for Z3 Managed .NET API prover
 houdini          Use    Test for Houdini decision procedure
-datatypes        Use	Test for datatypes
+datatypes        SoonToBeIncluded	Test for datatypes
 generalizedarray Use	Test for generalized array theory
 livevars         Use    STORM benchmarks for testing correctness of live variable analysis
 lazyinline       Postponed    Lazy inlining benchmarks
