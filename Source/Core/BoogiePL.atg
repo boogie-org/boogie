@@ -121,8 +121,6 @@ CHARACTERS
   quote = '"'.
 
   newLine = cr + lf.
-  hexDigit = digit + "ABCDEFabcdef".
-  /* Rustan's original suggestion: regularStringChar = ANY - quote - '\\' - newLine. */
   regularStringChar = ANY - quote - newLine.
 
   nondigit = letter + special.
@@ -135,14 +133,7 @@ TOKENS
   bvlit = digit {digit} 'b' 'v' digit {digit}.
   digits = digit {digit}.
 
-  string =
-    quote { regularStringChar
-       | "\\\'" | "\\\"" | "\\\\" | "\\0" | "\\a" | "\\b" | "\\f" | "\\n" | "\\r" | "\\t" | "\\v"
-       | "\\x" hexDigit [hexDigit] [hexDigit] [hexDigit]
-       | "\\u" hexDigit hexDigit hexDigit hexDigit
-       | "\\U" hexDigit hexDigit hexDigit hexDigit hexDigit hexDigit hexDigit hexDigit
-       } 
-    quote.
+  string = quote { regularStringChar | "\\\"" } quote.
 
   float = digit {digit} '.' {digit}.
 

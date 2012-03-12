@@ -23,3 +23,16 @@ implementation {:id 2} foo(x : int) returns(n : int)
 }
 
 type ref, any, name;
+
+
+// allow \" and other backslashes rather liberally:
+
+procedure
+  {:myAttribute
+        "h\n\"ello\"",
+        "again",
+        "and\\" a\"gain\"",
+        again}
+P();
+
+const again: int;
