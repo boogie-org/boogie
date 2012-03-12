@@ -323,6 +323,9 @@ namespace BytecodeTranslator {
     }
 
     public Bpl.Constant FindOrCreateConstant(string str) {
+      str = str.Replace("\n", "\\n");
+      str = str.Replace("\r", "\\r");
+      str = str.Replace("\"", "\\\"");
       Bpl.Constant c;
       if (!this.declaredStringConstants.TryGetValue(str, out c)) {
         var tok = Bpl.Token.NoToken;
@@ -330,9 +333,6 @@ namespace BytecodeTranslator {
         var name = "$string_literal_" + TranslationHelper.TurnStringIntoValidIdentifier(str) + "_" + declaredStringConstants.Count;
         var tident = new Bpl.TypedIdent(tok, name, t);
         c = new Bpl.Constant(tok, tident, true);
-        str = str.Replace("\n", "\\n");
-        str = str.Replace("\r", "\\r");
-        str = str.Replace("\"", "\u0022");
         var attrib = new Bpl.QKeyValue(Bpl.Token.NoToken, "value", new List<object> { str, }, null);
         c.Attributes = attrib;
         this.declaredStringConstants.Add(str, c);
