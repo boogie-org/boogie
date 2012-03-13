@@ -1616,18 +1616,18 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
       case unfolding@Unfolding(acc@Access(pred@MemberAccess(obj, f), perm), e) =>
         val (tmpGlobalsV, tmpGlobals) = this.FreshGlobals("unfolding")
         val tmpTranslator = new ExpressionTranslator(tmpGlobals, this.oldEtran.globals, currentClass);
+        val o = Tr(obj)
+        val (flagV, flag) = Boogie.NewBVar("predFlag", tbool, true)
         
-        val receiverOk = isDefined(obj) ::: prove(nonNull(Tr(obj)), obj.pos, "Receiver might be null.");
+        val receiverOk = isDefined(obj) ::: prove(nonNull(o), obj.pos, "Receiver might be null.");
         val definition = scaleExpressionByPermission(SubstThis(DefinitionOf(pred.predicate), obj), perm, unfolding.pos)
         
         // pick new k
         val (unfoldingKV, unfoldingK) = Boogie.NewBVar("unfoldingK", tint, true)
         
-        // record folded predicate
-        etran.fpi.addFoldedPredicate()
-        
-        Comment("unfolding") ::
+        val res = Comment("unfolding") ::
         BLocal(unfoldingKV) :: bassume(0 < unfoldingK && 1000*unfoldingK < percentPermission(1)) ::
+        BLocal(flagV) :: (flag := true) ::
         // check definedness
         receiverOk ::: isDefined(perm) :::
         // copy state into temporary variables
@@ -1642,6 +1642,12 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
         TransferPermissionToSecMask(pred.predicate, obj, perm, unfolding.pos) :::
         // check definedness of e in state where the predicate is unfolded
         tmpTranslator.isDefined(e)
+        
+        // record folded predicate
+        val version = etran.Heap.select(o, pred.predicate.FullName)
+        etran.fpi.addFoldedPredicate(FoldedPredicate(pred.predicate, o, version, etran.fpi.currentConditions, flag))
+        
+        res
       case Iff(e0,e1) =>
         isDefined(e0) ::: isDefined(e1)
       case Implies(e0,e1) =>
