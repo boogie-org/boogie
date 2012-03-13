@@ -1,0 +1,13 @@
+class Lala {
+    var x;
+
+    predicate inv { acc(x) }
+
+    method koko()
+        requires inv
+    {
+        x := x + 1;
+        assert (unfolding inv in x) == old(unfolding inv in x)
+    }
+}
+
