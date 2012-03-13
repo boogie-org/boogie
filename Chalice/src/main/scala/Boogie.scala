@@ -222,13 +222,17 @@ object Boogie {
      indent +  "assert " + "{:msg \"" + pos + assert.message + "\"}" + (assert.subsumption match {case Some(n) => "{:subsumption " + n + "}"; case None => ""}) + " " + PrintExpr(e) + ";" + nl
    case Assume(e) => indent + "assume " + PrintExpr(e) +  ";" + nl
    case If(guard, thn, els) =>
+     if (thn == Nil && els == Nil) "" else
      indent + "if (" +
      (if (guard == null) "*" else PrintExpr(guard)) +
      ") {" +  nl + 
      IndentMore { Print(thn, "", PrintStmt)  } + 
-     indent +  "} else {"  + nl + 
-     IndentMore { Print(els, "", PrintStmt)  } + 
-     indent + "}" + nl
+     indent +  "}" +
+     (if (els == Nil) nl else
+       " else {"  + nl + 
+       IndentMore { Print(els, "", PrintStmt)  } + 
+       indent + "}" + nl
+     )
    case Assign(lhs, rhs) =>
      indent + PrintExpr(lhs) + " := " + PrintExpr(rhs) + ";" + nl
    case AssignMap(lhs, index, rhs) =>
