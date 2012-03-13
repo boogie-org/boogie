@@ -1506,6 +1506,13 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
 
   def ChooseEtran(chooseOld: Boolean) = if (chooseOld) oldEtran else this
   
+  def isOldEtran = {
+    Heap match {
+      case Boogie.Old(_) => true
+      case _ => false
+    }
+  }
+  
   /** return a new etran which is identical, expect for the fpi */
   def resetFpi = {
     new ExpressionTranslator(globals, preGlobals, new FoldedPredicatesInfo, currentClass, checkTermination)
@@ -1638,14 +1645,15 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
         // inhale the definition of the predicate
         tmpTranslator.Inhale(List(definition), "unfolding", false, unfoldingK) :::
         // remove secondary permissions (if any), and add them again
-        etran.UpdateSecMaskDuringUnfold(pred.predicate, Tr(obj), etran.Heap.select(Tr(obj), pred.predicate.FullName), perm, unfoldingK) :::
-        TransferPermissionToSecMask(pred.predicate, obj, perm, unfolding.pos) :::
+        (if (isOldEtran) Nil else
+          UpdateSecMaskDuringUnfold(pred.predicate, Tr(obj), Heap.select(Tr(obj), pred.predicate.FullName), perm, unfoldingK) :::
+          TransferPermissionToSecMask(pred.predicate, obj, perm, unfolding.pos)) :::
         // check definedness of e in state where the predicate is unfolded
         tmpTranslator.isDefined(e)
         
         // record folded predicate
-        val version = etran.Heap.select(o, pred.predicate.FullName)
-        etran.fpi.addFoldedPredicate(FoldedPredicate(pred.predicate, o, version, etran.fpi.currentConditions, flag))
+        val version = Heap.select(o, pred.predicate.FullName)
+        if (!isOldEtran) fpi.addFoldedPredicate(FoldedPredicate(pred.predicate, o, version, fpi.currentConditions, flag))
         
         res
       case Iff(e0,e1) =>
@@ -2070,16 +2078,17 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
       val stmts = BLocal(receiverV) :: (receiver := o) ::
       BLocal(flagV) :: (flag := true) ::
       functionTrigger(o, pred.predicate) ::
-      BLocal(versionV) :: (version := etran.Heap.select(o, pred.predicate.FullName)) ::
+      BLocal(versionV) :: (version := Heap.select(o, pred.predicate.FullName)) ::
       (if(check) isDefined(uf)(true) else
+        if (isOldEtran) Nil else
         // remove secondary permissions (if any), and add them again
-        etran.UpdateSecMaskDuringUnfold(pred.predicate, o, etran.Heap.select(o, pred.predicate.FullName), perm, currentK) :::
+        UpdateSecMaskDuringUnfold(pred.predicate, o, Heap.select(o, pred.predicate.FullName), perm, currentK) :::
         TransferPermissionToSecMask(pred.predicate, BoogieExpr(receiver), perm, uf.pos)
       ) :::
       bassume(Tr(uf))
       
       // record folded predicate
-      etran.fpi.addFoldedPredicate(FoldedPredicate(pred.predicate, receiver, version, etran.fpi.currentConditions, flag))
+      if (!isOldEtran) fpi.addFoldedPredicate(FoldedPredicate(pred.predicate, receiver, version, fpi.currentConditions, flag))
       
       stmts
     case e =>
