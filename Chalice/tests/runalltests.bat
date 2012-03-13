@@ -26,7 +26,7 @@ for %%f in (examples permission-model general-tests regressions predicates) do (
 
 REM Run refinement regression tests
 cd refinements
-call test.bat
+REM call test.bat
 cd ..
 
 if !nosummary!==0 (
