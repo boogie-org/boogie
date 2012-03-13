@@ -2221,13 +2221,16 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
     (perm.permissionType match {
       case PermissionType.Mixed =>
         bassert(f > 0 || (f == 0 && n > 0), error.pos, error.message + " The permission at " + pos + " might not be positive.") ::
-        DecPermissionBoth(obj, memberName, f, n, em, error, pos, exactchecking)
+        (if (isUpdatingSecMask) DecPermissionBoth2(obj, memberName, f, n, em, error, pos, exactchecking)
+        else DecPermissionBoth(obj, memberName, f, n, em, error, pos, exactchecking))
       case PermissionType.Epsilons =>
         bassert(n > 0, error.pos, error.message + " The permission at " + pos + " might not be positive.") ::
-        DecPermissionEpsilon(obj, memberName, n, em, error, pos)
+        (if (isUpdatingSecMask) DecPermissionEpsilon2(obj, memberName, n, em, error, pos)
+        else DecPermissionEpsilon(obj, memberName, n, em, error, pos))
       case PermissionType.Fraction =>
         bassert(f > 0, error.pos, error.message + " The permission at " + pos + " might not be positive.") ::
-        DecPermission(obj, memberName, f, em, error, pos, exactchecking)
+        (if (isUpdatingSecMask) DecPermission2(obj, memberName, f, em, error, pos, exactchecking)
+        else DecPermission(obj, memberName, f, em, error, pos, exactchecking))
     })
     
     if (isUpdatingSecMask)
@@ -2519,6 +2522,7 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
   def CanRead(obj: Boogie.Expr, field: String): Boogie.Expr = CanRead(obj, new Boogie.VarExpr(field))
   def CanReadForSure(obj: Boogie.Expr, field: Boogie.Expr): Boogie.Expr = new Boogie.FunctionApp("CanReadForSure", List(Mask, obj, field))
   def CanReadForSure(obj: Boogie.Expr, field: String): Boogie.Expr = CanReadForSure(obj, new Boogie.VarExpr(field))
+  def CanReadForSure2(obj: Boogie.Expr, field: Boogie.Expr): Boogie.Expr = new Boogie.FunctionApp("CanReadForSure", List(SecMask, obj, field))
   def CanWrite(obj: Boogie.Expr, field: Boogie.Expr): Boogie.Expr = new Boogie.FunctionApp("CanWrite", Mask, obj, field)
   def CanWrite(obj: Boogie.Expr, field: String): Boogie.Expr = CanWrite(obj, new Boogie.VarExpr(field))
   def HasNoPermission(obj: Boogie.Expr, field: String) =
@@ -2562,6 +2566,28 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
     MapUpdate3(mask, obj, field, "perm$R", fP - howMuch) ::
     bassume(wf(Heap, Mask, SecMask)) :: Nil
   }
+  def DecPermission2(obj: Boogie.Expr, field: String, howMuch: Boogie.Expr, mask: Boogie.Expr, error: ErrorMessage, pos: Position, exactchecking: Boolean): List[Boogie.Stmt] = {
+    DecPermission(obj, field, howMuch, mask, error, pos, exactchecking) :::
+    Boogie.If(new Boogie.MapSelect(mask, obj, field, "perm$R") < 0,
+        MapUpdate3(mask, obj, field, "perm$R", 0),
+        Nil)
+  }
+  def DecPermissionEpsilon2(obj: Boogie.Expr, field: String, epsilons: Boogie.Expr, mask: Boogie.Expr, error: ErrorMessage, pos: Position): List[Boogie.Stmt] = {
+    DecPermissionEpsilon(obj, field, epsilons, mask, error, pos) :::
+    Boogie.If(new Boogie.MapSelect(mask, obj, field, "perm$N") < 0,
+        MapUpdate3(mask, obj, field, "perm$N", 0),
+        Nil)
+  }
+  def DecPermissionBoth2(obj: Boogie.Expr, field: String, howMuch: Boogie.Expr, epsilons: Boogie.Expr, mask: Boogie.Expr, error: ErrorMessage, pos: Position, exactchecking: Boolean): List[Boogie.Stmt] = {
+    DecPermissionBoth(obj, field, howMuch, epsilons, mask, error, pos, exactchecking) :::
+    Boogie.If(new Boogie.MapSelect(mask, obj, field, "perm$R") < 0,
+        MapUpdate3(mask, obj, field, "perm$R", 0),
+        Nil) ::
+    Boogie.If(new Boogie.MapSelect(mask, obj, field, "perm$N") < 0,
+        MapUpdate3(mask, obj, field, "perm$N", 0),
+        Nil) :: Nil
+  }
+
 
   def MapUpdate3(m: Boogie.Expr, arg0: Boogie.Expr, arg1: String, arg2: String, rhs: Boogie.Expr) = {
     // m[a,b,c] := rhs
