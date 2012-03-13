@@ -790,6 +790,9 @@ object Resolver {
        case c:Class if (c.IsNormalClass) =>
          p = MonitorEpsilon(Some(exp))
          p.pos = a.pos
+       case null =>
+         // ignore, found error earlier
+         p = Star
        case _ =>
          context.Error(a.pos, "type " + typ.FullName + " of variable " + id + " is not supported inside a rd expression.")
          p = Star
