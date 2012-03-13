@@ -56,6 +56,7 @@ object Chalice {
     val gen: Boolean
     val showFullStackTrace: Boolean
     val noBplFile: Boolean
+    val bplFile: String
     def getHelp(): String
   }
   
@@ -69,8 +70,9 @@ object Chalice {
     var aPrintProgram = false
     var aDoTypecheck = true
     var aDoTranslate = true
-    var aNoBplFile = false
-    var aBoogieArgs = " ";
+    var aNoBplFile = true
+    var aBplFile = "out.bpl"
+    var aBoogieArgs = " "
     var aGen = false;
     var aShowFullStackTrace = false
     
@@ -78,7 +80,8 @@ object Chalice {
      "help" -> (
        {() => },
        "print this message"),
-     "print" -> ({() => aPrintProgram = true},"print intermediate versions of the Chalice program"),
+     "print" -> ({() => aNoBplFile = false},"output the Boogie program used for verification to 'out.bpl'"),
+     "printIntermediate" -> ({() => aPrintProgram = true},"print intermediate versions of the Chalice program"),
      "noTranslate" -> (
        {() => aDoTranslate = false},
        "do not translate the program to Boogie (only parse and typecheck)"),
@@ -94,9 +97,6 @@ object Chalice {
      "checkLeaks" -> (
        {() => checkLeaks = true},
        "(no description available)"),
-     "noBplFile" -> (
-       {() => aNoBplFile = true},
-       "Do not generate a .bpl file, but pass the intermediate program directly to Boogie."),
      "noDeadlockChecks" -> (
        {() => skipDeadlockChecks = true},
        "skip all lock ordering checks"),
@@ -131,6 +131,7 @@ object Chalice {
     // help text for options with arguments
     val nonBooleanOptions = ListMap(
       "boogie:<file>" -> "use the executable of Boogie at <file>",
+      "print:<file>" -> "print the Boogie program used for verification into file <file>",
       "defaults:<level>" -> ("defaults to reduce specification overhead\n"+
           "level 0 or below: no defaults\n"+
           "level 1: unfold predicates with receiver this in pre and postconditions\n"+
@@ -157,6 +158,7 @@ object Chalice {
     for (a <- args) {
      if (a == "/help" || a == "-help") {Console.out.println(help); return None}
      else if ((a.startsWith("-") || a.startsWith("/")) && (options contains a.substring(1))) options(a.substring(1))._1()
+     else if (a.startsWith("/print:") || a.startsWith("-print:")) {aBplFile = a.substring(7); aNoBplFile = false}
      else if (a.startsWith("/boogie:") || a.startsWith("-boogie:")) aBoogiePath = a.substring(8)
      else if (a.startsWith("/defaults:") || a.startsWith("-defaults:")) {
        try {
@@ -222,6 +224,7 @@ object Chalice {
         val gen = aGen 
         val showFullStackTrace = aShowFullStackTrace
         val noBplFile = aNoBplFile
+        val bplFile = aBplFile
         def getHelp(): String = help
     })
   }
@@ -317,15 +320,13 @@ object Chalice {
       
       // write to out.bpl
       val bplText = TranslatorPrelude.P + (bplProg map Boogie.Print).foldLeft(""){ (a, b) => a + b };
-      val bplFilename = if (vsMode) "c:\\tmp\\out.bpl" else (if (params.noBplFile) "stdin.bpl" else "out.bpl")
+      val bplFilename = if (vsMode) "c:\\tmp\\out.bpl" else (if (params.noBplFile) "stdin.bpl" else params.bplFile)
       if (!params.noBplFile) writeFile(bplFilename, bplText);
       // run Boogie.exe on out.bpl
-      val boogie = Runtime.getRuntime.exec(boogiePath + " /errorTrace:0 " + boogieArgs + bplFilename);
-      if (params.noBplFile) {
-        val output = boogie.getOutputStream()
-        output.write(bplText.getBytes)
-        output.close
-      }
+      val boogie = Runtime.getRuntime.exec(boogiePath + " /errorTrace:0 " + boogieArgs + "stdin.bpl");
+      val output = boogie.getOutputStream()
+      output.write(bplText.getBytes)
+      output.close
       // terminate boogie if interrupted
       Runtime.getRuntime.addShutdownHook(new Thread(new Runnable() {
         def run {
