@@ -1,0 +1,4 @@
+Verification of internal-bug-3.chalice using parameters="" 
+
+The program did not typecheck.
+5.28: undeclared member non_existing_field in class C

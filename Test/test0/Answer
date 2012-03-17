@@ -186,6 +186,12 @@ type any;
 
 type name;
 
+procedure {:myAttribute "h\n\"ello\"", "again", "and\\" a\"gain\"", again} P();
+
+
+
+const again: int;
+
 Boogie program verifier finished with 0 verified, 0 errors
 AttributeResolution.bpl(1,18): Error: undeclared identifier: foo
 AttributeResolution.bpl(3,18): Error: undeclared identifier: bar

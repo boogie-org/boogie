@@ -473,13 +473,17 @@ namespace Microsoft.Dafny {
         r = new MatchStmt(Tok(s.Tok), CloneExpr(s.Source),
           s.Cases.ConvertAll(c => new MatchCaseStmt(Tok(c.tok), c.Id, c.Arguments.ConvertAll(CloneBoundVar), c.Body.ConvertAll(CloneStmt))));
 
+      } else if (stmt is AssignSuchThatStmt) {
+        var s = (AssignSuchThatStmt)stmt;
+        r = new AssignSuchThatStmt(Tok(s.Tok), s.Lhss.ConvertAll(CloneExpr), CloneExpr(s.Assume.Expr));
+
       } else if (stmt is UpdateStmt) {
         var s = (UpdateStmt)stmt;
         r = new UpdateStmt(Tok(s.Tok), s.Lhss.ConvertAll(CloneExpr), s.Rhss.ConvertAll(CloneRHS), s.CanMutateKnownState);
 
       } else if (stmt is VarDeclStmt) {
         var s = (VarDeclStmt)stmt;
-        r = new VarDeclStmt(Tok(s.Tok), s.Lhss.ConvertAll(c => (VarDecl)CloneStmt(c)), (UpdateStmt)CloneStmt(s.Update));
+        r = new VarDeclStmt(Tok(s.Tok), s.Lhss.ConvertAll(c => (VarDecl)CloneStmt(c)), (ConcreteUpdateStatement)CloneStmt(s.Update));
 
       } else {
         Contract.Assert(false); throw new cce.UnreachableException();  // unexpected statement
@@ -494,7 +498,11 @@ namespace Microsoft.Dafny {
     void AddStmtLabels(Statement s, LabelNode node) {
       if (node != null) {
         AddStmtLabels(s, node.Next);
-        s.Labels = new LabelNode(Tok(node.Tok), node.Label, s.Labels);
+        if (node.Label == null) {
+          // this indicates an implicit-target break statement that has been resolved; don't add it
+        } else {
+          s.Labels = new LabelNode(Tok(node.Tok), node.Label, s.Labels);
+        }
       }
     }
 
@@ -771,8 +779,12 @@ namespace Microsoft.Dafny {
            *   assert ...;                 assert E;                    assert E;
            *   assert E;                                                assert E;
            *   
-           *   var x:=E;                   var x;                       var x:=E;
+           *   var x := E;                 var x;                       var x := E;
+           *   var x := E;                 var x := *;                  var x := E;
+           *   var x := E1;                var x :| E0;                 var x := E1; assert E0;
            *   var VarProduction;                                       var VarProduction;
+           *   
+           *   x := E;                     x := *;                      x := E;
            *   
            *   if ... Then else Else       if (G) Then' else Else'      if (G) Merge(Then,Then') else Merge(Else,Else')
            *   if (G) Then else Else       if (*) Then' else Else'      if (G) Merge(Then,Then') else Merge(Else,Else')
@@ -877,8 +889,55 @@ namespace Microsoft.Dafny {
           } else if (cur is VarDeclStmt) {
             var cNew = (VarDeclStmt)cur;
             var cOld = oldS as VarDeclStmt;
-            if (cOld != null && cNew.Lhss.Count == 1 && cOld.Lhss.Count == 1 && cNew.Lhss[0].Name == cOld.Lhss[0].Name && cOld.Update == null) {
-              // Note, we allow switching between ghost and non-ghost, since that seems unproblematic.
+            bool doMerge = false;
+            Expression addedAssert = null;
+            if (cOld != null && cNew.Lhss.Count == 1 && cOld.Lhss.Count == 1 && cNew.Lhss[0].Name == cOld.Lhss[0].Name) {
+              var update = cNew.Update as UpdateStmt;
+              if (update != null && update.Rhss.Count == 1 && update.Rhss[0] is ExprRhs) {
+                // Note, we allow switching between ghost and non-ghost, since that seems unproblematic.
+                if (cOld.Update == null) {
+                  doMerge = true;
+                } else if (cOld.Update is AssignSuchThatStmt) {
+                  doMerge = true;
+                  addedAssert = CloneExpr(((AssignSuchThatStmt)cOld.Update).Assume.Expr);
+                } else {
+                  var updateOld = (UpdateStmt)cOld.Update;  // if cast fails, there are more ConcreteUpdateStatement subclasses than expected
+                  if (updateOld.Rhss.Count == 1 && updateOld.Rhss[0] is HavocRhs) {
+                    doMerge = true;
+                  }
+                }
+              }
+            }
+            if (doMerge) {
+              // Go ahead with the merge:
+              body.Add(cNew);
+              i++; j++;
+              if (addedAssert != null) {
+                body.Add(new AssertStmt(addedAssert.tok, addedAssert));
+              }
+            } else {
+              MergeAddStatement(cur, body);
+              i++;
+            }
+
+          } else if (cur is AssignStmt) {
+            var cNew = (AssignStmt)cur;
+            var cOld = oldS as AssignStmt;
+            if (cOld == null && oldS is UpdateStmt) {
+              var us = (UpdateStmt)oldS;
+              if (us.ResolvedStatements.Count == 1) {
+                cOld = us.ResolvedStatements[0] as AssignStmt;
+              }
+            }
+            bool doMerge = false;
+            if (cOld != null && cNew.Lhs.Resolved is IdentifierExpr && cOld.Lhs.Resolved is IdentifierExpr) {
+              if (((IdentifierExpr)cNew.Lhs.Resolved).Name == ((IdentifierExpr)cOld.Lhs.Resolved).Name) {
+                if (!(cNew.Rhs is TypeRhs) && cOld.Rhs is HavocRhs) {
+                  doMerge = true;
+                }
+              }
+            }
+            if (doMerge) {
               // Go ahead with the merge:
               body.Add(cNew);
               i++; j++;

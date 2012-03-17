@@ -258,6 +258,7 @@ object PrintProgram {
   }
   def Expr(e: Expression): Unit = Expr(e, 0, false)
   def Expr(e: Expression, contextBindingPower: Int, fragileContext: Boolean): Unit = e match {
+    case BoogieExpr(_) => throw new InternalErrorException("unexpected in pretty printer")
     case IntLiteral(n) => print(n)
     case BoolLiteral(b) => print(b)
     case NullLiteral() => print("null")

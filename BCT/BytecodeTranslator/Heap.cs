@@ -314,8 +314,7 @@ namespace BytecodeTranslator {
       #endregion
 
       #region Parse the declarations
-      var ms = new MemoryStream(ASCIIEncoding.UTF8.GetBytes(preludeText.ToString()));
-      int errorCount = Bpl.Parser.Parse(ms, "foo", new List<string>(), out prelude);
+      int errorCount = Bpl.Parser.Parse(preludeText.ToString(), "foo", out prelude);
       if (prelude == null || errorCount > 0) {
         prelude = null;
         return false;

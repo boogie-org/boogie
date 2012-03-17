@@ -54,26 +54,30 @@ static StructuredCmd/*!*/ dummyStructuredCmd = new BreakCmd(Token.NoToken, null)
 ///the parsed program.
 ///</summary>
 public static int Parse (string/*!*/ filename, /*maybe null*/ List<string/*!*/> defines, out /*maybe null*/ Program program) /* throws System.IO.IOException */ {
-Contract.Requires(filename != null);
-Contract.Requires(cce.NonNullElements(defines,true));
-
-
-  FileStream stream = new FileStream(filename, FileMode.Open, FileAccess.Read, FileShare.Read);
-  var ret = Parse(stream, filename, defines, out program);
-  stream.Close();
-  return ret;
-}
-
-
-public static int Parse (Stream stream, string/*!*/ filename, /*maybe null*/ List<string/*!*/> defines, out /*maybe null*/ Program program) /* throws System.IO.IOException */ {
-Contract.Requires(stream != null);
-Contract.Requires(filename != null);
-Contract.Requires(cce.NonNullElements(defines,true));
+  Contract.Requires(filename != null);
+  Contract.Requires(cce.NonNullElements(defines,true));
 
   if (defines == null) {
     defines = new List<string/*!*/>();
   }
-  string s = ParserHelper.Fill(stream, defines);
+
+  if (filename == "stdin.bpl") {
+    var s = ParserHelper.Fill(Console.In, defines);
+    return Parse(s, filename, out program);
+  } else {
+    FileStream stream = new FileStream(filename, FileMode.Open, FileAccess.Read, FileShare.Read);
+    var s = ParserHelper.Fill(stream, defines);
+    var ret = Parse(s, filename, out program);
+    stream.Close();
+    return ret;
+  }
+}
+
+
+public static int Parse (string s, string/*!*/ filename, out /*maybe null*/ Program program) /* throws System.IO.IOException */ {
+  Contract.Requires(s != null);
+  Contract.Requires(filename != null);
+
   byte[]/*!*/ buffer = cce.NonNull(UTF8Encoding.Default.GetBytes(s));
   MemoryStream ms = new MemoryStream(buffer,false);
   Errors errors = new Errors();

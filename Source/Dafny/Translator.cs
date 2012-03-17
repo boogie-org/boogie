@@ -269,7 +269,7 @@ namespace Microsoft.Dafny {
       }
 
       Bpl.Program prelude;
-      int errorCount = Bpl.Parser.Parse(preludePath, null, out prelude);
+      int errorCount = Bpl.Parser.Parse(preludePath, (List<string>)null, out prelude);
       if (prelude == null || errorCount > 0) {
         return null;
       } else {
@@ -3331,6 +3331,25 @@ namespace Microsoft.Dafny {
           TrStmt(s.hiddenUpdate, builder, locals, etran);
         }
         builder.Add(new Bpl.ReturnCmd(stmt.Tok));
+      } else if (stmt is AssignSuchThatStmt) {
+        var s = (AssignSuchThatStmt)stmt;
+        AddComment(builder, s, "assign-such-that statement");
+        // treat like a parallel havoc, followed by an assume
+        // Here comes the havoc part
+        var lhss = new List<Expression>();
+        var havocRhss = new List<AssignmentRhs>();
+        foreach (var lhs in s.Lhss) {
+          lhss.Add(lhs.Resolved);
+          havocRhss.Add(new HavocRhs(lhs.tok));  // note, a HavocRhs is constructed as already resolved
+        }
+        List<AssignToLhs> lhsBuilder;
+        List<Bpl.IdentifierExpr> bLhss;
+        ProcessLhss(lhss, false, builder, locals, etran, out lhsBuilder, out bLhss);
+        ProcessRhss(lhsBuilder, bLhss, lhss, havocRhss, builder, locals, etran);
+        // End by doing the assume
+        TrStmt(s.Assume, builder, locals, etran);
+        builder.Add(CaptureState(s.Tok));  // just do one capture state--here, at the very end (that is, don't do one before the assume)
+
       } else if (stmt is UpdateStmt) {
         var s = (UpdateStmt)stmt;
         // This UpdateStmt can be single-target assignment, a multi-assignment, a call statement, or
@@ -7072,7 +7091,7 @@ namespace Microsoft.Dafny {
     /// <summary>
     /// Returns true iff 'expr' is a two-state expression, that is, if it mentions "old(...)" or "fresh(...)".
     /// </summary>
-    static bool MentionsOldState(Expression expr) {
+    public static bool MentionsOldState(Expression expr) {
       Contract.Requires(expr != null);
       if (expr is OldExpr || expr is FreshExpr) {
         return true;

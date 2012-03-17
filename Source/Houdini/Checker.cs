@@ -70,19 +70,7 @@ namespace Microsoft.Boogie.Houdini {
         Console.WriteLine("Time taken = " + queryTime);
       }
 
-      if (proverOutcome == ProverInterface.Outcome.Invalid) {
-        Contract.Assume(collector.examples != null);
-        if (collector.examples.Count == 0) {
-          string memStr = System.Convert.ToString(System.GC.GetTotalMemory(false));
-          if (memStr != null)
-            memStr = "?";
-          throw new UnexpectedProverOutputException("Outcome.Errors w/ 0 counter examples. " + memStr + " memory used");
-        }
-        errors = collector.examples;
-      }
-      else {
-        errors = null;
-      }
+      errors = collector.examples;
       return proverOutcome;
     }
 

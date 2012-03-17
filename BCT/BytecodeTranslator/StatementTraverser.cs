@@ -88,6 +88,7 @@ namespace BytecodeTranslator
         var remover = new AnonymousDelegateRemover(this.sink.host, this.PdbReader);
         newTypes = remover.RemoveAnonymousDelegates(methodBody.MethodDefinition, block);
       }
+      StmtBuilder.Add(new Bpl.AssumeCmd(Bpl.Token.NoToken, Bpl.Expr.True, new Bpl.QKeyValue(Bpl.Token.NoToken, "breadcrumb", new List<object> { Bpl.Expr.Literal(this.NextUniqueNumber()) }, null)));
       this.Traverse(methodBody);
       return newTypes;
     }

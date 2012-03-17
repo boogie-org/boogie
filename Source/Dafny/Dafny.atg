@@ -148,27 +148,35 @@ Dafny
        defaultModule = new DefaultModuleDecl();
      }
      IToken idRefined;
+     bool isGhost;
   .)
-  { "module"                             (. attrs = null;  idRefined = null;  theImports = new List<string/*!*/>();
-                                            namedModuleDefaultClassMembers = new List<MemberDecl>();
-                                         .)
-    { Attribute<ref attrs> }
-    Ident<out id>                        (. defaultModule.ImportNames.Add(id.val); .)
-    [ "refines" Ident<out idRefined> ]
-    [ "imports" Idents<theImports> ]     (. module = new ModuleDecl(id, id.val, idRefined == null ? null : idRefined.val, theImports, attrs); .)
-    "{"                                  (. module.BodyStartTok = t; .)
-      { ClassDecl<module, out c>         (. module.TopLevelDecls.Add(c); .)
-      | DatatypeDecl<module, out dt>     (. module.TopLevelDecls.Add(dt); .)
-      | ArbitraryTypeDecl<module, out at>(. module.TopLevelDecls.Add(at); .)
-      | ClassMemberDecl<namedModuleDefaultClassMembers, false>
-      }
-    "}"                                  (. module.BodyEndTok = t;
-                                            module.TopLevelDecls.Add(new DefaultClassDecl(module, namedModuleDefaultClassMembers));
-                                            theModules.Add(module); .)
-  | ClassDecl<defaultModule, out c>           (. defaultModule.TopLevelDecls.Add(c); .)
-  | DatatypeDecl<defaultModule, out dt>       (. defaultModule.TopLevelDecls.Add(dt); .)
-  | ArbitraryTypeDecl<defaultModule, out at>  (. defaultModule.TopLevelDecls.Add(at); .)
-  | ClassMemberDecl<membersDefaultClass, false>
+  { (. isGhost = false; .)
+    [ "ghost"  (. isGhost = true; .) ]
+
+    ( "module"                             (. attrs = null;  idRefined = null;  theImports = new List<string/*!*/>();
+                                              namedModuleDefaultClassMembers = new List<MemberDecl>();
+                                           .)
+      { Attribute<ref attrs> }
+      Ident<out id>                        (. defaultModule.ImportNames.Add(id.val); .)
+      [ "refines" Ident<out idRefined> ]
+      [ "imports" Idents<theImports> ]     (. module = new ModuleDecl(id, id.val, isGhost, idRefined == null ? null : idRefined.val, theImports, attrs); .)
+      "{"                                  (. module.BodyStartTok = t; .)
+        { ClassDecl<module, out c>         (. module.TopLevelDecls.Add(c); .)
+        | DatatypeDecl<module, out dt>     (. module.TopLevelDecls.Add(dt); .)
+        | ArbitraryTypeDecl<module, out at>(. module.TopLevelDecls.Add(at); .)
+        | ClassMemberDecl<namedModuleDefaultClassMembers, false, false>
+        }
+      "}"                                  (. module.BodyEndTok = t;
+                                              module.TopLevelDecls.Add(new DefaultClassDecl(module, namedModuleDefaultClassMembers));
+                                              theModules.Add(module); .)
+    | (. if (isGhost) { SemErr(t, "a class is not allowed to be declared as 'ghost'"); } .)
+      ClassDecl<defaultModule, out c>           (. defaultModule.TopLevelDecls.Add(c); .)
+    | (. if (isGhost) { SemErr(t, "a datatype is not allowed to be declared as 'ghost'"); } .)
+      DatatypeDecl<defaultModule, out dt>       (. defaultModule.TopLevelDecls.Add(dt); .)
+    | (. if (isGhost) { SemErr(t, "a type is not allowed to be declared as 'ghost'"); } .)
+      ArbitraryTypeDecl<defaultModule, out at>  (. defaultModule.TopLevelDecls.Add(at); .)
+    | ClassMemberDecl<membersDefaultClass, isGhost, false>
+    )
   }
   (. if (defaultModuleCreatedHere) {
        defaultModule.TopLevelDecls.Add(new DefaultClassDecl(defaultModule, membersDefaultClass));
@@ -201,7 +209,7 @@ ClassDecl<ModuleDecl/*!*/ module, out ClassDecl/*!*/ c>
   Ident<out id>
   [ GenericParameters<typeArgs> ]
   "{"                                            (. bodyStart = t; .)
-  { ClassMemberDecl<members, true>
+  { ClassMemberDecl<members, false, true>
   }
   "}"
   (. c = new ClassDecl(id, id.val, module, typeArgs, members, attrs);
@@ -209,11 +217,12 @@ ClassDecl<ModuleDecl/*!*/ module, out ClassDecl/*!*/ c>
      c.BodyEndTok = t;
   .)
   .
-ClassMemberDecl<.List<MemberDecl/*!*/>/*!*/ mm, bool allowConstructors.>
+ClassMemberDecl<.List<MemberDecl/*!*/>/*!*/ mm, bool isAlreadyGhost, bool allowConstructors.>
 = (. Contract.Requires(cce.NonNullElements(mm));
      Method/*!*/ m;
      Function/*!*/ f;
      MemberModifiers mmod = new MemberModifiers();
+     mmod.IsGhost = isAlreadyGhost;
   .)
   { "ghost"                                (. mmod.IsGhost = true; .)
   | "static"                               (. mmod.IsStatic = true; .)
@@ -703,6 +712,7 @@ UpdateStmt<out Statement/*!*/ s>
      Expression lhs0;
      IToken x;
      Attributes attrs = null;
+     Expression suchThat = null;
   .)
   Lhs<out e>                       (. x = e.tok; .)
   ( { Attribute<ref attrs> }
@@ -710,14 +720,22 @@ UpdateStmt<out Statement/*!*/ s>
   |                                (. lhss.Add(e);  lhs0 = e; .)
     { "," Lhs<out e>               (. lhss.Add(e); .)
     }
-    ":="                           (. x = t; .)
-    Rhs<out r, lhs0>               (. rhss.Add(r); .)
-    { "," Rhs<out r, lhs0>         (. rhss.Add(r); .)
-    }
+    ( ":="                         (. x = t; .)
+      Rhs<out r, lhs0>             (. rhss.Add(r); .)
+      { "," Rhs<out r, lhs0>       (. rhss.Add(r); .)
+      }
+    | ":|"                         (. x = t; .)
+      Expression<out suchThat>
+    )
     ";"
   | ":"                            (. SemErr(t, "invalid statement (did you forget the 'label' keyword?)"); .)
   )
-  (. s = new UpdateStmt(x, lhss, rhss); .)
+  (. if (suchThat != null) {
+       s = new AssignSuchThatStmt(x, lhss, suchThat);
+     } else {
+       s = new UpdateStmt(x, lhss, rhss);
+     }
+  .)
   .
 Rhs<out AssignmentRhs r, Expression receiverForInitCall>
 = (. IToken/*!*/ x, newToken;  Expression/*!*/ e;
@@ -761,6 +779,7 @@ VarDeclStatement<.out Statement/*!*/ s.>
      AssignmentRhs r;  IdentifierExpr lhs0;
      List<VarDecl> lhss = new List<VarDecl>();
      List<AssignmentRhs> rhss = new List<AssignmentRhs>();
+     Expression suchThat = null;
   .)
   [ "ghost"                                 (. isGhost = true;  x = t; .)
   ]
@@ -776,10 +795,18 @@ VarDeclStatement<.out Statement/*!*/ s.>
     Rhs<out r, lhs0>               (. rhss.Add(r); .)
     { "," Rhs<out r, lhs0>         (. rhss.Add(r); .)
     }
+  | ":|"                           (. assignTok = t; .)
+    Expression<out suchThat>
   ]
   ";"
-  (. UpdateStmt update;
-     if (rhss.Count == 0) {
+  (. ConcreteUpdateStatement update;
+     if (suchThat != null) {
+       var ies = new List<Expression>();
+       foreach (var lhs in lhss) {
+         ies.Add(new IdentifierExpr(lhs.Tok, lhs.Name));
+       }
+       update = new AssignSuchThatStmt(assignTok, ies, suchThat);
+     } else if (rhss.Count == 0) {
        update = null;
      } else {
        var ies = new List<Expression>();

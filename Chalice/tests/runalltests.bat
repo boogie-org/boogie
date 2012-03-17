@@ -11,7 +11,7 @@ if "%1"=="-no-summary" (
 
 set t=0
 set c=0
-for %%f in (examples permission-model general-tests regressions) do (
+for %%f in (examples permission-model general-tests regressions predicates) do (
   echo Running tests in %%f ...
   echo ------------------------------------------------------
   cd %%f
@@ -26,7 +26,7 @@ for %%f in (examples permission-model general-tests regressions) do (
 
 REM Run refinement regression tests
 cd refinements
-call test.bat
+REM call test.bat
 cd ..
 
 if !nosummary!==0 (

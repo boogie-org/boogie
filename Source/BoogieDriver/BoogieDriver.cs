@@ -608,7 +608,7 @@ namespace Microsoft.Boogie {
 
       #region Run Houdini and verify
       if (CommandLineOptions.Clo.ContractInfer) {
-        Houdini.Houdini houdini = new Houdini.Houdini(program, true);
+        Houdini.Houdini houdini = new Houdini.Houdini(program);
         Houdini.HoudiniOutcome outcome = houdini.PerformHoudiniInference();
         if (CommandLineOptions.Clo.PrintAssignment) {
           Console.WriteLine("Assignment computed by Houdini:");
