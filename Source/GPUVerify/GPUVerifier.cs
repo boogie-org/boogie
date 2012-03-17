@@ -1201,6 +1201,15 @@ namespace GPUVerify
                     {
                         RaceInstrumenter.AddNoRaceContract(Proc);
                     }
+                    else
+                    {
+                        for (int i = 0; i < Proc.InParams.Length / 2; i++)
+                        {
+                            Proc.Requires.Add(new Requires(false, 
+                                Expr.Eq(new IdentifierExpr(Proc.InParams[i].tok, Proc.InParams[i]),
+                                        new IdentifierExpr(Proc.InParams[i + Proc.InParams.Length / 2].tok, Proc.InParams[i + Proc.InParams.Length / 2]))));
+                        }
+                    }
 
                 }
             }
