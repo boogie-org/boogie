@@ -26,20 +26,6 @@ namespace GPUVerify
             {
                 FunctionCall call = node.Fun as FunctionCall;
 
-                if (MatchesIntrinsic(call.Func, NO_READ))
-                {
-                    return Expr.Not(
-                        MakeReadHasOccurred(node, call, NO_READ)
-                    );
-                }
-
-                if (MatchesIntrinsic(call.Func, NO_WRITE))
-                {
-                    return Expr.Not(
-                        MakeWriteHasOccurred(node, call, NO_WRITE)
-                    );
-                }
-
                 if (MatchesIntrinsic(call.Func, READ_OFFSET))
                 {
                     return new IdentifierExpr(node.tok, new GlobalVariable(
@@ -56,6 +42,30 @@ namespace GPUVerify
                     );
                 }
 
+                if (MatchesIntrinsic(call.Func, READ_IMPLIES))
+                {
+                    return Expr.Imp(MakeReadHasOccurred(node, call, READ_IMPLIES), VisitExpr(node.Args[0]));
+                }
+
+                if (MatchesIntrinsic(call.Func, WRITE_IMPLIES))
+                {
+                    return Expr.Imp(MakeWriteHasOccurred(node, call, WRITE_IMPLIES), VisitExpr(node.Args[0]));
+                }
+
+                if (MatchesIntrinsic(call.Func, NO_READ))
+                {
+                    return Expr.Not(
+                        MakeReadHasOccurred(node, call, NO_READ)
+                    );
+                }
+
+                if (MatchesIntrinsic(call.Func, NO_WRITE))
+                {
+                    return Expr.Not(
+                        MakeWriteHasOccurred(node, call, NO_WRITE)
+                    );
+                }
+
                 if (MatchesIntrinsic(call.Func, READ))
                 {
                     return MakeReadHasOccurred(node, call, READ);
@@ -64,16 +74,6 @@ namespace GPUVerify
                 if (MatchesIntrinsic(call.Func, WRITE))
                 {
                     return MakeWriteHasOccurred(node, call, WRITE);
-                }
-
-                if (MatchesIntrinsic(call.Func, READ_IMPLIES))
-                {
-                    return Expr.Imp(MakeReadHasOccurred(node, call, READ_IMPLIES), node.Args[0]);
-                }
-
-                if (MatchesIntrinsic(call.Func, WRITE_IMPLIES))
-                {
-                    return Expr.Imp(MakeWriteHasOccurred(node, call, WRITE_IMPLIES), node.Args[0]);
                 }
 
             }
