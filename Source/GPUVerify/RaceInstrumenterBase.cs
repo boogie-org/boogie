@@ -385,7 +385,6 @@ namespace GPUVerify
             {
                 MapType mt = v.TypedIdent.Type as MapType;
                 Debug.Assert(mt.Arguments.Length == 1);
-                Debug.Assert(GPUVerifier.IsIntOrBv32(mt.Arguments[0]));
 
                 XParameterVariable = new LocalVariable(v.tok, new TypedIdent(v.tok, "_X_index", mt.Arguments[0]));
                 if (mt.Result is MapType)

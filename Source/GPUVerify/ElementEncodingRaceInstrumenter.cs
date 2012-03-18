@@ -111,7 +111,6 @@ namespace GPUVerify
             {
                 MapType mt = v.TypedIdent.Type as MapType;
                 Debug.Assert(mt.Arguments.Length == 1);
-                Debug.Assert(GPUVerifier.IsIntOrBv32(mt.Arguments[0]));
 
                 Variable AccessOffsetX = GPUVerifier.MakeOffsetXVariable(v, ReadOrWrite);
 
@@ -253,7 +252,6 @@ namespace GPUVerify
             {
                 MapType mt = v.TypedIdent.Type as MapType;
                 Debug.Assert(mt.Arguments.Length == 1);
-                Debug.Assert(GPUVerifier.IsIntOrBv32(mt.Arguments[0]));
 
                 result = Expr.Select(result,
                     new Expr[] { new IdentifierExpr(v.tok, new VariableDualiser(OneOrTwo).VisitVariable(GPUVerifier.MakeOffsetXVariable(v, "WRITE"))) });
