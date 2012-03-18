@@ -1803,13 +1803,37 @@ namespace Microsoft.Boogie {
     {
       selectors = new List<DatatypeSelector>();
     }
+
+    public override void Resolve(ResolutionContext rc) {
+      HashSet<string> selectorNames = new HashSet<string>();
+      foreach (DatatypeSelector selector in selectors) {
+        if (selector.Name.StartsWith("#")) {
+          rc.Error(selector.tok, "The selector must be a non-empty string");
+        }
+        else {
+          if (selectorNames.Contains(selector.Name))
+            rc.Error(this.tok, "The selectors for a constructor must be distinct strings");
+          else
+            selectorNames.Add(selector.Name);
+        }
+      }
+      base.Resolve(rc);
+    }
+    
+    public override void Typecheck(TypecheckingContext tc) {
+      CtorType outputType = this.OutParams[0].TypedIdent.Type as CtorType;
+      if (outputType == null || !outputType.IsDatatype()) {
+        tc.Error(tok, "The output type of a constructor must be a datatype");
+      }
+      base.Typecheck(tc);
+    }
   }
 
   public class DatatypeSelector : Function {
     public Function constructor;
     public int index;
     public DatatypeSelector(Function constructor, int index)
-      : base(constructor.tok, 
+      : base(constructor.InParams[index].tok, 
              constructor.InParams[index].Name + "#" + constructor.Name,
              new VariableSeq(new Formal(constructor.tok, new TypedIdent(constructor.tok, "", constructor.OutParams[0].TypedIdent.Type), true)),
              new Formal(constructor.tok, new TypedIdent(constructor.tok, "", constructor.InParams[index].TypedIdent.Type), false)) 
@@ -1817,6 +1841,7 @@ namespace Microsoft.Boogie {
       this.constructor = constructor;
       this.index = index;
     }
+
     public override void Emit(TokenTextWriter stream, int level) { }
   }
 
@@ -1830,8 +1855,8 @@ namespace Microsoft.Boogie {
     {
       this.constructor = constructor;
     }
-    public override void Emit(TokenTextWriter stream, int level) {
-    }
+
+    public override void Emit(TokenTextWriter stream, int level) { }
   }
 
   public class Function : DeclWithFormals {

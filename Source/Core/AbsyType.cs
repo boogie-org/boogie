@@ -2820,6 +2820,10 @@ Contract.Requires(that != null);
       this.Arguments = arguments;
     }
 
+    public bool IsDatatype() {
+      return QKeyValue.FindBoolAttribute(Decl.Attributes, "datatype");
+    }
+
     //-----------  Cloning  ----------------------------------
     // We implement our own clone-method, because bound type variables
     // have to be created in the right way. It is /not/ ok to just clone
