@@ -16,8 +16,9 @@ namespace GPUVerify
         public static string outputFile = null;
 
         public static bool OnlyDivergence = false;
-        public static bool FullAbstraction;
-        public static bool Inference;
+        public static bool FullAbstraction = false;
+        public static bool Inference = false;
+        public static bool ArrayEqualities = false;
         public static string invariantsFile = null;
         public static bool DividedArray = false;
         public static string ArrayToCheck = null;
@@ -127,6 +128,11 @@ namespace GPUVerify
                         invariantsFile = afterColon;
                     }
 
+                    break;
+
+                    case "-arrayEqualities":
+                    case "/arrayEqualities":
+                    ArrayEqualities = true;
                     break;
 
                     default:

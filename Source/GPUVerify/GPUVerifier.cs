@@ -918,7 +918,7 @@ namespace GPUVerify
                     }
                 }
 
-                if (!CommandLineOptions.FullAbstraction)
+                if (!CommandLineOptions.FullAbstraction && CommandLineOptions.ArrayEqualities)
                 {
                     foreach (Variable v in NonLocalState.getAllNonLocalVariables())
                     {
