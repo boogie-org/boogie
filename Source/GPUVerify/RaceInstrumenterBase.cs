@@ -182,17 +182,6 @@ namespace GPUVerify
             AddLogAccessProcedure(v, "READ");
             AddLogAccessProcedure(v, "WRITE");
 
-            HashSet<string> MayCallBarrier = verifier.GetProceduresThatIndirectlyCallProcedure(verifier.BarrierProcedure.Name);
-
-            verifier.ExtendModifiesSetOfProcedures(ReadDeclsResetAtBarrier, MayCallBarrier);
-            verifier.ExtendModifiesSetOfProcedures(WriteDeclsResetAtBarrier, MayCallBarrier);
-
-            HashSet<string> MayCallLogRead = verifier.GetProceduresThatIndirectlyCallProcedure("_LOG_READ_" + v.Name);
-            HashSet<string> MayCallLogWrite = verifier.GetProceduresThatIndirectlyCallProcedure("_LOG_WRITE_" + v.Name);
-
-            verifier.ExtendModifiesSetOfProcedures(ReadDeclsModifiedAtLogRead, MayCallLogRead);
-            verifier.ExtendModifiesSetOfProcedures(WriteDeclsModifiedAtLogWrite, MayCallLogWrite);
-
         }
         
         private StmtList AddRaceCheckCalls(StmtList stmtList)

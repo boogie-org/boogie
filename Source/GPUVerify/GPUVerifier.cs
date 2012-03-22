@@ -645,24 +645,21 @@ namespace GPUVerify
 
                     List<Expr> UserSuppliedInvariants = GetUserSuppliedInvariants(Impl.Name);
 
-                    HashSet<string> LocalNames = new HashSet<string>();
+                    HashSet<Variable> LocalVars = new HashSet<Variable>();
                     foreach (Variable v in Impl.LocVars)
                     {
-                        string basicName = StripThreadIdentifier(v.Name);
-                        LocalNames.Add(basicName);
+                        LocalVars.Add(v);
                     }
                     foreach (Variable v in Impl.InParams)
                     {
-                        string basicName = StripThreadIdentifier(v.Name);
-                        LocalNames.Add(basicName);
+                        LocalVars.Add(v);
                     }
                     foreach (Variable v in Impl.OutParams)
                     {
-                        string basicName = StripThreadIdentifier(v.Name);
-                        LocalNames.Add(basicName);
+                        LocalVars.Add(v);
                     }
 
-                    AddCandidateInvariants(Impl.StructuredStmts, LocalNames, UserSuppliedInvariants, Impl);
+                    AddCandidateInvariants(Impl.StructuredStmts, LocalVars, UserSuppliedInvariants, Impl);
 
                     Procedure Proc = Impl.Proc;
 
@@ -876,15 +873,15 @@ namespace GPUVerify
             return result;
         }
 
-        private void AddCandidateInvariants(StmtList stmtList, HashSet<string> LocalNames, List<Expr> UserSuppliedInvariants, Implementation Impl)
+        private void AddCandidateInvariants(StmtList stmtList, HashSet<Variable> LocalVars, List<Expr> UserSuppliedInvariants, Implementation Impl)
         {
             foreach (BigBlock bb in stmtList.BigBlocks)
             {
-                AddCandidateInvariants(bb, LocalNames, UserSuppliedInvariants, Impl);
+                AddCandidateInvariants(bb, LocalVars, UserSuppliedInvariants, Impl);
             }
         }
 
-        private void AddCandidateInvariants(BigBlock bb, HashSet<string> LocalNames, List<Expr> UserSuppliedInvariants, Implementation Impl)
+        private void AddCandidateInvariants(BigBlock bb, HashSet<Variable> LocalVars, List<Expr> UserSuppliedInvariants, Implementation Impl)
         {
             if (bb.ec is WhileCmd)
             {
@@ -903,8 +900,10 @@ namespace GPUVerify
                     new IdentifierExpr(wc.tok, new LocalVariable(wc.tok, new TypedIdent(wc.tok, LoopPredicate + "$2", Microsoft.Boogie.Type.Int)))
                 ));
 
-                foreach (string lv in LocalNames)
+                foreach (Variable v in LocalVars)
                 {
+                    string lv = StripThreadIdentifier(v.Name);
+
                     if (IsPredicateOrTemp(lv))
                     {
                         continue;
@@ -930,7 +929,7 @@ namespace GPUVerify
 
                 AddUserSuppliedInvariants(wc, UserSuppliedInvariants, Impl);
 
-                AddCandidateInvariants(wc.Body, LocalNames, UserSuppliedInvariants, Impl);
+                AddCandidateInvariants(wc.Body, LocalVars, UserSuppliedInvariants, Impl);
             }
             else if (bb.ec is IfCmd)
             {
@@ -1541,9 +1540,6 @@ namespace GPUVerify
             IdentifierExprSeq ModifiedVars = new IdentifierExprSeq(new IdentifierExpr[] { v1, v2 });
             bb.simpleCmds.Add(new HavocCmd(tok, ModifiedVars));
             bb.simpleCmds.Add(new AssumeCmd(tok, Expr.Eq(v1, v2)));
-
-            HashSet<string> MayCallBarrier = GetProceduresThatIndirectlyCallProcedure(BarrierProcedure.Name);
-            ExtendModifiesSetOfProcedures(ModifiedVars, MayCallBarrier);
 
         }
 
@@ -2563,88 +2559,6 @@ namespace GPUVerify
                 QKeyValue.FindBoolAttribute(variable.Attributes, LOCAL_ID_X_STRING) || 
                 QKeyValue.FindBoolAttribute(variable.Attributes, LOCAL_ID_Y_STRING) ||
                 QKeyValue.FindBoolAttribute(variable.Attributes, LOCAL_ID_Z_STRING));
-        }
-
-        internal HashSet<string> GetProceduresThatIndirectlyCallProcedure(string Name)
-        {
-            HashSet<string> MayCallProc = new HashSet<string>();
-            MayCallProc.Add(Name);
-            bool changed = true;
-            while (changed)
-            {
-                changed = false;
-                foreach (Declaration d in Program.TopLevelDeclarations)
-                {
-                    if (d is Implementation && !MayCallProc.Contains((d as Implementation).Name))
-                    {
-                        HashSet<string> CalledProcedures = GetCalledProcedures(d as Implementation);
-                        foreach (string p in CalledProcedures)
-                        {
-                            if (MayCallProc.Contains(p))
-                            {
-                                changed = true;
-                                MayCallProc.Add((d as Implementation).Name);
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-            return MayCallProc;
-        }
-
-        private HashSet<string> GetCalledProcedures(Implementation impl)
-        {
-            HashSet<string> result = new HashSet<string>();
-            return GetCalledProcedures(impl.StructuredStmts, result);
-        }
-
-        private HashSet<string> GetCalledProcedures(StmtList statements, HashSet<string> result)
-        {
-            foreach (BigBlock bb in statements.BigBlocks)
-            {
-                foreach (Cmd c in bb.simpleCmds)
-                {
-                    if (c is CallCmd)
-                    {
-                        result.Add((c as CallCmd).callee);
-                    }
-                }
-
-                if (bb.ec is WhileCmd)
-                {
-                    result = GetCalledProcedures((bb.ec as WhileCmd).Body, result);
-                }
-                else if (bb.ec is IfCmd)
-                {
-                    result = GetCalledProcedures((bb.ec as IfCmd).thn, result);
-                    Debug.Assert((bb.ec as IfCmd).elseIf == null);
-                    if ((bb.ec as IfCmd).elseBlock != null)
-                    {
-                        result = GetCalledProcedures((bb.ec as IfCmd).elseBlock, result);
-                    }
-                }
-            }
-
-            return result;
-        }
-
-        internal void ExtendModifiesSetOfProcedures(IdentifierExprSeq ModifiedVariables, HashSet<string> Procedures)
-        {
-            foreach (Declaration d in Program.TopLevelDeclarations)
-            {
-                if (d is Procedure && Procedures.Contains((d as Procedure).Name))
-                {
-                    Procedure P = d as Procedure;
-                    foreach (IdentifierExpr e in ModifiedVariables)
-                    {
-                        if (!GPUVerifier.ModifiesSetContains(P.Modifies, e))
-                        {
-                            P.Modifies.Add(e);
-                        }
-                    }
-                }
-            }
         }
 
     }
