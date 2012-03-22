@@ -300,6 +300,12 @@ namespace GPUVerify
 
             preProcess();
 
+            DoLiveVariableAnalysis();
+
+            DoSensitivityAnalysis();
+
+            DoArrayControlFlowAnalysis();
+
             if (CommandLineOptions.ShowStages)
             {
                 emitProgram(outputFilename + "_preprocessed");
@@ -406,6 +412,82 @@ namespace GPUVerify
                
             }
 
+        }
+
+        private void DoArrayControlFlowAnalysis()
+        {
+            // TODO
+        }
+
+        private void DoSensitivityAnalysis()
+        {
+            // TODO
+        }
+
+        private void DoLiveVariableAnalysis()
+        {
+            // TODO
+        }
+
+        private HashSet<Variable> GetModifiedVariables(StmtList stmtList)
+        {
+            HashSet<Variable> result = new HashSet<Variable>();
+
+            foreach(BigBlock bb in stmtList.BigBlocks)
+            {
+                HashSet<Variable> resultForBlock = GetModifiedVariables(bb);
+                foreach (Variable v in resultForBlock)
+                {
+                    result.Add(v);
+                }
+            }
+
+            return result;
+        }
+
+        private HashSet<Variable> GetModifiedVariables(BigBlock bb)
+        {
+            HashSet<Variable> result = new HashSet<Variable>();
+
+            foreach (Cmd c in bb.simpleCmds)
+            {
+                VariableSeq vars = new VariableSeq();
+                c.AddAssignedVariables(vars);
+                foreach (Variable v in vars)
+                {
+                    result.Add(v);
+                }
+            }
+
+            if (bb.ec is WhileCmd)
+            {
+                HashSet<Variable> modifiedByLoop = GetModifiedVariables((bb.ec as WhileCmd).Body);
+                foreach (Variable v in modifiedByLoop)
+                {
+                    result.Add(v);
+                }
+            }
+            else if (bb.ec is IfCmd)
+            {
+                HashSet<Variable> modifiedByThen = GetModifiedVariables((bb.ec as IfCmd).thn);
+                foreach (Variable v in modifiedByThen)
+                {
+                    result.Add(v);
+                }
+
+                if ((bb.ec as IfCmd).elseBlock != null)
+                {
+                    HashSet<Variable> modifiedByElse = GetModifiedVariables((bb.ec as IfCmd).elseBlock);
+                    foreach (Variable v in modifiedByElse)
+                    {
+                        result.Add(v);
+                    }
+                }
+
+                Debug.Assert((bb.ec as IfCmd).elseIf == null);
+            }
+
+            return result;
         }
 
         private void ProcessAccessInvariants()
@@ -909,6 +991,12 @@ namespace GPUVerify
                         continue;
                     }
 
+
+                    if (!ContainsNamedVariable(GetModifiedVariables(wc.Body), StripThreadIdentifier(v.Name)))
+                    {
+                        continue;
+                    }
+
                     AddEqualityCandidateInvariant(wc, LoopPredicate, new LocalVariable(wc.tok, new TypedIdent(wc.tok, lv, Microsoft.Boogie.Type.Int)));
 
                     if (Impl != KernelImplementation)
@@ -940,6 +1028,18 @@ namespace GPUVerify
             {
                 Debug.Assert(bb.ec == null);
             }
+        }
+
+        private bool ContainsNamedVariable(HashSet<Variable> variables, string name)
+        {
+            foreach(Variable v in variables)
+            {
+                if(StripThreadIdentifier(v.Name) == name)
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
         private void AddEqualityCandidateInvariant(WhileCmd wc, string LoopPredicate, Variable v)
@@ -1149,6 +1249,9 @@ namespace GPUVerify
         {
             CallCmd FirstBarrier = new CallCmd(KernelImplementation.tok, BarrierProcedure.Name, new ExprSeq(), new IdentifierExprSeq());
             CallCmd LastBarrier = new CallCmd(KernelImplementation.tok, BarrierProcedure.Name, new ExprSeq(), new IdentifierExprSeq());
+
+            FirstBarrier.Proc = KernelProcedure;
+            LastBarrier.Proc = KernelProcedure;
 
             CmdSeq newCommands = new CmdSeq();
             newCommands.Add(FirstBarrier);
@@ -1708,7 +1811,8 @@ namespace GPUVerify
             if (bb.ec is WhileCmd)
             {
                 WhileCmd WhileCommand = bb.ec as WhileCmd;
-                result.ec = new WhileCmd(WhileCommand.tok, WhileCommand.Guard, WhileCommand.Invariants, PerformFullSharedStateAbstraction(WhileCommand.Body));
+                result.ec = 
+                    new WhileCmd(WhileCommand.tok, WhileCommand.Guard, WhileCommand.Invariants, PerformFullSharedStateAbstraction(WhileCommand.Body));
             }
             else if (bb.ec is IfCmd)
             {
@@ -1951,7 +2055,9 @@ namespace GPUVerify
 
                     }
 
-                    result.simpleCmds.Add(new CallCmd(call.tok, call.callee, newIns, call.Outs));
+                    CallCmd newCall = new CallCmd(call.tok, call.callee, newIns, call.Outs);
+                    newCall.Proc = call.Proc;
+                    result.simpleCmds.Add(newCall);
                 }
                 else if (c is AssignCmd)
                 {
@@ -2236,9 +2342,7 @@ namespace GPUVerify
                 }
                 else if (d is Implementation)
                 {
-                    new Predicator(d != KernelImplementation).transform(d as Implementation);
-
-                    //MakePredicated(d as Implementation, d != KernelImplementation);
+                    new Predicator(this, d != KernelImplementation).transform(d as Implementation);
                 }
             }
 
@@ -2297,6 +2401,8 @@ namespace GPUVerify
                     }
 
                     CallCmd NewCallCmd = new CallCmd(Call.tok, Call.callee, newIns, newOuts);
+
+                    NewCallCmd.Proc = Call.Proc;
 
                     result.simpleCmds.Add(NewCallCmd);
                 }
@@ -2382,8 +2488,8 @@ namespace GPUVerify
 
             if (bb.ec is WhileCmd)
             {
-                result.ec = new WhileCmd(bb.ec.tok, 
-                    Expr.Or(new VariableDualiser(1).VisitExpr((bb.ec as WhileCmd).Guard), 
+                result.ec = new WhileCmd(bb.ec.tok,
+                    Expr.Or(new VariableDualiser(1).VisitExpr((bb.ec as WhileCmd).Guard),
                             new VariableDualiser(2).VisitExpr((bb.ec as WhileCmd).Guard)
                     ),
                     MakeDualInvariants((bb.ec as WhileCmd).Invariants), MakeDual((bb.ec as WhileCmd).Body, HalfDualise));

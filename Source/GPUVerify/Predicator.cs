@@ -17,7 +17,7 @@ namespace GPUVerify
         private Stack<Expr> predicate;
         private Stack<IdentifierExpr> enclosingLoopPredicate;
 
-        internal Predicator(bool AddPredicateParameter)
+        internal Predicator(GPUVerifier verifier, bool AddPredicateParameter) : base(verifier)
         {
             this.AddPredicateParameter = AddPredicateParameter;
             WhileLoopCounter = 0;
@@ -77,8 +77,11 @@ namespace GPUVerify
                 NewIns.Add(e);
             }
 
+            CallCmd newCallCmd = new CallCmd(Call.tok, Call.callee, NewIns, Call.Outs);
+            newCallCmd.Proc = Call.Proc;
+
             return new CmdSeq(
-                new Cmd[] { new CallCmd(Call.tok, Call.callee, NewIns, Call.Outs) });
+                new Cmd[] { newCallCmd });
 
         }
 

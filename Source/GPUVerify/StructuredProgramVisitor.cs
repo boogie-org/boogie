@@ -9,6 +9,13 @@ namespace GPUVerify
     class StructuredProgramVisitor
     {
 
+        protected GPUVerifier verifier;
+
+        public StructuredProgramVisitor(GPUVerifier verifier)
+        {
+            this.verifier = verifier;
+        }
+
         public virtual StmtList VisitStmtList(StmtList stmtList)
         {
             StmtList result = new StmtList(new List<BigBlock>(), stmtList.EndCurly);
@@ -69,7 +76,8 @@ namespace GPUVerify
 
         public virtual WhileCmd VisitWhileCmd(WhileCmd whileCmd)
         {
-            return new WhileCmd(whileCmd.tok, VisitWhileGuard(whileCmd.Guard), VisitWhileInvariants(whileCmd.Invariants), VisitStmtList(whileCmd.Body));
+            return new WhileCmd(whileCmd.tok, 
+                VisitWhileGuard(whileCmd.Guard), VisitWhileInvariants(whileCmd.Invariants), VisitStmtList(whileCmd.Body));
         }
 
         public virtual BreakCmd VisitBreakCmd(BreakCmd breakCmd)

@@ -21,6 +21,8 @@ namespace GPUVerify
         public bool addedLogWrite;
         private int logAddCount;
 
+        private Dictionary<string, Procedure> logAccessProcedures = new Dictionary<string, Procedure>();
+
         public RaceInstrumenterBase()
         {
             onlyLog1 = -1;
@@ -266,7 +268,13 @@ namespace GPUVerify
                                 inParams.Add(ar.IndexX);
                             }
 
-                            result.simpleCmds.Add(new CallCmd(c.tok, "_LOG_READ_" + ar.v.Name, inParams, new IdentifierExprSeq()));
+                            Procedure logProcedure = GetLogAccessProcedure(c.tok, "_LOG_READ_" + ar.v.Name);
+
+                            CallCmd logAccessCallCmd = new CallCmd(c.tok, logProcedure.Name, inParams, new IdentifierExprSeq());
+
+                            logAccessCallCmd.Proc = logProcedure;
+
+                            result.simpleCmds.Add(logAccessCallCmd);
                             
                         }
                     }
@@ -294,7 +302,14 @@ namespace GPUVerify
                                 inParams.Add(ar.IndexX);
                             }
 
-                            result.simpleCmds.Add(new CallCmd(c.tok, "_LOG_WRITE_" + ar.v.Name, inParams, new IdentifierExprSeq()));
+                            Procedure logProcedure = GetLogAccessProcedure(c.tok, "_LOG_WRITE_" + ar.v.Name);
+
+                            CallCmd logAccessCallCmd = new CallCmd(c.tok, logProcedure.Name, inParams, new IdentifierExprSeq());
+
+                            logAccessCallCmd.Proc = logProcedure;
+
+                            result.simpleCmds.Add(logAccessCallCmd);
+                            
                             addedLogWrite = true;
                             
                         }
@@ -308,7 +323,8 @@ namespace GPUVerify
             if (bb.ec is WhileCmd)
             {
                 WhileCmd WhileCommand = bb.ec as WhileCmd;
-                result.ec = new WhileCmd(WhileCommand.tok, WhileCommand.Guard, WhileCommand.Invariants, AddRaceCheckCalls(WhileCommand.Body));
+                result.ec = new WhileCmd(WhileCommand.tok, WhileCommand.Guard, 
+                        WhileCommand.Invariants, AddRaceCheckCalls(WhileCommand.Body));
             }
             else if (bb.ec is IfCmd)
             {
@@ -327,6 +343,17 @@ namespace GPUVerify
 
             return result;
 
+        }
+
+        private Procedure GetLogAccessProcedure(IToken tok, string name)
+        {
+            if (logAccessProcedures.ContainsKey(name))
+            {
+                return logAccessProcedures[name];
+            }
+            Procedure newProcedure = new Procedure(tok, name, new TypeVariableSeq(), new VariableSeq(), new VariableSeq(), new RequiresSeq(), new IdentifierExprSeq(), new EnsuresSeq());
+            logAccessProcedures[name] = newProcedure;
+            return newProcedure;
         }
 
 
@@ -408,7 +435,11 @@ namespace GPUVerify
                 inParams.Add(XParameterVariable);
             }
 
-            LogReadOrWriteProcedure = new Procedure(v.tok, "_LOG_" + ReadOrWrite + "_" + v.Name, new TypeVariableSeq(), inParams, new VariableSeq(), new RequiresSeq(), new IdentifierExprSeq(), new EnsuresSeq());
+            string LogProcedureName = "_LOG_" + ReadOrWrite + "_" + v.Name;
+
+            LogReadOrWriteProcedure = GetLogAccessProcedure(v.tok, LogProcedureName);
+
+            LogReadOrWriteProcedure.InParams = inParams;
 
             if (CommandLineOptions.Symmetry && ReadOrWrite.Equals("READ"))
             {
