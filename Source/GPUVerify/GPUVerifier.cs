@@ -33,9 +33,9 @@ namespace GPUVerify
         private const string LOCAL_ID_Y_STRING = "local_id_y";
         private const string LOCAL_ID_Z_STRING = "local_id_z";
 
-        private static Constant _X = null;
-        private static Constant _Y = null;
-        private static Constant _Z = null;
+        internal static Constant _X = null;
+        internal static Constant _Y = null;
+        internal static Constant _Z = null;
 
         private Constant _GROUP_SIZE_X = null;
         private Constant _GROUP_SIZE_Y = null;
@@ -62,6 +62,8 @@ namespace GPUVerify
         private const string NUM_GROUPS_Z_STRING = "num_groups_z";
 
         public IRaceInstrumenter RaceInstrumenter;
+
+        public UniformityAnalyser uniformityAnalyser;
 
         public GPUVerifier(string filename, Program program, IRaceInstrumenter raceInstrumenter) : this(filename, program, raceInstrumenter, false)
         {
@@ -302,7 +304,7 @@ namespace GPUVerify
 
             DoLiveVariableAnalysis();
 
-            DoSensitivityAnalysis();
+            DoUniformityAnalysis();
 
             DoArrayControlFlowAnalysis();
 
@@ -419,9 +421,10 @@ namespace GPUVerify
             // TODO
         }
 
-        private void DoSensitivityAnalysis()
+        private void DoUniformityAnalysis()
         {
-            // TODO
+            uniformityAnalyser = new UniformityAnalyser(this);
+            uniformityAnalyser.Analyse();
         }
 
         private void DoLiveVariableAnalysis()
@@ -969,49 +972,7 @@ namespace GPUVerify
             {
                 WhileCmd wc = bb.ec as WhileCmd;
 
-                Debug.Assert(wc.Guard is NAryExpr);
-                Debug.Assert((wc.Guard as NAryExpr).Args.Length == 2);
-                Debug.Assert((wc.Guard as NAryExpr).Args[0] is IdentifierExpr);
-                string LoopPredicate = ((wc.Guard as NAryExpr).Args[0] as IdentifierExpr).Name;
-
-                LoopPredicate = LoopPredicate.Substring(0, LoopPredicate.IndexOf('$'));
-
-                AddCandidateInvariant(wc, Expr.Eq(
-                    // Int type used here, but it doesn't matter as we will print and then re-parse the program
-                    new IdentifierExpr(wc.tok, new LocalVariable(wc.tok, new TypedIdent(wc.tok, LoopPredicate + "$1", Microsoft.Boogie.Type.Int))),
-                    new IdentifierExpr(wc.tok, new LocalVariable(wc.tok, new TypedIdent(wc.tok, LoopPredicate + "$2", Microsoft.Boogie.Type.Int)))
-                ));
-
-                foreach (Variable v in LocalVars)
-                {
-                    string lv = StripThreadIdentifier(v.Name);
-
-                    if (IsPredicateOrTemp(lv))
-                    {
-                        continue;
-                    }
-
-
-                    if (!ContainsNamedVariable(GetModifiedVariables(wc.Body), StripThreadIdentifier(v.Name)))
-                    {
-                        continue;
-                    }
-
-                    AddEqualityCandidateInvariant(wc, LoopPredicate, new LocalVariable(wc.tok, new TypedIdent(wc.tok, lv, Microsoft.Boogie.Type.Int)));
-
-                    if (Impl != KernelImplementation)
-                    {
-                        AddPredicatedEqualityCandidateInvariant(wc, LoopPredicate, new LocalVariable(wc.tok, new TypedIdent(wc.tok, lv, Microsoft.Boogie.Type.Int)));                    
-                    }
-                }
-
-                if (!CommandLineOptions.FullAbstraction && CommandLineOptions.ArrayEqualities)
-                {
-                    foreach (Variable v in NonLocalState.getAllNonLocalVariables())
-                    {
-                        AddEqualityCandidateInvariant(wc, LoopPredicate, v);
-                    }
-                }
+                AddBarrierDivergenceCandidates(LocalVars, Impl, wc);
 
                 RaceInstrumenter.AddRaceCheckingCandidateInvariants(wc);
 
@@ -1028,6 +989,96 @@ namespace GPUVerify
             {
                 Debug.Assert(bb.ec == null);
             }
+        }
+
+        private void AddBarrierDivergenceCandidates(HashSet<Variable> LocalVars, Implementation Impl, WhileCmd wc)
+        {
+
+            if (CommandLineOptions.AddDivergenceCandidatesOnlyToBarrierLoops)
+            {
+                if (!ContainsBarrierCall(wc.Body))
+                {
+                    return;
+                }
+            }
+
+            Debug.Assert(wc.Guard is NAryExpr);
+            Debug.Assert((wc.Guard as NAryExpr).Args.Length == 2);
+            Debug.Assert((wc.Guard as NAryExpr).Args[0] is IdentifierExpr);
+            string LoopPredicate = ((wc.Guard as NAryExpr).Args[0] as IdentifierExpr).Name;
+
+            LoopPredicate = LoopPredicate.Substring(0, LoopPredicate.IndexOf('$'));
+
+            AddCandidateInvariant(wc, Expr.Eq(
+                // Int type used here, but it doesn't matter as we will print and then re-parse the program
+                new IdentifierExpr(wc.tok, new LocalVariable(wc.tok, new TypedIdent(wc.tok, LoopPredicate + "$1", Microsoft.Boogie.Type.Int))),
+                new IdentifierExpr(wc.tok, new LocalVariable(wc.tok, new TypedIdent(wc.tok, LoopPredicate + "$2", Microsoft.Boogie.Type.Int)))
+            ));
+
+            foreach (Variable v in LocalVars)
+            {
+                string lv = StripThreadIdentifier(v.Name);
+
+                if (IsPredicateOrTemp(lv))
+                {
+                    continue;
+                }
+
+                if (CommandLineOptions.AddDivergenceCandidatesOnlyIfModified)
+                {
+                    if (!ContainsNamedVariable(GetModifiedVariables(wc.Body), StripThreadIdentifier(v.Name)))
+                    {
+                        continue;
+                    }
+                }
+
+                AddEqualityCandidateInvariant(wc, LoopPredicate, new LocalVariable(wc.tok, new TypedIdent(wc.tok, lv, Microsoft.Boogie.Type.Int)));
+
+                if (Impl != KernelImplementation)
+                {
+                    AddPredicatedEqualityCandidateInvariant(wc, LoopPredicate, new LocalVariable(wc.tok, new TypedIdent(wc.tok, lv, Microsoft.Boogie.Type.Int)));
+                }
+            }
+
+            if (!CommandLineOptions.FullAbstraction && CommandLineOptions.ArrayEqualities)
+            {
+                foreach (Variable v in NonLocalState.getAllNonLocalVariables())
+                {
+                    AddEqualityCandidateInvariant(wc, LoopPredicate, v);
+                }
+            }
+        }
+
+        private bool ContainsBarrierCall(StmtList stmtList)
+        {
+            foreach (BigBlock bb in stmtList.BigBlocks)
+            {
+                if (ContainsBarrierCall(bb))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private bool ContainsBarrierCall(BigBlock bb)
+        {
+            foreach (Cmd c in bb.simpleCmds)
+            {
+                if (c is CallCmd && ((c as CallCmd).Proc == BarrierProcedure))
+                {
+                    return true;
+                }
+            }
+
+            if (bb.ec is WhileCmd)
+            {
+                return ContainsBarrierCall((bb.ec as WhileCmd).Body);
+            }
+
+            Debug.Assert(bb.ec == null || bb.ec is BreakCmd);
+
+            return false;
         }
 
         private bool ContainsNamedVariable(HashSet<Variable> variables, string name)
@@ -1240,7 +1291,7 @@ namespace GPUVerify
             return ExistentialBooleanConstant;
         }
 
-        private string StripThreadIdentifier(string p)
+        internal static string StripThreadIdentifier(string p)
         {
             return p.Substring(0, p.IndexOf("$"));
         }
@@ -1339,77 +1390,13 @@ namespace GPUVerify
                     continue;
                 }
 
-                EnsureDisabledThreadHasNoEffect(Impl);
+                new EnsureDisabledThreadHasNoEffectInstrumenter(this, Impl).instrument();
 
             }
 
         }
 
-        private void EnsureDisabledThreadHasNoEffect(Implementation Impl)
-        {
-            foreach (IdentifierExpr iex in Impl.Proc.Modifies)
-            {
-                // For some reason, this does not work well with maps
-                if (iex.Decl.TypedIdent.Type is MapType)
-                {
-                    continue;
-                }
-
-                Expr NoEffectExpr = Expr.Imp(
-                        Expr.Not(new IdentifierExpr(iex.tok, new LocalVariable(iex.tok, new TypedIdent(iex.tok, "_P$" + GetThreadSuffix(iex.Name), Microsoft.Boogie.Type.Bool)))),
-                        Expr.Eq(iex, new OldExpr(iex.tok, iex))
-                    );
-
-                Impl.Proc.Ensures.Add(new Ensures(false,
-                    NoEffectExpr
-                ));
-
-                AddInvariantToAllLoops(NoEffectExpr, Impl.StructuredStmts);
-
-            }
-
-            AddEnablednessInvariantToAllLoops(Impl.StructuredStmts);
-        }
-
-        private void AddEnablednessInvariantToAllLoops(StmtList stmtList)
-        {
-            foreach (BigBlock bb in stmtList.BigBlocks)
-            {
-                AddEnablednessInvariantToAllLoops(bb);
-            }
-        }
-
-        private void AddEnablednessInvariantToAllLoops(BigBlock bb)
-        {
-            if (bb.ec is WhileCmd)
-            {
-                WhileCmd wc = bb.ec as WhileCmd;
-                Debug.Assert(wc.Guard is NAryExpr);
-                Debug.Assert((wc.Guard as NAryExpr).Fun is BinaryOperator);
-                Debug.Assert((wc.Guard as NAryExpr).Args[0] is IdentifierExpr);
-                string LoopPredicate = ((wc.Guard as NAryExpr).Args[0] as IdentifierExpr).Name;
-                LoopPredicate = StripThreadIdentifier(LoopPredicate);
-
-                wc.Invariants.Add(
-                    new AssertCmd(wc.tok,
-                        Expr.Imp(
-                            Expr.Not(new IdentifierExpr(wc.tok, new LocalVariable(wc.tok, new TypedIdent(wc.tok, "_P$1", Microsoft.Boogie.Type.Bool)))),
-                            Expr.Not(new IdentifierExpr(wc.tok, new LocalVariable(wc.tok, new TypedIdent(wc.tok, LoopPredicate + "$1", Microsoft.Boogie.Type.Bool))))
-                    )));
-
-                wc.Invariants.Add(
-                    new AssertCmd(wc.tok,
-                        Expr.Imp(
-                            Expr.Not(new IdentifierExpr(wc.tok, new LocalVariable(wc.tok, new TypedIdent(wc.tok, "_P$2", Microsoft.Boogie.Type.Bool)))),
-                            Expr.Not(new IdentifierExpr(wc.tok, new LocalVariable(wc.tok, new TypedIdent(wc.tok, LoopPredicate + "$2", Microsoft.Boogie.Type.Bool))))
-                    )));
-
-                AddEnablednessInvariantToAllLoops(wc.Body);
-            }
-
-        }
-
-        private void AddInvariantToAllLoops(Expr Invariant, StmtList stmtList)
+        internal static void AddInvariantToAllLoops(Expr Invariant, StmtList stmtList)
         {
             foreach (BigBlock bb in stmtList.BigBlocks)
             {
@@ -1417,7 +1404,7 @@ namespace GPUVerify
             }
         }
 
-        private void AddInvariantToAllLoops(Expr Invariant, BigBlock bb)
+        internal static void AddInvariantToAllLoops(Expr Invariant, BigBlock bb)
         {
             if (bb.ec is WhileCmd)
             {
@@ -1428,7 +1415,7 @@ namespace GPUVerify
             Debug.Assert(!(bb.ec is IfCmd));
         }
 
-        private int GetThreadSuffix(string p)
+        internal static int GetThreadSuffix(string p)
         {
             return Int32.Parse(p.Substring(p.IndexOf("$") + 1, p.Length - (p.IndexOf("$") + 1)));
         }
@@ -2309,40 +2296,47 @@ namespace GPUVerify
             {
                 if (d is Procedure)
                 {
-                    if (d != KernelProcedure)
+                    Procedure proc = d as Procedure;
+                    IdentifierExpr enabled = new IdentifierExpr(proc.tok,
+                        new LocalVariable(proc.tok, new TypedIdent(proc.tok, "_P", Microsoft.Boogie.Type.Bool)));
+                    Expr predicateExpr;
+                    if (!uniformityAnalyser.IsUniform(proc.Name))
                     {
                         // Add predicate to start of parameter list
-                        Procedure proc = d as Procedure;
                         VariableSeq NewIns = new VariableSeq();
-                        TypedIdent enabled = new TypedIdent(proc.tok, "_P", Microsoft.Boogie.Type.Bool);
-                        NewIns.Add(new LocalVariable(proc.tok, enabled));
+                        NewIns.Add(enabled.Decl);
                         foreach (Variable v in proc.InParams)
                         {
                             NewIns.Add(v);
                         }
                         proc.InParams = NewIns;
-
-                        RequiresSeq newRequires = new RequiresSeq();
-                        foreach (Requires r in proc.Requires)
-                        {
-                            newRequires.Add(new Requires(r.Free, Predicator.ProcessEnabledIntrinsics(r.Condition, enabled)));
-                        }
-                        proc.Requires = newRequires;
-
-                        EnsuresSeq newEnsures = new EnsuresSeq();
-                        foreach (Ensures e in proc.Ensures)
-                        {
-                            newEnsures.Add(new Ensures(e.Free, Predicator.ProcessEnabledIntrinsics(e.Condition, enabled)));
-                        }
-                        proc.Ensures = newEnsures;
-
-
+                        predicateExpr = enabled;
                     }
+                    else
+                    {
+                        predicateExpr = Expr.True;
+                    }
+
+                    RequiresSeq newRequires = new RequiresSeq();
+                    foreach (Requires r in proc.Requires)
+                    {
+                        newRequires.Add(new Requires(r.Free, Predicator.ProcessEnabledIntrinsics(r.Condition, predicateExpr)));
+                    }
+                    proc.Requires = newRequires;
+
+                    EnsuresSeq newEnsures = new EnsuresSeq();
+                    foreach (Ensures e in proc.Ensures)
+                    {
+                        newEnsures.Add(new Ensures(e.Free, Predicator.ProcessEnabledIntrinsics(e.Condition, predicateExpr)));
+                    }
+                    proc.Ensures = newEnsures;
 
                 }
                 else if (d is Implementation)
                 {
-                    new Predicator(this, d != KernelImplementation).transform(d as Implementation);
+                    Implementation impl = d as Implementation;
+                    new Predicator(this, !uniformityAnalyser.IsUniform(impl.Name)).transform
+                        (impl);
                 }
             }
 
@@ -2494,9 +2488,15 @@ namespace GPUVerify
                     ),
                     MakeDualInvariants((bb.ec as WhileCmd).Invariants), MakeDual((bb.ec as WhileCmd).Body, HalfDualise));
             }
-            else
+            else if(bb.ec is IfCmd)
             {
-                Debug.Assert(bb.ec == null);
+                result.ec = new IfCmd(bb.ec.tok,
+                    Expr.And(new VariableDualiser(1).VisitExpr((bb.ec as IfCmd).Guard),
+                             new VariableDualiser(2).VisitExpr((bb.ec as IfCmd).Guard)),
+                             MakeDual((bb.ec as IfCmd).thn, HalfDualise),
+                             null,
+                             (bb.ec as IfCmd).elseBlock == null ? null : MakeDual((bb.ec as IfCmd).elseBlock, HalfDualise));
+
             }
 
             return result;

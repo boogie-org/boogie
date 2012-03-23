@@ -77,7 +77,7 @@ namespace GPUVerify
         public virtual WhileCmd VisitWhileCmd(WhileCmd whileCmd)
         {
             return new WhileCmd(whileCmd.tok, 
-                VisitWhileGuard(whileCmd.Guard), VisitWhileInvariants(whileCmd.Invariants), VisitStmtList(whileCmd.Body));
+                VisitWhileGuard(whileCmd.Guard), VisitWhileInvariants(whileCmd.Invariants, whileCmd.Guard), VisitStmtList(whileCmd.Body));
         }
 
         public virtual BreakCmd VisitBreakCmd(BreakCmd breakCmd)
@@ -86,7 +86,7 @@ namespace GPUVerify
         }
 
 
-        public virtual List<PredicateCmd> VisitWhileInvariants(List<PredicateCmd> invariants)
+        public virtual List<PredicateCmd> VisitWhileInvariants(List<PredicateCmd> invariants, Expr WhileGuard)
         {
             return invariants;
         }

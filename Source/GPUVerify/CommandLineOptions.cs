@@ -30,6 +30,12 @@ namespace GPUVerify
 
         public static bool ShowStages = false;
 
+        public static bool AddDivergenceCandidatesOnlyIfModified = false;
+        public static bool AddDivergenceCandidatesOnlyToBarrierLoops = false;
+
+        public static bool ShowUniformityAnalysis = false;
+        public static bool DoUniformityAnalysis = true;
+
         public static int Parse(string[] args)
         {
             for (int i = 0; i < args.Length; i++)
@@ -133,6 +139,26 @@ namespace GPUVerify
                     case "-arrayEqualities":
                     case "/arrayEqualities":
                     ArrayEqualities = true;
+                    break;
+
+                    case "-addDivergenceCandidatesOnlyIfModified":
+                    case "/addDivergenceCandidatesOnlyIfModified":
+                    AddDivergenceCandidatesOnlyIfModified = true;
+                    break;
+
+                    case "-addDivergenceCandidatesOnlyToBarrierLoops":
+                    case "/addDivergenceCandidatesOnlyToBarrierLoops":
+                    AddDivergenceCandidatesOnlyToBarrierLoops = true;
+                    break;
+
+                    case "-showUniformityAnalysis":
+                    case "/showUniformityAnalysis":
+                    ShowUniformityAnalysis = true;
+                    break;
+
+                    case "-noUniformityAnalysis":
+                    case "/noUniformityAnalysis":
+                    DoUniformityAnalysis = false;
                     break;
 
                     default:

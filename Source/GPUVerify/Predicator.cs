@@ -15,7 +15,9 @@ namespace GPUVerify
         private static HashSet<Microsoft.Boogie.Type> RequiredHavocVariables;
 
         private Stack<Expr> predicate;
-        private Stack<IdentifierExpr> enclosingLoopPredicate;
+        private Stack<Expr> enclosingLoopPredicate;
+
+        private Implementation impl = null;
 
         internal Predicator(GPUVerifier verifier, bool AddPredicateParameter) : base(verifier)
         {
@@ -24,11 +26,12 @@ namespace GPUVerify
             IfCounter = 0;
             RequiredHavocVariables = new HashSet<Microsoft.Boogie.Type>();
             predicate = new Stack<Expr>();
-            enclosingLoopPredicate = new Stack<IdentifierExpr>();
+            enclosingLoopPredicate = new Stack<Expr>();
         }
 
         internal void transform(Implementation impl)
         {
+            this.impl = impl;
             Expr Predicate;
 
             if (AddPredicateParameter)
@@ -49,11 +52,13 @@ namespace GPUVerify
             }
 
             predicate.Push(Predicate);
-            enclosingLoopPredicate.Push(null);
+            enclosingLoopPredicate.Push(Expr.True);
 
             impl.StructuredStmts = VisitStmtList(impl.StructuredStmts);
 
-            AddPredicateLocalVariables(impl);            
+            AddPredicateLocalVariables(impl);
+
+            this.impl = null;
         }
 
         public override CmdSeq VisitCmd(Cmd c)
@@ -70,7 +75,11 @@ namespace GPUVerify
         public override CmdSeq VisitCallCmd(CallCmd Call)
         {
             List<Expr> NewIns = new List<Expr>();
-            NewIns.Add(predicate.Peek());
+
+            if (!verifier.uniformityAnalyser.IsUniform(Call.callee))
+            {
+                NewIns.Add(predicate.Peek());
+            }
 
             foreach (Expr e in Call.Ins)
             {
@@ -158,37 +167,54 @@ namespace GPUVerify
             {
                 WhileCmd whileCmd = bb.ec as WhileCmd;
 
-                string LoopPredicate = "_LC" + WhileLoopCounter;
-                WhileLoopCounter++;
-
-                TypedIdent LoopPredicateTypedIdent = new TypedIdent(whileCmd.tok, LoopPredicate, Microsoft.Boogie.Type.Bool);
-
-                IdentifierExpr PredicateExpr = new IdentifierExpr(whileCmd.tok, new LocalVariable(whileCmd.tok, LoopPredicateTypedIdent));
-                Expr GuardExpr = whileCmd.Guard;
-
+                Expr PredicateExpr;
+                Expr NewGuard;
+                string LoopPredicate = null;
                 List<AssignLhs> WhilePredicateLhss = new List<AssignLhs>();
-                WhilePredicateLhss.Add(new SimpleAssignLhs(whileCmd.tok, PredicateExpr));
 
-                List<Expr> WhilePredicateRhss = new List<Expr>();
-                WhilePredicateRhss.Add(predicate.Peek().Equals(Expr.True) ? GuardExpr : Expr.And(predicate.Peek(), GuardExpr));
+                if (!enclosingLoopPredicate.Peek().Equals(Expr.True) || !verifier.uniformityAnalyser.IsUniform(impl.Name, whileCmd.Guard))
+                {
+                    LoopPredicate = "_LC" + WhileLoopCounter;
+                    WhileLoopCounter++;
 
-                firstBigBlock.simpleCmds.Add(new AssignCmd(whileCmd.tok, WhilePredicateLhss, WhilePredicateRhss));
+                    TypedIdent LoopPredicateTypedIdent = new TypedIdent(whileCmd.tok, LoopPredicate, Microsoft.Boogie.Type.Bool);
+
+                    PredicateExpr = new IdentifierExpr(whileCmd.tok, new LocalVariable(whileCmd.tok, LoopPredicateTypedIdent));
+
+                    WhilePredicateLhss.Add(new SimpleAssignLhs(whileCmd.tok, PredicateExpr as IdentifierExpr));
+
+                    List<Expr> WhilePredicateRhss = new List<Expr>();
+                    WhilePredicateRhss.Add(predicate.Peek().Equals(Expr.True) ? 
+                        whileCmd.Guard : Expr.And(predicate.Peek(), whileCmd.Guard));
+
+                    firstBigBlock.simpleCmds.Add(new AssignCmd(whileCmd.tok, WhilePredicateLhss, WhilePredicateRhss));
+
+                    NewGuard = PredicateExpr;
+                }
+                else
+                {
+                    PredicateExpr = enclosingLoopPredicate.Peek();
+                    NewGuard = whileCmd.Guard;
+                }
 
                 predicate.Push(PredicateExpr);
                 enclosingLoopPredicate.Push(PredicateExpr);
-                WhileCmd NewWhile = new WhileCmd(whileCmd.tok, PredicateExpr,
-                    VisitWhileInvariants(whileCmd.Invariants),
+                WhileCmd NewWhile = new WhileCmd(whileCmd.tok, NewGuard,
+                    VisitWhileInvariants(whileCmd.Invariants, NewGuard),
                     VisitStmtList(whileCmd.Body));
                 enclosingLoopPredicate.Pop();
                 predicate.Pop();
 
-                List<Expr> UpdatePredicateRhss = new List<Expr>();
-                UpdatePredicateRhss.Add(Expr.And(PredicateExpr, GuardExpr));
+                if (!enclosingLoopPredicate.Peek().Equals(Expr.True) || !verifier.uniformityAnalyser.IsUniform(impl.Name, whileCmd.Guard))
+                {
+                    List<Expr> UpdatePredicateRhss = new List<Expr>();
+                    UpdatePredicateRhss.Add(Expr.And(PredicateExpr, whileCmd.Guard));
 
-                CmdSeq updateCmd = new CmdSeq();
-                updateCmd.Add(new AssignCmd(whileCmd.tok, WhilePredicateLhss, UpdatePredicateRhss));
+                    CmdSeq updateCmd = new CmdSeq();
+                    updateCmd.Add(new AssignCmd(whileCmd.tok, WhilePredicateLhss, UpdatePredicateRhss));
 
-                NewWhile.Body.BigBlocks.Add(new BigBlock(whileCmd.tok, "update_" + LoopPredicate, updateCmd, null, null));
+                    NewWhile.Body.BigBlocks.Add(new BigBlock(whileCmd.tok, "update_" + LoopPredicate, updateCmd, null, null));
+                }
 
                 firstBigBlock.ec = NewWhile;
 
@@ -197,50 +223,68 @@ namespace GPUVerify
             {
                 IfCmd IfCommand = bb.ec as IfCmd;
 
-                string IfPredicate = "_P" + IfCounter;
-                IfCounter++;
-
-                IdentifierExpr PredicateExpr = new IdentifierExpr(IfCommand.tok,
-                    new LocalVariable(IfCommand.tok, new TypedIdent(IfCommand.tok, IfPredicate, Microsoft.Boogie.Type.Bool)));
-                Expr GuardExpr = IfCommand.Guard;
-
-                List<AssignLhs> IfPredicateLhss = new List<AssignLhs>();
-                IfPredicateLhss.Add(new SimpleAssignLhs(IfCommand.tok, PredicateExpr));
-
-                List<Expr> IfPredicateRhss = new List<Expr>();
-                IfPredicateRhss.Add(GuardExpr);
-
-                firstBigBlock.simpleCmds.Add(new AssignCmd(IfCommand.tok, IfPredicateLhss, IfPredicateRhss));
-
-                Debug.Assert(IfCommand.elseIf == null); // We need to preprocess these away
-
-                predicate.Push(Expr.And(predicate.Peek(), PredicateExpr));
-                StmtList PredicatedThen = VisitStmtList(IfCommand.thn);
-                predicate.Pop();
-                result.AddRange(PredicatedThen.BigBlocks);
-
-                if(IfCommand.elseIf != null)
+                if (IfCommand.elseIf != null)
                 {
                     throw new InvalidOperationException();
                 }
 
-                if (IfCommand.elseBlock != null)
+                if (predicate.Peek().Equals(Expr.True) && verifier.uniformityAnalyser.IsUniform(impl.Name, IfCommand.Guard))
                 {
-                    predicate.Push(Expr.And(predicate.Peek(), Expr.Not(PredicateExpr)));
-                    StmtList PredicatedElse = VisitStmtList(IfCommand.elseBlock);
+                    firstBigBlock.ec = 
+                        new IfCmd(IfCommand.tok, IfCommand.Guard, VisitStmtList(IfCommand.thn),
+                        null, IfCommand.elseBlock == null ? null : VisitStmtList(IfCommand.elseBlock));
+                }
+                else
+                {
+                    string IfPredicate = "_P" + IfCounter;
+                    IfCounter++;
+
+                    IdentifierExpr PredicateExpr = new IdentifierExpr(IfCommand.tok,
+                        new LocalVariable(IfCommand.tok, new TypedIdent(IfCommand.tok, IfPredicate, Microsoft.Boogie.Type.Bool)));
+                    Expr GuardExpr = IfCommand.Guard;
+
+                    List<AssignLhs> IfPredicateLhss = new List<AssignLhs>();
+                    IfPredicateLhss.Add(new SimpleAssignLhs(IfCommand.tok, PredicateExpr));
+
+                    List<Expr> IfPredicateRhss = new List<Expr>();
+                    IfPredicateRhss.Add(GuardExpr);
+
+                    firstBigBlock.simpleCmds.Add(new AssignCmd(IfCommand.tok, IfPredicateLhss, IfPredicateRhss));
+
+                    Debug.Assert(IfCommand.elseIf == null); // We need to preprocess these away
+
+                    predicate.Push(Expr.And(predicate.Peek(), PredicateExpr));
+                    StmtList PredicatedThen = VisitStmtList(IfCommand.thn);
                     predicate.Pop();
-                    result.AddRange(PredicatedElse.BigBlocks);
+                    result.AddRange(PredicatedThen.BigBlocks);
+
+                    if (IfCommand.elseBlock != null)
+                    {
+                        predicate.Push(Expr.And(predicate.Peek(), Expr.Not(PredicateExpr)));
+                        StmtList PredicatedElse = VisitStmtList(IfCommand.elseBlock);
+                        predicate.Pop();
+                        result.AddRange(PredicatedElse.BigBlocks);
+                    }
                 }
 
             }
             else if (bb.ec is BreakCmd)
             {
-                firstBigBlock.simpleCmds.Add(new AssignCmd(bb.tok,
-                    new List<AssignLhs>(new AssignLhs[] { new SimpleAssignLhs(bb.tok, enclosingLoopPredicate.Peek()) }),
-                    new List<Expr>(new Expr[] { new NAryExpr(bb.tok, new IfThenElse(bb.tok), new ExprSeq(
-                        new Expr[] { predicate.Peek(), Expr.False, enclosingLoopPredicate.Peek() })) })
-                    ));
-                firstBigBlock.ec = null;
+                if (enclosingLoopPredicate.Equals(Expr.True))
+                {
+                    firstBigBlock.ec = bb.ec;
+                }
+                else
+                {
+
+                    firstBigBlock.simpleCmds.Add(new AssignCmd(bb.tok,
+                        new List<AssignLhs>(new AssignLhs[] { 
+                            new SimpleAssignLhs(bb.tok, enclosingLoopPredicate.Peek() as IdentifierExpr) }),
+                        new List<Expr>(new Expr[] { new NAryExpr(bb.tok, new IfThenElse(bb.tok), new ExprSeq(
+                            new Expr[] { predicate.Peek(), Expr.False, enclosingLoopPredicate.Peek() })) })
+                        ));
+                    firstBigBlock.ec = null;
+                }
             }
             else if (bb.ec != null)
             {
@@ -266,19 +310,20 @@ namespace GPUVerify
             throw new InvalidOperationException();
         }
 
-        public override List<PredicateCmd> VisitWhileInvariants(List<PredicateCmd> invariants)
+        public override List<PredicateCmd> VisitWhileInvariants(List<PredicateCmd> invariants, Expr WhileGuard)
         {
             List<PredicateCmd> result = new List<PredicateCmd>();
 
             foreach (PredicateCmd cmd in invariants)
             {
-                result.Add(new AssertCmd(cmd.tok, ProcessEnabledIntrinsics(cmd.Expr, enclosingLoopPredicate.Peek().Decl.TypedIdent)));
+                result.Add(new AssertCmd(cmd.tok, ProcessEnabledIntrinsics(
+                    cmd.Expr, WhileGuard)));
             }
 
             return result;
         }
 
-        internal static Expr ProcessEnabledIntrinsics(Expr expr, TypedIdent currentPredicate)
+        internal static Expr ProcessEnabledIntrinsics(Expr expr, Expr currentPredicate)
         {
             return new EnabledToPredicateVisitor(currentPredicate).VisitExpr(expr);
         }
