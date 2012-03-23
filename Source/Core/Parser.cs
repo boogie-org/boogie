@@ -1093,6 +1093,7 @@ out VariableSeq/*!*/ ins, out VariableSeq/*!*/ outs, out QKeyValue kv) {
 		Expr guard;  Expr/*!*/ e;  bool isFree;
 		List<PredicateCmd/*!*/> invariants = new List<PredicateCmd/*!*/>();
 		StmtList/*!*/ body;
+		QKeyValue kv = null;
 		
 		Expect(40);
 		x = t; 
@@ -1105,11 +1106,14 @@ out VariableSeq/*!*/ ins, out VariableSeq/*!*/ outs, out QKeyValue kv) {
 				isFree = true;  
 			}
 			Expect(41);
+			while (la.kind == 25) {
+				Attribute(ref kv);
+			}
 			Expression(out e);
 			if (isFree) {
-			 invariants.Add(new AssumeCmd(z, e));
+			 invariants.Add(new AssumeCmd(z, e, kv));
 			} else {
-			 invariants.Add(new AssertCmd(z, e));
+			 invariants.Add(new AssertCmd(z, e, kv));
 			}
 			
 			Expect(7);
