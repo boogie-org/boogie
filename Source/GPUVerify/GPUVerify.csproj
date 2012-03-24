@@ -108,6 +108,8 @@
     <Compile Include="AccessRecord.cs" />
     <Compile Include="AsymmetricExpressionFinder.cs" />
     <Compile Include="EnsureDisabledThreadHasNoEffectInstrumenter.cs" />
+    <Compile Include="KernelDualiser.cs" />
+    <Compile Include="LoopInvariantGenerator.cs" />
     <Compile Include="StructuredProgramVisitor.cs" />
     <Compile Include="CrossThreadInvariantProcessor.cs" />
     <Compile Include="EnabledToPredicateVisitor.cs" />

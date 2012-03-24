@@ -117,12 +117,21 @@ namespace GPUVerify
 
             Debug.Assert(havoc.Vars.Length == 1);
 
+            if (predicate.Peek().Equals(Expr.True))
+            {
+                result.Add(havoc);
+                return result;
+            }
+
             Microsoft.Boogie.Type type = havoc.Vars[0].Decl.TypedIdent.Type;
             Debug.Assert(type != null);
 
             RequiredHavocVariables.Add(type);
 
             IdentifierExpr HavocTempExpr = new IdentifierExpr(havoc.tok, new LocalVariable(havoc.tok, new TypedIdent(havoc.tok, "_HAVOC_" + type.ToString(), type)));
+
+            verifier.uniformityAnalyser.AddNonUniform(impl.Name, HavocTempExpr.Decl.Name);
+
             result.Add(new HavocCmd(havoc.tok, new IdentifierExprSeq(new IdentifierExpr[] { 
                         HavocTempExpr 
                     })));
@@ -176,6 +185,8 @@ namespace GPUVerify
                 {
                     LoopPredicate = "_LC" + WhileLoopCounter;
                     WhileLoopCounter++;
+
+                    verifier.uniformityAnalyser.AddNonUniform(impl.Name, LoopPredicate);
 
                     TypedIdent LoopPredicateTypedIdent = new TypedIdent(whileCmd.tok, LoopPredicate, Microsoft.Boogie.Type.Bool);
 
@@ -238,6 +249,8 @@ namespace GPUVerify
                 {
                     string IfPredicate = "_P" + IfCounter;
                     IfCounter++;
+
+                    verifier.uniformityAnalyser.AddNonUniform(impl.Name, IfPredicate);
 
                     IdentifierExpr PredicateExpr = new IdentifierExpr(IfCommand.tok,
                         new LocalVariable(IfCommand.tok, new TypedIdent(IfCommand.tok, IfPredicate, Microsoft.Boogie.Type.Bool)));

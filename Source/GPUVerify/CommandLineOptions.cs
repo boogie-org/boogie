@@ -34,7 +34,7 @@ namespace GPUVerify
         public static bool AddDivergenceCandidatesOnlyToBarrierLoops = false;
 
         public static bool ShowUniformityAnalysis = false;
-        public static bool DoUniformityAnalysis = true;
+        public static bool DoUniformityAnalysis = false;
 
         public static int Parse(string[] args)
         {

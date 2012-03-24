@@ -16,10 +16,16 @@ namespace GPUVerify
 
         private Dictionary<string, KeyValuePair<bool, Dictionary<string, bool>>> uniformityInfo;
 
+        private Dictionary<string, List<string>> inParameters;
+
+        private Dictionary<string, List<string>> outParameters;
+
         public UniformityAnalyser(GPUVerifier verifier)
         {
             this.verifier = verifier;
             uniformityInfo = new Dictionary<string, KeyValuePair<bool, Dictionary<string, bool>>>();
+            inParameters = new Dictionary<string, List<string>>();
+            outParameters = new Dictionary<string, List<string>>();
         }
 
         internal void Analyse()
@@ -54,8 +60,11 @@ namespace GPUVerify
                         }
                     }
 
+                    inParameters[Impl.Name] = new List<string>();
+
                     foreach (Variable v in Impl.InParams)
                     {
+                        inParameters[Impl.Name].Add(v.Name);
                         if (CommandLineOptions.DoUniformityAnalysis)
                         {
                             SetUniform(Impl.Name, v.Name);
@@ -66,8 +75,10 @@ namespace GPUVerify
                         }
                     }
 
+                    outParameters[Impl.Name] = new List<string>();
                     foreach (Variable v in Impl.OutParams)
                     {
+                        outParameters[Impl.Name].Add(v.Name);
                         if (CommandLineOptions.DoUniformityAnalysis)
                         {
                             SetUniform(Impl.Name, v.Name);
@@ -97,6 +108,24 @@ namespace GPUVerify
                                 Analyse(Impl, uniformityInfo[Impl.Name].Key);
                             }
                         }
+                    }
+                }
+            }
+
+            foreach (Declaration D in verifier.Program.TopLevelDeclarations)
+            {
+                if (D is Implementation)
+                {
+                    Implementation Impl = D as Implementation;
+                    if (!IsUniform (Impl.Name))
+                    {
+                        List<string> newIns = new List<String>();
+                        newIns.Add("_P");
+                        foreach (string s in inParameters[Impl.Name])
+                        {
+                            newIns.Add(s);
+                        }
+                        inParameters[Impl.Name] = newIns;
                     }
                 }
             }
@@ -249,7 +278,15 @@ namespace GPUVerify
 
         internal bool IsUniform(string procedureName, string v)
         {
-            Debug.Assert(uniformityInfo.ContainsKey(procedureName));
+            if (!uniformityInfo.ContainsKey(procedureName))
+            {
+                return false;
+            }
+
+            if (!uniformityInfo[procedureName].Value.ContainsKey(v))
+            {
+                return false;
+            }
             return uniformityInfo[procedureName].Value[v];
         }
 
@@ -281,9 +318,47 @@ namespace GPUVerify
                     Console.WriteLine("  " + v + ": " +
                         (uniformityInfo[p].Value[v] ? "uniform" : "nonuniform"));
                 }
+                Console.Write("Ins [");
+                for (int i = 0; i < inParameters[p].Count; i++)
+                {
+                    Console.Write((i == 0 ? "" : ", ") + inParameters[p][i]);
+                }
+                Console.WriteLine("]");
+                Console.Write("Outs [");
+                for (int i = 0; i < outParameters[p].Count; i++)
+                {
+                    Console.Write((i == 0 ? "" : ", ") + outParameters[p][i]);
+                }
+                Console.WriteLine("]");
             }
         }
 
+
+        internal string GetInParameter(string procName, int i)
+        {
+            Console.WriteLine("proc: " + procName + " i " + i);
+            return inParameters[procName][i];
+        }
+
+        internal string GetOutParameter(string procName, int i)
+        {
+            return outParameters[procName][i];
+        }
+
+
+        internal bool knowsOf(string p)
+        {
+            return uniformityInfo.ContainsKey(p);
+        }
+
+        internal void AddNonUniform(string proc, string v)
+        {
+            if (uniformityInfo.ContainsKey(proc))
+            {
+                Debug.Assert(!uniformityInfo[proc].Value.ContainsKey(v));
+                uniformityInfo[proc].Value[v] = false;
+            }
+        }
     }
 
 }

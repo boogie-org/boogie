@@ -432,66 +432,6 @@ namespace GPUVerify
             // TODO
         }
 
-        private HashSet<Variable> GetModifiedVariables(StmtList stmtList)
-        {
-            HashSet<Variable> result = new HashSet<Variable>();
-
-            foreach(BigBlock bb in stmtList.BigBlocks)
-            {
-                HashSet<Variable> resultForBlock = GetModifiedVariables(bb);
-                foreach (Variable v in resultForBlock)
-                {
-                    result.Add(v);
-                }
-            }
-
-            return result;
-        }
-
-        private HashSet<Variable> GetModifiedVariables(BigBlock bb)
-        {
-            HashSet<Variable> result = new HashSet<Variable>();
-
-            foreach (Cmd c in bb.simpleCmds)
-            {
-                VariableSeq vars = new VariableSeq();
-                c.AddAssignedVariables(vars);
-                foreach (Variable v in vars)
-                {
-                    result.Add(v);
-                }
-            }
-
-            if (bb.ec is WhileCmd)
-            {
-                HashSet<Variable> modifiedByLoop = GetModifiedVariables((bb.ec as WhileCmd).Body);
-                foreach (Variable v in modifiedByLoop)
-                {
-                    result.Add(v);
-                }
-            }
-            else if (bb.ec is IfCmd)
-            {
-                HashSet<Variable> modifiedByThen = GetModifiedVariables((bb.ec as IfCmd).thn);
-                foreach (Variable v in modifiedByThen)
-                {
-                    result.Add(v);
-                }
-
-                if ((bb.ec as IfCmd).elseBlock != null)
-                {
-                    HashSet<Variable> modifiedByElse = GetModifiedVariables((bb.ec as IfCmd).elseBlock);
-                    foreach (Variable v in modifiedByElse)
-                    {
-                        result.Add(v);
-                    }
-                }
-
-                Debug.Assert((bb.ec as IfCmd).elseIf == null);
-            }
-
-            return result;
-        }
 
         private void ProcessAccessInvariants()
         {
@@ -598,80 +538,18 @@ namespace GPUVerify
                 if (d is Procedure)
                 {
                     Procedure p = d as Procedure;
-                    p.Requires = ProcessCrossThreadInvariants(p.Requires);
-                    p.Ensures = ProcessCrossThreadInvariants(p.Ensures);
+                    p.Requires = new CrossThreadInvariantProcessor(this, p.Name).ProcessCrossThreadInvariants(p.Requires);
+                    p.Ensures = new CrossThreadInvariantProcessor(this, p.Name).ProcessCrossThreadInvariants(p.Ensures);
                 }
                 if (d is Implementation)
                 {
                     Implementation i = d as Implementation;
-                    ProcessCrossThreadInvariants(i.StructuredStmts);
+                    new CrossThreadInvariantProcessor(this, i.Name).ProcessCrossThreadInvariants(i.StructuredStmts);
                 }
 
             }
         }
 
-        private EnsuresSeq ProcessCrossThreadInvariants(EnsuresSeq ensuresSeq)
-        {
-            EnsuresSeq result = new EnsuresSeq();
-            foreach (Ensures e in ensuresSeq)
-            {
-                result.Add(new Ensures(e.Free, new CrossThreadInvariantProcessor().VisitExpr(e.Condition.Clone() as Expr)));
-            }
-            return result;
-        }
-
-        private RequiresSeq ProcessCrossThreadInvariants(RequiresSeq requiresSeq)
-        {
-            RequiresSeq result = new RequiresSeq();
-            foreach (Requires r in requiresSeq)
-            {
-                result.Add(new Requires(r.Free, new CrossThreadInvariantProcessor().VisitExpr(r.Condition.Clone() as Expr)));
-            }
-            return result;
-        }
-
-        private void ProcessCrossThreadInvariants(StmtList stmtList)
-        {
-            foreach (BigBlock bb in stmtList.BigBlocks)
-            {
-                ProcessCrossThreadInvariants(bb);
-            }
-        }
-
-        private void ProcessCrossThreadInvariants(BigBlock bb)
-        {
-            CmdSeq newCommands = new CmdSeq();
-
-            foreach (Cmd c in bb.simpleCmds)
-            {
-                if (c is AssertCmd)
-                {
-                    newCommands.Add(new AssertCmd(c.tok, new CrossThreadInvariantProcessor().VisitExpr((c as AssertCmd).Expr.Clone() as Expr)));
-                }
-                else if (c is AssumeCmd)
-                {
-                    newCommands.Add(new AssumeCmd(c.tok, new CrossThreadInvariantProcessor().VisitExpr((c as AssumeCmd).Expr.Clone() as Expr)));
-                }
-                else
-                {
-                    newCommands.Add(c);
-                }
-            }
-
-            bb.simpleCmds = newCommands;
-
-            if (bb.ec is WhileCmd)
-            {
-                WhileCmd whileCmd = bb.ec as WhileCmd;
-                List<PredicateCmd> newInvariants = new List<PredicateCmd>();
-                foreach(PredicateCmd p in whileCmd.Invariants)
-                {
-                    newInvariants.Add(new AssertCmd(p.tok, new CrossThreadInvariantProcessor().VisitExpr(p.Expr)));
-                }
-                whileCmd.Invariants = newInvariants;
-                ProcessCrossThreadInvariants(whileCmd.Body);
-            }
-        }
 
         private void emitProgram(string filename)
         {
@@ -730,21 +608,7 @@ namespace GPUVerify
 
                     List<Expr> UserSuppliedInvariants = GetUserSuppliedInvariants(Impl.Name);
 
-                    HashSet<Variable> LocalVars = new HashSet<Variable>();
-                    foreach (Variable v in Impl.LocVars)
-                    {
-                        LocalVars.Add(v);
-                    }
-                    foreach (Variable v in Impl.InParams)
-                    {
-                        LocalVars.Add(v);
-                    }
-                    foreach (Variable v in Impl.OutParams)
-                    {
-                        LocalVars.Add(v);
-                    }
-
-                    AddCandidateInvariants(Impl.StructuredStmts, LocalVars, UserSuppliedInvariants, Impl);
+                    new LoopInvariantGenerator(this, Impl).instrument(UserSuppliedInvariants);
 
                     Procedure Proc = Impl.Proc;
 
@@ -829,8 +693,8 @@ namespace GPUVerify
                     new IdentifierExpr(Proc.tok, new LocalVariable(Proc.tok, new TypedIdent(Proc.tok, "_P$2", Microsoft.Boogie.Type.Bool)))
                 ),
                 Expr.Eq(
-                    new IdentifierExpr(Proc.tok, new VariableDualiser(1).VisitVariable(v.Clone() as Variable)),
-                    new IdentifierExpr(Proc.tok, new VariableDualiser(2).VisitVariable(v.Clone() as Variable))
+                    new IdentifierExpr(Proc.tok, new VariableDualiser(1, uniformityAnalyser, Proc.Name).VisitVariable(v.Clone() as Variable)),
+                    new IdentifierExpr(Proc.tok, new VariableDualiser(2, uniformityAnalyser, Proc.Name).VisitVariable(v.Clone() as Variable))
                 )
             ));
         }
@@ -839,8 +703,8 @@ namespace GPUVerify
         {
             AddCandidateRequires(Proc,
                 Expr.Eq(
-                    new IdentifierExpr(Proc.tok, new VariableDualiser(1).VisitVariable(v.Clone() as Variable)),
-                    new IdentifierExpr(Proc.tok, new VariableDualiser(2).VisitVariable(v.Clone() as Variable))
+                    new IdentifierExpr(Proc.tok, new VariableDualiser(1, uniformityAnalyser, Proc.Name).VisitVariable(v.Clone() as Variable)),
+                    new IdentifierExpr(Proc.tok, new VariableDualiser(2, uniformityAnalyser, Proc.Name).VisitVariable(v.Clone() as Variable))
                 )
             );
         }
@@ -849,8 +713,8 @@ namespace GPUVerify
         {
             AddCandidateEnsures(Proc,
                 Expr.Eq(
-                    new IdentifierExpr(Proc.tok, new VariableDualiser(1).VisitVariable(v.Clone() as Variable)),
-                    new IdentifierExpr(Proc.tok, new VariableDualiser(2).VisitVariable(v.Clone() as Variable))
+                    new IdentifierExpr(Proc.tok, new VariableDualiser(1, uniformityAnalyser, Proc.Name).VisitVariable(v.Clone() as Variable)),
+                    new IdentifierExpr(Proc.tok, new VariableDualiser(2, uniformityAnalyser, Proc.Name).VisitVariable(v.Clone() as Variable))
                 ));
         }
 
@@ -958,130 +822,7 @@ namespace GPUVerify
             return result;
         }
 
-        private void AddCandidateInvariants(StmtList stmtList, HashSet<Variable> LocalVars, List<Expr> UserSuppliedInvariants, Implementation Impl)
-        {
-            foreach (BigBlock bb in stmtList.BigBlocks)
-            {
-                AddCandidateInvariants(bb, LocalVars, UserSuppliedInvariants, Impl);
-            }
-        }
-
-        private void AddCandidateInvariants(BigBlock bb, HashSet<Variable> LocalVars, List<Expr> UserSuppliedInvariants, Implementation Impl)
-        {
-            if (bb.ec is WhileCmd)
-            {
-                WhileCmd wc = bb.ec as WhileCmd;
-
-                AddBarrierDivergenceCandidates(LocalVars, Impl, wc);
-
-                RaceInstrumenter.AddRaceCheckingCandidateInvariants(wc);
-
-                AddUserSuppliedInvariants(wc, UserSuppliedInvariants, Impl);
-
-                AddCandidateInvariants(wc.Body, LocalVars, UserSuppliedInvariants, Impl);
-            }
-            else if (bb.ec is IfCmd)
-            {
-                // We should have done predicated execution by now, so we won't have any if statements
-                Debug.Assert(false);
-            }
-            else
-            {
-                Debug.Assert(bb.ec == null);
-            }
-        }
-
-        private void AddBarrierDivergenceCandidates(HashSet<Variable> LocalVars, Implementation Impl, WhileCmd wc)
-        {
-
-            if (CommandLineOptions.AddDivergenceCandidatesOnlyToBarrierLoops)
-            {
-                if (!ContainsBarrierCall(wc.Body))
-                {
-                    return;
-                }
-            }
-
-            Debug.Assert(wc.Guard is NAryExpr);
-            Debug.Assert((wc.Guard as NAryExpr).Args.Length == 2);
-            Debug.Assert((wc.Guard as NAryExpr).Args[0] is IdentifierExpr);
-            string LoopPredicate = ((wc.Guard as NAryExpr).Args[0] as IdentifierExpr).Name;
-
-            LoopPredicate = LoopPredicate.Substring(0, LoopPredicate.IndexOf('$'));
-
-            AddCandidateInvariant(wc, Expr.Eq(
-                // Int type used here, but it doesn't matter as we will print and then re-parse the program
-                new IdentifierExpr(wc.tok, new LocalVariable(wc.tok, new TypedIdent(wc.tok, LoopPredicate + "$1", Microsoft.Boogie.Type.Int))),
-                new IdentifierExpr(wc.tok, new LocalVariable(wc.tok, new TypedIdent(wc.tok, LoopPredicate + "$2", Microsoft.Boogie.Type.Int)))
-            ));
-
-            foreach (Variable v in LocalVars)
-            {
-                string lv = StripThreadIdentifier(v.Name);
-
-                if (IsPredicateOrTemp(lv))
-                {
-                    continue;
-                }
-
-                if (CommandLineOptions.AddDivergenceCandidatesOnlyIfModified)
-                {
-                    if (!ContainsNamedVariable(GetModifiedVariables(wc.Body), StripThreadIdentifier(v.Name)))
-                    {
-                        continue;
-                    }
-                }
-
-                AddEqualityCandidateInvariant(wc, LoopPredicate, new LocalVariable(wc.tok, new TypedIdent(wc.tok, lv, Microsoft.Boogie.Type.Int)));
-
-                if (Impl != KernelImplementation)
-                {
-                    AddPredicatedEqualityCandidateInvariant(wc, LoopPredicate, new LocalVariable(wc.tok, new TypedIdent(wc.tok, lv, Microsoft.Boogie.Type.Int)));
-                }
-            }
-
-            if (!CommandLineOptions.FullAbstraction && CommandLineOptions.ArrayEqualities)
-            {
-                foreach (Variable v in NonLocalState.getAllNonLocalVariables())
-                {
-                    AddEqualityCandidateInvariant(wc, LoopPredicate, v);
-                }
-            }
-        }
-
-        private bool ContainsBarrierCall(StmtList stmtList)
-        {
-            foreach (BigBlock bb in stmtList.BigBlocks)
-            {
-                if (ContainsBarrierCall(bb))
-                {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        private bool ContainsBarrierCall(BigBlock bb)
-        {
-            foreach (Cmd c in bb.simpleCmds)
-            {
-                if (c is CallCmd && ((c as CallCmd).Proc == BarrierProcedure))
-                {
-                    return true;
-                }
-            }
-
-            if (bb.ec is WhileCmd)
-            {
-                return ContainsBarrierCall((bb.ec as WhileCmd).Body);
-            }
-
-            Debug.Assert(bb.ec == null || bb.ec is BreakCmd);
-
-            return false;
-        }
-
-        private bool ContainsNamedVariable(HashSet<Variable> variables, string name)
+        internal static bool ContainsNamedVariable(HashSet<Variable> variables, string name)
         {
             foreach(Variable v in variables)
             {
@@ -1093,30 +834,8 @@ namespace GPUVerify
             return false;
         }
 
-        private void AddEqualityCandidateInvariant(WhileCmd wc, string LoopPredicate, Variable v)
-        {
-            AddCandidateInvariant(wc,
-                Expr.Eq(
-                    new IdentifierExpr(wc.tok, new VariableDualiser(1).VisitVariable(v.Clone() as Variable)),
-                    new IdentifierExpr(wc.tok, new VariableDualiser(2).VisitVariable(v.Clone() as Variable))
-            ));
-        }
 
-        private void AddPredicatedEqualityCandidateInvariant(WhileCmd wc, string LoopPredicate, Variable v)
-        {
-                AddCandidateInvariant(wc, Expr.Imp(
-                    Expr.And(
-                        new IdentifierExpr(wc.tok, new LocalVariable(wc.tok, new TypedIdent(wc.tok, LoopPredicate + "$1", Microsoft.Boogie.Type.Int))),
-                        new IdentifierExpr(wc.tok, new LocalVariable(wc.tok, new TypedIdent(wc.tok, LoopPredicate + "$2", Microsoft.Boogie.Type.Int)))
-                    ),
-                    Expr.Eq(
-                        new IdentifierExpr(wc.tok, new VariableDualiser(1).VisitVariable(v.Clone() as Variable)),
-                        new IdentifierExpr(wc.tok, new VariableDualiser(2).VisitVariable(v.Clone() as Variable))
-                )));
-        }
-
-
-        private bool IsPredicateOrTemp(string lv)
+        internal static bool IsPredicateOrTemp(string lv)
         {
             return (lv.Length >= 2 && lv.Substring(0,2).Equals("_P")) ||
                     (lv.Length > 3 && lv.Substring(0,3).Equals("_LC")) ||
@@ -1125,21 +844,8 @@ namespace GPUVerify
 
         
 
-        private void AddUserSuppliedInvariants(WhileCmd wc, List<Expr> UserSuppliedInvariants, Implementation Impl)
-        {
-            foreach (Expr e in UserSuppliedInvariants)
-            {
-                wc.Invariants.Add(new AssertCmd(wc.tok, e));
-                bool OK = ProgramIsOK(Impl);
-                wc.Invariants.RemoveAt(wc.Invariants.Count - 1);
-                if (OK)
-                {
-                    AddCandidateInvariant(wc, e);
-                }
-            }
-        }
 
-        private bool ProgramIsOK(Declaration d)
+        internal bool ProgramIsOK(Declaration d)
         {
             Debug.Assert(d is Procedure || d is Implementation);
             TokenTextWriter writer = new TokenTextWriter("temp_out.bpl");
@@ -1275,15 +981,7 @@ namespace GPUVerify
             return _GROUP_SIZE_Z != null;
         }
 
-        public void AddCandidateInvariant(WhileCmd wc, Expr e)
-        {
-            Constant ExistentialBooleanConstant = MakeExistentialBoolean(wc.tok);
-            IdentifierExpr ExistentialBoolean = new IdentifierExpr(wc.tok, ExistentialBooleanConstant);
-            wc.Invariants.Add(new AssertCmd(wc.tok, Expr.Imp(ExistentialBoolean, e)));
-            Program.TopLevelDeclarations.Add(ExistentialBooleanConstant);
-        }
-
-        private Constant MakeExistentialBoolean(IToken tok)
+        internal Constant MakeExistentialBoolean(IToken tok)
         {
             Constant ExistentialBooleanConstant = new Constant(tok, new TypedIdent(tok, "_b" + invariantGenerationCounter, Microsoft.Boogie.Type.Bool), false);
             invariantGenerationCounter++;
@@ -1624,8 +1322,8 @@ namespace GPUVerify
 
         private void HavocAndAssumeEquality(IToken tok, BigBlock bb, Variable v)
         {
-            IdentifierExpr v1 = new IdentifierExpr(tok, new VariableDualiser(1).VisitVariable(v.Clone() as Variable));
-            IdentifierExpr v2 = new IdentifierExpr(tok, new VariableDualiser(2).VisitVariable(v.Clone() as Variable));
+            IdentifierExpr v1 = new IdentifierExpr(tok, new VariableDualiser(1, null, null).VisitVariable(v.Clone() as Variable));
+            IdentifierExpr v2 = new IdentifierExpr(tok, new VariableDualiser(2, null, null).VisitVariable(v.Clone() as Variable));
 
             IdentifierExprSeq ModifiedVars = new IdentifierExprSeq(new IdentifierExpr[] { v1, v2 });
             bb.simpleCmds.Add(new HavocCmd(tok, ModifiedVars));
@@ -2164,35 +1862,9 @@ namespace GPUVerify
                 if (d is Procedure)
                 {
 
-                    // DuplicateParameters
-                    Procedure proc = d as Procedure;
+                    new KernelDualiser(this).DualiseProcedure(d as Procedure);
 
-                    bool HalfDualise = HalfDualisedProcedureNames.Contains(proc.Name);
-
-                    proc.Requires = DualiseRequires(proc.Requires);
-                    proc.Ensures = DualiseEnsures(proc.Ensures);
-
-                    proc.InParams = DualiseVariableSequence(proc.InParams, HalfDualise);
-                    proc.OutParams = DualiseVariableSequence(proc.OutParams, HalfDualise);
-                    IdentifierExprSeq NewModifies = new IdentifierExprSeq();
-                    foreach (IdentifierExpr v in proc.Modifies)
-                    {
-                        NewModifies.Add(new VariableDualiser(1).VisitIdentifierExpr((IdentifierExpr)v.Clone()));
-                    }
-
-                    if (!HalfDualise)
-                    {
-                        foreach (IdentifierExpr v in proc.Modifies)
-                        {
-                            if (!CommandLineOptions.Symmetry || !HalfDualisedVariableNames.Contains(v.Name))
-                            {
-                                NewModifies.Add(new VariableDualiser(2).VisitIdentifierExpr((IdentifierExpr)v.Clone()));
-                            }
-                        }
-                    }
-                    proc.Modifies = NewModifies;
-
-                    NewTopLevelDeclarations.Add(proc);
+                    NewTopLevelDeclarations.Add(d as Procedure);
 
                     continue;
 
@@ -2200,17 +1872,10 @@ namespace GPUVerify
 
                 if (d is Implementation)
                 {
-                    // DuplicateParameters
-                    Implementation impl = d as Implementation;
 
-                    bool HalfDualise = HalfDualisedProcedureNames.Contains(impl.Name);
+                    new KernelDualiser(this).DualiseImplementation(d as Implementation);
 
-                    impl.InParams = DualiseVariableSequence(impl.InParams, HalfDualise);
-                    impl.OutParams = DualiseVariableSequence(impl.OutParams, HalfDualise);
-                    MakeDualLocalVariables(impl, HalfDualise);
-                    impl.StructuredStmts = MakeDual(impl.StructuredStmts, HalfDualise);
-
-                    NewTopLevelDeclarations.Add(impl);
+                    NewTopLevelDeclarations.Add(d as Implementation);
 
                     continue;
 
@@ -2218,11 +1883,11 @@ namespace GPUVerify
 
                 if (d is Variable && ((d as Variable).IsMutable || IsThreadLocalIdConstant(d as Variable)))
                 {
-                    NewTopLevelDeclarations.Add(new VariableDualiser(1).VisitVariable((Variable)d.Clone()));
+                    NewTopLevelDeclarations.Add(new VariableDualiser(1, null, null).VisitVariable((Variable)d.Clone()));
 
                     if (!HalfDualisedVariableNames.Contains((d as Variable).Name))
                     {
-                        NewTopLevelDeclarations.Add(new VariableDualiser(2).VisitVariable((Variable)d.Clone()));
+                        NewTopLevelDeclarations.Add(new VariableDualiser(2, null, null).VisitVariable((Variable)d.Clone()));
                     }
 
                     continue;
@@ -2234,60 +1899,6 @@ namespace GPUVerify
 
             Program.TopLevelDeclarations = NewTopLevelDeclarations;
 
-        }
-
-        private EnsuresSeq DualiseEnsures(EnsuresSeq ensuresSeq)
-        {
-            EnsuresSeq newEnsures = new EnsuresSeq();
-            foreach (Ensures e in ensuresSeq)
-            {
-                newEnsures.Add(new Ensures(e.Free, new VariableDualiser(1).VisitExpr(e.Condition.Clone() as Expr)));
-                if (!CommandLineOptions.Symmetry || !ContainsAsymmetricExpression(e.Condition))
-                {
-                    newEnsures.Add(new Ensures(e.Free, new VariableDualiser(2).VisitExpr(e.Condition.Clone() as Expr)));
-                }
-            }
-            return newEnsures;
-        }
-
-        private RequiresSeq DualiseRequires(RequiresSeq requiresSeq)
-        {
-            RequiresSeq newRequires = new RequiresSeq();
-            foreach (Requires r in requiresSeq)
-            {
-                newRequires.Add(new Requires(r.Free, new VariableDualiser(1).VisitExpr(r.Condition.Clone() as Expr)));
-
-                if (!CommandLineOptions.Symmetry || !ContainsAsymmetricExpression(r.Condition))
-                {
-                    newRequires.Add(new Requires(r.Free, new VariableDualiser(2).VisitExpr(r.Condition.Clone() as Expr)));
-                }
-            }
-            return newRequires;
-        }
-
-        private bool ContainsAsymmetricExpression(Expr expr)
-        {
-            AsymmetricExpressionFinder finder = new AsymmetricExpressionFinder();
-            finder.VisitExpr(expr);
-            return finder.foundAsymmetricExpr();
-        }
-
-        private static VariableSeq DualiseVariableSequence(VariableSeq seq, bool HalfDualise)
-        {
-            VariableSeq result = new VariableSeq();
-            foreach (Variable v in seq)
-            {
-                result.Add(new VariableDualiser(1).VisitVariable((Variable)v.Clone()));
-            }
-
-            if (!HalfDualise)
-            {
-                foreach (Variable v in seq)
-                {
-                    result.Add(new VariableDualiser(2).VisitVariable((Variable)v.Clone()));
-                }
-            }
-            return result;
         }
 
         private void MakeKernelPredicated()
@@ -2341,199 +1952,6 @@ namespace GPUVerify
             }
 
         }
-
-        private StmtList MakeDual(StmtList stmtList, bool HalfDualise)
-        {
-            Contract.Requires(stmtList != null);
-
-            StmtList result = new StmtList(new List<BigBlock>(), stmtList.EndCurly);
-
-            foreach (BigBlock bodyBlock in stmtList.BigBlocks)
-            {
-                result.BigBlocks.Add(MakeDual(bodyBlock, HalfDualise));
-            }
-
-            return result;
-        }
-
-        private BigBlock MakeDual(BigBlock bb, bool HalfDualise)
-        {
-            // Not sure what to do about the transfer command
-
-            BigBlock result = new BigBlock(bb.tok, bb.LabelName, new CmdSeq(), null, bb.tc);
-
-            foreach (Cmd c in bb.simpleCmds)
-            {
-                if (c is CallCmd)
-                {
-                    CallCmd Call = c as CallCmd;
-
-                    List<Expr> newIns = new List<Expr>();
-                    foreach (Expr e in Call.Ins)
-                    {
-                        newIns.Add(new VariableDualiser(1).VisitExpr(e));
-                    }
-                    if (!HalfDualise && !HalfDualisedProcedureNames.Contains(Call.callee))
-                    {
-                        foreach (Expr e in Call.Ins)
-                        {
-                            newIns.Add(new VariableDualiser(2).VisitExpr(e));
-                        }
-                    }
-
-                    List<IdentifierExpr> newOuts = new List<IdentifierExpr>();
-                    foreach (IdentifierExpr ie in Call.Outs)
-                    {
-                        newOuts.Add(new VariableDualiser(1).VisitIdentifierExpr(ie.Clone() as IdentifierExpr) as IdentifierExpr);
-                    }
-                    if (!HalfDualise && !HalfDualisedProcedureNames.Contains(Call.callee))
-                    {
-                        foreach (IdentifierExpr ie in Call.Outs)
-                        {
-                            newOuts.Add(new VariableDualiser(2).VisitIdentifierExpr(ie.Clone() as IdentifierExpr) as IdentifierExpr);
-                        }
-                    }
-
-                    CallCmd NewCallCmd = new CallCmd(Call.tok, Call.callee, newIns, newOuts);
-
-                    NewCallCmd.Proc = Call.Proc;
-
-                    result.simpleCmds.Add(NewCallCmd);
-                }
-                else if (c is AssignCmd)
-                {
-                    AssignCmd assign = c as AssignCmd;
-
-                    Debug.Assert(assign.Lhss.Count == 1 && assign.Rhss.Count == 1);
-
-                    List<AssignLhs> newLhss = new List<AssignLhs>();
-
-                    newLhss.Add(new VariableDualiser(1).Visit(assign.Lhss.ElementAt(0).Clone() as AssignLhs) as AssignLhs);
-
-                    if (!HalfDualise)
-                    {
-                        newLhss.Add(new VariableDualiser(2).Visit(assign.Lhss.ElementAt(0).Clone() as AssignLhs) as AssignLhs);
-                    }
-
-                    List<Expr> newRhss = new List<Expr>();
-
-                    newRhss.Add(new VariableDualiser(1).VisitExpr(assign.Rhss.ElementAt(0).Clone() as Expr));
-
-                    if (!HalfDualise)
-                    {
-                        newRhss.Add(new VariableDualiser(2).VisitExpr(assign.Rhss.ElementAt(0).Clone() as Expr));
-                    }
-
-                    AssignCmd newAssign = new AssignCmd(assign.tok, newLhss, newRhss);
-
-                    result.simpleCmds.Add(newAssign);
-                }
-                else if (c is HavocCmd)
-                {
-                    HavocCmd havoc = c as HavocCmd;
-                    Debug.Assert(havoc.Vars.Length == 1);
-
-                    HavocCmd newHavoc;
-
-                    if (HalfDualise)
-                    {
-                        newHavoc = new HavocCmd(havoc.tok, new IdentifierExprSeq(new IdentifierExpr[] { 
-                            (IdentifierExpr)(new VariableDualiser(1).VisitIdentifierExpr(havoc.Vars[0].Clone() as IdentifierExpr)) 
-                        }));
-                    }
-                    else
-                    {
-                        newHavoc = new HavocCmd(havoc.tok, new IdentifierExprSeq(new IdentifierExpr[] { 
-                            (IdentifierExpr)(new VariableDualiser(1).VisitIdentifierExpr(havoc.Vars[0].Clone() as IdentifierExpr)), 
-                            (IdentifierExpr)(new VariableDualiser(2).VisitIdentifierExpr(havoc.Vars[0].Clone() as IdentifierExpr))
-                        }));
-                    }
-                    result.simpleCmds.Add(newHavoc);
-                }
-                else if (c is AssertCmd)
-                {
-                    AssertCmd ass = c as AssertCmd;
-                    if (HalfDualise || ContainsAsymmetricExpression(ass.Expr))
-                    {
-                        result.simpleCmds.Add(new AssertCmd(c.tok, new VariableDualiser(1).VisitExpr(ass.Expr.Clone() as Expr)));
-                    }
-                    else
-                    {
-                        result.simpleCmds.Add(new AssertCmd(c.tok, Expr.And(new VariableDualiser(1).VisitExpr(ass.Expr.Clone() as Expr), new VariableDualiser(2).VisitExpr(ass.Expr.Clone() as Expr))));
-                    }
-                }
-                else if (c is AssumeCmd)
-                {
-                    AssumeCmd ass = c as AssumeCmd;
-                    if (HalfDualise || ContainsAsymmetricExpression(ass.Expr))
-                    {
-                        result.simpleCmds.Add(new AssumeCmd(c.tok, new VariableDualiser(1).VisitExpr(ass.Expr.Clone() as Expr)));
-                    }
-                    else
-                    {
-                        result.simpleCmds.Add(new AssumeCmd(c.tok, Expr.And(new VariableDualiser(1).VisitExpr(ass.Expr.Clone() as Expr), new VariableDualiser(2).VisitExpr(ass.Expr.Clone() as Expr))));
-                    }
-                }
-                else
-                {
-                    Debug.Assert(false);
-                }
-            }
-
-            if (bb.ec is WhileCmd)
-            {
-                result.ec = new WhileCmd(bb.ec.tok,
-                    Expr.Or(new VariableDualiser(1).VisitExpr((bb.ec as WhileCmd).Guard),
-                            new VariableDualiser(2).VisitExpr((bb.ec as WhileCmd).Guard)
-                    ),
-                    MakeDualInvariants((bb.ec as WhileCmd).Invariants), MakeDual((bb.ec as WhileCmd).Body, HalfDualise));
-            }
-            else if(bb.ec is IfCmd)
-            {
-                result.ec = new IfCmd(bb.ec.tok,
-                    Expr.And(new VariableDualiser(1).VisitExpr((bb.ec as IfCmd).Guard),
-                             new VariableDualiser(2).VisitExpr((bb.ec as IfCmd).Guard)),
-                             MakeDual((bb.ec as IfCmd).thn, HalfDualise),
-                             null,
-                             (bb.ec as IfCmd).elseBlock == null ? null : MakeDual((bb.ec as IfCmd).elseBlock, HalfDualise));
-
-            }
-
-            return result;
-
-        }
-
-        private List<PredicateCmd> MakeDualInvariants(List<PredicateCmd> originalInvariants)
-        {
-            List<PredicateCmd> result = new List<PredicateCmd>();
-            foreach(PredicateCmd p in originalInvariants)
-            {
-                result.Add(new AssertCmd(p.tok, new VariableDualiser(1).VisitExpr(p.Expr.Clone() as Expr)));
-                if (!CommandLineOptions.Symmetry || !ContainsAsymmetricExpression(p.Expr))
-                {
-                    result.Add(new AssertCmd(p.tok, new VariableDualiser(2).VisitExpr(p.Expr.Clone() as Expr)));
-                }
-            }
-
-            return result;
-        }
-
-        private void MakeDualLocalVariables(Implementation impl, bool HalfDualise)
-        {
-            VariableSeq NewLocalVars = new VariableSeq();
-
-            foreach (LocalVariable v in impl.LocVars)
-            {
-                NewLocalVars.Add(new LocalVariable(v.tok, new TypedIdent(v.tok, v.Name + "$1", v.TypedIdent.Type)));
-                if (!HalfDualise)
-                {
-                    NewLocalVars.Add(new LocalVariable(v.tok, new TypedIdent(v.tok, v.Name + "$2", v.TypedIdent.Type)));
-                }
-            }
-
-            impl.LocVars = NewLocalVars;
-        }
-
 
         private void CheckKernelParameters()
         {
@@ -2665,6 +2083,14 @@ namespace GPUVerify
                 QKeyValue.FindBoolAttribute(variable.Attributes, LOCAL_ID_X_STRING) || 
                 QKeyValue.FindBoolAttribute(variable.Attributes, LOCAL_ID_Y_STRING) ||
                 QKeyValue.FindBoolAttribute(variable.Attributes, LOCAL_ID_Z_STRING));
+        }
+
+        internal void AddCandidateInvariant(WhileCmd wc, Expr e)
+        {
+            Constant ExistentialBooleanConstant = MakeExistentialBoolean(wc.tok);
+            IdentifierExpr ExistentialBoolean = new IdentifierExpr(wc.tok, ExistentialBooleanConstant);
+            wc.Invariants.Add(new AssertCmd(wc.tok, Expr.Imp(ExistentialBoolean, e)));
+            Program.TopLevelDeclarations.Add(ExistentialBooleanConstant);
         }
 
     }

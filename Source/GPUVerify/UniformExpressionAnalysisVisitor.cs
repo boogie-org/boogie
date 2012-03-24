@@ -19,12 +19,13 @@ namespace GPUVerify
 
         public override Variable VisitVariable(Variable v)
         {
-            if (uniformityInfo.ContainsKey(v.Name))
+            if (!uniformityInfo.ContainsKey(v.Name))
             {
-                if (!uniformityInfo[v.Name])
-                {
-                    isUniform = false;
-                }
+                isUniform = isUniform && (v is Constant);
+            }
+            else if (!uniformityInfo[v.Name])
+            {
+               isUniform = false;
             }
 
             return v;
