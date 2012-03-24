@@ -126,11 +126,14 @@ namespace GPUVerify
             Microsoft.Boogie.Type type = havoc.Vars[0].Decl.TypedIdent.Type;
             Debug.Assert(type != null);
 
-            RequiredHavocVariables.Add(type);
-
             IdentifierExpr HavocTempExpr = new IdentifierExpr(havoc.tok, new LocalVariable(havoc.tok, new TypedIdent(havoc.tok, "_HAVOC_" + type.ToString(), type)));
 
-            verifier.uniformityAnalyser.AddNonUniform(impl.Name, HavocTempExpr.Decl.Name);
+            if (!RequiredHavocVariables.Contains(type))
+            {
+                verifier.uniformityAnalyser.AddNonUniform(impl.Name, HavocTempExpr.Decl.Name);
+            }
+
+            RequiredHavocVariables.Add(type);
 
             result.Add(new HavocCmd(havoc.tok, new IdentifierExprSeq(new IdentifierExpr[] { 
                         HavocTempExpr 

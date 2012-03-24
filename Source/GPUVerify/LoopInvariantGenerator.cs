@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Microsoft.Boogie;
+using Microsoft.Basetypes;
 using System.Diagnostics;
 
 namespace GPUVerify
@@ -72,6 +73,11 @@ namespace GPUVerify
                 }
             }
 
+            if (verifier.uniformityAnalyser.IsUniform(Impl.Name, wc.Guard))
+            {
+                return;
+            }
+
             Debug.Assert(wc.Guard is NAryExpr);
             Debug.Assert((wc.Guard as NAryExpr).Args.Length == 2);
             Debug.Assert((wc.Guard as NAryExpr).Args[0] is IdentifierExpr);
@@ -87,6 +93,12 @@ namespace GPUVerify
 
             foreach (Variable v in LocalVars)
             {
+
+                if (verifier.uniformityAnalyser.IsUniform(Impl.Name, v.Name))
+                {
+                    continue;
+                }
+
                 string lv = GPUVerifier.StripThreadIdentifier(v.Name);
 
                 if (GPUVerifier.IsPredicateOrTemp(lv))
@@ -96,7 +108,7 @@ namespace GPUVerify
 
                 if (CommandLineOptions.AddDivergenceCandidatesOnlyIfModified)
                 {
-                    if (!GPUVerifier.ContainsNamedVariable(GetModifiedVariables(wc.Body), 
+                    if (!verifier.ContainsNamedVariable(GetModifiedVariables(wc.Body), 
                         GPUVerifier.StripThreadIdentifier(v.Name)))
                     {
                         continue;
@@ -136,6 +148,8 @@ namespace GPUVerify
 
                 AddBarrierDivergenceCandidates(LocalVars, Impl, wc);
 
+                AddLoopVariableBoundsCandidateInvariants(Impl, wc);
+
                 verifier.RaceInstrumenter.AddRaceCheckingCandidateInvariants(wc);
 
                 AddUserSuppliedInvariants(wc, UserSuppliedInvariants, Impl);
@@ -151,6 +165,39 @@ namespace GPUVerify
             {
                 Debug.Assert(bb.ec == null);
             }
+        }
+
+        private void AddLoopVariableBoundsCandidateInvariants(Implementation Impl, WhileCmd wc)
+        {
+            if (verifier.uniformityAnalyser.IsUniform(Impl.Name, wc.Guard))
+            {
+                VariablesOccurringInExpressionVisitor visitor = new VariablesOccurringInExpressionVisitor();
+                visitor.VisitExpr(wc.Guard);
+                foreach (Variable v in visitor.GetVariables())
+                {
+                    if (!verifier.ContainsNamedVariable(GetModifiedVariables(wc.Body), v.Name))
+                    {
+                        continue;
+                    }
+
+                    if (IsBVType (v.TypedIdent.Type))
+                    {
+                        int BVWidth = (v.TypedIdent.Type as BvType).Bits;
+
+                        verifier.AddCandidateInvariant(wc,
+                                GPUVerifier.MakeBitVectorBinaryBoolean("BV" + BVWidth + "_GEQ",
+                                new IdentifierExpr(v.tok, v),
+                                new LiteralExpr(v.tok, BigNum.FromInt(0), BVWidth)));
+                    }
+                }
+            }
+        }
+
+        private bool IsBVType(Microsoft.Boogie.Type type)
+        {
+            return type.Equals(Microsoft.Boogie.Type.GetBvType(32))
+                || type.Equals(Microsoft.Boogie.Type.GetBvType(16))
+                || type.Equals(Microsoft.Boogie.Type.GetBvType(8));
         }
 
         private void AddUserSuppliedInvariants(WhileCmd wc, List<Expr> UserSuppliedInvariants, Implementation Impl)

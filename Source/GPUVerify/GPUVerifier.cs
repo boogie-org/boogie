@@ -64,6 +64,7 @@ namespace GPUVerify
         public IRaceInstrumenter RaceInstrumenter;
 
         public UniformityAnalyser uniformityAnalyser;
+        public MayBeTidAnalyser mayBeTidAnalyser;
 
         public GPUVerifier(string filename, Program program, IRaceInstrumenter raceInstrumenter) : this(filename, program, raceInstrumenter, false)
         {
@@ -306,6 +307,8 @@ namespace GPUVerify
 
             DoUniformityAnalysis();
 
+            DoMayBeTidAnalysis();
+
             DoArrayControlFlowAnalysis();
 
             if (CommandLineOptions.ShowStages)
@@ -414,6 +417,12 @@ namespace GPUVerify
                
             }
 
+        }
+
+        private void DoMayBeTidAnalysis()
+        {
+            mayBeTidAnalyser = new MayBeTidAnalyser(this);
+            mayBeTidAnalyser.Analyse();
         }
 
         private void DoArrayControlFlowAnalysis()
@@ -822,7 +831,7 @@ namespace GPUVerify
             return result;
         }
 
-        internal static bool ContainsNamedVariable(HashSet<Variable> variables, string name)
+        internal bool ContainsNamedVariable(HashSet<Variable> variables, string name)
         {
             foreach(Variable v in variables)
             {
@@ -991,7 +1000,11 @@ namespace GPUVerify
 
         internal static string StripThreadIdentifier(string p)
         {
-            return p.Substring(0, p.IndexOf("$"));
+            if (p.Contains("$"))
+            {
+                return p.Substring(0, p.IndexOf("$"));
+            }
+            return p;
         }
 
         private void AddStartAndEndBarriers()
@@ -1181,7 +1194,7 @@ namespace GPUVerify
             AssumeThreadIdsInRange = (null == AssumeThreadIdsInRange) ? AssumeThreadIdsInRangeInDimension : Expr.And(AssumeThreadIdsInRange, AssumeThreadIdsInRangeInDimension);
         }
 
-        private Expr MakeBitVectorBinaryBoolean(string functionName, Expr lhs, Expr rhs)
+        internal static Expr MakeBitVectorBinaryBoolean(string functionName, Expr lhs, Expr rhs)
         {
             return new NAryExpr(lhs.tok, new FunctionCall(new Function(lhs.tok, functionName, new VariableSeq(new Variable[] { 
                 new LocalVariable(lhs.tok, new TypedIdent(lhs.tok, "arg1", Microsoft.Boogie.Type.GetBvType(32))),
@@ -2091,6 +2104,19 @@ namespace GPUVerify
             IdentifierExpr ExistentialBoolean = new IdentifierExpr(wc.tok, ExistentialBooleanConstant);
             wc.Invariants.Add(new AssertCmd(wc.tok, Expr.Imp(ExistentialBoolean, e)));
             Program.TopLevelDeclarations.Add(ExistentialBooleanConstant);
+        }
+
+        internal Implementation GetImplementation(string procedureName)
+        {
+            foreach (Declaration D in Program.TopLevelDeclarations)
+            {
+                if (D is Implementation && ((D as Implementation).Name == procedureName))
+                {
+                    return D as Implementation;
+                }
+            }
+            Debug.Assert(false);
+            return null;
         }
 
     }

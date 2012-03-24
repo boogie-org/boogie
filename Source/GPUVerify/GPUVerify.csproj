@@ -110,6 +110,7 @@
     <Compile Include="EnsureDisabledThreadHasNoEffectInstrumenter.cs" />
     <Compile Include="KernelDualiser.cs" />
     <Compile Include="LoopInvariantGenerator.cs" />
+    <Compile Include="MayBeTidAnalyser.cs" />
     <Compile Include="StructuredProgramVisitor.cs" />
     <Compile Include="CrossThreadInvariantProcessor.cs" />
     <Compile Include="EnabledToPredicateVisitor.cs" />
@@ -132,6 +133,7 @@
     <Compile Include="UniformExpressionAnalysisVisitor.cs" />
     <Compile Include="UniformityAnalyser.cs" />
     <Compile Include="VariableDualiser.cs" />
+    <Compile Include="VariablesOccurringInExpressionVisitor.cs" />
     <Compile Include="WriteCollector.cs" />
   </ItemGroup>
   <ItemGroup>

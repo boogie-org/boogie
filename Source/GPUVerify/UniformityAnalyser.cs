@@ -181,7 +181,7 @@ namespace GPUVerify
                                 SetNonUniform(callCmd.callee);
                             }
                         }
-                        Implementation CalleeImplementation = GetImplementation(callCmd.callee);
+                        Implementation CalleeImplementation = verifier.GetImplementation(callCmd.callee);
                         for (int i = 0; i < CalleeImplementation.InParams.Length; i++)
                         {
                             if (IsUniform(callCmd.callee, CalleeImplementation.InParams[i].Name)
@@ -220,19 +220,6 @@ namespace GPUVerify
                 Debug.Assert(ifCmd.elseIf == null);
             }
 
-        }
-
-        private Implementation GetImplementation(string procedureName)
-        {
-            foreach (Declaration D in verifier.Program.TopLevelDeclarations)
-            {
-                if (D is Implementation && ((D as Implementation).Name == procedureName))
-                {
-                    return D as Implementation;
-                }
-            }
-            Debug.Assert(false);
-            return null;
         }
 
         private void SetNonUniform(string procedureName)
