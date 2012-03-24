@@ -12,7 +12,7 @@ namespace GPUVerify
     {
         private GPUVerifier verifier;
 
-        private Dictionary<string, bool> ProcedureChanged = null;
+        private bool ProcedureChanged;
 
         private Dictionary<string, KeyValuePair<bool, Dictionary<string, bool>>> uniformityInfo;
 
@@ -30,8 +30,6 @@ namespace GPUVerify
 
         internal void Analyse()
         {
-            ProcedureChanged = new Dictionary<string, bool>();
-
             foreach (Declaration D in verifier.Program.TopLevelDeclarations)
             {
                 if(D is Implementation)
@@ -89,24 +87,22 @@ namespace GPUVerify
                         }
                     }
 
-                    ProcedureChanged[Impl.Name] = true;
+                    ProcedureChanged = true;
                 }
             }
 
             if (CommandLineOptions.DoUniformityAnalysis)
             {
-                while (SomeProcedureRequiresAnalysis())
+                while (ProcedureChanged)
                 {
+                    ProcedureChanged = false;
 
                     foreach (Declaration D in verifier.Program.TopLevelDeclarations)
                     {
                         if (D is Implementation)
                         {
                             Implementation Impl = D as Implementation;
-                            if (ProcedureChanged[Impl.Name])
-                            {
-                                Analyse(Impl, uniformityInfo[Impl.Name].Key);
-                            }
+                            Analyse(Impl, uniformityInfo[Impl.Name].Key);
                         }
                     }
                 }
@@ -136,22 +132,8 @@ namespace GPUVerify
             }
         }
 
-
-        private bool SomeProcedureRequiresAnalysis()
-        {
-            foreach (string procedureName in ProcedureChanged.Keys)
-            {
-                if (ProcedureChanged[procedureName])
-                {
-                    return true;
-                }
-            }
-            return false;
-        }
-
         private void Analyse(Implementation Impl, bool ControlFlowIsUniform)
         {
-            ProcedureChanged[Impl.Name] = false;
             Analyse(Impl, Impl.StructuredStmts, ControlFlowIsUniform);
         }
 
@@ -257,7 +239,7 @@ namespace GPUVerify
         {
             uniformityInfo[procedureName] = new KeyValuePair<bool,Dictionary<string,bool>>
                 (false, uniformityInfo[procedureName].Value);
-            RecordProcedureChanged(procedureName);
+            RecordProcedureChanged();
         }
 
         internal bool IsUniform(string procedureName)
@@ -293,18 +275,18 @@ namespace GPUVerify
         private void SetUniform(string procedureName, string v)
         {
             uniformityInfo[procedureName].Value[v] = true;
-            RecordProcedureChanged(procedureName);
+            RecordProcedureChanged();
         }
 
-        private void RecordProcedureChanged(string procedureName)
+        private void RecordProcedureChanged()
         {
-            ProcedureChanged[procedureName] = true;
+            ProcedureChanged = true;
         }
 
         private void SetNonUniform(string procedureName, string v)
         {
             uniformityInfo[procedureName].Value[v] = false;
-            RecordProcedureChanged(procedureName);
+            RecordProcedureChanged();
         }
 
         private void dump()
@@ -336,7 +318,6 @@ namespace GPUVerify
 
         internal string GetInParameter(string procName, int i)
         {
-            Console.WriteLine("proc: " + procName + " i " + i);
             return inParameters[procName][i];
         }
 
