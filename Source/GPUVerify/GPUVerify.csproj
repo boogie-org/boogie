@@ -110,6 +110,7 @@
     <Compile Include="EnsureDisabledThreadHasNoEffectInstrumenter.cs" />
     <Compile Include="KernelDualiser.cs" />
     <Compile Include="LoopInvariantGenerator.cs" />
+    <Compile Include="MayBePowerOfTwoAnalyser.cs" />
     <Compile Include="MayBeTidAnalyser.cs" />
     <Compile Include="StructuredProgramVisitor.cs" />
     <Compile Include="CrossThreadInvariantProcessor.cs" />

@@ -150,6 +150,8 @@ namespace GPUVerify
 
                 AddLoopVariableBoundsCandidateInvariants(Impl, wc);
 
+                AddPowerOfTwoCandidateInvariants(Impl, wc);
+
                 verifier.RaceInstrumenter.AddRaceCheckingCandidateInvariants(wc);
 
                 AddUserSuppliedInvariants(wc, UserSuppliedInvariants, Impl);
@@ -165,6 +167,43 @@ namespace GPUVerify
             {
                 Debug.Assert(bb.ec == null);
             }
+        }
+
+        private void AddPowerOfTwoCandidateInvariants(Implementation Impl, WhileCmd wc)
+        {
+            foreach (Variable v in Impl.LocVars)
+            {
+                string basicName = GPUVerifier.StripThreadIdentifier(v.Name);
+                if (verifier.uniformityAnalyser.IsUniform(Impl.Name, basicName))
+                {
+                    if (verifier.mayBePowerOfTwoAnalyser.MayBePowerOfTwo(Impl.Name, basicName))
+                    {
+                        if (verifier.ContainsNamedVariable(GetModifiedVariables(wc.Body), basicName))
+                        {
+                            verifier.AddCandidateInvariant(wc, MakePowerOfTwoExpr(v));
+                            for (int i = (1 << 30); i > 0; i >>= 1)
+                            {
+                                verifier.AddCandidateInvariant(wc, 
+                                    GPUVerifier.MakeBitVectorBinaryBoolean("BV32_LT",
+                                    new IdentifierExpr(v.tok, v),
+                                    new LiteralExpr(v.tok, BigNum.FromInt(i), 32)));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        private Expr MakePowerOfTwoExpr(Variable v)
+        {
+            Expr result = null;
+            for (int i = 1 << 30; i > 0; i >>= 1)
+            {
+                Expr eq = Expr.Eq(new IdentifierExpr(v.tok, v), new LiteralExpr(v.tok, BigNum.FromInt(i), 32));
+                result = (result == null ? eq : Expr.Or(eq, result));
+            }
+
+            return Expr.Or(Expr.Eq(new IdentifierExpr(v.tok, v), new LiteralExpr(v.tok, BigNum.FromInt(0), 32)), result);
         }
 
         private void AddLoopVariableBoundsCandidateInvariants(Implementation Impl, WhileCmd wc)

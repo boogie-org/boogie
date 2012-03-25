@@ -65,6 +65,7 @@ namespace GPUVerify
 
         public UniformityAnalyser uniformityAnalyser;
         public MayBeTidAnalyser mayBeTidAnalyser;
+        public MayBePowerOfTwoAnalyser mayBePowerOfTwoAnalyser;
 
         public GPUVerifier(string filename, Program program, IRaceInstrumenter raceInstrumenter) : this(filename, program, raceInstrumenter, false)
         {
@@ -309,6 +310,8 @@ namespace GPUVerify
 
             DoMayBeTidAnalysis();
 
+            DoMayBePowerOfTwoAnalysis();
+
             DoArrayControlFlowAnalysis();
 
             if (CommandLineOptions.ShowStages)
@@ -417,6 +420,12 @@ namespace GPUVerify
                
             }
 
+        }
+
+        private void DoMayBePowerOfTwoAnalysis()
+        {
+            mayBePowerOfTwoAnalyser = new MayBePowerOfTwoAnalyser(this);
+            mayBePowerOfTwoAnalyser.Analyse();
         }
 
         private void DoMayBeTidAnalysis()
