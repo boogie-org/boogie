@@ -9,7 +9,7 @@ namespace GPUVerify
     class NullRaceInstrumenter : IRaceInstrumenter
     {
 
-        public void AddRaceCheckingCandidateInvariants(Microsoft.Boogie.WhileCmd wc)
+        public void AddRaceCheckingCandidateInvariants(Implementation impl, Microsoft.Boogie.WhileCmd wc)
         {
             
         }

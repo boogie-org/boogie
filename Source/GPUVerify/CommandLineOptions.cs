@@ -38,6 +38,7 @@ namespace GPUVerify
 
         public static bool ShowMayBeTidAnalysis = false;
         public static bool ShowMayBePowerOfTwoAnalysis = false;
+        public static bool ShowMayBeTidPlusConstantAnalysis = false;
 
         public static int Parse(string[] args)
         {
@@ -167,6 +168,11 @@ namespace GPUVerify
                     case "-showMayBePowerOfTwoAnalysis":
                     case "/showMayBePowerOfTwoAnalysis":
                     ShowMayBePowerOfTwoAnalysis = true;
+                    break;
+
+                    case "-showMayBeTidPlusConstantAnalysis":
+                    case "/showMayBeTidPlusConstantAnalysis":
+                    ShowMayBeTidPlusConstantAnalysis = true;
                     break;
 
                     default:

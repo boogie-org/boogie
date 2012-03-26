@@ -50,13 +50,29 @@ namespace GPUVerify
 
         private void AddNoReadOrWriteCandidateInvariants(WhileCmd wc, Variable v)
         {
-            AddNoReadOrWriteCandidateInvariant(wc, v, "READ", "1");
-            AddNoReadOrWriteCandidateInvariant(wc, v, "WRITE", "1");
-            if (!CommandLineOptions.Symmetry)
+            // Reasoning: if READ_HAS_OCCURRED_v is not in the modifies set for the
+            // loop then there is no point adding an invariant
+            //
+            // If READ_HAS_OCCURRED_v is in the modifies set, but the loop does not
+            // contain a barrier, then it is almost certain that a read CAN be
+            // pending at the loop head, so the invariant will not hold
+            //
+            // If there is a barrier in the loop body then READ_HAS_OCCURRED_v will
+            // be in the modifies set, but there may not be a live read at the loop
+            // head, so it is worth adding the loop invariant candidate.
+            //
+            // The same reasoning applies for WRITE
+
+            if (verifier.ContainsBarrierCall(wc.Body))
             {
-                AddNoReadOrWriteCandidateInvariant(wc, v, "READ", "2");
+                AddNoReadOrWriteCandidateInvariant(wc, v, "READ", "1");
+                AddNoReadOrWriteCandidateInvariant(wc, v, "WRITE", "1");
+                if (!CommandLineOptions.Symmetry)
+                {
+                    AddNoReadOrWriteCandidateInvariant(wc, v, "READ", "2");
+                }
+                AddNoReadOrWriteCandidateInvariant(wc, v, "WRITE", "2");
             }
-            AddNoReadOrWriteCandidateInvariant(wc, v, "WRITE", "2");
         }
 
         private void AddNoReadOrWriteCandidateRequires(Procedure Proc, Variable v)
@@ -83,24 +99,62 @@ namespace GPUVerify
 
         protected abstract void AddNoReadOrWriteCandidateInvariant(WhileCmd wc, Variable v, string ReadOrWrite, string OneOrTwo);
 
-        public void AddRaceCheckingCandidateInvariants(WhileCmd wc)
+        public void AddRaceCheckingCandidateInvariants(Implementation impl, WhileCmd wc)
         {
             foreach (Variable v in NonLocalStateToCheck.getAllNonLocalVariables())
             {
                 AddNoReadOrWriteCandidateInvariants(wc, v);
-                AddReadOrWrittenOffsetIsThreadIdCandidateInvariants(wc, v);
+                AddReadOrWrittenOffsetIsThreadIdCandidateInvariants(impl, wc, v);
+                AddGroupStrideAccessCandidateInvariants(wc, v);
             }
         }
 
-        private void AddReadOrWrittenOffsetIsThreadIdCandidateInvariants(WhileCmd wc, Variable v)
+        private void AddGroupStrideAccessCandidateInvariants(WhileCmd wc, Variable v)
         {
-            AddReadOrWrittenOffsetIsThreadIdCandidateInvariant(wc, v, "WRITE", 1);
-            AddReadOrWrittenOffsetIsThreadIdCandidateInvariant(wc, v, "WRITE", 2);
-            AddReadOrWrittenOffsetIsThreadIdCandidateInvariant(wc, v, "READ", 1);
-            if (!CommandLineOptions.Symmetry)
+            // TODO
+        }
+
+        private void AddReadOrWrittenOffsetIsThreadIdCandidateInvariants(Implementation impl, WhileCmd wc, Variable v)
+        {
+            HashSet<Expr> OffsetsWrittenInLoop = GetOffsetsAccessed(wc.Body, v, "WRITE ");
+
+            foreach (Expr e in GetOffsetsAccessed(wc.Body, v, "READ"))
             {
-                AddReadOrWrittenOffsetIsThreadIdCandidateInvariant(wc, v, "READ", 2);
+                if (e is IdentifierExpr)
+                {
+                    string indexVarName =
+                        GPUVerifier.StripThreadIdentifier((e as IdentifierExpr).Decl.Name);
+
+                    if (verifier.mayBeTidAnalyser.MayBeTid(impl.Name, indexVarName))
+                    {
+                        AddReadOrWrittenOffsetIsThreadIdCandidateInvariant(wc, v, "READ", 1);
+                        if (!CommandLineOptions.Symmetry)
+                        {
+                            AddReadOrWrittenOffsetIsThreadIdCandidateInvariant(wc, v, "READ", 2);
+                        }
+                        // No point adding it multiple times
+                        break;
+                    }
+                }
             }
+
+            foreach (Expr e in GetOffsetsAccessed(wc.Body, v, "WRITE"))
+            {
+                if (e is IdentifierExpr)
+                {
+                    string indexVarName =
+                        GPUVerifier.StripThreadIdentifier((e as IdentifierExpr).Decl.Name);
+
+                    if (verifier.mayBeTidAnalyser.MayBeTid(impl.Name, indexVarName))
+                    {
+                        AddReadOrWrittenOffsetIsThreadIdCandidateInvariant(wc, v, "WRITE", 1);
+                        AddReadOrWrittenOffsetIsThreadIdCandidateInvariant(wc, v, "WRITE", 2);
+                        // No point adding it multiple times
+                        break;
+                    }
+                }
+            }
+
         }
 
         private void AddReadOrWrittenOffsetIsThreadIdCandidateRequires(Procedure Proc, Variable v)
@@ -550,5 +604,76 @@ namespace GPUVerify
 
         protected abstract Expr GenerateRaceCondition(Variable v, string FirstAccessType, string SecondAccessType);
 
+
+        private HashSet<Expr> GetOffsetsAccessed(StmtList stmts, Variable v, string AccessType)
+        {
+            HashSet<Expr> result = new HashSet<Expr> ();
+            foreach (BigBlock bb in stmts.BigBlocks)
+            {
+                HashSet<Expr> offsetsReadInBigBlock = GetOffsetsAccessed(bb, v, AccessType);
+                foreach (Expr e in offsetsReadInBigBlock)
+                {
+                    result.Add(e);
+                }
+            }
+            return result;
+        }
+
+        private HashSet<Expr> GetOffsetsAccessed(BigBlock bb, Variable v, string AccessType)
+        {
+            HashSet<Expr> result = new HashSet<Expr>();
+
+            foreach (Cmd c in bb.simpleCmds)
+            {
+                if (c is CallCmd)
+                {
+                    CallCmd call = c as CallCmd;
+
+                    if (call.callee == "_LOG_" + AccessType + "_" + v.Name)
+                    {
+                        // Ins[0] is thread 1's predicate,
+                        // Ins[1] is the offset to be read
+                        result.Add(call.Ins[1]);
+                    }
+
+                }
+
+            }
+
+            if (bb.ec is WhileCmd)
+            {
+                HashSet<Expr> bodyResult = GetOffsetsAccessed((bb.ec as WhileCmd).Body, v, AccessType);
+                foreach (Expr e in bodyResult)
+                {
+                    result.Add(e);
+                }
+            }
+            else if (bb.ec is IfCmd)
+            {
+                IfCmd ifCmd = bb.ec as IfCmd;
+
+                HashSet<Expr> thenResult = GetOffsetsAccessed(ifCmd.thn, v, AccessType);
+                foreach (Expr e in thenResult)
+                {
+                    result.Add(e);
+                }
+
+                Debug.Assert(ifCmd.elseIf == null);
+                
+                if(ifCmd.elseBlock != null)
+                {
+                    HashSet<Expr> elseResult = GetOffsetsAccessed(ifCmd.elseBlock, v, AccessType);
+                    foreach (Expr e in elseResult)
+                    {
+                        result.Add(e);
+                    }
+                }
+            }
+
+            return result;
+        }
+
     }
+
+
 }

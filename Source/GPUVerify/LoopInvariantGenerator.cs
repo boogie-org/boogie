@@ -67,7 +67,7 @@ namespace GPUVerify
 
             if (CommandLineOptions.AddDivergenceCandidatesOnlyToBarrierLoops)
             {
-                if (!ContainsBarrierCall(wc.Body))
+                if (!verifier.ContainsBarrierCall(wc.Body))
                 {
                     return;
                 }
@@ -152,7 +152,7 @@ namespace GPUVerify
 
                 AddPowerOfTwoCandidateInvariants(Impl, wc);
 
-                verifier.RaceInstrumenter.AddRaceCheckingCandidateInvariants(wc);
+                verifier.RaceInstrumenter.AddRaceCheckingCandidateInvariants(Impl, wc);
 
                 AddUserSuppliedInvariants(wc, UserSuppliedInvariants, Impl);
 
@@ -160,8 +160,13 @@ namespace GPUVerify
             }
             else if (bb.ec is IfCmd)
             {
-                // We should have done predicated execution by now, so we won't have any if statements
-                Debug.Assert(false);
+                IfCmd ifCmd = bb.ec as IfCmd;
+                AddCandidateInvariants(ifCmd.thn, LocalVars, UserSuppliedInvariants, Impl);
+                if (ifCmd.elseBlock != null)
+                {
+                    AddCandidateInvariants(ifCmd.elseBlock, LocalVars, UserSuppliedInvariants, Impl);
+                }
+
             }
             else
             {
@@ -313,39 +318,6 @@ namespace GPUVerify
 
             return result;
         }
-
-        private bool ContainsBarrierCall(StmtList stmtList)
-        {
-            foreach (BigBlock bb in stmtList.BigBlocks)
-            {
-                if (ContainsBarrierCall(bb))
-                {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        private bool ContainsBarrierCall(BigBlock bb)
-        {
-            foreach (Cmd c in bb.simpleCmds)
-            {
-                if (c is CallCmd && ((c as CallCmd).Proc == verifier.BarrierProcedure))
-                {
-                    return true;
-                }
-            }
-
-            if (bb.ec is WhileCmd)
-            {
-                return ContainsBarrierCall((bb.ec as WhileCmd).Body);
-            }
-
-            Debug.Assert(bb.ec == null || bb.ec is BreakCmd);
-
-            return false;
-        }
-
 
     }
 }

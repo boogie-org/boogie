@@ -8,7 +8,7 @@ namespace GPUVerify
 {
     interface IRaceInstrumenter
     {
-        void AddRaceCheckingCandidateInvariants(WhileCmd wc);
+        void AddRaceCheckingCandidateInvariants(Implementation impl, WhileCmd wc);
         void AddKernelPrecondition();
 
         // Summary:

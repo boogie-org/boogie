@@ -68,11 +68,11 @@ namespace GPUVerify
 
                 if (wcStartBlock.liveVarsBefore == null)
                 {
-                    Console.WriteLine("live before is null for " + wcLabel);
+
                 }
                 else
                 {
-                    Console.WriteLine("live before is non-null for " + wcLabel);
+
                     foreach (Variable v in impl.LocVars)
                     {
                         if (wcStartBlock.IsLive(v))

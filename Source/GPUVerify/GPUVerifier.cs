@@ -65,6 +65,7 @@ namespace GPUVerify
 
         public UniformityAnalyser uniformityAnalyser;
         public MayBeTidAnalyser mayBeTidAnalyser;
+        public MayBeTidPlusConstantAnalyser mayBeTidPlusConstantAnalyser;
         public MayBePowerOfTwoAnalyser mayBePowerOfTwoAnalyser;
         public LiveVariableAnalyser liveVariableAnalyser;
 
@@ -316,6 +317,8 @@ namespace GPUVerify
 
             DoMayBeTidAnalysis();
 
+            DoMayBeTidPlusConstantAnalysis();
+
             DoMayBePowerOfTwoAnalysis();
 
             DoArrayControlFlowAnalysis();
@@ -438,6 +441,12 @@ namespace GPUVerify
         {
             mayBeTidAnalyser = new MayBeTidAnalyser(this);
             mayBeTidAnalyser.Analyse();
+        }
+
+        private void DoMayBeTidPlusConstantAnalysis()
+        {
+            mayBeTidPlusConstantAnalyser = new MayBeTidPlusConstantAnalyser(this);
+            mayBeTidPlusConstantAnalyser.Analyse();
         }
 
         private void DoArrayControlFlowAnalysis()
@@ -2134,6 +2143,48 @@ namespace GPUVerify
             Debug.Assert(false);
             return null;
         }
+
+
+        internal bool ContainsBarrierCall(StmtList stmtList)
+        {
+            foreach (BigBlock bb in stmtList.BigBlocks)
+            {
+                if (ContainsBarrierCall(bb))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private bool ContainsBarrierCall(BigBlock bb)
+        {
+            foreach (Cmd c in bb.simpleCmds)
+            {
+                if (c is CallCmd && ((c as CallCmd).Proc == BarrierProcedure))
+                {
+                    return true;
+                }
+            }
+
+            if (bb.ec is WhileCmd)
+            {
+                return ContainsBarrierCall((bb.ec as WhileCmd).Body);
+            }
+
+            if (bb.ec is IfCmd)
+            {
+                Debug.Assert((bb.ec as IfCmd).elseIf == null);
+                if (ContainsBarrierCall((bb.ec as IfCmd).thn))
+                {
+                    return true;
+                }
+                return (bb.ec as IfCmd).elseBlock != null && ContainsBarrierCall((bb.ec as IfCmd).elseBlock);
+            }
+
+            return false;
+        }
+
 
     }
 }
