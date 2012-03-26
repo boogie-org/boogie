@@ -66,6 +66,7 @@ namespace GPUVerify
         public UniformityAnalyser uniformityAnalyser;
         public MayBeTidAnalyser mayBeTidAnalyser;
         public MayBePowerOfTwoAnalyser mayBePowerOfTwoAnalyser;
+        public LiveVariableAnalyser liveVariableAnalyser;
 
         public GPUVerifier(string filename, Program program, IRaceInstrumenter raceInstrumenter) : this(filename, program, raceInstrumenter, false)
         {
@@ -302,6 +303,11 @@ namespace GPUVerify
         internal void doit()
         {
 
+            if (CommandLineOptions.ShowStages)
+            {
+                emitProgram(outputFilename + "_original");
+            }
+
             preProcess();
 
             DoLiveVariableAnalysis();
@@ -447,7 +453,8 @@ namespace GPUVerify
 
         private void DoLiveVariableAnalysis()
         {
-            // TODO
+            liveVariableAnalyser = new LiveVariableAnalyser(this);
+            liveVariableAnalyser.Analyse();
         }
 
 
