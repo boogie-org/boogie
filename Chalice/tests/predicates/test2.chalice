@@ -1,0 +1,55 @@
+class FoldUnfoldExperiments
+{
+  var x:int;
+  var y:int;
+  var z:int;
+  var w:int;
+  predicate X { acc(x) }
+  predicate Y { acc(y) }
+  predicate Z { acc(z) }
+  
+  function getX():int
+    requires X;
+  { unfolding X in x }
+  
+  function getY():int
+    requires Y;
+  { unfolding Y in y }
+    
+  function getZ():int
+    requires Z;
+  { unfolding Z in z }
+  
+  method setX(v:int)
+    requires X;
+	ensures X && getX()==v;
+  {
+    unfold X; x:=v; fold X;
+  }
+  
+  // this method checks if the methodology frames correctly around a method call: what happens with folded data and unfolded data
+  // also: what happens if we have folded data during the call, that we unfold after the call
+  method check()
+    requires acc(x) && acc(y) && acc(z) && acc(w);
+	ensures acc(y) && y==2 && X && getX()==3 && Z && getZ()==4 && acc(w) && w==10;
+  {
+    x:=1; y:=2; z:=4; w:=10;
+	fold X; fold Y; fold Z;
+	call setX(3);
+	unfold Y;
+  }
+
+  // this method checks that method calls do not interfere with the correct handling of folds and unfolds
+  method check1()
+    requires X && acc(y) && y==1;
+	ensures acc(y) && y==1 && X && getX()==200;
+  {
+    call setX(10);
+	fold Y;
+	call setX(100);
+	unfold Y;
+	fold Y;
+	unfold Y;
+	call setX(200);
+  }
+}

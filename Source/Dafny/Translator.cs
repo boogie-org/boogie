@@ -269,7 +269,7 @@ namespace Microsoft.Dafny {
       }
 
       Bpl.Program prelude;
-      int errorCount = Bpl.Parser.Parse(preludePath, null, out prelude);
+      int errorCount = Bpl.Parser.Parse(preludePath, (List<string>)null, out prelude);
       if (prelude == null || errorCount > 0) {
         return null;
       } else {
@@ -2406,10 +2406,21 @@ namespace Microsoft.Dafny {
 
       } else if (expr is LetExpr) {
         var e = (LetExpr)expr;
-        foreach (var rhs in e.RHSs) {
-          CheckWellformed(rhs, options, locals, builder, etran);
+
+        var substMap = new Dictionary<IVariable, Expression>();
+        Contract.Assert(e.Vars.Count == e.RHSs.Count);  // checked by resolution
+        for (int i = 0; i < e.Vars.Count; i++) {
+          var vr = e.Vars[i];
+          var tp = TrType(vr.Type);
+          var v = new Bpl.LocalVariable(vr.tok, new Bpl.TypedIdent(vr.tok, vr.UniqueName, tp));
+          locals.Add(v);
+          var lhs = new Bpl.IdentifierExpr(vr.tok, vr.UniqueName, tp);
+
+          CheckWellformedWithResult(e.RHSs[i], options, lhs, vr.Type, locals, builder, etran);
+          substMap.Add(vr, new BoogieWrapper(lhs, vr.Type));
         }
-        CheckWellformedWithResult(etran.GetSubstitutedBody(e), options, result, resultType, locals, builder, etran);
+        CheckWellformedWithResult(Substitute(e.Body, null, substMap), options, result, resultType, locals, builder, etran);
+        result = null;
 
       } else if (expr is ComprehensionExpr) {
         var e = (ComprehensionExpr)expr;
@@ -3276,14 +3287,20 @@ namespace Microsoft.Dafny {
           AddComment(builder, stmt, "assert statement");
           PredicateStmt s = (PredicateStmt)stmt;
           TrStmt_CheckWellformed(s.Expr, builder, locals, etran, false);
+          IToken enclosingToken = null;
+          if (Attributes.Contains(stmt.Attributes, "prependAssertToken")) {
+            enclosingToken = stmt.Tok;
+          }
           bool splitHappened;
           var ss = TrSplitExpr(s.Expr, etran, out splitHappened);
           if (!splitHappened) {
-            builder.Add(Assert(s.Expr.tok, etran.TrExpr(s.Expr), "assertion violation"));
+            var tok = enclosingToken == null ? s.Expr.tok : new NestedToken(enclosingToken, s.Expr.tok);
+            builder.Add(Assert(tok, etran.TrExpr(s.Expr), "assertion violation"));
           } else {
             foreach (var split in ss) {
               if (!split.IsFree) {
-                builder.Add(AssertNS(split.E.tok, split.E, "assertion violation"));
+                var tok = enclosingToken == null ? split.E.tok : new NestedToken(enclosingToken, split.E.tok);
+                builder.Add(AssertNS(tok, split.E, "assertion violation"));
               }
             }
             builder.Add(new Bpl.AssumeCmd(stmt.Tok, etran.TrExpr(s.Expr)));
@@ -3314,6 +3331,25 @@ namespace Microsoft.Dafny {
           TrStmt(s.hiddenUpdate, builder, locals, etran);
         }
         builder.Add(new Bpl.ReturnCmd(stmt.Tok));
+      } else if (stmt is AssignSuchThatStmt) {
+        var s = (AssignSuchThatStmt)stmt;
+        AddComment(builder, s, "assign-such-that statement");
+        // treat like a parallel havoc, followed by an assume
+        // Here comes the havoc part
+        var lhss = new List<Expression>();
+        var havocRhss = new List<AssignmentRhs>();
+        foreach (var lhs in s.Lhss) {
+          lhss.Add(lhs.Resolved);
+          havocRhss.Add(new HavocRhs(lhs.tok));  // note, a HavocRhs is constructed as already resolved
+        }
+        List<AssignToLhs> lhsBuilder;
+        List<Bpl.IdentifierExpr> bLhss;
+        ProcessLhss(lhss, false, builder, locals, etran, out lhsBuilder, out bLhss);
+        ProcessRhss(lhsBuilder, bLhss, lhss, havocRhss, builder, locals, etran);
+        // End by doing the assume
+        TrStmt(s.Assume, builder, locals, etran);
+        builder.Add(CaptureState(s.Tok));  // just do one capture state--here, at the very end (that is, don't do one before the assume)
+
       } else if (stmt is UpdateStmt) {
         var s = (UpdateStmt)stmt;
         // This UpdateStmt can be single-target assignment, a multi-assignment, a call statement, or
@@ -7055,7 +7091,7 @@ namespace Microsoft.Dafny {
     /// <summary>
     /// Returns true iff 'expr' is a two-state expression, that is, if it mentions "old(...)" or "fresh(...)".
     /// </summary>
-    static bool MentionsOldState(Expression expr) {
+    public static bool MentionsOldState(Expression expr) {
       Contract.Requires(expr != null);
       if (expr is OldExpr || expr is FreshExpr) {
         return true;

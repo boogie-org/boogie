@@ -104,7 +104,19 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AccessCollector.cs" />
+    <Compile Include="AccessInvariantProcessor.cs" />
     <Compile Include="AccessRecord.cs" />
+    <Compile Include="AsymmetricExpressionFinder.cs" />
+    <Compile Include="EnsureDisabledThreadHasNoEffectInstrumenter.cs" />
+    <Compile Include="KernelDualiser.cs" />
+    <Compile Include="LiveVariableAnalyser.cs" />
+    <Compile Include="LoopInvariantGenerator.cs" />
+    <Compile Include="MayBePowerOfTwoAnalyser.cs" />
+    <Compile Include="MayBeTidAnalyser.cs" />
+    <Compile Include="MayBeTidPlusConstantAnalyser.cs" />
+    <Compile Include="StructuredProgramVisitor.cs" />
+    <Compile Include="CrossThreadInvariantProcessor.cs" />
+    <Compile Include="EnabledToPredicateVisitor.cs" />
     <Compile Include="CommandLineOptions.cs" />
     <Compile Include="ElementEncodingraceInstrumenter.cs" />
     <Compile Include="GPUVerifier.cs" />
@@ -121,7 +133,10 @@
     <Compile Include="RaceInstrumenterBase.cs" />
     <Compile Include="ReadCollector.cs" />
     <Compile Include="SetEncodingRaceInstrumenter.cs" />
+    <Compile Include="UniformExpressionAnalysisVisitor.cs" />
+    <Compile Include="UniformityAnalyser.cs" />
     <Compile Include="VariableDualiser.cs" />
+    <Compile Include="VariablesOccurringInExpressionVisitor.cs" />
     <Compile Include="WriteCollector.cs" />
   </ItemGroup>
   <ItemGroup>

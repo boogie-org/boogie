@@ -21,6 +21,8 @@ namespace GPUVerify
         public bool addedLogWrite;
         private int logAddCount;
 
+        private Dictionary<string, Procedure> logAccessProcedures = new Dictionary<string, Procedure>();
+
         public RaceInstrumenterBase()
         {
             onlyLog1 = -1;
@@ -48,13 +50,29 @@ namespace GPUVerify
 
         private void AddNoReadOrWriteCandidateInvariants(WhileCmd wc, Variable v)
         {
-            AddNoReadOrWriteCandidateInvariant(wc, v, "READ", "1");
-            AddNoReadOrWriteCandidateInvariant(wc, v, "WRITE", "1");
-            if (!CommandLineOptions.Symmetry)
+            // Reasoning: if READ_HAS_OCCURRED_v is not in the modifies set for the
+            // loop then there is no point adding an invariant
+            //
+            // If READ_HAS_OCCURRED_v is in the modifies set, but the loop does not
+            // contain a barrier, then it is almost certain that a read CAN be
+            // pending at the loop head, so the invariant will not hold
+            //
+            // If there is a barrier in the loop body then READ_HAS_OCCURRED_v will
+            // be in the modifies set, but there may not be a live read at the loop
+            // head, so it is worth adding the loop invariant candidate.
+            //
+            // The same reasoning applies for WRITE
+
+            if (verifier.ContainsBarrierCall(wc.Body))
             {
-                AddNoReadOrWriteCandidateInvariant(wc, v, "READ", "2");
+                AddNoReadOrWriteCandidateInvariant(wc, v, "READ", "1");
+                AddNoReadOrWriteCandidateInvariant(wc, v, "WRITE", "1");
+                if (!CommandLineOptions.Symmetry)
+                {
+                    AddNoReadOrWriteCandidateInvariant(wc, v, "READ", "2");
+                }
+                AddNoReadOrWriteCandidateInvariant(wc, v, "WRITE", "2");
             }
-            AddNoReadOrWriteCandidateInvariant(wc, v, "WRITE", "2");
         }
 
         private void AddNoReadOrWriteCandidateRequires(Procedure Proc, Variable v)
@@ -81,24 +99,62 @@ namespace GPUVerify
 
         protected abstract void AddNoReadOrWriteCandidateInvariant(WhileCmd wc, Variable v, string ReadOrWrite, string OneOrTwo);
 
-        public void AddRaceCheckingCandidateInvariants(WhileCmd wc)
+        public void AddRaceCheckingCandidateInvariants(Implementation impl, WhileCmd wc)
         {
             foreach (Variable v in NonLocalStateToCheck.getAllNonLocalVariables())
             {
                 AddNoReadOrWriteCandidateInvariants(wc, v);
-                AddReadOrWrittenOffsetIsThreadIdCandidateInvariants(wc, v);
+                AddReadOrWrittenOffsetIsThreadIdCandidateInvariants(impl, wc, v);
+                AddGroupStrideAccessCandidateInvariants(wc, v);
             }
         }
 
-        private void AddReadOrWrittenOffsetIsThreadIdCandidateInvariants(WhileCmd wc, Variable v)
+        private void AddGroupStrideAccessCandidateInvariants(WhileCmd wc, Variable v)
         {
-            AddReadOrWrittenOffsetIsThreadIdCandidateInvariant(wc, v, "WRITE", 1);
-            AddReadOrWrittenOffsetIsThreadIdCandidateInvariant(wc, v, "WRITE", 2);
-            AddReadOrWrittenOffsetIsThreadIdCandidateInvariant(wc, v, "READ", 1);
-            if (!CommandLineOptions.Symmetry)
+            // TODO
+        }
+
+        private void AddReadOrWrittenOffsetIsThreadIdCandidateInvariants(Implementation impl, WhileCmd wc, Variable v)
+        {
+            HashSet<Expr> OffsetsWrittenInLoop = GetOffsetsAccessed(wc.Body, v, "WRITE ");
+
+            foreach (Expr e in GetOffsetsAccessed(wc.Body, v, "READ"))
             {
-                AddReadOrWrittenOffsetIsThreadIdCandidateInvariant(wc, v, "READ", 2);
+                if (e is IdentifierExpr)
+                {
+                    string indexVarName =
+                        GPUVerifier.StripThreadIdentifier((e as IdentifierExpr).Decl.Name);
+
+                    if (verifier.mayBeTidAnalyser.MayBeTid(impl.Name, indexVarName))
+                    {
+                        AddReadOrWrittenOffsetIsThreadIdCandidateInvariant(wc, v, "READ", 1);
+                        if (!CommandLineOptions.Symmetry)
+                        {
+                            AddReadOrWrittenOffsetIsThreadIdCandidateInvariant(wc, v, "READ", 2);
+                        }
+                        // No point adding it multiple times
+                        break;
+                    }
+                }
             }
+
+            foreach (Expr e in GetOffsetsAccessed(wc.Body, v, "WRITE"))
+            {
+                if (e is IdentifierExpr)
+                {
+                    string indexVarName =
+                        GPUVerifier.StripThreadIdentifier((e as IdentifierExpr).Decl.Name);
+
+                    if (verifier.mayBeTidAnalyser.MayBeTid(impl.Name, indexVarName))
+                    {
+                        AddReadOrWrittenOffsetIsThreadIdCandidateInvariant(wc, v, "WRITE", 1);
+                        AddReadOrWrittenOffsetIsThreadIdCandidateInvariant(wc, v, "WRITE", 2);
+                        // No point adding it multiple times
+                        break;
+                    }
+                }
+            }
+
         }
 
         private void AddReadOrWrittenOffsetIsThreadIdCandidateRequires(Procedure Proc, Variable v)
@@ -181,17 +237,6 @@ namespace GPUVerify
             AddLogRaceDeclarations(v, "WRITE", out WriteDeclsResetAtBarrier, out WriteDeclsModifiedAtLogWrite);
             AddLogAccessProcedure(v, "READ");
             AddLogAccessProcedure(v, "WRITE");
-
-            HashSet<string> MayCallBarrier = verifier.GetProceduresThatIndirectlyCallProcedure(verifier.BarrierProcedure.Name);
-
-            verifier.ExtendModifiesSetOfProcedures(ReadDeclsResetAtBarrier, MayCallBarrier);
-            verifier.ExtendModifiesSetOfProcedures(WriteDeclsResetAtBarrier, MayCallBarrier);
-
-            HashSet<string> MayCallLogRead = verifier.GetProceduresThatIndirectlyCallProcedure("_LOG_READ_" + v.Name);
-            HashSet<string> MayCallLogWrite = verifier.GetProceduresThatIndirectlyCallProcedure("_LOG_WRITE_" + v.Name);
-
-            verifier.ExtendModifiesSetOfProcedures(ReadDeclsModifiedAtLogRead, MayCallLogRead);
-            verifier.ExtendModifiesSetOfProcedures(WriteDeclsModifiedAtLogWrite, MayCallLogWrite);
 
         }
         
@@ -277,7 +322,13 @@ namespace GPUVerify
                                 inParams.Add(ar.IndexX);
                             }
 
-                            result.simpleCmds.Add(new CallCmd(c.tok, "_LOG_READ_" + ar.v.Name, inParams, new IdentifierExprSeq()));
+                            Procedure logProcedure = GetLogAccessProcedure(c.tok, "_LOG_READ_" + ar.v.Name);
+
+                            CallCmd logAccessCallCmd = new CallCmd(c.tok, logProcedure.Name, inParams, new IdentifierExprSeq());
+
+                            logAccessCallCmd.Proc = logProcedure;
+
+                            result.simpleCmds.Add(logAccessCallCmd);
                             
                         }
                     }
@@ -305,7 +356,14 @@ namespace GPUVerify
                                 inParams.Add(ar.IndexX);
                             }
 
-                            result.simpleCmds.Add(new CallCmd(c.tok, "_LOG_WRITE_" + ar.v.Name, inParams, new IdentifierExprSeq()));
+                            Procedure logProcedure = GetLogAccessProcedure(c.tok, "_LOG_WRITE_" + ar.v.Name);
+
+                            CallCmd logAccessCallCmd = new CallCmd(c.tok, logProcedure.Name, inParams, new IdentifierExprSeq());
+
+                            logAccessCallCmd.Proc = logProcedure;
+
+                            result.simpleCmds.Add(logAccessCallCmd);
+                            
                             addedLogWrite = true;
                             
                         }
@@ -319,7 +377,8 @@ namespace GPUVerify
             if (bb.ec is WhileCmd)
             {
                 WhileCmd WhileCommand = bb.ec as WhileCmd;
-                result.ec = new WhileCmd(WhileCommand.tok, WhileCommand.Guard, WhileCommand.Invariants, AddRaceCheckCalls(WhileCommand.Body));
+                result.ec = new WhileCmd(WhileCommand.tok, WhileCommand.Guard, 
+                        WhileCommand.Invariants, AddRaceCheckCalls(WhileCommand.Body));
             }
             else if (bb.ec is IfCmd)
             {
@@ -340,6 +399,17 @@ namespace GPUVerify
 
         }
 
+        private Procedure GetLogAccessProcedure(IToken tok, string name)
+        {
+            if (logAccessProcedures.ContainsKey(name))
+            {
+                return logAccessProcedures[name];
+            }
+            Procedure newProcedure = new Procedure(tok, name, new TypeVariableSeq(), new VariableSeq(), new VariableSeq(), new RequiresSeq(), new IdentifierExprSeq(), new EnsuresSeq());
+            logAccessProcedures[name] = newProcedure;
+            return newProcedure;
+        }
+
 
         protected abstract void AddLogRaceDeclarations(Variable v, String ReadOrWrite, out IdentifierExprSeq ResetAtBarrier, out IdentifierExprSeq ModifiedAtLog);
 
@@ -353,7 +423,7 @@ namespace GPUVerify
             {
                 foreach (Variable v in NonLocalStateToCheck.getAllNonLocalVariables())
                 {
-                    CheckForRaces(tok, checkForRaces, v, false);
+                    CheckForRaces(checkForRaces, v, false);
                 }
             }
 
@@ -372,7 +442,7 @@ namespace GPUVerify
 
         protected abstract void SetNoAccessOccurred(IToken tok, BigBlock bb, Variable v, string AccessType);
 
-        public abstract void CheckForRaces(IToken tok, BigBlock bb, Variable v, bool ReadWriteOnly);
+        public abstract void CheckForRaces(BigBlock bb, Variable v, bool ReadWriteOnly);
 
         protected void MakeLogAccessProcedureHeader(Variable v, string ReadOrWrite, out Variable XParameterVariable, out Variable YParameterVariable, out Variable ZParameterVariable, out Procedure LogReadOrWriteProcedure)
         {
@@ -385,7 +455,6 @@ namespace GPUVerify
             {
                 MapType mt = v.TypedIdent.Type as MapType;
                 Debug.Assert(mt.Arguments.Length == 1);
-                Debug.Assert(GPUVerifier.IsIntOrBv32(mt.Arguments[0]));
 
                 XParameterVariable = new LocalVariable(v.tok, new TypedIdent(v.tok, "_X_index", mt.Arguments[0]));
                 if (mt.Result is MapType)
@@ -420,7 +489,11 @@ namespace GPUVerify
                 inParams.Add(XParameterVariable);
             }
 
-            LogReadOrWriteProcedure = new Procedure(v.tok, "_LOG_" + ReadOrWrite + "_" + v.Name, new TypeVariableSeq(), inParams, new VariableSeq(), new RequiresSeq(), new IdentifierExprSeq(), new EnsuresSeq());
+            string LogProcedureName = "_LOG_" + ReadOrWrite + "_" + v.Name;
+
+            LogReadOrWriteProcedure = GetLogAccessProcedure(v.tok, LogProcedureName);
+
+            LogReadOrWriteProcedure.InParams = inParams;
 
             if (CommandLineOptions.Symmetry && ReadOrWrite.Equals("READ"))
             {
@@ -462,6 +535,145 @@ namespace GPUVerify
         protected abstract Expr NoReadOrWriteExpr(Variable v, string ReadOrWrite, string OneOrTwo);
 
 
+        public void AddNoRaceContract(Procedure proc)
+        {
+            foreach (Variable v in NonLocalStateToCheck.getAllNonLocalVariables())
+            {
+                proc.Requires.Add(new Requires(false, Expr.Not(GenerateRaceCondition(v, "WRITE", "WRITE"))));
+                proc.Requires.Add(new Requires(false, Expr.Not(GenerateRaceCondition(v, "READ", "WRITE"))));
+                if (!CommandLineOptions.Symmetry)
+                {
+                    proc.Requires.Add(new Requires(false, Expr.Not(GenerateRaceCondition(v, "WRITE", "READ"))));
+                }
+
+                proc.Ensures.Add(new Ensures(false, Expr.Not(GenerateRaceCondition(v, "WRITE", "WRITE"))));
+                proc.Ensures.Add(new Ensures(false, Expr.Not(GenerateRaceCondition(v, "READ", "WRITE"))));
+                if (!CommandLineOptions.Symmetry)
+                {
+                    proc.Ensures.Add(new Ensures(false, Expr.Not(GenerateRaceCondition(v, "WRITE", "READ"))));
+                }
+            
+            }
+        }
+
+        public void AddNoRaceInvariants(Implementation impl)
+        {
+            AddNoRaceInvariants(impl.StructuredStmts);
+        }
+
+        private void AddNoRaceInvariants(StmtList stmtList)
+        {
+            foreach (BigBlock bb in stmtList.BigBlocks)
+            {
+                AddNoRaceInvariants(bb);
+            }
+        }
+
+        private void AddNoRaceInvariants(BigBlock bb)
+        {
+            if (bb.ec is WhileCmd)
+            {
+                WhileCmd wc = bb.ec as WhileCmd;
+                foreach (Variable v in NonLocalStateToCheck.getAllNonLocalVariables())
+                {
+                    wc.Invariants.Add(new AssertCmd(v.tok, Expr.Not(GenerateRaceCondition(v, "WRITE", "WRITE"))));
+                    wc.Invariants.Add(new AssertCmd(v.tok, Expr.Not(GenerateRaceCondition(v, "READ", "WRITE"))));
+                    if (!CommandLineOptions.Symmetry)
+                    {
+                        wc.Invariants.Add(new AssertCmd(v.tok, Expr.Not(GenerateRaceCondition(v, "WRITE", "READ"))));
+                    }
+                }
+
+                AddNoRaceInvariants(wc.Body);
+
+            }
+            else if (bb.ec is IfCmd)
+            {
+                AddNoRaceInvariants((bb.ec as IfCmd).thn);
+                if ((bb.ec as IfCmd).elseBlock != null)
+                {
+                    AddNoRaceInvariants((bb.ec as IfCmd).elseBlock);
+                }
+            }
+            else
+            {
+                Debug.Assert(bb.ec == null);
+            }
+        }
+
+
+        protected abstract Expr GenerateRaceCondition(Variable v, string FirstAccessType, string SecondAccessType);
+
+
+        private HashSet<Expr> GetOffsetsAccessed(StmtList stmts, Variable v, string AccessType)
+        {
+            HashSet<Expr> result = new HashSet<Expr> ();
+            foreach (BigBlock bb in stmts.BigBlocks)
+            {
+                HashSet<Expr> offsetsReadInBigBlock = GetOffsetsAccessed(bb, v, AccessType);
+                foreach (Expr e in offsetsReadInBigBlock)
+                {
+                    result.Add(e);
+                }
+            }
+            return result;
+        }
+
+        private HashSet<Expr> GetOffsetsAccessed(BigBlock bb, Variable v, string AccessType)
+        {
+            HashSet<Expr> result = new HashSet<Expr>();
+
+            foreach (Cmd c in bb.simpleCmds)
+            {
+                if (c is CallCmd)
+                {
+                    CallCmd call = c as CallCmd;
+
+                    if (call.callee == "_LOG_" + AccessType + "_" + v.Name)
+                    {
+                        // Ins[0] is thread 1's predicate,
+                        // Ins[1] is the offset to be read
+                        result.Add(call.Ins[1]);
+                    }
+
+                }
+
+            }
+
+            if (bb.ec is WhileCmd)
+            {
+                HashSet<Expr> bodyResult = GetOffsetsAccessed((bb.ec as WhileCmd).Body, v, AccessType);
+                foreach (Expr e in bodyResult)
+                {
+                    result.Add(e);
+                }
+            }
+            else if (bb.ec is IfCmd)
+            {
+                IfCmd ifCmd = bb.ec as IfCmd;
+
+                HashSet<Expr> thenResult = GetOffsetsAccessed(ifCmd.thn, v, AccessType);
+                foreach (Expr e in thenResult)
+                {
+                    result.Add(e);
+                }
+
+                Debug.Assert(ifCmd.elseIf == null);
+                
+                if(ifCmd.elseBlock != null)
+                {
+                    HashSet<Expr> elseResult = GetOffsetsAccessed(ifCmd.elseBlock, v, AccessType);
+                    foreach (Expr e in elseResult)
+                    {
+                        result.Add(e);
+                    }
+                }
+            }
+
+            return result;
+        }
 
     }
+
+
 }

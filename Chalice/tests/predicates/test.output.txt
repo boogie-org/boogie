@@ -1,0 +1,5 @@
+Verification of test.chalice using parameters="" 
+
+  32.5: Assertion might not hold. The expression at 32.12 might not evaluate to true.
+
+Boogie program verifier finished with 1 errors and 0 smoke test warnings.

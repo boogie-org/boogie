@@ -190,13 +190,13 @@ namespace GPUVerify
 
         protected override void SetNoAccessOccurred(IToken tok, BigBlock bb, Variable v, string AccessType)
         {
-            IdentifierExpr AccessSet1 = new IdentifierExpr(tok, new VariableDualiser(1).VisitVariable(
+            IdentifierExpr AccessSet1 = new IdentifierExpr(tok, new VariableDualiser(1, null, null).VisitVariable(
                             MakeAccessSetVariable(v, AccessType)));
             IdentifierExprSeq VariablesToHavoc = new IdentifierExprSeq();
             VariablesToHavoc.Add(AccessSet1);
             if (!CommandLineOptions.Symmetry || !AccessType.Equals("READ"))
             {
-                IdentifierExpr AccessSet2 = new IdentifierExpr(tok, new VariableDualiser(2).VisitVariable(
+                IdentifierExpr AccessSet2 = new IdentifierExpr(tok, new VariableDualiser(2, null, null).VisitVariable(
                                 MakeAccessSetVariable(v, AccessType)));
                 VariablesToHavoc.Add(AccessSet2);
             }
@@ -206,7 +206,7 @@ namespace GPUVerify
 
         }
 
-        public override void CheckForRaces(IToken tok, BigBlock bb, Variable v, bool ReadWriteOnly)
+        public override void CheckForRaces(BigBlock bb, Variable v, bool ReadWriteOnly)
         {
             if (!ReadWriteOnly)
             {
@@ -257,14 +257,21 @@ namespace GPUVerify
             return mt3.Arguments[0];
         }
 
-        private static void AddRaceCheck(BigBlock bb, Variable v, String Access1, String Access2)
+        private void AddRaceCheck(BigBlock bb, Variable v, String Access1, String Access2)
+        {
+            Expr AssertExpr = GenerateRaceCondition(v, Access1, Access2);
+
+            bb.simpleCmds.Add(new AssertCmd(v.tok, AssertExpr));
+        }
+
+        protected override Expr GenerateRaceCondition(Variable v, String Access1, String Access2)
         {
             VariableSeq DummyVars1;
             Expr SetExpr1 = AccessExpr(v, Access1, 1, out DummyVars1);
 
             VariableSeq DummyVars2;
             Expr SetExpr2 = AccessExpr(v, Access2, 2, out DummyVars2);
-            
+
             Debug.Assert(DummyVars1.Length == DummyVars2.Length);
             for (int i = 0; i < DummyVars1.Length; i++)
             {
@@ -277,8 +284,8 @@ namespace GPUVerify
             {
                 VariableSeq DummyVarsAccess1;
                 VariableSeq DummyVarsAccess2;
-                Expr IndexExpr1 = QuantifiedIndexExpr(v, new VariableDualiser(1).VisitVariable(v.Clone() as Variable), out DummyVarsAccess1);
-                Expr IndexExpr2 = QuantifiedIndexExpr(v, new VariableDualiser(2).VisitVariable(v.Clone() as Variable), out DummyVarsAccess2);
+                Expr IndexExpr1 = QuantifiedIndexExpr(v, new VariableDualiser(1, null, null).VisitVariable(v.Clone() as Variable), out DummyVarsAccess1);
+                Expr IndexExpr2 = QuantifiedIndexExpr(v, new VariableDualiser(2, null, null).VisitVariable(v.Clone() as Variable), out DummyVarsAccess2);
                 Debug.Assert(DummyVarsAccess1.Length == DummyVarsAccess2.Length);
                 Debug.Assert(DummyVars1.Length == DummyVarsAccess1.Length);
                 for (int i = 0; i < DummyVars1.Length; i++)
@@ -294,8 +301,7 @@ namespace GPUVerify
             {
                 AssertExpr = new ForallExpr(v.tok, DummyVars1, AssertExpr);
             }
-
-            bb.simpleCmds.Add(new AssertCmd(v.tok, AssertExpr));
+            return AssertExpr;
         }
 
         private static void SetNameDeep(IdentifierExpr e, string name)
@@ -335,7 +341,7 @@ namespace GPUVerify
 
         private static Expr AccessExpr(Variable v, String AccessType, int Thread, out VariableSeq DummyVars)
         {
-            return QuantifiedIndexExpr(v, new VariableDualiser(Thread).VisitVariable(MakeAccessSetVariable(v, AccessType)), out DummyVars);
+            return QuantifiedIndexExpr(v, new VariableDualiser(Thread, null, null).VisitVariable(MakeAccessSetVariable(v, AccessType)), out DummyVars);
         }
 
         private static Expr QuantifiedIndexExpr(Variable v, Variable AccessSetVariable, out VariableSeq DummyVars)
@@ -395,7 +401,7 @@ namespace GPUVerify
 
         private static Expr NoAccess0DExpr(IToken tok, Variable v, String AccessType, int Thread)
         {
-            return Expr.Not(new IdentifierExpr(tok, new VariableDualiser(Thread).VisitVariable(MakeAccessSetVariable(v, AccessType))));
+            return Expr.Not(new IdentifierExpr(tok, new VariableDualiser(Thread, null, null).VisitVariable(MakeAccessSetVariable(v, AccessType))));
         }
 
 

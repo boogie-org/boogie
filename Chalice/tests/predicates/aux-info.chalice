@@ -1,0 +1,33 @@
+class Cell {
+  var value: int;
+  
+  predicate p { acc(value,1) }
+  
+  method test()
+    requires p && acc(value,2)
+  {
+    // previously, the following sequence let to negative secondary permission
+    // to the field value.
+    fold p
+    fold p
+    call void()
+    call void()
+    call void2()
+    
+    unfold p
+    var tmp: int := value
+    fold p
+    // make sure that at this point we can retain information about the field value
+    assert tmp == unfolding p in value
+  }
+  
+  method void()
+    requires p
+  {}
+  
+  method void2()
+    requires p
+    ensures p
+  {}
+  
+}

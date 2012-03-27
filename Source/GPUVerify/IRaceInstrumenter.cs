@@ -8,7 +8,7 @@ namespace GPUVerify
 {
     interface IRaceInstrumenter
     {
-        void AddRaceCheckingCandidateInvariants(WhileCmd wc);
+        void AddRaceCheckingCandidateInvariants(Implementation impl, WhileCmd wc);
         void AddKernelPrecondition();
 
         // Summary:
@@ -20,10 +20,14 @@ namespace GPUVerify
 
         BigBlock MakeRaceCheckingStatements(IToken tok);
 
-        void CheckForRaces(IToken tok, BigBlock bb, Variable v, bool ReadWriteOnly);
+        void CheckForRaces(BigBlock bb, Variable v, bool ReadWriteOnly);
 
         void AddRaceCheckingCandidateRequires(Procedure Proc);
 
         void AddRaceCheckingCandidateEnsures(Procedure Proc);
+
+        void AddNoRaceContract(Procedure Proc);
+
+        void AddNoRaceInvariants(Implementation Impl);
     }
 }

@@ -16,8 +16,9 @@ namespace GPUVerify
         public static string outputFile = null;
 
         public static bool OnlyDivergence = false;
-        public static bool FullAbstraction;
-        public static bool Inference;
+        public static bool FullAbstraction = false;
+        public static bool Inference = false;
+        public static bool ArrayEqualities = false;
         public static string invariantsFile = null;
         public static bool DividedArray = false;
         public static string ArrayToCheck = null;
@@ -28,6 +29,16 @@ namespace GPUVerify
         public static bool SetEncoding = false;
 
         public static bool ShowStages = false;
+
+        public static bool AddDivergenceCandidatesOnlyIfModified = true;
+        public static bool AddDivergenceCandidatesOnlyToBarrierLoops = true;
+
+        public static bool ShowUniformityAnalysis = false;
+        public static bool DoUniformityAnalysis = true;
+
+        public static bool ShowMayBeTidAnalysis = false;
+        public static bool ShowMayBePowerOfTwoAnalysis = false;
+        public static bool ShowMayBeTidPlusConstantAnalysis = false;
 
         public static int Parse(string[] args)
         {
@@ -127,6 +138,41 @@ namespace GPUVerify
                         invariantsFile = afterColon;
                     }
 
+                    break;
+
+                    case "-arrayEqualities":
+                    case "/arrayEqualities":
+                    ArrayEqualities = true;
+                    break;
+
+                    case "-alwaysAddDivergenceCandidates":
+                    AddDivergenceCandidatesOnlyIfModified = false;
+                    AddDivergenceCandidatesOnlyToBarrierLoops = false;
+                    break;
+
+                    case "-showUniformityAnalysis":
+                    case "/showUniformityAnalysis":
+                    ShowUniformityAnalysis = true;
+                    break;
+
+                    case "-noUniformityAnalysis":
+                    case "/noUniformityAnalysis":
+                    DoUniformityAnalysis = false;
+                    break;
+
+                    case "-showMayBeTidAnalysis":
+                    case "/showMayBeTidAnalysis":
+                    ShowMayBeTidAnalysis = true;
+                    break;
+
+                    case "-showMayBePowerOfTwoAnalysis":
+                    case "/showMayBePowerOfTwoAnalysis":
+                    ShowMayBePowerOfTwoAnalysis = true;
+                    break;
+
+                    case "-showMayBeTidPlusConstantAnalysis":
+                    case "/showMayBeTidPlusConstantAnalysis":
+                    ShowMayBeTidPlusConstantAnalysis = true;
                     break;
 
                     default:

@@ -8,9 +8,7 @@ using System.Diagnostics.Contracts;
 using System.Collections.Generic;
 using Microsoft.Boogie;
 using Microsoft.Boogie.VCExprAST;
-using Microsoft.Boogie.Simplify;
 using VC;
-using Microsoft.Boogie.Z3;
 using System.Collections;
 using System.IO;
 using Microsoft.AbstractInterpretationFramework;
@@ -305,12 +303,10 @@ namespace Microsoft.Boogie.Houdini {
     private VCGen vcgen;
     private Checker checker;
     private Graph<Implementation> callGraph;
-    private bool continueAtError;
     private HashSet<Implementation> vcgenFailures;
 
-    public Houdini(Program program, bool continueAtError) {
+    public Houdini(Program program) {
       this.program = program;
-      this.continueAtError = continueAtError;
 
       if (CommandLineOptions.Clo.Trace)
         Console.WriteLine("Collecting existential constants...");
@@ -513,51 +509,6 @@ namespace Microsoft.Boogie.Houdini {
       return initial;
     }
 
-    private ProverInterface.Outcome VerifyUsingAxiom(HoudiniSession session, Implementation implementation, VCExpr axiom, out List<Counterexample> errors) {
-      if (vcgen == null)
-        throw new Exception("HdnVCGen not found for implementation: " + implementation.Name);
-      ProverInterface.Outcome outcome = TryCatchVerify(session, axiom, out errors);
-      return outcome;
-    }
-
-    // the main procedure that checks a procedure and updates the
-    // assignment and the worklist
-    private ProverInterface.Outcome HoudiniVerifyCurrent(
-                                        HoudiniSession session,
-                                        HoudiniState current,
-                                        Program program,
-                                        out List<Counterexample> errors,
-                                        out bool exc) {
-      if (current.Implementation == null)
-        throw new Exception("HoudiniVerifyCurrent has null implementation");
-
-      Implementation implementation = current.Implementation;
-      if (vcgen == null)
-        throw new Exception("HdnVCGen not found for implementation: " + implementation.Name);
-
-      ProverInterface.Outcome outcome = HoudiniVerifyCurrentAux(session, current, program, out errors, out exc);
-      return outcome;
-    }
-
-    private ProverInterface.Outcome VerifyCurrent(
-                                        HoudiniSession session,
-                                        HoudiniState current,
-                                        Program program,
-                                        out List<Counterexample> errors,
-                                        out bool exc) {
-      if (current.Implementation != null) {
-        Implementation implementation = current.Implementation;
-        if (vcgen == null)
-          throw new Exception("HdnVCGen not found for implementation: " + implementation.Name);
-
-        ProverInterface.Outcome outcome = TrySpinSameFunc(session, current, program, out errors, out exc);
-        return outcome;
-      }
-      else {
-        throw new Exception("VerifyCurrent has null implementation");
-      }
-    }
-
     private bool IsOutcomeNotHoudini(ProverInterface.Outcome outcome, List<Counterexample> errors) {
       switch (outcome) {
         case ProverInterface.Outcome.Valid:
@@ -574,44 +525,24 @@ namespace Microsoft.Boogie.Houdini {
       }
     }
 
-    // returns true if at least one of the violations is non-candidate
-    private bool AnyNonCandidateViolation(ProverInterface.Outcome outcome, List<Counterexample> errors) {
-      switch (outcome) {
-        case ProverInterface.Outcome.Invalid:
-          Contract.Assert(errors != null);
-          foreach (Counterexample error in errors) {
-            if (ExtractRefutedAnnotation(error) == null)
-              return true;
-          }
-          return false;
-        default:
-          return false;
-      }
-    }
-
-    private List<Counterexample> emptyList = new List<Counterexample>();
-
-    // Record most current Non-Candidate errors found by Boogie, etc.
-    private void UpdateHoudiniOutcome(HoudiniOutcome houdiniOutcome,
+    // Record most current non-candidate errors found
+    // Return true if there was at least one non-candidate error
+    private bool UpdateHoudiniOutcome(HoudiniOutcome houdiniOutcome,
                                       Implementation implementation,
-                                      ProverInterface.Outcome verificationOutcome,
+                                      ProverInterface.Outcome outcome,
                                       List<Counterexample> errors) {
-      string implName = implementation.ToString();
+      string implName = implementation.Name;
       houdiniOutcome.implementationOutcomes.Remove(implName);
       List<Counterexample> nonCandidateErrors = new List<Counterexample>();
 
-      switch (verificationOutcome) {
-        case ProverInterface.Outcome.Invalid:
-          Contract.Assume(errors != null);
+      if (outcome == ProverInterface.Outcome.Invalid) {
           foreach (Counterexample error in errors) {
             if (ExtractRefutedAnnotation(error) == null)
               nonCandidateErrors.Add(error);
           }
-          break;
-        default:
-          break;
       }
-      houdiniOutcome.implementationOutcomes.Add(implName, new VCGenOutcome(verificationOutcome, nonCandidateErrors));
+      houdiniOutcome.implementationOutcomes.Add(implName, new VCGenOutcome(outcome, nonCandidateErrors));
+      return nonCandidateErrors.Count > 0;
     }
 
     private void FlushWorkList(HoudiniState current) {
@@ -626,18 +557,20 @@ namespace Microsoft.Boogie.Houdini {
         HoudiniSession session;
         houdiniSessions.TryGetValue(current.Implementation, out session);
         List<Counterexample> errors;
-        ProverInterface.Outcome outcome = VerifyUsingAxiom(session, current.Implementation, axiom, out errors);
+        ProverInterface.Outcome outcome = TryCatchVerify(session, axiom, out errors);
         UpdateHoudiniOutcome(current.Outcome, current.Implementation, outcome, errors);
         this.NotifyOutcome(outcome);
 
         current.WorkQueue.Dequeue();
         this.NotifyDequeue();
-
       }
       this.NotifyFlushFinish();
     }
 
     private void UpdateAssignment(HoudiniState current, RefutedAnnotation refAnnot) {
+      if (CommandLineOptions.Clo.Trace) {
+        Console.WriteLine("Removing " + refAnnot.Constant);
+      }
       current.Assignment.Remove(refAnnot.Constant);
       current.Assignment.Add(refAnnot.Constant, false);
       this.NotifyConstant(refAnnot.Constant);
@@ -650,51 +583,6 @@ namespace Microsoft.Boogie.Houdini {
       }
     }
 
-    private void UpdateWorkList(HoudiniState current,
-                                ProverInterface.Outcome outcome,
-                                List<Counterexample> errors) {
-      Contract.Assume(current.Implementation != null);
-
-      switch (outcome) {
-        case ProverInterface.Outcome.Valid:
-          current.WorkQueue.Dequeue();
-          this.NotifyDequeue();
-          break;
-        case ProverInterface.Outcome.Invalid:
-          Contract.Assume(errors != null);
-          bool dequeue = false;
-          foreach (Counterexample error in errors) {
-            RefutedAnnotation refutedAnnotation = ExtractRefutedAnnotation(error);
-            if (refutedAnnotation != null) {
-              foreach (Implementation implementation in FindImplementationsToEnqueue(refutedAnnotation, current.Implementation)) { AddToWorkList(current, implementation); }
-              UpdateAssignment(current, refutedAnnotation);
-            }
-            else {
-              dequeue = true; //once one non-houdini error is hit dequeue?!
-            }
-          }
-          if (dequeue) {
-            current.WorkQueue.Dequeue();
-            this.NotifyDequeue();
-          }
-          break;
-        case ProverInterface.Outcome.TimeOut:
-          // TODO: reset session instead of blocking timed out funcs?
-          current.addToBlackList(current.Implementation.Name);
-          current.WorkQueue.Dequeue();
-          this.NotifyDequeue();
-          break;
-        case ProverInterface.Outcome.OutOfMemory:
-        case ProverInterface.Outcome.Undetermined:
-          current.WorkQueue.Dequeue();
-          this.NotifyDequeue();
-          break;
-        default:
-          throw new Exception("Unknown vcgen outcome");
-      }
-    }
-
-
     private void AddRelatedToWorkList(HoudiniState current, RefutedAnnotation refutedAnnotation) {
       Contract.Assume(current.Implementation != null);
       foreach (Implementation implementation in FindImplementationsToEnqueue(refutedAnnotation, current.Implementation)) {
@@ -704,7 +592,7 @@ namespace Microsoft.Boogie.Houdini {
 
 
     // Updates the worklist and current assignment
-    // @return true if the current function is kept on the queue
+    // @return true if the current function is dequeued
     private bool UpdateAssignmentWorkList(HoudiniState current,
                                           ProverInterface.Outcome outcome,
                                           List<Counterexample> errors) {
@@ -726,22 +614,12 @@ namespace Microsoft.Boogie.Houdini {
             }
           }
           break;
-
-        case ProverInterface.Outcome.TimeOut:
-          // TODO: reset session instead of blocking timed out funcs?
+        default:
           current.addToBlackList(current.Implementation.Name);
           break;
-        case ProverInterface.Outcome.Undetermined:
-        case ProverInterface.Outcome.OutOfMemory:
-          break;
-        default:
-          throw new Exception("Unknown vcgen outcome");
       }
-      if (dequeue) {
-        current.WorkQueue.Dequeue();
-        this.NotifyDequeue();
-      }
-      return !dequeue;
+      
+      return dequeue;
     }
 
     private class WorkQueue {
@@ -809,106 +687,6 @@ namespace Microsoft.Boogie.Houdini {
       }
     }
 
-    private void PrintBadList(string kind, List<string> list) {
-      if (list.Count != 0) {
-        Console.WriteLine("----------------------------------------");
-        Console.WriteLine("Functions: {0}", kind);
-        foreach (string fname in list) {
-          Console.WriteLine("\t{0}", fname);
-        }
-        Console.WriteLine("----------------------------------------");
-      }
-    }
-
-    private void PrintBadOutcomes(List<string> timeouts, List<string> inconc, List<string> errors) {
-      PrintBadList("TimedOut", timeouts);
-      PrintBadList("Inconclusive", inconc);
-      PrintBadList("Errors", errors);
-    }
-
-    public HoudiniOutcome VerifyProgram() {
-      HoudiniOutcome outcome = VerifyProgramSameFuncFirst();
-      PrintBadOutcomes(outcome.ListOfTimeouts, outcome.ListOfInconclusives, outcome.ListOfErrors);
-      return outcome;
-    }
-
-    // Old main loop
-    public HoudiniOutcome VerifyProgramUnorderedWork() {
-      HoudiniState current = new HoudiniState(BuildWorkList(program), BuildAssignment(houdiniConstants.Keys));
-      this.NotifyStart(program, houdiniConstants.Keys.Count);
-
-      while (current.WorkQueue.Count > 0) {
-        //System.GC.Collect();
-        this.NotifyIteration();
-
-        VCExpr axiom = BuildAxiom(current.Assignment);
-        this.NotifyAssignment(current.Assignment);
-
-        current.Implementation = current.WorkQueue.Peek();
-        this.NotifyImplementation(current.Implementation);
-
-        List<Counterexample> errors;
-        HoudiniSession session;
-        houdiniSessions.TryGetValue(current.Implementation, out session);
-        ProverInterface.Outcome outcome = VerifyUsingAxiom(session, current.Implementation, axiom, out errors);
-        this.NotifyOutcome(outcome);
-
-        UpdateHoudiniOutcome(current.Outcome, current.Implementation, outcome, errors);
-        if (IsOutcomeNotHoudini(outcome, errors) && !continueAtError) {
-          current.WorkQueue.Dequeue();
-          this.NotifyDequeue();
-          FlushWorkList(current);
-        }
-        else
-          UpdateWorkList(current, outcome, errors);
-      }
-      this.NotifyEnd(true);
-      current.Outcome.assignment = current.Assignment;
-      return current.Outcome;
-    }
-
-    // New main loop
-    public HoudiniOutcome VerifyProgramSameFuncFirst() {
-      HoudiniState current = new HoudiniState(BuildWorkList(program), BuildAssignment(houdiniConstants.Keys));
-      this.NotifyStart(program, houdiniConstants.Keys.Count);
-
-      while (current.WorkQueue.Count > 0) {
-        bool exceptional = false;
-        //System.GC.Collect();
-        this.NotifyIteration();
-
-        current.Implementation = current.WorkQueue.Peek();
-        this.NotifyImplementation(current.Implementation);
-
-        HoudiniSession session;
-        houdiniSessions.TryGetValue(current.Implementation, out session);
-        List<Counterexample> errors;
-        ProverInterface.Outcome outcome = VerifyCurrent(session, current, program, out errors, out exceptional);
-
-        // updates to worklist already done in VerifyCurrent, unless there was an exception
-        if (exceptional) {
-          this.NotifyOutcome(outcome);
-          UpdateHoudiniOutcome(current.Outcome, current.Implementation, outcome, errors);
-          if (IsOutcomeNotHoudini(outcome, errors) && !continueAtError) {
-            current.WorkQueue.Dequeue();
-            this.NotifyDequeue();
-            FlushWorkList(current);
-          }
-          else {
-            UpdateAssignmentWorkList(current, outcome, errors);
-          }
-          exceptional = false;
-        }
-      }
-      this.NotifyEnd(true);
-      current.Outcome.assignment = current.Assignment;
-      return current.Outcome;
-    }
-
-    //Clean houdini (Based on "Houdini Spec in Boogie" email 10/22/08
-    //Aborts when there is a violation of non-candidate assertion
-    //This can be used in eager mode (continueAfterError) by simply making
-    //all non-candidate annotations as unchecked (free requires/ensures, assumes)
     public HoudiniOutcome PerformHoudiniInference() {
       HoudiniState current = new HoudiniState(BuildWorkList(program), BuildAssignment(houdiniConstants.Keys));
       this.NotifyStart(program, houdiniConstants.Keys.Count);
@@ -917,31 +695,14 @@ namespace Microsoft.Boogie.Houdini {
       }
 
       while (current.WorkQueue.Count > 0) {
-        bool exceptional = false;
-        //System.GC.Collect();
         this.NotifyIteration();
 
         current.Implementation = current.WorkQueue.Peek();
         this.NotifyImplementation(current.Implementation);
 
-        List<Counterexample> errors;
         HoudiniSession session;
         this.houdiniSessions.TryGetValue(current.Implementation, out session);
-        ProverInterface.Outcome outcome = HoudiniVerifyCurrent(session, current, program, out errors, out exceptional);
-
-        // updates to worklist already done in VerifyCurrent, unless there was an exception
-        if (exceptional) {
-          this.NotifyOutcome(outcome);
-          UpdateHoudiniOutcome(current.Outcome, current.Implementation, outcome, errors);
-          if (AnyNonCandidateViolation(outcome, errors)) { //abort
-            current.WorkQueue.Dequeue();
-            this.NotifyDequeue();
-            FlushWorkList(current);
-          }
-          else { //continue
-            UpdateAssignmentWorkList(current, outcome, errors);
-          }
-        }
+        HoudiniVerifyCurrent(session, current);
       }
       this.NotifyEnd(true);
       current.Outcome.assignment = current.Assignment;
@@ -1027,7 +788,6 @@ namespace Microsoft.Boogie.Houdini {
       }
     }
 
-
     private void DebugRefutedCandidates(Implementation curFunc, List<Counterexample> errors) {
       XmlSink xmlRefuted = CommandLineOptions.Clo.XmlRefuted;
       if (xmlRefuted != null && errors != null) {
@@ -1084,11 +844,6 @@ namespace Microsoft.Boogie.Houdini {
       try {
         outcome = session.Verify(checker, axiom, out errors);
       }
-      catch (VCGenException e) {
-        Contract.Assume(e != null);
-        errors = null;
-        outcome = ProverInterface.Outcome.Undetermined;
-      }
       catch (UnexpectedProverOutputException upo) {
         Contract.Assume(upo != null);
         errors = null;
@@ -1097,141 +852,54 @@ namespace Microsoft.Boogie.Houdini {
       return outcome;
     }
 
-    //version of TryCatchVerify that spins on the same function
-    //as long as the current assignment is changing
-    private ProverInterface.Outcome TrySpinSameFunc(
-                                          HoudiniSession session,
-                                          HoudiniState current,
-                                          Program program,
-                                          out List<Counterexample> errors,
-                                          out bool exceptional) {
-      Contract.Assert(current.Implementation != null);
-      ProverInterface.Outcome outcome;
-      errors = null;
-      outcome = ProverInterface.Outcome.Undetermined;
-      try {
-        bool trySameFunc = true;
-        bool pastFirstIter = false; //see if this new loop is even helping
+    private void HoudiniVerifyCurrent(HoudiniSession session, HoudiniState current) {
+      while (true) {
+        VCExpr currentAx = BuildAxiom(current.Assignment);
+        this.NotifyAssignment(current.Assignment);
 
-        do {
-          if (pastFirstIter) {
-            //System.GC.Collect();
-            this.NotifyIteration();
-          }
+        //check the VC with the current assignment
+        List<Counterexample> errors;
+        ProverInterface.Outcome outcome = TryCatchVerify(session, currentAx, out errors);
+        this.NotifyOutcome(outcome);
 
-          VCExpr currentAx = BuildAxiom(current.Assignment);
-          this.NotifyAssignment(current.Assignment);
+        DebugRefutedCandidates(current.Implementation, errors);
 
-          outcome = session.Verify(checker, currentAx, out errors);
-          this.NotifyOutcome(outcome);
-
-          DebugRefutedCandidates(current.Implementation, errors);
-          UpdateHoudiniOutcome(current.Outcome, current.Implementation, outcome, errors);
-          if (!continueAtError && IsOutcomeNotHoudini(outcome, errors)) {
-            current.WorkQueue.Dequeue();
-            this.NotifyDequeue();
-            trySameFunc = false;
-            FlushWorkList(current);
-          }
-          else {
-            trySameFunc = UpdateAssignmentWorkList(current, outcome, errors);
-            //reset for the next round
-            errors = null;
-            outcome = ProverInterface.Outcome.Undetermined;
-          }
-          pastFirstIter = true;
-        } while (trySameFunc && current.WorkQueue.Count > 0);
-
-      }
-      catch (VCGenException e) {
-        Contract.Assume(e != null);
-        NotifyException("VCGen");
-        exceptional = true;
-        return outcome;
-      }
-      catch (UnexpectedProverOutputException upo) {
-        Contract.Assume(upo != null);
-        NotifyException("UnexpectedProverOutput");
-        exceptional = true;
-        return outcome;
-      }
-      exceptional = false;
-      return outcome;
-    }
-
-    //Similar to TrySpinSameFunc except no Candidate logic
-    private ProverInterface.Outcome HoudiniVerifyCurrentAux(
-                                          HoudiniSession session,
-                                          HoudiniState current,
-                                          Program program,
-                                          out List<Counterexample> errors,
-                                          out bool exceptional) {
-      Contract.Assert(current.Implementation != null);
-      ProverInterface.Outcome outcome;
-      // the following initialization is there just to satisfy the compiler 
-      // which apparently does not understand the semantics of do-while statements
-      errors = null;
-      outcome = ProverInterface.Outcome.Undetermined;
-
-      try {
-        bool trySameFunc = true;
-        bool pastFirstIter = false; //see if this new loop is even helping
-
-        do {
-          errors = null;
-          outcome = ProverInterface.Outcome.Undetermined;
-
-          if (pastFirstIter) {
-            //System.GC.Collect();
-            this.NotifyIteration();
-          }
-
-          VCExpr currentAx = BuildAxiom(current.Assignment);
-          this.NotifyAssignment(current.Assignment);
-
-          //check the VC with the current assignment
-          outcome = session.Verify(checker, currentAx, out errors);
-          this.NotifyOutcome(outcome);
-
-          DebugRefutedCandidates(current.Implementation, errors);
-          UpdateHoudiniOutcome(current.Outcome, current.Implementation, outcome, errors);
-
-          if (AnyNonCandidateViolation(outcome, errors)) { //abort
-            current.WorkQueue.Dequeue();
-            this.NotifyDequeue();
-            trySameFunc = false;
-            FlushWorkList(current);
-          }
-          else { //continue
-            trySameFunc = UpdateAssignmentWorkList(current, outcome, errors);
-          }
-          pastFirstIter = true;
-        } while (trySameFunc && current.WorkQueue.Count > 0);
-      }
-      catch (VCGenException e) {
-        Contract.Assume(e != null);
-        NotifyException("VCGen");
-        exceptional = true;
-        return outcome;
-      }
-      catch (UnexpectedProverOutputException upo) {
-        Contract.Assume(upo != null);
-        NotifyException("UnexpectedProverOutput");
-        exceptional = true;
-        return outcome;
-      }
-      exceptional = false;
-      return outcome;
+        if (UpdateHoudiniOutcome(current.Outcome, current.Implementation, outcome, errors)) { // abort
+          current.WorkQueue.Dequeue();
+          this.NotifyDequeue();
+          FlushWorkList(current);
+          return;
+        }
+        else if (UpdateAssignmentWorkList(current, outcome, errors)) {
+          current.WorkQueue.Dequeue();
+          this.NotifyDequeue();
+          return;
+        }
+      } 
     }
   }
 
-  public enum HoudiniOutcomeKind { Done, FatalError, VerificationCompleted }
-
   public class VCGenOutcome {
-    public ProverInterface.Outcome outcome;
+    public VCGen.Outcome outcome;
     public List<Counterexample> errors;
     public VCGenOutcome(ProverInterface.Outcome outcome, List<Counterexample> errors) {
-      this.outcome = outcome;
+      switch (outcome) {
+        case ProverInterface.Outcome.Invalid:
+          this.outcome = ConditionGeneration.Outcome.Errors;
+          break;
+        case ProverInterface.Outcome.OutOfMemory:
+          this.outcome = ConditionGeneration.Outcome.OutOfMemory;
+          break;
+        case ProverInterface.Outcome.TimeOut:
+          this.outcome = ConditionGeneration.Outcome.TimedOut;
+          break;
+        case ProverInterface.Outcome.Undetermined:
+          this.outcome = ConditionGeneration.Outcome.Inconclusive;
+          break;
+        case ProverInterface.Outcome.Valid:
+          this.outcome = ConditionGeneration.Outcome.Correct;
+          break;
+      }
       this.errors = errors;
     }
   }
@@ -1241,12 +909,10 @@ namespace Microsoft.Boogie.Houdini {
     public Dictionary<string, bool> assignment = new Dictionary<string, bool>();
     // boogie errors
     public Dictionary<string, VCGenOutcome> implementationOutcomes = new Dictionary<string, VCGenOutcome>();
-    // outcome kind    
-    public HoudiniOutcomeKind kind;
 
     // statistics 
 
-    private int CountResults(ProverInterface.Outcome outcome) {
+    private int CountResults(VCGen.Outcome outcome) {
       int outcomeCount = 0;
       foreach (VCGenOutcome verifyOutcome in implementationOutcomes.Values) {
         if (verifyOutcome.outcome == outcome)
@@ -1255,7 +921,7 @@ namespace Microsoft.Boogie.Houdini {
       return outcomeCount;
     }
 
-    private List<string> ListOutcomeMatches(ProverInterface.Outcome outcome) {
+    private List<string> ListOutcomeMatches(VCGen.Outcome outcome) {
       List<string> result = new List<string>();
       foreach (KeyValuePair<string, VCGenOutcome> kvpair in implementationOutcomes) {
         if (kvpair.Value.outcome == outcome)
@@ -1266,37 +932,37 @@ namespace Microsoft.Boogie.Houdini {
 
     public int ErrorCount {
       get {
-        return CountResults(ProverInterface.Outcome.Invalid);
+        return CountResults(VCGen.Outcome.Errors);
       }
     }
     public int Verified {
       get {
-        return CountResults(ProverInterface.Outcome.Valid);
+        return CountResults(VCGen.Outcome.Correct);
       }
     }
     public int Inconclusives {
       get {
-        return CountResults(ProverInterface.Outcome.Undetermined);
+        return CountResults(VCGen.Outcome.Inconclusive);
       }
     }
     public int TimeOuts {
       get {
-        return CountResults(ProverInterface.Outcome.TimeOut);
+        return CountResults(VCGen.Outcome.TimedOut);
       }
     }
     public List<string> ListOfTimeouts {
       get {
-        return ListOutcomeMatches(ProverInterface.Outcome.TimeOut);
+        return ListOutcomeMatches(VCGen.Outcome.TimedOut);
       }
     }
     public List<string> ListOfInconclusives {
       get {
-        return ListOutcomeMatches(ProverInterface.Outcome.Undetermined);
+        return ListOutcomeMatches(VCGen.Outcome.Inconclusive);
       }
     }
     public List<string> ListOfErrors {
       get {
-        return ListOutcomeMatches(ProverInterface.Outcome.Invalid);
+        return ListOutcomeMatches(VCGen.Outcome.Errors);
       }
     }
   }

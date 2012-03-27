@@ -35,26 +35,30 @@ static StructuredCmd/*!*/ dummyStructuredCmd = new BreakCmd(Token.NoToken, null)
 ///the parsed program.
 ///</summary>
 public static int Parse (string/*!*/ filename, /*maybe null*/ List<string/*!*/> defines, out /*maybe null*/ Program program) /* throws System.IO.IOException */ {
-Contract.Requires(filename != null);
-Contract.Requires(cce.NonNullElements(defines,true));
-
-
-  FileStream stream = new FileStream(filename, FileMode.Open, FileAccess.Read, FileShare.Read);
-  var ret = Parse(stream, filename, defines, out program);
-  stream.Close();
-  return ret;
-}
-
-
-public static int Parse (Stream stream, string/*!*/ filename, /*maybe null*/ List<string/*!*/> defines, out /*maybe null*/ Program program) /* throws System.IO.IOException */ {
-Contract.Requires(stream != null);
-Contract.Requires(filename != null);
-Contract.Requires(cce.NonNullElements(defines,true));
+  Contract.Requires(filename != null);
+  Contract.Requires(cce.NonNullElements(defines,true));
 
   if (defines == null) {
     defines = new List<string/*!*/>();
   }
-  string s = ParserHelper.Fill(stream, defines);
+
+  if (filename == "stdin.bpl") {
+    var s = ParserHelper.Fill(Console.In, defines);
+    return Parse(s, filename, out program);
+  } else {
+    FileStream stream = new FileStream(filename, FileMode.Open, FileAccess.Read, FileShare.Read);
+    var s = ParserHelper.Fill(stream, defines);
+    var ret = Parse(s, filename, out program);
+    stream.Close();
+    return ret;
+  }
+}
+
+
+public static int Parse (string s, string/*!*/ filename, out /*maybe null*/ Program program) /* throws System.IO.IOException */ {
+  Contract.Requires(s != null);
+  Contract.Requires(filename != null);
+
   byte[]/*!*/ buffer = cce.NonNull(UTF8Encoding.Default.GetBytes(s));
   MemoryStream ms = new MemoryStream(buffer,false);
   Errors errors = new Errors();
@@ -66,6 +70,7 @@ Contract.Requires(cce.NonNullElements(defines,true));
     if (parser.errors.count == 0)
     {
       program = Pgm;
+      program.ProcessDatatypeConstructors();
       return 0;
     }
     else
@@ -111,9 +116,12 @@ CHARACTERS
   cr        = '\r'.
   lf        = '\n'.
   tab       = '\t'.
-
+  
   space = ' '.
   quote = '"'.
+
+  newLine = cr + lf.
+  regularStringChar = ANY - quote - newLine.
 
   nondigit = letter + special.
   nonquote = letter + digit + space + glyph.
@@ -124,7 +132,9 @@ TOKENS
   ident =  [ '\\' ] nondigit {nondigit | digit}.
   bvlit = digit {digit} 'b' 'v' digit {digit}.
   digits = digit {digit}.
-  string = quote {nonquote} quote.
+
+  string = quote { regularStringChar | "\\\"" } quote.
+
   float = digit {digit} '.' {digit}.
 
 COMMENTS FROM "/*" TO "*/" NESTED
@@ -776,6 +786,7 @@ WhileCmd<out WhileCmd/*!*/ wcmd>
      Expr guard;  Expr/*!*/ e;  bool isFree;
      List<PredicateCmd/*!*/> invariants = new List<PredicateCmd/*!*/>();
      StmtList/*!*/ body;
+     QKeyValue kv = null;
   .)
   "while"             (. x = t; .)
   Guard<out guard>    (. Contract.Assume(guard == null || cce.Owner.None(guard)); .)
@@ -783,10 +794,11 @@ WhileCmd<out WhileCmd/*!*/ wcmd>
     [ "free"          (. isFree = true;  .)
     ]
     "invariant"
+    { Attribute<ref kv> }
     Expression<out e> (. if (isFree) {
-                           invariants.Add(new AssumeCmd(z, e));
+                           invariants.Add(new AssumeCmd(z, e, kv));
                          } else {
-                           invariants.Add(new AssertCmd(z, e));
+                           invariants.Add(new AssertCmd(z, e, kv));
                          }
                       .)
     ";"

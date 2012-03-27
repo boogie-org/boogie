@@ -749,6 +749,7 @@ namespace Microsoft.Boogie {
         } else {
           stream.Write(level + 1, "invariant ");
         }
+        Cmd.EmitAttributes(stream, inv.Attributes);
         inv.Expr.Emit(stream);
         stream.WriteLine(";");
       }

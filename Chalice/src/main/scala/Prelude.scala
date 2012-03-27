@@ -73,6 +73,7 @@ type PermissionComponent;
 const unique perm$R: PermissionComponent;
 const unique perm$N: PermissionComponent;
 var Mask: MaskType where IsGoodMask(Mask);
+var SecMask: MaskType where IsGoodMask(SecMask);
 const Permission$denominator: int;
 axiom Permission$denominator > 0;
 const Permission$FullFraction: int;
@@ -136,12 +137,14 @@ object CreditsAndMuPL extends PreludeComponent {
   val text = """
 var Credits: CreditsType;
 
-function IsGoodState<T>(T) returns (bool);
-function combine<T,U>(T, U) returns (T);
-const nostate: HeapType;
+function IsGoodState(PartialHeapType) returns (bool);
+function combine(PartialHeapType, PartialHeapType) returns (PartialHeapType);
+function heapFragment<T>(T) returns (PartialHeapType);
+type PartialHeapType;
+const emptyPartialHeap: PartialHeapType;
 
-axiom (forall<T,U> a: T, b: U :: {IsGoodState(combine(a, b))} IsGoodState(combine(a, b)) <==> IsGoodState(a) && IsGoodState(b));
-axiom IsGoodState(nostate);
+axiom (forall a: PartialHeapType, b: PartialHeapType :: {IsGoodState(combine(a, b))} IsGoodState(combine(a, b)) <==> IsGoodState(a) && IsGoodState(b));
+axiom IsGoodState(emptyPartialHeap);
 
 type ModuleName;
 const CurrentModule: ModuleName;
@@ -165,25 +168,39 @@ axiom (forall m, n: Mu :: MuBelow(m, n) ==> n != $LockBottom);
 const unique held: Field int;
 function Acquire$Heap(int) returns (HeapType);
 function Acquire$Mask(int) returns (MaskType);
+function Acquire$SecMask(int) returns (MaskType);
 function Acquire$Credits(int) returns (CreditsType);
 axiom NonPredicateField(held);
 
 function LastSeen$Heap(Mu, int) returns (HeapType);
 function LastSeen$Mask(Mu, int) returns (MaskType);
+function LastSeen$SecMask(Mu, int) returns (MaskType);
 function LastSeen$Credits(Mu, int) returns (CreditsType);
 
 const unique rdheld: Field bool;
 axiom NonPredicateField(rdheld);
-function wf(h: HeapType, m: MaskType) returns (bool);
+function wf(h: HeapType, m: MaskType, sm: MaskType) returns (bool);
 
 function IsGoodInhaleState(ih: HeapType, h: HeapType,
-                           m: MaskType) returns (bool)
+                           m: MaskType, sm: MaskType) returns (bool)
 {
-  (forall<T> o: ref, f: Field T :: { ih[o, f] }  CanRead(m, o, f) ==> ih[o, f] == h[o, f]) &&
+  (forall<T> o: ref, f: Field T :: { ih[o, f] }  CanRead(m, sm, o, f) ==> ih[o, f] == h[o, f]) &&
   (forall o: ref :: { ih[o, held] }  (0<ih[o, held]) == (0<h[o, held])) &&
   (forall o: ref :: { ih[o, rdheld] }  ih[o, rdheld] == h[o, rdheld]) &&
   (forall o: ref :: { h[o, held] }  (0<h[o, held]) ==> ih[o, mu] == h[o, mu]) &&
   (forall o: ref :: { h[o, rdheld] }  h[o, rdheld] ==> ih[o, mu] == h[o, mu])
+}
+function IsGoodExhaleState(eh: HeapType, h: HeapType,
+                           m: MaskType, sm: MaskType) returns (bool)
+{
+  (forall<T> o: ref, f: Field T :: { eh[o, f] }  CanRead(m, sm, o, f) ==> eh[o, f] == h[o, f]) &&
+  (forall o: ref :: { eh[o, held] }  (0<eh[o, held]) == (0<h[o, held])) &&
+  (forall o: ref :: { eh[o, rdheld] }  eh[o, rdheld] == h[o, rdheld]) &&
+  (forall o: ref :: { h[o, held] }  (0<h[o, held]) ==> eh[o, mu] == h[o, mu]) &&
+  (forall o: ref :: { h[o, rdheld] }  h[o, rdheld] ==> eh[o, mu] == h[o, mu]) &&
+  (forall o: ref :: { h[o, forkK] } { eh[o, forkK] } h[o, forkK] == eh[o, forkK]) &&
+  (forall o: ref :: { h[o, held] } { eh[o, held] } h[o, held] == eh[o, held]) &&
+  (forall o: ref, f: Field int :: { eh[o, f], PredicateField(f) } PredicateField(f) ==> h[o, f] <= eh[o, f])
 }"""
 }
 object PermissionFunctionsAndAxiomsPL extends PreludeComponent {
@@ -192,7 +209,12 @@ object PermissionFunctionsAndAxiomsPL extends PreludeComponent {
 // -- Permissions ------------------------------------------------
 // ---------------------------------------------------------------
 
-function {:expand false} CanRead<T>(m: MaskType, obj: ref, f: Field T) returns (bool)
+function {:expand false} CanRead<T>(m: MaskType, sm: MaskType, obj: ref, f: Field T) returns (bool)
+{
+  0 <  m[obj,f][perm$R] || 0 <  m[obj,f][perm$N] ||
+  0 < sm[obj,f][perm$R] || 0 < sm[obj,f][perm$N]
+}
+function {:expand false} CanReadForSure<T>(m: MaskType, obj: ref, f: Field T) returns (bool)
 {
   0 < m[obj,f][perm$R] || 0 < m[obj,f][perm$N]
 }
@@ -210,7 +232,7 @@ function {:expand true} IsGoodMask(m: MaskType) returns (bool)
       (m[o,f][perm$N] < 0 ==> 0 < m[o,f][perm$R]))
 }
 
-axiom (forall h: HeapType, m: MaskType, o: ref, q: ref :: {wf(h, m), h[o, mu], h[q, mu]} wf(h, m) && o!=q && (0 < h[o, held] || h[o, rdheld]) && (0 < h[q, held] || h[q, rdheld]) ==> h[o, mu] != h[q, mu]);
+axiom (forall h: HeapType, m, sm: MaskType, o: ref, q: ref :: {wf(h, m, sm), h[o, mu], h[q, mu]} wf(h, m, sm) && o!=q && (0 < h[o, held] || h[o, rdheld]) && (0 < h[q, held] || h[q, rdheld]) ==> h[o, mu] != h[q, mu]);
 
 function DecPerm<T>(m: MaskType, o: ref, f: Field T, howMuch: int) returns (MaskType);
 
@@ -244,6 +266,7 @@ axiom (forall<T,U> h: HeapType, o: ref, f: Field T, newValue: U, q: ref, g: Fiel
 
 function Call$Heap(int) returns (HeapType);
 function Call$Mask(int) returns (MaskType);
+function Call$SecMask(int) returns (MaskType);
 function Call$Credits(int) returns (CreditsType);
 function Call$Args(int) returns (ArgSeq);
 type ArgSeq = <T>[int]T;

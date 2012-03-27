@@ -88,6 +88,7 @@ namespace BytecodeTranslator
         var remover = new AnonymousDelegateRemover(this.sink.host, this.PdbReader);
         newTypes = remover.RemoveAnonymousDelegates(methodBody.MethodDefinition, block);
       }
+      StmtBuilder.Add(new Bpl.AssumeCmd(Bpl.Token.NoToken, Bpl.Expr.True, new Bpl.QKeyValue(Bpl.Token.NoToken, "breadcrumb", new List<object> { Bpl.Expr.Literal(this.NextUniqueNumber()) }, null)));
       this.Traverse(methodBody);
       return newTypes;
     }
@@ -122,11 +123,14 @@ namespace BytecodeTranslator
           foreach (var sloc in slocs) {
             fileName = sloc.Document.Location;
             lineNumber = sloc.StartLine;
+
+            this.parent.lastSourceLocation = sloc;
             break;
           }
           if (fileName != null) {
             var attrib = new Bpl.QKeyValue(tok, "sourceLine", new List<object> { Bpl.Expr.Literal((int)lineNumber) }, null);
             attrib = new Bpl.QKeyValue(tok, "sourceFile", new List<object> { fileName }, attrib);
+            attrib = new Bpl.QKeyValue(tok, "first", new List<object>(), attrib);
             this.parent.StmtBuilder.Add(
               new Bpl.AssertCmd(tok, Bpl.Expr.True, attrib)
               );
@@ -237,6 +241,7 @@ namespace BytecodeTranslator
     }
 
     private static int counter = 0;
+    public IPrimarySourceLocation lastSourceLocation;
     internal int NextUniqueNumber() {
       return counter++;
     }
@@ -336,14 +341,16 @@ namespace BytecodeTranslator
       // then a struct value of type S is being assigned: "lhs := s"
       // model this as the statement "call lhs := S..#copy_ctor(s)" that does the bit-wise copying
       if (isStruct) {
-        var defaultValue = new DefaultValue() {
-          DefaultValueType = typ,
-          Locations = new List<ILocation>(localDeclarationStatement.Locations),
-          Type = typ,
-        };
-        var e2 = ExpressionFor(defaultValue);
-        StmtBuilder.Add(Bpl.Cmd.SimpleAssign(tok, boogieLocalExpr, e2));
-        if (structCopy) {
+        if (!structCopy) {
+          var defaultValue = new DefaultValue() {
+            DefaultValueType = typ,
+            Locations = new List<ILocation>(localDeclarationStatement.Locations),
+            Type = typ,
+          };
+          var e2 = ExpressionFor(defaultValue);
+          StmtBuilder.Add(Bpl.Cmd.SimpleAssign(tok, boogieLocalExpr, e2));
+        } else 
+        /*if (structCopy) */{
           var proc = this.sink.FindOrCreateProcedureForStructCopy(typ);
           e = ExpressionFor(initVal);
           StmtBuilder.Add(new Bpl.CallCmd(tok, proc.Name, new List<Bpl.Expr> { e, }, new List<Bpl.IdentifierExpr>{ boogieLocalExpr, }));
@@ -453,6 +460,9 @@ namespace BytecodeTranslator
       throw new TranslationException("For statements are not handled");
     }
 
+    public override void TraverseChildren(IDoUntilStatement doUntilStatement) {
+      throw new TranslationException("DoUntil statements are not handled");
+    }
     #endregion
 
     public void GenerateDispatchContinuation(ITryCatchFinallyStatement tryCatchFinallyStatement) {
