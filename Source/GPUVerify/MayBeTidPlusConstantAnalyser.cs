@@ -14,8 +14,8 @@ namespace GPUVerify
         // Given a p.v, says whether p.v may be assigned to a tid variable at some point
         private Dictionary<string, Dictionary<string, bool>> mayBeAssignedTid;
 
-        // Records the constants (as strings) that p.v may be incremented by
-        private Dictionary<string, Dictionary<string, HashSet<string>>> incrementedBy;
+        // Records the constants that p.v may be incremented by
+        private Dictionary<string, Dictionary<string, HashSet<Expr>>> incrementedBy;
 
         // The final result
         private Dictionary<string, Dictionary<string, bool>> mayBeTidPlusConstantInfo;
@@ -24,7 +24,7 @@ namespace GPUVerify
         {
             this.verifier = verifier;
             mayBeAssignedTid = new Dictionary<string, Dictionary<string, bool>>();
-            incrementedBy = new Dictionary<string, Dictionary<string, HashSet<string>>>();
+            incrementedBy = new Dictionary<string, Dictionary<string, HashSet<Expr>>>();
             mayBeTidPlusConstantInfo = new Dictionary<string, Dictionary<string, bool>>();
         }
 
@@ -36,25 +36,25 @@ namespace GPUVerify
                 {
                     Implementation Impl = D as Implementation;
                     mayBeAssignedTid[Impl.Name] = new Dictionary<string, bool>();
-                    incrementedBy[Impl.Name] = new Dictionary<string, HashSet<string>>();
+                    incrementedBy[Impl.Name] = new Dictionary<string, HashSet<Expr>>();
                     mayBeTidPlusConstantInfo[Impl.Name] = new Dictionary<string, bool> ();
 
                     foreach (Variable v in Impl.LocVars)
                     {
                         mayBeAssignedTid[Impl.Name][v.Name] = false;
-                        incrementedBy[Impl.Name][v.Name] = new HashSet<string>();
+                        incrementedBy[Impl.Name][v.Name] = new HashSet<Expr>();
                     }
 
                     foreach (Variable v in Impl.InParams)
                     {
                         mayBeAssignedTid[Impl.Name][v.Name] = false;
-                        incrementedBy[Impl.Name][v.Name] = new HashSet<string>();
+                        incrementedBy[Impl.Name][v.Name] = new HashSet<Expr>();
                     }
 
                     foreach (Variable v in Impl.OutParams)
                     {
                         mayBeAssignedTid[Impl.Name][v.Name] = false;
-                        incrementedBy[Impl.Name][v.Name] = new HashSet<string>();
+                        incrementedBy[Impl.Name][v.Name] = new HashSet<Expr>();
                     }
 
                     // Fixpoint not required - this is just syntactic
@@ -124,7 +124,7 @@ namespace GPUVerify
 
                                 if (constantIncrement != null)
                                 {
-                                    incrementedBy[impl.Name][lhsV.Name].Add(ConvertToString(constantIncrement));
+                                    incrementedBy[impl.Name][lhsV.Name].Add(constantIncrement);
                                 }
 
                             }
@@ -213,9 +213,9 @@ namespace GPUVerify
                 {
                     Console.WriteLine("  " + v + ": gets assigned tid - " + mayBeAssignedTid[p][v]);
                     Console.Write("  " + v + ": incremented by -");
-                    foreach(string s in incrementedBy[p][v])
+                    foreach(Expr e in incrementedBy[p][v])
                     {
-                        Console.Write(" " + s);
+                        Console.Write(" " + ConvertToString(e));
                     }
                     Console.WriteLine("");
 
@@ -224,9 +224,9 @@ namespace GPUVerify
                     if(mayBeTidPlusConstantInfo[p][v])
                     {
                         Console.Write("may be tid + ");
-                        foreach(string s in incrementedBy[p][v])
+                        foreach(Expr e in incrementedBy[p][v])
                         {
-                            Console.WriteLine(s);
+                            Console.WriteLine(ConvertToString(e));
                         }
                     }
                     else
@@ -253,6 +253,38 @@ namespace GPUVerify
 
             return mayBeTidPlusConstantInfo[p][v];
         }
-    
+
+
+        internal Expr GetIncrement(string p, string v)
+        {
+            Debug.Assert(mayBeTidPlusConstantInfo[p][v]);
+            Debug.Assert(incrementedBy[p][v].Count == 1);
+            foreach (Expr e in incrementedBy[p][v])
+            {
+                return e;
+            }
+            Debug.Assert(false);
+            return null;
+        }
+
+        internal HashSet<string> GetMayBeTidPlusConstantVars(string p)
+        {
+            HashSet<string> result = new HashSet<string>();
+
+            if(!mayBeTidPlusConstantInfo.ContainsKey(p))
+            {
+                return result;
+            }
+
+            foreach (string v in mayBeTidPlusConstantInfo[p].Keys)
+            {
+                if (mayBeTidPlusConstantInfo[p][v])
+                {
+                    result.Add(v);
+                }
+            }
+
+            return result;
+        }
     }
 }

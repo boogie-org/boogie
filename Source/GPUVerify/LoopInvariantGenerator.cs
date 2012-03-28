@@ -258,7 +258,7 @@ namespace GPUVerify
             }
         }
 
-        private HashSet<Variable> GetModifiedVariables(StmtList stmtList)
+        internal static HashSet<Variable> GetModifiedVariables(StmtList stmtList)
         {
             HashSet<Variable> result = new HashSet<Variable>();
 
@@ -274,7 +274,7 @@ namespace GPUVerify
             return result;
         }
 
-        private HashSet<Variable> GetModifiedVariables(BigBlock bb)
+        private static HashSet<Variable> GetModifiedVariables(BigBlock bb)
         {
             HashSet<Variable> result = new HashSet<Variable>();
 

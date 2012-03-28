@@ -104,41 +104,247 @@ namespace GPUVerify
             foreach (Variable v in NonLocalStateToCheck.getAllNonLocalVariables())
             {
                 AddNoReadOrWriteCandidateInvariants(wc, v);
-                AddReadOrWrittenOffsetIsThreadIdCandidateInvariants(impl, wc, v);
-                AddGroupStrideAccessCandidateInvariants(wc, v);
+                AddReadOrWrittenOffsetIsThreadIdCandidateInvariants(impl, wc, v, "READ");
+                AddReadOrWrittenOffsetIsThreadIdCandidateInvariants(impl, wc, v, "WRITE");
+                AddGroupStrideAccessCandidateInvariants(impl, wc, v, "READ");
+                AddGroupStrideAccessCandidateInvariants(impl, wc, v, "WRITE");
             }
         }
 
-        private void AddGroupStrideAccessCandidateInvariants(WhileCmd wc, Variable v)
+        private void AddGroupStrideAccessCandidateInvariants(Implementation impl, WhileCmd wc, Variable v, string accessKind)
         {
-            // TODO
+            foreach (Expr e in GetOffsetsAccessed(wc.Body, v, accessKind))
+            {
+                if (!TryGenerateCandidateForStrideVariable(impl, wc, v, e, accessKind))
+                {
+                    if (e is IdentifierExpr)
+                    {
+                        foreach(Expr f in GetExpressionsFromWhichVariableIsAssignedInLoop(wc.Body, (e as IdentifierExpr).Decl))
+                        {
+                            TryGenerateCandidateForStrideVariable(impl, wc, v, f, accessKind);
+                        }
+                    }
+                }
+            }
         }
 
-        private void AddReadOrWrittenOffsetIsThreadIdCandidateInvariants(Implementation impl, WhileCmd wc, Variable v)
+        private bool TryGenerateCandidateForStrideVariable(Implementation impl, WhileCmd wc, Variable v, Expr e, string accessKind)
         {
-            HashSet<Expr> OffsetsWrittenInLoop = GetOffsetsAccessed(wc.Body, v, "WRITE ");
-
-            foreach (Expr e in GetOffsetsAccessed(wc.Body, v, "READ"))
+            foreach (string w in
+                verifier.mayBeTidPlusConstantAnalyser.GetMayBeTidPlusConstantVars(impl.Name))
             {
-                if (e is IdentifierExpr)
+                if (!verifier.ContainsNamedVariable(
+                    LoopInvariantGenerator.GetModifiedVariables(wc.Body), w))
                 {
-                    string indexVarName =
-                        GPUVerifier.StripThreadIdentifier((e as IdentifierExpr).Decl.Name);
+                    continue;
+                }
 
-                    if (verifier.mayBeTidAnalyser.MayBeTid(impl.Name, indexVarName))
+                // Check also live
+
+                if (!IsLinearFunctionOfVariable(e, w))
+                {
+                    continue;
+                }
+
+                Debug.Assert(!verifier.uniformityAnalyser.IsUniform(impl.Name, w));
+
+                Variable wVariable = new LocalVariable(wc.tok, new TypedIdent(wc.tok, w,
+                        Microsoft.Boogie.Type.GetBvType(32)));
+
+                Expr indexModPow2EqualsTid = ExprModPow2EqualsTid(
+                    new IdentifierExpr(wc.tok, wVariable),
+                    verifier.mayBeTidPlusConstantAnalyser.GetIncrement(impl.Name, w));
+
+                verifier.AddCandidateInvariant(wc, new VariableDualiser(1, verifier.uniformityAnalyser, impl.Name).VisitExpr(indexModPow2EqualsTid.Clone() as Expr));
+                verifier.AddCandidateInvariant(wc, new VariableDualiser(2, verifier.uniformityAnalyser, impl.Name).VisitExpr(indexModPow2EqualsTid.Clone() as Expr));
+
+                Expr offsetExpr = new IdentifierExpr(Token.NoToken, GPUVerifier.MakeOffsetXVariable(v, accessKind));
+                Expr invertedOffset = InverseOfLinearFunctionOfVariable(e, w, offsetExpr);
+
+                Expr invertedOffsetModPow2EqualsTid = ExprModPow2EqualsTid(
+                    invertedOffset,
+                    verifier.mayBeTidPlusConstantAnalyser.GetIncrement(impl.Name, w));
+
+                Expr candidateInvariantExpr = Expr.Imp(
+                        new IdentifierExpr(Token.NoToken, ElementEncodingRaceInstrumenter.MakeReadOrWriteHasOccurredVariable(v, accessKind)),
+                        invertedOffsetModPow2EqualsTid);
+
+                verifier.AddCandidateInvariant(wc, new VariableDualiser(1, verifier.uniformityAnalyser, impl.Name).VisitExpr(candidateInvariantExpr.Clone() as Expr));
+
+                if (accessKind.Equals("WRITE") || !CommandLineOptions.Symmetry)
+                {
+                    verifier.AddCandidateInvariant(wc, new VariableDualiser(2, verifier.uniformityAnalyser, impl.Name).VisitExpr(candidateInvariantExpr.Clone() as Expr));
+                }
+
+                return true;
+
+            }
+            return false;
+        }
+
+        private HashSet<Expr> GetExpressionsFromWhichVariableIsAssignedInLoop(StmtList stmts, Variable variable)
+        {
+            HashSet<Expr> result = new HashSet<Expr>();
+            foreach (BigBlock bb in stmts.BigBlocks)
+            {
+                foreach (Expr e in GetExpressionsFromWhichVariableIsAssignedInLoop(bb, variable))
+                {
+                    result.Add(e);
+                }
+            }
+            return result;
+        }
+
+        private HashSet<Expr> GetExpressionsFromWhichVariableIsAssignedInLoop(BigBlock bb, Variable variable)
+        {
+            HashSet<Expr> result = new HashSet<Expr>();
+            foreach (Cmd c in bb.simpleCmds)
+            {
+                if (c is AssignCmd)
+                {
+                    AssignCmd assign = c as AssignCmd;
+                    if (assign.Lhss[0] is SimpleAssignLhs)
                     {
-                        AddReadOrWrittenOffsetIsThreadIdCandidateInvariant(wc, v, "READ", 1);
-                        if (!CommandLineOptions.Symmetry)
+                        if (GPUVerifier.StripThreadIdentifier((assign.Lhss[0] as SimpleAssignLhs).AssignedVariable.Name).Equals(
+                            GPUVerifier.StripThreadIdentifier(variable.Name)))
                         {
-                            AddReadOrWrittenOffsetIsThreadIdCandidateInvariant(wc, v, "READ", 2);
+                            if (assign.Rhss[0] is NAryExpr && ((assign.Rhss[0] as NAryExpr).Fun is IfThenElse))
+                            {
+                                result.Add((assign.Rhss[0] as NAryExpr).Args[1]);
+                            }
+                            else
+                            {
+                                result.Add(assign.Rhss[0]);
+                            }
                         }
-                        // No point adding it multiple times
-                        break;
                     }
                 }
             }
 
-            foreach (Expr e in GetOffsetsAccessed(wc.Body, v, "WRITE"))
+            if (bb.ec is WhileCmd)
+            {
+                foreach (Expr e in GetExpressionsFromWhichVariableIsAssignedInLoop((bb.ec as WhileCmd).Body, variable))
+                {
+                    result.Add(e);
+                }
+            }
+            else if (bb.ec is IfCmd)
+            {
+                IfCmd ifCmd = bb.ec as IfCmd;
+
+                foreach (Expr e in GetExpressionsFromWhichVariableIsAssignedInLoop(ifCmd.thn, variable))
+                {
+                    result.Add(e);
+                }
+
+                Debug.Assert(ifCmd.elseIf == null);
+
+                if (ifCmd.elseBlock != null)
+                {
+                    foreach (Expr e in GetExpressionsFromWhichVariableIsAssignedInLoop(ifCmd.elseBlock, variable))
+                    {
+                        result.Add(e);
+                    }
+                }
+
+            }
+
+            return result;
+        }
+
+        private Expr InverseOfLinearFunctionOfVariable(Expr e, string v, Expr offsetExpr)
+        {
+            if (e is IdentifierExpr)
+            {
+                if (GPUVerifier.StripThreadIdentifier((e as IdentifierExpr).Name).Equals(
+                    v))
+                {
+                    return offsetExpr;
+                }
+                return e;
+            }
+
+            if (e is NAryExpr)
+            {
+                NAryExpr nary = e as NAryExpr;
+                if (nary.Fun.FunctionName.Equals("BV32_ADD"))
+                {
+                    if (DoesNotReferTo(nary.Args[0], v))
+                    {
+                        return GPUVerifier.MakeBitVectorBinaryBitVector("BV32_SUB",
+                            InverseOfLinearFunctionOfVariable(nary.Args[1], v, offsetExpr),
+                            nary.Args[0]);
+                    }
+                    else
+                    {
+                        Debug.Assert(DoesNotReferTo(nary.Args[1], v));
+                        return GPUVerifier.MakeBitVectorBinaryBitVector("BV32_SUB",
+                            InverseOfLinearFunctionOfVariable(nary.Args[0], v, offsetExpr),
+                            nary.Args[1]);
+                    }
+                }
+            }
+
+            Debug.Assert(false);
+
+            return null;
+        }
+
+        private Expr ExprModPow2EqualsTid(Expr expr, Expr powerOfTwoExpr)
+        {
+            Expr Pow2Minus1 = GPUVerifier.MakeBitVectorBinaryBitVector("BV32_SUB", powerOfTwoExpr, 
+                            new LiteralExpr(Token.NoToken, BigNum.FromInt(1), 32));
+
+            Expr Pow2Minus1BitAndExpr =
+                GPUVerifier.MakeBitVectorBinaryBitVector("BV32_AND", Pow2Minus1, expr);
+
+            return Expr.Eq(Pow2Minus1BitAndExpr, new IdentifierExpr(Token.NoToken, GPUVerifier._X));
+
+        }
+
+        private bool IsLinearFunctionOfVariable(Expr e, string v)
+        {
+            // e is v
+            if (e is IdentifierExpr)
+            {
+                return GPUVerifier.StripThreadIdentifier((e as IdentifierExpr).Name).Equals(v);
+            }
+
+            // e is v + f /* f only contains constants or literals */
+            if (e is NAryExpr)
+            {
+                NAryExpr nary = e as NAryExpr;
+                if (nary.Fun.FunctionName.Equals("BV32_ADD"))
+                {
+                    if (IsLinearFunctionOfVariable(nary.Args[0], v)
+                        && DoesNotReferTo(nary.Args[1], v))
+                    {
+                        return true;
+                    }
+
+                    if (IsLinearFunctionOfVariable(nary.Args[1], v)
+                        && DoesNotReferTo(nary.Args[0], v))
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            // We can handle further cases if they prove useful
+
+            return false;
+        }
+
+        private bool DoesNotReferTo(Expr expr, string v)
+        {
+            FindReferencesToNamedVariableVisitor visitor = new FindReferencesToNamedVariableVisitor(v);
+            visitor.VisitExpr(expr);
+            return !visitor.found;
+        }
+
+        private void AddReadOrWrittenOffsetIsThreadIdCandidateInvariants(Implementation impl, WhileCmd wc, Variable v, string accessType)
+        {
+            foreach (Expr e in GetOffsetsAccessed(wc.Body, v, accessType))
             {
                 if (e is IdentifierExpr)
                 {
@@ -147,8 +353,11 @@ namespace GPUVerify
 
                     if (verifier.mayBeTidAnalyser.MayBeTid(impl.Name, indexVarName))
                     {
-                        AddReadOrWrittenOffsetIsThreadIdCandidateInvariant(wc, v, "WRITE", 1);
-                        AddReadOrWrittenOffsetIsThreadIdCandidateInvariant(wc, v, "WRITE", 2);
+                        AddReadOrWrittenOffsetIsThreadIdCandidateInvariant(wc, v, accessType, 1);
+                        if (accessType.Equals("WRITE") || !CommandLineOptions.Symmetry)
+                        {
+                            AddReadOrWrittenOffsetIsThreadIdCandidateInvariant(wc, v, accessType, 2);
+                        }
                         // No point adding it multiple times
                         break;
                     }
@@ -610,8 +819,7 @@ namespace GPUVerify
             HashSet<Expr> result = new HashSet<Expr> ();
             foreach (BigBlock bb in stmts.BigBlocks)
             {
-                HashSet<Expr> offsetsReadInBigBlock = GetOffsetsAccessed(bb, v, AccessType);
-                foreach (Expr e in offsetsReadInBigBlock)
+                foreach (Expr e in GetOffsetsAccessed(bb, v, AccessType))
                 {
                     result.Add(e);
                 }
@@ -633,7 +841,12 @@ namespace GPUVerify
                     {
                         // Ins[0] is thread 1's predicate,
                         // Ins[1] is the offset to be read
-                        result.Add(call.Ins[1]);
+                        // Ins[1] has the form BV32_ADD(offset#construct...(P), offset)
+                        // We are looking for the second parameter to this BV32_ADD
+                        Expr offset = call.Ins[1];
+                        Debug.Assert(offset is NAryExpr);
+                        Debug.Assert((offset as NAryExpr).Fun.FunctionName == "BV32_ADD");
+                        result.Add((offset as NAryExpr).Args[1]);
                     }
 
                 }
@@ -675,5 +888,25 @@ namespace GPUVerify
 
     }
 
+
+    class FindReferencesToNamedVariableVisitor : StandardVisitor
+    {
+        internal bool found = false;
+        private string name;
+
+        internal FindReferencesToNamedVariableVisitor(string name)
+        {
+            this.name = name;
+        }
+
+        public override Variable VisitVariable(Variable node)
+        {
+            if (GPUVerifier.StripThreadIdentifier(node.Name).Equals(name))
+            {
+                found = true;
+            }
+            return base.VisitVariable(node);
+        }
+    }
 
 }

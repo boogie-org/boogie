@@ -635,11 +635,6 @@ namespace GPUVerify
 
                     Implementation Impl = Program.TopLevelDeclarations[i] as Implementation;
 
-                    if (QKeyValue.FindIntAttribute(Impl.Attributes, "inline", -1) == 1)
-                    {
-                        continue;
-                    }
-
                     List<Expr> UserSuppliedInvariants = GetUserSuppliedInvariants(Impl.Name);
 
                     new LoopInvariantGenerator(this, Impl).instrument(UserSuppliedInvariants);
@@ -681,7 +676,10 @@ namespace GPUVerify
 
             foreach (string name in names)
             {
-                AddEqualityCandidateEnsures(Proc, new LocalVariable(Proc.tok, new TypedIdent(Proc.tok, name, Microsoft.Boogie.Type.Int)));
+                if (!uniformityAnalyser.IsUniform(Proc.Name, name))
+                {
+                    AddEqualityCandidateEnsures(Proc, new LocalVariable(Proc.tok, new TypedIdent(Proc.tok, name, Microsoft.Boogie.Type.Int)));
+                }
             }
 
         }
@@ -694,15 +692,13 @@ namespace GPUVerify
                 names.Add(StripThreadIdentifier(v.Name));
             }
 
-            bool hasPredicateParameter = false;
-
             foreach (string name in names)
             {
 
                 if (IsPredicateOrTemp(name))
                 {
                     Debug.Assert(name.Equals("_P"));
-                    hasPredicateParameter = true;
+                    Debug.Assert(!uniformityAnalyser.IsUniform(Proc.Name));
                     AddCandidateRequires(Proc, Expr.Eq(
                         new IdentifierExpr(Proc.tok, new LocalVariable(Proc.tok, new TypedIdent(Proc.tok, name + "$1", Microsoft.Boogie.Type.Bool))),
                         new IdentifierExpr(Proc.tok, new LocalVariable(Proc.tok, new TypedIdent(Proc.tok, name + "$2", Microsoft.Boogie.Type.Bool)))
@@ -710,12 +706,16 @@ namespace GPUVerify
                 }
                 else
                 {
-                    AddPredicatedEqualityCandidateRequires(Proc, new LocalVariable(Proc.tok, new TypedIdent(Proc.tok, name, Microsoft.Boogie.Type.Int)));
-                    AddEqualityCandidateRequires(Proc, new LocalVariable(Proc.tok, new TypedIdent(Proc.tok, name, Microsoft.Boogie.Type.Int)));
+                    if (!uniformityAnalyser.IsUniform(Proc.Name, name))
+                    {
+                        if (!uniformityAnalyser.IsUniform(Proc.Name))
+                        {
+                            AddPredicatedEqualityCandidateRequires(Proc, new LocalVariable(Proc.tok, new TypedIdent(Proc.tok, name, Microsoft.Boogie.Type.Int)));
+                        }
+                        AddEqualityCandidateRequires(Proc, new LocalVariable(Proc.tok, new TypedIdent(Proc.tok, name, Microsoft.Boogie.Type.Int)));
+                    }
                 }
             }
-
-            Debug.Assert(hasPredicateParameter);
 
         }
 
@@ -1227,6 +1227,14 @@ namespace GPUVerify
             }), new LocalVariable(lhs.tok, new TypedIdent(lhs.tok, "result", Microsoft.Boogie.Type.Bool)))), new ExprSeq(new Expr[] { lhs, rhs }));
         }
 
+        internal static Expr MakeBitVectorBinaryBitVector(string functionName, Expr lhs, Expr rhs)
+        {
+            return new NAryExpr(lhs.tok, new FunctionCall(new Function(lhs.tok, functionName, new VariableSeq(new Variable[] { 
+                new LocalVariable(lhs.tok, new TypedIdent(lhs.tok, "arg1", Microsoft.Boogie.Type.GetBvType(32))),
+                new LocalVariable(lhs.tok, new TypedIdent(lhs.tok, "arg2", Microsoft.Boogie.Type.GetBvType(32)))
+            }), new LocalVariable(lhs.tok, new TypedIdent(lhs.tok, "result", Microsoft.Boogie.Type.GetBvType(32))))), new ExprSeq(new Expr[] { lhs, rhs }));
+        }
+
         private Constant GetGroupSize(string dimension)
         {
             Contract.Requires(dimension.Equals("X") || dimension.Equals("Y") || dimension.Equals("Z"));
@@ -1380,43 +1388,6 @@ namespace GPUVerify
             }
             return false;
         }
-
-/*        private bool CallsBarrier(Implementation impl)
-        {
-            return CallsBarrier(impl.StructuredStmts);
-        }
-
-        private bool CallsBarrier(StmtList stmtList)
-        {
-            foreach (BigBlock bb in stmtList.BigBlocks)
-            {
-                if (CallsBarrier(bb))
-                {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        private bool CallsBarrier(BigBlock bb)
-        {
-            foreach (Cmd c in bb.simpleCmds)
-            {
-                if (c is CallCmd && (c as CallCmd).callee.Equals(BarrierProcedure.Name))
-                {
-                    return true;
-                }
-            }
-            if (bb.ec is WhileCmd)
-            {
-                return CallsBarrier((bb.ec as WhileCmd).Body);
-            }
-            else
-            {
-                Debug.Assert(bb.ec == null);
-                return false;
-            }
-        }*/
 
         private void AbstractSharedState()
         {
