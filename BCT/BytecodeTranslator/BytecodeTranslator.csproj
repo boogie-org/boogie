@@ -158,9 +158,9 @@
       <Project>{0703D916-A881-45E6-A5CD-6BC50E2E30E2}</Project>
       <Name>ContractExtractor</Name>
     </ProjectReference>
-    <ProjectReference Include="..\..\..\CCICodeBox\Converters\ILToCodeModel\ILToCodeModel.csproj">
-      <Project>{27F2A417-B6ED-43AD-A38E-A0B6142216F6}</Project>
-      <Name>ILToCodeModel</Name>
+    <ProjectReference Include="..\..\..\CCICodeBox\Converters\NewILToCodeModel\NewILToCodeModel.csproj">
+      <Project>{A555D4CB-F16F-4049-A8CF-180B8A05C755}</Project>
+      <Name>NewILToCodeModel</Name>
     </ProjectReference>
     <ProjectReference Include="..\..\..\CCICodeBox\Samples\ILGarbageCollect\ILGarbageCollect.csproj">
       <Project>{60CD0C85-1E4A-4068-A4EC-D15B7981A908}</Project>
