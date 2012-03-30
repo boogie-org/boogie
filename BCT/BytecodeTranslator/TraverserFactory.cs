@@ -35,8 +35,8 @@ namespace BytecodeTranslator {
       return new StatementTraverser(sink, pdbReader, contractContext, this);
     }
 
-    public virtual ExpressionTraverser MakeExpressionTraverser(Sink sink, StatementTraverser/*?*/ statementTraverser, bool contractContext) {
-      return new ExpressionTraverser(sink, statementTraverser, contractContext);
+    public virtual ExpressionTraverser MakeExpressionTraverser(Sink sink, StatementTraverser/*?*/ statementTraverser, bool contractContext, bool expressionIsOpAssignStatement = false) {
+      return new ExpressionTraverser(sink, statementTraverser, contractContext, expressionIsOpAssignStatement);
     }
   }
 }
