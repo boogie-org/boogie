@@ -1092,11 +1092,27 @@ namespace GPUVerify
                     }
                     else
                     {
-                        for (int i = 0; i < Proc.InParams.Length / 2; i++)
+                        bool foundNonUniform = false;
+                        int indexOfFirstNonUniformParameter;
+                        for (indexOfFirstNonUniformParameter = 0; indexOfFirstNonUniformParameter < Proc.InParams.Length; indexOfFirstNonUniformParameter++)
                         {
-                            Proc.Requires.Add(new Requires(false, 
-                                Expr.Eq(new IdentifierExpr(Proc.InParams[i].tok, Proc.InParams[i]),
-                                        new IdentifierExpr(Proc.InParams[i + Proc.InParams.Length / 2].tok, Proc.InParams[i + Proc.InParams.Length / 2]))));
+                            if (!uniformityAnalyser.IsUniform(Proc.Name, StripThreadIdentifier(Proc.InParams[indexOfFirstNonUniformParameter].Name)))
+                            {
+                                foundNonUniform = true;
+                                break;
+                            }
+                        }
+
+                        if (foundNonUniform)
+                        {
+                            // I have a feeling this will never be reachable!!!
+                            int numberOfNonUniformParameters = (Proc.InParams.Length - indexOfFirstNonUniformParameter) / 2;
+                            for (int i = indexOfFirstNonUniformParameter; i < numberOfNonUniformParameters; i++)
+                            {
+                                Proc.Requires.Add(new Requires(false,
+                                    Expr.Eq(new IdentifierExpr(Proc.InParams[i].tok, Proc.InParams[i]),
+                                            new IdentifierExpr(Proc.InParams[i + numberOfNonUniformParameters].tok, Proc.InParams[i + numberOfNonUniformParameters]))));
+                            }
                         }
                     }
 
