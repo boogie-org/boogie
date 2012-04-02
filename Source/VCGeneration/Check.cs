@@ -824,7 +824,7 @@ namespace Microsoft.Boogie {
     }
 
     // (check-sat + get-unsat-core)
-    public virtual void CheckAssumptions(List<VCExpr> assumptions, out List<int> unsatCore)
+    public virtual Outcome CheckAssumptions(List<VCExpr> assumptions, out List<int> unsatCore)
     {
         throw new NotImplementedException();
     }
