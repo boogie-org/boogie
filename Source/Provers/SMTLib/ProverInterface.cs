@@ -792,7 +792,7 @@ namespace Microsoft.Boogie.SMTLib
     /// </summary>
     static int nameCounter = 0;
 
-    public override Outcome CheckAssumptions(List<VCExpr> assumptions, out List<int> unsatCore)
+    public override Outcome CheckAssumptions(List<VCExpr> assumptions, out List<int> unsatCore, ErrorHandler handler)
     {
         unsatCore = new List<int>();
 
@@ -810,7 +810,7 @@ namespace Microsoft.Boogie.SMTLib
         }
         Check();
 
-        var prevOutcome = GetResponse();
+        var prevOutcome = CheckOutcomeCore(handler);
         
         if (prevOutcome != Outcome.Valid)
         {
