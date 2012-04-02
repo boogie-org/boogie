@@ -1142,7 +1142,7 @@ namespace VC
 
             TheoremProver.Push();
             TheoremProver.AssertAxioms();
-            ProverInterface.Outcome outcome = TheoremProver.CheckAssumptions(assumptions, out unsatCore);
+            ProverInterface.Outcome outcome = TheoremProver.CheckAssumptions(assumptions, out unsatCore, reporter);
             TheoremProver.Pop();
             numQueries++;
 
