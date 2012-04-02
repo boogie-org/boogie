@@ -1108,6 +1108,25 @@ namespace VC
             checker.TheoremProver.LogComment(str);
           }
 
+          public Outcome CheckAssumptions(List<VCExpr> hardAssumptions, List<VCExpr> softAssumptions, out List<int> unsatisfiedSoftAssumptions) {
+            ProverInterface.Outcome outcome = TheoremProver.CheckAssumptions(hardAssumptions, softAssumptions, out unsatisfiedSoftAssumptions);
+            switch (outcome) {
+              case ProverInterface.Outcome.Valid:
+                return Outcome.Correct;
+              case ProverInterface.Outcome.Invalid:
+                return Outcome.Errors;
+              case ProverInterface.Outcome.OutOfMemory:
+                return Outcome.OutOfMemory;
+              case ProverInterface.Outcome.TimeOut:
+                return Outcome.TimedOut;
+              case ProverInterface.Outcome.Undetermined:
+                return Outcome.Inconclusive;
+              default:
+                Contract.Assert(false);
+                throw new cce.UnreachableException();
+            }
+          }
+
           public Outcome CheckAssumptions(List<VCExpr> assumptions, out List<int> unsatCore) {
             if (!UseCheckAssumptions) {
                 Outcome ret;
@@ -1612,7 +1631,7 @@ namespace VC
 
             int iters = 0;
 
-            // for blocking candidates (and focussing on a counterexample)
+            // for blocking candidates (and focusing on a counterexample)
             var block = new HashSet<int>();
 
             // Process tasks while not done. We're done when:
@@ -1717,8 +1736,7 @@ namespace VC
                             foreach (var id in calls.currCandidates)
                             {
                                 var rb = calls.getRecursionBound(id);
-                                if (rb <= bound) continue;
-                                if (rb < minRecReached) minRecReached = rb;
+                                if (bound < rb && rb < minRecReached) minRecReached = rb;
                             }
                             bound = minRecReached;
                             if (useSummary) summaryComputation.boundChanged();
@@ -2238,14 +2256,19 @@ namespace VC
 
             bool allTrue = true;
             bool allFalse = true;
+            List<VCExpr> softAssumptions = new List<VCExpr>();
+            List<int> unsatisfiedSoftAssumptions;
 
             assumptions = new List<VCExpr>();
             procsThatReachedRecBound.Clear();
 
             foreach (int id in calls.currCandidates)
             {
-                if (calls.getRecursionBound(id) <= bound)
+                int idBound = calls.getRecursionBound(id);
+                if (idBound <= bound)
                 {
+                    if (idBound > 0)
+                      softAssumptions.Add(calls.getFalseExpr(id));
                     if (block.Contains(id))
                     {
                         Contract.Assert(useSummary);
@@ -2276,7 +2299,7 @@ namespace VC
             }
             else
             {
-                ret = checker.CheckAssumptions(assumptions, out unsatCore);
+                ret = checker.CheckAssumptions(assumptions, softAssumptions, out unsatisfiedSoftAssumptions);
             }
 
             if (ret != Outcome.Correct && ret != Outcome.Errors)

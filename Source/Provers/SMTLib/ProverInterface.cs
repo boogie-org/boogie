@@ -846,6 +846,72 @@ namespace Microsoft.Boogie.SMTLib
         DeclCollector.Push();
     }
 
+    public override Outcome CheckAssumptions(List<VCExpr> hardAssumptions, List<VCExpr> softAssumptions, out List<int> unsatisfiedSoftAssumptions) {
+      unsatisfiedSoftAssumptions = new List<int>();
+
+      Push();
+      foreach (var a in hardAssumptions) {
+        SendThisVC("(assert " + VCExpr2String(a, 1) + ")");
+      }
+      Check();
+      Outcome outcome = GetResponse();
+      if (outcome != Outcome.Invalid) {
+        Pop();
+        return outcome;
+      }
+
+      List<string> currAssumptions = new List<string>();
+      foreach (var a in softAssumptions) {
+        currAssumptions.Add(VCExpr2String(a, 1));
+      }
+
+      int k = 0;
+      List<string> relaxVars = new List<string>();
+      while (true) {
+        Push();
+        AssertAxioms();
+        foreach (var a in currAssumptions) {
+          SendThisVC("(assert " + a + ")");
+        }
+        Check();
+        outcome = GetResponse();
+        Pop();
+        if (outcome != Outcome.Valid)
+          break;
+        string relaxVar = "relax_" + k;
+        relaxVars.Add(relaxVar);
+        SendThisVC("(declare-fun " + relaxVar + " () Int)");
+        List<string> nextAssumptions = new List<string>();
+        for (int i = 0; i < currAssumptions.Count; i++) {
+          string constraint = "(= " + relaxVar + " " + i + ")";
+          nextAssumptions.Add("(or " + currAssumptions[i] + " " + constraint + ")");
+        }
+        currAssumptions = nextAssumptions;
+        k++;
+      }
+
+      if (outcome == Outcome.Invalid) {
+        foreach (var relaxVar in relaxVars) {
+          SendThisVC("(get-value (" + relaxVar + "))");
+          var resp = Process.GetProverResponse();
+          if (resp == null) break;
+          if (!(resp.Name == "" && resp.ArgCount == 1)) break;
+          resp = resp.Arguments[0];
+          if (!(resp.Name == "" && resp.ArgCount == 2)) break;
+          resp = resp.Arguments[1];
+          if (resp.ArgCount != 0)
+            break;
+          int v;
+          if (int.TryParse(resp.Name, out v))
+            unsatisfiedSoftAssumptions.Add(v);
+          else
+            break;
+        }
+      }
+
+      Pop();
+      return outcome;
+    }
   }
 
   public class SMTLibProverContext : DeclFreeProverContext
