@@ -92,7 +92,6 @@ namespace Microsoft.Boogie.SMTLib
           }
           PrepareCommon();
       }
-      prevOutcomeAvailable = false;
     }
 
     void SetupProcess()
@@ -556,13 +555,6 @@ namespace Microsoft.Boogie.SMTLib
 
     private Outcome GetResponse()
     {
-      if (prevOutcomeAvailable)
-      {
-          Contract.Assert(CommandLineOptions.Clo.StratifiedInlining > 0);
-          prevOutcomeAvailable = false;
-          return prevOutcome;
-      }
-
       var result = Outcome.Undetermined;
       var wasUnknown = false;
 
@@ -785,8 +777,6 @@ namespace Microsoft.Boogie.SMTLib
 
     public override void Check()
     {
-        Contract.Assert(prevOutcomeAvailable == false);
-
         PrepareCommon();
         SendThisVC("(check-sat)");
         FlushLogFile();
@@ -800,14 +790,10 @@ namespace Microsoft.Boogie.SMTLib
     /// <summary>
     /// Extra state for ApiChecker (used by stratifiedInlining)
     /// </summary>
-    bool prevOutcomeAvailable;
-    Outcome prevOutcome;
     static int nameCounter = 0;
 
-    public override void CheckAssumptions(List<VCExpr> assumptions, out List<int> unsatCore)
+    public override Outcome CheckAssumptions(List<VCExpr> assumptions, out List<int> unsatCore)
     {
-        Contract.Assert(prevOutcomeAvailable == false);
-
         unsatCore = new List<int>();
 
         // Name the assumptions
@@ -824,12 +810,13 @@ namespace Microsoft.Boogie.SMTLib
         }
         Check();
 
-        prevOutcome = GetResponse();
-        prevOutcomeAvailable = true;
+        var prevOutcome = GetResponse();
+        
         if (prevOutcome != Outcome.Valid)
         {
-            return;
+            return prevOutcome;
         }
+
         Contract.Assert(usingUnsatCore, "SMTLib prover not setup for computing unsat cores");
         SendThisVC("(get-unsat-core)");
         var resp = Process.GetProverResponse();
@@ -838,6 +825,8 @@ namespace Microsoft.Boogie.SMTLib
         foreach (var s in resp.Arguments) unsatCore.Add(nameToAssumption[s.Name]);
 
         FlushLogFile();
+
+        return prevOutcome;
     }
 
     public override void Push()
