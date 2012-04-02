@@ -1929,6 +1929,7 @@ namespace VC
           calleeToCallSites[callee].Remove(cs);
         }
 
+#if SuperAwesomeMethod  
         private Outcome FindUnsatCoreInMainCallees(Implementation impl, ApiChecker checker, VCExpressionGenerator Gen, PCBErrorReporter reporter, List<VCExpr> assumptions, out HashSet<VCExprVar> unsatCore)
         {
           Debug.Assert(checker is ApiChecker);
@@ -1950,7 +1951,7 @@ namespace VC
           }
           return Outcome.Correct;
         }
-
+      
         private Outcome FindUnsatCore(Implementation impl, ApiChecker checker, VCExpressionGenerator Gen, PCBErrorReporter reporter, List<VCExpr> assumptions, out HashSet<VCExprVar> unsatCore)
         {
           Helpers.ExtraTraceInformation("Number of assumptions = " + assumptions.Count);
@@ -2174,8 +2175,7 @@ namespace VC
             InlineIntoMain(checker, impl, unsatCore);
           }
         }
-
-        
+#endif
 
         // A step of the stratified inlining algorithm: both under-approx and over-approx queries
         private Outcome stratifiedStep(int bound, VerificationState vState, HashSet<int> block)
