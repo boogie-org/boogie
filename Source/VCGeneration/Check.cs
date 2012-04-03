@@ -823,8 +823,8 @@ namespace Microsoft.Boogie {
         throw new NotImplementedException();
     }
 
-    // (check-sat + get-unsat-core)
-    public virtual void CheckAssumptions(List<VCExpr> assumptions, out List<int> unsatCore)
+    // (check-sat + get-unsat-core + checkOutcome)
+    public virtual Outcome CheckAssumptions(List<VCExpr> assumptions, out List<int> unsatCore, ErrorHandler handler)
     {
         throw new NotImplementedException();
     }
