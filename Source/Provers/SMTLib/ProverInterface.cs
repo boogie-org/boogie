@@ -85,7 +85,7 @@ namespace Microsoft.Boogie.SMTLib
           {
               currentLogFile = OpenOutputFile("");
           }
-          if (CommandLineOptions.Clo.ProcedureCopyBound > 0 || CommandLineOptions.Clo.UseUnsatCoreForInlining)
+          if (CommandLineOptions.Clo.ProcedureCopyBound > 0)
           {
               SendThisVC("(set-option :produce-unsat-cores true)");
               this.usingUnsatCore = true;
@@ -835,7 +835,7 @@ namespace Microsoft.Boogie.SMTLib
         DeclCollector.Push();
     }
 
-    public override Outcome CheckAssumptions(List<VCExpr> hardAssumptions, List<VCExpr> softAssumptions, out List<int> unsatisfiedSoftAssumptions) {
+    public override Outcome CheckAssumptions(List<VCExpr> hardAssumptions, List<VCExpr> softAssumptions, out List<int> unsatisfiedSoftAssumptions, ErrorHandler handler) {
       unsatisfiedSoftAssumptions = new List<int>();
 
       Push();
@@ -863,7 +863,7 @@ namespace Microsoft.Boogie.SMTLib
           SendThisVC("(assert " + a + ")");
         }
         Check();
-        outcome = GetResponse();
+        outcome = CheckOutcomeCore(handler);
         Pop();
         if (outcome != Outcome.Valid)
           break;

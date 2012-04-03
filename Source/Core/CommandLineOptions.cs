@@ -564,7 +564,6 @@ namespace Microsoft.Boogie {
     public int StratifiedInliningOption = 0;
     public bool StratifiedInliningWithoutModels = false; // disable model generation for SI
     public int StratifiedInliningVerbose = 0; // verbosity level
-    public bool UseUnsatCoreForInlining = false;
     public int RecursionBound = 500;
     public string inferLeastForUnsat = null;
     public string CoverageReporterPath = null;
@@ -1025,10 +1024,6 @@ namespace Microsoft.Boogie {
           if (ps.ConfirmArgumentCount(1)) {
             StratifiedInliningOption = Int32.Parse(cce.NonNull(args[ps.i]));
           }
-          return true;
-
-        case "useUnsatCoreForInlining":
-          UseUnsatCoreForInlining = true;
           return true;
 
         case "inferLeastForUnsat":
