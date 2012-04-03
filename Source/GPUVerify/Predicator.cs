@@ -17,6 +17,9 @@ namespace GPUVerify
         private Stack<Expr> predicate;
         private Stack<Expr> enclosingLoopPredicate;
 
+        private IdentifierExpr returnPredicate;
+        private bool hitNonuniformReturn;
+
         private Implementation impl = null;
 
         internal Predicator(GPUVerifier verifier, bool AddPredicateParameter) : base(verifier)
@@ -54,16 +57,36 @@ namespace GPUVerify
             predicate.Push(Predicate);
             enclosingLoopPredicate.Push(Expr.True);
 
+            Variable ReturnPredicateVariable = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "_R", Microsoft.Boogie.Type.Bool));
+            returnPredicate = new IdentifierExpr(Token.NoToken, ReturnPredicateVariable);
+            hitNonuniformReturn = false;
+
             impl.StructuredStmts = VisitStmtList(impl.StructuredStmts);
 
             AddPredicateLocalVariables(impl);
+
+            if (hitNonuniformReturn)
+            {
+                impl.LocVars.Add(ReturnPredicateVariable);
+                verifier.uniformityAnalyser.AddNonUniform(impl.Name, ReturnPredicateVariable.Name);
+
+                CmdSeq newSimpleCmds = new CmdSeq();
+                newSimpleCmds.Add(new AssignCmd(Token.NoToken,
+                    new List<AssignLhs>(new AssignLhs[] { new SimpleAssignLhs(Token.NoToken, returnPredicate) }),
+                    new List<Expr>(new Expr[] { Expr.True })));
+                foreach (Cmd c in impl.StructuredStmts.BigBlocks[0].simpleCmds)
+                {
+                    newSimpleCmds.Add(c);
+                }
+                impl.StructuredStmts.BigBlocks[0].simpleCmds = newSimpleCmds;
+            }
 
             this.impl = null;
         }
 
         public override CmdSeq VisitCmd(Cmd c)
         {
-            if (c is CallCmd || !predicate.Peek().Equals(Expr.True))
+            if (c is CallCmd || !GetCurrentPredicate().Equals(Expr.True))
             {
                 return base.VisitCmd(c);
             }
@@ -78,7 +101,7 @@ namespace GPUVerify
 
             if (!verifier.uniformityAnalyser.IsUniform(Call.callee))
             {
-                NewIns.Add(predicate.Peek());
+                NewIns.Add(GetCurrentPredicate());
             }
 
             foreach (Expr e in Call.Ins)
@@ -99,7 +122,7 @@ namespace GPUVerify
             Debug.Assert(assign.Lhss.Count == 1 && assign.Rhss.Count == 1);
 
             ExprSeq iteArgs = new ExprSeq();
-            iteArgs.Add(predicate.Peek());
+            iteArgs.Add(GetCurrentPredicate());
             iteArgs.Add(assign.Rhss.ElementAt(0));
             iteArgs.Add(assign.Lhss.ElementAt(0).AsExpr);
             NAryExpr ite = new NAryExpr(assign.tok, new IfThenElse(assign.tok), iteArgs);
@@ -117,7 +140,7 @@ namespace GPUVerify
 
             Debug.Assert(havoc.Vars.Length == 1);
 
-            if (predicate.Peek().Equals(Expr.True))
+            if (GetCurrentPredicate().Equals(Expr.True))
             {
                 result.Add(havoc);
                 return result;
@@ -144,7 +167,7 @@ namespace GPUVerify
 
             List<Expr> rhss = new List<Expr>();
             rhss.Add(new NAryExpr(havoc.tok, new IfThenElse(havoc.tok), new ExprSeq(
-                new Expr[] { predicate.Peek(), HavocTempExpr, havoc.Vars[0] })));
+                new Expr[] { GetCurrentPredicate(), HavocTempExpr, havoc.Vars[0] })));
 
             result.Add(new AssignCmd(havoc.tok, lhss, rhss));
 
@@ -155,14 +178,14 @@ namespace GPUVerify
         public override CmdSeq VisitAssertCmd(AssertCmd assert)
         {
             return new CmdSeq(new Cmd[] {
-                new AssertCmd(assert.tok, Expr.Imp(predicate.Peek(), assert.Expr))
+                new AssertCmd(assert.tok, Expr.Imp(GetCurrentPredicate(), assert.Expr))
             });
         }
 
         public override CmdSeq VisitAssumeCmd(AssumeCmd assume)
         {
             return new CmdSeq(new Cmd[] {
-                new AssumeCmd(assume.tok, Expr.Imp(predicate.Peek(), assume.Expr))
+                new AssumeCmd(assume.tok, Expr.Imp(GetCurrentPredicate(), assume.Expr))
             });
         }
 
@@ -179,12 +202,19 @@ namespace GPUVerify
             {
                 WhileCmd whileCmd = bb.ec as WhileCmd;
 
+                if (!hitNonuniformReturn && verifier.uniformityAnalyser.HasNonuniformReturn(impl.Name, whileCmd))
+                {
+                    hitNonuniformReturn = true;
+                }
+
                 Expr PredicateExpr;
                 Expr NewGuard;
                 string LoopPredicate = null;
                 List<AssignLhs> WhilePredicateLhss = new List<AssignLhs>();
 
-                if (!enclosingLoopPredicate.Peek().Equals(Expr.True) || !verifier.uniformityAnalyser.IsUniform(impl.Name, whileCmd.Guard))
+                if (!enclosingLoopPredicate.Peek().Equals(Expr.True) || 
+                    !verifier.uniformityAnalyser.IsUniform(impl.Name, whileCmd.Guard) ||
+                    !verifier.uniformityAnalyser.IsUniform(impl.Name, whileCmd))
                 {
                     LoopPredicate = "_LC" + WhileLoopCounter;
                     WhileLoopCounter++;
@@ -198,8 +228,8 @@ namespace GPUVerify
                     WhilePredicateLhss.Add(new SimpleAssignLhs(whileCmd.tok, PredicateExpr as IdentifierExpr));
 
                     List<Expr> WhilePredicateRhss = new List<Expr>();
-                    WhilePredicateRhss.Add(predicate.Peek().Equals(Expr.True) ? 
-                        whileCmd.Guard : Expr.And(predicate.Peek(), whileCmd.Guard));
+                    WhilePredicateRhss.Add(GetCurrentPredicate().Equals(Expr.True) ? 
+                        whileCmd.Guard : Expr.And(GetCurrentPredicate(), whileCmd.Guard));
 
                     firstBigBlock.simpleCmds.Add(new AssignCmd(whileCmd.tok, WhilePredicateLhss, WhilePredicateRhss));
 
@@ -242,7 +272,7 @@ namespace GPUVerify
                     throw new InvalidOperationException();
                 }
 
-                if (predicate.Peek().Equals(Expr.True) && verifier.uniformityAnalyser.IsUniform(impl.Name, IfCommand.Guard))
+                if (GetCurrentPredicate().Equals(Expr.True) && verifier.uniformityAnalyser.IsUniform(impl.Name, IfCommand.Guard))
                 {
                     firstBigBlock.ec = 
                         new IfCmd(IfCommand.tok, IfCommand.Guard, VisitStmtList(IfCommand.thn),
@@ -286,18 +316,17 @@ namespace GPUVerify
             }
             else if (bb.ec is BreakCmd)
             {
-                if (enclosingLoopPredicate.Equals(Expr.True))
+                if (enclosingLoopPredicate.Peek().Equals(Expr.True))
                 {
                     firstBigBlock.ec = bb.ec;
                 }
                 else
                 {
-
                     firstBigBlock.simpleCmds.Add(new AssignCmd(bb.tok,
                         new List<AssignLhs>(new AssignLhs[] { 
                             new SimpleAssignLhs(bb.tok, enclosingLoopPredicate.Peek() as IdentifierExpr) }),
                         new List<Expr>(new Expr[] { new NAryExpr(bb.tok, new IfThenElse(bb.tok), new ExprSeq(
-                            new Expr[] { predicate.Peek(), Expr.False, enclosingLoopPredicate.Peek() })) })
+                            new Expr[] { GetCurrentPredicate(), Expr.False, enclosingLoopPredicate.Peek() })) })
                         ));
                     firstBigBlock.ec = null;
                 }
@@ -307,8 +336,45 @@ namespace GPUVerify
                 throw new InvalidOperationException();
             }
 
+            if (bb.tc is ReturnCmd)
+            {
+                if (!GetCurrentPredicate().Equals(Expr.True))
+                {
+                    hitNonuniformReturn = true;
+                }
+
+                if (hitNonuniformReturn)
+                {
+                    // Add a new big block with just the assignment
+                    AssignCmd assignToReturnPredicate = new AssignCmd(Token.NoToken,
+                        new List<AssignLhs>(new AssignLhs[] { new SimpleAssignLhs(Token.NoToken, returnPredicate) }),
+                        new List<Expr>(new Expr[] { GetCurrentPredicate() }));
+
+                    result.Add(new BigBlock(Token.NoToken, null, new CmdSeq(new Cmd[] { assignToReturnPredicate }), null, null));
+                    firstBigBlock.tc = null;
+                }
+
+            }
+
+            result[result.Count - 1].tc = firstBigBlock.tc;
+
+            if (result.Count > 1)
+            {
+                firstBigBlock.tc = null;
+            }
+
             return result;
 
+        }
+
+        private Expr GetCurrentPredicate()
+        {
+            if (!hitNonuniformReturn)
+            {
+                return predicate.Peek();
+            }
+
+            return Expr.And(predicate.Peek(), returnPredicate);
         }
 
         public override IfCmd VisitIfCmd(IfCmd ifCmd)

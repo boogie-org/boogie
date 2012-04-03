@@ -290,6 +290,14 @@ namespace GPUVerify
                              (bb.ec as IfCmd).elseBlock == null ? null : MakeDual((bb.ec as IfCmd).elseBlock, HalfDualise));
 
             }
+            else if (bb.ec is BreakCmd)
+            {
+                result.ec = bb.ec;
+            }
+            else
+            {
+                Debug.Assert(bb.ec == null);
+            }
 
             return result;
 
@@ -300,12 +308,18 @@ namespace GPUVerify
             List<PredicateCmd> result = new List<PredicateCmd>();
             foreach (PredicateCmd p in originalInvariants)
             {
-                result.Add(new AssertCmd(p.tok, 
-                    Dualise(p.Expr, 1)));
+                {
+                    PredicateCmd newP = new AssertCmd(p.tok,
+                        Dualise(p.Expr, 1));
+                    newP.Attributes = p.Attributes;
+                    result.Add(newP);
+                }
                 if ((!CommandLineOptions.Symmetry || !ContainsAsymmetricExpression(p.Expr))
                     && !verifier.uniformityAnalyser.IsUniform(procName, p.Expr))
                 {
-                    result.Add(new AssertCmd(p.tok, Dualise(p.Expr, 2)));
+                    PredicateCmd newP = new AssertCmd(p.tok, Dualise(p.Expr, 2));
+                    newP.Attributes = p.Attributes;
+                    result.Add(newP);
                 }
             }
 

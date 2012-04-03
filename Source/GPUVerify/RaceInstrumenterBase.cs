@@ -804,6 +804,10 @@ namespace GPUVerify
                     AddNoRaceInvariants((bb.ec as IfCmd).elseBlock);
                 }
             }
+            else if (bb.ec is BreakCmd)
+            {
+                // Do nothing
+            }
             else
             {
                 Debug.Assert(bb.ec == null);
