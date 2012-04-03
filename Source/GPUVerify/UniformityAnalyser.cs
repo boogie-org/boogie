@@ -16,16 +16,27 @@ namespace GPUVerify
 
         private Dictionary<string, KeyValuePair<bool, Dictionary<string, bool>>> uniformityInfo;
 
+        private Dictionary<string, HashSet<int>> nonUniformLoops;
+
+        private Dictionary<string, HashSet<int>> loopsWithNonuniformReturn;
+
         private Dictionary<string, List<string>> inParameters;
 
         private Dictionary<string, List<string>> outParameters;
+
+        private List<WhileCmd> loopStack;
+
+        private bool hitNonuniformReturn;
 
         public UniformityAnalyser(GPUVerifier verifier)
         {
             this.verifier = verifier;
             uniformityInfo = new Dictionary<string, KeyValuePair<bool, Dictionary<string, bool>>>();
+            nonUniformLoops = new Dictionary<string, HashSet<int>>();
+            loopsWithNonuniformReturn = new Dictionary<string, HashSet<int>>();
             inParameters = new Dictionary<string, List<string>>();
             outParameters = new Dictionary<string, List<string>>();
+            loopStack = new List<WhileCmd>();
         }
 
         internal void Analyse()
@@ -41,6 +52,9 @@ namespace GPUVerify
                     Implementation Impl = D as Implementation;
                     uniformityInfo.Add(Impl.Name, new KeyValuePair<bool, Dictionary<string, bool>>
                         (uniformProcedure, new Dictionary<string, bool> ()));
+
+                    nonUniformLoops.Add(Impl.Name, new HashSet<int>());
+                    loopsWithNonuniformReturn.Add(Impl.Name, new HashSet<int>());
 
                     SetNonUniform(Impl.Name, GPUVerifier._X.Name);
                     SetNonUniform(Impl.Name, GPUVerifier._Y.Name);
@@ -101,6 +115,7 @@ namespace GPUVerify
                     {
                         if (D is Implementation)
                         {
+                            hitNonuniformReturn = false;
                             Implementation Impl = D as Implementation;
                             Analyse(Impl, uniformityInfo[Impl.Name].Key);
                         }
@@ -137,8 +152,10 @@ namespace GPUVerify
             Analyse(Impl, Impl.StructuredStmts, ControlFlowIsUniform);
         }
 
+
         private void Analyse(Implementation impl, StmtList stmtList, bool ControlFlowIsUniform)
         {
+            ControlFlowIsUniform &= !hitNonuniformReturn;
             foreach (BigBlock bb in stmtList.BigBlocks)
             {
                 Analyse(impl, bb, ControlFlowIsUniform);
@@ -147,6 +164,7 @@ namespace GPUVerify
 
         private void Analyse(Implementation impl, BigBlock bb, bool ControlFlowIsUniform)
         {
+            ControlFlowIsUniform &= !hitNonuniformReturn;
             foreach (Cmd c in bb.simpleCmds)
             {
                 if (c is AssignCmd)
@@ -207,7 +225,10 @@ namespace GPUVerify
             if (bb.ec is WhileCmd)
             {
                 WhileCmd wc = bb.ec as WhileCmd;
-                Analyse(impl, wc.Body, ControlFlowIsUniform && IsUniform(impl.Name, wc.Guard));
+                loopStack.Add(wc);
+                Analyse(impl, wc.Body, ControlFlowIsUniform && IsUniform(impl.Name, wc.Guard) && 
+                    !nonUniformLoops[impl.Name].Contains(GetLoopId(wc)));
+                loopStack.RemoveAt(loopStack.Count - 1);
             }
             else if (bb.ec is IfCmd)
             {
@@ -219,13 +240,44 @@ namespace GPUVerify
                 }
                 Debug.Assert(ifCmd.elseIf == null);
             }
+            else if (bb.ec is BreakCmd)
+            {
+                if (!ControlFlowIsUniform && !nonUniformLoops[impl.Name].Contains(GetLoopId(loopStack[loopStack.Count - 1])))
+                {
+                    SetNonUniform(impl.Name, loopStack[loopStack.Count - 1]);
+                }
+            }
 
+            if (bb.tc is ReturnCmd && !ControlFlowIsUniform)
+            {
+                hitNonuniformReturn = true;
+                if (loopStack.Count > 0 && !nonUniformLoops[impl.Name].Contains(GetLoopId(loopStack[0])))
+                {
+                    SetNonUniform(impl.Name, loopStack[0]);
+                    loopsWithNonuniformReturn[impl.Name].Add(GetLoopId(loopStack[0]));
+                }
+            }
+
+
+        }
+
+        private int GetLoopId(WhileCmd wc)
+        {
+            AssertCmd inv = wc.Invariants[0] as AssertCmd;
+            Debug.Assert(inv.Attributes.Key.Contains("loophead_"));
+            return Convert.ToInt32(inv.Attributes.Key.Substring("loophead_".Length));
         }
 
         private void SetNonUniform(string procedureName)
         {
             uniformityInfo[procedureName] = new KeyValuePair<bool,Dictionary<string,bool>>
                 (false, uniformityInfo[procedureName].Value);
+            RecordProcedureChanged();
+        }
+
+        private void SetNonUniform(string procedureName, WhileCmd wc)
+        {
+            nonUniformLoops[procedureName].Add(GetLoopId(wc));
             RecordProcedureChanged();
         }
 
@@ -299,6 +351,12 @@ namespace GPUVerify
                     Console.Write((i == 0 ? "" : ", ") + outParameters[p][i]);
                 }
                 Console.WriteLine("]");
+                Console.Write("Non-uniform loops:");
+                foreach (int l in nonUniformLoops[p])
+                {
+                    Console.Write(" " + l);
+                }
+                Console.WriteLine();
             }
         }
 
@@ -326,6 +384,16 @@ namespace GPUVerify
                 Debug.Assert(!uniformityInfo[proc].Value.ContainsKey(v));
                 uniformityInfo[proc].Value[v] = false;
             }
+        }
+
+        internal bool IsUniform(string proc, WhileCmd wc)
+        {
+            return !nonUniformLoops[proc].Contains(GetLoopId(wc));
+        }
+
+        internal bool HasNonuniformReturn(string proc, WhileCmd whileCmd)
+        {
+            return loopsWithNonuniformReturn[proc].Contains(GetLoopId(whileCmd));
         }
     }
 

@@ -290,6 +290,8 @@ namespace GPUVerify
 
         internal void preProcess()
         {
+            RemoveRedundantReturns();
+
             RemoveElseIfs();
 
             AddStartAndEndBarriers();
@@ -539,7 +541,9 @@ namespace GPUVerify
 
             foreach (PredicateCmd p in invariants)
             {
-                result.Add(new AssertCmd(p.tok, new AccessInvariantProcessor().VisitExpr(p.Expr.Clone() as Expr)));
+                PredicateCmd newP = new AssertCmd(p.tok, new AccessInvariantProcessor().VisitExpr(p.Expr.Clone() as Expr));
+                newP.Attributes = p.Attributes;
+                result.Add(newP);
             }
 
             return result;
@@ -1674,6 +1678,17 @@ namespace GPUVerify
             }
         }
 
+        private void RemoveRedundantReturns()
+        {
+            foreach (Declaration d in Program.TopLevelDeclarations)
+            {
+                if (d is Implementation)
+                {
+                    RemoveRedundantReturns((d as Implementation).StructuredStmts);
+                }
+            }
+        }
+
         private StmtList RemoveElseIfs(StmtList stmtList)
         {
             Contract.Requires(stmtList != null);
@@ -1686,6 +1701,18 @@ namespace GPUVerify
             }
 
             return result;
+        }
+
+        private void RemoveRedundantReturns(StmtList stmtList)
+        {
+            Contract.Requires(stmtList != null);
+
+            BigBlock bb = stmtList.BigBlocks[stmtList.BigBlocks.Count - 1];
+
+            if (bb.tc is ReturnCmd)
+            {
+                bb.tc = null;
+            }
         }
 
         private BigBlock RemoveElseIfs(BigBlock bb)
