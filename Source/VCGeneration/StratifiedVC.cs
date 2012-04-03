@@ -1106,7 +1106,8 @@ namespace VC
             checker.TheoremProver.LogComment(str);
           }
 
-          public Outcome CheckAssumptions(List<VCExpr> hardAssumptions, List<VCExpr> softAssumptions, out List<int> unsatisfiedSoftAssumptions) {
+          public Outcome CheckAssumptions(List<VCExpr> hardAssumptions, List<VCExpr> softAssumptions) {
+            List<int> unsatisfiedSoftAssumptions;
             ProverInterface.Outcome outcome = TheoremProver.CheckAssumptions(hardAssumptions, softAssumptions, out unsatisfiedSoftAssumptions, reporter);
             switch (outcome) {
               case ProverInterface.Outcome.Valid:
@@ -1613,7 +1614,7 @@ namespace VC
             // bool underApproxNeeded = true;
 
             // The recursion bound for stratified search
-            int bound = 1;
+            int bound = CommandLineOptions.Clo.NonUniformUnfolding ? CommandLineOptions.Clo.RecursionBound : 1;
 
             int done = 0;
 
@@ -1720,13 +1721,7 @@ namespace VC
                         if (block.Count == 0)
                         {
                             // Increment bound
-                            var minRecReached = CommandLineOptions.Clo.RecursionBound + 1;
-                            foreach (var id in calls.currCandidates)
-                            {
-                                var rb = calls.getRecursionBound(id);
-                                if (bound < rb && rb < minRecReached) minRecReached = rb;
-                            }
-                            bound = minRecReached;
+                            bound++;
                             if (useSummary) summaryComputation.boundChanged();
 
                             if (bound > CommandLineOptions.Clo.RecursionBound)
@@ -2210,7 +2205,6 @@ namespace VC
             bool allTrue = true;
             bool allFalse = true;
             List<VCExpr> softAssumptions = new List<VCExpr>();
-            List<int> unsatisfiedSoftAssumptions;
 
             assumptions = new List<VCExpr>();
             procsThatReachedRecBound.Clear();
@@ -2220,7 +2214,7 @@ namespace VC
                 int idBound = calls.getRecursionBound(id);
                 if (idBound <= bound)
                 {
-                    if (idBound > 0)
+                    if (idBound > 1)
                       softAssumptions.Add(calls.getFalseExpr(id));
                     if (block.Contains(id))
                     {
@@ -2249,7 +2243,9 @@ namespace VC
             }
             else
             {
-                ret = checker.CheckAssumptions(assumptions, softAssumptions, out unsatisfiedSoftAssumptions);
+              ret = CommandLineOptions.Clo.NonUniformUnfolding
+                    ? checker.CheckAssumptions(assumptions, softAssumptions)
+                    : checker.CheckAssumptions(assumptions);
             }
 
             if (ret != Outcome.Correct && ret != Outcome.Errors)

@@ -864,9 +864,9 @@ namespace Microsoft.Boogie.SMTLib
         }
         Check();
         outcome = CheckOutcomeCore(handler);
-        Pop();
         if (outcome != Outcome.Valid)
           break;
+        Pop();
         string relaxVar = "relax_" + k;
         relaxVars.Add(relaxVar);
         SendThisVC("(declare-fun " + relaxVar + " () Int)");
@@ -882,6 +882,7 @@ namespace Microsoft.Boogie.SMTLib
       if (outcome == Outcome.Invalid) {
         foreach (var relaxVar in relaxVars) {
           SendThisVC("(get-value (" + relaxVar + "))");
+          FlushLogFile();
           var resp = Process.GetProverResponse();
           if (resp == null) break;
           if (!(resp.Name == "" && resp.ArgCount == 1)) break;
@@ -896,6 +897,7 @@ namespace Microsoft.Boogie.SMTLib
           else
             break;
         }
+        Pop();
       }
 
       Pop();
