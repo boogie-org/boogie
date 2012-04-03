@@ -348,7 +348,7 @@ namespace GPUVerify
                     // Add a new big block with just the assignment
                     AssignCmd assignToReturnPredicate = new AssignCmd(Token.NoToken,
                         new List<AssignLhs>(new AssignLhs[] { new SimpleAssignLhs(Token.NoToken, returnPredicate) }),
-                        new List<Expr>(new Expr[] { GetCurrentPredicate() }));
+                        new List<Expr>(new Expr[] { Expr.And(returnPredicate, Expr.Not(predicate.Peek ())) }));
 
                     result.Add(new BigBlock(Token.NoToken, null, new CmdSeq(new Cmd[] { assignToReturnPredicate }), null, null));
                     firstBigBlock.tc = null;

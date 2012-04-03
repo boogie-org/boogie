@@ -26,6 +26,8 @@ namespace GPUVerify
 
         private List<WhileCmd> loopStack;
 
+        private bool hitNonuniformReturn;
+
         public UniformityAnalyser(GPUVerifier verifier)
         {
             this.verifier = verifier;
@@ -113,6 +115,7 @@ namespace GPUVerify
                     {
                         if (D is Implementation)
                         {
+                            hitNonuniformReturn = false;
                             Implementation Impl = D as Implementation;
                             Analyse(Impl, uniformityInfo[Impl.Name].Key);
                         }
@@ -149,8 +152,10 @@ namespace GPUVerify
             Analyse(Impl, Impl.StructuredStmts, ControlFlowIsUniform);
         }
 
+
         private void Analyse(Implementation impl, StmtList stmtList, bool ControlFlowIsUniform)
         {
+            ControlFlowIsUniform &= !hitNonuniformReturn;
             foreach (BigBlock bb in stmtList.BigBlocks)
             {
                 Analyse(impl, bb, ControlFlowIsUniform);
@@ -159,6 +164,7 @@ namespace GPUVerify
 
         private void Analyse(Implementation impl, BigBlock bb, bool ControlFlowIsUniform)
         {
+            ControlFlowIsUniform &= !hitNonuniformReturn;
             foreach (Cmd c in bb.simpleCmds)
             {
                 if (c is AssignCmd)
@@ -242,11 +248,16 @@ namespace GPUVerify
                 }
             }
 
-            if (bb.tc is ReturnCmd && !ControlFlowIsUniform && loopStack.Count > 0 && !nonUniformLoops[impl.Name].Contains(GetLoopId(loopStack[0])))
+            if (bb.tc is ReturnCmd && !ControlFlowIsUniform)
             {
-                SetNonUniform(impl.Name, loopStack[0]);
-                loopsWithNonuniformReturn[impl.Name].Add(GetLoopId(loopStack[0]));
+                hitNonuniformReturn = true;
+                if (loopStack.Count > 0 && !nonUniformLoops[impl.Name].Contains(GetLoopId(loopStack[0])))
+                {
+                    SetNonUniform(impl.Name, loopStack[0]);
+                    loopsWithNonuniformReturn[impl.Name].Add(GetLoopId(loopStack[0]));
+                }
             }
+
 
         }
 
