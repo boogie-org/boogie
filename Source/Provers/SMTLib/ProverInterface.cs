@@ -838,9 +838,20 @@ namespace Microsoft.Boogie.SMTLib
     public override Outcome CheckAssumptions(List<VCExpr> hardAssumptions, List<VCExpr> softAssumptions, out List<int> unsatisfiedSoftAssumptions, ErrorHandler handler) {
       unsatisfiedSoftAssumptions = new List<int>();
 
-      Push();
+      // First, convert both hard and soft assumptions to SMTLIB strings
+      List<string> hardAssumptionStrings = new List<string>();
       foreach (var a in hardAssumptions) {
-        SendThisVC("(assert " + VCExpr2String(a, 1) + ")");
+        hardAssumptionStrings.Add(VCExpr2String(a, 1));
+      }
+      List<string> currAssumptionStrings = new List<string>();
+      foreach (var a in softAssumptions) {
+        currAssumptionStrings.Add(VCExpr2String(a, 1));
+      }
+
+      Push();
+      AssertAxioms();
+      foreach (var a in hardAssumptionStrings) {
+        SendThisVC("(assert " + a + ")");
       }
       Check();
       Outcome outcome = GetResponse();
@@ -849,17 +860,11 @@ namespace Microsoft.Boogie.SMTLib
         return outcome;
       }
 
-      List<string> currAssumptions = new List<string>();
-      foreach (var a in softAssumptions) {
-        currAssumptions.Add(VCExpr2String(a, 1));
-      }
-
       int k = 0;
       List<string> relaxVars = new List<string>();
       while (true) {
         Push();
-        AssertAxioms();
-        foreach (var a in currAssumptions) {
+        foreach (var a in currAssumptionStrings) {
           SendThisVC("(assert " + a + ")");
         }
         Check();
@@ -870,12 +875,12 @@ namespace Microsoft.Boogie.SMTLib
         string relaxVar = "relax_" + k;
         relaxVars.Add(relaxVar);
         SendThisVC("(declare-fun " + relaxVar + " () Int)");
-        List<string> nextAssumptions = new List<string>();
-        for (int i = 0; i < currAssumptions.Count; i++) {
+        List<string> nextAssumptionStrings = new List<string>();
+        for (int i = 0; i < currAssumptionStrings.Count; i++) {
           string constraint = "(= " + relaxVar + " " + i + ")";
-          nextAssumptions.Add("(or " + currAssumptions[i] + " " + constraint + ")");
+          nextAssumptionStrings.Add("(or " + currAssumptionStrings[i] + " " + constraint + ")");
         }
-        currAssumptions = nextAssumptions;
+        currAssumptionStrings = nextAssumptionStrings;
         k++;
       }
 

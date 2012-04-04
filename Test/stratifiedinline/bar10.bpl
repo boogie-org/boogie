@@ -33,11 +33,9 @@ procedure main()
 modifies i;
 {
   i := 0;
-  if (*) {
-    call foo();
-  } else {
-    call bar1(0);
-    call bar2(0);
-  }
+  call bar1(0);
+  call bar2(0);
+  i := 0;
+  call foo();
   assert i < 10;
 }
