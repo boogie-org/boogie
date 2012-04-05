@@ -280,7 +280,7 @@ namespace GPUVerify
 
             Expr AssertExpr = Expr.And(SetExpr1, SetExpr2);
 
-            if (Access1.Equals("WRITE") && Access2.Equals("WRITE") && !CommandLineOptions.FullAbstraction)
+            if (Access1.Equals("WRITE") && Access2.Equals("WRITE") && !verifier.ArrayModelledAdversarially(v))
             {
                 VariableSeq DummyVarsAccess1;
                 VariableSeq DummyVarsAccess2;

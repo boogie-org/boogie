@@ -235,7 +235,7 @@ namespace GPUVerify
                     ));
             }
 
-            if (FirstAccessType.Equals("WRITE") && SecondAccessType.Equals("WRITE") && !CommandLineOptions.FullAbstraction)
+            if (FirstAccessType.Equals("WRITE") && SecondAccessType.Equals("WRITE") && !verifier.ArrayModelledAdversarially(v))
             {
                 RaceCondition = Expr.And(RaceCondition, Expr.Neq(
                     MakeWrittenIndex(v, 1),

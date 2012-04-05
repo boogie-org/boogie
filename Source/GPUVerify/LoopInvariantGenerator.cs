@@ -123,11 +123,14 @@ namespace GPUVerify
                 }
             }
 
-            if (!CommandLineOptions.FullAbstraction && CommandLineOptions.ArrayEqualities)
+            if (CommandLineOptions.ArrayEqualities)
             {
                 foreach (Variable v in verifier.NonLocalState.getAllNonLocalVariables())
                 {
-                    AddEqualityCandidateInvariant(wc, LoopPredicate, v);
+                    if (!verifier.ArrayModelledAdversarially(v))
+                    {
+                        AddEqualityCandidateInvariant(wc, LoopPredicate, v);
+                    }
                 }
             }
         }

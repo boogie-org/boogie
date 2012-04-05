@@ -68,6 +68,7 @@ namespace GPUVerify
         public MayBeTidPlusConstantAnalyser mayBeTidPlusConstantAnalyser;
         public MayBePowerOfTwoAnalyser mayBePowerOfTwoAnalyser;
         public LiveVariableAnalyser liveVariableAnalyser;
+        public ArrayControlFlowAnalyser arrayControlFlowAnalyser;
 
         public GPUVerifier(string filename, Program program, IRaceInstrumenter raceInstrumenter) : this(filename, program, raceInstrumenter, false)
         {
@@ -453,7 +454,8 @@ namespace GPUVerify
 
         private void DoArrayControlFlowAnalysis()
         {
-            // TODO
+            arrayControlFlowAnalyser = new ArrayControlFlowAnalyser(this);
+            arrayControlFlowAnalyser.Analyse();
         }
 
         private void DoUniformityAnalysis()
@@ -1321,7 +1323,7 @@ namespace GPUVerify
 
             checkNonDivergence.simpleCmds.Add(new AssertCmd(tok, Expr.Eq(P1, P2)));
 
-            if (!CommandLineOptions.OnlyDivergence || !CommandLineOptions.FullAbstraction)
+            if (!CommandLineOptions.OnlyDivergence)
             {
                 List<BigBlock> returnbigblocks = new List<BigBlock>();
                 returnbigblocks.Add(new BigBlock(tok, "__Disabled", new CmdSeq(), null, new ReturnCmd(tok)));
@@ -1334,15 +1336,14 @@ namespace GPUVerify
 
             bigblocks.Add(RaceInstrumenter.MakeRaceCheckingStatements(tok));
 
-            if (!CommandLineOptions.FullAbstraction)
+            BigBlock havocSharedState = new BigBlock(tok, "__HavocSharedState", new CmdSeq(), null, null);
+            bigblocks.Add(havocSharedState);
+            foreach (Variable v in NonLocalState.getAllNonLocalVariables())
             {
-                BigBlock havocSharedState = new BigBlock(tok, "__HavocSharedState", new CmdSeq(), null, null);
-                bigblocks.Add(havocSharedState);
-                foreach (Variable v in NonLocalState.getAllNonLocalVariables())
+                if (!ArrayModelledAdversarially(v))
                 {
                     HavocAndAssumeEquality(tok, havocSharedState, v);
                 }
-
             }
 
             StmtList statements = new StmtList(bigblocks, BarrierProcedure.tok);
@@ -1411,16 +1412,11 @@ namespace GPUVerify
 
         private void AbstractSharedState()
         {
-            if (!CommandLineOptions.FullAbstraction)
-            {
-                return; // There's actually nothing to do here
-            }
-
             List<Declaration> NewTopLevelDeclarations = new List<Declaration>();
 
             foreach (Declaration d in Program.TopLevelDeclarations)
             {
-                if (d is Variable && NonLocalState.Contains(d as Variable))
+                if (d is Variable && NonLocalState.Contains(d as Variable) && ArrayModelledAdversarially(d as Variable))
                 {
                     continue;
                 }
@@ -1449,7 +1445,7 @@ namespace GPUVerify
 
             foreach (IdentifierExpr e in proc.Modifies)
             {
-                if (!NonLocalState.Contains(e.Decl))
+                if (!NonLocalState.Contains(e.Decl) || !ArrayModelledAdversarially(e.Decl))
                 {
                     NewModifies.Add(e);
                 }
@@ -1504,7 +1500,18 @@ namespace GPUVerify
                     Expr rhs = assign.Rhss[0];
                     ReadCollector rc = new ReadCollector(NonLocalState);
                     rc.Visit(rhs);
-                    if (rc.accesses.Count > 0)
+
+                    bool foundAdversarial = false;
+                    foreach (AccessRecord ar in rc.accesses)
+                    {
+                        if (ArrayModelledAdversarially(ar.v))
+                        {
+                            foundAdversarial = true;
+                            break;
+                        }
+                    }
+
+                    if (foundAdversarial)
                     {
                         Debug.Assert(lhs is SimpleAssignLhs);
                         result.simpleCmds.Add(new HavocCmd(c.tok, new IdentifierExprSeq(new IdentifierExpr[] { (lhs as SimpleAssignLhs).AssignedVariable })));
@@ -1513,7 +1520,7 @@ namespace GPUVerify
 
                     WriteCollector wc = new WriteCollector(NonLocalState);
                     wc.Visit(lhs);
-                    if (wc.GetAccess() != null)
+                    if (wc.GetAccess() != null && ArrayModelledAdversarially(wc.GetAccess().v))
                     {
                         continue; // Just remove the write
                     }
@@ -2200,5 +2207,18 @@ namespace GPUVerify
         }
 
 
+
+        internal bool ArrayModelledAdversarially(Variable v)
+        {
+            if (CommandLineOptions.AdversarialAbstraction)
+            {
+                return true;
+            }
+            if (CommandLineOptions.EqualityAbstraction)
+            {
+                return false;
+            }
+            return !arrayControlFlowAnalyser.MayAffectControlFlow(v.Name);
+        }
     }
 }

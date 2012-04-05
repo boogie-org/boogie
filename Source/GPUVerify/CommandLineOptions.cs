@@ -16,7 +16,8 @@ namespace GPUVerify
         public static string outputFile = null;
 
         public static bool OnlyDivergence = false;
-        public static bool FullAbstraction = false;
+        public static bool AdversarialAbstraction = false;
+        public static bool EqualityAbstraction = false;
         public static bool Inference = false;
         public static bool ArrayEqualities = false;
         public static string invariantsFile = null;
@@ -39,6 +40,7 @@ namespace GPUVerify
         public static bool ShowMayBeTidAnalysis = false;
         public static bool ShowMayBePowerOfTwoAnalysis = false;
         public static bool ShowMayBeTidPlusConstantAnalysis = false;
+        public static bool ShowArrayControlFlowAnalysis = false;
 
         public static int Parse(string[] args)
         {
@@ -81,9 +83,15 @@ namespace GPUVerify
 
                     break;
 
-                    case "-fullAbstraction":
-                    case "/fullAbstraction":
-                    FullAbstraction = true;
+                    case "-adversarialAbstraction":
+                    case "/adversarialAbstraction":
+                    AdversarialAbstraction = true;
+
+                    break;
+
+                    case "-equalityAbstraction":
+                    case "/equalityAbstraction":
+                    EqualityAbstraction = true;
 
                     break;
 
@@ -175,6 +183,11 @@ namespace GPUVerify
                     ShowMayBeTidPlusConstantAnalysis = true;
                     break;
 
+                    case "-showArrayControlFlowAnalysis":
+                    case "/showArrayControlFlowAnalysis":
+                    ShowArrayControlFlowAnalysis = true;
+                    break;
+
                     default:
                         inputFiles.Add(args[i]);
                         break;
@@ -204,7 +217,7 @@ namespace GPUVerify
   where <option> is one of
 
   /help            : this message
-  /fullAbstraction : apply full state abstraction
+  /adversarialAbstraction : apply full state abstraction
   /onlyDivergence  : only check for divergence-freedom, not race-freedom
   /symmetry        : apply symmetry breaking
   /eager           : check races eagerly, rather than waiting for barrier
