@@ -29,9 +29,9 @@ namespace GPUVerify
         private int TempCounter = 0;
         private int invariantGenerationCounter;
 
-        private const string LOCAL_ID_X_STRING = "local_id_x";
-        private const string LOCAL_ID_Y_STRING = "local_id_y";
-        private const string LOCAL_ID_Z_STRING = "local_id_z";
+        internal const string LOCAL_ID_X_STRING = "local_id_x";
+        internal const string LOCAL_ID_Y_STRING = "local_id_y";
+        internal const string LOCAL_ID_Z_STRING = "local_id_z";
 
         internal static Constant _X = null;
         internal static Constant _Y = null;
@@ -41,30 +41,30 @@ namespace GPUVerify
         private Constant _GROUP_SIZE_Y = null;
         private Constant _GROUP_SIZE_Z = null;
 
-        private const string GROUP_SIZE_X_STRING = "group_size_x";
-        private const string GROUP_SIZE_Y_STRING = "group_size_y";
-        private const string GROUP_SIZE_Z_STRING = "group_size_z";
+        internal const string GROUP_SIZE_X_STRING = "group_size_x";
+        internal const string GROUP_SIZE_Y_STRING = "group_size_y";
+        internal const string GROUP_SIZE_Z_STRING = "group_size_z";
 
         private Constant _GROUP_X = null;
         private Constant _GROUP_Y = null;
         private Constant _GROUP_Z = null;
 
-        private const string GROUP_ID_X_STRING = "group_id_x";
-        private const string GROUP_ID_Y_STRING = "group_id_y";
-        private const string GROUP_ID_Z_STRING = "group_id_z";
+        internal const string GROUP_ID_X_STRING = "group_id_x";
+        internal const string GROUP_ID_Y_STRING = "group_id_y";
+        internal const string GROUP_ID_Z_STRING = "group_id_z";
 
         private Constant _NUM_GROUPS_X = null;
         private Constant _NUM_GROUPS_Y = null;
         private Constant _NUM_GROUPS_Z = null;
 
-        private const string NUM_GROUPS_X_STRING = "num_groups_x";
-        private const string NUM_GROUPS_Y_STRING = "num_groups_y";
-        private const string NUM_GROUPS_Z_STRING = "num_groups_z";
+        internal const string NUM_GROUPS_X_STRING = "num_groups_x";
+        internal const string NUM_GROUPS_Y_STRING = "num_groups_y";
+        internal const string NUM_GROUPS_Z_STRING = "num_groups_z";
 
         public IRaceInstrumenter RaceInstrumenter;
 
         public UniformityAnalyser uniformityAnalyser;
-        public MayBeTidAnalyser mayBeTidAnalyser;
+        public MayBeThreadConfigurationVariableAnalyser mayBeTidAnalyser;
         public MayBeTidPlusConstantAnalyser mayBeTidPlusConstantAnalyser;
         public MayBePowerOfTwoAnalyser mayBePowerOfTwoAnalyser;
         public LiveVariableAnalyser liveVariableAnalyser;
@@ -442,7 +442,7 @@ namespace GPUVerify
 
         private void DoMayBeTidAnalysis()
         {
-            mayBeTidAnalyser = new MayBeTidAnalyser(this);
+            mayBeTidAnalyser = new MayBeThreadConfigurationVariableAnalyser(this);
             mayBeTidAnalyser.Analyse();
         }
 
