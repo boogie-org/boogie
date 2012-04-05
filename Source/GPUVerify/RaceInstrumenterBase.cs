@@ -344,55 +344,98 @@ namespace GPUVerify
 
         private void AddReadOrWrittenOffsetIsThreadIdCandidateInvariants(Implementation impl, WhileCmd wc, Variable v, string accessType)
         {
+
             foreach (Expr e in GetOffsetsAccessed(wc.Body, v, accessType))
             {
-                if (e is IdentifierExpr)
+                if (verifier.mayBeTidAnalyser.MayBe(GPUVerifier.LOCAL_ID_X_STRING, impl.Name, GPUVerifier.StripThreadIdentifiers(e)))
                 {
-                    string indexVarName =
-                        GPUVerifier.StripThreadIdentifier((e as IdentifierExpr).Decl.Name);
-
-                    if (verifier.mayBeTidAnalyser.MayBe("local_id_x", impl.Name, indexVarName))
+                    AddAccessedOffsetIsThreadLocalIdCandidateInvariant(wc, v, accessType, 1);
+                    if (accessType.Equals("WRITE") || !CommandLineOptions.Symmetry)
                     {
-                        AddReadOrWrittenOffsetIsThreadIdCandidateInvariant(wc, v, accessType, 1);
-                        if (accessType.Equals("WRITE") || !CommandLineOptions.Symmetry)
-                        {
-                            AddReadOrWrittenOffsetIsThreadIdCandidateInvariant(wc, v, accessType, 2);
-                        }
-                        // No point adding it multiple times
-                        break;
+                        AddAccessedOffsetIsThreadLocalIdCandidateInvariant(wc, v, accessType, 2);
                     }
+                    // No point adding it multiple times
+                    break;
                 }
             }
 
+            foreach (Expr e in GetOffsetsAccessed(wc.Body, v, accessType))
+            {
+                if (verifier.mayBeGidAnalyser.MayBe("x", impl.Name, GPUVerifier.StripThreadIdentifiers(e)))
+                {
+                    AddAccessedOffsetIsThreadGlobalIdCandidateInvariant(wc, v, accessType, 1);
+                    if (accessType.Equals("WRITE") || !CommandLineOptions.Symmetry)
+                    {
+                        AddAccessedOffsetIsThreadGlobalIdCandidateInvariant(wc, v, accessType, 2);
+                    }
+                    // No point adding it multiple times
+                    break;
+                }
+            }
+
+            foreach (Expr e in GetOffsetsAccessed(wc.Body, v, accessType))
+            {
+                if (verifier.mayBeFlattened2DTidOrGidAnalyser.MayBe("local", impl.Name, GPUVerifier.StripThreadIdentifiers(e)))
+                {
+                    AddAccessedOffsetIsThreadFlattened2DLocalIdCandidateInvariant(wc, v, accessType, 1);
+                    if (accessType.Equals("WRITE") || !CommandLineOptions.Symmetry)
+                    {
+                        AddAccessedOffsetIsThreadFlattened2DLocalIdCandidateInvariant(wc, v, accessType, 2);
+                    }
+                    // No point adding it multiple times
+                    break;
+                }
+            }
+
+            foreach (Expr e in GetOffsetsAccessed(wc.Body, v, accessType))
+            {
+                if (verifier.mayBeFlattened2DTidOrGidAnalyser.MayBe("global", impl.Name, GPUVerifier.StripThreadIdentifiers(e)))
+                {
+                    AddAccessedOffsetIsThreadFlattened2DGlobalIdCandidateInvariant(wc, v, accessType, 1);
+                    if (accessType.Equals("WRITE") || !CommandLineOptions.Symmetry)
+                    {
+                        AddAccessedOffsetIsThreadFlattened2DGlobalIdCandidateInvariant(wc, v, accessType, 2);
+                    }
+                    // No point adding it multiple times
+                    break;
+                }
+            }
+        
         }
 
         private void AddReadOrWrittenOffsetIsThreadIdCandidateRequires(Procedure Proc, Variable v)
         {
-            AddReadOrWrittenOffsetIsThreadIdCandidateRequires(Proc, v, "WRITE", 1);
-            AddReadOrWrittenOffsetIsThreadIdCandidateRequires(Proc, v, "WRITE", 2);
-            AddReadOrWrittenOffsetIsThreadIdCandidateRequires(Proc, v, "READ", 1);
+            AddAccessedOffsetIsThreadLocalIdCandidateRequires(Proc, v, "WRITE", 1);
+            AddAccessedOffsetIsThreadLocalIdCandidateRequires(Proc, v, "WRITE", 2);
+            AddAccessedOffsetIsThreadLocalIdCandidateRequires(Proc, v, "READ", 1);
             if (!CommandLineOptions.Symmetry)
             {
-                AddReadOrWrittenOffsetIsThreadIdCandidateRequires(Proc, v, "READ", 2);
+                AddAccessedOffsetIsThreadLocalIdCandidateRequires(Proc, v, "READ", 2);
             }
         }
 
         private void AddReadOrWrittenOffsetIsThreadIdCandidateEnsures(Procedure Proc, Variable v)
         {
-            AddReadOrWrittenOffsetIsThreadIdCandidateEnsures(Proc, v, "WRITE", 1);
-            AddReadOrWrittenOffsetIsThreadIdCandidateEnsures(Proc, v, "WRITE", 2);
-            AddReadOrWrittenOffsetIsThreadIdCandidateEnsures(Proc, v, "READ", 1);
+            AddAccessedOffsetIsThreadLocalIdCandidateEnsures(Proc, v, "WRITE", 1);
+            AddAccessedOffsetIsThreadLocalIdCandidateEnsures(Proc, v, "WRITE", 2);
+            AddAccessedOffsetIsThreadLocalIdCandidateEnsures(Proc, v, "READ", 1);
             if (!CommandLineOptions.Symmetry)
             {
-                AddReadOrWrittenOffsetIsThreadIdCandidateEnsures(Proc, v, "READ", 2);
+                AddAccessedOffsetIsThreadLocalIdCandidateEnsures(Proc, v, "READ", 2);
             }
         }
 
-        protected abstract void AddReadOrWrittenOffsetIsThreadIdCandidateInvariant(WhileCmd wc, Variable v, string ReadOrWrite, int Thread);
+        protected abstract void AddAccessedOffsetIsThreadLocalIdCandidateInvariant(WhileCmd wc, Variable v, string ReadOrWrite, int Thread);
 
-        protected abstract void AddReadOrWrittenOffsetIsThreadIdCandidateRequires(Procedure Proc, Variable v, string ReadOrWrite, int Thread);
+        protected abstract void AddAccessedOffsetIsThreadGlobalIdCandidateInvariant(WhileCmd wc, Variable v, string ReadOrWrite, int Thread);
 
-        protected abstract void AddReadOrWrittenOffsetIsThreadIdCandidateEnsures(Procedure Proc, Variable v, string ReadOrWrite, int Thread);
+        protected abstract void AddAccessedOffsetIsThreadFlattened2DLocalIdCandidateInvariant(WhileCmd wc, Variable v, string ReadOrWrite, int Thread);
+
+        protected abstract void AddAccessedOffsetIsThreadFlattened2DGlobalIdCandidateInvariant(WhileCmd wc, Variable v, string ReadOrWrite, int Thread);
+
+        protected abstract void AddAccessedOffsetIsThreadLocalIdCandidateRequires(Procedure Proc, Variable v, string ReadOrWrite, int Thread);
+
+        protected abstract void AddAccessedOffsetIsThreadLocalIdCandidateEnsures(Procedure Proc, Variable v, string ReadOrWrite, int Thread);
 
         public void AddKernelPrecondition()
         {

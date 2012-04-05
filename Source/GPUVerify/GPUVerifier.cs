@@ -1269,7 +1269,7 @@ namespace GPUVerify
             }), new LocalVariable(lhs.tok, new TypedIdent(lhs.tok, "result", Microsoft.Boogie.Type.GetBvType(32))))), new ExprSeq(new Expr[] { lhs, rhs }));
         }
 
-        private Constant GetGroupSize(string dimension)
+        internal Constant GetGroupSize(string dimension)
         {
             Contract.Requires(dimension.Equals("X") || dimension.Equals("Y") || dimension.Equals("Z"));
             if (dimension.Equals("X")) return _GROUP_SIZE_X;
@@ -1279,7 +1279,7 @@ namespace GPUVerify
             return null;
         }
 
-        private Constant GetNumGroups(string dimension)
+        internal Constant GetNumGroups(string dimension)
         {
             Contract.Requires(dimension.Equals("X") || dimension.Equals("Y") || dimension.Equals("Z"));
             if (dimension.Equals("X")) return _NUM_GROUPS_X;
@@ -1289,7 +1289,7 @@ namespace GPUVerify
             return null;
         }
 
-        public Constant MakeThreadId(IToken tok, string dimension, int number)
+        internal Constant MakeThreadId(IToken tok, string dimension, int number)
         {
             Contract.Requires(dimension.Equals("X") || dimension.Equals("Y") || dimension.Equals("Z"));
             string name = null;
@@ -1300,7 +1300,7 @@ namespace GPUVerify
             return new Constant(tok, new TypedIdent(tok, name + "$" + number, GetTypeOfId(dimension)));
         }
 
-        private Constant GetGroupId(string dimension)
+        internal Constant GetGroupId(string dimension)
         {
             Contract.Requires(dimension.Equals("X") || dimension.Equals("Y") || dimension.Equals("Z"));
             if (dimension.Equals("X")) return _GROUP_X;
@@ -2232,5 +2232,20 @@ namespace GPUVerify
             }
             return !arrayControlFlowAnalyser.MayAffectControlFlow(v.Name);
         }
+
+        internal static Expr StripThreadIdentifiers(Expr e)
+        {
+            return new ThreadIdentifierStripper().VisitExpr(e.Clone() as Expr);
+        }
     }
+
+    class ThreadIdentifierStripper : StandardVisitor
+    {
+        public override Variable VisitVariable(Variable node)
+        {
+            node.Name = GPUVerifier.StripThreadIdentifier(node.Name);
+            return base.VisitVariable(node);
+        }
+    }
+
 }

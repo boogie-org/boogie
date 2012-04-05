@@ -428,7 +428,7 @@ namespace GPUVerify
 
 
 
-        protected override void AddReadOrWrittenOffsetIsThreadIdCandidateInvariant(WhileCmd wc, Variable v, string ReadOrWrite, int Thread)
+        protected override void AddAccessedOffsetIsThreadLocalIdCandidateInvariant(WhileCmd wc, Variable v, string ReadOrWrite, int Thread)
         {
             Expr expr = AccessOnlyAtThreadId(v, ReadOrWrite, Thread);
 
@@ -436,6 +436,11 @@ namespace GPUVerify
             {
                 verifier.AddCandidateInvariant(wc, expr);
             }
+        }
+
+        protected override void AddAccessedOffsetIsThreadGlobalIdCandidateInvariant(WhileCmd wc, Variable v, string ReadOrWrite, int Thread)
+        {
+            throw new NotImplementedException();
         }
 
         private Expr AccessOnlyAtThreadId(Variable v, string ReadOrWrite, int Thread)
@@ -484,7 +489,7 @@ namespace GPUVerify
             return new ForallExpr(v.tok, Dummies, Expr.Imp(ImplicationLhs, Expr.Not(Access)));
         }
 
-        protected override void AddReadOrWrittenOffsetIsThreadIdCandidateRequires(Procedure Proc, Variable v, string ReadOrWrite, int Thread)
+        protected override void AddAccessedOffsetIsThreadLocalIdCandidateRequires(Procedure Proc, Variable v, string ReadOrWrite, int Thread)
         {
             Expr expr = AccessOnlyAtThreadId(v, ReadOrWrite, Thread);
 
@@ -494,7 +499,7 @@ namespace GPUVerify
             }
         }
 
-        protected override void AddReadOrWrittenOffsetIsThreadIdCandidateEnsures(Procedure Proc, Variable v, string ReadOrWrite, int Thread)
+        protected override void AddAccessedOffsetIsThreadLocalIdCandidateEnsures(Procedure Proc, Variable v, string ReadOrWrite, int Thread)
         {
             Expr expr = AccessOnlyAtThreadId(v, ReadOrWrite, Thread);
 
@@ -502,6 +507,16 @@ namespace GPUVerify
             {
                 verifier.AddCandidateEnsures(Proc, expr);
             }
+        }
+
+        protected override void AddAccessedOffsetIsThreadFlattened2DLocalIdCandidateInvariant(WhileCmd wc, Variable v, string ReadOrWrite, int Thread)
+        {
+            throw new NotImplementedException();
+        }
+
+        protected override void AddAccessedOffsetIsThreadFlattened2DGlobalIdCandidateInvariant(WhileCmd wc, Variable v, string ReadOrWrite, int Thread)
+        {
+            throw new NotImplementedException();
         }
 
     }

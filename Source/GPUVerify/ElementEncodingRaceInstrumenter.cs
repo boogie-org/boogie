@@ -324,65 +324,25 @@ namespace GPUVerify
         }
 
 
-        protected override void AddReadOrWrittenOffsetIsThreadIdCandidateInvariant(WhileCmd wc, Variable v, string ReadOrWrite, int Thread)
+        protected override void AddAccessedOffsetIsThreadGlobalIdCandidateInvariant(WhileCmd wc, Variable v, string ReadOrWrite, int Thread)
         {
-            AddReadOrWrittenXOffsetIsThreadIdCandidateInvariant(wc, v, ReadOrWrite, Thread);
-            AddReadOrWrittenYOffsetIsThreadIdCandidateInvariant(wc, v, ReadOrWrite, Thread);
-            AddReadOrWrittenZOffsetIsThreadIdCandidateInvariant(wc, v, ReadOrWrite, Thread);
-        }
-
-        private void AddReadOrWrittenZOffsetIsThreadIdCandidateInvariant(WhileCmd wc, Variable v, string ReadOrWrite, int Thread)
-        {
-            Expr expr = ReadOrWrittenZOffsetIsThreadIdExpr(v, ReadOrWrite, Thread);
+            Expr expr = AccessedOffsetIsThreadGlobalIdExpr(v, ReadOrWrite, Thread);
             if (expr != null)
             {
                 verifier.AddCandidateInvariant(wc, expr);
             }
         }
 
-        private Expr ReadOrWrittenZOffsetIsThreadIdExpr(Variable v, string ReadOrWrite, int Thread)
+        protected override void AddAccessedOffsetIsThreadLocalIdCandidateInvariant(WhileCmd wc, Variable v, string ReadOrWrite, int Thread)
         {
-            Expr expr = null;
-            if (GPUVerifier.HasZDimension(v) && verifier.KernelHasIdZ() && GPUVerifier.IndexTypeOfZDimension(v).Equals(verifier.GetTypeOfIdZ()))
-            {
-                expr = Expr.Imp(
-                        new IdentifierExpr(v.tok, new VariableDualiser(Thread, null, null).VisitVariable(ElementEncodingRaceInstrumenter.MakeReadOrWriteHasOccurredVariable(v, ReadOrWrite))),
-                        Expr.Eq(new IdentifierExpr(v.tok, new VariableDualiser(Thread, null, null).VisitVariable(GPUVerifier.MakeOffsetZVariable(v, ReadOrWrite))), new IdentifierExpr(v.tok, verifier.MakeThreadId(v.tok, "Z", Thread))));
-            }
-            return expr;
-        }
-
-        private void AddReadOrWrittenYOffsetIsThreadIdCandidateInvariant(WhileCmd wc, Variable v, string ReadOrWrite, int Thread)
-        {
-            Expr expr = ReadOrWrittenYOffsetIsThreadIdExpr(v, ReadOrWrite, Thread);
+            Expr expr = AccessedOffsetIsThreadLocalIdExpr(v, ReadOrWrite, Thread);
             if (expr != null)
             {
                 verifier.AddCandidateInvariant(wc, expr);
             }
         }
 
-        private Expr ReadOrWrittenYOffsetIsThreadIdExpr(Variable v, string ReadOrWrite, int Thread)
-        {
-            Expr expr = null;
-            if (GPUVerifier.HasYDimension(v) && verifier.KernelHasIdY() && GPUVerifier.IndexTypeOfYDimension(v).Equals(verifier.GetTypeOfIdY()))
-            {
-                expr = Expr.Imp(
-                        new IdentifierExpr(v.tok, new VariableDualiser(Thread, null, null).VisitVariable(ElementEncodingRaceInstrumenter.MakeReadOrWriteHasOccurredVariable(v, ReadOrWrite))),
-                        Expr.Eq(new IdentifierExpr(v.tok, new VariableDualiser(Thread, null, null).VisitVariable(GPUVerifier.MakeOffsetYVariable(v, ReadOrWrite))), new IdentifierExpr(v.tok, verifier.MakeThreadId(v.tok, "Y", Thread))));
-            }
-            return expr;
-        }
-
-        private void AddReadOrWrittenXOffsetIsThreadIdCandidateInvariant(WhileCmd wc, Variable v, string ReadOrWrite, int Thread)
-        {
-            Expr expr = ReadOrWrittenXOffsetIsThreadIdExpr(v, ReadOrWrite, Thread);
-            if (expr != null)
-            {
-                verifier.AddCandidateInvariant(wc, expr);
-            }
-        }
-
-        private Expr ReadOrWrittenXOffsetIsThreadIdExpr(Variable v, string ReadOrWrite, int Thread)
+        private Expr AccessedOffsetIsThreadLocalIdExpr(Variable v, string ReadOrWrite, int Thread)
         {
             Expr expr = null;
             if (GPUVerifier.HasXDimension(v) && GPUVerifier.IndexTypeOfXDimension(v).Equals(verifier.GetTypeOfIdX()))
@@ -394,68 +354,103 @@ namespace GPUVerify
             return expr;
         }
 
-        protected override void AddReadOrWrittenOffsetIsThreadIdCandidateRequires(Procedure Proc, Variable v, string ReadOrWrite, int Thread)
+        private Expr AccessedOffsetIsThreadGlobalIdExpr(Variable v, string ReadOrWrite, int Thread)
         {
-            AddReadOrWrittenXOffsetIsThreadIdCandidateRequires(Proc, v, ReadOrWrite, Thread);
-            AddReadOrWrittenYOffsetIsThreadIdCandidateRequires(Proc, v, ReadOrWrite, Thread);
-            AddReadOrWrittenZOffsetIsThreadIdCandidateRequires(Proc, v, ReadOrWrite, Thread);
+            Expr expr = null;
+            if (GPUVerifier.HasXDimension(v) && GPUVerifier.IndexTypeOfXDimension(v).Equals(verifier.GetTypeOfIdX()))
+            {
+                expr = Expr.Imp(
+                        new IdentifierExpr(v.tok, new VariableDualiser(Thread, null, null).VisitVariable(ElementEncodingRaceInstrumenter.MakeReadOrWriteHasOccurredVariable(v, ReadOrWrite))),
+                        Expr.Eq(
+                            new IdentifierExpr(v.tok, new VariableDualiser(Thread, null, null).VisitVariable(GPUVerifier.MakeOffsetXVariable(v, ReadOrWrite))),
+                            GlobalIdExpr("X", Thread)
+                            )
+                            );
+            }
+            return expr;
         }
 
-        protected override void AddReadOrWrittenOffsetIsThreadIdCandidateEnsures(Procedure Proc, Variable v, string ReadOrWrite, int Thread)
+        private Expr GlobalIdExpr(string dimension, int Thread)
         {
-            AddReadOrWrittenXOffsetIsThreadIdCandidateEnsures(Proc, v, ReadOrWrite, Thread);
-            AddReadOrWrittenYOffsetIsThreadIdCandidateEnsures(Proc, v, ReadOrWrite, Thread);
-            AddReadOrWrittenZOffsetIsThreadIdCandidateEnsures(Proc, v, ReadOrWrite, Thread);
+            return GPUVerifier.MakeBitVectorBinaryBitVector("BV32_ADD", GPUVerifier.MakeBitVectorBinaryBitVector("BV32_MUL",
+                            new IdentifierExpr(Token.NoToken, verifier.GetGroupId(dimension)), new IdentifierExpr(Token.NoToken, verifier.GetGroupSize(dimension))),
+                                new IdentifierExpr(Token.NoToken, verifier.MakeThreadId(Token.NoToken, dimension, Thread)));
         }
 
-        private void AddReadOrWrittenXOffsetIsThreadIdCandidateRequires(Procedure Proc, Variable v, string ReadOrWrite, int Thread)
+        private Expr GlobalSizeExpr(string dimension)
         {
-            Expr expr = ReadOrWrittenXOffsetIsThreadIdExpr(v, ReadOrWrite, Thread);
+            return GPUVerifier.MakeBitVectorBinaryBitVector("BV32_MUL",
+                            new IdentifierExpr(Token.NoToken, verifier.GetNumGroups(dimension)), 
+                            new IdentifierExpr(Token.NoToken, verifier.GetGroupSize(dimension)));
+        }
+
+        protected override void AddAccessedOffsetIsThreadFlattened2DLocalIdCandidateInvariant(WhileCmd wc, Variable v, string ReadOrWrite, int Thread)
+        {
+            Expr expr = AccessedOffsetIsThreadFlattened2DLocalIdExpr(v, ReadOrWrite, Thread);
+            if (expr != null)
+            {
+                verifier.AddCandidateInvariant(wc, expr);
+            }
+        }
+
+        private Expr AccessedOffsetIsThreadFlattened2DLocalIdExpr(Variable v, string ReadOrWrite, int Thread)
+        {
+            Expr expr = null;
+            if (GPUVerifier.HasXDimension(v) && GPUVerifier.IndexTypeOfXDimension(v).Equals(verifier.GetTypeOfIdX()))
+            {
+                expr = Expr.Imp(
+                        new IdentifierExpr(v.tok, new VariableDualiser(Thread, null, null).VisitVariable(ElementEncodingRaceInstrumenter.MakeReadOrWriteHasOccurredVariable(v, ReadOrWrite))),
+                        Expr.Eq(
+                            new IdentifierExpr(v.tok, new VariableDualiser(Thread, null, null).VisitVariable(GPUVerifier.MakeOffsetXVariable(v, ReadOrWrite))),
+                            GPUVerifier.MakeBitVectorBinaryBitVector("BV32_ADD", GPUVerifier.MakeBitVectorBinaryBitVector("BV32_MUL",
+                            new IdentifierExpr(v.tok, verifier.MakeThreadId(v.tok, "Y", Thread)), new IdentifierExpr(v.tok, verifier.GetGroupSize("X"))),
+                                new IdentifierExpr(v.tok, verifier.MakeThreadId(v.tok, "X", Thread)))
+                            )
+                            );
+            }
+            return expr;
+        }
+
+        protected override void AddAccessedOffsetIsThreadFlattened2DGlobalIdCandidateInvariant(WhileCmd wc, Variable v, string ReadOrWrite, int Thread)
+        {
+            Expr expr = AccessedOffsetIsThreadFlattened2DGlobalIdExpr(v, ReadOrWrite, Thread);
+            if (expr != null)
+            {
+                verifier.AddCandidateInvariant(wc, expr);
+            }
+        }
+
+        private Expr AccessedOffsetIsThreadFlattened2DGlobalIdExpr(Variable v, string ReadOrWrite, int Thread)
+        {
+            Expr expr = null;
+            if (GPUVerifier.HasXDimension(v) && GPUVerifier.IndexTypeOfXDimension(v).Equals(verifier.GetTypeOfIdX()))
+            {
+                expr = Expr.Imp(
+                        new IdentifierExpr(v.tok, new VariableDualiser(Thread, null, null).VisitVariable(ElementEncodingRaceInstrumenter.MakeReadOrWriteHasOccurredVariable(v, ReadOrWrite))),
+                        Expr.Eq(
+                            new IdentifierExpr(v.tok, new VariableDualiser(Thread, null, null).VisitVariable(GPUVerifier.MakeOffsetXVariable(v, ReadOrWrite))),
+                            GPUVerifier.MakeBitVectorBinaryBitVector("BV32_ADD", GPUVerifier.MakeBitVectorBinaryBitVector("BV32_MUL",
+                            GlobalIdExpr("Y", Thread), GlobalSizeExpr("X")),
+                                GlobalIdExpr("X", Thread))
+                            )
+                            );
+            }
+            return expr;
+        }
+
+
+        protected override void AddAccessedOffsetIsThreadLocalIdCandidateRequires(Procedure Proc, Variable v, string ReadOrWrite, int Thread)
+        {
+            Expr expr = AccessedOffsetIsThreadLocalIdExpr(v, ReadOrWrite, Thread);
             if (expr != null)
             {
                 verifier.AddCandidateRequires(Proc, expr);
             }
         }
 
-        private void AddReadOrWrittenYOffsetIsThreadIdCandidateRequires(Procedure Proc, Variable v, string ReadOrWrite, int Thread)
+        protected override void AddAccessedOffsetIsThreadLocalIdCandidateEnsures(Procedure Proc, Variable v, string ReadOrWrite, int Thread)
         {
-            Expr expr = ReadOrWrittenYOffsetIsThreadIdExpr(v, ReadOrWrite, Thread);
-            if (expr != null)
-            {
-                verifier.AddCandidateRequires(Proc, expr);
-            }
-        }
-
-        private void AddReadOrWrittenZOffsetIsThreadIdCandidateRequires(Procedure Proc, Variable v, string ReadOrWrite, int Thread)
-        {
-            Expr expr = ReadOrWrittenZOffsetIsThreadIdExpr(v, ReadOrWrite, Thread);
-            if (expr != null)
-            {
-                verifier.AddCandidateRequires(Proc, expr);
-            }
-        }
-
-        private void AddReadOrWrittenXOffsetIsThreadIdCandidateEnsures(Procedure Proc, Variable v, string ReadOrWrite, int Thread)
-        {
-            Expr expr = ReadOrWrittenXOffsetIsThreadIdExpr(v, ReadOrWrite, Thread);
-            if (expr != null)
-            {
-                verifier.AddCandidateEnsures(Proc, expr);
-            }
-        }
-
-        private void AddReadOrWrittenYOffsetIsThreadIdCandidateEnsures(Procedure Proc, Variable v, string ReadOrWrite, int Thread)
-        {
-            Expr expr = ReadOrWrittenYOffsetIsThreadIdExpr(v, ReadOrWrite, Thread);
-            if (expr != null)
-            {
-                verifier.AddCandidateEnsures(Proc, expr);
-            }
-        }
-
-        private void AddReadOrWrittenZOffsetIsThreadIdCandidateEnsures(Procedure Proc, Variable v, string ReadOrWrite, int Thread)
-        {
-            Expr expr = ReadOrWrittenZOffsetIsThreadIdExpr(v, ReadOrWrite, Thread);
+            Expr expr = AccessedOffsetIsThreadLocalIdExpr(v, ReadOrWrite, Thread);
             if (expr != null)
             {
                 verifier.AddCandidateEnsures(Proc, expr);
