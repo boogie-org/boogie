@@ -111,7 +111,7 @@ namespace GPUVerify
 
                                 Variable rhsV = (assign.Rhss[0] as IdentifierExpr).Decl;
 
-                                if (verifier.mayBeTidAnalyser.MayBeLocal("X", impl.Name, rhsV.Name))
+                                if (verifier.mayBeTidAnalyser.MayBe(GPUVerifier.LOCAL_ID_X_STRING, impl.Name, rhsV.Name))
                                 {
                                     mayBeAssignedTid[impl.Name][lhsV.Name] = true;
                                 }

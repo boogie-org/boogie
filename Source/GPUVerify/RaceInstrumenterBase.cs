@@ -351,7 +351,7 @@ namespace GPUVerify
                     string indexVarName =
                         GPUVerifier.StripThreadIdentifier((e as IdentifierExpr).Decl.Name);
 
-                    if (verifier.mayBeTidAnalyser.MayBeLocal("X", impl.Name, indexVarName))
+                    if (verifier.mayBeTidAnalyser.MayBe("local_id_x", impl.Name, indexVarName))
                     {
                         AddReadOrWrittenOffsetIsThreadIdCandidateInvariant(wc, v, accessType, 1);
                         if (accessType.Equals("WRITE") || !CommandLineOptions.Symmetry)

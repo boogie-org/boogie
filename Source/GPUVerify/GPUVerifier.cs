@@ -37,29 +37,29 @@ namespace GPUVerify
         internal static Constant _Y = null;
         internal static Constant _Z = null;
 
-        private Constant _GROUP_SIZE_X = null;
-        private Constant _GROUP_SIZE_Y = null;
-        private Constant _GROUP_SIZE_Z = null;
-
         internal const string GROUP_SIZE_X_STRING = "group_size_x";
         internal const string GROUP_SIZE_Y_STRING = "group_size_y";
         internal const string GROUP_SIZE_Z_STRING = "group_size_z";
 
-        private Constant _GROUP_X = null;
-        private Constant _GROUP_Y = null;
-        private Constant _GROUP_Z = null;
+        internal static Constant _GROUP_SIZE_X = null;
+        internal static Constant _GROUP_SIZE_Y = null;
+        internal static Constant _GROUP_SIZE_Z = null;
 
         internal const string GROUP_ID_X_STRING = "group_id_x";
         internal const string GROUP_ID_Y_STRING = "group_id_y";
         internal const string GROUP_ID_Z_STRING = "group_id_z";
 
-        private Constant _NUM_GROUPS_X = null;
-        private Constant _NUM_GROUPS_Y = null;
-        private Constant _NUM_GROUPS_Z = null;
+        internal static Constant _GROUP_X = null;
+        internal static Constant _GROUP_Y = null;
+        internal static Constant _GROUP_Z = null;
 
         internal const string NUM_GROUPS_X_STRING = "num_groups_x";
         internal const string NUM_GROUPS_Y_STRING = "num_groups_y";
         internal const string NUM_GROUPS_Z_STRING = "num_groups_z";
+
+        internal static Constant _NUM_GROUPS_X = null;
+        internal static Constant _NUM_GROUPS_Y = null;
+        internal static Constant _NUM_GROUPS_Z = null;
 
         public IRaceInstrumenter RaceInstrumenter;
 

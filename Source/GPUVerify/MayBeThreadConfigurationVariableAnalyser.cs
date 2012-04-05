@@ -9,21 +9,37 @@ namespace GPUVerify
 {
     class MayBeThreadConfigurationVariableAnalyser
     {
+        private static string[] SpecialNames = { 
+            GPUVerifier.LOCAL_ID_X_STRING,
+            GPUVerifier.LOCAL_ID_Y_STRING,
+            GPUVerifier.LOCAL_ID_Z_STRING,
+            GPUVerifier.GROUP_ID_X_STRING,
+            GPUVerifier.GROUP_ID_Y_STRING,
+            GPUVerifier.GROUP_ID_Z_STRING,
+            GPUVerifier.NUM_GROUPS_X_STRING,
+            GPUVerifier.NUM_GROUPS_Y_STRING,
+            GPUVerifier.NUM_GROUPS_Z_STRING,
+            GPUVerifier.GROUP_SIZE_X_STRING,
+            GPUVerifier.GROUP_SIZE_Y_STRING,
+            GPUVerifier.GROUP_SIZE_Z_STRING
+        };
 
         private GPUVerifier verifier;
 
         private bool ProcedureChanged;
 
-        private Dictionary<string, Dictionary<string, bool>> mayBeLocalXInfo;
-        private Dictionary<string, Dictionary<string, bool>> mayBeLocalYInfo;
-        private Dictionary<string, Dictionary<string, bool>> mayBeLocalZInfo;
+        private Dictionary<string, Dictionary<string, Dictionary<string, bool>>> mayBeInfo;
 
         public MayBeThreadConfigurationVariableAnalyser(GPUVerifier verifier)
         {
             this.verifier = verifier;
-            mayBeLocalXInfo = new Dictionary<string, Dictionary<string, bool>>();
-            mayBeLocalYInfo = new Dictionary<string, Dictionary<string, bool>>();
-            mayBeLocalZInfo = new Dictionary<string, Dictionary<string, bool>>();
+
+            mayBeInfo = new Dictionary<string,Dictionary<string,Dictionary<string,bool>>>();
+            foreach (string s in SpecialNames)
+            {
+                mayBeInfo[s] = new Dictionary<string, Dictionary<string, bool>>();
+            }
+        
         }
 
         internal void Analyse()
@@ -33,41 +49,50 @@ namespace GPUVerify
                 if(D is Implementation)
                 {
                     Implementation Impl = D as Implementation;
-                    mayBeLocalXInfo.Add(Impl.Name, new Dictionary<string, bool> ());
-                    mayBeLocalYInfo.Add(Impl.Name, new Dictionary<string, bool>());
-                    mayBeLocalZInfo.Add(Impl.Name, new Dictionary<string, bool>());
 
-                    SetMayBeLocal("X", Impl.Name, GPUVerifier._X.Name);
-                    SetNotLocal("X", Impl.Name, GPUVerifier._Y.Name);
-                    SetNotLocal("X", Impl.Name, GPUVerifier._Z.Name);
+                    foreach (string s in SpecialNames)
+                    {
+                        mayBeInfo[s][Impl.Name] = new Dictionary<string, bool>();
+                    }
 
-                    SetNotLocal("Y", Impl.Name, GPUVerifier._X.Name);
-                    SetMayBeLocal("Y", Impl.Name, GPUVerifier._Y.Name);
-                    SetNotLocal("Y", Impl.Name, GPUVerifier._Z.Name);
+                    SetMayBe(GPUVerifier.LOCAL_ID_X_STRING, Impl.Name, GPUVerifier._X.Name);
+                    SetMayBe(GPUVerifier.LOCAL_ID_Y_STRING, Impl.Name, GPUVerifier._Y.Name);
+                    SetMayBe(GPUVerifier.LOCAL_ID_Z_STRING, Impl.Name, GPUVerifier._Z.Name);
 
-                    SetNotLocal("Z", Impl.Name, GPUVerifier._X.Name);
-                    SetNotLocal("Z", Impl.Name, GPUVerifier._Y.Name);
-                    SetMayBeLocal("Z", Impl.Name, GPUVerifier._Z.Name);
+                    SetMayBe(GPUVerifier.GROUP_ID_X_STRING, Impl.Name, GPUVerifier._GROUP_X.Name);
+                    SetMayBe(GPUVerifier.GROUP_ID_Y_STRING, Impl.Name, GPUVerifier._GROUP_Y.Name);
+                    SetMayBe(GPUVerifier.GROUP_ID_Z_STRING, Impl.Name, GPUVerifier._GROUP_Z.Name);
+
+                    SetMayBe(GPUVerifier.GROUP_SIZE_X_STRING, Impl.Name, GPUVerifier._GROUP_SIZE_X.Name);
+                    SetMayBe(GPUVerifier.GROUP_SIZE_Y_STRING, Impl.Name, GPUVerifier._GROUP_SIZE_Y.Name);
+                    SetMayBe(GPUVerifier.GROUP_SIZE_Z_STRING, Impl.Name, GPUVerifier._GROUP_SIZE_Z.Name);
+
+                    SetMayBe(GPUVerifier.NUM_GROUPS_X_STRING, Impl.Name, GPUVerifier._NUM_GROUPS_X.Name);
+                    SetMayBe(GPUVerifier.NUM_GROUPS_Y_STRING, Impl.Name, GPUVerifier._NUM_GROUPS_Y.Name);
+                    SetMayBe(GPUVerifier.NUM_GROUPS_Z_STRING, Impl.Name, GPUVerifier._NUM_GROUPS_Z.Name);
 
                     foreach (Variable v in Impl.LocVars)
                     {
-                        SetMayBeLocal("X", Impl.Name, v.Name);
-                        SetMayBeLocal("Y", Impl.Name, v.Name);
-                        SetMayBeLocal("Z", Impl.Name, v.Name);
+                        foreach (string s in SpecialNames)
+                        {
+                            SetMayBe(s, Impl.Name, v.Name);
+                        }
                     }
 
                     foreach (Variable v in Impl.InParams)
                     {
-                        SetMayBeLocal("X", Impl.Name, v.Name);
-                        SetMayBeLocal("Y", Impl.Name, v.Name);
-                        SetMayBeLocal("Z", Impl.Name, v.Name);
+                        foreach (string s in SpecialNames)
+                        {
+                            SetMayBe(s, Impl.Name, v.Name);
+                        }
                     }
 
                     foreach (Variable v in Impl.OutParams)
                     {
-                        SetMayBeLocal("X", Impl.Name, v.Name);
-                        SetMayBeLocal("Y", Impl.Name, v.Name);
-                        SetMayBeLocal("Z", Impl.Name, v.Name);
+                        foreach (string s in SpecialNames)
+                        {
+                            SetMayBe(s, Impl.Name, v.Name);
+                        }
                     }
 
                     ProcedureChanged = true;
@@ -113,21 +138,24 @@ namespace GPUVerify
             {
                 if (c is AssignCmd)
                 {
-                    TransferAssign(impl, c as AssignCmd, "X");
-                    TransferAssign(impl, c as AssignCmd, "Y");
-                    TransferAssign(impl, c as AssignCmd, "Z");
+                    foreach (string s in SpecialNames)
+                    {
+                        TransferAssign(impl, c as AssignCmd, s);
+                    }
                 }
                 else if (c is CallCmd)
                 {
-                    TransferCall(impl, c as CallCmd, "X");
-                    TransferCall(impl, c as CallCmd, "Y");
-                    TransferCall(impl, c as CallCmd, "Z");
+                    foreach (string s in SpecialNames)
+                    {
+                        TransferCall(impl, c as CallCmd, s);
+                    }
                 }
                 else if (c is HavocCmd)
                 {
-                    TransferHavoc(impl, c as HavocCmd, "X");
-                    TransferHavoc(impl, c as HavocCmd, "Y");
-                    TransferHavoc(impl, c as HavocCmd, "Z");
+                    foreach (string s in SpecialNames)
+                    {
+                        TransferHavoc(impl, c as HavocCmd, s);
+                    }
                 }
             }
 
@@ -149,16 +177,16 @@ namespace GPUVerify
 
         }
 
-        private void TransferHavoc(Implementation impl, HavocCmd havoc, string dim)
+        private void TransferHavoc(Implementation impl, HavocCmd havoc, string component)
         {
             Debug.Assert(havoc.Vars.Length == 1);
-            if (MayBeLocal(dim, impl.Name, havoc.Vars[0].Decl.Name))
+            if (MayBe(component, impl.Name, havoc.Vars[0].Decl.Name))
             {
-                SetNotLocal(dim, impl.Name, havoc.Vars[0].Decl.Name);
+                SetNot(component, impl.Name, havoc.Vars[0].Decl.Name);
             }
         }
 
-        private void TransferCall(Implementation impl, CallCmd callCmd, string dim)
+        private void TransferCall(Implementation impl, CallCmd callCmd, string component)
         {
             if (callCmd.callee != verifier.BarrierProcedure.Name)
             {
@@ -166,26 +194,26 @@ namespace GPUVerify
                 Implementation CalleeImplementation = verifier.GetImplementation(callCmd.callee);
                 for (int i = 0; i < CalleeImplementation.InParams.Length; i++)
                 {
-                    if (MayBeLocal(dim, callCmd.callee, CalleeImplementation.InParams[i].Name)
-                        && !MayBeLocal(dim, impl.Name, callCmd.Ins[i]))
+                    if (MayBe(component, callCmd.callee, CalleeImplementation.InParams[i].Name)
+                        && !MayBe(component, impl.Name, callCmd.Ins[i]))
                     {
-                        SetNotLocal(dim, callCmd.callee, CalleeImplementation.InParams[i].Name);
+                        SetNot(component, callCmd.callee, CalleeImplementation.InParams[i].Name);
                     }
                 }
 
                 for (int i = 0; i < CalleeImplementation.OutParams.Length; i++)
                 {
-                    if (MayBeLocal(dim, impl.Name, callCmd.Outs[i].Name)
-                        && !MayBeLocal(dim, callCmd.callee, CalleeImplementation.OutParams[i].Name))
+                    if (MayBe(component, impl.Name, callCmd.Outs[i].Name)
+                        && !MayBe(component, callCmd.callee, CalleeImplementation.OutParams[i].Name))
                     {
-                        SetNotLocal(dim, impl.Name, callCmd.Outs[i].Name);
+                        SetNot(component, impl.Name, callCmd.Outs[i].Name);
                     }
                 }
 
             }
         }
 
-        private void TransferAssign(Implementation impl, AssignCmd assignCmd, string dim)
+        private void TransferAssign(Implementation impl, AssignCmd assignCmd, string component)
         {
             Debug.Assert(assignCmd.Lhss.Count == 1);
             Debug.Assert(assignCmd.Rhss.Count == 1);
@@ -194,100 +222,70 @@ namespace GPUVerify
                 SimpleAssignLhs lhs = assignCmd.Lhss[0] as SimpleAssignLhs;
                 Expr rhs = assignCmd.Rhss[0];
 
-                if (MayBeLocal(dim, impl.Name, lhs.AssignedVariable.Name)
-                    && !MayBeLocal(dim, impl.Name, rhs))
+                if (MayBe(component, impl.Name, lhs.AssignedVariable.Name)
+                    && !MayBe(component, impl.Name, rhs))
                 {
-                    SetNotLocal(dim, impl.Name, lhs.AssignedVariable.Name);
+                    SetNot(component, impl.Name, lhs.AssignedVariable.Name);
                 }
 
             }
         }
 
-        private void SetNotLocal(string dim, string proc, string v)
+        private void SetNot(string component, string proc, string v)
         {
-            GetMayBeLocalDimInfo(dim)[proc][v] = false;
+            mayBeInfo[component][proc][v] = false;
             ProcedureChanged = true;
         }
 
-        private void SetMayBeLocal(string dim, string proc, string v)
+        private void SetMayBe(string component, string proc, string v)
         {
-            GetMayBeLocalDimInfo(dim)[proc][v] = true;
+            mayBeInfo[component][proc][v] = true;
         }
 
-        internal bool MayBeLocal(string dim, string proc, string v)
+        internal bool MayBe(string component, string proc, string v)
         {
-            if (!GetMayBeLocalDimInfo(dim).ContainsKey(proc))
+            if (!mayBeInfo[component].ContainsKey(proc))
             {
                 return false;
             }
 
-            if (!GetMayBeLocalDimInfo(dim)[proc].ContainsKey(v))
+            if (!mayBeInfo[component][proc].ContainsKey(v))
             {
                 return false;
             }
 
-            return GetMayBeLocalDimInfo(dim)[proc][v];
+            return mayBeInfo[component][proc][v];
         }
 
-        internal bool MayBeLocal(string dim, string proc, Expr e)
+        internal bool MayBe(string component, string proc, Expr e)
         {
             if (e is IdentifierExpr)
             {
-                return MayBeLocal(dim, proc, (e as IdentifierExpr).Decl.Name);
+                return MayBe(component, proc, (e as IdentifierExpr).Decl.Name);
             }
             return false;
         }
 
         private void dump()
         {
-            foreach (string p in mayBeLocalXInfo.Keys)
+            foreach (string s in SpecialNames)
             {
-                Console.WriteLine("Procedure " + p);
-                foreach (string v in mayBeLocalXInfo[p].Keys)
+                Console.WriteLine("*** " + s + " ***");
+
+                foreach (string p in mayBeInfo[s].Keys)
                 {
-                    if (mayBeLocalXInfo[p][v])
+                    Console.WriteLine("  Procedure " + p);
+
+                    foreach (string v in mayBeInfo[s][p].Keys)
                     {
-                        Console.WriteLine("  " + v + ": may be " + GPUVerifier.LOCAL_ID_X_STRING);
-                    }
-                }
-                foreach (string v in mayBeLocalYInfo[p].Keys)
-                {
-                    if (mayBeLocalYInfo[p][v])
-                    {
-                        Console.WriteLine("  " + v + ": may be " + GPUVerifier.LOCAL_ID_Y_STRING);
-                    }
-                }
-                foreach (string v in mayBeLocalZInfo[p].Keys)
-                {
-                    if (mayBeLocalZInfo[p][v])
-                    {
-                        Console.WriteLine("  " + v + ": may be " + GPUVerifier.LOCAL_ID_Z_STRING);
+                        if (mayBeInfo[s][p][v])
+                        {
+                            Console.WriteLine("    " + v + ": may be " + s);
+                        }
                     }
                 }
             }
 
-        }
-
-        private Dictionary<string, Dictionary<string, bool>> GetMayBeLocalDimInfo(string dim)
-        {
-            Dictionary<string, Dictionary<string, bool>> map = null;
-            if (dim.Equals("X"))
-            {
-                map = mayBeLocalXInfo;
-            }
-            else if (dim.Equals("Y"))
-            {
-                map = mayBeLocalYInfo;
-            }
-            else if (dim.Equals("Z"))
-            {
-                map = mayBeLocalZInfo;
-            }
-            else
-            {
-                Debug.Assert(false);
-            }
-            return map;
         }
 
     }
