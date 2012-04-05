@@ -108,6 +108,9 @@
     <Compile Include="AccessRecord.cs" />
     <Compile Include="ArrayControlFlowAnalyser.cs" />
     <Compile Include="AsymmetricExpressionFinder.cs" />
+    <Compile Include="MayBeGlobalSizeAnalyser.cs" />
+    <Compile Include="MayBeFlattened2DTidOrGidAnalyser.cs" />
+    <Compile Include="MayBeGidAnalyser.cs" />
     <Compile Include="EnsureDisabledThreadHasNoEffectInstrumenter.cs" />
     <Compile Include="KernelDualiser.cs" />
     <Compile Include="LiveVariableAnalyser.cs" />

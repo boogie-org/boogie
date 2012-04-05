@@ -65,6 +65,9 @@ namespace GPUVerify
 
         public UniformityAnalyser uniformityAnalyser;
         public MayBeThreadConfigurationVariableAnalyser mayBeTidAnalyser;
+        public MayBeGidAnalyser mayBeGidAnalyser;
+        public MayBeGlobalSizeAnalyser mayBeGlobalSizeAnalyser;
+        public MayBeFlattened2DTidOrGidAnalyser mayBeFlattened2DTidOrGidAnalyser;
         public MayBeTidPlusConstantAnalyser mayBeTidPlusConstantAnalyser;
         public MayBePowerOfTwoAnalyser mayBePowerOfTwoAnalyser;
         public LiveVariableAnalyser liveVariableAnalyser;
@@ -444,6 +447,15 @@ namespace GPUVerify
         {
             mayBeTidAnalyser = new MayBeThreadConfigurationVariableAnalyser(this);
             mayBeTidAnalyser.Analyse();
+
+            mayBeGidAnalyser = new MayBeGidAnalyser(this);
+            mayBeGidAnalyser.Analyse();
+
+            mayBeGlobalSizeAnalyser = new MayBeGlobalSizeAnalyser(this);
+            mayBeGlobalSizeAnalyser.Analyse();
+
+            mayBeFlattened2DTidOrGidAnalyser = new MayBeFlattened2DTidOrGidAnalyser(this);
+            mayBeFlattened2DTidOrGidAnalyser.Analyse();
         }
 
         private void DoMayBeTidPlusConstantAnalysis()
