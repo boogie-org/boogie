@@ -1039,8 +1039,6 @@ namespace VC
           private List<int> numAxiomsPushed;
           // Api-based theorem prover
           private ProverInterface TheoremProver;
-          // Use checkAssumptions?
-          public static bool UseCheckAssumptions = true;
           private FCallHandler calls;
           // Underlying checker
           public Checker underlyingChecker;
@@ -1108,33 +1106,44 @@ namespace VC
             checker.TheoremProver.LogComment(str);
           }
 
-          public Outcome CheckAssumptions(List<VCExpr> assumptions, out List<int> unsatCore) {
-            if (!UseCheckAssumptions) {
-                Outcome ret;
-
-                unsatCore = new List<int>();
-                for (int i = 0; i < assumptions.Count; i++)
-                    unsatCore.Add(i);
-
-                if (assumptions.Count == 0)
-                {
-                    return CheckVC();
-                }
-
-                Push();
-
-                foreach (var a in assumptions)
-                {
-                    AddAxiom(a);
-                }
-                ret = CheckVC();
-
-                Pop();
-
-                return ret;
-
+          public Outcome CheckAssumptions(List<VCExpr> hardAssumptions, List<VCExpr> softAssumptions) {
+            List<int> unsatisfiedSoftAssumptions;
+            ProverInterface.Outcome outcome = TheoremProver.CheckAssumptions(hardAssumptions, softAssumptions, out unsatisfiedSoftAssumptions, reporter);
+            switch (outcome) {
+              case ProverInterface.Outcome.Valid:
+                return Outcome.Correct;
+              case ProverInterface.Outcome.Invalid:
+                return Outcome.Errors;
+              case ProverInterface.Outcome.OutOfMemory:
+                return Outcome.OutOfMemory;
+              case ProverInterface.Outcome.TimeOut:
+                return Outcome.TimedOut;
+              case ProverInterface.Outcome.Undetermined:
+                return Outcome.Inconclusive;
+              default:
+                Contract.Assert(false);
+                throw new cce.UnreachableException();
             }
-            
+          }
+
+          public Outcome CheckAssumptions(List<VCExpr> assumptions) {
+            if (assumptions.Count == 0) {
+              return CheckVC();
+            }
+
+            Push();
+
+            foreach (var a in assumptions) {
+              AddAxiom(a);
+            }
+            Outcome ret = CheckVC();
+
+            Pop();
+
+            return ret;
+          }
+
+          public Outcome CheckAssumptions(List<VCExpr> assumptions, out List<int> unsatCore) {
             if (assumptions.Count == 0) {
               unsatCore = new List<int>();
               return CheckVC();
@@ -1605,13 +1614,13 @@ namespace VC
             // bool underApproxNeeded = true;
 
             // The recursion bound for stratified search
-            int bound = 1;
+            int bound = CommandLineOptions.Clo.NonUniformUnfolding ? CommandLineOptions.Clo.RecursionBound : 1;
 
             int done = 0;
 
             int iters = 0;
 
-            // for blocking candidates (and focussing on a counterexample)
+            // for blocking candidates (and focusing on a counterexample)
             var block = new HashSet<int>();
 
             // Process tasks while not done. We're done when:
@@ -1712,14 +1721,7 @@ namespace VC
                         if (block.Count == 0)
                         {
                             // Increment bound
-                            var minRecReached = CommandLineOptions.Clo.RecursionBound + 1;
-                            foreach (var id in calls.currCandidates)
-                            {
-                                var rb = calls.getRecursionBound(id);
-                                if (rb <= bound) continue;
-                                if (rb < minRecReached) minRecReached = rb;
-                            }
-                            bound = minRecReached;
+                            bound++;
                             if (useSummary) summaryComputation.boundChanged();
 
                             if (bound > CommandLineOptions.Clo.RecursionBound)
@@ -1911,6 +1913,7 @@ namespace VC
           calleeToCallSites[callee].Remove(cs);
         }
 
+#if SuperAwesomeMethod  
         private Outcome FindUnsatCoreInMainCallees(Implementation impl, ApiChecker checker, VCExpressionGenerator Gen, PCBErrorReporter reporter, List<VCExpr> assumptions, out HashSet<VCExprVar> unsatCore)
         {
           Debug.Assert(checker is ApiChecker);
@@ -1932,7 +1935,7 @@ namespace VC
           }
           return Outcome.Correct;
         }
-
+      
         private Outcome FindUnsatCore(Implementation impl, ApiChecker checker, VCExpressionGenerator Gen, PCBErrorReporter reporter, List<VCExpr> assumptions, out HashSet<VCExprVar> unsatCore)
         {
           Helpers.ExtraTraceInformation("Number of assumptions = " + assumptions.Count);
@@ -2156,74 +2159,38 @@ namespace VC
             InlineIntoMain(checker, impl, unsatCore);
           }
         }
-
-        
+#endif
 
         // A step of the stratified inlining algorithm: both under-approx and over-approx queries
         private Outcome stratifiedStep(int bound, VerificationState vState, HashSet<int> block)
         {
-            Outcome ret;
-            List<int> unsatCore;
-
-            // No need of computing Unsat cores for stratified inlining
-            if (!CommandLineOptions.Clo.UseUnsatCoreForInlining && CommandLineOptions.Clo.ProverName == "SMTLIB") 
-                ApiChecker.UseCheckAssumptions = false;
-
             var reporter = vState.reporter as StratifiedInliningErrorReporter;
             var calls = vState.calls;
             var checker = vState.checker;
 
             reporter.underapproximationMode = true;
             checker.LogComment(";;;;;;;;;;;; Underapprox mode begin ;;;;;;;;;;");
-            List<VCExpr> assumptions;
-            List<int> ids;
-
-            while (true)
+            List<VCExpr> assumptions = new List<VCExpr>();
+            List<int> ids = new List<int>();
+            foreach (int id in calls.currCandidates)
             {
-                assumptions = new List<VCExpr>();
-                ids = new List<int>();
-                foreach (int id in calls.currCandidates)
-                {
-                    assumptions.Add(calls.getFalseExpr(id));
-                    ids.Add(id);
-                }
-                ret = checker.CheckAssumptions(assumptions, out unsatCore);
-                if (!CommandLineOptions.Clo.UseUnsatCoreForInlining) break;
-                if (ret != Outcome.Correct) break;
-                Debug.Assert(unsatCore.Count <= assumptions.Count);
-                if (unsatCore.Count == assumptions.Count)
-                    break;
-
-                var unsatCoreIds = new List<int>();
-                foreach (int i in unsatCore)
-                    unsatCoreIds.Add(ids[i]);
-                vState.checker.LogComment(";;;;;;;;;;;; Expansion begin ;;;;;;;;;;");
-                bool incrementalSearch = 
-                    CommandLineOptions.Clo.StratifiedInliningOption == 0 ||
-                    CommandLineOptions.Clo.StratifiedInliningOption == 2;
-                DoExpansion(incrementalSearch, unsatCoreIds, vState);
-                vState.calls.forcedCandidates.UnionWith(unsatCoreIds);
-                vState.checker.LogComment(";;;;;;;;;;;; Expansion end ;;;;;;;;;;");
+                assumptions.Add(calls.getFalseExpr(id));
+                ids.Add(id);
             }
-
+            Outcome ret = checker.CheckAssumptions(assumptions);
             checker.LogComment(";;;;;;;;;;;; Underapprox mode end ;;;;;;;;;;");
-
-            if (ret == Outcome.Errors)
-            {
-                return ret;
-            }
 
             if (ret != Outcome.Correct)
             {
-                // The query ran out of memory or time, that's it,
-                // we cannot do better. Give up!
+                // Either the query returned an error or it ran out of memory or time.
+                // In all cases, we are done.
                 return ret;
             }
 
-            // If we didn't underapproximate, then we're done
             if (calls.currCandidates.Count == 0)
             {
-                return ret;
+              // If we didn't underapproximate, then we're done
+              return ret;
             }
 
             checker.LogComment(";;;;;;;;;;;; Overapprox mode begin ;;;;;;;;;;");
@@ -2237,31 +2204,32 @@ namespace VC
 
             bool allTrue = true;
             bool allFalse = true;
+            List<VCExpr> softAssumptions = new List<VCExpr>();
 
             assumptions = new List<VCExpr>();
             procsThatReachedRecBound.Clear();
 
             foreach (int id in calls.currCandidates)
             {
-                if (calls.getRecursionBound(id) <= bound)
+                int idBound = calls.getRecursionBound(id);
+                if (idBound <= bound)
                 {
+                    if (idBound > 1)
+                      softAssumptions.Add(calls.getFalseExpr(id));
                     if (block.Contains(id))
                     {
                         Contract.Assert(useSummary);
-                        //checker.AddAxiom(calls.getFalseExpr(id));
                         assumptions.Add(calls.getFalseExpr(id));
                         allTrue = false;
                     }
                     else
                     {
-                        //checker.TheoremProver.PushVCExpression(calls.getTrueExpr(id));
                         allFalse = false;
                     }
                 }
                 else
                 {
                     procsThatReachedRecBound.Add(calls.getProc(id));
-                    //checker.AddAxiom(calls.getFalseExpr(id));
                     assumptions.Add(calls.getFalseExpr(id));
                     allTrue = false;
                 }
@@ -2275,7 +2243,9 @@ namespace VC
             }
             else
             {
-                ret = checker.CheckAssumptions(assumptions, out unsatCore);
+              ret = CommandLineOptions.Clo.NonUniformUnfolding
+                    ? checker.CheckAssumptions(assumptions, softAssumptions)
+                    : checker.CheckAssumptions(assumptions);
             }
 
             if (ret != Outcome.Correct && ret != Outcome.Errors)

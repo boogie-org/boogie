@@ -1472,7 +1472,7 @@ namespace Microsoft.Boogie {
         NAryExpr/*!*/ res = Expr.Select(Map.AsExpr, Indexes);
         Contract.Assert(res != null);
         res.TypeParameters = this.TypeParameters;
-        res.Type = Map.AsExpr.Type.AsMap.Result;
+        res.Type = this.Type;
         return res;
       }
     }

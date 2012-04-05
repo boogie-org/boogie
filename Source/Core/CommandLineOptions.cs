@@ -564,8 +564,8 @@ namespace Microsoft.Boogie {
     public int StratifiedInliningOption = 0;
     public bool StratifiedInliningWithoutModels = false; // disable model generation for SI
     public int StratifiedInliningVerbose = 0; // verbosity level
-    public bool UseUnsatCoreForInlining = false;
     public int RecursionBound = 500;
+    public bool NonUniformUnfolding = false;
     public string inferLeastForUnsat = null;
     public string CoverageReporterPath = null;
     public Process coverageReporter = null; // used internally for debugging
@@ -1027,10 +1027,6 @@ namespace Microsoft.Boogie {
           }
           return true;
 
-        case "useUnsatCoreForInlining":
-          UseUnsatCoreForInlining = true;
-          return true;
-
         case "inferLeastForUnsat":
           if (ps.ConfirmArgumentCount(1)) {
             inferLeastForUnsat = args[ps.i];
@@ -1228,7 +1224,8 @@ namespace Microsoft.Boogie {
               ps.CheckBooleanFlag("doModSetAnalysis", ref DoModSetAnalysis) ||
               ps.CheckBooleanFlag("doNotUseLabels", ref UseLabels, false) ||
               ps.CheckBooleanFlag("contractInfer", ref ContractInfer) ||
-              ps.CheckBooleanFlag("printAssignment", ref PrintAssignment)
+              ps.CheckBooleanFlag("printAssignment", ref PrintAssignment) ||
+              ps.CheckBooleanFlag("nonUniformUnfolding", ref NonUniformUnfolding)
               ) {
             // one of the boolean flags matched
             return true;

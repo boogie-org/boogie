@@ -1,12 +1,12 @@
 var i: int;
 var m: int;
 
-procedure {:inline 1} foo()
+procedure {:inline 1} foo(x: int)
 modifies i;
 {
-  if (i < 20) {
+  if (i < x) {
       i := i + 1;
-      call foo();
+      call foo(x);
   }
 }
 
@@ -34,7 +34,9 @@ modifies i;
 {
   i := 0;
   if (*) {
-    call foo();
+    call foo(20);
+    i := 0;
+    call foo(4);
   } else {
     call bar1(0);
     call bar2(0);

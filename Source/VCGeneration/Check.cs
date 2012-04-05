@@ -829,6 +829,10 @@ namespace Microsoft.Boogie {
         throw new NotImplementedException();
     }
 
+    public virtual Outcome CheckAssumptions(List<VCExpr> hardAssumptions, List<VCExpr> softAssumptions, out List<int> unsatisfiedSoftAssumptions, ErrorHandler handler) {
+      throw new NotImplementedException();
+    }
+
     public virtual Outcome CheckOutcomeCore(ErrorHandler handler)
     {
         throw new NotImplementedException();

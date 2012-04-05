@@ -85,7 +85,7 @@ namespace Microsoft.Boogie.SMTLib
           {
               currentLogFile = OpenOutputFile("");
           }
-          if (CommandLineOptions.Clo.ProcedureCopyBound > 0 || CommandLineOptions.Clo.UseUnsatCoreForInlining)
+          if (CommandLineOptions.Clo.ProcedureCopyBound > 0)
           {
               SendThisVC("(set-option :produce-unsat-cores true)");
               this.usingUnsatCore = true;
@@ -835,6 +835,79 @@ namespace Microsoft.Boogie.SMTLib
         DeclCollector.Push();
     }
 
+    public override Outcome CheckAssumptions(List<VCExpr> hardAssumptions, List<VCExpr> softAssumptions, out List<int> unsatisfiedSoftAssumptions, ErrorHandler handler) {
+      unsatisfiedSoftAssumptions = new List<int>();
+
+      // First, convert both hard and soft assumptions to SMTLIB strings
+      List<string> hardAssumptionStrings = new List<string>();
+      foreach (var a in hardAssumptions) {
+        hardAssumptionStrings.Add(VCExpr2String(a, 1));
+      }
+      List<string> currAssumptionStrings = new List<string>();
+      foreach (var a in softAssumptions) {
+        currAssumptionStrings.Add(VCExpr2String(a, 1));
+      }
+
+      Push();
+      AssertAxioms();
+      foreach (var a in hardAssumptionStrings) {
+        SendThisVC("(assert " + a + ")");
+      }
+      Check();
+      Outcome outcome = GetResponse();
+      if (outcome != Outcome.Invalid) {
+        Pop();
+        return outcome;
+      }
+
+      int k = 0;
+      List<string> relaxVars = new List<string>();
+      while (true) {
+        Push();
+        foreach (var a in currAssumptionStrings) {
+          SendThisVC("(assert " + a + ")");
+        }
+        Check();
+        outcome = CheckOutcomeCore(handler);
+        if (outcome != Outcome.Valid)
+          break;
+        Pop();
+        string relaxVar = "relax_" + k;
+        relaxVars.Add(relaxVar);
+        SendThisVC("(declare-fun " + relaxVar + " () Int)");
+        List<string> nextAssumptionStrings = new List<string>();
+        for (int i = 0; i < currAssumptionStrings.Count; i++) {
+          string constraint = "(= " + relaxVar + " " + i + ")";
+          nextAssumptionStrings.Add("(or " + currAssumptionStrings[i] + " " + constraint + ")");
+        }
+        currAssumptionStrings = nextAssumptionStrings;
+        k++;
+      }
+
+      if (outcome == Outcome.Invalid) {
+        foreach (var relaxVar in relaxVars) {
+          SendThisVC("(get-value (" + relaxVar + "))");
+          FlushLogFile();
+          var resp = Process.GetProverResponse();
+          if (resp == null) break;
+          if (!(resp.Name == "" && resp.ArgCount == 1)) break;
+          resp = resp.Arguments[0];
+          if (!(resp.Name == "" && resp.ArgCount == 2)) break;
+          resp = resp.Arguments[1];
+          if (resp.ArgCount != 0)
+            break;
+          int v;
+          if (int.TryParse(resp.Name, out v))
+            unsatisfiedSoftAssumptions.Add(v);
+          else
+            break;
+        }
+        Pop();
+      }
+
+      Pop();
+      return outcome;
+    }
   }
 
   public class SMTLibProverContext : DeclFreeProverContext

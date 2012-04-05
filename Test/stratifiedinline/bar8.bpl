@@ -4,7 +4,7 @@ var m: int;
 procedure {:inline 1} foo() 
 modifies i;
 {
-  if (i < 80) {
+  if (i < 20) {
       i := i + 1;
       call foo();
   }
