@@ -113,59 +113,21 @@ namespace GPUVerify
             {
                 if (c is AssignCmd)
                 {
-                    AssignCmd assignCmd = c as AssignCmd;
-                    Debug.Assert(assignCmd.Lhss.Count == 1);
-                    Debug.Assert(assignCmd.Rhss.Count == 1);
-                    if (assignCmd.Lhss[0] is SimpleAssignLhs)
-                    {
-                        SimpleAssignLhs lhs = assignCmd.Lhss[0] as SimpleAssignLhs;
-                        Expr rhs = assignCmd.Rhss[0];
-
-                        if (MayBeLocal ("X", impl.Name, lhs.AssignedVariable.Name)
-                            && !MayBeLocal("X", impl.Name, rhs))
-                        {
-                            SetNotLocal ("X", impl.Name, lhs.AssignedVariable.Name);
-                        }
-
-                    }
+                    TransferAssign(impl, c as AssignCmd, "X");
+                    TransferAssign(impl, c as AssignCmd, "Y");
+                    TransferAssign(impl, c as AssignCmd, "Z");
                 }
                 else if (c is CallCmd)
                 {
-                    CallCmd callCmd = c as CallCmd;
-
-                    if (callCmd.callee != verifier.BarrierProcedure.Name)
-                    {
-
-                        Implementation CalleeImplementation = verifier.GetImplementation(callCmd.callee);
-                        for (int i = 0; i < CalleeImplementation.InParams.Length; i++)
-                        {
-                            if (MayBeLocal("X", callCmd.callee, CalleeImplementation.InParams[i].Name)
-                                && !MayBeLocal("X", impl.Name, callCmd.Ins[i]))
-                            {
-                                SetNotLocal("X", callCmd.callee, CalleeImplementation.InParams[i].Name);
-                            }
-                        }
-
-                        for (int i = 0; i < CalleeImplementation.OutParams.Length; i++)
-                        {
-                            if (MayBeLocal("X", impl.Name, callCmd.Outs[i].Name)
-                                && !MayBeLocal("X", callCmd.callee, CalleeImplementation.OutParams[i].Name))
-                            {
-                                SetNotLocal("X", impl.Name, callCmd.Outs[i].Name);
-                            }
-                        }
-
-                    }
-                    else if (c is HavocCmd)
-                    {
-                        HavocCmd havoc = c as HavocCmd;
-                        Debug.Assert(havoc.Vars.Length == 1);
-
-                        if (MayBeLocal("X", impl.Name, havoc.Vars[0].Decl.Name))
-                        {
-                            SetNotLocal("X", impl.Name, havoc.Vars[0].Decl.Name);
-                        }
-                    }
+                    TransferCall(impl, c as CallCmd, "X");
+                    TransferCall(impl, c as CallCmd, "Y");
+                    TransferCall(impl, c as CallCmd, "Z");
+                }
+                else if (c is HavocCmd)
+                {
+                    TransferHavoc(impl, c as HavocCmd, "X");
+                    TransferHavoc(impl, c as HavocCmd, "Y");
+                    TransferHavoc(impl, c as HavocCmd, "Z");
                 }
             }
 
@@ -185,6 +147,60 @@ namespace GPUVerify
                 Debug.Assert(ifCmd.elseIf == null);
             }
 
+        }
+
+        private void TransferHavoc(Implementation impl, HavocCmd havoc, string dim)
+        {
+            Debug.Assert(havoc.Vars.Length == 1);
+            if (MayBeLocal(dim, impl.Name, havoc.Vars[0].Decl.Name))
+            {
+                SetNotLocal(dim, impl.Name, havoc.Vars[0].Decl.Name);
+            }
+        }
+
+        private void TransferCall(Implementation impl, CallCmd callCmd, string dim)
+        {
+            if (callCmd.callee != verifier.BarrierProcedure.Name)
+            {
+
+                Implementation CalleeImplementation = verifier.GetImplementation(callCmd.callee);
+                for (int i = 0; i < CalleeImplementation.InParams.Length; i++)
+                {
+                    if (MayBeLocal(dim, callCmd.callee, CalleeImplementation.InParams[i].Name)
+                        && !MayBeLocal(dim, impl.Name, callCmd.Ins[i]))
+                    {
+                        SetNotLocal(dim, callCmd.callee, CalleeImplementation.InParams[i].Name);
+                    }
+                }
+
+                for (int i = 0; i < CalleeImplementation.OutParams.Length; i++)
+                {
+                    if (MayBeLocal(dim, impl.Name, callCmd.Outs[i].Name)
+                        && !MayBeLocal(dim, callCmd.callee, CalleeImplementation.OutParams[i].Name))
+                    {
+                        SetNotLocal(dim, impl.Name, callCmd.Outs[i].Name);
+                    }
+                }
+
+            }
+        }
+
+        private void TransferAssign(Implementation impl, AssignCmd assignCmd, string dim)
+        {
+            Debug.Assert(assignCmd.Lhss.Count == 1);
+            Debug.Assert(assignCmd.Rhss.Count == 1);
+            if (assignCmd.Lhss[0] is SimpleAssignLhs)
+            {
+                SimpleAssignLhs lhs = assignCmd.Lhss[0] as SimpleAssignLhs;
+                Expr rhs = assignCmd.Rhss[0];
+
+                if (MayBeLocal(dim, impl.Name, lhs.AssignedVariable.Name)
+                    && !MayBeLocal(dim, impl.Name, rhs))
+                {
+                    SetNotLocal(dim, impl.Name, lhs.AssignedVariable.Name);
+                }
+
+            }
         }
 
         private void SetNotLocal(string dim, string proc, string v)
@@ -229,8 +245,24 @@ namespace GPUVerify
                 Console.WriteLine("Procedure " + p);
                 foreach (string v in mayBeLocalXInfo[p].Keys)
                 {
-                    Console.WriteLine("  " + v + ": " +
-                        (mayBeLocalXInfo[p][v] ? "may be" : "likely not") + " " + GPUVerifier.LOCAL_ID_X_STRING);
+                    if (mayBeLocalXInfo[p][v])
+                    {
+                        Console.WriteLine("  " + v + ": may be " + GPUVerifier.LOCAL_ID_X_STRING);
+                    }
+                }
+                foreach (string v in mayBeLocalYInfo[p].Keys)
+                {
+                    if (mayBeLocalYInfo[p][v])
+                    {
+                        Console.WriteLine("  " + v + ": may be " + GPUVerifier.LOCAL_ID_Y_STRING);
+                    }
+                }
+                foreach (string v in mayBeLocalZInfo[p].Keys)
+                {
+                    if (mayBeLocalZInfo[p][v])
+                    {
+                        Console.WriteLine("  " + v + ": may be " + GPUVerifier.LOCAL_ID_Z_STRING);
+                    }
                 }
             }
 
