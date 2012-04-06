@@ -519,5 +519,15 @@ namespace GPUVerify
             throw new NotImplementedException();
         }
 
+        protected override void AddAccessedOffsetInRangeCTimesLocalIdToCTimesLocalIdPlusC(WhileCmd wc, Variable v, Expr constant, string ReadOrWrite, int Thread)
+        {
+            throw new NotImplementedException();
+        }
+
+        protected override void AddAccessedOffsetInRangeCTimesGlobalIdToCTimesGlobalIdPlusC(WhileCmd wc, Variable v, Expr constant, string ReadOrWrite, int Thread)
+        {
+            throw new NotImplementedException();
+        }
+
     }
 }

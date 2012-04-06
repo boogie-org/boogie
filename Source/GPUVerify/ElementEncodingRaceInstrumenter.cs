@@ -399,7 +399,7 @@ namespace GPUVerify
             if (GPUVerifier.HasXDimension(v) && GPUVerifier.IndexTypeOfXDimension(v).Equals(verifier.GetTypeOfIdX()))
             {
                 expr = Expr.Imp(
-                        new IdentifierExpr(v.tok, new VariableDualiser(Thread, null, null).VisitVariable(ElementEncodingRaceInstrumenter.MakeReadOrWriteHasOccurredVariable(v, ReadOrWrite))),
+                        AccessHasOccurred(v, ReadOrWrite, Thread),
                         Expr.Eq(
                             new IdentifierExpr(v.tok, new VariableDualiser(Thread, null, null).VisitVariable(GPUVerifier.MakeOffsetXVariable(v, ReadOrWrite))),
                             GPUVerifier.MakeBitVectorBinaryBitVector("BV32_ADD", GPUVerifier.MakeBitVectorBinaryBitVector("BV32_MUL",
@@ -426,7 +426,7 @@ namespace GPUVerify
             if (GPUVerifier.HasXDimension(v) && GPUVerifier.IndexTypeOfXDimension(v).Equals(verifier.GetTypeOfIdX()))
             {
                 expr = Expr.Imp(
-                        new IdentifierExpr(v.tok, new VariableDualiser(Thread, null, null).VisitVariable(ElementEncodingRaceInstrumenter.MakeReadOrWriteHasOccurredVariable(v, ReadOrWrite))),
+                        AccessHasOccurred(v, ReadOrWrite, Thread),
                         Expr.Eq(
                             new IdentifierExpr(v.tok, new VariableDualiser(Thread, null, null).VisitVariable(GPUVerifier.MakeOffsetXVariable(v, ReadOrWrite))),
                             GPUVerifier.MakeBitVectorBinaryBitVector("BV32_ADD", GPUVerifier.MakeBitVectorBinaryBitVector("BV32_MUL",
@@ -438,6 +438,51 @@ namespace GPUVerify
             return expr;
         }
 
+        protected override void AddAccessedOffsetInRangeCTimesLocalIdToCTimesLocalIdPlusC(WhileCmd wc, Variable v, Expr constant, string ReadOrWrite, int Thread)
+        {
+            Expr CTimesLocalId = GPUVerifier.MakeBitVectorBinaryBitVector("BV32_MUL", constant.Clone() as Expr, 
+                new IdentifierExpr(Token.NoToken, verifier.MakeThreadId(Token.NoToken, "X", Thread)));
+
+            Expr CTimesLocalIdPlusC = GPUVerifier.MakeBitVectorBinaryBitVector("BV32_ADD", GPUVerifier.MakeBitVectorBinaryBitVector("BV32_MUL", constant.Clone() as Expr,
+                new IdentifierExpr(Token.NoToken, verifier.MakeThreadId(Token.NoToken, "X", Thread))), constant.Clone() as Expr);
+
+            Expr CTimesLocalIdLeqAccessedOffset = GPUVerifier.MakeBitVectorBinaryBoolean("BV32_LEQ", CTimesLocalId, OffsetXExpr(v, ReadOrWrite, Thread));
+
+            Expr AccessedOffsetLtCTimesLocalIdPlusC = GPUVerifier.MakeBitVectorBinaryBoolean("BV32_LT", OffsetXExpr(v, ReadOrWrite, Thread), CTimesLocalIdPlusC);
+
+            verifier.AddCandidateInvariant(wc,
+                Expr.Imp(
+                    AccessHasOccurred(v, ReadOrWrite, Thread),
+                    Expr.And(CTimesLocalIdLeqAccessedOffset, AccessedOffsetLtCTimesLocalIdPlusC)));
+        }
+
+        private static IdentifierExpr AccessHasOccurred(Variable v, string ReadOrWrite, int Thread)
+        {
+            return new IdentifierExpr(v.tok, new VariableDualiser(Thread, null, null).VisitVariable(ElementEncodingRaceInstrumenter.MakeReadOrWriteHasOccurredVariable(v, ReadOrWrite)));
+        }
+
+        private static IdentifierExpr OffsetXExpr(Variable v, string ReadOrWrite, int Thread)
+        {
+            return new IdentifierExpr(v.tok, new VariableDualiser(Thread, null, null).VisitVariable(GPUVerifier.MakeOffsetXVariable(v, ReadOrWrite)));
+        }
+
+        protected override void AddAccessedOffsetInRangeCTimesGlobalIdToCTimesGlobalIdPlusC(WhileCmd wc, Variable v, Expr constant, string ReadOrWrite, int Thread)
+        {
+            Expr CTimesGlobalId = GPUVerifier.MakeBitVectorBinaryBitVector("BV32_MUL", constant.Clone() as Expr,
+                GlobalIdExpr("X", Thread));
+
+            Expr CTimesGlobalIdPlusC = GPUVerifier.MakeBitVectorBinaryBitVector("BV32_ADD", GPUVerifier.MakeBitVectorBinaryBitVector("BV32_MUL", constant.Clone() as Expr,
+                GlobalIdExpr("X", Thread)), constant.Clone() as Expr);
+
+            Expr CTimesGlobalIdLeqAccessedOffset = GPUVerifier.MakeBitVectorBinaryBoolean("BV32_LEQ", CTimesGlobalId, OffsetXExpr(v, ReadOrWrite, Thread));
+
+            Expr AccessedOffsetLtCTimesGlobalIdPlusC = GPUVerifier.MakeBitVectorBinaryBoolean("BV32_LT", OffsetXExpr(v, ReadOrWrite, Thread), CTimesGlobalIdPlusC);
+
+            verifier.AddCandidateInvariant(wc,
+                Expr.Imp(
+                    AccessHasOccurred(v, ReadOrWrite, Thread),
+                    Expr.And(CTimesGlobalIdLeqAccessedOffset, AccessedOffsetLtCTimesGlobalIdPlusC)));
+        }
 
         protected override void AddAccessedOffsetIsThreadLocalIdCandidateRequires(Procedure Proc, Variable v, string ReadOrWrite, int Thread)
         {

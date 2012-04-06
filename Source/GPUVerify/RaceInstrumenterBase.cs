@@ -400,7 +400,183 @@ namespace GPUVerify
                     break;
                 }
             }
+
+            KeyValuePair<IdentifierExpr, Expr> iLessThanC = GetILessThanC(wc.Guard);
+            if (iLessThanC.Key != null)
+            {
+                foreach (Expr e in GetOffsetsAccessed(wc.Body, v, accessType))
+                {
+                    if(HasFormIPlusLocalIdTimesC(e, iLessThanC, impl))
+                    {
+                        AddAccessedOffsetInRangeCTimesLocalIdToCTimesLocalIdPlusC(wc, v, iLessThanC.Value, accessType, 1);
+                        if (accessType.Equals("WRITE") || !CommandLineOptions.Symmetry)
+                        {
+                            AddAccessedOffsetInRangeCTimesLocalIdToCTimesLocalIdPlusC(wc, v, iLessThanC.Value, accessType, 2);
+                        }
+                        break;
+                    }
+                }
+
+                foreach (Expr e in GetOffsetsAccessed(wc.Body, v, accessType))
+                {
+                    if (HasFormIPlusGlobalIdTimesC(e, iLessThanC, impl))
+                    {
+                        AddAccessedOffsetInRangeCTimesGlobalIdToCTimesGlobalIdPlusC(wc, v, iLessThanC.Value, accessType, 1);
+                        if (accessType.Equals("WRITE") || !CommandLineOptions.Symmetry)
+                        {
+                            AddAccessedOffsetInRangeCTimesGlobalIdToCTimesGlobalIdPlusC(wc, v, iLessThanC.Value, accessType, 2);
+                        }
+                        break;
+                    }
+                }
+            
+            }
+
         
+        }
+
+        private bool HasFormIPlusLocalIdTimesC(Expr e, KeyValuePair<IdentifierExpr, Expr> iLessThanC, Implementation impl)
+        {
+            if (!(e is NAryExpr))
+            {
+                return false;
+            }
+
+            NAryExpr nary = e as NAryExpr;
+
+            if (!nary.Fun.FunctionName.Equals("BV32_ADD"))
+            {
+                return false;
+            }
+
+            return (SameIdentifierExpression(nary.Args[0], iLessThanC.Key) &&
+                IsLocalIdTimesConstant(nary.Args[1], iLessThanC.Value, impl)) ||
+                (SameIdentifierExpression(nary.Args[1], iLessThanC.Key) &&
+                IsLocalIdTimesConstant(nary.Args[0], iLessThanC.Value, impl));
+        }
+
+        private bool IsLocalIdTimesConstant(Expr maybeLocalIdTimesConstant, Expr constant, Implementation impl)
+        {
+            if (!(maybeLocalIdTimesConstant is NAryExpr))
+            {
+                return false;
+            }
+            NAryExpr nary = maybeLocalIdTimesConstant as NAryExpr;
+            if(!nary.Fun.FunctionName.Equals("BV32_MUL"))
+            {
+                return false;
+            }
+
+            return
+                (SameConstant(nary.Args[0], constant) && verifier.mayBeTidAnalyser.MayBe(GPUVerifier.LOCAL_ID_X_STRING, impl.Name, nary.Args[1])) ||
+                (SameConstant(nary.Args[1], constant) && verifier.mayBeTidAnalyser.MayBe(GPUVerifier.LOCAL_ID_X_STRING, impl.Name, nary.Args[0]));
+        }
+
+
+        private bool HasFormIPlusGlobalIdTimesC(Expr e, KeyValuePair<IdentifierExpr, Expr> iLessThanC, Implementation impl)
+        {
+            if (!(e is NAryExpr))
+            {
+                return false;
+            }
+
+            NAryExpr nary = e as NAryExpr;
+
+            if (!nary.Fun.FunctionName.Equals("BV32_ADD"))
+            {
+                return false;
+            }
+
+            return (SameIdentifierExpression(nary.Args[0], iLessThanC.Key) &&
+                IsGlobalIdTimesConstant(nary.Args[1], iLessThanC.Value, impl)) ||
+                (SameIdentifierExpression(nary.Args[1], iLessThanC.Key) &&
+                IsGlobalIdTimesConstant(nary.Args[0], iLessThanC.Value, impl));
+        }
+
+        private bool IsGlobalIdTimesConstant(Expr maybeGlobalIdTimesConstant, Expr constant, Implementation impl)
+        {
+            if (!(maybeGlobalIdTimesConstant is NAryExpr))
+            {
+                return false;
+            }
+            NAryExpr nary = maybeGlobalIdTimesConstant as NAryExpr;
+            if (!nary.Fun.FunctionName.Equals("BV32_MUL"))
+            {
+                return false;
+            }
+
+            return
+                (SameConstant(nary.Args[0], constant) && verifier.mayBeGidAnalyser.MayBe("x", impl.Name, nary.Args[1])) ||
+                (SameConstant(nary.Args[1], constant) && verifier.mayBeGidAnalyser.MayBe("x", impl.Name, nary.Args[0]));
+        }
+
+
+        private bool SameConstant(Expr expr, Expr constant)
+        {
+            if (constant is IdentifierExpr)
+            {
+                IdentifierExpr identifierExpr = constant as IdentifierExpr;
+                Debug.Assert(identifierExpr.Decl is Constant);
+                return expr is IdentifierExpr && (expr as IdentifierExpr).Decl is Constant && (expr as IdentifierExpr).Decl.Name.Equals(identifierExpr.Decl.Name);
+            }
+            else
+            {
+                Debug.Assert(constant is LiteralExpr);
+                LiteralExpr literalExpr = constant as LiteralExpr;
+                if (!(expr is LiteralExpr))
+                {
+                    return false;
+                }
+                if (!(literalExpr.Val is BvConst) || !((expr as LiteralExpr).Val is BvConst))
+                {
+                    return false;
+                }
+
+                return (literalExpr.Val as BvConst).Value.ToInt == ((expr as LiteralExpr).Val as BvConst).Value.ToInt;
+            }
+        }
+
+        private bool SameIdentifierExpression(Expr expr, IdentifierExpr identifierExpr)
+        {
+            if (!(expr is IdentifierExpr))
+            {
+                return false;
+            }
+            return (expr as IdentifierExpr).Decl.Name.Equals(identifierExpr.Name);
+        }
+
+        private KeyValuePair<IdentifierExpr, Expr> GetILessThanC(Expr expr)
+        {
+
+            if (expr is NAryExpr && (expr as NAryExpr).Fun.FunctionName.Equals("bv32_to_bool"))
+            {
+                expr = (expr as NAryExpr).Args[0];
+            }
+
+            if (!(expr is NAryExpr))
+            {
+                return new KeyValuePair<IdentifierExpr, Expr>(null, null);
+            }
+
+            NAryExpr nary = expr as NAryExpr;
+
+            if (!(nary.Fun.FunctionName.Equals("BV32_C_LT") || nary.Fun.FunctionName.Equals("BV32_LT")))
+            {
+                return new KeyValuePair<IdentifierExpr, Expr>(null, null);
+            }
+
+            if (!(nary.Args[0] is IdentifierExpr))
+            {
+                return new KeyValuePair<IdentifierExpr, Expr>(null, null);
+            }
+
+            if (!((nary.Args[1] is IdentifierExpr && (nary.Args[1] as IdentifierExpr).Decl is Constant) || nary.Args[1] is LiteralExpr))
+            {
+                return new KeyValuePair<IdentifierExpr, Expr>(null, null);
+            }
+
+            return new KeyValuePair<IdentifierExpr, Expr>(nary.Args[0] as IdentifierExpr, nary.Args[1]);
+
         }
 
         private void AddReadOrWrittenOffsetIsThreadIdCandidateRequires(Procedure Proc, Variable v)
@@ -433,9 +609,15 @@ namespace GPUVerify
 
         protected abstract void AddAccessedOffsetIsThreadFlattened2DGlobalIdCandidateInvariant(WhileCmd wc, Variable v, string ReadOrWrite, int Thread);
 
+        protected abstract void AddAccessedOffsetInRangeCTimesLocalIdToCTimesLocalIdPlusC(WhileCmd wc, Variable v, Expr constant, string ReadOrWrite, int Thread);
+
+        protected abstract void AddAccessedOffsetInRangeCTimesGlobalIdToCTimesGlobalIdPlusC(WhileCmd wc, Variable v, Expr constant, string ReadOrWrite, int Thread);
+
         protected abstract void AddAccessedOffsetIsThreadLocalIdCandidateRequires(Procedure Proc, Variable v, string ReadOrWrite, int Thread);
 
         protected abstract void AddAccessedOffsetIsThreadLocalIdCandidateEnsures(Procedure Proc, Variable v, string ReadOrWrite, int Thread);
+
+
 
         public void AddKernelPrecondition()
         {
