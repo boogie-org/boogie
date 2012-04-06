@@ -1550,12 +1550,12 @@ namespace GPUVerify
             else if (bb.ec is IfCmd)
             {
                 IfCmd IfCommand = bb.ec as IfCmd;
-                Debug.Assert(IfCommand.elseIf == null); // We don't handle else if yet
+                Debug.Assert(IfCommand.elseIf == null);
                 result.ec = new IfCmd(IfCommand.tok, IfCommand.Guard, PerformFullSharedStateAbstraction(IfCommand.thn), IfCommand.elseIf, IfCommand.elseBlock != null ? PerformFullSharedStateAbstraction(IfCommand.elseBlock) : null);
             }
             else
             {
-                Debug.Assert(bb.ec == null);
+                Debug.Assert(bb.ec == null || bb.ec is BreakCmd);
             }
 
             return result;
