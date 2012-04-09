@@ -189,13 +189,16 @@ namespace GPUVerify
                         if (verifier.ContainsNamedVariable(GetModifiedVariables(wc.Body), basicName))
                         {
                             verifier.AddCandidateInvariant(wc, MakePowerOfTwoExpr(v));
-                            for (int i = (1 << 30); i > 0; i >>= 1)
+                            for (int i = (1 << 15); i > 0; i >>= 1)
                             {
                                 verifier.AddCandidateInvariant(wc, 
                                     GPUVerifier.MakeBitVectorBinaryBoolean("BV32_LT",
                                     new IdentifierExpr(v.tok, v),
                                     new LiteralExpr(v.tok, BigNum.FromInt(i), 32)));
                             }
+                            verifier.AddCandidateInvariant(wc,
+                                Expr.Neq(new IdentifierExpr(v.tok, v),
+                                new LiteralExpr(v.tok, BigNum.FromInt(0), 32)));
                         }
                     }
                 }
@@ -205,7 +208,7 @@ namespace GPUVerify
         private Expr MakePowerOfTwoExpr(Variable v)
         {
             Expr result = null;
-            for (int i = 1 << 30; i > 0; i >>= 1)
+            for (int i = 1 << 15; i > 0; i >>= 1)
             {
                 Expr eq = Expr.Eq(new IdentifierExpr(v.tok, v), new LiteralExpr(v.tok, BigNum.FromInt(i), 32));
                 result = (result == null ? eq : Expr.Or(eq, result));
