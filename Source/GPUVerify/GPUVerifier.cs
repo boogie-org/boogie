@@ -1069,11 +1069,16 @@ namespace GPUVerify
             }
             KernelImplementation.StructuredStmts.BigBlocks[0].simpleCmds = newCommands;
 
-            CmdSeq lastCommand = new CmdSeq();
-            lastCommand.Add(LastBarrier);
-            BigBlock bb = new BigBlock(KernelProcedure.tok, "__lastBarrier", lastCommand, null, null);
+            // Last barrier is needed if we don't use eager race checking
+            if (!CommandLineOptions.Eager)
+            {
+                CmdSeq lastCommand = new CmdSeq();
+                lastCommand.Add(LastBarrier);
+                BigBlock bb = new BigBlock(KernelProcedure.tok, "__lastBarrier", lastCommand, null, null);
 
-            KernelImplementation.StructuredStmts.BigBlocks.Add(bb);
+                KernelImplementation.StructuredStmts.BigBlocks.Add(bb);
+            }
+
         }
 
         private void GenerateStandardKernelContract()
