@@ -7,25 +7,27 @@ using Microsoft.Boogie;
 
 namespace GPUVerify
 {
-    class MayBeTidPlusConstantAnalyser
+    abstract class MayBeIdPlusConstantAnalyser
     {
-        private GPUVerifier verifier;
+        protected GPUVerifier verifier;
+
+        protected MayBeAnalyser mayBeAnalyser;
 
         // Given a p.v, says whether p.v may be assigned to a tid variable at some point
-        private Dictionary<string, Dictionary<string, bool>> mayBeAssignedTid;
+        protected Dictionary<string, Dictionary<string, bool>> mayBeAssignedId;
 
         // Records the constants that p.v may be incremented by
-        private Dictionary<string, Dictionary<string, HashSet<Expr>>> incrementedBy;
+        protected Dictionary<string, Dictionary<string, HashSet<Expr>>> incrementedBy;
 
         // The final result
-        private Dictionary<string, Dictionary<string, bool>> mayBeTidPlusConstantInfo;
+        protected Dictionary<string, Dictionary<string, bool>> mayBeIdPlusConstantInfo;
 
-        public MayBeTidPlusConstantAnalyser(GPUVerifier verifier)
+        public MayBeIdPlusConstantAnalyser(GPUVerifier verifier)
         {
             this.verifier = verifier;
-            mayBeAssignedTid = new Dictionary<string, Dictionary<string, bool>>();
+            mayBeAssignedId = new Dictionary<string, Dictionary<string, bool>>();
             incrementedBy = new Dictionary<string, Dictionary<string, HashSet<Expr>>>();
-            mayBeTidPlusConstantInfo = new Dictionary<string, Dictionary<string, bool>>();
+            mayBeIdPlusConstantInfo = new Dictionary<string, Dictionary<string, bool>>();
         }
 
         internal void Analyse()
@@ -35,35 +37,35 @@ namespace GPUVerify
                 if (D is Implementation)
                 {
                     Implementation Impl = D as Implementation;
-                    mayBeAssignedTid[Impl.Name] = new Dictionary<string, bool>();
+                    mayBeAssignedId[Impl.Name] = new Dictionary<string, bool>();
                     incrementedBy[Impl.Name] = new Dictionary<string, HashSet<Expr>>();
-                    mayBeTidPlusConstantInfo[Impl.Name] = new Dictionary<string, bool> ();
+                    mayBeIdPlusConstantInfo[Impl.Name] = new Dictionary<string, bool>();
 
                     foreach (Variable v in Impl.LocVars)
                     {
-                        mayBeAssignedTid[Impl.Name][v.Name] = false;
+                        mayBeAssignedId[Impl.Name][v.Name] = false;
                         incrementedBy[Impl.Name][v.Name] = new HashSet<Expr>();
                     }
 
                     foreach (Variable v in Impl.InParams)
                     {
-                        mayBeAssignedTid[Impl.Name][v.Name] = false;
+                        mayBeAssignedId[Impl.Name][v.Name] = false;
                         incrementedBy[Impl.Name][v.Name] = new HashSet<Expr>();
                     }
 
                     foreach (Variable v in Impl.OutParams)
                     {
-                        mayBeAssignedTid[Impl.Name][v.Name] = false;
+                        mayBeAssignedId[Impl.Name][v.Name] = false;
                         incrementedBy[Impl.Name][v.Name] = new HashSet<Expr>();
                     }
 
                     // Fixpoint not required - this is just syntactic
                     Analyse(Impl);
 
-                    foreach (string v in mayBeAssignedTid[Impl.Name].Keys)
+                    foreach (string v in mayBeAssignedId[Impl.Name].Keys)
                     {
-                        mayBeTidPlusConstantInfo[Impl.Name][v] =
-                            mayBeAssignedTid[Impl.Name][v] && incrementedBy[Impl.Name][v].Count == 1;
+                        mayBeIdPlusConstantInfo[Impl.Name][v] =
+                            mayBeAssignedId[Impl.Name][v] && incrementedBy[Impl.Name][v].Count == 1;
                     }
 
                 }
@@ -88,6 +90,7 @@ namespace GPUVerify
             }
         }
 
+
         private void Analyse(Implementation impl, BigBlock bb)
         {
             foreach (Cmd c in bb.simpleCmds)
@@ -103,7 +106,7 @@ namespace GPUVerify
                     {
                         Variable lhsV = (assign.Lhss[0] as SimpleAssignLhs).AssignedVariable.Decl;
 
-                        if (mayBeAssignedTid[impl.Name].ContainsKey(lhsV.Name))
+                        if (mayBeAssignedId[impl.Name].ContainsKey(lhsV.Name))
                         {
 
                             if (assign.Rhss[0] is IdentifierExpr)
@@ -111,9 +114,9 @@ namespace GPUVerify
 
                                 Variable rhsV = (assign.Rhss[0] as IdentifierExpr).Decl;
 
-                                if (verifier.mayBeTidAnalyser.MayBe(GPUVerifier.LOCAL_ID_X_STRING, impl.Name, rhsV.Name))
+                                if (mayBeAnalyser.MayBe(ComponentString(), impl.Name, rhsV.Name))
                                 {
-                                    mayBeAssignedTid[impl.Name][lhsV.Name] = true;
+                                    mayBeAssignedId[impl.Name][lhsV.Name] = true;
                                 }
 
                             }
@@ -179,7 +182,7 @@ namespace GPUVerify
                 return null;
             }
 
-            if (!(nary.Args[0] is IdentifierExpr && 
+            if (!(nary.Args[0] is IdentifierExpr &&
                 ((nary.Args[0] as IdentifierExpr).Decl.Name.Equals(v.Name))))
             {
                 return null;
@@ -206,12 +209,12 @@ namespace GPUVerify
 
         private void dump()
         {
-            foreach (string p in mayBeTidPlusConstantInfo.Keys)
+            foreach (string p in mayBeIdPlusConstantInfo.Keys)
             {
                 Console.WriteLine("Procedure " + p);
-                foreach (string v in mayBeTidPlusConstantInfo[p].Keys)
+                foreach (string v in mayBeIdPlusConstantInfo[p].Keys)
                 {
-                    Console.WriteLine("  " + v + ": gets assigned tid - " + mayBeAssignedTid[p][v]);
+                    Console.WriteLine("  " + v + ": gets assigned " + idKind() + " - " + mayBeAssignedId[p][v]);
                     Console.Write("  " + v + ": incremented by -");
                     foreach(Expr e in incrementedBy[p][v])
                     {
@@ -221,9 +224,9 @@ namespace GPUVerify
 
                     Console.Write("  " + v + ": ");
                     
-                    if(mayBeTidPlusConstantInfo[p][v])
+                    if(mayBeIdPlusConstantInfo[p][v])
                     {
-                        Console.Write("may be tid + ");
+                        Console.Write("may be " + idKind() + " + ");
                         foreach(Expr e in incrementedBy[p][v])
                         {
                             Console.WriteLine(ConvertToString(e));
@@ -231,33 +234,20 @@ namespace GPUVerify
                     }
                     else
                     {
-                        Console.WriteLine("likely not tid + const");
+                        Console.WriteLine("likely not " + idKind() + " + const");
                     }
                 }
             }
 
         }
 
+        protected abstract string idKind();
 
-        internal bool MayBeTidPlusConstant(string p, string v)
-        {
-            if (!mayBeTidPlusConstantInfo.ContainsKey(p))
-            {
-                return false;
-            }
-
-            if (!mayBeTidPlusConstantInfo[p].ContainsKey(v))
-            {
-                return false;
-            }
-
-            return mayBeTidPlusConstantInfo[p][v];
-        }
-
+        protected abstract string ComponentString();
 
         internal Expr GetIncrement(string p, string v)
         {
-            Debug.Assert(mayBeTidPlusConstantInfo[p][v]);
+            Debug.Assert(mayBeIdPlusConstantInfo[p][v]);
             Debug.Assert(incrementedBy[p][v].Count == 1);
             foreach (Expr e in incrementedBy[p][v])
             {
@@ -267,18 +257,18 @@ namespace GPUVerify
             return null;
         }
 
-        internal HashSet<string> GetMayBeTidPlusConstantVars(string p)
+        internal HashSet<string> GetMayBeIdPlusConstantVars(string p)
         {
             HashSet<string> result = new HashSet<string>();
 
-            if(!mayBeTidPlusConstantInfo.ContainsKey(p))
+            if (!mayBeIdPlusConstantInfo.ContainsKey(p))
             {
                 return result;
             }
 
-            foreach (string v in mayBeTidPlusConstantInfo[p].Keys)
+            foreach (string v in mayBeIdPlusConstantInfo[p].Keys)
             {
-                if (mayBeTidPlusConstantInfo[p][v])
+                if (mayBeIdPlusConstantInfo[p][v])
                 {
                     result.Add(v);
                 }
@@ -286,5 +276,60 @@ namespace GPUVerify
 
             return result;
         }
+
+
+        internal abstract Expr MakeIdExpr();
     }
+
+    class MayBeLocalIdPlusConstantAnalyser : MayBeIdPlusConstantAnalyser
+    {
+
+        internal MayBeLocalIdPlusConstantAnalyser(GPUVerifier verifier) : base(verifier)
+        {
+            mayBeAnalyser = verifier.mayBeTidAnalyser;
+        }
+
+        override internal Expr MakeIdExpr()
+        {
+            return new IdentifierExpr(Token.NoToken, GPUVerifier._X);
+        }
+
+        protected override string idKind()
+        {
+            return "local id";
+        }
+
+        protected override string ComponentString()
+        {
+            return GPUVerifier.LOCAL_ID_X_STRING;
+        }
+    }
+
+    class MayBeGlobalIdPlusConstantAnalyser : MayBeIdPlusConstantAnalyser
+    {
+        internal MayBeGlobalIdPlusConstantAnalyser(GPUVerifier verifier)
+            : base(verifier)
+        {
+            mayBeAnalyser = verifier.mayBeGidAnalyser;
+        }
+
+        protected override string idKind()
+        {
+            return "global id";
+        }
+
+        override internal Expr MakeIdExpr()
+        {
+            return verifier.GlobalIdExpr("X");
+        }
+
+        protected override string ComponentString()
+        {
+            return "x";
+        }
+
+    }
+
+
+
 }

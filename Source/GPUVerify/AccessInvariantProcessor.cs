@@ -44,36 +44,36 @@ namespace GPUVerify
 
                 if (MatchesIntrinsic(call.Func, READ_IMPLIES))
                 {
-                    return Expr.Imp(MakeReadHasOccurred(node, call, READ_IMPLIES), VisitExpr(node.Args[0]));
+                    return Expr.Imp(MakeReadHasOccurred(call, READ_IMPLIES), VisitExpr(node.Args[0]));
                 }
 
                 if (MatchesIntrinsic(call.Func, WRITE_IMPLIES))
                 {
-                    return Expr.Imp(MakeWriteHasOccurred(node, call, WRITE_IMPLIES), VisitExpr(node.Args[0]));
+                    return Expr.Imp(MakeWriteHasOccurred(call, WRITE_IMPLIES), VisitExpr(node.Args[0]));
                 }
 
                 if (MatchesIntrinsic(call.Func, NO_READ))
                 {
                     return Expr.Not(
-                        MakeReadHasOccurred(node, call, NO_READ)
+                        MakeReadHasOccurred(call, NO_READ)
                     );
                 }
 
                 if (MatchesIntrinsic(call.Func, NO_WRITE))
                 {
                     return Expr.Not(
-                        MakeWriteHasOccurred(node, call, NO_WRITE)
+                        MakeWriteHasOccurred(call, NO_WRITE)
                     );
                 }
 
                 if (MatchesIntrinsic(call.Func, READ))
                 {
-                    return MakeReadHasOccurred(node, call, READ);
+                    return MakeReadHasOccurred(call, READ);
                 }
 
                 if (MatchesIntrinsic(call.Func, WRITE))
                 {
-                    return MakeWriteHasOccurred(node, call, WRITE);
+                    return MakeWriteHasOccurred(call, WRITE);
                 }
 
             }
@@ -81,18 +81,14 @@ namespace GPUVerify
             return base.VisitNAryExpr(node);
         }
 
-        private static IdentifierExpr MakeReadHasOccurred(NAryExpr node, FunctionCall call, string intrinsicPrefix)
+        private static IdentifierExpr MakeReadHasOccurred(FunctionCall call, string intrinsicPrefix)
         {
-            return new IdentifierExpr(node.tok, new GlobalVariable(
-                                        node.tok, new TypedIdent(node.tok, "_READ_HAS_OCCURRED_" +
-                                            call.Func.Name.Substring(intrinsicPrefix.Length), Microsoft.Boogie.Type.Bool)));
+            return GPUVerifier.MakeAccessHasOccurredExpr(call.Func.Name.Substring(intrinsicPrefix.Length), "READ");
         }
 
-        private static IdentifierExpr MakeWriteHasOccurred(NAryExpr node, FunctionCall call, string intrinsicPrefix)
+        private static IdentifierExpr MakeWriteHasOccurred(FunctionCall call, string intrinsicPrefix)
         {
-            return new IdentifierExpr(node.tok, new GlobalVariable(
-                                        node.tok, new TypedIdent(node.tok, "_WRITE_HAS_OCCURRED_" +
-                                            call.Func.Name.Substring(intrinsicPrefix.Length), Microsoft.Boogie.Type.Bool)));
+            return GPUVerifier.MakeAccessHasOccurredExpr(call.Func.Name.Substring(intrinsicPrefix.Length), "WRITE");
         }
 
 

@@ -68,7 +68,8 @@ namespace GPUVerify
         public MayBeGidAnalyser mayBeGidAnalyser;
         public MayBeGlobalSizeAnalyser mayBeGlobalSizeAnalyser;
         public MayBeFlattened2DTidOrGidAnalyser mayBeFlattened2DTidOrGidAnalyser;
-        public MayBeTidPlusConstantAnalyser mayBeTidPlusConstantAnalyser;
+        public MayBeLocalIdPlusConstantAnalyser mayBeTidPlusConstantAnalyser;
+        public MayBeGlobalIdPlusConstantAnalyser mayBeGidPlusConstantAnalyser;
         public MayBePowerOfTwoAnalyser mayBePowerOfTwoAnalyser;
         public LiveVariableAnalyser liveVariableAnalyser;
         public ArrayControlFlowAnalyser arrayControlFlowAnalyser;
@@ -323,7 +324,7 @@ namespace GPUVerify
 
             DoMayBeTidAnalysis();
 
-            DoMayBeTidPlusConstantAnalysis();
+            DoMayBeIdPlusConstantAnalysis();
 
             DoMayBePowerOfTwoAnalysis();
 
@@ -458,10 +459,12 @@ namespace GPUVerify
             mayBeFlattened2DTidOrGidAnalyser.Analyse();
         }
 
-        private void DoMayBeTidPlusConstantAnalysis()
+        private void DoMayBeIdPlusConstantAnalysis()
         {
-            mayBeTidPlusConstantAnalyser = new MayBeTidPlusConstantAnalyser(this);
+            mayBeTidPlusConstantAnalyser = new MayBeLocalIdPlusConstantAnalyser(this);
             mayBeTidPlusConstantAnalyser.Analyse();
+            mayBeGidPlusConstantAnalyser = new MayBeGlobalIdPlusConstantAnalyser(this);
+            mayBeGidPlusConstantAnalyser.Analyse();
         }
 
         private void DoArrayControlFlowAnalysis()
@@ -1289,7 +1292,7 @@ namespace GPUVerify
             return null;
         }
 
-        internal Constant MakeThreadId(IToken tok, string dimension, int number)
+        internal Constant MakeThreadId(IToken tok, string dimension)
         {
             Contract.Requires(dimension.Equals("X") || dimension.Equals("Y") || dimension.Equals("Z"));
             string name = null;
@@ -1297,7 +1300,13 @@ namespace GPUVerify
             if (dimension.Equals("Y")) name = _Y.Name;
             if (dimension.Equals("Z")) name = _Z.Name;
             Debug.Assert(name != null);
-            return new Constant(tok, new TypedIdent(tok, name + "$" + number, GetTypeOfId(dimension)));
+            return new Constant(tok, new TypedIdent(tok, name, GetTypeOfId(dimension)));
+        }
+
+        internal Constant MakeThreadId(IToken tok, string dimension, int number)
+        {
+            Constant resultWithoutThreadId = MakeThreadId(tok, dimension);
+            return new Constant(tok, new TypedIdent(tok, resultWithoutThreadId.Name + "$" + number, GetTypeOfId(dimension)));
         }
 
         internal Constant GetGroupId(string dimension)
@@ -1610,8 +1619,8 @@ namespace GPUVerify
         {
             IdentifierExprSeq newVars = new IdentifierExprSeq();
 
-            Variable ReadHasOccurred = new GlobalVariable(v.tok, new TypedIdent(v.tok, "_READ_HAS_OCCURRED_" + v.Name, Microsoft.Boogie.Type.Bool));
-            Variable WriteHasOccurred = new GlobalVariable(v.tok, new TypedIdent(v.tok, "_WRITE_HAS_OCCURRED_" + v.Name, Microsoft.Boogie.Type.Bool));
+            Variable ReadHasOccurred = MakeAccessHasOccurredVariable(v.Name, "READ");
+            Variable WriteHasOccurred = MakeAccessHasOccurredVariable(v.Name, "WRITE");
 
             newVars.Add(new IdentifierExpr(v.tok, ReadHasOccurred));
             newVars.Add(new IdentifierExpr(v.tok, WriteHasOccurred));
@@ -1669,6 +1678,20 @@ namespace GPUVerify
         }
 
 
+        internal static GlobalVariable MakeAccessHasOccurredVariable(string varName, string accessType)
+        {
+            return new GlobalVariable(Token.NoToken, new TypedIdent(Token.NoToken, MakeAccessHasOccurredVariableName(varName, accessType), Microsoft.Boogie.Type.Bool));
+        }
+
+        internal static string MakeAccessHasOccurredVariableName(string varName, string accessType)
+        {
+            return "_" + accessType + "_HAS_OCCURRED_" + varName;
+        }
+
+        internal static IdentifierExpr MakeAccessHasOccurredExpr(string varName, string accessType)
+        {
+            return new IdentifierExpr(Token.NoToken, MakeAccessHasOccurredVariable(varName, accessType));
+        }
 
         internal static bool IsIntOrBv32(Microsoft.Boogie.Type type)
         {
@@ -2150,10 +2173,7 @@ namespace GPUVerify
 
         public static bool IsThreadLocalIdConstant(Variable variable)
         {
-            return variable is Constant && (
-                QKeyValue.FindBoolAttribute(variable.Attributes, LOCAL_ID_X_STRING) || 
-                QKeyValue.FindBoolAttribute(variable.Attributes, LOCAL_ID_Y_STRING) ||
-                QKeyValue.FindBoolAttribute(variable.Attributes, LOCAL_ID_Z_STRING));
+            return variable.Name.Equals(_X.Name) || variable.Name.Equals(_Y.Name) || variable.Name.Equals(_Z.Name);
         }
 
         internal void AddCandidateInvariant(WhileCmd wc, Expr e)
@@ -2236,6 +2256,13 @@ namespace GPUVerify
         internal static Expr StripThreadIdentifiers(Expr e)
         {
             return new ThreadIdentifierStripper().VisitExpr(e.Clone() as Expr);
+        }
+
+        internal Expr GlobalIdExpr(string dimension)
+        {
+            return GPUVerifier.MakeBitVectorBinaryBitVector("BV32_ADD", GPUVerifier.MakeBitVectorBinaryBitVector("BV32_MUL",
+                            new IdentifierExpr(Token.NoToken, GetGroupId(dimension)), new IdentifierExpr(Token.NoToken, GetGroupSize(dimension))),
+                                new IdentifierExpr(Token.NoToken, MakeThreadId(Token.NoToken, dimension)));
         }
     }
 

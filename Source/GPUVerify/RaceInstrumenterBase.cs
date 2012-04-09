@@ -65,13 +65,24 @@ namespace GPUVerify
 
             if (verifier.ContainsBarrierCall(wc.Body))
             {
-                AddNoReadOrWriteCandidateInvariant(wc, v, "READ", "1");
-                AddNoReadOrWriteCandidateInvariant(wc, v, "WRITE", "1");
-                if (!CommandLineOptions.Symmetry)
+                if (verifier.ContainsNamedVariable(
+                    LoopInvariantGenerator.GetModifiedVariables(wc.Body), GPUVerifier.MakeAccessHasOccurredVariableName(v.Name, "READ")) 
+                    || CommandLineOptions.AssignAtBarriers)
                 {
-                    AddNoReadOrWriteCandidateInvariant(wc, v, "READ", "2");
+                    AddNoReadOrWriteCandidateInvariant(wc, v, "READ", "1");
+                    if (!CommandLineOptions.Symmetry)
+                    {
+                        AddNoReadOrWriteCandidateInvariant(wc, v, "READ", "2");
+                    }
                 }
-                AddNoReadOrWriteCandidateInvariant(wc, v, "WRITE", "2");
+
+                if (verifier.ContainsNamedVariable(
+                    LoopInvariantGenerator.GetModifiedVariables(wc.Body), GPUVerifier.MakeAccessHasOccurredVariableName(v.Name, "WRITE"))
+                    || CommandLineOptions.AssignAtBarriers)
+                {
+                    AddNoReadOrWriteCandidateInvariant(wc, v, "WRITE", "1");
+                    AddNoReadOrWriteCandidateInvariant(wc, v, "WRITE", "2");
+                }
             }
         }
 
@@ -115,23 +126,147 @@ namespace GPUVerify
         {
             foreach (Expr e in GetOffsetsAccessed(wc.Body, v, accessKind))
             {
-                if (!TryGenerateCandidateForStrideVariable(impl, wc, v, e, accessKind))
+                if (TryGenerateCandidateForDirectStridedAccess(impl, wc, v, e, accessKind))
+                {
+                    continue;
+                }
+
+                if (!TryGenerateCandidateForReducedStrengthStrideVariable(impl, wc, v, e, accessKind))
                 {
                     if (e is IdentifierExpr)
                     {
                         foreach(Expr f in GetExpressionsFromWhichVariableIsAssignedInLoop(wc.Body, (e as IdentifierExpr).Decl))
                         {
-                            TryGenerateCandidateForStrideVariable(impl, wc, v, f, accessKind);
+                            TryGenerateCandidateForReducedStrengthStrideVariable(impl, wc, v, f, accessKind);
                         }
                     }
                 }
             }
         }
 
-        private bool TryGenerateCandidateForStrideVariable(Implementation impl, WhileCmd wc, Variable v, Expr e, string accessKind)
+        private bool TryGenerateCandidateForDirectStridedAccess(Implementation impl, WhileCmd wc, Variable v, Expr e, string accessKind)
+        {
+            if (!(e is NAryExpr))
+            {
+                return false;
+            }
+
+            NAryExpr nary = e as NAryExpr;
+
+            if (!nary.Fun.FunctionName.Equals("BV32_ADD"))
+            {
+                return false;
+            }
+
+            {
+                Expr constant = IsIdPlusConstantMultiple(nary.Args[0], nary.Args[1], true, impl);
+                if (constant != null)
+                {
+                    Expr offsetExpr = new IdentifierExpr(Token.NoToken, GPUVerifier.MakeOffsetXVariable(v, accessKind));
+                    Expr modPow2Expr = ExprModPow2EqualsId(offsetExpr, constant, new IdentifierExpr(Token.NoToken,
+                        verifier.MakeThreadId(Token.NoToken, "X")));
+
+                    Expr candidateInvariantExpr = Expr.Imp(
+                            new IdentifierExpr(Token.NoToken, GPUVerifier.MakeAccessHasOccurredVariable(v.Name, accessKind)),
+                            modPow2Expr);
+
+                    verifier.AddCandidateInvariant(wc, new VariableDualiser(1, verifier.uniformityAnalyser, impl.Name).VisitExpr(candidateInvariantExpr.Clone() as Expr));
+                    if (accessKind.Equals("WRITE") || !CommandLineOptions.Symmetry)
+                    {
+                        verifier.AddCandidateInvariant(wc, new VariableDualiser(2, verifier.uniformityAnalyser, impl.Name).VisitExpr(candidateInvariantExpr.Clone() as Expr));
+                    }
+                    return true;
+                }
+            }
+
+            {
+                Expr constant = IsIdPlusConstantMultiple(nary.Args[0], nary.Args[1], false, impl);
+                if (constant != null)
+                {
+                    Expr offsetExpr = new IdentifierExpr(Token.NoToken, GPUVerifier.MakeOffsetXVariable(v, accessKind));
+                    Expr modPow2Expr = ExprModPow2EqualsId(offsetExpr, constant, verifier.GlobalIdExpr("X"));
+
+                    Expr candidateInvariantExpr = Expr.Imp(
+                            new IdentifierExpr(Token.NoToken, GPUVerifier.MakeAccessHasOccurredVariable(v.Name, accessKind)),
+                            modPow2Expr);
+
+                    verifier.AddCandidateInvariant(wc, new VariableDualiser(1, verifier.uniformityAnalyser, impl.Name).VisitExpr(candidateInvariantExpr.Clone() as Expr));
+                    if (accessKind.Equals("WRITE") || !CommandLineOptions.Symmetry)
+                    {
+                        verifier.AddCandidateInvariant(wc, new VariableDualiser(2, verifier.uniformityAnalyser, impl.Name).VisitExpr(candidateInvariantExpr.Clone() as Expr));
+                    }
+                    return true;
+                }
+            }
+
+            return false;
+
+        }
+
+        private Expr IsIdPlusConstantMultiple(Expr arg1, Expr arg2, bool local, Implementation impl)
+        {
+            {
+                Expr constant = IsConstantMultiple(arg2);
+                if (constant != null && IsId(arg1, local, impl))
+                {
+                    return constant;
+                }
+            }
+
+            {
+                Expr constant = IsConstantMultiple(arg1);
+                if (constant != null && IsId(arg2, local, impl))
+                {
+                    return constant;
+                }
+            }
+
+            return null;
+
+        }
+
+        private Expr IsConstantMultiple(Expr e)
+        {
+            if (!(e is NAryExpr))
+            {
+                return null;
+            }
+
+            NAryExpr nary = e as NAryExpr;
+
+            if (!(nary.Fun.FunctionName.Equals("BV32_MUL")))
+            {
+                return null;
+            }
+
+            if (IsConstant(nary.Args[0]))
+            {
+                return nary.Args[0];
+            }
+
+            if (IsConstant(nary.Args[1]))
+            {
+                return nary.Args[1];
+            }
+
+            return null;
+
+        }
+
+        private bool IsId(Expr mayBeId, bool local, Implementation impl)
+        {
+            if (local)
+            {
+                return verifier.mayBeTidAnalyser.MayBe(GPUVerifier.LOCAL_ID_X_STRING, impl.Name, mayBeId);
+            }
+
+            return verifier.mayBeGidAnalyser.MayBe("x", impl.Name, mayBeId);
+        }
+
+        private bool TryGenerateCandidateForReducedStrengthStrideVariable(Implementation impl, WhileCmd wc, Variable v, Expr e, string accessKind)
         {
             foreach (string w in
-                verifier.mayBeTidPlusConstantAnalyser.GetMayBeTidPlusConstantVars(impl.Name))
+                verifier.mayBeTidPlusConstantAnalyser.GetMayBeIdPlusConstantVars(impl.Name))
             {
                 if (!verifier.ContainsNamedVariable(
                     LoopInvariantGenerator.GetModifiedVariables(wc.Body), w))
@@ -141,45 +276,74 @@ namespace GPUVerify
 
                 // Check also live
 
-                if (!IsLinearFunctionOfVariable(e, w))
+                if (GenerateModIdInvariants(impl, wc, v, e, accessKind, w, verifier.mayBeTidPlusConstantAnalyser))
+                {
+                    return true;
+                }
+
+            }
+
+            foreach (string w in
+                verifier.mayBeGidPlusConstantAnalyser.GetMayBeIdPlusConstantVars(impl.Name))
+            {
+                if (!verifier.ContainsNamedVariable(
+                    LoopInvariantGenerator.GetModifiedVariables(wc.Body), w))
                 {
                     continue;
                 }
 
-                Debug.Assert(!verifier.uniformityAnalyser.IsUniform(impl.Name, w));
+                // Check also live
 
-                Variable wVariable = new LocalVariable(wc.tok, new TypedIdent(wc.tok, w,
-                        Microsoft.Boogie.Type.GetBvType(32)));
-
-                Expr indexModPow2EqualsTid = ExprModPow2EqualsTid(
-                    new IdentifierExpr(wc.tok, wVariable),
-                    verifier.mayBeTidPlusConstantAnalyser.GetIncrement(impl.Name, w));
-
-                verifier.AddCandidateInvariant(wc, new VariableDualiser(1, verifier.uniformityAnalyser, impl.Name).VisitExpr(indexModPow2EqualsTid.Clone() as Expr));
-                verifier.AddCandidateInvariant(wc, new VariableDualiser(2, verifier.uniformityAnalyser, impl.Name).VisitExpr(indexModPow2EqualsTid.Clone() as Expr));
-
-                Expr offsetExpr = new IdentifierExpr(Token.NoToken, GPUVerifier.MakeOffsetXVariable(v, accessKind));
-                Expr invertedOffset = InverseOfLinearFunctionOfVariable(e, w, offsetExpr);
-
-                Expr invertedOffsetModPow2EqualsTid = ExprModPow2EqualsTid(
-                    invertedOffset,
-                    verifier.mayBeTidPlusConstantAnalyser.GetIncrement(impl.Name, w));
-
-                Expr candidateInvariantExpr = Expr.Imp(
-                        new IdentifierExpr(Token.NoToken, ElementEncodingRaceInstrumenter.MakeReadOrWriteHasOccurredVariable(v, accessKind)),
-                        invertedOffsetModPow2EqualsTid);
-
-                verifier.AddCandidateInvariant(wc, new VariableDualiser(1, verifier.uniformityAnalyser, impl.Name).VisitExpr(candidateInvariantExpr.Clone() as Expr));
-
-                if (accessKind.Equals("WRITE") || !CommandLineOptions.Symmetry)
+                if (GenerateModIdInvariants(impl, wc, v, e, accessKind, w, verifier.mayBeGidPlusConstantAnalyser))
                 {
-                    verifier.AddCandidateInvariant(wc, new VariableDualiser(2, verifier.uniformityAnalyser, impl.Name).VisitExpr(candidateInvariantExpr.Clone() as Expr));
+                    return true;
                 }
 
-                return true;
-
             }
+            
+            
             return false;
+        }
+
+        private bool GenerateModIdInvariants(Implementation impl, WhileCmd wc, Variable v, Expr e, string accessKind, 
+            string w, MayBeIdPlusConstantAnalyser mayBeIdPlusConstantAnalyser)
+        {
+            if (!IsLinearFunctionOfVariable(e, w))
+            {
+                return false;
+            }
+
+            Debug.Assert(!verifier.uniformityAnalyser.IsUniform(impl.Name, w));
+
+            Variable wVariable = new LocalVariable(wc.tok, new TypedIdent(wc.tok, w,
+                    Microsoft.Boogie.Type.GetBvType(32)));
+
+            Expr indexModPow2EqualsId = ExprModPow2EqualsId(
+                new IdentifierExpr(wc.tok, wVariable),
+                mayBeIdPlusConstantAnalyser.GetIncrement(impl.Name, w), mayBeIdPlusConstantAnalyser.MakeIdExpr());
+
+            verifier.AddCandidateInvariant(wc, new VariableDualiser(1, verifier.uniformityAnalyser, impl.Name).VisitExpr(indexModPow2EqualsId.Clone() as Expr));
+            verifier.AddCandidateInvariant(wc, new VariableDualiser(2, verifier.uniformityAnalyser, impl.Name).VisitExpr(indexModPow2EqualsId.Clone() as Expr));
+
+            Expr offsetExpr = new IdentifierExpr(Token.NoToken, GPUVerifier.MakeOffsetXVariable(v, accessKind));
+            Expr invertedOffset = InverseOfLinearFunctionOfVariable(e, w, offsetExpr);
+
+            Expr invertedOffsetModPow2EqualsId = ExprModPow2EqualsId(
+                invertedOffset,
+                mayBeIdPlusConstantAnalyser.GetIncrement(impl.Name, w), mayBeIdPlusConstantAnalyser.MakeIdExpr());
+
+            Expr candidateInvariantExpr = Expr.Imp(
+                    new IdentifierExpr(Token.NoToken, GPUVerifier.MakeAccessHasOccurredVariable(v.Name, accessKind)),
+                    invertedOffsetModPow2EqualsId);
+
+            verifier.AddCandidateInvariant(wc, new VariableDualiser(1, verifier.uniformityAnalyser, impl.Name).VisitExpr(candidateInvariantExpr.Clone() as Expr));
+
+            if (accessKind.Equals("WRITE") || !CommandLineOptions.Symmetry)
+            {
+                verifier.AddCandidateInvariant(wc, new VariableDualiser(2, verifier.uniformityAnalyser, impl.Name).VisitExpr(candidateInvariantExpr.Clone() as Expr));
+            }
+
+            return true;
         }
 
         private HashSet<Expr> GetExpressionsFromWhichVariableIsAssignedInLoop(StmtList stmts, Variable variable)
@@ -290,7 +454,7 @@ namespace GPUVerify
             return null;
         }
 
-        private Expr ExprModPow2EqualsTid(Expr expr, Expr powerOfTwoExpr)
+        private Expr ExprModPow2EqualsId(Expr expr, Expr powerOfTwoExpr, Expr threadIdExpr)
         {
             Expr Pow2Minus1 = GPUVerifier.MakeBitVectorBinaryBitVector("BV32_SUB", powerOfTwoExpr, 
                             new LiteralExpr(Token.NoToken, BigNum.FromInt(1), 32));
@@ -298,7 +462,7 @@ namespace GPUVerify
             Expr Pow2Minus1BitAndExpr =
                 GPUVerifier.MakeBitVectorBinaryBitVector("BV32_AND", Pow2Minus1, expr);
 
-            return Expr.Eq(Pow2Minus1BitAndExpr, new IdentifierExpr(Token.NoToken, GPUVerifier._X));
+            return Expr.Eq(Pow2Minus1BitAndExpr, threadIdExpr);
 
         }
 
@@ -570,13 +734,18 @@ namespace GPUVerify
                 return new KeyValuePair<IdentifierExpr, Expr>(null, null);
             }
 
-            if (!((nary.Args[1] is IdentifierExpr && (nary.Args[1] as IdentifierExpr).Decl is Constant) || nary.Args[1] is LiteralExpr))
+            if (!IsConstant(nary.Args[1]))
             {
                 return new KeyValuePair<IdentifierExpr, Expr>(null, null);
             }
 
             return new KeyValuePair<IdentifierExpr, Expr>(nary.Args[0] as IdentifierExpr, nary.Args[1]);
 
+        }
+
+        private static bool IsConstant(Expr e)
+        {
+            return ((e is IdentifierExpr && (e as IdentifierExpr).Decl is Constant) || e is LiteralExpr);
         }
 
         private void AddReadOrWrittenOffsetIsThreadIdCandidateRequires(Procedure Proc, Variable v)
