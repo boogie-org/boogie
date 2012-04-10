@@ -105,22 +105,26 @@ namespace BytecodeTranslator
     /// <remarks>still a stub</remarks>
     public override void TraverseChildren(IAddressableExpression addressableExpression)
     {
-      ILocalDefinition/*?*/ local = addressableExpression.Definition as ILocalDefinition;
+      Contract.Assume(false, "The expression containing this as a subexpression should never allow a call to this routine.");
+    }
+
+    private void LoadAddressOf(object container, IExpression/*?*/ instance) {
+
+      ILocalDefinition/*?*/ local = container as ILocalDefinition;
       if (local != null)
       {
         TranslatedExpressions.Push(Bpl.Expr.Ident(this.sink.FindOrCreateLocalVariable(local)));
         return;
       }
-      IParameterDefinition/*?*/ param = addressableExpression.Definition as IParameterDefinition;
+      IParameterDefinition/*?*/ param = container as IParameterDefinition;
       if (param != null)
       {
         this.LoadParameter(param);
         return;
       }
-      IFieldReference/*?*/ field = addressableExpression.Definition as IFieldReference;
+      IFieldReference/*?*/ field = container as IFieldReference;
       if (field != null) {
         var f = Bpl.Expr.Ident(this.sink.FindOrCreateFieldVariable(field.ResolvedField));
-        var instance = addressableExpression.Instance;
         if (instance == null) {
           TranslatedExpressions.Push(f);
         } else {
@@ -132,31 +136,46 @@ namespace BytecodeTranslator
         } 
         return;
       }
-      IArrayIndexer/*?*/ arrayIndexer = addressableExpression.Definition as IArrayIndexer;
+      IArrayIndexer/*?*/ arrayIndexer = container as IArrayIndexer;
       if (arrayIndexer != null)
       {
         this.Traverse(arrayIndexer);
         return;
       }
-      IAddressDereference/*?*/ addressDereference = addressableExpression.Definition as IAddressDereference;
+      IAddressDereference/*?*/ addressDereference = container as IAddressDereference;
       if (addressDereference != null)
       {
         this.Traverse(addressDereference);
         return;
       }
-      IBlockExpression block = addressableExpression.Definition as IBlockExpression;
+      IBlockExpression block = container as IBlockExpression;
       if (block != null) {
         this.Traverse(block);
         return;
       }
-      IMethodReference/*?*/ method = addressableExpression.Definition as IMethodReference;
+      IMethodReference/*?*/ method = container as IMethodReference;
       if (method != null)
       {
         Console.WriteLine(MemberHelper.GetMethodSignature(method, NameFormattingOptions.Signature));
         //TODO
         throw new NotImplementedException();
       }
-      Contract.Assert(addressableExpression.Definition is IThisReference);
+      IExpression/*?*/ expression = container as IExpression;
+      if (expression != null) {
+        
+        this.Traverse(expression);
+        var e = this.TranslatedExpressions.Pop();
+
+        var newLocal = Bpl.Expr.Ident(this.sink.CreateFreshLocal(expression.Type));
+        var cmd = Bpl.Cmd.SimpleAssign(Bpl.Token.NoToken, newLocal, e);
+        this.StmtTraverser.StmtBuilder.Add(cmd);
+
+        this.TranslatedExpressions.Push(newLocal);
+
+        return;
+      }
+
+      Contract.Assume(false);
     }
 
     public override void TraverseChildren(IAddressDereference addressDereference)
@@ -352,7 +371,9 @@ namespace BytecodeTranslator
           this.Traverse(addressOf.Expression);
         }
       } else {
-        this.Traverse(addressOf.Expression);
+        object container = addressOf.Expression.Definition;
+        IExpression/*?*/ instance = addressOf.Expression.Instance;
+        this.LoadAddressOf(container, instance);
         return;
       }
     }
@@ -729,7 +750,7 @@ namespace BytecodeTranslator
         // the AddressOf node should be ignored.
         var addrOf = thisArg as IAddressOf;
         var boogieType = this.sink.CciTypeToBoogie(methodToCall.ContainingType);
-        if (addrOf != null && boogieType != this.sink.Heap.RefType) {
+        if (false && addrOf != null && boogieType != this.sink.Heap.RefType) {
           thisArg = addrOf.Expression;
         }
 
@@ -759,20 +780,20 @@ namespace BytecodeTranslator
         }
 
         var expressionToTraverse = exp;
-        Bpl.Type boogieTypeOfExpression;
+        //Bpl.Type boogieTypeOfExpression;
 
-        // Special case! exp can be an AddressOf expression if it is a value type being passed by reference.
-        // But since we pass reference parameters by in-out value passing, need to short-circuit the
-        // AddressOf node if the underlying type is not a Ref.
-        var addrOf = exp as IAddressOf;
-        if (addrOf != null) {
-          boogieTypeOfExpression = this.sink.CciTypeToBoogie(addrOf.Expression.Type);
-          if (boogieTypeOfExpression != this.sink.Heap.RefType) {
-            expressionToTraverse = addrOf.Expression;
-          }
-        }
+        //// Special case! exp can be an AddressOf expression if it is a value type being passed by reference.
+        //// But since we pass reference parameters by in-out value passing, need to short-circuit the
+        //// AddressOf node if the underlying type is not a Ref.
+        //var addrOf = exp as IAddressOf;
+        //if (addrOf != null) {
+        //  boogieTypeOfExpression = this.sink.CciTypeToBoogie(addrOf.Expression.Type);
+        //  if (boogieTypeOfExpression != this.sink.Heap.RefType) {
+        //    expressionToTraverse = addrOf.Expression;
+        //  }
+        //}
 
-        boogieTypeOfExpression = this.sink.CciTypeToBoogie(expressionToTraverse.Type);
+        //boogieTypeOfExpression = this.sink.CciTypeToBoogie(expressionToTraverse.Type);
         this.Traverse(expressionToTraverse);
 
         Bpl.Expr e = this.TranslatedExpressions.Pop();
@@ -1312,39 +1333,54 @@ namespace BytecodeTranslator
       }
       IPropertyDefinition/*?*/ propertyDefinition = container as IPropertyDefinition;
       if (propertyDefinition != null) {
-        //Contract.Assume(propertyDefinition.Getter != null && propertyDefinition.Setter != null);
-        //if (!propertyDefinition.IsStatic) {
-        //  this.Traverse(target.Instance);
-        //}
-        //ILocalDefinition temp = null;
-        //if (pushTargetRValue) {
-        //  if (!propertyDefinition.IsStatic) {
-        //    this.generator.Emit(OperationCode.Dup);
-        //    this.generator.Emit(target.GetterIsVirtual ? OperationCode.Callvirt : OperationCode.Call, propertyDefinition.Getter);
-        //  } else {
-        //    this.generator.Emit(OperationCode.Call, propertyDefinition.Getter);
-        //  }
-        //  if (!treatAsStatement && resultIsInitialTargetRValue) {
-        //    this.generator.Emit(OperationCode.Dup);
-        //    this.StackSize++;
-        //    temp = new TemporaryVariable(source.Type, this.method);
-        //    this.VisitAssignmentTo(temp);
-        //  }
-        //}
-        //sourceTraverser(source);
-        //if (!treatAsStatement && !resultIsInitialTargetRValue) {
-        //  this.generator.Emit(OperationCode.Dup);
-        //  this.StackSize++;
-        //  temp = new TemporaryVariable(propertyDefinition.Type, this.method);
-        //  this.VisitAssignmentTo(temp);
-        //}
-        //if (!propertyDefinition.IsStatic) {
-        //  this.generator.Emit(target.SetterIsVirtual ? OperationCode.Callvirt : OperationCode.Call, propertyDefinition.Setter);
-        //} else {
-        //  this.generator.Emit(OperationCode.Call, propertyDefinition.Setter);
-        //}
-        //if (temp != null) this.LoadLocal(temp);
-        //return;
+        Contract.Assume(propertyDefinition.Getter != null && propertyDefinition.Setter != null);
+        if (!propertyDefinition.IsStatic) {
+          this.Traverse(target.Instance);
+        }
+        Bpl.IdentifierExpr temp = null;
+        var token = Bpl.Token.NoToken;
+        if (pushTargetRValue) {
+
+          List<Bpl.Expr> inexpr;
+          List<Bpl.IdentifierExpr> outvars;
+          Bpl.IdentifierExpr thisExpr;
+          Dictionary<Bpl.IdentifierExpr, Tuple<Bpl.IdentifierExpr, bool>> toBoxed;
+          var proc2 = TranslateArgumentsAndReturnProcedure(token, propertyDefinition.Getter, propertyDefinition.Getter.ResolvedMethod, target.Instance, IteratorHelper.GetEmptyEnumerable<IExpression>(), out inexpr, out outvars, out thisExpr, out toBoxed);
+
+          EmitLineDirective(token);
+
+          this.StmtTraverser.StmtBuilder.Add(new Bpl.CallCmd(token, proc2.Name, inexpr, outvars));
+
+          if (!treatAsStatement && resultIsInitialTargetRValue) {
+            //var 
+            //this.generator.Emit(OperationCode.Dup);
+            //this.StackSize++;
+            //temp = new TemporaryVariable(source.Type, this.method);
+            //this.VisitAssignmentTo(temp);
+          }
+        }
+        sourceTraverser(source);
+        if (!treatAsStatement && !resultIsInitialTargetRValue) {
+          var e3 = this.TranslatedExpressions.Pop();
+          var loc = this.sink.CreateFreshLocal(source.Type);
+          temp = Bpl.Expr.Ident(loc);
+          var cmd = Bpl.Cmd.SimpleAssign(tok, temp, e3);
+          this.StmtTraverser.StmtBuilder.Add(cmd);
+          this.TranslatedExpressions.Push(temp);
+        }
+
+        var setterArgs = new List<Bpl.Expr>();
+        var setterArg = this.TranslatedExpressions.Pop();
+        if (!propertyDefinition.IsStatic)
+          setterArgs.Add(this.TranslatedExpressions.Pop());
+        setterArgs.Add(setterArg);
+
+        var setterProc = this.sink.FindOrCreateProcedure(propertyDefinition.Setter.ResolvedMethod);
+        EmitLineDirective(token);
+        this.StmtTraverser.StmtBuilder.Add(new Bpl.CallCmd(token, setterProc.Decl.Name, setterArgs, new List<Bpl.IdentifierExpr>()));
+
+        if (temp != null) this.TranslatedExpressions.Push(temp);
+        return;
       }
       Contract.Assume(false);
     }
@@ -1519,7 +1555,23 @@ namespace BytecodeTranslator
 
 
     public override void TraverseChildren(IBitwiseAnd bitwiseAnd) {
-      base.TraverseChildren(bitwiseAnd);
+      var targetExpression = bitwiseAnd.LeftOperand as ITargetExpression;
+      if (targetExpression != null) { // x &= e
+        bool statement = this.currentExpressionIsOpAssignStatement;
+        this.currentExpressionIsOpAssignStatement = false;
+        this.VisitAssignment(targetExpression, bitwiseAnd, (IExpression e) => this.TraverseBitwiseAndRightOperandAndDoOperation(e),
+          treatAsStatement: statement, pushTargetRValue: true, resultIsInitialTargetRValue: bitwiseAnd.ResultIsUnmodifiedLeftOperand);
+      } else { // x & e
+        this.Traverse(bitwiseAnd.LeftOperand);
+        this.TraverseBitwiseAndRightOperandAndDoOperation(bitwiseAnd);
+      }
+    }
+    private void TraverseBitwiseAndRightOperandAndDoOperation(IExpression expression) {
+      Contract.Assume(expression is IBitwiseAnd);
+      var bitwiseAnd = (IBitwiseAnd)expression;
+
+      this.Traverse(bitwiseAnd.RightOperand);
+
       Bpl.Expr rexp = TranslatedExpressions.Pop();
       Bpl.Expr lexp = TranslatedExpressions.Pop();
       Bpl.Expr e;
@@ -1537,7 +1589,23 @@ namespace BytecodeTranslator
     }
 
     public override void TraverseChildren(IBitwiseOr bitwiseOr) {
-      base.TraverseChildren(bitwiseOr);
+      var targetExpression = bitwiseOr.LeftOperand as ITargetExpression;
+      if (targetExpression != null) { // x |= e
+        bool statement = this.currentExpressionIsOpAssignStatement;
+        this.currentExpressionIsOpAssignStatement = false;
+        this.VisitAssignment(targetExpression, bitwiseOr, (IExpression e) => this.TraverseBitwiseOrRightOperandAndDoOperation(e),
+          treatAsStatement: statement, pushTargetRValue: true, resultIsInitialTargetRValue: bitwiseOr.ResultIsUnmodifiedLeftOperand);
+      } else { // x | e
+        this.Traverse(bitwiseOr.LeftOperand);
+        this.TraverseBitwiseOrRightOperandAndDoOperation(bitwiseOr);
+      }
+    }
+
+    private void TraverseBitwiseOrRightOperandAndDoOperation(IExpression expression) {
+      Contract.Assume(expression is IBitwiseOr);
+      var bitwiseOr = (IBitwiseOr)expression;
+      this.Traverse(bitwiseOr.RightOperand);
+
       Bpl.Expr rexp = TranslatedExpressions.Pop();
       Bpl.Expr lexp = TranslatedExpressions.Pop();
       Bpl.Expr e;
@@ -1555,7 +1623,23 @@ namespace BytecodeTranslator
     }
 
     public override void TraverseChildren(IModulus modulus) {
-      base.TraverseChildren(modulus);
+      var targetExpression = modulus.LeftOperand as ITargetExpression;
+      if (targetExpression != null) { // x %= e
+        bool statement = this.currentExpressionIsOpAssignStatement;
+        this.currentExpressionIsOpAssignStatement = false;
+        this.VisitAssignment(targetExpression, modulus, (IExpression e) => this.TraverseModulusRightOperandAndDoOperation(e),
+          treatAsStatement: statement, pushTargetRValue: true, resultIsInitialTargetRValue: modulus.ResultIsUnmodifiedLeftOperand);
+      } else { // x % e
+        this.Traverse(modulus.LeftOperand);
+        this.TraverseModulusRightOperandAndDoOperation(modulus);
+      }
+    }
+
+    private void TraverseModulusRightOperandAndDoOperation(IExpression expression) {
+      Contract.Assume(expression is IModulus);
+      var modulus = (IModulus)expression;
+      this.Traverse(modulus.RightOperand);
+
       Bpl.Expr rexp = TranslatedExpressions.Pop();
       Bpl.Expr lexp = TranslatedExpressions.Pop();
       Bpl.Expr e;
@@ -1577,7 +1661,23 @@ namespace BytecodeTranslator
 
     public override void TraverseChildren(IDivision division)
     {
-      base.TraverseChildren(division);
+      var targetExpression = division.LeftOperand as ITargetExpression;
+      if (targetExpression != null) { // x /= e
+        bool statement = this.currentExpressionIsOpAssignStatement;
+        this.currentExpressionIsOpAssignStatement = false;
+        this.VisitAssignment(targetExpression, division, (IExpression e) => this.TraverseDivisionRightOperandAndDoOperation(e),
+          treatAsStatement: statement, pushTargetRValue: true, resultIsInitialTargetRValue: division.ResultIsUnmodifiedLeftOperand);
+      } else { // x / e
+        this.Traverse(division.LeftOperand);
+        this.TraverseDivisionRightOperandAndDoOperation(division);
+      }
+    }
+
+    private void TraverseDivisionRightOperandAndDoOperation(IExpression expression) {
+      Contract.Assume(expression is IDivision);
+      var division = (IDivision)expression;
+      this.Traverse(division.RightOperand);
+
       Bpl.Expr rexp = TranslatedExpressions.Pop();
       Bpl.Expr lexp = TranslatedExpressions.Pop();
       Bpl.Expr e;
@@ -1598,7 +1698,23 @@ namespace BytecodeTranslator
     }
 
     public override void TraverseChildren(IExclusiveOr exclusiveOr) {
-      base.TraverseChildren(exclusiveOr);
+      var targetExpression = exclusiveOr.LeftOperand as ITargetExpression;
+      if (targetExpression != null) { // x ^= e
+        bool statement = this.currentExpressionIsOpAssignStatement;
+        this.currentExpressionIsOpAssignStatement = false;
+        this.VisitAssignment(targetExpression, exclusiveOr, (IExpression e) => this.TraverseExclusiveOrRightOperandAndDoOperation(e),
+          treatAsStatement: statement, pushTargetRValue: true, resultIsInitialTargetRValue: exclusiveOr.ResultIsUnmodifiedLeftOperand);
+      } else { // x ^ e
+        this.Traverse(exclusiveOr.LeftOperand);
+        this.TraverseExclusiveOrRightOperandAndDoOperation(exclusiveOr);
+      }
+    }
+
+    private void TraverseExclusiveOrRightOperandAndDoOperation(IExpression expression) {
+      Contract.Assume(expression is IExclusiveOr);
+      var exclusiveOr = (IExclusiveOr)expression;
+      this.Traverse(exclusiveOr.RightOperand);
+
       Bpl.Expr rexp = TranslatedExpressions.Pop();
       Bpl.Expr lexp = TranslatedExpressions.Pop();
       var e = new Bpl.NAryExpr(
@@ -1611,7 +1727,22 @@ namespace BytecodeTranslator
 
     public override void TraverseChildren(ISubtraction subtraction)
     {
-      base.TraverseChildren(subtraction);
+      var targetExpression = subtraction.LeftOperand as ITargetExpression;
+      if (targetExpression != null) { // x -= e
+        bool statement = this.currentExpressionIsOpAssignStatement;
+        this.currentExpressionIsOpAssignStatement = false;
+        this.VisitAssignment(targetExpression, subtraction, (IExpression e) => this.TraverseSubtractionRightOperandAndDoOperation(e),
+          treatAsStatement: statement, pushTargetRValue: true, resultIsInitialTargetRValue: subtraction.ResultIsUnmodifiedLeftOperand);
+      } else { // x - e
+        this.Traverse(subtraction.LeftOperand);
+        this.TraverseSubtractionRightOperandAndDoOperation(subtraction);
+      }
+    }
+    private void TraverseSubtractionRightOperandAndDoOperation(IExpression expression) {
+      Contract.Assume(expression is ISubtraction);
+      var subtraction = (ISubtraction)expression;
+
+      this.Traverse(subtraction.RightOperand);
       Bpl.Expr rexp = TranslatedExpressions.Pop();
       Bpl.Expr lexp = TranslatedExpressions.Pop();
       Bpl.Expr e;
@@ -1633,7 +1764,23 @@ namespace BytecodeTranslator
 
     public override void TraverseChildren(IMultiplication multiplication)
     {
-      base.TraverseChildren(multiplication);
+      var targetExpression = multiplication.LeftOperand as ITargetExpression;
+      if (targetExpression != null) { // x *= e
+        bool statement = this.currentExpressionIsOpAssignStatement;
+        this.currentExpressionIsOpAssignStatement = false;
+        this.VisitAssignment(targetExpression, multiplication, (IExpression e) => this.TraverseMultiplicationRightOperandAndDoOperation(e),
+          treatAsStatement: statement, pushTargetRValue: true, resultIsInitialTargetRValue: multiplication.ResultIsUnmodifiedLeftOperand);
+      } else { // x * e
+        this.Traverse(multiplication.LeftOperand);
+        this.TraverseMultiplicationRightOperandAndDoOperation(multiplication);
+      }
+    }
+
+    private void TraverseMultiplicationRightOperandAndDoOperation(IExpression expression) {
+      Contract.Assume(expression is IMultiplication);
+      var multiplication = (IMultiplication)expression;
+      this.Traverse(multiplication.RightOperand);
+
       Bpl.Expr rexp = TranslatedExpressions.Pop();
       Bpl.Expr lexp = TranslatedExpressions.Pop();
       Bpl.Expr e;
@@ -1751,6 +1898,15 @@ namespace BytecodeTranslator
 
     public override void TraverseChildren(IEquality equal)
     {
+      if ((equal.LeftOperand.Type.TypeCode != PrimitiveTypeCode.NotPrimitive || equal.LeftOperand.Type.TypeCode != PrimitiveTypeCode.NotPrimitive)
+        && !TypeHelper.TypesAreEquivalent(equal.LeftOperand.Type, equal.RightOperand.Type)) {
+        throw new TranslationException(
+          String.Format("Decompiler messed up: equality's left operand is of type '{0}' but right operand is of type '{1}'.",
+          TypeHelper.GetTypeName(equal.LeftOperand.Type),
+          TypeHelper.GetTypeName(equal.RightOperand.Type)
+          ));
+      }
+
       base.TraverseChildren(equal);
       Bpl.Expr rexp = TranslatedExpressions.Pop();
       Bpl.Expr lexp = TranslatedExpressions.Pop();
@@ -1759,6 +1915,17 @@ namespace BytecodeTranslator
 
     public override void TraverseChildren(INotEquality nonEqual)
     {
+
+      if ((nonEqual.LeftOperand.Type.TypeCode != PrimitiveTypeCode.NotPrimitive || nonEqual.LeftOperand.Type.TypeCode != PrimitiveTypeCode.NotPrimitive)
+        &&
+        !TypeHelper.TypesAreEquivalent(nonEqual.LeftOperand.Type, nonEqual.RightOperand.Type)) {
+        throw new TranslationException(
+          String.Format("Decompiler messed up: inequality's left operand is of type '{0}' but right operand is of type '{1}'.",
+          TypeHelper.GetTypeName(nonEqual.LeftOperand.Type),
+          TypeHelper.GetTypeName(nonEqual.RightOperand.Type)
+          ));
+      }
+
       base.TraverseChildren(nonEqual);
       Bpl.Expr rexp = TranslatedExpressions.Pop();
       Bpl.Expr lexp = TranslatedExpressions.Pop();
@@ -1766,7 +1933,23 @@ namespace BytecodeTranslator
     }
 
     public override void TraverseChildren(IRightShift rightShift) {
-      base.TraverseChildren(rightShift);
+      var targetExpression = rightShift.LeftOperand as ITargetExpression;
+      if (targetExpression != null) { // x >>= e
+        bool statement = this.currentExpressionIsOpAssignStatement;
+        this.currentExpressionIsOpAssignStatement = false;
+        this.VisitAssignment(targetExpression, rightShift, (IExpression e) => this.TraverseRightShiftRightOperandAndDoOperation(e),
+          treatAsStatement: statement, pushTargetRValue: true, resultIsInitialTargetRValue: rightShift.ResultIsUnmodifiedLeftOperand);
+      } else { // x >> e
+        this.Traverse(rightShift.LeftOperand);
+        this.TraverseRightShiftRightOperandAndDoOperation(rightShift);
+      }
+    }
+
+    private void TraverseRightShiftRightOperandAndDoOperation(IExpression expression) {
+      Contract.Assume(expression is IRightShift);
+      var rightShift = (IRightShift)expression;
+      this.Traverse(rightShift.RightOperand);
+
       Bpl.Expr rexp = TranslatedExpressions.Pop();
       Bpl.Expr lexp = TranslatedExpressions.Pop();
       Bpl.Expr e = new Bpl.NAryExpr(
@@ -1778,7 +1961,23 @@ namespace BytecodeTranslator
     }
 
     public override void TraverseChildren(ILeftShift leftShift) {
-      base.TraverseChildren(leftShift);
+      var targetExpression = leftShift.LeftOperand as ITargetExpression;
+      if (targetExpression != null) { // x <<= e
+        bool statement = this.currentExpressionIsOpAssignStatement;
+        this.currentExpressionIsOpAssignStatement = false;
+        this.VisitAssignment(targetExpression, leftShift, (IExpression e) => this.TraverseLeftShiftRightOperandAndDoOperation(e),
+          treatAsStatement: statement, pushTargetRValue: true, resultIsInitialTargetRValue: leftShift.ResultIsUnmodifiedLeftOperand);
+      } else { // x << e
+        this.Traverse(leftShift.LeftOperand);
+        this.TraverseLeftShiftRightOperandAndDoOperation(leftShift);
+      }
+    }
+
+    private void TraverseLeftShiftRightOperandAndDoOperation(IExpression expression) {
+      Contract.Assume(expression is ILeftShift);
+      var leftShift = (ILeftShift)expression;
+      this.Traverse(leftShift.RightOperand);
+
       Bpl.Expr rexp = TranslatedExpressions.Pop();
       Bpl.Expr lexp = TranslatedExpressions.Pop();
       Bpl.Expr e = new Bpl.NAryExpr(
