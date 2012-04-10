@@ -198,6 +198,10 @@ namespace GPUVerify
                 visitor.VisitExpr(wc.Guard);
                 foreach (Variable v in visitor.GetVariables())
                 {
+                    if (!mayBeDerivedFrom[impl.Name].ContainsKey(v.Name))
+                    {
+                        continue;
+                    }
                     foreach (string s in mayBeDerivedFrom[impl.Name][v.Name])
                     {
                         if (!arraysWhichMayAffectControlFlow.Contains(s))
