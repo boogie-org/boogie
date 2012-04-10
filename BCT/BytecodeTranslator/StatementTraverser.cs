@@ -56,6 +56,7 @@ namespace BytecodeTranslator
     internal readonly Stack<Bpl.Expr> operandStack = new Stack<Bpl.Expr>();
     private bool captureState;
     private static int captureStateCounter = 0;
+    public IPrimarySourceLocation lastSourceLocation;
 
     #region Constructors
     public StatementTraverser(Sink sink, PdbReader/*?*/ pdbReader, bool contractContext, TraverserFactory factory) {
@@ -88,7 +89,7 @@ namespace BytecodeTranslator
         var remover = new AnonymousDelegateRemover(this.sink.host, this.PdbReader);
         newTypes = remover.RemoveAnonymousDelegates(methodBody.MethodDefinition, block);
       }
-      StmtBuilder.Add(new Bpl.AssumeCmd(Bpl.Token.NoToken, Bpl.Expr.True, new Bpl.QKeyValue(Bpl.Token.NoToken, "breadcrumb", new List<object> { Bpl.Expr.Literal(this.NextUniqueNumber()) }, null)));
+      StmtBuilder.Add(new Bpl.AssumeCmd(Bpl.Token.NoToken, Bpl.Expr.True, new Bpl.QKeyValue(Bpl.Token.NoToken, "breadcrumb", new List<object> { Bpl.Expr.Literal(this.sink.UniqueNumberAcrossAllAssemblies) }, null)));
       this.Traverse(methodBody);
       return newTypes;
     }
@@ -206,10 +207,10 @@ namespace BytecodeTranslator
       if (this.sink.Options.instrumentBranches) {
         var tok = conditionalStatement.Token();
         thenTraverser.StmtBuilder.Add(
-          new Bpl.AssumeCmd(tok, Bpl.Expr.True, new Bpl.QKeyValue(Bpl.Token.NoToken, "breadcrumb", new List<object> { Bpl.Expr.Literal(this.NextUniqueNumber()) }, null))
+          new Bpl.AssumeCmd(tok, Bpl.Expr.True, new Bpl.QKeyValue(Bpl.Token.NoToken, "breadcrumb", new List<object> { Bpl.Expr.Literal(this.sink.UniqueNumberAcrossAllAssemblies) }, null))
           );
         elseTraverser.StmtBuilder.Add(
-          new Bpl.AssumeCmd(tok, Bpl.Expr.True, new Bpl.QKeyValue(Bpl.Token.NoToken, "breadcrumb", new List<object> { Bpl.Expr.Literal(this.NextUniqueNumber()) }, null))
+          new Bpl.AssumeCmd(tok, Bpl.Expr.True, new Bpl.QKeyValue(Bpl.Token.NoToken, "breadcrumb", new List<object> { Bpl.Expr.Literal(this.sink.UniqueNumberAcrossAllAssemblies) }, null))
           );
       }
 
@@ -239,13 +240,6 @@ namespace BytecodeTranslator
       StmtBuilder.Add(ifcmd);
 
     }
-
-    private static int counter = 0;
-    public IPrimarySourceLocation lastSourceLocation;
-    internal int NextUniqueNumber() {
-      return counter++;
-    }
-
 
     /// <summary>
     /// 

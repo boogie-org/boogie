@@ -89,10 +89,10 @@ namespace BytecodeTranslator {
     [RepresentationFor("MultisetSingleton", "function {:inline true} MultisetSingleton(x: Delegate): DelegateMultiset { MultisetEmpty[x := 1] }")]
     public Bpl.Function MultisetSingleton = null;
 
-    [RepresentationFor("MultisetPlus", "function {:inline true} MultisetPlus(x: DelegateMultiset, y: DelegateMultiset): DelegateMultiset { mapadd(x, y) }")]
+    [RepresentationFor("MultisetPlus", "function {:inline true} MultisetPlus(x: DelegateMultiset, y: DelegateMultiset): DelegateMultiset { DelegateMapadd(x, y) }")]
     public  Bpl.Function MultisetPlus = null;
 
-    [RepresentationFor("MultisetMinus", "function {:inline true} MultisetMinus(x: DelegateMultiset, y: DelegateMultiset): DelegateMultiset { mapiteint(mapgt(x, y), mapsub(x, y), mapconstint(0)) }")]
+    [RepresentationFor("MultisetMinus", "function {:inline true} MultisetMinus(x: DelegateMultiset, y: DelegateMultiset): DelegateMultiset { DelegateMapiteint(DelegateMapgt(x, y), DelegateMapsub(x, y), DelegateMapconstint(0)) }")]
     public Bpl.Function MultisetMinus = null;
 
     [RepresentationFor("Field", "type Field;")]
@@ -364,8 +364,18 @@ namespace BytecodeTranslator {
     [RepresentationFor("$DisjointSubtree", "function $DisjointSubtree(Type, Type): bool;")]
     public Bpl.Function DisjointSubtree = null;
 
+    [RepresentationFor("$Alloc", "var $Alloc: [Ref] bool;")]
+    public Bpl.Variable AllocVariable = null;
+
+    [RepresentationFor("$allocImp", "function {:builtin \"MapImp\"} $allocImp([Ref]bool, [Ref]bool) : [Ref]bool;")]
+    public Bpl.Function AllocImplies = null;
+    [RepresentationFor("$allocConstBool", "function {:builtin \"MapConst\"} $allocConstBool(bool) : [Ref]bool;")]
+    public Bpl.Function AllocConstBool = null;
+
+
+
     protected readonly string CommonText =
-      @"var $Alloc: [Ref] bool;
+      @"//var $Alloc: [Ref] bool;
 
 procedure {:inline 1} Alloc() returns (x: Ref)
   modifies $Alloc;
@@ -374,26 +384,26 @@ procedure {:inline 1} Alloc() returns (x: Ref)
   $Alloc[x] := true;
 }
 
-function {:builtin ""MapAdd""} mapadd([Delegate]int, [Delegate]int) : [Delegate]int;
-function {:builtin ""MapSub""} mapsub([Delegate]int, [Delegate]int) : [Delegate]int;
-function {:builtin ""MapMul""} mapmul([Delegate]int, [Delegate]int) : [Delegate]int;
-function {:builtin ""MapDiv""} mapdiv([Delegate]int, [Delegate]int) : [Delegate]int;
-function {:builtin ""MapMod""} mapmod([Delegate]int, [Delegate]int) : [Delegate]int;
-function {:builtin ""MapConst""} mapconstint(int) : [Delegate]int;
-function {:builtin ""MapConst""} mapconstbool(bool) : [Delegate]bool;
-function {:builtin ""MapAnd""} mapand([Delegate]bool, [Delegate]bool) : [Delegate]bool;
-function {:builtin ""MapOr""} mapor([Delegate]bool, [Delegate]bool) : [Delegate]bool;
-function {:builtin ""MapNot""} mapnot([Delegate]bool) : [Delegate]bool;
-function {:builtin ""MapIte""} mapiteint([Delegate]bool, [Delegate]int, [Delegate]int) : [Delegate]int;
-function {:builtin ""MapIte""} mapitebool([Delegate]bool, [Delegate]bool, [Delegate]bool) : [Delegate]bool;
-function {:builtin ""MapLe""} maple([Delegate]int, [Delegate]int) : [Delegate]bool;
-function {:builtin ""MapLt""} maplt([Delegate]int, [Delegate]int) : [Delegate]bool;
-function {:builtin ""MapGe""} mapge([Delegate]int, [Delegate]int) : [Delegate]bool;
-function {:builtin ""MapGt""} mapgt([Delegate]int, [Delegate]int) : [Delegate]bool;
-function {:builtin ""MapEq""} mapeq([Delegate]int, [Delegate]int) : [Delegate]bool;
-function {:builtin ""MapIff""} mapiff([Delegate]bool, [Delegate]bool) : [Delegate]bool;
-function {:builtin ""MapImp""} mapimp([Delegate]bool, [Delegate]bool) : [Delegate]bool;
-axiom MultisetEmpty == mapconstint(0);
+function {:builtin ""MapAdd""} DelegateMapadd([Delegate]int, [Delegate]int) : [Delegate]int;
+function {:builtin ""MapSub""} DelegateMapsub([Delegate]int, [Delegate]int) : [Delegate]int;
+function {:builtin ""MapMul""} DelegateMapmul([Delegate]int, [Delegate]int) : [Delegate]int;
+function {:builtin ""MapDiv""} DelegateMapdiv([Delegate]int, [Delegate]int) : [Delegate]int;
+function {:builtin ""MapMod""} DelegateMapmod([Delegate]int, [Delegate]int) : [Delegate]int;
+function {:builtin ""MapConst""} DelegateMapconstint(int) : [Delegate]int;
+function {:builtin ""MapConst""} DelegateMapconstbool(bool) : [Delegate]bool;
+function {:builtin ""MapAnd""} DelegateMapand([Delegate]bool, [Delegate]bool) : [Delegate]bool;
+function {:builtin ""MapOr""} DelegateMapor([Delegate]bool, [Delegate]bool) : [Delegate]bool;
+function {:builtin ""MapNot""} DelegateMapnot([Delegate]bool) : [Delegate]bool;
+function {:builtin ""MapIte""} DelegateMapiteint([Delegate]bool, [Delegate]int, [Delegate]int) : [Delegate]int;
+function {:builtin ""MapIte""} DelegateMapitebool([Delegate]bool, [Delegate]bool, [Delegate]bool) : [Delegate]bool;
+function {:builtin ""MapLe""} DelegateMaple([Delegate]int, [Delegate]int) : [Delegate]bool;
+function {:builtin ""MapLt""} DelegateMaplt([Delegate]int, [Delegate]int) : [Delegate]bool;
+function {:builtin ""MapGe""} DelegateMapge([Delegate]int, [Delegate]int) : [Delegate]bool;
+function {:builtin ""MapGt""} DelegateMapgt([Delegate]int, [Delegate]int) : [Delegate]bool;
+function {:builtin ""MapEq""} DelegateMapeq([Delegate]int, [Delegate]int) : [Delegate]bool;
+function {:builtin ""MapIff""} DelegateMapiff([Delegate]bool, [Delegate]bool) : [Delegate]bool;
+function {:builtin ""MapImp""} DelegateMapimp([Delegate]bool, [Delegate]bool) : [Delegate]bool;
+axiom MultisetEmpty == DelegateMapconstint(0);
 
 function IsRef(u: Union) : (bool);
 axiom (forall x: bool :: {Bool2Union(x)} Union2Bool(Bool2Union(x)) == x && !IsRef(Bool2Union(x)));
