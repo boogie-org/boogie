@@ -34,6 +34,8 @@ namespace GPUVerify
         public static bool AddDivergenceCandidatesOnlyIfModified = true;
         public static bool AddDivergenceCandidatesOnlyToBarrierLoops = true;
 
+        public static bool AssignAtBarriers = false;
+
         public static bool ShowUniformityAnalysis = false;
         public static bool DoUniformityAnalysis = true;
 
@@ -154,8 +156,14 @@ namespace GPUVerify
                     break;
 
                     case "-alwaysAddDivergenceCandidates":
+                    case "/alwaysAddDivergenceCandidates":
                     AddDivergenceCandidatesOnlyIfModified = false;
                     AddDivergenceCandidatesOnlyToBarrierLoops = false;
+                    break;
+
+                    case "-assignAtBarriers":
+                    case "/assignAtBarriers":
+                    AssignAtBarriers = true;
                     break;
 
                     case "-showUniformityAnalysis":

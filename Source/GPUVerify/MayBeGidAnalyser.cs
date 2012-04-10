@@ -7,7 +7,7 @@ using Microsoft.Boogie;
 
 namespace GPUVerify
 {
-    class MayBeGidAnalyser
+    class MayBeGidAnalyser : MayBeAnalyser
     {
         private static string[] dimensions = { "x", "y", "z" };
 
@@ -213,7 +213,7 @@ namespace GPUVerify
             mayBeInfo[component][proc][v] = true;
         }
 
-        internal bool MayBe(string component, string proc, string v)
+        override internal bool MayBe(string component, string proc, string v)
         {
             if (!mayBeInfo[component].ContainsKey(proc))
             {
@@ -228,7 +228,7 @@ namespace GPUVerify
             return mayBeInfo[component][proc][v];
         }
 
-        internal bool MayBe(string component, string proc, Expr e)
+        override internal bool MayBe(string component, string proc, Expr e)
         {
             if (e is IdentifierExpr)
             {

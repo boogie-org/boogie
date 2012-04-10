@@ -117,7 +117,7 @@
     <Compile Include="LoopInvariantGenerator.cs" />
     <Compile Include="MayBePowerOfTwoAnalyser.cs" />
     <Compile Include="MayBeThreadConfigurationVariableAnalyser.cs" />
-    <Compile Include="MayBeTidPlusConstantAnalyser.cs" />
+    <Compile Include="MayBeIdPlusConstantAnalyser.cs" />
     <Compile Include="StructuredProgramVisitor.cs" />
     <Compile Include="CrossThreadInvariantProcessor.cs" />
     <Compile Include="EnabledToPredicateVisitor.cs" />

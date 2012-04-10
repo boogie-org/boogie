@@ -7,7 +7,13 @@ using Microsoft.Boogie;
 
 namespace GPUVerify
 {
-    class MayBeThreadConfigurationVariableAnalyser
+    abstract class MayBeAnalyser
+    {
+        abstract internal bool MayBe(string component, string proc, string v);
+        abstract internal bool MayBe(string component, string proc, Expr e);
+    }
+
+    class MayBeThreadConfigurationVariableAnalyser : MayBeAnalyser
     {
         private static string[] SpecialNames = { 
             GPUVerifier.LOCAL_ID_X_STRING,
@@ -242,7 +248,7 @@ namespace GPUVerify
             mayBeInfo[component][proc][v] = true;
         }
 
-        internal bool MayBe(string component, string proc, string v)
+        override internal bool MayBe(string component, string proc, string v)
         {
             if (!mayBeInfo[component].ContainsKey(proc))
             {
@@ -257,7 +263,7 @@ namespace GPUVerify
             return mayBeInfo[component][proc][v];
         }
 
-        internal bool MayBe(string component, string proc, Expr e)
+        override internal bool MayBe(string component, string proc, Expr e)
         {
             if (e is IdentifierExpr)
             {
