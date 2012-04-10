@@ -314,13 +314,6 @@ namespace GPUVerify
             }
         }
 
-
-
-        protected override void AddNoReadOrWriteCandidateInvariant(WhileCmd wc, Variable v, string ReadOrWrite, string OneOrTwo)
-        {
-            verifier.AddCandidateInvariant(wc, NoReadOrWriteExpr(v, ReadOrWrite, OneOrTwo));
-        }
-
         protected override Expr NoReadOrWriteExpr(Variable v, string ReadOrWrite, string OneOrTwo)
         {
             Variable ReadOrWriteHasOccurred = GPUVerifier.MakeAccessHasOccurredVariable(v.Name, ReadOrWrite);
@@ -331,22 +324,28 @@ namespace GPUVerify
         }
 
 
-        protected override void AddAccessedOffsetIsThreadGlobalIdCandidateInvariant(WhileCmd wc, Variable v, string ReadOrWrite, int Thread)
+        protected override void AddAccessedOffsetIsThreadGlobalIdCandidateInvariant(WhileCmd wc, Variable v, string ReadOrWrite)
         {
-            Expr expr = AccessedOffsetIsThreadGlobalIdExpr(v, ReadOrWrite, Thread);
-            if (expr != null)
+            Expr expr = AccessedOffsetIsThreadGlobalIdExpr(v, ReadOrWrite, 1);
+
+            if (ReadOrWrite.Equals("WRITE") || !CommandLineOptions.Symmetry)
             {
-                verifier.AddCandidateInvariant(wc, expr);
+                expr = Expr.And(expr, AccessedOffsetIsThreadGlobalIdExpr(v, ReadOrWrite, 2));
             }
+
+            verifier.AddCandidateInvariant(wc, expr, "accessed offset is global id");
         }
 
-        protected override void AddAccessedOffsetIsThreadLocalIdCandidateInvariant(WhileCmd wc, Variable v, string ReadOrWrite, int Thread)
+        protected override void AddAccessedOffsetIsThreadLocalIdCandidateInvariant(WhileCmd wc, Variable v, string ReadOrWrite)
         {
-            Expr expr = AccessedOffsetIsThreadLocalIdExpr(v, ReadOrWrite, Thread);
-            if (expr != null)
+            Expr expr = AccessedOffsetIsThreadLocalIdExpr(v, ReadOrWrite, 1);
+
+            if (ReadOrWrite.Equals("WRITE") || !CommandLineOptions.Symmetry)
             {
-                verifier.AddCandidateInvariant(wc, expr);
+                expr = Expr.And(expr, AccessedOffsetIsThreadLocalIdExpr(v, ReadOrWrite, 2));
             }
+
+            verifier.AddCandidateInvariant(wc, expr, "accessed offset is local id");
         }
 
         private Expr AccessedOffsetIsThreadLocalIdExpr(Variable v, string ReadOrWrite, int Thread)
@@ -389,13 +388,15 @@ namespace GPUVerify
                             new IdentifierExpr(Token.NoToken, verifier.GetGroupSize(dimension)));
         }
 
-        protected override void AddAccessedOffsetIsThreadFlattened2DLocalIdCandidateInvariant(WhileCmd wc, Variable v, string ReadOrWrite, int Thread)
+        protected override void AddAccessedOffsetIsThreadFlattened2DLocalIdCandidateInvariant(WhileCmd wc, Variable v, string ReadOrWrite)
         {
-            Expr expr = AccessedOffsetIsThreadFlattened2DLocalIdExpr(v, ReadOrWrite, Thread);
-            if (expr != null)
+            Expr expr = AccessedOffsetIsThreadFlattened2DLocalIdExpr(v, ReadOrWrite, 1);
+            if (ReadOrWrite.Equals("WRITE") || !CommandLineOptions.Symmetry)
             {
-                verifier.AddCandidateInvariant(wc, expr);
+                expr = Expr.And(expr, AccessedOffsetIsThreadFlattened2DLocalIdExpr(v, ReadOrWrite, 2));
             }
+            
+            verifier.AddCandidateInvariant(wc, expr, "accessed offset is flattened 2D local id");
         }
 
         private Expr AccessedOffsetIsThreadFlattened2DLocalIdExpr(Variable v, string ReadOrWrite, int Thread)
@@ -416,13 +417,15 @@ namespace GPUVerify
             return expr;
         }
 
-        protected override void AddAccessedOffsetIsThreadFlattened2DGlobalIdCandidateInvariant(WhileCmd wc, Variable v, string ReadOrWrite, int Thread)
+        protected override void AddAccessedOffsetIsThreadFlattened2DGlobalIdCandidateInvariant(WhileCmd wc, Variable v, string ReadOrWrite)
         {
-            Expr expr = AccessedOffsetIsThreadFlattened2DGlobalIdExpr(v, ReadOrWrite, Thread);
-            if (expr != null)
+            Expr expr = AccessedOffsetIsThreadFlattened2DGlobalIdExpr(v, ReadOrWrite, 1);
+            if (ReadOrWrite.Equals("WRITE") || !CommandLineOptions.Symmetry)
             {
-                verifier.AddCandidateInvariant(wc, expr);
+                expr = Expr.And(expr, AccessedOffsetIsThreadFlattened2DGlobalIdExpr(v, ReadOrWrite, 2));
             }
+
+            verifier.AddCandidateInvariant(wc, expr, "accessed offset is flattened 2D global id");
         }
 
         private Expr AccessedOffsetIsThreadFlattened2DGlobalIdExpr(Variable v, string ReadOrWrite, int Thread)
@@ -443,7 +446,21 @@ namespace GPUVerify
             return expr;
         }
 
-        protected override void AddAccessedOffsetInRangeCTimesLocalIdToCTimesLocalIdPlusC(WhileCmd wc, Variable v, Expr constant, string ReadOrWrite, int Thread)
+        protected override void AddAccessedOffsetInRangeCTimesLocalIdToCTimesLocalIdPlusC(WhileCmd wc, Variable v, Expr constant, string ReadOrWrite)
+        {
+
+            Expr expr = MakeCTimesLocalIdRangeExpression(v, constant, ReadOrWrite, 1);
+
+            if (ReadOrWrite.Equals("WRITE") || !CommandLineOptions.Symmetry)
+            {
+                expr = Expr.And(expr, MakeCTimesLocalIdRangeExpression(v, constant, ReadOrWrite, 2));
+            }
+
+            verifier.AddCandidateInvariant(wc,
+                expr, "accessed offset in range [ C*local_id, (C+1)*local_id )");
+        }
+
+        private Expr MakeCTimesLocalIdRangeExpression(Variable v, Expr constant, string ReadOrWrite, int Thread)
         {
             Expr CTimesLocalId = GPUVerifier.MakeBitVectorBinaryBitVector("BV32_MUL", constant.Clone() as Expr, 
                 new IdentifierExpr(Token.NoToken, verifier.MakeThreadId(Token.NoToken, "X", Thread)));
@@ -455,10 +472,9 @@ namespace GPUVerify
 
             Expr AccessedOffsetLtCTimesLocalIdPlusC = GPUVerifier.MakeBitVectorBinaryBoolean("BV32_LT", OffsetXExpr(v, ReadOrWrite, Thread), CTimesLocalIdPlusC);
 
-            verifier.AddCandidateInvariant(wc,
-                Expr.Imp(
+            return Expr.Imp(
                     AccessHasOccurred(v, ReadOrWrite, Thread),
-                    Expr.And(CTimesLocalIdLeqAccessedOffset, AccessedOffsetLtCTimesLocalIdPlusC)));
+                    Expr.And(CTimesLocalIdLeqAccessedOffset, AccessedOffsetLtCTimesLocalIdPlusC));
         }
 
         private static IdentifierExpr AccessHasOccurred(Variable v, string ReadOrWrite, int Thread)
@@ -471,7 +487,20 @@ namespace GPUVerify
             return new IdentifierExpr(v.tok, new VariableDualiser(Thread, null, null).VisitVariable(GPUVerifier.MakeOffsetXVariable(v, ReadOrWrite)));
         }
 
-        protected override void AddAccessedOffsetInRangeCTimesGlobalIdToCTimesGlobalIdPlusC(WhileCmd wc, Variable v, Expr constant, string ReadOrWrite, int Thread)
+        protected override void AddAccessedOffsetInRangeCTimesGlobalIdToCTimesGlobalIdPlusC(WhileCmd wc, Variable v, Expr constant, string ReadOrWrite)
+        {
+            Expr expr = MakeCTimesGloalIdRangeExpr(v, constant, ReadOrWrite, 1);
+
+            if (ReadOrWrite.Equals("WRITE") || !CommandLineOptions.Symmetry)
+            {
+                expr = Expr.And(expr, MakeCTimesGloalIdRangeExpr(v, constant, ReadOrWrite, 2));
+            }
+
+            verifier.AddCandidateInvariant(wc,
+                expr, "accessed offset in range [ C*global_id, (C+1)*global_id )");
+        }
+
+        private Expr MakeCTimesGloalIdRangeExpr(Variable v, Expr constant, string ReadOrWrite, int Thread)
         {
             Expr CTimesGlobalId = GPUVerifier.MakeBitVectorBinaryBitVector("BV32_MUL", constant.Clone() as Expr,
                 GlobalIdExpr("X", Thread));
@@ -483,10 +512,10 @@ namespace GPUVerify
 
             Expr AccessedOffsetLtCTimesGlobalIdPlusC = GPUVerifier.MakeBitVectorBinaryBoolean("BV32_LT", OffsetXExpr(v, ReadOrWrite, Thread), CTimesGlobalIdPlusC);
 
-            verifier.AddCandidateInvariant(wc,
-                Expr.Imp(
+            Expr implication = Expr.Imp(
                     AccessHasOccurred(v, ReadOrWrite, Thread),
-                    Expr.And(CTimesGlobalIdLeqAccessedOffset, AccessedOffsetLtCTimesGlobalIdPlusC)));
+                    Expr.And(CTimesGlobalIdLeqAccessedOffset, AccessedOffsetLtCTimesGlobalIdPlusC));
+            return implication;
         }
 
         protected override void AddAccessedOffsetIsThreadLocalIdCandidateRequires(Procedure Proc, Variable v, string ReadOrWrite, int Thread)

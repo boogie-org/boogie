@@ -212,6 +212,8 @@ namespace GPUVerify
                 string LoopPredicate = null;
                 List<AssignLhs> WhilePredicateLhss = new List<AssignLhs>();
 
+                PredicateCmd NewInvariant = null;
+
                 if (!enclosingLoopPredicate.Peek().Equals(Expr.True) || 
                     !verifier.uniformityAnalyser.IsUniform(impl.Name, whileCmd.Guard) ||
                     !verifier.uniformityAnalyser.IsUniform(impl.Name, whileCmd))
@@ -231,6 +233,8 @@ namespace GPUVerify
                     WhilePredicateRhss.Add(GetCurrentPredicate().Equals(Expr.True) ? 
                         whileCmd.Guard : Expr.And(GetCurrentPredicate(), whileCmd.Guard));
 
+                    NewInvariant = new AssertCmd(Token.NoToken, Expr.Imp(PredicateExpr, WhilePredicateRhss[0]));
+
                     firstBigBlock.simpleCmds.Add(new AssignCmd(whileCmd.tok, WhilePredicateLhss, WhilePredicateRhss));
 
                     NewGuard = PredicateExpr;
@@ -246,6 +250,12 @@ namespace GPUVerify
                 WhileCmd NewWhile = new WhileCmd(whileCmd.tok, NewGuard,
                     VisitWhileInvariants(whileCmd.Invariants, NewGuard),
                     VisitStmtList(whileCmd.Body));
+
+                if (NewInvariant != null)
+                {
+                    NewWhile.Invariants.Add(NewInvariant);
+                }
+
                 enclosingLoopPredicate.Pop();
                 predicate.Pop();
 

@@ -416,10 +416,6 @@ namespace GPUVerify
             }
         }
 
-        protected override void AddNoReadOrWriteCandidateInvariant(WhileCmd wc, Variable v, string ReadOrWrite, string OneOrTwo)
-        {
-            verifier.AddCandidateInvariant(wc, NoReadOrWriteExpr(v, ReadOrWrite, OneOrTwo));
-        }
 
         protected override Expr NoReadOrWriteExpr(Variable v, string ReadOrWrite, string OneOrTwoString)
         {
@@ -428,17 +424,20 @@ namespace GPUVerify
 
 
 
-        protected override void AddAccessedOffsetIsThreadLocalIdCandidateInvariant(WhileCmd wc, Variable v, string ReadOrWrite, int Thread)
+        protected override void AddAccessedOffsetIsThreadLocalIdCandidateInvariant(WhileCmd wc, Variable v, string ReadOrWrite)
         {
-            Expr expr = AccessOnlyAtThreadId(v, ReadOrWrite, Thread);
+            Expr expr = AccessOnlyAtThreadId(v, ReadOrWrite, 1);
 
-            if (expr != null)
+            if (ReadOrWrite.Equals("WRITE") || !CommandLineOptions.Symmetry)
             {
-                verifier.AddCandidateInvariant(wc, expr);
+                expr = Expr.And(expr, AccessOnlyAtThreadId(v, ReadOrWrite, 2));
             }
+
+            verifier.AddCandidateInvariant(wc, expr, "accessed offset is local id");
+
         }
 
-        protected override void AddAccessedOffsetIsThreadGlobalIdCandidateInvariant(WhileCmd wc, Variable v, string ReadOrWrite, int Thread)
+        protected override void AddAccessedOffsetIsThreadGlobalIdCandidateInvariant(WhileCmd wc, Variable v, string ReadOrWrite)
         {
             throw new NotImplementedException();
         }
@@ -509,22 +508,22 @@ namespace GPUVerify
             }
         }
 
-        protected override void AddAccessedOffsetIsThreadFlattened2DLocalIdCandidateInvariant(WhileCmd wc, Variable v, string ReadOrWrite, int Thread)
+        protected override void AddAccessedOffsetIsThreadFlattened2DLocalIdCandidateInvariant(WhileCmd wc, Variable v, string ReadOrWrite)
         {
             throw new NotImplementedException();
         }
 
-        protected override void AddAccessedOffsetIsThreadFlattened2DGlobalIdCandidateInvariant(WhileCmd wc, Variable v, string ReadOrWrite, int Thread)
+        protected override void AddAccessedOffsetIsThreadFlattened2DGlobalIdCandidateInvariant(WhileCmd wc, Variable v, string ReadOrWrite)
         {
             throw new NotImplementedException();
         }
 
-        protected override void AddAccessedOffsetInRangeCTimesLocalIdToCTimesLocalIdPlusC(WhileCmd wc, Variable v, Expr constant, string ReadOrWrite, int Thread)
+        protected override void AddAccessedOffsetInRangeCTimesLocalIdToCTimesLocalIdPlusC(WhileCmd wc, Variable v, Expr constant, string ReadOrWrite)
         {
             throw new NotImplementedException();
         }
 
-        protected override void AddAccessedOffsetInRangeCTimesGlobalIdToCTimesGlobalIdPlusC(WhileCmd wc, Variable v, Expr constant, string ReadOrWrite, int Thread)
+        protected override void AddAccessedOffsetInRangeCTimesGlobalIdToCTimesGlobalIdPlusC(WhileCmd wc, Variable v, Expr constant, string ReadOrWrite)
         {
             throw new NotImplementedException();
         }

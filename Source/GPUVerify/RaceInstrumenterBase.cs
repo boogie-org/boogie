@@ -69,19 +69,14 @@ namespace GPUVerify
                     LoopInvariantGenerator.GetModifiedVariables(wc.Body), GPUVerifier.MakeAccessHasOccurredVariableName(v.Name, "READ")) 
                     || CommandLineOptions.AssignAtBarriers)
                 {
-                    AddNoReadOrWriteCandidateInvariant(wc, v, "READ", "1");
-                    if (!CommandLineOptions.Symmetry)
-                    {
-                        AddNoReadOrWriteCandidateInvariant(wc, v, "READ", "2");
-                    }
+                    AddNoReadOrWriteCandidateInvariant(wc, v, "READ");
                 }
 
                 if (verifier.ContainsNamedVariable(
                     LoopInvariantGenerator.GetModifiedVariables(wc.Body), GPUVerifier.MakeAccessHasOccurredVariableName(v.Name, "WRITE"))
                     || CommandLineOptions.AssignAtBarriers)
                 {
-                    AddNoReadOrWriteCandidateInvariant(wc, v, "WRITE", "1");
-                    AddNoReadOrWriteCandidateInvariant(wc, v, "WRITE", "2");
+                    AddNoReadOrWriteCandidateInvariant(wc, v, "WRITE");
                 }
             }
         }
@@ -108,7 +103,15 @@ namespace GPUVerify
             AddNoReadOrWriteCandidateEnsures(Proc, v, "WRITE", "2");
         }
 
-        protected abstract void AddNoReadOrWriteCandidateInvariant(WhileCmd wc, Variable v, string ReadOrWrite, string OneOrTwo);
+        private void AddNoReadOrWriteCandidateInvariant(WhileCmd wc, Variable v, string ReadOrWrite)
+        {
+            Expr candidate = NoReadOrWriteExpr(v, ReadOrWrite, "1");
+            if (ReadOrWrite.Equals("WRITE") || !CommandLineOptions.Symmetry)
+            {
+                candidate = Expr.And(candidate, NoReadOrWriteExpr(v, ReadOrWrite, "2"));
+            }
+            verifier.AddCandidateInvariant(wc, candidate, "no " + ReadOrWrite.ToLower());
+        }
 
         public void AddRaceCheckingCandidateInvariants(Implementation impl, WhileCmd wc)
         {
@@ -170,11 +173,7 @@ namespace GPUVerify
                             new IdentifierExpr(Token.NoToken, GPUVerifier.MakeAccessHasOccurredVariable(v.Name, accessKind)),
                             modPow2Expr);
 
-                    verifier.AddCandidateInvariant(wc, new VariableDualiser(1, verifier.uniformityAnalyser, impl.Name).VisitExpr(candidateInvariantExpr.Clone() as Expr));
-                    if (accessKind.Equals("WRITE") || !CommandLineOptions.Symmetry)
-                    {
-                        verifier.AddCandidateInvariant(wc, new VariableDualiser(2, verifier.uniformityAnalyser, impl.Name).VisitExpr(candidateInvariantExpr.Clone() as Expr));
-                    }
+                    AddAccessRelatedCandidateInvariant(wc, accessKind, candidateInvariantExpr, impl.Name, "direct stride local");
                     return true;
                 }
             }
@@ -190,17 +189,24 @@ namespace GPUVerify
                             new IdentifierExpr(Token.NoToken, GPUVerifier.MakeAccessHasOccurredVariable(v.Name, accessKind)),
                             modPow2Expr);
 
-                    verifier.AddCandidateInvariant(wc, new VariableDualiser(1, verifier.uniformityAnalyser, impl.Name).VisitExpr(candidateInvariantExpr.Clone() as Expr));
-                    if (accessKind.Equals("WRITE") || !CommandLineOptions.Symmetry)
-                    {
-                        verifier.AddCandidateInvariant(wc, new VariableDualiser(2, verifier.uniformityAnalyser, impl.Name).VisitExpr(candidateInvariantExpr.Clone() as Expr));
-                    }
+                    AddAccessRelatedCandidateInvariant(wc, accessKind, candidateInvariantExpr, impl.Name, "direct stride global");
                     return true;
                 }
             }
 
             return false;
 
+        }
+
+        private void AddAccessRelatedCandidateInvariant(WhileCmd wc, string accessKind, Expr candidateInvariantExpr, string procName, string tag)
+        {
+            Expr candidate = new VariableDualiser(1, verifier.uniformityAnalyser, procName).VisitExpr(candidateInvariantExpr.Clone() as Expr);
+            if (accessKind.Equals("WRITE") || !CommandLineOptions.Symmetry)
+            {
+                candidate = Expr.And(candidate, new VariableDualiser(2, verifier.uniformityAnalyser, procName).VisitExpr(candidateInvariantExpr.Clone() as Expr));
+            }
+
+            verifier.AddCandidateInvariant(wc, candidate, tag);
         }
 
         private Expr IsIdPlusConstantMultiple(Expr arg1, Expr arg2, bool local, Implementation impl)
@@ -322,8 +328,12 @@ namespace GPUVerify
                 new IdentifierExpr(wc.tok, wVariable),
                 mayBeIdPlusConstantAnalyser.GetIncrement(impl.Name, w), mayBeIdPlusConstantAnalyser.MakeIdExpr());
 
-            verifier.AddCandidateInvariant(wc, new VariableDualiser(1, verifier.uniformityAnalyser, impl.Name).VisitExpr(indexModPow2EqualsId.Clone() as Expr));
-            verifier.AddCandidateInvariant(wc, new VariableDualiser(2, verifier.uniformityAnalyser, impl.Name).VisitExpr(indexModPow2EqualsId.Clone() as Expr));
+            verifier.AddCandidateInvariant(wc, 
+                new VariableDualiser(1, verifier.uniformityAnalyser, impl.Name).VisitExpr(indexModPow2EqualsId.Clone() as Expr),
+                "is " + mayBeIdPlusConstantAnalyser.idKind() + " plus constant multiple");
+            verifier.AddCandidateInvariant(wc, 
+                new VariableDualiser(2, verifier.uniformityAnalyser, impl.Name).VisitExpr(indexModPow2EqualsId.Clone() as Expr),
+                "is " + mayBeIdPlusConstantAnalyser.idKind() + " plus constant multiple");
 
             Expr offsetExpr = new IdentifierExpr(Token.NoToken, GPUVerifier.MakeOffsetXVariable(v, accessKind));
             Expr invertedOffset = InverseOfLinearFunctionOfVariable(e, w, offsetExpr);
@@ -336,12 +346,8 @@ namespace GPUVerify
                     new IdentifierExpr(Token.NoToken, GPUVerifier.MakeAccessHasOccurredVariable(v.Name, accessKind)),
                     invertedOffsetModPow2EqualsId);
 
-            verifier.AddCandidateInvariant(wc, new VariableDualiser(1, verifier.uniformityAnalyser, impl.Name).VisitExpr(candidateInvariantExpr.Clone() as Expr));
-
-            if (accessKind.Equals("WRITE") || !CommandLineOptions.Symmetry)
-            {
-                verifier.AddCandidateInvariant(wc, new VariableDualiser(2, verifier.uniformityAnalyser, impl.Name).VisitExpr(candidateInvariantExpr.Clone() as Expr));
-            }
+            AddAccessRelatedCandidateInvariant(wc, accessKind, candidateInvariantExpr, impl.Name, "accessed offset is "
+                + mayBeIdPlusConstantAnalyser.idKind() + " plus constant multiple");
 
             return true;
         }
@@ -513,11 +519,7 @@ namespace GPUVerify
             {
                 if (verifier.mayBeTidAnalyser.MayBe(GPUVerifier.LOCAL_ID_X_STRING, impl.Name, GPUVerifier.StripThreadIdentifiers(e)))
                 {
-                    AddAccessedOffsetIsThreadLocalIdCandidateInvariant(wc, v, accessType, 1);
-                    if (accessType.Equals("WRITE") || !CommandLineOptions.Symmetry)
-                    {
-                        AddAccessedOffsetIsThreadLocalIdCandidateInvariant(wc, v, accessType, 2);
-                    }
+                    AddAccessedOffsetIsThreadLocalIdCandidateInvariant(wc, v, accessType);
                     // No point adding it multiple times
                     break;
                 }
@@ -527,11 +529,7 @@ namespace GPUVerify
             {
                 if (verifier.mayBeGidAnalyser.MayBe("x", impl.Name, GPUVerifier.StripThreadIdentifiers(e)))
                 {
-                    AddAccessedOffsetIsThreadGlobalIdCandidateInvariant(wc, v, accessType, 1);
-                    if (accessType.Equals("WRITE") || !CommandLineOptions.Symmetry)
-                    {
-                        AddAccessedOffsetIsThreadGlobalIdCandidateInvariant(wc, v, accessType, 2);
-                    }
+                    AddAccessedOffsetIsThreadGlobalIdCandidateInvariant(wc, v, accessType);
                     // No point adding it multiple times
                     break;
                 }
@@ -541,11 +539,7 @@ namespace GPUVerify
             {
                 if (verifier.mayBeFlattened2DTidOrGidAnalyser.MayBe("local", impl.Name, GPUVerifier.StripThreadIdentifiers(e)))
                 {
-                    AddAccessedOffsetIsThreadFlattened2DLocalIdCandidateInvariant(wc, v, accessType, 1);
-                    if (accessType.Equals("WRITE") || !CommandLineOptions.Symmetry)
-                    {
-                        AddAccessedOffsetIsThreadFlattened2DLocalIdCandidateInvariant(wc, v, accessType, 2);
-                    }
+                    AddAccessedOffsetIsThreadFlattened2DLocalIdCandidateInvariant(wc, v, accessType);
                     // No point adding it multiple times
                     break;
                 }
@@ -555,11 +549,7 @@ namespace GPUVerify
             {
                 if (verifier.mayBeFlattened2DTidOrGidAnalyser.MayBe("global", impl.Name, GPUVerifier.StripThreadIdentifiers(e)))
                 {
-                    AddAccessedOffsetIsThreadFlattened2DGlobalIdCandidateInvariant(wc, v, accessType, 1);
-                    if (accessType.Equals("WRITE") || !CommandLineOptions.Symmetry)
-                    {
-                        AddAccessedOffsetIsThreadFlattened2DGlobalIdCandidateInvariant(wc, v, accessType, 2);
-                    }
+                    AddAccessedOffsetIsThreadFlattened2DGlobalIdCandidateInvariant(wc, v, accessType);
                     // No point adding it multiple times
                     break;
                 }
@@ -572,11 +562,7 @@ namespace GPUVerify
                 {
                     if(HasFormIPlusLocalIdTimesC(e, iLessThanC, impl))
                     {
-                        AddAccessedOffsetInRangeCTimesLocalIdToCTimesLocalIdPlusC(wc, v, iLessThanC.Value, accessType, 1);
-                        if (accessType.Equals("WRITE") || !CommandLineOptions.Symmetry)
-                        {
-                            AddAccessedOffsetInRangeCTimesLocalIdToCTimesLocalIdPlusC(wc, v, iLessThanC.Value, accessType, 2);
-                        }
+                        AddAccessedOffsetInRangeCTimesLocalIdToCTimesLocalIdPlusC(wc, v, iLessThanC.Value, accessType);
                         break;
                     }
                 }
@@ -585,11 +571,7 @@ namespace GPUVerify
                 {
                     if (HasFormIPlusGlobalIdTimesC(e, iLessThanC, impl))
                     {
-                        AddAccessedOffsetInRangeCTimesGlobalIdToCTimesGlobalIdPlusC(wc, v, iLessThanC.Value, accessType, 1);
-                        if (accessType.Equals("WRITE") || !CommandLineOptions.Symmetry)
-                        {
-                            AddAccessedOffsetInRangeCTimesGlobalIdToCTimesGlobalIdPlusC(wc, v, iLessThanC.Value, accessType, 2);
-                        }
+                        AddAccessedOffsetInRangeCTimesGlobalIdToCTimesGlobalIdPlusC(wc, v, iLessThanC.Value, accessType);
                         break;
                     }
                 }
@@ -770,17 +752,17 @@ namespace GPUVerify
             }
         }
 
-        protected abstract void AddAccessedOffsetIsThreadLocalIdCandidateInvariant(WhileCmd wc, Variable v, string ReadOrWrite, int Thread);
+        protected abstract void AddAccessedOffsetIsThreadLocalIdCandidateInvariant(WhileCmd wc, Variable v, string ReadOrWrite);
 
-        protected abstract void AddAccessedOffsetIsThreadGlobalIdCandidateInvariant(WhileCmd wc, Variable v, string ReadOrWrite, int Thread);
+        protected abstract void AddAccessedOffsetIsThreadGlobalIdCandidateInvariant(WhileCmd wc, Variable v, string ReadOrWrite);
 
-        protected abstract void AddAccessedOffsetIsThreadFlattened2DLocalIdCandidateInvariant(WhileCmd wc, Variable v, string ReadOrWrite, int Thread);
+        protected abstract void AddAccessedOffsetIsThreadFlattened2DLocalIdCandidateInvariant(WhileCmd wc, Variable v, string ReadOrWrite);
 
-        protected abstract void AddAccessedOffsetIsThreadFlattened2DGlobalIdCandidateInvariant(WhileCmd wc, Variable v, string ReadOrWrite, int Thread);
+        protected abstract void AddAccessedOffsetIsThreadFlattened2DGlobalIdCandidateInvariant(WhileCmd wc, Variable v, string ReadOrWrite);
 
-        protected abstract void AddAccessedOffsetInRangeCTimesLocalIdToCTimesLocalIdPlusC(WhileCmd wc, Variable v, Expr constant, string ReadOrWrite, int Thread);
+        protected abstract void AddAccessedOffsetInRangeCTimesLocalIdToCTimesLocalIdPlusC(WhileCmd wc, Variable v, Expr constant, string ReadOrWrite);
 
-        protected abstract void AddAccessedOffsetInRangeCTimesGlobalIdToCTimesGlobalIdPlusC(WhileCmd wc, Variable v, Expr constant, string ReadOrWrite, int Thread);
+        protected abstract void AddAccessedOffsetInRangeCTimesGlobalIdToCTimesGlobalIdPlusC(WhileCmd wc, Variable v, Expr constant, string ReadOrWrite);
 
         protected abstract void AddAccessedOffsetIsThreadLocalIdCandidateRequires(Procedure Proc, Variable v, string ReadOrWrite, int Thread);
 
