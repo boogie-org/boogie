@@ -2181,11 +2181,13 @@ namespace GPUVerify
             return variable.Name.Equals(_X.Name) || variable.Name.Equals(_Y.Name) || variable.Name.Equals(_Z.Name);
         }
 
-        internal void AddCandidateInvariant(WhileCmd wc, Expr e)
+        internal void AddCandidateInvariant(WhileCmd wc, Expr e, string tag)
         {
             Constant ExistentialBooleanConstant = MakeExistentialBoolean(wc.tok);
             IdentifierExpr ExistentialBoolean = new IdentifierExpr(wc.tok, ExistentialBooleanConstant);
-            wc.Invariants.Add(new AssertCmd(wc.tok, Expr.Imp(ExistentialBoolean, e)));
+            PredicateCmd invariant = new AssertCmd(wc.tok, Expr.Imp(ExistentialBoolean, e));
+            invariant.Attributes = new QKeyValue(Token.NoToken, "tag", new List<object>(new object[] { tag }), null);
+            wc.Invariants.Add(invariant);
             Program.TopLevelDeclarations.Add(ExistentialBooleanConstant);
         }
 

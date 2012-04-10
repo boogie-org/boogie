@@ -241,7 +241,7 @@ namespace GPUVerify
 
         }
 
-        protected abstract string idKind();
+        internal abstract string idKind();
 
         protected abstract string ComponentString();
 
@@ -294,7 +294,7 @@ namespace GPUVerify
             return new IdentifierExpr(Token.NoToken, GPUVerifier._X);
         }
 
-        protected override string idKind()
+        internal override string idKind()
         {
             return "local id";
         }
@@ -313,7 +313,7 @@ namespace GPUVerify
             mayBeAnalyser = verifier.mayBeGidAnalyser;
         }
 
-        protected override string idKind()
+        internal override string idKind()
         {
             return "global id";
         }

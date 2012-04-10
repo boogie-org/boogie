@@ -45,7 +45,7 @@ namespace GPUVerify
                 Expr.Eq(
                     new IdentifierExpr(wc.tok, new VariableDualiser(1, verifier.uniformityAnalyser, Impl.Name).VisitVariable(v.Clone() as Variable)),
                     new IdentifierExpr(wc.tok, new VariableDualiser(2, verifier.uniformityAnalyser, Impl.Name).VisitVariable(v.Clone() as Variable))
-            ));
+            ), "equality");
         }
 
         private void AddPredicatedEqualityCandidateInvariant(WhileCmd wc, string LoopPredicate, Variable v)
@@ -58,7 +58,7 @@ namespace GPUVerify
                 Expr.Eq(
                     new IdentifierExpr(wc.tok, new VariableDualiser(1, verifier.uniformityAnalyser, Impl.Name).VisitVariable(v.Clone() as Variable)),
                     new IdentifierExpr(wc.tok, new VariableDualiser(2, verifier.uniformityAnalyser, Impl.Name).VisitVariable(v.Clone() as Variable))
-            )));
+            )), "predicated equality");
         }
 
 
@@ -89,7 +89,7 @@ namespace GPUVerify
                 // Int type used here, but it doesn't matter as we will print and then re-parse the program
                 new IdentifierExpr(wc.tok, new LocalVariable(wc.tok, new TypedIdent(wc.tok, LoopPredicate + "$1", Microsoft.Boogie.Type.Int))),
                 new IdentifierExpr(wc.tok, new LocalVariable(wc.tok, new TypedIdent(wc.tok, LoopPredicate + "$2", Microsoft.Boogie.Type.Int)))
-            ));
+            ), "loop predicate equality");
 
             foreach (Variable v in LocalVars)
             {
@@ -188,17 +188,17 @@ namespace GPUVerify
                     {
                         if (verifier.ContainsNamedVariable(GetModifiedVariables(wc.Body), basicName))
                         {
-                            verifier.AddCandidateInvariant(wc, MakePowerOfTwoExpr(v));
+                            verifier.AddCandidateInvariant(wc, MakePowerOfTwoExpr(v), "pow2 disjunction");
                             for (int i = (1 << 15); i > 0; i >>= 1)
                             {
                                 verifier.AddCandidateInvariant(wc, 
                                     GPUVerifier.MakeBitVectorBinaryBoolean("BV32_LT",
                                     new IdentifierExpr(v.tok, v),
-                                    new LiteralExpr(v.tok, BigNum.FromInt(i), 32)));
+                                    new LiteralExpr(v.tok, BigNum.FromInt(i), 32)), "pow2 less than " + i);
                             }
                             verifier.AddCandidateInvariant(wc,
                                 Expr.Neq(new IdentifierExpr(v.tok, v),
-                                new LiteralExpr(v.tok, BigNum.FromInt(0), 32)));
+                                new LiteralExpr(v.tok, BigNum.FromInt(0), 32)), "pow2 not zero");
                         }
                     }
                 }
@@ -237,7 +237,7 @@ namespace GPUVerify
                         verifier.AddCandidateInvariant(wc,
                                 GPUVerifier.MakeBitVectorBinaryBoolean("BV" + BVWidth + "_GEQ",
                                 new IdentifierExpr(v.tok, v),
-                                new LiteralExpr(v.tok, BigNum.FromInt(0), BVWidth)));
+                                new LiteralExpr(v.tok, BigNum.FromInt(0), BVWidth)), "loop guard variable non-negative");
                     }
                 }
             }
@@ -259,7 +259,7 @@ namespace GPUVerify
                 wc.Invariants.RemoveAt(wc.Invariants.Count - 1);
                 if (OK)
                 {
-                    verifier.AddCandidateInvariant(wc, e);
+                    verifier.AddCandidateInvariant(wc, e, "user supplied");
                 }
             }
         }
