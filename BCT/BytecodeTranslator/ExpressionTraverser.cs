@@ -1345,7 +1345,7 @@ namespace BytecodeTranslator
           List<Bpl.IdentifierExpr> outvars;
           Bpl.IdentifierExpr thisExpr;
           Dictionary<Bpl.IdentifierExpr, Tuple<Bpl.IdentifierExpr, bool>> toBoxed;
-          var proc2 = TranslateArgumentsAndReturnProcedure(token, propertyDefinition.Getter, propertyDefinition.Getter.ResolvedMethod, target.Instance, IteratorHelper.GetEmptyEnumerable<IExpression>(), out inexpr, out outvars, out thisExpr, out toBoxed);
+          var proc2 = TranslateArgumentsAndReturnProcedure(token, propertyDefinition.Getter, propertyDefinition.Getter.ResolvedMethod, target.Instance, Enumerable<IExpression>.Empty, out inexpr, out outvars, out thisExpr, out toBoxed);
 
           EmitLineDirective(token);
 
