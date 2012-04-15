@@ -131,6 +131,7 @@ namespace BytecodeTranslator
           this.Traverse(instance);
           Bpl.Expr instanceExpr = TranslatedExpressions.Pop();
           Bpl.IdentifierExpr temp = Bpl.Expr.Ident(this.sink.CreateFreshLocal(field.ResolvedField.Type));
+          AssertOrAssumeNonNull(Bpl.Token.NoToken, instanceExpr);
           this.StmtTraverser.StmtBuilder.Add(TranslationHelper.BuildAssignCmd(temp, this.sink.Heap.ReadHeap(instanceExpr, f, field.ContainingType.ResolvedType.IsStruct ? AccessType.Struct : AccessType.Heap, temp.Type)));
           TranslatedExpressions.Push(temp);
         } 
@@ -196,15 +197,25 @@ namespace BytecodeTranslator
 
     public override void TraverseChildren(IArrayIndexer arrayIndexer) {
 
-      if (!IsAtomicInstance(arrayIndexer.IndexedObject)) {
-        // Simplify the BE so that all nested dereferences and method calls are broken up into separate assignments to locals.
-        var se = ExpressionSimplifier.Simplify(this.sink, arrayIndexer);
-        this.Traverse(se);
-        return;
-      }
+      //if (!IsAtomicInstance(arrayIndexer.IndexedObject)) {
+      //  // Simplify the BE so that all nested dereferences and method calls are broken up into separate assignments to locals.
+      //  var se = ExpressionSimplifier.Simplify(this.sink, arrayIndexer);
+      //  this.Traverse(se);
+      //  return;
+      //}
 
       this.Traverse(arrayIndexer.IndexedObject);
       Bpl.Expr arrayExpr = TranslatedExpressions.Pop();
+
+      var be = arrayIndexer.IndexedObject as IBoundExpression;
+      if (be != null && be.Instance != null) {
+        var l = this.sink.CreateFreshLocal(be.Type);
+        var lhs = Bpl.Expr.Ident(l);
+        var cmd = Bpl.Cmd.SimpleAssign(arrayIndexer.Token(), lhs, arrayExpr);
+        this.StmtTraverser.StmtBuilder.Add(cmd);
+        arrayExpr = lhs;
+      }
+
       this.Traverse(arrayIndexer.Indices);
       int count = arrayIndexer.Indices.Count();
       Bpl.Expr[] indexExprs = new Bpl.Expr[count];
@@ -220,6 +231,7 @@ namespace BytecodeTranslator
         indexExpr = new Bpl.NAryExpr(arrayIndexer.Token(), new Bpl.FunctionCall(f), new Bpl.ExprSeq(indexExprs));
       }
 
+      AssertOrAssumeNonNull(arrayIndexer.Token(), arrayExpr);
       this.TranslatedExpressions.Push(this.sink.Heap.ReadHeap(arrayExpr, indexExpr, AccessType.Array, this.sink.CciTypeToBoogie(arrayIndexer.Type)));
     }
 
@@ -237,11 +249,24 @@ namespace BytecodeTranslator
     public override void TraverseChildren(IBoundExpression boundExpression)
     {
 
-      if (boundExpression.Instance != null && !IsAtomicInstance(boundExpression.Instance)) {
-        // Simplify the BE so that all nested dereferences and method calls are broken up into separate assignments to locals.
-        var se = ExpressionSimplifier.Simplify(this.sink, boundExpression);
-        this.Traverse(se);
-        return;
+      //if (boundExpression.Instance != null && !IsAtomicInstance(boundExpression.Instance)) {
+      //  // Simplify the BE so that all nested dereferences and method calls are broken up into separate assignments to locals.
+      //  var se = ExpressionSimplifier.Simplify(this.sink, boundExpression);
+      //  this.Traverse(se);
+      //  return;
+      //}
+
+      if (boundExpression.Instance != null) {
+        this.Traverse(boundExpression.Instance);
+        var nestedBE = boundExpression.Instance as IBoundExpression;
+        if (nestedBE != null) {
+          var l = this.sink.CreateFreshLocal(nestedBE.Type);
+          var e = this.TranslatedExpressions.Pop();
+          var lhs = Bpl.Expr.Ident(l);
+          var cmd = Bpl.Cmd.SimpleAssign(boundExpression.Token(), lhs, e);
+          this.StmtTraverser.StmtBuilder.Add(cmd);
+          this.TranslatedExpressions.Push(lhs);
+        }
       }
 
       #region Local
@@ -270,10 +295,13 @@ namespace BytecodeTranslator
         if (instance == null) {
           TranslatedExpressions.Push(f);
         } else {
-          this.Traverse(instance);
+//          this.Traverse(instance);
           Bpl.Expr instanceExpr = TranslatedExpressions.Pop();
           var bplType = this.sink.CciTypeToBoogie(field.Type);
           var e = this.sink.Heap.ReadHeap(instanceExpr, f, field.ContainingType.ResolvedType.IsStruct ? AccessType.Struct : AccessType.Heap, bplType);
+
+          AssertOrAssumeNonNull(boundExpression.Token(), instanceExpr);
+
           this.TranslatedExpressions.Push(e);
         }
         return;
@@ -318,6 +346,18 @@ namespace BytecodeTranslator
         }
       }
       #endregion
+    }
+
+    private void AssertOrAssumeNonNull(Bpl.IToken token, Bpl.Expr instance, bool assume = true) {
+      Bpl.Cmd c;
+      var n = Bpl.Expr.Ident(this.sink.Heap.NullRef);
+      var neq = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Neq, instance, n);
+      if (assume) {
+        c = new Bpl.AssumeCmd(token, neq);
+      } else {
+        c = new Bpl.AssertCmd(token, neq);
+      }
+      this.StmtTraverser.StmtBuilder.Add(c);
     }
 
     internal static bool IsAtomicInstance(IExpression expression) {
@@ -695,6 +735,7 @@ namespace BytecodeTranslator
         this.StmtTraverser.StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(local), Bpl.Expr.Ident(eventVar)));
         inexpr.Insert(0, Bpl.Expr.Ident(local));
       } else {
+        AssertOrAssumeNonNull(methodCallToken, thisExpr);
         this.StmtTraverser.StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(local), this.sink.Heap.ReadHeap(thisExpr, Bpl.Expr.Ident(eventVar), resolvedMethod.ContainingType.ResolvedType.IsStruct ? AccessType.Struct : AccessType.Heap, local.TypedIdent.Type)));
         inexpr[0] = Bpl.Expr.Ident(local);
       }
@@ -1175,7 +1216,7 @@ namespace BytecodeTranslator
             this.Traverse(target.Instance);
             x = this.TranslatedExpressions.Pop();
             if (pushTargetRValue) {
-
+              AssertOrAssumeNonNull(tok, x);
               var e2 = this.sink.Heap.ReadHeap(x, f, TranslationHelper.IsStruct(field.ContainingType) ? AccessType.Struct : AccessType.Heap, boogieTypeOfField);
               this.TranslatedExpressions.Push(e2);
 
@@ -1238,6 +1279,7 @@ namespace BytecodeTranslator
           this.Traverse(arrayIndexer.Indices);
           var indexExpr = this.TranslatedExpressions.Peek();
           if (pushTargetRValue) {
+            AssertOrAssumeNonNull(tok, arrayExpr);
             var e2 = this.sink.Heap.ReadHeap(arrayExpr, indexExpr, AccessType.Array, this.sink.CciTypeToBoogie(arrayIndexer.Type));
             this.TranslatedExpressions.Push(e2);
 
@@ -1258,6 +1300,7 @@ namespace BytecodeTranslator
           StmtTraverser.StmtBuilder.Add(sink.Heap.WriteHeap(Bpl.Token.NoToken, x, indices_prime, e, AccessType.Array, sink.CciTypeToBoogie(arrayIndexer.Type)));
 
           if (!treatAsStatement && !resultIsInitialTargetRValue) {
+            AssertOrAssumeNonNull(tok, arrayExpr);
             var e2 = this.sink.Heap.ReadHeap(arrayExpr, indexExpr, AccessType.Array, this.sink.CciTypeToBoogie(arrayIndexer.Type));
             this.TranslatedExpressions.Push(e2);
           } else {
