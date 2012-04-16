@@ -707,33 +707,35 @@ namespace BytecodeTranslator {
         }
         #endregion
 
-        #region Add free ensures for allocatedness of result (for methods that return references)
-        if (retVariable != null && retVariable.TypedIdent.Type == this.Heap.RefType) {
-          var ens = new Bpl.Ensures(true,
-            Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Or,
-              Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Eq,
-                Bpl.Expr.Ident(retVariable), Bpl.Expr.Ident(this.Heap.NullRef)),
-              Bpl.Expr.Select(Bpl.Expr.Ident(this.Heap.AllocVariable), Bpl.Expr.Ident(retVariable))
-              ));
-          boogiePostcondition.Add(ens);
-        }
-        #endregion
-        #region Add free ensures for preservation of allocatedness: AllocMapImplies(old($Alloc), $Alloc) == AllocMapConst(true)
-        var preserveAlloc = new Bpl.Ensures(true,
-          Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Eq,
-            new Bpl.NAryExpr(
-              Bpl.Token.NoToken,
-              new Bpl.FunctionCall(this.Heap.AllocImplies),
-                new Bpl.ExprSeq(
-                  new Bpl.OldExpr(Bpl.Token.NoToken, Bpl.Expr.Ident(this.Heap.AllocVariable)),
-                  Bpl.Expr.Ident(this.Heap.AllocVariable))),
-            new Bpl.NAryExpr(
-              Bpl.Token.NoToken,
-              new Bpl.FunctionCall(this.Heap.AllocConstBool),
-                new Bpl.ExprSeq(Bpl.Expr.True))
+        if (options.monotonicHeap) {
+          #region Add free ensures for allocatedness of result (for methods that return references)
+          if (retVariable != null && retVariable.TypedIdent.Type == this.Heap.RefType) {
+            var ens = new Bpl.Ensures(true,
+              Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Or,
+                Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Eq,
+                  Bpl.Expr.Ident(retVariable), Bpl.Expr.Ident(this.Heap.NullRef)),
+                Bpl.Expr.Select(Bpl.Expr.Ident(this.Heap.AllocVariable), Bpl.Expr.Ident(retVariable))
                 ));
-        boogiePostcondition.Add(preserveAlloc);
-        #endregion
+            boogiePostcondition.Add(ens);
+          }
+          #endregion
+          #region Add free ensures for preservation of allocatedness: AllocMapImplies(old($Alloc), $Alloc) == AllocMapConst(true)
+          var preserveAlloc = new Bpl.Ensures(true,
+            Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Eq,
+              new Bpl.NAryExpr(
+                Bpl.Token.NoToken,
+                new Bpl.FunctionCall(this.Heap.AllocImplies),
+                  new Bpl.ExprSeq(
+                    new Bpl.OldExpr(Bpl.Token.NoToken, Bpl.Expr.Ident(this.Heap.AllocVariable)),
+                    Bpl.Expr.Ident(this.Heap.AllocVariable))),
+              new Bpl.NAryExpr(
+                Bpl.Token.NoToken,
+                new Bpl.FunctionCall(this.Heap.AllocConstBool),
+                  new Bpl.ExprSeq(Bpl.Expr.True))
+                  ));
+          boogiePostcondition.Add(preserveAlloc);
+          #endregion
+        }
 
       }
       return procInfo;

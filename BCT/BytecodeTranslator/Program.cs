@@ -69,6 +69,13 @@ namespace BytecodeTranslator {
     [OptionDescription("Instrument branches with unique counter values", ShortForm = "ib")]
     public bool instrumentBranches = false;
 
+    [OptionDescription("Add free ensures that express heap monotonicity", ShortForm = "heapM")]
+    public bool monotonicHeap = false;
+
+    public enum Dereference { Assert, Assume, None, }
+    [OptionDescription("Assert/Assume on all object dereferences", ShortForm = "deref")]
+    public Dereference dereference = Dereference.Assume;
+
   }
 
   public class BCT {

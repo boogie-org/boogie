@@ -348,16 +348,18 @@ namespace BytecodeTranslator
       #endregion
     }
 
-    private void AssertOrAssumeNonNull(Bpl.IToken token, Bpl.Expr instance, bool assume = true) {
-      Bpl.Cmd c;
-      var n = Bpl.Expr.Ident(this.sink.Heap.NullRef);
-      var neq = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Neq, instance, n);
-      if (assume) {
-        c = new Bpl.AssumeCmd(token, neq);
-      } else {
-        c = new Bpl.AssertCmd(token, neq);
+    private void AssertOrAssumeNonNull(Bpl.IToken token, Bpl.Expr instance) {
+      if (this.sink.Options.dereference != Options.Dereference.None) {
+        Bpl.Cmd c;
+        var n = Bpl.Expr.Ident(this.sink.Heap.NullRef);
+        var neq = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Neq, instance, n);
+        if (this.sink.Options.dereference == Options.Dereference.Assume) {
+          c = new Bpl.AssumeCmd(token, neq);
+        } else {
+          c = new Bpl.AssertCmd(token, neq);
+        }
+        this.StmtTraverser.StmtBuilder.Add(c);
       }
-      this.StmtTraverser.StmtBuilder.Add(c);
     }
 
     internal static bool IsAtomicInstance(IExpression expression) {
