@@ -78,14 +78,14 @@ namespace Microsoft.Boogie.SMTLib
 
       SetupProcess();
 
-      if (CommandLineOptions.Clo.StratifiedInlining > 0)
+      if (CommandLineOptions.Clo.StratifiedInlining > 0 || CommandLineOptions.Clo.ContractInfer)
       {
           // Prepare for ApiChecker usage
           if (options.LogFilename != null && currentLogFile == null)
           {
               currentLogFile = OpenOutputFile("");
           }
-          if (CommandLineOptions.Clo.ProcedureCopyBound > 0)
+          if (CommandLineOptions.Clo.ProcedureCopyBound > 0 || CommandLineOptions.Clo.ContractInfer)
           {
               SendThisVC("(set-option :produce-unsat-cores true)");
               this.usingUnsatCore = true;
@@ -770,6 +770,14 @@ namespace Microsoft.Boogie.SMTLib
         SendThisVC(a);
     }
 
+    public override void DefineMacro(Function fun, VCExpr vc) {
+      DeclCollector.AddFunction(fun);
+      string name = Namer.GetName(fun, fun.Name);
+      string a = "(define-fun " + name + "() Bool " + VCExpr2String(vc, 1) + ")";
+      AssertAxioms();
+      SendThisVC(a);
+    }
+
     public override void AssertAxioms()
     {
         FlushAxioms();
@@ -805,7 +813,9 @@ namespace Microsoft.Boogie.SMTLib
             nameCounter++;
             nameToAssumption.Add(name, i);
 
-            SendThisVC(string.Format("(assert (! {0} :named {1}))", VCExpr2String(vc, 1), name));
+            string vcString = VCExpr2String(vc, 1);
+            AssertAxioms();
+            SendThisVC(string.Format("(assert (! {0} :named {1}))", vcString, name));
             i++;
         }
         Check();

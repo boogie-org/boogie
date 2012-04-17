@@ -164,6 +164,11 @@ void ObjectInvariant()
       return TypeToString(t);
     }
 
+    public void AddFunction(Function func) {
+      if (KnownFunctions.Contains(func))
+        return;
+      KnownFunctions.Add(func);
+    }
 
     public override bool Visit(VCExprNAry node, bool arg) {
       Contract.Requires(node != null);

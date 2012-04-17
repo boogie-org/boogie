@@ -851,8 +851,13 @@ namespace Microsoft.Boogie {
     public abstract ProverContext Context {
       get;
     }
+
     public abstract VCExpressionGenerator VCExprGen {
       get;
+    }
+
+    public virtual void DefineMacro(Function fun, VCExpr vc) {
+      throw new NotImplementedException();
     }
   }
 
