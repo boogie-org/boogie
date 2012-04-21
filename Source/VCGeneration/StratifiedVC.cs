@@ -210,7 +210,7 @@ namespace VC
             var bet = ctx.BoogieExprTranslator;
             VCExpr controlFlowVariableExpr = CommandLineOptions.Clo.UseLabels ? null : bet.LookupVariable(info.controlFlowVariable);
 
-            VCExpr vcexpr = gen.Not(GenerateVC(impl, controlFlowVariableExpr, out label2absy, checker));
+            VCExpr vcexpr = gen.Not(GenerateVC(impl, controlFlowVariableExpr, out label2absy, checker.TheoremProver.Context));
             Contract.Assert(vcexpr != null);
             if (!CommandLineOptions.Clo.UseLabels) {
               VCExpr controlFlowFunctionAppl = exprGen.ControlFlowFunctionApplication(controlFlowVariableExpr, exprGen.Integer(BigNum.ZERO));
@@ -438,8 +438,11 @@ namespace VC
                 checker2.Pop();
 
                 var end = DateTime.UtcNow;
-                Console.WriteLine("Summary computation took {0} sec and inferred {1} of {2} contracts", 
-                    (end - start).TotalSeconds, found, calls.allSummaryConst.Count);
+                if (CommandLineOptions.Clo.StratifiedInliningVerbose > 0)
+                {
+                    Console.WriteLine(">> Summary computation took {0} sec and inferred {1} of {2} contracts",
+                        (end - start).TotalSeconds, found, calls.allSummaryConst.Count);
+                }
 
             }
 
@@ -1263,7 +1266,7 @@ namespace VC
             Hashtable/*TransferCmd->ReturnCmd*/ gotoCmdOrigins = PassifyImpl(impl, program, out mvInfo);
             var exprGen = checker.TheoremProver.Context.ExprGen;
             VCExpr controlFlowVariableExpr = CommandLineOptions.Clo.UseLabels ? null : exprGen.Integer(BigNum.ZERO); 
-            vcMain = GenerateVC(impl, controlFlowVariableExpr, out mainLabel2absy, checker);
+            vcMain = GenerateVC(impl, controlFlowVariableExpr, out mainLabel2absy, checker.TheoremProver.Context);
             if (!CommandLineOptions.Clo.UseLabels) {
               VCExpr controlFlowFunctionAppl = exprGen.ControlFlowFunctionApplication(exprGen.Integer(BigNum.ZERO), exprGen.Integer(BigNum.ZERO));
               VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl, exprGen.Integer(BigNum.FromInt(impl.Blocks[0].UniqueId)));
@@ -1570,7 +1573,7 @@ namespace VC
 
                 foreach (int id in calls.currCandidates)
                 {
-                    if (calls.isNonTrivialCandidate(id) && calls.getRecursionBound(id) <= CommandLineOptions.Clo.RecursionBound)
+                    if (calls.getRecursionBound(id) <= CommandLineOptions.Clo.RecursionBound)
                     {
                         toExpand.Add(id);
                     }
@@ -1754,7 +1757,14 @@ namespace VC
                         if (CommandLineOptions.Clo.StratifiedInliningVerbose > 0)
                         {
                             Console.Write(">> SI Inlining: ");
-                            reporter.candidatesToExpand.ForEach(c => Console.Write("{0} ", calls.getProc(c)));
+                            reporter.candidatesToExpand.ForEach(c =>
+                                { if (!calls.isSkipped(c)) Console.Write("{0} ", calls.getProc(c)); });
+
+                            Console.WriteLine();
+                            Console.Write(">> SI Skipping: ");
+                            reporter.candidatesToExpand.ForEach(c =>
+                            { if (calls.isSkipped(c)) Console.Write("{0} ", calls.getProc(c)); });
+
                             Console.WriteLine();
                         }
                         // Expand and try again
@@ -1790,7 +1800,7 @@ namespace VC
                 Console.WriteLine(">> SI: Calls to Z3: {0}", vState.numQueries);
                 Console.WriteLine(">> SI: Expansions performed: {0}", vState.expansionCount);
                 Console.WriteLine(">> SI: Candidates left: {0}", calls.currCandidates.Count);
-                Console.WriteLine(">> SI: Nontrivial Candidates left: {0}", calls.numNonTrivialCandidates());
+                Console.WriteLine(">> SI: Candidates skipped: {0}", calls.currCandidates.Where(i => calls.isSkipped(i)).Count());
                 Console.WriteLine(">> SI: VC Size: {0}", vState.vcSize);
             }
             #endregion
@@ -2171,11 +2181,11 @@ namespace VC
             reporter.underapproximationMode = true;
             checker.LogComment(";;;;;;;;;;;; Underapprox mode begin ;;;;;;;;;;");
             List<VCExpr> assumptions = new List<VCExpr>();
-            List<int> ids = new List<int>();
+            
             foreach (int id in calls.currCandidates)
             {
-                assumptions.Add(calls.getFalseExpr(id));
-                ids.Add(id);
+                if (!calls.isSkipped(id))
+                    assumptions.Add(calls.getFalseExpr(id));
             }
             Outcome ret = checker.CheckAssumptions(assumptions);
             checker.LogComment(";;;;;;;;;;;; Underapprox mode end ;;;;;;;;;;");
@@ -2211,11 +2221,14 @@ namespace VC
 
             foreach (int id in calls.currCandidates)
             {
+                if (calls.isSkipped(id)) continue;
+
                 int idBound = calls.getRecursionBound(id);
                 if (idBound <= bound)
                 {
                     if (idBound > 1)
                       softAssumptions.Add(calls.getFalseExpr(id));
+
                     if (block.Contains(id))
                     {
                         Contract.Assert(useSummary);
@@ -2287,6 +2300,9 @@ namespace VC
 
         // Does on-demand inlining -- pushes procedure bodies on the theorem prover stack.
         private void DoExpansion(bool incremental, List<int>/*!*/ candidates, VerificationState vState) {
+          // Skipped calls don't get inlined
+          candidates = candidates.FindAll(id => !vState.calls.isSkipped(id));
+
           vState.expansionCount += candidates.Count;
 
           if (incremental)
@@ -2503,7 +2519,7 @@ namespace VC
             var exprGen = checker.TheoremProver.Context.ExprGen;
             VCExpr controlFlowVariableExpr = CommandLineOptions.Clo.UseLabels ? null : exprGen.Integer(BigNum.ZERO);
 
-            vc = GenerateVC(impl, controlFlowVariableExpr, out label2absy, checker);
+            vc = GenerateVC(impl, controlFlowVariableExpr, out label2absy, checker.TheoremProver.Context);
 
             if (!CommandLineOptions.Clo.UseLabels) {
               VCExpr controlFlowFunctionAppl = exprGen.ControlFlowFunctionApplication(exprGen.Integer(BigNum.ZERO), exprGen.Integer(BigNum.ZERO));
@@ -2859,37 +2875,23 @@ namespace VC
                 return cce.NonNull(implName2StratifiedInliningInfo[currProc].label2absy);
             }
 
-            // How many of the current candidates represent calls to procedures
-            // with non-trivial mod sets.
-            // This is only used for statistic purposes
-            public bool isNonTrivialCandidate(int id)
+            // Is this candidate a "skipped" call
+            // Currently this is experimental
+            public bool isSkipped(int id)
             {
-                string proc = getProc(id);
-                if (proc == "") return false;
-                if (!implName2StratifiedInliningInfo.ContainsKey(proc)) return false;
-                var info = implName2StratifiedInliningInfo[proc];
-                if (info.impl.Proc.Modifies.Length != 0) return true;
-                return false;
-                /*
-                foreach (IdentifierExpr ie in info.impl.Proc.Modifies)
-                {
-                    if (ie.Decl.Name.StartsWith("Mem_") || ie.Decl.Name.StartsWith("Res_"))
-                    {
-                        return true;
-                    }
-                }
-                return false;
-                 */
-            }
+                if (!CommandLineOptions.Clo.BctModeForStratifiedInlining) return false;
 
-            public int numNonTrivialCandidates()
-            {
-                int ret = 0;
-                foreach (int id in currCandidates)
-                {
-                    if (isNonTrivialCandidate(id)) ret++;
-                }
-                return ret;
+                var proc = getProc(id);
+                if (!implName2StratifiedInliningInfo.ContainsKey(proc)) return false;
+                var modSet = new HashSet<string>();
+                implName2StratifiedInliningInfo[proc].impl.Proc.Modifies
+                    .Cast<IdentifierExpr>()
+                    .Select(ie => ie.Decl.Name)
+                    .Iter(s => modSet.Add(s));
+                modSet.Remove("$Alloc");
+                modSet.Remove("assertsPassed");
+                modSet.Remove("$Exception");
+                return modSet.Count == 0;
             }
 
             // Finds labels and changes them:
@@ -3453,7 +3455,7 @@ namespace VC
                 if (underapproximationMode)
                 {
                     var cex = GenerateTraceMain(labels, model, mvInfo);
-                    Debug.Assert(candidatesToExpand.Count == 0);
+                    Debug.Assert(candidatesToExpand.All(calls.isSkipped));
                     if (cex != null) {
                       GetModelWithStates(model);
                       callback.OnCounterexample(cex, null);

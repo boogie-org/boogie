@@ -251,7 +251,7 @@ namespace GPUVerify
                     VisitWhileInvariants(whileCmd.Invariants, NewGuard),
                     VisitStmtList(whileCmd.Body));
 
-                if (NewInvariant != null)
+                if (NewInvariant != null && !CommandLineOptions.NoLoopPredicateInvariants)
                 {
                     NewWhile.Invariants.Add(NewInvariant);
                 }

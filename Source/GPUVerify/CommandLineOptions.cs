@@ -44,6 +44,8 @@ namespace GPUVerify
         public static bool ShowMayBeTidPlusConstantAnalysis = false;
         public static bool ShowArrayControlFlowAnalysis = false;
 
+        public static bool NoLoopPredicateInvariants = false;
+
         public static int Parse(string[] args)
         {
             for (int i = 0; i < args.Length; i++)
@@ -194,6 +196,11 @@ namespace GPUVerify
                     case "-showArrayControlFlowAnalysis":
                     case "/showArrayControlFlowAnalysis":
                     ShowArrayControlFlowAnalysis = true;
+                    break;
+
+                    case "-noLoopPredicateInvariants":
+                    case "/noLoopPredicateInvariants":
+                    NoLoopPredicateInvariants = true;
                     break;
 
                     default:

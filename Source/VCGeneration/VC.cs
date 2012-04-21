@@ -611,7 +611,7 @@ namespace VC {
         var exprGen = ch.TheoremProver.Context.ExprGen;
         VCExpr controlFlowVariableExpr = CommandLineOptions.Clo.UseLabels ? null : exprGen.Integer(BigNum.ZERO);
 
-        VCExpr vc = parent.GenerateVC(impl, controlFlowVariableExpr, out label2Absy, ch);
+        VCExpr vc = parent.GenerateVC(impl, controlFlowVariableExpr, out label2Absy, ch.TheoremProver.Context);
         Contract.Assert(vc != null);
 
         if (!CommandLineOptions.Clo.UseLabels) {
@@ -1550,7 +1550,7 @@ namespace VC {
         var exprGen = ctx.ExprGen;
         VCExpr controlFlowVariableExpr = CommandLineOptions.Clo.UseLabels ? null : exprGen.Integer(BigNum.ZERO);
 
-        VCExpr vc = parent.GenerateVCAux(impl, controlFlowVariableExpr, label2absy, checker);
+        VCExpr vc = parent.GenerateVCAux(impl, controlFlowVariableExpr, label2absy, checker.TheoremProver.Context);
         Contract.Assert(vc != null);
 
         if (!CommandLineOptions.Clo.UseLabels) {
@@ -1630,20 +1630,20 @@ namespace VC {
     }
     #endregion
 
-    public VCExpr GenerateVC(Implementation/*!*/ impl, VCExpr controlFlowVariableExpr, out Hashtable/*<int, Absy!>*//*!*/ label2absy, Checker/*!*/ ch)
+    public VCExpr GenerateVC(Implementation/*!*/ impl, VCExpr controlFlowVariableExpr, out Hashtable/*<int, Absy!>*//*!*/ label2absy, ProverContext proverContext)
     {
       Contract.Requires(impl != null);
-      Contract.Requires(ch != null);
+      Contract.Requires(proverContext != null);
       Contract.Ensures(Contract.ValueAtReturn(out label2absy) != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
 
       label2absy = new Hashtable/*<int, Absy!>*/();
-      return GenerateVCAux(impl, controlFlowVariableExpr, label2absy, ch);
+      return GenerateVCAux(impl, controlFlowVariableExpr, label2absy, proverContext);
     }
 
-    protected VCExpr GenerateVCAux(Implementation/*!*/ impl, VCExpr controlFlowVariableExpr, Hashtable/*<int, Absy!>*//*!*/ label2absy, Checker/*!*/ ch) {
+    protected VCExpr GenerateVCAux(Implementation/*!*/ impl, VCExpr controlFlowVariableExpr, Hashtable/*<int, Absy!>*//*!*/ label2absy, ProverContext proverContext) {
       Contract.Requires(impl != null);
-      Contract.Requires(ch != null);
+      Contract.Requires(proverContext != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
 
       TypecheckingContext tc = new TypecheckingContext(null);
@@ -1653,35 +1653,35 @@ namespace VC {
       int assertionCount;
       switch (CommandLineOptions.Clo.vcVariety) {
         case CommandLineOptions.VCVariety.Structured:
-          vc = VCViaStructuredProgram(impl, label2absy, ch.TheoremProver.Context, out assertionCount);
+          vc = VCViaStructuredProgram(impl, label2absy, proverContext, out assertionCount);
           break;
         case CommandLineOptions.VCVariety.Block:
-          vc = FlatBlockVC(impl, label2absy, false, false, false, ch.TheoremProver.Context, out assertionCount);
+          vc = FlatBlockVC(impl, label2absy, false, false, false, proverContext, out assertionCount);
           break;
         case CommandLineOptions.VCVariety.BlockReach:
-          vc = FlatBlockVC(impl, label2absy, false, true, false, ch.TheoremProver.Context, out assertionCount);
+          vc = FlatBlockVC(impl, label2absy, false, true, false, proverContext, out assertionCount);
           break;
         case CommandLineOptions.VCVariety.Local:
-          vc = FlatBlockVC(impl, label2absy, true, false, false, ch.TheoremProver.Context, out assertionCount);
+          vc = FlatBlockVC(impl, label2absy, true, false, false, proverContext, out assertionCount);
           break;
         case CommandLineOptions.VCVariety.BlockNested:
-          vc = NestedBlockVC(impl, label2absy, false, ch.TheoremProver.Context, out assertionCount);
+          vc = NestedBlockVC(impl, label2absy, false, proverContext, out assertionCount);
           break;
         case CommandLineOptions.VCVariety.BlockNestedReach:
-          vc = NestedBlockVC(impl, label2absy, true, ch.TheoremProver.Context, out assertionCount);
+          vc = NestedBlockVC(impl, label2absy, true, proverContext, out assertionCount);
           break;
         case CommandLineOptions.VCVariety.Dag:
           if (cce.NonNull(CommandLineOptions.Clo.TheProverFactory).SupportsDags) {
-            vc = DagVC(cce.NonNull(impl.Blocks[0]), controlFlowVariableExpr, label2absy, new Hashtable/*<Block, VCExpr!>*/(), ch.TheoremProver.Context, out assertionCount);
+            vc = DagVC(cce.NonNull(impl.Blocks[0]), controlFlowVariableExpr, label2absy, new Hashtable/*<Block, VCExpr!>*/(), proverContext, out assertionCount);
           } else {
-            vc = LetVC(cce.NonNull(impl.Blocks[0]), controlFlowVariableExpr, label2absy, ch.TheoremProver.Context, out assertionCount);
+            vc = LetVC(cce.NonNull(impl.Blocks[0]), controlFlowVariableExpr, label2absy, proverContext, out assertionCount);
           }
           break;
         case CommandLineOptions.VCVariety.DagIterative:
-          vc = LetVCIterative(impl.Blocks, controlFlowVariableExpr, label2absy, ch.TheoremProver.Context, out assertionCount);
+          vc = LetVCIterative(impl.Blocks, controlFlowVariableExpr, label2absy, proverContext, out assertionCount);
           break;
         case CommandLineOptions.VCVariety.Doomed:
-          vc = FlatBlockVC(impl, label2absy, false, false, true, ch.TheoremProver.Context, out assertionCount);
+          vc = FlatBlockVC(impl, label2absy, false, false, true, proverContext, out assertionCount);
           break;
         default:
           Contract.Assert(false);
