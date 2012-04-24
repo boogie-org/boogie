@@ -6,6 +6,8 @@ using Microsoft.Boogie;
 using Microsoft.Basetypes;
 using System.Diagnostics;
 
+using GPUVerify.InvariantGenerationRules;
+
 namespace GPUVerify
 {
     class LoopInvariantGenerator
@@ -13,10 +15,16 @@ namespace GPUVerify
         private GPUVerifier verifier;
         private Implementation Impl;
 
+        private List<InvariantGenerationRule> invariantGenerationRules;
+
         public LoopInvariantGenerator(GPUVerifier verifier, Implementation Impl)
         {
             this.verifier = verifier;
             this.Impl = Impl;
+
+            invariantGenerationRules = new List<InvariantGenerationRule>();
+            invariantGenerationRules.Add(new PowerOfTwoInvariantGenerator(verifier));
+            invariantGenerationRules.Add(new LoopVariableBoundsInvariantGenerator(verifier));
         }
 
         internal void instrument(List<Expr> UserSuppliedInvariants)
@@ -149,11 +157,12 @@ namespace GPUVerify
             {
                 WhileCmd wc = bb.ec as WhileCmd;
 
+                foreach (InvariantGenerationRule r in invariantGenerationRules)
+                {
+                    r.GenerateCandidates(Impl, wc);
+                }
+
                 AddBarrierDivergenceCandidates(LocalVars, Impl, wc);
-
-                AddLoopVariableBoundsCandidateInvariants(Impl, wc);
-
-                AddPowerOfTwoCandidateInvariants(Impl, wc);
 
                 verifier.RaceInstrumenter.AddRaceCheckingCandidateInvariants(Impl, wc);
 
@@ -175,79 +184,6 @@ namespace GPUVerify
             {
                 Debug.Assert(bb.ec == null);
             }
-        }
-
-        private void AddPowerOfTwoCandidateInvariants(Implementation Impl, WhileCmd wc)
-        {
-            foreach (Variable v in Impl.LocVars)
-            {
-                string basicName = GPUVerifier.StripThreadIdentifier(v.Name);
-                if (verifier.uniformityAnalyser.IsUniform(Impl.Name, basicName))
-                {
-                    if (verifier.mayBePowerOfTwoAnalyser.MayBePowerOfTwo(Impl.Name, basicName))
-                    {
-                        if (verifier.ContainsNamedVariable(GetModifiedVariables(wc.Body), basicName))
-                        {
-                            verifier.AddCandidateInvariant(wc, MakePowerOfTwoExpr(v), "pow2 disjunction");
-                            for (int i = (1 << 15); i > 0; i >>= 1)
-                            {
-                                verifier.AddCandidateInvariant(wc, 
-                                    GPUVerifier.MakeBitVectorBinaryBoolean("BV32_LT",
-                                    new IdentifierExpr(v.tok, v),
-                                    new LiteralExpr(v.tok, BigNum.FromInt(i), 32)), "pow2 less than " + i);
-                            }
-                            verifier.AddCandidateInvariant(wc,
-                                Expr.Neq(new IdentifierExpr(v.tok, v),
-                                new LiteralExpr(v.tok, BigNum.FromInt(0), 32)), "pow2 not zero");
-                        }
-                    }
-                }
-            }
-        }
-
-        private Expr MakePowerOfTwoExpr(Variable v)
-        {
-            Expr result = null;
-            for (int i = 1 << 15; i > 0; i >>= 1)
-            {
-                Expr eq = Expr.Eq(new IdentifierExpr(v.tok, v), new LiteralExpr(v.tok, BigNum.FromInt(i), 32));
-                result = (result == null ? eq : Expr.Or(eq, result));
-            }
-
-            return Expr.Or(Expr.Eq(new IdentifierExpr(v.tok, v), new LiteralExpr(v.tok, BigNum.FromInt(0), 32)), result);
-        }
-
-        private void AddLoopVariableBoundsCandidateInvariants(Implementation Impl, WhileCmd wc)
-        {
-            if (verifier.uniformityAnalyser.IsUniform(Impl.Name, wc.Guard))
-            {
-                VariablesOccurringInExpressionVisitor visitor = new VariablesOccurringInExpressionVisitor();
-                visitor.VisitExpr(wc.Guard);
-                foreach (Variable v in visitor.GetVariables())
-                {
-                    if (!verifier.ContainsNamedVariable(GetModifiedVariables(wc.Body), v.Name))
-                    {
-                        continue;
-                    }
-
-                    if (IsBVType (v.TypedIdent.Type))
-                    {
-                        int BVWidth = (v.TypedIdent.Type as BvType).Bits;
-
-                        verifier.AddCandidateInvariant(wc,
-                                GPUVerifier.MakeBitVectorBinaryBoolean("BV" + BVWidth + "_GEQ",
-                                new IdentifierExpr(v.tok, v),
-                                new LiteralExpr(v.tok, BigNum.FromInt(0), BVWidth)), "loop guard variable non-negative");
-                    }
-                }
-            }
-        }
-
-        private bool IsBVType(Microsoft.Boogie.Type type)
-        {
-            return type.Equals(Microsoft.Boogie.Type.GetBvType(32))
-                || type.Equals(Microsoft.Boogie.Type.GetBvType(16))
-                || type.Equals(Microsoft.Boogie.Type.GetBvType(8));
         }
 
         private void AddUserSuppliedInvariants(WhileCmd wc, List<Expr> UserSuppliedInvariants, Implementation Impl)
