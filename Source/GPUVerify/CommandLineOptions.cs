@@ -25,8 +25,6 @@ namespace GPUVerify
         public static string ArrayToCheck = null;
         public static bool DividedAccesses = false;
 
-        public static bool SetEncoding = false;
-
         public static bool ShowStages = false;
 
         public static bool AddDivergenceCandidatesOnlyIfModified = true;
@@ -115,11 +113,6 @@ namespace GPUVerify
                     case "/divided":
                     DividedAccesses = true;
                     DividedArray = true;
-                    break;
-
-                    case "-setEncoding":
-                    case "/setEncoding":
-                    SetEncoding = true;
                     break;
 
                     case "-showStages":

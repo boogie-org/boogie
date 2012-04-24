@@ -91,7 +91,7 @@ namespace GPUVerify
         public static bool doit(string filename, Variable v, int a1, int a2)
         {
             Program newProgram = parse();
-            RaceInstrumenterBase ri = CommandLineOptions.SetEncoding ? (RaceInstrumenterBase)new SetEncodingRaceInstrumenter() : (RaceInstrumenterBase) new ElementEncodingRaceInstrumenter();
+            RaceInstrumenterBase ri = new ElementEncodingRaceInstrumenter();
             GPUVerifier newGp = new GPUVerifier(filename, newProgram, ri);
             ri.setVerifier(newGp);
 
@@ -184,7 +184,7 @@ namespace GPUVerify
             {
                 if (!CommandLineOptions.OnlyDivergence)
                 {
-                    RaceInstrumenterBase ri = CommandLineOptions.SetEncoding ? (RaceInstrumenterBase)new SetEncodingRaceInstrumenter() : (RaceInstrumenterBase)new ElementEncodingRaceInstrumenter();
+                    RaceInstrumenterBase ri = new ElementEncodingRaceInstrumenter();
                     ri.setVerifier(g);
                     g.setRaceInstrumenter(ri);
                 }
