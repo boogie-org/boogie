@@ -11,19 +11,13 @@ namespace GPUVerify
     class SetEncodingRaceInstrumenter : RaceInstrumenterBase
     {
 
-        protected override void AddLogRaceDeclarations(Variable v, String ReadOrWrite, out IdentifierExprSeq ResetAtBarrier, out IdentifierExprSeq ModifiedAtLog)
+        protected override void AddLogRaceDeclarations(Variable v, string ReadOrWrite)
         {
+            // TODO: requires revision due to major changes in this code.
+
             Variable AccessSet = MakeAccessSetVariable(v, ReadOrWrite);
 
-            if (CommandLineOptions.Symmetry && ReadOrWrite.Equals("READ"))
-            {
-                verifier.HalfDualisedVariableNames.Add(AccessSet.Name);
-            }
-
             verifier.Program.TopLevelDeclarations.Add(AccessSet);
-
-            ResetAtBarrier = new IdentifierExprSeq(new IdentifierExpr[] { new IdentifierExpr(v.tok, AccessSet) });
-            ModifiedAtLog = ResetAtBarrier;
 
         }
 
@@ -96,97 +90,10 @@ namespace GPUVerify
 
         protected override void AddLogAccessProcedure(Variable v, string ReadOrWrite)
         {
-            Variable XParameterVariable;
-            Variable YParameterVariable;
-            Variable ZParameterVariable;
-            Procedure LogReadOrWriteProcedure;
-
-            MakeLogAccessProcedureHeader(v, ReadOrWrite, out XParameterVariable, out YParameterVariable, out ZParameterVariable, out LogReadOrWriteProcedure);
-
-            LogReadOrWriteProcedure.Modifies.Add(new IdentifierExpr(v.tok, MakeAccessSetVariable(v, ReadOrWrite)));
-
-            List<BigBlock> bigblocks = new List<BigBlock>();
-
-            CmdSeq simpleCmds = new CmdSeq();
-
-            List<Expr> trueExpr = new List<Expr>(new Expr[] { Expr.True });
-
-            if (v.TypedIdent.Type is MapType)
-            {
-                MapType mt = v.TypedIdent.Type as MapType;
-                Debug.Assert(mt.Arguments.Length == 1);
-                Debug.Assert(GPUVerifier.IsIntOrBv32(mt.Arguments[0]));
-
-                if (mt.Result is MapType)
-                {
-                    MapType mt2 = mt.Result as MapType;
-                    Debug.Assert(mt2.Arguments.Length == 1);
-                    Debug.Assert(GPUVerifier.IsIntOrBv32(mt2.Arguments[0]));
-
-                    if (mt2.Result is MapType)
-                    {
-                        MapType mt3 = mt2.Arguments[0] as MapType;
-                        Debug.Assert(mt3.Arguments.Length == 1);
-                        Debug.Assert(GPUVerifier.IsIntOrBv32(mt3.Arguments[0]));
-                        Debug.Assert(!(mt3.Result is MapType));
-
-                        simpleCmds.Add(
-                            new AssignCmd(v.tok,
-                                 new List<AssignLhs>(new AssignLhs[] {
-                                new MapAssignLhs(v.tok, 
-                                    new MapAssignLhs(v.tok, 
-                                        new MapAssignLhs(v.tok, 
-                                           new SimpleAssignLhs(v.tok, new IdentifierExpr(v.tok, MakeAccessSetVariable(v, ReadOrWrite)))
-                                            , new List<Expr>(new Expr[] {  new IdentifierExpr(v.tok, ZParameterVariable) }))
-                                            , new List<Expr>(new Expr[] {  new IdentifierExpr(v.tok, YParameterVariable) }))
-                                            , new List<Expr>(new Expr[] {  new IdentifierExpr(v.tok, XParameterVariable) }))
-                             }), trueExpr));
-
-                    }
-                    else
-                    {
-                        simpleCmds.Add(
-                            new AssignCmd(v.tok,
-                                 new List<AssignLhs>(new AssignLhs[] {
-                                new MapAssignLhs(v.tok, 
-                                    new MapAssignLhs(v.tok, 
-                                       new SimpleAssignLhs(v.tok, new IdentifierExpr(v.tok, MakeAccessSetVariable(v, ReadOrWrite)))
-                                        , new List<Expr>(new Expr[] {  new IdentifierExpr(v.tok, YParameterVariable) }))
-                                        , new List<Expr>(new Expr[] {  new IdentifierExpr(v.tok, XParameterVariable) }))
-                             }), trueExpr));
-                    }
-                }
-                else
-                {
-                    simpleCmds.Add(
-                        new AssignCmd(v.tok,
-                             new List<AssignLhs>(new AssignLhs[] {
-                                new MapAssignLhs(v.tok, 
-                                    new SimpleAssignLhs(v.tok, new IdentifierExpr(v.tok, MakeAccessSetVariable(v, ReadOrWrite)))
-                                    , new List<Expr>(new Expr[] {  new IdentifierExpr(v.tok, XParameterVariable) }))
-                             }), trueExpr));
-                }
-            }
-            else
-            {
-                simpleCmds.Add(new AssignCmd(v.tok, 
-                    new List<AssignLhs>(new AssignLhs[] { new SimpleAssignLhs(v.tok, new IdentifierExpr(v.tok, MakeAccessSetVariable(v, ReadOrWrite))) }), 
-                    trueExpr));
-            }
-
-
-            bigblocks.Add(new BigBlock(v.tok, "_LOG_" + ReadOrWrite + "", simpleCmds, null, null));
-
-            StmtList statements = new StmtList(bigblocks, v.tok);
-
-            Implementation LogReadOrWriteImplementation = new Implementation(v.tok, "_LOG_" + ReadOrWrite + "_" + v.Name, new TypeVariableSeq(), LogReadOrWriteProcedure.InParams, new VariableSeq(), new VariableSeq(), statements);
-            LogReadOrWriteImplementation.AddAttribute("inline", new object[] { new LiteralExpr(v.tok, BigNum.FromInt(1)) });
-
-            LogReadOrWriteImplementation.Proc = LogReadOrWriteProcedure;
-
-            verifier.Program.TopLevelDeclarations.Add(LogReadOrWriteProcedure);
-            verifier.Program.TopLevelDeclarations.Add(LogReadOrWriteImplementation);
+            // TODO: requires major revision due to significant changes in calling code
+            throw new NotImplementedException();
         }
+        
 
         protected override void SetNoAccessOccurred(IToken tok, BigBlock bb, Variable v, string AccessType)
         {
@@ -194,33 +101,11 @@ namespace GPUVerify
                             MakeAccessSetVariable(v, AccessType)));
             IdentifierExprSeq VariablesToHavoc = new IdentifierExprSeq();
             VariablesToHavoc.Add(AccessSet1);
-            if (!CommandLineOptions.Symmetry || !AccessType.Equals("READ"))
-            {
-                IdentifierExpr AccessSet2 = new IdentifierExpr(tok, new VariableDualiser(2, null, null).VisitVariable(
-                                MakeAccessSetVariable(v, AccessType)));
-                VariablesToHavoc.Add(AccessSet2);
-            }
             bb.simpleCmds.Add(new HavocCmd(tok, VariablesToHavoc));
 
             AddAssumeNoAccess(bb, v, AccessType);
 
         }
-
-        public override void CheckForRaces(BigBlock bb, Variable v, bool ReadWriteOnly)
-        {
-            if (!ReadWriteOnly)
-            {
-                AddRaceCheck(bb, v, "WRITE", "WRITE");
-            }
-            AddRaceCheck(bb, v, "READ", "WRITE");
-            if (!CommandLineOptions.Symmetry)
-            {
-                AddRaceCheck(bb, v, "WRITE", "READ");
-            }
-
-
-        }
-
 
 
         private static Microsoft.Boogie.Type GetIndexType(Variable v, int index)
@@ -257,53 +142,6 @@ namespace GPUVerify
             return mt3.Arguments[0];
         }
 
-        private void AddRaceCheck(BigBlock bb, Variable v, String Access1, String Access2)
-        {
-            Expr AssertExpr = GenerateRaceCondition(v, Access1, Access2);
-
-            bb.simpleCmds.Add(new AssertCmd(v.tok, AssertExpr));
-        }
-
-        protected override Expr GenerateRaceCondition(Variable v, String Access1, String Access2)
-        {
-            VariableSeq DummyVars1;
-            Expr SetExpr1 = AccessExpr(v, Access1, 1, out DummyVars1);
-
-            VariableSeq DummyVars2;
-            Expr SetExpr2 = AccessExpr(v, Access2, 2, out DummyVars2);
-
-            Debug.Assert(DummyVars1.Length == DummyVars2.Length);
-            for (int i = 0; i < DummyVars1.Length; i++)
-            {
-                Debug.Assert(DummyVars1[i].Name.Equals(DummyVars2[i].Name));
-            }
-
-            Expr AssertExpr = Expr.And(SetExpr1, SetExpr2);
-
-            if (Access1.Equals("WRITE") && Access2.Equals("WRITE") && !verifier.ArrayModelledAdversarially(v))
-            {
-                VariableSeq DummyVarsAccess1;
-                VariableSeq DummyVarsAccess2;
-                Expr IndexExpr1 = QuantifiedIndexExpr(v, new VariableDualiser(1, null, null).VisitVariable(v.Clone() as Variable), out DummyVarsAccess1);
-                Expr IndexExpr2 = QuantifiedIndexExpr(v, new VariableDualiser(2, null, null).VisitVariable(v.Clone() as Variable), out DummyVarsAccess2);
-                Debug.Assert(DummyVarsAccess1.Length == DummyVarsAccess2.Length);
-                Debug.Assert(DummyVars1.Length == DummyVarsAccess1.Length);
-                for (int i = 0; i < DummyVars1.Length; i++)
-                {
-                    Debug.Assert(DummyVarsAccess1[i].Name.Equals(DummyVarsAccess2[i].Name));
-                    Debug.Assert(DummyVars1[i].Name.Equals(DummyVarsAccess1[i].Name));
-                }
-                AssertExpr = Expr.And(AssertExpr, Expr.Neq(IndexExpr1, IndexExpr2));
-            }
-
-            AssertExpr = Expr.Not(AssertExpr);
-            if (DummyVars1.Length > 0)
-            {
-                AssertExpr = new ForallExpr(v.tok, DummyVars1, AssertExpr);
-            }
-            return AssertExpr;
-        }
-
         private static void SetNameDeep(IdentifierExpr e, string name)
         {
             e.Name = e.Decl.Name = e.Decl.TypedIdent.Name = name;
@@ -317,11 +155,6 @@ namespace GPUVerify
         private static void AddAssumeNoAccess(BigBlock bb, Variable v, String AccessType)
         {
             bb.simpleCmds.Add(new AssumeCmd(v.tok, NoAccessExpr(v, AccessType, 1)));
-
-            if (!CommandLineOptions.Symmetry || !AccessType.Equals("READ"))
-            {
-                bb.simpleCmds.Add(new AssumeCmd(v.tok, NoAccessExpr(v, AccessType, 2)));
-            }
         }
 
         private static Expr NoAccessExpr(Variable v, String AccessType, int Thread)
@@ -408,12 +241,7 @@ namespace GPUVerify
         protected override void AddRequiresNoPendingAccess(Variable v)
         {
             verifier.KernelProcedure.Requires.Add(new Requires(false, NoAccessExpr(v, "WRITE", 1)));
-            verifier.KernelProcedure.Requires.Add(new Requires(false, NoAccessExpr(v, "WRITE", 2)));
             verifier.KernelProcedure.Requires.Add(new Requires(false, NoAccessExpr(v, "READ", 1)));
-            if(!CommandLineOptions.Symmetry)
-            {
-                verifier.KernelProcedure.Requires.Add(new Requires(false, NoAccessExpr(v, "READ", 2)));
-            }
         }
 
 
@@ -427,12 +255,6 @@ namespace GPUVerify
         protected override void AddAccessedOffsetIsThreadLocalIdCandidateInvariant(WhileCmd wc, Variable v, string ReadOrWrite)
         {
             Expr expr = AccessOnlyAtThreadId(v, ReadOrWrite, 1);
-
-            if (ReadOrWrite.Equals("WRITE") || !CommandLineOptions.Symmetry)
-            {
-                expr = Expr.And(expr, AccessOnlyAtThreadId(v, ReadOrWrite, 2));
-            }
-
             verifier.AddCandidateInvariant(wc, expr, "accessed offset is local id");
 
         }

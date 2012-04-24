@@ -23,9 +23,6 @@ namespace GPUVerify
 
         private HashSet<string> ReservedNames = new HashSet<string>();
 
-        internal HashSet<string> HalfDualisedProcedureNames = new HashSet<string>();
-        internal HashSet<string> HalfDualisedVariableNames = new HashSet<string>();
-
         private int TempCounter = 0;
         private int invariantGenerationCounter;
 
@@ -375,10 +372,7 @@ namespace GPUVerify
                 emitProgram(outputFilename + "_cross_thread_invariants");
             }
 
-            if (CommandLineOptions.Eager)
-            {
-                AddEagerRaceChecking();
-            }
+            RaceInstrumenter.AddRaceCheckingDeclarations();
 
             GenerateBarrierImplementation();
 
@@ -611,36 +605,6 @@ namespace GPUVerify
             using (TokenTextWriter writer = new TokenTextWriter(filename + ".bpl"))
             {
                 Program.Emit(writer);
-            }
-        }
-
-        private void AddEagerRaceChecking()
-        {
-            foreach(Variable v in NonLocalState.getAllNonLocalVariables())
-            {
-                foreach (Declaration d in Program.TopLevelDeclarations)
-                {
-                    if (!(d is Implementation))
-                    {
-                        continue;
-                    }
-
-                    Implementation impl = d as Implementation;
-
-                    if (impl.Name.Equals("_LOG_READ_" + v.Name) || impl.Name.Equals("_LOG_WRITE_" + v.Name))
-                    {
-                        BigBlock bb = new BigBlock(v.tok, "__CheckForRaces", new CmdSeq(), null, null);
-                        RaceInstrumenter.CheckForRaces(bb, v, impl.Name.Equals("_LOG_READ_" + v.Name));
-                        StmtList newStatements = new StmtList(new List<BigBlock>(), v.tok);
-                        
-                        foreach(BigBlock bb2 in impl.StructuredStmts.BigBlocks)
-                        {
-                            newStatements.BigBlocks.Add(bb2);
-                        }
-                        newStatements.BigBlocks.Add(bb);
-                        impl.StructuredStmts = newStatements;
-                    }
-                }
             }
         }
 
@@ -1069,16 +1033,6 @@ namespace GPUVerify
             }
             KernelImplementation.StructuredStmts.BigBlocks[0].simpleCmds = newCommands;
 
-            // Last barrier is needed if we don't use eager race checking
-            if (!CommandLineOptions.Eager)
-            {
-                CmdSeq lastCommand = new CmdSeq();
-                lastCommand.Add(LastBarrier);
-                BigBlock bb = new BigBlock(KernelProcedure.tok, "__lastBarrier", lastCommand, null, null);
-
-                KernelImplementation.StructuredStmts.BigBlocks.Add(bb);
-            }
-
         }
 
         private void GenerateStandardKernelContract()
@@ -1112,11 +1066,7 @@ namespace GPUVerify
                     Proc.Requires.Add(new Requires(false, AssumeDistinctThreads));
                     Proc.Requires.Add(new Requires(false, AssumeThreadIdsInRange));
 
-                    if (Proc != KernelProcedure)
-                    {
-                        RaceInstrumenter.AddNoRaceContract(Proc);
-                    }
-                    else
+                    if (Proc == KernelProcedure)
                     {
                         bool foundNonUniform = false;
                         int indexOfFirstNonUniformParameter;
@@ -1156,8 +1106,6 @@ namespace GPUVerify
                     continue;
                 }
                 Implementation Impl = D as Implementation;
-
-                RaceInstrumenter.AddNoRaceInvariants(Impl);
 
                 if (QKeyValue.FindIntAttribute(Impl.Proc.Attributes, "inline", -1) == 1)
                 {
@@ -1360,7 +1308,7 @@ namespace GPUVerify
                 checkNonDivergence.ec = new IfCmd(tok, Expr.Or(Expr.Not(P1), Expr.Not(P2)), returnstatement, null, null);
             }
 
-            bigblocks.Add(RaceInstrumenter.MakeRaceCheckingStatements(tok));
+            bigblocks.Add(RaceInstrumenter.MakeResetReadWriteSetsStatements(tok));
 
             BigBlock havocSharedState = new BigBlock(tok, "__HavocSharedState", new CmdSeq(), null, null);
             bigblocks.Add(havocSharedState);
@@ -1983,11 +1931,7 @@ namespace GPUVerify
                 if (d is Variable && ((d as Variable).IsMutable || IsThreadLocalIdConstant(d as Variable)))
                 {
                     NewTopLevelDeclarations.Add(new VariableDualiser(1, null, null).VisitVariable((Variable)d.Clone()));
-
-                    if (!HalfDualisedVariableNames.Contains((d as Variable).Name))
-                    {
-                        NewTopLevelDeclarations.Add(new VariableDualiser(2, null, null).VisitVariable((Variable)d.Clone()));
-                    }
+                    NewTopLevelDeclarations.Add(new VariableDualiser(2, null, null).VisitVariable((Variable)d.Clone()));
 
                     continue;
                 }

@@ -19,18 +19,14 @@ namespace GPUVerify
             
         }
 
-        public void CheckForRaces(BigBlock bb, Variable v, bool ReadWriteOnly)
-        {
-        }
-
         public bool AddRaceCheckingInstrumentation()
         {
             return true;
         }
 
-        public Microsoft.Boogie.BigBlock MakeRaceCheckingStatements(Microsoft.Boogie.IToken tok)
+        public Microsoft.Boogie.BigBlock MakeResetReadWriteSetsStatements(Microsoft.Boogie.IToken tok)
         {
-            return new BigBlock(tok, "__CheckForRaces", new CmdSeq(), null, null);
+            return new BigBlock(tok, "__ResetReadWriteSets", new CmdSeq(), null, null);
         }
 
         public void AddRaceCheckingCandidateRequires(Procedure Proc)
@@ -43,13 +39,7 @@ namespace GPUVerify
 
         }
 
-
-        public void AddNoRaceContract(Procedure proc)
-        {
-
-        }
-
-        public void AddNoRaceInvariants(Implementation impl)
+        public void AddRaceCheckingDeclarations()
         {
 
         }

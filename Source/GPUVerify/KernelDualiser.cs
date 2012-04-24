@@ -23,30 +23,11 @@ namespace GPUVerify
         {
             procName = proc.Name;
 
-            bool HalfDualise = verifier.HalfDualisedProcedureNames.Contains(proc.Name);
-
             proc.Requires = DualiseRequires(proc.Requires);
             proc.Ensures = DualiseEnsures(proc.Ensures);
 
-            proc.InParams = DualiseVariableSequence(proc.InParams, HalfDualise);
-            proc.OutParams = DualiseVariableSequence(proc.OutParams, HalfDualise);
-            IdentifierExprSeq NewModifies = new IdentifierExprSeq();
-            foreach (IdentifierExpr v in proc.Modifies)
-            {
-                NewModifies.Add(new VariableDualiser(1, verifier.uniformityAnalyser, procName).VisitIdentifierExpr((IdentifierExpr)v.Clone()));
-            }
-
-            if (!HalfDualise)
-            {
-                foreach (IdentifierExpr v in proc.Modifies)
-                {
-                    if (!CommandLineOptions.Symmetry || !verifier.HalfDualisedVariableNames.Contains(v.Name))
-                    {
-                        NewModifies.Add(new VariableDualiser(2, verifier.uniformityAnalyser, procName).VisitIdentifierExpr((IdentifierExpr)v.Clone()));
-                    }
-                }
-            }
-            proc.Modifies = NewModifies;
+            proc.InParams = DualiseVariableSequence(proc.InParams);
+            proc.OutParams = DualiseVariableSequence(proc.OutParams);
 
             procName = null;
         }
@@ -59,7 +40,7 @@ namespace GPUVerify
                 newRequires.Add(new Requires(r.Free, new VariableDualiser(1, verifier.uniformityAnalyser, procName).
                     VisitExpr(r.Condition.Clone() as Expr)));
 
-                if ((!CommandLineOptions.Symmetry || !ContainsAsymmetricExpression(r.Condition))
+                if (!ContainsAsymmetricExpression(r.Condition)
                     && !verifier.uniformityAnalyser.IsUniform(procName, r.Condition))
                 {
                     newRequires.Add(new Requires(r.Free, new VariableDualiser(2, verifier.uniformityAnalyser, procName).
@@ -76,7 +57,7 @@ namespace GPUVerify
             {
                 newEnsures.Add(new Ensures(e.Free, new VariableDualiser(1, verifier.uniformityAnalyser, procName).
                     VisitExpr(e.Condition.Clone() as Expr)));
-                if ((!CommandLineOptions.Symmetry || !ContainsAsymmetricExpression(e.Condition))
+                if (!ContainsAsymmetricExpression(e.Condition)
                     && !verifier.uniformityAnalyser.IsUniform(procName, e.Condition))
                 {
                     newEnsures.Add(new Ensures(e.Free, new VariableDualiser(2, verifier.uniformityAnalyser, procName).
@@ -87,7 +68,7 @@ namespace GPUVerify
         }
 
 
-        private StmtList MakeDual(StmtList stmtList, bool HalfDualise)
+        private StmtList MakeDual(StmtList stmtList)
         {
             Contract.Requires(stmtList != null);
 
@@ -95,13 +76,13 @@ namespace GPUVerify
 
             foreach (BigBlock bodyBlock in stmtList.BigBlocks)
             {
-                result.BigBlocks.Add(MakeDual(bodyBlock, HalfDualise));
+                result.BigBlocks.Add(MakeDual(bodyBlock));
             }
 
             return result;
         }
 
-        private BigBlock MakeDual(BigBlock bb, bool HalfDualise)
+        private BigBlock MakeDual(BigBlock bb)
         {
             // Not sure what to do about the transfer command
 
@@ -126,14 +107,11 @@ namespace GPUVerify
                             nonUniformNewIns.Add(new VariableDualiser(1, verifier.uniformityAnalyser, procName).VisitExpr(Call.Ins[i]));
                         }
                     }
-                    if (!HalfDualise && !verifier.HalfDualisedProcedureNames.Contains(Call.callee))
+                    for (int i = 0; i < Call.Ins.Count; i++)
                     {
-                        for (int i = 0; i < Call.Ins.Count; i++)
+                        if (!(verifier.uniformityAnalyser.knowsOf(Call.callee) && verifier.uniformityAnalyser.IsUniform(Call.callee, verifier.uniformityAnalyser.GetInParameter(Call.callee, i))))
                         {
-                            if (!(verifier.uniformityAnalyser.knowsOf(Call.callee) && verifier.uniformityAnalyser.IsUniform(Call.callee, verifier.uniformityAnalyser.GetInParameter(Call.callee, i))))
-                            {
-                                nonUniformNewIns.Add(new VariableDualiser(2, verifier.uniformityAnalyser, procName).VisitExpr(Call.Ins[i]));
-                            }
+                            nonUniformNewIns.Add(new VariableDualiser(2, verifier.uniformityAnalyser, procName).VisitExpr(Call.Ins[i]));
                         }
                     }
 
@@ -154,14 +132,11 @@ namespace GPUVerify
                         }
 
                     }
-                    if (!HalfDualise && !verifier.HalfDualisedProcedureNames.Contains(Call.callee))
+                    for (int i = 0; i < Call.Outs.Count; i++)
                     {
-                        for (int i = 0; i < Call.Outs.Count; i++)
+                        if (!(verifier.uniformityAnalyser.knowsOf(Call.callee) && verifier.uniformityAnalyser.IsUniform(Call.callee, verifier.uniformityAnalyser.GetOutParameter(Call.callee, i))))
                         {
-                            if (!(verifier.uniformityAnalyser.knowsOf(Call.callee) && verifier.uniformityAnalyser.IsUniform(Call.callee, verifier.uniformityAnalyser.GetOutParameter(Call.callee, i))))
-                            {
-                                nonUniformNewOuts.Add(new VariableDualiser(2, verifier.uniformityAnalyser, procName).VisitIdentifierExpr(Call.Outs[i].Clone() as IdentifierExpr) as IdentifierExpr);
-                            }
+                            nonUniformNewOuts.Add(new VariableDualiser(2, verifier.uniformityAnalyser, procName).VisitIdentifierExpr(Call.Outs[i].Clone() as IdentifierExpr) as IdentifierExpr);
                         }
                     }
 
@@ -191,18 +166,10 @@ namespace GPUVerify
                         List<Expr> newRhss = new List<Expr>();
 
                         newLhss.Add(new VariableDualiser(1, verifier.uniformityAnalyser, procName).Visit(assign.Lhss.ElementAt(0).Clone() as AssignLhs) as AssignLhs);
-
-                        if (!HalfDualise)
-                        {
-                            newLhss.Add(new VariableDualiser(2, verifier.uniformityAnalyser, procName).Visit(assign.Lhss.ElementAt(0).Clone() as AssignLhs) as AssignLhs);
-                        }
+                        newLhss.Add(new VariableDualiser(2, verifier.uniformityAnalyser, procName).Visit(assign.Lhss.ElementAt(0).Clone() as AssignLhs) as AssignLhs);
 
                         newRhss.Add(new VariableDualiser(1, verifier.uniformityAnalyser, procName).VisitExpr(assign.Rhss.ElementAt(0).Clone() as Expr));
-
-                        if (!HalfDualise)
-                        {
-                            newRhss.Add(new VariableDualiser(2, verifier.uniformityAnalyser, procName).VisitExpr(assign.Rhss.ElementAt(0).Clone() as Expr));
-                        }
+                        newRhss.Add(new VariableDualiser(2, verifier.uniformityAnalyser, procName).VisitExpr(assign.Rhss.ElementAt(0).Clone() as Expr));
 
                         AssignCmd newAssign = new AssignCmd(assign.tok, newLhss, newRhss);
 
@@ -216,25 +183,17 @@ namespace GPUVerify
 
                     HavocCmd newHavoc;
 
-                    if (HalfDualise)
-                    {
-                        newHavoc = new HavocCmd(havoc.tok, new IdentifierExprSeq(new IdentifierExpr[] { 
-                            (IdentifierExpr)(new VariableDualiser(1, verifier.uniformityAnalyser, procName).VisitIdentifierExpr(havoc.Vars[0].Clone() as IdentifierExpr)) 
-                        }));
-                    }
-                    else
-                    {
-                        newHavoc = new HavocCmd(havoc.tok, new IdentifierExprSeq(new IdentifierExpr[] { 
-                            (IdentifierExpr)(new VariableDualiser(1, verifier.uniformityAnalyser, procName).VisitIdentifierExpr(havoc.Vars[0].Clone() as IdentifierExpr)), 
-                            (IdentifierExpr)(new VariableDualiser(2, verifier.uniformityAnalyser, procName).VisitIdentifierExpr(havoc.Vars[0].Clone() as IdentifierExpr))
-                        }));
-                    }
+                    newHavoc = new HavocCmd(havoc.tok, new IdentifierExprSeq(new IdentifierExpr[] { 
+                        (IdentifierExpr)(new VariableDualiser(1, verifier.uniformityAnalyser, procName).VisitIdentifierExpr(havoc.Vars[0].Clone() as IdentifierExpr)), 
+                        (IdentifierExpr)(new VariableDualiser(2, verifier.uniformityAnalyser, procName).VisitIdentifierExpr(havoc.Vars[0].Clone() as IdentifierExpr))
+                    }));
+
                     result.simpleCmds.Add(newHavoc);
                 }
                 else if (c is AssertCmd)
                 {
                     AssertCmd ass = c as AssertCmd;
-                    if (HalfDualise || ContainsAsymmetricExpression(ass.Expr))
+                    if (ContainsAsymmetricExpression(ass.Expr))
                     {
                         result.simpleCmds.Add(new AssertCmd(c.tok, new VariableDualiser(1, verifier.uniformityAnalyser, procName).VisitExpr(ass.Expr.Clone() as Expr)));
                     }
@@ -247,7 +206,7 @@ namespace GPUVerify
                 else if (c is AssumeCmd)
                 {
                     AssumeCmd ass = c as AssumeCmd;
-                    if (HalfDualise || ContainsAsymmetricExpression(ass.Expr))
+                    if (ContainsAsymmetricExpression(ass.Expr))
                     {
                         result.simpleCmds.Add(new AssumeCmd(c.tok, new VariableDualiser(1, verifier.uniformityAnalyser, procName).VisitExpr(ass.Expr.Clone() as Expr)));
                     }
@@ -278,16 +237,16 @@ namespace GPUVerify
                 }
                 result.ec = new WhileCmd(bb.ec.tok,
                     NewGuard,
-                    MakeDualInvariants((bb.ec as WhileCmd).Invariants), MakeDual((bb.ec as WhileCmd).Body, HalfDualise));
+                    MakeDualInvariants((bb.ec as WhileCmd).Invariants), MakeDual((bb.ec as WhileCmd).Body));
             }
             else if (bb.ec is IfCmd)
             {
                 Debug.Assert(verifier.uniformityAnalyser.IsUniform(procName, (bb.ec as IfCmd).Guard));
                 result.ec = new IfCmd(bb.ec.tok,
                     (bb.ec as IfCmd).Guard,
-                             MakeDual((bb.ec as IfCmd).thn, HalfDualise),
+                             MakeDual((bb.ec as IfCmd).thn),
                              null,
-                             (bb.ec as IfCmd).elseBlock == null ? null : MakeDual((bb.ec as IfCmd).elseBlock, HalfDualise));
+                             (bb.ec as IfCmd).elseBlock == null ? null : MakeDual((bb.ec as IfCmd).elseBlock));
 
             }
             else if (bb.ec is BreakCmd)
@@ -314,7 +273,7 @@ namespace GPUVerify
                     newP.Attributes = p.Attributes;
                     result.Add(newP);
                 }
-                if ((!CommandLineOptions.Symmetry || !ContainsAsymmetricExpression(p.Expr))
+                if (!ContainsAsymmetricExpression(p.Expr)
                     && !verifier.uniformityAnalyser.IsUniform(procName, p.Expr))
                 {
                     PredicateCmd newP = new AssertCmd(p.tok, Dualise(p.Expr, 2));
@@ -326,7 +285,7 @@ namespace GPUVerify
             return result;
         }
 
-        private void MakeDualLocalVariables(Implementation impl, bool HalfDualise)
+        private void MakeDualLocalVariables(Implementation impl)
         {
             VariableSeq NewLocalVars = new VariableSeq();
 
@@ -340,11 +299,8 @@ namespace GPUVerify
                 {
                     NewLocalVars.Add(
                         new VariableDualiser(1, verifier.uniformityAnalyser, procName).VisitVariable(v.Clone() as Variable));
-                    if (!HalfDualise)
-                    {
-                        NewLocalVars.Add(
-                            new VariableDualiser(2, verifier.uniformityAnalyser, procName).VisitVariable(v.Clone() as Variable));
-                    }
+                    NewLocalVars.Add(
+                        new VariableDualiser(2, verifier.uniformityAnalyser, procName).VisitVariable(v.Clone() as Variable));
                 }
             }
 
@@ -358,7 +314,7 @@ namespace GPUVerify
             return finder.foundAsymmetricExpr();
         }
 
-        private VariableSeq DualiseVariableSequence(VariableSeq seq, bool HalfDualise)
+        private VariableSeq DualiseVariableSequence(VariableSeq seq)
         {
             VariableSeq uniform = new VariableSeq();
             VariableSeq nonuniform = new VariableSeq();
@@ -375,14 +331,11 @@ namespace GPUVerify
                 }
             }
 
-             if (!HalfDualise)
+            foreach (Variable v in seq)
             {
-                foreach (Variable v in seq)
+                if (!verifier.uniformityAnalyser.IsUniform(procName, v.Name))
                 {
-                    if (!verifier.uniformityAnalyser.IsUniform(procName, v.Name))
-                    {
-                        nonuniform.Add(new VariableDualiser(2, verifier.uniformityAnalyser, procName).VisitVariable((Variable)v.Clone()));
-                    }
+                    nonuniform.Add(new VariableDualiser(2, verifier.uniformityAnalyser, procName).VisitVariable((Variable)v.Clone()));
                 }
             }
 
@@ -396,12 +349,10 @@ namespace GPUVerify
         {
             procName = impl.Name;
 
-            bool HalfDualise = verifier.HalfDualisedProcedureNames.Contains(impl.Name);
-
-            impl.InParams = DualiseVariableSequence(impl.InParams, HalfDualise);
-            impl.OutParams = DualiseVariableSequence(impl.OutParams, HalfDualise);
-            MakeDualLocalVariables(impl, HalfDualise);
-            impl.StructuredStmts = MakeDual(impl.StructuredStmts, HalfDualise);
+            impl.InParams = DualiseVariableSequence(impl.InParams);
+            impl.OutParams = DualiseVariableSequence(impl.OutParams);
+            MakeDualLocalVariables(impl);
+            impl.StructuredStmts = MakeDual(impl.StructuredStmts);
 
             procName = null;
         }

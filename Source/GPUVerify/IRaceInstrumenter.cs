@@ -18,16 +18,13 @@ namespace GPUVerify
         // this will return false.
         bool AddRaceCheckingInstrumentation();
 
-        BigBlock MakeRaceCheckingStatements(IToken tok);
+        void AddRaceCheckingDeclarations();
 
-        void CheckForRaces(BigBlock bb, Variable v, bool ReadWriteOnly);
+        BigBlock MakeResetReadWriteSetsStatements(IToken tok);
 
         void AddRaceCheckingCandidateRequires(Procedure Proc);
 
         void AddRaceCheckingCandidateEnsures(Procedure Proc);
 
-        void AddNoRaceContract(Procedure Proc);
-
-        void AddNoRaceInvariants(Implementation Impl);
     }
 }

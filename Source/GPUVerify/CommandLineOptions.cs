@@ -24,17 +24,13 @@ namespace GPUVerify
         public static bool DividedArray = false;
         public static string ArrayToCheck = null;
         public static bool DividedAccesses = false;
-        public static bool Eager = false;
 
-        public static bool Symmetry = false;
         public static bool SetEncoding = false;
 
         public static bool ShowStages = false;
 
         public static bool AddDivergenceCandidatesOnlyIfModified = true;
         public static bool AddDivergenceCandidatesOnlyToBarrierLoops = true;
-
-        public static bool AssignAtBarriers = false;
 
         public static bool ShowUniformityAnalysis = false;
         public static bool DoUniformityAnalysis = true;
@@ -121,19 +117,9 @@ namespace GPUVerify
                     DividedArray = true;
                     break;
 
-                    case "-symmetry":
-                    case "/symmetry":
-                    Symmetry = true;
-                    break;
-
                     case "-setEncoding":
                     case "/setEncoding":
                     SetEncoding = true;
-                    break;
-
-                    case "-eager":
-                    case "/eager":
-                    Eager = true;
                     break;
 
                     case "-showStages":
@@ -161,11 +147,6 @@ namespace GPUVerify
                     case "/alwaysAddDivergenceCandidates":
                     AddDivergenceCandidatesOnlyIfModified = false;
                     AddDivergenceCandidatesOnlyToBarrierLoops = false;
-                    break;
-
-                    case "-assignAtBarriers":
-                    case "/assignAtBarriers":
-                    AssignAtBarriers = true;
                     break;
 
                     case "-showUniformityAnalysis":
