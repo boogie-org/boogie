@@ -31,4 +31,7 @@ echo -----
 echo ----- Running regression test bar10.bpl
 %BGEXE% %* /noinfer /stratifiedInline:1 /nonUniformUnfolding bar10.bpl
 echo -----
+echo ----- Running regression test bar11.bpl
+%BGEXE% %* /noinfer /stratifiedInline:1 bar11.bpl
+echo -----
 
