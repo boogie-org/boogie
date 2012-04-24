@@ -1371,7 +1371,6 @@ namespace VC
         private bool refinementLoopCheckPath(ApiChecker apiChecker, HashSet<VCExprVar> varsToSet, HashSet<VCExprVar> allVars)
         {
             var assumptions = new List<VCExpr>();
-            List<int> temp = null;
 
             var query = new HashSet<string>();
             varsToSet.Iter(v => query.Add(v.Name));
@@ -1405,7 +1404,7 @@ namespace VC
             }
             //Console.WriteLine();
 
-            var o = apiChecker.CheckAssumptions(assumptions, out temp);
+            var o = apiChecker.CheckAssumptions(assumptions);
             Debug.Assert(o == Outcome.Correct || o == Outcome.Errors);
             //Console.WriteLine("Result = " + o.ToString());
             apiChecker.LogComment("FindLeast: Query End");

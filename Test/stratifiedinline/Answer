@@ -484,3 +484,24 @@ Execution trace:
 
 Boogie program verifier finished with 0 verified, 1 error
 -----
+----- Running regression test bar11.bpl
+bar11.bpl(31,1): Error BP5003: A postcondition might not hold on this return path.
+bar11.bpl(26,1): Related location: This is the postcondition that might not hold.
+Execution trace:
+    bar11.bpl(30,3): anon0
+    Inlined call to procedure foo begins
+        bar11.bpl(15,3): anon0
+        value = 0
+        Inlined call to procedure bar begins
+            bar11.bpl(8,5): anon0
+            value = 1
+        Inlined call to procedure bar ends
+        Inlined call to procedure bar begins
+            bar11.bpl(8,5): anon0
+            value = 2
+        Inlined call to procedure bar ends
+        value = 2
+    Inlined call to procedure foo ends
+
+Boogie program verifier finished with 0 verified, 1 error
+-----
