@@ -18,7 +18,9 @@ namespace GPUVerify
         public override Variable VisitVariable(Variable node)
         {
             if (node.TypedIdent.Name.Contains("_READ_HAS_OCCURRED") ||
-                node.TypedIdent.Name.Contains("_READ_OFFSET"))
+                node.TypedIdent.Name.Contains("_READ_OFFSET") ||
+                node.TypedIdent.Name.Contains("_WRITE_HAS_OCCURRED") ||
+                node.TypedIdent.Name.Contains("_WRITE_OFFSET"))
             {
                 found = true;
             }
