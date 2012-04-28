@@ -616,7 +616,8 @@ namespace Microsoft.Boogie {
             Console.WriteLine(x.Key + " = " + x.Value);
           }
         }
-        if (CommandLineOptions.Clo.Trace) {
+        if (CommandLineOptions.Clo.Trace) 
+        {
           int numTrueAssigns = 0;
           foreach (var x in outcome.assignment) {
             if (x.Value)
@@ -625,7 +626,10 @@ namespace Microsoft.Boogie {
           Console.WriteLine("Number of true assignments = " + numTrueAssigns);
           Console.WriteLine("Number of false assignments = " + (outcome.assignment.Count - numTrueAssigns));
           Console.WriteLine("Prover time = " + Houdini.HoudiniSession.proverTime);
+          Console.WriteLine("Unsat core prover time = " + Houdini.HoudiniSession.unsatCoreProverTime);
           Console.WriteLine("Number of prover queries = " + Houdini.HoudiniSession.numProverQueries);
+          Console.WriteLine("Number of unsat core prover queries = " + Houdini.HoudiniSession.numUnsatCoreProverQueries);
+          Console.WriteLine("Number of unsat core prunings = " + Houdini.HoudiniSession.numUnsatCorePrunings);
         }
 
         foreach (Houdini.VCGenOutcome x in outcome.implementationOutcomes.Values) {

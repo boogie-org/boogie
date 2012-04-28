@@ -389,6 +389,7 @@ namespace Microsoft.Boogie {
     public int /*(0:3)*/ ErrorTrace = 1;
     public bool IntraproceduralInfer = true;
     public bool ContractInfer = false;
+    public bool UseUnsatCoreForContractInfer = false;
     public bool PrintAssignment = false;
     public int InlineDepth = -1;
     public bool UseUncheckedContracts = false;
@@ -1231,6 +1232,7 @@ namespace Microsoft.Boogie {
               ps.CheckBooleanFlag("doModSetAnalysis", ref DoModSetAnalysis) ||
               ps.CheckBooleanFlag("doNotUseLabels", ref UseLabels, false) ||
               ps.CheckBooleanFlag("contractInfer", ref ContractInfer) ||
+              ps.CheckBooleanFlag("useUnsatCoreForContractInfer", ref UseUnsatCoreForContractInfer) ||
               ps.CheckBooleanFlag("printAssignment", ref PrintAssignment) ||
               ps.CheckBooleanFlag("nonUniformUnfolding", ref NonUniformUnfolding)
               ) {

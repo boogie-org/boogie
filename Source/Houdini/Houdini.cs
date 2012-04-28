@@ -309,7 +309,9 @@ namespace Microsoft.Boogie.Houdini {
     private ProverInterface proverInterface;
     private Graph<Implementation> callGraph;
     private HashSet<Implementation> vcgenFailures;
+    private HoudiniState currentHoudiniState;
 
+    public HoudiniState CurrentHoudiniState { get { return currentHoudiniState; } }
 
     private ProverInterface CreateProver(Program prog, string/*?*/ logFilePath, bool appendLogFile, int timeout) {
       Contract.Requires(prog != null);
@@ -395,7 +397,7 @@ namespace Microsoft.Boogie.Houdini {
         try {
           if (CommandLineOptions.Clo.Trace)
             Console.WriteLine("Generating VC for {0}", impl.Name);
-          HoudiniSession session = new HoudiniSession(vcgen, proverInterface, program, impl);
+          HoudiniSession session = new HoudiniSession(this, vcgen, proverInterface, program, impl);
           houdiniSessions.Add(impl, session);
         }
         catch (VCGenException) {
@@ -405,6 +407,7 @@ namespace Microsoft.Boogie.Houdini {
         }
       }
       this.houdiniSessions = new ReadOnlyDictionary<Implementation, HoudiniSession>(houdiniSessions);
+      currentHoudiniState = new HoudiniState(BuildWorkList(program), BuildAssignment(houdiniConstants));
     }
 
     private void Inline() {
@@ -531,7 +534,7 @@ namespace Microsoft.Boogie.Houdini {
        */
     }
 
-    private bool MatchCandidate(Expr boogieExpr, out Variable candidateConstant) {
+    public bool MatchCandidate(Expr boogieExpr, out Variable candidateConstant) {
       candidateConstant = null;
       IExpr antecedent;
       IExpr expr = boogieExpr as IExpr;
@@ -588,41 +591,41 @@ namespace Microsoft.Boogie.Houdini {
       return nonCandidateErrors.Count > 0;
     }
 
-    private void FlushWorkList(HoudiniState current) {
+    private void FlushWorkList() {
       this.NotifyFlushStart();
-      while (current.WorkQueue.Count > 0) {
+      while (currentHoudiniState.WorkQueue.Count > 0) {
         this.NotifyIteration();
 
-        current.Implementation = current.WorkQueue.Peek();
-        this.NotifyImplementation(current.Implementation);
+        currentHoudiniState.Implementation = currentHoudiniState.WorkQueue.Peek();
+        this.NotifyImplementation(currentHoudiniState.Implementation);
 
         HoudiniSession session;
-        houdiniSessions.TryGetValue(current.Implementation, out session);
+        houdiniSessions.TryGetValue(currentHoudiniState.Implementation, out session);
         List<Counterexample> errors;
-        ProverInterface.Outcome outcome = TryCatchVerify(session, current.Assignment, out errors);
-        UpdateHoudiniOutcome(current.Outcome, current.Implementation, outcome, errors);
+        ProverInterface.Outcome outcome = TryCatchVerify(session, out errors);
+        UpdateHoudiniOutcome(currentHoudiniState.Outcome, currentHoudiniState.Implementation, outcome, errors);
         this.NotifyOutcome(outcome);
 
-        current.WorkQueue.Dequeue();
+        currentHoudiniState.WorkQueue.Dequeue();
         this.NotifyDequeue();
       }
       this.NotifyFlushFinish();
     }
 
-    private void UpdateAssignment(HoudiniState current, RefutedAnnotation refAnnot) {
+    private void UpdateAssignment(RefutedAnnotation refAnnot) {
       if (CommandLineOptions.Clo.Trace) {
         Console.WriteLine("Removing " + refAnnot.Constant);
       }
-      current.Assignment.Remove(refAnnot.Constant);
-      current.Assignment.Add(refAnnot.Constant, false);
+      currentHoudiniState.Assignment.Remove(refAnnot.Constant);
+      currentHoudiniState.Assignment.Add(refAnnot.Constant, false);
       this.NotifyConstant(refAnnot.Constant.Name);
     }
 
-    private void AddRelatedToWorkList(HoudiniState current, RefutedAnnotation refutedAnnotation) {
-      Contract.Assume(current.Implementation != null);
-      foreach (Implementation implementation in FindImplementationsToEnqueue(refutedAnnotation, current.Implementation)) {
-        if (!current.isBlackListed(implementation.Name)) {
-          current.WorkQueue.Enqueue(implementation);
+    private void AddRelatedToWorkList(RefutedAnnotation refutedAnnotation) {
+      Contract.Assume(currentHoudiniState.Implementation != null);
+      foreach (Implementation implementation in FindImplementationsToEnqueue(refutedAnnotation, currentHoudiniState.Implementation)) {
+        if (!currentHoudiniState.isBlackListed(implementation.Name)) {
+          currentHoudiniState.WorkQueue.Enqueue(implementation);
           this.NotifyEnqueue(implementation);
         }
       }
@@ -630,10 +633,9 @@ namespace Microsoft.Boogie.Houdini {
 
     // Updates the worklist and current assignment
     // @return true if the current function is dequeued
-    private bool UpdateAssignmentWorkList(HoudiniState current,
-                                          ProverInterface.Outcome outcome,
+    private bool UpdateAssignmentWorkList(ProverInterface.Outcome outcome,
                                           List<Counterexample> errors) {
-      Contract.Assume(current.Implementation != null);
+      Contract.Assume(currentHoudiniState.Implementation != null);
       bool dequeue = true;
 
       switch (outcome) {
@@ -645,21 +647,21 @@ namespace Microsoft.Boogie.Houdini {
           foreach (Counterexample error in errors) {
             RefutedAnnotation refutedAnnotation = ExtractRefutedAnnotation(error);
             if (refutedAnnotation != null) { // some candidate annotation removed
-              AddRelatedToWorkList(current, refutedAnnotation);
-              UpdateAssignment(current, refutedAnnotation);
+              AddRelatedToWorkList(refutedAnnotation);
+              UpdateAssignment(refutedAnnotation);
               dequeue = false;
             }
           }
           break;
         default:
-          current.addToBlackList(current.Implementation.Name);
+          currentHoudiniState.addToBlackList(currentHoudiniState.Implementation.Name);
           break;
       }
       
       return dequeue;
     }
 
-    private class WorkQueue {
+    public class WorkQueue {
       private Queue<Implementation> queue;
       private HashSet<Implementation> set;
       public WorkQueue() {
@@ -688,7 +690,7 @@ namespace Microsoft.Boogie.Houdini {
       }
     }
 
-    private class HoudiniState {
+    public class HoudiniState {
       private WorkQueue _workQueue;
       private HashSet<string> blackList;
       private Dictionary<Variable, bool> _assignment;
@@ -725,28 +727,27 @@ namespace Microsoft.Boogie.Houdini {
     }
 
     public HoudiniOutcome PerformHoudiniInference() {
-      HoudiniState current = new HoudiniState(BuildWorkList(program), BuildAssignment(houdiniConstants));
       this.NotifyStart(program, houdiniConstants.Count);
       foreach (Implementation impl in vcgenFailures) {
-        current.addToBlackList(impl.Name);
+        currentHoudiniState.addToBlackList(impl.Name);
       }
 
-      while (current.WorkQueue.Count > 0) {
+      while (currentHoudiniState.WorkQueue.Count > 0) {
         this.NotifyIteration();
 
-        current.Implementation = current.WorkQueue.Peek();
-        this.NotifyImplementation(current.Implementation);
+        currentHoudiniState.Implementation = currentHoudiniState.WorkQueue.Peek();
+        this.NotifyImplementation(currentHoudiniState.Implementation);
 
         HoudiniSession session;
-        this.houdiniSessions.TryGetValue(current.Implementation, out session);
-        HoudiniVerifyCurrent(session, current);
+        this.houdiniSessions.TryGetValue(currentHoudiniState.Implementation, out session);
+        HoudiniVerifyCurrent(session);
       }
       this.NotifyEnd(true);
       Dictionary<string, bool> assignment = new Dictionary<string, bool>();
-      foreach (var x in current.Assignment)
+      foreach (var x in currentHoudiniState.Assignment)
         assignment[x.Key.Name] = x.Value;
-      current.Outcome.assignment = assignment;
-      return current.Outcome;
+      currentHoudiniState.Outcome.assignment = assignment;
+      return currentHoudiniState.Outcome;
     }
 
     private List<Implementation> FindImplementationsToEnqueue(RefutedAnnotation refutedAnnotation, Implementation currentImplementation) {
@@ -806,7 +807,6 @@ namespace Microsoft.Boogie.Houdini {
       public static RefutedAnnotation BuildRefutedAssert(Variable constant) {
         return new RefutedAnnotation(constant, RefutedAnnotationKind.ASSERT, null);
       }
-
     }
 
     private void PrintRefutedCall(CallCounterexample err, XmlSink xmlOut) {
@@ -884,10 +884,10 @@ namespace Microsoft.Boogie.Houdini {
       return null;
     }
 
-    private ProverInterface.Outcome TryCatchVerify(HoudiniSession session, Dictionary<Variable, bool> assignment, out List<Counterexample> errors) {
+    private ProverInterface.Outcome TryCatchVerify(HoudiniSession session, out List<Counterexample> errors) {
       ProverInterface.Outcome outcome;
       try {
-        outcome = session.Verify(proverInterface, assignment, out errors);
+        outcome = session.Verify(proverInterface, currentHoudiniState.Assignment, out errors);
       }
       catch (UnexpectedProverOutputException upo) {
         Contract.Assume(upo != null);
@@ -897,25 +897,27 @@ namespace Microsoft.Boogie.Houdini {
       return outcome;
     }
 
-    private void HoudiniVerifyCurrent(HoudiniSession session, HoudiniState current) {
+    private void HoudiniVerifyCurrent(HoudiniSession session) {
       while (true) {
-        this.NotifyAssignment(current.Assignment);
+        this.NotifyAssignment(currentHoudiniState.Assignment);
 
         //check the VC with the current assignment
         List<Counterexample> errors;
-        ProverInterface.Outcome outcome = TryCatchVerify(session, current.Assignment, out errors);
+        ProverInterface.Outcome outcome = TryCatchVerify(session, out errors);
         this.NotifyOutcome(outcome);
 
-        DebugRefutedCandidates(current.Implementation, errors);
+        DebugRefutedCandidates(currentHoudiniState.Implementation, errors);
 
-        if (UpdateHoudiniOutcome(current.Outcome, current.Implementation, outcome, errors)) { // abort
-          current.WorkQueue.Dequeue();
+        if (UpdateHoudiniOutcome(currentHoudiniState.Outcome, currentHoudiniState.Implementation, outcome, errors)) { // abort
+          currentHoudiniState.WorkQueue.Dequeue();
           this.NotifyDequeue();
-          FlushWorkList(current);
+          FlushWorkList();
           return;
         }
-        else if (UpdateAssignmentWorkList(current, outcome, errors)) {
-          current.WorkQueue.Dequeue();
+        else if (UpdateAssignmentWorkList(outcome, errors)) {
+          if (CommandLineOptions.Clo.UseUnsatCoreForContractInfer && outcome == ProverInterface.Outcome.Valid)
+            session.UpdateUnsatCore(proverInterface, currentHoudiniState.Assignment);
+          currentHoudiniState.WorkQueue.Dequeue();
           this.NotifyDequeue();
           return;
         }
