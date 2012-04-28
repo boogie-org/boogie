@@ -67,116 +67,7 @@ namespace VC
             return RECORD_TYPES.INT_BOOL;
         }
 
-        public class LazyInliningInfo {
-          [ContractInvariantMethod]
-          void ObjectInvariant() {
-            Contract.Invariant(impl != null);
-            Contract.Invariant(function != null);
-            Contract.Invariant(controlFlowVariable != null);
-            Contract.Invariant(assertExpr != null);
-            Contract.Invariant(cce.NonNullElements(interfaceVars));
-            Contract.Invariant(incarnationOriginMap == null || cce.NonNullDictionaryAndValues(incarnationOriginMap));
-          }
-
-          public Implementation impl;
-          public int uniqueId;
-          public Function function;
-          public Variable controlFlowVariable;
-          public List<Variable> interfaceVars;
-          public List<List<Variable>> interfaceVarCopies;
-          public Expr assertExpr;
-          public VCExpr vcexpr;
-          public List<VCExprVar> privateVars;
-          public Dictionary<Incarnation, Absy> incarnationOriginMap;
-          public Hashtable /*Variable->Expr*/ exitIncarnationMap;
-          public Hashtable /*GotoCmd->returnCmd*/ gotoCmdOrigins;
-          public Hashtable/*<int, Absy!>*/ label2absy;
-          public ModelViewInfo mvInfo;
-
-          public Dictionary<Block, VCExprVar> reachVars;
-          public List<VCExprLetBinding> reachVarBindings;
-          public Variable inputErrorVariable;
-          public Variable outputErrorVariable;
-
-          public LazyInliningInfo(Implementation impl, Program program, ProverContext ctxt, int uniqueId, GlobalVariable errorVariable) {
-            Contract.Requires(impl != null);
-            Contract.Requires(program != null);
-            Procedure proc = cce.NonNull(impl.Proc);
-
-            this.impl = impl;
-            this.uniqueId = uniqueId;
-            this.controlFlowVariable = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "@cfc", Microsoft.Boogie.Type.Int));
-            impl.LocVars.Add(controlFlowVariable);
-
-            List<Variable> interfaceVars = new List<Variable>();
-            Expr assertExpr = new LiteralExpr(Token.NoToken, true);
-            Contract.Assert(assertExpr != null);
-            foreach (Variable v in program.GlobalVariables()) {
-              Contract.Assert(v != null);
-              interfaceVars.Add(v);
-              if (v.Name == "error")
-                inputErrorVariable = v;
-            }
-            // InParams must be obtained from impl and not proc
-            foreach (Variable v in impl.InParams) {
-              Contract.Assert(v != null);
-              interfaceVars.Add(v);
-            }
-            // OutParams must be obtained from impl and not proc
-            foreach (Variable v in impl.OutParams) {
-              Contract.Assert(v != null);
-              Constant c = new Constant(Token.NoToken,
-                                        new TypedIdent(Token.NoToken, impl.Name + "_" + v.Name, v.TypedIdent.Type));
-              interfaceVars.Add(c);
-              Expr eqExpr = Expr.Eq(new IdentifierExpr(Token.NoToken, c), new IdentifierExpr(Token.NoToken, v));
-              assertExpr = Expr.And(assertExpr, eqExpr);
-            }
-            if (errorVariable != null) {
-              proc.Modifies.Add(new IdentifierExpr(Token.NoToken, errorVariable));
-            }
-            foreach (IdentifierExpr e in proc.Modifies) {
-              Contract.Assert(e != null);
-              if (e.Decl == null)
-                continue;
-              Variable v = e.Decl;
-              Constant c = new Constant(Token.NoToken, new TypedIdent(Token.NoToken, impl.Name + "_" + v.Name, v.TypedIdent.Type));
-              interfaceVars.Add(c);
-              if (v.Name == "error") {
-                outputErrorVariable = c;
-                continue;
-              }
-              Expr eqExpr = Expr.Eq(new IdentifierExpr(Token.NoToken, c), new IdentifierExpr(Token.NoToken, v));
-              assertExpr = Expr.And(assertExpr, eqExpr);
-            }
-
-            this.interfaceVars = interfaceVars;
-            this.assertExpr = Expr.Not(assertExpr);
-            VariableSeq functionInterfaceVars = new VariableSeq();
-            foreach (Variable v in interfaceVars) {
-              Contract.Assert(v != null);
-              functionInterfaceVars.Add(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, v.Name, v.TypedIdent.Type), true));
-            }
-            TypedIdent ti = new TypedIdent(Token.NoToken, "", Bpl.Type.Bool);
-            Contract.Assert(ti != null);
-            Formal returnVar = new Formal(Token.NoToken, ti, false);
-            Contract.Assert(returnVar != null);
-            this.function = new Function(Token.NoToken, proc.Name, functionInterfaceVars, returnVar);
-            ctxt.DeclareFunction(this.function, "");
-
-            interfaceVarCopies = new List<List<Variable>>();
-            int temp = 0;
-            for (int i = 0; i < CommandLineOptions.Clo.ProcedureCopyBound; i++) {
-              interfaceVarCopies.Add(new List<Variable>());
-              foreach (Variable v in interfaceVars) {
-                Constant constant = new Constant(Token.NoToken, new TypedIdent(Token.NoToken, v.Name + temp++, v.TypedIdent.Type));
-                interfaceVarCopies[i].Add(constant);
-                //program.TopLevelDeclarations.Add(constant);
-              }
-            }
-          }
-        }
-
-        protected VCExpr GenerateReachVC(Implementation impl, LazyInliningInfo info, Checker ch) {
+        protected VCExpr GenerateReachVC(Implementation impl, StratifiedInliningInfo info, Checker ch) {
           Variable controlFlowVariable = info.controlFlowVariable;
           VCExpressionGenerator gen = ch.VCExprGen;
           ProverContext proverCtxt = ch.TheoremProver.Context;
@@ -219,32 +110,110 @@ namespace VC
           return reachvcexpr;
         }
 
-        public class StratifiedInliningInfo : LazyInliningInfo
-        {
-            [ContractInvariantMethod]
-            void ObjectInvariant()
-            {
-                Contract.Invariant(cce.NonNullElements(privateVars));
-                Contract.Invariant(cce.NonNullElements(interfaceExprVars));
+        public class StratifiedInliningInfo {
+          public Implementation impl;
+          public Function function;
+          public Variable controlFlowVariable;
+          public List<Variable> interfaceVars;
+          public List<List<Variable>> interfaceVarCopies;
+          public Expr assertExpr;
+          public VCExpr vcexpr;
+          public List<VCExprVar> privateVars;
+          public Dictionary<Incarnation, Absy> incarnationOriginMap;
+          public Hashtable /*Variable->Expr*/ exitIncarnationMap;
+          public Hashtable /*GotoCmd->returnCmd*/ gotoCmdOrigins;
+          public Hashtable/*<int, Absy!>*/ label2absy;
+          public ModelViewInfo mvInfo;
+
+          public Dictionary<Block, VCExprVar> reachVars;
+          public List<VCExprLetBinding> reachVarBindings;
+          public Variable inputErrorVariable;
+          public Variable outputErrorVariable;
+
+          public bool initialized;
+          public int inline_cnt;
+          public List<VCExprVar> interfaceExprVars;
+          public VCExpr funcExpr;
+          public VCExpr falseExpr;
+
+          public StratifiedInliningInfo(Implementation impl, Program program, ProverContext ctxt) {
+            Contract.Requires(impl != null);
+            Contract.Requires(program != null);
+            Contract.Requires(impl != null);
+            Contract.Requires(program != null);
+            Procedure proc = cce.NonNull(impl.Proc);
+
+            this.impl = impl;
+            this.controlFlowVariable = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "@cfc", Microsoft.Boogie.Type.Int));
+            impl.LocVars.Add(controlFlowVariable);
+
+            List<Variable> interfaceVars = new List<Variable>();
+            Expr assertExpr = new LiteralExpr(Token.NoToken, true);
+            Contract.Assert(assertExpr != null);
+            foreach (Variable v in program.GlobalVariables()) {
+              Contract.Assert(v != null);
+              interfaceVars.Add(v);
+              if (v.Name == "error")
+                inputErrorVariable = v;
+            }
+            // InParams must be obtained from impl and not proc
+            foreach (Variable v in impl.InParams) {
+              Contract.Assert(v != null);
+              interfaceVars.Add(v);
+            }
+            // OutParams must be obtained from impl and not proc
+            foreach (Variable v in impl.OutParams) {
+              Contract.Assert(v != null);
+              Constant c = new Constant(Token.NoToken,
+                                        new TypedIdent(Token.NoToken, impl.Name + "_" + v.Name, v.TypedIdent.Type));
+              interfaceVars.Add(c);
+              Expr eqExpr = Expr.Eq(new IdentifierExpr(Token.NoToken, c), new IdentifierExpr(Token.NoToken, v));
+              assertExpr = Expr.And(assertExpr, eqExpr);
+            }
+            foreach (IdentifierExpr e in proc.Modifies) {
+              Contract.Assert(e != null);
+              if (e.Decl == null)
+                continue;
+              Variable v = e.Decl;
+              Constant c = new Constant(Token.NoToken, new TypedIdent(Token.NoToken, impl.Name + "_" + v.Name, v.TypedIdent.Type));
+              interfaceVars.Add(c);
+              if (v.Name == "error") {
+                outputErrorVariable = c;
+                continue;
+              }
+              Expr eqExpr = Expr.Eq(new IdentifierExpr(Token.NoToken, c), new IdentifierExpr(Token.NoToken, v));
+              assertExpr = Expr.And(assertExpr, eqExpr);
             }
 
-            public bool initialized;
-            public int inline_cnt;
-            public List<VCExprVar> interfaceExprVars;
-            public VCExpr funcExpr;
-            public VCExpr falseExpr;
+            this.interfaceVars = interfaceVars;
+            this.assertExpr = Expr.Not(assertExpr);
+            VariableSeq functionInterfaceVars = new VariableSeq();
+            foreach (Variable v in interfaceVars) {
+              Contract.Assert(v != null);
+              functionInterfaceVars.Add(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, v.Name, v.TypedIdent.Type), true));
+            }
+            TypedIdent ti = new TypedIdent(Token.NoToken, "", Bpl.Type.Bool);
+            Contract.Assert(ti != null);
+            Formal returnVar = new Formal(Token.NoToken, ti, false);
+            Contract.Assert(returnVar != null);
+            this.function = new Function(Token.NoToken, proc.Name, functionInterfaceVars, returnVar);
+            ctxt.DeclareFunction(this.function, "");
 
-            public StratifiedInliningInfo(Implementation impl, Program program, ProverContext ctxt, int uniqueid)
-                : base(impl, program, ctxt, uniqueid, null)
-            {
-                Contract.Requires(impl != null);
-                Contract.Requires(program != null);
-                inline_cnt = 0;
-                privateVars = new List<VCExprVar>();
-                interfaceExprVars = new List<VCExprVar>();
-                initialized = false;
+            interfaceVarCopies = new List<List<Variable>>();
+            int temp = 0;
+            for (int i = 0; i < CommandLineOptions.Clo.ProcedureCopyBound; i++) {
+              interfaceVarCopies.Add(new List<Variable>());
+              foreach (Variable v in interfaceVars) {
+                Constant constant = new Constant(Token.NoToken, new TypedIdent(Token.NoToken, v.Name + temp++, v.TypedIdent.Type));
+                interfaceVarCopies[i].Add(constant);
+              }
             }
 
+            inline_cnt = 0;
+            privateVars = new List<VCExprVar>();
+            interfaceExprVars = new List<VCExprVar>();
+            initialized = false;
+          }
         }
 
         public void GenerateVCsForStratifiedInlining(Program program)
@@ -263,7 +232,7 @@ namespace VC
                 Procedure proc = cce.NonNull(impl.Proc);
                 if (proc.FindExprAttribute("inline") != null)
                 {
-                    StratifiedInliningInfo info = new StratifiedInliningInfo(impl, program, checker.TheoremProver.Context, QuantifierExpr.GetNextSkolemId());
+                    StratifiedInliningInfo info = new StratifiedInliningInfo(impl, program, checker.TheoremProver.Context);
                     implName2StratifiedInliningInfo[impl.Name] = info;
 
                     ExprSeq exprs = new ExprSeq();
