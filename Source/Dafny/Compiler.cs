@@ -82,7 +82,7 @@ namespace Microsoft.Dafny {
             var at = (ArbitraryTypeDecl)d;
             Error("Arbitrary type ('{0}') cannot be compiled", at.Name);
           } else if (d is DatatypeDecl) {
-            DatatypeDecl dt = (DatatypeDecl)d;
+            var dt = (DatatypeDecl)d;
             Indent(indent);
             wr.Write("public abstract class Base_{0}", dt.Name);
             if (dt.TypeArgs.Count != 0) {
@@ -202,10 +202,7 @@ namespace Microsoft.Dafny {
         //   }
         // }
         Indent(indent);
-        wr.Write("public class {0}", DtCtorName(ctor));
-        if (dt.TypeArgs.Count != 0) {
-          wr.Write("<{0}>", TypeParameters(dt.TypeArgs));
-        }
+        wr.Write("public class {0}", DtCtorName(ctor, dt.TypeArgs));
         wr.Write(" : Base_{0}", dt.Name);
         if (dt.TypeArgs.Count != 0) {
           wr.Write("<{0}>", TypeParameters(dt.TypeArgs));
@@ -239,10 +236,7 @@ namespace Microsoft.Dafny {
         // Equals method
         Indent(ind); wr.WriteLine("public override bool Equals(object other) {");
         Indent(ind + IndentAmount);
-        wr.Write("var oth = other as {0}", DtCtorName(ctor));
-        if (dt.TypeArgs.Count != 0) {
-          wr.Write("<{0}>", TypeParameters(dt.TypeArgs));
-        }
+        wr.Write("var oth = other as {0}", DtCtorName(ctor, dt.TypeArgs));
         wr.WriteLine(";");
         Indent(ind + IndentAmount);
         wr.Write("return oth != null");
@@ -279,8 +273,14 @@ namespace Microsoft.Dafny {
       //     get { if (d == null) { d = Default; } return d; }
       //   }
       //   public Dt(Base_Dt<T> d) { this.d = d; }
+      //   static Base_Dt<T> theDefault;
       //   public static Base_Dt<T> Default {
-      //     get { return ...; }
+      //     get {
+      //       if (theDefault == null) {
+      //         theDefault = ...;
+      //       }
+      //       return theDefault;
+      //     }
       //   }
       //   public override bool Equals(object other) {
       //     return other is Dt<T> && _D.Equals(((Dt<T>)other)._D);
@@ -317,23 +317,41 @@ namespace Microsoft.Dafny {
       wr.WriteLine("public @{0}(Base_{1} d) {{ this.d = d; }}", dt.Name, DtT);
 
       Indent(ind);
+      wr.WriteLine("static Base_{0} theDefault;", DtT);
+
+      Indent(ind);
       wr.WriteLine("public static Base_{0} Default {{", DtT);
       Indent(ind + IndentAmount);
-      wr.Write("get { return ");
-      wr.Write("new {0}", DtCtorName(cce.NonNull(dt.DefaultCtor)));
-      if (dt.TypeArgs.Count != 0) {
-        wr.Write("<{0}>", TypeParameters(dt.TypeArgs));
+      wr.WriteLine("get {");
+      Indent(ind + 2 * IndentAmount);
+      wr.WriteLine("if (theDefault == null) {");
+      Indent(ind + 3 * IndentAmount);
+      wr.Write("theDefault = ");
+
+      DatatypeCtor defaultCtor;
+      if (dt is IndDatatypeDecl) {
+        defaultCtor = ((IndDatatypeDecl)dt).DefaultCtor;
+      } else {
+        defaultCtor = ((CoDatatypeDecl)dt).Ctors[0];  // pick any one of them
       }
+      wr.Write("new {0}", DtCtorName(defaultCtor, dt.TypeArgs));
       wr.Write("(");
       string sep = "";
-      foreach (Formal f in dt.DefaultCtor.Formals) {
+      foreach (Formal f in defaultCtor.Formals) {
         if (!f.IsGhost) {
           wr.Write("{0}{1}", sep, DefaultValue(f.Type));
           sep = ", ";
         }
       }
       wr.Write(")");
-      wr.WriteLine("; }");
+      
+      wr.WriteLine(";");
+      Indent(ind + 2 * IndentAmount);
+      wr.WriteLine("}");
+      Indent(ind + 2 * IndentAmount);
+      wr.WriteLine("return theDefault;");
+      Indent(ind + IndentAmount); wr.WriteLine("}");
+
       Indent(ind);  wr.WriteLine("}");
 
       Indent(ind);  wr.WriteLine("public override bool Equals(object other) {");
@@ -390,9 +408,32 @@ namespace Microsoft.Dafny {
     }
 
     string DtCtorName(DatatypeCtor ctor) {
-      Contract.Requires(ctor != null);Contract.Ensures(Contract.Result<string>() != null);
+      Contract.Requires(ctor != null);
+      Contract.Ensures(Contract.Result<string>() != null);
 
       return cce.NonNull(ctor.EnclosingDatatype).Name + "_" + ctor.Name;
+    }
+
+    string DtCtorName(DatatypeCtor ctor, List<TypeParameter> typeParams) {
+      Contract.Requires(ctor != null);
+      Contract.Ensures(Contract.Result<string>() != null);
+
+      var s = DtCtorName(ctor);
+      if (typeParams != null && typeParams.Count != 0) {
+        s += "<" + TypeParameters(typeParams) + ">";
+      }
+      return s;
+    }
+
+    string DtCtorName(DatatypeCtor ctor, List<Type> typeArgs) {
+      Contract.Requires(ctor != null);
+      Contract.Ensures(Contract.Result<string>() != null);
+
+      var s = DtCtorName(ctor);
+      if (typeArgs != null && typeArgs.Count != 0) {
+        s += "<" + TypeNames(typeArgs) + ">";
+      }
+      return s;
     }
 
     public bool HasMain(Program program) {
@@ -504,7 +545,7 @@ namespace Microsoft.Dafny {
       if (body is MatchExpr) {
         MatchExpr me = (MatchExpr)body;
         // Type source = e;
-        // if (source._D is Dt_Ctor0) {
+        // if (source._Ctor0) {
         //   FormalType f0 = ((Dt_Ctor0)source._D).a0;
         //   ...
         //   return Body0;
@@ -528,8 +569,9 @@ namespace Microsoft.Dafny {
           wr.WriteLine("throw new System.Exception();");
         } else {
           int i = 0;
+          var sourceType = (UserDefinedType)me.Source.Type;
           foreach (MatchCaseExpr mc in me.Cases) {
-            MatchCasePrelude(source, cce.NonNull(mc.Ctor), mc.Arguments, i, me.Cases.Count, indent + IndentAmount);
+            MatchCasePrelude(source, sourceType, cce.NonNull(mc.Ctor), mc.Arguments, i, me.Cases.Count, indent + IndentAmount);
             CompileReturnBody(mc.Body, indent + IndentAmount);
             i++;
           }
@@ -689,7 +731,7 @@ namespace Microsoft.Dafny {
         if (udt.TypeArgs.Count != 0) {
           s += "<" + TypeNames(udt.TypeArgs) + ">";
         }
-        return string.Format("new {0}({0}.Default)", s);
+        return string.Format("new {0}()", s);
       } else if (type.IsTypeParameter) {
         UserDefinedType udt = (UserDefinedType)type;
         return "default(@" + udt.Name + ")";
@@ -1075,7 +1117,7 @@ namespace Microsoft.Dafny {
       } else if (stmt is MatchStmt) {
         MatchStmt s = (MatchStmt)stmt;
         // Type source = e;
-        // if (source._D is Dt_Ctor0) {
+        // if (source._Ctor0) {
         //   FormalType f0 = ((Dt_Ctor0)source._D).a0;
         //   ...
         //   Body0;
@@ -1085,6 +1127,8 @@ namespace Microsoft.Dafny {
         //   ...
         // }
         if (s.Cases.Count != 0) {
+          var sourceType = (UserDefinedType)s.Source.Type;
+
           SpillLetVariableDecls(s.Source, indent);
           string source = "_source" + tmpVarCount;
           tmpVarCount++;
@@ -1095,7 +1139,7 @@ namespace Microsoft.Dafny {
 
           int i = 0;
           foreach (MatchCaseStmt mc in s.Cases) {
-            MatchCasePrelude(source, cce.NonNull(mc.Ctor), mc.Arguments, i, s.Cases.Count, indent);
+            MatchCasePrelude(source, sourceType, cce.NonNull(mc.Ctor), mc.Arguments, i, s.Cases.Count, indent);
             TrStmtList(mc.Body, indent);
             i++;
           }
@@ -1344,11 +1388,12 @@ namespace Microsoft.Dafny {
       }
     }
 
-    void MatchCasePrelude(string source, DatatypeCtor ctor, List<BoundVar/*!*/>/*!*/ arguments, int caseIndex, int caseCount, int indent) {
+    void MatchCasePrelude(string source, UserDefinedType sourceType, DatatypeCtor ctor, List<BoundVar/*!*/>/*!*/ arguments, int caseIndex, int caseCount, int indent) {
       Contract.Requires(source != null);
+      Contract.Requires(sourceType != null);
       Contract.Requires(ctor != null);
       Contract.Requires(cce.NonNullElements(arguments));
-      // if (source._D is Dt_Ctor0) {
+      // if (source._Ctor0) {
       //   FormalType f0 = ((Dt_Ctor0)source._D).a0;
       //   ...
       Indent(indent);
@@ -1356,7 +1401,7 @@ namespace Microsoft.Dafny {
       if (caseIndex == caseCount - 1) {
         wr.Write("true");
       } else {
-        wr.Write("{0}._D is {1}", source, DtCtorName(ctor));
+        wr.Write("{0}._{1}", source, ctor.Name);
       }
       wr.WriteLine(") {");
 
@@ -1368,7 +1413,7 @@ namespace Microsoft.Dafny {
           // FormalType f0 = ((Dt_Ctor0)source._D).a0;
           Indent(indent + IndentAmount);
           wr.WriteLine("{0} @{1} = (({2}){3}._D).@{4};",
-            TypeName(bv.Type), bv.Name, DtCtorName(ctor), source, FormalName(arg, k));
+            TypeName(bv.Type), bv.Name, DtCtorName(ctor, sourceType.TypeArgs), source, FormalName(arg, k));
           k++;
         }
       }
@@ -1561,10 +1606,7 @@ namespace Microsoft.Dafny {
         if (dtv.InferredTypeArgs.Count != 0) {
           wr.Write("<{0}>", TypeNames(dtv.InferredTypeArgs));
         }
-        wr.Write("(new {0}", DtCtorName(dtv.Ctor));
-        if (dtv.InferredTypeArgs.Count != 0) {
-          wr.Write("<{0}>", TypeNames(dtv.InferredTypeArgs));
-        }
+        wr.Write("(new {0}", DtCtorName(dtv.Ctor, dtv.InferredTypeArgs));
         wr.Write("(");
         string sep = "";
         for (int i = 0; i < dtv.Arguments.Count; i++) {
