@@ -102,10 +102,10 @@ namespace Microsoft.Boogie.Houdini {
       conjecture = exprGen.Function(macro);
 
       if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Local) {
-        handler = new VCGen.ErrorReporterLocal(gotoCmdOrigins, label2absy, impl.Blocks, vcgen.incarnationOriginMap, collector, mvInfo, vcgen.implName2LazyInliningInfo, proverInterface.Context, program);
+        handler = new VCGen.ErrorReporterLocal(gotoCmdOrigins, label2absy, impl.Blocks, vcgen.incarnationOriginMap, collector, mvInfo, proverInterface.Context, program);
       }
       else {
-        handler = new VCGen.ErrorReporter(gotoCmdOrigins, label2absy, impl.Blocks, vcgen.incarnationOriginMap, collector, mvInfo, vcgen.implName2LazyInliningInfo, proverInterface.Context, program);
+        handler = new VCGen.ErrorReporter(gotoCmdOrigins, label2absy, impl.Blocks, vcgen.incarnationOriginMap, collector, mvInfo, proverInterface.Context, program);
       }
 
       this.houdini = houdini;

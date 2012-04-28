@@ -559,7 +559,6 @@ namespace Microsoft.Boogie {
     public Inlining ProcedureInlining = Inlining.Assume;
     public bool PrintInlined = false;
     public bool ExtractLoops = false;
-    public int LazyInlining = 0;
     public int ProcedureCopyBound = 0;
     public int StratifiedInlining = 0;
     public int StratifiedInliningOption = 0;
@@ -977,13 +976,6 @@ namespace Microsoft.Boogie {
           }
           return true;
 
-        case "lazyInline":
-          if (ps.ConfirmArgumentCount(1)) {
-            LazyInlining = Int32.Parse(args[ps.i]);
-            if (LazyInlining > 3) ps.Error("Invalid argument \"{0}\" to option {1}", args[ps.i], ps.s);
-          }
-          return true;
-
         case "procCopyBound":
           if (ps.ConfirmArgumentCount(1)) {
             ProcedureCopyBound = Int32.Parse(args[ps.i]);
@@ -1273,12 +1265,6 @@ namespace Microsoft.Boogie {
 
       if (UseArrayTheory) {
         Monomorphize = true;
-      }
-
-      if (LazyInlining > 0) {
-        TypeEncodingMethod = TypeEncoding.Monomorphic;
-        UseArrayTheory = true;
-        UseAbstractInterpretation = false;
       }
 
       if (inferLeastForUnsat != null) {
