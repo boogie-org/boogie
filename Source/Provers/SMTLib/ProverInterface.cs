@@ -428,8 +428,8 @@ namespace Microsoft.Boogie.SMTLib
               labels = CalculatePath(0);
               xlabels = labels;
             }
-            ErrorModel errorModel = GetErrorModel();
-            handler.OnModel(xlabels, errorModel);
+            Model model = GetErrorModel();
+            handler.OnModel(xlabels, model);
           }
 
           if (labels == null || errorsLeft == 0) break;
@@ -489,7 +489,7 @@ namespace Microsoft.Boogie.SMTLib
       return path.ToArray();
     }
 
-    private ErrorModel GetErrorModel() {
+    private Model GetErrorModel() {
       if (!options.ExpectingModel())
         return null;
       SendThisVC("(get-model)");
@@ -528,7 +528,7 @@ namespace Microsoft.Boogie.SMTLib
         else
           theModel = models[0];
       }
-      return new ErrorModel(theModel);
+      return theModel;
     }
 
     private string[] GetLabelsInfo()

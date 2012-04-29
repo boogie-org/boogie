@@ -2714,7 +2714,7 @@ namespace VC
 
         public class EmptyErrorHandler : ProverInterface.ErrorHandler
         {
-            public override void OnModel(IList<string> labels, ErrorModel errModel)
+            public override void OnModel(IList<string> labels, Model model)
             {
                 
             }
@@ -2898,7 +2898,7 @@ namespace VC
               return;
             }
 
-            public override void OnModel(IList<string> labels, ErrorModel errModel) {
+            public override void OnModel(IList<string> labels, Model model) {
               List<Absy> absyList = new List<Absy>();
               foreach (var label in labels) {
                 absyList.Add(Label2Absy(label));
@@ -2906,9 +2906,6 @@ namespace VC
 
               orderedStateIds = new List<Tuple<int, int>>();
               candidatesToExpand = new List<int>();
-
-              Model model = null;
-              if (errModel != null) model = errModel.ToModel();
 
               if (underapproximationMode) {
                 var cex = NewTrace(0, absyList, model);

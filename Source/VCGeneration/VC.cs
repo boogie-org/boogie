@@ -1624,14 +1624,15 @@ namespace VC {
         this.program = program;
       }
 
-      public override void OnModel(IList<string/*!*/>/*!*/ labels, ErrorModel errModel) {
+      public override void OnModel(IList<string/*!*/>/*!*/ labels, Model model) {
         //Contract.Requires(cce.NonNullElements(labels));
-        if (CommandLineOptions.Clo.PrintErrorModel >= 1 && errModel != null) {
+        if (CommandLineOptions.Clo.PrintErrorModel >= 1 && model != null) {
           if (VC.ConditionGeneration.errorModelList != null)
           {
-            VC.ConditionGeneration.errorModelList.Add(errModel);
+            VC.ConditionGeneration.errorModelList.Add(model);
           }
-          errModel.Print(ErrorReporter.ModelWriter);
+          
+          model.Write(ErrorReporter.ModelWriter);
           ErrorReporter.ModelWriter.Flush();
         }
 
@@ -1651,7 +1652,7 @@ namespace VC {
         Contract.Assert(traceNodes.Contains(entryBlock));
         trace.Add(entryBlock);
 
-        Counterexample newCounterexample = TraceCounterexample(entryBlock, traceNodes, trace, errModel == null ? null : errModel.ToModel(), MvInfo, incarnationOriginMap, context, program, new Dictionary<TraceLocation, CalleeCounterexampleInfo>());
+        Counterexample newCounterexample = TraceCounterexample(entryBlock, traceNodes, trace, model, MvInfo, incarnationOriginMap, context, program, new Dictionary<TraceLocation, CalleeCounterexampleInfo>());
 
         if (newCounterexample == null)
           return;
@@ -1712,13 +1713,13 @@ namespace VC {
         Contract.Requires(program != null);
       }
 
-      public override void OnModel(IList<string/*!*/>/*!*/ labels, ErrorModel errModel) {
+      public override void OnModel(IList<string/*!*/>/*!*/ labels, Model model) {
         //Contract.Requires(cce.NonNullElements(labels));
         // We ignore the error model here for enhanced error message purposes.
         // It is only printed to the command line.
-        if (CommandLineOptions.Clo.PrintErrorModel >= 1 && errModel != null) {
+        if (CommandLineOptions.Clo.PrintErrorModel >= 1 && model != null) {
           if (CommandLineOptions.Clo.PrintErrorModelFile != null) {
-            errModel.Print(ErrorReporter.ModelWriter);
+            model.Write(ErrorReporter.ModelWriter);
             ErrorReporter.ModelWriter.Flush();
           }
         }
@@ -1744,7 +1745,7 @@ namespace VC {
             if (b.Cmds.Has(a)) {
               BlockSeq trace = new BlockSeq();
               trace.Add(b);
-              Counterexample newCounterexample = AssertCmdToCounterexample(a, cce.NonNull(b.TransferCmd), trace, errModel == null ? null : errModel.ToModel(), MvInfo, context);
+              Counterexample newCounterexample = AssertCmdToCounterexample(a, cce.NonNull(b.TransferCmd), trace, model, MvInfo, context);
               callback.OnCounterexample(newCounterexample, null);
               goto NEXT_ASSERT;
             }
@@ -2369,490 +2370,6 @@ namespace VC {
       return null;
     }
 
-
-    static void /*return printable error!*/ ApplyEnhancedErrorPrintingStrategy(Bpl.Expr/*!*/ expr, Hashtable /*Variable -> Expr*//*!*/ incarnationMap,
-      MiningStrategy errorDataEnhanced, ErrorModel/*!*/ errModel, Dictionary<Expr/*!*/, object>/*!*/ exprToPrintableValue,
-      List<string/*!*/>/*!*/ relatedInformation, bool printInternalStateDumpOnce, Dictionary<Incarnation, Absy/*!*/>/*!*/ incarnationOriginMap) {
-      Contract.Requires(expr != null);
-      Contract.Requires(incarnationMap != null);
-      Contract.Requires(errModel != null);
-      Contract.Requires(cce.NonNullDictionaryAndValues(exprToPrintableValue));
-      Contract.Requires(cce.NonNullElements(relatedInformation));
-      Contract.Requires(cce.NonNullDictionaryAndValues(incarnationOriginMap));
-      if (errorDataEnhanced is ListOfMiningStrategies) {
-        ListOfMiningStrategies loms = (ListOfMiningStrategies)errorDataEnhanced;
-        List < MiningStrategy > l = loms.msList;
-        for (int i = 0; i < l.Count; i++) {
-          MiningStrategy ms = l[i];
-          if (ms != null) {
-            ApplyEnhancedErrorPrintingStrategy(expr, incarnationMap, l[i], errModel, exprToPrintableValue, relatedInformation, false, incarnationOriginMap);
-          }
-        }
-      } else if (errorDataEnhanced is EEDTemplate /*EDEverySubExpr*/) {
-        EEDTemplate eedT = (EEDTemplate)errorDataEnhanced;
-        string reason = eedT.reason;
-        List<Bpl.Expr> listOfExprs = eedT.exprList;
-        Contract.Assert(cce.NonNullElements(listOfExprs));
-        if (listOfExprs != null) {
-          List<string> holeFillers = new List<string>();
-          for (int i = 0; i < listOfExprs.Count; i++) {
-            bool alreadySet = false;
-            foreach (KeyValuePair<Bpl.Expr, object> kvp in exprToPrintableValue) {
-              Contract.Assert(kvp.Key != null);
-              Bpl.Expr e = kvp.Key;
-              Bpl.Expr f = listOfExprs[i];
-              // the strings are compared instead of the actual expressions because 
-              // the expressions might not be identical, but their print-out strings will be
-              if (e.ToString() == f.ToString()) {
-                object o = kvp.Value;
-                if (o != null) {
-                  holeFillers.Add(o.ToString());
-                  alreadySet = true;
-                  break;
-                }
-              }
-            }
-            if (!alreadySet) {
-              // no information about that Expression found, so put in <unknown>
-              holeFillers.Add("<unknown>");
-            }
-          }
-          reason = FormatReasonString(reason, holeFillers);
-        }
-        if (reason != null) {
-          relatedInformation.Add("(related information): " + reason);
-        }
-      } else {
-        // define new templates here!
-      }
-
-      if (printInternalStateDumpOnce) {
-        ComputeAndTreatHeapSuccessions(incarnationMap, errModel, incarnationOriginMap, relatedInformation);
-
-        // default action: print all values!
-        foreach (KeyValuePair<Bpl.Expr, object> kvp in exprToPrintableValue) {
-          Contract.Assert(kvp.Key != null);
-          object o = kvp.Value;
-          if (o != null) {
-            // We do not want to print LiteralExprs because that gives things like 0 == 0.
-            // If both arguments to the string.Format are the same it is also useless, 
-            //   as that would print e.g. $a == $a.
-            if (!(kvp.Key is LiteralExpr) && kvp.Key.ToString() != o.ToString()) {
-              string boogieExpr;
-              // check whether we are handling BPL or SSC input
-              bool runningOnBpl = CommandLineOptions.Clo.Files.Exists(fn => Path.GetExtension(fn).ToLower() == "bpl");
-              if (runningOnBpl) {
-                boogieExpr = kvp.Key.ToString();
-              } else {
-                boogieExpr = Helpers.PrettyPrintBplExpr(kvp.Key);
-              }
-              relatedInformation.Add("(internal state dump): " + string.Format("{0} == {1}", boogieExpr, o));
-            }
-          }
-        }
-      }
-    }
-
-    static void ComputeAndTreatHeapSuccessions(System.Collections.Hashtable/*!*/ incarnationMap, ErrorModel/*!*/ errModel,
-      Dictionary<Incarnation, Absy/*!*/>/*!*/ incarnationOriginMap, List<string/*!*/>/*!*/ relatedInformation) {
-      Contract.Requires(incarnationMap != null);
-      Contract.Requires(errModel != null);
-      Contract.Requires(cce.NonNullDictionaryAndValues(incarnationOriginMap));
-      Contract.Requires(cce.NonNullElements(relatedInformation));
-      List<int> heapSuccList = ComputeHeapSuccessions(incarnationMap, errModel);
-      TreatHeapSuccessions(heapSuccList, incarnationMap, errModel, incarnationOriginMap, relatedInformation);
-    }
-
-    static List<int> ComputeHeapSuccessions(System.Collections.Hashtable incarnationMap, ErrorModel errModel) {
-      Contract.Requires(incarnationMap != null);
-      Contract.Requires(errModel != null);
-      // find the heap variable
-      Variable heap = null;
-      ICollection ic = incarnationMap.Keys;
-      foreach (object o in ic) {
-        if (o is GlobalVariable) {
-          GlobalVariable gv = (GlobalVariable)o;
-          if (gv.Name == "$Heap") {
-            heap = gv;
-          }
-        }
-      }
-      List<int> heapIdSuccession = new List<int>();
-      if (heap == null) {
-        // without knowing the name of the current heap we cannot create a heap succession!
-      } else {
-        object oHeap = incarnationMap[heap];
-        if (oHeap != null) {
-          string currentHeap = oHeap.ToString();
-          int currentHeapId;
-          if (errModel.identifierToPartition.TryGetValue(currentHeap, out currentHeapId)) {
-            while (currentHeapId != -1) {
-              if (!heapIdSuccession.Contains(currentHeapId)) {
-                heapIdSuccession.Add(currentHeapId);
-                currentHeapId = ComputePredecessorHeapId(currentHeapId, errModel);
-              } else {
-                // looping behavior, just stop here and do not add this value (again!)
-                break;
-              }
-            }
-          }
-        }
-      }
-      if (heapIdSuccession.Count > 0) {
-        int heapId = heapIdSuccession[heapIdSuccession.Count - 1];
-        List<string> strl = errModel.partitionToIdentifiers[heapId];
-        Contract.Assert(strl != null);
-        if (strl != null && strl.Contains("$Heap")) {
-          // we have a proper succession of heaps that starts with $Heap
-          return heapIdSuccession;
-        } else {
-          // no proper heap succession, not starting with $Heap!
-          return null;
-        }
-      } else {
-        // no heap succession found because either the $Heap does not have a current incarnation
-        // or because (unlikely!) the model is somehow messed up
-        return null;
-      }
-    }
-
-    static int ComputePredecessorHeapId(int id, ErrorModel errModel) {
-      Contract.Requires(errModel != null);
-      //check "$HeapSucc" and "store2" functions:
-      List<int> heapSuccPredIdList = new List<int>();
-      List<List<int>> heapSuccFunc;
-      errModel.definedFunctions.TryGetValue("$HeapSucc", out heapSuccFunc);
-      if (heapSuccFunc != null) {
-        foreach (List<int> heapSuccFuncDef in heapSuccFunc) {
-          // do not look at the else case of the function def, so check .Count
-          if (heapSuccFuncDef != null && heapSuccFuncDef.Count == 3 && heapSuccFuncDef[1] == id) {
-            // make sure each predecessor is put into the list at most once
-            if (!heapSuccPredIdList.Contains(heapSuccFuncDef[0])) {
-              heapSuccPredIdList.Add(heapSuccFuncDef[0]);
-            }
-          }
-        }
-      }
-      List<int> store2PredIdList = new List<int>();
-      ;
-      List<List<int>> store2Func;
-      errModel.definedFunctions.TryGetValue("store2", out store2Func);
-      if (store2Func != null) {
-        foreach (List<int> store2FuncDef in store2Func) {
-          // do not look at the else case of the function def, so check .Count
-          if (store2FuncDef != null && store2FuncDef.Count == 5 && store2FuncDef[4] == id) {
-            // make sure each predecessor is put into the list at most once
-            if (!store2PredIdList.Contains(store2FuncDef[0])) {
-              store2PredIdList.Add(store2FuncDef[0]);
-            }
-          }
-        }
-      }
-      if (heapSuccPredIdList.Count + store2PredIdList.Count > 0) {
-        if (store2PredIdList.Count == 1) {
-          return store2PredIdList[0];
-        } else if (store2PredIdList.Count == 0) {
-          if (heapSuccPredIdList.Count == 1) {
-            return heapSuccPredIdList[0];
-          } else { //(heapSuccPredIdList.Count > 1)
-            if (heapSuccPredIdList.Count == 2) {
-              // if one of the 2 is a self-loop, take the other!
-              if (heapSuccPredIdList[0] == id) {
-                return heapSuccPredIdList[1];
-              } else if (heapSuccPredIdList[1] == id) {
-                return heapSuccPredIdList[0];
-              } else {
-                //no self-loop, two different predecessors, cannot choose
-                return -1;
-              }
-            } else {
-              // at least 3 different predecessors available, one of them could be a self-loop, but 
-              // we cannot choose between the other 2 (or more) candidates
-              return -1;
-            }
-          }
-        } else {
-          // more than one result in the succession coming from store2, no way 
-          // to decide which is right, end here
-          return -1;
-        }
-      } else {
-        // no predecessor found
-        return -1;
-      }
-    }
-
-    static void TreatHeapSuccessions(List<int> heapSuccessionList, System.Collections.Hashtable incarnationMap, ErrorModel errModel,
-      Dictionary<Incarnation, Absy/*!*/>/*!*/ incarnationOriginMap, List<string/*!*/>/*!*/ relatedInformation) {
-      Contract.Requires(incarnationMap != null);
-      Contract.Requires(errModel != null);
-      Contract.Requires(cce.NonNullDictionaryAndValues(incarnationOriginMap));
-      Contract.Requires(cce.NonNullElements(relatedInformation));
-      if (heapSuccessionList == null) {
-        // empty list of heap successions, nothing we can do!
-        return;
-      }
-      // primarily look for $o and $f (with skolem-id stuff) and then look where they were last changed!
-      // find the o and f variables
-      Variable dollarO = null;
-      Variable dollarF = null;
-      ICollection ic = incarnationMap.Keys;
-      foreach (object o in ic) {
-        if (o is BoundVariable) {
-          BoundVariable bv = (BoundVariable)o;
-          if (bv.Name == "$o") {
-            dollarO = bv;
-          } else if (bv.Name == "$f") {
-            dollarF = bv;
-          }
-        }
-      }
-      if (dollarO == null || dollarF == null) {
-        // without knowing the name of the current incarnation of $Heap, $o and $f we don't do anything here
-      } else {
-        object objO = incarnationMap[dollarO];
-        object objF = incarnationMap[dollarF];
-        if (objO != null && objF != null) {
-          int zidO = errModel.identifierToPartition[objO.ToString()];
-          int zidF = errModel.identifierToPartition[objF.ToString()];
-
-          List<List<int>> select2Func = null;
-          if (errModel.definedFunctions.TryGetValue("select2", out select2Func) && select2Func != null) {
-            // check for all changes to $o.$f!
-            List<int> heapsChangedOFZid = new List<int>();
-            int oldValueZid = -1;
-            int newValueZid = -1;
-
-            for (int i = 0; i < heapSuccessionList.Count; i++) {
-              bool foundValue = false;
-              foreach (List<int> f in select2Func) {
-                if (f != null && f.Count == 4 && f[0] == heapSuccessionList[i] && f[1] == zidO && f[2] == zidF) {
-                  newValueZid = f[3];
-                  foundValue = true;
-                  break;
-                }
-              }
-              if (!foundValue) {
-                //    get default of the function once Leo&Nikolaj have changed it so the default is type correct
-                //    for now treat it as a -1 !
-                // the last element of select2Func is the else case, it has only 1 element, so grab that:
-                // newValueZid = (select2Func[select2Func.Count-1])[0];
-                newValueZid = -1;
-              }
-
-              if (oldValueZid != newValueZid) {
-                // there was a change here, record that in the list:
-                if (oldValueZid != -1) {
-                  // don't record a change at the "initial" location, which refers to the $Heap in
-                  // its current incarnation, and is marked by the oldValueZid being uninitialized
-                  heapsChangedOFZid.Add(heapSuccessionList[i - 1]);
-                }
-                oldValueZid = newValueZid;
-              }
-            }
-
-            foreach (int id in heapsChangedOFZid) {
-              //get the heap name out of the errModel for this zid:
-              List<string> l = errModel.partitionToIdentifiers[id];
-              Contract.Assert(l != null);
-              List<string> heaps = new List<string>();
-              if (l != null) {
-                foreach (string s in l) {
-                  if (s.StartsWith("$Heap")) {
-                    heaps.Add(s);
-                  }
-                }
-              }
-              // easy case first:
-              if (heaps.Count == 1) {
-                string heapName = heaps[0];
-                // we have a string with the name of the heap, but we need to get the 
-                // source location out of a map that uses Incarnations!
-
-                ICollection incOrgMKeys = incarnationOriginMap.Keys;
-                foreach (Incarnation inc in incOrgMKeys) {
-                  if (inc != null) {
-                    if (inc.Name == heapName) {
-                      Absy source = null;
-                      incarnationOriginMap.TryGetValue(inc, out source);
-                      if (source != null) {
-                        if (source is Block) {
-                          Block b = (Block)source;
-                          string fileName = b.tok.filename;
-                          if (fileName != null) {
-                            fileName = fileName.Substring(fileName.LastIndexOf('\\') + 1);
-                          }
-                          relatedInformation.Add("(related information): Changed $o.$f here: " + fileName + "(" + b.tok.line + "," + b.tok.col + ")");
-                        } else if (source is Cmd) {
-                          Cmd c = (Cmd)source;
-                          string fileName = c.tok.filename;
-                          if (fileName != null) {
-                            fileName = fileName.Substring(fileName.LastIndexOf('\\') + 1);
-                          }
-                          relatedInformation.Add("(related information) Changed $o.$f here: " + fileName + "(" + c.tok.line + "," + c.tok.col + ")");
-                        } else {
-                          Contract.Assert(false);
-                          throw new cce.UnreachableException();
-                        }
-                      }
-                    }
-                  }
-                }
-              } else {
-                // more involved! best use some of the above code and try to synchronize joint parts
-                // here there is more than one "$Heap@i" in the partition, check if they all agree on one
-                // source location or maybe if some of them are joins (i.e. blocks) that should be ignored
-              }
-
-            }
-          }
-        }
-      }
-    }
-
-    static string FormatReasonString(string reason, List<string> holeFillers) {
-      if (holeFillers != null) {
-        // in case all elements of holeFillers are "<unknown>" we can not say anything useful
-        // so just say nothing and return null
-        bool allUnknown = true;
-        foreach (string s in holeFillers) {
-          if (s != "<unknown>") {
-            allUnknown = false;
-            break;
-          }
-        }
-        if (allUnknown) {
-          return null;
-        }
-        string[] a = holeFillers.ToArray();
-        reason = string.Format(reason, a);
-      }
-      return reason;
-    }
-
-    static object ValueFromZID(ErrorModel errModel, int id) {
-      Contract.Requires(errModel != null);
-      return ValueFromZID(errModel, id, null);
-    }
-
-    static object ValueFromZID(ErrorModel errModel, int id, string searchForAlternate) {
-      Contract.Requires(errModel != null);
-      object o = errModel.partitionToValue[id];
-      if (o != null) {
-        return o;
-      } else {
-        // more elaborate scheme to find something better, as in: look at the identifiers that
-        // this partition maps to, or similar things!
-
-        //treatment for 'null':
-        int idForNull = -1;
-        if (errModel.valueToPartition.TryGetValue("nullObject", out idForNull) && idForNull == id) {
-          return "nullObject";
-        }
-
-        string returnStr = null;
-
-        // "good identifiers" if there is no value found are 'unique consts' or 
-        // '$in' parameters; '$in' parameters are treated, unclear how to get 'unique const' info
-        List<string> identifiers = errModel.partitionToIdentifiers[id];
-        if (identifiers != null) {
-          foreach (string s in identifiers) {
-            Contract.Assert(s != null);
-            //$in parameters are (more) interesting than other identifiers, return the
-            // first one found
-            if (s.EndsWith("$in")) {
-              returnStr = s;
-              break;
-            }
-          }
-        }
-
-        // try to get mappings from one identifier to another if there are exactly 
-        // two identifiers in the partition, where one of them is the identifier for which 
-        // we search for alternate encodings (third parameter of the method) [or an incarnation
-        // of such an identifier]
-        if (returnStr == null && searchForAlternate != null && identifiers != null && identifiers.Count == 2) {
-          if (identifiers[0] == searchForAlternate || identifiers[0].StartsWith(searchForAlternate + ".sk.")) {
-            returnStr = identifiers[1];
-          } else if (identifiers[1] == searchForAlternate || identifiers[1].StartsWith(searchForAlternate + ".sk.")) {
-            returnStr = identifiers[0];
-          }
-        }
-
-        if (returnStr != null) {
-          return Helpers.BeautifyBplString(returnStr);
-        }
-
-        return null;
-      }
-    }
-
-    static int TreatInterpretedFunction(string functionName, List<int> zargs, ErrorModel errModel) {
-      Contract.Requires(functionName != null);
-      Contract.Requires(zargs != null);
-      Contract.Requires(errModel != null);
-      if (zargs.Count != 2) {
-        //all interpreted functions are binary, so there have to be exactly two arguments
-        return -1;
-      } else {
-        object arg0 = ValueFromZID(errModel, zargs[0]);
-        object arg1 = ValueFromZID(errModel, zargs[1]);
-        if (arg0 is BigNum && arg1 is BigNum) {
-          BigNum arg0i = (BigNum)arg0;
-          BigNum arg1i = (BigNum)arg1;
-          BigNum result;
-          if (functionName == "+") {
-            result = arg0i + arg1i;
-          } else if (functionName == "-") {
-            result = arg0i - arg1i;
-          } else /*if (functionName == "*")*/ {
-            result = arg0i * arg1i;
-          }
-          int returnId = -1;
-          if (errModel.valueToPartition.TryGetValue(result, out returnId)) {
-            return returnId;
-          } else {
-            return -1;
-          }
-        } else {
-          //both arguments need to be integers for this to work!
-          return -1;
-        }
-      }
-    }
-
-    static int TreatFunction(string functionName, List<int> zargs, bool undefined, ErrorModel errModel) {
-      Contract.Requires(functionName != null);
-      Contract.Requires(zargs != null);
-      Contract.Requires(errModel != null);
-      List<List<int>> functionDef;
-      if ((!errModel.definedFunctions.TryGetValue(functionName, out functionDef) && functionName != "+" && functionName != "-" && functionName != "*") || undefined) {
-        // no fitting function found or one of the arguments is undefined
-        return -1;
-      } else {
-        if (functionName == "+" || functionName == "-" || functionName == "*") {
-          return TreatInterpretedFunction(functionName, zargs, errModel);
-        }
-        Contract.Assert(functionDef != null);
-        foreach (List<int> pWiseF in functionDef) {
-          Contract.Assert(pWiseF != null);
-          // else case in the function definition:
-          if (pWiseF.Count == 1) {
-            return pWiseF[0];
-          }
-          // number of arguments is exactly the right number
-          Contract.Assert(zargs.Count == pWiseF.Count - 1);
-          if (Contract.ForAll(zargs, i => i == pWiseF[i])) {
-            return pWiseF[pWiseF.Count - 1];
-          }
-        }
-        // all functions should have an 'else ->' case defined, therefore this should be
-        // unreachable code!
-        Contract.Assert(false);
-        throw new cce.UnreachableException();
-      }
-    }
-
     protected static Counterexample AssertCmdToCounterexample(AssertCmd cmd, TransferCmd transferCmd, BlockSeq trace, Model errModel, ModelViewInfo mvInfo, ProverContext context) 
     {
       Contract.Requires(cmd != null);
@@ -2862,7 +2379,6 @@ namespace VC {
       Contract.Ensures(Contract.Result<Counterexample>() != null);
 
       List<string> relatedInformation = new List<string>();
-      
       
       // See if it is a special assert inserted in translation
       if (cmd is AssertRequiresCmd)
