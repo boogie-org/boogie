@@ -559,7 +559,6 @@ namespace Microsoft.Boogie {
     public Inlining ProcedureInlining = Inlining.Assume;
     public bool PrintInlined = false;
     public bool ExtractLoops = false;
-    public int ProcedureCopyBound = 0;
     public int StratifiedInlining = 0;
     public int StratifiedInliningOption = 0;
     public bool StratifiedInliningWithoutModels = false; // disable model generation for SI
@@ -973,12 +972,6 @@ namespace Microsoft.Boogie {
                 ps.Error("Invalid argument \"{0}\" to option {1}", args[ps.i], ps.s);
                 break;
             }
-          }
-          return true;
-
-        case "procCopyBound":
-          if (ps.ConfirmArgumentCount(1)) {
-            ProcedureCopyBound = Int32.Parse(args[ps.i]);
           }
           return true;
 

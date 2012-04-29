@@ -85,7 +85,7 @@ namespace Microsoft.Boogie.SMTLib
           {
               currentLogFile = OpenOutputFile("");
           }
-          if (CommandLineOptions.Clo.ProcedureCopyBound > 0 || CommandLineOptions.Clo.ContractInfer)
+          if (CommandLineOptions.Clo.ContractInfer)
           {
               SendThisVC("(set-option :produce-unsat-cores true)");
               this.usingUnsatCore = true;
