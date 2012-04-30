@@ -30,6 +30,7 @@ namespace VC
         private bool useSummary;
         private SummaryComputation summaryComputation;
         private HashSet<string> procsThatReachedRecBound;
+        ProverInterface prover;
 
         [ContractInvariantMethod]
         void ObjectInvariant()
@@ -44,11 +45,9 @@ namespace VC
         public StratifiedVCGen(Program program, string/*?*/ logFilePath, bool appendLogFile)
             : base(program, logFilePath, appendLogFile)
         {
-            Contract.Requires(program != null);
-
             implName2StratifiedInliningInfo = new Dictionary<string, StratifiedInliningInfo>();
-
-            this.GenerateVCsForStratifiedInlining(program);
+            prover = ProverInterface.CreateProver(program, logFilePath, appendLogFile, CommandLineOptions.Clo.ProverKillTime);
+            this.GenerateVCsForStratifiedInlining();
             PersistCallTree = false;
             useSummary = false;
             procsThatReachedRecBound = new HashSet<string>();
@@ -205,11 +204,8 @@ namespace VC
           }
         }
 
-        public void GenerateVCsForStratifiedInlining(Program program)
+        public void GenerateVCsForStratifiedInlining()
         {
-            Contract.Requires(program != null);
-            Checker checker = FindCheckerFor(null, CommandLineOptions.Clo.ProverKillTime);
-
             foreach (Declaration decl in program.TopLevelDeclarations)
             {
                 Contract.Assert(decl != null);
@@ -221,7 +217,7 @@ namespace VC
                 Procedure proc = cce.NonNull(impl.Proc);
                 if (proc.FindExprAttribute("inline") != null)
                 {
-                    StratifiedInliningInfo info = new StratifiedInliningInfo(impl, program, checker.TheoremProver.Context);
+                    StratifiedInliningInfo info = new StratifiedInliningInfo(impl, program, prover.Context);
                     implName2StratifiedInliningInfo[impl.Name] = info;
 
                     ExprSeq exprs = new ExprSeq();
@@ -272,7 +268,7 @@ namespace VC
                 ins.Add(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "x", argtype), true));
 
                 var recordFunc = new Function(Token.NoToken, proc.Name, ins, returnVar);
-                checker.TheoremProver.Context.DeclareFunction(recordFunc, "");
+                prover.Context.DeclareFunction(recordFunc, "");
 
                 var exprs = new ExprSeq();
                 exprs.Add(new IdentifierExpr(Token.NoToken, proc.InParams[0]));
@@ -282,7 +278,7 @@ namespace VC
             }
         }
 
-        private void GenerateVCForStratifiedInlining(Program program, StratifiedInliningInfo info, ProverInterface prover)
+        private void GenerateVCForStratifiedInlining(StratifiedInliningInfo info)
         {
             Contract.Requires(program != null);
             Contract.Requires(info != null);
@@ -1041,6 +1037,7 @@ namespace VC
         public Outcome FindLeastToVerify(Implementation impl, Program program, ref HashSet<string> allBoolVars)
         {
             Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
+            Debug.Assert(this.program == program);
 
             // Record current time
             var startTime = DateTime.UtcNow;
@@ -1052,17 +1049,13 @@ namespace VC
             satQueryCache = new Dictionary<int, List<HashSet<string>>>();
             unsatQueryCache = new Dictionary<int, List<HashSet<string>>>();
 
-            // Get the checker
-            ProverInterface prover = ProverInterface.CreateProver(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend, CommandLineOptions.Clo.ProverKillTime);
-
             Contract.Assert(implName2StratifiedInliningInfo != null);
-            this.program = program;
 
             // Build VCs for all procedures
             foreach (StratifiedInliningInfo info in implName2StratifiedInliningInfo.Values)
             {
                 Contract.Assert(info != null);
-                GenerateVCForStratifiedInlining(program, info, prover);
+                GenerateVCForStratifiedInlining(info);
             }
 
             // Get the VC of the current procedure
@@ -1261,6 +1254,7 @@ namespace VC
         public override Outcome VerifyImplementation(Implementation/*!*/ impl, Program/*!*/ program, VerifierCallback/*!*/ callback)
         {
             Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
+            Debug.Assert(this.program == program);
             var computeUnderBound = true;
 
             #region stratified inlining options
@@ -1274,10 +1268,8 @@ namespace VC
                     computeUnderBound = false;
                     break;
             }
-
             #endregion
 
-            ProverInterface prover = ProverInterface.CreateProver(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend, CommandLineOptions.Clo.ProverKillTime);
             ProverInterface prover2 = null;
             if (useSummary) {
               prover2 = ProverInterface.CreateProver(program, "prover2.txt", true, CommandLineOptions.Clo.ProverKillTime);
@@ -1291,8 +1283,6 @@ namespace VC
             {
                 Microsoft.Boogie.InterProcGenKill.ComputeLiveVars(impl, program);
             }
-
-            this.program = program;
 
             // Get the VC of the current procedure
             VCExpr vc;
@@ -1315,7 +1305,7 @@ namespace VC
             coverageManager.addMain();
 
             // Put all of the necessary state into one object
-            var vState = new VerificationState(vc, calls, prover, reporter, prover, new EmptyErrorHandler());
+            var vState = new VerificationState(vc, calls, prover, reporter, prover2, new EmptyErrorHandler());
             vState.vcSize += SizeComputingVisitor.ComputeSize(vc);
             vState.coverageManager = coverageManager;
 
@@ -1746,7 +1736,7 @@ namespace VC
                 StratifiedInliningInfo info = implName2StratifiedInliningInfo[procName];
                 if (!info.initialized)
                 {
-                    GenerateVCForStratifiedInlining(program, info, prover);
+                    GenerateVCForStratifiedInlining(info);
                 }
                 //Console.WriteLine("Inlining {0}", procName);
                 VCExpr expansion = cce.NonNull(info.vcexpr);
