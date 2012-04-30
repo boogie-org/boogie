@@ -472,6 +472,22 @@ namespace VC {
       ReachedBound
     }
 
+    public static Outcome ProverInterfaceOutcomeToConditionGenerationOutcome(ProverInterface.Outcome outcome) {
+      switch (outcome) {
+        case ProverInterface.Outcome.Invalid:
+          return Outcome.Errors;
+        case ProverInterface.Outcome.OutOfMemory:
+          return Outcome.OutOfMemory;
+        case ProverInterface.Outcome.TimeOut:
+          return Outcome.TimedOut;
+        case ProverInterface.Outcome.Undetermined:
+          return Outcome.Inconclusive;
+        case ProverInterface.Outcome.Valid:
+          return Outcome.Correct;
+      }
+      return Outcome.Inconclusive;  // unreachable but the stupid compiler does not understand
+    }
+
     [ContractInvariantMethod]
     void ObjectInvariant() {
       Contract.Invariant(cce.NonNullElements(checkers));
