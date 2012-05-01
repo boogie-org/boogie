@@ -1265,6 +1265,7 @@ namespace Microsoft.Boogie {
       }
 
       if (StratifiedInlining > 0) {
+        UseLabels = false;
         TypeEncodingMethod = TypeEncoding.Monomorphic;
         UseArrayTheory = true;
         UseAbstractInterpretation = false;

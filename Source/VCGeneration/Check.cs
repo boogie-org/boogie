@@ -300,6 +300,64 @@ namespace Microsoft.Boogie {
   // -----------------------------------------------------------------------------------------------
 
   public abstract class ProverInterface {
+    public static ProverInterface CreateProver(Program prog, string/*?*/ logFilePath, bool appendLogFile, int timeout) {
+      Contract.Requires(prog != null);
+
+      ProverOptions options = cce.NonNull(CommandLineOptions.Clo.TheProverFactory).BlankProverOptions();
+
+      if (logFilePath != null) {
+        options.LogFilename = logFilePath;
+        if (appendLogFile)
+          options.AppendLogFile = appendLogFile;
+      }
+
+      if (timeout > 0) {
+        options.TimeLimit = timeout * 1000;
+      }
+
+      options.Parse(CommandLineOptions.Clo.ProverOptions);
+
+      ProverContext ctx = (ProverContext)CommandLineOptions.Clo.TheProverFactory.NewProverContext(options);
+
+      // set up the context
+      foreach (Declaration decl in prog.TopLevelDeclarations) {
+        Contract.Assert(decl != null);
+        TypeCtorDecl t = decl as TypeCtorDecl;
+        if (t != null) {
+          ctx.DeclareType(t, null);
+        }
+      }
+      foreach (Declaration decl in prog.TopLevelDeclarations) {
+        Contract.Assert(decl != null);
+        Constant c = decl as Constant;
+        if (c != null) {
+          ctx.DeclareConstant(c, c.Unique, null);
+        }
+        else {
+          Function f = decl as Function;
+          if (f != null) {
+            ctx.DeclareFunction(f, null);
+          }
+        }
+      }
+      foreach (Declaration decl in prog.TopLevelDeclarations) {
+        Contract.Assert(decl != null);
+        Axiom ax = decl as Axiom;
+        if (ax != null) {
+          ctx.AddAxiom(ax, null);
+        }
+      }
+      foreach (Declaration decl in prog.TopLevelDeclarations) {
+        Contract.Assert(decl != null);
+        GlobalVariable v = decl as GlobalVariable;
+        if (v != null) {
+          ctx.DeclareGlobalVariable(v, null);
+        }
+      }
+
+      return (ProverInterface)CommandLineOptions.Clo.TheProverFactory.SpawnProver(options, ctx);
+    }
+
     public enum Outcome {
       Valid,
       Invalid,

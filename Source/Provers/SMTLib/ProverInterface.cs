@@ -804,6 +804,7 @@ namespace Microsoft.Boogie.SMTLib
     {
         unsatCore = new List<int>();
 
+        Push();
         // Name the assumptions
         var nameToAssumption = new Dictionary<string, int>();
         int i = 0;
@@ -820,23 +821,23 @@ namespace Microsoft.Boogie.SMTLib
         }
         Check();
 
-        var prevOutcome = CheckOutcomeCore(handler);
-        
-        if (prevOutcome != Outcome.Valid)
-        {
-            return prevOutcome;
+        var outcome = CheckOutcomeCore(handler);
+
+        if (outcome != Outcome.Valid) {
+          Pop();
+          return outcome;
         }
 
         Contract.Assert(usingUnsatCore, "SMTLib prover not setup for computing unsat cores");
         SendThisVC("(get-unsat-core)");
         var resp = Process.GetProverResponse();
         unsatCore = new List<int>();
-        if(resp.Name != "") unsatCore.Add(nameToAssumption[resp.Name]);
+        if (resp.Name != "") unsatCore.Add(nameToAssumption[resp.Name]);
         foreach (var s in resp.Arguments) unsatCore.Add(nameToAssumption[s.Name]);
 
         FlushLogFile();
-
-        return prevOutcome;
+        Pop();
+        return outcome;
     }
 
     public override void Push()

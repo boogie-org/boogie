@@ -30,6 +30,7 @@ namespace VC
         private bool useSummary;
         private SummaryComputation summaryComputation;
         private HashSet<string> procsThatReachedRecBound;
+        ProverInterface prover;
 
         [ContractInvariantMethod]
         void ObjectInvariant()
@@ -44,11 +45,9 @@ namespace VC
         public StratifiedVCGen(Program program, string/*?*/ logFilePath, bool appendLogFile)
             : base(program, logFilePath, appendLogFile)
         {
-            Contract.Requires(program != null);
-
             implName2StratifiedInliningInfo = new Dictionary<string, StratifiedInliningInfo>();
-
-            this.GenerateVCsForStratifiedInlining(program);
+            prover = ProverInterface.CreateProver(program, logFilePath, appendLogFile, CommandLineOptions.Clo.ProverKillTime);
+            this.GenerateVCsForStratifiedInlining();
             PersistCallTree = false;
             useSummary = false;
             procsThatReachedRecBound = new HashSet<string>();
@@ -205,11 +204,8 @@ namespace VC
           }
         }
 
-        public void GenerateVCsForStratifiedInlining(Program program)
+        public void GenerateVCsForStratifiedInlining()
         {
-            Contract.Requires(program != null);
-            Checker checker = FindCheckerFor(null, CommandLineOptions.Clo.ProverKillTime);
-
             foreach (Declaration decl in program.TopLevelDeclarations)
             {
                 Contract.Assert(decl != null);
@@ -221,7 +217,7 @@ namespace VC
                 Procedure proc = cce.NonNull(impl.Proc);
                 if (proc.FindExprAttribute("inline") != null)
                 {
-                    StratifiedInliningInfo info = new StratifiedInliningInfo(impl, program, checker.TheoremProver.Context);
+                    StratifiedInliningInfo info = new StratifiedInliningInfo(impl, program, prover.Context);
                     implName2StratifiedInliningInfo[impl.Name] = info;
 
                     ExprSeq exprs = new ExprSeq();
@@ -272,7 +268,7 @@ namespace VC
                 ins.Add(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "x", argtype), true));
 
                 var recordFunc = new Function(Token.NoToken, proc.Name, ins, returnVar);
-                checker.TheoremProver.Context.DeclareFunction(recordFunc, "");
+                prover.Context.DeclareFunction(recordFunc, "");
 
                 var exprs = new ExprSeq();
                 exprs.Add(new IdentifierExpr(Token.NoToken, proc.InParams[0]));
@@ -282,11 +278,11 @@ namespace VC
             }
         }
 
-        private void GenerateVCForStratifiedInlining(Program program, StratifiedInliningInfo info, Checker checker)
+        private void GenerateVCForStratifiedInlining(StratifiedInliningInfo info)
         {
             Contract.Requires(program != null);
             Contract.Requires(info != null);
-            Contract.Requires(checker != null);
+            Contract.Requires(prover != null);
             Contract.Requires(info.impl != null);
             Contract.Requires(info.impl.Proc != null);
             Contract.Requires(!info.initialized);
@@ -299,15 +295,15 @@ namespace VC
             info.gotoCmdOrigins = PassifyImpl(impl, program, out mvInfo);
             Contract.Assert(info.exitIncarnationMap != null);
             Hashtable/*<int, Absy!>*/ label2absy;
-            VCExpressionGenerator gen = checker.VCExprGen;
+            VCExpressionGenerator gen = prover.VCExprGen;
             Contract.Assert(gen != null);
 
-            var ctx = checker.TheoremProver.Context;
+            var ctx = prover.Context;
             var exprGen = ctx.ExprGen;
             var bet = ctx.BoogieExprTranslator;
             VCExpr controlFlowVariableExpr = CommandLineOptions.Clo.UseLabels ? null : bet.LookupVariable(info.controlFlowVariable);
 
-            VCExpr vcexpr = gen.Not(GenerateVC(impl, controlFlowVariableExpr, out label2absy, checker.TheoremProver.Context));
+            VCExpr vcexpr = gen.Not(GenerateVC(impl, controlFlowVariableExpr, out label2absy, prover.Context));
             Contract.Assert(vcexpr != null);
             if (!CommandLineOptions.Clo.UseLabels) {
               VCExpr controlFlowFunctionAppl = exprGen.ControlFlowFunctionApplication(controlFlowVariableExpr, exprGen.Integer(BigNum.ZERO));
@@ -318,7 +314,7 @@ namespace VC
             info.label2absy = label2absy;
             info.mvInfo = mvInfo;
 
-            Boogie2VCExprTranslator translator = checker.TheoremProver.Context.BoogieExprTranslator;
+            Boogie2VCExprTranslator translator = prover.Context.BoogieExprTranslator;
             Contract.Assert(translator != null);
             info.privateVars = new List<VCExprVar>();
             foreach (Variable v in impl.LocVars)
@@ -417,9 +413,10 @@ namespace VC
                 overApproxNodes.IntersectWith(calls.summaryCandidates.Keys);
                 
                 var roots = FindTopMostAncestors(calls.candidateParent, overApproxNodes);
-                var checker2 = vState.checker2;
+                var prover2 = vState.checker2.prover;
+                var reporter2 = vState.checker2.reporter;
 
-                checker2.Push();
+                prover2.Push();
 
                 // candidates to block
                 var block = new HashSet<int>();
@@ -429,7 +426,7 @@ namespace VC
                     calls.currCandidates.Iter(id => { if (calls.getRecursionBound(id) > bound) block.Add(id); });
                     foreach (var id in block)
                     {
-                        checker2.AddAxiom(calls.getFalseExpr(id));
+                        prover2.Assert(calls.getFalseExpr(id), true);
                         var curr = id;
                         usesBound.Add(id);
                         while (curr != 0)
@@ -447,14 +444,14 @@ namespace VC
                     // inline procedures in post order
                     var post = getPostOrder(calls.candidateParent, id);
 
-                    vState.checker2.Push();
+                    vState.checker.prover.Push();
                     foreach (var cid in post)
                     {
                         if (goodCandidates.Contains(cid)) continue;
 
-                        checker2.AddAxiom(calls.id2VC[cid]);
+                        prover2.Assert(calls.id2VC[cid], true);
                         if (!overApproxNodes.Contains(cid)) continue;
-                        checker2.AddAxiom(calls.id2ControlVar[cid]);
+                        prover2.Assert(calls.id2ControlVar[cid], true);
 
                         foreach (var tup in calls.summaryCandidates[cid])
                         {
@@ -466,11 +463,13 @@ namespace VC
                             // It is OK to assume the summary while trying to prove it
                             var summary = getSummary(tup.Item1);
 
-                            checker2.Push();
-                            checker2.AddAxiom(summary);
-                            checker2.AddAxiom(checker2.underlyingChecker.VCExprGen.Not(tup.Item2));
-                            var outcome = checker2.CheckVC();
-                            checker2.Pop();
+                            prover2.Push();
+                            prover2.Assert(summary, true);
+                            prover2.Assert(prover2.VCExprGen.Not(tup.Item2), true);
+                            prover2.Check();
+                            var outcome = ConditionGeneration.ProverInterfaceOutcomeToConditionGenerationOutcome(prover2.CheckOutcomeCore(reporter2));
+
+                            prover2.Pop();
                             if (outcome == Outcome.Correct)
                             {
                                 //Console.WriteLine("Found summary: {0}", tup.Item1);
@@ -480,9 +479,9 @@ namespace VC
                             }
                         }
                     }
-                    checker2.Pop();
+                    prover2.Pop();
                 }
-                checker2.Pop();
+                prover2.Pop();
 
                 var end = DateTime.UtcNow;
                 if (CommandLineOptions.Clo.StratifiedInliningVerbose > 0)
@@ -510,7 +509,7 @@ namespace VC
             {
                 if (calls.allSummaryConst.Count == 0) return null;
                 // TODO: does it matter which checker we use here?
-                var Gen = vState.checker.underlyingChecker.VCExprGen;
+                var Gen = vState.checker.prover.VCExprGen;
 
                 var ret = VCExpressionGenerator.True;
                 foreach (var c in calls.allSummaryConst)
@@ -963,105 +962,21 @@ namespace VC
                 timeStamp++;
                 return timeStamp - 1;
             }
-
         }
 
         public class ApiChecker {
-          // The VC of main
-          private VCExpr vcMain;
-          // Error reporter (stores models)
-          private ProverInterface.ErrorHandler reporter;
-          // The theorem prover interface
-          public Checker checker;
-          // stores the number of axioms pushed since pervious backtracking point
-          private List<int> numAxiomsPushed;
-          // Api-based theorem prover
-          private ProverInterface TheoremProver;
-          private FCallHandler calls;
-          // Underlying checker
-          public Checker underlyingChecker;
-          // Statistics
-          public int numQueries;
+          public ProverInterface prover;
+          public ProverInterface.ErrorHandler reporter;
 
-          public ApiChecker(VCExpr vcMain, ProverInterface.ErrorHandler reporter, Checker checker, FCallHandler calls) {
-            this.vcMain = vcMain;
+          public ApiChecker(ProverInterface prover, ProverInterface.ErrorHandler reporter) {
             this.reporter = reporter;
-            this.checker = checker;
-            this.underlyingChecker = checker;
-            this.calls = calls;
-            numAxiomsPushed = new List<int>();
-            numQueries = 0;
-            TheoremProver = checker.TheoremProver;
-            Debug.Assert(TheoremProver != null);
-
-            // Add main to the TP stack
-            TheoremProver.Assert(vcMain, false);
-          }
-
-          public void updateMainVC(VCExpr vcMain) {
-            throw new NotImplementedException("Stratified non-incremental search is not yet supported with z3api");
+            this.prover = prover;
           }
 
           public Outcome CheckVC() {
-            Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
-
-            TheoremProver.AssertAxioms();
-            TheoremProver.Check();
-            ProverInterface.Outcome outcome = TheoremProver.CheckOutcomeCore(reporter);
-            numQueries++;
-
-            switch (outcome) {
-              case ProverInterface.Outcome.Valid:
-                return Outcome.Correct;
-              case ProverInterface.Outcome.Invalid:
-                return Outcome.Errors;
-              case ProverInterface.Outcome.OutOfMemory:
-                return Outcome.OutOfMemory;
-              case ProverInterface.Outcome.TimeOut:
-                return Outcome.TimedOut;
-              case ProverInterface.Outcome.Undetermined:
-                return Outcome.Inconclusive;
-              default:
-                Contract.Assert(false);
-                throw new cce.UnreachableException();
-            }
-          }
-
-          public void Push() {
-            TheoremProver.Push();
-          }
-
-          public void Pop() {
-            TheoremProver.AssertAxioms();
-            TheoremProver.Pop();
-          }
-
-          public void AddAxiom(VCExpr vc) {
-            TheoremProver.Assert(vc, true);
-          }
-
-          public void LogComment(string str) {
-            checker.TheoremProver.LogComment(str);
-          }
-
-          public Outcome CheckAssumptions(List<VCExpr> hardAssumptions, List<VCExpr> softAssumptions) {
-            List<int> unsatisfiedSoftAssumptions;
-            ProverInterface.Outcome outcome = TheoremProver.CheckAssumptions(hardAssumptions, softAssumptions, out unsatisfiedSoftAssumptions, reporter);
-            switch (outcome) {
-              case ProverInterface.Outcome.Valid:
-                return Outcome.Correct;
-              case ProverInterface.Outcome.Invalid:
-                return Outcome.Errors;
-              case ProverInterface.Outcome.OutOfMemory:
-                return Outcome.OutOfMemory;
-              case ProverInterface.Outcome.TimeOut:
-                return Outcome.TimedOut;
-              case ProverInterface.Outcome.Undetermined:
-                return Outcome.Inconclusive;
-              default:
-                Contract.Assert(false);
-                throw new cce.UnreachableException();
-            }
+            prover.Check();
+            ProverInterface.Outcome outcome = prover.CheckOutcomeCore(reporter);
+            return ConditionGeneration.ProverInterfaceOutcomeToConditionGenerationOutcome(outcome);
           }
 
           public Outcome CheckAssumptions(List<VCExpr> assumptions) {
@@ -1069,105 +984,60 @@ namespace VC
               return CheckVC();
             }
 
-            Push();
-
+            prover.Push();
             foreach (var a in assumptions) {
-              AddAxiom(a);
+              prover.Assert(a, true);
             }
             Outcome ret = CheckVC();
-
-            Pop();
-
+            prover.Pop();
             return ret;
+          }
+          
+          public Outcome CheckAssumptions(List<VCExpr> hardAssumptions, List<VCExpr> softAssumptions) {
+            List<int> unsatisfiedSoftAssumptions;
+            ProverInterface.Outcome outcome = prover.CheckAssumptions(hardAssumptions, softAssumptions, out unsatisfiedSoftAssumptions, reporter);
+            return ConditionGeneration.ProverInterfaceOutcomeToConditionGenerationOutcome(outcome);
           }
 
           public Outcome CheckAssumptions(List<VCExpr> assumptions, out List<int> unsatCore) {
-            if (assumptions.Count == 0) {
-              unsatCore = new List<int>();
-              return CheckVC();
-            }
-
-            TheoremProver.Push();
-            TheoremProver.AssertAxioms();
-            ProverInterface.Outcome outcome = TheoremProver.CheckAssumptions(assumptions, out unsatCore, reporter);
-            TheoremProver.Pop();
-            numQueries++;
-
-            switch (outcome) {
-              case ProverInterface.Outcome.Valid:
-                return Outcome.Correct;
-              case ProverInterface.Outcome.Invalid:
-                return Outcome.Errors;
-              case ProverInterface.Outcome.OutOfMemory:
-                return Outcome.OutOfMemory;
-              case ProverInterface.Outcome.TimeOut:
-                return Outcome.TimedOut;
-              case ProverInterface.Outcome.Undetermined:
-                return Outcome.Inconclusive;
-              default:
-                Contract.Assert(false);
-                throw new cce.UnreachableException();
-            }
-          }
-
-          public void SetTimeOut(int msec)
-          {
-              TheoremProver.SetTimeOut(msec);
+            ProverInterface.Outcome outcome = prover.CheckAssumptions(assumptions, out unsatCore, reporter);
+            return ConditionGeneration.ProverInterfaceOutcomeToConditionGenerationOutcome(outcome);
           }
         }
 
         // Store important information related to a single VerifyImplementation query
         public class VerificationState
         {
-            // The VC of main
-            public VCExpr vcMain { get; private set; }
             // The call tree
             public FCallHandler calls;
-            // Error reporter (stores models)
-            public ProverInterface.ErrorHandler reporter;
-            // The theorem prover interface
-            //public Checker checker;
             public ApiChecker checker;
             // The coverage graph reporter
             public CoverageGraphManager coverageManager;
             // For statistics
             public int vcSize;
             public int expansionCount;
-            public int numQueries
-            {
-                get
-                {
-                    return checker.numQueries;
-                }
-            }
+            
             // For making summary queries on the side
             public ApiChecker checker2;
 
-            public VerificationState(VCExpr vcMain, FCallHandler calls,
-                ProverInterface.ErrorHandler reporter, Checker checker, Checker checker2)
-            {
-                this.vcMain = vcMain;
-                this.calls = calls;
-                this.reporter = reporter;
-
-                    this.checker = new ApiChecker(vcMain, reporter, checker, calls);
-                    if(checker2 != null)
-                      this.checker2 = new ApiChecker(VCExpressionGenerator.False, new EmptyErrorHandler(), checker2, calls); 
-                vcSize = 0;
-                expansionCount = 0;
-                
+            public VerificationState(VCExpr vcMain, FCallHandler calls, ProverInterface prover, ProverInterface.ErrorHandler reporter) {
+              prover.Assert(vcMain, false); 
+              this.calls = calls;
+              this.checker = new ApiChecker(prover, reporter);
+              vcSize = 0;
+              expansionCount = 0;
             }
-
-            public void updateMainVC(VCExpr vcMain)
-            {
-                this.vcMain = vcMain;
-                checker.updateMainVC(vcMain);
+            public VerificationState(VCExpr vcMain, FCallHandler calls, ProverInterface prover, ProverInterface.ErrorHandler reporter,
+                                     ProverInterface prover2, ProverInterface.ErrorHandler reporter2)
+              : this(vcMain, calls, prover, reporter) {
+                this.checker2 = new ApiChecker(prover2, reporter2);
             }
         }
 
         public Outcome FindLeastToVerify(Implementation impl, Program program, ref HashSet<string> allBoolVars)
         {
             Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
+            Debug.Assert(this.program == program);
 
             // Record current time
             var startTime = DateTime.UtcNow;
@@ -1179,17 +1049,13 @@ namespace VC
             satQueryCache = new Dictionary<int, List<HashSet<string>>>();
             unsatQueryCache = new Dictionary<int, List<HashSet<string>>>();
 
-            // Get the checker
-            Checker checker = FindCheckerFor(impl, CommandLineOptions.Clo.ProverKillTime); Contract.Assert(checker != null);
-
             Contract.Assert(implName2StratifiedInliningInfo != null);
-            this.program = program;
 
             // Build VCs for all procedures
             foreach (StratifiedInliningInfo info in implName2StratifiedInliningInfo.Values)
             {
                 Contract.Assert(info != null);
-                GenerateVCForStratifiedInlining(program, info, checker);
+                GenerateVCForStratifiedInlining(info);
             }
 
             // Get the VC of the current procedure
@@ -1199,9 +1065,9 @@ namespace VC
 
             ConvertCFG2DAG(impl, program);
             Hashtable/*TransferCmd->ReturnCmd*/ gotoCmdOrigins = PassifyImpl(impl, program, out mvInfo);
-            var exprGen = checker.TheoremProver.Context.ExprGen;
+            var exprGen = prover.Context.ExprGen;
             VCExpr controlFlowVariableExpr = CommandLineOptions.Clo.UseLabels ? null : exprGen.Integer(BigNum.ZERO); 
-            vcMain = GenerateVC(impl, controlFlowVariableExpr, out mainLabel2absy, checker.TheoremProver.Context);
+            vcMain = GenerateVC(impl, controlFlowVariableExpr, out mainLabel2absy, prover.Context);
             if (!CommandLineOptions.Clo.UseLabels) {
               VCExpr controlFlowFunctionAppl = exprGen.ControlFlowFunctionApplication(exprGen.Integer(BigNum.ZERO), exprGen.Integer(BigNum.ZERO));
               VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl, exprGen.Integer(BigNum.FromInt(impl.Blocks[0].UniqueId)));
@@ -1209,17 +1075,17 @@ namespace VC
             }
 
             // Find all procedure calls in vc and put labels on them      
-            FCallHandler calls = new FCallHandler(checker.VCExprGen, implName2StratifiedInliningInfo, impl.Name, mainLabel2absy);
+            FCallHandler calls = new FCallHandler(prover.VCExprGen, implName2StratifiedInliningInfo, impl.Name, mainLabel2absy);
             calls.setCurrProcAsMain();
             vcMain = calls.Mutate(vcMain, true);
 
             // Put all of the necessary state into one object
-            var vState = new VerificationState(vcMain, calls, new EmptyErrorHandler(), checker, null);
+            var vState = new VerificationState(vcMain, calls, prover, new EmptyErrorHandler());
             vState.coverageManager = null;
 
             // We'll restore the original state of the theorem prover at the end
             // of this procedure
-            vState.checker.Push();
+            vState.checker.prover.Push();
 
             // Do eager inlining
             while (calls.currCandidates.Count > 0)
@@ -1231,7 +1097,7 @@ namespace VC
                     Debug.Assert(calls.getRecursionBound(id) <= 1, "Recursion not supported");
                     toExpand.Add(id);
                 }
-                DoExpansion(true, toExpand, vState);
+                DoExpansion(toExpand, vState);
             }
 
             // Find all the boolean constants
@@ -1241,7 +1107,7 @@ namespace VC
                 var constant = decl as Constant;
                 if (constant == null) continue;
                 if (!allBoolVars.Contains(constant.Name)) continue;
-                var v = checker.TheoremProver.Context.BoogieExprTranslator.LookupVariable(constant);
+                var v = prover.Context.BoogieExprTranslator.LookupVariable(constant);
                 allConsts.Add(v);
             }
 
@@ -1256,7 +1122,7 @@ namespace VC
             }
             allBoolVars = ret;
 
-            vState.checker.Pop();
+            vState.checker.prover.Pop();
 
             return Outcome.Correct;
         }
@@ -1306,43 +1172,39 @@ namespace VC
         private bool refinementLoopCheckPath(ApiChecker apiChecker, HashSet<VCExprVar> varsToSet, HashSet<VCExprVar> allVars)
         {
             var assumptions = new List<VCExpr>();
-
+            var prover = apiChecker.prover;
             var query = new HashSet<string>();
             varsToSet.Iter(v => query.Add(v.Name));
 
             if (checkCache(query, unsatQueryCache))
             {
-                apiChecker.LogComment("FindLeast: Query Cache Hit");
+                prover.LogComment("FindLeast: Query Cache Hit");
                 return true;
             }
             if (checkCache(query, satQueryCache))
             {
-                apiChecker.LogComment("FindLeast: Query Cache Hit");
+                prover.LogComment("FindLeast: Query Cache Hit");
                 return false;
             }
 
+            prover.LogComment("FindLeast: Query Begin");
 
-            apiChecker.LogComment("FindLeast: Query Begin");
-
-            //Console.Write("Query: ");
             foreach (var c in allVars)
             {
                 if (varsToSet.Contains(c))
                 {
-                    //Console.Write(c.Name + " ");
-                    assumptions.Add(c); //apiChecker.underlyingChecker.VCExprGen.Eq(c, VCExpressionGenerator.True));
+                    assumptions.Add(c); 
                 }
                 else
                 {
-                    assumptions.Add(apiChecker.underlyingChecker.VCExprGen.Not(c));
+                    assumptions.Add(prover.VCExprGen.Not(c));
                 }
             }
-            //Console.WriteLine();
 
             var o = apiChecker.CheckAssumptions(assumptions);
             Debug.Assert(o == Outcome.Correct || o == Outcome.Errors);
             //Console.WriteLine("Result = " + o.ToString());
-            apiChecker.LogComment("FindLeast: Query End");
+            prover.LogComment("FindLeast: Query End");
 
             if (o == Outcome.Correct)
             {
@@ -1392,55 +1254,25 @@ namespace VC
         public override Outcome VerifyImplementation(Implementation/*!*/ impl, Program/*!*/ program, VerifierCallback/*!*/ callback)
         {
             Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
+            Debug.Assert(this.program == program);
             var computeUnderBound = true;
 
             #region stratified inlining options
-            // This flag control the nature of queries made by Stratified VerifyImplementation
-            // true: incremental search; false: in-place inlining
-            bool incrementalSearch = true;
-            // This flag allows the VCs (and live variable analysis) to be created on-demand
-            bool createVConDemand = true;
-
             switch (CommandLineOptions.Clo.StratifiedInliningOption)
             {
-                case 0:
-                    incrementalSearch = true;
-                    createVConDemand = true;
-                    break;
                 case 1:
-                    incrementalSearch = false;
-                    createVConDemand = true;
-                    break;
-                case 2:
-                    incrementalSearch = true;
-                    createVConDemand = false;
-                    break;
-                case 3:
-                    incrementalSearch = false;
-                    createVConDemand = false;
-                    break;
-                case 6:
-                    incrementalSearch = true;
-                    createVConDemand = true;
                     useSummary = true;
                     break;
-                case 7:
-                    incrementalSearch = true;
-                    createVConDemand = true;
+                case 2:
                     useSummary = true;
                     computeUnderBound = false;
                     break;
             }
-
             #endregion
 
-            // Get the checker
-            Checker checker = FindCheckerFor(null, CommandLineOptions.Clo.ProverKillTime); Contract.Assert(checker != null);
-            Checker checker2 = null;
-            if (useSummary)
-            {
-                
-                checker2 = new Checker(this, program, "checker2.txt", true, CommandLineOptions.Clo.ProverKillTime);
+            ProverInterface prover2 = null;
+            if (useSummary) {
+              prover2 = ProverInterface.CreateProver(program, "prover2.txt", true, CommandLineOptions.Clo.ProverKillTime);
             }
 
             // Record current time
@@ -1452,28 +1284,14 @@ namespace VC
                 Microsoft.Boogie.InterProcGenKill.ComputeLiveVars(impl, program);
             }
 
-            // Build VCs for all procedures
-            Contract.Assert(implName2StratifiedInliningInfo != null);
-            this.program = program;
-
-            if (!createVConDemand)
-            {
-                foreach (StratifiedInliningInfo info in implName2StratifiedInliningInfo.Values)
-                {
-                    Contract.Assert(info != null);
-                    GenerateVCForStratifiedInlining(program, info, checker);
-                }
-            }
-
             // Get the VC of the current procedure
             VCExpr vc;
-            StratifiedInliningErrorReporter reporter;
             Hashtable/*<int, Absy!>*/ mainLabel2absy;
-            GetVC(impl, program, callback, out vc, out mainLabel2absy, out reporter);
-
+            StratifiedInliningErrorReporter reporter;
+            GetVC(impl, program, prover, callback, out vc, out mainLabel2absy, out reporter);
       
             // Find all procedure calls in vc and put labels on them      
-            FCallHandler calls = new FCallHandler(checker.VCExprGen, implName2StratifiedInliningInfo, impl.Name, mainLabel2absy);
+            FCallHandler calls = new FCallHandler(prover.VCExprGen, implName2StratifiedInliningInfo, impl.Name, mainLabel2absy);
             calls.setCurrProcAsMain();
             vc = calls.Mutate(vc, true);
             reporter.SetCandidateHandler(calls);
@@ -1482,13 +1300,12 @@ namespace VC
             // Identify summary candidates: Match ensure clauses with the appropriate call site
             if (useSummary) calls.matchSummaries();
             
-
             // create a process for displaying coverage information
             var coverageManager = new CoverageGraphManager(calls);
             coverageManager.addMain();
 
             // Put all of the necessary state into one object
-            var vState = new VerificationState(vc, calls, reporter, checker, checker2);
+            var vState = new VerificationState(vc, calls, prover, reporter, prover2, new EmptyErrorHandler());
             vState.vcSize += SizeComputingVisitor.ComputeSize(vc);
             vState.coverageManager = coverageManager;
 
@@ -1496,7 +1313,7 @@ namespace VC
 
             // We'll restore the original state of the theorem prover at the end
             // of this procedure
-            vState.checker.Push();
+            vState.checker.prover.Push();
 
             Outcome ret = Outcome.ReachedBound;
 
@@ -1512,7 +1329,7 @@ namespace VC
                         toExpand.Add(id);
                     }
                 }
-                DoExpansion(incrementalSearch, toExpand, vState);
+                DoExpansion(toExpand, vState);
             }
             #endregion
 
@@ -1532,7 +1349,7 @@ namespace VC
                     }
                     if (toExpand.Count == 0) expand = false;
                     else {
-                      DoExpansion(incrementalSearch, toExpand, vState);
+                      DoExpansion(toExpand, vState);
                     }
                 }
             }
@@ -1588,7 +1405,7 @@ namespace VC
                         calls.setRecursionIncrement(id, 0);
                         coverageManager.addNode(id);
                     }
-                    DoExpansion(incrementalSearch, task.nodes, vState);
+                    DoExpansion(task.nodes, vState);
                 }
                 else if (task.type == CoverageGraphManager.Task.TaskType.BLOCK)
                 {
@@ -1611,8 +1428,8 @@ namespace VC
 
                     if (useSummary && summary != null)
                     {
-                        vState.checker.Push();
-                        vState.checker.AddAxiom(summary);
+                        vState.checker.prover.Push();
+                        vState.checker.prover.Assert(summary, true);
                     }
 
                     // Stratified Step
@@ -1621,7 +1438,7 @@ namespace VC
 
                     if (useSummary && summary != null)
                     {
-                        vState.checker.Pop();
+                        vState.checker.prover.Pop();
                     }
 
                     // Sorry, out of luck (time/memory)
@@ -1702,9 +1519,9 @@ namespace VC
                             Console.WriteLine();
                         }
                         // Expand and try again
-                        vState.checker.LogComment(";;;;;;;;;;;; Expansion begin ;;;;;;;;;;");
-                        DoExpansion(incrementalSearch, reporter.candidatesToExpand, vState);
-                        vState.checker.LogComment(";;;;;;;;;;;; Expansion end ;;;;;;;;;;");
+                        vState.checker.prover.LogComment(";;;;;;;;;;;; Expansion begin ;;;;;;;;;;");
+                        DoExpansion(reporter.candidatesToExpand, vState);
+                        vState.checker.prover.LogComment(";;;;;;;;;;;; Expansion end ;;;;;;;;;;");
 
                         #endregion
                     }
@@ -1715,7 +1532,7 @@ namespace VC
                     var node = task.queryNode;
                     // assert that any path must pass through this node
                     var expr = calls.getTrueExpr(node);
-                    vState.checker.AddAxiom(expr);
+                    vState.checker.prover.Assert(expr, true);
                 }
                 else
                 {
@@ -1726,12 +1543,11 @@ namespace VC
 
             // Pop off everything that we pushed so that there are no side effects from
             // this call to VerifyImplementation
-            vState.checker.Pop();
+            vState.checker.prover.Pop();
 
             #region Coverage reporter
             if (CommandLineOptions.Clo.StratifiedInliningVerbose > 0)
             {
-                Console.WriteLine(">> SI: Calls to Z3: {0}", vState.numQueries);
                 Console.WriteLine(">> SI: Expansions performed: {0}", vState.expansionCount);
                 Console.WriteLine(">> SI: Candidates left: {0}", calls.currCandidates.Count);
                 Console.WriteLine(">> SI: Candidates skipped: {0}", calls.currCandidates.Where(i => calls.isSkipped(i)).Count());
@@ -1760,19 +1576,20 @@ namespace VC
                     callTree.Add(calls.getPersistentId(id), 0);
                 }
             }
-            if (checker2 != null) checker2.Close();
+            if (prover2 != null) prover2.Close();
             return ret;
         }
 
         // A step of the stratified inlining algorithm: both under-approx and over-approx queries
         private Outcome stratifiedStep(int bound, VerificationState vState, HashSet<int> block)
         {
-            var reporter = vState.reporter as StratifiedInliningErrorReporter;
             var calls = vState.calls;
             var checker = vState.checker;
+            var prover = checker.prover;
+            var reporter = checker.reporter as StratifiedInliningErrorReporter;
 
             reporter.underapproximationMode = true;
-            checker.LogComment(";;;;;;;;;;;; Underapprox mode begin ;;;;;;;;;;");
+            prover.LogComment(";;;;;;;;;;;; Underapprox mode begin ;;;;;;;;;;");
             List<VCExpr> assumptions = new List<VCExpr>();
             
             foreach (int id in calls.currCandidates)
@@ -1781,7 +1598,7 @@ namespace VC
                     assumptions.Add(calls.getFalseExpr(id));
             }
             Outcome ret = checker.CheckAssumptions(assumptions);
-            checker.LogComment(";;;;;;;;;;;; Underapprox mode end ;;;;;;;;;;");
+            prover.LogComment(";;;;;;;;;;;; Underapprox mode end ;;;;;;;;;;");
 
             if (ret != Outcome.Correct)
             {
@@ -1796,7 +1613,7 @@ namespace VC
               return ret;
             }
 
-            checker.LogComment(";;;;;;;;;;;; Overapprox mode begin ;;;;;;;;;;");
+            prover.LogComment(";;;;;;;;;;;; Overapprox mode begin ;;;;;;;;;;");
 
             // Over-approx query
             reporter.underapproximationMode = false;
@@ -1883,7 +1700,7 @@ namespace VC
 
             Contract.Assert(ret == Outcome.Errors);
 
-            checker.LogComment(";;;;;;;;;;;; Overapprox mode end ;;;;;;;;;;");
+            prover.LogComment(";;;;;;;;;;;; Overapprox mode end ;;;;;;;;;;");
 
             return ret;
         }
@@ -1892,27 +1709,19 @@ namespace VC
         static int newVarCnt = 0;
 
         // Does on-demand inlining -- pushes procedure bodies on the theorem prover stack.
-        private void DoExpansion(bool incremental, List<int>/*!*/ candidates, VerificationState vState) {
-          // Skipped calls don't get inlined
-          candidates = candidates.FindAll(id => !vState.calls.isSkipped(id));
-
-          vState.expansionCount += candidates.Count;
-
-          if (incremental)
-            DoExpansionAndPush(candidates, vState);
-          else
-            DoExpansionAndInline(candidates, vState);
-        }
-
-        // Does on-demand inlining -- pushes procedure bodies on the theorem prover stack.
-        private void DoExpansionAndPush(List<int>/*!*/ candidates, VerificationState vState)
+        private void DoExpansion(List<int>/*!*/ candidates, VerificationState vState)
         {
             Contract.Requires(candidates != null);
             Contract.Requires(vState.calls != null);
-            Contract.Requires(vState.checker != null);
+            Contract.Requires(vState.checker.prover != null);
             Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
 
-            var checker = vState.checker.underlyingChecker;
+            // Skipped calls don't get inlined
+            candidates = candidates.FindAll(id => !vState.calls.isSkipped(id));
+
+            vState.expansionCount += candidates.Count; 
+            
+            var prover = vState.checker.prover;
             var calls = vState.calls;
 
             VCExpr exprToPush = VCExpressionGenerator.True;
@@ -1927,13 +1736,13 @@ namespace VC
                 StratifiedInliningInfo info = implName2StratifiedInliningInfo[procName];
                 if (!info.initialized)
                 {
-                    GenerateVCForStratifiedInlining(program, info, checker);
+                    GenerateVCForStratifiedInlining(info);
                 }
                 //Console.WriteLine("Inlining {0}", procName);
                 VCExpr expansion = cce.NonNull(info.vcexpr);
                 
                 if (!CommandLineOptions.Clo.UseLabels) {
-                  var ctx = checker.TheoremProver.Context;
+                  var ctx = prover.Context;
                   var bet = ctx.BoogieExprTranslator;
                   VCExpr controlFlowVariableExpr = bet.LookupVariable(info.controlFlowVariable);
                   VCExpr eqExpr = ctx.ExprGen.Eq(controlFlowVariableExpr, ctx.ExprGen.Integer(BigNum.FromInt(id)));
@@ -1949,7 +1758,7 @@ namespace VC
                 }
                 VCExprSubstitution substForall = new VCExprSubstitution(substForallDict, new Dictionary<TypeVariable, Microsoft.Boogie.Type>());
 
-                SubstitutingVCExprVisitor subst = new SubstitutingVCExprVisitor(checker.VCExprGen);
+                SubstitutingVCExprVisitor subst = new SubstitutingVCExprVisitor(prover.VCExprGen);
                 Contract.Assert(subst != null);
                 expansion = subst.Mutate(expansion, substForall);
 
@@ -1960,15 +1769,15 @@ namespace VC
                     Contract.Assert(v != null);
                     string newName = v.Name + "_si_" + newVarCnt.ToString();
                     newVarCnt++;
-                    checker.TheoremProver.Context.DeclareConstant(new Constant(Token.NoToken, new TypedIdent(Token.NoToken, newName, v.Type)), false, null);
-                    substExistsDict.Add(v, checker.VCExprGen.Variable(newName, v.Type));
+                    prover.Context.DeclareConstant(new Constant(Token.NoToken, new TypedIdent(Token.NoToken, newName, v.Type)), false, null);
+                    substExistsDict.Add(v, prover.VCExprGen.Variable(newName, v.Type));
                 }
                 if (CommandLineOptions.Clo.ModelViewFile != null) {
                   SaveSubstitution(vState, id, substForallDict, substExistsDict);
                 }
                 VCExprSubstitution substExists = new VCExprSubstitution(substExistsDict, new Dictionary<TypeVariable, Microsoft.Boogie.Type>());
 
-                subst = new SubstitutingVCExprVisitor(checker.VCExprGen);
+                subst = new SubstitutingVCExprVisitor(prover.VCExprGen);
                 expansion = subst.Mutate(expansion, substExists);
 
                 if (!calls.currCandidates.Contains(id))
@@ -1986,104 +1795,22 @@ namespace VC
                 if(vState.coverageManager != null) vState.coverageManager.addRecentEdges(id);
                 
                 //expansion = checker.VCExprGen.Eq(calls.id2ControlVar[id], expansion);
-                expansion = checker.VCExprGen.Implies(calls.id2ControlVar[id], expansion);
+                expansion = prover.VCExprGen.Implies(calls.id2ControlVar[id], expansion);
                 calls.id2VC.Add(id, expansion);
 
-                exprToPush = checker.VCExprGen.And(exprToPush, expansion);
+                exprToPush = prover.VCExprGen.And(exprToPush, expansion);
             }
-            vState.checker.AddAxiom(exprToPush);
+            vState.checker.prover.Assert(exprToPush, true);
             vState.vcSize += SizeComputingVisitor.ComputeSize(exprToPush);
-        }
-
-        // Does on-demand inlining -- inlines procedures into the VC of main.
-        private void DoExpansionAndInline(List<int>/*!*/ candidates, VerificationState vState)
-        {
-            Contract.Requires(candidates != null);
-            Contract.Requires(vState.calls != null);
-            Contract.Requires(vState.checker != null);
-            Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
-
-            var checker = vState.checker.underlyingChecker;
-            var calls = vState.calls;
-
-            FCallInliner inliner = new FCallInliner(checker.VCExprGen);
-            Contract.Assert(inliner != null);
-            foreach (int id in candidates)
-            {
-                VCExprNAry expr = calls.id2Candidate[id];
-                Contract.Assert(expr != null);
-
-                string procName = (cce.NonNull(expr.Op as VCExprBoogieFunctionOp)).Func.Name;
-                if (!implName2StratifiedInliningInfo.ContainsKey(procName)) continue;
-
-                StratifiedInliningInfo info = implName2StratifiedInliningInfo[procName];
-                if (!info.initialized)
-                {
-                    GenerateVCForStratifiedInlining(program, info, checker);
-                }
-
-                VCExpr expansion = cce.NonNull(info.vcexpr);
-
-                // Instantiate the "forall" variables
-                Dictionary<VCExprVar, VCExpr> substForallDict = new Dictionary<VCExprVar, VCExpr>();
-                Contract.Assert(info.interfaceExprVars.Count == expr.Length);
-                for (int i = 0; i < info.interfaceExprVars.Count; i++)
-                {
-                    substForallDict.Add(info.interfaceExprVars[i], expr[i]);
-                }
-
-                VCExprSubstitution substForall = new VCExprSubstitution(substForallDict, new Dictionary<TypeVariable, Microsoft.Boogie.Type>());
-
-                SubstitutingVCExprVisitor subst = new SubstitutingVCExprVisitor(checker.VCExprGen); Contract.Assert(subst != null);
-                expansion = subst.Mutate(expansion, substForall);
-
-                // Instantiate and declare the "exists" variables
-                Dictionary<VCExprVar, VCExpr> substExistsDict = new Dictionary<VCExprVar, VCExpr>();
-                for (int i = 0; i < info.privateVars.Count; i++)
-                {
-                    VCExprVar v = info.privateVars[i];
-                    string newName = v.Name + "_si_" + newVarCnt.ToString();
-                    newVarCnt++;
-                    checker.TheoremProver.Context.DeclareConstant(new Constant(Token.NoToken, new TypedIdent(Token.NoToken, newName, v.Type)), false, null);
-                    substExistsDict.Add(v, checker.VCExprGen.Variable(newName, v.Type));
-                }
-                if (CommandLineOptions.Clo.ModelViewFile != null) {
-                  SaveSubstitution(vState, id, substForallDict, substExistsDict);
-                }
-                VCExprSubstitution substExists = new VCExprSubstitution(substExistsDict, new Dictionary<TypeVariable, Microsoft.Boogie.Type>());
-
-                subst = new SubstitutingVCExprVisitor(checker.VCExprGen);
-                expansion = subst.Mutate(expansion, substExists);
-
-                if (!calls.currCandidates.Contains(id))
-                {
-                    Console.WriteLine("Don't know what we just expanded");
-                }
-
-                calls.currCandidates.Remove(id);
-
-                // Record the new set of candidates and rename absy labels
-                
-                calls.currInlineCount = id;
-                calls.setCurrProc(procName);
-                expansion = calls.Mutate(expansion, true);
-                vState.coverageManager.addRecentEdges(id);
-
-                inliner.subst.Add(id, expansion);
-
-            }
-
-            vState.updateMainVC(inliner.Mutate(vState.vcMain, true));
-            vState.vcSize = SizeComputingVisitor.ComputeSize(vState.vcMain);
         }
 
         private void SaveSubstitution(VerificationState vState, int id, 
           Dictionary<VCExprVar, VCExpr> substForallDict, Dictionary<VCExprVar, VCExpr> substExistsDict) {
-          var checker = vState.checker.underlyingChecker;
+          var prover = vState.checker.prover;
           var calls = vState.calls;
-          Boogie2VCExprTranslator translator = checker.TheoremProver.Context.BoogieExprTranslator;
+          Boogie2VCExprTranslator translator = prover.Context.BoogieExprTranslator;
           VCExprVar mvStateConstant = translator.LookupVariable(ModelViewInfo.MVState_ConstantDef);
-          substExistsDict.Add(mvStateConstant, checker.VCExprGen.Integer(BigNum.FromInt(id)));
+          substExistsDict.Add(mvStateConstant, prover.VCExprGen.Integer(BigNum.FromInt(id)));
           Dictionary<VCExprVar, VCExpr> mapping = new Dictionary<VCExprVar, VCExpr>();
           foreach (var key in substForallDict.Keys)
             mapping[key] = substForallDict[key];
@@ -2094,7 +1821,7 @@ namespace VC
 
         // Return the VC for the impl (don't pass it to the theorem prover).
         // GetVC is a cheap imitation of VerifyImplementation, except that the VC is not passed to the theorem prover.
-        private void GetVC(Implementation/*!*/ impl, Program/*!*/ program, VerifierCallback/*!*/ callback, out VCExpr/*!*/ vc, out Hashtable/*<int, Absy!>*//*!*/ label2absy, out StratifiedInliningErrorReporter/*!*/ reporter)
+        private void GetVC(Implementation/*!*/ impl, Program/*!*/ program, ProverInterface prover, VerifierCallback/*!*/ callback, out VCExpr/*!*/ vc, out Hashtable/*<int, Absy!>*//*!*/ label2absy, out StratifiedInliningErrorReporter/*!*/ reporter)
         {
             Contract.Requires(impl != null);
             Contract.Requires(program != null);
@@ -2106,13 +1833,11 @@ namespace VC
             ConvertCFG2DAG(impl, program);
             ModelViewInfo mvInfo;
             Hashtable/*TransferCmd->ReturnCmd*/ gotoCmdOrigins = PassifyImpl(impl, program, out mvInfo);
-            Checker checker = FindCheckerFor(impl, CommandLineOptions.Clo.ProverKillTime);
-            Contract.Assert(checker != null);
 
-            var exprGen = checker.TheoremProver.Context.ExprGen;
+            var exprGen = prover.Context.ExprGen;
             VCExpr controlFlowVariableExpr = CommandLineOptions.Clo.UseLabels ? null : exprGen.Integer(BigNum.ZERO);
 
-            vc = GenerateVC(impl, controlFlowVariableExpr, out label2absy, checker.TheoremProver.Context);
+            vc = GenerateVC(impl, controlFlowVariableExpr, out label2absy, prover.Context);
 
             if (!CommandLineOptions.Clo.UseLabels) {
               VCExpr controlFlowFunctionAppl = exprGen.ControlFlowFunctionApplication(exprGen.Integer(BigNum.ZERO), exprGen.Integer(BigNum.ZERO));
@@ -2121,8 +1846,7 @@ namespace VC
             }
 
             reporter = new StratifiedInliningErrorReporter(
-               cce.NonNull(implName2StratifiedInliningInfo), checker.TheoremProver, callback, mvInfo,
-               checker.TheoremProver.Context, gotoCmdOrigins, program, impl);
+               cce.NonNull(implName2StratifiedInliningInfo), prover, callback, mvInfo, prover.Context, gotoCmdOrigins, program, impl);
         }
 
 
@@ -2195,22 +1919,6 @@ namespace VC
 
             public HashSet<int> forcedCandidates;
 
-            ////////////////////////////
-            // For Proc-Copy-Bounding
-
-            // candidate Ids for PCB VCs starting from this number. This is to ensure
-            // that there is no clash with the usual candidate Ids
-            public static readonly int pcbStartingCandidateId = 1000000;
-
-            // Unique ID for BoogieCallExpr
-            public Dictionary<BoogieCallExpr, int> pcbBoogieExpr2Id;
-
-            // (Proc, copy number) -> candidate
-            public Dictionary<Tuple<string, int>, int> procCopy2Id;
-
-            ////////////////////////////
-
-
             // User info -- to decrease/increase calculation of recursion bound
             public Dictionary<int, int> recursionIncrement;
 
@@ -2267,9 +1975,6 @@ namespace VC
                 argExprMap = new Dictionary<int, VCExpr>();
                 recordExpr2Var = new Dictionary<BoogieCallExpr, VCExpr>();
 
-                pcbBoogieExpr2Id = new Dictionary<BoogieCallExpr, int>();
-                procCopy2Id = new Dictionary<Tuple<string, int>, int>();
-
                 forcedCandidates = new HashSet<int>();
 
                 id2Vars = new Dictionary<int, Dictionary<VCExprVar, VCExpr>>();
@@ -2282,11 +1987,6 @@ namespace VC
             public void Clear()
             {
                 currCandidates = new HashSet<int>();
-            }
-
-            public bool isPCBCandidate(int id)
-            {
-                return (id >= pcbStartingCandidateId);
             }
 
             // Return the set of all candidates
@@ -2733,7 +2433,6 @@ namespace VC
             Hashtable/*TransferCmd->ReturnCmd*/ gotoCmdOrigins;
 
             public bool underapproximationMode;
-            public bool procBoundingMode;
             public List<int>/*!*/ candidatesToExpand;
 
             [ContractInvariantMethod]
@@ -2767,7 +2466,6 @@ namespace VC
                 this.program = program;
                 this.mainImpl = mainImpl;
                 this.underapproximationMode = false;
-                this.procBoundingMode = false;
                 this.calls = null;
                 this.candidatesToExpand = new List<int>();
                 this.gotoCmdOrigins = gotoCmdOrigins;
@@ -2907,18 +2605,13 @@ namespace VC
               orderedStateIds = new List<Tuple<int, int>>();
               candidatesToExpand = new List<int>();
 
-              if (underapproximationMode) {
-                var cex = NewTrace(0, absyList, model);
-                Debug.Assert(candidatesToExpand.Count == 0);
-                if (cex != null) {
-                  GetModelWithStates(model);
-                  callback.OnCounterexample(cex, null);
-                  this.PrintModel(model);
-                }
-                return;
-              }
+              var cex = NewTrace(0, absyList, model);
 
-              NewTrace(0, absyList, model);
+              if (underapproximationMode) {
+                GetModelWithStates(model);
+                callback.OnCounterexample(cex, null);
+                this.PrintModel(model);
+              }
             }
 
             private Counterexample NewTrace(int candidateId, List<Absy> absyList, Model model) {
