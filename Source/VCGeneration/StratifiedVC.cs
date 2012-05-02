@@ -22,6 +22,10 @@ namespace VC
 
     public class StratifiedVCGen : VCGen
     {
+      public override void Close() {
+        prover.Close();
+        base.Close();
+      }
         private Dictionary<string, StratifiedInliningInfo> implName2StratifiedInliningInfo;
         public bool PersistCallTree;
         public static Dictionary<string, int> callTree = null;
@@ -973,7 +977,7 @@ namespace VC
             this.prover = prover;
           }
 
-          public Outcome CheckVC() {
+          private Outcome CheckVC() {
             prover.Check();
             ProverInterface.Outcome outcome = prover.CheckOutcomeCore(reporter);
             return ConditionGeneration.ProverInterfaceOutcomeToConditionGenerationOutcome(outcome);

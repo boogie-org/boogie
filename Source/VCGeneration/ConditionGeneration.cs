@@ -919,7 +919,7 @@ namespace VC {
     }
 
 
-    public void Close() {
+    virtual public void Close() {
       foreach (Checker checker in checkers) {
         Contract.Assert(checker != null);
         checker.Close();
