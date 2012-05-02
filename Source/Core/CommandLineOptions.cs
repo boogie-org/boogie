@@ -1248,8 +1248,8 @@ namespace Microsoft.Boogie {
       }
 
       if (TheProverFactory == null) {
-        TheProverFactory = ProverFactory.Load("SMTLIB");
-        ProverName = "SMTLIB".ToUpper();
+        TheProverFactory = ProverFactory.Load("SMTLib");
+        ProverName = "SMTLib".ToUpper();
       }
 
       if (vcVariety == VCVariety.Unspecified) {
