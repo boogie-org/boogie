@@ -62,3 +62,446 @@ Boogie program verifier finished with 1 verified, 0 errors
 
 Boogie program verifier finished with 1 verified, 0 errors
 -----
+----- Running regression test bar7.bpl
+bar7.bpl(42,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    bar7.bpl(35,5): anon0
+    bar7.bpl(37,5): anon4_Then
+    Inlined call to procedure foo begins
+        bar7.bpl(7,3): anon0
+        bar7.bpl(8,9): anon2_Then
+        Inlined call to procedure foo begins
+            bar7.bpl(7,3): anon0
+            bar7.bpl(8,9): anon2_Then
+            Inlined call to procedure foo begins
+                bar7.bpl(7,3): anon0
+                bar7.bpl(8,9): anon2_Then
+                Inlined call to procedure foo begins
+                    bar7.bpl(7,3): anon0
+                    bar7.bpl(8,9): anon2_Then
+                    Inlined call to procedure foo begins
+                        bar7.bpl(7,3): anon0
+                        bar7.bpl(8,9): anon2_Then
+                        Inlined call to procedure foo begins
+                            bar7.bpl(7,3): anon0
+                            bar7.bpl(8,9): anon2_Then
+                            Inlined call to procedure foo begins
+                                bar7.bpl(7,3): anon0
+                                bar7.bpl(8,9): anon2_Then
+                                Inlined call to procedure foo begins
+                                    bar7.bpl(7,3): anon0
+                                    bar7.bpl(8,9): anon2_Then
+                                    Inlined call to procedure foo begins
+                                        bar7.bpl(7,3): anon0
+                                        bar7.bpl(8,9): anon2_Then
+                                        Inlined call to procedure foo begins
+                                            bar7.bpl(7,3): anon0
+                                            bar7.bpl(8,9): anon2_Then
+                                            Inlined call to procedure foo begins
+                                                bar7.bpl(7,3): anon0
+                                                bar7.bpl(8,9): anon2_Then
+                                                Inlined call to procedure foo begins
+                                                    bar7.bpl(7,3): anon0
+                                                    bar7.bpl(8,9): anon2_Then
+                                                    Inlined call to procedure foo begins
+                                                        bar7.bpl(7,3): anon0
+                                                        bar7.bpl(8,9): anon2_Then
+                                                        Inlined call to procedure foo begins
+                                                            bar7.bpl(7,3): anon0
+                                                            bar7.bpl(8,9): anon2_Then
+                                                            Inlined call to procedure foo begins
+                                                                bar7.bpl(7,3): anon0
+                                                                bar7.bpl(8,9): anon2_Then
+                                                                Inlined call to procedure foo begins
+                                                                    bar7.bpl(7,3): anon0
+                                                                    bar7.bpl(8,9): anon2_Then
+                                                                    Inlined call to procedure foo begins
+                                                                        bar7.bpl(7,3): anon0
+                                                                        bar7.bpl(8,9): anon2_Then
+                                                                        Inlined call to procedure foo begins
+                                                                            bar7.bpl(7,3): anon0
+                                                                            bar7.bpl(8,9): anon2_Then
+                                                                            Inlined call to procedure foo begins
+                                                                                bar7.bpl(7,3): anon0
+                                                                                bar7.bpl(8,9): anon2_Then
+                                                                                Inlined call to procedure foo begins
+                                                                                    bar7.bpl(7,3): anon0
+                                                                                    bar7.bpl(8,9): anon2_Then
+                                                                                    Inlined call to procedure foo begins
+                                                                                        bar7.bpl(7,3): anon0
+                                                                                        bar7.bpl(7,3): anon2_Else
+                                                                                    Inlined call to procedure foo ends
+                                                                                Inlined call to procedure foo ends
+                                                                            Inlined call to procedure foo ends
+                                                                        Inlined call to procedure foo ends
+                                                                    Inlined call to procedure foo ends
+                                                                Inlined call to procedure foo ends
+                                                            Inlined call to procedure foo ends
+                                                        Inlined call to procedure foo ends
+                                                    Inlined call to procedure foo ends
+                                                Inlined call to procedure foo ends
+                                            Inlined call to procedure foo ends
+                                        Inlined call to procedure foo ends
+                                    Inlined call to procedure foo ends
+                                Inlined call to procedure foo ends
+                            Inlined call to procedure foo ends
+                        Inlined call to procedure foo ends
+                    Inlined call to procedure foo ends
+                Inlined call to procedure foo ends
+            Inlined call to procedure foo ends
+        Inlined call to procedure foo ends
+    Inlined call to procedure foo ends
+    bar7.bpl(42,3): anon3
+
+Boogie program verifier finished with 0 verified, 1 error
+-----
+----- Running regression test bar8.bpl
+bar8.bpl(41,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    bar8.bpl(34,5): anon0
+    bar8.bpl(36,5): anon4_Then
+    Inlined call to procedure foo begins
+        bar8.bpl(7,3): anon0
+        bar8.bpl(8,9): anon2_Then
+        Inlined call to procedure foo begins
+            bar8.bpl(7,3): anon0
+            bar8.bpl(8,9): anon2_Then
+            Inlined call to procedure foo begins
+                bar8.bpl(7,3): anon0
+                bar8.bpl(8,9): anon2_Then
+                Inlined call to procedure foo begins
+                    bar8.bpl(7,3): anon0
+                    bar8.bpl(8,9): anon2_Then
+                    Inlined call to procedure foo begins
+                        bar8.bpl(7,3): anon0
+                        bar8.bpl(8,9): anon2_Then
+                        Inlined call to procedure foo begins
+                            bar8.bpl(7,3): anon0
+                            bar8.bpl(8,9): anon2_Then
+                            Inlined call to procedure foo begins
+                                bar8.bpl(7,3): anon0
+                                bar8.bpl(8,9): anon2_Then
+                                Inlined call to procedure foo begins
+                                    bar8.bpl(7,3): anon0
+                                    bar8.bpl(8,9): anon2_Then
+                                    Inlined call to procedure foo begins
+                                        bar8.bpl(7,3): anon0
+                                        bar8.bpl(8,9): anon2_Then
+                                        Inlined call to procedure foo begins
+                                            bar8.bpl(7,3): anon0
+                                            bar8.bpl(8,9): anon2_Then
+                                            Inlined call to procedure foo begins
+                                                bar8.bpl(7,3): anon0
+                                                bar8.bpl(8,9): anon2_Then
+                                                Inlined call to procedure foo begins
+                                                    bar8.bpl(7,3): anon0
+                                                    bar8.bpl(8,9): anon2_Then
+                                                    Inlined call to procedure foo begins
+                                                        bar8.bpl(7,3): anon0
+                                                        bar8.bpl(8,9): anon2_Then
+                                                        Inlined call to procedure foo begins
+                                                            bar8.bpl(7,3): anon0
+                                                            bar8.bpl(8,9): anon2_Then
+                                                            Inlined call to procedure foo begins
+                                                                bar8.bpl(7,3): anon0
+                                                                bar8.bpl(8,9): anon2_Then
+                                                                Inlined call to procedure foo begins
+                                                                    bar8.bpl(7,3): anon0
+                                                                    bar8.bpl(8,9): anon2_Then
+                                                                    Inlined call to procedure foo begins
+                                                                        bar8.bpl(7,3): anon0
+                                                                        bar8.bpl(8,9): anon2_Then
+                                                                        Inlined call to procedure foo begins
+                                                                            bar8.bpl(7,3): anon0
+                                                                            bar8.bpl(8,9): anon2_Then
+                                                                            Inlined call to procedure foo begins
+                                                                                bar8.bpl(7,3): anon0
+                                                                                bar8.bpl(8,9): anon2_Then
+                                                                                Inlined call to procedure foo begins
+                                                                                    bar8.bpl(7,3): anon0
+                                                                                    bar8.bpl(8,9): anon2_Then
+                                                                                    Inlined call to procedure foo begins
+                                                                                        bar8.bpl(7,3): anon0
+                                                                                        bar8.bpl(7,3): anon2_Else
+                                                                                    Inlined call to procedure foo ends
+                                                                                Inlined call to procedure foo ends
+                                                                            Inlined call to procedure foo ends
+                                                                        Inlined call to procedure foo ends
+                                                                    Inlined call to procedure foo ends
+                                                                Inlined call to procedure foo ends
+                                                            Inlined call to procedure foo ends
+                                                        Inlined call to procedure foo ends
+                                                    Inlined call to procedure foo ends
+                                                Inlined call to procedure foo ends
+                                            Inlined call to procedure foo ends
+                                        Inlined call to procedure foo ends
+                                    Inlined call to procedure foo ends
+                                Inlined call to procedure foo ends
+                            Inlined call to procedure foo ends
+                        Inlined call to procedure foo ends
+                    Inlined call to procedure foo ends
+                Inlined call to procedure foo ends
+            Inlined call to procedure foo ends
+        Inlined call to procedure foo ends
+    Inlined call to procedure foo ends
+    bar8.bpl(41,3): anon3
+
+Boogie program verifier finished with 0 verified, 1 error
+-----
+----- Running regression test bar9.bpl
+bar9.bpl(44,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    bar9.bpl(35,5): anon0
+    bar9.bpl(41,5): anon4_Else
+    Inlined call to procedure bar1 begins
+        bar9.bpl(16,3): anon0
+        bar9.bpl(18,7): anon2_Then
+        Inlined call to procedure bar1 begins
+            bar9.bpl(16,3): anon0
+            bar9.bpl(18,7): anon2_Then
+            Inlined call to procedure bar1 begins
+                bar9.bpl(16,3): anon0
+                bar9.bpl(18,7): anon2_Then
+                Inlined call to procedure bar1 begins
+                    bar9.bpl(16,3): anon0
+                    bar9.bpl(18,7): anon2_Then
+                    Inlined call to procedure bar1 begins
+                        bar9.bpl(16,3): anon0
+                        bar9.bpl(18,7): anon2_Then
+                        Inlined call to procedure bar1 begins
+                            bar9.bpl(16,3): anon0
+                            bar9.bpl(18,7): anon2_Then
+                            Inlined call to procedure bar1 begins
+                                bar9.bpl(16,3): anon0
+                                bar9.bpl(18,7): anon2_Then
+                                Inlined call to procedure bar1 begins
+                                    bar9.bpl(16,3): anon0
+                                    bar9.bpl(18,7): anon2_Then
+                                    Inlined call to procedure bar1 begins
+                                        bar9.bpl(16,3): anon0
+                                        bar9.bpl(18,7): anon2_Then
+                                        Inlined call to procedure bar1 begins
+                                            bar9.bpl(16,3): anon0
+                                            bar9.bpl(18,7): anon2_Then
+                                            Inlined call to procedure bar1 begins
+                                                bar9.bpl(16,3): anon0
+                                                bar9.bpl(18,7): anon2_Then
+                                                Inlined call to procedure bar1 begins
+                                                    bar9.bpl(16,3): anon0
+                                                    bar9.bpl(18,7): anon2_Then
+                                                    Inlined call to procedure bar1 begins
+                                                        bar9.bpl(16,3): anon0
+                                                        bar9.bpl(18,7): anon2_Then
+                                                        Inlined call to procedure bar1 begins
+                                                            bar9.bpl(16,3): anon0
+                                                            bar9.bpl(18,7): anon2_Then
+                                                            Inlined call to procedure bar1 begins
+                                                                bar9.bpl(16,3): anon0
+                                                                bar9.bpl(18,7): anon2_Then
+                                                                Inlined call to procedure bar1 begins
+                                                                    bar9.bpl(16,3): anon0
+                                                                    bar9.bpl(18,7): anon2_Then
+                                                                    Inlined call to procedure bar1 begins
+                                                                        bar9.bpl(16,3): anon0
+                                                                        bar9.bpl(18,7): anon2_Then
+                                                                        Inlined call to procedure bar1 begins
+                                                                            bar9.bpl(16,3): anon0
+                                                                            bar9.bpl(18,7): anon2_Then
+                                                                            Inlined call to procedure bar1 begins
+                                                                                bar9.bpl(16,3): anon0
+                                                                                bar9.bpl(18,7): anon2_Then
+                                                                                Inlined call to procedure bar1 begins
+                                                                                    bar9.bpl(16,3): anon0
+                                                                                    bar9.bpl(18,7): anon2_Then
+                                                                                    Inlined call to procedure bar1 begins
+                                                                                        bar9.bpl(16,3): anon0
+                                                                                        bar9.bpl(16,3): anon2_Else
+                                                                                    Inlined call to procedure bar1 ends
+                                                                                Inlined call to procedure bar1 ends
+                                                                            Inlined call to procedure bar1 ends
+                                                                        Inlined call to procedure bar1 ends
+                                                                    Inlined call to procedure bar1 ends
+                                                                Inlined call to procedure bar1 ends
+                                                            Inlined call to procedure bar1 ends
+                                                        Inlined call to procedure bar1 ends
+                                                    Inlined call to procedure bar1 ends
+                                                Inlined call to procedure bar1 ends
+                                            Inlined call to procedure bar1 ends
+                                        Inlined call to procedure bar1 ends
+                                    Inlined call to procedure bar1 ends
+                                Inlined call to procedure bar1 ends
+                            Inlined call to procedure bar1 ends
+                        Inlined call to procedure bar1 ends
+                    Inlined call to procedure bar1 ends
+                Inlined call to procedure bar1 ends
+            Inlined call to procedure bar1 ends
+        Inlined call to procedure bar1 ends
+    Inlined call to procedure bar1 ends
+    Inlined call to procedure bar2 begins
+        bar9.bpl(26,3): anon0
+        bar9.bpl(27,7): anon2_Then
+        Inlined call to procedure bar2 begins
+            bar9.bpl(26,3): anon0
+            bar9.bpl(27,7): anon2_Then
+            Inlined call to procedure bar2 begins
+                bar9.bpl(26,3): anon0
+                bar9.bpl(27,7): anon2_Then
+                Inlined call to procedure bar2 begins
+                    bar9.bpl(26,3): anon0
+                    bar9.bpl(27,7): anon2_Then
+                    Inlined call to procedure bar2 begins
+                        bar9.bpl(26,3): anon0
+                        bar9.bpl(27,7): anon2_Then
+                        Inlined call to procedure bar2 begins
+                            bar9.bpl(26,3): anon0
+                            bar9.bpl(27,7): anon2_Then
+                            Inlined call to procedure bar2 begins
+                                bar9.bpl(26,3): anon0
+                                bar9.bpl(27,7): anon2_Then
+                                Inlined call to procedure bar2 begins
+                                    bar9.bpl(26,3): anon0
+                                    bar9.bpl(27,7): anon2_Then
+                                    Inlined call to procedure bar2 begins
+                                        bar9.bpl(26,3): anon0
+                                        bar9.bpl(27,7): anon2_Then
+                                        Inlined call to procedure bar2 begins
+                                            bar9.bpl(26,3): anon0
+                                            bar9.bpl(27,7): anon2_Then
+                                            Inlined call to procedure bar2 begins
+                                                bar9.bpl(26,3): anon0
+                                                bar9.bpl(26,3): anon2_Else
+                                            Inlined call to procedure bar2 ends
+                                        Inlined call to procedure bar2 ends
+                                    Inlined call to procedure bar2 ends
+                                Inlined call to procedure bar2 ends
+                            Inlined call to procedure bar2 ends
+                        Inlined call to procedure bar2 ends
+                    Inlined call to procedure bar2 ends
+                Inlined call to procedure bar2 ends
+            Inlined call to procedure bar2 ends
+        Inlined call to procedure bar2 ends
+    Inlined call to procedure bar2 ends
+    bar9.bpl(44,3): anon3
+
+Boogie program verifier finished with 0 verified, 1 error
+-----
+----- Running regression test bar10.bpl
+bar10.bpl(40,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    bar10.bpl(35,5): anon0
+    Inlined call to procedure bar1 begins
+        bar10.bpl(16,3): anon0
+        bar10.bpl(16,3): anon2_Else
+    Inlined call to procedure bar1 ends
+    Inlined call to procedure bar2 begins
+        bar10.bpl(26,3): anon0
+        bar10.bpl(26,3): anon2_Else
+    Inlined call to procedure bar2 ends
+    Inlined call to procedure foo begins
+        bar10.bpl(7,3): anon0
+        bar10.bpl(8,9): anon2_Then
+        Inlined call to procedure foo begins
+            bar10.bpl(7,3): anon0
+            bar10.bpl(8,9): anon2_Then
+            Inlined call to procedure foo begins
+                bar10.bpl(7,3): anon0
+                bar10.bpl(8,9): anon2_Then
+                Inlined call to procedure foo begins
+                    bar10.bpl(7,3): anon0
+                    bar10.bpl(8,9): anon2_Then
+                    Inlined call to procedure foo begins
+                        bar10.bpl(7,3): anon0
+                        bar10.bpl(8,9): anon2_Then
+                        Inlined call to procedure foo begins
+                            bar10.bpl(7,3): anon0
+                            bar10.bpl(8,9): anon2_Then
+                            Inlined call to procedure foo begins
+                                bar10.bpl(7,3): anon0
+                                bar10.bpl(8,9): anon2_Then
+                                Inlined call to procedure foo begins
+                                    bar10.bpl(7,3): anon0
+                                    bar10.bpl(8,9): anon2_Then
+                                    Inlined call to procedure foo begins
+                                        bar10.bpl(7,3): anon0
+                                        bar10.bpl(8,9): anon2_Then
+                                        Inlined call to procedure foo begins
+                                            bar10.bpl(7,3): anon0
+                                            bar10.bpl(8,9): anon2_Then
+                                            Inlined call to procedure foo begins
+                                                bar10.bpl(7,3): anon0
+                                                bar10.bpl(8,9): anon2_Then
+                                                Inlined call to procedure foo begins
+                                                    bar10.bpl(7,3): anon0
+                                                    bar10.bpl(8,9): anon2_Then
+                                                    Inlined call to procedure foo begins
+                                                        bar10.bpl(7,3): anon0
+                                                        bar10.bpl(8,9): anon2_Then
+                                                        Inlined call to procedure foo begins
+                                                            bar10.bpl(7,3): anon0
+                                                            bar10.bpl(8,9): anon2_Then
+                                                            Inlined call to procedure foo begins
+                                                                bar10.bpl(7,3): anon0
+                                                                bar10.bpl(8,9): anon2_Then
+                                                                Inlined call to procedure foo begins
+                                                                    bar10.bpl(7,3): anon0
+                                                                    bar10.bpl(8,9): anon2_Then
+                                                                    Inlined call to procedure foo begins
+                                                                        bar10.bpl(7,3): anon0
+                                                                        bar10.bpl(8,9): anon2_Then
+                                                                        Inlined call to procedure foo begins
+                                                                            bar10.bpl(7,3): anon0
+                                                                            bar10.bpl(8,9): anon2_Then
+                                                                            Inlined call to procedure foo begins
+                                                                                bar10.bpl(7,3): anon0
+                                                                                bar10.bpl(8,9): anon2_Then
+                                                                                Inlined call to procedure foo begins
+                                                                                    bar10.bpl(7,3): anon0
+                                                                                    bar10.bpl(8,9): anon2_Then
+                                                                                    Inlined call to procedure foo begins
+                                                                                        bar10.bpl(7,3): anon0
+                                                                                        bar10.bpl(7,3): anon2_Else
+                                                                                    Inlined call to procedure foo ends
+                                                                                Inlined call to procedure foo ends
+                                                                            Inlined call to procedure foo ends
+                                                                        Inlined call to procedure foo ends
+                                                                    Inlined call to procedure foo ends
+                                                                Inlined call to procedure foo ends
+                                                            Inlined call to procedure foo ends
+                                                        Inlined call to procedure foo ends
+                                                    Inlined call to procedure foo ends
+                                                Inlined call to procedure foo ends
+                                            Inlined call to procedure foo ends
+                                        Inlined call to procedure foo ends
+                                    Inlined call to procedure foo ends
+                                Inlined call to procedure foo ends
+                            Inlined call to procedure foo ends
+                        Inlined call to procedure foo ends
+                    Inlined call to procedure foo ends
+                Inlined call to procedure foo ends
+            Inlined call to procedure foo ends
+        Inlined call to procedure foo ends
+    Inlined call to procedure foo ends
+
+Boogie program verifier finished with 0 verified, 1 error
+-----
+----- Running regression test bar11.bpl
+bar11.bpl(31,1): Error BP5003: A postcondition might not hold on this return path.
+bar11.bpl(26,1): Related location: This is the postcondition that might not hold.
+Execution trace:
+    bar11.bpl(30,3): anon0
+    Inlined call to procedure foo begins
+        bar11.bpl(15,3): anon0
+        value = 0
+        Inlined call to procedure bar begins
+            bar11.bpl(8,5): anon0
+            value = 1
+        Inlined call to procedure bar ends
+        Inlined call to procedure bar begins
+            bar11.bpl(8,5): anon0
+            value = 2
+        Inlined call to procedure bar ends
+        value = 2
+    Inlined call to procedure foo ends
+
+Boogie program verifier finished with 0 verified, 1 error
+-----

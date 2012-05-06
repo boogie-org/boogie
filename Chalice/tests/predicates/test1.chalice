@@ -1,0 +1,50 @@
+class List
+{
+  var value:int;
+  var next:List;
+  
+  predicate inv { acc(value) && acc(next) && (next!=null ==> next.inv) }
+  
+  function get():int
+    requires inv;
+  { unfolding inv in value }
+  
+  // the purpose of this method is to test whether the methodology can roll back correctly the secondary mask:
+  // s0 unf s1 unf s2 fold, should roll back to state s1 and not s0
+  // note also the unfolding expression in the precondition: the fact that next!=null must be known in the body of the method
+  // this means that the secondary mask must start off containing this.next, according to the proposal
+  method foo()
+    requires inv && unfolding inv in next!=null;
+	ensures inv && unfolding inv in next!=null;
+  {
+    unfold inv;
+	value:=0;
+	unfold next.inv;
+	next.value:=1;
+	fold next.inv;
+	assert next.get()==1;
+	assert value==0;
+	fold inv;
+	assert get()==0;
+	assert unfolding inv in next!=null && next.get()==1;
+	assert unfolding inv in next.get()==1;
+  }
+  
+  // this method tests whether the methodology works correctly when (un)folds happen on statically unknown objects
+  method goo(a:List, b:List, c:bool)
+    requires a!=null && b!=null && a.inv && b.inv;
+  {
+    var z:List;
+	unfold a.inv;
+	unfold b.inv;
+	a.value:=0;
+	b.value:=1;
+	if(c) { z:=a } else { z:=b }
+	fold z.inv;
+	assert c ==> a.inv && a.get()==0;
+	assert !c ==> b.inv && b.get()==1;
+	unfold z.inv;
+	assert a.value==0;
+	assert b.value==1;
+  }
+}

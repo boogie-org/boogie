@@ -21,6 +21,8 @@ namespace GPUVerify
         public bool addedLogWrite;
         private int logAddCount;
 
+        private Dictionary<string, Procedure> logAccessProcedures = new Dictionary<string, Procedure>();
+
         public RaceInstrumenterBase()
         {
             onlyLog1 = -1;
@@ -48,86 +50,694 @@ namespace GPUVerify
 
         private void AddNoReadOrWriteCandidateInvariants(WhileCmd wc, Variable v)
         {
-            AddNoReadOrWriteCandidateInvariant(wc, v, "READ", "1");
-            AddNoReadOrWriteCandidateInvariant(wc, v, "WRITE", "1");
-            if (!CommandLineOptions.Symmetry)
+            // Reasoning: if READ_HAS_OCCURRED_v is not in the modifies set for the
+            // loop then there is no point adding an invariant
+            //
+            // If READ_HAS_OCCURRED_v is in the modifies set, but the loop does not
+            // contain a barrier, then it is almost certain that a read CAN be
+            // pending at the loop head, so the invariant will not hold
+            //
+            // If there is a barrier in the loop body then READ_HAS_OCCURRED_v will
+            // be in the modifies set, but there may not be a live read at the loop
+            // head, so it is worth adding the loop invariant candidate.
+            //
+            // The same reasoning applies for WRITE
+
+            if (verifier.ContainsBarrierCall(wc.Body))
             {
-                AddNoReadOrWriteCandidateInvariant(wc, v, "READ", "2");
+                if (verifier.ContainsNamedVariable(
+                    LoopInvariantGenerator.GetModifiedVariables(wc.Body), GPUVerifier.MakeAccessHasOccurredVariableName(v.Name, "READ")))
+                {
+                    AddNoReadOrWriteCandidateInvariant(wc, v, "READ");
+                }
+
+                if (verifier.ContainsNamedVariable(
+                    LoopInvariantGenerator.GetModifiedVariables(wc.Body), GPUVerifier.MakeAccessHasOccurredVariableName(v.Name, "WRITE")))
+                {
+                    AddNoReadOrWriteCandidateInvariant(wc, v, "WRITE");
+                }
             }
-            AddNoReadOrWriteCandidateInvariant(wc, v, "WRITE", "2");
         }
 
         private void AddNoReadOrWriteCandidateRequires(Procedure Proc, Variable v)
         {
             AddNoReadOrWriteCandidateRequires(Proc, v, "READ", "1");
             AddNoReadOrWriteCandidateRequires(Proc, v, "WRITE", "1");
-            if (!CommandLineOptions.Symmetry)
-            {
-                AddNoReadOrWriteCandidateRequires(Proc, v, "READ", "2");
-            }
-            AddNoReadOrWriteCandidateRequires(Proc, v, "WRITE", "2");
         }
 
         private void AddNoReadOrWriteCandidateEnsures(Procedure Proc, Variable v)
         {
             AddNoReadOrWriteCandidateEnsures(Proc, v, "READ", "1");
             AddNoReadOrWriteCandidateEnsures(Proc, v, "WRITE", "1");
-            if (!CommandLineOptions.Symmetry)
-            {
-                AddNoReadOrWriteCandidateEnsures(Proc, v, "READ", "2");
-            }
-            AddNoReadOrWriteCandidateEnsures(Proc, v, "WRITE", "2");
         }
 
-        protected abstract void AddNoReadOrWriteCandidateInvariant(WhileCmd wc, Variable v, string ReadOrWrite, string OneOrTwo);
+        private void AddNoReadOrWriteCandidateInvariant(WhileCmd wc, Variable v, string ReadOrWrite)
+        {
+            Expr candidate = NoReadOrWriteExpr(v, ReadOrWrite, "1");
+            verifier.AddCandidateInvariant(wc, candidate, "no " + ReadOrWrite.ToLower());
+        }
 
-        public void AddRaceCheckingCandidateInvariants(WhileCmd wc)
+        public void AddRaceCheckingCandidateInvariants(Implementation impl, WhileCmd wc)
         {
             foreach (Variable v in NonLocalStateToCheck.getAllNonLocalVariables())
             {
                 AddNoReadOrWriteCandidateInvariants(wc, v);
-                AddReadOrWrittenOffsetIsThreadIdCandidateInvariants(wc, v);
+                AddReadOrWrittenOffsetIsThreadIdCandidateInvariants(impl, wc, v, "READ");
+                AddReadOrWrittenOffsetIsThreadIdCandidateInvariants(impl, wc, v, "WRITE");
+                AddGroupStrideAccessCandidateInvariants(impl, wc, v, "READ");
+                AddGroupStrideAccessCandidateInvariants(impl, wc, v, "WRITE");
             }
         }
 
-        private void AddReadOrWrittenOffsetIsThreadIdCandidateInvariants(WhileCmd wc, Variable v)
+        private void AddGroupStrideAccessCandidateInvariants(Implementation impl, WhileCmd wc, Variable v, string accessKind)
         {
-            AddReadOrWrittenOffsetIsThreadIdCandidateInvariant(wc, v, "WRITE", 1);
-            AddReadOrWrittenOffsetIsThreadIdCandidateInvariant(wc, v, "WRITE", 2);
-            AddReadOrWrittenOffsetIsThreadIdCandidateInvariant(wc, v, "READ", 1);
-            if (!CommandLineOptions.Symmetry)
+            foreach (Expr e in GetOffsetsAccessed(wc.Body, v, accessKind))
             {
-                AddReadOrWrittenOffsetIsThreadIdCandidateInvariant(wc, v, "READ", 2);
+                if (TryGenerateCandidateForDirectStridedAccess(impl, wc, v, e, accessKind))
+                {
+                    continue;
+                }
+
+                if (!TryGenerateCandidateForReducedStrengthStrideVariable(impl, wc, v, e, accessKind))
+                {
+                    if (e is IdentifierExpr)
+                    {
+                        foreach(Expr f in GetExpressionsFromWhichVariableIsAssignedInLoop(wc.Body, (e as IdentifierExpr).Decl))
+                        {
+                            TryGenerateCandidateForReducedStrengthStrideVariable(impl, wc, v, f, accessKind);
+                        }
+                    }
+                }
             }
+        }
+
+        private bool TryGenerateCandidateForDirectStridedAccess(Implementation impl, WhileCmd wc, Variable v, Expr e, string accessKind)
+        {
+            if (!(e is NAryExpr))
+            {
+                return false;
+            }
+
+            NAryExpr nary = e as NAryExpr;
+
+            if (!nary.Fun.FunctionName.Equals("BV32_ADD"))
+            {
+                return false;
+            }
+
+            {
+                Expr constant = IsIdPlusConstantMultiple(nary.Args[0], nary.Args[1], true, impl);
+                if (constant != null)
+                {
+                    Expr offsetExpr = new IdentifierExpr(Token.NoToken, GPUVerifier.MakeOffsetXVariable(v, accessKind));
+                    Expr modPow2Expr = ExprModPow2EqualsId(offsetExpr, constant, new IdentifierExpr(Token.NoToken,
+                        verifier.MakeThreadId(Token.NoToken, "X")));
+
+                    Expr candidateInvariantExpr = Expr.Imp(
+                            new IdentifierExpr(Token.NoToken, GPUVerifier.MakeAccessHasOccurredVariable(v.Name, accessKind)),
+                            modPow2Expr);
+
+                    AddAccessRelatedCandidateInvariant(wc, accessKind, candidateInvariantExpr, impl.Name, "direct stride local");
+                    return true;
+                }
+            }
+
+            {
+                Expr constant = IsIdPlusConstantMultiple(nary.Args[0], nary.Args[1], false, impl);
+                if (constant != null)
+                {
+                    Expr offsetExpr = new IdentifierExpr(Token.NoToken, GPUVerifier.MakeOffsetXVariable(v, accessKind));
+                    Expr modPow2Expr = ExprModPow2EqualsId(offsetExpr, constant, verifier.GlobalIdExpr("X"));
+
+                    Expr candidateInvariantExpr = Expr.Imp(
+                            new IdentifierExpr(Token.NoToken, GPUVerifier.MakeAccessHasOccurredVariable(v.Name, accessKind)),
+                            modPow2Expr);
+
+                    AddAccessRelatedCandidateInvariant(wc, accessKind, candidateInvariantExpr, impl.Name, "direct stride global");
+                    return true;
+                }
+            }
+
+            return false;
+
+        }
+
+        private void AddAccessRelatedCandidateInvariant(WhileCmd wc, string accessKind, Expr candidateInvariantExpr, string procName, string tag)
+        {
+            Expr candidate = new VariableDualiser(1, verifier.uniformityAnalyser, procName).VisitExpr(candidateInvariantExpr.Clone() as Expr);
+            verifier.AddCandidateInvariant(wc, candidate, tag);
+        }
+
+        private Expr IsIdPlusConstantMultiple(Expr arg1, Expr arg2, bool local, Implementation impl)
+        {
+            {
+                Expr constant = IsConstantMultiple(arg2);
+                if (constant != null && IsId(arg1, local, impl))
+                {
+                    return constant;
+                }
+            }
+
+            {
+                Expr constant = IsConstantMultiple(arg1);
+                if (constant != null && IsId(arg2, local, impl))
+                {
+                    return constant;
+                }
+            }
+
+            return null;
+
+        }
+
+        private Expr IsConstantMultiple(Expr e)
+        {
+            if (!(e is NAryExpr))
+            {
+                return null;
+            }
+
+            NAryExpr nary = e as NAryExpr;
+
+            if (!(nary.Fun.FunctionName.Equals("BV32_MUL")))
+            {
+                return null;
+            }
+
+            if (IsConstant(nary.Args[0]))
+            {
+                return nary.Args[0];
+            }
+
+            if (IsConstant(nary.Args[1]))
+            {
+                return nary.Args[1];
+            }
+
+            return null;
+
+        }
+
+        private bool IsId(Expr mayBeId, bool local, Implementation impl)
+        {
+            if (local)
+            {
+                return verifier.mayBeTidAnalyser.MayBe(GPUVerifier.LOCAL_ID_X_STRING, impl.Name, mayBeId);
+            }
+
+            return verifier.mayBeGidAnalyser.MayBe("x", impl.Name, mayBeId);
+        }
+
+        private bool TryGenerateCandidateForReducedStrengthStrideVariable(Implementation impl, WhileCmd wc, Variable v, Expr e, string accessKind)
+        {
+            foreach (string w in
+                verifier.mayBeTidPlusConstantAnalyser.GetMayBeIdPlusConstantVars(impl.Name))
+            {
+                if (!verifier.ContainsNamedVariable(
+                    LoopInvariantGenerator.GetModifiedVariables(wc.Body), w))
+                {
+                    continue;
+                }
+
+                // Check also live
+
+                if (GenerateModIdInvariants(impl, wc, v, e, accessKind, w, verifier.mayBeTidPlusConstantAnalyser))
+                {
+                    return true;
+                }
+
+            }
+
+            foreach (string w in
+                verifier.mayBeGidPlusConstantAnalyser.GetMayBeIdPlusConstantVars(impl.Name))
+            {
+                if (!verifier.ContainsNamedVariable(
+                    LoopInvariantGenerator.GetModifiedVariables(wc.Body), w))
+                {
+                    continue;
+                }
+
+                // Check also live
+
+                if (GenerateModIdInvariants(impl, wc, v, e, accessKind, w, verifier.mayBeGidPlusConstantAnalyser))
+                {
+                    return true;
+                }
+
+            }
+            
+            
+            return false;
+        }
+
+        private bool GenerateModIdInvariants(Implementation impl, WhileCmd wc, Variable v, Expr e, string accessKind, 
+            string w, MayBeIdPlusConstantAnalyser mayBeIdPlusConstantAnalyser)
+        {
+            if (!IsLinearFunctionOfVariable(e, w))
+            {
+                return false;
+            }
+
+            Debug.Assert(!verifier.uniformityAnalyser.IsUniform(impl.Name, w));
+
+            Variable wVariable = new LocalVariable(wc.tok, new TypedIdent(wc.tok, w,
+                    Microsoft.Boogie.Type.GetBvType(32)));
+
+            Expr indexModPow2EqualsId = ExprModPow2EqualsId(
+                new IdentifierExpr(wc.tok, wVariable),
+                mayBeIdPlusConstantAnalyser.GetIncrement(impl.Name, w), mayBeIdPlusConstantAnalyser.MakeIdExpr());
+
+            verifier.AddCandidateInvariant(wc, 
+                new VariableDualiser(1, verifier.uniformityAnalyser, impl.Name).VisitExpr(indexModPow2EqualsId.Clone() as Expr),
+                "is " + mayBeIdPlusConstantAnalyser.idKind() + " plus constant multiple");
+            verifier.AddCandidateInvariant(wc, 
+                new VariableDualiser(2, verifier.uniformityAnalyser, impl.Name).VisitExpr(indexModPow2EqualsId.Clone() as Expr),
+                "is " + mayBeIdPlusConstantAnalyser.idKind() + " plus constant multiple");
+
+            Expr offsetExpr = new IdentifierExpr(Token.NoToken, GPUVerifier.MakeOffsetXVariable(v, accessKind));
+            Expr invertedOffset = InverseOfLinearFunctionOfVariable(e, w, offsetExpr);
+
+            Expr invertedOffsetModPow2EqualsId = ExprModPow2EqualsId(
+                invertedOffset,
+                mayBeIdPlusConstantAnalyser.GetIncrement(impl.Name, w), mayBeIdPlusConstantAnalyser.MakeIdExpr());
+
+            Expr candidateInvariantExpr = Expr.Imp(
+                    new IdentifierExpr(Token.NoToken, GPUVerifier.MakeAccessHasOccurredVariable(v.Name, accessKind)),
+                    invertedOffsetModPow2EqualsId);
+
+            AddAccessRelatedCandidateInvariant(wc, accessKind, candidateInvariantExpr, impl.Name, "accessed offset is "
+                + mayBeIdPlusConstantAnalyser.idKind() + " plus constant multiple");
+
+            return true;
+        }
+
+        private HashSet<Expr> GetExpressionsFromWhichVariableIsAssignedInLoop(StmtList stmts, Variable variable)
+        {
+            HashSet<Expr> result = new HashSet<Expr>();
+            foreach (BigBlock bb in stmts.BigBlocks)
+            {
+                foreach (Expr e in GetExpressionsFromWhichVariableIsAssignedInLoop(bb, variable))
+                {
+                    result.Add(e);
+                }
+            }
+            return result;
+        }
+
+        private HashSet<Expr> GetExpressionsFromWhichVariableIsAssignedInLoop(BigBlock bb, Variable variable)
+        {
+            HashSet<Expr> result = new HashSet<Expr>();
+            foreach (Cmd c in bb.simpleCmds)
+            {
+                if (c is AssignCmd)
+                {
+                    AssignCmd assign = c as AssignCmd;
+                    if (assign.Lhss[0] is SimpleAssignLhs)
+                    {
+                        if (GPUVerifier.StripThreadIdentifier((assign.Lhss[0] as SimpleAssignLhs).AssignedVariable.Name).Equals(
+                            GPUVerifier.StripThreadIdentifier(variable.Name)))
+                        {
+                            if (assign.Rhss[0] is NAryExpr && ((assign.Rhss[0] as NAryExpr).Fun is IfThenElse))
+                            {
+                                result.Add((assign.Rhss[0] as NAryExpr).Args[1]);
+                            }
+                            else
+                            {
+                                result.Add(assign.Rhss[0]);
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (bb.ec is WhileCmd)
+            {
+                foreach (Expr e in GetExpressionsFromWhichVariableIsAssignedInLoop((bb.ec as WhileCmd).Body, variable))
+                {
+                    result.Add(e);
+                }
+            }
+            else if (bb.ec is IfCmd)
+            {
+                IfCmd ifCmd = bb.ec as IfCmd;
+
+                foreach (Expr e in GetExpressionsFromWhichVariableIsAssignedInLoop(ifCmd.thn, variable))
+                {
+                    result.Add(e);
+                }
+
+                Debug.Assert(ifCmd.elseIf == null);
+
+                if (ifCmd.elseBlock != null)
+                {
+                    foreach (Expr e in GetExpressionsFromWhichVariableIsAssignedInLoop(ifCmd.elseBlock, variable))
+                    {
+                        result.Add(e);
+                    }
+                }
+
+            }
+
+            return result;
+        }
+
+        private Expr InverseOfLinearFunctionOfVariable(Expr e, string v, Expr offsetExpr)
+        {
+            if (e is IdentifierExpr)
+            {
+                if (GPUVerifier.StripThreadIdentifier((e as IdentifierExpr).Name).Equals(
+                    v))
+                {
+                    return offsetExpr;
+                }
+                return e;
+            }
+
+            if (e is NAryExpr)
+            {
+                NAryExpr nary = e as NAryExpr;
+                if (nary.Fun.FunctionName.Equals("BV32_ADD"))
+                {
+                    if (DoesNotReferTo(nary.Args[0], v))
+                    {
+                        return GPUVerifier.MakeBitVectorBinaryBitVector("BV32_SUB",
+                            InverseOfLinearFunctionOfVariable(nary.Args[1], v, offsetExpr),
+                            nary.Args[0]);
+                    }
+                    else
+                    {
+                        Debug.Assert(DoesNotReferTo(nary.Args[1], v));
+                        return GPUVerifier.MakeBitVectorBinaryBitVector("BV32_SUB",
+                            InverseOfLinearFunctionOfVariable(nary.Args[0], v, offsetExpr),
+                            nary.Args[1]);
+                    }
+                }
+            }
+
+            Debug.Assert(false);
+
+            return null;
+        }
+
+        private Expr ExprModPow2EqualsId(Expr expr, Expr powerOfTwoExpr, Expr threadIdExpr)
+        {
+            Expr Pow2Minus1 = GPUVerifier.MakeBitVectorBinaryBitVector("BV32_SUB", powerOfTwoExpr, 
+                            new LiteralExpr(Token.NoToken, BigNum.FromInt(1), 32));
+
+            Expr Pow2Minus1BitAndExpr =
+                GPUVerifier.MakeBitVectorBinaryBitVector("BV32_AND", Pow2Minus1, expr);
+
+            return Expr.Eq(Pow2Minus1BitAndExpr, threadIdExpr);
+
+        }
+
+        private bool IsLinearFunctionOfVariable(Expr e, string v)
+        {
+            // e is v
+            if (e is IdentifierExpr)
+            {
+                return GPUVerifier.StripThreadIdentifier((e as IdentifierExpr).Name).Equals(v);
+            }
+
+            // e is v + f /* f only contains constants or literals */
+            if (e is NAryExpr)
+            {
+                NAryExpr nary = e as NAryExpr;
+                if (nary.Fun.FunctionName.Equals("BV32_ADD"))
+                {
+                    if (IsLinearFunctionOfVariable(nary.Args[0], v)
+                        && DoesNotReferTo(nary.Args[1], v))
+                    {
+                        return true;
+                    }
+
+                    if (IsLinearFunctionOfVariable(nary.Args[1], v)
+                        && DoesNotReferTo(nary.Args[0], v))
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            // We can handle further cases if they prove useful
+
+            return false;
+        }
+
+        private bool DoesNotReferTo(Expr expr, string v)
+        {
+            FindReferencesToNamedVariableVisitor visitor = new FindReferencesToNamedVariableVisitor(v);
+            visitor.VisitExpr(expr);
+            return !visitor.found;
+        }
+
+        private void AddReadOrWrittenOffsetIsThreadIdCandidateInvariants(Implementation impl, WhileCmd wc, Variable v, string accessType)
+        {
+
+            foreach (Expr e in GetOffsetsAccessed(wc.Body, v, accessType))
+            {
+                if (verifier.mayBeTidAnalyser.MayBe(GPUVerifier.LOCAL_ID_X_STRING, impl.Name, GPUVerifier.StripThreadIdentifiers(e)))
+                {
+                    AddAccessedOffsetIsThreadLocalIdCandidateInvariant(wc, v, accessType);
+                    // No point adding it multiple times
+                    break;
+                }
+            }
+
+            foreach (Expr e in GetOffsetsAccessed(wc.Body, v, accessType))
+            {
+                if (verifier.mayBeGidAnalyser.MayBe("x", impl.Name, GPUVerifier.StripThreadIdentifiers(e)))
+                {
+                    AddAccessedOffsetIsThreadGlobalIdCandidateInvariant(wc, v, accessType);
+                    // No point adding it multiple times
+                    break;
+                }
+            }
+
+            foreach (Expr e in GetOffsetsAccessed(wc.Body, v, accessType))
+            {
+                if (verifier.mayBeFlattened2DTidOrGidAnalyser.MayBe("local", impl.Name, GPUVerifier.StripThreadIdentifiers(e)))
+                {
+                    AddAccessedOffsetIsThreadFlattened2DLocalIdCandidateInvariant(wc, v, accessType);
+                    // No point adding it multiple times
+                    break;
+                }
+            }
+
+            foreach (Expr e in GetOffsetsAccessed(wc.Body, v, accessType))
+            {
+                if (verifier.mayBeFlattened2DTidOrGidAnalyser.MayBe("global", impl.Name, GPUVerifier.StripThreadIdentifiers(e)))
+                {
+                    AddAccessedOffsetIsThreadFlattened2DGlobalIdCandidateInvariant(wc, v, accessType);
+                    // No point adding it multiple times
+                    break;
+                }
+            }
+
+            KeyValuePair<IdentifierExpr, Expr> iLessThanC = GetILessThanC(wc.Guard);
+            if (iLessThanC.Key != null)
+            {
+                foreach (Expr e in GetOffsetsAccessed(wc.Body, v, accessType))
+                {
+                    if(HasFormIPlusLocalIdTimesC(e, iLessThanC, impl))
+                    {
+                        AddAccessedOffsetInRangeCTimesLocalIdToCTimesLocalIdPlusC(wc, v, iLessThanC.Value, accessType);
+                        break;
+                    }
+                }
+
+                foreach (Expr e in GetOffsetsAccessed(wc.Body, v, accessType))
+                {
+                    if (HasFormIPlusGlobalIdTimesC(e, iLessThanC, impl))
+                    {
+                        AddAccessedOffsetInRangeCTimesGlobalIdToCTimesGlobalIdPlusC(wc, v, iLessThanC.Value, accessType);
+                        break;
+                    }
+                }
+            
+            }
+
+        
+        }
+
+        private bool HasFormIPlusLocalIdTimesC(Expr e, KeyValuePair<IdentifierExpr, Expr> iLessThanC, Implementation impl)
+        {
+            if (!(e is NAryExpr))
+            {
+                return false;
+            }
+
+            NAryExpr nary = e as NAryExpr;
+
+            if (!nary.Fun.FunctionName.Equals("BV32_ADD"))
+            {
+                return false;
+            }
+
+            return (SameIdentifierExpression(nary.Args[0], iLessThanC.Key) &&
+                IsLocalIdTimesConstant(nary.Args[1], iLessThanC.Value, impl)) ||
+                (SameIdentifierExpression(nary.Args[1], iLessThanC.Key) &&
+                IsLocalIdTimesConstant(nary.Args[0], iLessThanC.Value, impl));
+        }
+
+        private bool IsLocalIdTimesConstant(Expr maybeLocalIdTimesConstant, Expr constant, Implementation impl)
+        {
+            if (!(maybeLocalIdTimesConstant is NAryExpr))
+            {
+                return false;
+            }
+            NAryExpr nary = maybeLocalIdTimesConstant as NAryExpr;
+            if(!nary.Fun.FunctionName.Equals("BV32_MUL"))
+            {
+                return false;
+            }
+
+            return
+                (SameConstant(nary.Args[0], constant) && verifier.mayBeTidAnalyser.MayBe(GPUVerifier.LOCAL_ID_X_STRING, impl.Name, nary.Args[1])) ||
+                (SameConstant(nary.Args[1], constant) && verifier.mayBeTidAnalyser.MayBe(GPUVerifier.LOCAL_ID_X_STRING, impl.Name, nary.Args[0]));
+        }
+
+
+        private bool HasFormIPlusGlobalIdTimesC(Expr e, KeyValuePair<IdentifierExpr, Expr> iLessThanC, Implementation impl)
+        {
+            if (!(e is NAryExpr))
+            {
+                return false;
+            }
+
+            NAryExpr nary = e as NAryExpr;
+
+            if (!nary.Fun.FunctionName.Equals("BV32_ADD"))
+            {
+                return false;
+            }
+
+            return (SameIdentifierExpression(nary.Args[0], iLessThanC.Key) &&
+                IsGlobalIdTimesConstant(nary.Args[1], iLessThanC.Value, impl)) ||
+                (SameIdentifierExpression(nary.Args[1], iLessThanC.Key) &&
+                IsGlobalIdTimesConstant(nary.Args[0], iLessThanC.Value, impl));
+        }
+
+        private bool IsGlobalIdTimesConstant(Expr maybeGlobalIdTimesConstant, Expr constant, Implementation impl)
+        {
+            if (!(maybeGlobalIdTimesConstant is NAryExpr))
+            {
+                return false;
+            }
+            NAryExpr nary = maybeGlobalIdTimesConstant as NAryExpr;
+            if (!nary.Fun.FunctionName.Equals("BV32_MUL"))
+            {
+                return false;
+            }
+
+            return
+                (SameConstant(nary.Args[0], constant) && verifier.mayBeGidAnalyser.MayBe("x", impl.Name, nary.Args[1])) ||
+                (SameConstant(nary.Args[1], constant) && verifier.mayBeGidAnalyser.MayBe("x", impl.Name, nary.Args[0]));
+        }
+
+
+        private bool SameConstant(Expr expr, Expr constant)
+        {
+            if (constant is IdentifierExpr)
+            {
+                IdentifierExpr identifierExpr = constant as IdentifierExpr;
+                Debug.Assert(identifierExpr.Decl is Constant);
+                return expr is IdentifierExpr && (expr as IdentifierExpr).Decl is Constant && (expr as IdentifierExpr).Decl.Name.Equals(identifierExpr.Decl.Name);
+            }
+            else
+            {
+                Debug.Assert(constant is LiteralExpr);
+                LiteralExpr literalExpr = constant as LiteralExpr;
+                if (!(expr is LiteralExpr))
+                {
+                    return false;
+                }
+                if (!(literalExpr.Val is BvConst) || !((expr as LiteralExpr).Val is BvConst))
+                {
+                    return false;
+                }
+
+                return (literalExpr.Val as BvConst).Value.ToInt == ((expr as LiteralExpr).Val as BvConst).Value.ToInt;
+            }
+        }
+
+        private bool SameIdentifierExpression(Expr expr, IdentifierExpr identifierExpr)
+        {
+            if (!(expr is IdentifierExpr))
+            {
+                return false;
+            }
+            return (expr as IdentifierExpr).Decl.Name.Equals(identifierExpr.Name);
+        }
+
+        private KeyValuePair<IdentifierExpr, Expr> GetILessThanC(Expr expr)
+        {
+
+            if (expr is NAryExpr && (expr as NAryExpr).Fun.FunctionName.Equals("bv32_to_bool"))
+            {
+                expr = (expr as NAryExpr).Args[0];
+            }
+
+            if (!(expr is NAryExpr))
+            {
+                return new KeyValuePair<IdentifierExpr, Expr>(null, null);
+            }
+
+            NAryExpr nary = expr as NAryExpr;
+
+            if (!(nary.Fun.FunctionName.Equals("BV32_C_LT") || nary.Fun.FunctionName.Equals("BV32_LT")))
+            {
+                return new KeyValuePair<IdentifierExpr, Expr>(null, null);
+            }
+
+            if (!(nary.Args[0] is IdentifierExpr))
+            {
+                return new KeyValuePair<IdentifierExpr, Expr>(null, null);
+            }
+
+            if (!IsConstant(nary.Args[1]))
+            {
+                return new KeyValuePair<IdentifierExpr, Expr>(null, null);
+            }
+
+            return new KeyValuePair<IdentifierExpr, Expr>(nary.Args[0] as IdentifierExpr, nary.Args[1]);
+
+        }
+
+        private static bool IsConstant(Expr e)
+        {
+            return ((e is IdentifierExpr && (e as IdentifierExpr).Decl is Constant) || e is LiteralExpr);
         }
 
         private void AddReadOrWrittenOffsetIsThreadIdCandidateRequires(Procedure Proc, Variable v)
         {
-            AddReadOrWrittenOffsetIsThreadIdCandidateRequires(Proc, v, "WRITE", 1);
-            AddReadOrWrittenOffsetIsThreadIdCandidateRequires(Proc, v, "WRITE", 2);
-            AddReadOrWrittenOffsetIsThreadIdCandidateRequires(Proc, v, "READ", 1);
-            if (!CommandLineOptions.Symmetry)
-            {
-                AddReadOrWrittenOffsetIsThreadIdCandidateRequires(Proc, v, "READ", 2);
-            }
+            AddAccessedOffsetIsThreadLocalIdCandidateRequires(Proc, v, "WRITE", 1);
+            AddAccessedOffsetIsThreadLocalIdCandidateRequires(Proc, v, "READ", 1);
         }
 
         private void AddReadOrWrittenOffsetIsThreadIdCandidateEnsures(Procedure Proc, Variable v)
         {
-            AddReadOrWrittenOffsetIsThreadIdCandidateEnsures(Proc, v, "WRITE", 1);
-            AddReadOrWrittenOffsetIsThreadIdCandidateEnsures(Proc, v, "WRITE", 2);
-            AddReadOrWrittenOffsetIsThreadIdCandidateEnsures(Proc, v, "READ", 1);
-            if (!CommandLineOptions.Symmetry)
-            {
-                AddReadOrWrittenOffsetIsThreadIdCandidateEnsures(Proc, v, "READ", 2);
-            }
+            AddAccessedOffsetIsThreadLocalIdCandidateEnsures(Proc, v, "WRITE", 1);
+            AddAccessedOffsetIsThreadLocalIdCandidateEnsures(Proc, v, "READ", 1);
         }
 
-        protected abstract void AddReadOrWrittenOffsetIsThreadIdCandidateInvariant(WhileCmd wc, Variable v, string ReadOrWrite, int Thread);
+        protected abstract void AddAccessedOffsetIsThreadLocalIdCandidateInvariant(WhileCmd wc, Variable v, string ReadOrWrite);
 
-        protected abstract void AddReadOrWrittenOffsetIsThreadIdCandidateRequires(Procedure Proc, Variable v, string ReadOrWrite, int Thread);
+        protected abstract void AddAccessedOffsetIsThreadGlobalIdCandidateInvariant(WhileCmd wc, Variable v, string ReadOrWrite);
 
-        protected abstract void AddReadOrWrittenOffsetIsThreadIdCandidateEnsures(Procedure Proc, Variable v, string ReadOrWrite, int Thread);
+        protected abstract void AddAccessedOffsetIsThreadFlattened2DLocalIdCandidateInvariant(WhileCmd wc, Variable v, string ReadOrWrite);
+
+        protected abstract void AddAccessedOffsetIsThreadFlattened2DGlobalIdCandidateInvariant(WhileCmd wc, Variable v, string ReadOrWrite);
+
+        protected abstract void AddAccessedOffsetInRangeCTimesLocalIdToCTimesLocalIdPlusC(WhileCmd wc, Variable v, Expr constant, string ReadOrWrite);
+
+        protected abstract void AddAccessedOffsetInRangeCTimesGlobalIdToCTimesGlobalIdPlusC(WhileCmd wc, Variable v, Expr constant, string ReadOrWrite);
+
+        protected abstract void AddAccessedOffsetIsThreadLocalIdCandidateRequires(Procedure Proc, Variable v, string ReadOrWrite, int Thread);
+
+        protected abstract void AddAccessedOffsetIsThreadLocalIdCandidateEnsures(Procedure Proc, Variable v, string ReadOrWrite, int Thread);
+
+
 
         public void AddKernelPrecondition()
         {
@@ -136,6 +746,7 @@ namespace GPUVerify
                 AddRequiresNoPendingAccess(v);
             }
         }
+
         public bool AddRaceCheckingInstrumentation()
         {
 
@@ -161,37 +772,16 @@ namespace GPUVerify
             if (failedToFindSecondAccess || !addedLogWrite)
                 return false;
 
-            foreach (Variable v in NonLocalStateToCheck.getAllNonLocalVariables())
-            {
-                AddRaceCheckingDecsAndProcsForVar(v);
-            }
-
             return true;
 
         }
 
         private void AddRaceCheckingDecsAndProcsForVar(Variable v)
         {
-            IdentifierExprSeq ReadDeclsResetAtBarrier;
-            IdentifierExprSeq WriteDeclsResetAtBarrier;
-            IdentifierExprSeq ReadDeclsModifiedAtLogRead;
-            IdentifierExprSeq WriteDeclsModifiedAtLogWrite;
-                
-            AddLogRaceDeclarations(v, "READ", out ReadDeclsResetAtBarrier, out ReadDeclsModifiedAtLogRead);
-            AddLogRaceDeclarations(v, "WRITE", out WriteDeclsResetAtBarrier, out WriteDeclsModifiedAtLogWrite);
+            AddLogRaceDeclarations(v, "READ");
+            AddLogRaceDeclarations(v, "WRITE");
             AddLogAccessProcedure(v, "READ");
             AddLogAccessProcedure(v, "WRITE");
-
-            HashSet<string> MayCallBarrier = verifier.GetProceduresThatIndirectlyCallProcedure(verifier.BarrierProcedure.Name);
-
-            verifier.ExtendModifiesSetOfProcedures(ReadDeclsResetAtBarrier, MayCallBarrier);
-            verifier.ExtendModifiesSetOfProcedures(WriteDeclsResetAtBarrier, MayCallBarrier);
-
-            HashSet<string> MayCallLogRead = verifier.GetProceduresThatIndirectlyCallProcedure("_LOG_READ_" + v.Name);
-            HashSet<string> MayCallLogWrite = verifier.GetProceduresThatIndirectlyCallProcedure("_LOG_WRITE_" + v.Name);
-
-            verifier.ExtendModifiesSetOfProcedures(ReadDeclsModifiedAtLogRead, MayCallLogRead);
-            verifier.ExtendModifiesSetOfProcedures(WriteDeclsModifiedAtLogWrite, MayCallLogWrite);
 
         }
         
@@ -277,7 +867,13 @@ namespace GPUVerify
                                 inParams.Add(ar.IndexX);
                             }
 
-                            result.simpleCmds.Add(new CallCmd(c.tok, "_LOG_READ_" + ar.v.Name, inParams, new IdentifierExprSeq()));
+                            Procedure logProcedure = GetLogAccessProcedure(c.tok, "_LOG_READ_" + ar.v.Name);
+
+                            CallCmd logAccessCallCmd = new CallCmd(c.tok, logProcedure.Name, inParams, new IdentifierExprSeq());
+
+                            logAccessCallCmd.Proc = logProcedure;
+
+                            result.simpleCmds.Add(logAccessCallCmd);
                             
                         }
                     }
@@ -305,7 +901,14 @@ namespace GPUVerify
                                 inParams.Add(ar.IndexX);
                             }
 
-                            result.simpleCmds.Add(new CallCmd(c.tok, "_LOG_WRITE_" + ar.v.Name, inParams, new IdentifierExprSeq()));
+                            Procedure logProcedure = GetLogAccessProcedure(c.tok, "_LOG_WRITE_" + ar.v.Name);
+
+                            CallCmd logAccessCallCmd = new CallCmd(c.tok, logProcedure.Name, inParams, new IdentifierExprSeq());
+
+                            logAccessCallCmd.Proc = logProcedure;
+
+                            result.simpleCmds.Add(logAccessCallCmd);
+                            
                             addedLogWrite = true;
                             
                         }
@@ -319,7 +922,8 @@ namespace GPUVerify
             if (bb.ec is WhileCmd)
             {
                 WhileCmd WhileCommand = bb.ec as WhileCmd;
-                result.ec = new WhileCmd(WhileCommand.tok, WhileCommand.Guard, WhileCommand.Invariants, AddRaceCheckCalls(WhileCommand.Body));
+                result.ec = new WhileCmd(WhileCommand.tok, WhileCommand.Guard, 
+                        WhileCommand.Invariants, AddRaceCheckCalls(WhileCommand.Body));
             }
             else if (bb.ec is IfCmd)
             {
@@ -340,28 +944,32 @@ namespace GPUVerify
 
         }
 
+        private Procedure GetLogAccessProcedure(IToken tok, string name)
+        {
+            if (logAccessProcedures.ContainsKey(name))
+            {
+                return logAccessProcedures[name];
+            }
+            Procedure newProcedure = new Procedure(tok, name, new TypeVariableSeq(), new VariableSeq(), new VariableSeq(), new RequiresSeq(), new IdentifierExprSeq(), new EnsuresSeq());
+            logAccessProcedures[name] = newProcedure;
+            return newProcedure;
+        }
 
-        protected abstract void AddLogRaceDeclarations(Variable v, String ReadOrWrite, out IdentifierExprSeq ResetAtBarrier, out IdentifierExprSeq ModifiedAtLog);
+
+        protected abstract void AddLogRaceDeclarations(Variable v, string ReadOrWrite);
 
         protected abstract void AddLogAccessProcedure(Variable v, string ReadOrWrite);
 
 
-        public BigBlock MakeRaceCheckingStatements(IToken tok)
+        public BigBlock MakeResetReadWriteSetsStatements(IToken tok)
         {
-            BigBlock checkForRaces = new BigBlock(tok, "__CheckForRaces", new CmdSeq(), null, null);
-            if (!CommandLineOptions.Eager)
-            {
-                foreach (Variable v in NonLocalStateToCheck.getAllNonLocalVariables())
-                {
-                    CheckForRaces(tok, checkForRaces, v, false);
-                }
-            }
+            BigBlock result = new BigBlock(tok, "__ResetReadWriteSets", new CmdSeq(), null, null);
 
             foreach (Variable v in NonLocalStateToCheck.getAllNonLocalVariables())
             {
-                SetNoAccessOccurred(tok, checkForRaces, v);
+                SetNoAccessOccurred(tok, result, v);
             }
-            return checkForRaces;
+            return result;
         }
 
         private void SetNoAccessOccurred(IToken tok, BigBlock bb, Variable v)
@@ -372,63 +980,33 @@ namespace GPUVerify
 
         protected abstract void SetNoAccessOccurred(IToken tok, BigBlock bb, Variable v, string AccessType);
 
-        public abstract void CheckForRaces(IToken tok, BigBlock bb, Variable v, bool ReadWriteOnly);
-
-        protected void MakeLogAccessProcedureHeader(Variable v, string ReadOrWrite, out Variable XParameterVariable, out Variable YParameterVariable, out Variable ZParameterVariable, out Procedure LogReadOrWriteProcedure)
+        protected Procedure MakeLogAccessProcedureHeader(Variable v, string ReadOrWrite)
         {
             VariableSeq inParams = new VariableSeq();
-            XParameterVariable = null;
-            YParameterVariable = null;
-            ZParameterVariable = null;
 
-            if (v.TypedIdent.Type is MapType)
-            {
-                MapType mt = v.TypedIdent.Type as MapType;
-                Debug.Assert(mt.Arguments.Length == 1);
-                Debug.Assert(GPUVerifier.IsIntOrBv32(mt.Arguments[0]));
+            Variable PredicateParameter = new LocalVariable(v.tok, new TypedIdent(v.tok, "_P", Microsoft.Boogie.Type.Bool));
 
-                XParameterVariable = new LocalVariable(v.tok, new TypedIdent(v.tok, "_X_index", mt.Arguments[0]));
-                if (mt.Result is MapType)
-                {
-                    MapType mt2 = mt.Result as MapType;
-                    Debug.Assert(mt2.Arguments.Length == 1);
-                    Debug.Assert(GPUVerifier.IsIntOrBv32(mt2.Arguments[0]));
-                    YParameterVariable = new LocalVariable(v.tok, new TypedIdent(v.tok, "_Y_index", mt2.Arguments[0]));
-                    if (mt2.Result is MapType)
-                    {
-                        MapType mt3 = mt2.Arguments[0] as MapType;
-                        Debug.Assert(mt3.Arguments.Length == 1);
-                        Debug.Assert(GPUVerifier.IsIntOrBv32(mt3.Arguments[0]));
-                        Debug.Assert(!(mt3.Result is MapType));
-                        ZParameterVariable = new LocalVariable(v.tok, new TypedIdent(v.tok, "_Z_index", mt3.Arguments[0]));
-                    }
-                }
-            }
+            Debug.Assert(v.TypedIdent.Type is MapType);
+            MapType mt = v.TypedIdent.Type as MapType;
+            Debug.Assert(mt.Arguments.Length == 1);
+            Variable OffsetParameter = new LocalVariable(v.tok, new TypedIdent(v.tok, "_offset", mt.Arguments[0]));
+            Debug.Assert(!(mt.Result is MapType));
 
-            if (ZParameterVariable != null)
-            {
-                inParams.Add(ZParameterVariable);
-            }
+            inParams.Add(new VariableDualiser(1, null, null).VisitVariable(PredicateParameter.Clone() as Variable));
+            inParams.Add(new VariableDualiser(1, null, null).VisitVariable(OffsetParameter.Clone() as Variable));
 
-            if (YParameterVariable != null)
-            {
-                inParams.Add(YParameterVariable);
-            }
+            inParams.Add(new VariableDualiser(2, null, null).VisitVariable(PredicateParameter.Clone() as Variable));
+            inParams.Add(new VariableDualiser(2, null, null).VisitVariable(OffsetParameter.Clone() as Variable));
 
-            if (XParameterVariable != null)
-            {
-                inParams.Add(XParameterVariable);
-            }
+            string LogProcedureName = "_LOG_" + ReadOrWrite + "_" + v.Name;
 
-            LogReadOrWriteProcedure = new Procedure(v.tok, "_LOG_" + ReadOrWrite + "_" + v.Name, new TypeVariableSeq(), inParams, new VariableSeq(), new RequiresSeq(), new IdentifierExprSeq(), new EnsuresSeq());
+            Procedure result = GetLogAccessProcedure(v.tok, LogProcedureName);
 
-            if (CommandLineOptions.Symmetry && ReadOrWrite.Equals("READ"))
-            {
-                verifier.HalfDualisedProcedureNames.Add(LogReadOrWriteProcedure.Name);
-            }
+            result.InParams = inParams;
 
-            LogReadOrWriteProcedure.AddAttribute("inline", new object[] { new LiteralExpr(v.tok, BigNum.FromInt(1)) });
+            result.AddAttribute("inline", new object[] { new LiteralExpr(v.tok, BigNum.FromInt(1)) });
 
+            return result;
         }
 
         public void AddRaceCheckingCandidateRequires(Procedure Proc)
@@ -461,7 +1039,111 @@ namespace GPUVerify
 
         protected abstract Expr NoReadOrWriteExpr(Variable v, string ReadOrWrite, string OneOrTwo);
 
+        private HashSet<Expr> GetOffsetsAccessed(StmtList stmts, Variable v, string AccessType)
+        {
+            HashSet<Expr> result = new HashSet<Expr> ();
+            foreach (BigBlock bb in stmts.BigBlocks)
+            {
+                foreach (Expr e in GetOffsetsAccessed(bb, v, AccessType))
+                {
+                    result.Add(e);
+                }
+            }
+            return result;
+        }
+
+        private HashSet<Expr> GetOffsetsAccessed(BigBlock bb, Variable v, string AccessType)
+        {
+            HashSet<Expr> result = new HashSet<Expr>();
+
+            foreach (Cmd c in bb.simpleCmds)
+            {
+                if (c is CallCmd)
+                {
+                    CallCmd call = c as CallCmd;
+
+                    if (call.callee == "_LOG_" + AccessType + "_" + v.Name)
+                    {
+                        // Ins[0] is thread 1's predicate,
+                        // Ins[1] is the offset to be read
+                        // Ins[1] has the form BV32_ADD(offset#construct...(P), offset)
+                        // We are looking for the second parameter to this BV32_ADD
+                        Expr offset = call.Ins[1];
+                        Debug.Assert(offset is NAryExpr);
+                        Debug.Assert((offset as NAryExpr).Fun.FunctionName == "BV32_ADD");
+                        result.Add((offset as NAryExpr).Args[1]);
+                    }
+
+                }
+
+            }
+
+            if (bb.ec is WhileCmd)
+            {
+                HashSet<Expr> bodyResult = GetOffsetsAccessed((bb.ec as WhileCmd).Body, v, AccessType);
+                foreach (Expr e in bodyResult)
+                {
+                    result.Add(e);
+                }
+            }
+            else if (bb.ec is IfCmd)
+            {
+                IfCmd ifCmd = bb.ec as IfCmd;
+
+                HashSet<Expr> thenResult = GetOffsetsAccessed(ifCmd.thn, v, AccessType);
+                foreach (Expr e in thenResult)
+                {
+                    result.Add(e);
+                }
+
+                Debug.Assert(ifCmd.elseIf == null);
+                
+                if(ifCmd.elseBlock != null)
+                {
+                    HashSet<Expr> elseResult = GetOffsetsAccessed(ifCmd.elseBlock, v, AccessType);
+                    foreach (Expr e in elseResult)
+                    {
+                        result.Add(e);
+                    }
+                }
+            }
+
+            return result;
+        }
+
+        public void AddRaceCheckingDeclarations()
+        {
+            foreach (Variable v in NonLocalStateToCheck.getAllNonLocalVariables())
+            {
+                AddRaceCheckingDecsAndProcsForVar(v);
+            }
+        }
 
 
     }
+
+
+
+    class FindReferencesToNamedVariableVisitor : StandardVisitor
+    {
+        internal bool found = false;
+        private string name;
+
+        internal FindReferencesToNamedVariableVisitor(string name)
+        {
+            this.name = name;
+        }
+
+        public override Variable VisitVariable(Variable node)
+        {
+            if (GPUVerifier.StripThreadIdentifier(node.Name).Equals(name))
+            {
+                found = true;
+            }
+            return base.VisitVariable(node);
+        }
+    }
+
+
+
 }

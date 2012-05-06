@@ -86,20 +86,20 @@ namespace BytecodeTranslator {
     [RepresentationFor("MultisetEmpty", "const unique MultisetEmpty: DelegateMultiset;")]
     public Bpl.Constant MultisetEmpty = null;
 
-    [RepresentationFor("MultisetSingleton", "function {:inline} MultisetSingleton(x: Delegate): DelegateMultiset { MultisetEmpty[x := 1] }")]
+    [RepresentationFor("MultisetSingleton", "function {:inline true} MultisetSingleton(x: Delegate): DelegateMultiset { MultisetEmpty[x := 1] }")]
     public Bpl.Function MultisetSingleton = null;
 
-    [RepresentationFor("MultisetPlus", "function {:inline} MultisetPlus(x: DelegateMultiset, y: DelegateMultiset): DelegateMultiset { mapadd(x, y) }")]
+    [RepresentationFor("MultisetPlus", "function {:inline true} MultisetPlus(x: DelegateMultiset, y: DelegateMultiset): DelegateMultiset { DelegateMapadd(x, y) }")]
     public  Bpl.Function MultisetPlus = null;
 
-    [RepresentationFor("MultisetMinus", "function {:inline} MultisetMinus(x: DelegateMultiset, y: DelegateMultiset): DelegateMultiset { mapiteint(mapgt(x, y), mapsub(x, y), mapconstint(0)) }")]
+    [RepresentationFor("MultisetMinus", "function {:inline true} MultisetMinus(x: DelegateMultiset, y: DelegateMultiset): DelegateMultiset { DelegateMapiteint(DelegateMapgt(x, y), DelegateMapsub(x, y), DelegateMapconstint(0)) }")]
     public Bpl.Function MultisetMinus = null;
 
     [RepresentationFor("Field", "type Field;")]
     public Bpl.TypeCtorDecl FieldTypeDecl = null;
     public Bpl.CtorType FieldType;
 
-    [RepresentationFor("Union", "type {:datatype} Union;")]
+    [RepresentationFor("Union", "type Union;")]
     public Bpl.TypeCtorDecl UnionTypeDecl = null;
     public Bpl.CtorType UnionType;
 
@@ -126,37 +126,37 @@ namespace BytecodeTranslator {
 
     #region CLR Boxing
 
-    [RepresentationFor("$BoxFromBool", "procedure $BoxFromBool(b: bool) returns (r: Ref) free ensures $BoxedValue(r) == Bool2Union(b); { call r := Alloc(); assume $BoxedValue(r) == Bool2Union(b); }")]
+    [RepresentationFor("$BoxFromBool", "procedure {:inline 1} $BoxFromBool(b: bool) returns (r: Ref) { call r := Alloc(); assume $BoxedValue(r) == Bool2Union(b); }")]
     public Bpl.Procedure BoxFromBool = null;
 
-    [RepresentationFor("$BoxFromInt", "procedure $BoxFromInt(i: int) returns (r: Ref) free ensures $BoxedValue(r) == Int2Union(i); { call r := Alloc(); assume $BoxedValue(r) == Int2Union(i); }")]
+    [RepresentationFor("$BoxFromInt", "procedure {:inline 1} $BoxFromInt(i: int) returns (r: Ref) { call r := Alloc(); assume $BoxedValue(r) == Int2Union(i); }")]
     public Bpl.Procedure BoxFromInt = null;
 
-    [RepresentationFor("$BoxFromReal", "procedure $BoxFromReal(r: Real) returns (rf: Ref) free ensures $BoxedValue(rf) == Real2Union(r); { call rf := Alloc(); assume $BoxedValue(rf) == Real2Union(r); }")]
+    [RepresentationFor("$BoxFromReal", "procedure {:inline 1} $BoxFromReal(r: Real) returns (rf: Ref) { call rf := Alloc(); assume $BoxedValue(rf) == Real2Union(r); }")]
     public Bpl.Procedure BoxFromReal = null;
 
-    [RepresentationFor("$BoxFromStruct", "procedure $BoxFromStruct(s: Ref) returns (r: Ref) free ensures $BoxedValue(r) == Struct2Union(s); { call r := Alloc(); assume $BoxedValue(r) == Struct2Union(s); }")]
+    [RepresentationFor("$BoxFromStruct", "procedure {:inline 1} $BoxFromStruct(s: Ref) returns (r: Ref) { call r := Alloc(); assume $BoxedValue(r) == Struct2Union(s); }")]
     public Bpl.Procedure BoxFromStruct = null;
 
-    [RepresentationFor("$BoxFromUnion", "procedure {:inline 1} $BoxFromUnion(u: Union) returns (r: Ref) { if (is#Ref2Union(u)) { r := refValue#Ref2Union(u); } else { call r := Alloc(); assume $BoxedValue(r) == u; } }")]
+    [RepresentationFor("$BoxFromUnion", "procedure {:inline 1} $BoxFromUnion(u: Union) returns (r: Ref) { if (IsRef(u)) { r := Union2Ref(u); } else { call r := Alloc(); assume $BoxedValue(r) == u; } }")]
     public Bpl.Procedure BoxFromUnion = null;
 
     [RepresentationFor("$BoxedValue", "function $BoxedValue(r: Ref): Union;")]
     public Bpl.Function BoxedValue = null;
 
-    [RepresentationFor("$Unbox2Bool", "function $Unbox2Bool(r: Ref): (bool) { boolValue#Bool2Union($BoxedValue(r)) }")]
+    [RepresentationFor("$Unbox2Bool", "function {:inline true} $Unbox2Bool(r: Ref): (bool) { Union2Bool($BoxedValue(r)) }")]
     public Bpl.Function Unbox2Bool = null;
 
-    [RepresentationFor("$Unbox2Int", "function $Unbox2Int(r: Ref): (int) { intValue#Int2Union($BoxedValue(r)) }")]
+    [RepresentationFor("$Unbox2Int", "function {:inline true} $Unbox2Int(r: Ref): (int) { Union2Int($BoxedValue(r)) }")]
     public Bpl.Function Unbox2Int = null;
 
-    [RepresentationFor("$Unbox2Real", "function $Unbox2Real(r: Ref): (Real) { realValue#Real2Union($BoxedValue(r)) }")]
+    [RepresentationFor("$Unbox2Real", "function {:inline true} $Unbox2Real(r: Ref): (Real) { Union2Real($BoxedValue(r)) }")]
     public Bpl.Function Unbox2Real = null;
 
-    [RepresentationFor("$Unbox2Struct", "function $Unbox2Struct(r: Ref): (Ref) { structValue#Struct2Union($BoxedValue(r)) }")]
+    [RepresentationFor("$Unbox2Struct", "function {:inline true} $Unbox2Struct(r: Ref): (Ref) { Union2Struct($BoxedValue(r)) }")]
     public Bpl.Function Unbox2Struct = null;
 
-    [RepresentationFor("$Unbox2Union", "function $Unbox2Union(r: Ref): (Union) { $BoxedValue(r) }")]
+    [RepresentationFor("$Unbox2Union", "function {:inline true} $Unbox2Union(r: Ref): (Union) { $BoxedValue(r) }")]
     public Bpl.Function Unbox2Union = null;
 
     #endregion
@@ -165,34 +165,34 @@ namespace BytecodeTranslator {
 
     #region Heap values
 
-    [RepresentationFor("Union2Bool", "function Union2Bool(u: Union): (bool) { boolValue#Bool2Union(u) }")]
+    [RepresentationFor("Union2Bool", "function Union2Bool(u: Union): (bool);")]
     public Bpl.Function Union2Bool = null;
-    
-    [RepresentationFor("Union2Int", "function Union2Int(u: Union): (int) { intValue#Int2Union(u) }")]
+
+    [RepresentationFor("Union2Int", "function Union2Int(u: Union): (int);")]
     public Bpl.Function Union2Int = null;
-    
-    [RepresentationFor("Union2Ref", "function Union2Ref(u: Union): (Ref) { refValue#Ref2Union(u) }")]
+
+    [RepresentationFor("Union2Ref", "function Union2Ref(u: Union): (Ref);")]
     public Bpl.Function Union2Ref = null;
 
-    [RepresentationFor("Union2Real", "function Union2Real(u: Union): (Real) { realValue#Real2Union(u) }")]
+    [RepresentationFor("Union2Real", "function Union2Real(u: Union): (Real);")]
     public Bpl.Function Union2Real = null;
 
-    [RepresentationFor("Union2Struct", "function Union2Struct(u: Union): (Ref) { structValue#Struct2Union(u) }")]
+    [RepresentationFor("Union2Struct", "function Union2Struct(u: Union): (Ref);")]
     public Bpl.Function Union2Struct = null;
 
-    [RepresentationFor("Bool2Union", "function {:constructor} Bool2Union(boolValue: bool): Union;")]
+    [RepresentationFor("Bool2Union", "function Bool2Union(boolValue: bool): Union;")]
     public Bpl.Function Bool2Union = null;
 
-    [RepresentationFor("Int2Union", "function {:constructor} Int2Union(intValue: int): Union;")]
+    [RepresentationFor("Int2Union", "function Int2Union(intValue: int): Union;")]
     public Bpl.Function Int2Union = null;
 
-    [RepresentationFor("Ref2Union", "function {:constructor} Ref2Union(refValue: Ref): Union;")]
+    [RepresentationFor("Ref2Union", "function Ref2Union(refValue: Ref): Union;")]
     public Bpl.Function Ref2Union = null;
 
-    [RepresentationFor("Real2Union", "function {:constructor} Real2Union(realValue: Real): Union;")]
+    [RepresentationFor("Real2Union", "function Real2Union(realValue: Real): Union;")]
     public Bpl.Function Real2Union = null;
 
-    [RepresentationFor("Struct2Union", "function {:constructor} Struct2Union(structValue: Ref): Union;")]
+    [RepresentationFor("Struct2Union", "function Struct2Union(structValue: Ref): Union;")]
     public Bpl.Function Struct2Union = null;
 
     [RepresentationFor("Union2Union", "function {:inline true} Union2Union(u: Union): Union { u }")]
@@ -364,8 +364,18 @@ namespace BytecodeTranslator {
     [RepresentationFor("$DisjointSubtree", "function $DisjointSubtree(Type, Type): bool;")]
     public Bpl.Function DisjointSubtree = null;
 
+    [RepresentationFor("$Alloc", "var $Alloc: [Ref] bool;")]
+    public Bpl.Variable AllocVariable = null;
+
+    [RepresentationFor("$allocImp", "function {:builtin \"MapImp\"} $allocImp([Ref]bool, [Ref]bool) : [Ref]bool;")]
+    public Bpl.Function AllocImplies = null;
+    [RepresentationFor("$allocConstBool", "function {:builtin \"MapConst\"} $allocConstBool(bool) : [Ref]bool;")]
+    public Bpl.Function AllocConstBool = null;
+
+
+
     protected readonly string CommonText =
-      @"var $Alloc: [Ref] bool;
+      @"//var $Alloc: [Ref] bool;
 
 procedure {:inline 1} Alloc() returns (x: Ref)
   modifies $Alloc;
@@ -374,26 +384,34 @@ procedure {:inline 1} Alloc() returns (x: Ref)
   $Alloc[x] := true;
 }
 
-function {:builtin ""MapAdd""} mapadd([Delegate]int, [Delegate]int) : [Delegate]int;
-function {:builtin ""MapSub""} mapsub([Delegate]int, [Delegate]int) : [Delegate]int;
-function {:builtin ""MapMul""} mapmul([Delegate]int, [Delegate]int) : [Delegate]int;
-function {:builtin ""MapDiv""} mapdiv([Delegate]int, [Delegate]int) : [Delegate]int;
-function {:builtin ""MapMod""} mapmod([Delegate]int, [Delegate]int) : [Delegate]int;
-function {:builtin ""MapConst""} mapconstint(int) : [Delegate]int;
-function {:builtin ""MapConst""} mapconstbool(bool) : [Delegate]bool;
-function {:builtin ""MapAnd""} mapand([Delegate]bool, [Delegate]bool) : [Delegate]bool;
-function {:builtin ""MapOr""} mapor([Delegate]bool, [Delegate]bool) : [Delegate]bool;
-function {:builtin ""MapNot""} mapnot([Delegate]bool) : [Delegate]bool;
-function {:builtin ""MapIte""} mapiteint([Delegate]bool, [Delegate]int, [Delegate]int) : [Delegate]int;
-function {:builtin ""MapIte""} mapitebool([Delegate]bool, [Delegate]bool, [Delegate]bool) : [Delegate]bool;
-function {:builtin ""MapLe""} maple([Delegate]int, [Delegate]int) : [Delegate]bool;
-function {:builtin ""MapLt""} maplt([Delegate]int, [Delegate]int) : [Delegate]bool;
-function {:builtin ""MapGe""} mapge([Delegate]int, [Delegate]int) : [Delegate]bool;
-function {:builtin ""MapGt""} mapgt([Delegate]int, [Delegate]int) : [Delegate]bool;
-function {:builtin ""MapEq""} mapeq([Delegate]int, [Delegate]int) : [Delegate]bool;
-function {:builtin ""MapIff""} mapiff([Delegate]bool, [Delegate]bool) : [Delegate]bool;
-function {:builtin ""MapImp""} mapimp([Delegate]bool, [Delegate]bool) : [Delegate]bool;
-axiom MultisetEmpty == mapconstint(0);
+function {:builtin ""MapAdd""} DelegateMapadd([Delegate]int, [Delegate]int) : [Delegate]int;
+function {:builtin ""MapSub""} DelegateMapsub([Delegate]int, [Delegate]int) : [Delegate]int;
+function {:builtin ""MapMul""} DelegateMapmul([Delegate]int, [Delegate]int) : [Delegate]int;
+function {:builtin ""MapDiv""} DelegateMapdiv([Delegate]int, [Delegate]int) : [Delegate]int;
+function {:builtin ""MapMod""} DelegateMapmod([Delegate]int, [Delegate]int) : [Delegate]int;
+function {:builtin ""MapConst""} DelegateMapconstint(int) : [Delegate]int;
+function {:builtin ""MapConst""} DelegateMapconstbool(bool) : [Delegate]bool;
+function {:builtin ""MapAnd""} DelegateMapand([Delegate]bool, [Delegate]bool) : [Delegate]bool;
+function {:builtin ""MapOr""} DelegateMapor([Delegate]bool, [Delegate]bool) : [Delegate]bool;
+function {:builtin ""MapNot""} DelegateMapnot([Delegate]bool) : [Delegate]bool;
+function {:builtin ""MapIte""} DelegateMapiteint([Delegate]bool, [Delegate]int, [Delegate]int) : [Delegate]int;
+function {:builtin ""MapIte""} DelegateMapitebool([Delegate]bool, [Delegate]bool, [Delegate]bool) : [Delegate]bool;
+function {:builtin ""MapLe""} DelegateMaple([Delegate]int, [Delegate]int) : [Delegate]bool;
+function {:builtin ""MapLt""} DelegateMaplt([Delegate]int, [Delegate]int) : [Delegate]bool;
+function {:builtin ""MapGe""} DelegateMapge([Delegate]int, [Delegate]int) : [Delegate]bool;
+function {:builtin ""MapGt""} DelegateMapgt([Delegate]int, [Delegate]int) : [Delegate]bool;
+function {:builtin ""MapEq""} DelegateMapeq([Delegate]int, [Delegate]int) : [Delegate]bool;
+function {:builtin ""MapIff""} DelegateMapiff([Delegate]bool, [Delegate]bool) : [Delegate]bool;
+function {:builtin ""MapImp""} DelegateMapimp([Delegate]bool, [Delegate]bool) : [Delegate]bool;
+axiom MultisetEmpty == DelegateMapconstint(0);
+
+function IsRef(u: Union) : (bool);
+axiom (forall x: bool :: {Bool2Union(x)} Union2Bool(Bool2Union(x)) == x && !IsRef(Bool2Union(x)));
+axiom (forall x: int :: {Int2Union(x)} Union2Int(Int2Union(x)) == x && !IsRef(Int2Union(x)));
+axiom (forall x: Real :: {Real2Union(x)} Union2Real(Real2Union(x)) == x && !IsRef(Real2Union(x)));
+axiom (forall x: Ref :: {Ref2Union(x)} Union2Ref(Ref2Union(x)) == x && IsRef(Ref2Union(x)));
+axiom (forall x: Ref :: {Struct2Union(x)} Union2Struct(Struct2Union(x)) == x && !IsRef(Struct2Union(x)));
+
 
 /*
 // Subtype is reflexive
@@ -435,7 +453,7 @@ procedure {:inline 1} System.Threading.Thread.Start$System.Object(this: Ref, par
 {
   call {:async} Wrapper_System.Threading.ParameterizedThreadStart.Invoke$System.Object($ThreadDelegate(this), parameter$in);
 }
-procedure {:inline 1} Wrapper_System.Threading.ParameterizedThreadStart.Invoke$System.Object(this: Ref, obj$in: Ref) {
+procedure Wrapper_System.Threading.ParameterizedThreadStart.Invoke$System.Object(this: Ref, obj$in: Ref) {
   $Exception := null;
   call System.Threading.ParameterizedThreadStart.Invoke$System.Object(this, obj$in);
 }
@@ -449,7 +467,7 @@ procedure {:inline 1} System.Threading.Thread.Start(this: Ref)
 {
   call {:async} Wrapper_System.Threading.ThreadStart.Invoke($ThreadDelegate(this));
 }
-procedure {:inline 1} Wrapper_System.Threading.ThreadStart.Invoke(this: Ref) {
+procedure Wrapper_System.Threading.ThreadStart.Invoke(this: Ref) {
   $Exception := null;
   call System.Threading.ThreadStart.Invoke(this);
 }
@@ -470,7 +488,8 @@ procedure {:inline 1} DelegateAdd(a: Ref, b: Ref) returns (c: Ref)
     else 
     {
         call c := Alloc();
-        assume $Delegate(c) == MultisetPlus($Delegate(a), $Delegate(b));
+        assume $RefToDelegate(c) == $RefToDelegate(a) || $RefToDelegate(c) == $RefToDelegate(b);
+        assume $RefToDelegateMultiset(c) == MultisetPlus($RefToDelegateMultiset(a), $RefToDelegateMultiset(b));
     }
 }
 
@@ -486,21 +505,23 @@ procedure {:inline 1} DelegateRemove(a: Ref, b: Ref) returns (c: Ref)
     {
         c := a;
     } 
-    else if (MultisetMinus($Delegate(a), $Delegate(b)) == MultisetEmpty)
+    else if (MultisetMinus($RefToDelegateMultiset(a), $RefToDelegateMultiset(b)) == MultisetEmpty)
     {
         c := null;
     }
     else 
     {
         call c := Alloc();
-        assume $Delegate(c) == MultisetMinus($Delegate(a), $Delegate(b));
+        assume $RefToDelegateMultiset(c) == MultisetMinus($RefToDelegateMultiset(a), $RefToDelegateMultiset(b));
+        assume $RefToDelegateMultiset(c)[$RefToDelegate(c)] > 0;
     }
 }
 
 procedure {:inline 1} DelegateCreate(d: Delegate) returns (c: Ref)
 {
     call c := Alloc();
-    assume $Delegate(c) == MultisetSingleton(d);
+    assume $RefToDelegate(c) == d;
+    assume $RefToDelegateMultiset(c) == MultisetSingleton(d);
 }
 
 procedure {:inline 1} System.String.op_Equality$System.String$System.String(a$in: Ref, b$in: Ref) returns ($result: bool);
@@ -514,46 +535,15 @@ implementation System.String.op_Inequality$System.String$System.String(a$in: Ref
   $result := (a$in != b$in);
 }
 
-// SILVERLIGHT CONTROL SPECIFIC CODE
-var isControlEnabled: [Ref]bool;
-var isControlChecked: [Ref]bool;
-
-procedure {:inline 1} System.Windows.Controls.Control.set_IsEnabled$System.Boolean($this: Ref, value$in: bool);
-implementation System.Windows.Controls.Control.set_IsEnabled$System.Boolean($this: Ref, value$in: bool) {
-  $Exception:=null;
-  isControlEnabled[$this] := value$in;
-}
-
-procedure {:inline 1} System.Windows.Controls.Control.get_IsEnabled($this: Ref) returns ($result: Ref);
-implementation System.Windows.Controls.Control.get_IsEnabled($this: Ref) returns ($result: Ref) {
-  var enabledness: bool;
-  $Exception:=null;
-  enabledness := isControlEnabled[$this];
-  $result := Union2Ref(Bool2Union(enabledness));
-}
-
-procedure {:inline 1} System.Windows.Controls.Primitives.ToggleButton.set_IsChecked$System.Nullable$System.Boolean$($this: Ref, value$in: Ref);
-implementation System.Windows.Controls.Primitives.ToggleButton.set_IsChecked$System.Nullable$System.Boolean$($this: Ref, value$in: Ref) {
-  var check: bool;
-  $Exception:=null;
-  check := Union2Bool(Ref2Union(value$in));
-  isControlChecked[$this] := check;
-}
-
-procedure {:inline 1} System.Windows.Controls.Primitives.ToggleButton.get_IsChecked($this: Ref) returns ($result: Ref);
-implementation System.Windows.Controls.Primitives.ToggleButton.get_IsChecked($this: Ref) returns ($result: Ref) {
-  var isChecked: bool;
-  $Exception:=null;
-  isChecked := isControlChecked[$this];
-  $result := Union2Ref(Bool2Union(isChecked));
-}
-
 ";
 
-    [RepresentationFor("$Delegate", "function $Delegate(Ref): DelegateMultiset;")]
-    public Bpl.Function Delegate = null;
+    [RepresentationFor("$RefToDelegate", "function $RefToDelegate(Ref): Delegate;")]
+    public Bpl.Function RefToDelegate = null;
 
-    [RepresentationFor("$DelegateCons", "function {:constructor} $DelegateCons($Method: int, $Receiver: Ref, $TypeParameters: Type): Delegate;")]
+    [RepresentationFor("$RefToDelegateMultiset", "function $RefToDelegateMultiset(Ref): DelegateMultiset;")]
+    public Bpl.Function RefToDelegateMultiset = null;
+
+    [RepresentationFor("$RefToDelegateMultisetCons", "function {:constructor} $RefToDelegateMultisetCons($Method: int, $Receiver: Ref, $TypeParameters: Type): Delegate;")]
     public Bpl.DatatypeConstructor DelegateCons = null;
 
     public Bpl.Function DelegateMethod {

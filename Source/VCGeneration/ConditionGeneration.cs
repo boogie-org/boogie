@@ -472,6 +472,22 @@ namespace VC {
       ReachedBound
     }
 
+    public static Outcome ProverInterfaceOutcomeToConditionGenerationOutcome(ProverInterface.Outcome outcome) {
+      switch (outcome) {
+        case ProverInterface.Outcome.Invalid:
+          return Outcome.Errors;
+        case ProverInterface.Outcome.OutOfMemory:
+          return Outcome.OutOfMemory;
+        case ProverInterface.Outcome.TimeOut:
+          return Outcome.TimedOut;
+        case ProverInterface.Outcome.Undetermined:
+          return Outcome.Inconclusive;
+        case ProverInterface.Outcome.Valid:
+          return Outcome.Correct;
+      }
+      return Outcome.Inconclusive;  // unreachable but the stupid compiler does not understand
+    }
+
     [ContractInvariantMethod]
     void ObjectInvariant() {
       Contract.Invariant(cce.NonNullElements(checkers));
@@ -493,7 +509,7 @@ namespace VC {
     protected string/*?*/ logFilePath;
     protected bool appendLogFile;
 
-    public static List<ErrorModel> errorModelList;
+    public static List<Model> errorModelList;
 
     public ConditionGeneration(Program p) {
       Contract.Requires(p != null);
@@ -535,14 +551,14 @@ namespace VC {
     /// each counterexample consisting of an array of labels.
     /// </summary>
     /// <param name="impl"></param>
-    public Outcome VerifyImplementation(Implementation impl, Program program, out List<Counterexample> errors, out List<ErrorModel> errorsModel)
+    public Outcome VerifyImplementation(Implementation impl, Program program, out List<Counterexample> errors, out List<Model> errorsModel)
     {
         Contract.Ensures(Contract.Result<Outcome>() != Outcome.Errors || Contract.ValueAtReturn(out errors) != null);
         Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
         List<Counterexample> errorsOut;
 
         Outcome outcome;
-        errorModelList = new List<ErrorModel>();
+        errorModelList = new List<Model>();
         outcome = VerifyImplementation(impl, program, out errorsOut);
         errors = errorsOut;
         errorsModel = errorModelList;
@@ -903,7 +919,7 @@ namespace VC {
     }
 
 
-    public void Close() {
+    virtual public void Close() {
       foreach (Checker checker in checkers) {
         Contract.Assert(checker != null);
         checker.Close();

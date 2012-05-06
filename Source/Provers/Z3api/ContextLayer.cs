@@ -261,7 +261,7 @@ namespace Microsoft.Boogie.Z3 {
         sw.WriteLine("*** END_MODEL");
         var sr = new StringReader(sw.ToString());
         var models = Microsoft.Boogie.Model.ParseModels(sr);
-        Z3ErrorModelAndLabels e = new Z3ErrorModelAndLabels(new ErrorModel(models[0]), new List<string>(labelStrings));
+        Z3ErrorModelAndLabels e = new Z3ErrorModelAndLabels(models[0], new List<string>(labelStrings));
         boogieErrors.Add(e);
 
         if (boogieErrors.Count < this.counterexamples) {
@@ -332,7 +332,7 @@ namespace Microsoft.Boogie.Z3 {
         sw.WriteLine("*** END_MODEL");
         var sr = new StringReader(sw.ToString());
         var models = Microsoft.Boogie.Model.ParseModels(sr);
-        Z3ErrorModelAndLabels e = new Z3ErrorModelAndLabels(new ErrorModel(models[0]), new List<string>(labelStrings));
+        Z3ErrorModelAndLabels e = new Z3ErrorModelAndLabels(models[0], new List<string>(labelStrings));
         boogieErrors.Add(e);
 
         labels.Dispose();
@@ -442,16 +442,16 @@ namespace Microsoft.Boogie.Z3 {
   }
 
   public class Z3ErrorModelAndLabels {
-    private ErrorModel _errorModel;
+    private Model _model;
     private List<string> _relevantLabels;
-    public ErrorModel ErrorModel {
-      get { return this._errorModel; }
+    public Model Model {
+      get { return this._model; }
     }
     public List<string> RelevantLabels {
       get { return this._relevantLabels; }
     }
-    public Z3ErrorModelAndLabels(ErrorModel errorModel, List<string> relevantLabels) {
-      this._errorModel = errorModel;
+    public Z3ErrorModelAndLabels(Model model, List<string> relevantLabels) {
+      this._model = model;
       this._relevantLabels = relevantLabels;
     }
   }

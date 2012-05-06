@@ -43,26 +43,32 @@ namespace Microsoft.Boogie.SMTLib
         _proverPath = Path.Combine(CodebaseString(), proverExe);
         string firstTry = _proverPath;
 
-        if (File.Exists(firstTry))
+        if (File.Exists(firstTry)) {
+          if (CommandLineOptions.Clo.Trace) {
+            Console.WriteLine("[TRACE] Using prover: " + _proverPath);
+          }
           return;
-
-        string programFiles = Environment.GetEnvironmentVariable("ProgramFiles");
-        Contract.Assert(programFiles != null);
-        string programFilesX86 = Environment.GetEnvironmentVariable("ProgramFiles(x86)");
-        if (programFiles.Equals(programFilesX86)) {
-          // If both %ProgramFiles% and %ProgramFiles(x86)% point to "ProgramFiles (x86)", use %ProgramW6432% instead.
-          programFiles = Environment.GetEnvironmentVariable("ProgramW6432");
         }
-
 
         List<string> z3Dirs = new List<string>();
-        if (Directory.Exists(programFiles + @"\Microsoft Research\")) {
-          string msrDir = programFiles + @"\Microsoft Research\";
-          z3Dirs.AddRange(Directory.GetDirectories(msrDir, "Z3-*"));
-        }
-        if (Directory.Exists(programFilesX86 + @"\Microsoft Research\")) {
-          string msrDir = programFilesX86 + @"\Microsoft Research\";
-          z3Dirs.AddRange(Directory.GetDirectories(msrDir, "Z3-*"));
+
+        string programFiles = Environment.GetEnvironmentVariable("ProgramFiles");
+        if (programFiles != null) {
+          string programFilesX86 = Environment.GetEnvironmentVariable("ProgramFiles(x86)");
+          if (programFiles.Equals(programFilesX86)) {
+            // If both %ProgramFiles% and %ProgramFiles(x86)% point to "ProgramFiles (x86)", use %ProgramW6432% instead.
+            programFiles = Environment.GetEnvironmentVariable("ProgramW6432");
+          }
+
+
+          if (Directory.Exists(programFiles + @"\Microsoft Research\")) {
+            string msrDir = programFiles + @"\Microsoft Research\";
+            z3Dirs.AddRange(Directory.GetDirectories(msrDir, "Z3-*"));
+          }
+          if (Directory.Exists(programFilesX86 + @"\Microsoft Research\")) {
+            string msrDir = programFilesX86 + @"\Microsoft Research\";
+            z3Dirs.AddRange(Directory.GetDirectories(msrDir, "Z3-*"));
+          }
         }
 
         int minMajor = 3, minMinor = 2;

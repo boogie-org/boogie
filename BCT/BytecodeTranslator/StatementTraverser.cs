@@ -53,9 +53,10 @@ namespace BytecodeTranslator
 
     public readonly Bpl.StmtListBuilder StmtBuilder = new Bpl.StmtListBuilder();
     private bool contractContext;
-    internal readonly Stack<IExpression> operandStack = new Stack<IExpression>();
+    internal readonly Stack<Bpl.Expr> operandStack = new Stack<Bpl.Expr>();
     private bool captureState;
     private static int captureStateCounter = 0;
+    public IPrimarySourceLocation lastSourceLocation;
 
     #region Constructors
     public StatementTraverser(Sink sink, PdbReader/*?*/ pdbReader, bool contractContext, TraverserFactory factory) {
@@ -88,6 +89,7 @@ namespace BytecodeTranslator
         var remover = new AnonymousDelegateRemover(this.sink.host, this.PdbReader);
         newTypes = remover.RemoveAnonymousDelegates(methodBody.MethodDefinition, block);
       }
+      StmtBuilder.Add(new Bpl.AssumeCmd(Bpl.Token.NoToken, Bpl.Expr.True, new Bpl.QKeyValue(Bpl.Token.NoToken, "breadcrumb", new List<object> { Bpl.Expr.Literal(this.sink.UniqueNumberAcrossAllAssemblies) }, null)));
       this.Traverse(methodBody);
       return newTypes;
     }
@@ -129,6 +131,7 @@ namespace BytecodeTranslator
           if (fileName != null) {
             var attrib = new Bpl.QKeyValue(tok, "sourceLine", new List<object> { Bpl.Expr.Literal((int)lineNumber) }, null);
             attrib = new Bpl.QKeyValue(tok, "sourceFile", new List<object> { fileName }, attrib);
+            attrib = new Bpl.QKeyValue(tok, "first", new List<object>(), attrib);
             this.parent.StmtBuilder.Add(
               new Bpl.AssertCmd(tok, Bpl.Expr.True, attrib)
               );
@@ -204,10 +207,10 @@ namespace BytecodeTranslator
       if (this.sink.Options.instrumentBranches) {
         var tok = conditionalStatement.Token();
         thenTraverser.StmtBuilder.Add(
-          new Bpl.AssumeCmd(tok, Bpl.Expr.True, new Bpl.QKeyValue(Bpl.Token.NoToken, "breadcrumb", new List<object> { Bpl.Expr.Literal(this.NextUniqueNumber()) }, null))
+          new Bpl.AssumeCmd(tok, Bpl.Expr.True, new Bpl.QKeyValue(Bpl.Token.NoToken, "breadcrumb", new List<object> { Bpl.Expr.Literal(this.sink.UniqueNumberAcrossAllAssemblies) }, null))
           );
         elseTraverser.StmtBuilder.Add(
-          new Bpl.AssumeCmd(tok, Bpl.Expr.True, new Bpl.QKeyValue(Bpl.Token.NoToken, "breadcrumb", new List<object> { Bpl.Expr.Literal(this.NextUniqueNumber()) }, null))
+          new Bpl.AssumeCmd(tok, Bpl.Expr.True, new Bpl.QKeyValue(Bpl.Token.NoToken, "breadcrumb", new List<object> { Bpl.Expr.Literal(this.sink.UniqueNumberAcrossAllAssemblies) }, null))
           );
       }
 
@@ -238,20 +241,19 @@ namespace BytecodeTranslator
 
     }
 
-    private static int counter = 0;
-    public IPrimarySourceLocation lastSourceLocation;
-    internal int NextUniqueNumber() {
-      return counter++;
-    }
-
-
     /// <summary>
     /// 
     /// </summary>
     /// <param name="expressionStatement"></param>
     /// <remarks> TODO: might be wrong for the general case</remarks>
     public override void TraverseChildren(IExpressionStatement expressionStatement) {
-      ExpressionTraverser etrav = this.factory.MakeExpressionTraverser(this.sink, this, this.contractContext);
+
+      var expressionIsOpAssignStatement = false;
+      var binOp = expressionStatement.Expression as IBinaryOperation;
+      if (binOp != null && binOp.LeftOperand is ITargetExpression)
+          expressionIsOpAssignStatement = true;
+
+      ExpressionTraverser etrav = this.factory.MakeExpressionTraverser(this.sink, this, this.contractContext, expressionIsOpAssignStatement);
       etrav.Traverse(expressionStatement.Expression);
     }
 
@@ -363,13 +365,7 @@ namespace BytecodeTranslator
     public override void TraverseChildren(IPushStatement pushStatement) {
       var tok = pushStatement.Token();
       var val = pushStatement.ValueToPush;
-      var dup = val as IDupValue;
-      IExpression e;
-      if (dup != null) {
-        e = this.operandStack.Peek();
-      } else {
-        e = val;
-      }
+      var e = ExpressionFor(val);
       this.operandStack.Push(e);
       return;
     }
@@ -377,8 +373,6 @@ namespace BytecodeTranslator
     /// <summary>
     /// 
     /// </summary>
-    /// <remarks>(mschaef) not implemented</remarks>
-    /// <param name="returnStatement"></param>
     public override void TraverseChildren(IReturnStatement returnStatement) {
       Bpl.IToken tok = returnStatement.Token();
 

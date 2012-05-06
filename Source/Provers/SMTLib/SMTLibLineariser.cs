@@ -563,7 +563,7 @@ namespace Microsoft.Boogie.SMTLib
         if (node.Type.BvBits % 8 == 0) {
           wr.Write("#x");
           for (var pos = node.Type.BvBits / 8 - 1; pos >= 0; pos--) {
-            var k = pos < bytes.Length ? bytes[pos] : 0;
+            var k = pos < bytes.Length ? bytes[pos] : (byte)0;
             wr.Write(hex[k >> 4]);
             wr.Write(hex[k & 0xf]);
           }
@@ -571,7 +571,7 @@ namespace Microsoft.Boogie.SMTLib
           wr.Write("#b");
           for (var pos = node.Type.BvBits - 1; pos >= 0; pos--) {
             var i = pos >> 3;
-            var k = i < bytes.Length ? bytes[i] : 0;
+            var k = i < bytes.Length ? bytes[i] : (byte)0;
             wr.Write((k & (1 << (pos & 7))) == 0 ? '0' : '1');
           }
         }

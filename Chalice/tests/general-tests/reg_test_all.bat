@@ -1,2 +1,2 @@
 @echo off
-call "..\test-scripts\%0" %*
+call "..\test-scripts\%~nx0" %*

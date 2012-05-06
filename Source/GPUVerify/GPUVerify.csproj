@@ -104,9 +104,28 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AccessCollector.cs" />
+    <Compile Include="AccessInvariantProcessor.cs" />
     <Compile Include="AccessRecord.cs" />
+    <Compile Include="ArrayControlFlowAnalyser.cs" />
+    <Compile Include="AsymmetricExpressionFinder.cs" />
+    <Compile Include="InvariantGenerationRules\LoopVariableBoundsInvariantGenerator.cs" />
+    <Compile Include="InvariantGenerationRules\InvariantGenerationRule.cs" />
+    <Compile Include="InvariantGenerationRules\PowerOfTwoInvariantGenerator.cs" />
+    <Compile Include="MayBeGlobalSizeAnalyser.cs" />
+    <Compile Include="MayBeFlattened2DTidOrGidAnalyser.cs" />
+    <Compile Include="MayBeGidAnalyser.cs" />
+    <Compile Include="EnsureDisabledThreadHasNoEffectInstrumenter.cs" />
+    <Compile Include="KernelDualiser.cs" />
+    <Compile Include="LiveVariableAnalyser.cs" />
+    <Compile Include="LoopInvariantGenerator.cs" />
+    <Compile Include="MayBePowerOfTwoAnalyser.cs" />
+    <Compile Include="MayBeThreadConfigurationVariableAnalyser.cs" />
+    <Compile Include="MayBeIdPlusConstantAnalyser.cs" />
+    <Compile Include="StructuredProgramVisitor.cs" />
+    <Compile Include="CrossThreadInvariantProcessor.cs" />
+    <Compile Include="EnabledToPredicateVisitor.cs" />
     <Compile Include="CommandLineOptions.cs" />
-    <Compile Include="ElementEncodingraceInstrumenter.cs" />
+    <Compile Include="ElementEncodingRaceInstrumenter.cs" />
     <Compile Include="GPUVerifier.cs" />
     <Compile Include="INonLocalState.cs" />
     <Compile Include="IRaceInstrumenter.cs" />
@@ -120,8 +139,10 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RaceInstrumenterBase.cs" />
     <Compile Include="ReadCollector.cs" />
-    <Compile Include="SetEncodingRaceInstrumenter.cs" />
+    <Compile Include="UniformExpressionAnalysisVisitor.cs" />
+    <Compile Include="UniformityAnalyser.cs" />
     <Compile Include="VariableDualiser.cs" />
+    <Compile Include="VariablesOccurringInExpressionVisitor.cs" />
     <Compile Include="WriteCollector.cs" />
   </ItemGroup>
   <ItemGroup>
@@ -132,10 +153,6 @@
     <ProjectReference Include="..\Basetypes\Basetypes.csproj">
       <Project>{43DFAD18-3E35-4558-9BE2-CAFF6B5BA8A0}</Project>
       <Name>Basetypes</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\BoogieDriver\BoogieDriver.csproj">
-      <Project>{DAB6BAA4-7AF7-449F-96AB-F58F34D03A7A}</Project>
-      <Name>BoogieDriver</Name>
     </ProjectReference>
     <ProjectReference Include="..\Core\Core.csproj">
       <Project>{B230A69C-C466-4065-B9C1-84D80E76D802}</Project>

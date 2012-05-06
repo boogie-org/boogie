@@ -11,12 +11,12 @@ if not %ERRORLEVEL%==0 (
 	goto :exit_with_error
 )
 
-REM Get the Scala version, or rather, a string such as "scala-2.8.1"
-for /f "delims=" %%A in ('dir /b %ROOT_DIR%\project\boot\scala-*') do @set SCALA_DIR=%%A
+
+set SCALA_DIR=scala-2.8.1
 
 REM Set classpath elements
-set __CP.SCALA_LIB=%ROOT_DIR%\project\boot\%SCALA_DIR%\lib\scala-library.jar
-set __CP.CHALICE=%ROOT_DIR%\target\%SCALA_DIR%.final\classes
+set __CP.SCALA_LIB="%ROOT_DIR%project\boot\%SCALA_DIR%\lib\scala-library.jar"
+set __CP.CHALICE="%ROOT_DIR%target\%SCALA_DIR%.final\classes"
 
 REM Assemble classpath and check if all classpath elements exist
 set CP=
@@ -36,6 +36,7 @@ set CHALICE_MAIN=chalice.Chalice
 REM Chalice command line options
 set CHALICE_OPTS=
 set CHALICE_OPTS=%CHALICE_OPTS% /boogieOpt:nologo
+set CHALICE_OPTS=%CHALICE_OPTS% /boogieOpt:noinfer
 set CHALICE_OPTS=%CHALICE_OPTS% %*
 
 REM Assemble main command

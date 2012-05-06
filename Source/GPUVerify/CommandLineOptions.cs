@@ -16,18 +16,29 @@ namespace GPUVerify
         public static string outputFile = null;
 
         public static bool OnlyDivergence = false;
-        public static bool FullAbstraction;
-        public static bool Inference;
+        public static bool AdversarialAbstraction = false;
+        public static bool EqualityAbstraction = false;
+        public static bool Inference = false;
+        public static bool ArrayEqualities = false;
         public static string invariantsFile = null;
         public static bool DividedArray = false;
         public static string ArrayToCheck = null;
         public static bool DividedAccesses = false;
-        public static bool Eager = false;
-
-        public static bool Symmetry = false;
-        public static bool SetEncoding = false;
 
         public static bool ShowStages = false;
+
+        public static bool AddDivergenceCandidatesOnlyIfModified = true;
+        public static bool AddDivergenceCandidatesOnlyToBarrierLoops = true;
+
+        public static bool ShowUniformityAnalysis = false;
+        public static bool DoUniformityAnalysis = true;
+
+        public static bool ShowMayBeThreadConfigurationVariableAnalysis = false;
+        public static bool ShowMayBePowerOfTwoAnalysis = false;
+        public static bool ShowMayBeTidPlusConstantAnalysis = false;
+        public static bool ShowArrayControlFlowAnalysis = false;
+
+        public static bool NoLoopPredicateInvariants = false;
 
         public static int Parse(string[] args)
         {
@@ -70,9 +81,15 @@ namespace GPUVerify
 
                     break;
 
-                    case "-fullAbstraction":
-                    case "/fullAbstraction":
-                    FullAbstraction = true;
+                    case "-adversarialAbstraction":
+                    case "/adversarialAbstraction":
+                    AdversarialAbstraction = true;
+
+                    break;
+
+                    case "-equalityAbstraction":
+                    case "/equalityAbstraction":
+                    EqualityAbstraction = true;
 
                     break;
 
@@ -98,21 +115,6 @@ namespace GPUVerify
                     DividedArray = true;
                     break;
 
-                    case "-symmetry":
-                    case "/symmetry":
-                    Symmetry = true;
-                    break;
-
-                    case "-setEncoding":
-                    case "/setEncoding":
-                    SetEncoding = true;
-                    break;
-
-                    case "-eager":
-                    case "/eager":
-                    Eager = true;
-                    break;
-
                     case "-showStages":
                     case "/showStages":
                     ShowStages = true;
@@ -127,6 +129,52 @@ namespace GPUVerify
                         invariantsFile = afterColon;
                     }
 
+                    break;
+
+                    case "-arrayEqualities":
+                    case "/arrayEqualities":
+                    ArrayEqualities = true;
+                    break;
+
+                    case "-alwaysAddDivergenceCandidates":
+                    case "/alwaysAddDivergenceCandidates":
+                    AddDivergenceCandidatesOnlyIfModified = false;
+                    AddDivergenceCandidatesOnlyToBarrierLoops = false;
+                    break;
+
+                    case "-showUniformityAnalysis":
+                    case "/showUniformityAnalysis":
+                    ShowUniformityAnalysis = true;
+                    break;
+
+                    case "-noUniformityAnalysis":
+                    case "/noUniformityAnalysis":
+                    DoUniformityAnalysis = false;
+                    break;
+
+                    case "-showMayBeTidAnalysis":
+                    case "/showMayBeTidAnalysis":
+                    ShowMayBeThreadConfigurationVariableAnalysis = true;
+                    break;
+
+                    case "-showMayBePowerOfTwoAnalysis":
+                    case "/showMayBePowerOfTwoAnalysis":
+                    ShowMayBePowerOfTwoAnalysis = true;
+                    break;
+
+                    case "-showMayBeTidPlusConstantAnalysis":
+                    case "/showMayBeTidPlusConstantAnalysis":
+                    ShowMayBeTidPlusConstantAnalysis = true;
+                    break;
+
+                    case "-showArrayControlFlowAnalysis":
+                    case "/showArrayControlFlowAnalysis":
+                    ShowArrayControlFlowAnalysis = true;
+                    break;
+
+                    case "-noLoopPredicateInvariants":
+                    case "/noLoopPredicateInvariants":
+                    NoLoopPredicateInvariants = true;
                     break;
 
                     default:
@@ -158,7 +206,7 @@ namespace GPUVerify
   where <option> is one of
 
   /help            : this message
-  /fullAbstraction : apply full state abstraction
+  /adversarialAbstraction : apply full state abstraction
   /onlyDivergence  : only check for divergence-freedom, not race-freedom
   /symmetry        : apply symmetry breaking
   /eager           : check races eagerly, rather than waiting for barrier

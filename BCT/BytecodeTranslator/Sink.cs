@@ -55,6 +55,7 @@ namespace BytecodeTranslator {
           }
         }
       }
+      this.uniqueNumberSeed = 0;
     }
 
     public Options Options { get { return this.options; } }
@@ -100,8 +101,12 @@ namespace BytecodeTranslator {
     public readonly string DelegateAddName = "DelegateAdd";
     public readonly string DelegateRemoveName = "DelegateRemove";
 
+    public Bpl.Expr ReadDelegateMultiset(Bpl.Expr delegateReference) {
+      return new Bpl.NAryExpr(delegateReference.tok, new Bpl.FunctionCall(Heap.RefToDelegateMultiset), new Bpl.ExprSeq(delegateReference));
+    }
+
     public Bpl.Expr ReadDelegate(Bpl.Expr delegateReference) {
-      return new Bpl.NAryExpr(delegateReference.tok, new Bpl.FunctionCall(Heap.Delegate), new Bpl.ExprSeq(delegateReference));
+      return new Bpl.NAryExpr(delegateReference.tok, new Bpl.FunctionCall(Heap.RefToDelegate), new Bpl.ExprSeq(delegateReference));
     }
 
     public Bpl.Expr ReadMethod(Bpl.Expr delegateExpr) {
@@ -319,6 +324,9 @@ namespace BytecodeTranslator {
     }
 
     public Bpl.Constant FindOrCreateConstant(string str) {
+      str = str.Replace("\n", "\\n");
+      str = str.Replace("\r", "\\r");
+      str = str.Replace("\"", "\\\"");
       Bpl.Constant c;
       if (!this.declaredStringConstants.TryGetValue(str, out c)) {
         var tok = Bpl.Token.NoToken;
@@ -326,6 +334,8 @@ namespace BytecodeTranslator {
         var name = "$string_literal_" + TranslationHelper.TurnStringIntoValidIdentifier(str) + "_" + declaredStringConstants.Count;
         var tident = new Bpl.TypedIdent(tok, name, t);
         c = new Bpl.Constant(tok, tident, true);
+        var attrib = new Bpl.QKeyValue(Bpl.Token.NoToken, "value", new List<object> { str, }, null);
+        c.Attributes = attrib;
         this.declaredStringConstants.Add(str, c);
         this.TranslatedProgram.TopLevelDeclarations.Add(c);
       }
@@ -696,6 +706,37 @@ namespace BytecodeTranslator {
           }
         }
         #endregion
+
+        if (options.monotonicHeap) {
+          #region Add free ensures for allocatedness of result (for methods that return references)
+          if (retVariable != null && retVariable.TypedIdent.Type == this.Heap.RefType) {
+            var ens = new Bpl.Ensures(true,
+              Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Or,
+                Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Eq,
+                  Bpl.Expr.Ident(retVariable), Bpl.Expr.Ident(this.Heap.NullRef)),
+                Bpl.Expr.Select(Bpl.Expr.Ident(this.Heap.AllocVariable), Bpl.Expr.Ident(retVariable))
+                ));
+            boogiePostcondition.Add(ens);
+          }
+          #endregion
+          #region Add free ensures for preservation of allocatedness: AllocMapImplies(old($Alloc), $Alloc) == AllocMapConst(true)
+          var preserveAlloc = new Bpl.Ensures(true,
+            Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Eq,
+              new Bpl.NAryExpr(
+                Bpl.Token.NoToken,
+                new Bpl.FunctionCall(this.Heap.AllocImplies),
+                  new Bpl.ExprSeq(
+                    new Bpl.OldExpr(Bpl.Token.NoToken, Bpl.Expr.Ident(this.Heap.AllocVariable)),
+                    Bpl.Expr.Ident(this.Heap.AllocVariable))),
+              new Bpl.NAryExpr(
+                Bpl.Token.NoToken,
+                new Bpl.FunctionCall(this.Heap.AllocConstBool),
+                  new Bpl.ExprSeq(Bpl.Expr.True))
+                  ));
+          boogiePostcondition.Add(preserveAlloc);
+          #endregion
+        }
+
       }
       return procInfo;
     }
@@ -1371,5 +1412,14 @@ namespace BytecodeTranslator {
         }
       }
     }
+
+    private int uniqueNumberSeed;
+    public int UniqueNumberAcrossAllAssemblies {
+      get {
+        return uniqueNumberSeed++;
+      }
+    }
+
+
   }
 }

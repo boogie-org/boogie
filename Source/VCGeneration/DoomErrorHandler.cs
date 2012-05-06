@@ -63,7 +63,7 @@ namespace VC
             }
         }
 
-        public override void OnModel(IList<string>/*!>!*/ labels, ErrorModel errModel)
+        public override void OnModel(IList<string>/*!>!*/ labels, Model model)
         {
             // TODO: it would be better to check which reachability variables are actually set to one!
             List<Block> traceNodes = new List<Block>();
@@ -80,7 +80,6 @@ namespace VC
                 }
             }
             m_CurrentTrace.AddRange(traceNodes);
-
         }
 
     }

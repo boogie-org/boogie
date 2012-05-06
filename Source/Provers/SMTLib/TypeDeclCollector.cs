@@ -164,6 +164,12 @@ void ObjectInvariant()
       return TypeToString(t);
     }
 
+    public void AddFunction(Function func) {
+      if (KnownFunctions.Contains(func))
+        return;
+      KnownFunctions.Add(func);
+    }
+
     public override bool Visit(VCExprNAry node, bool arg) {
       Contract.Requires(node != null);
 
@@ -171,7 +177,9 @@ void ObjectInvariant()
       else if (node.Op is VCExprSelectOp) RegisterSelect(node);
       else {
         VCExprBoogieFunctionOp op = node.Op as VCExprBoogieFunctionOp;
-        if (op != null && !IsDatatypeFunction(op.Func) && !KnownFunctions.Contains(op.Func)) {
+        if (op != null && 
+          !(op.Func is DatatypeConstructor) && !(op.Func is DatatypeMembership) && !(op.Func is DatatypeSelector) && 
+          !KnownFunctions.Contains(op.Func)) {
           Function f = op.Func;
           Contract.Assert(f != null);
           
@@ -250,26 +258,16 @@ void ObjectInvariant()
       if (type.IsBool || type.IsInt || type.IsBv)
         return;
 
-      if (CommandLineOptions.Clo.TypeEncodingMethod == CommandLineOptions.TypeEncoding.Monomorphic && !IsDatatype(type)) {
+      CtorType ctorType = type as CtorType;
+      if (ctorType != null && ctorType.IsDatatype())
+        return;
+
+      if (CommandLineOptions.Clo.TypeEncodingMethod == CommandLineOptions.TypeEncoding.Monomorphic) {
         AddDeclaration("(declare-sort " + TypeToString(type) + " 0)");
         KnownTypes.Add(type);
         return;
       }
-    }
-
-    public static bool IsDatatype(Type t) {
-      CtorType ctorType = t.AsCtor;
-      if (t == null)
-        return false;
-      return QKeyValue.FindBoolAttribute(ctorType.Decl.Attributes, "datatype");
-    }
-
-    public static bool IsDatatypeFunction(Function f) {
-      return
-        f is DatatypeConstructor ||
-        f is DatatypeSelector ||
-        f is DatatypeMembership;
-    }
+    }  
 
     private void RegisterSelect(VCExprNAry node)
     {

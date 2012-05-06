@@ -272,9 +272,9 @@ namespace Microsoft.Boogie {
 
       while (ps.i < args.Length) {
         cce.LoopInvariant(ps.args == args);
-        ps.s = args[ps.i];
-        Contract.Assert(ps.s != null);
-        ps.s = ps.s.Trim();
+        string arg = args[ps.i];
+        Contract.Assert(arg != null);
+        ps.s = arg.Trim();
 
         bool isOption = ps.s.StartsWith("-") || ps.s.StartsWith("/");
         int colonIndex = ps.s.IndexOf(':');
@@ -290,12 +290,15 @@ namespace Microsoft.Boogie {
 
         if (isOption) {
           if (!ParseOption(ps.s.Substring(1), ps)) {
-            ps.Error("unknown switch: {0}", ps.s);
+            if (Path.DirectorySeparatorChar == '/' && ps.s.StartsWith("/"))
+              Files.Add(arg);
+            else
+              ps.Error("unknown switch: {0}", ps.s);
           }
-        } else if (ps.ConfirmArgumentCount(0)) {
-          string filename = ps.s;
-          Files.Add(filename);
+        } else {
+          Files.Add(arg);
         }
+
         ps.i = ps.nextIndex;
       }
 
@@ -389,6 +392,8 @@ namespace Microsoft.Boogie {
     public int /*(0:3)*/ ErrorTrace = 1;
     public bool IntraproceduralInfer = true;
     public bool ContractInfer = false;
+    public bool UseUnsatCoreForContractInfer = false;
+    public bool PrintAssignment = false;
     public int InlineDepth = -1;
     public bool UseUncheckedContracts = false;
     public bool SimplifyLogFileAppend = false;
@@ -447,6 +452,7 @@ namespace Microsoft.Boogie {
     public int EnhancedErrorMessages = 0;
     public bool ForceBplErrors = false; // if true, boogie error is shown even if "msg" attribute is present
     public bool UseArrayTheory = false;
+    public bool UseLabels = true;
     public bool MonomorphicArrays {
       get {
         return UseArrayTheory || TypeEncodingMethod == TypeEncoding.Monomorphic;
@@ -556,13 +562,13 @@ namespace Microsoft.Boogie {
     public Inlining ProcedureInlining = Inlining.Assume;
     public bool PrintInlined = false;
     public bool ExtractLoops = false;
-    public int LazyInlining = 0;
-    public int ProcedureCopyBound = 0;
     public int StratifiedInlining = 0;
     public int StratifiedInliningOption = 0;
     public bool StratifiedInliningWithoutModels = false; // disable model generation for SI
-    public bool UseUnsatCoreForInlining = false;
+    public int StratifiedInliningVerbose = 0; // verbosity level
+    public bool BctModeForStratifiedInlining = false;
     public int RecursionBound = 500;
+    public bool NonUniformUnfolding = false;
     public string inferLeastForUnsat = null;
     public string CoverageReporterPath = null;
     public Process coverageReporter = null; // used internally for debugging
@@ -828,10 +834,6 @@ namespace Microsoft.Boogie {
           ps.GetNumericArgument(ref EnhancedErrorMessages, 2);
           return true;
 
-        case "contractInfer":
-          ContractInfer = true;
-          return true;
-
         case "inlineDepth":
           ps.GetNumericArgument(ref InlineDepth);
           return true;
@@ -976,19 +978,6 @@ namespace Microsoft.Boogie {
           }
           return true;
 
-        case "lazyInline":
-          if (ps.ConfirmArgumentCount(1)) {
-            LazyInlining = Int32.Parse(args[ps.i]);
-            if (LazyInlining > 3) ps.Error("Invalid argument \"{0}\" to option {1}", args[ps.i], ps.s);
-          }
-          return true;
-
-        case "procCopyBound":
-          if (ps.ConfirmArgumentCount(1)) {
-            ProcedureCopyBound = Int32.Parse(args[ps.i]);
-          }
-          return true;
-
         case "stratifiedInline":
           if (ps.ConfirmArgumentCount(1)) {
             switch (args[ps.i]) {
@@ -1005,7 +994,17 @@ namespace Microsoft.Boogie {
             }
           }
           return true;
-
+        case "siVerbose":
+          if (ps.ConfirmArgumentCount(1)) {
+            StratifiedInliningVerbose = Int32.Parse(cce.NonNull(args[ps.i]));
+          }
+          return true;
+        case "siBct":
+          if (ps.ConfirmArgumentCount(1))
+          {
+              BctModeForStratifiedInlining = (Int32.Parse(cce.NonNull(args[ps.i])) == 1);
+          }
+          return true;
         case "recursionBound":
           if (ps.ConfirmArgumentCount(1)) {
             RecursionBound = Int32.Parse(cce.NonNull(args[ps.i]));
@@ -1022,10 +1021,6 @@ namespace Microsoft.Boogie {
           if (ps.ConfirmArgumentCount(1)) {
             StratifiedInliningOption = Int32.Parse(cce.NonNull(args[ps.i]));
           }
-          return true;
-
-        case "useUnsatCoreForInlining":
-          UseUnsatCoreForInlining = true;
           return true;
 
         case "inferLeastForUnsat":
@@ -1222,7 +1217,12 @@ namespace Microsoft.Boogie {
               ps.CheckBooleanFlag("z3multipleErrors", ref z3AtFlag, false) ||
               ps.CheckBooleanFlag("monomorphize", ref Monomorphize) ||
               ps.CheckBooleanFlag("useArrayTheory", ref UseArrayTheory) ||
-              ps.CheckBooleanFlag("doModSetAnalysis", ref DoModSetAnalysis)
+              ps.CheckBooleanFlag("doModSetAnalysis", ref DoModSetAnalysis) ||
+              ps.CheckBooleanFlag("doNotUseLabels", ref UseLabels, false) ||
+              ps.CheckBooleanFlag("contractInfer", ref ContractInfer) ||
+              ps.CheckBooleanFlag("useUnsatCoreForContractInfer", ref UseUnsatCoreForContractInfer) ||
+              ps.CheckBooleanFlag("printAssignment", ref PrintAssignment) ||
+              ps.CheckBooleanFlag("nonUniformUnfolding", ref NonUniformUnfolding)
               ) {
             // one of the boolean flags matched
             return true;
@@ -1251,8 +1251,8 @@ namespace Microsoft.Boogie {
       }
 
       if (TheProverFactory == null) {
-        TheProverFactory = ProverFactory.Load("SMTLIB");
-        ProverName = "SMTLIB".ToUpper();
+        TheProverFactory = ProverFactory.Load("SMTLib");
+        ProverName = "SMTLib".ToUpper();
       }
 
       if (vcVariety == VCVariety.Unspecified) {
@@ -1261,12 +1261,6 @@ namespace Microsoft.Boogie {
 
       if (UseArrayTheory) {
         Monomorphize = true;
-      }
-
-      if (LazyInlining > 0) {
-        TypeEncodingMethod = TypeEncoding.Monomorphic;
-        UseArrayTheory = true;
-        UseAbstractInterpretation = false;
       }
 
       if (inferLeastForUnsat != null) {
