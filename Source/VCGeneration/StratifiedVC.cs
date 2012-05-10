@@ -17,9 +17,6 @@ namespace VC
 {
     using Bpl = Microsoft.Boogie;
 
-    // Types whose values can be recorded
-    public enum RECORD_TYPES { INT, BOOL, INT_INT, INT_BOOL };
-
     public class StratifiedVCGen : VCGen
     {
       public override void Close() {
@@ -57,23 +54,10 @@ namespace VC
             procsThatReachedRecBound = new HashSet<string>();
         }
 
-        public static RECORD_TYPES getRecordType(Bpl.Type type)
-        {
-            if (type.IsInt) return RECORD_TYPES.INT;
-            if (type.IsBool) return RECORD_TYPES.BOOL;
-            Contract.Assert(type.IsMap);
-            var mt = type.AsMap;
-            Contract.Assert(mt.MapArity == 1);
-            Contract.Assert(mt.Result.IsInt || mt.Result.IsBool);
-            Contract.Assert(mt.Arguments[0].IsInt);
-            if (mt.Result.IsInt) return RECORD_TYPES.INT_INT;
-            return RECORD_TYPES.INT_BOOL;
-        }
-
-        protected VCExpr GenerateReachVC(Implementation impl, StratifiedInliningInfo info, Checker ch) {
+        protected void GenerateReachVC(Implementation impl, StratifiedInliningInfo info, ProverInterface prover) {
           Variable controlFlowVariable = info.controlFlowVariable;
-          VCExpressionGenerator gen = ch.VCExprGen;
-          ProverContext proverCtxt = ch.TheoremProver.Context;
+          VCExpressionGenerator gen = prover.VCExprGen;
+          ProverContext proverCtxt = prover.Context;
           Boogie2VCExprTranslator translator = proverCtxt.BoogieExprTranslator;
           VCExprVar controlFlowVariableExpr = translator.LookupVariable(controlFlowVariable);
 
@@ -95,22 +79,13 @@ namespace VC
               reachExprs[b] = gen.Or(reachExprs[b], gen.And(reachVars[pb], controlTransferExpr));
             }
           }
-          reachExprs[impl.Blocks[0]] = VCExpressionGenerator.True;
+          // leave the binding for reachVars[impl.Blocks[0]] undefined
+          // this binding will be defined when this impl is inlined
           List<VCExprLetBinding> bindings = new List<VCExprLetBinding>();
           foreach (Block b in impl.Blocks) {
             bindings.Add(gen.LetBinding(reachVars[b], reachExprs[b]));
           }
           info.reachVarBindings = bindings;
-
-          Debug.Assert(exitBlock != null && exitBlock.Cmds.Length > 0);
-          AssertCmd assertCmd = (AssertCmd)exitBlock.Cmds[exitBlock.Cmds.Length - 1];
-          Debug.Assert(assertCmd != null);
-          VCExpr exitFlowFunctionAppl = gen.ControlFlowFunctionApplication(controlFlowVariableExpr, gen.Integer(BigNum.FromInt(exitBlock.UniqueId)));
-          VCExpr exitTransferExpr = gen.Eq(exitFlowFunctionAppl, gen.Integer(BigNum.FromInt(assertCmd.UniqueId)));
-          VCExpr exitCondition = gen.And(info.reachVars[exitBlock], exitTransferExpr);
-          VCExpr errorExpr = gen.Eq(translator.LookupVariable(info.outputErrorVariable), gen.And(translator.LookupVariable(info.inputErrorVariable), exitCondition));
-          VCExpr reachvcexpr = gen.Let(info.reachVarBindings, errorExpr);
-          return reachvcexpr;
         }
 
         public class StratifiedInliningInfo {
@@ -121,22 +96,15 @@ namespace VC
           public Expr assertExpr;
           public VCExpr vcexpr;
           public List<VCExprVar> privateVars;
-          public Dictionary<Incarnation, Absy> incarnationOriginMap;
-          public Hashtable /*Variable->Expr*/ exitIncarnationMap;
-          public Hashtable /*GotoCmd->returnCmd*/ gotoCmdOrigins;
           public Hashtable/*<int, Absy!>*/ label2absy;
           public ModelViewInfo mvInfo;
 
           public Dictionary<Block, VCExprVar> reachVars;
           public List<VCExprLetBinding> reachVarBindings;
-          public Variable inputErrorVariable;
-          public Variable outputErrorVariable;
 
           public bool initialized;
           public int inline_cnt;
           public List<VCExprVar> interfaceExprVars;
-          public VCExpr funcExpr;
-          public VCExpr falseExpr;
 
           public StratifiedInliningInfo(Implementation impl, Program program, ProverContext ctxt) {
             Contract.Requires(impl != null);
@@ -150,19 +118,16 @@ namespace VC
             impl.LocVars.Add(controlFlowVariable);
 
             List<Variable> interfaceVars = new List<Variable>();
-            Expr assertExpr = new LiteralExpr(Token.NoToken, true);
-            Contract.Assert(assertExpr != null);
             foreach (Variable v in program.GlobalVariables()) {
               Contract.Assert(v != null);
               interfaceVars.Add(v);
-              if (v.Name == "error")
-                inputErrorVariable = v;
             }
             // InParams must be obtained from impl and not proc
             foreach (Variable v in impl.InParams) {
               Contract.Assert(v != null);
               interfaceVars.Add(v);
             }
+            Expr assertExpr = new LiteralExpr(Token.NoToken, true);
             // OutParams must be obtained from impl and not proc
             foreach (Variable v in impl.OutParams) {
               Contract.Assert(v != null);
@@ -179,10 +144,6 @@ namespace VC
               Variable v = e.Decl;
               Constant c = new Constant(Token.NoToken, new TypedIdent(Token.NoToken, impl.Name + "_" + v.Name, v.TypedIdent.Type));
               interfaceVars.Add(c);
-              if (v.Name == "error") {
-                outputErrorVariable = c;
-                continue;
-              }
               Expr eqExpr = Expr.Eq(new IdentifierExpr(Token.NoToken, c), new IdentifierExpr(Token.NoToken, v));
               assertExpr = Expr.And(assertExpr, eqExpr);
             }
@@ -296,8 +257,7 @@ namespace VC
             Contract.Assert(impl != null);
             ConvertCFG2DAG(impl, program);
             ModelViewInfo mvInfo;
-            info.gotoCmdOrigins = PassifyImpl(impl, program, out mvInfo);
-            Contract.Assert(info.exitIncarnationMap != null);
+            PassifyImpl(impl, program, out mvInfo);
             Hashtable/*<int, Absy!>*/ label2absy;
             VCExpressionGenerator gen = prover.VCExprGen;
             Contract.Assert(gen != null);
@@ -343,27 +303,9 @@ namespace VC
                 interfaceExprs.Add(ev);
             }
 
-            Function function = cce.NonNull(info.function);
-            Contract.Assert(function != null);
-            info.funcExpr = gen.Function(function, interfaceExprs);
             info.vcexpr = vcexpr;
-
             info.initialized = true;
         }
-
-        public struct CallSite {
-          public string callerName;
-          public string calleeName;
-          public VCExprVar callSiteConstant;
-          public VCExprNAry callExpr;
-
-          public CallSite(string callerName, string calleeName, VCExprVar callSiteConstant, VCExprNAry callExpr) {
-            this.callerName = callerName;
-            this.calleeName = calleeName;
-            this.callSiteConstant = callSiteConstant;
-            this.callExpr = callExpr;
-          }
-        };
 
         public class SummaryComputation
         {
@@ -2963,17 +2905,6 @@ namespace VC
                 Expr assertExpr = implName2StratifiedInliningInfo[implName].assertExpr;
                 Contract.Assert(assertExpr != null);
                 exitBlock.Cmds.Add(new AssertCmd(Token.NoToken, assertExpr));
-            }
-        }
-
-        protected override void storeIncarnationMaps(string implName, Hashtable exitIncarnationMap)
-        {
-            if (implName2StratifiedInliningInfo != null && implName2StratifiedInliningInfo.ContainsKey(implName))
-            {
-                StratifiedInliningInfo info = implName2StratifiedInliningInfo[implName];
-                Contract.Assert(info != null);
-                info.exitIncarnationMap = exitIncarnationMap;
-                info.incarnationOriginMap = this.incarnationOriginMap;
             }
         }
 
