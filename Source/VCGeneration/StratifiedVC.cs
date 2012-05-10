@@ -1224,6 +1224,9 @@ namespace VC
             // Record current time
             var startTime = DateTime.UtcNow;
 
+            // Flush any axioms that came with the program before we start SI on this implementation
+            prover.AssertAxioms();
+
             // Run live variable analysis
             if (CommandLineOptions.Clo.LiveVariableAnalysis == 2)
             {
@@ -1250,6 +1253,11 @@ namespace VC
             var coverageManager = new CoverageGraphManager(calls);
             coverageManager.addMain();
 
+
+            // We'll restore the original state of the theorem prover at the end
+            // of this procedure
+            prover.Push();
+
             // Put all of the necessary state into one object
             var vState = new VerificationState(vc, calls, prover, reporter, prover2, new EmptyErrorHandler());
             vState.vcSize += SizeComputingVisitor.ComputeSize(vc);
@@ -1257,9 +1265,6 @@ namespace VC
 
             if (useSummary) summaryComputation = new SummaryComputation(vState, computeUnderBound);
 
-            // We'll restore the original state of the theorem prover at the end
-            // of this procedure
-            vState.checker.prover.Push();
 
             Outcome ret = Outcome.ReachedBound;
 

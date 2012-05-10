@@ -272,9 +272,9 @@ namespace Microsoft.Boogie {
 
       while (ps.i < args.Length) {
         cce.LoopInvariant(ps.args == args);
-        ps.s = args[ps.i];
-        Contract.Assert(ps.s != null);
-        ps.s = ps.s.Trim();
+        string arg = args[ps.i];
+        Contract.Assert(arg != null);
+        ps.s = arg.Trim();
 
         bool isOption = ps.s.StartsWith("-") || ps.s.StartsWith("/");
         int colonIndex = ps.s.IndexOf(':');
@@ -290,12 +290,15 @@ namespace Microsoft.Boogie {
 
         if (isOption) {
           if (!ParseOption(ps.s.Substring(1), ps)) {
-            ps.Error("unknown switch: {0}", ps.s);
+            if (Path.DirectorySeparatorChar == '/' && ps.s.StartsWith("/"))
+              Files.Add(arg);
+            else
+              ps.Error("unknown switch: {0}", ps.s);
           }
-        } else if (ps.ConfirmArgumentCount(0)) {
-          string filename = ps.s;
-          Files.Add(filename);
+        } else {
+          Files.Add(arg);
         }
+
         ps.i = ps.nextIndex;
       }
 
@@ -1248,8 +1251,8 @@ namespace Microsoft.Boogie {
       }
 
       if (TheProverFactory == null) {
-        TheProverFactory = ProverFactory.Load("SMTLIB");
-        ProverName = "SMTLIB".ToUpper();
+        TheProverFactory = ProverFactory.Load("SMTLib");
+        ProverName = "SMTLib".ToUpper();
       }
 
       if (vcVariety == VCVariety.Unspecified) {

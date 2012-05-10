@@ -125,7 +125,7 @@
     <Compile Include="CrossThreadInvariantProcessor.cs" />
     <Compile Include="EnabledToPredicateVisitor.cs" />
     <Compile Include="CommandLineOptions.cs" />
-    <Compile Include="ElementEncodingraceInstrumenter.cs" />
+    <Compile Include="ElementEncodingRaceInstrumenter.cs" />
     <Compile Include="GPUVerifier.cs" />
     <Compile Include="INonLocalState.cs" />
     <Compile Include="IRaceInstrumenter.cs" />
