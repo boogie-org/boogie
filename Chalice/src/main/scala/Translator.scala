@@ -2227,10 +2227,10 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
       (m := em) ::
       bassume(IsGoodExhaleState(eh, Heap, m, sm)) ::
       (if (pred != null)
-        restoreFoldedLocationsHelperPred(pred, receiver, m, Heap, eh, recursionBound=0, unconditional = true)
+        restoreFoldedLocationsHelperPred(pred, receiver, m, Heap, eh, List(), unconditional = true)
       else
         Nil) :::
-      restoreFoldedLocations(m, Heap, eh, fpi.getRecursionBound()) :::
+      restoreFoldedLocations(m, Heap, eh) :::
       (Heap := eh) :: Nil
     else Nil) :::
     (if (isUpdatingSecMask) Nil else bassume(AreGoodMasks(m, sm)) :: Nil) :::
@@ -2238,23 +2238,26 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
     Comment("end exhale")
   }
   
-  def restoreFoldedLocations(mask: Expr, heap: Boogie.Expr, exhaleHeap: Boogie.Expr, recursionBound: Int, unconditional: Boolean = false): List[Boogie.Stmt] = {
-    (for (fp <- etran.fpi.getFoldedPredicates()) yield {
-      restoreFoldedLocationsHelperPred(fp.predicate, fp.receiver, mask, heap, exhaleHeap, recursionBound, unconditional)
+  def restoreFoldedLocations(mask: Expr, heap: Boogie.Expr, exhaleHeap: Boogie.Expr): List[Boogie.Stmt] = {
+    val foldedPredicates = etran.fpi.getFoldedPredicates()
+    (for (fp <- foldedPredicates) yield {
+      val allButCurrentPredicate = foldedPredicates filter (a => a != fp)
+      restoreFoldedLocationsHelperPred(fp.predicate, fp.receiver, mask, heap, exhaleHeap, allButCurrentPredicate, unconditional = false)
     }) flatten
   }
   
-  def restoreFoldedLocationsHelperPred(pred: Predicate, receiver: Expr, mask: Expr, heap: Boogie.Expr, exhaleHeap: Boogie.Expr, recursionBound: Int, unconditional: Boolean = false): List[Boogie.Stmt] = {
+  /** copy all the values of locations that are folded (one or more levels down) under the predicate 'pred' from the 'heap' to 'exhaleHeap'. If 'unconditional' is false, then the statements are guarded by the condition that permission to 'receiver.pred' is available in 'mask'. */
+  def restoreFoldedLocationsHelperPred(pred: Predicate, receiver: Expr, mask: Expr, heap: Boogie.Expr, exhaleHeap: Boogie.Expr, otherPredicates: List[FoldedPredicate], unconditional: Boolean = false): List[Boogie.Stmt] = {
     val definition = SubstThis(DefinitionOf(pred), BoogieExpr(receiver))
-    val stmts = restoreFoldedLocationsHelper(definition, mask, heap, exhaleHeap, recursionBound)
+    val stmts = restoreFoldedLocationsHelper(definition, mask, heap, exhaleHeap, otherPredicates)
     if (unconditional)
       stmts
     else
       Boogie.If(CanRead(receiver, pred.FullName, mask, ZeroMask), stmts, Nil)
   }
   
-  def restoreFoldedLocationsHelper(expr: Expression, mask: Expr, heap: Boogie.Expr, exhaleHeap: Boogie.Expr, recursionBound: Int): List[Boogie.Stmt] = {
-    val f = (expr: Expression) => restoreFoldedLocationsHelper(expr, mask, heap, exhaleHeap, recursionBound)
+  def restoreFoldedLocationsHelper(expr: Expression, mask: Expr, heap: Boogie.Expr, exhaleHeap: Boogie.Expr, otherPredicates: List[FoldedPredicate]): List[Boogie.Stmt] = {
+    val f = (expr: Expression) => restoreFoldedLocationsHelper(expr, mask, heap, exhaleHeap, otherPredicates)
     expr match {
       case pred@MemberAccess(e, p) if pred.isPredicate =>
         val tmp = Access(pred, Full);
@@ -2267,11 +2270,12 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
       case acc@Access(e,perm) =>
         val memberName = if (e.isPredicate) e.predicate.FullName else e.f.FullName;
         val trE = Tr(e.e)
-        (if (e.isPredicate && recursionBound > 0) {
+        (if (e.isPredicate) {
           // check for recursively nested things
-          (for (fp <- etran.fpi.getFoldedPredicates()) yield {
+          (for (fp <- otherPredicates) yield {
+            val allButCurrentPredicate = otherPredicates filter (a => a != fp)
             Boogie.If(fp.receiver ==@ trE,
-              restoreFoldedLocationsHelperPred(fp.predicate, fp.receiver, mask, heap, exhaleHeap, recursionBound-1, unconditional = true),
+              restoreFoldedLocationsHelperPred(fp.predicate, fp.receiver, mask, heap, exhaleHeap, allButCurrentPredicate, unconditional = true),
               Nil)
           })
         } else Nil) :::
