@@ -1485,6 +1485,11 @@ class FoldedPredicatesInfo {
     foldedPredicates length
   }
   
+  /** get an upper bound on the recursion depth when updating the secondary mask */
+  def getRecursionBound(): Int = {
+    foldedPredicates length
+  }
+  
 }
 object FoldedPredicatesInfo {
   def apply() = new FoldedPredicatesInfo()
@@ -2222,10 +2227,10 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
       (m := em) ::
       bassume(IsGoodExhaleState(eh, Heap, m, sm)) ::
       (if (pred != null)
-        restoreFoldedLocationsHelperPred(pred, receiver, m, Heap, eh, unconditional = true)
+        restoreFoldedLocationsHelperPred(pred, receiver, m, Heap, eh, recursionBound=0, unconditional = true)
       else
         Nil) :::
-      restoreFoldedLocations(m, Heap, eh) :::
+      restoreFoldedLocations(m, Heap, eh, fpi.getRecursionBound()) :::
       (Heap := eh) :: Nil
     else Nil) :::
     (if (isUpdatingSecMask) Nil else bassume(AreGoodMasks(m, sm)) :: Nil) :::
@@ -2233,37 +2238,43 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
     Comment("end exhale")
   }
   
-  def restoreFoldedLocations(mask: Expr, heap: Boogie.Expr, exhaleHeap: Boogie.Expr): List[Boogie.Stmt] = {
+  def restoreFoldedLocations(mask: Expr, heap: Boogie.Expr, exhaleHeap: Boogie.Expr, recursionBound: Int, unconditional: Boolean = false): List[Boogie.Stmt] = {
     (for (fp <- etran.fpi.getFoldedPredicates()) yield {
-      restoreFoldedLocationsHelperPred(fp.predicate, fp.receiver, mask, heap, exhaleHeap)
+      restoreFoldedLocationsHelperPred(fp.predicate, fp.receiver, mask, heap, exhaleHeap, recursionBound, unconditional)
     }) flatten
   }
   
-  def restoreFoldedLocationsHelperPred(pred: Predicate, receiver: Expr, mask: Expr, heap: Boogie.Expr, exhaleHeap: Boogie.Expr, unconditional: Boolean = false): List[Boogie.Stmt] = {
+  def restoreFoldedLocationsHelperPred(pred: Predicate, receiver: Expr, mask: Expr, heap: Boogie.Expr, exhaleHeap: Boogie.Expr, recursionBound: Int, unconditional: Boolean = false): List[Boogie.Stmt] = {
     val definition = SubstThis(DefinitionOf(pred), BoogieExpr(receiver))
-    val stmts = restoreFoldedLocationsHelper(definition, heap, exhaleHeap)
+    val stmts = restoreFoldedLocationsHelper(definition, mask, heap, exhaleHeap, recursionBound)
     if (unconditional)
       stmts
     else
       Boogie.If(CanRead(receiver, pred.FullName, mask, ZeroMask), stmts, Nil)
   }
   
-  def restoreFoldedLocationsHelper(expr: Expression, heap: Boogie.Expr, exhaleHeap: Boogie.Expr): List[Boogie.Stmt] = {
+  def restoreFoldedLocationsHelper(expr: Expression, mask: Expr, heap: Boogie.Expr, exhaleHeap: Boogie.Expr, recursionBound: Int): List[Boogie.Stmt] = {
+    val f = (expr: Expression) => restoreFoldedLocationsHelper(expr, mask, heap, exhaleHeap, recursionBound)
     expr match {
       case pred@MemberAccess(e, p) if pred.isPredicate =>
         val tmp = Access(pred, Full);
         tmp.pos = pred.pos;
-        restoreFoldedLocationsHelper(tmp, heap, exhaleHeap)
+        f(tmp)
       case AccessAll(obj, perm) =>
         throw new InternalErrorException("not implemented yet")
       case AccessSeq(s, None, perm) =>
         throw new InternalErrorException("not implemented yet")
       case acc@Access(e,perm) =>
         val memberName = if (e.isPredicate) e.predicate.FullName else e.f.FullName;
-        if (e.isPredicate) {
-          throw new InternalErrorException("not implemented yet")
-        }
         val trE = Tr(e.e)
+        (if (e.isPredicate && recursionBound > 0) {
+          // check for recursively nested things
+          (for (fp <- etran.fpi.getFoldedPredicates()) yield {
+            Boogie.If(fp.receiver ==@ trE,
+              restoreFoldedLocationsHelperPred(fp.predicate, fp.receiver, mask, heap, exhaleHeap, recursionBound-1, unconditional = true),
+              Nil)
+          })
+        } else Nil) :::
         // save the value of 'e' by copying manually from exhaleHeap to heap
         (exhaleHeap.select(trE, memberName) := heap.select(trE, memberName)) :: Nil
       case acc @ AccessSeq(s, Some(member), perm) =>
@@ -2271,14 +2282,11 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
       case cr@Credit(ch, n) =>
         throw new InternalErrorException("not implemented yet")
       case Implies(e0,e1) =>
-        Boogie.If(Tr(e0), restoreFoldedLocationsHelper(e1, heap, exhaleHeap), Nil)
+        Boogie.If(Tr(e0), f(e1), Nil)
       case IfThenElse(con, then, els) =>
-        Boogie.If(Tr(con),
-                  restoreFoldedLocationsHelper(then, heap, exhaleHeap),
-                  restoreFoldedLocationsHelper(els, heap, exhaleHeap))
+        Boogie.If(Tr(con), f(then), f(els))
       case And(e0,e1) =>
-        restoreFoldedLocationsHelper(e0, heap, exhaleHeap) :::
-        restoreFoldedLocationsHelper(e1, heap, exhaleHeap)
+        f(e0) ::: f(e1)
       case holds@Holds(e) =>
         throw new InternalErrorException("not implemented yet")
       case Eval(h, e) =>
