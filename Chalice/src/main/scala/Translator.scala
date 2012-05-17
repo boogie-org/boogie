@@ -2214,7 +2214,7 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
     val (ehV, eh) = Boogie.NewBVar("exhaleHeap", theap, true)
     var (emV, em: Expr) = Boogie.NewBVar("exhaleMask", tmask, true)
     Comment("begin exhale (" + occasion + ")") ::
-    (if (!isUpdatingSecMask && !duringUnfold)
+    (if (!isUpdatingSecMask && !duringUnfold && !transferPermissionToSecMask)
       BLocal(emV) :: (em := m) ::
       BLocal(ehV) :: Boogie.Havoc(eh) :: Nil
     else {
@@ -2223,13 +2223,9 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
     }) :::
     (for (p <- predicates) yield ExhaleHelper(p._1, em, sm, eh, p._2, check, currentK, exactchecking, false, transferPermissionToSecMask, recurseOnPredicatesDepth, isUpdatingSecMask, previousReceivers, duringUnfold)).flatten :::
     (for (p <- predicates) yield ExhaleHelper(p._1, em, sm, eh, p._2, check, currentK, exactchecking, true, transferPermissionToSecMask, recurseOnPredicatesDepth, isUpdatingSecMask, previousReceivers, duringUnfold)).flatten :::
-    (if (!isUpdatingSecMask && !duringUnfold)
+    (if (!isUpdatingSecMask && !duringUnfold && !transferPermissionToSecMask)
       (m := em) ::
       bassume(IsGoodExhaleState(eh, Heap, m, sm)) ::
-      (if (pred != null)
-        restoreFoldedLocationsHelperPred(pred, receiver, m, Heap, eh, List(), unconditional = true)
-      else
-        Nil) :::
       restoreFoldedLocations(m, Heap, eh) :::
       (Heap := eh) :: Nil
     else Nil) :::
@@ -2379,7 +2375,7 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
         // update version number (if necessary)
         (if (e.isPredicate && !isUpdatingSecMask)
           Boogie.If(!CanRead(trE, memberName, m, sm), // if we cannot access the predicate anymore, then its version will be havoced
-            (if (!duringUnfold) bassume(Heap.select(trE, memberName) < eh.select(trE, memberName)) :: Nil // assume that the predicate's version grows monotonically
+            (if (!duringUnfold) (if (!transferPermissionToSecMask) bassume(Heap.select(trE, memberName) < eh.select(trE, memberName)) :: Nil else Nil) // assume that the predicate's version grows monotonically
             else { // duringUnfold -> the heap is not havoced, thus we need to locally havoc the version
               val (oldVersV, oldVers) = Boogie.NewBVar("oldVers", tint, true)
               val (newVersV, newVers) = Boogie.NewBVar("newVers", tint, true)
