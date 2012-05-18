@@ -2238,18 +2238,18 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
     val foldedPredicates = etran.fpi.getFoldedPredicates()
     (for (fp <- foldedPredicates) yield {
       val allButCurrentPredicate = foldedPredicates filter (a => a != fp)
-      restoreFoldedLocationsHelperPred(fp.predicate, fp.receiver, fp.version, mask, heap, exhaleHeap, allButCurrentPredicate, unconditional = false)
+      restoreFoldedLocationsHelperPred(fp.predicate, fp.receiver, mask, heap, exhaleHeap, allButCurrentPredicate, unconditional = false)
     }) flatten
   }
   
   /** copy all the values of locations that are folded (one or more levels down) under the predicate 'pred' from the 'heap' to 'exhaleHeap'. If 'unconditional' is false, then the statements are guarded by the condition that permission to 'receiver.pred' is available in 'mask'. */
-  def restoreFoldedLocationsHelperPred(pred: Predicate, receiver: Expr, version: Expr, mask: Expr, heap: Boogie.Expr, exhaleHeap: Boogie.Expr, otherPredicates: List[FoldedPredicate], unconditional: Boolean = false): List[Boogie.Stmt] = {
+  def restoreFoldedLocationsHelperPred(pred: Predicate, receiver: Expr, mask: Expr, heap: Boogie.Expr, exhaleHeap: Boogie.Expr, otherPredicates: List[FoldedPredicate], unconditional: Boolean = false): List[Boogie.Stmt] = {
     val definition = SubstThis(DefinitionOf(pred), BoogieExpr(receiver))
     val stmts = restoreFoldedLocationsHelper(definition, mask, heap, exhaleHeap, otherPredicates)
     if (unconditional)
       stmts
     else
-      Boogie.If(CanRead(receiver, pred.FullName, mask, ZeroMask) && version ==@ heap.select(receiver, pred.FullName), stmts, Nil)
+      Boogie.If(CanRead(receiver, pred.FullName, mask, ZeroMask), stmts, Nil)
   }
   
   def restoreFoldedLocationsHelper(expr: Expression, mask: Expr, heap: Boogie.Expr, exhaleHeap: Boogie.Expr, otherPredicates: List[FoldedPredicate]): List[Boogie.Stmt] = {
@@ -2270,8 +2270,8 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
           // check for recursively nested things
           (for (fp <- otherPredicates) yield {
             val allButCurrentPredicate = otherPredicates filter (a => a != fp)
-            Boogie.If(fp.receiver ==@ trE && fp.version ==@ heap.select(trE, fp.predicate.FullName),
-              restoreFoldedLocationsHelperPred(fp.predicate, fp.receiver, fp.version, mask, heap, exhaleHeap, allButCurrentPredicate, unconditional = true),
+            Boogie.If(fp.receiver ==@ trE,
+              restoreFoldedLocationsHelperPred(fp.predicate, fp.receiver, mask, heap, exhaleHeap, allButCurrentPredicate, unconditional = true),
               Nil)
           })
         } else Nil) :::
