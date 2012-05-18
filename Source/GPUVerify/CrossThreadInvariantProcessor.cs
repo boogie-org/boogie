@@ -9,6 +9,14 @@ namespace GPUVerify
 {
     class CrossThreadInvariantProcessor : StandardVisitor
     {
+        private GPUVerifier verifier;
+        private string procName;
+
+        public CrossThreadInvariantProcessor(GPUVerifier verifier, string procName)
+        {
+            this.verifier = verifier;
+            this.procName = procName;
+        }
 
         public override Expr VisitNAryExpr(NAryExpr node)
         {
@@ -19,26 +27,27 @@ namespace GPUVerify
 
                 if (call.Func.Name.Equals("__uniform_bv32") || call.Func.Name.Equals("__uniform_bool"))
                 {
-                    return Expr.Eq(new VariableDualiser(1).VisitExpr(node.Args[0].Clone() as Expr),
-                                   new VariableDualiser(2).VisitExpr(node.Args[0].Clone() as Expr));
+                    return Expr.Eq(new VariableDualiser(1, verifier.uniformityAnalyser, procName).VisitExpr(node.Args[0].Clone() as Expr),
+                                   new VariableDualiser(2, verifier.uniformityAnalyser, procName).VisitExpr(node.Args[0].Clone() as Expr));
                 }
 
                 if (call.Func.Name.Equals("__distinct_bv32") || call.Func.Name.Equals("__distinct_bool"))
                 {
-                    return Expr.Neq(new VariableDualiser(1).VisitExpr(node.Args[0].Clone() as Expr),
-                                   new VariableDualiser(2).VisitExpr(node.Args[0].Clone() as Expr));
+                    return Expr.Neq(new VariableDualiser(1, verifier.uniformityAnalyser, procName).VisitExpr(node.Args[0].Clone() as Expr),
+                                   new VariableDualiser(2, verifier.uniformityAnalyser, procName).VisitExpr(node.Args[0].Clone() as Expr));
                 }
 
                 if (call.Func.Name.Equals("__all"))
                 {
-                    return Expr.And(new VariableDualiser(1).VisitExpr(node.Args[0].Clone() as Expr),
-                                   new VariableDualiser(2).VisitExpr(node.Args[0].Clone() as Expr));
+                    return Expr.And(new VariableDualiser(1, verifier.uniformityAnalyser, procName).VisitExpr(node.Args[0].Clone() as Expr),
+                                   new VariableDualiser(2, verifier.uniformityAnalyser, procName).VisitExpr(node.Args[0].Clone() as Expr));
                 }
 
                 if (call.Func.Name.Equals("__at_most_one"))
                 {
-                    return Expr.Not(Expr.And(new VariableDualiser(1).VisitExpr(node.Args[0].Clone() as Expr),
-                                   new VariableDualiser(2).VisitExpr(node.Args[0].Clone() as Expr)));
+                    return Expr.Not(Expr.And(new VariableDualiser(1, verifier.uniformityAnalyser, procName).VisitExpr(node.Args[0].Clone() as Expr),
+                                   new VariableDualiser(2, verifier.uniformityAnalyser, procName)
+                                       .VisitExpr(node.Args[0].Clone() as Expr)));
                 }
 
 
@@ -48,6 +57,68 @@ namespace GPUVerify
         }
 
 
+        internal EnsuresSeq ProcessCrossThreadInvariants(EnsuresSeq ensuresSeq)
+        {
+            EnsuresSeq result = new EnsuresSeq();
+            foreach (Ensures e in ensuresSeq)
+            {
+                result.Add(new Ensures(e.Free, VisitExpr(e.Condition.Clone() as Expr)));
+            }
+            return result;
+        }
+
+        internal RequiresSeq ProcessCrossThreadInvariants(RequiresSeq requiresSeq)
+        {
+            RequiresSeq result = new RequiresSeq();
+            foreach (Requires r in requiresSeq)
+            {
+                result.Add(new Requires(r.Free, VisitExpr(r.Condition.Clone() as Expr)));
+            }
+            return result;
+        }
+
+        internal void ProcessCrossThreadInvariants(StmtList stmtList)
+        {
+            foreach (BigBlock bb in stmtList.BigBlocks)
+            {
+                ProcessCrossThreadInvariants(bb);
+            }
+        }
+
+        private void ProcessCrossThreadInvariants(BigBlock bb)
+        {
+            CmdSeq newCommands = new CmdSeq();
+
+            foreach (Cmd c in bb.simpleCmds)
+            {
+                if (c is AssertCmd)
+                {
+                    newCommands.Add(new AssertCmd(c.tok, VisitExpr((c as AssertCmd).Expr.Clone() as Expr)));
+                }
+                else if (c is AssumeCmd)
+                {
+                    newCommands.Add(new AssumeCmd(c.tok, VisitExpr((c as AssumeCmd).Expr.Clone() as Expr)));
+                }
+                else
+                {
+                    newCommands.Add(c);
+                }
+            }
+
+            bb.simpleCmds = newCommands;
+
+            if (bb.ec is WhileCmd)
+            {
+                WhileCmd whileCmd = bb.ec as WhileCmd;
+                List<PredicateCmd> newInvariants = new List<PredicateCmd>();
+                foreach (PredicateCmd p in whileCmd.Invariants)
+                {
+                    newInvariants.Add(new AssertCmd(p.tok, VisitExpr(p.Expr)));
+                }
+                whileCmd.Invariants = newInvariants;
+                ProcessCrossThreadInvariants(whileCmd.Body);
+            }
+        }
 
     }
 }

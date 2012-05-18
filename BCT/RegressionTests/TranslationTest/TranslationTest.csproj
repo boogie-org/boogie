@@ -52,25 +52,25 @@
     <Compile Include="UnitTest0.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\..\..\CCICodeBox\Converters\ILToCodeModel\ILToCodeModel.csproj">
-      <Project>{27F2A417-B6ED-43AD-A38E-A0B6142216F6}</Project>
-      <Name>ILToCodeModel</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\..\..\..\CCICodeBox\CoreObjectModel\CodeModel\CodeModel.csproj">
-      <Project>{035FEA7F-0D36-4AE4-B694-EC45191B9AF2}</Project>
-      <Name>CodeModel</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\..\..\..\CCICodeBox\CoreObjectModel\MetadataHelper\MetadataHelper.csproj">
+    <ProjectReference Include="..\..\..\..\CCICodePlex\Ast\Metadata\Sources\MetadataHelper\MetadataHelper.csproj">
       <Project>{4A34A3C5-6176-49D7-A4C5-B2B671247F8F}</Project>
       <Name>MetadataHelper</Name>
     </ProjectReference>
-    <ProjectReference Include="..\..\..\..\CCICodeBox\CoreObjectModel\MutableCodeModel\MutableCodeModel.csproj">
+    <ProjectReference Include="..\..\..\..\CCICodePlex\Ast\Metadata\Sources\PeReader\PeReader.csproj">
+      <Project>{34B9A0CE-DF18-4CBC-8F7A-90C2B74338D5}</Project>
+      <Name>PeReader</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\..\CCICodePlex\Ast\Sources\CodeModel\CodeModel.csproj">
+      <Project>{035FEA7F-0D36-4AE4-B694-EC45191B9AF2}</Project>
+      <Name>CodeModel</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\..\CCICodePlex\Ast\Sources\MutableCodeModel\MutableCodeModel.csproj">
       <Project>{319E150C-8F33-49E7-81CA-30F02F9BA90A}</Project>
       <Name>MutableCodeModel</Name>
     </ProjectReference>
-    <ProjectReference Include="..\..\..\..\CCICodeBox\PEReaderAndWriter\PEReader\PeReader.csproj">
-      <Project>{34B9A0CE-DF18-4CBC-8F7A-90C2B74338D5}</Project>
-      <Name>PeReader</Name>
+    <ProjectReference Include="..\..\..\..\CCICodePlex\Ast\Sources\NewILToCodeModel\NewILToCodeModel.csproj">
+      <Project>{A555D4CB-F16F-4049-A8CF-180B8A05C755}</Project>
+      <Name>NewILToCodeModel</Name>
     </ProjectReference>
     <ProjectReference Include="..\..\BytecodeTranslator\BytecodeTranslator.csproj">
       <Project>{9C8E4D74-0251-479D-ADAC-A9A469977301}</Project>

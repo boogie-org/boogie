@@ -31,11 +31,6 @@ namespace VC {
       Contract.Requires(program != null);
       this.appendLogFile = appendLogFile;
       this.logFilePath = logFilePath;
-      implName2LazyInliningInfo = new Dictionary<string, LazyInliningInfo>();
-
-      if (CommandLineOptions.Clo.LazyInlining > 0) {
-        this.GenerateVCsForLazyInlining(program);
-      }
     }
 
     private static AssumeCmd AssertTurnedIntoAssume(AssertCmd assrt) {
@@ -62,316 +57,6 @@ namespace VC {
 
       return new AssumeCmd(assrt.tok, expr);
     }
-
-    #region LazyInlining
-    public class LazyInliningInfo {
-      [ContractInvariantMethod]
-      void ObjectInvariant() {
-        Contract.Invariant(impl != null);
-        Contract.Invariant(function != null);
-        Contract.Invariant(controlFlowVariable != null);
-        Contract.Invariant(assertExpr != null);
-        Contract.Invariant(cce.NonNullElements(interfaceVars));
-        Contract.Invariant(incarnationOriginMap == null || cce.NonNullDictionaryAndValues(incarnationOriginMap));
-      }
-
-      public Implementation impl;
-      public int uniqueId;
-      public Function function;
-      public Variable controlFlowVariable;
-      public List<Variable> interfaceVars;
-      public List<List<Variable>> interfaceVarCopies;
-      public Expr assertExpr;
-      public VCExpr vcexpr;
-      public List<VCExprVar> privateVars;
-      public Dictionary<Incarnation, Absy> incarnationOriginMap;
-      public Hashtable /*Variable->Expr*/ exitIncarnationMap;
-      public Hashtable /*GotoCmd->returnCmd*/ gotoCmdOrigins;
-      public Hashtable/*<int, Absy!>*/ label2absy;
-      public ModelViewInfo mvInfo;
-
-      public Dictionary<Block, VCExprVar> reachVars;
-      public List<VCExprLetBinding> reachVarBindings;
-      public Variable inputErrorVariable;
-      public Variable outputErrorVariable;
-
-      public LazyInliningInfo(Implementation impl, Program program, ProverContext ctxt, int uniqueId, GlobalVariable errorVariable) {
-        Contract.Requires(impl != null);
-        Contract.Requires(program != null);
-        Procedure proc = cce.NonNull(impl.Proc);
-
-        this.impl = impl;
-        this.uniqueId = uniqueId;
-        this.controlFlowVariable = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "@cfc", Microsoft.Boogie.Type.Int));
-        impl.LocVars.Add(controlFlowVariable);
-
-        List<Variable> interfaceVars = new List<Variable>();
-        Expr assertExpr = new LiteralExpr(Token.NoToken, true);
-        Contract.Assert(assertExpr != null);
-        foreach (Variable v in program.GlobalVariables()) {
-          Contract.Assert(v != null);
-          interfaceVars.Add(v);
-          if (v.Name == "error")
-            inputErrorVariable = v;
-        }
-        // InParams must be obtained from impl and not proc
-        foreach (Variable v in impl.InParams) {
-          Contract.Assert(v != null);
-          interfaceVars.Add(v);
-        }
-        // OutParams must be obtained from impl and not proc
-        foreach (Variable v in impl.OutParams) {
-          Contract.Assert(v != null);
-          Constant c = new Constant(Token.NoToken,
-                                    new TypedIdent(Token.NoToken, impl.Name + "_" + v.Name, v.TypedIdent.Type));
-          interfaceVars.Add(c);
-          Expr eqExpr = Expr.Eq(new IdentifierExpr(Token.NoToken, c), new IdentifierExpr(Token.NoToken, v));
-          assertExpr = Expr.And(assertExpr, eqExpr);
-        }
-        if (errorVariable != null) {
-          proc.Modifies.Add(new IdentifierExpr(Token.NoToken, errorVariable));
-        }
-        foreach (IdentifierExpr e in proc.Modifies) {
-          Contract.Assert(e != null);
-          if (e.Decl == null)
-            continue;
-          Variable v = e.Decl;
-          Constant c = new Constant(Token.NoToken, new TypedIdent(Token.NoToken, impl.Name + "_" + v.Name, v.TypedIdent.Type));
-          interfaceVars.Add(c);
-          if (v.Name == "error") {
-            outputErrorVariable = c;
-            continue;
-          }
-          Expr eqExpr = Expr.Eq(new IdentifierExpr(Token.NoToken, c), new IdentifierExpr(Token.NoToken, v));
-          assertExpr = Expr.And(assertExpr, eqExpr);
-        }
-
-        this.interfaceVars = interfaceVars;
-        this.assertExpr = Expr.Not(assertExpr);
-        VariableSeq functionInterfaceVars = new VariableSeq();
-        foreach (Variable v in interfaceVars) {
-          Contract.Assert(v != null);
-          functionInterfaceVars.Add(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, v.Name, v.TypedIdent.Type), true));
-        }
-        TypedIdent ti = new TypedIdent(Token.NoToken, "", Bpl.Type.Bool);
-        Contract.Assert(ti != null);
-        Formal returnVar = new Formal(Token.NoToken, ti, false);
-        Contract.Assert(returnVar != null);
-        this.function = new Function(Token.NoToken, proc.Name, functionInterfaceVars, returnVar);
-        ctxt.DeclareFunction(this.function, "");
-
-        interfaceVarCopies = new List<List<Variable>>();
-        int temp = 0;
-        for (int i = 0; i < CommandLineOptions.Clo.ProcedureCopyBound; i++) {
-          interfaceVarCopies.Add(new List<Variable>());
-          foreach (Variable v in interfaceVars) {
-            Constant constant = new Constant(Token.NoToken, new TypedIdent(Token.NoToken, v.Name + temp++, v.TypedIdent.Type));
-            interfaceVarCopies[i].Add(constant);
-            //program.TopLevelDeclarations.Add(constant);
-          }
-        }
-      }
-    }
-    [ContractInvariantMethod]
-    void ObjectInvariant() {
-      Contract.Invariant(implName2LazyInliningInfo == null || cce.NonNullDictionaryAndValues(implName2LazyInliningInfo));
-    }
-
-    public Dictionary<string, LazyInliningInfo> implName2LazyInliningInfo;
-    protected GlobalVariable errorVariable;
-
-    public void GenerateVCsForLazyInlining(Program program) {
-      Contract.Requires(program != null);
-      Checker checker = FindCheckerFor(null, CommandLineOptions.Clo.ProverKillTime);
-      Contract.Assert(checker != null);
-
-      VCExpr a = checker.VCExprGen.Integer(BigNum.ONE);
-      VCExpr b = checker.VCExprGen.Integer(BigNum.ONE);
-      VCExprNAry c = (VCExprNAry) checker.VCExprGen.ControlFlowFunctionApplication(a, b);
-      VCExprBoogieFunctionOp op = (VCExprBoogieFunctionOp)c.Op;
-      checker.TheoremProver.Context.DeclareFunction(op.Func, "");
-
-      errorVariable = new GlobalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "error", Bpl.Type.Bool));  // come up with a better name for the variable
-      program.TopLevelDeclarations.Add(errorVariable);
-
-      foreach (Declaration decl in program.TopLevelDeclarations) {
-        Contract.Assert(decl != null);
-        Implementation impl = decl as Implementation;
-        if (impl == null)
-          continue;
-        Procedure proc = cce.NonNull(impl.Proc);
-        if (proc.FindExprAttribute("inline") != null) {
-          LazyInliningInfo info = new LazyInliningInfo(impl, program, checker.TheoremProver.Context, QuantifierExpr.GetNextSkolemId(), errorVariable);
-          implName2LazyInliningInfo[impl.Name] = info;
-          ExprSeq exprs = new ExprSeq();
-          foreach (Variable v in program.GlobalVariables()) {
-            Contract.Assert(v != null);
-            exprs.Add(new OldExpr(Token.NoToken, new IdentifierExpr(Token.NoToken, v)));
-          }
-          foreach (Variable v in proc.InParams) {
-            Contract.Assert(v != null);
-            exprs.Add(new IdentifierExpr(Token.NoToken, v));
-          }
-          foreach (Variable v in proc.OutParams) {
-            Contract.Assert(v != null);
-            exprs.Add(new IdentifierExpr(Token.NoToken, v));
-          }
-          foreach (IdentifierExpr ie in proc.Modifies) {
-            Contract.Assert(ie != null);
-            if (ie.Decl == null)
-              continue;
-            exprs.Add(ie);
-          }
-          Expr freePostExpr = new NAryExpr(Token.NoToken, new FunctionCall(info.function), exprs);
-          proc.Ensures.Add(new Ensures(true, freePostExpr));
-
-          if (CommandLineOptions.Clo.ProcedureCopyBound > 0) {
-            Expr ret = new LiteralExpr(Token.NoToken, false);
-            for (int k = 0; k < CommandLineOptions.Clo.ProcedureCopyBound; k++) {
-              var iv = info.interfaceVarCopies[k];
-              Contract.Assert(info.function.InParams.Length == iv.Count);
-
-              Expr conj = new LiteralExpr(Token.NoToken, true);
-              for (int i = 0; i < iv.Count; i++) {
-                Expr eqExpr = new NAryExpr(
-                  Token.NoToken, new BinaryOperator(Token.NoToken, BinaryOperator.Opcode.Eq), new ExprSeq(exprs[i], Expr.Ident(iv[i])));
-                conj =
-                  new NAryExpr(Token.NoToken, new BinaryOperator(Token.NoToken, BinaryOperator.Opcode.And), new ExprSeq(conj, eqExpr));
-              }
-              ret =
-                new NAryExpr(Token.NoToken, new BinaryOperator(Token.NoToken, BinaryOperator.Opcode.Or), new ExprSeq(ret, conj));
-            }
-            proc.Ensures.Add(new Ensures(true, ret));
-          }
-        }
-      }
-
-      foreach (LazyInliningInfo info in implName2LazyInliningInfo.Values) {
-        Contract.Assert(info != null);
-        GenerateVCForLazyInlining(program, info, checker);
-      }
-    }
-
-    private void GenerateVCForLazyInlining(Program program, LazyInliningInfo info, Checker checker) {
-      Contract.Requires(program != null);
-      Contract.Requires(info != null);
-      Contract.Requires(checker != null);
-      Contract.Requires(info.impl != null);
-      Contract.Requires(info.impl.Proc != null);
-
-      Implementation impl = info.impl;
-      ConvertCFG2DAG(impl, program);
-      ModelViewInfo mvInfo;
-      info.gotoCmdOrigins = PassifyImpl(impl, program, out mvInfo);
-      Contract.Assert(info.exitIncarnationMap != null);
-      VCExpressionGenerator gen = checker.VCExprGen;
-      Contract.Assert(gen != null);
-      Boogie2VCExprTranslator translator = checker.TheoremProver.Context.BoogieExprTranslator;
-      Contract.Assert(translator != null);
-
-      TypecheckingContext tc = new TypecheckingContext(null);
-      impl.Typecheck(tc);
-      int assertionCount;
-      VCExpr vcexpr = gen.Not(LetVC(impl.Blocks[0], translator.LookupVariable(info.controlFlowVariable), null, checker.TheoremProver.Context, out assertionCount));
-      CumulativeAssertionCount += assertionCount;
-      Contract.Assert(vcexpr != null);
-      ResetPredecessors(impl.Blocks);
-      VCExpr reachvcexpr = GenerateReachVC(impl, info, checker);
-      vcexpr = gen.And(vcexpr, reachvcexpr);
-
-      List<VCExprVar> privateVars = new List<VCExprVar>();
-      foreach (Variable v in impl.LocVars) {
-        Contract.Assert(v != null);
-        privateVars.Add(translator.LookupVariable(v));
-      }
-      foreach (Variable v in impl.OutParams) {
-        Contract.Assert(v != null);
-        privateVars.Add(translator.LookupVariable(v));
-      }
-
-      info.privateVars = privateVars;
-
-      if (privateVars.Count > 0) {
-        vcexpr = gen.Exists(new List<TypeVariable>(), privateVars, new List<VCTrigger>(),
-                            new VCQuantifierInfos(impl.Name, info.uniqueId, false, null), vcexpr);
-      }
-
-      List<VCExprVar> interfaceExprVars = new List<VCExprVar>();
-      List<VCExpr> interfaceExprs = new List<VCExpr>();
-      foreach (Variable v in info.interfaceVars) {
-        Contract.Assert(v != null);
-        VCExprVar ev = translator.LookupVariable(v);
-        Contract.Assert(ev != null);
-        interfaceExprVars.Add(ev);
-        interfaceExprs.Add(ev);
-      }
-
-      Function function = cce.NonNull(info.function);
-      VCExpr expr = gen.Function(function, interfaceExprs);
-      Contract.Assert(expr != null);
-      vcexpr = gen.Implies(expr, vcexpr);
-
-      List<VCTrigger> triggers = new List<VCTrigger>();
-      List<VCExpr> exprs = new List<VCExpr>();
-      exprs.Add(expr);
-      VCTrigger trigger = new VCTrigger(true, exprs);
-      Contract.Assert(trigger != null);
-      triggers.Add(trigger);
-
-      Expr e = new LiteralExpr(Token.NoToken, BigNum.FromInt(1));
-      QKeyValue q = new QKeyValue(Token.NoToken, "weight", new List<object>(new object[] { e }), null);
-      interfaceExprVars.Reverse();
-      vcexpr = gen.Forall(new List<TypeVariable>(), interfaceExprVars, triggers,
-                          new VCQuantifierInfos(impl.Name, QuantifierExpr.GetNextSkolemId(), false, q), vcexpr);
-
-      info.vcexpr = vcexpr;
-      checker.TheoremProver.PushVCExpression(vcexpr);
-    }
-
-    protected VCExpr GenerateReachVC(Implementation impl, LazyInliningInfo info, Checker ch) {
-      Variable controlFlowVariable = info.controlFlowVariable;
-      VCExpressionGenerator gen = ch.VCExprGen;
-      ProverContext proverCtxt = ch.TheoremProver.Context;
-      Boogie2VCExprTranslator translator = proverCtxt.BoogieExprTranslator;
-      VCExprVar controlFlowVariableExpr = translator.LookupVariable(controlFlowVariable);
-
-      Block exitBlock = null;
-      Dictionary<Block, VCExprVar> reachVars = new Dictionary<Block, VCExprVar>();
-      Dictionary<Block, VCExpr> reachExprs = new Dictionary<Block, VCExpr>();
-      foreach (Block b in impl.Blocks) {
-        reachVars[b] = gen.Variable(b.Label + "_reachable", Bpl.Type.Bool);
-        reachExprs[b] = VCExpressionGenerator.False;
-        if (b.TransferCmd is ReturnCmd)
-          exitBlock = b;
-      }
-      info.reachVars = reachVars;
-
-      foreach (Block b in impl.Blocks) {
-        foreach (Block pb in b.Predecessors) {
-          VCExpr controlFlowFunctionAppl = gen.ControlFlowFunctionApplication(controlFlowVariableExpr, gen.Integer(BigNum.FromInt(pb.UniqueId)));
-          VCExpr controlTransferExpr = gen.Eq(controlFlowFunctionAppl, gen.Integer(BigNum.FromInt(b.UniqueId)));
-          reachExprs[b] = gen.Or(reachExprs[b], gen.And(reachVars[pb], controlTransferExpr));
-        }
-      }
-      reachExprs[impl.Blocks[0]] = VCExpressionGenerator.True;
-      List<VCExprLetBinding> bindings = new List<VCExprLetBinding>();
-      foreach (Block b in impl.Blocks) {
-        bindings.Add(gen.LetBinding(reachVars[b], reachExprs[b]));
-      }
-      info.reachVarBindings = bindings;
-
-      Debug.Assert(exitBlock != null && exitBlock.Cmds.Length > 0);
-      AssertCmd assertCmd = (AssertCmd) exitBlock.Cmds[exitBlock.Cmds.Length - 1];
-      Debug.Assert(assertCmd != null);
-      VCExpr exitFlowFunctionAppl = gen.ControlFlowFunctionApplication(controlFlowVariableExpr, gen.Integer(BigNum.FromInt(exitBlock.UniqueId)));
-      VCExpr exitTransferExpr = gen.Eq(exitFlowFunctionAppl, gen.Integer(BigNum.FromInt(assertCmd.UniqueId)));
-      VCExpr exitCondition = gen.And(info.reachVars[exitBlock], exitTransferExpr);
-      VCExpr errorExpr = gen.Eq(translator.LookupVariable(info.outputErrorVariable), gen.And(translator.LookupVariable(info.inputErrorVariable), exitCondition));
-      VCExpr reachvcexpr = gen.Let(info.reachVarBindings, errorExpr);
-      return reachvcexpr;
-    }
-    #endregion
-
 
     #region Soundness smoke tester
     class SmokeTester {
@@ -611,7 +296,7 @@ namespace VC {
         var exprGen = ch.TheoremProver.Context.ExprGen;
         VCExpr controlFlowVariableExpr = CommandLineOptions.Clo.UseLabels ? null : exprGen.Integer(BigNum.ZERO);
 
-        VCExpr vc = parent.GenerateVC(impl, controlFlowVariableExpr, out label2Absy, ch);
+        VCExpr vc = parent.GenerateVC(impl, controlFlowVariableExpr, out label2Absy, ch.TheoremProver.Context);
         Contract.Assert(vc != null);
 
         if (!CommandLineOptions.Clo.UseLabels) {
@@ -1550,7 +1235,7 @@ namespace VC {
         var exprGen = ctx.ExprGen;
         VCExpr controlFlowVariableExpr = CommandLineOptions.Clo.UseLabels ? null : exprGen.Integer(BigNum.ZERO);
 
-        VCExpr vc = parent.GenerateVCAux(impl, controlFlowVariableExpr, label2absy, checker);
+        VCExpr vc = parent.GenerateVCAux(impl, controlFlowVariableExpr, label2absy, checker.TheoremProver.Context);
         Contract.Assert(vc != null);
 
         if (!CommandLineOptions.Clo.UseLabels) {
@@ -1560,9 +1245,9 @@ namespace VC {
         }
         
         if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Local) {
-          reporter = new ErrorReporterLocal(gotoCmdOrigins, label2absy, impl.Blocks, parent.incarnationOriginMap, callback, mvInfo, parent.implName2LazyInliningInfo, cce.NonNull(this.Checker.TheoremProver.Context), parent.program);
+          reporter = new ErrorReporterLocal(gotoCmdOrigins, label2absy, impl.Blocks, parent.incarnationOriginMap, callback, mvInfo, cce.NonNull(this.Checker.TheoremProver.Context), parent.program);
         } else {
-          reporter = new ErrorReporter(gotoCmdOrigins, label2absy, impl.Blocks, parent.incarnationOriginMap, callback, mvInfo, parent.implName2LazyInliningInfo, this.Checker.TheoremProver.Context, parent.program);
+          reporter = new ErrorReporter(gotoCmdOrigins, label2absy, impl.Blocks, parent.incarnationOriginMap, callback, mvInfo, this.Checker.TheoremProver.Context, parent.program);
         }
 
         if (CommandLineOptions.Clo.TraceVerify && no >= 0) {
@@ -1630,20 +1315,20 @@ namespace VC {
     }
     #endregion
 
-    public VCExpr GenerateVC(Implementation/*!*/ impl, VCExpr controlFlowVariableExpr, out Hashtable/*<int, Absy!>*//*!*/ label2absy, Checker/*!*/ ch)
+    public VCExpr GenerateVC(Implementation/*!*/ impl, VCExpr controlFlowVariableExpr, out Hashtable/*<int, Absy!>*//*!*/ label2absy, ProverContext proverContext)
     {
       Contract.Requires(impl != null);
-      Contract.Requires(ch != null);
+      Contract.Requires(proverContext != null);
       Contract.Ensures(Contract.ValueAtReturn(out label2absy) != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
 
       label2absy = new Hashtable/*<int, Absy!>*/();
-      return GenerateVCAux(impl, controlFlowVariableExpr, label2absy, ch);
+      return GenerateVCAux(impl, controlFlowVariableExpr, label2absy, proverContext);
     }
 
-    protected VCExpr GenerateVCAux(Implementation/*!*/ impl, VCExpr controlFlowVariableExpr, Hashtable/*<int, Absy!>*//*!*/ label2absy, Checker/*!*/ ch) {
+    protected VCExpr GenerateVCAux(Implementation/*!*/ impl, VCExpr controlFlowVariableExpr, Hashtable/*<int, Absy!>*//*!*/ label2absy, ProverContext proverContext) {
       Contract.Requires(impl != null);
-      Contract.Requires(ch != null);
+      Contract.Requires(proverContext != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
 
       TypecheckingContext tc = new TypecheckingContext(null);
@@ -1653,35 +1338,35 @@ namespace VC {
       int assertionCount;
       switch (CommandLineOptions.Clo.vcVariety) {
         case CommandLineOptions.VCVariety.Structured:
-          vc = VCViaStructuredProgram(impl, label2absy, ch.TheoremProver.Context, out assertionCount);
+          vc = VCViaStructuredProgram(impl, label2absy, proverContext, out assertionCount);
           break;
         case CommandLineOptions.VCVariety.Block:
-          vc = FlatBlockVC(impl, label2absy, false, false, false, ch.TheoremProver.Context, out assertionCount);
+          vc = FlatBlockVC(impl, label2absy, false, false, false, proverContext, out assertionCount);
           break;
         case CommandLineOptions.VCVariety.BlockReach:
-          vc = FlatBlockVC(impl, label2absy, false, true, false, ch.TheoremProver.Context, out assertionCount);
+          vc = FlatBlockVC(impl, label2absy, false, true, false, proverContext, out assertionCount);
           break;
         case CommandLineOptions.VCVariety.Local:
-          vc = FlatBlockVC(impl, label2absy, true, false, false, ch.TheoremProver.Context, out assertionCount);
+          vc = FlatBlockVC(impl, label2absy, true, false, false, proverContext, out assertionCount);
           break;
         case CommandLineOptions.VCVariety.BlockNested:
-          vc = NestedBlockVC(impl, label2absy, false, ch.TheoremProver.Context, out assertionCount);
+          vc = NestedBlockVC(impl, label2absy, false, proverContext, out assertionCount);
           break;
         case CommandLineOptions.VCVariety.BlockNestedReach:
-          vc = NestedBlockVC(impl, label2absy, true, ch.TheoremProver.Context, out assertionCount);
+          vc = NestedBlockVC(impl, label2absy, true, proverContext, out assertionCount);
           break;
         case CommandLineOptions.VCVariety.Dag:
           if (cce.NonNull(CommandLineOptions.Clo.TheProverFactory).SupportsDags) {
-            vc = DagVC(cce.NonNull(impl.Blocks[0]), controlFlowVariableExpr, label2absy, new Hashtable/*<Block, VCExpr!>*/(), ch.TheoremProver.Context, out assertionCount);
+            vc = DagVC(cce.NonNull(impl.Blocks[0]), controlFlowVariableExpr, label2absy, new Hashtable/*<Block, VCExpr!>*/(), proverContext, out assertionCount);
           } else {
-            vc = LetVC(cce.NonNull(impl.Blocks[0]), controlFlowVariableExpr, label2absy, ch.TheoremProver.Context, out assertionCount);
+            vc = LetVC(cce.NonNull(impl.Blocks[0]), controlFlowVariableExpr, label2absy, proverContext, out assertionCount);
           }
           break;
         case CommandLineOptions.VCVariety.DagIterative:
-          vc = LetVCIterative(impl.Blocks, controlFlowVariableExpr, label2absy, ch.TheoremProver.Context, out assertionCount);
+          vc = LetVCIterative(impl.Blocks, controlFlowVariableExpr, label2absy, proverContext, out assertionCount);
           break;
         case CommandLineOptions.VCVariety.Doomed:
-          vc = FlatBlockVC(impl, label2absy, false, false, true, ch.TheoremProver.Context, out assertionCount);
+          vc = FlatBlockVC(impl, label2absy, false, false, true, proverContext, out assertionCount);
           break;
         default:
           Contract.Assert(false);
@@ -1719,9 +1404,6 @@ namespace VC {
           watch.Start();
       }
 
-      if (errorVariable != null) {
-        impl.Proc.Modifies.Add(new IdentifierExpr(Token.NoToken, errorVariable));
-      }
       ConvertCFG2DAG(impl, program);
 
       SmokeTester smoke_tester = null;
@@ -1898,7 +1580,6 @@ namespace VC {
         Contract.Invariant(cce.NonNullElements(blocks));
         Contract.Invariant(cce.NonNullDictionaryAndValues(incarnationOriginMap));
         Contract.Invariant(callback != null);
-        Contract.Invariant(cce.NonNullDictionaryAndValues(implName2LazyInliningInfo));
         Contract.Invariant(context != null);
         Contract.Invariant(program != null);
       }
@@ -1914,7 +1595,6 @@ namespace VC {
         }
       }
 
-      Dictionary<string/*!*/, LazyInliningInfo/*!*/>/*!*/ implName2LazyInliningInfo;
       protected ProverContext/*!*/ context;
       Program/*!*/ program;
 
@@ -1924,7 +1604,6 @@ namespace VC {
           Dictionary<Incarnation, Absy/*!*/>/*!*/ incarnationOriginMap,
           VerifierCallback/*!*/ callback,
           ModelViewInfo mvInfo,
-          Dictionary<string/*!*/, LazyInliningInfo/*!*/>/*!*/ implName2LazyInliningInfo,
           ProverContext/*!*/ context,
           Program/*!*/ program) {
         Contract.Requires(gotoCmdOrigins != null);
@@ -1932,7 +1611,6 @@ namespace VC {
         Contract.Requires(cce.NonNullElements(blocks));
         Contract.Requires(cce.NonNullDictionaryAndValues(incarnationOriginMap));
         Contract.Requires(callback != null);
-        Contract.Requires(cce.NonNullDictionaryAndValues(implName2LazyInliningInfo));
         Contract.Requires(context!=null);
         Contract.Requires(program!=null);
         this.gotoCmdOrigins = gotoCmdOrigins;
@@ -1942,20 +1620,19 @@ namespace VC {
         this.callback = callback;
         this.MvInfo = mvInfo;
 
-        this.implName2LazyInliningInfo = implName2LazyInliningInfo;
         this.context = context;
         this.program = program;
-        // base();
       }
 
-      public override void OnModel(IList<string/*!*/>/*!*/ labels, ErrorModel errModel) {
+      public override void OnModel(IList<string/*!*/>/*!*/ labels, Model model) {
         //Contract.Requires(cce.NonNullElements(labels));
-        if (CommandLineOptions.Clo.PrintErrorModel >= 1 && errModel != null) {
+        if (CommandLineOptions.Clo.PrintErrorModel >= 1 && model != null) {
           if (VC.ConditionGeneration.errorModelList != null)
           {
-            VC.ConditionGeneration.errorModelList.Add(errModel);
+            VC.ConditionGeneration.errorModelList.Add(model);
           }
-          errModel.Print(ErrorReporter.ModelWriter);
+          
+          model.Write(ErrorReporter.ModelWriter);
           ErrorReporter.ModelWriter.Flush();
         }
 
@@ -1975,7 +1652,7 @@ namespace VC {
         Contract.Assert(traceNodes.Contains(entryBlock));
         trace.Add(entryBlock);
 
-        Counterexample newCounterexample = TraceCounterexample(entryBlock, traceNodes, trace, errModel == null ? null : errModel.ToModel(), MvInfo, incarnationOriginMap, implName2LazyInliningInfo, context, program, new Dictionary<TraceLocation, CalleeCounterexampleInfo>());
+        Counterexample newCounterexample = TraceCounterexample(entryBlock, traceNodes, trace, model, MvInfo, incarnationOriginMap, context, program, new Dictionary<TraceLocation, CalleeCounterexampleInfo>());
 
         if (newCounterexample == null)
           return;
@@ -2023,28 +1700,26 @@ namespace VC {
           Dictionary<Incarnation, Absy/*!*/>/*!*/ incarnationOriginMap,
           VerifierCallback/*!*/ callback,
           ModelViewInfo mvInfo,
-          Dictionary<string/*!*/, LazyInliningInfo/*!*/>/*!*/ implName2LazyInliningInfo,
           ProverContext/*!*/ context,
           Program/*!*/ program)
-        : base(gotoCmdOrigins, label2absy, blocks, incarnationOriginMap, callback, mvInfo, implName2LazyInliningInfo, context, program) // here for aesthetic purposes //TODO: Maybe nix?
+        : base(gotoCmdOrigins, label2absy, blocks, incarnationOriginMap, callback, mvInfo, context, program) // here for aesthetic purposes //TODO: Maybe nix?
       {
         Contract.Requires(gotoCmdOrigins != null);
         Contract.Requires(label2absy != null);
         Contract.Requires(cce.NonNullElements(blocks));
         Contract.Requires(cce.NonNullDictionaryAndValues(incarnationOriginMap));
         Contract.Requires(callback != null);
-        Contract.Requires(cce.NonNullDictionaryAndValues(implName2LazyInliningInfo));
         Contract.Requires(context != null);
         Contract.Requires(program != null);
       }
 
-      public override void OnModel(IList<string/*!*/>/*!*/ labels, ErrorModel errModel) {
+      public override void OnModel(IList<string/*!*/>/*!*/ labels, Model model) {
         //Contract.Requires(cce.NonNullElements(labels));
         // We ignore the error model here for enhanced error message purposes.
         // It is only printed to the command line.
-        if (CommandLineOptions.Clo.PrintErrorModel >= 1 && errModel != null) {
+        if (CommandLineOptions.Clo.PrintErrorModel >= 1 && model != null) {
           if (CommandLineOptions.Clo.PrintErrorModelFile != null) {
-            errModel.Print(ErrorReporter.ModelWriter);
+            model.Write(ErrorReporter.ModelWriter);
             ErrorReporter.ModelWriter.Flush();
           }
         }
@@ -2070,7 +1745,7 @@ namespace VC {
             if (b.Cmds.Has(a)) {
               BlockSeq trace = new BlockSeq();
               trace.Add(b);
-              Counterexample newCounterexample = AssertCmdToCounterexample(a, cce.NonNull(b.TransferCmd), trace, errModel == null ? null : errModel.ToModel(), MvInfo, context);
+              Counterexample newCounterexample = AssertCmdToCounterexample(a, cce.NonNull(b.TransferCmd), trace, model, MvInfo, context);
               callback.OnCounterexample(newCounterexample, null);
               goto NEXT_ASSERT;
             }
@@ -2342,7 +2017,7 @@ namespace VC {
       }
       #endregion
       
-      #region Support for lazy/stratified inlining
+      #region Support for stratified inlining
       addExitAssert(impl.Name, exitBlock);
       #endregion
 
@@ -2370,12 +2045,8 @@ namespace VC {
       }
 
       mvInfo = new ModelViewInfo(program, impl);
-      Hashtable exitIncarnationMap = Convert2PassiveCmd(impl, mvInfo);
+      Convert2PassiveCmd(impl, mvInfo);
 
-      #region Support for lazy/stratified inlining
-      storeIncarnationMaps(impl.Name, exitIncarnationMap);
-      #endregion
-            
       #region Peep-hole optimizations
       if (CommandLineOptions.Clo.RemoveEmptyBlocks){
         #region Get rid of empty blocks
@@ -2488,34 +2159,9 @@ namespace VC {
       }
     }
 
-    // Used by lazy/stratified inlining
+    // Used by stratified inlining
     protected virtual void addExitAssert(string implName, Block exitBlock)
     {
-      if (CommandLineOptions.Clo.LazyInlining == 0) return;
-      Debug.Assert(implName2LazyInliningInfo != null);
-
-      if (implName2LazyInliningInfo.ContainsKey(implName)) {
-        Expr assertExpr = implName2LazyInliningInfo[implName].assertExpr;
-        Contract.Assert(assertExpr != null);
-        exitBlock.Cmds.Add(new AssertCmd(Token.NoToken, assertExpr));
-      }
-      else {
-        Expr oldExpr = new OldExpr(Token.NoToken, new IdentifierExpr(Token.NoToken, errorVariable));
-        Expr expr = new IdentifierExpr(Token.NoToken, errorVariable);
-        Expr assertExpr = NAryExpr.Imp(oldExpr, expr);
-        exitBlock.Cmds.Add(new AssertCmd(Token.NoToken, assertExpr));
-      }
-    }
-
-    protected virtual void storeIncarnationMaps(string implName, Hashtable exitIncarnationMap)
-    {
-        if (implName2LazyInliningInfo != null && implName2LazyInliningInfo.ContainsKey(implName))
-        {
-            LazyInliningInfo info = implName2LazyInliningInfo[implName];
-            Contract.Assert(info != null);
-            info.exitIncarnationMap = exitIncarnationMap;
-            info.incarnationOriginMap = this.incarnationOriginMap;
-        }
     }
 
     public virtual Counterexample extractLoopTrace(Counterexample cex, string mainProcName, Program program, Dictionary<string, Dictionary<string, Block>> extractLoopMappingInfo)
@@ -2653,20 +2299,7 @@ namespace VC {
 
     protected virtual bool elIsLoop(string procname)
     {
-        Contract.Requires(procname != null);
-
-        LazyInliningInfo info = null;
-        if (implName2LazyInliningInfo.ContainsKey(procname))
-        {
-            info = implName2LazyInliningInfo[procname];
-        }
-
-        if (info == null) return false;
-
-        var lp = info.impl.Proc as LoopProcedure;
-
-        if (lp == null) return false;
-        return true;
+      return false;
     }
 
     private Block elGetBlock(string procname, Block block, Dictionary<string, Dictionary<string, Block>> extractLoopMappingInfo)
@@ -2682,161 +2315,9 @@ namespace VC {
         return extractLoopMappingInfo[procname][block.Label];
     }
 
-    private static Counterexample LazyCounterexample(
-                                       Model/*!*/ errModel, ModelViewInfo mvInfo,
-                                       Dictionary<string/*!*/, LazyInliningInfo/*!*/>/*!*/ implName2LazyInliningInfo,
-                                       ProverContext/*!*/ context,
-                                       Program/*!*/ program,
-                                       string/*!*/ implName, List<Model.Element>/*!*/ values)
-    {
-      Contract.Requires(errModel != null);
-      Contract.Requires(cce.NonNullDictionaryAndValues(implName2LazyInliningInfo));
-      Contract.Requires(context != null);
-      Contract.Requires(program != null);
-      Contract.Requires(implName != null);
-      Contract.Requires(values != null);
-      Contract.Ensures(Contract.Result<Counterexample>() != null);
-
-      Boogie2VCExprTranslator boogieExprTranslator = context.BoogieExprTranslator;
-      Contract.Assert(boogieExprTranslator != null);
-      LazyInliningInfo info = implName2LazyInliningInfo[implName];
-      Contract.Assert(info != null);
-      BlockSeq trace = new BlockSeq();
-      Block b = cce.NonNull( info.impl).Blocks[0];
-      trace.Add(b);
-      VCExprVar cfcVar = boogieExprTranslator.LookupVariable(info.controlFlowVariable);
-      string cfcName = context.Lookup(cfcVar);
-      Model.Func skolemFunction = errModel.TryGetSkolemFunc(cfcName + "!" + info.uniqueId);
-      Model.Element cfcValue = skolemFunction.TryPartialEval(values.ToArray());
-
-      Model.Func controlFlowFunction = errModel.GetFunc("ControlFlow");
-      var calleeCounterexamples = new Dictionary<TraceLocation, CalleeCounterexampleInfo>();
-      while (true) {
-        CmdSeq cmds = b.Cmds;Contract.Assert(cmds != null);
-        TransferCmd transferCmd = cce.NonNull(b.TransferCmd);
-        for (int i = 0; i < cmds.Length; i++)
-        {
-          Cmd cmd = cce.NonNull( cmds[i]);
-          AssertCmd assertCmd = cmd as AssertCmd;
-          if (assertCmd != null && controlFlowFunction.TryEval(cfcValue, errModel.MkIntElement(b.UniqueId)).AsInt() == assertCmd.UniqueId)
-          {
-            Counterexample newCounterexample;
-            newCounterexample = AssertCmdToCounterexample(assertCmd, transferCmd, trace, errModel, mvInfo, context);
-            newCounterexample.AddCalleeCounterexample(calleeCounterexamples);
-            return newCounterexample;
-          }
-            
-          AssumeCmd assumeCmd = cmd as AssumeCmd;
-          if (assumeCmd == null) continue;
-          NAryExpr naryExpr = assumeCmd.Expr as NAryExpr;
-          if (naryExpr == null) continue;
-          string calleeName = naryExpr.Fun.FunctionName;
-          Contract.Assert(calleeName != null);
-          if (!implName2LazyInliningInfo.ContainsKey(calleeName)) continue;
-      
-          List<Model.Element> args = new List<Model.Element>();
-          foreach (Expr expr in naryExpr.Args)
-          {Contract.Assert(expr != null);
-            VCExprVar exprVar;
-            string name;
-            LiteralExpr litExpr = expr as LiteralExpr;
-            
-            if (litExpr != null) 
-            {
-              args.Add(errModel.MkElement(litExpr.Val.ToString()));
-              continue;
-            }
-          
-            IdentifierExpr idExpr = expr as IdentifierExpr;
-            Contract.Assert( idExpr != null);
-            Variable var = cce.NonNull(idExpr.Decl);
-            
-            if (var is Constant) 
-            {
-              exprVar = boogieExprTranslator.LookupVariable(var);
-              name = context.Lookup(exprVar);
-              args.Add(errModel.GetFunc(name).GetConstant());
-              continue;
-            }
-            
-            int index = 0;
-            List<GlobalVariable> globalVars = program.GlobalVariables();
-            foreach (Variable global in globalVars)
-            {
-              Contract.Assert(global != null);
-              if (global == var) break;
-              index++;
-            }
-            if (index < globalVars.Count)
-            {
-              args.Add(values[index]);
-              continue;
-            }
-            
-            foreach (Variable input in info.impl.InParams)
-            {
-              Contract.Assert(input != null);
-              if (input == var) break;
-              index++;
-            }
-            if (index < globalVars.Count + info.impl.InParams.Length)
-            {
-              args.Add(values[index]);
-              continue;
-            }
-              
-            foreach (Variable output in info.impl.OutParams)
-            {
-              Contract.Assert(output != null);
-              if (output == var) break;
-              index++;
-            }
-            if (index < globalVars.Count + info.impl.InParams.Length + info.impl.OutParams.Length)
-            {
-              args.Add(values[index]);
-              continue;
-            }
-            
-            exprVar = boogieExprTranslator.LookupVariable(var);
-            name = context.Lookup(exprVar);
-            Model.Func skolemFunction1 = errModel.TryGetSkolemFunc(name + "!" + info.uniqueId);
-            args.Add(skolemFunction1.TryPartialEval(values.ToArray()));
-          }
-          calleeCounterexamples[new TraceLocation(trace.Length - 1, i)] = 
-            new CalleeCounterexampleInfo(
-              LazyCounterexample(errModel, mvInfo, implName2LazyInliningInfo, context, program, calleeName, args),
-              args);
-        }
-          
-        GotoCmd gotoCmd = transferCmd as GotoCmd;
-        if (gotoCmd == null) break;
-        int nextBlockId = controlFlowFunction.TryEval(cfcValue, errModel.MkIntElement(b.UniqueId)).AsInt();
-        foreach (Block x in gotoCmd.labelTargets) {
-          if (nextBlockId == x.UniqueId) {
-            b = x;
-            break;
-          }
-        }
-        //b = (Block)cce.NonNull(info.label2absy)[nextBlockId];
-        trace.Add(b);
-      }
-      Contract.Assert(false);throw new cce.UnreachableException();
-    }
-
-    static Counterexample TraceCounterexample(Block b, BlockSeq trace, ErrorModel errModel, Dictionary<Incarnation, Absy/*!*/>/*!*/ incarnationOriginMap) {
-      Contract.Requires(b != null);
-      Contract.Requires(trace != null);
-      Contract.Requires(errModel != null);
-      Contract.Requires(cce.NonNullDictionaryAndValues(incarnationOriginMap));
-      // After translation, all potential errors come from asserts.
-
-      return null;
-    }
-
     static Counterexample TraceCounterexample(
                           Block/*!*/ b, Hashtable/*!*/ traceNodes, BlockSeq/*!*/ trace, Model errModel, ModelViewInfo mvInfo,
                           Dictionary<Incarnation, Absy/*!*/>/*!*/ incarnationOriginMap,
-                          Dictionary<string/*!*/, LazyInliningInfo/*!*/>/*!*/ implName2LazyInliningInfo,
                           ProverContext/*!*/ context, Program/*!*/ program,
                           Dictionary<TraceLocation/*!*/, CalleeCounterexampleInfo/*!*/>/*!*/ calleeCounterexamples)
     {
@@ -2844,7 +2325,6 @@ namespace VC {
       Contract.Requires(traceNodes != null);
       Contract.Requires(trace != null);
       Contract.Requires(cce.NonNullDictionaryAndValues(incarnationOriginMap));
-      Contract.Requires(cce.NonNullDictionaryAndValues(implName2LazyInliningInfo));
       Contract.Requires(context != null);
       Contract.Requires(program != null);
       Contract.Requires(cce.NonNullDictionaryAndValues(calleeCounterexamples));
@@ -2864,41 +2344,6 @@ namespace VC {
           newCounterexample.AddCalleeCounterexample(calleeCounterexamples);
           return newCounterexample;
         }
-        
-        #region Counterexample generation for lazily inlined procedures
-        if (errModel == null) continue;
-        AssumeCmd assumeCmd = cmd as AssumeCmd;
-        if (assumeCmd == null) continue;
-        NAryExpr naryExpr = assumeCmd.Expr as NAryExpr;
-        if (naryExpr == null) continue;
-        string calleeName = naryExpr.Fun.FunctionName;
-        if (!implName2LazyInliningInfo.ContainsKey(calleeName)) continue;
-        Boogie2VCExprTranslator boogieExprTranslator = context.BoogieExprTranslator;
-        Contract.Assert(boogieExprTranslator != null);
-        List<Model.Element> args = new List<Model.Element>();
-        foreach (Expr expr in naryExpr.Args)
-        {Contract.Assert(expr != null);
-          LiteralExpr litExpr = expr as LiteralExpr;
-          if (litExpr != null) 
-          {
-            args.Add(errModel.MkElement(litExpr.Val.ToString()));
-            continue;
-          }
-          
-          IdentifierExpr idExpr = expr as IdentifierExpr;
-          Contract.Assert( idExpr != null);
-          Contract.Assert( idExpr.Decl != null);
-          VCExprVar var = boogieExprTranslator.LookupVariable(idExpr.Decl);
-          Contract.Assert(var != null);
-          string name = context.Lookup(var);
-          Contract.Assert(name != null);
-          args.Add(errModel.GetFunc(name).GetConstant());
-        }
-        calleeCounterexamples[new TraceLocation(trace.Length - 1, i)] = 
-            new CalleeCounterexampleInfo(
-                LazyCounterexample(errModel, mvInfo, implName2LazyInliningInfo, context, program, calleeName, args),
-                args);
-        #endregion
       }
       
       GotoCmd gotoCmd = transferCmd as GotoCmd;
@@ -2909,499 +2354,12 @@ namespace VC {
           Contract.Assert(bb != null);
           if (traceNodes.Contains(bb)){
             trace.Add(bb);
-            return TraceCounterexample(bb, traceNodes, trace, errModel, mvInfo, incarnationOriginMap, implName2LazyInliningInfo, context, program, calleeCounterexamples);
+            return TraceCounterexample(bb, traceNodes, trace, errModel, mvInfo, incarnationOriginMap, context, program, calleeCounterexamples);
           }
         }
       }
 
       return null;
-
-      // Debug.Fail("Could not find failing node.");
-      // throw new Microsoft.Contracts.AssertException();
-    }
-
-
-    static void /*return printable error!*/ ApplyEnhancedErrorPrintingStrategy(Bpl.Expr/*!*/ expr, Hashtable /*Variable -> Expr*//*!*/ incarnationMap,
-      MiningStrategy errorDataEnhanced, ErrorModel/*!*/ errModel, Dictionary<Expr/*!*/, object>/*!*/ exprToPrintableValue,
-      List<string/*!*/>/*!*/ relatedInformation, bool printInternalStateDumpOnce, Dictionary<Incarnation, Absy/*!*/>/*!*/ incarnationOriginMap) {
-      Contract.Requires(expr != null);
-      Contract.Requires(incarnationMap != null);
-      Contract.Requires(errModel != null);
-      Contract.Requires(cce.NonNullDictionaryAndValues(exprToPrintableValue));
-      Contract.Requires(cce.NonNullElements(relatedInformation));
-      Contract.Requires(cce.NonNullDictionaryAndValues(incarnationOriginMap));
-      if (errorDataEnhanced is ListOfMiningStrategies) {
-        ListOfMiningStrategies loms = (ListOfMiningStrategies)errorDataEnhanced;
-        List < MiningStrategy > l = loms.msList;
-        for (int i = 0; i < l.Count; i++) {
-          MiningStrategy ms = l[i];
-          if (ms != null) {
-            ApplyEnhancedErrorPrintingStrategy(expr, incarnationMap, l[i], errModel, exprToPrintableValue, relatedInformation, false, incarnationOriginMap);
-          }
-        }
-      } else if (errorDataEnhanced is EEDTemplate /*EDEverySubExpr*/) {
-        EEDTemplate eedT = (EEDTemplate)errorDataEnhanced;
-        string reason = eedT.reason;
-        List<Bpl.Expr> listOfExprs = eedT.exprList;
-        Contract.Assert(cce.NonNullElements(listOfExprs));
-        if (listOfExprs != null) {
-          List<string> holeFillers = new List<string>();
-          for (int i = 0; i < listOfExprs.Count; i++) {
-            bool alreadySet = false;
-            foreach (KeyValuePair<Bpl.Expr, object> kvp in exprToPrintableValue) {
-              Contract.Assert(kvp.Key != null);
-              Bpl.Expr e = kvp.Key;
-              Bpl.Expr f = listOfExprs[i];
-              // the strings are compared instead of the actual expressions because 
-              // the expressions might not be identical, but their print-out strings will be
-              if (e.ToString() == f.ToString()) {
-                object o = kvp.Value;
-                if (o != null) {
-                  holeFillers.Add(o.ToString());
-                  alreadySet = true;
-                  break;
-                }
-              }
-            }
-            if (!alreadySet) {
-              // no information about that Expression found, so put in <unknown>
-              holeFillers.Add("<unknown>");
-            }
-          }
-          reason = FormatReasonString(reason, holeFillers);
-        }
-        if (reason != null) {
-          relatedInformation.Add("(related information): " + reason);
-        }
-      } else {
-        // define new templates here!
-      }
-
-      if (printInternalStateDumpOnce) {
-        ComputeAndTreatHeapSuccessions(incarnationMap, errModel, incarnationOriginMap, relatedInformation);
-
-        // default action: print all values!
-        foreach (KeyValuePair<Bpl.Expr, object> kvp in exprToPrintableValue) {
-          Contract.Assert(kvp.Key != null);
-          object o = kvp.Value;
-          if (o != null) {
-            // We do not want to print LiteralExprs because that gives things like 0 == 0.
-            // If both arguments to the string.Format are the same it is also useless, 
-            //   as that would print e.g. $a == $a.
-            if (!(kvp.Key is LiteralExpr) && kvp.Key.ToString() != o.ToString()) {
-              string boogieExpr;
-              // check whether we are handling BPL or SSC input
-              bool runningOnBpl = CommandLineOptions.Clo.Files.Exists(fn => Path.GetExtension(fn).ToLower() == "bpl");
-              if (runningOnBpl) {
-                boogieExpr = kvp.Key.ToString();
-              } else {
-                boogieExpr = Helpers.PrettyPrintBplExpr(kvp.Key);
-              }
-              relatedInformation.Add("(internal state dump): " + string.Format("{0} == {1}", boogieExpr, o));
-            }
-          }
-        }
-      }
-    }
-
-    static void ComputeAndTreatHeapSuccessions(System.Collections.Hashtable/*!*/ incarnationMap, ErrorModel/*!*/ errModel,
-      Dictionary<Incarnation, Absy/*!*/>/*!*/ incarnationOriginMap, List<string/*!*/>/*!*/ relatedInformation) {
-      Contract.Requires(incarnationMap != null);
-      Contract.Requires(errModel != null);
-      Contract.Requires(cce.NonNullDictionaryAndValues(incarnationOriginMap));
-      Contract.Requires(cce.NonNullElements(relatedInformation));
-      List<int> heapSuccList = ComputeHeapSuccessions(incarnationMap, errModel);
-      TreatHeapSuccessions(heapSuccList, incarnationMap, errModel, incarnationOriginMap, relatedInformation);
-    }
-
-    static List<int> ComputeHeapSuccessions(System.Collections.Hashtable incarnationMap, ErrorModel errModel) {
-      Contract.Requires(incarnationMap != null);
-      Contract.Requires(errModel != null);
-      // find the heap variable
-      Variable heap = null;
-      ICollection ic = incarnationMap.Keys;
-      foreach (object o in ic) {
-        if (o is GlobalVariable) {
-          GlobalVariable gv = (GlobalVariable)o;
-          if (gv.Name == "$Heap") {
-            heap = gv;
-          }
-        }
-      }
-      List<int> heapIdSuccession = new List<int>();
-      if (heap == null) {
-        // without knowing the name of the current heap we cannot create a heap succession!
-      } else {
-        object oHeap = incarnationMap[heap];
-        if (oHeap != null) {
-          string currentHeap = oHeap.ToString();
-          int currentHeapId;
-          if (errModel.identifierToPartition.TryGetValue(currentHeap, out currentHeapId)) {
-            while (currentHeapId != -1) {
-              if (!heapIdSuccession.Contains(currentHeapId)) {
-                heapIdSuccession.Add(currentHeapId);
-                currentHeapId = ComputePredecessorHeapId(currentHeapId, errModel);
-              } else {
-                // looping behavior, just stop here and do not add this value (again!)
-                break;
-              }
-            }
-          }
-        }
-      }
-      if (heapIdSuccession.Count > 0) {
-        int heapId = heapIdSuccession[heapIdSuccession.Count - 1];
-        List<string> strl = errModel.partitionToIdentifiers[heapId];
-        Contract.Assert(strl != null);
-        if (strl != null && strl.Contains("$Heap")) {
-          // we have a proper succession of heaps that starts with $Heap
-          return heapIdSuccession;
-        } else {
-          // no proper heap succession, not starting with $Heap!
-          return null;
-        }
-      } else {
-        // no heap succession found because either the $Heap does not have a current incarnation
-        // or because (unlikely!) the model is somehow messed up
-        return null;
-      }
-    }
-
-    static int ComputePredecessorHeapId(int id, ErrorModel errModel) {
-      Contract.Requires(errModel != null);
-      //check "$HeapSucc" and "store2" functions:
-      List<int> heapSuccPredIdList = new List<int>();
-      List<List<int>> heapSuccFunc;
-      errModel.definedFunctions.TryGetValue("$HeapSucc", out heapSuccFunc);
-      if (heapSuccFunc != null) {
-        foreach (List<int> heapSuccFuncDef in heapSuccFunc) {
-          // do not look at the else case of the function def, so check .Count
-          if (heapSuccFuncDef != null && heapSuccFuncDef.Count == 3 && heapSuccFuncDef[1] == id) {
-            // make sure each predecessor is put into the list at most once
-            if (!heapSuccPredIdList.Contains(heapSuccFuncDef[0])) {
-              heapSuccPredIdList.Add(heapSuccFuncDef[0]);
-            }
-          }
-        }
-      }
-      List<int> store2PredIdList = new List<int>();
-      ;
-      List<List<int>> store2Func;
-      errModel.definedFunctions.TryGetValue("store2", out store2Func);
-      if (store2Func != null) {
-        foreach (List<int> store2FuncDef in store2Func) {
-          // do not look at the else case of the function def, so check .Count
-          if (store2FuncDef != null && store2FuncDef.Count == 5 && store2FuncDef[4] == id) {
-            // make sure each predecessor is put into the list at most once
-            if (!store2PredIdList.Contains(store2FuncDef[0])) {
-              store2PredIdList.Add(store2FuncDef[0]);
-            }
-          }
-        }
-      }
-      if (heapSuccPredIdList.Count + store2PredIdList.Count > 0) {
-        if (store2PredIdList.Count == 1) {
-          return store2PredIdList[0];
-        } else if (store2PredIdList.Count == 0) {
-          if (heapSuccPredIdList.Count == 1) {
-            return heapSuccPredIdList[0];
-          } else { //(heapSuccPredIdList.Count > 1)
-            if (heapSuccPredIdList.Count == 2) {
-              // if one of the 2 is a self-loop, take the other!
-              if (heapSuccPredIdList[0] == id) {
-                return heapSuccPredIdList[1];
-              } else if (heapSuccPredIdList[1] == id) {
-                return heapSuccPredIdList[0];
-              } else {
-                //no self-loop, two different predecessors, cannot choose
-                return -1;
-              }
-            } else {
-              // at least 3 different predecessors available, one of them could be a self-loop, but 
-              // we cannot choose between the other 2 (or more) candidates
-              return -1;
-            }
-          }
-        } else {
-          // more than one result in the succession coming from store2, no way 
-          // to decide which is right, end here
-          return -1;
-        }
-      } else {
-        // no predecessor found
-        return -1;
-      }
-    }
-
-    static void TreatHeapSuccessions(List<int> heapSuccessionList, System.Collections.Hashtable incarnationMap, ErrorModel errModel,
-      Dictionary<Incarnation, Absy/*!*/>/*!*/ incarnationOriginMap, List<string/*!*/>/*!*/ relatedInformation) {
-      Contract.Requires(incarnationMap != null);
-      Contract.Requires(errModel != null);
-      Contract.Requires(cce.NonNullDictionaryAndValues(incarnationOriginMap));
-      Contract.Requires(cce.NonNullElements(relatedInformation));
-      if (heapSuccessionList == null) {
-        // empty list of heap successions, nothing we can do!
-        return;
-      }
-      // primarily look for $o and $f (with skolem-id stuff) and then look where they were last changed!
-      // find the o and f variables
-      Variable dollarO = null;
-      Variable dollarF = null;
-      ICollection ic = incarnationMap.Keys;
-      foreach (object o in ic) {
-        if (o is BoundVariable) {
-          BoundVariable bv = (BoundVariable)o;
-          if (bv.Name == "$o") {
-            dollarO = bv;
-          } else if (bv.Name == "$f") {
-            dollarF = bv;
-          }
-        }
-      }
-      if (dollarO == null || dollarF == null) {
-        // without knowing the name of the current incarnation of $Heap, $o and $f we don't do anything here
-      } else {
-        object objO = incarnationMap[dollarO];
-        object objF = incarnationMap[dollarF];
-        if (objO != null && objF != null) {
-          int zidO = errModel.identifierToPartition[objO.ToString()];
-          int zidF = errModel.identifierToPartition[objF.ToString()];
-
-          List<List<int>> select2Func = null;
-          if (errModel.definedFunctions.TryGetValue("select2", out select2Func) && select2Func != null) {
-            // check for all changes to $o.$f!
-            List<int> heapsChangedOFZid = new List<int>();
-            int oldValueZid = -1;
-            int newValueZid = -1;
-
-            for (int i = 0; i < heapSuccessionList.Count; i++) {
-              bool foundValue = false;
-              foreach (List<int> f in select2Func) {
-                if (f != null && f.Count == 4 && f[0] == heapSuccessionList[i] && f[1] == zidO && f[2] == zidF) {
-                  newValueZid = f[3];
-                  foundValue = true;
-                  break;
-                }
-              }
-              if (!foundValue) {
-                //    get default of the function once Leo&Nikolaj have changed it so the default is type correct
-                //    for now treat it as a -1 !
-                // the last element of select2Func is the else case, it has only 1 element, so grab that:
-                // newValueZid = (select2Func[select2Func.Count-1])[0];
-                newValueZid = -1;
-              }
-
-              if (oldValueZid != newValueZid) {
-                // there was a change here, record that in the list:
-                if (oldValueZid != -1) {
-                  // don't record a change at the "initial" location, which refers to the $Heap in
-                  // its current incarnation, and is marked by the oldValueZid being uninitialized
-                  heapsChangedOFZid.Add(heapSuccessionList[i - 1]);
-                }
-                oldValueZid = newValueZid;
-              }
-            }
-
-            foreach (int id in heapsChangedOFZid) {
-              //get the heap name out of the errModel for this zid:
-              List<string> l = errModel.partitionToIdentifiers[id];
-              Contract.Assert(l != null);
-              List<string> heaps = new List<string>();
-              if (l != null) {
-                foreach (string s in l) {
-                  if (s.StartsWith("$Heap")) {
-                    heaps.Add(s);
-                  }
-                }
-              }
-              // easy case first:
-              if (heaps.Count == 1) {
-                string heapName = heaps[0];
-                // we have a string with the name of the heap, but we need to get the 
-                // source location out of a map that uses Incarnations!
-
-                ICollection incOrgMKeys = incarnationOriginMap.Keys;
-                foreach (Incarnation inc in incOrgMKeys) {
-                  if (inc != null) {
-                    if (inc.Name == heapName) {
-                      Absy source = null;
-                      incarnationOriginMap.TryGetValue(inc, out source);
-                      if (source != null) {
-                        if (source is Block) {
-                          Block b = (Block)source;
-                          string fileName = b.tok.filename;
-                          if (fileName != null) {
-                            fileName = fileName.Substring(fileName.LastIndexOf('\\') + 1);
-                          }
-                          relatedInformation.Add("(related information): Changed $o.$f here: " + fileName + "(" + b.tok.line + "," + b.tok.col + ")");
-                        } else if (source is Cmd) {
-                          Cmd c = (Cmd)source;
-                          string fileName = c.tok.filename;
-                          if (fileName != null) {
-                            fileName = fileName.Substring(fileName.LastIndexOf('\\') + 1);
-                          }
-                          relatedInformation.Add("(related information) Changed $o.$f here: " + fileName + "(" + c.tok.line + "," + c.tok.col + ")");
-                        } else {
-                          Contract.Assert(false);
-                          throw new cce.UnreachableException();
-                        }
-                      }
-                    }
-                  }
-                }
-              } else {
-                // more involved! best use some of the above code and try to synchronize joint parts
-                // here there is more than one "$Heap@i" in the partition, check if they all agree on one
-                // source location or maybe if some of them are joins (i.e. blocks) that should be ignored
-              }
-
-            }
-          }
-        }
-      }
-    }
-
-    static string FormatReasonString(string reason, List<string> holeFillers) {
-      if (holeFillers != null) {
-        // in case all elements of holeFillers are "<unknown>" we can not say anything useful
-        // so just say nothing and return null
-        bool allUnknown = true;
-        foreach (string s in holeFillers) {
-          if (s != "<unknown>") {
-            allUnknown = false;
-            break;
-          }
-        }
-        if (allUnknown) {
-          return null;
-        }
-        string[] a = holeFillers.ToArray();
-        reason = string.Format(reason, a);
-      }
-      return reason;
-    }
-
-    static object ValueFromZID(ErrorModel errModel, int id) {
-      Contract.Requires(errModel != null);
-      return ValueFromZID(errModel, id, null);
-    }
-
-    static object ValueFromZID(ErrorModel errModel, int id, string searchForAlternate) {
-      Contract.Requires(errModel != null);
-      object o = errModel.partitionToValue[id];
-      if (o != null) {
-        return o;
-      } else {
-        // more elaborate scheme to find something better, as in: look at the identifiers that
-        // this partition maps to, or similar things!
-
-        //treatment for 'null':
-        int idForNull = -1;
-        if (errModel.valueToPartition.TryGetValue("nullObject", out idForNull) && idForNull == id) {
-          return "nullObject";
-        }
-
-        string returnStr = null;
-
-        // "good identifiers" if there is no value found are 'unique consts' or 
-        // '$in' parameters; '$in' parameters are treated, unclear how to get 'unique const' info
-        List<string> identifiers = errModel.partitionToIdentifiers[id];
-        if (identifiers != null) {
-          foreach (string s in identifiers) {
-            Contract.Assert(s != null);
-            //$in parameters are (more) interesting than other identifiers, return the
-            // first one found
-            if (s.EndsWith("$in")) {
-              returnStr = s;
-              break;
-            }
-          }
-        }
-
-        // try to get mappings from one identifier to another if there are exactly 
-        // two identifiers in the partition, where one of them is the identifier for which 
-        // we search for alternate encodings (third parameter of the method) [or an incarnation
-        // of such an identifier]
-        if (returnStr == null && searchForAlternate != null && identifiers != null && identifiers.Count == 2) {
-          if (identifiers[0] == searchForAlternate || identifiers[0].StartsWith(searchForAlternate + ".sk.")) {
-            returnStr = identifiers[1];
-          } else if (identifiers[1] == searchForAlternate || identifiers[1].StartsWith(searchForAlternate + ".sk.")) {
-            returnStr = identifiers[0];
-          }
-        }
-
-        if (returnStr != null) {
-          return Helpers.BeautifyBplString(returnStr);
-        }
-
-        return null;
-      }
-    }
-
-    static int TreatInterpretedFunction(string functionName, List<int> zargs, ErrorModel errModel) {
-      Contract.Requires(functionName != null);
-      Contract.Requires(zargs != null);
-      Contract.Requires(errModel != null);
-      if (zargs.Count != 2) {
-        //all interpreted functions are binary, so there have to be exactly two arguments
-        return -1;
-      } else {
-        object arg0 = ValueFromZID(errModel, zargs[0]);
-        object arg1 = ValueFromZID(errModel, zargs[1]);
-        if (arg0 is BigNum && arg1 is BigNum) {
-          BigNum arg0i = (BigNum)arg0;
-          BigNum arg1i = (BigNum)arg1;
-          BigNum result;
-          if (functionName == "+") {
-            result = arg0i + arg1i;
-          } else if (functionName == "-") {
-            result = arg0i - arg1i;
-          } else /*if (functionName == "*")*/ {
-            result = arg0i * arg1i;
-          }
-          int returnId = -1;
-          if (errModel.valueToPartition.TryGetValue(result, out returnId)) {
-            return returnId;
-          } else {
-            return -1;
-          }
-        } else {
-          //both arguments need to be integers for this to work!
-          return -1;
-        }
-      }
-    }
-
-    static int TreatFunction(string functionName, List<int> zargs, bool undefined, ErrorModel errModel) {
-      Contract.Requires(functionName != null);
-      Contract.Requires(zargs != null);
-      Contract.Requires(errModel != null);
-      List<List<int>> functionDef;
-      if ((!errModel.definedFunctions.TryGetValue(functionName, out functionDef) && functionName != "+" && functionName != "-" && functionName != "*") || undefined) {
-        // no fitting function found or one of the arguments is undefined
-        return -1;
-      } else {
-        if (functionName == "+" || functionName == "-" || functionName == "*") {
-          return TreatInterpretedFunction(functionName, zargs, errModel);
-        }
-        Contract.Assert(functionDef != null);
-        foreach (List<int> pWiseF in functionDef) {
-          Contract.Assert(pWiseF != null);
-          // else case in the function definition:
-          if (pWiseF.Count == 1) {
-            return pWiseF[0];
-          }
-          // number of arguments is exactly the right number
-          Contract.Assert(zargs.Count == pWiseF.Count - 1);
-          if (Contract.ForAll(zargs, i => i == pWiseF[i])) {
-            return pWiseF[pWiseF.Count - 1];
-          }
-        }
-        // all functions should have an 'else ->' case defined, therefore this should be
-        // unreachable code!
-        Contract.Assert(false);
-        throw new cce.UnreachableException();
-      }
     }
 
     protected static Counterexample AssertCmdToCounterexample(AssertCmd cmd, TransferCmd transferCmd, BlockSeq trace, Model errModel, ModelViewInfo mvInfo, ProverContext context) 
@@ -3413,7 +2371,6 @@ namespace VC {
       Contract.Ensures(Contract.Result<Counterexample>() != null);
 
       List<string> relatedInformation = new List<string>();
-      
       
       // See if it is a special assert inserted in translation
       if (cmd is AssertRequiresCmd)

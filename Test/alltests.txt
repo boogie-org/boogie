@@ -24,7 +24,6 @@ houdini          Use    Test for Houdini decision procedure
 datatypes        SoonToBeIncluded	Test for datatypes
 generalizedarray Use	Test for generalized array theory
 livevars         Use    STORM benchmarks for testing correctness of live variable analysis
-lazyinline       Postponed    Lazy inlining benchmarks
 stratifiedinline Use    Stratified inlining benchmarks
 extractloops     Use    Extract loops benchmarks
 havoc0           Use    HAVOC-generated bpl files

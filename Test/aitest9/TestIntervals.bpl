@@ -22,3 +22,19 @@ procedure P()
   assert -3 <= c;
   assert c <= 0;  // error (there was once an error in the Intervals which thought this assertion to be true)
 }
+
+// The following tests a triply nested array, where the innermost array is a polymorphic map.
+// There was once an error in Boogie's handling of such things in the AI code.
+
+type ref;
+type teflon;
+
+type Field a;
+type HeapType = <a>[Field a]a;
+var Heap: HeapType;
+
+procedure Q(myField: Field [ref][teflon]bool, r: ref, t: teflon)
+  modifies Heap;
+{
+  Heap[myField][r][t] := true;
+}

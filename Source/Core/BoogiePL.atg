@@ -786,6 +786,7 @@ WhileCmd<out WhileCmd/*!*/ wcmd>
      Expr guard;  Expr/*!*/ e;  bool isFree;
      List<PredicateCmd/*!*/> invariants = new List<PredicateCmd/*!*/>();
      StmtList/*!*/ body;
+     QKeyValue kv = null;
   .)
   "while"             (. x = t; .)
   Guard<out guard>    (. Contract.Assume(guard == null || cce.Owner.None(guard)); .)
@@ -793,10 +794,11 @@ WhileCmd<out WhileCmd/*!*/ wcmd>
     [ "free"          (. isFree = true;  .)
     ]
     "invariant"
+    { Attribute<ref kv> }
     Expression<out e> (. if (isFree) {
-                           invariants.Add(new AssumeCmd(z, e));
+                           invariants.Add(new AssumeCmd(z, e, kv));
                          } else {
-                           invariants.Add(new AssertCmd(z, e));
+                           invariants.Add(new AssertCmd(z, e, kv));
                          }
                       .)
     ";"

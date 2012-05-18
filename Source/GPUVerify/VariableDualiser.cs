@@ -11,10 +11,17 @@ namespace GPUVerify
     class VariableDualiser : Duplicator
     {
         private int id;
+        private UniformityAnalyser uniformityAnalyser;
+        private string procName;
 
-        public VariableDualiser(int id)
+        public VariableDualiser(int id, UniformityAnalyser uniformityAnalyser, string procName)
         {
+            Debug.Assert((uniformityAnalyser == null && procName == null)
+                || (uniformityAnalyser != null && procName != null));
+
             this.id = id;
+            this.uniformityAnalyser = uniformityAnalyser;
+            this.procName = procName;
         }
 
         public override Expr VisitIdentifierExpr(IdentifierExpr node)
@@ -34,7 +41,13 @@ namespace GPUVerify
 
         private TypedIdent DualiseTypedIdent(Variable v)
         {
-            return new TypedIdent(v.tok, v.Name + "$" + id, v.TypedIdent.Type);
+
+            if (uniformityAnalyser == null || !uniformityAnalyser.IsUniform(procName, v.Name))
+            {
+                return new TypedIdent(v.tok, v.Name + "$" + id, v.TypedIdent.Type);
+            }
+
+            return new TypedIdent(v.tok, v.Name, v.TypedIdent.Type);
         }
 
         public override Variable VisitVariable(Variable node)

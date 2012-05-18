@@ -232,6 +232,21 @@ namespace Microsoft.Dafny {
         }
       }
     }
+    public bool IsIndDatatype {
+      get {
+        return AsIndDatatype != null;
+      }
+    }
+    public IndDatatypeDecl AsIndDatatype {
+      get {
+        UserDefinedType udt = this as UserDefinedType;
+        if (udt == null) {
+          return null;
+        } else {
+          return udt.ResolvedClass as IndDatatypeDecl;
+        }
+      }
+    }
     public bool IsTypeParameter {
       get {
         UserDefinedType ct = this as UserDefinedType;
@@ -774,15 +789,13 @@ namespace Microsoft.Dafny {
     }
   }
 
-  public class DatatypeDecl : TopLevelDecl {
+  public abstract class DatatypeDecl : TopLevelDecl {
     public readonly List<DatatypeCtor/*!*/>/*!*/ Ctors;
     [ContractInvariantMethod]
     void ObjectInvariant() {
       Contract.Invariant(cce.NonNullElements(Ctors));
       Contract.Invariant(1 <= Ctors.Count);
     }
-
-    public DatatypeCtor DefaultCtor;  // set during resolution
 
     public DatatypeDecl(IToken/*!*/ tok, string/*!*/ name, ModuleDecl/*!*/ module, List<TypeParameter/*!*/>/*!*/ typeArgs,
       [Captured] List<DatatypeCtor/*!*/>/*!*/ ctors, Attributes attributes)
@@ -797,7 +810,39 @@ namespace Microsoft.Dafny {
     }
   }
 
-  public class DatatypeCtor : Declaration, TypeParameter.ParentType {
+  public class IndDatatypeDecl : DatatypeDecl
+  {
+    public DatatypeCtor DefaultCtor;  // set during resolution
+    public bool[] TypeParametersUsedInConstructionByDefaultCtor;  // set during resolution; has same length as
+
+    public IndDatatypeDecl(IToken/*!*/ tok, string/*!*/ name, ModuleDecl/*!*/ module, List<TypeParameter/*!*/>/*!*/ typeArgs,
+      [Captured] List<DatatypeCtor/*!*/>/*!*/ ctors, Attributes attributes)
+      : base(tok, name, module, typeArgs, ctors, attributes) {
+      Contract.Requires(tok != null);
+      Contract.Requires(name != null);
+      Contract.Requires(module != null);
+      Contract.Requires(cce.NonNullElements(typeArgs));
+      Contract.Requires(cce.NonNullElements(ctors));
+      Contract.Requires(1 <= ctors.Count);
+    }
+  }
+
+  public class CoDatatypeDecl : DatatypeDecl
+  {
+    public CoDatatypeDecl(IToken/*!*/ tok, string/*!*/ name, ModuleDecl/*!*/ module, List<TypeParameter/*!*/>/*!*/ typeArgs,
+      [Captured] List<DatatypeCtor/*!*/>/*!*/ ctors, Attributes attributes)
+      : base(tok, name, module, typeArgs, ctors, attributes) {
+      Contract.Requires(tok != null);
+      Contract.Requires(name != null);
+      Contract.Requires(module != null);
+      Contract.Requires(cce.NonNullElements(typeArgs));
+      Contract.Requires(cce.NonNullElements(ctors));
+      Contract.Requires(1 <= ctors.Count);
+    }
+  }
+
+  public class DatatypeCtor : Declaration, TypeParameter.ParentType
+  {
     public readonly List<Formal/*!*/>/*!*/ Formals;
     [ContractInvariantMethod]
     void ObjectInvariant() {
@@ -1562,13 +1607,13 @@ namespace Microsoft.Dafny {
   public class VarDeclStmt : ConcreteSyntaxStatement
   {
     public readonly List<VarDecl> Lhss;
-    public readonly UpdateStmt Update;
+    public readonly ConcreteUpdateStatement Update;
     [ContractInvariantMethod]
     void ObjectInvariant() {
       Contract.Invariant(cce.NonNullElements(Lhss));
     }
 
-    public VarDeclStmt(IToken tok, List<VarDecl> lhss, UpdateStmt update)
+    public VarDeclStmt(IToken tok, List<VarDecl> lhss, ConcreteUpdateStatement update)
       : base(tok)
     {
       Contract.Requires(lhss != null);
@@ -1578,9 +1623,35 @@ namespace Microsoft.Dafny {
     }
   }
 
-  public class UpdateStmt : ConcreteSyntaxStatement
+  /// <summary>
+  /// Common superclass of UpdateStmt and AssignSuchThatStmt.
+  /// </summary>
+  public abstract class ConcreteUpdateStatement : ConcreteSyntaxStatement
   {
     public readonly List<Expression> Lhss;
+    public ConcreteUpdateStatement(IToken tok, List<Expression> lhss)
+      : base(tok) {
+      Contract.Requires(tok != null);
+      Contract.Requires(cce.NonNullElements(lhss));
+      Lhss = lhss;
+    }
+  }
+
+  public class AssignSuchThatStmt : ConcreteUpdateStatement
+  {
+    public readonly AssumeStmt Assume;
+    public AssignSuchThatStmt(IToken tok, List<Expression> lhss, Expression expr)
+      : base(tok, lhss) {
+      Contract.Requires(tok != null);
+      Contract.Requires(cce.NonNullElements(lhss));
+      Contract.Requires(lhss.Count != 0);
+      Contract.Requires(expr != null);
+      Assume = new AssumeStmt(tok, expr);
+    }
+  }
+
+  public class UpdateStmt : ConcreteUpdateStatement
+  {
     public readonly List<AssignmentRhs> Rhss;
     public readonly bool CanMutateKnownState;
     [ContractInvariantMethod]
@@ -1589,24 +1660,22 @@ namespace Microsoft.Dafny {
       Contract.Invariant(cce.NonNullElements(Rhss));
     }
     public UpdateStmt(IToken tok, List<Expression> lhss, List<AssignmentRhs> rhss)
-      : base(tok)
+      : base(tok, lhss)
     {
       Contract.Requires(tok != null);
       Contract.Requires(cce.NonNullElements(lhss));
       Contract.Requires(cce.NonNullElements(rhss));
       Contract.Requires(lhss.Count != 0 || rhss.Count == 1);
-      Lhss = lhss;
       Rhss = rhss;
       CanMutateKnownState = false;
     }
     public UpdateStmt(IToken tok, List<Expression> lhss, List<AssignmentRhs> rhss, bool mutate)
-      : base(tok)
+      : base(tok, lhss)
     {
       Contract.Requires(tok != null);
       Contract.Requires(cce.NonNullElements(lhss));
       Contract.Requires(cce.NonNullElements(rhss));
       Contract.Requires(lhss.Count != 0 || rhss.Count == 1);
-      Lhss = lhss;
       Rhss = rhss;
       CanMutateKnownState = mutate;
     }
@@ -2259,6 +2328,7 @@ namespace Microsoft.Dafny {
     public readonly List<Expression/*!*/>/*!*/ Arguments;
     public DatatypeCtor Ctor;  // filled in by resolution
     public List<Type/*!*/> InferredTypeArgs = new List<Type>();  // filled in by resolution
+    public bool IsCoCall;  // filled in by resolution
     [ContractInvariantMethod]
     void ObjectInvariant() {
       Contract.Invariant(DatatypeName != null);
@@ -2485,6 +2555,8 @@ namespace Microsoft.Dafny {
     public readonly Expression/*!*/ Receiver;
     public readonly IToken OpenParen;  // can be null if Args.Count == 0
     public readonly List<Expression/*!*/>/*!*/ Args;
+    public enum CoCallResolution { No, Yes, NoBecauseFunctionHasSideEffects }
+    public CoCallResolution CoCall = CoCallResolution.No;  // indicates whether or not the call is a co-recursive call; filled in by resolution
 
     [ContractInvariantMethod]
     void ObjectInvariant() {

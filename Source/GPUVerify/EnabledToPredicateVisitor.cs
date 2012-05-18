@@ -10,13 +10,13 @@ namespace GPUVerify
     class EnabledToPredicateVisitor : StandardVisitor
     {
 
-        public EnabledToPredicateVisitor(TypedIdent currentPredicate)
+        public EnabledToPredicateVisitor(Expr currentPredicate)
         {
             this.currentPredicate = currentPredicate;
 
         }
 
-        private TypedIdent currentPredicate;
+        private Expr currentPredicate;
 
 
         public override Expr VisitNAryExpr(NAryExpr node)
@@ -27,7 +27,7 @@ namespace GPUVerify
 
                 if (call.Func.Name.Equals("__enabled"))
                 {
-                    return new IdentifierExpr(node.tok, new LocalVariable(node.tok, currentPredicate));
+                    return currentPredicate;
                 }
 
             }

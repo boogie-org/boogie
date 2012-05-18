@@ -749,6 +749,7 @@ namespace Microsoft.Boogie {
         } else {
           stream.Write(level + 1, "invariant ");
         }
+        Cmd.EmitAttributes(stream, inv.Attributes);
         inv.Expr.Emit(stream);
         stream.WriteLine(";");
       }
@@ -1471,7 +1472,7 @@ namespace Microsoft.Boogie {
         NAryExpr/*!*/ res = Expr.Select(Map.AsExpr, Indexes);
         Contract.Assert(res != null);
         res.TypeParameters = this.TypeParameters;
-        res.Type = Map.AsExpr.Type.AsMap.Result;
+        res.Type = this.Type;
         return res;
       }
     }

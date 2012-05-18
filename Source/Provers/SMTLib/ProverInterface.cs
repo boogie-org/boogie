@@ -78,21 +78,20 @@ namespace Microsoft.Boogie.SMTLib
 
       SetupProcess();
 
-      if (CommandLineOptions.Clo.StratifiedInlining > 0)
+      if (CommandLineOptions.Clo.StratifiedInlining > 0 || CommandLineOptions.Clo.ContractInfer)
       {
           // Prepare for ApiChecker usage
           if (options.LogFilename != null && currentLogFile == null)
           {
               currentLogFile = OpenOutputFile("");
           }
-          if (CommandLineOptions.Clo.ProcedureCopyBound > 0 || CommandLineOptions.Clo.UseUnsatCoreForInlining)
+          if (CommandLineOptions.Clo.ContractInfer)
           {
               SendThisVC("(set-option :produce-unsat-cores true)");
               this.usingUnsatCore = true;
           }
           PrepareCommon();
       }
-      prevOutcomeAvailable = false;
     }
 
     void SetupProcess()
@@ -429,8 +428,8 @@ namespace Microsoft.Boogie.SMTLib
               labels = CalculatePath(0);
               xlabels = labels;
             }
-            ErrorModel errorModel = GetErrorModel();
-            handler.OnModel(xlabels, errorModel);
+            Model model = GetErrorModel();
+            handler.OnModel(xlabels, model);
           }
 
           if (labels == null || errorsLeft == 0) break;
@@ -490,7 +489,7 @@ namespace Microsoft.Boogie.SMTLib
       return path.ToArray();
     }
 
-    private ErrorModel GetErrorModel() {
+    private Model GetErrorModel() {
       if (!options.ExpectingModel())
         return null;
       SendThisVC("(get-model)");
@@ -529,7 +528,7 @@ namespace Microsoft.Boogie.SMTLib
         else
           theModel = models[0];
       }
-      return new ErrorModel(theModel);
+      return theModel;
     }
 
     private string[] GetLabelsInfo()
@@ -556,13 +555,6 @@ namespace Microsoft.Boogie.SMTLib
 
     private Outcome GetResponse()
     {
-      if (prevOutcomeAvailable)
-      {
-          Contract.Assert(CommandLineOptions.Clo.StratifiedInlining > 0);
-          prevOutcomeAvailable = false;
-          return prevOutcome;
-      }
-
       var result = Outcome.Undetermined;
       var wasUnknown = false;
 
@@ -778,6 +770,14 @@ namespace Microsoft.Boogie.SMTLib
         SendThisVC(a);
     }
 
+    public override void DefineMacro(Function fun, VCExpr vc) {
+      DeclCollector.AddFunction(fun);
+      string name = Namer.GetName(fun, fun.Name);
+      string a = "(define-fun " + name + "() Bool " + VCExpr2String(vc, 1) + ")";
+      AssertAxioms();
+      SendThisVC(a);
+    }
+
     public override void AssertAxioms()
     {
         FlushAxioms();
@@ -785,8 +785,6 @@ namespace Microsoft.Boogie.SMTLib
 
     public override void Check()
     {
-        Contract.Assert(prevOutcomeAvailable == false);
-
         PrepareCommon();
         SendThisVC("(check-sat)");
         FlushLogFile();
@@ -800,16 +798,13 @@ namespace Microsoft.Boogie.SMTLib
     /// <summary>
     /// Extra state for ApiChecker (used by stratifiedInlining)
     /// </summary>
-    bool prevOutcomeAvailable;
-    Outcome prevOutcome;
     static int nameCounter = 0;
 
-    public override void CheckAssumptions(List<VCExpr> assumptions, out List<int> unsatCore)
+    public override Outcome CheckAssumptions(List<VCExpr> assumptions, out List<int> unsatCore, ErrorHandler handler)
     {
-        Contract.Assert(prevOutcomeAvailable == false);
-
         unsatCore = new List<int>();
 
+        Push();
         // Name the assumptions
         var nameToAssumption = new Dictionary<string, int>();
         int i = 0;
@@ -819,25 +814,30 @@ namespace Microsoft.Boogie.SMTLib
             nameCounter++;
             nameToAssumption.Add(name, i);
 
-            SendThisVC(string.Format("(assert (! {0} :named {1}))", VCExpr2String(vc, 1), name));
+            string vcString = VCExpr2String(vc, 1);
+            AssertAxioms();
+            SendThisVC(string.Format("(assert (! {0} :named {1}))", vcString, name));
             i++;
         }
         Check();
 
-        prevOutcome = GetResponse();
-        prevOutcomeAvailable = true;
-        if (prevOutcome != Outcome.Valid)
-        {
-            return;
+        var outcome = CheckOutcomeCore(handler);
+
+        if (outcome != Outcome.Valid) {
+          Pop();
+          return outcome;
         }
+
         Contract.Assert(usingUnsatCore, "SMTLib prover not setup for computing unsat cores");
         SendThisVC("(get-unsat-core)");
         var resp = Process.GetProverResponse();
         unsatCore = new List<int>();
-        if(resp.Name != "") unsatCore.Add(nameToAssumption[resp.Name]);
+        if (resp.Name != "") unsatCore.Add(nameToAssumption[resp.Name]);
         foreach (var s in resp.Arguments) unsatCore.Add(nameToAssumption[s.Name]);
 
         FlushLogFile();
+        Pop();
+        return outcome;
     }
 
     public override void Push()
@@ -846,6 +846,79 @@ namespace Microsoft.Boogie.SMTLib
         DeclCollector.Push();
     }
 
+    public override Outcome CheckAssumptions(List<VCExpr> hardAssumptions, List<VCExpr> softAssumptions, out List<int> unsatisfiedSoftAssumptions, ErrorHandler handler) {
+      unsatisfiedSoftAssumptions = new List<int>();
+
+      // First, convert both hard and soft assumptions to SMTLIB strings
+      List<string> hardAssumptionStrings = new List<string>();
+      foreach (var a in hardAssumptions) {
+        hardAssumptionStrings.Add(VCExpr2String(a, 1));
+      }
+      List<string> currAssumptionStrings = new List<string>();
+      foreach (var a in softAssumptions) {
+        currAssumptionStrings.Add(VCExpr2String(a, 1));
+      }
+
+      Push();
+      AssertAxioms();
+      foreach (var a in hardAssumptionStrings) {
+        SendThisVC("(assert " + a + ")");
+      }
+      Check();
+      Outcome outcome = GetResponse();
+      if (outcome != Outcome.Invalid) {
+        Pop();
+        return outcome;
+      }
+
+      int k = 0;
+      List<string> relaxVars = new List<string>();
+      while (true) {
+        Push();
+        foreach (var a in currAssumptionStrings) {
+          SendThisVC("(assert " + a + ")");
+        }
+        Check();
+        outcome = CheckOutcomeCore(handler);
+        if (outcome != Outcome.Valid)
+          break;
+        Pop();
+        string relaxVar = "relax_" + k;
+        relaxVars.Add(relaxVar);
+        SendThisVC("(declare-fun " + relaxVar + " () Int)");
+        List<string> nextAssumptionStrings = new List<string>();
+        for (int i = 0; i < currAssumptionStrings.Count; i++) {
+          string constraint = "(= " + relaxVar + " " + i + ")";
+          nextAssumptionStrings.Add("(or " + currAssumptionStrings[i] + " " + constraint + ")");
+        }
+        currAssumptionStrings = nextAssumptionStrings;
+        k++;
+      }
+
+      if (outcome == Outcome.Invalid) {
+        foreach (var relaxVar in relaxVars) {
+          SendThisVC("(get-value (" + relaxVar + "))");
+          FlushLogFile();
+          var resp = Process.GetProverResponse();
+          if (resp == null) break;
+          if (!(resp.Name == "" && resp.ArgCount == 1)) break;
+          resp = resp.Arguments[0];
+          if (!(resp.Name == "" && resp.ArgCount == 2)) break;
+          resp = resp.Arguments[1];
+          if (resp.ArgCount != 0)
+            break;
+          int v;
+          if (int.TryParse(resp.Name, out v))
+            unsatisfiedSoftAssumptions.Add(v);
+          else
+            break;
+        }
+        Pop();
+      }
+
+      Pop();
+      return outcome;
+    }
   }
 
   public class SMTLibProverContext : DeclFreeProverContext

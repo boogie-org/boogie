@@ -230,10 +230,10 @@ REVERSE_IMPLIES=<bool>    Encode P==>Q as Q||!P.
             outcome = context.Check(out z3LabelModels);
         }
 
-        public override void CheckAssumptions(List<VCExpr> assumptions, out List<int> unsatCore)
+        public override ProverInterface.Outcome CheckAssumptions(List<VCExpr> assumptions, out List<int> unsatCore, ErrorHandler handler)
         {
             LineariserOptions linOptions = new Z3LineariserOptions(false, (Z3InstanceOptions)this.options, new List<VCExprVar>());
-            outcome = context.CheckAssumptions(assumptions, linOptions, out z3LabelModels, out unsatCore);
+            return context.CheckAssumptions(assumptions, linOptions, out z3LabelModels, out unsatCore);
         }
 
         public override void Push()
@@ -285,7 +285,7 @@ REVERSE_IMPLIES=<bool>    Encode P==>Q as Q||!P.
                 foreach (Z3ErrorModelAndLabels z3LabelModel in z3LabelModels)
                 {
                     List<string> unprefixedLabels = RemovePrefixes(z3LabelModel.RelevantLabels);
-                    handler.OnModel(unprefixedLabels, z3LabelModel.ErrorModel);
+                    handler.OnModel(unprefixedLabels, z3LabelModel.Model);
                 }
             }
             return outcome;
@@ -295,7 +295,7 @@ REVERSE_IMPLIES=<bool>    Encode P==>Q as Q||!P.
           if (outcome == Outcome.Invalid) {
             foreach (Z3ErrorModelAndLabels z3LabelModel in z3LabelModels) {
               List<string> unprefixedLabels = RemovePrefixes(z3LabelModel.RelevantLabels);
-              handler.OnModel(unprefixedLabels, z3LabelModel.ErrorModel);
+              handler.OnModel(unprefixedLabels, z3LabelModel.Model);
             }
           }
           return outcome;

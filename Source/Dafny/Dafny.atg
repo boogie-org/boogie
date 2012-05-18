@@ -171,7 +171,7 @@ Dafny
                                               theModules.Add(module); .)
     | (. if (isGhost) { SemErr(t, "a class is not allowed to be declared as 'ghost'"); } .)
       ClassDecl<defaultModule, out c>           (. defaultModule.TopLevelDecls.Add(c); .)
-    | (. if (isGhost) { SemErr(t, "a datatype is not allowed to be declared as 'ghost'"); } .)
+    | (. if (isGhost) { SemErr(t, "a datatype/codatatype is not allowed to be declared as 'ghost'"); } .)
       DatatypeDecl<defaultModule, out dt>       (. defaultModule.TopLevelDecls.Add(dt); .)
     | (. if (isGhost) { SemErr(t, "a type is not allowed to be declared as 'ghost'"); } .)
       ArbitraryTypeDecl<defaultModule, out at>  (. defaultModule.TopLevelDecls.Add(at); .)
@@ -241,9 +241,12 @@ DatatypeDecl<ModuleDecl/*!*/ module, out DatatypeDecl/*!*/ dt>
      List<TypeParameter/*!*/> typeArgs = new List<TypeParameter/*!*/>();
      List<DatatypeCtor/*!*/> ctors = new List<DatatypeCtor/*!*/>();
      IToken bodyStart = Token.NoToken;  // dummy assignment
+     bool co = false;
   .)
   SYNC
-  "datatype"
+  ( "datatype"
+  | "codatatype"     (. co = true; .)
+  )
   { Attribute<ref attrs> }
   Ident<out id>
   [ GenericParameters<typeArgs> ]
@@ -251,7 +254,11 @@ DatatypeDecl<ModuleDecl/*!*/ module, out DatatypeDecl/*!*/ dt>
   DatatypeMemberDecl<ctors>
   { "|" DatatypeMemberDecl<ctors> }
   SYNC ";"
-  (. dt = new DatatypeDecl(id, id.val, module, typeArgs, ctors, attrs);
+  (. if (co) {
+       dt = new CoDatatypeDecl(id, id.val, module, typeArgs, ctors, attrs);
+     } else {
+       dt = new IndDatatypeDecl(id, id.val, module, typeArgs, ctors, attrs);
+     }
      dt.BodyStartTok = bodyStart;
      dt.BodyEndTok = t;
   .)
@@ -712,6 +719,7 @@ UpdateStmt<out Statement/*!*/ s>
      Expression lhs0;
      IToken x;
      Attributes attrs = null;
+     Expression suchThat = null;
   .)
   Lhs<out e>                       (. x = e.tok; .)
   ( { Attribute<ref attrs> }
@@ -719,14 +727,22 @@ UpdateStmt<out Statement/*!*/ s>
   |                                (. lhss.Add(e);  lhs0 = e; .)
     { "," Lhs<out e>               (. lhss.Add(e); .)
     }
-    ":="                           (. x = t; .)
-    Rhs<out r, lhs0>               (. rhss.Add(r); .)
-    { "," Rhs<out r, lhs0>         (. rhss.Add(r); .)
-    }
+    ( ":="                         (. x = t; .)
+      Rhs<out r, lhs0>             (. rhss.Add(r); .)
+      { "," Rhs<out r, lhs0>       (. rhss.Add(r); .)
+      }
+    | ":|"                         (. x = t; .)
+      Expression<out suchThat>
+    )
     ";"
   | ":"                            (. SemErr(t, "invalid statement (did you forget the 'label' keyword?)"); .)
   )
-  (. s = new UpdateStmt(x, lhss, rhss); .)
+  (. if (suchThat != null) {
+       s = new AssignSuchThatStmt(x, lhss, suchThat);
+     } else {
+       s = new UpdateStmt(x, lhss, rhss);
+     }
+  .)
   .
 Rhs<out AssignmentRhs r, Expression receiverForInitCall>
 = (. IToken/*!*/ x, newToken;  Expression/*!*/ e;
@@ -770,6 +786,7 @@ VarDeclStatement<.out Statement/*!*/ s.>
      AssignmentRhs r;  IdentifierExpr lhs0;
      List<VarDecl> lhss = new List<VarDecl>();
      List<AssignmentRhs> rhss = new List<AssignmentRhs>();
+     Expression suchThat = null;
   .)
   [ "ghost"                                 (. isGhost = true;  x = t; .)
   ]
@@ -785,10 +802,18 @@ VarDeclStatement<.out Statement/*!*/ s.>
     Rhs<out r, lhs0>               (. rhss.Add(r); .)
     { "," Rhs<out r, lhs0>         (. rhss.Add(r); .)
     }
+  | ":|"                           (. assignTok = t; .)
+    Expression<out suchThat>
   ]
   ";"
-  (. UpdateStmt update;
-     if (rhss.Count == 0) {
+  (. ConcreteUpdateStatement update;
+     if (suchThat != null) {
+       var ies = new List<Expression>();
+       foreach (var lhs in lhss) {
+         ies.Add(new IdentifierExpr(lhs.Tok, lhs.Name));
+       }
+       update = new AssignSuchThatStmt(assignTok, ies, suchThat);
+     } else if (rhss.Count == 0) {
        update = null;
      } else {
        var ies = new List<Expression>();

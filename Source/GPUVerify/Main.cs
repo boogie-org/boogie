@@ -28,7 +28,7 @@ namespace GPUVerify
 
             if (CommandLineOptions.inputFiles.Count < 1)
             {
-                OnlyBoogie.ErrorWriteLine("*** Error: No input files were specified.");
+                Console.WriteLine("*** Error: No input files were specified.");
                 Environment.Exit(1);
             }
 
@@ -41,7 +41,7 @@ namespace GPUVerify
                 }
                 if (extension != ".gbpl")
                 {
-                    OnlyBoogie.AdvisoryWriteLine("Warning '{0}': Should only pass filename with extension .gbpl. Input must be GBoogie programs.", file);
+                    Console.WriteLine("Warning '{0}': Should only pass filename with extension .gbpl. Input must be GBoogie programs.", file);
                 }
             }
 
@@ -91,7 +91,7 @@ namespace GPUVerify
         public static bool doit(string filename, Variable v, int a1, int a2)
         {
             Program newProgram = parse();
-            RaceInstrumenterBase ri = CommandLineOptions.SetEncoding ? (RaceInstrumenterBase)new SetEncodingRaceInstrumenter() : (RaceInstrumenterBase) new ElementEncodingRaceInstrumenter();
+            RaceInstrumenterBase ri = new ElementEncodingRaceInstrumenter();
             GPUVerifier newGp = new GPUVerifier(filename, newProgram, ri);
             ri.setVerifier(newGp);
 
@@ -184,7 +184,7 @@ namespace GPUVerify
             {
                 if (!CommandLineOptions.OnlyDivergence)
                 {
-                    RaceInstrumenterBase ri = CommandLineOptions.SetEncoding ? (RaceInstrumenterBase)new SetEncodingRaceInstrumenter() : (RaceInstrumenterBase)new ElementEncodingRaceInstrumenter();
+                    RaceInstrumenterBase ri = new ElementEncodingRaceInstrumenter();
                     ri.setVerifier(g);
                     g.setRaceInstrumenter(ri);
                 }
@@ -220,14 +220,14 @@ namespace GPUVerify
                     errorCount = Parser.Parse(bplFileName, defines, out programSnippet);
                     if (programSnippet == null || errorCount != 0)
                     {
-                        OnlyBoogie.ErrorWriteLine("{0} parse errors detected in {1}", errorCount, bplFileName);
+                        Console.WriteLine("{0} parse errors detected in {1}", errorCount, bplFileName);
                         okay = false;
                         continue;
                     }
                 }
                 catch (IOException e)
                 {
-                    OnlyBoogie.ErrorWriteLine("Error opening file \"{0}\": {1}", bplFileName, e.Message);
+                    Console.WriteLine("Error opening file \"{0}\": {1}", bplFileName, e.Message);
                     okay = false;
                     continue;
                 }
