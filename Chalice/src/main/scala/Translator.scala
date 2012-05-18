@@ -2234,6 +2234,7 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
     Comment("end exhale")
   }
   
+  /** copy all the values of locations that are folded under any predicate (that we care about) one or more levels down from 'heap' to 'exhaleHeap' */
   def restoreFoldedLocations(mask: Expr, heap: Boogie.Expr, exhaleHeap: Boogie.Expr): List[Boogie.Stmt] = {
     val foldedPredicates = etran.fpi.getFoldedPredicates()
     (for (fp <- foldedPredicates) yield {
@@ -2252,6 +2253,7 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
       Boogie.If(CanRead(receiver, pred.FullName, mask, ZeroMask), stmts, Nil)
   }
   
+  /** the actual recursive method for restoreFoldedLocationsHelperPred */
   def restoreFoldedLocationsHelper(expr: Expression, mask: Expr, heap: Boogie.Expr, exhaleHeap: Boogie.Expr, otherPredicates: List[FoldedPredicate]): List[Boogie.Stmt] = {
     val f = (expr: Expression) => restoreFoldedLocationsHelper(expr, mask, heap, exhaleHeap, otherPredicates)
     expr match {
