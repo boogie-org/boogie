@@ -2282,7 +2282,7 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
       case acc @ AccessSeq(s, Some(member), perm) =>
         throw new InternalErrorException("not implemented yet")
       case cr@Credit(ch, n) =>
-        throw new InternalErrorException("not implemented yet")
+        Nil
       case Implies(e0,e1) =>
         Boogie.If(Tr(e0), f(e1), Nil)
       case IfThenElse(con, then, els) =>
@@ -2290,9 +2290,9 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
       case And(e0,e1) =>
         f(e0) ::: f(e1)
       case holds@Holds(e) =>
-        throw new InternalErrorException("not implemented yet")
+        Nil
       case Eval(h, e) =>
-        throw new InternalErrorException("not implemented yet")
+        Nil
       case e =>
         Nil
     }
