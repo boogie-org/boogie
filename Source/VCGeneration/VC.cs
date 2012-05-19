@@ -2045,12 +2045,8 @@ namespace VC {
       }
 
       mvInfo = new ModelViewInfo(program, impl);
-      Hashtable exitIncarnationMap = Convert2PassiveCmd(impl, mvInfo);
+      Convert2PassiveCmd(impl, mvInfo);
 
-      #region Support for stratified inlining
-      storeIncarnationMaps(impl.Name, exitIncarnationMap);
-      #endregion
-            
       #region Peep-hole optimizations
       if (CommandLineOptions.Clo.RemoveEmptyBlocks){
         #region Get rid of empty blocks
@@ -2165,10 +2161,6 @@ namespace VC {
 
     // Used by stratified inlining
     protected virtual void addExitAssert(string implName, Block exitBlock)
-    {
-    }
-
-    protected virtual void storeIncarnationMaps(string implName, Hashtable exitIncarnationMap)
     {
     }
 

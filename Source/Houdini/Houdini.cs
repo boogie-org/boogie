@@ -689,6 +689,8 @@ namespace Microsoft.Boogie.Houdini {
       foreach (var x in currentHoudiniState.Assignment)
         assignment[x.Key.Name] = x.Value;
       currentHoudiniState.Outcome.assignment = assignment;
+      vcgen.Close();
+      proverInterface.Close();
       return currentHoudiniState.Outcome;
     }
 
