@@ -1659,15 +1659,12 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
         tmpTranslator.ExhaleDuringUnfold(List((acc, ErrorMessage(unfolding.pos, "Unfolding might fail."))), "unfolding", false, unfoldingK, false) :::
         // inhale the definition of the predicate
         tmpTranslator.Inhale(List(definition), "unfolding", false, unfoldingK) :::
-        // remove secondary permissions (if any), and add them again
-        (if (isOldEtran) Nil else
-          UpdateSecMaskDuringUnfold(pred.predicate, Tr(obj), Heap.select(Tr(obj), pred.predicate.FullName), perm, unfoldingK) :::
-          TransferPermissionToSecMask(pred.predicate, obj, perm, unfolding.pos)) :::
         // update the predicate mask to indicate the predicates that are folded under 'pred'
         (if (isOldEtran) Nil
         else etran.keepFoldedLocations(definition, o, pred.predicate, etran.Mask, etran.Heap, etran.fpi.getFoldedPredicates(pred.predicate))) :::
         // check definedness of e in state where the predicate is unfolded
-        tmpTranslator.isDefined(e)
+        tmpTranslator.isDefined(e) :::
+        bassume(wf(etran.Heap, etran.Mask, etran.SecMask)) :: Nil
         
         // record folded predicate
         val version = Heap.select(o, pred.predicate.FullName)
