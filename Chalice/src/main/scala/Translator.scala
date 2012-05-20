@@ -2272,7 +2272,7 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
           val (fV, f) = Boogie.NewBVar("f", FieldType(tt), true)
           val (pmV, pm: Expr) = Boogie.NewBVar("newPredicateMask", tpmask, true)
           val assumption = (heap.select(foldReceiver, foldPred.FullName+"#m").select(ref, f.id) || heap.select(trE, memberName+"#m").select(ref, f.id)) ==> pm.select(ref, f.id)
-          BLocal(pmV) :: (pm := ZeroPMask) ::
+          BLocal(pmV) :: Havoc(pm) ::
           bassume(new Boogie.Forall(ttV, fV, assumption).forall(refV)) ::
           (heap.select(foldReceiver, foldPred.FullName+"#m") := pm) :: Nil
         } else Nil) :::
