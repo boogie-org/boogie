@@ -289,7 +289,8 @@ namespace Microsoft.Dafny {
 
         if (dt is IndDatatypeDecl) {
           Indent(ind); wr.WriteLine("public override string ToString() {");
-          Indent(ind + IndentAmount); wr.WriteLine("string s = \"{0}\";", ctor.FullName.Substring(1)/*skip the #*/);
+          string nm = (dt.Module.IsDefaultModule ? "" : dt.Module.Name + ".") + dt.Name + "." + ctor.Name;
+          Indent(ind + IndentAmount); wr.WriteLine("string s = \"{0}\";", nm);
           if (ctor.Formals.Count != 0) {
             Indent(ind + IndentAmount); wr.WriteLine("s += \"(\";");
             i = 0;
@@ -446,7 +447,7 @@ namespace Microsoft.Dafny {
       // destructors
       foreach (var ctor in dt.Ctors) {
         foreach (var arg in ctor.Formals) {
-          if (arg.HasName) {
+          if (!arg.IsGhost && arg.HasName) {
             //   public T0 @Dtor0 { get { return ((DT_Ctor)_D).@Dtor0; } }
             Indent(ind);
             wr.WriteLine("public {0} dtor_{1} {{ get {{ return (({2}_{3}{4})_D).@{1}; }} }}", TypeName(arg.Type), arg.Name, dt.Name, ctor.Name, DtT_TypeArgs);

@@ -247,6 +247,26 @@ namespace Microsoft.Dafny {
         }
       }
     }
+    public bool IsCoDatatype {
+      get {
+        return AsCoDatatype != null;
+      }
+    }
+    public CoDatatypeDecl AsCoDatatype {
+      get {
+        UserDefinedType udt = this as UserDefinedType;
+        if (udt == null) {
+          return null;
+        } else {
+          return udt.ResolvedClass as CoDatatypeDecl;
+        }
+      }
+    }
+    public bool InvolvesCoDatatype {
+      get {
+        return IsCoDatatype;  // TODO: should really check structure of the type recursively
+      }
+    }
     public bool IsTypeParameter {
       get {
         UserDefinedType ct = this as UserDefinedType;
@@ -2555,7 +2575,7 @@ namespace Microsoft.Dafny {
     public readonly Expression/*!*/ Receiver;
     public readonly IToken OpenParen;  // can be null if Args.Count == 0
     public readonly List<Expression/*!*/>/*!*/ Args;
-    public enum CoCallResolution { No, Yes, NoBecauseFunctionHasSideEffects }
+    public enum CoCallResolution { No, Yes, NoBecauseFunctionHasSideEffects, NoBecauseRecursiveCallsAreNotAllowedInThisContext, NoBecauseIsNotGuarded }
     public CoCallResolution CoCall = CoCallResolution.No;  // indicates whether or not the call is a co-recursive call; filled in by resolution
 
     [ContractInvariantMethod]
