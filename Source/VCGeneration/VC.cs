@@ -288,7 +288,7 @@ namespace VC {
         }
         parent.CurrentLocalVariables = impl.LocVars;
         ModelViewInfo mvInfo;
-        parent.PassifyImpl(impl, program, out mvInfo);
+        parent.PassifyImpl(impl, out mvInfo);
         Hashtable label2Absy;
         Checker ch = parent.FindCheckerFor(impl, CommandLineOptions.Clo.SmokeTimeout);
         Contract.Assert(ch != null);
@@ -1404,7 +1404,7 @@ namespace VC {
           watch.Start();
       }
 
-      ConvertCFG2DAG(impl, program);
+      ConvertCFG2DAG(impl);
 
       SmokeTester smoke_tester = null;
       if (CommandLineOptions.Clo.SoundnessSmokeTest) {
@@ -1413,7 +1413,7 @@ namespace VC {
       }
 
       ModelViewInfo mvInfo;
-      Hashtable/*TransferCmd->ReturnCmd*/ gotoCmdOrigins = PassifyImpl(impl, program, out mvInfo);
+      Hashtable/*TransferCmd->ReturnCmd*/ gotoCmdOrigins = PassifyImpl(impl, out mvInfo);
 
       double max_vc_cost = CommandLineOptions.Clo.VcsMaxCost;
       int tmp_max_vc_cost = -1, max_splits = CommandLineOptions.Clo.VcsMaxSplits, 
@@ -1757,10 +1757,9 @@ namespace VC {
         }
       }
     }
-    public void ConvertCFG2DAG(Implementation impl, Program program)
+    public void ConvertCFG2DAG(Implementation impl)
     {
     Contract.Requires(impl != null);
-    Contract.Requires(program != null);
       impl.PruneUnreachableBlocks();  // This is needed for VCVariety.BlockNested, and is otherwise just an optimization
 
       CurrentLocalVariables = impl.LocVars;
@@ -1972,7 +1971,7 @@ namespace VC {
       #endregion
     }
 
-    public Hashtable/*TransferCmd->ReturnCmd*/ PassifyImpl(Implementation impl, Program program, out ModelViewInfo mvInfo)
+    public Hashtable/*TransferCmd->ReturnCmd*/ PassifyImpl(Implementation impl, out ModelViewInfo mvInfo)
     {
       Contract.Requires(impl != null);
       Contract.Requires(program != null);

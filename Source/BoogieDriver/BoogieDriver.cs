@@ -692,7 +692,7 @@ namespace Microsoft.Boogie {
                 if (c == null || !c.Name.StartsWith(CommandLineOptions.Clo.inferLeastForUnsat)) continue;
                 ss.Add(c.Name);
               }
-              outcome = svcgen.FindLeastToVerify(impl, program, ref ss);
+              outcome = svcgen.FindLeastToVerify(impl, ref ss);
               errors = new List<Counterexample>();
               Console.Write("Result: ");
               foreach (var s in ss) {

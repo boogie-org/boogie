@@ -504,7 +504,6 @@ namespace VC {
     protected Hashtable /*Variable -> int*/ variable2SequenceNumber;
     public Dictionary<Incarnation, Absy>/*!>!*/ incarnationOriginMap = new Dictionary<Incarnation, Absy>();
 
-    // used only by FindCheckerFor
     public Program program;
     protected string/*?*/ logFilePath;
     protected bool appendLogFile;

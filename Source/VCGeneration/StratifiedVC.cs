@@ -48,263 +48,350 @@ namespace VC
         {
             implName2StratifiedInliningInfo = new Dictionary<string, StratifiedInliningInfo>();
             prover = ProverInterface.CreateProver(program, logFilePath, appendLogFile, CommandLineOptions.Clo.ProverKillTime);
-            this.GenerateVCsForStratifiedInlining();
+            foreach (Declaration decl in program.TopLevelDeclarations) {
+              Implementation impl = decl as Implementation;
+              if (impl == null) continue;
+              Contract.Assert(!impl.Name.StartsWith(recordProcName), "Not allowed to have an implementation for this guy");
+              if (impl.Proc.FindExprAttribute("inline") != null) {
+                implName2StratifiedInliningInfo[impl.Name] = new StratifiedInliningInfo(impl, this);
+              }
+            }
+            this.GenerateRecordFunctions();
             PersistCallTree = false;
             useSummary = false;
             procsThatReachedRecBound = new HashSet<string>();
         }
 
-        protected void GenerateReachVC(Implementation impl, StratifiedInliningInfo info, ProverInterface prover) {
-          Variable controlFlowVariable = info.controlFlowVariable;
-          VCExpressionGenerator gen = prover.VCExprGen;
-          ProverContext proverCtxt = prover.Context;
-          Boogie2VCExprTranslator translator = proverCtxt.BoogieExprTranslator;
-          VCExprVar controlFlowVariableExpr = translator.LookupVariable(controlFlowVariable);
-
-          Block exitBlock = null;
-          Dictionary<Block, VCExprVar> reachVars = new Dictionary<Block, VCExprVar>();
-          Dictionary<Block, VCExpr> reachExprs = new Dictionary<Block, VCExpr>();
-          foreach (Block b in impl.Blocks) {
-            reachVars[b] = gen.Variable(b.Label + "_reachable", Bpl.Type.Bool);
-            reachExprs[b] = VCExpressionGenerator.False;
-            if (b.TransferCmd is ReturnCmd)
-              exitBlock = b;
+        internal class CallSitesSimplifier : StandardVisitor {
+          VariableSeq localVars;
+          StratifiedVCGen vcgen;
+          public static void SimplifyCallSites(Implementation implementation, StratifiedVCGen vcgen) {
+            CallSitesSimplifier visitor = new CallSitesSimplifier(vcgen);
+            visitor.Visit(implementation);
+            implementation.LocVars.AddRange(visitor.localVars);
           }
-          info.reachVars = reachVars;
-
-          foreach (Block b in impl.Blocks) {
-            foreach (Block pb in b.Predecessors) {
-              VCExpr controlFlowFunctionAppl = gen.ControlFlowFunctionApplication(controlFlowVariableExpr, gen.Integer(BigNum.FromInt(pb.UniqueId)));
-              VCExpr controlTransferExpr = gen.Eq(controlFlowFunctionAppl, gen.Integer(BigNum.FromInt(b.UniqueId)));
-              reachExprs[b] = gen.Or(reachExprs[b], gen.And(reachVars[pb], controlTransferExpr));
+          private CallSitesSimplifier(StratifiedVCGen vcgen) {
+            this.vcgen = vcgen;
+            this.localVars = new VariableSeq();
+          }
+          public override CmdSeq VisitCmdSeq(CmdSeq cmdSeq) {
+            CmdSeq newCmdSeq = new CmdSeq();
+            foreach (Cmd cmd in cmdSeq) {
+              AssumeCmd assumeCmd = cmd as AssumeCmd;
+              if (assumeCmd == null) {
+                newCmdSeq.Add(cmd);
+                continue;
+              }
+              NAryExpr naryExpr = assumeCmd.Expr as NAryExpr;
+              if (naryExpr == null || !vcgen.implName2StratifiedInliningInfo.ContainsKey(naryExpr.Fun.FunctionName)) {
+                newCmdSeq.Add(cmd);
+                continue;
+              }
+              
+              ExprSeq exprs = new ExprSeq();
+              foreach (Expr e in naryExpr.Args) {
+                LocalVariable newVar = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "CallSiteSimplification@" + localVars.Length, e.Type));
+                localVars.Add(newVar);
+                newCmdSeq.Add(new AssumeCmd(Token.NoToken, Expr.Eq(Expr.Ident(newVar), e)));
+                exprs.Add(Expr.Ident(newVar));
+              }
+              newCmdSeq.Add(new NAryExpr(Token.NoToken, naryExpr.Fun, exprs));
             }
+            return newCmdSeq;
           }
-          // leave the binding for reachVars[impl.Blocks[0]] undefined
-          // this binding will be defined when this impl is inlined
-          List<VCExprLetBinding> bindings = new List<VCExprLetBinding>();
-          foreach (Block b in impl.Blocks) {
-            bindings.Add(gen.LetBinding(reachVars[b], reachExprs[b]));
+        }
+
+        internal class CallSitesCollector : StandardVisitor {
+          List<CallSite> callSites;
+          StratifiedVCGen vcgen;
+          StratifiedInliningInfo info;
+          Block currBlock;
+          public static List<CallSite> CollectCallSites(Implementation implementation, StratifiedVCGen vcgen) {
+            var visitor = new CallSitesCollector(implementation, vcgen);
+            visitor.Visit(implementation);
+            return visitor.callSites;
           }
-          info.reachVarBindings = bindings;
+          private CallSitesCollector(Implementation implementation, StratifiedVCGen vcgen) {
+            this.vcgen = vcgen;
+            this.info = vcgen.implName2StratifiedInliningInfo[implementation.Name];
+            callSites = new List<CallSite>();
+          }
+          public override Block VisitBlock(Block node) {
+            this.currBlock = node;
+            return base.VisitBlock(node);
+          }
+          public override Cmd VisitAssumeCmd(AssumeCmd node) {
+            NAryExpr naryExpr = node.Expr as NAryExpr;
+            if (naryExpr == null)
+              return node;
+            if (!vcgen.implName2StratifiedInliningInfo.ContainsKey(naryExpr.Fun.FunctionName)) 
+              return node;
+            List<VCExpr> interfaceExprVars = new List<VCExpr>();
+            foreach (Expr e in naryExpr.Args) {
+              IdentifierExpr ie = e as IdentifierExpr;
+              interfaceExprVars.Add(vcgen.prover.Context.BoogieExprTranslator.LookupVariable(ie.Decl));
+            }
+            CallSite cs = new CallSite(naryExpr.Fun.FunctionName, interfaceExprVars, currBlock);
+            callSites.Add(cs);
+            return node;
+          }
+        }
+        
+        public class StratifiedVC {
+          private static int newVarCount = 0;
+          private static VCExprVar CreateNewVar(ProverInterface prover, Microsoft.Boogie.Type type) {
+            string newName = "StratifiedInlining@" + newVarCnt.ToString();
+            newVarCount++;
+            Constant newVar = new Constant(Token.NoToken, new TypedIdent(Token.NoToken, newName, type));
+            prover.Context.DeclareConstant(newVar, false, null);
+            return prover.VCExprGen.Variable(newVar.Name, type);
+          }
+          private static int idCount = 0;
+
+          int id;
+          Implementation impl;
+          List<VCExprVar> interfaceExprVars;
+          List<StratifiedCallSite> callSites;
+          VCExpr vcexpr;
+          public Dictionary<Block, VCExprVar> reachVars;
+
+          public StratifiedVC(StratifiedInliningInfo info, StratifiedVCGen vcgen) {
+            if (!info.initialized) {
+              info.GenerateVC(vcgen);
+            }
+
+            impl = info.impl;
+            interfaceExprVars = new List<VCExprVar>();
+            VCExpr expansion = info.vcexpr;
+            var prover = vcgen.prover;
+            VCExpressionGenerator gen = prover.VCExprGen;
+            var bet = prover.Context.BoogieExprTranslator;
+            VCExpr controlFlowVariableExpr = bet.LookupVariable(info.controlFlowVariable);
+            id = idCount++;
+            VCExpr eqExpr = gen.Eq(controlFlowVariableExpr, gen.Integer(BigNum.FromInt(id)));
+            expansion = gen.And(eqExpr, expansion);
+
+            Dictionary<VCExprVar, VCExpr> substDict = new Dictionary<VCExprVar, VCExpr>();
+            foreach (VCExprVar v in info.interfaceExprVars) {
+              VCExprVar newVar = CreateNewVar(prover, v.Type);
+              interfaceExprVars.Add(newVar);
+              substDict.Add(v, newVar);
+            }
+            foreach (VCExprVar v in info.privateExprVars) {
+              substDict.Add(v, CreateNewVar(prover, v.Type));
+            }
+            VCExprSubstitution subst = new VCExprSubstitution(substDict, new Dictionary<TypeVariable, Microsoft.Boogie.Type>());
+            SubstitutingVCExprVisitor substVisitor = new SubstitutingVCExprVisitor(prover.VCExprGen);
+            expansion = substVisitor.Mutate(expansion, subst);
+            
+            reachVars = new Dictionary<Block, VCExprVar>();
+            Dictionary<Block, VCExpr> reachExprs = new Dictionary<Block, VCExpr>();
+            foreach (Block b in impl.Blocks) {
+              reachVars[b] = CreateNewVar(prover, Bpl.Type.Bool);
+              reachExprs[b] = VCExpressionGenerator.False;
+            }
+            foreach (Block b in impl.Blocks) {
+              foreach (Block pb in b.Predecessors) {
+                VCExpr controlFlowFunctionAppl = gen.ControlFlowFunctionApplication(controlFlowVariableExpr, gen.Integer(BigNum.FromInt(pb.UniqueId)));
+                VCExpr controlTransferExpr = gen.Eq(controlFlowFunctionAppl, gen.Integer(BigNum.FromInt(b.UniqueId)));
+                reachExprs[b] = gen.Or(reachExprs[b], gen.And(reachVars[pb], controlTransferExpr));
+              }
+            }
+            // The binding for entry block should be left defined;
+            // it will get filled in when the call tree is constructed
+            vcexpr = expansion;
+            for (int i = 1; i < impl.Blocks.Count; i++) {
+              Block b = impl.Blocks[i];
+              vcexpr = gen.And(vcexpr, gen.Eq(reachVars[b], reachExprs[b]));
+            }
+
+            callSites = new List<StratifiedCallSite>();
+            foreach (CallSite cs in info.callSites) {
+              callSites.Add(new StratifiedCallSite(cs, substVisitor, subst, reachVars));
+            }
+
+          }
+        }
+
+        public class CallSite {
+          public string callee;
+          public List<VCExpr> interfaceExprVars;
+          public Block block;
+          public CallSite(string callee, List<VCExpr> interfaceExprVars, Block block) {
+            this.callee = callee;
+            this.interfaceExprVars = interfaceExprVars;
+            this.block = block;
+          }
+        }
+
+        public class StratifiedCallSite {
+          CallSite callSite;
+          List<VCExpr> interfaceExprVars;
+          VCExprVar reachVar;
+
+          public StratifiedCallSite(CallSite cs, SubstitutingVCExprVisitor substVisitor, VCExprSubstitution subst, Dictionary<Block, VCExprVar> reachVars) {
+            callSite = cs;
+            interfaceExprVars = new List<VCExpr>();
+            foreach (VCExpr v in cs.interfaceExprVars) {
+              interfaceExprVars.Add(substVisitor.Mutate(v, subst));
+            }
+            reachVar = reachVars[cs.block];
+          }
         }
 
         public class StratifiedInliningInfo {
           public Implementation impl;
           public Function function;
           public Variable controlFlowVariable;
-          public List<Variable> interfaceVars;
           public Expr assertExpr;
           public VCExpr vcexpr;
-          public List<VCExprVar> privateVars;
+          public List<VCExprVar> interfaceExprVars;
+          public List<VCExprVar> privateExprVars;
           public Hashtable/*<int, Absy!>*/ label2absy;
           public ModelViewInfo mvInfo;
-
-          public Dictionary<Block, VCExprVar> reachVars;
-          public List<VCExprLetBinding> reachVarBindings;
-
+          public List<CallSite> callSites;
           public bool initialized;
-          public int inline_cnt;
-          public List<VCExprVar> interfaceExprVars;
 
-          public StratifiedInliningInfo(Implementation impl, Program program, ProverContext ctxt) {
-            Contract.Requires(impl != null);
-            Contract.Requires(program != null);
-            Contract.Requires(impl != null);
-            Contract.Requires(program != null);
-            Procedure proc = cce.NonNull(impl.Proc);
+          public StratifiedInliningInfo(Implementation implementation, StratifiedVCGen vcgen) {
+            impl = implementation;
 
-            this.impl = impl;
-            this.controlFlowVariable = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "@cfc", Microsoft.Boogie.Type.Int));
-            impl.LocVars.Add(controlFlowVariable);
-
-            List<Variable> interfaceVars = new List<Variable>();
-            foreach (Variable v in program.GlobalVariables()) {
-              Contract.Assert(v != null);
-              interfaceVars.Add(v);
-            }
-            // InParams must be obtained from impl and not proc
-            foreach (Variable v in impl.InParams) {
-              Contract.Assert(v != null);
-              interfaceVars.Add(v);
-            }
-            Expr assertExpr = new LiteralExpr(Token.NoToken, true);
-            // OutParams must be obtained from impl and not proc
-            foreach (Variable v in impl.OutParams) {
-              Contract.Assert(v != null);
-              Constant c = new Constant(Token.NoToken,
-                                        new TypedIdent(Token.NoToken, impl.Name + "_" + v.Name, v.TypedIdent.Type));
-              interfaceVars.Add(c);
-              Expr eqExpr = Expr.Eq(new IdentifierExpr(Token.NoToken, c), new IdentifierExpr(Token.NoToken, v));
-              assertExpr = Expr.And(assertExpr, eqExpr);
-            }
-            foreach (IdentifierExpr e in proc.Modifies) {
-              Contract.Assert(e != null);
-              if (e.Decl == null)
-                continue;
-              Variable v = e.Decl;
-              Constant c = new Constant(Token.NoToken, new TypedIdent(Token.NoToken, impl.Name + "_" + v.Name, v.TypedIdent.Type));
-              interfaceVars.Add(c);
-              Expr eqExpr = Expr.Eq(new IdentifierExpr(Token.NoToken, c), new IdentifierExpr(Token.NoToken, v));
-              assertExpr = Expr.And(assertExpr, eqExpr);
-            }
-
-            this.interfaceVars = interfaceVars;
-            this.assertExpr = Expr.Not(assertExpr);
             VariableSeq functionInterfaceVars = new VariableSeq();
-            foreach (Variable v in interfaceVars) {
-              Contract.Assert(v != null);
-              functionInterfaceVars.Add(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, v.Name, v.TypedIdent.Type), true));
+            foreach (Variable v in vcgen.program.GlobalVariables()) {
+              functionInterfaceVars.Add(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "", v.TypedIdent.Type), true));
             }
-            TypedIdent ti = new TypedIdent(Token.NoToken, "", Bpl.Type.Bool);
-            Contract.Assert(ti != null);
-            Formal returnVar = new Formal(Token.NoToken, ti, false);
-            Contract.Assert(returnVar != null);
-            this.function = new Function(Token.NoToken, proc.Name, functionInterfaceVars, returnVar);
-            ctxt.DeclareFunction(this.function, "");
+            foreach (Variable v in impl.InParams) {
+              functionInterfaceVars.Add(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "", v.TypedIdent.Type), true));
+            }
+            foreach (Variable v in impl.OutParams) {
+              functionInterfaceVars.Add(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "", v.TypedIdent.Type), true));
+            }
+            foreach (IdentifierExpr e in impl.Proc.Modifies) {
+              if (e.Decl == null) continue;
+              functionInterfaceVars.Add(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "", e.Decl.TypedIdent.Type), true));
+            }
+            Formal returnVar = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "", Bpl.Type.Bool), false);
+            function = new Function(Token.NoToken, impl.Name, functionInterfaceVars, returnVar);
+            vcgen.prover.Context.DeclareFunction(function, "");
 
-            inline_cnt = 0;
-            privateVars = new List<VCExprVar>();
-            interfaceExprVars = new List<VCExprVar>();
+            ExprSeq exprs = new ExprSeq();
+            foreach (Variable v in vcgen.program.GlobalVariables()) {
+              Contract.Assert(v != null);
+              exprs.Add(new OldExpr(Token.NoToken, new IdentifierExpr(Token.NoToken, v)));
+            }
+            foreach (Variable v in impl.Proc.InParams) {
+              Contract.Assert(v != null);
+              exprs.Add(new IdentifierExpr(Token.NoToken, v));
+            }
+            foreach (Variable v in impl.Proc.OutParams) {
+              Contract.Assert(v != null);
+              exprs.Add(new IdentifierExpr(Token.NoToken, v));
+            }
+            foreach (IdentifierExpr ie in impl.Proc.Modifies) {
+              Contract.Assert(ie != null);
+              if (ie.Decl == null)
+                continue;
+              exprs.Add(ie);
+            }
+            Expr freePostExpr = new NAryExpr(Token.NoToken, new FunctionCall(function), exprs);
+            impl.Proc.Ensures.Add(new Ensures(Token.NoToken, true, freePostExpr, "", new QKeyValue(Token.NoToken, "si_fcall", new List<object>(), null)));
+            
             initialized = false;
           }
-        }
 
-        public void GenerateVCsForStratifiedInlining()
-        {
-            foreach (Declaration decl in program.TopLevelDeclarations)
-            {
-                Contract.Assert(decl != null);
-                Implementation impl = decl as Implementation;
-                if (impl == null)
-                    continue;
-                Contract.Assert(!impl.Name.StartsWith(recordProcName), "Not allowed to have an implementation for this guy");
-
-                Procedure proc = cce.NonNull(impl.Proc);
-                if (proc.FindExprAttribute("inline") != null)
-                {
-                    StratifiedInliningInfo info = new StratifiedInliningInfo(impl, program, prover.Context);
-                    implName2StratifiedInliningInfo[impl.Name] = info;
-
-                    ExprSeq exprs = new ExprSeq();
-                    foreach (Variable v in program.GlobalVariables())
-                    {
-                        Contract.Assert(v != null);
-                        exprs.Add(new OldExpr(Token.NoToken, new IdentifierExpr(Token.NoToken, v)));
-                    }
-                    foreach (Variable v in proc.InParams)
-                    {
-                        Contract.Assert(v != null);
-                        exprs.Add(new IdentifierExpr(Token.NoToken, v));
-                    }
-                    foreach (Variable v in proc.OutParams)
-                    {
-                        Contract.Assert(v != null);
-                        exprs.Add(new IdentifierExpr(Token.NoToken, v));
-                    }
-                    foreach (IdentifierExpr ie in proc.Modifies)
-                    {
-                        Contract.Assert(ie != null);
-                        if (ie.Decl == null)
-                            continue;
-                        exprs.Add(ie);
-                    }
-                    Expr freePostExpr = new NAryExpr(Token.NoToken, new FunctionCall(info.function), exprs);
-                    proc.Ensures.Add(new Ensures(Token.NoToken, true, freePostExpr, "", new QKeyValue(Token.NoToken, "si_fcall", new List<object>(), null)));
-                }
+          public void GenerateVC(StratifiedVCGen vcgen) {
+            List<Variable> outputVariables = new List<Variable>();
+            assertExpr = new LiteralExpr(Token.NoToken, true);
+            foreach (Variable v in impl.OutParams) {
+              Constant c = new Constant(Token.NoToken, new TypedIdent(Token.NoToken, impl.Name + "_" + v.Name, v.TypedIdent.Type));
+              outputVariables.Add(c);
+              Expr eqExpr = Expr.Eq(new IdentifierExpr(Token.NoToken, c), new IdentifierExpr(Token.NoToken, v));
+              assertExpr = Expr.And(assertExpr, eqExpr);
             }
-
-            foreach (var decl in program.TopLevelDeclarations)
-            {
-                var proc = decl as Procedure;
-                if (proc == null) continue;
-                if (!proc.Name.StartsWith(recordProcName)) continue;
-                Contract.Assert(proc.InParams.Length == 1);
-
-                // Make a new function
-                TypedIdent ti = new TypedIdent(Token.NoToken, "", Bpl.Type.Bool);
-                Contract.Assert(ti != null);
-                Formal returnVar = new Formal(Token.NoToken, ti, false);
-                Contract.Assert(returnVar != null);
-
-                // Get record type
-                var argtype = proc.InParams[0].TypedIdent.Type;
-
-                var ins = new VariableSeq();
-                ins.Add(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "x", argtype), true));
-
-                var recordFunc = new Function(Token.NoToken, proc.Name, ins, returnVar);
-                prover.Context.DeclareFunction(recordFunc, "");
-
-                var exprs = new ExprSeq();
-                exprs.Add(new IdentifierExpr(Token.NoToken, proc.InParams[0]));
-
-                Expr freePostExpr = new NAryExpr(Token.NoToken, new FunctionCall(recordFunc), exprs);
-                proc.Ensures.Add(new Ensures(true, freePostExpr));
+            foreach (IdentifierExpr e in impl.Proc.Modifies) {
+              if (e.Decl == null) continue;
+              Variable v = e.Decl;
+              Constant c = new Constant(Token.NoToken, new TypedIdent(Token.NoToken, impl.Name + "_" + v.Name, v.TypedIdent.Type));
+              outputVariables.Add(c);
+              Expr eqExpr = Expr.Eq(new IdentifierExpr(Token.NoToken, c), new IdentifierExpr(Token.NoToken, v));
+              assertExpr = Expr.And(assertExpr, eqExpr);
             }
-        }
+            assertExpr = Expr.Not(assertExpr);
 
-        private void GenerateVCForStratifiedInlining(StratifiedInliningInfo info)
-        {
-            Contract.Requires(program != null);
-            Contract.Requires(info != null);
-            Contract.Requires(prover != null);
-            Contract.Requires(info.impl != null);
-            Contract.Requires(info.impl.Proc != null);
-            Contract.Requires(!info.initialized);
-            Contract.Ensures(info.initialized);
-
-            Implementation impl = info.impl;
-            Contract.Assert(impl != null);
-            ConvertCFG2DAG(impl, program);
+            Program program = vcgen.program;
+            ProverInterface proverInterface = vcgen.prover;
+            vcgen.ConvertCFG2DAG(impl);
             ModelViewInfo mvInfo;
-            PassifyImpl(impl, program, out mvInfo);
-            Hashtable/*<int, Absy!>*/ label2absy;
-            VCExpressionGenerator gen = prover.VCExprGen;
-            Contract.Assert(gen != null);
+            vcgen.PassifyImpl(impl, out mvInfo);
 
-            var ctx = prover.Context;
-            var exprGen = ctx.ExprGen;
-            var bet = ctx.BoogieExprTranslator;
-            VCExpr controlFlowVariableExpr = CommandLineOptions.Clo.UseLabels ? null : bet.LookupVariable(info.controlFlowVariable);
+            controlFlowVariable = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "@cfc", Microsoft.Boogie.Type.Int));
+            impl.LocVars.Add(controlFlowVariable);
 
-            VCExpr vcexpr = gen.Not(GenerateVC(impl, controlFlowVariableExpr, out label2absy, prover.Context));
-            Contract.Assert(vcexpr != null);
+            VCExpressionGenerator gen = proverInterface.VCExprGen;
+            var exprGen = proverInterface.Context.ExprGen;
+            var translator = proverInterface.Context.BoogieExprTranslator;
+            VCExpr controlFlowVariableExpr = CommandLineOptions.Clo.UseLabels ? null : translator.LookupVariable(controlFlowVariable);
+
+            CallSitesSimplifier.SimplifyCallSites(impl, vcgen);
+            vcexpr = gen.Not(vcgen.GenerateVC(impl, controlFlowVariableExpr, out label2absy, proverInterface.Context));
             if (!CommandLineOptions.Clo.UseLabels) {
               VCExpr controlFlowFunctionAppl = exprGen.ControlFlowFunctionApplication(controlFlowVariableExpr, exprGen.Integer(BigNum.ZERO));
               VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl, exprGen.Integer(BigNum.FromInt(impl.Blocks[0].UniqueId)));
               vcexpr = exprGen.And(eqExpr, vcexpr);
             }
-          
-            info.label2absy = label2absy;
-            info.mvInfo = mvInfo;
 
-            Boogie2VCExprTranslator translator = prover.Context.BoogieExprTranslator;
-            Contract.Assert(translator != null);
-            info.privateVars = new List<VCExprVar>();
-            foreach (Variable v in impl.LocVars)
-            {
-                Contract.Assert(v != null);
-                info.privateVars.Add(translator.LookupVariable(v));
+            privateExprVars = new List<VCExprVar>();
+            foreach (Variable v in impl.LocVars) {
+              privateExprVars.Add(translator.LookupVariable(v));
             }
-            foreach (Variable v in impl.OutParams)
-            {
-                Contract.Assert(v != null);
-                info.privateVars.Add(translator.LookupVariable(v));
+            foreach (Variable v in impl.OutParams) {
+              privateExprVars.Add(translator.LookupVariable(v));
             }
 
-            info.interfaceExprVars = new List<VCExprVar>();
-            List<VCExpr> interfaceExprs = new List<VCExpr>();
-            foreach (Variable v in info.interfaceVars)
-            {
-                Contract.Assert(v != null);
-                VCExprVar ev = translator.LookupVariable(v);
-                Contract.Assert(ev != null);
-                info.interfaceExprVars.Add(ev);
-                interfaceExprs.Add(ev);
+            interfaceExprVars = new List<VCExprVar>();
+            foreach (Variable v in program.GlobalVariables()) {
+              interfaceExprVars.Add(translator.LookupVariable(v));
+            }
+            foreach (Variable v in impl.InParams) {
+              interfaceExprVars.Add(translator.LookupVariable(v));
+            }
+            foreach (Variable v in outputVariables) {
+              interfaceExprVars.Add(translator.LookupVariable(v));
             }
 
-            info.vcexpr = vcexpr;
-            info.initialized = true;
+            callSites = CallSitesCollector.CollectCallSites(impl, vcgen);
+
+            initialized = true;
+          }
+        }
+
+        public void GenerateRecordFunctions() {
+          foreach (var decl in program.TopLevelDeclarations) {
+            var proc = decl as Procedure;
+            if (proc == null) continue;
+            if (!proc.Name.StartsWith(recordProcName)) continue;
+            Contract.Assert(proc.InParams.Length == 1);
+
+            // Make a new function
+            TypedIdent ti = new TypedIdent(Token.NoToken, "", Bpl.Type.Bool);
+            Contract.Assert(ti != null);
+            Formal returnVar = new Formal(Token.NoToken, ti, false);
+            Contract.Assert(returnVar != null);
+
+            // Get record type
+            var argtype = proc.InParams[0].TypedIdent.Type;
+
+            var ins = new VariableSeq();
+            ins.Add(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "x", argtype), true));
+
+            var recordFunc = new Function(Token.NoToken, proc.Name, ins, returnVar);
+            prover.Context.DeclareFunction(recordFunc, "");
+
+            var exprs = new ExprSeq();
+            exprs.Add(new IdentifierExpr(Token.NoToken, proc.InParams[0]));
+
+            Expr freePostExpr = new NAryExpr(Token.NoToken, new FunctionCall(recordFunc), exprs);
+            proc.Ensures.Add(new Ensures(true, freePostExpr));
+          }
         }
 
         public class SummaryComputation
@@ -980,10 +1067,9 @@ namespace VC
             }
         }
 
-        public Outcome FindLeastToVerify(Implementation impl, Program program, ref HashSet<string> allBoolVars)
+        public Outcome FindLeastToVerify(Implementation impl, ref HashSet<string> allBoolVars)
         {
             Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
-            Debug.Assert(this.program == program);
 
             // Record current time
             var startTime = DateTime.UtcNow;
@@ -1001,7 +1087,7 @@ namespace VC
             foreach (StratifiedInliningInfo info in implName2StratifiedInliningInfo.Values)
             {
                 Contract.Assert(info != null);
-                GenerateVCForStratifiedInlining(info);
+                info.GenerateVC(this);
             }
 
             // Get the VC of the current procedure
@@ -1009,8 +1095,8 @@ namespace VC
             Hashtable/*<int, Absy!>*/ mainLabel2absy;
             ModelViewInfo mvInfo;
 
-            ConvertCFG2DAG(impl, program);
-            Hashtable/*TransferCmd->ReturnCmd*/ gotoCmdOrigins = PassifyImpl(impl, program, out mvInfo);
+            ConvertCFG2DAG(impl);
+            Hashtable/*TransferCmd->ReturnCmd*/ gotoCmdOrigins = PassifyImpl(impl, out mvInfo);
             var exprGen = prover.Context.ExprGen;
             VCExpr controlFlowVariableExpr = CommandLineOptions.Clo.UseLabels ? null : exprGen.Integer(BigNum.ZERO); 
             vcMain = GenerateVC(impl, controlFlowVariableExpr, out mainLabel2absy, prover.Context);
@@ -1687,7 +1773,7 @@ namespace VC
                 StratifiedInliningInfo info = implName2StratifiedInliningInfo[procName];
                 if (!info.initialized)
                 {
-                    GenerateVCForStratifiedInlining(info);
+                    info.GenerateVC(this);
                 }
                 //Console.WriteLine("Inlining {0}", procName);
                 VCExpr expansion = cce.NonNull(info.vcexpr);
@@ -1715,7 +1801,7 @@ namespace VC
 
                 // Instantiate and declare the "exists" variables
                 Dictionary<VCExprVar, VCExpr> substExistsDict = new Dictionary<VCExprVar, VCExpr>();
-                foreach (VCExprVar v in info.privateVars)
+                foreach (VCExprVar v in info.privateExprVars)
                 {
                     Contract.Assert(v != null);
                     string newName = v.Name + "_si_" + newVarCnt.ToString();
@@ -1781,9 +1867,9 @@ namespace VC
             Contract.Ensures(Contract.ValueAtReturn(out label2absy) != null);
             Contract.Ensures(Contract.ValueAtReturn(out reporter) != null);
 
-            ConvertCFG2DAG(impl, program);
+            ConvertCFG2DAG(impl);
             ModelViewInfo mvInfo;
-            Hashtable/*TransferCmd->ReturnCmd*/ gotoCmdOrigins = PassifyImpl(impl, program, out mvInfo);
+            Hashtable/*TransferCmd->ReturnCmd*/ gotoCmdOrigins = PassifyImpl(impl, out mvInfo);
 
             var exprGen = prover.Context.ExprGen;
             VCExpr controlFlowVariableExpr = CommandLineOptions.Clo.UseLabels ? null : exprGen.Integer(BigNum.ZERO);
