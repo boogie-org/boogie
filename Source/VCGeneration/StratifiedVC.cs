@@ -95,7 +95,7 @@ namespace VC
                 newCmdSeq.Add(new AssumeCmd(Token.NoToken, Expr.Eq(Expr.Ident(newVar), e)));
                 exprs.Add(Expr.Ident(newVar));
               }
-              newCmdSeq.Add(new NAryExpr(Token.NoToken, naryExpr.Fun, exprs));
+              newCmdSeq.Add(new AssumeCmd(Token.NoToken, new NAryExpr(Token.NoToken, naryExpr.Fun, exprs)));
             }
             return newCmdSeq;
           }
