@@ -82,6 +82,140 @@ namespace GPUVerify
             return result;
         }
 
+        private void MakeDual(CmdSeq cs, Cmd c)
+        {
+            if (c is CallCmd)
+            {
+                CallCmd Call = c as CallCmd;
+
+                List<Expr> uniformNewIns = new List<Expr>();
+                List<Expr> nonUniformNewIns = new List<Expr>();
+                for (int i = 0; i < Call.Ins.Count; i++)
+                {
+                    if (verifier.uniformityAnalyser.knowsOf(Call.callee) && verifier.uniformityAnalyser.IsUniform(Call.callee, verifier.uniformityAnalyser.GetInParameter(Call.callee, i)))
+                    {
+                        uniformNewIns.Add(Call.Ins[i]);
+                    }
+                    else
+                    {
+                        nonUniformNewIns.Add(new VariableDualiser(1, verifier.uniformityAnalyser, procName).VisitExpr(Call.Ins[i]));
+                    }
+                }
+                for (int i = 0; i < Call.Ins.Count; i++)
+                {
+                    if (!(verifier.uniformityAnalyser.knowsOf(Call.callee) && verifier.uniformityAnalyser.IsUniform(Call.callee, verifier.uniformityAnalyser.GetInParameter(Call.callee, i))))
+                    {
+                        nonUniformNewIns.Add(new VariableDualiser(2, verifier.uniformityAnalyser, procName).VisitExpr(Call.Ins[i]));
+                    }
+                }
+
+                List<Expr> newIns = uniformNewIns;
+                newIns.AddRange(nonUniformNewIns);
+
+                List<IdentifierExpr> uniformNewOuts = new List<IdentifierExpr>();
+                List<IdentifierExpr> nonUniformNewOuts = new List<IdentifierExpr>();
+                for (int i = 0; i < Call.Outs.Count; i++)
+                {
+                    if (verifier.uniformityAnalyser.knowsOf(Call.callee) && verifier.uniformityAnalyser.IsUniform(Call.callee, verifier.uniformityAnalyser.GetOutParameter(Call.callee, i)))
+                    {
+                        uniformNewOuts.Add(Call.Outs[i]);
+                    }
+                    else
+                    {
+                        nonUniformNewOuts.Add(new VariableDualiser(1, verifier.uniformityAnalyser, procName).VisitIdentifierExpr(Call.Outs[i].Clone() as IdentifierExpr) as IdentifierExpr);
+                    }
+
+                }
+                for (int i = 0; i < Call.Outs.Count; i++)
+                {
+                    if (!(verifier.uniformityAnalyser.knowsOf(Call.callee) && verifier.uniformityAnalyser.IsUniform(Call.callee, verifier.uniformityAnalyser.GetOutParameter(Call.callee, i))))
+                    {
+                        nonUniformNewOuts.Add(new VariableDualiser(2, verifier.uniformityAnalyser, procName).VisitIdentifierExpr(Call.Outs[i].Clone() as IdentifierExpr) as IdentifierExpr);
+                    }
+                }
+
+                List<IdentifierExpr> newOuts = uniformNewOuts;
+                newOuts.AddRange(nonUniformNewOuts);
+
+                CallCmd NewCallCmd = new CallCmd(Call.tok, Call.callee, newIns, newOuts);
+
+                NewCallCmd.Proc = Call.Proc;
+
+                cs.Add(NewCallCmd);
+            }
+            else if (c is AssignCmd)
+            {
+                AssignCmd assign = c as AssignCmd;
+
+                Debug.Assert(assign.Lhss.Count == 1 && assign.Rhss.Count == 1);
+
+                if (assign.Lhss[0] is SimpleAssignLhs &&
+                    verifier.uniformityAnalyser.IsUniform(procName, (assign.Lhss[0] as SimpleAssignLhs).AssignedVariable.Name))
+                {
+                    cs.Add(assign);
+                }
+                else
+                {
+                    List<AssignLhs> newLhss = new List<AssignLhs>();
+                    List<Expr> newRhss = new List<Expr>();
+
+                    newLhss.Add(new VariableDualiser(1, verifier.uniformityAnalyser, procName).Visit(assign.Lhss.ElementAt(0).Clone() as AssignLhs) as AssignLhs);
+                    newLhss.Add(new VariableDualiser(2, verifier.uniformityAnalyser, procName).Visit(assign.Lhss.ElementAt(0).Clone() as AssignLhs) as AssignLhs);
+
+                    newRhss.Add(new VariableDualiser(1, verifier.uniformityAnalyser, procName).VisitExpr(assign.Rhss.ElementAt(0).Clone() as Expr));
+                    newRhss.Add(new VariableDualiser(2, verifier.uniformityAnalyser, procName).VisitExpr(assign.Rhss.ElementAt(0).Clone() as Expr));
+
+                    AssignCmd newAssign = new AssignCmd(assign.tok, newLhss, newRhss);
+
+                    cs.Add(newAssign);
+                }
+            }
+            else if (c is HavocCmd)
+            {
+                HavocCmd havoc = c as HavocCmd;
+                Debug.Assert(havoc.Vars.Length == 1);
+
+                HavocCmd newHavoc;
+
+                newHavoc = new HavocCmd(havoc.tok, new IdentifierExprSeq(new IdentifierExpr[] { 
+                    (IdentifierExpr)(new VariableDualiser(1, verifier.uniformityAnalyser, procName).VisitIdentifierExpr(havoc.Vars[0].Clone() as IdentifierExpr)), 
+                    (IdentifierExpr)(new VariableDualiser(2, verifier.uniformityAnalyser, procName).VisitIdentifierExpr(havoc.Vars[0].Clone() as IdentifierExpr))
+                }));
+
+                cs.Add(newHavoc);
+            }
+            else if (c is AssertCmd)
+            {
+                AssertCmd ass = c as AssertCmd;
+                if (ContainsAsymmetricExpression(ass.Expr))
+                {
+                    cs.Add(new AssertCmd(c.tok, new VariableDualiser(1, verifier.uniformityAnalyser, procName).VisitExpr(ass.Expr.Clone() as Expr)));
+                }
+                else
+                {
+                    cs.Add(new AssertCmd(c.tok, Expr.And(new VariableDualiser(1, verifier.uniformityAnalyser, procName).VisitExpr(ass.Expr.Clone() as Expr),
+                        new VariableDualiser(2, verifier.uniformityAnalyser, procName).VisitExpr(ass.Expr.Clone() as Expr))));
+                }
+            }
+            else if (c is AssumeCmd)
+            {
+                AssumeCmd ass = c as AssumeCmd;
+                if (ContainsAsymmetricExpression(ass.Expr))
+                {
+                    cs.Add(new AssumeCmd(c.tok, new VariableDualiser(1, verifier.uniformityAnalyser, procName).VisitExpr(ass.Expr.Clone() as Expr)));
+                }
+                else
+                {
+                    cs.Add(new AssumeCmd(c.tok, Expr.And(new VariableDualiser(1, verifier.uniformityAnalyser, procName).VisitExpr(ass.Expr.Clone() as Expr),
+                        new VariableDualiser(2, verifier.uniformityAnalyser, procName).VisitExpr(ass.Expr.Clone() as Expr))));
+                }
+            }
+            else
+            {
+                Debug.Assert(false);
+            }
+        }
+
         private BigBlock MakeDual(BigBlock bb)
         {
             // Not sure what to do about the transfer command
@@ -90,136 +224,7 @@ namespace GPUVerify
 
             foreach (Cmd c in bb.simpleCmds)
             {
-                if (c is CallCmd)
-                {
-                    CallCmd Call = c as CallCmd;
-
-                    List<Expr> uniformNewIns = new List<Expr>();
-                    List<Expr> nonUniformNewIns = new List<Expr>();
-                    for (int i = 0; i < Call.Ins.Count; i++)
-                    {
-                        if (verifier.uniformityAnalyser.knowsOf(Call.callee) && verifier.uniformityAnalyser.IsUniform(Call.callee, verifier.uniformityAnalyser.GetInParameter(Call.callee, i)))
-                        {
-                            uniformNewIns.Add(Call.Ins[i]);
-                        }
-                        else
-                        {
-                            nonUniformNewIns.Add(new VariableDualiser(1, verifier.uniformityAnalyser, procName).VisitExpr(Call.Ins[i]));
-                        }
-                    }
-                    for (int i = 0; i < Call.Ins.Count; i++)
-                    {
-                        if (!(verifier.uniformityAnalyser.knowsOf(Call.callee) && verifier.uniformityAnalyser.IsUniform(Call.callee, verifier.uniformityAnalyser.GetInParameter(Call.callee, i))))
-                        {
-                            nonUniformNewIns.Add(new VariableDualiser(2, verifier.uniformityAnalyser, procName).VisitExpr(Call.Ins[i]));
-                        }
-                    }
-
-                    List<Expr> newIns = uniformNewIns;
-                    newIns.AddRange(nonUniformNewIns);
-
-                    List<IdentifierExpr> uniformNewOuts = new List<IdentifierExpr>();
-                    List<IdentifierExpr> nonUniformNewOuts = new List<IdentifierExpr>();
-                    for (int i = 0; i < Call.Outs.Count; i++)
-                    {
-                        if (verifier.uniformityAnalyser.knowsOf(Call.callee) && verifier.uniformityAnalyser.IsUniform(Call.callee, verifier.uniformityAnalyser.GetOutParameter(Call.callee, i)))
-                        {
-                            uniformNewOuts.Add(Call.Outs[i]);
-                        }
-                        else
-                        {
-                            nonUniformNewOuts.Add(new VariableDualiser(1, verifier.uniformityAnalyser, procName).VisitIdentifierExpr(Call.Outs[i].Clone() as IdentifierExpr) as IdentifierExpr);
-                        }
-
-                    }
-                    for (int i = 0; i < Call.Outs.Count; i++)
-                    {
-                        if (!(verifier.uniformityAnalyser.knowsOf(Call.callee) && verifier.uniformityAnalyser.IsUniform(Call.callee, verifier.uniformityAnalyser.GetOutParameter(Call.callee, i))))
-                        {
-                            nonUniformNewOuts.Add(new VariableDualiser(2, verifier.uniformityAnalyser, procName).VisitIdentifierExpr(Call.Outs[i].Clone() as IdentifierExpr) as IdentifierExpr);
-                        }
-                    }
-
-                    List<IdentifierExpr> newOuts = uniformNewOuts;
-                    newOuts.AddRange(nonUniformNewOuts);
-
-                    CallCmd NewCallCmd = new CallCmd(Call.tok, Call.callee, newIns, newOuts);
-
-                    NewCallCmd.Proc = Call.Proc;
-
-                    result.simpleCmds.Add(NewCallCmd);
-                }
-                else if (c is AssignCmd)
-                {
-                    AssignCmd assign = c as AssignCmd;
-
-                    Debug.Assert(assign.Lhss.Count == 1 && assign.Rhss.Count == 1);
-
-                    if (assign.Lhss[0] is SimpleAssignLhs &&
-                        verifier.uniformityAnalyser.IsUniform(procName, (assign.Lhss[0] as SimpleAssignLhs).AssignedVariable.Name))
-                    {
-                        result.simpleCmds.Add(assign);
-                    }
-                    else
-                    {
-                        List<AssignLhs> newLhss = new List<AssignLhs>();
-                        List<Expr> newRhss = new List<Expr>();
-
-                        newLhss.Add(new VariableDualiser(1, verifier.uniformityAnalyser, procName).Visit(assign.Lhss.ElementAt(0).Clone() as AssignLhs) as AssignLhs);
-                        newLhss.Add(new VariableDualiser(2, verifier.uniformityAnalyser, procName).Visit(assign.Lhss.ElementAt(0).Clone() as AssignLhs) as AssignLhs);
-
-                        newRhss.Add(new VariableDualiser(1, verifier.uniformityAnalyser, procName).VisitExpr(assign.Rhss.ElementAt(0).Clone() as Expr));
-                        newRhss.Add(new VariableDualiser(2, verifier.uniformityAnalyser, procName).VisitExpr(assign.Rhss.ElementAt(0).Clone() as Expr));
-
-                        AssignCmd newAssign = new AssignCmd(assign.tok, newLhss, newRhss);
-
-                        result.simpleCmds.Add(newAssign);
-                    }
-                }
-                else if (c is HavocCmd)
-                {
-                    HavocCmd havoc = c as HavocCmd;
-                    Debug.Assert(havoc.Vars.Length == 1);
-
-                    HavocCmd newHavoc;
-
-                    newHavoc = new HavocCmd(havoc.tok, new IdentifierExprSeq(new IdentifierExpr[] { 
-                        (IdentifierExpr)(new VariableDualiser(1, verifier.uniformityAnalyser, procName).VisitIdentifierExpr(havoc.Vars[0].Clone() as IdentifierExpr)), 
-                        (IdentifierExpr)(new VariableDualiser(2, verifier.uniformityAnalyser, procName).VisitIdentifierExpr(havoc.Vars[0].Clone() as IdentifierExpr))
-                    }));
-
-                    result.simpleCmds.Add(newHavoc);
-                }
-                else if (c is AssertCmd)
-                {
-                    AssertCmd ass = c as AssertCmd;
-                    if (ContainsAsymmetricExpression(ass.Expr))
-                    {
-                        result.simpleCmds.Add(new AssertCmd(c.tok, new VariableDualiser(1, verifier.uniformityAnalyser, procName).VisitExpr(ass.Expr.Clone() as Expr)));
-                    }
-                    else
-                    {
-                        result.simpleCmds.Add(new AssertCmd(c.tok, Expr.And(new VariableDualiser(1, verifier.uniformityAnalyser, procName).VisitExpr(ass.Expr.Clone() as Expr),
-                            new VariableDualiser(2, verifier.uniformityAnalyser, procName).VisitExpr(ass.Expr.Clone() as Expr))));
-                    }
-                }
-                else if (c is AssumeCmd)
-                {
-                    AssumeCmd ass = c as AssumeCmd;
-                    if (ContainsAsymmetricExpression(ass.Expr))
-                    {
-                        result.simpleCmds.Add(new AssumeCmd(c.tok, new VariableDualiser(1, verifier.uniformityAnalyser, procName).VisitExpr(ass.Expr.Clone() as Expr)));
-                    }
-                    else
-                    {
-                        result.simpleCmds.Add(new AssumeCmd(c.tok, Expr.And(new VariableDualiser(1, verifier.uniformityAnalyser, procName).VisitExpr(ass.Expr.Clone() as Expr),
-                            new VariableDualiser(2, verifier.uniformityAnalyser, procName).VisitExpr(ass.Expr.Clone() as Expr))));
-                    }
-                }
-                else
-                {
-                    Debug.Assert(false);
-                }
+                MakeDual(result.simpleCmds, c);
             }
 
             if (bb.ec is WhileCmd)
