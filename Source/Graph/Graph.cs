@@ -99,12 +99,13 @@ namespace Graphing {
       if (domineeNum == dominatorNum)
         return true;
       int currentNodeNum = this.doms[domineeNum];
-      do {
+      while (true) {
         if (currentNodeNum == dominatorNum)
           return true;
+        if (currentNodeNum == this.sourceNum)
+          return false;
         currentNodeNum = this.doms[currentNodeNum];
-      } while (currentNodeNum != this.sourceNum);
-      return false;
+      }
     }
     private Dictionary<Node, List<Node>> domMap = null;
     [Pure]

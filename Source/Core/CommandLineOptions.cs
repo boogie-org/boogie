@@ -1559,6 +1559,7 @@ namespace Microsoft.Boogie {
                    n = none (unsound)
                    p = predicates (default)
                    a = arguments
+                   m = monomorphic
   /monomorphize   
                 Do not abstract map types in the encoding (this is an
                 experimental feature that will not do the right thing if
