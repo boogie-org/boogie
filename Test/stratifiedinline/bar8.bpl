@@ -1,7 +1,7 @@
 var i: int;
 var m: int;
 
-procedure {:inline 1} foo() 
+procedure foo() 
 modifies i;
 {
   if (i < 20) {
@@ -10,7 +10,7 @@ modifies i;
   }
 }
 
-procedure {:inline 1} bar1(j: int) 
+procedure bar1(j: int) 
 modifies i;
 {
   if (j < 2*m) {
@@ -19,7 +19,7 @@ modifies i;
   }
 }
 
-procedure {:inline 1} bar2(j: int) 
+procedure bar2(j: int) 
 modifies i;
 {
   if (j < m) {
@@ -28,7 +28,7 @@ modifies i;
   }
 }
 
-procedure main()
+procedure {:entrypoint} main()
 modifies i;
 {
   i := 0;
@@ -38,5 +38,5 @@ modifies i;
     call bar1(0);
     call bar2(0);
   }
-  assert i < 10;
+  assume !(i < 10);
 }

@@ -1,7 +1,7 @@
 var y: int;
 var x: int;
 
-procedure {:inline 1} bar(b: bool)
+procedure bar(b: bool)
 modifies y;
 {
   if (b) {
@@ -11,7 +11,7 @@ modifies y;
   }
 }
 
-procedure {:inline 1} foo() 
+procedure foo() 
 modifies x, y;
 {
   var b: bool;
@@ -29,13 +29,11 @@ modifies x, y;
 }
 
 
-procedure main()
-requires x == y;
-ensures x == y;
+procedure {:entrypoint} main()
 modifies x, y;
-modifies y;
 {
+  assume x == y;
   call foo();
-  assert x == y;
   call bar(false);
+  assume x != y;
 }

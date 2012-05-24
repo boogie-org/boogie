@@ -1,13 +1,13 @@
 var x: int;
 var y: int;
 
-procedure {:inline 1} bar()
+procedure bar()
 modifies y;
 {
   y := y + 1;
 }
 
-procedure {:inline 1} foo() 
+procedure foo() 
 modifies x, y;
 {
   x := x + 1;
@@ -16,11 +16,11 @@ modifies x, y;
   x := x + 1;
 }
 
-procedure main()
-requires x == y;
-ensures x != y;
+procedure {:entrypoint} main()
 modifies x, y;
 {
+  assume x == y;
   call foo();
+  assume x == y;
 }
 

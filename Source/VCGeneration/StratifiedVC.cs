@@ -52,9 +52,7 @@ namespace VC
               Implementation impl = decl as Implementation;
               if (impl == null) continue;
               Contract.Assert(!impl.Name.StartsWith(recordProcName), "Not allowed to have an implementation for this guy");
-              if (impl.Proc.FindExprAttribute("inline") != null) {
-                implName2StratifiedInliningInfo[impl.Name] = new StratifiedInliningInfo(impl, this);
-              }
+              implName2StratifiedInliningInfo[impl.Name] = new StratifiedInliningInfo(impl, this);
             }
             this.GenerateRecordFunctions();
             PersistCallTree = false;
@@ -136,58 +134,63 @@ namespace VC
             return node;
           }
         }
-        
-        public class StratifiedVC {
-          private static int newVarCount = 0;
-          private static VCExprVar CreateNewVar(ProverInterface prover, Microsoft.Boogie.Type type) {
-            string newName = "StratifiedInlining@" + newVarCnt.ToString();
-            newVarCount++;
-            Constant newVar = new Constant(Token.NoToken, new TypedIdent(Token.NoToken, newName, type));
-            prover.Context.DeclareConstant(newVar, false, null);
-            return prover.VCExprGen.Variable(newVar.Name, type);
-          }
-          private static int idCount = 0;
 
+        private int newVarCount = 0;
+        public VCExprVar CreateNewVar(Microsoft.Boogie.Type type) {
+          string newName = "StratifiedInlining@" + newVarCnt.ToString();
+          newVarCount++;
+          Constant newVar = new Constant(Token.NoToken, new TypedIdent(Token.NoToken, newName, type));
+          prover.Context.DeclareConstant(newVar, false, null);
+          return prover.VCExprGen.Variable(newVar.Name, type);
+        }
+        private int idCount = 1; // 0 is reserved for the VC of main
+        public int CreateNewId() {
+          return idCount++;
+        }
+
+        public class StratifiedVC {
+          StratifiedInliningInfo info;
           int id;
-          Implementation impl;
           List<VCExprVar> interfaceExprVars;
           List<StratifiedCallSite> callSites;
           VCExpr vcexpr;
           public Dictionary<Block, VCExprVar> reachVars;
 
-          public StratifiedVC(StratifiedInliningInfo info, StratifiedVCGen vcgen) {
+          public StratifiedVC(StratifiedInliningInfo siInfo) {
+            info = siInfo;
             if (!info.initialized) {
-              info.GenerateVC(vcgen);
+              info.GenerateVC();
             }
 
-            impl = info.impl;
-            interfaceExprVars = new List<VCExprVar>();
             VCExpr expansion = info.vcexpr;
+            var vcgen = info.vcgen;
             var prover = vcgen.prover;
             VCExpressionGenerator gen = prover.VCExprGen;
             var bet = prover.Context.BoogieExprTranslator;
             VCExpr controlFlowVariableExpr = bet.LookupVariable(info.controlFlowVariable);
-            id = idCount++;
+            id = vcgen.CreateNewId();
             VCExpr eqExpr = gen.Eq(controlFlowVariableExpr, gen.Integer(BigNum.FromInt(id)));
             expansion = gen.And(eqExpr, expansion);
 
+            interfaceExprVars = new List<VCExprVar>();
             Dictionary<VCExprVar, VCExpr> substDict = new Dictionary<VCExprVar, VCExpr>();
             foreach (VCExprVar v in info.interfaceExprVars) {
-              VCExprVar newVar = CreateNewVar(prover, v.Type);
+              VCExprVar newVar = vcgen.CreateNewVar(v.Type);
               interfaceExprVars.Add(newVar);
               substDict.Add(v, newVar);
             }
             foreach (VCExprVar v in info.privateExprVars) {
-              substDict.Add(v, CreateNewVar(prover, v.Type));
+              substDict.Add(v, vcgen.CreateNewVar(v.Type));
             }
             VCExprSubstitution subst = new VCExprSubstitution(substDict, new Dictionary<TypeVariable, Microsoft.Boogie.Type>());
             SubstitutingVCExprVisitor substVisitor = new SubstitutingVCExprVisitor(prover.VCExprGen);
             expansion = substVisitor.Mutate(expansion, subst);
-            
+
+            var impl = info.impl;
             reachVars = new Dictionary<Block, VCExprVar>();
             Dictionary<Block, VCExpr> reachExprs = new Dictionary<Block, VCExpr>();
             foreach (Block b in impl.Blocks) {
-              reachVars[b] = CreateNewVar(prover, Bpl.Type.Bool);
+              reachVars[b] = vcgen.CreateNewVar(Bpl.Type.Bool);
               reachExprs[b] = VCExpressionGenerator.False;
             }
             foreach (Block b in impl.Blocks) {
@@ -209,7 +212,16 @@ namespace VC
             foreach (CallSite cs in info.callSites) {
               callSites.Add(new StratifiedCallSite(cs, substVisitor, subst, reachVars));
             }
+          }
 
+          public VCExpr Attach(StratifiedCallSite stratifiedCallSite) {
+            Contract.Assert(interfaceExprVars.Count == stratifiedCallSite.interfaceExprVars.Count);
+            VCExpressionGenerator gen = info.vcgen.prover.VCExprGen;
+            VCExpr ret = gen.Eq(stratifiedCallSite.reachVar, reachVars[info.impl.Blocks[0]]);
+            for (int i = 0; i < stratifiedCallSite.interfaceExprVars.Count; i++) {
+              ret = gen.And(ret, gen.Eq(stratifiedCallSite.interfaceExprVars[i], interfaceExprVars[i]));
+            }
+            return ret;
           }
         }
 
@@ -225,9 +237,9 @@ namespace VC
         }
 
         public class StratifiedCallSite {
-          CallSite callSite;
-          List<VCExpr> interfaceExprVars;
-          VCExprVar reachVar;
+          public CallSite callSite;
+          public List<VCExpr> interfaceExprVars;
+          public VCExprVar reachVar;
 
           public StratifiedCallSite(CallSite cs, SubstitutingVCExprVisitor substVisitor, VCExprSubstitution subst, Dictionary<Block, VCExprVar> reachVars) {
             callSite = cs;
@@ -240,6 +252,7 @@ namespace VC
         }
 
         public class StratifiedInliningInfo {
+          public StratifiedVCGen vcgen;
           public Implementation impl;
           public Function function;
           public Variable controlFlowVariable;
@@ -252,7 +265,8 @@ namespace VC
           public List<CallSite> callSites;
           public bool initialized;
 
-          public StratifiedInliningInfo(Implementation implementation, StratifiedVCGen vcgen) {
+          public StratifiedInliningInfo(Implementation implementation, StratifiedVCGen stratifiedVcGen) {
+            vcgen = stratifiedVcGen;
             impl = implementation;
 
             VariableSeq functionInterfaceVars = new VariableSeq();
@@ -298,7 +312,7 @@ namespace VC
             initialized = false;
           }
 
-          public void GenerateVC(StratifiedVCGen vcgen) {
+          public void GenerateVC() {
             List<Variable> outputVariables = new List<Variable>();
             assertExpr = new LiteralExpr(Token.NoToken, true);
             foreach (Variable v in impl.OutParams) {
@@ -1054,7 +1068,7 @@ namespace VC
             public ApiChecker checker2;
 
             public VerificationState(VCExpr vcMain, FCallHandler calls, ProverInterface prover, ProverInterface.ErrorHandler reporter) {
-              prover.Assert(vcMain, false); 
+              prover.Assert(vcMain, true); 
               this.calls = calls;
               this.checker = new ApiChecker(prover, reporter);
               vcSize = 0;
@@ -1087,7 +1101,7 @@ namespace VC
             foreach (StratifiedInliningInfo info in implName2StratifiedInliningInfo.Values)
             {
                 Contract.Assert(info != null);
-                info.GenerateVC(this);
+                info.GenerateVC();
             }
 
             // Get the VC of the current procedure
@@ -1285,8 +1299,10 @@ namespace VC
 
         public override Outcome VerifyImplementation(Implementation/*!*/ impl, Program/*!*/ program, VerifierCallback/*!*/ callback)
         {
-            Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
+            if (!QKeyValue.FindBoolAttribute(impl.Attributes, "entrypoint")) 
+              return Outcome.Correct;
             Debug.Assert(this.program == program);
+
             var computeUnderBound = true;
 
             #region stratified inlining options
@@ -1320,11 +1336,12 @@ namespace VC
             }
 
             // Get the VC of the current procedure
-            VCExpr vc;
-            Hashtable/*<int, Absy!>*/ mainLabel2absy;
-            StratifiedInliningErrorReporter reporter;
-            GetVC(impl, program, prover, callback, out vc, out mainLabel2absy, out reporter);
-      
+            StratifiedInliningInfo info = implName2StratifiedInliningInfo[impl.Name];
+            info.GenerateVC();
+            VCExpr vc = info.vcexpr;
+            Hashtable mainLabel2absy = info.label2absy;
+            var reporter = new StratifiedInliningErrorReporter(implName2StratifiedInliningInfo, prover, callback, info.mvInfo, prover.Context, program, impl);
+
             // Find all procedure calls in vc and put labels on them      
             FCallHandler calls = new FCallHandler(prover.VCExprGen, implName2StratifiedInliningInfo, impl.Name, mainLabel2absy);
             calls.setCurrProcAsMain();
@@ -1773,7 +1790,7 @@ namespace VC
                 StratifiedInliningInfo info = implName2StratifiedInliningInfo[procName];
                 if (!info.initialized)
                 {
-                    info.GenerateVC(this);
+                    info.GenerateVC();
                 }
                 //Console.WriteLine("Inlining {0}", procName);
                 VCExpr expansion = cce.NonNull(info.vcexpr);
@@ -1883,7 +1900,7 @@ namespace VC
             }
 
             reporter = new StratifiedInliningErrorReporter(
-               cce.NonNull(implName2StratifiedInliningInfo), prover, callback, mvInfo, prover.Context, gotoCmdOrigins, program, impl);
+               cce.NonNull(implName2StratifiedInliningInfo), prover, callback, mvInfo, prover.Context, program, impl);
         }
 
 
@@ -2467,7 +2484,6 @@ namespace VC
             Program/*!*/ program;
             Implementation/*!*/ mainImpl;
             ProverContext/*!*/ context;
-            Hashtable/*TransferCmd->ReturnCmd*/ gotoCmdOrigins;
 
             public bool underapproximationMode;
             public List<int>/*!*/ candidatesToExpand;
@@ -2487,7 +2503,6 @@ namespace VC
 
             public StratifiedInliningErrorReporter(Dictionary<string/*!*/, StratifiedInliningInfo/*!*/>/*!*/ implName2StratifiedInliningInfo,
                                                    ProverInterface/*!*/ theoremProver, VerifierCallback/*!*/ callback, ModelViewInfo mvInfo, ProverContext/*!*/ context,
-                                                   Hashtable/*TransferCmd->ReturnCmd*/ gotoCmdOrigins,
                                                    Program/*!*/ program, Implementation/*!*/ mainImpl)
             {
                 Contract.Requires(cce.NonNullDictionaryAndValues(implName2StratifiedInliningInfo));
@@ -2505,7 +2520,6 @@ namespace VC
                 this.underapproximationMode = false;
                 this.calls = null;
                 this.candidatesToExpand = new List<int>();
-                this.gotoCmdOrigins = gotoCmdOrigins;
             }
 
             public void SetCandidateHandler(FCallHandler calls)
@@ -2637,21 +2651,14 @@ namespace VC
               Contract.Assert(CommandLineOptions.Clo.StratifiedInliningWithoutModels || model != null);
 
               candidatesToExpand = new List<int>();
+              var cex = GenerateTraceMain(labels, model, mvInfo);
 
-              if (underapproximationMode) {
-                var cex = GenerateTraceMain(labels, model, mvInfo);
+              if (underapproximationMode && cex != null) {
                 Debug.Assert(candidatesToExpand.All(calls.isSkipped));
-                if (cex != null) {
-                  GetModelWithStates(model);
-                  callback.OnCounterexample(cex, null);
-                  this.PrintModel(model);
-                }
-                return;
+                GetModelWithStates(model);
+                callback.OnCounterexample(cex, null);
+                this.PrintModel(model);
               }
-
-              Contract.Assert(calls != null);
-
-              GenerateTraceMain(labels, model, mvInfo);
             }
 
             // Construct the interprocedural trace
@@ -2663,28 +2670,7 @@ namespace VC
               }
 
               orderedStateIds = new List<Tuple<int, int>>();
-              Counterexample newCounterexample =
-               GenerateTrace(labels, errModel, 0, mainImpl);
-
-              if (newCounterexample == null)
-                return null;
-
-              #region Map passive program errors back to original program errors
-              ReturnCounterexample returnExample = newCounterexample as ReturnCounterexample;
-              if (returnExample != null && gotoCmdOrigins != null) {
-                foreach (Block b in returnExample.Trace) {
-                  Contract.Assert(b != null);
-                  Contract.Assume(b.TransferCmd != null);
-                  ReturnCmd cmd = (ReturnCmd)gotoCmdOrigins[b.TransferCmd];
-                  if (cmd != null) {
-                    returnExample.FailingReturn = cmd;
-                    break;
-                  }
-                }
-              }
-              #endregion
-
-              return newCounterexample;
+              return GenerateTrace(labels, errModel, 0, mainImpl);
             }
 
             private Counterexample GenerateTrace(IList<string/*!*/>/*!*/ labels, Model/*!*/ errModel,

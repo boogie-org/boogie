@@ -1,6 +1,6 @@
 var M: [int]int;
 
-procedure {:inline 1} bar(y: int) returns (b: bool)
+procedure bar(y: int) returns (b: bool)
 modifies M;
 {
   if (b) {
@@ -10,7 +10,7 @@ modifies M;
   }
 }
 
-procedure {:inline 1} foo(x: int, y: int) 
+procedure foo(x: int, y: int) 
 modifies M;
 {
   var b: bool;
@@ -23,14 +23,14 @@ modifies M;
   }
 }
 
-procedure main(x: int, y: int) returns (b: bool)
-requires x != y;
-requires M[x] == M[y];
-ensures !b ==> M[x] == M[y]+1;
-ensures b ==> M[x]+1 == M[y];
+procedure {:entrypoint} main(x: int, y: int) returns (b: bool)
 modifies M;
 {
+  assume x != y;
+  assume M[x] == M[y];
   call foo(x, y);
-  assert M[x] == M[y];
-  call b := bar(y);
+  if (M[x] == M[y]) {
+    call b := bar(y);
+    assume (if b then M[x]+1 != M[y] else M[x] != M[y]+1);
+  }
 }
