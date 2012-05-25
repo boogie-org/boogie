@@ -14,6 +14,7 @@ namespace GPUVerify
     {
         public string outputFilename;
         public Program Program;
+        public ResolutionContext ResContext;
 
         public Procedure KernelProcedure;
         public Implementation KernelImplementation;
@@ -71,15 +72,16 @@ namespace GPUVerify
         public LiveVariableAnalyser liveVariableAnalyser;
         public ArrayControlFlowAnalyser arrayControlFlowAnalyser;
 
-        public GPUVerifier(string filename, Program program, IRaceInstrumenter raceInstrumenter) : this(filename, program, raceInstrumenter, false)
+        public GPUVerifier(string filename, Program program, ResolutionContext rc, IRaceInstrumenter raceInstrumenter) : this(filename, program, rc, raceInstrumenter, false)
         {
         }
 
-        public GPUVerifier(string filename, Program program, IRaceInstrumenter raceInstrumenter, bool skipCheck)
+        public GPUVerifier(string filename, Program program, ResolutionContext rc, IRaceInstrumenter raceInstrumenter, bool skipCheck)
             : base((IErrorSink)null)
         {
             this.outputFilename = filename;
             this.Program = program;
+            this.ResContext = rc;
             this.RaceInstrumenter = raceInstrumenter;
             if(!skipCheck)
                 CheckWellFormedness();
@@ -436,7 +438,8 @@ namespace GPUVerify
             {
 
                 Program p = GPUVerify.ParseBoogieProgram(new List<string>(new string[] { outputFilename + ".bpl" }), true);
-                p.Resolve();
+                ResolutionContext rc = new ResolutionContext(null);
+                p.Resolve(rc);
                 p.Typecheck();
 
                 Contract.Assert(p != null);
@@ -444,7 +447,7 @@ namespace GPUVerify
                 Implementation impl = null;
 
                 {
-                    GPUVerifier tempGPUV = new GPUVerifier("not_used", p, new NullRaceInstrumenter(), true);
+                    GPUVerifier tempGPUV = new GPUVerifier("not_used", p, rc, new NullRaceInstrumenter(), true);
                     tempGPUV.KernelProcedure = tempGPUV.CheckExactlyOneKernelProcedure();
                     tempGPUV.GetKernelImplementation();
                     impl = tempGPUV.KernelImplementation;
@@ -1189,7 +1192,7 @@ namespace GPUVerify
 
         private void GeneratePreconditionsForDimension(ref Expr AssumeDistinctThreads, ref Expr AssumeThreadIdsInRange, IToken tok, String dimension)
         {
-            foreach (Declaration D in Program.TopLevelDeclarations)
+            foreach (Declaration D in Program.TopLevelDeclarations.ToList())
             {
                 if (!(D is Procedure))
                 {
@@ -1203,10 +1206,10 @@ namespace GPUVerify
 
                 if (GetTypeOfId(dimension).Equals(Microsoft.Boogie.Type.GetBvType(32)))
                 {
-                    Proc.Requires.Add(new Requires(false, MakeBitVectorBinaryBoolean("BV32_GT", new IdentifierExpr(tok, GetGroupSize(dimension)), ZeroBV(tok))));
-                    Proc.Requires.Add(new Requires(false, MakeBitVectorBinaryBoolean("BV32_GT", new IdentifierExpr(tok, GetNumGroups(dimension)), ZeroBV(tok))));
-                    Proc.Requires.Add(new Requires(false, MakeBitVectorBinaryBoolean("BV32_GEQ", new IdentifierExpr(tok, GetGroupId(dimension)), ZeroBV(tok))));
-                    Proc.Requires.Add(new Requires(false, MakeBitVectorBinaryBoolean("BV32_LT", new IdentifierExpr(tok, GetGroupId(dimension)), new IdentifierExpr(tok, GetNumGroups(dimension)))));
+                    Proc.Requires.Add(new Requires(false, MakeBVSgt(new IdentifierExpr(tok, GetGroupSize(dimension)), ZeroBV(tok))));
+                    Proc.Requires.Add(new Requires(false, MakeBVSgt(new IdentifierExpr(tok, GetNumGroups(dimension)), ZeroBV(tok))));
+                    Proc.Requires.Add(new Requires(false, MakeBVSge(new IdentifierExpr(tok, GetGroupId(dimension)), ZeroBV(tok))));
+                    Proc.Requires.Add(new Requires(false, MakeBVSlt(new IdentifierExpr(tok, GetGroupId(dimension)), new IdentifierExpr(tok, GetNumGroups(dimension)))));
                 }
                 else
                 {
@@ -1229,12 +1232,12 @@ namespace GPUVerify
                 GetTypeOfId(dimension).Equals(Microsoft.Boogie.Type.GetBvType(32)) ?
                     Expr.And(
                         Expr.And(
-                        MakeBitVectorBinaryBoolean("BV32_GEQ", new IdentifierExpr(tok, MakeThreadId(tok, dimension, 1)), ZeroBV(tok)),
-                        MakeBitVectorBinaryBoolean("BV32_GEQ", new IdentifierExpr(tok, MakeThreadId(tok, dimension, 2)), ZeroBV(tok))
+                        MakeBVSge(new IdentifierExpr(tok, MakeThreadId(tok, dimension, 1)), ZeroBV(tok)),
+                        MakeBVSge(new IdentifierExpr(tok, MakeThreadId(tok, dimension, 2)), ZeroBV(tok))
                         ),
                         Expr.And(
-                        MakeBitVectorBinaryBoolean("BV32_LT", new IdentifierExpr(tok, MakeThreadId(tok, dimension, 1)), new IdentifierExpr(tok, GetGroupSize(dimension))),
-                        MakeBitVectorBinaryBoolean("BV32_LT", new IdentifierExpr(tok, MakeThreadId(tok, dimension, 2)), new IdentifierExpr(tok, GetGroupSize(dimension)))
+                        MakeBVSlt(new IdentifierExpr(tok, MakeThreadId(tok, dimension, 1)), new IdentifierExpr(tok, GetGroupSize(dimension))),
+                        MakeBVSlt(new IdentifierExpr(tok, MakeThreadId(tok, dimension, 2)), new IdentifierExpr(tok, GetGroupSize(dimension)))
                         ))
                 :
                     Expr.And(
@@ -1249,6 +1252,41 @@ namespace GPUVerify
 
             AssumeThreadIdsInRange = (null == AssumeThreadIdsInRange) ? AssumeThreadIdsInRangeInDimension : Expr.And(AssumeThreadIdsInRange, AssumeThreadIdsInRangeInDimension);
         }
+
+        private Function GetOrCreateBVFunction(string functionName, string smtName, Microsoft.Boogie.Type resultType, params Microsoft.Boogie.Type[] argTypes)
+        {
+            Function f = (Function)ResContext.LookUpProcedure(functionName);
+            if (f != null)
+                return f;
+
+            f = new Function(Token.NoToken, functionName,
+                             new VariableSeq(argTypes.Select(t => new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "", t))).ToArray()),
+                             new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "", resultType)));
+            f.AddAttribute("bvbuiltin", smtName);
+            Program.TopLevelDeclarations.Add(f);
+            ResContext.AddProcedure(f);
+            return f;
+        }
+
+        private Expr MakeBVFunctionCall(string functionName, string smtName, Microsoft.Boogie.Type resultType, params Expr[] args)
+        {
+            Function f = GetOrCreateBVFunction(functionName, smtName, resultType, args.Select(a => a.Type).ToArray());
+            return new NAryExpr(Token.NoToken, new FunctionCall(f), new ExprSeq(args));
+        }
+
+        private Expr MakeBitVectorBinaryBoolean(string suffix, string smtName, Expr lhs, Expr rhs)
+        {
+            return MakeBVFunctionCall("BV" + lhs.Type.BvBits + "_" + suffix, smtName, Microsoft.Boogie.Type.Bool, lhs, rhs);
+        }
+
+        private Expr MakeBitVectorBinaryBitVector(string suffix, string smtName, Expr lhs, Expr rhs)
+        {
+            return MakeBVFunctionCall("BV" + lhs.Type.BvBits + "_" + suffix, smtName, lhs.Type, lhs, rhs);
+        }
+
+        internal Expr MakeBVSlt(Expr lhs, Expr rhs) { return MakeBitVectorBinaryBoolean("SLT", "bvslt", lhs, rhs); }
+        internal Expr MakeBVSgt(Expr lhs, Expr rhs) { return MakeBitVectorBinaryBoolean("SGT", "bvsgt", lhs, rhs); }
+        internal Expr MakeBVSge(Expr lhs, Expr rhs) { return MakeBitVectorBinaryBoolean("SGE", "bvsge", lhs, rhs); }
 
         internal static Expr MakeBitVectorBinaryBoolean(string functionName, Expr lhs, Expr rhs)
         {
