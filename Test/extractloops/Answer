@@ -83,3 +83,8 @@ Execution trace:
 
 Boogie program verifier finished with 0 verified, 1 error
 -----
+----- Running regression test detLoopExtract.bpl with deterministicExtractLoops
+Stratified Inlining: Reached recursion bound of 4
+
+Boogie program verifier finished with 1 verified, 0 errors
+-----
