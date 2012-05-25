@@ -99,61 +99,48 @@ namespace VC
           }
         }
 
-        internal class CallSitesCollector : StandardVisitor {
-          List<CallSite> callSites;
-          StratifiedVCGen vcgen;
-          StratifiedInliningInfo info;
-          Block currBlock;
-          public static List<CallSite> CollectCallSites(Implementation implementation, StratifiedVCGen vcgen) {
-            var visitor = new CallSitesCollector(implementation, vcgen);
-            visitor.Visit(implementation);
-            return visitor.callSites;
-          }
-          private CallSitesCollector(Implementation implementation, StratifiedVCGen vcgen) {
-            this.vcgen = vcgen;
-            this.info = vcgen.implName2StratifiedInliningInfo[implementation.Name];
-            callSites = new List<CallSite>();
-          }
-          public override Block VisitBlock(Block node) {
-            this.currBlock = node;
-            return base.VisitBlock(node);
-          }
-          public override Cmd VisitAssumeCmd(AssumeCmd node) {
-            NAryExpr naryExpr = node.Expr as NAryExpr;
-            if (naryExpr == null)
-              return node;
-            if (!vcgen.implName2StratifiedInliningInfo.ContainsKey(naryExpr.Fun.FunctionName)) 
-              return node;
-            List<VCExpr> interfaceExprVars = new List<VCExpr>();
-            foreach (Expr e in naryExpr.Args) {
-              IdentifierExpr ie = e as IdentifierExpr;
-              interfaceExprVars.Add(vcgen.prover.Context.BoogieExprTranslator.LookupVariable(ie.Decl));
+        private Dictionary<Block, List<CallSite>> CollectCallSites(Implementation implementation) {
+          var callSites = new Dictionary<Block, List<CallSite>>();
+          foreach (Block block in implementation.Blocks) {
+            for (int i = 0; i < block.Cmds.Length; i++) {
+              AssumeCmd assumeCmd = block.Cmds[i] as AssumeCmd;
+              if (assumeCmd == null) continue;
+              NAryExpr naryExpr = assumeCmd.Expr as NAryExpr;
+              if (naryExpr == null) continue;
+              if (!implName2StratifiedInliningInfo.ContainsKey(naryExpr.Fun.FunctionName)) continue;
+              List<VCExpr> interfaceExprVars = new List<VCExpr>();
+              foreach (Expr e in naryExpr.Args) {
+                IdentifierExpr ie = e as IdentifierExpr;
+                interfaceExprVars.Add(prover.Context.BoogieExprTranslator.LookupVariable(ie.Decl));
+              }
+              CallSite cs = new CallSite(naryExpr.Fun.FunctionName, interfaceExprVars, block, i);
+              if (!callSites.ContainsKey(block))
+                callSites[block] = new List<CallSite>();
+              callSites[block].Add(cs);
             }
-            CallSite cs = new CallSite(naryExpr.Fun.FunctionName, interfaceExprVars, currBlock);
-            callSites.Add(cs);
-            return node;
           }
+          return callSites;
         }
 
-        private int newVarCount = 0;
+        private int newVarCountForStratifiedInlining = 0;
         public VCExprVar CreateNewVar(Microsoft.Boogie.Type type) {
-          string newName = "StratifiedInlining@" + newVarCnt.ToString();
-          newVarCount++;
+          string newName = "StratifiedInlining@" + newVarCountForStratifiedInlining.ToString();
+          newVarCountForStratifiedInlining++;
           Constant newVar = new Constant(Token.NoToken, new TypedIdent(Token.NoToken, newName, type));
           prover.Context.DeclareConstant(newVar, false, null);
           return prover.VCExprGen.Variable(newVar.Name, type);
         }
-        private int idCount = 1; // 0 is reserved for the VC of main
+        private int idCountForStratifiedInlining = 0; 
         public int CreateNewId() {
-          return idCount++;
+          return idCountForStratifiedInlining++;
         }
 
         public class StratifiedVC {
-          StratifiedInliningInfo info;
-          int id;
-          List<VCExprVar> interfaceExprVars;
-          List<StratifiedCallSite> callSites;
-          VCExpr vcexpr;
+          public StratifiedInliningInfo info;
+          public int id;
+          public List<VCExprVar> interfaceExprVars;
+          public Dictionary<Block, List<StratifiedCallSite>> callSites;
+          public VCExpr vcexpr;
           public Dictionary<Block, VCExprVar> reachVars;
 
           public StratifiedVC(StratifiedInliningInfo siInfo) {
@@ -162,7 +149,7 @@ namespace VC
               info.GenerateVC();
             }
 
-            VCExpr expansion = info.vcexpr;
+            vcexpr = info.vcexpr;
             var vcgen = info.vcgen;
             var prover = vcgen.prover;
             VCExpressionGenerator gen = prover.VCExprGen;
@@ -170,7 +157,30 @@ namespace VC
             VCExpr controlFlowVariableExpr = bet.LookupVariable(info.controlFlowVariable);
             id = vcgen.CreateNewId();
             VCExpr eqExpr = gen.Eq(controlFlowVariableExpr, gen.Integer(BigNum.FromInt(id)));
-            expansion = gen.And(eqExpr, expansion);
+            vcexpr = gen.And(eqExpr, vcexpr);
+
+            var impl = info.impl;
+            reachVars = new Dictionary<Block, VCExprVar>();
+            Dictionary<Block, VCExpr> reachExprs = new Dictionary<Block, VCExpr>();
+            foreach (Block b in impl.Blocks) {
+              reachVars[b] = vcgen.CreateNewVar(Bpl.Type.Bool);
+              reachExprs[b] = VCExpressionGenerator.False;
+            }
+            foreach (Block currBlock in impl.Blocks) {
+              GotoCmd gotoCmd = currBlock.TransferCmd as GotoCmd;
+              if (gotoCmd == null) continue;
+              foreach (Block successorBlock in gotoCmd.labelTargets) {
+                VCExpr controlFlowFunctionAppl = gen.ControlFlowFunctionApplication(controlFlowVariableExpr, gen.Integer(BigNum.FromInt(currBlock.UniqueId)));
+                VCExpr controlTransferExpr = gen.Eq(controlFlowFunctionAppl, gen.Integer(BigNum.FromInt(successorBlock.UniqueId)));
+                reachExprs[successorBlock] = gen.Or(reachExprs[successorBlock], gen.And(reachVars[currBlock], controlTransferExpr));
+              }
+            }
+            // The binding for entry block should be left defined;
+            // it will get filled in when the call tree is constructed
+            for (int i = 1; i < impl.Blocks.Count; i++) {
+              Block b = impl.Blocks[i];
+              vcexpr = gen.And(vcexpr, gen.Eq(reachVars[b], reachExprs[b]));
+            }
 
             interfaceExprVars = new List<VCExprVar>();
             Dictionary<VCExprVar, VCExpr> substDict = new Dictionary<VCExprVar, VCExpr>();
@@ -184,55 +194,40 @@ namespace VC
             }
             VCExprSubstitution subst = new VCExprSubstitution(substDict, new Dictionary<TypeVariable, Microsoft.Boogie.Type>());
             SubstitutingVCExprVisitor substVisitor = new SubstitutingVCExprVisitor(prover.VCExprGen);
-            expansion = substVisitor.Mutate(expansion, subst);
+            vcexpr = substVisitor.Mutate(vcexpr, subst);
 
-            var impl = info.impl;
-            reachVars = new Dictionary<Block, VCExprVar>();
-            Dictionary<Block, VCExpr> reachExprs = new Dictionary<Block, VCExpr>();
-            foreach (Block b in impl.Blocks) {
-              reachVars[b] = vcgen.CreateNewVar(Bpl.Type.Bool);
-              reachExprs[b] = VCExpressionGenerator.False;
-            }
-            foreach (Block b in impl.Blocks) {
-              foreach (Block pb in b.Predecessors) {
-                VCExpr controlFlowFunctionAppl = gen.ControlFlowFunctionApplication(controlFlowVariableExpr, gen.Integer(BigNum.FromInt(pb.UniqueId)));
-                VCExpr controlTransferExpr = gen.Eq(controlFlowFunctionAppl, gen.Integer(BigNum.FromInt(b.UniqueId)));
-                reachExprs[b] = gen.Or(reachExprs[b], gen.And(reachVars[pb], controlTransferExpr));
+            callSites = new Dictionary<Block, List<StratifiedCallSite>>();
+            foreach (Block b in info.callSites.Keys) {
+              callSites[b] = new List<StratifiedCallSite>();
+              foreach (CallSite cs in info.callSites[b]) {
+                callSites[b].Add(new StratifiedCallSite(cs, substVisitor, subst, reachVars));
               }
-            }
-            // The binding for entry block should be left defined;
-            // it will get filled in when the call tree is constructed
-            vcexpr = expansion;
-            for (int i = 1; i < impl.Blocks.Count; i++) {
-              Block b = impl.Blocks[i];
-              vcexpr = gen.And(vcexpr, gen.Eq(reachVars[b], reachExprs[b]));
-            }
-
-            callSites = new List<StratifiedCallSite>();
-            foreach (CallSite cs in info.callSites) {
-              callSites.Add(new StratifiedCallSite(cs, substVisitor, subst, reachVars));
             }
           }
 
-          public VCExpr Attach(StratifiedCallSite stratifiedCallSite) {
-            Contract.Assert(interfaceExprVars.Count == stratifiedCallSite.interfaceExprVars.Count);
-            VCExpressionGenerator gen = info.vcgen.prover.VCExprGen;
-            VCExpr ret = gen.Eq(stratifiedCallSite.reachVar, reachVars[info.impl.Blocks[0]]);
-            for (int i = 0; i < stratifiedCallSite.interfaceExprVars.Count; i++) {
-              ret = gen.And(ret, gen.Eq(stratifiedCallSite.interfaceExprVars[i], interfaceExprVars[i]));
+          public List<StratifiedCallSite> CallSites {
+            get {
+              var ret = new List<StratifiedCallSite>();
+              foreach (var b in callSites.Keys) {
+                foreach (var cs in callSites[b]) {
+                  ret.Add(cs);
+                }
+              }
+              return ret;
             }
-            return ret;
           }
         }
 
         public class CallSite {
-          public string callee;
+          public string calleeName;
           public List<VCExpr> interfaceExprVars;
           public Block block;
-          public CallSite(string callee, List<VCExpr> interfaceExprVars, Block block) {
-            this.callee = callee;
+          public int numInstr;  // for TraceLocation
+          public CallSite(string callee, List<VCExpr> interfaceExprVars, Block block, int numInstr) {
+            this.calleeName = callee;
             this.interfaceExprVars = interfaceExprVars;
             this.block = block;
+            this.numInstr = numInstr;
           }
         }
 
@@ -240,6 +235,7 @@ namespace VC
           public CallSite callSite;
           public List<VCExpr> interfaceExprVars;
           public VCExprVar reachVar;
+          public StratifiedVC attachedVC;
 
           public StratifiedCallSite(CallSite cs, SubstitutingVCExprVisitor substVisitor, VCExprSubstitution subst, Dictionary<Block, VCExprVar> reachVars) {
             callSite = cs;
@@ -248,6 +244,19 @@ namespace VC
               interfaceExprVars.Add(substVisitor.Mutate(v, subst));
             }
             reachVar = reachVars[cs.block];
+            attachedVC = null;
+          }
+
+          public VCExpr Attach(StratifiedVC svc) {
+            Contract.Assert(interfaceExprVars.Count == svc.interfaceExprVars.Count);
+            StratifiedInliningInfo info = svc.info;
+            VCExpressionGenerator gen = info.vcgen.prover.VCExprGen;
+            VCExpr ret = gen.Eq(reachVar, svc.reachVars[info.impl.Blocks[0]]);
+            for (int i = 0; i < interfaceExprVars.Count; i++) {
+              ret = gen.And(ret, gen.Eq(interfaceExprVars[i], svc.interfaceExprVars[i]));
+            }
+            attachedVC = svc;
+            return ret;
           }
         }
 
@@ -262,7 +271,7 @@ namespace VC
           public List<VCExprVar> privateExprVars;
           public Hashtable/*<int, Absy!>*/ label2absy;
           public ModelViewInfo mvInfo;
-          public List<CallSite> callSites;
+          public Dictionary<Block, List<CallSite>> callSites;
           public bool initialized;
 
           public StratifiedInliningInfo(Implementation implementation, StratifiedVCGen stratifiedVcGen) {
@@ -372,7 +381,7 @@ namespace VC
               interfaceExprVars.Add(translator.LookupVariable(v));
             }
 
-            callSites = CallSitesCollector.CollectCallSites(impl, vcgen);
+            callSites = vcgen.CollectCallSites(impl);
 
             initialized = true;
           }
@@ -1297,11 +1306,57 @@ namespace VC
             }
         }
 
+        private Outcome NewVerifyImplementation(Implementation impl, Program program, VerifierCallback callback) {
+          StratifiedInliningInfo info = implName2StratifiedInliningInfo[impl.Name];
+          StratifiedVC svc = new StratifiedVC(info);
+          var reporter = new StratifiedInliningErrorReporter(implName2StratifiedInliningInfo, prover, callback, svc);
+          prover.Push();
+          HashSet<StratifiedCallSite> openCallSites = new HashSet<StratifiedCallSite>(svc.CallSites);
+          prover.Assert(svc.vcexpr, true);
+          prover.Assert(svc.reachVars[info.impl.Blocks[0]], true);
+          Outcome outcome = Outcome.Inconclusive;
+          while (true) {
+            // underapproximate query
+            prover.Push();
+            foreach (StratifiedCallSite cs in openCallSites) {
+              prover.Assert(cs.reachVar, false);
+            }
+            reporter.underapproximationMode = true;
+            outcome = CheckVC(reporter);
+            prover.Pop();
+            if (outcome != Outcome.Correct) break;
+
+            // overapproximate query
+            reporter.underapproximationMode = false;
+            outcome = CheckVC(reporter);
+            if (outcome != Outcome.Errors) break;
+            foreach (var scs in reporter.callSitesToExpand) {
+              openCallSites.Remove(scs);
+              svc = new StratifiedVC(implName2StratifiedInliningInfo[scs.callSite.calleeName]);
+              foreach (var newCallSite in svc.CallSites)
+                openCallSites.Add(newCallSite);
+              prover.Assert(svc.vcexpr, true);
+              prover.Assert(scs.Attach(svc), true);
+            }
+          }
+
+          prover.Pop();
+          return outcome;
+        }
+
+        private Outcome CheckVC(ProverInterface.ErrorHandler reporter) {
+          prover.Check();
+          ProverInterface.Outcome outcome = prover.CheckOutcomeCore(reporter);
+          return ConditionGeneration.ProverInterfaceOutcomeToConditionGenerationOutcome(outcome);
+        }
+
         public override Outcome VerifyImplementation(Implementation/*!*/ impl, Program/*!*/ program, VerifierCallback/*!*/ callback)
         {
-            if (!QKeyValue.FindBoolAttribute(impl.Attributes, "entrypoint")) 
-              return Outcome.Correct;
+            Debug.Assert(QKeyValue.FindBoolAttribute(impl.Attributes, "entrypoint"));
             Debug.Assert(this.program == program);
+            
+            if (!CommandLineOptions.Clo.UseLabels)
+              return NewVerifyImplementation(impl, program, callback);
 
             var computeUnderBound = true;
 
@@ -1340,7 +1395,7 @@ namespace VC
             info.GenerateVC();
             VCExpr vc = info.vcexpr;
             Hashtable mainLabel2absy = info.label2absy;
-            var reporter = new StratifiedInliningErrorReporter(implName2StratifiedInliningInfo, prover, callback, info.mvInfo, prover.Context, program, impl);
+            var reporter = new StratifiedInliningErrorReporter(implName2StratifiedInliningInfo, prover, callback, info);
 
             // Find all procedure calls in vc and put labels on them      
             FCallHandler calls = new FCallHandler(prover.VCExprGen, implName2StratifiedInliningInfo, impl.Name, mainLabel2absy);
@@ -1872,37 +1927,6 @@ namespace VC
             mapping[key] = substExistsDict[key];
           calls.id2Vars[id] = mapping;
         }
-
-        // Return the VC for the impl (don't pass it to the theorem prover).
-        // GetVC is a cheap imitation of VerifyImplementation, except that the VC is not passed to the theorem prover.
-        private void GetVC(Implementation/*!*/ impl, Program/*!*/ program, ProverInterface prover, VerifierCallback/*!*/ callback, out VCExpr/*!*/ vc, out Hashtable/*<int, Absy!>*//*!*/ label2absy, out StratifiedInliningErrorReporter/*!*/ reporter)
-        {
-            Contract.Requires(impl != null);
-            Contract.Requires(program != null);
-            Contract.Requires(callback != null);
-            Contract.Ensures(Contract.ValueAtReturn(out vc) != null);
-            Contract.Ensures(Contract.ValueAtReturn(out label2absy) != null);
-            Contract.Ensures(Contract.ValueAtReturn(out reporter) != null);
-
-            ConvertCFG2DAG(impl);
-            ModelViewInfo mvInfo;
-            Hashtable/*TransferCmd->ReturnCmd*/ gotoCmdOrigins = PassifyImpl(impl, out mvInfo);
-
-            var exprGen = prover.Context.ExprGen;
-            VCExpr controlFlowVariableExpr = CommandLineOptions.Clo.UseLabels ? null : exprGen.Integer(BigNum.ZERO);
-
-            vc = GenerateVC(impl, controlFlowVariableExpr, out label2absy, prover.Context);
-
-            if (!CommandLineOptions.Clo.UseLabels) {
-              VCExpr controlFlowFunctionAppl = exprGen.ControlFlowFunctionApplication(exprGen.Integer(BigNum.ZERO), exprGen.Integer(BigNum.ZERO));
-              VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl, exprGen.Integer(BigNum.FromInt(impl.Blocks[0].UniqueId)));
-              vc = exprGen.Implies(eqExpr, vc);
-            }
-
-            reporter = new StratifiedInliningErrorReporter(
-               cce.NonNull(implName2StratifiedInliningInfo), prover, callback, mvInfo, prover.Context, program, impl);
-        }
-
 
         // Uniquely identifies a procedure call (the call expr, instance)
         public class BoogieCallExpr : IEquatable<BoogieCallExpr>
@@ -2476,50 +2500,58 @@ namespace VC
 
         public class StratifiedInliningErrorReporter : ProverInterface.ErrorHandler
         {
-            Dictionary<string/*!*/, StratifiedInliningInfo/*!*/>/*!*/ implName2StratifiedInliningInfo;
-            ProverInterface/*!*/ theoremProver;
-            VerifierCallback/*!*/ callback;
-            ModelViewInfo mvInfo;
+            Dictionary<string, StratifiedInliningInfo> implName2StratifiedInliningInfo;
+            ProverInterface theoremProver;
+            VerifierCallback callback;
             FCallHandler calls;
-            Program/*!*/ program;
-            Implementation/*!*/ mainImpl;
-            ProverContext/*!*/ context;
+            StratifiedInliningInfo mainInfo;
+            StratifiedVC mainVC;
 
             public bool underapproximationMode;
-            public List<int>/*!*/ candidatesToExpand;
+            public List<int> candidatesToExpand;
+            public List<StratifiedCallSite> callSitesToExpand;
 
             [ContractInvariantMethod]
             void ObjectInvariant()
             {
                 Contract.Invariant(candidatesToExpand != null);
-                Contract.Invariant(context != null);
-                Contract.Invariant(mainImpl != null);
-                Contract.Invariant(program != null);
+                Contract.Invariant(mainInfo != null);
                 Contract.Invariant(callback != null);
                 Contract.Invariant(theoremProver != null);
                 Contract.Invariant(cce.NonNullDictionaryAndValues(implName2StratifiedInliningInfo));
             }
 
 
-            public StratifiedInliningErrorReporter(Dictionary<string/*!*/, StratifiedInliningInfo/*!*/>/*!*/ implName2StratifiedInliningInfo,
-                                                   ProverInterface/*!*/ theoremProver, VerifierCallback/*!*/ callback, ModelViewInfo mvInfo, ProverContext/*!*/ context,
-                                                   Program/*!*/ program, Implementation/*!*/ mainImpl)
+            public StratifiedInliningErrorReporter(Dictionary<string, StratifiedInliningInfo> implName2StratifiedInliningInfo,
+                                                   ProverInterface theoremProver, VerifierCallback callback,  
+                                                   StratifiedInliningInfo mainInfo)
             {
                 Contract.Requires(cce.NonNullDictionaryAndValues(implName2StratifiedInliningInfo));
                 Contract.Requires(theoremProver != null);
                 Contract.Requires(callback != null);
-                Contract.Requires(context != null);
-                Contract.Requires(mainImpl != null);
+                Contract.Requires(mainInfo != null);
                 this.implName2StratifiedInliningInfo = implName2StratifiedInliningInfo;
                 this.theoremProver = theoremProver;
                 this.callback = callback;
-                this.mvInfo = mvInfo;
-                this.context = context;
-                this.program = program;
-                this.mainImpl = mainImpl;
+                this.mainInfo = mainInfo;
                 this.underapproximationMode = false;
                 this.calls = null;
                 this.candidatesToExpand = new List<int>();
+            }
+
+            public StratifiedInliningErrorReporter(Dictionary<string, StratifiedInliningInfo> implName2StratifiedInliningInfo,
+                                                   ProverInterface theoremProver, VerifierCallback callback,
+                                                   StratifiedVC mainVC) {
+              Contract.Requires(cce.NonNullDictionaryAndValues(implName2StratifiedInliningInfo));
+              Contract.Requires(theoremProver != null);
+              Contract.Requires(callback != null);
+              Contract.Requires(mainVC != null);
+              this.implName2StratifiedInliningInfo = implName2StratifiedInliningInfo;
+              this.theoremProver = theoremProver;
+              this.callback = callback;
+              this.mainVC = mainVC;
+              this.underapproximationMode = false;
+              this.candidatesToExpand = new List<int>();
             }
 
             public void SetCandidateHandler(FCallHandler calls)
@@ -2534,7 +2566,7 @@ namespace VC
               // first, get the unique name
               string uniqueName;
 
-              VCExprVar vvar = context.BoogieExprTranslator.TryLookupVariable(v);
+              VCExprVar vvar = theoremProver.Context.BoogieExprTranslator.TryLookupVariable(v);
               if (vvar == null) {
                 uniqueName = v.Name;
               }
@@ -2550,7 +2582,7 @@ namespace VC
                     vvar = (VCExprVar)mapping[vvar];
                   }
                 }
-                uniqueName = context.Lookup(vvar);
+                uniqueName = theoremProver.Context.Lookup(vvar);
               }
 
               var f = m.TryGetFunc(uniqueName);
@@ -2580,7 +2612,7 @@ namespace VC
 
             private void GetModelWithStates(Model m) {
               if (m == null) return;
-
+              var mvInfo = mainInfo.mvInfo;
               var mvstates = m.TryGetFunc("@MV_state");
               if (mvstates == null)
                 return;
@@ -2650,8 +2682,14 @@ namespace VC
             public void OnModelOld(IList<string/*!*/>/*!*/ labels, Model model) {
               Contract.Assert(CommandLineOptions.Clo.StratifiedInliningWithoutModels || model != null);
 
+              if (CommandLineOptions.Clo.PrintErrorModel >= 1 && model != null) {
+                model.Write(ErrorReporter.ModelWriter);
+                ErrorReporter.ModelWriter.Flush();
+              }
+
               candidatesToExpand = new List<int>();
-              var cex = GenerateTraceMain(labels, model, mvInfo);
+              orderedStateIds = new List<Tuple<int, int>>();
+              var cex = GenerateTrace(labels, model, 0, mainInfo.impl, mainInfo.mvInfo);
 
               if (underapproximationMode && cex != null) {
                 Debug.Assert(candidatesToExpand.All(calls.isSkipped));
@@ -2661,27 +2699,13 @@ namespace VC
               }
             }
 
-            // Construct the interprocedural trace
-            private Counterexample GenerateTraceMain(IList<string/*!*/>/*!*/ labels, Model/*!*/ errModel, ModelViewInfo mvInfo) {
-              Contract.Requires(cce.NonNullElements(labels));
-              if (CommandLineOptions.Clo.PrintErrorModel >= 1 && errModel != null) {
-                errModel.Write(ErrorReporter.ModelWriter);
-                ErrorReporter.ModelWriter.Flush();
-              }
-
-              orderedStateIds = new List<Tuple<int, int>>();
-              return GenerateTrace(labels, errModel, 0, mainImpl);
-            }
-
             private Counterexample GenerateTrace(IList<string/*!*/>/*!*/ labels, Model/*!*/ errModel,
-                                                 int candidateId, Implementation procImpl) {
+                                                 int candidateId, Implementation procImpl, ModelViewInfo mvInfo) {
               Contract.Requires(cce.NonNullElements(labels));
               Contract.Requires(procImpl != null);
 
               Hashtable traceNodes = new Hashtable();
-              //string procPrefix = "si_inline_" + candidateId.ToString() + "_";
-
-              //Console.WriteLine("GenerateTrace: {0}", procImpl.Name);
+              
               foreach (string s in labels) {
                 Contract.Assert(s != null);
                 var absylabel = calls.ParseRenamedAbsyLabel(s, candidateId);
@@ -2734,7 +2758,7 @@ namespace VC
 
                   // Skip if 'cmd' not contained in the trace or not an assert
                   if (cmd is AssertCmd && traceNodes.Contains(cmd)) {
-                    Counterexample newCounterexample = AssertCmdToCounterexample((AssertCmd)cmd, transferCmd, trace, errModel, mvInfo, context);
+                    Counterexample newCounterexample = AssertCmdToCounterexample((AssertCmd)cmd, transferCmd, trace, errModel, mvInfo, theoremProver.Context);
                     newCounterexample.AddCalleeCounterexample(calleeCounterexamples);
                     return newCounterexample;
                   }
@@ -2775,7 +2799,7 @@ namespace VC
                     }
                     else if (expr is VCExprVar) {
                       var idExpr = expr as VCExprVar;
-                      string name = context.Lookup(idExpr);
+                      string name = theoremProver.Context.Lookup(idExpr);
                       Contract.Assert(name != null);
                       Model.Func f = errModel.TryGetFunc(name);
                       if (f != null) {
@@ -2802,10 +2826,9 @@ namespace VC
                   }
                   else {
                     orderedStateIds.Add(new Tuple<int, int>(calleeId, StratifiedInliningErrorReporter.CALL));
+                    var calleeInfo = implName2StratifiedInliningInfo[calleeName];
                     calleeCounterexamples[new TraceLocation(trace.Length - 1, i)] =
-                        new CalleeCounterexampleInfo(
-                            cce.NonNull(GenerateTrace(labels, errModel, calleeId, implName2StratifiedInliningInfo[calleeName].impl)),
-                            new List<Model.Element>());
+                        new CalleeCounterexampleInfo(GenerateTrace(labels, errModel, calleeId, calleeInfo.impl, calleeInfo.mvInfo), new List<Model.Element>());
                     orderedStateIds.Add(new Tuple<int, int>(candidateId, StratifiedInliningErrorReporter.RETURN));
                   }
                 }
@@ -2834,108 +2857,47 @@ namespace VC
               else {
                 List<Absy> absyList = new List<Absy>();
                 foreach (var label in labels) {
-                  absyList.Add(Label2Absy(label));
+                  absyList.Add(Label2Absy(mainVC.info.impl.Name, label));
                 }
 
                 orderedStateIds = new List<Tuple<int, int>>();
-                candidatesToExpand = new List<int>();
+                callSitesToExpand = new List<StratifiedCallSite>();
 
-                var cex = NewTrace(0, absyList, model);
-
-                if (underapproximationMode) {
-                  GetModelWithStates(model);
+                var cex = NewTrace(mainVC, absyList, model);
+                if (underapproximationMode && cex != null) {
                   callback.OnCounterexample(cex, null);
                   this.PrintModel(model);
                 }
               }
             }
 
-            private Counterexample NewTrace(int candidateId, List<Absy> absyList, Model model) {
+            private Counterexample NewTrace(StratifiedVC svc, List<Absy> absyList, Model model) {
               AssertCmd assertCmd = (AssertCmd)absyList[absyList.Count - 1];
               BlockSeq trace = new BlockSeq();
               var calleeCounterexamples = new Dictionary<TraceLocation, CalleeCounterexampleInfo>();
               for (int j = 0; j < absyList.Count - 1; j++) {
-                Block b = (Block)absyList[j];
+                Block b = (Block) absyList[j];
                 trace.Add(b);
-                CmdSeq cmdSeq = b.Cmds;
-                for (int i = 0; i < cmdSeq.Length; i++) {
-                  Cmd cmd = cmdSeq[i];
-                  if (cmd == assertCmd) break;
-                  AssumeCmd assumeCmd = cmd as AssumeCmd;
-                  if (assumeCmd == null) continue;
-                  NAryExpr naryExpr = assumeCmd.Expr as NAryExpr;
-                  if (naryExpr == null)
-                    continue;
-                  string calleeName = naryExpr.Fun.FunctionName;
-                  Contract.Assert(calleeName != null);
-
-                  BinaryOperator binOp = naryExpr.Fun as BinaryOperator;
-                  if (binOp != null && binOp.Op == BinaryOperator.Opcode.And) {
-                    Expr expr = naryExpr.Args[0];
-                    NAryExpr mvStateExpr = expr as NAryExpr;
-                    if (mvStateExpr != null && mvStateExpr.Fun.FunctionName == ModelViewInfo.MVState_FunctionDef.Name) {
-                      LiteralExpr x = mvStateExpr.Args[1] as LiteralExpr;
-                      orderedStateIds.Add(new Tuple<int, int>(candidateId, x.asBigNum.ToInt));
-                    }
-                  }
-
-                  if (calleeName.StartsWith(recordProcName) && model != null) {
-                    var expr = calls.recordExpr2Var[new BoogieCallExpr(naryExpr, candidateId)];
-
-                    // Record concrete value of the argument to this procedure
-                    var args = new List<Model.Element>();
-                    if (expr is VCExprIntLit) {
-                      args.Add(model.MkElement((expr as VCExprIntLit).Val.ToString()));
-                    }
-                    else if (expr == VCExpressionGenerator.True) {
-                      args.Add(model.MkElement("true"));
-                    }
-                    else if (expr == VCExpressionGenerator.False) {
-                      args.Add(model.MkElement("false"));
-                    }
-                    else if (expr is VCExprVar) {
-                      var idExpr = expr as VCExprVar;
-                      string name = context.Lookup(idExpr);
-                      Contract.Assert(name != null);
-                      Model.Func f = model.TryGetFunc(name);
-                      if (f != null) {
-                        args.Add(f.GetConstant());
-                      }
-                    }
-                    else {
-                      Contract.Assert(false);
-                    }
-                    calleeCounterexamples[new TraceLocation(trace.Length - 1, i)] =
-                         new CalleeCounterexampleInfo(null, args);
-                    continue;
-                  }
-
-                  if (!implName2StratifiedInliningInfo.ContainsKey(calleeName))
-                    continue;
-
-                  int calleeId = calls.boogieExpr2Id[new BoogieCallExpr(naryExpr, candidateId)];
-
-                  if (calls.currCandidates.Contains(calleeId)) {
-                    candidatesToExpand.Add(calleeId);
+                if (!svc.callSites.ContainsKey(b)) continue;
+                foreach (StratifiedCallSite scs in svc.callSites[b]) {
+                  if (scs.attachedVC == null) {
+                    callSitesToExpand.Add(scs);
                   }
                   else {
-                    orderedStateIds.Add(new Tuple<int, int>(calleeId, StratifiedInliningErrorReporter.CALL));
-                    string[] labels = theoremProver.CalculatePath(calleeId);
+                    string[] labels = theoremProver.CalculatePath(scs.attachedVC.id);
                     List<Absy> calleeAbsyList = new List<Absy>();
                     foreach (string label in labels) {
-                      VCExprNAry expr = calls.id2Candidate[calleeId];
-                      string procName = (cce.NonNull(expr.Op as VCExprBoogieFunctionOp)).Func.Name;
-                      calleeAbsyList.Add(Label2Absy(procName, label));
+                      calleeAbsyList.Add(Label2Absy(scs.callSite.calleeName, label));
                     }
-                    calleeCounterexamples[new TraceLocation(trace.Length - 1, i)] =
-                      new CalleeCounterexampleInfo(NewTrace(calleeId, calleeAbsyList, model), new List<Model.Element>());
-                    orderedStateIds.Add(new Tuple<int, int>(candidateId, StratifiedInliningErrorReporter.RETURN));
+                    var calleeCounterexample = NewTrace(scs.attachedVC, calleeAbsyList, model);
+                    calleeCounterexamples[new TraceLocation(trace.Length - 1, scs.callSite.numInstr)] =
+                      new CalleeCounterexampleInfo(calleeCounterexample, new List<Model.Element>());
                   }
                 }
               }
 
               Block lastBlock = (Block)absyList[absyList.Count - 2];
-              Counterexample newCounterexample = AssertCmdToCounterexample(assertCmd, lastBlock.TransferCmd, trace, model, mvInfo, context);
+              Counterexample newCounterexample = AssertCmdToCounterexample(assertCmd, lastBlock.TransferCmd, trace, model, svc.info.mvInfo, theoremProver.Context);
               newCounterexample.AddCalleeCounterexample(calleeCounterexamples);
               return newCounterexample;
             }
