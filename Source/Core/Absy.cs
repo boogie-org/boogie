@@ -2482,6 +2482,10 @@ namespace Microsoft.Boogie {
           }
         }
 
+        if (CommandLineOptions.Clo.StratifiedInlining > 0) {
+          return !QKeyValue.FindBoolAttribute(Attributes, "entrypoint");
+        }
+
         return false;
       }
     }
