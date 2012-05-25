@@ -267,6 +267,16 @@ namespace GPUVerify
 
         }
 
+        private Block MakeDual(Block b)
+        {
+            Block result = new Block(b.tok, b.Label, new CmdSeq(), b.TransferCmd);
+            foreach (Cmd c in b.Cmds)
+            {
+                MakeDual(result.Cmds, c);
+            }
+            return result;
+        }
+
         private List<PredicateCmd> MakeDualInvariants(List<PredicateCmd> originalInvariants)
         {
             List<PredicateCmd> result = new List<PredicateCmd>();
@@ -350,14 +360,17 @@ namespace GPUVerify
         }
 
 
-        internal void DualiseImplementation(Implementation impl)
+        internal void DualiseImplementation(Implementation impl, bool unstructured)
         {
             procName = impl.Name;
 
             impl.InParams = DualiseVariableSequence(impl.InParams);
             impl.OutParams = DualiseVariableSequence(impl.OutParams);
             MakeDualLocalVariables(impl);
-            impl.StructuredStmts = MakeDual(impl.StructuredStmts);
+            if (unstructured)
+                impl.Blocks = new List<Block>(impl.Blocks.Select(MakeDual));
+            else
+                impl.StructuredStmts = MakeDual(impl.StructuredStmts);
 
             procName = null;
         }

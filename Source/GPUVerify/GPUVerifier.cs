@@ -1924,7 +1924,7 @@ namespace GPUVerify
                 if (d is Implementation)
                 {
 
-                    new KernelDualiser(this).DualiseImplementation(d as Implementation);
+                    new KernelDualiser(this).DualiseImplementation(d as Implementation, CommandLineOptions.Unstructured);
 
                     NewTopLevelDeclarations.Add(d as Implementation);
 
