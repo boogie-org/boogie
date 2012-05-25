@@ -562,6 +562,7 @@ namespace Microsoft.Boogie {
     public Inlining ProcedureInlining = Inlining.Assume;
     public bool PrintInlined = false;
     public bool ExtractLoops = false;
+    public bool DeterministicExtractLoops = false;
     public int StratifiedInlining = 0;
     public int StratifiedInliningOption = 0;
     public bool StratifiedInliningWithoutModels = false; // disable model generation for SI
@@ -953,6 +954,12 @@ namespace Microsoft.Boogie {
         case "extractLoops":
           if (ps.ConfirmArgumentCount(0)) {
             ExtractLoops = true;
+          }
+          return true;  
+
+        case "deterministicExtractLoops":
+          if (ps.ConfirmArgumentCount(0)) {
+            DeterministicExtractLoops = true;
           }
           return true;
 
