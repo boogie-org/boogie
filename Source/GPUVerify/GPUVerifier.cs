@@ -102,19 +102,35 @@ namespace GPUVerify
 
         private Procedure CheckExactlyOneKernelProcedure()
         {
-            return CheckSingleInstanceOfAttributedProcedure(Program, "kernel");
+            var p = CheckSingleInstanceOfAttributedProcedure("kernel");
+            if (p == null)
+            {
+                Error(Program, "\"kernel\" attribute has not been specified for any procedure.  You must mark exactly one procedure with this attribute");
+            }
+
+            return p;
         }
 
-        private Procedure CheckExactlyOneBarrierProcedure()
+        private Procedure FindOrCreateBarrierProcedure()
         {
-            return CheckSingleInstanceOfAttributedProcedure(Program, "barrier");
+            var p = CheckSingleInstanceOfAttributedProcedure("barrier");
+            if (p == null)
+            {
+                p = new Procedure(Token.NoToken, "barrier", new TypeVariableSeq(),
+                                  new VariableSeq(), new VariableSeq(),
+                                  new RequiresSeq(), new IdentifierExprSeq(),
+                                  new EnsuresSeq(),
+                                  new QKeyValue(Token.NoToken, "barrier", new List<object>(), null));
+                Program.TopLevelDeclarations.Add(p);
+            }
+            return p;
         }
 
-        private Procedure CheckSingleInstanceOfAttributedProcedure(Program program, string attribute)
+        private Procedure CheckSingleInstanceOfAttributedProcedure(string attribute)
         {
             Procedure attributedProcedure = null;
 
-            foreach (Declaration decl in program.TopLevelDeclarations)
+            foreach (Declaration decl in Program.TopLevelDeclarations)
             {
                 if (!QKeyValue.FindBoolAttribute(decl.Attributes, attribute))
                 {
@@ -142,11 +158,6 @@ namespace GPUVerify
                 {
                     Error(decl, "\"{0}\" attribute can only be applied to a procedure", attribute);
                 }
-            }
-
-            if (attributedProcedure == null)
-            {
-                Error(program, "\"{0}\" attribute has not been specified for any procedure.  You must mark exactly one procedure with this attribute", attribute);
             }
 
             return attributedProcedure;
@@ -189,10 +200,20 @@ namespace GPUVerify
             return true;
         }
 
-        private bool FindNonLocalVariables(Program program)
+        private void MaybeCreateAttributedConst(string attr, ref Constant constFieldRef)
+        {
+            if (constFieldRef == null)
+            {
+                constFieldRef = new Constant(Token.NoToken, new TypedIdent(Token.NoToken, attr, Microsoft.Boogie.Type.GetBvType(32)));
+                constFieldRef.AddAttribute(attr);
+                Program.TopLevelDeclarations.Add(constFieldRef);
+            }
+        }
+
+        private bool FindNonLocalVariables()
         {
             bool success = true;
-            foreach (Declaration D in program.TopLevelDeclarations)
+            foreach (Declaration D in Program.TopLevelDeclarations)
             {
                 if (D is Variable && (D as Variable).IsMutable)
                 {
@@ -231,6 +252,22 @@ namespace GPUVerify
 
                 }
             }
+
+            MaybeCreateAttributedConst(LOCAL_ID_X_STRING, ref _X);
+            MaybeCreateAttributedConst(LOCAL_ID_Y_STRING, ref _Y);
+            MaybeCreateAttributedConst(LOCAL_ID_Z_STRING, ref _Z);
+
+            MaybeCreateAttributedConst(GROUP_SIZE_X_STRING, ref _GROUP_SIZE_X);
+            MaybeCreateAttributedConst(GROUP_SIZE_Y_STRING, ref _GROUP_SIZE_Y);
+            MaybeCreateAttributedConst(GROUP_SIZE_Z_STRING, ref _GROUP_SIZE_Z);
+
+            MaybeCreateAttributedConst(GROUP_ID_X_STRING, ref _GROUP_X);
+            MaybeCreateAttributedConst(GROUP_ID_Y_STRING, ref _GROUP_Y);
+            MaybeCreateAttributedConst(GROUP_ID_Z_STRING, ref _GROUP_Z);
+
+            MaybeCreateAttributedConst(NUM_GROUPS_X_STRING, ref _NUM_GROUPS_X);
+            MaybeCreateAttributedConst(NUM_GROUPS_Y_STRING, ref _NUM_GROUPS_Y);
+            MaybeCreateAttributedConst(NUM_GROUPS_Z_STRING, ref _NUM_GROUPS_Z);
 
             return success;
         }
@@ -2017,7 +2054,7 @@ namespace GPUVerify
 
         private int Check()
         {
-            BarrierProcedure = CheckExactlyOneBarrierProcedure();
+            BarrierProcedure = FindOrCreateBarrierProcedure();
             KernelProcedure = CheckExactlyOneKernelProcedure();
 
             if (ErrorCount > 0)
@@ -2035,99 +2072,13 @@ namespace GPUVerify
                 Error(BarrierProcedure, "Barrier procedure must not return any results");
             }
 
-            if (!FindNonLocalVariables(Program))
+            if (!FindNonLocalVariables())
             {
                 return ErrorCount;
             }
 
             CheckKernelImplementation();
-
-            if (!KernelHasIdX())
-            {
-                MissingKernelAttributeError(LOCAL_ID_X_STRING);
-            }
-
-            if (!KernelHasGroupSizeX())
-            {
-                MissingKernelAttributeError(GROUP_SIZE_X_STRING);
-            }
-
-            if (!KernelHasNumGroupsX())
-            {
-                MissingKernelAttributeError(NUM_GROUPS_X_STRING);
-            }
-
-            if (!KernelHasGroupIdX())
-            {
-                MissingKernelAttributeError(GROUP_ID_X_STRING);
-            }
-
-            if (!KernelHasIdY())
-            {
-                MissingKernelAttributeError(LOCAL_ID_Y_STRING);
-            }
-
-            if (!KernelHasGroupSizeY())
-            {
-                MissingKernelAttributeError(GROUP_SIZE_Y_STRING);
-            }
-
-            if (!KernelHasNumGroupsY())
-            {
-                MissingKernelAttributeError(NUM_GROUPS_Y_STRING);
-            }
-
-            if (!KernelHasGroupIdY())
-            {
-                MissingKernelAttributeError(GROUP_ID_Y_STRING);
-            }
-
-            if (!KernelHasIdY())
-            {
-                MissingKernelAttributeError(LOCAL_ID_Y_STRING);
-            }
-
-            if (!KernelHasGroupSizeY())
-            {
-                MissingKernelAttributeError(GROUP_SIZE_Y_STRING);
-            }
-
-            if (!KernelHasNumGroupsY())
-            {
-                MissingKernelAttributeError(NUM_GROUPS_Y_STRING);
-            }
-
-            if (!KernelHasGroupIdY())
-            {
-                MissingKernelAttributeError(GROUP_ID_Y_STRING);
-            }
-
-            if (!KernelHasIdZ())
-            {
-                MissingKernelAttributeError(LOCAL_ID_Z_STRING);
-            }
-
-            if (!KernelHasGroupSizeZ())
-            {
-                MissingKernelAttributeError(GROUP_SIZE_Z_STRING);
-            }
-
-            if (!KernelHasNumGroupsZ())
-            {
-                MissingKernelAttributeError(NUM_GROUPS_Z_STRING);
-            }
-
-            if (!KernelHasGroupIdZ())
-            {
-                MissingKernelAttributeError(GROUP_ID_Z_STRING);
-            }
-
             return ErrorCount;
-        }
-
-        private void MissingKernelAttributeError(string attribute)
-        {
-            Error(KernelProcedure.tok, "Kernel must declare global constant marked with attribute ':" + attribute + "'");
         }
 
         public static bool IsThreadLocalIdConstant(Variable variable)
