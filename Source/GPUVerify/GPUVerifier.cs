@@ -1950,6 +1950,12 @@ namespace GPUVerify
 
         private void MakeKernelPredicated()
         {
+            if (CommandLineOptions.Unstructured)
+            {
+                BlockPredicator.Predicate(Program);
+                return;
+            }
+
             foreach (Declaration d in Program.TopLevelDeclarations)
             {
                 if (d is Procedure)
