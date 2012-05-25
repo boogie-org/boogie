@@ -1,58 +1,58 @@
 ----- Running regression test t1.bpl
-t1.bpl(38,5): Error BP5001: This assertion might not hold.
+(0,0): Error BP5001: This assertion might not hold.
 Execution trace:
-    t1.bpl(19,3): anon0
-    t1.bpl(23,3): anon3_LoopHead
+    t1.bpl(17,3): anon0
+    t1.bpl(22,3): anon3_LoopHead
     Inlined call to procedure foo begins
-        t1.bpl(11,5): anon0
+        t1.bpl(8,5): anon0
     Inlined call to procedure foo ends
-    t1.bpl(27,3): anon3_LoopBody
-    t1.bpl(23,3): anon3_LoopHead
+    t1.bpl(26,3): anon3_LoopBody
+    t1.bpl(22,3): anon3_LoopHead
     Inlined call to procedure foo begins
-        t1.bpl(11,5): anon0
+        t1.bpl(8,5): anon0
     Inlined call to procedure foo ends
-    t1.bpl(27,3): anon3_LoopBody
-    t1.bpl(23,3): anon3_LoopHead
+    t1.bpl(26,3): anon3_LoopBody
+    t1.bpl(22,3): anon3_LoopHead
     Inlined call to procedure foo begins
-        t1.bpl(11,5): anon0
+        t1.bpl(8,5): anon0
     Inlined call to procedure foo ends
-    t1.bpl(33,3): anon3_LoopDone
-    t1.bpl(37,3): anon2
+    t1.bpl(32,3): anon3_LoopDone
+    t1.bpl(36,3): anon2
 
 Boogie program verifier finished with 0 verified, 1 error
 -----
 ----- Running regression test t2.bpl
-t2.bpl(51,5): Error BP5001: This assertion might not hold.
+(0,0): Error BP5001: This assertion might not hold.
 Execution trace:
-    t2.bpl(19,3): anon0
-    t2.bpl(23,3): anon3_LoopHead
+    t2.bpl(16,3): anon0
+    t2.bpl(21,3): anon3_LoopHead
     Inlined call to procedure foo begins
-        t2.bpl(11,5): anon0
+        t2.bpl(7,5): anon0
     Inlined call to procedure foo ends
-    t2.bpl(27,3): anon3_LoopBody
-    t2.bpl(34,3): lab1_LoopHead
-    t2.bpl(37,3): lab1_LoopBody
-    t2.bpl(34,3): lab1_LoopHead
-    t2.bpl(37,3): lab1_LoopBody
-    t2.bpl(34,3): lab1_LoopHead
-    t2.bpl(42,3): lab1_LoopDone
-    t2.bpl(23,3): anon3_LoopHead
+    t2.bpl(25,3): anon3_LoopBody
+    t2.bpl(32,3): lab1_LoopHead
+    t2.bpl(35,3): lab1_LoopBody
+    t2.bpl(32,3): lab1_LoopHead
+    t2.bpl(35,3): lab1_LoopBody
+    t2.bpl(32,3): lab1_LoopHead
+    t2.bpl(40,3): lab1_LoopDone
+    t2.bpl(21,3): anon3_LoopHead
     Inlined call to procedure foo begins
-        t2.bpl(11,5): anon0
+        t2.bpl(7,5): anon0
     Inlined call to procedure foo ends
-    t2.bpl(27,3): anon3_LoopBody
-    t2.bpl(34,3): lab1_LoopHead
-    t2.bpl(37,3): lab1_LoopBody
-    t2.bpl(34,3): lab1_LoopHead
-    t2.bpl(37,3): lab1_LoopBody
-    t2.bpl(34,3): lab1_LoopHead
-    t2.bpl(42,3): lab1_LoopDone
-    t2.bpl(23,3): anon3_LoopHead
+    t2.bpl(25,3): anon3_LoopBody
+    t2.bpl(32,3): lab1_LoopHead
+    t2.bpl(35,3): lab1_LoopBody
+    t2.bpl(32,3): lab1_LoopHead
+    t2.bpl(35,3): lab1_LoopBody
+    t2.bpl(32,3): lab1_LoopHead
+    t2.bpl(40,3): lab1_LoopDone
+    t2.bpl(21,3): anon3_LoopHead
     Inlined call to procedure foo begins
-        t2.bpl(11,5): anon0
+        t2.bpl(7,5): anon0
     Inlined call to procedure foo ends
-    t2.bpl(46,3): anon3_LoopDone
-    t2.bpl(50,3): anon2
+    t2.bpl(44,3): anon3_LoopDone
+    t2.bpl(48,3): anon2
 
 Boogie program verifier finished with 0 verified, 1 error
 -----
@@ -61,25 +61,25 @@ Boogie program verifier finished with 0 verified, 1 error
 Boogie program verifier finished with 1 verified, 0 errors
 -----
 ----- Running regression test t3.bpl with recursion bound 4
-t3.bpl(38,5): Error BP5001: This assertion might not hold.
+(0,0): Error BP5001: This assertion might not hold.
 Execution trace:
-    t3.bpl(19,3): anon0
-    t3.bpl(23,3): anon3_LoopHead
+    t3.bpl(15,3): anon0
+    t3.bpl(20,3): anon3_LoopHead
     Inlined call to procedure foo begins
-        t3.bpl(11,5): anon0
+        t3.bpl(6,5): anon0
     Inlined call to procedure foo ends
-    t3.bpl(27,3): anon3_LoopBody
-    t3.bpl(23,3): anon3_LoopHead
+    t3.bpl(24,3): anon3_LoopBody
+    t3.bpl(20,3): anon3_LoopHead
     Inlined call to procedure foo begins
-        t3.bpl(11,5): anon0
+        t3.bpl(6,5): anon0
     Inlined call to procedure foo ends
-    t3.bpl(27,3): anon3_LoopBody
-    t3.bpl(23,3): anon3_LoopHead
+    t3.bpl(24,3): anon3_LoopBody
+    t3.bpl(20,3): anon3_LoopHead
     Inlined call to procedure foo begins
-        t3.bpl(11,5): anon0
+        t3.bpl(6,5): anon0
     Inlined call to procedure foo ends
-    t3.bpl(33,3): anon3_LoopDone
-    t3.bpl(37,3): anon2
+    t3.bpl(30,3): anon3_LoopDone
+    t3.bpl(34,3): anon2
 
 Boogie program verifier finished with 0 verified, 1 error
 -----
