@@ -307,6 +307,10 @@ namespace GPUVerify
 
         internal void doit()
         {
+            if (CommandLineOptions.Unstructured)
+            {
+                Microsoft.Boogie.CommandLineOptions.Clo.PrintUnstructured = 2;
+            }
 
             if (CommandLineOptions.ShowStages)
             {
