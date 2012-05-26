@@ -1,20 +1,20 @@
-# Aste started: 2012-05-01 07:00:01
+# Aste started: 2012-05-26 07:00:01
 # Host id: Boogiebox
 # Configuration: boogie.cfg
 # Task: aste.tasks.boogie.FullBuild
-# [2012-05-01 07:02:01] SpecSharp revision: 3db7f750e303
-# [2012-05-01 07:02:01] SscBoogie revision: 3db7f750e303
-# [2012-05-01 07:03:39] Boogie revision: cabbad2de19a
-[2012-05-01 07:05:18] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com SpecSharp.sln /Project "Checkin Tests" /Build
+# [2012-05-26 07:01:09] SpecSharp revision: e71da07ecd58
+# [2012-05-26 07:01:09] SscBoogie revision: e71da07ecd58
+# [2012-05-26 07:01:56] Boogie revision: 509c0bb4c4eb
+[2012-05-26 07:03:49] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com SpecSharp.sln /Project "Checkin Tests" /Build
 
     1>corflags : warning CF011: The specified file is strong name signed.  Using /Force will invalidate the signature of this image and will require the assembly to be resigned.
     warning CF011: The specified file is strong name signed.  Using /Force will invalidate the signature of this image and will require the assembly to be resigned.
-[2012-05-01 07:06:46] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Boogie.sln /Rebuild Checked
+[2012-05-26 07:05:17] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Boogie.sln /Rebuild Checked
 
     D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(823,16): warning CS0659: 'Microsoft.Boogie.BasicType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
     D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(2802,16): warning CS0659: 'Microsoft.Boogie.CtorType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
     D:\Temp\aste\Boogie\Source\Core\OOLongUtil.cs(109,7): warning CS0162: Unreachable code detected
-    D:\Temp\aste\Boogie\Source\Core\Absy.cs(708,7): warning CC1036: Detected call to method 'Graphing.Graph`1<Microsoft.Boogie.Block>.TopologicalSort' without [Pure] in contracts of method 'Microsoft.Boogie.Program.GraphFromImpl(Microsoft.Boogie.Implementation)'.
+    D:\Temp\aste\Boogie\Source\Core\Absy.cs(752,7): warning CC1036: Detected call to method 'Graphing.Graph`1<Microsoft.Boogie.Block>.TopologicalSort' without [Pure] in contracts of method 'Microsoft.Boogie.Program.GraphFromImpl(Microsoft.Boogie.Implementation)'.
     EXEC : warning CC1079: Type Microsoft.Boogie.Variable implements Microsoft.AbstractInterpretationFramework.IVariable.get_Name by inheriting Microsoft.Boogie.NamedDeclaration.get_Name causing the interface contract to not be checked at runtime. Consider adding a wrapper method.
     D:\Temp\aste\Boogie\Source\Core\Parser.cs(116,3): warning CC1032: Method 'Microsoft.Boogie.Parser+BvBounds.Resolve(Microsoft.Boogie.ResolutionContext)' overrides 'Microsoft.Boogie.Absy.Resolve(Microsoft.Boogie.ResolutionContext)', thus cannot add Requires.
     D:\Temp\aste\Boogie\Source\Core\Parser.cs(121,5): warning CC1032: Method 'Microsoft.Boogie.Parser+BvBounds.Emit(Microsoft.Boogie.TokenTextWriter,System.Int32,System.Boolean)' overrides 'Microsoft.Boogie.Expr.Emit(Microsoft.Boogie.TokenTextWriter,System.Int32,System.Boolean)', thus cannot add Requires.
@@ -41,5 +41,5 @@
     warning CS0162: Unreachable code detected
     warning CC1032: Method 'Microsoft.Boogie.Houdini.InlineRequiresVisitor.VisitCmdSeq(Microsoft.Boogie.CmdSeq)' overrides 'Microsoft.Boogie.StandardVisitor.VisitCmdSeq(Microsoft.Boogie.CmdSeq)', thus cannot add Requires.
     warning CC1032: Method 'Microsoft.Boogie.Houdini.FreeRequiresVisitor.VisitAssertRequiresCmd(Microsoft.Boogie.AssertRequiresCmd)' overrides 'Microsoft.Boogie.StandardVisitor.VisitAssertRequiresCmd(Microsoft.Boogie.AssertRequiresCmd)', thus cannot add Requires.
-[2012-05-01 08:06:00] 0 out of 33 test(s) in D:\Temp\aste\Boogie\Test\alltests.txt failed
-# [2012-05-01 08:06:41] Released nightly of Boogie
+[2012-05-26 08:03:41] 0 out of 33 test(s) in D:\Temp\aste\Boogie\Test\alltests.txt failed
+# [2012-05-26 08:04:24] Released nightly of Boogie
