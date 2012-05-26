@@ -32,6 +32,8 @@ namespace VC
         private SummaryComputation summaryComputation;
         private HashSet<string> procsThatReachedRecBound;
         ProverInterface prover;
+        public HashSet<string> procsToSkip;
+        public Dictionary<string, int> extraRecBound;
 
         [ContractInvariantMethod]
         void ObjectInvariant()
@@ -58,6 +60,27 @@ namespace VC
             PersistCallTree = false;
             useSummary = false;
             procsThatReachedRecBound = new HashSet<string>();
+            procsToSkip = new HashSet<string>();
+            extraRecBound = new Dictionary<string, int>();
+            //extraRecBound.Add("FcFinishReset_loop_label_59_head", 4);
+        }
+
+        // Is this procedure to be "skipped" 
+        // Currently this is experimental
+        public bool isSkipped(string procName)
+        {
+            return procsToSkip.Contains(procName);
+        }
+        public bool isSkipped(int candidate, FCallHandler calls)
+        {
+            return isSkipped(calls.getProc(candidate));
+        }
+        // Extra rec bound for procedures
+        public int GetExtraRecBound(string procName)
+        {
+            if (!extraRecBound.ContainsKey(procName))
+                return 0;
+            else return extraRecBound[procName];
         }
 
         internal class CallSitesSimplifier : StandardVisitor {
@@ -1403,6 +1426,7 @@ namespace VC
             vc = calls.Mutate(vc, true);
             reporter.SetCandidateHandler(calls);
             calls.id2VC.Add(0, vc);
+            calls.extraRecursion = extraRecBound;
 
             // Identify summary candidates: Match ensure clauses with the appropriate call site
             if (useSummary) calls.matchSummaries();
@@ -1617,16 +1641,22 @@ namespace VC
                         if (CommandLineOptions.Clo.StratifiedInliningVerbose > 0)
                         {
                             Console.Write(">> SI Inlining: ");
-                            reporter.candidatesToExpand.ForEach(c =>
-                                { if (!calls.isSkipped(c)) Console.Write("{0} ", calls.getProc(c)); });
+                            reporter.candidatesToExpand
+                                .Select(c => calls.getProc(c))
+                                .Iter(c =>
+                                { if (!isSkipped(c)) Console.Write("{0} ", c); });
 
                             Console.WriteLine();
                             Console.Write(">> SI Skipping: ");
-                            reporter.candidatesToExpand.ForEach(c =>
-                            { if (calls.isSkipped(c)) Console.Write("{0} ", calls.getProc(c)); });
+                            reporter.candidatesToExpand
+                                .Select(c => calls.getProc(c))
+                                .Iter(c =>
+                                { if (isSkipped(c)) Console.Write("{0} ", c); });
 
                             Console.WriteLine();
+
                         }
+
                         // Expand and try again
                         vState.checker.prover.LogComment(";;;;;;;;;;;; Expansion begin ;;;;;;;;;;");
                         DoExpansion(reporter.candidatesToExpand, vState);
@@ -1659,7 +1689,7 @@ namespace VC
             {
                 Console.WriteLine(">> SI: Expansions performed: {0}", vState.expansionCount);
                 Console.WriteLine(">> SI: Candidates left: {0}", calls.currCandidates.Count);
-                Console.WriteLine(">> SI: Candidates skipped: {0}", calls.currCandidates.Where(i => calls.isSkipped(i)).Count());
+                Console.WriteLine(">> SI: Candidates skipped: {0}", calls.currCandidates.Where(i => isSkipped(i, calls)).Count());
                 Console.WriteLine(">> SI: VC Size: {0}", vState.vcSize);
             }
             #endregion
@@ -1703,7 +1733,7 @@ namespace VC
             
             foreach (int id in calls.currCandidates)
             {
-                if (!calls.isSkipped(id))
+                if (!isSkipped(id, calls))
                     assumptions.Add(calls.getFalseExpr(id));
             }
             Outcome ret = checker.CheckAssumptions(assumptions);
@@ -1740,7 +1770,7 @@ namespace VC
 
             foreach (int id in calls.currCandidates)
             {
-                if (calls.isSkipped(id)) continue;
+                if (isSkipped(id, calls)) continue;
 
                 int idBound = calls.getRecursionBound(id);
                 if (idBound <= bound)
@@ -1826,7 +1856,7 @@ namespace VC
             Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
 
             // Skipped calls don't get inlined
-            candidates = candidates.FindAll(id => !vState.calls.isSkipped(id));
+            candidates = candidates.FindAll(id => !isSkipped(id, vState.calls));
 
             vState.expansionCount += candidates.Count; 
             
@@ -1999,6 +2029,7 @@ namespace VC
 
             // User info -- to decrease/increase calculation of recursion bound
             public Dictionary<int, int> recursionIncrement;
+            public Dictionary<string, int> extraRecursion;
 
             public HashSet<int> currCandidates;
             [ContractInvariantMethod]
@@ -2054,6 +2085,7 @@ namespace VC
                 recordExpr2Var = new Dictionary<BoogieCallExpr, VCExpr>();
 
                 forcedCandidates = new HashSet<int>();
+                extraRecursion = new Dictionary<string, int>();
 
                 id2Vars = new Dictionary<int, Dictionary<VCExprVar, VCExpr>>();
                 summaryCandidates = new Dictionary<int, List<Tuple<VCExprVar, VCExpr>>>();
@@ -2091,6 +2123,9 @@ namespace VC
                     id = candidateParent[id];
                     if (getProc(id) == str && !forcedCandidates.Contains(id)) ret++;
                 }
+
+                if (extraRecursion.ContainsKey(str)) ret -= extraRecursion[str];
+
                 return ret;
             }
 
@@ -2244,25 +2279,6 @@ namespace VC
                     return mainLabel2absy;
                 }
                 return cce.NonNull(implName2StratifiedInliningInfo[currProc].label2absy);
-            }
-
-            // Is this candidate a "skipped" call
-            // Currently this is experimental
-            public bool isSkipped(int id)
-            {
-                if (!CommandLineOptions.Clo.BctModeForStratifiedInlining) return false;
-
-                var proc = getProc(id);
-                if (!implName2StratifiedInliningInfo.ContainsKey(proc)) return false;
-                var modSet = new HashSet<string>();
-                implName2StratifiedInliningInfo[proc].impl.Proc.Modifies
-                    .Cast<IdentifierExpr>()
-                    .Select(ie => ie.Decl.Name)
-                    .Iter(s => modSet.Add(s));
-                modSet.Remove("$Alloc");
-                modSet.Remove("assertsPassed");
-                modSet.Remove("$Exception");
-                return modSet.Count == 0;
             }
 
             // Finds labels and changes them:
@@ -2692,7 +2708,7 @@ namespace VC
               var cex = GenerateTrace(labels, model, 0, mainInfo.impl, mainInfo.mvInfo);
 
               if (underapproximationMode && cex != null) {
-                Debug.Assert(candidatesToExpand.All(calls.isSkipped));
+                //Debug.Assert(candidatesToExpand.All(calls.isSkipped));
                 GetModelWithStates(model);
                 callback.OnCounterexample(cex, null);
                 this.PrintModel(model);
