@@ -295,7 +295,7 @@ namespace VC
           public Hashtable/*<int, Absy!>*/ label2absy;
           public ModelViewInfo mvInfo;
           public Dictionary<Block, List<CallSite>> callSites;
-          public bool initialized;
+          public bool initialized { get; private set; }
 
           public StratifiedInliningInfo(Implementation implementation, StratifiedVCGen stratifiedVcGen) {
             vcgen = stratifiedVcGen;
@@ -344,7 +344,8 @@ namespace VC
             initialized = false;
           }
 
-          public void GenerateVC() {
+          public void GenerateVC()  {
+            if (initialized) return;
             List<Variable> outputVariables = new List<Variable>();
             assertExpr = new LiteralExpr(Token.NoToken, true);
             foreach (Variable v in impl.OutParams) {
@@ -1130,27 +1131,12 @@ namespace VC
             Contract.Assert(implName2StratifiedInliningInfo != null);
 
             // Build VCs for all procedures
-            foreach (StratifiedInliningInfo info in implName2StratifiedInliningInfo.Values)
-            {
-                Contract.Assert(info != null);
-                info.GenerateVC();
-            }
+            implName2StratifiedInliningInfo.Values
+                .Iter(info => info.GenerateVC());
 
             // Get the VC of the current procedure
-            VCExpr vcMain;
-            Hashtable/*<int, Absy!>*/ mainLabel2absy;
-            ModelViewInfo mvInfo;
-
-            ConvertCFG2DAG(impl);
-            Hashtable/*TransferCmd->ReturnCmd*/ gotoCmdOrigins = PassifyImpl(impl, out mvInfo);
-            var exprGen = prover.Context.ExprGen;
-            VCExpr controlFlowVariableExpr = CommandLineOptions.Clo.UseLabels ? null : exprGen.Integer(BigNum.ZERO); 
-            vcMain = GenerateVC(impl, controlFlowVariableExpr, out mainLabel2absy, prover.Context);
-            if (!CommandLineOptions.Clo.UseLabels) {
-              VCExpr controlFlowFunctionAppl = exprGen.ControlFlowFunctionApplication(exprGen.Integer(BigNum.ZERO), exprGen.Integer(BigNum.ZERO));
-              VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl, exprGen.Integer(BigNum.FromInt(impl.Blocks[0].UniqueId)));
-              vcMain = exprGen.Implies(eqExpr, vcMain);
-            }
+            VCExpr vcMain = implName2StratifiedInliningInfo[impl.Name].vcexpr;
+            Hashtable/*<int, Absy!>*/ mainLabel2absy = implName2StratifiedInliningInfo[impl.Name].label2absy;
 
             // Find all procedure calls in vc and put labels on them      
             FCallHandler calls = new FCallHandler(prover.VCExprGen, implName2StratifiedInliningInfo, impl.Name, mainLabel2absy);
