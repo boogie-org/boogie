@@ -523,10 +523,6 @@ namespace Microsoft.Boogie {
         loopHeaderToOutputs[header] = outputs;
         loopHeaderToSubstMap[header] = substMap;
         LoopProcedure loopProc = new LoopProcedure(impl, header, inputs, outputs, globalMods);
-        if (CommandLineOptions.Clo.StratifiedInlining > 0) {
-          loopProc.AddAttribute("inline", Expr.Literal(1));
-          loopProc.AddAttribute("verify", Expr.Literal(false));
-        }
         loopHeaderToLoopProc[header] = loopProc;
 
         CallCmd callCmd1 = new CallCmd(Token.NoToken, loopProc.Name, callInputs1, callOutputs1);

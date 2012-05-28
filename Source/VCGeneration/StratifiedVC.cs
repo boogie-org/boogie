@@ -31,6 +31,7 @@ namespace VC
         private bool useSummary;
         private SummaryComputation summaryComputation;
         private HashSet<string> procsThatReachedRecBound;
+        public int boundUsedInLastQuery { get; private set; }
         ProverInterface prover;
         public HashSet<string> procsToSkip;
         public Dictionary<string, int> extraRecBound;
@@ -62,7 +63,7 @@ namespace VC
             procsThatReachedRecBound = new HashSet<string>();
             procsToSkip = new HashSet<string>();
             extraRecBound = new Dictionary<string, int>();
-            //extraRecBound.Add("FcFinishReset_loop_label_59_head", 4);
+            boundUsedInLastQuery = -1;
         }
 
         // Is this procedure to be "skipped" 
@@ -1503,6 +1504,8 @@ namespace VC
             //   case 3: (internal error)   The theorem prover TimesOut of runs OutOfMemory
             while (true)
             {
+                boundUsedInLastQuery = bound;
+
                 // Check timeout
                 if (CommandLineOptions.Clo.ProverKillTime != -1)
                 {
