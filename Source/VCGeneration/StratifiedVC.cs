@@ -377,7 +377,9 @@ namespace VC
             var translator = proverInterface.Context.BoogieExprTranslator;
             VCExpr controlFlowVariableExpr = CommandLineOptions.Clo.UseLabels ? null : translator.LookupVariable(controlFlowVariable);
 
-            CallSitesSimplifier.SimplifyCallSites(impl, vcgen);
+            if (!CommandLineOptions.Clo.UseLabels) {
+              CallSitesSimplifier.SimplifyCallSites(impl, vcgen);
+            }
             vcexpr = gen.Not(vcgen.GenerateVC(impl, controlFlowVariableExpr, out label2absy, proverInterface.Context));
             if (!CommandLineOptions.Clo.UseLabels) {
               VCExpr controlFlowFunctionAppl = exprGen.ControlFlowFunctionApplication(controlFlowVariableExpr, exprGen.Integer(BigNum.ZERO));
@@ -404,8 +406,9 @@ namespace VC
               interfaceExprVars.Add(translator.LookupVariable(v));
             }
 
-            callSites = vcgen.CollectCallSites(impl);
-
+            if (!CommandLineOptions.Clo.UseLabels) {
+              callSites = vcgen.CollectCallSites(impl);
+            }
             initialized = true;
           }
         }
