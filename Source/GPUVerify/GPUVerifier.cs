@@ -1520,8 +1520,10 @@ namespace GPUVerify
 
             impl.LocVars = NewLocVars;
 
-            impl.StructuredStmts = PerformFullSharedStateAbstraction(impl.StructuredStmts);
-
+            if (CommandLineOptions.Unstructured)
+                impl.Blocks = impl.Blocks.Select(PerformFullSharedStateAbstraction).ToList();
+            else
+                impl.StructuredStmts = PerformFullSharedStateAbstraction(impl.StructuredStmts);
         }
 
 
@@ -1538,11 +1540,11 @@ namespace GPUVerify
             return result;
         }
 
-        private BigBlock PerformFullSharedStateAbstraction(BigBlock bb)
+        private CmdSeq PerformFullSharedStateAbstraction(CmdSeq cs)
         {
-            BigBlock result = new BigBlock(bb.tok, bb.LabelName, new CmdSeq(), null, bb.tc);
+            var result = new CmdSeq();
 
-            foreach (Cmd c in bb.simpleCmds)
+            foreach (Cmd c in cs)
             {
                 if (c is AssignCmd)
                 {
@@ -1567,7 +1569,7 @@ namespace GPUVerify
                     if (foundAdversarial)
                     {
                         Debug.Assert(lhs is SimpleAssignLhs);
-                        result.simpleCmds.Add(new HavocCmd(c.tok, new IdentifierExprSeq(new IdentifierExpr[] { (lhs as SimpleAssignLhs).AssignedVariable })));
+                        result.Add(new HavocCmd(c.tok, new IdentifierExprSeq(new IdentifierExpr[] { (lhs as SimpleAssignLhs).AssignedVariable })));
                         continue;
                     }
 
@@ -1579,8 +1581,22 @@ namespace GPUVerify
                     }
 
                 }
-                result.simpleCmds.Add(c);
+                result.Add(c);
             }
+
+            return result;
+        }
+
+        private Block PerformFullSharedStateAbstraction(Block b)
+        {
+            return new Block(Token.NoToken, b.Label, PerformFullSharedStateAbstraction(b.Cmds), b.TransferCmd);
+        }
+
+        private BigBlock PerformFullSharedStateAbstraction(BigBlock bb)
+        {
+            BigBlock result = new BigBlock(bb.tok, bb.LabelName, new CmdSeq(), null, bb.tc);
+
+            result.simpleCmds = PerformFullSharedStateAbstraction(bb.simpleCmds);
 
             if (bb.ec is WhileCmd)
             {
