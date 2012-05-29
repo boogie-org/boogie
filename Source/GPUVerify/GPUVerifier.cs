@@ -14,6 +14,7 @@ namespace GPUVerify
     {
         public string outputFilename;
         public Program Program;
+        public ResolutionContext ResContext;
 
         public Procedure KernelProcedure;
         public Implementation KernelImplementation;
@@ -71,15 +72,16 @@ namespace GPUVerify
         public LiveVariableAnalyser liveVariableAnalyser;
         public ArrayControlFlowAnalyser arrayControlFlowAnalyser;
 
-        public GPUVerifier(string filename, Program program, IRaceInstrumenter raceInstrumenter) : this(filename, program, raceInstrumenter, false)
+        public GPUVerifier(string filename, Program program, ResolutionContext rc, IRaceInstrumenter raceInstrumenter) : this(filename, program, rc, raceInstrumenter, false)
         {
         }
 
-        public GPUVerifier(string filename, Program program, IRaceInstrumenter raceInstrumenter, bool skipCheck)
+        public GPUVerifier(string filename, Program program, ResolutionContext rc, IRaceInstrumenter raceInstrumenter, bool skipCheck)
             : base((IErrorSink)null)
         {
             this.outputFilename = filename;
             this.Program = program;
+            this.ResContext = rc;
             this.RaceInstrumenter = raceInstrumenter;
             if(!skipCheck)
                 CheckWellFormedness();
@@ -102,19 +104,35 @@ namespace GPUVerify
 
         private Procedure CheckExactlyOneKernelProcedure()
         {
-            return CheckSingleInstanceOfAttributedProcedure(Program, "kernel");
+            var p = CheckSingleInstanceOfAttributedProcedure("kernel");
+            if (p == null)
+            {
+                Error(Program, "\"kernel\" attribute has not been specified for any procedure.  You must mark exactly one procedure with this attribute");
+            }
+
+            return p;
         }
 
-        private Procedure CheckExactlyOneBarrierProcedure()
+        private Procedure FindOrCreateBarrierProcedure()
         {
-            return CheckSingleInstanceOfAttributedProcedure(Program, "barrier");
+            var p = CheckSingleInstanceOfAttributedProcedure("barrier");
+            if (p == null)
+            {
+                p = new Procedure(Token.NoToken, "barrier", new TypeVariableSeq(),
+                                  new VariableSeq(), new VariableSeq(),
+                                  new RequiresSeq(), new IdentifierExprSeq(),
+                                  new EnsuresSeq(),
+                                  new QKeyValue(Token.NoToken, "barrier", new List<object>(), null));
+                Program.TopLevelDeclarations.Add(p);
+            }
+            return p;
         }
 
-        private Procedure CheckSingleInstanceOfAttributedProcedure(Program program, string attribute)
+        private Procedure CheckSingleInstanceOfAttributedProcedure(string attribute)
         {
             Procedure attributedProcedure = null;
 
-            foreach (Declaration decl in program.TopLevelDeclarations)
+            foreach (Declaration decl in Program.TopLevelDeclarations)
             {
                 if (!QKeyValue.FindBoolAttribute(decl.Attributes, attribute))
                 {
@@ -142,11 +160,6 @@ namespace GPUVerify
                 {
                     Error(decl, "\"{0}\" attribute can only be applied to a procedure", attribute);
                 }
-            }
-
-            if (attributedProcedure == null)
-            {
-                Error(program, "\"{0}\" attribute has not been specified for any procedure.  You must mark exactly one procedure with this attribute", attribute);
             }
 
             return attributedProcedure;
@@ -189,10 +202,20 @@ namespace GPUVerify
             return true;
         }
 
-        private bool FindNonLocalVariables(Program program)
+        private void MaybeCreateAttributedConst(string attr, ref Constant constFieldRef)
+        {
+            if (constFieldRef == null)
+            {
+                constFieldRef = new Constant(Token.NoToken, new TypedIdent(Token.NoToken, attr, Microsoft.Boogie.Type.GetBvType(32)), /*unique=*/false);
+                constFieldRef.AddAttribute(attr);
+                Program.TopLevelDeclarations.Add(constFieldRef);
+            }
+        }
+
+        private bool FindNonLocalVariables()
         {
             bool success = true;
-            foreach (Declaration D in program.TopLevelDeclarations)
+            foreach (Declaration D in Program.TopLevelDeclarations)
             {
                 if (D is Variable && (D as Variable).IsMutable)
                 {
@@ -231,6 +254,22 @@ namespace GPUVerify
 
                 }
             }
+
+            MaybeCreateAttributedConst(LOCAL_ID_X_STRING, ref _X);
+            MaybeCreateAttributedConst(LOCAL_ID_Y_STRING, ref _Y);
+            MaybeCreateAttributedConst(LOCAL_ID_Z_STRING, ref _Z);
+
+            MaybeCreateAttributedConst(GROUP_SIZE_X_STRING, ref _GROUP_SIZE_X);
+            MaybeCreateAttributedConst(GROUP_SIZE_Y_STRING, ref _GROUP_SIZE_Y);
+            MaybeCreateAttributedConst(GROUP_SIZE_Z_STRING, ref _GROUP_SIZE_Z);
+
+            MaybeCreateAttributedConst(GROUP_ID_X_STRING, ref _GROUP_X);
+            MaybeCreateAttributedConst(GROUP_ID_Y_STRING, ref _GROUP_Y);
+            MaybeCreateAttributedConst(GROUP_ID_Z_STRING, ref _GROUP_Z);
+
+            MaybeCreateAttributedConst(NUM_GROUPS_X_STRING, ref _NUM_GROUPS_X);
+            MaybeCreateAttributedConst(NUM_GROUPS_Y_STRING, ref _NUM_GROUPS_Y);
+            MaybeCreateAttributedConst(NUM_GROUPS_Z_STRING, ref _NUM_GROUPS_Z);
 
             return success;
         }
@@ -307,6 +346,10 @@ namespace GPUVerify
 
         internal void doit()
         {
+            if (CommandLineOptions.Unstructured)
+            {
+                Microsoft.Boogie.CommandLineOptions.Clo.PrintUnstructured = 2;
+            }
 
             if (CommandLineOptions.ShowStages)
             {
@@ -395,7 +438,8 @@ namespace GPUVerify
             {
 
                 Program p = GPUVerify.ParseBoogieProgram(new List<string>(new string[] { outputFilename + ".bpl" }), true);
-                p.Resolve();
+                ResolutionContext rc = new ResolutionContext(null);
+                p.Resolve(rc);
                 p.Typecheck();
 
                 Contract.Assert(p != null);
@@ -403,7 +447,7 @@ namespace GPUVerify
                 Implementation impl = null;
 
                 {
-                    GPUVerifier tempGPUV = new GPUVerifier("not_used", p, new NullRaceInstrumenter(), true);
+                    GPUVerifier tempGPUV = new GPUVerifier("not_used", p, rc, new NullRaceInstrumenter(), true);
                     tempGPUV.KernelProcedure = tempGPUV.CheckExactlyOneKernelProcedure();
                     tempGPUV.GetKernelImplementation();
                     impl = tempGPUV.KernelImplementation;
@@ -1148,7 +1192,7 @@ namespace GPUVerify
 
         private void GeneratePreconditionsForDimension(ref Expr AssumeDistinctThreads, ref Expr AssumeThreadIdsInRange, IToken tok, String dimension)
         {
-            foreach (Declaration D in Program.TopLevelDeclarations)
+            foreach (Declaration D in Program.TopLevelDeclarations.ToList())
             {
                 if (!(D is Procedure))
                 {
@@ -1162,10 +1206,10 @@ namespace GPUVerify
 
                 if (GetTypeOfId(dimension).Equals(Microsoft.Boogie.Type.GetBvType(32)))
                 {
-                    Proc.Requires.Add(new Requires(false, MakeBitVectorBinaryBoolean("BV32_GT", new IdentifierExpr(tok, GetGroupSize(dimension)), ZeroBV(tok))));
-                    Proc.Requires.Add(new Requires(false, MakeBitVectorBinaryBoolean("BV32_GT", new IdentifierExpr(tok, GetNumGroups(dimension)), ZeroBV(tok))));
-                    Proc.Requires.Add(new Requires(false, MakeBitVectorBinaryBoolean("BV32_GEQ", new IdentifierExpr(tok, GetGroupId(dimension)), ZeroBV(tok))));
-                    Proc.Requires.Add(new Requires(false, MakeBitVectorBinaryBoolean("BV32_LT", new IdentifierExpr(tok, GetGroupId(dimension)), new IdentifierExpr(tok, GetNumGroups(dimension)))));
+                    Proc.Requires.Add(new Requires(false, MakeBVSgt(new IdentifierExpr(tok, GetGroupSize(dimension)), ZeroBV(tok))));
+                    Proc.Requires.Add(new Requires(false, MakeBVSgt(new IdentifierExpr(tok, GetNumGroups(dimension)), ZeroBV(tok))));
+                    Proc.Requires.Add(new Requires(false, MakeBVSge(new IdentifierExpr(tok, GetGroupId(dimension)), ZeroBV(tok))));
+                    Proc.Requires.Add(new Requires(false, MakeBVSlt(new IdentifierExpr(tok, GetGroupId(dimension)), new IdentifierExpr(tok, GetNumGroups(dimension)))));
                 }
                 else
                 {
@@ -1188,12 +1232,12 @@ namespace GPUVerify
                 GetTypeOfId(dimension).Equals(Microsoft.Boogie.Type.GetBvType(32)) ?
                     Expr.And(
                         Expr.And(
-                        MakeBitVectorBinaryBoolean("BV32_GEQ", new IdentifierExpr(tok, MakeThreadId(tok, dimension, 1)), ZeroBV(tok)),
-                        MakeBitVectorBinaryBoolean("BV32_GEQ", new IdentifierExpr(tok, MakeThreadId(tok, dimension, 2)), ZeroBV(tok))
+                        MakeBVSge(new IdentifierExpr(tok, MakeThreadId(tok, dimension, 1)), ZeroBV(tok)),
+                        MakeBVSge(new IdentifierExpr(tok, MakeThreadId(tok, dimension, 2)), ZeroBV(tok))
                         ),
                         Expr.And(
-                        MakeBitVectorBinaryBoolean("BV32_LT", new IdentifierExpr(tok, MakeThreadId(tok, dimension, 1)), new IdentifierExpr(tok, GetGroupSize(dimension))),
-                        MakeBitVectorBinaryBoolean("BV32_LT", new IdentifierExpr(tok, MakeThreadId(tok, dimension, 2)), new IdentifierExpr(tok, GetGroupSize(dimension)))
+                        MakeBVSlt(new IdentifierExpr(tok, MakeThreadId(tok, dimension, 1)), new IdentifierExpr(tok, GetGroupSize(dimension))),
+                        MakeBVSlt(new IdentifierExpr(tok, MakeThreadId(tok, dimension, 2)), new IdentifierExpr(tok, GetGroupSize(dimension)))
                         ))
                 :
                     Expr.And(
@@ -1208,6 +1252,41 @@ namespace GPUVerify
 
             AssumeThreadIdsInRange = (null == AssumeThreadIdsInRange) ? AssumeThreadIdsInRangeInDimension : Expr.And(AssumeThreadIdsInRange, AssumeThreadIdsInRangeInDimension);
         }
+
+        private Function GetOrCreateBVFunction(string functionName, string smtName, Microsoft.Boogie.Type resultType, params Microsoft.Boogie.Type[] argTypes)
+        {
+            Function f = (Function)ResContext.LookUpProcedure(functionName);
+            if (f != null)
+                return f;
+
+            f = new Function(Token.NoToken, functionName,
+                             new VariableSeq(argTypes.Select(t => new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "", t))).ToArray()),
+                             new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "", resultType)));
+            f.AddAttribute("bvbuiltin", smtName);
+            Program.TopLevelDeclarations.Add(f);
+            ResContext.AddProcedure(f);
+            return f;
+        }
+
+        private Expr MakeBVFunctionCall(string functionName, string smtName, Microsoft.Boogie.Type resultType, params Expr[] args)
+        {
+            Function f = GetOrCreateBVFunction(functionName, smtName, resultType, args.Select(a => a.Type).ToArray());
+            return new NAryExpr(Token.NoToken, new FunctionCall(f), new ExprSeq(args));
+        }
+
+        private Expr MakeBitVectorBinaryBoolean(string suffix, string smtName, Expr lhs, Expr rhs)
+        {
+            return MakeBVFunctionCall("BV" + lhs.Type.BvBits + "_" + suffix, smtName, Microsoft.Boogie.Type.Bool, lhs, rhs);
+        }
+
+        private Expr MakeBitVectorBinaryBitVector(string suffix, string smtName, Expr lhs, Expr rhs)
+        {
+            return MakeBVFunctionCall("BV" + lhs.Type.BvBits + "_" + suffix, smtName, lhs.Type, lhs, rhs);
+        }
+
+        internal Expr MakeBVSlt(Expr lhs, Expr rhs) { return MakeBitVectorBinaryBoolean("SLT", "bvslt", lhs, rhs); }
+        internal Expr MakeBVSgt(Expr lhs, Expr rhs) { return MakeBitVectorBinaryBoolean("SGT", "bvsgt", lhs, rhs); }
+        internal Expr MakeBVSge(Expr lhs, Expr rhs) { return MakeBitVectorBinaryBoolean("SGE", "bvsge", lhs, rhs); }
 
         internal static Expr MakeBitVectorBinaryBoolean(string functionName, Expr lhs, Expr rhs)
         {
@@ -1920,7 +1999,7 @@ namespace GPUVerify
                 if (d is Implementation)
                 {
 
-                    new KernelDualiser(this).DualiseImplementation(d as Implementation);
+                    new KernelDualiser(this).DualiseImplementation(d as Implementation, CommandLineOptions.Unstructured);
 
                     NewTopLevelDeclarations.Add(d as Implementation);
 
@@ -1946,6 +2025,12 @@ namespace GPUVerify
 
         private void MakeKernelPredicated()
         {
+            if (CommandLineOptions.Unstructured)
+            {
+                BlockPredicator.Predicate(Program);
+                return;
+            }
+
             foreach (Declaration d in Program.TopLevelDeclarations)
             {
                 if (d is Procedure)
@@ -2007,7 +2092,7 @@ namespace GPUVerify
 
         private int Check()
         {
-            BarrierProcedure = CheckExactlyOneBarrierProcedure();
+            BarrierProcedure = FindOrCreateBarrierProcedure();
             KernelProcedure = CheckExactlyOneKernelProcedure();
 
             if (ErrorCount > 0)
@@ -2025,99 +2110,13 @@ namespace GPUVerify
                 Error(BarrierProcedure, "Barrier procedure must not return any results");
             }
 
-            if (!FindNonLocalVariables(Program))
+            if (!FindNonLocalVariables())
             {
                 return ErrorCount;
             }
 
             CheckKernelImplementation();
-
-            if (!KernelHasIdX())
-            {
-                MissingKernelAttributeError(LOCAL_ID_X_STRING);
-            }
-
-            if (!KernelHasGroupSizeX())
-            {
-                MissingKernelAttributeError(GROUP_SIZE_X_STRING);
-            }
-
-            if (!KernelHasNumGroupsX())
-            {
-                MissingKernelAttributeError(NUM_GROUPS_X_STRING);
-            }
-
-            if (!KernelHasGroupIdX())
-            {
-                MissingKernelAttributeError(GROUP_ID_X_STRING);
-            }
-
-            if (!KernelHasIdY())
-            {
-                MissingKernelAttributeError(LOCAL_ID_Y_STRING);
-            }
-
-            if (!KernelHasGroupSizeY())
-            {
-                MissingKernelAttributeError(GROUP_SIZE_Y_STRING);
-            }
-
-            if (!KernelHasNumGroupsY())
-            {
-                MissingKernelAttributeError(NUM_GROUPS_Y_STRING);
-            }
-
-            if (!KernelHasGroupIdY())
-            {
-                MissingKernelAttributeError(GROUP_ID_Y_STRING);
-            }
-
-            if (!KernelHasIdY())
-            {
-                MissingKernelAttributeError(LOCAL_ID_Y_STRING);
-            }
-
-            if (!KernelHasGroupSizeY())
-            {
-                MissingKernelAttributeError(GROUP_SIZE_Y_STRING);
-            }
-
-            if (!KernelHasNumGroupsY())
-            {
-                MissingKernelAttributeError(NUM_GROUPS_Y_STRING);
-            }
-
-            if (!KernelHasGroupIdY())
-            {
-                MissingKernelAttributeError(GROUP_ID_Y_STRING);
-            }
-
-            if (!KernelHasIdZ())
-            {
-                MissingKernelAttributeError(LOCAL_ID_Z_STRING);
-            }
-
-            if (!KernelHasGroupSizeZ())
-            {
-                MissingKernelAttributeError(GROUP_SIZE_Z_STRING);
-            }
-
-            if (!KernelHasNumGroupsZ())
-            {
-                MissingKernelAttributeError(NUM_GROUPS_Z_STRING);
-            }
-
-            if (!KernelHasGroupIdZ())
-            {
-                MissingKernelAttributeError(GROUP_ID_Z_STRING);
-            }
-
             return ErrorCount;
-        }
-
-        private void MissingKernelAttributeError(string attribute)
-        {
-            Error(KernelProcedure.tok, "Kernel must declare global constant marked with attribute ':" + attribute + "'");
         }
 
         public static bool IsThreadLocalIdConstant(Variable variable)

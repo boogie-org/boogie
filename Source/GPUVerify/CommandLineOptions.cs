@@ -40,6 +40,8 @@ namespace GPUVerify
 
         public static bool NoLoopPredicateInvariants = false;
 
+        public static bool Unstructured = false;
+
         public static int Parse(string[] args)
         {
             for (int i = 0; i < args.Length; i++)
@@ -177,6 +179,11 @@ namespace GPUVerify
                     NoLoopPredicateInvariants = true;
                     break;
 
+                    case "-unstructured":
+                    case "/unstructured":
+                    Unstructured = true;
+                    break;
+
                     default:
                         inputFiles.Add(args[i]);
                         break;
@@ -216,6 +223,7 @@ namespace GPUVerify
   /divided         : check individual pairs of possibly racing statements separately
   /dividedArray    : check races on arrays one at a time
   /dividedElement  : ???
+  /unstructured    : operate on the unstructured form of the program
 
 ");
         }

@@ -404,7 +404,7 @@ namespace Microsoft.Boogie {
             inline = true;
           }
         }
-        if (inline && CommandLineOptions.Clo.StratifiedInlining == 0) {
+        if (inline) {
           foreach (var d in TopLevelDeclarations) {
             var impl = d as Implementation;
             if (impl != null) {

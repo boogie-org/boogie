@@ -1,22 +1,20 @@
 var g: int;
 
-procedure A();
-  requires g == 0;
-  modifies g;
 
-procedure {:inline 1} {:verify false} foo(); 
-
-implementation foo() {
+procedure foo()
+{
   var t: int;
   t := 0;
 }
 
-implementation A()
+procedure {:entrypoint} A()
+modifies g;
 {
   var x: int;
   var y: int;
 
   anon0:
+    assume g == 0;
     x := 4;
     goto anon3_LoopHead;
 
@@ -48,8 +46,6 @@ implementation A()
     goto anon2;
 
   anon2:
-    assert false;
-    assert x == 1;
     return;
 }
 
