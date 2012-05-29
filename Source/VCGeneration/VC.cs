@@ -1384,10 +1384,7 @@ namespace VC {
       }
     }
 
-    public override Outcome VerifyImplementation(Implementation/*!*/ impl, Program/*!*/ program, VerifierCallback/*!*/ callback) {
-      //Contract.Requires(impl != null);
-      //Contract.Requires(program != null);
-      //Contract.Requires(callback != null);
+    public override Outcome VerifyImplementation(Implementation/*!*/ impl, VerifierCallback/*!*/ callback) {
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
 
       if (impl.SkipVerification) {

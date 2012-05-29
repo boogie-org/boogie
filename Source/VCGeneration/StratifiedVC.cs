@@ -367,9 +367,25 @@ namespace VC {
     private bool useSummary;
     private SummaryComputation summaryComputation;
     private HashSet<string> procsThatReachedRecBound;
-    public int boundUsedInLastQuery { get; private set; }
     public HashSet<string> procsToSkip;
     public Dictionary<string, int> extraRecBound;
+
+    public StratifiedVCGen(bool usePrevCallTree, Dictionary<string, int> prevCallTree, 
+                           HashSet<string> procsToSkip, Dictionary<string, int> extraRecBound,
+                           Program program, string/*?*/ logFilePath, bool appendLogFile) 
+    : this(program, logFilePath, appendLogFile)
+    {
+      this.procsToSkip = new HashSet<string>(procsToSkip);
+      this.extraRecBound = new Dictionary<string, int>(extraRecBound);
+
+      if (usePrevCallTree) {
+        callTree = prevCallTree;
+        PersistCallTree = true;
+      }
+      else {
+        PersistCallTree = false;
+      }
+    }
 
     public StratifiedVCGen(Program program, string/*?*/ logFilePath, bool appendLogFile)
       : base(program, logFilePath, appendLogFile) {
@@ -379,7 +395,6 @@ namespace VC {
       procsThatReachedRecBound = new HashSet<string>();
       procsToSkip = new HashSet<string>();
       extraRecBound = new Dictionary<string, int>();
-      boundUsedInLastQuery = -1;
     }
 
     // Is this procedure to be "skipped" 
@@ -1189,7 +1204,7 @@ namespace VC {
       }
     }
 
-    public override Outcome VerifyImplementation(Implementation/*!*/ impl, Program/*!*/ program, VerifierCallback/*!*/ callback) {
+    public override Outcome VerifyImplementation(Implementation/*!*/ impl, VerifierCallback/*!*/ callback) {
       Debug.Assert(QKeyValue.FindBoolAttribute(impl.Attributes, "entrypoint"));
       Debug.Assert(this.program == program);
 
@@ -1318,8 +1333,6 @@ namespace VC {
       //   case 2: (bug)     We find a bug
       //   case 3: (internal error)   The theorem prover TimesOut of runs OutOfMemory
       while (true) {
-        boundUsedInLastQuery = bound;
-
         // Check timeout
         if (CommandLineOptions.Clo.ProverKillTime != -1) {
           if ((DateTime.UtcNow - startTime).TotalSeconds > CommandLineOptions.Clo.ProverKillTime) {

@@ -101,10 +101,7 @@ namespace VC {
     /// - check if |= (reach=false) => wlp.S.false holds for each reach
     ///
     /// </summary>
-    public override Outcome VerifyImplementation(Implementation impl, Program program, VerifierCallback callback) {
-      //Contract.Requires(impl != null);
-      //Contract.Requires(program != null);
-      //Contract.Requires(callback != null);
+    public override Outcome VerifyImplementation(Implementation impl, VerifierCallback callback) {
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
       
       Console.WriteLine();
@@ -115,7 +112,7 @@ namespace VC {
 
       //Impl2Dot(impl, String.Format("c:/dot/{0}_orig.dot", impl.Name));      
 
-      Transform4DoomedCheck(impl, program);
+      Transform4DoomedCheck(impl);
 
       //Impl2Dot(impl, String.Format("c:/dot/{0}_fin.dot", impl.Name));
     
@@ -694,7 +691,7 @@ namespace VC {
     // this might be redundant, but I didn't find a better place to get this information.     
     private Dictionary<Variable, Expr> m_LastReachVarIncarnation = new Dictionary<Variable, Expr>();
 
-    private void Transform4DoomedCheck(Implementation impl, Program program)
+    private void Transform4DoomedCheck(Implementation impl)
     {
         variable2SequenceNumber = new Hashtable/*Variable -> int*/();
         incarnationOriginMap = new Dictionary<Incarnation, Absy>();
