@@ -35,7 +35,7 @@ namespace GPUVerify.InvariantGenerationRules
                         int BVWidth = (v.TypedIdent.Type as BvType).Bits;
 
                         verifier.AddCandidateInvariant(wc,
-                                GPUVerifier.MakeBitVectorBinaryBoolean("BV" + BVWidth + "_GEQ",
+                                verifier.MakeBVSge(
                                 new IdentifierExpr(v.tok, v),
                                 new LiteralExpr(v.tok, BigNum.FromInt(0), BVWidth)), "loop guard variable non-negative");
                     }

@@ -312,7 +312,7 @@ namespace GPUVerify
 
             Expr CTimesLocalIdLeqAccessedOffset = GPUVerifier.MakeBitVectorBinaryBoolean("BV32_LEQ", CTimesLocalId, OffsetXExpr(v, ReadOrWrite, Thread));
 
-            Expr AccessedOffsetLtCTimesLocalIdPlusC = GPUVerifier.MakeBitVectorBinaryBoolean("BV32_LT", OffsetXExpr(v, ReadOrWrite, Thread), CTimesLocalIdPlusC);
+            Expr AccessedOffsetLtCTimesLocalIdPlusC = verifier.MakeBVSlt(OffsetXExpr(v, ReadOrWrite, Thread), CTimesLocalIdPlusC);
 
             return Expr.Imp(
                     AccessHasOccurred(v, ReadOrWrite, Thread),
@@ -346,7 +346,7 @@ namespace GPUVerify
 
             Expr CTimesGlobalIdLeqAccessedOffset = GPUVerifier.MakeBitVectorBinaryBoolean("BV32_LEQ", CTimesGlobalId, OffsetXExpr(v, ReadOrWrite, Thread));
 
-            Expr AccessedOffsetLtCTimesGlobalIdPlusC = GPUVerifier.MakeBitVectorBinaryBoolean("BV32_LT", OffsetXExpr(v, ReadOrWrite, Thread), CTimesGlobalIdPlusC);
+            Expr AccessedOffsetLtCTimesGlobalIdPlusC = verifier.MakeBVSlt(OffsetXExpr(v, ReadOrWrite, Thread), CTimesGlobalIdPlusC);
 
             Expr implication = Expr.Imp(
                     AccessHasOccurred(v, ReadOrWrite, Thread),

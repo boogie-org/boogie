@@ -798,9 +798,17 @@ namespace GPUVerify
             return result;
         }
 
+        private Block AddRaceCheckCalls(Block b)
+        {
+            return new Block(Token.NoToken, b.Label, AddRaceCheckCalls(b.Cmds), b.TransferCmd);
+        }
+
         private void AddRaceCheckCalls(Implementation impl)
         {
-            impl.StructuredStmts = AddRaceCheckCalls(impl.StructuredStmts);
+            if (CommandLineOptions.Unstructured)
+                impl.Blocks = impl.Blocks.Select(AddRaceCheckCalls).ToList();
+            else
+                impl.StructuredStmts = AddRaceCheckCalls(impl.StructuredStmts);
         }
 
         private bool shouldAddLogCallAndIncr()
@@ -828,13 +836,12 @@ namespace GPUVerify
             return false;
         }
 
-        private BigBlock AddRaceCheckCalls(BigBlock bb)
+        private CmdSeq AddRaceCheckCalls(CmdSeq cs)
         {
-            BigBlock result = new BigBlock(bb.tok, bb.LabelName, new CmdSeq(), null, bb.tc);
-
-            foreach (Cmd c in bb.simpleCmds)
+            var result = new CmdSeq();
+            foreach (Cmd c in cs)
             {
-                result.simpleCmds.Add(c);
+                result.Add(c);
                 if (c is AssignCmd)
                 {
                     AssignCmd assign = c as AssignCmd;
@@ -873,8 +880,8 @@ namespace GPUVerify
 
                             logAccessCallCmd.Proc = logProcedure;
 
-                            result.simpleCmds.Add(logAccessCallCmd);
-                            
+                            cs.Add(logAccessCallCmd);
+
                         }
                     }
 
@@ -907,17 +914,20 @@ namespace GPUVerify
 
                             logAccessCallCmd.Proc = logProcedure;
 
-                            result.simpleCmds.Add(logAccessCallCmd);
-                            
+                            cs.Add(logAccessCallCmd);
+
                             addedLogWrite = true;
-                            
+
                         }
                     }
-
-
-
                 }
             }
+            return result;
+        }
+
+        private BigBlock AddRaceCheckCalls(BigBlock bb)
+        {
+            BigBlock result = new BigBlock(bb.tok, bb.LabelName, AddRaceCheckCalls(bb.simpleCmds), null, bb.tc);
 
             if (bb.ec is WhileCmd)
             {
@@ -941,7 +951,6 @@ namespace GPUVerify
             }
 
             return result;
-
         }
 
         private Procedure GetLogAccessProcedure(IToken tok, string name)

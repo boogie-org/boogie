@@ -41,6 +41,9 @@ namespace GPUVerify
 
         internal void Analyse()
         {
+            if (CommandLineOptions.Unstructured)
+                return;
+
             foreach (Declaration D in verifier.Program.TopLevelDeclarations)
             {
                 if(D is Implementation)
@@ -283,6 +286,9 @@ namespace GPUVerify
 
         internal bool IsUniform(string procedureName)
         {
+            if (CommandLineOptions.Unstructured)
+                return false;
+
             if (!uniformityInfo.ContainsKey(procedureName))
             {
                 return false;
@@ -292,6 +298,9 @@ namespace GPUVerify
 
         internal bool IsUniform(string procedureName, Expr expr)
         {
+            if (CommandLineOptions.Unstructured)
+                return false;
+
             UniformExpressionAnalysisVisitor visitor = new UniformExpressionAnalysisVisitor(uniformityInfo[procedureName].Value);
             visitor.VisitExpr(expr);
             return visitor.IsUniform();
@@ -299,6 +308,9 @@ namespace GPUVerify
 
         internal bool IsUniform(string procedureName, string v)
         {
+            if (CommandLineOptions.Unstructured)
+                return false;
+
             if (!uniformityInfo.ContainsKey(procedureName))
             {
                 return false;
@@ -363,11 +375,17 @@ namespace GPUVerify
 
         internal string GetInParameter(string procName, int i)
         {
+            if (CommandLineOptions.Unstructured)
+                return null;
+
             return inParameters[procName][i];
         }
 
         internal string GetOutParameter(string procName, int i)
         {
+            if (CommandLineOptions.Unstructured)
+                return null;
+
             return outParameters[procName][i];
         }
 
@@ -388,6 +406,9 @@ namespace GPUVerify
 
         internal bool IsUniform(string proc, WhileCmd wc)
         {
+            if (CommandLineOptions.Unstructured)
+                return false;
+
             return !nonUniformLoops[proc].Contains(GetLoopId(wc));
         }
 
