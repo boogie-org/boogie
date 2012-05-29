@@ -2361,7 +2361,7 @@ namespace VC {
       return null;
     }
 
-    protected static Counterexample AssertCmdToCounterexample(AssertCmd cmd, TransferCmd transferCmd, BlockSeq trace, Model errModel, ModelViewInfo mvInfo, ProverContext context) 
+    public static Counterexample AssertCmdToCounterexample(AssertCmd cmd, TransferCmd transferCmd, BlockSeq trace, Model errModel, ModelViewInfo mvInfo, ProverContext context) 
     {
       Contract.Requires(cmd != null);
       Contract.Requires(transferCmd != null);
