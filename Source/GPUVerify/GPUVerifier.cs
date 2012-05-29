@@ -206,7 +206,7 @@ namespace GPUVerify
         {
             if (constFieldRef == null)
             {
-                constFieldRef = new Constant(Token.NoToken, new TypedIdent(Token.NoToken, attr, Microsoft.Boogie.Type.GetBvType(32)));
+                constFieldRef = new Constant(Token.NoToken, new TypedIdent(Token.NoToken, attr, Microsoft.Boogie.Type.GetBvType(32)), /*unique=*/false);
                 constFieldRef.AddAttribute(attr);
                 Program.TopLevelDeclarations.Add(constFieldRef);
             }
