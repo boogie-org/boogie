@@ -26,10 +26,7 @@ namespace VC {
 
     public StratifiedVC(StratifiedInliningInfo siInfo) {
       info = siInfo;
-      if (!info.initialized) {
-        info.GenerateVC();
-      }
-
+      info.GenerateVC();
       vcexpr = info.vcexpr;
       var vcgen = info.vcgen;
       var prover = vcgen.prover;
@@ -232,9 +229,8 @@ namespace VC {
       var exprGen = proverInterface.Context.ExprGen;
       var translator = proverInterface.Context.BoogieExprTranslator;
       VCExpr controlFlowVariableExpr = CommandLineOptions.Clo.UseLabels ? null : translator.LookupVariable(controlFlowVariable);
-
       vcexpr = gen.Not(vcgen.GenerateVC(impl, controlFlowVariableExpr, out label2absy, proverInterface.Context));
-      if (!CommandLineOptions.Clo.UseLabels) {
+      if (controlFlowVariableExpr != null) {
         VCExpr controlFlowFunctionAppl = exprGen.ControlFlowFunctionApplication(controlFlowVariableExpr, exprGen.Integer(BigNum.ZERO));
         VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl, exprGen.Integer(BigNum.FromInt(impl.Blocks[0].UniqueId)));
         vcexpr = exprGen.And(eqExpr, vcexpr);
@@ -356,6 +352,15 @@ namespace VC {
     private int idCountForStratifiedInlining = 0;
     public int CreateNewId() {
       return idCountForStratifiedInlining++;
+    }
+
+    // Used inside PassifyImpl
+    protected override void addExitAssert(string implName, Block exitBlock) {
+      if (implName2StratifiedInliningInfo != null && implName2StratifiedInliningInfo.ContainsKey(implName)) {
+        Expr assertExpr = implName2StratifiedInliningInfo[implName].assertExpr;
+        Contract.Assert(assertExpr != null);
+        exitBlock.Cmds.Add(new AssertCmd(Token.NoToken, assertExpr));
+      }
     }
   }
 
@@ -1643,9 +1648,7 @@ namespace VC {
         if (!implName2StratifiedInliningInfo.ContainsKey(procName)) continue;
 
         StratifiedInliningInfo info = implName2StratifiedInliningInfo[procName];
-        if (!info.initialized) {
-          info.GenerateVC();
-        }
+        info.GenerateVC();
         //Console.WriteLine("Inlining {0}", procName);
         VCExpr expansion = cce.NonNull(info.vcexpr);
 
@@ -2591,15 +2594,6 @@ namespace VC {
       public override void OnProverWarning(string msg) {
         //Contract.Requires(msg != null);
         callback.OnWarning(msg);
-      }
-    }
-
-    // Used inside PassifyImpl
-    protected override void addExitAssert(string implName, Block exitBlock) {
-      if (implName2StratifiedInliningInfo != null && implName2StratifiedInliningInfo.ContainsKey(implName)) {
-        Expr assertExpr = implName2StratifiedInliningInfo[implName].assertExpr;
-        Contract.Assert(assertExpr != null);
-        exitBlock.Cmds.Add(new AssertCmd(Token.NoToken, assertExpr));
       }
     }
 
