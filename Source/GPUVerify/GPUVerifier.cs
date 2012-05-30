@@ -1589,7 +1589,8 @@ namespace GPUVerify
 
         private Block PerformFullSharedStateAbstraction(Block b)
         {
-            return new Block(Token.NoToken, b.Label, PerformFullSharedStateAbstraction(b.Cmds), b.TransferCmd);
+            b.Cmds = PerformFullSharedStateAbstraction(b.Cmds);
+            return b;
         }
 
         private BigBlock PerformFullSharedStateAbstraction(BigBlock bb)

@@ -800,7 +800,8 @@ namespace GPUVerify
 
         private Block AddRaceCheckCalls(Block b)
         {
-            return new Block(Token.NoToken, b.Label, AddRaceCheckCalls(b.Cmds), b.TransferCmd);
+            b.Cmds = AddRaceCheckCalls(b.Cmds);
+            return b;
         }
 
         private void AddRaceCheckCalls(Implementation impl)
