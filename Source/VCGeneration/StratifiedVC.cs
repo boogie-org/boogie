@@ -1873,9 +1873,21 @@ namespace VC {
           if (getProc(id) == str && !forcedCandidates.Contains(id)) ret++;
         }
 
-        if (extraRecursion.ContainsKey(str)) ret -= extraRecursion[str];
+        // Usual
+        if (!extraRecursion.ContainsKey(str))
+            return ret;
 
-        return ret;
+        // Usual
+        if (ret <= CommandLineOptions.Clo.RecursionBound - 1)
+            return ret;
+
+        // Special
+        if (ret >= CommandLineOptions.Clo.RecursionBound &&
+            ret <= CommandLineOptions.Clo.RecursionBound + extraRecursion[str] - 1)
+            return CommandLineOptions.Clo.RecursionBound - 1;
+
+        // Special
+        return ret - extraRecursion[str];
       }
 
       // Set user-define increment/decrement to recursionBound
