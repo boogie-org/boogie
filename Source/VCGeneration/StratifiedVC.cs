@@ -427,6 +427,47 @@ namespace VC {
         exitBlock.Cmds.Add(new AssertCmd(Token.NoToken, assertExpr));
       }
     }
+
+    public override Counterexample extractLoopTrace(Counterexample cex, string mainProcName, Program program, Dictionary<string, Dictionary<string, Block>> extractLoopMappingInfo) {
+      // Construct the set of inlined procs in the original program
+      var inlinedProcs = new HashSet<string>();
+      foreach (var decl in program.TopLevelDeclarations) {
+        // Implementations
+        if (decl is Implementation) {
+          var impl = decl as Implementation;
+          if (!(impl.Proc is LoopProcedure)) {
+            inlinedProcs.Add(impl.Name);
+          }
+        }
+
+        // And recording procedures
+        if (decl is Procedure) {
+          var proc = decl as Procedure;
+          if (proc.Name.StartsWith(recordProcName)) {
+            Debug.Assert(!(decl is LoopProcedure));
+            inlinedProcs.Add(proc.Name);
+          }
+        }
+      }
+
+      return extractLoopTraceRec(
+          new CalleeCounterexampleInfo(cex, new List<Model.Element>()),
+          mainProcName, inlinedProcs, extractLoopMappingInfo).counterexample;
+    }
+
+    protected override bool elIsLoop(string procname) {
+      StratifiedInliningInfo info = null;
+      if (implName2StratifiedInliningInfo.ContainsKey(procname)) {
+        info = implName2StratifiedInliningInfo[procname];
+      }
+
+      if (info == null) return false;
+
+      var lp = info.impl.Proc as LoopProcedure;
+
+      if (lp == null) return false;
+      return true;
+    }
   }
 
   public class StratifiedVCGen : StratifiedVCGenBase {
@@ -2640,47 +2681,6 @@ namespace VC {
         //Contract.Requires(msg != null);
         callback.OnWarning(msg);
       }
-    }
-
-    public override Counterexample extractLoopTrace(Counterexample cex, string mainProcName, Program program, Dictionary<string, Dictionary<string, Block>> extractLoopMappingInfo) {
-      // Construct the set of inlined procs in the original program
-      var inlinedProcs = new HashSet<string>();
-      foreach (var decl in program.TopLevelDeclarations) {
-        // Implementations
-        if (decl is Implementation) {
-          var impl = decl as Implementation;
-          if (!(impl.Proc is LoopProcedure)) {
-            inlinedProcs.Add(impl.Name);
-          }
-        }
-
-        // And recording procedures
-        if (decl is Procedure) {
-          var proc = decl as Procedure;
-          if (proc.Name.StartsWith(recordProcName)) {
-            Debug.Assert(!(decl is LoopProcedure));
-            inlinedProcs.Add(proc.Name);
-          }
-        }
-      }
-
-      return extractLoopTraceRec(
-          new CalleeCounterexampleInfo(cex, new List<Model.Element>()),
-          mainProcName, inlinedProcs, extractLoopMappingInfo).counterexample;
-    }
-
-    protected override bool elIsLoop(string procname) {
-      StratifiedInliningInfo info = null;
-      if (implName2StratifiedInliningInfo.ContainsKey(procname)) {
-        info = implName2StratifiedInliningInfo[procname];
-      }
-
-      if (info == null) return false;
-
-      var lp = info.impl.Proc as LoopProcedure;
-
-      if (lp == null) return false;
-      return true;
     }
 
   } // class StratifiedVCGen
