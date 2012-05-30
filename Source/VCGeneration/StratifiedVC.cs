@@ -21,6 +21,7 @@ namespace VC {
     public int id;
     public List<VCExprVar> interfaceExprVars;
     public Dictionary<Block, List<StratifiedCallSite>> callSites;
+    public Dictionary<Block, List<StratifiedCallSite>> recordProcCallSites;
     public VCExpr vcexpr;
     public Dictionary<Block, VCExprVar> reachVars;
 
@@ -79,6 +80,14 @@ namespace VC {
         callSites[b] = new List<StratifiedCallSite>();
         foreach (CallSite cs in info.callSites[b]) {
           callSites[b].Add(new StratifiedCallSite(cs, substVisitor, subst, reachVars));
+        }
+      }
+
+      recordProcCallSites = new Dictionary<Block, List<StratifiedCallSite>>();
+      foreach (Block b in info.recordProcCallSites.Keys) {
+        recordProcCallSites[b] = new List<StratifiedCallSite>();
+        foreach (CallSite cs in info.recordProcCallSites[b]) {
+          recordProcCallSites[b].Add(new StratifiedCallSite(cs, substVisitor, subst, reachVars));
         }
       }
     }
@@ -147,6 +156,7 @@ namespace VC {
     public Hashtable/*<int, Absy!>*/ label2absy;
     public ModelViewInfo mvInfo;
     public Dictionary<Block, List<CallSite>> callSites;
+    public Dictionary<Block, List<CallSite>> recordProcCallSites;
     public bool initialized { get; private set; }
 
     public StratifiedInliningInfo(Implementation implementation, StratifiedVCGenBase stratifiedVcGen) {
@@ -256,6 +266,7 @@ namespace VC {
       }
 
       callSites = vcgen.CollectCallSites(impl);
+      recordProcCallSites = vcgen.CollectRecordProcedureCallSites(impl);
       initialized = true;
     }
   }
@@ -300,6 +311,7 @@ namespace VC {
   }
 
   public class StratifiedVCGenBase : VCGen {
+    public readonly static string recordProcName = "boogie_si_record";
     public Dictionary<string, StratifiedInliningInfo> implName2StratifiedInliningInfo;
     public ProverInterface prover;
 
@@ -311,6 +323,37 @@ namespace VC {
         Implementation impl = decl as Implementation;
         if (impl == null) continue;
         implName2StratifiedInliningInfo[impl.Name] = new StratifiedInliningInfo(impl, this);
+      }
+      GenerateRecordFunctions();
+    }
+
+    private void GenerateRecordFunctions() {
+      foreach (var decl in program.TopLevelDeclarations) {
+        var proc = decl as Procedure;
+        if (proc == null) continue;
+        if (!proc.Name.StartsWith(recordProcName)) continue;
+        Contract.Assert(proc.InParams.Length == 1);
+
+        // Make a new function
+        TypedIdent ti = new TypedIdent(Token.NoToken, "", Bpl.Type.Bool);
+        Contract.Assert(ti != null);
+        Formal returnVar = new Formal(Token.NoToken, ti, false);
+        Contract.Assert(returnVar != null);
+
+        // Get record type
+        var argtype = proc.InParams[0].TypedIdent.Type;
+
+        var ins = new VariableSeq();
+        ins.Add(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "x", argtype), true));
+
+        var recordFunc = new Function(Token.NoToken, proc.Name, ins, returnVar);
+        prover.Context.DeclareFunction(recordFunc, "");
+
+        var exprs = new ExprSeq();
+        exprs.Add(new IdentifierExpr(Token.NoToken, proc.InParams[0]));
+
+        Expr freePostExpr = new NAryExpr(Token.NoToken, new FunctionCall(recordFunc), exprs);
+        proc.Ensures.Add(new Ensures(true, freePostExpr));
       }
     }
 
@@ -328,6 +371,28 @@ namespace VC {
           NAryExpr naryExpr = assumeCmd.Expr as NAryExpr;
           if (naryExpr == null) continue;
           if (!implName2StratifiedInliningInfo.ContainsKey(naryExpr.Fun.FunctionName)) continue;
+          List<VCExpr> interfaceExprs = new List<VCExpr>();
+          foreach (Expr e in naryExpr.Args) {
+            interfaceExprs.Add(prover.Context.BoogieExprTranslator.Translate(e));
+          }
+          CallSite cs = new CallSite(naryExpr.Fun.FunctionName, interfaceExprs, block, i);
+          if (!callSites.ContainsKey(block))
+            callSites[block] = new List<CallSite>();
+          callSites[block].Add(cs);
+        }
+      }
+      return callSites;
+    }
+
+    public Dictionary<Block, List<CallSite>> CollectRecordProcedureCallSites(Implementation implementation) {
+      var callSites = new Dictionary<Block, List<CallSite>>();
+      foreach (Block block in implementation.Blocks) {
+        for (int i = 0; i < block.Cmds.Length; i++) {
+          AssumeCmd assumeCmd = block.Cmds[i] as AssumeCmd;
+          if (assumeCmd == null) continue;
+          NAryExpr naryExpr = assumeCmd.Expr as NAryExpr;
+          if (naryExpr == null) continue;
+          if (!naryExpr.Fun.FunctionName.StartsWith(recordProcName)) continue;
           List<VCExpr> interfaceExprs = new List<VCExpr>();
           foreach (Expr e in naryExpr.Args) {
             interfaceExprs.Add(prover.Context.BoogieExprTranslator.Translate(e));
@@ -368,7 +433,6 @@ namespace VC {
     public bool PersistCallTree;
     public static Dictionary<string, int> callTree = null;
     public int numInlined = 0;
-    public readonly static string recordProcName = "boogie_si_record";
     private bool useSummary;
     private SummaryComputation summaryComputation;
     private HashSet<string> procsThatReachedRecBound;
@@ -394,7 +458,6 @@ namespace VC {
 
     public StratifiedVCGen(Program program, string/*?*/ logFilePath, bool appendLogFile)
       : base(program, logFilePath, appendLogFile) {
-      this.GenerateRecordFunctions();
       PersistCallTree = false;
       useSummary = false;
       procsThatReachedRecBound = new HashSet<string>();
@@ -415,36 +478,6 @@ namespace VC {
       if (!extraRecBound.ContainsKey(procName))
         return 0;
       else return extraRecBound[procName];
-    }
-
-    public void GenerateRecordFunctions() {
-      foreach (var decl in program.TopLevelDeclarations) {
-        var proc = decl as Procedure;
-        if (proc == null) continue;
-        if (!proc.Name.StartsWith(recordProcName)) continue;
-        Contract.Assert(proc.InParams.Length == 1);
-
-        // Make a new function
-        TypedIdent ti = new TypedIdent(Token.NoToken, "", Bpl.Type.Bool);
-        Contract.Assert(ti != null);
-        Formal returnVar = new Formal(Token.NoToken, ti, false);
-        Contract.Assert(returnVar != null);
-
-        // Get record type
-        var argtype = proc.InParams[0].TypedIdent.Type;
-
-        var ins = new VariableSeq();
-        ins.Add(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "x", argtype), true));
-
-        var recordFunc = new Function(Token.NoToken, proc.Name, ins, returnVar);
-        prover.Context.DeclareFunction(recordFunc, "");
-
-        var exprs = new ExprSeq();
-        exprs.Add(new IdentifierExpr(Token.NoToken, proc.InParams[0]));
-
-        Expr freePostExpr = new NAryExpr(Token.NoToken, new FunctionCall(recordFunc), exprs);
-        proc.Ensures.Add(new Ensures(true, freePostExpr));
-      }
     }
 
     public class SummaryComputation {
