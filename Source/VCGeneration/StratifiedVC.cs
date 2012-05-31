@@ -310,7 +310,7 @@ namespace VC {
     }
   }
 
-  public class StratifiedVCGenBase : VCGen {
+  public abstract class StratifiedVCGenBase : VCGen {
     public readonly static string recordProcName = "boogie_si_record";
     public Dictionary<string, StratifiedInliningInfo> implName2StratifiedInliningInfo;
     public ProverInterface prover;
@@ -468,6 +468,8 @@ namespace VC {
       if (lp == null) return false;
       return true;
     }
+
+    public abstract Outcome FindLeastToVerify(Implementation impl, ref HashSet<string> allBoolVars);
   }
 
   public class StratifiedVCGen : StratifiedVCGenBase {
@@ -1102,7 +1104,7 @@ namespace VC {
       }
     }
 
-    public Outcome FindLeastToVerify(Implementation impl, ref HashSet<string> allBoolVars) {
+    public override Outcome FindLeastToVerify(Implementation impl, ref HashSet<string> allBoolVars) {
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
 
       // Record current time
