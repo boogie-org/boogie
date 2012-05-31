@@ -1403,6 +1403,9 @@ namespace GPUVerify
             StmtList statements = new StmtList(bigblocks, BarrierProcedure.tok);
             Implementation BarrierImplementation = new Implementation(BarrierProcedure.tok, BarrierProcedure.Name, new TypeVariableSeq(), BarrierProcedure.InParams, BarrierProcedure.OutParams, new VariableSeq(), statements);
 
+            if (CommandLineOptions.Unstructured)
+                BarrierImplementation.Resolve(ResContext);
+
             BarrierImplementation.AddAttribute("inline", new object[] { new LiteralExpr(tok, BigNum.FromInt(1)) });
             BarrierProcedure.AddAttribute("inline", new object[] { new LiteralExpr(tok, BigNum.FromInt(1)) });
 
