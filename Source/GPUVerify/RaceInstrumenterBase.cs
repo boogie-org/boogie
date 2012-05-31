@@ -846,79 +846,79 @@ namespace GPUVerify
                 if (c is AssignCmd)
                 {
                     AssignCmd assign = c as AssignCmd;
-                    Debug.Assert(assign.Lhss.Count == 1);
-                    Debug.Assert(assign.Rhss.Count == 1);
-                    AssignLhs lhs = assign.Lhss[0];
-                    Expr rhs = assign.Rhss[0];
 
                     ReadCollector rc = new ReadCollector(NonLocalStateToCheck);
-                    rc.Visit(rhs);
+                    foreach (var rhs in assign.Rhss)
+                        rc.Visit(rhs);
                     if (rc.accesses.Count > 0)
                     {
-                        Debug.Assert(rc.accesses.Count == 1);
-                        AccessRecord ar = rc.accesses[0];
-
-                        if (shouldAddLogCallAndIncr())
+                        foreach (AccessRecord ar in rc.accesses)
                         {
-
-                            ExprSeq inParams = new ExprSeq();
-                            if (ar.IndexZ != null)
+                            if (shouldAddLogCallAndIncr())
                             {
-                                inParams.Add(ar.IndexZ);
+
+                                ExprSeq inParams = new ExprSeq();
+                                if (ar.IndexZ != null)
+                                {
+                                    inParams.Add(ar.IndexZ);
+                                }
+                                if (ar.IndexY != null)
+                                {
+                                    inParams.Add(ar.IndexY);
+                                }
+                                if (ar.IndexX != null)
+                                {
+                                    inParams.Add(ar.IndexX);
+                                }
+
+                                Procedure logProcedure = GetLogAccessProcedure(c.tok, "_LOG_READ_" + ar.v.Name);
+
+                                CallCmd logAccessCallCmd = new CallCmd(c.tok, logProcedure.Name, inParams, new IdentifierExprSeq());
+
+                                logAccessCallCmd.Proc = logProcedure;
+
+                                cs.Add(logAccessCallCmd);
+
                             }
-                            if (ar.IndexY != null)
-                            {
-                                inParams.Add(ar.IndexY);
-                            }
-                            if (ar.IndexX != null)
-                            {
-                                inParams.Add(ar.IndexX);
-                            }
-
-                            Procedure logProcedure = GetLogAccessProcedure(c.tok, "_LOG_READ_" + ar.v.Name);
-
-                            CallCmd logAccessCallCmd = new CallCmd(c.tok, logProcedure.Name, inParams, new IdentifierExprSeq());
-
-                            logAccessCallCmd.Proc = logProcedure;
-
-                            cs.Add(logAccessCallCmd);
-
                         }
                     }
 
-                    WriteCollector wc = new WriteCollector(NonLocalStateToCheck);
-                    wc.Visit(lhs);
-                    if (wc.GetAccess() != null)
+                    foreach (var lhs in assign.Lhss)
                     {
-                        AccessRecord ar = wc.GetAccess();
-
-                        if (shouldAddLogCallAndIncr())
+                        WriteCollector wc = new WriteCollector(NonLocalStateToCheck);
+                        wc.Visit(lhs);
+                        if (wc.GetAccess() != null)
                         {
+                            AccessRecord ar = wc.GetAccess();
 
-                            ExprSeq inParams = new ExprSeq();
-                            if (ar.IndexZ != null)
+                            if (shouldAddLogCallAndIncr())
                             {
-                                inParams.Add(ar.IndexZ);
+
+                                ExprSeq inParams = new ExprSeq();
+                                if (ar.IndexZ != null)
+                                {
+                                    inParams.Add(ar.IndexZ);
+                                }
+                                if (ar.IndexY != null)
+                                {
+                                    inParams.Add(ar.IndexY);
+                                }
+                                if (ar.IndexX != null)
+                                {
+                                    inParams.Add(ar.IndexX);
+                                }
+
+                                Procedure logProcedure = GetLogAccessProcedure(c.tok, "_LOG_WRITE_" + ar.v.Name);
+
+                                CallCmd logAccessCallCmd = new CallCmd(c.tok, logProcedure.Name, inParams, new IdentifierExprSeq());
+
+                                logAccessCallCmd.Proc = logProcedure;
+
+                                cs.Add(logAccessCallCmd);
+
+                                addedLogWrite = true;
+
                             }
-                            if (ar.IndexY != null)
-                            {
-                                inParams.Add(ar.IndexY);
-                            }
-                            if (ar.IndexX != null)
-                            {
-                                inParams.Add(ar.IndexX);
-                            }
-
-                            Procedure logProcedure = GetLogAccessProcedure(c.tok, "_LOG_WRITE_" + ar.v.Name);
-
-                            CallCmd logAccessCallCmd = new CallCmd(c.tok, logProcedure.Name, inParams, new IdentifierExprSeq());
-
-                            logAccessCallCmd.Proc = logProcedure;
-
-                            cs.Add(logAccessCallCmd);
-
-                            addedLogWrite = true;
-
                         }
                     }
                 }

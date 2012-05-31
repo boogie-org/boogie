@@ -98,38 +98,38 @@ namespace GPUVerify
                 if (c is AssignCmd)
                 {
                     AssignCmd assign = c as AssignCmd;
-                    assign = c as AssignCmd;
-                    Debug.Assert(assign.Lhss.Count == 1);
-                    Debug.Assert(assign.Rhss.Count == 1);
 
-                    if (assign.Lhss[0] is SimpleAssignLhs)
+                    for (int i = 0; i != assign.Lhss.Count; i++)
                     {
-                        Variable lhsV = (assign.Lhss[0] as SimpleAssignLhs).AssignedVariable.Decl;
-
-                        if (mayBeAssignedId[impl.Name].ContainsKey(lhsV.Name))
+                        if (assign.Lhss[i] is SimpleAssignLhs)
                         {
+                            Variable lhsV = (assign.Lhss[i] as SimpleAssignLhs).AssignedVariable.Decl;
 
-                            if (assign.Rhss[0] is IdentifierExpr)
+                            if (mayBeAssignedId[impl.Name].ContainsKey(lhsV.Name))
                             {
 
-                                Variable rhsV = (assign.Rhss[0] as IdentifierExpr).Decl;
-
-                                if (mayBeAnalyser.MayBe(ComponentString(), impl.Name, rhsV.Name))
+                                if (assign.Rhss[i] is IdentifierExpr)
                                 {
-                                    mayBeAssignedId[impl.Name][lhsV.Name] = true;
+
+                                    Variable rhsV = (assign.Rhss[i] as IdentifierExpr).Decl;
+
+                                    if (mayBeAnalyser.MayBe(ComponentString(), impl.Name, rhsV.Name))
+                                    {
+                                        mayBeAssignedId[impl.Name][lhsV.Name] = true;
+                                    }
+
                                 }
-
-                            }
-                            else
-                            {
-
-                                Expr constantIncrement = GetConstantIncrement(lhsV, assign.Rhss[0]);
-
-                                if (constantIncrement != null)
+                                else
                                 {
-                                    incrementedBy[impl.Name][lhsV.Name].Add(constantIncrement);
-                                }
 
+                                    Expr constantIncrement = GetConstantIncrement(lhsV, assign.Rhss[i]);
+
+                                    if (constantIncrement != null)
+                                    {
+                                        incrementedBy[impl.Name][lhsV.Name].Add(constantIncrement);
+                                    }
+
+                                }
                             }
                         }
                     }

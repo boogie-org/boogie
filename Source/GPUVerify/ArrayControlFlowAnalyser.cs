@@ -117,27 +117,28 @@ namespace GPUVerify
                 if (c is AssignCmd)
                 {
                     AssignCmd assignCmd = c as AssignCmd;
-                    Debug.Assert(assignCmd.Lhss.Count == 1);
-                    Debug.Assert(assignCmd.Rhss.Count == 1);
-                    if (assignCmd.Lhss[0] is SimpleAssignLhs)
+                    for (int i = 0; i != assignCmd.Lhss.Count; i++)
                     {
-                        SimpleAssignLhs lhs = assignCmd.Lhss[0] as SimpleAssignLhs;
-                        Expr rhs = assignCmd.Rhss[0];
-
-                        VariablesOccurringInExpressionVisitor visitor = new VariablesOccurringInExpressionVisitor();
-                        visitor.VisitExpr(rhs);
-
-                        foreach (Variable v in visitor.GetVariables())
+                        if (assignCmd.Lhss[i] is SimpleAssignLhs)
                         {
-                            if (!mayBeDerivedFrom[impl.Name].ContainsKey(v.Name))
+                            SimpleAssignLhs lhs = assignCmd.Lhss[i] as SimpleAssignLhs;
+                            Expr rhs = assignCmd.Rhss[i];
+
+                            VariablesOccurringInExpressionVisitor visitor = new VariablesOccurringInExpressionVisitor();
+                            visitor.VisitExpr(rhs);
+
+                            foreach (Variable v in visitor.GetVariables())
                             {
-                                continue;
-                            }
-                            foreach (String s in mayBeDerivedFrom[impl.Name][v.Name])
-                            {
-                                if (!mayBeDerivedFrom[impl.Name][lhs.AssignedVariable.Name].Contains(s))
+                                if (!mayBeDerivedFrom[impl.Name].ContainsKey(v.Name))
                                 {
-                                    SetMayBeDerivedFrom(impl.Name, lhs.AssignedVariable.Name, s);
+                                    continue;
+                                }
+                                foreach (String s in mayBeDerivedFrom[impl.Name][v.Name])
+                                {
+                                    if (!mayBeDerivedFrom[impl.Name][lhs.AssignedVariable.Name].Contains(s))
+                                    {
+                                        SetMayBeDerivedFrom(impl.Name, lhs.AssignedVariable.Name, s);
+                                    }
                                 }
                             }
                         }

@@ -147,23 +147,22 @@ namespace GPUVerify
             {
                 AssignCmd assign = c as AssignCmd;
 
-                Debug.Assert(assign.Lhss.Count == 1 && assign.Rhss.Count == 1);
-
-                if (assign.Lhss[0] is SimpleAssignLhs &&
-                    verifier.uniformityAnalyser.IsUniform(procName, (assign.Lhss[0] as SimpleAssignLhs).AssignedVariable.Name))
+                if (assign.Lhss.All(lhs =>
+                        lhs is SimpleAssignLhs &&
+                        verifier.uniformityAnalyser.IsUniform(procName, (lhs as SimpleAssignLhs).AssignedVariable.Name)))
                 {
                     cs.Add(assign);
                 }
                 else
                 {
-                    List<AssignLhs> newLhss = new List<AssignLhs>();
-                    List<Expr> newRhss = new List<Expr>();
-
-                    newLhss.Add(new VariableDualiser(1, verifier.uniformityAnalyser, procName).Visit(assign.Lhss.ElementAt(0).Clone() as AssignLhs) as AssignLhs);
-                    newLhss.Add(new VariableDualiser(2, verifier.uniformityAnalyser, procName).Visit(assign.Lhss.ElementAt(0).Clone() as AssignLhs) as AssignLhs);
-
-                    newRhss.Add(new VariableDualiser(1, verifier.uniformityAnalyser, procName).VisitExpr(assign.Rhss.ElementAt(0).Clone() as Expr));
-                    newRhss.Add(new VariableDualiser(2, verifier.uniformityAnalyser, procName).VisitExpr(assign.Rhss.ElementAt(0).Clone() as Expr));
+                    List<AssignLhs> newLhss = assign.Lhss.SelectMany(lhs => new AssignLhs[] {
+                        new VariableDualiser(1, verifier.uniformityAnalyser, procName).Visit(lhs.Clone() as AssignLhs) as AssignLhs,
+                        new VariableDualiser(2, verifier.uniformityAnalyser, procName).Visit(lhs.Clone() as AssignLhs) as AssignLhs
+                    }).ToList();
+                    List<Expr> newRhss = assign.Rhss.SelectMany(rhs => new Expr[] {
+                        new VariableDualiser(1, verifier.uniformityAnalyser, procName).VisitExpr(rhs.Clone() as Expr),
+                        new VariableDualiser(2, verifier.uniformityAnalyser, procName).VisitExpr(rhs.Clone() as Expr)
+                    }).ToList();
 
                     AssignCmd newAssign = new AssignCmd(assign.tok, newLhss, newRhss);
 

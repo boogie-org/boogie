@@ -186,19 +186,19 @@ namespace GPUVerify
 
         private void TransferAssign(Implementation impl, AssignCmd assignCmd, string component)
         {
-            Debug.Assert(assignCmd.Lhss.Count == 1);
-            Debug.Assert(assignCmd.Rhss.Count == 1);
-            if (assignCmd.Lhss[0] is SimpleAssignLhs)
+            for (int i = 0; i != assignCmd.Lhss.Count; ++i)
             {
-                SimpleAssignLhs lhs = assignCmd.Lhss[0] as SimpleAssignLhs;
-                Expr rhs = assignCmd.Rhss[0];
-
-                if (MayBe(component, impl.Name, lhs.AssignedVariable.Name)
-                    && !MayBe(component, impl.Name, rhs))
+                if (assignCmd.Lhss[i] is SimpleAssignLhs)
                 {
-                    SetNot(component, impl.Name, lhs.AssignedVariable.Name);
-                }
+                    SimpleAssignLhs lhs = assignCmd.Lhss[i] as SimpleAssignLhs;
+                    Expr rhs = assignCmd.Rhss[i];
 
+                    if (MayBe(component, impl.Name, lhs.AssignedVariable.Name)
+                        && !MayBe(component, impl.Name, rhs))
+                    {
+                        SetNot(component, impl.Name, lhs.AssignedVariable.Name);
+                    }
+                }
             }
         }
 
