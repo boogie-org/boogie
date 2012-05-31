@@ -199,8 +199,9 @@ class BlockPredicator {
                                new TypedIdent(Token.NoToken, "fp",
                                               Microsoft.Boogie.Type.Bool),
                                /*incoming=*/true);
-        dwf.InParams = new VariableSeq((dwf.InParams + new VariableSeq(fpVar))
-                       .Cast<Variable>().ToArray());
+        dwf.InParams = new VariableSeq(
+          (new Variable[] {fpVar}.Concat(dwf.InParams.Cast<Variable>()))
+            .ToArray());
       }
       var impl = decl as Implementation;
       if (impl != null)
