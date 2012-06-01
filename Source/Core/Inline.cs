@@ -384,7 +384,7 @@ namespace Microsoft.Boogie {
       codeCopier.OldSubst = null;
     }
 
-    private Cmd InlinedRequires(Implementation impl, CallCmd callCmd, Requires req) {
+    private Cmd InlinedRequires(CallCmd callCmd, Requires req) {
       Requires/*!*/ reqCopy = (Requires/*!*/)cce.NonNull(req.Clone());
       if (req.Free)
         reqCopy.Condition = Expr.True;
@@ -395,14 +395,15 @@ namespace Microsoft.Boogie {
       return a;
     }
 
-    private Cmd InlinedEnsures(Implementation impl, CallCmd callCmd, Ensures ens) {
-      if (impl.FindExprAttribute("inline") != null && !ens.Free) {
+    private Cmd InlinedEnsures(CallCmd callCmd, Ensures ens) {
+      if (QKeyValue.FindBoolAttribute(ens.Attributes, "assume")) {
+        return new AssumeCmd(ens.tok, codeCopier.CopyExpr(ens.Condition));
+      } else if (ens.Free) {
+        return new AssumeCmd(ens.tok, Expr.True); 
+      } else {
         Ensures/*!*/ ensCopy = (Ensures/*!*/)cce.NonNull(ens.Clone());
         ensCopy.Condition = codeCopier.CopyExpr(ens.Condition);
         return new AssertEnsuresCmd(ensCopy);
-      }
-      else {
-        return new AssumeCmd(ens.tok, codeCopier.CopyExpr(ens.Condition));
       }
     }
 
@@ -448,7 +449,7 @@ namespace Microsoft.Boogie {
       // inject requires
       for (int i = 0; i < proc.Requires.Length; i++) {
         Requires/*!*/ req = cce.NonNull(proc.Requires[i]);
-        inCmds.Add(InlinedRequires(impl, callCmd, req));
+        inCmds.Add(InlinedRequires(callCmd, req));
       }
 
       VariableSeq locVars = cce.NonNull(impl.OriginalLocVars);
@@ -509,7 +510,7 @@ namespace Microsoft.Boogie {
       // inject ensures
       for (int i = 0; i < proc.Ensures.Length; i++) {
         Ensures/*!*/ ens = cce.NonNull(proc.Ensures[i]);
-        outCmds.Add(InlinedEnsures(impl, callCmd, ens));
+        outCmds.Add(InlinedEnsures(callCmd, ens));
       }
 
       // assign out params
