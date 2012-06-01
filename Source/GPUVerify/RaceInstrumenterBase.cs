@@ -1076,12 +1076,21 @@ namespace GPUVerify
                     {
                         // Ins[0] is thread 1's predicate,
                         // Ins[1] is the offset to be read
-                        // Ins[1] has the form BV32_ADD(offset#construct...(P), offset)
-                        // We are looking for the second parameter to this BV32_ADD
+                        // If Ins[1] has the form BV32_ADD(offset#construct...(P), offset),
+                        // we are looking for the second parameter to this BV32_ADD
                         Expr offset = call.Ins[1];
-                        Debug.Assert(offset is NAryExpr);
-                        Debug.Assert((offset as NAryExpr).Fun.FunctionName == "BV32_ADD");
-                        result.Add((offset as NAryExpr).Args[1]);
+                        if (offset is NAryExpr)
+                        {
+                            var nExpr = (NAryExpr)offset;
+                            if (nExpr.Fun.FunctionName == "BV32_ADD" &&
+                                nExpr.Args[0] is NAryExpr)
+                            {
+                                var n0Expr = (NAryExpr)nExpr.Args[0];
+                                if (n0Expr.Fun.FunctionName.StartsWith("offset#"))
+                                    offset = nExpr.Args[1];
+                            }
+                        }
+                        result.Add(offset);
                     }
 
                 }
