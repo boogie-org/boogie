@@ -1222,7 +1222,8 @@ namespace Microsoft.Boogie {
               ps.CheckBooleanFlag("contractInfer", ref ContractInfer) ||
               ps.CheckBooleanFlag("useUnsatCoreForContractInfer", ref UseUnsatCoreForContractInfer) ||
               ps.CheckBooleanFlag("printAssignment", ref PrintAssignment) ||
-              ps.CheckBooleanFlag("nonUniformUnfolding", ref NonUniformUnfolding)
+              ps.CheckBooleanFlag("nonUniformUnfolding", ref NonUniformUnfolding) ||
+              ps.CheckBooleanFlag("deterministicExtractLoops", ref DeterministicExtractLoops)
               ) {
             // one of the boolean flags matched
             return true;
