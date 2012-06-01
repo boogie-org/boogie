@@ -701,7 +701,7 @@ namespace Microsoft.Boogie {
               Console.WriteLine();
             }
             else {
-              outcome = vcgen.VerifyImplementation(impl, program, out errors);
+              outcome = vcgen.VerifyImplementation(impl, out errors);
               if (CommandLineOptions.Clo.ExtractLoops && vcgen is VCGen && errors != null) {
                 for (int i = 0; i < errors.Count; i++) {
                   errors[i] = (vcgen as VCGen).extractLoopTrace(errors[i], impl.Name, program, extractLoopMappingInfo);

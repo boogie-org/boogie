@@ -1,3 +1,4 @@
+using Graphing;
 using Microsoft.Boogie;
 using System;
 using System.Collections.Generic;
@@ -10,6 +11,7 @@ class BlockPredicator {
 
   Program prog;
   Implementation impl;
+  Graph<Block> blockGraph;
 
   Expr returnBlockId;
 
@@ -19,6 +21,7 @@ class BlockPredicator {
   Dictionary<Microsoft.Boogie.Type, IdentifierExpr> havocVars =
     new Dictionary<Microsoft.Boogie.Type, IdentifierExpr>();
   Dictionary<Block, Expr> blockIds = new Dictionary<Block, Expr>();
+  HashSet<Block> doneBlocks = new HashSet<Block>();
 
   BlockPredicator(Program p, Implementation i) {
     prog = p;
@@ -95,6 +98,23 @@ class BlockPredicator {
         PredicateCmd(cmdSeq, new AssumeCmd(Token.NoToken,
                targets.Select(t => (Expr)Expr.Eq(cur, t)).Aggregate(Expr.Or)));
       }
+
+      foreach (Block b in gCmd.labelTargets) {
+        if (blockGraph.Predecessors(b).Count() == 1) {
+          if (!doneBlocks.Contains(b)) {
+            var assumes = b.Cmds.Cast<Cmd>().TakeWhile(c => c is AssumeCmd);
+            if (assumes.Count() > 0) {
+              foreach (AssumeCmd aCmd in assumes) {
+                cmdSeq.Add(new AssumeCmd(Token.NoToken,
+                                         Expr.Imp(Expr.Eq(cur, blockIds[b]),
+                                         aCmd.Expr)));
+              }
+              b.Cmds =
+                new CmdSeq(b.Cmds.Cast<Cmd>().Skip(assumes.Count()).ToArray());
+            }
+          }
+        }
+      }
     } else if (cmd is ReturnCmd) {
       PredicateCmd(cmdSeq, Cmd.SimpleAssign(Token.NoToken, cur, returnBlockId));
     } else {
@@ -103,8 +123,8 @@ class BlockPredicator {
   }
 
   void PredicateImplementation() {
-    var g = prog.ProcessLoops(impl);
-    var sortedBlocks = g.LoopyTopSort();
+    blockGraph = prog.ProcessLoops(impl);
+    var sortedBlocks = blockGraph.LoopyTopSort();
 
     int blockId = 0;
     foreach (var block in impl.Blocks)
@@ -163,6 +183,7 @@ class BlockPredicator {
         prevBlock.TransferCmd = new GotoCmd(Token.NoToken,
                                             new BlockSeq(runBlock));
         prevBlock = runBlock;
+        doneBlocks.Add(runBlock);
       }
     }
 

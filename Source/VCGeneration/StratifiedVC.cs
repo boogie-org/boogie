@@ -21,15 +21,13 @@ namespace VC {
     public int id;
     public List<VCExprVar> interfaceExprVars;
     public Dictionary<Block, List<StratifiedCallSite>> callSites;
+    public Dictionary<Block, List<StratifiedCallSite>> recordProcCallSites;
     public VCExpr vcexpr;
     public Dictionary<Block, VCExprVar> reachVars;
 
     public StratifiedVC(StratifiedInliningInfo siInfo) {
       info = siInfo;
-      if (!info.initialized) {
-        info.GenerateVC();
-      }
-
+      info.GenerateVC();
       vcexpr = info.vcexpr;
       var vcgen = info.vcgen;
       var prover = vcgen.prover;
@@ -82,6 +80,14 @@ namespace VC {
         callSites[b] = new List<StratifiedCallSite>();
         foreach (CallSite cs in info.callSites[b]) {
           callSites[b].Add(new StratifiedCallSite(cs, substVisitor, subst, reachVars));
+        }
+      }
+
+      recordProcCallSites = new Dictionary<Block, List<StratifiedCallSite>>();
+      foreach (Block b in info.recordProcCallSites.Keys) {
+        recordProcCallSites[b] = new List<StratifiedCallSite>();
+        foreach (CallSite cs in info.recordProcCallSites[b]) {
+          recordProcCallSites[b].Add(new StratifiedCallSite(cs, substVisitor, subst, reachVars));
         }
       }
     }
@@ -150,6 +156,7 @@ namespace VC {
     public Hashtable/*<int, Absy!>*/ label2absy;
     public ModelViewInfo mvInfo;
     public Dictionary<Block, List<CallSite>> callSites;
+    public Dictionary<Block, List<CallSite>> recordProcCallSites;
     public bool initialized { get; private set; }
 
     public StratifiedInliningInfo(Implementation implementation, StratifiedVCGenBase stratifiedVcGen) {
@@ -232,9 +239,8 @@ namespace VC {
       var exprGen = proverInterface.Context.ExprGen;
       var translator = proverInterface.Context.BoogieExprTranslator;
       VCExpr controlFlowVariableExpr = CommandLineOptions.Clo.UseLabels ? null : translator.LookupVariable(controlFlowVariable);
-
       vcexpr = gen.Not(vcgen.GenerateVC(impl, controlFlowVariableExpr, out label2absy, proverInterface.Context));
-      if (!CommandLineOptions.Clo.UseLabels) {
+      if (controlFlowVariableExpr != null) {
         VCExpr controlFlowFunctionAppl = exprGen.ControlFlowFunctionApplication(controlFlowVariableExpr, exprGen.Integer(BigNum.ZERO));
         VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl, exprGen.Integer(BigNum.FromInt(impl.Blocks[0].UniqueId)));
         vcexpr = exprGen.And(eqExpr, vcexpr);
@@ -260,6 +266,7 @@ namespace VC {
       }
 
       callSites = vcgen.CollectCallSites(impl);
+      recordProcCallSites = vcgen.CollectRecordProcedureCallSites(impl);
       initialized = true;
     }
   }
@@ -303,7 +310,8 @@ namespace VC {
     }
   }
 
-  public class StratifiedVCGenBase : VCGen {
+  public abstract class StratifiedVCGenBase : VCGen {
+    public readonly static string recordProcName = "boogie_si_record";
     public Dictionary<string, StratifiedInliningInfo> implName2StratifiedInliningInfo;
     public ProverInterface prover;
 
@@ -315,6 +323,37 @@ namespace VC {
         Implementation impl = decl as Implementation;
         if (impl == null) continue;
         implName2StratifiedInliningInfo[impl.Name] = new StratifiedInliningInfo(impl, this);
+      }
+      GenerateRecordFunctions();
+    }
+
+    private void GenerateRecordFunctions() {
+      foreach (var decl in program.TopLevelDeclarations) {
+        var proc = decl as Procedure;
+        if (proc == null) continue;
+        if (!proc.Name.StartsWith(recordProcName)) continue;
+        Contract.Assert(proc.InParams.Length == 1);
+
+        // Make a new function
+        TypedIdent ti = new TypedIdent(Token.NoToken, "", Bpl.Type.Bool);
+        Contract.Assert(ti != null);
+        Formal returnVar = new Formal(Token.NoToken, ti, false);
+        Contract.Assert(returnVar != null);
+
+        // Get record type
+        var argtype = proc.InParams[0].TypedIdent.Type;
+
+        var ins = new VariableSeq();
+        ins.Add(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "x", argtype), true));
+
+        var recordFunc = new Function(Token.NoToken, proc.Name, ins, returnVar);
+        prover.Context.DeclareFunction(recordFunc, "");
+
+        var exprs = new ExprSeq();
+        exprs.Add(new IdentifierExpr(Token.NoToken, proc.InParams[0]));
+
+        Expr freePostExpr = new NAryExpr(Token.NoToken, new FunctionCall(recordFunc), exprs);
+        proc.Ensures.Add(new Ensures(true, freePostExpr));
       }
     }
 
@@ -345,6 +384,28 @@ namespace VC {
       return callSites;
     }
 
+    public Dictionary<Block, List<CallSite>> CollectRecordProcedureCallSites(Implementation implementation) {
+      var callSites = new Dictionary<Block, List<CallSite>>();
+      foreach (Block block in implementation.Blocks) {
+        for (int i = 0; i < block.Cmds.Length; i++) {
+          AssumeCmd assumeCmd = block.Cmds[i] as AssumeCmd;
+          if (assumeCmd == null) continue;
+          NAryExpr naryExpr = assumeCmd.Expr as NAryExpr;
+          if (naryExpr == null) continue;
+          if (!naryExpr.Fun.FunctionName.StartsWith(recordProcName)) continue;
+          List<VCExpr> interfaceExprs = new List<VCExpr>();
+          foreach (Expr e in naryExpr.Args) {
+            interfaceExprs.Add(prover.Context.BoogieExprTranslator.Translate(e));
+          }
+          CallSite cs = new CallSite(naryExpr.Fun.FunctionName, interfaceExprs, block, i);
+          if (!callSites.ContainsKey(block))
+            callSites[block] = new List<CallSite>();
+          callSites[block].Add(cs);
+        }
+      }
+      return callSites;
+    }
+
     private int newVarCountForStratifiedInlining = 0;
     public VCExprVar CreateNewVar(Microsoft.Boogie.Type type) {
       string newName = "StratifiedInlining@" + newVarCountForStratifiedInlining.ToString();
@@ -357,29 +418,94 @@ namespace VC {
     public int CreateNewId() {
       return idCountForStratifiedInlining++;
     }
+
+    // Used inside PassifyImpl
+    protected override void addExitAssert(string implName, Block exitBlock) {
+      if (implName2StratifiedInliningInfo != null && implName2StratifiedInliningInfo.ContainsKey(implName)) {
+        Expr assertExpr = implName2StratifiedInliningInfo[implName].assertExpr;
+        Contract.Assert(assertExpr != null);
+        exitBlock.Cmds.Add(new AssertCmd(Token.NoToken, assertExpr));
+      }
+    }
+
+    public override Counterexample extractLoopTrace(Counterexample cex, string mainProcName, Program program, Dictionary<string, Dictionary<string, Block>> extractLoopMappingInfo) {
+      // Construct the set of inlined procs in the original program
+      var inlinedProcs = new HashSet<string>();
+      foreach (var decl in program.TopLevelDeclarations) {
+        // Implementations
+        if (decl is Implementation) {
+          var impl = decl as Implementation;
+          if (!(impl.Proc is LoopProcedure)) {
+            inlinedProcs.Add(impl.Name);
+          }
+        }
+
+        // And recording procedures
+        if (decl is Procedure) {
+          var proc = decl as Procedure;
+          if (proc.Name.StartsWith(recordProcName)) {
+            Debug.Assert(!(decl is LoopProcedure));
+            inlinedProcs.Add(proc.Name);
+          }
+        }
+      }
+
+      return extractLoopTraceRec(
+          new CalleeCounterexampleInfo(cex, new List<Model.Element>()),
+          mainProcName, inlinedProcs, extractLoopMappingInfo).counterexample;
+    }
+
+    protected override bool elIsLoop(string procname) {
+      StratifiedInliningInfo info = null;
+      if (implName2StratifiedInliningInfo.ContainsKey(procname)) {
+        info = implName2StratifiedInliningInfo[procname];
+      }
+
+      if (info == null) return false;
+
+      var lp = info.impl.Proc as LoopProcedure;
+
+      if (lp == null) return false;
+      return true;
+    }
+
+    public abstract Outcome FindLeastToVerify(Implementation impl, ref HashSet<string> allBoolVars);
   }
 
   public class StratifiedVCGen : StratifiedVCGenBase {
     public bool PersistCallTree;
     public static Dictionary<string, int> callTree = null;
     public int numInlined = 0;
-    public readonly static string recordProcName = "boogie_si_record";
     private bool useSummary;
     private SummaryComputation summaryComputation;
     private HashSet<string> procsThatReachedRecBound;
-    public int boundUsedInLastQuery { get; private set; }
     public HashSet<string> procsToSkip;
     public Dictionary<string, int> extraRecBound;
 
+    public StratifiedVCGen(bool usePrevCallTree, Dictionary<string, int> prevCallTree, 
+                           HashSet<string> procsToSkip, Dictionary<string, int> extraRecBound,
+                           Program program, string/*?*/ logFilePath, bool appendLogFile) 
+    : this(program, logFilePath, appendLogFile)
+    {
+      this.procsToSkip = new HashSet<string>(procsToSkip);
+      this.extraRecBound = new Dictionary<string, int>(extraRecBound);
+
+      if (usePrevCallTree) {
+        callTree = prevCallTree;
+        PersistCallTree = true;
+      }
+      else {
+        PersistCallTree = false;
+      }
+    }
+
     public StratifiedVCGen(Program program, string/*?*/ logFilePath, bool appendLogFile)
       : base(program, logFilePath, appendLogFile) {
-      this.GenerateRecordFunctions();
       PersistCallTree = false;
       useSummary = false;
       procsThatReachedRecBound = new HashSet<string>();
       procsToSkip = new HashSet<string>();
       extraRecBound = new Dictionary<string, int>();
-      boundUsedInLastQuery = -1;
     }
 
     // Is this procedure to be "skipped" 
@@ -395,36 +521,6 @@ namespace VC {
       if (!extraRecBound.ContainsKey(procName))
         return 0;
       else return extraRecBound[procName];
-    }
-
-    public void GenerateRecordFunctions() {
-      foreach (var decl in program.TopLevelDeclarations) {
-        var proc = decl as Procedure;
-        if (proc == null) continue;
-        if (!proc.Name.StartsWith(recordProcName)) continue;
-        Contract.Assert(proc.InParams.Length == 1);
-
-        // Make a new function
-        TypedIdent ti = new TypedIdent(Token.NoToken, "", Bpl.Type.Bool);
-        Contract.Assert(ti != null);
-        Formal returnVar = new Formal(Token.NoToken, ti, false);
-        Contract.Assert(returnVar != null);
-
-        // Get record type
-        var argtype = proc.InParams[0].TypedIdent.Type;
-
-        var ins = new VariableSeq();
-        ins.Add(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "x", argtype), true));
-
-        var recordFunc = new Function(Token.NoToken, proc.Name, ins, returnVar);
-        prover.Context.DeclareFunction(recordFunc, "");
-
-        var exprs = new ExprSeq();
-        exprs.Add(new IdentifierExpr(Token.NoToken, proc.InParams[0]));
-
-        Expr freePostExpr = new NAryExpr(Token.NoToken, new FunctionCall(recordFunc), exprs);
-        proc.Ensures.Add(new Ensures(true, freePostExpr));
-      }
     }
 
     public class SummaryComputation {
@@ -1008,7 +1104,7 @@ namespace VC {
       }
     }
 
-    public Outcome FindLeastToVerify(Implementation impl, ref HashSet<string> allBoolVars) {
+    public override Outcome FindLeastToVerify(Implementation impl, ref HashSet<string> allBoolVars) {
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
 
       // Record current time
@@ -1189,7 +1285,7 @@ namespace VC {
       }
     }
 
-    public override Outcome VerifyImplementation(Implementation/*!*/ impl, Program/*!*/ program, VerifierCallback/*!*/ callback) {
+    public override Outcome VerifyImplementation(Implementation/*!*/ impl, VerifierCallback/*!*/ callback) {
       Debug.Assert(QKeyValue.FindBoolAttribute(impl.Attributes, "entrypoint"));
       Debug.Assert(this.program == program);
 
@@ -1318,8 +1414,6 @@ namespace VC {
       //   case 2: (bug)     We find a bug
       //   case 3: (internal error)   The theorem prover TimesOut of runs OutOfMemory
       while (true) {
-        boundUsedInLastQuery = bound;
-
         // Check timeout
         if (CommandLineOptions.Clo.ProverKillTime != -1) {
           if ((DateTime.UtcNow - startTime).TotalSeconds > CommandLineOptions.Clo.ProverKillTime) {
@@ -1630,9 +1724,7 @@ namespace VC {
         if (!implName2StratifiedInliningInfo.ContainsKey(procName)) continue;
 
         StratifiedInliningInfo info = implName2StratifiedInliningInfo[procName];
-        if (!info.initialized) {
-          info.GenerateVC();
-        }
+        info.GenerateVC();
         //Console.WriteLine("Inlining {0}", procName);
         VCExpr expansion = cce.NonNull(info.vcexpr);
 
@@ -1857,9 +1949,21 @@ namespace VC {
           if (getProc(id) == str && !forcedCandidates.Contains(id)) ret++;
         }
 
-        if (extraRecursion.ContainsKey(str)) ret -= extraRecursion[str];
+        // Usual
+        if (!extraRecursion.ContainsKey(str))
+            return ret;
 
-        return ret;
+        // Usual
+        if (ret <= CommandLineOptions.Clo.RecursionBound - 1)
+            return ret;
+
+        // Special
+        if (ret >= CommandLineOptions.Clo.RecursionBound &&
+            ret <= CommandLineOptions.Clo.RecursionBound + extraRecursion[str] - 1)
+            return CommandLineOptions.Clo.RecursionBound - 1;
+
+        // Special
+        return ret - extraRecursion[str];
       }
 
       // Set user-define increment/decrement to recursionBound
@@ -2579,56 +2683,6 @@ namespace VC {
         //Contract.Requires(msg != null);
         callback.OnWarning(msg);
       }
-    }
-
-    // Used inside PassifyImpl
-    protected override void addExitAssert(string implName, Block exitBlock) {
-      if (implName2StratifiedInliningInfo != null && implName2StratifiedInliningInfo.ContainsKey(implName)) {
-        Expr assertExpr = implName2StratifiedInliningInfo[implName].assertExpr;
-        Contract.Assert(assertExpr != null);
-        exitBlock.Cmds.Add(new AssertCmd(Token.NoToken, assertExpr));
-      }
-    }
-
-    public override Counterexample extractLoopTrace(Counterexample cex, string mainProcName, Program program, Dictionary<string, Dictionary<string, Block>> extractLoopMappingInfo) {
-      // Construct the set of inlined procs in the original program
-      var inlinedProcs = new HashSet<string>();
-      foreach (var decl in program.TopLevelDeclarations) {
-        // Implementations
-        if (decl is Implementation) {
-          var impl = decl as Implementation;
-          if (!(impl.Proc is LoopProcedure)) {
-            inlinedProcs.Add(impl.Name);
-          }
-        }
-
-        // And recording procedures
-        if (decl is Procedure) {
-          var proc = decl as Procedure;
-          if (proc.Name.StartsWith(recordProcName)) {
-            Debug.Assert(!(decl is LoopProcedure));
-            inlinedProcs.Add(proc.Name);
-          }
-        }
-      }
-
-      return extractLoopTraceRec(
-          new CalleeCounterexampleInfo(cex, new List<Model.Element>()),
-          mainProcName, inlinedProcs, extractLoopMappingInfo).counterexample;
-    }
-
-    protected override bool elIsLoop(string procname) {
-      StratifiedInliningInfo info = null;
-      if (implName2StratifiedInliningInfo.ContainsKey(procname)) {
-        info = implName2StratifiedInliningInfo[procname];
-      }
-
-      if (info == null) return false;
-
-      var lp = info.impl.Proc as LoopProcedure;
-
-      if (lp == null) return false;
-      return true;
     }
 
   } // class StratifiedVCGen

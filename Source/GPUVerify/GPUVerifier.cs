@@ -1374,7 +1374,8 @@ namespace GPUVerify
             IdentifierExpr P1 = new IdentifierExpr(tok, new LocalVariable(tok, BarrierProcedure.InParams[0].TypedIdent));
             IdentifierExpr P2 = new IdentifierExpr(tok, new LocalVariable(tok, BarrierProcedure.InParams[1].TypedIdent));
 
-            checkNonDivergence.simpleCmds.Add(new AssertCmd(tok, Expr.Eq(P1, P2)));
+            if (!CommandLineOptions.Unstructured)
+                checkNonDivergence.simpleCmds.Add(new AssertCmd(tok, Expr.Eq(P1, P2)));
 
             if (!CommandLineOptions.OnlyDivergence)
             {
@@ -1520,8 +1521,10 @@ namespace GPUVerify
 
             impl.LocVars = NewLocVars;
 
-            impl.StructuredStmts = PerformFullSharedStateAbstraction(impl.StructuredStmts);
-
+            if (CommandLineOptions.Unstructured)
+                impl.Blocks = impl.Blocks.Select(PerformFullSharedStateAbstraction).ToList();
+            else
+                impl.StructuredStmts = PerformFullSharedStateAbstraction(impl.StructuredStmts);
         }
 
 
@@ -1538,49 +1541,77 @@ namespace GPUVerify
             return result;
         }
 
-        private BigBlock PerformFullSharedStateAbstraction(BigBlock bb)
+        private CmdSeq PerformFullSharedStateAbstraction(CmdSeq cs)
         {
-            BigBlock result = new BigBlock(bb.tok, bb.LabelName, new CmdSeq(), null, bb.tc);
+            var result = new CmdSeq();
 
-            foreach (Cmd c in bb.simpleCmds)
+            foreach (Cmd c in cs)
             {
                 if (c is AssignCmd)
                 {
                     AssignCmd assign = c as AssignCmd;
-                    Debug.Assert(assign.Lhss.Count == 1);
-                    Debug.Assert(assign.Rhss.Count == 1);
-                    AssignLhs lhs = assign.Lhss[0];
-                    Expr rhs = assign.Rhss[0];
-                    ReadCollector rc = new ReadCollector(NonLocalState);
-                    rc.Visit(rhs);
 
-                    bool foundAdversarial = false;
-                    foreach (AccessRecord ar in rc.accesses)
+                    var lhss = new List<AssignLhs>(); 
+                    var rhss = new List<Expr>(); 
+
+                    for (int i = 0; i != assign.Lhss.Count; i++)
                     {
-                        if (ArrayModelledAdversarially(ar.v))
+                        AssignLhs lhs = assign.Lhss[i];
+                        Expr rhs = assign.Rhss[i];
+                        ReadCollector rc = new ReadCollector(NonLocalState);
+                        rc.Visit(rhs);
+
+                        bool foundAdversarial = false;
+                        foreach (AccessRecord ar in rc.accesses)
                         {
-                            foundAdversarial = true;
-                            break;
+                            if (ArrayModelledAdversarially(ar.v))
+                            {
+                                foundAdversarial = true;
+                                break;
+                            }
                         }
+
+                        if (foundAdversarial)
+                        {
+                            Debug.Assert(lhs is SimpleAssignLhs);
+                            result.Add(new HavocCmd(c.tok, new IdentifierExprSeq(new IdentifierExpr[] { (lhs as SimpleAssignLhs).AssignedVariable })));
+                            continue;
+                        }
+
+                        WriteCollector wc = new WriteCollector(NonLocalState);
+                        wc.Visit(lhs);
+                        if (wc.GetAccess() != null && ArrayModelledAdversarially(wc.GetAccess().v))
+                        {
+                            continue; // Just remove the write
+                        }
+
+                        lhss.Add(lhs);
+                        rhss.Add(rhs);
                     }
 
-                    if (foundAdversarial)
+                    if (lhss.Count != 0)
                     {
-                        Debug.Assert(lhs is SimpleAssignLhs);
-                        result.simpleCmds.Add(new HavocCmd(c.tok, new IdentifierExprSeq(new IdentifierExpr[] { (lhs as SimpleAssignLhs).AssignedVariable })));
-                        continue;
+                        result.Add(new AssignCmd(assign.tok, lhss, rhss));
                     }
-
-                    WriteCollector wc = new WriteCollector(NonLocalState);
-                    wc.Visit(lhs);
-                    if (wc.GetAccess() != null && ArrayModelledAdversarially(wc.GetAccess().v))
-                    {
-                        continue; // Just remove the write
-                    }
-
+                    continue;
                 }
-                result.simpleCmds.Add(c);
+                result.Add(c);
             }
+
+            return result;
+        }
+
+        private Block PerformFullSharedStateAbstraction(Block b)
+        {
+            b.Cmds = PerformFullSharedStateAbstraction(b.Cmds);
+            return b;
+        }
+
+        private BigBlock PerformFullSharedStateAbstraction(BigBlock bb)
+        {
+            BigBlock result = new BigBlock(bb.tok, bb.LabelName, new CmdSeq(), null, bb.tc);
+
+            result.simpleCmds = PerformFullSharedStateAbstraction(bb.simpleCmds);
 
             if (bb.ec is WhileCmd)
             {
@@ -1874,19 +1905,18 @@ namespace GPUVerify
                 {
                     AssignCmd assign = c as AssignCmd;
 
-                    Debug.Assert(assign.Lhss.Count == 1 && assign.Rhss.Count == 1);
-
-                    AssignLhs lhs = assign.Lhss.ElementAt(0);
-                    Expr rhs = assign.Rhss.ElementAt(0);
-
-                    if (!NonLocalAccessCollector.ContainsNonLocalAccess(rhs, NonLocalState) || 
-                        (!NonLocalAccessCollector.ContainsNonLocalAccess(lhs, NonLocalState) && 
-                          NonLocalAccessCollector.IsNonLocalAccess(rhs, NonLocalState)))
+                    if (assign.Lhss.Zip(assign.Rhss, (lhs, rhs) =>
+                            !NonLocalAccessCollector.ContainsNonLocalAccess(rhs, NonLocalState) || 
+                              (!NonLocalAccessCollector.ContainsNonLocalAccess(lhs, NonLocalState) && 
+                                NonLocalAccessCollector.IsNonLocalAccess(rhs, NonLocalState))).All(b => b))
                     {
                         result.simpleCmds.Add(c);
                     }
                     else
                     {
+                        Debug.Assert(assign.Lhss.Count == 1 && assign.Rhss.Count == 1);
+                        AssignLhs lhs = assign.Lhss.ElementAt(0);
+                        Expr rhs = assign.Rhss.ElementAt(0);
                         rhs = PullOutNonLocalAccessesIntoTemps(result, rhs, impl);
                         List<AssignLhs> newLhss = new List<AssignLhs>();
                         newLhss.Add(lhs);
