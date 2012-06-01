@@ -402,7 +402,8 @@ namespace Microsoft.Boogie {
         return new AssertEnsuresCmd(ensCopy);
       }
       else {
-        return new AssumeCmd(ens.tok, codeCopier.CopyExpr(ens.Condition));
+        //return new AssumeCmd(ens.tok, codeCopier.CopyExpr(ens.Condition));
+        return new AssumeCmd(ens.tok, Expr.True);
       }
     }
 
