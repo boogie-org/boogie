@@ -590,7 +590,25 @@ namespace Microsoft.Boogie {
                     if (!found) {
                         Block auxNewBlock = new Block();
                         auxNewBlock.Label = ((Block)bl).Label;
-                        auxNewBlock.Cmds = codeCopier.CopyCmdSeq(((Block)block).Cmds);
+                        auxNewBlock.Cmds = codeCopier.CopyCmdSeq(((Block)bl).Cmds);
+                        //add restoration code for such blocks
+                        if (loopHeaderToAssignCmd.ContainsKey(header))
+                        {
+                            AssignCmd assignCmd = loopHeaderToAssignCmd[header];
+                            auxNewBlock.Cmds.Add(assignCmd);
+                        }
+                        List<AssignLhs> lhsg = new List<AssignLhs>();
+                        IdentifierExprSeq/*!*/ globalsMods = loopHeaderToLoopProc[header].Modifies;
+                        foreach (IdentifierExpr gl in globalsMods)
+                            lhsg.Add(new SimpleAssignLhs(Token.NoToken, gl));
+                        List<Expr> rhsg = new List<Expr>();
+                        foreach (IdentifierExpr gl in globalsMods)
+                            rhsg.Add(new OldExpr(Token.NoToken, gl));
+                        if (lhsg.Count != 0)
+                        {
+                            AssignCmd globalAssignCmd = new AssignCmd(Token.NoToken, lhsg, rhsg);
+                            auxNewBlock.Cmds.Add(globalAssignCmd);
+                        }
                         blockMap[(Block)bl] = auxNewBlock;
                     }
                 }
@@ -666,21 +684,6 @@ namespace Microsoft.Boogie {
             if (newTargets.Length == 0) {
                 if (!detLoopExtract)
                     newBlock.Cmds.Add(new AssumeCmd(Token.NoToken, Expr.False));
-                else {
-                    if (loopHeaderToAssignCmd.ContainsKey(header)) {
-                        AssignCmd assignCmd = loopHeaderToAssignCmd[header];
-                        newBlock.Cmds.Add(assignCmd);
-                    }
-                    List<AssignLhs> lhsg = new List<AssignLhs>();
-                    IdentifierExprSeq/*!*/ globalsMods = loopHeaderToLoopProc[header].Modifies;
-                    foreach (IdentifierExpr gl in globalsMods)
-                        lhsg.Add(new SimpleAssignLhs(Token.NoToken, gl));
-                    List<Expr> rhsg = new List<Expr>();
-                    foreach (IdentifierExpr gl in globalsMods)
-                        rhsg.Add(new OldExpr(Token.NoToken, gl));
-                    AssignCmd globalAssignCmd = new AssignCmd(Token.NoToken, lhsg, rhsg);
-                    newBlock.Cmds.Add(globalAssignCmd);
-                }
                 newBlock.TransferCmd = new ReturnCmd(Token.NoToken);
             } else {
               newBlock.TransferCmd = new GotoCmd(Token.NoToken, newLabels, newTargets);

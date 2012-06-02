@@ -245,6 +245,11 @@ namespace Microsoft.Boogie.Houdini {
     }
   }
 
+  public class Macro : Function {
+    public Macro(IToken tok, string name, VariableSeq args, Variable result)
+      : base(tok, name, args, result) { }
+  }
+
   public class InlineRequiresVisitor : StandardVisitor {
     public override CmdSeq VisitCmdSeq(CmdSeq cmdSeq) {
       Contract.Requires(cmdSeq != null);
@@ -279,11 +284,6 @@ namespace Microsoft.Boogie.Houdini {
     }
   }
 
-  public class Macro : Function {
-    public Macro(IToken tok, string name, VariableSeq args, Variable result)
-      : base(tok, name, args, result) { }
-  }
-
   public class FreeRequiresVisitor : StandardVisitor {
     public override Requires VisitRequires(Requires requires) {
       if (requires.Free)
@@ -298,6 +298,13 @@ namespace Microsoft.Boogie.Houdini {
       node.Requires = base.VisitRequires(node.Requires);
       node.Expr = this.VisitExpr(node.Expr);
       return node;
+    }
+  }
+
+  public class InlineEnsuresVisitor : StandardVisitor {
+    public override Ensures VisitEnsures(Ensures ensures) {
+      ensures.Attributes = new QKeyValue(Token.NoToken, "assume", new List<object>(), ensures.Attributes);
+      return base.VisitEnsures(ensures);
     }
   }
 
@@ -364,6 +371,11 @@ namespace Microsoft.Boogie.Houdini {
       foreach (Implementation impl in callGraph.Nodes) {
         FreeRequiresVisitor freeRequiresVisitor = new FreeRequiresVisitor();
         freeRequiresVisitor.Visit(impl);
+      }
+
+      foreach (Implementation impl in callGraph.Nodes) {
+        InlineEnsuresVisitor inlineEnsuresVisitor = new InlineEnsuresVisitor();
+        inlineEnsuresVisitor.Visit(impl);
       }
 
       foreach (Implementation impl in callGraph.Nodes) {

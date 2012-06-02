@@ -274,6 +274,19 @@ namespace Dafny
       }
       return new MultiSet<T>(r);
     }
+    public IEnumerable<T> Elements {
+      get {
+        List<T> l = new List<T>();
+        foreach (T t in dict.Keys) {
+          int n;
+          dict.TryGetValue(t, out n);
+          for (int i = 0; i < n; i ++) {
+            l.Add(t);
+          }
+        }
+        return l;
+      }
+    }
   }
 
   public class Map<U, V>
@@ -288,9 +301,16 @@ namespace Dafny
         return new Map<U, V>(new Dictionary<U,V>());
       }
     }
-    public static Map<U, V> FromElements(params Pair<U,V>[] values) {
+    public static Map<U, V> FromElements(params Pair<U, V>[] values) {
       Dictionary<U, V> d = new Dictionary<U, V>(values.Length);
-      foreach (Pair<U,V> p in values) {
+      foreach (Pair<U, V> p in values) {
+        d[p.Car] = p.Cdr;
+      }
+      return new Map<U, V>(d);
+    }
+    public static Map<U, V> FromCollection(List<Pair<U, V>> values) {
+      Dictionary<U, V> d = new Dictionary<U, V>(values.Count);
+      foreach (Pair<U, V> p in values) {
         d[p.Car] = p.Cdr;
       }
       return new Map<U, V>(d);
@@ -342,6 +362,11 @@ namespace Dafny
       Dictionary<U, V> d = new Dictionary<U, V>(dict);
       d[index] = val;
       return new Map<U, V>(d);
+    }
+    public IEnumerable<U> Domain {
+      get {
+        return dict.Keys;
+      }
     }
   }
   public class Sequence<T>
@@ -471,6 +496,12 @@ namespace Dafny
       }
       return frall;
     }
+    public static bool QuantMap<U,V>(Dafny.Map<U,V> map, bool frall, System.Predicate<U> pred) {
+      foreach (var u in map.Domain) {
+        if (pred(u) != frall) { return !frall; }
+      }
+      return frall;
+    }
     public static bool QuantSeq<U>(Dafny.Sequence<U> seq, bool frall, System.Predicate<U> pred) {
       foreach (var u in seq.Elements) {
         if (pred(u) != frall) { return !frall; }
@@ -479,6 +510,7 @@ namespace Dafny
     }
     // Enumerating other collections
     public delegate Dafny.Set<T> ComprehensionDelegate<T>();
+    public delegate Dafny.Map<U, V> MapComprehensionDelegate<U, V>();
     public static IEnumerable<bool> AllBooleans {
       get {
         yield return false;

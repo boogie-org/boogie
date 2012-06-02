@@ -195,11 +195,13 @@ class BlockPredicator {
     foreach (var decl in p.TopLevelDeclarations) {
       if (decl is DeclWithFormals && !(decl is Function)) {
         var dwf = (DeclWithFormals)decl;
-        var fpVar = new LocalVariable(Token.NoToken,
-                                    new TypedIdent(Token.NoToken, "fp",
-                                                   Microsoft.Boogie.Type.Bool));
-        dwf.InParams = new VariableSeq((dwf.InParams + new VariableSeq(fpVar))
-                       .Cast<Variable>().ToArray());
+        var fpVar = new Formal(Token.NoToken,
+                               new TypedIdent(Token.NoToken, "fp",
+                                              Microsoft.Boogie.Type.Bool),
+                               /*incoming=*/true);
+        dwf.InParams = new VariableSeq(
+          (new Variable[] {fpVar}.Concat(dwf.InParams.Cast<Variable>()))
+            .ToArray());
       }
       var impl = decl as Implementation;
       if (impl != null)
