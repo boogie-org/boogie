@@ -995,6 +995,7 @@ namespace BytecodeTranslator
           cmd = Bpl.Cmd.SimpleAssign(tok, bplLocal, e);
         }
         StmtTraverser.StmtBuilder.Add(cmd);
+        this.TranslatedExpressions.Push(e); // value of assignment might be needed for an enclosing expression
         return;
       }
 
@@ -1010,6 +1011,7 @@ namespace BytecodeTranslator
           cmd = Bpl.Cmd.SimpleAssign(tok, bplParam, e);
         }
         StmtTraverser.StmtBuilder.Add(cmd);
+        this.TranslatedExpressions.Push(e); // value of assignment might be needed for an enclosing expression
         return;
       }
 
@@ -1029,6 +1031,7 @@ namespace BytecodeTranslator
           StmtTraverser.StmtBuilder.Add(this.sink.Heap.WriteHeap(tok, x, f, e,
             field.ResolvedField.ContainingType.ResolvedType.IsStruct ? AccessType.Struct : AccessType.Heap,
             boogieType));
+          this.TranslatedExpressions.Push(e); // value of assignment might be needed for an enclosing expression
         }
         return;
       }
@@ -1042,6 +1045,7 @@ namespace BytecodeTranslator
         this.Traverse(source);
         var e = this.TranslatedExpressions.Pop();
         StmtTraverser.StmtBuilder.Add(sink.Heap.WriteHeap(Bpl.Token.NoToken, x, indices_prime, e, AccessType.Array, sink.CciTypeToBoogie(arrayIndexer.Type)));
+        this.TranslatedExpressions.Push(e); // value of assignment might be needed for an enclosing expression
         return;
       }
 
@@ -1083,6 +1087,7 @@ namespace BytecodeTranslator
           var bplLocal = Bpl.Expr.Ident(this.sink.ThisVariable);
           cmd = Bpl.Cmd.SimpleAssign(tok, bplLocal, e);
           StmtTraverser.StmtBuilder.Add(cmd);
+          this.TranslatedExpressions.Push(e); // value of assignment might be needed for an enclosing expression
           return;
         }
       }
