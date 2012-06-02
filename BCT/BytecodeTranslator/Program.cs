@@ -295,6 +295,7 @@ namespace BytecodeTranslator {
         if (module == null || module == Dummy.Module || module == Dummy.Assembly) {
           Console.WriteLine(a + " is not a PE file containing a CLR module or assembly, or an error occurred when loading it.");
           Console.WriteLine("Skipping it, continuing with other input assemblies");
+          continue;
         }
         modules.Add(module);
       }
