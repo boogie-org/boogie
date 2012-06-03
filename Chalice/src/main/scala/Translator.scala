@@ -2067,7 +2067,7 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
       bassume(preEtran.Heap ==@ evalHeap) ::
       bassume(submask(preEtran.Mask, evalMask))
     case uf@Unfolding(acc@Access(pred@MemberAccess(obj, f), perm), ufexpr) =>
-	  if (transferToSecMask) throw new NotSupportedException("not yet implemented")
+	  if (transferToSecMask) return Nil
       // handle unfolding like the next case, but also record permissions of the predicate
       // in the secondary mask and track the predicate in the auxilary information
       val (receiverV, receiver) = Boogie.NewBVar("predRec", tref, true)
