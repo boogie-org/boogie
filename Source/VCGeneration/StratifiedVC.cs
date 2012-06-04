@@ -23,44 +23,20 @@ namespace VC {
     public Dictionary<Block, List<StratifiedCallSite>> callSites;
     public Dictionary<Block, List<StratifiedCallSite>> recordProcCallSites;
     public VCExpr vcexpr;
-    public Dictionary<Block, VCExprVar> reachVars;
+    public VCExprVar entryExprVar;
+    public Dictionary<Block, Macro> reachMacros;
+    public Dictionary<Block, VCExpr> reachMacroDefinitions;
 
     public StratifiedVC(StratifiedInliningInfo siInfo) {
       info = siInfo;
       info.GenerateVC();
-      vcexpr = info.vcexpr;
       var vcgen = info.vcgen;
       var prover = vcgen.prover;
       VCExpressionGenerator gen = prover.VCExprGen;
-      var bet = prover.Context.BoogieExprTranslator;
-      VCExpr controlFlowVariableExpr = bet.LookupVariable(info.controlFlowVariable);
+      var bet = prover.Context.BoogieExprTranslator; 
+      
+      vcexpr = info.vcexpr;
       id = vcgen.CreateNewId();
-      VCExpr eqExpr = gen.Eq(controlFlowVariableExpr, gen.Integer(BigNum.FromInt(id)));
-      vcexpr = gen.And(eqExpr, vcexpr);
-
-      var impl = info.impl;
-      reachVars = new Dictionary<Block, VCExprVar>();
-      Dictionary<Block, VCExpr> reachExprs = new Dictionary<Block, VCExpr>();
-      foreach (Block b in impl.Blocks) {
-        reachVars[b] = vcgen.CreateNewVar(Bpl.Type.Bool);
-        reachExprs[b] = VCExpressionGenerator.False;
-      }
-      foreach (Block currBlock in impl.Blocks) {
-        GotoCmd gotoCmd = currBlock.TransferCmd as GotoCmd;
-        if (gotoCmd == null) continue;
-        foreach (Block successorBlock in gotoCmd.labelTargets) {
-          VCExpr controlFlowFunctionAppl = gen.ControlFlowFunctionApplication(controlFlowVariableExpr, gen.Integer(BigNum.FromInt(currBlock.UniqueId)));
-          VCExpr controlTransferExpr = gen.Eq(controlFlowFunctionAppl, gen.Integer(BigNum.FromInt(successorBlock.UniqueId)));
-          reachExprs[successorBlock] = gen.Or(reachExprs[successorBlock], gen.And(reachVars[currBlock], controlTransferExpr));
-        }
-      }
-      // The binding for entry block should be left defined;
-      // it will get filled in when the call tree is constructed
-      for (int i = 1; i < impl.Blocks.Count; i++) {
-        Block b = impl.Blocks[i];
-        vcexpr = gen.And(vcexpr, gen.Eq(reachVars[b], reachExprs[b]));
-      }
-
       interfaceExprVars = new List<VCExprVar>();
       Dictionary<VCExprVar, VCExpr> substDict = new Dictionary<VCExprVar, VCExpr>();
       foreach (VCExprVar v in info.interfaceExprVars) {
@@ -71,15 +47,35 @@ namespace VC {
       foreach (VCExprVar v in info.privateExprVars) {
         substDict.Add(v, vcgen.CreateNewVar(v.Type));
       }
+      substDict.Add(bet.LookupVariable(info.controlFlowVariable), gen.Integer(BigNum.FromInt(id)));
       VCExprSubstitution subst = new VCExprSubstitution(substDict, new Dictionary<TypeVariable, Microsoft.Boogie.Type>());
       SubstitutingVCExprVisitor substVisitor = new SubstitutingVCExprVisitor(prover.VCExprGen);
       vcexpr = substVisitor.Mutate(vcexpr, subst);
+
+      var impl = info.impl;
+      reachMacros = new Dictionary<Block, Macro>();
+      reachMacroDefinitions = new Dictionary<Block, VCExpr>();
+      foreach (Block b in impl.Blocks) {
+        reachMacros[b] = vcgen.CreateNewMacro();
+        reachMacroDefinitions[b] = VCExpressionGenerator.False;
+      }
+      entryExprVar = vcgen.CreateNewVar(Microsoft.Boogie.Type.Bool);
+      reachMacroDefinitions[impl.Blocks[0]] = entryExprVar;
+      foreach (Block currBlock in impl.Blocks) {
+        GotoCmd gotoCmd = currBlock.TransferCmd as GotoCmd;
+        if (gotoCmd == null) continue;
+        foreach (Block successorBlock in gotoCmd.labelTargets) {
+          VCExpr controlFlowFunctionAppl = gen.ControlFlowFunctionApplication(gen.Integer(BigNum.FromInt(id)), gen.Integer(BigNum.FromInt(currBlock.UniqueId)));
+          VCExpr controlTransferExpr = gen.Eq(controlFlowFunctionAppl, gen.Integer(BigNum.FromInt(successorBlock.UniqueId)));
+          reachMacroDefinitions[successorBlock] = gen.Or(reachMacroDefinitions[successorBlock], gen.And(gen.Function(reachMacros[currBlock]), controlTransferExpr));
+        }
+      }
 
       callSites = new Dictionary<Block, List<StratifiedCallSite>>();
       foreach (Block b in info.callSites.Keys) {
         callSites[b] = new List<StratifiedCallSite>();
         foreach (CallSite cs in info.callSites[b]) {
-          callSites[b].Add(new StratifiedCallSite(cs, substVisitor, subst, reachVars));
+          callSites[b].Add(new StratifiedCallSite(cs, substVisitor, subst, gen.Function(reachMacros[cs.block])));
         }
       }
 
@@ -87,7 +83,7 @@ namespace VC {
       foreach (Block b in info.recordProcCallSites.Keys) {
         recordProcCallSites[b] = new List<StratifiedCallSite>();
         foreach (CallSite cs in info.recordProcCallSites[b]) {
-          recordProcCallSites[b].Add(new StratifiedCallSite(cs, substVisitor, subst, reachVars));
+          recordProcCallSites[b].Add(new StratifiedCallSite(cs, substVisitor, subst, gen.Function(reachMacros[cs.block])));
         }
       }
     }
@@ -121,22 +117,22 @@ namespace VC {
   public class StratifiedCallSite {
     public CallSite callSite;
     public List<VCExpr> interfaceExprs;
-    public VCExprVar reachVar;
+    public VCExpr reachExpr;
 
-    public StratifiedCallSite(CallSite cs, SubstitutingVCExprVisitor substVisitor, VCExprSubstitution subst, Dictionary<Block, VCExprVar> reachVars) {
+    public StratifiedCallSite(CallSite cs, SubstitutingVCExprVisitor substVisitor, VCExprSubstitution subst, VCExpr reachExpression) {
       callSite = cs;
       interfaceExprs = new List<VCExpr>();
       foreach (VCExpr v in cs.interfaceExprs) {
         interfaceExprs.Add(substVisitor.Mutate(v, subst));
       }
-      reachVar = reachVars[cs.block];
+      reachExpr = reachExpression;
     }
 
     public VCExpr Attach(StratifiedVC svc) {
       Contract.Assert(interfaceExprs.Count == svc.interfaceExprVars.Count);
       StratifiedInliningInfo info = svc.info;
       VCExpressionGenerator gen = info.vcgen.prover.VCExprGen;
-      VCExpr ret = gen.Eq(reachVar, svc.reachVars[info.impl.Blocks[0]]);
+      VCExpr ret = gen.Eq(reachExpr, svc.entryExprVar);
       for (int i = 0; i < interfaceExprs.Count; i++) {
         ret = gen.And(ret, gen.Eq(interfaceExprs[i], svc.interfaceExprVars[i]));
       }
@@ -157,6 +153,7 @@ namespace VC {
     public ModelViewInfo mvInfo;
     public Dictionary<Block, List<CallSite>> callSites;
     public Dictionary<Block, List<CallSite>> recordProcCallSites;
+    public IEnumerable<Block> sortedBlocks;
     public bool initialized { get; private set; }
 
     public StratifiedInliningInfo(Implementation implementation, StratifiedVCGenBase stratifiedVcGen) {
@@ -232,19 +229,32 @@ namespace VC {
       ModelViewInfo mvInfo;
       vcgen.PassifyImpl(impl, out mvInfo);
 
-      controlFlowVariable = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "@cfc", Microsoft.Boogie.Type.Int));
-      impl.LocVars.Add(controlFlowVariable);
-
       VCExpressionGenerator gen = proverInterface.VCExprGen;
       var exprGen = proverInterface.Context.ExprGen;
       var translator = proverInterface.Context.BoogieExprTranslator;
-      VCExpr controlFlowVariableExpr = CommandLineOptions.Clo.UseLabels ? null : translator.LookupVariable(controlFlowVariable);
+      VCExpr controlFlowVariableExpr = null;
+      if (!CommandLineOptions.Clo.UseLabels) {
+        controlFlowVariable = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "@cfc", Microsoft.Boogie.Type.Int));
+        controlFlowVariableExpr = translator.LookupVariable(controlFlowVariable);
+      }
       vcexpr = gen.Not(vcgen.GenerateVC(impl, controlFlowVariableExpr, out label2absy, proverInterface.Context));
       if (controlFlowVariableExpr != null) {
         VCExpr controlFlowFunctionAppl = exprGen.ControlFlowFunctionApplication(controlFlowVariableExpr, exprGen.Integer(BigNum.ZERO));
         VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl, exprGen.Integer(BigNum.FromInt(impl.Blocks[0].UniqueId)));
         vcexpr = exprGen.And(eqExpr, vcexpr);
       }
+
+      Graph<Block> dag = new Graph<Block>();
+      dag.AddSource(impl.Blocks[0]);
+      foreach (Block b in impl.Blocks) {
+        GotoCmd gtc = b.TransferCmd as GotoCmd;
+        if (gtc != null) {
+          foreach (Block dest in gtc.labelTargets) {
+            dag.AddEdge(b, dest);
+          }
+        }
+      }
+      sortedBlocks = dag.TopologicalSort();
 
       privateExprVars = new List<VCExprVar>();
       foreach (Variable v in impl.LocVars) {
@@ -406,10 +416,16 @@ namespace VC {
       return callSites;
     }
 
-    private int newVarCountForStratifiedInlining = 0;
+    private int macroCountForStratifiedInlining = 0;
+    public Macro CreateNewMacro() {
+      string newName = "StratifiedInliningMacro@" + macroCountForStratifiedInlining.ToString();
+      macroCountForStratifiedInlining++;
+      return new Macro(Token.NoToken, newName, new VariableSeq(), new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "", Microsoft.Boogie.Type.Bool), false));
+    }
+    private int varCountForStratifiedInlining = 0;
     public VCExprVar CreateNewVar(Microsoft.Boogie.Type type) {
-      string newName = "StratifiedInlining@" + newVarCountForStratifiedInlining.ToString();
-      newVarCountForStratifiedInlining++;
+      string newName = "StratifiedInliningVar@" + varCountForStratifiedInlining.ToString();
+      varCountForStratifiedInlining++;
       Constant newVar = new Constant(Token.NoToken, new TypedIdent(Token.NoToken, newName, type));
       prover.Context.DeclareConstant(newVar, false, null);
       return prover.VCExprGen.Variable(newVar.Name, type);
