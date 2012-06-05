@@ -1,0 +1,4 @@
+----- Running regression test ..\dafnyRuntimeChecking (without runtime checking)
+..\dafnyRuntimeChecking Succeeded
+----- Running regression test ..\dafnyRuntimeChecking (with runtime checking)
+..\dafnyRuntimeChecking Succeeded

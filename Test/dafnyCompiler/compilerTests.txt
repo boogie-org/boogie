@@ -1,0 +1,8 @@
+..\dafny0               Postpone      Dafny functionality tests
+..\dafny1               Postpone      Various Dafny examples
+..\dafny2               Postpone      More Dafny examples
+..\dafnyRuntimeChecking Use           Dafny runtime checking tests
+..\VSI-Benchmarks       Postpone      Solutions to Verified Software Initiative verification challenges
+..\vacid0               Postpone      Dafny attempts to VACID Edition 0 benchmarks
+..\vstte2012            Postpone      Dafny solutions for the VSTTE 2012 program veri..\fication competition
+..\VSComp2010           Postpone      Dafny solutions to VSComp (verified software competition) problems
