@@ -75,7 +75,9 @@ namespace VC {
       foreach (Block b in info.callSites.Keys) {
         callSites[b] = new List<StratifiedCallSite>();
         foreach (CallSite cs in info.callSites[b]) {
-          callSites[b].Add(new StratifiedCallSite(cs, substVisitor, subst, gen.Function(reachMacros[cs.block])));
+          VCExpr controlFlowFunctionAppl = gen.ControlFlowFunctionApplication(gen.Integer(BigNum.FromInt(id)), gen.Integer(BigNum.FromInt(b.UniqueId)));
+          VCExpr blockExpr = gen.Eq(controlFlowFunctionAppl, gen.Integer(BigNum.ZERO));
+          callSites[b].Add(new StratifiedCallSite(cs, substVisitor, subst, gen.Function(reachMacros[cs.block]), blockExpr));
         }
       }
 
@@ -83,7 +85,9 @@ namespace VC {
       foreach (Block b in info.recordProcCallSites.Keys) {
         recordProcCallSites[b] = new List<StratifiedCallSite>();
         foreach (CallSite cs in info.recordProcCallSites[b]) {
-          recordProcCallSites[b].Add(new StratifiedCallSite(cs, substVisitor, subst, gen.Function(reachMacros[cs.block])));
+          VCExpr controlFlowFunctionAppl = gen.ControlFlowFunctionApplication(gen.Integer(BigNum.FromInt(id)), gen.Integer(BigNum.FromInt(b.UniqueId)));
+          VCExpr blockExpr = gen.Eq(controlFlowFunctionAppl, gen.Integer(BigNum.ZERO));
+          recordProcCallSites[b].Add(new StratifiedCallSite(cs, substVisitor, subst, gen.Function(reachMacros[cs.block]), blockExpr));
         }
       }
     }
@@ -118,21 +122,25 @@ namespace VC {
     public CallSite callSite;
     public List<VCExpr> interfaceExprs;
     public VCExpr reachExpr;
+    public VCExpr blockExpr;
 
-    public StratifiedCallSite(CallSite cs, SubstitutingVCExprVisitor substVisitor, VCExprSubstitution subst, VCExpr reachExpression) {
+    public StratifiedCallSite(CallSite cs, SubstitutingVCExprVisitor substVisitor, VCExprSubstitution subst, 
+                              VCExpr reachExpression, VCExpr blockExpression) {
       callSite = cs;
       interfaceExprs = new List<VCExpr>();
       foreach (VCExpr v in cs.interfaceExprs) {
         interfaceExprs.Add(substVisitor.Mutate(v, subst));
       }
       reachExpr = reachExpression;
+      blockExpr = blockExpression;
     }
 
     public VCExpr Attach(StratifiedVC svc) {
       Contract.Assert(interfaceExprs.Count == svc.interfaceExprVars.Count);
       StratifiedInliningInfo info = svc.info;
       VCExpressionGenerator gen = info.vcgen.prover.VCExprGen;
-      VCExpr ret = gen.Eq(reachExpr, svc.entryExprVar);
+      // VCExpr ret = gen.Eq(reachExpr, svc.entryExprVar);
+      VCExpr ret = VCExpressionGenerator.True;
       for (int i = 0; i < interfaceExprs.Count; i++) {
         ret = gen.And(ret, gen.Eq(interfaceExprs[i], svc.interfaceExprVars[i]));
       }
