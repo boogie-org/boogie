@@ -188,7 +188,7 @@ namespace Microsoft.Boogie.Z3
             else
             {
                 string varName = namer.GetName(node, node.Name);
-                return cm.GetConstant(varName, node.Type);
+                return cm.GetConstant(varName, node.Type,node);
             }
         }
 
@@ -252,7 +252,7 @@ namespace Microsoft.Boogie.Z3
         private Term MakeQuantifier(bool isForall, uint weight, string qid, int skolemid, List<string> varNames, List<Type> boogieTypes, List<Pattern> patterns, List<Term> no_patterns, Term body) {
           List<Term> bound = new List<Term>();
           for (int i = 0; i < varNames.Count; i++) {
-            Term t = cm.GetConstant(varNames[i], boogieTypes[i]);
+            Term t = cm.GetConstant(varNames[i], boogieTypes[i], null);
             bound.Add(t);
           }
 

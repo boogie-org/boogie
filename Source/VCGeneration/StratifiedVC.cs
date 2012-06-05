@@ -2454,7 +2454,7 @@ namespace VC
                 {
                     GenerateVCForStratifiedInlining(program, info, checker);
                 }
-                //Console.WriteLine("Inlining {0}", procName);
+                Console.WriteLine("Inlining {0}", procName);
                 VCExpr expansion = cce.NonNull(info.vcexpr);
 
                 // Instantiate the "forall" variables

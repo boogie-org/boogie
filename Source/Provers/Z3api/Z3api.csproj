@@ -118,9 +118,8 @@
   </Target>
   -->
   <ItemGroup>
-    <Reference Include="Microsoft.Z3, Version=2.0.40827.2, Culture=neutral, PublicKeyToken=9c8d792caae602a2, processorArchitecture=x86">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\Binaries\Microsoft.Z3.dll</HintPath>
+    <Reference Include="ManagedAPI">
+      <HintPath>..\..\..\..\..\iZ3\win\iZ3\Debug\ManagedAPI.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core">

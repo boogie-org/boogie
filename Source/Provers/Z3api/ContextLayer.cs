@@ -20,6 +20,8 @@ namespace Microsoft.Boogie.Z3 {
     internal BacktrackDictionary<string, Term> constants = new BacktrackDictionary<string, Term>();
     internal BacktrackDictionary<string, FuncDecl> functions = new BacktrackDictionary<string, FuncDecl>();
     internal BacktrackDictionary<string, Term> labels = new BacktrackDictionary<string, Term>();
+    internal BacktrackDictionary<Term, VCExpr> constants_inv = null;
+    internal BacktrackDictionary<FuncDecl, Function> functions_inv = null;
 
     public Config config;
     public Context z3;
@@ -56,7 +58,13 @@ namespace Microsoft.Boogie.Z3 {
       z3 = new Context(config);
       z3.SetPrintMode(PrintMode.Smtlib2Compliant);
       if (logFilename != null)
-        z3.OpenLog(logFilename);
+      {
+#if true
+          Z3Log.Open(logFilename);
+#else
+          z3.OpenLog(logFilename);
+#endif
+      }
       foreach (string tag in debugTraces)
         z3.EnableDebugTrace(tag);
 
@@ -64,6 +72,227 @@ namespace Microsoft.Boogie.Z3 {
       this.tm = new Z3TypeCachedBuilder(this);
       this.namer = new UniqueNamer();
     }
+
+    public Z3apiProverContext(Context ctx, VCExpressionGenerator gen)
+        : base(gen, new VCGenerationOptions(new List<string>()))
+    {
+        z3 = ctx;
+
+        this.z3log = null;
+        this.tm = new Z3TypeCachedBuilder(this);
+        this.namer = new UniqueNamer();
+
+        // For external 
+
+        constants_inv = new BacktrackDictionary<Term, VCExpr>();
+        functions_inv = new BacktrackDictionary<FuncDecl, Function>();
+    }
+
+    public Term VCExprToTerm(VCExpr expr, LineariserOptions linOptions) {
+        Z3apiExprLineariser visitor = new Z3apiExprLineariser(this, namer);
+        return (Term)expr.Accept(visitor, linOptions);
+    }
+
+
+    private class fromZ3
+    {
+        private VCExpressionGenerator gen;
+        private Dictionary<Term, VCExpr> memo;
+        private BacktrackDictionary<Term, VCExpr> constants_inv;
+        private BacktrackDictionary<FuncDecl, Function> functions_inv;
+        private List<VCExprLetBinding> lets;
+        private int let_ctr = 0;
+
+        private VCExpr create_let(Term t, VCExpr u)
+        {
+            var name = "$x" + let_ctr.ToString();
+            let_ctr++;
+            var sym = gen.Variable(name, u.Type);
+            memo.Remove(t);
+            memo.Add(t, sym);
+            lets.Add(gen.LetBinding(sym, u));
+            return sym;
+        }
+
+        public fromZ3(VCExpressionGenerator _gen,
+                      BacktrackDictionary<Term, VCExpr> _constants_inv,
+                      BacktrackDictionary<FuncDecl, Function> _functions_inv)
+        {
+            gen = _gen;
+            constants_inv = _constants_inv;
+            functions_inv = _functions_inv;
+            memo = new Dictionary<Term, VCExpr>();
+            lets = new List<VCExprLetBinding>();
+        }
+
+        public void clear()
+        {
+            memo.Clear();
+            lets.Clear();
+        }
+        public VCExpr get(Term arg)
+        {
+            if (memo.ContainsKey(arg))
+                return memo[arg];
+            VCExpr res = null;
+            switch (arg.GetKind())
+            {
+                case TermKind.Numeral:
+                    var numstr = arg.GetNumeralString();
+                    var bignum = Basetypes.BigNum.FromString(numstr);
+                    res = gen.Integer(bignum);
+                    break;
+                case TermKind.App:
+                    var args = arg.GetAppArgs();
+                    var vcargs = new VCExpr[args.Length];
+                    for (int i = 0; i < args.Length; i++)
+                        vcargs[i] = get(args[i]);
+
+                    switch (arg.GetAppDecl().GetKind())
+                    {
+                        case DeclKind.Add:
+                            if (vcargs.Length == 0)
+                                res = gen.Integer(Basetypes.BigNum.FromInt(0));
+                            else
+                            {
+                                res = vcargs[0];
+                                for (int k = 1; k < vcargs.Length; k++)
+                                    res = gen.Add(res, vcargs[k]);
+                            }
+                            break;
+                        case DeclKind.And:
+                            res = VCExpressionGenerator.True;
+                            for (int i = 0; i < vcargs.Length; i++)
+                                res = gen.AndSimp(res, vcargs[i]);
+                            break;
+                        case DeclKind.Div:
+                            Debug.Assert(vcargs.Length == 2);
+                            res = gen.Function(VCExpressionGenerator.DivOp, vcargs[0], vcargs[1]);
+                            break;
+                        case DeclKind.Eq:
+                            Debug.Assert(vcargs.Length == 2);
+                            res = gen.Eq(vcargs[0], vcargs[1]);
+                            break;
+                        case DeclKind.False:
+                            res = VCExpressionGenerator.False;
+                            break;
+                        case DeclKind.Ge:
+                            Debug.Assert(vcargs.Length == 2);
+                            res = gen.Function(VCExpressionGenerator.GeOp, vcargs[0], vcargs[1]);
+                            break;
+                        case DeclKind.Gt:
+                            Debug.Assert(vcargs.Length == 2);
+                            res = gen.Gt(vcargs[0], vcargs[1]);
+                            break;
+                        case DeclKind.IDiv:
+                            Debug.Assert(vcargs.Length == 2);
+                            res = gen.Function(VCExpressionGenerator.DivOp, vcargs[0], vcargs[1]);
+                            break;
+                        case DeclKind.Iff:
+                            Debug.Assert(vcargs.Length == 2);
+                            var l = create_let(args[0], vcargs[0]);
+                            var r = create_let(args[1], vcargs[1]);
+                            return gen.And(gen.Implies(l, r), gen.Implies(r, l));
+                        case DeclKind.Implies:
+                            Debug.Assert(vcargs.Length == 2);
+                            res = gen.Implies(vcargs[0], vcargs[1]);
+                            break;
+                        case DeclKind.Ite:
+                            Debug.Assert(vcargs.Length == 3);
+                            res = gen.Function(VCExpressionGenerator.IfThenElseOp, vcargs[0], vcargs[1], vcargs[2]);
+                            break;
+                        case DeclKind.Le:
+                            Debug.Assert(vcargs.Length == 2);
+                            res = gen.Function(VCExpressionGenerator.LeOp, vcargs[0], vcargs[1]);
+                            break;
+                        case DeclKind.Lt:
+                            Debug.Assert(vcargs.Length == 2);
+                            res = gen.Function(VCExpressionGenerator.LtOp, vcargs[0], vcargs[1]);
+                            break;
+                        case DeclKind.Mod:
+                            Debug.Assert(vcargs.Length == 2);
+                            res = gen.Function(VCExpressionGenerator.ModOp, vcargs[0], vcargs[1]);
+                            break;
+                        case DeclKind.Mul:
+                            Debug.Assert(vcargs.Length == 2);
+                            res = gen.Function(VCExpressionGenerator.MulOp, vcargs[0], vcargs[1]);
+                            break;
+                        case DeclKind.Not:
+                            Debug.Assert(vcargs.Length == 1);
+                            res = gen.Not(vcargs[0]);
+                            break;
+                        case DeclKind.Or:
+                            res = VCExpressionGenerator.False;
+                            for (int i = 0; i < vcargs.Length; i++)
+                                res = gen.OrSimp(res, vcargs[i]);
+                            break;
+                        case DeclKind.Select:
+                            Debug.Assert(vcargs.Length == 2);
+                            res = gen.Select(vcargs[0], vcargs[1]);
+                            break;
+                        case DeclKind.Store:
+                            Debug.Assert(vcargs.Length == 3);
+                            res = gen.Store(vcargs[0], vcargs[1], vcargs[2]);
+                            break;
+                        case DeclKind.Sub:
+                            Debug.Assert(vcargs.Length == 2);
+                            res = gen.Function(VCExpressionGenerator.SubOp, vcargs[0], vcargs[1]);
+                            break;
+                        case DeclKind.True:
+                            res = VCExpressionGenerator.True;
+                            break;
+                        case DeclKind.Uminus:
+                            Debug.Assert(vcargs.Length == 1);
+                            var bigzero = Basetypes.BigNum.FromInt(0);
+                            res = gen.Function(VCExpressionGenerator.SubOp, gen.Integer(bigzero), vcargs[0]);
+                            break;
+                        case DeclKind.Uninterpreted:
+                            var name = arg.GetAppDecl().GetDeclName();
+                            if (args.Length == 0)
+                            { // a 0-ary constant is a VCExprVar
+                                if (!constants_inv.TryGetValue(arg, out res))
+                                    throw new Exception("Z3 returned unknown constant: " + name);
+                            }
+                            else
+                            {
+                                Function f;
+                                if (!functions_inv.TryGetValue(arg.GetAppDecl(), out f))
+                                    throw new Exception("Z3 returned unknown function: " + name);
+                                List<VCExpr> vcargsList = new List<VCExpr>(vcargs);
+                                res = gen.Function(f, vcargsList);
+                            }   
+                            break;
+                        default:
+                            throw new Exception("Unknown Z3 operator");
+                    }
+                    break;
+                default:
+                    Debug.Assert(false);
+                    throw new Exception("Unknown Z3 AST kind");
+            }
+
+            memo.Add(arg, res);
+            return res;
+        }
+        public VCExpr add_lets(VCExpr e)
+        {
+            foreach (var let in lets)
+            {
+                e = gen.Let(e, let);
+            }
+            return e;
+        }
+    }
+
+    public VCExpr TermToVCExpr(Term t)
+    {
+      var fZ = new fromZ3(gen, constants_inv, functions_inv);
+      return fZ.add_lets(fZ.get(t));
+    }
+
+
+    
+
 
     public override void DeclareType(TypeCtorDecl t, string attributes) {
       base.DeclareType(t, attributes);
@@ -97,6 +326,7 @@ namespace Microsoft.Boogie.Z3 {
       Sort rangeAst = tm.GetType(range);
       FuncDecl constDeclAst = z3.MkFuncDecl(symbolAst, domainAst.ToArray(), rangeAst);
       functions.Add(functionName, constDeclAst);
+      if(functions_inv != null)functions_inv.Add(constDeclAst, f);
       log("(declare-funs (({0} {1} {2})))", functionName, domainStr, rangeAst);
     }
 
@@ -122,7 +352,11 @@ namespace Microsoft.Boogie.Z3 {
     }
 
     public void CloseLog() {
-      z3.CloseLog();
+#if true
+        Z3Log.Close();
+#else
+        z3.CloseLog();
+#endif
       if (z3log != null) {
         z3log.Close();
       }
@@ -134,6 +368,8 @@ namespace Microsoft.Boogie.Z3 {
       constants.CreateBacktrackPoint();
       functions.CreateBacktrackPoint();
       labels.CreateBacktrackPoint();
+      if(constants_inv != null)constants_inv.CreateBacktrackPoint();
+      if(functions_inv != null)functions_inv.CreateBacktrackPoint();
       z3.Push();
       log("(push)");
     }
@@ -144,6 +380,8 @@ namespace Microsoft.Boogie.Z3 {
       functions.Backtrack();
       constants.Backtrack();
       symbols.Backtrack();
+      if (constants_inv != null) constants_inv.Backtrack();
+      if (functions_inv != null) functions_inv.Backtrack();
       log("(pop)");
     }
 
@@ -368,13 +606,18 @@ namespace Microsoft.Boogie.Z3 {
       return result;
     }
 
-    public Term GetConstant(string constantName, Type constantType) {
+    public Term GetConstant(string constantName, Type constantType, VCExpr node)
+    {
       Term typeSafeTerm;
       if (!constants.ContainsKey(constantName))
         this.DeclareConstant(constantName, constantType);
 
       if (!constants.TryGetValue(constantName, out typeSafeTerm))
         throw new Exception("constant " + constantName + " is not defined");
+
+      if (constants_inv != null && !constants_inv.ContainsKey(typeSafeTerm))
+          constants_inv.Add(typeSafeTerm, node);
+
       return typeSafeTerm;
     }
 
