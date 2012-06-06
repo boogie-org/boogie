@@ -877,7 +877,7 @@ namespace GPUVerify
 
                                 logAccessCallCmd.Proc = logProcedure;
 
-                                cs.Add(logAccessCallCmd);
+                                result.Add(logAccessCallCmd);
 
                             }
                         }
@@ -914,7 +914,7 @@ namespace GPUVerify
 
                                 logAccessCallCmd.Proc = logProcedure;
 
-                                cs.Add(logAccessCallCmd);
+                                result.Add(logAccessCallCmd);
 
                                 addedLogWrite = true;
 
