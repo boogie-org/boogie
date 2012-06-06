@@ -234,7 +234,6 @@ namespace VC {
       Program program = vcgen.program;
       ProverInterface proverInterface = vcgen.prover;
       vcgen.ConvertCFG2DAG(impl);
-      ModelViewInfo mvInfo;
       vcgen.PassifyImpl(impl, out mvInfo);
 
       VCExpressionGenerator gen = proverInterface.VCExprGen;
