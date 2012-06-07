@@ -381,6 +381,8 @@ namespace Microsoft.Dafny {
       Contract.Requires(declarations != null);
       Contract.Requires(cce.NonNullElements(datatypeDependencies));
 
+      int prevErrorCount = ErrorCount;
+
       // Resolve the meat of classes, and the type parameters of all top-level type declarations
       foreach (TopLevelDecl d in declarations) {
         Contract.Assert(d != null);
@@ -397,6 +399,32 @@ namespace Microsoft.Dafny {
         if (datatypeDependencies.GetSCCRepresentative(dtd) == dtd) {
           // do the following check once per SCC, so call it on each SCC representative
           SccStratosphereCheck(dtd, datatypeDependencies);
+        }
+      }
+      // Perform the guardedness check on co-datatypes
+      if (ErrorCount == prevErrorCount) {  // because CheckCoCalls requires the given expression to have been successfully resolved
+        foreach (var decl in declarations) {
+          var cl = decl as ClassDecl;
+          if (cl != null) {
+            foreach (var member in cl.Members) {
+              var fn = member as Function;
+              if (fn != null && fn.Body != null && cl.Module.CallGraph.GetSCCRepresentative(fn) == fn) {
+                bool dealsWithCodatatypes = false;
+                foreach (var m in cl.Module.CallGraph.GetSCC(fn)) {
+                  var f = (Function)m;
+                  if (f.ResultType.InvolvesCoDatatype) {
+                    dealsWithCodatatypes = true;
+                    break;
+                  }
+                }
+                foreach (var m in cl.Module.CallGraph.GetSCC(fn)) {
+                  var f = (Function)m;
+                  var checker = new CoCallResolution(f, dealsWithCodatatypes);
+                  checker.CheckCoCalls(f.Body);
+                }
+              }
+            }
+          }
         }
       }
     }
@@ -726,8 +754,9 @@ namespace Microsoft.Dafny {
         // any type is fine
       }
       if (f.Body != null) {
+        var prevErrorCount = ErrorCount;
         List<IVariable> matchVarContext = new List<IVariable>(f.Formals);
-        ResolveExpression(f.Body, false, matchVarContext, null);
+        ResolveExpression(f.Body, false, matchVarContext);
         if (!f.IsGhost) {
           CheckIsNonGhost(f.Body);
         }
@@ -849,8 +878,7 @@ namespace Microsoft.Dafny {
       foreach (MaybeFreeExpression e in m.Ens) {
         ResolveExpression(e.E, true);
         Contract.Assert(e.E.Type != null);  // follows from postcondition of ResolveExpression
-        if (!UnifyTypes(e.E.Type, Type.Bool))
-        {
+        if (!UnifyTypes(e.E.Type, Type.Bool)) {
           Error(e.E, "Postcondition must be a boolean (got {0})", e.E.Type);
         }
       }
@@ -887,6 +915,13 @@ namespace Microsoft.Dafny {
       Contract.Requires(type != null);
       if (type is BasicType) {
         // nothing to resolve
+      } else if (type is MapType) {
+        MapType mt = (MapType)type;
+        ResolveType(tok, mt.Domain, defaultTypeArguments, allowAutoTypeArguments);
+        ResolveType(tok, mt.Range, defaultTypeArguments, allowAutoTypeArguments);
+        if (mt.Domain.IsSubrangeType || mt.Range.IsSubrangeType) {
+          Error(tok, "sorry, cannot instantiate collection type with a subrange type");
+        }
       } else if (type is CollectionType) {
         var t = (CollectionType)type;
         var argType = t.Arg;
@@ -894,7 +929,7 @@ namespace Microsoft.Dafny {
         if (argType.IsSubrangeType) {
           Error(tok, "sorry, cannot instantiate collection type with a subrange type");
         }
-      } else if (type is UserDefinedType) {
+      }  else if (type is UserDefinedType) {
         UserDefinedType t = (UserDefinedType)type;
         foreach (Type tt in t.TypeArgs) {
           ResolveType(t.tok, tt, defaultTypeArguments, allowAutoTypeArguments);
@@ -1011,6 +1046,8 @@ namespace Microsoft.Dafny {
         return b is SetType && UnifyTypes(((SetType)a).Arg, ((SetType)b).Arg);
       } else if (a is MultiSetType) {
         return b is MultiSetType && UnifyTypes(((MultiSetType)a).Arg, ((MultiSetType)b).Arg);
+      }else if (a is MapType) {
+        return b is MapType && UnifyTypes(((MapType)a).Domain, ((MapType)b).Domain) && UnifyTypes(((MapType)a).Range, ((MapType)b).Range);
       } else if (a is SeqType) {
         return b is SeqType && UnifyTypes(((SeqType)a).Arg, ((SeqType)b).Arg);
       } else if (a is UserDefinedType) {
@@ -1120,9 +1157,22 @@ namespace Microsoft.Dafny {
           if (!UnifyTypes(iProxy.Arg, ((SeqType)t).Arg)) {
             return false;
           }
+          if (!UnifyTypes(iProxy.Domain, Type.Int)) {
+            return false;
+          }
         } else if (t.IsArrayType && (t.AsArrayType).Dims == 1) {
           Type elType = UserDefinedType.ArrayElementType(t);
           if (!UnifyTypes(iProxy.Arg, elType)) {
+            return false;
+          }
+          if (!UnifyTypes(iProxy.Domain, Type.Int)) {
+            return false;
+          }
+        } else if (t is MapType) {
+          if (!UnifyTypes(iProxy.Arg, ((MapType)t).Range)) {
+            return false;
+          }
+          if (!UnifyTypes(iProxy.Domain, ((MapType)t).Domain)) {
             return false;
           }
         } else {
@@ -1199,8 +1249,8 @@ namespace Microsoft.Dafny {
         } else if (b is IndexableTypeProxy) {
           IndexableTypeProxy pb = (IndexableTypeProxy)b;
           // the intersection of ObjectsTypeProxy and IndexableTypeProxy is
-          // EITHER a sequence of ObjectTypeProxy OR an array of anything
-          // TODO: here, only the first of the two cases is supported
+          // EITHER a sequence of ObjectTypeProxy OR an array of anything OR map of ObjectTypeProxy in either domain or range.
+          // TODO: here, only the first of the three cases is supported
           b.T = new SeqType(pb.Arg);
           a.T = b.T;
           return UnifyTypes(pb.Arg, new ObjectTypeProxy());
@@ -1224,10 +1274,8 @@ namespace Microsoft.Dafny {
         } else if (b is IndexableTypeProxy) {
           CollectionTypeProxy pa = (CollectionTypeProxy)a;
           IndexableTypeProxy pb = (IndexableTypeProxy)b;
-          // strengthen a and b to a sequence type
-          a.T = new SeqType(pa.Arg);
-          b.T = new SeqType(pb.Arg);
-          return UnifyTypes(pa.Arg, pb.Arg);
+          // a and b could be a map or a sequence
+          return true;
         } else {
           Contract.Assert(false); throw new cce.UnreachableException();  // unexpected restricted-proxy type
         }
@@ -1307,7 +1355,7 @@ namespace Microsoft.Dafny {
             Statement target = loopStack[loopStack.Count - s.BreakCount];
             if (target.Labels == null) {
               // make sure there is a label, because the compiler and translator will want to see a unique ID
-              target.Labels = new LabelNode(target.Tok, null, null);
+              target.Labels = new LList<Label>(new Label(target.Tok, null), null);
             }
             s.TargetStmt = target;
             if (specContextOnly && !target.IsGhost && !inSpecOnlyContext[target]) {
@@ -1806,11 +1854,11 @@ namespace Microsoft.Dafny {
           } else {
             var er = (ExprRhs)rhs;
             if (er.Expr is IdentifierSequence) {
-              var cRhs = ResolveIdentifierSequence((IdentifierSequence)er.Expr, true, true, null);
+              var cRhs = ResolveIdentifierSequence((IdentifierSequence)er.Expr, true, true);
               isEffectful = cRhs != null;
               callRhs = callRhs ?? cRhs;
             } else if (er.Expr is FunctionCallExpr) {
-              var cRhs = ResolveFunctionCallExpr((FunctionCallExpr)er.Expr, true, true, null);
+              var cRhs = ResolveFunctionCallExpr((FunctionCallExpr)er.Expr, true, true);
               isEffectful = cRhs != null;
               callRhs = callRhs ?? cRhs;
             } else {
@@ -2110,17 +2158,18 @@ namespace Microsoft.Dafny {
       foreach (Statement ss in blockStmt.Body) {
         labeledStatements.PushMarker();
         // push labels
-        for (var lnode = ss.Labels; lnode != null; lnode = lnode.Next) {
-          Contract.Assert(lnode.Label != null);  // LabelNode's with .Label==null are added only during resolution of the break statements with 'stmt' as their target, which hasn't happened yet
-          var prev = labeledStatements.Find(lnode.Label);
+        for (var l = ss.Labels; l != null; l = l.Next) {
+          var lnode = l.Data;
+          Contract.Assert(lnode.Name != null);  // LabelNode's with .Label==null are added only during resolution of the break statements with 'stmt' as their target, which hasn't happened yet
+          var prev = labeledStatements.Find(lnode.Name);
           if (prev == ss) {
             Error(lnode.Tok, "duplicate label");
           } else if (prev != null) {
             Error(lnode.Tok, "label shadows an enclosing label");
           } else {
-            bool b = labeledStatements.Push(lnode.Label, ss);
+            bool b = labeledStatements.Push(lnode.Name, ss);
             Contract.Assert(b);  // since we just checked for duplicates, we expect the Push to succeed
-            if (lnode == ss.Labels) {  // add it only once
+            if (l == ss.Labels) {  // add it only once
               inSpecOnlyContext.Add(ss, specContextOnly);
             }
           }
@@ -2368,6 +2417,9 @@ namespace Microsoft.Dafny {
 
       if (type is BasicType) {
         return type;
+      } else if (type is MapType) {
+        MapType t = (MapType)type;
+        return new MapType(SubstType(t.Domain, subst), SubstType(t.Range, subst));
       } else if (type is CollectionType) {
         CollectionType t = (CollectionType)type;
         Type arg = SubstType(t.Arg, subst);
@@ -2456,17 +2508,17 @@ namespace Microsoft.Dafny {
     }
 
     /// <summary>
-    /// "twoState" implies that "old" and "fresh" expressions are allowed
+    /// "twoState" implies that "old" and "fresh" expressions are allowed.
     /// </summary>
     void ResolveExpression(Expression expr, bool twoState) {
-      ResolveExpression(expr, twoState, null, null);
+      ResolveExpression(expr, twoState, null);
     }
 
     /// <summary>
     /// "matchVarContext" says which variables are allowed to be used as the source expression in a "match" expression;
     /// if null, no "match" expression will be allowed.
     /// </summary>
-    void ResolveExpression(Expression expr, bool twoState, List<IVariable> matchVarContext, DatatypeValue coContext) {
+    void ResolveExpression(Expression expr, bool twoState, List<IVariable> matchVarContext) {
       Contract.Requires(expr != null);
       Contract.Requires(currentClass != null);
       Contract.Ensures(expr.Type != null);
@@ -2482,7 +2534,7 @@ namespace Microsoft.Dafny {
 
       if (expr is ParensExpression) {
         var e = (ParensExpression)expr;
-        ResolveExpression(e.E, twoState, matchVarContext, coContext);  // allow "match" expressions inside e.E if the parenthetic expression had been allowed to be a "match" expression
+        ResolveExpression(e.E, twoState, matchVarContext);  // allow "match" expressions inside e.E if the parenthetic expression had been allowed to be a "match" expression
         e.ResolvedExpression = e.E;
         e.Type = e.E.Type;
 
@@ -2494,7 +2546,7 @@ namespace Microsoft.Dafny {
 
       } else if (expr is IdentifierSequence) {
         var e = (IdentifierSequence)expr;
-        ResolveIdentifierSequence(e, twoState, false, coContext);
+        ResolveIdentifierSequence(e, twoState, false);
 
       } else if (expr is LiteralExpr) {
         LiteralExpr e = (LiteralExpr)expr;
@@ -2559,7 +2611,7 @@ namespace Microsoft.Dafny {
           int j = 0;
           foreach (Expression arg in dtv.Arguments) {
             Formal formal = ctor != null && j < ctor.Formals.Count ? ctor.Formals[j] : null;
-            ResolveExpression(arg, twoState, null, ctor != null && ctor.EnclosingDatatype is CoDatatypeDecl ? dtv : null);
+            ResolveExpression(arg, twoState, null);
             Contract.Assert(arg.Type != null);  // follows from postcondition of ResolveExpression
             if (formal != null) {
               Type st = SubstType(formal.Type, subst);
@@ -2588,9 +2640,28 @@ namespace Microsoft.Dafny {
         } else {
           expr.Type = new SeqType(elementType);
         }
-
+      } else if (expr is MapDisplayExpr) {
+        MapDisplayExpr e = (MapDisplayExpr)expr;
+        Type domainType = new InferredTypeProxy();
+        Type rangeType = new InferredTypeProxy();
+        foreach (ExpressionPair p in e.Elements) {
+          ResolveExpression(p.A, twoState);
+          Contract.Assert(p.A.Type != null);  // follows from postcondition of ResolveExpression
+          if (!UnifyTypes(domainType, p.A.Type)) {
+            Error(p.A, "All elements of display must be of the same type (got {0}, but type of previous elements is {1})", p.A.Type, domainType);
+          }
+          ResolveExpression(p.B, twoState);
+          Contract.Assert(p.B.Type != null);  // follows from postcondition of ResolveExpression
+          if (!UnifyTypes(rangeType, p.B.Type)) {
+            Error(p.B, "All elements of display must be of the same type (got {0}, but type of previous elements is {1})", p.B.Type, rangeType);
+          }
+        }
+        expr.Type = new MapType(domainType, rangeType);
       } else if (expr is ExprDotName) {
         var e = (ExprDotName)expr;
+        // The following call to ResolveExpression is just preliminary.  If it succeeds, it is redone below on the resolved expression.  Thus,
+        // it's okay to be more lenient here and use coLevel (instead of trying to use CoLevel_Dec(coLevel), which is needed when .Name denotes a
+        // destructor for a co-datatype).
         ResolveExpression(e.Obj, twoState);
         Contract.Assert(e.Obj.Type != null);  // follows from postcondition of ResolveExpression
         Expression resolved = ResolvePredicateOrField(expr.tok, e.Obj, e.SuffixName);
@@ -2657,38 +2728,48 @@ namespace Microsoft.Dafny {
 
       } else if (expr is SeqUpdateExpr) {
         SeqUpdateExpr e = (SeqUpdateExpr)expr;
-        bool seqErr = false;
         ResolveExpression(e.Seq, twoState);
         Contract.Assert(e.Seq.Type != null);  // follows from postcondition of ResolveExpression
         Type elementType = new InferredTypeProxy();
-        if (!UnifyTypes(e.Seq.Type, new SeqType(elementType))) {
-          Error(expr, "sequence update requires a sequence (got {0})", e.Seq.Type);
-          seqErr = true;
-        }
-        ResolveExpression(e.Index, twoState);
-        Contract.Assert(e.Index.Type != null);  // follows from postcondition of ResolveExpression
-        if (!UnifyTypes(e.Index.Type, Type.Int)) {
-          Error(e.Index, "sequence update requires integer index (got {0})", e.Index.Type);
-        }
-        ResolveExpression(e.Value, twoState);
-        Contract.Assert(e.Value.Type != null);  // follows from postcondition of ResolveExpression
-        if (!UnifyTypes(e.Value.Type, elementType)) {
-          Error(e.Value, "sequence update requires the value to have the element type of the sequence (got {0})", e.Value.Type);
-        }
-        if (!seqErr) {
+        Type domainType = new InferredTypeProxy();
+        Type rangeType = new InferredTypeProxy();
+        if (UnifyTypes(e.Seq.Type, new SeqType(elementType))) {
+          ResolveExpression(e.Index, twoState);
+          Contract.Assert(e.Index.Type != null);  // follows from postcondition of ResolveExpression
+          if (!UnifyTypes(e.Index.Type, Type.Int)) {
+            Error(e.Index, "sequence update requires integer index (got {0})", e.Index.Type);
+          }
+          ResolveExpression(e.Value, twoState);
+          Contract.Assert(e.Value.Type != null);  // follows from postcondition of ResolveExpression
+          if (!UnifyTypes(e.Value.Type, elementType)) {
+            Error(e.Value, "sequence update requires the value to have the element type of the sequence (got {0})", e.Value.Type);
+          }
           expr.Type = e.Seq.Type;
+        } else if (UnifyTypes(e.Seq.Type, new MapType(domainType, rangeType))) {
+          ResolveExpression(e.Index, twoState);
+          if (!UnifyTypes(e.Index.Type, domainType)) {
+            Error(e.Index, "map update requires domain element to be of type {0} (got {1})", domainType, e.Index.Type);
+          }
+          ResolveExpression(e.Value, twoState);
+          if (!UnifyTypes(e.Value.Type, rangeType)) {
+            Error(e.Value, "map update requires the value to have the range type {0} (got {1})", rangeType, e.Value.Type);
+          }
+          expr.Type = e.Seq.Type;
+        } else {
+          Error(expr, "update requires a sequence or map (got {0})", e.Seq.Type);
         }
+
 
       } else if (expr is FunctionCallExpr) {
         FunctionCallExpr e = (FunctionCallExpr)expr;
-        ResolveFunctionCallExpr(e, twoState, false, coContext);
+        ResolveFunctionCallExpr(e, twoState, false);
 
       } else if (expr is OldExpr) {
         OldExpr e = (OldExpr)expr;
         if (!twoState) {
           Error(expr, "old expressions are not allowed in this context");
         }
-        ResolveExpression(e.E, twoState, null, coContext);
+        ResolveExpression(e.E, twoState, null);
         expr.Type = e.E.Type;
 
       } else if (expr is MultiSetFormingExpr) {
@@ -2786,8 +2867,10 @@ namespace Microsoft.Dafny {
             if (!UnifyTypes(e.E0.Type, e.E1.Type)) {
               Error(expr, "arguments must have the same type (got {0} and {1})", e.E0.Type, e.E1.Type);
             }
-            if (!UnifyTypes(e.E0.Type, new SetType(new InferredTypeProxy())) && !UnifyTypes(e.E0.Type, new MultiSetType(new InferredTypeProxy()))) {
-              Error(expr, "arguments must be of a [multi]set type (got {0})", e.E0.Type);
+            if (!UnifyTypes(e.E0.Type, new SetType(new InferredTypeProxy())) &&
+                !UnifyTypes(e.E0.Type, new MultiSetType(new InferredTypeProxy())) &&
+                !UnifyTypes(e.E0.Type, new MapType(new InferredTypeProxy(), new InferredTypeProxy()))) {
+              Error(expr, "arguments must be of a [multi]set or map type (got {0})", e.E0.Type);
             }
             expr.Type = Type.Bool;
             break;
@@ -2857,7 +2940,7 @@ namespace Microsoft.Dafny {
           case BinaryExpr.Opcode.In:
           case BinaryExpr.Opcode.NotIn:
             if (!UnifyTypes(e.E1.Type, new CollectionTypeProxy(e.E0.Type))) {
-              Error(expr, "second argument to {0} must be a set or sequence of type {1} (instead got {2})", BinaryExpr.OpcodeString(e.Op), e.E0.Type, e.E1.Type);
+              Error(expr, "second argument to \"{0}\" must be a set or sequence with elements of type {1}, or a map with domain {1} (instead got {2})", BinaryExpr.OpcodeString(e.Op), e.E0.Type, e.E1.Type);
             }
             expr.Type = Type.Bool;
             break;
@@ -2985,6 +3068,42 @@ namespace Microsoft.Dafny {
           }
         }
 
+      } else if (expr is MapComprehension) {
+        var e = (MapComprehension)expr;
+        int prevErrorCount = ErrorCount;
+        scope.PushMarker();
+        if (e.BoundVars.Count != 1) {
+          Error(e.tok, "a map comprehension must have exactly one bound variable.");
+        }
+        foreach (BoundVar v in e.BoundVars) {
+          if (!scope.Push(v.Name, v)) {
+            Error(v, "Duplicate bound-variable name: {0}", v.Name);
+          }
+          ResolveType(v.tok, v.Type, null, true);
+        }
+        ResolveExpression(e.Range, twoState);
+        Contract.Assert(e.Range.Type != null);  // follows from postcondition of ResolveExpression
+        if (!UnifyTypes(e.Range.Type, Type.Bool)) {
+          Error(expr, "range of comprehension must be of type bool (instead got {0})", e.Range.Type);
+        }
+        ResolveExpression(e.Term, twoState);
+        Contract.Assert(e.Term.Type != null);  // follows from postcondition of ResolveExpression
+
+        ResolveAttributes(e.Attributes, twoState);
+        scope.PopMarker();
+        expr.Type = new MapType(e.BoundVars[0].Type,e.Term.Type);
+
+        if (prevErrorCount == ErrorCount) {
+          var missingBounds = new List<BoundVar>();
+          e.Bounds = DiscoverBounds(e.tok, e.BoundVars, e.Range, true, missingBounds);
+          if (missingBounds.Count != 0) {
+            e.MissingBounds = missingBounds;
+            foreach (var bv in e.MissingBounds) {
+              Error(expr, "a map comprehension must produce a finite domain, but Dafny's heuristics can't figure out how to produce a bounded set of values for '{0}'", bv.Name);
+            }
+          }
+        }
+
       } else if (expr is WildcardExpr) {
         expr.Type = new SetType(new ObjectType());
 
@@ -3100,7 +3219,7 @@ namespace Microsoft.Dafny {
             innerMatchVarContext.Remove(goodMatchVariable);  // this variable is no longer available for matching
           }
           innerMatchVarContext.AddRange(mc.Arguments);
-          ResolveExpression(mc.Body, twoState, innerMatchVarContext, null);
+          ResolveExpression(mc.Body, twoState, innerMatchVarContext);
           Contract.Assert(mc.Body.Type != null);  // follows from postcondition of ResolveExpression
           if (!UnifyTypes(expr.Type, mc.Body.Type)) {
             Error(mc.Body.tok, "type of case bodies do not agree (found {0}, previous types {1})", mc.Body.Type, expr.Type);
@@ -3228,9 +3347,8 @@ namespace Microsoft.Dafny {
     /// If "!allowMethodCall" or if what is being called does not refer to a method, resolves "e" and returns "null".
     /// Otherwise (that is, if "allowMethodCall" and what is being called refers to a method), resolves the receiver
     /// of "e" but NOT the arguments, and returns a CallRhs corresponding to the call.
-    /// "coContext" is to be non-null if this function call is a direct argument to a co-constructor.
     /// </summary>
-    CallRhs ResolveFunctionCallExpr(FunctionCallExpr e, bool twoState, bool allowMethodCall, DatatypeValue coContext) {
+    CallRhs ResolveFunctionCallExpr(FunctionCallExpr e, bool twoState, bool allowMethodCall) {
       ResolveReceiver(e.Receiver, twoState);
       Contract.Assert(e.Receiver.Type != null);  // follows from postcondition of ResolveExpression
       NonProxyType nptype;
@@ -3295,25 +3413,17 @@ namespace Microsoft.Dafny {
         }
 
         // Resolution termination check
-        if (coContext != null && function.Reads.Count == 0) {
-          e.CoCall = FunctionCallExpr.CoCallResolution.Yes;
-          coContext.IsCoCall = true;
-        } else {
-          if (coContext != null) {
-            e.CoCall = FunctionCallExpr.CoCallResolution.NoBecauseFunctionHasSideEffects;
-          }
-          if (currentFunction != null && currentFunction.EnclosingClass != null && function.EnclosingClass != null) {
-            ModuleDecl callerModule = currentFunction.EnclosingClass.Module;
-            ModuleDecl calleeModule = function.EnclosingClass.Module;
-            if (callerModule == calleeModule) {
-              // intra-module call; this is allowed; add edge in module's call graph
-              callerModule.CallGraph.AddEdge(currentFunction, function);
-              if (currentFunction == function) {
-                currentFunction.IsRecursive = true;  // self recursion (mutual recursion is determined elsewhere)
-              }
-            } else {
-              Contract.Assert(importGraph.Reaches(callerModule, calleeModule));
+        if (currentFunction != null && currentFunction.EnclosingClass != null && function.EnclosingClass != null) {
+          ModuleDecl callerModule = currentFunction.EnclosingClass.Module;
+          ModuleDecl calleeModule = function.EnclosingClass.Module;
+          if (callerModule == calleeModule) {
+            // intra-module call; this is allowed; add edge in module's call graph
+            callerModule.CallGraph.AddEdge(currentFunction, function);
+            if (currentFunction == function) {
+              currentFunction.IsRecursive = true;  // self recursion (mutual recursion is determined elsewhere)
             }
+          } else {
+            Contract.Assert(importGraph.Reaches(callerModule, calleeModule));
           }
         }
       }
@@ -3324,7 +3434,7 @@ namespace Microsoft.Dafny {
     /// If "!allowMethodCall", or if "e" does not designate a method call, resolves "e" and returns "null".
     /// Otherwise, resolves all sub-parts of "e" and returns a (resolved) CallRhs expression representing the call.
     /// </summary>
-    CallRhs ResolveIdentifierSequence(IdentifierSequence e, bool twoState, bool allowMethodCall, DatatypeValue coContext) {
+    CallRhs ResolveIdentifierSequence(IdentifierSequence e, bool twoState, bool allowMethodCall) {
       // Look up "id" as follows:
       //  - local variable, parameter, or bound variable (if this clashes with something of interest, one can always rename the local variable locally)
       //  - unamibugous type name (class or datatype or arbitrary-type) (if two imported types have the same name, an error message is produced here)
@@ -3344,7 +3454,7 @@ namespace Microsoft.Dafny {
         // ----- root is a local variable, parameter, or bound variable
         r = new IdentifierExpr(id, id.val);
         ResolveExpression(r, twoState);
-        r = ResolveSuffix(r, e, 1, twoState, allowMethodCall, coContext, out call);
+        r = ResolveSuffix(r, e, 1, twoState, allowMethodCall, out call);
 
       } else if (classes.TryGetValue(id.val, out decl)) {
         if (decl is AmbiguousTopLevelDecl) {
@@ -3360,7 +3470,7 @@ namespace Microsoft.Dafny {
         } else if (decl is ClassDecl) {
           // ----- root is a class
           var cd = (ClassDecl)decl;
-          r = ResolveSuffix(new StaticReceiverExpr(id, cd), e, 1, twoState, allowMethodCall, coContext, out call);
+          r = ResolveSuffix(new StaticReceiverExpr(id, cd), e, 1, twoState, allowMethodCall, out call);
 
         } else {
           // ----- root is a datatype
@@ -3369,7 +3479,7 @@ namespace Microsoft.Dafny {
           r = new DatatypeValue(id, id.val, e.Tokens[1].val, args);
           ResolveExpression(r, twoState);
           if (e.Tokens.Count != 2) {
-            r = ResolveSuffix(r, e, 2, twoState, allowMethodCall, coContext, out call);
+            r = ResolveSuffix(r, e, 2, twoState, allowMethodCall, out call);
           }
         }
 
@@ -3383,7 +3493,7 @@ namespace Microsoft.Dafny {
           r = new DatatypeValue(id, pair.Item1.EnclosingDatatype.Name, id.val, args);
           ResolveExpression(r, twoState);
           if (e.Tokens.Count != 1) {
-            r = ResolveSuffix(r, e, 1, twoState, allowMethodCall, coContext, out call);
+            r = ResolveSuffix(r, e, 1, twoState, allowMethodCall, out call);
           }
         }
 
@@ -3400,7 +3510,7 @@ namespace Microsoft.Dafny {
           receiver = new ImplicitThisExpr(id);
           receiver.Type = GetThisType(id, currentClass);  // resolve here
         }
-        r = ResolveSuffix(receiver, e, 0, twoState, allowMethodCall, coContext, out call);
+        r = ResolveSuffix(receiver, e, 0, twoState, allowMethodCall, out call);
 
       } else {
         Error(id, "unresolved identifier: {0}", id.val);
@@ -3426,7 +3536,7 @@ namespace Microsoft.Dafny {
     /// Except, if "allowMethodCall" is "true" and the would-be-returned value designates a method
     /// call, instead returns null and returns "call" as a non-null value.
     /// </summary>
-    Expression ResolveSuffix(Expression r, IdentifierSequence e, int p, bool twoState, bool allowMethodCall, DatatypeValue coContext, out CallRhs call) {
+    Expression ResolveSuffix(Expression r, IdentifierSequence e, int p, bool twoState, bool allowMethodCall, out CallRhs call) {
       Contract.Requires(r != null);
       Contract.Requires(e != null);
       Contract.Requires(0 <= p && p <= e.Tokens.Count);
@@ -3439,7 +3549,7 @@ namespace Microsoft.Dafny {
         var resolved = ResolvePredicateOrField(e.Tokens[p], r, e.Tokens[p].val);
         if (resolved != null) {
           r = resolved;
-          ResolveExpression(r, twoState, null, p == e.Tokens.Count - 1 ? coContext : null);
+          ResolveExpression(r, twoState, null);
         }
       }
 
@@ -3459,7 +3569,7 @@ namespace Microsoft.Dafny {
           r = null;
         } else {
           r = new FunctionCallExpr(e.Tokens[p], e.Tokens[p].val, r, e.OpenParen, e.Arguments);
-          ResolveExpression(r, twoState, null, coContext);
+          ResolveExpression(r, twoState, null);
         }
       } else if (e.Arguments != null) {
         Contract.Assert(p == e.Tokens.Count);
@@ -3554,6 +3664,12 @@ namespace Microsoft.Dafny {
               case BinaryExpr.ResolvedOpcode.InSeq:
                 if (whereIsBv == 0) {
                   bounds.Add(new QuantifierExpr.SeqBoundedPool(e1));
+                  goto CHECK_NEXT_BOUND_VARIABLE;
+                }
+                break;
+              case BinaryExpr.ResolvedOpcode.InMap:
+                if (whereIsBv == 0) {
+                  bounds.Add(new QuantifierExpr.SetBoundedPool(e1));
                   goto CHECK_NEXT_BOUND_VARIABLE;
                 }
                 break;
@@ -3920,28 +4036,37 @@ namespace Microsoft.Dafny {
       ResolveExpression(e.Seq, twoState);
       Contract.Assert(e.Seq.Type != null);  // follows from postcondition of ResolveExpression
       Type elementType = new InferredTypeProxy();
-      Type expectedType;
-      if (e.SelectOne || allowNonUnitArraySelection) {
-        expectedType = new IndexableTypeProxy(elementType);
-      } else {
-        expectedType = new SeqType(elementType);
-      }
+      Type domainType = new InferredTypeProxy();
+      IndexableTypeProxy expectedType = new IndexableTypeProxy(elementType, domainType);
       if (!UnifyTypes(e.Seq.Type, expectedType)) {
-        Error(e, "sequence/array selection requires a sequence or array (got {0})", e.Seq.Type);
+        Error(e, "sequence/array/map selection requires a sequence, array or map (got {0})", e.Seq.Type);
         seqErr = true;
+      }
+      if (!e.SelectOne)  // require sequence or array
+      {
+        if (!allowNonUnitArraySelection) {
+          // require seq
+          if (!UnifyTypes(expectedType, new SeqType(new InferredTypeProxy()))) {
+            Error(e, "selection requires a sequence (got {0})", e.Seq.Type);
+          }
+        } else {
+          if (UnifyTypes(expectedType, new MapType(new InferredTypeProxy(), new InferredTypeProxy()))) {
+            Error(e, "cannot multiselect a map (got {0} as map type)", e.Seq.Type);
+          }
+        }
       }
       if (e.E0 != null) {
         ResolveExpression(e.E0, twoState);
         Contract.Assert(e.E0.Type != null);  // follows from postcondition of ResolveExpression
-        if (!UnifyTypes(e.E0.Type, Type.Int)) {
-          Error(e.E0, "sequence/array selection requires integer indices (got {0})", e.E0.Type);
+        if (!UnifyTypes(e.E0.Type, domainType)) {
+          Error(e.E0, "sequence/array/map selection requires {1} indices (got {0})", e.E0.Type, domainType);
         }
       }
       if (e.E1 != null) {
         ResolveExpression(e.E1, twoState);
         Contract.Assert(e.E1.Type != null);  // follows from postcondition of ResolveExpression
-        if (!UnifyTypes(e.E1.Type, Type.Int)) {
-          Error(e.E1, "sequence/array selection requires integer indices (got {0})", e.E1.Type);
+        if (!UnifyTypes(e.E1.Type, domainType)) {
+          Error(e.E1, "sequence/array/map selection requires {1} indices (got {0})", e.E1.Type, domainType);
         }
       }
       if (!seqErr) {
@@ -3971,6 +4096,8 @@ namespace Microsoft.Dafny {
             return BinaryExpr.ResolvedOpcode.MultiSetEq;
           } else if (operandType is SeqType) {
             return BinaryExpr.ResolvedOpcode.SeqEq;
+          } else if (operandType is MapType) {
+            return BinaryExpr.ResolvedOpcode.MapEq;
           } else {
             return BinaryExpr.ResolvedOpcode.EqCommon;
           }
@@ -3981,12 +4108,16 @@ namespace Microsoft.Dafny {
             return BinaryExpr.ResolvedOpcode.MultiSetNeq;
           } else if (operandType is SeqType) {
             return BinaryExpr.ResolvedOpcode.SeqNeq;
+          } else if (operandType is MapType) {
+            return BinaryExpr.ResolvedOpcode.MapNeq;
           } else {
             return BinaryExpr.ResolvedOpcode.NeqCommon;
           }
         case BinaryExpr.Opcode.Disjoint:
           if (operandType is MultiSetType) {
             return BinaryExpr.ResolvedOpcode.MultiSetDisjoint;
+          } else if(operandType is MapType) {
+            return BinaryExpr.ResolvedOpcode.MapDisjoint;
           } else {
             return BinaryExpr.ResolvedOpcode.Disjoint;
           }
@@ -4017,6 +4148,8 @@ namespace Microsoft.Dafny {
             return BinaryExpr.ResolvedOpcode.Union;
           } else if (operandType is MultiSetType) {
             return BinaryExpr.ResolvedOpcode.MultiSetUnion;
+          } else if (operandType is MapType) {
+            return BinaryExpr.ResolvedOpcode.MapUnion;
           } else if (operandType is SeqType) {
             return BinaryExpr.ResolvedOpcode.Concat;
           } else {
@@ -4061,6 +4194,8 @@ namespace Microsoft.Dafny {
             return BinaryExpr.ResolvedOpcode.InSet;
           } else if (operandType is MultiSetType) {
             return BinaryExpr.ResolvedOpcode.InMultiSet;
+          } else if (operandType is MapType) {
+            return BinaryExpr.ResolvedOpcode.InMap;
           } else {
             return BinaryExpr.ResolvedOpcode.InSeq;
           }
@@ -4069,6 +4204,8 @@ namespace Microsoft.Dafny {
             return BinaryExpr.ResolvedOpcode.NotInSet;
           } else if (operandType is MultiSetType) {
             return BinaryExpr.ResolvedOpcode.NotInMultiSet;
+          } else if (operandType is MapType) {
+            return BinaryExpr.ResolvedOpcode.NotInMap;
           } else {
             return BinaryExpr.ResolvedOpcode.NotInSeq;
           }
@@ -4102,6 +4239,9 @@ namespace Microsoft.Dafny {
       } else if (expr is DisplayExpression) {
         DisplayExpression e = (DisplayExpression)expr;
         return e.Elements.Exists(ee => UsesSpecFeatures(ee));
+      } else if (expr is MapDisplayExpr) {
+        MapDisplayExpr e = (MapDisplayExpr)expr;
+        return e.Elements.Exists(p => UsesSpecFeatures(p.A) || UsesSpecFeatures(p.B));
       } else if (expr is FieldSelectExpr) {
         FieldSelectExpr e = (FieldSelectExpr)expr;
         return cce.NonNull(e.Field).IsGhost || UsesSpecFeatures(e.Obj);
@@ -4148,6 +4288,9 @@ namespace Microsoft.Dafny {
       } else if (expr is SetComprehension) {
         var e = (SetComprehension)expr;
         return (e.Range != null && UsesSpecFeatures(e.Range)) || (e.Term != null && UsesSpecFeatures(e.Term));
+      } else if (expr is MapComprehension) {
+        var e = (MapComprehension)expr;
+        return (UsesSpecFeatures(e.Range)) || (UsesSpecFeatures(e.Term));
       } else if (expr is WildcardExpr) {
         return false;
       } else if (expr is PredicateExpr) {
@@ -4167,6 +4310,185 @@ namespace Microsoft.Dafny {
         return e.ResolvedExpression != null && UsesSpecFeatures(e.ResolvedExpression);
       } else {
         Contract.Assert(false); throw new cce.UnreachableException();  // unexpected expression
+      }
+    }
+  }
+
+  class CoCallResolution
+  {
+    readonly ModuleDecl currentModule;
+    readonly Function currentFunction;
+    readonly bool dealsWithCodatatypes;
+
+    public CoCallResolution(Function currentFunction, bool dealsWithCodatatypes) {
+      Contract.Requires(currentFunction != null);
+      this.currentModule = currentFunction.EnclosingClass.Module;
+      this.currentFunction = currentFunction;
+      this.dealsWithCodatatypes = dealsWithCodatatypes;
+    }
+
+    /// <summary>
+    /// Determines which calls in "expr" can be considered to be co-calls, which co-constructor
+    /// invocations host such co-calls, and which destructor operations are not allowed.
+    /// Assumes "expr" to have been successfully resolved.
+    /// </summary>
+    public void CheckCoCalls(Expression expr) {
+      Contract.Requires(expr != null);
+      var candidates = CheckCoCalls(expr, true, null);
+      ProcessCoCallInfo(candidates);
+    }
+
+    struct CoCallInfo
+    {
+      public int GuardCount;
+      public FunctionCallExpr CandidateCall;
+      public DatatypeValue EnclosingCoConstructor;
+      public CoCallInfo(int guardCount, FunctionCallExpr candidateCall, DatatypeValue enclosingCoConstructor) {
+        Contract.Requires(0 <= guardCount);
+        Contract.Requires(candidateCall != null);
+
+        GuardCount = guardCount;
+        CandidateCall = candidateCall;
+        EnclosingCoConstructor = enclosingCoConstructor;
+      }
+
+      public void AdjustGuardCount(int p) {
+        GuardCount += p;
+      }
+    }
+
+    /// <summary>
+    /// Recursively goes through the entire "expr".  Every call within the same recursive cluster is a potential
+    /// co-call.  All such calls will get their .CoCall field filled in, indicating whether or not the call
+    /// is a co-call.  If the situation deals with co-datatypes, then one of the NoBecause... values is chosen (rather
+    /// than just No), so that any error message that may later be produced when trying to prove termination of the
+    /// recursive call can include a note pointing out that the call was not selected to be a co-call.
+    /// "allowCallsWithinRecursiveCluster" is passed in as "false" if the enclosing context has no easy way of
+    /// controlling the uses of "expr" (for example, if the enclosing context passes "expr" to a function or binds
+    /// "expr" to a variable).
+    /// </summary>
+    List<CoCallInfo> CheckCoCalls(Expression expr, bool allowCallsWithinRecursiveCluster, DatatypeValue coContext) {
+      Contract.Requires(expr != null);
+      Contract.Ensures(allowCallsWithinRecursiveCluster || Contract.Result<List<CoCallInfo>>().Count == 0);
+
+      var candidates = new List<CoCallInfo>();
+      expr = expr.Resolved;
+      if (expr is DatatypeValue) {
+        var e = (DatatypeValue)expr;
+        if (e.Ctor.EnclosingDatatype is CoDatatypeDecl) {
+          foreach (var arg in e.Arguments) {
+            foreach (var c in CheckCoCalls(arg, allowCallsWithinRecursiveCluster, e)) {
+              c.AdjustGuardCount(1);
+              candidates.Add(c);
+            }
+          }
+          return candidates;
+        }
+      } else if (expr is FieldSelectExpr) {
+        var e = (FieldSelectExpr)expr;
+        if (e.Field.EnclosingClass is CoDatatypeDecl) {
+          foreach (var c in CheckCoCalls(e.Obj, allowCallsWithinRecursiveCluster, null)) {
+            if (c.GuardCount <= 1) {
+              // This call was not guarded (c.GuardedCount == 0) or the guard for this candidate co-call is
+              // being removed (c.GuardedCount == 1), so this call is not allowed as a co-call.
+              // (So, don't include "res" among "results".)
+              c.CandidateCall.CoCall = FunctionCallExpr.CoCallResolution.NoBecauseIsNotGuarded;
+            } else {
+              c.AdjustGuardCount(-1);
+              candidates.Add(c);
+            }
+          }
+          return candidates;
+        }
+      } else if (expr is MatchExpr) {
+        var e = (MatchExpr)expr;
+        var r = CheckCoCalls(e.Source, false, null);
+        Contract.Assert(r.Count == 0);  // follows from postcondition of CheckCoCalls
+        foreach (var kase in e.Cases) {
+          r = CheckCoCalls(kase.Body, allowCallsWithinRecursiveCluster, null);
+          candidates.AddRange(r);
+        }
+        return candidates;
+      } else if (expr is FunctionCallExpr) {
+        var e = (FunctionCallExpr)expr;
+        // First, consider the arguments of the call, making sure that they do not include calls within the recursive cluster.
+        // (Note, if functions could have a "destruction level" declaration that promised to only destruct its arguments by
+        // so much, then some recursive calls within the cluster could be allowed.)
+        foreach (var arg in e.Args) {
+          var r = CheckCoCalls(arg, false, null);
+          Contract.Assert(r.Count == 0);  // follows from postcondition of CheckCoCalls
+        }
+        // Second, investigate the possibility that this call itself may be a candidate co-call
+        if (currentModule.CallGraph.GetSCCRepresentative(currentFunction) == currentModule.CallGraph.GetSCCRepresentative(e.Function)) {
+          // This call goes to another function in the same recursive cluster
+          if (e.Function.Reads.Count != 0) {
+            // this call is disqualified from being a co-call, because of side effects
+            if (!dealsWithCodatatypes) {
+              e.CoCall = FunctionCallExpr.CoCallResolution.No;
+            } else  if (coContext != null) {
+              e.CoCall = FunctionCallExpr.CoCallResolution.NoBecauseFunctionHasSideEffects;
+            } else {
+              e.CoCall = FunctionCallExpr.CoCallResolution.NoBecauseIsNotGuarded;
+            }
+          } else if (!allowCallsWithinRecursiveCluster) {
+            if (!dealsWithCodatatypes) {
+              e.CoCall = FunctionCallExpr.CoCallResolution.No;
+            } else {
+              e.CoCall = FunctionCallExpr.CoCallResolution.NoBecauseRecursiveCallsAreNotAllowedInThisContext;
+            }
+          } else {
+            // e.CoCall is not filled in here, but will be filled in when the list of candidates are processed
+            candidates.Add(new CoCallInfo(0, e, coContext));
+          }
+        }
+        return candidates;
+      } else if (expr is OldExpr) {
+        var e = (OldExpr)expr;
+        // here, "coContext" is passed along (the use of "old" says this must be ghost code, so the compiler does not need to handle this case)
+        return CheckCoCalls(e.E, allowCallsWithinRecursiveCluster, coContext);
+      } else if (expr is LetExpr) {
+        var e = (LetExpr)expr;
+        foreach (var rhs in e.RHSs) {
+          var r = CheckCoCalls(rhs, false, null);
+          Contract.Assert(r.Count == 0);  // follows from postcondition of CheckCoCalls
+        }
+        return CheckCoCalls(e.Body, allowCallsWithinRecursiveCluster, null);
+      } else if (expr is ComprehensionExpr) {
+        var e = (ComprehensionExpr)expr;
+        foreach (var ee in e.SubExpressions) {
+          var r = CheckCoCalls(ee, false, null);
+          Contract.Assert(r.Count == 0);  // follows from postcondition of CheckCoCalls
+        }
+        return candidates;
+      }
+
+      // Default handling:
+      foreach (var ee in expr.SubExpressions) {
+        var r = CheckCoCalls(ee, allowCallsWithinRecursiveCluster, null);
+        candidates.AddRange(r);
+      }
+      if (expr.Type is BasicType) {
+        // nothing can escape this expression, so process the results now
+        ProcessCoCallInfo(candidates);
+        candidates.Clear();
+      }
+      return candidates;
+    }
+
+    /// <summary>
+    /// This method is to be called when it has been determined that all candidate
+    /// co-calls in "info" are indeed allowed as co-calls.
+    /// </summary>
+    void ProcessCoCallInfo(List<CoCallInfo> coCandidates) {
+      foreach (var c in coCandidates) {
+        if (c.GuardCount != 0) {
+          c.CandidateCall.CoCall = FunctionCallExpr.CoCallResolution.Yes;
+          c.EnclosingCoConstructor.IsCoCall = true;
+        } else if (dealsWithCodatatypes) {
+          c.CandidateCall.CoCall = FunctionCallExpr.CoCallResolution.NoBecauseIsNotGuarded;
+        } else {
+          c.CandidateCall.CoCall = FunctionCallExpr.CoCallResolution.No;
+        }
       }
     }
   }

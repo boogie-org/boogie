@@ -18,6 +18,7 @@ namespace Microsoft.Boogie {
   using Microsoft.Boogie.AbstractInterpretation;
   using System.Diagnostics.Contracts;
   using System.Diagnostics;
+  using System.Linq;
   using VC;
   using AI = Microsoft.AbstractInterpretationFramework;
   using BoogiePL = Microsoft.Boogie;
@@ -176,6 +177,14 @@ namespace Microsoft.Boogie {
           Microsoft.Boogie.BitVectorAnalysis.DoBitVectorAnalysis(program);
           PrintBplFile(CommandLineOptions.Clo.BitVectorAnalysisOutputBplFile, program, false);
           return;
+        }
+
+        if (CommandLineOptions.Clo.PrintCFGPrefix != null) {
+          foreach (var impl in program.TopLevelDeclarations.OfType<Implementation>()) {
+            using (StreamWriter sw = new StreamWriter(CommandLineOptions.Clo.PrintCFGPrefix + "." + impl.Name + ".dot")) {
+              sw.Write(program.ProcessLoops(impl).ToDot());
+            }
+          }
         }
 
         EliminateDeadVariablesAndInline(program);
@@ -404,7 +413,7 @@ namespace Microsoft.Boogie {
             inline = true;
           }
         }
-        if (inline && CommandLineOptions.Clo.StratifiedInlining == 0) {
+        if (inline) {
           foreach (var d in TopLevelDeclarations) {
             var impl = d as Implementation;
             if (impl != null) {
@@ -692,7 +701,7 @@ namespace Microsoft.Boogie {
                 if (c == null || !c.Name.StartsWith(CommandLineOptions.Clo.inferLeastForUnsat)) continue;
                 ss.Add(c.Name);
               }
-              outcome = svcgen.FindLeastToVerify(impl, program, ref ss);
+              outcome = svcgen.FindLeastToVerify(impl, ref ss);
               errors = new List<Counterexample>();
               Console.Write("Result: ");
               foreach (var s in ss) {
@@ -701,7 +710,7 @@ namespace Microsoft.Boogie {
               Console.WriteLine();
             }
             else {
-              outcome = vcgen.VerifyImplementation(impl, program, out errors);
+              outcome = vcgen.VerifyImplementation(impl, out errors);
               if (CommandLineOptions.Clo.ExtractLoops && vcgen is VCGen && errors != null) {
                 for (int i = 0; i < errors.Count; i++) {
                   errors[i] = (vcgen as VCGen).extractLoopTrace(errors[i], impl.Name, program, extractLoopMappingInfo);

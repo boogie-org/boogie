@@ -232,6 +232,7 @@ object Resolver {
              if (!e.typ.IsBool) context.Error(c.pos, "where clause requires a boolean expression (found " + e.typ.FullName + ")")
            case p@Predicate(id, e) =>
              var ctx = context;
+             if (ContainsWaitlevel(e)) context.Error(e.pos, "predicate body is not allowed to mention 'waitlevel'")
              ResolveExpr(e, ctx, false, true)(true);
              if(!e.typ.IsBool) context.Error(e.pos, "predicate requires a boolean expression (found " + e.typ.FullName + ")")
            case f@Function(id, ins, out, spec, definition) =>
@@ -857,6 +858,18 @@ object Resolver {
    AST.visit(expr,
      e => e match {
        case Star => x = true
+       case _ =>
+     }
+   )
+   x
+ }
+ 
+ // does e contain 'waitlevel'?
+ def ContainsWaitlevel(expr: Expression): Boolean = {
+   var x: Boolean = false
+   AST.visit(expr,
+     e => e match {
+       case _:MaxLockLiteral => x = true
        case _ =>
      }
    )

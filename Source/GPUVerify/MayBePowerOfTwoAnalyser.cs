@@ -85,18 +85,18 @@ namespace GPUVerify
                 if (c is AssignCmd)
                 {
                     AssignCmd assign = c as AssignCmd;
-                    assign = c as AssignCmd;
-                    Debug.Assert(assign.Lhss.Count == 1);
-                    Debug.Assert(assign.Rhss.Count == 1);
 
-                    if (assign.Lhss[0] is SimpleAssignLhs)
+                    for (int i = 0; i != assign.Lhss.Count; i++)
                     {
-                        Variable v = (assign.Lhss[0] as SimpleAssignLhs).AssignedVariable.Decl;
-                        if (mayBePowerOfTwoInfo[impl.Name].ContainsKey(v.Name))
+                        if (assign.Lhss[i] is SimpleAssignLhs)
                         {
-                            if (isPowerOfTwoOperation(v, assign.Rhss[0]))
+                            Variable v = (assign.Lhss[i] as SimpleAssignLhs).AssignedVariable.Decl;
+                            if (mayBePowerOfTwoInfo[impl.Name].ContainsKey(v.Name))
                             {
-                                mayBePowerOfTwoInfo[impl.Name][v.Name] = true;
+                                if (isPowerOfTwoOperation(v, assign.Rhss[i]))
+                                {
+                                    mayBePowerOfTwoInfo[impl.Name][v.Name] = true;
+                                }
                             }
                         }
                     }

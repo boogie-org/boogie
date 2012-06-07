@@ -80,9 +80,9 @@ namespace Microsoft.Boogie.Houdini {
       collector = new ConditionGeneration.CounterexampleCollector();
       collector.OnProgress("HdnVCGen", 0, 0, 0.0);
 
-      vcgen.ConvertCFG2DAG(impl, program);
+      vcgen.ConvertCFG2DAG(impl);
       ModelViewInfo mvInfo;
-      Hashtable/*TransferCmd->ReturnCmd*/ gotoCmdOrigins = vcgen.PassifyImpl(impl, program, out mvInfo);
+      Hashtable/*TransferCmd->ReturnCmd*/ gotoCmdOrigins = vcgen.PassifyImpl(impl, out mvInfo);
 
       houdiniConstants = ExistentialConstantCollector.CollectHoudiniConstants(houdini, impl);
 

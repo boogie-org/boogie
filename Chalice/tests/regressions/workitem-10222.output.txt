@@ -1,0 +1,4 @@
+Verification of workitem-10222.chalice using parameters="" 
+
+The program did not typecheck.
+6.9: predicate body is not allowed to mention 'waitlevel'

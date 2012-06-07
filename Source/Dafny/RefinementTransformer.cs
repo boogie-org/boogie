@@ -193,6 +193,9 @@ namespace Microsoft.Dafny {
       } else if (t is MultiSetType) {
         var tt = (MultiSetType)t;
         return new MultiSetType(tt.Arg);
+      } else if (t is MapType) {
+        var tt = (MapType)t;
+        return new MapType(tt.Domain, tt.Range);
       } else if (t is UserDefinedType) {
         var tt = (UserDefinedType)t;
         return new UserDefinedType(Tok(tt.tok), tt.Name, tt.TypeArgs.ConvertAll(CloneType));
@@ -277,6 +280,13 @@ namespace Microsoft.Dafny {
           return new SeqDisplayExpr(Tok(e.tok), e.Elements.ConvertAll(CloneExpr));
         }
 
+      } else if (expr is MapDisplayExpr) {
+        MapDisplayExpr e = (MapDisplayExpr)expr;
+        List<ExpressionPair> pp = new List<ExpressionPair>();
+        foreach(ExpressionPair p in e.Elements) {
+          pp.Add(new ExpressionPair(CloneExpr(p.A),CloneExpr(p.B)));
+        }
+        return new MapDisplayExpr(Tok(expr.tok), pp);
       } else if (expr is ExprDotName) {
         var e = (ExprDotName)expr;
         return new ExprDotName(Tok(e.tok), CloneExpr(e.Obj), e.SuffixName);
@@ -343,6 +353,8 @@ namespace Microsoft.Dafny {
           return new ForallExpr(tk, bvs, range, term, null);
         } else if (e is ExistsExpr) {
           return new ExistsExpr(tk, bvs, range, term, null);
+        } else if (e is MapComprehension) {
+          return new MapComprehension(tk, bvs, range, term);
         } else {
           Contract.Assert(e is SetComprehension);
           return new SetComprehension(tk, bvs, range, term);
@@ -501,13 +513,13 @@ namespace Microsoft.Dafny {
       return r;
     }
 
-    void AddStmtLabels(Statement s, LabelNode node) {
+    void AddStmtLabels(Statement s, LList<Label> node) {
       if (node != null) {
         AddStmtLabels(s, node.Next);
-        if (node.Label == null) {
+        if (node.Data.Name == null) {
           // this indicates an implicit-target break statement that has been resolved; don't add it
         } else {
-          s.Labels = new LabelNode(Tok(node.Tok), node.Label, s.Labels);
+          s.Labels = new LList<Label>(new Label(Tok(node.Data.Tok), node.Data.Name), s.Labels);
         }
       }
     }
@@ -1078,8 +1090,8 @@ namespace Microsoft.Dafny {
       Contract.Requires(labels != null);
       Contract.Requires(0 <= loopLevels);
 
-      for (LabelNode n = s.Labels; n != null; n = n.Next) {
-        labels.Push(n.Label);
+      for (LList<Label> n = s.Labels; n != null; n = n.Next) {
+        labels.Push(n.Data.Name);
       }
 
       if (s is SkeletonStatement) {
@@ -1104,7 +1116,7 @@ namespace Microsoft.Dafny {
         }
       }
 
-      for (LabelNode n = s.Labels; n != null; n = n.Next) {
+      for (LList<Label> n = s.Labels; n != null; n = n.Next) {
         labels.Pop();
       }
     }

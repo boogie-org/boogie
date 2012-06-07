@@ -247,6 +247,26 @@ namespace Microsoft.Dafny {
         }
       }
     }
+    public bool IsCoDatatype {
+      get {
+        return AsCoDatatype != null;
+      }
+    }
+    public CoDatatypeDecl AsCoDatatype {
+      get {
+        UserDefinedType udt = this as UserDefinedType;
+        if (udt == null) {
+          return null;
+        } else {
+          return udt.ResolvedClass as CoDatatypeDecl;
+        }
+      }
+    }
+    public bool InvolvesCoDatatype {
+      get {
+        return IsCoDatatype;  // TODO: should really check structure of the type recursively
+      }
+    }
     public bool IsTypeParameter {
       get {
         UserDefinedType ct = this as UserDefinedType;
@@ -345,6 +365,22 @@ namespace Microsoft.Dafny {
       Contract.Ensures(Contract.Result<string>() != null);
       Contract.Assume(cce.IsPeerConsistent(Arg));
       return "seq<" + base.Arg + ">";
+    }
+  }
+  public class MapType : CollectionType
+  {
+    public Type Domain, Range;
+    public MapType(Type domain, Type range) : base(domain) {
+      Contract.Requires(domain != null && range != null);
+      Domain = domain;
+      Range = range;
+    }
+    [Pure]
+    public override string ToString() {
+      Contract.Ensures(Contract.Result<string>() != null);
+      Contract.Assume(cce.IsPeerConsistent(Domain));
+      Contract.Assume(cce.IsPeerConsistent(Range));
+      return "map<" + Domain +", " + Range + ">";
     }
   }
 
@@ -541,7 +577,7 @@ namespace Microsoft.Dafny {
 
   /// <summary>
   /// This proxy stands for:
-  ///     set(Arg) or seq(Arg)
+  ///     set(Arg) or seq(Arg) or map(Arg, Range)
   /// </summary>
   public class CollectionTypeProxy : RestrictedTypeProxy {
     public readonly Type Arg;
@@ -582,18 +618,19 @@ namespace Microsoft.Dafny {
 
   /// <summary>
   /// This proxy stands for:
-  ///     seq(Arg) or array(Arg)
+  ///     seq(Arg) or array(Arg) or map(Arg, Range)
   /// </summary>
   public class IndexableTypeProxy : RestrictedTypeProxy {
-    public readonly Type Arg;
+    public readonly Type Arg, Domain;
     [ContractInvariantMethod]
     void ObjectInvariant() {
       Contract.Invariant(Arg != null);
     }
 
-    public IndexableTypeProxy(Type arg) {
+    public IndexableTypeProxy(Type arg, Type domain) {
       Contract.Requires(arg != null);
       Arg = arg;
+      Domain = domain;
     }
     public override int OrderID {
       get {
@@ -1283,7 +1320,7 @@ namespace Microsoft.Dafny {
 
   public abstract class Statement {
     public readonly IToken Tok;
-    public LabelNode Labels;  // mutable during resolution
+    public LList<Label> Labels;  // mutable during resolution
 
     private Attributes attributes;
     public Attributes Attributes {
@@ -1326,19 +1363,43 @@ namespace Microsoft.Dafny {
     }
   }
 
-  public class LabelNode
+  public class LList<T>
+  {
+    public readonly T Data;
+    public readonly LList<T> Next;
+    const LList<T> Empty = null;
+
+    public LList(T d, LList<T> next) {
+      Data = d;
+      Next = next;
+    }
+
+    public static LList<T> Append(LList<T> a, LList<T> b) {
+      if (a == null) return b;
+      return new LList<T>(a.Data, Append(a.Next, b));
+      // pretend this is ML
+    }
+    public static int Count(LList<T> n) {
+      int count = 0;
+      while (n != null) {
+        count++;
+        n = n.Next;
+      }
+      return count;
+    }
+  }
+
+  public class Label
   {
     public readonly IToken Tok;
-    public readonly string Label;
+    public readonly string Name;
     public readonly int UniqueId;
-    public readonly LabelNode Next;
     static int nodes = 0;
 
-    public LabelNode(IToken tok, string label, LabelNode next) {
+    public Label(IToken tok, string label) {
       Contract.Requires(tok != null);
       Tok = tok;
-      Label = label;
-      Next = next;
+      Name = label;
       UniqueId = nodes++;
     }
   }
@@ -2359,6 +2420,15 @@ namespace Microsoft.Dafny {
       Contract.Requires(tok != null);
     }
   }
+  public class ExpressionPair {
+    public Expression A, B;
+    public ExpressionPair(Expression a, Expression b) {
+      Contract.Requires(a != null);
+      Contract.Requires(b != null);
+      A = a;
+      B = b;
+    }
+  }
 
   public class ImplicitThisExpr : ThisExpr {
     public ImplicitThisExpr(IToken tok)
@@ -2422,7 +2492,7 @@ namespace Microsoft.Dafny {
       Contract.Requires(cce.NonNullElements(elements));
     }
   }
-
+  
   public class MultiSetDisplayExpr : DisplayExpression {
     public MultiSetDisplayExpr(IToken tok, List<Expression/*!*/>/*!*/ elements) : base(tok, elements) {
       Contract.Requires(tok != null);
@@ -2430,6 +2500,15 @@ namespace Microsoft.Dafny {
     }
   }
 
+  public class MapDisplayExpr : Expression {
+    public List<ExpressionPair/*!*/>/*!*/ Elements;
+    public MapDisplayExpr(IToken tok, List<ExpressionPair/*!*/>/*!*/ elements)
+      : base(tok) {
+      Contract.Requires(tok != null);
+      Contract.Requires(cce.NonNullElements(elements));
+      Elements = elements;
+    }
+  }
   public class SeqDisplayExpr : DisplayExpression {
     public SeqDisplayExpr(IToken tok, List<Expression/*!*/>/*!*/ elements)
       : base(tok, elements) {
@@ -2555,7 +2634,7 @@ namespace Microsoft.Dafny {
     public readonly Expression/*!*/ Receiver;
     public readonly IToken OpenParen;  // can be null if Args.Count == 0
     public readonly List<Expression/*!*/>/*!*/ Args;
-    public enum CoCallResolution { No, Yes, NoBecauseFunctionHasSideEffects }
+    public enum CoCallResolution { No, Yes, NoBecauseFunctionHasSideEffects, NoBecauseRecursiveCallsAreNotAllowedInThisContext, NoBecauseIsNotGuarded }
     public CoCallResolution CoCall = CoCallResolution.No;  // indicates whether or not the call is a co-recursive call; filled in by resolution
 
     [ContractInvariantMethod]
@@ -2775,7 +2854,7 @@ namespace Microsoft.Dafny {
       MultiSetUnion,
       MultiSetIntersection,
       MultiSetDifference,
-      // sequences
+      // Sequences
       SeqEq,
       SeqNeq,
       ProperPrefix,
@@ -2783,6 +2862,13 @@ namespace Microsoft.Dafny {
       Concat,
       InSeq,
       NotInSeq,
+      // Maps
+      MapEq,
+      MapNeq,
+      InMap,
+      NotInMap,
+      MapDisjoint,
+      MapUnion,
       // datatypes
       RankLt,
       RankGt
@@ -2800,12 +2886,14 @@ namespace Microsoft.Dafny {
         case ResolvedOpcode.SetEq:
         case ResolvedOpcode.MultiSetEq:
         case ResolvedOpcode.SeqEq:
+        case ResolvedOpcode.MapEq:
           return Opcode.Eq;
 
         case ResolvedOpcode.NeqCommon:
         case ResolvedOpcode.SetNeq:
         case ResolvedOpcode.MultiSetNeq:
         case ResolvedOpcode.SeqNeq:
+        case ResolvedOpcode.MapNeq:
           return Opcode.Neq;
 
         case ResolvedOpcode.Lt:
@@ -2835,6 +2923,7 @@ namespace Microsoft.Dafny {
         case ResolvedOpcode.Add:
         case ResolvedOpcode.Union:
         case ResolvedOpcode.MultiSetUnion:
+        case ResolvedOpcode.MapUnion:
         case ResolvedOpcode.Concat:
           return Opcode.Add;
 
@@ -2853,16 +2942,19 @@ namespace Microsoft.Dafny {
 
         case ResolvedOpcode.Disjoint:
         case ResolvedOpcode.MultiSetDisjoint:
+        case ResolvedOpcode.MapDisjoint:
           return Opcode.Disjoint;
 
         case ResolvedOpcode.InSet:
         case ResolvedOpcode.InMultiSet:
         case ResolvedOpcode.InSeq:
+        case ResolvedOpcode.InMap:
           return Opcode.In;
 
         case ResolvedOpcode.NotInSet:
         case ResolvedOpcode.NotInMultiSet:
         case ResolvedOpcode.NotInSeq:
+        case ResolvedOpcode.NotInMap:
           return Opcode.NotIn;
 
         default:
@@ -3000,6 +3092,11 @@ namespace Microsoft.Dafny {
       public readonly Expression Set;
       public SetBoundedPool(Expression set) { Set = set; }
     }
+    public class MapBoundedPool : BoundedPool
+    {
+      public readonly Expression Map;
+      public MapBoundedPool(Expression map) { Map = map; }
+    }
     public class SeqBoundedPool : BoundedPool
     {
       public readonly Expression Seq;
@@ -3092,6 +3189,17 @@ namespace Microsoft.Dafny {
       Contract.Requires(range != null);
 
       TermIsImplicit = term == null;
+    }
+  }
+  public class MapComprehension : ComprehensionExpr
+  {
+    public MapComprehension(IToken/*!*/ tok, List<BoundVar/*!*/>/*!*/ bvars, Expression/*!*/ range, Expression term)
+      : base(tok, bvars, range, term, null) {
+      Contract.Requires(tok != null);
+      Contract.Requires(cce.NonNullElements(bvars));
+      Contract.Requires(1 <= bvars.Count);
+      Contract.Requires(range != null);
+      Contract.Requires(term != null);
     }
   }
 

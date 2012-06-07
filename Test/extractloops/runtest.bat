@@ -16,4 +16,10 @@ echo -----
 echo ----- Running regression test t3.bpl with recursion bound 4
 %BGEXE% %* /stratifiedInline:1 /extractLoops /removeEmptyBlocks:0 /coalesceBlocks:0 /recursionBound:4 t3.bpl
 echo -----
+echo ----- Running regression test detLoopExtract.bpl with deterministicExtractLoops
+%BGEXE% %*  /stratifiedInline:1 /extractLoops /removeEmptyBlocks:0 /coalesceBlocks:0 /deterministicExtractLoops /recursionBound:4 detLoopExtract.bpl
+echo -----
+echo ----- Running regression test detLoopExtract1.bpl with deterministicExtractLoops
+%BGEXE% %*  /stratifiedInline:1 /extractLoops /removeEmptyBlocks:0 /coalesceBlocks:0 /deterministicExtractLoops /recursionBound:4 detLoopExtract1.bpl
+echo -----
 

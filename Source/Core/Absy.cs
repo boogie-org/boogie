@@ -407,6 +407,8 @@ namespace Microsoft.Boogie {
           AddToFullMap(fullMap, impl.Name, block.Label, block);
       }
 
+      bool detLoopExtract = CommandLineOptions.Clo.DeterministicExtractLoops;
+
       Dictionary<Block/*!*/, VariableSeq/*!*/>/*!*/ loopHeaderToInputs = new Dictionary<Block/*!*/, VariableSeq/*!*/>();
       Dictionary<Block/*!*/, VariableSeq/*!*/>/*!*/ loopHeaderToOutputs = new Dictionary<Block/*!*/, VariableSeq/*!*/>();
       Dictionary<Block/*!*/, Hashtable/*!*/>/*!*/ loopHeaderToSubstMap = new Dictionary<Block/*!*/, Hashtable/*!*/>();
@@ -521,10 +523,6 @@ namespace Microsoft.Boogie {
         loopHeaderToOutputs[header] = outputs;
         loopHeaderToSubstMap[header] = substMap;
         LoopProcedure loopProc = new LoopProcedure(impl, header, inputs, outputs, globalMods);
-        if (CommandLineOptions.Clo.StratifiedInlining > 0) {
-          loopProc.AddAttribute("inline", Expr.Literal(1));
-          loopProc.AddAttribute("verify", Expr.Literal(false));
-        }
         loopHeaderToLoopProc[header] = loopProc;
 
         CallCmd callCmd1 = new CallCmd(Token.NoToken, loopProc.Name, callInputs1, callOutputs1);
@@ -576,6 +574,46 @@ namespace Microsoft.Boogie {
                 newBlock2.Cmds = codeCopier.CopyCmdSeq(newBlocksCreated[block].Cmds);
                 blockMap[newBlocksCreated[block]] = newBlock2;
             }
+            //for detLoopExtract, need the immediate successors even outside the loop
+            if (detLoopExtract) {
+                GotoCmd auxGotoCmd = block.TransferCmd as GotoCmd;
+                Contract.Assert(auxGotoCmd != null && auxGotoCmd.labelNames != null && 
+                    auxGotoCmd.labelTargets != null && auxGotoCmd.labelTargets.Length >= 1);
+                foreach(var bl in auxGotoCmd.labelTargets) {
+                    bool found = false;
+                    foreach(var n in g.NaturalLoops(header, source)) { //very expensive, can we do a contains?
+                        if (bl == n) { //clarify: is this the right comparison?
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found) {
+                        Block auxNewBlock = new Block();
+                        auxNewBlock.Label = ((Block)bl).Label;
+                        auxNewBlock.Cmds = codeCopier.CopyCmdSeq(((Block)bl).Cmds);
+                        //add restoration code for such blocks
+                        if (loopHeaderToAssignCmd.ContainsKey(header))
+                        {
+                            AssignCmd assignCmd = loopHeaderToAssignCmd[header];
+                            auxNewBlock.Cmds.Add(assignCmd);
+                        }
+                        List<AssignLhs> lhsg = new List<AssignLhs>();
+                        IdentifierExprSeq/*!*/ globalsMods = loopHeaderToLoopProc[header].Modifies;
+                        foreach (IdentifierExpr gl in globalsMods)
+                            lhsg.Add(new SimpleAssignLhs(Token.NoToken, gl));
+                        List<Expr> rhsg = new List<Expr>();
+                        foreach (IdentifierExpr gl in globalsMods)
+                            rhsg.Add(new OldExpr(Token.NoToken, gl));
+                        if (lhsg.Count != 0)
+                        {
+                            AssignCmd globalAssignCmd = new AssignCmd(Token.NoToken, lhsg, rhsg);
+                            auxNewBlock.Cmds.Add(globalAssignCmd);
+                        }
+                        blockMap[(Block)bl] = auxNewBlock;
+                    }
+                }
+
+            }
           }
 
           CallCmd callCmd = (CallCmd) (loopHeaderToCallCmd2[header]).Clone();
@@ -611,17 +649,21 @@ namespace Microsoft.Boogie {
                                     new StringSeq(cce.NonNull(blockMap[header]).Label, exit.Label),
                                     new BlockSeq(blockMap[header], exit));
 
+        if (detLoopExtract) //cutting the non-determinism
+            cmd = new GotoCmd(Token.NoToken,
+                                    new StringSeq(cce.NonNull(blockMap[header]).Label),
+                                    new BlockSeq(blockMap[header]));
+
         Block entry;
-        if (loopHeaderToAssignCmd.ContainsKey(header))
-        {
+        CmdSeq initCmds = new CmdSeq();
+        if (loopHeaderToAssignCmd.ContainsKey(header)) {
             AssignCmd assignCmd = loopHeaderToAssignCmd[header];
-            entry = new Block(Token.NoToken, "entry", new CmdSeq(assignCmd), cmd);
+            initCmds.Add(assignCmd);
         }
-        else
-        {
-            entry = new Block(Token.NoToken, "entry", new CmdSeq(), cmd);
-        }
+
+        entry = new Block(Token.NoToken, "entry", initCmds, cmd);
         blocks.Add(entry);
+
         foreach (Block/*!*/ block in blockMap.Keys) {
           Contract.Assert(block != null);
           Block/*!*/ newBlock = cce.NonNull(blockMap[block]);
@@ -637,11 +679,12 @@ namespace Microsoft.Boogie {
               if (blockMap.ContainsKey(target)) {
                 newLabels.Add(gotoCmd.labelNames[i]);
                 newTargets.Add(blockMap[target]);
-              }
+              }  
             }
             if (newTargets.Length == 0) {
-              newBlock.Cmds.Add(new AssumeCmd(Token.NoToken, Expr.False));
-              newBlock.TransferCmd = new ReturnCmd(Token.NoToken);
+                if (!detLoopExtract)
+                    newBlock.Cmds.Add(new AssumeCmd(Token.NoToken, Expr.False));
+                newBlock.TransferCmd = new ReturnCmd(Token.NoToken);
             } else {
               newBlock.TransferCmd = new GotoCmd(Token.NoToken, newLabels, newTargets);
             }
@@ -1995,6 +2038,11 @@ namespace Microsoft.Boogie {
     }
   }
 
+  public class Macro : Function {
+    public Macro(IToken tok, string name, VariableSeq args, Variable result)
+      : base(tok, name, args, result) { }
+  }
+
   public class Requires : Absy, IPotentialErrorNode {
     public readonly bool Free;
     public Expr/*!*/ Condition;
@@ -2436,6 +2484,10 @@ namespace Microsoft.Boogie {
           if (inl != null && inl is LiteralExpr && ((LiteralExpr)inl).isBigNum && ((LiteralExpr)inl).asBigNum.Signum > 0) {
             return true;
           }
+        }
+
+        if (CommandLineOptions.Clo.StratifiedInlining > 0) {
+          return !QKeyValue.FindBoolAttribute(Attributes, "entrypoint");
         }
 
         return false;

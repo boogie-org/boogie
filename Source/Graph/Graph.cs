@@ -99,12 +99,13 @@ namespace Graphing {
       if (domineeNum == dominatorNum)
         return true;
       int currentNodeNum = this.doms[domineeNum];
-      do {
+      while (true) {
         if (currentNodeNum == dominatorNum)
           return true;
+        if (currentNodeNum == this.sourceNum)
+          return false;
         currentNodeNum = this.doms[currentNodeNum];
-      } while (currentNodeNum != this.sourceNum);
-      return false;
+      }
     }
     private Dictionary<Node, List<Node>> domMap = null;
     [Pure]
@@ -841,6 +842,19 @@ namespace Graphing {
             }
         }
         return dag.TopologicalSort();
+    }
+
+    public string ToDot(Func<Node, string> NodeLabel = null, Func<Node, string> NodeStyle = null) {
+      NodeLabel = NodeLabel ?? (n => n.ToString());
+      NodeStyle = NodeStyle ?? (n => "[shape=box]");
+      var s = new StringBuilder();
+      s.AppendLine("digraph G {");
+      foreach (var n in Nodes)
+        s.AppendLine("  \"" + NodeLabel(n) + "\" " + NodeStyle(n) + ";");
+      foreach (var e in Edges)
+        s.AppendLine("  \"" + NodeLabel(e.Item1) + "\" -> \"" + NodeLabel(e.Item2) + "\";");
+      s.AppendLine("}");
+      return s.ToString();
     }
   } // end: class Graph
 

@@ -450,6 +450,7 @@ namespace Microsoft.Boogie {
     public string PrintErrorModelFile = null;
     public string/*?*/ ModelViewFile = null;
     public int EnhancedErrorMessages = 0;
+    public string PrintCFGPrefix = null;
     public bool ForceBplErrors = false; // if true, boogie error is shown even if "msg" attribute is present
     public bool UseArrayTheory = false;
     public bool UseLabels = true;
@@ -562,11 +563,11 @@ namespace Microsoft.Boogie {
     public Inlining ProcedureInlining = Inlining.Assume;
     public bool PrintInlined = false;
     public bool ExtractLoops = false;
+    public bool DeterministicExtractLoops = false;
     public int StratifiedInlining = 0;
     public int StratifiedInliningOption = 0;
     public bool StratifiedInliningWithoutModels = false; // disable model generation for SI
     public int StratifiedInliningVerbose = 0; // verbosity level
-    public bool BctModeForStratifiedInlining = false;
     public int RecursionBound = 500;
     public bool NonUniformUnfolding = false;
     public string inferLeastForUnsat = null;
@@ -834,6 +835,12 @@ namespace Microsoft.Boogie {
           ps.GetNumericArgument(ref EnhancedErrorMessages, 2);
           return true;
 
+        case "printCFG":
+          if (ps.ConfirmArgumentCount(1)) {
+            PrintCFGPrefix = args[ps.i];
+          }
+          return true;
+
         case "inlineDepth":
           ps.GetNumericArgument(ref InlineDepth);
           return true;
@@ -954,6 +961,12 @@ namespace Microsoft.Boogie {
           if (ps.ConfirmArgumentCount(0)) {
             ExtractLoops = true;
           }
+          return true;  
+
+        case "deterministicExtractLoops":
+          if (ps.ConfirmArgumentCount(0)) {
+            DeterministicExtractLoops = true;
+          }
           return true;
 
         case "inline":
@@ -997,12 +1010,6 @@ namespace Microsoft.Boogie {
         case "siVerbose":
           if (ps.ConfirmArgumentCount(1)) {
             StratifiedInliningVerbose = Int32.Parse(cce.NonNull(args[ps.i]));
-          }
-          return true;
-        case "siBct":
-          if (ps.ConfirmArgumentCount(1))
-          {
-              BctModeForStratifiedInlining = (Int32.Parse(cce.NonNull(args[ps.i])) == 1);
           }
           return true;
         case "recursionBound":
@@ -1222,7 +1229,8 @@ namespace Microsoft.Boogie {
               ps.CheckBooleanFlag("contractInfer", ref ContractInfer) ||
               ps.CheckBooleanFlag("useUnsatCoreForContractInfer", ref UseUnsatCoreForContractInfer) ||
               ps.CheckBooleanFlag("printAssignment", ref PrintAssignment) ||
-              ps.CheckBooleanFlag("nonUniformUnfolding", ref NonUniformUnfolding)
+              ps.CheckBooleanFlag("nonUniformUnfolding", ref NonUniformUnfolding) ||
+              ps.CheckBooleanFlag("deterministicExtractLoops", ref DeterministicExtractLoops)
               ) {
             // one of the boolean flags matched
             return true;
@@ -1448,6 +1456,10 @@ namespace Microsoft.Boogie {
                 0 (default) - no enhanced error messages
                 1 - Z3 error model enhanced error messages
 
+  /printCFG:<prefix> : print control flow graph of each implementation in
+                       Graphviz format to files named:
+                         <prefix>.<procedure name>.dot
+
   ---- Inference options -----------------------------------------------------
 
   /infer:<flags>
@@ -1559,6 +1571,7 @@ namespace Microsoft.Boogie {
                    n = none (unsound)
                    p = predicates (default)
                    a = arguments
+                   m = monomorphic
   /monomorphize   
                 Do not abstract map types in the encoding (this is an
                 experimental feature that will not do the right thing if

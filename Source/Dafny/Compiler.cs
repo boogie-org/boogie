@@ -289,7 +289,8 @@ namespace Microsoft.Dafny {
 
         if (dt is IndDatatypeDecl) {
           Indent(ind); wr.WriteLine("public override string ToString() {");
-          Indent(ind + IndentAmount); wr.WriteLine("string s = \"{0}\";", ctor.FullName.Substring(1)/*skip the #*/);
+          string nm = (dt.Module.IsDefaultModule ? "" : dt.Module.Name + ".") + dt.Name + "." + ctor.Name;
+          Indent(ind + IndentAmount); wr.WriteLine("string s = \"{0}\";", nm);
           if (ctor.Formals.Count != 0) {
             Indent(ind + IndentAmount); wr.WriteLine("s += \"(\";");
             i = 0;
@@ -446,7 +447,7 @@ namespace Microsoft.Dafny {
       // destructors
       foreach (var ctor in dt.Ctors) {
         foreach (var arg in ctor.Formals) {
-          if (arg.HasName) {
+          if (!arg.IsGhost && arg.HasName) {
             //   public T0 @Dtor0 { get { return ((DT_Ctor)_D).@Dtor0; } }
             Indent(ind);
             wr.WriteLine("public {0} dtor_{1} {{ get {{ return (({2}_{3}{4})_D).@{1}; }} }}", TypeName(arg.Type), arg.Name, dt.Name, ctor.Name, DtT_TypeArgs);
@@ -684,6 +685,7 @@ namespace Microsoft.Dafny {
     readonly string DafnySetClass = "Dafny.Set";
     readonly string DafnyMultiSetClass = "Dafny.MultiSet";
     readonly string DafnySeqClass = "Dafny.Sequence";
+    readonly string DafnyMapClass = "Dafny.Map";
 
     string TypeName(Type type)
     {
@@ -745,6 +747,13 @@ namespace Microsoft.Dafny {
           Error("compilation of seq<object> is not supported; consider introducing a ghost");
         }
         return DafnyMultiSetClass + "<" + TypeName(argType) + ">";
+      } else if (type is MapType) {
+        Type domType = ((MapType)type).Domain;
+        Type ranType = ((MapType)type).Range;
+        if (domType is ObjectType || ranType is ObjectType) {
+          Error("compilation of map<object, _> or map<_, object> is not supported; consider introducing a ghost");
+        }
+        return DafnyMapClass + "<" + TypeName(domType) + "," + TypeName(ranType) + ">";
       } else {
         Contract.Assert(false); throw new cce.UnreachableException();  // unexpected type
       }
@@ -815,6 +824,8 @@ namespace Microsoft.Dafny {
         return DafnyMultiSetClass + "<" + TypeName(((MultiSetType)type).Arg) + ">.Empty";
       } else if (type is SeqType) {
         return DafnySeqClass + "<" + TypeName(((SeqType)type).Arg) + ">.Empty";
+      } else if (type is MapType) {
+        return TypeName(type)+".Empty";
       } else {
         Contract.Assert(false); throw new cce.UnreachableException();  // unexpected type
       }
@@ -860,7 +871,7 @@ namespace Microsoft.Dafny {
       } else if (stmt is BreakStmt) {
         var s = (BreakStmt)stmt;
         Indent(indent);
-        wr.WriteLine("goto after_{0};", s.TargetStmt.Labels.UniqueId);
+        wr.WriteLine("goto after_{0};", s.TargetStmt.Labels.Data.UniqueId);
       } else if (stmt is ReturnStmt) {
         var s = (ReturnStmt)stmt;
         if (s.hiddenUpdate != null)
@@ -1440,7 +1451,7 @@ namespace Microsoft.Dafny {
         TrStmt(ss, indent + IndentAmount);
         if (ss.Labels != null) {
           Indent(indent);  // labels are not indented as much as the statements
-          wr.WriteLine("after_{0}: ;", ss.Labels.UniqueId);
+          wr.WriteLine("after_{0}: ;", ss.Labels.Data.UniqueId);
         }
       }
     }
@@ -1529,6 +1540,25 @@ namespace Microsoft.Dafny {
       }
       wr.Write(")");
     }
+    void TrExprPairList(List<ExpressionPair/*!*/>/*!*/ exprs) {
+      Contract.Requires(cce.NonNullElements(exprs));
+      wr.Write("(");
+      string sep = "";
+      foreach (ExpressionPair p in exprs) {
+        wr.Write(sep);
+        wr.Write("new Dafny.Pair<");
+        wr.Write(TypeName(p.A.Type));
+        wr.Write(",");
+        wr.Write(TypeName(p.B.Type));
+        wr.Write(">(");
+        TrExpr(p.A);
+        wr.Write(",");
+        TrExpr(p.B);
+        wr.Write(")");
+        sep = ", ";
+      }
+      wr.Write(")");
+    }
 
     /// <summary>
     /// Before calling TrExpr(expr), the caller must have spilled the let variables declared in "expr".
@@ -1577,6 +1607,11 @@ namespace Microsoft.Dafny {
         Type elType = cce.NonNull((SeqType)e.Type).Arg;
         wr.Write("{0}<{1}>.FromElements", DafnySeqClass, TypeName(elType));
         TrExprList(e.Elements);
+
+      } else if (expr is MapDisplayExpr) {
+        MapDisplayExpr e = (MapDisplayExpr)expr;
+        wr.Write("{0}.FromElements", TypeName(e.Type));
+        TrExprPairList(e.Elements);
 
       } else if (expr is FieldSelectExpr) {
         FieldSelectExpr e = (FieldSelectExpr)expr;
@@ -1828,10 +1863,12 @@ namespace Microsoft.Dafny {
           case BinaryExpr.ResolvedOpcode.SetEq:
           case BinaryExpr.ResolvedOpcode.MultiSetEq:
           case BinaryExpr.ResolvedOpcode.SeqEq:
+          case BinaryExpr.ResolvedOpcode.MapEq:
             callString = "Equals";  break;
           case BinaryExpr.ResolvedOpcode.SetNeq:
           case BinaryExpr.ResolvedOpcode.MultiSetNeq:
           case BinaryExpr.ResolvedOpcode.SeqNeq:
+          case BinaryExpr.ResolvedOpcode.MapNeq:
             preOpString = "!";  callString = "Equals";  break;
           case BinaryExpr.ResolvedOpcode.ProperSubset:
           case BinaryExpr.ResolvedOpcode.ProperMultiSubset:
@@ -1847,9 +1884,11 @@ namespace Microsoft.Dafny {
             callString = "IsProperSupersetOf";  break;
           case BinaryExpr.ResolvedOpcode.Disjoint:
           case BinaryExpr.ResolvedOpcode.MultiSetDisjoint:
+          case BinaryExpr.ResolvedOpcode.MapDisjoint:
             callString = "IsDisjointFrom";  break;
           case BinaryExpr.ResolvedOpcode.InSet:
           case BinaryExpr.ResolvedOpcode.InMultiSet:
+          case BinaryExpr.ResolvedOpcode.InMap:
             TrParenExpr(e.E1);
             wr.Write(".Contains(");
             TrExpr(e.E0);
@@ -1857,6 +1896,7 @@ namespace Microsoft.Dafny {
             break;
           case BinaryExpr.ResolvedOpcode.NotInSet:
           case BinaryExpr.ResolvedOpcode.NotInMultiSet:
+          case BinaryExpr.ResolvedOpcode.NotInMap:
             wr.Write("!");
             TrParenExpr(e.E1);
             wr.Write(".Contains(");
@@ -1950,6 +1990,11 @@ namespace Microsoft.Dafny {
             wr.Write("Dafny.Helpers.QuantSet(");
             TrExpr(b.Set);
             wr.Write(", ");
+          } else if (bound is QuantifierExpr.MapBoundedPool) {
+            var b = (QuantifierExpr.MapBoundedPool)bound;
+            wr.Write("Dafny.Helpers.QuantMap(");
+            TrExpr(b.Map);
+            wr.Write(", ");
           } else if (bound is QuantifierExpr.SeqBoundedPool) {
             var b = (QuantifierExpr.SeqBoundedPool)bound;
             wr.Write("Dafny.Helpers.QuantSeq(");
@@ -2007,6 +2052,11 @@ namespace Microsoft.Dafny {
             wr.Write("foreach (var @{0} in (", bv.Name);
             TrExpr(b.Set);
             wr.Write(").Elements) { ");
+          } else if (bound is QuantifierExpr.MapBoundedPool) {
+            var b = (QuantifierExpr.MapBoundedPool)bound;
+            wr.Write("foreach (var @{0} in (", bv.Name);
+            TrExpr(b.Map);
+            wr.Write(").Domain) { ");
           } else if (bound is QuantifierExpr.SeqBoundedPool) {
             var b = (QuantifierExpr.SeqBoundedPool)bound;
             wr.Write("foreach (var @{0} in (", bv.Name);
@@ -2025,6 +2075,70 @@ namespace Microsoft.Dafny {
           wr.Write("}");
         }
         wr.Write("return Dafny.Set<{0}>.FromCollection(_coll); ", typeName);
+        wr.Write("})()");
+
+      } else if (expr is MapComprehension) {
+        var e = (MapComprehension)expr;
+        // For "map i | R(i) :: Term(i)" where the term has type "V" and i has type "U", emit something like:
+        // ((MapComprehensionDelegate<U, V>)delegate() {
+        //   var _coll = new List<Pair<U,V>>();
+        //   foreach (L l in sq.Elements) {
+        //     foreach (K k in st.Elements) {
+        //       for (BigInteger j = Lo; j < Hi; j++) {
+        //         for (bool i in Helper.AllBooleans) {
+        //           if (R(i,j,k,l)) {
+        //             _coll.Add(new Pair(i, Term(i));
+        //           }
+        //         }
+        //       }
+        //     }
+        //   }
+        //   return Dafny.Map<U, V>.FromElements(_coll);
+        // })()
+        Contract.Assert(e.Bounds != null);  // the resolver would have insisted on finding bounds
+        var domtypeName = TypeName(((MapType)e.Type).Domain);
+        var rantypeName = TypeName(((MapType)e.Type).Range);
+        wr.Write("((Dafny.Helpers.MapComprehensionDelegate<{0},{1}>)delegate() {{ ", domtypeName, rantypeName);
+        wr.Write("var _coll = new System.Collections.Generic.List<Dafny.Pair<{0},{1}>>(); ", domtypeName, rantypeName);
+        var n = e.BoundVars.Count;
+        Contract.Assert(e.Bounds.Count == n && n == 1);
+        var bound = e.Bounds[0];
+        var bv = e.BoundVars[0];
+        if (bound is QuantifierExpr.BoolBoundedPool) {
+          wr.Write("foreach (var @{0} in Dafny.Helpers.AllBooleans) {{ ", bv.Name);
+        } else if (bound is QuantifierExpr.IntBoundedPool) {
+          var b = (QuantifierExpr.IntBoundedPool)bound;
+          wr.Write("for (var @{0} = ", bv.Name);
+          TrExpr(b.LowerBound);
+          wr.Write("; @{0} < ", bv.Name);
+          TrExpr(b.UpperBound);
+          wr.Write("; @{0}++) {{ ", bv.Name);
+        } else if (bound is QuantifierExpr.SetBoundedPool) {
+          var b = (QuantifierExpr.SetBoundedPool)bound;
+          wr.Write("foreach (var @{0} in (", bv.Name);
+          TrExpr(b.Set);
+          wr.Write(").Elements) { ");
+        } else if (bound is QuantifierExpr.MapBoundedPool) {
+          var b = (QuantifierExpr.MapBoundedPool)bound;
+          wr.Write("foreach (var @{0} in (", bv.Name);
+          TrExpr(b.Map);
+          wr.Write(").Domain) { ");
+        } else if (bound is QuantifierExpr.SeqBoundedPool) {
+          var b = (QuantifierExpr.SeqBoundedPool)bound;
+          wr.Write("foreach (var @{0} in (", bv.Name);
+          TrExpr(b.Seq);
+          wr.Write(").Elements) { ");
+        } else {
+          Contract.Assert(false); throw new cce.UnreachableException();  // unexpected BoundedPool type
+        }
+        wr.Write("if (");
+        TrExpr(e.Range);
+        wr.Write(") { ");
+        wr.Write("_coll.Add(new Dafny.Pair<{0},{1}>(@{2},", domtypeName, rantypeName, bv.Name);
+        TrExpr(e.Term);
+        wr.Write(")); }");
+        wr.Write("}");
+        wr.Write("return Dafny.Map<{0},{1}>.FromCollection(_coll); ", domtypeName, rantypeName);
         wr.Write("})()");
 
       } else if (expr is PredicateExpr) {

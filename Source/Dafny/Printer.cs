@@ -421,9 +421,9 @@ namespace Microsoft.Dafny {
     /// </summary>
     public void PrintStatement(Statement stmt, int indent) {
       Contract.Requires(stmt != null);
-      for (LabelNode label = stmt.Labels; label != null; label = label.Next) {
-        if (label.Label != null) {
-          wr.WriteLine("label {0}:", label.Label);
+      for (LList<Label> label = stmt.Labels; label != null; label = label.Next) {
+        if (label.Data.Name != null) {
+          wr.WriteLine("label {0}:", label.Data.Name);
           Indent(indent);
         }
       }
@@ -881,6 +881,12 @@ namespace Microsoft.Dafny {
         PrintExpressionList(e.Elements);
         wr.Write(e is SetDisplayExpr || e is MultiSetDisplayExpr ? "}" : "]");
 
+      } else if (expr is MapDisplayExpr) {
+        MapDisplayExpr e = (MapDisplayExpr)expr;
+        wr.Write("map");
+        wr.Write("{");
+        PrintExpressionPairList(e.Elements);
+        wr.Write("}");
       } else if (expr is ExprDotName) {
         var e = (ExprDotName)expr;
         // determine if parens are needed
@@ -1184,6 +1190,24 @@ namespace Microsoft.Dafny {
         }
         if (parensNeeded) { wr.Write(")"); }
 
+      } else if (expr is MapComprehension) {
+        var e = (MapComprehension)expr;
+        bool parensNeeded = !isRightmost;
+        if (parensNeeded) { wr.Write("("); }
+        wr.Write("map ");
+        string sep = "";
+        foreach (BoundVar bv in e.BoundVars) {
+          wr.Write("{0}{1}", sep, bv.Name);
+          sep = ", ";
+          PrintType(": ", bv.Type);
+        }
+        PrintAttributes(e.Attributes);
+        wr.Write(" | ");
+        PrintExpression(e.Range);
+        wr.Write(" :: ");
+        PrintExpression(e.Term);
+        if (parensNeeded) { wr.Write(")"); }
+
       } else if (expr is WildcardExpr) {
         wr.Write("*");
 
@@ -1257,6 +1281,18 @@ namespace Microsoft.Dafny {
         wr.Write(sep);
         sep = ", ";
         PrintExpression(e);
+      }
+    }
+    void PrintExpressionPairList(List<ExpressionPair> exprs) {
+      Contract.Requires(exprs != null);
+      string sep = "";
+      foreach (ExpressionPair p in exprs) {
+        Contract.Assert(p != null);
+        wr.Write(sep);
+        sep = ", ";
+        PrintExpression(p.A);
+        wr.Write(":=");
+        PrintExpression(p.B);
       }
     }
 

@@ -274,6 +274,100 @@ namespace Dafny
       }
       return new MultiSet<T>(r);
     }
+    public IEnumerable<T> Elements {
+      get {
+        List<T> l = new List<T>();
+        foreach (T t in dict.Keys) {
+          int n;
+          dict.TryGetValue(t, out n);
+          for (int i = 0; i < n; i ++) {
+            l.Add(t);
+          }
+        }
+        return l;
+      }
+    }
+  }
+
+  public class Map<U, V>
+  {
+    Dictionary<U, V> dict;
+    public Map() { }
+    Map(Dictionary<U, V> d) {
+      dict = d;
+    }
+    public static Map<U, V> Empty {
+      get {
+        return new Map<U, V>(new Dictionary<U,V>());
+      }
+    }
+    public static Map<U, V> FromElements(params Pair<U, V>[] values) {
+      Dictionary<U, V> d = new Dictionary<U, V>(values.Length);
+      foreach (Pair<U, V> p in values) {
+        d[p.Car] = p.Cdr;
+      }
+      return new Map<U, V>(d);
+    }
+    public static Map<U, V> FromCollection(List<Pair<U, V>> values) {
+      Dictionary<U, V> d = new Dictionary<U, V>(values.Count);
+      foreach (Pair<U, V> p in values) {
+        d[p.Car] = p.Cdr;
+      }
+      return new Map<U, V>(d);
+    }
+    public bool Equals(Map<U, V> other) {
+      foreach (U u in dict.Keys) {
+        V v1, v2;
+        if (!dict.TryGetValue(u, out v1)) {
+          return false; // this shouldn't happen
+        }
+        if (!other.dict.TryGetValue(u, out v2)) {
+          return false; // other dictionary does not contain this element
+        }
+        if (!v1.Equals(v2)) {
+          return false;
+        }
+      }
+      foreach (U u in other.dict.Keys) {
+        if (!dict.ContainsKey(u)) {
+          return false; // this shouldn't happen
+        }
+      }
+      return true;
+    }
+    public override bool Equals(object other) {
+      return other is Map<U, V> && Equals((Map<U, V>)other);
+    }
+    public override int GetHashCode() {
+      return dict.GetHashCode();
+    }
+    public bool IsDisjointFrom(Map<U, V> other) {
+      foreach (U u in dict.Keys) {
+        if (other.dict.ContainsKey(u))
+          return false;
+      }
+      foreach (U u in other.dict.Keys) {
+        if (dict.ContainsKey(u))
+          return false;
+      }
+      return true;
+    }
+    public bool Contains(U u) {
+      return dict.ContainsKey(u);
+    }
+    public V Select(U index) {
+      return dict[index];
+    }
+    public Map<U, V> Update(U index, V val) {
+      Dictionary<U, V> d = new Dictionary<U, V>(dict);
+      d[index] = val;
+      return new Map<U, V>(d);
+    }
+    public IEnumerable<U> Domain {
+      get {
+        return dict.Keys;
+      }
+    }
   }
   public class Sequence<T>
   {
@@ -402,6 +496,12 @@ namespace Dafny
       }
       return frall;
     }
+    public static bool QuantMap<U,V>(Dafny.Map<U,V> map, bool frall, System.Predicate<U> pred) {
+      foreach (var u in map.Domain) {
+        if (pred(u) != frall) { return !frall; }
+      }
+      return frall;
+    }
     public static bool QuantSeq<U>(Dafny.Sequence<U> seq, bool frall, System.Predicate<U> pred) {
       foreach (var u in seq.Elements) {
         if (pred(u) != frall) { return !frall; }
@@ -410,6 +510,7 @@ namespace Dafny
     }
     // Enumerating other collections
     public delegate Dafny.Set<T> ComprehensionDelegate<T>();
+    public delegate Dafny.Map<U, V> MapComprehensionDelegate<U, V>();
     public static IEnumerable<bool> AllBooleans {
       get {
         yield return false;

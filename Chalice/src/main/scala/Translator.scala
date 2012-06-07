@@ -265,7 +265,7 @@ class Translator {
       // Encoding with heapFragment and combine
       /* function ##C.f(state, ref, t_1, ..., t_n) returns (t);
          axiom (forall h: HeapType, m, sm: MaskType, this: ref, x_1: t_1, ..., x_n: t_n ::
-            wf(h, m, sm) && IsGoodState(partialHeap) ==> #C.f(h, m, sm, this, x_1, ..., x_n) ==  ##C.f(partialHeap, this, x_1, ..., x_n))
+            wf(h, m, sm) ==> #C.f(h, m, sm, this, x_1, ..., x_n) ==  ##C.f(partialHeap, this, x_1, ..., x_n))
       */
       val partialHeap = functionDependencies(pre, etran);
       val inArgs = (f.ins map {i => Boogie.VarExpr(i.UniqueName)});
@@ -280,7 +280,7 @@ class Translator {
       Axiom(new Boogie.Forall(
         BVar(HeapName, theap) :: BVar(MaskName, tmask) :: BVar(SecMaskName, tmask) :: BVar("this", tref) :: (f.ins map Variable2BVar),
         new Trigger(List(applyF, wellformed)),
-          (wellformed && IsGoodState(partialHeap) && CanAssumeFunctionDefs)
+          (wellformed && CanAssumeFunctionDefs)
           ==>
           (applyF ==@ applyFrameFunction))
       )
@@ -1973,7 +1973,6 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
       (if(e.isPredicate) Nil else List(bassume(TypeInformation(new Boogie.MapSelect(Heap, trE, memberName), e.f.typ.typ)))) :::
       InhalePermission(perm, trE, memberName, currentK, (if (transferToSecMask) SecMask else Mask)) :::
       bassume(AreGoodMasks(Mask, SecMask)) ::
-      bassume(IsGoodState(heapFragment(new Boogie.MapSelect(ih, trE, memberName)))) ::
       bassume(wf(Heap, Mask, SecMask)) ::
       bassume(wf(ih, Mask, SecMask))
     case acc @ AccessSeq(s, Some(member), perm) =>
@@ -2045,7 +2044,6 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
          bassert(nonNull(trE), holds.pos, "The target of the holds predicate might be null.")
        else Nil) :::
       bassume(AreGoodMasks(Mask, SecMask)) ::
-      bassume(IsGoodState(heapFragment(new Boogie.MapSelect(ih, trE, "held")))) ::
       bassume(wf(Heap, Mask, SecMask)) ::
       bassume(wf(ih, Mask, SecMask)) ::
       new Boogie.MapUpdate(Heap, trE, VarExpr("held"),
@@ -2055,7 +2053,6 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
       bassume(new Boogie.MapSelect(ih, trE, "mu") !=@ bLockBottom) ::
       bassume(wf(Heap, Mask, SecMask)) ::
       bassume(AreGoodMasks(Mask, SecMask)) ::
-      bassume(IsGoodState(heapFragment(new Boogie.MapSelect(ih, trE, "held")))) ::
       bassume(wf(Heap, Mask, SecMask)) ::
       bassume(wf(ih, Mask, SecMask))
     case Eval(h, e) => 
@@ -2081,7 +2078,7 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
       bassume(preEtran.Heap ==@ evalHeap) ::
       bassume(submask(preEtran.Mask, evalMask))
     case uf@Unfolding(acc@Access(pred@MemberAccess(obj, f), perm), ufexpr) =>
-	  if (transferToSecMask) throw new NotSupportedException("not yet implemented")
+	  if (transferToSecMask) return Nil
       // handle unfolding like the next case, but also record permissions of the predicate
       // in the secondary mask and track the predicate in the auxilary information
       val (receiverV, receiver) = Boogie.NewBVar("predRec", tref, true)
@@ -2826,7 +2823,6 @@ object TranslationHelper {
   def monitorK = "monitorK";
   def predicateK = "predicateK";
   def CurrentModule = VarExpr("CurrentModule");
-  def IsGoodState(e: Expr) = FunctionApp("IsGoodState", List(e));
   def dtype(e: Expr) = FunctionApp("dtype", List(e))
   def functionName(f: Function) = "#" + f.FullName;
   def className(cl: Class) = Boogie.VarExpr(cl.id + "#t")

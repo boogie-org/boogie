@@ -488,7 +488,7 @@ namespace Microsoft.Boogie {
       get;
     }
 
-    public virtual void DefineMacro(Function fun, VCExpr vc) {
+    public virtual void DefineMacro(Macro fun, VCExpr vc) {
       throw new NotImplementedException();
     }
   }

@@ -447,9 +447,8 @@ namespace VC {
   }
   [ContractClassFor(typeof(ConditionGeneration))]
   public abstract class ConditionGenerationContracts : ConditionGeneration {
-    public override Outcome VerifyImplementation(Implementation impl, Program program, VerifierCallback callback) {
+    public override Outcome VerifyImplementation(Implementation impl, VerifierCallback callback) {
       Contract.Requires(impl != null);
-      Contract.Requires(program != null);
       Contract.Requires(callback != null);
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
       throw new NotImplementedException();
@@ -504,7 +503,6 @@ namespace VC {
     protected Hashtable /*Variable -> int*/ variable2SequenceNumber;
     public Dictionary<Incarnation, Absy>/*!>!*/ incarnationOriginMap = new Dictionary<Incarnation, Absy>();
 
-    // used only by FindCheckerFor
     public Program program;
     protected string/*?*/ logFilePath;
     protected bool appendLogFile;
@@ -523,9 +521,8 @@ namespace VC {
     /// each counterexample consisting of an array of labels.
     /// </summary>
     /// <param name="impl"></param>
-    public Outcome VerifyImplementation(Implementation impl, Program program, out List<Counterexample>/*?*/ errors) {
+    public Outcome VerifyImplementation(Implementation impl, out List<Counterexample>/*?*/ errors) {
       Contract.Requires(impl != null);
-      Contract.Requires(program != null);
 
       Contract.Ensures(Contract.ValueAtReturn(out errors) == null || Contract.ForAll(Contract.ValueAtReturn(out errors), i => i != null));
       Contract.Ensures(Contract.Result<Outcome>() != Outcome.Errors || errors != null);
@@ -533,7 +530,7 @@ namespace VC {
       Helpers.ExtraTraceInformation("Starting implementation verification");
 
       CounterexampleCollector collector = new CounterexampleCollector();
-      Outcome outcome = VerifyImplementation(impl, program, collector);
+      Outcome outcome = VerifyImplementation(impl, collector);
       if (outcome == Outcome.Errors) {
         errors = collector.examples;
       } else {
@@ -551,7 +548,7 @@ namespace VC {
     /// each counterexample consisting of an array of labels.
     /// </summary>
     /// <param name="impl"></param>
-    public Outcome VerifyImplementation(Implementation impl, Program program, out List<Counterexample> errors, out List<Model> errorsModel)
+    public Outcome VerifyImplementation(Implementation impl, out List<Counterexample> errors, out List<Model> errorsModel)
     {
         Contract.Ensures(Contract.Result<Outcome>() != Outcome.Errors || Contract.ValueAtReturn(out errors) != null);
         Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
@@ -559,14 +556,14 @@ namespace VC {
 
         Outcome outcome;
         errorModelList = new List<Model>();
-        outcome = VerifyImplementation(impl, program, out errorsOut);
+        outcome = VerifyImplementation(impl, out errorsOut);
         errors = errorsOut;
         errorsModel = errorModelList;
 
         return outcome;
     }
 
-    public abstract Outcome VerifyImplementation(Implementation impl, Program program, VerifierCallback callback);
+    public abstract Outcome VerifyImplementation(Implementation impl, VerifierCallback callback);
 
     /////////////////////////////////// Common Methods and Classes //////////////////////////////////////////
 

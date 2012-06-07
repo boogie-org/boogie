@@ -48,7 +48,7 @@ namespace GPUVerify
             parseProcessOutput();
         }
 
-        public static Program parse()
+        public static Program parse(out ResolutionContext rc)
         {
             Program program = ParseBoogieProgram(CommandLineOptions.inputFiles, false);
             if (program == null)
@@ -58,15 +58,15 @@ namespace GPUVerify
 
             Microsoft.Boogie.CommandLineOptions.Clo.DoModSetAnalysis = true;
 
-            int errorCount = program.Resolve();
-            if (errorCount != 0)
+            rc = new ResolutionContext(null);
+            program.Resolve(rc);
+            if (rc.ErrorCount != 0)
             {
-                Console.WriteLine("{0} name resolution errors detected in {1}", errorCount, CommandLineOptions.inputFiles[CommandLineOptions.inputFiles.Count - 1]);
+                Console.WriteLine("{0} name resolution errors detected in {1}", rc.ErrorCount, CommandLineOptions.inputFiles[CommandLineOptions.inputFiles.Count - 1]);
                 Environment.Exit(1);
             }
             
-            errorCount = program.Typecheck();
-
+            int errorCount = program.Typecheck();
             if (errorCount != 0)
             {
                 Console.WriteLine("{0} type checking errors detected in {1}", errorCount, CommandLineOptions.inputFiles[CommandLineOptions.inputFiles.Count - 1]);
@@ -90,9 +90,10 @@ namespace GPUVerify
 
         public static bool doit(string filename, Variable v, int a1, int a2)
         {
-            Program newProgram = parse();
+            ResolutionContext rc;
+            Program newProgram = parse(out rc);
             RaceInstrumenterBase ri = new ElementEncodingRaceInstrumenter();
-            GPUVerifier newGp = new GPUVerifier(filename, newProgram, ri);
+            GPUVerifier newGp = new GPUVerifier(filename, newProgram, rc, ri);
             ri.setVerifier(newGp);
 
             
@@ -128,9 +129,10 @@ namespace GPUVerify
             {
                 fn = CommandLineOptions.outputFile;
             }
-            Program program = parse();
+            ResolutionContext rc;
+            Program program = parse(out rc);
             IList<GPUVerifier> result = new List<GPUVerifier>();
-            GPUVerifier g = new GPUVerifier(fn, program, new NullRaceInstrumenter());
+            GPUVerifier g = new GPUVerifier(fn, program, rc, new NullRaceInstrumenter());
 
             if (CommandLineOptions.DividedArray)
             {
