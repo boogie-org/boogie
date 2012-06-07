@@ -124,6 +124,7 @@ namespace GPUVerify
                                   new EnsuresSeq(),
                                   new QKeyValue(Token.NoToken, "barrier", new List<object>(), null));
                 Program.TopLevelDeclarations.Add(p);
+                ResContext.AddProcedure(p);
             }
             return p;
         }
