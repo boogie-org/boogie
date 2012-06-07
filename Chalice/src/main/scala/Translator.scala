@@ -2381,11 +2381,11 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
               BLocal(newVersV) :: Boogie.Havoc(newVers) :: (Heap.select(trE, memberName) := newVers) ::
               bassume(oldVers < Heap.select(trE, memberName)) :: Nil
             }),
-            Nil) :::
-            (if (duringUnfold)
-              // assume that the mask of the predicate we are inhaling contains this location
-              bassume(h.select(unfoldReceiver, unfoldPredicate.FullName+"#m").select(trE, memberName)) :: Nil
-            else Nil)
+            Nil) :: Nil
+        else Nil) :::
+        (if (duringUnfold)
+          // assume that the mask of the predicate we are inhaling contains this location
+          bassume(h.select(unfoldReceiver, unfoldPredicate.FullName+"#m").select(trE, memberName)) :: Nil
         else Nil) :::
         bassume(wf(Heap, m, sm)) :::
         (if (m != Mask || sm != SecMask) bassume(wf(Heap, Mask, SecMask)) :: Nil else Nil)
