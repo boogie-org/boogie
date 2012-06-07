@@ -1057,7 +1057,7 @@ namespace GPUVerify
         {
             if (p.Contains("$"))
             {
-                return p.Substring(0, p.IndexOf("$"));
+                return p.Substring(0, p.LastIndexOf("$"));
             }
             return p;
         }
