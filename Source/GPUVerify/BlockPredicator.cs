@@ -206,7 +206,7 @@ class BlockPredicator {
       if (decl is DeclWithFormals && !(decl is Function)) {
         var dwf = (DeclWithFormals)decl;
         var fpVar = new Formal(Token.NoToken,
-                               new TypedIdent(Token.NoToken, "fp",
+                               new TypedIdent(Token.NoToken, "_P",
                                               Microsoft.Boogie.Type.Bool),
                                /*incoming=*/true);
         dwf.InParams = new VariableSeq(
