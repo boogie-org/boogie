@@ -268,12 +268,13 @@ namespace GPUVerify
 
         private Block MakeDual(Block b)
         {
-            Block result = new Block(b.tok, b.Label, new CmdSeq(), b.TransferCmd);
+            var newCmds = new CmdSeq();
             foreach (Cmd c in b.Cmds)
             {
-                MakeDual(result.Cmds, c);
+                MakeDual(newCmds, c);
             }
-            return result;
+            b.Cmds = newCmds;
+            return b;
         }
 
         private List<PredicateCmd> MakeDualInvariants(List<PredicateCmd> originalInvariants)

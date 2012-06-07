@@ -770,12 +770,13 @@ namespace Microsoft.Boogie.SMTLib
         SendThisVC(a);
     }
 
-    public override void DefineMacro(Function fun, VCExpr vc) {
-      DeclCollector.AddFunction(fun);
-      string name = Namer.GetName(fun, fun.Name);
-      string a = "(define-fun " + name + "() Bool " + VCExpr2String(vc, 1) + ")";
+    public override void DefineMacro(Macro f, VCExpr vc) {
+      DeclCollector.AddFunction(f);
+      string printedName = Namer.GetQuotedName(f, f.Name);
+      var argTypes = f.InParams.Cast<Variable>().MapConcat(p => DeclCollector.TypeToStringReg(p.TypedIdent.Type), " ");
+      string decl = "(define-fun " + printedName + " (" + argTypes + ") " + DeclCollector.TypeToStringReg(f.OutParams[0].TypedIdent.Type) + " " + VCExpr2String(vc, 1) + ")";
       AssertAxioms();
-      SendThisVC(a);
+      SendThisVC(decl); 
     }
 
     public override void AssertAxioms()

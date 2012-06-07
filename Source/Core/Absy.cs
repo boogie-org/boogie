@@ -2038,6 +2038,11 @@ namespace Microsoft.Boogie {
     }
   }
 
+  public class Macro : Function {
+    public Macro(IToken tok, string name, VariableSeq args, Variable result)
+      : base(tok, name, args, result) { }
+  }
+
   public class Requires : Absy, IPotentialErrorNode {
     public readonly bool Free;
     public Expr/*!*/ Condition;

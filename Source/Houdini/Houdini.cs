@@ -245,11 +245,6 @@ namespace Microsoft.Boogie.Houdini {
     }
   }
 
-  public class Macro : Function {
-    public Macro(IToken tok, string name, VariableSeq args, Variable result)
-      : base(tok, name, args, result) { }
-  }
-
   public class InlineRequiresVisitor : StandardVisitor {
     public override CmdSeq VisitCmdSeq(CmdSeq cmdSeq) {
       Contract.Requires(cmdSeq != null);
