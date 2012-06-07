@@ -203,6 +203,11 @@ namespace GPUVerify
                 {
                     cs.Add(new AssumeCmd(c.tok, new VariableDualiser(1, verifier.uniformityAnalyser, procName).VisitExpr(ass.Expr.Clone() as Expr)));
                 }
+                else if (QKeyValue.FindBoolAttribute(ass.Attributes, "backedge"))
+                {
+                    cs.Add(new AssumeCmd(c.tok, Expr.Or(new VariableDualiser(1, verifier.uniformityAnalyser, procName).VisitExpr(ass.Expr.Clone() as Expr),
+                        new VariableDualiser(2, verifier.uniformityAnalyser, procName).VisitExpr(ass.Expr.Clone() as Expr))));
+                }
                 else
                 {
                     cs.Add(new AssumeCmd(c.tok, Expr.And(new VariableDualiser(1, verifier.uniformityAnalyser, procName).VisitExpr(ass.Expr.Clone() as Expr),

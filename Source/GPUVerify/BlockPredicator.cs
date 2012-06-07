@@ -158,6 +158,16 @@ class BlockPredicator {
     var prevBlock = entryBlock;
     foreach (var n in sortedBlocks) {
       if (n.Item2) {
+        var backedgeBlock = new Block();
+        newBlocks.Add(backedgeBlock);
+
+        backedgeBlock.Label = n.Item1.Label + ".backedge";
+        backedgeBlock.Cmds = new CmdSeq(new AssumeCmd(Token.NoToken,
+          Expr.Eq(cur, blockIds[n.Item1]),
+          new QKeyValue(Token.NoToken, "backedge", new List<object>(), null)));
+        backedgeBlock.TransferCmd = new GotoCmd(Token.NoToken,
+                                                new BlockSeq(n.Item1));
+
         var tailBlock = new Block();
         newBlocks.Add(tailBlock);
 
@@ -166,7 +176,7 @@ class BlockPredicator {
                                              Expr.Neq(cur, blockIds[n.Item1])));
 
         prevBlock.TransferCmd = new GotoCmd(Token.NoToken,
-                                            new BlockSeq(tailBlock, n.Item1));
+                                        new BlockSeq(backedgeBlock, tailBlock));
         prevBlock = tailBlock;
       } else {
         var runBlock = n.Item1;
