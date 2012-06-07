@@ -2289,6 +2289,35 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
     }
   }
   
+  /** assume that for all locations o.l of the predicate 'receiver.pred', the per-predicate mask of 'receiver.pred' is true for o.l */
+  def contentsInPerPredicateMask(expr: Expression, receiver: Expr, pred: Predicate, heap: Expr): List[Boogie.Stmt] = {
+    val f = (expr: Expression) => contentsInPerPredicateMask(expr, receiver, pred, heap)
+    expr match {
+      case pred@MemberAccess(e, p) if pred.isPredicate =>
+        val tmp = Access(pred, Full);
+        tmp.pos = pred.pos;
+        f(tmp)
+      case AccessAll(obj, perm) =>
+        throw new InternalErrorException("not implemented yet")
+      case AccessSeq(s, None, perm) =>
+        throw new InternalErrorException("not implemented yet")
+      case acc@Access(e,perm) =>
+        val memberName = if (e.isPredicate) e.predicate.FullName else e.f.FullName;
+        val trE = Tr(e.e)
+        bassume(heap.select(receiver, pred.FullName+"#m").select(trE, memberName)) :: Nil
+      case acc @ AccessSeq(s, Some(member), perm) =>
+        throw new InternalErrorException("not implemented yet")
+      case Implies(e0,e1) =>
+        Boogie.If(Tr(e0), f(e1), Nil)
+      case IfThenElse(con, then, els) =>
+        Boogie.If(Tr(con), f(then), f(els))
+      case And(e0,e1) =>
+        f(e0) ::: f(e1)
+      case e =>
+        Nil
+    }
+  }
+  
   // see comment in front of method exhale about parameter isUpdatingSecMask
   def ExhalePermission(perm: Permission, obj: Expr, memberName: String, currentK: Expr, pos: Position, error: ErrorMessage, em: Boogie.Expr, exactchecking: Boolean, isUpdatingSecMask: Boolean): List[Boogie.Stmt] = {
     val (f, stmts) = extractKFromPermission(perm, currentK)
@@ -2380,6 +2409,10 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
             }),
             Nil) :: Nil
         else Nil) :::
+        (if (duringUnfold) {
+          val predicateBody = SubstThis(DefinitionOf(e.predicate), e.e)
+          contentsInPerPredicateMask(predicateBody, trE, e.predicate, Heap)
+        } else Nil) :::
         bassume(wf(Heap, m, sm)) :::
         (if (m != Mask || sm != SecMask) bassume(wf(Heap, Mask, SecMask)) :: Nil else Nil)
       }
