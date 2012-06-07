@@ -494,8 +494,7 @@ class Translator {
     bassume(etran.Heap ==@ Boogie.Old(etran.Heap)) ::
     bassume(etran.Mask ==@ Boogie.Old(etran.Mask)) ::
     bassume(etran.SecMask ==@ Boogie.Old(etran.SecMask)) ::
-    bassume(etran.Credits ==@ Boogie.Old(etran.Credits)) ::
-    bassume((etran.Heap.select(ref, pmask.id) ==@ ZeroPMask).forall(refV).forall(pmaskV))
+    bassume(etran.Credits ==@ Boogie.Old(etran.Credits))
   }
 
   /**********************************************************************
