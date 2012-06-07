@@ -48,7 +48,7 @@ namespace GPUVerify
 
         protected abstract void AddRequiresNoPendingAccess(Variable v);
 
-        private void AddNoReadOrWriteCandidateInvariants(WhileCmd wc, Variable v)
+        private void AddNoReadOrWriteCandidateInvariants(IRegion region, Variable v)
         {
             // Reasoning: if READ_HAS_OCCURRED_v is not in the modifies set for the
             // loop then there is no point adding an invariant
@@ -63,18 +63,18 @@ namespace GPUVerify
             //
             // The same reasoning applies for WRITE
 
-            if (verifier.ContainsBarrierCall(wc.Body))
+            if (verifier.ContainsBarrierCall(region))
             {
                 if (verifier.ContainsNamedVariable(
-                    LoopInvariantGenerator.GetModifiedVariables(wc.Body), GPUVerifier.MakeAccessHasOccurredVariableName(v.Name, "READ")))
+                    LoopInvariantGenerator.GetModifiedVariables(region), GPUVerifier.MakeAccessHasOccurredVariableName(v.Name, "READ")))
                 {
-                    AddNoReadOrWriteCandidateInvariant(wc, v, "READ");
+                    AddNoReadOrWriteCandidateInvariant(region, v, "READ");
                 }
 
                 if (verifier.ContainsNamedVariable(
-                    LoopInvariantGenerator.GetModifiedVariables(wc.Body), GPUVerifier.MakeAccessHasOccurredVariableName(v.Name, "WRITE")))
+                    LoopInvariantGenerator.GetModifiedVariables(region), GPUVerifier.MakeAccessHasOccurredVariableName(v.Name, "WRITE")))
                 {
-                    AddNoReadOrWriteCandidateInvariant(wc, v, "WRITE");
+                    AddNoReadOrWriteCandidateInvariant(region, v, "WRITE");
                 }
             }
         }
@@ -91,47 +91,47 @@ namespace GPUVerify
             AddNoReadOrWriteCandidateEnsures(Proc, v, "WRITE", "1");
         }
 
-        private void AddNoReadOrWriteCandidateInvariant(WhileCmd wc, Variable v, string ReadOrWrite)
+        private void AddNoReadOrWriteCandidateInvariant(IRegion region, Variable v, string ReadOrWrite)
         {
             Expr candidate = NoReadOrWriteExpr(v, ReadOrWrite, "1");
-            verifier.AddCandidateInvariant(wc, candidate, "no " + ReadOrWrite.ToLower());
+            verifier.AddCandidateInvariant(region, candidate, "no " + ReadOrWrite.ToLower());
         }
 
-        public void AddRaceCheckingCandidateInvariants(Implementation impl, WhileCmd wc)
+        public void AddRaceCheckingCandidateInvariants(Implementation impl, IRegion region)
         {
             foreach (Variable v in NonLocalStateToCheck.getAllNonLocalVariables())
             {
-                AddNoReadOrWriteCandidateInvariants(wc, v);
-                AddReadOrWrittenOffsetIsThreadIdCandidateInvariants(impl, wc, v, "READ");
-                AddReadOrWrittenOffsetIsThreadIdCandidateInvariants(impl, wc, v, "WRITE");
-                AddGroupStrideAccessCandidateInvariants(impl, wc, v, "READ");
-                AddGroupStrideAccessCandidateInvariants(impl, wc, v, "WRITE");
+                AddNoReadOrWriteCandidateInvariants(region, v);
+                AddReadOrWrittenOffsetIsThreadIdCandidateInvariants(impl, region, v, "READ");
+                AddReadOrWrittenOffsetIsThreadIdCandidateInvariants(impl, region, v, "WRITE");
+                AddGroupStrideAccessCandidateInvariants(impl, region, v, "READ");
+                AddGroupStrideAccessCandidateInvariants(impl, region, v, "WRITE");
             }
         }
 
-        private void AddGroupStrideAccessCandidateInvariants(Implementation impl, WhileCmd wc, Variable v, string accessKind)
+        private void AddGroupStrideAccessCandidateInvariants(Implementation impl, IRegion region, Variable v, string accessKind)
         {
-            foreach (Expr e in GetOffsetsAccessed(wc.Body, v, accessKind))
+            foreach (Expr e in GetOffsetsAccessed(region, v, accessKind))
             {
-                if (TryGenerateCandidateForDirectStridedAccess(impl, wc, v, e, accessKind))
+                if (TryGenerateCandidateForDirectStridedAccess(impl, region, v, e, accessKind))
                 {
                     continue;
                 }
 
-                if (!TryGenerateCandidateForReducedStrengthStrideVariable(impl, wc, v, e, accessKind))
+                if (!TryGenerateCandidateForReducedStrengthStrideVariable(impl, region, v, e, accessKind))
                 {
                     if (e is IdentifierExpr)
                     {
-                        foreach(Expr f in GetExpressionsFromWhichVariableIsAssignedInLoop(wc.Body, (e as IdentifierExpr).Decl))
+                        foreach(Expr f in GetExpressionsFromWhichVariableIsAssignedInLoop(region, (e as IdentifierExpr).Decl))
                         {
-                            TryGenerateCandidateForReducedStrengthStrideVariable(impl, wc, v, f, accessKind);
+                            TryGenerateCandidateForReducedStrengthStrideVariable(impl, region, v, f, accessKind);
                         }
                     }
                 }
             }
         }
 
-        private bool TryGenerateCandidateForDirectStridedAccess(Implementation impl, WhileCmd wc, Variable v, Expr e, string accessKind)
+        private bool TryGenerateCandidateForDirectStridedAccess(Implementation impl, IRegion region, Variable v, Expr e, string accessKind)
         {
             if (!(e is NAryExpr))
             {
@@ -157,7 +157,7 @@ namespace GPUVerify
                             new IdentifierExpr(Token.NoToken, GPUVerifier.MakeAccessHasOccurredVariable(v.Name, accessKind)),
                             modPow2Expr);
 
-                    AddAccessRelatedCandidateInvariant(wc, accessKind, candidateInvariantExpr, impl.Name, "direct stride local");
+                    AddAccessRelatedCandidateInvariant(region, accessKind, candidateInvariantExpr, impl.Name, "direct stride local");
                     return true;
                 }
             }
@@ -173,7 +173,7 @@ namespace GPUVerify
                             new IdentifierExpr(Token.NoToken, GPUVerifier.MakeAccessHasOccurredVariable(v.Name, accessKind)),
                             modPow2Expr);
 
-                    AddAccessRelatedCandidateInvariant(wc, accessKind, candidateInvariantExpr, impl.Name, "direct stride global");
+                    AddAccessRelatedCandidateInvariant(region, accessKind, candidateInvariantExpr, impl.Name, "direct stride global");
                     return true;
                 }
             }
@@ -182,10 +182,10 @@ namespace GPUVerify
 
         }
 
-        private void AddAccessRelatedCandidateInvariant(WhileCmd wc, string accessKind, Expr candidateInvariantExpr, string procName, string tag)
+        private void AddAccessRelatedCandidateInvariant(IRegion region, string accessKind, Expr candidateInvariantExpr, string procName, string tag)
         {
             Expr candidate = new VariableDualiser(1, verifier.uniformityAnalyser, procName).VisitExpr(candidateInvariantExpr.Clone() as Expr);
-            verifier.AddCandidateInvariant(wc, candidate, tag);
+            verifier.AddCandidateInvariant(region, candidate, tag);
         }
 
         private Expr IsIdPlusConstantMultiple(Expr arg1, Expr arg2, bool local, Implementation impl)
@@ -248,20 +248,20 @@ namespace GPUVerify
             return verifier.mayBeGidAnalyser.MayBe("x", impl.Name, mayBeId);
         }
 
-        private bool TryGenerateCandidateForReducedStrengthStrideVariable(Implementation impl, WhileCmd wc, Variable v, Expr e, string accessKind)
+        private bool TryGenerateCandidateForReducedStrengthStrideVariable(Implementation impl, IRegion region, Variable v, Expr e, string accessKind)
         {
             foreach (string w in
                 verifier.mayBeTidPlusConstantAnalyser.GetMayBeIdPlusConstantVars(impl.Name))
             {
                 if (!verifier.ContainsNamedVariable(
-                    LoopInvariantGenerator.GetModifiedVariables(wc.Body), w))
+                    LoopInvariantGenerator.GetModifiedVariables(region), w))
                 {
                     continue;
                 }
 
                 // Check also live
 
-                if (GenerateModIdInvariants(impl, wc, v, e, accessKind, w, verifier.mayBeTidPlusConstantAnalyser))
+                if (GenerateModIdInvariants(impl, region, v, e, accessKind, w, verifier.mayBeTidPlusConstantAnalyser))
                 {
                     return true;
                 }
@@ -272,14 +272,14 @@ namespace GPUVerify
                 verifier.mayBeGidPlusConstantAnalyser.GetMayBeIdPlusConstantVars(impl.Name))
             {
                 if (!verifier.ContainsNamedVariable(
-                    LoopInvariantGenerator.GetModifiedVariables(wc.Body), w))
+                    LoopInvariantGenerator.GetModifiedVariables(region), w))
                 {
                     continue;
                 }
 
                 // Check also live
 
-                if (GenerateModIdInvariants(impl, wc, v, e, accessKind, w, verifier.mayBeGidPlusConstantAnalyser))
+                if (GenerateModIdInvariants(impl, region, v, e, accessKind, w, verifier.mayBeGidPlusConstantAnalyser))
                 {
                     return true;
                 }
@@ -290,7 +290,7 @@ namespace GPUVerify
             return false;
         }
 
-        private bool GenerateModIdInvariants(Implementation impl, WhileCmd wc, Variable v, Expr e, string accessKind, 
+        private bool GenerateModIdInvariants(Implementation impl, IRegion region, Variable v, Expr e, string accessKind, 
             string w, MayBeIdPlusConstantAnalyser mayBeIdPlusConstantAnalyser)
         {
             if (!IsLinearFunctionOfVariable(e, w))
@@ -300,17 +300,17 @@ namespace GPUVerify
 
             Debug.Assert(!verifier.uniformityAnalyser.IsUniform(impl.Name, w));
 
-            Variable wVariable = new LocalVariable(wc.tok, new TypedIdent(wc.tok, w,
+            Variable wVariable = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, w,
                     Microsoft.Boogie.Type.GetBvType(32)));
 
             Expr indexModPow2EqualsId = ExprModPow2EqualsId(
-                new IdentifierExpr(wc.tok, wVariable),
+                new IdentifierExpr(Token.NoToken, wVariable),
                 mayBeIdPlusConstantAnalyser.GetIncrement(impl.Name, w), mayBeIdPlusConstantAnalyser.MakeIdExpr());
 
-            verifier.AddCandidateInvariant(wc, 
+            verifier.AddCandidateInvariant(region, 
                 new VariableDualiser(1, verifier.uniformityAnalyser, impl.Name).VisitExpr(indexModPow2EqualsId.Clone() as Expr),
                 "is " + mayBeIdPlusConstantAnalyser.idKind() + " plus constant multiple");
-            verifier.AddCandidateInvariant(wc, 
+            verifier.AddCandidateInvariant(region, 
                 new VariableDualiser(2, verifier.uniformityAnalyser, impl.Name).VisitExpr(indexModPow2EqualsId.Clone() as Expr),
                 "is " + mayBeIdPlusConstantAnalyser.idKind() + " plus constant multiple");
 
@@ -325,29 +325,16 @@ namespace GPUVerify
                     new IdentifierExpr(Token.NoToken, GPUVerifier.MakeAccessHasOccurredVariable(v.Name, accessKind)),
                     invertedOffsetModPow2EqualsId);
 
-            AddAccessRelatedCandidateInvariant(wc, accessKind, candidateInvariantExpr, impl.Name, "accessed offset is "
+            AddAccessRelatedCandidateInvariant(region, accessKind, candidateInvariantExpr, impl.Name, "accessed offset is "
                 + mayBeIdPlusConstantAnalyser.idKind() + " plus constant multiple");
 
             return true;
         }
 
-        private HashSet<Expr> GetExpressionsFromWhichVariableIsAssignedInLoop(StmtList stmts, Variable variable)
+        private HashSet<Expr> GetExpressionsFromWhichVariableIsAssignedInLoop(IRegion region, Variable variable)
         {
             HashSet<Expr> result = new HashSet<Expr>();
-            foreach (BigBlock bb in stmts.BigBlocks)
-            {
-                foreach (Expr e in GetExpressionsFromWhichVariableIsAssignedInLoop(bb, variable))
-                {
-                    result.Add(e);
-                }
-            }
-            return result;
-        }
-
-        private HashSet<Expr> GetExpressionsFromWhichVariableIsAssignedInLoop(BigBlock bb, Variable variable)
-        {
-            HashSet<Expr> result = new HashSet<Expr>();
-            foreach (Cmd c in bb.simpleCmds)
+            foreach (Cmd c in region.Cmds())
             {
                 if (c is AssignCmd)
                 {
@@ -368,34 +355,6 @@ namespace GPUVerify
                         }
                     }
                 }
-            }
-
-            if (bb.ec is WhileCmd)
-            {
-                foreach (Expr e in GetExpressionsFromWhichVariableIsAssignedInLoop((bb.ec as WhileCmd).Body, variable))
-                {
-                    result.Add(e);
-                }
-            }
-            else if (bb.ec is IfCmd)
-            {
-                IfCmd ifCmd = bb.ec as IfCmd;
-
-                foreach (Expr e in GetExpressionsFromWhichVariableIsAssignedInLoop(ifCmd.thn, variable))
-                {
-                    result.Add(e);
-                }
-
-                Debug.Assert(ifCmd.elseIf == null);
-
-                if (ifCmd.elseBlock != null)
-                {
-                    foreach (Expr e in GetExpressionsFromWhichVariableIsAssignedInLoop(ifCmd.elseBlock, variable))
-                    {
-                        result.Add(e);
-                    }
-                }
-
             }
 
             return result;
@@ -491,66 +450,66 @@ namespace GPUVerify
             return !visitor.found;
         }
 
-        private void AddReadOrWrittenOffsetIsThreadIdCandidateInvariants(Implementation impl, WhileCmd wc, Variable v, string accessType)
+        private void AddReadOrWrittenOffsetIsThreadIdCandidateInvariants(Implementation impl, IRegion region, Variable v, string accessType)
         {
 
-            foreach (Expr e in GetOffsetsAccessed(wc.Body, v, accessType))
+            foreach (Expr e in GetOffsetsAccessed(region, v, accessType))
             {
                 if (verifier.mayBeTidAnalyser.MayBe(GPUVerifier.LOCAL_ID_X_STRING, impl.Name, GPUVerifier.StripThreadIdentifiers(e)))
                 {
-                    AddAccessedOffsetIsThreadLocalIdCandidateInvariant(wc, v, accessType);
+                    AddAccessedOffsetIsThreadLocalIdCandidateInvariant(region, v, accessType);
                     // No point adding it multiple times
                     break;
                 }
             }
 
-            foreach (Expr e in GetOffsetsAccessed(wc.Body, v, accessType))
+            foreach (Expr e in GetOffsetsAccessed(region, v, accessType))
             {
                 if (verifier.mayBeGidAnalyser.MayBe("x", impl.Name, GPUVerifier.StripThreadIdentifiers(e)))
                 {
-                    AddAccessedOffsetIsThreadGlobalIdCandidateInvariant(wc, v, accessType);
+                    AddAccessedOffsetIsThreadGlobalIdCandidateInvariant(region, v, accessType);
                     // No point adding it multiple times
                     break;
                 }
             }
 
-            foreach (Expr e in GetOffsetsAccessed(wc.Body, v, accessType))
+            foreach (Expr e in GetOffsetsAccessed(region, v, accessType))
             {
                 if (verifier.mayBeFlattened2DTidOrGidAnalyser.MayBe("local", impl.Name, GPUVerifier.StripThreadIdentifiers(e)))
                 {
-                    AddAccessedOffsetIsThreadFlattened2DLocalIdCandidateInvariant(wc, v, accessType);
+                    AddAccessedOffsetIsThreadFlattened2DLocalIdCandidateInvariant(region, v, accessType);
                     // No point adding it multiple times
                     break;
                 }
             }
 
-            foreach (Expr e in GetOffsetsAccessed(wc.Body, v, accessType))
+            foreach (Expr e in GetOffsetsAccessed(region, v, accessType))
             {
                 if (verifier.mayBeFlattened2DTidOrGidAnalyser.MayBe("global", impl.Name, GPUVerifier.StripThreadIdentifiers(e)))
                 {
-                    AddAccessedOffsetIsThreadFlattened2DGlobalIdCandidateInvariant(wc, v, accessType);
+                    AddAccessedOffsetIsThreadFlattened2DGlobalIdCandidateInvariant(region, v, accessType);
                     // No point adding it multiple times
                     break;
                 }
             }
 
-            KeyValuePair<IdentifierExpr, Expr> iLessThanC = GetILessThanC(wc.Guard);
+            KeyValuePair<IdentifierExpr, Expr> iLessThanC = GetILessThanC(region.Guard());
             if (iLessThanC.Key != null)
             {
-                foreach (Expr e in GetOffsetsAccessed(wc.Body, v, accessType))
+                foreach (Expr e in GetOffsetsAccessed(region, v, accessType))
                 {
                     if(HasFormIPlusLocalIdTimesC(e, iLessThanC, impl))
                     {
-                        AddAccessedOffsetInRangeCTimesLocalIdToCTimesLocalIdPlusC(wc, v, iLessThanC.Value, accessType);
+                        AddAccessedOffsetInRangeCTimesLocalIdToCTimesLocalIdPlusC(region, v, iLessThanC.Value, accessType);
                         break;
                     }
                 }
 
-                foreach (Expr e in GetOffsetsAccessed(wc.Body, v, accessType))
+                foreach (Expr e in GetOffsetsAccessed(region, v, accessType))
                 {
                     if (HasFormIPlusGlobalIdTimesC(e, iLessThanC, impl))
                     {
-                        AddAccessedOffsetInRangeCTimesGlobalIdToCTimesGlobalIdPlusC(wc, v, iLessThanC.Value, accessType);
+                        AddAccessedOffsetInRangeCTimesGlobalIdToCTimesGlobalIdPlusC(region, v, iLessThanC.Value, accessType);
                         break;
                     }
                 }
@@ -721,17 +680,17 @@ namespace GPUVerify
             AddAccessedOffsetIsThreadLocalIdCandidateEnsures(Proc, v, "READ", 1);
         }
 
-        protected abstract void AddAccessedOffsetIsThreadLocalIdCandidateInvariant(WhileCmd wc, Variable v, string ReadOrWrite);
+        protected abstract void AddAccessedOffsetIsThreadLocalIdCandidateInvariant(IRegion region, Variable v, string ReadOrWrite);
 
-        protected abstract void AddAccessedOffsetIsThreadGlobalIdCandidateInvariant(WhileCmd wc, Variable v, string ReadOrWrite);
+        protected abstract void AddAccessedOffsetIsThreadGlobalIdCandidateInvariant(IRegion region, Variable v, string ReadOrWrite);
 
-        protected abstract void AddAccessedOffsetIsThreadFlattened2DLocalIdCandidateInvariant(WhileCmd wc, Variable v, string ReadOrWrite);
+        protected abstract void AddAccessedOffsetIsThreadFlattened2DLocalIdCandidateInvariant(IRegion region, Variable v, string ReadOrWrite);
 
-        protected abstract void AddAccessedOffsetIsThreadFlattened2DGlobalIdCandidateInvariant(WhileCmd wc, Variable v, string ReadOrWrite);
+        protected abstract void AddAccessedOffsetIsThreadFlattened2DGlobalIdCandidateInvariant(IRegion region, Variable v, string ReadOrWrite);
 
-        protected abstract void AddAccessedOffsetInRangeCTimesLocalIdToCTimesLocalIdPlusC(WhileCmd wc, Variable v, Expr constant, string ReadOrWrite);
+        protected abstract void AddAccessedOffsetInRangeCTimesLocalIdToCTimesLocalIdPlusC(IRegion region, Variable v, Expr constant, string ReadOrWrite);
 
-        protected abstract void AddAccessedOffsetInRangeCTimesGlobalIdToCTimesGlobalIdPlusC(WhileCmd wc, Variable v, Expr constant, string ReadOrWrite);
+        protected abstract void AddAccessedOffsetInRangeCTimesGlobalIdToCTimesGlobalIdPlusC(IRegion region, Variable v, Expr constant, string ReadOrWrite);
 
         protected abstract void AddAccessedOffsetIsThreadLocalIdCandidateRequires(Procedure Proc, Variable v, string ReadOrWrite, int Thread);
 
@@ -1049,24 +1008,11 @@ namespace GPUVerify
 
         protected abstract Expr NoReadOrWriteExpr(Variable v, string ReadOrWrite, string OneOrTwo);
 
-        private HashSet<Expr> GetOffsetsAccessed(StmtList stmts, Variable v, string AccessType)
-        {
-            HashSet<Expr> result = new HashSet<Expr> ();
-            foreach (BigBlock bb in stmts.BigBlocks)
-            {
-                foreach (Expr e in GetOffsetsAccessed(bb, v, AccessType))
-                {
-                    result.Add(e);
-                }
-            }
-            return result;
-        }
-
-        private HashSet<Expr> GetOffsetsAccessed(BigBlock bb, Variable v, string AccessType)
+        private HashSet<Expr> GetOffsetsAccessed(IRegion region, Variable v, string AccessType)
         {
             HashSet<Expr> result = new HashSet<Expr>();
 
-            foreach (Cmd c in bb.simpleCmds)
+            foreach (Cmd c in region.Cmds())
             {
                 if (c is CallCmd)
                 {
@@ -1095,36 +1041,6 @@ namespace GPUVerify
 
                 }
 
-            }
-
-            if (bb.ec is WhileCmd)
-            {
-                HashSet<Expr> bodyResult = GetOffsetsAccessed((bb.ec as WhileCmd).Body, v, AccessType);
-                foreach (Expr e in bodyResult)
-                {
-                    result.Add(e);
-                }
-            }
-            else if (bb.ec is IfCmd)
-            {
-                IfCmd ifCmd = bb.ec as IfCmd;
-
-                HashSet<Expr> thenResult = GetOffsetsAccessed(ifCmd.thn, v, AccessType);
-                foreach (Expr e in thenResult)
-                {
-                    result.Add(e);
-                }
-
-                Debug.Assert(ifCmd.elseIf == null);
-                
-                if(ifCmd.elseBlock != null)
-                {
-                    HashSet<Expr> elseResult = GetOffsetsAccessed(ifCmd.elseBlock, v, AccessType);
-                    foreach (Expr e in elseResult)
-                    {
-                        result.Add(e);
-                    }
-                }
             }
 
             return result;

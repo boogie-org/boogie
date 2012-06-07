@@ -127,20 +127,12 @@ namespace GPUVerify
 
         private void Analyse(Implementation Impl)
         {
-            Analyse(Impl, Impl.StructuredStmts);
+            Analyse(Impl, verifier.RootRegion(Impl));
         }
 
-        private void Analyse(Implementation impl, StmtList stmtList)
+        private void Analyse(Implementation impl, IRegion region)
         {
-            foreach (BigBlock bb in stmtList.BigBlocks)
-            {
-                Analyse(impl, bb);
-            }
-        }
-
-        private void Analyse(Implementation impl, BigBlock bb)
-        {
-            foreach (Cmd c in bb.simpleCmds)
+            foreach (Cmd c in region.Cmds())
             {
                 if (c is AssignCmd)
                 {
@@ -164,23 +156,6 @@ namespace GPUVerify
                     }
                 }
             }
-
-            if (bb.ec is WhileCmd)
-            {
-                WhileCmd wc = bb.ec as WhileCmd;
-                Analyse(impl, wc.Body);
-            }
-            else if (bb.ec is IfCmd)
-            {
-                IfCmd ifCmd = bb.ec as IfCmd;
-                Analyse(impl, ifCmd.thn);
-                if (ifCmd.elseBlock != null)
-                {
-                    Analyse(impl, ifCmd.elseBlock);
-                }
-                Debug.Assert(ifCmd.elseIf == null);
-            }
-
         }
 
         private void TransferHavoc(Implementation impl, HavocCmd havoc, string component)

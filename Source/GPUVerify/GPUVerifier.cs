@@ -2158,13 +2158,13 @@ namespace GPUVerify
             return variable.Name.Equals(_X.Name) || variable.Name.Equals(_Y.Name) || variable.Name.Equals(_Z.Name);
         }
 
-        internal void AddCandidateInvariant(WhileCmd wc, Expr e, string tag)
+        internal void AddCandidateInvariant(IRegion region, Expr e, string tag)
         {
-            Constant ExistentialBooleanConstant = MakeExistentialBoolean(wc.tok);
-            IdentifierExpr ExistentialBoolean = new IdentifierExpr(wc.tok, ExistentialBooleanConstant);
-            PredicateCmd invariant = new AssertCmd(wc.tok, Expr.Imp(ExistentialBoolean, e));
+            Constant ExistentialBooleanConstant = MakeExistentialBoolean(Token.NoToken);
+            IdentifierExpr ExistentialBoolean = new IdentifierExpr(Token.NoToken, ExistentialBooleanConstant);
+            PredicateCmd invariant = new AssertCmd(Token.NoToken, Expr.Imp(ExistentialBoolean, e));
             invariant.Attributes = new QKeyValue(Token.NoToken, "tag", new List<object>(new object[] { tag }), null);
-            wc.Invariants.Add(invariant);
+            region.AddInvariant(invariant);
             Program.TopLevelDeclarations.Add(ExistentialBooleanConstant);
         }
 
@@ -2182,41 +2182,14 @@ namespace GPUVerify
         }
 
 
-        internal bool ContainsBarrierCall(StmtList stmtList)
+        internal bool ContainsBarrierCall(IRegion loop)
         {
-            foreach (BigBlock bb in stmtList.BigBlocks)
-            {
-                if (ContainsBarrierCall(bb))
-                {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        private bool ContainsBarrierCall(BigBlock bb)
-        {
-            foreach (Cmd c in bb.simpleCmds)
+            foreach (Cmd c in loop.Cmds())
             {
                 if (c is CallCmd && ((c as CallCmd).Proc == BarrierProcedure))
                 {
                     return true;
                 }
-            }
-
-            if (bb.ec is WhileCmd)
-            {
-                return ContainsBarrierCall((bb.ec as WhileCmd).Body);
-            }
-
-            if (bb.ec is IfCmd)
-            {
-                Debug.Assert((bb.ec as IfCmd).elseIf == null);
-                if (ContainsBarrierCall((bb.ec as IfCmd).thn))
-                {
-                    return true;
-                }
-                return (bb.ec as IfCmd).elseBlock != null && ContainsBarrierCall((bb.ec as IfCmd).elseBlock);
             }
 
             return false;
@@ -2247,6 +2220,14 @@ namespace GPUVerify
             return GPUVerifier.MakeBitVectorBinaryBitVector("BV32_ADD", GPUVerifier.MakeBitVectorBinaryBitVector("BV32_MUL",
                             new IdentifierExpr(Token.NoToken, GetGroupId(dimension)), new IdentifierExpr(Token.NoToken, GetGroupSize(dimension))),
                                 new IdentifierExpr(Token.NoToken, MakeThreadId(Token.NoToken, dimension)));
+        }
+
+        internal IRegion RootRegion(Implementation Impl)
+        {
+          if (CommandLineOptions.Unstructured)
+              return new UnstructuredRegion(Program, Impl);
+          else
+              return new StructuredRegion(Impl);
         }
     }
 

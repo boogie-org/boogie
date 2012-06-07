@@ -43,153 +43,131 @@ namespace GPUVerify
                     LocalVars.Add(v);
                 }
 
-                AddCandidateInvariants(Impl.StructuredStmts, LocalVars, UserSuppliedInvariants, Impl);
+                AddCandidateInvariants(verifier.RootRegion(Impl), LocalVars, UserSuppliedInvariants, Impl);
 
         }
 
-        private void AddEqualityCandidateInvariant(WhileCmd wc, string LoopPredicate, Variable v)
+        private void AddEqualityCandidateInvariant(IRegion region, string LoopPredicate, Variable v)
         {
-            verifier.AddCandidateInvariant(wc,
+            verifier.AddCandidateInvariant(region,
                 Expr.Eq(
-                    new IdentifierExpr(wc.tok, new VariableDualiser(1, verifier.uniformityAnalyser, Impl.Name).VisitVariable(v.Clone() as Variable)),
-                    new IdentifierExpr(wc.tok, new VariableDualiser(2, verifier.uniformityAnalyser, Impl.Name).VisitVariable(v.Clone() as Variable))
+                    new IdentifierExpr(Token.NoToken, new VariableDualiser(1, verifier.uniformityAnalyser, Impl.Name).VisitVariable(v.Clone() as Variable)),
+                    new IdentifierExpr(Token.NoToken, new VariableDualiser(2, verifier.uniformityAnalyser, Impl.Name).VisitVariable(v.Clone() as Variable))
             ), "equality");
         }
 
-        private void AddPredicatedEqualityCandidateInvariant(WhileCmd wc, string LoopPredicate, Variable v)
+        private void AddPredicatedEqualityCandidateInvariant(IRegion region, string LoopPredicate, Variable v)
         {
-            verifier.AddCandidateInvariant(wc, Expr.Imp(
+            verifier.AddCandidateInvariant(region, Expr.Imp(
                 Expr.And(
-                    new IdentifierExpr(wc.tok, new LocalVariable(wc.tok, new TypedIdent(wc.tok, LoopPredicate + "$1", Microsoft.Boogie.Type.Int))),
-                    new IdentifierExpr(wc.tok, new LocalVariable(wc.tok, new TypedIdent(wc.tok, LoopPredicate + "$2", Microsoft.Boogie.Type.Int)))
+                    new IdentifierExpr(Token.NoToken, new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, LoopPredicate + "$1", Microsoft.Boogie.Type.Int))),
+                    new IdentifierExpr(Token.NoToken, new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, LoopPredicate + "$2", Microsoft.Boogie.Type.Int)))
                 ),
                 Expr.Eq(
-                    new IdentifierExpr(wc.tok, new VariableDualiser(1, verifier.uniformityAnalyser, Impl.Name).VisitVariable(v.Clone() as Variable)),
-                    new IdentifierExpr(wc.tok, new VariableDualiser(2, verifier.uniformityAnalyser, Impl.Name).VisitVariable(v.Clone() as Variable))
+                    new IdentifierExpr(Token.NoToken, new VariableDualiser(1, verifier.uniformityAnalyser, Impl.Name).VisitVariable(v.Clone() as Variable)),
+                    new IdentifierExpr(Token.NoToken, new VariableDualiser(2, verifier.uniformityAnalyser, Impl.Name).VisitVariable(v.Clone() as Variable))
             )), "predicated equality");
         }
 
 
-        private void AddBarrierDivergenceCandidates(HashSet<Variable> LocalVars, Implementation Impl, WhileCmd wc)
+        private void AddBarrierDivergenceCandidates(HashSet<Variable> LocalVars, Implementation Impl, IRegion region)
         {
 
             if (CommandLineOptions.AddDivergenceCandidatesOnlyToBarrierLoops)
             {
-                if (!verifier.ContainsBarrierCall(wc.Body))
+                if (!verifier.ContainsBarrierCall(region))
                 {
                     return;
                 }
             }
 
-            if (verifier.uniformityAnalyser.IsUniform(Impl.Name, wc.Guard))
+            Expr guard = region.Guard();
+            if (verifier.uniformityAnalyser.IsUniform(Impl.Name, guard))
             {
                 return;
             }
 
-            Debug.Assert(wc.Guard is NAryExpr);
-            Debug.Assert((wc.Guard as NAryExpr).Args.Length == 2);
-            Debug.Assert((wc.Guard as NAryExpr).Args[0] is IdentifierExpr);
-            string LoopPredicate = ((wc.Guard as NAryExpr).Args[0] as IdentifierExpr).Name;
-
-            LoopPredicate = LoopPredicate.Substring(0, LoopPredicate.IndexOf('$'));
-
-            verifier.AddCandidateInvariant(wc, Expr.Eq(
-                // Int type used here, but it doesn't matter as we will print and then re-parse the program
-                new IdentifierExpr(wc.tok, new LocalVariable(wc.tok, new TypedIdent(wc.tok, LoopPredicate + "$1", Microsoft.Boogie.Type.Int))),
-                new IdentifierExpr(wc.tok, new LocalVariable(wc.tok, new TypedIdent(wc.tok, LoopPredicate + "$2", Microsoft.Boogie.Type.Int)))
-            ), "loop predicate equality");
-
-            foreach (Variable v in LocalVars)
+            if (guard is NAryExpr &&
+                (guard as NAryExpr).Args.Length == 2 &&
+                (guard as NAryExpr).Args[0] is IdentifierExpr)
             {
+                string LoopPredicate = ((guard as NAryExpr).Args[0] as IdentifierExpr).Name;
 
-                if (verifier.uniformityAnalyser.IsUniform(Impl.Name, v.Name))
+                LoopPredicate = LoopPredicate.Substring(0, LoopPredicate.IndexOf('$'));
+
+                verifier.AddCandidateInvariant(region, Expr.Eq(
+                    // Int type used here, but it doesn't matter as we will print and then re-parse the program
+                    new IdentifierExpr(Token.NoToken, new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, LoopPredicate + "$1", Microsoft.Boogie.Type.Int))),
+                    new IdentifierExpr(Token.NoToken, new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, LoopPredicate + "$2", Microsoft.Boogie.Type.Int)))
+                ), "loop predicate equality");
+
+                foreach (Variable v in LocalVars)
                 {
-                    continue;
-                }
 
-                string lv = GPUVerifier.StripThreadIdentifier(v.Name);
-
-                if (GPUVerifier.IsPredicateOrTemp(lv))
-                {
-                    continue;
-                }
-
-                if (CommandLineOptions.AddDivergenceCandidatesOnlyIfModified)
-                {
-                    if (!verifier.ContainsNamedVariable(GetModifiedVariables(wc.Body), 
-                        GPUVerifier.StripThreadIdentifier(v.Name)))
+                    if (verifier.uniformityAnalyser.IsUniform(Impl.Name, v.Name))
                     {
                         continue;
                     }
-                }
 
-                AddEqualityCandidateInvariant(wc, LoopPredicate, new LocalVariable(wc.tok, new TypedIdent(wc.tok, lv, Microsoft.Boogie.Type.Int)));
+                    string lv = GPUVerifier.StripThreadIdentifier(v.Name);
 
-                if (Impl != verifier.KernelImplementation)
-                {
-                    AddPredicatedEqualityCandidateInvariant(wc, LoopPredicate, new LocalVariable(wc.tok, new TypedIdent(wc.tok, lv, Microsoft.Boogie.Type.Int)));
-                }
-            }
-
-            if (CommandLineOptions.ArrayEqualities)
-            {
-                foreach (Variable v in verifier.NonLocalState.getAllNonLocalVariables())
-                {
-                    if (!verifier.ArrayModelledAdversarially(v))
+                    if (GPUVerifier.IsPredicateOrTemp(lv))
                     {
-                        AddEqualityCandidateInvariant(wc, LoopPredicate, v);
+                        continue;
+                    }
+
+                    if (CommandLineOptions.AddDivergenceCandidatesOnlyIfModified)
+                    {
+                        if (!verifier.ContainsNamedVariable(GetModifiedVariables(region),
+                            GPUVerifier.StripThreadIdentifier(v.Name)))
+                        {
+                            continue;
+                        }
+                    }
+
+                    AddEqualityCandidateInvariant(region, LoopPredicate, new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, lv, Microsoft.Boogie.Type.Int)));
+
+                    if (Impl != verifier.KernelImplementation)
+                    {
+                        AddPredicatedEqualityCandidateInvariant(region, LoopPredicate, new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, lv, Microsoft.Boogie.Type.Int)));
+                    }
+                }
+
+                if (CommandLineOptions.ArrayEqualities)
+                {
+                    foreach (Variable v in verifier.NonLocalState.getAllNonLocalVariables())
+                    {
+                        if (!verifier.ArrayModelledAdversarially(v))
+                        {
+                            AddEqualityCandidateInvariant(region, LoopPredicate, v);
+                        }
                     }
                 }
             }
         }
 
-        private void AddCandidateInvariants(StmtList stmtList, HashSet<Variable> LocalVars, List<Expr> UserSuppliedInvariants, Implementation Impl)
+        private void AddCandidateInvariants(IRegion region, HashSet<Variable> LocalVars, List<Expr> UserSuppliedInvariants, Implementation Impl)
         {
-            foreach (BigBlock bb in stmtList.BigBlocks)
+            foreach (IRegion subregion in region.SubRegions())
             {
-                AddCandidateInvariants(bb, LocalVars, UserSuppliedInvariants, Impl);
-            }
-        }
-
-        private void AddCandidateInvariants(BigBlock bb, HashSet<Variable> LocalVars, List<Expr> UserSuppliedInvariants, Implementation Impl)
-        {
-            if (bb.ec is WhileCmd)
-            {
-                WhileCmd wc = bb.ec as WhileCmd;
-
                 foreach (InvariantGenerationRule r in invariantGenerationRules)
                 {
-                    r.GenerateCandidates(Impl, wc);
+                    r.GenerateCandidates(Impl, subregion);
                 }
 
-                AddBarrierDivergenceCandidates(LocalVars, Impl, wc);
+                AddBarrierDivergenceCandidates(LocalVars, Impl, subregion);
 
-                verifier.RaceInstrumenter.AddRaceCheckingCandidateInvariants(Impl, wc);
+                verifier.RaceInstrumenter.AddRaceCheckingCandidateInvariants(Impl, subregion);
 
-                AddUserSuppliedInvariants(wc, UserSuppliedInvariants, Impl);
-
-                AddCandidateInvariants(wc.Body, LocalVars, UserSuppliedInvariants, Impl);
-            }
-            else if (bb.ec is IfCmd)
-            {
-                IfCmd ifCmd = bb.ec as IfCmd;
-                AddCandidateInvariants(ifCmd.thn, LocalVars, UserSuppliedInvariants, Impl);
-                if (ifCmd.elseBlock != null)
-                {
-                    AddCandidateInvariants(ifCmd.elseBlock, LocalVars, UserSuppliedInvariants, Impl);
-                }
-
-            }
-            else
-            {
-                Debug.Assert(bb.ec == null);
+                AddUserSuppliedInvariants(subregion, UserSuppliedInvariants, Impl);
             }
         }
 
-        private void AddUserSuppliedInvariants(WhileCmd wc, List<Expr> UserSuppliedInvariants, Implementation Impl)
+        private void AddUserSuppliedInvariants(IRegion region, List<Expr> UserSuppliedInvariants, Implementation Impl)
         {
             foreach (Expr e in UserSuppliedInvariants)
             {
+              /*
                 wc.Invariants.Add(new AssertCmd(wc.tok, e));
                 bool OK = verifier.ProgramIsOK(Impl);
                 wc.Invariants.RemoveAt(wc.Invariants.Count - 1);
@@ -197,30 +175,16 @@ namespace GPUVerify
                 {
                     verifier.AddCandidateInvariant(wc, e, "user supplied");
                 }
+              */
+                verifier.AddCandidateInvariant(region, e, "user supplied");
             }
         }
 
-        internal static HashSet<Variable> GetModifiedVariables(StmtList stmtList)
+        internal static HashSet<Variable> GetModifiedVariables(IRegion region)
         {
             HashSet<Variable> result = new HashSet<Variable>();
 
-            foreach (BigBlock bb in stmtList.BigBlocks)
-            {
-                HashSet<Variable> resultForBlock = GetModifiedVariables(bb);
-                foreach (Variable v in resultForBlock)
-                {
-                    result.Add(v);
-                }
-            }
-
-            return result;
-        }
-
-        private static HashSet<Variable> GetModifiedVariables(BigBlock bb)
-        {
-            HashSet<Variable> result = new HashSet<Variable>();
-
-            foreach (Cmd c in bb.simpleCmds)
+            foreach (Cmd c in region.Cmds())
             {
                 VariableSeq vars = new VariableSeq();
                 c.AddAssignedVariables(vars);
@@ -228,34 +192,6 @@ namespace GPUVerify
                 {
                     result.Add(v);
                 }
-            }
-
-            if (bb.ec is WhileCmd)
-            {
-                HashSet<Variable> modifiedByLoop = GetModifiedVariables((bb.ec as WhileCmd).Body);
-                foreach (Variable v in modifiedByLoop)
-                {
-                    result.Add(v);
-                }
-            }
-            else if (bb.ec is IfCmd)
-            {
-                HashSet<Variable> modifiedByThen = GetModifiedVariables((bb.ec as IfCmd).thn);
-                foreach (Variable v in modifiedByThen)
-                {
-                    result.Add(v);
-                }
-
-                if ((bb.ec as IfCmd).elseBlock != null)
-                {
-                    HashSet<Variable> modifiedByElse = GetModifiedVariables((bb.ec as IfCmd).elseBlock);
-                    foreach (Variable v in modifiedByElse)
-                    {
-                        result.Add(v);
-                    }
-                }
-
-                Debug.Assert((bb.ec as IfCmd).elseIf == null);
             }
 
             return result;

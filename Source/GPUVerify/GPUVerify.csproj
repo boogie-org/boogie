@@ -109,6 +109,8 @@
     <Compile Include="ArrayControlFlowAnalyser.cs" />
     <Compile Include="AsymmetricExpressionFinder.cs" />
     <Compile Include="BlockPredicator.cs" />
+    <Compile Include="UnstructuredRegion.cs" />
+    <Compile Include="IRegion.cs" />
     <Compile Include="GraphAlgorithms.cs" />
     <Compile Include="InvariantGenerationRules\LoopVariableBoundsInvariantGenerator.cs" />
     <Compile Include="InvariantGenerationRules\InvariantGenerationRule.cs" />
@@ -145,6 +147,7 @@
     <Compile Include="UniformityAnalyser.cs" />
     <Compile Include="VariableDualiser.cs" />
     <Compile Include="VariablesOccurringInExpressionVisitor.cs" />
+    <Compile Include="StructuredRegion.cs" />
     <Compile Include="WriteCollector.cs" />
   </ItemGroup>
   <ItemGroup>
