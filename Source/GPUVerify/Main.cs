@@ -129,6 +129,12 @@ namespace GPUVerify
             {
                 fn = CommandLineOptions.outputFile;
             }
+            else if (CommandLineOptions.inputFiles.Count == 1)
+            {
+                var inputFile = CommandLineOptions.inputFiles[0];
+                if (Path.GetExtension(inputFile).ToLower() != ".bpl")
+                    fn = Path.GetFileNameWithoutExtension(inputFile);
+            }
             ResolutionContext rc;
             Program program = parse(out rc);
             IList<GPUVerifier> result = new List<GPUVerifier>();
