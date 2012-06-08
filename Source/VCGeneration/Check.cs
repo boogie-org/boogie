@@ -100,8 +100,9 @@ namespace Microsoft.Boogie {
 
     /// <summary>
     /// Constructor.  Initialize a checker with the program and log file.
+    /// Optionally, use prover context provided by parameter "ctx". 
     /// </summary>
-    public Checker(VC.ConditionGeneration vcgen, Program prog, string/*?*/ logFilePath, bool appendLogFile, int timeout) {
+    public Checker(VC.ConditionGeneration vcgen, Program prog, string/*?*/ logFilePath, bool appendLogFile, int timeout, ProverContext ctx = null) {
       Contract.Requires(vcgen != null);
       Contract.Requires(prog != null);
       this.timeout = timeout;
@@ -121,7 +122,6 @@ namespace Microsoft.Boogie {
       options.Parse(CommandLineOptions.Clo.ProverOptions);
 
       ContextCacheKey key = new ContextCacheKey(prog);
-      ProverContext ctx;
       ProverInterface prover;
 
       if (vcgen.CheckerCommonState == null) {
@@ -129,12 +129,13 @@ namespace Microsoft.Boogie {
       }
       IDictionary<ContextCacheKey, ProverContext>/*!>!*/ cachedContexts = (IDictionary<ContextCacheKey, ProverContext/*!*/>)vcgen.CheckerCommonState;
 
-      if (cachedContexts.TryGetValue(key, out ctx)) {
+      if (ctx == null && cachedContexts.TryGetValue(key, out ctx))
+      {
         ctx = (ProverContext)cce.NonNull(ctx).Clone();
         prover = (ProverInterface)
           CommandLineOptions.Clo.TheProverFactory.SpawnProver(options, ctx);
       } else {
-        ctx = (ProverContext)CommandLineOptions.Clo.TheProverFactory.NewProverContext(options);
+        if (ctx == null) ctx = (ProverContext)CommandLineOptions.Clo.TheProverFactory.NewProverContext(options);
 
         // set up the context
         foreach (Declaration decl in prog.TopLevelDeclarations) {
