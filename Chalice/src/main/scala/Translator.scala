@@ -1626,7 +1626,6 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
         val (tmpGlobalsV, tmpGlobals) = this.FreshGlobals("unfolding")
         val tmpTranslator = new ExpressionTranslator(tmpGlobals, this.oldEtran.globals, currentClass);
         val o = Tr(obj)
-        val (flagV, flag) = Boogie.NewBVar("predFlag", tbool, true)
         
         val receiverOk = isDefined(obj) ::: prove(nonNull(o), obj.pos, "Receiver might be null.");
         val definition = scaleExpressionByPermission(SubstThis(DefinitionOf(pred.predicate), obj), perm, unfolding.pos)
@@ -1634,9 +1633,8 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
         // pick new k
         val (unfoldingKV, unfoldingK) = Boogie.NewBVar("unfoldingK", tint, true)
         
-        val res = Comment("unfolding") ::
+        Comment("unfolding") ::
         BLocal(unfoldingKV) :: bassume(0 < unfoldingK && 1000*unfoldingK < percentPermission(1)) ::
-        BLocal(flagV) :: (flag := true) ::
         // check definedness
         receiverOk ::: isDefined(perm) :::
         // copy state into temporary variables
@@ -1652,12 +1650,6 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
         // check definedness of e in state where the predicate is unfolded
         tmpTranslator.isDefined(e) :::
         bassume(wf(etran.Heap, etran.Mask, etran.SecMask)) :: Nil
-        
-        // record folded predicate
-        val version = Heap.select(o, pred.predicate.FullName)
-        if (!isOldEtran) fpi.addFoldedPredicate(FoldedPredicate(pred.predicate, o, version, fpi.currentConditions, flag))
-        
-        res
       case Iff(e0,e1) =>
         isDefined(e0) ::: isDefined(e1)
       case Implies(e0,e1) =>
@@ -2079,29 +2071,11 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
       bassume(submask(preEtran.Mask, evalMask))
     case uf@Unfolding(acc@Access(pred@MemberAccess(obj, f), perm), ufexpr) =>
 	  if (transferToSecMask) return Nil
-      // handle unfolding like the next case, but also record permissions of the predicate
-      // in the secondary mask and track the predicate in the auxilary information
-      val (receiverV, receiver) = Boogie.NewBVar("predRec", tref, true)
-      val (versionV, version) = Boogie.NewBVar("predVer", tint, true)
-      val (flagV, flag) = Boogie.NewBVar("predFlag", tbool, true)
       val o = TrExpr(obj);
       
-      val stmts = BLocal(receiverV) :: (receiver := o) ::
-      BLocal(flagV) :: (flag := true) ::
       functionTrigger(o, pred.predicate) ::
-      BLocal(versionV) :: (version := Heap.select(o, pred.predicate.FullName)) ::
-      (if(check) isDefined(uf)(true) else
-        if (isOldEtran) Nil else
-        // remove secondary permissions (if any), and add them again
-        UpdateSecMaskDuringUnfold(pred.predicate, o, Heap.select(o, pred.predicate.FullName), perm, currentK) :::
-        TransferPermissionToSecMask(pred.predicate, BoogieExpr(receiver), perm, uf.pos)
-      ) :::
+      (if(check) isDefined(uf)(true) else Nil) :::
       bassume(Tr(uf))
-      
-      // record folded predicate
-      if (!isOldEtran) fpi.addFoldedPredicate(FoldedPredicate(pred.predicate, receiver, version, fpi.currentConditions, flag))
-      
-      stmts
     case e =>
       (if(check) isDefined(e)(true) else Nil) :::
       bassume(Tr(e))
@@ -2153,35 +2127,7 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
     UpdateSecMask(predicate, receiver, version, perm, currentK, 1, Map())
   }
   def UpdateSecMask(predicate: Predicate, receiver: Expr, version: Expr, perm: Permission, currentK: Expr, depth: Int, previousReceivers: Map[String,List[Expr]]): List[Stmt] = {
-    assert (depth >= 0)
-    if (depth <= 0) return Nil
-    
-    val definition = scaleExpressionByPermission(SubstThis(DefinitionOf(predicate), BoogieExpr(receiver)), perm, NoPosition)
-    val occasion = "update SecMask"
-    
-    // condition: if any folded predicate matches (both receiver and version), update the secondary map
-    val disj = (for (fp <- etran.fpi.getFoldedPredicates(predicate)) yield {
-        val conditions = (fp.conditions map (c => if (c._2) c._1 else !c._1)).foldLeft(true: Expr){ (a: Expr, b: Expr) => a && b }
-        val b = fp.version ==@ version && fp.receiver ==@ receiver && conditions && fp.flag
-        (b, fp.flag)
-      })
-    val b = (disj map (a => a._1)).foldLeft(false: Expr){ (a: Expr, b: Expr) => a || b }
-    
-    // add receiver to list of previous receivers
-    val newPreviousReceivers = previousReceivers + (predicate.FullName -> (receiver :: previousReceivers.getOrElse(predicate.FullName, Nil)))
-
-    // assumption that the current receiver is different from all previous ones
-    (for (r <- previousReceivers.getOrElse(predicate.FullName, Nil)) yield {
-      bassume(receiver !=@ r)
-    }) :::
-    // actually update the secondary mask
-    Boogie.If(b,
-      // remove correct predicate from the auxiliary information by setting
-      // its flag to false
-      (disj.foldLeft(Nil: List[Stmt]){ (a: List[Stmt], b: (Expr, Expr)) => Boogie.If(b._1,/*(b._2 := false) :: */Nil,a) :: Nil }) :::
-      // asserts are converted to assumes, so error messages do not matter
-      assert2assume(Exhale(SecMask, SecMask, List((definition, ErrorMessage(NoPosition, ""))), occasion, false, currentK, false /* it should not important what we pass here */, false, depth-1, true, newPreviousReceivers, false)),
-      Nil) :: Nil
+    Nil
   }
   /** Most general form of exhale; implements all the specific versions above */
   // Note: If isUpdatingSecMask, then m is actually a secondary mask, and at the
@@ -2320,6 +2266,7 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
   
   // see comment in front of method exhale about parameter isUpdatingSecMask
   def ExhalePermission(perm: Permission, obj: Expr, memberName: String, currentK: Expr, pos: Position, error: ErrorMessage, em: Boogie.Expr, exactchecking: Boolean, isUpdatingSecMask: Boolean): List[Boogie.Stmt] = {
+    if (isUpdatingSecMask) return Nil
     val (f, stmts) = extractKFromPermission(perm, currentK)
     val n = extractEpsilonsFromPermission(perm);
     
