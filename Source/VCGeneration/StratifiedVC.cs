@@ -139,8 +139,7 @@ namespace VC {
       Contract.Assert(interfaceExprs.Count == svc.interfaceExprVars.Count);
       StratifiedInliningInfo info = svc.info;
       VCExpressionGenerator gen = info.vcgen.prover.VCExprGen;
-      // VCExpr ret = gen.Eq(reachExpr, svc.entryExprVar);
-      VCExpr ret = VCExpressionGenerator.True;
+      VCExpr ret = svc.vcexpr;
       for (int i = 0; i < interfaceExprs.Count; i++) {
         ret = gen.And(ret, gen.Eq(interfaceExprs[i], svc.interfaceExprVars[i]));
       }
