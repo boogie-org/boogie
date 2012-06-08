@@ -144,6 +144,7 @@ namespace VC {
       for (int i = 0; i < interfaceExprs.Count; i++) {
         ret = gen.And(ret, gen.Eq(interfaceExprs[i], svc.interfaceExprVars[i]));
       }
+      ret = gen.Or(blockExpr, ret);
       return ret;
     }
   }
