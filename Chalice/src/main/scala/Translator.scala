@@ -686,13 +686,9 @@ class Translator {
       case fold@Fold(acc@Access(pred@MemberAccess(e, f), perm)) =>
         val o = TrExpr(e);
         var definition = scaleExpressionByPermission(SubstThis(DefinitionOf(pred.predicate), e), perm, fold.pos)
-        val (receiverV, receiver) = Boogie.NewBVar("predRec", tref, true)
-        val (versionV, version) = Boogie.NewBVar("predVer", tint, true)
-        val (flagV, flag) = Boogie.NewBVar("predFlag", tbool, true)
-        
         // pick new k
         val (foldKV, foldK) = Boogie.NewBVar("foldK", tint, true)
-        val stmts = Comment("fold") ::
+        Comment("fold") ::
         functionTrigger(o, pred.predicate) ::
         BLocal(foldKV) :: bassume(0 < foldK && 1000*foldK < percentPermission(1) && 1000*foldK < methodK) ::
         isDefined(e) :::
@@ -701,16 +697,8 @@ class Translator {
         // remove the definition from the current state, and replace by predicate itself
         etran.ExhaleAndTransferToSecMask(o, pred.predicate, List((definition, ErrorMessage(s.pos, "Fold might fail because the definition of " + pred.predicate.FullName + " does not hold."))), "fold", foldK, false) :::
         Inhale(List(acc), "fold", foldK) :::
-        BLocal(receiverV) :: (receiver := o) ::
-        BLocal(versionV) :: (version := etran.Heap.select(o, pred.predicate.FullName)) ::
-        BLocal(flagV) :: (flag := true) ::
         etran.keepFoldedLocations(definition, o, pred.predicate, etran.Mask, etran.Heap, etran.fpi.getFoldedPredicates(pred.predicate)) :::
         bassume(wf(etran.Heap, etran.Mask, etran.SecMask))
-        
-        // record folded predicate
-        etran.fpi.addFoldedPredicate(FoldedPredicate(pred.predicate, receiver, version, etran.fpi.currentConditions, flag))
-        
-        stmts
       case unfld@Unfold(acc@Access(pred@MemberAccess(e, f), perm:Permission)) =>
         val o = TrExpr(e);
         val definition = scaleExpressionByPermission(SubstThis(DefinitionOf(pred.predicate), e), perm, unfld.pos)
@@ -1964,7 +1952,19 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
       val trE = Tr(e.e)
       val module = currentClass.module;
       val memberName = if(e.isPredicate) e.predicate.FullName else e.f.FullName;
-
+      
+      (if (e.isPredicate) {
+        val (receiverV, receiver) = Boogie.NewBVar("predRec", tref, true)
+        val (versionV, version) = Boogie.NewBVar("predVer", tint, true)
+        val (flagV, flag) = Boogie.NewBVar("predFlag", tbool, true)
+        
+        // record folded predicate
+        etran.fpi.addFoldedPredicate(FoldedPredicate(e.predicate, receiver, version, etran.fpi.currentConditions, flag))
+        
+        BLocal(receiverV) :: (receiver := trE) ::
+        BLocal(versionV) :: (version := etran.Heap.select(trE, memberName)) ::
+        BLocal(flagV) :: (flag := true) :: Nil
+      } else Nil) :::
       // List(bassert(nonNull(trE), acc.pos, "The target of the acc predicate might be null."))
       (if(check) isDefined(e.e)(true) ::: isDefined(perm)(true)
       else Nil) :::
