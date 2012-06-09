@@ -206,11 +206,23 @@ namespace Microsoft.Boogie {
       }
     }
 
+    void ApplyRedirections(Model m) {
+      var mapping = new Dictionary<Model.Element, Model.Element>();
+      foreach (var name in new string[] { "U_2_bool", "U_2_int" }) {
+        Model.Func f = m.TryGetFunc(name);
+        if (f != null && f.Arity == 1) {
+          foreach (var ft in f.Apps) mapping[ft.Args[0]] = ft.Result;
+        }
+      }
+      m.Substitute(mapping);
+    }
+
     public Model GetModelWithStates()
     {
       if (Model == null) return null;
 
       Model m = Model;
+      ApplyRedirections(m); 
 
       var mvstates = m.TryGetFunc("@MV_state");
       if (MvInfo == null || mvstates == null)
