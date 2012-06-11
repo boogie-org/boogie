@@ -76,8 +76,20 @@ namespace VC {
         callSites[b] = new List<StratifiedCallSite>();
         foreach (CallSite cs in info.callSites[b]) {
           VCExpr controlFlowFunctionAppl = gen.ControlFlowFunctionApplication(gen.Integer(BigNum.FromInt(id)), gen.Integer(BigNum.FromInt(b.UniqueId)));
-          VCExpr blockExpr = gen.Eq(controlFlowFunctionAppl, gen.Integer(BigNum.ZERO));
-          callSites[b].Add(new StratifiedCallSite(cs, substVisitor, subst, gen.Function(reachMacros[cs.block]), blockExpr));
+          // VCExpr blockExpr = gen.Eq(controlFlowFunctionAppl, gen.Integer(BigNum.ZERO));
+          VCExpr unblockExpr;
+          GotoCmd gotoCmd = b.TransferCmd as GotoCmd;
+          if (gotoCmd == null) {
+            AssertCmd assertCmd = (AssertCmd) b.Cmds[b.Cmds.Length-1];
+            unblockExpr = gen.Eq(controlFlowFunctionAppl, gen.Integer(BigNum.FromInt(-assertCmd.UniqueId)));
+          }
+          else {
+            unblockExpr = VCExpressionGenerator.False;
+            foreach (Block nextBlock in gotoCmd.labelTargets) {
+              unblockExpr = gen.Or(unblockExpr, gen.Eq(controlFlowFunctionAppl, gen.Integer(BigNum.FromInt(nextBlock.UniqueId))));
+            }
+          }
+          callSites[b].Add(new StratifiedCallSite(cs, substVisitor, subst, gen.Function(reachMacros[cs.block]), gen.Not(unblockExpr)));
         }
       }
 
@@ -86,8 +98,20 @@ namespace VC {
         recordProcCallSites[b] = new List<StratifiedCallSite>();
         foreach (CallSite cs in info.recordProcCallSites[b]) {
           VCExpr controlFlowFunctionAppl = gen.ControlFlowFunctionApplication(gen.Integer(BigNum.FromInt(id)), gen.Integer(BigNum.FromInt(b.UniqueId)));
-          VCExpr blockExpr = gen.Eq(controlFlowFunctionAppl, gen.Integer(BigNum.ZERO));
-          recordProcCallSites[b].Add(new StratifiedCallSite(cs, substVisitor, subst, gen.Function(reachMacros[cs.block]), blockExpr));
+          // VCExpr blockExpr = gen.Eq(controlFlowFunctionAppl, gen.Integer(BigNum.ZERO));
+          VCExpr unblockExpr;
+          GotoCmd gotoCmd = b.TransferCmd as GotoCmd;
+          if (gotoCmd == null) {
+            AssertCmd assertCmd = (AssertCmd)b.Cmds[b.Cmds.Length - 1];
+            unblockExpr = gen.Eq(controlFlowFunctionAppl, gen.Integer(BigNum.FromInt(-assertCmd.UniqueId)));
+          }
+          else {
+            unblockExpr = VCExpressionGenerator.False;
+            foreach (Block nextBlock in gotoCmd.labelTargets) {
+              unblockExpr = gen.Or(unblockExpr, gen.Eq(controlFlowFunctionAppl, gen.Integer(BigNum.FromInt(nextBlock.UniqueId))));
+            }
+          }
+          recordProcCallSites[b].Add(new StratifiedCallSite(cs, substVisitor, subst, gen.Function(reachMacros[cs.block]), gen.Not(unblockExpr)));
         }
       }
     }
@@ -97,6 +121,18 @@ namespace VC {
         var ret = new List<StratifiedCallSite>();
         foreach (var b in callSites.Keys) {
           foreach (var cs in callSites[b]) {
+            ret.Add(cs);
+          }
+        }
+        return ret;
+      }
+    }
+
+    public List<StratifiedCallSite> RecordProcCallSites {
+      get {
+        var ret = new List<StratifiedCallSite>();
+        foreach (var b in recordProcCallSites.Keys) {
+          foreach (var cs in recordProcCallSites[b]) {
             ret.Add(cs);
           }
         }
@@ -138,13 +174,41 @@ namespace VC {
     public VCExpr Attach(StratifiedVC svc) {
       Contract.Assert(interfaceExprs.Count == svc.interfaceExprVars.Count);
       StratifiedInliningInfo info = svc.info;
-      VCExpressionGenerator gen = info.vcgen.prover.VCExprGen;
+      ProverInterface prover = info.vcgen.prover;
+      VCExpressionGenerator gen = prover.VCExprGen;
+      
+      Dictionary<VCExprVar, VCExpr> substDict = new Dictionary<VCExprVar, VCExpr>();
+      for (int i = 0; i < svc.interfaceExprVars.Count; i++) {
+        VCExprVar v = svc.interfaceExprVars[i];
+        substDict.Add(v, interfaceExprs[i]);
+      }
+      VCExprSubstitution subst = new VCExprSubstitution(substDict, new Dictionary<TypeVariable, Microsoft.Boogie.Type>());
+      SubstitutingVCExprVisitor substVisitor = new SubstitutingVCExprVisitor(prover.VCExprGen);
+      svc.vcexpr = substVisitor.Mutate(svc.vcexpr, subst);
+      foreach (StratifiedCallSite scs in svc.CallSites) {
+        List<VCExpr> newInterfaceExprs = new List<VCExpr>();
+        foreach (VCExpr expr in scs.interfaceExprs) {
+          newInterfaceExprs.Add(substVisitor.Mutate(expr, subst));
+        }
+        scs.interfaceExprs = newInterfaceExprs;
+      }
+      foreach (StratifiedCallSite scs in svc.RecordProcCallSites) {
+        List<VCExpr> newInterfaceExprs = new List<VCExpr>();
+        foreach (VCExpr expr in scs.interfaceExprs) {
+          newInterfaceExprs.Add(substVisitor.Mutate(expr, subst));
+        }
+        scs.interfaceExprs = newInterfaceExprs;
+      }
+      return gen.Or(blockExpr, svc.vcexpr);
+      
+      /*
       VCExpr ret = svc.vcexpr;
       for (int i = 0; i < interfaceExprs.Count; i++) {
         ret = gen.And(ret, gen.Eq(interfaceExprs[i], svc.interfaceExprVars[i]));
       }
       ret = gen.Or(blockExpr, ret);
       return ret;
+      */ 
     }
   }
 
@@ -153,7 +217,7 @@ namespace VC {
     public Implementation impl;
     public Function function;
     public Variable controlFlowVariable;
-    public Expr assertExpr;
+    public AssertCmd exitAssertCmd;
     public VCExpr vcexpr;
     public List<VCExprVar> interfaceExprVars;
     public List<VCExprVar> privateExprVars;
@@ -214,7 +278,7 @@ namespace VC {
     public void GenerateVC() {
       if (initialized) return;
       List<Variable> outputVariables = new List<Variable>();
-      assertExpr = new LiteralExpr(Token.NoToken, true);
+      Expr assertExpr = new LiteralExpr(Token.NoToken, true);
       foreach (Variable v in impl.OutParams) {
         Constant c = new Constant(Token.NoToken, new TypedIdent(Token.NoToken, impl.Name + "_" + v.Name, v.TypedIdent.Type));
         outputVariables.Add(c);
@@ -229,7 +293,7 @@ namespace VC {
         Expr eqExpr = Expr.Eq(new IdentifierExpr(Token.NoToken, c), new IdentifierExpr(Token.NoToken, v));
         assertExpr = Expr.And(assertExpr, eqExpr);
       }
-      assertExpr = Expr.Not(assertExpr);
+      exitAssertCmd = new AssertCmd(Token.NoToken, Expr.Not(assertExpr));
 
       Program program = vcgen.program;
       ProverInterface proverInterface = vcgen.prover;
@@ -445,9 +509,9 @@ namespace VC {
     // Used inside PassifyImpl
     protected override void addExitAssert(string implName, Block exitBlock) {
       if (implName2StratifiedInliningInfo != null && implName2StratifiedInliningInfo.ContainsKey(implName)) {
-        Expr assertExpr = implName2StratifiedInliningInfo[implName].assertExpr;
-        Contract.Assert(assertExpr != null);
-        exitBlock.Cmds.Add(new AssertCmd(Token.NoToken, assertExpr));
+        AssertCmd exitAssertCmd = implName2StratifiedInliningInfo[implName].exitAssertCmd;
+        Contract.Assert(exitAssertCmd != null);
+        exitBlock.Cmds.Add(exitAssertCmd);
       }
     }
 
