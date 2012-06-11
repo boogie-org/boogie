@@ -25,7 +25,7 @@ namespace GPUVerify
         private HashSet<string> ReservedNames = new HashSet<string>();
 
         private int TempCounter = 0;
-        private int invariantGenerationCounter;
+        private int invariantGenerationCounter = 0;
 
         internal const string LOCAL_ID_X_STRING = "local_id_x";
         internal const string LOCAL_ID_Y_STRING = "local_id_y";
@@ -655,9 +655,6 @@ namespace GPUVerify
 
         private void ComputeInvariant()
         {
-
-            invariantGenerationCounter = 0;
-
             for (int i = 0; i < Program.TopLevelDeclarations.Count; i++)
             {
                 if (Program.TopLevelDeclarations[i] is Implementation)
