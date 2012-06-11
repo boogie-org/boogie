@@ -2156,14 +2156,19 @@ namespace GPUVerify
 
         internal void AddCandidateInvariant(IRegion region, Expr e, string tag)
         {
+            region.AddInvariant(CreateCandidateInvariant(e, tag));
+        }
+
+        internal PredicateCmd CreateCandidateInvariant(Expr e, string tag)
+        {
             Constant ExistentialBooleanConstant = MakeExistentialBoolean(Token.NoToken);
             IdentifierExpr ExistentialBoolean = new IdentifierExpr(Token.NoToken, ExistentialBooleanConstant);
             PredicateCmd invariant = new AssertCmd(Token.NoToken, Expr.Imp(ExistentialBoolean, e));
             invariant.Attributes = new QKeyValue(Token.NoToken, "tag", new List<object>(new object[] { tag }), null);
-            region.AddInvariant(invariant);
             Program.TopLevelDeclarations.Add(ExistentialBooleanConstant);
+            return invariant;
         }
-
+            
         internal Implementation GetImplementation(string procedureName)
         {
             foreach (Declaration D in Program.TopLevelDeclarations)
