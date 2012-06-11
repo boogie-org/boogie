@@ -9,6 +9,7 @@ namespace GPUVerify {
 
 class BlockPredicator {
 
+  GPUVerifier verifier;
   Program prog;
   Implementation impl;
   Graph<Block> blockGraph;
@@ -23,7 +24,8 @@ class BlockPredicator {
   Dictionary<Block, Expr> blockIds = new Dictionary<Block, Expr>();
   HashSet<Block> doneBlocks = new HashSet<Block>();
 
-  BlockPredicator(Program p, Implementation i) {
+  BlockPredicator(GPUVerifier v, Program p, Implementation i) {
+    verifier = v;
     prog = p;
     impl = i;
   }
@@ -184,6 +186,13 @@ class BlockPredicator {
 
         pExpr = Expr.Eq(cur, blockIds[runBlock]);
         CmdSeq newCmdSeq = new CmdSeq();
+        if (CommandLineOptions.Inference && blockGraph.Headers.Contains(runBlock)) {
+          newCmdSeq.Add(verifier.CreateCandidateInvariant(Expr.Eq(cur,
+                  new NAryExpr(Token.NoToken,
+                       new IfThenElse(Token.NoToken),
+                       new ExprSeq(fp, blockIds[runBlock], returnBlockId))),
+                "uniform loop"));
+        }
         newCmdSeq.Add(Cmd.SimpleAssign(Token.NoToken, p, pExpr));
         foreach (Cmd cmd in runBlock.Cmds)
           PredicateCmd(newCmdSeq, cmd);
@@ -201,8 +210,8 @@ class BlockPredicator {
     impl.Blocks = newBlocks;
   }
 
-  public static void Predicate(Program p) {
-    foreach (var decl in p.TopLevelDeclarations) {
+  public static void Predicate(GPUVerifier v, Program p) {
+    foreach (var decl in p.TopLevelDeclarations.ToList()) {
       if (decl is DeclWithFormals && !(decl is Function)) {
         var dwf = (DeclWithFormals)decl;
         var fpVar = new Formal(Token.NoToken,
@@ -215,7 +224,7 @@ class BlockPredicator {
       }
       var impl = decl as Implementation;
       if (impl != null)
-        new BlockPredicator(p, impl).PredicateImplementation();
+        new BlockPredicator(v, p, impl).PredicateImplementation();
     }
   }
 

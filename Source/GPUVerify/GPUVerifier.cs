@@ -2057,7 +2057,7 @@ namespace GPUVerify
         {
             if (CommandLineOptions.Unstructured)
             {
-                BlockPredicator.Predicate(Program);
+                BlockPredicator.Predicate(this, Program);
                 return;
             }
 
