@@ -54,10 +54,10 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
       // collect the array dimensions from the various array.Length functions, and
       // collect all known datatype values
       foreach (var fn in m.Functions) {
-        if (Regex.IsMatch(fn.Name, "^array[0-9]*.Length[0-9]*$")) {
-          int j = fn.Name.IndexOf('.', 5);
-          int dims = j == 5 ? 1 : int.Parse(fn.Name.Substring(5, j - 5));
-          int idx = j == 5 ? 0 : int.Parse(fn.Name.Substring(j + 7));
+        if (Regex.IsMatch(fn.Name, "^_System.array[0-9]*.Length[0-9]*$")) {
+          int j = fn.Name.IndexOf('.', 13);
+          int dims = j == 13 ? 1 : int.Parse(fn.Name.Substring(13, j - 13));
+          int idx = j == 13 ? 0 : int.Parse(fn.Name.Substring(j + 7));
           foreach (var tpl in fn.Apps) {
             var elt = tpl.Args[0];
             var len = tpl.Result;
