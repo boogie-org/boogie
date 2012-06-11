@@ -1,4 +1,8 @@
 ----- Running regression test ..\dafnyRuntimeChecking (without runtime checking)
 ..\dafnyRuntimeChecking Succeeded
+----- Running regression test ..\VSI-Benchmarks (without runtime checking)
+..\VSI-Benchmarks Succeeded
 ----- Running regression test ..\dafnyRuntimeChecking (with runtime checking)
 ..\dafnyRuntimeChecking Succeeded
+----- Running regression test ..\VSI-Benchmarks (with runtime checking)
+..\VSI-Benchmarks Succeeded
