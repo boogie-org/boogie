@@ -188,12 +188,12 @@ namespace GPUVerify
                 AssertCmd ass = c as AssertCmd;
                 if (ContainsAsymmetricExpression(ass.Expr))
                 {
-                    cs.Add(new AssertCmd(c.tok, new VariableDualiser(1, verifier.uniformityAnalyser, procName).VisitExpr(ass.Expr.Clone() as Expr)));
+                    cs.Add(new AssertCmd(c.tok, new VariableDualiser(1, verifier.uniformityAnalyser, procName).VisitExpr(ass.Expr.Clone() as Expr), ass.Attributes));
                 }
                 else
                 {
                     cs.Add(new AssertCmd(c.tok, Expr.And(new VariableDualiser(1, verifier.uniformityAnalyser, procName).VisitExpr(ass.Expr.Clone() as Expr),
-                        new VariableDualiser(2, verifier.uniformityAnalyser, procName).VisitExpr(ass.Expr.Clone() as Expr))));
+                        new VariableDualiser(2, verifier.uniformityAnalyser, procName).VisitExpr(ass.Expr.Clone() as Expr)), ass.Attributes));
                 }
             }
             else if (c is AssumeCmd)
