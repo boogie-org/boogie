@@ -1,37 +1,24 @@
 
 -------------------- AssumeStmt0 --------------------
-
-Dafny program verifier finished with 2 verified, 0 errors
 Compiled assembly into AssumeStmt0.exe
 Rewrote assembly into AssumeStmt0.exe
 
 -------------------- AssumeStmt1 --------------------
-
-Dafny program verifier finished with 2 verified, 0 errors
 Compiled assembly into AssumeStmt1.exe
 Rewrote assembly into AssumeStmt1.exe
 
 -------------------- AssertStmt0 --------------------
-
-Dafny program verifier finished with 2 verified, 0 errors
 Compiled assembly into AssertStmt0.exe
 Rewrote assembly into AssertStmt0.exe
 
 -------------------- AssertStmt1 --------------------
-AssertStmt1.dfy(3,13): Error: assertion violation
-
-Dafny program verifier finished with 1 verified, 1 error
 Compiled assembly into AssertStmt1.exe
 Rewrote assembly into AssertStmt1.exe
 
 -------------------- Precondition0 --------------------
-
-Dafny program verifier finished with 2 verified, 0 errors
 Compiled assembly into Precondition0.exe
 Rewrote assembly into Precondition0.exe
 
 -------------------- Precondition1 --------------------
-
-Dafny program verifier finished with 4 verified, 0 errors
 Compiled assembly into Precondition1.exe
 Rewrote assembly into Precondition1.exe

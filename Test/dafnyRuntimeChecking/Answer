@@ -1,7 +1,5 @@
 
 -------------------- AssumeStmt0 --------------------
-
-Dafny program verifier finished with 2 verified, 0 errors
 Compiled program written to AssumeStmt0.cs
 Compiled assembly into AssumeStmt0.exe
 Rewrote assembly into AssumeStmt0.exe
@@ -603,8 +601,6 @@ public class @_default {
 }
 
 -------------------- AssumeStmt1 --------------------
-
-Dafny program verifier finished with 2 verified, 0 errors
 Compiled program written to AssumeStmt1.cs
 Compiled assembly into AssumeStmt1.exe
 Rewrote assembly into AssumeStmt1.exe
@@ -1206,8 +1202,6 @@ public class @_default {
 }
 
 -------------------- AssertStmt0 --------------------
-
-Dafny program verifier finished with 2 verified, 0 errors
 Compiled program written to AssertStmt0.cs
 Compiled assembly into AssertStmt0.exe
 Rewrote assembly into AssertStmt0.exe
@@ -1809,9 +1803,6 @@ public class @_default {
 }
 
 -------------------- AssertStmt1 --------------------
-AssertStmt1.dfy(3,13): Error: assertion violation
-
-Dafny program verifier finished with 1 verified, 1 error
 Compiled program written to AssertStmt1.cs
 Compiled assembly into AssertStmt1.exe
 Rewrote assembly into AssertStmt1.exe
@@ -2413,8 +2404,6 @@ public class @_default {
 }
 
 -------------------- Precondition0 --------------------
-
-Dafny program verifier finished with 2 verified, 0 errors
 Compiled program written to Precondition0.cs
 Compiled assembly into Precondition0.exe
 Rewrote assembly into Precondition0.exe
@@ -3016,8 +3005,6 @@ public class @_default {
 }
 
 -------------------- Precondition1 --------------------
-
-Dafny program verifier finished with 4 verified, 0 errors
 Compiled program written to Precondition1.cs
 Compiled assembly into Precondition1.exe
 Rewrote assembly into Precondition1.exe
