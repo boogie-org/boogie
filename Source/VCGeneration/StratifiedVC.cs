@@ -305,45 +305,6 @@ namespace VC {
     }
   }
 
-  public class CallSitesSimplifier : StandardVisitor {
-    VariableSeq localVars;
-    StratifiedVCGenBase vcgen;
-    public static void SimplifyCallSites(Implementation implementation, StratifiedVCGenBase vcgen) {
-      CallSitesSimplifier visitor = new CallSitesSimplifier(vcgen);
-      visitor.Visit(implementation);
-      implementation.LocVars.AddRange(visitor.localVars);
-    }
-    private CallSitesSimplifier(StratifiedVCGenBase vcgen) {
-      this.vcgen = vcgen;
-      this.localVars = new VariableSeq();
-    }
-    public override CmdSeq VisitCmdSeq(CmdSeq cmdSeq) {
-      CmdSeq newCmdSeq = new CmdSeq();
-      foreach (Cmd cmd in cmdSeq) {
-        AssumeCmd assumeCmd = cmd as AssumeCmd;
-        if (assumeCmd == null) {
-          newCmdSeq.Add(cmd);
-          continue;
-        }
-        NAryExpr naryExpr = assumeCmd.Expr as NAryExpr;
-        if (naryExpr == null || !vcgen.implName2StratifiedInliningInfo.ContainsKey(naryExpr.Fun.FunctionName)) {
-          newCmdSeq.Add(cmd);
-          continue;
-        }
-
-        ExprSeq exprs = new ExprSeq();
-        foreach (Expr e in naryExpr.Args) {
-          LocalVariable newVar = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "CallSiteSimplification@" + localVars.Length, e.Type));
-          localVars.Add(newVar);
-          newCmdSeq.Add(new AssumeCmd(Token.NoToken, Expr.Eq(Expr.Ident(newVar), e)));
-          exprs.Add(Expr.Ident(newVar));
-        }
-        newCmdSeq.Add(new AssumeCmd(Token.NoToken, new NAryExpr(Token.NoToken, naryExpr.Fun, exprs)));
-      }
-      return newCmdSeq;
-    }
-  }
-
   public abstract class StratifiedVCGenBase : VCGen {
     public readonly static string recordProcName = "boogie_si_record";
     public Dictionary<string, StratifiedInliningInfo> implName2StratifiedInliningInfo;
