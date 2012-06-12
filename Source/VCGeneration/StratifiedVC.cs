@@ -15,7 +15,7 @@ using Microsoft.Boogie.VCExprAST;
 
 namespace VC {
   using Bpl = Microsoft.Boogie;
-
+  
   public class StratifiedVC {
     public StratifiedInliningInfo info;
     public int id;
@@ -23,6 +23,8 @@ namespace VC {
     public Dictionary<Block, List<StratifiedCallSite>> callSites;
     public Dictionary<Block, List<StratifiedCallSite>> recordProcCallSites;
     public VCExpr vcexpr;
+
+    // the following three fields are not being used at the moment
     public VCExprVar entryExprVar;
     public Dictionary<Block, Macro> reachMacros;
     public Dictionary<Block, VCExpr> reachMacroDefinitions;
@@ -75,21 +77,7 @@ namespace VC {
       foreach (Block b in info.callSites.Keys) {
         callSites[b] = new List<StratifiedCallSite>();
         foreach (CallSite cs in info.callSites[b]) {
-          VCExpr controlFlowFunctionAppl = gen.ControlFlowFunctionApplication(gen.Integer(BigNum.FromInt(id)), gen.Integer(BigNum.FromInt(b.UniqueId)));
-          // VCExpr blockExpr = gen.Eq(controlFlowFunctionAppl, gen.Integer(BigNum.ZERO));
-          VCExpr unblockExpr;
-          GotoCmd gotoCmd = b.TransferCmd as GotoCmd;
-          if (gotoCmd == null) {
-            AssertCmd assertCmd = (AssertCmd) b.Cmds[b.Cmds.Length-1];
-            unblockExpr = gen.Eq(controlFlowFunctionAppl, gen.Integer(BigNum.FromInt(-assertCmd.UniqueId)));
-          }
-          else {
-            unblockExpr = VCExpressionGenerator.False;
-            foreach (Block nextBlock in gotoCmd.labelTargets) {
-              unblockExpr = gen.Or(unblockExpr, gen.Eq(controlFlowFunctionAppl, gen.Integer(BigNum.FromInt(nextBlock.UniqueId))));
-            }
-          }
-          callSites[b].Add(new StratifiedCallSite(cs, substVisitor, subst, gen.Function(reachMacros[cs.block]), gen.Not(unblockExpr)));
+          callSites[b].Add(new StratifiedCallSite(cs, substVisitor, subst));
         }
       }
 
@@ -97,21 +85,7 @@ namespace VC {
       foreach (Block b in info.recordProcCallSites.Keys) {
         recordProcCallSites[b] = new List<StratifiedCallSite>();
         foreach (CallSite cs in info.recordProcCallSites[b]) {
-          VCExpr controlFlowFunctionAppl = gen.ControlFlowFunctionApplication(gen.Integer(BigNum.FromInt(id)), gen.Integer(BigNum.FromInt(b.UniqueId)));
-          // VCExpr blockExpr = gen.Eq(controlFlowFunctionAppl, gen.Integer(BigNum.ZERO));
-          VCExpr unblockExpr;
-          GotoCmd gotoCmd = b.TransferCmd as GotoCmd;
-          if (gotoCmd == null) {
-            AssertCmd assertCmd = (AssertCmd)b.Cmds[b.Cmds.Length - 1];
-            unblockExpr = gen.Eq(controlFlowFunctionAppl, gen.Integer(BigNum.FromInt(-assertCmd.UniqueId)));
-          }
-          else {
-            unblockExpr = VCExpressionGenerator.False;
-            foreach (Block nextBlock in gotoCmd.labelTargets) {
-              unblockExpr = gen.Or(unblockExpr, gen.Eq(controlFlowFunctionAppl, gen.Integer(BigNum.FromInt(nextBlock.UniqueId))));
-            }
-          }
-          recordProcCallSites[b].Add(new StratifiedCallSite(cs, substVisitor, subst, gen.Function(reachMacros[cs.block]), gen.Not(unblockExpr)));
+          recordProcCallSites[b].Add(new StratifiedCallSite(cs, substVisitor, subst));
         }
       }
     }
@@ -146,9 +120,11 @@ namespace VC {
     public List<VCExpr> interfaceExprs;
     public Block block;
     public int numInstr;  // for TraceLocation
-    public CallSite(string callee, List<VCExpr> interfaceExprs, Block block, int numInstr) {
+    public VCExprVar callSiteVar;
+    public CallSite(string callee, List<VCExpr> interfaceExprs, VCExprVar callSiteVar, Block block, int numInstr) {
       this.calleeName = callee;
       this.interfaceExprs = interfaceExprs;
+      this.callSiteVar = callSiteVar;
       this.block = block;
       this.numInstr = numInstr;
     }
@@ -157,18 +133,16 @@ namespace VC {
   public class StratifiedCallSite {
     public CallSite callSite;
     public List<VCExpr> interfaceExprs;
-    public VCExpr reachExpr;
-    public VCExpr blockExpr;
+    public VCExpr callSiteExpr;
 
-    public StratifiedCallSite(CallSite cs, SubstitutingVCExprVisitor substVisitor, VCExprSubstitution subst, 
-                              VCExpr reachExpression, VCExpr blockExpression) {
+    public StratifiedCallSite(CallSite cs, SubstitutingVCExprVisitor substVisitor, VCExprSubstitution subst) {
       callSite = cs;
       interfaceExprs = new List<VCExpr>();
       foreach (VCExpr v in cs.interfaceExprs) {
         interfaceExprs.Add(substVisitor.Mutate(v, subst));
       }
-      reachExpr = reachExpression;
-      blockExpr = blockExpression;
+      if (callSite.callSiteVar != null)
+        callSiteExpr = substVisitor.Mutate(callSite.callSiteVar, subst);
     }
 
     public VCExpr Attach(StratifiedVC svc) {
@@ -199,16 +173,7 @@ namespace VC {
         }
         scs.interfaceExprs = newInterfaceExprs;
       }
-      return gen.Or(blockExpr, svc.vcexpr);
-      
-      /*
-      VCExpr ret = svc.vcexpr;
-      for (int i = 0; i < interfaceExprs.Count; i++) {
-        ret = gen.And(ret, gen.Eq(interfaceExprs[i], svc.interfaceExprVars[i]));
-      }
-      ret = gen.Or(blockExpr, ret);
-      return ret;
-      */ 
+      return gen.Implies(callSiteExpr, svc.vcexpr);
     }
   }
 
@@ -225,7 +190,6 @@ namespace VC {
     public ModelViewInfo mvInfo;
     public Dictionary<Block, List<CallSite>> callSites;
     public Dictionary<Block, List<CallSite>> recordProcCallSites;
-    public IEnumerable<Block> sortedBlocks;
     public bool initialized { get; private set; }
 
     public StratifiedInliningInfo(Implementation implementation, StratifiedVCGenBase stratifiedVcGen) {
@@ -307,25 +271,16 @@ namespace VC {
       if (!CommandLineOptions.Clo.UseLabels) {
         controlFlowVariable = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "@cfc", Microsoft.Boogie.Type.Int));
         controlFlowVariableExpr = translator.LookupVariable(controlFlowVariable);
+        vcgen.InstrumentCallSites(impl);
       }
       vcexpr = gen.Not(vcgen.GenerateVC(impl, controlFlowVariableExpr, out label2absy, proverInterface.Context));
       if (controlFlowVariableExpr != null) {
         VCExpr controlFlowFunctionAppl = exprGen.ControlFlowFunctionApplication(controlFlowVariableExpr, exprGen.Integer(BigNum.ZERO));
         VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl, exprGen.Integer(BigNum.FromInt(impl.Blocks[0].UniqueId)));
         vcexpr = exprGen.And(eqExpr, vcexpr);
+        callSites = vcgen.CollectCallSites(impl);
+        recordProcCallSites = vcgen.CollectRecordProcedureCallSites(impl);
       }
-
-      Graph<Block> dag = new Graph<Block>();
-      dag.AddSource(impl.Blocks[0]);
-      foreach (Block b in impl.Blocks) {
-        GotoCmd gtc = b.TransferCmd as GotoCmd;
-        if (gtc != null) {
-          foreach (Block dest in gtc.labelTargets) {
-            dag.AddEdge(b, dest);
-          }
-        }
-      }
-      sortedBlocks = dag.TopologicalSort();
 
       privateExprVars = new List<VCExprVar>();
       foreach (Variable v in impl.LocVars) {
@@ -346,8 +301,6 @@ namespace VC {
         interfaceExprVars.Add(translator.LookupVariable(v));
       }
 
-      callSites = vcgen.CollectCallSites(impl);
-      recordProcCallSites = vcgen.CollectRecordProcedureCallSites(impl);
       initialized = true;
     }
   }
@@ -443,11 +396,33 @@ namespace VC {
       base.Close();
     }
 
+    public void InstrumentCallSites(Implementation implementation) {
+      var callSiteId = 0;
+      foreach (Block block in implementation.Blocks) {
+        CmdSeq newCmds = new CmdSeq();
+        for (int i = 0; i < block.Cmds.Length; i++) {
+          Cmd cmd = block.Cmds[i];
+          newCmds.Add(cmd);
+          AssumeCmd assumeCmd = cmd as AssumeCmd;
+          if (assumeCmd == null) continue;
+          NAryExpr naryExpr = assumeCmd.Expr as NAryExpr;
+          if (naryExpr == null) continue;
+          if (!implName2StratifiedInliningInfo.ContainsKey(naryExpr.Fun.FunctionName)) continue;
+          Variable callSiteVar = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "StratifiedInliningCallSite" + callSiteId, Microsoft.Boogie.Type.Bool));
+          implementation.LocVars.Add(callSiteVar);
+          newCmds.Add(new AssumeCmd(Token.NoToken, new IdentifierExpr(Token.NoToken, callSiteVar)));
+          callSiteId++;
+        }
+        block.Cmds = newCmds;
+      }
+    }
+
     public Dictionary<Block, List<CallSite>> CollectCallSites(Implementation implementation) {
       var callSites = new Dictionary<Block, List<CallSite>>();
       foreach (Block block in implementation.Blocks) {
         for (int i = 0; i < block.Cmds.Length; i++) {
-          AssumeCmd assumeCmd = block.Cmds[i] as AssumeCmd;
+          Cmd cmd = block.Cmds[i];
+          AssumeCmd assumeCmd = cmd as AssumeCmd;
           if (assumeCmd == null) continue;
           NAryExpr naryExpr = assumeCmd.Expr as NAryExpr;
           if (naryExpr == null) continue;
@@ -456,7 +431,11 @@ namespace VC {
           foreach (Expr e in naryExpr.Args) {
             interfaceExprs.Add(prover.Context.BoogieExprTranslator.Translate(e));
           }
-          CallSite cs = new CallSite(naryExpr.Fun.FunctionName, interfaceExprs, block, i);
+          int instr = i;
+          i++;
+          AssumeCmd callSiteAssumeCmd = (AssumeCmd)block.Cmds[i];
+          IdentifierExpr iexpr = (IdentifierExpr) callSiteAssumeCmd.Expr;
+          CallSite cs = new CallSite(naryExpr.Fun.FunctionName, interfaceExprs, prover.Context.BoogieExprTranslator.LookupVariable(iexpr.Decl), block, instr);
           if (!callSites.ContainsKey(block))
             callSites[block] = new List<CallSite>();
           callSites[block].Add(cs);
@@ -478,7 +457,7 @@ namespace VC {
           foreach (Expr e in naryExpr.Args) {
             interfaceExprs.Add(prover.Context.BoogieExprTranslator.Translate(e));
           }
-          CallSite cs = new CallSite(naryExpr.Fun.FunctionName, interfaceExprs, block, i);
+          CallSite cs = new CallSite(naryExpr.Fun.FunctionName, interfaceExprs, null, block, i);
           if (!callSites.ContainsKey(block))
             callSites[block] = new List<CallSite>();
           callSites[block].Add(cs);
