@@ -1418,7 +1418,13 @@ namespace GPUVerify
             IdentifierExpr P1 = new IdentifierExpr(tok, new LocalVariable(tok, BarrierProcedure.InParams[0].TypedIdent));
             IdentifierExpr P2 = new IdentifierExpr(tok, new LocalVariable(tok, BarrierProcedure.InParams[1].TypedIdent));
 
-            checkNonDivergence.simpleCmds.Add(new AssertCmd(tok, Expr.Eq(P1, P2)));
+            Expr DivergenceCondition = Expr.Eq(P1, P2);
+            if (CommandLineOptions.InterGroupRaceChecking)
+            {
+                DivergenceCondition = Expr.Imp(ThreadsInSameGroup(), DivergenceCondition);
+            }
+
+            checkNonDivergence.simpleCmds.Add(new AssertCmd(tok, DivergenceCondition));
 
             if (!CommandLineOptions.OnlyDivergence)
             {
@@ -1431,15 +1437,32 @@ namespace GPUVerify
                 checkNonDivergence.ec = new IfCmd(tok, Expr.Or(Expr.Not(P1), Expr.Not(P2)), returnstatement, null, null);
             }
 
-            bigblocks.Add(RaceInstrumenter.MakeResetReadWriteSetsStatements(tok));
+            if (CommandLineOptions.InterGroupRaceChecking)
+            {
+                bigblocks.Add(new BigBlock(Token.NoToken, null, new CmdSeq(),
+                    new IfCmd(Token.NoToken, P1, new StmtList(MakeResetAndHavocBlocks(1), Token.NoToken), null, null),
+                    null));
+                bigblocks.Add(new BigBlock(Token.NoToken, null, new CmdSeq(),
+                    new IfCmd(Token.NoToken, P2, new StmtList(MakeResetAndHavocBlocks(2), Token.NoToken), null, null),
+                    null));
+            }
+            else
+            {
+                foreach (BigBlock bb in MakeResetAndHavocBlocks(1))
+                {
+                    bigblocks.Add(bb);
+                }
+                foreach (BigBlock bb in MakeResetAndHavocBlocks(2))
+                {
+                    bigblocks.Add(bb);
+                }
+            }
 
-            BigBlock havocSharedState = new BigBlock(tok, "__HavocSharedState", new CmdSeq(), null, null);
-            bigblocks.Add(havocSharedState);
             foreach (Variable v in NonLocalState.getAllNonLocalVariables())
             {
                 if (!ArrayModelledAdversarially(v))
                 {
-                    HavocAndAssumeEquality(tok, havocSharedState, v);
+                    bigblocks.Add(AssumeEqualityBetweenSharedArrays(v, P1, P2));
                 }
             }
 
@@ -1455,6 +1478,20 @@ namespace GPUVerify
             BarrierImplementation.Proc = BarrierProcedure;
 
             Program.TopLevelDeclarations.Add(BarrierImplementation);
+        }
+
+        private List<BigBlock> MakeResetAndHavocBlocks(int Thread)
+        {
+            List<BigBlock> ResetAndHavocBlocks = new List<BigBlock>();
+            foreach (Variable v in NonLocalState.getAllNonLocalVariables())
+            {
+                ResetAndHavocBlocks.Add(RaceInstrumenter.MakeResetReadWriteSetsStatements(v, Thread));
+                if (!ArrayModelledAdversarially(v))
+                {
+                    ResetAndHavocBlocks.Add(HavocSharedArray(v, Thread));
+                }
+            }
+            return ResetAndHavocBlocks;
         }
 
 
@@ -1487,16 +1524,27 @@ namespace GPUVerify
             return v.TypedIdent.Type is MapType;
         }
 
-        private void HavocAndAssumeEquality(IToken tok, BigBlock bb, Variable v)
+        private BigBlock HavocSharedArray(Variable v, int thread)
         {
-            IdentifierExpr v1 = new IdentifierExpr(tok, new VariableDualiser(1, null, null).VisitVariable(v.Clone() as Variable));
-            IdentifierExpr v2 = new IdentifierExpr(tok, new VariableDualiser(2, null, null).VisitVariable(v.Clone() as Variable));
-
-            IdentifierExprSeq ModifiedVars = new IdentifierExprSeq(new IdentifierExpr[] { v1, v2 });
-            bb.simpleCmds.Add(new HavocCmd(tok, ModifiedVars));
-            bb.simpleCmds.Add(new AssumeCmd(tok, Expr.Eq(v1, v2)));
-
+            IdentifierExpr vForThread = new IdentifierExpr(Token.NoToken, new VariableDualiser(thread, null, null).VisitVariable(v.Clone() as Variable));
+            return new BigBlock(Token.NoToken, null, new CmdSeq(new Cmd[] { new HavocCmd(Token.NoToken, new IdentifierExprSeq(new IdentifierExpr[] { vForThread })) }), null, null);
         }
+
+        private BigBlock AssumeEqualityBetweenSharedArrays(Variable v, Expr P1, Expr P2)
+        {
+            IdentifierExpr v1 = new IdentifierExpr(Token.NoToken, new VariableDualiser(1, null, null).VisitVariable(v.Clone() as Variable));
+            IdentifierExpr v2 = new IdentifierExpr(Token.NoToken, new VariableDualiser(2, null, null).VisitVariable(v.Clone() as Variable));
+
+            Expr AssumeGuard = Expr.Eq(v1, v2);
+
+            if (CommandLineOptions.InterGroupRaceChecking)
+            {
+                AssumeGuard = Expr.Imp(ThreadsInSameGroup(), AssumeGuard);
+            }
+
+            return new BigBlock(Token.NoToken, null, new CmdSeq(new Cmd[] { new AssumeCmd(Token.NoToken, AssumeGuard) }), null, null);
+        }
+
 
         internal static bool ModifiesSetContains(IdentifierExprSeq Modifies, IdentifierExpr v)
         {

@@ -930,24 +930,19 @@ namespace GPUVerify
         protected abstract void AddLogAccessProcedure(Variable v, string ReadOrWrite);
 
 
-        public BigBlock MakeResetReadWriteSetsStatements(IToken tok)
+        public BigBlock MakeResetReadWriteSetsStatements(Variable v, int Thread)
         {
-            BigBlock result = new BigBlock(tok, "__ResetReadWriteSets", new CmdSeq(), null, null);
-
-            foreach (Variable v in NonLocalStateToCheck.getAllNonLocalVariables())
+            BigBlock result = new BigBlock(Token.NoToken, null, new CmdSeq(), null, null);
+            if (Thread == 2)
             {
-                SetNoAccessOccurred(tok, result, v);
+                return result;
             }
+            SetNoAccessOccurred(result, v, "READ");
+            SetNoAccessOccurred(result, v, "WRITE");
             return result;
         }
 
-        private void SetNoAccessOccurred(IToken tok, BigBlock bb, Variable v)
-        {
-            SetNoAccessOccurred(tok, bb, v, "READ");
-            SetNoAccessOccurred(tok, bb, v, "WRITE");
-        }
-
-        protected abstract void SetNoAccessOccurred(IToken tok, BigBlock bb, Variable v, string AccessType);
+        protected abstract void SetNoAccessOccurred(BigBlock bb, Variable v, string AccessType);
 
         protected Procedure MakeLogAccessProcedureHeader(Variable v, string ReadOrWrite)
         {

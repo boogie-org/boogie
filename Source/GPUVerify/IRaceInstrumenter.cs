@@ -20,7 +20,7 @@ namespace GPUVerify
 
         void AddRaceCheckingDeclarations();
 
-        BigBlock MakeResetReadWriteSetsStatements(IToken tok);
+        BigBlock MakeResetReadWriteSetsStatements(Variable v, int thread);
 
         void AddRaceCheckingCandidateRequires(Procedure Proc);
 
