@@ -1084,64 +1084,78 @@ namespace GPUVerify
         {
             RaceInstrumenter.AddKernelPrecondition();
 
-            Expr AssumeDistinctThreads = null;
-            Expr AssumeThreadIdsInRange = null;
             IToken tok = KernelImplementation.tok;
 
-            GeneratePreconditionsForDimension(ref AssumeDistinctThreads, ref AssumeThreadIdsInRange, tok, "X");
-            GeneratePreconditionsForDimension(ref AssumeDistinctThreads, ref AssumeThreadIdsInRange, tok, "Y");
-            GeneratePreconditionsForDimension(ref AssumeDistinctThreads, ref AssumeThreadIdsInRange, tok, "Z");
+            GeneratePreconditionsForDimension(tok, "X");
+            GeneratePreconditionsForDimension(tok, "Y");
+            GeneratePreconditionsForDimension(tok, "Z");
 
-            if (AssumeDistinctThreads != null)
+            foreach (Declaration D in Program.TopLevelDeclarations)
             {
-                Debug.Assert(AssumeThreadIdsInRange != null);
-
-                foreach (Declaration D in Program.TopLevelDeclarations)
+                if (!(D is Procedure))
                 {
-                    if (!(D is Procedure))
-                    {
-                        continue;
-                    }
-                    Procedure Proc = D as Procedure;
-                    if (QKeyValue.FindIntAttribute(Proc.Attributes, "inline", -1) == 1)
-                    {
-                        continue;
-                    }
+                    continue;
+                }
+                Procedure Proc = D as Procedure;
+                if (QKeyValue.FindIntAttribute(Proc.Attributes, "inline", -1) == 1)
+                {
+                    continue;
+                }
 
-                    Proc.Requires.Add(new Requires(false, AssumeDistinctThreads));
-                    Proc.Requires.Add(new Requires(false, AssumeThreadIdsInRange));
+                Expr DistinctLocalIds =
+                    Expr.Or(
+                        Expr.Or(
+                            Expr.Neq(
+                            new IdentifierExpr(tok, MakeThreadId(tok, "X", 1)),
+                            new IdentifierExpr(tok, MakeThreadId(tok, "X", 2))
+                            ),
+                            Expr.Neq(
+                            new IdentifierExpr(tok, MakeThreadId(tok, "Y", 1)),
+                            new IdentifierExpr(tok, MakeThreadId(tok, "Y", 2))
+                            )
+                        ),
+                        Expr.Neq(
+                        new IdentifierExpr(tok, MakeThreadId(tok, "Z", 1)),
+                        new IdentifierExpr(tok, MakeThreadId(tok, "Z", 2))
+                        )
+                    );
 
-                    if (Proc == KernelProcedure)
-                    {
-                        bool foundNonUniform = false;
-                        int indexOfFirstNonUniformParameter;
-                        for (indexOfFirstNonUniformParameter = 0; indexOfFirstNonUniformParameter < Proc.InParams.Length; indexOfFirstNonUniformParameter++)
-                        {
-                            if (!uniformityAnalyser.IsUniform(Proc.Name, StripThreadIdentifier(Proc.InParams[indexOfFirstNonUniformParameter].Name)))
-                            {
-                                foundNonUniform = true;
-                                break;
-                            }
-                        }
-
-                        if (foundNonUniform)
-                        {
-                            // I have a feeling this will never be reachable!!!
-                            int numberOfNonUniformParameters = (Proc.InParams.Length - indexOfFirstNonUniformParameter) / 2;
-                            for (int i = indexOfFirstNonUniformParameter; i < numberOfNonUniformParameters; i++)
-                            {
-                                Proc.Requires.Add(new Requires(false,
-                                    Expr.Eq(new IdentifierExpr(Proc.InParams[i].tok, Proc.InParams[i]),
-                                            new IdentifierExpr(Proc.InParams[i + numberOfNonUniformParameters].tok, Proc.InParams[i + numberOfNonUniformParameters]))));
-                            }
-                        }
-                    }
+                if (CommandLineOptions.InterGroupRaceChecking)
+                {
+                    Proc.Requires.Add(new Requires(false, Expr.Imp(ThreadsInSameGroup(), DistinctLocalIds)));
 
                 }
-            }
-            else
-            {
-                Debug.Assert(AssumeThreadIdsInRange == null);
+                else
+                {
+                    Proc.Requires.Add(new Requires(false, DistinctLocalIds));
+                }
+
+                if (Proc == KernelProcedure)
+                {
+                    bool foundNonUniform = false;
+                    int indexOfFirstNonUniformParameter;
+                    for (indexOfFirstNonUniformParameter = 0; indexOfFirstNonUniformParameter < Proc.InParams.Length; indexOfFirstNonUniformParameter++)
+                    {
+                        if (!uniformityAnalyser.IsUniform(Proc.Name, StripThreadIdentifier(Proc.InParams[indexOfFirstNonUniformParameter].Name)))
+                        {
+                            foundNonUniform = true;
+                            break;
+                        }
+                    }
+
+                    if (foundNonUniform)
+                    {
+                        // I have a feeling this will never be reachable!!!
+                        int numberOfNonUniformParameters = (Proc.InParams.Length - indexOfFirstNonUniformParameter) / 2;
+                        for (int i = indexOfFirstNonUniformParameter; i < numberOfNonUniformParameters; i++)
+                        {
+                            Proc.Requires.Add(new Requires(false,
+                                Expr.Eq(new IdentifierExpr(Proc.InParams[i].tok, Proc.InParams[i]),
+                                        new IdentifierExpr(Proc.InParams[i + numberOfNonUniformParameters].tok, Proc.InParams[i + numberOfNonUniformParameters]))));
+                        }
+                    }
+                }
+
             }
 
             foreach (Declaration D in Program.TopLevelDeclarations)
@@ -1165,6 +1179,26 @@ namespace GPUVerify
 
             }
 
+        }
+
+        internal Expr ThreadsInSameGroup()
+        {
+            return Expr.And(
+                                        Expr.And(
+                                            Expr.Eq(
+                                            new IdentifierExpr(Token.NoToken, MakeGroupId("X", 1)),
+                                            new IdentifierExpr(Token.NoToken, MakeGroupId("X", 2))
+                                            ),
+                                            Expr.Eq(
+                                            new IdentifierExpr(Token.NoToken, MakeGroupId("Y", 1)),
+                                            new IdentifierExpr(Token.NoToken, MakeGroupId("Y", 2))
+                                            )
+                                        ),
+                                        Expr.Eq(
+                                        new IdentifierExpr(Token.NoToken, MakeGroupId("Z", 1)),
+                                        new IdentifierExpr(Token.NoToken, MakeGroupId("Z", 2))
+                                        )
+                                    );
         }
 
         internal static void AddInvariantToAllLoops(Expr Invariant, StmtList stmtList)
@@ -1191,7 +1225,7 @@ namespace GPUVerify
             return Int32.Parse(p.Substring(p.IndexOf("$") + 1, p.Length - (p.IndexOf("$") + 1)));
         }
 
-        private void GeneratePreconditionsForDimension(ref Expr AssumeDistinctThreads, ref Expr AssumeThreadIdsInRange, IToken tok, String dimension)
+        private void GeneratePreconditionsForDimension(IToken tok, String dimension)
         {
             foreach (Declaration D in Program.TopLevelDeclarations.ToList())
             {
@@ -1205,53 +1239,59 @@ namespace GPUVerify
                     continue;
                 }
 
+                Expr GroupSizePositive;
+                Expr NumGroupsPositive;
+                Expr GroupIdNonNegative;
+                Expr GroupIdLessThanNumGroups;
+
                 if (GetTypeOfId(dimension).Equals(Microsoft.Boogie.Type.GetBvType(32)))
                 {
-                    Proc.Requires.Add(new Requires(false, MakeBVSgt(new IdentifierExpr(tok, GetGroupSize(dimension)), ZeroBV(tok))));
-                    Proc.Requires.Add(new Requires(false, MakeBVSgt(new IdentifierExpr(tok, GetNumGroups(dimension)), ZeroBV(tok))));
-                    Proc.Requires.Add(new Requires(false, MakeBVSge(new IdentifierExpr(tok, GetGroupId(dimension)), ZeroBV(tok))));
-                    Proc.Requires.Add(new Requires(false, MakeBVSlt(new IdentifierExpr(tok, GetGroupId(dimension)), new IdentifierExpr(tok, GetNumGroups(dimension)))));
+                    GroupSizePositive = MakeBVSgt(new IdentifierExpr(tok, GetGroupSize(dimension)), ZeroBV(tok));
+                    NumGroupsPositive = MakeBVSgt(new IdentifierExpr(tok, GetNumGroups(dimension)), ZeroBV(tok));
+                    GroupIdNonNegative = MakeBVSge(new IdentifierExpr(tok, GetGroupId(dimension)), ZeroBV(tok));
+                    GroupIdLessThanNumGroups = MakeBVSlt(new IdentifierExpr(tok, GetGroupId(dimension)), new IdentifierExpr(tok, GetNumGroups(dimension)));
                 }
                 else
                 {
-                    Proc.Requires.Add(new Requires(false, Expr.Gt(new IdentifierExpr(tok, GetGroupSize(dimension)), Zero(tok))));
-                    Proc.Requires.Add(new Requires(false, Expr.Gt(new IdentifierExpr(tok, GetNumGroups(dimension)), Zero(tok))));
-                    Proc.Requires.Add(new Requires(false, Expr.Ge(new IdentifierExpr(tok, GetGroupId(dimension)), Zero(tok))));
-                    Proc.Requires.Add(new Requires(false, Expr.Lt(new IdentifierExpr(tok, GetGroupId(dimension)), new IdentifierExpr(tok, GetNumGroups(dimension)))));
+                    GroupSizePositive = Expr.Gt(new IdentifierExpr(tok, GetGroupSize(dimension)), Zero(tok));
+                    NumGroupsPositive = Expr.Gt(new IdentifierExpr(tok, GetNumGroups(dimension)), Zero(tok));
+                    GroupIdNonNegative = Expr.Ge(new IdentifierExpr(tok, GetGroupId(dimension)), Zero(tok));
+                    GroupIdLessThanNumGroups = Expr.Lt(new IdentifierExpr(tok, GetGroupId(dimension)), new IdentifierExpr(tok, GetNumGroups(dimension)));
                 }
+
+                Proc.Requires.Add(new Requires(false, GroupSizePositive));
+                Proc.Requires.Add(new Requires(false, NumGroupsPositive));
+                if (CommandLineOptions.InterGroupRaceChecking)
+                {
+                    Proc.Requires.Add(new Requires(false, new VariableDualiser(1, null, null).VisitExpr(GroupIdNonNegative)));
+                    Proc.Requires.Add(new Requires(false, new VariableDualiser(2, null, null).VisitExpr(GroupIdNonNegative)));
+                    Proc.Requires.Add(new Requires(false, new VariableDualiser(1, null, null).VisitExpr(GroupIdLessThanNumGroups)));
+                    Proc.Requires.Add(new Requires(false, new VariableDualiser(2, null, null).VisitExpr(GroupIdLessThanNumGroups)));
+                }
+                else
+                {
+                    Proc.Requires.Add(new Requires(false, GroupIdNonNegative));
+                    Proc.Requires.Add(new Requires(false, GroupIdLessThanNumGroups));
+                }
+
+                Expr ThreadIdNonNegative =
+                    GetTypeOfId(dimension).Equals(Microsoft.Boogie.Type.GetBvType(32)) ?
+                            MakeBVSge(new IdentifierExpr(tok, MakeThreadId(tok, dimension)), ZeroBV(tok))
+                    :
+                            Expr.Ge(new IdentifierExpr(tok, MakeThreadId(tok, dimension)), Zero(tok));
+                Expr ThreadIdLessThanGroupSize =
+                    GetTypeOfId(dimension).Equals(Microsoft.Boogie.Type.GetBvType(32)) ?
+                            MakeBVSlt(new IdentifierExpr(tok, MakeThreadId(tok, dimension)), new IdentifierExpr(tok, GetGroupSize(dimension)))
+                    :
+                            Expr.Lt(new IdentifierExpr(tok, MakeThreadId(tok, dimension)), new IdentifierExpr(tok, GetGroupSize(dimension)));
+
+                Proc.Requires.Add(new Requires(false, new VariableDualiser(1, null, null).VisitExpr(ThreadIdNonNegative)));
+                Proc.Requires.Add(new Requires(false, new VariableDualiser(2, null, null).VisitExpr(ThreadIdNonNegative)));
+                Proc.Requires.Add(new Requires(false, new VariableDualiser(1, null, null).VisitExpr(ThreadIdLessThanGroupSize)));
+                Proc.Requires.Add(new Requires(false, new VariableDualiser(2, null, null).VisitExpr(ThreadIdLessThanGroupSize)));
+
             }
 
-            Expr AssumeThreadsDistinctInDimension =
-                    Expr.Neq(
-                    new IdentifierExpr(tok, MakeThreadId(tok, dimension, 1)),
-                    new IdentifierExpr(tok, MakeThreadId(tok, dimension, 2))
-                    );
-
-            AssumeDistinctThreads = (null == AssumeDistinctThreads) ? AssumeThreadsDistinctInDimension : Expr.Or(AssumeDistinctThreads, AssumeThreadsDistinctInDimension);
-
-            Expr AssumeThreadIdsInRangeInDimension =
-                GetTypeOfId(dimension).Equals(Microsoft.Boogie.Type.GetBvType(32)) ?
-                    Expr.And(
-                        Expr.And(
-                        MakeBVSge(new IdentifierExpr(tok, MakeThreadId(tok, dimension, 1)), ZeroBV(tok)),
-                        MakeBVSge(new IdentifierExpr(tok, MakeThreadId(tok, dimension, 2)), ZeroBV(tok))
-                        ),
-                        Expr.And(
-                        MakeBVSlt(new IdentifierExpr(tok, MakeThreadId(tok, dimension, 1)), new IdentifierExpr(tok, GetGroupSize(dimension))),
-                        MakeBVSlt(new IdentifierExpr(tok, MakeThreadId(tok, dimension, 2)), new IdentifierExpr(tok, GetGroupSize(dimension)))
-                        ))
-                :
-                    Expr.And(
-                        Expr.And(
-                        Expr.Ge(new IdentifierExpr(tok, MakeThreadId(tok, dimension, 1)), Zero(tok)),
-                        Expr.Ge(new IdentifierExpr(tok, MakeThreadId(tok, dimension, 2)), Zero(tok))
-                        ),
-                        Expr.And(
-                        Expr.Lt(new IdentifierExpr(tok, MakeThreadId(tok, dimension, 1)), new IdentifierExpr(tok, GetGroupSize(dimension))),
-                        Expr.Lt(new IdentifierExpr(tok, MakeThreadId(tok, dimension, 2)), new IdentifierExpr(tok, GetGroupSize(dimension)))
-                        ));
-
-            AssumeThreadIdsInRange = (null == AssumeThreadIdsInRange) ? AssumeThreadIdsInRangeInDimension : Expr.And(AssumeThreadIdsInRange, AssumeThreadIdsInRangeInDimension);
         }
 
         private Function GetOrCreateBVFunction(string functionName, string smtName, Microsoft.Boogie.Type resultType, params Microsoft.Boogie.Type[] argTypes)
@@ -1350,6 +1390,12 @@ namespace GPUVerify
             if (dimension.Equals("Z")) return _GROUP_Z;
             Debug.Assert(false);
             return null;
+        }
+
+        internal Constant MakeGroupId(string dimension, int number)
+        {
+            Constant resultWithoutThreadId = GetGroupId(dimension);
+            return new Constant(Token.NoToken, new TypedIdent(Token.NoToken, resultWithoutThreadId.Name + "$" + number, GetTypeOfId(dimension)));
         }
 
         private static LiteralExpr Zero(IToken tok)
@@ -2040,7 +2086,8 @@ namespace GPUVerify
 
                 }
 
-                if (d is Variable && ((d as Variable).IsMutable || IsThreadLocalIdConstant(d as Variable)))
+                if (d is Variable && ((d as Variable).IsMutable || IsThreadLocalIdConstant(d as Variable)
+                    || (CommandLineOptions.InterGroupRaceChecking && IsGroupIdConstant(d as Variable) ) ))
                 {
                     NewTopLevelDeclarations.Add(new VariableDualiser(1, null, null).VisitVariable((Variable)d.Clone()));
                     NewTopLevelDeclarations.Add(new VariableDualiser(2, null, null).VisitVariable((Variable)d.Clone()));
@@ -2155,6 +2202,11 @@ namespace GPUVerify
         public static bool IsThreadLocalIdConstant(Variable variable)
         {
             return variable.Name.Equals(_X.Name) || variable.Name.Equals(_Y.Name) || variable.Name.Equals(_Z.Name);
+        }
+
+        public static bool IsGroupIdConstant(Variable variable)
+        {
+            return variable.Name.Equals(_GROUP_X.Name) || variable.Name.Equals(_GROUP_Y.Name) || variable.Name.Equals(_GROUP_Z.Name);
         }
 
         internal void AddCandidateInvariant(IRegion region, Expr e, string tag)

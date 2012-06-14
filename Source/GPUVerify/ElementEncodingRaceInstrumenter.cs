@@ -65,6 +65,12 @@ namespace GPUVerify
                         MakeAccessedIndex(v, new IdentifierExpr(Token.NoToken, VariableForThread(2, OffsetParameter)), 2, "READ")
                         ));
                 }
+
+                if (verifier.NonLocalState.getGroupSharedVariables().Contains(v) && CommandLineOptions.InterGroupRaceChecking)
+                {
+                    WriteReadGuard = Expr.And(WriteReadGuard, verifier.ThreadsInSameGroup());
+                }
+
                 WriteReadGuard = Expr.Not(WriteReadGuard);
                 simpleCmds.Add(new AssertCmd(Token.NoToken, WriteReadGuard));
             }
@@ -87,6 +93,12 @@ namespace GPUVerify
                         MakeAccessedIndex(v, new IdentifierExpr(Token.NoToken, VariableForThread(2, OffsetParameter)), 2, "WRITE")
                         ));
                 }
+
+                if (verifier.NonLocalState.getGroupSharedVariables().Contains(v) && CommandLineOptions.InterGroupRaceChecking)
+                {
+                    WriteWriteGuard = Expr.And(WriteWriteGuard, verifier.ThreadsInSameGroup());
+                }
+
                 WriteWriteGuard = Expr.Not(WriteWriteGuard);
                 simpleCmds.Add(new AssertCmd(Token.NoToken, WriteWriteGuard));
 
@@ -105,6 +117,12 @@ namespace GPUVerify
                         MakeAccessedIndex(v, new IdentifierExpr(Token.NoToken, VariableForThread(2, OffsetParameter)), 2, "READ")
                         ));
                 }
+
+                if (verifier.NonLocalState.getGroupSharedVariables().Contains(v) && CommandLineOptions.InterGroupRaceChecking)
+                {
+                    ReadWriteGuard = Expr.And(ReadWriteGuard, verifier.ThreadsInSameGroup());
+                }
+
                 ReadWriteGuard = Expr.Not(ReadWriteGuard);
                 simpleCmds.Add(new AssertCmd(Token.NoToken, ReadWriteGuard));
 
