@@ -222,7 +222,6 @@ namespace Microsoft.Dafny {
       var isPredicate = f is Predicate;
       Indent(indent);
       string k = isPredicate ? "predicate" : "function";
-      if (f.IsUnlimited) { k = "unlimited " + k; }
       if (f.IsStatic) { k = "static " + k; }
       if (!f.IsGhost) { k += " method"; }
       PrintClassMethodHelper(k, f.Attributes, f.Name, f.TypeArgs);
@@ -662,7 +661,10 @@ namespace Microsoft.Dafny {
       } else if (s is AssignSuchThatStmt) {
         var update = (AssignSuchThatStmt)s;
         wr.Write(" :| ");
-        PrintExpression(update.Assume.Expr);
+        if (update.AssumeToken != null) {
+          wr.Write("assume ");
+        }
+        PrintExpression(update.Expr);
       } else {
         Contract.Assert(s == null);  // otherwise, unknown type
       }
