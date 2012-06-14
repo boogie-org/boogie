@@ -22,3 +22,7 @@ Boogie program verifier finished with 1 verified, 0 errors
 ------------------------------ TuringFactorial.bpl ---------------------
 
 Boogie program verifier finished with 1 verified, 0 errors
+
+------------------------------ BQueue.bpl ---------------------
+
+Boogie program verifier finished with 8 verified, 0 errors
