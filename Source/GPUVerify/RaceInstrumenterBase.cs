@@ -930,19 +930,29 @@ namespace GPUVerify
         protected abstract void AddLogAccessProcedure(Variable v, string ReadOrWrite);
 
 
-        public BigBlock MakeResetReadWriteSetsStatements(Variable v, int Thread)
+        public BigBlock MakeResetReadWriteSetStatements(Variable v, int Thread)
         {
             BigBlock result = new BigBlock(Token.NoToken, null, new CmdSeq(), null, null);
             if (Thread == 2)
             {
                 return result;
             }
-            SetNoAccessOccurred(result, v, "READ");
-            SetNoAccessOccurred(result, v, "WRITE");
+
+            Expr ResetReadAssumeGuard = Expr.Not(new IdentifierExpr(Token.NoToken,
+                new VariableDualiser(1, null, null).VisitVariable(GPUVerifier.MakeAccessHasOccurredVariable(v.Name, "READ"))));
+            Expr ResetWriteAssumeGuard = Expr.Not(new IdentifierExpr(Token.NoToken,
+                new VariableDualiser(1, null, null).VisitVariable(GPUVerifier.MakeAccessHasOccurredVariable(v.Name, "WRITE"))));
+
+            if (CommandLineOptions.InterGroupRaceChecking && verifier.NonLocalState.getGlobalVariables().Contains(v))
+            {
+                ResetReadAssumeGuard = Expr.Imp(verifier.ThreadsInSameGroup(), ResetReadAssumeGuard);
+                ResetWriteAssumeGuard = Expr.Imp(verifier.ThreadsInSameGroup(), ResetWriteAssumeGuard);
+            }
+
+            result.simpleCmds.Add(new AssumeCmd(Token.NoToken, ResetReadAssumeGuard));
+            result.simpleCmds.Add(new AssumeCmd(Token.NoToken, ResetWriteAssumeGuard));
             return result;
         }
-
-        protected abstract void SetNoAccessOccurred(BigBlock bb, Variable v, string AccessType);
 
         protected Procedure MakeLogAccessProcedureHeader(Variable v, string ReadOrWrite)
         {

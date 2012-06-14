@@ -1485,7 +1485,7 @@ namespace GPUVerify
             List<BigBlock> ResetAndHavocBlocks = new List<BigBlock>();
             foreach (Variable v in NonLocalState.getAllNonLocalVariables())
             {
-                ResetAndHavocBlocks.Add(RaceInstrumenter.MakeResetReadWriteSetsStatements(v, Thread));
+                ResetAndHavocBlocks.Add(RaceInstrumenter.MakeResetReadWriteSetStatements(v, Thread));
                 if (!ArrayModelledAdversarially(v))
                 {
                     ResetAndHavocBlocks.Add(HavocSharedArray(v, Thread));

@@ -24,7 +24,7 @@ namespace GPUVerify
             return true;
         }
 
-        public Microsoft.Boogie.BigBlock MakeResetReadWriteSetsStatements(Variable v, int Thread)
+        public Microsoft.Boogie.BigBlock MakeResetReadWriteSetStatements(Variable v, int Thread)
         {
             return new BigBlock(Token.NoToken, null, new CmdSeq(), null, null);
         }

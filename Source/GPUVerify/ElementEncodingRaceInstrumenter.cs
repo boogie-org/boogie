@@ -174,14 +174,6 @@ namespace GPUVerify
             return new AssignCmd(lhs.tok, lhss, rhss);
         }
 
-        protected override void SetNoAccessOccurred(BigBlock bb, Variable v, string AccessType)
-        {
-            IdentifierExpr AccessOccurred1 = new IdentifierExpr(Token.NoToken,
-                new VariableDualiser(1, null, null).VisitVariable(GPUVerifier.MakeAccessHasOccurredVariable(v.Name, AccessType)));
-
-            bb.simpleCmds.Add(new AssumeCmd(Token.NoToken, Expr.Not(AccessOccurred1)));
-        }
-
         private Expr MakeAccessedIndex(Variable v, Expr offsetExpr, int Thread, string AccessType)
         {
             Expr result = new IdentifierExpr(v.tok, new VariableDualiser(Thread, null, null).VisitVariable(v.Clone() as Variable));
