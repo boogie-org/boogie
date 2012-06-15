@@ -76,6 +76,9 @@ class StructuredRegion : IRegion {
       } else if (bb.ec is WhileCmd) {
         var wc = (WhileCmd)bb.ec;
         yield return new StructuredRegion(wc);
+
+        foreach (var r in SubRegions(wc.Body))
+          yield return r;
       }
     }
   }

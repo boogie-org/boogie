@@ -42,6 +42,8 @@ namespace GPUVerify
 
         public static bool Unstructured = false;
 
+        public static bool InterGroupRaceChecking = false;
+
         public static int Parse(string[] args)
         {
             for (int i = 0; i < args.Length; i++)
@@ -182,6 +184,11 @@ namespace GPUVerify
                     case "-unstructured":
                     case "/unstructured":
                     Unstructured = true;
+                    break;
+
+                    case "-interGroupRaceChecking":
+                    case "/interGroupRaceChecking":
+                    InterGroupRaceChecking = true;
                     break;
 
                     default:

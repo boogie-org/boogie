@@ -930,24 +930,29 @@ namespace GPUVerify
         protected abstract void AddLogAccessProcedure(Variable v, string ReadOrWrite);
 
 
-        public BigBlock MakeResetReadWriteSetsStatements(IToken tok)
+        public BigBlock MakeResetReadWriteSetStatements(Variable v, int Thread)
         {
-            BigBlock result = new BigBlock(tok, "__ResetReadWriteSets", new CmdSeq(), null, null);
-
-            foreach (Variable v in NonLocalStateToCheck.getAllNonLocalVariables())
+            BigBlock result = new BigBlock(Token.NoToken, null, new CmdSeq(), null, null);
+            if (Thread == 2)
             {
-                SetNoAccessOccurred(tok, result, v);
+                return result;
             }
+
+            Expr ResetReadAssumeGuard = Expr.Not(new IdentifierExpr(Token.NoToken,
+                new VariableDualiser(1, null, null).VisitVariable(GPUVerifier.MakeAccessHasOccurredVariable(v.Name, "READ"))));
+            Expr ResetWriteAssumeGuard = Expr.Not(new IdentifierExpr(Token.NoToken,
+                new VariableDualiser(1, null, null).VisitVariable(GPUVerifier.MakeAccessHasOccurredVariable(v.Name, "WRITE"))));
+
+            if (CommandLineOptions.InterGroupRaceChecking && verifier.NonLocalState.getGlobalVariables().Contains(v))
+            {
+                ResetReadAssumeGuard = Expr.Imp(verifier.ThreadsInSameGroup(), ResetReadAssumeGuard);
+                ResetWriteAssumeGuard = Expr.Imp(verifier.ThreadsInSameGroup(), ResetWriteAssumeGuard);
+            }
+
+            result.simpleCmds.Add(new AssumeCmd(Token.NoToken, ResetReadAssumeGuard));
+            result.simpleCmds.Add(new AssumeCmd(Token.NoToken, ResetWriteAssumeGuard));
             return result;
         }
-
-        private void SetNoAccessOccurred(IToken tok, BigBlock bb, Variable v)
-        {
-            SetNoAccessOccurred(tok, bb, v, "READ");
-            SetNoAccessOccurred(tok, bb, v, "WRITE");
-        }
-
-        protected abstract void SetNoAccessOccurred(IToken tok, BigBlock bb, Variable v, string AccessType);
 
         protected Procedure MakeLogAccessProcedureHeader(Variable v, string ReadOrWrite)
         {
