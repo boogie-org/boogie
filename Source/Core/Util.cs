@@ -61,6 +61,11 @@ namespace Microsoft.Boogie {
     {
       foreach (var e in coll) fn(e);
     }
+
+    public static IEnumerable<Tuple<TSource1, TSource2>> Zip<TSource1, TSource2>(this IEnumerable<TSource1> source1, IEnumerable<TSource2> source2)
+    {
+      return source1.Zip(source2, (e1, e2) => new Tuple<TSource1, TSource2>(e1, e2));
+    }
   }
 
   public class TokenTextWriter : IDisposable {

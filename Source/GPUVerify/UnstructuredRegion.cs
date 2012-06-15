@@ -37,6 +37,10 @@ class UnstructuredRegion : IRegion {
     guard = null;
   }
 
+  public object Identifier() {
+    return header;
+  }
+
   private HashSet<Block> SubBlocks() {
     if (header != null) {
       return loopNodes[header];

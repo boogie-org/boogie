@@ -64,13 +64,12 @@ namespace GPUVerify
         public UniformityAnalyser uniformityAnalyser;
         public MayBeThreadConfigurationVariableAnalyser mayBeTidAnalyser;
         public MayBeGidAnalyser mayBeGidAnalyser;
-        public MayBeGlobalSizeAnalyser mayBeGlobalSizeAnalyser;
-        public MayBeFlattened2DTidOrGidAnalyser mayBeFlattened2DTidOrGidAnalyser;
         public MayBeLocalIdPlusConstantAnalyser mayBeTidPlusConstantAnalyser;
         public MayBeGlobalIdPlusConstantAnalyser mayBeGidPlusConstantAnalyser;
         public MayBePowerOfTwoAnalyser mayBePowerOfTwoAnalyser;
         public LiveVariableAnalyser liveVariableAnalyser;
         public ArrayControlFlowAnalyser arrayControlFlowAnalyser;
+        public Dictionary<Implementation, VariableDefinitionAnalysis> varDefAnalyses;
 
         public GPUVerifier(string filename, Program program, ResolutionContext rc, IRaceInstrumenter raceInstrumenter) : this(filename, program, rc, raceInstrumenter, false)
         {
@@ -371,6 +370,8 @@ namespace GPUVerify
 
             DoArrayControlFlowAnalysis();
 
+            DoVariableDefinitionAnalysis();
+
             if (CommandLineOptions.ShowStages)
             {
                 emitProgram(outputFilename + "_preprocessed");
@@ -490,12 +491,6 @@ namespace GPUVerify
 
             mayBeGidAnalyser = new MayBeGidAnalyser(this);
             mayBeGidAnalyser.Analyse();
-
-            mayBeGlobalSizeAnalyser = new MayBeGlobalSizeAnalyser(this);
-            mayBeGlobalSizeAnalyser.Analyse();
-
-            mayBeFlattened2DTidOrGidAnalyser = new MayBeFlattened2DTidOrGidAnalyser(this);
-            mayBeFlattened2DTidOrGidAnalyser.Analyse();
         }
 
         private void DoMayBeIdPlusConstantAnalysis()
@@ -524,6 +519,12 @@ namespace GPUVerify
             liveVariableAnalyser.Analyse();
         }
 
+        private void DoVariableDefinitionAnalysis()
+        {
+            varDefAnalyses = Program.TopLevelDeclarations
+                .OfType<Implementation>()
+                .ToDictionary(i => i, i => VariableDefinitionAnalysis.Analyse(this, i));
+        }
 
         private void ProcessAccessInvariants()
         {

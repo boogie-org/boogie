@@ -115,8 +115,6 @@
     <Compile Include="InvariantGenerationRules\LoopVariableBoundsInvariantGenerator.cs" />
     <Compile Include="InvariantGenerationRules\InvariantGenerationRule.cs" />
     <Compile Include="InvariantGenerationRules\PowerOfTwoInvariantGenerator.cs" />
-    <Compile Include="MayBeGlobalSizeAnalyser.cs" />
-    <Compile Include="MayBeFlattened2DTidOrGidAnalyser.cs" />
     <Compile Include="MayBeGidAnalyser.cs" />
     <Compile Include="EnsureDisabledThreadHasNoEffectInstrumenter.cs" />
     <Compile Include="KernelDualiser.cs" />
@@ -147,6 +145,7 @@
     <Compile Include="UniformityAnalyser.cs" />
     <Compile Include="VariableDualiser.cs" />
     <Compile Include="VariablesOccurringInExpressionVisitor.cs" />
+    <Compile Include="VariableDefinitionAnalysis.cs" />
     <Compile Include="StructuredRegion.cs" />
     <Compile Include="WriteCollector.cs" />
   </ItemGroup>
