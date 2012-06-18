@@ -1,20 +1,19 @@
 using Graphing;
-using Microsoft.Boogie;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.Contracts;
 using System.Linq;
 
-namespace GPUVerify {
+namespace Microsoft.Boogie {
 
-class BlockPredicator {
+public class BlockPredicator {
 
-  GPUVerifier verifier;
   Program prog;
   Implementation impl;
   Graph<Block> blockGraph;
 
+  bool createCandidateInvariants = true;
   bool useProcedurePredicates = true;
 
   Expr returnBlockId;
@@ -27,10 +26,10 @@ class BlockPredicator {
   Dictionary<Block, Expr> blockIds = new Dictionary<Block, Expr>();
   HashSet<Block> doneBlocks = new HashSet<Block>();
 
-  BlockPredicator(GPUVerifier v, Program p, Implementation i, bool upp) {
-    verifier = v;
+  BlockPredicator(Program p, Implementation i, bool cci, bool upp) {
     prog = p;
     impl = i;
+    createCandidateInvariants = cci;
     useProcedurePredicates = upp;
   }
 
@@ -222,7 +221,7 @@ class BlockPredicator {
                                             new BlockSeq(runBlock));
 
         pExpr = Expr.Eq(cur, blockIds[runBlock]);
-        if (CommandLineOptions.Inference && blockGraph.Headers.Contains(runBlock)) {
+        if (createCandidateInvariants && blockGraph.Headers.Contains(runBlock)) {
           AddUniformCandidateInvariant(runBlock.Cmds, runBlock);
           AddNonUniformCandidateInvariant(runBlock.Cmds, runBlock);
         }
@@ -252,7 +251,7 @@ class BlockPredicator {
   }
 
   private void AddUniformCandidateInvariant(CmdSeq cs, Block header) {
-    cs.Add(verifier.CreateCandidateInvariant(Expr.Eq(cur,
+    cs.Add(prog.CreateCandidateInvariant(Expr.Eq(cur,
                CreateIfFPThenElse(blockIds[header], returnBlockId)),
              "uniform loop"));
   }
@@ -274,12 +273,14 @@ class BlockPredicator {
     }
     var curIsHeaderOrExit = exits.Aggregate((Expr)Expr.Eq(cur, blockIds[header]),
                                             (e, exit) => Expr.Or(e, Expr.Eq(cur, exit)));
-    cs.Add(verifier.CreateCandidateInvariant(
+    cs.Add(prog.CreateCandidateInvariant(
              CreateIfFPThenElse(curIsHeaderOrExit, Expr.Eq(cur, returnBlockId)),
              "non-uniform loop"));
   }
 
-  public static void Predicate(GPUVerifier v, Program p, bool useProcedurePredicates = true) {
+  public static void Predicate(Program p,
+                               bool createCandidateInvariants = true,
+                               bool useProcedurePredicates = true) {
     foreach (var decl in p.TopLevelDeclarations.ToList()) {
       if (useProcedurePredicates && decl is DeclWithFormals && !(decl is Function)) {
         var dwf = (DeclWithFormals)decl;
@@ -293,7 +294,7 @@ class BlockPredicator {
       }
       var impl = decl as Implementation;
       if (impl != null)
-        new BlockPredicator(v, p, impl, useProcedurePredicates).PredicateImplementation();
+        new BlockPredicator(p, impl, createCandidateInvariants, useProcedurePredicates).PredicateImplementation();
     }
   }
 
