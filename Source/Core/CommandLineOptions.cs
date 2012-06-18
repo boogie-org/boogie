@@ -450,6 +450,7 @@ namespace Microsoft.Boogie {
     public string PrintErrorModelFile = null;
     public string/*?*/ ModelViewFile = null;
     public int EnhancedErrorMessages = 0;
+    public string PrintCFGPrefix = null;
     public bool ForceBplErrors = false; // if true, boogie error is shown even if "msg" attribute is present
     public bool UseArrayTheory = false;
     public bool UseLabels = true;
@@ -832,6 +833,12 @@ namespace Microsoft.Boogie {
 
         case "enhancedErrorMessages":
           ps.GetNumericArgument(ref EnhancedErrorMessages, 2);
+          return true;
+
+        case "printCFG":
+          if (ps.ConfirmArgumentCount(1)) {
+            PrintCFGPrefix = args[ps.i];
+          }
           return true;
 
         case "inlineDepth":
@@ -1448,6 +1455,10 @@ namespace Microsoft.Boogie {
   /enhancedErrorMessages:<n>
                 0 (default) - no enhanced error messages
                 1 - Z3 error model enhanced error messages
+
+  /printCFG:<prefix> : print control flow graph of each implementation in
+                       Graphviz format to files named:
+                         <prefix>.<procedure name>.dot
 
   ---- Inference options -----------------------------------------------------
 

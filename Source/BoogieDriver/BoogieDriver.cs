@@ -18,6 +18,7 @@ namespace Microsoft.Boogie {
   using Microsoft.Boogie.AbstractInterpretation;
   using System.Diagnostics.Contracts;
   using System.Diagnostics;
+  using System.Linq;
   using VC;
   using AI = Microsoft.AbstractInterpretationFramework;
   using BoogiePL = Microsoft.Boogie;
@@ -176,6 +177,14 @@ namespace Microsoft.Boogie {
           Microsoft.Boogie.BitVectorAnalysis.DoBitVectorAnalysis(program);
           PrintBplFile(CommandLineOptions.Clo.BitVectorAnalysisOutputBplFile, program, false);
           return;
+        }
+
+        if (CommandLineOptions.Clo.PrintCFGPrefix != null) {
+          foreach (var impl in program.TopLevelDeclarations.OfType<Implementation>()) {
+            using (StreamWriter sw = new StreamWriter(CommandLineOptions.Clo.PrintCFGPrefix + "." + impl.Name + ".dot")) {
+              sw.Write(program.ProcessLoops(impl).ToDot());
+            }
+          }
         }
 
         EliminateDeadVariablesAndInline(program);

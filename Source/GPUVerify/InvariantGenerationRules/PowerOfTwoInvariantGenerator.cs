@@ -17,7 +17,7 @@ namespace GPUVerify.InvariantGenerationRules
 
         }
 
-        public override void GenerateCandidates(Implementation Impl, WhileCmd wc)
+        public override void GenerateCandidates(Implementation Impl, IRegion region)
         {
             foreach (Variable v in Impl.LocVars)
             {
@@ -26,17 +26,17 @@ namespace GPUVerify.InvariantGenerationRules
                 {
                     if (verifier.mayBePowerOfTwoAnalyser.MayBePowerOfTwo(Impl.Name, basicName))
                     {
-                        if (verifier.ContainsNamedVariable(LoopInvariantGenerator.GetModifiedVariables(wc.Body), basicName))
+                        if (verifier.ContainsNamedVariable(LoopInvariantGenerator.GetModifiedVariables(region), basicName))
                         {
-                            verifier.AddCandidateInvariant(wc, MakePowerOfTwoExpr(v), "pow2 disjunction");
+                            verifier.AddCandidateInvariant(region, MakePowerOfTwoExpr(v), "pow2 disjunction");
                             for (int i = (1 << 15); i > 0; i >>= 1)
                             {
-                                verifier.AddCandidateInvariant(wc, 
+                                verifier.AddCandidateInvariant(region, 
                                     GPUVerifier.MakeBitVectorBinaryBoolean("BV32_LT",
                                     new IdentifierExpr(v.tok, v),
                                     new LiteralExpr(v.tok, BigNum.FromInt(i), 32)), "pow2 less than " + i);
                             }
-                            verifier.AddCandidateInvariant(wc,
+                            verifier.AddCandidateInvariant(region,
                                 Expr.Neq(new IdentifierExpr(v.tok, v),
                                 new LiteralExpr(v.tok, BigNum.FromInt(0), 32)), "pow2 not zero");
                         }

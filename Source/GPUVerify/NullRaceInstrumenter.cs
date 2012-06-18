@@ -9,7 +9,7 @@ namespace GPUVerify
     class NullRaceInstrumenter : IRaceInstrumenter
     {
 
-        public void AddRaceCheckingCandidateInvariants(Implementation impl, Microsoft.Boogie.WhileCmd wc)
+        public void AddRaceCheckingCandidateInvariants(Implementation impl, IRegion region)
         {
             
         }
@@ -24,9 +24,9 @@ namespace GPUVerify
             return true;
         }
 
-        public Microsoft.Boogie.BigBlock MakeResetReadWriteSetsStatements(Microsoft.Boogie.IToken tok)
+        public Microsoft.Boogie.BigBlock MakeResetReadWriteSetStatements(Variable v, int Thread)
         {
-            return new BigBlock(tok, "__ResetReadWriteSets", new CmdSeq(), null, null);
+            return new BigBlock(Token.NoToken, null, new CmdSeq(), null, null);
         }
 
         public void AddRaceCheckingCandidateRequires(Procedure Proc)

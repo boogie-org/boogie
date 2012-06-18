@@ -17,15 +17,15 @@ namespace GPUVerify.InvariantGenerationRules
 
         }
 
-        public override void GenerateCandidates(Implementation Impl, WhileCmd wc)
+        public override void GenerateCandidates(Implementation Impl, IRegion region)
         {
-            if (verifier.uniformityAnalyser.IsUniform(Impl.Name, wc.Guard))
+            if (verifier.uniformityAnalyser.IsUniform(Impl.Name, region.Guard()))
             {
                 VariablesOccurringInExpressionVisitor visitor = new VariablesOccurringInExpressionVisitor();
-                visitor.VisitExpr(wc.Guard);
+                visitor.VisitExpr(region.Guard());
                 foreach (Variable v in visitor.GetVariables())
                 {
-                    if (!verifier.ContainsNamedVariable(LoopInvariantGenerator.GetModifiedVariables(wc.Body), v.Name))
+                    if (!verifier.ContainsNamedVariable(LoopInvariantGenerator.GetModifiedVariables(region), v.Name))
                     {
                         continue;
                     }
@@ -34,7 +34,7 @@ namespace GPUVerify.InvariantGenerationRules
                     {
                         int BVWidth = (v.TypedIdent.Type as BvType).Bits;
 
-                        verifier.AddCandidateInvariant(wc,
+                        verifier.AddCandidateInvariant(region,
                                 verifier.MakeBVSge(
                                 new IdentifierExpr(v.tok, v),
                                 new LiteralExpr(v.tok, BigNum.FromInt(0), BVWidth)), "loop guard variable non-negative");

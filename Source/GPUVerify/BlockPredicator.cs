@@ -9,6 +9,7 @@ namespace GPUVerify {
 
 class BlockPredicator {
 
+  GPUVerifier verifier;
   Program prog;
   Implementation impl;
   Graph<Block> blockGraph;
@@ -16,14 +17,15 @@ class BlockPredicator {
   Expr returnBlockId;
 
   LocalVariable curVar, pVar;
-  IdentifierExpr cur, p;
+  IdentifierExpr cur, p, fp;
   Expr pExpr;
   Dictionary<Microsoft.Boogie.Type, IdentifierExpr> havocVars =
     new Dictionary<Microsoft.Boogie.Type, IdentifierExpr>();
   Dictionary<Block, Expr> blockIds = new Dictionary<Block, Expr>();
   HashSet<Block> doneBlocks = new HashSet<Block>();
 
-  BlockPredicator(Program p, Implementation i) {
+  BlockPredicator(GPUVerifier v, Program p, Implementation i) {
+    verifier = v;
     prog = p;
     impl = i;
   }
@@ -145,7 +147,7 @@ class BlockPredicator {
 
     var newBlocks = new List<Block>();
 
-    var fp = Expr.Ident(impl.InParams[0]);
+    fp = Expr.Ident(impl.InParams[0]);
     Block entryBlock = new Block();
     entryBlock.Label = "entry";
     entryBlock.Cmds = new CmdSeq(Cmd.SimpleAssign(Token.NoToken, cur,
@@ -158,6 +160,16 @@ class BlockPredicator {
     var prevBlock = entryBlock;
     foreach (var n in sortedBlocks) {
       if (n.Item2) {
+        var backedgeBlock = new Block();
+        newBlocks.Add(backedgeBlock);
+
+        backedgeBlock.Label = n.Item1.Label + ".backedge";
+        backedgeBlock.Cmds = new CmdSeq(new AssumeCmd(Token.NoToken,
+          Expr.Eq(cur, blockIds[n.Item1]),
+          new QKeyValue(Token.NoToken, "backedge", new List<object>(), null)));
+        backedgeBlock.TransferCmd = new GotoCmd(Token.NoToken,
+                                                new BlockSeq(n.Item1));
+
         var tailBlock = new Block();
         newBlocks.Add(tailBlock);
 
@@ -166,7 +178,7 @@ class BlockPredicator {
                                              Expr.Neq(cur, blockIds[n.Item1])));
 
         prevBlock.TransferCmd = new GotoCmd(Token.NoToken,
-                                            new BlockSeq(tailBlock, n.Item1));
+                                        new BlockSeq(backedgeBlock, tailBlock));
         prevBlock = tailBlock;
       } else {
         var runBlock = n.Item1;
@@ -174,6 +186,10 @@ class BlockPredicator {
 
         pExpr = Expr.Eq(cur, blockIds[runBlock]);
         CmdSeq newCmdSeq = new CmdSeq();
+        if (CommandLineOptions.Inference && blockGraph.Headers.Contains(runBlock)) {
+          AddUniformCandidateInvariant(newCmdSeq, runBlock);
+          AddNonUniformCandidateInvariant(newCmdSeq, runBlock);
+        }
         newCmdSeq.Add(Cmd.SimpleAssign(Token.NoToken, p, pExpr));
         foreach (Cmd cmd in runBlock.Cmds)
           PredicateCmd(newCmdSeq, cmd);
@@ -191,12 +207,43 @@ class BlockPredicator {
     impl.Blocks = newBlocks;
   }
 
-  public static void Predicate(Program p) {
-    foreach (var decl in p.TopLevelDeclarations) {
+  private void AddUniformCandidateInvariant(CmdSeq cs, Block header) {
+    cs.Add(verifier.CreateCandidateInvariant(Expr.Eq(cur,
+            new NAryExpr(Token.NoToken,
+                 new IfThenElse(Token.NoToken),
+                 new ExprSeq(fp, blockIds[header], returnBlockId))),
+          "uniform loop"));
+  }
+
+  private void AddNonUniformCandidateInvariant(CmdSeq cs, Block header) {
+    var loopNodes = new HashSet<Block>();
+    foreach (var b in blockGraph.BackEdgeNodes(header))
+      loopNodes.UnionWith(blockGraph.NaturalLoops(header, b));
+    var exits = new HashSet<Expr>();
+    foreach (var ln in loopNodes) {
+      if (ln.TransferCmd is GotoCmd) {
+        var gCmd = (GotoCmd) ln.TransferCmd;
+        foreach (var exit in gCmd.labelTargets.Cast<Block>()
+                                 .Where(b => !loopNodes.Contains(b)))
+          exits.Add(blockIds[exit]);
+      }
+      if (ln.TransferCmd is ReturnCmd)
+        exits.Add(returnBlockId);
+    }
+    var curIsHeaderOrExit = exits.Aggregate((Expr)Expr.Eq(cur, blockIds[header]),
+                                            (e, exit) => Expr.Or(e, Expr.Eq(cur, exit)));
+    cs.Add(verifier.CreateCandidateInvariant(new NAryExpr(Token.NoToken,
+                 new IfThenElse(Token.NoToken),
+                 new ExprSeq(fp, curIsHeaderOrExit, Expr.Eq(cur, returnBlockId))),
+                 "non-uniform loop"));
+  }
+
+  public static void Predicate(GPUVerifier v, Program p) {
+    foreach (var decl in p.TopLevelDeclarations.ToList()) {
       if (decl is DeclWithFormals && !(decl is Function)) {
         var dwf = (DeclWithFormals)decl;
         var fpVar = new Formal(Token.NoToken,
-                               new TypedIdent(Token.NoToken, "fp",
+                               new TypedIdent(Token.NoToken, "_P",
                                               Microsoft.Boogie.Type.Bool),
                                /*incoming=*/true);
         dwf.InParams = new VariableSeq(
@@ -205,7 +252,7 @@ class BlockPredicator {
       }
       var impl = decl as Implementation;
       if (impl != null)
-        new BlockPredicator(p, impl).PredicateImplementation();
+        new BlockPredicator(v, p, impl).PredicateImplementation();
     }
   }
 

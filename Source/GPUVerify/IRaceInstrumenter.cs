@@ -8,7 +8,7 @@ namespace GPUVerify
 {
     interface IRaceInstrumenter
     {
-        void AddRaceCheckingCandidateInvariants(Implementation impl, WhileCmd wc);
+        void AddRaceCheckingCandidateInvariants(Implementation impl, IRegion region);
         void AddKernelPrecondition();
 
         // Summary:
@@ -20,7 +20,7 @@ namespace GPUVerify
 
         void AddRaceCheckingDeclarations();
 
-        BigBlock MakeResetReadWriteSetsStatements(IToken tok);
+        BigBlock MakeResetReadWriteSetStatements(Variable v, int thread);
 
         void AddRaceCheckingCandidateRequires(Procedure Proc);
 

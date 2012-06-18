@@ -99,7 +99,11 @@ namespace GPUVerify
 
         private void Analyse(Implementation Impl)
         {
-            Analyse(Impl, Impl.StructuredStmts);
+            if (CommandLineOptions.Unstructured)
+                foreach (var b in Impl.Blocks)
+                    Analyse(Impl, b.Cmds);
+            else
+                Analyse(Impl, Impl.StructuredStmts);
         }
 
         private void Analyse(Implementation impl, StmtList stmtList)
@@ -110,9 +114,29 @@ namespace GPUVerify
             }
         }
 
-        private void Analyse(Implementation impl, BigBlock bb)
+        private void ExprMayAffectControlFlow(Implementation impl, Expr e)
         {
-            foreach (Cmd c in bb.simpleCmds)
+            var visitor = new VariablesOccurringInExpressionVisitor();
+            visitor.VisitExpr(e);
+            foreach (Variable v in visitor.GetVariables())
+            {
+                if (!mayBeDerivedFrom[impl.Name].ContainsKey(v.Name))
+                {
+                    continue;
+                }
+                foreach (string s in mayBeDerivedFrom[impl.Name][v.Name])
+                {
+                    if (!arraysWhichMayAffectControlFlow.Contains(s))
+                    {
+                        SetArrayMayAffectControlFlow(s);
+                    }
+                }
+            }
+        }
+
+        private void Analyse(Implementation impl, CmdSeq cs)
+        {
+            foreach (var c in cs)
             {
                 if (c is AssignCmd)
                 {
@@ -189,28 +213,23 @@ namespace GPUVerify
 
                     }
                 }
+                else if (c is AssumeCmd)
+                {
+                    var assumeCmd = c as AssumeCmd;
+                    ExprMayAffectControlFlow(impl, assumeCmd.Expr);
+                }
             }
+        }
+
+        private void Analyse(Implementation impl, BigBlock bb)
+        {
+            Analyse(impl, bb.simpleCmds);
 
             if (bb.ec is WhileCmd)
             {
                 WhileCmd wc = bb.ec as WhileCmd;
 
-                VariablesOccurringInExpressionVisitor visitor = new VariablesOccurringInExpressionVisitor();
-                visitor.VisitExpr(wc.Guard);
-                foreach (Variable v in visitor.GetVariables())
-                {
-                    if (!mayBeDerivedFrom[impl.Name].ContainsKey(v.Name))
-                    {
-                        continue;
-                    }
-                    foreach (string s in mayBeDerivedFrom[impl.Name][v.Name])
-                    {
-                        if (!arraysWhichMayAffectControlFlow.Contains(s))
-                        {
-                            SetArrayMayAffectControlFlow(s);
-                        }
-                    }
-                }
+                ExprMayAffectControlFlow(impl, wc.Guard);
 
                 Analyse(impl, wc.Body);
             }
@@ -218,22 +237,7 @@ namespace GPUVerify
             {
                 IfCmd ifCmd = bb.ec as IfCmd;
 
-                VariablesOccurringInExpressionVisitor visitor = new VariablesOccurringInExpressionVisitor();
-                visitor.VisitExpr(ifCmd.Guard);
-                foreach (Variable v in visitor.GetVariables())
-                {
-                    if (!mayBeDerivedFrom[impl.Name].ContainsKey(v.Name))
-                    {
-                        continue;
-                    }
-                    foreach (string s in mayBeDerivedFrom[impl.Name][v.Name])
-                    {
-                        if (!arraysWhichMayAffectControlFlow.Contains(s))
-                        {
-                            SetArrayMayAffectControlFlow(s);
-                        }
-                    }
-                }
+                ExprMayAffectControlFlow(impl, ifCmd.Guard);
                 
                 Analyse(impl, ifCmd.thn);
                 if (ifCmd.elseBlock != null)

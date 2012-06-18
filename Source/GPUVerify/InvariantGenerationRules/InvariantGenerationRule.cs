@@ -16,7 +16,7 @@ namespace GPUVerify.InvariantGenerationRules
             this.verifier = verifier;
         }
 
-        public abstract void GenerateCandidates(Implementation Impl, WhileCmd wc);
+        public abstract void GenerateCandidates(Implementation Impl, IRegion region);
     }
 
 }

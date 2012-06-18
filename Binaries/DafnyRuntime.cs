@@ -1,8 +1,9 @@
 ﻿using System.Numerics;
-using System.Collections.Generic;
 
 namespace Dafny
 {
+  using System.Collections.Generic;
+
   public class Set<T>
   {
     Dictionary<T, bool> dict;

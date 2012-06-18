@@ -545,6 +545,8 @@ namespace Microsoft.Boogie {
       // header_last block that was created because of splitting header.
       Dictionary<Block, Block> newBlocksCreated = new Dictionary<Block, Block>();
 
+      bool headRecursion = false; // testing an option to put recursive call before loop body 
+
       IEnumerable<Block> sortedHeaders = g.SortHeadersByDominance();
       foreach (Block/*!*/ header in sortedHeaders)
       {
@@ -565,7 +567,17 @@ namespace Microsoft.Boogie {
               continue;
             Block newBlock = new Block();
             newBlock.Label = block.Label;
-            newBlock.Cmds = codeCopier.CopyCmdSeq(block.Cmds);
+            if (headRecursion && block == header)
+            {
+                CallCmd callCmd = (CallCmd)(loopHeaderToCallCmd2[header]).Clone();
+                addUniqueCallAttr(si_unique_loc, callCmd);
+                si_unique_loc++;
+                newBlock.Cmds.Add(callCmd);  // add the recursive call at head of loop
+                var rest = codeCopier.CopyCmdSeq(block.Cmds);
+                newBlock.Cmds.AddRange(rest);
+            }
+            else
+              newBlock.Cmds = codeCopier.CopyCmdSeq(block.Cmds);
             blockMap[block] = newBlock;
             if (newBlocksCreated.ContainsKey(block))
             {
@@ -616,14 +628,21 @@ namespace Microsoft.Boogie {
             }
           }
 
-          CallCmd callCmd = (CallCmd) (loopHeaderToCallCmd2[header]).Clone();
-          addUniqueCallAttr(si_unique_loc, callCmd);
-          si_unique_loc++;
+          CmdSeq cmdSeq;
+          if (headRecursion)
+              cmdSeq = new CmdSeq();
+          else
+          {
+              CallCmd callCmd = (CallCmd)(loopHeaderToCallCmd2[header]).Clone();
+              addUniqueCallAttr(si_unique_loc, callCmd);
+              si_unique_loc++;
+              cmdSeq = new CmdSeq(callCmd);
+          }
 
           Block/*!*/ block1 = new Block(Token.NoToken, source.Label + "_dummy",
                               new CmdSeq(new AssumeCmd(Token.NoToken, Expr.False)), new ReturnCmd(Token.NoToken));
           Block/*!*/ block2 = new Block(Token.NoToken, block1.Label,
-                              new CmdSeq(callCmd), new ReturnCmd(Token.NoToken));
+                              cmdSeq, new ReturnCmd(Token.NoToken));
           impl.Blocks.Add(block1);
           dummyBlocks.Add(block1.Label);
 
@@ -2036,6 +2055,11 @@ namespace Microsoft.Boogie {
       Contract.Ensures(Contract.Result<Absy>() != null);
       return visitor.VisitFunction(this);
     }
+  }
+
+  public class Macro : Function {
+    public Macro(IToken tok, string name, VariableSeq args, Variable result)
+      : base(tok, name, args, result) { }
   }
 
   public class Requires : Absy, IPotentialErrorNode {

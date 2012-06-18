@@ -137,14 +137,10 @@ object CreditsAndMuPL extends PreludeComponent {
   val text = """
 var Credits: CreditsType;
 
-function IsGoodState(PartialHeapType) returns (bool);
 function combine(PartialHeapType, PartialHeapType) returns (PartialHeapType);
 function heapFragment<T>(T) returns (PartialHeapType);
 type PartialHeapType;
 const emptyPartialHeap: PartialHeapType;
-
-axiom (forall a: PartialHeapType, b: PartialHeapType :: {IsGoodState(combine(a, b))} IsGoodState(combine(a, b)) <==> IsGoodState(a) && IsGoodState(b));
-axiom IsGoodState(emptyPartialHeap);
 
 type ModuleName;
 const CurrentModule: ModuleName;

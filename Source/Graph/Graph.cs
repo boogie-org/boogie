@@ -843,6 +843,19 @@ namespace Graphing {
         }
         return dag.TopologicalSort();
     }
+
+    public string ToDot(Func<Node, string> NodeLabel = null, Func<Node, string> NodeStyle = null) {
+      NodeLabel = NodeLabel ?? (n => n.ToString());
+      NodeStyle = NodeStyle ?? (n => "[shape=box]");
+      var s = new StringBuilder();
+      s.AppendLine("digraph G {");
+      foreach (var n in Nodes)
+        s.AppendLine("  \"" + NodeLabel(n) + "\" " + NodeStyle(n) + ";");
+      foreach (var e in Edges)
+        s.AppendLine("  \"" + NodeLabel(e.Item1) + "\" -> \"" + NodeLabel(e.Item2) + "\";");
+      s.AppendLine("}");
+      return s.ToString();
+    }
   } // end: class Graph
 
   public class GraphProgram {

@@ -74,6 +74,14 @@ namespace Microsoft.Boogie
       }
       public abstract ElementKind Kind { get; }
       public virtual int AsInt() { throw new NotImplementedException(); }
+
+      public override int GetHashCode() {
+        return Id;
+      }
+
+      public override bool Equals(object obj) {
+        return obj == this;
+      }
     }
 
     #region element kinds
@@ -164,6 +172,17 @@ namespace Microsoft.Boogie
       public override string ToString()
       {
         return string.Format("{0}/{1}", Name, Arity);
+      }
+
+      internal void Substitute(Dictionary<Element, Element> mapping) {
+        Element e;
+        if (@else != null && mapping.TryGetValue(@else, out e))
+          @else = e;
+        foreach (var ft in apps) {
+          if (mapping.TryGetValue(ft.Result, out e)) ft.Result = e;
+          for (var i = 0; i < ft.Args.Length; ++i)
+            if (mapping.TryGetValue(ft.Args[i], out e)) ft.Args[i] = e;
+        }
       }
 
       public Element Else
@@ -322,7 +341,7 @@ namespace Microsoft.Boogie
         }
         return null;
       }
-
+ 
       /// <summary>
       /// Short for TryEval(args) == (Element)true
       /// </summary>
@@ -366,8 +385,9 @@ namespace Microsoft.Boogie
     {
       static readonly Element[] EmptyArgs = new Element[0];
 
+      // These should be immutable, except when Substituting the entire model
       public readonly Func Func;
-      public readonly Element Result;
+      public Element Result; 
       public readonly Element[] Args;
 
       internal FuncTuple(Func func, Element res, Element[] args)
@@ -676,6 +696,10 @@ namespace Microsoft.Boogie
       wr.WriteLine("*** END_MODEL");
     }
 
+    public void Substitute(Dictionary<Element, Element> mapping) {
+      foreach (var f in functions) f.Substitute(mapping);
+    }
+
     class Parser
     {
       internal System.IO.TextReader rd;
@@ -799,6 +823,8 @@ namespace Microsoft.Boogie
 
       internal void Run()
       {
+        var selectFunctions = new Dictionary<int, Model.Func>();
+        var storeFunctions = new Dictionary<int, Model.Func>();
         for (; ; ) {
           var line = ReadLine();
           if (line == null) break; // end of model, everything fine
@@ -854,21 +880,38 @@ namespace Microsoft.Boogie
                   if (fn == null)
                     fn = currModel.MkFunc(funName, 1);
                   if (tuple0 == "}") break;
-                  fn.Else = GetElt(tuple[0]);
+                  if (fn.Else == null)
+                    fn.Else = GetElt(tuple[0]);
                   continue;
                 }
                 string tuplePenultimate = tuple[tuple.Count - 2] as string;
                 if (tuplePenultimate != "->") BadModel("invalid function tuple definition");
                 var resultName = tuple[tuple.Count - 1];
                 if (tuple0 == "else") {
-                  if (fn != null && !(resultName is string && ((string)resultName) == "#unspecified")) {
+                  if (fn != null && !(resultName is string && ((string)resultName) == "#unspecified") && fn.Else == null) {
                     fn.Else = GetElt(resultName);
                   }
                   continue;
                 }
 
-                if (fn == null)
-                  fn = currModel.MkFunc(funName, tuple.Count - 2);
+                if (fn == null) {
+                  var arity = tuple.Count - 2;
+                  if (Regex.IsMatch(funName, "^MapType[0-9]*Select$")) {
+                    funName = string.Format("[{0}]", arity);
+                    if (!selectFunctions.TryGetValue(arity, out fn)) {
+                      fn = currModel.MkFunc(funName, arity);
+                      selectFunctions.Add(arity, fn);
+                    }
+                  } else if (Regex.IsMatch(funName, "^MapType[0-9]*Store$")) {
+                    funName = string.Format("[{0}:=]", arity);
+                    if (!storeFunctions.TryGetValue(arity, out fn)) {
+                      fn = currModel.MkFunc(funName, arity);
+                      storeFunctions.Add(arity, fn);
+                    }
+                  } else {
+                    fn = currModel.MkFunc(funName, arity);
+                  }
+                }
                 var args = new Element[fn.Arity];
                 for (int i = 0; i < fn.Arity; ++i)
                   args[i] = GetElt(tuple[i]);

@@ -63,6 +63,10 @@ namespace GPUVerify
                     SetNonUniform(Impl.Name, GPUVerifier._Y.Name);
                     SetNonUniform(Impl.Name, GPUVerifier._Z.Name);
 
+                    SetNonUniform(Impl.Name, GPUVerifier._GROUP_X.Name);
+                    SetNonUniform(Impl.Name, GPUVerifier._GROUP_Y.Name);
+                    SetNonUniform(Impl.Name, GPUVerifier._GROUP_Z.Name);
+
                     foreach (Variable v in Impl.LocVars)
                     {
                         if (CommandLineOptions.DoUniformityAnalysis)

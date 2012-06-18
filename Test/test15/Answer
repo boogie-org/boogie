@@ -144,7 +144,7 @@ type -> {
   T@U!val!0 -> T@T!val!4
   T@U!val!1 -> T@T!val!2
   T@U!val!2 -> T@T!val!3
-  T@U!val!3 -> T@T!val!0
+  -2 -> T@T!val!0
   else -> T@T!val!4
 }
 Ctor -> {
@@ -162,12 +162,12 @@ Ctor -> {
   6 5 -> true
   else -> true
 }
-MapType0Select -> {
-  T@U!val!0 T@U!val!1 T@U!val!2 -> T@U!val!3
-  else -> T@U!val!3
+[3] -> {
+  T@U!val!0 T@U!val!1 T@U!val!2 -> -2
+  else -> -2
 }
 U_2_int -> {
-  T@U!val!3 -> -2
+  -2 -> -2
   else -> -2
 }
 MapType0TypeInv1 -> {
@@ -187,8 +187,8 @@ MapType0TypeInv0 -> {
   else -> T@T!val!2
 }
 int_2_U -> {
-  -2 -> T@U!val!3
-  else -> T@U!val!3
+  -2 -> -2
+  else -> -2
 }
 *** STATE <initial>
   Heap -> T@U!val!0

@@ -7,7 +7,7 @@ REM ======================
 REM ====================== Examples written in Boogie
 REM ======================
 for %%f in (Find.bpl DutchFlag.bpl Bubble.bpl DivMod.bpl McCarthy-91.bpl
-            TuringFactorial.bpl) do (
+            TuringFactorial.bpl BQueue.bpl) do (
   echo.
   echo ------------------------------ %%f ---------------------
   %BPLEXE% %* %%f

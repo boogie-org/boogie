@@ -7,10 +7,11 @@ Rewrote assembly into AssumeStmt0.exe
 
 using System.Diagnostics.Contracts;
 using System.Numerics;
-using System.Collections.Generic;
 
 namespace Dafny
 {
+  using System.Collections.Generic;
+
   public class Set<T>
   {
     Dictionary<T, bool> dict;
@@ -589,13 +590,13 @@ namespace Dafny {
   }
 }
 
-public class @_default {
+public class @__default {
   public void @Main()
   {
     Contract.Assume((new BigInteger(2)) < (new BigInteger(10)));
   }
   public static void Main(string[] args) {
-    @_default b = new @_default();
+    @__default b = new @__default();
     b.Main();
   }
 }
@@ -608,10 +609,11 @@ Rewrote assembly into AssumeStmt1.exe
 
 using System.Diagnostics.Contracts;
 using System.Numerics;
-using System.Collections.Generic;
 
 namespace Dafny
 {
+  using System.Collections.Generic;
+
   public class Set<T>
   {
     Dictionary<T, bool> dict;
@@ -1190,13 +1192,13 @@ namespace Dafny {
   }
 }
 
-public class @_default {
+public class @__default {
   public void @Main()
   {
     Contract.Assume((new BigInteger(10)) < (new BigInteger(2)));
   }
   public static void Main(string[] args) {
-    @_default b = new @_default();
+    @__default b = new @__default();
     b.Main();
   }
 }
@@ -1209,10 +1211,11 @@ Rewrote assembly into AssertStmt0.exe
 
 using System.Diagnostics.Contracts;
 using System.Numerics;
-using System.Collections.Generic;
 
 namespace Dafny
 {
+  using System.Collections.Generic;
+
   public class Set<T>
   {
     Dictionary<T, bool> dict;
@@ -1791,13 +1794,13 @@ namespace Dafny {
   }
 }
 
-public class @_default {
+public class @__default {
   public void @Main()
   {
     Contract.Assert((new BigInteger(2)) < (new BigInteger(10)));
   }
   public static void Main(string[] args) {
-    @_default b = new @_default();
+    @__default b = new @__default();
     b.Main();
   }
 }
@@ -1810,10 +1813,11 @@ Rewrote assembly into AssertStmt1.exe
 
 using System.Diagnostics.Contracts;
 using System.Numerics;
-using System.Collections.Generic;
 
 namespace Dafny
 {
+  using System.Collections.Generic;
+
   public class Set<T>
   {
     Dictionary<T, bool> dict;
@@ -2392,13 +2396,13 @@ namespace Dafny {
   }
 }
 
-public class @_default {
+public class @__default {
   public void @Main()
   {
     Contract.Assert((new BigInteger(10)) < (new BigInteger(2)));
   }
   public static void Main(string[] args) {
-    @_default b = new @_default();
+    @__default b = new @__default();
     b.Main();
   }
 }
@@ -2411,10 +2415,11 @@ Rewrote assembly into Precondition0.exe
 
 using System.Diagnostics.Contracts;
 using System.Numerics;
-using System.Collections.Generic;
 
 namespace Dafny
 {
+  using System.Collections.Generic;
+
   public class Set<T>
   {
     Dictionary<T, bool> dict;
@@ -2993,13 +2998,13 @@ namespace Dafny {
   }
 }
 
-public class @_default {
+public class @__default {
   public void @Main()
   {
     Contract.Requires(true);
   }
   public static void Main(string[] args) {
-    @_default b = new @_default();
+    @__default b = new @__default();
     b.Main();
   }
 }
@@ -3012,10 +3017,11 @@ Rewrote assembly into Precondition1.exe
 
 using System.Diagnostics.Contracts;
 using System.Numerics;
-using System.Collections.Generic;
 
 namespace Dafny
 {
+  using System.Collections.Generic;
+
   public class Set<T>
   {
     Dictionary<T, bool> dict;
@@ -3594,7 +3600,7 @@ namespace Dafny {
   }
 }
 
-public class @_default {
+public class @__default {
   public void @foo(BigInteger @x, BigInteger @y)
   {
     Contract.Requires((new BigInteger(0)) <= (@x));
@@ -3605,7 +3611,7 @@ public class @_default {
     (this).@foo(new BigInteger(2), (new BigInteger(0)) - (new BigInteger(7)));
   }
   public static void Main(string[] args) {
-    @_default b = new @_default();
+    @__default b = new @__default();
     b.Main();
   }
 }
@@ -3618,10 +3624,11 @@ Rewrote assembly into Postcondition0.exe
 
 using System.Diagnostics.Contracts;
 using System.Numerics;
-using System.Collections.Generic;
 
 namespace Dafny
 {
+  using System.Collections.Generic;
+
   public class Set<T>
   {
     Dictionary<T, bool> dict;
@@ -4200,13 +4207,13 @@ namespace Dafny {
   }
 }
 
-public class @_default {
+public class @__default {
   public void @Main()
   {
     Contract.Ensures(true);
   }
   public static void Main(string[] args) {
-    @_default b = new @_default();
+    @__default b = new @__default();
     b.Main();
   }
 }
@@ -4219,10 +4226,11 @@ Rewrote assembly into Postcondition1.exe
 
 using System.Diagnostics.Contracts;
 using System.Numerics;
-using System.Collections.Generic;
 
 namespace Dafny
 {
+  using System.Collections.Generic;
+
   public class Set<T>
   {
     Dictionary<T, bool> dict;
@@ -4801,7 +4809,7 @@ namespace Dafny {
   }
 }
 
-public class @_default {
+public class @__default {
   public BigInteger @x = new BigInteger(0);
   public BigInteger @y = new BigInteger(0);
   public void @Main()
@@ -4812,7 +4820,7 @@ public class @_default {
     (this).@y = (new BigInteger(0)) - (new BigInteger(7));
   }
   public static void Main(string[] args) {
-    @_default b = new @_default();
+    @__default b = new @__default();
     b.Main();
   }
 }
