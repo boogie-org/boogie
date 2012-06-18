@@ -7,6 +7,12 @@ using System.Linq;
 
 namespace GPUVerify {
 
+  public class Foo {
+    public static void Predicate(Program p) {
+      BlockPredicator.Predicate(null, p);
+    }
+  }
+
 class BlockPredicator {
 
   GPUVerifier verifier;
@@ -255,7 +261,6 @@ class BlockPredicator {
         new BlockPredicator(v, p, impl).PredicateImplementation();
     }
   }
-
 }
 
 }
