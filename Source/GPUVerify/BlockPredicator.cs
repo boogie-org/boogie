@@ -2,6 +2,7 @@ using Graphing;
 using Microsoft.Boogie;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Diagnostics.Contracts;
 using System.Linq;
 
@@ -14,6 +15,8 @@ class BlockPredicator {
   Implementation impl;
   Graph<Block> blockGraph;
 
+  bool useProcedurePredicates = true;
+
   Expr returnBlockId;
 
   LocalVariable curVar, pVar;
@@ -24,10 +27,39 @@ class BlockPredicator {
   Dictionary<Block, Expr> blockIds = new Dictionary<Block, Expr>();
   HashSet<Block> doneBlocks = new HashSet<Block>();
 
-  BlockPredicator(GPUVerifier v, Program p, Implementation i) {
+  BlockPredicator(GPUVerifier v, Program p, Implementation i, bool upp) {
     verifier = v;
     prog = p;
     impl = i;
+    useProcedurePredicates = upp;
+  }
+
+  void PredicateCmd(List<Block> blocks, Block block, Cmd cmd, out Block nextBlock) {
+    if (!useProcedurePredicates && cmd is CallCmd) {
+      var trueBlock = new Block();
+      blocks.Add(trueBlock);
+      trueBlock.Label = block.Label + ".call.true";
+      trueBlock.Cmds.Add(new AssumeCmd(Token.NoToken, p));
+      trueBlock.Cmds.Add(cmd);
+
+      var falseBlock = new Block();
+      blocks.Add(falseBlock);
+      falseBlock.Label = block.Label + ".call.false";
+      falseBlock.Cmds.Add(new AssumeCmd(Token.NoToken, Expr.Not(p)));
+
+      var contBlock = new Block();
+      blocks.Add(contBlock);
+      contBlock.Label = block.Label + ".call.cont";
+
+      block.TransferCmd =
+        new GotoCmd(Token.NoToken, new BlockSeq(trueBlock, falseBlock));
+      trueBlock.TransferCmd = falseBlock.TransferCmd =
+        new GotoCmd(Token.NoToken, new BlockSeq(contBlock));
+      nextBlock = contBlock;
+    } else {
+      PredicateCmd(block.Cmds, cmd);
+      nextBlock = block;
+    }
   }
 
   void PredicateCmd(CmdSeq cmdSeq, Cmd cmd) {
@@ -79,6 +111,7 @@ class BlockPredicator {
                                       new ExprSeq(p, havocTempExpr, v))));
       }
     } else if (cmd is CallCmd) {
+      Debug.Assert(useProcedurePredicates);
       var cCmd = (CallCmd)cmd;
       cCmd.Ins.Insert(0, p);
       cmdSeq.Add(cCmd);
@@ -145,16 +178,16 @@ class BlockPredicator {
     impl.LocVars.Add(pVar);
     p = Expr.Ident(pVar);
 
+    if (useProcedurePredicates)
+      fp = Expr.Ident(impl.InParams[0]);
+
     var newBlocks = new List<Block>();
 
-    fp = Expr.Ident(impl.InParams[0]);
     Block entryBlock = new Block();
     entryBlock.Label = "entry";
     entryBlock.Cmds = new CmdSeq(Cmd.SimpleAssign(Token.NoToken, cur,
-                        new NAryExpr(Token.NoToken,
-                          new IfThenElse(Token.NoToken),
-                          new ExprSeq(fp, blockIds[sortedBlocks[0].Item1],
-                                      returnBlockId))));
+                        CreateIfFPThenElse(blockIds[sortedBlocks[0].Item1],
+                                           returnBlockId)));
     newBlocks.Add(entryBlock);
 
     var prevBlock = entryBlock;
@@ -182,22 +215,23 @@ class BlockPredicator {
         prevBlock = tailBlock;
       } else {
         var runBlock = n.Item1;
+        var oldCmdSeq = runBlock.Cmds;
+        runBlock.Cmds = new CmdSeq();
         newBlocks.Add(runBlock);
-
-        pExpr = Expr.Eq(cur, blockIds[runBlock]);
-        CmdSeq newCmdSeq = new CmdSeq();
-        if (CommandLineOptions.Inference && blockGraph.Headers.Contains(runBlock)) {
-          AddUniformCandidateInvariant(newCmdSeq, runBlock);
-          AddNonUniformCandidateInvariant(newCmdSeq, runBlock);
-        }
-        newCmdSeq.Add(Cmd.SimpleAssign(Token.NoToken, p, pExpr));
-        foreach (Cmd cmd in runBlock.Cmds)
-          PredicateCmd(newCmdSeq, cmd);
-        PredicateTransferCmd(newCmdSeq, runBlock.TransferCmd);
-        runBlock.Cmds = newCmdSeq;
-
         prevBlock.TransferCmd = new GotoCmd(Token.NoToken,
                                             new BlockSeq(runBlock));
+
+        pExpr = Expr.Eq(cur, blockIds[runBlock]);
+        if (CommandLineOptions.Inference && blockGraph.Headers.Contains(runBlock)) {
+          AddUniformCandidateInvariant(runBlock.Cmds, runBlock);
+          AddNonUniformCandidateInvariant(runBlock.Cmds, runBlock);
+        }
+        runBlock.Cmds.Add(Cmd.SimpleAssign(Token.NoToken, p, pExpr));
+        var transferCmd = runBlock.TransferCmd;
+        foreach (Cmd cmd in oldCmdSeq)
+          PredicateCmd(newBlocks, runBlock, cmd, out runBlock);
+        PredicateTransferCmd(runBlock.Cmds, transferCmd);
+
         prevBlock = runBlock;
         doneBlocks.Add(runBlock);
       }
@@ -207,12 +241,20 @@ class BlockPredicator {
     impl.Blocks = newBlocks;
   }
 
+  private Expr CreateIfFPThenElse(Expr then, Expr eElse) {
+    if (useProcedurePredicates) {
+      return new NAryExpr(Token.NoToken,
+                 new IfThenElse(Token.NoToken),
+                 new ExprSeq(fp, then, eElse));
+    } else {
+      return then;
+    }
+  }
+
   private void AddUniformCandidateInvariant(CmdSeq cs, Block header) {
     cs.Add(verifier.CreateCandidateInvariant(Expr.Eq(cur,
-            new NAryExpr(Token.NoToken,
-                 new IfThenElse(Token.NoToken),
-                 new ExprSeq(fp, blockIds[header], returnBlockId))),
-          "uniform loop"));
+               CreateIfFPThenElse(blockIds[header], returnBlockId)),
+             "uniform loop"));
   }
 
   private void AddNonUniformCandidateInvariant(CmdSeq cs, Block header) {
@@ -232,15 +274,14 @@ class BlockPredicator {
     }
     var curIsHeaderOrExit = exits.Aggregate((Expr)Expr.Eq(cur, blockIds[header]),
                                             (e, exit) => Expr.Or(e, Expr.Eq(cur, exit)));
-    cs.Add(verifier.CreateCandidateInvariant(new NAryExpr(Token.NoToken,
-                 new IfThenElse(Token.NoToken),
-                 new ExprSeq(fp, curIsHeaderOrExit, Expr.Eq(cur, returnBlockId))),
-                 "non-uniform loop"));
+    cs.Add(verifier.CreateCandidateInvariant(
+             CreateIfFPThenElse(curIsHeaderOrExit, Expr.Eq(cur, returnBlockId)),
+             "non-uniform loop"));
   }
 
-  public static void Predicate(GPUVerifier v, Program p) {
+  public static void Predicate(GPUVerifier v, Program p, bool useProcedurePredicates = true) {
     foreach (var decl in p.TopLevelDeclarations.ToList()) {
-      if (decl is DeclWithFormals && !(decl is Function)) {
+      if (useProcedurePredicates && decl is DeclWithFormals && !(decl is Function)) {
         var dwf = (DeclWithFormals)decl;
         var fpVar = new Formal(Token.NoToken,
                                new TypedIdent(Token.NoToken, "_P",
@@ -252,7 +293,7 @@ class BlockPredicator {
       }
       var impl = decl as Implementation;
       if (impl != null)
-        new BlockPredicator(v, p, impl).PredicateImplementation();
+        new BlockPredicator(v, p, impl, useProcedurePredicates).PredicateImplementation();
     }
   }
 
