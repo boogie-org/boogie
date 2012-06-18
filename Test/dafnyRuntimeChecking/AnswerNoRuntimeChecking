@@ -1,0 +1,24 @@
+
+-------------------- AssumeStmt0 --------------------
+Compilation error: an assume statement cannot be compiled (line 3)
+
+-------------------- AssumeStmt1 --------------------
+Compilation error: an assume statement cannot be compiled (line 3)
+
+-------------------- AssertStmt0 --------------------
+Compiled assembly into AssertStmt0.exe
+
+-------------------- AssertStmt1 --------------------
+Compiled assembly into AssertStmt1.exe
+
+-------------------- Precondition0 --------------------
+Compiled assembly into Precondition0.exe
+
+-------------------- Precondition1 --------------------
+Compiled assembly into Precondition1.exe
+
+-------------------- Postcondition0 --------------------
+Compiled assembly into Postcondition0.exe
+
+-------------------- Postcondition1 --------------------
+Compiled assembly into Postcondition1.exe

@@ -186,9 +186,9 @@ class BlockPredicator {
 
         pExpr = Expr.Eq(cur, blockIds[runBlock]);
         CmdSeq newCmdSeq = new CmdSeq();
-        AddNonUniformInvariant(newCmdSeq, runBlock);
         if (CommandLineOptions.Inference && blockGraph.Headers.Contains(runBlock)) {
           AddUniformCandidateInvariant(newCmdSeq, runBlock);
+          AddNonUniformCandidateInvariant(newCmdSeq, runBlock);
         }
         newCmdSeq.Add(Cmd.SimpleAssign(Token.NoToken, p, pExpr));
         foreach (Cmd cmd in runBlock.Cmds)
@@ -215,7 +215,7 @@ class BlockPredicator {
           "uniform loop"));
   }
 
-  private void AddNonUniformInvariant(CmdSeq cs, Block header) {
+  private void AddNonUniformCandidateInvariant(CmdSeq cs, Block header) {
     var loopNodes = new HashSet<Block>();
     foreach (var b in blockGraph.BackEdgeNodes(header))
       loopNodes.UnionWith(blockGraph.NaturalLoops(header, b));
@@ -232,9 +232,10 @@ class BlockPredicator {
     }
     var curIsHeaderOrExit = exits.Aggregate((Expr)Expr.Eq(cur, blockIds[header]),
                                             (e, exit) => Expr.Or(e, Expr.Eq(cur, exit)));
-    cs.Add(new AssertCmd(Token.NoToken, new NAryExpr(Token.NoToken,
-             new IfThenElse(Token.NoToken),
-             new ExprSeq(fp, curIsHeaderOrExit, Expr.Eq(cur, returnBlockId)))));
+    cs.Add(verifier.CreateCandidateInvariant(new NAryExpr(Token.NoToken,
+                 new IfThenElse(Token.NoToken),
+                 new ExprSeq(fp, curIsHeaderOrExit, Expr.Eq(cur, returnBlockId))),
+                 "non-uniform loop"));
   }
 
   public static void Predicate(GPUVerifier v, Program p) {

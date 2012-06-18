@@ -7,19 +7,29 @@ using Microsoft.Boogie;
 namespace GPUVerify {
 
 class StructuredRegion : IRegion {
+  Implementation impl;
   WhileCmd cmd;
-  StmtList stmts;
+
+  public StructuredRegion(Implementation impl) {
+    this.impl = impl;
+  }
 
   public StructuredRegion(WhileCmd cmd) {
     this.cmd = cmd;
   }
 
-  public StructuredRegion(StmtList stmts) {
-    this.stmts = stmts;
+  public object Identifier() {
+    if (cmd != null)
+      return cmd;
+    else
+      return impl;
   }
 
-  public StructuredRegion(Implementation impl) {
-    this.stmts = impl.StructuredStmts;
+  private StmtList StmtList() {
+    if (cmd != null)
+      return cmd.Body;
+    else
+      return impl.StructuredStmts;
   }
 
   private IEnumerable<Cmd> Cmds(StmtList stmts) {
@@ -84,24 +94,15 @@ class StructuredRegion : IRegion {
   }
 
   public IEnumerable<Cmd> Cmds() {
-    if (cmd != null)
-      return Cmds(cmd.Body);
-    else
-      return Cmds(stmts);
+    return Cmds(StmtList());
   }
 
   public IEnumerable<object> CmdsChildRegions() {
-    if (cmd != null)
-      return CmdsChildRegions(cmd.Body);
-    else
-      return CmdsChildRegions(stmts);
+    return CmdsChildRegions(StmtList());
   }
 
   public IEnumerable<IRegion> SubRegions() {
-    if (cmd != null)
-      return SubRegions(cmd.Body);
-    else
-      return SubRegions(stmts);
+    return SubRegions(StmtList());
   }
 
   public Expr Guard() {

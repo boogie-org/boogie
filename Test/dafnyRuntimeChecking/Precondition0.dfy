@@ -1,0 +1,3 @@
+method Main()
+  requires true;
+{}
