@@ -399,7 +399,6 @@ namespace Microsoft.Boogie {
     public bool SimplifyLogFileAppend = false;
     public bool SoundnessSmokeTest = false;
     public string Z3ExecutablePath = null;
-    public bool Predicate = false;
 
     public enum ProverWarnings {
       None,
@@ -1231,8 +1230,7 @@ namespace Microsoft.Boogie {
               ps.CheckBooleanFlag("useUnsatCoreForContractInfer", ref UseUnsatCoreForContractInfer) ||
               ps.CheckBooleanFlag("printAssignment", ref PrintAssignment) ||
               ps.CheckBooleanFlag("nonUniformUnfolding", ref NonUniformUnfolding) ||
-              ps.CheckBooleanFlag("deterministicExtractLoops", ref DeterministicExtractLoops) ||
-              ps.CheckBooleanFlag("predicate", ref Predicate)
+              ps.CheckBooleanFlag("deterministicExtractLoops", ref DeterministicExtractLoops)
               ) {
             // one of the boolean flags matched
             return true;

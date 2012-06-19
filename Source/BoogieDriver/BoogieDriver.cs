@@ -23,20 +23,6 @@ namespace Microsoft.Boogie {
   using AI = Microsoft.AbstractInterpretationFramework;
   using BoogiePL = Microsoft.Boogie;
 
-  public class PredicateVisitor : StandardVisitor {
-    Variable predicateVariable;
-    public PredicateVisitor(Variable predicateVariable) {
-      this.predicateVariable = predicateVariable;
-    }
-
-    public override Expr VisitIdentifierExpr(IdentifierExpr node) {
-      if (node.Decl == predicateVariable)
-        return Expr.True;
-      else
-        return base.VisitIdentifierExpr(node);
-    }
-  }
-
   /* 
     The following assemblies are referenced because they are needed at runtime, not at compile time:
       BaseTypes
@@ -666,30 +652,6 @@ namespace Microsoft.Boogie {
         return PipelineOutcome.Done;
       }
       #endregion
-
-      if (CommandLineOptions.Clo.Predicate) {
-        GPUVerify.Foo.Predicate(program);
-        foreach (Declaration decl in program.TopLevelDeclarations) {
-          Implementation impl = decl as Implementation;
-          if (impl == null) continue;
-          if (!QKeyValue.FindBoolAttribute(impl.Attributes, "entrypoint")) continue;
-          Variable predicateVariable = null;
-          foreach (Variable v in impl.InParams) {
-            if (v.Name == "_P") {
-              predicateVariable = v;
-              break;
-            }
-          }
-          Debug.Assert(predicateVariable != null);
-          PredicateVisitor predicateVisitor = new PredicateVisitor(predicateVariable);
-          predicateVisitor.Visit(impl);
-        }
-        if (CommandLineOptions.Clo.PrintInstrumented) {
-          using (TokenTextWriter writer = new TokenTextWriter(Console.Out)) {
-            program.Emit(writer);
-          }
-        }
-      }
 
       #region Verify each implementation
 
