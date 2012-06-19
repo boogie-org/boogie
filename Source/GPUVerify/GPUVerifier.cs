@@ -25,7 +25,6 @@ namespace GPUVerify
         private HashSet<string> ReservedNames = new HashSet<string>();
 
         private int TempCounter = 0;
-        private int invariantGenerationCounter = 0;
 
         internal const string LOCAL_ID_X_STRING = "local_id_x";
         internal const string LOCAL_ID_Y_STRING = "local_id_y";
@@ -815,18 +814,16 @@ namespace GPUVerify
 
         internal void AddCandidateRequires(Procedure Proc, Expr e)
         {
-            Constant ExistentialBooleanConstant = MakeExistentialBoolean(Proc.tok);
+            Constant ExistentialBooleanConstant = Program.MakeExistentialBoolean();
             IdentifierExpr ExistentialBoolean = new IdentifierExpr(Proc.tok, ExistentialBooleanConstant);
             Proc.Requires.Add(new Requires(false, Expr.Imp(ExistentialBoolean, e)));
-            Program.TopLevelDeclarations.Add(ExistentialBooleanConstant);
         }
 
         internal void AddCandidateEnsures(Procedure Proc, Expr e)
         {
-            Constant ExistentialBooleanConstant = MakeExistentialBoolean(Proc.tok);
+            Constant ExistentialBooleanConstant = Program.MakeExistentialBoolean();
             IdentifierExpr ExistentialBoolean = new IdentifierExpr(Proc.tok, ExistentialBooleanConstant);
             Proc.Ensures.Add(new Ensures(false, Expr.Imp(ExistentialBoolean, e)));
-            Program.TopLevelDeclarations.Add(ExistentialBooleanConstant);
         }
 
         private List<Expr> GetUserSuppliedInvariants(string ProcedureName)
@@ -1041,14 +1038,6 @@ namespace GPUVerify
         public bool KernelHasGroupSizeZ()
         {
             return _GROUP_SIZE_Z != null;
-        }
-
-        internal Constant MakeExistentialBoolean(IToken tok)
-        {
-            Constant ExistentialBooleanConstant = new Constant(tok, new TypedIdent(tok, "_b" + invariantGenerationCounter, Microsoft.Boogie.Type.Bool), false);
-            invariantGenerationCounter++;
-            ExistentialBooleanConstant.AddAttribute("existential", new object[] { Expr.True });
-            return ExistentialBooleanConstant;
         }
 
         internal static string StripThreadIdentifier(string p)
@@ -2153,7 +2142,7 @@ namespace GPUVerify
         {
             if (CommandLineOptions.Unstructured)
             {
-                BlockPredicator.Predicate(this, Program);
+                BlockPredicator.Predicate(Program, /*createCandidateInvariants=*/CommandLineOptions.Inference);
                 return;
             }
 
@@ -2257,19 +2246,9 @@ namespace GPUVerify
 
         internal void AddCandidateInvariant(IRegion region, Expr e, string tag)
         {
-            region.AddInvariant(CreateCandidateInvariant(e, tag));
+            region.AddInvariant(Program.CreateCandidateInvariant(e, tag));
         }
 
-        internal PredicateCmd CreateCandidateInvariant(Expr e, string tag)
-        {
-            Constant ExistentialBooleanConstant = MakeExistentialBoolean(Token.NoToken);
-            IdentifierExpr ExistentialBoolean = new IdentifierExpr(Token.NoToken, ExistentialBooleanConstant);
-            PredicateCmd invariant = new AssertCmd(Token.NoToken, Expr.Imp(ExistentialBoolean, e));
-            invariant.Attributes = new QKeyValue(Token.NoToken, "tag", new List<object>(new object[] { tag }), null);
-            Program.TopLevelDeclarations.Add(ExistentialBooleanConstant);
-            return invariant;
-        }
-            
         internal Implementation GetImplementation(string procedureName)
         {
             foreach (Declaration D in Program.TopLevelDeclarations)
