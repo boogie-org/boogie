@@ -82,7 +82,7 @@ class VariableDefinitionAnalysis {
     } while (changed);
   }
 
-  private class BuildNamedDefVisitor : StandardVisitor {
+  private class BuildNamedDefVisitor : Duplicator {
     private VariableDefinitionAnalysis analysis;
 
     public BuildNamedDefVisitor(VariableDefinitionAnalysis a) {
@@ -111,7 +111,7 @@ class VariableDefinitionAnalysis {
         BuildNamedDefFor(v);
   }
 
-  private class SubstDualisedDefVisitor : StandardVisitor {
+  private class SubstDualisedDefVisitor : Duplicator {
     private VariableDefinitionAnalysis analysis;
     private VariableDualiser dualiser;
     public bool isSubstitutable = true;
