@@ -1403,12 +1403,6 @@ namespace VC {
 
       ConvertCFG2DAG(impl);
 
-      if (CommandLineOptions.Clo.DoPredication) {
-        DesugarCalls(impl);
-        BlockPredicator.Predicate(program, impl);
-        impl.ComputePredecessorsForBlocks();
-      }
-
       SmokeTester smoke_tester = null;
       if (CommandLineOptions.Clo.SoundnessSmokeTest) {
         smoke_tester = new SmokeTester(this, impl, program, callback);
@@ -2061,7 +2055,13 @@ namespace VC {
         EmitImpl(impl, true);
       }
       #endregion
-    
+
+      if (CommandLineOptions.Clo.DoPredication) {
+        DesugarCalls(impl);
+        BlockPredicator.Predicate(program, impl);
+        impl.ComputePredecessorsForBlocks();
+      }
+
       if (CommandLineOptions.Clo.LiveVariableAnalysis > 0) {
         Microsoft.Boogie.LiveVariableAnalysis.ComputeLiveVariables(impl);
       }

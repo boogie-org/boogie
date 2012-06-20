@@ -77,10 +77,14 @@ public class BlockPredicator {
         // the first statement in the block.
         var assign = cmdSeq.Last();
         cmdSeq.Truncate(cmdSeq.Length-1);
-        cmdSeq.Add(new AssertCmd(aCmd.tok, Expr.Imp(pExpr, aCmd.Expr)));
+        aCmd.Expr = Expr.Imp(pExpr, aCmd.Expr);
+        cmdSeq.Add(aCmd);
+        // cmdSeq.Add(new AssertCmd(aCmd.tok, Expr.Imp(pExpr, aCmd.Expr)));
         cmdSeq.Add(assign);
       } else {
-        cmdSeq.Add(new AssertCmd(aCmd.tok, Expr.Imp(p, aCmd.Expr)));
+        aCmd.Expr = Expr.Imp(p, aCmd.Expr);
+        cmdSeq.Add(aCmd);
+        // cmdSeq.Add(new AssertCmd(aCmd.tok, Expr.Imp(p, aCmd.Expr)));
       }
     } else if (cmd is AssumeCmd) {
       var aCmd = (AssumeCmd)cmd;
@@ -114,6 +118,9 @@ public class BlockPredicator {
       var cCmd = (CallCmd)cmd;
       cCmd.Ins.Insert(0, p);
       cmdSeq.Add(cCmd);
+    }
+    else if (cmd is CommentCmd) {
+      // skip
     } else {
       Console.WriteLine("Unsupported cmd: " + cmd.GetType().ToString());
     }
