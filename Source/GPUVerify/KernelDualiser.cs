@@ -186,32 +186,27 @@ namespace GPUVerify
             else if (c is AssertCmd)
             {
                 AssertCmd ass = c as AssertCmd;
-                if (ContainsAsymmetricExpression(ass.Expr))
+                cs.Add(new AssertCmd(c.tok, new VariableDualiser(1, verifier.uniformityAnalyser, procName).VisitExpr(ass.Expr.Clone() as Expr), ass.Attributes));
+                if (!ContainsAsymmetricExpression(ass.Expr))
                 {
-                    cs.Add(new AssertCmd(c.tok, new VariableDualiser(1, verifier.uniformityAnalyser, procName).VisitExpr(ass.Expr.Clone() as Expr), ass.Attributes));
-                }
-                else
-                {
-                    cs.Add(new AssertCmd(c.tok, Expr.And(new VariableDualiser(1, verifier.uniformityAnalyser, procName).VisitExpr(ass.Expr.Clone() as Expr),
-                        new VariableDualiser(2, verifier.uniformityAnalyser, procName).VisitExpr(ass.Expr.Clone() as Expr)), ass.Attributes));
+                    cs.Add(new AssertCmd(c.tok, new VariableDualiser(2, verifier.uniformityAnalyser, procName).VisitExpr(ass.Expr.Clone() as Expr), ass.Attributes));
                 }
             }
             else if (c is AssumeCmd)
             {
                 AssumeCmd ass = c as AssumeCmd;
-                if (ContainsAsymmetricExpression(ass.Expr))
-                {
-                    cs.Add(new AssumeCmd(c.tok, new VariableDualiser(1, verifier.uniformityAnalyser, procName).VisitExpr(ass.Expr.Clone() as Expr)));
-                }
-                else if (QKeyValue.FindBoolAttribute(ass.Attributes, "backedge"))
+                if (QKeyValue.FindBoolAttribute(ass.Attributes, "backedge"))
                 {
                     cs.Add(new AssumeCmd(c.tok, Expr.Or(new VariableDualiser(1, verifier.uniformityAnalyser, procName).VisitExpr(ass.Expr.Clone() as Expr),
                         new VariableDualiser(2, verifier.uniformityAnalyser, procName).VisitExpr(ass.Expr.Clone() as Expr))));
                 }
                 else
                 {
-                    cs.Add(new AssumeCmd(c.tok, Expr.And(new VariableDualiser(1, verifier.uniformityAnalyser, procName).VisitExpr(ass.Expr.Clone() as Expr),
-                        new VariableDualiser(2, verifier.uniformityAnalyser, procName).VisitExpr(ass.Expr.Clone() as Expr))));
+                    cs.Add(new AssumeCmd(c.tok, new VariableDualiser(1, verifier.uniformityAnalyser, procName).VisitExpr(ass.Expr.Clone() as Expr)));
+                    if (!ContainsAsymmetricExpression(ass.Expr))
+                    {
+                        cs.Add(new AssumeCmd(c.tok, new VariableDualiser(2, verifier.uniformityAnalyser, procName).VisitExpr(ass.Expr.Clone() as Expr)));
+                    }
                 }
             }
             else

@@ -911,6 +911,25 @@ namespace Microsoft.Boogie {
       }
       return globals;
     }
+
+    private int invariantGenerationCounter = 0;
+
+    public Constant MakeExistentialBoolean() {
+      Constant ExistentialBooleanConstant = new Constant(Token.NoToken, new TypedIdent(tok, "_b" + invariantGenerationCounter, Microsoft.Boogie.Type.Bool), false);
+      invariantGenerationCounter++;
+      ExistentialBooleanConstant.AddAttribute("existential", new object[] { Expr.True });
+      TopLevelDeclarations.Add(ExistentialBooleanConstant);
+      return ExistentialBooleanConstant;
+    }
+
+    public PredicateCmd CreateCandidateInvariant(Expr e, string tag = null) {
+      Constant ExistentialBooleanConstant = MakeExistentialBoolean();
+      IdentifierExpr ExistentialBoolean = new IdentifierExpr(Token.NoToken, ExistentialBooleanConstant);
+      PredicateCmd invariant = new AssertCmd(Token.NoToken, Expr.Imp(ExistentialBoolean, e));
+      if (tag != null)
+        invariant.Attributes = new QKeyValue(Token.NoToken, "tag", new List<object>(new object[] { tag }), null);
+      return invariant;
+    }
   }
 
   //---------------------------------------------------------------------

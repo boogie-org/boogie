@@ -452,45 +452,13 @@ namespace GPUVerify
 
         private void AddReadOrWrittenOffsetIsThreadIdCandidateInvariants(Implementation impl, IRegion region, Variable v, string accessType)
         {
+            var offsets = GetOffsetsAccessed(region, v, accessType)
+               .Select(ofs => verifier.varDefAnalyses[impl].SubstDualisedDefinitions(ofs, 1, impl.Name))
+               .ToList();
 
-            foreach (Expr e in GetOffsetsAccessed(region, v, accessType))
+            if (!offsets.Contains(null))
             {
-                if (verifier.mayBeTidAnalyser.MayBe(GPUVerifier.LOCAL_ID_X_STRING, impl.Name, GPUVerifier.StripThreadIdentifiers(e)))
-                {
-                    AddAccessedOffsetIsThreadLocalIdCandidateInvariant(region, v, accessType);
-                    // No point adding it multiple times
-                    break;
-                }
-            }
-
-            foreach (Expr e in GetOffsetsAccessed(region, v, accessType))
-            {
-                if (verifier.mayBeGidAnalyser.MayBe("x", impl.Name, GPUVerifier.StripThreadIdentifiers(e)))
-                {
-                    AddAccessedOffsetIsThreadGlobalIdCandidateInvariant(region, v, accessType);
-                    // No point adding it multiple times
-                    break;
-                }
-            }
-
-            foreach (Expr e in GetOffsetsAccessed(region, v, accessType))
-            {
-                if (verifier.mayBeFlattened2DTidOrGidAnalyser.MayBe("local", impl.Name, GPUVerifier.StripThreadIdentifiers(e)))
-                {
-                    AddAccessedOffsetIsThreadFlattened2DLocalIdCandidateInvariant(region, v, accessType);
-                    // No point adding it multiple times
-                    break;
-                }
-            }
-
-            foreach (Expr e in GetOffsetsAccessed(region, v, accessType))
-            {
-                if (verifier.mayBeFlattened2DTidOrGidAnalyser.MayBe("global", impl.Name, GPUVerifier.StripThreadIdentifiers(e)))
-                {
-                    AddAccessedOffsetIsThreadFlattened2DGlobalIdCandidateInvariant(region, v, accessType);
-                    // No point adding it multiple times
-                    break;
-                }
+                AddAccessedOffsetsAreConstantCandidateInvariant(region, v, offsets, accessType);
             }
 
             KeyValuePair<IdentifierExpr, Expr> iLessThanC = GetILessThanC(region.Guard());
@@ -680,17 +648,11 @@ namespace GPUVerify
             AddAccessedOffsetIsThreadLocalIdCandidateEnsures(Proc, v, "READ", 1);
         }
 
-        protected abstract void AddAccessedOffsetIsThreadLocalIdCandidateInvariant(IRegion region, Variable v, string ReadOrWrite);
-
-        protected abstract void AddAccessedOffsetIsThreadGlobalIdCandidateInvariant(IRegion region, Variable v, string ReadOrWrite);
-
-        protected abstract void AddAccessedOffsetIsThreadFlattened2DLocalIdCandidateInvariant(IRegion region, Variable v, string ReadOrWrite);
-
-        protected abstract void AddAccessedOffsetIsThreadFlattened2DGlobalIdCandidateInvariant(IRegion region, Variable v, string ReadOrWrite);
-
         protected abstract void AddAccessedOffsetInRangeCTimesLocalIdToCTimesLocalIdPlusC(IRegion region, Variable v, Expr constant, string ReadOrWrite);
 
         protected abstract void AddAccessedOffsetInRangeCTimesGlobalIdToCTimesGlobalIdPlusC(IRegion region, Variable v, Expr constant, string ReadOrWrite);
+
+        protected abstract void AddAccessedOffsetsAreConstantCandidateInvariant(IRegion region, Variable v, IEnumerable<Expr> offsets, string ReadOrWrite);
 
         protected abstract void AddAccessedOffsetIsThreadLocalIdCandidateRequires(Procedure Proc, Variable v, string ReadOrWrite, int Thread);
 
