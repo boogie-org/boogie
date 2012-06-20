@@ -2056,7 +2056,7 @@ namespace VC {
       }
       #endregion
 
-      if (CommandLineOptions.Clo.DoPredication) {
+      if (CommandLineOptions.Clo.DoPredication && CommandLineOptions.Clo.StratifiedInlining == 0) {
         DesugarCalls(impl);
         BlockPredicator.Predicate(program, impl);
         impl.ComputePredecessorsForBlocks();
