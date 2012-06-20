@@ -594,6 +594,15 @@ namespace Microsoft.Boogie {
         program.UnrollLoops(CommandLineOptions.Clo.LoopUnrollCount);
       }
 
+      if (CommandLineOptions.Clo.DoPredication && CommandLineOptions.Clo.StratifiedInlining > 0) {
+        BlockPredicator.Predicate(program, false, false);
+        if (CommandLineOptions.Clo.PrintInstrumented) {
+          using (TokenTextWriter writer = new TokenTextWriter(Console.Out)) {
+            program.Emit(writer);
+          }
+        }
+      }
+
       Dictionary<string, Dictionary<string, Block>> extractLoopMappingInfo = null;
       if (CommandLineOptions.Clo.ExtractLoops)
       {

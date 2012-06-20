@@ -77,10 +77,10 @@ public class BlockPredicator {
         // the first statement in the block.
         var assign = cmdSeq.Last();
         cmdSeq.Truncate(cmdSeq.Length-1);
-        cmdSeq.Add(new AssertCmd(Token.NoToken, Expr.Imp(pExpr, aCmd.Expr)));
+        cmdSeq.Add(new AssertCmd(aCmd.tok, Expr.Imp(pExpr, aCmd.Expr)));
         cmdSeq.Add(assign);
       } else {
-        cmdSeq.Add(new AssertCmd(Token.NoToken, Expr.Imp(p, aCmd.Expr)));
+        cmdSeq.Add(new AssertCmd(aCmd.tok, Expr.Imp(p, aCmd.Expr)));
       }
     } else if (cmd is AssumeCmd) {
       var aCmd = (AssumeCmd)cmd;
@@ -157,7 +157,12 @@ public class BlockPredicator {
   }
 
   void PredicateImplementation() {
-    blockGraph = prog.ProcessLoops(impl);
+    try {
+      blockGraph = prog.ProcessLoops(impl);
+    }
+    catch (Program.IrreducibleLoopException) {
+      return;
+    }
     var sortedBlocks = blockGraph.LoopyTopSort();
 
     int blockId = 0;
@@ -296,6 +301,10 @@ public class BlockPredicator {
       if (impl != null)
         new BlockPredicator(p, impl, createCandidateInvariants, useProcedurePredicates).PredicateImplementation();
     }
+  }
+
+  public static void Predicate(Program p, Implementation impl) {
+    new BlockPredicator(p, impl, false, false).PredicateImplementation();
   }
 
 }
