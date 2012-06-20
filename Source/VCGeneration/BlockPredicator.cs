@@ -121,14 +121,16 @@ public class BlockPredicator {
     }
     else if (cmd is CommentCmd) {
       // skip
-      } else if (cmd is StateCmd) {
+    }
+    else if (cmd is StateCmd) {
       var sCmd = (StateCmd)cmd;
       var newCmdSeq = new CmdSeq();
       foreach (Cmd c in sCmd.Cmds)
         PredicateCmd(newCmdSeq, c);
       sCmd.Cmds = newCmdSeq;
       cmdSeq.Add(sCmd);
-    } else {
+    }
+    else {
       Console.WriteLine("Unsupported cmd: " + cmd.GetType().ToString());
     }
   }
@@ -171,12 +173,7 @@ public class BlockPredicator {
   }
 
   void PredicateImplementation() {
-    try {
-      blockGraph = prog.ProcessLoops(impl);
-    }
-    catch (Program.IrreducibleLoopException) {
-      return;
-    }
+    blockGraph = prog.ProcessLoops(impl);
     var sortedBlocks = blockGraph.LoopyTopSort();
 
     int blockId = 0;
@@ -311,14 +308,20 @@ public class BlockPredicator {
           (new Variable[] {fpVar}.Concat(dwf.InParams.Cast<Variable>()))
             .ToArray());
       }
-      var impl = decl as Implementation;
-      if (impl != null)
-        new BlockPredicator(p, impl, createCandidateInvariants, useProcedurePredicates).PredicateImplementation();
+      try {
+        var impl = decl as Implementation;
+        if (impl != null)
+          new BlockPredicator(p, impl, createCandidateInvariants, useProcedurePredicates).PredicateImplementation();
+      }
+      catch (Program.IrreducibleLoopException) { }
     }
   }
 
   public static void Predicate(Program p, Implementation impl) {
-    new BlockPredicator(p, impl, false, false).PredicateImplementation();
+    try {
+      new BlockPredicator(p, impl, false, false).PredicateImplementation();
+    }
+    catch (Program.IrreducibleLoopException) { }
   }
 
 }
