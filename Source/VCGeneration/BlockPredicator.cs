@@ -121,6 +121,13 @@ public class BlockPredicator {
     }
     else if (cmd is CommentCmd) {
       // skip
+      } else if (cmd is StateCmd) {
+      var sCmd = (StateCmd)cmd;
+      var newCmdSeq = new CmdSeq();
+      foreach (Cmd c in sCmd.Cmds)
+        PredicateCmd(newCmdSeq, c);
+      sCmd.Cmds = newCmdSeq;
+      cmdSeq.Add(sCmd);
     } else {
       Console.WriteLine("Unsupported cmd: " + cmd.GetType().ToString());
     }
