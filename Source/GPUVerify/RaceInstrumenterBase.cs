@@ -456,7 +456,7 @@ namespace GPUVerify
                .Select(ofs => verifier.varDefAnalyses[impl].SubstDualisedDefinitions(ofs, 1, impl.Name))
                .ToList();
 
-            if (!offsets.Contains(null))
+            if (offsets.Count != 0 && !offsets.Contains(null))
             {
                 AddAccessedOffsetsAreConstantCandidateInvariant(region, v, offsets, accessType);
             }

@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Linq;
 
-namespace GPUVerify {
+namespace Microsoft.Boogie {
 
 public static class GraphAlgorithms {
 

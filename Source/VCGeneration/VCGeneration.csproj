@@ -144,6 +144,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="BlockPredicator.cs" />
     <Compile Include="Check.cs" />
     <Compile Include="ConditionGeneration.cs" />
     <Compile Include="Context.cs" />
@@ -151,6 +152,7 @@
     <Compile Include="DoomedLoopUnrolling.cs" />
     <Compile Include="DoomedStrategy.cs" />
     <Compile Include="DoomErrorHandler.cs" />
+    <Compile Include="GraphAlgorithms.cs" />
     <Compile Include="HasseDiagram.cs" />
     <Compile Include="OrderingAxioms.cs" />
     <Compile Include="StratifiedVC.cs" />
