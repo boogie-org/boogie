@@ -242,10 +242,10 @@ namespace GPUVerify
         {
             if (local)
             {
-                return verifier.mayBeTidAnalyser.MayBe(GPUVerifier.LOCAL_ID_X_STRING, impl.Name, mayBeId);
+                return verifier.IsLocalId(mayBeId, 0, impl);
             }
 
-            return verifier.mayBeGidAnalyser.MayBe("x", impl.Name, mayBeId);
+            return verifier.IsGlobalId(mayBeId, 0, impl);
         }
 
         private bool TryGenerateCandidateForReducedStrengthStrideVariable(Implementation impl, IRegion region, Variable v, Expr e, string accessKind)
@@ -453,7 +453,7 @@ namespace GPUVerify
         private void AddReadOrWrittenOffsetIsThreadIdCandidateInvariants(Implementation impl, IRegion region, Variable v, string accessType)
         {
             var offsets = GetOffsetsAccessed(region, v, accessType)
-               .Select(ofs => verifier.varDefAnalyses[impl].SubstDualisedDefinitions(ofs, 1, impl.Name))
+               .Select(ofs => verifier.varDefAnalyses[impl].SubstDefinitions(ofs, impl.Name))
                .ToList();
 
             if (offsets.Count != 0 && !offsets.Contains(null))
@@ -520,8 +520,8 @@ namespace GPUVerify
             }
 
             return
-                (SameConstant(nary.Args[0], constant) && verifier.mayBeTidAnalyser.MayBe(GPUVerifier.LOCAL_ID_X_STRING, impl.Name, nary.Args[1])) ||
-                (SameConstant(nary.Args[1], constant) && verifier.mayBeTidAnalyser.MayBe(GPUVerifier.LOCAL_ID_X_STRING, impl.Name, nary.Args[0]));
+                (SameConstant(nary.Args[0], constant) && verifier.IsLocalId(nary.Args[1], 0, impl)) ||
+                (SameConstant(nary.Args[1], constant) && verifier.IsLocalId(nary.Args[0], 0, impl));
         }
 
 
@@ -558,8 +558,8 @@ namespace GPUVerify
             }
 
             return
-                (SameConstant(nary.Args[0], constant) && verifier.mayBeGidAnalyser.MayBe("x", impl.Name, nary.Args[1])) ||
-                (SameConstant(nary.Args[1], constant) && verifier.mayBeGidAnalyser.MayBe("x", impl.Name, nary.Args[0]));
+                (SameConstant(nary.Args[0], constant) && verifier.IsGlobalId(nary.Args[1], 0, impl)) ||
+                (SameConstant(nary.Args[1], constant) && verifier.IsGlobalId(nary.Args[0], 0, impl));
         }
 
 

@@ -111,31 +111,35 @@ class VariableDefinitionAnalysis {
         BuildNamedDefFor(v);
   }
 
-  private class SubstDualisedDefVisitor : Duplicator {
+  private class SubstDefVisitor : Duplicator {
     private VariableDefinitionAnalysis analysis;
-    private VariableDualiser dualiser;
+    private string procName;
     public bool isSubstitutable = true;
 
-    public SubstDualisedDefVisitor(VariableDefinitionAnalysis a, int id, string procName) {
+    public SubstDefVisitor(VariableDefinitionAnalysis a, string p) {
       analysis = a;
-      dualiser = new VariableDualiser(id, analysis.verifier.uniformityAnalyser, procName);
+      procName = p;
     }
 
     public override Expr VisitIdentifierExpr(IdentifierExpr expr) {
       if (expr.Decl is Constant)
-        return dualiser.VisitIdentifierExpr(expr);
-      var varName = GPUVerifier.StripThreadIdentifier(expr.Decl.Name);
+        return expr;
+      int id;
+      var varName = GPUVerifier.StripThreadIdentifier(expr.Decl.Name, out id);
       Expr def;
       if (!analysis.namedDefMap.TryGetValue(varName, out def)) {
         isSubstitutable = false;
         return null;
       }
-      return (Expr)dualiser.Visit(def.Clone());
+      if (id == 0)
+        return def;
+      else
+        return (Expr)new VariableDualiser(id, analysis.verifier.uniformityAnalyser, procName).Visit(def.Clone());
     }
   }
 
-  public Expr SubstDualisedDefinitions(Expr e, int id, string procName) {
-    var v = new SubstDualisedDefVisitor(this, id, procName);
+  public Expr SubstDefinitions(Expr e, string procName) {
+    var v = new SubstDefVisitor(this, procName);
     Expr result = (Expr)v.Visit(e.Clone());
     if (!v.isSubstitutable)
       return null;
