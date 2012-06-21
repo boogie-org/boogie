@@ -379,14 +379,14 @@ namespace GPUVerify
                 {
                     if (DoesNotReferTo(nary.Args[0], v))
                     {
-                        return GPUVerifier.MakeBitVectorBinaryBitVector("BV32_SUB",
+                        return verifier.MakeBVSub(
                             InverseOfLinearFunctionOfVariable(nary.Args[1], v, offsetExpr),
                             nary.Args[0]);
                     }
                     else
                     {
                         Debug.Assert(DoesNotReferTo(nary.Args[1], v));
-                        return GPUVerifier.MakeBitVectorBinaryBitVector("BV32_SUB",
+                        return verifier.MakeBVSub(
                             InverseOfLinearFunctionOfVariable(nary.Args[0], v, offsetExpr),
                             nary.Args[1]);
                     }
@@ -400,11 +400,10 @@ namespace GPUVerify
 
         private Expr ExprModPow2EqualsId(Expr expr, Expr powerOfTwoExpr, Expr threadIdExpr)
         {
-            Expr Pow2Minus1 = GPUVerifier.MakeBitVectorBinaryBitVector("BV32_SUB", powerOfTwoExpr, 
+            Expr Pow2Minus1 = verifier.MakeBVSub(powerOfTwoExpr, 
                             new LiteralExpr(Token.NoToken, BigNum.FromInt(1), 32));
 
-            Expr Pow2Minus1BitAndExpr =
-                GPUVerifier.MakeBitVectorBinaryBitVector("BV32_AND", Pow2Minus1, expr);
+            Expr Pow2Minus1BitAndExpr = verifier.MakeBVAnd(Pow2Minus1, expr);
 
             return Expr.Eq(Pow2Minus1BitAndExpr, threadIdExpr);
 

@@ -1300,7 +1300,9 @@ namespace GPUVerify
         private Expr MakeBVFunctionCall(string functionName, string smtName, Microsoft.Boogie.Type resultType, params Expr[] args)
         {
             Function f = GetOrCreateBVFunction(functionName, smtName, resultType, args.Select(a => a.Type).ToArray());
-            return new NAryExpr(Token.NoToken, new FunctionCall(f), new ExprSeq(args));
+            var e = new NAryExpr(Token.NoToken, new FunctionCall(f), new ExprSeq(args));
+            e.Type = resultType;
+            return e;
         }
 
         private Expr MakeBitVectorBinaryBoolean(string suffix, string smtName, Expr lhs, Expr rhs)
@@ -1316,6 +1318,9 @@ namespace GPUVerify
         internal Expr MakeBVSlt(Expr lhs, Expr rhs) { return MakeBitVectorBinaryBoolean("SLT", "bvslt", lhs, rhs); }
         internal Expr MakeBVSgt(Expr lhs, Expr rhs) { return MakeBitVectorBinaryBoolean("SGT", "bvsgt", lhs, rhs); }
         internal Expr MakeBVSge(Expr lhs, Expr rhs) { return MakeBitVectorBinaryBoolean("SGE", "bvsge", lhs, rhs); }
+
+        internal Expr MakeBVAnd(Expr lhs, Expr rhs) { return MakeBitVectorBinaryBitVector("AND", "bvand", lhs, rhs); }
+        internal Expr MakeBVSub(Expr lhs, Expr rhs) { return MakeBitVectorBinaryBitVector("SUB", "bvsub", lhs, rhs); }
 
         internal static Expr MakeBitVectorBinaryBoolean(string functionName, Expr lhs, Expr rhs)
         {
