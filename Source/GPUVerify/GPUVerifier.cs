@@ -1320,7 +1320,10 @@ namespace GPUVerify
         internal Expr MakeBVSge(Expr lhs, Expr rhs) { return MakeBitVectorBinaryBoolean("SGE", "bvsge", lhs, rhs); }
 
         internal Expr MakeBVAnd(Expr lhs, Expr rhs) { return MakeBitVectorBinaryBitVector("AND", "bvand", lhs, rhs); }
+        internal Expr MakeBVAdd(Expr lhs, Expr rhs) { return MakeBitVectorBinaryBitVector("ADD", "bvadd", lhs, rhs); }
         internal Expr MakeBVSub(Expr lhs, Expr rhs) { return MakeBitVectorBinaryBitVector("SUB", "bvsub", lhs, rhs); }
+        internal Expr MakeBVMul(Expr lhs, Expr rhs) { return MakeBitVectorBinaryBitVector("MUL", "bvmul", lhs, rhs); }
+        internal Expr MakeBVURem(Expr lhs, Expr rhs) { return MakeBitVectorBinaryBitVector("UREM", "bvurem", lhs, rhs); }
 
         internal static Expr MakeBitVectorBinaryBoolean(string functionName, Expr lhs, Expr rhs)
         {
@@ -1337,6 +1340,42 @@ namespace GPUVerify
                 new LocalVariable(lhs.tok, new TypedIdent(lhs.tok, "arg2", Microsoft.Boogie.Type.GetBvType(32)))
             }), new LocalVariable(lhs.tok, new TypedIdent(lhs.tok, "result", Microsoft.Boogie.Type.GetBvType(32))))), new ExprSeq(new Expr[] { lhs, rhs }));
         }
+
+        private static bool IsBVFunctionCall(Expr e, string smtName, out ExprSeq args)
+        {
+            args = null;
+            var ne = e as NAryExpr;
+            if (ne == null)
+                return false;
+
+            var fc = ne.Fun as FunctionCall;
+            if (fc == null)
+                return false;
+
+            string bvBuiltin = QKeyValue.FindStringAttribute(fc.Func.Attributes, "bvbuiltin");
+            if (bvBuiltin == smtName)
+            {
+                args = ne.Args;
+                return true;
+            }
+
+            return false;
+        }
+
+        private static bool IsBVFunctionCall(Expr e, string smtName, out Expr lhs, out Expr rhs)
+        {
+            ExprSeq es;
+            if (IsBVFunctionCall(e, smtName, out es))
+            {
+                lhs = es[0]; rhs = es[1];
+                return true;
+            }
+            lhs = null; rhs = null;
+            return false;
+        }
+
+        internal static bool IsBVAdd(Expr e, out Expr lhs, out Expr rhs) { return IsBVFunctionCall(e, "bvadd", out lhs, out rhs); }
+        internal static bool IsBVMul(Expr e, out Expr lhs, out Expr rhs) { return IsBVFunctionCall(e, "bvmul", out lhs, out rhs); }
 
         internal Constant GetGroupSize(string dimension)
         {
@@ -2299,7 +2338,7 @@ namespace GPUVerify
 
         internal Expr GlobalIdExpr(string dimension)
         {
-            return GPUVerifier.MakeBitVectorBinaryBitVector("BV32_ADD", GPUVerifier.MakeBitVectorBinaryBitVector("BV32_MUL",
+            return MakeBVAdd(MakeBVMul(
                             new IdentifierExpr(Token.NoToken, GetGroupId(dimension)), new IdentifierExpr(Token.NoToken, GetGroupSize(dimension))),
                                 new IdentifierExpr(Token.NoToken, MakeThreadId(Token.NoToken, dimension)));
         }
@@ -2418,8 +2457,6 @@ namespace GPUVerify
             return IsGivenConstant(maybeGroupId, GetGroupIdConst(dim)) &&
                    IsGivenConstant(maybeGroupSize, GetGroupSizeConst(dim));
         }
-
-
     }
 
 }
