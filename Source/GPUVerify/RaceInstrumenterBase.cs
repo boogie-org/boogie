@@ -131,121 +131,145 @@ namespace GPUVerify
             }
         }
 
+        private class StrideConstraint {}
+        private class EqStrideConstraint : StrideConstraint {
+            public EqStrideConstraint(Expr eq) { this.eq = eq; }
+            public Expr eq;
+        }
+        private class ModStrideConstraint : StrideConstraint {
+            public ModStrideConstraint(Expr mod, Expr modEq) { this.mod = mod; this.modEq = modEq; }
+            public Expr mod, modEq;
+        }
+
+        private StrideConstraint BuildBottomStrideConstraint(Expr e)
+        {
+            int width = e.Type.BvBits;
+            return new ModStrideConstraint(new LiteralExpr(Token.NoToken, BigNum.FromInt(1), width),
+                                           new LiteralExpr(Token.NoToken, BigNum.FromInt(0), width));
+        }
+
+        private bool IsBottomStrideConstraint(StrideConstraint sc)
+        {
+            var msc = sc as ModStrideConstraint;
+            if (msc == null)
+                return false;
+
+            var le = msc.mod as LiteralExpr;
+            if (le == null)
+                return false;
+
+            var bvc = le.Val as BvConst;
+            if (bvc == null)
+                return false;
+
+            return bvc.Value.InInt32 && bvc.Value.ToInt == 1;
+        }
+
+        private StrideConstraint BuildAddStrideConstraint(Expr e, StrideConstraint lhsc, StrideConstraint rhsc)
+        {
+            if (lhsc is EqStrideConstraint && rhsc is EqStrideConstraint)
+            {
+                return new EqStrideConstraint(e);
+            }
+
+            if (lhsc is EqStrideConstraint && rhsc is ModStrideConstraint)
+                return BuildAddStrideConstraint(e, rhsc, lhsc);
+
+            if (lhsc is ModStrideConstraint && rhsc is EqStrideConstraint)
+            {
+                var lhsmc = (ModStrideConstraint)lhsc;
+                var rhsec = (EqStrideConstraint)rhsc;
+
+                return new ModStrideConstraint(lhsmc.mod, verifier.MakeBVAdd(lhsmc.modEq, rhsec.eq));
+            }
+
+            if (lhsc is ModStrideConstraint && rhsc is ModStrideConstraint)
+            {
+                var lhsmc = (ModStrideConstraint)lhsc;
+                var rhsmc = (ModStrideConstraint)rhsc;
+
+                if (lhsmc.mod == rhsmc.mod)
+                    return new ModStrideConstraint(lhsmc.mod, verifier.MakeBVAdd(lhsmc.modEq, rhsmc.modEq));
+            }
+
+            return BuildBottomStrideConstraint(e);
+        }
+
+        private StrideConstraint BuildMulStrideConstraint(Expr e, StrideConstraint lhsc, StrideConstraint rhsc)
+        {
+            if (lhsc is EqStrideConstraint && rhsc is EqStrideConstraint)
+            {
+                return new EqStrideConstraint(e);
+            }
+
+            if (lhsc is EqStrideConstraint && rhsc is ModStrideConstraint)
+                return BuildMulStrideConstraint(e, rhsc, lhsc);
+
+            if (lhsc is ModStrideConstraint && rhsc is EqStrideConstraint)
+            {
+                var lhsmc = (ModStrideConstraint)lhsc;
+                var rhsec = (EqStrideConstraint)rhsc;
+
+                return new ModStrideConstraint(verifier.MakeBVMul(lhsmc.mod, rhsec.eq),
+                                               verifier.MakeBVMul(lhsmc.modEq, rhsec.eq));
+            }
+
+            return BuildBottomStrideConstraint(e);
+        }
+
+        private StrideConstraint BuildStrideConstraint(Implementation impl, Expr e)
+        {
+            if (e is LiteralExpr || (e is IdentifierExpr && ((IdentifierExpr)e).Decl is Constant))
+                return new EqStrideConstraint(e);
+
+            Expr lhs, rhs;
+
+            if (GPUVerifier.IsBVAdd(e, out lhs, out rhs))
+            {
+                var lhsc = BuildStrideConstraint(impl, lhs);
+                var rhsc = BuildStrideConstraint(impl, rhs);
+                return BuildAddStrideConstraint(e, lhsc, rhsc);
+            }
+
+            if (GPUVerifier.IsBVMul(e, out lhs, out rhs))
+            {
+                var lhsc = BuildStrideConstraint(impl, lhs);
+                var rhsc = BuildStrideConstraint(impl, rhs);
+                return BuildMulStrideConstraint(e, lhsc, rhsc);
+            }
+
+            return BuildBottomStrideConstraint(e);
+        }
+
         private bool TryGenerateCandidateForDirectStridedAccess(Implementation impl, IRegion region, Variable v, Expr e, string accessKind)
         {
-            if (!(e is NAryExpr))
-            {
+            bool isConstant;
+            e = verifier.varDefAnalyses[impl].SubstDefinitions(e, impl.Name, out isConstant);
+            if (isConstant)
                 return false;
-            }
 
-            NAryExpr nary = e as NAryExpr;
-
-            if (!nary.Fun.FunctionName.Equals("BV32_ADD"))
+            var sc = BuildStrideConstraint(impl, e);
+            var msc = sc as ModStrideConstraint;
+            if (msc != null && !IsBottomStrideConstraint(msc))
             {
-                return false;
-            }
+                Expr offsetExpr = new IdentifierExpr(Token.NoToken, GPUVerifier.MakeOffsetXVariable(v, accessKind));
+                Expr modEqExpr = Expr.Eq(verifier.MakeBVURem(offsetExpr, msc.mod), verifier.MakeBVURem(msc.modEq, msc.mod));
 
-            {
-                Expr constant = IsIdPlusConstantMultiple(nary.Args[0], nary.Args[1], true, impl);
-                if (constant != null)
-                {
-                    Expr offsetExpr = new IdentifierExpr(Token.NoToken, GPUVerifier.MakeOffsetXVariable(v, accessKind));
-                    Expr modPow2Expr = ExprModPow2EqualsId(offsetExpr, constant, new IdentifierExpr(Token.NoToken,
-                        verifier.MakeThreadId(Token.NoToken, "X")));
+                Expr candidateInvariantExpr = Expr.Imp(
+                        new IdentifierExpr(Token.NoToken, GPUVerifier.MakeAccessHasOccurredVariable(v.Name, accessKind)),
+                        modEqExpr);
 
-                    Expr candidateInvariantExpr = Expr.Imp(
-                            new IdentifierExpr(Token.NoToken, GPUVerifier.MakeAccessHasOccurredVariable(v.Name, accessKind)),
-                            modPow2Expr);
-
-                    AddAccessRelatedCandidateInvariant(region, accessKind, candidateInvariantExpr, impl.Name, "direct stride local");
-                    return true;
-                }
-            }
-
-            {
-                Expr constant = IsIdPlusConstantMultiple(nary.Args[0], nary.Args[1], false, impl);
-                if (constant != null)
-                {
-                    Expr offsetExpr = new IdentifierExpr(Token.NoToken, GPUVerifier.MakeOffsetXVariable(v, accessKind));
-                    Expr modPow2Expr = ExprModPow2EqualsId(offsetExpr, constant, verifier.GlobalIdExpr("X"));
-
-                    Expr candidateInvariantExpr = Expr.Imp(
-                            new IdentifierExpr(Token.NoToken, GPUVerifier.MakeAccessHasOccurredVariable(v.Name, accessKind)),
-                            modPow2Expr);
-
-                    AddAccessRelatedCandidateInvariant(region, accessKind, candidateInvariantExpr, impl.Name, "direct stride global");
-                    return true;
-                }
+                AddAccessRelatedCandidateInvariant(region, accessKind, candidateInvariantExpr, impl.Name, "direct stride");
+                return true;
             }
 
             return false;
-
         }
 
         private void AddAccessRelatedCandidateInvariant(IRegion region, string accessKind, Expr candidateInvariantExpr, string procName, string tag)
         {
             Expr candidate = new VariableDualiser(1, verifier.uniformityAnalyser, procName).VisitExpr(candidateInvariantExpr.Clone() as Expr);
             verifier.AddCandidateInvariant(region, candidate, tag);
-        }
-
-        private Expr IsIdPlusConstantMultiple(Expr arg1, Expr arg2, bool local, Implementation impl)
-        {
-            {
-                Expr constant = IsConstantMultiple(arg2);
-                if (constant != null && IsId(arg1, local, impl))
-                {
-                    return constant;
-                }
-            }
-
-            {
-                Expr constant = IsConstantMultiple(arg1);
-                if (constant != null && IsId(arg2, local, impl))
-                {
-                    return constant;
-                }
-            }
-
-            return null;
-
-        }
-
-        private Expr IsConstantMultiple(Expr e)
-        {
-            if (!(e is NAryExpr))
-            {
-                return null;
-            }
-
-            NAryExpr nary = e as NAryExpr;
-
-            if (!(nary.Fun.FunctionName.Equals("BV32_MUL")))
-            {
-                return null;
-            }
-
-            if (IsConstant(nary.Args[0]))
-            {
-                return nary.Args[0];
-            }
-
-            if (IsConstant(nary.Args[1]))
-            {
-                return nary.Args[1];
-            }
-
-            return null;
-
-        }
-
-        private bool IsId(Expr mayBeId, bool local, Implementation impl)
-        {
-            if (local)
-            {
-                return verifier.mayBeTidAnalyser.MayBe(GPUVerifier.LOCAL_ID_X_STRING, impl.Name, mayBeId);
-            }
-
-            return verifier.mayBeGidAnalyser.MayBe("x", impl.Name, mayBeId);
         }
 
         private bool TryGenerateCandidateForReducedStrengthStrideVariable(Implementation impl, IRegion region, Variable v, Expr e, string accessKind)
@@ -379,14 +403,14 @@ namespace GPUVerify
                 {
                     if (DoesNotReferTo(nary.Args[0], v))
                     {
-                        return GPUVerifier.MakeBitVectorBinaryBitVector("BV32_SUB",
+                        return verifier.MakeBVSub(
                             InverseOfLinearFunctionOfVariable(nary.Args[1], v, offsetExpr),
                             nary.Args[0]);
                     }
                     else
                     {
                         Debug.Assert(DoesNotReferTo(nary.Args[1], v));
-                        return GPUVerifier.MakeBitVectorBinaryBitVector("BV32_SUB",
+                        return verifier.MakeBVSub(
                             InverseOfLinearFunctionOfVariable(nary.Args[0], v, offsetExpr),
                             nary.Args[1]);
                     }
@@ -400,11 +424,10 @@ namespace GPUVerify
 
         private Expr ExprModPow2EqualsId(Expr expr, Expr powerOfTwoExpr, Expr threadIdExpr)
         {
-            Expr Pow2Minus1 = GPUVerifier.MakeBitVectorBinaryBitVector("BV32_SUB", powerOfTwoExpr, 
+            Expr Pow2Minus1 = verifier.MakeBVSub(powerOfTwoExpr, 
                             new LiteralExpr(Token.NoToken, BigNum.FromInt(1), 32));
 
-            Expr Pow2Minus1BitAndExpr =
-                GPUVerifier.MakeBitVectorBinaryBitVector("BV32_AND", Pow2Minus1, expr);
+            Expr Pow2Minus1BitAndExpr = verifier.MakeBVAnd(Pow2Minus1, expr);
 
             return Expr.Eq(Pow2Minus1BitAndExpr, threadIdExpr);
 
@@ -453,7 +476,7 @@ namespace GPUVerify
         private void AddReadOrWrittenOffsetIsThreadIdCandidateInvariants(Implementation impl, IRegion region, Variable v, string accessType)
         {
             var offsets = GetOffsetsAccessed(region, v, accessType)
-               .Select(ofs => verifier.varDefAnalyses[impl].SubstDualisedDefinitions(ofs, 1, impl.Name))
+               .Select(ofs => verifier.varDefAnalyses[impl].SubstDefinitions(ofs, impl.Name))
                .ToList();
 
             if (offsets.Count != 0 && !offsets.Contains(null))
@@ -520,8 +543,8 @@ namespace GPUVerify
             }
 
             return
-                (SameConstant(nary.Args[0], constant) && verifier.mayBeTidAnalyser.MayBe(GPUVerifier.LOCAL_ID_X_STRING, impl.Name, nary.Args[1])) ||
-                (SameConstant(nary.Args[1], constant) && verifier.mayBeTidAnalyser.MayBe(GPUVerifier.LOCAL_ID_X_STRING, impl.Name, nary.Args[0]));
+                (SameConstant(nary.Args[0], constant) && verifier.IsLocalId(nary.Args[1], 0, impl)) ||
+                (SameConstant(nary.Args[1], constant) && verifier.IsLocalId(nary.Args[0], 0, impl));
         }
 
 
@@ -558,8 +581,8 @@ namespace GPUVerify
             }
 
             return
-                (SameConstant(nary.Args[0], constant) && verifier.mayBeGidAnalyser.MayBe("x", impl.Name, nary.Args[1])) ||
-                (SameConstant(nary.Args[1], constant) && verifier.mayBeGidAnalyser.MayBe("x", impl.Name, nary.Args[0]));
+                (SameConstant(nary.Args[0], constant) && verifier.IsGlobalId(nary.Args[1], 0, impl)) ||
+                (SameConstant(nary.Args[1], constant) && verifier.IsGlobalId(nary.Args[0], 0, impl));
         }
 
 

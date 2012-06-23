@@ -1,15 +1,15 @@
-# Aste started: 2012-06-08 07:00:06
+# Aste started: 2012-06-21 07:00:05
 # Host id: Boogiebox
 # Configuration: boogie.cfg
 # Task: aste.tasks.boogie.FullBuild
-# [2012-06-08 07:02:11] SpecSharp revision: b46b99e00a7e
-# [2012-06-08 07:02:11] SscBoogie revision: b46b99e00a7e
-# [2012-06-08 07:03:22] Boogie revision: 4c147e39859e
-[2012-06-08 07:05:15] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com SpecSharp.sln /Project "Checkin Tests" /Build
+# [2012-06-21 07:01:09] SpecSharp revision: 9bc1893bd39e
+# [2012-06-21 07:01:09] SscBoogie revision: 9bc1893bd39e
+# [2012-06-21 07:02:06] Boogie revision: 3965241b90a2
+[2012-06-21 07:04:05] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com SpecSharp.sln /Project "Checkin Tests" /Build
 
     1>corflags : warning CF011: The specified file is strong name signed.  Using /Force will invalidate the signature of this image and will require the assembly to be resigned.
     warning CF011: The specified file is strong name signed.  Using /Force will invalidate the signature of this image and will require the assembly to be resigned.
-[2012-06-08 07:06:42] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Boogie.sln /Rebuild Checked
+[2012-06-21 07:05:36] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Boogie.sln /Rebuild Checked
 
     D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(823,16): warning CS0659: 'Microsoft.Boogie.BasicType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
     D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(2802,16): warning CS0659: 'Microsoft.Boogie.CtorType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
@@ -41,5 +41,6 @@
     warning CS0162: Unreachable code detected
     warning CC1032: Method 'Microsoft.Boogie.Houdini.InlineRequiresVisitor.VisitCmdSeq(Microsoft.Boogie.CmdSeq)' overrides 'Microsoft.Boogie.StandardVisitor.VisitCmdSeq(Microsoft.Boogie.CmdSeq)', thus cannot add Requires.
     warning CC1032: Method 'Microsoft.Boogie.Houdini.FreeRequiresVisitor.VisitAssertRequiresCmd(Microsoft.Boogie.AssertRequiresCmd)' overrides 'Microsoft.Boogie.StandardVisitor.VisitAssertRequiresCmd(Microsoft.Boogie.AssertRequiresCmd)', thus cannot add Requires.
-[2012-06-08 08:03:55] 0 out of 33 test(s) in D:\Temp\aste\Boogie\Test\alltests.txt failed
-# [2012-06-08 08:04:37] Released nightly of Boogie
+[2012-06-21 08:09:53] 1 out of 33 test(s) in D:\Temp\aste\Boogie\Test\alltests.txt failed
+['dafny1']
+# [2012-06-21 08:10:35] Released nightly of Boogie
