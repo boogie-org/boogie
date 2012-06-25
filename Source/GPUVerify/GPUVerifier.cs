@@ -61,8 +61,6 @@ namespace GPUVerify
         public IRaceInstrumenter RaceInstrumenter;
 
         public UniformityAnalyser uniformityAnalyser;
-        public MayBeThreadConfigurationVariableAnalyser mayBeTidAnalyser;
-        public MayBeGidAnalyser mayBeGidAnalyser;
         public MayBeLocalIdPlusConstantAnalyser mayBeTidPlusConstantAnalyser;
         public MayBeGlobalIdPlusConstantAnalyser mayBeGidPlusConstantAnalyser;
         public MayBePowerOfTwoAnalyser mayBePowerOfTwoAnalyser;
@@ -361,15 +359,13 @@ namespace GPUVerify
 
             DoUniformityAnalysis();
 
-            DoMayBeTidAnalysis();
+            DoVariableDefinitionAnalysis();
 
             DoMayBeIdPlusConstantAnalysis();
 
             DoMayBePowerOfTwoAnalysis();
 
             DoArrayControlFlowAnalysis();
-
-            DoVariableDefinitionAnalysis();
 
             if (CommandLineOptions.ShowStages)
             {
@@ -481,15 +477,6 @@ namespace GPUVerify
         {
             mayBePowerOfTwoAnalyser = new MayBePowerOfTwoAnalyser(this);
             mayBePowerOfTwoAnalyser.Analyse();
-        }
-
-        private void DoMayBeTidAnalysis()
-        {
-            mayBeTidAnalyser = new MayBeThreadConfigurationVariableAnalyser(this);
-            mayBeTidAnalyser.Analyse();
-
-            mayBeGidAnalyser = new MayBeGidAnalyser(this);
-            mayBeGidAnalyser.Analyse();
         }
 
         private void DoMayBeIdPlusConstantAnalysis()
@@ -1040,13 +1027,27 @@ namespace GPUVerify
             return _GROUP_SIZE_Z != null;
         }
 
+        internal static string StripThreadIdentifier(string p, out int id)
+        {
+            if (p.EndsWith("$1"))
+            {
+                id = 1;
+                return p.Substring(0, p.Length - 2);
+            }
+            if (p.EndsWith("$2"))
+            {
+                id = 2;
+                return p.Substring(0, p.Length - 2);
+            }
+
+            id = 0;
+            return p;
+        }
+
         internal static string StripThreadIdentifier(string p)
         {
-            if (p.Contains("$"))
-            {
-                return p.Substring(0, p.LastIndexOf("$"));
-            }
-            return p;
+            int id;
+            return StripThreadIdentifier(p, out id);
         }
 
         private void AddStartAndEndBarriers()
@@ -1299,7 +1300,9 @@ namespace GPUVerify
         private Expr MakeBVFunctionCall(string functionName, string smtName, Microsoft.Boogie.Type resultType, params Expr[] args)
         {
             Function f = GetOrCreateBVFunction(functionName, smtName, resultType, args.Select(a => a.Type).ToArray());
-            return new NAryExpr(Token.NoToken, new FunctionCall(f), new ExprSeq(args));
+            var e = new NAryExpr(Token.NoToken, new FunctionCall(f), new ExprSeq(args));
+            e.Type = resultType;
+            return e;
         }
 
         private Expr MakeBitVectorBinaryBoolean(string suffix, string smtName, Expr lhs, Expr rhs)
@@ -1316,6 +1319,12 @@ namespace GPUVerify
         internal Expr MakeBVSgt(Expr lhs, Expr rhs) { return MakeBitVectorBinaryBoolean("SGT", "bvsgt", lhs, rhs); }
         internal Expr MakeBVSge(Expr lhs, Expr rhs) { return MakeBitVectorBinaryBoolean("SGE", "bvsge", lhs, rhs); }
 
+        internal Expr MakeBVAnd(Expr lhs, Expr rhs) { return MakeBitVectorBinaryBitVector("AND", "bvand", lhs, rhs); }
+        internal Expr MakeBVAdd(Expr lhs, Expr rhs) { return MakeBitVectorBinaryBitVector("ADD", "bvadd", lhs, rhs); }
+        internal Expr MakeBVSub(Expr lhs, Expr rhs) { return MakeBitVectorBinaryBitVector("SUB", "bvsub", lhs, rhs); }
+        internal Expr MakeBVMul(Expr lhs, Expr rhs) { return MakeBitVectorBinaryBitVector("MUL", "bvmul", lhs, rhs); }
+        internal Expr MakeBVURem(Expr lhs, Expr rhs) { return MakeBitVectorBinaryBitVector("UREM", "bvurem", lhs, rhs); }
+
         internal static Expr MakeBitVectorBinaryBoolean(string functionName, Expr lhs, Expr rhs)
         {
             return new NAryExpr(lhs.tok, new FunctionCall(new Function(lhs.tok, functionName, new VariableSeq(new Variable[] { 
@@ -1331,6 +1340,42 @@ namespace GPUVerify
                 new LocalVariable(lhs.tok, new TypedIdent(lhs.tok, "arg2", Microsoft.Boogie.Type.GetBvType(32)))
             }), new LocalVariable(lhs.tok, new TypedIdent(lhs.tok, "result", Microsoft.Boogie.Type.GetBvType(32))))), new ExprSeq(new Expr[] { lhs, rhs }));
         }
+
+        private static bool IsBVFunctionCall(Expr e, string smtName, out ExprSeq args)
+        {
+            args = null;
+            var ne = e as NAryExpr;
+            if (ne == null)
+                return false;
+
+            var fc = ne.Fun as FunctionCall;
+            if (fc == null)
+                return false;
+
+            string bvBuiltin = QKeyValue.FindStringAttribute(fc.Func.Attributes, "bvbuiltin");
+            if (bvBuiltin == smtName)
+            {
+                args = ne.Args;
+                return true;
+            }
+
+            return false;
+        }
+
+        private static bool IsBVFunctionCall(Expr e, string smtName, out Expr lhs, out Expr rhs)
+        {
+            ExprSeq es;
+            if (IsBVFunctionCall(e, smtName, out es))
+            {
+                lhs = es[0]; rhs = es[1];
+                return true;
+            }
+            lhs = null; rhs = null;
+            return false;
+        }
+
+        internal static bool IsBVAdd(Expr e, out Expr lhs, out Expr rhs) { return IsBVFunctionCall(e, "bvadd", out lhs, out rhs); }
+        internal static bool IsBVMul(Expr e, out Expr lhs, out Expr rhs) { return IsBVFunctionCall(e, "bvmul", out lhs, out rhs); }
 
         internal Constant GetGroupSize(string dimension)
         {
@@ -2291,14 +2336,9 @@ namespace GPUVerify
             return !arrayControlFlowAnalyser.MayAffectControlFlow(v.Name);
         }
 
-        internal static Expr StripThreadIdentifiers(Expr e)
-        {
-            return new ThreadIdentifierStripper().VisitExpr(e.Clone() as Expr);
-        }
-
         internal Expr GlobalIdExpr(string dimension)
         {
-            return GPUVerifier.MakeBitVectorBinaryBitVector("BV32_ADD", GPUVerifier.MakeBitVectorBinaryBitVector("BV32_MUL",
+            return MakeBVAdd(MakeBVMul(
                             new IdentifierExpr(Token.NoToken, GetGroupId(dimension)), new IdentifierExpr(Token.NoToken, GetGroupSize(dimension))),
                                 new IdentifierExpr(Token.NoToken, MakeThreadId(Token.NoToken, dimension)));
         }
@@ -2310,14 +2350,112 @@ namespace GPUVerify
           else
               return new StructuredRegion(Impl);
         }
-    }
 
-    class ThreadIdentifierStripper : StandardVisitor
-    {
-        public override Variable VisitVariable(Variable node)
+
+        public static bool IsGivenConstant(Expr e, Constant c)
         {
-            node.Name = GPUVerifier.StripThreadIdentifier(node.Name);
-            return base.VisitVariable(node);
+            if (!(e is IdentifierExpr))
+                return false;
+
+            var varName = ((IdentifierExpr)e).Decl.Name;
+            return (StripThreadIdentifier(varName) == StripThreadIdentifier(c.Name));
+        }
+
+        public bool SubstIsGivenConstant(Implementation impl, Expr e, Constant c)
+        {
+            if (!(e is IdentifierExpr))
+                return false;
+            e = varDefAnalyses[impl].SubstDefinitions(e, impl.Name);
+            return IsGivenConstant(e, c);
+        }
+
+        public Constant GetLocalIdConst(int dim)
+        {
+            switch (dim)
+            {
+                case 0:  return _X;
+                case 1:  return _Y;
+                case 2:  return _Z;
+                default: Debug.Assert(false);
+                         return null;
+            }
+        }
+
+        public Constant GetGroupIdConst(int dim)
+        {
+            switch (dim)
+            {
+                case 0:  return _GROUP_X;
+                case 1:  return _GROUP_Y;
+                case 2:  return _GROUP_Z;
+                default: Debug.Assert(false);
+                         return null;
+            }
+        }
+
+        public Constant GetGroupSizeConst(int dim)
+        {
+            switch (dim)
+            {
+                case 0:  return _GROUP_SIZE_X;
+                case 1:  return _GROUP_SIZE_Y;
+                case 2:  return _GROUP_SIZE_Z;
+                default: Debug.Assert(false);
+                         return null;
+            }
+        }
+
+        public bool IsLocalId(Expr e, int dim, Implementation impl)
+        {
+            return SubstIsGivenConstant(impl, e, GetLocalIdConst(dim));
+        }
+
+        public bool IsGlobalId(Expr e, int dim, Implementation impl)
+        {
+            e = varDefAnalyses[impl].SubstDefinitions(e, impl.Name);
+
+            if (e is NAryExpr && (e as NAryExpr).Fun.FunctionName.Equals("BV32_ADD"))
+            {
+                NAryExpr nary = e as NAryExpr;
+                Constant localId = GetLocalIdConst(dim);
+
+                if (IsGivenConstant(nary.Args[1], localId))
+                {
+                    return IsGroupIdTimesGroupSize(nary.Args[0], dim);
+                }
+
+                if (IsGivenConstant(nary.Args[0], localId))
+                {
+                    return IsGroupIdTimesGroupSize(nary.Args[1], dim);
+                }
+            }
+
+            return false;
+        }
+
+        private bool IsGroupIdTimesGroupSize(Expr expr, int dim)
+        {
+            if (expr is NAryExpr && (expr as NAryExpr).Fun.FunctionName.Equals("BV32_MUL"))
+            {
+                NAryExpr innerNary = expr as NAryExpr;
+
+                if (IsGroupIdAndSize(dim, innerNary.Args[0], innerNary.Args[1]))
+                {
+                    return true;
+                }
+
+                if (IsGroupIdAndSize(dim, innerNary.Args[1], innerNary.Args[0]))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private bool IsGroupIdAndSize(int dim, Expr maybeGroupId, Expr maybeGroupSize)
+        {
+            return IsGivenConstant(maybeGroupId, GetGroupIdConst(dim)) &&
+                   IsGivenConstant(maybeGroupSize, GetGroupSizeConst(dim));
         }
     }
 

@@ -77,10 +77,14 @@ public class BlockPredicator {
         // the first statement in the block.
         var assign = cmdSeq.Last();
         cmdSeq.Truncate(cmdSeq.Length-1);
-        cmdSeq.Add(new AssertCmd(Token.NoToken, Expr.Imp(pExpr, aCmd.Expr)));
+        aCmd.Expr = Expr.Imp(pExpr, aCmd.Expr);
+        cmdSeq.Add(aCmd);
+        // cmdSeq.Add(new AssertCmd(aCmd.tok, Expr.Imp(pExpr, aCmd.Expr)));
         cmdSeq.Add(assign);
       } else {
-        cmdSeq.Add(new AssertCmd(Token.NoToken, Expr.Imp(p, aCmd.Expr)));
+        aCmd.Expr = Expr.Imp(p, aCmd.Expr);
+        cmdSeq.Add(aCmd);
+        // cmdSeq.Add(new AssertCmd(aCmd.tok, Expr.Imp(p, aCmd.Expr)));
       }
     } else if (cmd is AssumeCmd) {
       var aCmd = (AssumeCmd)cmd;
@@ -114,14 +118,19 @@ public class BlockPredicator {
       var cCmd = (CallCmd)cmd;
       cCmd.Ins.Insert(0, p);
       cmdSeq.Add(cCmd);
-    } else if (cmd is StateCmd) {
+    }
+    else if (cmd is CommentCmd) {
+      // skip
+    }
+    else if (cmd is StateCmd) {
       var sCmd = (StateCmd)cmd;
       var newCmdSeq = new CmdSeq();
       foreach (Cmd c in sCmd.Cmds)
         PredicateCmd(newCmdSeq, c);
       sCmd.Cmds = newCmdSeq;
       cmdSeq.Add(sCmd);
-    } else {
+    }
+    else {
       Console.WriteLine("Unsupported cmd: " + cmd.GetType().ToString());
     }
   }
@@ -299,10 +308,20 @@ public class BlockPredicator {
           (new Variable[] {fpVar}.Concat(dwf.InParams.Cast<Variable>()))
             .ToArray());
       }
-      var impl = decl as Implementation;
-      if (impl != null)
-        new BlockPredicator(p, impl, createCandidateInvariants, useProcedurePredicates).PredicateImplementation();
+      try {
+        var impl = decl as Implementation;
+        if (impl != null)
+          new BlockPredicator(p, impl, createCandidateInvariants, useProcedurePredicates).PredicateImplementation();
+      }
+      catch (Program.IrreducibleLoopException) { }
     }
+  }
+
+  public static void Predicate(Program p, Implementation impl) {
+    try {
+      new BlockPredicator(p, impl, false, false).PredicateImplementation();
+    }
+    catch (Program.IrreducibleLoopException) { }
   }
 
 }

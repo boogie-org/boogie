@@ -259,10 +259,10 @@ namespace GPUVerify
 
         private Expr MakeCTimesLocalIdRangeExpression(Variable v, Expr constant, string ReadOrWrite, int Thread)
         {
-            Expr CTimesLocalId = GPUVerifier.MakeBitVectorBinaryBitVector("BV32_MUL", constant.Clone() as Expr, 
+            Expr CTimesLocalId = verifier.MakeBVMul(constant.Clone() as Expr, 
                 new IdentifierExpr(Token.NoToken, verifier.MakeThreadId(Token.NoToken, "X", Thread)));
 
-            Expr CTimesLocalIdPlusC = GPUVerifier.MakeBitVectorBinaryBitVector("BV32_ADD", GPUVerifier.MakeBitVectorBinaryBitVector("BV32_MUL", constant.Clone() as Expr,
+            Expr CTimesLocalIdPlusC = verifier.MakeBVAdd(verifier.MakeBVMul(constant.Clone() as Expr,
                 new IdentifierExpr(Token.NoToken, verifier.MakeThreadId(Token.NoToken, "X", Thread))), constant.Clone() as Expr);
 
             Expr CTimesLocalIdLeqAccessedOffset = GPUVerifier.MakeBitVectorBinaryBoolean("BV32_LEQ", CTimesLocalId, OffsetXExpr(v, ReadOrWrite, Thread));
@@ -293,10 +293,10 @@ namespace GPUVerify
 
         private Expr MakeCTimesGloalIdRangeExpr(Variable v, Expr constant, string ReadOrWrite, int Thread)
         {
-            Expr CTimesGlobalId = GPUVerifier.MakeBitVectorBinaryBitVector("BV32_MUL", constant.Clone() as Expr,
+            Expr CTimesGlobalId = verifier.MakeBVMul(constant.Clone() as Expr,
                 GlobalIdExpr("X", Thread));
 
-            Expr CTimesGlobalIdPlusC = GPUVerifier.MakeBitVectorBinaryBitVector("BV32_ADD", GPUVerifier.MakeBitVectorBinaryBitVector("BV32_MUL", constant.Clone() as Expr,
+            Expr CTimesGlobalIdPlusC = verifier.MakeBVAdd(verifier.MakeBVMul(constant.Clone() as Expr,
                 GlobalIdExpr("X", Thread)), constant.Clone() as Expr);
 
             Expr CTimesGlobalIdLeqAccessedOffset = GPUVerifier.MakeBitVectorBinaryBoolean("BV32_LEQ", CTimesGlobalId, OffsetXExpr(v, ReadOrWrite, Thread));

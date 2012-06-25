@@ -113,13 +113,11 @@
     <Compile Include="InvariantGenerationRules\LoopVariableBoundsInvariantGenerator.cs" />
     <Compile Include="InvariantGenerationRules\InvariantGenerationRule.cs" />
     <Compile Include="InvariantGenerationRules\PowerOfTwoInvariantGenerator.cs" />
-    <Compile Include="MayBeGidAnalyser.cs" />
     <Compile Include="EnsureDisabledThreadHasNoEffectInstrumenter.cs" />
     <Compile Include="KernelDualiser.cs" />
     <Compile Include="LiveVariableAnalyser.cs" />
     <Compile Include="LoopInvariantGenerator.cs" />
     <Compile Include="MayBePowerOfTwoAnalyser.cs" />
-    <Compile Include="MayBeThreadConfigurationVariableAnalyser.cs" />
     <Compile Include="MayBeIdPlusConstantAnalyser.cs" />
     <Compile Include="StructuredProgramVisitor.cs" />
     <Compile Include="CrossThreadInvariantProcessor.cs" />

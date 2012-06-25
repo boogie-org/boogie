@@ -285,7 +285,7 @@ object PrintProgram {
     case IntPermTimes(n, p) => BinExpr(n, p, "*", 0x60, false, false, contextBindingPower, fragileContext)
     case Epsilons(e) => print("rd("); Expr(e); print(")");
     case Access(e, p) =>  print("acc("); Expr(e); print(", "); Expr(p); print(")")
-    case AccessAll(obj, p) =>   print("acc("); Expr(obj); print(", "); print(".*"); Expr(p); print(")")
+    case AccessAll(obj, p) =>   print("acc("); Expr(obj); print(".*"); print(", "); Expr(p); print(")")
     case AccessSeq(s, f, p) =>  print("acc("); Expr(s); print(", "); print("[*].");
       f match { case None => print("*"); case Some(x) => print(x)}
       Expr(p); print(")")

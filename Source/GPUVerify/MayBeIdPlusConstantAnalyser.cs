@@ -11,8 +11,6 @@ namespace GPUVerify
     {
         protected GPUVerifier verifier;
 
-        protected MayBeAnalyser mayBeAnalyser;
-
         // Given a p.v, says whether p.v may be assigned to a tid variable at some point
         protected Dictionary<string, Dictionary<string, bool>> mayBeAssignedId;
 
@@ -104,7 +102,7 @@ namespace GPUVerify
 
                                     Variable rhsV = (assign.Rhss[i] as IdentifierExpr).Decl;
 
-                                    if (mayBeAnalyser.MayBe(ComponentString(), impl.Name, rhsV.Name))
+                                    if (IsId(assign.Rhss[i], impl))
                                     {
                                         mayBeAssignedId[impl.Name][lhsV.Name] = true;
                                     }
@@ -127,6 +125,7 @@ namespace GPUVerify
                 }
             }
         }
+
 
         private string ConvertToString(Expr constantIncrement)
         {
@@ -217,7 +216,7 @@ namespace GPUVerify
 
         internal abstract string idKind();
 
-        protected abstract string ComponentString();
+        protected abstract bool IsId(Expr expr, Implementation impl);
 
         internal Expr GetIncrement(string p, string v)
         {
@@ -260,7 +259,11 @@ namespace GPUVerify
 
         internal MayBeLocalIdPlusConstantAnalyser(GPUVerifier verifier) : base(verifier)
         {
-            mayBeAnalyser = verifier.mayBeTidAnalyser;
+        }
+
+        protected override bool IsId(Expr expr, Implementation impl)
+        {
+            return verifier.IsLocalId(expr, 0, impl);
         }
 
         override internal Expr MakeIdExpr()
@@ -272,11 +275,6 @@ namespace GPUVerify
         {
             return "local id";
         }
-
-        protected override string ComponentString()
-        {
-            return GPUVerifier.LOCAL_ID_X_STRING;
-        }
     }
 
     class MayBeGlobalIdPlusConstantAnalyser : MayBeIdPlusConstantAnalyser
@@ -284,7 +282,11 @@ namespace GPUVerify
         internal MayBeGlobalIdPlusConstantAnalyser(GPUVerifier verifier)
             : base(verifier)
         {
-            mayBeAnalyser = verifier.mayBeGidAnalyser;
+        }
+
+        protected override bool IsId(Expr expr, Implementation impl)
+        {
+            return verifier.IsGlobalId(expr, 0, impl);
         }
 
         internal override string idKind()
@@ -296,12 +298,6 @@ namespace GPUVerify
         {
             return verifier.GlobalIdExpr("X");
         }
-
-        protected override string ComponentString()
-        {
-            return "x";
-        }
-
     }
 
 
