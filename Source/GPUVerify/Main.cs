@@ -92,7 +92,7 @@ namespace GPUVerify
         {
             ResolutionContext rc;
             Program newProgram = parse(out rc);
-            RaceInstrumenterBase ri = new ElementEncodingRaceInstrumenter();
+            RaceInstrumenter ri = new RaceInstrumenter();
             GPUVerifier newGp = new GPUVerifier(filename, newProgram, rc, ri);
             ri.setVerifier(newGp);
 
@@ -192,7 +192,7 @@ namespace GPUVerify
             {
                 if (!CommandLineOptions.OnlyDivergence)
                 {
-                    RaceInstrumenterBase ri = new ElementEncodingRaceInstrumenter();
+                    RaceInstrumenter ri = new RaceInstrumenter();
                     ri.setVerifier(g);
                     g.setRaceInstrumenter(ri);
                 }
