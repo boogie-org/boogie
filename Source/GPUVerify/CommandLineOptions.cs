@@ -33,9 +33,7 @@ namespace GPUVerify
         public static bool ShowUniformityAnalysis = false;
         public static bool DoUniformityAnalysis = true;
 
-        public static bool ShowMayBeThreadConfigurationVariableAnalysis = false;
         public static bool ShowMayBePowerOfTwoAnalysis = false;
-        public static bool ShowMayBeTidPlusConstantAnalysis = false;
         public static bool ShowArrayControlFlowAnalysis = false;
 
         public static bool NoLoopPredicateInvariants = false;
@@ -158,19 +156,9 @@ namespace GPUVerify
                     DoUniformityAnalysis = false;
                     break;
 
-                    case "-showMayBeTidAnalysis":
-                    case "/showMayBeTidAnalysis":
-                    ShowMayBeThreadConfigurationVariableAnalysis = true;
-                    break;
-
                     case "-showMayBePowerOfTwoAnalysis":
                     case "/showMayBePowerOfTwoAnalysis":
                     ShowMayBePowerOfTwoAnalysis = true;
-                    break;
-
-                    case "-showMayBeTidPlusConstantAnalysis":
-                    case "/showMayBeTidPlusConstantAnalysis":
-                    ShowMayBeTidPlusConstantAnalysis = true;
                     break;
 
                     case "-showArrayControlFlowAnalysis":

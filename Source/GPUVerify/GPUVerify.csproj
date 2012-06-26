@@ -108,6 +108,8 @@
     <Compile Include="AccessRecord.cs" />
     <Compile Include="ArrayControlFlowAnalyser.cs" />
     <Compile Include="AsymmetricExpressionFinder.cs" />
+    <Compile Include="StrideConstraint.cs" />
+    <Compile Include="ReducedStrengthAnalysis.cs" />
     <Compile Include="UnstructuredRegion.cs" />
     <Compile Include="IRegion.cs" />
     <Compile Include="InvariantGenerationRules\LoopVariableBoundsInvariantGenerator.cs" />
@@ -118,7 +120,6 @@
     <Compile Include="LiveVariableAnalyser.cs" />
     <Compile Include="LoopInvariantGenerator.cs" />
     <Compile Include="MayBePowerOfTwoAnalyser.cs" />
-    <Compile Include="MayBeIdPlusConstantAnalyser.cs" />
     <Compile Include="StructuredProgramVisitor.cs" />
     <Compile Include="CrossThreadInvariantProcessor.cs" />
     <Compile Include="EnabledToPredicateVisitor.cs" />

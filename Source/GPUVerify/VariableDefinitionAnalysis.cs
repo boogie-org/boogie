@@ -167,10 +167,7 @@ class VariableDefinitionAnalysis {
       }
       if (!def.Item2)
         isConstant = false;
-      if (id == 0)
-        return def.Item1;
-      else
-        return (Expr)new VariableDualiser(id, analysis.verifier.uniformityAnalyser, procName).Visit(def.Item1.Clone());
+      return analysis.verifier.MaybeDualise(def.Item1, id, procName);
     }
   }
 

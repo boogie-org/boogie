@@ -17,7 +17,7 @@ namespace GPUVerify
 
         private List<InvariantGenerationRule> invariantGenerationRules;
 
-        public LoopInvariantGenerator(GPUVerifier verifier, Implementation Impl)
+        LoopInvariantGenerator(GPUVerifier verifier, Implementation Impl)
         {
             this.verifier = verifier;
             this.Impl = Impl;
@@ -27,7 +27,38 @@ namespace GPUVerify
             invariantGenerationRules.Add(new LoopVariableBoundsInvariantGenerator(verifier));
         }
 
-        internal void instrument(List<Expr> UserSuppliedInvariants)
+        public static void PreInstrument(GPUVerifier verifier, Implementation impl)
+        {
+            foreach (var region in verifier.RootRegion(impl).SubRegions())
+            {
+                GenerateCandidateForReducedStrengthStrideVariables(verifier, impl, region);
+            }
+        }
+
+        private static void GenerateCandidateForReducedStrengthStrideVariables(GPUVerifier verifier, Implementation impl, IRegion region)
+        {
+            var rsa = verifier.reducedStrengthAnalyses[impl];
+            foreach (string lc in rsa.StridedLoopCounters(region.Identifier()))
+            {
+                var sc = rsa.GetStrideConstraint(lc);
+                Variable lcVariable = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, lc,
+                        Microsoft.Boogie.Type.GetBvType(32)));
+                var lcExpr = new IdentifierExpr(Token.NoToken, lcVariable);
+                var lcPred = sc.MaybeBuildPredicate(verifier, lcExpr);
+
+                if (lcPred != null)
+                {
+                    verifier.AddCandidateInvariant(region, lcPred, "variable " + lc + " is strided");
+                }
+            }
+        }
+
+        public static void PostInstrument(GPUVerifier verifier, Implementation Impl, List<Expr> UserSuppliedInvariants)
+        {
+            new LoopInvariantGenerator(verifier, Impl).PostInstrument(UserSuppliedInvariants);
+        }
+
+        internal void PostInstrument(List<Expr> UserSuppliedInvariants)
         {
                 HashSet<Variable> LocalVars = new HashSet<Variable>();
                 foreach (Variable v in Impl.LocVars)

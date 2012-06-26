@@ -64,12 +64,11 @@ namespace GPUVerify
         public IRaceInstrumenter RaceInstrumenter;
 
         public UniformityAnalyser uniformityAnalyser;
-        public MayBeLocalIdPlusConstantAnalyser mayBeTidPlusConstantAnalyser;
-        public MayBeGlobalIdPlusConstantAnalyser mayBeGidPlusConstantAnalyser;
         public MayBePowerOfTwoAnalyser mayBePowerOfTwoAnalyser;
         public LiveVariableAnalyser liveVariableAnalyser;
         public ArrayControlFlowAnalyser arrayControlFlowAnalyser;
         public Dictionary<Implementation, VariableDefinitionAnalysis> varDefAnalyses;
+        public Dictionary<Implementation, ReducedStrengthAnalysis> reducedStrengthAnalyses;
 
         public GPUVerifier(string filename, Program program, ResolutionContext rc, IRaceInstrumenter raceInstrumenter) : this(filename, program, rc, raceInstrumenter, false)
         {
@@ -364,7 +363,7 @@ namespace GPUVerify
 
             DoVariableDefinitionAnalysis();
 
-            DoMayBeIdPlusConstantAnalysis();
+            DoReducedStrengthAnalysis();
 
             DoMayBePowerOfTwoAnalysis();
 
@@ -373,6 +372,14 @@ namespace GPUVerify
             if (CommandLineOptions.ShowStages)
             {
                 emitProgram(outputFilename + "_preprocessed");
+            }
+
+            if (CommandLineOptions.Inference)
+            {
+                foreach (var impl in Program.TopLevelDeclarations.OfType<Implementation>().ToList())
+                {
+                    LoopInvariantGenerator.PreInstrument(this, impl);
+                }
             }
 
             if (RaceInstrumenter.AddRaceCheckingInstrumentation() == false)
@@ -482,14 +489,6 @@ namespace GPUVerify
             mayBePowerOfTwoAnalyser.Analyse();
         }
 
-        private void DoMayBeIdPlusConstantAnalysis()
-        {
-            mayBeTidPlusConstantAnalyser = new MayBeLocalIdPlusConstantAnalyser(this);
-            mayBeTidPlusConstantAnalyser.Analyse();
-            mayBeGidPlusConstantAnalyser = new MayBeGlobalIdPlusConstantAnalyser(this);
-            mayBeGidPlusConstantAnalyser.Analyse();
-        }
-
         private void DoArrayControlFlowAnalysis()
         {
             arrayControlFlowAnalyser = new ArrayControlFlowAnalyser(this);
@@ -513,6 +512,13 @@ namespace GPUVerify
             varDefAnalyses = Program.TopLevelDeclarations
                 .OfType<Implementation>()
                 .ToDictionary(i => i, i => VariableDefinitionAnalysis.Analyse(this, i));
+        }
+
+        private void DoReducedStrengthAnalysis()
+        {
+            reducedStrengthAnalyses = Program.TopLevelDeclarations
+                .OfType<Implementation>()
+                .ToDictionary(i => i, i => ReducedStrengthAnalysis.Analyse(this, i));
         }
 
         private void ProcessAccessInvariants()
@@ -654,7 +660,7 @@ namespace GPUVerify
 
                     List<Expr> UserSuppliedInvariants = GetUserSuppliedInvariants(Impl.Name);
 
-                    new LoopInvariantGenerator(this, Impl).instrument(UserSuppliedInvariants);
+                    LoopInvariantGenerator.PostInstrument(this, Impl, UserSuppliedInvariants);
 
                     Procedure Proc = Impl.Proc;
 
@@ -2524,6 +2530,14 @@ namespace GPUVerify
         {
             return IsGivenConstant(maybeGroupId, GetGroupIdConst(dim)) &&
                    IsGivenConstant(maybeGroupSize, GetGroupSizeConst(dim));
+        }
+
+        internal Expr MaybeDualise(Expr e, int id, string procName)
+        {
+            if (id == 0)
+                return e;
+            else
+                return (Expr)new VariableDualiser(id, uniformityAnalyser, procName).Visit(e.Clone());
         }
     }
 
