@@ -668,7 +668,7 @@ namespace Microsoft.Boogie
     public void Write(System.IO.TextWriter wr)
     {
       wr.WriteLine("*** MODEL");
-      foreach (var f in Functions)
+      foreach (var f in Functions.OrderBy(f => f.Name))
         if (f.Arity == 0) {
           wr.WriteLine("{0} -> {1}", f.Name, f.GetConstant());
         }
