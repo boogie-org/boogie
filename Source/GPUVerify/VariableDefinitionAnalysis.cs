@@ -127,7 +127,8 @@ class VariableDefinitionAnalysis {
     if (namedDefMap.TryGetValue(v.Name, out def))
       return def.Item1;
 
-    def = defMap[v];
+    if (!defMap.TryGetValue(v, out def))
+      return e;
     Expr defExpr;
     if (def.Item1 == null)
       defExpr = e;
