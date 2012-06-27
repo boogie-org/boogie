@@ -675,6 +675,13 @@ namespace GPUVerify
             foreach (Variable v in NonLocalStateToCheck.getAllNonLocalVariables())
             {
                 AddRequiresNoPendingAccess(v);
+
+                if (!verifier.ArrayModelledAdversarially(v))
+                {
+                    IdentifierExpr v1 = new IdentifierExpr(Token.NoToken, new VariableDualiser(1, null, null).VisitVariable(v.Clone() as Variable));
+                    IdentifierExpr v2 = new IdentifierExpr(Token.NoToken, new VariableDualiser(2, null, null).VisitVariable(v.Clone() as Variable));
+                    verifier.KernelProcedure.Requires.Add(new Requires(false, Expr.Eq(v1, v2)));
+                }
             }
         }
 
