@@ -130,6 +130,9 @@ namespace GPUVerify
             {
                 bool isConstant;
                 var def = verifier.varDefAnalyses[impl].SubstDefinitions(offset, impl.Name, out isConstant);
+                if (def == null)
+                    continue;
+
                 if (isConstant)
                 {
                     offsetPreds.Add(Expr.Eq(offsetExpr, def));
