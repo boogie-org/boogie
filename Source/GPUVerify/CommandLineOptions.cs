@@ -44,8 +44,6 @@ namespace GPUVerify
 
         public static bool InterGroupRaceChecking = false;
 
-        public static bool BarrierParameters = false;
-
         public static int Parse(string[] args)
         {
             for (int i = 0; i < args.Length; i++)
@@ -191,11 +189,6 @@ namespace GPUVerify
                     case "-interGroupRaceChecking":
                     case "/interGroupRaceChecking":
                     InterGroupRaceChecking = true;
-                    break;
-
-                    case "-barrierParameters":
-                    case "/barrierParameters":
-                    BarrierParameters = true;
                     break;
 
                     default:

@@ -58,9 +58,6 @@ namespace GPUVerify
         internal static Constant _NUM_GROUPS_Y = null;
         internal static Constant _NUM_GROUPS_Z = null;
 
-        internal const int CLK_LOCAL_MEM_FENCE = 1;
-        internal const int CLK_GLOBAL_MEM_FENCE = 2;
-
         public IRaceInstrumenter RaceInstrumenter;
 
         public UniformityAnalyser uniformityAnalyser;
@@ -1453,13 +1450,8 @@ namespace GPUVerify
             BigBlock checkNonDivergence = new BigBlock(tok, "__BarrierImpl", new CmdSeq(), null, null);
             bigblocks.Add(checkNonDivergence);
 
-            Debug.Assert((BarrierProcedure.InParams.Length % 2) == 0);
-            int paramsPerThread = BarrierProcedure.InParams.Length / 2;
             IdentifierExpr P1 = new IdentifierExpr(tok, new LocalVariable(tok, BarrierProcedure.InParams[0].TypedIdent));
-            IdentifierExpr P2 = new IdentifierExpr(tok, new LocalVariable(tok, BarrierProcedure.InParams[paramsPerThread].TypedIdent));
-
-            IdentifierExpr Flags1 = CommandLineOptions.BarrierParameters ? new IdentifierExpr(tok, new LocalVariable(tok, BarrierProcedure.InParams[1].TypedIdent)) : null;
-            IdentifierExpr Flags2 = CommandLineOptions.BarrierParameters ? new IdentifierExpr(tok, new LocalVariable(tok, BarrierProcedure.InParams[paramsPerThread + 1].TypedIdent)) : null;
+            IdentifierExpr P2 = new IdentifierExpr(tok, new LocalVariable(tok, BarrierProcedure.InParams[1].TypedIdent));
 
             Expr DivergenceCondition = Expr.Eq(P1, P2);
             if (CommandLineOptions.InterGroupRaceChecking)
@@ -1474,64 +1466,38 @@ namespace GPUVerify
                 List<BigBlock> returnbigblocks = new List<BigBlock>();
                 returnbigblocks.Add(new BigBlock(tok, "__Disabled", new CmdSeq(), null, new ReturnCmd(tok)));
                 StmtList returnstatement = new StmtList(returnbigblocks, BarrierProcedure.tok);
-
-                Expr IfGuard;
-
-                if (CommandLineOptions.InterGroupRaceChecking)
-                {
-                    IfGuard = Expr.Or(Expr.And(Expr.Not(P1), Expr.Not(P2)), Expr.And(ThreadsInSameGroup(), Expr.Or(Expr.Not(P1), Expr.Not(P2))));
-                }
-                else
-                {
-                    // We make this an "Or", not an "And", because "And" is implied by the assertion that the variables
-                    // are equal, together with the "Or".  The weaker "Or" ensures that many auxiliary assertions will not
-                    // fail if divergence has not been proved.
-                    IfGuard = Expr.Or(Expr.Not(P1), Expr.Not(P2));
-                }
-                checkNonDivergence.ec = new IfCmd(tok, IfGuard, returnstatement, null, null);
+                // We make this an "Or", not an "And", because "And" is implied by the assertion that the variables
+                // are equal, together with the "Or".  The weaker "Or" ensures that many auxiliary assertions will not
+                // fail if divergence has not been proved.
+                checkNonDivergence.ec = new IfCmd(tok, Expr.Or(Expr.Not(P1), Expr.Not(P2)), returnstatement, null, null);
             }
 
+            if (CommandLineOptions.InterGroupRaceChecking)
             {
-                Expr IfGuard1 = CommandLineOptions.InterGroupRaceChecking ? (Expr)P1 : (Expr)Expr.True;
-                Expr IfGuard2 = CommandLineOptions.InterGroupRaceChecking ? (Expr)P2 : (Expr)Expr.True;
-
-                if (CommandLineOptions.BarrierParameters)
-                {
-                    IfGuard1 = Expr.And(IfGuard1, CLK_LOCAL_MEM_FENCE_isSet(Flags1));
-                    IfGuard2 = Expr.And(IfGuard2, CLK_LOCAL_MEM_FENCE_isSet(Flags2));
-                }
-
                 bigblocks.Add(new BigBlock(Token.NoToken, null, new CmdSeq(),
-                    new IfCmd(Token.NoToken, IfGuard1, new StmtList(MakeResetAndHavocBlocks(1, NonLocalState.getGroupSharedVariables()), Token.NoToken), null, null),
+                    new IfCmd(Token.NoToken, P1, new StmtList(MakeResetAndHavocBlocks(1), Token.NoToken), null, null),
                     null));
                 bigblocks.Add(new BigBlock(Token.NoToken, null, new CmdSeq(),
-                    new IfCmd(Token.NoToken, IfGuard2, new StmtList(MakeResetAndHavocBlocks(2, NonLocalState.getGroupSharedVariables()), Token.NoToken), null, null),
+                    new IfCmd(Token.NoToken, P2, new StmtList(MakeResetAndHavocBlocks(2), Token.NoToken), null, null),
                     null));
             }
-
+            else
             {
-                Expr IfGuard1 = CommandLineOptions.InterGroupRaceChecking ? (Expr)P1 : (Expr)Expr.True;
-                Expr IfGuard2 = CommandLineOptions.InterGroupRaceChecking ? (Expr)P2 : (Expr)Expr.True;
-
-                if (CommandLineOptions.BarrierParameters)
+                foreach (BigBlock bb in MakeResetAndHavocBlocks(1))
                 {
-                    IfGuard1 = Expr.And(IfGuard1, CLK_GLOBAL_MEM_FENCE_isSet(Flags1));
-                    IfGuard2 = Expr.And(IfGuard2, CLK_GLOBAL_MEM_FENCE_isSet(Flags2));
+                    bigblocks.Add(bb);
                 }
-
-                bigblocks.Add(new BigBlock(Token.NoToken, null, new CmdSeq(),
-                    new IfCmd(Token.NoToken, IfGuard1, new StmtList(MakeResetAndHavocBlocks(1, NonLocalState.getGlobalVariables()), Token.NoToken), null, null),
-                    null));
-                bigblocks.Add(new BigBlock(Token.NoToken, null, new CmdSeq(),
-                    new IfCmd(Token.NoToken, IfGuard2, new StmtList(MakeResetAndHavocBlocks(2, NonLocalState.getGlobalVariables()), Token.NoToken), null, null),
-                    null));
+                foreach (BigBlock bb in MakeResetAndHavocBlocks(2))
+                {
+                    bigblocks.Add(bb);
+                }
             }
 
             foreach (Variable v in NonLocalState.getAllNonLocalVariables())
             {
                 if (!ArrayModelledAdversarially(v))
                 {
-                    bigblocks.Add(AssumeEqualityBetweenSharedArrays(v, P1, P2, Flags1, Flags2));
+                    bigblocks.Add(AssumeEqualityBetweenSharedArrays(v, P1, P2));
                 }
             }
 
@@ -1549,27 +1515,10 @@ namespace GPUVerify
             Program.TopLevelDeclarations.Add(BarrierImplementation);
         }
 
-        private static Expr flagIsSet(Expr Flags, int flag)
-        {
-            return Expr.Eq(new BvExtractExpr(
-                                    Token.NoToken, Flags, flag, flag - 1),
-                                    new LiteralExpr(Token.NoToken, BigNum.FromInt(1), 1));
-        }
-
-        private static Expr CLK_GLOBAL_MEM_FENCE_isSet(Expr Flags)
-        {
-            return flagIsSet(Flags, CLK_GLOBAL_MEM_FENCE);
-        }
-
-        private static Expr CLK_LOCAL_MEM_FENCE_isSet(Expr Flags)
-        {
-            return flagIsSet(Flags, CLK_LOCAL_MEM_FENCE);
-        }
-
-        private List<BigBlock> MakeResetAndHavocBlocks(int Thread, ICollection<Variable> variables)
+        private List<BigBlock> MakeResetAndHavocBlocks(int Thread)
         {
             List<BigBlock> ResetAndHavocBlocks = new List<BigBlock>();
-            foreach (Variable v in variables)
+            foreach (Variable v in NonLocalState.getAllNonLocalVariables())
             {
                 ResetAndHavocBlocks.Add(RaceInstrumenter.MakeResetReadWriteSetStatements(v, Thread));
                 if (!ArrayModelledAdversarially(v))
@@ -1616,35 +1565,17 @@ namespace GPUVerify
             return new BigBlock(Token.NoToken, null, new CmdSeq(new Cmd[] { new HavocCmd(Token.NoToken, new IdentifierExprSeq(new IdentifierExpr[] { vForThread })) }), null, null);
         }
 
-        private BigBlock AssumeEqualityBetweenSharedArrays(Variable v, Expr P1, Expr P2, Expr Flags1, Expr Flags2)
+        private BigBlock AssumeEqualityBetweenSharedArrays(Variable v, Expr P1, Expr P2)
         {
             IdentifierExpr v1 = new IdentifierExpr(Token.NoToken, new VariableDualiser(1, null, null).VisitVariable(v.Clone() as Variable));
             IdentifierExpr v2 = new IdentifierExpr(Token.NoToken, new VariableDualiser(2, null, null).VisitVariable(v.Clone() as Variable));
 
             Expr AssumeGuard = Expr.Eq(v1, v2);
 
-            Expr EqualityCondition = Expr.True;
-
             if (CommandLineOptions.InterGroupRaceChecking)
             {
-                EqualityCondition = ThreadsInSameGroup();
+                AssumeGuard = Expr.Imp(ThreadsInSameGroup(), AssumeGuard);
             }
-
-            if (CommandLineOptions.BarrierParameters)
-            {
-                if (NonLocalState.getGroupSharedVariables().Contains(v))
-                {
-                    EqualityCondition = Expr.And(EqualityCondition,
-                        Expr.And(CLK_LOCAL_MEM_FENCE_isSet(Flags1), CLK_LOCAL_MEM_FENCE_isSet(Flags2)));
-                }
-                else if (NonLocalState.getGlobalVariables().Contains(v))
-                {
-                    EqualityCondition = Expr.And(EqualityCondition,
-                        Expr.And(CLK_GLOBAL_MEM_FENCE_isSet(Flags1), CLK_GLOBAL_MEM_FENCE_isSet(Flags2)));
-                }
-            }
-
-            AssumeGuard = Expr.Imp(EqualityCondition, AssumeGuard);
 
             return new BigBlock(Token.NoToken, null, new CmdSeq(new Cmd[] { new AssumeCmd(Token.NoToken, AssumeGuard) }), null, null);
         }
@@ -2329,21 +2260,9 @@ namespace GPUVerify
                 return ErrorCount;
             }
 
-            if(!CommandLineOptions.BarrierParameters && BarrierProcedure.InParams.Length != 0)
+            if (BarrierProcedure.InParams.Length != 0)
             {
                 Error(BarrierProcedure, "Barrier procedure must not take any arguments");
-            }
-
-            if (CommandLineOptions.BarrierParameters)
-            {
-                if (BarrierProcedure.InParams.Length != 1)
-                {
-                    Error(BarrierProcedure, "Barrier procedure must take exactly one argument");
-                }
-                else if (!BarrierProcedure.InParams[0].TypedIdent.Type.Equals(new BvType(32)))
-                {
-                    Error(BarrierProcedure, "Argument to barrier procedure must have type bv32");
-                }
             }
 
             if (BarrierProcedure.OutParams.Length != 0)
