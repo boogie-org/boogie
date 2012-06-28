@@ -1968,6 +1968,26 @@ namespace VC {
       #endregion
     }
 
+    public void DesugarCalls(Implementation impl) {
+      foreach (Block block in impl.Blocks) {
+        CmdSeq newCmds = new CmdSeq();
+        foreach (Cmd cmd in block.Cmds) {
+          SugaredCmd sugaredCmd = cmd as SugaredCmd;
+          if (sugaredCmd != null) {
+            StateCmd stateCmd = sugaredCmd.Desugaring as StateCmd;
+            foreach (Variable v in stateCmd.Locals) {
+              impl.LocVars.Add(v);
+            }
+            newCmds.AddRange(stateCmd.Cmds);
+          }
+          else {
+            newCmds.Add(cmd);
+          }
+        }
+        block.Cmds = newCmds;
+      }
+    }
+
     public Hashtable/*TransferCmd->ReturnCmd*/ PassifyImpl(Implementation impl, out ModelViewInfo mvInfo)
     {
       Contract.Requires(impl != null);
@@ -2035,7 +2055,13 @@ namespace VC {
         EmitImpl(impl, true);
       }
       #endregion
-    
+
+      if (CommandLineOptions.Clo.DoPredication && CommandLineOptions.Clo.StratifiedInlining == 0) {
+        DesugarCalls(impl);
+        BlockPredicator.Predicate(program, impl);
+        impl.ComputePredecessorsForBlocks();
+      }
+
       if (CommandLineOptions.Clo.LiveVariableAnalysis > 0) {
         Microsoft.Boogie.LiveVariableAnalysis.ComputeLiveVariables(impl);
       }

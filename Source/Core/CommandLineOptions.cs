@@ -574,6 +574,8 @@ namespace Microsoft.Boogie {
     public string CoverageReporterPath = null;
     public Process coverageReporter = null; // used internally for debugging
 
+    public bool DoPredication = false;
+
     public enum TypeEncoding {
       None,
       Predicates,
@@ -1230,7 +1232,8 @@ namespace Microsoft.Boogie {
               ps.CheckBooleanFlag("useUnsatCoreForContractInfer", ref UseUnsatCoreForContractInfer) ||
               ps.CheckBooleanFlag("printAssignment", ref PrintAssignment) ||
               ps.CheckBooleanFlag("nonUniformUnfolding", ref NonUniformUnfolding) ||
-              ps.CheckBooleanFlag("deterministicExtractLoops", ref DeterministicExtractLoops)
+              ps.CheckBooleanFlag("deterministicExtractLoops", ref DeterministicExtractLoops) ||
+              ps.CheckBooleanFlag("predicate", ref DoPredication)
               ) {
             // one of the boolean flags matched
             return true;

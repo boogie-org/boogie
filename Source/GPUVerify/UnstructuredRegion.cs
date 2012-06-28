@@ -56,16 +56,18 @@ class UnstructuredRegion : IRegion {
   }
 
   public IEnumerable<object> CmdsChildRegions() {
+    if (header != null)
+      foreach (Cmd c in header.Cmds)
+        yield return c;
     foreach (var b in SubBlocks()) {
-      if (b == header)
-        foreach (Cmd c in b.Cmds)
-          yield return c;
-      else if (innermostHeader[b] == header) {
-          if (loopNodes.ContainsKey(b))
-            yield return new UnstructuredRegion(this, b);
-          else
-            foreach (Cmd c in b.Cmds)
-              yield return c;
+      Block bHeader;
+      innermostHeader.TryGetValue(b, out bHeader);
+      if (header == bHeader) {
+        if (blockGraph.Headers.Contains(b))
+          yield return new UnstructuredRegion(this, b);
+        else
+          foreach (Cmd c in b.Cmds)
+            yield return c;
       }
     }
   }

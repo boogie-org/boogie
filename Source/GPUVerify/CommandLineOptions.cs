@@ -33,9 +33,7 @@ namespace GPUVerify
         public static bool ShowUniformityAnalysis = false;
         public static bool DoUniformityAnalysis = true;
 
-        public static bool ShowMayBeThreadConfigurationVariableAnalysis = false;
         public static bool ShowMayBePowerOfTwoAnalysis = false;
-        public static bool ShowMayBeTidPlusConstantAnalysis = false;
         public static bool ShowArrayControlFlowAnalysis = false;
 
         public static bool NoLoopPredicateInvariants = false;
@@ -43,6 +41,8 @@ namespace GPUVerify
         public static bool Unstructured = false;
 
         public static bool InterGroupRaceChecking = false;
+
+        public static bool BarrierParameters = false;
 
         public static int Parse(string[] args)
         {
@@ -156,19 +156,9 @@ namespace GPUVerify
                     DoUniformityAnalysis = false;
                     break;
 
-                    case "-showMayBeTidAnalysis":
-                    case "/showMayBeTidAnalysis":
-                    ShowMayBeThreadConfigurationVariableAnalysis = true;
-                    break;
-
                     case "-showMayBePowerOfTwoAnalysis":
                     case "/showMayBePowerOfTwoAnalysis":
                     ShowMayBePowerOfTwoAnalysis = true;
-                    break;
-
-                    case "-showMayBeTidPlusConstantAnalysis":
-                    case "/showMayBeTidPlusConstantAnalysis":
-                    ShowMayBeTidPlusConstantAnalysis = true;
                     break;
 
                     case "-showArrayControlFlowAnalysis":
@@ -189,6 +179,11 @@ namespace GPUVerify
                     case "-interGroupRaceChecking":
                     case "/interGroupRaceChecking":
                     InterGroupRaceChecking = true;
+                    break;
+
+                    case "-barrierParameters":
+                    case "/barrierParameters":
+                    BarrierParameters = true;
                     break;
 
                     default:
