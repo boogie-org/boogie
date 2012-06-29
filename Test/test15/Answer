@@ -1,14 +1,14 @@
 
 -------------------- NullInModel --------------------
 *** MODEL
-s -> T@U!val!0
-%lbl%+24 -> true
 %lbl%@47 -> false
-refType -> T@T!val!2
-intType -> T@T!val!0
+%lbl%+24 -> true
 %lbl%+37 -> true
 boolType -> T@T!val!1
+intType -> T@T!val!0
 null -> T@U!val!0
+refType -> T@T!val!2
+s -> T@U!val!0
 tickleBool -> {
   true -> true
   false -> true
@@ -33,12 +33,12 @@ Boogie program verifier finished with 0 verified, 1 error
 
 -------------------- IntInModel --------------------
 *** MODEL
-intType -> T@T!val!0
-boolType -> T@T!val!1
-%lbl%+29 -> true
-%lbl%+23 -> true
-i -> 0
 %lbl%@39 -> false
+%lbl%+23 -> true
+%lbl%+29 -> true
+boolType -> T@T!val!1
+i -> 0
+intType -> T@T!val!0
 tickleBool -> {
   true -> true
   false -> true
@@ -58,18 +58,18 @@ Boogie program verifier finished with 0 verified, 1 error
 
 -------------------- ModelTest --------------------
 *** MODEL
-%lbl%+64 -> true
-s -> T@U!val!0
-j@2 -> 4
-%lbl%+119 -> true
-boolType -> T@T!val!1
-intType -> T@T!val!0
-refType -> T@T!val!2
 %lbl%@182 -> false
+%lbl%+119 -> true
+%lbl%+64 -> true
+boolType -> T@T!val!1
 i@0 -> 1
+intType -> T@T!val!0
 j@0 -> 2
 j@1 -> 3
+j@2 -> 4
 r -> T@U!val!1
+refType -> T@T!val!2
+s -> T@U!val!0
 tickleBool -> {
   true -> true
   false -> true
@@ -114,27 +114,27 @@ Execution trace:
     CaptureState.bpl(16,5): anon4_Then
     CaptureState.bpl(24,5): anon3
 *** MODEL
-m@3 -> -1
-this -> T@U!val!1
-intType -> T@T!val!0
-%lbl%+112 -> true
-Heap -> T@U!val!0
-%lbl%+116 -> true
+%lbl%@334 -> false
 %lbl%+110 -> true
+%lbl%+112 -> true
+%lbl%+116 -> true
+%lbl%+189 -> true
+@MV_state_const -> 6
+boolType -> T@T!val!1
+F -> T@U!val!2
 FieldNameType -> T@T!val!3
+Heap -> T@U!val!0
+intType -> T@T!val!0
+m -> **m
 m@0 -> -2
 m@2 -> -1
+m@3 -> -1
+r -> **r
 r@0 -> -2
-boolType -> T@T!val!1
-%lbl%@334 -> false
-%lbl%+189 -> true
 RefType -> T@T!val!2
-F -> T@U!val!2
-@MV_state_const -> 6
+this -> T@U!val!1
 x@@4 -> 797
 y@@1 -> **y@@1
-r -> **r
-m -> **m
 tickleBool -> {
   true -> true
   false -> true
