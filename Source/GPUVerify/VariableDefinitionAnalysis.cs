@@ -110,6 +110,7 @@ class VariableDefinitionAnalysis {
 
   private class BuildNamedDefVisitor : Duplicator {
     private VariableDefinitionAnalysis analysis;
+    public bool isSelfReferential = false;
 
     public BuildNamedDefVisitor(VariableDefinitionAnalysis a) {
       analysis = a;
@@ -118,31 +119,51 @@ class VariableDefinitionAnalysis {
     public override Expr VisitIdentifierExpr(IdentifierExpr expr) {
       if (expr.Decl is Constant)
         return expr;
-      return analysis.BuildNamedDefFor(expr.Decl, expr);
+      var def = analysis.BuildNamedDefFor(expr.Decl, expr);
+      if (def == null)
+        isSelfReferential = true;
+      return def;
     }
   }
+
+  HashSet<Variable> vars;
 
   Expr BuildNamedDefFor(Variable v, Expr e = null) {
     VarDef def;
     if (namedDefMap.TryGetValue(v.Name, out def))
       return def.Item1;
 
+    if (vars.Contains(v))
+      return null;
+
+    vars.Add(v);
     if (!defMap.TryGetValue(v, out def))
       return e;
     Expr defExpr;
-    if (def.Item1 == null)
+    bool defIsConstant;
+    if (def.Item1 == null) {
       defExpr = e;
-    else
-      defExpr = (Expr)new BuildNamedDefVisitor(this).Visit(def.Item1.Clone());
-    namedDefMap[v.Name] = new VarDef(defExpr, def.Item2);
+      defIsConstant = def.Item2;
+    } else {
+      var ndv = new BuildNamedDefVisitor(this);
+      defExpr = (Expr)ndv.Visit(def.Item1.Clone());
+      defIsConstant = def.Item2 && !ndv.isSelfReferential;
+      if (ndv.isSelfReferential)
+        defExpr = null;
+    }
+    namedDefMap[v.Name] = new VarDef(defExpr, defIsConstant);
+    vars.Remove(v);
 
     return defExpr;
   }
 
   void BuildNamedDefMap() {
     foreach (var v in defMap.Keys)
-      if (defMap[v].Item1 != null)
+      if (defMap[v].Item1 != null) {
+        vars = new HashSet<Variable>();
         BuildNamedDefFor(v);
+      }
+    vars = null;
   }
 
   private class SubstDefVisitor : Duplicator {
