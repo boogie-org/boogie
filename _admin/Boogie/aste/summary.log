@@ -1,15 +1,15 @@
-# Aste started: 2012-06-28 07:00:02
+# Aste started: 2012-07-01 07:00:02
 # Host id: Boogiebox
 # Configuration: boogie.cfg
 # Task: aste.tasks.boogie.FullBuild
-# [2012-06-28 07:01:12] SpecSharp revision: c5e115b716fb
-# [2012-06-28 07:01:12] SscBoogie revision: c5e115b716fb
-# [2012-06-28 07:02:11] Boogie revision: a813e78d9573
-[2012-06-28 07:03:59] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com SpecSharp.sln /Project "Checkin Tests" /Build
+# [2012-07-01 07:01:03] SpecSharp revision: 5a36a96934ef
+# [2012-07-01 07:01:03] SscBoogie revision: 5a36a96934ef
+# [2012-07-01 07:02:11] Boogie revision: a31c96069547
+[2012-07-01 07:03:15] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com SpecSharp.sln /Project "Checkin Tests" /Build
 
     1>corflags : warning CF011: The specified file is strong name signed.  Using /Force will invalidate the signature of this image and will require the assembly to be resigned.
     warning CF011: The specified file is strong name signed.  Using /Force will invalidate the signature of this image and will require the assembly to be resigned.
-[2012-06-28 07:05:29] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Boogie.sln /Rebuild Checked
+[2012-07-01 07:04:56] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Boogie.sln /Rebuild Checked
 
     D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(823,16): warning CS0659: 'Microsoft.Boogie.BasicType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
     D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(2802,16): warning CS0659: 'Microsoft.Boogie.CtorType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
@@ -41,6 +41,9 @@
     warning CS0162: Unreachable code detected
     warning CC1032: Method 'Microsoft.Boogie.Houdini.InlineRequiresVisitor.VisitCmdSeq(Microsoft.Boogie.CmdSeq)' overrides 'Microsoft.Boogie.StandardVisitor.VisitCmdSeq(Microsoft.Boogie.CmdSeq)', thus cannot add Requires.
     warning CC1032: Method 'Microsoft.Boogie.Houdini.FreeRequiresVisitor.VisitAssertRequiresCmd(Microsoft.Boogie.AssertRequiresCmd)' overrides 'Microsoft.Boogie.StandardVisitor.VisitAssertRequiresCmd(Microsoft.Boogie.AssertRequiresCmd)', thus cannot add Requires.
-[2012-06-28 08:09:26] 1 out of 33 test(s) in D:\Temp\aste\Boogie\Test\alltests.txt failed
-['test15']
-# [2012-06-28 08:10:09] Released nightly of Boogie
+[2012-07-01 07:05:12] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Dafny.sln /Rebuild Checked
+
+    D:\Temp\aste\Boogie\Source\Dafny\RefinementTransformer.cs(65,7): warning CC1033: Method 'Microsoft.Dafny.RefinementTransformer.PreResolve(Microsoft.Dafny.ModuleDefinition)' implements interface method 'Microsoft.Dafny.IRewriter.PreResolve(Microsoft.Dafny.ModuleDefinition)', thus cannot add Requires.
+    warning CC1033: Method 'Microsoft.Dafny.RefinementTransformer.PreResolve(Microsoft.Dafny.ModuleDefinition)' implements interface method 'Microsoft.Dafny.IRewriter.PreResolve(Microsoft.Dafny.ModuleDefinition)', thus cannot add Requires.
+[2012-07-01 08:10:46] 0 out of 33 test(s) in D:\Temp\aste\Boogie\Test\alltests.txt failed
+# [2012-07-01 08:11:28] Released nightly of Boogie
