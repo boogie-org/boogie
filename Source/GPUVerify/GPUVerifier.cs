@@ -633,8 +633,16 @@ namespace GPUVerify
                 }
                 if (d is Implementation)
                 {
-                    Implementation i = d as Implementation;
-                    new CrossThreadInvariantProcessor(this, i.Name).ProcessCrossThreadInvariants(i.StructuredStmts);
+                    Implementation impl = d as Implementation;
+
+                    if (CommandLineOptions.Unstructured)
+                    {
+                        new CrossThreadInvariantProcessor(this, impl.Name).ProcessCrossThreadInvariants(impl.Blocks);
+                    }
+                    else
+                    {
+                        new CrossThreadInvariantProcessor(this, impl.Name).ProcessCrossThreadInvariants(impl.StructuredStmts);
+                    }
                 }
 
             }

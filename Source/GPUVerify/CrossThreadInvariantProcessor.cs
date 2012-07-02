@@ -43,7 +43,7 @@ namespace GPUVerify
                                    new VariableDualiser(2, verifier.uniformityAnalyser, procName).VisitExpr(node.Args[0].Clone() as Expr));
                 }
 
-                if (call.Func.Name.Equals("__at_most_one"))
+                if (call.Func.Name.Equals("__exclusive"))
                 {
                     return Expr.Not(Expr.And(new VariableDualiser(1, verifier.uniformityAnalyser, procName).VisitExpr(node.Args[0].Clone() as Expr),
                                    new VariableDualiser(2, verifier.uniformityAnalyser, procName)
@@ -85,11 +85,36 @@ namespace GPUVerify
             }
         }
 
+        internal void ProcessCrossThreadInvariants(List<Block> blocks)
+        {
+            foreach (Block b in blocks)
+            {
+                b.Cmds = ProcessCrossThreadInvariants(b.Cmds);
+            }
+        }
+
         private void ProcessCrossThreadInvariants(BigBlock bb)
+        {
+            bb.simpleCmds = ProcessCrossThreadInvariants(bb.simpleCmds);
+
+            if (bb.ec is WhileCmd)
+            {
+                WhileCmd whileCmd = bb.ec as WhileCmd;
+                List<PredicateCmd> newInvariants = new List<PredicateCmd>();
+                foreach (PredicateCmd p in whileCmd.Invariants)
+                {
+                    newInvariants.Add(new AssertCmd(p.tok, VisitExpr(p.Expr)));
+                }
+                whileCmd.Invariants = newInvariants;
+                ProcessCrossThreadInvariants(whileCmd.Body);
+            }
+        }
+
+        private CmdSeq ProcessCrossThreadInvariants(CmdSeq cmds)
         {
             CmdSeq newCommands = new CmdSeq();
 
-            foreach (Cmd c in bb.simpleCmds)
+            foreach (Cmd c in cmds)
             {
                 if (c is AssertCmd)
                 {
@@ -104,20 +129,7 @@ namespace GPUVerify
                     newCommands.Add(c);
                 }
             }
-
-            bb.simpleCmds = newCommands;
-
-            if (bb.ec is WhileCmd)
-            {
-                WhileCmd whileCmd = bb.ec as WhileCmd;
-                List<PredicateCmd> newInvariants = new List<PredicateCmd>();
-                foreach (PredicateCmd p in whileCmd.Invariants)
-                {
-                    newInvariants.Add(new AssertCmd(p.tok, VisitExpr(p.Expr)));
-                }
-                whileCmd.Invariants = newInvariants;
-                ProcessCrossThreadInvariants(whileCmd.Body);
-            }
+            return newCommands;
         }
 
     }
