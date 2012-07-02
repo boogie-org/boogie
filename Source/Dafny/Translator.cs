@@ -26,6 +26,7 @@ namespace Microsoft.Dafny {
     readonly Dictionary<TopLevelDecl/*!*/,Bpl.Constant/*!*/>/*!*/ classes = new Dictionary<TopLevelDecl/*!*/,Bpl.Constant/*!*/>();
     readonly Dictionary<Field/*!*/,Bpl.Constant/*!*/>/*!*/ fields = new Dictionary<Field/*!*/,Bpl.Constant/*!*/>();
     readonly Dictionary<Field/*!*/, Bpl.Function/*!*/>/*!*/ fieldFunctions = new Dictionary<Field/*!*/, Bpl.Function/*!*/>();
+    Program program;
 
     [ContractInvariantMethod]
     void ObjectInvariant()
@@ -306,9 +307,10 @@ namespace Microsoft.Dafny {
 */
     }
 
-    public Bpl.Program Translate(Program program) {
-      Contract.Requires(program != null);
+    public Bpl.Program Translate(Program p) {
+      Contract.Requires(p != null);
       Contract.Ensures(Contract.Result<Bpl.Program>() != null);
+      program = p;
 
       if (sink == null || predef == null) {
         // something went wrong during construction, which reads the prelude; an error has
@@ -325,14 +327,18 @@ namespace Microsoft.Dafny {
           AddClassMembers((ClassDecl)d);
         }
       }
-      foreach (ModuleDecl m in program.Modules) {
+      foreach (ModuleDefinition m in program.Modules) {
         foreach (TopLevelDecl d in m.TopLevelDecls) {
           if (d is ArbitraryTypeDecl) {
             // nothing to do--this is treated just like a type parameter
           } else if (d is DatatypeDecl) {
             AddDatatype((DatatypeDecl)d);
-          } else {
+          } else if (d is ClassDecl) {
             AddClassMembers((ClassDecl)d);
+          } else if (d is ModuleDecl) {
+            // nop, sub-modules are handled in their own iteration.
+          } else {
+            Contract.Assert(false);
           }
         }
       }
@@ -811,7 +817,7 @@ namespace Microsoft.Dafny {
       }
 
       // mh < ModuleContextHeight || (mh == ModuleContextHeight && (fh <= FunctionContextHeight || InMethodContext))
-      ModuleDecl mod = f.EnclosingClass.Module;
+      ModuleDefinition mod = f.EnclosingClass.Module;
       var activateForeign = Bpl.Expr.Lt(Bpl.Expr.Literal(mod.Height), etran.ModuleContextHeight());
       var activateIntra = 
         Bpl.Expr.And(
@@ -1017,7 +1023,7 @@ namespace Microsoft.Dafny {
       return Bpl.Expr.And(lower, upper);
     }
 
-    ModuleDecl currentModule = null;  // the name of the module whose members are currently being translated
+    ModuleDefinition currentModule = null;  // the name of the module whose members are currently being translated
     Method currentMethod = null;  // the method whose implementation is currently being translated
     int loopHeapVarCount = 0;
     int otherTmpVarCount = 0;
@@ -1554,7 +1560,7 @@ namespace Microsoft.Dafny {
       // the procedure itself
       Bpl.RequiresSeq req = new Bpl.RequiresSeq();
       // free requires mh == ModuleContextHeight && fh == FunctionContextHeight;
-      ModuleDecl mod = f.EnclosingClass.Module;
+      ModuleDefinition mod = f.EnclosingClass.Module;
       Bpl.Expr context = Bpl.Expr.And(
         Bpl.Expr.Eq(Bpl.Expr.Literal(mod.Height), etran.ModuleContextHeight()),
         Bpl.Expr.Eq(Bpl.Expr.Literal(mod.CallGraph.GetSCCRepresentativeId(f)), etran.FunctionContextHeight()));
@@ -2372,7 +2378,7 @@ namespace Microsoft.Dafny {
 
           if (options.Decr != null && e.CoCall != FunctionCallExpr.CoCallResolution.Yes) {
             // check that the decreases measure goes down
-            ModuleDecl module = cce.NonNull(e.Function.EnclosingClass).Module;
+            ModuleDefinition module = cce.NonNull(e.Function.EnclosingClass).Module;
             if (module == cce.NonNull(options.Decr.EnclosingClass).Module) {
               if (module.CallGraph.GetSCCRepresentative(e.Function) == module.CallGraph.GetSCCRepresentative(options.Decr)) {
                 bool contextDecrInferred, calleeDecrInferred;
@@ -2819,7 +2825,7 @@ namespace Microsoft.Dafny {
       } else if (type is IntType) {
         return new Bpl.IdentifierExpr(tok, "class._System.int", predef.ClassNameType);
       } else if (type is ObjectType) {
-        return new Bpl.IdentifierExpr(tok, "class._System.object", predef.ClassNameType);
+        return new Bpl.IdentifierExpr(tok, GetClass(program.BuiltIns.ObjectDecl));
       } else if (type is CollectionType) {
         CollectionType ct = (CollectionType)type;
         Bpl.Expr a = GetTypeExpr(tok, ct.Arg);
@@ -4394,7 +4400,7 @@ namespace Microsoft.Dafny {
       CheckFrameSubset(tok, method.Mod.Expressions, receiver, substMap, etran, builder, "call may violate context's modifies clause", null);
 
       // Check termination
-      ModuleDecl module = method.EnclosingClass.Module;
+      ModuleDefinition module = method.EnclosingClass.Module;
       if (module == currentModule) {
         if (module.CallGraph.GetSCCRepresentative(method) == module.CallGraph.GetSCCRepresentative(currentMethod)) {
           bool contextDecrInferred, calleeDecrInferred;
@@ -5298,7 +5304,7 @@ namespace Microsoft.Dafny {
           typeArgs.Add(tRhs.EType);
           rightType = etran.GoodRef_Ref(tok, nw, new Bpl.IdentifierExpr(tok, "class._System." + BuiltIns.ArrayClassName(tRhs.ArrayDimensions.Count), predef.ClassNameType), typeArgs, true);
         } else if (tRhs.EType is ObjectType) {
-          rightType = etran.GoodRef_Ref(tok, nw, new Bpl.IdentifierExpr(tok, "class._System.object", predef.ClassNameType), new List<Type>(), true);
+          rightType = etran.GoodRef_Ref(tok, nw, new Bpl.IdentifierExpr(Token.NoToken,GetClass(program.BuiltIns.ObjectDecl)), new List<Type>(), true);
         } else {
           rightType = etran.GoodRef_Class(tok, nw, (UserDefinedType)tRhs.EType, true);
         }
@@ -5714,7 +5720,7 @@ namespace Microsoft.Dafny {
           }
           string nm = FunctionName(e.Function, 1 + offsetToUse);
           if (this.applyLimited_CurrentFunction != null && e.Function.IsRecursive) {
-            ModuleDecl module = cce.NonNull(e.Function.EnclosingClass).Module;
+            ModuleDefinition module = cce.NonNull(e.Function.EnclosingClass).Module;
             if (module == cce.NonNull(applyLimited_CurrentFunction.EnclosingClass).Module) {
               if (module.CallGraph.GetSCCRepresentative(e.Function) == module.CallGraph.GetSCCRepresentative(applyLimited_CurrentFunction)) {
                 nm = FunctionName(e.Function, 0 + offsetToUse);

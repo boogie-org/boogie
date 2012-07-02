@@ -32,33 +32,8 @@ namespace Microsoft.Dafny {
         wr.WriteLine("// " + Bpl.CommandLineOptions.Clo.Environment);
       }
       wr.WriteLine("// {0}", prog.Name);
-      foreach (ModuleDecl module in prog.Modules) {
-        wr.WriteLine();
-        if (module.IsDefaultModule) {
-          PrintTopLevelDecls(module.TopLevelDecls, 0);
-        } else {
-          wr.Write("module");
-          PrintAttributes(module.Attributes);
-          wr.Write(" {0} ", module.Name);
-          if (module.RefinementBaseName != null) {
-            wr.Write("refines {0} ", module.RefinementBaseName);
-          }
-          if (module.ImportNames.Count != 0) {
-            string sep = "imports ";
-            foreach (string imp in module.ImportNames) {
-              wr.Write("{0}{1}", sep, imp);
-              sep = ", ";
-            }
-          }
-          if (module.TopLevelDecls.Count == 0) {
-            wr.WriteLine(" { }");
-          } else {
-            wr.WriteLine(" {");
-            PrintTopLevelDecls(module.TopLevelDecls, IndentAmount);
-            wr.WriteLine("}");
-          }
-        }
-      }
+      wr.WriteLine();
+      PrintTopLevelDecls(prog.DefaultModuleDef.TopLevelDecls, 0);
     }
 
     public void PrintTopLevelDecls(List<TopLevelDecl> classes, int indent) {
@@ -78,7 +53,7 @@ namespace Microsoft.Dafny {
         } else if (d is DatatypeDecl) {
           if (i++ != 0) { wr.WriteLine(); }
           PrintDatatype((DatatypeDecl)d, indent);
-        } else {
+        } else if (d is ClassDecl) {
           ClassDecl cl = (ClassDecl)d;
           if (!cl.IsDefaultClass) {
             if (i++ != 0) { wr.WriteLine(); }
@@ -88,6 +63,34 @@ namespace Microsoft.Dafny {
           } else {
             if (i++ != 0) { wr.WriteLine(); }
             PrintClass_Members(cl, indent);
+          }
+        } else if (d is ModuleDecl) {
+          wr.WriteLine();
+          Indent(indent);
+          if (d is LiteralModuleDecl) {
+            ModuleDefinition module = ((LiteralModuleDecl)d).ModuleDef;
+            wr.Write("module");
+            PrintAttributes(module.Attributes);
+            wr.Write(" {0} ", module.Name);
+            if (module.RefinementBaseName != null) {
+              wr.Write("refines {0} ", Util.Comma(".", module.RefinementBaseName, id => id.val));
+            }
+            if (module.TopLevelDecls.Count == 0) {
+              wr.WriteLine("{ }");
+            } else {
+              wr.WriteLine("{");
+              PrintTopLevelDecls(module.TopLevelDecls, indent + IndentAmount);
+              Indent(indent);
+              wr.WriteLine("}");
+            }
+          } else if (d is AliasModuleDecl) {
+            wr.Write("module");
+            wr.Write(" {0} ", ((AliasModuleDecl)d).Name);
+            wr.WriteLine("= {0};", Util.Comma(".", ((AliasModuleDecl)d).Path, id => id.val));
+          } else if (d is AbstractModuleDecl) {
+            wr.Write("module");
+            wr.Write(" {0} ", ((AbstractModuleDecl)d).Name);
+            wr.WriteLine("as {0};", Util.Comma(".", ((AbstractModuleDecl)d).Path, id => id.val));
           }
         }
       }
@@ -147,17 +150,10 @@ namespace Microsoft.Dafny {
 
       wr.Write(" {0}", name);
       if (typeArgs.Count != 0) {
-        wr.Write("<");
-        string sep = "";
-        foreach (TypeParameter tp in typeArgs) {
-          Contract.Assert(tp != null);
-          wr.Write("{0}{1}", sep, tp.Name);
-          if (tp.EqualitySupport == TypeParameter.EqualitySupportValue.Required) {
-            wr.Write("(==)");
-          }
-          sep = ", ";
-        }
-        wr.Write(">");
+        wr.Write("<" +
+                 Util.Comma(", ", typeArgs,
+                   tp => tp.Name + (tp.EqualitySupport == TypeParameter.EqualitySupportValue.Required? "(==)": ""))
+                 + ">");
       }
     }
 
@@ -262,7 +258,7 @@ namespace Microsoft.Dafny {
 
     // ----------------------------- PrintMethod -----------------------------
 
-    const int IndentAmount = 2;
+    const int IndentAmount = 2; // The amount of indent for each new scope
     const string BunchaSpaces = "                                ";
     void Indent(int amount)
     {  Contract.Requires( 0 <= amount);

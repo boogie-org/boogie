@@ -21,8 +21,8 @@ using IToken = Microsoft.Boogie.IToken;
 namespace Microsoft.Dafny {
   public class RefinementToken : TokenWrapper
   {
-    public readonly ModuleDecl InheritingModule;
-    public RefinementToken(IToken tok, ModuleDecl m)
+    public readonly ModuleDefinition InheritingModule;
+    public RefinementToken(IToken tok, ModuleDefinition m)
       : base(tok)
     {
       Contract.Requires(tok != null);
@@ -30,7 +30,7 @@ namespace Microsoft.Dafny {
       this.InheritingModule = m;
     }
 
-    public static bool IsInherited(IToken tok, ModuleDecl m) {
+    public static bool IsInherited(IToken tok, ModuleDefinition m) {
       while (tok is NestedToken) {
         var n = (NestedToken)tok;
         // check Outer
@@ -58,33 +58,19 @@ namespace Microsoft.Dafny {
       this.reporter = reporter;
     }
 
-    private ModuleDecl moduleUnderConstruction;  // non-null for the duration of Construct calls
+    private ModuleDefinition moduleUnderConstruction;  // non-null for the duration of Construct calls
     private Queue<Action> postTasks = new Queue<Action>();  // empty whenever moduleUnderConstruction==null, these tasks are for the post-resolve phase of module moduleUnderConstruction
 
-    public void PreResolve(ModuleDecl m) {
-      if (m.RefinementBase == null) {
-        // This Rewriter doesn't do anything
-        return;
-      }
+    public void PreResolve(ModuleDefinition m) {
+      Contract.Requires(m != null);
+      Contract.Requires(m.RefinementBase != null);
 
       if (moduleUnderConstruction != null) {
         postTasks.Clear();
       }
+      
       moduleUnderConstruction = m;
-      var prev = m.RefinementBase;
-
-      // Include the imports of the base.  Note, prev is itself NOT added as an import
-      // of m; instead, the contents from prev is merged directly into m.
-      // (Here, we change the import declarations.  But edges for these imports will
-      // not be added to the importGraph of the calling resolver.  However, the refines
-      // clause gave rise to an edge in the importGraph, so the transitive import edges
-      // are represented in the importGraph.)
-      foreach (var im in prev.Imports) {
-        if (!m.ImportNames.Contains(im.Name)) {
-          m.ImportNames.Add(im.Name);
-          m.Imports.Add(im);
-        }
-      }
+      var prev = m.RefinementBase;     
 
       // Create a simple name-to-decl dictionary.  Ignore any duplicates at this time.
       var declaredNames = new Dictionary<string, int>();
@@ -96,40 +82,71 @@ namespace Microsoft.Dafny {
       }
 
       // Merge the declarations of prev into the declarations of m
-
       foreach (var d in prev.TopLevelDecls) {
         int index;
         if (!declaredNames.TryGetValue(d.Name, out index)) {
           m.TopLevelDecls.Add(CloneDeclaration(d, m));
         } else {
           var nw = m.TopLevelDecls[index];
-          if (d is ArbitraryTypeDecl) {
-            bool dDemandsEqualitySupport = ((ArbitraryTypeDecl)d).MustSupportEquality;
-            if (nw is ArbitraryTypeDecl) {
-              if (dDemandsEqualitySupport != ((ArbitraryTypeDecl)nw).MustSupportEquality) {
-                reporter.Error(nw, "type declaration '{0}' is not allowed to change the requirement of supporting equality", nw.Name);
-              }
-            } else if (dDemandsEqualitySupport) {
-              if (nw is ClassDecl) {
-                // fine, as long as "nw" does not take any type parameters
-                if (nw.TypeArgs.Count != 0) {
-                  reporter.Error(nw, "arbitrary type '{0}' is not allowed to be replaced by a class that takes type parameters", nw.Name);
-                }
-              } else if (nw is CoDatatypeDecl) {
-                reporter.Error(nw, "a type declaration that requires equality support cannot be replaced by a codatatype");
+          if (d is ModuleDecl) {
+            if (!(nw is ModuleDecl)) {
+              reporter.Error(nw, "a module ({0}) must refine another module", nw.Name);
+            } else if (!(d is AbstractModuleDecl)) {
+              reporter.Error(nw, "a module ({0}) can only refine abstract modules", nw.Name);
+            } else {
+              ModuleSignature original = ((AbstractModuleDecl)d).OriginalSignature;
+              ModuleSignature derived = null;
+              if (nw is AliasModuleDecl) {
+                derived = ((AliasModuleDecl)nw).Signature;
+              } else if (nw is AbstractModuleDecl) {
+                derived = ((AbstractModuleDecl)nw).Signature;
               } else {
-                Contract.Assert(nw is IndDatatypeDecl);
-                if (nw.TypeArgs.Count != 0) {
-                  reporter.Error(nw, "arbitrary type '{0}' is not allowed to be replaced by a datatype that takes type parameters", nw.Name);
+                reporter.Error(nw, "a module ({0}) can only be refined by alias or abstract modules", d.Name);
+              }
+              if (derived != null) {
+                // check that the new module refines the previous declaration
+                while (derived != null) {
+                  if (derived == original)
+                    break;
+                  derived = derived.Refines;
+                }
+                if (derived != original) {
+                  reporter.Error(nw, "a module ({0}) can only be replaced by a refinement of the original module", d.Name);
+                }
+              }
+            }
+          } else if (d is ArbitraryTypeDecl) {
+            if (nw is ModuleDecl) {
+              reporter.Error(nw, "a module ({0}) must refine another module", nw.Name);
+            } else {
+              bool dDemandsEqualitySupport = ((ArbitraryTypeDecl)d).MustSupportEquality;
+              if (nw is ArbitraryTypeDecl) {
+                if (dDemandsEqualitySupport != ((ArbitraryTypeDecl)nw).MustSupportEquality) {
+                  reporter.Error(nw, "type declaration '{0}' is not allowed to change the requirement of supporting equality", nw.Name);
+                }
+              } else if (dDemandsEqualitySupport) {
+                if (nw is ClassDecl) {
+                  // fine, as long as "nw" does not take any type parameters
+                  if (nw.TypeArgs.Count != 0) {
+                    reporter.Error(nw, "arbitrary type '{0}' is not allowed to be replaced by a class that takes type parameters", nw.Name);
+                  }
+                } else if (nw is CoDatatypeDecl) {
+                  reporter.Error(nw, "a type declaration that requires equality support cannot be replaced by a codatatype");
                 } else {
-                  // Here, we need to figure out if the new type supports equality.  But we won't know about that until resolution has
-                  // taken place, so we defer it until the PostResolve phase.
-                  var udt = new UserDefinedType(nw.tok, nw.Name, nw, new List<Type>());
-                  postTasks.Enqueue(delegate() {
-                    if (!udt.SupportsEquality) {
-                      reporter.Error(udt.tok, "datatype '{0}' is used to refine an arbitrary type with equality support, but '{0}' does not support equality", udt.Name);
-                    }
-                  });
+                  Contract.Assert(nw is IndDatatypeDecl);
+                  if (nw.TypeArgs.Count != 0) {
+                    reporter.Error(nw, "arbitrary type '{0}' is not allowed to be replaced by a datatype that takes type parameters", nw.Name);
+                  } else {
+                    // Here, we need to figure out if the new type supports equality.  But we won't know about that until resolution has
+                    // taken place, so we defer it until the PostResolve phase.
+                    var udt = new UserDefinedType(nw.tok, nw.Name, nw, new List<Type>());
+                    postTasks.Enqueue(delegate()
+                    {
+                      if (!udt.SupportsEquality) {
+                        reporter.Error(udt.tok, "datatype '{0}' is used to refine an arbitrary type with equality support, but '{0}' does not support equality", udt.Name);
+                      }
+                    });
+                  }
                 }
               }
             }
@@ -151,7 +168,7 @@ namespace Microsoft.Dafny {
       Contract.Assert(moduleUnderConstruction == m);  // this should be as it was set earlier in this method
     }
 
-    public void PostResolve(ModuleDecl m) {
+    public void PostResolve(ModuleDefinition m) {
       if (m == moduleUnderConstruction) {
         while (this.postTasks.Count != 0) {
           var a = postTasks.Dequeue();
@@ -173,7 +190,8 @@ namespace Microsoft.Dafny {
 
     // -------------------------------------------------- Cloning ---------------------------------------------------------------
 
-    TopLevelDecl CloneDeclaration(TopLevelDecl d, ModuleDecl m) {
+    // Clone a toplevel, specifying that its parent module should be m (i.e. it will be added to m.TopLevelDecls).
+    TopLevelDecl CloneDeclaration(TopLevelDecl d, ModuleDefinition m) {
       Contract.Requires(d != null);
       Contract.Requires(m != null);
 
@@ -198,6 +216,25 @@ namespace Microsoft.Dafny {
         var mm = dd.Members.ConvertAll(CloneMember);
         var cl = new ClassDecl(Tok(dd.tok), dd.Name, m, tps, mm, null);
         return cl;
+      } else if (d is ModuleDecl) {
+        if (d is LiteralModuleDecl) {
+          return new LiteralModuleDecl(((LiteralModuleDecl)d).ModuleDef,m);
+        } else if (d is AliasModuleDecl) {
+          var a = (AliasModuleDecl)d;
+          var alias = new AliasModuleDecl(a.Path, a.tok, m);
+          alias.ModuleReference = a.ModuleReference;
+          alias.Signature = a.Signature;
+          return alias;
+        } else if (d is AbstractModuleDecl) {
+          var a = (AbstractModuleDecl)d;
+          var abs = new AbstractModuleDecl(a.Path, a.tok, m);
+          abs.Signature = a.Signature;
+          abs.OriginalSignature = a.OriginalSignature;
+          return abs;
+        } else {
+          Contract.Assert(false);  // unexpected declaration
+          return null;  // to please compiler
+        }
       } else {
         Contract.Assert(false);  // unexpected declaration
         return null;  // to please compiler
@@ -1217,7 +1254,7 @@ namespace Microsoft.Dafny {
 
     // ---------------------- additional methods -----------------------------------------------------------------------------
 
-    public static bool ContainsChange(Expression expr, ModuleDecl m) {
+    public static bool ContainsChange(Expression expr, ModuleDefinition m) {
       Contract.Requires(expr != null);
       Contract.Requires(m != null);
 

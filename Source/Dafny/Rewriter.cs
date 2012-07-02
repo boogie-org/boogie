@@ -7,16 +7,16 @@ namespace Microsoft.Dafny
   [ContractClass(typeof(IRewriterContracts))]
   public interface IRewriter
   {
-    void PreResolve(ModuleDecl m);
-    void PostResolve(ModuleDecl m);
+    void PreResolve(ModuleDefinition m);
+    void PostResolve(ModuleDefinition m);
   }
   [ContractClassFor(typeof(IRewriter))]
   abstract class IRewriterContracts : IRewriter
   {
-    public void PreResolve(ModuleDecl m) {
+    public void PreResolve(ModuleDefinition m) {
       Contract.Requires(m != null);
     }
-    public void PostResolve(ModuleDecl m) {
+    public void PostResolve(ModuleDefinition m) {
       Contract.Requires(m != null);
     }
   }
@@ -61,7 +61,7 @@ namespace Microsoft.Dafny
   /// </summary>
   public class AutoContractsRewriter : IRewriter
   {
-    public void PreResolve(ModuleDecl m) {
+    public void PreResolve(ModuleDefinition m) {
       foreach (var d in m.TopLevelDecls) {
         bool sayYes = true;
         if (d is ClassDecl && Attributes.ContainsBool(d.Attributes, "autocontracts", ref sayYes) && sayYes) {
@@ -112,7 +112,7 @@ namespace Microsoft.Dafny
       }
     }
 
-    public void PostResolve(ModuleDecl m) {
+    public void PostResolve(ModuleDefinition m) {
       foreach (var d in m.TopLevelDecls) {
         bool sayYes = true;
         if (d is ClassDecl && Attributes.ContainsBool(d.Attributes, "autocontracts", ref sayYes) && sayYes) {
