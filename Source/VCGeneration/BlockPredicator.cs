@@ -77,7 +77,7 @@ public class BlockPredicator {
         // the first statement in the block.
         var assign = cmdSeq.Last();
         cmdSeq.Truncate(cmdSeq.Length-1);
-        aCmd.Expr = Expr.Imp(pExpr, aCmd.Expr);
+        aCmd.Expr = QKeyValue.FindBoolAttribute(aCmd.Attributes, "do_not_predicate") ? aCmd.Expr : Expr.Imp(pExpr, aCmd.Expr);
         cmdSeq.Add(aCmd);
         // cmdSeq.Add(new AssertCmd(aCmd.tok, Expr.Imp(pExpr, aCmd.Expr)));
         cmdSeq.Add(assign);
