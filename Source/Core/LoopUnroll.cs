@@ -10,7 +10,7 @@ using Microsoft.Boogie.GraphUtil;
 
 namespace Microsoft.Boogie {
   public class LoopUnroll {
-    public static List<Block/*!*/>/*!*/ UnrollLoops(Block start, int unrollMaxDepth) {
+    public static List<Block/*!*/>/*!*/ UnrollLoops(Block start, int unrollMaxDepth, bool soundLoopUnrolling) {
       Contract.Requires(start != null);
 
       Contract.Requires(0 <= unrollMaxDepth);
@@ -32,7 +32,7 @@ namespace Microsoft.Boogie {
         }
       }
 
-      LoopUnroll lu = new LoopUnroll(unrollMaxDepth, containingSCC, new List<Block/*!*/>());
+      LoopUnroll lu = new LoopUnroll(unrollMaxDepth, soundLoopUnrolling, containingSCC, new List<Block/*!*/>());
       lu.Visit(gStart);
       lu.newBlockSeqGlobal.Reverse();
       return lu.newBlockSeqGlobal;
@@ -172,6 +172,7 @@ namespace Microsoft.Boogie {
     readonly List<Block/*!*/>/*!*/ newBlockSeqGlobal;
     readonly Dictionary<GraphNode/*!*/, SCC<GraphNode/*!*/>>/*!*/ containingSCC;
     readonly int c;
+    readonly bool soundLoopUnrolling;
     readonly LoopUnroll next;
     readonly LoopUnroll/*!*/ head;
 
@@ -185,7 +186,7 @@ namespace Microsoft.Boogie {
 
 
     [NotDelayed]
-    private LoopUnroll(int unrollMaxDepth, Dictionary<GraphNode/*!*/, SCC<GraphNode/*!*/>>/*!*/ scc, List<Block/*!*/>/*!*/ newBlockSeqGlobal)
+    private LoopUnroll(int unrollMaxDepth, bool soundLoopUnrolling, Dictionary<GraphNode/*!*/, SCC<GraphNode/*!*/>>/*!*/ scc, List<Block/*!*/>/*!*/ newBlockSeqGlobal)
       : base() {//BASEMOVE DANGER
       Contract.Requires(cce.NonNullElements(newBlockSeqGlobal));
       Contract.Requires(cce.NonNullDictionaryAndValues(scc) && Contract.ForAll(scc.Values, v => cce.NonNullElements(v)));
@@ -196,21 +197,22 @@ namespace Microsoft.Boogie {
       //:base();
       this.head = this;
       if (unrollMaxDepth != 0) {
-        next = new LoopUnroll(unrollMaxDepth - 1, scc, newBlockSeqGlobal, this);
+        next = new LoopUnroll(unrollMaxDepth - 1, soundLoopUnrolling, scc, newBlockSeqGlobal, this);
       }
     }
 
-    private LoopUnroll(int unrollMaxDepth, Dictionary<GraphNode/*!*/, SCC<GraphNode/*!*/>> scc, List<Block/*!*/>/*!*/ newBlockSeqGlobal, LoopUnroll head) {
+    private LoopUnroll(int unrollMaxDepth, bool soundLoopUnrolling, Dictionary<GraphNode/*!*/, SCC<GraphNode/*!*/>> scc, List<Block/*!*/>/*!*/ newBlockSeqGlobal, LoopUnroll head) {
       Contract.Requires(head != null);
       Contract.Requires(cce.NonNullDictionaryAndValues(scc));
       Contract.Requires(cce.NonNullElements(newBlockSeqGlobal));
       Contract.Requires(0 <= unrollMaxDepth);
       this.newBlockSeqGlobal = newBlockSeqGlobal;
       this.c = unrollMaxDepth;
+      this.soundLoopUnrolling = soundLoopUnrolling;
       this.containingSCC = scc;
       this.head = head;
       if (unrollMaxDepth != 0) {
-        next = new LoopUnroll(unrollMaxDepth - 1, scc, newBlockSeqGlobal, head);
+        next = new LoopUnroll(unrollMaxDepth - 1, soundLoopUnrolling, scc, newBlockSeqGlobal, head);
       }
     }
 
@@ -238,8 +240,11 @@ namespace Microsoft.Boogie {
               break;
             }
           }
-          body.Add(new AssumeCmd(orig.tok, Bpl.Expr.False));
-
+          if (soundLoopUnrolling) {
+            body.Add(new AssertCmd(orig.tok, Bpl.Expr.False));
+          } else {
+            body.Add(new AssumeCmd(orig.tok, Bpl.Expr.False));
+          }
           tcmd = new ReturnCmd(orig.TransferCmd.tok);
 
         } else {

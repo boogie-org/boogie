@@ -437,6 +437,7 @@ namespace Microsoft.Boogie {
     }
 
     public int LoopUnrollCount = -1;  // -1 means don't unroll loops
+    public bool SoundLoopUnrolling = false;
     public int LoopFrameConditions = -1;  // -1 means not specified -- this will be replaced by the "implications" section below
     public int ModifiesDefault = 5;
     public bool LocalModifiesChecks = true;
@@ -1182,6 +1183,7 @@ namespace Microsoft.Boogie {
               ps.CheckBooleanFlag("alwaysAssumeFreeLoopInvariants", ref AlwaysAssumeFreeLoopInvariants, true) ||
               ps.CheckBooleanFlag("nologo", ref DontShowLogo) ||
               ps.CheckBooleanFlag("proverLogAppend", ref SimplifyLogFileAppend) ||
+              ps.CheckBooleanFlag("soundLoopUnrolling", ref SoundLoopUnrolling) ||
               ps.CheckBooleanFlag("checkInfer", ref InstrumentWithAsserts) ||
               ps.CheckBooleanFlag("interprocInfer", ref IntraproceduralInfer, false) ||
               ps.CheckBooleanFlag("restartProver", ref RestartProverPerVC) ||
@@ -1421,6 +1423,8 @@ namespace Microsoft.Boogie {
 
   /loopUnroll:<n>
                 unroll loops, following up to n back edges (and then some)
+  /soundLoopUnrolling
+                sound loop unrolling
   /printModel:<n>
                 0 (default) - do not print Z3's error model
                 1 - print Z3's error model

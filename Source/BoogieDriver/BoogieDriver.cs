@@ -591,7 +591,7 @@ namespace Microsoft.Boogie {
       Microsoft.Boogie.AbstractInterpretation.NativeAbstractInterpretation.RunAbstractInterpretation(program);
 
       if (CommandLineOptions.Clo.LoopUnrollCount != -1) {
-        program.UnrollLoops(CommandLineOptions.Clo.LoopUnrollCount);
+        program.UnrollLoops(CommandLineOptions.Clo.LoopUnrollCount, CommandLineOptions.Clo.SoundLoopUnrolling);
       }
 
       Dictionary<string, Dictionary<string, Block>> extractLoopMappingInfo = null;
