@@ -415,8 +415,6 @@ namespace GPUVerify
                 emitProgram(outputFilename + "_dualised");
             }
 
-            ProcessCrossThreadInvariants();
-
             if (CommandLineOptions.ShowStages)
             {
                 emitProgram(outputFilename + "_cross_thread_invariants");
@@ -620,34 +618,6 @@ namespace GPUVerify
             }
             return result;
         }
-
-        private void ProcessCrossThreadInvariants()
-        {
-            foreach (Declaration d in Program.TopLevelDeclarations)
-            {
-                if (d is Procedure)
-                {
-                    Procedure p = d as Procedure;
-                    p.Requires = new CrossThreadInvariantProcessor(this, p.Name).ProcessCrossThreadInvariants(p.Requires);
-                    p.Ensures = new CrossThreadInvariantProcessor(this, p.Name).ProcessCrossThreadInvariants(p.Ensures);
-                }
-                if (d is Implementation)
-                {
-                    Implementation impl = d as Implementation;
-
-                    if (CommandLineOptions.Unstructured)
-                    {
-                        new CrossThreadInvariantProcessor(this, impl.Name).ProcessCrossThreadInvariants(impl.Blocks);
-                    }
-                    else
-                    {
-                        new CrossThreadInvariantProcessor(this, impl.Name).ProcessCrossThreadInvariants(impl.StructuredStmts);
-                    }
-                }
-
-            }
-        }
-
 
         private void emitProgram(string filename)
         {

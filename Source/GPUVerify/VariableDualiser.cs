@@ -78,11 +78,12 @@ namespace GPUVerify
             {
                 FunctionCall call = node.Fun as FunctionCall;
 
-                if (call.Func.Name.Equals("__uniform_bv32") || call.Func.Name.Equals("__uniform_bool") ||
-                    call.Func.Name.Equals("__distinct_bv32") || call.Func.Name.Equals("__distinct_bool") ||
-                    call.Func.Name.Equals("__all") || call.Func.Name.Equals("__at_most_one"))
+                if (call.Func.Name.Equals("__other_bool") || call.Func.Name.Equals("__other_bv32"))
                 {
-                    return node;
+                    Debug.Assert(id == 1 || id == 2);
+                    int otherId = id == 1 ? 2 : 1;
+                    return new VariableDualiser(otherId, uniformityAnalyser, procName).VisitExpr(
+                        node.Args[0]);
                 }
 
             }

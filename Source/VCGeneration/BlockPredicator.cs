@@ -77,7 +77,8 @@ public class BlockPredicator {
         // the first statement in the block.
         var assign = cmdSeq.Last();
         cmdSeq.Truncate(cmdSeq.Length-1);
-        aCmd.Expr = QKeyValue.FindBoolAttribute(aCmd.Attributes, "do_not_predicate") ? aCmd.Expr : Expr.Imp(pExpr, aCmd.Expr);
+        Expr newExpr = new EnabledReplacementVisitor(pExpr).VisitExpr(aCmd.Expr);
+        aCmd.Expr = QKeyValue.FindBoolAttribute(aCmd.Attributes, "do_not_predicate") ? newExpr : Expr.Imp(pExpr, newExpr);
         cmdSeq.Add(aCmd);
         // cmdSeq.Add(new AssertCmd(aCmd.tok, Expr.Imp(pExpr, aCmd.Expr)));
         cmdSeq.Add(assign);
@@ -307,7 +308,26 @@ public class BlockPredicator {
         dwf.InParams = new VariableSeq(
           (new Variable[] {fpVar}.Concat(dwf.InParams.Cast<Variable>()))
             .ToArray());
+
+        if (dwf is Procedure)
+        {
+            var proc = (Procedure)dwf;
+            var newRequires = new RequiresSeq();
+            foreach (Requires r in proc.Requires)
+            {
+                newRequires.Add(new Requires(r.Free,
+                    new EnabledReplacementVisitor(new IdentifierExpr(Token.NoToken, fpVar)).VisitExpr(r.Condition)));
+            }
+            var newEnsures = new EnsuresSeq();
+            foreach (Ensures e in proc.Ensures)
+            {
+                newEnsures.Add(new Ensures(e.Free,
+                    new EnabledReplacementVisitor(new IdentifierExpr(Token.NoToken, fpVar)).VisitExpr(e.Condition)));
+            }
+        }
+
       }
+
       try {
         var impl = decl as Implementation;
         if (impl != null)
@@ -324,6 +344,30 @@ public class BlockPredicator {
     catch (Program.IrreducibleLoopException) { }
   }
 
+}
+
+
+class EnabledReplacementVisitor : StandardVisitor
+{
+    private Expr pExpr;
+
+    internal EnabledReplacementVisitor(Expr pExpr)
+    {
+        this.pExpr = pExpr;
+    }
+
+    public override Expr VisitExpr(Expr node)
+    {
+        if (node is IdentifierExpr)
+        {
+            IdentifierExpr iExpr = node as IdentifierExpr;
+            if (iExpr.Decl is Constant && QKeyValue.FindBoolAttribute(iExpr.Decl.Attributes, "__enabled"))
+            {
+                return pExpr;
+            }
+        }
+        return base.VisitExpr(node);
+    }
 }
 
 }
