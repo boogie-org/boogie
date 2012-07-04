@@ -8,7 +8,7 @@ syntax: regexp
 ^Binaries/BytecodeTranslator$
 ^BCT/Binaries/.*$
 ^Chalice/tests/(examples|permission-model|refinements|general-tests|regressions|predicates)/.*\.bpl
-Test/([^/]*)/Output
+Test/.*/Output
 Test/([^/]*)/([^/]*)\.sx
 Test/(dafny0|dafny1|dafny2|VSI-Benchmarks|vacid0|VSComp2010|vstte2012)/(out\.cs|.*\.dll|.*\.pdb|.*\.exe|.*\.tmp.*)
 Test/desktop/
@@ -24,3 +24,4 @@ Chalice/project/target
 Chalice/target
 Chalice/scripts/create_release/release
 BCT/InternalBCT.sln
+*.pyc
