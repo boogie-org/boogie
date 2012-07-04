@@ -121,7 +121,6 @@
     <Compile Include="LoopInvariantGenerator.cs" />
     <Compile Include="MayBePowerOfTwoAnalyser.cs" />
     <Compile Include="StructuredProgramVisitor.cs" />
-    <Compile Include="CrossThreadInvariantProcessor.cs" />
     <Compile Include="EnabledToPredicateVisitor.cs" />
     <Compile Include="CommandLineOptions.cs" />
     <Compile Include="GPUVerifier.cs" />
