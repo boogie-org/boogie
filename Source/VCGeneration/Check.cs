@@ -367,6 +367,12 @@ namespace Microsoft.Boogie {
       Undetermined
     }
     public class ErrorHandler {
+      // Used in CheckOutcomeCore
+      public virtual int StartingProcId()
+      {
+          return 0;
+      }
+
       public virtual void OnModel(IList<string> labels, Model model) {
         Contract.Requires(cce.NonNullElements(labels));
       }

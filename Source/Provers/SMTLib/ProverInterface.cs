@@ -425,7 +425,7 @@ namespace Microsoft.Boogie.SMTLib
               xlabels = labels.Select(a => a.Replace("@", "").Replace("+", "")).ToList();
             }
             else {
-              labels = CalculatePath(0);
+              labels = CalculatePath(handler.StartingProcId());
               xlabels = labels;
             }
             Model model = GetErrorModel();
