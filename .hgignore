@@ -25,3 +25,7 @@ Chalice/target
 Chalice/scripts/create_release/release
 BCT/InternalBCT.sln
 *.pyc
+*.dll.mdb
+*.exe.mdb
+*.pidb
+*.userprefs
