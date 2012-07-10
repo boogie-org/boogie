@@ -339,9 +339,11 @@ namespace GPUVerify
             PullOutNonLocalAccesses();
         }
 
-        
-
-        
+        private void MergeBlocksIntoPredecessors()
+        {
+            foreach (var impl in Program.TopLevelDeclarations.OfType<Implementation>())
+                VC.VCGen.MergeBlocksIntoPredecessors(Program, impl);
+        }
 
         internal void doit()
         {
@@ -401,11 +403,25 @@ namespace GPUVerify
                 emitProgram(outputFilename + "_abstracted");
             }
 
+            MergeBlocksIntoPredecessors();
+
+            if (CommandLineOptions.ShowStages)
+            {
+                emitProgram(outputFilename + "_merged_pre_predication");
+            }
+
             MakeKernelPredicated();
 
             if (CommandLineOptions.ShowStages)
             {
                 emitProgram(outputFilename + "_predicated");
+            }
+
+            MergeBlocksIntoPredecessors();
+
+            if (CommandLineOptions.ShowStages)
+            {
+                emitProgram(outputFilename + "_merged_post_predication");
             }
 
             MakeKernelDualised();
