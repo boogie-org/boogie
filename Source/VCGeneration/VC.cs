@@ -7,6 +7,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Threading;
 using System.IO;
 using Microsoft.Boogie;
@@ -3033,6 +3034,31 @@ namespace VC {
       else // b has some successors, but we are already visiting it, or we have already visited it...
       {
         return new BlockSeq(b);
+      }
+    }
+
+    /// <summary>
+    /// Simplifies the CFG of the given implementation impl by merging each
+    /// basic block with a single predecessor into that predecessor if the
+    /// predecessor has a single successor.
+    /// </summary>
+    public static void MergeBlocksIntoPredecessors(Program prog, Implementation impl) {
+      var blockGraph = prog.ProcessLoops(impl);
+      var predMap = new Dictionary<Block, Block>();
+      foreach (var block in blockGraph.Nodes) {
+        try {
+          var pred = blockGraph.Predecessors(block).Single();
+          if (blockGraph.Successors(pred).Single() == block) {
+            Block predMapping;
+            while (predMap.TryGetValue(pred, out predMapping))
+              pred = predMapping;
+            pred.Cmds.AddRange(block.Cmds);
+            pred.TransferCmd = block.TransferCmd;
+            impl.Blocks.Remove(block);
+            predMap[block] = pred;
+          }
+        // If Single throws an exception above (i.e. not exactly one pred/succ), skip this block.
+        } catch (InvalidOperationException) {}
       }
     }
 
