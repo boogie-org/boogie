@@ -182,7 +182,7 @@ SubModuleDecl<ModuleDefinition parent, bool isOverallModuleGhost, out ModuleDecl
     { Attribute<ref attrs> }
     NoUSIdent<out id>                          
     ((
-      [ "refines" QualifiedName<out idRefined> ] (. module = new ModuleDefinition(id, id.val, isOverallModuleGhost, false, idRefined == null ? null : idRefined, attrs); .)
+      [ "refines" QualifiedName<out idRefined> ] (. module = new ModuleDefinition(id, id.val, isOverallModuleGhost, false, idRefined == null ? null : idRefined, attrs, false); .)
        "{"                                       (. module.BodyStartTok = t; .)
         { (. isGhost = false; .)
           [ "ghost"  (. isGhost = true; .) ]
@@ -536,8 +536,8 @@ TypeAndToken<out IToken/*!*/ tok, out Type/*!*/ ty>
 ReferenceType<out IToken/*!*/ tok, out Type/*!*/ ty>
 = (. Contract.Ensures(Contract.ValueAtReturn(out tok) != null); Contract.Ensures(Contract.ValueAtReturn(out ty) != null);
      tok = Token.NoToken;  ty = new BoolType();  /*keep compiler happy*/
-     IToken moduleName = null;
      List<Type/*!*/>/*!*/ gt;
+     List<IToken> path;
   .)
   ( "object"                        (. tok = t;  ty = new ObjectType(); .)
   | arrayToken                      (. tok = t;  gt = new List<Type/*!*/>(); .)
@@ -550,11 +550,12 @@ ReferenceType<out IToken/*!*/ tok, out Type/*!*/ ty>
                                        }
                                        ty = theBuiltIns.ArrayType(tok, dims, gt[0], true);
                                     .)
-  | Ident<out tok>                  (. gt = new List<Type/*!*/>(); .)
-    [                               (. moduleName = tok; .)
-      "." Ident<out tok>
-    ]
-    [ GenericInstantiation<gt> ]    (. ty = new UserDefinedType(tok, tok.val, gt, moduleName); .)
+  | Ident<out tok>                  (. gt = new List<Type/*!*/>();
+                                       path = new List<IToken>(); .)
+    {                               (. path.Add(tok); .)
+      "." Ident<out tok>           
+    }
+    [ GenericInstantiation<gt> ]    (. ty = new UserDefinedType(tok, tok.val, gt, path); .)
   )
   .
 GenericInstantiation<.List<Type/*!*/>/*!*/ gt.>
@@ -576,9 +577,9 @@ FunctionDecl<MemberModifiers mmod, out Function/*!*/ f>
      List<Expression/*!*/> reqs = new List<Expression/*!*/>();
      List<Expression/*!*/> ens = new List<Expression/*!*/>();
      List<FrameExpression/*!*/> reads = new List<FrameExpression/*!*/>();
-     List<Expression/*!*/> decreases = new List<Expression/*!*/>();
+     List<Expression/*!*/> decreases;
      Expression body = null;
-     bool isPredicate = false;
+     bool isPredicate = false;  bool isCoPredicate = false;
      bool isFunctionMethod = false;
      IToken openParen = null;
      IToken bodyStart = Token.NoToken;
@@ -619,14 +620,34 @@ FunctionDecl<MemberModifiers mmod, out Function/*!*/ f>
     | "..."                    (. signatureOmitted = true;
                                   openParen = Token.NoToken; .)
     )
+
+  /* ----- copredicate ----- */
+  | "copredicate"              (. isCoPredicate = true; .)
+    (. if (mmod.IsGhost) { SemErr(t, "copredicates cannot be declared 'ghost' (they are ghost by default)"); }
+    .)
+    { Attribute<ref attrs> }
+    NoUSIdent<out id>
+    (
+      [ GenericParameters<typeArgs> ]
+      [ Formals<true, isFunctionMethod, formals, out openParen>
+        [ ":"                  (. SemErr(t, "copredicates do not have an explicitly declared return type; it is always bool"); .)
+        ]
+      ]
+    | "..."                    (. signatureOmitted = true;
+                                  openParen = Token.NoToken; .)
+    )
   )
 
+  (. decreases = isCoPredicate ? null : new List<Expression/*!*/>(); .)
   { FunctionSpec<reqs, reads, ens, decreases> }
   [ FunctionBody<out body, out bodyStart, out bodyEnd>
   ]
   (. if (isPredicate) {
         f = new Predicate(id, id.val, mmod.IsStatic, !isFunctionMethod, typeArgs, openParen, formals,
                           reqs, reads, ens, new Specification<Expression>(decreases, null), body, false, attrs, signatureOmitted);
+     } else if (isCoPredicate) {
+        f = new CoPredicate(id, id.val, mmod.IsStatic, typeArgs, openParen, formals,
+                          reqs, reads, ens, body, attrs, signatureOmitted);
      } else {
         f = new Function(id, id.val, mmod.IsStatic, !isFunctionMethod, typeArgs, openParen, formals, returnType,
                          reqs, reads, ens, new Specification<Expression>(decreases, null), body, attrs, signatureOmitted);
@@ -635,8 +656,10 @@ FunctionDecl<MemberModifiers mmod, out Function/*!*/ f>
      f.BodyEndTok = bodyEnd;
   .)
   .
-FunctionSpec<.List<Expression/*!*/>/*!*/ reqs, List<FrameExpression/*!*/>/*!*/ reads, List<Expression/*!*/>/*!*/ ens, List<Expression/*!*/>/*!*/ decreases.>
-= (. Contract.Requires(cce.NonNullElements(reqs)); Contract.Requires(cce.NonNullElements(reads)); Contract.Requires(cce.NonNullElements(decreases));
+FunctionSpec<.List<Expression/*!*/>/*!*/ reqs, List<FrameExpression/*!*/>/*!*/ reads, List<Expression/*!*/>/*!*/ ens, List<Expression/*!*/> decreases.>
+= (. Contract.Requires(cce.NonNullElements(reqs));
+     Contract.Requires(cce.NonNullElements(reads));
+     Contract.Requires(decreases == null || cce.NonNullElements(decreases));
      Expression/*!*/ e;  FrameExpression/*!*/ fe; .)
   (
     SYNC
@@ -646,7 +669,12 @@ FunctionSpec<.List<Expression/*!*/>/*!*/ reqs, List<FrameExpression/*!*/>/*!*/ r
               }
             ] SYNC ";"
   | "ensures" Expression<out e> SYNC ";"      (. ens.Add(e); .)
-  | "decreases" DecreasesList<decreases, false> SYNC ";"
+  | "decreases"                               (. if (decreases == null) {
+                                                   SemErr(t, "'decreases' clauses are meaningless for copredicates, so they are not allowed");
+                                                   decreases = new List<Expression/*!*/>();
+                                                 }
+                                              .)
+    DecreasesList<decreases, false> SYNC ";"
   )
   .
 PossiblyWildExpression<out Expression/*!*/ e>
@@ -729,9 +757,22 @@ OneStmt<out Statement/*!*/ s>
     SYNC
     ";"                                (. s = label != null ? new BreakStmt(x, label) : new BreakStmt(x, breakCount); .)
   | ReturnStmt<out s>
-  | "..."                              (. s = new SkeletonStatement(t); .)
+  | SkeletonStmt<out s> 
     ";"
   )
+  .
+
+SkeletonStmt<out Statement s>
+= (. List<IToken> names = null;
+     List<Expression> exprs = null;
+     IToken tok, dotdotdot;
+     Expression e; .)
+  "..."                                (. dotdotdot = t; .)
+  ["where"                             (. names = new List<IToken>(); exprs = new List<Expression>(); .)
+     Ident<out tok> "=" Expression<out e>        (. names.Add(tok); exprs.Add(e); .)
+     {"," Ident<out tok> "=" Expression<out e> } (. names.Add(tok); exprs.Add(e); .)
+  ]
+                                       (. s = new SkeletonStatement(dotdotdot, names, exprs); .)
   .
 ReturnStmt<out Statement/*!*/ s>
 = (.
@@ -802,16 +843,18 @@ Rhs<out AssignmentRhs r, Expression receiverForInitCall>
       "]"                              (. // make sure an array class with this dimensionality exists
                                           UserDefinedType tmp = theBuiltIns.ArrayType(x, ee.Count, new IntType(), true);
                                        .)
-    | "." Ident<out x>
-      "("                              (. args = new List<Expression/*!*/>(); .)
+    | "." Ident<out x>                 
+      "("                              (. // This case happens when we have type<typeargs>.Constructor(args)
+                                          // There is no ambiguity about where the constructor is or whether one exists.
+                                          args = new List<Expression/*!*/>(); .)
         [ Expressions<args> ]
       ")"                              (. initCall = new CallStmt(x, new List<Expression>(), receiverForInitCall, x.val, args); .)
     | "("                              (. var udf = ty as UserDefinedType;
-                                          if (udf != null && udf.ModuleName != null && udf.TypeArgs.Count == 0) {
-                                            // The parsed name had the form "A.B", so treat "A" as the name of the type and "B" as
+                                          if (udf != null && 0 < udf.Path.Count && udf.TypeArgs.Count == 0) {
+                                            // The parsed name had the form "A.B.Ctr", so treat "A.B" as the name of the type and "Ctr" as
                                             // the name of the constructor that's being invoked.
                                             x = udf.tok;
-                                            ty = new UserDefinedType(udf.ModuleName, udf.ModuleName.val, new List<Type>(), null);
+                                            ty = new UserDefinedType(udf.Path[0], udf.Path[udf.Path.Count-1].val, new List<Type>(), udf.Path.GetRange(0,udf.Path.Count-1));
                                           } else {
                                             SemErr(t, "expected '.'");
                                             x = null;
@@ -1440,8 +1483,6 @@ EndlessExpression<out Expression e>
 = (. IToken/*!*/ x;
      Expression e0, e1;
      e = dummyExpr;
-     BoundVar d;
-     List<BoundVar> letVars;  List<Expression> letRHSs;
   .)
   ( "if"                            (. x = t; .)
     Expression<out e>
@@ -1456,7 +1497,18 @@ EndlessExpression<out Expression e>
   | "assume"                        (. x = t; .)
     Expression<out e0> ";"
     Expression<out e1>              (. e = new AssumeExpr(x, e0, e1); .)
-  | "var"                           (. x = t;
+  | LetExpr<out e>
+  | NamedExpr<out e>
+  )
+  .
+
+LetExpr<out Expression e>
+= (. IToken/*!*/ x;
+     e = dummyExpr;
+     BoundVar d;
+     List<BoundVar> letVars;  List<Expression> letRHSs;
+  .)
+    "var"                           (. x = t;
                                        letVars = new List<BoundVar>();
                                        letRHSs = new List<Expression>(); .)
     IdentTypeOptional<out d>        (. letVars.Add(d); .)
@@ -1468,8 +1520,20 @@ EndlessExpression<out Expression e>
     }
     ";"
     Expression<out e>               (. e = new LetExpr(x, letVars, letRHSs, e); .)
-  )
   .
+
+NamedExpr<out Expression e>
+= (. IToken/*!*/ x, d;
+     e = dummyExpr;
+     Expression expr;
+  .)
+    "expr"                          (. x = t; .)
+    NoUSIdent<out d>
+    ":"
+    Expression<out e>               (. expr = e;
+                                       e = new NamedExpr(x, d.val, expr); .)
+  .
+
 MatchExpression<out Expression/*!*/ e>
 = (. Contract.Ensures(Contract.ValueAtReturn(out e) != null); IToken/*!*/ x;  MatchCaseExpr/*!*/ c;
      List<MatchCaseExpr/*!*/> cases = new List<MatchCaseExpr/*!*/>();

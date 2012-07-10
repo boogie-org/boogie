@@ -39,7 +39,7 @@ namespace Microsoft.Dafny {
 
   public class BuiltIns
   {
-    public readonly ModuleDefinition SystemModule = new ModuleDefinition(Token.NoToken, "_System", false, false, null, null);
+    public readonly ModuleDefinition SystemModule = new ModuleDefinition(Token.NoToken, "_System", false, false, null, null, true);
     Dictionary<int, ClassDecl/*!*/> arrayTypeDecls = new Dictionary<int, ClassDecl>();
     public readonly ClassDecl ObjectDecl;
     public BuiltIns() {
@@ -414,9 +414,10 @@ namespace Microsoft.Dafny {
       Contract.Invariant(tok != null);
       Contract.Invariant(Name != null);
       Contract.Invariant(cce.NonNullElements(TypeArgs));
+      Contract.Invariant(cce.NonNullElements(Path));
     }
 
-    public readonly IToken ModuleName;  // may be null
+    public readonly List<IToken> Path;  // may be null
     public readonly IToken tok;  // token of the Name
     public readonly string Name;
     [Rep]
@@ -454,11 +455,13 @@ namespace Microsoft.Dafny {
     public TopLevelDecl ResolvedClass;  // filled in by resolution, if Name denotes a class/datatype and TypeArgs match the type parameters of that class/datatype
     public TypeParameter ResolvedParam;  // filled in by resolution, if Name denotes an enclosing type parameter and TypeArgs is the empty list
 
-    public UserDefinedType(IToken/*!*/ tok, string/*!*/ name, [Captured] List<Type/*!*/>/*!*/ typeArgs, IToken moduleName) {
+    public UserDefinedType(IToken/*!*/ tok, string/*!*/ name, [Captured] List<Type/*!*/>/*!*/ typeArgs, List<IToken> moduleName) {
       Contract.Requires(tok != null);
       Contract.Requires(name != null);
       Contract.Requires(cce.NonNullElements(typeArgs));
-      this.ModuleName = moduleName;
+      Contract.Requires(moduleName == null || cce.NonNullElements(moduleName));
+      if (moduleName != null) this.Path = moduleName;
+      else this.Path = new List<IToken>();
       this.tok = tok;
       this.Name = name;
       this.TypeArgs = typeArgs;
@@ -476,6 +479,7 @@ namespace Microsoft.Dafny {
       this.Name = name;
       this.TypeArgs = typeArgs;
       this.ResolvedClass = cd;
+      this.Path = new List<IToken>();
     }
 
     /// <summary>
@@ -489,6 +493,7 @@ namespace Microsoft.Dafny {
       this.Name = name;
       this.TypeArgs = new List<Type/*!*/>();
       this.ResolvedParam = tp;
+      this.Path = new List<IToken>();
     }
 
     /// <summary>
@@ -522,19 +527,10 @@ namespace Microsoft.Dafny {
     [Pure]
     public override string ToString() {
       Contract.Ensures(Contract.Result<string>() != null);
-
-      string s = Name;
-      if (ModuleName != null) {
-        s = ModuleName.val + "." + s;
-      }
+      
+      string s = Util.Comma(".", Path, i => i.val) + (Path.Count == 0 ? "" : ".") + Name;
       if (TypeArgs.Count != 0) {
-        string sep = "<";
-        foreach (Type t in TypeArgs) {
-          Contract.Assume(cce.IsPeerConsistent(t));
-          s += sep + t;
-          sep = ",";
-        }
-        s += ">";
+        s += "<" + Util.Comma(",", TypeArgs, ty => ty.ToString()) + ">";
       }
       return s;
     }
@@ -840,9 +836,11 @@ namespace Microsoft.Dafny {
     
     public readonly Dictionary<string, TopLevelDecl> TopLevels = new Dictionary<string, TopLevelDecl>();
     public readonly Dictionary<string, Tuple<DatatypeCtor, bool>> Ctors = new Dictionary<string, Tuple<DatatypeCtor, bool>>();
+    public readonly Dictionary<string, MemberDecl> StaticMembers = new Dictionary<string, MemberDecl>();
     public ModuleDefinition ModuleDef; // Note: this is null if this signature does not correspond to a specific definition (i.e.
                                        // it is abstract). Otherwise, it points to that definition.
     public ModuleSignature Refines;
+    public bool IsGhost = false;
     public ModuleSignature() {}
 
     public bool FindSubmodule(string name, out ModuleSignature pp) {
@@ -868,14 +866,14 @@ namespace Microsoft.Dafny {
     public int Height;  // height in the topological sorting of modules; filled in during resolution
     public readonly bool IsGhost;
     public readonly bool IsAbstract; // True iff this module represents an abstract interface
-
+    private readonly bool IsBuiltinName; // true if this is something like _System that shouldn't have it's name mangled.
     [ContractInvariantMethod]
     void ObjectInvariant() {
       Contract.Invariant(cce.NonNullElements(TopLevelDecls));
       Contract.Invariant(CallGraph != null);
     }
 
-    public ModuleDefinition(IToken tok, string name, bool isGhost, bool isAbstract, List<IToken> refinementBase,  Attributes attributes)
+    public ModuleDefinition(IToken tok, string name, bool isGhost, bool isAbstract, List<IToken> refinementBase,  Attributes attributes, bool isBuiltinName)
       : base(tok, name, attributes) {
       Contract.Requires(tok != null);
       Contract.Requires(name != null);
@@ -884,6 +882,7 @@ namespace Microsoft.Dafny {
       IsAbstract = isAbstract;
       RefinementBaseRoot = null;
       RefinementBase = null;
+      IsBuiltinName = isBuiltinName;
     }
     public virtual bool IsDefaultModule {
       get {
@@ -894,15 +893,32 @@ namespace Microsoft.Dafny {
     new public string CompileName {
       get {
         if (compileName == null) {
-          compileName = "_" + Height.ToString() + "_" + NonglobalVariable.CompilerizeName(Name);
+          if (IsBuiltinName)
+            compileName = Name;
+          else
+            compileName = "_" + Height.ToString() + "_" + NonglobalVariable.CompilerizeName(Name);
         }
         return compileName;
+      }
+    }
+
+    public static IEnumerable<Function> AllFunctions(List<TopLevelDecl> declarations) {
+      foreach (var d in declarations) {
+        var cl = d as ClassDecl;
+        if (cl != null) {
+          foreach (var member in cl.Members) {
+            var fn = member as Function;
+            if (fn != null) {
+              yield return fn;
+            }
+          }
+        }
       }
     }
   }
 
   public class DefaultModuleDecl : ModuleDefinition {
-    public DefaultModuleDecl() : base(Token.NoToken, "_module", false, false, null, null) {
+    public DefaultModuleDecl() : base(Token.NoToken, "_module", false, false, null, null, true) {
     }
     public override bool IsDefaultModule {
       get {
@@ -1079,7 +1095,7 @@ namespace Microsoft.Dafny {
         Contract.Requires(EnclosingDatatype != null);
         Contract.Ensures(Contract.Result<string>() != null);
 
-        return "#" + EnclosingDatatype.FullName + "." + Name;
+        return "#" + EnclosingDatatype.FullCompileName + "." + Name;
       }
     }
   }
@@ -1165,11 +1181,21 @@ namespace Microsoft.Dafny {
   public class DatatypeDestructor : SpecialField
   {
     public readonly DatatypeCtor EnclosingCtor;
+    public readonly Formal CorrespondingFormal;
 
-    public DatatypeDestructor(IToken tok, DatatypeCtor enclosingCtor, string name, string compiledName, string preString, string postString, bool isGhost, Type type, Attributes attributes)
+    public DatatypeDestructor(IToken tok, DatatypeCtor enclosingCtor, Formal correspondingFormal, string name, string compiledName, string preString, string postString, bool isGhost, Type type, Attributes attributes)
       : base(tok, name, compiledName, preString, postString, isGhost, false, type, attributes)
     {
+      Contract.Requires(tok != null);
+      Contract.Requires(enclosingCtor != null);
+      Contract.Requires(correspondingFormal != null);
+      Contract.Requires(name != null);
+      Contract.Requires(compiledName != null);
+      Contract.Requires(preString != null);
+      Contract.Requires(postString != null);
+      Contract.Requires(type != null);
       EnclosingCtor = enclosingCtor;
+      CorrespondingFormal = correspondingFormal;
     }
   }
 
@@ -1476,6 +1502,19 @@ namespace Microsoft.Dafny {
       : base(tok, name, isStatic, isGhost, typeArgs, openParen, formals, new BoolType(), req, reads, ens, decreases, body, attributes, signatureOmitted) {
       Contract.Requires(!bodyIsExtended || body != null);
       BodyIsExtended = bodyIsExtended;
+    }
+  }
+
+  public class CoPredicate : Function
+  {
+    public readonly List<FunctionCallExpr> Uses = new List<FunctionCallExpr>();  // filled in during resolution, used by verifier
+
+    public CoPredicate(IToken tok, string name, bool isStatic,
+                     List<TypeParameter> typeArgs, IToken openParen, List<Formal> formals,
+                     List<Expression> req, List<FrameExpression> reads, List<Expression> ens,
+                     Expression body, Attributes attributes, bool signatureOmitted)
+      : base(tok, name, isStatic, true, typeArgs, openParen, formals, new BoolType(),
+             req, reads, ens, new Specification<Expression>(new List<Expression>(), null), body, attributes, signatureOmitted) {
     }
   }
 
@@ -2493,10 +2532,13 @@ namespace Microsoft.Dafny {
     public readonly Statement S;
     public readonly bool ConditionOmitted;
     public readonly bool BodyOmitted;
+    public readonly List<IToken> NameReplacements;
+    public readonly List<Expression> ExprReplacements;
     public SkeletonStatement(IToken tok)
       : base(tok)
     {
       Contract.Requires(tok != null);
+      S = null;
     }
     public SkeletonStatement(Statement s, bool conditionOmitted, bool bodyOmitted)
       : base(s.Tok)
@@ -2505,6 +2547,13 @@ namespace Microsoft.Dafny {
       S = s;
       ConditionOmitted = conditionOmitted;
       BodyOmitted = bodyOmitted;
+    }
+    public SkeletonStatement(IToken tok, List<IToken> nameReplacements, List<Expression> exprReplacements)
+      : base(tok) {
+      Contract.Requires(tok != null);
+      NameReplacements = nameReplacements;
+      ExprReplacements = exprReplacements;
+      
     }
     public override IEnumerable<Statement> SubStatements {
       get {
@@ -2948,7 +2997,7 @@ namespace Microsoft.Dafny {
     public readonly Expression/*!*/ Receiver;
     public readonly IToken OpenParen;  // can be null if Args.Count == 0
     public readonly List<Expression/*!*/>/*!*/ Args;
-    public Dictionary<TypeParameter, Type> TypeArgumentSubstitutions;  // create, initialized, and used by resolution (could be deleted once all of resolution is done)
+    public Dictionary<TypeParameter, Type> TypeArgumentSubstitutions;  // created, initialized, and used by resolution (could be deleted once all of resolution is done)
     public enum CoCallResolution { No, Yes, NoBecauseFunctionHasSideEffects, NoBecauseRecursiveCallsAreNotAllowedInThisContext, NoBecauseIsNotGuarded }
     public CoCallResolution CoCall = CoCallResolution.No;  // indicates whether or not the call is a co-recursive call; filled in by resolution
 
@@ -3367,6 +3416,34 @@ namespace Microsoft.Dafny {
           yield return rhs;
         }
         yield return Body;
+      }
+    }
+  }
+  // Represents expr Name: Body
+  //         or expr Name: (assert Body == Contract; Body)
+  public class NamedExpr : Expression
+  {
+    public readonly string Name;
+    public readonly Expression Body;
+    public readonly Expression Contract;
+    public readonly IToken ReplacerToken;
+
+    public NamedExpr(IToken tok, string p, Expression body)
+      : base(tok) {
+      Name = p;
+      Body = body;
+    }
+    public NamedExpr(IToken tok, string p, Expression body, Expression contract, IToken token)
+      : base(tok) {
+      Name = p;
+      Body = body;
+      Contract = contract;
+      ReplacerToken = token;
+    }
+    public override IEnumerable<Expression> SubExpressions {
+      get {
+        yield return Body;
+        if (Contract != null) yield return Contract;
       }
     }
   }
@@ -3885,7 +3962,7 @@ namespace Microsoft.Dafny {
 
   public class Specification<T> where T : class
   {
-    public List<T> Expressions;
+    public readonly List<T> Expressions;
 
     [ContractInvariantMethod]
     private void ObjectInvariant()

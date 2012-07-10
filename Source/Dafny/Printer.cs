@@ -223,7 +223,7 @@ namespace Microsoft.Dafny {
       Contract.Requires(f != null);
       var isPredicate = f is Predicate;
       Indent(indent);
-      string k = isPredicate ? "predicate" : "function";
+      string k = isPredicate ? "predicate" : f is CoPredicate ? "copredicate" : "function";
       if (f.IsStatic) { k = "static " + k; }
       if (!f.IsGhost) { k += " method"; }
       PrintClassMethodHelper(k, f.Attributes, f.Name, f.TypeArgs);
@@ -1167,7 +1167,12 @@ namespace Microsoft.Dafny {
         }
         if (parensNeeded) { wr.Write(")"); }
 
-      } else if (expr is SetComprehension) {
+      } else if (expr is NamedExpr) {
+        var e = (NamedExpr)expr;
+        wr.Write("expr {0}: ", e.Name);
+        PrintExpression(e.Body);
+ 
+       } else if (expr is SetComprehension) {
         var e = (SetComprehension)expr;
         bool parensNeeded = !isRightmost;
         if (parensNeeded) { wr.Write("("); }
@@ -1250,6 +1255,10 @@ namespace Microsoft.Dafny {
 
       } else if (expr is MatchExpr) {
         Contract.Assert(false); throw new cce.UnreachableException();  // MatchExpr is an extended expression and should be printed only using PrintExtendedExpr
+      } else if (expr is BoxingCastExpr) {
+        // this is not expected for a parsed program, but we may be called for /trace purposes in the translator
+        var e = (BoxingCastExpr)expr;
+        PrintExpr(e.E, contextBindingStrength, fragileContext, isRightmost, indent);
       } else {
         Contract.Assert(false); throw new cce.UnreachableException();  // unexpected expression
       }

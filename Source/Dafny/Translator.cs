@@ -26,6 +26,7 @@ namespace Microsoft.Dafny {
     readonly Dictionary<TopLevelDecl/*!*/,Bpl.Constant/*!*/>/*!*/ classes = new Dictionary<TopLevelDecl/*!*/,Bpl.Constant/*!*/>();
     readonly Dictionary<Field/*!*/,Bpl.Constant/*!*/>/*!*/ fields = new Dictionary<Field/*!*/,Bpl.Constant/*!*/>();
     readonly Dictionary<Field/*!*/, Bpl.Function/*!*/>/*!*/ fieldFunctions = new Dictionary<Field/*!*/, Bpl.Function/*!*/>();
+    readonly Dictionary<string, Bpl.Constant> fieldConstants = new Dictionary<string,Constant>();
     Program program;
 
     [ContractInvariantMethod]
@@ -53,6 +54,7 @@ namespace Microsoft.Dafny {
       public readonly Bpl.Type HeapType;
       public readonly string HeapVarName;
       public readonly Bpl.Type ClassNameType;
+      public readonly Bpl.Type NameFamilyType;
       public readonly Bpl.Type DatatypeType;
       public readonly Bpl.Type DtCtorId;
       public readonly Bpl.Expr Null;
@@ -71,6 +73,7 @@ namespace Microsoft.Dafny {
         Contract.Invariant(HeapType != null);
         Contract.Invariant(HeapVarName != null);
         Contract.Invariant(ClassNameType != null);
+        Contract.Invariant(NameFamilyType != null);
         Contract.Invariant(DatatypeType != null);
         Contract.Invariant(DtCtorId != null);
         Contract.Invariant(Null != null);
@@ -126,7 +129,7 @@ namespace Microsoft.Dafny {
 
       public PredefinedDecls(Bpl.TypeCtorDecl refType, Bpl.TypeCtorDecl boxType, Bpl.TypeCtorDecl tickType,
                              Bpl.TypeSynonymDecl setTypeCtor, Bpl.TypeSynonymDecl multiSetTypeCtor, Bpl.TypeCtorDecl mapTypeCtor, Bpl.Function arrayLength, Bpl.TypeCtorDecl seqTypeCtor, Bpl.TypeCtorDecl fieldNameType,
-                             Bpl.GlobalVariable heap, Bpl.TypeCtorDecl classNameType,
+                             Bpl.GlobalVariable heap, Bpl.TypeCtorDecl classNameType, Bpl.TypeCtorDecl nameFamilyType,
                              Bpl.TypeCtorDecl datatypeType, Bpl.TypeCtorDecl dtCtorId,
                              Bpl.Constant allocField, Bpl.Constant classDotArray) {
         #region Non-null preconditions on parameters
@@ -158,6 +161,7 @@ namespace Microsoft.Dafny {
         this.HeapType = heap.TypedIdent.Type;
         this.HeapVarName = heap.Name;
         this.ClassNameType = new Bpl.CtorType(Token.NoToken, classNameType, new Bpl.TypeSeq());
+        this.NameFamilyType = new Bpl.CtorType(Token.NoToken, nameFamilyType, new Bpl.TypeSeq());
         this.DatatypeType = new Bpl.CtorType(Token.NoToken, datatypeType, new Bpl.TypeSeq());
         this.DtCtorId = new Bpl.CtorType(Token.NoToken, dtCtorId, new Bpl.TypeSeq());
         this.allocField = allocField;
@@ -180,6 +184,7 @@ namespace Microsoft.Dafny {
       Bpl.TypeCtorDecl seqTypeCtor = null;
       Bpl.TypeCtorDecl fieldNameType = null;
       Bpl.TypeCtorDecl classNameType = null;
+      Bpl.TypeCtorDecl nameFamilyType = null;
       Bpl.TypeCtorDecl datatypeType = null;
       Bpl.TypeCtorDecl dtCtorId = null;
       Bpl.TypeCtorDecl boxType = null;
@@ -203,6 +208,8 @@ namespace Microsoft.Dafny {
             dtCtorId = dt;
           } else if (dt.Name == "ref") {
             refType = dt;
+          } else if (dt.Name == "NameFamily") {
+            nameFamilyType = dt;
           } else if (dt.Name == "BoxType") {
             boxType = dt;
           } else if (dt.Name == "TickType") {
@@ -250,6 +257,8 @@ namespace Microsoft.Dafny {
         Console.WriteLine("Error: Dafny prelude is missing declaration of type Field");
       } else if (classNameType == null) {
         Console.WriteLine("Error: Dafny prelude is missing declaration of type ClassName");
+      } else if (nameFamilyType == null) {
+        Console.WriteLine("Error: Dafny prelude is missing declaration of type NameFamily");
       } else if (datatypeType == null) {
         Console.WriteLine("Error: Dafny prelude is missing declaration of type DatatypeType");
       } else if (dtCtorId == null) {
@@ -268,7 +277,7 @@ namespace Microsoft.Dafny {
         Console.WriteLine("Error: Dafny prelude is missing declaration of class._System.array");
       } else {
         return new PredefinedDecls(refType, boxType, tickType,
-                                   setTypeCtor, multiSetTypeCtor, mapTypeCtor, arrayLength, seqTypeCtor, fieldNameType, heap, classNameType, datatypeType, dtCtorId,
+                                   setTypeCtor, multiSetTypeCtor, mapTypeCtor, arrayLength, seqTypeCtor, fieldNameType, heap, classNameType, nameFamilyType, datatypeType, dtCtorId,
                                    allocField, classDotArray);
       }
       return null;
@@ -310,8 +319,9 @@ namespace Microsoft.Dafny {
     public Bpl.Program Translate(Program p) {
       Contract.Requires(p != null);
       Contract.Ensures(Contract.Result<Bpl.Program>() != null);
+      
       program = p;
-
+      
       if (sink == null || predef == null) {
         // something went wrong during construction, which reads the prelude; an error has
         // already been printed, so just return an empty program here (which is non-null)
@@ -333,14 +343,17 @@ namespace Microsoft.Dafny {
             // nothing to do--this is treated just like a type parameter
           } else if (d is DatatypeDecl) {
             AddDatatype((DatatypeDecl)d);
+          } else if (d is ModuleDecl) {
+            // submodules have already been added as a top level module, ignore this.
           } else if (d is ClassDecl) {
             AddClassMembers((ClassDecl)d);
-          } else if (d is ModuleDecl) {
-            // nop, sub-modules are handled in their own iteration.
           } else {
             Contract.Assert(false);
           }
         }
+      }
+      foreach(var c in fieldConstants.Values) {
+        sink.TopLevelDeclarations.Add(c);
       }
       return sink;
     }
@@ -396,7 +409,7 @@ namespace Microsoft.Dafny {
         if (bvs.Length != 0) {
           q = new Bpl.ExistsExpr(ctor.tok, bvs, q);
         }
-        q = Bpl.Expr.Imp(FunctionCall(ctor.tok, ctor.QueryField.FullName, Bpl.Type.Bool, dId), q);
+        q = Bpl.Expr.Imp(FunctionCall(ctor.tok, ctor.QueryField.FullCompileName, Bpl.Type.Bool, dId), q);
         q = new Bpl.ForallExpr(ctor.tok, new VariableSeq(dBv), q);
         sink.TopLevelDeclarations.Add(new Bpl.Axiom(ctor.tok, q));
 
@@ -525,11 +538,11 @@ namespace Microsoft.Dafny {
       var cases_dId = new Bpl.IdentifierExpr(dt.tok, cases_dBv.Name, predef.DatatypeType);
       Bpl.Expr cases_body = null;
       foreach (DatatypeCtor ctor in dt.Ctors) {
-        var disj = FunctionCall(ctor.tok, ctor.QueryField.FullName, Bpl.Type.Bool, cases_dId);
+        var disj = FunctionCall(ctor.tok, ctor.QueryField.FullCompileName, Bpl.Type.Bool, cases_dId);
         cases_body = cases_body == null ? disj : Bpl.Expr.Or(cases_body, disj);
       }
       var cases_resType = new Bpl.Formal(dt.tok, new Bpl.TypedIdent(dt.tok, Bpl.TypedIdent.NoName, Bpl.Type.Bool), false);
-      var cases_fn = new Bpl.Function(dt.tok, "$IsA#" + dt.FullName, new Bpl.VariableSeq(cases_dBv), cases_resType);
+      var cases_fn = new Bpl.Function(dt.tok, "$IsA#" + dt.FullCompileName, new Bpl.VariableSeq(cases_dBv), cases_resType);
       cases_fn.Body = cases_body;
       sink.TopLevelDeclarations.Add(cases_fn);
     }
@@ -596,6 +609,9 @@ namespace Microsoft.Dafny {
           }
           AddFrameAxiom(f);
           AddWellformednessCheck(f);
+          if (f is CoPredicate) {
+            AddCoinductionPrinciple((CoPredicate)f);
+          }
 
         } else if (member is Method) {
           Method m = (Method)member;
@@ -706,7 +722,7 @@ namespace Microsoft.Dafny {
     }
 
     void AddFunctionAxiom(Function/*!*/ f, Expression body, List<Expression/*!*/>/*!*/ ens, Specialization specialization, int layerOffset) {
-      if (f is Predicate) {
+      if (f is Predicate || f is CoPredicate) {
         var ax = FunctionAxiom(f, FunctionAxiomVisibility.IntraModuleOnly, body, ens, specialization, layerOffset);
         sink.TopLevelDeclarations.Add(ax);
         ax = FunctionAxiom(f, FunctionAxiomVisibility.ForeignModuleOnly, body, ens, specialization, layerOffset);
@@ -849,7 +865,7 @@ namespace Microsoft.Dafny {
           Bpl.Expr.Neq(Bpl.Expr.Literal(mod.CallGraph.GetSCCRepresentativeId(f)), etran.FunctionContextHeight())),
           etran.InMethodContext());
       // useViaCanCall: f#canCall(args)
-      Bpl.IdentifierExpr canCallFuncID = new Bpl.IdentifierExpr(f.tok, f.FullName + "#canCall", Bpl.Type.Bool);
+      Bpl.IdentifierExpr canCallFuncID = new Bpl.IdentifierExpr(f.tok, f.FullCompileName + "#canCall", Bpl.Type.Bool);
       Bpl.Expr useViaCanCall = new Bpl.NAryExpr(f.tok, new Bpl.FunctionCall(canCallFuncID), args);
 
       // ante := useViaCanCall || (useViaContext && typeAnte && pre)
@@ -865,11 +881,11 @@ namespace Microsoft.Dafny {
         if (layerOffset == 0) {
           meat = Bpl.Expr.And(
             CanCallAssumption(bodyWithSubst, etran),
-            visibility == FunctionAxiomVisibility.ForeignModuleOnly && f is Predicate ?
+            visibility == FunctionAxiomVisibility.ForeignModuleOnly && (f is Predicate || f is CoPredicate) ?
               Bpl.Expr.Imp(funcAppl, etran.LimitedFunctions(f).TrExpr(bodyWithSubst)) :
               Bpl.Expr.Eq(funcAppl, etran.LimitedFunctions(f).TrExpr(bodyWithSubst)));
         } else {
-          meat = visibility == FunctionAxiomVisibility.ForeignModuleOnly && f is Predicate ?
+          meat = visibility == FunctionAxiomVisibility.ForeignModuleOnly && (f is Predicate || f is CoPredicate) ?
             Bpl.Expr.Imp(funcAppl, etran.TrExpr(bodyWithSubst)) :
             Bpl.Expr.Eq(funcAppl, etran.TrExpr(bodyWithSubst));
         }
@@ -954,7 +970,7 @@ namespace Microsoft.Dafny {
       Contract.Requires(0 <= layer && layer < 3);
       Contract.Ensures(Contract.Result<string>() != null);
 
-      string name = f.FullName;
+      string name = f.FullCompileName;
       switch (layer) {
         case 2: name += "#2"; break;
         case 0: name += "#limited"; break;
@@ -1137,7 +1153,7 @@ namespace Microsoft.Dafny {
             foreach (var inFormal in m.Ins) {
               var dt = inFormal.Type.AsDatatype;
               if (dt != null) {
-                var funcID = new Bpl.FunctionCall(new Bpl.IdentifierExpr(inFormal.tok, "$IsA#" + dt.FullName, Bpl.Type.Bool));
+                var funcID = new Bpl.FunctionCall(new Bpl.IdentifierExpr(inFormal.tok, "$IsA#" + dt.FullCompileName, Bpl.Type.Bool));
                 var f = new Bpl.IdentifierExpr(inFormal.tok, inFormal.UniqueName, TrType(inFormal.Type));
                 builder.Add(new Bpl.AssumeCmd(inFormal.tok, new Bpl.NAryExpr(inFormal.tok, funcID, new Bpl.ExprSeq(f))));
               }
@@ -1452,8 +1468,8 @@ namespace Microsoft.Dafny {
         if (wh != null) { wellFormed = Bpl.Expr.And(wellFormed, wh); }
       }
 
-      string axiomComment = "frame axiom for " + f.FullName;
-      Bpl.FunctionCall fn = new Bpl.FunctionCall(new Bpl.IdentifierExpr(f.tok, f.FullName, TrType(f.ResultType)));
+      string axiomComment = "frame axiom for " + f.FullCompileName;
+      Bpl.FunctionCall fn = new Bpl.FunctionCall(new Bpl.IdentifierExpr(f.tok, f.FullCompileName, TrType(f.ResultType)));
       while (fn != null) {
         Bpl.Expr F0 = new Bpl.NAryExpr(f.tok, fn, f0args);
         Bpl.Expr F1 = new Bpl.NAryExpr(f.tok, fn, f1args);
@@ -1575,7 +1591,7 @@ namespace Microsoft.Dafny {
           }
         }
       }
-      Bpl.Procedure proc = new Bpl.Procedure(f.tok, "CheckWellformed$$" + f.FullName, typeParams, inParams, new Bpl.VariableSeq(),
+      Bpl.Procedure proc = new Bpl.Procedure(f.tok, "CheckWellformed$$" + f.FullCompileName, typeParams, inParams, new Bpl.VariableSeq(),
         req, new Bpl.IdentifierExprSeq(), ens, etran.TrAttributes(f.Attributes, null));
       sink.TopLevelDeclarations.Add(proc);
 
@@ -1637,7 +1653,7 @@ namespace Microsoft.Dafny {
         // don't fall through to postcondition checks
         bodyCheckBuilder.Add(new Bpl.AssumeCmd(f.tok, Bpl.Expr.False));
       } else {
-        Bpl.FunctionCall funcID = new Bpl.FunctionCall(new Bpl.IdentifierExpr(f.tok, f.FullName, TrType(f.ResultType)));
+        Bpl.FunctionCall funcID = new Bpl.FunctionCall(new Bpl.IdentifierExpr(f.tok, f.FullCompileName, TrType(f.ResultType)));
         Bpl.ExprSeq args = new Bpl.ExprSeq();
         args.Add(etran.HeapExpr);
         foreach (Variable p in implInParams) {
@@ -1729,7 +1745,7 @@ namespace Microsoft.Dafny {
             t = BplAnd(t, Bpl.Expr.Neq(etran.TrExpr(e.Obj), predef.Null));
           } else if (e.Field is DatatypeDestructor) {
             var dtor = (DatatypeDestructor)e.Field;
-            t = BplAnd(t, FunctionCall(e.tok, dtor.EnclosingCtor.QueryField.FullName, Bpl.Type.Bool, etran.TrExpr(e.Obj)));
+            t = BplAnd(t, FunctionCall(e.tok, dtor.EnclosingCtor.QueryField.FullCompileName, Bpl.Type.Bool, etran.TrExpr(e.Obj)));
           }
           return t;
         }
@@ -1988,7 +2004,7 @@ namespace Microsoft.Dafny {
         // check well-formedness of the other parameters
         r = BplAnd(r, CanCallAssumption(e.Args, etran));
         // get to assume canCall
-        Bpl.IdentifierExpr canCallFuncID = new Bpl.IdentifierExpr(expr.tok, e.Function.FullName + "#canCall", Bpl.Type.Bool);
+        Bpl.IdentifierExpr canCallFuncID = new Bpl.IdentifierExpr(expr.tok, e.Function.FullCompileName + "#canCall", Bpl.Type.Bool);
         ExprSeq args = etran.FunctionInvocationArguments(e);
         Bpl.Expr canCallFuncAppl = new Bpl.NAryExpr(expr.tok, new Bpl.FunctionCall(canCallFuncID), args);
         r = BplAnd(r, canCallFuncAppl);
@@ -2036,6 +2052,12 @@ namespace Microsoft.Dafny {
         }
         return BplAnd(canCall, CanCallAssumption(etran.GetSubstitutedBody(e), etran));
 
+      } else if (expr is NamedExpr) {
+        var e = (NamedExpr)expr;
+        var canCall = CanCallAssumption(e.Body, etran);
+        if (e.Contract != null)
+          return BplAnd(canCall, CanCallAssumption(e.Contract, etran));
+        else return canCall;
       } else if (expr is ComprehensionExpr) {
         var e = (ComprehensionExpr)expr;
         var total = CanCallAssumption(e.Term, etran);
@@ -2231,7 +2253,7 @@ namespace Microsoft.Dafny {
           CheckNonNull(expr.tok, e.Obj, builder, etran, options.AssertKv);
         } else if (e.Field is DatatypeDestructor) {
           var dtor = (DatatypeDestructor)e.Field;
-          var correctConstructor = FunctionCall(e.tok, dtor.EnclosingCtor.QueryField.FullName, Bpl.Type.Bool, etran.TrExpr(e.Obj));
+          var correctConstructor = FunctionCall(e.tok, dtor.EnclosingCtor.QueryField.FullCompileName, Bpl.Type.Bool, etran.TrExpr(e.Obj));
           if (dtor.EnclosingCtor.EnclosingDatatype.Ctors.Count == 1) {
             // There is only one constructor, so the value must be been constructed by it; might as well assume that here.
             builder.Add(new Bpl.AssumeCmd(expr.tok, correctConstructor));
@@ -2376,7 +2398,7 @@ namespace Microsoft.Dafny {
             CheckFrameSubset(expr.tok, e.Function.Reads, e.Receiver, substMap, etran, builder, "insufficient reads clause to invoke function", options.AssertKv);
           }
 
-          if (options.Decr != null && e.CoCall != FunctionCallExpr.CoCallResolution.Yes) {
+          if (options.Decr != null && e.CoCall != FunctionCallExpr.CoCallResolution.Yes && !(e.Function is CoPredicate)) {
             // check that the decreases measure goes down
             ModuleDefinition module = cce.NonNull(e.Function.EnclosingClass).Module;
             if (module == cce.NonNull(options.Decr.EnclosingClass).Module) {
@@ -2420,7 +2442,7 @@ namespace Microsoft.Dafny {
           }
         }
         // all is okay, so allow this function application access to the function's axiom, except if it was okay because of the self-call allowance.
-        Bpl.IdentifierExpr canCallFuncID = new Bpl.IdentifierExpr(expr.tok, e.Function.FullName + "#canCall", Bpl.Type.Bool);
+        Bpl.IdentifierExpr canCallFuncID = new Bpl.IdentifierExpr(expr.tok, e.Function.FullCompileName + "#canCall", Bpl.Type.Bool);
         ExprSeq args = etran.FunctionInvocationArguments(e);
         Bpl.Expr canCallFuncAppl = new Bpl.NAryExpr(expr.tok, new Bpl.FunctionCall(canCallFuncID), args);
         builder.Add(new Bpl.AssumeCmd(expr.tok, allowance == null ? canCallFuncAppl : Bpl.Expr.Or(allowance, canCallFuncAppl)));
@@ -2499,6 +2521,14 @@ namespace Microsoft.Dafny {
         CheckWellformedWithResult(Substitute(e.Body, null, substMap), options, result, resultType, locals, builder, etran);
         result = null;
 
+      } else if (expr is NamedExpr) {
+        var e = (NamedExpr)expr;
+        CheckWellformedWithResult(e.Body, options, result, resultType, locals, builder, etran);
+        if (e.Contract != null) {
+          CheckWellformedWithResult(e.Contract, options, result, resultType, locals, builder, etran);
+          var theSame = Bpl.Expr.Eq(etran.TrExpr(e.Body), etran.TrExpr(e.Contract));
+          builder.Add(Assert(new ForceCheckToken(e.ReplacerToken), theSame, "replacement must be the same value"));
+        }
       } else if (expr is ComprehensionExpr) {
         var e = (ComprehensionExpr)expr;
         var substMap = SetupBoundVarsAsLocals(e.BoundVars, builder, locals, etran);
@@ -2796,8 +2826,22 @@ namespace Microsoft.Dafny {
       if (classes.TryGetValue(cl, out cc)) {
         Contract.Assert(cc != null);
       } else {
-        cc = new Bpl.Constant(cl.tok, new Bpl.TypedIdent(cl.tok, "class." + cl.FullName, predef.ClassNameType), true);
+        cc = new Bpl.Constant(cl.tok, new Bpl.TypedIdent(cl.tok, "class." + cl.FullCompileName, predef.ClassNameType), !cl.Module.IsAbstract);
         classes.Add(cl, cc);
+      }
+      return cc;
+    }
+
+    Bpl.Constant GetFieldNameFamily(string n) {
+      Contract.Requires(n != null);
+      Contract.Requires(predef != null);
+      Contract.Ensures(Contract.Result<Bpl.Constant>() != null);
+      Bpl.Constant cc;
+      if (fieldConstants.TryGetValue(n, out cc)) {
+        Contract.Assert(cc != null);
+      } else {
+        cc = new Bpl.Constant(Token.NoToken, new Bpl.TypedIdent(Token.NoToken, "field$" + n, predef.NameFamilyType), true);
+        fieldConstants.Add(n, cc);
       }
       return cc;
     }
@@ -2861,13 +2905,13 @@ namespace Microsoft.Dafny {
       if (fields.TryGetValue(f, out fc)) {
         Contract.Assert(fc != null);
       } else {
-        // const unique f: Field ty;
+        // const f: Field ty;
         Bpl.Type ty = predef.FieldName(f.tok, TrType(f.Type));
-        fc = new Bpl.Constant(f.tok, new Bpl.TypedIdent(f.tok, f.FullName, ty), true);
+        fc = new Bpl.Constant(f.tok, new Bpl.TypedIdent(f.tok, f.FullCompileName, ty), false);
         fields.Add(f, fc);
-        // axiom FDim(f) == 0 && DeclType(f) == C;
+        // axiom FDim(f) == 0 && FieldOfDecl(C, name) == f;
         Bpl.Expr fdim = Bpl.Expr.Eq(FunctionCall(f.tok, BuiltinFunction.FDim, ty, Bpl.Expr.Ident(fc)), Bpl.Expr.Literal(0));
-        Bpl.Expr declType = Bpl.Expr.Eq(FunctionCall(f.tok, BuiltinFunction.DeclType, ty, Bpl.Expr.Ident(fc)), new Bpl.IdentifierExpr(f.tok, GetClass(cce.NonNull(f.EnclosingClass))));
+        Bpl.Expr declType = Bpl.Expr.Eq(FunctionCall(f.tok, BuiltinFunction.FieldOfDecl, ty, new Bpl.IdentifierExpr(f.tok, GetClass(cce.NonNull(f.EnclosingClass))), new Bpl.IdentifierExpr(f.tok, GetFieldNameFamily(f.Name))), Bpl.Expr.Ident(fc));
         Bpl.Axiom ax = new Bpl.Axiom(f.tok, Bpl.Expr.And(fdim, declType));
         sink.TopLevelDeclarations.Add(ax);
       }
@@ -2894,7 +2938,7 @@ namespace Microsoft.Dafny {
         Bpl.Type receiverType = f.EnclosingClass is ClassDecl ? predef.RefType : predef.DatatypeType;
         args.Add(new Bpl.Formal(f.tok, new Bpl.TypedIdent(f.tok, "this", receiverType), true));
         Bpl.Formal result = new Bpl.Formal(f.tok, new Bpl.TypedIdent(f.tok, Bpl.TypedIdent.NoName, ty), false);
-        ff = new Bpl.Function(f.tok, f.FullName, args, result);
+        ff = new Bpl.Function(f.tok, f.FullCompileName, args, result);
         fieldFunctions.Add(f, ff);
         // treat certain fields specially
         if (f.EnclosingClass is ArrayClassDecl) {
@@ -2936,7 +2980,7 @@ namespace Microsoft.Dafny {
         args.Add(new Bpl.Formal(p.tok, new Bpl.TypedIdent(p.tok, p.UniqueName, TrType(p.Type)), true));
       }
       Bpl.Formal res = new Bpl.Formal(f.tok, new Bpl.TypedIdent(f.tok, Bpl.TypedIdent.NoName, TrType(f.ResultType)), false);
-      Bpl.Function func = new Bpl.Function(f.tok, f.FullName, typeParams, args, res);
+      Bpl.Function func = new Bpl.Function(f.tok, f.FullCompileName, typeParams, args, res);
       sink.TopLevelDeclarations.Add(func);
 
       if (f.IsRecursive) {
@@ -2945,7 +2989,7 @@ namespace Microsoft.Dafny {
       }
 
       res = new Bpl.Formal(f.tok, new Bpl.TypedIdent(f.tok, Bpl.TypedIdent.NoName, Bpl.Type.Bool), false);
-      Bpl.Function canCallF = new Bpl.Function(f.tok, f.FullName + "#canCall", args, res);
+      Bpl.Function canCallF = new Bpl.Function(f.tok, f.FullCompileName + "#canCall", args, res);
       sink.TopLevelDeclarations.Add(canCallF);
     }
 
@@ -3052,10 +3096,10 @@ namespace Microsoft.Dafny {
       Bpl.TypeVariableSeq typeParams = TrTypeParamDecls(m.TypeArgs);
       string name;
       switch (kind) {
-        case 0: name = "CheckWellformed$$" + m.FullName; break;
-        case 1: name = m.FullName; break;
-        case 2: name = string.Format("RefinementCall_{0}$${1}", m.EnclosingClass.Module.Name, m.FullName); break;
-        case 3: name = string.Format("RefinementImpl_{0}$${1}", m.EnclosingClass.Module.Name, m.FullName); break;
+        case 0: name = "CheckWellformed$$" + m.FullCompileName; break;
+        case 1: name = m.FullCompileName; break;
+        case 2: name = string.Format("RefinementCall_{0}$${1}", m.EnclosingClass.Module.Name, m.FullCompileName); break;
+        case 3: name = string.Format("RefinementImpl_{0}$${1}", m.EnclosingClass.Module.Name, m.FullCompileName); break;
         default: Contract.Assert(false); throw new cce.UnreachableException();  // unexpected kind
       }
       Bpl.Procedure proc = new Bpl.Procedure(m.tok, name, typeParams, inParams, outParams, req, mod, ens);
@@ -4432,9 +4476,9 @@ namespace Microsoft.Dafny {
       // Make the call
       string name;
       if (RefinementToken.IsInherited(method.tok, currentModule)) {
-        name = string.Format("RefinementCall_{0}$${1}", currentModule.Name, method.FullName);
+        name = string.Format("RefinementCall_{0}$${1}", currentModule.Name, method.FullCompileName);
       } else {
-        name = method.FullName;
+        name = method.FullCompileName;
       }
       Bpl.CallCmd call = new Bpl.CallCmd(tok, name, ins, outs);
       builder.Add(call);
@@ -4795,7 +4839,7 @@ namespace Microsoft.Dafny {
         return Bpl.Expr.Le(Bpl.Expr.Literal(0), x);
 
       } else  if (type is BoolType || type is IntType) {
-        // nothing todo
+        // nothing to do
 
       } else if (type is SetType) {
         SetType st = (SetType)type;
@@ -5304,7 +5348,7 @@ namespace Microsoft.Dafny {
           typeArgs.Add(tRhs.EType);
           rightType = etran.GoodRef_Ref(tok, nw, new Bpl.IdentifierExpr(tok, "class._System." + BuiltIns.ArrayClassName(tRhs.ArrayDimensions.Count), predef.ClassNameType), typeArgs, true);
         } else if (tRhs.EType is ObjectType) {
-          rightType = etran.GoodRef_Ref(tok, nw, new Bpl.IdentifierExpr(Token.NoToken,GetClass(program.BuiltIns.ObjectDecl)), new List<Type>(), true);
+          rightType = etran.GoodRef_Ref(tok, nw, new Bpl.IdentifierExpr(Token.NoToken, GetClass(program.BuiltIns.ObjectDecl)), new List<Type>(), true);
         } else {
           rightType = etran.GoodRef_Class(tok, nw, (UserDefinedType)tRhs.EType, true);
         }
@@ -5978,7 +6022,8 @@ namespace Microsoft.Dafny {
         } else if (expr is LetExpr) {
           var e = (LetExpr)expr;
           return TrExpr(GetSubstitutedBody(e));
-
+        } else if (expr is NamedExpr) {
+          return TrExpr(((NamedExpr)expr).Body);
         } else if (expr is QuantifierExpr) {
           QuantifierExpr e = (QuantifierExpr)expr;
           Bpl.VariableSeq bvars = new Bpl.VariableSeq();
@@ -6538,6 +6583,7 @@ namespace Microsoft.Dafny {
       DtTypeParams, // type parameters of datatype
       TypeTuple,
       DeclType,
+      FieldOfDecl,
       FDim,  // field dimension (0 - named, 1 or more - indexed)
 
       DatatypeCtorId,
@@ -6776,6 +6822,10 @@ namespace Microsoft.Dafny {
           Contract.Assert(args.Length == 1);
           Contract.Assert(typeInstantiation != null);
           return FunctionCall(tok, "DeclType", predef.ClassNameType, args);
+        case BuiltinFunction.FieldOfDecl:
+          Contract.Assert(args.Length == 2);
+          Contract.Assert(typeInstantiation != null);
+          return FunctionCall(tok, "FieldOfDecl", predef.FieldName(tok, typeInstantiation) , args);
         case BuiltinFunction.FDim:
           Contract.Assert(args.Length == 1);
           Contract.Assert(typeInstantiation != null);
@@ -7019,7 +7069,7 @@ namespace Microsoft.Dafny {
               // Note that "body" does not contain limited calls.
 
               // F#canCall(args)
-              Bpl.IdentifierExpr canCallFuncID = new Bpl.IdentifierExpr(expr.tok, f.FullName + "#canCall", Bpl.Type.Bool);
+              Bpl.IdentifierExpr canCallFuncID = new Bpl.IdentifierExpr(expr.tok, f.FullCompileName + "#canCall", Bpl.Type.Bool);
               ExprSeq args = etran.FunctionInvocationArguments(fexp);
               Bpl.Expr canCall = new Bpl.NAryExpr(expr.tok, new Bpl.FunctionCall(canCallFuncID), args);
 
@@ -7463,6 +7513,231 @@ namespace Microsoft.Dafny {
       }
     }
 
+    void AddCoinductionPrinciple(CoPredicate coPredicate) {
+      Contract.Requires(coPredicate != null);
+      if (coPredicate.Body == null) {
+        return;  // we can't generate any useful coinduction principle if the copredicate doesn't have a body
+      } else if (2 <= coPredicate.EnclosingClass.Module.CallGraph.GetSCCSize(coPredicate)) {
+        return;  // this copredicate involves mutually recursive calls; for now, we don't handle those
+      }
+      var n = (coPredicate.IsStatic ? 0 : 1) + coPredicate.Formals.Count;
+      var templates = new List<FunctionCallExpr[/*of length n*/]>();
+      foreach (var fce in coPredicate.Uses) {
+        // Compute a template of instantiation for this use:  for each actual argument, record
+        // a function F if the argument is a call to F, or record null otherwise.
+        var t = new FunctionCallExpr[n];
+        var i = 0;
+        if (!coPredicate.IsStatic) {
+          t[i] = fce.Receiver.Resolved as FunctionCallExpr;
+          i++;
+        }
+        foreach (var a in fce.Args) {
+          t[i] = a.Resolved as FunctionCallExpr;
+          i++;
+        }
+        Contract.Assert(i == t.Length);
+        // See if this template has been done before (for now, this is a slow check; it would be nice to speed it up)
+        foreach (var prev in templates) {
+          var j = 0;
+          for (; j < n; j++) {
+            if (prev[j] == null && t[j] == null) {
+              // things are equal
+            } else if (prev[j] != null && t[j] != null && prev[j].Function == t[j].Function) {
+              // things are equal
+            } else {
+              // we found an unequal part of the template
+              break;
+            }
+          }
+          if (j == n) {
+            // template 't' matches 'prev', so we've already spilled out an axiom for this template
+            // TODO: this is not the complete test, because of possible type parameters
+            goto Next_Use;
+          }
+          // 't' does not match this 'prev'; try the next 'prev'
+        }
+        // No 'prev' matches the current template 't'.  So, generate an axiom for 't'.
+        string comment = string.Format("Coinduction principle for copredicate {0} instantiated like:", coPredicate.FullName);
+        foreach (var tf in t) {
+          comment += tf == null ? " ." : " " + tf.Name;
+        }
+        sink.TopLevelDeclarations.Add(new Bpl.Axiom(fce.tok, CoinductionPrinciple(coPredicate, fce, t), comment));
+        templates.Add(t);
+      Next_Use: ;
+      }
+    }
+
+    /// <summary>
+    /// It's the "callOfInterest" that determines the (type-parameter instantiated) types of the arguments
+    /// </summary>
+    Bpl.Expr CoinductionPrinciple(CoPredicate coPredicate, FunctionCallExpr callOfInterest, FunctionCallExpr[] t) {
+      Contract.Requires(coPredicate != null);
+      Contract.Requires(coPredicate.Body != null);
+      Contract.Requires(t != null);
+      Contract.Requires(t.Length == (coPredicate.IsStatic ? 0 : 1) + coPredicate.Formals.Count);
+      // Let C be the name of the coPredicate, and suppose it is defined by:
+      //     copredicate C(x)
+      //       requires PreC(x);
+      //     {
+      //       Body[C]
+      //     }
+      // where the notation Body[_] means an expression Body with holes and in particular one whole
+      // for every recursive use of C.
+      // The general form of the coinduction principle of which we will generate an instance is:
+      //   forall P ::
+      //     forall s ::   // where s is a list of arguments to coPredicate
+      //       P(s) &&
+      //       (forall s' :: P(s') ==> Body[P][x := s'])
+      //       ==>
+      //       C(s)
+      // We will pick particular P's, and will therefore instead generate the axiom once for each
+      // such P.  We will also redistribute the terms as follows:
+      //   (forall s :: P(s) ==> Body[P][x := s])
+      //   ==>
+      //   (forall s :: P(s) ==> C(s))
+      // Furthermore, if the C of interest has actual parameters that are function-call expressions,
+      // then the P will be chosen to fit that pattern.  As a specific example, suppose C takes 3
+      // parameters (that is, 's' is a triple (s0,s1,s2)) and that the actual arguments for these, in
+      // the C use of interest, are of the form C(E0,F(E1),G(E2,E3)), where E0 denotes an expression that
+      // is not a function-call expression and E1,E2,E3 are any expressions.  Also, suppose the
+      // preconditions of C,F,G are PreC(s0,s1,s2), PreF(f), PreG(g0,g1).
+      // Then, we pick P(s0,s1,s2) :=
+      //   exists a,b,c,d :: PreF(b) && PreG(c,d) && PredC(a,F(b),G(c,d)) && (s0,s1,s2) == (a,F(b),G(c,d))
+      // So, the axiom looks like:
+      //   (forall a,b,c,d :: PreF(b) && PreG(c,d) && PredC(a,F(b),G(c,d))
+      //                      ==> Body[P][x0,x1,x2 := a,F(b),G(c,d)])
+      //   ==>
+      //   (forall a,b,c,d { C(a,F(b),G(c,d)) } ::
+      //                      PreF(b) && PreG(c,d) && PredC(a,F(b),G(c,d))
+      //                      ==> C(a,F(b),G(c,d)))
+      //
+      // To be usable, we need to do more.  In particular, we need to do some preprocessing of the expressions
+      // of the form C(E0,E1,E2) in Body, which are turned into P(E0,E1,E2) in Body[P] (where these are any
+      // expressions E0,E1,E2, not necessarily the ones as above).  We know that such C(E0,E1,E2) occurrences
+      // sit only in positive positions.  Hence, we can soundly replace each (exists a,b,c,d :: Q(a,b,c,d))
+      // expressions in Body[P] in the axiom with Q(A,B,C,D) for any A,B,C,D.  For this to be useful, we need
+      // good guesses for A,B,C,D.
+      //
+      // TODO: also need a module/function-height antecedent for the axiom!
+      var tok = coPredicate.tok;
+      var bvs = new Bpl.VariableSeq();
+      var boundVars = new List<BoundVar>();
+      Bpl.BoundVariable heapVar = new Bpl.BoundVariable(tok, new Bpl.TypedIdent(tok, "$h", predef.HeapType));
+      bvs.Add(heapVar);
+      var bHeap = new Bpl.IdentifierExpr(tok, heapVar);
+      Bpl.Expr typeAntecedents = FunctionCall(tok, BuiltinFunction.IsGoodHeap, null, bHeap);
+      var etran = new ExpressionTranslator(this, predef, bHeap);
+      Expression pre = new LiteralExpr(tok, true);
+      var i = 0;
+      Expression receiverReplacement = null;
+      if (!coPredicate.IsStatic) {
+        Expression preF;
+        receiverReplacement = FG(tok, callOfInterest.Receiver.Type, t[i], boundVars, bvs, ref typeAntecedents, out preF, etran);
+        typeAntecedents = BplAnd(typeAntecedents, Bpl.Expr.Neq(etran.TrExpr(receiverReplacement), predef.Null));
+        if (preF != null) {
+          pre = AutoContractsRewriter.BinBoolExpr(receiverReplacement.tok, BinaryExpr.ResolvedOpcode.And, pre, preF);
+        }
+        i++;
+      }
+      var substMap = new Dictionary<IVariable, Expression>();
+      var j = 0;
+      foreach (var p in coPredicate.Formals) {
+        Expression preF;
+        var e = FG(tok, callOfInterest.Args[j].Type, t[i], boundVars, bvs, ref typeAntecedents, out preF, etran);
+        substMap.Add(p, e);
+        if (preF != null) {
+          pre = AutoContractsRewriter.BinBoolExpr(e.tok, BinaryExpr.ResolvedOpcode.And, pre, preF);
+        }
+        i++; j++;
+      }
+      // conjoin subst(preC) to pre
+      foreach (var req in coPredicate.Req) {
+        var preC = Substitute(req, receiverReplacement, substMap);
+        pre = AutoContractsRewriter.BinBoolExpr(tok, BinaryExpr.ResolvedOpcode.And, pre, preC);
+      }
+      // build up the term C(a,F(b),G(c,d))
+      var args = new List<Expression>();
+      foreach (var p in coPredicate.Formals) {
+        args.Add(substMap[p]);
+      }
+      var C = new FunctionCallExpr(tok, coPredicate.Name, receiverReplacement, tok, args);
+      C.Function = coPredicate;
+      C.Type = coPredicate.ResultType;
+      // We are now ready to produce the Conclusion of the axiom
+      var preStuff = Bpl.Expr.And(typeAntecedents, etran.TrExpr(pre));
+      Bpl.Expr Conclusion = new Bpl.ForallExpr(tok, bvs, new Bpl.Trigger(tok, true, new ExprSeq(etran.TrExpr(C))),
+        Bpl.Expr.Imp(preStuff, etran.TrExpr(C)));
+      // Now for the antecedent of the axiom
+      // TODO: if e.Body uses a 'match' expression, first desugar it into an ordinary expression
+      var s = new CoinductionSubstituter(coPredicate, receiverReplacement, substMap, pre, boundVars, receiverReplacement, args);
+      var body = s.Substitute(coPredicate.Body);
+      Bpl.Expr Antecedent = new Bpl.ForallExpr(tok, bvs, Bpl.Expr.Imp(preStuff, etran.TrExpr(body)));
+      // Put it all together and we're ready to go
+      return Bpl.Expr.Imp(Antecedent, Conclusion);
+    }
+
+    /// <summary>
+    /// "templateFunc" is passed in as "null", then "precondition" is guaranteed to come out as "null".
+    /// </summary>
+    Expression FG(IToken tok, Type argumentType, FunctionCallExpr templateFunc, List<BoundVar> boundVars, Bpl.VariableSeq bvs, ref Bpl.Expr typeAntecedents, out Expression precondition, ExpressionTranslator etran) {
+      Contract.Requires(tok != null);
+      Contract.Requires(argumentType != null);
+      Contract.Requires(boundVars != null);
+      Contract.Requires(bvs != null);
+      Contract.Requires(etran != null);
+      Contract.Ensures(Contract.Result<Expression>() != null);
+      Contract.Ensures(Contract.ValueAtReturn<Expression>(out precondition) != null);
+      // TODO: also need to return type antecedents
+      precondition = new LiteralExpr(tok, true);
+      if (templateFunc == null) {
+        // generate a fresh variable of type "argumentType"
+        var k = new BoundVar(tok, "_coind" + otherTmpVarCount, argumentType);
+        otherTmpVarCount++;
+        boundVars.Add(k);
+        // convert it to a Boogie variable and add it to "bvs"
+        var bvar = new Bpl.BoundVariable(k.tok, new Bpl.TypedIdent(k.tok, k.UniqueName, TrType(k.Type)));
+        bvs.Add(bvar);
+        // update typeAntecedents
+        var wh = GetWhereClause(k.tok, new Bpl.IdentifierExpr(k.tok, bvar), k.Type, etran);
+        if (wh != null) {
+          typeAntecedents = BplAnd(typeAntecedents, wh);
+        }
+        // make an IdentifierExpr out of it and return it
+        IdentifierExpr ie = new IdentifierExpr(k.tok, k.UniqueName);
+        ie.Var = k; ie.Type = ie.Var.Type;  // resolve it here
+        return ie;
+
+      } else {
+        // for each formal parameter to "templateFunc", generate a fresh variable
+        // for each one, convert it to a Boogie variable and add it to "bvs"
+        // make a FunctionCallExpr, passing in these variables as arguments, and then returning the FunctionCallExpr
+        Expression preIgnore;
+        Expression receiver = null;
+        if (!templateFunc.Function.IsStatic) {
+          receiver = FG(tok, templateFunc.Receiver.Type, null, boundVars, bvs, ref typeAntecedents, out preIgnore, etran);
+          typeAntecedents = BplAnd(typeAntecedents, Bpl.Expr.Neq(etran.TrExpr(receiver), predef.Null));
+        }
+        var args = new List<Expression>();
+        var i = 0;
+        var substMap = new Dictionary<IVariable, Expression>();
+        foreach (var arg in templateFunc.Args) {
+          var e = FG(tok, arg.Type, null, boundVars, bvs, ref typeAntecedents, out preIgnore, etran);
+          args.Add(e);
+          substMap.Add(templateFunc.Function.Formals[i], e);
+          i++;
+        }
+        var F = new FunctionCallExpr(tok, templateFunc.Name, receiver, tok, args);
+        F.Function = templateFunc.Function;
+        F.Type = templateFunc.Function.ResultType;
+
+        foreach (var req in templateFunc.Function.Req) {
+          var pre = Substitute(req, receiver, substMap);
+          precondition = AutoContractsRewriter.BinBoolExpr(tok, BinaryExpr.ResolvedOpcode.And, precondition, pre);
+        }
+        return F;
+      }
+    }
+
     /// <summary>
     /// Returns true iff 'v' occurs as a free variable in 'expr'.
     /// Parameter 'v' is allowed to be a ThisSurrogate, in which case the method return true iff 'this'
@@ -7507,254 +7782,447 @@ namespace Microsoft.Dafny {
       Contract.Requires(expr != null);
       Contract.Requires(cce.NonNullDictionaryAndValues(substMap));
       Contract.Ensures(Contract.Result<Expression>() != null);
+      var s = new Substituter(receiverReplacement, substMap);
+      return s.Substitute(expr);
+    }
 
-      Expression newExpr = null;  // set to non-null value only if substitution has any effect; if non-null, newExpr will be resolved at end
+    public class CoinductionSubstituter : Substituter
+    {
+      CoPredicate coPredicate;
+      Expression existentialAntecedent;
+      List<BoundVar> existentialVariables;
+      Expression existentialReceiver;
+      List<Expression> existentialTemplates;
 
-      if (expr is LiteralExpr || expr is WildcardExpr || expr is BoogieWrapper) {
-        // nothing to substitute
-      } else if (expr is ThisExpr) {
-        return receiverReplacement == null ? expr : receiverReplacement;
-      } else if (expr is IdentifierExpr) {
-        IdentifierExpr e = (IdentifierExpr)expr;
-        Expression substExpr;
-        if (substMap.TryGetValue(e.Var, out substExpr)) {
-          return cce.NonNull(substExpr);
+      public CoinductionSubstituter(CoPredicate coPredicate, Expression receiverReplacement, Dictionary<IVariable, Expression> substMap,
+        Expression existentialAntecedent, List<BoundVar> existentialVariables, Expression existentialReceiver, List<Expression> existentialTemplates)
+        : base(receiverReplacement, substMap)
+      {
+        Contract.Requires(coPredicate != null);
+        Contract.Requires(substMap != null);
+        Contract.Requires(existentialAntecedent != null);
+        Contract.Requires(existentialVariables != null);
+        Contract.Requires(existentialTemplates != null);
+        this.coPredicate = coPredicate;
+        this.existentialAntecedent = existentialAntecedent;
+        this.existentialVariables = existentialVariables;
+        this.existentialReceiver = existentialReceiver;
+        this.existentialTemplates = existentialTemplates;
+      }
+      public override Expression Substitute(Expression expr) {
+        expr = base.Substitute(expr);
+        var e = expr as FunctionCallExpr;
+        if (e == null || e.Function != coPredicate) {
+          return expr;
         }
-      } else if (expr is DisplayExpression) {
-        DisplayExpression e = (DisplayExpression)expr;
-        List<Expression> newElements = SubstituteExprList(e.Elements, receiverReplacement, substMap);
-        if (newElements != e.Elements) {
-          if (expr is SetDisplayExpr) {
-            newExpr = new SetDisplayExpr(expr.tok, newElements);
-          } else if (expr is MultiSetDisplayExpr) {
-            newExpr = new MultiSetDisplayExpr(expr.tok, newElements);
+        // We found a call coPredicate(args).  Replace it with P(args), where P is the predicate we're
+        // using in the coinduction principle.  As described in method CoinductionPrinciple above, the
+        // predicate P has the form:
+        //     exists a,b,c,d :: PreF(b) && PreG(c,d) && PredC(a,F(b),G(c,d)) && (s0,s1,s2) == (a,F(b),G(c,d))
+        // where s0,s1,s2 are shows as the actual arguments to coPredicate (called "args" four lines
+        // above).  This existential corresponds to the parameters passed to this CoinductionSubstituter
+        // as follows:
+        //     exists existentialVariables :: existentialAntecedent           && (s0,s1,s2) == (existentialTemplate)
+        // The idea is now to build up a substitution for a,b,c,d, such that the last conjunct
+        // in the existential will be true in any context.  We can then replace coPredicate(s0,s1,s2) with
+        //     existentialAntecedent[a,b,c,d := A,B,C,D]
+        var substMap = new Dictionary<IVariable, Expression>();
+        var j = 0;
+        for (int i = -1; i < existentialTemplates.Count; i++) {
+          Expression templ;
+          Expression si;
+          if (0 <= i) {
+            templ = existentialTemplates[i].Resolved;
+            si = e.Args[i];
+          } else if (existentialReceiver != null) {
+            templ = existentialReceiver.Resolved;
+            si = e.Receiver;
           } else {
-            newExpr = new SeqDisplayExpr(expr.tok, newElements);
+            continue;
           }
-        }
-
-      } else if (expr is FieldSelectExpr) {
-        FieldSelectExpr fse = (FieldSelectExpr)expr;
-        Expression substE = Substitute(fse.Obj, receiverReplacement, substMap);
-        if (substE != fse.Obj) {
-          FieldSelectExpr fseNew = new FieldSelectExpr(fse.tok, substE, fse.FieldName);
-          fseNew.Field = fse.Field;  // resolve on the fly (and fseExpr.Type is set at end of method)
-          newExpr = fseNew;
-        }
-
-      } else if (expr is SeqSelectExpr) {
-        SeqSelectExpr sse = (SeqSelectExpr)expr;
-        Expression seq = Substitute(sse.Seq, receiverReplacement, substMap);
-        Expression e0 = sse.E0 == null ? null : Substitute(sse.E0, receiverReplacement, substMap);
-        Expression e1 = sse.E1 == null ? null : Substitute(sse.E1, receiverReplacement, substMap);
-        if (seq != sse.Seq || e0 != sse.E0 || e1 != sse.E1) {
-          newExpr = new SeqSelectExpr(sse.tok, sse.SelectOne, seq, e0, e1);
-        }
-
-      } else if (expr is SeqUpdateExpr) {
-        SeqUpdateExpr sse = (SeqUpdateExpr)expr;
-        Expression seq = Substitute(sse.Seq, receiverReplacement, substMap);
-        Expression index = Substitute(sse.Index, receiverReplacement, substMap);
-        Expression val = Substitute(sse.Value, receiverReplacement, substMap);
-        if (seq != sse.Seq || index != sse.Index || val != sse.Value) {
-          newExpr = new SeqUpdateExpr(sse.tok, seq, index, val);
-        }
-
-      } else if (expr is MultiSelectExpr) {
-        MultiSelectExpr mse = (MultiSelectExpr)expr;
-        Expression array = Substitute(mse.Array, receiverReplacement, substMap);
-        List<Expression> newArgs = SubstituteExprList(mse.Indices, receiverReplacement, substMap);
-        if (array != mse.Array || newArgs != mse.Indices) {
-          newExpr = new MultiSelectExpr(mse.tok, array, newArgs);
-        }
-
-      } else if (expr is FunctionCallExpr) {
-        FunctionCallExpr e = (FunctionCallExpr)expr;
-        Expression receiver = Substitute(e.Receiver, receiverReplacement, substMap);
-        List<Expression> newArgs = SubstituteExprList(e.Args, receiverReplacement, substMap);
-        if (receiver != e.Receiver || newArgs != e.Args) {
-          FunctionCallExpr newFce = new FunctionCallExpr(expr.tok, e.Name, receiver, e.OpenParen, newArgs);
-          newFce.Function = e.Function;  // resolve on the fly (and set newFce.Type below, at end)
-          newExpr = newFce;
-        }
-
-      } else if (expr is DatatypeValue) {
-        DatatypeValue dtv = (DatatypeValue)expr;
-        List<Expression> newArgs = SubstituteExprList(dtv.Arguments, receiverReplacement, substMap);
-        if (newArgs != dtv.Arguments) {
-          DatatypeValue newDtv = new DatatypeValue(dtv.tok, dtv.DatatypeName, dtv.MemberName, newArgs);
-          newDtv.Ctor = dtv.Ctor;  // resolve on the fly (and set newDtv.Type below, at end)
-          newExpr = newDtv;
-        }
-
-      } else if (expr is OldExpr) {
-        OldExpr e = (OldExpr)expr;
-        // Note, it is up to the caller to avoid variable capture.  In most cases, this is not a
-        // problem, since variables have unique declarations.  However, it is an issue if the substitution
-        // takes place inside an OldExpr.  In those cases (see LetExpr), the caller can use a
-        // BoogieWrapper before calling Substitute.
-        Expression se = Substitute(e.E, receiverReplacement, substMap);
-        if (se != e.E) {
-          newExpr = new OldExpr(expr.tok, se);
-        }
-      } else if (expr is FreshExpr) {
-        FreshExpr e = (FreshExpr)expr;
-        Expression se = Substitute(e.E, receiverReplacement, substMap);
-        if (se != e.E) {
-          newExpr = new FreshExpr(expr.tok, se);
-        }
-      } else if (expr is AllocatedExpr) {
-        AllocatedExpr e = (AllocatedExpr)expr;
-        Expression se = Substitute(e.E, receiverReplacement, substMap);
-        if (se != e.E) {
-          newExpr = new AllocatedExpr(expr.tok, se);
-        }
-      } else if (expr is UnaryExpr) {
-        UnaryExpr e = (UnaryExpr)expr;
-        Expression se = Substitute(e.E, receiverReplacement, substMap);
-        if (se != e.E) {
-          newExpr = new UnaryExpr(expr.tok, e.Op, se);
-        }
-      } else if (expr is BinaryExpr) {
-        BinaryExpr e = (BinaryExpr)expr;
-        Expression e0 = Substitute(e.E0, receiverReplacement, substMap);
-        Expression e1 = Substitute(e.E1, receiverReplacement, substMap);
-        if (e0 != e.E0 || e1 != e.E1) {
-          BinaryExpr newBin = new BinaryExpr(expr.tok, e.Op, e0, e1);
-          newBin.ResolvedOp = e.ResolvedOp;  // part of what needs to be done to resolve on the fly (newBin.Type is set below, at end)
-          newExpr = newBin;
-        }
-
-      } else if (expr is LetExpr) {
-        var e = (LetExpr)expr;
-        var rhss = new List<Expression>();
-        bool anythingChanged = false;
-        foreach (var rhs in e.RHSs) {
-          var r = Substitute(rhs, receiverReplacement, substMap);
-          if (r != rhs) {
-            anythingChanged = true;
-          }
-          rhss.Add(r);
-        }
-        var body = Substitute(e.Body, receiverReplacement, substMap);
-        if (anythingChanged || body != e.Body) {
-          newExpr = new LetExpr(e.tok, e.Vars, rhss, body);
-        }
-
-      } else if (expr is ComprehensionExpr) {
-        var e = (ComprehensionExpr)expr;
-        Expression newRange = e.Range == null ? null : Substitute(e.Range, receiverReplacement, substMap);
-        Expression newTerm = Substitute(e.Term, receiverReplacement, substMap);
-        Attributes newAttrs = SubstAttributes(e.Attributes, receiverReplacement, substMap);
-        if (e is SetComprehension) {
-          if (newRange != e.Range || newTerm != e.Term || newAttrs != e.Attributes) {
-            newExpr = new SetComprehension(expr.tok, e.BoundVars, newRange, newTerm);
-          }
-        } else if (e is MapComprehension) {
-          if (newRange != e.Range || newTerm != e.Term || newAttrs != e.Attributes) {
-            newExpr = new MapComprehension(expr.tok, e.BoundVars, newRange, newTerm);
-          }
-        } else if (e is QuantifierExpr) {
-          var q = (QuantifierExpr)e;
-          if (newRange != e.Range || newTerm != e.Term || newAttrs != e.Attributes) {
-            if (expr is ForallExpr) {
-              newExpr = new ForallExpr(expr.tok, e.BoundVars, newRange, newTerm, newAttrs);
+          templ = PossiblyInline(templ);
+          if (templ is IdentifierExpr) {
+            // this one is easy--use the instantiation a:=si
+            Contract.Assert(((IdentifierExpr)templ).Var == existentialVariables[j]);
+            substMap.Add(existentialVariables[j], si);
+            j++;
+          } else {
+            var templFce = (FunctionCallExpr)templ;
+            var psi = PartiallyEvaluate(si, 1);
+            var fce = psi as FunctionCallExpr;
+            if (fce == null || fce.Function != templFce.Function) {
+              // This is not what we were hoping for.  What can we do?
+              // One option would be to existentially quantify over the variable for which we didn't get an instantiation.
+              // Another option would be to guess some arbitrary but value.
+              // A third option, which is what we'll do, is to return false.
+              return new LiteralExpr(e.tok, false);
             } else {
-              newExpr = new ExistsExpr(expr.tok, e.BoundVars, newRange, newTerm, newAttrs);
+              // We're in luck.  Pick the parameters of the partially evaluated call
+              if (templFce.Receiver != null) {
+                Contract.Assert(templFce.Receiver is IdentifierExpr && ((IdentifierExpr)templFce.Receiver).Var == existentialVariables[j]);
+                substMap.Add(existentialVariables[j], fce.Receiver);
+                j++;
+              }
+              var k = 0;
+              foreach (var arg in fce.Args) {
+                Contract.Assert(templFce.Args[k] is IdentifierExpr && ((IdentifierExpr)templFce.Args[k]).Var == existentialVariables[j]);
+                substMap.Add(existentialVariables[j], arg);
+                j++;
+                k++;
+              }
             }
           }
-        } else {
-          Contract.Assert(false);  // unexpected ComprehensionExpr
         }
-
-      } else if (expr is PredicateExpr) {
-        var e = (PredicateExpr)expr;
-        Expression g = Substitute(e.Guard, receiverReplacement, substMap);
-        Expression b = Substitute(e.Body, receiverReplacement, substMap);
-        if (g != e.Guard || b != e.Body) {
-          if (expr is AssertExpr) {
-            newExpr = new AssertExpr(e.tok, g, b);
-          } else {
-            newExpr = new AssumeExpr(e.tok, g, b);
-          }
-        }
-
-      } else if (expr is ITEExpr) {
-        ITEExpr e = (ITEExpr)expr;
-        Expression test = Substitute(e.Test, receiverReplacement, substMap);
-        Expression thn = Substitute(e.Thn, receiverReplacement, substMap);
-        Expression els = Substitute(e.Els, receiverReplacement, substMap);
-        if (test != e.Test || thn != e.Thn || els != e.Els) {
-          newExpr = new ITEExpr(expr.tok, test, thn, els);
-        }
-
-      } else if (expr is ConcreteSyntaxExpression) {
-        var e = (ConcreteSyntaxExpression)expr;
-        return Substitute(e.ResolvedExpression, receiverReplacement, substMap);
+        Contract.Assert(j == existentialVariables.Count);
+        return Translator.Substitute(existentialAntecedent, null, substMap);
       }
 
-      if (newExpr == null) {
+      Expression PossiblyInline(Expression expr) {
+        Contract.Requires(expr != null);
+        Contract.Ensures(Contract.Result<Expression>() != null);
+        if (expr is FunctionCallExpr) {
+          var e = (FunctionCallExpr)expr;
+          if (e.Function.Body != null && !e.Function.IsRecursive) {
+            var inlinedBody = InlineFunctionCall(e);
+            // use the inlinedBody if it consists of only IdentifierExpr's and FunctionCallExpr's
+            if (IsTemplateLike(inlinedBody)) {
+              return PossiblyInline(inlinedBody);
+            }
+          }
+        }
         return expr;
-      } else {
-        newExpr.Type = expr.Type;  // resolve on the fly (any additional resolution must be done above)
-        return newExpr;
       }
-    }
 
-    static List<Expression/*!*/>/*!*/ SubstituteExprList(List<Expression/*!*/>/*!*/ elist,
-                                                 Expression receiverReplacement, Dictionary<IVariable,Expression/*!*/>/*!*/ substMap) {
-      Contract.Requires(cce.NonNullElements(elist));
-      Contract.Requires(cce.NonNullDictionaryAndValues(substMap));
-      Contract.Ensures(cce.NonNullElements(Contract.Result<List<Expression>>()));
-
-      List<Expression> newElist = null;  // initialized lazily
-      for (int i = 0; i < elist.Count; i++)
-      {cce.LoopInvariant(  newElist == null || newElist.Count == i);
-
-        Expression substE = Substitute(elist[i], receiverReplacement, substMap);
-        if (substE != elist[i] && newElist == null) {
-          newElist = new List<Expression>();
-          for (int j = 0; j < i; j++) {
-            newElist.Add(elist[j]);
+      bool IsTemplateLike(Expression expr) {
+        Contract.Requires(expr != null);
+        expr = expr.Resolved;
+        if (expr is IdentifierExpr) {
+          return true;
+        } else if (expr is FunctionCallExpr) {
+          var e = (FunctionCallExpr)expr;
+          if (e.Receiver == null || IsTemplateLike(e.Receiver)) {
+            return e.Args.TrueForAll(IsTemplateLike);
           }
         }
-        if (newElist != null) {
-          newElist.Add(substE);
-        }
-      }
-      if (newElist == null) {
-        return elist;
-      } else {
-        return newElist;
+        return false;
       }
     }
 
-    static Attributes SubstAttributes(Attributes attrs, Expression receiverReplacement, Dictionary<IVariable, Expression/*!*/>/*!*/ substMap) {
-      Contract.Requires(cce.NonNullDictionaryAndValues(substMap));
-      if (attrs != null) {
-        List<Attributes.Argument> newArgs = new List<Attributes.Argument>();  // allocate it eagerly, what the heck, it doesn't seem worth the extra complexity in the code to do it lazily for the infrequently occurring attributes
-        bool anyArgSubst = false;
-        foreach (Attributes.Argument arg in attrs.Args) {
-          Attributes.Argument newArg = arg;
-          if (arg.E != null) {
-            Expression newE = Substitute(arg.E, receiverReplacement, substMap);
-            if (newE != arg.E) {
-              newArg = new Attributes.Argument(arg.Tok, newE);
-              anyArgSubst = true;
+    /// <summary>
+    /// Returns a (resolved) expression that evaluates to the same value as "expr".
+    /// Assumes "expr" to be well defined.
+    /// </summary>
+    public static Expression PartiallyEvaluate(Expression expr, int recursiveInlineDepth) {
+      Contract.Requires(expr != null);
+      Contract.Requires(0 <= recursiveInlineDepth);
+      if (expr is ConcreteSyntaxExpression) {
+        var e = (ConcreteSyntaxExpression)expr;
+        return PartiallyEvaluate(e.ResolvedExpression, recursiveInlineDepth);
+      } else if (expr is FieldSelectExpr) {
+        var e = (FieldSelectExpr)expr;
+        // check if it's a destructor around a constructor
+        var dtor = e.Field as DatatypeDestructor;
+        if (dtor != null) {
+          var obj = PartiallyEvaluate(e.Obj, recursiveInlineDepth);
+          var dtv = obj as DatatypeValue;
+          if (dtv != null) {
+            for (int i = 0; i < dtv.Ctor.Formals.Count; i++) {
+              if (dtv.Ctor.Formals[i] == dtor.CorrespondingFormal) {
+                return dtv.Arguments[i];
+              }
+            }
+            Contract.Assert(false);  // we expect to have found the destructor among the constructor's formals
+          } else if (obj != e.Obj) {
+            var peE = new FieldSelectExpr(e.tok, obj, e.FieldName);
+            peE.Field = e.Field;  // resolve here
+            peE.Type = e.Type;  // resolve here
+            return peE;
+          }
+        }
+      } else if (expr is FunctionCallExpr) {
+        var e = (FunctionCallExpr)expr;
+        if (e.Function.Body != null && (!e.Function.IsRecursive || 0 < recursiveInlineDepth)) {
+          var inlinedBody = InlineFunctionCall(e);
+          return PartiallyEvaluate(inlinedBody, recursiveInlineDepth - (e.Function.IsRecursive ? 1 : 0));
+        }
+      }
+      return expr;
+    }
+
+    static Expression InlineFunctionCall(FunctionCallExpr fce) {
+      Contract.Requires(fce != null);
+      var substMap = new Dictionary<IVariable, Expression>();
+      for (int i = 0; i < fce.Args.Count; i++) {
+        substMap.Add(fce.Function.Formals[i], fce.Args[i]);
+      }
+      // TODO: in the following substitution, it may be that we also need to update the types of the resulting subexpressions (is this true for all Substitute calls?)
+      return Substitute(fce.Function.Body, fce.Receiver, substMap);
+    }
+
+    public class Substituter
+    {
+      public readonly Expression receiverReplacement;
+      public readonly Dictionary<IVariable, Expression/*!*/>/*!*/ substMap;
+      public Substituter(Expression receiverReplacement, Dictionary<IVariable, Expression/*!*/>/*!*/ substMap) {
+        Contract.Requires(substMap != null);
+        this.receiverReplacement = receiverReplacement;
+        this.substMap = substMap;
+      }
+      public virtual Expression Substitute(Expression expr) {
+        Contract.Requires(expr != null);
+        Contract.Ensures(Contract.Result<Expression>() != null);
+
+        Expression newExpr = null;  // set to non-null value only if substitution has any effect; if non-null, newExpr will be resolved at end
+
+        if (expr is LiteralExpr || expr is WildcardExpr || expr is BoogieWrapper) {
+          // nothing to substitute
+        } else if (expr is ThisExpr) {
+          return receiverReplacement == null ? expr : receiverReplacement;
+        } else if (expr is IdentifierExpr) {
+          IdentifierExpr e = (IdentifierExpr)expr;
+          Expression substExpr;
+          if (substMap.TryGetValue(e.Var, out substExpr)) {
+            return cce.NonNull(substExpr);
+          }
+        } else if (expr is DisplayExpression) {
+          DisplayExpression e = (DisplayExpression)expr;
+          List<Expression> newElements = SubstituteExprList(e.Elements);
+          if (newElements != e.Elements) {
+            if (expr is SetDisplayExpr) {
+              newExpr = new SetDisplayExpr(expr.tok, newElements);
+            } else if (expr is MultiSetDisplayExpr) {
+              newExpr = new MultiSetDisplayExpr(expr.tok, newElements);
+            } else {
+              newExpr = new SeqDisplayExpr(expr.tok, newElements);
             }
           }
-          newArgs.Add(newArg);
-        }
-        if (!anyArgSubst) {
-          newArgs = attrs.Args;
+
+        } else if (expr is FieldSelectExpr) {
+          FieldSelectExpr fse = (FieldSelectExpr)expr;
+          Expression substE = Substitute(fse.Obj);
+          if (substE != fse.Obj) {
+            FieldSelectExpr fseNew = new FieldSelectExpr(fse.tok, substE, fse.FieldName);
+            fseNew.Field = fse.Field;  // resolve on the fly (and fseExpr.Type is set at end of method)
+            newExpr = fseNew;
+          }
+
+        } else if (expr is SeqSelectExpr) {
+          SeqSelectExpr sse = (SeqSelectExpr)expr;
+          Expression seq = Substitute(sse.Seq);
+          Expression e0 = sse.E0 == null ? null : Substitute(sse.E0);
+          Expression e1 = sse.E1 == null ? null : Substitute(sse.E1);
+          if (seq != sse.Seq || e0 != sse.E0 || e1 != sse.E1) {
+            newExpr = new SeqSelectExpr(sse.tok, sse.SelectOne, seq, e0, e1);
+          }
+
+        } else if (expr is SeqUpdateExpr) {
+          SeqUpdateExpr sse = (SeqUpdateExpr)expr;
+          Expression seq = Substitute(sse.Seq);
+          Expression index = Substitute(sse.Index);
+          Expression val = Substitute(sse.Value);
+          if (seq != sse.Seq || index != sse.Index || val != sse.Value) {
+            newExpr = new SeqUpdateExpr(sse.tok, seq, index, val);
+          }
+
+        } else if (expr is MultiSelectExpr) {
+          MultiSelectExpr mse = (MultiSelectExpr)expr;
+          Expression array = Substitute(mse.Array);
+          List<Expression> newArgs = SubstituteExprList(mse.Indices);
+          if (array != mse.Array || newArgs != mse.Indices) {
+            newExpr = new MultiSelectExpr(mse.tok, array, newArgs);
+          }
+
+        } else if (expr is FunctionCallExpr) {
+          FunctionCallExpr e = (FunctionCallExpr)expr;
+          Expression receiver = Substitute(e.Receiver);
+          List<Expression> newArgs = SubstituteExprList(e.Args);
+          if (receiver != e.Receiver || newArgs != e.Args) {
+            FunctionCallExpr newFce = new FunctionCallExpr(expr.tok, e.Name, receiver, e.OpenParen, newArgs);
+            newFce.Function = e.Function;  // resolve on the fly (and set newFce.Type below, at end)
+            newExpr = newFce;
+          }
+
+        } else if (expr is DatatypeValue) {
+          DatatypeValue dtv = (DatatypeValue)expr;
+          List<Expression> newArgs = SubstituteExprList(dtv.Arguments);
+          if (newArgs != dtv.Arguments) {
+            DatatypeValue newDtv = new DatatypeValue(dtv.tok, dtv.DatatypeName, dtv.MemberName, newArgs);
+            newDtv.Ctor = dtv.Ctor;  // resolve on the fly (and set newDtv.Type below, at end)
+            newExpr = newDtv;
+          }
+
+        } else if (expr is OldExpr) {
+          OldExpr e = (OldExpr)expr;
+          // Note, it is up to the caller to avoid variable capture.  In most cases, this is not a
+          // problem, since variables have unique declarations.  However, it is an issue if the substitution
+          // takes place inside an OldExpr.  In those cases (see LetExpr), the caller can use a
+          // BoogieWrapper before calling Substitute.
+          Expression se = Substitute(e.E);
+          if (se != e.E) {
+            newExpr = new OldExpr(expr.tok, se);
+          }
+        } else if (expr is FreshExpr) {
+          FreshExpr e = (FreshExpr)expr;
+          Expression se = Substitute(e.E);
+          if (se != e.E) {
+            newExpr = new FreshExpr(expr.tok, se);
+          }
+        } else if (expr is AllocatedExpr) {
+          AllocatedExpr e = (AllocatedExpr)expr;
+          Expression se = Substitute(e.E);
+          if (se != e.E) {
+            newExpr = new AllocatedExpr(expr.tok, se);
+          }
+        } else if (expr is UnaryExpr) {
+          UnaryExpr e = (UnaryExpr)expr;
+          Expression se = Substitute(e.E);
+          if (se != e.E) {
+            newExpr = new UnaryExpr(expr.tok, e.Op, se);
+          }
+        } else if (expr is BinaryExpr) {
+          BinaryExpr e = (BinaryExpr)expr;
+          Expression e0 = Substitute(e.E0);
+          Expression e1 = Substitute(e.E1);
+          if (e0 != e.E0 || e1 != e.E1) {
+            BinaryExpr newBin = new BinaryExpr(expr.tok, e.Op, e0, e1);
+            newBin.ResolvedOp = e.ResolvedOp;  // part of what needs to be done to resolve on the fly (newBin.Type is set below, at end)
+            newExpr = newBin;
+          }
+
+        } else if (expr is LetExpr) {
+          var e = (LetExpr)expr;
+          var rhss = new List<Expression>();
+          bool anythingChanged = false;
+          foreach (var rhs in e.RHSs) {
+            var r = Substitute(rhs);
+            if (r != rhs) {
+              anythingChanged = true;
+            }
+            rhss.Add(r);
+          }
+          var body = Substitute(e.Body);
+          if (anythingChanged || body != e.Body) {
+            newExpr = new LetExpr(e.tok, e.Vars, rhss, body);
+          }
+
+      } else if (expr is NamedExpr) {
+        var e = (NamedExpr)expr;
+        var body = Substitute(e.Body);
+        var contract = e.Contract == null ? null : Substitute(e.Contract);
+        newExpr = new NamedExpr(e.tok, e.Name, body, contract, e.ReplacerToken);
+        } else if (expr is ComprehensionExpr) {
+          var e = (ComprehensionExpr)expr;
+          Expression newRange = e.Range == null ? null : Substitute(e.Range);
+          Expression newTerm = Substitute(e.Term);
+          Attributes newAttrs = SubstAttributes(e.Attributes);
+          if (e is SetComprehension) {
+            if (newRange != e.Range || newTerm != e.Term || newAttrs != e.Attributes) {
+              newExpr = new SetComprehension(expr.tok, e.BoundVars, newRange, newTerm);
+            }
+          } else if (e is MapComprehension) {
+            if (newRange != e.Range || newTerm != e.Term || newAttrs != e.Attributes) {
+              newExpr = new MapComprehension(expr.tok, e.BoundVars, newRange, newTerm);
+            }
+          } else if (e is QuantifierExpr) {
+            var q = (QuantifierExpr)e;
+            if (newRange != e.Range || newTerm != e.Term || newAttrs != e.Attributes) {
+              if (expr is ForallExpr) {
+                newExpr = new ForallExpr(expr.tok, e.BoundVars, newRange, newTerm, newAttrs);
+              } else {
+                newExpr = new ExistsExpr(expr.tok, e.BoundVars, newRange, newTerm, newAttrs);
+              }
+            }
+          } else {
+            Contract.Assert(false);  // unexpected ComprehensionExpr
+          }
+
+        } else if (expr is PredicateExpr) {
+          var e = (PredicateExpr)expr;
+          Expression g = Substitute(e.Guard);
+          Expression b = Substitute(e.Body);
+          if (g != e.Guard || b != e.Body) {
+            if (expr is AssertExpr) {
+              newExpr = new AssertExpr(e.tok, g, b);
+            } else {
+              newExpr = new AssumeExpr(e.tok, g, b);
+            }
+          }
+
+        } else if (expr is ITEExpr) {
+          ITEExpr e = (ITEExpr)expr;
+          Expression test = Substitute(e.Test);
+          Expression thn = Substitute(e.Thn);
+          Expression els = Substitute(e.Els);
+          if (test != e.Test || thn != e.Thn || els != e.Els) {
+            newExpr = new ITEExpr(expr.tok, test, thn, els);
+          }
+
+        } else if (expr is ConcreteSyntaxExpression) {
+          var e = (ConcreteSyntaxExpression)expr;
+          return Substitute(e.ResolvedExpression);
         }
 
-        Attributes prev = SubstAttributes(attrs.Prev, receiverReplacement, substMap);
-        if (newArgs != attrs.Args || prev != attrs.Prev) {
-          return new Attributes(attrs.Name, newArgs, prev);
+        if (newExpr == null) {
+          return expr;
+        } else {
+          newExpr.Type = expr.Type;  // resolve on the fly (any additional resolution must be done above)
+          return newExpr;
         }
       }
-      return attrs;
+
+      protected List<Expression/*!*/>/*!*/ SubstituteExprList(List<Expression/*!*/>/*!*/ elist) {
+        Contract.Requires(cce.NonNullElements(elist));
+        Contract.Ensures(cce.NonNullElements(Contract.Result<List<Expression>>()));
+
+        List<Expression> newElist = null;  // initialized lazily
+        for (int i = 0; i < elist.Count; i++) {
+          cce.LoopInvariant(newElist == null || newElist.Count == i);
+
+          Expression substE = Substitute(elist[i]);
+          if (substE != elist[i] && newElist == null) {
+            newElist = new List<Expression>();
+            for (int j = 0; j < i; j++) {
+              newElist.Add(elist[j]);
+            }
+          }
+          if (newElist != null) {
+            newElist.Add(substE);
+          }
+        }
+        if (newElist == null) {
+          return elist;
+        } else {
+          return newElist;
+        }
+      }
+
+      Attributes SubstAttributes(Attributes attrs) {
+        Contract.Requires(cce.NonNullDictionaryAndValues(substMap));
+        if (attrs != null) {
+          List<Attributes.Argument> newArgs = new List<Attributes.Argument>();  // allocate it eagerly, what the heck, it doesn't seem worth the extra complexity in the code to do it lazily for the infrequently occurring attributes
+          bool anyArgSubst = false;
+          foreach (Attributes.Argument arg in attrs.Args) {
+            Attributes.Argument newArg = arg;
+            if (arg.E != null) {
+              Expression newE = Substitute(arg.E);
+              if (newE != arg.E) {
+                newArg = new Attributes.Argument(arg.Tok, newE);
+                anyArgSubst = true;
+              }
+            }
+            newArgs.Add(newArg);
+          }
+          if (!anyArgSubst) {
+            newArgs = attrs.Args;
+          }
+
+          Attributes prev = SubstAttributes(attrs.Prev);
+          if (newArgs != attrs.Args || prev != attrs.Prev) {
+            return new Attributes(attrs.Name, newArgs, prev);
+          }
+        }
+        return attrs;
+      }
     }
 
   }

@@ -97,6 +97,7 @@ namespace Microsoft.Dafny {
     readonly Dictionary<DatatypeDecl/*!*/, Dictionary<string/*!*/, MemberDecl/*!*/>/*!*/>/*!*/ datatypeMembers = new Dictionary<DatatypeDecl/*!*/, Dictionary<string/*!*/, MemberDecl/*!*/>/*!*/>();
     readonly Dictionary<DatatypeDecl/*!*/, Dictionary<string/*!*/, DatatypeCtor/*!*/>/*!*/>/*!*/ datatypeCtors = new Dictionary<DatatypeDecl/*!*/, Dictionary<string/*!*/, DatatypeCtor/*!*/>/*!*/>();
     readonly Graph<ModuleDecl/*!*/>/*!*/ dependencies = new Graph<ModuleDecl/*!*/>();
+    ModuleSignature systemNameInfo = null;
     public Resolver(Program prog) {
       Contract.Requires(prog != null);
       builtIns = prog.BuiltIns;
@@ -142,7 +143,7 @@ namespace Microsoft.Dafny {
       var refinementTransformer = new RefinementTransformer(this);
       
       IRewriter rewriter = new AutoContractsRewriter();
-      var systemNameInfo = RegisterTopLevelDecls(prog.BuiltIns.SystemModule);
+      systemNameInfo = RegisterTopLevelDecls(prog.BuiltIns.SystemModule);
       foreach (var decl in sortedDecls) {
         if (decl is LiteralModuleDecl) {
           // The declaration is a literal module, so it has members and such that we need
@@ -171,18 +172,16 @@ namespace Microsoft.Dafny {
           }
           literalDecl.Signature = RegisterTopLevelDecls(m);
           literalDecl.Signature.Refines = refinedSig;
+          var sig = literalDecl.Signature;
           // set up environment
-          moduleInfo = MergeSignature(literalDecl.Signature, systemNameInfo);
-          // resolve
-          var datatypeDependencies = new Graph<IndDatatypeDecl>();
-          int prevErrorCount = ErrorCount;
-          ResolveTopLevelDecls_Signatures(m.TopLevelDecls, datatypeDependencies);
-          if (ErrorCount == prevErrorCount)
-          ResolveTopLevelDecls_Meat(m.TopLevelDecls, datatypeDependencies);
+          var errorCount = ErrorCount;
+          ResolveModuleDefinition(m, sig);
 
-          refinementTransformer.PostResolve(m);
-          // give rewriter a chance to do processing
-          rewriter.PostResolve(m);
+          if (ErrorCount == errorCount) {
+            refinementTransformer.PostResolve(m);
+            // give rewriter a chance to do processing
+            rewriter.PostResolve(m);
+          }
         } else if (decl is AliasModuleDecl) {
           var alias = (AliasModuleDecl)decl;
           // resolve the path
@@ -194,16 +193,11 @@ namespace Microsoft.Dafny {
           }
         } else if (decl is AbstractModuleDecl) {
           var abs = (AbstractModuleDecl)decl;
-          ModuleSignature p; ModuleDefinition mod;
+          ModuleSignature p;
           if (ResolvePath(abs.Root, abs.Path, out p)) {
-            abs.Signature = MakeAbstractSignature(p, abs.Name, abs.Height, out mod);
+            abs.Signature = MakeAbstractSignature(p, abs.FullCompileName, abs.Height, prog.Modules);
             abs.OriginalSignature = p;
-            moduleInfo = MergeSignature(abs.Signature, systemNameInfo);
             // resolve
-            var datatypeDependencies = new Graph<IndDatatypeDecl>();
-            ResolveTopLevelDecls_Signatures(mod.TopLevelDecls, datatypeDependencies);
-            ResolveTopLevelDecls_Meat(mod.TopLevelDecls, datatypeDependencies);
-            prog.Modules.Add(mod);
           } else {
             abs.Signature = new ModuleSignature(); // there was an error, give it a valid but empty signature
           }
@@ -212,23 +206,26 @@ namespace Microsoft.Dafny {
       }
       // compute IsRecursive bit for mutually recursive functions
       foreach (ModuleDefinition m in prog.Modules) {
-        foreach (TopLevelDecl decl in m.TopLevelDecls) {
-          ClassDecl cl = decl as ClassDecl;
-          if (cl != null) {
-            foreach (MemberDecl member in cl.Members) {
-              Function fn = member as Function;
-              if (fn != null && !fn.IsRecursive) {  // note, self-recursion has already been determined
-                int n = m.CallGraph.GetSCCSize(fn);
-                if (2 <= n) {
-                  // the function is mutually recursive (note, the SCC does not determine self recursion)
-                  fn.IsRecursive = true;
-                }
-              }
+        foreach (var fn in ModuleDefinition.AllFunctions(m.TopLevelDecls)) {
+          if (!fn.IsRecursive) {  // note, self-recursion has already been determined
+            int n = m.CallGraph.GetSCCSize(fn);
+            if (2 <= n) {
+              // the function is mutually recursive (note, the SCC does not determine self recursion)
+              fn.IsRecursive = true;
             }
           }
         }
       }
-      
+    }
+
+    private void ResolveModuleDefinition(ModuleDefinition m, ModuleSignature sig) {
+      moduleInfo = MergeSignature(sig, systemNameInfo);
+      // resolve
+      var datatypeDependencies = new Graph<IndDatatypeDecl>();
+      int prevErrorCount = ErrorCount;
+      ResolveTopLevelDecls_Signatures(m, m.TopLevelDecls, datatypeDependencies);
+      if (ErrorCount == prevErrorCount)
+        ResolveTopLevelDecls_Meat(m.TopLevelDecls, datatypeDependencies);
     }
 
 
@@ -362,12 +359,17 @@ namespace Microsoft.Dafny {
       foreach (var kv in m.Ctors) {
         info.Ctors[kv.Key] = kv.Value;
       }
+      foreach (var kv in m.StaticMembers) {
+        info.StaticMembers[kv.Key] = kv.Value;
+      }
+      info.IsGhost = m.IsGhost;
       return info;
     }
     ModuleSignature RegisterTopLevelDecls(ModuleDefinition moduleDef) {
       Contract.Requires(moduleDef != null);
       var sig = new ModuleSignature();
       sig.ModuleDef = moduleDef;
+      sig.IsGhost = moduleDef.IsGhost;
       List<TopLevelDecl> declarations = moduleDef.TopLevelDecls;
 
       foreach (TopLevelDecl d in declarations) {
@@ -402,7 +404,13 @@ namespace Microsoft.Dafny {
             }
           }
           cl.HasConstructor = hasConstructor;
-
+          if (cl.IsDefaultClass) {
+            foreach (MemberDecl m in cl.Members) {
+              if (!sig.StaticMembers.ContainsKey(m.Name) && m.IsStatic && (m is Function || m is Method)) {
+                sig.StaticMembers.Add(m.Name, m);
+              }
+            }
+          }
         } else {
           DatatypeDecl dt = (DatatypeDecl)d;
 
@@ -447,7 +455,7 @@ namespace Microsoft.Dafny {
                 if (members.ContainsKey(formal.Name)) {
                   Error(ctor, "Name of deconstructor is used by another member of the datatype: {0}", formal.Name);
                 } else {
-                  dtor = new DatatypeDestructor(formal.tok, ctor, formal.Name, "dtor_" + formal.Name, "", "", formal.IsGhost, formal.Type, null);
+                  dtor = new DatatypeDestructor(formal.tok, ctor, formal, formal.Name, "dtor_" + formal.Name, "", "", formal.IsGhost, formal.Type, null);
                   dtor.EnclosingClass = dt;  // resolve here
                   members.Add(formal.Name, dtor);
                 }
@@ -460,17 +468,19 @@ namespace Microsoft.Dafny {
       return sig;
     }
 
-    private ModuleSignature MakeAbstractSignature(ModuleSignature p, string Name, int Height, out ModuleDefinition mod) {
-      mod = new ModuleDefinition(Token.NoToken, Name+".Abs", true, true, null, null);
+    private ModuleSignature MakeAbstractSignature(ModuleSignature p, string Name, int Height, List<ModuleDefinition> mods) {
+      var mod = new ModuleDefinition(Token.NoToken, Name+".Abs", true, true, null, null, false);
       mod.Height = Height;
       foreach (var kv in p.TopLevels) {
-        mod.TopLevelDecls.Add(CloneDeclaration(kv.Value, mod));
+        mod.TopLevelDecls.Add(CloneDeclaration(kv.Value, mod, mods, Name));
       }
       var sig = RegisterTopLevelDecls(mod);
       sig.Refines = p.Refines;
+      mods.Add(mod);
+      ResolveModuleDefinition(mod, sig);
       return sig;
     }
-    TopLevelDecl CloneDeclaration(TopLevelDecl d, ModuleDefinition m) {
+    TopLevelDecl CloneDeclaration(TopLevelDecl d, ModuleDefinition m, List<ModuleDefinition> mods, string Name) {
       Contract.Requires(d != null);
       Contract.Requires(m != null);
 
@@ -493,8 +503,9 @@ namespace Microsoft.Dafny {
         var dd = (ClassDecl)d;
         var tps = dd.TypeArgs.ConvertAll(CloneTypeParam);
         var mm = dd.Members.ConvertAll(CloneMember);
-        var cl = new ClassDecl(dd.tok, dd.Name, m, tps, mm, null);
-        return cl;
+        if (dd is DefaultClassDecl) {
+          return new DefaultClassDecl(m, mm);
+        } else return new ClassDecl(dd.tok, dd.Name, m, tps, mm, null); 
       } else if (d is ModuleDecl) {
         if (d is LiteralModuleDecl) {
           return new LiteralModuleDecl(((LiteralModuleDecl)d).ModuleDef, m);
@@ -504,9 +515,17 @@ namespace Microsoft.Dafny {
           alias.ModuleReference = a.ModuleReference;
           alias.Signature = a.Signature;
           return alias;
+        } else if (d is AbstractModuleDecl) {
+          var abs = (AbstractModuleDecl)d;
+          var sig = MakeAbstractSignature(abs.OriginalSignature, Name + "." + abs.Name, abs.Height, mods);
+          var a = new AbstractModuleDecl(abs.Path, abs.tok, m);
+          a.Signature = sig;
+          a.OriginalSignature = abs.OriginalSignature;
+          return a;
+        } else {
+          Contract.Assert(false);  // unexpected declaration
+          return null;  // to please compiler
         }
-        Contract.Assert(false);  // unexpected declaration
-        return null;  // to please compiler
       } else {
         Contract.Assert(false);  // unexpected declaration
         return null;  // to please compiler
@@ -551,7 +570,7 @@ namespace Microsoft.Dafny {
         return new MapType(CloneType(tt.Domain), CloneType(tt.Range));
       } else if (t is UserDefinedType) {
         var tt = (UserDefinedType)t;
-        return new UserDefinedType(tt.tok, tt.Name, tt.TypeArgs.ConvertAll(CloneType), tt.ModuleName == null ? null : tt.ModuleName);
+        return new UserDefinedType(tt.tok, tt.Name, tt.TypeArgs.ConvertAll(CloneType), tt.Path.ConvertAll(x => x));
       } else if (t is InferredTypeProxy) {
         return new InferredTypeProxy();
       } else {
@@ -574,6 +593,9 @@ namespace Microsoft.Dafny {
       if (f is Predicate) {
         return new Predicate(tok, f.Name, f.IsStatic, isGhost, tps, f.OpenParen, formals,
           req, reads, ens, decreases, body, false, null, false);
+      } else if (f is CoPredicate) {
+        return new CoPredicate(tok, f.Name, f.IsStatic, tps, f.OpenParen, formals,
+          req, reads, ens, body, null, false);
       } else {
         return new Function(tok, f.Name, f.IsStatic, isGhost, tps, f.OpenParen, formals, CloneType(f.ResultType),
           req, reads, ens, decreases, body, null, false);
@@ -784,7 +806,7 @@ namespace Microsoft.Dafny {
       }
       return i == Path.Count;
     }
-    public void ResolveTopLevelDecls_Signatures(List<TopLevelDecl/*!*/>/*!*/ declarations, Graph<IndDatatypeDecl/*!*/>/*!*/ datatypeDependencies) {
+    public void ResolveTopLevelDecls_Signatures(ModuleDefinition def, List<TopLevelDecl/*!*/>/*!*/ declarations, Graph<IndDatatypeDecl/*!*/>/*!*/ datatypeDependencies) {
       Contract.Requires(declarations != null);
       Contract.Requires(datatypeDependencies != null);  // more expensive check: Contract.Requires(cce.NonNullElements(datatypeDependencies));
       foreach (TopLevelDecl d in declarations) {
@@ -796,7 +818,18 @@ namespace Microsoft.Dafny {
         } else if (d is ClassDecl) {
           ResolveClassMemberTypes((ClassDecl)d);
         } else if (d is ModuleDecl) {
-          // TODO: what goes here?
+          var decl = (ModuleDecl)d;
+          if (!def.IsGhost) {
+            if (decl.Signature.IsGhost) {
+              if (!(def.IsDefaultModule)) // _module is allowed to contain ghost modules, but not by ghost itself. Note this presents a challenge to 
+                                          // trusted verification, as toplevels can't be trusted if they invoke ghost module members.
+                Error(d.tok, "ghost modules can only be imported into other ghost modules, not physical ones.");
+            } else {
+              // physical modules are allowed everywhere
+            }
+          } else {
+            // everything is allowed in a ghost module
+          }
         } else {
           ResolveCtorTypes((DatatypeDecl)d, datatypeDependencies);
         }
@@ -829,28 +862,24 @@ namespace Microsoft.Dafny {
           DetermineEqualitySupport(dtd, datatypeDependencies);
         }
       }
+
       if (ErrorCount == prevErrorCount) {  // because CheckCoCalls requires the given expression to have been successfully resolved
         // Perform the guardedness check on co-datatypes
-        foreach (var decl in declarations) {
-          var cl = decl as ClassDecl;
-          if (cl != null) {
-            foreach (var member in cl.Members) {
-              var fn = member as Function;
-              if (fn != null && fn.Body != null && cl.Module.CallGraph.GetSCCRepresentative(fn) == fn) {
-                bool dealsWithCodatatypes = false;
-                foreach (var m in cl.Module.CallGraph.GetSCC(fn)) {
-                  var f = (Function)m;
-                  if (f.ResultType.InvolvesCoDatatype) {
-                    dealsWithCodatatypes = true;
-                    break;
-                  }
-                }
-                foreach (var m in cl.Module.CallGraph.GetSCC(fn)) {
-                  var f = (Function)m;
-                  var checker = new CoCallResolution(f, dealsWithCodatatypes);
-                  checker.CheckCoCalls(f.Body);
-                }
+        foreach (var fn in ModuleDefinition.AllFunctions(declarations)) {
+          var module = fn.EnclosingClass.Module;
+          if (fn.Body != null && module.CallGraph.GetSCCRepresentative(fn) == fn) {
+            bool dealsWithCodatatypes = false;
+            foreach (var m in module.CallGraph.GetSCC(fn)) {
+              var f = (Function)m;
+              if (f.ResultType.InvolvesCoDatatype) {
+                dealsWithCodatatypes = true;
+                break;
               }
+            }
+            foreach (var m in module.CallGraph.GetSCC(fn)) {
+              var f = (Function)m;
+              var checker = new CoCallResolution(f, dealsWithCodatatypes);
+              checker.CheckCoCalls(f.Body);
             }
           }
         }
@@ -978,7 +1007,83 @@ namespace Microsoft.Dafny {
             }
           }
         }
+        // Check that copredicates are not recursive with non-copredicate functions.
+        foreach (var fn in ModuleDefinition.AllFunctions(declarations)) {
+          if (fn.Body != null && (fn is CoPredicate || fn.IsRecursive)) {
+            CoPredicateChecks(fn.Body, fn, CallingPosition.Positive);
+          }
+        }
       }
+    }
+
+    enum CallingPosition { Positive, Negative, Neither }
+
+    static CallingPosition Invert(CallingPosition cp) {
+      switch (cp) {
+        case CallingPosition.Positive: return CallingPosition.Negative;
+        case CallingPosition.Negative: return CallingPosition.Positive;
+        default: return CallingPosition.Neither;
+      }
+    }
+
+    void CoPredicateChecks(Expression expr, Function context, CallingPosition cp) {
+      Contract.Requires(expr != null);
+      Contract.Requires(context != null);
+      if (expr is ConcreteSyntaxExpression) {
+        var e = (ConcreteSyntaxExpression)expr;
+        CoPredicateChecks(e.Resolved, context, cp);
+        return;
+      } else  if (expr is FunctionCallExpr) {
+        var e = (FunctionCallExpr)expr;
+        var moduleCaller = context.EnclosingClass.Module;
+        var moduleCallee = e.Function.EnclosingClass.Module;
+        if (moduleCaller == moduleCallee && moduleCaller.CallGraph.GetSCCRepresentative(context) == moduleCaller.CallGraph.GetSCCRepresentative(e.Function)) {
+          // we're looking at a recursive call
+          if (context is CoPredicate) {
+            if (!(e.Function is CoPredicate)) {
+              Error(e, "a recursive call from a copredicate can go only to other copredicates");
+            } else if (cp != CallingPosition.Positive) {
+              Error(e, "a recursive copredicate call can only be done in positive positions");
+            }
+          } else if (e.Function is CoPredicate) {
+            Error(e, "a recursive call from a non-copredicate can go only to other non-copredicates");
+          }
+        }
+        // fall through to do the subexpressions
+      } else if (expr is UnaryExpr) {
+        var e = (UnaryExpr)expr;
+        if (e.Op == UnaryExpr.Opcode.Not) {
+          CoPredicateChecks(e.E, context, Invert(cp));
+          return;
+        }
+      } else if (expr is BinaryExpr) {
+        var e = (BinaryExpr)expr;
+        switch (e.ResolvedOp) {
+          case BinaryExpr.ResolvedOpcode.And:
+          case BinaryExpr.ResolvedOpcode.Or:
+            CoPredicateChecks(e.E0, context, cp);
+            CoPredicateChecks(e.E1, context, cp);
+            return;
+          case BinaryExpr.ResolvedOpcode.Imp:
+            CoPredicateChecks(e.E0, context, Invert(cp));
+            CoPredicateChecks(e.E1, context, cp);
+            return;
+          default:
+            break;
+        }
+      } else if (expr is LetExpr) {
+        var e = (LetExpr)expr;
+        CoPredicateChecks(e.Body, context, cp);
+        return;
+      } else if (expr is QuantifierExpr) {
+        var e = (QuantifierExpr)expr;
+        if (e.Range != null) {
+          CoPredicateChecks(e.Range, context, e is ExistsExpr ? Invert(cp) : cp);
+        }
+        CoPredicateChecks(e.Term, context, cp);
+        return;
+      }
+      expr.SubExpressions.Iter(ee => CoPredicateChecks(ee, context, CallingPosition.Neither));
     }
 
     void CheckEqualityTypes_Stmt(Statement stmt) {
@@ -1848,7 +1953,7 @@ namespace Microsoft.Dafny {
             Error(t.tok, "sorry, cannot instantiate type parameter with a subrange type");
           }
         }
-        TypeParameter tp = t.ModuleName == null ? allTypeParameters.Find(t.Name) : null;
+        TypeParameter tp = t.Path.Count == 0 ? allTypeParameters.Find(t.Name) : null;
         if (tp != null) {
           if (t.TypeArgs.Count == 0) {
             t.ResolvedParam = tp;
@@ -1857,17 +1962,26 @@ namespace Microsoft.Dafny {
           }
         } else if (t.ResolvedClass == null) {  // this test is because 'array' is already resolved; TODO: an alternative would be to pre-populate 'classes' with built-in references types like 'array' (and perhaps in the future 'string')
           TopLevelDecl d = null;
-          if (t.ModuleName != null) {
-            ModuleSignature sig;
-            if (moduleInfo.FindSubmodule(t.ModuleName.val, out sig)) {
-              if (!sig.TopLevels.TryGetValue(t.Name, out d)) {
-                Error(t.tok, "The name does not exist in the given module");
-              }
+
+          int j = 0;
+          var sig = moduleInfo;
+          while (j < t.Path.Count) {
+            if (sig.FindSubmodule(t.Path[j].val, out sig)) {
+              j++;
             } else {
-              Error(t.ModuleName, "Undeclared module name: {0} (did you forget a module import?)", t.ModuleName.val);
+              Error(t.Path[j], "module {0} does not exist", t.Path[j].val);
+              break;
             }
-          } else if (!moduleInfo.TopLevels.TryGetValue(t.Name, out d)) {
-            Error(t.tok, "Undeclared top-level type or type parameter: {0} (did you forget a module import?)", t.Name);
+          }
+          if (j == t.Path.Count) {
+            if (!sig.TopLevels.TryGetValue(t.Name, out d)) {
+              if (j == 0)
+                Error(t.tok, "Undeclared top-level type or type parameter: {0} (did you forget to qualify a name?)", t.Name);
+              else
+                Error(t.tok, "Undeclared type {0} in module {1}", t.Name, t.Path[t.Path.Count - 1].val);
+            }
+          } else {
+            // error has already been reported
           }
 
           if (d == null) {
@@ -3488,44 +3602,9 @@ namespace Microsoft.Dafny {
         } else if (d is AmbiguousTopLevelDecl) {
           Error(expr.tok, "The name {0} ambiguously refers to a type in one of the modules {1}", dtv.DatatypeName, ((AmbiguousTopLevelDecl)d).ModuleNames());
         } else if (!(d is DatatypeDecl)) {
-          Error(expr.tok, "Expected datatype, found class: {0}", dtv.DatatypeName);
+          Error(expr.tok, "Expected datatype: {0}", dtv.DatatypeName);
         } else {
-          // this resolution is a little special, in that the syntax shows only the base name, not its instantiation (which is inferred)
-          DatatypeDecl dt = (DatatypeDecl)d;
-          List<Type> gt = new List<Type>(dt.TypeArgs.Count);
-          Dictionary<TypeParameter,Type> subst = new Dictionary<TypeParameter,Type>();
-          for (int i = 0; i < dt.TypeArgs.Count; i++) {
-            Type t = new InferredTypeProxy();
-            gt.Add(t);
-            dtv.InferredTypeArgs.Add(t);
-            subst.Add(dt.TypeArgs[i], t);
-          }
-          expr.Type = new UserDefinedType(dtv.tok, dtv.DatatypeName, gt, null);
-          ResolveType(expr.tok, expr.Type, null, true);
-
-          DatatypeCtor ctor;
-          if (!datatypeCtors[dt].TryGetValue(dtv.MemberName, out ctor)) {
-            Error(expr.tok, "undeclared constructor {0} in datatype {1}", dtv.MemberName, dtv.DatatypeName);
-          } else {
-            Contract.Assert(ctor != null);  // follows from postcondition of TryGetValue
-            dtv.Ctor = ctor;
-            if (ctor.Formals.Count != dtv.Arguments.Count) {
-              Error(expr.tok, "wrong number of arguments to datatype constructor {0} (found {1}, expected {2})", dtv.DatatypeName, dtv.Arguments.Count, ctor.Formals.Count);
-            }
-          }
-          int j = 0;
-          foreach (Expression arg in dtv.Arguments) {
-            Formal formal = ctor != null && j < ctor.Formals.Count ? ctor.Formals[j] : null;
-            ResolveExpression(arg, twoState, null);
-            Contract.Assert(arg.Type != null);  // follows from postcondition of ResolveExpression
-            if (formal != null) {
-              Type st = SubstType(formal.Type, subst);
-              if (!UnifyTypes(arg.Type, st)) {
-                Error(arg.tok, "incorrect type of datatype constructor argument (found {0}, expected {1})", arg.Type, st);
-              }
-            }
-            j++;
-          }
+          ResolveDatatypeValue(twoState, dtv, (DatatypeDecl)d);
         }
 
       } else if (expr is DisplayExpression) {
@@ -3892,7 +3971,12 @@ namespace Microsoft.Dafny {
         scope.PopMarker();
         expr.Type = e.Body.Type;
 
-      } else if (expr is QuantifierExpr) {
+      } else if (expr is NamedExpr) {
+        var e = (NamedExpr)expr;
+        ResolveExpression(e.Body, twoState);
+        if (e.Contract != null) ResolveExpression(e.Contract, twoState);
+        e.Type = e.Body.Type;
+      }else if (expr is QuantifierExpr) {
         QuantifierExpr e = (QuantifierExpr)expr;
         int prevErrorCount = ErrorCount;
         scope.PushMarker();
@@ -4156,6 +4240,44 @@ namespace Microsoft.Dafny {
       }
     }
 
+    private void ResolveDatatypeValue(bool twoState, DatatypeValue dtv, DatatypeDecl dt) {
+      // this resolution is a little special, in that the syntax shows only the base name, not its instantiation (which is inferred)
+      List<Type> gt = new List<Type>(dt.TypeArgs.Count);
+      Dictionary<TypeParameter, Type> subst = new Dictionary<TypeParameter, Type>();
+      for (int i = 0; i < dt.TypeArgs.Count; i++) {
+        Type t = new InferredTypeProxy();
+        gt.Add(t);
+        dtv.InferredTypeArgs.Add(t);
+        subst.Add(dt.TypeArgs[i], t);
+      }
+      // Construct a resolved type directly, as we know the declaration is dt.
+      dtv.Type = new UserDefinedType(dtv.tok, dtv.DatatypeName, dt, gt);
+      
+      DatatypeCtor ctor;
+      if (!datatypeCtors[dt].TryGetValue(dtv.MemberName, out ctor)) {
+        Error(dtv.tok, "undeclared constructor {0} in datatype {1}", dtv.MemberName, dtv.DatatypeName);
+      } else {
+        Contract.Assert(ctor != null);  // follows from postcondition of TryGetValue
+        dtv.Ctor = ctor;
+        if (ctor.Formals.Count != dtv.Arguments.Count) {
+          Error(dtv.tok, "wrong number of arguments to datatype constructor {0} (found {1}, expected {2})", dtv.DatatypeName, dtv.Arguments.Count, ctor.Formals.Count);
+        }
+      }
+      int j = 0;
+      foreach (Expression arg in dtv.Arguments) {
+        Formal formal = ctor != null && j < ctor.Formals.Count ? ctor.Formals[j] : null;
+        ResolveExpression(arg, twoState, null);
+        Contract.Assert(arg.Type != null);  // follows from postcondition of ResolveExpression
+        if (formal != null) {
+          Type st = SubstType(formal.Type, subst);
+          if (!UnifyTypes(arg.Type, st)) {
+            Error(arg.tok, "incorrect type of datatype constructor argument (found {0}, expected {1})", arg.Type, st);
+          }
+        }
+        j++;
+      }
+    }
+
     private bool ComparableTypes(Type A, Type B) {
       if (A.IsArrayType && B.IsArrayType) {
         Type a = UserDefinedType.ArrayElementType(A);
@@ -4253,7 +4375,8 @@ namespace Microsoft.Dafny {
       } else if (expr is DatatypeValue) {
         var e = (DatatypeValue)expr;
         // check all NON-ghost arguments
-        for (int i = 0; i < e.Ctor.Formals.Count; i++) {
+        // note that if resolution is successful, then |e.Arguments| == |e.Ctor.Formals|
+        for (int i = 0; i < e.Arguments.Count; i++) {
           if (!e.Ctor.Formals[i].IsGhost) {
             CheckIsNonGhost(e.Arguments[i]);
           }
@@ -4297,6 +4420,9 @@ namespace Microsoft.Dafny {
           }
           return;
         }
+      } else if (expr is NamedExpr) {
+        if (moduleInfo.IsGhost) return;
+        else CheckIsNonGhost(((NamedExpr)expr).Body);
       }
 
       foreach (var ee in expr.SubExpressions) {
@@ -4331,6 +4457,9 @@ namespace Microsoft.Dafny {
       } else {
         Function function = (Function)member;
         e.Function = function;
+        if (function is CoPredicate) {
+          ((CoPredicate)function).Uses.Add(e);
+        }
         if (e.Receiver is StaticReceiverExpr && !function.IsStatic) {
           Error(e, "an instance function must be selected via an object, not just a class name");
         }
@@ -4402,9 +4531,9 @@ namespace Microsoft.Dafny {
       //       (if two imported types have the same name, an error message is produced here)
       //  - unambiguous constructor name of a datatype (if two constructors have the same name, an error message is produced here)
       //  - imported module name
-      //  - field name (with implicit receiver) (if the field is occluded by anything above, one can use an explicit "this.")
-      // Note, at present, modules do not give rise to new namespaces, which is something that should
-      // be changed in the language when modules are given more attention.
+      //  - field, function or method name (with implicit receiver) (if the field is occluded by anything above, one can use an explicit "this.")
+      //  - static function or method in the enclosing module.
+      
       Expression r = null;  // resolved version of e
       CallRhs call = null;
 
@@ -4466,18 +4595,20 @@ namespace Microsoft.Dafny {
           }
         }
 
-      } else if (classMembers.TryGetValue(currentClass, out members) && members.TryGetValue(id.val, out member)) {
+      } else if ((classMembers.TryGetValue(currentClass, out members) && members.TryGetValue(id.val, out member))
+                 || moduleInfo.StaticMembers.TryGetValue(id.val, out member)) // try static members of the current module too.
+      {
         // ----- field, function, or method
         Expression receiver;
         if (member.IsStatic) {
-          receiver = new StaticReceiverExpr(id, currentClass);
+          receiver = new StaticReceiverExpr(id, (ClassDecl)member.EnclosingClass);
         } else {
           if (!scope.AllowInstance) {
             Error(id, "'this' is not allowed in a 'static' context");
             // nevertheless, set "receiver" to a value so we can continue resolution
           }
           receiver = new ImplicitThisExpr(id);
-          receiver.Type = GetThisType(id, currentClass);  // resolve here
+          receiver.Type = GetThisType(id, (ClassDecl)member.EnclosingClass);  // resolve here
         }
         r = ResolveSuffix(receiver, e, 0, twoState, allowMethodCall, out call);
 
@@ -4498,10 +4629,11 @@ namespace Microsoft.Dafny {
       return call;
     }
 
-    CallRhs ResolveIdentifierSequenceModuleScope(IdentifierSequence e, int p, ModuleSignature info, bool twoState, bool allowMethodCall) {
+    CallRhs ResolveIdentifierSequenceModuleScope(IdentifierSequence e, int p, ModuleSignature sig, bool twoState, bool allowMethodCall) {
       // Look up "id" as follows:
       //  - unamibugous type/module name (class, datatype, sub-module (including submodules of imports) or arbitrary-type)
       //       (if two imported types have the same name, an error message is produced here)
+      //  - static function or method of sig.
       // This is used to look up names that appear after a dot in a sequence identifier. For example, in X.M.*, M should be looked up in X, but
       // should not consult the local scope. This distingushes this from the above, in that local scope, imported modules, etc. are ignored.
       Contract.Requires(p < e.Tokens.Count);
@@ -4509,8 +4641,10 @@ namespace Microsoft.Dafny {
       CallRhs call = null;
 
       TopLevelDecl decl;
+      MemberDecl member;
+      Tuple<DatatypeCtor, bool> pair;
       var id = e.Tokens[p];
-      if (info.TopLevels.TryGetValue(id.val, out decl)) {
+      if (sig.TopLevels.TryGetValue(id.val, out decl)) {
         if (decl is AmbiguousTopLevelDecl) {
           Error(id, "The name {0} ambiguously refers to a something in one of the modules {1}", id.val, ((AmbiguousTopLevelDecl)decl).ModuleNames());
         } else if (decl is ClassDecl) {
@@ -4529,11 +4663,33 @@ namespace Microsoft.Dafny {
           var dt = (DatatypeDecl)decl;  // otherwise, unexpected TopLevelDecl
           var args = (e.Tokens.Count == p + 2 ? e.Arguments : null) ?? new List<Expression>();
           r = new DatatypeValue(id, id.val, e.Tokens[p + 1].val, args);
-          ResolveExpression(r, twoState);
+          ResolveDatatypeValue(twoState, (DatatypeValue) r, dt);
           if (e.Tokens.Count != p + 2) {
             r = ResolveSuffix(r, e, p + 2, twoState, allowMethodCall, out call);
           }
         }
+      } else if (sig.Ctors.TryGetValue(id.val, out pair)) {
+        // ----- root is a datatype constructor
+        if (pair.Item2) {
+          // there is more than one constructor with this name
+          Error(id, "the name '{0}' denotes a datatype constructor, but does not do so uniquely; add an explicit qualification (for example, '{1}.{0}')", id.val, pair.Item1.EnclosingDatatype.Name);
+        } else {
+          var dt = pair.Item1.EnclosingDatatype;
+          var args = (e.Tokens.Count == p+1 ? e.Arguments : null) ?? new List<Expression>();
+          r = new DatatypeValue(id, dt.Name, id.val, args);
+          ResolveDatatypeValue(twoState, (DatatypeValue)r, dt);
+          if (e.Tokens.Count != p+1) {
+            r = ResolveSuffix(r, e, p+1, twoState, allowMethodCall, out call);
+          }
+        }
+      } else if (sig.StaticMembers.TryGetValue(id.val, out member)) // try static members of the current module too.
+      {
+        // ----- function, or method
+        Expression receiver;
+        Contract.Assert(member.IsStatic);
+        receiver = new StaticReceiverExpr(id, (ClassDecl)member.EnclosingClass);
+        r = ResolveSuffix(receiver, e, p, twoState, allowMethodCall, out call);
+
       } else {
         Error(id, "unresolved identifier: {0}", id.val);
         // resolve arguments, if any
@@ -5303,6 +5459,8 @@ namespace Microsoft.Dafny {
           return true;
         }
         return UsesSpecFeatures(e.E0) || UsesSpecFeatures(e.E1);
+      }  else if (expr is NamedExpr) {
+         return moduleInfo.IsGhost ? false : UsesSpecFeatures(((NamedExpr)expr).Body);
       } else if (expr is ComprehensionExpr) {
         if (expr is QuantifierExpr && ((QuantifierExpr)expr).Bounds == null) {
           return true;  // the quantifier cannot be compiled if the resolver found no bounds
