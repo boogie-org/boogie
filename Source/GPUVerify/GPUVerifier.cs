@@ -1847,68 +1847,24 @@ namespace GPUVerify
             return mt.Arguments[0];
         }
 
-        private void AddRaceCheckingDeclarations(Variable v)
+        internal GlobalVariable FindOrCreateAccessHasOccurredVariable(string varName, string accessType)
         {
-            IdentifierExprSeq newVars = new IdentifierExprSeq();
-
-            Variable ReadHasOccurred = MakeAccessHasOccurredVariable(v.Name, "READ");
-            Variable WriteHasOccurred = MakeAccessHasOccurredVariable(v.Name, "WRITE");
-
-            newVars.Add(new IdentifierExpr(v.tok, ReadHasOccurred));
-            newVars.Add(new IdentifierExpr(v.tok, WriteHasOccurred));
-
-            Program.TopLevelDeclarations.Add(ReadHasOccurred);
-            Program.TopLevelDeclarations.Add(WriteHasOccurred);
-            if (v.TypedIdent.Type is MapType)
+            string name = MakeAccessHasOccurredVariableName(varName, accessType) + "$1";
+            foreach(Declaration D in Program.TopLevelDeclarations)
             {
-                MapType mt = v.TypedIdent.Type as MapType;
-                Debug.Assert(mt.Arguments.Length == 1);
-                Debug.Assert(IsIntOrBv32(mt.Arguments[0]));
-
-                Variable ReadOffsetX = MakeOffsetXVariable(v, "READ");
-                Variable WriteOffsetX = MakeOffsetXVariable(v, "WRITE");
-                newVars.Add(new IdentifierExpr(v.tok, ReadOffsetX));
-                newVars.Add(new IdentifierExpr(v.tok, WriteOffsetX));
-                Program.TopLevelDeclarations.Add(ReadOffsetX);
-                Program.TopLevelDeclarations.Add(WriteOffsetX);
-
-                if (mt.Result is MapType)
+                if(D is GlobalVariable && ((GlobalVariable)D).Name.Equals(name))
                 {
-                    MapType mt2 = mt.Result as MapType;
-                    Debug.Assert(mt2.Arguments.Length == 1);
-                    Debug.Assert(IsIntOrBv32(mt2.Arguments[0]));
-
-                    Variable ReadOffsetY = MakeOffsetYVariable(v, "READ");
-                    Variable WriteOffsetY = MakeOffsetYVariable(v, "WRITE");
-                    newVars.Add(new IdentifierExpr(v.tok, ReadOffsetY));
-                    newVars.Add(new IdentifierExpr(v.tok, WriteOffsetY));
-                    Program.TopLevelDeclarations.Add(ReadOffsetY);
-                    Program.TopLevelDeclarations.Add(WriteOffsetY);
-
-                    if (mt2.Result is MapType)
-                    {
-                        MapType mt3 = mt2.Arguments[0] as MapType;
-                        Debug.Assert(mt3.Arguments.Length == 1);
-                        Debug.Assert(IsIntOrBv32(mt3.Arguments[0]));
-                        Debug.Assert(!(mt3.Result is MapType));
-
-                        Variable ReadOffsetZ = MakeOffsetZVariable(v, "READ");
-                        Variable WriteOffsetZ = MakeOffsetZVariable(v, "WRITE");
-                        newVars.Add(new IdentifierExpr(v.tok, ReadOffsetZ));
-                        newVars.Add(new IdentifierExpr(v.tok, WriteOffsetZ));
-                        Program.TopLevelDeclarations.Add(ReadOffsetZ);
-                        Program.TopLevelDeclarations.Add(WriteOffsetZ);
-
-                    }
+                    return D as GlobalVariable;
                 }
             }
 
-            foreach (IdentifierExpr e in newVars)
-            {
-                KernelProcedure.Modifies.Add(e);
-            }
-        }
+            GlobalVariable result = new VariableDualiser(1, null, null).VisitVariable(
+                MakeAccessHasOccurredVariable(varName, accessType)) as GlobalVariable;
 
+            Program.TopLevelDeclarations.Add(result);
+            return result;
+
+        }
 
         internal static GlobalVariable MakeAccessHasOccurredVariable(string varName, string accessType)
         {
@@ -2210,7 +2166,10 @@ namespace GPUVerify
                     || (CommandLineOptions.InterGroupRaceChecking && IsGroupIdConstant(d as Variable) ) ))
                 {
                     NewTopLevelDeclarations.Add(new VariableDualiser(1, null, null).VisitVariable((Variable)d.Clone()));
-                    NewTopLevelDeclarations.Add(new VariableDualiser(2, null, null).VisitVariable((Variable)d.Clone()));
+                    if (!QKeyValue.FindBoolAttribute(d.Attributes, "race_checking"))
+                    {
+                        NewTopLevelDeclarations.Add(new VariableDualiser(2, null, null).VisitVariable((Variable)d.Clone()));
+                    }
 
                     continue;
                 }

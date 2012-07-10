@@ -830,11 +830,7 @@ namespace GPUVerify
 
         protected void AddLogRaceDeclarations(Variable v, String ReadOrWrite)
         {
-            Variable AccessHasOccurred = GPUVerifier.MakeAccessHasOccurredVariable(v.Name, ReadOrWrite);
-
-            // Assumes full symmetry reduction
-
-            verifier.Program.TopLevelDeclarations.Add(new VariableDualiser(1, null, null).VisitVariable(AccessHasOccurred.Clone() as Variable));
+            Variable AccessHasOccurred = verifier.FindOrCreateAccessHasOccurredVariable(v.Name, ReadOrWrite);
 
             Debug.Assert(v.TypedIdent.Type is MapType);
             MapType mt = v.TypedIdent.Type as MapType;
