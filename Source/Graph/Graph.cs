@@ -64,7 +64,7 @@ namespace Graphing {
     }
   }
 
-  internal class DomRelation<Node> {
+  public class DomRelation<Node> {
     // doms maps (unique) node numbers to the node numbers of the immediate dominator
     // to use it on Nodes, one needs the two way mapping between nodes and their numbers.
     private int[] doms; // 0 is unused: means undefined
@@ -486,7 +486,7 @@ namespace Graphing {
       return ret;
     }
 
-    internal DomRelation<Node> /*Map<Node,Set<Node>>*/ DominatorMap {
+    public DomRelation<Node> /*Map<Node,Set<Node>>*/ DominatorMap {
       get {
         Contract.Assert(source != null);
         if (this.dominatorMap == null) {
