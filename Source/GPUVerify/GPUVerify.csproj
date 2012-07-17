@@ -104,7 +104,6 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AccessCollector.cs" />
-    <Compile Include="AccessInvariantProcessor.cs" />
     <Compile Include="AccessRecord.cs" />
     <Compile Include="ArrayControlFlowAnalyser.cs" />
     <Compile Include="AsymmetricExpressionFinder.cs" />

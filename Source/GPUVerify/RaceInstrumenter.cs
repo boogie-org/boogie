@@ -122,7 +122,7 @@ namespace GPUVerify
 
         private List<Expr> CollectOffsetPredicates(Implementation impl, IRegion region, Variable v, string accessType)
         {
-            var offsetVar = new VariableDualiser(1, null, null).VisitVariable(GPUVerifier.MakeOffsetXVariable(v, accessType));
+            var offsetVar = new VariableDualiser(1, null, null).VisitVariable(GPUVerifier.MakeOffsetVariable(v, accessType));
             var offsetExpr = new IdentifierExpr(Token.NoToken, offsetVar);
             var offsetPreds = new List<Expr>();
 
@@ -704,7 +704,7 @@ namespace GPUVerify
             Procedure LogAccessProcedure = MakeLogAccessProcedureHeader(v, Access);
 
             Variable AccessHasOccurredVariable = GPUVerifier.MakeAccessHasOccurredVariable(v.Name, Access);
-            Variable AccessOffsetXVariable = GPUVerifier.MakeOffsetXVariable(v, Access);
+            Variable AccessOffsetXVariable = GPUVerifier.MakeOffsetVariable(v, Access);
 
             Variable PredicateParameter = new LocalVariable(v.tok, new TypedIdent(v.tok, "_P", Microsoft.Boogie.Type.Bool));
 
@@ -734,15 +734,15 @@ namespace GPUVerify
             {
                 // Check read by thread 2 does not conflict with write by thread 1
                 Variable WriteHasOccurredVariable = GPUVerifier.MakeAccessHasOccurredVariable(v.Name, "WRITE");
-                Variable WriteOffsetXVariable = GPUVerifier.MakeOffsetXVariable(v, "WRITE");
+                Variable WriteOffsetVariable = GPUVerifier.MakeOffsetVariable(v, "WRITE");
                 Expr WriteReadGuard = new IdentifierExpr(Token.NoToken, VariableForThread(2, PredicateParameter));
                 WriteReadGuard = Expr.And(WriteReadGuard, new IdentifierExpr(Token.NoToken, VariableForThread(1, WriteHasOccurredVariable)));
-                WriteReadGuard = Expr.And(WriteReadGuard, Expr.Eq(new IdentifierExpr(Token.NoToken, VariableForThread(1, WriteOffsetXVariable)), 
+                WriteReadGuard = Expr.And(WriteReadGuard, Expr.Eq(new IdentifierExpr(Token.NoToken, VariableForThread(1, WriteOffsetVariable)), 
                                                 new IdentifierExpr(Token.NoToken, VariableForThread(2, OffsetParameter))));
                 if (!verifier.ArrayModelledAdversarially(v))
                 {
                     WriteReadGuard = Expr.And(WriteReadGuard, Expr.Neq(
-                        MakeAccessedIndex(v, new IdentifierExpr(Token.NoToken, VariableForThread(1, WriteOffsetXVariable)), 1, "WRITE"),
+                        MakeAccessedIndex(v, new IdentifierExpr(Token.NoToken, VariableForThread(1, WriteOffsetVariable)), 1, "WRITE"),
                         MakeAccessedIndex(v, new IdentifierExpr(Token.NoToken, VariableForThread(2, OffsetParameter)), 2, "READ")
                         ));
                 }
@@ -761,16 +761,16 @@ namespace GPUVerify
 
                 // Check write by thread 2 does not conflict with write by thread 1
                 Variable WriteHasOccurredVariable = GPUVerifier.MakeAccessHasOccurredVariable(v.Name, "WRITE");
-                Variable WriteOffsetXVariable = GPUVerifier.MakeOffsetXVariable(v, "WRITE");
+                Variable WriteOffsetVariable = GPUVerifier.MakeOffsetVariable(v, "WRITE");
 
                 Expr WriteWriteGuard = new IdentifierExpr(Token.NoToken, VariableForThread(2, PredicateParameter));
                 WriteWriteGuard = Expr.And(WriteWriteGuard, new IdentifierExpr(Token.NoToken, VariableForThread(1, WriteHasOccurredVariable)));
-                WriteWriteGuard = Expr.And(WriteWriteGuard, Expr.Eq(new IdentifierExpr(Token.NoToken, VariableForThread(1, WriteOffsetXVariable)),
+                WriteWriteGuard = Expr.And(WriteWriteGuard, Expr.Eq(new IdentifierExpr(Token.NoToken, VariableForThread(1, WriteOffsetVariable)),
                                                 new IdentifierExpr(Token.NoToken, VariableForThread(2, OffsetParameter))));
                 if (!verifier.ArrayModelledAdversarially(v))
                 {
                     WriteWriteGuard = Expr.And(WriteWriteGuard, Expr.Neq(
-                        MakeAccessedIndex(v, new IdentifierExpr(Token.NoToken, VariableForThread(1, WriteOffsetXVariable)), 1, "WRITE"),
+                        MakeAccessedIndex(v, new IdentifierExpr(Token.NoToken, VariableForThread(1, WriteOffsetVariable)), 1, "WRITE"),
                         MakeAccessedIndex(v, new IdentifierExpr(Token.NoToken, VariableForThread(2, OffsetParameter)), 2, "WRITE")
                         ));
                 }
@@ -785,16 +785,16 @@ namespace GPUVerify
 
                 // Check write by thread 2 does not conflict with read by thread 1
                 Variable ReadHasOccurredVariable = GPUVerifier.MakeAccessHasOccurredVariable(v.Name, "READ");
-                Variable ReadOffsetXVariable = GPUVerifier.MakeOffsetXVariable(v, "READ");
+                Variable ReadOffsetVariable = GPUVerifier.MakeOffsetVariable(v, "READ");
 
                 Expr ReadWriteGuard = new IdentifierExpr(Token.NoToken, VariableForThread(2, PredicateParameter));
                 ReadWriteGuard = Expr.And(ReadWriteGuard, new IdentifierExpr(Token.NoToken, VariableForThread(1, ReadHasOccurredVariable)));
-                ReadWriteGuard = Expr.And(ReadWriteGuard, Expr.Eq(new IdentifierExpr(Token.NoToken, VariableForThread(1, ReadOffsetXVariable)),
+                ReadWriteGuard = Expr.And(ReadWriteGuard, Expr.Eq(new IdentifierExpr(Token.NoToken, VariableForThread(1, ReadOffsetVariable)),
                                                 new IdentifierExpr(Token.NoToken, VariableForThread(2, OffsetParameter))));
                 if (!verifier.ArrayModelledAdversarially(v))
                 {
                     ReadWriteGuard = Expr.And(ReadWriteGuard, Expr.Neq(
-                        MakeAccessedIndex(v, new IdentifierExpr(Token.NoToken, VariableForThread(1, ReadOffsetXVariable)), 1, "WRITE"),
+                        MakeAccessedIndex(v, new IdentifierExpr(Token.NoToken, VariableForThread(1, ReadOffsetVariable)), 1, "WRITE"),
                         MakeAccessedIndex(v, new IdentifierExpr(Token.NoToken, VariableForThread(2, OffsetParameter)), 2, "READ")
                         ));
                 }
@@ -830,14 +830,13 @@ namespace GPUVerify
 
         protected void AddLogRaceDeclarations(Variable v, String ReadOrWrite)
         {
-            Variable AccessHasOccurred = verifier.FindOrCreateAccessHasOccurredVariable(v.Name, ReadOrWrite);
+            verifier.FindOrCreateAccessHasOccurredVariable(v.Name, ReadOrWrite);
 
             Debug.Assert(v.TypedIdent.Type is MapType);
             MapType mt = v.TypedIdent.Type as MapType;
             Debug.Assert(mt.Arguments.Length == 1);
 
-            Variable AccessOffsetX = GPUVerifier.MakeOffsetXVariable(v, ReadOrWrite);
-            verifier.Program.TopLevelDeclarations.Add(new VariableDualiser(1, null, null).VisitVariable(AccessOffsetX.Clone() as Variable));
+            verifier.FindOrCreateOffsetVariable(v, ReadOrWrite);
 
         }
         
@@ -900,11 +899,11 @@ namespace GPUVerify
         private Expr AccessedOffsetIsThreadLocalIdExpr(Variable v, string ReadOrWrite, int Thread)
         {
             Expr expr = null;
-            if (GPUVerifier.HasXDimension(v) && GPUVerifier.IndexTypeOfXDimension(v).Equals(verifier.GetTypeOfIdX()))
+            if (GPUVerifier.IndexType(v).Equals(verifier.GetTypeOfIdX()))
             {
                 expr = Expr.Imp(
                         new IdentifierExpr(v.tok, new VariableDualiser(Thread, null, null).VisitVariable(GPUVerifier.MakeAccessHasOccurredVariable(v.Name, ReadOrWrite))),
-                        Expr.Eq(new IdentifierExpr(v.tok, new VariableDualiser(Thread, null, null).VisitVariable(GPUVerifier.MakeOffsetXVariable(v, ReadOrWrite))), new IdentifierExpr(v.tok, verifier.MakeThreadId(v.tok, "X", Thread))));
+                        Expr.Eq(new IdentifierExpr(v.tok, new VariableDualiser(Thread, null, null).VisitVariable(GPUVerifier.MakeOffsetVariable(v, ReadOrWrite))), new IdentifierExpr(v.tok, verifier.MakeThreadId(v.tok, "X", Thread))));
             }
             return expr;
         }
@@ -912,12 +911,12 @@ namespace GPUVerify
         private Expr AccessedOffsetIsThreadGlobalIdExpr(Variable v, string ReadOrWrite, int Thread)
         {
             Expr expr = null;
-            if (GPUVerifier.HasXDimension(v) && GPUVerifier.IndexTypeOfXDimension(v).Equals(verifier.GetTypeOfIdX()))
+            if (GPUVerifier.IndexType(v).Equals(verifier.GetTypeOfIdX()))
             {
                 expr = Expr.Imp(
                         new IdentifierExpr(v.tok, new VariableDualiser(Thread, null, null).VisitVariable(GPUVerifier.MakeAccessHasOccurredVariable(v.Name, ReadOrWrite))),
                         Expr.Eq(
-                            new IdentifierExpr(v.tok, new VariableDualiser(Thread, null, null).VisitVariable(GPUVerifier.MakeOffsetXVariable(v, ReadOrWrite))),
+                            new IdentifierExpr(v.tok, new VariableDualiser(Thread, null, null).VisitVariable(GPUVerifier.MakeOffsetVariable(v, ReadOrWrite))),
                             GlobalIdExpr("X", Thread)
                             )
                             );
@@ -961,7 +960,7 @@ namespace GPUVerify
 
         private static IdentifierExpr OffsetXExpr(Variable v, string ReadOrWrite, int Thread)
         {
-            return new IdentifierExpr(v.tok, new VariableDualiser(Thread, null, null).VisitVariable(GPUVerifier.MakeOffsetXVariable(v, ReadOrWrite)));
+            return new IdentifierExpr(v.tok, new VariableDualiser(Thread, null, null).VisitVariable(GPUVerifier.MakeOffsetVariable(v, ReadOrWrite)));
         }
 
         protected void AddAccessedOffsetInRangeCTimesGlobalIdToCTimesGlobalIdPlusC(IRegion region, Variable v, Expr constant, string ReadOrWrite)

@@ -389,8 +389,6 @@ namespace GPUVerify
                 return;
             }
 
-            ProcessAccessInvariants();
-
             if (CommandLineOptions.ShowStages)
             {
                 emitProgram(outputFilename + "_instrumented");
@@ -533,106 +531,6 @@ namespace GPUVerify
             reducedStrengthAnalyses = Program.TopLevelDeclarations
                 .OfType<Implementation>()
                 .ToDictionary(i => i, i => ReducedStrengthAnalysis.Analyse(this, i));
-        }
-
-        private void ProcessAccessInvariants()
-        {
-            foreach (Declaration d in Program.TopLevelDeclarations)
-            {
-                if (d is Procedure)
-                {
-                    Procedure p = d as Procedure;
-                    p.Requires = ProcessAccessInvariants(p.Requires);
-                    p.Ensures = ProcessAccessInvariants(p.Ensures);
-                }
-
-                if (d is Implementation)
-                {
-                    Implementation i = d as Implementation;
-                    ProcessAccessInvariants(i.StructuredStmts);
-                }
-            }
-        }
-
-        private void ProcessAccessInvariants(StmtList stmtList)
-        {
-            
-            foreach (BigBlock bb in stmtList.BigBlocks)
-            {
-                ProcessAccessInvariants(bb);
-            }
-        }
-
-        private void ProcessAccessInvariants(BigBlock bb)
-        {
-            CmdSeq newCommands = new CmdSeq();
-
-            foreach (Cmd c in bb.simpleCmds)
-            {
-                if (c is AssertCmd)
-                {
-                    newCommands.Add(new AssertCmd(c.tok, new AccessInvariantProcessor().VisitExpr((c as AssertCmd).Expr.Clone() as Expr)));
-                }
-                else if (c is AssumeCmd)
-                {
-                    newCommands.Add(new AssumeCmd(c.tok, new AccessInvariantProcessor().VisitExpr((c as AssumeCmd).Expr.Clone() as Expr)));
-                }
-                else
-                {
-                    newCommands.Add(c);
-                }
-            }
-
-            bb.simpleCmds = newCommands;
-
-            if (bb.ec is WhileCmd)
-            {
-                WhileCmd whileCmd = bb.ec as WhileCmd;
-                whileCmd.Invariants = ProcessAccessInvariants(whileCmd.Invariants);
-                ProcessAccessInvariants(whileCmd.Body);
-            }
-            else if (bb.ec is IfCmd)
-            {
-                ProcessAccessInvariants((bb.ec as IfCmd).thn);
-                if ((bb.ec as IfCmd).elseBlock != null)
-                {
-                    ProcessAccessInvariants((bb.ec as IfCmd).elseBlock);
-                }
-            }
-        }
-
-        private List<PredicateCmd> ProcessAccessInvariants(List<PredicateCmd> invariants)
-        {
-            List<PredicateCmd> result = new List<PredicateCmd>();
-
-            foreach (PredicateCmd p in invariants)
-            {
-                PredicateCmd newP = new AssertCmd(p.tok, new AccessInvariantProcessor().VisitExpr(p.Expr.Clone() as Expr));
-                newP.Attributes = p.Attributes;
-                result.Add(newP);
-            }
-
-            return result;
-        }
-
-        private EnsuresSeq ProcessAccessInvariants(EnsuresSeq ensuresSeq)
-        {
-            EnsuresSeq result = new EnsuresSeq();
-            foreach (Ensures e in ensuresSeq)
-            {
-                result.Add(new Ensures(e.Free, new AccessInvariantProcessor().VisitExpr(e.Condition.Clone() as Expr)));
-            }
-            return result;
-        }
-
-        private RequiresSeq ProcessAccessInvariants(RequiresSeq requiresSeq)
-        {
-            RequiresSeq result = new RequiresSeq();
-            foreach (Requires r in requiresSeq)
-            {
-                result.Add(new Requires(r.Free, new AccessInvariantProcessor().VisitExpr(r.Condition.Clone() as Expr)));
-            }
-            return result;
         }
 
         private void emitProgram(string filename)
@@ -1587,16 +1485,6 @@ namespace GPUVerify
             return false;
         }
 
-        public static bool HasYDimension(Variable v)
-        {
-            return v.TypedIdent.Type is MapType && (v.TypedIdent.Type as MapType).Result is MapType;
-        }
-
-        public static bool HasXDimension(Variable v)
-        {
-            return v.TypedIdent.Type is MapType;
-        }
-
         private BigBlock HavocSharedArray(Variable v, int thread)
         {
             IdentifierExpr vForThread = new IdentifierExpr(Token.NoToken, new VariableDualiser(thread, null, null).VisitVariable(v.Clone() as Variable));
@@ -1819,46 +1707,19 @@ namespace GPUVerify
 
         }
 
-
-
-
-
-
-        internal static GlobalVariable MakeOffsetZVariable(Variable v, string ReadOrWrite)
+        internal static string MakeOffsetVariableName(string Name, string AccessType)
         {
-            return new GlobalVariable(v.tok, new TypedIdent(v.tok, "_" + ReadOrWrite + "_OFFSET_Z_" + v.Name, IndexTypeOfZDimension(v)));
+            return "_" + AccessType + "_OFFSET_" + Name;
         }
 
-        internal static GlobalVariable MakeOffsetYVariable(Variable v, string ReadOrWrite)
+        internal static GlobalVariable MakeOffsetVariable(Variable v, string ReadOrWrite)
         {
-            return new GlobalVariable(v.tok, new TypedIdent(v.tok, "_" + ReadOrWrite + "_OFFSET_Y_" + v.Name, IndexTypeOfYDimension(v)));
+            return new GlobalVariable(v.tok, new TypedIdent(v.tok, MakeOffsetVariableName(v.Name, ReadOrWrite), IndexType(v)));
         }
 
-        internal static GlobalVariable MakeOffsetXVariable(Variable v, string ReadOrWrite)
+        public static Microsoft.Boogie.Type IndexType(Variable v)
         {
-            return new GlobalVariable(v.tok, new TypedIdent(v.tok, "_" + ReadOrWrite + "_OFFSET_X_" + v.Name, IndexTypeOfXDimension(v)));
-        }
-
-        public static Microsoft.Boogie.Type IndexTypeOfZDimension(Variable v)
-        {
-            Contract.Requires(HasZDimension(v));
-            MapType mt = v.TypedIdent.Type as MapType;
-            MapType mt2 = mt.Result as MapType;
-            MapType mt3 = mt2.Result as MapType;
-            return mt3.Arguments[0];
-        }
-
-        public static Microsoft.Boogie.Type IndexTypeOfYDimension(Variable v)
-        {
-            Contract.Requires(HasYDimension(v));
-            MapType mt = v.TypedIdent.Type as MapType;
-            MapType mt2 = mt.Result as MapType;
-            return mt2.Arguments[0];
-        }
-
-        public static Microsoft.Boogie.Type IndexTypeOfXDimension(Variable v)
-        {
-            Contract.Requires(HasXDimension(v));
+            Debug.Assert(v.TypedIdent.Type is MapType);
             MapType mt = v.TypedIdent.Type as MapType;
             return mt.Arguments[0];
         }
@@ -1876,6 +1737,25 @@ namespace GPUVerify
 
             GlobalVariable result = new VariableDualiser(1, null, null).VisitVariable(
                 MakeAccessHasOccurredVariable(varName, accessType)) as GlobalVariable;
+
+            Program.TopLevelDeclarations.Add(result);
+            return result;
+
+        }
+
+        internal GlobalVariable FindOrCreateOffsetVariable(Variable v, string accessType)
+        {
+            string name = MakeOffsetVariableName(v.Name, accessType) + "$1";
+            foreach (Declaration D in Program.TopLevelDeclarations)
+            {
+                if (D is GlobalVariable && ((GlobalVariable)D).Name.Equals(name))
+                {
+                    return D as GlobalVariable;
+                }
+            }
+
+            GlobalVariable result = new VariableDualiser(1, null, null).VisitVariable(
+                MakeOffsetVariable(v, accessType)) as GlobalVariable;
 
             Program.TopLevelDeclarations.Add(result);
             return result;
