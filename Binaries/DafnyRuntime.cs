@@ -509,6 +509,12 @@ namespace Dafny
       }
       return frall;
     }
+    public static bool QuantDatatype<U>(IEnumerable<U> set, bool frall, System.Predicate<U> pred) {
+      foreach (var u in set) {
+        if (pred(u) != frall) { return !frall; }
+      }
+      return frall;
+    }
     // Enumerating other collections
     public delegate Dafny.Set<T> ComprehensionDelegate<T>();
     public delegate Dafny.Map<U, V> MapComprehensionDelegate<U, V>();
