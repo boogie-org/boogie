@@ -40,9 +40,7 @@ namespace GPUVerify
 
         public static bool Unstructured = false;
 
-        public static bool InterGroupRaceChecking = false;
-
-        public static bool BarrierParameters = false;
+        public static bool OnlyIntraGroupRaceChecking = false;
 
         public static int Parse(string[] args)
         {
@@ -176,14 +174,9 @@ namespace GPUVerify
                     Unstructured = true;
                     break;
 
-                    case "-interGroupRaceChecking":
-                    case "/interGroupRaceChecking":
-                    InterGroupRaceChecking = true;
-                    break;
-
-                    case "-barrierParameters":
-                    case "/barrierParameters":
-                    BarrierParameters = true;
+                    case "-onlyIntraGroupRaceChecking":
+                    case "/onlyIntraGroupRaceChecking":
+                    OnlyIntraGroupRaceChecking = true;
                     break;
 
                     default:

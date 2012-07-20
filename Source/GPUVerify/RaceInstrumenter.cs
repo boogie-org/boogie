@@ -13,7 +13,7 @@ namespace GPUVerify
     {
         protected GPUVerifier verifier;
 
-        public INonLocalState NonLocalStateToCheck;
+        public IKernelArrayInfo NonLocalStateToCheck;
 
         public int onlyLog1;
         public int onlyLog2;
@@ -35,14 +35,14 @@ namespace GPUVerify
         public void setVerifier(GPUVerifier verifier)
         {
             this.verifier = verifier;
-            NonLocalStateToCheck = new NonLocalStateLists();
-            foreach(Variable v in verifier.NonLocalState.getGlobalVariables())
+            NonLocalStateToCheck = new KernelArrayInfoLists();
+            foreach(Variable v in verifier.KernelArrayInfo.getGlobalArrays())
             {
-                NonLocalStateToCheck.getGlobalVariables().Add(v);
+                NonLocalStateToCheck.getGlobalArrays().Add(v);
             }
-            foreach(Variable v in verifier.NonLocalState.getGroupSharedVariables())
+            foreach(Variable v in verifier.KernelArrayInfo.getGroupSharedArrays())
             {
-                NonLocalStateToCheck.getGroupSharedVariables().Add(v);
+                NonLocalStateToCheck.getGroupSharedArrays().Add(v);
             }
         }
 
@@ -97,7 +97,7 @@ namespace GPUVerify
 
         public void AddRaceCheckingCandidateInvariants(Implementation impl, IRegion region)
         {
-            foreach (Variable v in NonLocalStateToCheck.getAllNonLocalVariables())
+            foreach (Variable v in NonLocalStateToCheck.getAllNonLocalArrays())
             {
                 AddNoReadOrWriteCandidateInvariants(region, v);
                 AddReadOrWrittenOffsetIsThreadIdCandidateInvariants(impl, region, v, "READ");
@@ -340,7 +340,7 @@ namespace GPUVerify
 
         public void AddKernelPrecondition()
         {
-            foreach (Variable v in NonLocalStateToCheck.getAllNonLocalVariables())
+            foreach (Variable v in NonLocalStateToCheck.getAllNonLocalArrays())
             {
                 AddRequiresNoPendingAccess(v);
 
@@ -585,7 +585,7 @@ namespace GPUVerify
             Expr ResetWriteAssumeGuard = Expr.Not(new IdentifierExpr(Token.NoToken,
                 new VariableDualiser(1, null, null).VisitVariable(GPUVerifier.MakeAccessHasOccurredVariable(v.Name, "WRITE"))));
 
-            if (CommandLineOptions.InterGroupRaceChecking && verifier.NonLocalState.getGlobalVariables().Contains(v))
+            if (verifier.KernelArrayInfo.getGlobalArrays().Contains(v))
             {
                 ResetReadAssumeGuard = Expr.Imp(verifier.ThreadsInSameGroup(), ResetReadAssumeGuard);
                 ResetWriteAssumeGuard = Expr.Imp(verifier.ThreadsInSameGroup(), ResetWriteAssumeGuard);
@@ -627,16 +627,88 @@ namespace GPUVerify
 
         public void AddRaceCheckingCandidateRequires(Procedure Proc)
         {
-            foreach (Variable v in NonLocalStateToCheck.getAllNonLocalVariables())
+            foreach (Variable v in NonLocalStateToCheck.getAllNonLocalArrays())
             {
                 AddNoReadOrWriteCandidateRequires(Proc, v);
                 AddReadOrWrittenOffsetIsThreadIdCandidateRequires(Proc, v);
             }
+
+            DoHoudiniPointerAnalysis(Proc);
+
+        }
+
+        private void DoHoudiniPointerAnalysis(Procedure Proc)
+        {
+            HashSet<string> alreadyConsidered = new HashSet<string>();
+
+            foreach (Variable v in Proc.InParams)
+            {
+                string strippedVarName = GPUVerifier.StripThreadIdentifier(v.Name);
+                if (alreadyConsidered.Contains(strippedVarName))
+                {
+                    continue;
+                }
+                alreadyConsidered.Add(strippedVarName);
+                if (v.TypedIdent.Type is CtorType)
+                {
+                    CtorType ct = v.TypedIdent.Type as CtorType;
+                    if (ct.Decl.Name.Equals("ptr"))
+                    {
+                        foreach (var arrayCollection in new ICollection<Variable>[] { 
+                            verifier.KernelArrayInfo.getGlobalArrays(), verifier.KernelArrayInfo.getGroupSharedArrays(),
+                            verifier.KernelArrayInfo.getPrivateArrays() })
+                        {
+                            if (arrayCollection.Count == 0)
+                            {
+                                continue;
+                            }
+
+                            // This will need to be adapted to work with uniformity analysis
+                            foreach (string thread in new string[] { "1", "2" })
+                            {
+                                Expr DisjunctionOverPointerSet = null;
+                                foreach (var array in arrayCollection)
+                                {
+                                    Expr PointerSetDisjunct = Expr.Eq(MakePtrBaseExpr(v, strippedVarName, thread), MakeArrayIdExpr(array));
+                                    DisjunctionOverPointerSet = (DisjunctionOverPointerSet == null ? PointerSetDisjunct : Expr.Or(DisjunctionOverPointerSet, PointerSetDisjunct));
+                                    verifier.AddCandidateRequires(Proc,
+                                        Expr.Imp(new IdentifierExpr(Token.NoToken, "_P$" + thread, Microsoft.Boogie.Type.Bool),
+                                            Expr.Neq(MakePtrBaseExpr(v, strippedVarName, thread), MakeArrayIdExpr(array))));
+                                }
+                                Debug.Assert(DisjunctionOverPointerSet != null);
+                                verifier.AddCandidateRequires(Proc,
+                                    Expr.Imp(new IdentifierExpr(Token.NoToken, "_P$" + thread, Microsoft.Boogie.Type.Bool),
+                                             DisjunctionOverPointerSet));
+                                verifier.AddCandidateRequires(Proc,
+                                    Expr.Imp(new IdentifierExpr(Token.NoToken, "_P$" + thread, Microsoft.Boogie.Type.Bool),
+                                            Expr.Eq(MakePtrOffsetExpr(v, strippedVarName, thread), GPUVerifier.ZeroBV())));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        private static IdentifierExpr MakeArrayIdExpr(Variable array)
+        {
+            return new IdentifierExpr(Token.NoToken, "$arrayId" + array.Name, null);
+        }
+
+        private static NAryExpr MakePtrBaseExpr(Variable v, string strippedVarName, string thread)
+        {
+            return new NAryExpr(Token.NoToken, new FunctionCall(new IdentifierExpr(Token.NoToken, "base#MKPTR", v.TypedIdent.Type)),
+                                                        new ExprSeq(new Expr[] { new IdentifierExpr(Token.NoToken, strippedVarName + "$" + thread, v.TypedIdent.Type) }));
+        }
+
+        private static NAryExpr MakePtrOffsetExpr(Variable v, string strippedVarName, string thread)
+        {
+            return new NAryExpr(Token.NoToken, new FunctionCall(new IdentifierExpr(Token.NoToken, "offset#MKPTR", v.TypedIdent.Type)),
+                                                        new ExprSeq(new Expr[] { new IdentifierExpr(Token.NoToken, strippedVarName + "$" + thread, v.TypedIdent.Type) }));
         }
 
         public void AddRaceCheckingCandidateEnsures(Procedure Proc)
         {
-            foreach (Variable v in NonLocalStateToCheck.getAllNonLocalVariables())
+            foreach (Variable v in NonLocalStateToCheck.getAllNonLocalArrays())
             {
                 AddNoReadOrWriteCandidateEnsures(Proc, v);
                 AddReadOrWrittenOffsetIsThreadIdCandidateEnsures(Proc, v);
@@ -693,7 +765,7 @@ namespace GPUVerify
 
         public void AddRaceCheckingDeclarations()
         {
-            foreach (Variable v in NonLocalStateToCheck.getAllNonLocalVariables())
+            foreach (Variable v in NonLocalStateToCheck.getAllNonLocalArrays())
             {
                 AddRaceCheckingDecsAndProcsForVar(v);
             }
@@ -747,7 +819,7 @@ namespace GPUVerify
                         ));
                 }
 
-                if (verifier.NonLocalState.getGroupSharedVariables().Contains(v) && CommandLineOptions.InterGroupRaceChecking)
+                if (verifier.KernelArrayInfo.getGroupSharedArrays().Contains(v))
                 {
                     WriteReadGuard = Expr.And(WriteReadGuard, verifier.ThreadsInSameGroup());
                 }
@@ -775,7 +847,7 @@ namespace GPUVerify
                         ));
                 }
 
-                if (verifier.NonLocalState.getGroupSharedVariables().Contains(v) && CommandLineOptions.InterGroupRaceChecking)
+                if (verifier.KernelArrayInfo.getGroupSharedArrays().Contains(v))
                 {
                     WriteWriteGuard = Expr.And(WriteWriteGuard, verifier.ThreadsInSameGroup());
                 }
@@ -799,7 +871,7 @@ namespace GPUVerify
                         ));
                 }
 
-                if (verifier.NonLocalState.getGroupSharedVariables().Contains(v) && CommandLineOptions.InterGroupRaceChecking)
+                if (verifier.KernelArrayInfo.getGroupSharedArrays().Contains(v))
                 {
                     ReadWriteGuard = Expr.And(ReadWriteGuard, verifier.ThreadsInSameGroup());
                 }

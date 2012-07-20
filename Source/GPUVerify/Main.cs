@@ -97,23 +97,23 @@ namespace GPUVerify
             ri.setVerifier(newGp);
 
             
-            Variable newG = findClonedVar(v, newGp.NonLocalState.getGlobalVariables());
-            Variable newT = findClonedVar(v, newGp.NonLocalState.getGroupSharedVariables());
+            Variable newG = findClonedVar(v, newGp.KernelArrayInfo.getGlobalArrays());
+            Variable newT = findClonedVar(v, newGp.KernelArrayInfo.getGroupSharedArrays());
             Contract.Assert(newG == null || newT == null);
 
-            ri.NonLocalStateToCheck.getGlobalVariables().Clear();
-            ri.NonLocalStateToCheck.getGroupSharedVariables().Clear();
+            ri.NonLocalStateToCheck.getGlobalArrays().Clear();
+            ri.NonLocalStateToCheck.getGroupSharedArrays().Clear();
             ri.onlyLog1 = a1;
             ri.onlyLog2 = a2;
 
             if (newG != null)
             {
-                ri.NonLocalStateToCheck.getGlobalVariables().Add(newG);
+                ri.NonLocalStateToCheck.getGlobalArrays().Add(newG);
             }
 
             if (newT != null)
             {
-                ri.NonLocalStateToCheck.getGroupSharedVariables().Add(newT);
+                ri.NonLocalStateToCheck.getGroupSharedArrays().Add(newT);
             }
             
             newGp.doit();
@@ -144,7 +144,7 @@ namespace GPUVerify
             {
                 bool FoundArray = CommandLineOptions.ArrayToCheck == null;
 
-                foreach (Variable v in g.NonLocalState.getAllNonLocalVariables())
+                foreach (Variable v in g.KernelArrayInfo.getAllNonLocalArrays())
                 {
                     if (CommandLineOptions.DividedAccesses)
                     {

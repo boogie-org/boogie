@@ -12,14 +12,14 @@ namespace GPUVerify
     {
         public HashSet<Expr> Accesses = new HashSet<Expr>();
 
-        private INonLocalState NonLocalState;
+        private IKernelArrayInfo NonLocalState;
 
-        public NonLocalAccessCollector(INonLocalState NonLocalState)
+        public NonLocalAccessCollector(IKernelArrayInfo NonLocalState)
         {
             this.NonLocalState = NonLocalState;
         }
 
-        public static bool IsNonLocalAccess(Expr n, INonLocalState NonLocalState)
+        public static bool IsNonLocalAccess(Expr n, IKernelArrayInfo NonLocalState)
         {
             if (n is NAryExpr)
             {
@@ -48,7 +48,7 @@ namespace GPUVerify
             return false;
         }
 
-        public static bool ContainsNonLocalAccess(AssignLhs lhs, INonLocalState NonLocalState)
+        public static bool ContainsNonLocalAccess(AssignLhs lhs, IKernelArrayInfo NonLocalState)
         {
             NonLocalAccessCollector collector = new NonLocalAccessCollector(NonLocalState);
             if (lhs is SimpleAssignLhs)
@@ -63,7 +63,7 @@ namespace GPUVerify
             return collector.Accesses.Count > 0;
         }
 
-        public static bool ContainsNonLocalAccess(Expr rhs, INonLocalState NonLocalState)
+        public static bool ContainsNonLocalAccess(Expr rhs, IKernelArrayInfo NonLocalState)
         {
             NonLocalAccessCollector collector = new NonLocalAccessCollector(NonLocalState);
             collector.VisitExpr(rhs);

@@ -13,7 +13,7 @@ namespace GPUVerify
 
         private AccessRecord access = null;
 
-        public WriteCollector(INonLocalState NonLocalState)
+        public WriteCollector(IKernelArrayInfo NonLocalState)
             : base(NonLocalState)
         {
         }

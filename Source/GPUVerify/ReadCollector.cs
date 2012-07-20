@@ -17,7 +17,7 @@ namespace GPUVerify
 
         public List<AccessRecord> accesses = new List<AccessRecord>();
 
-        public ReadCollector(INonLocalState NonLocalState)
+        public ReadCollector(IKernelArrayInfo NonLocalState)
             : base(NonLocalState)
         {
         }

@@ -166,7 +166,7 @@ namespace GPUVerify
 
                 if (CommandLineOptions.ArrayEqualities)
                 {
-                    foreach (Variable v in verifier.NonLocalState.getAllNonLocalVariables())
+                    foreach (Variable v in verifier.KernelArrayInfo.getAllNonLocalArrays())
                     {
                         if (!verifier.ArrayModelledAdversarially(v))
                         {

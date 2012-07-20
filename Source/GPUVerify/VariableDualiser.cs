@@ -36,7 +36,7 @@ namespace GPUVerify
                 return new IdentifierExpr(node.tok, new Constant(node.tok, DualiseTypedIdent(node.Decl)));
             }
 
-            if (CommandLineOptions.InterGroupRaceChecking && GPUVerifier.IsGroupIdConstant(node.Decl))
+            if (GPUVerifier.IsGroupIdConstant(node.Decl))
             {
                 return new IdentifierExpr(node.tok, new Constant(node.tok, DualiseTypedIdent(node.Decl)));
             }
@@ -58,7 +58,7 @@ namespace GPUVerify
         public override Variable VisitVariable(Variable node)
         {
             if (!(node is Constant) || GPUVerifier.IsThreadLocalIdConstant(node) ||
-                (CommandLineOptions.InterGroupRaceChecking && GPUVerifier.IsGroupIdConstant(node)))
+                GPUVerifier.IsGroupIdConstant(node))
             {
                 node.TypedIdent = DualiseTypedIdent(node);
                 node.Name = node.Name + "$" + id;

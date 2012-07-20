@@ -8,9 +8,9 @@ namespace GPUVerify
 {
     abstract class AccessCollector : StandardVisitor
     {
-        protected INonLocalState NonLocalState;
+        protected IKernelArrayInfo NonLocalState;
 
-        public AccessCollector(INonLocalState NonLocalState)
+        public AccessCollector(IKernelArrayInfo NonLocalState)
         {
             this.NonLocalState = NonLocalState;
         }

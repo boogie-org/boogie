@@ -123,13 +123,13 @@
     <Compile Include="EnabledToPredicateVisitor.cs" />
     <Compile Include="CommandLineOptions.cs" />
     <Compile Include="GPUVerifier.cs" />
-    <Compile Include="INonLocalState.cs" />
+    <Compile Include="IKernelArrayInfo.cs" />
     <Compile Include="IRaceInstrumenter.cs" />
     <Compile Include="Main.cs" />
     <Compile Include="NoConflictingAccessOptimiser.cs" />
     <Compile Include="NonLocalAccessCollector.cs" />
     <Compile Include="NonLocalAccessExtractor.cs" />
-    <Compile Include="NonLocalStateLists.cs" />
+    <Compile Include="KernelArrayInfoLists.cs" />
     <Compile Include="NullRaceInstrumenter.cs" />
     <Compile Include="Predicator.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

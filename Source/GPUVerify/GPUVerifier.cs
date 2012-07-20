@@ -20,7 +20,7 @@ namespace GPUVerify
         public Implementation KernelImplementation;
         public Procedure BarrierProcedure;
 
-        public INonLocalState NonLocalState = new NonLocalStateLists();
+        public IKernelArrayInfo KernelArrayInfo = new KernelArrayInfoLists();
 
         private HashSet<string> ReservedNames = new HashSet<string>();
 
@@ -117,8 +117,7 @@ namespace GPUVerify
             if (p == null)
             {
                 p = new Procedure(Token.NoToken, "barrier", new TypeVariableSeq(),
-                                  new VariableSeq(CommandLineOptions.BarrierParameters ? 
-                                      new Variable[] { new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "__flags", new BvType(32)), true) } : new Variable[] { }),
+                                  new VariableSeq(new Variable[] { new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "__flags", new BvType(32)), true) }),
                                   new VariableSeq(),
                                   new RequiresSeq(), new IdentifierExprSeq(),
                                   new EnsuresSeq(),
@@ -218,18 +217,22 @@ namespace GPUVerify
             bool success = true;
             foreach (Declaration D in Program.TopLevelDeclarations)
             {
-                if (D is Variable && (D as Variable).IsMutable)
+                if (D is Variable && 
+                    (D as Variable).IsMutable && 
+                    (D as Variable).TypedIdent.Type is MapType &&
+                    !ReservedNames.Contains((D as Variable).Name))
                 {
-                    if (!ReservedNames.Contains((D as Variable).Name))
+                    if (QKeyValue.FindBoolAttribute(D.Attributes, "group_shared"))
                     {
-                        if (QKeyValue.FindBoolAttribute(D.Attributes, "group_shared"))
-                        {
-                            NonLocalState.getGroupSharedVariables().Add(D as Variable);
-                        }
-                        else if(QKeyValue.FindBoolAttribute(D.Attributes, "global"))
-                        {
-                            NonLocalState.getGlobalVariables().Add(D as Variable);
-                        }
+                        KernelArrayInfo.getGroupSharedArrays().Add(D as Variable);
+                    }
+                    else if (QKeyValue.FindBoolAttribute(D.Attributes, "global"))
+                    {
+                        KernelArrayInfo.getGlobalArrays().Add(D as Variable);
+                    }
+                    else
+                    {
+                        KernelArrayInfo.getPrivateArrays().Add(D as Variable);
                     }
                 }
                 else if (D is Constant)
@@ -991,14 +994,11 @@ namespace GPUVerify
                         )
                     );
 
-                if (CommandLineOptions.InterGroupRaceChecking)
-                {
-                    Proc.Requires.Add(new Requires(false, Expr.Imp(ThreadsInSameGroup(), DistinctLocalIds)));
+                Proc.Requires.Add(new Requires(false, Expr.Imp(ThreadsInSameGroup(), DistinctLocalIds)));
 
-                }
-                else
+                if (CommandLineOptions.OnlyIntraGroupRaceChecking)
                 {
-                    Proc.Requires.Add(new Requires(false, DistinctLocalIds));
+                    Proc.Requires.Add(new Requires(false, ThreadsInSameGroup()));
                 }
 
                 if (Proc == KernelProcedure)
@@ -1117,39 +1117,31 @@ namespace GPUVerify
 
                 if (GetTypeOfId(dimension).Equals(Microsoft.Boogie.Type.GetBvType(32)))
                 {
-                    GroupSizePositive = MakeBVSgt(new IdentifierExpr(tok, GetGroupSize(dimension)), ZeroBV(tok));
-                    NumGroupsPositive = MakeBVSgt(new IdentifierExpr(tok, GetNumGroups(dimension)), ZeroBV(tok));
-                    GroupIdNonNegative = MakeBVSge(new IdentifierExpr(tok, GetGroupId(dimension)), ZeroBV(tok));
+                    GroupSizePositive = MakeBVSgt(new IdentifierExpr(tok, GetGroupSize(dimension)), ZeroBV());
+                    NumGroupsPositive = MakeBVSgt(new IdentifierExpr(tok, GetNumGroups(dimension)), ZeroBV());
+                    GroupIdNonNegative = MakeBVSge(new IdentifierExpr(tok, GetGroupId(dimension)), ZeroBV());
                     GroupIdLessThanNumGroups = MakeBVSlt(new IdentifierExpr(tok, GetGroupId(dimension)), new IdentifierExpr(tok, GetNumGroups(dimension)));
                 }
                 else
                 {
-                    GroupSizePositive = Expr.Gt(new IdentifierExpr(tok, GetGroupSize(dimension)), Zero(tok));
-                    NumGroupsPositive = Expr.Gt(new IdentifierExpr(tok, GetNumGroups(dimension)), Zero(tok));
-                    GroupIdNonNegative = Expr.Ge(new IdentifierExpr(tok, GetGroupId(dimension)), Zero(tok));
+                    GroupSizePositive = Expr.Gt(new IdentifierExpr(tok, GetGroupSize(dimension)), Zero());
+                    NumGroupsPositive = Expr.Gt(new IdentifierExpr(tok, GetNumGroups(dimension)), Zero());
+                    GroupIdNonNegative = Expr.Ge(new IdentifierExpr(tok, GetGroupId(dimension)), Zero());
                     GroupIdLessThanNumGroups = Expr.Lt(new IdentifierExpr(tok, GetGroupId(dimension)), new IdentifierExpr(tok, GetNumGroups(dimension)));
                 }
 
                 Proc.Requires.Add(new Requires(false, GroupSizePositive));
                 Proc.Requires.Add(new Requires(false, NumGroupsPositive));
-                if (CommandLineOptions.InterGroupRaceChecking)
-                {
-                    Proc.Requires.Add(new Requires(false, new VariableDualiser(1, null, null).VisitExpr(GroupIdNonNegative)));
-                    Proc.Requires.Add(new Requires(false, new VariableDualiser(2, null, null).VisitExpr(GroupIdNonNegative)));
-                    Proc.Requires.Add(new Requires(false, new VariableDualiser(1, null, null).VisitExpr(GroupIdLessThanNumGroups)));
-                    Proc.Requires.Add(new Requires(false, new VariableDualiser(2, null, null).VisitExpr(GroupIdLessThanNumGroups)));
-                }
-                else
-                {
-                    Proc.Requires.Add(new Requires(false, GroupIdNonNegative));
-                    Proc.Requires.Add(new Requires(false, GroupIdLessThanNumGroups));
-                }
+                Proc.Requires.Add(new Requires(false, new VariableDualiser(1, null, null).VisitExpr(GroupIdNonNegative)));
+                Proc.Requires.Add(new Requires(false, new VariableDualiser(2, null, null).VisitExpr(GroupIdNonNegative)));
+                Proc.Requires.Add(new Requires(false, new VariableDualiser(1, null, null).VisitExpr(GroupIdLessThanNumGroups)));
+                Proc.Requires.Add(new Requires(false, new VariableDualiser(2, null, null).VisitExpr(GroupIdLessThanNumGroups)));
 
                 Expr ThreadIdNonNegative =
                     GetTypeOfId(dimension).Equals(Microsoft.Boogie.Type.GetBvType(32)) ?
-                            MakeBVSge(new IdentifierExpr(tok, MakeThreadId(tok, dimension)), ZeroBV(tok))
+                            MakeBVSge(new IdentifierExpr(tok, MakeThreadId(tok, dimension)), ZeroBV())
                     :
-                            Expr.Ge(new IdentifierExpr(tok, MakeThreadId(tok, dimension)), Zero(tok));
+                            Expr.Ge(new IdentifierExpr(tok, MakeThreadId(tok, dimension)), Zero());
                 Expr ThreadIdLessThanGroupSize =
                     GetTypeOfId(dimension).Equals(Microsoft.Boogie.Type.GetBvType(32)) ?
                             MakeBVSlt(new IdentifierExpr(tok, MakeThreadId(tok, dimension)), new IdentifierExpr(tok, GetGroupSize(dimension)))
@@ -1313,14 +1305,14 @@ namespace GPUVerify
             return new Constant(Token.NoToken, new TypedIdent(Token.NoToken, resultWithoutThreadId.Name + "$" + number, GetTypeOfId(dimension)));
         }
 
-        private static LiteralExpr Zero(IToken tok)
+        private static LiteralExpr Zero()
         {
-            return new LiteralExpr(tok, BigNum.FromInt(0));
+            return new LiteralExpr(Token.NoToken, BigNum.FromInt(0));
         }
 
-        private static LiteralExpr ZeroBV(IToken tok)
+        internal static LiteralExpr ZeroBV()
         {
-            return new LiteralExpr(tok, BigNum.FromInt(0), 32);
+            return new LiteralExpr(Token.NoToken, BigNum.FromInt(0), 32);
         }
 
         
@@ -1338,14 +1330,10 @@ namespace GPUVerify
             IdentifierExpr P1 = new IdentifierExpr(tok, new LocalVariable(tok, BarrierProcedure.InParams[0].TypedIdent));
             IdentifierExpr P2 = new IdentifierExpr(tok, new LocalVariable(tok, BarrierProcedure.InParams[paramsPerThread].TypedIdent));
 
-            IdentifierExpr Flags1 = CommandLineOptions.BarrierParameters ? new IdentifierExpr(tok, new LocalVariable(tok, BarrierProcedure.InParams[1].TypedIdent)) : null;
-            IdentifierExpr Flags2 = CommandLineOptions.BarrierParameters ? new IdentifierExpr(tok, new LocalVariable(tok, BarrierProcedure.InParams[paramsPerThread + 1].TypedIdent)) : null;
+            IdentifierExpr Flags1 = new IdentifierExpr(tok, new LocalVariable(tok, BarrierProcedure.InParams[1].TypedIdent));
+            IdentifierExpr Flags2 = new IdentifierExpr(tok, new LocalVariable(tok, BarrierProcedure.InParams[paramsPerThread + 1].TypedIdent));
 
-            Expr DivergenceCondition = Expr.Eq(P1, P2);
-            if (CommandLineOptions.InterGroupRaceChecking)
-            {
-                DivergenceCondition = Expr.Imp(ThreadsInSameGroup(), DivergenceCondition);
-            }
+            Expr DivergenceCondition = Expr.Imp(ThreadsInSameGroup(), Expr.Eq(P1, P2));
 
             checkNonDivergence.simpleCmds.Add(new AssertCmd(tok, DivergenceCondition));
 
@@ -1355,60 +1343,37 @@ namespace GPUVerify
                 returnbigblocks.Add(new BigBlock(tok, "__Disabled", new CmdSeq(), null, new ReturnCmd(tok)));
                 StmtList returnstatement = new StmtList(returnbigblocks, BarrierProcedure.tok);
 
-                Expr IfGuard;
-
-                if (CommandLineOptions.InterGroupRaceChecking)
-                {
-                    IfGuard = Expr.Or(Expr.And(Expr.Not(P1), Expr.Not(P2)), Expr.And(ThreadsInSameGroup(), Expr.Or(Expr.Not(P1), Expr.Not(P2))));
-                }
-                else
-                {
-                // We make this an "Or", not an "And", because "And" is implied by the assertion that the variables
-                // are equal, together with the "Or".  The weaker "Or" ensures that many auxiliary assertions will not
-                // fail if divergence has not been proved.
-                    IfGuard = Expr.Or(Expr.Not(P1), Expr.Not(P2));
-            }
+                Expr IfGuard = Expr.Or(Expr.And(Expr.Not(P1), Expr.Not(P2)), Expr.And(ThreadsInSameGroup(), Expr.Or(Expr.Not(P1), Expr.Not(P2))));
                 checkNonDivergence.ec = new IfCmd(tok, IfGuard, returnstatement, null, null);
             }
 
-            if(NonLocalState.getGroupSharedVariables().Count > 0) {
-                Expr IfGuard1 = CommandLineOptions.InterGroupRaceChecking ? (Expr)P1 : (Expr)Expr.True;
-                Expr IfGuard2 = CommandLineOptions.InterGroupRaceChecking ? (Expr)P2 : (Expr)Expr.True;
+            if(KernelArrayInfo.getGroupSharedArrays().Count > 0) {
 
-                if (CommandLineOptions.BarrierParameters)
-            {
-                    IfGuard1 = Expr.And(IfGuard1, CLK_LOCAL_MEM_FENCE_isSet(Flags1));
-                    IfGuard2 = Expr.And(IfGuard2, CLK_LOCAL_MEM_FENCE_isSet(Flags2));
-                }
+                Expr IfGuard1 = Expr.And(P1, CLK_LOCAL_MEM_FENCE_isSet(Flags1));
+                Expr IfGuard2 = Expr.And(P2, CLK_LOCAL_MEM_FENCE_isSet(Flags2));
 
                 bigblocks.Add(new BigBlock(Token.NoToken, null, new CmdSeq(),
-                    new IfCmd(Token.NoToken, IfGuard1, new StmtList(MakeResetAndHavocBlocks(1, NonLocalState.getGroupSharedVariables()), Token.NoToken), null, null),
+                    new IfCmd(Token.NoToken, IfGuard1, new StmtList(MakeResetAndHavocBlocks(1, KernelArrayInfo.getGroupSharedArrays()), Token.NoToken), null, null),
                     null));
                 bigblocks.Add(new BigBlock(Token.NoToken, null, new CmdSeq(),
-                    new IfCmd(Token.NoToken, IfGuard2, new StmtList(MakeResetAndHavocBlocks(2, NonLocalState.getGroupSharedVariables()), Token.NoToken), null, null),
+                    new IfCmd(Token.NoToken, IfGuard2, new StmtList(MakeResetAndHavocBlocks(2, KernelArrayInfo.getGroupSharedArrays()), Token.NoToken), null, null),
                     null));
             }
 
-            if (NonLocalState.getGlobalVariables().Count > 0)
+            if (KernelArrayInfo.getGlobalArrays().Count > 0)
             {
-                Expr IfGuard1 = CommandLineOptions.InterGroupRaceChecking ? (Expr)P1 : (Expr)Expr.True;
-                Expr IfGuard2 = CommandLineOptions.InterGroupRaceChecking ? (Expr)P2 : (Expr)Expr.True;
-
-                if (CommandLineOptions.BarrierParameters)
-                {
-                    IfGuard1 = Expr.And(IfGuard1, CLK_GLOBAL_MEM_FENCE_isSet(Flags1));
-                    IfGuard2 = Expr.And(IfGuard2, CLK_GLOBAL_MEM_FENCE_isSet(Flags2));
-                }
+                Expr IfGuard1 = Expr.And(P1, CLK_GLOBAL_MEM_FENCE_isSet(Flags1));
+                Expr IfGuard2 = Expr.And(P2, CLK_GLOBAL_MEM_FENCE_isSet(Flags2));
 
                 bigblocks.Add(new BigBlock(Token.NoToken, null, new CmdSeq(),
-                    new IfCmd(Token.NoToken, IfGuard1, new StmtList(MakeResetAndHavocBlocks(1, NonLocalState.getGlobalVariables()), Token.NoToken), null, null),
+                    new IfCmd(Token.NoToken, IfGuard1, new StmtList(MakeResetAndHavocBlocks(1, KernelArrayInfo.getGlobalArrays()), Token.NoToken), null, null),
                     null));
                 bigblocks.Add(new BigBlock(Token.NoToken, null, new CmdSeq(),
-                    new IfCmd(Token.NoToken, IfGuard2, new StmtList(MakeResetAndHavocBlocks(2, NonLocalState.getGlobalVariables()), Token.NoToken), null, null),
+                    new IfCmd(Token.NoToken, IfGuard2, new StmtList(MakeResetAndHavocBlocks(2, KernelArrayInfo.getGlobalArrays()), Token.NoToken), null, null),
                     null));
             }
 
-            foreach (Variable v in NonLocalState.getAllNonLocalVariables())
+            foreach (Variable v in KernelArrayInfo.getAllNonLocalArrays())
             {
                 if (!ArrayModelledAdversarially(v))
                 {
@@ -1498,25 +1463,17 @@ namespace GPUVerify
 
             Expr AssumeGuard = Expr.Eq(v1, v2);
 
-            Expr EqualityCondition = Expr.True;
+            Expr EqualityCondition = ThreadsInSameGroup();
 
-            if (CommandLineOptions.InterGroupRaceChecking)
+            if (KernelArrayInfo.getGroupSharedArrays().Contains(v))
             {
-                EqualityCondition = ThreadsInSameGroup();
+                EqualityCondition = Expr.And(EqualityCondition,
+                    Expr.And(CLK_LOCAL_MEM_FENCE_isSet(Flags1), CLK_LOCAL_MEM_FENCE_isSet(Flags2)));
             }
-
-            if (CommandLineOptions.BarrierParameters)
+            else if (KernelArrayInfo.getGlobalArrays().Contains(v))
             {
-                if (NonLocalState.getGroupSharedVariables().Contains(v))
-                {
-                    EqualityCondition = Expr.And(EqualityCondition,
-                        Expr.And(CLK_LOCAL_MEM_FENCE_isSet(Flags1), CLK_LOCAL_MEM_FENCE_isSet(Flags2)));
-                }
-                else if (NonLocalState.getGlobalVariables().Contains(v))
-                {
-                    EqualityCondition = Expr.And(EqualityCondition,
-                        Expr.And(CLK_GLOBAL_MEM_FENCE_isSet(Flags1), CLK_GLOBAL_MEM_FENCE_isSet(Flags2)));
-                }
+                EqualityCondition = Expr.And(EqualityCondition,
+                    Expr.And(CLK_GLOBAL_MEM_FENCE_isSet(Flags1), CLK_GLOBAL_MEM_FENCE_isSet(Flags2)));
             }
 
             AssumeGuard = Expr.Imp(EqualityCondition, AssumeGuard);
@@ -1543,7 +1500,7 @@ namespace GPUVerify
 
             foreach (Declaration d in Program.TopLevelDeclarations)
             {
-                if (d is Variable && NonLocalState.Contains(d as Variable) && ArrayModelledAdversarially(d as Variable))
+                if (d is Variable && KernelArrayInfo.Contains(d as Variable) && ArrayModelledAdversarially(d as Variable))
                 {
                     continue;
                 }
@@ -1572,7 +1529,7 @@ namespace GPUVerify
 
             foreach (IdentifierExpr e in proc.Modifies)
             {
-                if (!NonLocalState.Contains(e.Decl) || !ArrayModelledAdversarially(e.Decl))
+                if (!KernelArrayInfo.Contains(e.Decl) || !ArrayModelledAdversarially(e.Decl))
                 {
                     NewModifies.Add(e);
                 }
@@ -1588,7 +1545,7 @@ namespace GPUVerify
 
             foreach (Variable v in impl.LocVars)
             {
-                Debug.Assert(!NonLocalState.getGroupSharedVariables().Contains(v));
+                Debug.Assert(!KernelArrayInfo.getGroupSharedArrays().Contains(v));
                 NewLocVars.Add(v);
             }
 
@@ -1631,7 +1588,7 @@ namespace GPUVerify
                     {
                         AssignLhs lhs = assign.Lhss[i];
                         Expr rhs = assign.Rhss[i];
-                        ReadCollector rc = new ReadCollector(NonLocalState);
+                        ReadCollector rc = new ReadCollector(KernelArrayInfo);
                         rc.Visit(rhs);
 
                         bool foundAdversarial = false;
@@ -1651,7 +1608,7 @@ namespace GPUVerify
                             continue;
                         }
 
-                        WriteCollector wc = new WriteCollector(NonLocalState);
+                        WriteCollector wc = new WriteCollector(KernelArrayInfo);
                         wc.Visit(lhs);
                         if (wc.GetAccess() != null && ArrayModelledAdversarially(wc.GetAccess().v))
                         {
@@ -1905,7 +1862,7 @@ namespace GPUVerify
                     {
                         Expr e = call.Ins[i];
 
-                        while (NonLocalAccessCollector.ContainsNonLocalAccess(e, NonLocalState))
+                        while (NonLocalAccessCollector.ContainsNonLocalAccess(e, KernelArrayInfo))
                         {
                             AssignCmd assignToTemp;
                             LocalVariable tempDecl;
@@ -1927,9 +1884,9 @@ namespace GPUVerify
                     AssignCmd assign = c as AssignCmd;
 
                     if (assign.Lhss.Zip(assign.Rhss, (lhs, rhs) =>
-                            !NonLocalAccessCollector.ContainsNonLocalAccess(rhs, NonLocalState) || 
-                              (!NonLocalAccessCollector.ContainsNonLocalAccess(lhs, NonLocalState) && 
-                                NonLocalAccessCollector.IsNonLocalAccess(rhs, NonLocalState))).All(b => b))
+                            !NonLocalAccessCollector.ContainsNonLocalAccess(rhs, KernelArrayInfo) || 
+                              (!NonLocalAccessCollector.ContainsNonLocalAccess(lhs, KernelArrayInfo) && 
+                                NonLocalAccessCollector.IsNonLocalAccess(rhs, KernelArrayInfo))).All(b => b))
                     {
                         result.simpleCmds.Add(c);
                     }
@@ -1969,7 +1926,7 @@ namespace GPUVerify
             if (bb.ec is WhileCmd)
             {
                 WhileCmd WhileCommand = bb.ec as WhileCmd;
-                while (NonLocalAccessCollector.ContainsNonLocalAccess(WhileCommand.Guard, NonLocalState))
+                while (NonLocalAccessCollector.ContainsNonLocalAccess(WhileCommand.Guard, KernelArrayInfo))
                 {
                     AssignCmd assignToTemp;
                     LocalVariable tempDecl;
@@ -1983,7 +1940,7 @@ namespace GPUVerify
             {
                 IfCmd IfCommand = bb.ec as IfCmd;
                 Debug.Assert(IfCommand.elseIf == null); // "else if" must have been eliminated by this phase
-                while (NonLocalAccessCollector.ContainsNonLocalAccess(IfCommand.Guard, NonLocalState))
+                while (NonLocalAccessCollector.ContainsNonLocalAccess(IfCommand.Guard, KernelArrayInfo))
                 {
                     AssignCmd assignToTemp;
                     LocalVariable tempDecl;
@@ -2008,7 +1965,7 @@ namespace GPUVerify
 
         private Expr PullOutNonLocalAccessesIntoTemps(BigBlock result, Expr e, Implementation impl)
         {
-            while (NonLocalAccessCollector.ContainsNonLocalAccess(e, NonLocalState))
+            while (NonLocalAccessCollector.ContainsNonLocalAccess(e, KernelArrayInfo))
             {
                 AssignCmd assignToTemp;
                 LocalVariable tempDecl;
@@ -2021,7 +1978,7 @@ namespace GPUVerify
 
         private Expr ExtractLocalAccessToTemp(Expr rhs, out AssignCmd tempAssignment, out LocalVariable tempDeclaration)
         {
-            NonLocalAccessExtractor extractor = new NonLocalAccessExtractor(TempCounter, NonLocalState);
+            NonLocalAccessExtractor extractor = new NonLocalAccessExtractor(TempCounter, KernelArrayInfo);
             TempCounter++;
             rhs = extractor.VisitExpr(rhs);
             tempAssignment = extractor.Assignment;
@@ -2059,7 +2016,7 @@ namespace GPUVerify
                 }
 
                 if (d is Variable && ((d as Variable).IsMutable || IsThreadLocalIdConstant(d as Variable)
-                    || (CommandLineOptions.InterGroupRaceChecking && IsGroupIdConstant(d as Variable) ) ))
+                    || IsGroupIdConstant(d as Variable) ))
                 {
                     NewTopLevelDeclarations.Add(new VariableDualiser(1, null, null).VisitVariable((Variable)d.Clone()));
                     if (!QKeyValue.FindBoolAttribute(d.Attributes, "race_checking"))
@@ -2155,21 +2112,13 @@ namespace GPUVerify
                 return ErrorCount;
             }
 
-            if(!CommandLineOptions.BarrierParameters && BarrierProcedure.InParams.Length != 0)
+            if (BarrierProcedure.InParams.Length != 1)
             {
-                Error(BarrierProcedure, "Barrier procedure must not take any arguments");
+                Error(BarrierProcedure, "Barrier procedure must take exactly one argument");
             }
-
-            if (CommandLineOptions.BarrierParameters)
+            else if (!BarrierProcedure.InParams[0].TypedIdent.Type.Equals(new BvType(32)))
             {
-                if (BarrierProcedure.InParams.Length != 1)
-                {
-                    Error(BarrierProcedure, "Barrier procedure must take exactly one argument");
-                }
-                else if (!BarrierProcedure.InParams[0].TypedIdent.Type.Equals(new BvType(32)))
-                {
-                    Error(BarrierProcedure, "Argument to barrier procedure must have type bv32");
-                }
+                Error(BarrierProcedure, "Argument to barrier procedure must have type bv32");
             }
 
             if (BarrierProcedure.OutParams.Length != 0)

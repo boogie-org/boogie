@@ -37,7 +37,7 @@ namespace GPUVerify
                     SetNotDerivedFromSharedState(Impl.Name, GPUVerifier._Y.Name);
                     SetNotDerivedFromSharedState(Impl.Name, GPUVerifier._Z.Name);
 
-                    foreach (Variable v in verifier.NonLocalState.getAllNonLocalVariables())
+                    foreach (Variable v in verifier.KernelArrayInfo.getAllNonLocalArrays())
                     {
                         SetMayBeDerivedFrom(Impl.Name, v.Name, v.Name);
                     }

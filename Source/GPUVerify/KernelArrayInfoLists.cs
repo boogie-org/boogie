@@ -7,28 +7,30 @@ using System.Diagnostics;
 
 namespace GPUVerify
 {
-    class NonLocalStateLists : INonLocalState
+    class KernelArrayInfoLists : IKernelArrayInfo
     {
         private List<Variable> GlobalVariables;
         private List<Variable> GroupSharedVariables;
+        private List<Variable> PrivateVariables;
 
-        public NonLocalStateLists()
+        public KernelArrayInfoLists()
         {
             GlobalVariables = new List<Variable>();
             GroupSharedVariables = new List<Variable>();
+            PrivateVariables = new List<Variable>();
         }
 
-        public ICollection<Variable> getGlobalVariables()
+        public ICollection<Variable> getGlobalArrays()
         {
             return GlobalVariables;
         }
 
-        public ICollection<Variable> getGroupSharedVariables()
+        public ICollection<Variable> getGroupSharedArrays()
         {
             return GroupSharedVariables;
         }
 
-        public ICollection<Variable> getAllNonLocalVariables()
+        public ICollection<Variable> getAllNonLocalArrays()
         {
             List<Variable> all = new List<Variable>();
             all.AddRange(GlobalVariables);
@@ -36,9 +38,22 @@ namespace GPUVerify
             return all;
         }
 
+        public ICollection<Variable> getPrivateArrays()
+        {
+            return PrivateVariables;
+        }
+
+        public ICollection<Variable> getAllArrays()
+        {
+            List<Variable> all = new List<Variable>();
+            all.AddRange(getAllNonLocalArrays());
+            all.AddRange(PrivateVariables);
+            return all;
+        }
+
         public bool Contains(Variable v)
         {
-            return getAllNonLocalVariables().Contains(v);
+            return getAllNonLocalArrays().Contains(v);
         }
 
     }

@@ -14,9 +14,9 @@ namespace GPUVerify
         public LocalVariable Declaration = null;
         public bool done = false;
 
-        private INonLocalState NonLocalState;
+        private IKernelArrayInfo NonLocalState;
 
-        public NonLocalAccessExtractor(int TempId, INonLocalState NonLocalState)
+        public NonLocalAccessExtractor(int TempId, IKernelArrayInfo NonLocalState)
         {
             this.TempId = TempId;
             this.NonLocalState = NonLocalState;
