@@ -66,7 +66,7 @@ namespace Microsoft.Dafny {
       ReadRuntimeSystem();
       CompileBuiltIns(program.BuiltIns);
 
-      foreach (ModuleDefinition m in program.Modules) {
+      foreach (ModuleDefinition m in program.CompileModules) {
         if (m.IsGhost) {
           // the purpose of a ghost module is to skip compilation
           continue;
@@ -217,6 +217,7 @@ namespace Microsoft.Dafny {
         wr.WriteLine("}");
       }
 
+      int constructorIndex = 0; // used to give each constructor a different
       foreach (DatatypeCtor ctor in dt.Ctors) {
         // class Dt_Ctor<T,U> : Base_Dt<T> {
         //   Fields;
@@ -235,7 +236,7 @@ namespace Microsoft.Dafny {
         //   }
         // }
         Indent(indent);
-        wr.Write("public class {0}", DtCtorName(ctor, dt.TypeArgs));
+        wr.Write("public class {0}", DtCtorDeclarationName(ctor, dt.TypeArgs));
         wr.WriteLine(" : Base_{0}{1} {{", dt.CompileName, typeParams);
         int ind = indent + IndentAmount;
 
@@ -249,7 +250,7 @@ namespace Microsoft.Dafny {
         }
 
         Indent(ind);
-        wr.Write("public {0}(", DtCtorName(ctor));
+        wr.Write("public {0}(", DtCtorDeclartionName(ctor));
         WriteFormals("", ctor.Formals);
         wr.WriteLine(") {");
         i = 0;
@@ -286,7 +287,17 @@ namespace Microsoft.Dafny {
 
         // GetHashCode method
         Indent(ind); wr.WriteLine("public override int GetHashCode() {");
-        Indent(ind + IndentAmount); wr.WriteLine("return base.GetHashCode();  // surely this can be improved");
+        Indent(ind + IndentAmount); wr.Write("return " + constructorIndex);
+
+        i = 0;
+        foreach (Formal arg in ctor.Formals) {
+          if (!arg.IsGhost) {
+            string nm = FormalName(arg, i);
+            wr.Write(" ^ this.@{0}.GetHashCode()", nm);
+            i++;
+          }
+        }
+        wr.WriteLine(";");
         Indent(ind); wr.WriteLine("}");
 
         if (dt is IndDatatypeDecl) {
@@ -313,12 +324,13 @@ namespace Microsoft.Dafny {
 
         Indent(indent);  wr.WriteLine("}");
       }
+      constructorIndex ++;
     }
 
     void CompileDatatypeStruct(DatatypeDecl dt, int indent) {
       Contract.Requires(dt != null);
 
-      // public struct Dt<T> {
+      // public struct Dt<T> : IDatatype{
       //   Base_Dt<T> d;
       //   public Base_Dt<T> _D {
       //     get {
@@ -445,7 +457,25 @@ namespace Microsoft.Dafny {
         Indent(ind);
         wr.WriteLine("public bool is_{0} {{ get {{ return _D is {1}_{0}{2}; }} }}", ctor.CompileName, dt.CompileName, DtT_TypeArgs);
       }
-
+      if (dt.HasFinitePossibleValues) {
+        Indent(ind);
+        wr.WriteLine("public static System.Collections.Generic.IEnumerable<@{0}> AllSingletonConstructors {{", DtT);
+        Indent(ind + IndentAmount);
+        wr.WriteLine("get {");
+        foreach (var ctr in dt.Ctors) {
+          if (ctr.Formals.Count == 0) {
+            Indent(ind + IndentAmount + IndentAmount);
+            wr.WriteLine("yield return new @{0}(new {2}_{1}());", DtT, ctr.CompileName, dt.CompileName);
+          }
+        }
+        Indent(ind + IndentAmount + IndentAmount);
+        wr.WriteLine("yield break;");
+        Indent(ind + IndentAmount);
+        wr.WriteLine("}");
+        Indent(ind);
+        wr.WriteLine("}");
+      }
+  
       // destructors
       foreach (var ctor in dt.Ctors) {
         foreach (var arg in ctor.Formals) {
@@ -484,11 +514,20 @@ namespace Microsoft.Dafny {
       return formal.HasName ? formal.CompileName : "_a" + i;
     }
 
+    string DtName(DatatypeDecl decl) {
+      return decl.Module.IsDefaultModule ? decl.CompileName : decl.FullCompileName;
+    }
     string DtCtorName(DatatypeCtor ctor) {
       Contract.Requires(ctor != null);
       Contract.Ensures(Contract.Result<string>() != null);
 
-      return cce.NonNull(ctor.EnclosingDatatype).CompileName + "_" + ctor.CompileName;
+      return DtName(ctor.EnclosingDatatype) + "_" + ctor.CompileName;
+    }
+    string DtCtorDeclartionName(DatatypeCtor ctor) {
+      Contract.Requires(ctor != null);
+      Contract.Ensures(Contract.Result<string>() != null);
+
+      return ctor.EnclosingDatatype.CompileName + "_" + ctor.CompileName;
     }
 
     string DtCtorName(DatatypeCtor ctor, List<TypeParameter> typeParams) {
@@ -496,6 +535,16 @@ namespace Microsoft.Dafny {
       Contract.Ensures(Contract.Result<string>() != null);
 
       var s = DtCtorName(ctor);
+      if (typeParams != null && typeParams.Count != 0) {
+        s += "<" + TypeParameters(typeParams) + ">";
+      }
+      return s;
+    }
+    string DtCtorDeclarationName(DatatypeCtor ctor, List<TypeParameter> typeParams) {
+      Contract.Requires(ctor != null);
+      Contract.Ensures(Contract.Result<string>() != null);
+
+      var s = DtCtorDeclartionName(ctor);
       if (typeParams != null && typeParams.Count != 0) {
         s += "<" + TypeParameters(typeParams) + ">";
       }
@@ -1138,6 +1187,9 @@ namespace Microsoft.Dafny {
             wr.Write("foreach (var @{0} in (", bv.CompileName);
             TrExpr(b.Seq);
             wr.Write(").UniqueElements) { ");
+          } else if (bound is QuantifierExpr.DatatypeBoundedPool) {
+            var b = (QuantifierExpr.DatatypeBoundedPool)bound;
+            wr.Write("foreach (var @{0} in {1}.AllSingletonConstructors) {{", bv.CompileName, TypeName(bv.Type));
           } else {
             Contract.Assert(false); throw new cce.UnreachableException();  // unexpected BoundedPool type
           }
@@ -1712,7 +1764,7 @@ namespace Microsoft.Dafny {
         Contract.Assert(dtv.Ctor != null);  // since dtv has been successfully resolved
         var typeParams = dtv.InferredTypeArgs.Count == 0 ? "" : string.Format("<{0}>", TypeNames(dtv.InferredTypeArgs));
 
-        wr.Write("new {0}{1}(", dtv.DatatypeName, typeParams);
+        wr.Write("new {0}{1}(", DtName(dtv.Ctor.EnclosingDatatype), typeParams);
         if (!dtv.IsCoCall) {
           // For an ordinary constructor (that is, one that does not guard any co-recursive calls), generate:
           //   new Dt_Cons<T>( args )
@@ -2025,6 +2077,11 @@ namespace Microsoft.Dafny {
             wr.Write("Dafny.Helpers.QuantSeq(");
             TrExpr(b.Seq);
             wr.Write(", ");
+          } else if (bound is QuantifierExpr.DatatypeBoundedPool) {
+            var b = (QuantifierExpr.DatatypeBoundedPool)bound;
+            wr.Write("Dafny.Helpers.QuantDatatype(");
+
+            wr.Write("{0}.AllSingletonConstructors, ", DtName(b.Decl));
           } else {
             Contract.Assert(false); throw new cce.UnreachableException();  // unexpected BoundedPool type
           }
@@ -2087,6 +2144,9 @@ namespace Microsoft.Dafny {
             wr.Write("foreach (var @{0} in (", bv.CompileName);
             TrExpr(b.Seq);
             wr.Write(").Elements) { ");
+          } else if (bound is QuantifierExpr.DatatypeBoundedPool) {
+            var b = (QuantifierExpr.DatatypeBoundedPool)bound;
+            wr.Write("foreach (var @{0} in {1}.AllSingletonConstructors) {{", bv.CompileName, TypeName(bv.Type));
           } else {
             Contract.Assert(false); throw new cce.UnreachableException();  // unexpected BoundedPool type
           }
