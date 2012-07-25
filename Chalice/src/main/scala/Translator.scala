@@ -207,14 +207,21 @@ class Translator {
     val inArgs = (f.ins map {i => Boogie.VarExpr(i.UniqueName)})
     val thisArg = VarExpr("this")
     val args = thisArg :: inArgs;
-    
-    val formalsNoMask = BVar(HeapName, theap) :: BVar("this", tref) :: (f.ins map Variable2BVar)
+
+    /////    
+    val formalsNoHeapNoMask = BVar("this", tref) :: (f.ins map Variable2BVar)
+    val formalsNoMask = BVar(HeapName, theap) :: formalsNoHeapNoMask
     val formals = BVar(MaskName, tmask) :: BVar(SecMaskName, tmask) :: formalsNoMask
     val applyF = FunctionApp(functionName(f), List(etran.Heap) ::: args);
     val limitedApplyF = FunctionApp(functionName(f) + "#limited", List(etran.Heap) ::: args)
+    /////
+    val limitedFTrigger = FunctionApp(functionName(f) + "#limited#trigger", args)
+    
     val pre = Preconditions(f.spec).foldLeft(BoolLiteral(true): Expression)({ (a, b) => And(a, b) });
     val wellformed = wf(VarExpr(HeapName), VarExpr(MaskName), VarExpr(SecMaskName))
     val triggers = f.dependentPredicates map (p => new Trigger(List(limitedApplyF, wellformed, FunctionApp("#" + p.FullName+"#trigger", thisArg :: Nil))))
+    /////
+    val newTriggers = f.dependentPredicates map (p => new Trigger(List(limitedFTrigger, wellformed, FunctionApp("#" + p.FullName+"#trigger", thisArg :: Nil))))
 
     /** Limit application of the function by introducing a second (limited) function */
     val body = etran.Tr(
@@ -241,17 +248,28 @@ class Translator {
          wf(h, m, sm) && CurrentModule == module#C ==> #C.f(h, m, this, x_1, ..., x_n) == tr(body))
     */
     Axiom(new Boogie.Forall(Nil,
-      formals, List(new Trigger(List(applyF,wellformed))),
+      formals, List(new Trigger(  List(applyF,wellformed))) ,
         (wellformed && (CurrentModule ==@ ModuleName(currentClass)) && etran.TrAll(pre))
         ==>
         (applyF ==@ body))) ::
     (if (f.isRecursive)
+      // add version of the function definition axiom with different triggers (due to strange Z3 behaviour, repeating the axiom seems to be necessary)
+          Axiom(new Boogie.Forall(Nil,
+            formals, newTriggers,
+              (wellformed && (CurrentModule ==@ ModuleName(currentClass)) && etran.TrAll(pre))
+              ==>
+        (applyF ==@ body))) ::
       // define the limited function (even for unlimited function since its SCC might have limited functions)
       Boogie.Function(functionName(f) + "#limited", formalsNoMask, BVar("$myresult", f.out.typ)) ::
       Axiom(new Boogie.Forall(Nil, formals,
-            new Trigger(List(applyF,wellformed)) :: triggers,
+          new Trigger(List(applyF,wellformed)) :: Nil,  
+          //  new Trigger(List(applyF,wellformed)) :: triggers,  // commented, as secondary patterns seem not to be working
             (wellformed ==> (applyF ==@ limitedApplyF)))) ::
-      Nil
+      Boogie.Function(functionName(f) + "#limited#trigger", formalsNoHeapNoMask, BVar("$myresult", tbool)) ::
+      Axiom(new Boogie.Forall(Nil, formals,
+            List(new Trigger(List(limitedApplyF,wellformed))),
+            (wellformed ==> limitedFTrigger))) ::         
+            Nil  ///// above
     else
       Nil)
   }
