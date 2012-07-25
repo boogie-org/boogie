@@ -11,9 +11,6 @@ class C
 {
   method M (x:List, y:List)
     requires x!=null && y!=null && x!=y && x.valid && y.valid;
-    requires unfolding x.valid in x.next!=y;
-    requires unfolding y.valid in y.next!=x;
-      // the two requirements above are needed, otherwise Chalice cannot prove that the two lists are disjoint
   {
     var i: int := unfolding x.valid in x.value;
     var j: int := unfolding y.valid in y.value;
