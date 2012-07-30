@@ -8,6 +8,21 @@ namespace Microsoft.Boogie {
 
 public static class GraphAlgorithms {
 
+  public static Graph<Node> Dual<Node>(this Graph<Node> g, Node dummySource) {
+    var exits = g.Nodes.Where(n => g.Successors(n).Count() == 0).ToList();
+    if (exits.Count == 0)
+      return null;
+    var dual = new Graph<Node>(new HashSet<Tuple<Node, Node>>(g.Edges.Select(e => new Tuple<Node, Node>(e.Item2, e.Item1))));
+    if (exits.Count == 1)
+      dual.AddSource(exits[0]);
+    else {
+      dual.AddSource(dummySource);
+      foreach (var exit in exits)
+        dual.AddEdge(dummySource, exit);
+    }
+    return dual;
+  }
+
   public static List<Tuple<Node, bool>> LoopyTopSort<Node>(this Graph<Node> g) {
     Contract.Assert(g.Reducible);
 

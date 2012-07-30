@@ -155,6 +155,7 @@
     <Compile Include="GraphAlgorithms.cs" />
     <Compile Include="HasseDiagram.cs" />
     <Compile Include="OrderingAxioms.cs" />
+    <Compile Include="SmartBlockPredicator.cs" />
     <Compile Include="StratifiedVC.cs" />
     <Compile Include="VC.cs" />
     <Compile Include="VCDoomed.cs" />
