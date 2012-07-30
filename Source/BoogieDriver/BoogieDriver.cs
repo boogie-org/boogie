@@ -744,7 +744,7 @@ namespace Microsoft.Boogie {
           if (CommandLineOptions.Clo.Trace || CommandLineOptions.Clo.XmlSink != null) {
             if (CommandLineOptions.Clo.Trace) {
               int poCount = vcgen.CumulativeAssertionCount - prevAssertionCount;
-              timeIndication = string.Format("  [{0} s, {1} proof obligation{2}]  ", elapsed.ToString("%s\\.fff"), poCount, poCount == 1 ? "" : "s");
+              timeIndication = string.Format("  [{0:F3} s, {1} proof obligation{2}]  ", elapsed.TotalSeconds, poCount, poCount == 1 ? "" : "s");
             }
           }
 
