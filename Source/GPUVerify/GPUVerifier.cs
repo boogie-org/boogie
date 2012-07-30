@@ -2039,7 +2039,14 @@ namespace GPUVerify
         {
             if (CommandLineOptions.Unstructured)
             {
-                BlockPredicator.Predicate(Program, /*createCandidateInvariants=*/CommandLineOptions.Inference);
+                if (CommandLineOptions.SmartPredication)
+                {
+                    SmartBlockPredicator.Predicate(Program, /*createCandidateInvariants=*/CommandLineOptions.Inference);
+                }
+                else
+                {
+                    BlockPredicator.Predicate(Program, /*createCandidateInvariants=*/CommandLineOptions.Inference);
+                }
                 return;
             }
 

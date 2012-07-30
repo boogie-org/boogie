@@ -39,6 +39,7 @@ namespace GPUVerify
         public static bool NoLoopPredicateInvariants = false;
 
         public static bool Unstructured = false;
+        public static bool SmartPredication = false;
 
         public static bool OnlyIntraGroupRaceChecking = false;
 
@@ -172,6 +173,11 @@ namespace GPUVerify
                     case "-unstructured":
                     case "/unstructured":
                     Unstructured = true;
+                    break;
+
+                    case "-smartPredication":
+                    case "/smartPredication":
+                    SmartPredication = true;
                     break;
 
                     case "-onlyIntraGroupRaceChecking":
