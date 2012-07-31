@@ -983,6 +983,36 @@ procedure RegressionTestInput.ClassWithArrayTypes.Main4$System.Int32array($this:
 
 
 
+implementation RegressionTestInput.ClassWithArrayTypes.Main4$System.Int32array($this: Ref, xs$in: Ref)
+{
+  var xs: Ref;
+  var $localExc: Ref;
+  var $label: int;
+
+    xs := xs$in;
+    assume {:breadcrumb 13} true;
+    if (xs != null)
+    {
+    }
+    else
+    {
+    }
+
+    if ((if xs != null then $ArrayLength(xs) > 0 else false))
+    {
+        assert {:first} {:sourceFile "C:\dev\Boogie\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 121} true;
+        assert {:sourceFile "C:\dev\Boogie\BCT\RegressionTests\RegressionTestInput\Class1.cs"} {:sourceLine 121} true;
+        assume $this != null;
+        assume xs != null;
+        $ArrayContents := $ArrayContents[F$RegressionTestInput.ClassWithArrayTypes.a[$this] := $ArrayContents[F$RegressionTestInput.ClassWithArrayTypes.a[$this]][0 := Int2Union(Union2Int($ArrayContents[xs][0]))]];
+    }
+    else
+    {
+    }
+}
+
+
+
 procedure RegressionTestInput.ClassWithArrayTypes.#ctor($this: Ref);
   free ensures $allocImp(old($Alloc), $Alloc) == $allocConstBool(true);
 

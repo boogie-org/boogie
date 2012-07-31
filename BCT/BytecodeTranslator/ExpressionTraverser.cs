@@ -687,8 +687,10 @@ namespace BytecodeTranslator
           this.StmtTraverser.StmtBuilder.Add(TranslationHelper.BuildAssignCmd(lhs, fromUnion));
         }
 
-        Bpl.Expr expr = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Neq, Bpl.Expr.Ident(this.sink.Heap.ExceptionVariable), Bpl.Expr.Ident(this.sink.Heap.NullRef));
-        this.StmtTraverser.RaiseException(expr);
+        if (this.sink.Options.modelExceptions) {
+          Bpl.Expr expr = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Neq, Bpl.Expr.Ident(this.sink.Heap.ExceptionVariable), Bpl.Expr.Ident(this.sink.Heap.NullRef));
+          this.StmtTraverser.RaiseException(expr);
+        }
       } finally {
         // TODO move away phone related code from the translation, it would be better to have 2 or more translation phases
         if (PhoneCodeHelper.instance().PhonePlugin != null) {

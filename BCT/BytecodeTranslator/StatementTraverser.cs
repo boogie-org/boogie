@@ -518,6 +518,14 @@ namespace BytecodeTranslator
     }
 
     public override void TraverseChildren(ITryCatchFinallyStatement tryCatchFinallyStatement) {
+
+      if (!this.sink.Options.modelExceptions) {
+        this.Traverse(tryCatchFinallyStatement.TryBody);
+        if (tryCatchFinallyStatement.FinallyBody != null)
+          this.Traverse(tryCatchFinallyStatement.FinallyBody);
+        return;
+      }
+
       this.sink.nestedTryCatchFinallyStatements.Add(new Tuple<ITryCatchFinallyStatement, Sink.TryCatchFinallyContext>(tryCatchFinallyStatement, Sink.TryCatchFinallyContext.InTry));
       this.Traverse(tryCatchFinallyStatement.TryBody);
       StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(this.sink.LabelVariable), Bpl.Expr.Literal(-1)));
@@ -572,6 +580,10 @@ namespace BytecodeTranslator
     }
 
     public override void TraverseChildren(IThrowStatement throwStatement) {
+      if (!this.sink.Options.modelExceptions) {
+        StmtBuilder.Add(new Bpl.AssumeCmd(throwStatement.Token(), Bpl.Expr.False));
+        return;
+      }
       ExpressionTraverser exceptionTraverser = this.factory.MakeExpressionTraverser(this.sink, this, this.contractContext);
       exceptionTraverser.Traverse(throwStatement.Exception);
       StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(this.sink.Heap.ExceptionVariable), exceptionTraverser.TranslatedExpressions.Pop()));
