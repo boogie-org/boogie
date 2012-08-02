@@ -532,7 +532,8 @@ namespace BytecodeTranslator {
         foreach (Bpl.Variable v in this.sink.LocalVarMap.Values) {
           vars.Add(v);
         }
-        vars.Add(procInfo.LocalExcVariable);
+        if (this.sink.Options.modelExceptions)
+          vars.Add(procInfo.LocalExcVariable);
         vars.Add(procInfo.LabelVariable);
         Bpl.VariableSeq vseq = new Bpl.VariableSeq(vars.ToArray());
         #endregion

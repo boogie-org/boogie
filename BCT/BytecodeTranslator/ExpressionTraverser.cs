@@ -687,8 +687,10 @@ namespace BytecodeTranslator
           this.StmtTraverser.StmtBuilder.Add(TranslationHelper.BuildAssignCmd(lhs, fromUnion));
         }
 
-        Bpl.Expr expr = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Neq, Bpl.Expr.Ident(this.sink.Heap.ExceptionVariable), Bpl.Expr.Ident(this.sink.Heap.NullRef));
-        this.StmtTraverser.RaiseException(expr);
+        if (this.sink.Options.modelExceptions) {
+          Bpl.Expr expr = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Neq, Bpl.Expr.Ident(this.sink.Heap.ExceptionVariable), Bpl.Expr.Ident(this.sink.Heap.NullRef));
+          this.StmtTraverser.RaiseException(expr);
+        }
       } finally {
         // TODO move away phone related code from the translation, it would be better to have 2 or more translation phases
         if (PhoneCodeHelper.instance().PhonePlugin != null) {
@@ -1215,22 +1217,24 @@ namespace BytecodeTranslator
         } else {
           Bpl.Expr x = null;
           Bpl.IdentifierExpr temp = null;
-          if (target.Instance != null) {
-            this.Traverse(target.Instance);
-            x = this.TranslatedExpressions.Pop();
-            if (pushTargetRValue) {
+          if (pushTargetRValue) {
+            if (target.Instance != null) {
+              this.Traverse(target.Instance);
+              x = this.TranslatedExpressions.Pop();
               AssertOrAssumeNonNull(tok, x);
               var e2 = this.sink.Heap.ReadHeap(x, f, TranslationHelper.IsStruct(field.ContainingType) ? AccessType.Struct : AccessType.Heap, boogieTypeOfField);
               this.TranslatedExpressions.Push(e2);
-
-              if (!treatAsStatement && resultIsInitialTargetRValue) {
-                var loc = this.sink.CreateFreshLocal(source.Type);
-                temp = Bpl.Expr.Ident(loc);
-                var e3 = this.TranslatedExpressions.Pop();
-                var cmd = Bpl.Cmd.SimpleAssign(tok, temp, e3);
-                this.StmtTraverser.StmtBuilder.Add(cmd);
-                this.TranslatedExpressions.Push(temp);
-              }
+            } else {
+              TranslatedExpressions.Push(f);
+            }
+            
+            if (!treatAsStatement && resultIsInitialTargetRValue) {
+              var loc = this.sink.CreateFreshLocal(source.Type);
+              temp = Bpl.Expr.Ident(loc);
+              var e3 = this.TranslatedExpressions.Pop();
+              var cmd = Bpl.Cmd.SimpleAssign(tok, temp, e3);
+              this.StmtTraverser.StmtBuilder.Add(cmd);
+              this.TranslatedExpressions.Push(temp);
             }
           }
           sourceTraverser(source);

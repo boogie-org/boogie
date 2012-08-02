@@ -38,6 +38,9 @@ namespace BytecodeTranslator {
     [OptionDescription("Emit a 'capture state' directive after each statement, (default: false)", ShortForm = "c")]
     public bool captureState = false;
 
+    [OptionDescription("Model exceptional control flow, (default: true)", ShortForm = "e")]
+    public bool modelExceptions = true;
+
     [OptionDescription("Translation should be done for Get Me Here functionality, (default: false)", ShortForm = "gmh")]
     public bool getMeHere = false;
 
