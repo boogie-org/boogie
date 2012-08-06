@@ -14,7 +14,6 @@ public class SmartBlockPredicator {
   Graph<Block> blockGraph;
   List<Tuple<Block, bool>> sortedBlocks;
 
-  bool createCandidateInvariants = true;
   bool useProcedurePredicates = true;
 
   Dictionary<Block, Variable> predMap, defMap;
@@ -27,10 +26,9 @@ public class SmartBlockPredicator {
   Dictionary<Block, Expr> blockIds = new Dictionary<Block, Expr>();
   HashSet<Block> doneBlocks = new HashSet<Block>();
 
-  SmartBlockPredicator(Program p, Implementation i, bool cci, bool upp) {
+  SmartBlockPredicator(Program p, Implementation i, bool upp) {
     prog = p;
     impl = i;
-    createCandidateInvariants = cci;
     useProcedurePredicates = upp;
   }
 
@@ -413,7 +411,6 @@ public class SmartBlockPredicator {
   }
 
   public static void Predicate(Program p,
-                               bool createCandidateInvariants = true,
                                bool useProcedurePredicates = true) {
     foreach (var decl in p.TopLevelDeclarations.ToList()) {
       if (useProcedurePredicates && decl is DeclWithFormals && !(decl is Function)) {
@@ -448,7 +445,7 @@ public class SmartBlockPredicator {
       try {
         var impl = decl as Implementation;
         if (impl != null)
-          new SmartBlockPredicator(p, impl, createCandidateInvariants, useProcedurePredicates).PredicateImplementation();
+          new SmartBlockPredicator(p, impl, useProcedurePredicates).PredicateImplementation();
       }
       catch (Program.IrreducibleLoopException) { }
     }
@@ -456,7 +453,7 @@ public class SmartBlockPredicator {
 
   public static void Predicate(Program p, Implementation impl) {
     try {
-      new SmartBlockPredicator(p, impl, false, false).PredicateImplementation();
+      new SmartBlockPredicator(p, impl, false).PredicateImplementation();
     }
     catch (Program.IrreducibleLoopException) { }
   }

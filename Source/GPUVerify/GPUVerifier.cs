@@ -2041,7 +2041,7 @@ namespace GPUVerify
             {
                 if (CommandLineOptions.SmartPredication)
                 {
-                    SmartBlockPredicator.Predicate(Program, /*createCandidateInvariants=*/CommandLineOptions.Inference);
+                    SmartBlockPredicator.Predicate(Program);
                 }
                 else
                 {
