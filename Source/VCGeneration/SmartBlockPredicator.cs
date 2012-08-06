@@ -184,10 +184,7 @@ public class SmartBlockPredicator {
                         DomRelation<Block> pdom,
                         IEnumerator<Tuple<Block, bool>> i,
                         Variable headPredicate,
-                        ref int predCount,
-                        Dictionary<Block, Variable> predMap,
-                        Dictionary<Block, Variable> defMap,
-                        Dictionary<Block, HashSet<Variable>> ownedMap) {
+                        ref int predCount) {
     var header = i.Current.Item1;
     var regionPreds = new List<Tuple<Block, Variable>>();
     var ownedPreds = new HashSet<Variable>();
@@ -208,8 +205,7 @@ public class SmartBlockPredicator {
         if (blockGraph.Headers.Contains(block.Item1)) {
           var loopPred = FreshPredicate(ref predCount);
           ownedPreds.Add(loopPred);
-          AssignPredicates(blockGraph, dom, pdom, i, loopPred, ref predCount,
-                           predMap, defMap, ownedMap);
+          AssignPredicates(blockGraph, dom, pdom, i, loopPred, ref predCount);
         } else {
           bool foundExisting = false;
           foreach (var regionPred in regionPreds) {
@@ -232,9 +228,7 @@ public class SmartBlockPredicator {
     } while (i.MoveNext());
   }
 
-  void AssignPredicates(out Dictionary<Block, Variable> predMap,
-                        out Dictionary<Block, Variable> defMap,
-                        out Dictionary<Block, HashSet<Variable>> ownedMap) {
+  void AssignPredicates() {
     DomRelation<Block> dom = blockGraph.DominatorMap;
 
     Graph<Block> dualGraph = blockGraph.Dual(new Block());
@@ -253,7 +247,7 @@ public class SmartBlockPredicator {
     ownedMap = new Dictionary<Block, HashSet<Variable>>();
     AssignPredicates(blockGraph, dom, pdom, iter,
                      useProcedurePredicates ? impl.InParams[0] : null,
-                     ref predCount, predMap, defMap, ownedMap);
+                     ref predCount);
   }
 
   IEnumerable<Block> LoopsExited(Block src, Block dest) {
@@ -337,7 +331,7 @@ public class SmartBlockPredicator {
     blockGraph = prog.ProcessLoops(impl);
     sortedBlocks = blockGraph.LoopyTopSort();
 
-    AssignPredicates(out predMap, out defMap, out ownedMap);
+    AssignPredicates();
     partInfo = BuildPartitionInfo();
 
     if (useProcedurePredicates)
