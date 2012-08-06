@@ -18,6 +18,7 @@ public class SmartBlockPredicator {
 
   Dictionary<Block, Variable> predMap, defMap;
   Dictionary<Block, HashSet<Variable>> ownedMap;
+  Dictionary<Block, Block> parentMap;
   Dictionary<Block, PartInfo> partInfo;
 
   IdentifierExpr fp;
@@ -193,16 +194,15 @@ public class SmartBlockPredicator {
     predMap[header] = headPredicate;
     defMap[header] = headPredicate;
     regionPreds.Add(new Tuple<Block, Variable>(header, headPredicate));
-    if (!i.MoveNext())
-      return;
 
-    do {
+    while (i.MoveNext()) {
       var block = i.Current;
       if (block.Item2) {
         if (block.Item1 == header)
           return;
       } else {
         if (blockGraph.Headers.Contains(block.Item1)) {
+          parentMap[block.Item1] = header;
           var loopPred = FreshPredicate(ref predCount);
           ownedPreds.Add(loopPred);
           AssignPredicates(blockGraph, dom, pdom, i, loopPred, ref predCount);
@@ -225,7 +225,7 @@ public class SmartBlockPredicator {
           }
         }
       }
-    } while (i.MoveNext());
+    }
   }
 
   void AssignPredicates() {
@@ -245,6 +245,7 @@ public class SmartBlockPredicator {
     predMap = new Dictionary<Block, Variable>();
     defMap = new Dictionary<Block, Variable>();
     ownedMap = new Dictionary<Block, HashSet<Variable>>();
+    parentMap = new Dictionary<Block, Block>();
     AssignPredicates(blockGraph, dom, pdom, iter,
                      useProcedurePredicates ? impl.InParams[0] : null,
                      ref predCount);
@@ -372,6 +373,17 @@ public class SmartBlockPredicator {
         if (prevBlock != null)
           prevBlock.TransferCmd = new GotoCmd(Token.NoToken,
                                               new BlockSeq(runBlock));
+
+        if (parentMap.ContainsKey(runBlock)) {
+          var parent = parentMap[runBlock];
+          if (predMap.ContainsKey(parent)) {
+            var parentPred = predMap[parent];
+            if (parentPred != null) {
+              runBlock.Cmds.Add(new AssertCmd(Token.NoToken,
+                                              Expr.Imp(pExpr, Expr.Ident(parentPred))));
+            }
+          }
+        }
 
         var transferCmd = runBlock.TransferCmd;
         foreach (Cmd cmd in oldCmdSeq)
