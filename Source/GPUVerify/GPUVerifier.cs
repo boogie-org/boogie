@@ -784,12 +784,45 @@ namespace GPUVerify
             return false;
         }
 
+        internal static bool IsPredicate(string v) {
+          if (v.Length < 2) {
+            return false;
+          }
+          if (!v.Substring(0, 1).Equals("p")) {
+            return false;
+          }
+          for (int i = 1; i < v.Length; i++) {
+            if (!Char.IsDigit(v.ToCharArray()[i])) {
+              return false;
+            }
+          }
+          return true;
+        }
 
-        internal static bool IsPredicateOrTemp(string lv)
-        {
-            return (lv.Length >= 2 && lv.Substring(0,2).Equals("_P")) ||
-                    (lv.Length > 3 && lv.Substring(0,3).Equals("_LC")) ||
-                    (lv.Length > 5 && lv.Substring(0,5).Equals("_temp"));
+        internal static bool IsPredicateOrTemp(string lv) {
+          
+          // We should improve this by having a general convention
+          // for names of temporary or predicate variables
+
+          if (lv.Length >= 2) {
+            if (lv.Substring(0, 1).Equals("p") || lv.Substring(0, 1).Equals("v")) {
+              for (int i = 1; i < lv.Length; i++) {
+                if (!Char.IsDigit(lv.ToCharArray()[i])) {
+                  return false;
+                }
+              }
+              return true;
+            }
+
+          }
+
+          if (lv.Contains("_HAVOC_")) {
+            return true;
+          }
+
+          return (lv.Length >= 2 && lv.Substring(0,2).Equals("_P")) ||
+                  (lv.Length > 3 && lv.Substring(0,3).Equals("_LC")) ||
+                  (lv.Length > 5 && lv.Substring(0,5).Equals("_temp"));
         }
 
         
