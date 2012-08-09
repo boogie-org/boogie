@@ -18,6 +18,7 @@ using Microsoft.VisualStudio.Text.Editor;
 using Microsoft.VisualStudio.Text.Tagging;
 using Microsoft.VisualStudio.Text.Projection;
 using Microsoft.VisualStudio.Utilities;
+using System.Diagnostics.Contracts;
 using Bpl = Microsoft.Boogie;
 using Dafny = Microsoft.Dafny;
 
@@ -45,12 +46,14 @@ namespace DafnyLanguage
   internal sealed class OutliningTagger : ITagger<IOutliningRegionTag>
   {
     ITextBuffer _buffer;
+    ITextSnapshot _snapshot;  // the most recent snapshot of _buffer that we have been informed about
+    Dafny.Program _program;  // the program parsed from _snapshot
+    List<ORegion> _regions = new List<ORegion>();  // the regions generated from _program
     ITagAggregator<DafnyResolverTag> _aggregator;
-    Dafny.Program _program;
-    List<ORegion> _regions = new List<ORegion>();
 
     internal OutliningTagger(ITextBuffer buffer, ITagAggregator<DafnyResolverTag> tagAggregator) {
       _buffer = buffer;
+      _snapshot = _buffer.CurrentSnapshot;
       _aggregator = tagAggregator;
       _aggregator.TagsChanged += new EventHandler<TagsChangedEventArgs>(_aggregator_TagsChanged);
     }
@@ -60,11 +63,26 @@ namespace DafnyLanguage
     /// </summary>
     public IEnumerable<ITagSpan<IOutliningRegionTag>> GetTags(NormalizedSnapshotSpanCollection spans) {
       if (spans.Count == 0) yield break;
-      var snapshot = spans[0].Snapshot;
+      // (A NormalizedSnapshotSpanCollection contains spans that all come from the same snapshot.)
+      // The spans are ordered by the .Start component, and the collection contains no adjacent or abutting spans.
+      // Hence, to find a span that includes all the ones in "spans", we only need to look at the .Start for the
+      // first spand and the .End of the last span:
+      var startPoint = spans[0].Start;
+      var endPoint = spans[spans.Count - 1].End;
+
+      // Note, (startPoint,endPoint) are points in the spans for which we're being asked to provide tags.  We need to translate
+      // these back into the most recent snapshot that we've computed regions for, namely _snapshot.
+      var entire = new SnapshotSpan(startPoint, endPoint).TranslateTo(_snapshot, SpanTrackingMode.EdgeExclusive);
+      int start = entire.Start;
+      int end = entire.End;
+      if (start == end) yield break;
+
       foreach (var r in _regions) {
-        yield return new TagSpan<OutliningRegionTag>(
-          new SnapshotSpan(snapshot, r.Start, r.Length),
-          new OutliningRegionTag(false, false, "...", r.HoverText));
+        if (r.Start <= end && start <= r.Start + r.Length) {
+          yield return new TagSpan<OutliningRegionTag>(
+            new SnapshotSpan(_snapshot, r.Start, r.Length),
+            new OutliningRegionTag(false, false, "...", r.HoverText));
+        }
       }
     }
 
@@ -74,7 +92,7 @@ namespace DafnyLanguage
     void _aggregator_TagsChanged(object sender, TagsChangedEventArgs e) {
       var r = sender as ResolverTagger;
       if (r != null && r._program != null) {
-        if (!ComputeOutliningRegions(r._program))
+        if (!ComputeOutliningRegions(r._program, r._snapshot))
           return;  // no new regions
 
         var chng = TagsChanged;
@@ -88,19 +106,30 @@ namespace DafnyLanguage
       }
     }
 
-    bool ComputeOutliningRegions(Dafny.Program program) {
+    bool ComputeOutliningRegions(Dafny.Program program, ITextSnapshot snapshot) {
+      Contract.Requires(snapshot != null);
+
       if (program == _program)
         return false;  // no new regions
 
       List<ORegion> newRegions = new List<ORegion>();
 
-      foreach (Dafny.ModuleDecl module in program.Modules) {
+      foreach (var module in program.Modules) {
         if (!module.IsDefaultModule) {
           newRegions.Add(new ORegion(module, "module"));
         }
         foreach (Dafny.TopLevelDecl d in module.TopLevelDecls) {
-          if (d is Dafny.DatatypeDecl) {
+          if (!HasBodyTokens(d) && !(d is Dafny.ClassDecl)) {
+            continue;
+          }
+          if (d is Dafny.ArbitraryTypeDecl) {
+            newRegions.Add(new ORegion(d, "type"));
+          } else if (d is Dafny.CoDatatypeDecl) {
+            newRegions.Add(new ORegion(d, "codatatype"));
+          } else if (d is Dafny.DatatypeDecl) {
             newRegions.Add(new ORegion(d, "datatype"));
+          } else if (d is Dafny.ModuleDecl) {
+            // do nothing here, since the outer loop handles modules
           } else {
             Dafny.ClassDecl cl = (Dafny.ClassDecl)d;
             if (!cl.IsDefaultClass) {
@@ -108,18 +137,27 @@ namespace DafnyLanguage
             }
             // do the class members (in particular, functions and methods)
             foreach (Dafny.MemberDecl m in cl.Members) {
+              if (!HasBodyTokens(m)) {
+                continue;
+              }
               if (m is Dafny.Function && ((Dafny.Function)m).Body != null) {
-                newRegions.Add(new ORegion(m, "function"));
+                newRegions.Add(new ORegion(m, m is Dafny.CoPredicate ? "copredicate" : m is Dafny.Predicate ? "predicate" : "function"));
               } else if (m is Dafny.Method && ((Dafny.Method)m).Body != null) {
-                newRegions.Add(new ORegion(m, "method"));
+                newRegions.Add(new ORegion(m, m is Dafny.Constructor ? "constructor" : "method"));
               }
             }
           }
         }
       }
+      _snapshot = snapshot;
       _regions = newRegions;
       _program = program;
       return true;
+    }
+
+    bool HasBodyTokens(Dafny.Declaration decl) {
+      Contract.Requires(decl != null);
+      return decl.BodyStartTok != Bpl.Token.NoToken && decl.BodyEndTok != Bpl.Token.NoToken;
     }
 
     class ORegion
