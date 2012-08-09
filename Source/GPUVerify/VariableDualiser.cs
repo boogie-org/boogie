@@ -10,6 +10,9 @@ namespace GPUVerify
 {
     class VariableDualiser : Duplicator
     {
+      static HashSet<string> otherFunctionNames =
+        new HashSet<string>(new string[] { "__other_bool", "__other_bv32", "__other_arrayId" });
+
         private int id;
         private UniformityAnalyser uniformityAnalyser;
         private string procName;
@@ -78,7 +81,7 @@ namespace GPUVerify
             {
                 FunctionCall call = node.Fun as FunctionCall;
 
-                if (call.Func.Name.Equals("__other_bool") || call.Func.Name.Equals("__other_bv32"))
+                if (otherFunctionNames.Contains(call.Func.Name))
                 {
                     Debug.Assert(id == 1 || id == 2);
                     int otherId = id == 1 ? 2 : 1;
