@@ -66,7 +66,8 @@ type CreditsType = [ref]int;
 type ref;
 const null: ref;
 
-var Heap: HeapType;"""
+var Heap: HeapType;
+var InitHeap: HeapType;"""
 }
 object PermissionTypesAndConstantsPL extends PreludeComponent {
   val text = """
