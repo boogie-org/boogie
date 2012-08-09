@@ -361,7 +361,6 @@ class Translator {
     
     // const unique class.name: HeapType;
     Const(pred.FullName, true, FieldType(tint)) ::
-    Const(pred.FullName+"#m", true, FieldType(tpmask)) ::
     Const(pred.FullName+"#m_calc", true, FieldType(tpmask)) ::
     // axiom PredicateField(f);
     Axiom(PredicateField(pred.FullName)) ::
@@ -2211,7 +2210,7 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
   def restoreFoldedLocations(mask: Expr, heap: Boogie.Expr, exhaleHeap: Boogie.Expr): List[Boogie.Stmt] = {
     val foldedPredicates = etran.fpi.getFoldedPredicates()
     (for (fp <- foldedPredicates) yield {
-      val stmts = bassume(IsGoodExhalePredicateState(exhaleHeap, heap, heap.select(fp.receiver, fp.predicate.FullName+"#m")))
+      val stmts = bassume(IsGoodExhalePredicateState(exhaleHeap, heap, heap.select(fp.receiver, fp.predicate.FullName+"#m_calc")))
       Boogie.If(CanRead(fp.receiver, fp.predicate.FullName, mask, ZeroMask) && heap.select(fp.receiver, fp.predicate.FullName) ==@ fp.version, stmts, Nil) :: Nil
     }) flatten
   }
@@ -2376,19 +2375,16 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
         (if (e.isPredicate && !isUpdatingSecMask)
           Boogie.If(!CanRead(trE, memberName, m, sm), // if we cannot access the predicate anymore, then its version will be havoced
             (if (!duringUnfold) {
-              val (newpred_mV, newpred_m) = Boogie.NewBVar("newpred_m", tpmask, true)
               val (newpred_m_calcV, newpred_m_calc) = Boogie.NewBVar("newpred_m_calc", tpmask, true)            
-               (if (!transferPermissionToSecMask) bassume(Heap.select(trE, memberName) < eh.select(trE, memberName)) :: bassume(InitHeap.select(trE,memberName+"#m_calc") ==@ ZeroPMask) :: bassume(Heap.select(trE,memberName+"#m") ==@ Heap.select(trE,memberName+"#m_calc")) :: BLocal(newpred_mV) :: BLocal(newpred_m_calcV) :: Boogie.Havoc(newpred_m) :: Boogie.Havoc(newpred_m_calc) :: (Heap.select(trE, memberName+"#m") := newpred_m) :: (Heap.select(trE, memberName+"#m_calc") := newpred_m_calc) :: Nil else bassume(Heap.select(trE,memberName+"#m") ==@ Heap.select(trE,memberName+"#m_calc")) :: BLocal(newpred_mV) :: BLocal(newpred_m_calcV) :: Boogie.Havoc(newpred_m) :: Boogie.Havoc(newpred_m_calc) :: (Heap.select(trE, memberName+"#m") := newpred_m) :: (Heap.select(trE, memberName+"#m_calc") := newpred_m_calc) :: Nil) // fix this conditional to not repeat // assume that the predicate's version grows monotonically
+               (if (!transferPermissionToSecMask) bassume(Heap.select(trE, memberName) < eh.select(trE, memberName)) :: bassume(InitHeap.select(trE,memberName+"#m_calc") ==@ ZeroPMask) :: BLocal(newpred_m_calcV) :: Boogie.Havoc(newpred_m_calc) :: (Heap.select(trE, memberName+"#m_calc") := newpred_m_calc) :: Nil else BLocal(newpred_m_calcV) :: Boogie.Havoc(newpred_m_calc) :: (Heap.select(trE, memberName+"#m_calc") := newpred_m_calc) :: Nil) // fix this conditional to not repeat // assume that the predicate's version grows monotonically
             } else { // duringUnfold -> the heap is not havoced, thus we need to locally havoc the version
               val (oldVersV, oldVers) = Boogie.NewBVar("oldVers", tint, true) 
               val (newVersV, newVers) = Boogie.NewBVar("newVers", tint, true)
-              val (newpred_mV, newpred_m) = Boogie.NewBVar("newpred_m", tpmask, true)
               val (newpred_m_calcV, newpred_m_calc) = Boogie.NewBVar("newpred_m_calc", tpmask, true)
               bassume(InitHeap.select(trE,memberName+"#m_calc") ==@ ZeroPMask) :: 
-              (if (!duringUnfolding) (bassume(Heap.select(trE,memberName+"#m") ==@ Heap.select(trE,memberName+"#m_calc"))) else (bassume(true))) ::
               BLocal(oldVersV) :: (oldVers := Heap.select(trE, memberName)) :: 
               BLocal(newVersV) :: Boogie.Havoc(newVers) :: (Heap.select(trE, memberName) := newVers) ::
-              bassume(oldVers < Heap.select(trE, memberName)) :: BLocal(newpred_mV) :: BLocal(newpred_m_calcV) :: Boogie.Havoc(newpred_m) :: Boogie.Havoc(newpred_m_calc) :: (Heap.select(trE, memberName+"#m") := newpred_m) :: (Heap.select(trE, memberName+"#m_calc") := newpred_m_calc) :: Nil
+              bassume(oldVers < Heap.select(trE, memberName)) :: BLocal(newpred_m_calcV) :: Boogie.Havoc(newpred_m_calc) :: (Heap.select(trE, memberName+"#m_calc") := newpred_m_calc) :: Nil
             }),
             Nil) :: Nil
         else Nil) :::
