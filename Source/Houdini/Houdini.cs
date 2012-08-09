@@ -485,14 +485,18 @@ namespace Microsoft.Boogie.Houdini {
 
     public bool MatchCandidate(Expr boogieExpr, out Variable candidateConstant) {
       candidateConstant = null;
-      IExpr antecedent;
+      IExpr antecedent, consequent;
       IExpr expr = boogieExpr as IExpr;
-      if (expr != null && ExprUtil.Match(expr, Prop.Implies, out antecedent)) {
+      if (expr != null && ExprUtil.Match(expr, Prop.Implies, out antecedent, out consequent)) {
         IdentifierExpr.ConstantFunApp constantFunApp = antecedent as IdentifierExpr.ConstantFunApp;
         if (constantFunApp != null && houdiniConstants.Contains(constantFunApp.IdentifierExpr.Decl)) {
           candidateConstant = constantFunApp.IdentifierExpr.Decl;
           return true;
         }
+
+        var e = consequent as Expr;
+        if (e != null && MatchCandidate(e, out candidateConstant))
+          return true;
       }
       return false;
     }

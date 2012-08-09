@@ -14,11 +14,11 @@ public class SmartBlockPredicator {
   Graph<Block> blockGraph;
   List<Tuple<Block, bool>> sortedBlocks;
 
-  bool createCandidateInvariants = true;
   bool useProcedurePredicates = true;
 
   Dictionary<Block, Variable> predMap, defMap;
   Dictionary<Block, HashSet<Variable>> ownedMap;
+  Dictionary<Block, Block> parentMap;
   Dictionary<Block, PartInfo> partInfo;
 
   IdentifierExpr fp;
@@ -27,10 +27,9 @@ public class SmartBlockPredicator {
   Dictionary<Block, Expr> blockIds = new Dictionary<Block, Expr>();
   HashSet<Block> doneBlocks = new HashSet<Block>();
 
-  SmartBlockPredicator(Program p, Implementation i, bool cci, bool upp) {
+  SmartBlockPredicator(Program p, Implementation i, bool upp) {
     prog = p;
     impl = i;
-    createCandidateInvariants = cci;
     useProcedurePredicates = upp;
   }
 
@@ -186,10 +185,7 @@ public class SmartBlockPredicator {
                         DomRelation<Block> pdom,
                         IEnumerator<Tuple<Block, bool>> i,
                         Variable headPredicate,
-                        ref int predCount,
-                        Dictionary<Block, Variable> predMap,
-                        Dictionary<Block, Variable> defMap,
-                        Dictionary<Block, HashSet<Variable>> ownedMap) {
+                        ref int predCount) {
     var header = i.Current.Item1;
     var regionPreds = new List<Tuple<Block, Variable>>();
     var ownedPreds = new HashSet<Variable>();
@@ -198,20 +194,18 @@ public class SmartBlockPredicator {
     predMap[header] = headPredicate;
     defMap[header] = headPredicate;
     regionPreds.Add(new Tuple<Block, Variable>(header, headPredicate));
-    if (!i.MoveNext())
-      return;
 
-    do {
+    while (i.MoveNext()) {
       var block = i.Current;
       if (block.Item2) {
         if (block.Item1 == header)
           return;
       } else {
         if (blockGraph.Headers.Contains(block.Item1)) {
+          parentMap[block.Item1] = header;
           var loopPred = FreshPredicate(ref predCount);
           ownedPreds.Add(loopPred);
-          AssignPredicates(blockGraph, dom, pdom, i, loopPred, ref predCount,
-                           predMap, defMap, ownedMap);
+          AssignPredicates(blockGraph, dom, pdom, i, loopPred, ref predCount);
         } else {
           bool foundExisting = false;
           foreach (var regionPred in regionPreds) {
@@ -231,12 +225,10 @@ public class SmartBlockPredicator {
           }
         }
       }
-    } while (i.MoveNext());
+    }
   }
 
-  void AssignPredicates(out Dictionary<Block, Variable> predMap,
-                        out Dictionary<Block, Variable> defMap,
-                        out Dictionary<Block, HashSet<Variable>> ownedMap) {
+  void AssignPredicates() {
     DomRelation<Block> dom = blockGraph.DominatorMap;
 
     Graph<Block> dualGraph = blockGraph.Dual(new Block());
@@ -253,9 +245,10 @@ public class SmartBlockPredicator {
     predMap = new Dictionary<Block, Variable>();
     defMap = new Dictionary<Block, Variable>();
     ownedMap = new Dictionary<Block, HashSet<Variable>>();
+    parentMap = new Dictionary<Block, Block>();
     AssignPredicates(blockGraph, dom, pdom, iter,
                      useProcedurePredicates ? impl.InParams[0] : null,
-                     ref predCount, predMap, defMap, ownedMap);
+                     ref predCount);
   }
 
   IEnumerable<Block> LoopsExited(Block src, Block dest) {
@@ -339,7 +332,7 @@ public class SmartBlockPredicator {
     blockGraph = prog.ProcessLoops(impl);
     sortedBlocks = blockGraph.LoopyTopSort();
 
-    AssignPredicates(out predMap, out defMap, out ownedMap);
+    AssignPredicates();
     partInfo = BuildPartitionInfo();
 
     if (useProcedurePredicates)
@@ -381,6 +374,17 @@ public class SmartBlockPredicator {
           prevBlock.TransferCmd = new GotoCmd(Token.NoToken,
                                               new BlockSeq(runBlock));
 
+        if (parentMap.ContainsKey(runBlock)) {
+          var parent = parentMap[runBlock];
+          if (predMap.ContainsKey(parent)) {
+            var parentPred = predMap[parent];
+            if (parentPred != null) {
+              runBlock.Cmds.Add(new AssertCmd(Token.NoToken,
+                                              Expr.Imp(pExpr, Expr.Ident(parentPred))));
+            }
+          }
+        }
+
         var transferCmd = runBlock.TransferCmd;
         foreach (Cmd cmd in oldCmdSeq)
           PredicateCmd(pExpr, newBlocks, runBlock, cmd, out runBlock);
@@ -413,7 +417,6 @@ public class SmartBlockPredicator {
   }
 
   public static void Predicate(Program p,
-                               bool createCandidateInvariants = true,
                                bool useProcedurePredicates = true) {
     foreach (var decl in p.TopLevelDeclarations.ToList()) {
       if (useProcedurePredicates && decl is DeclWithFormals && !(decl is Function)) {
@@ -448,7 +451,7 @@ public class SmartBlockPredicator {
       try {
         var impl = decl as Implementation;
         if (impl != null)
-          new SmartBlockPredicator(p, impl, createCandidateInvariants, useProcedurePredicates).PredicateImplementation();
+          new SmartBlockPredicator(p, impl, useProcedurePredicates).PredicateImplementation();
       }
       catch (Program.IrreducibleLoopException) { }
     }
@@ -456,7 +459,7 @@ public class SmartBlockPredicator {
 
   public static void Predicate(Program p, Implementation impl) {
     try {
-      new SmartBlockPredicator(p, impl, false, false).PredicateImplementation();
+      new SmartBlockPredicator(p, impl, false).PredicateImplementation();
     }
     catch (Program.IrreducibleLoopException) { }
   }
