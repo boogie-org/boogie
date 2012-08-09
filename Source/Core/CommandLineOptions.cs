@@ -254,7 +254,7 @@ namespace Microsoft.Boogie {
     /// <summary>
     /// This method is called after all parsing is done, if no parse errors were encountered.
     /// </summary>
-    protected virtual void ApplyDefaultOptions() {
+    public virtual void ApplyDefaultOptions() {
     }
       
     /// <summary>
@@ -1244,7 +1244,7 @@ namespace Microsoft.Boogie {
       return base.ParseOption(name, ps);  // defer to superclass
     }
 
-    protected override void ApplyDefaultOptions() {
+    public override void ApplyDefaultOptions() {
       Contract.Ensures(TheProverFactory != null);
       Contract.Ensures(vcVariety != VCVariety.Unspecified);
 
