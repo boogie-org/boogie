@@ -13,21 +13,7 @@ namespace GPUVerify {
 
     public IKernelArrayInfo NonLocalStateToCheck;
 
-    public int onlyLog1;
-    public int onlyLog2;
-    public bool failedToFindSecondAccess;
-    public bool addedLogWrite;
-    private int logAddCount;
-
     private Dictionary<string, Procedure> logAccessProcedures = new Dictionary<string, Procedure>();
-
-    public RaceInstrumenter() {
-      onlyLog1 = -1;
-      onlyLog2 = -1;
-      failedToFindSecondAccess = false;
-      addedLogWrite = false;
-      logAddCount = 0;
-    }
 
     public void setVerifier(GPUVerifier verifier) {
       this.verifier = verifier;
@@ -295,27 +281,13 @@ namespace GPUVerify {
       }
     }
 
-    public bool AddRaceCheckingInstrumentation() {
-
-      if (onlyLog1 != -1) {
-        addedLogWrite = false;
-        failedToFindSecondAccess = true;
-      }
-      else {
-        addedLogWrite = true;
-        failedToFindSecondAccess = false;
-      }
+    public void AddRaceCheckingInstrumentation() {
 
       foreach (Declaration d in verifier.Program.TopLevelDeclarations) {
         if (d is Implementation) {
           AddRaceCheckCalls(d as Implementation);
         }
       }
-
-      if (failedToFindSecondAccess || !addedLogWrite)
-        return false;
-
-      return true;
 
     }
 
@@ -350,27 +322,6 @@ namespace GPUVerify {
         impl.StructuredStmts = AddRaceCheckCalls(impl.StructuredStmts);
     }
 
-    private bool shouldAddLogCallAndIncr() {
-      Contract.Assert(onlyLog1 >= -1);
-      int oldLogAddCount = logAddCount;
-      ++logAddCount;
-
-      if (onlyLog1 == -1) {
-        return true;
-      }
-
-      if (onlyLog1 + onlyLog2 == oldLogAddCount) {
-        failedToFindSecondAccess = false;
-        return true;
-      }
-
-      if (onlyLog1 == oldLogAddCount) {
-        return true;
-      }
-
-      return false;
-    }
-
     private CmdSeq AddRaceCheckCalls(CmdSeq cs) {
       var result = new CmdSeq();
       foreach (Cmd c in cs) {
@@ -383,28 +334,26 @@ namespace GPUVerify {
             rc.Visit(rhs);
           if (rc.accesses.Count > 0) {
             foreach (AccessRecord ar in rc.accesses) {
-              if (shouldAddLogCallAndIncr()) {
 
-                ExprSeq inParams = new ExprSeq();
-                if (ar.IndexZ != null) {
-                  inParams.Add(ar.IndexZ);
-                }
-                if (ar.IndexY != null) {
-                  inParams.Add(ar.IndexY);
-                }
-                if (ar.IndexX != null) {
-                  inParams.Add(ar.IndexX);
-                }
-
-                Procedure logProcedure = GetLogAccessProcedure(c.tok, "_LOG_READ_" + ar.v.Name);
-
-                CallCmd logAccessCallCmd = new CallCmd(c.tok, logProcedure.Name, inParams, new IdentifierExprSeq());
-
-                logAccessCallCmd.Proc = logProcedure;
-
-                result.Add(logAccessCallCmd);
-
+              ExprSeq inParams = new ExprSeq();
+              if (ar.IndexZ != null) {
+                inParams.Add(ar.IndexZ);
               }
+              if (ar.IndexY != null) {
+                inParams.Add(ar.IndexY);
+              }
+              if (ar.IndexX != null) {
+                inParams.Add(ar.IndexX);
+              }
+
+              Procedure logProcedure = GetLogAccessProcedure(c.tok, "_LOG_READ_" + ar.v.Name);
+
+              CallCmd logAccessCallCmd = new CallCmd(c.tok, logProcedure.Name, inParams, new IdentifierExprSeq());
+
+              logAccessCallCmd.Proc = logProcedure;
+
+              result.Add(logAccessCallCmd);
+
             }
           }
 
@@ -414,30 +363,25 @@ namespace GPUVerify {
             if (wc.GetAccess() != null) {
               AccessRecord ar = wc.GetAccess();
 
-              if (shouldAddLogCallAndIncr()) {
-
-                ExprSeq inParams = new ExprSeq();
-                if (ar.IndexZ != null) {
-                  inParams.Add(ar.IndexZ);
-                }
-                if (ar.IndexY != null) {
-                  inParams.Add(ar.IndexY);
-                }
-                if (ar.IndexX != null) {
-                  inParams.Add(ar.IndexX);
-                }
-
-                Procedure logProcedure = GetLogAccessProcedure(c.tok, "_LOG_WRITE_" + ar.v.Name);
-
-                CallCmd logAccessCallCmd = new CallCmd(c.tok, logProcedure.Name, inParams, new IdentifierExprSeq());
-
-                logAccessCallCmd.Proc = logProcedure;
-
-                result.Add(logAccessCallCmd);
-
-                addedLogWrite = true;
-
+              ExprSeq inParams = new ExprSeq();
+              if (ar.IndexZ != null) {
+                inParams.Add(ar.IndexZ);
               }
+              if (ar.IndexY != null) {
+                inParams.Add(ar.IndexY);
+              }
+              if (ar.IndexX != null) {
+                inParams.Add(ar.IndexX);
+              }
+
+              Procedure logProcedure = GetLogAccessProcedure(c.tok, "_LOG_WRITE_" + ar.v.Name);
+
+              CallCmd logAccessCallCmd = new CallCmd(c.tok, logProcedure.Name, inParams, new IdentifierExprSeq());
+
+              logAccessCallCmd.Proc = logProcedure;
+
+              result.Add(logAccessCallCmd);
+
             }
           }
         }

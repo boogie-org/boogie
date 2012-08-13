@@ -88,7 +88,7 @@ namespace GPUVerify
             return null;
         }
 
-        public static bool doit(string filename, Variable v, int a1, int a2)
+/*        public static bool doit(string filename, Variable v, int a1, int a2)
         {
             ResolutionContext rc;
             Program newProgram = parse(out rc);
@@ -121,6 +121,7 @@ namespace GPUVerify
             return !ri.failedToFindSecondAccess;
 
         }
+      */
 
         public static void parseProcessOutput()
         {

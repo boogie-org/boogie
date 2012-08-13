@@ -19,9 +19,9 @@ namespace GPUVerify
             
         }
 
-        public bool AddRaceCheckingInstrumentation()
+        public void AddRaceCheckingInstrumentation()
         {
-            return true;
+
         }
 
         public Microsoft.Boogie.BigBlock MakeResetReadWriteSetStatements(Variable v, int Thread)

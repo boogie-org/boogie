@@ -387,10 +387,7 @@ namespace GPUVerify
                 }
             }
 
-            if (RaceInstrumenter.AddRaceCheckingInstrumentation() == false)
-            {
-                return;
-            }
+            RaceInstrumenter.AddRaceCheckingInstrumentation();
 
             if (CommandLineOptions.ShowStages)
             {
