@@ -21,9 +21,6 @@ namespace GPUVerify
         public static bool Inference = false;
         public static bool ArrayEqualities = false;
         public static string invariantsFile = null;
-        public static bool DividedArray = false;
-        public static string ArrayToCheck = null;
-        public static bool DividedAccesses = false;
 
         public static bool ShowStages = false;
 
@@ -93,28 +90,6 @@ namespace GPUVerify
 
                     break;
 
-                    case "-dividedArray":
-                    case "/dividedArray":
-                    if (hasColonArgument)
-                    {
-                        ArrayToCheck = afterColon;
-                    }
-                    DividedArray = true;
-
-                    break;
-
-                    case "-dividedAccesses":
-                    case "/dividedAccesses":
-                    DividedAccesses = true;
-
-                    break;
-
-                    case "-divided":
-                    case "/divided":
-                    DividedAccesses = true;
-                    DividedArray = true;
-                    break;
-
                     case "-showStages":
                     case "/showStages":
                     ShowStages = true;
@@ -181,11 +156,6 @@ namespace GPUVerify
                         break;
                 }
 
-                if (OnlyDivergence)
-                {
-                    DividedArray = false;
-                    DividedAccesses = false;
-                }
             }
             return 0;
         }
