@@ -825,7 +825,9 @@ namespace GPUVerify
                 }
 
                 WriteReadGuard = Expr.Not(WriteReadGuard);
-                simpleCmds.Add(new AssertCmd(Token.NoToken, WriteReadGuard));
+                simpleCmds.Add(new AssertCmd(Token.NoToken, WriteReadGuard,
+                  new QKeyValue(Token.NoToken, "write_read_race", new List<object>(new object[] { }), null)
+                  ));
             }
             else
             {
@@ -853,7 +855,9 @@ namespace GPUVerify
                 }
 
                 WriteWriteGuard = Expr.Not(WriteWriteGuard);
-                simpleCmds.Add(new AssertCmd(Token.NoToken, WriteWriteGuard));
+                simpleCmds.Add(new AssertCmd(Token.NoToken, WriteWriteGuard,
+                   new QKeyValue(Token.NoToken, "write_write_race", new List<object>(new object[] { }), null)
+                  ));
 
                 // Check write by thread 2 does not conflict with read by thread 1
                 Variable ReadHasOccurredVariable = GPUVerifier.MakeAccessHasOccurredVariable(v.Name, "READ");
@@ -877,7 +881,9 @@ namespace GPUVerify
                 }
 
                 ReadWriteGuard = Expr.Not(ReadWriteGuard);
-                simpleCmds.Add(new AssertCmd(Token.NoToken, ReadWriteGuard));
+                simpleCmds.Add(new AssertCmd(Token.NoToken, ReadWriteGuard,
+                  new QKeyValue(Token.NoToken, "read_write_race", new List<object>(new object[] { }), null)
+                  ));
 
             }
 

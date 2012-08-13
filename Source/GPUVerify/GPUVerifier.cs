@@ -1355,8 +1355,8 @@ namespace GPUVerify
             IToken tok = BarrierProcedure.tok;
 
             List<BigBlock> bigblocks = new List<BigBlock>();
-            BigBlock checkNonDivergence = new BigBlock(tok, "__BarrierImpl", new CmdSeq(), null, null);
-            bigblocks.Add(checkNonDivergence);
+            BigBlock barrierEntryBlock = new BigBlock(tok, "__BarrierImpl", new CmdSeq(), null, null);
+            bigblocks.Add(barrierEntryBlock);
 
             Debug.Assert((BarrierProcedure.InParams.Length % 2) == 0);
             int paramsPerThread = BarrierProcedure.InParams.Length / 2;
@@ -1368,7 +1368,10 @@ namespace GPUVerify
 
             Expr DivergenceCondition = Expr.Imp(ThreadsInSameGroup(), Expr.Eq(P1, P2));
 
-            checkNonDivergence.simpleCmds.Add(new AssertCmd(tok, DivergenceCondition));
+            Requires nonDivergenceRequires = new Requires(false, DivergenceCondition);
+            nonDivergenceRequires.Attributes = new QKeyValue(Token.NoToken, "barrier_divergence",
+              new List<object>(new object[] { }), null);
+            BarrierProcedure.Requires.Add(nonDivergenceRequires);
 
             if (!CommandLineOptions.OnlyDivergence)
             {
@@ -1377,7 +1380,7 @@ namespace GPUVerify
                 StmtList returnstatement = new StmtList(returnbigblocks, BarrierProcedure.tok);
 
                 Expr IfGuard = Expr.Or(Expr.And(Expr.Not(P1), Expr.Not(P2)), Expr.And(ThreadsInSameGroup(), Expr.Or(Expr.Not(P1), Expr.Not(P2))));
-                checkNonDivergence.ec = new IfCmd(tok, IfGuard, returnstatement, null, null);
+                barrierEntryBlock.ec = new IfCmd(tok, IfGuard, returnstatement, null, null);
             }
 
             if(KernelArrayInfo.getGroupSharedArrays().Count > 0) {
