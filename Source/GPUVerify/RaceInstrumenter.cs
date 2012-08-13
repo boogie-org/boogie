@@ -336,15 +336,7 @@ namespace GPUVerify {
             foreach (AccessRecord ar in rc.accesses) {
 
               ExprSeq inParams = new ExprSeq();
-              if (ar.IndexZ != null) {
-                inParams.Add(ar.IndexZ);
-              }
-              if (ar.IndexY != null) {
-                inParams.Add(ar.IndexY);
-              }
-              if (ar.IndexX != null) {
-                inParams.Add(ar.IndexX);
-              }
+              inParams.Add(ar.Index);
 
               Procedure logProcedure = GetLogAccessProcedure(c.tok, "_LOG_READ_" + ar.v.Name);
 
@@ -364,15 +356,7 @@ namespace GPUVerify {
               AccessRecord ar = wc.GetAccess();
 
               ExprSeq inParams = new ExprSeq();
-              if (ar.IndexZ != null) {
-                inParams.Add(ar.IndexZ);
-              }
-              if (ar.IndexY != null) {
-                inParams.Add(ar.IndexY);
-              }
-              if (ar.IndexX != null) {
-                inParams.Add(ar.IndexX);
-              }
+              inParams.Add(ar.Index);
 
               Procedure logProcedure = GetLogAccessProcedure(c.tok, "_LOG_WRITE_" + ar.v.Name);
 
