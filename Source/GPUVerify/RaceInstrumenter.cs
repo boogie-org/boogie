@@ -11,9 +11,11 @@ namespace GPUVerify {
   class RaceInstrumenter : IRaceInstrumenter {
     protected GPUVerifier verifier;
 
+    private QKeyValue SourceLocationAttributes = null;
+
     public IKernelArrayInfo NonLocalStateToCheck;
 
-    private Dictionary<string, Procedure> logAccessProcedures = new Dictionary<string, Procedure>();
+    private Dictionary<string, Procedure> RaceCheckingProcedures = new Dictionary<string, Procedure>();
 
     public void setVerifier(GPUVerifier verifier) {
       this.verifier = verifier;
@@ -295,8 +297,9 @@ namespace GPUVerify {
       AddLogRaceDeclarations(v, "READ");
       AddLogRaceDeclarations(v, "WRITE");
       AddLogAccessProcedure(v, "READ");
+      AddCheckAccessProcedure(v, "READ");
       AddLogAccessProcedure(v, "WRITE");
-
+      AddCheckAccessProcedure(v, "WRITE");
     }
 
     private StmtList AddRaceCheckCalls(StmtList stmtList) {
@@ -326,6 +329,14 @@ namespace GPUVerify {
       var result = new CmdSeq();
       foreach (Cmd c in cs) {
         result.Add(c);
+
+        if (c is AssertCmd) {
+          AssertCmd assertion = c as AssertCmd;
+          if (QKeyValue.FindBoolAttribute(assertion.Attributes, "sourceloc")) {
+            SourceLocationAttributes = assertion.Attributes;
+          }
+        }
+
         if (c is AssignCmd) {
           AssignCmd assign = c as AssignCmd;
 
@@ -338,13 +349,21 @@ namespace GPUVerify {
               ExprSeq inParams = new ExprSeq();
               inParams.Add(ar.Index);
 
-              Procedure logProcedure = GetLogAccessProcedure(c.tok, "_LOG_READ_" + ar.v.Name);
+              Procedure logProcedure = GetRaceCheckingProcedure(c.tok, "_LOG_READ_" + ar.v.Name);
+              Procedure checkProcedure = GetRaceCheckingProcedure(c.tok, "_CHECK_READ_" + ar.v.Name);
+
+              verifier.OnlyThread1.Add(logProcedure.Name);
+              verifier.OnlyThread2.Add(checkProcedure.Name);
 
               CallCmd logAccessCallCmd = new CallCmd(c.tok, logProcedure.Name, inParams, new IdentifierExprSeq());
-
               logAccessCallCmd.Proc = logProcedure;
 
+              CallCmd checkAccessCallCmd = new CallCmd(c.tok, checkProcedure.Name, inParams, new IdentifierExprSeq());
+              checkAccessCallCmd.Proc = checkProcedure;
+              checkAccessCallCmd.Attributes = SourceLocationAttributes;
+
               result.Add(logAccessCallCmd);
+              result.Add(checkAccessCallCmd);
 
             }
           }
@@ -358,13 +377,20 @@ namespace GPUVerify {
               ExprSeq inParams = new ExprSeq();
               inParams.Add(ar.Index);
 
-              Procedure logProcedure = GetLogAccessProcedure(c.tok, "_LOG_WRITE_" + ar.v.Name);
+              Procedure logProcedure = GetRaceCheckingProcedure(c.tok, "_LOG_WRITE_" + ar.v.Name);
+              Procedure checkProcedure = GetRaceCheckingProcedure(c.tok, "_CHECK_WRITE_" + ar.v.Name);
+
+              verifier.OnlyThread1.Add(logProcedure.Name);
+              verifier.OnlyThread2.Add(checkProcedure.Name);
 
               CallCmd logAccessCallCmd = new CallCmd(c.tok, logProcedure.Name, inParams, new IdentifierExprSeq());
+              CallCmd checkAccessCallCmd = new CallCmd(c.tok, checkProcedure.Name, inParams, new IdentifierExprSeq());
 
               logAccessCallCmd.Proc = logProcedure;
+              checkAccessCallCmd.Proc = checkProcedure;
 
               result.Add(logAccessCallCmd);
+              result.Add(checkAccessCallCmd);
 
             }
           }
@@ -396,12 +422,12 @@ namespace GPUVerify {
       return result;
     }
 
-    private Procedure GetLogAccessProcedure(IToken tok, string name) {
-      if (logAccessProcedures.ContainsKey(name)) {
-        return logAccessProcedures[name];
+    private Procedure GetRaceCheckingProcedure(IToken tok, string name) {
+      if (RaceCheckingProcedures.ContainsKey(name)) {
+        return RaceCheckingProcedures[name];
       }
       Procedure newProcedure = new Procedure(tok, name, new TypeVariableSeq(), new VariableSeq(), new VariableSeq(), new RequiresSeq(), new IdentifierExprSeq(), new EnsuresSeq());
-      logAccessProcedures[name] = newProcedure;
+      RaceCheckingProcedures[name] = newProcedure;
       return newProcedure;
     }
 
@@ -441,12 +467,34 @@ namespace GPUVerify {
       inParams.Add(new VariableDualiser(1, null, null).VisitVariable(PredicateParameter.Clone() as Variable));
       inParams.Add(new VariableDualiser(1, null, null).VisitVariable(OffsetParameter.Clone() as Variable));
 
+      string LogProcedureName = "_LOG_" + ReadOrWrite + "_" + v.Name;
+
+      Procedure result = GetRaceCheckingProcedure(v.tok, LogProcedureName);
+
+      result.InParams = inParams;
+
+      result.AddAttribute("inline", new object[] { new LiteralExpr(v.tok, BigNum.FromInt(1)) });
+
+      return result;
+    }
+
+    protected Procedure MakeCheckAccessProcedureHeader(Variable v, string ReadOrWrite) {
+      VariableSeq inParams = new VariableSeq();
+
+      Variable PredicateParameter = new LocalVariable(v.tok, new TypedIdent(v.tok, "_P", Microsoft.Boogie.Type.Bool));
+
+      Debug.Assert(v.TypedIdent.Type is MapType);
+      MapType mt = v.TypedIdent.Type as MapType;
+      Debug.Assert(mt.Arguments.Length == 1);
+      Variable OffsetParameter = new LocalVariable(v.tok, new TypedIdent(v.tok, "_offset", mt.Arguments[0]));
+      Debug.Assert(!(mt.Result is MapType));
+
       inParams.Add(new VariableDualiser(2, null, null).VisitVariable(PredicateParameter.Clone() as Variable));
       inParams.Add(new VariableDualiser(2, null, null).VisitVariable(OffsetParameter.Clone() as Variable));
 
-      string LogProcedureName = "_LOG_" + ReadOrWrite + "_" + v.Name;
+      string CheckProcedureName = "_CHECK_" + ReadOrWrite + "_" + v.Name;
 
-      Procedure result = GetLogAccessProcedure(v.tok, LogProcedureName);
+      Procedure result = GetRaceCheckingProcedure(v.tok, CheckProcedureName);
 
       result.InParams = inParams;
 
@@ -605,6 +653,35 @@ namespace GPUVerify {
           Expr.And(new IdentifierExpr(v.tok, VariableForThread(1, PredicateParameter)), new IdentifierExpr(v.tok, TrackVariable)),
           new IdentifierExpr(v.tok, VariableForThread(1, OffsetParameter))));
 
+      bigblocks.Add(new BigBlock(v.tok, "_LOG_" + Access + "", simpleCmds, null, null));
+
+      LogAccessProcedure.Modifies.Add(new IdentifierExpr(Token.NoToken, VariableForThread(1, AccessHasOccurredVariable)));
+      LogAccessProcedure.Modifies.Add(new IdentifierExpr(Token.NoToken, VariableForThread(1, AccessOffsetXVariable)));
+
+      Implementation LogAccessImplementation = new Implementation(v.tok, "_LOG_" + Access + "_" + v.Name, new TypeVariableSeq(), LogAccessProcedure.InParams, new VariableSeq(), locals, new StmtList(bigblocks, v.tok));
+      LogAccessImplementation.AddAttribute("inline", new object[] { new LiteralExpr(v.tok, BigNum.FromInt(1)) });
+
+      LogAccessImplementation.Proc = LogAccessProcedure;
+
+      verifier.Program.TopLevelDeclarations.Add(LogAccessProcedure);
+      verifier.Program.TopLevelDeclarations.Add(LogAccessImplementation);
+    }
+
+
+    protected void AddCheckAccessProcedure(Variable v, string Access) {
+      Procedure CheckAccessProcedure = MakeCheckAccessProcedureHeader(v, Access);
+
+      Variable AccessHasOccurredVariable = GPUVerifier.MakeAccessHasOccurredVariable(v.Name, Access);
+      Variable AccessOffsetXVariable = GPUVerifier.MakeOffsetVariable(v, Access);
+
+      Variable PredicateParameter = new LocalVariable(v.tok, new TypedIdent(v.tok, "_P", Microsoft.Boogie.Type.Bool));
+
+      Debug.Assert(v.TypedIdent.Type is MapType);
+      MapType mt = v.TypedIdent.Type as MapType;
+      Debug.Assert(mt.Arguments.Length == 1);
+      Variable OffsetParameter = new LocalVariable(v.tok, new TypedIdent(v.tok, "_offset", mt.Arguments[0]));
+      Debug.Assert(!(mt.Result is MapType));
+
       if (Access.Equals("READ")) {
         // Check read by thread 2 does not conflict with write by thread 1
         Variable WriteHasOccurredVariable = GPUVerifier.MakeAccessHasOccurredVariable(v.Name, "WRITE");
@@ -625,9 +702,11 @@ namespace GPUVerify {
         }
 
         WriteReadGuard = Expr.Not(WriteReadGuard);
-        simpleCmds.Add(new AssertCmd(Token.NoToken, WriteReadGuard,
-          new QKeyValue(Token.NoToken, "write_read_race", new List<object>(new object[] { }), null)
-          ));
+
+        Requires NoWriteReadRaceRequires = new Requires(false, WriteReadGuard);
+        NoWriteReadRaceRequires.Attributes = new QKeyValue(Token.NoToken, "write_read_race",
+          new List<object>(new object[] { }), null);
+        CheckAccessProcedure.Requires.Add(NoWriteReadRaceRequires);
       }
       else {
         Debug.Assert(Access.Equals("WRITE"));
@@ -652,9 +731,10 @@ namespace GPUVerify {
         }
 
         WriteWriteGuard = Expr.Not(WriteWriteGuard);
-        simpleCmds.Add(new AssertCmd(Token.NoToken, WriteWriteGuard,
-           new QKeyValue(Token.NoToken, "write_write_race", new List<object>(new object[] { }), null)
-          ));
+        Requires NoWriteWriteRaceRequires = new Requires(false, WriteWriteGuard);
+        NoWriteWriteRaceRequires.Attributes = new QKeyValue(Token.NoToken, "write_write_race",
+          new List<object>(new object[] { }), null);
+        CheckAccessProcedure.Requires.Add(NoWriteWriteRaceRequires);
 
         // Check write by thread 2 does not conflict with read by thread 1
         Variable ReadHasOccurredVariable = GPUVerifier.MakeAccessHasOccurredVariable(v.Name, "READ");
@@ -676,25 +756,16 @@ namespace GPUVerify {
         }
 
         ReadWriteGuard = Expr.Not(ReadWriteGuard);
-        simpleCmds.Add(new AssertCmd(Token.NoToken, ReadWriteGuard,
-          new QKeyValue(Token.NoToken, "read_write_race", new List<object>(new object[] { }), null)
-          ));
+        Requires NoReadWriteRaceRequires = new Requires(false, ReadWriteGuard);
+        NoReadWriteRaceRequires.Attributes = new QKeyValue(Token.NoToken, "read_write_race",
+          new List<object>(new object[] { }), null);
+        CheckAccessProcedure.Requires.Add(NoReadWriteRaceRequires);
 
       }
-
-      bigblocks.Add(new BigBlock(v.tok, "_LOG_" + Access + "", simpleCmds, null, null));
-
-      LogAccessProcedure.Modifies.Add(new IdentifierExpr(Token.NoToken, VariableForThread(1, AccessHasOccurredVariable)));
-      LogAccessProcedure.Modifies.Add(new IdentifierExpr(Token.NoToken, VariableForThread(1, AccessOffsetXVariable)));
-
-      Implementation LogAccessImplementation = new Implementation(v.tok, "_LOG_" + Access + "_" + v.Name, new TypeVariableSeq(), LogAccessProcedure.InParams, new VariableSeq(), locals, new StmtList(bigblocks, v.tok));
-      LogAccessImplementation.AddAttribute("inline", new object[] { new LiteralExpr(v.tok, BigNum.FromInt(1)) });
-
-      LogAccessImplementation.Proc = LogAccessProcedure;
-
-      verifier.Program.TopLevelDeclarations.Add(LogAccessProcedure);
-      verifier.Program.TopLevelDeclarations.Add(LogAccessImplementation);
+      verifier.Program.TopLevelDeclarations.Add(CheckAccessProcedure);
     }
+
+
 
     private Variable VariableForThread(int thread, Variable v) {
       return new VariableDualiser(thread, null, null).VisitVariable(v.Clone() as Variable);

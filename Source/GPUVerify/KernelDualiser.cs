@@ -106,12 +106,14 @@ namespace GPUVerify {
           if (verifier.uniformityAnalyser.knowsOf(Call.callee) && verifier.uniformityAnalyser.IsUniform(Call.callee, verifier.uniformityAnalyser.GetInParameter(Call.callee, i))) {
             uniformNewIns.Add(Call.Ins[i]);
           }
-          else {
+          else if(!verifier.OnlyThread2.Contains(Call.callee)) {
             nonUniformNewIns.Add(new VariableDualiser(1, verifier.uniformityAnalyser, procName).VisitExpr(Call.Ins[i]));
           }
         }
         for (int i = 0; i < Call.Ins.Count; i++) {
-          if (!(verifier.uniformityAnalyser.knowsOf(Call.callee) && verifier.uniformityAnalyser.IsUniform(Call.callee, verifier.uniformityAnalyser.GetInParameter(Call.callee, i)))) {
+          if (
+            !(verifier.uniformityAnalyser.knowsOf(Call.callee) && verifier.uniformityAnalyser.IsUniform(Call.callee, verifier.uniformityAnalyser.GetInParameter(Call.callee, i)))
+            && !verifier.OnlyThread1.Contains(Call.callee)) {
             nonUniformNewIns.Add(new VariableDualiser(2, verifier.uniformityAnalyser, procName).VisitExpr(Call.Ins[i]));
           }
         }

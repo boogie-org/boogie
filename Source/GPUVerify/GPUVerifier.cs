@@ -24,6 +24,9 @@ namespace GPUVerify
 
         private HashSet<string> ReservedNames = new HashSet<string>();
 
+        internal HashSet<string> OnlyThread1 = new HashSet<string>();
+        internal HashSet<string> OnlyThread2 = new HashSet<string>();
+
         private int TempCounter = 0;
 
         internal const string LOCAL_ID_X_STRING = "local_id_x";
