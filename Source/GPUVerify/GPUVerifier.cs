@@ -24,6 +24,9 @@ namespace GPUVerify
 
         private HashSet<string> ReservedNames = new HashSet<string>();
 
+        internal HashSet<string> OnlyThread1 = new HashSet<string>();
+        internal HashSet<string> OnlyThread2 = new HashSet<string>();
+
         private int TempCounter = 0;
 
         internal const string LOCAL_ID_X_STRING = "local_id_x";
@@ -387,10 +390,7 @@ namespace GPUVerify
                 }
             }
 
-            if (RaceInstrumenter.AddRaceCheckingInstrumentation() == false)
-            {
-                return;
-            }
+            RaceInstrumenter.AddRaceCheckingInstrumentation();
 
             if (CommandLineOptions.ShowStages)
             {
@@ -454,47 +454,6 @@ namespace GPUVerify
             }
 
             emitProgram(outputFilename);
-
-
-            if (CommandLineOptions.DividedAccesses)
-            {
-
-                Program p = GPUVerify.ParseBoogieProgram(new List<string>(new string[] { outputFilename + ".bpl" }), true);
-                ResolutionContext rc = new ResolutionContext(null);
-                p.Resolve(rc);
-                p.Typecheck();
-
-                Contract.Assert(p != null);
-
-                Implementation impl = null;
-
-                {
-                    GPUVerifier tempGPUV = new GPUVerifier("not_used", p, rc, new NullRaceInstrumenter(), true);
-                    tempGPUV.KernelProcedure = tempGPUV.CheckExactlyOneKernelProcedure();
-                    tempGPUV.GetKernelImplementation();
-                    impl = tempGPUV.KernelImplementation;
-                }
-
-                Contract.Assert(impl != null);
-
-                NoConflictingAccessOptimiser opt = new NoConflictingAccessOptimiser(impl);
-                Contract.Assert(opt.NumLogCalls() <= 2);
-                if (opt.NumLogCalls() == 2 && !opt.HasConflicting())
-                {
-                    FileInfo f = new FileInfo(outputFilename);
-                    
-                    string newName = f.Directory.FullName + "\\" + "NO_CONFLICTS_" + f.Name + ".bpl";
-                    //File.Delete(newName);
-                    if (File.Exists(newName))
-                    {
-                        File.Delete(newName);
-                    }
-                    File.Move(outputFilename + ".bpl", newName);
-                    //Console.WriteLine("Renamed " + ouputFilename + "; no conflicting accesses (that are not already tested by other output files).");
-                }
-
-               
-            }
 
         }
 

@@ -126,7 +126,6 @@
     <Compile Include="IKernelArrayInfo.cs" />
     <Compile Include="IRaceInstrumenter.cs" />
     <Compile Include="Main.cs" />
-    <Compile Include="NoConflictingAccessOptimiser.cs" />
     <Compile Include="NonLocalAccessCollector.cs" />
     <Compile Include="NonLocalAccessExtractor.cs" />
     <Compile Include="KernelArrayInfoLists.cs" />
