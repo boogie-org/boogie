@@ -345,26 +345,7 @@ namespace GPUVerify {
             rc.Visit(rhs);
           if (rc.accesses.Count > 0) {
             foreach (AccessRecord ar in rc.accesses) {
-
-              ExprSeq inParams = new ExprSeq();
-              inParams.Add(ar.Index);
-
-              Procedure logProcedure = GetRaceCheckingProcedure(c.tok, "_LOG_READ_" + ar.v.Name);
-              Procedure checkProcedure = GetRaceCheckingProcedure(c.tok, "_CHECK_READ_" + ar.v.Name);
-
-              verifier.OnlyThread1.Add(logProcedure.Name);
-              verifier.OnlyThread2.Add(checkProcedure.Name);
-
-              CallCmd logAccessCallCmd = new CallCmd(c.tok, logProcedure.Name, inParams, new IdentifierExprSeq());
-              logAccessCallCmd.Proc = logProcedure;
-
-              CallCmd checkAccessCallCmd = new CallCmd(c.tok, checkProcedure.Name, inParams, new IdentifierExprSeq());
-              checkAccessCallCmd.Proc = checkProcedure;
-              checkAccessCallCmd.Attributes = SourceLocationAttributes;
-
-              result.Add(logAccessCallCmd);
-              result.Add(checkAccessCallCmd);
-
+              AddLogAndCheckCalls(result, ar, "READ");
             }
           }
 
@@ -373,30 +354,33 @@ namespace GPUVerify {
             wc.Visit(lhs);
             if (wc.GetAccess() != null) {
               AccessRecord ar = wc.GetAccess();
-
-              ExprSeq inParams = new ExprSeq();
-              inParams.Add(ar.Index);
-
-              Procedure logProcedure = GetRaceCheckingProcedure(c.tok, "_LOG_WRITE_" + ar.v.Name);
-              Procedure checkProcedure = GetRaceCheckingProcedure(c.tok, "_CHECK_WRITE_" + ar.v.Name);
-
-              verifier.OnlyThread1.Add(logProcedure.Name);
-              verifier.OnlyThread2.Add(checkProcedure.Name);
-
-              CallCmd logAccessCallCmd = new CallCmd(c.tok, logProcedure.Name, inParams, new IdentifierExprSeq());
-              CallCmd checkAccessCallCmd = new CallCmd(c.tok, checkProcedure.Name, inParams, new IdentifierExprSeq());
-
-              logAccessCallCmd.Proc = logProcedure;
-              checkAccessCallCmd.Proc = checkProcedure;
-
-              result.Add(logAccessCallCmd);
-              result.Add(checkAccessCallCmd);
-
+              AddLogAndCheckCalls(result, ar, "WRITE");
             }
           }
         }
       }
       return result;
+    }
+
+    private void AddLogAndCheckCalls(CmdSeq result, AccessRecord ar, string Access) {
+      ExprSeq inParams = new ExprSeq();
+      inParams.Add(ar.Index);
+
+      Procedure logProcedure = GetRaceCheckingProcedure(Token.NoToken, "_LOG_" + Access + "_" + ar.v.Name);
+      Procedure checkProcedure = GetRaceCheckingProcedure(Token.NoToken, "_CHECK_" + Access + "_" + ar.v.Name);
+
+      verifier.OnlyThread1.Add(logProcedure.Name);
+      verifier.OnlyThread2.Add(checkProcedure.Name);
+
+      CallCmd logAccessCallCmd = new CallCmd(Token.NoToken, logProcedure.Name, inParams, new IdentifierExprSeq());
+      logAccessCallCmd.Proc = logProcedure;
+
+      CallCmd checkAccessCallCmd = new CallCmd(Token.NoToken, checkProcedure.Name, inParams, new IdentifierExprSeq());
+      checkAccessCallCmd.Proc = checkProcedure;
+      checkAccessCallCmd.Attributes = SourceLocationAttributes;
+
+      result.Add(logAccessCallCmd);
+      result.Add(checkAccessCallCmd);
     }
 
     private BigBlock AddRaceCheckCalls(BigBlock bb) {
