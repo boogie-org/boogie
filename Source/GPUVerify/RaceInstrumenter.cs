@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Diagnostics;
@@ -12,6 +13,8 @@ namespace GPUVerify {
     protected GPUVerifier verifier;
 
     private QKeyValue SourceLocationAttributes = null;
+
+    private int CurrStmtNo = 1;
 
     public IKernelArrayInfo NonLocalStateToCheck;
 
@@ -363,8 +366,11 @@ namespace GPUVerify {
     }
 
     private void AddLogAndCheckCalls(CmdSeq result, AccessRecord ar, string Access) {
-      ExprSeq inParams = new ExprSeq();
-      inParams.Add(ar.Index);
+      ExprSeq inParamsLog = new ExprSeq();
+      ExprSeq inParamsChk = new ExprSeq();
+      inParamsChk.Add(ar.Index);
+      inParamsLog.Add(ar.Index);
+      inParamsLog.Add(new LiteralExpr(Token.NoToken, BigNum.FromInt(CurrStmtNo), 32));
 
       Procedure logProcedure = GetRaceCheckingProcedure(Token.NoToken, "_LOG_" + Access + "_" + ar.v.Name);
       Procedure checkProcedure = GetRaceCheckingProcedure(Token.NoToken, "_CHECK_" + Access + "_" + ar.v.Name);
@@ -372,15 +378,26 @@ namespace GPUVerify {
       verifier.OnlyThread1.Add(logProcedure.Name);
       verifier.OnlyThread2.Add(checkProcedure.Name);
 
-      CallCmd logAccessCallCmd = new CallCmd(Token.NoToken, logProcedure.Name, inParams, new IdentifierExprSeq());
+      CallCmd logAccessCallCmd = new CallCmd(Token.NoToken, logProcedure.Name, inParamsLog, new IdentifierExprSeq());
       logAccessCallCmd.Proc = logProcedure;
 
-      CallCmd checkAccessCallCmd = new CallCmd(Token.NoToken, checkProcedure.Name, inParams, new IdentifierExprSeq());
+      CallCmd checkAccessCallCmd = new CallCmd(Token.NoToken, checkProcedure.Name, inParamsChk, new IdentifierExprSeq());
       checkAccessCallCmd.Proc = checkProcedure;
       checkAccessCallCmd.Attributes = SourceLocationAttributes;
 
       result.Add(logAccessCallCmd);
       result.Add(checkAccessCallCmd);
+
+      string fname = QKeyValue.FindStringAttribute(SourceLocationAttributes, "fname");
+      if (fname != null)
+      {
+        writeSourceLocToFile(SourceLocationAttributes, Path.GetFileNameWithoutExtension(CommandLineOptions.inputFiles[0]) + ".loc");
+      }
+      else
+      {
+        Debug.Assert(false, "RaceInstrumenter.AddLogAndCheckCalls: Could not write sourceloc to file as filename could not be found.\n");
+      }
+      CurrStmtNo++;
     }
 
     private BigBlock AddRaceCheckCalls(BigBlock bb) {
@@ -446,10 +463,12 @@ namespace GPUVerify {
       MapType mt = v.TypedIdent.Type as MapType;
       Debug.Assert(mt.Arguments.Length == 1);
       Variable OffsetParameter = new LocalVariable(v.tok, new TypedIdent(v.tok, "_offset", mt.Arguments[0]));
+      Variable SourceParameter = new LocalVariable(v.tok, new TypedIdent(v.tok, "_source", mt.Arguments[0]));
       Debug.Assert(!(mt.Result is MapType));
 
       inParams.Add(new VariableDualiser(1, null, null).VisitVariable(PredicateParameter.Clone() as Variable));
       inParams.Add(new VariableDualiser(1, null, null).VisitVariable(OffsetParameter.Clone() as Variable));
+      inParams.Add(new VariableDualiser(1, null, null).VisitVariable(SourceParameter.Clone() as Variable));
 
       string LogProcedureName = "_LOG_" + ReadOrWrite + "_" + v.Name;
 
@@ -612,6 +631,7 @@ namespace GPUVerify {
 
       Variable AccessHasOccurredVariable = GPUVerifier.MakeAccessHasOccurredVariable(v.Name, Access);
       Variable AccessOffsetXVariable = GPUVerifier.MakeOffsetVariable(v, Access);
+      Variable AccessSourceVariable = GPUVerifier.MakeSourceVariable(v, Access);
 
       Variable PredicateParameter = new LocalVariable(v.tok, new TypedIdent(v.tok, "_P", Microsoft.Boogie.Type.Bool));
 
@@ -619,6 +639,7 @@ namespace GPUVerify {
       MapType mt = v.TypedIdent.Type as MapType;
       Debug.Assert(mt.Arguments.Length == 1);
       Variable OffsetParameter = new LocalVariable(v.tok, new TypedIdent(v.tok, "_offset", mt.Arguments[0]));
+      Variable SourceParameter = new LocalVariable(v.tok, new TypedIdent(v.tok, "_source", mt.Arguments[0]));
       Debug.Assert(!(mt.Result is MapType));
 
       VariableSeq locals = new VariableSeq();
@@ -636,6 +657,9 @@ namespace GPUVerify {
       simpleCmds.Add(MakeConditionalAssignment(VariableForThread(1, AccessOffsetXVariable),
           Expr.And(new IdentifierExpr(v.tok, VariableForThread(1, PredicateParameter)), new IdentifierExpr(v.tok, TrackVariable)),
           new IdentifierExpr(v.tok, VariableForThread(1, OffsetParameter))));
+      simpleCmds.Add(MakeConditionalAssignment(VariableForThread(1, AccessSourceVariable),
+          Expr.And(new IdentifierExpr(v.tok, VariableForThread(1, PredicateParameter)), new IdentifierExpr(v.tok, TrackVariable)),
+          new IdentifierExpr(v.tok, VariableForThread(1, SourceParameter))));
 
       bigblocks.Add(new BigBlock(v.tok, "_LOG_" + Access + "", simpleCmds, null, null));
 
@@ -674,6 +698,7 @@ namespace GPUVerify {
         WriteReadGuard = Expr.And(WriteReadGuard, new IdentifierExpr(Token.NoToken, VariableForThread(1, WriteHasOccurredVariable)));
         WriteReadGuard = Expr.And(WriteReadGuard, Expr.Eq(new IdentifierExpr(Token.NoToken, VariableForThread(1, WriteOffsetVariable)),
                                         new IdentifierExpr(Token.NoToken, VariableForThread(2, OffsetParameter))));
+
         if (!verifier.ArrayModelledAdversarially(v)) {
           WriteReadGuard = Expr.And(WriteReadGuard, Expr.Neq(
               MakeAccessedIndex(v, new IdentifierExpr(Token.NoToken, VariableForThread(1, WriteOffsetVariable)), 1, "WRITE"),
@@ -688,8 +713,8 @@ namespace GPUVerify {
         WriteReadGuard = Expr.Not(WriteReadGuard);
 
         Requires NoWriteReadRaceRequires = new Requires(false, WriteReadGuard);
-        NoWriteReadRaceRequires.Attributes = new QKeyValue(Token.NoToken, "write_read_race",
-          new List<object>(new object[] { }), null);
+        QKeyValue kv = new QKeyValue(Token.NoToken, "write_read", new List<object>(), null);
+        NoWriteReadRaceRequires.Attributes = new QKeyValue(Token.NoToken, "race", new List<object>(), kv);
         CheckAccessProcedure.Requires.Add(NoWriteReadRaceRequires);
       }
       else {
@@ -716,8 +741,8 @@ namespace GPUVerify {
 
         WriteWriteGuard = Expr.Not(WriteWriteGuard);
         Requires NoWriteWriteRaceRequires = new Requires(false, WriteWriteGuard);
-        NoWriteWriteRaceRequires.Attributes = new QKeyValue(Token.NoToken, "write_write_race",
-          new List<object>(new object[] { }), null);
+        QKeyValue kv = new QKeyValue(Token.NoToken, "write_write", new List<object>(), null);
+        NoWriteWriteRaceRequires.Attributes = new QKeyValue(Token.NoToken, "race", new List<object>(), kv);
         CheckAccessProcedure.Requires.Add(NoWriteWriteRaceRequires);
 
         // Check write by thread 2 does not conflict with read by thread 1
@@ -741,8 +766,8 @@ namespace GPUVerify {
 
         ReadWriteGuard = Expr.Not(ReadWriteGuard);
         Requires NoReadWriteRaceRequires = new Requires(false, ReadWriteGuard);
-        NoReadWriteRaceRequires.Attributes = new QKeyValue(Token.NoToken, "read_write_race",
-          new List<object>(new object[] { }), null);
+        kv = new QKeyValue(Token.NoToken, "read_write", new List<object>(), null);
+        NoReadWriteRaceRequires.Attributes = new QKeyValue(Token.NoToken, "race", new List<object>(), kv);
         CheckAccessProcedure.Requires.Add(NoReadWriteRaceRequires);
 
       }
@@ -897,6 +922,15 @@ namespace GPUVerify {
       return implication;
     }
 
+    private void writeSourceLocToFile(QKeyValue kv, string path) {
+      TextWriter tw = new StreamWriter(path, true);
+      tw.Write("\n" + QKeyValue.FindIntAttribute(SourceLocationAttributes, "line", -1) 
+                    + "#" + QKeyValue.FindIntAttribute(SourceLocationAttributes, "col", -1) 
+                    + "#" + QKeyValue.FindStringAttribute(SourceLocationAttributes, "fname") 
+                    + "#" + QKeyValue.FindStringAttribute(SourceLocationAttributes, "dir"));
+      tw.Close();
+    }
+    
     protected void AddAccessedOffsetIsThreadLocalIdCandidateRequires(Procedure Proc, Variable v, string ReadOrWrite, int Thread) {
       Expr expr = AccessedOffsetIsThreadLocalIdExpr(v, ReadOrWrite, Thread);
       if (expr != null) {

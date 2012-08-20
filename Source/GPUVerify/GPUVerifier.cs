@@ -353,6 +353,7 @@ namespace GPUVerify
 
         internal void doit()
         {
+            File.Delete(Path.GetFileNameWithoutExtension(CommandLineOptions.inputFiles[0]) + ".loc"); 
             if (CommandLineOptions.Unstructured)
             {
                 Microsoft.Boogie.CommandLineOptions.Clo.PrintUnstructured = 2;
@@ -1667,6 +1668,16 @@ namespace GPUVerify
         internal static GlobalVariable MakeOffsetVariable(Variable v, string ReadOrWrite)
         {
             return new GlobalVariable(v.tok, new TypedIdent(v.tok, MakeOffsetVariableName(v.Name, ReadOrWrite), IndexType(v)));
+        }
+
+        internal static string MakeSourceVariableName(string Name, string AccessType)
+        {
+          return "_" + AccessType + "_SOURCE_" + Name;
+        }
+
+        internal static GlobalVariable MakeSourceVariable(Variable v, string ReadOrWrite)
+        {
+          return new GlobalVariable(v.tok, new TypedIdent(v.tok, MakeSourceVariableName(v.Name, ReadOrWrite), IndexType(v)));
         }
 
         public static Microsoft.Boogie.Type IndexType(Variable v)

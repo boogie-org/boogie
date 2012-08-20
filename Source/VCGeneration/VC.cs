@@ -1819,9 +1819,11 @@ namespace VC {
             if (a is AssertCmd) {
               Bpl.AssertCmd c = (AssertCmd) a;
               Bpl.AssertCmd b = new Bpl.LoopInitAssertCmd(c.tok, c.Expr);
+              b.Attributes = c.Attributes;
               b.ErrorData = c.ErrorData;
               prefixOfPredicateCmdsInit.Add(b);
               b = new Bpl.LoopInvMaintainedAssertCmd(c.tok, c.Expr);
+              b.Attributes = c.Attributes; 
               b.ErrorData = c.ErrorData;
               prefixOfPredicateCmdsMaintained.Add(b);
               header.Cmds[i] = new AssumeCmd(c.tok,c.Expr);
