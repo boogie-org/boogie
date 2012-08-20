@@ -389,6 +389,7 @@ namespace GPUVerify {
       result.Add(checkAccessCallCmd);
 
       string fname = QKeyValue.FindStringAttribute(SourceLocationAttributes, "fname");
+
       if (fname != null)
       {
         writeSourceLocToFile(SourceLocationAttributes, Path.GetFileNameWithoutExtension(CommandLineOptions.inputFiles[0]) + ".loc");
@@ -788,6 +789,7 @@ namespace GPUVerify {
       Debug.Assert(mt.Arguments.Length == 1);
 
       verifier.FindOrCreateOffsetVariable(v, ReadOrWrite);
+      verifier.FindOrCreateSourceVariable(v, ReadOrWrite);
 
     }
 

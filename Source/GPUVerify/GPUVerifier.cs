@@ -1725,6 +1725,22 @@ namespace GPUVerify
 
         }
 
+        internal GlobalVariable FindOrCreateSourceVariable(Variable v, string accessType) {
+          string name = MakeSourceVariableName(v.Name, accessType) + "$1";
+          foreach (Declaration D in Program.TopLevelDeclarations) {
+            if (D is GlobalVariable && ((GlobalVariable)D).Name.Equals(name)) {
+              return D as GlobalVariable;
+            }
+          }
+
+          GlobalVariable result = new VariableDualiser(1, null, null).VisitVariable(
+              MakeSourceVariable(v, accessType)) as GlobalVariable;
+
+          Program.TopLevelDeclarations.Add(result);
+          return result;
+
+        }
+
         internal static GlobalVariable MakeAccessHasOccurredVariable(string varName, string accessType)
         {
             return new GlobalVariable(Token.NoToken, new TypedIdent(Token.NoToken, MakeAccessHasOccurredVariableName(varName, accessType), Microsoft.Boogie.Type.Bool));
