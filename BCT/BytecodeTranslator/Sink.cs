@@ -1421,5 +1421,6 @@ namespace BytecodeTranslator {
     }
 
 
+    public Predicate<IMethodDefinition> MethodThrowsExceptions = m => false;
   }
 }

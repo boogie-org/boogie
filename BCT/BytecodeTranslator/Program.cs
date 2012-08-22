@@ -38,8 +38,8 @@ namespace BytecodeTranslator {
     [OptionDescription("Emit a 'capture state' directive after each statement, (default: false)", ShortForm = "c")]
     public bool captureState = false;
 
-    [OptionDescription("Model exceptional control flow, (default: true)", ShortForm = "e")]
-    public bool modelExceptions = true;
+    [OptionDescription("Model exceptional control flow, (0: none, 1: explicit exceptions, 2: conservatively, default: 2)", ShortForm = "e")]
+    public int modelExceptions = 2;
 
     [OptionDescription("Translation should be done for Get Me Here functionality, (default: false)", ShortForm = "gmh")]
     public bool getMeHere = false;
@@ -109,6 +109,11 @@ namespace BytecodeTranslator {
       }
       if (options.stub != null) {
         Console.WriteLine("/s is no longer used to specify stub assemblies");
+        return errorReturnValue;
+      }
+
+      if (options.modelExceptions == 1 && !options.wholeProgram) {
+        Console.WriteLine("can specify a precise modeling of exceptions only when doing whole program analysis");
         return errorReturnValue;
       }
 

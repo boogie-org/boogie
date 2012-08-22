@@ -532,7 +532,8 @@ namespace BytecodeTranslator {
         foreach (Bpl.Variable v in this.sink.LocalVarMap.Values) {
           vars.Add(v);
         }
-        if (this.sink.Options.modelExceptions)
+        // LocalExcVariable holds the exception thrown by any method called from this method, even if this method swallows all exceptions
+        if (0 <this.sink.Options.modelExceptions)
           vars.Add(procInfo.LocalExcVariable);
         vars.Add(procInfo.LabelVariable);
         Bpl.VariableSeq vseq = new Bpl.VariableSeq(vars.ToArray());

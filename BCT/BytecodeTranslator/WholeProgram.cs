@@ -56,6 +56,13 @@ namespace BytecodeTranslator {
           typeRecorder.Traverse((IAssembly)a);
         }
         #endregion
+        #region Possibly gather exception information
+        if (sink.Options.modelExceptions == 1) {
+          this.sink.MethodThrowsExceptions = ExceptionAnalyzer.ComputeExplicitlyThrownExceptions(assemblies);
+        }
+          
+        #endregion
+
         base.TranslateAssemblies(assemblies);
       }
       
@@ -74,6 +81,7 @@ namespace BytecodeTranslator {
             }
             this.subTypes[baseClass].Add(typeDefinition);
           }
+
           foreach (var iface in typeDefinition.Interfaces) {
             if (!this.subTypes.ContainsKey(iface)) {
               this.subTypes[iface] = new List<ITypeReference>();

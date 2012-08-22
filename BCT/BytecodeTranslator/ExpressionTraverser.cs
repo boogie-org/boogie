@@ -687,7 +687,8 @@ namespace BytecodeTranslator
           this.StmtTraverser.StmtBuilder.Add(TranslationHelper.BuildAssignCmd(lhs, fromUnion));
         }
 
-        if (this.sink.Options.modelExceptions) {
+        if (this.sink.Options.modelExceptions == 2
+          || (this.sink.Options.modelExceptions == 1 && this.sink.MethodThrowsExceptions(resolvedMethod))) {
           Bpl.Expr expr = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Neq, Bpl.Expr.Ident(this.sink.Heap.ExceptionVariable), Bpl.Expr.Ident(this.sink.Heap.NullRef));
           this.StmtTraverser.RaiseException(expr);
         }

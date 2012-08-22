@@ -519,7 +519,7 @@ namespace BytecodeTranslator
 
     public override void TraverseChildren(ITryCatchFinallyStatement tryCatchFinallyStatement) {
 
-      if (!this.sink.Options.modelExceptions) {
+      if (this.sink.Options.modelExceptions == 0) {
         this.Traverse(tryCatchFinallyStatement.TryBody);
         if (tryCatchFinallyStatement.FinallyBody != null)
           this.Traverse(tryCatchFinallyStatement.FinallyBody);
@@ -580,7 +580,7 @@ namespace BytecodeTranslator
     }
 
     public override void TraverseChildren(IThrowStatement throwStatement) {
-      if (!this.sink.Options.modelExceptions) {
+      if (this.sink.Options.modelExceptions == 0) {
         StmtBuilder.Add(new Bpl.AssumeCmd(throwStatement.Token(), Bpl.Expr.False));
         return;
       }
