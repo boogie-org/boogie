@@ -599,7 +599,7 @@ namespace Microsoft.Boogie
       return linekv;
     }
 
-    static QKeyValue GetSourceLocInfo(Counterexample error) {
+    static QKeyValue GetSourceLocInfo(Counterexample error, string AccessType) {
       string sourceVarName = null;
       int sourceLocLineNo = -1;
       int currLineNo = -1;
@@ -615,7 +615,7 @@ namespace Microsoft.Boogie
       {
         foreach (Cmd c in b.Cmds)
         {
-          if (c.ToString().Contains("_SOURCE_")) 
+          if (c.ToString().Contains(AccessType + "_SOURCE_")) 
           {
             sourceVarName = Regex.Split(c.ToString(), " ")[1];
           }
@@ -802,7 +802,8 @@ namespace Microsoft.Boogie
                 else if (QKeyValue.FindBoolAttribute(err.FailingRequires.Attributes, "race"))
                 {        
                   int lidx1 = -1, lidy1 = -1, lidz1 = -1, lidx2 = -1, lidy2 = -1, lidz2 = -1;
-                  string thread1 = null, thread2 = null;
+                  int gidx1 = -1, gidy1 = -1, gidz1 = -1, gidx2 = -1, gidy2 = -1, gidz2 = -1;
+                  string thread1 = null, thread2 = null, group1 = null, group2 = null;
                   if (error.Model != null) 
                   {
                     lidx1 = error.Model.TryGetFunc("local_id_x$1").GetConstant().AsInt();
@@ -811,33 +812,44 @@ namespace Microsoft.Boogie
                     lidx2 = error.Model.TryGetFunc("local_id_x$2").GetConstant().AsInt();
                     lidy2 = error.Model.TryGetFunc("local_id_y$2").GetConstant().AsInt();
                     lidz2 = error.Model.TryGetFunc("local_id_z$2").GetConstant().AsInt();
+
+                    gidx1 = error.Model.TryGetFunc("group_id_x$1").GetConstant().AsInt();
+                    gidy1 = error.Model.TryGetFunc("group_id_y$1").GetConstant().AsInt();
+                    gidz1 = error.Model.TryGetFunc("group_id_z$1").GetConstant().AsInt();
+                    gidx2 = error.Model.TryGetFunc("group_id_x$2").GetConstant().AsInt();
+                    gidy2 = error.Model.TryGetFunc("group_id_y$2").GetConstant().AsInt();
+                    gidz2 = error.Model.TryGetFunc("group_id_z$2").GetConstant().AsInt();
+
                     thread1 = "(" + lidx1 + ", " + lidy1 + ", " + lidz1 + ")";
                     thread2 = "(" + lidx2 + ", " + lidy2 + ", " + lidz2 + ")";
+
+                    group1 = "(" + gidx1 + ", " + gidy1 + ", " + gidz1 + ")";
+                    group2 = "(" + gidx2 + ", " + gidy2 + ", " + gidz2 + ")";
                   }
                   if (QKeyValue.FindBoolAttribute(err.FailingRequires.Attributes, "write_read"))
                   {
-                    err.FailingRequires.Attributes = GetSourceLocInfo(error);
-                    ReportBplError(err.FailingCall, "Race Error: \nWrite-read race caused by thread " 
-                                                        + thread2 + " executing statement at:" , true, true);
+                    err.FailingRequires.Attributes = GetSourceLocInfo(error, "WRITE");
+                    ReportBplError(err.FailingCall, "Race Error: Write-read race caused by \nthread " 
+                                                        + thread2 + ", group " + group2 + " executing statement at:" , true, true);
                     ReportBplError(err.FailingRequires, "The conflicting statement executed by thread "
-                                                    + thread1 + " is:", true, true);
+                                                    + thread1 + ", group " + group1 + " is:", true, true);
                   }
                   else if (QKeyValue.FindBoolAttribute(err.FailingRequires.Attributes, "read_write"))
                   {
-                    err.FailingRequires.Attributes = GetSourceLocInfo(error);
-                    ReportBplError(err.FailingCall, "Race Error: \nRead-write race caused by thread "
-                                                        + thread2 + " executing statement at:", true, true);
+                    err.FailingRequires.Attributes = GetSourceLocInfo(error, "READ");
+                    ReportBplError(err.FailingCall, "Race Error: Read-write race caused by \nthread "
+                                                        + thread2 + ", group " + group2 + " executing statement at:", true, true);
                     ReportBplError(err.FailingRequires, "The conflicting statement executed by thread "
-                                                    + thread1 + " is:", true, true);
+                                                    + thread1 + ", group " + group1 + " is:", true, true);
 
                   }
                   else if (QKeyValue.FindBoolAttribute(err.FailingRequires.Attributes, "write_write"))
                   {
-                    err.FailingRequires.Attributes = GetSourceLocInfo(error);
-                    ReportBplError(err.FailingCall, "Race Error: \nWrite-write race caused by thread "
-                                                        + thread2 + " executing statement at:", true, true);
+                    err.FailingRequires.Attributes = GetSourceLocInfo(error, "WRITE");
+                    ReportBplError(err.FailingCall, "Race Error: Write-write race caused by \nthread "
+                                                        + thread2 + ", group " + group2 + " executing statement at:", true, true);
                     ReportBplError(err.FailingRequires, "The conflicting statement executed by thread "
-                                                    + thread1 + " is:", true, true);
+                                                    + thread1 + ", group " + group1 + " is:", true, true);
 
                   }
                 }
@@ -845,8 +857,8 @@ namespace Microsoft.Boogie
                 {
                   if (!IsRepeatedKV(err.FailingRequires.Attributes, seenReqAttrs))
                   {
-                    ReportBplError(err.FailingCall, "Requires Error: A precondition for this call might not hold.", true, true);
-                    ReportBplError(err.FailingRequires, "Related location: This is the precondition that might not hold.", false, true);
+                    ReportBplError(err.FailingCall, "Requires Error: A precondition for this call might not hold:", true, true);
+                    ReportBplError(err.FailingRequires, "Related location: This is the precondition that might not hold:", false, true);
                     seenReqAttrs.Add(err.FailingRequires.Attributes);
                   }
                   else
@@ -869,8 +881,7 @@ namespace Microsoft.Boogie
                 else
                 {
                   if (!IsRepeatedKV(err.FailingEnsures.Attributes, seenEnsAttrs)) {
-                    ReportBplError(err.FailingReturn, "Ensures Error: A postcondition might not hold on this return path.", true, true);
-                    ReportBplError(err.FailingEnsures, "Related location: This is the postcondition that might not hold.", false, true);
+                    ReportBplError(err.FailingEnsures, "Ensures Error: This postcondition might not hold on all return paths:", true, true);
                     seenEnsAttrs.Add(err.FailingEnsures.Attributes);
                   }
                   else
@@ -889,7 +900,7 @@ namespace Microsoft.Boogie
                 if (err.FailingAssert is LoopInitAssertCmd)
                 {
                   if (!IsRepeatedKV(err.FailingAssert.Attributes, seenInvEAttrs)) {
-                    ReportBplError(err.FailingAssert, "Invariant Error: This loop invariant might not hold on entry.", true, true);
+                    ReportBplError(err.FailingAssert, "Invariant Error: This loop invariant might not hold on entry:", true, true);
                     if (CommandLineOptions.Clo.XmlSink != null)
                     {
                       CommandLineOptions.Clo.XmlSink.WriteError("loop invariant entry violation", err.FailingAssert.tok, null, error.Trace);
@@ -905,7 +916,7 @@ namespace Microsoft.Boogie
                 {
                   // this assertion is a loop invariant which is not maintained
                   if (!IsRepeatedKV(err.FailingAssert.Attributes, seenInvMAttrs)) {
-                    ReportBplError(err.FailingAssert, "Invariant Error: This loop invariant might not be maintained by the loop.", true, true);
+                    ReportBplError(err.FailingAssert, "Invariant Error: This loop invariant might not be maintained by the loop:", true, true);
                     if (CommandLineOptions.Clo.XmlSink != null)
                     {
                       CommandLineOptions.Clo.XmlSink.WriteError("loop invariant maintenance violation", err.FailingAssert.tok, null, error.Trace);
@@ -931,7 +942,7 @@ namespace Microsoft.Boogie
                   {
                     if (!IsRepeatedKV(err.FailingAssert.Attributes, seenAssertAttrs)) 
                     {
-                      ReportBplError(err.FailingAssert, "Assertion Error: This assertion might not hold.", true, true);
+                      ReportBplError(err.FailingAssert, "Assertion Error: This assertion might not hold:", true, true);
                       seenAssertAttrs.Add(err.FailingAssert.Attributes.Clone() as QKeyValue);
                     }
                     else
