@@ -617,6 +617,44 @@ namespace BytecodeTranslator
         }
       }
 
+      // Handle type equality specially when it is testing against a constant, i.e., o.GetType() == typeof(T)
+      if (IsOperator(resolvedMethod) && !IsConversionOperator(resolvedMethod) && 
+        TypeHelper.TypesAreEquivalent(resolvedMethod.ContainingType, this.sink.host.PlatformType.SystemType)) {
+        // REVIEW: Assume the only operators on System.Type are == and !=
+        var typeToTest = methodCall.Arguments.ElementAtOrDefault(0) as ITypeOf;
+        IMethodCall callToGetType;
+        if (typeToTest == null) {
+          typeToTest = methodCall.Arguments.ElementAtOrDefault(1) as ITypeOf;
+          callToGetType = methodCall.Arguments.ElementAtOrDefault(0) as IMethodCall;
+        } else {
+          callToGetType = methodCall.Arguments.ElementAtOrDefault(1) as IMethodCall;
+        }
+        if (typeToTest != null && callToGetType != null &&
+          TypeHelper.TypesAreEquivalent(callToGetType.MethodToCall.ContainingType, this.sink.host.PlatformType.SystemObject) &&
+          MemberHelper.GetMethodSignature(callToGetType.MethodToCall).Equals("System.Object.GetType")) {
+
+          IExpression objectToTest = callToGetType.ThisArgument;
+
+          // generate: is#T($DynamicType(o))
+          var typeFunction = this.sink.FindOrDefineType(typeToTest.TypeToGet.ResolvedType);
+          Contract.Assume(typeFunction != null);
+          var funcName = String.Format("is#{0}", typeFunction.Name);
+          var identExpr = Bpl.Expr.Ident(new Bpl.LocalVariable(methodCallToken, new Bpl.TypedIdent(methodCallToken, funcName, Bpl.Type.Bool)));
+          var funcCall = new Bpl.FunctionCall(identExpr);
+
+          this.Traverse(objectToTest);
+          var e = this.TranslatedExpressions.Pop();
+
+          var exprs = new Bpl.ExprSeq(this.sink.Heap.DynamicType(e));
+          Bpl.Expr typeTestExpression = new Bpl.NAryExpr(methodCallToken, funcCall, exprs);
+          if (MemberHelper.GetMethodSignature(resolvedMethod).Equals("System.Type.op_Inequality"))
+            typeTestExpression = Bpl.Expr.Unary( methodCallToken, Bpl.UnaryOperator.Opcode.Not, typeTestExpression);
+          this.TranslatedExpressions.Push(typeTestExpression);
+          return;
+        }
+      }
+
+
       List<Bpl.Expr> inexpr;
       List<Bpl.IdentifierExpr> outvars;
       Bpl.IdentifierExpr thisExpr;
@@ -710,6 +748,15 @@ namespace BytecodeTranslator
           }
         }
       }
+    }
+
+    public virtual bool IsOperator(IMethodDefinition methodDefinition) {
+      return (methodDefinition.IsSpecialName && methodDefinition.Name.Value.StartsWith("op_"));
+    }
+
+    public virtual bool IsConversionOperator(IMethodDefinition methodDefinition) {
+      return (methodDefinition.IsSpecialName && (
+        methodDefinition.Name.Value == "op_Explicit" || methodDefinition.Name.Value == "op_Implicit"));
     }
 
     private void EmitLineDirective(Bpl.IToken methodCallToken) {

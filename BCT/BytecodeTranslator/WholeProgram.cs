@@ -149,80 +149,99 @@ namespace BytecodeTranslator {
           return;
         }
 
-        Bpl.IToken token = methodCall.Token();
-
-        List<Bpl.Expr> inexpr;
-        List<Bpl.IdentifierExpr> outvars;
-        Bpl.IdentifierExpr thisExpr;
-        Dictionary<Bpl.IdentifierExpr, Tuple<Bpl.IdentifierExpr,bool>> toBoxed;
-        var proc = TranslateArgumentsAndReturnProcedure(token, methodCall.MethodToCall, resolvedMethod, methodCall.IsStaticCall ? null : methodCall.ThisArgument, methodCall.Arguments, out inexpr, out outvars, out thisExpr, out toBoxed);
-
-
-        Bpl.QKeyValue attrib = null;
-        foreach (var a in resolvedMethod.Attributes) {
-          if (TypeHelper.GetTypeName(a.Type).EndsWith("AsyncAttribute")) {
-            attrib = new Bpl.QKeyValue(token, "async", new List<object>(), null);
-            break;
-          }
-        }
-
-        var elseBranch = new Bpl.StmtListBuilder();
-
-        var methodname = proc.Name;
-
-        Bpl.CallCmd call;
-        if (attrib != null)
-          call = new Bpl.CallCmd(token, methodname, inexpr, outvars, attrib);
-        else
-          call = new Bpl.CallCmd(token, methodname, inexpr, outvars);
-        elseBranch.Add(call);
-
-        Bpl.IfCmd ifcmd = null;
-
         Contract.Assume(1 <= overrides.Count);
+
+        var getType = new Microsoft.Cci.MethodReference(
+          this.sink.host,
+          this.sink.host.PlatformType.SystemObject,
+          CallingConvention.HasThis,
+          this.sink.host.PlatformType.SystemType,
+          this.sink.host.NameTable.GetNameFor("GetType"), 0);
+        var op_Type_Equality = new Microsoft.Cci.MethodReference(
+          this.sink.host,
+          this.sink.host.PlatformType.SystemType,
+          CallingConvention.Default,
+          this.sink.host.PlatformType.SystemBoolean,
+          this.sink.host.NameTable.GetNameFor("op_Equality"),
+          0,
+          this.sink.host.PlatformType.SystemType,
+          this.sink.host.PlatformType.SystemType);
+
+        // Depending on whether the method is a void method or not
+        // Turn into expression:
+        //   (o.GetType() == typeof(T1)) ? ((T1)o).M(...) : ( (o.GetType() == typeof(T2)) ? ((T2)o).M(...) : ...
+        // Or turn into statements:
+        //   if (o.GetType() == typeof(T1)) ((T1)o).M(...) else if ...
+        var turnIntoStatements = resolvedMethod.Type.TypeCode == PrimitiveTypeCode.Void;
+        IStatement elseStatement = null;
+
+        IExpression elseValue = new MethodCall() {
+          Arguments = new List<IExpression>(methodCall.Arguments),
+          IsStaticCall = false,
+          IsVirtualCall = false,
+          MethodToCall = methodCall.MethodToCall,
+          ThisArgument = methodCall.ThisArgument,
+          Type = methodCall.Type,
+        };
+        if (turnIntoStatements)
+          elseStatement = new ExpressionStatement() { Expression = elseValue, };
+
+        Conditional ifConditional = null;
+        ConditionalStatement ifStatement = null;
+
         foreach (var typeMethodPair in overrides) {
           var t = typeMethodPair.Item1;
           var m = typeMethodPair.Item2;
 
-          // guard: is#T($DynamicType(local_variable))
-          var typeFunction = this.sink.FindOrDefineType(t.ResolvedType);
-          if (typeFunction == null) {
-            // BUGBUG!! This just silently skips the branch that would dispatch to t's implementation of the method!
-            continue;
+          var cond = new MethodCall() {
+            Arguments = new List<IExpression>(){
+                new MethodCall() {
+                  Arguments = new List<IExpression>(),
+                  IsStaticCall = false,
+                  IsVirtualCall = false,
+                  MethodToCall = getType,
+                  ThisArgument = methodCall.ThisArgument,
+                },
+                new TypeOf() {
+                  TypeToGet = t,
+                },
+              },
+            IsStaticCall = true,
+            IsVirtualCall = false,
+            MethodToCall = op_Type_Equality,
+            Type = this.sink.host.PlatformType.SystemBoolean,
+          };
+          var thenValue = new MethodCall() {
+            Arguments = new List<IExpression>(methodCall.Arguments),
+            IsStaticCall = false,
+            IsVirtualCall = false,
+            MethodToCall = m,
+            ThisArgument = methodCall.ThisArgument,
+            Type = t,
+          };
+          if (turnIntoStatements) {
+            ifStatement = new ConditionalStatement() {
+              Condition = cond,
+              FalseBranch = elseStatement,
+              TrueBranch = new ExpressionStatement() { Expression = thenValue, },
+            };
+            elseStatement = ifStatement;
+          } else {
+            ifConditional = new Conditional() {
+              Condition = cond,
+              ResultIfFalse = elseValue,
+              ResultIfTrue = thenValue,
+            };
+            elseValue = ifConditional;
           }
-          var funcName = String.Format("is#{0}", typeFunction.Name);
-          var identExpr = Bpl.Expr.Ident(new Bpl.LocalVariable(token, new Bpl.TypedIdent(token, funcName, Bpl.Type.Bool)));
-          var funcCall = new Bpl.FunctionCall(identExpr);
-          var exprs = new Bpl.ExprSeq(this.sink.Heap.DynamicType(inexpr[0]));
-          var guard = new Bpl.NAryExpr(token, funcCall, exprs);
-
-          var thenBranch = new Bpl.StmtListBuilder();
-          methodname = TranslationHelper.CreateUniqueMethodName(m); // REVIEW: Shouldn't this be call to FindOrCreateProcedure?
-          if (attrib != null)
-            call = new Bpl.CallCmd(token, methodname, inexpr, outvars, attrib);
-          else
-            call = new Bpl.CallCmd(token, methodname, inexpr, outvars);
-          thenBranch.Add(call);
-
-          ifcmd = new Bpl.IfCmd(token,
-            guard,
-            thenBranch.Collect(token),
-            null,
-            elseBranch.Collect(token)
-            );
-          elseBranch = new Bpl.StmtListBuilder();
-          elseBranch.Add(ifcmd);
         }
-
-        if (ifcmd == null) {
-          // BUGBUG: then no override made it into the if-statement.
-          // currently that happens when all types are generic.
-          // Should be able to remove this when that is fixed.
-          base.Traverse(methodCall);
-          return;
+        if (turnIntoStatements) {
+          Contract.Assume(ifStatement != null);
+          this.StmtTraverser.Traverse(ifStatement);
+        } else {
+          Contract.Assume(ifConditional != null);
+          base.Traverse(ifConditional);
         }
-
-        this.StmtTraverser.StmtBuilder.Add(ifcmd);
 
         return;
       }
