@@ -615,15 +615,22 @@ namespace Microsoft.Boogie
       {
         foreach (Cmd c in b.Cmds)
         {
-          if (c.ToString().Contains(AccessType + "_SOURCE_")) 
+          if (b.tok.val.Equals("_LOG_" + AccessType) && c.ToString().Contains(AccessType + "_SOURCE_")) 
           {
             sourceVarName = Regex.Split(c.ToString(), " ")[1];
           }
         }
       }
-      sourceLocLineNo = error.Model.TryGetFunc(sourceVarName).GetConstant().AsInt();
-
-      if (sourceLocLineNo != 0)
+      if (sourceVarName != null)
+      {
+        Model.Func f = error.Model.TryGetFunc(sourceVarName);
+        if (f != null)
+        {
+          sourceLocLineNo = f.GetConstant().AsInt();
+        }
+      }
+      
+      if (sourceLocLineNo != 0 && sourceLocLineNo != -1)
       {
         while ((fileLine = tr.ReadLine()) != null)
         {
@@ -651,7 +658,7 @@ namespace Microsoft.Boogie
       }
       else
       {
-        Console.WriteLine("sourceLocLineNo is 0. No sourceloc at that location.\n");
+        Console.WriteLine("sourceLocLineNo is {0}. No sourceloc at that location.\n", sourceLocLineNo);
         return null;
       } 
       tr.Close();

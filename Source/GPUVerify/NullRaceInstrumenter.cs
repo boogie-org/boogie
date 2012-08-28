@@ -43,6 +43,10 @@ namespace GPUVerify
         {
 
         }
+        public void AddSourceLocationLoopInvariants(Implementation impl, IRegion region)
+        {
+
+        }
 
     }
 }

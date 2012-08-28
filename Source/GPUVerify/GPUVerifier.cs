@@ -1024,6 +1024,20 @@ namespace GPUVerify
 
             foreach (Declaration D in Program.TopLevelDeclarations)
             {
+              if (!(D is Implementation))
+              {
+                continue;
+              }
+              Implementation Impl = D as Implementation;
+              
+              foreach (IRegion subregion in RootRegion(Impl).SubRegions())
+              {
+                RaceInstrumenter.AddSourceLocationLoopInvariants(Impl, subregion);
+              }
+            }
+
+            foreach (Declaration D in Program.TopLevelDeclarations)
+            {
                 if (!(D is Implementation))
                 {
                     continue;
@@ -1665,9 +1679,10 @@ namespace GPUVerify
             return "_" + AccessType + "_OFFSET_" + Name;
         }
 
-        internal static GlobalVariable MakeOffsetVariable(Variable v, string ReadOrWrite)
+        internal static GlobalVariable MakeOffsetVariable(string Name, string ReadOrWrite)
         {
-            return new GlobalVariable(v.tok, new TypedIdent(v.tok, MakeOffsetVariableName(v.Name, ReadOrWrite), IndexType(v)));
+          return new GlobalVariable(Token.NoToken, new TypedIdent(Token.NoToken, MakeOffsetVariableName(Name, ReadOrWrite), 
+            Microsoft.Boogie.Type.GetBvType(32)));
         }
 
         internal static string MakeSourceVariableName(string Name, string AccessType)
@@ -1675,16 +1690,10 @@ namespace GPUVerify
           return "_" + AccessType + "_SOURCE_" + Name;
         }
 
-        internal static GlobalVariable MakeSourceVariable(Variable v, string ReadOrWrite)
+        internal static GlobalVariable MakeSourceVariable(string name, string ReadOrWrite)
         {
-          return new GlobalVariable(v.tok, new TypedIdent(v.tok, MakeSourceVariableName(v.Name, ReadOrWrite), IndexType(v)));
-        }
-
-        public static Microsoft.Boogie.Type IndexType(Variable v)
-        {
-            Debug.Assert(v.TypedIdent.Type is MapType);
-            MapType mt = v.TypedIdent.Type as MapType;
-            return mt.Arguments[0];
+          return new GlobalVariable(Token.NoToken, new TypedIdent(Token.NoToken, MakeSourceVariableName(name, ReadOrWrite),
+            Microsoft.Boogie.Type.GetBvType(32)));
         }
 
         internal GlobalVariable FindOrCreateAccessHasOccurredVariable(string varName, string accessType)
@@ -1706,9 +1715,9 @@ namespace GPUVerify
 
         }
 
-        internal GlobalVariable FindOrCreateOffsetVariable(Variable v, string accessType)
+        internal GlobalVariable FindOrCreateOffsetVariable(string varName, string accessType)
         {
-            string name = MakeOffsetVariableName(v.Name, accessType) + "$1";
+            string name = MakeOffsetVariableName(varName, accessType) + "$1";
             foreach (Declaration D in Program.TopLevelDeclarations)
             {
                 if (D is GlobalVariable && ((GlobalVariable)D).Name.Equals(name))
@@ -1718,15 +1727,15 @@ namespace GPUVerify
             }
 
             GlobalVariable result = new VariableDualiser(1, null, null).VisitVariable(
-                MakeOffsetVariable(v, accessType)) as GlobalVariable;
+                MakeOffsetVariable(varName, accessType)) as GlobalVariable;
 
             Program.TopLevelDeclarations.Add(result);
             return result;
 
         }
 
-        internal GlobalVariable FindOrCreateSourceVariable(Variable v, string accessType) {
-          string name = MakeSourceVariableName(v.Name, accessType) + "$1";
+        internal GlobalVariable FindOrCreateSourceVariable(string varName, string accessType) {
+          string name = MakeSourceVariableName(varName, accessType) + "$1";
           foreach (Declaration D in Program.TopLevelDeclarations) {
             if (D is GlobalVariable && ((GlobalVariable)D).Name.Equals(name)) {
               return D as GlobalVariable;
@@ -1734,7 +1743,7 @@ namespace GPUVerify
           }
 
           GlobalVariable result = new VariableDualiser(1, null, null).VisitVariable(
-              MakeSourceVariable(v, accessType)) as GlobalVariable;
+              MakeSourceVariable(varName, accessType)) as GlobalVariable;
 
           Program.TopLevelDeclarations.Add(result);
           return result;

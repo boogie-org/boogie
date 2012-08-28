@@ -21,5 +21,7 @@ namespace GPUVerify
 
         void AddRaceCheckingCandidateEnsures(Procedure Proc);
 
+        void AddSourceLocationLoopInvariants(Implementation impl, IRegion region);
+
     }
 }
