@@ -101,8 +101,8 @@ class VariableDefinitionAnalysis {
         }
         if (c is HavocCmd) {
           var hCmd = (HavocCmd)c;
-          foreach (Variable v in hCmd.Vars)
-            UpdateDefMap(v, null, false);
+          foreach (IdentifierExpr iExpr in hCmd.Vars)
+            UpdateDefMap(iExpr.Decl, null, false);
         }
       }
     } while (changed);
