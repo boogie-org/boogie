@@ -61,9 +61,6 @@ namespace GPUVerify
         internal static Constant _NUM_GROUPS_Y = null;
         internal static Constant _NUM_GROUPS_Z = null;
 
-        internal const int CLK_LOCAL_MEM_FENCE = 1;
-        internal const int CLK_GLOBAL_MEM_FENCE = 2;
-
         public IRaceInstrumenter RaceInstrumenter;
 
         public UniformityAnalyser uniformityAnalyser;
@@ -120,7 +117,9 @@ namespace GPUVerify
             if (p == null)
             {
                 p = new Procedure(Token.NoToken, "barrier", new TypeVariableSeq(),
-                                  new VariableSeq(new Variable[] { new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "__flags", new BvType(32)), true) }),
+                                  new VariableSeq(new Variable[] { 
+                                    new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "__local_fence", new BvType(1)), true),
+                                    new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "__global_fence", new BvType(1)), true) }),
                                   new VariableSeq(),
                                   new RequiresSeq(), new IdentifierExprSeq(),
                                   new EnsuresSeq(),
@@ -1337,8 +1336,11 @@ namespace GPUVerify
             IdentifierExpr P1 = new IdentifierExpr(tok, new LocalVariable(tok, BarrierProcedure.InParams[0].TypedIdent));
             IdentifierExpr P2 = new IdentifierExpr(tok, new LocalVariable(tok, BarrierProcedure.InParams[paramsPerThread].TypedIdent));
 
-            IdentifierExpr Flags1 = new IdentifierExpr(tok, new LocalVariable(tok, BarrierProcedure.InParams[1].TypedIdent));
-            IdentifierExpr Flags2 = new IdentifierExpr(tok, new LocalVariable(tok, BarrierProcedure.InParams[paramsPerThread + 1].TypedIdent));
+            Expr LocalFence1 = MakeFenceExpr(BarrierProcedure.InParams[1]);
+            Expr LocalFence2 = MakeFenceExpr(BarrierProcedure.InParams[paramsPerThread + 1]);
+
+            Expr GlobalFence1 = MakeFenceExpr(BarrierProcedure.InParams[2]);
+            Expr GlobalFence2 = MakeFenceExpr(BarrierProcedure.InParams[paramsPerThread + 2]);
 
             Expr DivergenceCondition = Expr.Imp(ThreadsInSameGroup(), Expr.Eq(P1, P2));
 
@@ -1359,8 +1361,8 @@ namespace GPUVerify
 
             if(KernelArrayInfo.getGroupSharedArrays().Count > 0) {
 
-                Expr IfGuard1 = Expr.And(P1, CLK_LOCAL_MEM_FENCE_isSet(Flags1));
-                Expr IfGuard2 = Expr.And(P2, CLK_LOCAL_MEM_FENCE_isSet(Flags2));
+                Expr IfGuard1 = Expr.And(P1, LocalFence1);
+                Expr IfGuard2 = Expr.And(P2, LocalFence2);
 
                 bigblocks.Add(new BigBlock(Token.NoToken, null, new CmdSeq(),
                     new IfCmd(Token.NoToken, IfGuard1, new StmtList(MakeResetAndHavocBlocks(1, KernelArrayInfo.getGroupSharedArrays()), Token.NoToken), null, null),
@@ -1372,8 +1374,8 @@ namespace GPUVerify
 
             if (KernelArrayInfo.getGlobalArrays().Count > 0)
             {
-                Expr IfGuard1 = Expr.And(P1, CLK_GLOBAL_MEM_FENCE_isSet(Flags1));
-                Expr IfGuard2 = Expr.And(P2, CLK_GLOBAL_MEM_FENCE_isSet(Flags2));
+                Expr IfGuard1 = Expr.And(P1, GlobalFence1);
+                Expr IfGuard2 = Expr.And(P2, GlobalFence2);
 
                 bigblocks.Add(new BigBlock(Token.NoToken, null, new CmdSeq(),
                     new IfCmd(Token.NoToken, IfGuard1, new StmtList(MakeResetAndHavocBlocks(1, KernelArrayInfo.getGlobalArrays()), Token.NoToken), null, null),
@@ -1387,7 +1389,7 @@ namespace GPUVerify
             {
                 if (!ArrayModelledAdversarially(v))
                 {
-                    bigblocks.Add(AssumeEqualityBetweenSharedArrays(v, P1, P2, Flags1, Flags2));
+                    bigblocks.Add(AssumeEqualityBetweenSharedArrays(v, P1, P2, LocalFence1, LocalFence2, GlobalFence1, GlobalFence2));
                 }
             }
 
@@ -1407,21 +1409,16 @@ namespace GPUVerify
             Program.TopLevelDeclarations.Add(BarrierImplementation);
         }
 
+        private static NAryExpr MakeFenceExpr(Variable v) {
+          return Expr.Eq(new IdentifierExpr(Token.NoToken, new LocalVariable(Token.NoToken, v.TypedIdent)), 
+            new LiteralExpr(Token.NoToken, BigNum.FromInt(1), 1));
+        }
+
         private static Expr flagIsSet(Expr Flags, int flag)
         {
             return Expr.Eq(new BvExtractExpr(
                                     Token.NoToken, Flags, flag, flag - 1),
                                     new LiteralExpr(Token.NoToken, BigNum.FromInt(1), 1));
-        }
-
-        private static Expr CLK_GLOBAL_MEM_FENCE_isSet(Expr Flags)
-        {
-            return flagIsSet(Flags, CLK_GLOBAL_MEM_FENCE);
-        }
-
-        private static Expr CLK_LOCAL_MEM_FENCE_isSet(Expr Flags)
-        {
-            return flagIsSet(Flags, CLK_LOCAL_MEM_FENCE);
         }
 
         private List<BigBlock> MakeResetAndHavocBlocks(int Thread, ICollection<Variable> variables)
@@ -1466,7 +1463,7 @@ namespace GPUVerify
             return new BigBlock(Token.NoToken, null, new CmdSeq(new Cmd[] { new HavocCmd(Token.NoToken, new IdentifierExprSeq(new IdentifierExpr[] { vForThread })) }), null, null);
         }
 
-        private BigBlock AssumeEqualityBetweenSharedArrays(Variable v, Expr P1, Expr P2, Expr Flags1, Expr Flags2)
+        private BigBlock AssumeEqualityBetweenSharedArrays(Variable v, Expr P1, Expr P2, Expr LocalFence1, Expr LocalFence2, Expr GlobalFence1, Expr GlobalFence2)
         {
             IdentifierExpr v1 = new IdentifierExpr(Token.NoToken, new VariableDualiser(1, null, null).VisitVariable(v.Clone() as Variable));
             IdentifierExpr v2 = new IdentifierExpr(Token.NoToken, new VariableDualiser(2, null, null).VisitVariable(v.Clone() as Variable));
@@ -1478,12 +1475,12 @@ namespace GPUVerify
             if (KernelArrayInfo.getGroupSharedArrays().Contains(v))
             {
                 EqualityCondition = Expr.And(EqualityCondition,
-                    Expr.And(CLK_LOCAL_MEM_FENCE_isSet(Flags1), CLK_LOCAL_MEM_FENCE_isSet(Flags2)));
+                    Expr.And(LocalFence1, LocalFence2));
             }
             else if (KernelArrayInfo.getGlobalArrays().Contains(v))
             {
                 EqualityCondition = Expr.And(EqualityCondition,
-                    Expr.And(CLK_GLOBAL_MEM_FENCE_isSet(Flags1), CLK_GLOBAL_MEM_FENCE_isSet(Flags2)));
+                    Expr.And(GlobalFence1, GlobalFence2));
             }
 
             AssumeGuard = Expr.Imp(EqualityCondition, AssumeGuard);
@@ -2150,13 +2147,16 @@ namespace GPUVerify
                 return ErrorCount;
             }
 
-            if (BarrierProcedure.InParams.Length != 1)
+            if (BarrierProcedure.InParams.Length != 2)
             {
-                Error(BarrierProcedure, "Barrier procedure must take exactly one argument");
+                Error(BarrierProcedure, "Barrier procedure must take exactly two arguments");
             }
-            else if (!BarrierProcedure.InParams[0].TypedIdent.Type.Equals(new BvType(32)))
+            else if (!BarrierProcedure.InParams[0].TypedIdent.Type.Equals(new BvType(1)))
             {
-                Error(BarrierProcedure, "Argument to barrier procedure must have type bv32");
+                Error(BarrierProcedure, "First argument to barrier procedure must have type bv1");
+            }
+            else if (!BarrierProcedure.InParams[1].TypedIdent.Type.Equals(new BvType(1))) {
+              Error(BarrierProcedure, "Second argument to barrier procedure must have type bv1");
             }
 
             if (BarrierProcedure.OutParams.Length != 0)
@@ -2359,6 +2359,13 @@ namespace GPUVerify
             else
                 return (Expr)new VariableDualiser(id, uniformityAnalyser, procName).Visit(e.Clone());
         }
+
+        internal static bool IsConstantInCurrentRegion(IdentifierExpr expr) {
+          return (expr.Decl is Constant) ||
+                 (expr.Decl is Formal && ((Formal)expr.Decl).InComing);
+        }
+    
     }
+
 
 }

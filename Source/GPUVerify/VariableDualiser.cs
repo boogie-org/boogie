@@ -29,22 +29,27 @@ namespace GPUVerify
 
         public override Expr VisitIdentifierExpr(IdentifierExpr node)
         {
-            if (!(node.Decl is Constant))
-            {
-                return new IdentifierExpr(node.tok, new LocalVariable(node.tok, DualiseTypedIdent(node.Decl)));
-            }
+          if (node.Decl is Formal) {
+            return new IdentifierExpr(node.tok, new Formal(node.tok, DualiseTypedIdent(node.Decl),
+              (node.Decl as Formal).InComing));
+          }
 
-            if (GPUVerifier.IsThreadLocalIdConstant(node.Decl))
-            {
-                return new IdentifierExpr(node.tok, new Constant(node.tok, DualiseTypedIdent(node.Decl)));
-            }
+          if (!(node.Decl is Constant))
+          {
+              return new IdentifierExpr(node.tok, new LocalVariable(node.tok, DualiseTypedIdent(node.Decl)));
+          }
 
-            if (GPUVerifier.IsGroupIdConstant(node.Decl))
-            {
-                return new IdentifierExpr(node.tok, new Constant(node.tok, DualiseTypedIdent(node.Decl)));
-            }
+          if (GPUVerifier.IsThreadLocalIdConstant(node.Decl))
+          {
+              return new IdentifierExpr(node.tok, new Constant(node.tok, DualiseTypedIdent(node.Decl)));
+          }
 
-            return node;
+          if (GPUVerifier.IsGroupIdConstant(node.Decl))
+          {
+              return new IdentifierExpr(node.tok, new Constant(node.tok, DualiseTypedIdent(node.Decl)));
+          }
+
+          return node;
         }
 
         private TypedIdent DualiseTypedIdent(Variable v)

@@ -602,14 +602,13 @@ namespace Microsoft.Boogie
     static QKeyValue GetSourceLocInfo(Counterexample error, string AccessType) {
       string sourceVarName = null;
       int sourceLocLineNo = -1;
-      int currLineNo = -1;
-      string fileLine;
-      string[] slocTokens = null;
-      int line = -1;
-      int col = -1;
-      string fname = null;
-      string dir = null;
-      TextReader tr = new StreamReader(Path.GetFileNameWithoutExtension(CommandLineOptions.Clo.Files[0]) + ".loc");
+
+      string sourceLocFileName = Path.GetDirectoryName(CommandLineOptions.Clo.Files[0]) +
+                 Path.DirectorySeparatorChar +
+                 Path.GetFileNameWithoutExtension(CommandLineOptions.Clo.Files[0]) +
+                 ".loc";
+
+      TextReader tr = new StreamReader(sourceLocFileName);
 
       foreach (Block b in error.Trace)
       {
@@ -632,9 +631,10 @@ namespace Microsoft.Boogie
       
       if (sourceLocLineNo != 0 && sourceLocLineNo != -1)
       {
-        while ((fileLine = tr.ReadLine()) != null)
+        string fileLine;
+        int currLineNo;
+        for(currLineNo = 0; ((fileLine = tr.ReadLine()) != null); currLineNo++)
         {
-          currLineNo++;
           if (currLineNo == sourceLocLineNo)
           {
             break;
@@ -648,12 +648,12 @@ namespace Microsoft.Boogie
         }
         if (fileLine != null)
         {
-          slocTokens = Regex.Split(fileLine, "#");
-          line = System.Convert.ToInt32(slocTokens[0]);
-          col = System.Convert.ToInt32(slocTokens[1]);
-          fname = slocTokens[2];
-          dir = slocTokens[3];
-          return CreateSourceLocQKV(line, col, fname, dir);
+          string[] slocTokens = Regex.Split(fileLine, "#");
+          return CreateSourceLocQKV(
+                  System.Convert.ToInt32(slocTokens[0]),
+                  System.Convert.ToInt32(slocTokens[1]),
+                  slocTokens[2], 
+                  slocTokens[3]);
         }
       }
       else
