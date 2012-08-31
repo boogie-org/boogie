@@ -365,6 +365,10 @@ namespace GPUVerify
 
             preProcess();
 
+            if (CommandLineOptions.ShowStages) {
+              emitProgram(outputFilename + "_preprocessed");
+            }
+
             DoLiveVariableAnalysis();
 
             DoUniformityAnalysis();
@@ -377,17 +381,17 @@ namespace GPUVerify
 
             DoArrayControlFlowAnalysis();
 
-            if (CommandLineOptions.ShowStages)
-            {
-                emitProgram(outputFilename + "_preprocessed");
-            }
-
             if (CommandLineOptions.Inference)
             {
                 foreach (var impl in Program.TopLevelDeclarations.OfType<Implementation>().ToList())
                 {
                     LoopInvariantGenerator.PreInstrument(this, impl);
                 }
+
+                if (CommandLineOptions.ShowStages) {
+                  emitProgram(outputFilename + "_pre_inference");
+                }
+
             }
 
             RaceInstrumenter.AddRaceCheckingInstrumentation();
@@ -430,11 +434,6 @@ namespace GPUVerify
             if (CommandLineOptions.ShowStages)
             {
                 emitProgram(outputFilename + "_dualised");
-            }
-
-            if (CommandLineOptions.ShowStages)
-            {
-                emitProgram(outputFilename + "_cross_thread_invariants");
             }
 
             RaceInstrumenter.AddRaceCheckingDeclarations();
