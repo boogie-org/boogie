@@ -2153,36 +2153,9 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
   def UpdateSecMaskDuringUnfold(predicate: Predicate, receiver: Expr, version: Expr, perm: Permission, currentK: Expr): List[Stmt] = {
     UpdateSecMask(predicate, receiver, version, perm, currentK, 1, Map())
   }
+  // no longer relevant (as of Sept 2012), since we don't take this approach with secondary mask any more
   def UpdateSecMask(predicate: Predicate, receiver: Expr, version: Expr, perm: Permission, currentK: Expr, depth: Int, previousReceivers: Map[String,List[Expr]]): List[Stmt] = {
-    assert (depth >= 0)
-    if (depth <= 0) return Nil
-    
-    val definition = scaleExpressionByPermission(SubstThis(DefinitionOf(predicate), BoogieExpr(receiver)), perm, NoPosition)
-    val occasion = "update SecMask"
-    
-    // condition: if any folded predicate matches (both receiver and version), update the secondary map
-    val disj = (for (fp <- etran.fpi.getFoldedPredicates(predicate)) yield {
-        val conditions = (fp.conditions map (c => if (c._2) c._1 else !c._1)).foldLeft(true: Expr){ (a: Expr, b: Expr) => a && b }
-        val b = fp.version ==@ version && fp.receiver ==@ receiver && conditions && fp.flag
-        (b, fp.flag)
-      })
-    val b = (disj map (a => a._1)).foldLeft(false: Expr){ (a: Expr, b: Expr) => a || b }
-    
-    // add receiver to list of previous receivers
-    val newPreviousReceivers = previousReceivers + (predicate.FullName -> (receiver :: previousReceivers.getOrElse(predicate.FullName, Nil)))
-
-    // assumption that the current receiver is different from all previous ones
-    (for (r <- previousReceivers.getOrElse(predicate.FullName, Nil)) yield {
-      bassume(receiver !=@ r)
-    }) :::
-    // actually update the secondary mask
-    Boogie.If(b,
-      // remove correct predicate from the auxiliary information by setting
-      // its flag to false
-      (disj.foldLeft(Nil: List[Stmt]){ (a: List[Stmt], b: (Expr, Expr)) => Boogie.If(b._1,/*(b._2 := false) :: */Nil,a) :: Nil }) :::
-      // asserts are converted to assumes, so error messages do not matter
-      assert2assume(Exhale(SecMask, SecMask, List((definition, ErrorMessage(NoPosition, ""))), occasion, false, currentK, false /* it should not important what we pass here */, false, depth-1, true, newPreviousReceivers, false)),
-      Nil) :: Nil
+    Nil 
   }
   /** Most general form of exhale; implements all the specific versions above */
   // Note: If isUpdatingSecMask, then m is actually a secondary mask, and at the
