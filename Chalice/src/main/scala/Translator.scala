@@ -225,7 +225,7 @@ class Translator {
 
     /** Limit application of the function by introducing a second (limited) function */
     val body = etran.Tr(
-      if (f.isRecursive && ! f.isUnlimited) {
+      if (true) { // used to be: if (f.isRecursive && ! f.isUnlimited)    ... but now we treat all functions uniformly
         val limited = Map() ++ (f.SCC zip (f.SCC map {f =>
           val result = Function(f.id + "#limited", f.ins, f.out, f.spec, None);
           result.Parent = f.Parent;
@@ -252,8 +252,9 @@ class Translator {
         (wellformed && (CurrentModule ==@ ModuleName(currentClass)) && etran.TrAll(pre))
         ==>
         (applyF ==@ body))) ::
-    (if (f.isRecursive)
-      // add version of the function definition axiom with different triggers (due to strange Z3 behaviour, repeating the axiom seems to be necessary)
+    (if (true)
+       // used to be:  (if (f.isRecursive)    ... but now we treat all functions uniformly
+       // add version of the function definition axiom with different triggers (due to strange Z3 behaviour, repeating the axiom seems to be necessary)
           Axiom(new Boogie.Forall(Nil,
             formals, newTriggers,
               (wellformed && (CurrentModule ==@ ModuleName(currentClass)) && etran.TrAll(pre))
