@@ -2,6 +2,7 @@ using System;
 using Microsoft.Boogie;
 using System.Collections.Generic;
 using System.Linq;
+using System.Diagnostics;
 
 namespace GPUVerify {
 
@@ -43,7 +44,7 @@ class VariableDefinitionAnalysis {
     }
 
     public override Expr VisitIdentifierExpr(IdentifierExpr expr) {
-      if (expr.Decl is Constant)
+      if (GPUVerifier.IsConstantInCurrentRegion(expr))
         return expr;
       if (!analysis.defMap.ContainsKey(expr.Decl) || !analysis.defMap[expr.Decl].Item2)
         isDerivedFromConstants = false;
@@ -117,7 +118,7 @@ class VariableDefinitionAnalysis {
     }
 
     public override Expr VisitIdentifierExpr(IdentifierExpr expr) {
-      if (expr.Decl is Constant)
+      if (GPUVerifier.IsConstantInCurrentRegion(expr))
         return expr;
       var def = analysis.BuildNamedDefFor(expr.Decl, expr);
       if (def == null)
@@ -178,7 +179,7 @@ class VariableDefinitionAnalysis {
     }
 
     public override Expr VisitIdentifierExpr(IdentifierExpr expr) {
-      if (expr.Decl is Constant)
+      if (GPUVerifier.IsConstantInCurrentRegion(expr))
         return expr;
       int id;
       var varName = GPUVerifier.StripThreadIdentifier(expr.Decl.Name, out id);

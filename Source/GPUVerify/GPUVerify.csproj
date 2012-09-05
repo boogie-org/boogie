@@ -105,6 +105,7 @@
   <ItemGroup>
     <Compile Include="AccessCollector.cs" />
     <Compile Include="AccessRecord.cs" />
+    <Compile Include="AdversarialAbstraction.cs" />
     <Compile Include="ArrayControlFlowAnalyser.cs" />
     <Compile Include="AsymmetricExpressionFinder.cs" />
     <Compile Include="StrideConstraint.cs" />
