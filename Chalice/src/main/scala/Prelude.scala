@@ -287,6 +287,16 @@ function PredicateField<T>(f: Field T) returns (bool);
 axiom (forall<T> f: Field T :: NonPredicateField(f) ==> ! PredicateField(f));
 axiom (forall<T> f: Field T :: PredicateField(f) ==> ! NonPredicateField(f));
 
+// function for recording enclosure of one predicate instance in another
+function #predicateInside#(x:ref, p: Field (int), v:int, y:ref, q:Field (int), w : int) returns (bool);
+
+// transitivity for #predicateInside#
+axiom (forall x:ref, p: Field (int), v:int, y:ref, q:Field (int), w : int, z:ref, r:Field(int),u:int :: {#predicateInside#(x,p,v,y,q,w), #predicateInside#(y,q,w,z,r,u)} #predicateInside#(x,p,v,y,q,w) && #predicateInside#(y,q,w,z,r,u) ==> #predicateInside#(x,p,v,z,r,u));
+
+// knowledge that two identical instances of the same predicate cannot be inside each other
+axiom (forall x:ref, p: Field (int), v:int, y:ref, w:int :: {#predicateInside#(x,p,v,y,p,w)} #predicateInside#(x,p,v,y,p,w) ==> x!=y);
+
+
 function submask(m1: MaskType, m2: MaskType) returns (bool);
 
 axiom (forall m1: MaskType, m2: MaskType :: {submask(m1, m2)}
