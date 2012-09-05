@@ -37,7 +37,6 @@ REM Chalice command line options
 set CHALICE_OPTS=
 set CHALICE_OPTS=%CHALICE_OPTS% /boogieOpt:nologo
 set CHALICE_OPTS=%CHALICE_OPTS% /boogieOpt:noinfer
-set CHALICE_OPTS=%CHALICE_OPTS% /boogie:C:\Users\Alex\Downloads\nightly\Boogie.exe
 set CHALICE_OPTS=%CHALICE_OPTS% %*
 
 REM Assemble main command
