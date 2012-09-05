@@ -168,13 +168,27 @@ class Translator {
     val functionKStmts = BLocal(functionKV) :: bassume(0 < functionK && 1000*functionK < permissionOnePercent)
     
     // Boogie function that represents the Chalice function
-    Boogie.Function(functionName(f), BVar("heap", theap) :: BVar("this", tref) :: (f.ins map Variable2BVar), BVar("$myresult", f.out.typ)) ::
+    {
+      val bIns = if (f.isStatic) {
+        BVar("heap", theap) :: (f.ins map Variable2BVar)
+      } else {
+        BVar("heap", theap) :: BVar("this", tref) :: (f.ins map Variable2BVar)
+      }
+      Boogie.Function(functionName(f), bIns, BVar("$myresult", f.out.typ))
+    } ::
     // check definedness of the function's precondition and body
-    Proc(f.FullName + "$checkDefinedness", 
-      NewBVarWhere("this", new Type(currentClass)) :: (f.ins map {i => Variable2BVarWhere(i)}),
+    Proc(f.FullName + "$checkDefinedness",
+      {
+    	val insVar = f.ins map {i => Variable2BVarWhere(i)}
+    	if (!f.isStatic) {
+    	  NewBVarWhere("this", new Type(currentClass)) :: insVar
+    	} else {
+    	  insVar
+    	}
+      },
       Nil,
       GlobalNames,
-      DefaultPrecondition(),
+      DefaultPrecondition(f.isStatic),
       functionKStmts :::
       //bassume(CanAssumeFunctionDefs) ::
       DefinePreInitialState :::
@@ -206,10 +220,16 @@ class Translator {
   def definitionAxiom(f: Function, definition: Expression): List[Decl] = {
     val inArgs = (f.ins map {i => Boogie.VarExpr(i.UniqueName)})
     val thisArg = VarExpr("this")
-    val args = thisArg :: inArgs;
+    val args = if (f.isStatic) inArgs else thisArg :: inArgs;
 
     /////    
-    val formalsNoHeapNoMask = BVar("this", tref) :: (f.ins map Variable2BVar)
+    
+    val formalsNoHeapNoMask = if (f.isStatic) {
+        (f.ins map Variable2BVar)
+      } else {
+        BVar("this", tref) :: (f.ins map Variable2BVar)
+      }
+
     val formalsNoMask = BVar(HeapName, theap) :: formalsNoHeapNoMask
     val formals = BVar(MaskName, tmask) :: BVar(SecMaskName, tmask) :: formalsNoMask
     val applyF = FunctionApp(functionName(f), List(etran.Heap) ::: args);
@@ -228,6 +248,7 @@ class Translator {
       if (true) { // used to be: if (f.isRecursive && ! f.isUnlimited)    ... but now we treat all functions uniformly
         val limited = Map() ++ (f.SCC zip (f.SCC map {f =>
           val result = Function(f.id + "#limited", f.ins, f.out, f.spec, None);
+          result.isStatic = f.isStatic
           result.Parent = f.Parent;
           result;
         }));
@@ -290,18 +311,29 @@ class Translator {
       val inArgs = (f.ins map {i => Boogie.VarExpr(i.UniqueName)});
       val frameFunctionName = "#" + functionName(f);
 
-      val args = VarExpr("this") :: inArgs;
+      val args = if (!f.isStatic) VarExpr("this") :: inArgs else inArgs;
       val applyF = FunctionApp(functionName(f) + (if (f.isRecursive) "#limited" else ""), List(etran.Heap) ::: args);
       val applyFrameFunction = FunctionApp(frameFunctionName, partialHeap :: args)
       val wellformed = wf(VarExpr(HeapName), VarExpr(MaskName), VarExpr(SecMaskName))
       
-      Boogie.Function(frameFunctionName, Boogie.BVar("state", tpartialheap) :: Boogie.BVar("this", tref) :: (f.ins map Variable2BVar), new BVar("$myresult", f.out.typ)) ::
-      Axiom(new Boogie.Forall(
-        BVar(HeapName, theap) :: BVar(MaskName, tmask) :: BVar(SecMaskName, tmask) :: BVar("this", tref) :: (f.ins map Variable2BVar),
-        new Trigger(List(applyF, wellformed)),
-          (wellformed && CanAssumeFunctionDefs)
-          ==>
-          (applyF ==@ applyFrameFunction))
+      if (!f.isStatic) (
+	      Boogie.Function(frameFunctionName, Boogie.BVar("state", tpartialheap) :: Boogie.BVar("this", tref) :: (f.ins map Variable2BVar), new BVar("$myresult", f.out.typ)) ::
+	      Axiom(new Boogie.Forall(
+	        BVar(HeapName, theap) :: BVar(MaskName, tmask) :: BVar(SecMaskName, tmask) :: BVar("this", tref) :: (f.ins map Variable2BVar),
+	        new Trigger(List(applyF, wellformed)),
+	          (wellformed && CanAssumeFunctionDefs)
+	          ==>
+	          (applyF ==@ applyFrameFunction))
+	      )
+      ) else (
+          Boogie.Function(frameFunctionName, Boogie.BVar("state", tpartialheap) :: (f.ins map Variable2BVar), new BVar("$myresult", f.out.typ)) ::
+	      Axiom(new Boogie.Forall(
+	        BVar(HeapName, theap) :: BVar(MaskName, tmask) :: BVar(SecMaskName, tmask) :: (f.ins map Variable2BVar),
+	        new Trigger(List(applyF, wellformed)),
+	          (wellformed && CanAssumeFunctionDefs)
+	          ==>
+	          (applyF ==@ applyFrameFunction))
+	      )
       )
     } else {
       // Encoding with universal quantification over two heaps
@@ -309,7 +341,8 @@ class Translator {
             wf(h1,m1,sm1) && wf(h2,m2,sm1) && functionDependenciesEqual(h1, h2, #C.f) ==>
               #C.f(h1, m1, sm1, this, x_1, ..., x_n) == #C.f(h2, m2, sm2, this, x_1, ..., x_n)
        */
-      var args = VarExpr("this") :: (f.ins map {i => Boogie.VarExpr(i.UniqueName)});
+      var args = if (!f.isStatic) VarExpr("this") :: (f.ins map {i => Boogie.VarExpr(i.UniqueName)})
+                 else (f.ins map {i => Boogie.VarExpr(i.UniqueName)})
 
       // create two heaps
       val (globals1V, globals1) = etran.FreshGlobals("a"); val etran1 = new ExpressionTranslator(globals1, currentClass);
@@ -320,14 +353,24 @@ class Translator {
       val apply2 = FunctionApp(functionName(f), etran2.Heap :: args)
       val wellformed1 = wf(etran1.Heap, etran1.Mask, etran1.SecMask)
       val wellformed2 = wf(etran2.Heap, etran2.Mask, etran2.SecMask)
-
-      Axiom(new Boogie.Forall(
-        heap1 :: heap2 :: mask1 :: mask2 :: secmask1 :: secmask2 :: BVar("this", tref) :: (f.ins map Variable2BVar),
-        new Trigger(List(apply1, apply2, wellformed1, wellformed2)),
-          (wellformed1 && wellformed2 && functionDependenciesEqual(pre, etran1, etran2) && CanAssumeFunctionDefs)
-          ==>
-          (apply1 ==@ apply2)
-      ))
+      
+      if (!f.isStatic) (
+	      Axiom(new Boogie.Forall(
+	        heap1 :: heap2 :: mask1 :: mask2 :: secmask1 :: secmask2 :: BVar("this", tref) :: (f.ins map Variable2BVar),
+	        new Trigger(List(apply1, apply2, wellformed1, wellformed2)),
+	          (wellformed1 && wellformed2 && functionDependenciesEqual(pre, etran1, etran2) && CanAssumeFunctionDefs)
+	          ==>
+	          (apply1 ==@ apply2)
+	      ))
+      ) else (
+         Axiom(new Boogie.Forall(
+	        heap1 :: heap2 :: mask1 :: mask2 :: secmask1 :: secmask2 :: (f.ins map Variable2BVar),
+	        new Trigger(List(apply1, apply2, wellformed1, wellformed2)),
+	          (wellformed1 && wellformed2 && functionDependenciesEqual(pre, etran1, etran2) && CanAssumeFunctionDefs)
+	          ==>
+	          (apply1 ==@ apply2)
+	      ))
+      )
     }
   }
   
@@ -496,10 +539,13 @@ class Translator {
     new Boogie.Forall(chV, (ch ==@ bnull) || (0 <= new MapSelect(etran.Credits, ch)))
   }
 
-  def DefaultPrecondition() = {
-    "requires this!=null;" ::
-    "free requires wf(Heap, Mask, SecMask);" ::
-    Nil
+  def DefaultPrecondition(isStatic: Boolean = false) = {
+    if (!isStatic) {
+      "requires this!=null;" ::
+      "free requires wf(Heap, Mask, SecMask);" :: Nil
+    } else {
+      "free requires wf(Heap, Mask, SecMask);" :: Nil
+    }
   }
 
   def DefinePreInitialState = {
@@ -1639,17 +1685,23 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
         // pick new k
         val (funcappKV, funcappK) = Boogie.NewBVar("funcappK", tint, true)
         
-        // check definedness of receiver + arguments
-        (obj :: args flatMap { arg => isDefined(arg) }) :::
+        // check definedness of receiver
+        (if (!func.f.isStatic) {
+          isDefined(obj)
+        } else Nil) :::
+        // check definedness of arguments
+        (args flatMap { arg => isDefined(arg) }) :::
         // check that receiver is not null
-        List(prove(nonNull(Tr(obj)), obj.pos, "Receiver might be null.")) :::
+        (if (!func.f.isStatic) {
+          List(prove(nonNull(Tr(obj)), obj.pos, "Receiver might be null."))
+        } else Nil) :::
         // check precondition of the function by exhaling the precondition in tmpHeap/tmpMask/tmpCredits
         Comment("check precondition of call") ::
         BLocal(funcappKV) :: bassume(0 < funcappK && 1000*funcappK < percentPermission(1)) ::
         bassume(assumption) ::
         BLocals(tmpGlobalsV) :::
         copyState(tmpGlobals, this) :::
-        tmpTranslator.Exhale(Preconditions(func.f.spec) map { pre=> (SubstVars(pre, obj, func.f.ins, args), ErrorMessage(func.pos, "Precondition at " + pre.pos + " might not hold."))},
+        tmpTranslator.Exhale(Preconditions(func.f.spec) map { pre=> (if (func.f.isStatic) SubstVars(pre, func.f.ins, args) else SubstVars(pre, obj, func.f.ins, args), ErrorMessage(func.pos, "Precondition at " + pre.pos + " might not hold."))},
                              "function call",
                              false, funcappK, false) :::
         // size of the heap of callee must be strictly smaller than size of the heap of the caller
@@ -1804,8 +1856,13 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
       Boogie.Ite(trrecursive(con), trrecursive(then), trrecursive(els))  // of type: VarExpr(TrClass(then.typ))
     case Not(e) =>
       ! trrecursive(e)
-    case func@FunctionApplication(obj, id, args) =>
-      FunctionApp(functionName(func.f), Heap :: (obj :: args map { arg => trrecursive(arg)}))
+    case func@FunctionApplication(obj, id, args) => {
+      if (!func.f.isStatic) {
+        FunctionApp(functionName(func.f), Heap :: (obj :: args map { arg => trrecursive(arg)}))
+      } else {
+        FunctionApp(functionName(func.f), Heap :: (args map { arg => trrecursive(arg)}))
+      }
+    }
     case uf@Unfolding(_, e) =>
       trrecursive(e)
     case Iff(e0,e1) =>

@@ -32,7 +32,7 @@ class Parser extends StandardTokenParsers {
                        "between", "and", "above", "below", "share", "unshare", "acquire", "release", "downgrade",
                        "lock", "fork", "join", "rd", "acc", "credit", "holds", "old", "assigned",
                        "call", "if", "else", "while", "invariant", "lockchange",
-                       "returns", "requires", "ensures", "where",
+                       "returns", "requires", "ensures", "where", "static",
                        "int", "bool", "false", "true", "null", "string", "waitlevel", "lockbottom",
                        "module", "external",
                        "predicate", "function", "free", "send", "receive",
@@ -105,10 +105,11 @@ class Parser extends StandardTokenParsers {
   }
   def functionDecl = {
     currentLocalVariables = Set[String]();
-    ("unlimited" ?) ~ ("function" ~> ident) ~ formalParameters(true) ~ (":" ~> typeDecl) ~ (methodSpec*) ~ opt("{" ~> expression <~ "}") ^^ {
-      case u ~ id ~ ins ~ out ~ specs ~ body => {
+    ("unlimited" ?) ~ ("static" ?) ~ ("function" ~> ident) ~ formalParameters(true) ~ (":" ~> typeDecl) ~ (methodSpec*) ~ opt("{" ~> expression <~ "}") ^^ {
+      case u ~ s ~ id ~ ins ~ out ~ specs ~ body => {
         val f = Function(id, ins, out, specs, body);
         if (u.isDefined) f.isUnlimited = true;
+        if (s.isDefined) f.isStatic = true;
         f
       }
     }

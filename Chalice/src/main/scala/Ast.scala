@@ -209,6 +209,7 @@ case class Function(id: String, ins: List[Variable], out: Type, spec: List[Speci
     result
   }
   var isUnlimited = false
+  var isStatic = false
   var isRecursive = false
   var SCC: List[Function] = Nil
 }
