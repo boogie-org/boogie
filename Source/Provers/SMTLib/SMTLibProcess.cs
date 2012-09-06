@@ -162,6 +162,11 @@ namespace Microsoft.Boogie.SMTLib
               sb.Clear();
             }
           }
+        } else if (resp.Name == "unsupported") {
+          // Skip -- this may be a benign "unsupported" from a previous command.
+          // Of course, this is suboptimal.  We should really be using
+          // print-success to identify the errant command and determine whether
+          // the response is benign.
         } else {
           return resp;
         }
