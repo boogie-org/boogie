@@ -2033,8 +2033,8 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
   def Inhale(p: Expression, ih: Boogie.Expr, check: Boolean, currentK: Expr, unfoldReceiver: VarExpr, unfoldPredicateName : String, unfoldVersion: VarExpr): List[Boogie.Stmt] =
     InhaleImplementation(p, ih, check, currentK, false, unfoldReceiver, unfoldPredicateName, unfoldVersion)
   
-  def InhaleToSecMask(p: Expression): List[Boogie.Stmt] =
-    InhaleImplementation(p, Heap /* it should not matter what we pass here */, false /* check */, -1 /* it should not matter what we pass here */, true)
+  def InhaleToSecMask(p: Expression, unfoldingReceiver: VarExpr = null, unfoldingPredicateName: String = null, unfoldingVersion: VarExpr = null): List[Boogie.Stmt] =
+    InhaleImplementation(p, Heap /* it should not matter what we pass here */, false /* check */, -1 /* it should not matter what we pass here */, true, unfoldingReceiver, unfoldingPredicateName, unfoldingVersion)
 
   def InhaleImplementation(p: Expression, ih: Boogie.Expr, check: Boolean, currentK: Expr, transferToSecMask: Boolean, unfoldReceiver: VarExpr = null, unfoldPredicateName: String = null, unfoldVersion: VarExpr = null): List[Boogie.Stmt] = desugar(p) match {
     case pred@MemberAccess(e, p) if pred.isPredicate => 
@@ -2183,7 +2183,7 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
         if (isOldEtran) Nil else
         // remove secondary permissions (if any), and add them again
         UpdateSecMaskDuringUnfold(pred.predicate, o, Heap.select(o, pred.predicate.FullName), perm, currentK) :::
-        TransferPermissionToSecMask(pred.predicate, BoogieExpr(receiver), perm, uf.pos)
+        TransferPermissionToSecMask(pred.predicate, BoogieExpr(receiver), perm, uf.pos, receiver, pred.predicate.FullName, version)
       ) :::
       bassume(Tr(uf))
       
@@ -2199,10 +2199,10 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
   /** Transfer the permissions mentioned in the body of the predicate to the
    * secondary mask.
   */
-  def TransferPermissionToSecMask(pred: Predicate, obj: Expression, perm: Permission, pos: Position): List[Stmt] = {
+  def TransferPermissionToSecMask(pred: Predicate, obj: Expression, perm: Permission, pos: Position, unfoldingReceiver: VarExpr = null, unfoldingPredicateName: String = null, unfoldingVersion: VarExpr = null): List[Stmt] = {
     var definition = scaleExpressionByPermission(SubstThis(DefinitionOf(pred), obj), perm, pos)
     // go through definition and handle all permisions correctly
-    InhaleToSecMask(definition)
+    InhaleToSecMask(definition, unfoldingReceiver, unfoldingPredicateName, unfoldingVersion)
   }
   
   // Exhale is done in two passes: In the first run, everything except permissions
@@ -2428,7 +2428,7 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
         // check definedness
         (if(check) isDefined(e.e)(true) :::
                    bassert(nonNull(Tr(e.e)), error.pos, error.message + " The target of the acc predicate at " + acc.pos + " might be null.") else Nil) :::
-        (if(e.isPredicate && foldReceiver != null) bassume(FunctionApp("#predicateInside#", trE :: VarExpr(memberName) :: Heap.select(trE, memberName) :: foldReceiver :: VarExpr(foldPredicateName) :: foldVersion :: Nil)) :: Nil else Nil) :::
+        (if(e.isPredicate && foldReceiver != null) bassume(FunctionApp("#predicateInside#", foldReceiver :: VarExpr(foldPredicateName) :: foldVersion :: trE :: VarExpr(memberName) :: Heap.select(trE, memberName) :: Nil)) :: Nil else Nil) :::
         // if the mask does not contain sufficient permissions, try folding acc(e, fraction)
         // TODO: include automagic again
         // check that the necessary permissions are there and remove them from the mask
