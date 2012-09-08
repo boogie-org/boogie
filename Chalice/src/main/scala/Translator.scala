@@ -1825,145 +1825,235 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
    *  the expression and an expression translator as argument). The default
    *  behaviour is to translate only pure assertions (and throw and error otherwise).
    */
-  def Tr(e: Expression): Boogie.Expr = Tr(e, (ee,et) => et.Tr(ee))
-  def Tr(e: Expression, trrec: (Expression, ExpressionTranslator) => Expr): Boogie.Expr = {
-    def trrecursive(e: Expression): Expr = trrec(e, this)
+  def Tr(e: Expression): Boogie.Expr = (Tr(e,false))._1
+  def Tr(e: Expression, b: Boolean) : (Boogie.Expr, List[Boogie.Stmt]) = (Tr(e, (ee,et) => et.Tr(ee,b)))
+  def Tr(e: Expression, trrec: (Expression, ExpressionTranslator) => (Boogie.Expr, List[Boogie.Stmt])): (Boogie.Expr, List[Boogie.Stmt]) = {
+    def trrecursive(e: Expression): (Boogie.Expr, List[Boogie.Stmt]) = trrec(e, this)
     desugar(e) match {
-    case IntLiteral(n) => n
-    case BoolLiteral(b) => b
-    case NullLiteral() => bnull
+    case IntLiteral(n) => (n,Nil)
+    case BoolLiteral(b) => (b,Nil)
+    case NullLiteral() => (bnull,Nil)
     case StringLiteral(s) =>
       // since there currently are no operations defined on string, except == and !=, just translate
       // each string to a unique number
-      s.hashCode()
-    case BoogieExpr(b) => b
+      (s.hashCode(),Nil)
+    case BoogieExpr(b) => (b,Nil)
     case MaxLockLiteral() => throw new InternalErrorException("waitlevel case should be handled in << and == and !=")
-    case LockBottomLiteral() => bLockBottom
-    case _:ThisExpr => VarExpr("this")
-    case _:Result => VarExpr("result")
-    case ve : VariableExpr => VarExpr(ve.v.UniqueName)
+    case LockBottomLiteral() => (bLockBottom,Nil)
+    case _:ThisExpr => (VarExpr("this"),Nil)
+    case _:Result => (VarExpr("result"),Nil)
+    case ve : VariableExpr => (VarExpr(ve.v.UniqueName),Nil)
     case fs @ MemberAccess(e,_) =>
       assert(! fs.isPredicate);
-      var r = Heap.select(trrecursive(e), fs.f.FullName);
+      var (ee,ll) = trrecursive(e)
+      var r = Heap.select(ee, fs.f.FullName);
       if (fs.f.isInstanceOf[SpecialField] && fs.f.id == "joinable")
-        r !=@ 0 // joinable is encoded as an integer
+        (r !=@ 0,ll) // joinable is encoded as an integer
       else
-        r
+        (r,ll)
     case _:Permission => throw new InternalErrorException("permission unexpected here")
     case _:PermissionExpr => throw new InternalErrorException("permission expression unexpected here: " + e.pos)
     case _:Credit => throw new InternalErrorException("credit expression unexpected here")
     case Holds(e) =>
-      var ee = trrecursive(e)
-      (0 < Heap.select(ee, "held")) &&
-      !Heap.select(ee, "rdheld")
+      var (ee,ll) = trrecursive(e)
+      ((0 < Heap.select(ee, "held")) &&
+      !Heap.select(ee, "rdheld"),ll)
     case RdHolds(e) =>
-      Heap.select(trrecursive(e), "rdheld")
+      var (ee,ll) = trrecursive(e)
+      (Heap.select(ee, "rdheld"),ll)
     case a: Assigned =>
-      VarExpr("assigned$" + a.v.UniqueName)
+      (VarExpr("assigned$" + a.v.UniqueName),Nil)
     case Old(e) =>
       trrec(e, oldEtran)
     case IfThenElse(con, then, els) =>
-      Boogie.Ite(trrecursive(con), trrecursive(then), trrecursive(els))  // of type: VarExpr(TrClass(then.typ))
+      var (conE,conL) = trrecursive(con)
+      var (thenE,thenL) = trrecursive(then)
+      var (elsE,elsL) = trrecursive(els)
+      (Boogie.Ite(conE, thenE, elsE),(conL ::: thenL ::: elsL))  // of type: VarExpr(TrClass(then.typ))
     case Not(e) =>
-      ! trrecursive(e)
+      var (ee,ll) = trrecursive(e)
+      ((! ee),ll)
     case func@FunctionApplication(obj, id, args) => {
-      if (!func.f.isStatic) {
-        FunctionApp(functionName(func.f), Heap :: (obj :: args map { arg => trrecursive(arg)}))
-      } else {
-        FunctionApp(functionName(func.f), Heap :: (args map { arg => trrecursive(arg)}))
-      }
+      var fullArgs = if (!func.f.isStatic) (obj :: args) else (args)
+      var trArgs = fullArgs map {arg => trrecursive(arg)} // yields a list of (Expr, List[Boogie.Stmt]) pairs
+      var trArgsE = trArgs.foldRight(List[Boogie.Expr]())((el, ll) => el._1 :: ll) // collect list of exprs
+      var trArgsL = trArgs.foldRight(List[Boogie.Stmt]())((x,y) => ((x._2) ::: y)) // concatenate lists of statements
+      (FunctionApp(functionName(func.f), Heap :: trArgsE),trArgsL)
     }
-    case uf@Unfolding(_, e) =>
-      trrecursive(e)
+    case uf@Unfolding(acc@Access(pred@MemberAccess(obj, f), perm), ufexpr) =>
+      // handle unfolding like the next case, but also record permissions of the predicate
+      // in the secondary mask and track the predicate in the auxilary information
+            val (ee,ll) = trrecursive(ufexpr)
+            val (receiverV, receiver) = Boogie.NewBVar("predRec", tref, true)
+            val (versionV, version) = Boogie.NewBVar("predVer", tint, true)
+            val (flagV, flag) = Boogie.NewBVar("predFlag", tbool, true)
+            val o = TrExpr(obj);
+            
+            val stmts = BLocal(receiverV) :: (receiver := o) ::
+            BLocal(flagV) :: (flag := true) ::
+            functionTrigger(o, pred.predicate) ::
+            BLocal(versionV) :: (version := Heap.select(o, pred.predicate.FullName)) :::
+           // UpdateSecMaskDuringUnfold(pred.predicate, o, Heap.select(o, pred.predicate.FullName), perm, currentK) :::
+              TransferPermissionToSecMask(pred.predicate, BoogieExpr(receiver), perm, uf.pos, receiver, pred.predicate.FullName, version)
+            
+            (ee, ll ::: stmts)
     case Iff(e0,e1) =>
-      trrecursive(e0) <==> trrecursive(e1)
+      var (ee0,l0) = trrecursive(e0)
+      var (ee1,l1) = trrecursive(e1)
+      ((ee0 <==> ee1), l0 ::: l1)
     case Implies(e0,e1) =>
-      trrecursive(e0) ==> trrecursive(e1)
+      var (ee0,l0) = trrecursive(e0)
+      var (ee1,l1) = trrecursive(e1)
+      ((ee0 ==> ee1), l0 ::: l1)
     case And(e0,e1) =>
-      trrecursive(e0) && trrecursive(e1)
+      var (ee0,l0) = trrecursive(e0)
+      var (ee1,l1) = trrecursive(e1)
+      ((ee0 && ee1), l0 ::: l1)
     case Or(e0,e1) =>
-      trrecursive(e0) || trrecursive(e1)
+      var (ee0,l0) = trrecursive(e0)
+      var (ee1,l1) = trrecursive(e1)
+      ((ee0 || ee1), l0 ::: l1)
     case Eq(e0,e1) =>
       (ShaveOffOld(e0), ShaveOffOld(e1)) match {
         case ((MaxLockLiteral(),o0), (MaxLockLiteral(),o1)) =>
           if (o0 == o1)
-            true
+            (true, Nil) // in this case, l0 and l1 would be Nil, (and Tr((MaxLockLiteral(),_)) is not defined)
           else
-            MaxLockPreserved
-        case ((MaxLockLiteral(),o), _) => ChooseEtran(o).IsHighestLock(trrecursive(e1))
-        case (_, (MaxLockLiteral(),o)) => ChooseEtran(o).IsHighestLock(trrecursive(e0))
-        case _ => if(e0.typ.IsSeq) FunctionApp("Seq#Equal", List(trrecursive(e0), trrecursive(e1))) else (trrecursive(e0) ==@ trrecursive(e1))
+            (MaxLockPreserved, Nil) // in this case, l0 and l1 would be Nil, (and Tr((MaxLockLiteral(),_)) is not defined)
+        case ((MaxLockLiteral(),o), _) => 
+          var (ee1,l1) = trrecursive(e1)          
+          (ChooseEtran(o).IsHighestLock(ee1), l1) // in this case, l0 would be Nil, (and Tr((MaxLockLiteral(),_)) is not defined)
+        case (_, (MaxLockLiteral(),o)) => 
+          var (ee0,l0) = trrecursive(e0) 
+          (ChooseEtran(o).IsHighestLock(ee0), l0) // in this case, l1 would be Nil, (and Tr((MaxLockLiteral(),_)) is not defined)
+        case _ => 
+          var (ee0,l0) = trrecursive(e0) 
+          var (ee1,l1) = trrecursive(e1)          
+          ((if(e0.typ.IsSeq) FunctionApp("Seq#Equal", List(ee0, ee1)) else (ee0 ==@ ee1)), l0 ::: l1)
       }
     case Neq(e0,e1) =>
       trrecursive(Not(Eq(e0,e1)))
     case Less(e0,e1) =>
-      trrecursive(e0) < trrecursive(e1)
+      var (ee0,l0) = trrecursive(e0)
+      var (ee1,l1) = trrecursive(e1)
+      (ee0 < ee1, l0 ::: l1)
     case AtMost(e0,e1) =>
-      trrecursive(e0) <= trrecursive(e1)
+      var (ee0,l0) = trrecursive(e0)
+      var (ee1,l1) = trrecursive(e1)
+      (ee0 <= ee1, l0 ::: l1)
     case AtLeast(e0,e1) =>
-      trrecursive(e0) >= trrecursive(e1)
+      var (ee0,l0) = trrecursive(e0)
+      var (ee1,l1) = trrecursive(e1)
+      (ee0 >= ee1, l0 ::: l1)
     case Greater(e0,e1) =>
-      trrecursive(e0) > trrecursive(e1)
+      var (ee0,l0) = trrecursive(e0)
+      var (ee1,l1) = trrecursive(e1)
+      (ee0 > ee1, l0 ::: l1)
     case LockBelow(e0,e1) => {
-      def MuValue(b: Expression): Boogie.Expr =
-        if (b.typ.IsRef) new Boogie.MapSelect(Heap, trrecursive(b), "mu") else trrecursive(b)
+      def MuValue(b: Expression): (Boogie.Expr, List[Boogie.Stmt]) = (
+        trrecursive(b) match {
+          case (eb, lb) =>
+            ((if (b.typ.IsRef) new Boogie.MapSelect(Heap, eb, "mu") else eb),lb)
+          }
+        )
       (ShaveOffOld(e0), ShaveOffOld(e1)) match {
         case ((MaxLockLiteral(),o0), (MaxLockLiteral(),o1)) =>
           if (o0 == o1)
-            false
+            (false,Nil) // in this case, l0 and l1 are guaranteed to be Nil
           else
-            TemporalMaxLockComparison(ChooseEtran(o0), ChooseEtran(o1))
-        case ((MaxLockLiteral(),o), _) => ChooseEtran(o).MaxLockIsBelowX(MuValue(e1))
-        case (_, (MaxLockLiteral(),o)) => ChooseEtran(o).MaxLockIsAboveX(MuValue(e0))
-        case _ => new FunctionApp("MuBelow", MuValue(e0), MuValue(e1)) }
+            (TemporalMaxLockComparison(ChooseEtran(o0), ChooseEtran(o1)),Nil) // in this case, l0 and l1 are guaranteed to be Nil
+        case ((MaxLockLiteral(),o), _) => 
+          var (ee1, l1) = MuValue(e1)
+          (ChooseEtran(o).MaxLockIsBelowX(ee1),l1)
+        case (_, (MaxLockLiteral(),o)) => 
+          var (ee0, l0) = MuValue(e0)
+          (ChooseEtran(o).MaxLockIsAboveX(ee0),l0)
+        case _ => 
+          var (ee0, l0) = MuValue(e0)
+          var (ee1, l1) = MuValue(e1)
+          ((new FunctionApp("MuBelow", ee0, ee1)),l0 ::: l1) }
     }
     case Plus(e0,e1) =>
-      trrecursive(e0) + trrecursive(e1)
+      var (ee0,l0) = trrecursive(e0)
+      var (ee1,l1) = trrecursive(e1)
+      (ee0 + ee1, l0 ::: l1)
     case Minus(e0,e1) =>
-      trrecursive(e0) - trrecursive(e1)
+      var (ee0,l0) = trrecursive(e0)
+      var (ee1,l1) = trrecursive(e1)
+      (ee0 - ee1, l0 ::: l1)
     case Times(e0,e1) =>
-      trrecursive(e0) * trrecursive(e1)
+      var (ee0,l0) = trrecursive(e0)
+      var (ee1,l1) = trrecursive(e1)
+      (ee0 * ee1, l0 ::: l1)
     case Div(e0,e1) =>
-      trrecursive(e0) / trrecursive(e1)
+      var (ee0,l0) = trrecursive(e0)
+      var (ee1,l1) = trrecursive(e1)
+      (ee0 / ee1, l0 ::: l1)
     case Mod(e0,e1) =>
-      trrecursive(e0) % trrecursive(e1)
+      var (ee0,l0) = trrecursive(e0)
+      var (ee1,l1) = trrecursive(e1)
+      (ee0 % ee1, l0 ::: l1)
     case EmptySeq(t) =>
-      createEmptySeq
+      (createEmptySeq, Nil)
     case ExplicitSeq(es) =>
       es match {
-        case Nil => createEmptySeq
-        case h :: Nil => createSingletonSeq(trrecursive(h))
-        case h :: t => createAppendSeq(createSingletonSeq(trrecursive(h)), trrecursive(ExplicitSeq(t)))
+        case Nil => (createEmptySeq, Nil)
+        case h :: Nil => 
+          var (eh,lh) = trrecursive(h)
+          (createSingletonSeq(eh),lh)
+        case h :: t =>         
+          var (eh,lh) = trrecursive(h)
+          var (et,lt) = trrecursive(ExplicitSeq(t))
+          ((createAppendSeq(createSingletonSeq(eh), et)), lh ::: lt)
       }
     case Range(min, max) =>
-      createRange(trrecursive(min), trrecursive(max))
+      var (emin,lmin) = trrecursive(min)
+      var (emax,lmax) = trrecursive(max)
+      ((createRange(emin, emax)), lmin ::: lmax)
     case Append(e0, e1) =>
-      createAppendSeq(trrecursive(e0), trrecursive(e1))
-    case at@At(e0, e1) =>SeqIndex(trrecursive(e0), trrecursive(e1))
+      var (ee0,l0) = trrecursive(e0)
+      var (ee1,l1) = trrecursive(e1)
+      ((createAppendSeq(ee0, ee1)), l0 ::: l1)
+    case at@At(e0, e1) => 
+      var (ee0,l0) = trrecursive(e0)
+      var (ee1,l1) = trrecursive(e1)
+      ((SeqIndex(ee0, ee1)), l0 ::: l1)
     case Drop(e0, e1) =>
+      var (ee0,l0) = trrecursive(e0)
+      var (ee1,l1) = trrecursive(e1)
       e1 match {
         case IntLiteral(0) =>
-          trrecursive(e0)
+          (ee0, l0 ::: l1)
         case _ =>
-          Boogie.FunctionApp("Seq#Drop", List(trrecursive(e0), trrecursive(e1)))
+          ((Boogie.FunctionApp("Seq#Drop", List(ee0, ee1))), l0 ::: l1)
       }
     case Take(e0, e1) =>
-      Boogie.FunctionApp("Seq#Take", List(trrecursive(e0), trrecursive(e1)))
-    case Length(e) => SeqLength(trrecursive(e))
-    case Contains(e0, e1) => SeqContains(trrecursive(e1), trrecursive(e0))
+      var (ee0,l0) = trrecursive(e0)
+      var (ee1,l1) = trrecursive(e1)
+      ((Boogie.FunctionApp("Seq#Take", List(ee0, ee1))), l0 ::: l1)
+    case Length(e) => 
+      var (ee,l) = trrecursive(e)
+      (SeqLength(ee), l)
+    case Contains(e0, e1) => 
+      var (ee0,l0) = trrecursive(e0)
+      var (ee1,l1) = trrecursive(e1)
+      (SeqContains(ee1, ee0), l0 ::: l1) // Note: swapping of arguments
     case Eval(h, e) =>
       val (evalHeap, evalMask, evalSecMask, evalCredits, checks, assumptions) = fromEvalState(h);
       val evalEtran = new ExpressionTranslator(Globals(evalHeap, evalMask, evalSecMask, evalCredits), oldEtran.globals, currentClass);
       trrec(e, evalEtran)
     case _:SeqQuantification => throw new InternalErrorException("should be desugared")
     case tq @ TypeQuantification(Forall, _, _, e, _) =>
-      Boogie.Forall(Nil, tq.variables map { v => Variable2BVar(v)}, Nil, trrecursive(e))
+      var (ee,l) = trrecursive(e)
+      ((Boogie.Forall(Nil, tq.variables map { v => Variable2BVar(v)}, Nil, ee)),l)
     case tq @ TypeQuantification(Exists, _, _, e, _) =>
-      Boogie.Exists(Nil, tq.variables map { v => Variable2BVar(v)}, Nil, trrecursive(e))
+      var (ee,l) = trrecursive(e)
+      ((Boogie.Exists(Nil, tq.variables map { v => Variable2BVar(v)}, Nil, ee)),l)
     }
   }
   
   /** translate everything, including permissions and credit expressions */
+  // Since this is only used in axiom generation (so far), the ability to generate "side-effects" from the evaluation of unfolding expressions (as in the list of boogie statements returned from Tr) is not implemented here (in axioms the side-effects are not wanted anyway)
   def TrAll(e: Expression): Expr = {
     def TrAllHelper(e: Expression, etran: ExpressionTranslator): Expr = e match {
       case pred@MemberAccess(e, p) if pred.isPredicate =>
@@ -1977,7 +2067,7 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
         val memberName = member.f.FullName;
         val (refV, ref) = Boogie.NewBVar("ref", tref, true);
         (SeqContains(Tr(s), ref) ==> CanRead(ref, memberName)).forall(refV)
-      case _ => etran.Tr(e, TrAllHelper)
+      case _ => (etran.Tr(e, (ee : Expression, et : ExpressionTranslator) => (TrAllHelper(ee,et),Nil)))._1 //wrap TrAllHelper to give it the return type needed for Tr.
     }
     TrAllHelper(e, this)
   }
@@ -2539,7 +2629,9 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
       bassume(wf(preEtran.Heap, preEtran.Mask, preEtran.SecMask)) ::
       bassert(proofOrAssume, p.pos, "Arguments for joinable might not match up.") ::
       preEtran.Exhale(List((e, error)), "eval", check, currentK, exactchecking)
-    case e if !onlyExactCheckingPermissions => (if(check) isDefined(e)(true) else Nil) ::: List(bassert(Tr(e), error.pos, error.message + " The expression at " + e.pos + " might not evaluate to true."))
+    case e if !onlyExactCheckingPermissions => 
+      val (ee,ll) = Tr(e, true) // keep list ll of statements here, in case we are missing effects from unfolding expressions (if we do not call isDefined(e) below, we won't add secondary permissions/"inside" instances)
+      (if(check) isDefined(e)(true) else ll) ::: List(bassert(ee, error.pos, error.message + " The expression at " + e.pos + " might not evaluate to true."))
     case _ => Nil
   }}
   
