@@ -1881,8 +1881,7 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
       (FunctionApp(functionName(func.f), Heap :: trArgsE),trArgsL)
     }
     case uf@Unfolding(acc@Access(pred@MemberAccess(obj, f), perm), ufexpr) =>
-      // handle unfolding like the next case, but also record permissions of the predicate
-      // in the secondary mask and track the predicate in the auxilary information
+      // record extra information resulting from "peeking inside" the predicate, generating appropriate statements (this is used in Exhale of an expression)
             val (ee,ll) = trrecursive(ufexpr)
             val (receiverV, receiver) = Boogie.NewBVar("predRec", tref, true)
             val (versionV, version) = Boogie.NewBVar("predVer", tint, true)
