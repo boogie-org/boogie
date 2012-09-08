@@ -27,17 +27,20 @@ namespace Microsoft.Boogie.SMTLib
     }
   }
 
+  public enum SolverKind { Z3, CVC3, CVC4 };
+
   public class SMTLibProverOptions : ProverOptions
   {
     public bool UseWeights = true;
-    public bool UseLabels { get { return UseZ3; } }
+    public bool SupportsLabels { get { return Solver == SolverKind.Z3; } }
+    public bool UseTickleBool { get { return Solver == SolverKind.Z3; } }
+    public SolverKind Solver = SolverKind.Z3;
     public List<OptionValue> SmtOptions = new List<OptionValue>();
     public List<string> SolverArguments = new List<string>();
     public bool MultiTraces = false;
     public string Logic = "";
 
     // Z3 specific (at the moment; some of them make sense also for other provers)
-    public bool UseZ3 = true;
     public string Inspector = null;
     public bool OptimizeForBv = false;
 
@@ -80,6 +83,27 @@ namespace Microsoft.Boogie.SMTLib
 
     protected override bool Parse(string opt)
     {
+      string SolverStr = null;
+      if (ParseString(opt, "SOLVER", ref SolverStr)) {
+        switch (SolverStr) {
+          case "z3":
+            Solver = SolverKind.Z3;
+            break;
+          case "cvc3":
+            Solver = SolverKind.CVC3;
+            Logic = "ALL";
+            break;
+          case "cvc4":
+            Solver = SolverKind.CVC4;
+            Logic = "ALL_SUPPORTED";
+            break;
+          default:
+            ReportError("Invalid SOLVER value; must be 'z3', 'cvc3' or 'cvc4'");
+            return false;
+        }
+        return true;
+      }
+
       if (opt.StartsWith("O:")) {
         AddSmtOption(opt.Substring(2));
         return true;
@@ -93,7 +117,6 @@ namespace Microsoft.Boogie.SMTLib
       return
         ParseBool(opt, "MULTI_TRACES", ref MultiTraces) ||
         ParseBool(opt, "USE_WEIGHTS", ref UseWeights) ||
-        ParseBool(opt, "USE_Z3", ref UseZ3) ||
         ParseString(opt, "INSPECTOR", ref Inspector) ||
         ParseBool(opt, "OPTIMIZE_FOR_BV", ref OptimizeForBv) ||
         ParseString(opt, "LOGIC", ref Logic) ||
@@ -103,7 +126,7 @@ namespace Microsoft.Boogie.SMTLib
     public override void PostParse()
     {
       base.PostParse();
-      if (UseZ3)
+      if (Solver == SolverKind.Z3)
         Z3.SetupOptions(this);
     }
 
@@ -115,18 +138,18 @@ namespace Microsoft.Boogie.SMTLib
 @"
 SMT-specific options:
 ~~~~~~~~~~~~~~~~~~~~~
+SOLVER=<string>           Use the given SMT solver (z3, cvc3, cvc4; default: z3)
 USE_WEIGHTS=<bool>        Pass :weight annotations on quantified formulas (default: true)
 VERBOSITY=<int>           1 - print prover output (default: 0)
 O:<name>=<value>          Pass (set-option :<name> <value>) to the SMT solver.
 C:<string>                Pass <string> to the SMT on the command line. 
-LOGIC=<string>            Pass (set-logic <string>) to the prover (default: empty)
+LOGIC=<string>            Pass (set-logic <string>) to the prover (default: empty, 'ALL' for CVC3 or 'ALL_SUPPORTED' for CVC4)
 
 Z3-specific options:
 ~~~~~~~~~~~~~~~~~~~~
 MULTI_TRACES=<bool>       Report errors with multiple paths leading to the same assertion.
 INSPECTOR=<string>        Use the specified Z3Inspector binary.
 OPTIMIZE_FOR_BV=<bool>    Optimize Z3 options for bitvector reasoning, and not quantifier instantiation. Defaults to false.
-USE_Z3=<bool>             Use z3.exe as the prover, and use Z3 extensions (default: true)
 " + base.Help;
       }
     }

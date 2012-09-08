@@ -94,17 +94,33 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
+    ProcessStartInfo ComputeProcessStartInfo()
+    {
+      var path = this.options.ProverPath;
+      switch (options.Solver) {
+        case SolverKind.Z3:
+          if (path == null)
+            path = Z3.ExecutablePath();
+          return SMTLibProcess.ComputerProcessStartInfo(path, "AUTO_CONFIG=false -smt2 -in");
+        case SolverKind.CVC3:
+          if (path == null)
+            path = "cvc3";
+          return SMTLibProcess.ComputerProcessStartInfo(path, "-lang smt2 +interactive -showPrompt");
+        case SolverKind.CVC4:
+          if (path == null)
+            path = "cvc4";
+          return SMTLibProcess.ComputerProcessStartInfo(path, "--smtlib2 --no-strict-parsing");
+        default:
+          Debug.Assert(false);
+          return null;
+      }
+    }
+
     void SetupProcess()
     {
-      if (!this.options.UseZ3)
-        return;
-
       if (Process != null) return;
 
-      var path = this.options.ProverPath;
-      if (path == null)
-        path = Z3.ExecutablePath();
-      var psi = SMTLibProcess.ComputerProcessStartInfo(path, "AUTO_CONFIG=false -smt2 -in");
+      var psi = ComputeProcessStartInfo();
       Process = new SMTLibProcess(psi, this.options);
       Process.ErrorHandler += this.HandleProverError;
     }
@@ -197,6 +213,10 @@ namespace Microsoft.Boogie.SMTLib
         SendCommon("; done setting options\n");
         SendCommon(_backgroundPredicates);
 
+        if (options.UseTickleBool) {
+          SendCommon("(declare-fun tickleBool (Bool) Bool)");
+          SendCommon("(assert (and (tickleBool true) (tickleBool false)))");
+        }
         
         if (ctx.KnownDatatypeConstructors.Count > 0) {
           string datatypeString = "";
@@ -986,7 +1006,7 @@ namespace Microsoft.Boogie.SMTLib
       List<string>/*!>!*/ proverCommands = new List<string/*!*/>();
       proverCommands.Add("smtlib");
       var opts = (SMTLibProverOptions)options ;
-      if (opts.UseZ3)
+      if (opts.Solver == SolverKind.Z3)
         proverCommands.Add("z3");
       else
         proverCommands.Add("external");
@@ -1009,6 +1029,11 @@ namespace Microsoft.Boogie.SMTLib
       Contract.Ensures(Contract.Result<SMTLibProcessTheoremProver>() != null);
 
       return new SMTLibProcessTheoremProver(options, gen, ctx);
+    }
+
+    public override bool SupportsLabels(ProverOptions options)
+    {
+      return ((SMTLibProverOptions)options).SupportsLabels;
     }
   }
 }

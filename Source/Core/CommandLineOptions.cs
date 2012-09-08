@@ -1266,6 +1266,12 @@ namespace Microsoft.Boogie {
         ProverName = "SMTLib".ToUpper();
       }
 
+      var proverOpts = TheProverFactory.BlankProverOptions();
+      proverOpts.Parse(ProverOptions);
+      if (!TheProverFactory.SupportsLabels(proverOpts)) {
+        UseLabels = false;
+      }
+
       if (vcVariety == VCVariety.Unspecified) {
         vcVariety = TheProverFactory.DefaultVCVariety;
       }

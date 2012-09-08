@@ -416,14 +416,7 @@ namespace Microsoft.Boogie.SMTLib
         Contract.Requires(node != null);
         Contract.Requires(options != null);
 
-        // not sure if this is needed
-        if (node[0].Type.IsBool) {
-          Contract.Assert(node[1].Type.IsBool);
-          // use equivalence
-          WriteApplication("iff", node, options);
-        } else {
-          WriteApplication("=", node, options);
-        }
+        WriteApplication("=", node, options);
 
         return true;
       }
@@ -470,7 +463,10 @@ namespace Microsoft.Boogie.SMTLib
       public bool VisitCustomOp(VCExprNAry node, LineariserOptions options)
       {
         VCExprCustomOp op = (VCExprCustomOp)node.Op;
-        WriteApplication(op.Name, node, options);
+        if (!ExprLineariser.ProverOptions.UseTickleBool && op.Name == "tickleBool")
+          ExprLineariser.Linearise(VCExpressionGenerator.True, options);
+        else
+          WriteApplication(op.Name, node, options);
         return true;
       }
 
@@ -517,7 +513,7 @@ namespace Microsoft.Boogie.SMTLib
         }
 
         var op = (VCExprLabelOp)node.Op;
-        if (ExprLineariser.ProverOptions.UseLabels) {
+        if (CommandLineOptions.Clo.UseLabels) {
           // Z3 extension
           //wr.Write("({0} {1} ", op.pos ? "lblpos" : "lblneg", SMTLibNamer.QuoteId(op.label));
           wr.Write("(! ");
@@ -529,7 +525,7 @@ namespace Microsoft.Boogie.SMTLib
 
         wr.Write(")");
 
-        if (ExprLineariser.ProverOptions.UseLabels)
+        if (CommandLineOptions.Clo.UseLabels)
           wr.Write(" :{0} {1})", op.pos ? "lblpos" : "lblneg", SMTLibNamer.QuoteId(op.label));
 
         return true;
