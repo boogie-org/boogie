@@ -193,6 +193,20 @@ namespace BytecodeTranslator {
           var t = typeMethodPair.Item1;
           var m = typeMethodPair.Item2;
 
+          if (m.IsGeneric) {
+            var baseMethod = m.ResolvedMethod;
+            m = new GenericMethodInstanceReference() {
+              CallingConvention = baseMethod.CallingConvention,
+              ContainingType = baseMethod.ContainingTypeDefinition,
+              GenericArguments = new List<ITypeReference>(IteratorHelper.GetConversionEnumerable<IGenericMethodParameter, ITypeReference>(baseMethod.GenericParameters)),
+              GenericMethod = baseMethod,
+              InternFactory = this.sink.host.InternFactory,
+              Name = baseMethod.Name,
+              Parameters = baseMethod.ParameterCount == 0 ? null : new List<IParameterTypeInformation>(baseMethod.Parameters),
+              Type = baseMethod.Type,
+            };
+          }
+
           var cond = new MethodCall() {
             Arguments = new List<IExpression>(){
                 new MethodCall() {
