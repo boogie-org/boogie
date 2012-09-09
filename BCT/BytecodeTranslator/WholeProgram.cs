@@ -117,6 +117,12 @@ namespace BytecodeTranslator {
       public override void TraverseChildren(IMethodCall methodCall) {
         var resolvedMethod = Sink.Unspecialize(methodCall.MethodToCall).ResolvedMethod;
 
+        var methodName = Microsoft.Cci.MemberHelper.GetMethodSignature(resolvedMethod);
+        if (methodName.Equals("System.Object.GetHashCode") || methodName.Equals("System.Object.ToString")) {
+          base.TraverseChildren(methodCall);
+          return;
+        }
+
         bool isEventAdd = resolvedMethod.IsSpecialName && resolvedMethod.Name.Value.StartsWith("add_");
         bool isEventRemove = resolvedMethod.IsSpecialName && resolvedMethod.Name.Value.StartsWith("remove_");
         if (isEventAdd || isEventRemove) {
