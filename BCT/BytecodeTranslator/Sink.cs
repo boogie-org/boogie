@@ -951,6 +951,7 @@ namespace BytecodeTranslator {
           gArgs.Add(a_prime);
         }
         var typeExpression = new Bpl.NAryExpr(Bpl.Token.NoToken, new Bpl.FunctionCall(genericType), gArgs);
+        return typeExpression;
       }
 
       IGenericTypeParameter gtp = type as IGenericTypeParameter;
@@ -1320,6 +1321,7 @@ namespace BytecodeTranslator {
       escapingGotoEdges = new Dictionary<ITryCatchFinallyStatement, List<string>>();
       nestedTryCatchFinallyStatements = new List<Tuple<ITryCatchFinallyStatement, TryCatchFinallyContext>>();
       mostNestedTryStatementTraverser.Traverse(method.Body);
+      this.operandStack.Clear();
     }
 
     public void BeginAssembly(IAssembly assembly) {
@@ -1422,5 +1424,14 @@ namespace BytecodeTranslator {
 
 
     public Predicate<IMethodDefinition> MethodThrowsExceptions = m => false;
+
+    /// <summary>
+    /// Moved from the statement traverser since it needs to be shared among the different statement
+    /// traversers, e.g., from before a conditional down into the branches. Really the whole idea
+    /// of having different statement traversers needs to be rethought, as does the use of this
+    /// operand stack to hold push and dup values...
+    /// </summary>
+    internal readonly Stack<Bpl.Expr> operandStack = new Stack<Bpl.Expr>();
+
   }
 }

@@ -53,7 +53,6 @@ namespace BytecodeTranslator
 
     public readonly Bpl.StmtListBuilder StmtBuilder = new Bpl.StmtListBuilder();
     private bool contractContext;
-    internal readonly Stack<Bpl.Expr> operandStack = new Stack<Bpl.Expr>();
     private bool captureState;
     private static int captureStateCounter = 0;
     public IPrimarySourceLocation lastSourceLocation;
@@ -366,7 +365,7 @@ namespace BytecodeTranslator
       var tok = pushStatement.Token();
       var val = pushStatement.ValueToPush;
       var e = ExpressionFor(val);
-      this.operandStack.Push(e);
+      this.sink.operandStack.Push(e);
       return;
     }
 
