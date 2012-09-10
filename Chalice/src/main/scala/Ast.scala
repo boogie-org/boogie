@@ -415,24 +415,6 @@ sealed abstract class Expression extends RValue {
   def transform(f: Expression => Option[Expression]) = AST.transform(this, f)
   def visit(f: RValue => Unit) = AST.visit(this, f)
   def visitOpt(f: RValue => Boolean) = AST.visitOpt(this, f)
-  // this is used for searching for triggers for quantifiers around this expression
-  def findFunctionAppsContaining(vs:List[Variable]): List[(Expression,Set[Variable])] = {
-    var functions: List[(Expression,Set[Variable])] = List()
-    this visit {_ match {
-      case fapp@FunctionApplication(obj, id, args) =>
-        var containedVars : Set[Variable] = Set()
-        fapp visit {_ match {
-          case ve@VariableExpr(s) =>
-            val v : Variable = ve.v
-            if (vs.contains(v)) (containedVars += v)
-          case _ =>}
-        }
-        if (!containedVars.isEmpty()) (functions = (fapp, containedVars) :: functions)
-      case _ =>}
-    }
-    functions
-  }
-
 }
 sealed abstract class Literal extends Expression
 case class IntLiteral(n: Int) extends Literal

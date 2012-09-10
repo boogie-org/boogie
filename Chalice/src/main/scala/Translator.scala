@@ -2044,12 +2044,54 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
     case _:SeqQuantification => throw new InternalErrorException("should be desugared")
     case tq @ TypeQuantification(Forall, _, _, e, _) =>
       var (ee,l) = trrecursive(e)
-      ((Boogie.Forall(Nil, tq.variables map { v => Variable2BVar(v)}, Nil, ee)),l)
+      ((Boogie.Forall(Nil, tq.variables map { v => Variable2BVar(v)}, generateTriggers(tq.variables,e), ee)),l)
     case tq @ TypeQuantification(Exists, _, _, e, _) =>
       var (ee,l) = trrecursive(e)
       ((Boogie.Exists(Nil, tq.variables map { v => Variable2BVar(v)}, Nil, ee)),l)
     }
   }
+  
+    // this is used for searching for triggers for quantifiers around this expression
+    def getLimitedFunctionAppsContaining(vs:List[Variable], toSearch : Expression): List[(Boogie.FunctionApp,Set[Variable])] = {
+      var functions: List[(Boogie.FunctionApp,Set[Variable])] = List()
+      toSearch visit {_ match {
+        case fapp@FunctionApplication(obj, id, args) =>
+          var containedVars : Set[Variable] = Set()
+          fapp visit {_ match {
+            case ve@VariableExpr(s) =>
+              val v : Variable = ve.v
+              if (vs.contains(v)) (containedVars += v)
+            case _ =>}
+          }
+          if (!containedVars.isEmpty) {
+            var fullArgs = if (!fapp.f.isStatic) (obj :: args) else (args)
+            var trArgs = fullArgs map {arg => Tr(arg)} // translate args
+            functions = (FunctionApp(functionName(fapp.f)+"#limited", Heap :: trArgs),containedVars) :: functions
+          }
+        case _ =>}
+      }
+      functions
+    }
+
+  
+  // Precondition : if vars is non-empty then every (f,vs) pair in functs satisfies the property that vars and vs are not disjoint.
+  def buildTriggersCovering(vars : Set[Variable], functs : List[(Boogie.FunctionApp,Set[Variable])], currentTrigger : List[Expr]) : List[Trigger] = {
+    if (vars.isEmpty) (List(Boogie.Trigger(currentTrigger)))
+    else (functs match {
+      case Nil => Nil
+      case ((f,vs) :: rest) => {  
+        val needed : Set[Variable] = vars.diff(vs)
+        buildTriggersCovering(needed, (rest.filter(func => !func._2.intersect(needed).isEmpty)), f :: currentTrigger) ::: buildTriggersCovering(vars, rest, currentTrigger)
+        }
+      }
+    )
+  }
+  
+  def generateTriggers(vs: List[Variable], toSearch : Expression) : List[Trigger] = {
+    val functionApps : List[(Boogie.FunctionApp,Set[Variable])] = getLimitedFunctionAppsContaining(vs, toSearch)
+    if (functionApps.isEmpty) (Nil) else (buildTriggersCovering(Set() ++ vs, functionApps, Nil))
+  }
+
   
   /** translate everything, including permissions and credit expressions */
   // Since this is only used in axiom generation (so far), the ability to generate "side-effects" from the evaluation of unfolding expressions (as in the list of boogie statements returned from Tr) is not implemented here (in axioms the side-effects are not wanted anyway)
