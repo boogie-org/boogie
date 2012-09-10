@@ -273,18 +273,64 @@ namespace BytecodeTranslator {
         Contract.Requires(type != null);
         Contract.Requires(resolvedMethod != null);
         var overrides = new List<Tuple<ITypeReference, IMethodReference>>();
-        foreach (var subType in this.subTypes[type]) {
-          var overriddenMethod = MemberHelper.GetImplicitlyOverridingDerivedClassMethod(resolvedMethod, subType.ResolvedType);
-          if (overriddenMethod != Dummy.Method) {
-            resolvedMethod = overriddenMethod;
+        if (type.ResolvedType.IsInterface) {
+          foreach (var subType in this.subTypes[type]) {
+            var def = subType.ResolvedType;
+            var foundSome = false; // prefer explicit, since if both are there, only the implicit get called through the iface pointer.
+            foreach (var implementingMethod in GetExplicitlyImplementedMethods(def, resolvedMethod)) {
+              overrides.Add(Tuple.Create<ITypeReference, IMethodReference>(subType, implementingMethod));
+              foundSome = true;
+            }
+            if (!foundSome) { // look for implicit
+              var mems = def.GetMatchingMembersNamed(resolvedMethod.Name, true,
+                tdm => {
+                  var m = tdm as IMethodDefinition;
+                  if (m == null) return false;
+                  return TypeHelper.ParameterListsAreEquivalentAssumingGenericMethodParametersAreEquivalentIfTheirIndicesMatch(
+                    m.Parameters, resolvedMethod.Parameters);
+                });
+              foreach (var mem in mems) {
+                var methodDef = mem as IMethodDefinition;
+                if (methodDef == null) continue;
+                overrides.Add(Tuple.Create<ITypeReference, IMethodReference>(subType, methodDef));
+
+              }
+            }
           }
-          overrides.Add(Tuple.Create<ITypeReference, IMethodReference>(subType, resolvedMethod));
-          if (this.subTypes.ContainsKey(subType)) {
-            overrides.AddRange(FindOverrides(subType, resolvedMethod));
+        } else {
+          foreach (var subType in this.subTypes[type]) {
+            var overridingMethod = MemberHelper.GetImplicitlyOverridingDerivedClassMethod(resolvedMethod, subType.ResolvedType);
+            if (overridingMethod != Dummy.Method) {
+              resolvedMethod = overridingMethod;
+            }
+            overrides.Add(Tuple.Create<ITypeReference, IMethodReference>(subType, resolvedMethod));
+            if (this.subTypes.ContainsKey(subType)) {
+              overrides.AddRange(FindOverrides(subType, resolvedMethod));
+            }
           }
         }
         return overrides;
       }
+
+      /// <summary>
+      /// Returns zero or more explicit implementations of an interface method that are defined in the given type definition.
+      /// </summary>
+      /// <remarks>
+      /// IMethodReferences are returned (as opposed to IMethodDefinitions) because the references are directly available:
+      /// no resolving is needed to find them.
+      /// </remarks>
+      public static IEnumerable<IMethodReference> GetExplicitlyImplementedMethods(ITypeDefinition typeDefinition, IMethodDefinition ifaceMethod) {
+        Contract.Requires(ifaceMethod != null);
+        Contract.Ensures(Contract.Result<IEnumerable<IMethodReference>>() != null);
+        Contract.Ensures(Contract.ForAll(Contract.Result<IEnumerable<IMethodReference>>(), x => x != null));
+
+        foreach (IMethodImplementation methodImplementation in typeDefinition.ExplicitImplementationOverrides) {
+          if (ifaceMethod.InternedKey == methodImplementation.ImplementedMethod.InternedKey)
+            yield return methodImplementation.ImplementingMethod;
+        }
+        var mems = TypeHelper.GetMethod(typeDefinition, ifaceMethod.Name, ifaceMethod.Parameters.Select(p => p.Type).ToArray());
+      }
+
 
     }
 
