@@ -384,6 +384,7 @@ namespace Microsoft.Boogie {
     public bool Wait = false;
     public bool Trace = false;
     public bool TraceTimes = false;
+    public bool TraceProofObligations = false;
     public bool NoResolve = false;
     public bool NoTypecheck = false;
     public bool OverlookBoogieTypeErrors = false;
@@ -1205,6 +1206,7 @@ namespace Microsoft.Boogie {
               ps.CheckBooleanFlag("wait", ref Wait) ||
               ps.CheckBooleanFlag("trace", ref Trace) ||
               ps.CheckBooleanFlag("traceTimes", ref TraceTimes) ||
+              ps.CheckBooleanFlag("tracePOs", ref TraceProofObligations) ||
               ps.CheckBooleanFlag("noResolve", ref NoResolve) ||
               ps.CheckBooleanFlag("noTypecheck", ref NoTypecheck) ||
               ps.CheckBooleanFlag("overlookTypeErrors", ref OverlookBoogieTypeErrors) ||
@@ -1515,6 +1517,8 @@ namespace Microsoft.Boogie {
 
   /trace        blurt out various debug trace information
   /traceTimes   output timing information at certain points in the pipeline
+  /tracePOs     output information about the number of proof obligations
+                (also included in the /trace output)
   /log[:method] Print debug output during translation
 
   /break        launch and break into debugger
