@@ -17,4 +17,4 @@ The program did not fully verify; the smoke warnings might be misleading if cont
   86.3: The end of method a3 is unreachable.
   138.5: The statements after the acquire statement are unreachable.
 
-Boogie program verifier finished with 10 errors and 4 smoke test warnings.
+Boogie program verifier finished with 10 errors and 4 smoke test warnings

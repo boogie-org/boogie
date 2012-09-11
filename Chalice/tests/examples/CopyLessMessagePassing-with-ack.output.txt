@@ -5,4 +5,4 @@ Verification of CopyLessMessagePassing-with-ack.chalice using parameters=""
   69.22: Assumption introduces a contradiction.
   72.21: Assumption introduces a contradiction.
 
-Boogie program verifier finished with 0 errors and 3 smoke test warnings.
+Boogie program verifier finished with 0 errors and 3 smoke test warnings

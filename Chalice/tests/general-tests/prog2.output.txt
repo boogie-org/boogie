@@ -9,4 +9,4 @@ The program did not fully verify; the smoke warnings might be misleading if cont
   20.3: The end of method Caller1 is unreachable.
   69.3: The end of method M2 is unreachable.
 
-Boogie program verifier finished with 4 errors and 2 smoke test warnings.
+Boogie program verifier finished with 4 errors and 2 smoke test warnings

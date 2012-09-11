@@ -16,4 +16,4 @@ The program did not fully verify; the smoke warnings might be misleading if cont
   73.3: The end of method main5 is unreachable.
   78.3: The end of method main6 is unreachable.
 
-Boogie program verifier finished with 7 errors and 6 smoke test warnings.
+Boogie program verifier finished with 7 errors and 6 smoke test warnings
