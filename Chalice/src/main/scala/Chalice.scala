@@ -139,7 +139,8 @@ object Chalice {
       "time:<n>" -> ("output timing information\n"+
           "0: no information is included\n"+
           "1: the overall verification time is output (default)\n"+
-          "2: detailed timings for each phase of the verification are output"),
+          "2: detailed timings for each phase of the verification are output\n"+
+          "3: (used for testing only) output the overall verification time on stderr"),
       "defaults:<level>" -> ("defaults to reduce specification overhead\n"+
           "level 0 or below: no defaults\n"+
           "level 1: unfold predicates with receiver this in pre and postconditions\n"+
@@ -184,7 +185,7 @@ object Chalice {
      else if (a.startsWith("/time:") || a.startsWith("-time:")) {
        try {
          val in = Integer.parseInt(a.substring(6));
-         if (in < 0 || in > 2) CommandLineError("/time takes only values 0, 1 or 2", help)
+         if (in < 0 || in > 3) CommandLineError("/time takes only values 0, 1, 2 or 3", help)
          else timingVerbosity = in
        } catch { case _ => CommandLineError("/time takes integer argument", help); }
      }
@@ -266,7 +267,7 @@ object Chalice {
        if (vsMode)
          ReportError(e.next.pos, e.msg);
        else
-         Console.err.println("Error: " + e);
+         Console.out.println("Error: " + e);
        Nil
      case parser.Success(prog, _) =>
        val pprog = if (smoke) SmokeTest.smokeProgram(prog) else prog
@@ -283,7 +284,7 @@ object Chalice {
     // typecheck program
     Resolver.Resolve(program) match {
      case Resolver.Errors(msgs) =>
-       if (!vsMode) Console.err.println("The program did not typecheck.");
+       if (!vsMode) Console.out.println("The program did not typecheck.");
        msgs foreach { msg => ReportError(msg._1, msg._2) };
        false;
      case Resolver.Success() =>
@@ -442,8 +443,8 @@ object Chalice {
       }
     }
 
+    val time = System.nanoTime - startTime
     if (timingVerbosity == 1) {
-      val time = System.nanoTime - startTime
       Console.out.println(" in " + ("%1.3f" format (time / 1000000000.0)) + " seconds")
     } else if (timingVerbosity == 2) {
       Console.out.println; Console.out.println
@@ -454,6 +455,9 @@ object Chalice {
       }
     } else {
       Console.out.println
+    }
+    if (timingVerbosity == 3) {
+      Console.err.println(("%1.3f" format (time / 1000000000.0)))
     }
   }
   
@@ -471,7 +475,7 @@ object Chalice {
   }
 
   def CommandLineError(msg: String, help: String) = {
-    Console.err.println("Error: " + msg)
+    Console.out.println("Error: " + msg)
   }
 
   def ReportError(pos: Position, msg: String) = {
@@ -479,7 +483,7 @@ object Chalice {
      val (r,c) = (pos.line, pos.column)     
      Console.out.println(r + "," + c + "," + r + "," + (c+5) + ":" + msg);
     } else {
-     Console.err.println(pos + ": " + msg)
+     Console.out.println(pos + ": " + msg)
     }
   }
   
