@@ -258,6 +258,15 @@ object Resolver {
                }
                b
              }
+             def hasAccessibilityPredicate(e: Expression) = {
+               var b = false
+               e transform {
+                 case _: PermissionExpr => b = true; None
+                 case ma: MemberAccess => if (ma.isPredicate) b = true; None
+                 case _ => None
+               }
+               b
+             }
              spec foreach {
                case p@Precondition(e) =>
                  ResolveExpr(e, context, false, true)(false)
@@ -265,6 +274,7 @@ object Resolver {
                case p@Postcondition(e) =>
                  ResolveExpr(e, context, false, true)(false)
                  if (hasCredit(e)) context.Error(p.pos, "the specification of functions cannot contain credit expressions") 
+                 if (hasAccessibilityPredicate(e)) context.Error(p.pos, "the postcondition of functions cannot contain accessibility predicates (permissions are returned automatically)") 
                case lc : LockChange => context.Error(lc.pos, "lockchange not allowed on function") 
              }
 
