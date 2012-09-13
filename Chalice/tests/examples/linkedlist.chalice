@@ -51,6 +51,7 @@ class Node {
 
   function size(): int
     requires valid;
+    ensures result > 0
   {
     unfolding this.valid in (next!=null ? 1+ next.size() : 1)
   }
