@@ -269,18 +269,12 @@ class Translator {
          wf(h, m, sm) && CurrentModule == module#C ==> #C.f(h, m, this, x_1, ..., x_n) == tr(body))
     */
     Axiom(new Boogie.Forall(Nil,
-      formals, List(new Trigger(  List(applyF,wellformed))) ,
+      formals, newTriggers ::: List(new Trigger(List(applyF,wellformed))) ,
         (wellformed && (CurrentModule ==@ ModuleName(currentClass)) && etran.TrAll(pre))
         ==>
         (applyF ==@ body))) ::
     (if (true)
        // used to be:  (if (f.isRecursive)    ... but now we treat all functions uniformly
-       // add version of the function definition axiom with different triggers (due to strange Z3 behaviour, repeating the axiom seems to be necessary)
-          Axiom(new Boogie.Forall(Nil,
-            formals, newTriggers,
-              (wellformed && (CurrentModule ==@ ModuleName(currentClass)) && etran.TrAll(pre))
-              ==>
-        (applyF ==@ body))) ::
       // define the limited function (even for unlimited function since its SCC might have limited functions)
       Boogie.Function(functionName(f) + "#limited", formalsNoMask, BVar("$myresult", f.out.typ)) ::
       Axiom(new Boogie.Forall(Nil, formals,
