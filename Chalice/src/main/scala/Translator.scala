@@ -190,7 +190,7 @@ class Translator {
       GlobalNames,
       DefaultPrecondition(f.isStatic),
       functionKStmts :::
-      //bassume(CanAssumeFunctionDefs) ::
+      bassume(FunctionContextHeight ==@ f.height) ::
       DefinePreInitialState :::
       // check definedness of the precondition
       InhaleWithChecking(Preconditions(f.spec) map { p => (if(0 < Chalice.defaults) UnfoldPredicatesWithReceiverThis(p) else p)}, "precondition", functionK) :::
@@ -376,7 +376,7 @@ class Translator {
   
   def postconditionAxiom(f: Function): List[Decl] = {
     /* axiom (forall h: HeapType, m, sm: MaskType, this: ref, x_1: t_1, ..., x_n: t_n ::
-          wf(h, m, sm) && CanAssumeFunctionDefs ==> Q[#C.f(h, m, this, x_1, ..., x_n)/result]
+          wf(h, m, sm) && (CanAssumeFunctionDefs || f.height < FunctionContextHeight) ==> Q[#C.f(h, m, this, x_1, ..., x_n)/result]
     */
     val inArgs = (f.ins map {i => Boogie.VarExpr(i.UniqueName)});
     val myresult = Boogie.BVar("result", f.out.typ);
@@ -389,7 +389,7 @@ class Translator {
       Axiom(new Boogie.Forall(
         BVar(HeapName, theap) :: BVar(MaskName, tmask) :: BVar(SecMaskName, tmask) :: BVar("this", tref) :: (f.ins map Variable2BVar),
         new Trigger(List(applyF, wellformed)),
-        (wellformed && CanAssumeFunctionDefs)
+        (wellformed && (CanAssumeFunctionDefs || f.height < FunctionContextHeight))
           ==>
         etran.Tr(SubstResult(post, f.apply(ExplicitThisExpr(), f.ins map { arg => new VariableExpr(arg) })))
         ))
@@ -3002,6 +3002,7 @@ object TranslationHelper {
   def CreditsName = "Credits";
   def GlobalNames = List(HeapName, MaskName, SecMaskName, CreditsName);
   def CanAssumeFunctionDefs = VarExpr("CanAssumeFunctionDefs");
+  def FunctionContextHeight = VarExpr("FunctionContextHeight");
   def permissionFull = percentPermission(100);
   def permissionOnePercent = percentPermission(1);
   def percentPermission(e: Expr) = {
