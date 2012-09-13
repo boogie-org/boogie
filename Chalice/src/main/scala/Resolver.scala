@@ -306,7 +306,6 @@ object Resolver {
      f.SCC = h(f);
      f.height = callGraphTopoSort.indexOf(h(f))
      assert(f.height >= 0)
-     println(f.Id + " - " + f.height)
      assert(f.SCC contains f);
      if (h(f).size > 1)
        f.isRecursive = true;
