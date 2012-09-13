@@ -299,10 +299,14 @@ object Resolver {
        }
    }
 
-   // fill in SCC for recursive functions 
-   val (_, h) = calls.computeSCC;
+   // fill in SCC and height for recursive functions 
+   val (callGraphCondensation, h) = calls.computeSCC;
+   val callGraphTopoSort = callGraphCondensation.computeTopologicalSort
    h.keys foreach {f:Function =>
      f.SCC = h(f);
+     f.height = callGraphTopoSort.indexOf(h(f))
+     assert(f.height >= 0)
+     println(f.Id + " - " + f.height)
      assert(f.SCC contains f);
      if (h(f).size > 1)
        f.isRecursive = true;
