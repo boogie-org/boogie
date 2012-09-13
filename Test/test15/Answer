@@ -9,11 +9,6 @@ intType -> T@T!val!0
 null -> T@U!val!0
 refType -> T@T!val!2
 s -> T@U!val!0
-tickleBool -> {
-  true -> true
-  false -> true
-  else -> true
-}
 type -> {
   T@U!val!0 -> T@T!val!2
   else -> T@T!val!2
@@ -23,6 +18,11 @@ Ctor -> {
   T@T!val!1 -> 1
   T@T!val!2 -> 2
   else -> 0
+}
+tickleBool -> {
+  true -> true
+  false -> true
+  else -> true
 }
 *** END_MODEL
 NullInModel.bpl(2,3): Error BP5001: This assertion might not hold.
@@ -39,15 +39,15 @@ Boogie program verifier finished with 0 verified, 1 error
 boolType -> T@T!val!1
 i -> 0
 intType -> T@T!val!0
-tickleBool -> {
-  true -> true
-  false -> true
-  else -> true
-}
 Ctor -> {
   T@T!val!0 -> 0
   T@T!val!1 -> 1
   else -> 0
+}
+tickleBool -> {
+  true -> true
+  false -> true
+  else -> true
 }
 *** END_MODEL
 IntInModel.bpl(2,3): Error BP5001: This assertion might not hold.
@@ -70,11 +70,6 @@ j@2 -> 4
 r -> T@U!val!1
 refType -> T@T!val!2
 s -> T@U!val!0
-tickleBool -> {
-  true -> true
-  false -> true
-  else -> true
-}
 type -> {
   T@U!val!0 -> T@T!val!2
   T@U!val!1 -> T@T!val!2
@@ -85,6 +80,11 @@ Ctor -> {
   T@T!val!1 -> 1
   T@T!val!2 -> 2
   else -> 0
+}
+tickleBool -> {
+  true -> true
+  false -> true
+  else -> true
 }
 *** END_MODEL
 ModelTest.bpl(7,3): Error BP5001: This assertion might not hold.
@@ -135,10 +135,9 @@ RefType -> T@T!val!2
 this -> T@U!val!1
 x@@4 -> 797
 y@@1 -> **y@@1
-tickleBool -> {
-  true -> true
-  false -> true
-  else -> true
+int_2_U -> {
+  -2 -> -2
+  else -> -2
 }
 type -> {
   T@U!val!0 -> T@T!val!4
@@ -147,6 +146,13 @@ type -> {
   -2 -> T@T!val!0
   else -> T@T!val!4
 }
+@MV_state -> {
+  6 0 -> true
+  6 3 -> true
+  6 4 -> true
+  6 5 -> true
+  else -> true
+}
 Ctor -> {
   T@T!val!0 -> 0
   T@T!val!1 -> 1
@@ -154,13 +160,6 @@ Ctor -> {
   T@T!val!3 -> 4
   T@T!val!4 -> 2
   else -> 0
-}
-@MV_state -> {
-  6 0 -> true
-  6 3 -> true
-  6 4 -> true
-  6 5 -> true
-  else -> true
 }
 [3] -> {
   T@U!val!0 T@U!val!1 T@U!val!2 -> -2
@@ -174,6 +173,15 @@ MapType0TypeInv1 -> {
   T@T!val!4 -> T@T!val!3
   else -> T@T!val!3
 }
+MapType0TypeInv0 -> {
+  T@T!val!4 -> T@T!val!2
+  else -> T@T!val!2
+}
+tickleBool -> {
+  true -> true
+  false -> true
+  else -> true
+}
 MapType0Type -> {
   T@T!val!2 T@T!val!3 T@T!val!0 -> T@T!val!4
   else -> T@T!val!4
@@ -181,14 +189,6 @@ MapType0Type -> {
 MapType0TypeInv2 -> {
   T@T!val!4 -> T@T!val!0
   else -> T@T!val!0
-}
-MapType0TypeInv0 -> {
-  T@T!val!4 -> T@T!val!2
-  else -> T@T!val!2
-}
-int_2_U -> {
-  -2 -> -2
-  else -> -2
 }
 *** STATE <initial>
   Heap -> T@U!val!0
