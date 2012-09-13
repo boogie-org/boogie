@@ -321,7 +321,7 @@ class Translator {
 	      Axiom(new Boogie.Forall(
 	        BVar(HeapName, theap) :: BVar(MaskName, tmask) :: BVar(SecMaskName, tmask) :: BVar("this", tref) :: (f.ins map Variable2BVar),
 	        new Trigger(List(applyF, wellformed)),
-	          (wellformed && CanAssumeFunctionDefs)
+	          (wellformed)
 	          ==>
 	          (applyF ==@ applyFrameFunction))
 	      )
@@ -330,7 +330,7 @@ class Translator {
 	      Axiom(new Boogie.Forall(
 	        BVar(HeapName, theap) :: BVar(MaskName, tmask) :: BVar(SecMaskName, tmask) :: (f.ins map Variable2BVar),
 	        new Trigger(List(applyF, wellformed)),
-	          (wellformed && CanAssumeFunctionDefs)
+	          (wellformed)
 	          ==>
 	          (applyF ==@ applyFrameFunction))
 	      )
@@ -358,7 +358,7 @@ class Translator {
 	      Axiom(new Boogie.Forall(
 	        heap1 :: heap2 :: mask1 :: mask2 :: secmask1 :: secmask2 :: BVar("this", tref) :: (f.ins map Variable2BVar),
 	        new Trigger(List(apply1, apply2, wellformed1, wellformed2)),
-	          (wellformed1 && wellformed2 && functionDependenciesEqual(pre, etran1, etran2) && CanAssumeFunctionDefs)
+	          (wellformed1 && wellformed2 && functionDependenciesEqual(pre, etran1, etran2))
 	          ==>
 	          (apply1 ==@ apply2)
 	      ))
@@ -366,7 +366,7 @@ class Translator {
          Axiom(new Boogie.Forall(
 	        heap1 :: heap2 :: mask1 :: mask2 :: secmask1 :: secmask2 :: (f.ins map Variable2BVar),
 	        new Trigger(List(apply1, apply2, wellformed1, wellformed2)),
-	          (wellformed1 && wellformed2 && functionDependenciesEqual(pre, etran1, etran2) && CanAssumeFunctionDefs)
+	          (wellformed1 && wellformed2 && functionDependenciesEqual(pre, etran1, etran2))
 	          ==>
 	          (apply1 ==@ apply2)
 	      ))
