@@ -254,7 +254,7 @@ class Translator {
     val wellformed = wf(VarExpr(HeapName), VarExpr(MaskName), VarExpr(SecMaskName))
     val triggers = f.dependentPredicates map (p => new Trigger(List(limitedApplyF, wellformed, FunctionApp("#" + p.FullName+"#trigger", thisArg :: Nil))))
     /////
-    val newTriggers = f.dependentPredicates map (p => new Trigger(List(limitedFTrigger, wellformed, FunctionApp("#" + p.FullName+"#trigger", thisArg :: Nil))))
+    val newTriggers = new Trigger(List(limitedFTrigger, wellformed) ::: (f.dependentPredicates map (p => FunctionApp("#" + p.FullName+"#trigger", thisArg :: Nil))))
 
     /** Limit application of the function by introducing a second (limited) function */
     val body = etran.Tr(
@@ -283,7 +283,7 @@ class Translator {
          wf(h, m, sm) && CurrentModule == module#C ==> #C.f(h, m, this, x_1, ..., x_n) == tr(body))
     */
     Axiom(new Boogie.Forall(Nil,
-      formals, newTriggers ::: List(new Trigger(List(applyF,wellformed))) ,
+      formals, newTriggers :: List(new Trigger(List(applyF,wellformed))) ,
         (wellformed && (CurrentModule ==@ ModuleName(currentClass)) && etran.TrAll(pre))
         ==>
         (applyF ==@ body))) ::
