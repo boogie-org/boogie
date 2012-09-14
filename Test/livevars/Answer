@@ -32,11 +32,9 @@ Execution trace:
     bla1.bpl(1348,3): inline$I8xKeyboardGetSysButtonEvent$0$label_9_false#1
     bla1.bpl(1376,3): inline$storm_IoSetCancelRoutine$0$label_7_false#1
     bla1.bpl(1408,3): inline$storm_IoSetCancelRoutine$0$label_8#1
-    bla1.bpl(1415,3): inline$storm_IoSetCancelRoutine$0$anon9_Else#1
-    bla1.bpl(1423,3): inline$storm_IoSetCancelRoutine$0$anon10_Then#1
+    bla1.bpl(1427,3): inline$storm_IoSetCancelRoutine$0$anon9_Then#1
     bla1.bpl(1431,3): inline$storm_IoSetCancelRoutine$0$anon3#1
-    bla1.bpl(1438,3): inline$storm_IoSetCancelRoutine$0$anon11_Else#1
-    bla1.bpl(1446,3): inline$storm_IoSetCancelRoutine$0$anon12_Then#1
+    bla1.bpl(1451,3): inline$storm_IoSetCancelRoutine$0$anon11_Then#1
     bla1.bpl(1456,3): inline$storm_IoSetCancelRoutine$0$anon6#1
     bla1.bpl(1467,3): inline$storm_IoSetCancelRoutine$0$anon13_Then#1
     bla1.bpl(1472,3): inline$storm_IoSetCancelRoutine$0$anon8#1
@@ -56,17 +54,14 @@ Execution trace:
     bla1.bpl(1739,3): anon7#1
     bla1.bpl(1796,3): inline$storm_IoCancelIrp$0$anon12_Then#1
     bla1.bpl(1801,3): inline$storm_IoCancelIrp$0$anon2#1
-    bla1.bpl(1812,3): inline$storm_IoCancelIrp$0$anon14_Else#1
-    bla1.bpl(1820,3): inline$storm_IoCancelIrp$0$anon15_Then#1
+    bla1.bpl(1825,3): inline$storm_IoCancelIrp$0$anon14_Then#1
     bla1.bpl(1830,3): inline$storm_IoCancelIrp$0$anon5#1
-    bla1.bpl(1838,3): inline$storm_IoCancelIrp$0$anon16_Else#1
-    bla1.bpl(1846,3): inline$storm_IoCancelIrp$0$anon17_Then#1
+    bla1.bpl(1851,3): inline$storm_IoCancelIrp$0$anon16_Then#1
     bla1.bpl(1856,3): inline$storm_IoCancelIrp$0$anon8#1
     bla1.bpl(1867,3): inline$storm_IoCancelIrp$0$anon18_Then#1
     bla1.bpl(1872,3): inline$storm_IoCancelIrp$0$anon10#1
     bla1.bpl(1932,3): inline$storm_IoAcquireCancelSpinLock$0$label_11_true#1
-    bla1.bpl(1947,3): inline$storm_IoAcquireCancelSpinLock$0$anon6_Else#1
-    bla1.bpl(1955,3): inline$storm_IoAcquireCancelSpinLock$0$anon7_Then#1
+    bla1.bpl(1960,3): inline$storm_IoAcquireCancelSpinLock$0$anon6_Then#1
     bla1.bpl(1965,3): inline$storm_IoAcquireCancelSpinLock$0$anon3#1
     bla1.bpl(1976,3): inline$storm_IoAcquireCancelSpinLock$0$anon8_Then#1
     bla1.bpl(1981,3): inline$storm_IoAcquireCancelSpinLock$0$anon5#1
