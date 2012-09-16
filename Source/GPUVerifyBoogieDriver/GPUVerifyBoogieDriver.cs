@@ -131,34 +131,39 @@ namespace Microsoft.Boogie
     public static void ErrorWriteLine(string s)
     {
       Contract.Requires(s != null);
-      if (!s.Contains("Error: ") && !s.Contains("Error BP"))
-      {
-        Console.WriteLine(s);
-        return;
-      }
-
-      // split the string up into its first line and the remaining lines
-      string remaining = null;
-      int i = s.IndexOf('\r');
-      if (0 <= i)
-      {
-        remaining = s.Substring(i + 1);
-        if (remaining.StartsWith("\n"))
-        {
-          remaining = remaining.Substring(1);
-        }
-        s = s.Substring(0, i);
-      }
-
       ConsoleColor col = Console.ForegroundColor;
-      Console.ForegroundColor = ConsoleColor.Red;
+      Console.ForegroundColor = ConsoleColor.DarkGray;
       Console.WriteLine(s);
       Console.ForegroundColor = col;
+    }
 
-      if (remaining != null)
+    private static void ErrorWriteLine(string locInfo, string message, ErrorMsgType msgtype)
+    {
+      Contract.Requires(message != null);
+      ConsoleColor col = Console.ForegroundColor;
+      if (!String.IsNullOrEmpty(locInfo))
       {
-        Console.WriteLine(remaining);
+        Console.Write(locInfo + " ");
       }
+
+      switch (msgtype)
+      {
+        case ErrorMsgType.Error:
+          Console.ForegroundColor = ConsoleColor.Red;
+          Console.Write("error: ");
+          break;
+        case ErrorMsgType.Note:
+          Console.ForegroundColor = ConsoleColor.DarkYellow;
+          Console.Write("note: ");
+          break;
+        case ErrorMsgType.NoError:
+        default:
+          break;
+      }
+        
+
+      Console.ForegroundColor = col;
+      Console.WriteLine(message);
     }
 
     public static void ErrorWriteLine(string format, params object[] args)
@@ -183,6 +188,20 @@ namespace Microsoft.Boogie
       Cil,
       Bpl,
       Dafny
+    };
+
+    enum ErrorMsgType
+    {
+      Error,
+      Note, 
+      NoError
+    };
+
+    enum RaceType
+    {
+      WW,
+      RW,
+      WR
     };
 
     static void ProcessFiles(List<string> fileNames)
@@ -308,17 +327,52 @@ namespace Microsoft.Boogie
       Console.WriteLine(s);
     }
 
+    private static void AddPadding(ref string string1, ref string string2)
+    {
+      if (string1.Length < string2.Length) 
+      {
+        for (int i = (string2.Length - string1.Length); i > 0; --i)
+        {
+          string1 += " ";
+        }
+      }
+      else
+      {
+        for (int i = (string1.Length - string2.Length); i > 0; --i)
+        {
+          string2 += " ";
+        }
+      }
+    }
+
+    private static string TrimLeadingSpaces(string s1, int noOfSpaces)
+    {
+      if (String.IsNullOrWhiteSpace(s1))
+      {
+        return s1;
+      }
+
+      int index;
+      for (index = 0; (index + 1) < s1.Length && Char.IsWhiteSpace(s1[index]); ++index);
+      string returnString = s1.Substring(index);
+      for (int i = noOfSpaces; i > 0; --i)
+      {
+        returnString = " " + returnString;
+      }
+      return returnString;
+    }
+
     static void WriteTrailer(int verified, int errors, int inconclusives, int timeOuts, int outOfMemories)
     {
       Contract.Requires(0 <= errors && 0 <= inconclusives && 0 <= timeOuts && 0 <= outOfMemories);
       Console.WriteLine();
       if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Doomed)
       {
-        Console.Write("{0} finished with {1} credible, {2} doomed{3}", CommandLineOptions.Clo.DescriptiveToolName, verified, errors, errors == 1 ? "" : "s");
+        Console.Write("{0} finished with {1} credible, {2} doomed{3}", "GPUVerify", verified, errors, errors == 1 ? "" : "s");
       }
       else
       {
-        Console.Write("{0} finished with {1} verified, {2} error{3}", CommandLineOptions.Clo.DescriptiveToolName, verified, errors, errors == 1 ? "" : "s");
+        Console.Write("{0} finished with {1} verified, {2} error{3}", "GPUVerify", verified, errors, errors == 1 ? "" : "s");
       }
       if (inconclusives != 0)
       {
@@ -340,17 +394,13 @@ namespace Microsoft.Boogie
 
     static void ReportBplError(Absy node, string message, bool error, bool showBplLocation)
     {
-      int failLine    = -1;
-      int failCol     = -1;
-      string failFile = null;
-      string locinfo  = null;
+      int failLine    = -1, failCol = -1;
+      string failFile = null, locinfo = null;
 
       QKeyValue attrs = GetAttributes(node);
       if (node != null)
       {
-        failLine = QKeyValue.FindIntAttribute(attrs, "line", -1);
-        failCol = QKeyValue.FindIntAttribute(attrs, "col", -1);
-        failFile = QKeyValue.FindStringAttribute(attrs, "fname");
+        GetLocInfoFromAttrs(attrs, out failLine, out failCol, out failFile);
       }
       
       if (showBplLocation && failLine != -1 && failCol != -1 && failFile != null)
@@ -572,6 +622,26 @@ namespace Microsoft.Boogie
       }
     }
 
+    static Model.Func ExtractIncarnationFromModel(Model m, string varName)
+    {
+      Model.Func lastFunc = null;
+      Model.Func penulFunc = null;
+      int currIncarnationNo = -1;
+      foreach (Model.Func f in m.Functions)
+      {
+        if(f.Name.Contains(varName))
+        {
+          string[] tokens = Regex.Split(f.Name, "@");
+          if (tokens.Length == 2 && System.Convert.ToInt32(tokens[1]) > currIncarnationNo)
+          {
+            penulFunc = lastFunc;
+            lastFunc = f;
+          }
+        }
+      }
+      return (penulFunc == null) ? lastFunc : penulFunc;
+    }
+
     static QKeyValue ExtractAsertSourceLocFromTrace(BlockSeq s)
     {
       foreach (Block b in s)
@@ -602,11 +672,8 @@ namespace Microsoft.Boogie
     static QKeyValue GetSourceLocInfo(Counterexample error, string AccessType) {
       string sourceVarName = null;
       int sourceLocLineNo = -1;
-
-      string sourceLocFileName = Path.GetDirectoryName(CommandLineOptions.Clo.Files[0]) +
-                 Path.DirectorySeparatorChar +
-                 Path.GetFileNameWithoutExtension(CommandLineOptions.Clo.Files[0]) +
-                 ".loc";
+      string directoryName = Path.GetDirectoryName(CommandLineOptions.Clo.Files[0]);
+      string sourceLocFileName = ((!String.IsNullOrEmpty(directoryName) && directoryName != ".") ? (directoryName + Path.DirectorySeparatorChar) : "") + Path.GetFileNameWithoutExtension(CommandLineOptions.Clo.Files[0]) + ".loc";
 
       TextReader tr = new StreamReader(sourceLocFileName);
 
@@ -629,23 +696,10 @@ namespace Microsoft.Boogie
         }
       }
       
-      if (sourceLocLineNo != 0 && sourceLocLineNo != -1)
+      if (sourceLocLineNo > 0)
       {
-        string fileLine;
-        int currLineNo;
-        for(currLineNo = 0; ((fileLine = tr.ReadLine()) != null); currLineNo++)
-        {
-          if (currLineNo == sourceLocLineNo)
-          {
-            break;
-          }
-        }
-        if (currLineNo < sourceLocLineNo)
-        {
-          fileLine = null;
-          Console.WriteLine("sourceLocLineNo greater than number of lines in .loc file ({0} > {1})\n", sourceLocLineNo, (currLineNo + 1));
-          return null;
-        }
+        // TODO: Make lines in .loc file be indexed from 1 for consistency.
+        string fileLine = FetchCodeLine(sourceLocFileName, sourceLocLineNo + 1);
         if (fileLine != null)
         {
           string[] slocTokens = Regex.Split(fileLine, "#");
@@ -667,7 +721,8 @@ namespace Microsoft.Boogie
 
     static bool IsRepeatedKV(QKeyValue attrs, List<QKeyValue> alreadySeen)
     {
-      //return false;
+      return false;
+      /*
       if (attrs == null)
       {
         return false;
@@ -730,6 +785,7 @@ namespace Microsoft.Boogie
         return true;
       }
       return false;
+      */
     }
 
     static void ProcessOutcome(VC.VCGen.Outcome outcome, List<Counterexample> errors, string timeIndication,
@@ -784,216 +840,403 @@ namespace Microsoft.Boogie
             // BP5xxx: Verification errors
 
             errors.Sort(new CounterexampleComparer());
-            List<QKeyValue> seenAssertAttrs = new List<QKeyValue>();
-            List<QKeyValue> seenReqAttrs = new List<QKeyValue>();
-            List<QKeyValue> seenEnsAttrs = new List<QKeyValue>();
-            List<QKeyValue> seenInvEAttrs = new List<QKeyValue>();
-            List<QKeyValue> seenInvMAttrs = new List<QKeyValue>();
-            List<QKeyValue> seenWWRaceAttrs = new List<QKeyValue>();
-            List<QKeyValue> seenWRRaceAttrs = new List<QKeyValue>();
-            List<QKeyValue> seenRWRaceAttrs = new List<QKeyValue>();
-            bool incrementErrors = true;
             foreach (Counterexample error in errors)
             {
               if (error is CallCounterexample)
               {
                 CallCounterexample err = (CallCounterexample)error;
-                if (!CommandLineOptions.Clo.ForceBplErrors && err.FailingRequires.ErrorMessage != null)
+                if (QKeyValue.FindBoolAttribute(err.FailingRequires.Attributes, "barrier_divergence"))
                 {
-                  ReportBplError(err.FailingRequires, err.FailingRequires.ErrorMessage, true, false);
-                }
-                else if (QKeyValue.FindBoolAttribute(err.FailingRequires.Attributes, "barrier_divergence"))
-                {
-                  ReportBplError(err.FailingCall, "Barrier Divergence Error: \nThe following barrier is reached by non-uniform control flow:", true, true);
+                  ReportBarrierDivergence(err.FailingCall, true);
                 }
                 else if (QKeyValue.FindBoolAttribute(err.FailingRequires.Attributes, "race"))
-                {        
+                {
+                  int byteOffset = -1, elemWidth = -1, elemOffset = -1;
                   int lidx1 = -1, lidy1 = -1, lidz1 = -1, lidx2 = -1, lidy2 = -1, lidz2 = -1;
                   int gidx1 = -1, gidy1 = -1, gidz1 = -1, gidx2 = -1, gidy2 = -1, gidz2 = -1;
-                  string thread1 = null, thread2 = null, group1 = null, group2 = null;
-                  if (error.Model != null) 
-                  {
-                    lidx1 = error.Model.TryGetFunc("local_id_x$1").GetConstant().AsInt();
-                    lidy1 = error.Model.TryGetFunc("local_id_y$1").GetConstant().AsInt();
-                    lidz1 = error.Model.TryGetFunc("local_id_z$1").GetConstant().AsInt();
-                    lidx2 = error.Model.TryGetFunc("local_id_x$2").GetConstant().AsInt();
-                    lidy2 = error.Model.TryGetFunc("local_id_y$2").GetConstant().AsInt();
-                    lidz2 = error.Model.TryGetFunc("local_id_z$2").GetConstant().AsInt();
+                  string thread1 = null, thread2 = null, group1 = null, group2 = null, arrName = null;
 
-                    gidx1 = error.Model.TryGetFunc("group_id_x$1").GetConstant().AsInt();
-                    gidy1 = error.Model.TryGetFunc("group_id_y$1").GetConstant().AsInt();
-                    gidz1 = error.Model.TryGetFunc("group_id_z$1").GetConstant().AsInt();
-                    gidx2 = error.Model.TryGetFunc("group_id_x$2").GetConstant().AsInt();
-                    gidy2 = error.Model.TryGetFunc("group_id_y$2").GetConstant().AsInt();
-                    gidz2 = error.Model.TryGetFunc("group_id_z$2").GetConstant().AsInt();
+                  Variable offsetVar = ExtractOffsetVar(err.FailingRequires.Condition as NAryExpr);
+                  Model.Func offsetFunc = ExtractIncarnationFromModel(error.Model, offsetVar.Name);
+                  Debug.Assert(offsetFunc != null, "ProcessOutcome(): Could not extract incarnation.");
+                  GetInfoFromVarAndFunc(offsetVar.Attributes, offsetFunc, out byteOffset, out elemWidth, out elemOffset, out arrName);
 
-                    thread1 = "(" + lidx1 + ", " + lidy1 + ", " + lidz1 + ")";
-                    thread2 = "(" + lidx2 + ", " + lidy2 + ", " + lidz2 + ")";
+                  Debug.Assert(error.Model != null, "ProcessOutcome(): null model");
+                  GetIdsFromModel(error.Model, out lidx1, out lidy1, out lidz1, out lidx2, out lidy2, out lidz2, 
+                                               out gidx1, out gidy1, out gidz1, out gidx2, out gidy2, out gidz2);
 
-                    group1 = "(" + gidx1 + ", " + gidy1 + ", " + gidz1 + ")";
-                    group2 = "(" + gidx2 + ", " + gidy2 + ", " + gidz2 + ")";
-                  }
+                  thread1 = "(" + lidx1 + ", " + lidy1 + ", " + lidz1 + ")";
+                  thread2 = "(" + lidx2 + ", " + lidy2 + ", " + lidz2 + ")";
+
+                  group1 = "(" + gidx1 + ", " + gidy1 + ", " + gidz1 + ")";
+                  group2 = "(" + gidx2 + ", " + gidy2 + ", " + gidz2 + ")";
+                  
                   if (QKeyValue.FindBoolAttribute(err.FailingRequires.Attributes, "write_read"))
                   {
                     err.FailingRequires.Attributes = GetSourceLocInfo(error, "WRITE");
-                    ReportBplError(err.FailingCall, "Race Error: Write-read race caused by \nthread " 
-                                                        + thread2 + ", group " + group2 + " executing statement at:" , true, true);
-                    ReportBplError(err.FailingRequires, "The conflicting statement executed by thread "
-                                                    + thread1 + ", group " + group1 + " is:", true, true);
+                    ReportRace(err.FailingCall, err.FailingRequires, thread1, thread2, group1, group2, arrName, byteOffset, elemOffset, RaceType.WR, true);
                   }
                   else if (QKeyValue.FindBoolAttribute(err.FailingRequires.Attributes, "read_write"))
                   {
                     err.FailingRequires.Attributes = GetSourceLocInfo(error, "READ");
-                    ReportBplError(err.FailingCall, "Race Error: Read-write race caused by \nthread "
-                                                        + thread2 + ", group " + group2 + " executing statement at:", true, true);
-                    ReportBplError(err.FailingRequires, "The conflicting statement executed by thread "
-                                                    + thread1 + ", group " + group1 + " is:", true, true);
+                    ReportRace(err.FailingCall, err.FailingRequires, thread1, thread2, group1, group2, arrName, byteOffset, elemOffset, RaceType.RW, true);
 
                   }
                   else if (QKeyValue.FindBoolAttribute(err.FailingRequires.Attributes, "write_write"))
                   {
                     err.FailingRequires.Attributes = GetSourceLocInfo(error, "WRITE");
-                    ReportBplError(err.FailingCall, "Race Error: Write-write race caused by \nthread "
-                                                        + thread2 + ", group " + group2 + " executing statement at:", true, true);
-                    ReportBplError(err.FailingRequires, "The conflicting statement executed by thread "
-                                                    + thread1 + ", group " + group1 + " is:", true, true);
-
+                    ReportRace(err.FailingCall, err.FailingRequires, thread1, thread2, group1, group2, arrName, byteOffset, elemOffset, RaceType.WW, true);
                   }
                 }
                 else
                 {
-                  if (!IsRepeatedKV(err.FailingRequires.Attributes, seenReqAttrs))
-                  {
-                    ReportBplError(err.FailingCall, "Requires Error: A precondition for this call might not hold:", true, true);
-                    ReportBplError(err.FailingRequires, "Related location: This is the precondition that might not hold:", false, true);
-                    seenReqAttrs.Add(err.FailingRequires.Attributes);
-                  }
-                  else
-                  {
-                    incrementErrors = false;
-                  }
-                }
-                if (CommandLineOptions.Clo.XmlSink != null)
-                {
-                  CommandLineOptions.Clo.XmlSink.WriteError("precondition violation", err.FailingCall.tok, err.FailingRequires.tok, error.Trace);
+                  ReportRequiresFailure(err.FailingCall, err.FailingRequires, true);
                 }
               }
               else if (error is ReturnCounterexample)
               {
                 ReturnCounterexample err = (ReturnCounterexample)error;
-                if (!CommandLineOptions.Clo.ForceBplErrors && err.FailingEnsures.ErrorMessage != null)
-                {
-                  ReportBplError(err.FailingEnsures, err.FailingEnsures.ErrorMessage, true, false);
-                }
-                else
-                {
-                  if (!IsRepeatedKV(err.FailingEnsures.Attributes, seenEnsAttrs)) {
-                    ReportBplError(err.FailingEnsures, "Ensures Error: This postcondition might not hold on all return paths:", true, true);
-                    seenEnsAttrs.Add(err.FailingEnsures.Attributes);
-                  }
-                  else
-                  {
-                    incrementErrors = false;
-                  }
-                }
-                if (CommandLineOptions.Clo.XmlSink != null)
-                {
-                  CommandLineOptions.Clo.XmlSink.WriteError("postcondition violation", err.FailingReturn.tok, err.FailingEnsures.tok, error.Trace);
-                }
+                ReportEnsuresFailure(err.FailingEnsures, true);
               }
-              else // error is AssertCounterexample
+              else
               {
                 AssertCounterexample err = (AssertCounterexample)error;
                 if (err.FailingAssert is LoopInitAssertCmd)
                 {
-                  if (!IsRepeatedKV(err.FailingAssert.Attributes, seenInvEAttrs)) {
-                    ReportBplError(err.FailingAssert, "Invariant Error: This loop invariant might not hold on entry:", true, true);
-                    if (CommandLineOptions.Clo.XmlSink != null)
-                    {
-                      CommandLineOptions.Clo.XmlSink.WriteError("loop invariant entry violation", err.FailingAssert.tok, null, error.Trace);
-                    }
-                    seenInvEAttrs.Add(err.FailingAssert.Attributes);
-                  }
-                  else
-                  {
-                    incrementErrors = false;
-                  }
+                  ReportInvariantEntryFailure(err.FailingAssert, true);
                 }
                 else if (err.FailingAssert is LoopInvMaintainedAssertCmd)
                 {
-                  // this assertion is a loop invariant which is not maintained
-                  if (!IsRepeatedKV(err.FailingAssert.Attributes, seenInvMAttrs)) {
-                    ReportBplError(err.FailingAssert, "Invariant Error: This loop invariant might not be maintained by the loop:", true, true);
-                    if (CommandLineOptions.Clo.XmlSink != null)
-                    {
-                      CommandLineOptions.Clo.XmlSink.WriteError("loop invariant maintenance violation", err.FailingAssert.tok, null, error.Trace);
-                    }
-                    seenInvMAttrs.Add(err.FailingAssert.Attributes);
-                  }
-                  else
-                  {
-                    incrementErrors = false;
-                  }
+                  ReportInvariantMaintedFailure(err.FailingAssert, true);
                 }
                 else
                 {
-                  if (!CommandLineOptions.Clo.ForceBplErrors && err.FailingAssert.ErrorMessage != null)
-                  {
-                    ReportBplError(err.FailingAssert, err.FailingAssert.ErrorMessage, true, false);
-                  }
-                  else if (err.FailingAssert.ErrorData is string)
-                  {
-                    ReportBplError(err.FailingAssert, (string)err.FailingAssert.ErrorData, true, true);
-                  }
-                  else
-                  {
-                    if (!IsRepeatedKV(err.FailingAssert.Attributes, seenAssertAttrs)) 
-                    {
-                      ReportBplError(err.FailingAssert, "Assertion Error: This assertion might not hold:", true, true);
-                      seenAssertAttrs.Add(err.FailingAssert.Attributes.Clone() as QKeyValue);
-                    }
-                    else
-                    {
-                      incrementErrors = false;
-                    }
-                  }
-                  if (CommandLineOptions.Clo.XmlSink != null)
-                  {
-                    CommandLineOptions.Clo.XmlSink.WriteError("assertion violation", err.FailingAssert.tok, null, error.Trace);
-                  }
+                  ReportFailingAssert(err.FailingAssert, true);
                 }
               }
-              if (CommandLineOptions.Clo.EnhancedErrorMessages == 1)
-              {
-                foreach (string info in error.relatedInformation)
-                {
-                  Contract.Assert(info != null);
-                  Console.WriteLine("       " + info);
-                }
-              }
-              /* Get rid of this, as we are only using /enhancedErrorMessages to pass the model through. 
-               * We don't actually want to see the enhanced error messages.
-               * 
-              if (CommandLineOptions.Clo.ErrorTrace > 0)
-              {
-                Console.WriteLine("Execution trace:");
-                error.Print(4);
-              }
-               */
-              if (CommandLineOptions.Clo.ModelViewFile != null)
-              {
-                error.PrintModel();
-              }
-              if (incrementErrors)
-              {
-                errorCount++;
-              }
+              errorCount++;
             }
             //}
             Inform(String.Format("{0}error{1}", timeIndication, errors.Count == 1 ? "" : "s"));
           }
           break;
       }
+    }
+
+    private static void ReportFailingAssert(Absy node, bool displayCode)
+    {
+      Console.WriteLine("");
+
+      int failLine = -1, failCol = -1;
+      string failFile = null, locinfo = null;
+
+      QKeyValue attrs = GetAttributes(node);
+      Debug.Assert(attrs != null, "ReportFailingAssert(): null attributes.");
+
+      GetLocInfoFromAttrs(attrs, out failLine, out failCol, out failFile);
+
+      Debug.Assert(failLine != -1 && failCol != -1 && failFile != null, "ReportFailingAssert(): could not get source location.",
+                    "Sourceloc info not found for {0}:{1}:{2}\n", node.tok.filename, node.tok.line, node.tok.col);
+
+      locinfo = failFile + ":" + failLine + ":" + failCol + ":";
+
+      ErrorWriteLine(locinfo, "this assertion might not hold", ErrorMsgType.Error);
+      if (displayCode)
+      {
+        ErrorWriteLine(FetchCodeLine(failFile, failLine));
+      }
+    }
+
+    private static void ReportInvariantMaintedFailure(Absy node, bool displayCode)
+    {
+      Console.WriteLine("");
+
+      int failLine = -1, failCol = -1;
+      string failFile = null, locinfo = null;
+
+      QKeyValue attrs = GetAttributes(node);
+      Debug.Assert(attrs != null, "ReportInvariantMaintedFailure(): null attributes.");
+
+      GetLocInfoFromAttrs(attrs, out failLine, out failCol, out failFile);
+
+      Debug.Assert(failLine != -1 && failCol != -1 && failFile != null, "ReportInvariantMaintedFailure(): could not get source location.",
+                    "Sourceloc info not found for {0}:{1}:{2}\n", node.tok.filename, node.tok.line, node.tok.col);
+
+      locinfo = failFile + ":" + failLine + ":" + failCol + ":";
+
+      ErrorWriteLine(locinfo, "loop invariant might not be maintained by the loop", ErrorMsgType.Error);
+      if (displayCode)
+      {
+        ErrorWriteLine(FetchCodeLine(failFile, failLine));
+      }
+    }
+
+    private static void ReportInvariantEntryFailure(Absy node, bool displayCode)
+    {
+      Console.WriteLine("");
+
+      int failLine = -1, failCol = -1;
+      string failFile = null, locinfo = null;
+
+      QKeyValue attrs = GetAttributes(node);
+      Debug.Assert(attrs != null, "ReportInvariantEntryFailure(): null attributes.");
+
+      GetLocInfoFromAttrs(attrs, out failLine, out failCol, out failFile);
+
+      Debug.Assert(failLine != -1 && failCol != -1 && failFile != null, "ReportInvariantEntryFailure(): could not get source location.",
+                    "Sourceloc info not found for {0}:{1}:{2}\n", node.tok.filename, node.tok.line, node.tok.col);
+
+      locinfo = failFile + ":" + failLine + ":" + failCol + ":";
+
+      ErrorWriteLine(locinfo, "loop invariant might not hold on entry", ErrorMsgType.Error);
+      if (displayCode)
+      {
+        ErrorWriteLine(FetchCodeLine(failFile, failLine));
+      }
+    }
+
+    private static void ReportEnsuresFailure(Absy node, bool displayCode)
+    {
+      Console.WriteLine("");
+
+      int failLine = -1, failCol = -1;
+      string failFile = null, locinfo = null;
+
+      QKeyValue attrs = GetAttributes(node);
+      Debug.Assert(attrs != null, "ReportEnsuresFailure(): null attributes.");
+
+      GetLocInfoFromAttrs(attrs, out failLine, out failCol, out failFile);
+
+      Debug.Assert(failLine != -1 && failCol != -1 && failFile != null, "ReportEnsuresFailure(): could not get source location.",
+                    "Sourceloc info not found for {0}:{1}:{2}\n", node.tok.filename, node.tok.line, node.tok.col);
+
+      locinfo = failFile + ":" + failLine + ":" + failCol + ":";
+
+      ErrorWriteLine(locinfo, "postcondition might not hold on all return paths", ErrorMsgType.Error);
+      if (displayCode)
+      {
+        ErrorWriteLine(FetchCodeLine(failFile, failLine));
+      }
+    }
+
+    private static void ReportRace(Absy callNode, Absy reqNode, string thread1, string thread2, string group1, string group2, string arrName, int byteOffset, int elemOffset, RaceType raceType, bool displayCode)
+    {
+      Console.WriteLine("");
+      int failLine1 = -1, failCol1 = -1, failLine2 = -1, failCol2 = -1;
+      string failFile1 = null, locinfo1 = null, failFile2 = null, locinfo2 = null, raceName, access1, access2;
+
+      QKeyValue callAttrs = GetAttributes(callNode);
+      QKeyValue reqAttrs = GetAttributes(reqNode);
+
+      Debug.Assert(callAttrs != null, "ReportRace(): null call attributes.");
+      Debug.Assert(reqAttrs != null, "ReportRace(): null req attributes.");
+
+      GetLocInfoFromAttrs(callAttrs, out failLine1, out failCol1, out failFile1);
+      GetLocInfoFromAttrs(reqAttrs,  out failLine2, out failCol2, out failFile2);
+
+      Debug.Assert(failLine1 != -1 && failCol1 != -1 && failFile1 != null, "ReportRace(): could not get source location for thread 1", 
+                    "Sourceloc info not found for {0}:{1}:{2}\n", callNode.tok.filename, callNode.tok.line, callNode.tok.col);
+      Debug.Assert(failLine2 != -1 && failCol2 != -1 && failFile2 != null, "ReportRace(): could not get source location for thread 2", 
+                    "Sourceloc info not found for {0}:{1}:{2}\n", reqNode.tok.filename, reqNode.tok.line, reqNode.tok.col);
+
+      switch (raceType)
+      {
+        case RaceType.RW:
+          raceName = "read-write";
+          access1 = "read from";
+          access2 = "wrote to";
+          break;
+        case RaceType.WR:
+          raceName = "write-read";
+          access1 = "wrote to";
+          access2 = "read from";
+          break;
+        case RaceType.WW:
+          raceName = "write-write";
+          access1 = "wrote to";
+          access2 = "wrote to";
+          break;
+        default:
+          raceName = null;
+          access1 = null;
+          access2 = null;
+          Debug.Assert(false, "ReportRace(): Reached default case in switch over raceType.");
+          break;
+      }
+      ErrorWriteLine(failFile1 + ":", "possible " + raceName + " race:\n", ErrorMsgType.Error);
+
+      locinfo1 = failFile1 + ":" + failLine1 + ":" + failCol1 + ":";
+      locinfo2 = failFile2 + ":" + failLine2 + ":" + failCol2 + ":";
+
+      AddPadding(ref locinfo1, ref locinfo2);
+      AddPadding(ref access1, ref access2);
+
+      ErrorWriteLine(locinfo1, "thread " + thread2 + " group " + group2 + " " + access2 + " " + arrName + "[" + byteOffset + "] (" + elemOffset + ")", ErrorMsgType.NoError);
+      if (displayCode)
+      {
+        ErrorWriteLine(TrimLeadingSpaces(FetchCodeLine(failFile1, failLine1) + "\n", 2));
+      }
+
+      ErrorWriteLine(locinfo2, "thread " + thread1 + " group " + group1 + " " + access1 + " " + arrName + "[" + byteOffset + "] (" + elemOffset + ")", ErrorMsgType.NoError);
+      if (displayCode)
+      {
+        ErrorWriteLine(TrimLeadingSpaces(FetchCodeLine(failFile2, failLine2) + "\n", 2));
+      }
+    }
+
+    private static void ReportBarrierDivergence(Absy node, bool displayCode)
+    {
+      Console.WriteLine("");
+
+      int failLine = -1, failCol = -1;
+      string failFile = null, locinfo = null;
+
+      QKeyValue attrs = GetAttributes(node);
+      Debug.Assert(attrs != null, "ReportBarrierDivergendce(): null attributes.");
+
+      GetLocInfoFromAttrs(attrs, out failLine, out failCol, out failFile);
+
+      Debug.Assert(failLine != -1 && failCol != -1 && failFile != null, "ReportBarrierDivergence(): could not get source location.", 
+                    "Sourceloc info not found for {0}:{1}:{2}\n", node.tok.filename, node.tok.line, node.tok.col);
+
+      locinfo = failFile + ":" + failLine + ":" + failCol + ":";
+
+      ErrorWriteLine(locinfo, "barrier may be reached by non-uniform control flow", ErrorMsgType.Error);
+      if (displayCode)
+      {
+        ErrorWriteLine(FetchCodeLine(failFile, failLine));
+      }
+    }
+
+    private static void ReportRequiresFailure(Absy callNode, Absy reqNode, bool displayCode)
+    {
+      // TODO: Remove code duplication below.
+      // bad_pre.cl:16:7: error: a precondition for this call might not hold
+      //   [codeline]
+      // bad_pre.cl:8:24: note: this is the precondition that might not hold
+      //   [codeline]
+      Console.WriteLine("");
+
+      int failLine1 = -1, failCol1 = -1, failLine2 = -1, failCol2 = -1;
+      string failFile1 = null, locinfo1 = null, failFile2 = null, locinfo2 = null;
+
+      QKeyValue callAttrs = GetAttributes(callNode);
+      QKeyValue reqAttrs = GetAttributes(reqNode);
+
+      Debug.Assert(callAttrs != null, "ReportRace(): null call attributes.");
+      Debug.Assert(reqAttrs != null, "ReportRace(): null req attributes.");
+
+      GetLocInfoFromAttrs(callAttrs, out failLine1, out failCol1, out failFile1);
+      GetLocInfoFromAttrs(reqAttrs, out failLine2, out failCol2, out failFile2);
+
+      Debug.Assert(failLine1 != -1 && failCol1 != -1 && failFile1 != null, "ReportRequiresFailure(): could not get source location from call",
+                    "Sourceloc info not found for {0}:{1}:{2}\n", callNode.tok.filename, callNode.tok.line, callNode.tok.col);
+      Debug.Assert(failLine2 != -1 && failCol2 != -1 && failFile2 != null, "ReportRequiresFailure(): could not get source location from requires",
+                    "Sourceloc info not found for {0}:{1}:{2}\n", reqNode.tok.filename, reqNode.tok.line, reqNode.tok.col);
+
+      locinfo1 = failFile1 + ":" + failLine1 + ":" + failCol1 + ":";
+      locinfo2 = failFile2 + ":" + failLine2 + ":" + failCol2 + ":";
+
+      ErrorWriteLine(locinfo1, "a precondition for this call might not hold", ErrorMsgType.Error);
+      if (displayCode)
+      {
+        ErrorWriteLine(TrimLeadingSpaces(FetchCodeLine(failFile1, failLine1), 2));
+      }
+
+      ErrorWriteLine(locinfo2, "this is the precondition that might not hold", ErrorMsgType.Note);
+      if (displayCode)
+      {
+        ErrorWriteLine(TrimLeadingSpaces(FetchCodeLine(failFile2, failLine2), 2));
+      }
+
+    }
+
+    private static string FetchCodeLine(string path, int lineNo)
+    {
+      TextReader tr = new StreamReader(path);
+      string line = null;
+
+      for (int currLineNo = 1; ((line = tr.ReadLine()) != null); currLineNo++)
+      {
+        if (currLineNo == lineNo)
+        {
+          break;
+        }
+      }
+      if (line != null)
+      {
+        return line;
+      }
+      else
+      {
+        Console.WriteLine("FetchCodeLine(): could not get line {0} from {1}\n", lineNo, path);
+        return null;
+      }
+    }
+
+    private static void GetLocInfoFromAttrs(QKeyValue attrs, out int failLine, out int failCol, out string failFile)
+    {
+      failLine = QKeyValue.FindIntAttribute(attrs, "line", -1);
+      failCol = QKeyValue.FindIntAttribute(attrs, "col", -1);
+      failFile = QKeyValue.FindStringAttribute(attrs, "fname");
+      string directoryName = Path.GetDirectoryName(CommandLineOptions.Clo.Files[0]);
+      failFile = ((!String.IsNullOrEmpty(directoryName) && directoryName != ".") ? (directoryName + Path.DirectorySeparatorChar) : "") + failFile;
+    }
+
+    private static void GetIdsFromModel(Model model, out int lidx1, out int lidy1, out int lidz1, out int lidx2, out int lidy2, out int lidz2, 
+                                                     out int gidx1, out int gidy1, out int gidz1, out int gidx2, out int gidy2, out int gidz2)
+    {
+      lidx1 = model.TryGetFunc("local_id_x$1").GetConstant().AsInt();
+      lidy1 = model.TryGetFunc("local_id_y$1").GetConstant().AsInt();
+      lidz1 = model.TryGetFunc("local_id_z$1").GetConstant().AsInt();
+      lidx2 = model.TryGetFunc("local_id_x$2").GetConstant().AsInt();
+      lidy2 = model.TryGetFunc("local_id_y$2").GetConstant().AsInt();
+      lidz2 = model.TryGetFunc("local_id_z$2").GetConstant().AsInt();
+
+      gidx1 = model.TryGetFunc("group_id_x$1").GetConstant().AsInt();
+      gidy1 = model.TryGetFunc("group_id_y$1").GetConstant().AsInt();
+      gidz1 = model.TryGetFunc("group_id_z$1").GetConstant().AsInt();
+      gidx2 = model.TryGetFunc("group_id_x$2").GetConstant().AsInt();
+      gidy2 = model.TryGetFunc("group_id_y$2").GetConstant().AsInt();
+      gidz2 = model.TryGetFunc("group_id_z$2").GetConstant().AsInt();
+    }
+
+    private static void GetInfoFromVarAndFunc(QKeyValue attrs, Model.Func f, out int byteOffset, out int elemWidth, out int elemOffset, out string arrName)
+    {
+      Debug.Assert(f != null && f.AppCount == 1);
+      elemOffset = f.Apps.FirstOrDefault().Result.AsInt();
+      arrName = ExtractArrName(f.Name);
+      elemWidth = QKeyValue.FindIntAttribute(attrs, "elem_width", -1);
+      Debug.Assert(elemWidth != -1, "GetInfoFromVarAndFunc: Could not find \"elem_width\" attribute.");
+      byteOffset = CalculateByteOffset(elemOffset, elemWidth);
+    }
+
+    private static int CalculateByteOffset(int elemOffset, int elemWidth)
+    {
+      return (elemOffset * elemWidth) / 8;
+    }
+
+    private static string ExtractArrName(string varName)
+    {
+      return Regex.Split(varName, "[$]+")[1];
+    }
+
+    private static Variable ExtractOffsetVar(NAryExpr expr)
+    {
+      foreach (Expr e in expr.Args)
+      {
+        if (e is NAryExpr && e.ToString().Contains("_OFFSET_"))
+        {
+          return ExtractOffsetVar(e as NAryExpr);
+        }
+        else if (e is IdentifierExpr && (e as IdentifierExpr).Name.Contains("_OFFSET_"))
+        {
+          return (e as IdentifierExpr).Decl;
+        }
+        else continue;
+      }
+      Debug.Assert(false, "GPUVerifyBoogieDriver: ExtractOffsetExpr() could not find _OFFSET expr.");
+      return null;
     }
 
     /// <summary>

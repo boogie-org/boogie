@@ -23,5 +23,8 @@ namespace GPUVerify
 
         void AddSourceLocationLoopInvariants(Implementation impl, IRegion region);
 
+        void AddStandardSourceVariablePreconditions();
+
+        void AddStandardSourceVariablePostconditions();
     }
 }

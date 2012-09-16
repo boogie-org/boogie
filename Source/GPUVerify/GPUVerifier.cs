@@ -955,6 +955,9 @@ namespace GPUVerify
             GeneratePreconditionsForDimension(tok, "Y");
             GeneratePreconditionsForDimension(tok, "Z");
 
+            RaceInstrumenter.AddStandardSourceVariablePreconditions();
+            RaceInstrumenter.AddStandardSourceVariablePostconditions();
+
             foreach (Declaration D in Program.TopLevelDeclarations)
             {
                 if (!(D is Procedure))
