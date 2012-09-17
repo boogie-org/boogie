@@ -78,12 +78,18 @@ namespace GPUVerify {
     }
 
     public void AddRaceCheckingCandidateInvariants(Implementation impl, IRegion region) {
+      List<Expr> offsetPredicatesRead = new List<Expr>();
+      List<Expr> offsetPredicatesWrite = new List<Expr>();
       foreach (Variable v in NonLocalStateToCheck.getAllNonLocalArrays()) {
         AddNoReadOrWriteCandidateInvariants(region, v);
         AddReadOrWrittenOffsetIsThreadIdCandidateInvariants(impl, region, v, "READ");
         AddReadOrWrittenOffsetIsThreadIdCandidateInvariants(impl, region, v, "WRITE");
-        AddOffsetsSatisfyPredicatesCandidateInvariant(region, v, "READ", CollectOffsetPredicates(impl, region, v, "READ"));
-        AddOffsetsSatisfyPredicatesCandidateInvariant(region, v, "WRITE", CollectOffsetPredicates(impl, region, v, "WRITE"));
+        offsetPredicatesRead = CollectOffsetPredicates(impl, region, v, "READ");
+        offsetPredicatesWrite = CollectOffsetPredicates(impl, region, v, "WRITE");
+        AddOffsetsSatisfyPredicatesCandidateInvariant(region, v, "READ", offsetPredicatesRead);
+        AddOffsetsSatisfyPredicatesCandidateInvariant(region, v, "WRITE", offsetPredicatesWrite);
+        AddOffsetsSatisfyPredicatesCandidateInvariant(region, v, "READ", new List<Expr>(offsetPredicatesRead.Zip(CollectSourceLocPredicates(region, v, "READ"), Expr.And)));
+        AddOffsetsSatisfyPredicatesCandidateInvariant(region, v, "WRITE", new List<Expr>(offsetPredicatesWrite.Zip(CollectSourceLocPredicates(region, v, "WRITE"), Expr.And)));
       }
     }
 
@@ -98,6 +104,22 @@ namespace GPUVerify {
       return !visitor.found;
     }
 
+    private List<Expr> CollectSourceLocPredicates(IRegion region, Variable v, string accessType) {
+      var sourceVar = verifier.FindOrCreateSourceVariable(v.Name, accessType);
+      var sourceExpr = new IdentifierExpr(Token.NoToken, sourceVar);
+      var sourcePreds = new List<Expr>();
+
+      foreach (Cmd c in region.Cmds()) {
+        if (c is CallCmd) {
+          CallCmd call = c as CallCmd;
+          if (call.callee == "_LOG_" + accessType + "_" + v.Name) {
+            sourcePreds.Add(Expr.Eq(sourceExpr, call.Ins[2]));
+          }
+        }
+      }
+
+      return sourcePreds;
+    }
     private List<Expr> CollectOffsetPredicates(Implementation impl, IRegion region, Variable v, string accessType) {
       var offsetVar = new VariableDualiser(1, null, null).VisitVariable(GPUVerifier.MakeOffsetVariable(v.Name, accessType));
       var offsetExpr = new IdentifierExpr(Token.NoToken, offsetVar);
@@ -879,44 +901,120 @@ namespace GPUVerify {
       }
     }
 
+    public void AddStandardSourceVariablePreconditions()
+    {
+      foreach (Declaration D in verifier.Program.TopLevelDeclarations.ToList())
+      {
+        if (!(D is Procedure))
+        {
+          continue;
+        }
+        Procedure Proc = D as Procedure;
+        foreach (string key in WriteAccessSourceLocations.Keys.Union(ReadAccessSourceLocations.Keys))
+        {
+          Proc.Requires.Add(new Requires(false, BuildNoAccessExpr(key, "WRITE")));
+          Proc.Requires.Add(new Requires(false, BuildNoAccessExpr(key, "READ")));
+
+          if (WriteAccessSourceLocations.ContainsKey(key))
+          {
+            Proc.Requires.Add(new Requires(false, BuildPossibleSourceLocationsExpr(key, "WRITE")));
+          }
+          else
+          {
+            Proc.Requires.Add(new Requires(false, BuildAccessOccurredFalseExpr(key, "WRITE")));
+          }
+
+          if (ReadAccessSourceLocations.ContainsKey(key))
+          {
+            Proc.Requires.Add(new Requires(false, BuildPossibleSourceLocationsExpr(key, "READ")));
+          }
+          else
+          {
+            Proc.Requires.Add(new Requires(false, BuildAccessOccurredFalseExpr(key, "READ")));
+          }
+        }
+      }
+    }
+
+    public void AddStandardSourceVariablePostconditions()
+    {
+      foreach (Declaration D in verifier.Program.TopLevelDeclarations.ToList())
+      {
+        if (!(D is Procedure))
+        {
+          continue;
+        }
+        Procedure Proc = D as Procedure;
+        foreach (string key in WriteAccessSourceLocations.Keys.Union(ReadAccessSourceLocations.Keys))
+        {
+          Proc.Ensures.Add(new Ensures(false, BuildNoAccessExpr(key, "WRITE")));
+          Proc.Ensures.Add(new Ensures(false, BuildNoAccessExpr(key, "READ")));
+
+          if (WriteAccessSourceLocations.ContainsKey(key))
+          {
+            Proc.Ensures.Add(new Ensures(false, BuildPossibleSourceLocationsExpr(key, "WRITE")));
+          }
+          else
+          {
+            Proc.Ensures.Add(new Ensures(false, BuildAccessOccurredFalseExpr(key, "WRITE")));
+          }
+
+          if (ReadAccessSourceLocations.ContainsKey(key))
+          {
+            Proc.Ensures.Add(new Ensures(false, BuildPossibleSourceLocationsExpr(key, "READ")));
+          }
+          else
+          {
+            Proc.Ensures.Add(new Ensures(false, BuildAccessOccurredFalseExpr(key, "READ")));
+          }
+        }
+      }
+    }
+
+    private Expr BuildAccessOccurredFalseExpr(string name, string AccessType)
+    {
+      return Expr.Imp(new IdentifierExpr(Token.NoToken, verifier.FindOrCreateAccessHasOccurredVariable(name, AccessType)),
+                                         Expr.False);
+    }
+    
     private AssertCmd BuildAccessOccurredFalseInvariant(string name, string AccessType)
     {
-      return new AssertCmd(Token.NoToken, Expr.Imp(new IdentifierExpr(Token.NoToken, verifier.FindOrCreateAccessHasOccurredVariable(name, AccessType)),
-                                                   Expr.False));
+      return new AssertCmd(Token.NoToken, BuildAccessOccurredFalseExpr(name, AccessType));
+    }
+
+    private Expr BuildNoAccessExpr(string name, string AccessType)
+    {
+      return Expr.Imp(Expr.Not(new IdentifierExpr(Token.NoToken, verifier.FindOrCreateAccessHasOccurredVariable(name, AccessType))),
+                                                   Expr.Eq(new IdentifierExpr(Token.NoToken, verifier.FindOrCreateSourceVariable(name, AccessType)),
+                                                           new LiteralExpr(Token.NoToken, BigNum.FromInt(0), 32)));
     }
 
     private AssertCmd BuildNoAccessInvariant(string name, string AccessType)
     {
-      return new AssertCmd(Token.NoToken, Expr.Imp(Expr.Not(new IdentifierExpr(Token.NoToken, verifier.FindOrCreateAccessHasOccurredVariable(name, AccessType))),
-                                                   Expr.Eq(new IdentifierExpr(Token.NoToken, verifier.FindOrCreateSourceVariable(name, AccessType)),
-                                                           new LiteralExpr(Token.NoToken, BigNum.FromInt(0), 32))));
+      return new AssertCmd(Token.NoToken, BuildNoAccessExpr(name, AccessType));
+    }
+
+    private Expr BuildPossibleSourceLocationsExpr(string name, string AccessType)
+    {
+      return Expr.Imp(new IdentifierExpr(Token.NoToken, verifier.FindOrCreateAccessHasOccurredVariable(name, AccessType)),
+                                         BuildDisjunctionFromAccessSourceLocations(name, AccessType));
     }
 
     private AssertCmd BuildPossibleSourceLocationsInvariant(string name, string AccessType)
     {
-      return new AssertCmd(Token.NoToken,
-                           Expr.Imp(new IdentifierExpr(Token.NoToken, verifier.FindOrCreateAccessHasOccurredVariable(name, AccessType)),
-                                                       BuildDisjunctionFromAccessSourceLocations(name, AccessType)));
+      return new AssertCmd(Token.NoToken, BuildPossibleSourceLocationsExpr(name, AccessType));
     }
 
     private Expr BuildDisjunctionFromAccessSourceLocations(string key, string AccessType)
     {
-      Expr disj = Expr.False;
+      List<Expr> sourceLocExprs = new List<Expr>();
       Dictionary<string, List<int>> AccessSourceLocations = (AccessType.Equals("WRITE")) ? WriteAccessSourceLocations : ReadAccessSourceLocations;
       foreach (int loc in AccessSourceLocations[key])
       {
-        if (disj.Equals(Expr.False))
-        {
-          disj = Expr.Eq(new IdentifierExpr(Token.NoToken, verifier.FindOrCreateSourceVariable(key, AccessType)),
-                         new LiteralExpr(Token.NoToken, BigNum.FromInt(loc), 32));
-        }
-        else
-        {
-          disj = Expr.Or(disj, Expr.Eq(new IdentifierExpr(Token.NoToken, verifier.FindOrCreateSourceVariable(key, AccessType)),
-                                       new LiteralExpr(Token.NoToken, BigNum.FromInt(loc), 32)));
-        }
+        sourceLocExprs.Add(Expr.Eq(new IdentifierExpr(Token.NoToken, verifier.FindOrCreateSourceVariable(key, AccessType)),
+                                   new LiteralExpr(Token.NoToken, BigNum.FromInt(loc), 32)));
       }
-      return disj;
+      return sourceLocExprs.Aggregate(Expr.Or);
     }
 
     protected Expr NoReadOrWriteExpr(Variable v, string ReadOrWrite, string OneOrTwo) {
