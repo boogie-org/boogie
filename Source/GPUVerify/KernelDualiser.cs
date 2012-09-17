@@ -158,18 +158,16 @@ namespace GPUVerify {
           cs.Add(assign);
         }
         else {
-          List<AssignLhs> newLhss = assign.Lhss.SelectMany(lhs => new AssignLhs[] {
-                        new VariableDualiser(1, verifier.uniformityAnalyser, procName).Visit(lhs.Clone() as AssignLhs) as AssignLhs,
-                        new VariableDualiser(2, verifier.uniformityAnalyser, procName).Visit(lhs.Clone() as AssignLhs) as AssignLhs
-                    }).ToList();
-          List<Expr> newRhss = assign.Rhss.SelectMany(rhs => new Expr[] {
-                        new VariableDualiser(1, verifier.uniformityAnalyser, procName).VisitExpr(rhs.Clone() as Expr),
-                        new VariableDualiser(2, verifier.uniformityAnalyser, procName).VisitExpr(rhs.Clone() as Expr)
-                    }).ToList();
-
-          AssignCmd newAssign = new AssignCmd(assign.tok, newLhss, newRhss);
-
-          cs.Add(newAssign);
+          foreach(var i in new int[] { 1, 2 }) {
+            List<AssignLhs> newLhss = assign.Lhss.Select(lhs =>
+              new VariableDualiser(i, verifier.uniformityAnalyser, procName).
+                Visit(lhs.Clone() as AssignLhs) as AssignLhs).ToList();
+            List<Expr> newRhss = assign.Rhss.Select(rhs =>
+              new VariableDualiser(i, verifier.uniformityAnalyser, procName).
+                VisitExpr(rhs.Clone() as Expr)).ToList();
+            AssignCmd newAssign = new AssignCmd(assign.tok, newLhss, newRhss);
+            cs.Add(newAssign);
+          }
         }
       }
       else if (c is HavocCmd) {
