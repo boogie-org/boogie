@@ -150,6 +150,7 @@ const CurrentModule: ModuleName;
 type TypeName;
 function dtype(ref) returns (TypeName);
 const CanAssumeFunctionDefs: bool;
+const FunctionContextHeight: int;
 
 type Mu;
 const unique mu: Field Mu;

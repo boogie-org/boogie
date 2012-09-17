@@ -212,6 +212,10 @@ case class Function(id: String, ins: List[Variable], out: Type, spec: List[Speci
   var isStatic = false
   var isRecursive = false
   var SCC: List[Function] = Nil
+  // the 'height' of this function is determined by a topological sort of the
+  // condensation of the call graph; mutually recursive functions get the same
+  // height.
+  var height: Int = -1
 }
 case class Condition(id: String, where: Option[Expression]) extends NamedMember(id)
 case class Variable(id: String, t: Type, isGhost: Boolean, isImmutable: Boolean) extends ASTNode {

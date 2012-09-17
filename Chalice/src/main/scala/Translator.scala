@@ -190,7 +190,7 @@ class Translator {
       GlobalNames,
       DefaultPrecondition(f.isStatic),
       functionKStmts :::
-      //bassume(CanAssumeFunctionDefs) ::
+      bassume(FunctionContextHeight ==@ f.height) ::
       DefinePreInitialState :::
       // check definedness of the precondition
       InhaleWithChecking(Preconditions(f.spec) map { p => (if(0 < Chalice.defaults) UnfoldPredicatesWithReceiverThis(p) else p)}, "precondition", functionK) :::
@@ -203,6 +203,19 @@ class Translator {
       // check definedness of function body
       checkBody :::
       (f.definition match {case Some(e) => BLocal(myresult) :: (Boogie.VarExpr("result") := etran.Tr(e)); case None => Nil}) :::
+      // assume canCall for all recursive calls
+      {
+        var b: Expr = true
+        f.definition match {
+          case Some(e) => e transform {
+            case app @ FunctionApplication(obj, id, args) if id == f.Id =>
+              b = b && FunctionApp(functionName(f) + "#canCall", (obj :: args) map etran.Tr); None
+            case _ => None
+          }
+          case _ =>
+        }
+        bassume(b) :: Nil
+      } :::
       // check that postcondition holds
       ExhaleWithChecking(Postconditions(f.spec) map { post => ((if(0 < Chalice.defaults) UnfoldPredicatesWithReceiverThis(post) else post),
               ErrorMessage(f.pos, "Postcondition at " + post.pos + " might not hold."))}, "function postcondition", functionK, true)) ::
@@ -241,7 +254,7 @@ class Translator {
     val wellformed = wf(VarExpr(HeapName), VarExpr(MaskName), VarExpr(SecMaskName))
     val triggers = f.dependentPredicates map (p => new Trigger(List(limitedApplyF, wellformed, FunctionApp("#" + p.FullName+"#trigger", thisArg :: Nil))))
     /////
-    val newTriggers = f.dependentPredicates map (p => new Trigger(List(limitedFTrigger, wellformed, FunctionApp("#" + p.FullName+"#trigger", thisArg :: Nil))))
+    val newTriggers = new Trigger(List(limitedFTrigger, wellformed) ::: (f.dependentPredicates map (p => FunctionApp("#" + p.FullName+"#trigger", thisArg :: Nil))))
 
     /** Limit application of the function by introducing a second (limited) function */
     val body = etran.Tr(
@@ -265,22 +278,17 @@ class Translator {
       }
     );
 
+    Boogie.Function(functionName(f) + "#canCall", formalsNoHeapNoMask, BVar("$myresult", tbool)) ::
     /* axiom (forall h: HeapType, m, sm: MaskType, this: ref, x_1: t_1, ..., x_n: t_n ::
          wf(h, m, sm) && CurrentModule == module#C ==> #C.f(h, m, this, x_1, ..., x_n) == tr(body))
     */
     Axiom(new Boogie.Forall(Nil,
-      formals, List(new Trigger(  List(applyF,wellformed))) ,
+      formals, newTriggers :: List(new Trigger(List(applyF,wellformed))) ,
         (wellformed && (CurrentModule ==@ ModuleName(currentClass)) && etran.TrAll(pre))
         ==>
         (applyF ==@ body))) ::
     (if (true)
        // used to be:  (if (f.isRecursive)    ... but now we treat all functions uniformly
-       // add version of the function definition axiom with different triggers (due to strange Z3 behaviour, repeating the axiom seems to be necessary)
-          Axiom(new Boogie.Forall(Nil,
-            formals, newTriggers,
-              (wellformed && (CurrentModule ==@ ModuleName(currentClass)) && etran.TrAll(pre))
-              ==>
-        (applyF ==@ body))) ::
       // define the limited function (even for unlimited function since its SCC might have limited functions)
       Boogie.Function(functionName(f) + "#limited", formalsNoMask, BVar("$myresult", f.out.typ)) ::
       Axiom(new Boogie.Forall(Nil, formals,
@@ -321,7 +329,7 @@ class Translator {
 	      Axiom(new Boogie.Forall(
 	        BVar(HeapName, theap) :: BVar(MaskName, tmask) :: BVar(SecMaskName, tmask) :: BVar("this", tref) :: (f.ins map Variable2BVar),
 	        new Trigger(List(applyF, wellformed)),
-	          (wellformed && CanAssumeFunctionDefs)
+	          (wellformed)
 	          ==>
 	          (applyF ==@ applyFrameFunction))
 	      )
@@ -330,7 +338,7 @@ class Translator {
 	      Axiom(new Boogie.Forall(
 	        BVar(HeapName, theap) :: BVar(MaskName, tmask) :: BVar(SecMaskName, tmask) :: (f.ins map Variable2BVar),
 	        new Trigger(List(applyF, wellformed)),
-	          (wellformed && CanAssumeFunctionDefs)
+	          (wellformed)
 	          ==>
 	          (applyF ==@ applyFrameFunction))
 	      )
@@ -358,7 +366,7 @@ class Translator {
 	      Axiom(new Boogie.Forall(
 	        heap1 :: heap2 :: mask1 :: mask2 :: secmask1 :: secmask2 :: BVar("this", tref) :: (f.ins map Variable2BVar),
 	        new Trigger(List(apply1, apply2, wellformed1, wellformed2)),
-	          (wellformed1 && wellformed2 && functionDependenciesEqual(pre, etran1, etran2) && CanAssumeFunctionDefs)
+	          (wellformed1 && wellformed2 && functionDependenciesEqual(pre, etran1, etran2))
 	          ==>
 	          (apply1 ==@ apply2)
 	      ))
@@ -366,7 +374,7 @@ class Translator {
          Axiom(new Boogie.Forall(
 	        heap1 :: heap2 :: mask1 :: mask2 :: secmask1 :: secmask2 :: (f.ins map Variable2BVar),
 	        new Trigger(List(apply1, apply2, wellformed1, wellformed2)),
-	          (wellformed1 && wellformed2 && functionDependenciesEqual(pre, etran1, etran2) && CanAssumeFunctionDefs)
+	          (wellformed1 && wellformed2 && functionDependenciesEqual(pre, etran1, etran2))
 	          ==>
 	          (apply1 ==@ apply2)
 	      ))
@@ -376,12 +384,13 @@ class Translator {
   
   def postconditionAxiom(f: Function): List[Decl] = {
     /* axiom (forall h: HeapType, m, sm: MaskType, this: ref, x_1: t_1, ..., x_n: t_n ::
-          wf(h, m, sm) && CanAssumeFunctionDefs ==> Q[#C.f(h, m, this, x_1, ..., x_n)/result]
+          wf(h, m, sm) && (CanAssumeFunctionDefs || f.height < FunctionContextHeight) ==> Q[#C.f(h, m, this, x_1, ..., x_n)/result]
     */
     val inArgs = (f.ins map {i => Boogie.VarExpr(i.UniqueName)});
     val myresult = Boogie.BVar("result", f.out.typ);
     val args = VarExpr("this") :: inArgs;
     val applyF = FunctionApp(functionName(f), List(VarExpr(HeapName)) ::: args)
+    val canCall = FunctionApp(functionName(f) + "#canCall", args)
     val wellformed = wf(VarExpr(HeapName), VarExpr(MaskName), VarExpr(SecMaskName))
     
     //postcondition axioms
@@ -389,7 +398,7 @@ class Translator {
       Axiom(new Boogie.Forall(
         BVar(HeapName, theap) :: BVar(MaskName, tmask) :: BVar(SecMaskName, tmask) :: BVar("this", tref) :: (f.ins map Variable2BVar),
         new Trigger(List(applyF, wellformed)),
-        (wellformed && CanAssumeFunctionDefs)
+        (wellformed && (CanAssumeFunctionDefs || f.height < FunctionContextHeight || canCall))
           ==>
         etran.Tr(SubstResult(post, f.apply(ExplicitThisExpr(), f.ins map { arg => new VariableExpr(arg) })))
         ))
@@ -3003,6 +3012,7 @@ object TranslationHelper {
   def CreditsName = "Credits";
   def GlobalNames = List(HeapName, MaskName, SecMaskName, CreditsName);
   def CanAssumeFunctionDefs = VarExpr("CanAssumeFunctionDefs");
+  def FunctionContextHeight = VarExpr("FunctionContextHeight");
   def permissionFull = percentPermission(100);
   def permissionOnePercent = percentPermission(1);
   def percentPermission(e: Expr) = {

@@ -46,11 +46,12 @@ class Node {
   function at(i: int): int
     requires valid && 0<=i && i<size();
   {
-    unfolding valid in i==0 ? value : next.at(i-1)  // no warning anymore... fishy!
+    unfolding valid in i==0 ? value : next.at(i-1)
   }
 
   function size(): int
     requires valid;
+    ensures result > 0
   {
     unfolding this.valid in (next!=null ? 1+ next.size() : 1)
   }
