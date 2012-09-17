@@ -1826,8 +1826,8 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
    *  behaviour is to translate only pure assertions (and throw and error otherwise).
    */
   def Tr(e: Expression): Boogie.Expr = (Tr(e,false))._1
-  def Tr(e: Expression, b: Boolean) : (Boogie.Expr, List[Boogie.Stmt]) = (Tr(e, (ee,et) => et.Tr(ee,b)))
-  def Tr(e: Expression, trrec: (Expression, ExpressionTranslator) => (Boogie.Expr, List[Boogie.Stmt])): (Boogie.Expr, List[Boogie.Stmt]) = {
+  def Tr(e: Expression, listNeeded: Boolean) : (Boogie.Expr, List[Boogie.Stmt]) = (Tr(e, (ee,et) => et.Tr(ee,listNeeded), listNeeded))
+  def Tr(e: Expression, trrec: (Expression, ExpressionTranslator) => (Boogie.Expr, List[Boogie.Stmt]), listNeeded: Boolean = false): (Boogie.Expr, List[Boogie.Stmt]) = {
     def trrecursive(e: Expression): (Boogie.Expr, List[Boogie.Stmt]) = trrec(e, this)
     desugar(e) match {
     case IntLiteral(n) => (n,Nil)
@@ -1869,7 +1869,7 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
       var (conE,conL) = trrecursive(con)
       var (thenE,thenL) = trrecursive(then)
       var (elsE,elsL) = trrecursive(els)
-      (Boogie.Ite(conE, thenE, elsE),(conL ::: thenL ::: elsL))  // of type: VarExpr(TrClass(then.typ))
+      (Boogie.Ite(conE, thenE, elsE), (if (listNeeded) (conL ::: thenL ::: elsL) else Nil))  // of type: VarExpr(TrClass(then.typ))
     case Not(e) =>
       var (ee,ll) = trrecursive(e)
       ((! ee),ll)
@@ -1877,7 +1877,7 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
       var fullArgs = if (!func.f.isStatic) (obj :: args) else (args)
       var trArgs = fullArgs map {arg => trrecursive(arg)} // yields a list of (Expr, List[Boogie.Stmt]) pairs
       var trArgsE = trArgs.foldRight(List[Boogie.Expr]())((el, ll) => el._1 :: ll) // collect list of exprs
-      var trArgsL = trArgs.foldRight(List[Boogie.Stmt]())((x,y) => ((x._2) ::: y)) // concatenate lists of statements
+      var trArgsL = if (listNeeded) (trArgs.foldRight(List[Boogie.Stmt]())((x,y) => ((x._2) ::: y))) else Nil // concatenate lists of statements
       (FunctionApp(functionName(func.f), Heap :: trArgsE),trArgsL)
     }
     case uf@Unfolding(acc@Access(pred@MemberAccess(obj, f), perm), ufexpr) =>
@@ -1888,30 +1888,30 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
             val (flagV, flag) = Boogie.NewBVar("predFlag", tbool, true)
             val o = TrExpr(obj);
             
-            val stmts = BLocal(receiverV) :: (receiver := o) ::
+            val stmts = if (listNeeded) (BLocal(receiverV) :: (receiver := o) ::
             BLocal(flagV) :: (flag := true) ::
             functionTrigger(o, pred.predicate) ::
             BLocal(versionV) :: (version := Heap.select(o, pred.predicate.FullName)) :::
            // UpdateSecMaskDuringUnfold(pred.predicate, o, Heap.select(o, pred.predicate.FullName), perm, currentK) :::
-              TransferPermissionToSecMask(pred.predicate, BoogieExpr(receiver), perm, uf.pos, receiver, pred.predicate.FullName, version)
+              TransferPermissionToSecMask(pred.predicate, BoogieExpr(receiver), perm, uf.pos, receiver, pred.predicate.FullName, version)) else Nil
             
             (ee, ll ::: stmts)
     case Iff(e0,e1) =>
       var (ee0,l0) = trrecursive(e0)
       var (ee1,l1) = trrecursive(e1)
-      ((ee0 <==> ee1), l0 ::: l1)
+      ((ee0 <==> ee1), if (listNeeded) (l0 ::: l1) else Nil)
     case Implies(e0,e1) =>
       var (ee0,l0) = trrecursive(e0)
       var (ee1,l1) = trrecursive(e1)
-      ((ee0 ==> ee1), l0 ::: l1)
+      ((ee0 ==> ee1), if (listNeeded) (l0 ::: l1) else Nil)
     case And(e0,e1) =>
       var (ee0,l0) = trrecursive(e0)
       var (ee1,l1) = trrecursive(e1)
-      ((ee0 && ee1), l0 ::: l1)
+      ((ee0 && ee1), if (listNeeded) (l0 ::: l1) else Nil)
     case Or(e0,e1) =>
       var (ee0,l0) = trrecursive(e0)
       var (ee1,l1) = trrecursive(e1)
-      ((ee0 || ee1), l0 ::: l1)
+      ((ee0 || ee1), if (listNeeded) (l0 ::: l1) else Nil)
     case Eq(e0,e1) =>
       (ShaveOffOld(e0), ShaveOffOld(e1)) match {
         case ((MaxLockLiteral(),o0), (MaxLockLiteral(),o1)) =>
@@ -1928,26 +1928,26 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
         case _ => 
           var (ee0,l0) = trrecursive(e0) 
           var (ee1,l1) = trrecursive(e1)          
-          ((if(e0.typ.IsSeq) FunctionApp("Seq#Equal", List(ee0, ee1)) else (ee0 ==@ ee1)), l0 ::: l1)
+          ((if(e0.typ.IsSeq) FunctionApp("Seq#Equal", List(ee0, ee1)) else (ee0 ==@ ee1)), if (listNeeded) (l0 ::: l1) else Nil)
       }
     case Neq(e0,e1) =>
       trrecursive(Not(Eq(e0,e1)))
     case Less(e0,e1) =>
       var (ee0,l0) = trrecursive(e0)
       var (ee1,l1) = trrecursive(e1)
-      (ee0 < ee1, l0 ::: l1)
+      (ee0 < ee1, if (listNeeded) (l0 ::: l1) else Nil)
     case AtMost(e0,e1) =>
       var (ee0,l0) = trrecursive(e0)
       var (ee1,l1) = trrecursive(e1)
-      (ee0 <= ee1, l0 ::: l1)
+      (ee0 <= ee1, if (listNeeded) (l0 ::: l1) else Nil)
     case AtLeast(e0,e1) =>
       var (ee0,l0) = trrecursive(e0)
       var (ee1,l1) = trrecursive(e1)
-      (ee0 >= ee1, l0 ::: l1)
+      (ee0 >= ee1, if (listNeeded) (l0 ::: l1) else Nil)
     case Greater(e0,e1) =>
       var (ee0,l0) = trrecursive(e0)
       var (ee1,l1) = trrecursive(e1)
-      (ee0 > ee1, l0 ::: l1)
+      (ee0 > ee1, if (listNeeded) (l0 ::: l1) else Nil)
     case LockBelow(e0,e1) => {
       def MuValue(b: Expression): (Boogie.Expr, List[Boogie.Stmt]) = (
         trrecursive(b) match {
@@ -1970,28 +1970,28 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
         case _ => 
           var (ee0, l0) = MuValue(e0)
           var (ee1, l1) = MuValue(e1)
-          ((new FunctionApp("MuBelow", ee0, ee1)),l0 ::: l1) }
+          ((new FunctionApp("MuBelow", ee0, ee1)), if (listNeeded) (l0 ::: l1) else Nil) }
     }
     case Plus(e0,e1) =>
       var (ee0,l0) = trrecursive(e0)
       var (ee1,l1) = trrecursive(e1)
-      (ee0 + ee1, l0 ::: l1)
+      (ee0 + ee1, if (listNeeded) (l0 ::: l1) else Nil)
     case Minus(e0,e1) =>
       var (ee0,l0) = trrecursive(e0)
       var (ee1,l1) = trrecursive(e1)
-      (ee0 - ee1, l0 ::: l1)
+      (ee0 - ee1, if (listNeeded) (l0 ::: l1) else Nil)
     case Times(e0,e1) =>
       var (ee0,l0) = trrecursive(e0)
       var (ee1,l1) = trrecursive(e1)
-      (ee0 * ee1, l0 ::: l1)
+      (ee0 * ee1, if (listNeeded) (l0 ::: l1) else Nil)
     case Div(e0,e1) =>
       var (ee0,l0) = trrecursive(e0)
       var (ee1,l1) = trrecursive(e1)
-      (ee0 / ee1, l0 ::: l1)
+      (ee0 / ee1, if (listNeeded) (l0 ::: l1) else Nil)
     case Mod(e0,e1) =>
       var (ee0,l0) = trrecursive(e0)
       var (ee1,l1) = trrecursive(e1)
-      (ee0 % ee1, l0 ::: l1)
+      (ee0 % ee1, if (listNeeded) (l0 ::: l1) else Nil)
     case EmptySeq(t) =>
       (createEmptySeq, Nil)
     case ExplicitSeq(es) =>
@@ -2003,40 +2003,40 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
         case h :: t =>         
           var (eh,lh) = trrecursive(h)
           var (et,lt) = trrecursive(ExplicitSeq(t))
-          ((createAppendSeq(createSingletonSeq(eh), et)), lh ::: lt)
+          ((createAppendSeq(createSingletonSeq(eh), et)), if (listNeeded) (lh ::: lt) else Nil)
       }
     case Range(min, max) =>
       var (emin,lmin) = trrecursive(min)
       var (emax,lmax) = trrecursive(max)
-      ((createRange(emin, emax)), lmin ::: lmax)
+      ((createRange(emin, emax)), if (listNeeded) (lmin ::: lmax) else Nil)
     case Append(e0, e1) =>
       var (ee0,l0) = trrecursive(e0)
       var (ee1,l1) = trrecursive(e1)
-      ((createAppendSeq(ee0, ee1)), l0 ::: l1)
+      ((createAppendSeq(ee0, ee1)), if (listNeeded) (l0 ::: l1) else Nil)
     case at@At(e0, e1) => 
       var (ee0,l0) = trrecursive(e0)
       var (ee1,l1) = trrecursive(e1)
-      ((SeqIndex(ee0, ee1)), l0 ::: l1)
+      ((SeqIndex(ee0, ee1)), if (listNeeded) (l0 ::: l1) else Nil)
     case Drop(e0, e1) =>
       var (ee0,l0) = trrecursive(e0)
       var (ee1,l1) = trrecursive(e1)
       e1 match {
         case IntLiteral(0) =>
-          (ee0, l0 ::: l1)
+          (ee0, if (listNeeded) (l0 ::: l1) else Nil)
         case _ =>
-          ((Boogie.FunctionApp("Seq#Drop", List(ee0, ee1))), l0 ::: l1)
+          ((Boogie.FunctionApp("Seq#Drop", List(ee0, ee1))), if (listNeeded) (l0 ::: l1) else Nil)
       }
     case Take(e0, e1) =>
       var (ee0,l0) = trrecursive(e0)
       var (ee1,l1) = trrecursive(e1)
-      ((Boogie.FunctionApp("Seq#Take", List(ee0, ee1))), l0 ::: l1)
+      ((Boogie.FunctionApp("Seq#Take", List(ee0, ee1))), if (listNeeded) (l0 ::: l1) else Nil)
     case Length(e) => 
       var (ee,l) = trrecursive(e)
       (SeqLength(ee), l)
     case Contains(e0, e1) => 
       var (ee0,l0) = trrecursive(e0)
       var (ee1,l1) = trrecursive(e1)
-      (SeqContains(ee1, ee0), l0 ::: l1) // Note: swapping of arguments
+      (SeqContains(ee1, ee0), if (listNeeded) (l0 ::: l1) else Nil) // Note: swapping of arguments
     case Eval(h, e) =>
       val (evalHeap, evalMask, evalSecMask, evalCredits, checks, assumptions) = fromEvalState(h);
       val evalEtran = new ExpressionTranslator(Globals(evalHeap, evalMask, evalSecMask, evalCredits), oldEtran.globals, currentClass);
@@ -2065,7 +2065,8 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
           }
           if (!containedVars.isEmpty) {
             var fullArgs = if (!fapp.f.isStatic) (obj :: args) else (args)
-            var trArgs = fullArgs map {arg => Tr(arg)} // translate args
+            var noOldETran = this.UseCurrentAsOld();
+            var trArgs = fullArgs map {arg => noOldETran.Tr(arg)} // translate args
             functions = (FunctionApp(functionName(fapp.f)+"#limited", Heap :: trArgs),containedVars) :: functions
           }
         case _ =>}
