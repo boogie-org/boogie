@@ -2074,11 +2074,11 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
   }
   
     // This is used for searching for triggers for quantifiers around the expression "toSearch". The list "vs" gives the variables which need triggering
-    // Returns a list of function applications (the limited forms of the corresponding functions) paired with two sets of variables.
+    // Returns a list of function applications (the framing function) paired with two sets of variables.
     // The first set of variables shows which of the "vs" occur (useful for deciding how to select applications for trigger sets later)
     // The second set of variables indicated the extra boolean variables which were introduced to "hide" problematic logical/comparison operators which may not occur in triggers.
     // e.g., if vs = [x] and toSearch = f(x, y ==> z) then a singleton list will be returned, containing (f(x,b),{x},{b}).
-    def getLimitedFunctionAppsContaining(vs:List[Variable], toSearch : Expression): (List[(Boogie.FunctionApp,Set[Variable],Set[Variable])]) = {
+    def getFunctionAppsContaining(vs:List[Variable], toSearch : Expression): (List[(Boogie.FunctionApp,Set[Variable],Set[Variable])]) = {
       var functions: List[(Boogie.FunctionApp,Set[Variable],Set[Variable])] = List() // accumulate candidate functions to return
       var nestedBoundVars : List[Variable] = List(); // count all variables bound in nested quantifiers, to avoid considering function applications mentioning these
 
@@ -2131,10 +2131,14 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
           }
           }
           if (!containsNestedBoundVars && !containedVars.isEmpty) {
-            var fullArgs = if (!fapp.f.isStatic) (obj :: processedArgs) else (processedArgs)
-            var noOldETran = this.UseCurrentAsOld();       
-            var trArgs = fullArgs map {arg => noOldETran.Tr(arg)} // translate args
-            functions ::= (FunctionApp(functionName(fapp.f)+"#limited", Heap :: trArgs),containedVars,extraVars)
+            val fullArgs = if (!fapp.f.isStatic) (obj :: processedArgs) else (processedArgs)
+            val noOldETran = this.UseCurrentAsOld();       
+            val trArgs = fullArgs map {arg => noOldETran.Tr(arg)} // translate args
+            val precs = Preconditions(fapp.f.spec) map (p => SubstVars(p, obj, fapp.f.ins, processedArgs))
+            val pre = precs.foldLeft(BoolLiteral(true): Expression)({ (a, b) => And(a, b) });
+            val partialHeap = functionDependencies(pre, etran);
+            val frameFunctionName = "#" + functionName(fapp.f);
+            functions ::= (FunctionApp(frameFunctionName, partialHeap :: trArgs),containedVars,extraVars)
           }
         case _ =>}
       }
@@ -2164,7 +2168,7 @@ def buildTriggersCovering(vars : Set[Variable], functs : List[(Boogie.FunctionAp
   // Generates trigger sets to cover the variables "vs", by searching the expression "toSearch".
   // Returns a list of pairs of lists of trigger sets couple with the extra variables they require to be quantified over (each list of triggers must contain trigger sets which employ exactly the same extra variables).
   def generateTriggers(vs: List[Variable], toSearch : Expression) : List[(List[Trigger],List[Variable])] = {
-    val functionApps : (List[(Boogie.FunctionApp,Set[Variable],Set[Variable])]) = getLimitedFunctionAppsContaining(vs, toSearch) // find suitable function applications
+    val functionApps : (List[(Boogie.FunctionApp,Set[Variable],Set[Variable])]) = getFunctionAppsContaining(vs, toSearch) // find suitable function applications
     if (functionApps.isEmpty) List() else {
       var triggerSetsToUse : List[(Trigger,Set[Variable])] = buildTriggersCovering(Set() ++ vs, functionApps, Nil, Set())
       var groupedTriggerSets : List[(List[Trigger],List[Variable])] = List() // group trigger sets by those which use the same sets of extra boolean variables
