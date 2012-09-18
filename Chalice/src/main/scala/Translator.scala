@@ -2052,8 +2052,10 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
       trrec(e, evalEtran)
     case _:SeqQuantification => throw new InternalErrorException("should be desugared")
     case tq @ TypeQuantification(Forall, _, _, e, _) =>
-      var (ee,l) = trrecursive(e)
-      ((Boogie.Forall(Nil, tq.variables map { v => Variable2BVar(v)}, generateTriggers(tq.variables,e), ee)),l)
+      val(ee,l) = trrecursive(e)
+      val groupedTriggerSets = generateTriggers(tq.variables,e)
+      val (triggers,extraVars) = if (groupedTriggerSets.isEmpty) (Nil,Nil) else (groupedTriggerSets.head) // TODO: deal with all elements of list
+      ((Boogie.Forall(Nil, (tq.variables ::: extraVars) map { v => Variable2BVar(v)}, triggers, ee)),l)
     case tq @ TypeQuantification(Exists, _, _, e, _) =>
       var (ee,l) = trrecursive(e)
       ((Boogie.Exists(Nil, tq.variables map { v => Variable2BVar(v)}, Nil, ee)),l)
@@ -2061,45 +2063,84 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
   }
   
     // this is used for searching for triggers for quantifiers around this expression
-    def getLimitedFunctionAppsContaining(vs:List[Variable], toSearch : Expression): List[(Boogie.FunctionApp,Set[Variable])] = {
-      var functions: List[(Boogie.FunctionApp,Set[Variable])] = List()
-      toSearch visit {_ match {
+    def getLimitedFunctionAppsContaining(vs:List[Variable], toSearch : Expression): (List[(Boogie.FunctionApp,Set[Variable],Set[Variable])]) = {
+      var functions: List[(Boogie.FunctionApp,Set[Variable],Set[Variable])] = List()
+
+      toSearch visit {
+      _ match {
         case fapp@FunctionApplication(obj, id, args) =>
+          var extraVars : Set[Variable] = Set()
+	  val freshBoolVar : (() => Option[Expression]) = {() =>
+	    val newV = new Variable("b", new Type(BoolClass))
+            extraVars += newV;
+	    Some(new VariableExpr(newV))
+	  }          
+	  val boolExprEliminator : (Expression => Option[Expression]) = ((expr:Expression) =>
+	  expr match {
+	    case exp@Not(e) => freshBoolVar()
+            case exp@Iff(e0,e1) => freshBoolVar()
+	    case exp@Implies(e0,e1) => freshBoolVar()
+	    case exp@And(e0,e1) => freshBoolVar()
+	    case exp@Or(e0,e1) => freshBoolVar()
+	    case Eq(e0,e1) => freshBoolVar()
+	    case Neq(e0,e1) => freshBoolVar()
+	    case Less(e0,e1) => freshBoolVar()
+	    case AtMost(e0,e1) => freshBoolVar()
+	    case AtLeast(e0,e1) => freshBoolVar()
+	    case Greater(e0,e1) => freshBoolVar()
+	    case _ => None
+	  });
           var containedVars : Set[Variable] = Set()
-          fapp visit {_ match {
+          val processedArgs = args map (_.transform(boolExprEliminator)) // eliminate all boolean expressions forbidden from triggers, and replace with "extraVars"
+          processedArgs map {e => e visit {_ match {
             case ve@VariableExpr(s) =>
               val v : Variable = ve.v
               if (vs.contains(v)) (containedVars += v)
             case _ =>}
           }
+          }
           if (!containedVars.isEmpty) {
-            var fullArgs = if (!fapp.f.isStatic) (obj :: args) else (args)
-            var noOldETran = this.UseCurrentAsOld();
+            var fullArgs = if (!fapp.f.isStatic) (obj :: processedArgs) else (processedArgs)
+            var noOldETran = this.UseCurrentAsOld();       
             var trArgs = fullArgs map {arg => noOldETran.Tr(arg)} // translate args
-            functions = (FunctionApp(functionName(fapp.f)+"#limited", Heap :: trArgs),containedVars) :: functions
+            functions ::= (FunctionApp(functionName(fapp.f)+"#limited", Heap :: trArgs),containedVars,extraVars)
           }
         case _ =>}
       }
       functions
     }
+    
+    
 
   
   // Precondition : if vars is non-empty then every (f,vs) pair in functs satisfies the property that vars and vs are not disjoint.
-  def buildTriggersCovering(vars : Set[Variable], functs : List[(Boogie.FunctionApp,Set[Variable])], currentTrigger : List[Expr]) : List[Trigger] = {
-    if (vars.isEmpty) (List(Boogie.Trigger(currentTrigger)))
+def buildTriggersCovering(vars : Set[Variable], functs : List[(Boogie.FunctionApp,Set[Variable],Set[Variable])], currentTrigger : List[Expr], extraVars : Set[Variable]) : List[(Trigger,Set[Variable])] = {
+  if (vars.isEmpty) (List((Boogie.Trigger(currentTrigger),extraVars)))
     else (functs match {
-      case Nil => Nil
-      case ((f,vs) :: rest) => {  
+      case Nil => Nil // this branch didn't result in a solution
+      case ((f,vs,extra) :: rest) => {  
         val needed : Set[Variable] = vars.diff(vs)
-        buildTriggersCovering(needed, (rest.filter(func => !func._2.intersect(needed).isEmpty)), f :: currentTrigger) ::: buildTriggersCovering(vars, rest, currentTrigger)
+        buildTriggersCovering(needed, (rest.filter(func => !func._2.intersect(needed).isEmpty)), f :: currentTrigger, extraVars|extra) ::: buildTriggersCovering(vars, rest, currentTrigger, extraVars)
         }
       }
     )
   }
   
-  def generateTriggers(vs: List[Variable], toSearch : Expression) : List[Trigger] = {
-    val functionApps : List[(Boogie.FunctionApp,Set[Variable])] = getLimitedFunctionAppsContaining(vs, toSearch)
-    if (functionApps.isEmpty) (Nil) else (buildTriggersCovering(Set() ++ vs, functionApps, Nil))
+  def generateTriggers(vs: List[Variable], toSearch : Expression) : List[(List[Trigger],List[Variable])] = {
+    val functionApps : (List[(Boogie.FunctionApp,Set[Variable],Set[Variable])]) = getLimitedFunctionAppsContaining(vs, toSearch)
+    if (functionApps.isEmpty) List() else {
+      var triggerSetsToUse : List[(Trigger,Set[Variable])] = buildTriggersCovering(Set() ++ vs, functionApps, Nil, Set())
+      var groupedTriggerSets : List[(List[Trigger],List[Variable])] = List()
+      
+      while (!triggerSetsToUse.isEmpty) {
+        triggerSetsToUse.partition((ts : (Trigger,Set[Variable])) => triggerSetsToUse.head._2.equals(ts._2)) match {
+          case (sameVars,rest) => 
+            triggerSetsToUse = rest;
+            groupedTriggerSets ::= ((sameVars map (_._1)), sameVars.head._2.toList)
+        }
+      }
+      groupedTriggerSets
+    }
   }
 
   
