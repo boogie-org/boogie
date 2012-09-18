@@ -2054,27 +2054,56 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
     case tq @ TypeQuantification(Forall, _, _, e, _) =>
       val(ee,l) = trrecursive(e)
       val groupedTriggerSets = generateTriggers(tq.variables,e)
-      val (triggers,extraVars) = if (groupedTriggerSets.isEmpty) (Nil,Nil) else (groupedTriggerSets.head) // TODO: deal with all elements of list
-      ((Boogie.Forall(Nil, (tq.variables ::: extraVars) map { v => Variable2BVar(v)}, triggers, ee)),l)
+      val oneQuantifier : (((List[Trigger],List[Variable])) => Boogie.Expr) = ((trigsAndExtraVars) => (Boogie.Forall(Nil, (tq.variables ::: trigsAndExtraVars._2) map { v => Variable2BVar(v)}, trigsAndExtraVars._1, ee)))
+      var firstTriggerSet : (List[Trigger],List[Variable]) = (Nil,Nil);
+      var restTriggerSet : List[(List[Trigger],List[Variable])] = Nil;
+      
+      groupedTriggerSets match {
+        case Nil =>
+          firstTriggerSet = (Nil,Nil); // we will generate no triggers for this quantifier
+          restTriggerSet = Nil
+        case ts :: rest =>
+          firstTriggerSet = ts;
+          restTriggerSet = rest
+      }
+      (restTriggerSet.foldRight(oneQuantifier(firstTriggerSet))((trigset,expr) => (oneQuantifier(trigset) && expr)),l)
     case tq @ TypeQuantification(Exists, _, _, e, _) =>
       var (ee,l) = trrecursive(e)
       ((Boogie.Exists(Nil, tq.variables map { v => Variable2BVar(v)}, Nil, ee)),l)
     }
   }
   
-    // this is used for searching for triggers for quantifiers around this expression
+    // This is used for searching for triggers for quantifiers around the expression "toSearch". The list "vs" gives the variables which need triggering
+    // Returns a list of function applications (the limited forms of the corresponding functions) paired with two sets of variables.
+    // The first set of variables shows which of the "vs" occur (useful for deciding how to select applications for trigger sets later)
+    // The second set of variables indicated the extra boolean variables which were introduced to "hide" problematic logical/comparison operators which may not occur in triggers.
+    // e.g., if vs = [x] and toSearch = f(x, y ==> z) then a singleton list will be returned, containing (f(x,b),{x},{b}).
     def getLimitedFunctionAppsContaining(vs:List[Variable], toSearch : Expression): (List[(Boogie.FunctionApp,Set[Variable],Set[Variable])]) = {
-      var functions: List[(Boogie.FunctionApp,Set[Variable],Set[Variable])] = List()
+      var functions: List[(Boogie.FunctionApp,Set[Variable],Set[Variable])] = List() // accumulate candidate functions to return
+      var nestedBoundVars : List[Variable] = List(); // count all variables bound in nested quantifiers, to avoid considering function applications mentioning these
 
+      // get all nested bound vars
+      toSearch visit {
+        _ match {          
+          case qe : Quantification =>
+            nestedBoundVars :::= qe.variables
+          case _ =>
+          }
+      }
+
+      // get all function applications
       toSearch visit {
       _ match {
         case fapp@FunctionApplication(obj, id, args) =>
-          var extraVars : Set[Variable] = Set()
+          var extraVars : Set[Variable] = Set() // collect extra variables generated for this term
+          var containsNestedBoundVars = false // flag to rule out this term
+          // closure to generate fresh boolean variable
 	  val freshBoolVar : (() => Option[Expression]) = {() =>
 	    val newV = new Variable("b", new Type(BoolClass))
             extraVars += newV;
 	    Some(new VariableExpr(newV))
 	  }          
+	  // replaces problematic logical/comparison expressions with fresh boolean variables
 	  val boolExprEliminator : (Expression => Option[Expression]) = ((expr:Expression) =>
 	  expr match {
 	    case exp@Not(e) => freshBoolVar()
@@ -2092,14 +2121,16 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
 	  });
           var containedVars : Set[Variable] = Set()
           val processedArgs = args map (_.transform(boolExprEliminator)) // eliminate all boolean expressions forbidden from triggers, and replace with "extraVars"
+          // collect all the sought (vs) variables in the function application
           processedArgs map {e => e visit {_ match {
             case ve@VariableExpr(s) =>
               val v : Variable = ve.v
+              if (nestedBoundVars.contains(v)) (containsNestedBoundVars = true);
               if (vs.contains(v)) (containedVars += v)
             case _ =>}
           }
           }
-          if (!containedVars.isEmpty) {
+          if (!containsNestedBoundVars && !containedVars.isEmpty) {
             var fullArgs = if (!fapp.f.isStatic) (obj :: processedArgs) else (processedArgs)
             var noOldETran = this.UseCurrentAsOld();       
             var trArgs = fullArgs map {arg => noOldETran.Tr(arg)} // translate args
@@ -2114,23 +2145,29 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
 
   
   // Precondition : if vars is non-empty then every (f,vs) pair in functs satisfies the property that vars and vs are not disjoint.
+  // Finds trigger sets by selecting entries from "functs" until all of "vars" occur, and accumulating the extra variables needed for each function term.
+  // Returns a list of the trigger sets found, paired with the extra boolean variables they use
 def buildTriggersCovering(vars : Set[Variable], functs : List[(Boogie.FunctionApp,Set[Variable],Set[Variable])], currentTrigger : List[Expr], extraVars : Set[Variable]) : List[(Trigger,Set[Variable])] = {
-  if (vars.isEmpty) (List((Boogie.Trigger(currentTrigger),extraVars)))
+  if (vars.isEmpty) (List((Boogie.Trigger(currentTrigger),extraVars))) // we have found a suitable trigger set
     else (functs match {
       case Nil => Nil // this branch didn't result in a solution
       case ((f,vs,extra) :: rest) => {  
-        val needed : Set[Variable] = vars.diff(vs)
+        val needed : Set[Variable] = vars.diff(vs) // variables still not triggered
+        // try adding the next element of functs, or not..
         buildTriggersCovering(needed, (rest.filter(func => !func._2.intersect(needed).isEmpty)), f :: currentTrigger, extraVars|extra) ::: buildTriggersCovering(vars, rest, currentTrigger, extraVars)
         }
       }
     )
   }
   
+  
+  // Generates trigger sets to cover the variables "vs", by searching the expression "toSearch".
+  // Returns a list of pairs of lists of trigger sets couple with the extra variables they require to be quantified over (each list of triggers must contain trigger sets which employ exactly the same extra variables).
   def generateTriggers(vs: List[Variable], toSearch : Expression) : List[(List[Trigger],List[Variable])] = {
-    val functionApps : (List[(Boogie.FunctionApp,Set[Variable],Set[Variable])]) = getLimitedFunctionAppsContaining(vs, toSearch)
+    val functionApps : (List[(Boogie.FunctionApp,Set[Variable],Set[Variable])]) = getLimitedFunctionAppsContaining(vs, toSearch) // find suitable function applications
     if (functionApps.isEmpty) List() else {
       var triggerSetsToUse : List[(Trigger,Set[Variable])] = buildTriggersCovering(Set() ++ vs, functionApps, Nil, Set())
-      var groupedTriggerSets : List[(List[Trigger],List[Variable])] = List()
+      var groupedTriggerSets : List[(List[Trigger],List[Variable])] = List() // group trigger sets by those which use the same sets of extra boolean variables
       
       while (!triggerSetsToUse.isEmpty) {
         triggerSetsToUse.partition((ts : (Trigger,Set[Variable])) => triggerSetsToUse.head._2.equals(ts._2)) match {
