@@ -19,10 +19,11 @@ namespace GPUVerify.InvariantGenerationRules
 
         public override void GenerateCandidates(Implementation Impl, IRegion region)
         {
-            if (verifier.uniformityAnalyser.IsUniform(Impl.Name, region.Guard()))
+            var guard = region.Guard();
+            if (guard != null && verifier.uniformityAnalyser.IsUniform(Impl.Name, guard))
             {
-                VariablesOccurringInExpressionVisitor visitor = new VariablesOccurringInExpressionVisitor();
-                visitor.VisitExpr(region.Guard());
+                var visitor = new VariablesOccurringInExpressionVisitor();
+                visitor.VisitExpr(guard);
                 foreach (Variable v in visitor.GetVariables())
                 {
                     if (!verifier.ContainsNamedVariable(LoopInvariantGenerator.GetModifiedVariables(region), v.Name))

@@ -383,6 +383,11 @@ namespace GPUVerify
 
             if (CommandLineOptions.Inference)
             {
+                foreach (var proc in Program.TopLevelDeclarations.OfType<Procedure>().ToList())
+                {
+                    RaceInstrumenter.DoHoudiniPointerAnalysis(proc);
+                }
+
                 foreach (var impl in Program.TopLevelDeclarations.OfType<Implementation>().ToList())
                 {
                     LoopInvariantGenerator.PreInstrument(this, impl);
@@ -470,7 +475,13 @@ namespace GPUVerify
 
         private void DoUniformityAnalysis()
         {
-            uniformityAnalyser = new UniformityAnalyser(this);
+            var entryPoints = new HashSet<Implementation>();
+            entryPoints.Add(KernelImplementation);
+
+            var nonUniformVars = new Variable[] { _X, _Y, _Z, _GROUP_X, _GROUP_Y, _GROUP_Z };
+
+            uniformityAnalyser = new UniformityAnalyser(Program, CommandLineOptions.DoUniformityAnalysis, CommandLineOptions.Unstructured,
+                                                        entryPoints, nonUniformVars);
             uniformityAnalyser.Analyse();
         }
 
@@ -1899,7 +1910,7 @@ namespace GPUVerify
             {
                 if (CommandLineOptions.SmartPredication)
                 {
-                    SmartBlockPredicator.Predicate(Program);
+                    SmartBlockPredicator.Predicate(Program, proc => proc != KernelProcedure, uniformityAnalyser);
                 }
                 else
                 {

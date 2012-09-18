@@ -14,7 +14,7 @@ public class SmartBlockPredicator {
   Graph<Block> blockGraph;
   List<Tuple<Block, bool>> sortedBlocks;
 
-  bool useProcedurePredicates = true;
+  Func<Procedure, bool> useProcedurePredicates;
 
   Dictionary<Block, Variable> predMap, defMap;
   Dictionary<Block, HashSet<Variable>> ownedMap;
@@ -26,15 +26,26 @@ public class SmartBlockPredicator {
     new Dictionary<Microsoft.Boogie.Type, IdentifierExpr>();
   Dictionary<Block, Expr> blockIds = new Dictionary<Block, Expr>();
   HashSet<Block> doneBlocks = new HashSet<Block>();
+  bool myUseProcedurePredicates;
+  UniformityAnalyser uni;
 
-  SmartBlockPredicator(Program p, Implementation i, bool upp) {
+  SmartBlockPredicator(Program p, Implementation i, Func<Procedure, bool> upp, UniformityAnalyser u) {
     prog = p;
     impl = i;
     useProcedurePredicates = upp;
+    myUseProcedurePredicates = useProcedurePredicates(i.Proc);
+    uni = u;
   }
 
   void PredicateCmd(Expr p, List<Block> blocks, Block block, Cmd cmd, out Block nextBlock) {
-    if (!useProcedurePredicates && cmd is CallCmd) {
+    var cCmd = cmd as CallCmd;
+    if (cCmd != null && !useProcedurePredicates(cCmd.Proc)) {
+      if (p == null) {
+        block.Cmds.Add(cmd);
+        nextBlock = block;
+        return;
+      }
+
       var trueBlock = new Block();
       blocks.Add(trueBlock);
       trueBlock.Label = block.Label + ".call.true";
@@ -62,12 +73,14 @@ public class SmartBlockPredicator {
   }
 
   void PredicateCmd(Expr p, CmdSeq cmdSeq, Cmd cmd) {
-    if (p == null) {
+    if (cmd is CallCmd) {
+      var cCmd = (CallCmd)cmd;
+      Debug.Assert(useProcedurePredicates(cCmd.Proc));
+      cCmd.Ins.Insert(0, p != null ? p : Expr.True);
+      cmdSeq.Add(cCmd);
+    } else if (p == null) {
       cmdSeq.Add(cmd);
-      return;
-    }
-
-    if (cmd is AssignCmd) {
+    } else if (cmd is AssignCmd) {
       var aCmd = (AssignCmd)cmd;
       cmdSeq.Add(new AssignCmd(Token.NoToken, aCmd.Lhss,
                    new List<Expr>(aCmd.Lhss.Zip(aCmd.Rhss, (lhs, rhs) =>
@@ -106,31 +119,31 @@ public class SmartBlockPredicator {
                                       new IfThenElse(Token.NoToken),
                                       new ExprSeq(p, havocTempExpr, v))));
       }
-    } else if (cmd is CallCmd) {
-      Debug.Assert(useProcedurePredicates);
-      var cCmd = (CallCmd)cmd;
-      cCmd.Ins.Insert(0, p);
-      cmdSeq.Add(cCmd);
-    }
-    else if (cmd is CommentCmd) {
+    } else if (cmd is CommentCmd) {
       // skip
-    }
-    else if (cmd is StateCmd) {
+    } else if (cmd is StateCmd) {
       var sCmd = (StateCmd)cmd;
       var newCmdSeq = new CmdSeq();
       foreach (Cmd c in sCmd.Cmds)
         PredicateCmd(p, newCmdSeq, c);
       sCmd.Cmds = newCmdSeq;
       cmdSeq.Add(sCmd);
-    }
-    else {
+    } else {
       Console.WriteLine("Unsupported cmd: " + cmd.GetType().ToString());
     }
   }
 
-  void PredicateTransferCmd(Expr p, Block src, CmdSeq cmdSeq, TransferCmd cmd) {
+  // hasPredicatedRegion is true iff the block or its targets are predicated
+  // (i.e. we enter, stay within or exit a predicated region).
+  void PredicateTransferCmd(Expr p, Block src, CmdSeq cmdSeq, TransferCmd cmd, out bool hasPredicatedRegion) {
+    hasPredicatedRegion = predMap.ContainsKey(src);
+
     if (cmd is GotoCmd) {
       var gCmd = (GotoCmd)cmd;
+
+      hasPredicatedRegion = hasPredicatedRegion ||
+        gCmd.labelTargets.Cast<Block>().Any(b => predMap.ContainsKey(b));
+
       if (gCmd.labelTargets.Length == 1) {
         if (defMap.ContainsKey(gCmd.labelTargets[0]))
           PredicateCmd(p, cmdSeq,
@@ -138,8 +151,12 @@ public class SmartBlockPredicator {
                                         Expr.Ident(predMap[gCmd.labelTargets[0]]), Expr.True));
       } else {
         Debug.Assert(gCmd.labelTargets.Length > 1);
-        Debug.Assert(gCmd.labelTargets.Cast<Block>().All(t => partInfo.ContainsKey(t)));
+        Debug.Assert(gCmd.labelTargets.Cast<Block>().All(t => uni.IsUniform(impl.Name, t) ||
+                                                              partInfo.ContainsKey(t)));
         foreach (Block target in gCmd.labelTargets) {
+          if (!partInfo.ContainsKey(target))
+            continue;
+
           var part = partInfo[target];
           if (defMap.ContainsKey(part.realDest))
             PredicateCmd(p, cmdSeq,
@@ -191,12 +208,16 @@ public class SmartBlockPredicator {
     var ownedPreds = new HashSet<Variable>();
     ownedMap[header] = ownedPreds;
 
-    predMap[header] = headPredicate;
-    defMap[header] = headPredicate;
-    regionPreds.Add(new Tuple<Block, Variable>(header, headPredicate));
+    if (headPredicate != null) {
+      predMap[header] = headPredicate;
+      defMap[header] = headPredicate;
+      regionPreds.Add(new Tuple<Block, Variable>(header, headPredicate));
+    }
 
     while (i.MoveNext()) {
       var block = i.Current;
+      if (uni != null && uni.IsUniform(impl.Name, block.Item1))
+        continue;
       if (block.Item2) {
         if (block.Item1 == header)
           return;
@@ -247,7 +268,7 @@ public class SmartBlockPredicator {
     ownedMap = new Dictionary<Block, HashSet<Variable>>();
     parentMap = new Dictionary<Block, Block>();
     AssignPredicates(blockGraph, dom, pdom, iter,
-                     useProcedurePredicates ? impl.InParams[0] : null,
+                     myUseProcedurePredicates ? impl.InParams[0] : null,
                      ref predCount);
   }
 
@@ -303,6 +324,9 @@ public class SmartBlockPredicator {
   Dictionary<Block, PartInfo> BuildPartitionInfo() {
     var partInfo = new Dictionary<Block, PartInfo>();
     foreach (var block in blockGraph.Nodes) {
+      if (uni.IsUniform(impl.Name, block))
+        continue;
+
       var parts = block.Cmds.Cast<Cmd>().TakeWhile(
           c => c is AssumeCmd &&
           QKeyValue.FindBoolAttribute(((AssumeCmd)c).Attributes, "partition"));
@@ -335,79 +359,98 @@ public class SmartBlockPredicator {
     AssignPredicates();
     partInfo = BuildPartitionInfo();
 
-    if (useProcedurePredicates)
+    if (myUseProcedurePredicates)
       fp = Expr.Ident(impl.InParams[0]);
 
     var newBlocks = new List<Block>();
     Block prevBlock = null;
     foreach (var n in sortedBlocks) {
-      var p = predMap[n.Item1];
-      var pExpr = Expr.Ident(p);
+      if (predMap.ContainsKey(n.Item1)) {
+        var p = predMap[n.Item1];
+        var pExpr = Expr.Ident(p);
 
-      if (n.Item2) {
-        var backedgeBlock = new Block();
-        newBlocks.Add(backedgeBlock);
+        if (n.Item2) {
+          var backedgeBlock = new Block();
+          newBlocks.Add(backedgeBlock);
 
-        backedgeBlock.Label = n.Item1.Label + ".backedge";
-        backedgeBlock.Cmds = new CmdSeq(new AssumeCmd(Token.NoToken, pExpr,
-          new QKeyValue(Token.NoToken, "backedge", new List<object>(), null)));
-        backedgeBlock.TransferCmd = new GotoCmd(Token.NoToken,
-                                                new BlockSeq(n.Item1));
+          backedgeBlock.Label = n.Item1.Label + ".backedge";
+          backedgeBlock.Cmds = new CmdSeq(new AssumeCmd(Token.NoToken, pExpr,
+            new QKeyValue(Token.NoToken, "backedge", new List<object>(), null)));
+          backedgeBlock.TransferCmd = new GotoCmd(Token.NoToken,
+                                                  new BlockSeq(n.Item1));
 
-        var tailBlock = new Block();
-        newBlocks.Add(tailBlock);
+          var tailBlock = new Block();
+          newBlocks.Add(tailBlock);
 
-        tailBlock.Label = n.Item1.Label + ".tail";
-        tailBlock.Cmds = new CmdSeq(new AssumeCmd(Token.NoToken,
-                                             Expr.Not(pExpr)));
+          tailBlock.Label = n.Item1.Label + ".tail";
+          tailBlock.Cmds = new CmdSeq(new AssumeCmd(Token.NoToken,
+                                               Expr.Not(pExpr)));
 
-        if (prevBlock != null)
-          prevBlock.TransferCmd = new GotoCmd(Token.NoToken,
-                                        new BlockSeq(backedgeBlock, tailBlock));
-        prevBlock = tailBlock;
+          if (prevBlock != null)
+            prevBlock.TransferCmd = new GotoCmd(Token.NoToken,
+                                          new BlockSeq(backedgeBlock, tailBlock));
+          prevBlock = tailBlock;
+        } else {
+          PredicateBlock(pExpr, n.Item1, newBlocks, ref prevBlock);
+        }
       } else {
-        var runBlock = n.Item1;
-        var oldCmdSeq = runBlock.Cmds;
-        runBlock.Cmds = new CmdSeq();
-        newBlocks.Add(runBlock);
-        if (prevBlock != null)
-          prevBlock.TransferCmd = new GotoCmd(Token.NoToken,
-                                              new BlockSeq(runBlock));
-
-        if (parentMap.ContainsKey(runBlock)) {
-          var parent = parentMap[runBlock];
-          if (predMap.ContainsKey(parent)) {
-            var parentPred = predMap[parent];
-            if (parentPred != null) {
-              runBlock.Cmds.Add(new AssertCmd(Token.NoToken,
-                                              Expr.Imp(pExpr, Expr.Ident(parentPred))));
-            }
-          }
+        if (!n.Item2) {
+          PredicateBlock(null, n.Item1, newBlocks, ref prevBlock);
         }
-
-        var transferCmd = runBlock.TransferCmd;
-        foreach (Cmd cmd in oldCmdSeq)
-          PredicateCmd(pExpr, newBlocks, runBlock, cmd, out runBlock);
-
-        if (ownedMap.ContainsKey(n.Item1)) {
-          var owned = ownedMap[n.Item1];
-          foreach (var v in owned)
-            runBlock.Cmds.Add(Cmd.SimpleAssign(Token.NoToken, Expr.Ident(v), Expr.False));
-        }
-
-        PredicateTransferCmd(pExpr, runBlock, runBlock.Cmds, transferCmd);
-
-        prevBlock = runBlock;
-        doneBlocks.Add(runBlock);
       }
     }
 
-    prevBlock.TransferCmd = new ReturnCmd(Token.NoToken);
+    if (prevBlock != null)
+      prevBlock.TransferCmd = new ReturnCmd(Token.NoToken);
+
     impl.Blocks = newBlocks;
   }
 
+  private void PredicateBlock(Expr pExpr, Block block, List<Block> newBlocks, ref Block prevBlock) {
+    var firstBlock = block;
+
+    var oldCmdSeq = block.Cmds;
+    block.Cmds = new CmdSeq();
+    newBlocks.Add(block);
+    if (prevBlock != null) {
+      prevBlock.TransferCmd = new GotoCmd(Token.NoToken, new BlockSeq(block));
+    }
+
+    if (parentMap.ContainsKey(block)) {
+      var parent = parentMap[block];
+      if (predMap.ContainsKey(parent)) {
+        var parentPred = predMap[parent];
+        if (parentPred != null) {
+          block.Cmds.Add(new AssertCmd(Token.NoToken,
+                                          pExpr != null ? (Expr)Expr.Imp(pExpr, Expr.Ident(parentPred))
+                                                        : Expr.Ident(parentPred)));
+        }
+      }
+    }
+
+    var transferCmd = block.TransferCmd;
+    foreach (Cmd cmd in oldCmdSeq)
+      PredicateCmd(pExpr, newBlocks, block, cmd, out block);
+
+    if (ownedMap.ContainsKey(firstBlock)) {
+      var owned = ownedMap[firstBlock];
+      foreach (var v in owned)
+        block.Cmds.Add(Cmd.SimpleAssign(Token.NoToken, Expr.Ident(v), Expr.False));
+    }
+
+    bool hasPredicatedRegion;
+    PredicateTransferCmd(pExpr, block, block.Cmds, transferCmd, out hasPredicatedRegion);
+
+    if (hasPredicatedRegion)
+      prevBlock = block;
+    else
+      prevBlock = null;
+
+    doneBlocks.Add(block);
+  }
+
   private Expr CreateIfFPThenElse(Expr then, Expr eElse) {
-    if (useProcedurePredicates) {
+    if (myUseProcedurePredicates) {
       return new NAryExpr(Token.NoToken,
                  new IfThenElse(Token.NoToken),
                  new ExprSeq(fp, then, eElse));
@@ -417,49 +460,60 @@ public class SmartBlockPredicator {
   }
 
   public static void Predicate(Program p,
-                               bool useProcedurePredicates = true) {
-    foreach (var decl in p.TopLevelDeclarations.ToList()) {
-      if (useProcedurePredicates && decl is DeclWithFormals && !(decl is Function)) {
-        var dwf = (DeclWithFormals)decl;
-        var fpVar = new Formal(Token.NoToken,
-                               new TypedIdent(Token.NoToken, "_P",
-                                              Microsoft.Boogie.Type.Bool),
-                               /*incoming=*/true);
-        dwf.InParams = new VariableSeq(
-          (new Variable[] {fpVar}.Concat(dwf.InParams.Cast<Variable>()))
-            .ToArray());
+                               Func<Procedure, bool> useProcedurePredicates = null,
+                               UniformityAnalyser uni = null) {
+    useProcedurePredicates = useProcedurePredicates ?? (proc => false);
+    if (uni != null) {
+      var oldUPP = useProcedurePredicates;
+      useProcedurePredicates = proc => oldUPP(proc) && !uni.IsUniform(proc.Name);
+    }
 
-        if (dwf is Procedure)
-        {
-            var proc = (Procedure)dwf;
-            var newRequires = new RequiresSeq();
-            foreach (Requires r in proc.Requires)
-            {
-                newRequires.Add(new Requires(r.Free,
-                    new EnabledReplacementVisitor(new IdentifierExpr(Token.NoToken, fpVar)).VisitExpr(r.Condition)));
-            }
-            var newEnsures = new EnsuresSeq();
-            foreach (Ensures e in proc.Ensures)
-            {
-                newEnsures.Add(new Ensures(e.Free,
-                    new EnabledReplacementVisitor(new IdentifierExpr(Token.NoToken, fpVar)).VisitExpr(e.Condition)));
-            }
+    foreach (var decl in p.TopLevelDeclarations.ToList()) {
+      if (decl is Procedure || decl is Implementation) {
+        var proc = decl as Procedure;
+        Implementation impl = null;
+        if (proc == null) {
+          impl = (Implementation)decl;
+          proc = impl.Proc;
         }
 
-      }
+        bool upp = useProcedurePredicates(proc);
+        if (upp) {
+          var dwf = (DeclWithFormals)decl;
+          var fpVar = new Formal(Token.NoToken,
+                                 new TypedIdent(Token.NoToken, "_P",
+                                                Microsoft.Boogie.Type.Bool),
+                                 /*incoming=*/true);
+          dwf.InParams = new VariableSeq(
+            (new Variable[] {fpVar}.Concat(dwf.InParams.Cast<Variable>()))
+              .ToArray());
 
-      try {
-        var impl = decl as Implementation;
-        if (impl != null)
-          new SmartBlockPredicator(p, impl, useProcedurePredicates).PredicateImplementation();
+          if (impl == null) {
+            var newRequires = new RequiresSeq();
+            foreach (Requires r in proc.Requires) {
+              newRequires.Add(new Requires(r.Free,
+                new EnabledReplacementVisitor(new IdentifierExpr(Token.NoToken, fpVar)).VisitExpr(r.Condition)));
+            }
+            var newEnsures = new EnsuresSeq();
+            foreach (Ensures e in proc.Ensures) {
+              newEnsures.Add(new Ensures(e.Free,
+                new EnabledReplacementVisitor(new IdentifierExpr(Token.NoToken, fpVar)).VisitExpr(e.Condition)));
+            }
+          }
+        }
+
+        if (impl != null) {
+          try {
+            new SmartBlockPredicator(p, impl, useProcedurePredicates, uni).PredicateImplementation();
+          } catch (Program.IrreducibleLoopException) { }
+        }
       }
-      catch (Program.IrreducibleLoopException) { }
     }
   }
 
   public static void Predicate(Program p, Implementation impl) {
     try {
-      new SmartBlockPredicator(p, impl, false).PredicateImplementation();
+      new SmartBlockPredicator(p, impl, proc => false, null).PredicateImplementation();
     }
     catch (Program.IrreducibleLoopException) { }
   }

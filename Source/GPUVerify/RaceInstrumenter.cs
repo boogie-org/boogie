@@ -551,20 +551,10 @@ namespace GPUVerify {
         AddNoReadOrWriteCandidateRequires(Proc, v);
         AddReadOrWrittenOffsetIsThreadIdCandidateRequires(Proc, v);
       }
-
-      DoHoudiniPointerAnalysis(Proc);
-
     }
 
-    private void DoHoudiniPointerAnalysis(Procedure Proc) {
-      HashSet<string> alreadyConsidered = new HashSet<string>();
-
+    public void DoHoudiniPointerAnalysis(Procedure Proc) {
       foreach (Variable v in Proc.InParams) {
-        string strippedVarName = GPUVerifier.StripThreadIdentifier(v.Name);
-        if (alreadyConsidered.Contains(strippedVarName)) {
-          continue;
-        }
-        alreadyConsidered.Add(strippedVarName);
         if (v.TypedIdent.Type is CtorType) {
           CtorType ct = v.TypedIdent.Type as CtorType;
           if (ct.Decl.Name.Equals("ptr")) {
@@ -575,42 +565,37 @@ namespace GPUVerify {
                 continue;
               }
 
-              // This will need to be adapted to work with uniformity analysis
-              foreach (string thread in new string[] { "1", "2" }) {
-                Expr DisjunctionOverPointerSet = null;
-                foreach (var array in arrayCollection) {
-                  Expr PointerSetDisjunct = Expr.Eq(MakePtrBaseExpr(v, strippedVarName, thread), MakeArrayIdExpr(array));
-                  DisjunctionOverPointerSet = (DisjunctionOverPointerSet == null ? PointerSetDisjunct : Expr.Or(DisjunctionOverPointerSet, PointerSetDisjunct));
-                  verifier.AddCandidateRequires(Proc,
-                      Expr.Imp(new IdentifierExpr(Token.NoToken, "_P$" + thread, Microsoft.Boogie.Type.Bool),
-                          Expr.Neq(MakePtrBaseExpr(v, strippedVarName, thread), MakeArrayIdExpr(array))));
-                }
-                Debug.Assert(DisjunctionOverPointerSet != null);
+              Expr DisjunctionOverPointerSet = null;
+              foreach (var array in arrayCollection) {
+                Expr PointerSetDisjunct = Expr.Eq(MakePtrBaseExpr(v), MakeArrayIdExpr(array));
+                DisjunctionOverPointerSet = (DisjunctionOverPointerSet == null ? PointerSetDisjunct : Expr.Or(DisjunctionOverPointerSet, PointerSetDisjunct));
                 verifier.AddCandidateRequires(Proc,
-                    Expr.Imp(new IdentifierExpr(Token.NoToken, "_P$" + thread, Microsoft.Boogie.Type.Bool),
-                             DisjunctionOverPointerSet));
-                verifier.AddCandidateRequires(Proc,
-                    Expr.Imp(new IdentifierExpr(Token.NoToken, "_P$" + thread, Microsoft.Boogie.Type.Bool),
-                            Expr.Eq(MakePtrOffsetExpr(v, strippedVarName, thread), GPUVerifier.ZeroBV())));
+                        Expr.Neq(MakePtrBaseExpr(v), MakeArrayIdExpr(array)));
               }
+              Debug.Assert(DisjunctionOverPointerSet != null);
+              verifier.AddCandidateRequires(Proc, DisjunctionOverPointerSet);
+              verifier.AddCandidateRequires(Proc, Expr.Eq(MakePtrOffsetExpr(v), GPUVerifier.ZeroBV()));
             }
           }
         }
       }
     }
 
-    private static IdentifierExpr MakeArrayIdExpr(Variable array) {
-      return new IdentifierExpr(Token.NoToken, "$arrayId" + array.Name, null);
+    private IdentifierExpr MakeArrayIdExpr(Variable array) {
+      var arrayId = verifier.ResContext.LookUpVariable("$arrayId" + array.Name);
+      return new IdentifierExpr(Token.NoToken, arrayId);
     }
 
-    private static NAryExpr MakePtrBaseExpr(Variable v, string strippedVarName, string thread) {
-      return new NAryExpr(Token.NoToken, new FunctionCall(new IdentifierExpr(Token.NoToken, "base#MKPTR", v.TypedIdent.Type)),
-                                                  new ExprSeq(new Expr[] { new IdentifierExpr(Token.NoToken, strippedVarName + "$" + thread, v.TypedIdent.Type) }));
+    private NAryExpr MakePtrBaseExpr(Variable v) {
+      var baseSel = (Function)verifier.ResContext.LookUpProcedure("base#MKPTR");
+      return new NAryExpr(Token.NoToken, new FunctionCall(baseSel),
+                          new ExprSeq(new Expr[] { Expr.Ident(v) }));
     }
 
-    private static NAryExpr MakePtrOffsetExpr(Variable v, string strippedVarName, string thread) {
-      return new NAryExpr(Token.NoToken, new FunctionCall(new IdentifierExpr(Token.NoToken, "offset#MKPTR", v.TypedIdent.Type)),
-                                                  new ExprSeq(new Expr[] { new IdentifierExpr(Token.NoToken, strippedVarName + "$" + thread, v.TypedIdent.Type) }));
+    private NAryExpr MakePtrOffsetExpr(Variable v) {
+      var offsetSel = (Function)verifier.ResContext.LookUpProcedure("offset#MKPTR");
+      return new NAryExpr(Token.NoToken, new FunctionCall(offsetSel),
+                          new ExprSeq(new Expr[] { Expr.Ident(v) }));
     }
 
     public void AddRaceCheckingCandidateEnsures(Procedure Proc) {

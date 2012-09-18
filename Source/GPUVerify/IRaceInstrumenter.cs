@@ -23,6 +23,7 @@ namespace GPUVerify
 
         void AddSourceLocationLoopInvariants(Implementation impl, IRegion region);
 
+        void DoHoudiniPointerAnalysis(Procedure Proc);
         void AddStandardSourceVariablePreconditions();
 
         void AddStandardSourceVariablePostconditions();
