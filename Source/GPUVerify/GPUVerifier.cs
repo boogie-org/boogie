@@ -834,25 +834,25 @@ namespace GPUVerify
 
         
 
-        public Microsoft.Boogie.Type GetTypeOfIdX()
+        public static Microsoft.Boogie.Type GetTypeOfIdX()
         {
             Contract.Requires(_X != null);
             return _X.TypedIdent.Type;
         }
 
-        public Microsoft.Boogie.Type GetTypeOfIdY()
+        public static Microsoft.Boogie.Type GetTypeOfIdY()
         {
             Contract.Requires(_Y != null);
             return _Y.TypedIdent.Type;
         }
 
-        public Microsoft.Boogie.Type GetTypeOfIdZ()
+        public static Microsoft.Boogie.Type GetTypeOfIdZ()
         {
             Contract.Requires(_Z != null);
             return _Z.TypedIdent.Type;
         }
 
-        public Microsoft.Boogie.Type GetTypeOfId(string dimension)
+        public static Microsoft.Boogie.Type GetTypeOfId(string dimension)
         {
             Contract.Requires(dimension.Equals("X") || dimension.Equals("Y") || dimension.Equals("Z"));
             if (dimension.Equals("X")) return GetTypeOfIdX();
@@ -1060,7 +1060,7 @@ namespace GPUVerify
 
         }
 
-        internal Expr ThreadsInSameGroup()
+        internal static Expr ThreadsInSameGroup()
         {
             return Expr.And(
                                         Expr.And(
@@ -1297,7 +1297,7 @@ namespace GPUVerify
             return new Constant(tok, new TypedIdent(tok, resultWithoutThreadId.Name + "$" + number, GetTypeOfId(dimension)));
         }
 
-        internal Constant GetGroupId(string dimension)
+        internal static Constant GetGroupId(string dimension)
         {
             Contract.Requires(dimension.Equals("X") || dimension.Equals("Y") || dimension.Equals("Z"));
             if (dimension.Equals("X")) return _GROUP_X;
@@ -1307,7 +1307,7 @@ namespace GPUVerify
             return null;
         }
 
-        internal Constant MakeGroupId(string dimension, int number)
+        internal static Constant MakeGroupId(string dimension, int number)
         {
             Constant resultWithoutThreadId = GetGroupId(dimension);
             return new Constant(Token.NoToken, new TypedIdent(Token.NoToken, resultWithoutThreadId.Name + "$" + number, GetTypeOfId(dimension)));
@@ -1367,11 +1367,13 @@ namespace GPUVerify
                 Expr IfGuard2 = Expr.And(P2, LocalFence2);
 
                 bigblocks.Add(new BigBlock(Token.NoToken, null, new CmdSeq(),
-                    new IfCmd(Token.NoToken, IfGuard1, new StmtList(MakeResetAndHavocBlocks(1, KernelArrayInfo.getGroupSharedArrays()), Token.NoToken), null, null),
+                    new IfCmd(Token.NoToken, IfGuard1, new StmtList(MakeResetBlocks(1, KernelArrayInfo.getGroupSharedArrays()), Token.NoToken), null, null),
                     null));
                 bigblocks.Add(new BigBlock(Token.NoToken, null, new CmdSeq(),
-                    new IfCmd(Token.NoToken, IfGuard2, new StmtList(MakeResetAndHavocBlocks(2, KernelArrayInfo.getGroupSharedArrays()), Token.NoToken), null, null),
+                    new IfCmd(Token.NoToken, IfGuard2, new StmtList(MakeResetBlocks(2, KernelArrayInfo.getGroupSharedArrays()), Token.NoToken), null, null),
                     null));
+
+                bigblocks.AddRange(MakeHavocBlocks(KernelArrayInfo.getGroupSharedArrays()));
             }
 
             if (KernelArrayInfo.getGlobalArrays().Count > 0)
@@ -1380,19 +1382,13 @@ namespace GPUVerify
                 Expr IfGuard2 = Expr.And(P2, GlobalFence2);
 
                 bigblocks.Add(new BigBlock(Token.NoToken, null, new CmdSeq(),
-                    new IfCmd(Token.NoToken, IfGuard1, new StmtList(MakeResetAndHavocBlocks(1, KernelArrayInfo.getGlobalArrays()), Token.NoToken), null, null),
+                    new IfCmd(Token.NoToken, IfGuard1, new StmtList(MakeResetBlocks(1, KernelArrayInfo.getGlobalArrays()), Token.NoToken), null, null),
                     null));
                 bigblocks.Add(new BigBlock(Token.NoToken, null, new CmdSeq(),
-                    new IfCmd(Token.NoToken, IfGuard2, new StmtList(MakeResetAndHavocBlocks(2, KernelArrayInfo.getGlobalArrays()), Token.NoToken), null, null),
+                    new IfCmd(Token.NoToken, IfGuard2, new StmtList(MakeResetBlocks(2, KernelArrayInfo.getGlobalArrays()), Token.NoToken), null, null),
                     null));
-            }
 
-            foreach (Variable v in KernelArrayInfo.getAllNonLocalArrays())
-            {
-                if (!ArrayModelledAdversarially(v))
-                {
-                    bigblocks.Add(AssumeEqualityBetweenSharedArrays(v, P1, P2, LocalFence1, LocalFence2, GlobalFence1, GlobalFence2));
-                }
+                bigblocks.AddRange(MakeHavocBlocks(KernelArrayInfo.getGlobalArrays()));
             }
 
             StmtList statements = new StmtList(bigblocks, BarrierProcedure.tok);
@@ -1423,22 +1419,28 @@ namespace GPUVerify
                                     new LiteralExpr(Token.NoToken, BigNum.FromInt(1), 1));
         }
 
-        private List<BigBlock> MakeResetAndHavocBlocks(int Thread, ICollection<Variable> variables)
+        private List<BigBlock> MakeResetBlocks(int Thread, ICollection<Variable> variables)
         {
             Debug.Assert(variables.Count > 0);
             List<BigBlock> ResetAndHavocBlocks = new List<BigBlock>();
             foreach (Variable v in variables)
             {
                 ResetAndHavocBlocks.Add(RaceInstrumenter.MakeResetReadWriteSetStatements(v, Thread));
-                if (!ArrayModelledAdversarially(v))
-                {
-                    ResetAndHavocBlocks.Add(HavocSharedArray(v, Thread));
-                }
             }
             Debug.Assert(ResetAndHavocBlocks.Count > 0);
             return ResetAndHavocBlocks;
         }
 
+        private List<BigBlock> MakeHavocBlocks(ICollection<Variable> variables) {
+          Debug.Assert(variables.Count > 0);
+          List<BigBlock> result = new List<BigBlock>();
+          foreach (Variable v in variables) {
+            if (!ArrayModelledAdversarially(v)) {
+              result.Add(HavocSharedArray(v));
+            }
+          }
+          return result;
+        }
 
         public static bool HasZDimension(Variable v)
         {
@@ -1459,37 +1461,12 @@ namespace GPUVerify
             return false;
         }
 
-        private BigBlock HavocSharedArray(Variable v, int thread)
+        private BigBlock HavocSharedArray(Variable v)
         {
-            IdentifierExpr vForThread = new IdentifierExpr(Token.NoToken, new VariableDualiser(thread, null, null).VisitVariable(v.Clone() as Variable));
-            return new BigBlock(Token.NoToken, null, new CmdSeq(new Cmd[] { new HavocCmd(Token.NoToken, new IdentifierExprSeq(new IdentifierExpr[] { vForThread })) }), null, null);
+            return new BigBlock(Token.NoToken, null, 
+              new CmdSeq(new Cmd[] { new HavocCmd(Token.NoToken, 
+                new IdentifierExprSeq(new IdentifierExpr[] { new IdentifierExpr(Token.NoToken, v) })) }), null, null);
         }
-
-        private BigBlock AssumeEqualityBetweenSharedArrays(Variable v, Expr P1, Expr P2, Expr LocalFence1, Expr LocalFence2, Expr GlobalFence1, Expr GlobalFence2)
-        {
-            IdentifierExpr v1 = new IdentifierExpr(Token.NoToken, new VariableDualiser(1, null, null).VisitVariable(v.Clone() as Variable));
-            IdentifierExpr v2 = new IdentifierExpr(Token.NoToken, new VariableDualiser(2, null, null).VisitVariable(v.Clone() as Variable));
-
-            Expr AssumeGuard = Expr.Eq(v1, v2);
-
-            Expr EqualityCondition = ThreadsInSameGroup();
-
-            if (KernelArrayInfo.getGroupSharedArrays().Contains(v))
-            {
-                EqualityCondition = Expr.And(EqualityCondition,
-                    Expr.And(LocalFence1, LocalFence2));
-            }
-            else if (KernelArrayInfo.getGlobalArrays().Contains(v))
-            {
-                EqualityCondition = Expr.And(EqualityCondition,
-                    Expr.And(GlobalFence1, GlobalFence2));
-            }
-
-            AssumeGuard = Expr.Imp(EqualityCondition, AssumeGuard);
-
-            return new BigBlock(Token.NoToken, null, new CmdSeq(new Cmd[] { new AssumeCmd(Token.NoToken, AssumeGuard) }), null, null);
-        }
-
 
         internal static bool ModifiesSetContains(IdentifierExprSeq Modifies, IdentifierExpr v)
         {
@@ -1880,16 +1857,32 @@ namespace GPUVerify
 
                 }
 
-                if (d is Variable && ((d as Variable).IsMutable || IsThreadLocalIdConstant(d as Variable)
-                    || IsGroupIdConstant(d as Variable) ))
-                {
-                    NewTopLevelDeclarations.Add(new VariableDualiser(1, null, null).VisitVariable((Variable)d.Clone()));
-                    if (!QKeyValue.FindBoolAttribute(d.Attributes, "race_checking"))
-                    {
-                        NewTopLevelDeclarations.Add(new VariableDualiser(2, null, null).VisitVariable((Variable)d.Clone()));
-                    }
+                if (d is Variable && ((d as Variable).IsMutable || 
+                    IsThreadLocalIdConstant(d as Variable) || 
+                    IsGroupIdConstant(d as Variable))) {
+                  var v = d as Variable;
 
+                  if (KernelArrayInfo.getGlobalArrays().Contains(v)) {
+                    NewTopLevelDeclarations.Add(v);
                     continue;
+                  }
+
+                  if (KernelArrayInfo.getGroupSharedArrays().Contains(v)) {
+                    Variable newV = new GlobalVariable(Token.NoToken, new TypedIdent(Token.NoToken,
+                        v.Name, new MapType(Token.NoToken, new TypeVariableSeq(), 
+                        new TypeSeq(new Microsoft.Boogie.Type[] { Microsoft.Boogie.Type.Bool }),
+                        v.TypedIdent.Type)));
+                    newV.Attributes = v.Attributes;
+                    NewTopLevelDeclarations.Add(newV);
+                    continue;
+                  }
+
+                  NewTopLevelDeclarations.Add(new VariableDualiser(1, null, null).VisitVariable((Variable)v.Clone()));
+                  if (!QKeyValue.FindBoolAttribute(v.Attributes, "race_checking")) {
+                    NewTopLevelDeclarations.Add(new VariableDualiser(2, null, null).VisitVariable((Variable)v.Clone()));
+                  }
+
+                  continue;
                 }
 
                 NewTopLevelDeclarations.Add(d);
