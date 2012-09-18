@@ -8,6 +8,7 @@ using System.IO;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Numerics;
+using System.Linq;
 using Bpl = Microsoft.Boogie;
 
 namespace Microsoft.Dafny {
@@ -558,6 +559,38 @@ namespace Microsoft.Dafny {
           Indent(indent);
         }
         PrintStatement(s.Body, indent);
+
+      } else if (stmt is CalcStmt) {
+        CalcStmt s = (CalcStmt)stmt;
+        wr.Write("calc ");
+        if (s.Op != CalcStmt.DefaultOp) {
+          wr.Write(BinaryExpr.OpcodeString(s.Op));
+          wr.Write(" ");
+        }
+        wr.WriteLine("{");
+        int lineInd = indent + IndentAmount;
+        Indent(lineInd);
+        PrintExpression(s.Lines.First(), lineInd);
+        wr.WriteLine(";");
+        for (var i = 1; i < s.Lines.Count; i++){
+          var e = s.Lines[i];
+          var h = s.Hints[i - 1];
+          var op = s.CustomOps[i - 1];
+          if (h != null) {
+            Indent(lineInd);
+            PrintStatement(h, lineInd);
+            wr.WriteLine();
+          }
+          Indent(lineInd);
+          if (op != null && (BinaryExpr.Opcode)op != s.Op) {
+            wr.Write(BinaryExpr.OpcodeString((BinaryExpr.Opcode)op));
+            wr.Write(" ");
+          }          
+          PrintExpression(e, lineInd);
+          wr.WriteLine(";");          
+        }
+        Indent(indent);
+        wr.Write("}");
 
       } else if (stmt is MatchStmt) {
         MatchStmt s = (MatchStmt)stmt;

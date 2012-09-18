@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Numerics;
 using System.Diagnostics.Contracts;
+using System.Linq;
 using Microsoft.Boogie;
 
 namespace Microsoft.Dafny
@@ -1705,6 +1706,11 @@ namespace Microsoft.Dafny
         var s = (ParallelStmt)stmt;
         CheckTypeInference(s.Range);
         CheckTypeInference(s.Body);
+      } else if (stmt is CalcStmt) {
+        // NadiaToDo: is this correct?
+        var s = (CalcStmt)stmt;
+        s.SubExpressions.Iter(e => CheckTypeInference(e));
+        s.SubStatements.Iter(CheckTypeInference);		
       } else if (stmt is MatchStmt) {
         var s = (MatchStmt)stmt;
         CheckTypeInference(s.Source);
@@ -3123,6 +3129,46 @@ namespace Microsoft.Dafny
           }
           CheckParallelBodyRestrictions(s.Body, s.Kind);
         }
+		
+      } else if (stmt is CalcStmt) {
+        var prevErrorCount = ErrorCount;
+        CalcStmt s = (CalcStmt)stmt;
+        s.IsGhost = true;
+        Contract.Assert(s.Lines.Count > 0); // follows from the invariant of CalcStatement
+        var resOp = s.Op;
+        var e0 = s.Lines.First();
+        ResolveExpression(e0, true);
+        Contract.Assert(e0.Type != null);  // follows from postcondition of ResolveExpression
+        for (int i = 1; i < s.Lines.Count; i++) {
+          var e1 = s.Lines[i];
+          ResolveExpression(e1, true);
+          Contract.Assert(e1.Type != null);  // follows from postcondition of ResolveExpression
+          if (!UnifyTypes(e0.Type, e1.Type)) {
+            Error(e1, "all calculation steps must have the same type (got {0} after {1})", e1.Type, e0.Type);
+          } else {
+            BinaryExpr step;
+            var op = s.CustomOps[i - 1];
+            if (op == null) {              
+              step = new BinaryExpr(e0.tok, s.Op, e0, e1); // Use calc-wide operator
+            } else {
+              step = new BinaryExpr(e0.tok, (BinaryExpr.Opcode)op, e0, e1); // Use custom line operator
+              Contract.Assert(CalcStmt.ResultOp(resOp, (BinaryExpr.Opcode)op) != null); // This was checked during parsing
+              resOp = (BinaryExpr.Opcode)CalcStmt.ResultOp(resOp, (BinaryExpr.Opcode)op);
+            }
+            ResolveExpression(step, true);
+            s.Steps.Add(step);            
+          }
+          e0 = e1;
+        }
+        foreach (var h in s.Hints)
+        {
+          if (h != null) {
+            ResolveStatement(h, true, method);
+          }
+        }
+        s.Result = new BinaryExpr(s.Tok, resOp, s.Lines.First(), s.Lines.Last());
+        ResolveExpression(s.Result, true);
+        Contract.Assert(prevErrorCount != ErrorCount || s.Steps.Count == s.Hints.Count);
 
       } else if (stmt is MatchStmt) {
         MatchStmt s = (MatchStmt)stmt;
@@ -3721,6 +3767,10 @@ namespace Microsoft.Dafny
             Contract.Assert(false);  // unexpected kind
             break;
         }
+		
+      } else if (stmt is CalcStmt) {
+          // cool
+          // NadiaTodo: ...I assume because it's always ghost		
 
       } else if (stmt is MatchStmt) {
         var s = (MatchStmt)stmt;
