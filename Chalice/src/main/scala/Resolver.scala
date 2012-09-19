@@ -301,7 +301,7 @@ object Resolver {
 
    // fill in SCC and height for recursive functions 
    val (callGraphCondensation, h) = calls.computeSCC;
-   val callGraphTopoSort = callGraphCondensation.computeTopologicalSort
+   val callGraphTopoSort = callGraphCondensation.computeTopologicalSort.reverse
    h.keys foreach {f:Function =>
      f.SCC = h(f);
      f.height = callGraphTopoSort.indexOf(h(f))
