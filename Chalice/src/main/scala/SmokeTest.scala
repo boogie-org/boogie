@@ -76,7 +76,7 @@ object SmokeTest {
       case None => ""
       case Some((verified,errors)) =>
         realErrors = errors-smokeErrors.size
-        "Boogie program verifier finished with " + realErrors + " errors and " + smokeTestWarnings + " smoke test warnings."
+        "Boogie program verifier finished with " + realErrors + " errors and " + smokeTestWarnings + " smoke test warnings"
     })
     
     verificationResult +

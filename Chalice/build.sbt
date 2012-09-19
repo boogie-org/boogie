@@ -3,7 +3,7 @@ name := "Chalice"
 
 version := "1.0"
 
-scalaVersion := "2.8.1"
+scalaVersion := "2.9.2"
 
 scalacOptions += "-deprecation"
 

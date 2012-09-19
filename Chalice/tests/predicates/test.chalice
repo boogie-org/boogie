@@ -30,9 +30,6 @@ class List
     fork t:=skip();
     // mask: value=0,p=100, secmask: -
     assert unfolding P in value==old(value);
-    // ERROR: Chalice currently cannot verify this example, as there is neither
-    // primary nor secondary permission available to value directly before the
-    // assertion
   }
 
 }

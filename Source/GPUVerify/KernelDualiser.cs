@@ -152,23 +152,36 @@ namespace GPUVerify {
       else if (c is AssignCmd) {
         AssignCmd assign = c as AssignCmd;
 
-        if (assign.Lhss.All(lhs =>
-                lhs is SimpleAssignLhs &&
-                verifier.uniformityAnalyser.IsUniform(procName, (lhs as SimpleAssignLhs).AssignedVariable.Name))) {
-          cs.Add(assign);
-        }
-        else {
-          foreach(var i in new int[] { 1, 2 }) {
-            List<AssignLhs> newLhss = assign.Lhss.Select(lhs =>
-              new VariableDualiser(i, verifier.uniformityAnalyser, procName).
-                Visit(lhs.Clone() as AssignLhs) as AssignLhs).ToList();
-            List<Expr> newRhss = assign.Rhss.Select(rhs =>
-              new VariableDualiser(i, verifier.uniformityAnalyser, procName).
-                VisitExpr(rhs.Clone() as Expr)).ToList();
-            AssignCmd newAssign = new AssignCmd(assign.tok, newLhss, newRhss);
-            cs.Add(newAssign);
+        var vd1 = new VariableDualiser(1, verifier.uniformityAnalyser, procName);
+        var vd2 = new VariableDualiser(2, verifier.uniformityAnalyser, procName);
+
+        List<AssignLhs> lhss1 = new List<AssignLhs>();
+        List<AssignLhs> lhss2 = new List<AssignLhs>();
+
+        List<Expr> rhss1 = new List<Expr>();
+        List<Expr> rhss2 = new List<Expr>();
+ 
+        foreach(var pair in assign.Lhss.Zip(assign.Rhss)) {
+          if(pair.Item1 is SimpleAssignLhs &&
+            verifier.uniformityAnalyser.IsUniform(procName, 
+            (pair.Item1 as SimpleAssignLhs).AssignedVariable.Name)) {
+            lhss1.Add(pair.Item1);
+            rhss1.Add(pair.Item2);
+          } else {
+            lhss1.Add(vd1.Visit(pair.Item1.Clone() as AssignLhs) as AssignLhs);
+            lhss2.Add(vd2.Visit(pair.Item1.Clone() as AssignLhs) as AssignLhs);
+            rhss1.Add(vd1.VisitExpr(pair.Item2.Clone() as Expr));
+            rhss2.Add(vd2.VisitExpr(pair.Item2.Clone() as Expr));
           }
         }
+
+        Debug.Assert(lhss1.Count > 0);
+        cs.Add(new AssignCmd(Token.NoToken, lhss1, rhss1));
+
+        if(lhss2.Count > 0) {
+          cs.Add(new AssignCmd(Token.NoToken, lhss2, rhss2));
+        }
+
       }
       else if (c is HavocCmd) {
         HavocCmd havoc = c as HavocCmd;

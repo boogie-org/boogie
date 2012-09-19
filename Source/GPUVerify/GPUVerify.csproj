@@ -135,8 +135,6 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RaceInstrumenter.cs" />
     <Compile Include="ReadCollector.cs" />
-    <Compile Include="UniformExpressionAnalysisVisitor.cs" />
-    <Compile Include="UniformityAnalyser.cs" />
     <Compile Include="VariableDualiser.cs" />
     <Compile Include="VariablesOccurringInExpressionVisitor.cs" />
     <Compile Include="VariableDefinitionAnalysis.cs" />

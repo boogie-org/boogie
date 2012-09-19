@@ -157,6 +157,7 @@
     <Compile Include="OrderingAxioms.cs" />
     <Compile Include="SmartBlockPredicator.cs" />
     <Compile Include="StratifiedVC.cs" />
+    <Compile Include="UniformityAnalyser.cs" />
     <Compile Include="VC.cs" />
     <Compile Include="VCDoomed.cs" />
     <Compile Include="..\version.cs" />

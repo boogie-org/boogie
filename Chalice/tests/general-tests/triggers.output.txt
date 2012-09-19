@@ -1,0 +1,7 @@
+Verification of triggers.chalice using parameters="" 
+
+  41.3: The postcondition at 46.14 might not hold. The expression at 46.14 might not evaluate to true.
+  49.3: The postcondition at 53.14 might not hold. The expression at 53.14 might not evaluate to true.
+  57.3: The postcondition at 61.14 might not hold. The expression at 61.14 might not evaluate to true.
+
+Boogie program verifier finished with 3 errors and 0 smoke test warnings

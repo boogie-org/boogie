@@ -91,7 +91,7 @@ namespace Graphing {
         return this.immediateDominatorMap;
       }
     }
-    public bool DominatedBy(Node dominee, Node dominator) {
+    public bool DominatedBy(Node dominee, Node dominator, List<Node> path = null) {
       Contract.Assume(this.nodeToPostOrderNumber != null);
       Contract.Assume(this.doms != null);
       int domineeNum = this.nodeToPostOrderNumber[dominee];
@@ -104,6 +104,8 @@ namespace Graphing {
           return true;
         if (currentNodeNum == this.sourceNum)
           return false;
+        if (path != null)
+          path.Add(postOrderNumberToNode[currentNodeNum].Val);
         currentNodeNum = this.doms[currentNodeNum];
       }
     }
@@ -323,6 +325,21 @@ namespace Graphing {
         }
 
 
+    }
+
+    public Node LeastCommonAncestor(Node n1, Node n2)
+    {
+        var nums = new HashSet<int>();
+        int num1 = nodeToPostOrderNumber[n1], num2 = nodeToPostOrderNumber[n2];
+
+        while (true)
+        {
+            if (!nums.Add(num1))
+                return postOrderNumberToNode[num1].Val;
+            if (!nums.Add(num2))
+                return postOrderNumberToNode[num2].Val;
+            num1 = doms[num1]; num2 = doms[num2];
+        }
     }
   }
 
