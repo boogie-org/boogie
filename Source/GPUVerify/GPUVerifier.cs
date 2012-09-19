@@ -476,7 +476,9 @@ namespace GPUVerify
         private void DoUniformityAnalysis()
         {
             var entryPoints = new HashSet<Implementation>();
-            entryPoints.Add(KernelImplementation);
+            if (CommandLineOptions.DoUniformityAnalysis) {
+              entryPoints.Add(KernelImplementation);
+            }
 
             var nonUniformVars = new Variable[] { _X, _Y, _Z, _GROUP_X, _GROUP_Y, _GROUP_Z };
 
@@ -1910,7 +1912,7 @@ namespace GPUVerify
             {
                 if (CommandLineOptions.SmartPredication)
                 {
-                    SmartBlockPredicator.Predicate(Program, proc => proc != KernelProcedure, uniformityAnalyser);
+                    SmartBlockPredicator.Predicate(Program, proc => true, uniformityAnalyser);
                 }
                 else
                 {
