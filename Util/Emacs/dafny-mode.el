@@ -8,7 +8,7 @@
 
 (if dafny-mode-map nil
   (setq dafny-mode-map (make-keymap))
-  (define-key dafny-mode-map "\C-c\C-c" 'dafny-run-boogie)
+  (define-key dafny-mode-map "\C-c\C-c" 'dafny-run-verifier)
   (define-key dafny-mode-map [(control return)] 'font-lock-fontify-buffer))
 
 (setq auto-mode-alist
@@ -32,13 +32,13 @@
    `(,(dafny-regexp-opt '(
         "class" "datatype" "codatatype" "type" "function" "predicate" "copredicate"
         "ghost" "var" "method" "constructor"
-        "module" "imports" "static" "refines"
+        "module" "import" "default" "as" "opened" "static" "refines"
         "returns" "requires" "ensures" "modifies" "reads" "free"
         "invariant" "decreases"
         )) . font-lock-builtin-face)
    `(,(dafny-regexp-opt '(
-        "assert" "assume" "break" "choose" "then" "else" "havoc" "if" "label" "return" "while" "print" "where"
-        "old" "forall" "exists" "new" "parallel" "in" "this" "fresh" "allocated"
+        "assert" "assume" "break" "choose" "then" "else" "if" "label" "return" "while" "print" "where"
+        "old" "forall" "exists" "new" "parallel" "calc" "in" "this" "fresh"
         "match" "case" "false" "true" "null")) . font-lock-keyword-face)
    `(,(dafny-regexp-opt '("array" "array2" "array3" "bool" "multiset" "map" "nat" "int" "object" "set" "seq")) . font-lock-type-face)
    )
@@ -69,7 +69,7 @@
    dafny-mode-menu (list dafny-mode-map)
    "Dafny Mode Menu." 
    '("Dafny"
-     ["Run Boogie" dafny-run-boogie t]
+     ["Run Dafny" dafny-run-verifier t]
      "---"
      ["Recolor buffer" font-lock-fontify-buffer t]
      "---"
@@ -81,8 +81,8 @@
 (defun dafny-command-line (file)
   (concat "boogie " file))
 
-(defun dafny-run-boogie ()
-  "run Boogie to check the Dafny program"
+(defun dafny-run-verifier ()
+  "run Dafny verifier"
   (interactive)
   (let ((f (buffer-name)))
     (compile (dafny-command-line f))))

@@ -53,7 +53,6 @@ namespace BytecodeTranslator
 
     public readonly Bpl.StmtListBuilder StmtBuilder = new Bpl.StmtListBuilder();
     private bool contractContext;
-    internal readonly Stack<Bpl.Expr> operandStack = new Stack<Bpl.Expr>();
     private bool captureState;
     private static int captureStateCounter = 0;
     public IPrimarySourceLocation lastSourceLocation;
@@ -366,7 +365,7 @@ namespace BytecodeTranslator
       var tok = pushStatement.Token();
       var val = pushStatement.ValueToPush;
       var e = ExpressionFor(val);
-      this.operandStack.Push(e);
+      this.sink.operandStack.Push(e);
       return;
     }
 
@@ -518,6 +517,14 @@ namespace BytecodeTranslator
     }
 
     public override void TraverseChildren(ITryCatchFinallyStatement tryCatchFinallyStatement) {
+
+      if (this.sink.Options.modelExceptions == 0) {
+        this.Traverse(tryCatchFinallyStatement.TryBody);
+        if (tryCatchFinallyStatement.FinallyBody != null)
+          this.Traverse(tryCatchFinallyStatement.FinallyBody);
+        return;
+      }
+
       this.sink.nestedTryCatchFinallyStatements.Add(new Tuple<ITryCatchFinallyStatement, Sink.TryCatchFinallyContext>(tryCatchFinallyStatement, Sink.TryCatchFinallyContext.InTry));
       this.Traverse(tryCatchFinallyStatement.TryBody);
       StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(this.sink.LabelVariable), Bpl.Expr.Literal(-1)));
@@ -572,6 +579,10 @@ namespace BytecodeTranslator
     }
 
     public override void TraverseChildren(IThrowStatement throwStatement) {
+      if (this.sink.Options.modelExceptions == 0) {
+        StmtBuilder.Add(new Bpl.AssumeCmd(throwStatement.Token(), Bpl.Expr.False));
+        return;
+      }
       ExpressionTraverser exceptionTraverser = this.factory.MakeExpressionTraverser(this.sink, this, this.contractContext);
       exceptionTraverser.Traverse(throwStatement.Exception);
       StmtBuilder.Add(TranslationHelper.BuildAssignCmd(Bpl.Expr.Ident(this.sink.Heap.ExceptionVariable), exceptionTraverser.TranslatedExpressions.Pop()));

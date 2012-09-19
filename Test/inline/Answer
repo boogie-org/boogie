@@ -306,12 +306,12 @@ implementation {:inline 3} recursive(x: int) returns (y: int)
     goto anon3_Then, anon3_Else;
 
   anon3_Then:
-    assume x == 0;
+    assume {:partition} x == 0;
     y := 1;
     return;
 
   anon3_Else:
-    assume x != 0;
+    assume {:partition} x != 0;
     goto anon2;
 
   anon2:
@@ -350,12 +350,12 @@ implementation recursivetest()
     goto inline$recursive$0$anon3_Then, inline$recursive$0$anon3_Else;
 
   inline$recursive$0$anon3_Then:
-    assume inline$recursive$0$x == 0;
+    assume {:partition} inline$recursive$0$x == 0;
     inline$recursive$0$y := 1;
     goto inline$recursive$0$Return;
 
   inline$recursive$0$anon3_Else:
-    assume inline$recursive$0$x != 0;
+    assume {:partition} inline$recursive$0$x != 0;
     goto inline$recursive$1$Entry;
 
   inline$recursive$1$Entry:
@@ -366,12 +366,12 @@ implementation recursivetest()
     goto inline$recursive$1$anon3_Then, inline$recursive$1$anon3_Else;
 
   inline$recursive$1$anon3_Then:
-    assume inline$recursive$1$x == 0;
+    assume {:partition} inline$recursive$1$x == 0;
     inline$recursive$1$y := 1;
     goto inline$recursive$1$Return;
 
   inline$recursive$1$anon3_Else:
-    assume inline$recursive$1$x != 0;
+    assume {:partition} inline$recursive$1$x != 0;
     goto inline$recursive$2$Entry;
 
   inline$recursive$2$Entry:
@@ -382,12 +382,12 @@ implementation recursivetest()
     goto inline$recursive$2$anon3_Then, inline$recursive$2$anon3_Else;
 
   inline$recursive$2$anon3_Then:
-    assume inline$recursive$2$x == 0;
+    assume {:partition} inline$recursive$2$x == 0;
     inline$recursive$2$y := 1;
     goto inline$recursive$2$Return;
 
   inline$recursive$2$anon3_Else:
-    assume inline$recursive$2$x != 0;
+    assume {:partition} inline$recursive$2$x != 0;
     call inline$recursive$2$k := recursive(inline$recursive$2$x - 1);
     inline$recursive$2$y := inline$recursive$2$y + inline$recursive$2$k;
     goto inline$recursive$2$Return;
@@ -438,12 +438,12 @@ implementation {:inline 3} recursive(x: int) returns (y: int)
     goto anon3_Then, anon3_Else;
 
   anon3_Then:
-    assume x == 0;
+    assume {:partition} x == 0;
     y := 1;
     return;
 
   anon3_Else:
-    assume x != 0;
+    assume {:partition} x != 0;
     goto inline$recursive$0$Entry;
 
   inline$recursive$0$Entry:
@@ -454,12 +454,12 @@ implementation {:inline 3} recursive(x: int) returns (y: int)
     goto inline$recursive$0$anon3_Then, inline$recursive$0$anon3_Else;
 
   inline$recursive$0$anon3_Then:
-    assume inline$recursive$0$x == 0;
+    assume {:partition} inline$recursive$0$x == 0;
     inline$recursive$0$y := 1;
     goto inline$recursive$0$Return;
 
   inline$recursive$0$anon3_Else:
-    assume inline$recursive$0$x != 0;
+    assume {:partition} inline$recursive$0$x != 0;
     goto inline$recursive$1$Entry;
 
   inline$recursive$1$Entry:
@@ -470,12 +470,12 @@ implementation {:inline 3} recursive(x: int) returns (y: int)
     goto inline$recursive$1$anon3_Then, inline$recursive$1$anon3_Else;
 
   inline$recursive$1$anon3_Then:
-    assume inline$recursive$1$x == 0;
+    assume {:partition} inline$recursive$1$x == 0;
     inline$recursive$1$y := 1;
     goto inline$recursive$1$Return;
 
   inline$recursive$1$anon3_Else:
-    assume inline$recursive$1$x != 0;
+    assume {:partition} inline$recursive$1$x != 0;
     goto inline$recursive$2$Entry;
 
   inline$recursive$2$Entry:
@@ -486,12 +486,12 @@ implementation {:inline 3} recursive(x: int) returns (y: int)
     goto inline$recursive$2$anon3_Then, inline$recursive$2$anon3_Else;
 
   inline$recursive$2$anon3_Then:
-    assume inline$recursive$2$x == 0;
+    assume {:partition} inline$recursive$2$x == 0;
     inline$recursive$2$y := 1;
     goto inline$recursive$2$Return;
 
   inline$recursive$2$anon3_Else:
-    assume inline$recursive$2$x != 0;
+    assume {:partition} inline$recursive$2$x != 0;
     call inline$recursive$2$k := recursive(inline$recursive$2$x - 1);
     inline$recursive$2$y := inline$recursive$2$y + inline$recursive$2$k;
     goto inline$recursive$2$Return;
@@ -542,12 +542,12 @@ implementation main(x: int)
     goto anon3_Then, anon3_Else;
 
   anon3_Then:
-    assume b;
+    assume {:partition} b;
     assert i > 0 && A[i] == x;
     goto anon2;
 
   anon3_Else:
-    assume !b;
+    assume {:partition} !b;
     goto anon2;
 
   anon2:
@@ -576,22 +576,22 @@ implementation {:inline 1} find(A: [int]int, size: int, x: int) returns (ret: in
     goto anon4_LoopDone, anon4_LoopBody;
 
   anon4_LoopBody:
-    assume i < size;
+    assume {:partition} i < size;
     call b := check(A, i, x);
     goto anon5_Then, anon5_Else;
 
   anon5_Then:
-    assume b;
+    assume {:partition} b;
     ret := i;
     found := b;
     goto anon3;
 
   anon5_Else:
-    assume !b;
+    assume {:partition} !b;
     goto anon4_LoopHead;
 
   anon4_LoopDone:
-    assume size <= i;
+    assume {:partition} size <= i;
     goto anon3;
 
   anon3:
@@ -613,12 +613,12 @@ implementation {:inline 3} check(A: [int]int, i: int, c: int) returns (ret: bool
     goto anon4_Then, anon4_Else;
 
   anon4_Then:
-    assume A[i] == c;
+    assume {:partition} A[i] == c;
     ret := true;
     goto anon3;
 
   anon4_Else:
-    assume A[i] != c;
+    assume {:partition} A[i] != c;
     ret := false;
     goto anon3;
 
@@ -669,7 +669,7 @@ implementation main(x: int)
     goto inline$find$0$anon4_LoopDone, inline$find$0$anon4_LoopBody;
 
   inline$find$0$anon4_LoopBody:
-    assume inline$find$0$i < inline$find$0$size;
+    assume {:partition} inline$find$0$i < inline$find$0$size;
     goto inline$check$0$Entry;
 
   inline$check$0$Entry:
@@ -683,12 +683,12 @@ implementation main(x: int)
     goto inline$check$0$anon4_Then, inline$check$0$anon4_Else;
 
   inline$check$0$anon4_Then:
-    assume inline$check$0$A[inline$check$0$i] == inline$check$0$c;
+    assume {:partition} inline$check$0$A[inline$check$0$i] == inline$check$0$c;
     inline$check$0$ret := true;
     goto inline$check$0$anon3;
 
   inline$check$0$anon4_Else:
-    assume inline$check$0$A[inline$check$0$i] != inline$check$0$c;
+    assume {:partition} inline$check$0$A[inline$check$0$i] != inline$check$0$c;
     inline$check$0$ret := false;
     goto inline$check$0$anon3;
 
@@ -704,17 +704,17 @@ implementation main(x: int)
     goto inline$find$0$anon5_Then, inline$find$0$anon5_Else;
 
   inline$find$0$anon5_Then:
-    assume inline$find$0$b;
+    assume {:partition} inline$find$0$b;
     inline$find$0$ret := inline$find$0$i;
     inline$find$0$found := inline$find$0$b;
     goto inline$find$0$anon3;
 
   inline$find$0$anon5_Else:
-    assume !inline$find$0$b;
+    assume {:partition} !inline$find$0$b;
     goto inline$find$0$anon4_LoopHead;
 
   inline$find$0$anon4_LoopDone:
-    assume inline$find$0$size <= inline$find$0$i;
+    assume {:partition} inline$find$0$size <= inline$find$0$i;
     goto inline$find$0$anon3;
 
   inline$find$0$anon3:
@@ -729,12 +729,12 @@ implementation main(x: int)
     goto anon3_Then, anon3_Else;
 
   anon3_Then:
-    assume b;
+    assume {:partition} b;
     assert i > 0 && A[i] == x;
     goto anon2;
 
   anon3_Else:
-    assume !b;
+    assume {:partition} !b;
     goto anon2;
 
   anon2:
@@ -766,7 +766,7 @@ implementation {:inline 1} find(A: [int]int, size: int, x: int) returns (ret: in
     goto anon4_LoopDone, anon4_LoopBody;
 
   anon4_LoopBody:
-    assume i < size;
+    assume {:partition} i < size;
     goto inline$check$0$Entry;
 
   inline$check$0$Entry:
@@ -780,12 +780,12 @@ implementation {:inline 1} find(A: [int]int, size: int, x: int) returns (ret: in
     goto inline$check$0$anon4_Then, inline$check$0$anon4_Else;
 
   inline$check$0$anon4_Then:
-    assume inline$check$0$A[inline$check$0$i] == inline$check$0$c;
+    assume {:partition} inline$check$0$A[inline$check$0$i] == inline$check$0$c;
     inline$check$0$ret := true;
     goto inline$check$0$anon3;
 
   inline$check$0$anon4_Else:
-    assume inline$check$0$A[inline$check$0$i] != inline$check$0$c;
+    assume {:partition} inline$check$0$A[inline$check$0$i] != inline$check$0$c;
     inline$check$0$ret := false;
     goto inline$check$0$anon3;
 
@@ -801,17 +801,17 @@ implementation {:inline 1} find(A: [int]int, size: int, x: int) returns (ret: in
     goto anon5_Then, anon5_Else;
 
   anon5_Then:
-    assume b;
+    assume {:partition} b;
     ret := i;
     found := b;
     goto anon3;
 
   anon5_Else:
-    assume !b;
+    assume {:partition} !b;
     goto anon4_LoopHead;
 
   anon4_LoopDone:
-    assume size <= i;
+    assume {:partition} size <= i;
     goto anon3;
 
   anon3:

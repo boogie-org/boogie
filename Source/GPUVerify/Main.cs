@@ -88,7 +88,7 @@ namespace GPUVerify
             return null;
         }
 
-        public static bool doit(string filename, Variable v, int a1, int a2)
+/*        public static bool doit(string filename, Variable v, int a1, int a2)
         {
             ResolutionContext rc;
             Program newProgram = parse(out rc);
@@ -121,8 +121,9 @@ namespace GPUVerify
             return !ri.failedToFindSecondAccess;
 
         }
+      */
 
-        public static IList<GPUVerifier> parseProcessOutput()
+        public static void parseProcessOutput()
         {
             string fn = "temp";
             if (CommandLineOptions.outputFile != null)
@@ -137,72 +138,16 @@ namespace GPUVerify
             }
             ResolutionContext rc;
             Program program = parse(out rc);
-            IList<GPUVerifier> result = new List<GPUVerifier>();
             GPUVerifier g = new GPUVerifier(fn, program, rc, new NullRaceInstrumenter());
 
-            if (CommandLineOptions.DividedArray)
+            if (!CommandLineOptions.OnlyDivergence)
             {
-                bool FoundArray = CommandLineOptions.ArrayToCheck == null;
-
-                foreach (Variable v in g.KernelArrayInfo.getAllNonLocalArrays())
-                {
-                    if (CommandLineOptions.DividedAccesses)
-                    {
-                        int i = 0;
-                        int j = 0;
-                        while (true)
-                        {
-                            bool res = doit(fn + "." + v.Name + "." + i + "." + (i + j), v, i, j);
-                            if (!res)
-                            {
-                                if (j == 0)
-                                {
-                                    break;
-                                }
-                                else
-                                {
-                                    i++;
-                                    j = 0;
-                                }
-                            }
-                            else
-                            {
-                                j++;
-                            }
-                        }
-                    }
-                    else
-                    {
-                        if (CommandLineOptions.ArrayToCheck == null || CommandLineOptions.ArrayToCheck.Equals(v.Name))
-                        {
-                            FoundArray = true;
-                            doit("temp_" + v.Name, v, -1, -1);
-                        }
-                    }
-                }
-
-                if (!FoundArray)
-                {
-                    Console.WriteLine("Did not find a non-local array named " + CommandLineOptions.ArrayToCheck);
-                    Environment.Exit(1);
-                }
-
-            }
-            else
-            {
-                if (!CommandLineOptions.OnlyDivergence)
-                {
-                    RaceInstrumenter ri = new RaceInstrumenter();
-                    ri.setVerifier(g);
-                    g.setRaceInstrumenter(ri);
-                }
-
-                g.doit();
-                result.Add(g);
-
+                RaceInstrumenter ri = new RaceInstrumenter();
+                ri.setVerifier(g);
+                g.setRaceInstrumenter(ri);
             }
 
-            return result;
+            g.doit();
             
         }
 

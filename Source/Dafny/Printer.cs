@@ -8,6 +8,7 @@ using System.IO;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Numerics;
+using System.Linq;
 using Bpl = Microsoft.Boogie;
 
 namespace Microsoft.Dafny {
@@ -84,11 +85,11 @@ namespace Microsoft.Dafny {
               wr.WriteLine("}");
             }
           } else if (d is AliasModuleDecl) {
-            wr.Write("module");
+            wr.Write("import"); if (((AliasModuleDecl)d).Opened) wr.Write(" opened");
             wr.Write(" {0} ", ((AliasModuleDecl)d).Name);
             wr.WriteLine("= {0};", Util.Comma(".", ((AliasModuleDecl)d).Path, id => id.val));
           } else if (d is AbstractModuleDecl) {
-            wr.Write("module");
+            wr.Write("import"); if (((AbstractModuleDecl)d).Opened) wr.Write(" opened");
             wr.Write(" {0} ", ((AbstractModuleDecl)d).Name);
             wr.WriteLine("as {0};", Util.Comma(".", ((AbstractModuleDecl)d).Path, id => id.val));
           }
@@ -329,7 +330,7 @@ namespace Microsoft.Dafny {
         wr.Write("ghost ");
       }
       if (f.HasName) {
-        wr.Write("{0}: ", f.Name);
+        wr.Write("{0}: ", f.DisplayName);
       }
       PrintType(f.Type);
     }
@@ -483,7 +484,7 @@ namespace Microsoft.Dafny {
         if (s.IsGhost) {
           wr.Write("ghost ");
         }
-        wr.Write("var {0}", s.Name);
+        wr.Write("var {0}", s.DisplayName);
         PrintType(": ", s.OptionalType);
         wr.Write(";");
 
@@ -559,6 +560,38 @@ namespace Microsoft.Dafny {
         }
         PrintStatement(s.Body, indent);
 
+      } else if (stmt is CalcStmt) {
+        CalcStmt s = (CalcStmt)stmt;
+        wr.Write("calc ");
+        if (s.Op != CalcStmt.DefaultOp) {
+          wr.Write(BinaryExpr.OpcodeString(s.Op));
+          wr.Write(" ");
+        }
+        wr.WriteLine("{");
+        int lineInd = indent + IndentAmount;
+        Indent(lineInd);
+        PrintExpression(s.Lines.First(), lineInd);
+        wr.WriteLine(";");
+        for (var i = 1; i < s.Lines.Count; i++){
+          var e = s.Lines[i];
+          var h = s.Hints[i - 1];
+          var op = s.CustomOps[i - 1];
+          if (h != null) {
+            Indent(lineInd);
+            PrintStatement(h, lineInd);
+            wr.WriteLine();
+          }
+          Indent(lineInd);
+          if (op != null && (BinaryExpr.Opcode)op != s.Op) {
+            wr.Write(BinaryExpr.OpcodeString((BinaryExpr.Opcode)op));
+            wr.Write(" ");
+          }          
+          PrintExpression(e, lineInd);
+          wr.WriteLine(";");          
+        }
+        Indent(indent);
+        wr.Write("}");
+
       } else if (stmt is MatchStmt) {
         MatchStmt s = (MatchStmt)stmt;
         wr.Write("match ");
@@ -571,7 +604,7 @@ namespace Microsoft.Dafny {
           if (mc.Arguments.Count != 0) {
             string sep = "(";
             foreach (BoundVar bv in mc.Arguments) {
-              wr.Write("{0}{1}", sep, bv.Name);
+              wr.Write("{0}{1}", sep, bv.DisplayName);
               sep = ", ";
             }
             wr.Write(")");
@@ -605,7 +638,7 @@ namespace Microsoft.Dafny {
         wr.Write("var ");
         string sep = "";
         foreach (var lhs in s.Lhss) {
-          wr.Write("{0}{1}", sep, lhs.Name);
+          wr.Write("{0}{1}", sep, lhs.DisplayName);
           PrintType(": ", lhs.OptionalType);
           sep = ", ";
         }
@@ -803,7 +836,7 @@ namespace Microsoft.Dafny {
           if (mc.Arguments.Count != 0) {
             string sep = "(";
             foreach (BoundVar bv in mc.Arguments) {
-              wr.Write("{0}{1}", sep, bv.Name);
+              wr.Write("{0}{1}", sep, bv.DisplayName);
               sep = ", ";
             }
             wr.Write(")");
@@ -1014,11 +1047,6 @@ namespace Microsoft.Dafny {
         PrintExpression(((FreshExpr)expr).E);
         wr.Write(")");
 
-      } else if (expr is AllocatedExpr) {
-        wr.Write("allocated(");
-        PrintExpression(((AllocatedExpr)expr).E);
-        wr.Write(")");
-
       } else if (expr is UnaryExpr) {
         UnaryExpr e = (UnaryExpr)expr;
         if (e.Op == UnaryExpr.Opcode.SeqLength) {
@@ -1139,7 +1167,7 @@ namespace Microsoft.Dafny {
         wr.Write("var ");
         string sep = "";
         foreach (var v in e.Vars) {
-          wr.Write("{0}{1}", sep, v.Name);
+          wr.Write("{0}{1}", sep, v.DisplayName);
           PrintType(": ", v.Type);
           sep = ", ";
         }
@@ -1179,7 +1207,7 @@ namespace Microsoft.Dafny {
         wr.Write("set ");
         string sep = "";
         foreach (BoundVar bv in e.BoundVars) {
-          wr.Write("{0}{1}", sep, bv.Name);
+          wr.Write("{0}{1}", sep, bv.DisplayName);
           sep = ", ";
           PrintType(": ", bv.Type);
         }
@@ -1199,7 +1227,7 @@ namespace Microsoft.Dafny {
         wr.Write("map ");
         string sep = "";
         foreach (BoundVar bv in e.BoundVars) {
-          wr.Write("{0}{1}", sep, bv.Name);
+          wr.Write("{0}{1}", sep, bv.DisplayName);
           sep = ", ";
           PrintType(": ", bv.Type);
         }
@@ -1268,7 +1296,7 @@ namespace Microsoft.Dafny {
       Contract.Requires(boundVars != null);
       string sep = "";
       foreach (BoundVar bv in boundVars) {
-        wr.Write("{0}{1}", sep, bv.Name);
+        wr.Write("{0}{1}", sep, bv.DisplayName);
         PrintType(": ", bv.Type);
         sep = ", ";
       }

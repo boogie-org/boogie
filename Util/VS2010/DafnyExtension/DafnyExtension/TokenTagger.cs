@@ -24,27 +24,21 @@ namespace DafnyLanguage
   public enum DafnyTokenKinds
   {
     Keyword, Number, String, Comment,
-    TypeIdentifier, VariableIdentifier
+    VariableIdentifier, VariableIdentifierDefinition
   }
 
   public class DafnyTokenTag : ITag
   {
     public DafnyTokenKinds Kind { get; private set; }
+    public string HoverText { get; private set; }
 
     public DafnyTokenTag(DafnyTokenKinds kind) {
       this.Kind = kind;
     }
-  }
-  public class IdentifierDafnyTokenTag : DafnyTokenTag
-  {
-    public IdentifierDafnyTokenTag()
-      : base(DafnyTokenKinds.VariableIdentifier) {
-    }
-  }
-  public class TypeDafnyTokenTag : DafnyTokenTag
-  {
-    public TypeDafnyTokenTag()
-      : base(DafnyTokenKinds.TypeIdentifier) {
+
+    public DafnyTokenTag(DafnyTokenKinds kind, string hoverText) {
+      this.Kind = kind;
+      this.HoverText = hoverText;
     }
   }
 
@@ -73,14 +67,11 @@ namespace DafnyLanguage
 
       // create a new SnapshotSpan for the entire region encompassed by the span collection
       SnapshotSpan entire = new SnapshotSpan(spans[0].Start, spans[spans.Count - 1].End).TranslateTo(currentSnapshot, SpanTrackingMode.EdgeExclusive);
-      int startLineNumber = entire.Start.GetContainingLine().LineNumber;
-      int endLineNumber = entire.End.GetContainingLine().LineNumber;
       
       // return tags for any regions that fall within that span
       // BUGBUG: depending on how GetTags gets called (e.g., once for each line in the buffer), this may produce quadratic behavior
       foreach (var region in currentRegions) {
         if (entire.IntersectsWith(region.Span)) {
-          // BUGBUG: this returns a span for currentSnapshot, but shouldn't we return spans for the spans[0].Snapshot?
           yield return new TagSpan<DafnyTokenTag>(new SnapshotSpan(region.Start, region.End), new DafnyTokenTag(region.Kind));
         }
       }
@@ -113,10 +104,11 @@ namespace DafnyLanguage
       _snapshot = snapshot;
       _regions = newRegions;
 
-      foreach (var span in difference) {
-        var chng = TagsChanged;
-        if (chng != null)
+      var chng = TagsChanged;
+      if (chng != null) {
+        foreach (var span in difference) {
           chng(this, new SnapshotSpanEventArgs(span));
+        }
       }
     }
 
@@ -228,7 +220,7 @@ namespace DafnyLanguage
             }
             // we have a keyword or an identifier
             string s = txt.Substring(cur, end - cur);
-            if (0 < trailingDigits && s.Length == 5 + trailingDigits && s.StartsWith("array") && s[5] != '0' && s != "array1") {
+            if (0 < trailingDigits && s.Length == 5 + trailingDigits && s.StartsWith("array") && s[5] != '0' && (trailingDigits != 1 || s[5] != '1')) {
               // this is a keyword (array2, array3, ...)
             } else {
               switch (s) {
@@ -239,6 +231,7 @@ namespace DafnyLanguage
                 case "assume":
                 case "bool":
                 case "break":
+                case "calc":
                 case "case":
                 case "choose":
                 case "class":
@@ -256,7 +249,6 @@ namespace DafnyLanguage
                 case "fresh":
                 case "function":
                 case "ghost":
-                case "havoc":
                 case "if":
                 case "imports":
                 case "in":

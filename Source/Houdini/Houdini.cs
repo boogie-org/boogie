@@ -485,14 +485,18 @@ namespace Microsoft.Boogie.Houdini {
 
     public bool MatchCandidate(Expr boogieExpr, out Variable candidateConstant) {
       candidateConstant = null;
-      IExpr antecedent;
+      IExpr antecedent, consequent;
       IExpr expr = boogieExpr as IExpr;
-      if (expr != null && ExprUtil.Match(expr, Prop.Implies, out antecedent)) {
+      if (expr != null && ExprUtil.Match(expr, Prop.Implies, out antecedent, out consequent)) {
         IdentifierExpr.ConstantFunApp constantFunApp = antecedent as IdentifierExpr.ConstantFunApp;
         if (constantFunApp != null && houdiniConstants.Contains(constantFunApp.IdentifierExpr.Decl)) {
           candidateConstant = constantFunApp.IdentifierExpr.Decl;
           return true;
         }
+
+        var e = consequent as Expr;
+        if (e != null && MatchCandidate(e, out candidateConstant))
+          return true;
       }
       return false;
     }
@@ -564,6 +568,8 @@ namespace Microsoft.Boogie.Houdini {
     private void UpdateAssignment(RefutedAnnotation refAnnot) {
       if (CommandLineOptions.Clo.Trace) {
         Console.WriteLine("Removing " + refAnnot.Constant);
+        using (var cexWriter = new System.IO.StreamWriter("houdiniCexTrace.bpl", true))
+            cexWriter.WriteLine("Removing " + refAnnot.Constant);
       }
       currentHoudiniState.Assignment.Remove(refAnnot.Constant);
       currentHoudiniState.Assignment.Add(refAnnot.Constant, false);
@@ -599,6 +605,22 @@ namespace Microsoft.Boogie.Houdini {
               AddRelatedToWorkList(refutedAnnotation);
               UpdateAssignment(refutedAnnotation);
               dequeue = false;
+              #region Extra debugging output
+              if (CommandLineOptions.Clo.Trace)
+              {
+                  using (var cexWriter = new System.IO.StreamWriter("houdiniCexTrace.bpl", true))
+                  {
+                      cexWriter.WriteLine("Counter example for " + refutedAnnotation.Constant);
+                      cexWriter.Write(error.ToString());
+                      cexWriter.WriteLine();
+                      using (var writer = new Microsoft.Boogie.TokenTextWriter(cexWriter))
+                          foreach (Microsoft.Boogie.Block blk in error.Trace)
+                              blk.Emit(writer, 15);
+                      //cexWriter.WriteLine(); 
+                  }
+              }
+              #endregion
+
             }
           }
           break;

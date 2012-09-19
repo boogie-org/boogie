@@ -121,6 +121,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ExceptionAnalysis.cs" />
     <Compile Include="TranslationPlugins\PhoneTranslator\PhoneFeedbackPlugin.cs" />
     <Compile Include="TranslationPlugins\Translators\BaseTranslator.cs" />
     <Compile Include="CLRSemantics.cs" />

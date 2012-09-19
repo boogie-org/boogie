@@ -502,8 +502,13 @@ namespace Microsoft.Boogie {
           CmdSeq ssBody = new CmdSeq();
           CmdSeq ssDone = new CmdSeq();
           if (wcmd.Guard != null) {
-            ssBody.Add(new AssumeCmd(wcmd.tok, wcmd.Guard));
-            ssDone.Add(new AssumeCmd(wcmd.tok, Expr.Not(wcmd.Guard)));
+            var ac = new AssumeCmd(wcmd.tok, wcmd.Guard);
+            ac.Attributes = new QKeyValue(wcmd.tok, "partition", new List<object>(), null);
+            ssBody.Add(ac);
+
+            ac = new AssumeCmd(wcmd.tok, Expr.Not(wcmd.Guard));
+            ac.Attributes = new QKeyValue(wcmd.tok, "partition", new List<object>(), null);
+            ssDone.Add(ac);
           }
 
           // Try to squeeze in ssBody into the first block of wcmd.Body
@@ -556,8 +561,13 @@ namespace Microsoft.Boogie {
             CmdSeq ssThen = new CmdSeq();
             CmdSeq ssElse = new CmdSeq();
             if (ifcmd.Guard != null) {
-              ssThen.Add(new AssumeCmd(ifcmd.tok, ifcmd.Guard));
-              ssElse.Add(new AssumeCmd(ifcmd.tok, Expr.Not(ifcmd.Guard)));
+              var ac = new AssumeCmd(ifcmd.tok, ifcmd.Guard);
+              ac.Attributes = new QKeyValue(ifcmd.tok, "partition", new List<object>(), null);
+              ssThen.Add(ac);
+
+              ac = new AssumeCmd(ifcmd.tok, Expr.Not(ifcmd.Guard));
+              ac.Attributes = new QKeyValue(ifcmd.tok, "partition", new List<object>(), null);
+              ssElse.Add(ac);
             }
 
             // Try to squeeze in ssThen/ssElse into the first block of ifcmd.thn/ifcmd.elseBlock
@@ -597,7 +607,9 @@ namespace Microsoft.Boogie {
               predLabel = elseLabel;
               predCmds = new CmdSeq();
               if (ifcmd.Guard != null) {
-                predCmds.Add(new AssumeCmd(ifcmd.tok, Expr.Not(ifcmd.Guard)));
+                var ac = new AssumeCmd(ifcmd.tok, Expr.Not(ifcmd.Guard));
+                ac.Attributes = new QKeyValue(ifcmd.tok, "partition", new List<object>(), null);
+                predCmds.Add(ac);
               }
 
             } else {

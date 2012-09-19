@@ -13,7 +13,7 @@ for %%f in (Simple.dfy) do (
 for %%f in (TypeTests.dfy NatTypes.dfy SmallTests.dfy Definedness.dfy
             FunctionSpecifications.dfy ResolutionErrors.dfy ParseErrors.dfy
             Array.dfy MultiDimArray.dfy NonGhostQuantifiers.dfy AdvancedLHS.dfy
-            ModulesCycle.dfy Modules0.dfy Modules1.dfy BadFunction.dfy
+            ModulesCycle.dfy Modules0.dfy Modules1.dfy Modules2.dfy BadFunction.dfy
             Comprehensions.dfy Basics.dfy ControlStructures.dfy
             Termination.dfy DTypes.dfy ParallelResolveErrors.dfy Parallel.dfy
             TypeParameters.dfy Datatypes.dfy
@@ -23,10 +23,16 @@ for %%f in (TypeTests.dfy NatTypes.dfy SmallTests.dfy Definedness.dfy
             ReturnErrors.dfy ReturnTests.dfy ChainingDisjointTests.dfy
             CallStmtTests.dfy MultiSets.dfy PredExpr.dfy LetExpr.dfy
             Predicates.dfy Skeletons.dfy Maps.dfy LiberalEquality.dfy
-            RefinementModificationChecking.dfy) do (
+            RefinementModificationChecking.dfy TailCalls.dfy) do (
   echo.
   echo -------------------- %%f --------------------
   %DAFNY_EXE% /compile:0 /print:out.bpl.tmp /dprint:out.dfy.tmp %* %%f
+)
+
+for %%f in (Superposition.dfy) do (
+  echo.
+  echo -------------------- %%f --------------------
+  %DAFNY_EXE% /compile:0 /print:out.bpl.tmp /dprint:out.dfy.tmp /tracePOs %* %%f
 )
 
 for %%f in (SmallTests.dfy LetExpr.dfy) do (

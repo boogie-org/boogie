@@ -18,16 +18,6 @@ namespace GPUVerify
         {
         }
 
-        public override AssignLhs VisitSimpleAssignLhs(SimpleAssignLhs node)
-        {
-            Debug.Assert(NoWrittenVariable());
-            if (NonLocalState.Contains(node.DeepAssignedVariable))
-            {
-                access = new AccessRecord(node.DeepAssignedVariable, null, null, null);
-            }
-            return node;
-        }
-
         private bool NoWrittenVariable()
         {
             return access == null;
@@ -44,42 +34,12 @@ namespace GPUVerify
 
             Variable WrittenVariable = node.DeepAssignedVariable;
 
-            MapAssignLhs MapAssignX = node;
+            CheckMapIndex(node);
+            Debug.Assert(!(node.Map is MapAssignLhs));
 
-            CheckMapIndex(MapAssignX);
-            Expr IndexX = MapAssignX.Indexes[0];
-            Expr IndexY = null;
-            Expr IndexZ = null;
+            access = new AccessRecord(WrittenVariable, node.Indexes[0]);
 
-            if (MapAssignX.Map is MapAssignLhs)
-            {
-                MapAssignLhs MapAssignY = MapAssignX.Map as MapAssignLhs;
-                CheckMapIndex(MapAssignY);
-                IndexY = MapAssignY.Indexes[0];
-                if (MapAssignY.Map is MapAssignLhs)
-                {
-                    MapAssignLhs MapAssignZ = MapAssignY.Map as MapAssignLhs;
-                    CheckMapIndex(MapAssignZ);
-                    IndexZ = MapAssignZ.Indexes[0];
-                    if (!(MapAssignZ.Map is SimpleAssignLhs))
-                    {
-                        Console.WriteLine("*** Error - maps with more than three levels of nesting are not supported");
-                        Environment.Exit(1);
-                    }
-                }
-                else
-                {
-                    Debug.Assert(MapAssignY.Map is SimpleAssignLhs);
-                }
-            }
-            else
-            {
-                Debug.Assert(MapAssignX.Map is SimpleAssignLhs);
-            }
-
-            access = new AccessRecord(WrittenVariable, IndexZ, IndexY, IndexX);
-
-            return MapAssignX;
+            return node;
         }
 
         private void CheckMapIndex(MapAssignLhs node)

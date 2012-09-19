@@ -19,16 +19,16 @@ namespace Demo
         this.MarkReservedWords(  // NOTE: these keywords must also appear once more below
           "class", "ghost", "static", "var", "method", "constructor", "datatype", "codatatype", "type",
           "assert", "assume", "new", "this", "object", "refines",
-          "module", "imports", "as",
+          "module", "import", "as", "default", "opened",
           "if", "then", "else", "while", "invariant",
-          "break", "label", "return", "parallel", "havoc", "print",
+          "break", "label", "return", "parallel", "print",
           "returns", "requires", "ensures", "modifies", "reads", "decreases",
           "bool", "nat", "int", "false", "true", "null",
           "function", "predicate", "copredicate", "free",
           "in", "forall", "exists",
           "seq", "set", "map", "multiset", "array", "array2", "array3",
           "match", "case",
-          "fresh", "allocated", "old", "choose", "where"
+          "fresh", "old", "choose", "where", "calc"
           );
 
         StringLiteral s = new StringLiteral("String", "'", StringFlags.AllowsDoubledQuote);
@@ -276,7 +276,9 @@ namespace Demo
           | "object"
           | "refines"
           | "module"
-          | "imports"
+          | "import"
+          | "default"
+          | "opened"
           | "as"
           | "if"
           | "then"
@@ -287,7 +289,7 @@ namespace Demo
           | "label"
           | "return"
           | "parallel"
-          | "havoc"
+          | "calc"
           | "print"
           | "returns"
           | "requires"
@@ -318,7 +320,6 @@ namespace Demo
           | "match"
           | "case"
           | "fresh"
-          | "allocated"
           | "old"
           | "choose"
           | "where"

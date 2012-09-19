@@ -25,6 +25,7 @@ namespace Microsoft.Dafny {
     }
 
     TextWriter wr;
+    Method enclosingMethod;  // non-null when a method body is being translated
 
     public int ErrorCount;
     void Error(string msg, params object[] args) {
@@ -633,7 +634,17 @@ namespace Microsoft.Dafny {
             if (m.Body == null) {
               Error("Method {0} has no body", m.FullName);
             } else {
+              if (m.IsTailRecursive) {
+                Indent(indent); wr.WriteLine("TAIL_CALL_START: ;");
+                if (!m.IsStatic) {
+                  Indent(indent + IndentAmount); wr.WriteLine("var _this = this;");
+                }
+              }
+              Contract.Assert(enclosingMethod == null);
+              enclosingMethod = m;
               TrStmtList(m.Body.Body, indent);
+              Contract.Assert(enclosingMethod == m);
+              enclosingMethod = null;
             }
             Indent(indent);  wr.WriteLine("}");
 
@@ -1160,11 +1171,11 @@ namespace Microsoft.Dafny {
           var ind = indent + i * IndentAmount;
           var bound = s.Bounds[i];
           var bv = s.BoundVars[i];
-          if (bound is QuantifierExpr.BoolBoundedPool) {
+          if (bound is ComprehensionExpr.BoolBoundedPool) {
             Indent(ind);
             wr.Write("foreach (var @{0} in Dafny.Helpers.AllBooleans) {{ ", bv.CompileName);
-          } else if (bound is QuantifierExpr.IntBoundedPool) {
-            var b = (QuantifierExpr.IntBoundedPool)bound;
+          } else if (bound is ComprehensionExpr.IntBoundedPool) {
+            var b = (ComprehensionExpr.IntBoundedPool)bound;
             SpillLetVariableDecls(b.LowerBound, ind);
             SpillLetVariableDecls(b.UpperBound, ind);
             Indent(ind);
@@ -1173,22 +1184,22 @@ namespace Microsoft.Dafny {
             wr.Write("; @{0} < ", bv.CompileName);
             TrExpr(b.UpperBound);
             wr.Write("; @{0}++) {{ ", bv.CompileName);
-          } else if (bound is QuantifierExpr.SetBoundedPool) {
-            var b = (QuantifierExpr.SetBoundedPool)bound;
+          } else if (bound is ComprehensionExpr.SetBoundedPool) {
+            var b = (ComprehensionExpr.SetBoundedPool)bound;
             SpillLetVariableDecls(b.Set, ind);
             Indent(ind);
             wr.Write("foreach (var @{0} in (", bv.CompileName);
             TrExpr(b.Set);
             wr.Write(").Elements) { ");
-          } else if (bound is QuantifierExpr.SeqBoundedPool) {
-            var b = (QuantifierExpr.SeqBoundedPool)bound;
+          } else if (bound is ComprehensionExpr.SeqBoundedPool) {
+            var b = (ComprehensionExpr.SeqBoundedPool)bound;
             SpillLetVariableDecls(b.Seq, ind);
             Indent(ind);
             wr.Write("foreach (var @{0} in (", bv.CompileName);
             TrExpr(b.Seq);
             wr.Write(").UniqueElements) { ");
-          } else if (bound is QuantifierExpr.DatatypeBoundedPool) {
-            var b = (QuantifierExpr.DatatypeBoundedPool)bound;
+          } else if (bound is ComprehensionExpr.DatatypeBoundedPool) {
+            var b = (ComprehensionExpr.DatatypeBoundedPool)bound;
             wr.Write("foreach (var @{0} in {1}.AllSingletonConstructors) {{", bv.CompileName, TypeName(bv.Type));
           } else {
             Contract.Assert(false); throw new cce.UnreachableException();  // unexpected BoundedPool type
@@ -1408,66 +1419,125 @@ namespace Microsoft.Dafny {
       Contract.Requires(s != null);
       Contract.Assert(s.Method != null);  // follows from the fact that stmt has been successfully resolved
 
-      var lvalues = new List<string>();
-      Contract.Assert(s.Lhs.Count == s.Method.Outs.Count);
-      for (int i = 0; i < s.Method.Outs.Count; i++) {
-        Formal p = s.Method.Outs[i];
-        if (!p.IsGhost) {
-          lvalues.Add(CreateLvalue(s.Lhs[i], indent));
+      if (s.Method == enclosingMethod && enclosingMethod.IsTailRecursive) {
+        // compile call as tail-recursive
+
+        // assign the actual in-parameters to temporary variables
+        var inTmps = new List<string>();
+        for (int i = 0; i < s.Method.Ins.Count; i++) {
+          Formal p = s.Method.Ins[i];
+          if (!p.IsGhost) {
+            SpillLetVariableDecls(s.Args[i], indent);
+          }
         }
-      }
-      var outTmps = new List<string>();
-      for (int i = 0; i < s.Method.Outs.Count; i++) {
-        Formal p = s.Method.Outs[i];
-        if (!p.IsGhost) {
-          string target = "_out" + tmpVarCount;
+        if (receiverReplacement != null) {
+          // TODO:  What to do here?  When does this happen, what does it mean?
+        } else if (!s.Method.IsStatic) {
+          SpillLetVariableDecls(s.Receiver, indent);
+
+          string inTmp = "_in" + tmpVarCount;
           tmpVarCount++;
-          outTmps.Add(target);
+          inTmps.Add(inTmp);
           Indent(indent);
-          wr.WriteLine("{0} {1};", TypeName(s.Lhs[i].Type), target);
+          wr.Write("var {0} = ", inTmp);
+          TrExpr(s.Receiver);
+          wr.WriteLine(";");
         }
-      }
-      Contract.Assert(lvalues.Count == outTmps.Count);
+        for (int i = 0; i < s.Method.Ins.Count; i++) {
+          Formal p = s.Method.Ins[i];
+          if (!p.IsGhost) {
+            string inTmp = "_in" + tmpVarCount;
+            tmpVarCount++;
+            inTmps.Add(inTmp);
+            Indent(indent);
+            wr.Write("var {0} = ", inTmp);
+            TrExpr(s.Args[i]);
+            wr.WriteLine(";");
+          }
+        }
+        // Now, assign to the formals
+        int n = 0;
+        if (!s.Method.IsStatic) {
+          Indent(indent);
+          wr.WriteLine("_this = {0};", inTmps[n]);
+          n++;
+        }
+        foreach (var p in s.Method.Ins) {
+          if (!p.IsGhost) {
+            Indent(indent);
+            wr.WriteLine("{0} = {1};", p.CompileName, inTmps[n]);
+            n++;
+          }
+        }
+        Contract.Assert(n == inTmps.Count);
+        // finally, the jump back to the head of the method
+        Indent(indent);
+        wr.WriteLine("goto TAIL_CALL_START;");
 
-      for (int i = 0; i < s.Method.Ins.Count; i++) {
-        Formal p = s.Method.Ins[i];
-        if (!p.IsGhost) {
-          SpillLetVariableDecls(s.Args[i], indent);
-        }
-      }
-      if (receiverReplacement != null) {
-        Indent(indent);
-        wr.Write("@" + receiverReplacement);
-      } else if (s.Method.IsStatic) {
-        Indent(indent);
-        wr.Write(TypeName(cce.NonNull(s.Receiver.Type)));
       } else {
-        SpillLetVariableDecls(s.Receiver, indent);
-        Indent(indent);
-        TrParenExpr(s.Receiver);
-      }
-      wr.Write(".@{0}(", s.Method.CompileName);
+        // compile call as a regular call
 
-      string sep = "";
-      for (int i = 0; i < s.Method.Ins.Count; i++) {
-        Formal p = s.Method.Ins[i];
-        if (!p.IsGhost) {
-          wr.Write(sep);
-          TrExpr(s.Args[i]);
+        var lvalues = new List<string>();
+        Contract.Assert(s.Lhs.Count == s.Method.Outs.Count);
+        for (int i = 0; i < s.Method.Outs.Count; i++) {
+          Formal p = s.Method.Outs[i];
+          if (!p.IsGhost) {
+            lvalues.Add(CreateLvalue(s.Lhs[i], indent));
+          }
+        }
+        var outTmps = new List<string>();
+        for (int i = 0; i < s.Method.Outs.Count; i++) {
+          Formal p = s.Method.Outs[i];
+          if (!p.IsGhost) {
+            string target = "_out" + tmpVarCount;
+            tmpVarCount++;
+            outTmps.Add(target);
+            Indent(indent);
+            wr.WriteLine("{0} {1};", TypeName(s.Lhs[i].Type), target);
+          }
+        }
+        Contract.Assert(lvalues.Count == outTmps.Count);
+
+        for (int i = 0; i < s.Method.Ins.Count; i++) {
+          Formal p = s.Method.Ins[i];
+          if (!p.IsGhost) {
+            SpillLetVariableDecls(s.Args[i], indent);
+          }
+        }
+        if (receiverReplacement != null) {
+          Indent(indent);
+          wr.Write("@" + receiverReplacement);
+        } else if (s.Method.IsStatic) {
+          Indent(indent);
+          wr.Write(TypeName(cce.NonNull(s.Receiver.Type)));
+        } else {
+          SpillLetVariableDecls(s.Receiver, indent);
+          Indent(indent);
+          TrParenExpr(s.Receiver);
+        }
+        wr.Write(".@{0}(", s.Method.CompileName);
+
+        string sep = "";
+        for (int i = 0; i < s.Method.Ins.Count; i++) {
+          Formal p = s.Method.Ins[i];
+          if (!p.IsGhost) {
+            wr.Write(sep);
+            TrExpr(s.Args[i]);
+            sep = ", ";
+          }
+        }
+
+        foreach (var outTmp in outTmps) {
+          wr.Write("{0}out {1}", sep, outTmp);
           sep = ", ";
         }
-      }
+        wr.WriteLine(");");
 
-      foreach (var outTmp in outTmps) {
-        wr.Write("{0}out {1}", sep, outTmp);
-        sep = ", ";
-      }
-      wr.WriteLine(");");
-
-      // assign to the actual LHSs
-      for (int j = 0; j < lvalues.Count; j++) {
-        Indent(indent);
-        wr.WriteLine("{0} = {1};", lvalues[j], outTmps[j]);
+        // assign to the actual LHSs
+        for (int j = 0; j < lvalues.Count; j++) {
+          Indent(indent);
+          wr.WriteLine("{0} = {1};", lvalues[j], outTmps[j]);
+        }
       }
     }
 
@@ -1651,7 +1721,7 @@ namespace Microsoft.Dafny {
         }
 
       } else if (expr is ThisExpr) {
-        wr.Write("this");
+        wr.Write(enclosingMethod != null && enclosingMethod.IsTailRecursive ? "_this" : "this");
 
       } else if (expr is IdentifierExpr) {
         IdentifierExpr e = (IdentifierExpr)expr;
@@ -2053,32 +2123,32 @@ namespace Microsoft.Dafny {
           var bound = e.Bounds[i];
           var bv = e.BoundVars[i];
           // emit:  Dafny.Helpers.QuantX(boundsInformation, isForall, bv => body)
-          if (bound is QuantifierExpr.BoolBoundedPool) {
+          if (bound is ComprehensionExpr.BoolBoundedPool) {
             wr.Write("Dafny.Helpers.QuantBool(");
-          } else if (bound is QuantifierExpr.IntBoundedPool) {
-            var b = (QuantifierExpr.IntBoundedPool)bound;
+          } else if (bound is ComprehensionExpr.IntBoundedPool) {
+            var b = (ComprehensionExpr.IntBoundedPool)bound;
             wr.Write("Dafny.Helpers.QuantInt(");
             TrExpr(b.LowerBound);
             wr.Write(", ");
             TrExpr(b.UpperBound);
             wr.Write(", ");
-          } else if (bound is QuantifierExpr.SetBoundedPool) {
-            var b = (QuantifierExpr.SetBoundedPool)bound;
+          } else if (bound is ComprehensionExpr.SetBoundedPool) {
+            var b = (ComprehensionExpr.SetBoundedPool)bound;
             wr.Write("Dafny.Helpers.QuantSet(");
             TrExpr(b.Set);
             wr.Write(", ");
-          } else if (bound is QuantifierExpr.MapBoundedPool) {
-            var b = (QuantifierExpr.MapBoundedPool)bound;
+          } else if (bound is ComprehensionExpr.MapBoundedPool) {
+            var b = (ComprehensionExpr.MapBoundedPool)bound;
             wr.Write("Dafny.Helpers.QuantMap(");
             TrExpr(b.Map);
             wr.Write(", ");
-          } else if (bound is QuantifierExpr.SeqBoundedPool) {
-            var b = (QuantifierExpr.SeqBoundedPool)bound;
+          } else if (bound is ComprehensionExpr.SeqBoundedPool) {
+            var b = (ComprehensionExpr.SeqBoundedPool)bound;
             wr.Write("Dafny.Helpers.QuantSeq(");
             TrExpr(b.Seq);
             wr.Write(", ");
-          } else if (bound is QuantifierExpr.DatatypeBoundedPool) {
-            var b = (QuantifierExpr.DatatypeBoundedPool)bound;
+          } else if (bound is ComprehensionExpr.DatatypeBoundedPool) {
+            var b = (ComprehensionExpr.DatatypeBoundedPool)bound;
             wr.Write("Dafny.Helpers.QuantDatatype(");
 
             wr.Write("{0}.AllSingletonConstructors, ", DtName(b.Decl));
@@ -2120,32 +2190,32 @@ namespace Microsoft.Dafny {
         for (int i = 0; i < n; i++) {
           var bound = e.Bounds[i];
           var bv = e.BoundVars[i];
-          if (bound is QuantifierExpr.BoolBoundedPool) {
+          if (bound is ComprehensionExpr.BoolBoundedPool) {
             wr.Write("foreach (var @{0} in Dafny.Helpers.AllBooleans) {{ ", bv.CompileName);
-          } else if (bound is QuantifierExpr.IntBoundedPool) {
-            var b = (QuantifierExpr.IntBoundedPool)bound;
+          } else if (bound is ComprehensionExpr.IntBoundedPool) {
+            var b = (ComprehensionExpr.IntBoundedPool)bound;
             wr.Write("for (var @{0} = ", bv.CompileName);
             TrExpr(b.LowerBound);
             wr.Write("; @{0} < ", bv.CompileName);
             TrExpr(b.UpperBound);
             wr.Write("; @{0}++) {{ ", bv.CompileName);
-          } else if (bound is QuantifierExpr.SetBoundedPool) {
-            var b = (QuantifierExpr.SetBoundedPool)bound;
+          } else if (bound is ComprehensionExpr.SetBoundedPool) {
+            var b = (ComprehensionExpr.SetBoundedPool)bound;
             wr.Write("foreach (var @{0} in (", bv.CompileName);
             TrExpr(b.Set);
             wr.Write(").Elements) { ");
-          } else if (bound is QuantifierExpr.MapBoundedPool) {
-            var b = (QuantifierExpr.MapBoundedPool)bound;
+          } else if (bound is ComprehensionExpr.MapBoundedPool) {
+            var b = (ComprehensionExpr.MapBoundedPool)bound;
             wr.Write("foreach (var @{0} in (", bv.CompileName);
             TrExpr(b.Map);
             wr.Write(").Domain) { ");
-          } else if (bound is QuantifierExpr.SeqBoundedPool) {
-            var b = (QuantifierExpr.SeqBoundedPool)bound;
+          } else if (bound is ComprehensionExpr.SeqBoundedPool) {
+            var b = (ComprehensionExpr.SeqBoundedPool)bound;
             wr.Write("foreach (var @{0} in (", bv.CompileName);
             TrExpr(b.Seq);
             wr.Write(").Elements) { ");
-          } else if (bound is QuantifierExpr.DatatypeBoundedPool) {
-            var b = (QuantifierExpr.DatatypeBoundedPool)bound;
+          } else if (bound is ComprehensionExpr.DatatypeBoundedPool) {
+            var b = (ComprehensionExpr.DatatypeBoundedPool)bound;
             wr.Write("foreach (var @{0} in {1}.AllSingletonConstructors) {{", bv.CompileName, TypeName(bv.Type));
           } else {
             Contract.Assert(false); throw new cce.UnreachableException();  // unexpected BoundedPool type
@@ -2189,27 +2259,27 @@ namespace Microsoft.Dafny {
         Contract.Assert(e.Bounds.Count == n && n == 1);
         var bound = e.Bounds[0];
         var bv = e.BoundVars[0];
-        if (bound is QuantifierExpr.BoolBoundedPool) {
+        if (bound is ComprehensionExpr.BoolBoundedPool) {
           wr.Write("foreach (var @{0} in Dafny.Helpers.AllBooleans) {{ ", bv.CompileName);
-        } else if (bound is QuantifierExpr.IntBoundedPool) {
-          var b = (QuantifierExpr.IntBoundedPool)bound;
+        } else if (bound is ComprehensionExpr.IntBoundedPool) {
+          var b = (ComprehensionExpr.IntBoundedPool)bound;
           wr.Write("for (var @{0} = ", bv.CompileName);
           TrExpr(b.LowerBound);
           wr.Write("; @{0} < ", bv.CompileName);
           TrExpr(b.UpperBound);
           wr.Write("; @{0}++) {{ ", bv.CompileName);
-        } else if (bound is QuantifierExpr.SetBoundedPool) {
-          var b = (QuantifierExpr.SetBoundedPool)bound;
+        } else if (bound is ComprehensionExpr.SetBoundedPool) {
+          var b = (ComprehensionExpr.SetBoundedPool)bound;
           wr.Write("foreach (var @{0} in (", bv.CompileName);
           TrExpr(b.Set);
           wr.Write(").Elements) { ");
-        } else if (bound is QuantifierExpr.MapBoundedPool) {
-          var b = (QuantifierExpr.MapBoundedPool)bound;
+        } else if (bound is ComprehensionExpr.MapBoundedPool) {
+          var b = (ComprehensionExpr.MapBoundedPool)bound;
           wr.Write("foreach (var @{0} in (", bv.CompileName);
           TrExpr(b.Map);
           wr.Write(").Domain) { ");
-        } else if (bound is QuantifierExpr.SeqBoundedPool) {
-          var b = (QuantifierExpr.SeqBoundedPool)bound;
+        } else if (bound is ComprehensionExpr.SeqBoundedPool) {
+          var b = (ComprehensionExpr.SeqBoundedPool)bound;
           wr.Write("foreach (var @{0} in (", bv.CompileName);
           TrExpr(b.Seq);
           wr.Write(").Elements) { ");

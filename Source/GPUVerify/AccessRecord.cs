@@ -10,16 +10,12 @@ namespace GPUVerify
     class AccessRecord
     {
         public Variable v;
-        public Expr IndexZ;
-        public Expr IndexY;
-        public Expr IndexX;
+        public Expr Index;
 
-        public AccessRecord(Variable v, Expr IndexZ, Expr IndexY, Expr IndexX)
+        public AccessRecord(Variable v, Expr Index)
         {
             this.v = v;
-            this.IndexZ = IndexZ;
-            this.IndexY = IndexY;
-            this.IndexX = IndexX;
+            this.Index = Index;
         }
 
 

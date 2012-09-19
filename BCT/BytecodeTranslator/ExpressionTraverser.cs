@@ -379,11 +379,11 @@ namespace BytecodeTranslator
     }
 
     public override void TraverseChildren(IDupValue dupValue) {
-      var e = this.StmtTraverser.operandStack.Peek();
+      var e = this.sink.operandStack.Peek();
       this.TranslatedExpressions.Push(e);
     }
     public override void TraverseChildren(IPopValue popValue) {
-      var locExpr = this.StmtTraverser.operandStack.Pop();
+      var locExpr = this.sink.operandStack.Pop();
       this.TranslatedExpressions.Push(locExpr);
     }
 
@@ -617,6 +617,44 @@ namespace BytecodeTranslator
         }
       }
 
+      // Handle type equality specially when it is testing against a constant, i.e., o.GetType() == typeof(T)
+      if (IsOperator(resolvedMethod) && !IsConversionOperator(resolvedMethod) && 
+        TypeHelper.TypesAreEquivalent(resolvedMethod.ContainingType, this.sink.host.PlatformType.SystemType)) {
+        // REVIEW: Assume the only operators on System.Type are == and !=
+        var typeToTest = methodCall.Arguments.ElementAtOrDefault(0) as ITypeOf;
+        IMethodCall callToGetType;
+        if (typeToTest == null) {
+          typeToTest = methodCall.Arguments.ElementAtOrDefault(1) as ITypeOf;
+          callToGetType = methodCall.Arguments.ElementAtOrDefault(0) as IMethodCall;
+        } else {
+          callToGetType = methodCall.Arguments.ElementAtOrDefault(1) as IMethodCall;
+        }
+        if (typeToTest != null && callToGetType != null &&
+          TypeHelper.TypesAreEquivalent(callToGetType.MethodToCall.ContainingType, this.sink.host.PlatformType.SystemObject) &&
+          MemberHelper.GetMethodSignature(callToGetType.MethodToCall).Equals("System.Object.GetType")) {
+
+          IExpression objectToTest = callToGetType.ThisArgument;
+
+          // generate: is#T($DynamicType(o))
+          var typeFunction = this.sink.FindOrDefineType(typeToTest.TypeToGet.ResolvedType);
+          Contract.Assume(typeFunction != null);
+          var funcName = String.Format("is#{0}", typeFunction.Name);
+          var identExpr = Bpl.Expr.Ident(new Bpl.LocalVariable(methodCallToken, new Bpl.TypedIdent(methodCallToken, funcName, Bpl.Type.Bool)));
+          var funcCall = new Bpl.FunctionCall(identExpr);
+
+          this.Traverse(objectToTest);
+          var e = this.TranslatedExpressions.Pop();
+
+          var exprs = new Bpl.ExprSeq(this.sink.Heap.DynamicType(e));
+          Bpl.Expr typeTestExpression = new Bpl.NAryExpr(methodCallToken, funcCall, exprs);
+          if (MemberHelper.GetMethodSignature(resolvedMethod).Equals("System.Type.op_Inequality"))
+            typeTestExpression = Bpl.Expr.Unary( methodCallToken, Bpl.UnaryOperator.Opcode.Not, typeTestExpression);
+          this.TranslatedExpressions.Push(typeTestExpression);
+          return;
+        }
+      }
+
+
       List<Bpl.Expr> inexpr;
       List<Bpl.IdentifierExpr> outvars;
       Bpl.IdentifierExpr thisExpr;
@@ -687,8 +725,11 @@ namespace BytecodeTranslator
           this.StmtTraverser.StmtBuilder.Add(TranslationHelper.BuildAssignCmd(lhs, fromUnion));
         }
 
-        Bpl.Expr expr = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Neq, Bpl.Expr.Ident(this.sink.Heap.ExceptionVariable), Bpl.Expr.Ident(this.sink.Heap.NullRef));
-        this.StmtTraverser.RaiseException(expr);
+        if (this.sink.Options.modelExceptions == 2
+          || (this.sink.Options.modelExceptions == 1 && this.sink.MethodThrowsExceptions(resolvedMethod))) {
+          Bpl.Expr expr = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Neq, Bpl.Expr.Ident(this.sink.Heap.ExceptionVariable), Bpl.Expr.Ident(this.sink.Heap.NullRef));
+          this.StmtTraverser.RaiseException(expr);
+        }
       } finally {
         // TODO move away phone related code from the translation, it would be better to have 2 or more translation phases
         if (PhoneCodeHelper.instance().PhonePlugin != null) {
@@ -707,6 +748,15 @@ namespace BytecodeTranslator
           }
         }
       }
+    }
+
+    public virtual bool IsOperator(IMethodDefinition methodDefinition) {
+      return (methodDefinition.IsSpecialName && methodDefinition.Name.Value.StartsWith("op_"));
+    }
+
+    public virtual bool IsConversionOperator(IMethodDefinition methodDefinition) {
+      return (methodDefinition.IsSpecialName && (
+        methodDefinition.Name.Value == "op_Explicit" || methodDefinition.Name.Value == "op_Implicit"));
     }
 
     private void EmitLineDirective(Bpl.IToken methodCallToken) {
@@ -1059,7 +1109,7 @@ namespace BytecodeTranslator
         }
         var pop = addressDereference.Address as IPopValue;
         if (pop != null) {
-          var popValue = this.StmtTraverser.operandStack.Pop();
+          var popValue = this.sink.operandStack.Pop();
           var be = popValue as IBoundExpression;
           if (be != null) {
             TranslateAssignment(tok, be.Definition, be.Instance, source);
@@ -1091,8 +1141,7 @@ namespace BytecodeTranslator
           return;
         }
       }
-
-      Contract.Assume(false);
+      throw new TranslationException("Untranslatable assignment statement.");
     }
 
     internal delegate void SourceTraverser(IExpression source);
@@ -1215,22 +1264,24 @@ namespace BytecodeTranslator
         } else {
           Bpl.Expr x = null;
           Bpl.IdentifierExpr temp = null;
-          if (target.Instance != null) {
-            this.Traverse(target.Instance);
-            x = this.TranslatedExpressions.Pop();
-            if (pushTargetRValue) {
+          if (pushTargetRValue) {
+            if (target.Instance != null) {
+              this.Traverse(target.Instance);
+              x = this.TranslatedExpressions.Pop();
               AssertOrAssumeNonNull(tok, x);
               var e2 = this.sink.Heap.ReadHeap(x, f, TranslationHelper.IsStruct(field.ContainingType) ? AccessType.Struct : AccessType.Heap, boogieTypeOfField);
               this.TranslatedExpressions.Push(e2);
-
-              if (!treatAsStatement && resultIsInitialTargetRValue) {
-                var loc = this.sink.CreateFreshLocal(source.Type);
-                temp = Bpl.Expr.Ident(loc);
-                var e3 = this.TranslatedExpressions.Pop();
-                var cmd = Bpl.Cmd.SimpleAssign(tok, temp, e3);
-                this.StmtTraverser.StmtBuilder.Add(cmd);
-                this.TranslatedExpressions.Push(temp);
-              }
+            } else {
+              TranslatedExpressions.Push(f);
+            }
+            
+            if (!treatAsStatement && resultIsInitialTargetRValue) {
+              var loc = this.sink.CreateFreshLocal(source.Type);
+              temp = Bpl.Expr.Ident(loc);
+              var e3 = this.TranslatedExpressions.Pop();
+              var cmd = Bpl.Cmd.SimpleAssign(tok, temp, e3);
+              this.StmtTraverser.StmtBuilder.Add(cmd);
+              this.TranslatedExpressions.Push(temp);
             }
           }
           sourceTraverser(source);
@@ -1625,6 +1676,8 @@ namespace BytecodeTranslator
         e = Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.And, lexp, rexp);
       }
       else {
+        if (lexp.Type != Bpl.Type.Int || rexp.Type != Bpl.Type.Int)
+          throw new TranslationException("BitwiseAnd called in a non-boolean context, but at least one argument is not an integer!");
         e = new Bpl.NAryExpr(
           bitwiseAnd.Token(),
           new Bpl.FunctionCall(this.sink.Heap.BitwiseAnd),
@@ -1944,8 +1997,10 @@ namespace BytecodeTranslator
 
     public override void TraverseChildren(IEquality equal)
     {
-      if ((equal.LeftOperand.Type.TypeCode != PrimitiveTypeCode.NotPrimitive || equal.LeftOperand.Type.TypeCode != PrimitiveTypeCode.NotPrimitive)
-        && !TypeHelper.TypesAreEquivalent(equal.LeftOperand.Type, equal.RightOperand.Type)) {
+      if ((equal.LeftOperand.Type.TypeCode != PrimitiveTypeCode.NotPrimitive || equal.RightOperand.Type.TypeCode != PrimitiveTypeCode.NotPrimitive)
+        && !TypeHelper.TypesAreEquivalent(equal.LeftOperand.Type, equal.RightOperand.Type)
+        && (!(IsConstantNull(equal.LeftOperand) || IsConstantNull(equal.RightOperand))) // null is "polymorphic": it can be compared against any reference type.
+        ) {
         throw new TranslationException(
           String.Format("Decompiler messed up: equality's left operand is of type '{0}' but right operand is of type '{1}'.",
           TypeHelper.GetTypeName(equal.LeftOperand.Type),
@@ -1959,12 +2014,20 @@ namespace BytecodeTranslator
       TranslatedExpressions.Push(Bpl.Expr.Binary(Bpl.BinaryOperator.Opcode.Eq, lexp, rexp));
     }
 
+    private bool IsConstantNull(IExpression iExpression) {
+      var ctc = iExpression as ICompileTimeConstant;
+      if (ctc == null) return false;
+      return ctc.Value == null;
+    }
+
     public override void TraverseChildren(INotEquality nonEqual)
     {
 
-      if ((nonEqual.LeftOperand.Type.TypeCode != PrimitiveTypeCode.NotPrimitive || nonEqual.LeftOperand.Type.TypeCode != PrimitiveTypeCode.NotPrimitive)
+      if ((nonEqual.LeftOperand.Type.TypeCode != PrimitiveTypeCode.NotPrimitive || nonEqual.RightOperand.Type.TypeCode != PrimitiveTypeCode.NotPrimitive)
         &&
-        !TypeHelper.TypesAreEquivalent(nonEqual.LeftOperand.Type, nonEqual.RightOperand.Type)) {
+        !TypeHelper.TypesAreEquivalent(nonEqual.LeftOperand.Type, nonEqual.RightOperand.Type)
+        && (!(IsConstantNull(nonEqual.LeftOperand) || IsConstantNull(nonEqual.RightOperand))) // null is "polymorphic": it can be compared against any reference type.
+        ) {
         throw new TranslationException(
           String.Format("Decompiler messed up: inequality's left operand is of type '{0}' but right operand is of type '{1}'.",
           TypeHelper.GetTypeName(nonEqual.LeftOperand.Type),

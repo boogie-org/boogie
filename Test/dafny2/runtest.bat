@@ -16,6 +16,7 @@ for %%f in (
     StoreAndRetrieve.dfy
     Intervals.dfy TreeFill.dfy TuringFactorial.dfy
     MajorityVote.dfy SegmentSum.dfy
+    MonotonicHeapstate.dfy Calculations.dfy
   ) do (
   echo.
   echo -------------------- %%f --------------------

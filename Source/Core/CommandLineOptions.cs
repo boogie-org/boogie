@@ -254,7 +254,7 @@ namespace Microsoft.Boogie {
     /// <summary>
     /// This method is called after all parsing is done, if no parse errors were encountered.
     /// </summary>
-    protected virtual void ApplyDefaultOptions() {
+    public virtual void ApplyDefaultOptions() {
     }
       
     /// <summary>
@@ -384,6 +384,7 @@ namespace Microsoft.Boogie {
     public bool Wait = false;
     public bool Trace = false;
     public bool TraceTimes = false;
+    public bool TraceProofObligations = false;
     public bool NoResolve = false;
     public bool NoTypecheck = false;
     public bool OverlookBoogieTypeErrors = false;
@@ -1205,6 +1206,7 @@ namespace Microsoft.Boogie {
               ps.CheckBooleanFlag("wait", ref Wait) ||
               ps.CheckBooleanFlag("trace", ref Trace) ||
               ps.CheckBooleanFlag("traceTimes", ref TraceTimes) ||
+              ps.CheckBooleanFlag("tracePOs", ref TraceProofObligations) ||
               ps.CheckBooleanFlag("noResolve", ref NoResolve) ||
               ps.CheckBooleanFlag("noTypecheck", ref NoTypecheck) ||
               ps.CheckBooleanFlag("overlookTypeErrors", ref OverlookBoogieTypeErrors) ||
@@ -1244,7 +1246,7 @@ namespace Microsoft.Boogie {
       return base.ParseOption(name, ps);  // defer to superclass
     }
 
-    protected override void ApplyDefaultOptions() {
+    public override void ApplyDefaultOptions() {
       Contract.Ensures(TheProverFactory != null);
       Contract.Ensures(vcVariety != VCVariety.Unspecified);
 
@@ -1264,6 +1266,12 @@ namespace Microsoft.Boogie {
       if (TheProverFactory == null) {
         TheProverFactory = ProverFactory.Load("SMTLib");
         ProverName = "SMTLib".ToUpper();
+      }
+
+      var proverOpts = TheProverFactory.BlankProverOptions();
+      proverOpts.Parse(ProverOptions);
+      if (!TheProverFactory.SupportsLabels(proverOpts)) {
+        UseLabels = false;
       }
 
       if (vcVariety == VCVariety.Unspecified) {
@@ -1509,6 +1517,8 @@ namespace Microsoft.Boogie {
 
   /trace        blurt out various debug trace information
   /traceTimes   output timing information at certain points in the pipeline
+  /tracePOs     output information about the number of proof obligations
+                (also included in the /trace output)
   /log[:method] Print debug output during translation
 
   /break        launch and break into debugger

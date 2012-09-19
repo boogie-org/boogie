@@ -56,6 +56,13 @@ namespace BytecodeTranslator {
           typeRecorder.Traverse((IAssembly)a);
         }
         #endregion
+        #region Possibly gather exception information
+        if (sink.Options.modelExceptions == 1) {
+          this.sink.MethodThrowsExceptions = ExceptionAnalyzer.ComputeExplicitlyThrownExceptions(assemblies);
+        }
+          
+        #endregion
+
         base.TranslateAssemblies(assemblies);
       }
       
@@ -74,6 +81,7 @@ namespace BytecodeTranslator {
             }
             this.subTypes[baseClass].Add(typeDefinition);
           }
+
           foreach (var iface in typeDefinition.Interfaces) {
             if (!this.subTypes.ContainsKey(iface)) {
               this.subTypes[iface] = new List<ITypeReference>();
@@ -109,6 +117,12 @@ namespace BytecodeTranslator {
       public override void TraverseChildren(IMethodCall methodCall) {
         var resolvedMethod = Sink.Unspecialize(methodCall.MethodToCall).ResolvedMethod;
 
+        var methodName = Microsoft.Cci.MemberHelper.GetMethodSignature(resolvedMethod);
+        if (methodName.Equals("System.Object.GetHashCode") || methodName.Equals("System.Object.ToString")) {
+          base.TraverseChildren(methodCall);
+          return;
+        }
+
         bool isEventAdd = resolvedMethod.IsSpecialName && resolvedMethod.Name.Value.StartsWith("add_");
         bool isEventRemove = resolvedMethod.IsSpecialName && resolvedMethod.Name.Value.StartsWith("remove_");
         if (isEventAdd || isEventRemove) {
@@ -141,80 +155,113 @@ namespace BytecodeTranslator {
           return;
         }
 
-        Bpl.IToken token = methodCall.Token();
-
-        List<Bpl.Expr> inexpr;
-        List<Bpl.IdentifierExpr> outvars;
-        Bpl.IdentifierExpr thisExpr;
-        Dictionary<Bpl.IdentifierExpr, Tuple<Bpl.IdentifierExpr,bool>> toBoxed;
-        var proc = TranslateArgumentsAndReturnProcedure(token, methodCall.MethodToCall, resolvedMethod, methodCall.IsStaticCall ? null : methodCall.ThisArgument, methodCall.Arguments, out inexpr, out outvars, out thisExpr, out toBoxed);
-
-
-        Bpl.QKeyValue attrib = null;
-        foreach (var a in resolvedMethod.Attributes) {
-          if (TypeHelper.GetTypeName(a.Type).EndsWith("AsyncAttribute")) {
-            attrib = new Bpl.QKeyValue(token, "async", new List<object>(), null);
-            break;
-          }
-        }
-
-        var elseBranch = new Bpl.StmtListBuilder();
-
-        var methodname = proc.Name;
-
-        Bpl.CallCmd call;
-        if (attrib != null)
-          call = new Bpl.CallCmd(token, methodname, inexpr, outvars, attrib);
-        else
-          call = new Bpl.CallCmd(token, methodname, inexpr, outvars);
-        elseBranch.Add(call);
-
-        Bpl.IfCmd ifcmd = null;
-
         Contract.Assume(1 <= overrides.Count);
+
+        var getType = new Microsoft.Cci.MethodReference(
+          this.sink.host,
+          this.sink.host.PlatformType.SystemObject,
+          CallingConvention.HasThis,
+          this.sink.host.PlatformType.SystemType,
+          this.sink.host.NameTable.GetNameFor("GetType"), 0);
+        var op_Type_Equality = new Microsoft.Cci.MethodReference(
+          this.sink.host,
+          this.sink.host.PlatformType.SystemType,
+          CallingConvention.Default,
+          this.sink.host.PlatformType.SystemBoolean,
+          this.sink.host.NameTable.GetNameFor("op_Equality"),
+          0,
+          this.sink.host.PlatformType.SystemType,
+          this.sink.host.PlatformType.SystemType);
+
+        // Depending on whether the method is a void method or not
+        // Turn into expression:
+        //   (o.GetType() == typeof(T1)) ? ((T1)o).M(...) : ( (o.GetType() == typeof(T2)) ? ((T2)o).M(...) : ...
+        // Or turn into statements:
+        //   if (o.GetType() == typeof(T1)) ((T1)o).M(...) else if ...
+        var turnIntoStatements = resolvedMethod.Type.TypeCode == PrimitiveTypeCode.Void;
+        IStatement elseStatement = null;
+
+        IExpression elseValue = new MethodCall() {
+          Arguments = new List<IExpression>(methodCall.Arguments),
+          IsStaticCall = false,
+          IsVirtualCall = false,
+          MethodToCall = methodCall.MethodToCall,
+          ThisArgument = methodCall.ThisArgument,
+          Type = methodCall.Type,
+        };
+        if (turnIntoStatements)
+          elseStatement = new ExpressionStatement() { Expression = elseValue, };
+
+        Conditional ifConditional = null;
+        ConditionalStatement ifStatement = null;
+
         foreach (var typeMethodPair in overrides) {
           var t = typeMethodPair.Item1;
           var m = typeMethodPair.Item2;
 
-          // guard: is#T($DynamicType(local_variable))
-          var typeFunction = this.sink.FindOrDefineType(t.ResolvedType);
-          if (typeFunction == null) {
-            // BUGBUG!! This just silently skips the branch that would dispatch to t's implementation of the method!
-            continue;
+          if (m.IsGeneric) {
+            var baseMethod = m.ResolvedMethod;
+            m = new GenericMethodInstanceReference() {
+              CallingConvention = baseMethod.CallingConvention,
+              ContainingType = baseMethod.ContainingTypeDefinition,
+              GenericArguments = new List<ITypeReference>(IteratorHelper.GetConversionEnumerable<IGenericMethodParameter, ITypeReference>(baseMethod.GenericParameters)),
+              GenericMethod = baseMethod,
+              InternFactory = this.sink.host.InternFactory,
+              Name = baseMethod.Name,
+              Parameters = baseMethod.ParameterCount == 0 ? null : new List<IParameterTypeInformation>(baseMethod.Parameters),
+              Type = baseMethod.Type,
+            };
           }
-          var funcName = String.Format("is#{0}", typeFunction.Name);
-          var identExpr = Bpl.Expr.Ident(new Bpl.LocalVariable(token, new Bpl.TypedIdent(token, funcName, Bpl.Type.Bool)));
-          var funcCall = new Bpl.FunctionCall(identExpr);
-          var exprs = new Bpl.ExprSeq(this.sink.Heap.DynamicType(inexpr[0]));
-          var guard = new Bpl.NAryExpr(token, funcCall, exprs);
 
-          var thenBranch = new Bpl.StmtListBuilder();
-          methodname = TranslationHelper.CreateUniqueMethodName(m); // REVIEW: Shouldn't this be call to FindOrCreateProcedure?
-          if (attrib != null)
-            call = new Bpl.CallCmd(token, methodname, inexpr, outvars, attrib);
-          else
-            call = new Bpl.CallCmd(token, methodname, inexpr, outvars);
-          thenBranch.Add(call);
-
-          ifcmd = new Bpl.IfCmd(token,
-            guard,
-            thenBranch.Collect(token),
-            null,
-            elseBranch.Collect(token)
-            );
-          elseBranch = new Bpl.StmtListBuilder();
-          elseBranch.Add(ifcmd);
+          var cond = new MethodCall() {
+            Arguments = new List<IExpression>(){
+                new MethodCall() {
+                  Arguments = new List<IExpression>(),
+                  IsStaticCall = false,
+                  IsVirtualCall = false,
+                  MethodToCall = getType,
+                  ThisArgument = methodCall.ThisArgument,
+                },
+                new TypeOf() {
+                  TypeToGet = t,
+                },
+              },
+            IsStaticCall = true,
+            IsVirtualCall = false,
+            MethodToCall = op_Type_Equality,
+            Type = this.sink.host.PlatformType.SystemBoolean,
+          };
+          var thenValue = new MethodCall() {
+            Arguments = new List<IExpression>(methodCall.Arguments),
+            IsStaticCall = false,
+            IsVirtualCall = false,
+            MethodToCall = m,
+            ThisArgument = methodCall.ThisArgument,
+            Type = t,
+          };
+          if (turnIntoStatements) {
+            ifStatement = new ConditionalStatement() {
+              Condition = cond,
+              FalseBranch = elseStatement,
+              TrueBranch = new ExpressionStatement() { Expression = thenValue, },
+            };
+            elseStatement = ifStatement;
+          } else {
+            ifConditional = new Conditional() {
+              Condition = cond,
+              ResultIfFalse = elseValue,
+              ResultIfTrue = thenValue,
+            };
+            elseValue = ifConditional;
+          }
         }
-
-        if (ifcmd == null) {
-          // BUGBUG: then no override made it into the if-statement.
-          // currently that happens when all types are generic.
-          // Should be able to remove this when that is fixed.
-          base.Traverse(methodCall);
-          return;
+        if (turnIntoStatements) {
+          Contract.Assume(ifStatement != null);
+          this.StmtTraverser.Traverse(ifStatement);
+        } else {
+          Contract.Assume(ifConditional != null);
+          base.Traverse(ifConditional);
         }
-
-        this.StmtTraverser.StmtBuilder.Add(ifcmd);
 
         return;
       }
@@ -226,18 +273,64 @@ namespace BytecodeTranslator {
         Contract.Requires(type != null);
         Contract.Requires(resolvedMethod != null);
         var overrides = new List<Tuple<ITypeReference, IMethodReference>>();
-        foreach (var subType in this.subTypes[type]) {
-          var overriddenMethod = MemberHelper.GetImplicitlyOverridingDerivedClassMethod(resolvedMethod, subType.ResolvedType);
-          if (overriddenMethod != Dummy.Method) {
-            resolvedMethod = overriddenMethod;
+        if (type.ResolvedType.IsInterface) {
+          foreach (var subType in this.subTypes[type]) {
+            var def = subType.ResolvedType;
+            var foundSome = false; // prefer explicit, since if both are there, only the implicit get called through the iface pointer.
+            foreach (var implementingMethod in GetExplicitlyImplementedMethods(def, resolvedMethod)) {
+              overrides.Add(Tuple.Create<ITypeReference, IMethodReference>(subType, implementingMethod));
+              foundSome = true;
+            }
+            if (!foundSome) { // look for implicit
+              var mems = def.GetMatchingMembersNamed(resolvedMethod.Name, true,
+                tdm => {
+                  var m = tdm as IMethodDefinition;
+                  if (m == null) return false;
+                  return TypeHelper.ParameterListsAreEquivalentAssumingGenericMethodParametersAreEquivalentIfTheirIndicesMatch(
+                    m.Parameters, resolvedMethod.Parameters);
+                });
+              foreach (var mem in mems) {
+                var methodDef = mem as IMethodDefinition;
+                if (methodDef == null) continue;
+                overrides.Add(Tuple.Create<ITypeReference, IMethodReference>(subType, methodDef));
+
+              }
+            }
           }
-          overrides.Add(Tuple.Create<ITypeReference, IMethodReference>(subType, resolvedMethod));
-          if (this.subTypes.ContainsKey(subType)) {
-            overrides.AddRange(FindOverrides(subType, resolvedMethod));
+        } else {
+          foreach (var subType in this.subTypes[type]) {
+            var overridingMethod = MemberHelper.GetImplicitlyOverridingDerivedClassMethod(resolvedMethod, subType.ResolvedType);
+            if (overridingMethod != Dummy.Method) {
+              resolvedMethod = overridingMethod;
+            }
+            overrides.Add(Tuple.Create<ITypeReference, IMethodReference>(subType, resolvedMethod));
+            if (this.subTypes.ContainsKey(subType)) {
+              overrides.AddRange(FindOverrides(subType, resolvedMethod));
+            }
           }
         }
         return overrides;
       }
+
+      /// <summary>
+      /// Returns zero or more explicit implementations of an interface method that are defined in the given type definition.
+      /// </summary>
+      /// <remarks>
+      /// IMethodReferences are returned (as opposed to IMethodDefinitions) because the references are directly available:
+      /// no resolving is needed to find them.
+      /// </remarks>
+      public static IEnumerable<IMethodReference> GetExplicitlyImplementedMethods(ITypeDefinition typeDefinition, IMethodDefinition ifaceMethod) {
+        Contract.Requires(ifaceMethod != null);
+        Contract.Ensures(Contract.Result<IEnumerable<IMethodReference>>() != null);
+        Contract.Ensures(Contract.ForAll(Contract.Result<IEnumerable<IMethodReference>>(), x => x != null));
+
+        foreach (IMethodImplementation methodImplementation in typeDefinition.ExplicitImplementationOverrides) {
+          if (ifaceMethod.InternedKey == methodImplementation.ImplementedMethod.InternedKey)
+            yield return methodImplementation.ImplementingMethod;
+        }
+        var mems = TypeHelper.GetMethod(typeDefinition, ifaceMethod.Name, ifaceMethod.Parameters.Select(p => p.Type).ToArray());
+      }
+
 
     }
 

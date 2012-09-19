@@ -280,8 +280,9 @@ namespace Microsoft.Dafny
     /// Print newline after the message.
     /// </summary>
     public static void Inform(string s) {
-      if ( ! CommandLineOptions.Clo.Trace) { return; }
-      Console.WriteLine(s);
+      if (CommandLineOptions.Clo.Trace || CommandLineOptions.Clo.TraceProofObligations) {
+        Console.WriteLine(s);
+      }
     }
 
     static void WriteTrailer(int verified, int errors, int inconclusives, int timeOuts, int outOfMemories){
@@ -598,10 +599,10 @@ namespace Microsoft.Dafny
             List<Counterexample>/*?*/ errors;
 
             DateTime start = new DateTime();  // to please compiler's definite assignment rules
-            if (CommandLineOptions.Clo.Trace || CommandLineOptions.Clo.XmlSink != null)
+            if (CommandLineOptions.Clo.Trace || CommandLineOptions.Clo.TraceProofObligations || CommandLineOptions.Clo.XmlSink != null)
             {
                 start = DateTime.Now;
-                if (CommandLineOptions.Clo.Trace)
+                if (CommandLineOptions.Clo.Trace || CommandLineOptions.Clo.TraceProofObligations)
                 {
                     Console.WriteLine();
                     Console.WriteLine("Verifying {0} ...", impl.Name);
@@ -634,13 +635,12 @@ namespace Microsoft.Dafny
             string timeIndication = "";
             DateTime end = DateTime.Now;
             TimeSpan elapsed = end - start;
-            if (CommandLineOptions.Clo.Trace || CommandLineOptions.Clo.XmlSink != null)
-            {
-                if (CommandLineOptions.Clo.Trace)
-                {
-                    int poCount = vcgen.CumulativeAssertionCount - prevAssertionCount;
-                    timeIndication = string.Format("  [{0} s, {1} proof obligation{2}]  ", elapsed.TotalSeconds, poCount, poCount == 1 ? "" : "s");
-                }
+            if (CommandLineOptions.Clo.Trace) {
+              int poCount = vcgen.CumulativeAssertionCount - prevAssertionCount;
+              timeIndication = string.Format("  [{0:F3} s, {1} proof obligation{2}]  ", elapsed.TotalSeconds, poCount, poCount == 1 ? "" : "s");
+            } else if (CommandLineOptions.Clo.TraceProofObligations) {
+              int poCount = vcgen.CumulativeAssertionCount - prevAssertionCount;
+              timeIndication = string.Format("  [{0} proof obligation{1}]  ", poCount, poCount == 1 ? "" : "s");
             }
 
             switch (outcome)
@@ -677,8 +677,8 @@ namespace Microsoft.Dafny
                         if (error is CallCounterexample)
                         {
                             CallCounterexample err = (CallCounterexample)error;
-                            ReportBplError(err.FailingCall.tok, "Error BP5002: A precondition for this call might not hold.", true);
-                            ReportBplError(err.FailingRequires.tok, "Related location: This is the precondition that might not hold.", false);
+                            ReportBplError(err.FailingCall.tok, (err.FailingCall.ErrorData as string) ?? "Error BP5002: A precondition for this call might not hold.", true);
+                            ReportBplError(err.FailingRequires.tok, (err.FailingRequires.ErrorData as string) ?? "Related location: This is the precondition that might not hold.", false);
                             if (CommandLineOptions.Clo.XmlSink != null)
                             {
                                 CommandLineOptions.Clo.XmlSink.WriteError("precondition violation", err.FailingCall.tok, err.FailingRequires.tok, error.Trace);
@@ -688,7 +688,8 @@ namespace Microsoft.Dafny
                         {
                             ReturnCounterexample err = (ReturnCounterexample)error;
                             ReportBplError(err.FailingReturn.tok, "Error BP5003: A postcondition might not hold on this return path.", true);
-                            ReportBplError(err.FailingEnsures.tok, "Related location: This is the postcondition that might not hold.", false);
+                            ReportBplError(err.FailingEnsures.tok, (err.FailingEnsures.ErrorData as string) ?? "Related location: This is the postcondition that might not hold.", false);
+                            ReportAllBplErrors(err.FailingEnsures.Attributes);
                             if (CommandLineOptions.Clo.XmlSink != null)
                             {
                                 CommandLineOptions.Clo.XmlSink.WriteError("postcondition violation", err.FailingReturn.tok, err.FailingEnsures.tok, error.Trace);
@@ -722,6 +723,8 @@ namespace Microsoft.Dafny
                                     msg = "Error BP5001: This assertion might not hold.";
                                 }
                                 ReportBplError(err.FailingAssert.tok, msg, true);
+                                var attr = err.FailingAssert.Attributes;
+                                ReportAllBplErrors(attr);
                                 if (CommandLineOptions.Clo.XmlSink != null)
                                 {
                                     CommandLineOptions.Clo.XmlSink.WriteError("assertion violation", err.FailingAssert.tok, null, error.Trace);
@@ -785,6 +788,18 @@ namespace Microsoft.Dafny
       #endregion
 
       return PipelineOutcome.VerificationCompleted;
+    }
+
+    private static void ReportAllBplErrors(QKeyValue attr) {
+      while (attr != null) {
+        if (attr.Key == "msg" && attr.Params.Count == 1) {
+          var str = attr.Params[0] as string;
+          if (str != null) {
+            ReportBplError(attr.tok, "Error: "+str, false);
+          }
+        }
+        attr = attr.Next;
+      }
     }
 
   }

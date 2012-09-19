@@ -55,14 +55,18 @@ namespace Microsoft.Dafny
     ResolutionErrorReporter reporter;
     Cloner rawCloner; // This cloner just gives exactly the same thing back.
     RefinementCloner refinementCloner; // This cloner wraps things in a RefinementTransformer
-    public RefinementTransformer(ResolutionErrorReporter reporter) {
+    Program program;
+    public RefinementTransformer(ResolutionErrorReporter reporter, Program p) {
       Contract.Requires(reporter != null);
       this.reporter = reporter;
       rawCloner = new Cloner();
+      program = p;
     }
 
     private ModuleDefinition moduleUnderConstruction;  // non-null for the duration of Construct calls
     private Queue<Action> postTasks = new Queue<Action>();  // empty whenever moduleUnderConstruction==null, these tasks are for the post-resolve phase of module moduleUnderConstruction
+    public Queue<Tuple<Method, Method>> translationMethodChecks = new Queue<Tuple<Method, Method>>();  // contains all the methods that need to be checked for structural refinement.
+    private Method currentMethod;
 
     public void PreResolve(ModuleDefinition m) {
 
@@ -108,7 +112,8 @@ namespace Microsoft.Dafny
               }
               if (derived != null) {
                 // check that the new module refines the previous declaration
-                CheckIsRefinement(derived, original, nw.tok, "a module (" + d.Name + ") can only be replaced by a refinement of the original module");
+                if (!CheckIsRefinement(derived, original))
+                  reporter.Error(nw.tok, "a module ({0}) can only be replaced by a refinement of the original module", d.Name);
               }
             }
           } else if (d is ArbitraryTypeDecl) {
@@ -164,18 +169,280 @@ namespace Microsoft.Dafny
       Contract.Assert(moduleUnderConstruction == m);  // this should be as it was set earlier in this method
     }
 
-    public bool CheckIsRefinement(ModuleSignature derived, ModuleSignature original, IToken errorTok, string errorMsg) {
-      while (derived != null) {
-        if (derived == original)
-          break;
-        derived = derived.Refines;
+    public bool CheckIsRefinement(ModuleSignature derived, ModuleSignature original) {
+      // Check refinement by construction.
+      var derivedPointer = derived;
+      while (derivedPointer != null) {
+        if (derivedPointer == original)
+          return true;
+        derivedPointer = derivedPointer.Refines;
       }
-      if (derived != original) {
-        reporter.Error(errorTok, errorMsg);
-        return false;
-      } else return true;
+      // Check structural refinement. Note this involves several checks.
+      // First, we need to know if the two modules are signature compatible;
+      // this is determined immediately as it is necessary for determining
+      // whether resolution will succeed. This involves checking classes, datatypes,
+      // type declarations, and nested modules. 
+      // Second, we need to determine whether the specifications will be compatible
+      // (i.e. substitutable), by translating to Boogie.
+
+      var errorCount = reporter.ErrorCount;
+      foreach (var kv in original.TopLevels) {
+        var d = kv.Value;
+        TopLevelDecl nw;
+        if (derived.TopLevels.TryGetValue(kv.Key, out nw)) {
+          if (d is ModuleDecl) {
+            if (!(nw is ModuleDecl)) {
+              reporter.Error(nw, "a module ({0}) must refine another module", nw.Name);
+            } else {
+              CheckIsRefinement(((ModuleDecl)nw).Signature, ((ModuleDecl)d).Signature);
+            }
+          } else if (d is ArbitraryTypeDecl) {
+            if (nw is ModuleDecl) {
+              reporter.Error(nw, "a module ({0}) must refine another module", nw.Name);
+            } else {
+              bool dDemandsEqualitySupport = ((ArbitraryTypeDecl)d).MustSupportEquality;
+              if (nw is ArbitraryTypeDecl) {
+                if (dDemandsEqualitySupport != ((ArbitraryTypeDecl)nw).MustSupportEquality) {
+                  reporter.Error(nw, "type declaration '{0}' is not allowed to change the requirement of supporting equality", nw.Name);
+                }
+              } else if (dDemandsEqualitySupport) {
+                if (nw is ClassDecl) {
+                  // fine, as long as "nw" does not take any type parameters
+                  if (nw.TypeArgs.Count != 0) {
+                    reporter.Error(nw, "arbitrary type '{0}' is not allowed to be replaced by a class that takes type parameters", nw.Name);
+                  }
+                } else if (nw is CoDatatypeDecl) {
+                  reporter.Error(nw, "a type declaration that requires equality support cannot be replaced by a codatatype");
+                } else {
+                  Contract.Assert(nw is IndDatatypeDecl);
+                  if (nw.TypeArgs.Count != 0) {
+                    reporter.Error(nw, "arbitrary type '{0}' is not allowed to be replaced by a datatype that takes type parameters", nw.Name);
+                  } else {
+                    var udt = new UserDefinedType(nw.tok, nw.Name, nw, new List<Type>());
+                    if (!(udt.SupportsEquality)) {
+                      reporter.Error(nw.tok, "datatype '{0}' is used to refine an arbitrary type with equality support, but '{0}' does not support equality", nw.Name);
+                    }
+                  }
+                }
+              }
+            }
+          } else if (d is DatatypeDecl) {
+            if (nw is DatatypeDecl) {
+              if (d is IndDatatypeDecl && !(nw is IndDatatypeDecl)) {
+                reporter.Error(nw, "a datatype ({0}) must be replaced by a datatype, not a codatatype", d.Name);
+              } else if (d is CoDatatypeDecl && !(nw is CoDatatypeDecl)) {
+                reporter.Error(nw, "a codatatype ({0}) must be replaced by a codatatype, not a datatype", d.Name);
+              }
+              // check constructors, formals, etc.
+              CheckDatatypesAreRefinements((DatatypeDecl)d, (DatatypeDecl)nw);
+            } else {
+              reporter.Error(nw, "a {0} ({1}) must be refined by a {0}", d is IndDatatypeDecl ? "datatype" : "codatatype", d.Name);
+            }
+          } else if (d is ClassDecl) {
+            if (!(nw is ClassDecl)) {
+              reporter.Error(nw, "a class declaration ({0}) must be refined by another class declaration", nw.Name);
+            } else {
+              CheckClassesAreRefinements((ClassDecl)nw, (ClassDecl)d);
+            }
+          } else {
+            Contract.Assert(false); throw new cce.UnreachableException(); // unexpected toplevel
+          }
+        } else {
+          reporter.Error(d, "declaration {0} must have a matching declaration in the refining module", d.Name);
+        }
+      }
+      return errorCount == reporter.ErrorCount;
     }
 
+    private void CheckClassesAreRefinements(ClassDecl nw, ClassDecl d) {
+      if (nw.TypeArgs.Count != d.TypeArgs.Count) {
+        reporter.Error(nw, "a refining class ({0}) must have the same number of type parameters", nw.Name);
+      } else {
+        var map = new Dictionary<string, MemberDecl>();
+        foreach (var mem in nw.Members) {
+          map.Add(mem.Name, mem);
+        }
+        foreach (var m in d.Members) {
+          MemberDecl newMem;
+          if (map.TryGetValue(m.Name, out newMem)) {
+            if (m.IsStatic != newMem.IsStatic) {
+              reporter.Error(newMem, "member {0} must {1}", m.Name, m.IsStatic? "be static" : "not be static");
+            }
+            if (m is Field) {
+              if (newMem is Field) {
+                var newField = (Field)newMem;
+                if (!ResolvedTypesAreTheSame(newField.Type, ((Field)m).Type))
+                  reporter.Error(newMem, "field must be refined by a field with the same type (got {0}, expected {1})", newField.Type, ((Field)m).Type);
+                if (m.IsGhost || !newField.IsGhost)
+                  reporter.Error(newField, "a field re-declaration ({0}) must be to ghostify the field", newField.Name, nw.Name);
+              } else {
+                reporter.Error(newMem, "a field declaration ({1}) must be replaced by a field in the refinement base (not {0})", newMem.Name, nw.Name);
+              }
+            } else if (m is Method) {
+              if (newMem is Method) {
+                CheckMethodsAreRefinements((Method)newMem, (Method)m);
+              } else {
+                reporter.Error(newMem, "method must be refined by a method");
+              }
+            } else if (m is Function) {
+              if (newMem is Function) {
+                CheckFunctionsAreRefinements((Function)newMem, (Function)m);
+              } else {
+                bool isPredicate = m is Predicate;
+                bool isCoPredicate = m is CoPredicate;
+                string s = isPredicate ? "predicate" : isCoPredicate ? "copredicate" : "function";
+                reporter.Error(newMem, "{0} must be refined by a {0}", s);
+              }
+            }
+          } else {
+            reporter.Error(nw is DefaultClassDecl ? nw.Module.tok : nw.tok, "refining {0} must have member {1}", nw is DefaultClassDecl ? "module" : "class", m.Name);
+          }
+        }
+      }
+    }
+    void CheckAgreementResolvedParameters(IToken tok, List<Formal> old, List<Formal> nw, string name, string thing, string parameterKind) {
+      Contract.Requires(tok != null);
+      Contract.Requires(old != null);
+      Contract.Requires(nw != null);
+      Contract.Requires(name != null);
+      Contract.Requires(thing != null);
+      Contract.Requires(parameterKind != null);
+      if (old.Count != nw.Count) {
+        reporter.Error(tok, "{0} '{1}' is declared with a different number of {2} ({3} instead of {4}) than the corresponding {0} in the module it refines", thing, name, parameterKind, nw.Count, old.Count);
+      } else {
+        for (int i = 0; i < old.Count; i++) {
+          var o = old[i];
+          var n = nw[i];
+          if (!o.IsGhost && n.IsGhost) {
+            reporter.Error(n.tok, "{0} '{1}' of {2} {3} cannot be changed, compared to the corresponding {2} in the module it refines, from non-ghost to ghost", parameterKind, n.Name, thing, name);
+          } else if (o.IsGhost && !n.IsGhost) {
+            reporter.Error(n.tok, "{0} '{1}' of {2} {3} cannot be changed, compared to the corresponding {2} in the module it refines, from ghost to non-ghost", parameterKind, n.Name, thing, name);
+          } else if (!ResolvedTypesAreTheSame(o.Type, n.Type)) {
+            reporter.Error(n.tok, "the type of {0} '{1}' is different from the type of the same {0} in the corresponding {2} in the module it refines ('{3}' instead of '{4}')", parameterKind, n.Name, thing, n.Type, o.Type);
+          }
+        }
+      }
+    }
+    private void CheckMethodsAreRefinements(Method nw, Method m) {
+      CheckAgreement_TypeParameters(nw.tok, m.TypeArgs, nw.TypeArgs, m.Name, "method", false);
+      CheckAgreementResolvedParameters(nw.tok, m.Ins, nw.Ins, m.Name, "method", "in-parameter");
+      CheckAgreementResolvedParameters(nw.tok, m.Outs, nw.Outs, m.Name, "method", "out-parameter");
+      program.TranslationTasks.Add(new MethodCheck(nw, m));
+    }
+    private void CheckFunctionsAreRefinements(Function nw, Function f) {
+      if (f is Predicate) {
+        if (!(nw is Predicate)) {
+          reporter.Error(nw, "a predicate declaration ({0}) can only be refined by a predicate", nw.Name);
+        } else {
+          CheckAgreement_TypeParameters(nw.tok, f.TypeArgs, nw.TypeArgs, nw.Name, "predicate", false);
+          CheckAgreementResolvedParameters(nw.tok, f.Formals, nw.Formals, nw.Name, "predicate", "parameter");
+        }
+      } else if (f is CoPredicate) {
+        reporter.Error(nw, "refinement of co-predicates is not supported");
+      } else {
+        // f is a plain Function
+        if (nw is Predicate || nw is CoPredicate) {
+          reporter.Error(nw, "a {0} declaration ({1}) can only be refined by a function or function method", nw.IsGhost ? "function" : "function method", nw.Name);
+        } else {
+          CheckAgreement_TypeParameters(nw.tok, f.TypeArgs, nw.TypeArgs, nw.Name, "function", false);
+          CheckAgreementResolvedParameters(nw.tok, f.Formals, nw.Formals, nw.Name, "function", "parameter");
+          if (!ResolvedTypesAreTheSame(nw.ResultType, f.ResultType)) {
+            reporter.Error(nw, "the result type of function '{0}' ({1}) differs from the result type of the corresponding function in the module it refines ({2})", nw.Name, nw.ResultType, f.ResultType);
+          }
+        }
+      }
+      program.TranslationTasks.Add(new FunctionCheck(nw, f));
+    }
+
+
+    private void CheckDatatypesAreRefinements(DatatypeDecl dd, DatatypeDecl nn) {
+      CheckAgreement_TypeParameters(nn.tok, dd.TypeArgs, nn.TypeArgs, dd.Name, "datatype", false);
+      if (dd.Ctors.Count != nn.Ctors.Count) {
+        reporter.Error(nn.tok, "a refining datatype must have the same number of constructors");
+      } else {
+        var map = new Dictionary<string, DatatypeCtor>();
+        foreach (var ctor in nn.Ctors) {
+          map.Add(ctor.Name, ctor);
+        }
+        foreach (var ctor in dd.Ctors) {
+          DatatypeCtor newCtor;
+          if (map.TryGetValue(ctor.Name, out newCtor)) {
+            if (newCtor.Formals.Count != ctor.Formals.Count) {
+              reporter.Error(newCtor, "the constructor ({0}) must have the same number of formals as in the refined module", newCtor.Name); 
+            } else {
+              for (int i = 0; i < newCtor.Formals.Count; i++) {
+                var a = ctor.Formals[i]; var b = newCtor.Formals[i];
+                if (a.HasName) {
+                  if (!b.HasName || a.Name != b.Name)
+                    reporter.Error(b, "formal argument {0} in constructor {1} does not have the same name as in the refined module (should be {2})", i, ctor.Name, a.Name);
+                }
+                if (!ResolvedTypesAreTheSame(a.Type, b.Type)) {
+                  reporter.Error(b, "formal argument {0} in constructor {1} does not have the same type as in the refined module (should be {2}, not {3})", i, ctor.Name, a.Type.ToString(), b.Type.ToString());
+                }
+              }
+            }
+          } else {
+            reporter.Error(nn, "the constructor {0} must be present in the refining datatype", ctor.Name);
+          }
+        }
+      }
+      
+    }
+    // Check that two resolved types are the same in a similar context (the same type parameters, method, class, etc.)
+    // Assumes that prev is in a previous refinement, and next is in some refinement. Note this is not communative.
+    public static bool ResolvedTypesAreTheSame(Type prev, Type next) {
+      Contract.Requires(prev != null);
+      Contract.Requires(next != null);
+      if (prev is TypeProxy || next is TypeProxy)
+        return false;
+
+      if (prev is BoolType) {
+        return next is BoolType;
+      } else if (prev is IntType) {
+        if (next is IntType) {
+          return (prev is NatType) == (next is NatType);
+        } else return false;
+      } else if (prev is ObjectType) {
+        return next is ObjectType;
+      } else if (prev is SetType) {
+        return next is SetType && ResolvedTypesAreTheSame(((SetType)prev).Arg, ((SetType)next).Arg);
+      } else if (prev is MultiSetType) {
+        return next is MultiSetType && ResolvedTypesAreTheSame(((MultiSetType)prev).Arg, ((MultiSetType)next).Arg);
+      } else if (prev is MapType) {
+        return next is MapType && ResolvedTypesAreTheSame(((MapType)prev).Domain, ((MapType)next).Domain) && ResolvedTypesAreTheSame(((MapType)prev).Range, ((MapType)next).Range);
+      } else if (prev is SeqType) {
+        return next is SeqType && ResolvedTypesAreTheSame(((SeqType)prev).Arg, ((SeqType)next).Arg);
+      } else if (prev is UserDefinedType) {
+        if (!(next is UserDefinedType)) {
+          return false;
+        }
+        UserDefinedType aa = (UserDefinedType)prev;
+        UserDefinedType bb = (UserDefinedType)next;
+        if (aa.ResolvedClass != null && aa.ResolvedClass.Name == bb.ResolvedClass.Name) {
+          // these are both resolved class/datatype types
+          Contract.Assert(aa.TypeArgs.Count == bb.TypeArgs.Count);
+          for (int i = 0; i < aa.TypeArgs.Count; i++)
+            if (!ResolvedTypesAreTheSame(aa.TypeArgs[i], bb.TypeArgs[i]))
+              return false;
+          return true;
+        } else if (aa.ResolvedParam != null && bb.ResolvedParam != null) {
+          // these are both resolved type parameters
+          Contract.Assert(aa.TypeArgs.Count == 0 && bb.TypeArgs.Count == 0);
+          // Note that this is only correct if the two types occur in the same context, ie. both from the same method
+          // or class field.
+          return aa.ResolvedParam.PositionalIndex == bb.ResolvedParam.PositionalIndex &&
+                 aa.ResolvedParam.IsToplevelScope == bb.ResolvedParam.IsToplevelScope;
+        } else if (aa.ResolvedParam.IsAbstractTypeDeclaration && bb.ResolvedClass != null) {
+          return (aa.ResolvedParam.Name == bb.ResolvedClass.Name);
+        } else {
+          // something is wrong; either aa or bb wasn't properly resolved, or they aren't the same
+          return false;
+        }
+
+      } else {
+        Contract.Assert(false); throw new cce.UnreachableException();  // unexpected type
+      }
+    }
     public void PostResolve(ModuleDefinition m) {
       if (m == moduleUnderConstruction) {
         while (this.postTasks.Count != 0) {
@@ -187,7 +454,7 @@ namespace Microsoft.Dafny
       }
       moduleUnderConstruction = null;
     }
-    Function CloneFunction(IToken tok, Function f, bool isGhost, List<Expression> moreEnsures, Expression moreBody, Expression replacementBody) {
+    Function CloneFunction(IToken tok, Function f, bool isGhost, List<Expression> moreEnsures, Expression moreBody, Expression replacementBody, bool checkPrevPostconditions, Attributes moreAttributes) {
       Contract.Requires(moreBody == null || f is Predicate);
       Contract.Requires(moreBody == null || replacementBody == null);
 
@@ -198,62 +465,69 @@ namespace Microsoft.Dafny
       var decreases = refinementCloner.CloneSpecExpr(f.Decreases);
 
       List<Expression> ens;
-      if (moreBody != null || replacementBody != null)
+      if (checkPrevPostconditions)  // note, if a postcondition includes something that changes in the module, the translator will notice this and still re-check the postcondition
         ens = f.Ens.ConvertAll(rawCloner.CloneExpr);
-      else ens = f.Ens.ConvertAll(refinementCloner.CloneExpr);
+      else
+        ens = f.Ens.ConvertAll(refinementCloner.CloneExpr);
       if (moreEnsures != null) {
         ens.AddRange(moreEnsures);
       }
 
       Expression body;
+      Predicate.BodyOriginKind bodyOrigin;
       if (replacementBody != null) {
         body = replacementBody;
+        bodyOrigin = Predicate.BodyOriginKind.DelayedDefinition;
       } else if (moreBody != null) {
         if (f.Body == null) {
           body = moreBody;
+          bodyOrigin = Predicate.BodyOriginKind.DelayedDefinition;
         } else {
           body = new BinaryExpr(f.tok, BinaryExpr.Opcode.And, refinementCloner.CloneExpr(f.Body), moreBody);
+          bodyOrigin = Predicate.BodyOriginKind.Extension;
         }
       } else {
         body = refinementCloner.CloneExpr(f.Body);
+        bodyOrigin = Predicate.BodyOriginKind.OriginalOrInherited;
       }
 
       if (f is Predicate) {
         return new Predicate(tok, f.Name, f.IsStatic, isGhost, tps, f.OpenParen, formals,
-          req, reads, ens, decreases, body, moreBody != null, null, false);
+          req, reads, ens, decreases, body, bodyOrigin, refinementCloner.MergeAttributes(f.Attributes, moreAttributes), false);
       } else if (f is CoPredicate) {
         return new CoPredicate(tok, f.Name, f.IsStatic, tps, f.OpenParen, formals,
-          req, reads, ens, body, null, false);
+          req, reads, ens, body, refinementCloner.MergeAttributes(f.Attributes, moreAttributes), false);
       } else {
         return new Function(tok, f.Name, f.IsStatic, isGhost, tps, f.OpenParen, formals, refinementCloner.CloneType(f.ResultType),
-          req, reads, ens, decreases, body, null, false);
+          req, reads, ens, decreases, body, refinementCloner.MergeAttributes(f.Attributes, moreAttributes), false);
       }
     }
 
-    Method CloneMethod(Method m, List<MaybeFreeExpression> moreEnsures, BlockStmt replacementBody) {
+    Method CloneMethod(Method m, List<MaybeFreeExpression> moreEnsures, Specification<Expression> decreases, BlockStmt newBody, bool checkPreviousPostconditions, Attributes moreAttributes) {
       Contract.Requires(m != null);
+      Contract.Requires(decreases != null);
 
       var tps = m.TypeArgs.ConvertAll(refinementCloner.CloneTypeParam);
       var ins = m.Ins.ConvertAll(refinementCloner.CloneFormal);
       var req = m.Req.ConvertAll(refinementCloner.CloneMayBeFreeExpr);
       var mod = refinementCloner.CloneSpecFrameExpr(m.Mod);
-      var decreases = refinementCloner.CloneSpecExpr(m.Decreases);
 
       List<MaybeFreeExpression> ens;
-      if (replacementBody != null)
+      if (checkPreviousPostconditions)
         ens = m.Ens.ConvertAll(rawCloner.CloneMayBeFreeExpr);
-      else ens = m.Ens.ConvertAll(refinementCloner.CloneMayBeFreeExpr);
+      else
+        ens = m.Ens.ConvertAll(refinementCloner.CloneMayBeFreeExpr);
       if (moreEnsures != null) {
         ens.AddRange(moreEnsures);
       }
 
-      var body = replacementBody ?? refinementCloner.CloneBlockStmt(m.Body);
+      var body = newBody ?? refinementCloner.CloneBlockStmt(m.Body);
       if (m is Constructor) {
         return new Constructor(new RefinementToken(m.tok, moduleUnderConstruction), m.Name, tps, ins,
-          req, mod, ens, decreases, body, null, false);
+          req, mod, ens, decreases, body, refinementCloner.MergeAttributes(m.Attributes, moreAttributes), false);
       } else {
         return new Method(new RefinementToken(m.tok, moduleUnderConstruction), m.Name, m.IsStatic, m.IsGhost, tps, ins, m.Outs.ConvertAll(refinementCloner.CloneFormal),
-          req, mod, ens, decreases, body, null, false);
+          req, mod, ens, decreases, body, refinementCloner.MergeAttributes(m.Attributes, moreAttributes), false);
       }
     }
 
@@ -279,7 +553,7 @@ namespace Microsoft.Dafny
         } else {
           var nwMember = nw.Members[index];
           if (nwMember is Field) {
-            if (member is Field && TypesAreEqual(((Field)nwMember).Type, ((Field)member).Type)) {
+            if (member is Field && TypesAreSyntacticallyEqual(((Field)nwMember).Type, ((Field)member).Type)) {
               if (member.IsGhost || !nwMember.IsGhost)
                 reporter.Error(nwMember, "a field re-declaration ({0}) must be to ghostify the field", nwMember.Name, nw.Name);
             } else {
@@ -318,21 +592,21 @@ namespace Microsoft.Dafny
               } else {
                 CheckAgreement_TypeParameters(f.tok, prevFunction.TypeArgs, f.TypeArgs, f.Name, "function");
                 CheckAgreement_Parameters(f.tok, prevFunction.Formals, f.Formals, f.Name, "function", "parameter");
-                if (!TypesAreEqual(prevFunction.ResultType, f.ResultType)) {
+                if (!TypesAreSyntacticallyEqual(prevFunction.ResultType, f.ResultType)) {
                   reporter.Error(f, "the result type of function '{0}' ({1}) differs from the result type of the corresponding function in the module it refines ({2})", f.Name, f.ResultType, prevFunction.ResultType);
                 }
               }
 
               Expression moreBody = null;
               Expression replacementBody = null;
-              if (isPredicate) {
-                moreBody = f.Body;
-              } else if (prevFunction.Body == null) {
+              if (prevFunction.Body == null) {
                 replacementBody = f.Body;
+              } else if (isPredicate) {
+                moreBody = f.Body;
               } else if (f.Body != null) {
                 reporter.Error(nwMember, "a refining function is not allowed to extend/change the body");
               }
-              nw.Members[index] = CloneFunction(f.tok, prevFunction, f.IsGhost, f.Ens, moreBody, replacementBody);
+              nw.Members[index] = CloneFunction(f.tok, prevFunction, f.IsGhost, f.Ens, moreBody, replacementBody, prevFunction.Body == null, f.Attributes);
             }
 
           } else {
@@ -347,10 +621,15 @@ namespace Microsoft.Dafny
               if (m.Mod.Expressions.Count != 0) {
                 reporter.Error(m.Mod.Expressions[0].E.tok, "a refining method is not allowed to extend the modifies clause");
               }
-              if (m.Decreases.Expressions.Count != 0) {
-                reporter.Error(m.Decreases.Expressions[0].tok, "decreases clause on refining method not supported");
+              Specification<Expression> decreases;
+              if (Contract.Exists(prevMethod.Decreases.Expressions, e => e is WildcardExpr)) {
+                decreases = m.Decreases;
+              } else {
+                if (m.Decreases.Expressions.Count != 0) {
+                  reporter.Error(m.Decreases.Expressions[0].tok, "decreases clause on refining method not supported, unless the refined method was specified with 'decreases *'");
+                }
+                decreases = refinementCloner.CloneSpecExpr(prevMethod.Decreases);
               }
-
               if (prevMethod.IsStatic != m.IsStatic) {
                 reporter.Error(m, "a method in a refining module cannot be changed from static to non-static or vice versa: {0}", m.Name);
               }
@@ -368,7 +647,7 @@ namespace Microsoft.Dafny
                 CheckAgreement_Parameters(m.tok, prevMethod.Ins, m.Ins, m.Name, "method", "in-parameter");
                 CheckAgreement_Parameters(m.tok, prevMethod.Outs, m.Outs, m.Name, "method", "out-parameter");
               }
-
+              currentMethod = m;
               var replacementBody = m.Body;
               if (replacementBody != null) {
                 if (prevMethod.Body == null) {
@@ -377,7 +656,7 @@ namespace Microsoft.Dafny
                   replacementBody = MergeBlockStmt(replacementBody, prevMethod.Body);
                 }
               }
-              nw.Members[index] = CloneMethod(prevMethod, m.Ens, replacementBody);
+              nw.Members[index] = CloneMethod(prevMethod, m.Ens, decreases, replacementBody, prevMethod.Body == null, m.Attributes);
             }
           }
         }
@@ -385,7 +664,7 @@ namespace Microsoft.Dafny
 
       return nw;
     }
-    void CheckAgreement_TypeParameters(IToken tok, List<TypeParameter> old, List<TypeParameter> nw, string name, string thing) {
+    void CheckAgreement_TypeParameters(IToken tok, List<TypeParameter> old, List<TypeParameter> nw, string name, string thing, bool checkNames = true) {
       Contract.Requires(tok != null);
       Contract.Requires(old != null);
       Contract.Requires(nw != null);
@@ -397,7 +676,7 @@ namespace Microsoft.Dafny
         for (int i = 0; i < old.Count; i++) {
           var o = old[i];
           var n = nw[i];
-          if (o.Name != n.Name) {
+          if (o.Name != n.Name && checkNames) { // if checkNames is false, then just treat the parameters positionally.
             reporter.Error(n.tok, "type parameters are not allowed to be renamed from the names given in the {0} in the module being refined (expected '{1}', found '{2}')", thing, o.Name, n.Name);
           } else {
             // This explains what we want to do and why:
@@ -444,14 +723,14 @@ namespace Microsoft.Dafny
             reporter.Error(n.tok, "{0} '{1}' of {2} {3} cannot be changed, compared to the corresponding {2} in the module it refines, from non-ghost to ghost", parameterKind, n.Name, thing, name);
           } else if (o.IsGhost && !n.IsGhost) {
             reporter.Error(n.tok, "{0} '{1}' of {2} {3} cannot be changed, compared to the corresponding {2} in the module it refines, from ghost to non-ghost", parameterKind, n.Name, thing, name);
-          } else if (!TypesAreEqual(o.Type, n.Type)) {
+          } else if (!TypesAreSyntacticallyEqual(o.Type, n.Type)) {
             reporter.Error(n.tok, "the type of {0} '{1}' is different from the type of the same {0} in the corresponding {2} in the module it refines ('{3}' instead of '{4}')", parameterKind, n.Name, thing, n.Type, o.Type);
           }
         }
       }
     }
 
-    bool TypesAreEqual(Type t, Type u) {
+    bool TypesAreSyntacticallyEqual(Type t, Type u) {
       Contract.Requires(t != null);
       Contract.Requires(u != null);
       return t.ToString() == u.ToString();
@@ -506,8 +785,6 @@ namespace Microsoft.Dafny
            * 
            * Note, LoopSpec must contain only invariant declarations (as the parser ensures for the first three cases).
            * Note, there is an implicit "...;" at the end of every block in a skeleton.
-           *   
-           * TODO:  should also handle labels and some form of new "replace" statement
            */
           if (cur is SkeletonStatement) {
             var S = ((SkeletonStatement)cur).S;
@@ -560,7 +837,8 @@ namespace Microsoft.Dafny
                 // it is not allowed to be just assumed in the translation, despite the fact
                 // that the condition is inherited.
                 var e = refinementCloner.CloneExpr(oldAssume.Expr);
-                body.Add(new AssertStmt(new Translator.ForceCheckToken(skel.Tok), e, new Attributes("prependAssertToken", new List<Attributes.Argument>(), null)));
+                var attrs = refinementCloner.MergeAttributes(oldAssume.Attributes, skel.Attributes);
+                body.Add(new AssertStmt(new Translator.ForceCheckToken(skel.Tok), e, new Attributes("prependAssertToken", new List<Attributes.Argument>(), attrs)));
                 i++; j++;
               }
 
@@ -573,7 +851,8 @@ namespace Microsoft.Dafny
                 i++;
               } else {
                 var e = refinementCloner.CloneExpr(oldAssume.Expr);
-                body.Add(new AssumeStmt(skel.Tok, e, null));
+                var attrs = refinementCloner.MergeAttributes(oldAssume.Attributes, skel.Attributes);
+                body.Add(new AssumeStmt(skel.Tok, e, attrs));
                 i++; j++;
               }
 
@@ -792,10 +1071,21 @@ namespace Microsoft.Dafny
     }
 
     bool PotentialMatch(Statement nxt, Statement other) {
+      Contract.Requires(nxt != null);
       Contract.Requires(!(nxt is SkeletonStatement) || ((SkeletonStatement)nxt).S != null);  // nxt is not "...;"
       Contract.Requires(other != null);
 
-      if (nxt is SkeletonStatement) {
+      if (nxt.Labels != null) {
+        for (var olbl = other.Labels; olbl != null; olbl = olbl.Next) {
+          var odata = olbl.Data;
+          for (var l = nxt.Labels; l != null; l = l.Next) {
+            if (odata.Name == l.Data.Name) {
+              return true;
+            }
+          }
+        }
+        return false;  // labels of 'nxt' don't match any label of 'other'
+      } else  if (nxt is SkeletonStatement) {
         var S = ((SkeletonStatement)nxt).S;
         if (S is AssertStmt) {
           return other is PredicateStmt;
@@ -957,7 +1247,7 @@ namespace Microsoft.Dafny
     }
 
     // Checks that statement stmt, defined in the constructed module m, is a refinement of skip in the parent module
-    private void CheckIsOkayUpdateStmt(ConcreteUpdateStatement stmt, ModuleDefinition m, ResolutionErrorReporter reporter) {
+    private bool CheckIsOkayUpdateStmt(ConcreteUpdateStatement stmt, ModuleDefinition m, ResolutionErrorReporter reporter) {
       foreach (var lhs in stmt.Lhss) {
         var l = lhs.Resolved;
         if (l is IdentifierExpr) {
@@ -966,23 +1256,25 @@ namespace Microsoft.Dafny
           if ((ident.Var is VarDecl && RefinementToken.IsInherited(((VarDecl)ident.Var).Tok, m)) || ident.Var is Formal) {
             // for some reason, formals are not considered to be inherited.
             reporter.Error(l.tok, "cannot assign to variable defined previously");
+            return false;
           }
         } else if (l is FieldSelectExpr) {
           if (RefinementToken.IsInherited(((FieldSelectExpr)l).Field.tok, m)) {
-            reporter.Error(l.tok, "cannot assign to field defined previously");
+            return false;
           }
         } else {
-          reporter.Error(lhs.tok, "cannot assign to something which could exist in the previous refinement");
+          return false;
         }
       }
       if (stmt is UpdateStmt) {
         var s = (UpdateStmt)stmt;
         foreach (var rhs in s.Rhss) {
           if (s.Rhss[0].CanAffectPreviouslyKnownExpressions) {
-            reporter.Error(s.Rhss[0].Tok, "cannot have method call which can affect the heap");
+            return false;
           }
         }
       }
+      return true;
     }
     // ---------------------- additional methods -----------------------------------------------------------------------------
 
@@ -994,7 +1286,7 @@ namespace Microsoft.Dafny
         var e = (FunctionCallExpr)expr;
         if (e.Function.EnclosingClass.Module == m) {
           var p = e.Function as Predicate;
-          if (p != null && p.BodyIsExtended) {
+          if (p != null && p.BodyOrigin == Predicate.BodyOriginKind.Extension) {
             return true;
           }
         }
@@ -1014,8 +1306,15 @@ namespace Microsoft.Dafny
     public RefinementCloner(ModuleDefinition m) {
       moduleUnderConstruction = m;
     }
-    override public IToken Tok(IToken tok) {
+    public override IToken Tok(IToken tok) {
       return new RefinementToken(tok, moduleUnderConstruction);
+    }
+    public virtual Attributes MergeAttributes(Attributes prevAttrs, Attributes moreAttrs) {
+      if (moreAttrs == null) {
+        return CloneAttributes(prevAttrs);
+      } else {
+        return new Attributes(moreAttrs.Name, moreAttrs.Args.ConvertAll(CloneAttrArg), MergeAttributes(prevAttrs, moreAttrs.Prev));
+      }
     }
   }
   class SubstitutionCloner : Cloner {
@@ -1027,7 +1326,7 @@ namespace Microsoft.Dafny
       SubstitutionsMade = new SortedSet<string>();
       this.c = c;
     }
-    new public Expression CloneExpr(Expression expr) {
+    public override Expression CloneExpr(Expression expr) {
       if (expr is NamedExpr) {
         NamedExpr n = (NamedExpr)expr;
         Expression E;

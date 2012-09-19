@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Numerics;
 using System.Diagnostics.Contracts;
+using System.Linq;
 using Microsoft.Boogie;
 
 namespace Microsoft.Dafny
@@ -93,6 +94,31 @@ namespace Microsoft.Dafny
         return nm;
       }
     }
+
+    class AmbiguousMemberDecl : MemberDecl  // only used with "classes"
+    {
+      readonly MemberDecl A;
+      readonly MemberDecl B;
+      public AmbiguousMemberDecl(ModuleDefinition m, MemberDecl a, MemberDecl b)
+        : base(a.tok, a.Name + "/" + b.Name, a.IsStatic, a.IsGhost, null) {
+        A = a;
+        B = b;
+      }
+      public string ModuleNames() {
+        string nm;
+        if (A is AmbiguousMemberDecl) {
+          nm = ((AmbiguousMemberDecl)A).ModuleNames();
+        } else {
+          nm = A.EnclosingClass.Module.Name;
+        }
+        if (B is AmbiguousMemberDecl) {
+          nm += ", " + ((AmbiguousMemberDecl)B).ModuleNames();
+        } else {
+          nm += ", " + B.EnclosingClass.Module.Name;
+        }
+        return nm;
+      }
+    }
     //Dictionary<string/*!*/, Tuple<DatatypeCtor, bool>> allDatatypeCtors;
 
     readonly Dictionary<ClassDecl/*!*/, Dictionary<string/*!*/, MemberDecl/*!*/>/*!*/>/*!*/ classMembers = new Dictionary<ClassDecl/*!*/, Dictionary<string/*!*/, MemberDecl/*!*/>/*!*/>();
@@ -144,10 +170,10 @@ namespace Microsoft.Dafny
         h++;
       }
 
-      var refinementTransformer = new RefinementTransformer(this);
+      var refinementTransformer = new RefinementTransformer(this, prog);
 
       IRewriter rewriter = new AutoContractsRewriter();
-      systemNameInfo = RegisterTopLevelDecls(prog.BuiltIns.SystemModule);
+      systemNameInfo = RegisterTopLevelDecls(prog.BuiltIns.SystemModule, false);
       foreach (var decl in sortedDecls) {
         if (decl is LiteralModuleDecl) {
           // The declaration is a literal module, so it has members and such that we need
@@ -176,7 +202,7 @@ namespace Microsoft.Dafny
               Error(m.RefinementBaseName[0], "module ({0}) named as refinement base does not exist", Util.Comma(".", m.RefinementBaseName, x => x.val));
             }
           }
-          literalDecl.Signature = RegisterTopLevelDecls(m);
+          literalDecl.Signature = RegisterTopLevelDecls(m, true);
           literalDecl.Signature.Refines = refinedSig;
           var sig = literalDecl.Signature;
           // set up environment
@@ -191,7 +217,7 @@ namespace Microsoft.Dafny
           if (ErrorCount == errorCount && !m.IsGhost) {
             // compilation should only proceed if everything is good, including the signature (which preResolveErrorCount does not include);
             var nw = (new Cloner()).CloneModuleDefinition(m, m.CompileName + "_Compile");
-            var compileSig = RegisterTopLevelDecls(nw);
+            var compileSig = RegisterTopLevelDecls(nw, true);
             compileSig.Refines = refinedSig;
             sig.CompileSignature = compileSig;
             useCompileSignatures = true;
@@ -216,11 +242,14 @@ namespace Microsoft.Dafny
             ModuleSignature compileSig;
             if (abs.CompilePath != null) {
               if (ResolvePath(abs.CompileRoot, abs.CompilePath, out compileSig)) {
-                if (refinementTransformer.CheckIsRefinement(compileSig, p, abs.CompilePath[0],
-                  "module " + Util.Comma(".", abs.CompilePath, x => x.val) + " must be a refinement of " + Util.Comma(".", abs.Path, x => x.val))) {
+                if (refinementTransformer.CheckIsRefinement(compileSig, p)) {
                   abs.Signature.CompileSignature = compileSig;
-                  abs.Signature.IsGhost = compileSig.IsGhost;
+                } else {
+                  Error(abs.CompilePath[0],
+                  "module " + Util.Comma(".", abs.CompilePath, x => x.val) + " must be a refinement of " + Util.Comma(".", abs.Path, x => x.val));
                 }
+                abs.Signature.IsGhost = compileSig.IsGhost;
+                // always keep the ghost information, to supress a spurious error message when the compile module isn't actually a refinement
               }
             }
           } else {
@@ -282,10 +311,12 @@ namespace Microsoft.Dafny
           return parent.TryLookup(name, out m);
         } else return false;
       }
-      public bool TryLookupLocal(IToken name, out ModuleDecl m) {
+      public bool TryLookupIgnore(IToken name, out ModuleDecl m, ModuleDecl ignore) {
         Contract.Requires(name != null);
-        if (modules.TryGetValue(name.val, out m)) {
+        if (modules.TryGetValue(name.val, out m) && m != ignore) {
           return true;
+        } else if (parent != null) {
+          return parent.TryLookup(name, out m);
         } else return false;
       }
       public IEnumerable<ModuleDecl> ModuleList {
@@ -305,17 +336,17 @@ namespace Microsoft.Dafny
           var subdecl = (LiteralModuleDecl)tld;
           var subBindings = BindModuleNames(subdecl.ModuleDef, bindings);
           if (!bindings.BindName(subdecl.Name, subdecl, subBindings)) {
-            Error(subdecl.Module, "Duplicate module name: {0}", subdecl.Name);
+            Error(subdecl.tok, "Duplicate module name: {0}", subdecl.Name);
           }
         } else if (tld is AbstractModuleDecl) {
           var subdecl = (AbstractModuleDecl)tld;
           if (!bindings.BindName(subdecl.Name, subdecl, null)) {
-            Error(subdecl.Module, "Duplicate module name: {0}", subdecl.Name);
+            Error(subdecl.tok, "Duplicate module name: {0}", subdecl.Name);
           }
         } else if (tld is AliasModuleDecl) {
           var subdecl = (AliasModuleDecl)tld;
           if (!bindings.BindName(subdecl.Name, subdecl, null)) {
-            Error(subdecl.Module, "Duplicate module name: {0}", subdecl.Name);
+            Error(subdecl.tok, "Duplicate module name: {0}", subdecl.Name);
           }
         }
       }
@@ -351,7 +382,7 @@ namespace Microsoft.Dafny
       } else if (moduleDecl is AliasModuleDecl) {
         var alias = moduleDecl as AliasModuleDecl;
         ModuleDecl root;
-        if (!bindings.TryLookup(alias.Path[0], out root))
+        if (!bindings.TryLookupIgnore(alias.Path[0], out root, alias))
           Error(alias.tok, ModuleNotFoundErrorMessage(0, alias.Path));
         else {
           dependencies.AddEdge(moduleDecl, root);
@@ -404,20 +435,62 @@ namespace Microsoft.Dafny
       info.IsGhost = m.IsGhost;
       return info;
     }
-    ModuleSignature RegisterTopLevelDecls(ModuleDefinition moduleDef) {
+    ModuleSignature RegisterTopLevelDecls(ModuleDefinition moduleDef, bool useImports) {
       Contract.Requires(moduleDef != null);
       var sig = new ModuleSignature();
       sig.ModuleDef = moduleDef;
       sig.IsGhost = moduleDef.IsGhost;
       List<TopLevelDecl> declarations = moduleDef.TopLevelDecls;
 
+      if (useImports) {
+        // First go through and add anything from the opened imports
+        foreach (var im in declarations) {
+          if (im is ModuleDecl && ((ModuleDecl)im).Opened) {
+            var s = ((ModuleDecl)im).Signature;
+            // classes:
+            foreach (var kv in s.TopLevels) {
+              TopLevelDecl d;
+              if (sig.TopLevels.TryGetValue(kv.Key, out d)) {
+                sig.TopLevels[kv.Key] = new AmbiguousTopLevelDecl(moduleDef, d, kv.Value);
+              } else {
+                sig.TopLevels.Add(kv.Key, kv.Value);
+              }
+            }
+            // constructors:
+            foreach (var kv in s.Ctors) {
+              Tuple<DatatypeCtor, bool> pair;
+              if (sig.Ctors.TryGetValue(kv.Key, out pair)) {
+                // mark it as a duplicate
+                sig.Ctors[kv.Key] = new Tuple<DatatypeCtor, bool>(pair.Item1, true);
+              } else {
+                // add new
+                sig.Ctors.Add(kv.Key, kv.Value);
+              }
+            }
+            // static members:
+            foreach (var kv in s.StaticMembers) {
+              MemberDecl md;
+              if (sig.StaticMembers.TryGetValue(kv.Key, out md)) {
+                sig.StaticMembers[kv.Key] = new AmbiguousMemberDecl(moduleDef, md, kv.Value);
+              } else {
+                // add new
+                sig.StaticMembers.Add(kv.Key, kv.Value);
+              }
+            }
+          }
+        }
+      }
+      // This is solely used to detect duplicates amongst the various e
+      Dictionary<string, TopLevelDecl> toplevels = new Dictionary<string, TopLevelDecl>();
+      // Now add the things present
       foreach (TopLevelDecl d in declarations) {
         Contract.Assert(d != null);
         // register the class/datatype/module name
-        if (sig.TopLevels.ContainsKey(d.Name)) {
+        if (toplevels.ContainsKey(d.Name)) {
           Error(d, "Duplicate name of top-level declaration: {0}", d.Name);
         } else {
-          sig.TopLevels.Add(d.Name, d);
+          toplevels[d.Name] = d;
+          sig.TopLevels[d.Name] = d;
         }
         if (d is ModuleDecl) {
           // nothing to do
@@ -445,8 +518,8 @@ namespace Microsoft.Dafny
           cl.HasConstructor = hasConstructor;
           if (cl.IsDefaultClass) {
             foreach (MemberDecl m in cl.Members) {
-              if (!sig.StaticMembers.ContainsKey(m.Name) && m.IsStatic && (m is Function || m is Method)) {
-                sig.StaticMembers.Add(m.Name, m);
+              if (m.IsStatic && (m is Function || m is Method)) {
+                sig.StaticMembers[m.Name] = m;
               }
             }
           }
@@ -513,7 +586,7 @@ namespace Microsoft.Dafny
       foreach (var kv in p.TopLevels) {
         mod.TopLevelDecls.Add(CloneDeclaration(kv.Value, mod, mods, Name));
       }
-      var sig = RegisterTopLevelDecls(mod);
+      var sig = RegisterTopLevelDecls(mod, false);
       sig.Refines = p.Refines;
       sig.CompileSignature = p;
       sig.IsGhost = p.IsGhost;
@@ -552,14 +625,14 @@ namespace Microsoft.Dafny
           return new LiteralModuleDecl(((LiteralModuleDecl)d).ModuleDef, m);
         } else if (d is AliasModuleDecl) {
           var a = (AliasModuleDecl)d;
-          var alias = new AliasModuleDecl(a.Path, a.tok, m);
+          var alias = new AliasModuleDecl(a.Path, a.tok, m, a.Opened);
           alias.ModuleReference = a.ModuleReference;
           alias.Signature = a.Signature;
           return alias;
         } else if (d is AbstractModuleDecl) {
           var abs = (AbstractModuleDecl)d;
           var sig = MakeAbstractSignature(abs.OriginalSignature, Name + "." + abs.Name, abs.Height, mods);
-          var a = new AbstractModuleDecl(abs.Path, abs.tok, m, abs.CompilePath);
+          var a = new AbstractModuleDecl(abs.Path, abs.tok, m, abs.CompilePath, abs.Opened);
           a.Signature = sig;
           a.OriginalSignature = abs.OriginalSignature;
           return a;
@@ -633,7 +706,7 @@ namespace Microsoft.Dafny
 
       if (f is Predicate) {
         return new Predicate(tok, f.Name, f.IsStatic, isGhost, tps, f.OpenParen, formals,
-          req, reads, ens, decreases, body, false, null, false);
+          req, reads, ens, decreases, body, Predicate.BodyOriginKind.OriginalOrInherited, null, false);
       } else if (f is CoPredicate) {
         return new CoPredicate(tok, f.Name, f.IsStatic, tps, f.OpenParen, formals,
           req, reads, ens, body, null, false);
@@ -670,13 +743,13 @@ namespace Microsoft.Dafny
       return new Specification<FrameExpression>(ee, null);
     }
     FrameExpression CloneFrameExpr(FrameExpression frame) {
-      return new FrameExpression(CloneExpr(frame.E), frame.FieldName);
+      return new FrameExpression(frame.tok, CloneExpr(frame.E), frame.FieldName);
     }
     MaybeFreeExpression CloneMayBeFreeExpr(MaybeFreeExpression expr) {
       return new MaybeFreeExpression(CloneExpr(expr.E), expr.IsFree);
     }
     BoundVar CloneBoundVar(BoundVar bv) {
-      return new BoundVar((bv.tok), bv.Name, CloneType(bv.Type));
+      return new BoundVar(bv.tok, bv.Name, CloneType(bv.Type));
     }
     Expression CloneExpr(Expression expr) {
       if (expr == null) {
@@ -684,37 +757,37 @@ namespace Microsoft.Dafny
       } else if (expr is LiteralExpr) {
         var e = (LiteralExpr)expr;
         if (e.Value == null) {
-          return new LiteralExpr((e.tok));
+          return new LiteralExpr(e.tok);
         } else if (e.Value is bool) {
-          return new LiteralExpr((e.tok), (bool)e.Value);
+          return new LiteralExpr(e.tok, (bool)e.Value);
         } else {
-          return new LiteralExpr((e.tok), (BigInteger)e.Value);
+          return new LiteralExpr(e.tok, (BigInteger)e.Value);
         }
 
       } else if (expr is ThisExpr) {
         if (expr is ImplicitThisExpr) {
-          return new ImplicitThisExpr((expr.tok));
+          return new ImplicitThisExpr(expr.tok);
         } else {
-          return new ThisExpr((expr.tok));
+          return new ThisExpr(expr.tok);
         }
 
       } else if (expr is IdentifierExpr) {
         var e = (IdentifierExpr)expr;
-        return new IdentifierExpr((e.tok), e.Name);
+        return new IdentifierExpr(e.tok, e.Name);
 
       } else if (expr is DatatypeValue) {
         var e = (DatatypeValue)expr;
-        return new DatatypeValue((e.tok), e.DatatypeName, e.MemberName, e.Arguments.ConvertAll(CloneExpr));
+        return new DatatypeValue(e.tok, e.DatatypeName, e.MemberName, e.Arguments.ConvertAll(CloneExpr));
 
       } else if (expr is DisplayExpression) {
         DisplayExpression e = (DisplayExpression)expr;
         if (expr is SetDisplayExpr) {
-          return new SetDisplayExpr((e.tok), e.Elements.ConvertAll(CloneExpr));
+          return new SetDisplayExpr(e.tok, e.Elements.ConvertAll(CloneExpr));
         } else if (expr is MultiSetDisplayExpr) {
-          return new MultiSetDisplayExpr((e.tok), e.Elements.ConvertAll(CloneExpr));
+          return new MultiSetDisplayExpr(e.tok, e.Elements.ConvertAll(CloneExpr));
         } else {
           Contract.Assert(expr is SeqDisplayExpr);
-          return new SeqDisplayExpr((e.tok), e.Elements.ConvertAll(CloneExpr));
+          return new SeqDisplayExpr(e.tok, e.Elements.ConvertAll(CloneExpr));
         }
 
       } else if (expr is MapDisplayExpr) {
@@ -723,54 +796,50 @@ namespace Microsoft.Dafny
         foreach (ExpressionPair p in e.Elements) {
           pp.Add(new ExpressionPair(CloneExpr(p.A), CloneExpr(p.B)));
         }
-        return new MapDisplayExpr((expr.tok), pp);
+        return new MapDisplayExpr(expr.tok, pp);
       } else if (expr is ExprDotName) {
         var e = (ExprDotName)expr;
-        return new ExprDotName((e.tok), CloneExpr(e.Obj), e.SuffixName);
+        return new ExprDotName(e.tok, CloneExpr(e.Obj), e.SuffixName);
 
       } else if (expr is FieldSelectExpr) {
         var e = (FieldSelectExpr)expr;
-        return new FieldSelectExpr((e.tok), CloneExpr(e.Obj), e.FieldName);
+        return new FieldSelectExpr(e.tok, CloneExpr(e.Obj), e.FieldName);
 
       } else if (expr is SeqSelectExpr) {
         var e = (SeqSelectExpr)expr;
-        return new SeqSelectExpr((e.tok), e.SelectOne, CloneExpr(e.Seq), CloneExpr(e.E0), CloneExpr(e.E1));
+        return new SeqSelectExpr(e.tok, e.SelectOne, CloneExpr(e.Seq), CloneExpr(e.E0), CloneExpr(e.E1));
 
       } else if (expr is MultiSelectExpr) {
         var e = (MultiSelectExpr)expr;
-        return new MultiSelectExpr((e.tok), CloneExpr(e.Array), e.Indices.ConvertAll(CloneExpr));
+        return new MultiSelectExpr(e.tok, CloneExpr(e.Array), e.Indices.ConvertAll(CloneExpr));
 
       } else if (expr is SeqUpdateExpr) {
         var e = (SeqUpdateExpr)expr;
-        return new SeqUpdateExpr((e.tok), CloneExpr(e.Seq), CloneExpr(e.Index), CloneExpr(e.Value));
+        return new SeqUpdateExpr(e.tok, CloneExpr(e.Seq), CloneExpr(e.Index), CloneExpr(e.Value));
 
       } else if (expr is FunctionCallExpr) {
         var e = (FunctionCallExpr)expr;
-        return new FunctionCallExpr((e.tok), e.Name, CloneExpr(e.Receiver), e.OpenParen == null ? null : (e.OpenParen), e.Args.ConvertAll(CloneExpr));
+        return new FunctionCallExpr(e.tok, e.Name, CloneExpr(e.Receiver), e.OpenParen == null ? null : (e.OpenParen), e.Args.ConvertAll(CloneExpr));
 
       } else if (expr is OldExpr) {
         var e = (OldExpr)expr;
-        return new OldExpr((e.tok), CloneExpr(e.E));
+        return new OldExpr(e.tok, CloneExpr(e.E));
 
       } else if (expr is MultiSetFormingExpr) {
         var e = (MultiSetFormingExpr)expr;
-        return new MultiSetFormingExpr((e.tok), CloneExpr(e.E));
+        return new MultiSetFormingExpr(e.tok, CloneExpr(e.E));
 
       } else if (expr is FreshExpr) {
         var e = (FreshExpr)expr;
-        return new FreshExpr((e.tok), CloneExpr(e.E));
-
-      } else if (expr is AllocatedExpr) {
-        var e = (AllocatedExpr)expr;
-        return new AllocatedExpr((e.tok), CloneExpr(e.E));
+        return new FreshExpr(e.tok, CloneExpr(e.E));
 
       } else if (expr is UnaryExpr) {
         var e = (UnaryExpr)expr;
-        return new UnaryExpr((e.tok), e.Op, CloneExpr(e.E));
+        return new UnaryExpr(e.tok, e.Op, CloneExpr(e.E));
 
       } else if (expr is BinaryExpr) {
         var e = (BinaryExpr)expr;
-        return new BinaryExpr((e.tok), e.Op, CloneExpr(e.E0), CloneExpr(e.E1));
+        return new BinaryExpr(e.tok, e.Op, CloneExpr(e.E0), CloneExpr(e.E1));
 
       } else if (expr is ChainingExpression) {
         var e = (ChainingExpression)expr;
@@ -778,11 +847,11 @@ namespace Microsoft.Dafny
 
       } else if (expr is LetExpr) {
         var e = (LetExpr)expr;
-        return new LetExpr((e.tok), e.Vars.ConvertAll(CloneBoundVar), e.RHSs.ConvertAll(CloneExpr), CloneExpr(e.Body));
+        return new LetExpr(e.tok, e.Vars.ConvertAll(CloneBoundVar), e.RHSs.ConvertAll(CloneExpr), CloneExpr(e.Body));
 
       } else if (expr is ComprehensionExpr) {
         var e = (ComprehensionExpr)expr;
-        var tk = (e.tok);
+        var tk = e.tok;
         var bvs = e.BoundVars.ConvertAll(CloneBoundVar);
         var range = CloneExpr(e.Range);
         var term = CloneExpr(e.Term);
@@ -798,20 +867,20 @@ namespace Microsoft.Dafny
         }
 
       } else if (expr is WildcardExpr) {
-        return new WildcardExpr((expr.tok));
+        return new WildcardExpr(expr.tok);
 
       } else if (expr is PredicateExpr) {
         var e = (PredicateExpr)expr;
         if (e is AssertExpr) {
-          return new AssertExpr((e.tok), CloneExpr(e.Guard), CloneExpr(e.Body));
+          return new AssertExpr(e.tok, CloneExpr(e.Guard), CloneExpr(e.Body));
         } else {
           Contract.Assert(e is AssumeExpr);
-          return new AssumeExpr((e.tok), CloneExpr(e.Guard), CloneExpr(e.Body));
+          return new AssumeExpr(e.tok, CloneExpr(e.Guard), CloneExpr(e.Body));
         }
 
       } else if (expr is ITEExpr) {
         var e = (ITEExpr)expr;
-        return new ITEExpr((e.tok), CloneExpr(e.Test), CloneExpr(e.Thn), CloneExpr(e.Els));
+        return new ITEExpr(e.tok, CloneExpr(e.Test), CloneExpr(e.Thn), CloneExpr(e.Els));
 
       } else if (expr is ParensExpression) {
         var e = (ParensExpression)expr;
@@ -824,8 +893,8 @@ namespace Microsoft.Dafny
 
       } else if (expr is MatchExpr) {
         var e = (MatchExpr)expr;
-        return new MatchExpr((e.tok), CloneExpr(e.Source),
-          e.Cases.ConvertAll(c => new MatchCaseExpr((c.tok), c.Id, c.Arguments.ConvertAll(CloneBoundVar), CloneExpr(c.Body))));
+        return new MatchExpr(e.tok, CloneExpr(e.Source),
+          e.Cases.ConvertAll(c => new MatchCaseExpr(c.tok, c.Id, c.Arguments.ConvertAll(CloneBoundVar), CloneExpr(c.Body))));
 
       } else {
         Contract.Assert(false); throw new cce.UnreachableException();  // unexpected expression
@@ -853,7 +922,7 @@ namespace Microsoft.Dafny
       foreach (TopLevelDecl d in declarations) {
         Contract.Assert(d != null);
         allTypeParameters.PushMarker();
-        ResolveTypeParameters(d.TypeArgs, true, d);
+        ResolveTypeParameters(d.TypeArgs, true, d, true);
         if (d is ArbitraryTypeDecl) {
           // nothing to do
         } else if (d is ClassDecl) {
@@ -889,24 +958,54 @@ namespace Microsoft.Dafny
       foreach (TopLevelDecl d in declarations) {
         Contract.Assert(d != null);
         allTypeParameters.PushMarker();
-        ResolveTypeParameters(d.TypeArgs, false, d);
+        ResolveTypeParameters(d.TypeArgs, false, d, true);
         if (d is ClassDecl) {
           ResolveClassMemberBodies((ClassDecl)d);
         }
         allTypeParameters.PopMarker();
       }
 
-      foreach (TopLevelDecl d in declarations) {
-        if (d is ClassDecl) {
-          foreach (var member in ((ClassDecl)d).Members) {
-            if (member is Method) {
-              var m = ((Method)member);
-              if (m.Body != null)
-                CheckTypeInference(m.Body);
-            } else if (member is Function) {
-              var f = (Function)member;
-              if (f.Body != null)
-                CheckTypeInference(f.Body);
+      if (ErrorCount == prevErrorCount) {
+        foreach (TopLevelDecl d in declarations) {
+          if (d is ClassDecl) {
+            foreach (var member in ((ClassDecl)d).Members) {
+              if (member is Method) {
+                var m = (Method)member;
+                if (m.Body != null) {
+                  CheckTypeInference(m.Body);
+                  bool tail = true;
+                  bool hasTailRecursionPreference = Attributes.ContainsBool(m.Attributes, "tailrecursion", ref tail);
+                  if (hasTailRecursionPreference && !tail) {
+                    // the user specifically requested no tail recursion, so do nothing else
+                  } else if (hasTailRecursionPreference && tail && m.IsGhost) {
+                    Error(m.tok, "tail recursion can be specified only for methods that will be compiled, not for ghost methods");
+                  } else {
+                    var module = m.EnclosingClass.Module;
+                    var sccSize = module.CallGraph.GetSCCSize(m);
+                    if (hasTailRecursionPreference && 2 <= sccSize) {
+                      Error(m.tok, "sorry, tail-call optimizations are not supported for mutually recursive methods");
+                    } else if (hasTailRecursionPreference || sccSize == 1) {
+                      CallStmt tailCall = null;
+                      var status = CheckTailRecursive(m.Body.Body, m, ref tailCall, hasTailRecursionPreference);
+                      if (status != TailRecursionStatus.NotTailRecursive) {
+                        m.IsTailRecursive = true;
+                      }
+                    }
+                  }
+                }
+                if (!m.IsTailRecursive && m.Body != null && Contract.Exists(m.Decreases.Expressions, e => e is WildcardExpr)) {
+                  Error(m.Decreases.Expressions[0].tok, "'decreases *' is allowed only on tail-recursive methods");
+                }
+              } else if (member is Function) {
+                var f = (Function)member;
+                if (f.Body != null) {
+                  CheckTypeInference(f.Body);
+                  bool tail = true;
+                  if (Attributes.ContainsBool(f.Attributes, "tailrecursion", ref tail) && tail) {
+                    Error(f.tok, "sorry, tail-call functions are not supported");
+                  }
+                }
+              }
             }
           }
         }
@@ -1074,6 +1173,172 @@ namespace Microsoft.Dafny
       }
     }
 
+    enum TailRecursionStatus
+    {
+      NotTailRecursive, // contains code that makes the enclosing method body not tail recursive (in way that is supported)
+      CanBeFollowedByAnything, // the code just analyzed does not do any recursive calls
+      TailCallSpent, // the method body is tail recursive, provided that all code that follows it in the method body is ghost
+    }
+
+    /// <summary>
+    /// Checks if "stmts" can be considered tail recursive, and (provided "reportsError" is true) reports an error if not.
+    /// Note, the current implementation is rather conservative in its analysis; upon need, the
+    /// algorithm could be improved.
+    /// In the current implementation, "enclosingMethod" is not allowed to be a mutually recursive method.
+    /// 
+    /// The incoming value of "tailCall" is not used, but it's nevertheless a 'ref' parameter to allow the
+    /// body to return the incoming value or to omit assignments to it.
+    /// If the return value is CanBeFollowedByAnything, "tailCall" is unchanged.
+    /// If the return value is TailCallSpent, "tailCall" shows one of the calls where the tail call was spent.  (Note,
+    /// there could be several if the statements have branches.)
+    /// If the return value is NoTailRecursive, "tailCall" could be anything.  In this case, an error
+    /// message has been reported (provided "reportsErrors" is true).
+    /// </summary>
+    TailRecursionStatus CheckTailRecursive(List<Statement> stmts, Method enclosingMethod, ref CallStmt tailCall, bool reportErrors) {
+      Contract.Requires(stmts != null);
+      var status = TailRecursionStatus.CanBeFollowedByAnything;
+      foreach (var s in stmts) {
+        if (!s.IsGhost) {
+          if (s is ReturnStmt && ((ReturnStmt)s).hiddenUpdate == null) {
+            return status;
+          }
+          if (status == TailRecursionStatus.TailCallSpent) {
+            // a tail call cannot be followed by non-ghost code
+            if (reportErrors) {
+              Error(tailCall.Tok, "this recursive call is not recognized as being tail recursive, because it is followed by non-ghost code");
+            }
+            return TailRecursionStatus.NotTailRecursive;
+          }
+          status = CheckTailRecursive(s, enclosingMethod, ref tailCall, reportErrors);
+          if (status == TailRecursionStatus.NotTailRecursive) {
+            return status;
+          }
+        }
+      }
+      return status;
+    }
+
+    /// <summary>
+    /// See CheckTailRecursive(List Statement, ...), including its description of "tailCall".
+    /// In the current implementation, "enclosingMethod" is not allowed to be a mutually recursive method.
+    /// </summary>
+    TailRecursionStatus CheckTailRecursive(Statement stmt, Method enclosingMethod, ref CallStmt tailCall, bool reportErrors) {
+      Contract.Requires(stmt != null && !stmt.IsGhost);
+      if (stmt is PrintStmt) {
+      } else if (stmt is BreakStmt) {
+      } else if (stmt is ReturnStmt) {
+        var s = (ReturnStmt)stmt;
+        if (s.hiddenUpdate != null) {
+          return CheckTailRecursive(s.hiddenUpdate, enclosingMethod, ref tailCall, reportErrors);
+        }
+      } else if (stmt is AssignStmt) {
+      } else if (stmt is VarDecl) {
+      } else if (stmt is CallStmt) {
+        var s = (CallStmt)stmt;
+        if (s.Method == enclosingMethod) {
+          // It's a recursive call.  It can be considered a tail call only if the LHS of the call are the
+          // formal out-parameters of the method
+          for (int i = 0; i < s.Lhs.Count; i++) {
+            var formal = enclosingMethod.Outs[i];
+            if (!formal.IsGhost) {
+              var lhs = s.Lhs[i] as IdentifierExpr;
+              if (lhs != null && lhs.Var == formal) {
+                // all is good
+              } else {
+                if (reportErrors) {
+                  Error(s.Tok, "the recursive call to '{0}' is not tail recursive because the actual out-parameter {1} is not the formal out-parameter '{2}'", s.Method.Name, i, formal.Name);
+                }
+                return TailRecursionStatus.NotTailRecursive;
+              }
+            }
+          }
+          tailCall = s;
+          return TailRecursionStatus.TailCallSpent;
+        }
+      } else if (stmt is BlockStmt) {
+        var s = (BlockStmt)stmt;
+        return CheckTailRecursive(s.Body, enclosingMethod, ref tailCall, reportErrors);
+      } else if (stmt is IfStmt) {
+        var s = (IfStmt)stmt;
+        var stThen = CheckTailRecursive(s.Thn, enclosingMethod, ref tailCall, reportErrors);
+        if (stThen == TailRecursionStatus.NotTailRecursive) {
+          return stThen;
+        }
+        var stElse = s.Els == null ? TailRecursionStatus.CanBeFollowedByAnything : CheckTailRecursive(s.Els, enclosingMethod, ref tailCall, reportErrors);
+        if (stElse == TailRecursionStatus.NotTailRecursive) {
+          return stElse;
+        } else if (stThen == TailRecursionStatus.TailCallSpent || stElse == TailRecursionStatus.TailCallSpent) {
+          return TailRecursionStatus.TailCallSpent;
+        }
+      } else if (stmt is AlternativeStmt) {
+        var s = (AlternativeStmt)stmt;
+        var status = TailRecursionStatus.CanBeFollowedByAnything;
+        foreach (var alt in s.Alternatives) {
+          var st = CheckTailRecursive(alt.Body, enclosingMethod, ref tailCall, reportErrors);
+          if (st == TailRecursionStatus.NotTailRecursive) {
+            return st;
+          } else if (st == TailRecursionStatus.TailCallSpent) {
+            status = st;
+          }
+        }
+        return status;
+      } else if (stmt is WhileStmt) {
+        var s = (WhileStmt)stmt;
+        var status = CheckTailRecursive(s.Body, enclosingMethod, ref tailCall, reportErrors);
+        if (status != TailRecursionStatus.CanBeFollowedByAnything) {
+          if (status == TailRecursionStatus.NotTailRecursive) {
+            // an error has already been reported
+          } else if (reportErrors) {
+            Error(tailCall.Tok, "a recursive call inside a loop is not recognized as being a tail call");
+          }
+          return TailRecursionStatus.NotTailRecursive;
+        }
+      } else if (stmt is AlternativeLoopStmt) {
+        var s = (AlternativeLoopStmt)stmt;
+        foreach (var alt in s.Alternatives) {
+          var status = CheckTailRecursive(alt.Body, enclosingMethod, ref tailCall, reportErrors);
+          if (status != TailRecursionStatus.CanBeFollowedByAnything) {
+            if (status == TailRecursionStatus.NotTailRecursive) {
+              // an error has already been reported
+            } else if (reportErrors) {
+              Error(tailCall.Tok, "a recursive call inside a loop is not recognized as being a tail call");
+            }
+            return TailRecursionStatus.NotTailRecursive;
+          }
+        }
+      } else if (stmt is ParallelStmt) {
+        var s = (ParallelStmt)stmt;
+        var status = CheckTailRecursive(s.Body, enclosingMethod, ref tailCall, reportErrors);
+        if (status != TailRecursionStatus.CanBeFollowedByAnything) {
+          if (status == TailRecursionStatus.NotTailRecursive) {
+            // an error has already been reported
+          } else if (reportErrors) {
+            Error(tailCall.Tok, "a recursive call inside a parallel statement is not a tail call");
+          }
+          return TailRecursionStatus.NotTailRecursive;
+        }
+      } else if (stmt is MatchStmt) {
+        var s = (MatchStmt)stmt;
+        var status = TailRecursionStatus.CanBeFollowedByAnything;
+        foreach (var kase in s.Cases) {
+          var st = CheckTailRecursive(kase.Body, enclosingMethod, ref tailCall, reportErrors);
+          if (st == TailRecursionStatus.NotTailRecursive) {
+            return st;
+          } else if (st == TailRecursionStatus.TailCallSpent) {
+            status = st;
+          }
+        }
+        return status;
+      } else if (stmt is AssignSuchThatStmt) {
+      } else if (stmt is ConcreteSyntaxStatement) {
+        var s = (ConcreteSyntaxStatement)stmt;
+        return CheckTailRecursive(s.ResolvedStatements, enclosingMethod, ref tailCall, reportErrors);
+      } else {
+        Contract.Assert(false);  // unexpected statement type
+      }
+      return TailRecursionStatus.CanBeFollowedByAnything;
+    }
+
     enum CallingPosition { Positive, Negative, Neither }
 
     static CallingPosition Invert(CallingPosition cp) {
@@ -1129,6 +1394,16 @@ namespace Microsoft.Dafny
           default:
             break;
         }
+      } else if (expr is MatchExpr) {
+        var e = (MatchExpr)expr;
+        CoPredicateChecks(e.Source, context, CallingPosition.Neither);
+        e.Cases.Iter(kase => CoPredicateChecks(kase.Body, context, cp));
+        return;
+      } else if (expr is ITEExpr) {
+        var e = (ITEExpr)expr;
+        CoPredicateChecks(e.Test, context, CallingPosition.Neither);
+        CoPredicateChecks(e.Thn, context, cp);
+        CoPredicateChecks(e.Els, context, cp);
       } else if (expr is LetExpr) {
         var e = (LetExpr)expr;
         CoPredicateChecks(e.Body, context, cp);
@@ -1431,6 +1706,11 @@ namespace Microsoft.Dafny
         var s = (ParallelStmt)stmt;
         CheckTypeInference(s.Range);
         CheckTypeInference(s.Body);
+      } else if (stmt is CalcStmt) {
+        // NadiaToDo: is this correct?
+        var s = (CalcStmt)stmt;
+        s.SubExpressions.Iter(e => CheckTypeInference(e));
+        s.SubStatements.Iter(CheckTypeInference);		
       } else if (stmt is MatchStmt) {
         var s = (MatchStmt)stmt;
         CheckTypeInference(s.Source);
@@ -1520,14 +1800,14 @@ namespace Microsoft.Dafny
         } else if (member is Function) {
           Function f = (Function)member;
           allTypeParameters.PushMarker();
-          ResolveTypeParameters(f.TypeArgs, true, f);
+          ResolveTypeParameters(f.TypeArgs, true, f, false);
           ResolveFunctionSignature(f);
           allTypeParameters.PopMarker();
 
         } else if (member is Method) {
           Method m = (Method)member;
           allTypeParameters.PushMarker();
-          ResolveTypeParameters(m.TypeArgs, true, m);
+          ResolveTypeParameters(m.TypeArgs, true, m, false);
           ResolveMethodSignature(m);
           allTypeParameters.PopMarker();
 
@@ -1556,14 +1836,14 @@ namespace Microsoft.Dafny
         } else if (member is Function) {
           Function f = (Function)member;
           allTypeParameters.PushMarker();
-          ResolveTypeParameters(f.TypeArgs, false, f);
+          ResolveTypeParameters(f.TypeArgs, false, f, false);
           ResolveFunction(f);
           allTypeParameters.PopMarker();
 
         } else if (member is Method) {
           Method m = (Method)member;
           allTypeParameters.PushMarker();
-          ResolveTypeParameters(m.TypeArgs, false, m);
+          ResolveTypeParameters(m.TypeArgs, false, m, false);
           ResolveMethod(m);
           allTypeParameters.PopMarker();
         } else {
@@ -1832,16 +2112,18 @@ namespace Microsoft.Dafny
       }
     }
 
-    void ResolveTypeParameters(List<TypeParameter/*!*/>/*!*/ tparams, bool emitErrors, TypeParameter.ParentType/*!*/ parent) {
+    void ResolveTypeParameters(List<TypeParameter/*!*/>/*!*/ tparams, bool emitErrors, TypeParameter.ParentType/*!*/ parent, bool isToplevel) {
 
       Contract.Requires(tparams != null);
       Contract.Requires(parent != null);
       // push non-duplicated type parameter names
+      int index = 0;
       foreach (TypeParameter tp in tparams) {
         Contract.Assert(tp != null);
         if (emitErrors) {
           // we're seeing this TypeParameter for the first time
           tp.Parent = parent;
+          tp.PositionalIndex = index;
         }
         if (!allTypeParameters.Push(tp.Name, tp) && emitErrors) {
           Error(tp, "Duplicate type-parameter name: {0}", tp.Name);
@@ -2014,6 +2296,9 @@ namespace Microsoft.Dafny
       foreach (Expression e in m.Decreases.Expressions) {
         ResolveExpression(e, false);
         // any type is fine
+        if (m.IsGhost && e is WildcardExpr) {
+          Error(e, "'decreases *' is not allowed on ghost methods");
+        }
       }
 
       // Add out-parameters to a new scope that will also include the outermost-level locals of the body
@@ -2366,7 +2651,7 @@ namespace Microsoft.Dafny
       Contract.Requires(a.T == null && b.T == null);
       Contract.Requires(a.OrderID <= b.OrderID);
       //modifies a.T, b.T;
-      Contract.Ensures(Contract.Result<bool>() || a.T != null || b.T != null);
+      Contract.Ensures(!Contract.Result<bool>() || a.T != null || b.T != null);
 
       if (a is DatatypeProxy) {
         if (b is DatatypeProxy) {
@@ -2800,7 +3085,7 @@ namespace Microsoft.Dafny
         bool bodyMustBeSpecOnly = specContextOnly || (prevErrorCount == ErrorCount && UsesSpecFeatures(s.Range));
         if (!bodyMustBeSpecOnly && prevErrorCount == ErrorCount) {
           var missingBounds = new List<BoundVar>();
-          s.Bounds = DiscoverBounds(s.Tok, s.BoundVars, s.Range, true, missingBounds);
+          s.Bounds = DiscoverBounds(s.Tok, s.BoundVars, s.Range, true, false, missingBounds);
           if (missingBounds.Count != 0) {
             bodyMustBeSpecOnly = true;
           }
@@ -2844,6 +3129,46 @@ namespace Microsoft.Dafny
           }
           CheckParallelBodyRestrictions(s.Body, s.Kind);
         }
+		
+      } else if (stmt is CalcStmt) {
+        var prevErrorCount = ErrorCount;
+        CalcStmt s = (CalcStmt)stmt;
+        s.IsGhost = true;
+        Contract.Assert(s.Lines.Count > 0); // follows from the invariant of CalcStatement
+        var resOp = s.Op;
+        var e0 = s.Lines.First();
+        ResolveExpression(e0, true);
+        Contract.Assert(e0.Type != null);  // follows from postcondition of ResolveExpression
+        for (int i = 1; i < s.Lines.Count; i++) {
+          var e1 = s.Lines[i];
+          ResolveExpression(e1, true);
+          Contract.Assert(e1.Type != null);  // follows from postcondition of ResolveExpression
+          if (!UnifyTypes(e0.Type, e1.Type)) {
+            Error(e1, "all calculation steps must have the same type (got {0} after {1})", e1.Type, e0.Type);
+          } else {
+            BinaryExpr step;
+            var op = s.CustomOps[i - 1];
+            if (op == null) {              
+              step = new BinaryExpr(e0.tok, s.Op, e0, e1); // Use calc-wide operator
+            } else {
+              step = new BinaryExpr(e0.tok, (BinaryExpr.Opcode)op, e0, e1); // Use custom line operator
+              Contract.Assert(CalcStmt.ResultOp(resOp, (BinaryExpr.Opcode)op) != null); // This was checked during parsing
+              resOp = (BinaryExpr.Opcode)CalcStmt.ResultOp(resOp, (BinaryExpr.Opcode)op);
+            }
+            ResolveExpression(step, true);
+            s.Steps.Add(step);            
+          }
+          e0 = e1;
+        }
+        foreach (var h in s.Hints)
+        {
+          if (h != null) {
+            ResolveStatement(h, true, method);
+          }
+        }
+        s.Result = new BinaryExpr(s.Tok, resOp, s.Lines.First(), s.Lines.Last());
+        ResolveExpression(s.Result, true);
+        Contract.Assert(prevErrorCount != ErrorCount || s.Steps.Count == s.Hints.Count);
 
       } else if (stmt is MatchStmt) {
         MatchStmt s = (MatchStmt)stmt;
@@ -3102,6 +3427,7 @@ namespace Microsoft.Dafny
       foreach (var a in s.ResolvedStatements) {
         ResolveStatement(a, specContextOnly, method);
       }
+      s.IsGhost = s.ResolvedStatements.TrueForAll(ss => ss.IsGhost);
     }
 
     bool ResolveAlternatives(List<GuardedAlternative> alternatives, bool specContextOnly, AlternativeLoopStmt loopToCatchBreaks, Method method) {
@@ -3441,6 +3767,10 @@ namespace Microsoft.Dafny
             Contract.Assert(false);  // unexpected kind
             break;
         }
+		
+      } else if (stmt is CalcStmt) {
+          // cool
+          // NadiaTodo: ...I assume because it's always ghost		
 
       } else if (stmt is MatchStmt) {
         var s = (MatchStmt)stmt;
@@ -3907,15 +4237,11 @@ namespace Microsoft.Dafny
           // fine
         } else if (UserDefinedType.DenotesClass(t) != null) {
           // fine
+        } else if (t.IsDatatype) {
+          // fine, treat this as the datatype itself.
         } else {
           Error(expr, "the argument of a fresh expression must denote an object or a collection of objects (instead got {0})", e.E.Type);
         }
-        expr.Type = Type.Bool;
-
-      } else if (expr is AllocatedExpr) {
-        AllocatedExpr e = (AllocatedExpr)expr;
-        ResolveExpression(e.E, twoState);
-        // e.E can be of any type
         expr.Type = Type.Bool;
 
       } else if (expr is UnaryExpr) {
@@ -4132,7 +4458,7 @@ namespace Microsoft.Dafny
 
         if (prevErrorCount == ErrorCount) {
           var missingBounds = new List<BoundVar>();
-          e.Bounds = DiscoverBounds(e.tok, e.BoundVars, e.LogicalBody(), e is ExistsExpr, missingBounds);
+          e.Bounds = DiscoverBounds(e.tok, e.BoundVars, e.LogicalBody(), e is ExistsExpr, false, missingBounds);
           if (missingBounds.Count != 0) {
             // Report errors here about quantifications that depend on the allocation state.
             var mb = missingBounds;
@@ -4176,7 +4502,7 @@ namespace Microsoft.Dafny
 
         if (prevErrorCount == ErrorCount) {
           var missingBounds = new List<BoundVar>();
-          e.Bounds = DiscoverBounds(e.tok, e.BoundVars, e.Range, true, missingBounds);
+          e.Bounds = DiscoverBounds(e.tok, e.BoundVars, e.Range, true, false, missingBounds);
           if (missingBounds.Count != 0) {
             e.MissingBounds = missingBounds;
             foreach (var bv in e.MissingBounds) {
@@ -4212,7 +4538,7 @@ namespace Microsoft.Dafny
 
         if (prevErrorCount == ErrorCount) {
           var missingBounds = new List<BoundVar>();
-          e.Bounds = DiscoverBounds(e.tok, e.BoundVars, e.Range, true, missingBounds);
+          e.Bounds = DiscoverBounds(e.tok, e.BoundVars, e.Range, true, false, missingBounds);
           if (missingBounds.Count != 0) {
             e.MissingBounds = missingBounds;
             foreach (var bv in e.MissingBounds) {
@@ -4517,10 +4843,6 @@ namespace Microsoft.Dafny
         Error(expr, "fresh expressions are allowed only in specification and ghost contexts");
         return;
 
-      } else if (expr is AllocatedExpr) {
-        Error(expr, "allocated expressions are allowed only in specification and ghost contexts");
-        return;
-
       } else if (expr is PredicateExpr) {
         var e = (PredicateExpr)expr;
         // ignore the guard
@@ -4657,9 +4979,8 @@ namespace Microsoft.Dafny
       //  - unamibugous type/module name (class, datatype, sub-module (including submodules of imports) or arbitrary-type)
       //       (if two imported types have the same name, an error message is produced here)
       //  - unambiguous constructor name of a datatype (if two constructors have the same name, an error message is produced here)
-      //  - imported module name
       //  - field, function or method name (with implicit receiver) (if the field is occluded by anything above, one can use an explicit "this.")
-      //  - static function or method in the enclosing module.
+      //  - static function or method in the enclosing module, or its imports.
 
       Expression r = null;  // resolved version of e
       CallRhs call = null;
@@ -4726,18 +5047,23 @@ namespace Microsoft.Dafny
                  || moduleInfo.StaticMembers.TryGetValue(id.val, out member)) // try static members of the current module too.
       {
         // ----- field, function, or method
-        Expression receiver;
-        if (member.IsStatic) {
-          receiver = new StaticReceiverExpr(id, (ClassDecl)member.EnclosingClass);
+        if (member is AmbiguousMemberDecl) {
+          Contract.Assert(member.IsStatic); // currently, static members of _default are the only thing which can be ambiguous.
+          Error(id, "The name {0} ambiguously refers to a static member in one of the modules {1}", id.val, ((AmbiguousMemberDecl)member).ModuleNames());
         } else {
-          if (!scope.AllowInstance) {
-            Error(id, "'this' is not allowed in a 'static' context");
-            // nevertheless, set "receiver" to a value so we can continue resolution
+          Expression receiver;
+          if (member.IsStatic) {
+            receiver = new StaticReceiverExpr(id, (ClassDecl)member.EnclosingClass);
+          } else {
+            if (!scope.AllowInstance) {
+              Error(id, "'this' is not allowed in a 'static' context");
+              // nevertheless, set "receiver" to a value so we can continue resolution
+            }
+            receiver = new ImplicitThisExpr(id);
+            receiver.Type = GetThisType(id, (ClassDecl)member.EnclosingClass);  // resolve here
           }
-          receiver = new ImplicitThisExpr(id);
-          receiver.Type = GetThisType(id, (ClassDecl)member.EnclosingClass);  // resolve here
+          r = ResolveSuffix(receiver, e, 0, twoState, allowMethodCall, out call);
         }
-        r = ResolveSuffix(receiver, e, 0, twoState, allowMethodCall, out call);
 
       } else {
         Error(id, "unresolved identifier: {0}", id.val);
@@ -4924,34 +5250,52 @@ namespace Microsoft.Dafny
     /// <summary>
     /// Tries to find a bounded pool for each of the bound variables "bvars" of "expr".  If this process
     /// fails, then "null" is returned and the bound variables for which the process fails are added to "missingBounds".
+    /// If "returnAllBounds" is false, then:
+    ///   -- at most one BoundedPool per variable is returned
+    ///   -- every IntBoundedPool returned has both a lower and an upper bound
+    ///   -- no SuperSetBoundedPool is returned
+    /// If "returnAllBounds" is true, then:
+    ///   -- a variable may give rise to several BoundedPool's
+    ///   -- IntBoundedPool bounds may have just one component
+    ///   -- a non-null return value means that some bound were found for each variable (but, for example, perhaps one
+    ///      variable only has lower bounds, no upper bounds)
     /// Requires "expr" to be successfully resolved.
     /// </summary>
-    List<QuantifierExpr.BoundedPool> DiscoverBounds(IToken tok, List<BoundVar> bvars, Expression expr, bool polarity, List<BoundVar> missingBounds) {
+    public static List<ComprehensionExpr.BoundedPool> DiscoverBounds(IToken tok, List<BoundVar> bvars, Expression expr, bool polarity, bool returnAllBounds, List<BoundVar> missingBounds) {
       Contract.Requires(tok != null);
       Contract.Requires(bvars != null);
       Contract.Requires(missingBounds != null);
       Contract.Requires(expr != null);
       Contract.Requires(expr.Type != null);  // a sanity check (but not a complete proof) that "expr" has been resolved
       Contract.Ensures(
-        (Contract.Result<List<QuantifierExpr.BoundedPool>>() != null &&
-         Contract.Result<List<QuantifierExpr.BoundedPool>>().Count == bvars.Count &&
+        (returnAllBounds && Contract.OldValue(missingBounds.Count) <= missingBounds.Count) ||
+        (!returnAllBounds &&
+         Contract.Result<List<ComprehensionExpr.BoundedPool>>() != null &&
+         Contract.Result<List<ComprehensionExpr.BoundedPool>>().Count == bvars.Count &&
          Contract.OldValue(missingBounds.Count) == missingBounds.Count) ||
-        (Contract.Result<List<QuantifierExpr.BoundedPool>>() == null &&
+        (!returnAllBounds &&
+         Contract.Result<List<ComprehensionExpr.BoundedPool>>() == null &&
          Contract.OldValue(missingBounds.Count) < missingBounds.Count));
 
-      var bounds = new List<QuantifierExpr.BoundedPool>();
+      var bounds = new List<ComprehensionExpr.BoundedPool>();
       bool foundError = false;
       for (int j = 0; j < bvars.Count; j++) {
         var bv = bvars[j];
         if (bv.Type is BoolType) {
           // easy
-          bounds.Add(new QuantifierExpr.BoolBoundedPool());
+          bounds.Add(new ComprehensionExpr.BoolBoundedPool());
         } else if (bv.Type.IsIndDatatype && (bv.Type.AsIndDatatype).HasFinitePossibleValues) {
-          bounds.Add(new QuantifierExpr.DatatypeBoundedPool(bv.Type.AsIndDatatype));
+          bounds.Add(new ComprehensionExpr.DatatypeBoundedPool(bv.Type.AsIndDatatype));
         } else {
           // Go through the conjuncts of the range expression to look for bounds.
           Expression lowerBound = bv.Type is NatType ? new LiteralExpr(bv.tok, new BigInteger(0)) : null;
           Expression upperBound = null;
+          bool foundBoundsForBv = false;
+          if (returnAllBounds && lowerBound != null) {
+            bounds.Add(new ComprehensionExpr.IntBoundedPool(lowerBound, upperBound));
+            lowerBound = null;
+            foundBoundsForBv = true;
+          }
           foreach (var conjunct in NormalizedConjuncts(expr, polarity)) {
             var c = conjunct as BinaryExpr;
             if (c == null) {
@@ -4966,33 +5310,48 @@ namespace Microsoft.Dafny
             switch (c.ResolvedOp) {
               case BinaryExpr.ResolvedOpcode.InSet:
                 if (whereIsBv == 0) {
-                  bounds.Add(new QuantifierExpr.SetBoundedPool(e1));
-                  goto CHECK_NEXT_BOUND_VARIABLE;
+                  bounds.Add(new ComprehensionExpr.SetBoundedPool(e1));
+                  foundBoundsForBv = true;
+                  if (!returnAllBounds) goto CHECK_NEXT_BOUND_VARIABLE;
+                }
+                break;
+              case BinaryExpr.ResolvedOpcode.Subset:
+                if (returnAllBounds && whereIsBv == 1) {
+                  bounds.Add(new ComprehensionExpr.SuperSetBoundedPool(e0));
+                  foundBoundsForBv = true;
                 }
                 break;
               case BinaryExpr.ResolvedOpcode.InMultiSet:
                 if (whereIsBv == 0) {
-                  bounds.Add(new QuantifierExpr.SetBoundedPool(e1));
-                  goto CHECK_NEXT_BOUND_VARIABLE;
+                  bounds.Add(new ComprehensionExpr.SetBoundedPool(e1));
+                  foundBoundsForBv = true;
+                  if (!returnAllBounds) goto CHECK_NEXT_BOUND_VARIABLE;
                 }
                 break;
               case BinaryExpr.ResolvedOpcode.InSeq:
                 if (whereIsBv == 0) {
-                  bounds.Add(new QuantifierExpr.SeqBoundedPool(e1));
-                  goto CHECK_NEXT_BOUND_VARIABLE;
+                  bounds.Add(new ComprehensionExpr.SeqBoundedPool(e1));
+                  foundBoundsForBv = true;
+                  if (!returnAllBounds) goto CHECK_NEXT_BOUND_VARIABLE;
                 }
                 break;
               case BinaryExpr.ResolvedOpcode.InMap:
                 if (whereIsBv == 0) {
-                  bounds.Add(new QuantifierExpr.SetBoundedPool(e1));
-                  goto CHECK_NEXT_BOUND_VARIABLE;
+                  bounds.Add(new ComprehensionExpr.SetBoundedPool(e1));
+                  foundBoundsForBv = true;
+                  if (!returnAllBounds) goto CHECK_NEXT_BOUND_VARIABLE;
                 }
                 break;
               case BinaryExpr.ResolvedOpcode.EqCommon:
                 if (bv.Type is IntType) {
                   var otherOperand = whereIsBv == 0 ? e1 : e0;
-                  bounds.Add(new QuantifierExpr.IntBoundedPool(otherOperand, Plus(otherOperand, 1)));
-                  goto CHECK_NEXT_BOUND_VARIABLE;
+                  bounds.Add(new ComprehensionExpr.IntBoundedPool(otherOperand, Plus(otherOperand, 1)));
+                  foundBoundsForBv = true;
+                  if (!returnAllBounds) goto CHECK_NEXT_BOUND_VARIABLE;
+                } else if (returnAllBounds && bv.Type is SetType) {
+                  var otherOperand = whereIsBv == 0 ? e1 : e0;
+                  bounds.Add(new ComprehensionExpr.SuperSetBoundedPool(otherOperand));
+                  foundBoundsForBv = true;
                 }
                 break;
               case BinaryExpr.ResolvedOpcode.Gt:
@@ -5015,16 +5374,22 @@ namespace Microsoft.Dafny
               default:
                 break;
             }
-            if (lowerBound != null && upperBound != null) {
-              // we have found two halves
-              bounds.Add(new QuantifierExpr.IntBoundedPool(lowerBound, upperBound));
-              goto CHECK_NEXT_BOUND_VARIABLE;
+            if ((lowerBound != null && upperBound != null) ||
+                (returnAllBounds && (lowerBound != null || upperBound != null))) {
+              // we have found two halves (or, in the case of returnAllBounds, we have found some bound)
+              bounds.Add(new ComprehensionExpr.IntBoundedPool(lowerBound, upperBound));
+              lowerBound = null;
+              upperBound = null;
+              foundBoundsForBv = true;
+              if (!returnAllBounds) goto CHECK_NEXT_BOUND_VARIABLE;
             }
           CHECK_NEXT_CONJUNCT: ;
           }
-          // we have checked every conjunct in the range expression and still have not discovered good bounds
-          missingBounds.Add(bv);  // record failing bound variable
-          foundError = true;
+          if (!foundBoundsForBv) {
+            // we have checked every conjunct in the range expression and still have not discovered good bounds
+            missingBounds.Add(bv);  // record failing bound variable
+            foundError = true;
+          }
         }
       CHECK_NEXT_BOUND_VARIABLE: ;  // should goto here only if the bound for the current variable has been discovered (otherwise, return with null from this method)
       }
@@ -5039,7 +5404,7 @@ namespace Microsoft.Dafny
     /// The other of "e0" and "e1" is an expression whose free variables are not among "boundVars[bvi..]".
     /// Ensures that the resulting "e0" and "e1" are not ConcreteSyntaxExpression's.
     /// </summary>
-    int SanitizeForBoundDiscovery(List<BoundVar> boundVars, int bvi, BinaryExpr.ResolvedOpcode op, ref Expression e0, ref Expression e1) {
+    static int SanitizeForBoundDiscovery(List<BoundVar> boundVars, int bvi, BinaryExpr.ResolvedOpcode op, ref Expression e0, ref Expression e1) {
       Contract.Requires(e0 != null);
       Contract.Requires(e1 != null);
       Contract.Requires(boundVars != null);
@@ -5163,7 +5528,7 @@ namespace Microsoft.Dafny
     /// Requires "expr" to be successfully resolved.
     /// Ensures that what is returned is not a ConcreteSyntaxExpression.
     /// </summary>
-    IEnumerable<Expression> NormalizedConjuncts(Expression expr, bool polarity) {
+    static IEnumerable<Expression> NormalizedConjuncts(Expression expr, bool polarity) {
       // We consider 5 cases.  To describe them, define P(e)=Conjuncts(e,true) and N(e)=Conjuncts(e,false).
       //   *  X ==> Y    is treated as a shorthand for !X || Y, and so is described by the remaining cases
       //   *  X && Y     P(_) = P(X),P(Y)    and    N(_) = !(X && Y)
@@ -5266,7 +5631,7 @@ namespace Microsoft.Dafny
       }
     }
 
-    Expression Plus(Expression e, int n) {
+    public static Expression Plus(Expression e, int n) {
       Contract.Requires(0 <= n);
 
       var nn = new LiteralExpr(e.tok, n);
@@ -5277,12 +5642,23 @@ namespace Microsoft.Dafny
       return p;
     }
 
+    public static Expression Minus(Expression e, int n) {
+      Contract.Requires(0 <= n);
+
+      var nn = new LiteralExpr(e.tok, n);
+      nn.Type = Type.Int;
+      var p = new BinaryExpr(e.tok, BinaryExpr.Opcode.Sub, e, nn);
+      p.ResolvedOp = BinaryExpr.ResolvedOpcode.Sub;
+      p.Type = Type.Int;
+      return p;
+    }
+
     /// <summary>
     /// Returns the set of free variables in "expr".
     /// Requires "expr" to be successfully resolved.
     /// Ensures that the set returned has no aliases.
     /// </summary>
-    ISet<IVariable> FreeVariables(Expression expr) {
+    static ISet<IVariable> FreeVariables(Expression expr) {
       Contract.Requires(expr != null);
       Contract.Ensures(expr.Type != null);
 
@@ -5581,8 +5957,6 @@ namespace Microsoft.Dafny
         OldExpr e = (OldExpr)expr;
         return UsesSpecFeatures(e.E);
       } else if (expr is FreshExpr) {
-        return true;
-      } else if (expr is AllocatedExpr) {
         return true;
       } else if (expr is UnaryExpr) {
         UnaryExpr e = (UnaryExpr)expr;

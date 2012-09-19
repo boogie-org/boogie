@@ -38,16 +38,15 @@ public class Parser {
 	public Token/*!*/ la;   // lookahead token
 	int errDist = minErrDist;
 
-static Program/*!*/ Pgm = new Program();
+readonly Program/*!*/ Pgm;
 
-static Expr/*!*/ dummyExpr = new LiteralExpr(Token.NoToken, false);
-static Cmd/*!*/ dummyCmd = new AssumeCmd(Token.NoToken, dummyExpr);
-static Block/*!*/ dummyBlock = new Block(Token.NoToken, "dummyBlock", new CmdSeq(),
-                                     new ReturnCmd(Token.NoToken));
-static Bpl.Type/*!*/ dummyType = new BasicType(Token.NoToken, SimpleType.Bool);
-static Bpl.ExprSeq/*!*/ dummyExprSeq = new ExprSeq ();
-static TransferCmd/*!*/ dummyTransferCmd = new ReturnCmd(Token.NoToken);
-static StructuredCmd/*!*/ dummyStructuredCmd = new BreakCmd(Token.NoToken, null);
+readonly Expr/*!*/ dummyExpr;
+readonly Cmd/*!*/ dummyCmd;
+readonly Block/*!*/ dummyBlock;
+readonly Bpl.Type/*!*/ dummyType;
+readonly Bpl.ExprSeq/*!*/ dummyExprSeq;
+readonly TransferCmd/*!*/ dummyTransferCmd;
+readonly StructuredCmd/*!*/ dummyStructuredCmd;
 
 ///<summary>
 ///Returns the number of parsing errors encountered.  If 0, "program" returns as
@@ -83,20 +82,33 @@ public static int Parse (string s, string/*!*/ filename, out /*maybe null*/ Prog
   Errors errors = new Errors();
   Scanner scanner = new Scanner(ms, errors, filename);
 
-  Parser parser = new Parser(scanner, errors);
-  Pgm = new Program(); // reset the global variable
-    parser.Parse();
-    if (parser.errors.count == 0)
-    {
-      program = Pgm;
-      program.ProcessDatatypeConstructors();
-      return 0;
-    }
-    else
-    {
-      program = null;
-      return parser.errors.count;
-    }
+  Parser parser = new Parser(scanner, errors, false);
+  parser.Parse();
+  if (parser.errors.count == 0)
+  {
+    program = parser.Pgm;
+    program.ProcessDatatypeConstructors();
+    return 0;
+  }
+  else
+  {
+    program = null;
+    return parser.errors.count;
+  }
+}
+
+public Parser(Scanner/*!*/ scanner, Errors/*!*/ errors, bool disambiguation)
+ : this(scanner, errors)
+{
+  // initialize readonly fields
+  Pgm = new Program();
+  dummyExpr = new LiteralExpr(Token.NoToken, false);
+  dummyCmd = new AssumeCmd(Token.NoToken, dummyExpr);
+  dummyBlock = new Block(Token.NoToken, "dummyBlock", new CmdSeq(), new ReturnCmd(Token.NoToken));
+  dummyType = new BasicType(Token.NoToken, SimpleType.Bool);
+  dummyExprSeq = new ExprSeq ();
+  dummyTransferCmd = new ReturnCmd(Token.NoToken);
+  dummyStructuredCmd = new BreakCmd(Token.NoToken, null);
 }
 
 // Class to represent the bounds of a bitvector expression t[a:b].
