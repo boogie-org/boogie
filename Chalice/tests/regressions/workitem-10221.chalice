@@ -1,0 +1,158 @@
+// In this example, additional unfold/fold pairs make the verification of the last three methods fail.
+
+class Node {
+  var next : Node;
+  var val : int;
+
+  predicate list {
+    acc(next) && acc(val) && (next!=null ==> next.list)
+  }
+  
+  function vals() : seq<int>
+    requires list
+  {
+    unfolding list in (next == null ? [val] : [val] ++ next.vals())
+  }
+
+  function reverse_vals() : seq<int>
+    requires list
+  {
+    unfolding list in (next == null ? [val] : next.reverse_vals() ++ [val])
+  }
+
+  method reverse_in_place() returns (r:Node)
+    requires list;
+    ensures true;
+  {
+    var l : Node := this;
+    r := null;
+
+    var rev : seq<int> := this.reverse_vals();
+    
+    while (l != null) 
+      invariant l!=null ==> l.list;
+      invariant r!=null ==> r.list;
+      invariant rev == (l==null ? nil<int> : l.reverse_vals()) ++ (r==null ? nil<int> : r.vals());
+    { 
+      var y: Node;
+//      if (r != null) {
+//        unfold r.list; fold r.list;
+//      }
+      unfold l.list;
+//      if (l.next != null) {
+//        unfold l.next.list; fold l.next.list;
+//      }
+    
+      y := l.next;
+      l.next := r;
+      r := l;
+      fold r.list;
+      l := y;
+    }
+    assert r.vals() == rev; // should be the post-condition
+  }
+  
+
+   method reverse_in_place_01() returns (r:Node)
+    requires list;
+    ensures true;
+  {
+    var l : Node := this;
+    r := null;
+
+    var rev : seq<int> := this.reverse_vals();
+    
+    while (l != null) 
+      invariant l!=null ==> l.list;
+      invariant r!=null ==> r.list;
+      invariant rev == (l==null ? nil<int> : l.reverse_vals()) ++ (r==null ? nil<int> : r.vals());
+    { 
+      var y: Node;
+//      if (r != null) {
+//        unfold r.list; fold r.list;
+//      }
+      unfold l.list;
+      if (l.next != null) {
+        unfold l.next.list; fold l.next.list;
+      }
+    
+      y := l.next;
+      l.next := r;
+      r := l;
+      fold r.list;
+      l := y;
+    }
+    assert r.vals() == rev; // should be the post-condition
+  }
+  
+   
+
+   method reverse_in_place_10() returns (r:Node)
+    requires list;
+    ensures true;
+  {
+    var l : Node := this;
+    r := null;
+
+    var rev : seq<int> := this.reverse_vals();
+    
+    while (l != null) 
+      invariant l!=null ==> l.list;
+      invariant r!=null ==> r.list;
+      invariant rev == (l==null ? nil<int> : l.reverse_vals()) ++ (r==null ? nil<int> : r.vals());
+    { 
+      var y: Node;
+      if (r != null) {
+        unfold r.list; fold r.list;
+      }
+      unfold l.list;
+//      if (l.next != null) {
+//        unfold l.next.list; fold l.next.list;
+//      }
+    
+      y := l.next;
+      l.next := r;
+      r := l;
+      fold r.list;
+      l := y;
+    }
+    assert r.vals() == rev; // should be the post-condition
+  }
+  
+   
+
+
+   method reverse_in_place_11() returns (r:Node)
+    requires list;
+    ensures true;
+  {
+    var l : Node := this;
+    r := null;
+
+    var rev : seq<int> := this.reverse_vals();
+    
+    while (l != null) 
+      invariant l!=null ==> l.list;
+      invariant r!=null ==> r.list;
+      invariant rev == (l==null ? nil<int> : l.reverse_vals()) ++ (r==null ? nil<int> : r.vals());
+    { 
+      var y: Node;
+      if (r != null) {
+        unfold r.list; fold r.list;
+      }
+      unfold l.list;
+      if (l.next != null) {
+        unfold l.next.list; fold l.next.list;
+      }
+    
+      y := l.next;
+      l.next := r;
+      r := l;
+      fold r.list;
+      l := y;
+    }
+    assert r.vals() == rev; // should be the post-condition
+  }
+  
+   
+}
