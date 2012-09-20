@@ -1,0 +1,17 @@
+class C
+{
+  var f: int;
+  predicate valid { acc(f) }
+  
+  function foo1(): int
+  ensures valid;
+  { 1 }
+  
+  function foo2(): int
+  ensures acc(f);
+  { 1 }
+
+  function foo3(): int
+  ensures rd(f);
+  { 1 }
+}

@@ -13,4 +13,4 @@ The program did not fully verify; the smoke warnings might be misleading if cont
   62.3: The end of method uf0 is unreachable.
   86.3: The end of method uf3 is unreachable.
 
-Boogie program verifier finished with 7 errors and 3 smoke test warnings.
+Boogie program verifier finished with 7 errors and 3 smoke test warnings

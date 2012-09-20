@@ -20,4 +20,4 @@ The program did not fully verify; the smoke warnings might be misleading if cont
   116.3: Predicate Cell.valid is equivalent to false.
   121.1: Where clause of channel C is equivalent to false.
 
-Boogie program verifier finished with 1 errors and 16 smoke test warnings.
+Boogie program verifier finished with 1 errors and 16 smoke test warnings

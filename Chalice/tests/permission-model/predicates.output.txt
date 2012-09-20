@@ -8,4 +8,4 @@ The program did not fully verify; the smoke warnings might be misleading if cont
   28.3: The end of method b3 is unreachable.
   49.3: The end of method b5 is unreachable.
 
-Boogie program verifier finished with 3 errors and 2 smoke test warnings.
+Boogie program verifier finished with 3 errors and 2 smoke test warnings

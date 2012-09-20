@@ -11,4 +11,4 @@ Verification of prog4.chalice using parameters=""
 The program did not fully verify; the smoke warnings might be misleading if contradictions are introduced by failing proof attempts of the verification.
   2.3: The end of method M is unreachable.
 
-Boogie program verifier finished with 7 errors and 1 smoke test warnings.
+Boogie program verifier finished with 7 errors and 1 smoke test warnings

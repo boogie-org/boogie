@@ -1,0 +1,51 @@
+class Node {
+  var next : Node;
+  var val : int;
+
+  predicate list {
+    acc(next) && acc(val) && (next!=null ==> next.list)
+  }
+  
+  function vals() : seq<int>
+    requires list
+  {
+    unfolding list in (next == null ? [val] : [val] ++ next.vals())
+  }
+
+  function reverse_vals() : seq<int>
+    requires list
+  {
+    unfolding list in (next == null ? [val] : next.reverse_vals() ++ [val])
+  }
+
+  method reverse_in_place() returns (r:Node)
+    requires list;
+    ensures r != null && r.list;
+    ensures r.vals() == old(this.reverse_vals());
+  {
+    var l : Node := this;
+    r := null;
+
+    while (l != null) 
+      invariant l!=null ==> l.list;
+      invariant r!=null ==> r.list;
+      invariant old(this.reverse_vals()) == (l==null ? nil<int> : l.reverse_vals()) ++ (r==null ? nil<int> : r.vals());
+    { 
+      var y: Node;
+      if (r != null) {
+        unfold r.list; fold r.list;
+      }
+      unfold l.list;
+      if (l.next != null) {
+        unfold l.next.list; fold l.next.list;
+      }
+
+    
+      y := l.next;
+      l.next := r;
+      r := l;
+      fold r.list;
+      l := y;
+    }
+  }
+}
