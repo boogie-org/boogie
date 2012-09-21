@@ -194,6 +194,7 @@ function IsGoodExhalePredicateState(eh: HeapType, h: HeapType, pm: PMaskType) re
 {
   (forall<T> o: ref, f: Field T :: { eh[o, f] }  pm[o, f] ==> eh[o, f] == h[o, f])
 }
+function predicateMaskField<T>(f: Field T): Field PMaskType;
 function IsGoodExhaleState(eh: HeapType, h: HeapType,
                            m: MaskType, sm: MaskType) returns (bool)
 {
@@ -205,6 +206,8 @@ function IsGoodExhaleState(eh: HeapType, h: HeapType,
   (forall o: ref :: { h[o, forkK] } { eh[o, forkK] } h[o, forkK] == eh[o, forkK]) &&
   (forall o: ref :: { h[o, held] } { eh[o, held] } h[o, held] == eh[o, held]) &&
   (forall o: ref, f: Field int :: { eh[o, f], PredicateField(f) } PredicateField(f) ==> h[o, f] <= eh[o, f]) &&
+  (forall o: ref, f: Field int :: { h[o, predicateMaskField(f)], PredicateField(f) } { eh[o, predicateMaskField(f)], PredicateField(f) } PredicateField(f) && CanRead(m, sm, o, f) ==>
+      (forall<T> o2: ref, f2: Field T :: { h[o2, f2] } { eh[o2, f2] }  h[o, predicateMaskField(f)][o2, f2] ==> eh[o2, f2] == h[o2, f2])) &&
   (forall pmask: Field PMaskType, o: ref :: eh[o, pmask] == h[o, pmask])
 }"""
 }
