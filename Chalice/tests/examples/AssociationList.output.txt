@@ -7,4 +7,4 @@ Verification of AssociationList.chalice using parameters=""
   73.9: The loop might lock/unlock more than the lockchange clause allows.
   107.7: Monitor invariant might hot hold. Insufficient fraction at 120.13 for Node.key.
 
-Boogie program verifier finished with 6 errors and 0 smoke test warnings.
+Boogie program verifier finished with 6 errors and 0 smoke test warnings

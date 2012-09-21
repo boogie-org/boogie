@@ -14,4 +14,4 @@ The program did not fully verify; the smoke warnings might be misleading if cont
   137.7: The begging of the lock-block is unreachable.
   142.3: The end of method nestedBad3 is unreachable.
 
-Boogie program verifier finished with 6 errors and 5 smoke test warnings.
+Boogie program verifier finished with 6 errors and 5 smoke test warnings

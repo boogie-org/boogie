@@ -5,4 +5,4 @@ Verification of internal-bug-2.chalice using parameters=""
 The program did not fully verify; the smoke warnings might be misleading if contradictions are introduced by failing proof attempts of the verification.
   6.5: The end of method koko is unreachable.
 
-Boogie program verifier finished with 1 errors and 1 smoke test warnings.
+Boogie program verifier finished with 1 errors and 1 smoke test warnings

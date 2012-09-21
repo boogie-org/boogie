@@ -35,18 +35,20 @@ if "!key!"=="!str!" (
 set output=output.txt
 echo Verification of %1.chalice using parameters="%chaliceparameters%" > %output%
 echo.>> %output%
-call %chalice% "%1.chalice" -smoke %chaliceparameters% %2 %3 %4 %5 %6 %7 >> %output% 2>&1
+call %chalice% "%1.chalice" -smoke -time:3 %chaliceparameters% %2 %3 %4 %5 %6 %7 1>> %output% 2> time.log
+set /p extime= < time.log
+del time.log 
 
 fc "%1.output.txt" output.txt > nul
 if not errorlevel 1 goto passTest
 goto failTest
 
 :passTest
-echo OK: %1.chalice
+echo OK: %1.chalice (%extime% seconds)
 goto end
 
 :failTest
-echo FAIL: %1.chalice
+echo FAIL: %1.chalice (%extime% seconds)
 if %nodiff%==0 (
     call %diff% "%1.output.txt" output.txt
 )

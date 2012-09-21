@@ -1,0 +1,114 @@
+/* Recursive implementation and specification of a linked list. */
+
+class Node {
+  var next: Node;
+  var value: int;
+
+  predicate valid {
+    rd*(next) && rd*(value) && (next!=null ==> next.valid)
+  }
+  
+  method testNestingUnfold()
+    requires acc(this.valid)
+    {
+      unfold this.valid;
+      assert this != this.next;
+      if(this.next != null) {
+        unfold this.next.valid;
+        assert this.next != this.next.next;
+        assert this != this.next.next;
+      }
+    }
+    
+  method testNestingFold() // this test shows that we build in the assumption that predicate instances with infinite expansions cannot be exist (in reachable code)
+    requires rd*(this.next) && rd*(this.value) && rd*(this.next.next) && rd*(this.next.value) && this.next != null  && this.next.next != null && this.next.next.valid
+    
+    {
+      fold this.next.valid;
+      assert this.next != this.next.next; // definition of valid "proves" that this.next and this.next.next cannot be aliases
+      fold this.valid;
+      assert this != this.next;
+      assert this != this.next.next;
+    }
+    
+  method testNestingUnfolding()
+    requires acc(this.valid)
+    {
+      assert this != (unfolding this.valid in this.next);
+      if((unfolding this.valid in this.next) != null) {
+        assert (unfolding this.valid in this.next) != (unfolding this.valid in (unfolding this.next.valid in this.next.next));
+        assert this != (unfolding this.valid in (unfolding this.next.valid in this.next.next));
+      }
+    }
+    
+  predicate p {
+    rd*(next) && rd*(value) && (next!=null ==> next.q)
+  }
+      
+  predicate q {
+    rd*(next) && rd*(value) && (next!=null ==> next.p)
+  }
+      
+  method testNestingUnfoldTwo()
+    requires acc(this.p)
+    {
+      unfold this.p;
+      assert this != this.next; // should fail
+      if(this.next != null) {
+        unfold this.next.q;
+        assert this.next != this.next.next; // should fail
+        assert this != this.next.next; // should succeed
+      }
+    }
+    
+  method testNestingFoldTwo() // this test shows that we build in the assumption that predicate instances with infinite expansions cannot be exist (in reachable code)
+    requires rd*(this.next) && rd*(this.value) && rd*(this.next.next) && rd*(this.next.value) && this.next != null  && this.next.next != null && this.next.next.p
+    
+    {
+      fold this.next.q;
+      assert this != this.next; // should fail
+      assert this.next != this.next.next; // should fail
+      assert this != this.next.next; // should fail
+    }
+    
+  method testNestingFoldThree() // this test shows that we build in the assumption that predicate instances with infinite expansions cannot be exist (in reachable code)
+    requires rd*(this.next) && rd*(this.value) && rd*(this.next.next) && rd*(this.next.value) && this.next != null  && this.next.next != null && this.next.next.p
+    
+    {
+      fold this.next.q;
+      fold this.p;
+      assert this != this.next; // should succeed, since this == this.next ==> this == this.next.next
+      assert this.next != this.next.next; // should fail - we haven't seen a cycle which would follow from this fact
+      assert this != this.next.next; // should succeed
+    }
+    
+  method testNestingUnfoldingTwo()
+    requires acc(this.p)
+    {
+      assert this != (unfolding this.p in this.next); // should fail
+      if((unfolding this.p in this.next) != null) {
+        assert (unfolding this.p in this.next) != (unfolding this.p in (unfolding this.next.q in this.next.next)); // should fail
+        assert this != (unfolding this.p in (unfolding this.next.q in this.next.next)); // should succeed
+      }
+    }
+    
+  method testNestingUnfoldingPrecondition(x: Node)
+    requires acc(this.valid) && (unfolding this.valid in this.next == x);
+    {
+      assert this != x;
+    }
+
+  function getNext() : Node
+    requires this.valid;
+    {
+      unfolding this.valid in this.next
+    }
+  
+  method testNestingUnfoldingPostcondition(x: Node)
+    requires acc(this.valid);
+    ensures acc(this.valid) && (unfolding this.valid in true) && this != this.getNext()
+    {
+      // nothing
+    }
+
+} 

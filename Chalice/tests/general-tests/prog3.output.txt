@@ -8,4 +8,4 @@ Verification of prog3.chalice using parameters=""
 The program did not fully verify; the smoke warnings might be misleading if contradictions are introduced by failing proof attempts of the verification.
   191.5: The statements after the method call statement are unreachable.
 
-Boogie program verifier finished with 4 errors and 1 smoke test warnings.
+Boogie program verifier finished with 4 errors and 1 smoke test warnings

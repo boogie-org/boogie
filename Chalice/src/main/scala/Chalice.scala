@@ -41,6 +41,7 @@ object Chalice {
   private[chalice] var percentageSupport = 2;
   private[chalice] var smoke = false;
   private[chalice] var smokeAll = false;
+  private[chalice] var timingVerbosity = 1;
 
   /**
    * Holds all command line arguments not stored in fields of Chalice.
@@ -126,12 +127,20 @@ object Chalice {
        "smoke testing; try to find unreachable code, preconditions/invariants/predicates that are equivalent to false and assumptions that introduce contradictions, by trying to prove 'false' at various positions."),
      "smokeAll" -> (
        {() => smokeAll = true; smoke = true},
-       "aggressive smoke testing; try to prove false after every statement.")
+       "aggressive smoke testing; try to prove false after every statement."),
+     "time" -> (
+       {() => timingVerbosity = 2},
+       "sets /time:2")
     )
     // help text for options with arguments
     val nonBooleanOptions = ListMap(
       "boogie:<file>" -> "use the executable of Boogie at <file>",
       "print:<file>" -> "print the Boogie program used for verification into file <file>",
+      "time:<n>" -> ("output timing information\n"+
+          "0: no information is included\n"+
+          "1: the overall verification time is output (default)\n"+
+          "2: detailed timings for each phase of the verification are output\n"+
+          "3: (used for testing only) output the overall verification time on stderr"),
       "defaults:<level>" -> ("defaults to reduce specification overhead\n"+
           "level 0 or below: no defaults\n"+
           "level 1: unfold predicates with receiver this in pre and postconditions\n"+
@@ -169,9 +178,16 @@ object Chalice {
      else if (a.startsWith("/percentageSupport:") || a.startsWith("-percentageSupport:")) {
        try {
          val in = Integer.parseInt(a.substring(19));
-         if (in < 0 || in > 3) CommandLineError("/percentageSupport takes only values 0,1,2 or 3", help)
+         if (in < 0 || in > 3) CommandLineError("/percentageSupport takes only values 0, 1, 2 or 3", help)
          else percentageSupport = in
        } catch { case _ => CommandLineError("/percentageSupport takes integer argument", help); }
+     }
+     else if (a.startsWith("/time:") || a.startsWith("-time:")) {
+       try {
+         val in = Integer.parseInt(a.substring(6));
+         if (in < 0 || in > 3) CommandLineError("/time takes only values 0, 1, 2 or 3", help)
+         else timingVerbosity = in
+       } catch { case _ => CommandLineError("/time takes integer argument", help); }
      }
      else if (a.startsWith("-boogieOpt:") || a.startsWith("/boogieOpt:"))
             aBoogieArgs += ("\"/" + a.substring(11) + "\"" + " ")
@@ -251,7 +267,7 @@ object Chalice {
        if (vsMode)
          ReportError(e.next.pos, e.msg);
        else
-         Console.err.println("Error: " + e);
+         Console.out.println("Error: " + e);
        Nil
      case parser.Success(prog, _) =>
        val pprog = if (smoke) SmokeTest.smokeProgram(prog) else prog
@@ -268,36 +284,64 @@ object Chalice {
     // typecheck program
     Resolver.Resolve(program) match {
      case Resolver.Errors(msgs) =>
-       if (!vsMode) Console.err.println("The program did not typecheck.");
+       if (!vsMode) Console.out.println("The program did not typecheck.");
        msgs foreach { msg => ReportError(msg._1, msg._2) };
        false;
      case Resolver.Success() =>
        true
     }
   }
-  
+
+  object VerificationSteps extends Enumeration {
+    type VerificationSteps = Value
+    val Init = Value("Init")
+    val Parse = Value("Parse")
+    val TypeCheck = Value("TypeCheck")
+    val PrintProgram = Value("PrintProgram")
+    val Translate = Value("Translate")
+    val Boogie = Value("Boogie")
+    val GenerateCode = Value("GenerateCode")
+  }
+
   def main(args: Array[String]): Unit = {
+
+    var timings = scala.collection.immutable.ListMap[VerificationSteps.Value, Long]()
+    for (step <- VerificationSteps.values) timings += (step -> 0)
+    var startTime = System.nanoTime
+    var tmpTime = startTime
 
     //Parse command line arguments
     val params = parseCommandLine(args) match {
       case Some(p) => p
       case None => return //invalid arguments, help has been displayed
     }
-    
+
+    timings += (VerificationSteps.Init -> (System.nanoTime - tmpTime))
+    tmpTime = System.nanoTime
+
     try {
 
       val program = parsePrograms(params) match {
         case Some(p) => p
         case None => return //illegal program, errors have already been displayed
       }
+
+      timings += (VerificationSteps.Parse -> (System.nanoTime - tmpTime))
+      tmpTime = System.nanoTime
       
       if(!params.doTypecheck || !typecheckProgram(params, program))
         return ;
-      
+
+      timings += (VerificationSteps.TypeCheck -> (System.nanoTime - tmpTime))
+      tmpTime = System.nanoTime
+
       if (params.printProgram) {
         Console.out.println("Program after type checking: ");
         PrintProgram.P(program)
       }
+
+      timings += (VerificationSteps.PrintProgram -> (System.nanoTime - tmpTime))
+      tmpTime = System.nanoTime
       
       if(!params.doTranslate)
         return;
@@ -317,6 +361,9 @@ object Chalice {
       val translator = new Translator();
       var bplProg: List[Boogie.Decl] = Nil
       bplProg = translator.translateProgram(program);
+
+      timings += (VerificationSteps.Translate -> (System.nanoTime - tmpTime))
+      tmpTime = System.nanoTime
       
       // write to out.bpl
       val bplText = TranslatorPrelude.P + (bplProg map Boogie.Print).foldLeft(""){ (a, b) => a + b };
@@ -347,7 +394,8 @@ object Chalice {
       val boogieOutput: ListBuffer[String] = new ListBuffer()
       while (line!=null){
         if (!smoke) {
-          Console.out.println(line);
+          if (previous_line != null) Console.out.println
+          Console.out.print(line);
           Console.out.flush;
         }
         boogieOutput += line
@@ -356,11 +404,14 @@ object Chalice {
       }
       boogie.waitFor;
       input.close;
+
+      timings += (VerificationSteps.Boogie -> (System.nanoTime - tmpTime))
+      tmpTime = System.nanoTime
       
       // smoke test output
       if (smoke) {
         val output = SmokeTest.processBoogieOutput(boogieOutput.toList)
-        Console.out.println(output);
+        Console.out.print(output);
         Console.out.flush;
       }
       
@@ -368,6 +419,9 @@ object Chalice {
       if(params.gen && (previous_line != null) && previous_line.endsWith(" 0 errors")) { // hack
         generateCSharpCode(params, program)
       }
+
+      timings += (VerificationSteps.GenerateCode -> (System.nanoTime - tmpTime))
+      tmpTime = System.nanoTime
     } catch {
       case e:InternalErrorException => {
         if (params.showFullStackTrace) {
@@ -388,6 +442,23 @@ object Chalice {
         return
       }
     }
+
+    val time = System.nanoTime - startTime
+    if (timingVerbosity == 1) {
+      Console.out.println(" in " + ("%1.3f" format (time / 1000000000.0)) + " seconds")
+    } else if (timingVerbosity == 2) {
+      Console.out.println; Console.out.println
+      Console.out.println("Timings Information")
+      val max = (timings.keySet.toList.map(a => a.toString.length).sortWith( (a, b) => a > b )).head
+      for ((step, time) <- timings) {
+        Console.out.println("  " + step + ": " + (" "*(max - step.toString.length)) + ("%1.3f" format (time / 1000000000.0)) + " seconds")
+      }
+    } else {
+      Console.out.println
+    }
+    if (timingVerbosity == 3) {
+      Console.err.println(("%1.3f" format (time / 1000000000.0)))
+    }
   }
   
   def generateCSharpCode(params: CommandLineParameters, program: List[TopLevelDecl]): Unit = {    
@@ -404,7 +475,7 @@ object Chalice {
   }
 
   def CommandLineError(msg: String, help: String) = {
-    Console.err.println("Error: " + msg)
+    Console.out.println("Error: " + msg)
   }
 
   def ReportError(pos: Position, msg: String) = {
@@ -412,7 +483,7 @@ object Chalice {
      val (r,c) = (pos.line, pos.column)     
      Console.out.println(r + "," + c + "," + r + "," + (c+5) + ":" + msg);
     } else {
-     Console.err.println(pos + ": " + msg)
+     Console.out.println(pos + ": " + msg)
     }
   }
   

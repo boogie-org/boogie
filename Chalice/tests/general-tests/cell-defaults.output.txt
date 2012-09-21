@@ -7,4 +7,4 @@ Verification of cell-defaults.chalice using parameters="-defaults -autoFold -aut
 The program did not fully verify; the smoke warnings might be misleading if contradictions are introduced by failing proof attempts of the verification.
   125.3: The end of method main2 is unreachable.
 
-Boogie program verifier finished with 3 errors and 1 smoke test warnings.
+Boogie program verifier finished with 3 errors and 1 smoke test warnings

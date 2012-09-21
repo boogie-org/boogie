@@ -19,9 +19,13 @@ object Resolver {
                       val currentMember: Member, val errors: ListBuffer[(Position,String)]) {
    final def AddVariable(v: Variable): ProgramContext = new LProgramContext(v, this);
    final def Error(pos: Position, msg: String) {errors += ((pos, msg))}
-   final def SetClass(cl: Class): ProgramContext = new MProgramContext(cl, null, this)
+   final def SetClass(cl: Class): ProgramContext = new MProgramContext(cl, null, false, this)
    final def SetMember(m: Member): ProgramContext = {
-     var ctx:ProgramContext = new MProgramContext(currentClass, m, this)
+     val static = m match {
+       case f: Function => f.isStatic
+       case _			=> false			
+     }
+     var ctx:ProgramContext = new MProgramContext(currentClass, m, static, this)
      m match {
        case m: Method =>
          assert(currentClass == m.Parent)
@@ -36,20 +40,30 @@ object Resolver {
      }
      ctx
    }
+   final def AsNonStatic(): ProgramContext = new NSProgramContext(this) 
 
    def LookupVariable(id: String): Option[Variable] = None
    def IsVariablePresent(vr: Variable): Boolean = false
-
+   def IsStatic: Boolean = false
+   
    private class LProgramContext(v: Variable, parent: ProgramContext) extends ProgramContext(parent.decls, parent.currentClass, parent.currentMember, errors) {
      assert (v!=null)
      override def LookupVariable(id: String): Option[Variable] =
        if (id == v.id) Some(v) else parent.LookupVariable(id)
      override def IsVariablePresent(vr: Variable): Boolean =
        if (vr == v) true else parent.IsVariablePresent(vr)
+     override def IsStatic = parent.IsStatic
    }
-   private class MProgramContext(cl: Class, m: Member, parent: ProgramContext) extends ProgramContext(parent.decls, cl, m, errors) {
+   private class MProgramContext(cl: Class, m: Member, static: Boolean, parent: ProgramContext) extends ProgramContext(parent.decls, cl, m, errors) {
      override def LookupVariable(id: String) = parent.LookupVariable(id)
      override def IsVariablePresent(vr: Variable) = parent.IsVariablePresent(vr)
+     override def IsStatic: Boolean =
+       if (static) true else parent.IsStatic
+   }
+   private class NSProgramContext(parent: ProgramContext) extends ProgramContext(parent.decls, parent.currentClass, parent.currentMember, errors) {
+     override def LookupVariable(id: String) = parent.LookupVariable(id)
+     override def IsVariablePresent(vr: Variable) = parent.IsVariablePresent(vr)
+     override def IsStatic = false 
    }
  }
 
@@ -244,6 +258,15 @@ object Resolver {
                }
                b
              }
+             def hasAccessibilityPredicate(e: Expression) = {
+               var b = false
+               e transform {
+                 case _: PermissionExpr => b = true; None
+                 case ma: MemberAccess => if (ma.isPredicate) b = true; None
+                 case _ => None
+               }
+               b
+             }
              spec foreach {
                case p@Precondition(e) =>
                  ResolveExpr(e, context, false, true)(false)
@@ -251,6 +274,7 @@ object Resolver {
                case p@Postcondition(e) =>
                  ResolveExpr(e, context, false, true)(false)
                  if (hasCredit(e)) context.Error(p.pos, "the specification of functions cannot contain credit expressions") 
+                 if (hasAccessibilityPredicate(e)) context.Error(p.pos, "the postcondition of functions cannot contain accessibility predicates (permissions are returned automatically)") 
                case lc : LockChange => context.Error(lc.pos, "lockchange not allowed on function") 
              }
 
@@ -275,10 +299,13 @@ object Resolver {
        }
    }
 
-   // fill in SCC for recursive functions 
-   val (_, h) = calls.computeSCC;
+   // fill in SCC and height for recursive functions 
+   val (callGraphCondensation, h) = calls.computeSCC;
+   val callGraphTopoSort = callGraphCondensation.computeTopologicalSort.reverse
    h.keys foreach {f:Function =>
      f.SCC = h(f);
+     f.height = callGraphTopoSort.indexOf(h(f))
+     assert(f.height >= 0)
      assert(f.SCC contains f);
      if (h(f).size > 1)
        f.isRecursive = true;
@@ -939,7 +966,11 @@ object Resolver {
      context.LookupVariable(id) match {
        case None => context.Error(ve.pos, "undefined local variable " + id); ve.typ = IntClass
        case Some(v) => ve.Resolve(v) }
-   case v:ThisExpr => v.typ = context.currentClass
+   case v:ThisExpr => 
+     v.typ = context.currentClass
+     if (context.IsStatic) {
+       context.Error(v.pos, "Accessing non-static member not allowed in static context.")
+     }
    case sel @ MemberAccess(e, id) =>
      ResolveExpr(e, context, twoStateContext, false)
      var typ: Class = IntClass
@@ -1018,7 +1049,8 @@ object Resolver {
      if (!e.typ.IsBool) context.Error(expr.pos, "not-expression requires boolean operand")
      expr.typ = BoolClass
    case appl@FunctionApplication(obj, id, args) =>
-     ResolveExpr(obj, context, twoStateContext, false);
+     // HACK: allow non-static access for receiver
+     ResolveExpr(obj, context.AsNonStatic(), twoStateContext, false);
      args foreach { arg => ResolveExpr(arg, context, twoStateContext, false)};
      // lookup function
      appl.typ = IntClass

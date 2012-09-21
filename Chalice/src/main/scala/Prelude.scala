@@ -61,6 +61,7 @@ object TypesPL extends PreludeComponent {
 type Field a;
 type HeapType = <a>[ref,Field a]a;
 type MaskType = <a>[ref,Field a][PermissionComponent]int;
+type PMaskType = <a>[ref,Field a]bool;
 type CreditsType = [ref]int;
 type ref;
 const null: ref;
@@ -83,6 +84,8 @@ const Permission$Full: [PermissionComponent]int;
 axiom Permission$Full[perm$R] == Permission$FullFraction && Permission$Full[perm$N] == 0;
 const ZeroMask: MaskType;
 axiom (forall<T> o: ref, f: Field T, pc: PermissionComponent :: ZeroMask[o,f][pc] == 0);
+const ZeroPMask: PMaskType;
+axiom (forall<T> o: ref, f: Field T :: ZeroPMask[o,f] == false);
 axiom IsGoodMask(ZeroMask);
 const unique joinable: Field int;
 axiom NonPredicateField(joinable);
@@ -147,6 +150,7 @@ const CurrentModule: ModuleName;
 type TypeName;
 function dtype(ref) returns (TypeName);
 const CanAssumeFunctionDefs: bool;
+const FunctionContextHeight: int;
 
 type Mu;
 const unique mu: Field Mu;
@@ -186,6 +190,10 @@ function IsGoodInhaleState(ih: HeapType, h: HeapType,
   (forall o: ref :: { h[o, held] }  (0<h[o, held]) ==> ih[o, mu] == h[o, mu]) &&
   (forall o: ref :: { h[o, rdheld] }  h[o, rdheld] ==> ih[o, mu] == h[o, mu])
 }
+function IsGoodExhalePredicateState(eh: HeapType, h: HeapType, pm: PMaskType) returns (bool)
+{
+  (forall<T> o: ref, f: Field T :: { eh[o, f] }  pm[o, f] ==> eh[o, f] == h[o, f])
+}
 function IsGoodExhaleState(eh: HeapType, h: HeapType,
                            m: MaskType, sm: MaskType) returns (bool)
 {
@@ -196,7 +204,8 @@ function IsGoodExhaleState(eh: HeapType, h: HeapType,
   (forall o: ref :: { h[o, rdheld] }  h[o, rdheld] ==> eh[o, mu] == h[o, mu]) &&
   (forall o: ref :: { h[o, forkK] } { eh[o, forkK] } h[o, forkK] == eh[o, forkK]) &&
   (forall o: ref :: { h[o, held] } { eh[o, held] } h[o, held] == eh[o, held]) &&
-  (forall o: ref, f: Field int :: { eh[o, f], PredicateField(f) } PredicateField(f) ==> h[o, f] <= eh[o, f])
+  (forall o: ref, f: Field int :: { eh[o, f], PredicateField(f) } PredicateField(f) ==> h[o, f] <= eh[o, f]) &&
+  (forall pmask: Field PMaskType, o: ref :: eh[o, pmask] == h[o, pmask])
 }"""
 }
 object PermissionFunctionsAndAxiomsPL extends PreludeComponent {
@@ -207,8 +216,7 @@ object PermissionFunctionsAndAxiomsPL extends PreludeComponent {
 
 function {:expand false} CanRead<T>(m: MaskType, sm: MaskType, obj: ref, f: Field T) returns (bool)
 {
-  0 <  m[obj,f][perm$R] || 0 <  m[obj,f][perm$N] ||
-  0 < sm[obj,f][perm$R] || 0 < sm[obj,f][perm$N]
+  0 < m[obj,f][perm$R] || 0 < m[obj,f][perm$N]
 }
 function {:expand false} CanReadForSure<T>(m: MaskType, obj: ref, f: Field T) returns (bool)
 {
@@ -279,6 +287,16 @@ function NonPredicateField<T>(f: Field T) returns (bool);
 function PredicateField<T>(f: Field T) returns (bool);
 axiom (forall<T> f: Field T :: NonPredicateField(f) ==> ! PredicateField(f));
 axiom (forall<T> f: Field T :: PredicateField(f) ==> ! NonPredicateField(f));
+
+// function for recording enclosure of one predicate instance in another
+function #predicateInside#(x:ref, p: Field (int), v:int, y:ref, q:Field (int), w : int) returns (bool);
+
+// transitivity for #predicateInside#
+axiom (forall x:ref, p: Field (int), v:int, y:ref, q:Field (int), w : int, z:ref, r:Field(int),u:int :: {#predicateInside#(x,p,v,y,q,w), #predicateInside#(y,q,w,z,r,u)} #predicateInside#(x,p,v,y,q,w) && #predicateInside#(y,q,w,z,r,u) ==> #predicateInside#(x,p,v,z,r,u));
+
+// knowledge that two identical instances of the same predicate cannot be inside each other
+axiom (forall x:ref, p: Field (int), v:int, y:ref, w:int :: {#predicateInside#(x,p,v,y,p,w)} #predicateInside#(x,p,v,y,p,w) ==> x!=y);
+
 
 function submask(m1: MaskType, m2: MaskType) returns (bool);
 
