@@ -1423,10 +1423,12 @@ namespace GPUVerify
                 Expr AtLeastOneEnabledWithLocalFence =
                   Expr.Or(Expr.And(P1, LocalFence1), Expr.And(P2, LocalFence2));
 
-                bigblocks.Add(new BigBlock(Token.NoToken, null, new CmdSeq(new Cmd[] { }),
-                  new IfCmd(Token.NoToken,
-                    AtLeastOneEnabledWithLocalFence,
-                    new StmtList(MakeHavocBlocks(KernelArrayInfo.getGroupSharedArrays()), Token.NoToken), null, null), null));
+                if (SomeArrayModelledNonAdversarially(KernelArrayInfo.getGroupSharedArrays())) {
+                  bigblocks.Add(new BigBlock(Token.NoToken, null, new CmdSeq(),
+                    new IfCmd(Token.NoToken,
+                      AtLeastOneEnabledWithLocalFence,
+                      new StmtList(MakeHavocBlocks(KernelArrayInfo.getGroupSharedArrays()), Token.NoToken), null, null), null));
+                }
             }
 
             if (KernelArrayInfo.getGlobalArrays().Count > 0)
@@ -1440,10 +1442,12 @@ namespace GPUVerify
                 Expr ThreadsInSameGroup_BothEnabled_AtLeastOneGlobalFence = 
                   Expr.And(Expr.And(GPUVerifier.ThreadsInSameGroup(), Expr.And(P1, P2)), Expr.Or(GlobalFence1, GlobalFence2));
 
-                bigblocks.Add(new BigBlock(Token.NoToken, null, new CmdSeq(new Cmd[] { }),
-                  new IfCmd(Token.NoToken,
-                    ThreadsInSameGroup_BothEnabled_AtLeastOneGlobalFence,
-                    new StmtList(MakeHavocBlocks(KernelArrayInfo.getGlobalArrays()), Token.NoToken), null, null), null));
+                if (SomeArrayModelledNonAdversarially(KernelArrayInfo.getGlobalArrays())) {
+                  bigblocks.Add(new BigBlock(Token.NoToken, null, new CmdSeq(),
+                    new IfCmd(Token.NoToken,
+                      ThreadsInSameGroup_BothEnabled_AtLeastOneGlobalFence,
+                      new StmtList(MakeHavocBlocks(KernelArrayInfo.getGlobalArrays()), Token.NoToken), null, null), null));
+                }
             }
 
             StmtList statements = new StmtList(bigblocks, BarrierProcedure.tok);
@@ -1494,7 +1498,18 @@ namespace GPUVerify
               result.Add(HavocSharedArray(v));
             }
           }
+          Debug.Assert(result.Count > 0);
           return result;
+        }
+
+        private bool SomeArrayModelledNonAdversarially(ICollection<Variable> variables) {
+          Debug.Assert(variables.Count > 0);
+          foreach (Variable v in variables) {
+            if (!ArrayModelledAdversarially(v)) {
+              return true;
+            }
+          }
+          return false;
         }
 
         public static bool HasZDimension(Variable v)
