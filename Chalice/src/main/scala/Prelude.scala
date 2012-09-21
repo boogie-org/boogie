@@ -18,7 +18,7 @@ object TranslatorPrelude {
   def addComponent(c: PreludeComponent*): Unit = {
     components ++= c
   }
-  
+
   // removes a component from the prelude. use with great care, as other parts of
   // the system could depend on the component c being present in the prelude.
   def removeComponent(c: PreludeComponent*): Unit = {
@@ -206,9 +206,9 @@ function IsGoodExhaleState(eh: HeapType, h: HeapType,
   (forall o: ref :: { h[o, forkK] } { eh[o, forkK] } h[o, forkK] == eh[o, forkK]) &&
   (forall o: ref :: { h[o, held] } { eh[o, held] } h[o, held] == eh[o, held]) &&
   (forall o: ref, f: Field int :: { eh[o, f], PredicateField(f) } PredicateField(f) ==> h[o, f] <= eh[o, f]) &&
-  (forall o: ref, f: Field int :: { h[o, predicateMaskField(f)], PredicateField(f) } { eh[o, predicateMaskField(f)], PredicateField(f) } PredicateField(f) && CanRead(m, sm, o, f) ==>
-      (forall<T> o2: ref, f2: Field T :: { h[o2, f2] } { eh[o2, f2] }  h[o, predicateMaskField(f)][o2, f2] ==> eh[o2, f2] == h[o2, f2])) &&
-  (forall pmask: Field PMaskType, o: ref :: eh[o, pmask] == h[o, pmask])
+  (forall o: ref, f: Field int :: { h[o, predicateMaskField(f)], PredicateField(f) } { eh[o, predicateMaskField(f)], PredicateField(f) } { m[o, predicateMaskField(f)], PredicateField(f) } PredicateField(f) && CanRead(m, sm, o, f) ==>
+      (forall<T> o2: ref, f2: Field T :: { h[o2, f2] } { eh[o2, f2] } { m[o2, f2] }  h[o, predicateMaskField(f)][o2, f2] ==> eh[o2, f2] == h[o2, f2])) &&
+  (forall o: ref, f: Field int :: { PredicateField(f), eh[o, predicateMaskField(f)] } PredicateField(f) && CanRead(m, sm, o, f) ==> eh[o, predicateMaskField(f)] == h[o, predicateMaskField(f)])
 }"""
 }
 object PermissionFunctionsAndAxiomsPL extends PreludeComponent {
