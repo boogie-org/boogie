@@ -70,7 +70,6 @@ namespace GPUVerify
             return collector.Accesses.Count > 0;
         }
 
-
         public override Expr VisitNAryExpr(NAryExpr node)
         {
             if (IsNonLocalAccess(node, NonLocalState))

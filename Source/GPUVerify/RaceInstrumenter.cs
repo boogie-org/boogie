@@ -473,16 +473,17 @@ namespace GPUVerify {
     }
 
 
-    public BigBlock MakeResetReadWriteSetStatements(Variable v, int Thread) {
+    public BigBlock MakeResetReadWriteSetStatements(Variable v, Expr ResetCondition) {
       BigBlock result = new BigBlock(Token.NoToken, null, new CmdSeq(), null, null);
-      if (Thread == 2) {
-        return result;
-      }
 
-      Expr ResetReadAssumeGuard = Expr.Not(new IdentifierExpr(Token.NoToken,
-          new VariableDualiser(1, null, null).VisitVariable(GPUVerifier.MakeAccessHasOccurredVariable(v.Name, "READ"))));
-      Expr ResetWriteAssumeGuard = Expr.Not(new IdentifierExpr(Token.NoToken,
-          new VariableDualiser(1, null, null).VisitVariable(GPUVerifier.MakeAccessHasOccurredVariable(v.Name, "WRITE"))));
+      Expr ResetReadAssumeGuard = Expr.Imp(ResetCondition, 
+        Expr.Not(new IdentifierExpr(Token.NoToken,
+          new VariableDualiser(1, null, null).VisitVariable(
+            GPUVerifier.MakeAccessHasOccurredVariable(v.Name, "READ")))));
+      Expr ResetWriteAssumeGuard = Expr.Imp(ResetCondition,
+        Expr.Not(new IdentifierExpr(Token.NoToken,
+          new VariableDualiser(1, null, null).VisitVariable(
+            GPUVerifier.MakeAccessHasOccurredVariable(v.Name, "WRITE")))));
 
       if (verifier.KernelArrayInfo.getGlobalArrays().Contains(v)) {
         ResetReadAssumeGuard = Expr.Imp(GPUVerifier.ThreadsInSameGroup(), ResetReadAssumeGuard);

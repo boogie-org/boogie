@@ -1,0 +1,23 @@
+class Node { 
+	var v: int 
+	var next: Node 
+	 
+	predicate V { 
+			 acc(v) 
+		&& acc(next) 
+		&& (next != null ==> next.V) 
+	} 
+
+	unlimited function length(): int 
+		requires rd(V) 
+	{ 1 + unfolding rd(V) in next == null ? 0 : next.length() } 
+	 
+	unlimited function at(i: int): int
+		requires rd(V) 
+		requires i >= 0 
+		requires i < length() // XXXX
+	{
+		unfolding rd(V) in i == 0 ? v : next.at(i - 1)
+		// Precondition at XXX might not hold
+	} 
+}
