@@ -6,7 +6,7 @@ set BASE_DIR=%~dp0\..\..
 set RELEASE_DIR_SRC=%~dp0\files
 set RELEASE_DIR_DST=%~dp0\release
 
-set CHALICE_JAR_SRC=%BASE_DIR%\target\scala-2.8.1.final\chalice_2.8.1-1.0.jar
+set CHALICE_JAR_SRC=%BASE_DIR%\target\scala-2.9.2\chalice_2.9.2-1.0.jar
 set CHALICE_JAR_DST=%RELEASE_DIR_DST%\chalice.jar
 
 pushd %BASE_DIR%
