@@ -25,7 +25,7 @@ namespace Microsoft.Boogie
   using VC;
   using AI = Microsoft.AbstractInterpretationFramework;
   using BoogiePL = Microsoft.Boogie;
-
+  
   /* 
     The following assemblies are referenced because they are needed at runtime, not at compile time:
       BaseTypes
@@ -636,30 +636,211 @@ namespace Microsoft.Boogie
           {
             penulFunc = lastFunc;
             lastFunc = f;
+            currIncarnationNo = System.Convert.ToInt32(tokens[1]);
           }
         }
       }
       return (penulFunc == null) ? lastFunc : penulFunc;
     }
 
-    static QKeyValue ExtractAsertSourceLocFromTrace(BlockSeq s)
+    static void PrintDetailedTrace(CallCounterexample err, int colOneLength, int colTwoLength, int colThreeLength, int failElemOffset, int elemWidth, string threadOneFailAccess, string threadTwoFailAccess)
     {
-      foreach (Block b in s)
+      Model model = err.Model;
+      BlockSeq trace = err.Trace;
+
+      int failCallLineNo = QKeyValue.FindIntAttribute(err.FailingCall.Attributes, "line", -1);
+      int failCallColNo  = QKeyValue.FindIntAttribute(err.FailingCall.Attributes, "col", -1);
+      int failReqLineNo  = QKeyValue.FindIntAttribute(err.FailingRequires.Attributes, "line", -1);
+      int failReqColNo   = QKeyValue.FindIntAttribute(err.FailingRequires.Attributes, "col", -1);
+
+      int lineno = -1;
+      int colno = -1;
+
+      bool checkCallExpected = false;
+      bool colTwoFail = false;
+      bool colThreeFail = false;
+
+      string colOne   = null;
+      string colTwo   = null;
+      string colThree = null;
+
+      foreach (Block b in trace)
       {
-        foreach (Cmd c in b.Cmds)
+        if (Regex.IsMatch(b.ToString(), @"inline[$]_LOG_(READ|WRITE)_[$]+\w+[$][0-9]+[$]_LOG_(READ|WRITE)"))
         {
-          if (c is AssertCmd)
+          int elemOffset = -1;
+          string arrName;
+
+          foreach (Cmd c in b.Cmds)
           {
-            if (QKeyValue.FindBoolAttribute(((AssertCmd)c).Attributes, "sourceloc"))
+            string access = (Regex.IsMatch(c.ToString(), @"inline[$]_LOG_READ")) ? "READ" : "WRITE";
+
+            if (Regex.IsMatch(c.ToString(), "assume _" + access + "_OFFSET")) 
             {
-              return ((AssertCmd)c).Attributes;
+              elemOffset = ExtractOffsetFromExpr(model, (((c as PredicateCmd).Expr as NAryExpr).Args[1] as NAryExpr).Args[1]);
+            }
+            else if (Regex.IsMatch(c.ToString(), "assume _" + access + "_SOURCE"))
+            {
+              arrName = ExtractArrName(c.ToString());
+              string enParamName = ExtractEnabledArg((c as AssumeCmd).Expr).Name;
+
+              Model.Func enFunc = model.TryGetFunc(enParamName);
+              Debug.Assert(enFunc != null, "PrintDetailedTrace(): could not get enParamName from model: " + enParamName);
+              Debug.Assert(enFunc.AppCount == 1, "PrintDetailedTrace(): enabled parameter function has more that one application.");
+              bool enabled = (enFunc.Apps.ElementAt(0).Result as Model.Boolean).Value;
+              int sourceLocLineNo = (ExtractSourceLineArg((c as AssumeCmd).Expr).Val as BvConst).Value.ToIntSafe;
+
+              string sourceLocLine = FetchCodeLine(GetSourceLocFileName(), sourceLocLineNo + 1);
+
+              string[] slocTokens = Regex.Split(sourceLocLine, "#");
+              lineno = System.Convert.ToInt32(slocTokens[0]);
+              colno = System.Convert.ToInt32(slocTokens[1]);
+              string fname = slocTokens[2];
+
+              colOne = fname + ":" + lineno + ":" + colno + ":";
+              colTwo = enabled ? " " + access.ToLower() + "s ((char*)" + arrName + ")" + "[" + ((elemOffset == -1) ? "?" : "" + CalculateByteOffset(elemOffset, elemWidth)) + "]" : "";
+              colTwoFail = elemOffset == failElemOffset && lineno == failReqLineNo && colno == failReqColNo && access == threadOneFailAccess;
+            }
+          }
+        }
+        else if (Regex.IsMatch(b.ToString(), @"inline[$]_LOG_(READ|WRITE)_[$]+\w+[$][0-9]+[$]Return"))
+        {
+          // Assuming that a LOG call will always be immediately followed by a CHECK call.
+          checkCallExpected = true;
+          continue;
+        }
+        else if (checkCallExpected)
+        {
+          foreach (Cmd c in b.Cmds)
+          {
+            if (Regex.IsMatch(c.ToString(), @"assert[\s]+[!]\(\w+[$][0-9]+(@[0-9]+|[\s]+)[\s]*&&[\s]+_(WRITE|READ)_HAS_OCCURRED"))
+            {
+              string access = Regex.IsMatch((c as AssertRequiresCmd).Call.callee, "_CHECK_READ_") ? "READ" : "WRITE";
+
+              string[] tokens = Regex.Split(c.ToString(), "&&");
+              string arrName = ExtractArrName(tokens[1]);
+              string enParamName = ExtractEnabledParameterName((c as AssertRequiresCmd).Expr);
+
+              Model.Func enFunc = model.TryGetFunc(enParamName);
+              Debug.Assert(enFunc != null, "PrintDetailedTrace(): could not get enParamName from model: " + enParamName);
+              Debug.Assert(enFunc.AppCount == 1, "PrintDetailedTrace(): enabled parameter function has more that one application.");
+              bool enabled = (enFunc.Apps.ElementAt(0).Result as Model.Boolean).Value;
+
+              Expr offsetArg = ExtractOffsetArg((c as AssertRequiresCmd).Expr, "_" + (c.ToString().Contains("WRITE") ? "WRITE" : "READ") + "_OFFSET_");
+
+
+
+              int elemOffset = ExtractOffsetFromExpr(model, offsetArg);
+              colThree = enabled ? " " + access.ToLower() + "s ((char*)" + arrName + ")" + "[" + ((elemOffset == -1) ? "?" : "" + CalculateByteOffset(elemOffset, elemWidth)) + "]" : "";
+              colThreeFail = elemOffset == failElemOffset && lineno == failCallLineNo && colno == failCallColNo && access == threadTwoFailAccess;
+
+              checkCallExpected = false;
+              PrintDetailedTraceLine(colOne, colTwo, colThree, colOneLength, colTwoLength, colThreeLength, colTwoFail, colThreeFail);
+              break;
             }
           }
         }
       }
-      return null;
     }
 
+    private static LiteralExpr ExtractSourceLineArg(Expr e)
+    {
+      var visitor = new GetThenOfIfThenElseVisitor();
+      visitor.VisitExpr(e);
+      return visitor.getResult();
+    }
+
+    private static Expr ExtractOffsetArg(Expr e, string pattern)
+    {
+      var visitor = new GetRHSOfEqualityVisitor(pattern);
+      visitor.VisitExpr(e);
+      return visitor.getResult();
+    }
+
+    private static IdentifierExpr ExtractEnabledArg(Expr e)
+    {
+      var visitor = new GetIfOfIfThenElseVisitor();
+      visitor.VisitExpr(e);
+      return visitor.getResult();
+    }
+
+    private static string ExtractEnabledParameterName(Expr e)
+    {
+      if (e is IdentifierExpr)
+      {
+        return ((IdentifierExpr)e).Name;
+      }
+      else
+      {
+        Debug.Assert(e is NAryExpr);
+        return ExtractEnabledParameterName(((NAryExpr)e).Args[0]);
+      }
+    }
+
+    private static int ExtractOffsetFromExpr(Model model, Expr offsetArg)
+    {
+      if (offsetArg is LiteralExpr)
+      {
+        return ((offsetArg as LiteralExpr).Val as BvConst).Value.ToIntSafe;
+      }
+      else if (offsetArg is IdentifierExpr)
+      {
+        string offsetname = (offsetArg as IdentifierExpr).Name;
+        Model.Func fo = model.TryGetFunc(offsetname);
+        Debug.Assert(fo != null, "ExtractOffsetFromExpr(): could not get value for the following from model: " + offsetname);
+        Debug.Assert(fo.AppCount == 1, "ExtractOffsetFromExpr(): the following function has more than one application: " + offsetname);
+        return (fo.Apps.ElementAt(0).Result as Model.BitVector).AsInt();
+
+      }
+      else
+      {
+        return -1;
+      }
+    }
+
+    private static void PrintDetailedTraceLine(string colOne, string colTwo, string colThree, int colOneLength, int colTwoLength, int colThreeLength, bool colTwoError, bool colThreeError)
+    {
+      Contract.Requires(colOneLength >= colOne.Length && colTwoLength >= colTwo.Length && colThreeLength >= colThree.Length);
+      Console.Write("{0}|", colOne + Chars(colOneLength - colOne.Length, ' '));
+
+      ConsoleColor col = Console.ForegroundColor;
+      if (colTwoError) 
+      {
+        Console.ForegroundColor = ConsoleColor.Red;
+      }
+      Console.Write("{0}", colTwo + Chars(colTwoLength - colTwo.Length, ' '));
+      Console.ForegroundColor = col;
+      Console.Write('|');
+
+      if (colThreeError)
+      {
+        Console.ForegroundColor = ConsoleColor.Red;
+      }
+      Console.WriteLine("{0}", colThree + Chars(colThreeLength - colThree.Length, ' '));
+      Console.ForegroundColor = col;
+
+    }
+
+   private static string GetSourceLocFileName()
+    {
+      return GetFilenamePathPrefix() + GetFileName() + ".loc";
+    }
+
+    private static string GetFileName()
+    {
+      return Path.GetFileNameWithoutExtension(CommandLineOptions.Clo.Files[0]);
+    }
+
+    private static string GetFilenamePathPrefix()
+    {
+      string directoryName = Path.GetDirectoryName(CommandLineOptions.Clo.Files[0]);
+      return ((!String.IsNullOrEmpty(directoryName) && directoryName != ".") ? (directoryName + Path.DirectorySeparatorChar) : "");
+    }
+
+    private static string GetCorrespondingThreadTwoName(string threadOneName)
+    {
+      return threadOneName.Replace("$1", "$2");
+    }
     static QKeyValue CreateSourceLocQKV(int line, int col, string fname, string dir)
     {
       QKeyValue dirkv = new QKeyValue(Token.NoToken, "dir", new List<object>(new object[] { dir }), null);
@@ -672,10 +853,6 @@ namespace Microsoft.Boogie
     static QKeyValue GetSourceLocInfo(Counterexample error, string AccessType) {
       string sourceVarName = null;
       int sourceLocLineNo = -1;
-      string directoryName = Path.GetDirectoryName(CommandLineOptions.Clo.Files[0]);
-      string sourceLocFileName = ((!String.IsNullOrEmpty(directoryName) && directoryName != ".") ? (directoryName + Path.DirectorySeparatorChar) : "") + Path.GetFileNameWithoutExtension(CommandLineOptions.Clo.Files[0]) + ".loc";
-
-      TextReader tr = new StreamReader(sourceLocFileName);
 
       foreach (Block b in error.Trace)
       {
@@ -699,7 +876,7 @@ namespace Microsoft.Boogie
       if (sourceLocLineNo > 0)
       {
         // TODO: Make lines in .loc file be indexed from 1 for consistency.
-        string fileLine = FetchCodeLine(sourceLocFileName, sourceLocLineNo + 1);
+        string fileLine = FetchCodeLine(GetSourceLocFileName(), sourceLocLineNo + 1);
         if (fileLine != null)
         {
           string[] slocTokens = Regex.Split(fileLine, "#");
@@ -715,7 +892,6 @@ namespace Microsoft.Boogie
         Console.WriteLine("sourceLocLineNo is {0}. No sourceloc at that location.\n", sourceLocLineNo);
         return null;
       } 
-      tr.Close();
       return null;
     }
 
@@ -847,71 +1023,95 @@ namespace Microsoft.Boogie
                 CallCounterexample err = (CallCounterexample)error;
                 if (QKeyValue.FindBoolAttribute(err.FailingRequires.Attributes, "barrier_divergence"))
                 {
-                  ReportBarrierDivergence(err.FailingCall, true);
+                  ReportBarrierDivergence(err.FailingCall);
                 }
                 else if (QKeyValue.FindBoolAttribute(err.FailingRequires.Attributes, "race"))
                 {
-                  int byteOffset = -1, elemWidth = -1, elemOffset = -1;
-                  int lidx1 = -1, lidy1 = -1, lidz1 = -1, lidx2 = -1, lidy2 = -1, lidz2 = -1;
-                  int gidx1 = -1, gidy1 = -1, gidz1 = -1, gidx2 = -1, gidy2 = -1, gidz2 = -1;
+                  int byteOffset = -1, elemOffset = -1, elemWidth = -1;
                   string thread1 = null, thread2 = null, group1 = null, group2 = null, arrName = null;
+                  //TODO: make this a command line argument.
+                  bool detailedTrace = false;
+                  string threadOneFailAccess = null, threadTwoFailAccess = null;
 
                   Variable offsetVar = ExtractOffsetVar(err.FailingRequires.Condition as NAryExpr);
+                  /* Right now the offset incarnation that is extracted is the penultimate one if
+                   * there is more than one incarnation, or the last one if there is only one incarnation.
+                   * TODO: In future, we should know the exact incarnation to extract. This information is 
+                   * available when the CallCounterexample is created in VC.cs AssertCmdToCounterexample() (line 2405)
+                   * The condition of the AssertRequiresCmd contains the incarnation information, so this should be passed 
+                   * on to the Requires of the created CallCounterexample. This can either be done by replacing the condition
+                   * of the Requires with the condition from AssertRequiresCmd (containing incarnation information) or creating 
+                   * a separate field in the Requires to store this original condition.
+                   */
                   Model.Func offsetFunc = ExtractIncarnationFromModel(error.Model, offsetVar.Name);
                   Debug.Assert(offsetFunc != null, "ProcessOutcome(): Could not extract incarnation.");
-                  GetInfoFromVarAndFunc(offsetVar.Attributes, offsetFunc, out byteOffset, out elemWidth, out elemOffset, out arrName);
+                  GetInfoFromVarAndFunc(offsetVar.Attributes, offsetFunc, out byteOffset, out elemOffset, out elemWidth, out arrName);
 
                   Debug.Assert(error.Model != null, "ProcessOutcome(): null model");
-                  GetIdsFromModel(error.Model, out lidx1, out lidy1, out lidz1, out lidx2, out lidy2, out lidz2, 
-                                               out gidx1, out gidy1, out gidz1, out gidx2, out gidy2, out gidz2);
+                  GetThreadsAndGroupsFromModel(err.Model, out thread1, out thread2, out group1, out group2, true);
 
-                  thread1 = "(" + lidx1 + ", " + lidy1 + ", " + lidz1 + ")";
-                  thread2 = "(" + lidx2 + ", " + lidy2 + ", " + lidz2 + ")";
-
-                  group1 = "(" + gidx1 + ", " + gidy1 + ", " + gidz1 + ")";
-                  group2 = "(" + gidx2 + ", " + gidy2 + ", " + gidz2 + ")";
-                  
                   if (QKeyValue.FindBoolAttribute(err.FailingRequires.Attributes, "write_read"))
                   {
                     err.FailingRequires.Attributes = GetSourceLocInfo(error, "WRITE");
-                    ReportRace(err.FailingCall, err.FailingRequires, thread1, thread2, group1, group2, arrName, byteOffset, elemOffset, RaceType.WR, true);
+                    threadOneFailAccess = "WRITE";
+                    threadTwoFailAccess = "READ";
+                    ReportRace(err.FailingCall, err.FailingRequires, thread1, thread2, group1, group2, arrName, byteOffset, RaceType.WR);
                   }
                   else if (QKeyValue.FindBoolAttribute(err.FailingRequires.Attributes, "read_write"))
                   {
                     err.FailingRequires.Attributes = GetSourceLocInfo(error, "READ");
-                    ReportRace(err.FailingCall, err.FailingRequires, thread1, thread2, group1, group2, arrName, byteOffset, elemOffset, RaceType.RW, true);
+                    threadOneFailAccess = "READ";
+                    threadTwoFailAccess = "WRITE";
+                    ReportRace(err.FailingCall, err.FailingRequires, thread1, thread2, group1, group2, arrName, byteOffset, RaceType.RW);
 
                   }
                   else if (QKeyValue.FindBoolAttribute(err.FailingRequires.Attributes, "write_write"))
                   {
                     err.FailingRequires.Attributes = GetSourceLocInfo(error, "WRITE");
-                    ReportRace(err.FailingCall, err.FailingRequires, thread1, thread2, group1, group2, arrName, byteOffset, elemOffset, RaceType.WW, true);
+                    threadOneFailAccess = "WRITE";
+                    threadTwoFailAccess = "WRITE";
+                    ReportRace(err.FailingCall, err.FailingRequires, thread1, thread2, group1, group2, arrName, byteOffset, RaceType.WW);
+                  }
+
+                  if (detailedTrace)
+                  {
+                    string fname = QKeyValue.FindStringAttribute(err.FailingCall.Attributes, "fname");
+                    Debug.Assert(!String.IsNullOrEmpty(fname));
+                    int colOneSize = fname.Length + 11;
+                    string colTwoHeader = " T " + GetThreadOne(error.Model, false) + " G " + GetGroupOne(error.Model, false) + " ";
+                    string colThreeHeader = " T " + GetThreadTwo(error.Model, false) + " G " + GetGroupTwo(error.Model, false) + " ";
+                    
+                    int colTwoSize   = colTwoHeader.Length + 2;
+                    int colThreeSize = colTwoHeader.Length + 2;
+                    
+                    PrintDetailedTraceHeader(colTwoHeader, colThreeHeader, colOneSize, colTwoSize, colThreeSize);
+                    PrintDetailedTrace(err, colOneSize, colTwoSize, colThreeSize, elemOffset, elemWidth, threadOneFailAccess, threadTwoFailAccess);
                   }
                 }
                 else
                 {
-                  ReportRequiresFailure(err.FailingCall, err.FailingRequires, true);
+                  ReportRequiresFailure(err.FailingCall, err.FailingRequires);
                 }
               }
               else if (error is ReturnCounterexample)
               {
                 ReturnCounterexample err = (ReturnCounterexample)error;
-                ReportEnsuresFailure(err.FailingEnsures, true);
+                ReportEnsuresFailure(err.FailingEnsures);
               }
               else
               {
                 AssertCounterexample err = (AssertCounterexample)error;
                 if (err.FailingAssert is LoopInitAssertCmd)
                 {
-                  ReportInvariantEntryFailure(err.FailingAssert, true);
+                  ReportInvariantEntryFailure(err.FailingAssert);
                 }
                 else if (err.FailingAssert is LoopInvMaintainedAssertCmd)
                 {
-                  ReportInvariantMaintedFailure(err.FailingAssert, true);
+                  ReportInvariantMaintedFailure(err.FailingAssert);
                 }
                 else
                 {
-                  ReportFailingAssert(err.FailingAssert, true);
+                  ReportFailingAssert(err.FailingAssert);
                 }
               }
               errorCount++;
@@ -923,7 +1123,33 @@ namespace Microsoft.Boogie
       }
     }
 
-    private static void ReportFailingAssert(Absy node, bool displayCode)
+    private static void PrintDetailedTraceHeader(string colTwoHeader, string colThreeHeader, int locationColSize, int colTwoSize, int colThreeSize)
+    {
+      Console.Write("\nLocation");
+      PrintNChars(locationColSize - "Location".Length, ' ');
+      Console.WriteLine("|{0}|{1}", colTwoHeader + Chars(colTwoSize - colTwoHeader.Length, ' '), colThreeHeader + Chars(colThreeSize - colThreeHeader.Length, ' '));
+      PrintNChars(locationColSize, '-');
+      Console.Write("|");
+      PrintNChars(colTwoSize, '-');
+      Console.Write("|");
+      PrintNChars(colThreeSize, '-');
+      Console.WriteLine("");
+    }
+
+    private static void PrintNChars(int n, char c)
+    {
+      for (int i = 0; i < n; ++i)
+      {
+        Console.Write(c);
+      }
+    }
+
+    private static string Chars(int n, char c)
+    {
+      return new String(c, n);
+    }
+
+    private static void ReportFailingAssert(Absy node)
     {
       Console.WriteLine("");
 
@@ -941,13 +1167,10 @@ namespace Microsoft.Boogie
       locinfo = failFile + ":" + failLine + ":" + failCol + ":";
 
       ErrorWriteLine(locinfo, "this assertion might not hold", ErrorMsgType.Error);
-      if (displayCode)
-      {
-        ErrorWriteLine(FetchCodeLine(failFile, failLine));
-      }
+      ErrorWriteLine(FetchCodeLine(failFile, failLine));
     }
 
-    private static void ReportInvariantMaintedFailure(Absy node, bool displayCode)
+    private static void ReportInvariantMaintedFailure(Absy node)
     {
       Console.WriteLine("");
 
@@ -965,13 +1188,10 @@ namespace Microsoft.Boogie
       locinfo = failFile + ":" + failLine + ":" + failCol + ":";
 
       ErrorWriteLine(locinfo, "loop invariant might not be maintained by the loop", ErrorMsgType.Error);
-      if (displayCode)
-      {
-        ErrorWriteLine(FetchCodeLine(failFile, failLine));
-      }
+      ErrorWriteLine(FetchCodeLine(failFile, failLine));
     }
 
-    private static void ReportInvariantEntryFailure(Absy node, bool displayCode)
+    private static void ReportInvariantEntryFailure(Absy node)
     {
       Console.WriteLine("");
 
@@ -989,13 +1209,10 @@ namespace Microsoft.Boogie
       locinfo = failFile + ":" + failLine + ":" + failCol + ":";
 
       ErrorWriteLine(locinfo, "loop invariant might not hold on entry", ErrorMsgType.Error);
-      if (displayCode)
-      {
-        ErrorWriteLine(FetchCodeLine(failFile, failLine));
-      }
+      ErrorWriteLine(FetchCodeLine(failFile, failLine));
     }
 
-    private static void ReportEnsuresFailure(Absy node, bool displayCode)
+    private static void ReportEnsuresFailure(Absy node)
     {
       Console.WriteLine("");
 
@@ -1013,13 +1230,10 @@ namespace Microsoft.Boogie
       locinfo = failFile + ":" + failLine + ":" + failCol + ":";
 
       ErrorWriteLine(locinfo, "postcondition might not hold on all return paths", ErrorMsgType.Error);
-      if (displayCode)
-      {
-        ErrorWriteLine(FetchCodeLine(failFile, failLine));
-      }
+      ErrorWriteLine(FetchCodeLine(failFile, failLine));
     }
 
-    private static void ReportRace(Absy callNode, Absy reqNode, string thread1, string thread2, string group1, string group2, string arrName, int byteOffset, int elemOffset, RaceType raceType, bool displayCode)
+    private static void ReportRace(Absy callNode, Absy reqNode, string thread1, string thread2, string group1, string group2, string arrName, int byteOffset, RaceType raceType)
     {
       Console.WriteLine("");
       int failLine1 = -1, failCol1 = -1, failLine2 = -1, failCol2 = -1;
@@ -1071,20 +1285,15 @@ namespace Microsoft.Boogie
       AddPadding(ref locinfo1, ref locinfo2);
       AddPadding(ref access1, ref access2);
 
-      ErrorWriteLine(locinfo1, "thread " + thread2 + " group " + group2 + " " + access2 + " " + arrName + "[" + byteOffset + "] (" + elemOffset + ")", ErrorMsgType.NoError);
-      if (displayCode)
-      {
-        ErrorWriteLine(TrimLeadingSpaces(FetchCodeLine(failFile1, failLine1) + "\n", 2));
-      }
+      ErrorWriteLine(locinfo1, "thread " + thread2 + " group " + group2 + " " + access2 + " ((char*)" + arrName + ")[" + byteOffset + "]", ErrorMsgType.NoError);
+      ErrorWriteLine(TrimLeadingSpaces(FetchCodeLine(failFile1, failLine1) + "\n", 2));
 
-      ErrorWriteLine(locinfo2, "thread " + thread1 + " group " + group1 + " " + access1 + " " + arrName + "[" + byteOffset + "] (" + elemOffset + ")", ErrorMsgType.NoError);
-      if (displayCode)
-      {
-        ErrorWriteLine(TrimLeadingSpaces(FetchCodeLine(failFile2, failLine2) + "\n", 2));
-      }
+
+      ErrorWriteLine(locinfo2, "thread " + thread1 + " group " + group1 + " " + access1 + " ((char*)" + arrName + ")[" + byteOffset + "]", ErrorMsgType.NoError);
+      ErrorWriteLine(TrimLeadingSpaces(FetchCodeLine(failFile2, failLine2) + "\n", 2));
     }
 
-    private static void ReportBarrierDivergence(Absy node, bool displayCode)
+    private static void ReportBarrierDivergence(Absy node)
     {
       Console.WriteLine("");
 
@@ -1102,19 +1311,11 @@ namespace Microsoft.Boogie
       locinfo = failFile + ":" + failLine + ":" + failCol + ":";
 
       ErrorWriteLine(locinfo, "barrier may be reached by non-uniform control flow", ErrorMsgType.Error);
-      if (displayCode)
-      {
-        ErrorWriteLine(FetchCodeLine(failFile, failLine));
-      }
+      ErrorWriteLine(FetchCodeLine(failFile, failLine));
     }
 
-    private static void ReportRequiresFailure(Absy callNode, Absy reqNode, bool displayCode)
+    private static void ReportRequiresFailure(Absy callNode, Absy reqNode)
     {
-      // TODO: Remove code duplication below.
-      // bad_pre.cl:16:7: error: a precondition for this call might not hold
-      //   [codeline]
-      // bad_pre.cl:8:24: note: this is the precondition that might not hold
-      //   [codeline]
       Console.WriteLine("");
 
       int failLine1 = -1, failCol1 = -1, failLine2 = -1, failCol2 = -1;
@@ -1138,17 +1339,11 @@ namespace Microsoft.Boogie
       locinfo2 = failFile2 + ":" + failLine2 + ":" + failCol2 + ":";
 
       ErrorWriteLine(locinfo1, "a precondition for this call might not hold", ErrorMsgType.Error);
-      if (displayCode)
-      {
-        ErrorWriteLine(TrimLeadingSpaces(FetchCodeLine(failFile1, failLine1), 2));
-      }
+      ErrorWriteLine(TrimLeadingSpaces(FetchCodeLine(failFile1, failLine1), 2));
+
 
       ErrorWriteLine(locinfo2, "this is the precondition that might not hold", ErrorMsgType.Note);
-      if (displayCode)
-      {
-        ErrorWriteLine(TrimLeadingSpaces(FetchCodeLine(failFile2, failLine2), 2));
-      }
-
+      ErrorWriteLine(TrimLeadingSpaces(FetchCodeLine(failFile2, failLine2), 2));
     }
 
     private static string FetchCodeLine(string path, int lineNo)
@@ -1178,30 +1373,107 @@ namespace Microsoft.Boogie
     {
       failLine = QKeyValue.FindIntAttribute(attrs, "line", -1);
       failCol = QKeyValue.FindIntAttribute(attrs, "col", -1);
-      failFile = QKeyValue.FindStringAttribute(attrs, "fname");
-      string directoryName = Path.GetDirectoryName(CommandLineOptions.Clo.Files[0]);
-      failFile = ((!String.IsNullOrEmpty(directoryName) && directoryName != ".") ? (directoryName + Path.DirectorySeparatorChar) : "") + failFile;
+      failFile = GetFilenamePathPrefix() + QKeyValue.FindStringAttribute(attrs, "fname");
     }
 
-    private static void GetIdsFromModel(Model model, out int lidx1, out int lidy1, out int lidz1, out int lidx2, out int lidy2, out int lidz2, 
-                                                     out int gidx1, out int gidy1, out int gidz1, out int gidx2, out int gidy2, out int gidz2)
+    private static void GetThreadsAndGroupsFromModel(Model model, out string thread1, out string thread2, out string group1, out string group2, bool withSpaces)
     {
-      lidx1 = model.TryGetFunc("local_id_x$1").GetConstant().AsInt();
-      lidy1 = model.TryGetFunc("local_id_y$1").GetConstant().AsInt();
-      lidz1 = model.TryGetFunc("local_id_z$1").GetConstant().AsInt();
-      lidx2 = model.TryGetFunc("local_id_x$2").GetConstant().AsInt();
-      lidy2 = model.TryGetFunc("local_id_y$2").GetConstant().AsInt();
-      lidz2 = model.TryGetFunc("local_id_z$2").GetConstant().AsInt();
-
-      gidx1 = model.TryGetFunc("group_id_x$1").GetConstant().AsInt();
-      gidy1 = model.TryGetFunc("group_id_y$1").GetConstant().AsInt();
-      gidz1 = model.TryGetFunc("group_id_z$1").GetConstant().AsInt();
-      gidx2 = model.TryGetFunc("group_id_x$2").GetConstant().AsInt();
-      gidy2 = model.TryGetFunc("group_id_y$2").GetConstant().AsInt();
-      gidz2 = model.TryGetFunc("group_id_z$2").GetConstant().AsInt();
+      thread1 = GetThreadOne(model, withSpaces);
+      thread2 = GetThreadTwo(model, withSpaces);
+      group1 = GetGroupOne(model, withSpaces);
+      group2 = GetGroupTwo(model, withSpaces);
     }
 
-    private static void GetInfoFromVarAndFunc(QKeyValue attrs, Model.Func f, out int byteOffset, out int elemWidth, out int elemOffset, out string arrName)
+    private static string GetGroupTwo(Model model, bool withSpaces)
+    {
+      return "("
+             + GetGidX2(model)
+             + "," + (withSpaces ? " " : "")
+             + GetGidY2(model)
+             + "," + (withSpaces ? " " : "")
+             + GetGidZ2(model)
+             + ")";
+    }
+
+    private static int GetGidZ2(Model model)
+    {
+      return model.TryGetFunc("group_id_z$2").GetConstant().AsInt();
+    }
+
+    private static int GetGidY2(Model model)
+    {
+      return model.TryGetFunc("group_id_y$2").GetConstant().AsInt();
+    }
+
+    private static int GetGidX2(Model model)
+    {
+      return model.TryGetFunc("group_id_x$2").GetConstant().AsInt();
+    }
+
+    private static string GetGroupOne(Model model, bool withSpaces)
+    {
+      return "("
+             + GetGidX1(model)
+             + "," + (withSpaces ? " " : "")
+             + GetGidY1(model)
+             + "," + (withSpaces ? " " : "")
+             + GetGidZ1(model) 
+             + ")";
+    }
+
+    private static int GetGidZ1(Model model)
+    {
+      return model.TryGetFunc("group_id_z$1").GetConstant().AsInt();
+    }
+
+    private static int GetGidY1(Model model)
+    {
+      return model.TryGetFunc("group_id_y$1").GetConstant().AsInt();
+    }
+
+    private static int GetGidX1(Model model)
+    {
+      return model.TryGetFunc("group_id_x$1").GetConstant().AsInt();
+    }
+
+    private static string GetThreadTwo(Model model, bool withSpaces)
+    {
+      return "("
+             + GetLidX2(model)
+             + "," + (withSpaces ? " " : "")
+             + GetLidY2(model)
+             + "," + (withSpaces ? " " : "")
+             + GetLidZ2(model) 
+             + ")";
+    }
+
+    private static int GetLidZ2(Model model)
+    {
+      return model.TryGetFunc("local_id_z$2").GetConstant().AsInt();
+    }
+
+    private static int GetLidY2(Model model)
+    {
+      return model.TryGetFunc("local_id_y$2").GetConstant().AsInt();
+    }
+
+    private static int GetLidX2(Model model)
+    {
+      return model.TryGetFunc("local_id_x$2").GetConstant().AsInt();
+    }
+
+    private static string GetThreadOne(Model model, bool withSpaces)
+    {
+      return "(" 
+             + model.TryGetFunc("local_id_x$1").GetConstant().AsInt() 
+             + "," + (withSpaces ? " " : "")
+             + model.TryGetFunc("local_id_y$1").GetConstant().AsInt() 
+             + "," + (withSpaces ? " " : "")
+             + model.TryGetFunc("local_id_z$1").GetConstant().AsInt() 
+             + ")";
+    }
+
+    private static void GetInfoFromVarAndFunc(QKeyValue attrs, Model.Func f, out int byteOffset, out int elemOffset, out int elemWidth, out string arrName)
     {
       Debug.Assert(f != null && f.AppCount == 1);
       elemOffset = f.Apps.FirstOrDefault().Result.AsInt();

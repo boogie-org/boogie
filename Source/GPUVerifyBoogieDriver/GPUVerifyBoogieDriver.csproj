@@ -43,6 +43,9 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="GetIfOfIfThenElseVisitor.cs" />
+    <Compile Include="GetRHSOfEqualityVisitor.cs" />
+    <Compile Include="GetThenOfIfThenElseVisitor.cs" />
     <Compile Include="GPUVerifyBoogieDriver.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
