@@ -1042,7 +1042,7 @@ object Resolver {
    case ite@IfThenElse(con, then, els) => 
      ResolveExpr(con, context, twoStateContext, false); ResolveExpr(then, context, twoStateContext, specContext); ResolveExpr(els, context, twoStateContext, specContext);
      if (!con.typ.IsBool) context.Error(con.pos, "condition of if-then-else expression must be a boolean");
-     if (! canAssign(then.typ, els.typ)) context.Error(ite.pos, "the then and else branch of an if-then-else expression must have compatible types");
+     if (!canAssign(then.typ, els.typ) && !canAssign(els.typ, then.typ)) context.Error(ite.pos, "the then and else branch of an if-then-else expression must have compatible types");
      ite.typ = then.typ;
    case expr@ Not(e) =>
      ResolveExpr(e, context, twoStateContext, false)
