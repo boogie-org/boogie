@@ -366,7 +366,26 @@ object Chalice {
       tmpTime = System.nanoTime
       
       // write to out.bpl
-      val bplText = TranslatorPrelude.P + (bplProg map Boogie.Print).foldLeft(""){ (a, b) => a + b };
+      val ss = """
+function IsGoodExhaleState(eh: HeapType, h: HeapType,
+                           m: MaskType, sm: MaskType) returns (bool)
+{
+  (forall<T> o: ref, f: Field T :: { eh[o, f] }  CanRead(m, sm, o, f) ==> eh[o, f] == h[o, f]) &&
+  (forall o: ref :: { eh[o, held] }  (0<eh[o, held]) == (0<h[o, held])) &&
+  (forall o: ref :: { eh[o, rdheld] }  eh[o, rdheld] == h[o, rdheld]) &&
+  (forall o: ref :: { h[o, held] }  (0<h[o, held]) ==> eh[o, mu] == h[o, mu]) &&
+  (forall o: ref :: { h[o, rdheld] }  h[o, rdheld] ==> eh[o, mu] == h[o, mu]) &&
+  (forall o: ref :: { h[o, forkK] } { eh[o, forkK] } h[o, forkK] == eh[o, forkK]) &&
+  (forall o: ref :: { h[o, held] } { eh[o, held] } h[o, held] == eh[o, held]) &&
+  (forall o: ref, f: Field int :: { eh[o, f], PredicateField(f) } PredicateField(f) ==> h[o, f] <= eh[o, f]) &&
+  (forall o: ref, f: Field int :: { h[o, predicateMaskField(f)], PredicateField(f) } { eh[o, predicateMaskField(f)], PredicateField(f) } { m[o, predicateMaskField(f)], PredicateField(f) } """
+    val ss2 =  (TranslatorPrelude.preds map (x => "{ #"+x.FullName+"#trigger(o), PredicateField(f) }")).mkString(" ")
+    val ss3 = """ PredicateField(f) && CanRead(m, sm, o, f) ==>
+      (forall<T> o2: ref, f2: Field T :: { h[o2, f2] } { eh[o2, f2] } { m[o2, f2] }  h[o, predicateMaskField(f)][o2, f2] ==> eh[o2, f2] == h[o2, f2])) &&
+  (forall o: ref, f: Field int :: { PredicateField(f), eh[o, predicateMaskField(f)] } PredicateField(f) && CanRead(m, sm, o, f) ==> eh[o, predicateMaskField(f)] == h[o, predicateMaskField(f)])
+}
+      """
+      val bplText = TranslatorPrelude.P + ss + ss2 + ss3 + (bplProg map Boogie.Print).foldLeft(""){ (a, b) => a + b };
       val bplFilename = if (vsMode) "c:\\tmp\\out.bpl" else (if (params.noBplFile) "stdin.bpl" else params.bplFile)
       if (!params.noBplFile) writeFile(bplFilename, bplText);
       // run Boogie.exe on out.bpl
