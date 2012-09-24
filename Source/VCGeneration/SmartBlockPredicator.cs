@@ -386,6 +386,11 @@ public class SmartBlockPredicator {
           tailBlock.Cmds = new CmdSeq(new AssumeCmd(Token.NoToken,
                                                Expr.Not(pExpr)));
 
+          if (uni != null && !uni.IsUniform(impl.Name, n.Item1)) {
+            uni.AddNonUniform(impl.Name, backedgeBlock);
+            uni.AddNonUniform(impl.Name, tailBlock);
+          }
+
           if (prevBlock != null)
             prevBlock.TransferCmd = new GotoCmd(Token.NoToken,
                                           new BlockSeq(backedgeBlock, tailBlock));

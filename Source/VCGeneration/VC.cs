@@ -3042,15 +3042,20 @@ namespace VC {
     /// <summary>
     /// Simplifies the CFG of the given implementation impl by merging each
     /// basic block with a single predecessor into that predecessor if the
-    /// predecessor has a single successor.
+    /// predecessor has a single successor.  If a uniformity analyser is
+    /// being used then block will only be merged if they are both uniform
+    /// or both non-uniform
     /// </summary>
-    public static void MergeBlocksIntoPredecessors(Program prog, Implementation impl) {
+    public static void MergeBlocksIntoPredecessors(Program prog, Implementation impl, UniformityAnalyser uni) {
       var blockGraph = prog.ProcessLoops(impl);
       var predMap = new Dictionary<Block, Block>();
       foreach (var block in blockGraph.Nodes) {
         try {
           var pred = blockGraph.Predecessors(block).Single();
-          if (blockGraph.Successors(pred).Single() == block) {
+          if (blockGraph.Successors(pred).Single() == block &&
+              (uni == null || 
+              (uni.IsUniform(impl.Name, pred) && uni.IsUniform(impl.Name, block)) ||
+              (!uni.IsUniform(impl.Name, pred) && !uni.IsUniform(impl.Name, block)))) {
             Block predMapping;
             while (predMap.TryGetValue(pred, out predMapping))
               pred = predMapping;

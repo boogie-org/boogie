@@ -383,7 +383,7 @@ namespace GPUVerify
         private void MergeBlocksIntoPredecessors()
         {
             foreach (var impl in Program.TopLevelDeclarations.OfType<Implementation>())
-                VC.VCGen.MergeBlocksIntoPredecessors(Program, impl);
+                VC.VCGen.MergeBlocksIntoPredecessors(Program, impl, uniformityAnalyser);
         }
 
         internal void doit()

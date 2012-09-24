@@ -522,6 +522,13 @@ namespace Microsoft.Boogie
             }
         }
 
+        public void AddNonUniform(string proc, Block b) {
+          if (nonUniformBlocks.ContainsKey(proc)) {
+            Debug.Assert(!nonUniformBlocks[proc].Contains(b));
+            nonUniformBlocks[proc].Add(b);
+          }
+        }
+
         public bool IsUniform(string proc, WhileCmd wc)
         {
             if (unstructured)
