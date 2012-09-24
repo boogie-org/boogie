@@ -130,6 +130,42 @@ namespace GPUVerify
             return p;
         }
 
+        private Procedure FindOrCreateBarrierInvariantProcedure() {
+          var p = CheckSingleInstanceOfAttributedProcedure("barrier_invariant");
+          if (p == null) {
+            p = new Procedure(Token.NoToken, "barrier_invariant", new TypeVariableSeq(),
+                              new VariableSeq(new Variable[] { 
+                                    new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "__cond", 
+                                      Microsoft.Boogie.Type.Bool), true)
+                              }),
+                              new VariableSeq(), new RequiresSeq(), new IdentifierExprSeq(),
+                              new EnsuresSeq(),
+                              new QKeyValue(Token.NoToken, "barrier_invariant", new List<object>(), null));
+            Program.TopLevelDeclarations.Add(p);
+            ResContext.AddProcedure(p);
+          }
+          return p;
+        }
+
+        private Procedure FindOrCreateBarrierInvariantInstantiationProcedure() {
+          var p = CheckSingleInstanceOfAttributedProcedure("barrier_invariant_instantiation");
+          if (p == null) {
+            p = new Procedure(Token.NoToken, "barrier_invariant_instantiation", new TypeVariableSeq(),
+                              new VariableSeq(new Variable[] { 
+                                    new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "__t1", 
+                                      new BvType(32)), true),
+                                    new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "__t2", 
+                                      new BvType(32)), true)
+                              }),
+                              new VariableSeq(), new RequiresSeq(), new IdentifierExprSeq(),
+                              new EnsuresSeq(),
+                              new QKeyValue(Token.NoToken, "barrier_invariant_instantiation", new List<object>(), null));
+            Program.TopLevelDeclarations.Add(p);
+            ResContext.AddProcedure(p);
+          }
+          return p;
+        }
+
         private Procedure CheckSingleInstanceOfAttributedProcedure(string attribute)
         {
             Procedure attributedProcedure = null;
@@ -1376,17 +1412,21 @@ namespace GPUVerify
 
             if(KernelArrayInfo.getGroupSharedArrays().Count > 0) {
 
-                Expr IfGuard1 = Expr.And(P1, LocalFence1);
-                Expr IfGuard2 = Expr.And(P2, LocalFence2);
+                bigblocks.AddRange(
+                      MakeResetBlocks(Expr.And(P1, LocalFence1), KernelArrayInfo.getGroupSharedArrays()));
 
-                bigblocks.Add(new BigBlock(Token.NoToken, null, new CmdSeq(),
-                    new IfCmd(Token.NoToken, IfGuard1, new StmtList(MakeResetBlocks(1, KernelArrayInfo.getGroupSharedArrays()), Token.NoToken), null, null),
-                    null));
-                bigblocks.Add(new BigBlock(Token.NoToken, null, new CmdSeq(),
-                    new IfCmd(Token.NoToken, IfGuard2, new StmtList(MakeResetBlocks(2, KernelArrayInfo.getGroupSharedArrays()), Token.NoToken), null, null),
-                    null));
+                // This could be relaxed to take into account whether the threads are in different
+                // groups, but for now we keep it relatively simple
 
-                bigblocks.AddRange(MakeHavocBlocks(KernelArrayInfo.getGroupSharedArrays()));
+                Expr AtLeastOneEnabledWithLocalFence =
+                  Expr.Or(Expr.And(P1, LocalFence1), Expr.And(P2, LocalFence2));
+
+                if (SomeArrayModelledNonAdversarially(KernelArrayInfo.getGroupSharedArrays())) {
+                  bigblocks.Add(new BigBlock(Token.NoToken, null, new CmdSeq(),
+                    new IfCmd(Token.NoToken,
+                      AtLeastOneEnabledWithLocalFence,
+                      new StmtList(MakeHavocBlocks(KernelArrayInfo.getGroupSharedArrays()), Token.NoToken), null, null), null));
+                }
             }
 
             if (KernelArrayInfo.getGlobalArrays().Count > 0)
@@ -1394,14 +1434,18 @@ namespace GPUVerify
                 Expr IfGuard1 = Expr.And(P1, GlobalFence1);
                 Expr IfGuard2 = Expr.And(P2, GlobalFence2);
 
-                bigblocks.Add(new BigBlock(Token.NoToken, null, new CmdSeq(),
-                    new IfCmd(Token.NoToken, IfGuard1, new StmtList(MakeResetBlocks(1, KernelArrayInfo.getGlobalArrays()), Token.NoToken), null, null),
-                    null));
-                bigblocks.Add(new BigBlock(Token.NoToken, null, new CmdSeq(),
-                    new IfCmd(Token.NoToken, IfGuard2, new StmtList(MakeResetBlocks(2, KernelArrayInfo.getGlobalArrays()), Token.NoToken), null, null),
-                    null));
+                bigblocks.AddRange(
+                      MakeResetBlocks(Expr.And(P1, GlobalFence1), KernelArrayInfo.getGlobalArrays()));
 
-                bigblocks.AddRange(MakeHavocBlocks(KernelArrayInfo.getGlobalArrays()));
+                Expr ThreadsInSameGroup_BothEnabled_AtLeastOneGlobalFence = 
+                  Expr.And(Expr.And(GPUVerifier.ThreadsInSameGroup(), Expr.And(P1, P2)), Expr.Or(GlobalFence1, GlobalFence2));
+
+                if (SomeArrayModelledNonAdversarially(KernelArrayInfo.getGlobalArrays())) {
+                  bigblocks.Add(new BigBlock(Token.NoToken, null, new CmdSeq(),
+                    new IfCmd(Token.NoToken,
+                      ThreadsInSameGroup_BothEnabled_AtLeastOneGlobalFence,
+                      new StmtList(MakeHavocBlocks(KernelArrayInfo.getGlobalArrays()), Token.NoToken), null, null), null));
+                }
             }
 
             StmtList statements = new StmtList(bigblocks, BarrierProcedure.tok);
@@ -1432,16 +1476,16 @@ namespace GPUVerify
                                     new LiteralExpr(Token.NoToken, BigNum.FromInt(1), 1));
         }
 
-        private List<BigBlock> MakeResetBlocks(int Thread, ICollection<Variable> variables)
+        private List<BigBlock> MakeResetBlocks(Expr ResetCondition, ICollection<Variable> variables)
         {
             Debug.Assert(variables.Count > 0);
-            List<BigBlock> ResetAndHavocBlocks = new List<BigBlock>();
+            List<BigBlock> result = new List<BigBlock>();
             foreach (Variable v in variables)
             {
-                ResetAndHavocBlocks.Add(RaceInstrumenter.MakeResetReadWriteSetStatements(v, Thread));
+                result.Add(RaceInstrumenter.MakeResetReadWriteSetStatements(v, ResetCondition));
             }
-            Debug.Assert(ResetAndHavocBlocks.Count > 0);
-            return ResetAndHavocBlocks;
+            Debug.Assert(result.Count > 0);
+            return result;
         }
 
         private List<BigBlock> MakeHavocBlocks(ICollection<Variable> variables) {
@@ -1452,7 +1496,18 @@ namespace GPUVerify
               result.Add(HavocSharedArray(v));
             }
           }
+          Debug.Assert(result.Count > 0);
           return result;
+        }
+
+        private bool SomeArrayModelledNonAdversarially(ICollection<Variable> variables) {
+          Debug.Assert(variables.Count > 0);
+          foreach (Variable v in variables) {
+            if (!ArrayModelledAdversarially(v)) {
+              return true;
+            }
+          }
+          return false;
         }
 
         public static bool HasZDimension(Variable v)
@@ -1711,6 +1766,12 @@ namespace GPUVerify
                 {
                     CallCmd call = c as CallCmd;
 
+                    if (QKeyValue.FindBoolAttribute(call.Proc.Attributes, "barrier_invariant") ||
+                        QKeyValue.FindBoolAttribute(call.Proc.Attributes, "binary_barrier_invariant")) {
+                      // Do not pull non-local accesses out of barrier invariants
+                      continue;
+                    }
+
                     List<Expr> newIns = new List<Expr>();
 
                     for (int i = 0; i < call.Ins.Count; i++)
@@ -1765,7 +1826,8 @@ namespace GPUVerify
                 }
                 else if (c is AssertCmd)
                 {
-                    result.simpleCmds.Add(new AssertCmd(c.tok, PullOutNonLocalAccessesIntoTemps(result, (c as AssertCmd).Expr, impl)));
+                  // Do not pull non-local accesses out of assert commands
+                  continue;
                 }
                 else if (c is AssumeCmd)
                 {
@@ -1846,8 +1908,10 @@ namespace GPUVerify
 
             List<Declaration> NewTopLevelDeclarations = new List<Declaration>();
 
-            foreach (Declaration d in Program.TopLevelDeclarations)
+            for(int i = 0; i < Program.TopLevelDeclarations.Count; i++)
             {
+                Declaration d = Program.TopLevelDeclarations[i];
+
                 if (d is Procedure)
                 {
 
@@ -2040,7 +2104,8 @@ namespace GPUVerify
                     return D as Implementation;
                 }
             }
-            Debug.Assert(false);
+            Error(Token.NoToken, "No implementation found for procedure \"" + procedureName + "\"");
+            Environment.Exit(1);
             return null;
         }
 
@@ -2206,6 +2271,10 @@ namespace GPUVerify
         internal static bool IsConstantInCurrentRegion(IdentifierExpr expr) {
           return (expr.Decl is Constant) ||
                  (expr.Decl is Formal && ((Formal)expr.Decl).InComing);
+        }
+
+        internal static Expr GroupSharedIndexingExpr(int Thread) {
+          return Thread == 1 ? Expr.True : ThreadsInSameGroup();
         }
     
     }
