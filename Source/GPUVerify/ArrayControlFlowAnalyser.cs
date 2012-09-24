@@ -172,10 +172,12 @@ namespace GPUVerify
                 {
                     CallCmd callCmd = c as CallCmd;
 
-                    if (callCmd.callee != verifier.BarrierProcedure.Name &&
-                        callCmd.callee != verifier.BarrierInvariantProcedure.Name &&
-                        callCmd.callee != verifier.BarrierInvariantInstantiationProcedure.Name)
-                    {
+                    if (QKeyValue.FindBoolAttribute(callCmd.Proc.Attributes, "barrier_invariant") ||
+                        QKeyValue.FindBoolAttribute(callCmd.Proc.Attributes, "binary_barrier_invariant")) {
+                        foreach (Expr param in callCmd.Ins) {
+                            ExprMayAffectControlFlow(impl, param);
+                        }
+                    } else if(callCmd.callee != verifier.BarrierProcedure.Name) {
 
                         Implementation CalleeImplementation = verifier.GetImplementation(callCmd.callee);
                         for (int i = 0; i < CalleeImplementation.InParams.Length; i++)
@@ -219,6 +221,10 @@ namespace GPUVerify
                 {
                     var assumeCmd = c as AssumeCmd;
                     ExprMayAffectControlFlow(impl, assumeCmd.Expr);
+                }
+                else if (c is AssertCmd) {
+                  var assertCmd = c as AssertCmd;
+                  ExprMayAffectControlFlow(impl, assertCmd.Expr);
                 }
             }
         }

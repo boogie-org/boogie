@@ -19,8 +19,6 @@ namespace GPUVerify
         public Procedure KernelProcedure;
         public Implementation KernelImplementation;
         public Procedure BarrierProcedure;
-        public Procedure BarrierInvariantProcedure;
-        public Procedure BarrierInvariantInstantiationProcedure;
 
         public IKernelArrayInfo KernelArrayInfo = new KernelArrayInfoLists();
 
@@ -1768,6 +1766,12 @@ namespace GPUVerify
                 {
                     CallCmd call = c as CallCmd;
 
+                    if (QKeyValue.FindBoolAttribute(call.Proc.Attributes, "barrier_invariant") ||
+                        QKeyValue.FindBoolAttribute(call.Proc.Attributes, "binary_barrier_invariant")) {
+                      // Do not pull non-local accesses out of barrier invariants
+                      continue;
+                    }
+
                     List<Expr> newIns = new List<Expr>();
 
                     for (int i = 0; i < call.Ins.Count; i++)
@@ -1822,7 +1826,8 @@ namespace GPUVerify
                 }
                 else if (c is AssertCmd)
                 {
-                    // Do not pull non-local accesses out of assert commands
+                  // Do not pull non-local accesses out of assert commands
+                  continue;
                 }
                 else if (c is AssumeCmd)
                 {
@@ -1903,8 +1908,10 @@ namespace GPUVerify
 
             List<Declaration> NewTopLevelDeclarations = new List<Declaration>();
 
-            foreach (Declaration d in Program.TopLevelDeclarations)
+            for(int i = 0; i < Program.TopLevelDeclarations.Count; i++)
             {
+                Declaration d = Program.TopLevelDeclarations[i];
+
                 if (d is Procedure)
                 {
 
@@ -2040,8 +2047,6 @@ namespace GPUVerify
         private int Check()
         {
             BarrierProcedure = FindOrCreateBarrierProcedure();
-            BarrierInvariantProcedure = FindOrCreateBarrierInvariantProcedure();
-            BarrierInvariantInstantiationProcedure = FindOrCreateBarrierInvariantInstantiationProcedure();
             KernelProcedure = CheckExactlyOneKernelProcedure();
 
             if (ErrorCount > 0)
@@ -2266,6 +2271,10 @@ namespace GPUVerify
         internal static bool IsConstantInCurrentRegion(IdentifierExpr expr) {
           return (expr.Decl is Constant) ||
                  (expr.Decl is Formal && ((Formal)expr.Decl).InComing);
+        }
+
+        internal static Expr GroupSharedIndexingExpr(int Thread) {
+          return Thread == 1 ? Expr.True : ThreadsInSameGroup();
         }
     
     }
