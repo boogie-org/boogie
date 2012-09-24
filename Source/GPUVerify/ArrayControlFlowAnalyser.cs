@@ -172,7 +172,9 @@ namespace GPUVerify
                 {
                     CallCmd callCmd = c as CallCmd;
 
-                    if (callCmd.callee != verifier.BarrierProcedure.Name)
+                    if (callCmd.callee != verifier.BarrierProcedure.Name &&
+                        callCmd.callee != verifier.BarrierInvariantProcedure.Name &&
+                        callCmd.callee != verifier.BarrierInvariantInstantiationProcedure.Name)
                     {
 
                         Implementation CalleeImplementation = verifier.GetImplementation(callCmd.callee);
