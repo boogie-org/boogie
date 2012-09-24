@@ -1,0 +1,5 @@
+Verification of internal-bug-5.chalice using parameters="" 
+
+  23.5: Assertion might not hold. The expression at 23.12 might not evaluate to true.
+
+Boogie program verifier finished with 1 errors and 0 smoke test warnings
