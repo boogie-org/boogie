@@ -108,8 +108,11 @@
     <Compile Include="AdversarialAbstraction.cs" />
     <Compile Include="ArrayControlFlowAnalyser.cs" />
     <Compile Include="AsymmetricExpressionFinder.cs" />
+    <Compile Include="BarrierInvariantDescriptor.cs" />
+    <Compile Include="BinaryBarrierInvariantDescriptor.cs" />
     <Compile Include="StrideConstraint.cs" />
     <Compile Include="ReducedStrengthAnalysis.cs" />
+    <Compile Include="UnaryBarrierInvariantDescriptor.cs" />
     <Compile Include="UnstructuredRegion.cs" />
     <Compile Include="IRegion.cs" />
     <Compile Include="InvariantGenerationRules\LoopVariableBoundsInvariantGenerator.cs" />

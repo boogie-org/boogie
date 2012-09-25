@@ -182,6 +182,7 @@ case class Method(id: String, ins: List[Variable], outs: List[Variable], spec: L
   override def Outs = outs
 }
 case class Predicate(id: String, private val rawDefinition: Expression) extends NamedMember(id) {
+  TranslatorPrelude.addPredicate(this)
   lazy val definition: Expression = rawDefinition.transform {
     case Epsilon | MethodEpsilon => Some(PredicateEpsilon(None))
     case _ => None

@@ -414,8 +414,9 @@ class Translator {
     // const unique class.name: HeapType;
     Const(pred.FullName, true, FieldType(tint)) ::
     Const(pred.FullName+"#m", true, FieldType(tpmask)) ::
-    // axiom PredicateField(f);
     Axiom(PredicateField(pred.FullName)) ::
+    // axiom PredicateField(f);
+    Axiom(FunctionApp("predicateMaskField", List(VarExpr(pred.FullName))) ==@ VarExpr(pred.FullName + "#m")) ::
     // trigger function to unfold function definitions
     Boogie.Function("#" + pred.FullName + "#trigger", BVar("this", tref) :: Nil, BVar("$myresult", tbool)) ::
     // check definedness of predicate body
@@ -2515,7 +2516,7 @@ def buildTriggersCovering(vars : Set[Variable], functs : List[(Boogie.FunctionAp
     (if (!isUpdatingSecMask && !duringUnfold && !transferPermissionToSecMask)
       (m := em) ::
       bassume(IsGoodExhaleState(eh, Heap, m, sm)) ::
-      restoreFoldedLocations(m, Heap, eh) :::
+      //restoreFoldedLocations(m, Heap, eh) :::
       (Heap := eh) :: Nil
     else Nil) :::
     (if (isUpdatingSecMask) Nil else bassume(AreGoodMasks(m, sm)) :: Nil) :::

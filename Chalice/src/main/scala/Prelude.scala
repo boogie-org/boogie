@@ -18,12 +18,19 @@ object TranslatorPrelude {
   def addComponent(c: PreludeComponent*): Unit = {
     components ++= c
   }
-  
+
   // removes a component from the prelude. use with great care, as other parts of
   // the system could depend on the component c being present in the prelude.
   def removeComponent(c: PreludeComponent*): Unit = {
     components --= c
   }
+
+  // records that a predicate occurs in the program (used for generating the
+  // correct triggers for an axiom in the prelude)
+  def addPredicate(p: Predicate*): Unit = {
+    predicates ++= p
+  }
+  val predicates: Set[Predicate] = Set()
   
   // default components
   private val components: Set[PreludeComponent] = Set(CopyrightPL, TypesPL, PermissionTypesAndConstantsPL, CreditsAndMuPL, PermissionFunctionsAndAxiomsPL, IfThenElsePL, ArithmeticPL, StringPL)
@@ -137,7 +144,8 @@ axiom 0 < predicateK && 1000*predicateK < Fractions(1);
 axiom predicateK == channelK && channelK == monitorK;"""
 }
 object CreditsAndMuPL extends PreludeComponent {
-  val text = """
+  def text = {
+    val base = """
 var Credits: CreditsType;
 
 function combine(PartialHeapType, PartialHeapType) returns (PartialHeapType);
@@ -194,6 +202,7 @@ function IsGoodExhalePredicateState(eh: HeapType, h: HeapType, pm: PMaskType) re
 {
   (forall<T> o: ref, f: Field T :: { eh[o, f] }  pm[o, f] ==> eh[o, f] == h[o, f])
 }
+function predicateMaskField<T>(f: Field T): Field PMaskType;
 function IsGoodExhaleState(eh: HeapType, h: HeapType,
                            m: MaskType, sm: MaskType) returns (bool)
 {
@@ -205,8 +214,15 @@ function IsGoodExhaleState(eh: HeapType, h: HeapType,
   (forall o: ref :: { h[o, forkK] } { eh[o, forkK] } h[o, forkK] == eh[o, forkK]) &&
   (forall o: ref :: { h[o, held] } { eh[o, held] } h[o, held] == eh[o, held]) &&
   (forall o: ref, f: Field int :: { eh[o, f], PredicateField(f) } PredicateField(f) ==> h[o, f] <= eh[o, f]) &&
-  (forall pmask: Field PMaskType, o: ref :: eh[o, pmask] == h[o, pmask])
-}"""
+  (forall o: ref, f: Field int :: { h[o, predicateMaskField(f)], PredicateField(f) } { eh[o, predicateMaskField(f)], PredicateField(f) } { m[o, predicateMaskField(f)], PredicateField(f) } """
+    val triggers =  (TranslatorPrelude.predicates map (x => "{ #"+x.FullName+"#trigger(o), PredicateField(f) }")).mkString(" ")
+    val rest = """ PredicateField(f) && CanRead(m, sm, o, f) ==>
+      (forall<T> o2: ref, f2: Field T :: { h[o2, f2] } { eh[o2, f2] } { m[o2, f2] }  h[o, predicateMaskField(f)][o2, f2] ==> eh[o2, f2] == h[o2, f2])) &&
+  (forall o: ref, f: Field int :: { PredicateField(f), eh[o, predicateMaskField(f)] } PredicateField(f) && CanRead(m, sm, o, f) ==> eh[o, predicateMaskField(f)] == h[o, predicateMaskField(f)])
+}
+      """
+    base + triggers + rest
+  }
 }
 object PermissionFunctionsAndAxiomsPL extends PreludeComponent {
   val text = """

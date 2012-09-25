@@ -10,7 +10,7 @@ namespace GPUVerify
 {
     class VariableDualiser : Duplicator
     {
-      static HashSet<string> otherFunctionNames =
+      static internal HashSet<string> otherFunctionNames =
         new HashSet<string>(new string[] { "__other_bool", "__other_bv32", "__other_arrayId" });
 
         private int id;
@@ -91,15 +91,16 @@ namespace GPUVerify
             if (QKeyValue.FindBoolAttribute(v.Attributes, "group_shared")) {
               return new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1),
                 new ExprSeq(new Expr[] { new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1), 
-                  new ExprSeq(new Expr[] { node.Args[0], GroupSharedIndexingExpr() })), VisitExpr(node.Args[1]) }));
+                  new ExprSeq(new Expr[] { node.Args[0], GPUVerifier.GroupSharedIndexingExpr(id) })), 
+                  VisitExpr(node.Args[1]) }));
             }
           }
 
-          // Avoid dualisation of certain special builtin functions that are cross-thread
           if (node.Fun is FunctionCall)
           {
             FunctionCall call = node.Fun as FunctionCall;
 
+            // Alternate dualisation for "other thread" functions
             if (otherFunctionNames.Contains(call.Func.Name))
             {
               Debug.Assert(id == 1 || id == 2);
@@ -119,14 +120,11 @@ namespace GPUVerify
           var v = node.DeepAssignedVariable;
           if(QKeyValue.FindBoolAttribute(v.Attributes, "group_shared")) {
             return new MapAssignLhs(Token.NoToken, new MapAssignLhs(Token.NoToken, node.Map,
-              new List<Expr>(new Expr[] { GroupSharedIndexingExpr() })), node.Indexes.Select(idx => this.VisitExpr(idx)).ToList());
+              new List<Expr>(new Expr[] { GPUVerifier.GroupSharedIndexingExpr(id) })), 
+              node.Indexes.Select(idx => this.VisitExpr(idx)).ToList());
 
           }
           return base.VisitMapAssignLhs(node);
-        }
-
-        private Expr GroupSharedIndexingExpr() {
-          return id == 1 ? Expr.True : GPUVerifier.ThreadsInSameGroup();
         }
 
     }
