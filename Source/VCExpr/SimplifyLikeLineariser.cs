@@ -376,6 +376,13 @@ namespace Microsoft.Boogie.VCExprAST {
     internal const string intMulName = "*";
     internal const string intDivName = "/";
     internal const string intModName = "%";
+    internal const string realAddName = "realAdd";
+    internal const string realSubName = "realSub";
+    internal const string realMulName = "realMul";
+    internal const string realDivName = "realDiv";
+    internal const string realPowName = "realPow";
+    internal const string toIntName = "toIntCoercion";
+    internal const string toRealName = "toRealCoercion";
 
     internal void AssertAsTerm(string x, LineariserOptions options) {
       Contract.Requires(options != null);
@@ -928,10 +935,16 @@ namespace Microsoft.Boogie.VCExprAST {
       public bool VisitAddOp(VCExprNAry node, LineariserOptions options) {
         //Contract.Requires(options != null);
         //Contract.Requires(node != null);
-        if (CommandLineOptions.Clo.ReflectAdd) {
-          WriteTermApplication(intAddNameReflect, node, options);
-        } else {
-          WriteTermApplication(intAddName, node, options);
+        if (node.Type.IsInt) {
+          if (CommandLineOptions.Clo.ReflectAdd) {
+            WriteTermApplication(intAddNameReflect, node, options);
+          }
+          else {
+            WriteTermApplication(intAddName, node, options);
+          }
+        }
+        else {
+          WriteTermApplication(realAddName, node, options);
         }
         return true;
       }
@@ -939,14 +952,24 @@ namespace Microsoft.Boogie.VCExprAST {
       public bool VisitSubOp(VCExprNAry node, LineariserOptions options) {
         //Contract.Requires(options != null);
         //Contract.Requires(node != null);
-        WriteTermApplication(intSubName, node, options);
+        if (node.Type.IsInt) {
+          WriteTermApplication(intSubName, node, options);
+        }
+        else {
+          WriteTermApplication(realSubName, node, options);
+        }
         return true;
       }
 
       public bool VisitMulOp(VCExprNAry node, LineariserOptions options) {
         //Contract.Requires(options != null);
         //Contract.Requires(node != null);
-        WriteTermApplication(intMulName, node, options);
+        if (node.Type.IsInt) {
+          WriteTermApplication(intMulName, node, options);
+        }
+        else {
+          WriteTermApplication(realMulName, node, options);
+        }
         return true;
       }
 
@@ -961,6 +984,20 @@ namespace Microsoft.Boogie.VCExprAST {
         //Contract.Requires(options != null);
         //Contract.Requires(node != null);
         WriteTermApplication(intModName, node, options);
+        return true;
+      }
+
+      public bool VisitRealDivOp(VCExprNAry node, LineariserOptions options) {
+        //Contract.Requires(options != null);
+        //Contract.Requires(node != null);
+        WriteTermApplication(realDivName, node, options);
+        return true;
+      }
+
+      public bool VisitPowOp(VCExprNAry node, LineariserOptions options) {
+        //Contract.Requires(options != null);
+        //Contract.Requires(node != null);
+        WriteTermApplication(realPowName, node, options);
         return true;
       }
 
@@ -1003,6 +1040,20 @@ namespace Microsoft.Boogie.VCExprAST {
         //Contract.Requires(options != null);
         //Contract.Requires(node != null);
         WriteApplication(subtypeArgsName, node, options, true);               // arguments are always terms
+        return true;
+      }
+
+      public bool VisitToIntOp(VCExprNAry node, LineariserOptions options) {
+        //Contract.Requires(options != null);
+        //Contract.Requires(node != null);
+        WriteApplication(toIntName, node, options);
+        return true;
+      }
+
+      public bool VisitToRealOp(VCExprNAry node, LineariserOptions options) {
+        //Contract.Requires(options != null);
+        //Contract.Requires(node != null);
+        WriteApplication(toRealName, node, options);
         return true;
       }
 

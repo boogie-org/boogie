@@ -486,6 +486,12 @@ namespace Microsoft.Boogie {
                 case Microsoft.Boogie.BinaryOperator.Opcode.Or:
                   op = " || ";
                   break;
+                case Microsoft.Boogie.BinaryOperator.Opcode.Pow:
+                  op = " ** ";
+                  break;
+                case Microsoft.Boogie.BinaryOperator.Opcode.RealDiv:
+                  op = " / ";
+                  break;
                 case Microsoft.Boogie.BinaryOperator.Opcode.Sub:
                   op = " - ";
                   break;

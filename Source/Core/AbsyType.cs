@@ -239,6 +239,11 @@ namespace Microsoft.Boogie {
         return false;
       }
     }
+    public virtual bool IsReal {
+      get {
+        return false;
+      }
+    }
     public virtual bool IsBool {
       get {
         return false;
@@ -330,6 +335,7 @@ namespace Microsoft.Boogie {
     }
 
     public static readonly Type/*!*/ Int = new BasicType(SimpleType.Int);
+    public static readonly Type/*!*/ Real = new BasicType(SimpleType.Real);
     public static readonly Type/*!*/ Bool = new BasicType(SimpleType.Bool);
     private static BvType[] bvtypeCache;
 
@@ -865,6 +871,8 @@ namespace Microsoft.Boogie {
       switch (T) {
         case SimpleType.Int:
           return "int";
+        case SimpleType.Real:
+          return "real";
         case SimpleType.Bool:
           return "bool";
       }
@@ -980,6 +988,11 @@ namespace Microsoft.Boogie {
     public override bool IsInt {
       get {
         return this.T == SimpleType.Int;
+      }
+    }
+    public override bool IsReal {
+      get {
+        return this.T == SimpleType.Real;
       }
     }
     public override bool IsBool {
@@ -1883,6 +1896,12 @@ Contract.Requires(that != null);
         return p != null && p.IsInt;
       }
     }
+    public override bool IsReal {
+      get {
+        Type p = ProxyFor;
+        return p != null && p.IsReal;
+      }
+    }
     public override bool IsBool {
       get {
         Type p = ProxyFor;
@@ -2726,6 +2745,11 @@ Contract.Requires(that != null);
         return ExpandedType.IsInt;
       }
     }
+    public override bool IsReal {
+      get {
+        return ExpandedType.IsReal;
+      }
+    }
     public override bool IsBool {
       get {
         return ExpandedType.IsBool;
@@ -3499,6 +3523,7 @@ Contract.Ensures(Contract.ValueAtReturn(out tpInstantiation) != null);
 
   public enum SimpleType {
     Int,
+    Real,
     Bool
   };
 

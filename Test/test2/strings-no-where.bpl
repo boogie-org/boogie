@@ -1,4 +1,4 @@
-type real;
+
 
 type elements;
 

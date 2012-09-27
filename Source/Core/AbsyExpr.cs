@@ -250,6 +250,18 @@ namespace Microsoft.Boogie {
       Contract.Ensures(Contract.Result<NAryExpr>() != null);
       return Binary(BinaryOperator.Opcode.Mod, e1, e2);
     }
+    public static NAryExpr RealDiv(Expr e1, Expr e2) {
+      Contract.Requires(e2 != null);
+      Contract.Requires(e1 != null);
+      Contract.Ensures(Contract.Result<NAryExpr>() != null);
+      return Binary(BinaryOperator.Opcode.RealDiv, e1, e2);
+    }
+    public static NAryExpr Pow(Expr e1, Expr e2) {
+      Contract.Requires(e2 != null);
+      Contract.Requires(e1 != null);
+      Contract.Ensures(Contract.Result<NAryExpr>() != null);
+      return Binary(BinaryOperator.Opcode.Pow, e1, e2);
+    }
     public static NAryExpr Subtype(Expr e1, Expr e2) {
       Contract.Requires(e2 != null);
       Contract.Requires(e1 != null);
@@ -280,6 +292,10 @@ namespace Microsoft.Boogie {
       return new LiteralExpr(Token.NoToken, BigNum.FromInt(value));
     }
     public static LiteralExpr Literal(BigNum value) {
+      Contract.Ensures(Contract.Result<LiteralExpr>() != null);
+      return new LiteralExpr(Token.NoToken, value);
+    }
+    public static LiteralExpr Literal(BigDec value) {
       Contract.Ensures(Contract.Result<LiteralExpr>() != null);
       return new LiteralExpr(Token.NoToken, value);
     }
@@ -401,7 +417,7 @@ namespace Microsoft.Boogie {
   }
 
   public class LiteralExpr : Expr {
-    public readonly object/*!*/ Val;  // false, true, a BigNum, or a BvConst
+    public readonly object/*!*/ Val;  // false, true, a BigNum, a BigDec, or a BvConst
     [ContractInvariantMethod]
     void ObjectInvariant() {
       Contract.Invariant(Val != null);
@@ -418,6 +434,7 @@ namespace Microsoft.Boogie {
       Val = b;
       Type = Type.Bool;
     }
+
     /// <summary>
     /// Creates a literal expression for the integer value "v".
     /// </summary>
@@ -428,6 +445,18 @@ namespace Microsoft.Boogie {
       Contract.Requires(tok != null);
       Val = v;
       Type = Type.Int;
+    }
+
+    /// <summary>
+    /// Creates a literal expression for the real value "v".
+    /// </summary>
+    /// <param name="tok"></param>
+    /// <param name="v"></param>
+    public LiteralExpr(IToken/*!*/ tok, BigDec v)
+      : base(tok) {
+      Contract.Requires(tok != null);
+      Val = v;
+      Type = Type.Real;
     }
 
     /// <summary>
@@ -487,6 +516,8 @@ namespace Microsoft.Boogie {
           return Type.Bool;
         } else if (Val is BigNum) {
           return Type.Int;
+        } else if (Val is BigDec) {
+          return Type.Real;
         } else if (Val is BvConst) {
           return Type.GetBvType(((BvConst)Val).Bits);
         } else {
@@ -526,6 +557,19 @@ namespace Microsoft.Boogie {
       get {
         Contract.Assert(isBigNum);
         return (BigNum)cce.NonNull(Val);
+      }
+    }
+
+    public bool isBigDec {
+      get {
+        return Val is BigDec;
+      }
+    }
+
+    public BigDec asBigDec {
+      get {
+        Contract.Assert(isBigDec);
+        return (BigDec)cce.NonNull(Val);
       }
     }
 
@@ -838,6 +882,7 @@ namespace Microsoft.Boogie {
     T Visit(MapSelect/*!*/ mapSelect);
     T Visit(MapStore/*!*/ mapStore);
     T Visit(TypeCoercion/*!*/ typeCoercion);
+    T Visit(ArithmeticCoercion/*!*/ arithCoercion);
     T Visit(IfThenElse/*!*/ ifThenElse);
   }
   [ContractClassFor(typeof(IAppliableVisitor<>))]
@@ -872,6 +917,11 @@ namespace Microsoft.Boogie {
 
     public T Visit(TypeCoercion typeCoercion) {
       Contract.Requires(typeCoercion != null);
+      throw new NotImplementedException();
+    }
+
+    public T Visit(ArithmeticCoercion arithCoercion) {
+      Contract.Requires(arithCoercion != null);
       throw new NotImplementedException();
     }
 
@@ -1012,6 +1062,7 @@ namespace Microsoft.Boogie {
     }
 
     public enum Opcode {
+      Neg,
       Not
     };
     private Opcode op;
@@ -1047,6 +1098,8 @@ namespace Microsoft.Boogie {
         Contract.Ensures(Contract.Result<string>() != null);
 
         switch (this.op) {
+          case Opcode.Neg:
+            return "-";
           case Opcode.Not:
             return "!";
         }
@@ -1061,7 +1114,7 @@ namespace Microsoft.Boogie {
       stream.SetToken(ref this.tok);
       Contract.Assert(args.Length == 1);
       // determine if parens are needed
-      int opBindingStrength = 0x60;
+      int opBindingStrength = 0x70;
       bool parensNeeded = opBindingStrength < contextBindingStrength ||
         (fragileContext && opBindingStrength == contextBindingStrength);
 
@@ -1099,6 +1152,14 @@ namespace Microsoft.Boogie {
       tpInstantiation = SimpleTypeParamInstantiation.EMPTY;
       Type arg0type = cce.NonNull(cce.NonNull(args[0]).Type);
       switch (this.op) {
+        case Opcode.Neg:
+          if (arg0type.Unify(Type.Int)) {
+            return Type.Int;
+          }
+          if (arg0type.Unify(Type.Real)) {
+            return Type.Real;
+          }
+          goto BAD_TYPE;
         case Opcode.Not:
           if (arg0type.Unify(Type.Bool)) {
             return Type.Bool;
@@ -1119,6 +1180,8 @@ namespace Microsoft.Boogie {
       //Contract.Requires(args != null);
       Contract.Ensures(Contract.Result<Type>() != null);
       switch (this.op) {
+        case Opcode.Neg:
+          return cce.NonNull(cce.NonNull(args[0]).Type);
         case Opcode.Not:
           return Type.Bool;
         default: {
@@ -1133,6 +1196,14 @@ namespace Microsoft.Boogie {
         return null;
       }
       switch (this.op) {
+        case Opcode.Neg:
+          if (argument is BigNum) {
+            return -((BigNum)argument);
+          }
+          if (argument is BigDec) {
+            return -((BigDec)argument);
+          }
+          break;
         case Opcode.Not:
           if (argument is bool) {
             return !((bool)argument);
@@ -1161,6 +1232,8 @@ namespace Microsoft.Boogie {
       Mul,
       Div,
       Mod,
+      RealDiv,
+      Pow,
       Eq,
       Neq,
       Gt,
@@ -1217,6 +1290,10 @@ namespace Microsoft.Boogie {
             return "div";
           case Opcode.Mod:
             return "mod";
+          case Opcode.RealDiv:
+            return "/";
+          case Opcode.Pow:
+            return "**";
           case Opcode.Eq:
             return "==";
           case Opcode.Neq:
@@ -1273,6 +1350,14 @@ namespace Microsoft.Boogie {
           opBindingStrength = 0x50;
           fragileRightContext = true;
           break;
+        case Opcode.RealDiv:
+          opBindingStrength = 0x50;
+          fragileRightContext = true;
+          break;
+        case Opcode.Pow:
+          opBindingStrength = 0x60;
+          fragileRightContext = true;
+          break;
         case Opcode.Eq:
         case Opcode.Neq:
         case Opcode.Gt:
@@ -1326,6 +1411,8 @@ namespace Microsoft.Boogie {
           case Opcode.Mul:
           case Opcode.Div:
           case Opcode.Mod:
+          case Opcode.RealDiv:
+          case Opcode.Pow:
           case Opcode.Neq:  // Neq is allowed, but not Eq
           case Opcode.Subtype:
             // These are fine
@@ -1377,10 +1464,28 @@ namespace Microsoft.Boogie {
         case Opcode.Add:
         case Opcode.Sub:
         case Opcode.Mul:
+          if (arg0type.Unify(Type.Int) && arg1type.Unify(Type.Int)) {
+            return Type.Int;
+          }
+          if (arg0type.Unify(Type.Real) && arg1type.Unify(Type.Real)) {
+            return Type.Real;
+          }
+          goto BAD_TYPE;
         case Opcode.Div:
         case Opcode.Mod:
           if (arg0type.Unify(Type.Int) && arg1type.Unify(Type.Int)) {
             return Type.Int;
+          }
+          goto BAD_TYPE;
+        case Opcode.RealDiv:
+          if ((arg0type.Unify(Type.Int) || arg0type.Unify(Type.Real)) &&
+              (arg1type.Unify(Type.Int) || arg1type.Unify(Type.Real))) {
+            return Type.Real;
+          }
+          goto BAD_TYPE;
+        case Opcode.Pow:
+          if (arg0type.Unify(Type.Real) && arg1type.Unify(Type.Real)) {
+            return Type.Real;
           }
           goto BAD_TYPE;
         case Opcode.Eq:
@@ -1404,6 +1509,9 @@ namespace Microsoft.Boogie {
         case Opcode.Lt:
         case Opcode.Le:
           if (arg0type.Unify(Type.Int) && arg1type.Unify(Type.Int)) {
+            return Type.Bool;
+          }
+          if (arg0type.Unify(Type.Real) && arg1type.Unify(Type.Real)) {
             return Type.Bool;
           }
           goto BAD_TYPE;
@@ -1440,9 +1548,15 @@ namespace Microsoft.Boogie {
         case Opcode.Add:
         case Opcode.Sub:
         case Opcode.Mul:
+          return cce.NonNull(args[0]).ShallowType;
+
         case Opcode.Div:
         case Opcode.Mod:
           return Type.Int;
+
+        case Opcode.RealDiv:
+        case Opcode.Pow:
+          return Type.Real;
 
         case Opcode.Eq:
         case Opcode.Neq:
@@ -1500,15 +1614,24 @@ namespace Microsoft.Boogie {
           if (e1 is BigNum && e2 is BigNum) {
             return ((BigNum)e1) + ((BigNum)e2);
           }
+          if (e1 is BigDec && e2 is BigDec) {
+            return ((BigDec)e1) + ((BigDec)e2);
+          }
           break;
         case Opcode.Sub:
           if (e1 is BigNum && e2 is BigNum) {
             return ((BigNum)e1) - ((BigNum)e2);
           }
+          if (e1 is BigDec && e2 is BigDec) {
+            return ((BigDec)e1) - ((BigDec)e2);
+          }
           break;
         case Opcode.Mul:
           if (e1 is BigNum && e2 is BigNum) {
             return ((BigNum)e1) * ((BigNum)e2);
+          }
+          if (e1 is BigDec && e2 is BigDec) {
+            return ((BigDec)e1) * ((BigDec)e2);
           }
           break;
         case Opcode.Div:
@@ -1521,24 +1644,42 @@ namespace Microsoft.Boogie {
             return /* TODO: right semantics? */ ((BigNum)e1) % ((BigNum)e2);
           }
           break;
+        case Opcode.RealDiv:
+          // TODO: add partial evaluation fro real division
+          break;
+        case Opcode.Pow:
+          // TODO: add partial evaluation fro real exponentiation
+          break;
         case Opcode.Lt:
           if (e1 is BigNum && e2 is BigNum) {
             return ((BigNum)e1) < ((BigNum)e2);
+          }
+          if (e1 is BigDec && e2 is BigDec) {
+            return ((BigDec)e1) < ((BigDec)e2);
           }
           break;
         case Opcode.Le:
           if (e1 is BigNum && e2 is BigNum) {
             return ((BigNum)e1) <= ((BigNum)e2);
           }
+          if (e1 is BigDec && e2 is BigDec) {
+            return ((BigDec)e1) <= ((BigDec)e2);
+          }
           break;
         case Opcode.Gt:
           if (e1 is BigNum && e2 is BigNum) {
             return ((BigNum)e1) > ((BigNum)e2);
           }
+          if (e1 is BigDec && e2 is BigDec) {
+            return ((BigDec)e1) > ((BigDec)e2);
+          }
           break;
         case Opcode.Ge:
           if (e1 is BigNum && e2 is BigNum) {
             return ((BigNum)e1) >= ((BigNum)e2);
+          }
+          if (e1 is BigDec && e2 is BigDec) {
+            return ((BigDec)e1) >= ((BigDec)e2);
           }
           break;
 
@@ -1724,7 +1865,7 @@ namespace Microsoft.Boogie {
       stream.SetToken(ref this.tok);
       Contract.Assert(args.Length == 1);
       // determine if parens are needed
-      int opBindingStrength = 0x70;
+      int opBindingStrength = 0x80;
       bool parensNeeded = opBindingStrength < contextBindingStrength ||
         (fragileContext && opBindingStrength == contextBindingStrength);
 
@@ -1780,6 +1921,114 @@ namespace Microsoft.Boogie {
       return visitor.Visit(this);
     }
 
+  }
+
+  public class ArithmeticCoercion : IAppliable {
+    public enum CoercionType {
+      ToInt,
+      ToReal
+    }
+
+    private IToken/*!*/ tok;
+    public readonly CoercionType Coercion;
+    private readonly string name;
+    private readonly Type type;
+    private readonly Type argType;
+    private readonly int hashCode;
+
+    public ArithmeticCoercion(IToken tok, CoercionType coercion) {
+      this.tok = tok;
+      this.Coercion = coercion;
+
+      switch (coercion) {
+        case CoercionType.ToInt:
+          this.name = "int";
+          this.type = Type.Int;
+          this.argType = Type.Real;
+          this.hashCode = 1;
+          break;
+        case CoercionType.ToReal:
+          this.name = "real";
+          this.type = Type.Real;
+          this.argType = Type.Int;
+          this.hashCode = 2;
+          break;
+        default:
+          Contract.Assert(false);
+          break;
+      }
+    }
+
+    [Pure]
+    public override string ToString() {
+      Contract.Ensures(Contract.Result<string>() != null);
+      return this.name;
+    }
+
+    [Pure]
+    [Reads(ReadsAttribute.Reads.Nothing)]
+    public override bool Equals(object other) {
+      ArithmeticCoercion ac = other as ArithmeticCoercion;
+      return ac != null && this.Coercion == ac.Coercion;
+    }
+
+    [Pure]
+    public override int GetHashCode() {
+      return this.hashCode;
+    }
+
+    public string/*!*/ FunctionName {
+      get {
+        return this.name;
+      }
+    }
+
+    public int ArgumentCount {
+      get {
+        return 1;
+      }
+    }
+
+    virtual public void Emit(ExprSeq args, TokenTextWriter stream, int contextBindingStrength, bool fragileContext) {
+      //Contract.Requires(stream != null);
+      //Contract.Requires(args != null);
+      stream.Write(this.name);
+      stream.Write("(");
+      args.Emit(stream);
+      stream.Write(")");
+    }
+
+    public void Resolve(ResolutionContext rc, Expr subjectForErrorReporting) {
+      //Contract.Requires(subjectForErrorReporting != null);
+      //Contract.Requires(rc != null);
+    }
+
+    public virtual Type Typecheck(ref ExprSeq args, out TypeParamInstantiation tpInstantiation, TypecheckingContext tc) {
+      //Contract.Requires(tc != null);
+      //Contract.Requires(args != null);
+      Contract.Assert(args.Length == 1);
+      Contract.Ensures(args != null);
+      Contract.Ensures(Contract.ValueAtReturn(out tpInstantiation) != null);
+
+      tpInstantiation = SimpleTypeParamInstantiation.EMPTY;
+
+      if (!cce.NonNull(cce.NonNull(args[0]).Type).Unify(argType)) {
+        tc.Error(this.tok, "argument type {0} does not match expected type {1}", cce.NonNull(args[0]).Type, this.argType);
+      }
+
+      return this.type;
+    }
+
+    public Type ShallowType(ExprSeq args) {
+      //Contract.Requires(args != null);
+      Contract.Ensures(Contract.Result<Type>() != null);
+      return this.type;
+    }
+
+    public virtual T Dispatch<T>(IAppliableVisitor<T> visitor) {
+      //Contract.Requires(visitor != null);
+      return visitor.Visit(this);
+    }
   }
 
   public class NAryExpr : Expr {
@@ -1949,7 +2198,7 @@ namespace Microsoft.Boogie {
                             bool withRhs) {
       Contract.Requires(args != null);
       Contract.Requires(stream != null);
-      const int opBindingStrength = 0x80;
+      const int opBindingStrength = 0x90;
       bool parensNeeded = opBindingStrength < contextBindingStrength ||
         (fragileContext && opBindingStrength == contextBindingStrength);
 
@@ -2440,7 +2689,7 @@ namespace Microsoft.Boogie {
     public override void Emit(TokenTextWriter stream, int contextBindingStrength, bool fragileContext) {
       //Contract.Requires(stream != null);
       stream.SetToken(this);
-      int opBindingStrength = 0x80;
+      int opBindingStrength = 0x90;
       bool parensNeeded = opBindingStrength < contextBindingStrength ||
         (fragileContext && opBindingStrength == contextBindingStrength);
 

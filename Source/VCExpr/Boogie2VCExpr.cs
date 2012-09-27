@@ -328,6 +328,8 @@ namespace Microsoft.Boogie.VCExprAST {
         }
       } else if (node.Val is BigNum) {
         return Gen.Integer(node.asBigNum);
+      } else if (node.Val is BigDec) {
+        return Gen.Real(node.asBigDec);
       } else if (node.Val is BvConst) {
         return Gen.Bitvector((BvConst)node.Val);
       } else {
@@ -961,8 +963,20 @@ namespace Microsoft.Boogie.VCExprAST {
     public VCExpr Visit(UnaryOperator unaryOperator) {
       //Contract.Requires(unaryOperator != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
-      Contract.Assert(unaryOperator.Op == UnaryOperator.Opcode.Not && this.args.Count == 1);
-      return Gen.Not(this.args);
+      Contract.Assert(unaryOperator.Op == UnaryOperator.Opcode.Neg || unaryOperator.Op == UnaryOperator.Opcode.Not);
+      Contract.Assert(this.args.Count == 1);
+      if (unaryOperator.Op == UnaryOperator.Opcode.Neg) {
+        VCExpr e = cce.NonNull(this.args[0]);
+        if (cce.NonNull(e.Type).IsInt) {
+          return Gen.Function(VCExpressionGenerator.SubIOp, Gen.Integer(BigNum.ZERO), e);
+        }
+        else {
+          return Gen.Function(VCExpressionGenerator.SubROp, Gen.Real(BigDec.ZERO), e);
+        }
+      }
+      else {
+        return Gen.Not(this.args);
+      }
     }
 
     public VCExpr Visit(BinaryOperator binaryOperator) {
@@ -996,6 +1010,21 @@ namespace Microsoft.Boogie.VCExprAST {
       return this.args[0];
     }
 
+    public VCExpr Visit(ArithmeticCoercion arithCoercion) {
+      //Contract.Requires(arithCoercion != null);
+      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      Contract.Assert(this.args.Count == 1);
+      switch (arithCoercion.Coercion) {
+        case ArithmeticCoercion.CoercionType.ToInt:
+          return Gen.Function(VCExpressionGenerator.ToIntOp, this.args);
+        case ArithmeticCoercion.CoercionType.ToReal:
+          return Gen.Function(VCExpressionGenerator.ToRealOp, this.args);
+        default:
+          Contract.Assert(false);
+          return null;
+      }
+    }
+
     public VCExpr Visit(IfThenElse ite) {
       //Contract.Requires(ite != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
@@ -1012,15 +1041,42 @@ namespace Microsoft.Boogie.VCExprAST {
 
       switch (app.Op) {
         case BinaryOperator.Opcode.Add:
-          return Gen.Function(VCExpressionGenerator.AddOp, args);
+          if (cce.NonNull(cce.NonNull(args[0]).Type).IsInt) {
+            return Gen.Function(VCExpressionGenerator.AddIOp, args);
+          }
+          else {
+            return Gen.Function(VCExpressionGenerator.AddROp, args);
+          }
         case BinaryOperator.Opcode.Sub:
-          return Gen.Function(VCExpressionGenerator.SubOp, args);
+          if (cce.NonNull(cce.NonNull(args[0]).Type).IsInt) {
+            return Gen.Function(VCExpressionGenerator.SubIOp, args);
+          }
+          else {
+            return Gen.Function(VCExpressionGenerator.SubROp, args);
+          }
         case BinaryOperator.Opcode.Mul:
-          return Gen.Function(VCExpressionGenerator.MulOp, args);
+          if (cce.NonNull(cce.NonNull(args[0]).Type).IsInt) {
+            return Gen.Function(VCExpressionGenerator.MulIOp, args);
+          }
+          else {
+            return Gen.Function(VCExpressionGenerator.MulROp, args);
+          }
         case BinaryOperator.Opcode.Div:
-          return Gen.Function(VCExpressionGenerator.DivOp, args);
+          return Gen.Function(VCExpressionGenerator.DivIOp, args);
         case BinaryOperator.Opcode.Mod:
           return Gen.Function(VCExpressionGenerator.ModOp, args);
+        case BinaryOperator.Opcode.RealDiv:
+          VCExpr arg0 = cce.NonNull(args[0]);
+          VCExpr arg1 = cce.NonNull(args[1]);
+          if (cce.NonNull(arg0.Type).IsInt) {
+            arg0 = Gen.Function(VCExpressionGenerator.ToRealOp, arg0);
+          }
+          if (cce.NonNull(arg1.Type).IsInt) {
+            arg1 = Gen.Function(VCExpressionGenerator.ToRealOp, arg1);
+          }
+          return Gen.Function(VCExpressionGenerator.DivROp, arg0, arg1);
+        case BinaryOperator.Opcode.Pow:
+          return Gen.Function(VCExpressionGenerator.PowOp, args);
         case BinaryOperator.Opcode.Eq:
         case BinaryOperator.Opcode.Iff:
           // we don't distinguish between equality and equivalence at this point

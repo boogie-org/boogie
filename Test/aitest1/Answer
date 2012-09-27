@@ -268,7 +268,7 @@ implementation p()
 
   A:
     assume {:inferred} true;
-    assume 0 - 1 <= x;
+    assume -1 <= x;
     assume {:inferred} -1 <= x;
     goto B, E;
 

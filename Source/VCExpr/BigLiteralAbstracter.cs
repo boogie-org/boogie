@@ -120,7 +120,7 @@ namespace Microsoft.Boogie.VCExprAST {
       Contract.Ensures(Contract.Result<VCExpr>() != null);
 
       if (lit.IsNegative)
-        return Gen.Function(VCExpressionGenerator.SubOp,
+        return Gen.Function(VCExpressionGenerator.SubIOp,
                             Gen.Integer(BigNum.ZERO), RepresentPos(lit.Neg));
       else
         return RepresentPos(lit);
@@ -145,7 +145,7 @@ namespace Microsoft.Boogie.VCExprAST {
         BigNum dist = lit - Literals[index - 1].Key;
         if (dist < resDistance) {
           resDistance = dist;
-          res = Gen.Function(VCExpressionGenerator.AddOp,
+          res = Gen.Function(VCExpressionGenerator.AddIOp,
                              Literals[index - 1].Value, Gen.Integer(dist));
         }
       }
@@ -154,7 +154,7 @@ namespace Microsoft.Boogie.VCExprAST {
         BigNum dist = Literals[index].Key - lit;
         if (dist < resDistance) {
           resDistance = dist;
-          res = Gen.Function(VCExpressionGenerator.SubOp,
+          res = Gen.Function(VCExpressionGenerator.SubIOp,
                              Literals[index].Value, Gen.Integer(dist));
         }
       }
@@ -198,7 +198,7 @@ namespace Microsoft.Boogie.VCExprAST {
       Contract.Requires(bExpr != null);
 
       BigNum dist = bValue - aValue;
-      VCExpr distExpr = Gen.Function(VCExpressionGenerator.SubOp, bExpr, aExpr);
+      VCExpr distExpr = Gen.Function(VCExpressionGenerator.SubIOp, bExpr, aExpr);
       if (dist <= ConstantDistanceTPO)
         // constants that are sufficiently close to each other are put
         // into a precise relationship

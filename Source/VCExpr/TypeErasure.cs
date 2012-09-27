@@ -524,6 +524,7 @@ namespace Microsoft.Boogie.TypeErasure {
 
     public virtual void Setup() {
       GetBasicTypeRepr(Type.Int);
+      GetBasicTypeRepr(Type.Real);
       GetBasicTypeRepr(Type.Bool);
     }
 
@@ -625,6 +626,7 @@ namespace Microsoft.Boogie.TypeErasure {
       base.Setup();
 
       GetTypeCasts(Type.Int);
+      GetTypeCasts(Type.Real);
       GetTypeCasts(Type.Bool);
     }
 
@@ -730,7 +732,7 @@ namespace Microsoft.Boogie.TypeErasure {
     ////////////////////////////////////////////////////////////////////////////
 
     // the only types that we allow in "untyped" expressions are U,
-    // Type.Int, and Type.Bool
+    // Type.Int, Type.Real, and Type.Bool
 
     public override Type TypeAfterErasure(Type type) {
       //Contract.Requires(type != null);
@@ -746,7 +748,7 @@ namespace Microsoft.Boogie.TypeErasure {
     [Pure]
     public override bool UnchangedType(Type type) {
       //Contract.Requires(type != null);
-      return type.IsInt || type.IsBool || type.IsBv || (type.IsMap && CommandLineOptions.Clo.MonomorphicArrays);
+      return type.IsInt || type.IsReal || type.IsBool || type.IsBv || (type.IsMap && CommandLineOptions.Clo.MonomorphicArrays);
     }
 
     public VCExpr Cast(VCExpr expr, Type toType) {
@@ -1143,7 +1145,7 @@ namespace Microsoft.Boogie.TypeErasure {
       Contract.Requires(bindings != null);
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
-      Contract.Assume(node.Type == Type.Bool || node.Type == Type.Int);
+      Contract.Assume(node.Type == Type.Bool || node.Type == Type.Int || node.Type == Type.Real);
       return node;
     }
 
@@ -1360,7 +1362,7 @@ namespace Microsoft.Boogie.TypeErasure {
     }
 
     // Cast the arguments of the node to their old type if necessary and possible; otherwise use
-    // their new type (int, bool, or U)
+    // their new type (int, real, bool, or U)
     private VCExpr CastArgumentsToOldType(VCExprNAry node, VariableBindings bindings, int newPolarity) {
       Contract.Requires(bindings != null);
       Contract.Requires(node != null);
@@ -1448,19 +1450,19 @@ namespace Microsoft.Boogie.TypeErasure {
       Contract.Requires((bindings != null));
       Contract.Requires((node != null));
       Contract.Ensures(Contract.Result<VCExpr>() != null);
-      return CastArguments(node, Type.Int, bindings, 0);
+      return CastArguments(node, node.Type, bindings, 0);
     }
     public override VCExpr VisitSubOp(VCExprNAry node, VariableBindings bindings) {
       Contract.Requires((bindings != null));
       Contract.Requires((node != null));
       Contract.Ensures(Contract.Result<VCExpr>() != null);
-      return CastArguments(node, Type.Int, bindings, 0);
+      return CastArguments(node, node.Type, bindings, 0);
     }
     public override VCExpr VisitMulOp(VCExprNAry node, VariableBindings bindings) {
       Contract.Requires((bindings != null));
       Contract.Requires((node != null));
       Contract.Ensures(Contract.Result<VCExpr>() != null);
-      return CastArguments(node, Type.Int, bindings, 0);
+      return CastArguments(node, node.Type, bindings, 0);
     }
     public override VCExpr VisitDivOp(VCExprNAry node, VariableBindings bindings) {
       Contract.Requires((bindings != null));
@@ -1474,35 +1476,59 @@ namespace Microsoft.Boogie.TypeErasure {
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       return CastArguments(node, Type.Int, bindings, 0);
     }
+    public override VCExpr VisitRealDivOp(VCExprNAry node, VariableBindings bindings) {
+      Contract.Requires((bindings != null));
+      Contract.Requires((node != null));
+      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      return CastArguments(node, Type.Real, bindings, 0);
+    }
+    public override VCExpr VisitPowOp(VCExprNAry node, VariableBindings bindings) {
+      Contract.Requires((bindings != null));
+      Contract.Requires((node != null));
+      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      return CastArguments(node, Type.Real, bindings, 0);
+    }
     public override VCExpr VisitLtOp(VCExprNAry node, VariableBindings bindings) {
       Contract.Requires((bindings != null));
       Contract.Requires((node != null));
       Contract.Ensures(Contract.Result<VCExpr>() != null);
-      return CastArguments(node, Type.Int, bindings, 0);
+      return CastArgumentsToOldType(node, bindings, 0);
     }
     public override VCExpr VisitLeOp(VCExprNAry node, VariableBindings bindings) {
       Contract.Requires((bindings != null));
       Contract.Requires((node != null));
       Contract.Ensures(Contract.Result<VCExpr>() != null);
-      return CastArguments(node, Type.Int, bindings, 0);
+      return CastArgumentsToOldType(node, bindings, 0);
     }
     public override VCExpr VisitGtOp(VCExprNAry node, VariableBindings bindings) {
       Contract.Requires((bindings != null));
       Contract.Requires((node != null));
       Contract.Ensures(Contract.Result<VCExpr>() != null);
-      return CastArguments(node, Type.Int, bindings, 0);
+      return CastArgumentsToOldType(node, bindings, 0);
     }
     public override VCExpr VisitGeOp(VCExprNAry node, VariableBindings bindings) {
       Contract.Requires((bindings != null));
       Contract.Requires((node != null));
       Contract.Ensures(Contract.Result<VCExpr>() != null);
-      return CastArguments(node, Type.Int, bindings, 0);
+      return CastArgumentsToOldType(node, bindings, 0);
     }
     public override VCExpr VisitSubtypeOp(VCExprNAry node, VariableBindings bindings) {
       Contract.Requires((bindings != null));
       Contract.Requires((node != null));
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       return CastArguments(node, AxBuilder.U, bindings, 0);
+    }
+    public override VCExpr VisitToIntOp(VCExprNAry node, VariableBindings bindings) {
+      Contract.Requires((bindings != null));
+      Contract.Requires((node != null));
+      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      return CastArgumentsToOldType(node, bindings, 0);
+    }
+    public override VCExpr VisitToRealOp(VCExprNAry node, VariableBindings bindings) {
+      Contract.Requires((bindings != null));
+      Contract.Requires((node != null));
+      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      return CastArgumentsToOldType(node, bindings, 0);
     }
     public override VCExpr VisitBvOp(VCExprNAry node, VariableBindings bindings) {
       Contract.Requires((bindings != null));

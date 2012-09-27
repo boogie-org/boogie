@@ -1,6 +1,9 @@
 const x: int;
 const y: int;
 const z: int;
+const r: real;
+const s: real;
+const t: real;
 const P: bool;
 const Q: bool;
 const R: bool;
@@ -16,6 +19,25 @@ axiom (x div y) div (z div x) == (x div y) div z;
 
 axiom x + y mod z == ((y mod z) + x);
 axiom (x + y) mod z == (x mod z) + (y mod z);
+
+axiom x / y / z == (x / (y / z));
+axiom (x / y) / (z / x) == (x / y) / z;
+axiom x / s / z == (x / (s / z));
+axiom (x / s) / (z / x) == (x / s) / z;
+axiom r / s / t == (r / (s / t));
+axiom (r / s) / (t / r) == (r / s) / t;
+
+axiom ((r * s) / t) == r * s / t;
+axiom ((r / s) * t) == (r / s) * t;
+
+axiom (r * s) ** t == (r ** t) * (s ** t);
+axiom r ** (s + t) == r ** s * r ** t;
+
+axiom int(real(x)) == x;
+axiom r >= 0.0 ==> real(int(r)) <= r;
+axiom int(0e-3 - 0.02) == 0;
+axiom int(0e2 - 3.5e1) == -35;
+axiom int(27e-1) == 2;
 
 axiom x - y - z == (x - (y - z));
 axiom (x - y) - (z - x) == (x - y) - z;

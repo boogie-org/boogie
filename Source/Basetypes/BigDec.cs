@@ -19,16 +19,33 @@ namespace Microsoft.Basetypes {
 
     // the internal representation
     [Rep]
-    internal readonly BIM mantisse;
+    internal readonly BIM mantissa;
     [Rep]
-    internal readonly BIM exponent;
+    internal readonly int exponent;
 
-    private static readonly BIM ONE = BIM.One;
-    private static readonly BIM TEN = new BIM(10);
+    public BIM Mantissa {
+      get {
+        return mantissa;
+      }
+    }
+
+    public int Exponent {
+      get {
+        return exponent;
+      }
+    }
+
+    public static readonly BigDec ZERO = FromInt(0);
+    private static readonly BIM ten = new BIM(10);
 
 
     ////////////////////////////////////////////////////////////////////////////
     // Constructors
+
+    [Pure]
+    public static BigDec FromInt(int v) {
+      return new BigDec(v, 0);
+    }
 
     [Pure]
     public static BigDec FromString(string v) {
@@ -36,42 +53,52 @@ namespace Microsoft.Basetypes {
 
       BIM integral = BIM.Zero;
       BIM fraction = BIM.Zero;
-      BIM exponent = BIM.Zero;
+      int exponent = 0;
 
       int len = v.Length;
 
       int i = v.IndexOf('e');
       if (i >= 0) {
-        exponent = BIM.Parse(v.Substring(i + 1, len - i));
+        if (i + 1 == v.Length) throw new FormatException();
+        exponent = Int32.Parse(v.Substring(i + 1, len - i - 1));
         len = i;
       }
 
-      int fraction_len = 0;
+      int fractionLen = 0;
       i = v.IndexOf('.');
       if (i >= 0) {
-        fraction = BIM.Parse(v.Substring(i + 1, len - i));
-        fraction_len = len - i;
+        if (i + 1 == v.Length) throw new FormatException();
+        fractionLen = len - i - 1;
+        fraction = BIM.Parse(v.Substring(i + 1, fractionLen));
         len = i;
       }
 
       integral = BIM.Parse(v.Substring(0, len));
 
-      while (fraction_len > 0) {
-        integral = integral * TEN;
-        exponent = exponent - ONE;
+      if (!fraction.IsZero) {
+        while (fractionLen > 0) {
+          integral = integral * ten;
+          exponent = exponent - 1;
+          fractionLen = fractionLen - 1;
+        }
       }
 
       return new BigDec(integral + fraction, exponent);
     }
 
-    internal BigDec(BIM mantisse, BIM exponent) {
-      while (mantisse % TEN == BIM.Zero) {
-        mantisse = mantisse / TEN;
-        exponent = exponent + ONE;
+    internal BigDec(BIM mantissa, int exponent) {
+      if (mantissa.IsZero) {
+        this.mantissa = mantissa;
+        this.exponent = 0;
       }
-
-      this.mantisse = mantisse;
-      this.exponent = exponent;
+      else {
+        while (mantissa % ten == BIM.Zero) {
+          mantissa = mantissa / ten;
+          exponent = exponent + 1;
+        }
+        this.mantissa = mantissa;
+        this.exponent = exponent;
+      }
     }
 
 
@@ -86,19 +113,84 @@ namespace Microsoft.Basetypes {
       if (!(obj is BigDec))
         return false;
 
-      BigDec other = (BigDec)obj;
-      return (this.mantisse == other.mantisse && this.exponent == other.exponent);
+      return (this == (BigDec)obj);
     }
 
     [Pure]
     public override int GetHashCode() {
-      return this.mantisse.GetHashCode() * 13 + this.exponent.GetHashCode();
+      return this.mantissa.GetHashCode() * 13 + this.exponent.GetHashCode();
     }
 
     [Pure]
     public override string/*!*/ ToString() {
       Contract.Ensures(Contract.Result<string>() != null);
-      return String.Format("%se%s", this.mantisse.ToString(), this.exponent.ToString());
+      return String.Format("{0}e{1}", this.mantissa.ToString(), this.exponent.ToString());
+    }
+
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Conversion operations
+
+    [Pure]
+    public BIM Floor(BIM? minimum, BIM? maximum) {
+      BIM n = this.mantissa;
+      
+      if (this.exponent >= 0) {
+        int e = this.exponent;
+        while (e > 0 && (minimum == null || minimum <= n) && (maximum == null || n <= maximum)) {
+          n = n * ten;
+          e = e - 1;
+        }
+      }
+      else {
+        int e = -this.exponent;
+        while (e > 0 && !n.IsZero) {
+          n = n / ten;
+          e = e - 1;
+        }
+      }
+
+      if (minimum != null && n < minimum)
+        return (BIM)minimum;
+      else if (maximum != null && maximum < n)
+        return (BIM)maximum;
+      else
+        return n;
+    }
+
+    [Pure]
+    public String ToDecimalString(int maxDigits) {
+      string s = this.mantissa.ToString();
+      int digits = (this.mantissa >= 0) ? s.Length : s.Length - 1;
+      BIM max = BIM.Pow(10, maxDigits);
+      BIM min = -max;
+
+      if (this.exponent >= 0) {
+        if (maxDigits < digits || maxDigits - digits < this.exponent) {
+          return String.Format("{0}.0", (this.mantissa >= 0) ? max.ToString() : min.ToString());
+        }
+        else {
+          return String.Format("{0}{1}.0", s, new string('0', this.exponent));
+        }
+      }
+      else {
+        int exp = -this.exponent;
+
+        if (exp < digits) {
+          int intDigits = digits - exp;
+          if (maxDigits < intDigits) {
+            return String.Format("{0}.0", (this.mantissa >= 0) ? max.ToString() : min.ToString());
+          }
+          else {
+            int fracDigits = Math.Min(maxDigits, digits - intDigits);
+            return String.Format("{0}.{1}", s.Substring(0, intDigits), s.Substring(intDigits, fracDigits));
+          }
+        }
+        else {
+          int fracDigits = Math.Min(maxDigits, digits);
+          return String.Format("0.{0}{1}", new string('0', exp - fracDigits), s.Substring(0, fracDigits));
+        }
+      }
     }
 
 
@@ -106,26 +198,40 @@ namespace Microsoft.Basetypes {
     // Basic arithmetic operations
 
     [Pure]
+    public BigDec Abs {
+      get {
+        return new BigDec(BIM.Abs(this.mantissa), this.exponent);
+      }
+    }
+
+    [Pure]
+    public BigDec Negate {
+      get {
+        return new BigDec(BIM.Negate(this.mantissa), this.exponent);
+      }
+    }
+
+    [Pure]
     public static BigDec operator -(BigDec x) {
-      return new BigDec(BIM.Negate(x.mantisse), x.exponent);
+      return x.Negate;
     }
 
     [Pure]
     public static BigDec operator +(BigDec x, BigDec y) {
-      BIM m1 = x.mantisse;
-      BIM e1 = x.exponent;
-      BIM m2 = y.mantisse;
-      BIM e2 = y.exponent;
+      BIM m1 = x.mantissa;
+      int e1 = x.exponent;
+      BIM m2 = y.mantissa;
+      int e2 = y.exponent;
       if (e2 < e1) {
-        m1 = y.mantisse;
+        m1 = y.mantissa;
         e1 = y.exponent;
-        m2 = x.mantisse;
+        m2 = x.mantissa;
         e2 = x.exponent;
       }
 
       while (e2 > e1) {
-        m2 = m2 * TEN;
-        e2 = e2 - ONE;
+        m2 = m2 * ten;
+        e2 = e2 - 1;
       }
 
       return new BigDec(m1 + m2, e1);
@@ -133,12 +239,12 @@ namespace Microsoft.Basetypes {
 
     [Pure]
     public static BigDec operator -(BigDec x, BigDec y) {
-      return x + (-y);
+      return x + y.Negate;
     }
 
     [Pure]
     public static BigDec operator *(BigDec x, BigDec y) {
-      return new BigDec(x.mantisse * y.mantisse, x.exponent + y.exponent);
+      return new BigDec(x.mantissa * y.mantissa, x.exponent + y.exponent);
     }
 
 
@@ -147,35 +253,41 @@ namespace Microsoft.Basetypes {
 
     public bool IsPositive {
       get {
-        return (this.mantisse > BIM.Zero);
+        return (this.mantissa > BIM.Zero);
       }
     }
 
     public bool IsNegative {
       get {
-        return (this.mantisse < BIM.Zero);
+        return (this.mantissa < BIM.Zero);
       }
     }
 
     public bool IsZero {
       get {
-        return this.mantisse.IsZero;
+        return this.mantissa.IsZero;
       }
     }
 
     [Pure]
     public int CompareTo(BigDec that) {
-      BigDec d = this - that;
-
-      if (d.IsZero) {
+      if (this.mantissa == that.mantissa && this.exponent == that.exponent) {
         return 0;
       }
-      else if (d.IsNegative) {
-        return -1;
-      }
       else {
-        return 1;
+        BigDec d = this - that;
+        return d.IsNegative ? -1 : 1;
       }
+    }
+
+    [Pure]
+    public static bool operator ==(BigDec x, BigDec y) {
+      return x.CompareTo(y) == 0;
+    }
+
+    [Pure]
+    public static bool operator !=(BigDec x, BigDec y) {
+      return x.CompareTo(y) != 0;
     }
 
     [Pure]

@@ -145,7 +145,8 @@ TOKENS
 
   string = quote { regularStringChar | "\\\"" } quote.
 
-  float = digit {digit} '.' {digit}.
+  decimal = digit {digit} 'e' [ '-' ] digit {digit} .
+  float = digit {digit} '.' digit {digit} [ 'e' [ '-' ] digit {digit} ] .
 
 COMMENTS FROM "/*" TO "*/" NESTED
 COMMENTS FROM "//" TO lf
@@ -313,6 +314,7 @@ TypeArgs<TypeSeq/*!*/ ts>
 TypeAtom<out Bpl.Type/*!*/ ty>
 = (.Contract.Ensures(Contract.ValueAtReturn(out ty) != null); ty = dummyType; .)
   ( "int"              (. ty = new BasicType(t, SimpleType.Int); .)
+  | "real"             (. ty = new BasicType(t, SimpleType.Real); .)
   | "bool"             (. ty = new BasicType(t, SimpleType.Bool); .)
   /* note: bitvectors are handled in UnresolvedTypeIdentifier */
   |
@@ -1162,9 +1164,9 @@ AddOp<out IToken/*!*/ x, out BinaryOperator.Opcode op>
 /*------------------------------------------------------------------------*/
 Factor<out Expr/*!*/ e0>
 = (.Contract.Ensures(Contract.ValueAtReturn(out e0) != null); IToken/*!*/ x; Expr/*!*/ e1; BinaryOperator.Opcode op; .)
-  UnaryExpression<out e0>
+  Power<out e0>
   { MulOp<out x, out op>
-    UnaryExpression<out e1> (. e0 = Expr.Binary(x, op, e0, e1); .)
+    Power<out e1> (. e0 = Expr.Binary(x, op, e0, e1); .)
   }
   .
 
@@ -1173,7 +1175,19 @@ MulOp<out IToken/*!*/ x, out BinaryOperator.Opcode op>
   ( "*"            (. x = t; op=BinaryOperator.Opcode.Mul; .)
   | "div"          (. x = t; op=BinaryOperator.Opcode.Div; .)
   | "mod"          (. x = t; op=BinaryOperator.Opcode.Mod; .)
+  | "/"            (. x = t; op=BinaryOperator.Opcode.RealDiv; .)
   )
+  .
+
+/*------------------------------------------------------------------------*/
+Power<out Expr/*!*/ e0>
+= (.Contract.Ensures(Contract.ValueAtReturn(out e0) != null); IToken/*!*/ x; Expr/*!*/ e1; .)
+  UnaryExpression<out e0>
+  [
+    "**"           (. x = t; .)
+    /* recurse because exponentation is right-associative */
+    Power<out e1>  (. e0 = Expr.Binary(x, BinaryOperator.Opcode.Pow, e0, e1); .)
+  ]
   .
 
 /*------------------------------------------------------------------------*/
@@ -1182,7 +1196,7 @@ UnaryExpression<out Expr/*!*/ e>
      e = dummyExpr;
   .)
   ( "-"                        (. x = t; .)
-    UnaryExpression<out e>     (. e = Expr.Binary(x, BinaryOperator.Opcode.Sub, new LiteralExpr(x, BigNum.ZERO), e); .)
+    UnaryExpression<out e>     (. e = Expr.Unary(x, UnaryOperator.Opcode.Neg, e); .)
   | NegOp                      (. x = t; .)
     UnaryExpression<out e>     (. e = Expr.Unary(x, UnaryOperator.Opcode.Not, e); .)
   | CoercionExpression<out e>
@@ -1271,7 +1285,7 @@ ArrayExpression<out Expr/*!*/ e>
 
 /*------------------------------------------------------------------------*/
 AtomExpression<out Expr/*!*/ e>
-= (. Contract.Ensures(Contract.ValueAtReturn(out e) != null); IToken/*!*/ x; int n; BigNum bn;
+= (. Contract.Ensures(Contract.ValueAtReturn(out e) != null); IToken/*!*/ x; int n; BigNum bn; BigDec bd;
      ExprSeq/*!*/ es;  VariableSeq/*!*/ ds;  Trigger trig;
      TypeVariableSeq/*!*/ typeParams;
      IdentifierExpr/*!*/ id;
@@ -1283,6 +1297,7 @@ AtomExpression<out Expr/*!*/ e>
   ( "false"           (. e = new LiteralExpr(t, false); .)
   | "true"            (. e = new LiteralExpr(t, true); .)
   | Nat<out bn>            (. e = new LiteralExpr(t, bn); .)
+  | Dec<out bd>            (. e = new LiteralExpr(t, bd); .)
   | BvLit<out bn, out n> (. e = new LiteralExpr(t, bn, n); .)
 
   | Ident<out x>            (. id = new IdentifierExpr(x, x.val);  e = id; .)
@@ -1297,6 +1312,16 @@ AtomExpression<out Expr/*!*/ e>
     "("
     Expression<out e>
     ")"                     (. e = new OldExpr(x, e); .)
+
+  | "int"                   (. x = t; .)
+    "("
+    Expression<out e>
+    ")"                     (. e = new NAryExpr(x, new ArithmeticCoercion(x, ArithmeticCoercion.CoercionType.ToInt), new ExprSeq(e)); .)
+
+  | "real"                  (. x = t; .)
+    "("
+    Expression<out e>
+    ")"                     (. e = new NAryExpr(x, new ArithmeticCoercion(x, ArithmeticCoercion.CoercionType.ToReal), new ExprSeq(e)); .)
 
   | "(" ( Expression<out e>                 (. if (e is BvBounds)
                                                  this.SemErr("parentheses around bitvector bounds " +
@@ -1477,6 +1502,23 @@ Nat<out BigNum n>
      } catch (FormatException) {
        this.SemErr("incorrectly formatted number");
        n = BigNum.ZERO;
+     }
+  .)
+  .
+
+/*------------------------------------------------------------------------*/
+Dec<out BigDec n>
+= (. string s = ""; .)
+  (
+    decimal   (. s = t.val; .)
+  |
+    float     (. s = t.val; .)
+  )
+  (. try {
+       n = BigDec.FromString(s);
+     } catch (FormatException) {
+       this.SemErr("incorrectly formatted number");
+       n = BigDec.ZERO;
      }
   .)
   .
