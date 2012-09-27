@@ -5,8 +5,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Provers", "Provers", "{B758
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BoogieDriver", "BoogieDriver\BoogieDriver.csproj", "{DAB6BAA4-7AF7-449F-96AB-F58F34D03A7A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Isabelle", "Provers\Isabelle\Isabelle.csproj", "{435D5BD0-6F62-49F8-BB24-33E2257519AD}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AbsInt", "AbsInt\AbsInt.csproj", "{0EFA3E43-690B-48DC-A72C-384A3EA7F31F}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SMTLib", "Provers\SMTLib\SMTLib.csproj", "{9B163AA3-36BC-4AFB-88AB-79BC9E97E401}"
@@ -81,32 +79,6 @@ Global
 		{DAB6BAA4-7AF7-449F-96AB-F58F34D03A7A}.z3apidebug|Mixed Platforms.Build.0 = Debug|Any CPU
 		{DAB6BAA4-7AF7-449F-96AB-F58F34D03A7A}.z3apidebug|x86.ActiveCfg = z3apidebug|x86
 		{DAB6BAA4-7AF7-449F-96AB-F58F34D03A7A}.z3apidebug|x86.Build.0 = z3apidebug|x86
-		{435D5BD0-6F62-49F8-BB24-33E2257519AD}.Checked|.NET.ActiveCfg = Checked|Any CPU
-		{435D5BD0-6F62-49F8-BB24-33E2257519AD}.Checked|Any CPU.ActiveCfg = Checked|Any CPU
-		{435D5BD0-6F62-49F8-BB24-33E2257519AD}.Checked|Any CPU.Build.0 = Checked|Any CPU
-		{435D5BD0-6F62-49F8-BB24-33E2257519AD}.Checked|Mixed Platforms.ActiveCfg = Checked|Any CPU
-		{435D5BD0-6F62-49F8-BB24-33E2257519AD}.Checked|Mixed Platforms.Build.0 = Checked|Any CPU
-		{435D5BD0-6F62-49F8-BB24-33E2257519AD}.Checked|x86.ActiveCfg = Checked|Any CPU
-		{435D5BD0-6F62-49F8-BB24-33E2257519AD}.Debug|.NET.ActiveCfg = Debug|Any CPU
-		{435D5BD0-6F62-49F8-BB24-33E2257519AD}.Debug|.NET.Build.0 = Debug|Any CPU
-		{435D5BD0-6F62-49F8-BB24-33E2257519AD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{435D5BD0-6F62-49F8-BB24-33E2257519AD}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{435D5BD0-6F62-49F8-BB24-33E2257519AD}.Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU
-		{435D5BD0-6F62-49F8-BB24-33E2257519AD}.Debug|Mixed Platforms.Build.0 = Debug|Any CPU
-		{435D5BD0-6F62-49F8-BB24-33E2257519AD}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{435D5BD0-6F62-49F8-BB24-33E2257519AD}.Release|.NET.ActiveCfg = Release|Any CPU
-		{435D5BD0-6F62-49F8-BB24-33E2257519AD}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{435D5BD0-6F62-49F8-BB24-33E2257519AD}.Release|Any CPU.Build.0 = Release|Any CPU
-		{435D5BD0-6F62-49F8-BB24-33E2257519AD}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
-		{435D5BD0-6F62-49F8-BB24-33E2257519AD}.Release|Mixed Platforms.Build.0 = Release|Any CPU
-		{435D5BD0-6F62-49F8-BB24-33E2257519AD}.Release|x86.ActiveCfg = Release|Any CPU
-		{435D5BD0-6F62-49F8-BB24-33E2257519AD}.z3apidebug|.NET.ActiveCfg = z3apidebug|Any CPU
-		{435D5BD0-6F62-49F8-BB24-33E2257519AD}.z3apidebug|Any CPU.ActiveCfg = z3apidebug|Any CPU
-		{435D5BD0-6F62-49F8-BB24-33E2257519AD}.z3apidebug|Any CPU.Build.0 = z3apidebug|Any CPU
-		{435D5BD0-6F62-49F8-BB24-33E2257519AD}.z3apidebug|Mixed Platforms.ActiveCfg = Debug|Any CPU
-		{435D5BD0-6F62-49F8-BB24-33E2257519AD}.z3apidebug|Mixed Platforms.Build.0 = Debug|Any CPU
-		{435D5BD0-6F62-49F8-BB24-33E2257519AD}.z3apidebug|x86.ActiveCfg = z3apidebug|Any CPU
-		{435D5BD0-6F62-49F8-BB24-33E2257519AD}.z3apidebug|x86.Build.0 = z3apidebug|Any CPU
 		{0EFA3E43-690B-48DC-A72C-384A3EA7F31F}.Checked|.NET.ActiveCfg = Checked|Any CPU
 		{0EFA3E43-690B-48DC-A72C-384A3EA7F31F}.Checked|Any CPU.ActiveCfg = Checked|Any CPU
 		{0EFA3E43-690B-48DC-A72C-384A3EA7F31F}.Checked|Any CPU.Build.0 = Checked|Any CPU
@@ -461,7 +433,6 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
-		{435D5BD0-6F62-49F8-BB24-33E2257519AD} = {B758C1E3-824A-439F-AA2F-0BA1143E8C8D}
 		{9B163AA3-36BC-4AFB-88AB-79BC9E97E401} = {B758C1E3-824A-439F-AA2F-0BA1143E8C8D}
 		{966DD87B-A29D-4F3C-9406-F680A61DC0E0} = {B758C1E3-824A-439F-AA2F-0BA1143E8C8D}
 	EndGlobalSection
