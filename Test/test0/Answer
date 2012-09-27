@@ -48,9 +48,13 @@ axiom x * y * z == x * y * z;
 
 axiom x * y * z * x == x * y * z;
 
-axiom x / y / z == x / (y / z);
+axiom x div y div z == x div (y div z);
 
-axiom x / y / (z / x) == x / y / z;
+axiom x div y div (z div x) == x div y div z;
+
+axiom x + y mod z == y mod z + x;
+
+axiom (x + y) mod z == x mod z + y mod z;
 
 axiom x - y - z == x - (y - z);
 

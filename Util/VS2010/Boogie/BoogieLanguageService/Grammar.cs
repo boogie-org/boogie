@@ -23,13 +23,14 @@ namespace Demo
           "bv30", "bv31", "bv32",
           "bv64",
           "call", "complete", "const",
+          "div",
           "else", "ensures", "exists", "extends",
           "false", "forall", "free", "function",
           "goto",
           "havoc",
           "if", "implementation", "int", "invariant",
           "lambda",
-          "modifies",
+          "mod", "modifies",
           "old",
           "procedure",
           "requires",
@@ -181,7 +182,7 @@ namespace Demo
         identList.Rule = MakePlusRule(identList, comma, ident);
         NewStmt.Rule = "new" + QualifiedName + GenericsPostfix.Q() + LParen + expressionList.Q() + RParen;
         NewArrStmt.Rule = "new" + QualifiedName + GenericsPostfix.Q() + LBracket + expressionList.Q() + RBracket;
-        BinOp.Rule = ToTerm("+") | "-" | "*" | "/" | "%" | "^" | "&" | "|"
+        BinOp.Rule = ToTerm("+") | "-" | "*" | "div" | "mod" | "^" | "&" | "|"
                     | "&&" | "||" | "==" | "!=" | greater | less
                     | ">=" | "<=" | "is"
                     | "=" | "+=" | "-="
@@ -376,7 +377,7 @@ namespace Demo
         #region 5. Operators precedence
         RegisterOperators(1, "<==>");
         RegisterOperators(2, "+", "-");
-        RegisterOperators(3, "*", "/", "%", "!!");
+        RegisterOperators(3, "*", "div", "mod", "!!");
         RegisterOperators(4, Associativity.Right, "^");
         RegisterOperators(5, "||");
         RegisterOperators(6, "&&");

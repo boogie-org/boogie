@@ -2157,8 +2157,8 @@ public class Errors {
 			case 68: s = "\"++\" expected"; break;
 			case 69: s = "\"+\" expected"; break;
 			case 70: s = "\"-\" expected"; break;
-			case 71: s = "\"/\" expected"; break;
-			case 72: s = "\"%\" expected"; break;
+			case 71: s = "\"div\" expected"; break;
+			case 72: s = "\"mod\" expected"; break;
 			case 73: s = "\"!\" expected"; break;
 			case 74: s = "\"\\u00ac\" expected"; break;
 			case 75: s = "\"false\" expected"; break;

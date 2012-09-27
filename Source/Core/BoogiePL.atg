@@ -1171,8 +1171,8 @@ Factor<out Expr/*!*/ e0>
 MulOp<out IToken/*!*/ x, out BinaryOperator.Opcode op>
 =                  (. Contract.Ensures(Contract.ValueAtReturn(out x) != null); x = Token.NoToken; op=BinaryOperator.Opcode.Add/*(dummy)*/; .)
   ( "*"            (. x = t; op=BinaryOperator.Opcode.Mul; .)
-  | "/"            (. x = t; op=BinaryOperator.Opcode.Div; .)
-  | "%"            (. x = t; op=BinaryOperator.Opcode.Mod; .)
+  | "div"          (. x = t; op=BinaryOperator.Opcode.Div; .)
+  | "mod"          (. x = t; op=BinaryOperator.Opcode.Mod; .)
   )
   .
 

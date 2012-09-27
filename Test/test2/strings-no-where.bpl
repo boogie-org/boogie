@@ -330,23 +330,23 @@ function #shl(int, int) returns (int);
 
 function #shr(int, int) returns (int);
 
-axiom (forall x: int, y: int :: { x % y } { x / y } x % y == x - x / y * y);
+axiom (forall x: int, y: int :: { x mod y } { x div y } x mod y == x - x div y * y);
 
-axiom (forall x: int, y: int :: { x % y } 0 <= x && 0 < y ==> 0 <= x % y && x % y < y);
+axiom (forall x: int, y: int :: { x mod y } 0 <= x && 0 < y ==> 0 <= x mod y && x mod y < y);
 
-axiom (forall x: int, y: int :: { x % y } 0 <= x && y < 0 ==> 0 <= x % y && x % y < 0 - y);
+axiom (forall x: int, y: int :: { x mod y } 0 <= x && y < 0 ==> 0 <= x mod y && x mod y < 0 - y);
 
-axiom (forall x: int, y: int :: { x % y } x <= 0 && 0 < y ==> 0 - y < x % y && x % y <= 0);
+axiom (forall x: int, y: int :: { x mod y } x <= 0 && 0 < y ==> 0 - y < x mod y && x mod y <= 0);
 
-axiom (forall x: int, y: int :: { x % y } x <= 0 && y < 0 ==> y < x % y && x % y <= 0);
+axiom (forall x: int, y: int :: { x mod y } x <= 0 && y < 0 ==> y < x mod y && x mod y <= 0);
 
-axiom (forall x: int, y: int :: { (x + y) % y } 0 <= x && 0 <= y ==> (x + y) % y == x % y);
+axiom (forall x: int, y: int :: { (x + y) mod y } 0 <= x && 0 <= y ==> (x + y) mod y == x mod y);
 
-axiom (forall x: int, y: int :: { (y + x) % y } 0 <= x && 0 <= y ==> (y + x) % y == x % y);
+axiom (forall x: int, y: int :: { (y + x) mod y } 0 <= x && 0 <= y ==> (y + x) mod y == x mod y);
 
-axiom (forall x: int, y: int :: { (x - y) % y } 0 <= x - y && 0 <= y ==> (x - y) % y == x % y);
+axiom (forall x: int, y: int :: { (x - y) mod y } 0 <= x - y && 0 <= y ==> (x - y) mod y == x mod y);
 
-axiom (forall a: int, b: int, d: int :: { a % d,b % d } 2 <= d && a % d == b % d && a < b ==> a + d <= b);
+axiom (forall a: int, b: int, d: int :: { a mod d,b mod d } 2 <= d && a mod d == b mod d && a < b ==> a + d <= b);
 
 axiom (forall i: int :: { #shl(i, 0) } #shl(i, 0) == i);
 
@@ -354,7 +354,7 @@ axiom (forall i: int, j: int :: 0 <= j ==> #shl(i, j + 1) == #shl(i, j) * 2);
 
 axiom (forall i: int :: { #shr(i, 0) } #shr(i, 0) == i);
 
-axiom (forall i: int, j: int :: 0 <= j ==> #shr(i, j + 1) == #shr(i, j) / 2);
+axiom (forall i: int, j: int :: 0 <= j ==> #shr(i, j + 1) == #shr(i, j) div 2);
 
 const unique $UnknownRef: ref;
 

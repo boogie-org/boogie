@@ -451,7 +451,7 @@ namespace Microsoft.Boogie {
                   op = " && ";
                   break;
                 case Microsoft.Boogie.BinaryOperator.Opcode.Div:
-                  op = " / ";
+                  op = " div ";
                   break;
                 case Microsoft.Boogie.BinaryOperator.Opcode.Eq:
                   op = " == ";
@@ -475,7 +475,7 @@ namespace Microsoft.Boogie {
                   op = " < ";
                   break;
                 case Microsoft.Boogie.BinaryOperator.Opcode.Mod:
-                  op = " % ";
+                  op = " mod ";
                   break;
                 case Microsoft.Boogie.BinaryOperator.Opcode.Mul:
                   op = " * ";

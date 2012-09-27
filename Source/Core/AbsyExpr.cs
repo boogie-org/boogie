@@ -1214,9 +1214,9 @@ namespace Microsoft.Boogie {
           case Opcode.Mul:
             return "*";
           case Opcode.Div:
-            return "/";
+            return "div";
           case Opcode.Mod:
-            return "%";
+            return "mod";
           case Opcode.Eq:
             return "==";
           case Opcode.Neq:
