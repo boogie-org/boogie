@@ -8,8 +8,9 @@ namespace GPUVerify {
   class UnaryBarrierInvariantDescriptor : BarrierInvariantDescriptor {
     private List<Expr> InstantiationExprs;
 
-    public UnaryBarrierInvariantDescriptor(Expr Predicate, Expr BarrierInvariant, KernelDualiser Dualiser) : 
-      base(Predicate, BarrierInvariant, Dualiser) {
+    public UnaryBarrierInvariantDescriptor(Expr Predicate, Expr BarrierInvariant,
+        QKeyValue SourceLocationInfo, KernelDualiser Dualiser, string ProcName) : 
+      base(Predicate, BarrierInvariant, SourceLocationInfo, Dualiser, ProcName) {
       InstantiationExprs = new List<Expr>();
     }
 
@@ -17,21 +18,22 @@ namespace GPUVerify {
       InstantiationExprs.Add(InstantiationExpr);
     }
 
-    internal override AssertCmd GetAssertCmd(QKeyValue Attributes) {
-      var vd = new VariableDualiser(1, null, null);
+    internal override AssertCmd GetAssertCmd() {
+      var vd = new VariableDualiser(1, Dualiser.verifier.uniformityAnalyser, ProcName);
       return new AssertCmd(
         Token.NoToken,
         vd.VisitExpr(Expr.Imp(Predicate, BarrierInvariant)),
-        Dualiser.MakeThreadSpecificAttributes(Attributes, 1));
+        Dualiser.MakeThreadSpecificAttributes(SourceLocationInfo, 1));
     }
 
     internal override List<AssumeCmd> GetInstantiationCmds() {
       var result = new List<AssumeCmd>();
       foreach (var Instantiation in InstantiationExprs) {
         foreach (var Thread in new int[] { 1, 2 }) {
-          var vd = new VariableDualiser(Thread, null, null);
+          var vd = new VariableDualiser(Thread, Dualiser.verifier.uniformityAnalyser, ProcName);
           var ThreadInstantiationExpr = vd.VisitExpr(Instantiation);
-          var ti = new ThreadInstantiator(Dualiser.verifier, ThreadInstantiationExpr, Thread);
+          var ti = new ThreadInstantiator(ThreadInstantiationExpr, Thread, 
+            Dualiser.verifier.uniformityAnalyser, ProcName);
 
           result.Add(new AssumeCmd(
             Token.NoToken,

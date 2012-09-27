@@ -9,8 +9,10 @@ namespace GPUVerify {
 
     private List<Tuple<Expr, Expr>> InstantiationExprPairs;
 
-    public BinaryBarrierInvariantDescriptor(Expr Predicate, Expr BarrierInvariant, KernelDualiser Dualiser) : 
-      base(Predicate, BarrierInvariant, Dualiser) {
+    public BinaryBarrierInvariantDescriptor(Expr Predicate, Expr BarrierInvariant,
+        QKeyValue SourceLocationInfo,
+        KernelDualiser Dualiser, string ProcName) : 
+      base(Predicate, BarrierInvariant, SourceLocationInfo, Dualiser, ProcName) {
       InstantiationExprPairs = new List<Tuple<Expr, Expr>>();
     }
 
@@ -18,13 +20,13 @@ namespace GPUVerify {
       InstantiationExprPairs.Add(new Tuple<Expr, Expr>(first, second));
     }
 
-    internal override AssertCmd GetAssertCmd(QKeyValue Attributes) {
+    internal override AssertCmd GetAssertCmd() {
       var vd = new VariableDualiser(1, null, null);
       return new AssertCmd(
         Token.NoToken,
         Expr.Imp(GPUVerifier.ThreadsInSameGroup(),
           vd.VisitExpr(Expr.Imp(Predicate, BarrierInvariant))),
-            Dualiser.MakeThreadSpecificAttributes(Attributes, 1));
+            Dualiser.MakeThreadSpecificAttributes(SourceLocationInfo, 1));
     }
 
     internal override List<AssumeCmd> GetInstantiationCmds() {
