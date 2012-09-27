@@ -6,7 +6,6 @@ using System.Text;
 using Microsoft.Boogie;
 using Microsoft.Basetypes;
 using Bpl = Microsoft.Boogie;
-using AI = Microsoft.AbstractInterpretationFramework;
 
 
 
@@ -134,7 +133,6 @@ private class BvBounds : Expr {
     {Contract.Assert(false);throw new cce.UnreachableException();}
   }
   public override void ComputeFreeVariables(GSet<object>/*!*/ freeVars) {Contract.Requires(freeVars != null); {Contract.Assert(false);throw new cce.UnreachableException();} }
-  public override AI.IExpr/*!*/ IExpr { get { Contract.Ensures(Contract.Result<AI.IExpr>()!=null); {Contract.Assert(false);throw new cce.UnreachableException();} } }
 }
 
 /*--------------------------------------------------------------------------*/

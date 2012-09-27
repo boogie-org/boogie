@@ -20,7 +20,6 @@ namespace Microsoft.Boogie {
   using System.Diagnostics;
   using System.Linq;
   using VC;
-  using AI = Microsoft.AbstractInterpretationFramework;
   using BoogiePL = Microsoft.Boogie;
 
   /* 
@@ -583,11 +582,13 @@ namespace Microsoft.Boogie {
       // ---------- Infer invariants --------------------------------------------------------
 
       // Abstract interpretation -> Always use (at least) intervals, if not specified otherwise (e.g. with the "/noinfer" switch)
-      if (CommandLineOptions.Clo.Ai.J_Intervals || CommandLineOptions.Clo.Ai.J_Trivial) {
-        Microsoft.Boogie.AbstractInterpretation.NativeAbstractInterpretation.RunAbstractInterpretation(program);
-      } else {
-        Microsoft.Boogie.AbstractInterpretation.AbstractInterpretation.RunAbstractInterpretation(program);
+      if (CommandLineOptions.Clo.UseAbstractInterpretation) {
+        if (!CommandLineOptions.Clo.Ai.J_Intervals && !CommandLineOptions.Clo.Ai.J_Trivial) {
+          // use /infer:j as the default
+          CommandLineOptions.Clo.Ai.J_Intervals = true;
+        }
       }
+      Microsoft.Boogie.AbstractInterpretation.NativeAbstractInterpretation.RunAbstractInterpretation(program);
 
       if (CommandLineOptions.Clo.LoopUnrollCount != -1) {
         program.UnrollLoops(CommandLineOptions.Clo.LoopUnrollCount);

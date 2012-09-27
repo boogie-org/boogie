@@ -13,7 +13,6 @@ namespace Microsoft.Boogie {
   using System.Diagnostics;
   using System.Collections.Generic;
   using Microsoft.Boogie.AbstractInterpretation;
-  using AI = Microsoft.AbstractInterpretationFramework;
   using System.Diagnostics.Contracts;
   using Microsoft.Basetypes;
 
@@ -38,20 +37,7 @@ namespace Microsoft.Boogie {
     public BinderExprContracts():base(null,null,null,null,null){
   }
 
-    public override Microsoft.AbstractInterpretationFramework.IFunctionSymbol FunctionSymbol {
-      get {
-        Contract.Ensures(Contract.Result<AI.IFunctionSymbol>() != null);
-        throw new NotImplementedException();
-      }
-    }
-
     public override Type ShallowType {
-      get {
-        throw new NotImplementedException();
-      }
-    }
-
-    public override Microsoft.AbstractInterpretationFramework.IExpr IExpr {
       get {
         throw new NotImplementedException();
       }
@@ -216,211 +202,6 @@ namespace Microsoft.Boogie {
           unmentionedParameters.Add(var);
       }
       return unmentionedParameters;
-    }
-
-
-    public abstract AI.IFunctionSymbol/*!*/ FunctionSymbol {
-      get;
-    }
-
-    internal sealed class AIQuantifier : AI.IFunApp {
-      internal readonly AIFunctionRep/*!*/ arg;
-      [ContractInvariantMethod]
-      void ObjectInvariant() {
-        Contract.Invariant(arg != null);
-      }
-
-      internal AIQuantifier(BinderExpr/*!*/ realQuantifier, int dummyIndex)
-        : this(new AIFunctionRep(realQuantifier, dummyIndex)) {
-        Contract.Requires(realQuantifier != null);
-      }
-      [Pure]
-      [Reads(ReadsAttribute.Reads.Nothing)]
-      public override bool Equals(object obj) {
-        if (obj == null)
-          return false;
-        if (!(obj is AIQuantifier))
-          return false;
-
-        AIQuantifier other = (AIQuantifier)obj;
-        return object.Equals(this.arg, other.arg);
-      }
-      [Pure]
-      public override int GetHashCode() {
-        return this.arg.GetHashCode();
-      }
-
-      private AIQuantifier(AIFunctionRep arg) {
-        Contract.Requires(arg != null);
-        this.arg = arg;
-        // base();
-      }
-
-      [Pure]
-      public object DoVisit(AI.ExprVisitor visitor) {
-        //Contract.Requires(visitor != null);
-        return visitor.VisitFunApp(this);
-      }
-
-      public AI.IFunctionSymbol/*!*/ FunctionSymbol {
-        get {
-          Contract.Ensures(Contract.Result<AI.IFunctionSymbol>() != null);
-          return arg.RealQuantifier.FunctionSymbol;
-        }
-      }
-
-      private IList/*?*/ argCache = null;
-      public IList/*<IExpr!>*//*!*/ Arguments {
-
-        get {
-          Contract.Ensures(Contract.Result<IList>() != null);
-
-          if (argCache == null) {
-            IList a = new ArrayList(1);
-            a.Add(arg);
-            argCache = ArrayList.ReadOnly(a);
-          }
-          return argCache;
-        }
-      }
-
-      public AI.IFunApp CloneWithArguments(IList/*<IExpr!>*/ args) {
-        //Contract.Requires(args != null);
-        Contract.Ensures(Contract.Result<AI.IFunApp>() != null);
-        Contract.Assume(args.Count == 1);
-
-        AIFunctionRep rep = args[0] as AIFunctionRep;
-        if (rep != null)
-          return new AIQuantifier(rep);
-        else
-          throw new System.NotImplementedException();
-      }
-
-      [Pure]
-      public override string ToString() {
-        Contract.Ensures(Contract.Result<string>() != null);
-        return string.Format("{0}({1})", FunctionSymbol, arg);
-      }
-    }
-
-    internal sealed class AIFunctionRep : AI.IFunction {
-      internal readonly BinderExpr/*!*/ RealQuantifier;
-      [ContractInvariantMethod]
-      void ObjectInvariant() {
-        Contract.Invariant(RealQuantifier != null);
-      }
-
-      private readonly int dummyIndex;
-
-      internal AIFunctionRep(BinderExpr realQuantifier, int dummyIndex) {
-        Contract.Requires(realQuantifier != null);
-        this.RealQuantifier = realQuantifier;
-        this.dummyIndex = dummyIndex;
-        Contract.Assert(realQuantifier.TypeParameters.Length == 0); // PR: don't know how to handle this yet
-        // base();
-      }
-      [Pure]
-      [Reads(ReadsAttribute.Reads.Nothing)]
-      public override bool Equals(object obj) {
-        if (obj == null)
-          return false;
-        if (!(obj is AIFunctionRep))
-          return false;
-
-        AIFunctionRep other = (AIFunctionRep)obj;
-        return object.Equals(this.RealQuantifier, other.RealQuantifier) && this.dummyIndex == other.dummyIndex;
-      }
-      [Pure]
-      public override int GetHashCode() {
-        return this.RealQuantifier.GetHashCode() ^ dummyIndex;
-      }
-
-      [Pure]
-      public object DoVisit(AI.ExprVisitor visitor) {
-        //Contract.Requires(visitor != null);
-        return visitor.VisitFunction(this);
-      }
-
-      public AI.IVariable/*!*/ Param {
-
-        get {
-          Contract.Ensures(Contract.Result<AI.IVariable>() != null);
-          return cce.NonNull(RealQuantifier.Dummies[dummyIndex]);
-        }
-      }
-      public AI.AIType/*!*/ ParamType {
-        get {
-          Contract.Ensures(Contract.Result<AI.AIType>() != null);
-          throw new System.NotImplementedException();
-        }
-      }
-
-      // We lazily convert to 1 dummy per quantifier representation for AIFramework
-      private AI.IExpr/*?*/ bodyCache = null;
-      public AI.IExpr/*!*/ Body {
-        get {
-          Contract.Ensures(Contract.Result<AI.IExpr>() != null);
-
-          if (bodyCache == null) {
-            int dummyi = dummyIndex;
-            int dummylen = RealQuantifier.Dummies.Length;
-            Contract.Assume(dummylen > dummyi);
-
-            // return the actual body if there are no more dummies
-            if (dummyi + 1 == dummylen)
-              bodyCache = RealQuantifier.Body.IExpr;
-            else {
-              AIQuantifier innerquant = new AIQuantifier(RealQuantifier, dummyi + 1);
-              bodyCache = innerquant;
-            }
-          }
-          return bodyCache;
-        }
-      }
-      public AI.IFunction CloneWithBody(AI.IExpr body) {
-        //Contract.Requires(body != null);
-        Contract.Ensures(Contract.Result<AI.IFunction>() != null);
-        BinderExpr realquant;
-
-        AIQuantifier innerquant = body as AIQuantifier;
-        if (innerquant == null) {
-          // new quantifier body, clone the real quantifier
-          realquant = (BinderExpr)RealQuantifier.Clone();
-          realquant.Body = BoogieFactory.IExpr2Expr(body);
-        } else {
-          if (innerquant.arg.dummyIndex > 0) {
-            realquant = innerquant.arg.RealQuantifier;
-          } else {
-            realquant = (BinderExpr)RealQuantifier.Clone();
-            VariableSeq/*!*/ newdummies = new VariableSeq();
-            newdummies.Add(Param);
-            newdummies.AddRange(innerquant.arg.RealQuantifier.Dummies);
-            realquant.Dummies = newdummies;
-            realquant.Body = innerquant.arg.RealQuantifier.Body;
-          }
-        }
-
-        return new AIFunctionRep(realquant, dummyIndex);
-      }
-      [Pure]
-      public override string ToString() {
-        Contract.Ensures(Contract.Result<string>() != null);
-        return string.Format("\\{0} :: {1}", Param, Body);
-      }
-    }
-
-    private AI.IExpr aiexprCache = null;
-    public override AI.IExpr/*!*/ IExpr {
-      get {
-        Contract.Ensures(Contract.Result<AI.IExpr>() != null);
-
-        if (TypeParameters.Length > 0)
-          return new Constant(Token.NoToken, new TypedIdent(Token.NoToken, "anon", Type.Bool));
-        if (aiexprCache == null) {
-          aiexprCache = new AIQuantifier(this, 0);
-        }
-        return aiexprCache;
-      }
     }
   }
 
@@ -678,13 +459,6 @@ namespace Microsoft.Boogie {
       Contract.Requires(dummies.Length + typeParams.Length > 0);
       //:base(tok, typeParams, dummies, null, null, body); // here for aesthetic reasons
     }
-    public override AI.IFunctionSymbol/*!*/ FunctionSymbol {
-      get {
-        Contract.Ensures(Contract.Result<AI.IFunctionSymbol>() != null);
-
-        return AI.Prop.Forall;
-      }
-    }
 
     public override Absy StdDispatch(StandardVisitor visitor) {
       //Contract.Requires(visitor != null);
@@ -725,13 +499,6 @@ namespace Microsoft.Boogie {
       Contract.Requires(tok != null);
       Contract.Requires(dummies.Length > 0);
       //:base(tok, new TypeVariableSeq(), dummies, null, null, body); // here for aesthetic reasons
-    }
-    public override AI.IFunctionSymbol/*!*/ FunctionSymbol {
-      get {
-        Contract.Ensures(Contract.Result<AI.IFunctionSymbol>() != null);
-
-        return AI.Prop.Exists;
-      }
     }
 
     public override Absy StdDispatch(StandardVisitor visitor) {
@@ -1003,15 +770,6 @@ namespace Microsoft.Boogie {
         }
 
         return mapType;
-      }
-    }
-
-    public override AI.IFunctionSymbol/*!*/ FunctionSymbol {
-
-      get {
-        Contract.Ensures(Contract.Result<AI.IFunctionSymbol>() != null);
-
-        return AI.Prop.Lambda;
       }
     }
 

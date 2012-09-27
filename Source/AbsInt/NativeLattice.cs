@@ -6,6 +6,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using System.Diagnostics.Contracts;
 using Microsoft.Boogie;
@@ -95,7 +96,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
       }
 
       if (lattice != null) {
-        Dictionary<Procedure, Implementation[]> procedureImplementations = AbstractionEngine.ComputeProcImplMap(program);
+        Dictionary<Procedure, Implementation[]> procedureImplementations = ComputeProcImplMap(program);
         ComputeProgramInvariants(program, procedureImplementations, lattice);
         if (CommandLineOptions.Clo.Ai.DebugStatistics) {
           Console.Error.WriteLine(lattice);
@@ -110,9 +111,22 @@ namespace Microsoft.Boogie.AbstractInterpretation
       }
     }
 
+    private static Dictionary<Procedure, Implementation[]> ComputeProcImplMap(Program program) {
+      Contract.Requires(program != null);
+      // Since implementations call procedures (impl. signatures) 
+      // rather than directly calling other implementations, we first
+      // need to compute which implementations implement which
+      // procedures and remember which implementations call which
+      // procedures.
+
+      return program
+            .TopLevelDeclarations
+            .Where(d => d is Implementation).Select(i => (Implementation)i)
+            .GroupBy(i => i.Proc).Select(g => g.ToArray()).ToDictionary(a => a[0].Proc);
+    }
+
     /// <summary>
-    /// Compute and apply the invariants for the program using the underlying abstract domain (using native Boogie
-    /// expressions, not the abstracted AI.Expr's).
+    /// Compute and apply the invariants for the program using the underlying abstract domain.
     /// </summary>
     public static void ComputeProgramInvariants(Program program, Dictionary<Procedure, Implementation[]> procedureImplementations, NativeLattice lattice) {
       Contract.Requires(program != null);

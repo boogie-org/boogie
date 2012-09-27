@@ -14,21 +14,21 @@ implementation SimpleLoop()
     goto test;
 
   test:  // cut point
-    assume {:inferred} 0 <= i;
-    assume {:inferred} 0 <= i;
+    assume {:inferred} 0 <= i && i < 11;
+    assume {:inferred} 0 <= i && i < 11;
     goto Then, Else;
 
   Then:
-    assume {:inferred} 0 <= i;
+    assume {:inferred} 0 <= i && i < 11;
     assume i < 10;
     i := i + 1;
-    assume {:inferred} i <= 10 && 1 <= i;
+    assume {:inferred} 1 <= i && i < 11;
     goto test;
 
   Else:
-    assume {:inferred} 0 <= i;
+    assume {:inferred} 0 <= i && i < 11;
     assume !(i < 10);
-    assume {:inferred} 10 <= i;
+    assume {:inferred} 0 <= i && i < 11;
     return;
 }
 
@@ -57,13 +57,13 @@ implementation VariableBoundLoop(n: int)
     assume {:inferred} 0 <= i;
     assume i < n;
     i := i + 1;
-    assume {:inferred} i <= n && 1 <= i;
+    assume {:inferred} 1 <= i && 1 <= n;
     goto test;
 
   Else:
     assume {:inferred} 0 <= i;
     assume !(i < n);
-    assume {:inferred} n <= i && 0 <= i;
+    assume {:inferred} 0 <= i;
     return;
 }
 
@@ -104,7 +104,7 @@ implementation FooToo()
     i := 3 * (i + 1);
     i := 1 + 3 * i;
     i := (i + 1) * 3;
-    assume {:inferred} 1 / 3 * i == 155;
+    assume {:inferred} i == 465;
     return;
 }
 
@@ -125,7 +125,7 @@ implementation FooTooStepByStep()
     i := 3 * (i + 1);
     i := 1 + 3 * i;
     i := (i + 1) * 3;
-    assume {:inferred} 1 / 3 * i == 155;
+    assume {:inferred} i == 465;
     return;
 }
 
@@ -212,7 +212,7 @@ implementation p()
   start:
     assume {:inferred} true;
     assume x < y;
-    assume {:inferred} x + 1 <= y;
+    assume {:inferred} true;
     return;
 }
 
@@ -235,18 +235,18 @@ implementation p()
   A:
     assume {:inferred} true;
     assume x < y;
-    assume {:inferred} x + 1 <= y;
+    assume {:inferred} true;
     goto B, C;
 
   B:
-    assume {:inferred} x + 1 <= y;
+    assume {:inferred} true;
     x := x * x;
     assume {:inferred} true;
     return;
 
   C:
-    assume {:inferred} x + 1 <= y;
-    assume {:inferred} x + 1 <= y;
+    assume {:inferred} true;
+    assume {:inferred} true;
     return;
 }
 
@@ -275,19 +275,19 @@ implementation p()
   B:
     assume {:inferred} -1 <= x;
     assume x < y;
-    assume {:inferred} x + 1 <= y && -1 <= x;
+    assume {:inferred} -1 <= x && 0 <= y;
     goto C, E;
 
   C:
-    assume {:inferred} x + 1 <= y && -1 <= x;
+    assume {:inferred} -1 <= x && 0 <= y;
     x := x * x;
-    assume {:inferred} 0 <= y;
+    assume {:inferred} x < 2 && 0 <= y;
     goto D, E;
 
   D:
-    assume {:inferred} 0 <= y;
+    assume {:inferred} x < 2 && 0 <= y;
     x := y;
-    assume {:inferred} x == y && 0 <= y;
+    assume {:inferred} 0 <= x && 0 <= y;
     return;
 
   E:
@@ -333,8 +333,8 @@ implementation p()
     goto D;
 
   D:
-    assume {:inferred} 9 <= x && x <= 10;
-    assume {:inferred} 9 <= x && x <= 10;
+    assume {:inferred} 9 <= x && x < 11;
+    assume {:inferred} 9 <= x && x < 11;
     return;
 }
 
@@ -363,13 +363,13 @@ implementation p()
   B:
     assume {:inferred} true;
     assume x <= 0;
-    assume {:inferred} x <= 0;
+    assume {:inferred} x < 1;
     goto D;
 
   C:
     assume {:inferred} true;
     assume y <= 0;
-    assume {:inferred} y <= 0;
+    assume {:inferred} y < 1;
     goto D;
 
   D:
@@ -402,7 +402,7 @@ implementation foo()
     i := i + 1;
     i := i + 1;
     j := j + 1;
-    assume {:inferred} i == j + 4 && j == 1 && n == 0;
+    assume {:inferred} i == 5 && j == 1 && n == 0;
     return;
 }
 
@@ -425,20 +425,20 @@ implementation foo()
     assume n >= 4;
     i := 0;
     j := i + 1;
-    assume {:inferred} j == i + 1 && i == 0 && 4 <= n;
+    assume {:inferred} i == 0 && j == 1 && 4 <= n;
     goto exit, loop0;
 
   loop0:  // cut point
-    assume {:inferred} 4 <= n && 0 <= i && j == i + 1;
+    assume {:inferred} 0 <= i && 1 <= j && 4 <= n;
     assume j <= n;
     i := i + 1;
     j := j + 1;
-    assume {:inferred} j <= n + 1 && j == i + 1 && 1 <= i && 4 <= n;
+    assume {:inferred} 1 <= i && 2 <= j && 4 <= n;
     goto loop0, exit;
 
   exit:
-    assume {:inferred} j <= n + 1 && 4 <= n && 0 <= i && j == i + 1;
-    assume {:inferred} j <= n + 1 && 4 <= n && 0 <= i && j == i + 1;
+    assume {:inferred} 0 <= i && 1 <= j && 4 <= n;
+    assume {:inferred} 0 <= i && 1 <= j && 4 <= n;
     return;
 }
 
@@ -446,5 +446,10 @@ implementation foo()
 
 Boogie program verifier finished with 0 verified, 0 errors
 -------------------- Bound.bpl -------------------- 
+Bound.bpl(24,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Bound.bpl(8,1): start
+    Bound.bpl(14,1): LoopHead
+    Bound.bpl(22,1): AfterLoop
 
-Boogie program verifier finished with 1 verified, 0 errors
+Boogie program verifier finished with 0 verified, 1 error

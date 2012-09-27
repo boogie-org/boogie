@@ -339,15 +339,6 @@ namespace Microsoft.Boogie.VCExprAST {
 
     ///////////////////////////////////////////////////////////////////////////////////
 
-    public override AIVariableExpr VisitAIVariableExpr(AIVariableExpr node) {
-      //Contract.Requires(node != null);
-      Contract.Ensures(Contract.Result<AIVariableExpr>() != null);
-      Contract.Assert(false);
-      throw new cce.UnreachableException();
-    }
-
-    ///////////////////////////////////////////////////////////////////////////////////
-
     public override Expr VisitIdentifierExpr(IdentifierExpr node) {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Expr>() != null);

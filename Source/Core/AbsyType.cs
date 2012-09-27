@@ -13,7 +13,6 @@ namespace Microsoft.Boogie {
   using System.Diagnostics;
   using System.Collections.Generic;
   using Microsoft.Boogie.AbstractInterpretation;
-  using AI = Microsoft.AbstractInterpretationFramework;
   using System.Diagnostics.Contracts;
 
   //=====================================================================
