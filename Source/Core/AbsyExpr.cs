@@ -2006,9 +2006,10 @@ namespace Microsoft.Boogie {
     public virtual Type Typecheck(ref ExprSeq args, out TypeParamInstantiation tpInstantiation, TypecheckingContext tc) {
       //Contract.Requires(tc != null);
       //Contract.Requires(args != null);
-      Contract.Assert(args.Length == 1);
       Contract.Ensures(args != null);
       Contract.Ensures(Contract.ValueAtReturn(out tpInstantiation) != null);
+
+      Contract.Assert(args.Length == 1);
 
       tpInstantiation = SimpleTypeParamInstantiation.EMPTY;
 
