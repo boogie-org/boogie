@@ -148,6 +148,7 @@
     <Compile Include="..\version.cs">
       <Link>version.cs</Link>
     </Compile>
+    <Compile Include="BigDec.cs" />
     <Compile Include="BigNum.cs" />
     <Compile Include="Rational.cs" />
     <Compile Include="Set.cs" />

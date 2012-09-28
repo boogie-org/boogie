@@ -15,6 +15,8 @@ using Microsoft.Z3;
 
 namespace Microsoft.Boogie.Z3
 {
+    using System.Numerics.BigInteger;
+
     public class Z3apiExprLineariser : IVCExprVisitor<Term, LineariserOptions>
     {
         private Z3apiOpLineariser opLineariser = null;
@@ -110,7 +112,7 @@ namespace Microsoft.Boogie.Z3
             return z3.MkSub(unwrapChildren);
           }
 
-          if (op == VCExpressionGenerator.DivOp) {
+          if (op == VCExpressionGenerator.DivOp || op == VCExpressionGenerator.RealDivOp) {
             return z3.MkDiv(unwrapChildren[0], unwrapChildren[1]);
           }
 
@@ -126,6 +128,14 @@ namespace Microsoft.Boogie.Z3
             return z3.MkIte(unwrapChildren[0], unwrapChildren[1], unwrapChildren[2]);
           }
 
+          if (op == VCExpressionGenerator.ToIntOp) {
+            return z3.MkToInt(unwrapChildren[0]);
+          }
+
+          if (op == VCExpressionGenerator.ToRealOp) {
+            return z3.MkToReal(unwrapChildren[0]);
+          }
+
           throw new Exception("unhandled boogie operator");
         }
 
@@ -139,11 +149,25 @@ namespace Microsoft.Boogie.Z3
             else if (node == VCExpressionGenerator.False)
                 return cm.z3.MkFalse();
             else if (node is VCExprIntLit)
-              return cm.z3.MkNumeral(((VCExprIntLit)node).Val.ToInt, cm.z3.MkIntSort());
-            else
-            {
-                Contract.Assert(false);
-                throw new cce.UnreachableException();
+                return cm.z3.MkNumeral(((VCExprIntLit)node).Val.ToInt, cm.z3.MkIntSort());
+            else if (node is VCExprRealLit) {
+                string m = ((VCExprRealLit)node).Val.Mantissa.ToString();
+                BigInteger e = ((VCExprRealLit)node).Val.Exponent;
+                string f = BigInteger.Pow(10, e.Abs);
+
+                if (e == 0) {
+                    return cm.z3.MkNumeral(m, cm.z3.MkRealSort());
+                }
+                else if (((VCExprRealLit)node).Val.Exponent > 0) {
+                    return cm.z3.MkMul(cm.z3.MkNumeral(m, cm.z3.MkRealSort()), cm.z3.MkNumeral(f, cm.z3.MkRealSort()));
+                }
+                else {
+                    return cm.z3.MkDiv(cm.z3.MkNumeral(m, cm.z3.MkRealSort()), cm.z3.MkNumeral(f, cm.z3.MkRealSort()));
+                }
+            }
+            else {
+              Contract.Assert(false);
+              throw new cce.UnreachableException();
             }
         }
 
@@ -548,6 +572,18 @@ namespace Microsoft.Boogie.Z3
                 return WriteApplication(node.Op, node, options);
             }
 
+            public Term VisitRealDivOp(VCExprNAry node, LineariserOptions options) {
+              Contract.Requires(options != null);
+              Contract.Requires(node != null);
+              return WriteApplication(node.Op, node, options);
+            }
+
+            public Term VisitPowOp(VCExprNAry node, LineariserOptions options) {
+              Contract.Requires(options != null);
+              Contract.Requires(node != null);
+              return WriteApplication(node.Op, node, options);
+            }
+
             public Term VisitLtOp(VCExprNAry node, LineariserOptions options)
             {
                 Contract.Requires(options != null);
@@ -588,6 +624,18 @@ namespace Microsoft.Boogie.Z3
                 Contract.Requires(options != null);
                 Contract.Requires(node != null);
                 return WriteApplication(node.Op, node, options);
+            }
+
+            public Term VisitToIntOp(VCExprNAry node, LineariserOptions options) {
+              Contract.Requires(options != null);
+              Contract.Requires(node != null);
+              return WriteApplication(node.Op, node, options);
+            }
+
+            public Term VisitToRealOp(VCExprNAry node, LineariserOptions options) {
+              Contract.Requires(options != null);
+              Contract.Requires(node != null);
+              return WriteApplication(node.Op, node, options);
             }
 
             public Term VisitBoogieFunctionOp(VCExprNAry node, LineariserOptions options)

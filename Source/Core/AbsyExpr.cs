@@ -13,8 +13,6 @@ namespace Microsoft.Boogie {
   using System.Diagnostics;
   using System.Collections.Generic;
   using Microsoft.Boogie.AbstractInterpretation;
-  using AI = Microsoft.AbstractInterpretationFramework;
-  using Microsoft.AbstractInterpretationFramework;//DANGER: Added?
   using System.Diagnostics.Contracts;
   using Microsoft.Basetypes;
 
@@ -252,6 +250,18 @@ namespace Microsoft.Boogie {
       Contract.Ensures(Contract.Result<NAryExpr>() != null);
       return Binary(BinaryOperator.Opcode.Mod, e1, e2);
     }
+    public static NAryExpr RealDiv(Expr e1, Expr e2) {
+      Contract.Requires(e2 != null);
+      Contract.Requires(e1 != null);
+      Contract.Ensures(Contract.Result<NAryExpr>() != null);
+      return Binary(BinaryOperator.Opcode.RealDiv, e1, e2);
+    }
+    public static NAryExpr Pow(Expr e1, Expr e2) {
+      Contract.Requires(e2 != null);
+      Contract.Requires(e1 != null);
+      Contract.Ensures(Contract.Result<NAryExpr>() != null);
+      return Binary(BinaryOperator.Opcode.Pow, e1, e2);
+    }
     public static NAryExpr Subtype(Expr e1, Expr e2) {
       Contract.Requires(e2 != null);
       Contract.Requires(e1 != null);
@@ -282,6 +292,10 @@ namespace Microsoft.Boogie {
       return new LiteralExpr(Token.NoToken, BigNum.FromInt(value));
     }
     public static LiteralExpr Literal(BigNum value) {
+      Contract.Ensures(Contract.Result<LiteralExpr>() != null);
+      return new LiteralExpr(Token.NoToken, value);
+    }
+    public static LiteralExpr Literal(BigDec value) {
       Contract.Ensures(Contract.Result<LiteralExpr>() != null);
       return new LiteralExpr(Token.NoToken, value);
     }
@@ -379,21 +393,6 @@ namespace Microsoft.Boogie {
       args.Add(subexpr);
       return new NAryExpr(x, new TypeCoercion(x, type), args);
     }
-
-
-    /// <summary>
-    /// This property returns a representation for the expression suitable for use
-    /// by the AIFramework.  Usually, the property just returns "this", but not
-    /// every Expr is an AI.IExpr (besides, AI.IExpr is to be thought of as an
-    /// abstract interface--any class that implements AI.IExpr is supposed to
-    /// implement some proper subinterface of AI.IExpr).
-    /// The converse operations of this property are found in AbsInt\ExprFactories.ssc.
-    /// </summary>
-    public abstract AI.IExpr/*!*/ IExpr {
-      [Peer]
-      get;
-    }
-
   }
   [ContractClassFor(typeof(Expr))]
   public abstract class ExprContracts : Expr {
@@ -415,17 +414,10 @@ namespace Microsoft.Boogie {
         throw new NotImplementedException();
       }
     }
-    public override Microsoft.AbstractInterpretationFramework.IExpr IExpr {
-      get {
-        Contract.Ensures(Contract.Result<Microsoft.AbstractInterpretationFramework.IExpr>() != null);
-
-        throw new NotImplementedException();
-      }
-    }
   }
 
-  public class LiteralExpr : Expr, AI.IFunApp {
-    public readonly object/*!*/ Val;  // false, true, a BigNum, or a BvConst
+  public class LiteralExpr : Expr {
+    public readonly object/*!*/ Val;  // false, true, a BigNum, a BigDec, or a BvConst
     [ContractInvariantMethod]
     void ObjectInvariant() {
       Contract.Invariant(Val != null);
@@ -442,6 +434,7 @@ namespace Microsoft.Boogie {
       Val = b;
       Type = Type.Bool;
     }
+
     /// <summary>
     /// Creates a literal expression for the integer value "v".
     /// </summary>
@@ -452,6 +445,18 @@ namespace Microsoft.Boogie {
       Contract.Requires(tok != null);
       Val = v;
       Type = Type.Int;
+    }
+
+    /// <summary>
+    /// Creates a literal expression for the real value "v".
+    /// </summary>
+    /// <param name="tok"></param>
+    /// <param name="v"></param>
+    public LiteralExpr(IToken/*!*/ tok, BigDec v)
+      : base(tok) {
+      Contract.Requires(tok != null);
+      Val = v;
+      Type = Type.Real;
     }
 
     /// <summary>
@@ -511,6 +516,8 @@ namespace Microsoft.Boogie {
           return Type.Bool;
         } else if (Val is BigNum) {
           return Type.Int;
+        } else if (Val is BigDec) {
+          return Type.Real;
         } else if (Val is BvConst) {
           return Type.GetBvType(((BvConst)Val).Bits);
         } else {
@@ -530,12 +537,6 @@ namespace Microsoft.Boogie {
     public bool IsTrue {
       get {
         return Val is bool && ((bool)Val) == true;
-      }
-    }
-    public override AI.IExpr/*!*/ IExpr {
-      get {
-        Contract.Ensures(Contract.Result<AI.IExpr>() != null);
-        return this;
       }
     }
 
@@ -559,6 +560,19 @@ namespace Microsoft.Boogie {
       }
     }
 
+    public bool isBigDec {
+      get {
+        return Val is BigDec;
+      }
+    }
+
+    public BigDec asBigDec {
+      get {
+        Contract.Assert(isBigDec);
+        return (BigDec)cce.NonNull(Val);
+      }
+    }
+
     public bool isBool {
       get {
         return Val is bool;
@@ -570,64 +584,6 @@ namespace Microsoft.Boogie {
         Contract.Assert(isBool);
         return (bool)cce.NonNull(Val);
       }
-    }
-
-    public AI.IFunctionSymbol/*!*/ FunctionSymbol {
-      get {
-        Contract.Ensures(Contract.Result<IFunctionSymbol>() != null);
-
-        if (Val is bool) {
-          if ((bool)Val) {
-            return AI.Prop.True;
-          } else {
-            return AI.Prop.False;
-          }
-        } else if (Val is BigNum) {
-          return AI.Int.Const((BigNum)Val);
-        } else if (Val is BvConst) {
-          return AI.Bv.Const(((BvConst)Val).Value, ((BvConst)Val).Bits);
-        } else {
-          {
-            Contract.Assert(false);
-            throw new cce.UnreachableException();
-          } // like, where did this value come from?!
-        }
-      }
-    }
-    public IList/*<AI.IExpr!>*//*!*/ Arguments {
-      get {
-        Contract.Ensures(Contract.Result<IList>() != null);
-
-        return ArrayList.ReadOnly(new AI.IExpr[0]);
-      }
-    }
-    public Microsoft.AbstractInterpretationFramework.IFunApp CloneWithArguments(IList/*<AI.IExpr!>*/ args) {
-      //Contract.Requires(args != null);
-      Contract.Ensures(Contract.Result<Microsoft.AbstractInterpretationFramework.IFunApp>() != null);
-      Contract.Assert(args.Count == 0);
-      return this;
-    }
-    public AI.AIType/*!*/ AIType {
-      get {
-        Contract.Requires(AIType != null);
-        if (Val is bool) {
-          return AI.Prop.Type;
-        } else if (Val is BigNum) {
-          return AI.Int.Type;
-        } else if (Val is BvConst) {
-          return AI.Bv.Type;
-        } else {
-          {
-            Contract.Assert(false);
-            throw new cce.UnreachableException();
-          } // like, where did this value come from?!
-        }
-      }
-    }
-    [Pure]
-    public object DoVisit(AI.ExprVisitor visitor) {
-      //Contract.Requires(visitor != null);
-      return visitor.VisitFunApp(this);
     }
 
     public override Absy StdDispatch(StandardVisitor visitor) {
@@ -685,86 +641,6 @@ namespace Microsoft.Boogie {
       unchecked {
         return Value.GetHashCode() ^ Bits;
       }
-    }
-  }
-
-  public class AIVariableExpr : Expr {
-
-    public string Name;     // identifier symbol
-    public AI.IVariable/*!*/ Decl;   // identifier declaration
-    [ContractInvariantMethod]
-    void ObjectInvariant() {
-      Contract.Invariant(Decl != null);
-    }
-
-
-    /// <summary>
-    /// Creates an unresolved identifier expression.
-    /// </summary>
-    /// <param name="tok"></param>
-    /// <param name="name"></param>
-    public AIVariableExpr(IToken/*!*/ tok, AI.IVariable/*!*/ var)
-      : base(tok) {
-      Contract.Requires(tok != null);
-      Contract.Requires(var != null);
-      Name = var.ToString();
-      Decl = var;
-    }
-    [Pure]
-    [Reads(ReadsAttribute.Reads.Nothing)]
-    public override bool Equals(object obj) {
-      if (obj == null)
-        return false;
-      if (!(obj is AIVariableExpr))
-        return false;
-
-      AIVariableExpr other = (AIVariableExpr)obj;
-      return object.Equals(this.Name, other.Name) && object.Equals(this.Decl, other.Decl);
-    }
-    [Pure]
-    public override int GetHashCode() {
-      int h = this.Name == null ? 0 : this.Name.GetHashCode();
-      h ^= this.Decl == null ? 0 : this.Decl.GetHashCode();
-      return h;
-    }
-    public override void Emit(TokenTextWriter stream, int contextBindingStrength, bool fragileContext) {
-      //Contract.Requires(stream != null);
-      if (CommandLineOptions.Clo.PrintWithUniqueASTIds) {
-        stream.Write("{0}^^", this.Decl == null ? "NoDecl" : "h" + this.Decl.GetHashCode());
-      }
-      stream.Write(this, "{0}", this.Name);
-    }
-    public override void Resolve(ResolutionContext rc) {
-      //Contract.Requires(rc != null);
-    }
-    public override void ComputeFreeVariables(Set /*Variable*/ freeVars) {
-      //Contract.Requires(freeVars != null);
-      if (Decl is Variable) {
-        freeVars.Add((Variable)Decl);
-      }
-    }
-    public override void Typecheck(TypecheckingContext tc) {
-      //Contract.Requires(tc != null);
-      throw new System.NotImplementedException();
-    }
-    public override Type/*!*/ ShallowType {
-      get {
-        Contract.Ensures(Contract.Result<Type>() != null);
-        throw new System.NotImplementedException();
-      }
-    }
-    public override AI.IExpr/*!*/ IExpr {
-      get {
-        Contract.Ensures(Contract.Result<AI.IExpr>() != null);
-
-        return Decl;
-      }
-    }
-
-    public override Absy StdDispatch(StandardVisitor visitor) {
-      //Contract.Requires(visitor != null);
-      Contract.Ensures(Contract.Result<Absy>() != null);
-      return visitor.VisitAIVariableExpr(this);
     }
   }
 
@@ -894,12 +770,11 @@ namespace Microsoft.Boogie {
       }
     }
 
-    public sealed class ConstantFunApp : AI.IFunApp {
+    public sealed class ConstantFunApp {
       private IdentifierExpr/*!*/ identifierExpr;
       [ContractInvariantMethod]
       void ObjectInvariant() {
         Contract.Invariant(identifierExpr != null);
-        Contract.Invariant(symbol != null);
         Contract.Invariant(emptyArgs != null);
       }
 
@@ -907,14 +782,6 @@ namespace Microsoft.Boogie {
         get {
           Contract.Requires(IdentifierExpr != null);
           return identifierExpr;
-        }
-      }
-
-      private AI.IFunctionSymbol/*!*/ symbol;
-      public AI.IFunctionSymbol/*!*/ FunctionSymbol {
-        get {
-          Contract.Ensures(Contract.Result<IFunctionSymbol>() != null);
-          return symbol;
         }
       }
 
@@ -926,43 +793,13 @@ namespace Microsoft.Boogie {
         }
       }
 
-      public AI.IFunApp CloneWithArguments(IList newargs) {
-        //Contract.Requires(newargs != null);
-        Contract.Ensures(Contract.Result<AI.IFunApp>() != null);
-        return this;
-      }
-
-      [Pure]
-      public object DoVisit(AI.ExprVisitor visitor) {
-        //Contract.Requires(visitor != null);
-        return visitor.VisitFunApp(this);
-      }
-
       public ConstantFunApp(IdentifierExpr ie, Constant c) {
         Contract.Requires(c != null);
         Contract.Requires(ie != null);
         this.identifierExpr = ie;
-        this.symbol =
-            new AI.NamedSymbol(c.TypedIdent.Name, BoogieFactory.Type2AIType(c.TypedIdent.Type));
         // base();
       }
 
-    }
-    private AI.IExpr iexprCache = null;
-    public override AI.IExpr/*!*/ IExpr {
-      get {
-        Contract.Ensures(Contract.Result<IExpr>() != null);
-
-        if (iexprCache == null) {
-          if (Decl is Constant)
-            iexprCache = new ConstantFunApp(this, (Constant)Decl);
-          else {
-            Contract.Assume(this.Decl != null);
-            iexprCache = Decl;
-          }
-        }
-        return iexprCache;
-      }
     }
 
     public override Absy StdDispatch(StandardVisitor visitor) {
@@ -972,7 +809,7 @@ namespace Microsoft.Boogie {
     }
   }
 
-  public class OldExpr : Expr, AI.IFunApp // HACK
+  public class OldExpr : Expr
   {
     public Expr/*!*/ Expr;
     [ContractInvariantMethod]
@@ -1030,67 +867,6 @@ namespace Microsoft.Boogie {
         return Expr.ShallowType;
       }
     }
-    public override AI.IExpr/*!*/ IExpr {
-      get {
-        Contract.Ensures(Contract.Result<IExpr>() != null);
-
-        // Put back these lines when "HACK" removed
-        //            // An Old expression has no AI.IExpr representation
-        //           {Contract.Assert(false);throw new cce.UnreachableException();}
-        return this;  // HACK
-      }
-    }
-    [Pure]
-    public object DoVisit(AI.ExprVisitor visitor) {
-      //Contract.Requires(visitor != null);
-      return visitor.VisitFunApp(this);
-    }
-    public AI.IFunApp CloneWithArguments(IList/*<IExpr!>*/ args) {
-      //Contract.Requires(args != null);
-      Contract.Ensures(Contract.Result<AI.IFunApp>() != null);
-      Contract.Assume(args.Count == 1);
-      AI.IExpr/*!*/ iexpr = (AI.IExpr)cce.NonNull(args[0]);
-      return new OldExpr(Token.NoToken, BoogieFactory.IExpr2Expr(iexpr));
-    }
-    private IList/*?*/ argCache = null;
-    public IList/*<IExpr!*//*!*/ Arguments {
-
-      get {
-        Contract.Ensures(Contract.Result<IList>() != null);
-
-        if (argCache == null) {
-          IList l = new ArrayList(1);
-          l.Add(Expr.IExpr);
-          argCache = ArrayList.ReadOnly(l);
-        }
-        return argCache;
-      }
-    }
-    private sealed class OldFunctionSymbol : AI.IFunctionSymbol {
-      private static readonly AI.AIType/*!*/ aitype = new AI.FunctionType(AI.Value.Type, AI.Value.Type);
-
-      public AI.AIType/*!*/ AIType {
-        get {
-          Contract.Ensures(Contract.Result<AIType>() != null);
-          return aitype;
-        }
-      }
-      private OldFunctionSymbol() {
-      }
-      internal static readonly OldFunctionSymbol/*!*/ Sym = new OldFunctionSymbol();
-
-      [Pure]
-      public override string ToString() {
-        Contract.Ensures(Contract.Result<string>() != null);
-        return "old";
-      }
-    }
-    public AI.IFunctionSymbol/*!*/ FunctionSymbol {
-      get {
-        Contract.Ensures(Contract.Result<IFunctionSymbol>() != null);
-        return OldFunctionSymbol.Sym;
-      }
-    }
 
     public override Absy StdDispatch(StandardVisitor visitor) {
       //Contract.Requires(visitor != null);
@@ -1106,6 +882,7 @@ namespace Microsoft.Boogie {
     T Visit(MapSelect/*!*/ mapSelect);
     T Visit(MapStore/*!*/ mapStore);
     T Visit(TypeCoercion/*!*/ typeCoercion);
+    T Visit(ArithmeticCoercion/*!*/ arithCoercion);
     T Visit(IfThenElse/*!*/ ifThenElse);
   }
   [ContractClassFor(typeof(IAppliableVisitor<>))]
@@ -1140,6 +917,11 @@ namespace Microsoft.Boogie {
 
     public T Visit(TypeCoercion typeCoercion) {
       Contract.Requires(typeCoercion != null);
+      throw new NotImplementedException();
+    }
+
+    public T Visit(ArithmeticCoercion arithCoercion) {
+      Contract.Requires(arithCoercion != null);
       throw new NotImplementedException();
     }
 
@@ -1198,10 +980,6 @@ namespace Microsoft.Boogie {
     /// </summary>
     Type/*!*/ ShallowType(ExprSeq/*!*/ args);
 
-    AI.IFunctionSymbol/*!*/ AIFunctionSymbol {
-      get;
-    }
-
     T Dispatch<T>(IAppliableVisitor<T>/*!*/ visitor);
   }
   [ContractClassFor(typeof(IAppliable))]
@@ -1250,13 +1028,6 @@ namespace Microsoft.Boogie {
       throw new NotImplementedException();
     }
 
-    public IFunctionSymbol AIFunctionSymbol {
-      get {
-        Contract.Ensures(Contract.Result<IFunctionSymbol>() != null);
-        throw new NotImplementedException();
-      }
-    }
-
     public T Dispatch<T>(IAppliableVisitor<T> visitor) {
       Contract.Requires(visitor != null);
       throw new NotImplementedException();
@@ -1291,6 +1062,7 @@ namespace Microsoft.Boogie {
     }
 
     public enum Opcode {
+      Neg,
       Not
     };
     private Opcode op;
@@ -1326,21 +1098,10 @@ namespace Microsoft.Boogie {
         Contract.Ensures(Contract.Result<string>() != null);
 
         switch (this.op) {
+          case Opcode.Neg:
+            return "-";
           case Opcode.Not:
             return "!";
-        }
-        System.Diagnostics.Debug.Fail("unknown unary operator: " + op.ToString());
-        throw new Exception();
-      }
-    }
-
-    public AI.IFunctionSymbol/*!*/ AIFunctionSymbol {
-      get {
-        Contract.Ensures(Contract.Result<IFunctionSymbol>() != null);
-
-        switch (this.op) {
-          case Opcode.Not:
-            return AI.Prop.Not;
         }
         System.Diagnostics.Debug.Fail("unknown unary operator: " + op.ToString());
         throw new Exception();
@@ -1353,7 +1114,7 @@ namespace Microsoft.Boogie {
       stream.SetToken(ref this.tok);
       Contract.Assert(args.Length == 1);
       // determine if parens are needed
-      int opBindingStrength = 0x60;
+      int opBindingStrength = 0x70;
       bool parensNeeded = opBindingStrength < contextBindingStrength ||
         (fragileContext && opBindingStrength == contextBindingStrength);
 
@@ -1391,6 +1152,14 @@ namespace Microsoft.Boogie {
       tpInstantiation = SimpleTypeParamInstantiation.EMPTY;
       Type arg0type = cce.NonNull(cce.NonNull(args[0]).Type);
       switch (this.op) {
+        case Opcode.Neg:
+          if (arg0type.Unify(Type.Int)) {
+            return Type.Int;
+          }
+          if (arg0type.Unify(Type.Real)) {
+            return Type.Real;
+          }
+          goto BAD_TYPE;
         case Opcode.Not:
           if (arg0type.Unify(Type.Bool)) {
             return Type.Bool;
@@ -1411,6 +1180,8 @@ namespace Microsoft.Boogie {
       //Contract.Requires(args != null);
       Contract.Ensures(Contract.Result<Type>() != null);
       switch (this.op) {
+        case Opcode.Neg:
+          return cce.NonNull(cce.NonNull(args[0]).Type);
         case Opcode.Not:
           return Type.Bool;
         default: {
@@ -1425,6 +1196,14 @@ namespace Microsoft.Boogie {
         return null;
       }
       switch (this.op) {
+        case Opcode.Neg:
+          if (argument is BigNum) {
+            return -((BigNum)argument);
+          }
+          if (argument is BigDec) {
+            return -((BigDec)argument);
+          }
+          break;
         case Opcode.Not:
           if (argument is bool) {
             return !((bool)argument);
@@ -1453,6 +1232,8 @@ namespace Microsoft.Boogie {
       Mul,
       Div,
       Mod,
+      RealDiv,
+      Pow,
       Eq,
       Neq,
       Gt,
@@ -1506,9 +1287,13 @@ namespace Microsoft.Boogie {
           case Opcode.Mul:
             return "*";
           case Opcode.Div:
-            return "/";
+            return "div";
           case Opcode.Mod:
-            return "%";
+            return "mod";
+          case Opcode.RealDiv:
+            return "/";
+          case Opcode.Pow:
+            return "**";
           case Opcode.Eq:
             return "==";
           case Opcode.Neq:
@@ -1531,50 +1316,6 @@ namespace Microsoft.Boogie {
             return "<==>";
           case Opcode.Subtype:
             return "<:";
-        }
-        System.Diagnostics.Debug.Fail("unknown binary operator: " + op.ToString());
-        throw new Exception();
-      }
-    }
-
-    public AI.IFunctionSymbol/*!*/ AIFunctionSymbol {
-      get {
-        Contract.Ensures(Contract.Result<IFunctionSymbol>() != null);
-
-        switch (this.op) {
-
-          case Opcode.Add:
-            return AI.Int.Add;
-          case Opcode.Sub:
-            return AI.Int.Sub;
-          case Opcode.Mul:
-            return AI.Int.Mul;
-          case Opcode.Div:
-            return AI.Int.Div;
-          case Opcode.Mod:
-            return AI.Int.Mod;
-          case Opcode.Eq:
-            return AI.Value.Eq;
-          case Opcode.Neq:
-            return AI.Value.Neq;
-          case Opcode.Gt:
-            return AI.Int.Greater;
-          case Opcode.Ge:
-            return AI.Int.AtLeast;
-          case Opcode.Lt:
-            return AI.Int.Less;
-          case Opcode.Le:
-            return AI.Int.AtMost;
-          case Opcode.And:
-            return AI.Prop.And;
-          case Opcode.Or:
-            return AI.Prop.Or;
-          case Opcode.Imp:
-            return AI.Prop.Implies;
-          case Opcode.Iff:
-            return AI.Value.Eq;
-          case Opcode.Subtype:
-            return AI.Value.Subtype;
         }
         System.Diagnostics.Debug.Fail("unknown binary operator: " + op.ToString());
         throw new Exception();
@@ -1607,6 +1348,14 @@ namespace Microsoft.Boogie {
           break;
         case Opcode.Mod:
           opBindingStrength = 0x50;
+          fragileRightContext = true;
+          break;
+        case Opcode.RealDiv:
+          opBindingStrength = 0x50;
+          fragileRightContext = true;
+          break;
+        case Opcode.Pow:
+          opBindingStrength = 0x60;
           fragileRightContext = true;
           break;
         case Opcode.Eq:
@@ -1662,6 +1411,8 @@ namespace Microsoft.Boogie {
           case Opcode.Mul:
           case Opcode.Div:
           case Opcode.Mod:
+          case Opcode.RealDiv:
+          case Opcode.Pow:
           case Opcode.Neq:  // Neq is allowed, but not Eq
           case Opcode.Subtype:
             // These are fine
@@ -1713,10 +1464,28 @@ namespace Microsoft.Boogie {
         case Opcode.Add:
         case Opcode.Sub:
         case Opcode.Mul:
+          if (arg0type.Unify(Type.Int) && arg1type.Unify(Type.Int)) {
+            return Type.Int;
+          }
+          if (arg0type.Unify(Type.Real) && arg1type.Unify(Type.Real)) {
+            return Type.Real;
+          }
+          goto BAD_TYPE;
         case Opcode.Div:
         case Opcode.Mod:
           if (arg0type.Unify(Type.Int) && arg1type.Unify(Type.Int)) {
             return Type.Int;
+          }
+          goto BAD_TYPE;
+        case Opcode.RealDiv:
+          if ((arg0type.Unify(Type.Int) || arg0type.Unify(Type.Real)) &&
+              (arg1type.Unify(Type.Int) || arg1type.Unify(Type.Real))) {
+            return Type.Real;
+          }
+          goto BAD_TYPE;
+        case Opcode.Pow:
+          if (arg0type.Unify(Type.Real) && arg1type.Unify(Type.Real)) {
+            return Type.Real;
           }
           goto BAD_TYPE;
         case Opcode.Eq:
@@ -1740,6 +1509,9 @@ namespace Microsoft.Boogie {
         case Opcode.Lt:
         case Opcode.Le:
           if (arg0type.Unify(Type.Int) && arg1type.Unify(Type.Int)) {
+            return Type.Bool;
+          }
+          if (arg0type.Unify(Type.Real) && arg1type.Unify(Type.Real)) {
             return Type.Bool;
           }
           goto BAD_TYPE;
@@ -1776,9 +1548,15 @@ namespace Microsoft.Boogie {
         case Opcode.Add:
         case Opcode.Sub:
         case Opcode.Mul:
+          return cce.NonNull(args[0]).ShallowType;
+
         case Opcode.Div:
         case Opcode.Mod:
           return Type.Int;
+
+        case Opcode.RealDiv:
+        case Opcode.Pow:
+          return Type.Real;
 
         case Opcode.Eq:
         case Opcode.Neq:
@@ -1836,15 +1614,24 @@ namespace Microsoft.Boogie {
           if (e1 is BigNum && e2 is BigNum) {
             return ((BigNum)e1) + ((BigNum)e2);
           }
+          if (e1 is BigDec && e2 is BigDec) {
+            return ((BigDec)e1) + ((BigDec)e2);
+          }
           break;
         case Opcode.Sub:
           if (e1 is BigNum && e2 is BigNum) {
             return ((BigNum)e1) - ((BigNum)e2);
           }
+          if (e1 is BigDec && e2 is BigDec) {
+            return ((BigDec)e1) - ((BigDec)e2);
+          }
           break;
         case Opcode.Mul:
           if (e1 is BigNum && e2 is BigNum) {
             return ((BigNum)e1) * ((BigNum)e2);
+          }
+          if (e1 is BigDec && e2 is BigDec) {
+            return ((BigDec)e1) * ((BigDec)e2);
           }
           break;
         case Opcode.Div:
@@ -1857,24 +1644,42 @@ namespace Microsoft.Boogie {
             return /* TODO: right semantics? */ ((BigNum)e1) % ((BigNum)e2);
           }
           break;
+        case Opcode.RealDiv:
+          // TODO: add partial evaluation fro real division
+          break;
+        case Opcode.Pow:
+          // TODO: add partial evaluation fro real exponentiation
+          break;
         case Opcode.Lt:
           if (e1 is BigNum && e2 is BigNum) {
             return ((BigNum)e1) < ((BigNum)e2);
+          }
+          if (e1 is BigDec && e2 is BigDec) {
+            return ((BigDec)e1) < ((BigDec)e2);
           }
           break;
         case Opcode.Le:
           if (e1 is BigNum && e2 is BigNum) {
             return ((BigNum)e1) <= ((BigNum)e2);
           }
+          if (e1 is BigDec && e2 is BigDec) {
+            return ((BigDec)e1) <= ((BigDec)e2);
+          }
           break;
         case Opcode.Gt:
           if (e1 is BigNum && e2 is BigNum) {
             return ((BigNum)e1) > ((BigNum)e2);
           }
+          if (e1 is BigDec && e2 is BigDec) {
+            return ((BigDec)e1) > ((BigDec)e2);
+          }
           break;
         case Opcode.Ge:
           if (e1 is BigNum && e2 is BigNum) {
             return ((BigNum)e1) >= ((BigNum)e2);
+          }
+          if (e1 is BigDec && e2 is BigDec) {
+            return ((BigDec)e1) >= ((BigDec)e2);
           }
           break;
 
@@ -1917,7 +1722,7 @@ namespace Microsoft.Boogie {
 
   }
 
-  public class FunctionCall : IAppliable, AI.IFunctionSymbol {
+  public class FunctionCall : IAppliable {
     private IdentifierExpr/*!*/ name;
     public Function Func;
     public FunctionCall(IdentifierExpr name) {
@@ -1940,25 +1745,6 @@ namespace Microsoft.Boogie {
       Contract.Invariant(name != null);
     }
 
-    public FunctionCall createUnresolvedCopy()
-    {
-        return new FunctionCall(new IdentifierExpr(name.tok, name.Name, name.Type));
-    }
-
-    public AI.IFunctionSymbol/*!*/ AIFunctionSymbol {
-      get {
-        Contract.Ensures(Contract.Result<IFunctionSymbol>() != null);
-
-        if (name.Name == "$typeof") {
-          return AI.Value.Typeof;
-        } else if (name.Name == "$allocated") {
-          return AI.FieldName.Allocated;
-        } else {
-          return this;
-        }
-      }
-    }
-
     [Pure]
     public override string ToString() {
       Contract.Ensures(Contract.Result<string>() != null);
@@ -1975,15 +1761,6 @@ namespace Microsoft.Boogie {
     public override int GetHashCode() {
       Contract.Assume(this.Func != null);
       return Func.GetHashCode();
-    }
-
-    public AI.AIType/*!*/ AIType {
-      get {
-        Contract.Ensures(Contract.Result<AIType>() != null);
-
-        Contract.Assume(this.Func != null);
-        return AI.Value.FunctionType(this.Func.InParams.Length);
-      }
     }
 
     virtual public void Emit(ExprSeq args, TokenTextWriter stream, int contextBindingStrength, bool fragileContext) {
@@ -2088,7 +1865,7 @@ namespace Microsoft.Boogie {
       stream.SetToken(ref this.tok);
       Contract.Assert(args.Length == 1);
       // determine if parens are needed
-      int opBindingStrength = 0x70;
+      int opBindingStrength = 0x80;
       bool parensNeeded = opBindingStrength < contextBindingStrength ||
         (fragileContext && opBindingStrength == contextBindingStrength);
 
@@ -2139,16 +1916,6 @@ namespace Microsoft.Boogie {
       return this.Type;
     }
 
-    public AI.IFunctionSymbol/*!*/ AIFunctionSymbol {
-      get {
-        Contract.Ensures(Contract.Result<IFunctionSymbol>() != null);
-
-        // not really clear what should be returned here ...
-        // should the operation be completely invisible for the abstract interpretation?
-        return AI.Heap.UnsupportedHeapOp;
-      }
-    }
-
     public T Dispatch<T>(IAppliableVisitor<T> visitor) {
       //Contract.Requires(visitor != null);
       return visitor.Visit(this);
@@ -2156,7 +1923,116 @@ namespace Microsoft.Boogie {
 
   }
 
-  public class NAryExpr : Expr, AI.IFunApp {
+  public class ArithmeticCoercion : IAppliable {
+    public enum CoercionType {
+      ToInt,
+      ToReal
+    }
+
+    private IToken/*!*/ tok;
+    public readonly CoercionType Coercion;
+    private readonly string name;
+    private readonly Type type;
+    private readonly Type argType;
+    private readonly int hashCode;
+
+    public ArithmeticCoercion(IToken tok, CoercionType coercion) {
+      this.tok = tok;
+      this.Coercion = coercion;
+
+      switch (coercion) {
+        case CoercionType.ToInt:
+          this.name = "int";
+          this.type = Type.Int;
+          this.argType = Type.Real;
+          this.hashCode = 1;
+          break;
+        case CoercionType.ToReal:
+          this.name = "real";
+          this.type = Type.Real;
+          this.argType = Type.Int;
+          this.hashCode = 2;
+          break;
+        default:
+          Contract.Assert(false);
+          break;
+      }
+    }
+
+    [Pure]
+    public override string ToString() {
+      Contract.Ensures(Contract.Result<string>() != null);
+      return this.name;
+    }
+
+    [Pure]
+    [Reads(ReadsAttribute.Reads.Nothing)]
+    public override bool Equals(object other) {
+      ArithmeticCoercion ac = other as ArithmeticCoercion;
+      return ac != null && this.Coercion == ac.Coercion;
+    }
+
+    [Pure]
+    public override int GetHashCode() {
+      return this.hashCode;
+    }
+
+    public string/*!*/ FunctionName {
+      get {
+        return this.name;
+      }
+    }
+
+    public int ArgumentCount {
+      get {
+        return 1;
+      }
+    }
+
+    virtual public void Emit(ExprSeq args, TokenTextWriter stream, int contextBindingStrength, bool fragileContext) {
+      //Contract.Requires(stream != null);
+      //Contract.Requires(args != null);
+      stream.Write(this.name);
+      stream.Write("(");
+      args.Emit(stream);
+      stream.Write(")");
+    }
+
+    public void Resolve(ResolutionContext rc, Expr subjectForErrorReporting) {
+      //Contract.Requires(subjectForErrorReporting != null);
+      //Contract.Requires(rc != null);
+    }
+
+    public virtual Type Typecheck(ref ExprSeq args, out TypeParamInstantiation tpInstantiation, TypecheckingContext tc) {
+      //Contract.Requires(tc != null);
+      //Contract.Requires(args != null);
+      Contract.Ensures(args != null);
+      Contract.Ensures(Contract.ValueAtReturn(out tpInstantiation) != null);
+
+      Contract.Assert(args.Length == 1);
+
+      tpInstantiation = SimpleTypeParamInstantiation.EMPTY;
+
+      if (!cce.NonNull(cce.NonNull(args[0]).Type).Unify(argType)) {
+        tc.Error(this.tok, "argument type {0} does not match expected type {1}", cce.NonNull(args[0]).Type, this.argType);
+      }
+
+      return this.type;
+    }
+
+    public Type ShallowType(ExprSeq args) {
+      //Contract.Requires(args != null);
+      Contract.Ensures(Contract.Result<Type>() != null);
+      return this.type;
+    }
+
+    public virtual T Dispatch<T>(IAppliableVisitor<T> visitor) {
+      //Contract.Requires(visitor != null);
+      return visitor.Visit(this);
+    }
+  }
+
+  public class NAryExpr : Expr {
     [Additive]
     [Peer]
     public IAppliable/*!*/ Fun;
@@ -2264,44 +2140,6 @@ namespace Microsoft.Boogie {
       }
     }
 
-    public override AI.IExpr/*!*/ IExpr {
-      get {
-        Contract.Ensures(Contract.Result<IExpr>() != null);
-
-        return this;
-      }
-    }
-    public AI.IFunctionSymbol/*!*/ FunctionSymbol {
-      get {
-
-        Contract.Ensures(Contract.Result<IFunctionSymbol>() != null);
-
-        return Fun.AIFunctionSymbol;
-      }
-    }
-    public IList/*<AI.IExpr!>*//*!*/ Arguments {
-      get {
-        Contract.Ensures(Contract.Result<IList>() != null);
-
-        AI.IExpr[] a = new AI.IExpr[Args.Length];
-        for (int i = 0; i < Args.Length; i++) {
-          a[i] = cce.NonNull(Args[i]).IExpr;
-        }
-        return ArrayList.ReadOnly(a);
-      }
-    }
-    public AI.IFunApp CloneWithArguments(IList/*<AI.IExpr!>*/ args) {
-      //Contract.Requires(args != null);
-      Contract.Ensures(Contract.Result<AI.IFunApp>() != null);
-      return new NAryExpr(this.tok, this.Fun, BoogieFactory.IExprArray2ExprSeq(args));
-    }
-
-    [Pure]
-    public object DoVisit(AI.ExprVisitor visitor) {
-      //Contract.Requires(visitor != null);
-      return visitor.VisitFunApp(this);
-    }
-
     public override Absy StdDispatch(StandardVisitor visitor) {
       //Contract.Requires(visitor != null);
       Contract.Ensures(Contract.Result<Absy>() != null);
@@ -2309,7 +2147,7 @@ namespace Microsoft.Boogie {
     }
   }
 
-  public class MapSelect : IAppliable, AI.IFunctionSymbol {
+  public class MapSelect : IAppliable {
 
     public readonly int Arity;
     private readonly IToken/*!*/ tok;
@@ -2361,7 +2199,7 @@ namespace Microsoft.Boogie {
                             bool withRhs) {
       Contract.Requires(args != null);
       Contract.Requires(stream != null);
-      const int opBindingStrength = 0x80;
+      const int opBindingStrength = 0x90;
       bool parensNeeded = opBindingStrength < contextBindingStrength ||
         (fragileContext && opBindingStrength == contextBindingStrength);
 
@@ -2484,40 +2322,13 @@ namespace Microsoft.Boogie {
       return Type.InferValueType(mapType.TypeParameters, mapType.Arguments, mapType.Result, actualArgTypes);
     }
 
-    public AI.IFunctionSymbol/*!*/ AIFunctionSymbol {
-      get {
-        Contract.Ensures(Contract.Result<IFunctionSymbol>() != null);
-
-        switch (Arity) {
-          case 1:
-            return AI.Heap.Select1;
-          case 2:
-            return AI.Heap.Select2;
-          default:
-            // Maps with Arity arguments are not fully supported yet
-            return AI.Heap.UnsupportedHeapOp;
-        }
-      }
-    }
-
-    public AI.AIType/*!*/ AIType {
-      [Rep]
-      [ResultNotNewlyAllocated]
-      get {
-        Contract.Ensures(Contract.Result<AIType>() != null);
-
-        return AI.Prop.Type;     // THAT is a type? PR: no idea whether this makes sense,
-        // but it is the type of select1
-      }
-    }
-
     public T Dispatch<T>(IAppliableVisitor<T> visitor) {
       //Contract.Requires(visitor != null);
       return visitor.Visit(this);
     }
   }
 
-  public class MapStore : IAppliable, AI.IFunctionSymbol {
+  public class MapStore : IAppliable {
 
     public readonly int Arity;
     public readonly IToken/*!*/ tok;
@@ -2631,32 +2442,6 @@ namespace Microsoft.Boogie {
       return cce.NonNull(args[0]).ShallowType;
     }
 
-    public AI.IFunctionSymbol/*!*/ AIFunctionSymbol {
-      get {
-        Contract.Ensures(Contract.Result<IFunctionSymbol>() != null);
-
-        switch (Arity) {
-          case 1:
-            return AI.Heap.Update1;
-          case 2:
-            return AI.Heap.Update2;
-          default:
-            // Maps with Arity arguments are not fully supported yet
-            return AI.Heap.UnsupportedHeapOp;
-        }
-      }
-    }
-
-    public AI.AIType/*!*/ AIType {
-      [Rep]
-      [ResultNotNewlyAllocated]
-      get {
-        Contract.Ensures(Contract.Result<AIType>() != null);
-
-        return AI.Heap.Type;
-      }
-    }
-
     public T Dispatch<T>(IAppliableVisitor<T> visitor) {
       //Contract.Requires(visitor != null);
       return visitor.Visit(this);
@@ -2664,7 +2449,7 @@ namespace Microsoft.Boogie {
   }
 
 
-  public class IfThenElse : IAppliable, AI.IFunctionSymbol {
+  public class IfThenElse : IAppliable {
 
     public IToken/*!*/ tok;
     [ContractInvariantMethod]
@@ -2758,23 +2543,6 @@ namespace Microsoft.Boogie {
       return cce.NonNull(args[1]).ShallowType;
     }
 
-    public AI.IFunctionSymbol/*!*/ AIFunctionSymbol {
-      get {
-        Contract.Ensures(Contract.Result<IFunctionSymbol>() != null);
-        return this;
-      }
-    }
-
-    public AI.AIType/*!*/ AIType {
-      [Rep]
-      [ResultNotNewlyAllocated]
-      get {
-        Contract.Ensures(Contract.Result<AIType>() != null);
-
-        return AI.Value.FunctionType(3);
-      }
-    }
-
     public T Dispatch<T>(IAppliableVisitor<T> visitor) {
       //Contract.Requires(visitor != null);
       return visitor.Visit(this);
@@ -2783,7 +2551,7 @@ namespace Microsoft.Boogie {
 
 
 
-  public class CodeExpr : Expr, AI.IUnknown {
+  public class CodeExpr : Expr {
     public VariableSeq/*!*/ LocVars;
     [Rep]
     public List<Block/*!*/>/*!*/ Blocks;
@@ -2800,18 +2568,6 @@ namespace Microsoft.Boogie {
       Contract.Requires(0 < blocks.Count);
       LocVars = localVariables;
       Blocks = blocks;
-    }
-
-    public override AI.IExpr/*!*/ IExpr {
-      get {
-        Contract.Ensures(Contract.Result<IExpr>() != null);
-        return this;
-      }
-    }
-    [Pure]
-    public object DoVisit(AI.ExprVisitor visitor) {
-      //Contract.Requires(visitor != null);
-      return this;
     }
 
     public override void ComputeFreeVariables(Set /*Variable*/ freeVars) {
@@ -2894,7 +2650,7 @@ namespace Microsoft.Boogie {
     }
   }
 
-  public class BvExtractExpr : Expr, AI.IFunApp {
+  public class BvExtractExpr : Expr {
     public /*readonly--except in StandardVisitor*/ Expr/*!*/ Bitvector;
     [ContractInvariantMethod]
     void ObjectInvariant() {
@@ -2934,7 +2690,7 @@ namespace Microsoft.Boogie {
     public override void Emit(TokenTextWriter stream, int contextBindingStrength, bool fragileContext) {
       //Contract.Requires(stream != null);
       stream.SetToken(this);
-      int opBindingStrength = 0x80;
+      int opBindingStrength = 0x90;
       bool parensNeeded = opBindingStrength < contextBindingStrength ||
         (fragileContext && opBindingStrength == contextBindingStrength);
 
@@ -2987,56 +2743,6 @@ namespace Microsoft.Boogie {
       }
     }
 
-    public override AI.IExpr/*!*/ IExpr {
-      get {
-        Contract.Ensures(Contract.Result<IExpr>() != null);
-
-        return this;
-      }
-    }
-    public AI.IFunctionSymbol/*!*/ FunctionSymbol {
-      get {
-        Contract.Ensures(Contract.Result<IFunctionSymbol>() != null);
-
-        return AI.Bv.Extract;
-      }
-    }
-    public IList/*<AI.IExpr!>*//*!*/ Arguments {
-      get {
-        Contract.Ensures(Contract.Result<IList>() != null);
-
-        AI.IExpr[] a = new AI.IExpr[3];
-        a[0] = Bitvector.IExpr;
-        a[1] = new LiteralExpr(Token.NoToken, BigNum.FromInt(End));
-        a[2] = new LiteralExpr(Token.NoToken, BigNum.FromInt(Start));
-        return ArrayList.ReadOnly(a);
-      }
-    }
-    public AI.IFunApp CloneWithArguments(IList/*<AI.IExpr!>*/ args) {
-      //Contract.Requires(args != null);
-      Contract.Ensures(Contract.Result<AI.IFunApp>() != null);
-      AI.IFunApp retFun;
-
-      if (args.Count == 3) {
-        retFun = new BvExtractExpr(this.tok,
-                                 BoogieFactory.IExpr2Expr(cce.NonNull((AI.IExpr)args[0])),
-                                 cce.NonNull((LiteralExpr/*!*/)args[1]).asBigNum.ToIntSafe,
-                                 cce.NonNull((LiteralExpr/*!*/)args[2]).asBigNum.ToIntSafe);
-      } else {
-        {
-          Contract.Assert(false);
-          throw new cce.UnreachableException();
-        }   // If we are something wrong is happended
-      }
-      return retFun;
-    }
-
-    [Pure]
-    public object DoVisit(AI.ExprVisitor visitor) {
-      //Contract.Requires(visitor != null);
-      return visitor.VisitFunApp(this);
-    }
-
     public override Absy StdDispatch(StandardVisitor visitor) {
       //Contract.Requires(visitor != null);
       Contract.Ensures(Contract.Result<Absy>() != null);
@@ -3044,7 +2750,7 @@ namespace Microsoft.Boogie {
     }
   }
 
-  public class BvConcatExpr : Expr, AI.IFunApp {
+  public class BvConcatExpr : Expr {
     public /*readonly--except in StandardVisitor*/ Expr/*!*/ E0, E1;
     [ContractInvariantMethod]
     void ObjectInvariant() {
@@ -3135,53 +2841,6 @@ namespace Microsoft.Boogie {
         int len1 = t1.IsBv ? t1.BvBits : /*expression is not type correct, so just pick an arbitrary number of bits*/0;
         return Type.GetBvType(len0 + len1);
       }
-    }
-
-    public override AI.IExpr/*!*/ IExpr {
-      get {
-        Contract.Ensures(Contract.Result<IExpr>() != null);
-
-        return this;
-      }
-    }
-    public AI.IFunctionSymbol/*!*/ FunctionSymbol {
-      get {
-        Contract.Ensures(Contract.Result<IFunctionSymbol>() != null);
-        return AI.Bv.Concat;
-      }
-    }
-    public IList/*<AI.IExpr!>*//*!*/ Arguments {
-      get {
-        Contract.Ensures(Contract.Result<IList>() != null);
-
-        AI.IExpr[] a = new AI.IExpr[2];
-        a[0] = E0.IExpr;
-        a[1] = E1.IExpr;
-        return ArrayList.ReadOnly(a);
-      }
-    }
-    public AI.IFunApp CloneWithArguments(IList/*<AI.IExpr!>*/ args) {
-      //Contract.Requires(args != null);
-      Contract.Ensures(Contract.Result<AI.IFunApp>() != null);
-      AI.IFunApp/*!*/ retFun;
-
-      if (args.Count == 2) {
-        retFun = new BvConcatExpr(this.tok,
-                               BoogieFactory.IExpr2Expr(cce.NonNull((AI.IExpr/*!*/)args[0])),
-                               BoogieFactory.IExpr2Expr(cce.NonNull((AI.IExpr/*!*/)args[1])));
-      } else {
-        {
-          Contract.Assert(false);
-          throw new cce.UnreachableException();
-        }   // If we are something wrong is happended
-      }
-      return retFun;
-    }
-
-    [Pure]
-    public object DoVisit(AI.ExprVisitor visitor) {
-      //Contract.Requires(visitor != null);
-      return visitor.VisitFunApp(this);
     }
 
     public override Absy StdDispatch(StandardVisitor visitor) {

@@ -63,11 +63,6 @@ namespace Microsoft.Boogie {
       Contract.Ensures(Contract.Result<Absy>() != null);
       return node.StdDispatch(this);
     }
-    public virtual AIVariableExpr VisitAIVariableExpr(AIVariableExpr node) {
-      Contract.Requires(node != null);
-      Contract.Ensures(Contract.Result<AIVariableExpr>() != null);
-      return node;
-    }
     public virtual Cmd VisitAssertCmd(AssertCmd node) {
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Cmd>() != null);

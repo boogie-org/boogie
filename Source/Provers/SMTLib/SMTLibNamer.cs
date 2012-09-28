@@ -22,8 +22,8 @@ namespace Microsoft.Boogie.SMTLib
       // Core theory:
       "and", "or", "not", "iff", "true", "false", "xor", "distinct", "ite", "=", "Bool",
       "=>", // implies (sic!)
-      // Integers
-      "Int", "*", "/", "-", "+", "<", "<=", ">", ">=",
+      // Integers and reals
+      "Int", "Real", "*", "/", "-", "+", "<", "<=", ">", ">=", "div", "mod",
       // Bitvectors
       "extract", "concat", 
       "bvnot", "bvneg", "bvand", "bvor", "bvadd", "bvmul", "bvudiv", "bvurem", "bvshl", "bvlshr", "bvult",
@@ -48,7 +48,7 @@ namespace Microsoft.Boogie.SMTLib
       "lblneg", "lblpos", "lbl-lit",
       "if", "&&", "||", "equals", "equiv", "bool",
       // Boogie-defined
-      "int_mod", "int_div", "UOrdering2", "UOrdering3", 
+      "real_pow", "UOrdering2", "UOrdering3", 
     };
 
     static HashSet<string> reservedSmtWords;

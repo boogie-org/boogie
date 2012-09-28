@@ -566,7 +566,7 @@ implementation {:inline 1} find(A: [int]int, size: int, x: int) returns (ret: in
   var b: bool;
 
   anon0:
-    ret := 0 - 1;
+    ret := -1;
     b := false;
     found := b;
     i := 0;
@@ -659,7 +659,7 @@ implementation main(x: int)
     goto inline$find$0$anon0;
 
   inline$find$0$anon0:
-    inline$find$0$ret := 0 - 1;
+    inline$find$0$ret := -1;
     inline$find$0$b := false;
     inline$find$0$found := inline$find$0$b;
     inline$find$0$i := 0;
@@ -756,7 +756,7 @@ implementation {:inline 1} find(A: [int]int, size: int, x: int) returns (ret: in
   var inline$check$0$ret: bool;
 
   anon0:
-    ret := 0 - 1;
+    ret := -1;
     b := false;
     found := b;
     i := 0;

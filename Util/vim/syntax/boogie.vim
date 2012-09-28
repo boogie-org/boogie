@@ -15,7 +15,7 @@ set cpo&vim
 " type
 syn keyword bplType			bool int
 " repeat / condition / label
-syn keyword bplExpr			forall exists cast returns lambda
+syn keyword bplExpr			forall exists cast returns lambda div mod
 syn keyword bplStmt			goto return while call else if assert assume havoc then 
 syn keyword bplDecl			axiom function procedure type requires ensures modifies unique const var free implementation invariant
 " user labels

@@ -11,7 +11,6 @@ using Microsoft.Boogie.VCExprAST;
 using VC;
 using System.Collections;
 using System.IO;
-using Microsoft.AbstractInterpretationFramework;
 using Graphing;
 
 namespace Microsoft.Boogie.Houdini {
@@ -485,17 +484,18 @@ namespace Microsoft.Boogie.Houdini {
 
     public bool MatchCandidate(Expr boogieExpr, out Variable candidateConstant) {
       candidateConstant = null;
-      IExpr antecedent, consequent;
-      IExpr expr = boogieExpr as IExpr;
-      if (expr != null && ExprUtil.Match(expr, Prop.Implies, out antecedent, out consequent)) {
-        IdentifierExpr.ConstantFunApp constantFunApp = antecedent as IdentifierExpr.ConstantFunApp;
-        if (constantFunApp != null && houdiniConstants.Contains(constantFunApp.IdentifierExpr.Decl)) {
-          candidateConstant = constantFunApp.IdentifierExpr.Decl;
+      NAryExpr e = boogieExpr as NAryExpr;
+      if (e != null && e.Fun is BinaryOperator && ((BinaryOperator)e.Fun).Op == BinaryOperator.Opcode.Imp) {
+        Expr antecedent = e.Args[0];
+        Expr consequent = e.Args[1];
+
+        IdentifierExpr id = antecedent as IdentifierExpr;
+        if (id != null && id.Decl is Constant && houdiniConstants.Contains((Constant)id.Decl)) {
+          candidateConstant = id.Decl;
           return true;
         }
 
-        var e = consequent as Expr;
-        if (e != null && MatchCandidate(e, out candidateConstant))
+        if (MatchCandidate(consequent, out candidateConstant))
           return true;
       }
       return false;

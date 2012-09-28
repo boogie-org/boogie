@@ -51,7 +51,8 @@ namespace Microsoft.Boogie.Z3
             public bool Equals(BasicType x, BasicType y)
             {
                 return (x.IsBool == y.IsBool) &&
-                       (x.IsInt == y.IsInt);
+                       (x.IsInt == y.IsInt) &&
+                       (x.IsReal == y.IsReal);
             }
 
             public int GetHashCode(BasicType basicType)
@@ -60,6 +61,8 @@ namespace Microsoft.Boogie.Z3
                     return 1;
                 else if (basicType.IsInt)
                     return 2;
+                else if (basicType.IsReal)
+                  return 3;
                 else
                     throw new Exception("Basic Type " + basicType.ToString() + " is unkwown");
             }
@@ -174,6 +177,10 @@ namespace Microsoft.Boogie.Z3
             else if (basicType.IsInt)
             {
                 typeAst = z3.MkIntSort();
+            }
+            else if (basicType.IsReal)
+            {
+                typeAst = z3.MkRealSort();
             }
             else
                 throw new Exception("Unknown Basic Type " + basicType.ToString());

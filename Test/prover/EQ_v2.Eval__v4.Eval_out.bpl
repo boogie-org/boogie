@@ -382,7 +382,7 @@ axiom (forall x: int, y: int :: { v4.INT_SUB(x, y): int } v4.INT_SUB(x, y): int 
 
 axiom (forall x: int, y: int :: { v4.INT_MULT(x, y): int } v4.INT_MULT(x, y): int == x * y);
 
-axiom (forall x: int, y: int :: { v4.INT_DIV(x, y): int } v4.INT_DIV(x, y): int == x / y);
+axiom (forall x: int, y: int :: { v4.INT_DIV(x, y): int } v4.INT_DIV(x, y): int == x div y);
 
 axiom (forall x: int, y: int :: { v4.INT_LT(x, y): bool } v4.INT_LT(x, y): bool <==> x < y);
 
@@ -1173,7 +1173,7 @@ axiom (forall x: int, y: int :: { v4.INT_SUB(x, y): int } v4.INT_SUB(x, y): int 
 
 axiom (forall x: int, y: int :: { v4.INT_MULT(x, y): int } v4.INT_MULT(x, y): int == x * y);
 
-axiom (forall x: int, y: int :: { v4.INT_DIV(x, y): int } v4.INT_DIV(x, y): int == x / y);
+axiom (forall x: int, y: int :: { v4.INT_DIV(x, y): int } v4.INT_DIV(x, y): int == x div y);
 
 axiom (forall x: int, y: int :: { v4.INT_LT(x, y): bool } v4.INT_LT(x, y): bool <==> x < y);
 

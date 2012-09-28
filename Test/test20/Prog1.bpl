@@ -1,5 +1,5 @@
 // Let's test some Boogie 2 features ...
-type real;
+
 type elements;
 
 type Field a;

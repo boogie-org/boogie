@@ -609,26 +609,9 @@ namespace Microsoft.Boogie {
     }
 
     public class AiFlags {
-      public bool Intervals = false;
-      public bool Constant = false;
-      public bool DynamicType = false;
-      public bool Nullness = false;
-      public bool Polyhedra = false;
       public bool J_Trivial = false;
       public bool J_Intervals = false;
       public bool DebugStatistics = false;
-
-      public bool AnySet {
-        get {
-          return Intervals
-              || Constant
-              || DynamicType
-              || Nullness
-              || Polyhedra
-              || J_Trivial
-              || J_Intervals;
-        }
-      }
     }
     public AiFlags/*!*/ Ai = new AiFlags();
 
@@ -639,26 +622,6 @@ namespace Microsoft.Boogie {
           if (ps.ConfirmArgumentCount(1)) {
             foreach (char c in cce.NonNull(args[ps.i])) {
               switch (c) {
-                case 'i':
-                  Ai.Intervals = true;
-                  UseAbstractInterpretation = true;
-                  break;
-                case 'c':
-                  Ai.Constant = true;
-                  UseAbstractInterpretation = true;
-                  break;
-                case 'd':
-                  Ai.DynamicType = true;
-                  UseAbstractInterpretation = true;
-                  break;
-                case 'n':
-                  Ai.Nullness = true;
-                  UseAbstractInterpretation = true;
-                  break;
-                case 'p':
-                  Ai.Polyhedra = true;
-                  UseAbstractInterpretation = true;
-                  break;
                 case 't':
                   Ai.J_Trivial = true;
                   UseAbstractInterpretation = true;
@@ -694,12 +657,6 @@ namespace Microsoft.Boogie {
         case "noinfer":
           if (ps.ConfirmArgumentCount(0)) {
             UseAbstractInterpretation = false;
-          }
-          return true;
-
-        case "logInfer":
-          if (ps.ConfirmArgumentCount(0)) {
-            Microsoft.AbstractInterpretationFramework.Lattice.LogSwitch = true;
           }
           return true;
 
@@ -1502,7 +1459,6 @@ namespace Microsoft.Boogie {
                 perform interprocedural inference (deprecated, not supported)
   /contractInfer
                 perform procedure contract inference
-  /logInfer     print debug output during inference
   /instrumentInfer
                 h - instrument inferred invariants only at beginning of
                     loop headers (default)

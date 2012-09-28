@@ -1,5 +1,5 @@
 // BoogiePL Examples
-type real;
+
 type elements;
 
 var x:int;  var y:real;  var z:ref;		// Variables

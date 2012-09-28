@@ -278,6 +278,9 @@ Execution trace:
     LargeLiterals0.bpl(7,5): anon0
 
 Boogie program verifier finished with 0 verified, 1 error
+--------------------- File Real.bpl ----------------------------
+
+Boogie program verifier finished with 1 verified, 0 errors
 --------------------- File NameClash.bpl ----------------------------
 
 Boogie program verifier finished with 1 verified, 0 errors
@@ -549,6 +552,9 @@ Execution trace:
     LargeLiterals0.bpl(7,5): anon0
 
 Boogie program verifier finished with 0 verified, 1 error
+--------------------- File Real.bpl ----------------------------
+
+Boogie program verifier finished with 1 verified, 0 errors
 --------------------- File NameClash.bpl ----------------------------
 
 Boogie program verifier finished with 1 verified, 0 errors
@@ -826,6 +832,9 @@ Execution trace:
     LargeLiterals0.bpl(7,5): anon0
 
 Boogie program verifier finished with 0 verified, 1 error
+--------------------- File Real.bpl ----------------------------
+
+Boogie program verifier finished with 1 verified, 0 errors
 --------------------- File NameClash.bpl ----------------------------
 
 Boogie program verifier finished with 1 verified, 0 errors

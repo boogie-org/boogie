@@ -36,7 +36,7 @@
         )) . font-lock-builtin-face)
    `(,(boogie-regexp-opt '(
         "assert" "assume" "break" "call" "then" "else" "havoc" "if" "goto" "return" "while"
-        "old" "forall" "exists" "lambda" "cast"
+        "old" "forall" "exists" "lambda" "cast" "div" "mod"
         "false" "true")) . font-lock-keyword-face)
    `(,(boogie-regexp-opt '("bool" "int"
                              "bv0" "bv1" "bv2" "bv3" "bv4" "bv5" "bv6" "bv7" "bv8" "bv9"

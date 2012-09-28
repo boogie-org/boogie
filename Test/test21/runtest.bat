@@ -4,6 +4,7 @@ setlocal
 set BGEXE=..\..\Binaries\Boogie.exe
 rem set BGEXE=mono ..\..\Binaries\Boogie.exe
 
+
 for %%m in (
               n p a
             ) do (
@@ -16,7 +17,8 @@ for %%f in (DisjointDomains.bpl DisjointDomains2.bpl FunAxioms.bpl
             Keywords.bpl Casts.bpl BooleanQuantification.bpl EmptyList.bpl Boxing.bpl
             MapOutputTypeParams.bpl ParallelAssignment.bpl BooleanQuantification2.bpl
             Flattening.bpl Orderings.bpl Orderings2.bpl Orderings3.bpl Orderings4.bpl
-            EmptySetBug.bpl Coercions2.bpl MapAxiomsConsistency.bpl LargeLiterals0.bpl) do (
+            EmptySetBug.bpl Coercions2.bpl MapAxiomsConsistency.bpl LargeLiterals0.bpl
+            Real.bpl) do (
   echo --------------------- File %%f ----------------------------
   %BGEXE% %* /typeEncoding:%%m /logPrefix:0%%m %%f
 )

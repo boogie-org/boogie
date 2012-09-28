@@ -28,7 +28,7 @@ procedure P1(y: int)
   {
     K:
     goto A;  
-    if (y % 2 == 0) {
+    if (y mod 2 == 0) {
       goto L;
       M:
     }
