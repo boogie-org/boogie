@@ -21,7 +21,7 @@ namespace GPUVerify {
     }
 
     internal override AssertCmd GetAssertCmd() {
-      var vd = new VariableDualiser(1, null, null);
+      var vd = new VariableDualiser(1, Dualiser.verifier.uniformityAnalyser, ProcName);
       return new AssertCmd(
         Token.NoToken,
         Expr.Imp(GPUVerifier.ThreadsInSameGroup(),
@@ -34,7 +34,7 @@ namespace GPUVerify {
       foreach (var Instantiation in InstantiationExprPairs) {
         foreach (var Thread in new int[] { 1, 2 }) {
 
-          var vd = new VariableDualiser(Thread, null, null);
+          var vd = new VariableDualiser(Thread, Dualiser.verifier.uniformityAnalyser, ProcName);
 
           var ThreadInstantiationExpr = vd.VisitExpr(Instantiation.Item1);
           var OtherThreadInstantiationExpr = vd.VisitExpr(Instantiation.Item2);

@@ -309,6 +309,16 @@ namespace Microsoft.Boogie
                         }
                     }
                 }
+                else if (c is HavocCmd)
+                {
+                    HavocCmd havocCmd = c as HavocCmd;
+                    foreach(IdentifierExpr ie in havocCmd.Vars)
+                    {
+                        if(IsUniform(impl.Name, ie.Decl.Name)) {
+                            SetNonUniform(impl.Name, ie.Decl.Name);
+                        }
+                    }
+                }
                 else if (c is CallCmd)
                 {
                     CallCmd callCmd = c as CallCmd;

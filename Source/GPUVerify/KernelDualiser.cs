@@ -445,12 +445,24 @@ namespace GPUVerify {
         return InstantiationExpr.Clone() as Expr;
       }
 
-      Debug.Assert(node.Decl is Constant ||
-        QKeyValue.FindBoolAttribute(node.Decl.Attributes, "global") ||
-        QKeyValue.FindBoolAttribute(node.Decl.Attributes, "group_shared") ||
-        (Uni != null && Uni.IsUniform(ProcName, node.Decl.Name)));
+      if(node.Decl is Constant ||
+          QKeyValue.FindBoolAttribute(node.Decl.Attributes, "global") ||
+          QKeyValue.FindBoolAttribute(node.Decl.Attributes, "group_shared") ||
+          (Uni != null && Uni.IsUniform(ProcName, node.Decl.Name))) {
+        return base.VisitIdentifierExpr(node);
+      }
 
-      return base.VisitIdentifierExpr(node);
+      if (InstantiationExprIsThreadId()) {
+        return new VariableDualiser(Thread, Uni, ProcName).VisitIdentifierExpr(node);
+      }
+
+      Debug.Assert(false);
+      return null;
+    }
+
+    private bool InstantiationExprIsThreadId() {
+      return (InstantiationExpr is IdentifierExpr) && 
+        ((IdentifierExpr)InstantiationExpr).Decl.Name.Equals(GPUVerifier.MakeThreadId("X", Thread).Name);
     }
 
     public override Expr VisitNAryExpr(NAryExpr node) {
