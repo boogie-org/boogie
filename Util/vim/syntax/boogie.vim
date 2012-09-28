@@ -13,7 +13,7 @@ set cpo&vim
 
 
 " type
-syn keyword bplType			bool int
+syn keyword bplType			bool int real
 " repeat / condition / label
 syn keyword bplExpr			forall exists cast returns lambda div mod
 syn keyword bplStmt			goto return while call else if assert assume havoc then 

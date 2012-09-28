@@ -33,8 +33,7 @@ namespace Demo
           "mod", "modifies",
           "old",
           "procedure",
-          "requires",
-          "return", "returns",
+          "real", "requires", "return", "returns",
           "then", "true", "type",
           "unique",
           "var",
@@ -271,8 +270,7 @@ namespace Demo
           "modifies" |
           "old" |
           "procedure" |
-          "requires" |
-          "return" | "returns" |
+          "real" | "requires" | "return" | "returns" |
           "then" | "true" | "type" |
           "unique" |
           "var" |
@@ -323,7 +321,7 @@ namespace Demo
           ;
 
         typeDecl.Rule
-          = (ToTerm("int") | "bool" | ident)
+          = (ToTerm("int") | "bool" | "real" | ident)
           ;
 
         fieldDecl.Rule
