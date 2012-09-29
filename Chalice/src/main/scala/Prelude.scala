@@ -83,10 +83,10 @@ const unique perm$N: PermissionComponent;
 var Mask: MaskType where IsGoodMask(Mask);
 var SecMask: MaskType where IsGoodMask(SecMask);
 const Permission$denominator: int;
-axiom Permission$denominator > 0;
+axiom Permission$denominator == 1.0;
 const Permission$FullFraction: int;
 const Permission$Zero: [PermissionComponent]int;
-axiom Permission$Zero[perm$R] == 0 && Permission$Zero[perm$N] == 0;
+axiom Permission$Zero[perm$R] == 0.0 && Permission$Zero[perm$N] == 0;
 const Permission$Full: [PermissionComponent]int;
 axiom Permission$Full[perm$R] == Permission$FullFraction && Permission$Full[perm$N] == 0;
 const ZeroMask: MaskType;
@@ -117,16 +117,16 @@ axiom Permission$denominator == 100000000000;"""
 }
 object PercentageFunctionPL extends PreludeComponent {
   val text = """
-function Fractions(n: int) returns (int)
+function {:inline} Fractions(n: int) returns (int)
 {
-  n * Permission$denominator
+  n / 100.0
 }
-axiom (forall x,y: int :: 0 <= x && x <= y ==> Fractions(x) <= Fractions(y));
+axiom (forall x,y: int :: 0.0 <= x && x <= y ==> Fractions(x) <= Fractions(y));
 
 axiom Permission$FullFraction  == Fractions(100);
-axiom 0 < channelK && 1000*channelK < Fractions(1);
-axiom 0 < monitorK && 1000*monitorK < Fractions(1);
-axiom 0 < predicateK && 1000*predicateK < Fractions(1);
+axiom 0.0 < channelK && 1000.0*channelK < Fractions(1);
+axiom 0.0 < monitorK && 1000.0*monitorK < Fractions(1);
+axiom 0.0 < predicateK && 1000.0*predicateK < Fractions(1);
 axiom predicateK == channelK && channelK == monitorK;"""
 }
 object PercentageUninterpretedFunctionPL extends PreludeComponent {

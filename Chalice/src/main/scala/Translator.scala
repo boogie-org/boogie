@@ -79,8 +79,8 @@ class Translator {
   def translateWhereClause(ch: Channel): List[Decl] = {
     
     // pick new k
-    val (whereKV, whereK) = Boogie.NewBVar("whereK", tint, true)
-    val whereKStmts = BLocal(whereKV) :: bassume(0 < whereK && 1000*whereK < permissionOnePercent)
+    val (whereKV, whereK) = Boogie.NewBVar("whereK", treal, true)
+    val whereKStmts = BLocal(whereKV) :: bassume(0.0 < whereK && 1000.0*whereK < permissionOnePercent)
     
     // check definedness of where clause
     Proc(ch.channelId + "$whereClause$checkDefinedness",
@@ -111,8 +111,8 @@ class Translator {
     val (lkV, lk) = NewBVar("lk", tref, true);
     
     // pick new k
-    val (methodKV, methodK) = Boogie.NewBVar("methodK", tint, true)
-    val methodKStmts = BLocal(methodKV) :: bassume(0 < methodK && 1000*methodK < permissionOnePercent)
+    val (methodKV, methodK) = Boogie.NewBVar("methodK", treal, true)
+    val methodKStmts = BLocal(methodKV) :: bassume(0.0 < methodK && 1000.0*methodK < permissionOnePercent)
     
     val oldTranslator = new ExpressionTranslator(Globals(h1, m1, sm1, c1), Globals(h0, m0, sm0, c0), currentClass);
     Proc(currentClass.id + "$monitorinvariant$checkDefinedness",
@@ -164,8 +164,8 @@ class Translator {
     etran = etran.CheckTermination(false);
     
     // pick new k
-    val (functionKV, functionK) = Boogie.NewBVar("functionK", tint, true)
-    val functionKStmts = BLocal(functionKV) :: bassume(0 < functionK && 1000*functionK < permissionOnePercent)
+    val (functionKV, functionK) = Boogie.NewBVar("functionK", treal, true)
+    val functionKStmts = BLocal(functionKV) :: bassume(0.0 < functionK && 1000.0*functionK < permissionOnePercent)
     
     // Boogie function that represents the Chalice function
     {
@@ -408,8 +408,8 @@ class Translator {
   def translatePredicate(pred: Predicate): List[Decl] = {
     
     // pick new k
-    val (predicateKV, predicateK) = Boogie.NewBVar("predicateK", tint, true)
-    val predicateKStmts = BLocal(predicateKV) :: bassume(0 < predicateK && 1000*predicateK < permissionOnePercent)
+    val (predicateKV, predicateK) = Boogie.NewBVar("predicateK", treal, true)
+    val predicateKStmts = BLocal(predicateKV) :: bassume(0.0 < predicateK && 1000.0*predicateK < permissionOnePercent)
     
     // const unique class.name: HeapType;
     Const(pred.FullName, true, FieldType(tint)) ::
@@ -439,8 +439,8 @@ class Translator {
   def translateMethod(method: Method): List[Decl] = {
     
     // pick new k for this method, that represents the fraction for read permissions
-    val (methodKV, methodK) = Boogie.NewBVar("methodK", tint, true)
-    val methodKStmts = BLocal(methodKV) :: bassume(0 < methodK && 1000*methodK < permissionOnePercent)
+    val (methodKV, methodK) = Boogie.NewBVar("methodK", treal, true)
+    val methodKStmts = BLocal(methodKV) :: bassume(0.0 < methodK && 1000.0*methodK < permissionOnePercent)
     
     // check definedness of the method contract
     Proc(method.FullName + "$checkDefinedness", 
@@ -500,8 +500,8 @@ class Translator {
     val postCI = Postconditions(mt.refines.Spec).map(extractInv)
 
     // pick new k for this method, that represents the fraction for read permissions
-    val (methodKV, methodK) = Boogie.NewBVar("methodK", tint, true)
-    val methodKStmts = BLocal(methodKV) :: bassume(0 < methodK && 1000*methodK < permissionOnePercent)
+    val (methodKV, methodK) = Boogie.NewBVar("methodK", treal, true)
+    val methodKStmts = BLocal(methodKV) :: bassume(0.0 < methodK && 1000.0*methodK < permissionOnePercent)
  
     // check definedness of refinement specifications
     Proc(mt.FullName + "$checkDefinedness",
@@ -767,10 +767,10 @@ class Translator {
         val (flagV, flag) = Boogie.NewBVar("predFlag", tbool, true)
         
         // pick new k
-        val (foldKV, foldK) = Boogie.NewBVar("foldK", tint, true)
+        val (foldKV, foldK) = Boogie.NewBVar("foldK", treal, true)
         val stmts = Comment("fold") ::
         functionTrigger(o, pred.predicate) ::
-        BLocal(foldKV) :: bassume(0 < foldK && 1000*foldK < percentPermission(1) && 1000*foldK < methodK) ::
+        BLocal(foldKV) :: bassume(0.0 < foldK && 1000.0*foldK < percentPermission(1) && 1000.0*foldK < methodK) ::
         isDefined(e) :::
         isDefined(perm) :::
         bassert(nonNull(o), s.pos, "The target of the fold statement might be null.") ::
@@ -792,7 +792,7 @@ class Translator {
         val definition = scaleExpressionByPermission(SubstThis(DefinitionOf(pred.predicate), e), perm, unfld.pos)
         
         // pick new k
-        val (unfoldKV, unfoldK) = Boogie.NewBVar("unfoldK", tint, true)
+        val (unfoldKV, unfoldK) = Boogie.NewBVar("unfoldK", treal, true)
         // record version of unfolded instance
         val (receiverV, receiver) = Boogie.NewBVar("predRec", tref, true)
         val (versionV, version) = Boogie.NewBVar("predVer", tint, true)
@@ -800,7 +800,7 @@ class Translator {
         functionTrigger(o, pred.predicate) ::
         BLocal(receiverV) :: (receiver := o) ::
         BLocal(versionV) :: (version := etran.Heap.select(o, pred.predicate.FullName)) ::
-        BLocal(unfoldKV) :: bassume(0 < unfoldK && unfoldK < percentPermission(1) && 1000*unfoldK < methodK) ::
+        BLocal(unfoldKV) :: bassume(0.0 < unfoldK && unfoldK < percentPermission(1) && 1000.0*unfoldK < methodK) ::
         isDefined(e) :::
         bassert(nonNull(o), s.pos, "The target of the fold statement might be null.") ::
         isDefined(perm) :::
@@ -822,9 +822,9 @@ class Translator {
         val argsSeqLength = 1 + args.length;
         
         // pick new k for this fork
-        val (asyncMethodCallKV, asyncMethodCallK) = Boogie.NewBVar("asyncMethodCallK", tint, true)
+        val (asyncMethodCallKV, asyncMethodCallK) = Boogie.NewBVar("asyncMethodCallK", treal, true)
         BLocal(asyncMethodCallKV) ::
-        bassume(0 < asyncMethodCallK && 1000*asyncMethodCallK < percentPermission(1) && 1000*asyncMethodCallK < methodK) ::
+        bassume(0.0 < asyncMethodCallK && 1000.0*asyncMethodCallK < percentPermission(1) && 1000.0*asyncMethodCallK < methodK) ::
         Comment("call " + id) ::
         // declare the local variable, if needed
         { if (c.local == null)
@@ -889,12 +889,12 @@ class Translator {
         val (preCallSecMaskV, preCallSecMask) = NewBVar("preCallSecMask", tmask, true);
         val (preCallCreditsV, preCallCredits) = NewBVar("preCallCredits", tcredits, true);
         val postEtran = new ExpressionTranslator(etran.globals, Globals(preCallHeap, preCallMask, preCallSecMask, preCallCredits), currentClass);
-        val (asyncJoinKV, asyncJoinK) = Boogie.NewBVar("asyncJoinK", tint, true)
+        val (asyncJoinKV, asyncJoinK) = Boogie.NewBVar("asyncJoinK", treal, true)
         
         Comment("join async") :: 
         // pick new k for this join
         BLocal(asyncJoinKV) ::
-        bassume(0 < asyncJoinK) ::
+        bassume(0.0 < asyncJoinK) ::
         // try to use the same k as for the fork
         bassume(asyncJoinK ==@ etran.Heap.select(token, forkK)) :: 
         // check that token is well-defined
@@ -1106,10 +1106,10 @@ class Translator {
     val (preGlobalsV, preGlobals) = etran.FreshGlobals("pre")
 
     // pick new k for the spec stmt
-    val (specKV, specK) = Boogie.NewBVar("specStmtK", tint, true)
+    val (specKV, specK) = Boogie.NewBVar("specStmtK", treal, true)
 
     BLocal(specKV) ::
-    bassume(0 < specK && 1000*specK < percentPermission(1) && 1000*specK < methodK) ::
+    bassume(0.0 < specK && 1000.0*specK < percentPermission(1) && 1000.0*specK < methodK) ::
     // declare new local variables
     s.locals.flatMap(v => translateLocalVarDecl(v, true)) :::
     Comment("spec statement") ::
@@ -1139,9 +1139,9 @@ class Translator {
     val postEtran = etran.FromPreGlobals(preGlobals)
     
     // pick new k for this method call
-    val (methodCallKV, methodCallK) = Boogie.NewBVar("methodCallK", tint, true)
+    val (methodCallKV, methodCallK) = Boogie.NewBVar("methodCallK", treal, true)
     BLocal(methodCallKV) ::
-    bassume(0 < methodCallK && 1000*methodCallK < percentPermission(1) && 1000*methodCallK < methodK) ::
+    bassume(0.0 < methodCallK && 1000.0*methodCallK < percentPermission(1) && 1000.0*methodCallK < methodK) ::
     Comment("call " + id) ::
     // introduce formal parameters and pre-state globals
     (for (v <- formalThisV :: formalInsV ::: formalOutsV) yield BLocal(Variable2BVarWhere(v))) :::
@@ -1189,13 +1189,13 @@ class Translator {
     val oldLocks = lkchOld map (e => loopEtran.oldEtran.Tr(e))
     val iterStartLocks = lkchIterStart map (e => iterStartEtran.oldEtran.Tr(e))
     val newLocks = lkch map (e => loopEtran.Tr(e));
-    val (whileKV, whileK) = Boogie.NewBVar("whileK", tint, true)
+    val (whileKV, whileK) = Boogie.NewBVar("whileK", treal, true)
     val previousEtran = etran // save etran
     
     Comment("while") ::
     // pick new k for this method call
     BLocal(whileKV) ::
-    bassume(0 < whileK && 1000*whileK < percentPermission(1) && 1000*whileK < methodK) ::
+    bassume(0.0 < whileK && 1000.0*whileK < percentPermission(1) && 1000.0*whileK < methodK) ::
     // save globals
     BLocals(preLoopGlobalsV) :::
     copyState(preLoopGlobals, loopEtran) :::
@@ -1698,7 +1698,7 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
         val tmpTranslator = new ExpressionTranslator(tmpGlobals, this.oldEtran.globals, currentClass);
         
         // pick new k
-        val (funcappKV, funcappK) = Boogie.NewBVar("funcappK", tint, true)
+        val (funcappKV, funcappK) = Boogie.NewBVar("funcappK", treal, true)
         
         // check definedness of receiver
         (if (!func.f.isStatic) {
@@ -1712,7 +1712,7 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
         } else Nil) :::
         // check precondition of the function by exhaling the precondition in tmpHeap/tmpMask/tmpCredits
         Comment("check precondition of call") ::
-        BLocal(funcappKV) :: bassume(0 < funcappK && 1000*funcappK < percentPermission(1)) ::
+        BLocal(funcappKV) :: bassume(0.0 < funcappK && 1000.0*funcappK < percentPermission(1)) ::
         bassume(assumption) ::
         BLocals(tmpGlobalsV) :::
         copyState(tmpGlobals, this) :::
@@ -1731,13 +1731,13 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
         val definition = scaleExpressionByPermission(SubstThis(DefinitionOf(pred.predicate), obj), perm, unfolding.pos)
         
         // pick new k
-        val (unfoldingKV, unfoldingK) = Boogie.NewBVar("unfoldingK", tint, true)
+        val (unfoldingKV, unfoldingK) = Boogie.NewBVar("unfoldingK", treal, true)
         // record version of unfolded instance
 	val (receiverV, receiver) = Boogie.NewBVar("predRec", tref, true)
 	val (versionV, version) = Boogie.NewBVar("predVer", tint, true)
 	
         val res = Comment("unfolding") ::
-        BLocal(unfoldingKV) :: bassume(0 < unfoldingK && 1000*unfoldingK < percentPermission(1)) ::
+        BLocal(unfoldingKV) :: bassume(0.0 < unfoldingK && 1000.0*unfoldingK < percentPermission(1)) ::
         BLocal(flagV) :: (flag := true) ::
         BLocal(receiverV) :: (receiver := o) ::
         BLocal(versionV) :: (version := etran.Heap.select(o, pred.predicate.FullName)) :::
@@ -2239,14 +2239,14 @@ def buildTriggersCovering(vars : Set[Variable], functs : List[(Boogie.FunctionAp
     stmts :::
     (perm.permissionType match {
       case PermissionType.Mixed =>
-        bassume(f > 0 || (f == 0 && n > 0)) ::
+        bassume(f > 0.0 || (f == 0.0 && n > 0)) ::
         IncPermission(obj, memberName, f, m) :::
         IncPermissionEpsilon(obj, memberName, n, m)
       case PermissionType.Epsilons =>
         bassume(n > 0) ::
         IncPermissionEpsilon(obj, memberName, n, m)
       case PermissionType.Fraction =>
-        bassume(f > 0) ::
+        bassume(f > 0.0) ::
         IncPermission(obj, memberName, f, m)
     })
   }
@@ -2299,8 +2299,8 @@ def buildTriggersCovering(vars : Set[Variable], functs : List[(Boogie.FunctionAp
       // assume that the permission is positive
       bassume((SeqContains(e, ref) ==>
       (perm.permissionType match {
-        case PermissionType.Fraction => r > 0
-        case PermissionType.Mixed    => r > 0 || (r == 0 && n > 0)
+        case PermissionType.Fraction => r > 0.0
+        case PermissionType.Mixed    => r > 0.0 || (r == 0.0 && n > 0)
         case PermissionType.Epsilons => n > 0
       })).forall(refV)) ::
       (if (check) isDefined(s)(true) ::: isDefined(perm)(true) else Nil) :::
@@ -2583,7 +2583,7 @@ def buildTriggersCovering(vars : Set[Variable], functs : List[(Boogie.FunctionAp
     val res = stmts :::
     (perm.permissionType match {
       case PermissionType.Mixed =>
-        bassert(f > 0 || (f == 0 && n > 0), error.pos, error.message + " The permission at " + pos + " might not be positive.") ::
+        bassert(f > 0.0 || (f == 0 && n > 0.0), error.pos, error.message + " The permission at " + pos + " might not be positive.") ::
         (if (isUpdatingSecMask) DecPermissionBoth2(obj, memberName, f, n, em, error, pos, exactchecking)
         else DecPermissionBoth(obj, memberName, f, n, em, error, pos, exactchecking))
       case PermissionType.Epsilons =>
@@ -2591,7 +2591,7 @@ def buildTriggersCovering(vars : Set[Variable], functs : List[(Boogie.FunctionAp
         (if (isUpdatingSecMask) DecPermissionEpsilon2(obj, memberName, n, em, error, pos)
         else DecPermissionEpsilon(obj, memberName, n, em, error, pos))
       case PermissionType.Fraction =>
-        bassert(f > 0, error.pos, error.message + " The permission at " + pos + " might not be positive.") ::
+        bassert(f > 0.0, error.pos, error.message + " The permission at " + pos + " might not be positive.") ::
         (if (isUpdatingSecMask) DecPermission2(obj, memberName, f, em, error, pos, exactchecking)
         else DecPermission(obj, memberName, f, em, error, pos, exactchecking))
     })
@@ -2643,7 +2643,7 @@ def buildTriggersCovering(vars : Set[Variable], functs : List[(Boogie.FunctionAp
       val ec = needExactChecking(perm, exactchecking)
       if (ec != onlyExactCheckingPermissions) Nil else {
         val memberName = if(e.isPredicate) e.predicate.FullName else e.f.FullName;
-        val (starKV, starK) = NewBVar("starK", tint, true);
+        val (starKV, starK) = NewBVar("starK", treal, true);
         val trE = Tr(e.e)
         
         // check definedness
@@ -2693,19 +2693,19 @@ def buildTriggersCovering(vars : Set[Variable], functs : List[(Boogie.FunctionAp
           // assert that the permission is positive
           bassert((SeqContains(e, ref) ==>
             (perm.permissionType match {
-              case PermissionType.Fraction => r > 0
-              case PermissionType.Mixed    => r > 0 || (r == 0 && n > 0)
+              case PermissionType.Fraction => r > 0.0
+              case PermissionType.Mixed    => r > 0.0 || (r == 0.0 && n > 0)
               case PermissionType.Epsilons => n > 0
             })).forall(refV), error.pos, error.message + " The permission at " + acc.pos + " might not be positive.") ::
           // make sure enough permission is available
           //  (see comment in front of method exhale for explanation of isUpdatingSecMask)
           (if (!isUpdatingSecMask) bassert((SeqContains(e, ref) ==>
             ((perm,perm.permissionType) match {
-              case _ if !ec     => mr > 0
-              case (Star,_)     => mr > 0
+              case _ if !ec     => mr > 0.0
+              case (Star,_)     => mr > 0.0
               case (_,PermissionType.Fraction) => r <= mr && (r ==@ mr ==> 0 <= mn)
               case (_,PermissionType.Mixed)    => r <= mr && (r ==@ mr ==> n <= mn)
-              case (_,PermissionType.Epsilons) => mr ==@ 0 ==> n <= mn
+              case (_,PermissionType.Epsilons) => mr ==@ 0.0 ==> n <= mn
             })).forall(refV), error.pos, error.message + " Insufficient permission at " + acc.pos + " for " + member.f.FullName) :: Nil else Nil) :::
           // additional assumption on k if we have a star permission or use inexact checking
           ( perm match {
@@ -2776,10 +2776,10 @@ def buildTriggersCovering(vars : Set[Variable], functs : List[(Boogie.FunctionAp
     case MethodEpsilon => (currentK, Nil)
     case ForkEpsilon(token) =>
       val fk = etran.Heap.select(Tr(token), forkK)
-      (fk, bassume(0 < fk && fk < percentPermission(1)) /* this is always true for forkK */)
+      (fk, bassume(0.0 < fk && fk < percentPermission(1)) /* this is always true for forkK */)
     case Star =>
-      val (starKV, starK) = NewBVar("starK", tint, true);
-      (starK, BLocal(starKV) :: bassume(starK > 0 /* an upper bound is provided later by DecPermission */) :: Nil)
+      val (starKV, starK) = NewBVar("starK", treal, true);
+      (starK, BLocal(starKV) :: bassume(starK > 0.0 /* an upper bound is provided later by DecPermission */) :: Nil)
     case Frac(p) => (percentPermission(Tr(p)), Nil)
     case IntPermTimes(lhs, rhs) => {
       val (r, rs) = extractKFromPermission(rhs, currentK)
@@ -2788,7 +2788,7 @@ def buildTriggersCovering(vars : Set[Variable], functs : List[(Boogie.FunctionAp
     case PermTimes(lhs, rhs) => {
       val (l, ls) = extractKFromPermission(lhs, currentK)
       val (r, rs) = extractKFromPermission(rhs, currentK)
-      val (resV, res) = Boogie.NewBVar("productK", tint, true)
+      val (resV, res) = Boogie.NewBVar("productK", treal, true)
       (res, ls ::: rs ::: BLocal(resV) :: bassume(permissionFull * res ==@ l * r) :: Nil)
     }
     case PermPlus(lhs, rhs) => {
@@ -2877,7 +2877,7 @@ def buildTriggersCovering(vars : Set[Variable], functs : List[(Boogie.FunctionAp
   def CanWrite(obj: Boogie.Expr, field: Boogie.Expr): Boogie.Expr = new Boogie.FunctionApp("CanWrite", Mask, obj, field)
   def CanWrite(obj: Boogie.Expr, field: String): Boogie.Expr = CanWrite(obj, new Boogie.VarExpr(field))
   def HasNoPermission(obj: Boogie.Expr, field: String) =
-    (new Boogie.MapSelect(Mask, obj, field, "perm$R") ==@ Boogie.IntLiteral(0)) &&
+    (new Boogie.MapSelect(Mask, obj, field, "perm$R") ==@ 0.0) &&
     (new Boogie.MapSelect(Mask, obj, field, "perm$N") ==@ Boogie.IntLiteral(0))
   def SetNoPermission(obj: Boogie.Expr, field: String, mask: Boogie.Expr) =
     Boogie.Assign(new Boogie.MapSelect(mask, obj, field), Boogie.VarExpr("Permission$Zero"))
@@ -2898,12 +2898,12 @@ def buildTriggersCovering(vars : Set[Variable], functs : List[(Boogie.FunctionAp
     val fP: Boogie.Expr = new Boogie.MapSelect(mask, obj, field, "perm$R")
     val fC: Boogie.Expr = new Boogie.MapSelect(mask, obj, field, "perm$N")
     (if (exactchecking) bassert(howMuch <= fP && (howMuch ==@ fP ==> 0 <= fC), error.pos, error.message + " Insufficient fraction at " + pos + " for " + field + ".") :: Nil
-    else bassert(fP > 0, error.pos, error.message + " Insufficient fraction at " + pos + " for " + field + ".") :: bassume(howMuch < fP)) :::
+    else bassert(fP > 0.0, error.pos, error.message + " Insufficient fraction at " + pos + " for " + field + ".") :: bassume(howMuch < fP)) :::
     MapUpdate3(mask, obj, field, "perm$R", new Boogie.MapSelect(mask, obj, field, "perm$R") - howMuch)
   }
   def DecPermissionEpsilon(obj: Boogie.Expr, field: String, epsilons: Boogie.Expr, mask: Boogie.Expr, error: ErrorMessage, pos: Position): List[Boogie.Stmt] = {
     val xyz = new Boogie.MapSelect(mask, obj, field, "perm$N")
-    bassert((new Boogie.MapSelect(mask, obj, field, "perm$R") ==@ Boogie.IntLiteral(0)) ==> (epsilons <= xyz), error.pos, error.message + " Insufficient epsilons at " + pos + "  for " + field + ".") ::
+    bassert((new Boogie.MapSelect(mask, obj, field, "perm$R") ==@ 0.0) ==> (epsilons <= xyz), error.pos, error.message + " Insufficient epsilons at " + pos + "  for " + field + ".") ::
     MapUpdate3(mask, obj, field, "perm$N", new Boogie.MapSelect(mask, obj, field, "perm$N") - epsilons) ::
     bassume(wf(Heap, Mask, SecMask)) :: Nil
   }
@@ -2912,15 +2912,15 @@ def buildTriggersCovering(vars : Set[Variable], functs : List[(Boogie.FunctionAp
     val fC: Boogie.Expr = new Boogie.MapSelect(mask, obj, field, "perm$N")
 
     (if (exactchecking) bassert(howMuch <= fP && (howMuch ==@ fP ==> epsilons <= fC), error.pos, error.message + " Insufficient permission at " + pos + " for " + field + ".") :: Nil
-    else bassert(fP > 0, error.pos, error.message + " Insufficient permission at " + pos + " for " + field + ".") :: bassume(howMuch < fP)) :::
+    else bassert(fP > 0.0, error.pos, error.message + " Insufficient permission at " + pos + " for " + field + ".") :: bassume(howMuch < fP)) :::
     MapUpdate3(mask, obj, field, "perm$N", fC - epsilons) ::
     MapUpdate3(mask, obj, field, "perm$R", fP - howMuch) ::
     bassume(wf(Heap, Mask, SecMask)) :: Nil
   }
   def DecPermission2(obj: Boogie.Expr, field: String, howMuch: Boogie.Expr, mask: Boogie.Expr, error: ErrorMessage, pos: Position, exactchecking: Boolean): List[Boogie.Stmt] = {
     DecPermission(obj, field, howMuch, mask, error, pos, exactchecking) :::
-    Boogie.If(new Boogie.MapSelect(mask, obj, field, "perm$R") < 0,
-        MapUpdate3(mask, obj, field, "perm$R", 0),
+    Boogie.If(new Boogie.MapSelect(mask, obj, field, "perm$R") < 0.0,
+        MapUpdate3(mask, obj, field, "perm$R", 0.0),
         Nil)
   }
   def DecPermissionEpsilon2(obj: Boogie.Expr, field: String, epsilons: Boogie.Expr, mask: Boogie.Expr, error: ErrorMessage, pos: Position): List[Boogie.Stmt] = {
@@ -2931,8 +2931,8 @@ def buildTriggersCovering(vars : Set[Variable], functs : List[(Boogie.FunctionAp
   }
   def DecPermissionBoth2(obj: Boogie.Expr, field: String, howMuch: Boogie.Expr, epsilons: Boogie.Expr, mask: Boogie.Expr, error: ErrorMessage, pos: Position, exactchecking: Boolean): List[Boogie.Stmt] = {
     DecPermissionBoth(obj, field, howMuch, epsilons, mask, error, pos, exactchecking) :::
-    Boogie.If(new Boogie.MapSelect(mask, obj, field, "perm$R") < 0,
-        MapUpdate3(mask, obj, field, "perm$R", 0),
+    Boogie.If(new Boogie.MapSelect(mask, obj, field, "perm$R") < 0.0,
+        MapUpdate3(mask, obj, field, "perm$R", 0.0),
         Nil) ::
     Boogie.If(new Boogie.MapSelect(mask, obj, field, "perm$N") < 0,
         MapUpdate3(mask, obj, field, "perm$N", 0),
@@ -3032,6 +3032,7 @@ object TranslationHelper {
   implicit def field2Expr(f: Field) = VarExpr(f.FullName);
   implicit def bool2Bool(b: Boolean): Boogie.BoolLiteral = Boogie.BoolLiteral(b)
   implicit def int2Int(n: Int): Boogie.IntLiteral = Boogie.IntLiteral(n)
+   implicit def real2Real(d: Double): Boogie.RealLiteral = Boogie.RealLiteral(d)
   implicit def lift(s: Boogie.Stmt): List[Boogie.Stmt] = List(s)
   implicit def type2BType(cl: Class): BType = {
     if(cl.IsRef) {
@@ -3074,6 +3075,7 @@ object TranslationHelper {
   def tArgSeq = NamedType("ArgSeq");
   def tref = NamedType("ref");
   def tbool = NamedType("bool");
+  def treal = NamedType("real");
   def tmu  = NamedType("Mu");
   def tint = NamedType("int");
   def tstring = NamedType("string");
