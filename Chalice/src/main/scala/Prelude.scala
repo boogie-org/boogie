@@ -33,7 +33,7 @@ object TranslatorPrelude {
   val predicates: Set[Predicate] = Set()
   
   // default components
-  private val components: Set[PreludeComponent] = Set(CopyrightPL, TypesPL, PermissionTypesAndConstantsPL, CreditsAndMuPL, PermissionFunctionsAndAxiomsPL, IfThenElsePL, ArithmeticPL, StringPL)
+  private val components: Set[PreludeComponent] = Set(CopyrightPL, TypesPL, PermissionTypesAndConstantsPL, CreditsAndMuPL, PermissionFunctionsAndAxiomsPL, IfThenElsePL, StringPL)
 
   // get the prelude (with all components currently included)
   def P: String = {
@@ -53,7 +53,7 @@ object TranslatorPrelude {
 sealed abstract class PreludeComponent {
   // determines the order in which the components are output
   def compare(that: PreludeComponent): Boolean = {
-    val order: List[PreludeComponent] = List(CopyrightPL, TypesPL, PermissionTypesAndConstantsPL, PercentageFixedDenominatorPL, PercentageFunctionPL, PercentageUninterpretedFunctionPL, CreditsAndMuPL, PermissionFunctionsAndAxiomsPL, IfThenElsePL, ArithmeticPL, StringPL, AxiomatizationOfSequencesPL)
+    val order: List[PreludeComponent] = List(CopyrightPL, TypesPL, PermissionTypesAndConstantsPL, PercentageFixedDenominatorPL, PercentageFunctionPL, PercentageUninterpretedFunctionPL, CreditsAndMuPL, PermissionFunctionsAndAxiomsPL, IfThenElsePL, StringPL, AxiomatizationOfSequencesPL)
     if (!order.contains(this)) false
     else order.indexOf(this) < order.indexOf(that)
   }
@@ -329,23 +329,6 @@ object IfThenElsePL extends PreludeComponent {
 function ite<T>(bool, T, T) returns (T);
 axiom (forall<T> con: bool, a: T, b: T :: {ite(con, a, b)} con ==> ite(con, a, b) == a);
 axiom (forall<T> con: bool, a: T, b: T :: {ite(con, a, b)} ! con ==> ite(con, a, b) == b);"""
-}
-object ArithmeticPL extends PreludeComponent {
-  val text = """
-// ---------------------------------------------------------------
-// -- Arithmetic -------------------------------------------------
-// ---------------------------------------------------------------
-
-// the connection between % and /
-axiom (forall x:int, y:int :: {x % y} {x / y}  x % y == x - x / y * y);
-
-// sign of denominator determines sign of remainder
-axiom (forall x:int, y:int :: {x % y}  0 < y  ==>  0 <= x % y  &&  x % y < y);
-axiom (forall x:int, y:int :: {x % y}  y < 0  ==>  y < x % y  &&  x % y <= 0);
-
-// the following axiom has some unfortunate matching, but it does state a property about % that
-// is sometime useful
-axiom (forall a: int, b: int, d: int :: { a % d, b % d } 2 <= d && a % d == b % d && a < b  ==>  a + d <= b);"""
 }
 object StringPL extends PreludeComponent {
   val text = """
