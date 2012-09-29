@@ -78,6 +78,7 @@ object Boogie {
    def store(e: Expr, f: Expr, rhs: Expr) = MapUpdate(this, e, Some(f), rhs)
  }
  case class IntLiteral(n: Int) extends Expr
+ case class RealLiteral(d: Double) extends Expr
  case class BoolLiteral(b: Boolean) extends Expr
  case class Null() extends Expr
  case class VarExpr(id: String) extends Expr {
@@ -252,6 +253,7 @@ object Boogie {
  }
  def PrintExpr(e: Expr, useParens: Boolean): String = e match {
    case IntLiteral(n) => n.toString
+   case RealLiteral(d) => d.toString
    case BoolLiteral(b) => b.toString
    case Null() => "null"
    case VarExpr(id) => id
