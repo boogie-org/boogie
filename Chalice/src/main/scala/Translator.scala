@@ -858,8 +858,8 @@ class Translator {
         BLocal(tokenV) :: Havoc(tokenId) :: bassume(nonNull(tokenId)) ::
         // the following assumes help in proving that the token is fresh
         bassume(etran.Heap.select(tokenId, "joinable") ==@ 0) ::
-        bassume(new Boogie.MapSelect(etran.Mask, tokenId, "joinable", "perm$N")==@ 0) ::
-        bassume(new Boogie.MapSelect(etran.Mask, tokenId, "joinable", "perm$R")==@ 0) ::
+        bassume(new Boogie.MapSelect(etran.Mask, tokenId, "joinable", "perm$N")==@ 0.0) ::
+        bassume(new Boogie.MapSelect(etran.Mask, tokenId, "joinable", "perm$R")==@ 0.0) ::
         etran.IncPermission(tokenId, "joinable", permissionFull) :::
         // create a fresh value for the joinable field
         BLocal(asyncStateV) :: Boogie.Havoc(asyncState) :: bassume(asyncState !=@ 0) ::
@@ -1426,7 +1426,7 @@ class Translator {
           List(ttV),
           List(Boogie.BVar("$o", tref), Boogie.BVar("$f", FieldType(tt))),
           Nil,
-          (o ==@ bnull) || ((new MapSelect(etran.Mask, o, f, "perm$R") ==@ 0) && (new MapSelect(etran.Mask, o, f, "perm$N") ==@ 0))
+          (o ==@ bnull) || ((new MapSelect(etran.Mask, o, f, "perm$R") ==@ 0.0) && (new MapSelect(etran.Mask, o, f, "perm$N") ==@ 0.0))
         ), pos, msg)
       )
     } else {
@@ -2239,11 +2239,11 @@ def buildTriggersCovering(vars : Set[Variable], functs : List[(Boogie.FunctionAp
     stmts :::
     (perm.permissionType match {
       case PermissionType.Mixed =>
-        bassume(f > 0.0 || (f == 0.0 && n > 0)) ::
+        bassume(f > 0.0 || (f == 0.0 && n > 0.0)) ::
         IncPermission(obj, memberName, f, m) :::
         IncPermissionEpsilon(obj, memberName, n, m)
       case PermissionType.Epsilons =>
-        bassume(n > 0) ::
+        bassume(n > 0.0) ::
         IncPermissionEpsilon(obj, memberName, n, m)
       case PermissionType.Fraction =>
         bassume(f > 0.0) ::
@@ -2300,8 +2300,8 @@ def buildTriggersCovering(vars : Set[Variable], functs : List[(Boogie.FunctionAp
       bassume((SeqContains(e, ref) ==>
       (perm.permissionType match {
         case PermissionType.Fraction => r > 0.0
-        case PermissionType.Mixed    => r > 0.0 || (r == 0.0 && n > 0)
-        case PermissionType.Epsilons => n > 0
+        case PermissionType.Mixed    => r > 0.0 || (r == 0.0 && n > 0.0)
+        case PermissionType.Epsilons => n > 0.0
       })).forall(refV)) ::
       (if (check) isDefined(s)(true) ::: isDefined(perm)(true) else Nil) :::
       {
@@ -2583,11 +2583,11 @@ def buildTriggersCovering(vars : Set[Variable], functs : List[(Boogie.FunctionAp
     val res = stmts :::
     (perm.permissionType match {
       case PermissionType.Mixed =>
-        bassert(f > 0.0 || (f == 0 && n > 0.0), error.pos, error.message + " The permission at " + pos + " might not be positive.") ::
+        bassert(f > 0.0 || (f == 0.0 && n > 0.0), error.pos, error.message + " The permission at " + pos + " might not be positive.") ::
         (if (isUpdatingSecMask) DecPermissionBoth2(obj, memberName, f, n, em, error, pos, exactchecking)
         else DecPermissionBoth(obj, memberName, f, n, em, error, pos, exactchecking))
       case PermissionType.Epsilons =>
-        bassert(n > 0, error.pos, error.message + " The permission at " + pos + " might not be positive.") ::
+        bassert(n > 0.0, error.pos, error.message + " The permission at " + pos + " might not be positive.") ::
         (if (isUpdatingSecMask) DecPermissionEpsilon2(obj, memberName, n, em, error, pos)
         else DecPermissionEpsilon(obj, memberName, n, em, error, pos))
       case PermissionType.Fraction =>
@@ -2694,8 +2694,8 @@ def buildTriggersCovering(vars : Set[Variable], functs : List[(Boogie.FunctionAp
           bassert((SeqContains(e, ref) ==>
             (perm.permissionType match {
               case PermissionType.Fraction => r > 0.0
-              case PermissionType.Mixed    => r > 0.0 || (r == 0.0 && n > 0)
-              case PermissionType.Epsilons => n > 0
+              case PermissionType.Mixed    => r > 0.0 || (r == 0.0 && n > 0.0)
+              case PermissionType.Epsilons => n > 0.0
             })).forall(refV), error.pos, error.message + " The permission at " + acc.pos + " might not be positive.") ::
           // make sure enough permission is available
           //  (see comment in front of method exhale for explanation of isUpdatingSecMask)
@@ -2703,7 +2703,7 @@ def buildTriggersCovering(vars : Set[Variable], functs : List[(Boogie.FunctionAp
             ((perm,perm.permissionType) match {
               case _ if !ec     => mr > 0.0
               case (Star,_)     => mr > 0.0
-              case (_,PermissionType.Fraction) => r <= mr && (r ==@ mr ==> 0 <= mn)
+              case (_,PermissionType.Fraction) => r <= mr && (r ==@ mr ==> 0.0 <= mn)
               case (_,PermissionType.Mixed)    => r <= mr && (r ==@ mr ==> n <= mn)
               case (_,PermissionType.Epsilons) => mr ==@ 0.0 ==> n <= mn
             })).forall(refV), error.pos, error.message + " Insufficient permission at " + acc.pos + " for " + member.f.FullName) :: Nil else Nil) :::
@@ -2769,7 +2769,7 @@ def buildTriggersCovering(vars : Set[Variable], functs : List[(Boogie.FunctionAp
   def extractKFromPermission(expr: Permission, currentK: Expr): (Expr, List[Boogie.Stmt]) = expr match {
     case Full => (permissionFull, Nil)
     case Epsilon => (currentK, Nil)
-    case Epsilons(_) => (0, Nil)
+    case Epsilons(_) => (0.0, Nil)
     case PredicateEpsilon(_) => (predicateK, Nil)
     case MonitorEpsilon(_) => (monitorK, Nil)
     case ChannelEpsilon(_) => (channelK, Nil)
@@ -2804,9 +2804,9 @@ def buildTriggersCovering(vars : Set[Variable], functs : List[(Boogie.FunctionAp
   }
   
   def extractEpsilonsFromPermission(expr: Permission): Expr = expr match {
-    case _:Write => 0
-    case Epsilons(n) => Tr(n)
-    case PermTimes(lhs, rhs) => 0 // multiplication cannot give epsilons
+    case _:Write => 0.0
+    case Epsilons(n) => int2real(Tr(n))
+    case PermTimes(lhs, rhs) => 0.0 // multiplication cannot give epsilons
     case IntPermTimes(lhs, rhs) => lhs * extractEpsilonsFromPermission(rhs)
     case PermPlus(lhs, rhs) => {
       val l = extractEpsilonsFromPermission(lhs)
@@ -2878,12 +2878,12 @@ def buildTriggersCovering(vars : Set[Variable], functs : List[(Boogie.FunctionAp
   def CanWrite(obj: Boogie.Expr, field: String): Boogie.Expr = CanWrite(obj, new Boogie.VarExpr(field))
   def HasNoPermission(obj: Boogie.Expr, field: String) =
     (new Boogie.MapSelect(Mask, obj, field, "perm$R") ==@ 0.0) &&
-    (new Boogie.MapSelect(Mask, obj, field, "perm$N") ==@ Boogie.IntLiteral(0))
+    (new Boogie.MapSelect(Mask, obj, field, "perm$N") ==@ 0.0)
   def SetNoPermission(obj: Boogie.Expr, field: String, mask: Boogie.Expr) =
     Boogie.Assign(new Boogie.MapSelect(mask, obj, field), Boogie.VarExpr("Permission$Zero"))
   def HasFullPermission(obj: Boogie.Expr, field: String, mask: Boogie.Expr) =
     (new Boogie.MapSelect(mask, obj, field, "perm$R") ==@ permissionFull) &&
-    (new Boogie.MapSelect(mask, obj, field, "perm$N") ==@ Boogie.IntLiteral(0))
+    (new Boogie.MapSelect(mask, obj, field, "perm$N") ==@ 0.0)
   def SetFullPermission(obj: Boogie.Expr, field: String) =
     Boogie.Assign(new Boogie.MapSelect(Mask, obj, field), Boogie.VarExpr("Permission$Full"))
 
@@ -2897,7 +2897,7 @@ def buildTriggersCovering(vars : Set[Variable], functs : List[(Boogie.FunctionAp
   def DecPermission(obj: Boogie.Expr, field: String, howMuch: Boogie.Expr, mask: Boogie.Expr, error: ErrorMessage, pos: Position, exactchecking: Boolean): List[Boogie.Stmt] = {
     val fP: Boogie.Expr = new Boogie.MapSelect(mask, obj, field, "perm$R")
     val fC: Boogie.Expr = new Boogie.MapSelect(mask, obj, field, "perm$N")
-    (if (exactchecking) bassert(howMuch <= fP && (howMuch ==@ fP ==> 0 <= fC), error.pos, error.message + " Insufficient fraction at " + pos + " for " + field + ".") :: Nil
+    (if (exactchecking) bassert(howMuch <= fP && (howMuch ==@ fP ==> 0.0 <= fC), error.pos, error.message + " Insufficient fraction at " + pos + " for " + field + ".") :: Nil
     else bassert(fP > 0.0, error.pos, error.message + " Insufficient fraction at " + pos + " for " + field + ".") :: bassume(howMuch < fP)) :::
     MapUpdate3(mask, obj, field, "perm$R", new Boogie.MapSelect(mask, obj, field, "perm$R") - howMuch)
   }
@@ -2925,8 +2925,8 @@ def buildTriggersCovering(vars : Set[Variable], functs : List[(Boogie.FunctionAp
   }
   def DecPermissionEpsilon2(obj: Boogie.Expr, field: String, epsilons: Boogie.Expr, mask: Boogie.Expr, error: ErrorMessage, pos: Position): List[Boogie.Stmt] = {
     DecPermissionEpsilon(obj, field, epsilons, mask, error, pos) :::
-    Boogie.If(new Boogie.MapSelect(mask, obj, field, "perm$N") < 0,
-        MapUpdate3(mask, obj, field, "perm$N", 0),
+    Boogie.If(new Boogie.MapSelect(mask, obj, field, "perm$N") < 0.0,
+        MapUpdate3(mask, obj, field, "perm$N", 0.0),
         Nil)
   }
   def DecPermissionBoth2(obj: Boogie.Expr, field: String, howMuch: Boogie.Expr, epsilons: Boogie.Expr, mask: Boogie.Expr, error: ErrorMessage, pos: Position, exactchecking: Boolean): List[Boogie.Stmt] = {
@@ -2934,8 +2934,8 @@ def buildTriggersCovering(vars : Set[Variable], functs : List[(Boogie.FunctionAp
     Boogie.If(new Boogie.MapSelect(mask, obj, field, "perm$R") < 0.0,
         MapUpdate3(mask, obj, field, "perm$R", 0.0),
         Nil) ::
-    Boogie.If(new Boogie.MapSelect(mask, obj, field, "perm$N") < 0,
-        MapUpdate3(mask, obj, field, "perm$N", 0),
+    Boogie.If(new Boogie.MapSelect(mask, obj, field, "perm$N") < 0.0,
+        MapUpdate3(mask, obj, field, "perm$N", 0.0),
         Nil) :: Nil
   }
 
@@ -3103,6 +3103,7 @@ object TranslationHelper {
       case 2 | 3 => FunctionApp("Fractions", List(e))
     }
   }
+  def int2real(e: Expr): Expr = FunctionApp("real", List(e))
   def forkK = "forkK";
   def channelK = "channelK";
   def monitorK = "monitorK";
