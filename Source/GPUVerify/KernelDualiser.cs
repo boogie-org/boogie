@@ -108,7 +108,9 @@ namespace GPUVerify {
           Debug.Assert(Call.Ins.Count >= 3);
           var BIDescriptor = new UnaryBarrierInvariantDescriptor(Call.Ins[0],
             Expr.Neq(Call.Ins[1], 
-              new LiteralExpr(Token.NoToken, BigNum.FromInt(0), 1)), this);
+              new LiteralExpr(Token.NoToken, BigNum.FromInt(0), 1)),
+              Call.Attributes,
+              this, procName);
           for (var i = 2; i < Call.Ins.Count; i++) {
             BIDescriptor.AddInstantiationExpr(Call.Ins[i]);
           }
@@ -122,7 +124,9 @@ namespace GPUVerify {
           Debug.Assert(Call.Ins.Count >= 4);
           var BIDescriptor = new BinaryBarrierInvariantDescriptor(Call.Ins[0],
             Expr.Neq(Call.Ins[1],
-              new LiteralExpr(Token.NoToken, BigNum.FromInt(0), 1)), this);
+              new LiteralExpr(Token.NoToken, BigNum.FromInt(0), 1)),
+              Call.Attributes,
+              this, procName);
           for (var i = 2; i < Call.Ins.Count; i += 2) {
             BIDescriptor.AddInstantiationExprPair(Call.Ins[i], Call.Ins[i + 1]);
           }
@@ -134,7 +138,7 @@ namespace GPUVerify {
         if (Call.callee.Equals(verifier.BarrierProcedure.Name)) {
           // Assert barrier invariants
           foreach (var BIDescriptor in BarrierInvariantDescriptors) {
-            cs.Add(BIDescriptor.GetAssertCmd(Call.Attributes));
+            cs.Add(BIDescriptor.GetAssertCmd());
           }
         }
 
@@ -420,14 +424,17 @@ namespace GPUVerify {
 
   class ThreadInstantiator : Duplicator {
 
-    private GPUVerifier verifier;
     private Expr InstantiationExpr;
     private int Thread;
+    private UniformityAnalyser Uni;
+    private string ProcName;
 
-    internal ThreadInstantiator(GPUVerifier verifier, Expr InstantiationExpr, int Thread) {
-      this.verifier = verifier;
+    internal ThreadInstantiator(Expr InstantiationExpr, int Thread,
+        UniformityAnalyser Uni, string ProcName) {
       this.InstantiationExpr = InstantiationExpr;
       this.Thread = Thread;
+      this.Uni = Uni;
+      this.ProcName = ProcName;
     }
 
     public override Expr VisitIdentifierExpr(IdentifierExpr node) {
@@ -438,11 +445,24 @@ namespace GPUVerify {
         return InstantiationExpr.Clone() as Expr;
       }
 
-      Debug.Assert(node.Decl is Constant ||
-        verifier.KernelArrayInfo.getGroupSharedArrays().Contains(node.Decl) ||
-        verifier.KernelArrayInfo.getGlobalArrays().Contains(node.Decl));
+      if(node.Decl is Constant ||
+          QKeyValue.FindBoolAttribute(node.Decl.Attributes, "global") ||
+          QKeyValue.FindBoolAttribute(node.Decl.Attributes, "group_shared") ||
+          (Uni != null && Uni.IsUniform(ProcName, node.Decl.Name))) {
+        return base.VisitIdentifierExpr(node);
+      }
 
-      return base.VisitIdentifierExpr(node);
+      if (InstantiationExprIsThreadId()) {
+        return new VariableDualiser(Thread, Uni, ProcName).VisitIdentifierExpr(node);
+      }
+
+      Debug.Assert(false);
+      return null;
+    }
+
+    private bool InstantiationExprIsThreadId() {
+      return (InstantiationExpr is IdentifierExpr) && 
+        ((IdentifierExpr)InstantiationExpr).Decl.Name.Equals(GPUVerifier.MakeThreadId("X", Thread).Name);
     }
 
     public override Expr VisitNAryExpr(NAryExpr node) {

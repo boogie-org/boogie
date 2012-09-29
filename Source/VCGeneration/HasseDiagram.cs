@@ -11,7 +11,6 @@ using System.Threading;
 using System.IO;
 using Microsoft.Boogie;
 using Graphing;
-using AI = Microsoft.AbstractInterpretationFramework;
 using System.Diagnostics.Contracts;
 using Microsoft.Basetypes;
 using Microsoft.Boogie.VCExprAST;

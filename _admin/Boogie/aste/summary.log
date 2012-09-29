@@ -1,45 +1,40 @@
-# Aste started: 2012-08-22 07:00:02
+# Aste started: 2012-09-28 10:27:56
 # Host id: Boogiebox
 # Configuration: boogie.cfg
 # Task: aste.tasks.boogie.FullBuild
-# [2012-08-22 07:01:12] SpecSharp revision: 5f64084327c6
-# [2012-08-22 07:01:12] SscBoogie revision: 5f64084327c6
-# [2012-08-22 07:02:05] Boogie revision: 693e9d4632c3
-[2012-08-22 07:03:35] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com SpecSharp.sln /Project "Checkin Tests" /Build
+# [2012-09-28 10:29:01] SpecSharp revision: 6649fff01012
+# [2012-09-28 10:29:01] SscBoogie revision: 6649fff01012
+# [2012-09-28 10:29:53] Boogie revision: cf9601ebcaee
+[2012-09-28 10:31:01] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com SpecSharp.sln /Project "Checkin Tests" /Build
 
     1>corflags : warning CF011: The specified file is strong name signed.  Using /Force will invalidate the signature of this image and will require the assembly to be resigned.
     warning CF011: The specified file is strong name signed.  Using /Force will invalidate the signature of this image and will require the assembly to be resigned.
-[2012-08-22 07:05:01] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Boogie.sln /Rebuild Checked
+[2012-09-28 10:32:13] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Boogie.sln /Rebuild Checked
 
-    D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(823,16): warning CS0659: 'Microsoft.Boogie.BasicType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
-    D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(2802,16): warning CS0659: 'Microsoft.Boogie.CtorType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
+    D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(828,16): warning CS0659: 'Microsoft.Boogie.BasicType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
+    D:\Temp\aste\Boogie\Source\Core\AbsyType.cs(2825,16): warning CS0659: 'Microsoft.Boogie.CtorType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
     D:\Temp\aste\Boogie\Source\Core\OOLongUtil.cs(109,7): warning CS0162: Unreachable code detected
-    D:\Temp\aste\Boogie\Source\Core\Absy.cs(770,7): warning CC1036: Detected call to method 'Graphing.Graph`1<Microsoft.Boogie.Block>.TopologicalSort' without [Pure] in contracts of method 'Microsoft.Boogie.Program.GraphFromImpl(Microsoft.Boogie.Implementation)'.
-    EXEC : warning CC1079: Type Microsoft.Boogie.Variable implements Microsoft.AbstractInterpretationFramework.IVariable.get_Name by inheriting Microsoft.Boogie.NamedDeclaration.get_Name causing the interface contract to not be checked at runtime. Consider adding a wrapper method.
+    D:\Temp\aste\Boogie\Source\Core\Absy.cs(747,7): warning CC1036: Detected call to method 'Graphing.Graph`1<Microsoft.Boogie.Block>.TopologicalSort' without [Pure] in contracts of method 'Microsoft.Boogie.Program.GraphFromImpl(Microsoft.Boogie.Implementation)'.
     D:\Temp\aste\Boogie\Source\Core\Parser.cs(128,3): warning CC1032: Method 'Microsoft.Boogie.Parser+BvBounds.Resolve(Microsoft.Boogie.ResolutionContext)' overrides 'Microsoft.Boogie.Absy.Resolve(Microsoft.Boogie.ResolutionContext)', thus cannot add Requires.
     D:\Temp\aste\Boogie\Source\Core\Parser.cs(133,5): warning CC1032: Method 'Microsoft.Boogie.Parser+BvBounds.Emit(Microsoft.Boogie.TokenTextWriter,System.Int32,System.Boolean)' overrides 'Microsoft.Boogie.Expr.Emit(Microsoft.Boogie.TokenTextWriter,System.Int32,System.Boolean)', thus cannot add Requires.
     D:\Temp\aste\Boogie\Source\Core\Parser.cs(136,74): warning CC1032: Method 'Microsoft.Boogie.Parser+BvBounds.ComputeFreeVariables(Microsoft.Boogie.GSet`1<System.Object>)' overrides 'Microsoft.Boogie.Expr.ComputeFreeVariables(Microsoft.Boogie.GSet`1<System.Object>)', thus cannot add Requires.
-    D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(247,7): warning CS0162: Unreachable code detected
-    D:\Temp\aste\Boogie\Source\AbsInt\ExprFactories.cs(266,7): warning CS0162: Unreachable code detected
     D:\Temp\aste\Boogie\Source\AbsInt\IntervalDomain.cs(49,9): warning CC1036: Detected call to method 'Microsoft.Boogie.AbstractInterpretation.NativeIntervallDomain+Node.StrictlyBefore(Microsoft.Boogie.Variable,Microsoft.Boogie.Variable)' without [Pure] in contracts of method 'Microsoft.Boogie.AbstractInterpretation.NativeIntervallDomain+Node.#ctor(Microsoft.Boogie.Variable,System.Nullable`1<System.Numerics.BigInteger>,System.Nullable`1<System.Numerics.BigInteger>,Microsoft.Boogie.AbstractInterpretation.NativeIntervallDomain+Node)'.
-    D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(1400,11): warning CS0162: Unreachable code detected
-    D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(1558,11): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(1399,11): warning CS0162: Unreachable code detected
+    D:\Temp\aste\Boogie\Source\VCGeneration\VC.cs(1557,11): warning CS0162: Unreachable code detected
     EXEC : warning CC1032: Method 'Microsoft.Boogie.Houdini.InlineRequiresVisitor.VisitCmdSeq(Microsoft.Boogie.CmdSeq)' overrides 'Microsoft.Boogie.StandardVisitor.VisitCmdSeq(Microsoft.Boogie.CmdSeq)', thus cannot add Requires.
     EXEC : warning CC1032: Method 'Microsoft.Boogie.Houdini.FreeRequiresVisitor.VisitAssertRequiresCmd(Microsoft.Boogie.AssertRequiresCmd)' overrides 'Microsoft.Boogie.StandardVisitor.VisitAssertRequiresCmd(Microsoft.Boogie.AssertRequiresCmd)', thus cannot add Requires.
     warning CS0659: 'Microsoft.Boogie.BasicType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
     warning CS0659: 'Microsoft.Boogie.CtorType' overrides Object.Equals(object o) but does not override Object.GetHashCode()
     warning CS0162: Unreachable code detected
     warning CC1036: Detected call to method 'Graphing.Graph`1<Microsoft.Boogie.Block>.TopologicalSort' without [Pure] in contracts of method 'Microsoft.Boogie.Program.GraphFromImpl(Microsoft.Boogie.Implementation)'.
-    warning CC1079: Type Microsoft.Boogie.Variable implements Microsoft.AbstractInterpretationFramework.IVariable.get_Name by inheriting Microsoft.Boogie.NamedDeclaration.get_Name causing the interface contract to not be checked at runtime. Consider adding a wrapper method.
     warning CC1032: Method 'Microsoft.Boogie.Parser+BvBounds.Resolve(Microsoft.Boogie.ResolutionContext)' overrides 'Microsoft.Boogie.Absy.Resolve(Microsoft.Boogie.ResolutionContext)', thus cannot add Requires.
     warning CC1032: Method 'Microsoft.Boogie.Parser+BvBounds.Emit(Microsoft.Boogie.TokenTextWriter,System.Int32,System.Boolean)' overrides 'Microsoft.Boogie.Expr.Emit(Microsoft.Boogie.TokenTextWriter,System.Int32,System.Boolean)', thus cannot add Requires.
     warning CC1032: Method 'Microsoft.Boogie.Parser+BvBounds.ComputeFreeVariables(Microsoft.Boogie.GSet`1<System.Object>)' overrides 'Microsoft.Boogie.Expr.ComputeFreeVariables(Microsoft.Boogie.GSet`1<System.Object>)', thus cannot add Requires.
-    warning CS0162: Unreachable code detected
-    warning CS0162: Unreachable code detected
     warning CC1036: Detected call to method 'Microsoft.Boogie.AbstractInterpretation.NativeIntervallDomain+Node.StrictlyBefore(Microsoft.Boogie.Variable,Microsoft.Boogie.Variable)' without [Pure] in contracts of method 'Microsoft.Boogie.AbstractInterpretation.NativeIntervallDomain+Node.#ctor(Microsoft.Boogie.Variable,System.Nullable`1<System.Numerics.BigInteger>,System.Nullable`1<System.Numerics.BigInteger>,Microsoft.Boogie.AbstractInterpretation.NativeIntervallDomain+Node)'.
     warning CS0162: Unreachable code detected
     warning CS0162: Unreachable code detected
     warning CC1032: Method 'Microsoft.Boogie.Houdini.InlineRequiresVisitor.VisitCmdSeq(Microsoft.Boogie.CmdSeq)' overrides 'Microsoft.Boogie.StandardVisitor.VisitCmdSeq(Microsoft.Boogie.CmdSeq)', thus cannot add Requires.
     warning CC1032: Method 'Microsoft.Boogie.Houdini.FreeRequiresVisitor.VisitAssertRequiresCmd(Microsoft.Boogie.AssertRequiresCmd)' overrides 'Microsoft.Boogie.StandardVisitor.VisitAssertRequiresCmd(Microsoft.Boogie.AssertRequiresCmd)', thus cannot add Requires.
-[2012-08-22 07:59:27] 0 out of 33 test(s) in D:\Temp\aste\Boogie\Test\alltests.txt failed
-# [2012-08-22 08:00:38] Released nightly of Boogie
+[2012-09-28 11:34:35] 2 out of 33 test(s) in D:\Temp\aste\Boogie\Test\alltests.txt failed
+['prover', 'dafny0']
+# [2012-09-28 11:35:15] Released nightly of Boogie

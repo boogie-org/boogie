@@ -609,26 +609,9 @@ namespace Microsoft.Boogie {
     }
 
     public class AiFlags {
-      public bool Intervals = false;
-      public bool Constant = false;
-      public bool DynamicType = false;
-      public bool Nullness = false;
-      public bool Polyhedra = false;
       public bool J_Trivial = false;
       public bool J_Intervals = false;
       public bool DebugStatistics = false;
-
-      public bool AnySet {
-        get {
-          return Intervals
-              || Constant
-              || DynamicType
-              || Nullness
-              || Polyhedra
-              || J_Trivial
-              || J_Intervals;
-        }
-      }
     }
     public AiFlags/*!*/ Ai = new AiFlags();
 
@@ -639,26 +622,6 @@ namespace Microsoft.Boogie {
           if (ps.ConfirmArgumentCount(1)) {
             foreach (char c in cce.NonNull(args[ps.i])) {
               switch (c) {
-                case 'i':
-                  Ai.Intervals = true;
-                  UseAbstractInterpretation = true;
-                  break;
-                case 'c':
-                  Ai.Constant = true;
-                  UseAbstractInterpretation = true;
-                  break;
-                case 'd':
-                  Ai.DynamicType = true;
-                  UseAbstractInterpretation = true;
-                  break;
-                case 'n':
-                  Ai.Nullness = true;
-                  UseAbstractInterpretation = true;
-                  break;
-                case 'p':
-                  Ai.Polyhedra = true;
-                  UseAbstractInterpretation = true;
-                  break;
                 case 't':
                   Ai.J_Trivial = true;
                   UseAbstractInterpretation = true;
@@ -694,12 +657,6 @@ namespace Microsoft.Boogie {
         case "noinfer":
           if (ps.ConfirmArgumentCount(0)) {
             UseAbstractInterpretation = false;
-          }
-          return true;
-
-        case "logInfer":
-          if (ps.ConfirmArgumentCount(0)) {
-            Microsoft.AbstractInterpretationFramework.Lattice.LogSwitch = true;
           }
           return true;
 
@@ -1133,6 +1090,18 @@ namespace Microsoft.Boogie {
           ps.GetNumericArgument(ref VcsCores);
           return true;
 
+        case "vcsLoad":
+          double load = 0.0;
+          if (ps.GetNumericArgument(ref load)) {
+            if (3.0 <= load) {
+              ps.Error("surprisingly high load specified; got {0}, expected nothing above 3.0", load.ToString());
+              load = 3.0;
+            }
+            int p = (int)Math.Round(System.Environment.ProcessorCount * load);
+            VcsCores = p < 1 ? 1 : p;
+          }
+          return true;
+
         case "simplifyMatchDepth":
           ps.GetNumericArgument(ref SimplifyProverMatchDepth);
           return true;
@@ -1502,7 +1471,6 @@ namespace Microsoft.Boogie {
                 perform interprocedural inference (deprecated, not supported)
   /contractInfer
                 perform procedure contract inference
-  /logInfer     print debug output during inference
   /instrumentInfer
                 h - instrument inferred invariants only at beginning of
                     loop headers (default)
@@ -1642,6 +1610,9 @@ namespace Microsoft.Boogie {
                 Warning: Affects error reporting.
   /vcsCores:<n>
                 Try to verify <n> VCs at once. Defaults to 1.
+  /vcsLoad:<f>  Sets vcsCores to the machine's ProcessorCount * f,
+                rounded to the nearest integer (where 0.0 <= f <= 3.0),
+                but never to less than 1.
 
   ---- Prover options --------------------------------------------------------
 

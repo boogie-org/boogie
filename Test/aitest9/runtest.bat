@@ -7,5 +7,5 @@ set BPLEXE=%BOOGIEDIR%\Boogie.exe
 for %%f in (VarMapFixPoint.bpl TestIntervals.bpl) do (
   echo. 
   echo -------------------- %%f -------------------- 
-  %BPLEXE% %* %%f /infer:i
+  %BPLEXE% %* %%f /infer:j
 )

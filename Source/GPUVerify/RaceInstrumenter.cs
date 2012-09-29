@@ -1028,7 +1028,8 @@ namespace GPUVerify {
     private Expr AccessedOffsetIsThreadLocalIdExpr(Variable v, string ReadOrWrite, int Thread) {
       return Expr.Imp(
                 new IdentifierExpr(v.tok, new VariableDualiser(Thread, null, null).VisitVariable(GPUVerifier.MakeAccessHasOccurredVariable(v.Name, ReadOrWrite))),
-                Expr.Eq(new IdentifierExpr(v.tok, new VariableDualiser(Thread, null, null).VisitVariable(GPUVerifier.MakeOffsetVariable(v.Name, ReadOrWrite))), new IdentifierExpr(v.tok, verifier.MakeThreadId(v.tok, "X", Thread))));
+                Expr.Eq(new IdentifierExpr(v.tok, new VariableDualiser(Thread, null, null).VisitVariable(GPUVerifier.MakeOffsetVariable(v.Name, ReadOrWrite))), 
+                  new IdentifierExpr(v.tok, GPUVerifier.MakeThreadId("X", Thread))));
     }
 
     private Expr GlobalIdExpr(string dimension, int Thread) {
@@ -1043,10 +1044,10 @@ namespace GPUVerify {
 
     private Expr MakeCTimesLocalIdRangeExpression(Variable v, Expr constant, string ReadOrWrite, int Thread) {
       Expr CTimesLocalId = verifier.MakeBVMul(constant.Clone() as Expr,
-          new IdentifierExpr(Token.NoToken, verifier.MakeThreadId(Token.NoToken, "X", Thread)));
+          new IdentifierExpr(Token.NoToken, GPUVerifier.MakeThreadId("X", Thread)));
 
       Expr CTimesLocalIdPlusC = verifier.MakeBVAdd(verifier.MakeBVMul(constant.Clone() as Expr,
-          new IdentifierExpr(Token.NoToken, verifier.MakeThreadId(Token.NoToken, "X", Thread))), constant.Clone() as Expr);
+          new IdentifierExpr(Token.NoToken, GPUVerifier.MakeThreadId("X", Thread))), constant.Clone() as Expr);
 
       Expr CTimesLocalIdLeqAccessedOffset = GPUVerifier.MakeBitVectorBinaryBoolean("BV32_LEQ", CTimesLocalId, OffsetXExpr(v, ReadOrWrite, Thread));
 

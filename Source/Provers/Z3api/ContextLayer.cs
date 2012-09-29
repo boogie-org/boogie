@@ -139,8 +139,12 @@ namespace Microsoft.Boogie.Z3 {
             {
                 case TermKind.Numeral:
                     var numstr = arg.GetNumeralString();
-                    var bignum = Basetypes.BigNum.FromString(numstr);
-                    res = gen.Integer(bignum);
+                    if (arg.GetSort().GetSortKind() == SortKind.Int) {
+                      res = gen.Integer(Basetypes.BigNum.FromString(numstr));
+                    }
+                    else {
+                      res = gen.Real(Basetypes.BigDec.FromString(numstr));
+                    }
                     break;
                 case TermKind.App:
                     var args = arg.GetAppArgs();
@@ -151,8 +155,14 @@ namespace Microsoft.Boogie.Z3 {
                     switch (arg.GetAppDecl().GetKind())
                     {
                         case DeclKind.Add:
-                            if (vcargs.Length == 0)
-                                res = gen.Integer(Basetypes.BigNum.FromInt(0));
+                            if (vcargs.Length == 0) {
+                              if (arg.GetSort().GetSortKind() == SortKind.Int) {
+                                res = gen.Integer(Basetypes.BigNum.ZERO);
+                              }
+                              else {
+                                res = gen.Real(Basetypes.BigDec.ZERO);
+                              }
+                            }
                             else
                             {
                                 res = vcargs[0];
@@ -167,7 +177,7 @@ namespace Microsoft.Boogie.Z3 {
                             break;
                         case DeclKind.Div:
                             Debug.Assert(vcargs.Length == 2);
-                            res = gen.Function(VCExpressionGenerator.DivOp, vcargs[0], vcargs[1]);
+                            res = gen.Function(VCExpressionGenerator.RealDivOp, vcargs[0], vcargs[1]);
                             break;
                         case DeclKind.Eq:
                             Debug.Assert(vcargs.Length == 2);
@@ -243,8 +253,22 @@ namespace Microsoft.Boogie.Z3 {
                             break;
                         case DeclKind.Uminus:
                             Debug.Assert(vcargs.Length == 1);
-                            var bigzero = Basetypes.BigNum.FromInt(0);
-                            res = gen.Function(VCExpressionGenerator.SubOp, gen.Integer(bigzero), vcargs[0]);
+                            var argzero = null;
+                            if (vcargs[0].Type.IsInt) {
+                              argzero = gen.Integer(Basetypes.BigNum.ZERO);
+                            }
+                            else {
+                              argzero = gen.Real(Basetypes.BigDec.ZERO);
+                            }
+                            res = gen.Function(VCExpressionGenerator.SubOp, argzero, vcargs[0]);
+                            break;
+                        case DeclKind.ToInt:
+                            Debug.Assert(vcargs.Length == 1);
+                            res = gen.Function(VCExpressionGenerator.ToIntOp, vcargs[0]);
+                            break;
+                        case DeclKind.ToReal:
+                            Debug.Assert(vcargs.Length == 1);
+                            res = gen.Function(VCExpressionGenerator.ToRealOp, vcargs[0]);
                             break;
                         case DeclKind.Uninterpreted:
                             var name = arg.GetAppDecl().GetDeclName();

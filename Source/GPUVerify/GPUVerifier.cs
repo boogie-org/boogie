@@ -1023,17 +1023,17 @@ namespace GPUVerify
                     Expr.Or(
                         Expr.Or(
                             Expr.Neq(
-                            new IdentifierExpr(tok, MakeThreadId(tok, "X", 1)),
-                            new IdentifierExpr(tok, MakeThreadId(tok, "X", 2))
+                            new IdentifierExpr(tok, MakeThreadId("X", 1)),
+                            new IdentifierExpr(tok, MakeThreadId("X", 2))
                             ),
                             Expr.Neq(
-                            new IdentifierExpr(tok, MakeThreadId(tok, "Y", 1)),
-                            new IdentifierExpr(tok, MakeThreadId(tok, "Y", 2))
+                            new IdentifierExpr(tok, MakeThreadId("Y", 1)),
+                            new IdentifierExpr(tok, MakeThreadId("Y", 2))
                             )
                         ),
                         Expr.Neq(
-                        new IdentifierExpr(tok, MakeThreadId(tok, "Z", 1)),
-                        new IdentifierExpr(tok, MakeThreadId(tok, "Z", 2))
+                        new IdentifierExpr(tok, MakeThreadId("Z", 1)),
+                        new IdentifierExpr(tok, MakeThreadId("Z", 2))
                         )
                     );
 
@@ -1196,14 +1196,14 @@ namespace GPUVerify
 
                 Expr ThreadIdNonNegative =
                     GetTypeOfId(dimension).Equals(Microsoft.Boogie.Type.GetBvType(32)) ?
-                            MakeBVSge(new IdentifierExpr(tok, MakeThreadId(tok, dimension)), ZeroBV())
+                            MakeBVSge(new IdentifierExpr(tok, MakeThreadId(dimension)), ZeroBV())
                     :
-                            Expr.Ge(new IdentifierExpr(tok, MakeThreadId(tok, dimension)), Zero());
+                            Expr.Ge(new IdentifierExpr(tok, MakeThreadId(dimension)), Zero());
                 Expr ThreadIdLessThanGroupSize =
                     GetTypeOfId(dimension).Equals(Microsoft.Boogie.Type.GetBvType(32)) ?
-                            MakeBVSlt(new IdentifierExpr(tok, MakeThreadId(tok, dimension)), new IdentifierExpr(tok, GetGroupSize(dimension)))
+                            MakeBVSlt(new IdentifierExpr(tok, MakeThreadId(dimension)), new IdentifierExpr(tok, GetGroupSize(dimension)))
                     :
-                            Expr.Lt(new IdentifierExpr(tok, MakeThreadId(tok, dimension)), new IdentifierExpr(tok, GetGroupSize(dimension)));
+                            Expr.Lt(new IdentifierExpr(tok, MakeThreadId(dimension)), new IdentifierExpr(tok, GetGroupSize(dimension)));
 
                 Proc.Requires.Add(new Requires(false, new VariableDualiser(1, null, null).VisitExpr(ThreadIdNonNegative)));
                 Proc.Requires.Add(new Requires(false, new VariableDualiser(2, null, null).VisitExpr(ThreadIdNonNegative)));
@@ -1329,7 +1329,7 @@ namespace GPUVerify
             return null;
         }
 
-        internal Constant MakeThreadId(IToken tok, string dimension)
+        internal static Constant MakeThreadId(string dimension)
         {
             Contract.Requires(dimension.Equals("X") || dimension.Equals("Y") || dimension.Equals("Z"));
             string name = null;
@@ -1337,13 +1337,14 @@ namespace GPUVerify
             if (dimension.Equals("Y")) name = _Y.Name;
             if (dimension.Equals("Z")) name = _Z.Name;
             Debug.Assert(name != null);
-            return new Constant(tok, new TypedIdent(tok, name, GetTypeOfId(dimension)));
+            return new Constant(Token.NoToken, new TypedIdent(Token.NoToken, name, GetTypeOfId(dimension)));
         }
 
-        internal Constant MakeThreadId(IToken tok, string dimension, int number)
+        internal static Constant MakeThreadId(string dimension, int number)
         {
-            Constant resultWithoutThreadId = MakeThreadId(tok, dimension);
-            return new Constant(tok, new TypedIdent(tok, resultWithoutThreadId.Name + "$" + number, GetTypeOfId(dimension)));
+            Constant resultWithoutThreadId = MakeThreadId(dimension);
+            return new Constant(Token.NoToken, new TypedIdent(
+              Token.NoToken, resultWithoutThreadId.Name + "$" + number, GetTypeOfId(dimension)));
         }
 
         internal static Constant GetGroupId(string dimension)
@@ -2142,7 +2143,7 @@ namespace GPUVerify
         {
             return MakeBVAdd(MakeBVMul(
                             new IdentifierExpr(Token.NoToken, GetGroupId(dimension)), new IdentifierExpr(Token.NoToken, GetGroupSize(dimension))),
-                                new IdentifierExpr(Token.NoToken, MakeThreadId(Token.NoToken, dimension)));
+                                new IdentifierExpr(Token.NoToken, MakeThreadId(dimension)));
         }
 
         internal IRegion RootRegion(Implementation Impl)

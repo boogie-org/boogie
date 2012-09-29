@@ -115,7 +115,7 @@ namespace Microsoft.Boogie.SMTLib
           }
           sb.Append(']');
           TypeToStringHelper(m.Result, sb);
-        } else if (t.IsBool || t.IsInt || t.IsBv) {
+        } else if (t.IsBool || t.IsInt || t.IsReal || t.IsBv) {
           sb.Append(TypeToString(t));
         } else {
           System.IO.StringWriter buffer = new System.IO.StringWriter();
@@ -137,6 +137,8 @@ namespace Microsoft.Boogie.SMTLib
         return "Bool";
       else if (t.IsInt)
         return "Int";
+      else if (t.IsReal)
+        return "Real";
       else if (t.IsBv) {
         return "(_ BitVec " + t.BvBits + ")";
       } else {
@@ -181,7 +183,16 @@ namespace Microsoft.Boogie.SMTLib
           wr.Write("(- 0 {0})", lit.Abs);
         else
           wr.Write(lit);
-      } else {
+      } 
+      else if (node is VCExprRealLit) {
+        BigDec lit = ((VCExprRealLit)node).Val;
+        if (lit.IsNegative)
+          // In SMT2 "-42" is an identifier (SMT2, Sect. 3.2 "Symbols")
+          wr.Write("(- 0.0 {0})", lit.Abs.ToDecimalString(20));
+        else
+          wr.Write(lit.ToDecimalString(20));
+      }
+      else {
         Contract.Assert(false);
         throw new cce.UnreachableException();
       }
@@ -609,13 +620,23 @@ namespace Microsoft.Boogie.SMTLib
 
       public bool VisitDivOp(VCExprNAry node, LineariserOptions options)
       {
-        WriteApplication("int_div", node, options);
+        WriteApplication("div", node, options);
         return true;
       }
 
       public bool VisitModOp(VCExprNAry node, LineariserOptions options)
       {
-        WriteApplication("int_mod", node, options);
+        WriteApplication("mod", node, options);
+        return true;
+      }
+
+      public bool VisitRealDivOp(VCExprNAry node, LineariserOptions options) {
+        WriteApplication("/", node, options);
+        return true;
+      }
+
+      public bool VisitPowOp(VCExprNAry node, LineariserOptions options) {
+        WriteApplication("real_pow", node, options);
         return true;
       }
 
@@ -652,6 +673,16 @@ namespace Microsoft.Boogie.SMTLib
       public bool VisitSubtype3Op(VCExprNAry node, LineariserOptions options)
       {
         WriteApplication("UOrdering3", node, options);
+        return true;
+      }
+
+      public bool VisitToIntOp(VCExprNAry node, LineariserOptions options) {
+        WriteApplication("to_int", node, options);
+        return true;
+      }
+
+      public bool VisitToRealOp(VCExprNAry node, LineariserOptions options) {
+        WriteApplication("to_real", node, options);
         return true;
       }
 

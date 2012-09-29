@@ -2135,11 +2135,8 @@ class ExpressionTranslator(val globals: Globals, preGlobals: Globals, val fpi: F
             val fullArgs = if (!fapp.f.isStatic) (obj :: processedArgs) else (processedArgs)
             val noOldETran = this.UseCurrentAsOld();       
             val trArgs = fullArgs map {arg => noOldETran.Tr(arg)} // translate args
-            val precs = Preconditions(fapp.f.spec) map (p => SubstVars(p, obj, fapp.f.ins, processedArgs))
-            val pre = precs.foldLeft(BoolLiteral(true): Expression)({ (a, b) => And(a, b) });
-            val partialHeap = functionDependencies(pre, etran);
-            val frameFunctionName = "#" + functionName(fapp.f);
-            functions ::= (FunctionApp(frameFunctionName, partialHeap :: trArgs),containedVars,extraVars)
+            val triggerFunctionName = functionName(fapp.f) + "#limited#trigger";
+            functions ::= (FunctionApp(triggerFunctionName, trArgs),containedVars,extraVars)
           }
         case _ =>}
       }
