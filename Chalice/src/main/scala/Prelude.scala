@@ -53,7 +53,7 @@ object TranslatorPrelude {
 sealed abstract class PreludeComponent {
   // determines the order in which the components are output
   def compare(that: PreludeComponent): Boolean = {
-    val order: List[PreludeComponent] = List(CopyrightPL, TypesPL, PermissionTypesAndConstantsPL, PercentageFixedDenominatorPL, PercentageFunctionPL, PercentageUninterpretedFunctionPL, CreditsAndMuPL, PermissionFunctionsAndAxiomsPL, IfThenElsePL, StringPL, AxiomatizationOfSequencesPL)
+    val order: List[PreludeComponent] = List(CopyrightPL, TypesPL, PermissionTypesAndConstantsPL, PercentageFunctionPL, CreditsAndMuPL, PermissionFunctionsAndAxiomsPL, IfThenElsePL, StringPL, AxiomatizationOfSequencesPL)
     if (!order.contains(this)) false
     else order.indexOf(this) < order.indexOf(that)
   }
@@ -105,19 +105,15 @@ const predicateK: real;"""
 }
 object PercentageStandardPL extends PreludeComponent {
   val text = """
-axiom (0 < channelK && 1000*channelK < Permission$denominator);
-axiom (0 < monitorK && 1000*monitorK < Permission$denominator);
-axiom (0 < predicateK && 1000*predicateK < Permission$denominator);
-axiom Permission$FullFraction  == 100*Permission$denominator;
+axiom Permission$FullFraction  == 1.0;
+axiom 0.0 < channelK && 1000.0*channelK < 0.01;
+axiom 0.0 < monitorK && 1000.0*monitorK < 0.01;
+axiom 0.0 < predicateK && 1000.0*predicateK < 0.01;
 axiom predicateK == channelK && channelK == monitorK;"""
-}
-object PercentageFixedDenominatorPL extends PreludeComponent {
-  val text = """
-axiom Permission$denominator == 100000000000;"""
 }
 object PercentageFunctionPL extends PreludeComponent {
   val text = """
-function {:inline} Fractions(n: int) returns (real)
+function Fractions(n: int) returns (real)
 {
   n / 100.0
 }
@@ -127,20 +123,6 @@ axiom Permission$FullFraction  == Fractions(100);
 axiom 0.0 < channelK && 1000.0*channelK < Fractions(1);
 axiom 0.0 < monitorK && 1000.0*monitorK < Fractions(1);
 axiom 0.0 < predicateK && 1000.0*predicateK < Fractions(1);
-axiom predicateK == channelK && channelK == monitorK;"""
-}
-object PercentageUninterpretedFunctionPL extends PreludeComponent {
-  val text = """
-function Fractions(n: int) returns (int);
-function Fractions'(n: int) returns (int);
-axiom (forall x: int :: { Fractions(x) } Fractions(x) == Fractions'(x));
-axiom (forall x,y: int :: 0 <= x && x <= y ==> Fractions'(x) <= Fractions'(y));
-axiom (forall x,y: int :: { Fractions(x), Fractions(y) } Fractions(x) + Fractions(y) == Fractions'(x+y));
-
-axiom Permission$FullFraction  == Fractions(100);
-axiom 0 < channelK && 1000*channelK < Fractions(1);
-axiom 0 < monitorK && 1000*monitorK < Fractions(1);
-axiom 0 < predicateK && 1000*predicateK < Fractions(1);
 axiom predicateK == channelK && channelK == monitorK;"""
 }
 object CreditsAndMuPL extends PreludeComponent {

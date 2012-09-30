@@ -34,11 +34,9 @@ object Chalice {
   private[chalice] var skipDeadlockChecks = false: Boolean;
   private[chalice] var skipTermination = false: Boolean;
   private[chalice] var noFreeAssume = false: Boolean;
-  // percentageSupport 0: use multiplication directly
-  // percentageSupport 1: fix Permission$denominator as constant (possibly unsound for small values of the constant?)
-  // percentageSupport 2: use function and provide some (redundant) axioms
-  // percentageSupport 3: use an uninterpreted function and axiomatize the properties of multiplication
-  private[chalice] var percentageSupport = 2;
+  // percentageSupport 0: use multiplication directly (default)
+  // percentageSupport 1: use function and provide some (redundant) axioms
+  private[chalice] var percentageSupport = 0;
   private[chalice] var smoke = false;
   private[chalice] var smokeAll = false;
   private[chalice] var timingVerbosity = 1;
@@ -147,10 +145,8 @@ object Chalice {
           "level 2: unfold predicates and functions with receiver this in pre and postconditions\n"+
           "level 3 or above: level 2 + autoMagic"),
       "percentageSupport:<n>" -> ("determin how percentage permissions are translated to Boogie\n"+
-          "0: use multiplication directly (can cause performance problems)\n"+
-          "1: fix Permission$denominator as constant (possibly unsound)\n"+
-          "2: use a function and provide some (redundant) axioms\n"+
-          "3: use an uninterpreted function and axiomatize the properties of multiplication"),
+          "0: use multiplication directly (default)\n"+
+          "1: use a function and provide some (redundant) axioms")+
       "boogieOpt:<arg>, /bo:<arg>" -> "specify additional Boogie options"
     )
     lazy val help = {
@@ -178,7 +174,7 @@ object Chalice {
      else if (a.startsWith("/percentageSupport:") || a.startsWith("-percentageSupport:")) {
        try {
          val in = Integer.parseInt(a.substring(19));
-         if (in < 0 || in > 3) CommandLineError("/percentageSupport takes only values 0, 1, 2 or 3", help)
+         if (in < 0 || in > 1) CommandLineError("/percentageSupport takes only values 0 or 1", help)
          else percentageSupport = in
        } catch { case _ => CommandLineError("/percentageSupport takes integer argument", help); }
      }
@@ -214,9 +210,7 @@ object Chalice {
     
     percentageSupport match {
       case 0 => TranslatorPrelude.addComponent(PercentageStandardPL)
-      case 1 => TranslatorPrelude.addComponent(PercentageStandardPL, PercentageFixedDenominatorPL)
-      case 2 => TranslatorPrelude.addComponent(PercentageFunctionPL)
-      case 3 => TranslatorPrelude.addComponent(PercentageUninterpretedFunctionPL)
+      case 1 => TranslatorPrelude.addComponent(PercentageFunctionPL)
     }
 
     // check that input files exist

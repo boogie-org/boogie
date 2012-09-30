@@ -3099,8 +3099,8 @@ object TranslationHelper {
   def permissionOnePercent = percentPermission(1);
   def percentPermission(e: Expr) = {
     Chalice.percentageSupport match {
-      case 0 | 1 => e*VarExpr("Permission$denominator")
-      case 2 | 3 => FunctionApp("Fractions", List(e))
+      case 0 => int2real(e)*0.01
+      case 1 => FunctionApp("Fractions", List(e))
     }
   }
   def int2real(e: Expr): Expr = FunctionApp("real", List(e))
