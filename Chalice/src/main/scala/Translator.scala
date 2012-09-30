@@ -2783,7 +2783,7 @@ def buildTriggersCovering(vars : Set[Variable], functs : List[(Boogie.FunctionAp
     case Frac(p) => (percentPermission(Tr(p)), Nil)
     case IntPermTimes(lhs, rhs) => {
       val (r, rs) = extractKFromPermission(rhs, currentK)
-      (lhs * r, rs)
+      (int2real(lhs) * r, rs)
     }
     case PermTimes(lhs, rhs) => {
       val (l, ls) = extractKFromPermission(lhs, currentK)
@@ -2807,7 +2807,7 @@ def buildTriggersCovering(vars : Set[Variable], functs : List[(Boogie.FunctionAp
     case _:Write => 0.0
     case Epsilons(n) => int2real(Tr(n))
     case PermTimes(lhs, rhs) => 0.0 // multiplication cannot give epsilons
-    case IntPermTimes(lhs, rhs) => lhs * extractEpsilonsFromPermission(rhs)
+    case IntPermTimes(lhs, rhs) => int2real(lhs) * extractEpsilonsFromPermission(rhs)
     case PermPlus(lhs, rhs) => {
       val l = extractEpsilonsFromPermission(lhs)
       val r = extractEpsilonsFromPermission(rhs)
