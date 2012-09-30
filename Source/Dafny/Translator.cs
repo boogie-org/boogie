@@ -3986,11 +3986,13 @@ namespace Microsoft.Dafny {
       } else if (stmt is CalcStmt) {
         /* Translate into:
         if (*) {
+            // line well-formedness checks;
+        } else if (*) {
             hint0;
             assert t0 op t1;
             assume false;
-        } else if ...
-        } else {
+        } else if (*) { ...
+        } else if (*) {
             hint<n-1>;
             assert t<n-1> op tn;
             assume false;
@@ -4000,33 +4002,40 @@ namespace Microsoft.Dafny {
         var s = (CalcStmt)stmt;
         Contract.Assert(s.Steps.Count == s.Hints.Count); // established by the resolver
         AddComment(builder, stmt, "calc statement");
-        // NadiaTodo: check well-formedness of lines
-        if (s.Steps.Count > 0) {
+        if (s.Lines.Count > 0) {          
           Bpl.IfCmd ifCmd = null;
-          Bpl.StmtList els = null;
-
+          Bpl.StmtListBuilder b;
+          // check steps:
           for (int i = s.Steps.Count; 0 <= --i; ) {
-            var b = new Bpl.StmtListBuilder();
-            var h = s.Hints[i];
-            if (h != null) {
-              TrStmt(h, b, locals, etran);
-            }
-            b.Add(Assert(s.Lines[i + 1].tok, etran.TrExpr(s.Steps[i]), "this calculation step might not hold"));
-            b.Add(new Bpl.AssumeCmd(s.Tok, Bpl.Expr.False));
-            if (i == s.Steps.Count - 1) {
-              // first iteration (last step)
-              els = b.Collect(s.Tok);
+            b = new Bpl.StmtListBuilder();
+            TrStmt(s.Hints[i], b, locals, etran);
+            bool splitHappened;
+            var ss = TrSplitExpr(s.Steps[i], etran, out splitHappened);
+            if (!splitHappened) {
+              b.Add(AssertNS(s.Lines[i + 1].tok, etran.TrExpr(s.Steps[i]), "the calculation step between the previous line and this line might not hold"));
             } else {
-              ifCmd = new Bpl.IfCmd(s.Tok, null, b.Collect(s.Tok), ifCmd, els);
-              els = null;
+              foreach (var split in ss) {
+                if (!split.IsFree) {
+                  b.Add(AssertNS(s.Lines[i + 1].tok, split.E, "the calculation step between the previous line and this line might not hold"));
+                }
+              }
             }
+            b.Add(new Bpl.AssumeCmd(s.Tok, Bpl.Expr.False));
+            ifCmd = new Bpl.IfCmd(s.Tok, null, b.Collect(s.Tok), ifCmd, null);
           }
-          if (ifCmd == null) {
-            // single step: generate an if without else parts
-            ifCmd = new Bpl.IfCmd(s.Tok, null, els, null, null);
+          // check well-formedness of lines:
+          b = new Bpl.StmtListBuilder();
+          foreach (var e in s.Lines) {            
+            TrStmt_CheckWellformed(e, b, locals, etran, false);
           }
+          b.Add(new Bpl.AssumeCmd(s.Tok, Bpl.Expr.False));
+          ifCmd = new Bpl.IfCmd(s.Tok, null, b.Collect(s.Tok), ifCmd, null);
           builder.Add(ifCmd);
-          builder.Add(new Bpl.AssumeCmd(s.Tok, etran.TrExpr(s.Result)));
+          // assume result:
+          if (s.Steps.Count > 0) {
+            Contract.Assert(s.Result != null); // established by the resolver
+            builder.Add(new Bpl.AssumeCmd(s.Tok, etran.TrExpr(s.Result)));
+          }
         }
 
       } else if (stmt is MatchStmt) {
