@@ -34,8 +34,6 @@ object Chalice {
   private[chalice] var skipDeadlockChecks = false: Boolean;
   private[chalice] var skipTermination = false: Boolean;
   private[chalice] var noFreeAssume = false: Boolean;
-  // percentageSupport 0: use multiplication directly (default)
-  // percentageSupport 1: use function and provide some (redundant) axioms
   private[chalice] var percentageSupport = 0;
   private[chalice] var smoke = false;
   private[chalice] var smokeAll = false;
