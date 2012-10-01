@@ -1530,14 +1530,13 @@ namespace Microsoft.Boogie
       // ---------- Infer invariants --------------------------------------------------------
 
       // Abstract interpretation -> Always use (at least) intervals, if not specified otherwise (e.g. with the "/noinfer" switch)
-      if (CommandLineOptions.Clo.Ai.J_Intervals || CommandLineOptions.Clo.Ai.J_Trivial)
-      {
-        Microsoft.Boogie.AbstractInterpretation.NativeAbstractInterpretation.RunAbstractInterpretation(program);
+      if (CommandLineOptions.Clo.UseAbstractInterpretation) {
+        if (!CommandLineOptions.Clo.Ai.J_Intervals && !CommandLineOptions.Clo.Ai.J_Trivial) {
+          // use /infer:j as the default
+          CommandLineOptions.Clo.Ai.J_Intervals = true;
+        }
       }
-      else
-      {
-        Microsoft.Boogie.AbstractInterpretation.AbstractInterpretation.RunAbstractInterpretation(program);
-      }
+      Microsoft.Boogie.AbstractInterpretation.NativeAbstractInterpretation.RunAbstractInterpretation(program);
 
       if (CommandLineOptions.Clo.LoopUnrollCount != -1)
       {
