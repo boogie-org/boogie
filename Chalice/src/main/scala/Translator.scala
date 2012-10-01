@@ -389,7 +389,7 @@ class Translator {
     val inArgs = (f.ins map {i => Boogie.VarExpr(i.UniqueName)});
     val myresult = Boogie.BVar("result", f.out.typ);
     val args = VarExpr("this") :: inArgs;
-    val applyF = FunctionApp(functionName(f), List(VarExpr(HeapName)) ::: args)
+    val applyFLimited = FunctionApp(functionName(f)+"#limited", List(VarExpr(HeapName)) ::: args)
     val canCall = FunctionApp(functionName(f) + "#canCall", args)
     val wellformed = wf(VarExpr(HeapName), VarExpr(MaskName), VarExpr(SecMaskName))
     
@@ -397,7 +397,7 @@ class Translator {
     (Postconditions(f.spec) map { post : Expression =>
       Axiom(new Boogie.Forall(
         BVar(HeapName, theap) :: BVar(MaskName, tmask) :: BVar(SecMaskName, tmask) :: BVar("this", tref) :: (f.ins map Variable2BVar),
-        new Trigger(List(applyF, wellformed)),
+        new Trigger(List(applyFLimited, wellformed)),
         (wellformed && (CanAssumeFunctionDefs || f.height < FunctionContextHeight || canCall))
           ==>
         etran.Tr(SubstResult(post, f.apply(ExplicitThisExpr(), f.ins map { arg => new VariableExpr(arg) })))
