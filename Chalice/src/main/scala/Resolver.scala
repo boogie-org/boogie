@@ -260,10 +260,11 @@ object Resolver {
              }
              def hasAccessibilityPredicate(e: Expression) = {
                var b = false
-               e transform {
-                 case _: PermissionExpr => b = true; None
-                 case ma: MemberAccess => if (ma.isPredicate) b = true; None
-                 case _ => None
+               e visitOpt {
+                 case _: PermissionExpr => b = true; false
+                 case ma: MemberAccess => if (ma.isPredicate) { b = true; false } else { true }
+                 case Unfolding(pred, e) => false
+                 case _ => true
                }
                b
              }
