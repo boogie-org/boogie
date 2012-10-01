@@ -1,0 +1,10 @@
+// this test is for function postconditions
+
+class FunctionPostconditions
+{
+  predicate valid { true }
+  
+  function t1(): int
+    ensures unfolding valid in true;
+  { 1 }
+}

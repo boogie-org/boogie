@@ -33,7 +33,7 @@ object TranslatorPrelude {
   val predicates: Set[Predicate] = Set()
   
   // default components
-  private val components: Set[PreludeComponent] = Set(CopyrightPL, TypesPL, PermissionTypesAndConstantsPL, CreditsAndMuPL, PermissionFunctionsAndAxiomsPL, IfThenElsePL, ArithmeticPL, StringPL)
+  private val components: Set[PreludeComponent] = Set(CopyrightPL, TypesPL, PermissionTypesAndConstantsPL, CreditsAndMuPL, PermissionFunctionsAndAxiomsPL, IfThenElsePL, StringPL)
 
   // get the prelude (with all components currently included)
   def P: String = {
@@ -53,7 +53,7 @@ object TranslatorPrelude {
 sealed abstract class PreludeComponent {
   // determines the order in which the components are output
   def compare(that: PreludeComponent): Boolean = {
-    val order: List[PreludeComponent] = List(CopyrightPL, TypesPL, PermissionTypesAndConstantsPL, PercentageFixedDenominatorPL, PercentageFunctionPL, PercentageUninterpretedFunctionPL, CreditsAndMuPL, PermissionFunctionsAndAxiomsPL, IfThenElsePL, ArithmeticPL, StringPL, AxiomatizationOfSequencesPL)
+    val order: List[PreludeComponent] = List(CopyrightPL, TypesPL, PermissionTypesAndConstantsPL, PercentageFunctionPL, CreditsAndMuPL, PermissionFunctionsAndAxiomsPL, IfThenElsePL, StringPL, AxiomatizationOfSequencesPL)
     if (!order.contains(this)) false
     else order.indexOf(this) < order.indexOf(that)
   }
@@ -67,7 +67,7 @@ object TypesPL extends PreludeComponent {
   val text = """
 type Field a;
 type HeapType = <a>[ref,Field a]a;
-type MaskType = <a>[ref,Field a][PermissionComponent]int;
+type MaskType = <a>[ref,Field a][PermissionComponent]real;
 type PMaskType = <a>[ref,Field a]bool;
 type CreditsType = [ref]int;
 type ref;
@@ -82,65 +82,47 @@ const unique perm$R: PermissionComponent;
 const unique perm$N: PermissionComponent;
 var Mask: MaskType where IsGoodMask(Mask);
 var SecMask: MaskType where IsGoodMask(SecMask);
-const Permission$denominator: int;
-axiom Permission$denominator > 0;
-const Permission$FullFraction: int;
-const Permission$Zero: [PermissionComponent]int;
-axiom Permission$Zero[perm$R] == 0 && Permission$Zero[perm$N] == 0;
-const Permission$Full: [PermissionComponent]int;
-axiom Permission$Full[perm$R] == Permission$FullFraction && Permission$Full[perm$N] == 0;
+const Permission$denominator: real;
+axiom Permission$denominator == 1.0;
+const Permission$FullFraction: real;
+const Permission$Zero: [PermissionComponent]real;
+axiom Permission$Zero[perm$R] == 0.0 && Permission$Zero[perm$N] == 0.0;
+const Permission$Full: [PermissionComponent]real;
+axiom Permission$Full[perm$R] == Permission$FullFraction && Permission$Full[perm$N] == 0.0;
 const ZeroMask: MaskType;
-axiom (forall<T> o: ref, f: Field T, pc: PermissionComponent :: ZeroMask[o,f][pc] == 0);
+axiom (forall<T> o: ref, f: Field T, pc: PermissionComponent :: ZeroMask[o,f][pc] == 0.0);
 const ZeroPMask: PMaskType;
 axiom (forall<T> o: ref, f: Field T :: ZeroPMask[o,f] == false);
 axiom IsGoodMask(ZeroMask);
 const unique joinable: Field int;
 axiom NonPredicateField(joinable);
 const unique token#t: TypeName;
-const unique forkK: Field int;
+const unique forkK: Field real;
 axiom NonPredicateField(forkK);
-const channelK: int;
-const monitorK: int;
-const predicateK: int;"""
+const channelK: real;
+const monitorK: real;
+const predicateK: real;"""
 }
 object PercentageStandardPL extends PreludeComponent {
   val text = """
-axiom (0 < channelK && 1000*channelK < Permission$denominator);
-axiom (0 < monitorK && 1000*monitorK < Permission$denominator);
-axiom (0 < predicateK && 1000*predicateK < Permission$denominator);
-axiom Permission$FullFraction  == 100*Permission$denominator;
+axiom Permission$FullFraction  == 1.0;
+axiom 0.0 < channelK && 1000.0*channelK < 0.01;
+axiom 0.0 < monitorK && 1000.0*monitorK < 0.01;
+axiom 0.0 < predicateK && 1000.0*predicateK < 0.01;
 axiom predicateK == channelK && channelK == monitorK;"""
-}
-object PercentageFixedDenominatorPL extends PreludeComponent {
-  val text = """
-axiom Permission$denominator == 100000000000;"""
 }
 object PercentageFunctionPL extends PreludeComponent {
   val text = """
-function Fractions(n: int) returns (int)
+function Fractions(n: int) returns (real)
 {
-  n * Permission$denominator
+  n / 100.0
 }
-axiom (forall x,y: int :: 0 <= x && x <= y ==> Fractions(x) <= Fractions(y));
+axiom (forall x,y: int :: 0.0 <= real(x) && real(x) <= real(y) ==> Fractions(x) <= Fractions(y));
 
 axiom Permission$FullFraction  == Fractions(100);
-axiom 0 < channelK && 1000*channelK < Fractions(1);
-axiom 0 < monitorK && 1000*monitorK < Fractions(1);
-axiom 0 < predicateK && 1000*predicateK < Fractions(1);
-axiom predicateK == channelK && channelK == monitorK;"""
-}
-object PercentageUninterpretedFunctionPL extends PreludeComponent {
-  val text = """
-function Fractions(n: int) returns (int);
-function Fractions'(n: int) returns (int);
-axiom (forall x: int :: { Fractions(x) } Fractions(x) == Fractions'(x));
-axiom (forall x,y: int :: 0 <= x && x <= y ==> Fractions'(x) <= Fractions'(y));
-axiom (forall x,y: int :: { Fractions(x), Fractions(y) } Fractions(x) + Fractions(y) == Fractions'(x+y));
-
-axiom Permission$FullFraction  == Fractions(100);
-axiom 0 < channelK && 1000*channelK < Fractions(1);
-axiom 0 < monitorK && 1000*monitorK < Fractions(1);
-axiom 0 < predicateK && 1000*predicateK < Fractions(1);
+axiom 0.0 < channelK && 1000.0*channelK < Fractions(1);
+axiom 0.0 < monitorK && 1000.0*monitorK < Fractions(1);
+axiom 0.0 < predicateK && 1000.0*predicateK < Fractions(1);
 axiom predicateK == channelK && channelK == monitorK;"""
 }
 object CreditsAndMuPL extends PreludeComponent {
@@ -232,49 +214,49 @@ object PermissionFunctionsAndAxiomsPL extends PreludeComponent {
 
 function {:expand false} CanRead<T>(m: MaskType, sm: MaskType, obj: ref, f: Field T) returns (bool)
 {
-  0 < m[obj,f][perm$R] || 0 < m[obj,f][perm$N]
+  0.0 < m[obj,f][perm$R] || 0.0 < m[obj,f][perm$N]
 }
 function {:expand false} CanReadForSure<T>(m: MaskType, obj: ref, f: Field T) returns (bool)
 {
-  0 < m[obj,f][perm$R] || 0 < m[obj,f][perm$N]
+  0.0 < m[obj,f][perm$R] || 0.0 < m[obj,f][perm$N]
 }
 function {:expand false} CanWrite<T>(m: MaskType, obj: ref, f: Field T) returns (bool)
 {
-  m[obj,f][perm$R] == Permission$FullFraction && m[obj,f][perm$N] == 0
+  m[obj,f][perm$R] == Permission$FullFraction && m[obj,f][perm$N] == 0.0
 }
 function {:expand true} IsGoodMask(m: MaskType) returns (bool)
 {
   (forall<T> o: ref, f: Field T ::
-      0 <= m[o,f][perm$R] && 
+      0.0 <= m[o,f][perm$R] && 
       (NonPredicateField(f) ==> 
         (m[o,f][perm$R]<=Permission$FullFraction &&
-        (0 < m[o,f][perm$N] ==> m[o,f][perm$R] < Permission$FullFraction))) &&
-      (m[o,f][perm$N] < 0 ==> 0 < m[o,f][perm$R]))
+        (0.0 < m[o,f][perm$N] ==> m[o,f][perm$R] < Permission$FullFraction))) &&
+      (m[o,f][perm$N] < 0.0 ==> 0.0 < m[o,f][perm$R]))
 }
 
 axiom (forall h: HeapType, m, sm: MaskType, o: ref, q: ref :: {wf(h, m, sm), h[o, mu], h[q, mu]} wf(h, m, sm) && o!=q && (0 < h[o, held] || h[o, rdheld]) && (0 < h[q, held] || h[q, rdheld]) ==> h[o, mu] != h[q, mu]);
 
-function DecPerm<T>(m: MaskType, o: ref, f: Field T, howMuch: int) returns (MaskType);
+function DecPerm<T>(m: MaskType, o: ref, f: Field T, howMuch: real) returns (MaskType);
 
-axiom (forall<T,U> m: MaskType, o: ref, f: Field T, howMuch: int, q: ref, g: Field U :: {DecPerm(m, o, f, howMuch)[q, g][perm$R]}
+axiom (forall<T,U> m: MaskType, o: ref, f: Field T, howMuch: real, q: ref, g: Field U :: {DecPerm(m, o, f, howMuch)[q, g][perm$R]}
       DecPerm(m, o, f, howMuch)[q, g][perm$R] == ite(o==q && f ==g, m[q, g][perm$R] - howMuch, m[q, g][perm$R])
 );
 
-function DecEpsilons<T>(m: MaskType, o: ref, f: Field T, howMuch: int) returns (MaskType);
+function DecEpsilons<T>(m: MaskType, o: ref, f: Field T, howMuch: real) returns (MaskType);
 
-axiom (forall<T,U> m: MaskType, o: ref, f: Field T, howMuch: int, q: ref, g: Field U :: {DecPerm(m, o, f, howMuch)[q, g][perm$N]}
+axiom (forall<T,U> m: MaskType, o: ref, f: Field T, howMuch: real, q: ref, g: Field U :: {DecPerm(m, o, f, howMuch)[q, g][perm$N]}
          DecEpsilons(m, o, f, howMuch)[q, g][perm$N] == ite(o==q && f ==g, m[q, g][perm$N] - howMuch, m[q, g][perm$N])
 );
 
-function IncPerm<T>(m: MaskType, o: ref, f: Field T, howMuch: int) returns (MaskType);
+function IncPerm<T>(m: MaskType, o: ref, f: Field T, howMuch: real) returns (MaskType);
 
-axiom (forall<T,U> m: MaskType, o: ref, f: Field T, howMuch: int, q: ref, g: Field U :: {IncPerm(m, o, f, howMuch)[q, g][perm$R]}
+axiom (forall<T,U> m: MaskType, o: ref, f: Field T, howMuch: real, q: ref, g: Field U :: {IncPerm(m, o, f, howMuch)[q, g][perm$R]}
          IncPerm(m, o, f, howMuch)[q, g][perm$R] == ite(o==q && f ==g, m[q, g][perm$R] + howMuch, m[q, g][perm$R])
 );
 
-function IncEpsilons<T>(m: MaskType, o: ref, f: Field T, howMuch: int) returns (MaskType);
+function IncEpsilons<T>(m: MaskType, o: ref, f: Field T, howMuch: real) returns (MaskType);
 
-axiom (forall<T,U> m: MaskType, o: ref, f: Field T, howMuch: int, q: ref, g: Field U :: {IncPerm(m, o, f, howMuch)[q, g][perm$N]}
+axiom (forall<T,U> m: MaskType, o: ref, f: Field T, howMuch: real, q: ref, g: Field U :: {IncPerm(m, o, f, howMuch)[q, g][perm$N]}
          IncEpsilons(m, o, f, howMuch)[q, g][perm$N] == ite(o==q && f ==g, m[q, g][perm$N] + howMuch, m[q, g][perm$N])
 );
 
@@ -292,7 +274,7 @@ function Call$Args(int) returns (ArgSeq);
 type ArgSeq = <T>[int]T;
 
 function EmptyMask(m: MaskType) returns (bool);
-axiom (forall m: MaskType :: {EmptyMask(m)} EmptyMask(m) <==> (forall<T> o: ref, f: Field T :: NonPredicateField(f) ==> m[o, f][perm$R]<=0 && m[o, f][perm$N]<=0));
+axiom (forall m: MaskType :: {EmptyMask(m)} EmptyMask(m) <==> (forall<T> o: ref, f: Field T :: NonPredicateField(f) ==> m[o, f][perm$R]<=0.0 && m[o, f][perm$N]<=0.0));
 
 const ZeroCredits: CreditsType;
 axiom (forall o: ref :: ZeroCredits[o] == 0);
@@ -329,23 +311,6 @@ object IfThenElsePL extends PreludeComponent {
 function ite<T>(bool, T, T) returns (T);
 axiom (forall<T> con: bool, a: T, b: T :: {ite(con, a, b)} con ==> ite(con, a, b) == a);
 axiom (forall<T> con: bool, a: T, b: T :: {ite(con, a, b)} ! con ==> ite(con, a, b) == b);"""
-}
-object ArithmeticPL extends PreludeComponent {
-  val text = """
-// ---------------------------------------------------------------
-// -- Arithmetic -------------------------------------------------
-// ---------------------------------------------------------------
-
-// the connection between % and /
-axiom (forall x:int, y:int :: {x % y} {x / y}  x % y == x - x / y * y);
-
-// sign of denominator determines sign of remainder
-axiom (forall x:int, y:int :: {x % y}  0 < y  ==>  0 <= x % y  &&  x % y < y);
-axiom (forall x:int, y:int :: {x % y}  y < 0  ==>  y < x % y  &&  x % y <= 0);
-
-// the following axiom has some unfortunate matching, but it does state a property about % that
-// is sometime useful
-axiom (forall a: int, b: int, d: int :: { a % d, b % d } 2 <= d && a % d == b % d && a < b  ==>  a + d <= b);"""
 }
 object StringPL extends PreludeComponent {
   val text = """

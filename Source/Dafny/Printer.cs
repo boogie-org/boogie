@@ -569,16 +569,18 @@ namespace Microsoft.Dafny {
         }
         wr.WriteLine("{");
         int lineInd = indent + IndentAmount;
-        Indent(lineInd);
-        PrintExpression(s.Lines.First(), lineInd);
-        wr.WriteLine(";");
+        if (s.Lines.Count > 0) {
+          Indent(lineInd);
+          PrintExpression(s.Lines.First(), lineInd);
+          wr.WriteLine(";");
+        }
         for (var i = 1; i < s.Lines.Count; i++){
           var e = s.Lines[i];
           var h = s.Hints[i - 1];
           var op = s.CustomOps[i - 1];
-          if (h != null) {
+          foreach (var st in h.Body) {
             Indent(lineInd);
-            PrintStatement(h, lineInd);
+            PrintStatement(st, lineInd);
             wr.WriteLine();
           }
           Indent(lineInd);

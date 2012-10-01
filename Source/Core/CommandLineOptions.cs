@@ -1090,6 +1090,18 @@ namespace Microsoft.Boogie {
           ps.GetNumericArgument(ref VcsCores);
           return true;
 
+        case "vcsLoad":
+          double load = 0.0;
+          if (ps.GetNumericArgument(ref load)) {
+            if (3.0 <= load) {
+              ps.Error("surprisingly high load specified; got {0}, expected nothing above 3.0", load.ToString());
+              load = 3.0;
+            }
+            int p = (int)Math.Round(System.Environment.ProcessorCount * load);
+            VcsCores = p < 1 ? 1 : p;
+          }
+          return true;
+
         case "simplifyMatchDepth":
           ps.GetNumericArgument(ref SimplifyProverMatchDepth);
           return true;
@@ -1598,6 +1610,9 @@ namespace Microsoft.Boogie {
                 Warning: Affects error reporting.
   /vcsCores:<n>
                 Try to verify <n> VCs at once. Defaults to 1.
+  /vcsLoad:<f>  Sets vcsCores to the machine's ProcessorCount * f,
+                rounded to the nearest integer (where 0.0 <= f <= 3.0),
+                but never to less than 1.
 
   ---- Prover options --------------------------------------------------------
 

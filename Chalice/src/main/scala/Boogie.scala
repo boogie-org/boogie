@@ -66,8 +66,8 @@ object Boogie {
    def +(that: Expr) = BinaryExpr("+", this, that)
    def -(that: Expr) = BinaryExpr("-", this, that)
    def *(that: Expr) = BinaryExpr("*", this, that)
-   def /(that: Expr) = BinaryExpr("/", this, that)
-   def %(that: Expr) = BinaryExpr("%", this, that)
+   def /(that: Expr) = BinaryExpr("div", this, that)
+   def %(that: Expr) = BinaryExpr("mod", this, that)
    def := (that: Expr) = Assign(this, that)
    def apply(e: Expr, f: Expr) = new MapSelect(this, e, Some(f))
    def apply(e: Expr) = new MapSelect(this, e, None)
@@ -78,6 +78,7 @@ object Boogie {
    def store(e: Expr, f: Expr, rhs: Expr) = MapUpdate(this, e, Some(f), rhs)
  }
  case class IntLiteral(n: Int) extends Expr
+ case class RealLiteral(d: Double) extends Expr
  case class BoolLiteral(b: Boolean) extends Expr
  case class Null() extends Expr
  case class VarExpr(id: String) extends Expr {
@@ -252,6 +253,7 @@ object Boogie {
  }
  def PrintExpr(e: Expr, useParens: Boolean): String = e match {
    case IntLiteral(n) => n.toString
+   case RealLiteral(d) => d.toString
    case BoolLiteral(b) => b.toString
    case Null() => "null"
    case VarExpr(id) => id
