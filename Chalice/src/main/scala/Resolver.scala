@@ -268,6 +268,14 @@ object Resolver {
                }
                b
              }
+             def hasUnfoldingExpression(e: Expression) = {
+               var b = false
+               e visit {
+                 case Unfolding(pred, e) => b = true
+                 case _ =>
+               }
+               b
+             }
              spec foreach {
                case p@Precondition(e) =>
                  ResolveExpr(e, context, false, true)(false)
@@ -276,6 +284,8 @@ object Resolver {
                  ResolveExpr(e, context, false, true)(false)
                  if (hasCredit(e)) context.Error(p.pos, "the specification of functions cannot contain credit expressions") 
                  if (hasAccessibilityPredicate(e)) context.Error(p.pos, "the postcondition of functions cannot contain accessibility predicates (permissions are returned automatically)") 
+                 // The following check is necessary, because the postcondition axiom has the limited function as a trigger.  If we were to allow unfolding expressions, then this might introduce a matching loop.  Since we don't know of any cases where one would use an unfolding expression in the postcondition, we forbid it here.
+                 if (hasUnfoldingExpression(e)) context.Error(p.pos, "the postcondition of functions cannot contain unfolding expressions at the moment") 
                case lc : LockChange => context.Error(lc.pos, "lockchange not allowed on function") 
              }
 
