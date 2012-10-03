@@ -11,7 +11,7 @@ using System.Linq;
 using System.Threading;
 using System.IO;
 using Microsoft.Boogie;
-using Graphing;
+using Microsoft.Boogie.GraphUtil;
 using System.Diagnostics.Contracts;
 using Microsoft.Basetypes;
 using Microsoft.Boogie.VCExprAST;
@@ -2058,12 +2058,6 @@ namespace VC {
       }
       #endregion
 
-      if (CommandLineOptions.Clo.DoPredication && CommandLineOptions.Clo.StratifiedInlining == 0) {
-        DesugarCalls(impl);
-        BlockPredicator.Predicate(program, impl);
-        impl.ComputePredecessorsForBlocks();
-      }
-
       if (CommandLineOptions.Clo.LiveVariableAnalysis > 0) {
         Microsoft.Boogie.LiveVariableAnalysis.ComputeLiveVariables(impl);
       }
@@ -3035,36 +3029,6 @@ namespace VC {
       else // b has some successors, but we are already visiting it, or we have already visited it...
       {
         return new BlockSeq(b);
-      }
-    }
-
-    /// <summary>
-    /// Simplifies the CFG of the given implementation impl by merging each
-    /// basic block with a single predecessor into that predecessor if the
-    /// predecessor has a single successor.  If a uniformity analyser is
-    /// being used then block will only be merged if they are both uniform
-    /// or both non-uniform
-    /// </summary>
-    public static void MergeBlocksIntoPredecessors(Program prog, Implementation impl, UniformityAnalyser uni) {
-      var blockGraph = prog.ProcessLoops(impl);
-      var predMap = new Dictionary<Block, Block>();
-      foreach (var block in blockGraph.Nodes) {
-        try {
-          var pred = blockGraph.Predecessors(block).Single();
-          if (blockGraph.Successors(pred).Single() == block &&
-              (uni == null || 
-              (uni.IsUniform(impl.Name, pred) && uni.IsUniform(impl.Name, block)) ||
-              (!uni.IsUniform(impl.Name, pred) && !uni.IsUniform(impl.Name, block)))) {
-            Block predMapping;
-            while (predMap.TryGetValue(pred, out predMapping))
-              pred = predMapping;
-            pred.Cmds.AddRange(block.Cmds);
-            pred.TransferCmd = block.TransferCmd;
-            impl.Blocks.Remove(block);
-            predMap[block] = pred;
-          }
-        // If Single throws an exception above (i.e. not exactly one pred/succ), skip this block.
-        } catch (InvalidOperationException) {}
       }
     }
 

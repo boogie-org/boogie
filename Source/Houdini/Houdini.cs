@@ -11,7 +11,7 @@ using Microsoft.Boogie.VCExprAST;
 using VC;
 using System.Collections;
 using System.IO;
-using Graphing;
+using Microsoft.Boogie.GraphUtil;
 
 namespace Microsoft.Boogie.Houdini {
 

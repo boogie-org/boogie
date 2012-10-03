@@ -155,7 +155,6 @@
     <Compile Include="CommandLineOptions.cs" />
     <Compile Include="DeadVarElim.cs" />
     <Compile Include="Duplicator.cs" />
-    <Compile Include="GraphAlgorithms.cs" />
     <Compile Include="Inline.cs" />
     <Compile Include="LambdaHelper.cs" />
     <Compile Include="LoopUnroll.cs" />

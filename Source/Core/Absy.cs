@@ -77,7 +77,7 @@ namespace Microsoft.Boogie {
   using System.Collections.Generic;
   using System.Diagnostics.Contracts;
   using Microsoft.Boogie.AbstractInterpretation;
-  using Graphing;
+  using Microsoft.Boogie.GraphUtil;
   using Set = GSet<object>;
 
   [ContractClass(typeof(AbsyContracts))]

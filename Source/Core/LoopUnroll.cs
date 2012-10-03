@@ -6,6 +6,7 @@
 using System.Diagnostics.Contracts;
 using System.Collections.Generic;
 using Bpl = Microsoft.Boogie;
+using Microsoft.Boogie.GraphUtil;
 
 namespace Microsoft.Boogie {
   public class LoopUnroll {

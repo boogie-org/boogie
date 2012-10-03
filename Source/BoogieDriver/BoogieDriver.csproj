@@ -226,6 +226,10 @@
       <Project>{B230A69C-C466-4065-B9C1-84D80E76D802}</Project>
       <Name>Core</Name>
     </ProjectReference>
+    <ProjectReference Include="..\Doomed\Doomed.csproj">
+      <Project>{884386a3-58e9-40bb-a273-b24976775553}</Project>
+      <Name>Doomed</Name>
+    </ProjectReference>
     <ProjectReference Include="..\Graph\Graph.csproj">
       <Project>{69A2B0B8-BCAC-4101-AE7A-556FCC58C06E}</Project>
       <Name>Graph</Name>
@@ -237,6 +241,10 @@
     <ProjectReference Include="..\ParserHelper\ParserHelper.csproj">
       <Project>{FCD3AC7F-9DFD-46C8-AB1E-09F0B0F16DC5}</Project>
       <Name>ParserHelper</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Predication\Predication.csproj">
+      <Project>{afaa5ce1-c41b-44f0-88f8-fd8a43826d44}</Project>
+      <Name>Predication</Name>
     </ProjectReference>
     <ProjectReference Include="..\Provers\SMTLib\SMTLib.csproj">
       <Project>{9B163AA3-36BC-4AFB-88AB-79BC9E97E401}</Project>

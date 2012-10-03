@@ -10,7 +10,7 @@ using System.Diagnostics;
 using System.Threading;
 using System.IO;
 using Microsoft.Boogie;
-using Graphing;
+using Microsoft.Boogie.GraphUtil;
 using System.Diagnostics.Contracts;
 using Microsoft.Basetypes;
 using Microsoft.Boogie.VCExprAST;

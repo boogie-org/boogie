@@ -594,15 +594,6 @@ namespace Microsoft.Boogie {
         program.UnrollLoops(CommandLineOptions.Clo.LoopUnrollCount);
       }
 
-      if (CommandLineOptions.Clo.DoPredication && CommandLineOptions.Clo.StratifiedInlining > 0) {
-        BlockPredicator.Predicate(program, false, false);
-        if (CommandLineOptions.Clo.PrintInstrumented) {
-          using (TokenTextWriter writer = new TokenTextWriter(Console.Out)) {
-            program.Emit(writer);
-          }
-        }
-      }
-
       Dictionary<string, Dictionary<string, Block>> extractLoopMappingInfo = null;
       if (CommandLineOptions.Clo.ExtractLoops)
       {
@@ -668,7 +659,7 @@ namespace Microsoft.Boogie {
       try {
         if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Doomed) {
           vcgen = new DCGen(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend);
-        } else if(CommandLineOptions.Clo.StratifiedInlining > 0) {
+        } else if (CommandLineOptions.Clo.StratifiedInlining > 0) {
           vcgen = new StratifiedVCGen(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend);
         } else {
           vcgen = new VCGen(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend);
