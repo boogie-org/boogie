@@ -632,6 +632,10 @@ namespace Microsoft.Boogie.AbstractInterpretation
           var n = ((BigNum)node.Val).ToBigInteger;
           Lo = n;
           Hi = n + 1;
+        } else if (node.Val is BigDec) {
+          var n = ((BigDec)node.Val).Floor(-BigInteger.Pow(10, 12), BigInteger.Pow(10, 12));
+          Lo = n;
+          Hi = n + 1;
         } else if (node.Val is bool) {
           if ((bool)node.Val) {
             // true
@@ -646,7 +650,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
         return node;
       }
       public override Expr VisitIdentifierExpr(IdentifierExpr node) {
-        if (node.Type.IsBool || node.Type.IsInt) {
+        if (node.Type.IsBool || node.Type.IsInt || node.Type.IsReal) {
           Node.GetBounds(N, node.Decl, out Lo, out Hi);
         }
         return node;
@@ -655,7 +659,18 @@ namespace Microsoft.Boogie.AbstractInterpretation
         if (node.Fun is UnaryOperator) {
           var op = (UnaryOperator)node.Fun;
           Contract.Assert(node.Args.Length == 1);
-          if (op.Op == UnaryOperator.Opcode.Not) {
+          if (op.Op == UnaryOperator.Opcode.Neg) {
+            BigInteger? lo, hi;
+            VisitExpr(node.Args[0]);
+            lo = Lo; hi = Hi;
+            if (hi != null) {
+              Lo = 1 - hi;
+            }
+            if (lo != null) {
+              Hi = -lo;
+            }
+          }
+          else if (op.Op == UnaryOperator.Opcode.Not) {
             VisitExpr(node.Args[0]);
             Contract.Assert((Lo == null && Hi == null) ||
               (Lo == null && (BigInteger)Hi == 1) ||
@@ -797,6 +812,20 @@ namespace Microsoft.Boogie.AbstractInterpretation
               }
               break;
             case BinaryOperator.Opcode.Mod:
+              // this uses an incomplete approximation that could be tightened up
+              if (lo0 != null && lo1 != null && 0 <= (BigInteger)lo0 && 0 <= (BigInteger)lo1) {
+                Lo = new BigInteger(0);
+                Hi = hi1;
+              }
+              break;
+            case BinaryOperator.Opcode.RealDiv:
+              // this uses an incomplete approximation that could be tightened up
+              if (lo0 != null && lo1 != null && 0 <= (BigInteger)lo0 && 0 <= (BigInteger)lo1) {
+                Lo = new BigInteger(0);
+                Hi = hi1;
+              }
+              break;
+            case BinaryOperator.Opcode.Pow:
               // this uses an incomplete approximation that could be tightened up
               if (lo0 != null && lo1 != null && 0 <= (BigInteger)lo0 && 0 <= (BigInteger)lo1) {
                 Lo = new BigInteger(0);

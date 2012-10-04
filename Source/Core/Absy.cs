@@ -11,56 +11,40 @@ namespace Microsoft.Boogie.AbstractInterpretation {
   using System.Diagnostics.Contracts;
   using System.Collections;
   using System.Collections.Generic;
-  using AI = Microsoft.AbstractInterpretationFramework;
 
   public class CallSite {
     public readonly Implementation/*!*/ Impl;
     public readonly Block/*!*/ Block;
     public readonly int Statement; // invariant: Block[Statement] is CallCmd
-    public readonly AI.Lattice.Element/*!*/ KnownBeforeCall;
     public readonly ProcedureSummaryEntry/*!*/ SummaryEntry;
     [ContractInvariantMethod]
     void ObjectInvariant() {
       Contract.Invariant(Impl != null);
       Contract.Invariant(Block != null);
-      Contract.Invariant(KnownBeforeCall != null);
       Contract.Invariant(SummaryEntry != null);
     }
 
 
-    public CallSite(Implementation impl, Block b, int stmt, AI.Lattice.Element e, ProcedureSummaryEntry summaryEntry) {
+    public CallSite(Implementation impl, Block b, int stmt, ProcedureSummaryEntry summaryEntry) {
       Contract.Requires(summaryEntry != null);
-      Contract.Requires(e != null);
       Contract.Requires(b != null);
       Contract.Requires(impl != null);
       this.Impl = impl;
       this.Block = b;
       this.Statement = stmt;
-      this.KnownBeforeCall = e;
       this.SummaryEntry = summaryEntry;
     }
   }
 
   public class ProcedureSummaryEntry {
-    public AI.Lattice/*!*/ Lattice;
-    public AI.Lattice.Element/*!*/ OnEntry;
-    public AI.Lattice.Element/*!*/ OnExit;
     public HashSet<CallSite>/*!*/ ReturnPoints; // whenever OnExit changes, we start analysis again at all the ReturnPoints
     [ContractInvariantMethod]
     void ObjectInvariant() {
-      Contract.Invariant(Lattice != null);
-      Contract.Invariant(OnEntry != null);
-      Contract.Invariant(OnExit != null);
       Contract.Invariant(ReturnPoints != null);
     }
 
 
-    public ProcedureSummaryEntry(AI.Lattice lattice, AI.Lattice.Element onEntry) {
-      Contract.Requires(onEntry != null);
-      Contract.Requires(lattice != null);
-      this.Lattice = lattice;
-      this.OnEntry = onEntry;
-      this.OnExit = lattice.Bottom;
+    public ProcedureSummaryEntry() {
       this.ReturnPoints = new HashSet<CallSite>();
       // base();
     }
@@ -93,8 +77,7 @@ namespace Microsoft.Boogie {
   using System.Collections.Generic;
   using System.Diagnostics.Contracts;
   using Microsoft.Boogie.AbstractInterpretation;
-  using AI = Microsoft.AbstractInterpretationFramework;
-  using Graphing;
+  using Microsoft.Boogie.GraphUtil;
   using Set = GSet<object>;
 
   [ContractClass(typeof(AbsyContracts))]
@@ -346,12 +329,6 @@ namespace Microsoft.Boogie {
     public void ComputeStronglyConnectedComponents() {
       foreach (Declaration d in this.TopLevelDeclarations) {
         d.ComputeStronglyConnectedComponents();
-      }
-    }
-
-    public void InstrumentWithInvariants() {
-      foreach (Declaration d in this.TopLevelDeclarations) {
-        d.InstrumentWithInvariants();
       }
     }
 
@@ -1045,14 +1022,6 @@ namespace Microsoft.Boogie {
     }
 
     /// <summary>
-    /// This method inserts the abstract-interpretation-inferred invariants
-    /// as assume (or possibly assert) statements in the statement sequences of
-    /// each block.
-    /// </summary>
-    public virtual void InstrumentWithInvariants() {
-    }
-
-    /// <summary>
     /// Reset the abstract stated computed before
     /// </summary>
     public virtual void ResetAbstractInterpretationState() { /* does nothing */
@@ -1388,7 +1357,7 @@ namespace Microsoft.Boogie {
     }
   }
 
-  public abstract class Variable : NamedDeclaration, AI.IVariable {
+  public abstract class Variable : NamedDeclaration {
     public TypedIdent/*!*/ TypedIdent;
     [ContractInvariantMethod]
     void ObjectInvariant() {
@@ -1445,11 +1414,6 @@ namespace Microsoft.Boogie {
       //Contract.Requires(tc != null);
       TypecheckAttributes(tc);
       this.TypedIdent.Typecheck(tc);
-    }
-    [Pure]
-    public object DoVisit(AI.ExprVisitor visitor) {
-      //Contract.Requires(visitor != null);
-      return visitor.VisitVariable(this);
     }
   }
 
@@ -2354,12 +2318,6 @@ namespace Microsoft.Boogie {
         for (int s = 0; s < this.Summary.Count; s++) {
           ProcedureSummaryEntry/*!*/ entry = cce.NonNull(this.Summary[s]);
           stream.Write(level + 1, "// ");
-          Expr e;
-          e = (Expr)entry.Lattice.ToPredicate(entry.OnEntry);
-          e.Emit(stream);
-          stream.Write("   ==>   ");
-          e = (Expr)entry.Lattice.ToPredicate(entry.OnExit);
-          e.Emit(stream);
           stream.WriteLine();
         }
       }
@@ -2862,53 +2820,6 @@ namespace Microsoft.Boogie {
     }
 
     /// <summary>
-    /// Instrument the blocks with the inferred invariants
-    /// </summary>
-    public override void InstrumentWithInvariants() {
-      foreach (Block b in this.Blocks) {
-        if (b.Lattice != null) {
-          Contract.Assert(b.PreInvariant != null);      /* If the pre-abstract state is null, then something is wrong */
-          Contract.Assert(b.PostInvariant != null);      /* If the post-state is null, then something is wrong */
-
-          bool instrumentEntry;
-          bool instrumentExit;
-          switch (CommandLineOptions.Clo.InstrumentInfer) {
-            case CommandLineOptions.InstrumentationPlaces.Everywhere:
-              instrumentEntry = true;
-              instrumentExit = true;
-              break;
-            case CommandLineOptions.InstrumentationPlaces.LoopHeaders:
-              instrumentEntry = b.widenBlock;
-              instrumentExit = false;
-              break;
-            default: {
-                Contract.Assert(false);
-                throw new cce.UnreachableException();
-              } // unexpected InstrumentationPlaces value
-          }
-
-          if (instrumentEntry || instrumentExit) {
-            CmdSeq newCommands = new CmdSeq();
-            if (instrumentEntry) {
-              Expr inv = (Expr)b.Lattice.ToPredicate(b.PreInvariant); /*b.PreInvariantBuckets.GetDisjunction(b.Lattice);*/
-              var kv = new QKeyValue(Token.NoToken, "inferred", new List<object>(), null);
-              PredicateCmd cmd = CommandLineOptions.Clo.InstrumentWithAsserts ? (PredicateCmd)new AssertCmd(Token.NoToken, inv, kv) : (PredicateCmd)new AssumeCmd(Token.NoToken, inv, kv);
-              newCommands.Add(cmd);
-            }
-            newCommands.AddRange(b.Cmds);
-            if (instrumentExit) {
-              Expr inv = (Expr)b.Lattice.ToPredicate(b.PostInvariant);
-              var kv = new QKeyValue(Token.NoToken, "inferred", new List<object>(), null);
-              PredicateCmd cmd = CommandLineOptions.Clo.InstrumentWithAsserts ? (PredicateCmd)new AssertCmd(Token.NoToken, inv, kv) : (PredicateCmd)new AssumeCmd(Token.NoToken, inv, kv);
-              newCommands.Add(cmd);
-            }
-            b.Cmds = newCommands;
-          }
-        }
-      }
-    }
-
-    /// <summary>
     /// Return a collection of blocks that are reachable from the block passed as a parameter.
     /// The block must be defined in the current implementation
     /// </summary>
@@ -3145,113 +3056,6 @@ namespace Microsoft.Boogie {
       //Contract.Requires(visitor != null);
       Contract.Ensures(Contract.Result<Absy>() != null);
       return visitor.VisitTypedIdent(this);
-    }
-  }
-
-  /// <summary>
-  /// Conceptually, a LatticeElementList is a infinite array indexed from 0,
-  /// where some finite number of elements have a non-null value.  All elements
-  /// have type Lattice.Element.
-  ///
-  /// The Count property returns the first index above all non-null values.
-  ///
-  /// The [i] getter returns the element at position i, which may be null.  The
-  /// index i is not allowed to be negative.
-  /// The [i] setter sets the element at position i.  As a side effect, this
-  /// operation may increase Count.  The index i is not allowed to be negative.
-  /// The right-hand value of the setter is not allowed to be null; that is,
-  /// null can occur in the list only as an "unused" element.
-  /// </summary>
-  public class LatticeElementList : ArrayList {
-    public new /*Maybe null*/ AI.Lattice.Element this[int i] {
-      get {
-        if (i < Count) {
-          return (AI.Lattice.Element)base[i];
-        } else {
-          return null;
-        }
-      }
-      set {
-        System.Diagnostics.Debug.Assert(value != null);
-        while (Count <= i) {
-          Add(null);
-        }
-        base[i] = value;
-      }
-    }
-    /// <summary>
-    /// Returns the disjunction of (the expression formed from) the
-    /// non-null lattice elements in the list.  The expressions are
-    /// formed according to the given "lattice", which is assumed to
-    /// be the lattice of the lattice elements stored in the list.
-    /// </summary>
-    /// <param name="lattice"></param>
-    /// <returns></returns>
-    public Expr GetDisjunction(AI.Lattice lattice) {
-      Contract.Requires(lattice != null);
-      Expr disjunction = null;
-      foreach (AI.Lattice.Element el in this) {
-        if (el != null) {
-          Expr e = (Expr)lattice.ToPredicate(el);
-          if (disjunction == null) {
-            disjunction = e;
-          } else {
-            disjunction = Expr.Or(disjunction, e);
-          }
-        }
-      }
-      if (disjunction == null) {
-        return Expr.False;
-      } else {
-        return disjunction;
-      }
-    }
-  }
-
-  public abstract class BoogieFactory {
-    public static Expr IExpr2Expr(AI.IExpr e) {
-      Contract.Requires(e != null);
-      Contract.Ensures(Contract.Result<Expr>() != null);
-      Variable v = e as Variable;
-      if (v != null) {
-        return new IdentifierExpr(Token.NoToken, v);
-      } else if (e is AI.IVariable) { // but not a Variable
-        return new AIVariableExpr(Token.NoToken, (AI.IVariable)e);
-      } else if (e is IdentifierExpr.ConstantFunApp) {
-        return ((IdentifierExpr.ConstantFunApp)e).IdentifierExpr;
-      } else if (e is QuantifierExpr.AIQuantifier) {
-        return ((QuantifierExpr.AIQuantifier)e).arg.RealQuantifier;
-      } else {
-        return (Expr)e;
-      }
-    }
-    public static ExprSeq IExprArray2ExprSeq(IList/*<AI.IExpr!>*/ a) {
-      Contract.Requires(a != null);
-      Contract.Ensures(Contract.Result<ExprSeq>() != null);
-      Expr[] e = new Expr[a.Count];
-      int i = 0;
-      foreach (AI.IExpr/*!*/ aei in a) {
-        Contract.Assert(aei != null);
-        e[i] = IExpr2Expr(aei);
-        i++;
-      }
-      return new ExprSeq(e);
-    }
-
-    // Convert a Boogie type into an AIType if possible.  This should be
-    // extended when AIFramework gets more types.
-    public static AI.AIType Type2AIType(Type t) {
-      Contract.Requires(t != null);
-      Contract.Ensures(Contract.Result<AI.AIType>() != null);
-      //      if (t.IsRef)
-      //        return AI.Ref.Type;
-      //      else
-      if (t.IsInt)
-        return AI.Int.Type;
-      //      else if (t.IsName)               PR: how to handle this case?
-      //        return AI.FieldName.Type;
-      else
-        return AI.Value.Type;
     }
   }
 

@@ -9,4 +9,4 @@ The program did not fully verify; the smoke warnings might be misleading if cont
   19.9: Precondition of method succeeds2 is equivalent to false.
   27.9: Precondition of method fails2 is equivalent to false.
 
-Boogie program verifier finished with 2 errors and 4 smoke test warnings.
+Boogie program verifier finished with 2 errors and 4 smoke test warnings

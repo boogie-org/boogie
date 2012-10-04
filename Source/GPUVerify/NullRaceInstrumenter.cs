@@ -24,7 +24,7 @@ namespace GPUVerify
 
         }
 
-        public Microsoft.Boogie.BigBlock MakeResetReadWriteSetStatements(Variable v, int Thread)
+        public Microsoft.Boogie.BigBlock MakeResetReadWriteSetStatements(Variable v, Expr ResetCondition)
         {
             return new BigBlock(Token.NoToken, null, new CmdSeq(), null, null);
         }
@@ -43,10 +43,25 @@ namespace GPUVerify
         {
 
         }
+        
         public void AddSourceLocationLoopInvariants(Implementation impl, IRegion region)
         {
 
         }
 
+        public void DoHoudiniPointerAnalysis(Procedure Proc)
+        {
+
+        }
+
+        public void AddStandardSourceVariablePreconditions()
+        {
+
+        }
+
+        public void AddStandardSourceVariablePostconditions()
+        {
+
+        }
     }
 }

@@ -144,29 +144,16 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="BlockPredicator.cs" />
     <Compile Include="Check.cs" />
     <Compile Include="ConditionGeneration.cs" />
     <Compile Include="Context.cs" />
-    <Compile Include="DoomCheck.cs" />
-    <Compile Include="DoomedLoopUnrolling.cs" />
-    <Compile Include="DoomedStrategy.cs" />
-    <Compile Include="DoomErrorHandler.cs" />
-    <Compile Include="GraphAlgorithms.cs" />
-    <Compile Include="HasseDiagram.cs" />
     <Compile Include="OrderingAxioms.cs" />
-    <Compile Include="SmartBlockPredicator.cs" />
     <Compile Include="StratifiedVC.cs" />
     <Compile Include="VC.cs" />
-    <Compile Include="VCDoomed.cs" />
     <Compile Include="..\version.cs" />
     <Compile Include="Wlp.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\AIFramework\AIFramework.csproj">
-      <Project>{39B0658D-C955-41C5-9A43-48C97A1EF5FD}</Project>
-      <Name>AIFramework</Name>
-    </ProjectReference>
     <ProjectReference Include="..\Basetypes\Basetypes.csproj">
       <Project>{43DFAD18-3E35-4558-9BE2-CAFF6B5BA8A0}</Project>
       <Name>Basetypes</Name>

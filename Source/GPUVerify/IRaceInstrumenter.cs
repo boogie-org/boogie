@@ -15,7 +15,7 @@ namespace GPUVerify
 
         void AddRaceCheckingDeclarations();
 
-        BigBlock MakeResetReadWriteSetStatements(Variable v, int thread);
+        BigBlock MakeResetReadWriteSetStatements(Variable v, Expr ResetCondition);
 
         void AddRaceCheckingCandidateRequires(Procedure Proc);
 
@@ -23,5 +23,9 @@ namespace GPUVerify
 
         void AddSourceLocationLoopInvariants(Implementation impl, IRegion region);
 
+        void DoHoudiniPointerAnalysis(Procedure Proc);
+        void AddStandardSourceVariablePreconditions();
+
+        void AddStandardSourceVariablePostconditions();
     }
 }

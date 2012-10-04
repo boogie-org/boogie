@@ -13,7 +13,6 @@ namespace Microsoft.Boogie {
   using System.Diagnostics;
   using System.Collections.Generic;
   using Microsoft.Boogie.AbstractInterpretation;
-  using AI = Microsoft.AbstractInterpretationFramework;
   using System.Diagnostics.Contracts;
   using Set = GSet<object>;
 
@@ -818,13 +817,6 @@ namespace Microsoft.Boogie {
     public bool widenBlock;
     public int iterations;         // Count the number of time we visited the block during fixpoint computation. Used to decide if we widen or not
 
-    // Block-specific invariants...
-    public AI.Lattice Lattice;    // The lattice used for the analysis of this block
-    public AI.Lattice.Element PreInvariant;   // The initial abstract states for this block
-    public AI.Lattice.Element PostInvariant;  // The exit abstract states for this block
-    // KRML: We want to include the following invariant, but at the moment, doing so causes a run-time error (something about committed):
-    //invariant ;
-
     // VC generation and SCC computation
     public BlockSeq/*!*/ Predecessors;
 
@@ -837,7 +829,6 @@ namespace Microsoft.Boogie {
       Contract.Invariant(Label != null);
       Contract.Invariant(Cmds != null);
       Contract.Invariant(cce.NonNullElements(liveVarsBefore, true));
-      Contract.Invariant((PreInvariant != null) == (PostInvariant != null));
     }
 
     public bool IsLive(Variable v) {
@@ -860,8 +851,6 @@ namespace Microsoft.Boogie {
       this.Label = label;
       this.Cmds = cmds;
       this.TransferCmd = transferCmd;
-      this.PreInvariant = null;
-      this.PostInvariant = null;
       this.Predecessors = new BlockSeq();
       this.liveVarsBefore = null;
       this.TraversingStatus = VisitState.ToVisit;
@@ -920,9 +909,6 @@ namespace Microsoft.Boogie {
       //      this.currentlyTraversed = false;
       this.TraversingStatus = VisitState.ToVisit;
       this.iterations = 0;
-      this.Lattice = null;
-      this.PreInvariant = null;
-      this.PostInvariant = null;
     }
 
     [Pure]

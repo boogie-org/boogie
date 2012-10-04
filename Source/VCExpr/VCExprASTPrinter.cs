@@ -290,12 +290,22 @@ namespace Microsoft.Boogie.VCExprAST {
     public bool VisitDivOp(VCExprNAry node, TextWriter wr) {
       //Contract.Requires(wr != null);
       //Contract.Requires(node != null);
-      return PrintNAry("/", node, wr);
+      return PrintNAry("div", node, wr);
     }
     public bool VisitModOp(VCExprNAry node, TextWriter wr) {
       //Contract.Requires(wr != null);
       //Contract.Requires(node != null);
-      return PrintNAry("%", node, wr);
+      return PrintNAry("mod", node, wr);
+    }
+    public bool VisitRealDivOp(VCExprNAry node, TextWriter wr) {
+      //Contract.Requires(wr != null);
+      //Contract.Requires(node != null);
+      return PrintNAry("/", node, wr);
+    }
+    public bool VisitPowOp(VCExprNAry node, TextWriter wr) {
+      //Contract.Requires(wr != null);
+      //Contract.Requires(node != null);
+      return PrintNAry("**", node, wr);
     }
     public bool VisitLtOp(VCExprNAry node, TextWriter wr) {
       //Contract.Requires(wr != null);
@@ -326,6 +336,16 @@ namespace Microsoft.Boogie.VCExprAST {
       //Contract.Requires(wr != null);
       //Contract.Requires(node != null);
       return PrintNAry("<::", node, wr);
+    }
+    public bool VisitToIntOp(VCExprNAry node, TextWriter wr) {
+      //Contract.Requires(wr != null);
+      //Contract.Requires(node != null);
+      return PrintNAry("int", node, wr);
+    }
+    public bool VisitToRealOp(VCExprNAry node, TextWriter wr) {
+      //Contract.Requires(wr != null);
+      //Contract.Requires(node != null);
+      return PrintNAry("real", node, wr);
     }
     public bool VisitBoogieFunctionOp(VCExprNAry node, TextWriter wr) {
       //Contract.Requires(wr != null);

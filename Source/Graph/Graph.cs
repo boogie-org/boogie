@@ -4,10 +4,11 @@
 //
 //-----------------------------------------------------------------------------
 using System;
+using System.Linq;
 using System.Collections.Generic;
 using System.Text; // for StringBuilder
 using System.Diagnostics.Contracts;
-namespace Graphing {
+namespace Microsoft.Boogie.GraphUtil {
 
   internal static class Util {
     private static string/*!*/ ListToString<T>(IEnumerable<T> xs) {
@@ -91,7 +92,7 @@ namespace Graphing {
         return this.immediateDominatorMap;
       }
     }
-    public bool DominatedBy(Node dominee, Node dominator) {
+    public bool DominatedBy(Node dominee, Node dominator, List<Node> path = null) {
       Contract.Assume(this.nodeToPostOrderNumber != null);
       Contract.Assume(this.doms != null);
       int domineeNum = this.nodeToPostOrderNumber[dominee];
@@ -104,6 +105,8 @@ namespace Graphing {
           return true;
         if (currentNodeNum == this.sourceNum)
           return false;
+        if (path != null)
+          path.Add(postOrderNumberToNode[currentNodeNum].Val);
         currentNodeNum = this.doms[currentNodeNum];
       }
     }
@@ -323,6 +326,21 @@ namespace Graphing {
         }
 
 
+    }
+
+    public Node LeastCommonAncestor(Node n1, Node n2)
+    {
+        var nums = new HashSet<int>();
+        int num1 = nodeToPostOrderNumber[n1], num2 = nodeToPostOrderNumber[n2];
+
+        while (true)
+        {
+            if (!nums.Add(num1))
+                return postOrderNumberToNode[num1].Val;
+            if (!nums.Add(num2))
+                return postOrderNumberToNode[num2].Val;
+            num1 = doms[num1]; num2 = doms[num2];
+        }
     }
   }
 
@@ -857,6 +875,418 @@ namespace Graphing {
       return s.ToString();
     }
   } // end: class Graph
+
+  public static class GraphAlgorithms
+  {
+
+      public static Graph<Node> Dual<Node>(this Graph<Node> g, Node dummySource)
+      {
+          var exits = g.Nodes.Where(n => g.Successors(n).Count() == 0).ToList();
+          if (exits.Count == 0)
+              return null;
+          var dual = new Graph<Node>(new HashSet<Tuple<Node, Node>>(g.Edges.Select(e => new Tuple<Node, Node>(e.Item2, e.Item1))));
+          if (exits.Count == 1)
+              dual.AddSource(exits[0]);
+          else
+          {
+              dual.AddSource(dummySource);
+              foreach (var exit in exits)
+                  dual.AddEdge(dummySource, exit);
+          }
+          return dual;
+      }
+
+      public static List<Tuple<Node, bool>> LoopyTopSort<Node>(this Graph<Node> g)
+      {
+          Contract.Assert(g.Reducible);
+
+          int n = g.Nodes.Count;
+          var nodeToNumber = new Dictionary<Node, int>(n);
+          var numberToNode = new Node[n];
+          var allNodes = new List<int>();
+          int counter = 0;
+          foreach (Node node in g.Nodes)
+          {
+              numberToNode[counter] = node;
+              nodeToNumber[node] = counter;
+              allNodes.Add(counter);
+              counter++;
+          }
+
+          var loops = new List<int>[n];
+          foreach (var h in g.Headers)
+          {
+              var loopNodes = new HashSet<Node>();
+              foreach (var b in g.BackEdgeNodes(h))
+                  loopNodes.UnionWith(g.NaturalLoops(h, b));
+              loops[nodeToNumber[h]] =
+                new List<int>(loopNodes.Select(node => nodeToNumber[node]));
+          }
+
+          var successors = new List<int>[n];
+          int[] incomingEdges = new int[n];
+
+          foreach (var e in g.Edges)
+          {
+              Contract.Assert(e.Item1 != null);
+              Contract.Assert(e.Item2 != null);
+              int source = nodeToNumber[e.Item1], target = nodeToNumber[e.Item2];
+              if (loops[target] == null || !loops[target].Contains(source))
+              {
+                  if (successors[source] == null)
+                      successors[source] = new List<int>();
+                  successors[source].Add(target);
+                  incomingEdges[target]++;
+              }
+          }
+
+          var sortedNodes = new List<Tuple<Node, bool>>();
+
+          var regionStack = new Stack<Tuple<Node, List<int>>>();
+          regionStack.Push(new Tuple<Node, List<int>>(default(Node), allNodes));
+
+          while (regionStack.Count != 0)
+          {
+              int rootIndex = -1;
+              foreach (var i in regionStack.Peek().Item2)
+              {
+                  if (incomingEdges[i] == 0)
+                  {
+                      rootIndex = i;
+                      break;
+                  }
+              }
+              if (rootIndex == -1)
+              {
+                  var region = regionStack.Pop();
+                  if (regionStack.Count != 0)
+                      sortedNodes.Add(new Tuple<Node, bool>(region.Item1, true));
+                  continue;
+              }
+              incomingEdges[rootIndex] = -1;
+              sortedNodes.Add(new Tuple<Node, bool>(numberToNode[rootIndex], false));
+              if (successors[rootIndex] != null)
+                  foreach (int s in successors[rootIndex])
+                      incomingEdges[s]--;
+              if (loops[rootIndex] != null)
+                  regionStack.Push(new Tuple<Node, List<int>>(numberToNode[rootIndex],
+                                                              loops[rootIndex]));
+          }
+
+          return sortedNodes;
+      }
+
+      // Algorithm from Jeanne Ferrante, Karl J. Ottenstein, Joe D. Warren,
+      // "The Program Dependence Graph and Its Use in Optimization"
+      public static Dictionary<Node, HashSet<Node>> ControlDependence<Node>(this Graph<Node> g) where Node : class, new()
+      {
+          Graph<Node> dual = g.Dual(new Node());
+          DomRelation<Node> pdom = dual.DominatorMap;
+          var result = new Dictionary<Node, HashSet<Node>>();
+
+          var S = g.Edges.Where(e => !pdom.DominatedBy(e.Item1, e.Item2));
+          foreach (var edge in S)
+          {
+              var L = pdom.LeastCommonAncestor(edge.Item1, edge.Item2);
+              var deps = new List<Node>();
+              if (L == edge.Item1)
+              {
+                  pdom.DominatedBy(edge.Item2, edge.Item1, deps);
+                  deps.Add(edge.Item2);
+                  deps.Add(edge.Item1);
+              }
+              else
+              {
+                  pdom.DominatedBy(edge.Item2, L, deps);
+                  deps.Add(edge.Item2);
+              }
+              if (result.ContainsKey(edge.Item1))
+              {
+                  result[edge.Item1].UnionWith(deps);
+              }
+              else
+              {
+                  result[edge.Item1] = new HashSet<Node>(deps);
+              }
+          }
+          return result;
+      }
+
+  }
+
+  public delegate System.Collections.IEnumerable/*<Node!>*//*!*/ Adjacency<T>(T/*!*/ node);
+
+
+  // An SCC is a set of nodes
+  public sealed class SCC<Node> : ICollection<Node>
+  {
+      [ContractInvariantMethod]
+      void ObjectInvariant()
+      {
+          Contract.Invariant(nodesMap != null);
+      }
+
+      private IDictionary<Node, object>/*!*/ nodesMap = new Dictionary<Node, object>();
+      private ICollection<Node>/*!*/ nodes
+      {
+          get
+          {
+              return cce.NonNull(nodesMap.Keys);
+          }
+      }
+
+      [Pure]
+      [GlobalAccess(false)]
+      [Escapes(true, false)]
+      System.Collections.IEnumerator/*!*/ System.Collections.IEnumerable.GetEnumerator()
+      {
+          Contract.Ensures(Contract.Result<System.Collections.IEnumerator>() != null);
+
+          return ((System.Collections.IEnumerable)nodes).GetEnumerator();
+      }
+
+      [Pure]
+      [GlobalAccess(false)]
+      [Escapes(true, false)]
+      IEnumerator<Node>/*!*/ IEnumerable<Node>.GetEnumerator()
+      {
+          Contract.Ensures(Contract.Result<IEnumerator<Node>>() != null);
+
+          return ((IEnumerable<Node>)nodes).GetEnumerator();
+      }
+
+      public int Count
+      {
+          get
+          {
+              return nodes.Count;
+          }
+      }
+      public bool IsReadOnly
+      {
+          get
+          {
+              return nodesMap.IsReadOnly;
+          }
+      }
+      public void Add(Node item)
+      {
+          nodesMap.Add(item, null);
+      }
+      public void Clear()
+      {
+          nodesMap.Clear();
+      }
+      [Pure]
+      public bool Contains(Node item)
+      {
+          return nodesMap.ContainsKey(item);
+      }
+      public void CopyTo(Node[] array, int arrayIndex)
+      {
+          //Contract.Requires(array != null);
+          nodes.CopyTo(array, arrayIndex);
+      }
+      public bool Remove(Node item)
+      {
+          return nodesMap.Remove(item);
+      }
+  }
+
+  public sealed class StronglyConnectedComponents<Node> : IEnumerable<SCC<Node>/*!*/> where Node : class
+  {
+      private readonly IDictionary<Node/*!*/, object>/*!*/ graph;
+      [ContractInvariantMethod]
+      void graphInvariantMethod()
+      {
+          Contract.Invariant(Contract.ForAll(graph, entry => entry.Key != null));
+          Contract.Invariant(preds != null);
+          Contract.Invariant(succs != null);
+      }
+      private readonly Adjacency<Node>/*!*/ preds;
+      private readonly Adjacency<Node>/*!*/ succs;
+
+      private bool computed = false;
+      public bool Computed
+      {
+          get
+          {
+              return computed;
+          }
+      }
+
+      [NotDelayed]
+      public StronglyConnectedComponents(System.Collections.IEnumerable/*<Node!>*/ graph, Adjacency<Node> preds, Adjacency<Node> succs)
+          : base()
+      {//BASEMOVE DANGER
+          Contract.Requires(succs != null);
+          Contract.Requires(preds != null);
+          Contract.Requires(graph != null);
+          Contract.Ensures(!Computed);
+          IDictionary<Node/*!*/, object>/*!*/ dict = new Dictionary<Node/*!*/, object>();
+          foreach (Node/*!*/ n in graph)
+          {
+              Contract.Assert(n != null);
+              dict.Add(n, null);
+          }
+
+          this.graph = dict;
+          this.preds = preds;
+          this.succs = succs;
+          //:base();
+      }
+
+      [Pure]
+      [GlobalAccess(false)]
+      [Escapes(true, false)]
+      System.Collections.IEnumerator/*!*/ System.Collections.IEnumerable.GetEnumerator()
+      {
+          Contract.Ensures(Contract.Result<System.Collections.IEnumerator>() != null);
+
+          return ((System.Collections.IEnumerable)sccs).GetEnumerator();
+      }
+
+      [Pure]
+      [GlobalAccess(false)]
+      [Escapes(true, false)]
+      IEnumerator<SCC<Node>/*!*/>/*!*/ IEnumerable<SCC<Node>/*!*/>.GetEnumerator()
+      {
+          Contract.Ensures(Contract.Result<IEnumerator<SCC<Node>>>() != null);
+
+          Contract.Assume(Computed);
+          Contract.Assert(cce.NonNullElements((IEnumerable<SCC<Node>/*!*/>)sccs));//REVIEW
+          return ((IEnumerable<SCC<Node>/*!*/>)sccs).GetEnumerator();
+      }
+
+      private readonly IList<SCC<Node>/*!*/>/*!*/ sccs = new List<SCC<Node>/*!*/>();
+      [ContractInvariantMethod]
+      void sccsInvariant()
+      {
+          Contract.Invariant(cce.NonNullElements(sccs));
+      }
+
+
+      public void Compute()
+      {
+          Contract.Requires(!Computed);
+          Contract.Ensures(Computed);
+          // Compute post times on graph with edges reversed
+          this.dfsNext = this.preds;
+          foreach (Node/*!*/ n in cce.NonNull(graph.Keys))
+          {
+              Contract.Assert(n != null);
+              if (!seen.ContainsKey(n))
+              {
+                  OrderNodes(n);
+              }
+          }
+
+          // Clear seen
+          seen.Clear();
+
+          // Compute SCCs
+          this.dfsNext = this.succs;
+          while (postOrder.Count > 0)
+          {
+              Node/*!*/ n = postOrder.Pop();
+              Contract.Assert(n != null);
+
+              if (!seen.ContainsKey(n))
+              {
+                  SCC<Node>/*!*/ curr = new SCC<Node>();
+                  FindSCCs(n, curr);
+                  sccs.Add(curr);
+              }
+          }
+
+          // Clear seen
+          seen.Clear();
+
+          this.computed = true;
+      }
+
+      private Adjacency<Node>/*?*/ dfsNext = null;
+
+      private readonly IDictionary<Node/*!*/, object>/*!*/ seen = new Dictionary<Node/*!*/, object>();
+      private readonly Stack<Node/*!*/>/*!*/ postOrder = new Stack<Node/*!*/>();
+      [ContractInvariantMethod]
+      void ObjectInvariant()
+      {
+          Contract.Invariant(seen != null);
+          Contract.Invariant(cce.NonNullElements(postOrder));
+      }
+
+
+      // DFS to order nodes by post times
+      private void OrderNodes(Node node)
+      {
+          Contract.Requires(node != null);
+          seen.Add(node, null);
+
+          Contract.Assert(dfsNext != null);
+          System.Collections.IEnumerable/*!*/ nexts = dfsNext(node);
+          Contract.Assert(nexts != null);
+          foreach (Node/*!*/ n in nexts)
+          {
+              Contract.Assert(n != null);
+              if (graph.ContainsKey(n) && !seen.ContainsKey(n))
+              {
+                  OrderNodes(n);
+              }
+          }
+
+          postOrder.Push(node);
+      }
+
+      // DFS to compute SCCs
+      private void FindSCCs(Node node, SCC<Node> currSCC)
+      {
+          Contract.Requires(currSCC != null);
+          Contract.Requires(node != null);
+          //modifies currSCC.*;
+          seen.Add(node, null);
+          currSCC.Add(node);
+
+          Contract.Assert(dfsNext != null);
+          System.Collections.IEnumerable/*!*/ nexts = dfsNext(node);
+          Contract.Assert(nexts != null);
+          foreach (Node/*!*/ n in nexts)
+          {
+              Contract.Assert(n != null);
+              if (graph.ContainsKey(n) && !seen.ContainsKey(n))
+              {
+                  FindSCCs(n, currSCC);
+              }
+          }
+      }
+
+      [Pure]
+      public override string ToString()
+      {
+          Contract.Ensures(Contract.Result<string>() != null);
+          string outStr = "";
+          int i = 0;
+
+          foreach (ICollection<Node> component in this)
+          {
+              string/*!*/ tmp = System.String.Format("\nComponent #{0} = ", i++);
+              Contract.Assert(tmp != null);
+              outStr += tmp;
+
+              bool firstInRow = true;
+
+              foreach (Node b in component)
+              {
+                  string/*!*/ tmpComponent = System.String.Format("{0}{1}", firstInRow ? "" : ", ", b);
+                  Contract.Assert(tmpComponent != null);
+                  outStr += tmpComponent;
+                  firstInRow = false;
+              }
+          }
+          return outStr;
+      }
+
+  }
 
   public class GraphProgram {
     static void TestGraph<T>(T/*!*/ source, params Tuple<T/*!*/, T/*!*/>[] edges) {

@@ -123,7 +123,7 @@ namespace GPUVerify {
           }
 
           Expr guard = region.Guard();
-          if (verifier.uniformityAnalyser.IsUniform(Impl.Name, guard))
+          if (guard != null && verifier.uniformityAnalyser.IsUniform(Impl.Name, guard))
           {
               return;
           }

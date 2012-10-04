@@ -9,10 +9,13 @@ using Microsoft.Basetypes;
 
 namespace GPUVerify {
   class KernelDualiser {
-    private GPUVerifier verifier;
+    internal GPUVerifier verifier;
+
+    private List<BarrierInvariantDescriptor> BarrierInvariantDescriptors;
 
     public KernelDualiser(GPUVerifier verifier) {
       this.verifier = verifier;
+      BarrierInvariantDescriptors = new List<BarrierInvariantDescriptor>();
     }
 
     private string procName = null;
@@ -74,7 +77,7 @@ namespace GPUVerify {
       return result;
     }
 
-    private QKeyValue MakeThreadSpecificAttributes(QKeyValue attributes, int Thread) {
+    internal QKeyValue MakeThreadSpecificAttributes(QKeyValue attributes, int Thread) {
       if (attributes == null) {
         return null;
       }
@@ -99,6 +102,45 @@ namespace GPUVerify {
     private void MakeDual(CmdSeq cs, Cmd c) {
       if (c is CallCmd) {
         CallCmd Call = c as CallCmd;
+
+        if (QKeyValue.FindBoolAttribute(Call.Proc.Attributes, "barrier_invariant")) {
+          // There should be a predicate, an invariant expression, and at least one instantiation
+          Debug.Assert(Call.Ins.Count >= 3);
+          var BIDescriptor = new UnaryBarrierInvariantDescriptor(Call.Ins[0],
+            Expr.Neq(Call.Ins[1], 
+              new LiteralExpr(Token.NoToken, BigNum.FromInt(0), 1)),
+              Call.Attributes,
+              this, procName);
+          for (var i = 2; i < Call.Ins.Count; i++) {
+            BIDescriptor.AddInstantiationExpr(Call.Ins[i]);
+          }
+          BarrierInvariantDescriptors.Add(BIDescriptor);
+          return;
+        }
+
+        if (QKeyValue.FindBoolAttribute(Call.Proc.Attributes, "binary_barrier_invariant")) {
+          // There should be a predicate, an invariant expression, and at least one pair of
+          // instantiation expressions
+          Debug.Assert(Call.Ins.Count >= 4);
+          var BIDescriptor = new BinaryBarrierInvariantDescriptor(Call.Ins[0],
+            Expr.Neq(Call.Ins[1],
+              new LiteralExpr(Token.NoToken, BigNum.FromInt(0), 1)),
+              Call.Attributes,
+              this, procName);
+          for (var i = 2; i < Call.Ins.Count; i += 2) {
+            BIDescriptor.AddInstantiationExprPair(Call.Ins[i], Call.Ins[i + 1]);
+          }
+          BarrierInvariantDescriptors.Add(BIDescriptor);
+          return;
+        }
+
+
+        if (Call.callee.Equals(verifier.BarrierProcedure.Name)) {
+          // Assert barrier invariants
+          foreach (var BIDescriptor in BarrierInvariantDescriptors) {
+            cs.Add(BIDescriptor.GetAssertCmd());
+          }
+        }
 
         List<Expr> uniformNewIns = new List<Expr>();
         List<Expr> nonUniformNewIns = new List<Expr>();
@@ -148,29 +190,50 @@ namespace GPUVerify {
         NewCallCmd.Attributes = Call.Attributes;
 
         cs.Add(NewCallCmd);
+
+        if (Call.callee.Equals(verifier.BarrierProcedure.Name)) {
+          foreach (var BIDescriptor in BarrierInvariantDescriptors) {
+            foreach (var Instantiation in BIDescriptor.GetInstantiationCmds()) {
+              cs.Add(Instantiation);
+            }
+          }
+          BarrierInvariantDescriptors.Clear();
+        }
+
       }
       else if (c is AssignCmd) {
         AssignCmd assign = c as AssignCmd;
 
-        if (assign.Lhss.All(lhs =>
-                lhs is SimpleAssignLhs &&
-                verifier.uniformityAnalyser.IsUniform(procName, (lhs as SimpleAssignLhs).AssignedVariable.Name))) {
-          cs.Add(assign);
-        }
-        else {
-          List<AssignLhs> newLhss = assign.Lhss.SelectMany(lhs => new AssignLhs[] {
-                        new VariableDualiser(1, verifier.uniformityAnalyser, procName).Visit(lhs.Clone() as AssignLhs) as AssignLhs,
-                        new VariableDualiser(2, verifier.uniformityAnalyser, procName).Visit(lhs.Clone() as AssignLhs) as AssignLhs
-                    }).ToList();
-          List<Expr> newRhss = assign.Rhss.SelectMany(rhs => new Expr[] {
-                        new VariableDualiser(1, verifier.uniformityAnalyser, procName).VisitExpr(rhs.Clone() as Expr),
-                        new VariableDualiser(2, verifier.uniformityAnalyser, procName).VisitExpr(rhs.Clone() as Expr)
-                    }).ToList();
+        var vd1 = new VariableDualiser(1, verifier.uniformityAnalyser, procName);
+        var vd2 = new VariableDualiser(2, verifier.uniformityAnalyser, procName);
 
-          AssignCmd newAssign = new AssignCmd(assign.tok, newLhss, newRhss);
+        List<AssignLhs> lhss1 = new List<AssignLhs>();
+        List<AssignLhs> lhss2 = new List<AssignLhs>();
 
-          cs.Add(newAssign);
+        List<Expr> rhss1 = new List<Expr>();
+        List<Expr> rhss2 = new List<Expr>();
+ 
+        foreach(var pair in assign.Lhss.Zip(assign.Rhss)) {
+          if(pair.Item1 is SimpleAssignLhs &&
+            verifier.uniformityAnalyser.IsUniform(procName, 
+            (pair.Item1 as SimpleAssignLhs).AssignedVariable.Name)) {
+            lhss1.Add(pair.Item1);
+            rhss1.Add(pair.Item2);
+          } else {
+            lhss1.Add(vd1.Visit(pair.Item1.Clone() as AssignLhs) as AssignLhs);
+            lhss2.Add(vd2.Visit(pair.Item1.Clone() as AssignLhs) as AssignLhs);
+            rhss1.Add(vd1.VisitExpr(pair.Item2.Clone() as Expr));
+            rhss2.Add(vd2.VisitExpr(pair.Item2.Clone() as Expr));
+          }
         }
+
+        Debug.Assert(lhss1.Count > 0);
+        cs.Add(new AssignCmd(Token.NoToken, lhss1, rhss1));
+
+        if(lhss2.Count > 0) {
+          cs.Add(new AssignCmd(Token.NoToken, lhss2, rhss2));
+        }
+
       }
       else if (c is HavocCmd) {
         HavocCmd havoc = c as HavocCmd;
@@ -358,5 +421,128 @@ namespace GPUVerify {
     }
 
   }
+
+  class ThreadInstantiator : Duplicator {
+
+    private Expr InstantiationExpr;
+    private int Thread;
+    private UniformityAnalyser Uni;
+    private string ProcName;
+
+    internal ThreadInstantiator(Expr InstantiationExpr, int Thread,
+        UniformityAnalyser Uni, string ProcName) {
+      this.InstantiationExpr = InstantiationExpr;
+      this.Thread = Thread;
+      this.Uni = Uni;
+      this.ProcName = ProcName;
+    }
+
+    public override Expr VisitIdentifierExpr(IdentifierExpr node) {
+      Debug.Assert(!(node.Decl is Formal));
+
+      if (GPUVerifier.IsThreadLocalIdConstant(node.Decl)) {
+        Debug.Assert(node.Decl.Name.Equals(GPUVerifier._X.Name));
+        return InstantiationExpr.Clone() as Expr;
+      }
+
+      if(node.Decl is Constant ||
+          QKeyValue.FindBoolAttribute(node.Decl.Attributes, "global") ||
+          QKeyValue.FindBoolAttribute(node.Decl.Attributes, "group_shared") ||
+          (Uni != null && Uni.IsUniform(ProcName, node.Decl.Name))) {
+        return base.VisitIdentifierExpr(node);
+      }
+
+      if (InstantiationExprIsThreadId()) {
+        return new VariableDualiser(Thread, Uni, ProcName).VisitIdentifierExpr(node);
+      }
+
+      Debug.Assert(false);
+      return null;
+    }
+
+    private bool InstantiationExprIsThreadId() {
+      return (InstantiationExpr is IdentifierExpr) && 
+        ((IdentifierExpr)InstantiationExpr).Decl.Name.Equals(GPUVerifier.MakeThreadId("X", Thread).Name);
+    }
+
+    public override Expr VisitNAryExpr(NAryExpr node) {
+      if (node.Fun is MapSelect) {
+        Debug.Assert((node.Fun as MapSelect).Arity == 1);
+        Debug.Assert(node.Args[0] is IdentifierExpr);
+        var v = (node.Args[0] as IdentifierExpr).Decl;
+        if (QKeyValue.FindBoolAttribute(v.Attributes, "group_shared")) {
+          return new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1),
+            new ExprSeq(new Expr[] { new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1), 
+              new ExprSeq(new Expr[] { node.Args[0], GPUVerifier.GroupSharedIndexingExpr(Thread) })), VisitExpr(node.Args[1]) }));
+        }
+      }
+      return base.VisitNAryExpr(node);
+    }
+
+
+  }
+
+
+
+  class ThreadPairInstantiator : Duplicator {
+
+    private GPUVerifier verifier;
+    private Tuple<Expr, Expr> InstantiationExprs;
+    private int Thread;
+
+    internal ThreadPairInstantiator(GPUVerifier verifier, Expr InstantiationExpr1, Expr InstantiationExpr2, int Thread) {
+      this.verifier = verifier;
+      this.InstantiationExprs = new Tuple<Expr, Expr>(InstantiationExpr1, InstantiationExpr2);
+      this.Thread = Thread;
+    }
+
+    public override Expr VisitIdentifierExpr(IdentifierExpr node) {
+      Debug.Assert(!(node.Decl is Formal));
+
+      if (GPUVerifier.IsThreadLocalIdConstant(node.Decl)) {
+        Debug.Assert(node.Decl.Name.Equals(GPUVerifier._X.Name));
+        return InstantiationExprs.Item1.Clone() as Expr;
+      }
+
+      Debug.Assert(node.Decl is Constant ||
+        verifier.KernelArrayInfo.getGroupSharedArrays().Contains(node.Decl) ||
+        verifier.KernelArrayInfo.getGlobalArrays().Contains(node.Decl));
+
+      return base.VisitIdentifierExpr(node);
+    }
+
+    public override Expr VisitNAryExpr(NAryExpr node) {
+      if (node.Fun is MapSelect) {
+        Debug.Assert((node.Fun as MapSelect).Arity == 1);
+        Debug.Assert(node.Args[0] is IdentifierExpr);
+        var v = (node.Args[0] as IdentifierExpr).Decl;
+
+        if (QKeyValue.FindBoolAttribute(v.Attributes, "group_shared")) {
+          return new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1),
+            new ExprSeq(new Expr[] { new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1), 
+              new ExprSeq(new Expr[] { node.Args[0], GPUVerifier.GroupSharedIndexingExpr(Thread) })), VisitExpr(node.Args[1]) }));
+        }
+      }
+
+      if (node.Fun is FunctionCall) {
+        FunctionCall call = node.Fun as FunctionCall;
+
+        // Alternate instantiation order for "other thread" functions.
+        // Note that we do not alternatve the "Thread" field, as we are not switching the
+        // thread for which instantiation is being performed
+        if (VariableDualiser.otherFunctionNames.Contains(call.Func.Name)) {
+          return new ThreadPairInstantiator(verifier, InstantiationExprs.Item2, InstantiationExprs.Item1, Thread)
+            .VisitExpr(node.Args[0]);
+        }
+
+      }
+
+      return base.VisitNAryExpr(node);
+    }
+
+
+  }
+
+
 
 }

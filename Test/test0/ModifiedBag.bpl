@@ -1,5 +1,5 @@
 // ----------- BEGIN PRELUDE
-type real;
+
 
 type elements;
 

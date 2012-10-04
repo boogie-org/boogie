@@ -471,7 +471,7 @@ function {:inline true} INT_NEQ(x:int, y:int)  returns  (bool)   {x != y}
 function {:inline true} INT_ADD(x:int, y:int)  returns  (int)   {x + y}
 function {:inline true} INT_SUB(x:int, y:int)  returns  (int)   {x - y}
 function {:inline true} INT_MULT(x:int, y:int) returns  (int)   {x * y}
-function {:inline true} INT_DIV(x:int, y:int)  returns  (int)   {x / y}
+function {:inline true} INT_DIV(x:int, y:int)  returns  (int)   {x div y}
 function {:inline true} INT_LT(x:int, y:int)   returns  (bool)  {x < y}
 function {:inline true} INT_ULT(x:int, y:int)   returns  (bool)  {x < y}
 function {:inline true} INT_LEQ(x:int, y:int)  returns  (bool)  {x <= y}

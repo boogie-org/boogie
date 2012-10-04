@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using Graphing;
+using Microsoft.Boogie.GraphUtil;
 using PureCollections;
 using System.Diagnostics.Contracts;
 
@@ -355,7 +355,7 @@ namespace Microsoft.Boogie {
     public static void ComputeLiveVariables(Implementation impl) {
       Contract.Requires(impl != null);
       Microsoft.Boogie.Helpers.ExtraTraceInformation("Starting live variable analysis");
-      Graphing.Graph<Block> dag = new Graph<Block>();
+      Graph<Block> dag = new Graph<Block>();
       dag.AddSource(cce.NonNull(impl.Blocks[0])); // there is always at least one node in the graph
       foreach (Block b in impl.Blocks) {
         GotoCmd gtc = b.TransferCmd as GotoCmd;

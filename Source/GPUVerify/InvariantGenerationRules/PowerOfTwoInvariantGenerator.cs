@@ -32,7 +32,7 @@ namespace GPUVerify.InvariantGenerationRules
                             for (int i = (1 << 15); i > 0; i >>= 1)
                             {
                                 verifier.AddCandidateInvariant(region, 
-                                    GPUVerifier.MakeBitVectorBinaryBoolean("BV32_LT",
+                                    verifier.MakeBVSlt(
                                     new IdentifierExpr(v.tok, v),
                                     new LiteralExpr(v.tok, BigNum.FromInt(i), 32)), "pow2 less than " + i);
                             }

@@ -23,29 +23,29 @@ implementation Join(b: bool)
     x := 3;
     y := 4;
     z := x + y;
-    assume {:inferred} x == 3 && y == 4 && z == 7;
-    goto Then, Else;
+    assume {:inferred} GlobalFlag && x == 3 && y == 4 && z == 7;
+	goto Then, Else;
 
   Then:
-    assume {:inferred} x == 3 && y == 4 && z == 7;
+    assume {:inferred} GlobalFlag && x == 3 && y == 4 && z == 7;
     assume b <==> true;
     x := x + 1;
-    assume {:inferred} x == 4 && y == 4 && z == 7;
+    assume {:inferred} GlobalFlag && x == 4 && y == 4 && z == 7 && b;
     goto join;
 
   Else:
-    assume {:inferred} x == 3 && y == 4 && z == 7;
+    assume {:inferred} GlobalFlag && x == 3 && y == 4 && z == 7;
     assume b <==> false;
     y := 4;
-    assume {:inferred} x == 3 && y == 4 && z == 7;
+    assume {:inferred} GlobalFlag && x == 3 && y == 4 && z == 7 && !b;
     goto join;
 
   join:
-    assume {:inferred} y == 4 && z == 7;
+    assume {:inferred} GlobalFlag && 3 <= x && x < 5 && y == 4 && z == 7;
     assert y == 4;
     assert z == 7;
     assert GlobalFlag <==> true;
-    assume {:inferred} y == 4 && z == 7;
+    assume {:inferred} GlobalFlag && 3 <= x && x < 5 && y == 4 && z == 7;
     return;
 }
 
@@ -68,20 +68,20 @@ implementation Loop()
     goto test;
 
   test:  // cut point
-    assume {:inferred} c == 0;
-    assume {:inferred} c == 0;
+    assume {:inferred} c == 0 && 0 <= i && i < 11;
+    assume {:inferred} c == 0 && 0 <= i && i < 11;
     goto Then, Else;
 
   Then:
-    assume {:inferred} c == 0;
+    assume {:inferred} c == 0 && 0 <= i && i < 11;
     assume i < 10;
     i := i + 1;
-    assume {:inferred} c == 0;
+    assume {:inferred} c == 0 && 1 <= i && i < 11;
     goto test;
 
   Else:
-    assume {:inferred} c == 0;
-    assume {:inferred} c == 0;
+    assume {:inferred} c == 0 && 0 <= i && i < 11;
+    assume {:inferred} c == 0 && 0 <= i && i < 11;
     return;
 }
 

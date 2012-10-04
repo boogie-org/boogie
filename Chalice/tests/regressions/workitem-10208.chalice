@@ -1,0 +1,41 @@
+class Test {
+  var f1: int;
+  var f2: int;
+
+  predicate valid {
+    acc(f1) && acc(f2) && f1 == f2
+  }
+  
+  method test()
+    requires valid
+  {
+    unfold valid
+    f1 := 2
+    f2 := 2
+    fold valid
+    
+    /* --- not strictly necessary */
+    unfold valid
+    assert f1 == 2
+    fold valid
+    /* --- */
+    
+    call test2()
+    
+    unfold valid
+    assert f1 == 2 // BUG: this should not verify (1)
+    assert false // BUG: this should not verify (2)
+  }
+  
+  method test2()
+    requires valid
+    ensures valid
+    ensures unfolding valid in f1 == 1 // line (1) above verifies also without this postcondition
+  {
+    unfold valid
+    f1 := 1
+    f2 := 1
+    fold valid
+  }
+  
+}

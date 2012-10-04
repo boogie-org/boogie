@@ -1,0 +1,86 @@
+class Node {
+  var next : Node;
+  var val : int;
+  /* ghost */ var length : int;
+
+  predicate lseg {
+    acc(length) && length > 0 && acc(next) && acc(val) && (length > 1 ==> next != null && next.lseg && next.lseg_length() + 1 == this.length)
+  }
+
+  function lseg_length() : int
+    requires lseg
+	{
+	  unfolding lseg in length
+	}
+
+  function elems() : seq<int>
+    requires lseg
+	{
+	  unfolding lseg in (length == 1 ? [val] : [val] ++ next.elems())
+	}
+
+  function end() : Node
+    requires lseg
+	{
+	  unfolding lseg in (length == 1 ? next : next.end())
+	}
+
+  /* ghost */ method addAtEndRec(n:Node)
+    requires lseg && acc(n.*)
+    ensures lseg
+    ensures elems() == old(elems()) ++ [old(n.val)]
+    ensures end() == old(n.next)
+	ensures lseg_length() == old(lseg_length()) + 1
+    {
+      unfold this.lseg;
+      if (length == 1) {
+        this.next := n
+        n.length := 1
+        fold n.lseg
+	  } else {
+        call this.next.addAtEndRec(n)
+      }
+      this.length := this.length + 1
+      fold this.lseg
+    }
+
+	method addAtEnd(v: int)
+		requires lseg
+		requires this.end() == null
+		ensures lseg
+		ensures elems() == old(elems()) ++ [v]
+	{
+		var cur: Node := this
+		unfold lseg
+		while (cur.next != null)
+			invariant acc(cur.*)
+			invariant this != cur ==> this.lseg && this.end() == cur
+			invariant cur.length > 0 && (cur.length > 1 ==> cur.next != null && cur.next.lseg) && (cur.length == 1 ? cur.next : cur.next.end()) == null
+			invariant ((this == cur ? [] : this.elems())
+						++ [cur.val]
+						++ (cur.next == null ? [] : cur.next.elems())) == old(this.elems())
+		{
+			/* ghost */ var temp: Node := cur
+			cur := cur.next 
+			if (this == temp) {
+				this.length := 1
+				fold lseg
+			} else {
+				call addAtEndRec(temp)
+			}
+			unfold cur.lseg
+		}
+
+	  var n: Node := new Node
+	  n.val := v
+	  n.next := null
+	  cur.next := n
+	  if(cur == this) {
+		this.length := 1
+		fold lseg
+	  } else {
+		call addAtEndRec(cur)
+	  }
+	  call addAtEndRec(n)			
+	}
+}

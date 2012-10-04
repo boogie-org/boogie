@@ -1,0 +1,38 @@
+class Cell  {
+  var x: int;
+  var b: bool;
+ 
+  predicate valid {
+    acc(this.b) && (this.b ==> acc(this.x,50))
+  }
+
+  method m()
+    requires this.valid && (unfolding valid in this.b) && acc(this.mu) && waitlevel << mu
+  {
+    acquire this;
+    
+    var c := (unfolding valid in this.x);
+    release this;
+    acquire this;
+    assert c == this.x;
+    call n();
+    c := (unfolding valid in this.x);
+    release this;
+    acquire this;
+    // ERROR: this is not supposed to verify (it did in previous versions of Chalice)
+    assert c == this.x;
+    release this;
+  }
+  
+  method n()
+    requires this.valid
+    ensures this.valid
+    {
+      unfold this.valid;
+      this.b := false;
+      fold this.valid;
+    }
+
+  invariant acc(this.x,50)
+}
+

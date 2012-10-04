@@ -118,7 +118,7 @@ axiom (forall x: int :: intSet0[x] == (x == 0 || x == 2 || x == 3));
 
 const intSet1: Set int;
 
-axiom (forall x: int :: intSet1[x] == (x == 0 - 5 || x == 3));
+axiom (forall x: int :: intSet1[x] == (x == -5 || x == 3));
 
 procedure P();
 
@@ -126,7 +126,7 @@ procedure P();
 
 implementation P()
 {
-    assert (forall x: int :: union(intSet0, intSet1)[x] == (x == 0 - 5 || x == 0 || x == 2 || x == 3));
+    assert (forall x: int :: union(intSet0, intSet1)[x] == (x == -5 || x == 0 || x == 2 || x == 3));
 }
 
 
@@ -143,7 +143,7 @@ axiom (forall x: int :: intSet0[x] <==> x == 0 || x == 2 || x == 3);
 
 const intSet1: Set int;
 
-axiom (forall x: int :: intSet1[x] <==> x == 0 - 5 || x == 3);
+axiom (forall x: int :: intSet1[x] <==> x == -5 || x == 3);
 
 procedure P();
 
@@ -151,7 +151,7 @@ procedure P();
 
 implementation P()
 {
-    assert (forall x: int :: union(intSet0, intSet1)[x] <==> x == 0 - 5 || x == 0 || x == 2 || x == 3);
+    assert (forall x: int :: union(intSet0, intSet1)[x] <==> x == -5 || x == 0 || x == 2 || x == 3);
 }
 
 

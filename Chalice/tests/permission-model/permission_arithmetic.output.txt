@@ -19,4 +19,4 @@ The program did not fully verify; the smoke warnings might be misleading if cont
   200.3: The end of method a28 is unreachable.
   215.3: The end of method a28b is unreachable.
 
-Boogie program verifier finished with 11 errors and 5 smoke test warnings.
+Boogie program verifier finished with 11 errors and 5 smoke test warnings

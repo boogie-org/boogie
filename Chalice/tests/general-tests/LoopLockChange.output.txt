@@ -9,4 +9,4 @@ The program did not fully verify; the smoke warnings might be misleading if cont
   10.5: The statements after the while-loop are unreachable.
   75.5: Assumption introduces a contradiction.
 
-Boogie program verifier finished with 3 errors and 3 smoke test warnings.
+Boogie program verifier finished with 3 errors and 3 smoke test warnings

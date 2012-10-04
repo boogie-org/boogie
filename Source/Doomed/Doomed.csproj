@@ -1,0 +1,101 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{884386A3-58E9-40BB-A273-B24976775553}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>Doomed</RootNamespace>
+    <AssemblyName>Doomed</AssemblyName>
+    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <TargetFrameworkProfile>Client</TargetFrameworkProfile>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup>
+    <SignAssembly>true</SignAssembly>
+  </PropertyGroup>
+  <PropertyGroup>
+    <AssemblyOriginatorKeyFile>..\InterimKey.snk</AssemblyOriginatorKeyFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="DoomCheck.cs" />
+    <Compile Include="DoomedLoopUnrolling.cs" />
+    <Compile Include="DoomedStrategy.cs" />
+    <Compile Include="DoomErrorHandler.cs" />
+    <Compile Include="HasseDiagram.cs" />
+    <Compile Include="VCDoomed.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Basetypes\Basetypes.csproj">
+      <Project>{43dfad18-3e35-4558-9be2-caff6b5ba8a0}</Project>
+      <Name>Basetypes</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\CodeContractsExtender\CodeContractsExtender.csproj">
+      <Project>{accc0156-0921-43ed-8f67-ad8bdc8cde31}</Project>
+      <Name>CodeContractsExtender</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Core\Core.csproj">
+      <Project>{b230a69c-c466-4065-b9c1-84d80e76d802}</Project>
+      <Name>Core</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Graph\Graph.csproj">
+      <Project>{69a2b0b8-bcac-4101-ae7a-556fcc58c06e}</Project>
+      <Name>Graph</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Model\Model.csproj">
+      <Project>{acef88d5-dadd-46da-bae1-2144d63f4c83}</Project>
+      <Name>Model</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\ParserHelper\ParserHelper.csproj">
+      <Project>{fcd3ac7f-9dfd-46c8-ab1e-09f0b0f16dc5}</Project>
+      <Name>ParserHelper</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\VCExpr\VCExpr.csproj">
+      <Project>{56ffdbca-7d14-43b8-a6ca-22a20e417ee1}</Project>
+      <Name>VCExpr</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\VCGeneration\VCGeneration.csproj">
+      <Project>{e1f10180-c7b9-4147-b51f-fa1b701966dc}</Project>
+      <Name>VCGeneration</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Properties\" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

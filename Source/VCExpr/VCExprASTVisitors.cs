@@ -75,12 +75,16 @@ namespace Microsoft.Boogie.VCExprAST {
     Result VisitMulOp(VCExprNAry node, Arg arg);
     Result VisitDivOp(VCExprNAry node, Arg arg);
     Result VisitModOp(VCExprNAry node, Arg arg);
+    Result VisitRealDivOp(VCExprNAry node, Arg arg);
+    Result VisitPowOp(VCExprNAry node, Arg arg);
     Result VisitLtOp(VCExprNAry node, Arg arg);
     Result VisitLeOp(VCExprNAry node, Arg arg);
     Result VisitGtOp(VCExprNAry node, Arg arg);
     Result VisitGeOp(VCExprNAry node, Arg arg);
     Result VisitSubtypeOp(VCExprNAry node, Arg arg);
     Result VisitSubtype3Op(VCExprNAry node, Arg arg);
+    Result VisitToIntOp(VCExprNAry node, Arg arg);
+    Result VisitToRealOp(VCExprNAry node, Arg arg);
     Result VisitBoogieFunctionOp(VCExprNAry node, Arg arg);
     Result VisitIfThenElseOp(VCExprNAry node, Arg arg);
     Result VisitCustomOp(VCExprNAry node, Arg arg);
@@ -179,6 +183,16 @@ namespace Microsoft.Boogie.VCExprAST {
       throw new NotImplementedException();
     }
 
+    public Result VisitRealDivOp(VCExprNAry node, Arg arg) {
+      Contract.Requires(node != null);
+      throw new NotImplementedException();
+    }
+
+    public Result VisitPowOp(VCExprNAry node, Arg arg) {
+      Contract.Requires(node != null);
+      throw new NotImplementedException();
+    }
+
     public Result VisitLtOp(VCExprNAry node, Arg arg) {
       Contract.Requires(node != null);
       throw new NotImplementedException();
@@ -205,6 +219,16 @@ namespace Microsoft.Boogie.VCExprAST {
     }
 
     public Result VisitSubtype3Op(VCExprNAry node, Arg arg) {
+      Contract.Requires(node != null);
+      throw new NotImplementedException();
+    }
+
+    public Result VisitToIntOp(VCExprNAry node, Arg arg) {
+      Contract.Requires(node != null);
+      throw new NotImplementedException();
+    }
+
+    public Result VisitToRealOp(VCExprNAry node, Arg arg) {
       Contract.Requires(node != null);
       throw new NotImplementedException();
     }
@@ -1427,6 +1451,14 @@ namespace Microsoft.Boogie.VCExprAST {
       //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
+    public virtual Result VisitRealDivOp(VCExprNAry node, Arg arg) {
+      //Contract.Requires(node != null);
+      return StandardResult(node, arg);
+    }
+    public virtual Result VisitPowOp(VCExprNAry node, Arg arg) {
+      //Contract.Requires(node != null);
+      return StandardResult(node, arg);
+    }
     public virtual Result VisitLtOp(VCExprNAry node, Arg arg) {
       //Contract.Requires(node != null);
       return StandardResult(node, arg);
@@ -1448,6 +1480,14 @@ namespace Microsoft.Boogie.VCExprAST {
       return StandardResult(node, arg);
     }
     public virtual Result VisitSubtype3Op(VCExprNAry node, Arg arg) {
+      //Contract.Requires(node != null);
+      return StandardResult(node, arg);
+    }
+    public virtual Result VisitToIntOp(VCExprNAry node, Arg arg) {
+      //Contract.Requires(node != null);
+      return StandardResult(node, arg);
+    }
+    public virtual Result VisitToRealOp(VCExprNAry node, Arg arg) {
       //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
