@@ -924,8 +924,8 @@ namespace Microsoft.Boogie.SMTLib
           if (resp == null) break;
           if (!(resp.Name == "" && resp.ArgCount == 1)) break;
           resp = resp.Arguments[0];
-          if (!(resp.Name == "" && resp.ArgCount == 2)) break;
-          resp = resp.Arguments[1];
+          if (!(resp.Name != "" && resp.ArgCount == 1)) break;
+          resp = resp.Arguments[0]; 
           if (resp.ArgCount != 0)
             break;
           int v;
