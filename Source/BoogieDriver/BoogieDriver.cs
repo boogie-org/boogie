@@ -617,6 +617,16 @@ namespace Microsoft.Boogie {
 
       #region Run Houdini and verify
       if (CommandLineOptions.Clo.ContractInfer) {
+          if (CommandLineOptions.Clo.AbstractHoudini != null)
+          {
+              CommandLineOptions.Clo.PrintErrorModel = 1;
+              // Run Abstract Houdini
+              Houdini.PredicateAbs.Initialize(program);
+              var abs = new Houdini.AbstractHoudini(program);
+              abs.computeSummaries(new Houdini.PredicateAbs());
+
+              return PipelineOutcome.Done;
+          }
         Houdini.Houdini houdini = new Houdini.Houdini(program);
         Houdini.HoudiniOutcome outcome = houdini.PerformHoudiniInference();
         if (CommandLineOptions.Clo.PrintAssignment) {

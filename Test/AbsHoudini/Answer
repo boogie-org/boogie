@@ -1,0 +1,19 @@
+
+-------------------- f1.bpl --------------------
+Running Abstract Houdini
+	Post: g == old(g) + 1
+	Post: g == old(g) + 2
+	Post: g == old(g) + 3
+	Pre: old(g) == 0
+Trying summary for foo: (And (== (fooSummaryPred g g@0) false) (== (fooSummaryPred g g@0) false))
+Trying summary for foo: (And (== (fooSummaryPred g g@0) (And (== g@0 (+ g 1)) (Implies (== g 0) (== g@0 (+ g 2))) (Implies (== g 0) (== g@0 (+ g 3))))) (== (fooSummaryPred g g@0) (And (== g@0 (+ g 1)) (Implies (== g 0) (== g@0 (+ g 2))) (Implies (== g 0) (== g@0 (+ g 3))))))
+Trying summary for foo: (And (== (fooSummaryPred g g@0) (== g@0 (+ g 1))) (== (fooSummaryPred g g@0) (== g@0 (+ g 1))))
+Trying summary for main: (And (== (mainSummaryPred g g@3) false) (== (mainSummaryPred g g@3) false))
+Trying summary for main: (And (== (mainSummaryPred g g@3) (And (== g@3 (+ g 1)) (Implies (! (== g 0)) (== g@3 (+ g 2))) (Implies (! (== g 0)) (== g@3 (+ g 3))))) (== (mainSummaryPred g g@3) (And (== g@3 (+ g 1)) (Implies (! (== g 0)) (== g@3 (+ g 2))) (Implies (! (== g 0)) (== g@3 (+ g 3))))))
+Trying summary for main: (And (== (mainSummaryPred g g@3) (Implies (== g 0) (== g@3 (+ g 1)))) (== (mainSummaryPred g g@3) (Implies (== g 0) (== g@3 (+ g 1)))))
+Summary of main:
+(old(g) == 0 ==> g == old(g) + 1)
+Summary of foo:
+g == old(g) + 1
+
+Boogie program verifier finished with 0 verified, 0 errors

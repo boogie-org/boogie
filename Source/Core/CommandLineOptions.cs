@@ -393,6 +393,7 @@ namespace Microsoft.Boogie {
     public int /*(0:3)*/ ErrorTrace = 1;
     public bool IntraproceduralInfer = true;
     public bool ContractInfer = false;
+    public string AbstractHoudini = null;
     public bool UseUnsatCoreForContractInfer = false;
     public bool PrintAssignment = false;
     public int InlineDepth = -1;
@@ -850,6 +851,14 @@ namespace Microsoft.Boogie {
             return true;
           }
 
+        case "abstractHoudini":
+            {
+                if (ps.ConfirmArgumentCount(1))
+                {
+                    AbstractHoudini = args[ps.i];
+                }
+                return true;
+            }
         case "vc":
           if (ps.ConfirmArgumentCount(1)) {
             switch (args[ps.i]) {
