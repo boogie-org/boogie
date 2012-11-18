@@ -816,6 +816,13 @@ namespace Microsoft.Boogie {
 
     public Dictionary<string, Dictionary<string, Block>> ExtractLoops()
     {
+        HashSet<string> procsWithIrreducibleLoops = null;
+        return ExtractLoops(out procsWithIrreducibleLoops);
+    }
+
+    public Dictionary<string, Dictionary<string, Block>> ExtractLoops(out HashSet<string> procsWithIrreducibleLoops)
+    {
+        procsWithIrreducibleLoops = new HashSet<string>();
         List<Implementation/*!*/>/*!*/ loopImpls = new List<Implementation/*!*/>();
         Dictionary<string, Dictionary<string, Block>> fullMap = new Dictionary<string, Dictionary<string, Block>>();
         foreach (Declaration d in this.TopLevelDeclarations)
@@ -832,6 +839,7 @@ namespace Microsoft.Boogie {
                 {
                     System.Diagnostics.Debug.Assert(!fullMap.ContainsKey(impl.Name));
                     fullMap[impl.Name] = null;
+                    procsWithIrreducibleLoops.Add(impl.Name);
 
                     // statically unroll loops in this procedure
 
