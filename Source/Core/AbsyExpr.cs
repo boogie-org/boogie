@@ -1744,6 +1744,11 @@ namespace Microsoft.Boogie {
     void ObjectInvariant() {
       Contract.Invariant(name != null);
     }
+    
+    public FunctionCall createUnresolvedCopy()
+    {
+        return new FunctionCall(new IdentifierExpr(name.tok, name.Name, name.Type));
+    }
 
     [Pure]
     public override string ToString() {

@@ -44,7 +44,7 @@ namespace Microsoft.Boogie.Houdini {
             this.impl2EndStateVars = new Dictionary<string, List<VCExpr>>();
             this.impl2CalleeSummaries = new Dictionary<string, List<Tuple<string, VCExprNAry>>>();
             this.impl2Summary = new Dictionary<string, ISummaryElement>();
-            this.name2Impl = BoogieUtil.nameImplMapping(program);
+            this.name2Impl = SimpleUtil.nameImplMapping(program);
 
             this.vcgen = new VCGen(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend);
             this.prover = ProverInterface.CreateProver(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend, CommandLineOptions.Clo.ProverKillTime);
@@ -334,7 +334,7 @@ namespace Microsoft.Boogie.Houdini {
             {
                 foreach (var cmd in blk.Cmds.OfType<AssertCmd>())
                 {
-                    if (BoogieUtil.isAssertTrue(cmd)) continue;
+                    if (SimpleUtil.isAssertTrue(cmd)) continue;
                     var nary = cmd.Expr as NAryExpr;
                     if (nary == null) continue;
                     var pred = nary.Fun as FunctionCall;
@@ -562,7 +562,7 @@ namespace Microsoft.Boogie.Houdini {
                 {
                     return ToValue(state[oldv]);
                 }
-                throw new InternalError("Cannot handle this case");
+                throw new AbsHoudiniInternalError("Cannot handle this case");
             }
 
             if (state.ContainsKey(v))
@@ -570,7 +570,7 @@ namespace Microsoft.Boogie.Houdini {
                 return ToValue(state[v]);
             }
 
-            throw new InternalError("Cannot handle this case");
+            throw new AbsHoudiniInternalError("Cannot handle this case");
         }
 
         private VCExpr ToVcVar(string v, Dictionary<string, VCExpr> incarnations, bool tryOld)
@@ -582,7 +582,7 @@ namespace Microsoft.Boogie.Houdini {
                 {
                     return incarnations[oldv];
                 }
-                throw new InternalError("Cannot handle this case");
+                throw new AbsHoudiniInternalError("Cannot handle this case");
             }
 
             if (incarnations.ContainsKey(v))
@@ -590,7 +590,7 @@ namespace Microsoft.Boogie.Houdini {
                 return incarnations[v];
             }
 
-            throw new InternalError("Cannot handle this case");
+            throw new AbsHoudiniInternalError("Cannot handle this case");
         }
 
         private object ToValue(Model.Element elem)
@@ -1023,13 +1023,13 @@ namespace Microsoft.Boogie.Houdini {
     }
 
 
-    public class InternalError : System.ApplicationException
+    public class AbsHoudiniInternalError : System.ApplicationException
     {
-        public InternalError(string msg) : base(msg) { }
+        public AbsHoudiniInternalError(string msg) : base(msg) { }
 
     };
 
-    public class BoogieUtil
+    public class SimpleUtil
     {
         // Constructs a mapping from procedure names to the implementation
         public static Dictionary<string, Implementation> nameImplMapping(Program p)
