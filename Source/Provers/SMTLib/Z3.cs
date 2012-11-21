@@ -36,6 +36,18 @@ namespace Microsoft.Boogie.SMTLib
     {
       Contract.Ensures(_proverPath != null);
 
+     // Command line option 'z3exe' always has priority if set 
+      if (CommandLineOptions.Clo.Z3ExecutablePath != null) {
+        _proverPath = CommandLineOptions.Clo.Z3ExecutablePath;
+        if (!File.Exists(_proverPath)) {
+          throw new ProverException("Cannot find prover specified with z3exe: " + _proverPath);
+        }
+        if (CommandLineOptions.Clo.Trace) {
+          Console.WriteLine("[TRACE] Using prover: " + _proverPath);
+        }
+        return;
+      }
+
       var proverExe = "z3.exe";
 
       if (_proverPath == null) {
