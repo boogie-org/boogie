@@ -593,40 +593,59 @@ namespace Microsoft.Boogie.Houdini {
       Contract.Assume(currentHoudiniState.Implementation != null);
       bool dequeue = true;
 
-      switch (outcome) {
-        case ProverInterface.Outcome.Valid:
-          //yeah, dequeue
-          break;
-        case ProverInterface.Outcome.Invalid:
-          Contract.Assume(errors != null);
-          foreach (Counterexample error in errors) {
-            RefutedAnnotation refutedAnnotation = ExtractRefutedAnnotation(error);
-            if (refutedAnnotation != null) { // some candidate annotation removed
-              AddRelatedToWorkList(refutedAnnotation);
-              UpdateAssignment(refutedAnnotation);
-              dequeue = false;
-              #region Extra debugging output
-              if (CommandLineOptions.Clo.Trace)
+      switch (outcome)
+      {
+          case ProverInterface.Outcome.Valid:
+              //yeah, dequeue
+              break;
+          case ProverInterface.Outcome.Invalid:
+              Contract.Assume(errors != null);
+              foreach (Counterexample error in errors)
               {
-                  using (var cexWriter = new System.IO.StreamWriter("houdiniCexTrace.bpl", true))
-                  {
-                      cexWriter.WriteLine("Counter example for " + refutedAnnotation.Constant);
-                      cexWriter.Write(error.ToString());
-                      cexWriter.WriteLine();
-                      using (var writer = new Microsoft.Boogie.TokenTextWriter(cexWriter))
-                          foreach (Microsoft.Boogie.Block blk in error.Trace)
-                              blk.Emit(writer, 15);
-                      //cexWriter.WriteLine(); 
+                  RefutedAnnotation refutedAnnotation = ExtractRefutedAnnotation(error);
+                  if (refutedAnnotation != null)
+                  { // some candidate annotation removed
+                      AddRelatedToWorkList(refutedAnnotation);
+                      UpdateAssignment(refutedAnnotation);
+                      dequeue = false;
+                      #region Extra debugging output
+                      if (CommandLineOptions.Clo.Trace)
+                      {
+                          using (var cexWriter = new System.IO.StreamWriter("houdiniCexTrace.bpl", true))
+                          {
+                              cexWriter.WriteLine("Counter example for " + refutedAnnotation.Constant);
+                              cexWriter.Write(error.ToString());
+                              cexWriter.WriteLine();
+                              using (var writer = new Microsoft.Boogie.TokenTextWriter(cexWriter))
+                                  foreach (Microsoft.Boogie.Block blk in error.Trace)
+                                      blk.Emit(writer, 15);
+                              //cexWriter.WriteLine(); 
+                          }
+                      }
+                      #endregion
+
                   }
               }
-              #endregion
-
-            }
-          }
-          break;
-        default:
-          currentHoudiniState.addToBlackList(currentHoudiniState.Implementation.Name);
-          break;
+              break;
+          default:
+              if (CommandLineOptions.Clo.Trace)
+              {
+                  Console.WriteLine("Timeout/Spaceout while verifying " + currentHoudiniState.Implementation.Name);
+              }
+              HoudiniSession houdiniSession;
+              houdiniSessions.TryGetValue(currentHoudiniState.Implementation, out houdiniSession);
+              foreach (Variable v in houdiniSession.houdiniAssertConstants)
+              {
+                  if (CommandLineOptions.Clo.Trace)
+                  {
+                      Console.WriteLine("Removing " + v);
+                  }
+                  currentHoudiniState.Assignment.Remove(v);
+                  currentHoudiniState.Assignment.Add(v, false);
+                  this.NotifyConstant(v.Name);
+              }
+              currentHoudiniState.addToBlackList(currentHoudiniState.Implementation.Name);
+              break;
       }
       
       return dequeue;

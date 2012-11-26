@@ -16,17 +16,20 @@ using VC;
 
 namespace Microsoft.Boogie.Houdini {
   public class ExistentialConstantCollector : StandardVisitor {
-    public static HashSet<Variable> CollectHoudiniConstants(Houdini houdini, Implementation impl) {
+    public static void CollectHoudiniConstants(Houdini houdini, Implementation impl, out HashSet<Variable> houdiniAssertConstants, out HashSet<Variable> houdiniAssumeConstants) {
       ExistentialConstantCollector collector = new ExistentialConstantCollector(houdini);
       collector.VisitImplementation(impl);
-      return collector.houdiniConstants;
+      houdiniAssertConstants = collector.houdiniAssertConstants;
+      houdiniAssumeConstants = collector.houdiniAssumeConstants;
     }
     private ExistentialConstantCollector(Houdini houdini) {
       this.houdini = houdini;
-      this.houdiniConstants = new HashSet<Variable>();
+      this.houdiniAssertConstants = new HashSet<Variable>();
+      this.houdiniAssumeConstants = new HashSet<Variable>();
     }
     private Houdini houdini;
-    private HashSet<Variable> houdiniConstants;
+    private HashSet<Variable> houdiniAssertConstants;
+    private HashSet<Variable> houdiniAssumeConstants;
     public override Cmd VisitAssertRequiresCmd(AssertRequiresCmd node) {
       AddHoudiniConstant(node);
       return base.VisitAssertRequiresCmd(node);
@@ -43,10 +46,17 @@ namespace Microsoft.Boogie.Houdini {
       AddHoudiniConstant(node);
       return base.VisitAssumeCmd(node);
     }
-    private void AddHoudiniConstant(PredicateCmd node) {
-      Variable houdiniConstant;
-      if (houdini.MatchCandidate(node.Expr, out houdiniConstant))
-        houdiniConstants.Add(houdiniConstant);
+    private void AddHoudiniConstant(AssertCmd assertCmd)
+    {
+        Variable houdiniConstant;
+        if (houdini.MatchCandidate(assertCmd.Expr, out houdiniConstant))
+            houdiniAssertConstants.Add(houdiniConstant);
+    }
+    private void AddHoudiniConstant(AssumeCmd assumeCmd)
+    {
+        Variable houdiniConstant;
+        if (houdini.MatchCandidate(assumeCmd.Expr, out houdiniConstant))
+            houdiniAssumeConstants.Add(houdiniConstant);
     }
   }
 
@@ -63,6 +73,7 @@ namespace Microsoft.Boogie.Houdini {
     ConditionGeneration.CounterexampleCollector collector;
     HashSet<Variable> unsatCoreSet;
     HashSet<Variable> houdiniConstants;
+    public HashSet<Variable> houdiniAssertConstants;
     Houdini houdini;
     Implementation implementation;
 
@@ -84,7 +95,11 @@ namespace Microsoft.Boogie.Houdini {
       ModelViewInfo mvInfo;
       Hashtable/*TransferCmd->ReturnCmd*/ gotoCmdOrigins = vcgen.PassifyImpl(impl, out mvInfo);
 
-      houdiniConstants = ExistentialConstantCollector.CollectHoudiniConstants(houdini, impl);
+      HashSet<Variable> houdiniAssumeConstants;
+      ExistentialConstantCollector.CollectHoudiniConstants(houdini, impl, out houdiniAssertConstants, out houdiniAssumeConstants);
+      houdiniConstants = new HashSet<Variable>();
+      houdiniConstants.UnionWith(houdiniAssertConstants);
+      houdiniConstants.UnionWith(houdiniAssumeConstants);
 
       var exprGen = proverInterface.Context.ExprGen;
       VCExpr controlFlowVariableExpr = CommandLineOptions.Clo.UseLabels ? null : exprGen.Integer(BigNum.ZERO);
