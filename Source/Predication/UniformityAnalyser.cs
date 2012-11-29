@@ -149,6 +149,44 @@ namespace Microsoft.Boogie
                 ProcedureChanged = true;
             }
 
+            var procs = prog.TopLevelDeclarations.OfType<Procedure>();
+
+            foreach (var Proc in procs) {
+
+              if (uniformityInfo.ContainsKey(Proc.Name)) {
+                continue;
+              }
+
+              bool uniformProcedure = doAnalysis;
+
+              uniformityInfo.Add(Proc.Name, new KeyValuePair<bool, Dictionary<string, bool>>
+                  (uniformProcedure, new Dictionary<string, bool>()));
+
+              inParameters[Proc.Name] = new List<string>();
+
+              foreach (Variable v in Proc.InParams) {
+                inParameters[Proc.Name].Add(v.Name);
+                if (doAnalysis) {
+                  SetUniform(Proc.Name, v.Name);
+                }
+                else {
+                  SetNonUniform(Proc.Name, v.Name);
+                }
+              }
+
+              outParameters[Proc.Name] = new List<string>();
+              foreach (Variable v in Proc.OutParams) {
+                outParameters[Proc.Name].Add(v.Name);
+                // We do not have a body for the procedure,
+                // so we must assume it produces non-uniform
+                // results
+                SetNonUniform(Proc.Name, v.Name);
+              }
+
+              ProcedureChanged = true;
+            }
+
+
             if (doAnalysis)
             {
                 while (ProcedureChanged)
@@ -163,17 +201,17 @@ namespace Microsoft.Boogie
                 }
             }
 
-            foreach (var Impl in impls)
+            foreach (var Proc in procs)
             {
-                if (!IsUniform (Impl.Name))
+                if (!IsUniform (Proc.Name))
                 {
                     List<string> newIns = new List<String>();
                     newIns.Add("_P");
-                    foreach (string s in inParameters[Impl.Name])
+                    foreach (string s in inParameters[Proc.Name])
                     {
                         newIns.Add(s);
                     }
-                    inParameters[Impl.Name] = newIns;
+                    inParameters[Proc.Name] = newIns;
                 }
             }
         }
@@ -265,15 +303,16 @@ namespace Microsoft.Boogie
             }
         }
 
-        private Implementation GetImplementation(string procedureName)
+        private Procedure GetProcedure(string procedureName)
         {
             foreach (Declaration D in prog.TopLevelDeclarations)
             {
-                if (D is Implementation && ((D as Implementation).Name == procedureName))
+                if (D is Procedure && ((D as Procedure).Name == procedureName))
                 {
-                    return D as Implementation;
+                    return D as Procedure;
                 }
             }
+            Debug.Assert(false);
             return null;
         }
 
@@ -357,10 +396,8 @@ namespace Microsoft.Boogie
                 else if (c is CallCmd)
                 {
                     CallCmd callCmd = c as CallCmd;
-                    Implementation CalleeImplementation = GetImplementation(callCmd.callee);
-
-                    if (CalleeImplementation != null)
-                    {
+                    DeclWithFormals Callee = GetProcedure(callCmd.callee);
+                    Debug.Assert(Callee != null);
 
                         if (!ControlFlowIsUniform)
                         {
@@ -369,26 +406,25 @@ namespace Microsoft.Boogie
                                 SetNonUniform(callCmd.callee);
                             }
                         }
-                        for (int i = 0; i < CalleeImplementation.InParams.Length; i++)
+                    for (int i = 0; i < Callee.InParams.Length; i++)
                         {
-                            if (IsUniform(callCmd.callee, CalleeImplementation.InParams[i].Name)
+                        if (IsUniform(callCmd.callee, Callee.InParams[i].Name)
                                 && !IsUniform(impl.Name, callCmd.Ins[i]))
                             {
-                                SetNonUniform(callCmd.callee, CalleeImplementation.InParams[i].Name);
+                            SetNonUniform(callCmd.callee, Callee.InParams[i].Name);
                             }
                         }
 
-                        for (int i = 0; i < CalleeImplementation.OutParams.Length; i++)
+                    for (int i = 0; i < Callee.OutParams.Length; i++)
                         {
                             if (IsUniform(impl.Name, callCmd.Outs[i].Name)
-                                && !IsUniform(callCmd.callee, CalleeImplementation.OutParams[i].Name))
+                            && !IsUniform(callCmd.callee, Callee.OutParams[i].Name))
                             {
                                 SetNonUniform(impl.Name, callCmd.Outs[i].Name);
                             }
                         }
 
                     }
-                }
                 else if (c is AssumeCmd)
                 {
                     var ac = (AssumeCmd)c;
@@ -526,19 +562,21 @@ namespace Microsoft.Boogie
                     Console.Write((i == 0 ? "" : ", ") + outParameters[p][i]);
                 }
                 Console.WriteLine("]");
+                if (nonUniformLoops.ContainsKey(p)) {
                 Console.Write("Non-uniform loops:");
-                foreach (int l in nonUniformLoops[p])
-                {
+                  foreach (int l in nonUniformLoops[p]) {
                     Console.Write(" " + l);
                 }
                 Console.WriteLine();
+                }
+                if (nonUniformBlocks.ContainsKey(p)) {
                 Console.Write("Non-uniform blocks:");
-                foreach (Block b in nonUniformBlocks[p])
-                {
+                  foreach (Block b in nonUniformBlocks[p]) {
                     Console.Write(" " + b.Label);
                 }
                 Console.WriteLine();
             }
+        }
         }
 
 
