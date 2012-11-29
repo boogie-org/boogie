@@ -494,15 +494,11 @@ public class SmartBlockPredicator {
               .ToArray());
 
           if (impl == null) {
-            var newRequires = new RequiresSeq();
             foreach (Requires r in proc.Requires) {
-              newRequires.Add(new Requires(r.Free,
-                new EnabledReplacementVisitor(new IdentifierExpr(Token.NoToken, fpVar)).VisitExpr(r.Condition)));
+              new EnabledReplacementVisitor(new IdentifierExpr(Token.NoToken, fpVar)).VisitExpr(r.Condition);
             }
-            var newEnsures = new EnsuresSeq();
             foreach (Ensures e in proc.Ensures) {
-              newEnsures.Add(new Ensures(e.Free,
-                new EnabledReplacementVisitor(new IdentifierExpr(Token.NoToken, fpVar)).VisitExpr(e.Condition)));
+              new EnabledReplacementVisitor(new IdentifierExpr(Token.NoToken, fpVar)).VisitExpr(e.Condition);
             }
           }
         }
