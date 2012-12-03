@@ -37,6 +37,10 @@ namespace Microsoft.Boogie.Houdini {
         ProverInterface prover;
         AbstractHoudiniErrorReporter reporter;
 
+        // Stats
+        TimeSpan proverTime;
+        int numProverQueries;
+
         public AbstractHoudini(Program program)
         {
             this.program = program;
@@ -50,6 +54,9 @@ namespace Microsoft.Boogie.Houdini {
             this.prover = ProverInterface.CreateProver(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend, CommandLineOptions.Clo.ProverKillTime);
             this.reporter = new AbstractHoudiniErrorReporter();
 
+            this.proverTime = TimeSpan.Zero;
+            this.numProverQueries = 0;
+            
             var impls = new List<Implementation>(
                 program.TopLevelDeclarations.OfType<Implementation>());
 
@@ -128,11 +135,16 @@ namespace Microsoft.Boogie.Houdini {
                 }
             }
 
+            
             foreach (var tup in impl2Summary)
             {
                 Console.WriteLine("Summary of {0}:", tup.Key);
                 Console.WriteLine("{0}", tup.Value);
             }
+            
+
+            Console.WriteLine("Prover time = " + proverTime.TotalSeconds);
+            Console.WriteLine("Number of prover queries = " + numProverQueries);
 
             prover.Close();
             CommandLineOptions.Clo.TheProverFactory.Close();
@@ -170,16 +182,26 @@ namespace Microsoft.Boogie.Houdini {
                            GetVarMapping(name2Impl[tup.Item1], tup.Item2), prover.VCExprGen);
                     summaryExpr = gen.AndSimp(summaryExpr, gen.Eq(tup.Item2, ts));
                 }
-                Console.WriteLine("Trying summary for {0}: {1}", impl.Name, summaryExpr);
+                //Console.WriteLine("Trying summary for {0}: {1}", impl.Name, summaryExpr);
 
                 reporter.model = null;
                 var vc = gen.AndSimp(env, summaryExpr);
                 vc = gen.Implies(vc, impl2VC[impl.Name]);
                 
                 //Console.WriteLine("Checking: {0}", vc);
+                if (CommandLineOptions.Clo.Trace)
+                {
+                    Console.WriteLine("Verifying " + impl.Name);
+                }
+
+                var start = DateTime.Now;
 
                 prover.BeginCheck(impl.Name, vc, reporter);
                 ProverInterface.Outcome proverOutcome = prover.CheckOutcome(reporter);
+                
+                proverTime += (DateTime.Now - start);
+                numProverQueries++;
+
                 if (reporter.model == null)
                     break;
                 
@@ -208,6 +230,22 @@ namespace Microsoft.Boogie.Houdini {
                 cnt++;
             }
 
+            // Fill up values of globals that are not modified
+            cnt = 0;
+            foreach (var g in program.TopLevelDeclarations.OfType<GlobalVariable>())
+            {
+                if (ret.ContainsKey(g.Name)) { cnt++; continue; }
+
+                ret.Add(string.Format("{0}", g.Name), summaryPred[cnt]);
+                cnt++;
+            }
+
+            // Constants
+            foreach (var c in program.TopLevelDeclarations.OfType<Constant>())
+            {
+                ret.Add(string.Format("{0}", c.Name), prover.Context.BoogieExprTranslator.Translate(Expr.Ident(c)));
+            }
+
             return ret;
 
         }
@@ -231,6 +269,29 @@ namespace Microsoft.Boogie.Houdini {
             {
                 ret.Add(v.Name, getValue(implVars[cnt], model));
                 cnt++;
+            }
+
+            // Fill up values of globals that are not modified
+            cnt = 0;
+            foreach (var g in program.TopLevelDeclarations.OfType<GlobalVariable>())
+            {
+                if (ret.ContainsKey(g.Name)) { cnt++; continue; }
+
+                ret.Add(string.Format("{0}", g.Name), getValue(implVars[cnt], model));
+                cnt++;
+            }
+
+            // Constants
+            foreach (var c in program.TopLevelDeclarations.OfType<Constant>())
+            {
+                try
+                {
+                    ret.Add(string.Format("{0}", c.Name), getValue(prover.Context.BoogieExprTranslator.Translate(Expr.Ident(c)), model));
+                }
+                catch (Exception)
+                {
+                    // constant not assigned a value
+                }
             }
 
             return ret;
@@ -479,42 +540,128 @@ namespace Microsoft.Boogie.Houdini {
         }
     }
 
+    public class NamedExpr 
+    {
+        public string name;
+        public Expr expr;
+
+        public NamedExpr(string name, Expr expr)
+        {
+            this.name = name;
+            this.expr = expr;
+        }
+
+        public NamedExpr(Expr expr)
+        {
+            this.name = null;
+            this.expr = expr;
+        }
+
+        public override string ToString()
+        {
+            if (name != null)
+                return name;
+
+            return expr.ToString();
+        }
+    }
+
     public class PredicateAbs : ISummaryElement
     {
-        public static List<Expr> PrePreds { get; private set; }
-        public static List<Expr> PostPreds { get; private set; }
+        public static Dictionary<string, List<NamedExpr>> PrePreds { get; private set; }
+        public static Dictionary<string, List<NamedExpr>> PostPreds { get; private set; }
+        private static HashSet<string> boolConstants;
 
+        string procName;
         PredicateAbsDisjunct[] value;
         bool isFalse;
 
-        public PredicateAbs()
+        public PredicateAbs(string procName)
         {
+            this.procName = procName;
             isFalse = true;
-            value = new PredicateAbsDisjunct[PostPreds.Count];
-            for (int i = 0; i < PostPreds.Count; i++) value[i] = null;
+            value = new PredicateAbsDisjunct[PostPreds[this.procName].Count];
+            for (int i = 0; i < PostPreds[this.procName].Count; i++) value[i] = null;
         }
 
         public static void Initialize(Program program)
         {
-            PrePreds = new List<Expr>();
-            PostPreds = new List<Expr>(); 
+            PrePreds = new Dictionary<string, List<NamedExpr>>();
+            PostPreds = new Dictionary<string, List<NamedExpr>>();
+            boolConstants = new HashSet<string>();
 
+            program.TopLevelDeclarations.OfType<Constant>()
+                .Where(c => c.TypedIdent.Type.IsBool)
+                .Iter(c => boolConstants.Add(c.Name));
+
+            // Add template pre-post to all procedures
+            var preT = new List<NamedExpr>();
+            var postT = new List<NamedExpr>();
+            var tempP = new HashSet<Procedure>();
             foreach (var proc in
                 program.TopLevelDeclarations.OfType<Procedure>()
                 .Where(proc => QKeyValue.FindBoolAttribute(proc.Attributes, "template")))
             {
+                tempP.Add(proc);
                 foreach (var ens in proc.Ensures.OfType<Ensures>())
                 {
                     if (QKeyValue.FindBoolAttribute(ens.Attributes, "pre"))
-                        PrePreds.Add(ens.Condition);
-                    else
-                        PostPreds.Add(ens.Condition);
+                        preT.Add(new NamedExpr(null, ens.Condition));
+                    if (QKeyValue.FindBoolAttribute(ens.Attributes, "post"))
+                        postT.Add(new NamedExpr(null, ens.Condition));
+
+                    var s = QKeyValue.FindStringAttribute(ens.Attributes, "pre");
+                    if (s != null)
+                        preT.Add(new NamedExpr(s, ens.Condition));
+
+                    s = QKeyValue.FindStringAttribute(ens.Attributes, "post");
+                    if (s != null)
+                        postT.Add(new NamedExpr(s, ens.Condition));
                 }
             }
 
-            Console.WriteLine("Running Abstract Houdini");
-            PostPreds.Iter(expr => Console.WriteLine("\tPost: {0}", expr));
-            PrePreds.Iter(expr => Console.WriteLine("\tPre: {0}", expr));
+            program.TopLevelDeclarations.RemoveAll(decl => tempP.Contains(decl));
+
+            foreach (var impl in program.TopLevelDeclarations.OfType<Implementation>())
+            {
+                PrePreds.Add(impl.Name, new List<NamedExpr>());
+                PostPreds.Add(impl.Name, new List<NamedExpr>());
+
+                preT.Iter(e => PrePreds[impl.Name].Add(e));
+                postT.Iter(e => PostPreds[impl.Name].Add(e));
+
+                // Pick up per-procedure pre-post
+                var nens = new EnsuresSeq();
+                foreach (var ens in impl.Proc.Ensures.OfType<Ensures>())
+                {
+                    string s = null;
+                    if (QKeyValue.FindBoolAttribute(ens.Attributes, "pre"))
+                    {
+                        PrePreds[impl.Name].Add(new NamedExpr(ens.Condition));
+                    }
+                    else if (QKeyValue.FindBoolAttribute(ens.Attributes, "post"))
+                    {
+                        PostPreds[impl.Name].Add(new NamedExpr(ens.Condition));
+                    }
+                    if ((s = QKeyValue.FindStringAttribute(ens.Attributes, "pre")) != null)
+                    {
+                        PrePreds[impl.Name].Add(new NamedExpr(s, ens.Condition));
+                    }
+                    else if ((s = QKeyValue.FindStringAttribute(ens.Attributes, "post")) != null)
+                    {
+                        PostPreds[impl.Name].Add(new NamedExpr(s, ens.Condition));
+                    }
+                    else
+                    {
+                        nens.Add(ens);
+                    }
+                }
+                impl.Proc.Ensures = nens;
+            }
+            
+            //Console.WriteLine("Running Abstract Houdini");
+            //PostPreds.Iter(expr => Console.WriteLine("\tPost: {0}", expr));
+            //PrePreds.Iter(expr => Console.WriteLine("\tPre: {0}", expr));
         }
 
         private object Eval(Expr expr, Dictionary<string, Model.Element> state)
@@ -568,6 +715,12 @@ namespace Microsoft.Boogie.Houdini {
             if (state.ContainsKey(v))
             {
                 return ToValue(state[v]);
+            }
+
+            if (boolConstants.Contains(v))
+            {
+                // value of this constant is immaterial, return true
+                return true;
             }
 
             throw new AbsHoudiniInternalError("Cannot handle this case");
@@ -708,14 +861,15 @@ namespace Microsoft.Boogie.Houdini {
             var ret = "";
             if (isFalse) return "false";
             var first = true;
-            for(int i = 0; i < PostPreds.Count; i++) 
+            PredicateAbsConjunct.tempProcName = procName;
+            for(int i = 0; i < PostPreds[procName].Count; i++) 
             {
                 if(value[i].isFalse) continue;
                 
                 if(value[i].isTrue)
-                    ret += string.Format("{0}{1}", first ? "" : " && ", PostPreds[i]);
+                    ret += string.Format("{0}{1}", first ? "" : " && ", PostPreds[procName][i]);
                 else
-                    ret += string.Format("{0}({1} ==> {2})", first ? "" : " && ", value[i], PostPreds[i]);
+                    ret += string.Format("{0}({1} ==> {2})", first ? "" : " && ", value[i], PostPreds[procName][i]);
 
                 first = false;
             }
@@ -727,33 +881,33 @@ namespace Microsoft.Boogie.Houdini {
 
         public ISummaryElement GetFlaseSummary(Program program, Implementation impl)
         {
-            return new PredicateAbs();
+            return new PredicateAbs(impl.Name);
         }
 
         public void Join(Dictionary<string, Model.Element> state)
         {
             // Evaluate each predicate on the state
-            var prePredsVal = new bool[PrePreds.Count];
-            var postPredsVal = new bool[PostPreds.Count];
+            var prePredsVal = new bool[PrePreds[procName].Count];
+            var postPredsVal = new bool[PostPreds[procName].Count];
 
-            var indexSeq = new List<int>(); 
-            for(int i = 0; i < PrePreds.Count; i++) indexSeq.Add(i);
+            var indexSeq = new List<int>();
+            for (int i = 0; i < PrePreds[procName].Count; i++) indexSeq.Add(i);
 
-            for (int i = 0; i < PrePreds.Count; i++)
+            for (int i = 0; i < PrePreds[procName].Count; i++)
             {
-                var v = Eval(PrePreds[i], state);
+                var v = Eval(PrePreds[procName][i].expr, state);
                 Debug.Assert(v is bool);
                 prePredsVal[i] = (bool)v;
             }
 
-            for (int i = 0; i < PostPreds.Count; i++)
+            for (int i = 0; i < PostPreds[procName].Count; i++)
             {
-                var v = Eval(PostPreds[i], state);
+                var v = Eval(PostPreds[procName][i].expr, state);
                 Debug.Assert(v is bool);
                 postPredsVal[i] = (bool)v;
             }
 
-            for (int i = 0; i < PostPreds.Count; i++)
+            for (int i = 0; i < PostPreds[procName].Count; i++)
             {
                 // No hope for this post pred?
                 if (!isFalse && value[i].isFalse) continue;
@@ -780,9 +934,9 @@ namespace Microsoft.Boogie.Houdini {
 
             var ret = VCExpressionGenerator.True;
 
-            for(int i = 0; i < PostPreds.Count; i++)
+            for(int i = 0; i < PostPreds[procName].Count; i++)
             {
-                ret = gen.AndSimp(ret, gen.ImpliesSimp(value[i].ToVcExpr(j => ToVcExpr(PrePreds[j], incarnations, gen), gen), ToVcExpr(PostPreds[i], incarnations, gen)));
+                ret = gen.AndSimp(ret, gen.ImpliesSimp(value[i].ToVcExpr(j => ToVcExpr(PrePreds[procName][j].expr, incarnations, gen), gen), ToVcExpr(PostPreds[procName][i].expr, incarnations, gen)));
             }
 
             return ret;
@@ -876,6 +1030,7 @@ namespace Microsoft.Boogie.Houdini {
     class PredicateAbsConjunct
     {
         static int ConjunctBound = 3;
+        public static string tempProcName = null;
 
         public bool isFalse { get; private set; }
         HashSet<int> posPreds;
@@ -950,12 +1105,12 @@ namespace Microsoft.Boogie.Houdini {
             var first = true;
             foreach (var p in posPreds)
             {
-                ret += string.Format("{0}{1}", first ? "" : " && ", PredicateAbs.PrePreds[p]);
+                ret += string.Format("{0}{1}", first ? "" : " && ", PredicateAbs.PrePreds[tempProcName][p]);
                 first = false;
             }
             foreach (var p in negPreds)
             {
-                ret += string.Format("{0}!{1}", first ? "" : " && ", PredicateAbs.PrePreds[p]);
+                ret += string.Format("{0}!{1}", first ? "" : " && ", PredicateAbs.PrePreds[tempProcName][p]);
                 first = false;
             }
             return ret;

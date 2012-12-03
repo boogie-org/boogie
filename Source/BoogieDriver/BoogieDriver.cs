@@ -623,7 +623,7 @@ namespace Microsoft.Boogie {
               // Run Abstract Houdini
               Houdini.PredicateAbs.Initialize(program);
               var abs = new Houdini.AbstractHoudini(program);
-              abs.computeSummaries(new Houdini.PredicateAbs());
+              abs.computeSummaries(new Houdini.PredicateAbs(program.TopLevelDeclarations.OfType<Implementation>().First().Name));
 
               return PipelineOutcome.Done;
           }
