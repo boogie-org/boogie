@@ -56,17 +56,6 @@ namespace Microsoft.Boogie.Houdini {
 
             this.proverTime = TimeSpan.Zero;
             this.numProverQueries = 0;
-            
-            var impls = new List<Implementation>(
-                program.TopLevelDeclarations.OfType<Implementation>());
-
-            // Create all VCs
-            impls
-                .Iter(attachEnsures);
-
-            impls
-                .Iter(GenVC);
-
         }
 
         public void computeSummaries(ISummaryElement summaryClass)
@@ -102,11 +91,12 @@ namespace Microsoft.Boogie.Houdini {
                     }
                 }
             }
+            Succ[main].Iter(impl => Console.WriteLine(impl.Name));
 
             // Build SCC
             var sccs = new StronglyConnectedComponents<Implementation>(name2Impl.Values,
-                new Adjacency<Implementation>(n => Succ[n]),
-                new Adjacency<Implementation>(n => Pred[n]));
+                new Adjacency<Implementation>(n => Pred[n]),
+                new Adjacency<Implementation>(n => Succ[n]));
             sccs.Compute();
 
             // impl -> priority
@@ -114,10 +104,21 @@ namespace Microsoft.Boogie.Houdini {
             int p = 0;
             foreach (var scc in sccs)
             {
-                scc.Iter(n => impl2Priority.Add(n.Name, p));
-                p++;
+                foreach (var impl in scc)
+                {
+                    impl2Priority.Add(impl.Name, p);
+                    p++;
+                }
             }
 
+            // Create all VCs
+            name2Impl.Values
+                .Iter(attachEnsures);
+
+            name2Impl.Values
+                .Iter(GenVC);
+
+            // Start the iteration
             var worklist = new SortedSet<Tuple<int, Implementation>>();
             name2Impl.Values
                 .Iter(impl => worklist.Add(Tuple.Create(impl2Priority[impl.Name], impl)));
@@ -131,15 +132,16 @@ namespace Microsoft.Boogie.Houdini {
 
                 if (changed)
                 {
-                    Pred[impl].Iter(pred => worklist.Add(Tuple.Create(impl2Priority[pred.Name], pred)));
+                    Pred[impl].Where(pred => pred != impl).Iter(pred => worklist.Add(Tuple.Create(impl2Priority[pred.Name], pred)));
                 }
             }
 
-            
-            foreach (var tup in impl2Summary)
+            var allImpls = new SortedSet<Tuple<int, string>>();
+            name2Impl.Values.Iter(impl => allImpls.Add(Tuple.Create(impl2Priority[impl.Name], impl.Name)));
+            foreach (var tup in allImpls)
             {
-                Console.WriteLine("Summary of {0}:", tup.Key);
-                Console.WriteLine("{0}", tup.Value);
+                Console.WriteLine("Summary of {0}:", tup.Item2);
+                Console.WriteLine("{0}", impl2Summary[tup.Item2]);
             }
             
 
