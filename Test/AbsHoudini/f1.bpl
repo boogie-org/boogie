@@ -26,7 +26,7 @@ procedure foo()
 }
 
 procedure {:template} summaryTemplate();
-  ensures g == old(g) + 1;
-  ensures g == old(g) + 2;
-  ensures g == old(g) + 3;
+  ensures {:post} g == old(g) + 1;
+  ensures {:post} g == old(g) + 2;
+  ensures {:post} g == old(g) + 3;
   ensures {:pre} old(g) == 0;

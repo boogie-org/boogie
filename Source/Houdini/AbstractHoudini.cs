@@ -41,6 +41,9 @@ namespace Microsoft.Boogie.Houdini {
         TimeSpan proverTime;
         int numProverQueries;
 
+        // Produce witness for correctness
+        public static string ProduceWitness = "absHoudiniWitness.bpl";
+
         public AbstractHoudini(Program program)
         {
             this.program = program;
@@ -62,12 +65,26 @@ namespace Microsoft.Boogie.Houdini {
         {
             this.summaryClass = summaryClass;
 
-            var main = program.TopLevelDeclarations
-                .OfType<Implementation>()
-                .Where(impl => QKeyValue.FindBoolAttribute(impl.Attributes, "entrypoint"))
-                .FirstOrDefault();
+            Inline();
 
-            Debug.Assert(main != null);
+            // Create a copy of the program
+            var copy = new Dictionary<string, Implementation>();
+            if (ProduceWitness != null)
+            {
+                foreach (var impl in program.TopLevelDeclarations.OfType<Implementation>())
+                {
+                    var nimpl = new Implementation(Token.NoToken, impl.Name, impl.TypeParameters,
+                        impl.InParams, impl.OutParams, new VariableSeq(impl.LocVars), new List<Block>());
+                    foreach (var blk in impl.Blocks)
+                    {
+                        var cd = new CodeCopier();
+                        nimpl.Blocks.Add(new Block(Token.NoToken, blk.Label,
+                            cd.CopyCmdSeq(blk.Cmds), cd.CopyTransferCmd(blk.TransferCmd)));
+                    }
+                    
+                    copy.Add(impl.Name, nimpl);
+                }                    
+            }
 
             program.TopLevelDeclarations
                 .OfType<Implementation>()
@@ -91,7 +108,6 @@ namespace Microsoft.Boogie.Houdini {
                     }
                 }
             }
-            Succ[main].Iter(impl => Console.WriteLine(impl.Name));
 
             // Build SCC
             var sccs = new StronglyConnectedComponents<Implementation>(name2Impl.Values,
@@ -142,15 +158,169 @@ namespace Microsoft.Boogie.Houdini {
             {
                 Console.WriteLine("Summary of {0}:", tup.Item2);
                 Console.WriteLine("{0}", impl2Summary[tup.Item2]);
-            }
-            
+            }           
 
             Console.WriteLine("Prover time = " + proverTime.TotalSeconds);
             Console.WriteLine("Number of prover queries = " + numProverQueries);
 
+            if (ProduceWitness != null)
+            {
+                foreach (var proc in program.TopLevelDeclarations.OfType<Procedure>())
+                {
+                    var nensures = new EnsuresSeq();
+                    proc.Ensures.OfType<Ensures>()
+                    .Where(ens => !QKeyValue.FindBoolAttribute(ens.Attributes, "ah"))
+                    .Iter(ens => nensures.Add(ens));
+                    foreach(Ensures en in nensures) {
+                        en.Attributes = removeAttr("assume", en.Attributes);
+                    }
+                        
+                    proc.Ensures = nensures;
+                }
+
+                var decls = new List<Declaration>();
+                copy.Values.Iter(impl => decls.Add(impl));
+                program.TopLevelDeclarations.Where(decl => !(decl is Implementation))
+                    .Iter(decl => decls.Add(decl));
+                program.TopLevelDeclarations = decls;
+
+                using (var wt = new TokenTextWriter(ProduceWitness))
+                {
+                    foreach (var decl in program.TopLevelDeclarations)
+                    {
+                        decl.Emit(wt, 0);
+                        var proc = decl as Procedure;
+                        if (proc != null && impl2Summary.ContainsKey(proc.Name))
+                        {
+                            wt.WriteLine("  ensures {{:inferred}} {0};", impl2Summary[proc.Name]);
+                            wt.WriteLine();
+                        }
+                    }
+                }
+                Console.WriteLine("Witness written to {0}", ProduceWitness);
+            }
+
             prover.Close();
             CommandLineOptions.Clo.TheProverFactory.Close();
         }
+
+        private QKeyValue removeAttr(string key, QKeyValue attr)
+        {
+            if (attr == null) return attr;
+            if (attr.Key == key) return removeAttr(key, attr.Next);
+            attr.Next = removeAttr(key, attr.Next);
+            return attr;
+        }
+
+        private void Inline()
+        {
+            if (CommandLineOptions.Clo.InlineDepth < 0)
+                return;
+
+            var callGraph = BuildCallGraph();
+
+            foreach (Implementation impl in callGraph.Nodes)
+            {
+                InlineRequiresVisitor inlineRequiresVisitor = new InlineRequiresVisitor();
+                inlineRequiresVisitor.Visit(impl);
+            }
+
+            foreach (Implementation impl in callGraph.Nodes)
+            {
+                FreeRequiresVisitor freeRequiresVisitor = new FreeRequiresVisitor();
+                freeRequiresVisitor.Visit(impl);
+            }
+
+            foreach (Implementation impl in callGraph.Nodes)
+            {
+                InlineEnsuresVisitor inlineEnsuresVisitor = new InlineEnsuresVisitor();
+                inlineEnsuresVisitor.Visit(impl);
+            }
+
+            foreach (Implementation impl in callGraph.Nodes)
+            {
+                impl.OriginalBlocks = impl.Blocks;
+                impl.OriginalLocVars = impl.LocVars;
+            }
+            foreach (Implementation impl in callGraph.Nodes)
+            {
+                CommandLineOptions.Inlining savedOption = CommandLineOptions.Clo.ProcedureInlining;
+                CommandLineOptions.Clo.ProcedureInlining = CommandLineOptions.Inlining.Spec;
+                Inliner.ProcessImplementationForHoudini(program, impl);
+                CommandLineOptions.Clo.ProcedureInlining = savedOption;
+            }
+            foreach (Implementation impl in callGraph.Nodes)
+            {
+                impl.OriginalBlocks = null;
+                impl.OriginalLocVars = null;
+            }
+
+            Graph<Implementation> oldCallGraph = callGraph;
+            callGraph = new Graph<Implementation>();
+            foreach (Implementation impl in oldCallGraph.Nodes)
+            {
+                callGraph.AddSource(impl);
+            }
+            foreach (Tuple<Implementation, Implementation> edge in oldCallGraph.Edges)
+            {
+                callGraph.AddEdge(edge.Item1, edge.Item2);
+            }
+            int count = CommandLineOptions.Clo.InlineDepth;
+            while (count > 0)
+            {
+                foreach (Implementation impl in oldCallGraph.Nodes)
+                {
+                    List<Implementation> newNodes = new List<Implementation>();
+                    foreach (Implementation succ in callGraph.Successors(impl))
+                    {
+                        newNodes.AddRange(oldCallGraph.Successors(succ));
+                    }
+                    foreach (Implementation newNode in newNodes)
+                    {
+                        callGraph.AddEdge(impl, newNode);
+                    }
+                }
+                count--;
+            }
+        }
+
+        private Graph<Implementation> BuildCallGraph()
+        {
+            Graph<Implementation> callGraph = new Graph<Implementation>();
+            Dictionary<Procedure, HashSet<Implementation>> procToImpls = new Dictionary<Procedure, HashSet<Implementation>>();
+            foreach (Declaration decl in program.TopLevelDeclarations)
+            {
+                Procedure proc = decl as Procedure;
+                if (proc == null) continue;
+                procToImpls[proc] = new HashSet<Implementation>();
+            }
+            foreach (Declaration decl in program.TopLevelDeclarations)
+            {
+                Implementation impl = decl as Implementation;
+                if (impl == null || impl.SkipVerification) continue;
+                callGraph.AddSource(impl);
+                procToImpls[impl.Proc].Add(impl);
+            }
+            foreach (Declaration decl in program.TopLevelDeclarations)
+            {
+                Implementation impl = decl as Implementation;
+                if (impl == null || impl.SkipVerification) continue;
+                foreach (Block b in impl.Blocks)
+                {
+                    foreach (Cmd c in b.Cmds)
+                    {
+                        CallCmd cc = c as CallCmd;
+                        if (cc == null) continue;
+                        foreach (Implementation callee in procToImpls[cc.Proc])
+                        {
+                            callGraph.AddEdge(impl, callee);
+                        }
+                    }
+                }
+            }
+            return callGraph;
+        }
+
 
         private bool ProcessImpl(Implementation impl)
         {
@@ -206,9 +376,10 @@ namespace Microsoft.Boogie.Houdini {
 
                 if (reporter.model == null)
                     break;
-                
+                //reporter.model.Write(Console.Out);
+
                 var state = CollectState(impl);
-                impl2Summary[impl.Name].Join(state);
+                impl2Summary[impl.Name].Join(state, reporter.model);
                 ret = true;
             }
             return ret;
@@ -245,11 +416,12 @@ namespace Microsoft.Boogie.Houdini {
             // Constants
             foreach (var c in program.TopLevelDeclarations.OfType<Constant>())
             {
-                ret.Add(string.Format("{0}", c.Name), prover.Context.BoogieExprTranslator.Translate(Expr.Ident(c)));
+                var value = prover.Context.BoogieExprTranslator.Translate(Expr.Ident(c));
+                ret.Add(string.Format("{0}", c.Name), value);
+                ret.Add(string.Format("old({0})", c.Name), value);
             }
 
             return ret;
-
         }
 
         private Dictionary<string, Model.Element> CollectState(Implementation impl)
@@ -288,7 +460,9 @@ namespace Microsoft.Boogie.Houdini {
             {
                 try
                 {
-                    ret.Add(string.Format("{0}", c.Name), getValue(prover.Context.BoogieExprTranslator.Translate(Expr.Ident(c)), model));
+                    var value = getValue(prover.Context.BoogieExprTranslator.Translate(Expr.Ident(c)), model);
+                    ret.Add(string.Format("{0}", c.Name), value);
+                    ret.Add(string.Format("old({0})", c.Name), value);
                 }
                 catch (Exception)
                 {
@@ -367,7 +541,8 @@ namespace Microsoft.Boogie.Houdini {
             }
             Expr postExpr = new NAryExpr(Token.NoToken, new FunctionCall(function), exprs);
             impl.Proc.Ensures.Add(
-                new Ensures(Token.NoToken, false, postExpr, ""));
+                new Ensures(Token.NoToken, false, postExpr, "", 
+                    new QKeyValue(Token.NoToken, "ah", new List<object>(), null)));
         }
 
         private void GenVC(Implementation impl)
@@ -424,7 +599,7 @@ namespace Microsoft.Boogie.Houdini {
     public interface ISummaryElement
     {
         ISummaryElement GetFlaseSummary(Program program, Implementation impl);
-        void Join(Dictionary<string, Model.Element> state);
+        void Join(Dictionary<string, Model.Element> state, Model model);
         VCExpr GetSummaryExpr(Dictionary<string, VCExpr> incarnations, VCExpressionGenerator gen);
     }
 
@@ -466,7 +641,7 @@ namespace Microsoft.Boogie.Houdini {
         }
 
 
-        public void Join(Dictionary<string, Model.Element> state)
+        public void Join(Dictionary<string, Model.Element> state, Model model)
         {
             foreach (var vv in vars)
             {
@@ -561,8 +736,8 @@ namespace Microsoft.Boogie.Houdini {
 
         public override string ToString()
         {
-            if (name != null)
-                return name;
+            //if (name != null)
+            //    return name;
 
             return expr.ToString();
         }
@@ -573,6 +748,8 @@ namespace Microsoft.Boogie.Houdini {
         public static Dictionary<string, List<NamedExpr>> PrePreds { get; private set; }
         public static Dictionary<string, List<NamedExpr>> PostPreds { get; private set; }
         private static HashSet<string> boolConstants;
+        // Temporary: used during eval
+        private static Model model = null;
 
         string procName;
         PredicateAbsDisjunct[] value;
@@ -666,11 +843,11 @@ namespace Microsoft.Boogie.Houdini {
             //PrePreds.Iter(expr => Console.WriteLine("\tPre: {0}", expr));
         }
 
-        private object Eval(Expr expr, Dictionary<string, Model.Element> state)
+        private Model.Element Eval(Expr expr, Dictionary<string, Model.Element> state)
         {
             if (expr is LiteralExpr)
             {
-                return (expr as LiteralExpr).Val;
+                return ToElem((expr as LiteralExpr).Val);
             }
 
             if (expr is IdentifierExpr)
@@ -691,38 +868,48 @@ namespace Microsoft.Boogie.Houdini {
                 var nary = expr as NAryExpr;
                 if (nary.Fun is UnaryOperator)
                 {
-                    return (nary.Fun as UnaryOperator).Evaluate(Eval(nary.Args[0], state));
+                    return ToElem((nary.Fun as UnaryOperator).Evaluate(ToValue(Eval(nary.Args[0], state))));
                 }
                 if (nary.Fun is BinaryOperator)
                 {
-                    return (nary.Fun as BinaryOperator).Evaluate(Eval(nary.Args[0], state), Eval(nary.Args[1], state));
+                    return ToElem((nary.Fun as BinaryOperator).Evaluate(ToValue(Eval(nary.Args[0], state)), ToValue(Eval(nary.Args[1], state))));
+                }
+                if (nary.Fun is MapSelect && nary.Args.Length == 2)
+                {
+                    var index = Eval(nary.Args[1], state);
+                    var map = Eval(nary.Args[0], state) as Model.Array;
+                    Debug.Assert(map != null, "Variable of map type must have an Array-typed value");
+                    var ret = map.Value.TryEval(index as Model.Element);
+                    if (ret == null) ret = map.Value.Else;
+                    Debug.Assert(ret != null);
+                    return ret;
                 }
                 Debug.Assert(false, "No other op is handled");                
             }
             throw new NotImplementedException(string.Format("Expr of type {0} is not handled", expr.GetType().ToString()));
         }
 
-        private object LookupVariable(string v, Dictionary<string, Model.Element> state, bool tryOld)
+        private Model.Element LookupVariable(string v, Dictionary<string, Model.Element> state, bool tryOld)
         {
             if (tryOld)
             {
                 var oldv = string.Format("old({0})", v);
                 if (state.ContainsKey(oldv))
                 {
-                    return ToValue(state[oldv]);
+                    return state[oldv];
                 }
                 throw new AbsHoudiniInternalError("Cannot handle this case");
             }
 
             if (state.ContainsKey(v))
             {
-                return ToValue(state[v]);
+                return state[v];
             }
 
             if (boolConstants.Contains(v))
             {
                 // value of this constant is immaterial, return true
-                return true;
+                return model.MkElement("true");
             }
 
             throw new AbsHoudiniInternalError("Cannot handle this case");
@@ -759,6 +946,13 @@ namespace Microsoft.Boogie.Houdini {
                 return (elem as Model.Boolean).Value;
             }
             throw new NotImplementedException("Cannot yet handle this Model.Element type");
+        }
+
+        private Model.Element ToElem(object val)
+        {
+            if (val is bool || val is int || val is Basetypes.BigNum)
+                return model.MkElement(val.ToString());
+            throw new NotImplementedException("Cannot yet handle this value type");
         }
 
         private VCExpr ToVcExpr(Expr expr, Dictionary<string, VCExpr> incarnations, VCExpressionGenerator gen)
@@ -803,12 +997,20 @@ namespace Microsoft.Boogie.Houdini {
                 var nary = expr as NAryExpr;
                 if (nary.Fun is UnaryOperator)
                 {
-                    Debug.Assert((nary.Fun as UnaryOperator).Op == UnaryOperator.Opcode.Not);
-                    return gen.Not(ToVcExpr(nary.Args[0], incarnations, gen));
+                    if ((nary.Fun as UnaryOperator).Op == UnaryOperator.Opcode.Not)
+                        return gen.Not(ToVcExpr(nary.Args[0], incarnations, gen));
+                    else if ((nary.Fun as UnaryOperator).Op == UnaryOperator.Opcode.Neg)
+                        return gen.Function(VCExpressionGenerator.SubIOp, gen.Integer(Basetypes.BigNum.FromInt(0)), ToVcExpr(nary.Args[0], incarnations, gen));
+                    else
+                        Debug.Assert(false, "No other unary op is handled");
                 }
                 if (nary.Fun is BinaryOperator)
                 {
                     return gen.Function(Translate(nary.Fun as BinaryOperator), ToVcExpr(nary.Args[0], incarnations, gen), ToVcExpr(nary.Args[1], incarnations, gen));
+                }
+                if (nary.Fun is MapSelect && nary.Args.Length == 2)
+                {
+                    return gen.Select(ToVcExpr(nary.Args[0], incarnations, gen), ToVcExpr(nary.Args[1], incarnations, gen));
                 }
                 Debug.Assert(false, "No other op is handled");
             }
@@ -875,6 +1077,7 @@ namespace Microsoft.Boogie.Houdini {
 
                 first = false;
             }
+            if (ret == "") ret = "true";
             return ret;
         }
 
@@ -886,8 +1089,10 @@ namespace Microsoft.Boogie.Houdini {
             return new PredicateAbs(impl.Name);
         }
 
-        public void Join(Dictionary<string, Model.Element> state)
+        public void Join(Dictionary<string, Model.Element> state, Model model)
         {
+            PredicateAbs.model = model;
+
             // Evaluate each predicate on the state
             var prePredsVal = new bool[PrePreds[procName].Count];
             var postPredsVal = new bool[PostPreds[procName].Count];
@@ -897,14 +1102,14 @@ namespace Microsoft.Boogie.Houdini {
 
             for (int i = 0; i < PrePreds[procName].Count; i++)
             {
-                var v = Eval(PrePreds[procName][i].expr, state);
+                var v = ToValue(Eval(PrePreds[procName][i].expr, state));
                 Debug.Assert(v is bool);
                 prePredsVal[i] = (bool)v;
             }
 
             for (int i = 0; i < PostPreds[procName].Count; i++)
             {
-                var v = Eval(PostPreds[procName][i].expr, state);
+                var v = ToValue(Eval(PostPreds[procName][i].expr, state));
                 Debug.Assert(v is bool);
                 postPredsVal[i] = (bool)v;
             }
