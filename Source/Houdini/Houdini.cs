@@ -311,8 +311,9 @@ namespace Microsoft.Boogie.Houdini {
     private Graph<Implementation> callGraph;
     private HashSet<Implementation> vcgenFailures;
     private HoudiniState currentHoudiniState;
+    private CrossDependencies crossDependencies;
 
-    public HoudiniState CurrentHoudiniState { get { return currentHoudiniState; } }
+    public HoudiniState CurrentHoudiniState { get { return currentHoudiniState; } }    
 
     public Houdini(Program program) {
       this.program = program;
@@ -326,6 +327,13 @@ namespace Microsoft.Boogie.Houdini {
       this.callGraph = BuildCallGraph();
       if (CommandLineOptions.Clo.Trace)
         Console.WriteLine("Number of implementations = {0}", callGraph.Nodes.Count);
+
+      if (CommandLineOptions.Clo.HoudiniUseCrossDependencies)
+      {
+          if (CommandLineOptions.Clo.Trace) Console.WriteLine("Computing procedure cross dependencies ...");
+          this.crossDependencies = new CrossDependencies(this.houdiniConstants);
+          this.crossDependencies.Visit(program);
+      }
 
       Inline();
       
@@ -425,6 +433,58 @@ namespace Microsoft.Boogie.Houdini {
       return existentialConstants;
     }
 
+      // Compute dependencies between candidates
+    public class CrossDependencies : StandardVisitor
+    {
+        public CrossDependencies(HashSet<Variable> constants)
+        {
+            this.constants = constants;
+        }
+
+        public override Program VisitProgram(Program node)
+        {
+            assumedInImpl = new Dictionary<string, HashSet<Implementation>>();
+            inAssume = false;
+            return base.VisitProgram(node);
+        }
+
+        public override Implementation VisitImplementation(Implementation node)
+        {
+            curImpl = node;
+            return base.VisitImplementation(node);
+        }
+
+        public override Cmd VisitAssumeCmd(AssumeCmd node)
+        {
+            inAssume = true;
+            var res = base.VisitAssumeCmd(node);
+            inAssume = false;
+            return res;
+        }
+
+        public override Variable VisitVariable(Variable node)
+        {
+            if (node is Constant)
+            {
+                var constant = node as Constant;
+                if (constants.Contains(constant))
+                {
+                    if (!assumedInImpl.ContainsKey(constant.Name))
+                        assumedInImpl[constant.Name] = new HashSet<Implementation>();
+                    assumedInImpl[constant.Name].Add(curImpl);
+                }
+            }
+            return base.VisitVariable(node);
+        }
+
+        HashSet<Variable> constants;
+        Implementation curImpl;
+        bool inAssume;
+
+        // contant -> set of implementations that have an assume command with that constant
+        public Dictionary<string, HashSet<Implementation>> assumedInImpl { get; private set; }
+    }
+      
     private Graph<Implementation> BuildCallGraph() {
       Graph<Implementation> callGraph = new Graph<Implementation>();
       Dictionary<Procedure, HashSet<Implementation>> procToImpls = new Dictionary<Procedure, HashSet<Implementation>>();
@@ -762,6 +822,15 @@ namespace Microsoft.Boogie.Houdini {
           }
           break;
         case RefutedAnnotationKind.ASSERT: //the implementation is already in queue
+          if (CommandLineOptions.Clo.HoudiniUseCrossDependencies && crossDependencies.assumedInImpl.ContainsKey(refutedAnnotation.Constant.Name))
+          {
+              foreach (var impl in crossDependencies.assumedInImpl[refutedAnnotation.Constant.Name])
+              {
+                  houdiniSessions.TryGetValue(impl, out session);
+                  if (session.InUnsatCore(refutedAnnotation.Constant))
+                      implementations.Add(impl);
+              }
+          }
           break;
         default:
           throw new Exception("Unknown Refuted annotation kind:" + refutedAnnotation.Kind);
