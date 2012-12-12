@@ -393,6 +393,7 @@ namespace Microsoft.Boogie {
     public int /*(0:3)*/ ErrorTrace = 1;
     public bool IntraproceduralInfer = true;
     public bool ContractInfer = false;
+    public bool ExplainHoudini = false;
     public bool HoudiniUseCrossDependencies = false;
     public string AbstractHoudini = null;
     public bool UseUnsatCoreForContractInfer = false;
@@ -1210,6 +1211,7 @@ namespace Microsoft.Boogie {
               ps.CheckBooleanFlag("doModSetAnalysis", ref DoModSetAnalysis) ||
               ps.CheckBooleanFlag("doNotUseLabels", ref UseLabels, false) ||
               ps.CheckBooleanFlag("contractInfer", ref ContractInfer) ||
+              ps.CheckBooleanFlag("explainHoudini", ref ExplainHoudini) ||
               ps.CheckBooleanFlag("crossDependencies", ref HoudiniUseCrossDependencies) ||
               ps.CheckBooleanFlag("useUnsatCoreForContractInfer", ref UseUnsatCoreForContractInfer) ||
               ps.CheckBooleanFlag("printAssignment", ref PrintAssignment) ||
