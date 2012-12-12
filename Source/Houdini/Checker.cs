@@ -67,6 +67,9 @@ namespace Microsoft.Boogie.Houdini {
         
         if (houdiniConstant != null && CommandLineOptions.Clo.ExplainHoudini)
         {
+            // For each houdini constant c, create two more constants c_pos and c_neg.
+            // Then change the asserted condition (c ==> \phi) to
+            // (c ==> (c_pos && (\phi || \not c_neg))
             var control = createNewExplainConstants(houdiniConstant);
             assertCmd.Expr = houdini.InsertCandidateControl(assertCmd.Expr, control.Item1, control.Item2);
             explainPositive.Add(control.Item1);
@@ -107,6 +110,7 @@ namespace Microsoft.Boogie.Houdini {
     public HashSet<Variable> houdiniAssertConstants;
     private HashSet<Variable> houdiniAssumeConstants;
     
+    // Extra constants created for ExplainHoudini
     private HashSet<Variable> explainConstantsPositive;
     private HashSet<Variable> explainConstantsNegative;
     private Dictionary<string, Tuple<Variable, Variable>> constantToControl;
@@ -190,7 +194,7 @@ namespace Microsoft.Boogie.Houdini {
 
       if (CommandLineOptions.Clo.ExplainHoudini)
       {
-          // default values for control variables
+          // default values for ExplainHoudini control variables
           foreach (var constant in explainConstantsNegative.Concat(explainConstantsPositive))
           {
               expr = exprGen.And(expr, exprTranslator.LookupVariable(constant));
@@ -266,6 +270,7 @@ namespace Microsoft.Boogie.Houdini {
                 if (tup.Value)
                     hardAssumptions.Add(exprVar);
                 else
+                    // Previously removed assumed candidates are the soft constraints
                     softAssumptions.Add(exprVar);
             }
             else if (houdiniAssertConstants.Contains(constant))
@@ -283,6 +288,11 @@ namespace Microsoft.Boogie.Houdini {
                     hardAssumptions.Add(exprGen.Not(exprVar));
             }
 
+            // For an asserted condition (c ==> \phi), 
+            // ExplainHoudini's extra control constants (c_pos, c_neg) are used as follows:
+            //   (true, true): "assert \phi"
+            //   (false, _): "assert false"
+            //   (true, false): "assert true"
             if (constant != refutedConstant && constantToControl.ContainsKey(constant.Name))
             {
                 var posControl = constantToControl[constant.Name].Item1;
@@ -338,6 +348,9 @@ namespace Microsoft.Boogie.Houdini {
             reason.Iter(r => Console.Write("{0} ", r));
             Console.WriteLine();
         }
+
+        // Get rid of those constants from the "reason" that can even make
+        // "assert false" pass
 
         hardAssumptions.Add(controlExprFalse);
         var softAssumptions2 = new List<VCExpr>();

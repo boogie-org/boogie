@@ -364,6 +364,7 @@ namespace Microsoft.Boogie.Houdini {
 
       if (CommandLineOptions.Clo.ExplainHoudini)
       {
+          // Print results of ExplainHoudini to a dotty file
           explainHoudiniDottyFile = new StreamWriter("explainHoudini.dot");
           explainHoudiniDottyFile.WriteLine("digraph explainHoudini {");
           foreach (var constant in houdiniConstants)
