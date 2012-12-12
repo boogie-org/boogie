@@ -314,6 +314,8 @@ namespace Microsoft.Boogie.Houdini {
 
     public HoudiniState CurrentHoudiniState { get { return currentHoudiniState; } }
 
+    public static TextWriter explainHoudiniDottyFile;
+
     public Houdini(Program program) {
       this.program = program;
 
@@ -351,6 +353,14 @@ namespace Microsoft.Boogie.Houdini {
       }
       this.houdiniSessions = new ReadOnlyDictionary<Implementation, HoudiniSession>(houdiniSessions);
       currentHoudiniState = new HoudiniState(BuildWorkList(program), BuildAssignment(houdiniConstants));
+
+      if (CommandLineOptions.Clo.ExplainHoudini)
+      {
+          explainHoudiniDottyFile = new StreamWriter("explainHoudini.dot");
+          explainHoudiniDottyFile.WriteLine("digraph explainHoudini {");
+          foreach (var constant in houdiniConstants)
+              explainHoudiniDottyFile.WriteLine("{0} [ label = \"{0}\" color=black ];", constant.Name);
+      }
     }
 
     private void Inline() {
@@ -499,6 +509,30 @@ namespace Microsoft.Boogie.Houdini {
           return true;
       }
       return false;
+    }
+
+    // For Explain houdini: it decorates the condition \phi as (vpos && (\phi || \not vneg))
+    // Precondition: MatchCandidate returns true
+    public Expr InsertCandidateControl(Expr boogieExpr, Variable vpos, Variable vneg)
+    {
+        Contract.Assert(CommandLineOptions.Clo.ExplainHoudini);
+
+        NAryExpr e = boogieExpr as NAryExpr;
+        if (e != null && e.Fun is BinaryOperator && ((BinaryOperator)e.Fun).Op == BinaryOperator.Opcode.Imp)
+        {
+            Expr antecedent = e.Args[0];
+            Expr consequent = e.Args[1];
+
+            IdentifierExpr id = antecedent as IdentifierExpr;
+            if (id != null && id.Decl is Constant && houdiniConstants.Contains((Constant)id.Decl))
+            {
+                return Expr.Imp(antecedent, Expr.And(Expr.Ident(vpos), Expr.Or(consequent, Expr.Not(Expr.Ident(vneg)))));
+            }
+
+            return Expr.Imp(antecedent, InsertCandidateControl(consequent, vpos, vneg));
+        }
+        Contract.Assert(false);
+        return null;
     }
 
     private Dictionary<Variable, bool> BuildAssignment(HashSet<Variable> constants) {
@@ -739,6 +773,11 @@ namespace Microsoft.Boogie.Houdini {
       currentHoudiniState.Outcome.assignment = assignment;
       vcgen.Close();
       proverInterface.Close();
+      if (CommandLineOptions.Clo.ExplainHoudini)
+      {
+          explainHoudiniDottyFile.WriteLine("};");
+          explainHoudiniDottyFile.Close();
+      }
       return currentHoudiniState.Outcome;
     }
 
@@ -899,6 +938,26 @@ namespace Microsoft.Boogie.Houdini {
         this.NotifyOutcome(outcome);
 
         DebugRefutedCandidates(currentHoudiniState.Implementation, errors);
+
+        #region Explain Houdini
+        if (CommandLineOptions.Clo.ExplainHoudini && outcome == ProverInterface.Outcome.Invalid)
+        {
+            Contract.Assume(errors != null);
+            // make a copy of this variable
+            errors = new List<Counterexample>(errors);
+            var refutedAnnotations = new List<RefutedAnnotation>();
+            foreach (Counterexample error in errors)
+            {
+                RefutedAnnotation refutedAnnotation = ExtractRefutedAnnotation(error);
+                if (refutedAnnotation.Kind == RefutedAnnotationKind.ASSERT) continue;
+                refutedAnnotations.Add(refutedAnnotation);
+            }
+            foreach (var refutedAnnotation in refutedAnnotations)
+            {
+                session.Explain(proverInterface, currentHoudiniState.Assignment, refutedAnnotation.Constant);
+            }
+        }
+        #endregion
 
         if (UpdateHoudiniOutcome(currentHoudiniState.Outcome, currentHoudiniState.Implementation, outcome, errors)) { // abort
           currentHoudiniState.WorkQueue.Dequeue();

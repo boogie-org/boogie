@@ -22,13 +22,15 @@ namespace Microsoft.Boogie.Houdini {
         // Impl -> Vars at end of the impl
         Dictionary<string, List<VCExpr>> impl2EndStateVars;
         // Impl -> (callee,summary pred)
-        Dictionary<string, List<Tuple<string, VCExprNAry>>> impl2CalleeSummaries;
+        Dictionary<string, List<Tuple<string, bool, VCExprNAry>>> impl2CalleeSummaries;
         // pointer to summary class
         ISummaryElement summaryClass;
         // impl -> summary
         Dictionary<string, ISummaryElement> impl2Summary;
         // name -> impl
         Dictionary<string, Implementation> name2Impl;
+        // Use Bilateral algorithm
+        public static bool UseBilateralAlgo = true;
 
         public static readonly string summaryPredSuffix = "SummaryPred";
 
@@ -49,7 +51,7 @@ namespace Microsoft.Boogie.Houdini {
             this.program = program;
             this.impl2VC = new Dictionary<string, VCExpr>();
             this.impl2EndStateVars = new Dictionary<string, List<VCExpr>>();
-            this.impl2CalleeSummaries = new Dictionary<string, List<Tuple<string, VCExprNAry>>>();
+            this.impl2CalleeSummaries = new Dictionary<string, List<Tuple<string, bool, VCExprNAry>>>();
             this.impl2Summary = new Dictionary<string, ISummaryElement>();
             this.name2Impl = SimpleUtil.nameImplMapping(program);
 
@@ -126,6 +128,10 @@ namespace Microsoft.Boogie.Houdini {
                     p++;
                 }
             }
+
+            // Turn off subsumption. Why? Because then I see multiple occurences of the
+            // attached ensures in the VC
+            CommandLineOptions.Clo.UseSubsumption = CommandLineOptions.SubsumptionOption.Never;
 
             // Create all VCs
             name2Impl.Values
@@ -331,28 +337,47 @@ namespace Microsoft.Boogie.Houdini {
             var env = VCExpressionGenerator.True;
             foreach (var tup in impl2CalleeSummaries[impl.Name])
             {
-                if (tup.Item1 == impl.Name)
+                // Not Bilateral: then reject self predicates
+                if (UseBilateralAlgo == false && tup.Item1 == impl.Name)
+                    continue;
+
+                // Bilateral: only reject self summary
+                if (UseBilateralAlgo == true && tup.Item1 == impl.Name && tup.Item2)
                     continue;
 
                 var calleeSummary = 
                     impl2Summary[tup.Item1].GetSummaryExpr(
-                       GetVarMapping(name2Impl[tup.Item1], tup.Item2), prover.VCExprGen);
-                env = gen.AndSimp(env, gen.Eq(tup.Item2, calleeSummary));
+                       GetVarMapping(name2Impl[tup.Item1], tup.Item3), prover.VCExprGen);
+                env = gen.AndSimp(env, gen.Eq(tup.Item3, calleeSummary));
             }
+
+            var upper = impl2Summary[impl.Name].GetTrueSummary(program, impl);
 
             while(true)
             {
+                var usedLower = true;
+                var query = impl2Summary[impl.Name];
+
                 // construct self summaries
                 var summaryExpr = VCExpressionGenerator.True;
                 foreach (var tup in impl2CalleeSummaries[impl.Name])
                 {
-                    if (tup.Item1 != impl.Name)
+                    if (UseBilateralAlgo == false && tup.Item1 != impl.Name)
                         continue;
+                    if (UseBilateralAlgo == true && (tup.Item1 != impl.Name || !tup.Item2))
+                        continue;
+                    
+                    if (UseBilateralAlgo)
+                    {
+                        query = query.AbstractConsequence(upper);
+                        if (query == null) query = impl2Summary[tup.Item1];
+                        else usedLower = false;
+                    }
 
                     var ts =
-                        impl2Summary[tup.Item1].GetSummaryExpr(
-                           GetVarMapping(name2Impl[tup.Item1], tup.Item2), prover.VCExprGen);
-                    summaryExpr = gen.AndSimp(summaryExpr, gen.Eq(tup.Item2, ts));
+                        query.GetSummaryExpr(
+                           GetVarMapping(name2Impl[tup.Item1], tup.Item3), prover.VCExprGen);
+                    summaryExpr = gen.AndSimp(summaryExpr, gen.Eq(tup.Item3, ts));
                 }
                 //Console.WriteLine("Trying summary for {0}: {1}", impl.Name, summaryExpr);
 
@@ -363,7 +388,7 @@ namespace Microsoft.Boogie.Houdini {
                 //Console.WriteLine("Checking: {0}", vc);
                 if (CommandLineOptions.Clo.Trace)
                 {
-                    Console.WriteLine("Verifying " + impl.Name);
+                    Console.WriteLine("Verifying {0}: {1}", impl.Name, query);
                 }
 
                 var start = DateTime.Now;
@@ -374,13 +399,48 @@ namespace Microsoft.Boogie.Houdini {
                 proverTime += (DateTime.Now - start);
                 numProverQueries++;
 
-                if (reporter.model == null)
-                    break;
-                //reporter.model.Write(Console.Out);
+                if (UseBilateralAlgo)
+                {
+                    if (proverOutcome == ProverInterface.Outcome.TimeOut || proverOutcome == ProverInterface.Outcome.OutOfMemory)
+                    {
+                        Console.WriteLine("timeout");
+                        impl2Summary[impl.Name] = upper;
+                        ret = true;
+                        break;
+                    }
+                    
+                    if (reporter.model == null && usedLower)
+                        break;
 
-                var state = CollectState(impl);
-                impl2Summary[impl.Name].Join(state, reporter.model);
-                ret = true;
+                    if (reporter.model == null)
+                    {
+                        upper.Meet(query);
+                    }
+                    else
+                    {
+                        var state = CollectState(impl);
+                        impl2Summary[impl.Name].Join(state, reporter.model);
+                        ret = true;
+                    }
+                }
+                else
+                {
+                    if (proverOutcome == ProverInterface.Outcome.TimeOut || proverOutcome == ProverInterface.Outcome.OutOfMemory)
+                    {
+                        Console.WriteLine("timeout");
+                        impl2Summary[impl.Name] = impl2Summary[impl.Name].GetTrueSummary(program, impl);
+                        ret = true;
+                        break;
+                    }
+
+                    if (reporter.model == null)
+                        break;
+                    //reporter.model.Write(Console.Out);
+
+                    var state = CollectState(impl);
+                    impl2Summary[impl.Name].Join(state, reporter.model);
+                    ret = true;
+                }
             }
             return ret;
         }
@@ -568,6 +628,7 @@ namespace Microsoft.Boogie.Houdini {
             // Find the assert
             impl2EndStateVars.Add(impl.Name, new List<VCExpr>());
             var found = false;
+            var assertId = -1;
             foreach (var blk in impl.Blocks)
             {
                 foreach (var cmd in blk.Cmds.OfType<AssertCmd>())
@@ -581,6 +642,8 @@ namespace Microsoft.Boogie.Houdini {
 
                     Debug.Assert(!found);
                     found = true;
+                    assertId = cmd.UniqueId;
+                    //Console.WriteLine("assert cmd id: {0}", cmd.UniqueId);
                     nary.Args.OfType<Expr>()
                         .Iter(expr => impl2EndStateVars[impl.Name].Add(prover.Context.BoogieExprTranslator.Translate(expr)));
                 }
@@ -588,10 +651,13 @@ namespace Microsoft.Boogie.Houdini {
             Debug.Assert(found);
 
             // Grab summary predicates
-            var visitor = new FindSummaryPred(prover.VCExprGen);
+            var visitor = new FindSummaryPred(prover.VCExprGen, assertId);
             visitor.Mutate(vcexpr, true);
 
-            impl2CalleeSummaries.Add(impl.Name, new List<Tuple<string, VCExprNAry>>());
+            // check sanity: only one predicate for self-summary
+            Debug.Assert(visitor.summaryPreds.Count(tup => tup.Item2) == 1);
+
+            impl2CalleeSummaries.Add(impl.Name, new List<Tuple<string, bool, VCExprNAry>>());
             visitor.summaryPreds.Iter(tup => impl2CalleeSummaries[impl.Name].Add(tup));
         }
     }
@@ -601,6 +667,11 @@ namespace Microsoft.Boogie.Houdini {
         ISummaryElement GetFlaseSummary(Program program, Implementation impl);
         void Join(Dictionary<string, Model.Element> state, Model model);
         VCExpr GetSummaryExpr(Dictionary<string, VCExpr> incarnations, VCExpressionGenerator gen);
+        // For Bilateral
+        ISummaryElement GetTrueSummary(Program program, Implementation impl);
+        void Meet(ISummaryElement other);
+        bool IsEqual(ISummaryElement other);
+        ISummaryElement AbstractConsequence(ISummaryElement upper);
     }
 
     public class ConstantVal : ISummaryElement
@@ -715,6 +786,31 @@ namespace Microsoft.Boogie.Houdini {
         {
             return new ConstantVal(program, impl);
         }
+
+        #region ISummaryElement (Bilateral) Members
+
+
+        public ISummaryElement GetTrueSummary(Program program, Implementation impl)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void Meet(ISummaryElement other)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool IsEqual(ISummaryElement other)
+        {
+            throw new NotImplementedException();
+        }
+
+        public ISummaryElement AbstractConsequence(ISummaryElement upper)
+        {
+            throw new NotImplementedException();
+        }
+
+        #endregion
     }
 
     public class NamedExpr 
@@ -1089,6 +1185,15 @@ namespace Microsoft.Boogie.Houdini {
             return new PredicateAbs(impl.Name);
         }
 
+        public ISummaryElement GetTrueSummary(Program program, Implementation impl)
+        {
+            var ret = new PredicateAbs(impl.Name);
+            ret.isFalse = false;
+            for (int i = 0; i < PostPreds[this.procName].Count; i++) ret.value[i] = new PredicateAbsDisjunct(false);
+
+            return ret;
+        }
+
         public void Join(Dictionary<string, Model.Element> state, Model model)
         {
             PredicateAbs.model = model;
@@ -1132,6 +1237,70 @@ namespace Microsoft.Boogie.Houdini {
             }
 
             isFalse = false;
+        }
+
+        // Precondition: the upper guys are just {true/false} ==> post-pred
+        public void Meet(ISummaryElement iother)
+        {
+            var other = iother as PredicateAbs;
+            if (isFalse) return;
+            if (other.isFalse)
+            {
+                isFalse = true;
+                for (int i = 0; i < PostPreds[this.procName].Count; i++) value[i] = null;
+                return;
+            }
+            Debug.Assert(this.procName == other.procName);
+
+            for (int i = 0; i < PostPreds[this.procName].Count; i++)
+            {
+                // check precondition
+                if (!value[i].isTrue && !value[i].isFalse)
+                    throw new NotImplementedException("Invalid upper domain element");
+                if (!other.value[i].isTrue && !other.value[i].isFalse)
+                    throw new NotImplementedException("Invalid upper domain element");
+
+                if (value[i].isFalse && other.value[i].isTrue)
+                    value[i] = new PredicateAbsDisjunct(true);
+            }
+        }
+
+        public bool IsEqual(ISummaryElement other)
+        {
+            return false;
+        }
+
+        // Precondition: the upper guys are just {true/false} ==> post-pred
+        // Postcondition: the returned value is also of this form
+        public ISummaryElement AbstractConsequence(ISummaryElement iupper)
+        {
+            var upper = iupper as PredicateAbs;
+
+            for (int i = 0; i < PostPreds[this.procName].Count; i++)
+            {
+                // check precondition
+                if (!upper.value[i].isTrue && !upper.value[i].isFalse)
+                    throw new NotImplementedException("Invalid upper domain element");
+
+                if (upper.value[i].isTrue)
+                    continue;
+
+                var ret = new PredicateAbs(this.procName);
+                ret.isFalse = false;
+                for (int j = 0; j < PostPreds[this.procName].Count; j++)
+                    ret.value[j] = new PredicateAbsDisjunct(false);
+
+                ret.value[i] = new PredicateAbsDisjunct(true);
+
+                // check that this \lesseq ret 
+                if (isFalse) return ret;
+
+                if (value[i].isTrue)
+                    return ret;
+            }
+
+            // Giveup: the abstract consequence is too difficult to compute
+            return null;
         }
 
         public VCExpr GetSummaryExpr(Dictionary<string, VCExpr> incarnations, VCExpressionGenerator gen)
@@ -1326,12 +1495,14 @@ namespace Microsoft.Boogie.Houdini {
 
     class FindSummaryPred : MutatingVCExprVisitor<bool>
     {
-        public List<Tuple<string, VCExprNAry>> summaryPreds;
+        public List<Tuple<string, bool, VCExprNAry>> summaryPreds;
+        int assertId;
 
-        public FindSummaryPred(VCExpressionGenerator gen)
+        public FindSummaryPred(VCExpressionGenerator gen, int assertId)
             : base(gen)
         {
-            summaryPreds = new List<Tuple<string, VCExprNAry>>();
+            summaryPreds = new List<Tuple<string, bool, VCExprNAry>>();
+            this.assertId = assertId;
         }
 
         protected override VCExpr/*!*/ UpdateModifiedNode(VCExprNAry/*!*/ originalNode,
@@ -1352,15 +1523,30 @@ namespace Microsoft.Boogie.Houdini {
             VCExprNAry retnary = ret as VCExprNAry;
             if (retnary == null) return ret;
             var op = retnary.Op as VCExprBoogieFunctionOp;
+            var selfSummary = false;
+
             if (op == null)
-                return ret;
+            {
+                var lop = retnary.Op as VCExprLabelOp;
+                if (lop == null) return ret;
+                if (lop.pos) return ret;
+                if (!lop.label.Equals("@" + assertId.ToString())) return ret;
+                
+                var subexpr = retnary[0] as VCExprNAry;
+                if (subexpr == null) return ret;
+                op = subexpr.Op as VCExprBoogieFunctionOp;
+                if (op == null) return ret;
+
+                selfSummary = true;
+                retnary = subexpr;
+            }
 
             string calleeName = op.Func.Name;
 
             if (!calleeName.EndsWith(AbstractHoudini.summaryPredSuffix))
                 return ret;
 
-            summaryPreds.Add(Tuple.Create(calleeName.Substring(0, calleeName.Length - AbstractHoudini.summaryPredSuffix.Length), retnary));
+            summaryPreds.Add(Tuple.Create(calleeName.Substring(0, calleeName.Length - AbstractHoudini.summaryPredSuffix.Length), selfSummary, retnary));
 
             return ret;
         }

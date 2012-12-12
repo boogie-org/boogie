@@ -13,23 +13,36 @@ using System.Collections;
 using System.IO;
 using System.Threading;
 using VC;
+using System.Linq;
 
 namespace Microsoft.Boogie.Houdini {
   public class ExistentialConstantCollector : StandardVisitor {
-    public static void CollectHoudiniConstants(Houdini houdini, Implementation impl, out HashSet<Variable> houdiniAssertConstants, out HashSet<Variable> houdiniAssumeConstants) {
-      ExistentialConstantCollector collector = new ExistentialConstantCollector(houdini);
-      collector.VisitImplementation(impl);
-      houdiniAssertConstants = collector.houdiniAssertConstants;
-      houdiniAssumeConstants = collector.houdiniAssumeConstants;
-    }
+      public static void CollectHoudiniConstants(Houdini houdini, Implementation impl, out ExistentialConstantCollector collector)
+      {
+          collector = new ExistentialConstantCollector(houdini);
+          collector.impl = impl;
+          collector.VisitImplementation(impl);
+      }
+
     private ExistentialConstantCollector(Houdini houdini) {
       this.houdini = houdini;
       this.houdiniAssertConstants = new HashSet<Variable>();
       this.houdiniAssumeConstants = new HashSet<Variable>();
+
+      this.explainNegative = new HashSet<Variable>();
+      this.explainPositive = new HashSet<Variable>();
+      this.constToControl = new Dictionary<string, Tuple<Variable, Variable>>();
     }
     private Houdini houdini;
-    private HashSet<Variable> houdiniAssertConstants;
-    private HashSet<Variable> houdiniAssumeConstants;
+    public HashSet<Variable> houdiniAssertConstants;
+    public HashSet<Variable> houdiniAssumeConstants;
+
+    // Explain Houdini stuff
+    public HashSet<Variable> explainPositive;
+    public HashSet<Variable> explainNegative;
+    public Dictionary<string, Tuple<Variable, Variable>> constToControl;
+    Implementation impl;
+
     public override Cmd VisitAssertRequiresCmd(AssertRequiresCmd node) {
       AddHoudiniConstant(node);
       return base.VisitAssertRequiresCmd(node);
@@ -51,12 +64,30 @@ namespace Microsoft.Boogie.Houdini {
         Variable houdiniConstant;
         if (houdini.MatchCandidate(assertCmd.Expr, out houdiniConstant))
             houdiniAssertConstants.Add(houdiniConstant);
+        
+        if (houdiniConstant != null && CommandLineOptions.Clo.ExplainHoudini)
+        {
+            var control = createNewExplainConstants(houdiniConstant);
+            assertCmd.Expr = houdini.InsertCandidateControl(assertCmd.Expr, control.Item1, control.Item2);
+            explainPositive.Add(control.Item1);
+            explainNegative.Add(control.Item2);
+            constToControl.Add(houdiniConstant.Name, control);
+        }
     }
     private void AddHoudiniConstant(AssumeCmd assumeCmd)
     {
         Variable houdiniConstant;
         if (houdini.MatchCandidate(assumeCmd.Expr, out houdiniConstant))
             houdiniAssumeConstants.Add(houdiniConstant);
+    }
+    private Tuple<Variable, Variable> createNewExplainConstants(Variable v)
+    {
+        Contract.Assert(impl != null);
+        Contract.Assert(CommandLineOptions.Clo.ExplainHoudini);
+        Variable v1 = new Constant(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("{0}_{1}_{2}", v.Name, impl.Name, "pos"), Microsoft.Boogie.BasicType.Bool));
+        Variable v2 = new Constant(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("{0}_{1}_{2}", v.Name, impl.Name, "neg"), Microsoft.Boogie.BasicType.Bool));
+
+        return Tuple.Create(v1, v2);
     }
   }
 
@@ -74,6 +105,12 @@ namespace Microsoft.Boogie.Houdini {
     HashSet<Variable> unsatCoreSet;
     HashSet<Variable> houdiniConstants;
     public HashSet<Variable> houdiniAssertConstants;
+    private HashSet<Variable> houdiniAssumeConstants;
+    
+    private HashSet<Variable> explainConstantsPositive;
+    private HashSet<Variable> explainConstantsNegative;
+    private Dictionary<string, Tuple<Variable, Variable>> constantToControl;
+
     Houdini houdini;
     Implementation implementation;
 
@@ -95,8 +132,14 @@ namespace Microsoft.Boogie.Houdini {
       ModelViewInfo mvInfo;
       Hashtable/*TransferCmd->ReturnCmd*/ gotoCmdOrigins = vcgen.PassifyImpl(impl, out mvInfo);
 
-      HashSet<Variable> houdiniAssumeConstants;
-      ExistentialConstantCollector.CollectHoudiniConstants(houdini, impl, out houdiniAssertConstants, out houdiniAssumeConstants);
+      ExistentialConstantCollector ecollector;
+      ExistentialConstantCollector.CollectHoudiniConstants(houdini, impl, out ecollector);
+      this.houdiniAssertConstants = ecollector.houdiniAssertConstants;
+      this.houdiniAssumeConstants = ecollector.houdiniAssumeConstants;
+      this.explainConstantsNegative = ecollector.explainNegative;
+      this.explainConstantsPositive = ecollector.explainPositive;
+      this.constantToControl = ecollector.constToControl;
+
       houdiniConstants = new HashSet<Variable>();
       houdiniConstants.UnionWith(houdiniAssertConstants);
       houdiniConstants.UnionWith(houdiniAssumeConstants);
@@ -145,6 +188,15 @@ namespace Microsoft.Boogie.Houdini {
         }
       }
 
+      if (CommandLineOptions.Clo.ExplainHoudini)
+      {
+          // default values for control variables
+          foreach (var constant in explainConstantsNegative.Concat(explainConstantsPositive))
+          {
+              expr = exprGen.And(expr, exprTranslator.LookupVariable(constant));
+          }
+      }
+
       /*
       foreach (Variable constant in this.houdiniConstants) {
         VCExprVar exprVar = exprTranslator.LookupVariable(constant);
@@ -182,7 +234,151 @@ namespace Microsoft.Boogie.Houdini {
       return proverOutcome;
     }
 
-    public void UpdateUnsatCore(ProverInterface proverInterface, Dictionary<Variable, bool> assignment) {
+    // MAXSAT
+    public void Explain(ProverInterface proverInterface, 
+        Dictionary<Variable, bool> assignment, Variable refutedConstant)
+    {
+        Contract.Assert(CommandLineOptions.Clo.ExplainHoudini);
+
+        collector.examples.Clear();
+
+        // debugging
+        houdiniAssertConstants.Iter(v => System.Diagnostics.Debug.Assert(assignment.ContainsKey(v)));
+        houdiniAssumeConstants.Iter(v => System.Diagnostics.Debug.Assert(assignment.ContainsKey(v)));
+        Contract.Assert(assignment.ContainsKey(refutedConstant));
+        Contract.Assert(houdiniAssertConstants.Contains(refutedConstant));
+
+        var hardAssumptions = new List<VCExpr>();
+        var softAssumptions = new List<VCExpr>();
+
+        Boogie2VCExprTranslator exprTranslator = proverInterface.Context.BoogieExprTranslator;
+        VCExpressionGenerator exprGen = proverInterface.VCExprGen;
+        var controlExpr = VCExpressionGenerator.True;
+
+        foreach (var tup in assignment)
+        {
+            Variable constant = tup.Key;
+            VCExprVar exprVar = exprTranslator.LookupVariable(constant);
+            var val = tup.Value;
+
+            if (houdiniAssumeConstants.Contains(constant))
+            {
+                if (tup.Value)
+                    hardAssumptions.Add(exprVar);
+                else
+                    softAssumptions.Add(exprVar);
+            }
+            else if (houdiniAssertConstants.Contains(constant))
+            {
+                if (constant == refutedConstant)
+                    hardAssumptions.Add(exprVar);
+                else
+                    hardAssumptions.Add(exprGen.Not(exprVar));
+            }
+            else
+            {
+                if (tup.Value)
+                    hardAssumptions.Add(exprVar);
+                else
+                    hardAssumptions.Add(exprGen.Not(exprVar));
+            }
+
+            if (constant != refutedConstant && constantToControl.ContainsKey(constant.Name))
+            {
+                var posControl = constantToControl[constant.Name].Item1;
+                var negControl = constantToControl[constant.Name].Item2;
+
+                // Handle self-recursion
+                if (houdiniAssertConstants.Contains(constant) && houdiniAssumeConstants.Contains(constant))
+                {
+                    // disable this assert
+                    controlExpr = exprGen.And(controlExpr, exprGen.And(exprTranslator.LookupVariable(posControl), exprGen.Not(exprTranslator.LookupVariable(negControl))));
+                }
+                else
+                {
+                    // default values for control variables
+                    controlExpr = exprGen.And(controlExpr, exprGen.And(exprTranslator.LookupVariable(posControl), exprTranslator.LookupVariable(negControl)));
+                }
+            }
+        }
+
+        hardAssumptions.Add(exprGen.Not(conjecture));
+
+        // default values for control variables
+        Contract.Assert(constantToControl.ContainsKey(refutedConstant.Name));
+        var pc = constantToControl[refutedConstant.Name].Item1;
+        var nc = constantToControl[refutedConstant.Name].Item2;
+
+        var controlExprNoop = exprGen.And(controlExpr,
+            exprGen.And(exprTranslator.LookupVariable(pc), exprTranslator.LookupVariable(nc)));
+
+        var controlExprFalse = exprGen.And(controlExpr,
+            exprGen.And(exprGen.Not(exprTranslator.LookupVariable(pc)), exprGen.Not(exprTranslator.LookupVariable(nc))));
+
+        if (CommandLineOptions.Clo.Trace)
+        {
+            Console.WriteLine("Verifying (MaxSat) " + descriptiveName);
+        }
+        DateTime now = DateTime.UtcNow;
+
+        var el = CommandLineOptions.Clo.ProverCCLimit;
+        CommandLineOptions.Clo.ProverCCLimit = 1;
+
+        List<int> unsatisfiedSoftAssumptions;
+        
+        hardAssumptions.Add(controlExprNoop);
+        proverInterface.CheckAssumptions(hardAssumptions, softAssumptions, out unsatisfiedSoftAssumptions, handler);
+        hardAssumptions.RemoveAt(hardAssumptions.Count - 1);
+
+        var reason = new HashSet<string>();
+        unsatisfiedSoftAssumptions.Iter(i => reason.Add(softAssumptions[i].ToString()));
+        if (CommandLineOptions.Clo.Trace)
+        {
+            Console.Write("Reason for removal of {0}: ", refutedConstant.Name);
+            reason.Iter(r => Console.Write("{0} ", r));
+            Console.WriteLine();
+        }
+
+        hardAssumptions.Add(controlExprFalse);
+        var softAssumptions2 = new List<VCExpr>();
+        for (int i = 0; i < softAssumptions.Count; i++)
+        {
+            if (unsatisfiedSoftAssumptions.Contains(i))
+            {
+                softAssumptions2.Add(softAssumptions[i]);
+                continue;
+            }
+            hardAssumptions.Add(softAssumptions[i]);
+        }
+
+        var unsatisfiedSoftAssumptions2 = new List<int>();
+        proverInterface.CheckAssumptions(hardAssumptions, softAssumptions2, out unsatisfiedSoftAssumptions2, handler);
+
+        unsatisfiedSoftAssumptions2.Iter(i => reason.Remove(softAssumptions2[i].ToString()));
+        if (CommandLineOptions.Clo.Trace)
+        {
+            Console.Write("Revised reason for removal of {0}: ", refutedConstant.Name);
+            reason.Iter(r => Console.Write("{0} ", r));
+            Console.WriteLine();
+        }
+        foreach (var r in reason)
+        {
+            Houdini.explainHoudiniDottyFile.WriteLine("{0} -> {1} [ label = \"\" color=red ];", refutedConstant.Name, r);
+        }
+
+        CommandLineOptions.Clo.ProverCCLimit = el;
+
+        double queryTime = (DateTime.UtcNow - now).TotalSeconds;
+        proverTime += queryTime;
+        numProverQueries++;
+        if (CommandLineOptions.Clo.Trace)
+        {
+            Console.WriteLine("Time taken = " + queryTime);
+        }
+    }
+
+    public void UpdateUnsatCore(ProverInterface proverInterface, Dictionary<Variable, bool> assignment)
+    {
       DateTime now = DateTime.UtcNow;
 
       Boogie2VCExprTranslator exprTranslator = proverInterface.Context.BoogieExprTranslator;
