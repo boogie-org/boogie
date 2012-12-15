@@ -43,8 +43,9 @@ namespace Microsoft.Boogie.Houdini {
         TimeSpan proverTime;
         int numProverQueries;
 
-        // Produce witness for correctness
+        // Produce witness for correctness: can only be set programmatically
         public static string ProduceWitness = "absHoudiniWitness.bpl";
+        public static bool FreeWitness = false;
 
         public AbstractHoudini(Program program)
         {
@@ -160,14 +161,16 @@ namespace Microsoft.Boogie.Houdini {
 
             var allImpls = new SortedSet<Tuple<int, string>>();
             name2Impl.Values.Iter(impl => allImpls.Add(Tuple.Create(impl2Priority[impl.Name], impl.Name)));
-            foreach (var tup in allImpls)
+            if (CommandLineOptions.Clo.Trace)
             {
-                Console.WriteLine("Summary of {0}:", tup.Item2);
-                Console.WriteLine("{0}", impl2Summary[tup.Item2]);
-            }           
-
-            Console.WriteLine("Prover time = " + proverTime.TotalSeconds);
-            Console.WriteLine("Number of prover queries = " + numProverQueries);
+                foreach (var tup in allImpls)
+                {
+                    Console.WriteLine("Summary of {0}:", tup.Item2);
+                    Console.WriteLine("{0}", impl2Summary[tup.Item2]);
+                }
+                Console.WriteLine("Prover time = " + proverTime.TotalSeconds);
+                Console.WriteLine("Number of prover queries = " + numProverQueries);
+            }
 
             if (ProduceWitness != null)
             {
@@ -175,7 +178,11 @@ namespace Microsoft.Boogie.Houdini {
                 {
                     var nensures = new EnsuresSeq();
                     proc.Ensures.OfType<Ensures>()
-                    .Where(ens => !QKeyValue.FindBoolAttribute(ens.Attributes, "ah"))
+                    .Where(ens => !QKeyValue.FindBoolAttribute(ens.Attributes, "ah") && 
+                        !QKeyValue.FindBoolAttribute(ens.Attributes, "pre") && 
+                        !QKeyValue.FindBoolAttribute(ens.Attributes, "post") &&
+                        QKeyValue.FindStringAttribute(ens.Attributes, "pre") == null &&
+                        QKeyValue.FindStringAttribute(ens.Attributes, "post") == null)
                     .Iter(ens => nensures.Add(ens));
                     foreach(Ensures en in nensures) {
                         en.Attributes = removeAttr("assume", en.Attributes);
@@ -189,21 +196,21 @@ namespace Microsoft.Boogie.Houdini {
                 program.TopLevelDeclarations.Where(decl => !(decl is Implementation))
                     .Iter(decl => decls.Add(decl));
                 program.TopLevelDeclarations = decls;
+                foreach (var proc in program.TopLevelDeclarations.OfType<Procedure>())
+                {
+                    if (impl2Summary.ContainsKey(proc.Name))
+                    {
+                        var ens = new Ensures(FreeWitness, impl2Summary[proc.Name].GetSummaryExpr(new Dictionary<string, Expr>()));
+                        ens.Attributes = new QKeyValue(Token.NoToken, "inferred", new List<object>(), ens.Attributes);
+                        proc.Ensures.Add(ens);
+                    }
+                }
 
                 using (var wt = new TokenTextWriter(ProduceWitness))
                 {
-                    foreach (var decl in program.TopLevelDeclarations)
-                    {
-                        decl.Emit(wt, 0);
-                        var proc = decl as Procedure;
-                        if (proc != null && impl2Summary.ContainsKey(proc.Name))
-                        {
-                            wt.WriteLine("  ensures {{:inferred}} {0};", impl2Summary[proc.Name]);
-                            wt.WriteLine();
-                        }
-                    }
+                    program.Emit(wt);
                 }
-                Console.WriteLine("Witness written to {0}", ProduceWitness);
+                if(CommandLineOptions.Clo.Trace) Console.WriteLine("Witness written to {0}", ProduceWitness);
             }
 
             prover.Close();
@@ -667,6 +674,8 @@ namespace Microsoft.Boogie.Houdini {
         ISummaryElement GetFlaseSummary(Program program, Implementation impl);
         void Join(Dictionary<string, Model.Element> state, Model model);
         VCExpr GetSummaryExpr(Dictionary<string, VCExpr> incarnations, VCExpressionGenerator gen);
+        Expr GetSummaryExpr(Dictionary<string, Expr> implVars);
+
         // For Bilateral
         ISummaryElement GetTrueSummary(Program program, Implementation impl);
         void Meet(ISummaryElement other);
@@ -806,6 +815,16 @@ namespace Microsoft.Boogie.Houdini {
         }
 
         public ISummaryElement AbstractConsequence(ISummaryElement upper)
+        {
+            throw new NotImplementedException();
+        }
+
+        #endregion
+
+        #region ISummaryElement Members
+
+
+        public Expr GetSummaryExpr(Dictionary<string, Expr> implVars)
         {
             throw new NotImplementedException();
         }
@@ -1049,6 +1068,16 @@ namespace Microsoft.Boogie.Houdini {
             if (val is bool || val is int || val is Basetypes.BigNum)
                 return model.MkElement(val.ToString());
             throw new NotImplementedException("Cannot yet handle this value type");
+        }
+
+        private static Expr ToExpr(Expr expr, Dictionary<string, Expr> incarnations)
+        {
+            var subst = new Substitution(v =>
+            {
+                if (incarnations.ContainsKey(v.Name)) return incarnations[v.Name];
+                else return Expr.Ident(v);
+            });
+            return Substituter.Apply(subst, expr);
         }
 
         private VCExpr ToVcExpr(Expr expr, Dictionary<string, VCExpr> incarnations, VCExpressionGenerator gen)
@@ -1318,6 +1347,21 @@ namespace Microsoft.Boogie.Houdini {
             return ret;
         }
 
+        public Expr GetSummaryExpr(Dictionary<string, Expr> implVars)
+        {
+            if (isFalse)
+                return Expr.False;
+
+            Expr ret = Expr.True;
+
+            for (int i = 0; i < PostPreds[procName].Count; i++)
+            {
+                ret = Expr.And(ret, Expr.Imp(value[i].ToExpr(j => ToExpr(PrePreds[procName][j].expr, implVars)), ToExpr(PostPreds[procName][i].expr, implVars)));
+            }
+
+            return ret;
+        }
+
         #endregion
     }
 
@@ -1384,6 +1428,14 @@ namespace Microsoft.Boogie.Houdini {
             if (isTrue) return VCExpressionGenerator.True;
             var ret = VCExpressionGenerator.False;
             conjuncts.Iter(c => ret = gen.OrSimp(ret, c.ToVcExpr(predToExpr, gen)));
+            return ret;
+        }
+
+        public Expr ToExpr(Func<int, Expr> predToExpr)
+        {
+            if (isTrue) return Expr.True;
+            Expr ret = Expr.False;
+            conjuncts.Iter(c => ret = Expr.Or(ret, c.ToExpr(predToExpr)));
             return ret;
         }
 
@@ -1469,6 +1521,15 @@ namespace Microsoft.Boogie.Houdini {
             var ret = VCExpressionGenerator.True;
             posPreds.Iter(p => ret = gen.AndSimp(ret, predToExpr(p)));
             negPreds.Iter(p => ret = gen.AndSimp(ret, gen.Not(predToExpr(p))));
+            return ret;
+        }
+
+        public Expr ToExpr(Func<int, Expr> predToExpr)
+        {
+            if (isFalse) return Expr.False;
+            Expr ret = Expr.True;
+            posPreds.Iter(p => ret = Expr.And(ret, predToExpr(p)));
+            negPreds.Iter(p => ret = Expr.And(ret, Expr.Not(predToExpr(p)))); 
             return ret;
         }
 
