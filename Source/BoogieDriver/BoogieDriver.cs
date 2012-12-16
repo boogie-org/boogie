@@ -651,8 +651,8 @@ namespace Microsoft.Boogie {
               }
               Console.WriteLine("Number of true assignments = " + numTrueAssigns);
               Console.WriteLine("Number of false assignments = " + (outcome.assignment.Count - numTrueAssigns));
-              Console.WriteLine("Prover time = " + Houdini.HoudiniSession.proverTime);
-              Console.WriteLine("Unsat core prover time = " + Houdini.HoudiniSession.unsatCoreProverTime);
+              Console.WriteLine("Prover time = " + Houdini.HoudiniSession.proverTime.ToString("F2"));
+              Console.WriteLine("Unsat core prover time = " + Houdini.HoudiniSession.unsatCoreProverTime.ToString("F2"));
               Console.WriteLine("Number of prover queries = " + Houdini.HoudiniSession.numProverQueries);
               Console.WriteLine("Number of unsat core prover queries = " + Houdini.HoudiniSession.numUnsatCoreProverQueries);
               Console.WriteLine("Number of unsat core prunings = " + Houdini.HoudiniSession.numUnsatCorePrunings);

@@ -43,9 +43,8 @@ namespace Microsoft.Boogie.Houdini {
         TimeSpan proverTime;
         int numProverQueries;
 
-        // Produce witness for correctness: can only be set programmatically
-        public static string ProduceWitness = "absHoudiniWitness.bpl";
-        public static bool FreeWitness = false;
+        // Produce witness for correctness: can be set programmatically
+        public static string WitnessFile = "absHoudiniWitness.bpl";
 
         public AbstractHoudini(Program program)
         {
@@ -62,32 +61,16 @@ namespace Microsoft.Boogie.Houdini {
 
             this.proverTime = TimeSpan.Zero;
             this.numProverQueries = 0;
+
+            if (CommandLineOptions.Clo.AbstractHoudini == "0")
+                UseBilateralAlgo = false;
         }
 
         public void computeSummaries(ISummaryElement summaryClass)
         {
             this.summaryClass = summaryClass;
 
-            Inline();
-
-            // Create a copy of the program
-            var copy = new Dictionary<string, Implementation>();
-            if (ProduceWitness != null)
-            {
-                foreach (var impl in program.TopLevelDeclarations.OfType<Implementation>())
-                {
-                    var nimpl = new Implementation(Token.NoToken, impl.Name, impl.TypeParameters,
-                        impl.InParams, impl.OutParams, new VariableSeq(impl.LocVars), new List<Block>());
-                    foreach (var blk in impl.Blocks)
-                    {
-                        var cd = new CodeCopier();
-                        nimpl.Blocks.Add(new Block(Token.NoToken, blk.Label,
-                            cd.CopyCmdSeq(blk.Cmds), cd.CopyTransferCmd(blk.TransferCmd)));
-                    }
-                    
-                    copy.Add(impl.Name, nimpl);
-                }                    
-            }
+            name2Impl.Values.Iter(attachEnsures);
 
             program.TopLevelDeclarations
                 .OfType<Implementation>()
@@ -130,14 +113,35 @@ namespace Microsoft.Boogie.Houdini {
                 }
             }
 
+
+            Inline();
+
+            #region Witness generation setup
+            // Create a copy of the program
+            var copy = new Dictionary<string, Implementation>();
+            if (WitnessFile != null)
+            {
+                foreach (var impl in program.TopLevelDeclarations.OfType<Implementation>())
+                {
+                    var nimpl = new Implementation(Token.NoToken, impl.Name, impl.TypeParameters,
+                        impl.InParams, impl.OutParams, new VariableSeq(impl.LocVars), new List<Block>());
+                    foreach (var blk in impl.Blocks)
+                    {
+                        var cd = new CodeCopier();
+                        nimpl.Blocks.Add(new Block(Token.NoToken, blk.Label,
+                            cd.CopyCmdSeq(blk.Cmds), cd.CopyTransferCmd(blk.TransferCmd)));
+                    }
+
+                    copy.Add(impl.Name, nimpl);
+                }
+            }
+            #endregion
+
             // Turn off subsumption. Why? Because then I see multiple occurences of the
             // attached ensures in the VC
             CommandLineOptions.Clo.UseSubsumption = CommandLineOptions.SubsumptionOption.Never;
 
             // Create all VCs
-            name2Impl.Values
-                .Iter(attachEnsures);
-
             name2Impl.Values
                 .Iter(GenVC);
 
@@ -168,53 +172,135 @@ namespace Microsoft.Boogie.Houdini {
                     Console.WriteLine("Summary of {0}:", tup.Item2);
                     Console.WriteLine("{0}", impl2Summary[tup.Item2]);
                 }
-                Console.WriteLine("Prover time = " + proverTime.TotalSeconds);
+                Console.WriteLine("Prover time = {0}", proverTime.TotalSeconds.ToString("F2"));
                 Console.WriteLine("Number of prover queries = " + numProverQueries);
             }
 
-            if (ProduceWitness != null)
-            {
-                foreach (var proc in program.TopLevelDeclarations.OfType<Procedure>())
-                {
-                    var nensures = new EnsuresSeq();
-                    proc.Ensures.OfType<Ensures>()
-                    .Where(ens => !QKeyValue.FindBoolAttribute(ens.Attributes, "ah") && 
-                        !QKeyValue.FindBoolAttribute(ens.Attributes, "pre") && 
-                        !QKeyValue.FindBoolAttribute(ens.Attributes, "post") &&
-                        QKeyValue.FindStringAttribute(ens.Attributes, "pre") == null &&
-                        QKeyValue.FindStringAttribute(ens.Attributes, "post") == null)
-                    .Iter(ens => nensures.Add(ens));
-                    foreach(Ensures en in nensures) {
-                        en.Attributes = removeAttr("assume", en.Attributes);
-                    }
-                        
-                    proc.Ensures = nensures;
-                }
-
-                var decls = new List<Declaration>();
-                copy.Values.Iter(impl => decls.Add(impl));
-                program.TopLevelDeclarations.Where(decl => !(decl is Implementation))
-                    .Iter(decl => decls.Add(decl));
-                program.TopLevelDeclarations = decls;
-                foreach (var proc in program.TopLevelDeclarations.OfType<Procedure>())
-                {
-                    if (impl2Summary.ContainsKey(proc.Name))
-                    {
-                        var ens = new Ensures(FreeWitness, impl2Summary[proc.Name].GetSummaryExpr(new Dictionary<string, Expr>()));
-                        ens.Attributes = new QKeyValue(Token.NoToken, "inferred", new List<object>(), ens.Attributes);
-                        proc.Ensures.Add(ens);
-                    }
-                }
-
-                using (var wt = new TokenTextWriter(ProduceWitness))
-                {
-                    program.Emit(wt);
-                }
-                if(CommandLineOptions.Clo.Trace) Console.WriteLine("Witness written to {0}", ProduceWitness);
-            }
+            ProduceWitness(copy);
 
             prover.Close();
             CommandLineOptions.Clo.TheProverFactory.Close();
+        }
+
+        // Obtain the summary expression for a procedure: used programmatically by clients
+        // of AbstractHoudini
+        private Expr GetSummary(Program program, Procedure proc)
+        {
+            if (!impl2Summary.ContainsKey(proc.Name))
+                return Expr.True;
+
+            var vars = new Dictionary<string, Expr>();
+            foreach (var g in program.TopLevelDeclarations.OfType<GlobalVariable>())
+                vars.Add(g.Name, Expr.Ident(g));
+            foreach (var v in proc.InParams.OfType<Variable>())
+                vars.Add(v.Name, Expr.Ident(v));
+            foreach (var v in proc.OutParams.OfType<Variable>())
+                vars.Add(v.Name, Expr.Ident(v));
+
+            return impl2Summary[proc.Name].GetSummaryExpr(
+                v => { if (vars.ContainsKey(v)) return vars[v]; else return null; },
+                v => { if (vars.ContainsKey(v)) return new OldExpr(Token.NoToken, vars[v]); else return null; });
+        }
+
+        // Produce a witness that proves that the inferred annotations are correct
+        private void ProduceWitness(Dictionary<string, Implementation> copy)
+        {
+            if (WitnessFile == null)
+                return;
+
+            foreach (var proc in program.TopLevelDeclarations.OfType<Procedure>())
+            {
+                var nensures = new EnsuresSeq();
+                proc.Ensures.OfType<Ensures>()
+                .Where(ens => !QKeyValue.FindBoolAttribute(ens.Attributes, "ah") &&
+                    !QKeyValue.FindBoolAttribute(ens.Attributes, "pre") &&
+                    !QKeyValue.FindBoolAttribute(ens.Attributes, "post") &&
+                    QKeyValue.FindStringAttribute(ens.Attributes, "pre") == null &&
+                    QKeyValue.FindStringAttribute(ens.Attributes, "post") == null)
+                .Iter(ens => nensures.Add(ens));
+                foreach (Ensures en in nensures)
+                    en.Attributes = removeAttr("assume", en.Attributes);
+
+                proc.Ensures = nensures;
+            }
+
+            var decls = new List<Declaration>();
+            copy.Values.Iter(impl => decls.Add(impl));
+            program.TopLevelDeclarations.Where(decl => !(decl is Implementation))
+                .Iter(decl => decls.Add(decl));
+            program.TopLevelDeclarations = decls;
+            var name2Proc = new Dictionary<string, Procedure>();
+            foreach (var proc in program.TopLevelDeclarations.OfType<Procedure>())
+            {
+                name2Proc.Add(proc.Name, proc);
+                if (impl2Summary.ContainsKey(proc.Name))
+                {
+                    var ens = new Ensures(false, 
+                        impl2Summary[proc.Name].GetSummaryExpr(
+                        new Func<string, Expr>(s => null), new Func<string, Expr>(s => null)));
+                    ens.Attributes = new QKeyValue(Token.NoToken, "inferred", new List<object>(), ens.Attributes);
+                    proc.Ensures.Add(ens);
+                }
+            }
+
+            using (var wt = new TokenTextWriter(WitnessFile))
+            {
+                program.Emit(wt);
+            }
+
+            // Replace SummaryPreds with their definition
+            foreach (var impl in program.TopLevelDeclarations.OfType<Implementation>())
+            {
+                foreach (var blk in impl.Blocks)
+                {
+                    foreach (var cmd in blk.Cmds.OfType<AssumeCmd>())
+                    {
+                        var expr = cmd.Expr as NAryExpr;
+                        if (expr == null) continue;
+                        var op = expr.Fun as FunctionCall;
+                        if (op == null || !op.FunctionName.EndsWith(summaryPredSuffix)) continue;
+                        var calleeName = op.FunctionName.Substring(0, op.FunctionName.Length - summaryPredSuffix.Length);
+                        if (!impl2Summary.ContainsKey(calleeName)) continue;
+                        var callee = name2Impl[calleeName];
+
+                        // variable order: globals, ins, outs, modifies
+                        var forold = new Dictionary<string, Expr>();
+                        var always = new Dictionary<string, Expr>();
+                        int i = 0;
+                        foreach (var g in program.TopLevelDeclarations.OfType<GlobalVariable>())
+                        {
+                            forold.Add(g.Name, expr.Args[i]);
+                            always.Add(g.Name, expr.Args[i]);
+                            i++;
+                        }
+                        foreach (var v in callee.InParams.OfType<Variable>())
+                        {
+                            always.Add(v.Name, expr.Args[i]);
+                            i++;
+                        }
+                        foreach (var v in callee.OutParams.OfType<Variable>())
+                        {
+                            always.Add(v.Name, expr.Args[i]);
+                            i++;
+                        }
+                        foreach (var ie in name2Proc[calleeName].Modifies.OfType<IdentifierExpr>())
+                        {
+                            always[ie.Name] = expr.Args[i];
+                            i++;
+                        }
+
+                        cmd.Expr = impl2Summary[calleeName].GetSummaryExpr(
+                            v => { if (always.ContainsKey(v)) return always[v]; else return null; },
+                            v => { if (forold.ContainsKey(v)) return forold[v]; else return null; });
+                    }
+                }
+            }
+
+            using (var wt = new TokenTextWriter(WitnessFile))
+            {
+                program.Emit(wt);
+            }
+            if (CommandLineOptions.Clo.Trace) Console.WriteLine("Witness written to {0}", WitnessFile);
         }
 
         private QKeyValue removeAttr(string key, QKeyValue attr)
@@ -410,7 +496,8 @@ namespace Microsoft.Boogie.Houdini {
                 {
                     if (proverOutcome == ProverInterface.Outcome.TimeOut || proverOutcome == ProverInterface.Outcome.OutOfMemory)
                     {
-                        Console.WriteLine("timeout");
+                        if(CommandLineOptions.Clo.Trace)
+                            Console.WriteLine("Timeout/Spaceout while verifying " + impl.Name);
                         impl2Summary[impl.Name] = upper;
                         ret = true;
                         break;
@@ -434,7 +521,8 @@ namespace Microsoft.Boogie.Houdini {
                 {
                     if (proverOutcome == ProverInterface.Outcome.TimeOut || proverOutcome == ProverInterface.Outcome.OutOfMemory)
                     {
-                        Console.WriteLine("timeout");
+                        if (CommandLineOptions.Clo.Trace)
+                            Console.WriteLine("Timeout/Spaceout while verifying " + impl.Name);
                         impl2Summary[impl.Name] = impl2Summary[impl.Name].GetTrueSummary(program, impl);
                         ret = true;
                         break;
@@ -617,6 +705,11 @@ namespace Microsoft.Boogie.Houdini {
             ModelViewInfo mvInfo;
             System.Collections.Hashtable label2absy;
 
+            if (CommandLineOptions.Clo.Trace)
+            {
+                Console.WriteLine("Generating VC of {0}", impl.Name);
+            }
+
             vcgen.ConvertCFG2DAG(impl);
             vcgen.PassifyImpl(impl, out mvInfo);
 
@@ -662,7 +755,8 @@ namespace Microsoft.Boogie.Houdini {
             visitor.Mutate(vcexpr, true);
 
             // check sanity: only one predicate for self-summary
-            Debug.Assert(visitor.summaryPreds.Count(tup => tup.Item2) == 1);
+            // (There may be none when the procedure doesn't return)
+            Debug.Assert(visitor.summaryPreds.Count(tup => tup.Item2) <= 1);
 
             impl2CalleeSummaries.Add(impl.Name, new List<Tuple<string, bool, VCExprNAry>>());
             visitor.summaryPreds.Iter(tup => impl2CalleeSummaries[impl.Name].Add(tup));
@@ -674,7 +768,7 @@ namespace Microsoft.Boogie.Houdini {
         ISummaryElement GetFlaseSummary(Program program, Implementation impl);
         void Join(Dictionary<string, Model.Element> state, Model model);
         VCExpr GetSummaryExpr(Dictionary<string, VCExpr> incarnations, VCExpressionGenerator gen);
-        Expr GetSummaryExpr(Dictionary<string, Expr> implVars);
+        Expr GetSummaryExpr(Func<string, Expr> always, Func<string, Expr> forold);
 
         // For Bilateral
         ISummaryElement GetTrueSummary(Program program, Implementation impl);
@@ -824,7 +918,7 @@ namespace Microsoft.Boogie.Houdini {
         #region ISummaryElement Members
 
 
-        public Expr GetSummaryExpr(Dictionary<string, Expr> implVars)
+        public Expr GetSummaryExpr(Func<string, Expr> always, Func<string, Expr> forold)
         {
             throw new NotImplementedException();
         }
@@ -937,7 +1031,7 @@ namespace Microsoft.Boogie.Houdini {
                     {
                         PostPreds[impl.Name].Add(new NamedExpr(ens.Condition));
                     }
-                    if ((s = QKeyValue.FindStringAttribute(ens.Attributes, "pre")) != null)
+                    else if ((s = QKeyValue.FindStringAttribute(ens.Attributes, "pre")) != null)
                     {
                         PrePreds[impl.Name].Add(new NamedExpr(s, ens.Condition));
                     }
@@ -1070,14 +1164,22 @@ namespace Microsoft.Boogie.Houdini {
             throw new NotImplementedException("Cannot yet handle this value type");
         }
 
-        private static Expr ToExpr(Expr expr, Dictionary<string, Expr> incarnations)
+        private static Expr ToExpr(Expr expr, Func<string, Expr> always, Func<string, Expr> forold)
         {
-            var subst = new Substitution(v =>
+            var substalways = new Substitution(v =>
             {
-                if (incarnations.ContainsKey(v.Name)) return incarnations[v.Name];
+                var ret = always(v.Name);
+                if (ret != null) return ret;
                 else return Expr.Ident(v);
             });
-            return Substituter.Apply(subst, expr);
+            var substold = new Substitution(v =>
+            {
+                var ret = forold(v.Name);
+                if (ret != null) return ret;
+                else return new OldExpr(Token.NoToken, Expr.Ident(v));
+            });
+
+            return Substituter.ApplyReplacingOldExprs(substalways, substold, expr);
         }
 
         private VCExpr ToVcExpr(Expr expr, Dictionary<string, VCExpr> incarnations, VCExpressionGenerator gen)
@@ -1266,6 +1368,8 @@ namespace Microsoft.Boogie.Houdini {
             }
 
             isFalse = false;
+
+            //Console.WriteLine("Result of Join: {0}", this.ToString());
         }
 
         // Precondition: the upper guys are just {true/false} ==> post-pred
@@ -1347,7 +1451,7 @@ namespace Microsoft.Boogie.Houdini {
             return ret;
         }
 
-        public Expr GetSummaryExpr(Dictionary<string, Expr> implVars)
+        public Expr GetSummaryExpr(Func<string, Expr> always, Func<string, Expr> forold)
         {
             if (isFalse)
                 return Expr.False;
@@ -1356,7 +1460,7 @@ namespace Microsoft.Boogie.Houdini {
 
             for (int i = 0; i < PostPreds[procName].Count; i++)
             {
-                ret = Expr.And(ret, Expr.Imp(value[i].ToExpr(j => ToExpr(PrePreds[procName][j].expr, implVars)), ToExpr(PostPreds[procName][i].expr, implVars)));
+                ret = Expr.And(ret, Expr.Imp(value[i].ToExpr(j => ToExpr(PrePreds[procName][j].expr, always, forold)), ToExpr(PostPreds[procName][i].expr, always, forold)));
             }
 
             return ret;
@@ -1607,7 +1711,19 @@ namespace Microsoft.Boogie.Houdini {
             if (!calleeName.EndsWith(AbstractHoudini.summaryPredSuffix))
                 return ret;
 
+            if (selfSummary)
+            {
+                // This summary pred would have been found twice
+                var nlist = new List<Tuple<string, bool, VCExprNAry>>();
+                foreach (var tup in summaryPreds)
+                {
+                    if (tup.Item3 != retnary) nlist.Add(tup);
+                }
+                summaryPreds = nlist;
+            }
+
             summaryPreds.Add(Tuple.Create(calleeName.Substring(0, calleeName.Length - AbstractHoudini.summaryPredSuffix.Length), selfSummary, retnary));
+
 
             return ret;
         }
