@@ -159,7 +159,7 @@ namespace Microsoft.Boogie.Houdini {
 
                 if (changed)
                 {
-                    Pred[impl].Where(pred => pred != impl).Iter(pred => worklist.Add(Tuple.Create(impl2Priority[pred.Name], pred)));
+                    Pred[impl].Where(pred => UseBilateralAlgo || pred != impl).Iter(pred => worklist.Add(Tuple.Create(impl2Priority[pred.Name], pred)));
                 }
             }
 
@@ -621,7 +621,15 @@ namespace Microsoft.Boogie.Houdini {
                 }
                 catch (Exception)
                 {
-                    // constant not assigned a value
+                    // constant not assigned a value: add a default value
+                    Model.Element value = null;
+                    if (c.TypedIdent.Type.IsInt)
+                        value = model.MkIntElement(0);
+                    else if (c.TypedIdent.Type.IsBool)
+                        value = model.MkElement("false");
+
+                    ret.Add(string.Format("{0}", c.Name), value);
+                    ret.Add(string.Format("old({0})", c.Name), value);
                 }
             }
 
@@ -1115,11 +1123,13 @@ namespace Microsoft.Boogie.Houdini {
                 return state[v];
             }
 
+            /*
             if (boolConstants.Contains(v))
             {
                 // value of this constant is immaterial, return true
                 return model.MkElement("true");
             }
+            */
 
             throw new AbsHoudiniInternalError("Cannot handle this case");
         }
