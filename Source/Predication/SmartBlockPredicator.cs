@@ -494,11 +494,18 @@ public class SmartBlockPredicator {
               .ToArray());
 
           if (impl == null) {
+            var fpIdentifierExpr = new IdentifierExpr(Token.NoToken, fpVar);
             foreach (Requires r in proc.Requires) {
-              new EnabledReplacementVisitor(new IdentifierExpr(Token.NoToken, fpVar)).VisitExpr(r.Condition);
+              new EnabledReplacementVisitor(fpIdentifierExpr).VisitExpr(r.Condition);
+              if (!QKeyValue.FindBoolAttribute(r.Attributes, "do_not_predicate")) {
+                r.Condition = Expr.Imp(fpIdentifierExpr, r.Condition);
+              }
             }
             foreach (Ensures e in proc.Ensures) {
               new EnabledReplacementVisitor(new IdentifierExpr(Token.NoToken, fpVar)).VisitExpr(e.Condition);
+              if (!QKeyValue.FindBoolAttribute(e.Attributes, "do_not_predicate")) {
+                e.Condition = Expr.Imp(fpIdentifierExpr, e.Condition);
+              }
             }
           }
         }
