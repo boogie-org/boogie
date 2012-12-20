@@ -1,0 +1,11 @@
+
+-------------------- f1.bpl --------------------
+Summary of foo:
+g == old(g) + 1
+Summary of main:
+(old(g) == 0 ==> g == old(g) + 1)
+Prover time = 0.0260026
+Number of prover queries = 6
+Witness written to absHoudiniWitness.bpl
+
+Boogie program verifier finished with 0 verified, 0 errors

@@ -78,6 +78,7 @@
     <Compile Include="..\version.cs">
       <Link>version.cs</Link>
     </Compile>
+    <Compile Include="AbstractHoudini.cs" />
     <Compile Include="Checker.cs" />
     <Compile Include="Houdini.cs" />
   </ItemGroup>
@@ -97,6 +98,10 @@
     <ProjectReference Include="..\Graph\Graph.csproj">
       <Project>{69A2B0B8-BCAC-4101-AE7A-556FCC58C06E}</Project>
       <Name>Graph</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Model\Model.csproj">
+      <Project>{acef88d5-dadd-46da-bae1-2144d63f4c83}</Project>
+      <Name>Model</Name>
     </ProjectReference>
     <ProjectReference Include="..\ParserHelper\ParserHelper.csproj">
       <Project>{FCD3AC7F-9DFD-46C8-AB1E-09F0B0F16DC5}</Project>

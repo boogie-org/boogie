@@ -311,8 +311,11 @@ namespace Microsoft.Boogie.Houdini {
     private Graph<Implementation> callGraph;
     private HashSet<Implementation> vcgenFailures;
     private HoudiniState currentHoudiniState;
+    private CrossDependencies crossDependencies;
 
-    public HoudiniState CurrentHoudiniState { get { return currentHoudiniState; } }
+    public HoudiniState CurrentHoudiniState { get { return currentHoudiniState; } }    
+
+    public static TextWriter explainHoudiniDottyFile;
 
     public Houdini(Program program) {
       this.program = program;
@@ -327,8 +330,15 @@ namespace Microsoft.Boogie.Houdini {
       if (CommandLineOptions.Clo.Trace)
         Console.WriteLine("Number of implementations = {0}", callGraph.Nodes.Count);
 
+      if (CommandLineOptions.Clo.HoudiniUseCrossDependencies)
+      {
+          if (CommandLineOptions.Clo.Trace) Console.WriteLine("Computing procedure cross dependencies ...");
+          this.crossDependencies = new CrossDependencies(this.houdiniConstants);
+          this.crossDependencies.Visit(program);
+      }
+
       Inline();
-      
+
       this.vcgen = new VCGen(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend);
       this.proverInterface = ProverInterface.CreateProver(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend, CommandLineOptions.Clo.ProverKillTime);
 
@@ -351,6 +361,16 @@ namespace Microsoft.Boogie.Houdini {
       }
       this.houdiniSessions = new ReadOnlyDictionary<Implementation, HoudiniSession>(houdiniSessions);
       currentHoudiniState = new HoudiniState(BuildWorkList(program), BuildAssignment(houdiniConstants));
+
+      if (CommandLineOptions.Clo.ExplainHoudini)
+      {
+          // Print results of ExplainHoudini to a dotty file
+          explainHoudiniDottyFile = new StreamWriter("explainHoudini.dot");
+          explainHoudiniDottyFile.WriteLine("digraph explainHoudini {");
+          foreach (var constant in houdiniConstants)
+              explainHoudiniDottyFile.WriteLine("{0} [ label = \"{0}\" color=black ];", constant.Name);
+          explainHoudiniDottyFile.WriteLine("TimeOut [label = \"TimeOut\" color=red ];");
+      }
     }
 
     private void Inline() {
@@ -425,6 +445,58 @@ namespace Microsoft.Boogie.Houdini {
       return existentialConstants;
     }
 
+      // Compute dependencies between candidates
+    public class CrossDependencies : StandardVisitor
+    {
+        public CrossDependencies(HashSet<Variable> constants)
+        {
+            this.constants = constants;
+        }
+
+        public override Program VisitProgram(Program node)
+        {
+            assumedInImpl = new Dictionary<string, HashSet<Implementation>>();
+            inAssume = false;
+            return base.VisitProgram(node);
+        }
+
+        public override Implementation VisitImplementation(Implementation node)
+        {
+            curImpl = node;
+            return base.VisitImplementation(node);
+        }
+
+        public override Cmd VisitAssumeCmd(AssumeCmd node)
+        {
+            inAssume = true;
+            var res = base.VisitAssumeCmd(node);
+            inAssume = false;
+            return res;
+        }
+
+        public override Variable VisitVariable(Variable node)
+        {
+            if (node is Constant)
+            {
+                var constant = node as Constant;
+                if (constants.Contains(constant))
+                {
+                    if (!assumedInImpl.ContainsKey(constant.Name))
+                        assumedInImpl[constant.Name] = new HashSet<Implementation>();
+                    assumedInImpl[constant.Name].Add(curImpl);
+                }
+            }
+            return base.VisitVariable(node);
+        }
+
+        HashSet<Variable> constants;
+        Implementation curImpl;
+        bool inAssume;
+
+        // contant -> set of implementations that have an assume command with that constant
+        public Dictionary<string, HashSet<Implementation>> assumedInImpl { get; private set; }
+    }
+      
     private Graph<Implementation> BuildCallGraph() {
       Graph<Implementation> callGraph = new Graph<Implementation>();
       Dictionary<Procedure, HashSet<Implementation>> procToImpls = new Dictionary<Procedure, HashSet<Implementation>>();
@@ -499,6 +571,30 @@ namespace Microsoft.Boogie.Houdini {
           return true;
       }
       return false;
+    }
+
+    // For Explain houdini: it decorates the condition \phi as (vpos && (\phi || \not vneg))
+    // Precondition: MatchCandidate returns true
+    public Expr InsertCandidateControl(Expr boogieExpr, Variable vpos, Variable vneg)
+    {
+        Contract.Assert(CommandLineOptions.Clo.ExplainHoudini);
+
+        NAryExpr e = boogieExpr as NAryExpr;
+        if (e != null && e.Fun is BinaryOperator && ((BinaryOperator)e.Fun).Op == BinaryOperator.Opcode.Imp)
+        {
+            Expr antecedent = e.Args[0];
+            Expr consequent = e.Args[1];
+
+            IdentifierExpr id = antecedent as IdentifierExpr;
+            if (id != null && id.Decl is Constant && houdiniConstants.Contains((Constant)id.Decl))
+            {
+                return Expr.Imp(antecedent, Expr.And(Expr.Ident(vpos), Expr.Or(consequent, Expr.Not(Expr.Ident(vneg)))));
+            }
+
+            return Expr.Imp(antecedent, InsertCandidateControl(consequent, vpos, vneg));
+        }
+        Contract.Assert(false);
+        return null;
     }
 
     private Dictionary<Variable, bool> BuildAssignment(HashSet<Variable> constants) {
@@ -593,40 +689,59 @@ namespace Microsoft.Boogie.Houdini {
       Contract.Assume(currentHoudiniState.Implementation != null);
       bool dequeue = true;
 
-      switch (outcome) {
-        case ProverInterface.Outcome.Valid:
-          //yeah, dequeue
-          break;
-        case ProverInterface.Outcome.Invalid:
-          Contract.Assume(errors != null);
-          foreach (Counterexample error in errors) {
-            RefutedAnnotation refutedAnnotation = ExtractRefutedAnnotation(error);
-            if (refutedAnnotation != null) { // some candidate annotation removed
-              AddRelatedToWorkList(refutedAnnotation);
-              UpdateAssignment(refutedAnnotation);
-              dequeue = false;
-              #region Extra debugging output
-              if (CommandLineOptions.Clo.Trace)
+      switch (outcome)
+      {
+          case ProverInterface.Outcome.Valid:
+              //yeah, dequeue
+              break;
+          case ProverInterface.Outcome.Invalid:
+              Contract.Assume(errors != null);
+              foreach (Counterexample error in errors)
               {
-                  using (var cexWriter = new System.IO.StreamWriter("houdiniCexTrace.bpl", true))
-                  {
-                      cexWriter.WriteLine("Counter example for " + refutedAnnotation.Constant);
-                      cexWriter.Write(error.ToString());
-                      cexWriter.WriteLine();
-                      using (var writer = new Microsoft.Boogie.TokenTextWriter(cexWriter))
-                          foreach (Microsoft.Boogie.Block blk in error.Trace)
-                              blk.Emit(writer, 15);
-                      //cexWriter.WriteLine(); 
+                  RefutedAnnotation refutedAnnotation = ExtractRefutedAnnotation(error);
+                  if (refutedAnnotation != null)
+                  { // some candidate annotation removed
+                      AddRelatedToWorkList(refutedAnnotation);
+                      UpdateAssignment(refutedAnnotation);
+                      dequeue = false;
+                      #region Extra debugging output
+                      if (CommandLineOptions.Clo.Trace)
+                      {
+                          using (var cexWriter = new System.IO.StreamWriter("houdiniCexTrace.bpl", true))
+                          {
+                              cexWriter.WriteLine("Counter example for " + refutedAnnotation.Constant);
+                              cexWriter.Write(error.ToString());
+                              cexWriter.WriteLine();
+                              using (var writer = new Microsoft.Boogie.TokenTextWriter(cexWriter))
+                                  foreach (Microsoft.Boogie.Block blk in error.Trace)
+                                      blk.Emit(writer, 15);
+                              //cexWriter.WriteLine(); 
+                          }
+                      }
+                      #endregion
+
                   }
               }
-              #endregion
-
-            }
-          }
-          break;
-        default:
-          currentHoudiniState.addToBlackList(currentHoudiniState.Implementation.Name);
-          break;
+              break;
+          default:
+              if (CommandLineOptions.Clo.Trace)
+              {
+                  Console.WriteLine("Timeout/Spaceout while verifying " + currentHoudiniState.Implementation.Name);
+              }
+              HoudiniSession houdiniSession;
+              houdiniSessions.TryGetValue(currentHoudiniState.Implementation, out houdiniSession);
+              foreach (Variable v in houdiniSession.houdiniAssertConstants)
+              {
+                  if (CommandLineOptions.Clo.Trace)
+                  {
+                      Console.WriteLine("Removing " + v);
+                  }
+                  currentHoudiniState.Assignment.Remove(v);
+                  currentHoudiniState.Assignment.Add(v, false);
+                  this.NotifyConstant(v.Name);
+              }
+              currentHoudiniState.addToBlackList(currentHoudiniState.Implementation.Name);
+              break;
       }
       
       return dequeue;
@@ -720,6 +835,11 @@ namespace Microsoft.Boogie.Houdini {
       currentHoudiniState.Outcome.assignment = assignment;
       vcgen.Close();
       proverInterface.Close();
+      if (CommandLineOptions.Clo.ExplainHoudini)
+      {
+          explainHoudiniDottyFile.WriteLine("};");
+          explainHoudiniDottyFile.Close();
+      }
       return currentHoudiniState.Outcome;
     }
 
@@ -743,6 +863,15 @@ namespace Microsoft.Boogie.Houdini {
           }
           break;
         case RefutedAnnotationKind.ASSERT: //the implementation is already in queue
+          if (CommandLineOptions.Clo.HoudiniUseCrossDependencies && crossDependencies.assumedInImpl.ContainsKey(refutedAnnotation.Constant.Name))
+          {
+              foreach (var impl in crossDependencies.assumedInImpl[refutedAnnotation.Constant.Name])
+              {
+                  houdiniSessions.TryGetValue(impl, out session);
+                  if (session.InUnsatCore(refutedAnnotation.Constant))
+                      implementations.Add(impl);
+              }
+          }
           break;
         default:
           throw new Exception("Unknown Refuted annotation kind:" + refutedAnnotation.Kind);
@@ -880,6 +1009,26 @@ namespace Microsoft.Boogie.Houdini {
         this.NotifyOutcome(outcome);
 
         DebugRefutedCandidates(currentHoudiniState.Implementation, errors);
+
+        #region Explain Houdini
+        if (CommandLineOptions.Clo.ExplainHoudini && outcome == ProverInterface.Outcome.Invalid)
+        {
+            Contract.Assume(errors != null);
+            // make a copy of this variable
+            errors = new List<Counterexample>(errors);
+            var refutedAnnotations = new List<RefutedAnnotation>();
+            foreach (Counterexample error in errors)
+            {
+                RefutedAnnotation refutedAnnotation = ExtractRefutedAnnotation(error);
+                if (refutedAnnotation.Kind == RefutedAnnotationKind.ASSERT) continue;
+                refutedAnnotations.Add(refutedAnnotation);
+            }
+            foreach (var refutedAnnotation in refutedAnnotations)
+            {
+                session.Explain(proverInterface, currentHoudiniState.Assignment, refutedAnnotation.Constant);
+            }
+        }
+        #endregion
 
         if (UpdateHoudiniOutcome(currentHoudiniState.Outcome, currentHoudiniState.Implementation, outcome, errors)) { // abort
           currentHoudiniState.WorkQueue.Dequeue();

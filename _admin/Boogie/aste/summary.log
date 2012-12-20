@@ -1,15 +1,11 @@
-# Aste started: 2012-10-05 07:00:01
+# Aste started: 2012-11-23 07:00:05
 # Host id: Boogiebox
 # Configuration: boogie.cfg
 # Task: aste.tasks.boogie.FullBuild
-# [2012-10-05 07:01:53] SpecSharp revision: 394202217a94
-# [2012-10-05 07:01:53] SscBoogie revision: 394202217a94
-# [2012-10-05 07:03:28] Boogie revision: 68e029f39416
-[2012-10-05 07:04:36] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com SpecSharp.sln /Project "Checkin Tests" /Build
-
-    1>corflags : warning CF011: The specified file is strong name signed.  Using /Force will invalidate the signature of this image and will require the assembly to be resigned.
-    warning CF011: The specified file is strong name signed.  Using /Force will invalidate the signature of this image and will require the assembly to be resigned.
-[2012-10-05 07:04:58] [Error] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Dafny.sln /Rebuild Checked
+# [2012-11-23 07:01:57] SpecSharp revision: 837b161b3297
+# [2012-11-23 07:01:57] SscBoogie revision: 837b161b3297
+# [2012-11-23 07:02:45] Boogie revision: f27f6d697f86
+[2012-11-23 07:03:41] [Error] C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\devenv.com Dafny.sln /Rebuild Checked
 
     D:\Temp\aste\Boogie\Source\Dafny\Translator.cs(13,17): error CS0234: The type or namespace name 'Boogie' does not exist in the namespace 'Microsoft' (are you missing an assembly reference?)
     D:\Temp\aste\Boogie\Source\Dafny\DafnyAst.cs(11,17): error CS0234: The type or namespace name 'Boogie' does not exist in the namespace 'Microsoft' (are you missing an assembly reference?)

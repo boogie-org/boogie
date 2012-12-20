@@ -591,7 +591,7 @@ namespace Microsoft.Boogie {
       Microsoft.Boogie.AbstractInterpretation.NativeAbstractInterpretation.RunAbstractInterpretation(program);
 
       if (CommandLineOptions.Clo.LoopUnrollCount != -1) {
-        program.UnrollLoops(CommandLineOptions.Clo.LoopUnrollCount);
+        program.UnrollLoops(CommandLineOptions.Clo.LoopUnrollCount, CommandLineOptions.Clo.SoundLoopUnrolling);
       }
 
       Dictionary<string, Dictionary<string, Block>> extractLoopMappingInfo = null;
@@ -616,40 +616,58 @@ namespace Microsoft.Boogie {
       }
 
       #region Run Houdini and verify
-      if (CommandLineOptions.Clo.ContractInfer) {
-        Houdini.Houdini houdini = new Houdini.Houdini(program);
-        Houdini.HoudiniOutcome outcome = houdini.PerformHoudiniInference();
-        if (CommandLineOptions.Clo.PrintAssignment) {
-          Console.WriteLine("Assignment computed by Houdini:");
-          foreach (var x in outcome.assignment) {
-            Console.WriteLine(x.Key + " = " + x.Value);
-          }
-        }
-        if (CommandLineOptions.Clo.Trace) 
-        {
-          int numTrueAssigns = 0;
-          foreach (var x in outcome.assignment) {
-            if (x.Value)
-              numTrueAssigns++;
-          }
-          Console.WriteLine("Number of true assignments = " + numTrueAssigns);
-          Console.WriteLine("Number of false assignments = " + (outcome.assignment.Count - numTrueAssigns));
-          Console.WriteLine("Prover time = " + Houdini.HoudiniSession.proverTime);
-          Console.WriteLine("Unsat core prover time = " + Houdini.HoudiniSession.unsatCoreProverTime);
-          Console.WriteLine("Number of prover queries = " + Houdini.HoudiniSession.numProverQueries);
-          Console.WriteLine("Number of unsat core prover queries = " + Houdini.HoudiniSession.numUnsatCoreProverQueries);
-          Console.WriteLine("Number of unsat core prunings = " + Houdini.HoudiniSession.numUnsatCorePrunings);
-        }
+      if (CommandLineOptions.Clo.ContractInfer)
+      {
+          if (CommandLineOptions.Clo.AbstractHoudini != null)
+          {
+              CommandLineOptions.Clo.PrintErrorModel = 1;
+              CommandLineOptions.Clo.UseArrayTheory = true;
+              CommandLineOptions.Clo.TypeEncodingMethod = CommandLineOptions.TypeEncoding.Monomorphic;
 
-        foreach (Houdini.VCGenOutcome x in outcome.implementationOutcomes.Values) {
-          ProcessOutcome(x.outcome, x.errors, "", ref errorCount, ref verified, ref inconclusives, ref timeOuts, ref outOfMemories);
-        }
-        //errorCount = outcome.ErrorCount;
-        //verified = outcome.Verified;
-        //inconclusives = outcome.Inconclusives;
-        //timeOuts = outcome.TimeOuts;
-        //outOfMemories = 0;
-        return PipelineOutcome.Done;
+              // Run Abstract Houdini
+              Houdini.PredicateAbs.Initialize(program);
+              var abs = new Houdini.AbstractHoudini(program);
+              abs.computeSummaries(new Houdini.PredicateAbs(program.TopLevelDeclarations.OfType<Implementation>().First().Name));
+
+              return PipelineOutcome.Done;
+          }
+          Houdini.Houdini houdini = new Houdini.Houdini(program);
+          Houdini.HoudiniOutcome outcome = houdini.PerformHoudiniInference();
+          if (CommandLineOptions.Clo.PrintAssignment)
+          {
+              Console.WriteLine("Assignment computed by Houdini:");
+              foreach (var x in outcome.assignment)
+              {
+                  Console.WriteLine(x.Key + " = " + x.Value);
+              }
+          }
+          if (CommandLineOptions.Clo.Trace)
+          {
+              int numTrueAssigns = 0;
+              foreach (var x in outcome.assignment)
+              {
+                  if (x.Value)
+                      numTrueAssigns++;
+              }
+              Console.WriteLine("Number of true assignments = " + numTrueAssigns);
+              Console.WriteLine("Number of false assignments = " + (outcome.assignment.Count - numTrueAssigns));
+              Console.WriteLine("Prover time = " + Houdini.HoudiniSession.proverTime.ToString("F2"));
+              Console.WriteLine("Unsat core prover time = " + Houdini.HoudiniSession.unsatCoreProverTime.ToString("F2"));
+              Console.WriteLine("Number of prover queries = " + Houdini.HoudiniSession.numProverQueries);
+              Console.WriteLine("Number of unsat core prover queries = " + Houdini.HoudiniSession.numUnsatCoreProverQueries);
+              Console.WriteLine("Number of unsat core prunings = " + Houdini.HoudiniSession.numUnsatCorePrunings);
+          }
+
+          foreach (Houdini.VCGenOutcome x in outcome.implementationOutcomes.Values)
+          {
+              ProcessOutcome(x.outcome, x.errors, "", ref errorCount, ref verified, ref inconclusives, ref timeOuts, ref outOfMemories);
+          }
+          //errorCount = outcome.ErrorCount;
+          //verified = outcome.Verified;
+          //inconclusives = outcome.Inconclusives;
+          //timeOuts = outcome.TimeOuts;
+          //outOfMemories = 0;
+          return PipelineOutcome.Done;
       }
       #endregion
 

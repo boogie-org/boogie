@@ -341,7 +341,7 @@ namespace Microsoft.Boogie {
       }
     }
 
-    public void UnrollLoops(int n) {
+    public void UnrollLoops(int n, bool uc) {
       Contract.Requires(0 <= n);
       foreach (Declaration d in this.TopLevelDeclarations) {
         Implementation impl = d as Implementation;
@@ -351,7 +351,7 @@ namespace Microsoft.Boogie {
             Block start = impl.Blocks[0];
             Contract.Assume(start != null);
             Contract.Assume(cce.IsConsistent(start));
-            impl.Blocks = LoopUnroll.UnrollLoops(start, n);
+            impl.Blocks = LoopUnroll.UnrollLoops(start, n, uc);
           }
           cce.EndExpose();
         }
@@ -522,7 +522,7 @@ namespace Microsoft.Boogie {
       // header_last block that was created because of splitting header.
       Dictionary<Block, Block> newBlocksCreated = new Dictionary<Block, Block>();
 
-      bool headRecursion = false; // testing an option to put recursive call before loop body 
+      bool headRecursion = false; // testing an option to put recursive call before loop body
 
       IEnumerable<Block> sortedHeaders = g.SortHeadersByDominance();
       foreach (Block/*!*/ header in sortedHeaders)
@@ -816,6 +816,13 @@ namespace Microsoft.Boogie {
 
     public Dictionary<string, Dictionary<string, Block>> ExtractLoops()
     {
+        HashSet<string> procsWithIrreducibleLoops = null;
+        return ExtractLoops(out procsWithIrreducibleLoops);
+    }
+
+    public Dictionary<string, Dictionary<string, Block>> ExtractLoops(out HashSet<string> procsWithIrreducibleLoops)
+    {
+        procsWithIrreducibleLoops = new HashSet<string>();
         List<Implementation/*!*/>/*!*/ loopImpls = new List<Implementation/*!*/>();
         Dictionary<string, Dictionary<string, Block>> fullMap = new Dictionary<string, Dictionary<string, Block>>();
         foreach (Declaration d in this.TopLevelDeclarations)
@@ -832,6 +839,7 @@ namespace Microsoft.Boogie {
                 {
                     System.Diagnostics.Debug.Assert(!fullMap.ContainsKey(impl.Name));
                     fullMap[impl.Name] = null;
+                    procsWithIrreducibleLoops.Add(impl.Name);
 
                     // statically unroll loops in this procedure
 
@@ -841,7 +849,7 @@ namespace Microsoft.Boogie {
 
                     // unroll
                     Block start = impl.Blocks[0];
-                    impl.Blocks = LoopUnroll.UnrollLoops(start, CommandLineOptions.Clo.RecursionBound);
+                    impl.Blocks = LoopUnroll.UnrollLoops(start, CommandLineOptions.Clo.RecursionBound, false);
 
                     // Now construct the "map back" information
                     // Resulting block label -> original block

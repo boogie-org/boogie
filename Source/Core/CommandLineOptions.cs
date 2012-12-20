@@ -393,6 +393,9 @@ namespace Microsoft.Boogie {
     public int /*(0:3)*/ ErrorTrace = 1;
     public bool IntraproceduralInfer = true;
     public bool ContractInfer = false;
+    public bool ExplainHoudini = false;
+    public bool HoudiniUseCrossDependencies = false;
+    public string AbstractHoudini = null;
     public bool UseUnsatCoreForContractInfer = false;
     public bool PrintAssignment = false;
     public int InlineDepth = -1;
@@ -437,6 +440,7 @@ namespace Microsoft.Boogie {
     }
 
     public int LoopUnrollCount = -1;  // -1 means don't unroll loops
+    public bool SoundLoopUnrolling = false;
     public int LoopFrameConditions = -1;  // -1 means not specified -- this will be replaced by the "implications" section below
     public int ModifiesDefault = 5;
     public bool LocalModifiesChecks = true;
@@ -849,6 +853,14 @@ namespace Microsoft.Boogie {
             return true;
           }
 
+        case "abstractHoudini":
+            {
+                if (ps.ConfirmArgumentCount(1))
+                {
+                    AbstractHoudini = args[ps.i];
+                }
+                return true;
+            }
         case "vc":
           if (ps.ConfirmArgumentCount(1)) {
             switch (args[ps.i]) {
@@ -1182,6 +1194,7 @@ namespace Microsoft.Boogie {
               ps.CheckBooleanFlag("alwaysAssumeFreeLoopInvariants", ref AlwaysAssumeFreeLoopInvariants, true) ||
               ps.CheckBooleanFlag("nologo", ref DontShowLogo) ||
               ps.CheckBooleanFlag("proverLogAppend", ref SimplifyLogFileAppend) ||
+              ps.CheckBooleanFlag("soundLoopUnrolling", ref SoundLoopUnrolling) ||
               ps.CheckBooleanFlag("checkInfer", ref InstrumentWithAsserts) ||
               ps.CheckBooleanFlag("interprocInfer", ref IntraproceduralInfer, false) ||
               ps.CheckBooleanFlag("restartProver", ref RestartProverPerVC) ||
@@ -1198,6 +1211,8 @@ namespace Microsoft.Boogie {
               ps.CheckBooleanFlag("doModSetAnalysis", ref DoModSetAnalysis) ||
               ps.CheckBooleanFlag("doNotUseLabels", ref UseLabels, false) ||
               ps.CheckBooleanFlag("contractInfer", ref ContractInfer) ||
+              ps.CheckBooleanFlag("explainHoudini", ref ExplainHoudini) ||
+              ps.CheckBooleanFlag("crossDependencies", ref HoudiniUseCrossDependencies) ||
               ps.CheckBooleanFlag("useUnsatCoreForContractInfer", ref UseUnsatCoreForContractInfer) ||
               ps.CheckBooleanFlag("printAssignment", ref PrintAssignment) ||
               ps.CheckBooleanFlag("nonUniformUnfolding", ref NonUniformUnfolding) ||
@@ -1421,6 +1436,8 @@ namespace Microsoft.Boogie {
 
   /loopUnroll:<n>
                 unroll loops, following up to n back edges (and then some)
+  /soundLoopUnrolling
+                sound loop unrolling
   /printModel:<n>
                 0 (default) - do not print Z3's error model
                 1 - print Z3's error model
