@@ -45,7 +45,7 @@ namespace Microsoft.Boogie.SMTLib
     public bool OptimizeForBv = false;
 
     public bool ProduceModel() {
-      return !CommandLineOptions.Clo.UseLabels ||
+      return !CommandLineOptions.Clo.UseLabels || CommandLineOptions.Clo.ExplainHoudini ||
              ExpectingModel();
     }
 

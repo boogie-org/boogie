@@ -369,6 +369,7 @@ namespace Microsoft.Boogie.Houdini {
           explainHoudiniDottyFile.WriteLine("digraph explainHoudini {");
           foreach (var constant in houdiniConstants)
               explainHoudiniDottyFile.WriteLine("{0} [ label = \"{0}\" color=black ];", constant.Name);
+          explainHoudiniDottyFile.WriteLine("TimeOut [label = \"TimeOut\" color=red ];");
       }
     }
 

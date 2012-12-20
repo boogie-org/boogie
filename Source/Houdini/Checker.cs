@@ -65,7 +65,7 @@ namespace Microsoft.Boogie.Houdini {
         if (houdini.MatchCandidate(assertCmd.Expr, out houdiniConstant))
             houdiniAssertConstants.Add(houdiniConstant);
         
-        if (houdiniConstant != null && CommandLineOptions.Clo.ExplainHoudini)
+        if (houdiniConstant != null && CommandLineOptions.Clo.ExplainHoudini && !constToControl.ContainsKey(houdiniConstant.Name))
         {
             // For each houdini constant c, create two more constants c_pos and c_neg.
             // Then change the asserted condition (c ==> \phi) to
@@ -334,49 +334,65 @@ namespace Microsoft.Boogie.Houdini {
         var el = CommandLineOptions.Clo.ProverCCLimit;
         CommandLineOptions.Clo.ProverCCLimit = 1;
 
-        List<int> unsatisfiedSoftAssumptions;
-        
-        hardAssumptions.Add(controlExprNoop);
-        proverInterface.CheckAssumptions(hardAssumptions, softAssumptions, out unsatisfiedSoftAssumptions, handler);
-        hardAssumptions.RemoveAt(hardAssumptions.Count - 1);
+        var outcome = ProverInterface.Outcome.Undetermined;
 
-        var reason = new HashSet<string>();
-        unsatisfiedSoftAssumptions.Iter(i => reason.Add(softAssumptions[i].ToString()));
-        if (CommandLineOptions.Clo.Trace)
+        do
         {
-            Console.Write("Reason for removal of {0}: ", refutedConstant.Name);
-            reason.Iter(r => Console.Write("{0} ", r));
-            Console.WriteLine();
-        }
+            List<int> unsatisfiedSoftAssumptions;
 
-        // Get rid of those constants from the "reason" that can even make
-        // "assert false" pass
+            hardAssumptions.Add(controlExprNoop);
+            outcome = proverInterface.CheckAssumptions(hardAssumptions, softAssumptions, out unsatisfiedSoftAssumptions, handler);
+            hardAssumptions.RemoveAt(hardAssumptions.Count - 1);
 
-        hardAssumptions.Add(controlExprFalse);
-        var softAssumptions2 = new List<VCExpr>();
-        for (int i = 0; i < softAssumptions.Count; i++)
-        {
-            if (unsatisfiedSoftAssumptions.Contains(i))
+            if (outcome == ProverInterface.Outcome.TimeOut || outcome == ProverInterface.Outcome.OutOfMemory || outcome == ProverInterface.Outcome.Undetermined)
+                break;
+
+            var reason = new HashSet<string>();
+            unsatisfiedSoftAssumptions.Iter(i => reason.Add(softAssumptions[i].ToString()));
+            if (CommandLineOptions.Clo.Trace)
             {
-                softAssumptions2.Add(softAssumptions[i]);
-                continue;
+                Console.Write("Reason for removal of {0}: ", refutedConstant.Name);
+                reason.Iter(r => Console.Write("{0} ", r));
+                Console.WriteLine();
             }
-            hardAssumptions.Add(softAssumptions[i]);
-        }
 
-        var unsatisfiedSoftAssumptions2 = new List<int>();
-        proverInterface.CheckAssumptions(hardAssumptions, softAssumptions2, out unsatisfiedSoftAssumptions2, handler);
+            // Get rid of those constants from the "reason" that can even make
+            // "assert false" pass
 
-        unsatisfiedSoftAssumptions2.Iter(i => reason.Remove(softAssumptions2[i].ToString()));
-        if (CommandLineOptions.Clo.Trace)
+            hardAssumptions.Add(controlExprFalse);
+            var softAssumptions2 = new List<VCExpr>();
+            for (int i = 0; i < softAssumptions.Count; i++)
+            {
+                if (unsatisfiedSoftAssumptions.Contains(i))
+                {
+                    softAssumptions2.Add(softAssumptions[i]);
+                    continue;
+                }
+                hardAssumptions.Add(softAssumptions[i]);
+            }
+
+            var unsatisfiedSoftAssumptions2 = new List<int>();
+            outcome = proverInterface.CheckAssumptions(hardAssumptions, softAssumptions2, out unsatisfiedSoftAssumptions2, handler);
+
+            if (outcome == ProverInterface.Outcome.TimeOut || outcome == ProverInterface.Outcome.OutOfMemory || outcome == ProverInterface.Outcome.Undetermined)
+                break;
+
+            unsatisfiedSoftAssumptions2.Iter(i => reason.Remove(softAssumptions2[i].ToString()));
+            if (CommandLineOptions.Clo.Trace)
+            {
+                Console.Write("Revised reason for removal of {0}: ", refutedConstant.Name);
+                reason.Iter(r => Console.Write("{0} ", r));
+                Console.WriteLine();
+            }
+            foreach (var r in reason)
+            {
+                Houdini.explainHoudiniDottyFile.WriteLine("{0} -> {1} [ label = \"{2}\" color=red ];", refutedConstant.Name, r, implementation.Name);
+            }
+        } while (false);
+
+        if (outcome == ProverInterface.Outcome.TimeOut || outcome == ProverInterface.Outcome.OutOfMemory || outcome == ProverInterface.Outcome.Undetermined)
         {
-            Console.Write("Revised reason for removal of {0}: ", refutedConstant.Name);
-            reason.Iter(r => Console.Write("{0} ", r));
-            Console.WriteLine();
-        }
-        foreach (var r in reason)
-        {
-            Houdini.explainHoudiniDottyFile.WriteLine("{0} -> {1} [ label = \"\" color=red ];", refutedConstant.Name, r);
+            Houdini.explainHoudiniDottyFile.WriteLine("{0} -> {1} [ label = \"{2}\" color=red ];", refutedConstant.Name, "TimeOut", implementation.Name);
         }
 
         CommandLineOptions.Clo.ProverCCLimit = el;
