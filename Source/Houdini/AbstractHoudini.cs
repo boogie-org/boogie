@@ -22,7 +22,7 @@ namespace Microsoft.Boogie.Houdini {
         // Impl -> Vars at end of the impl
         Dictionary<string, List<VCExpr>> impl2EndStateVars;
         // Impl -> (callee,summary pred)
-        Dictionary<string, List<Tuple<string, bool, VCExprNAry>>> impl2CalleeSummaries;
+        Dictionary<string, List<Tuple<string, bool, VCExprVar, VCExprNAry>>> impl2CalleeSummaries;
         // pointer to summary class
         ISummaryElement summaryClass;
         // impl -> summary
@@ -51,7 +51,7 @@ namespace Microsoft.Boogie.Houdini {
             this.program = program;
             this.impl2VC = new Dictionary<string, VCExpr>();
             this.impl2EndStateVars = new Dictionary<string, List<VCExpr>>();
-            this.impl2CalleeSummaries = new Dictionary<string, List<Tuple<string, bool, VCExprNAry>>>();
+            this.impl2CalleeSummaries = new Dictionary<string, List<Tuple<string, bool, VCExprVar, VCExprNAry>>>();
             this.impl2Summary = new Dictionary<string, ISummaryElement>();
             this.name2Impl = SimpleUtil.nameImplMapping(program);
 
@@ -68,6 +68,9 @@ namespace Microsoft.Boogie.Houdini {
 
         public void computeSummaries(ISummaryElement summaryClass)
         {
+            //PredicateAbs.FindUnsatPairs(prover.VCExprGen, prover);
+            //throw new AbsHoudiniInternalError("Done");
+
             this.summaryClass = summaryClass;
 
             name2Impl.Values.Iter(attachEnsures);
@@ -440,7 +443,7 @@ namespace Microsoft.Boogie.Houdini {
 
                 var calleeSummary = 
                     impl2Summary[tup.Item1].GetSummaryExpr(
-                       GetVarMapping(name2Impl[tup.Item1], tup.Item3), prover.VCExprGen);
+                       GetVarMapping(name2Impl[tup.Item1], tup.Item4), prover.VCExprGen);
                 env = gen.AndSimp(env, gen.Eq(tup.Item3, calleeSummary));
             }
 
@@ -469,7 +472,7 @@ namespace Microsoft.Boogie.Houdini {
 
                     var ts =
                         query.GetSummaryExpr(
-                           GetVarMapping(name2Impl[tup.Item1], tup.Item3), prover.VCExprGen);
+                           GetVarMapping(name2Impl[tup.Item1], tup.Item4), prover.VCExprGen);
                     summaryExpr = gen.AndSimp(summaryExpr, gen.Eq(tup.Item3, ts));
                 }
                 //Console.WriteLine("Trying summary for {0}: {1}", impl.Name, summaryExpr);
@@ -489,8 +492,12 @@ namespace Microsoft.Boogie.Houdini {
                 prover.BeginCheck(impl.Name, vc, reporter);
                 ProverInterface.Outcome proverOutcome = prover.CheckOutcome(reporter);
                 
-                proverTime += (DateTime.Now - start);
+                var inc = (DateTime.Now - start);
+                proverTime += inc;
                 numProverQueries++;
+
+                if(CommandLineOptions.Clo.Trace)
+                    Console.WriteLine("Time taken = " + inc.TotalSeconds.ToString()); 
 
                 if (UseBilateralAlgo)
                 {
@@ -640,13 +647,27 @@ namespace Microsoft.Boogie.Houdini {
         {
             if (arg is VCExprLiteral)
             {
-                return model.GetElement(arg.ToString());
+                //return model.GetElement(arg.ToString());
+                return model.MkElement(arg.ToString());
             }
             else if (arg is VCExprVar)
             {
-                var el = model.GetFunc(prover.Context.Lookup(arg as VCExprVar));
-                Debug.Assert(el.Arity == 0 && el.AppCount == 1);
-                return el.Apps.First().Result;
+                var el = model.TryGetFunc(prover.Context.Lookup(arg as VCExprVar));
+                if (el != null)
+                {
+                    Debug.Assert(el.Arity == 0 && el.AppCount == 1);
+                    return el.Apps.First().Result;
+                }
+                else
+                {
+                    // Variable not defined; assign arbitrary value
+                    if (arg.Type.IsBool)
+                        return model.MkElement("false");
+                    else if (arg.Type.IsInt)
+                        return model.MkIntElement(0);
+                    else
+                        return null;
+                }
             }
             else
             {
@@ -724,14 +745,6 @@ namespace Microsoft.Boogie.Houdini {
             var gen = prover.VCExprGen;
             var vcexpr = vcgen.GenerateVC(impl, null, out label2absy, prover.Context);
 
-            // Create a macro so that the VC can sit with the theorem prover
-            Macro macro = new Macro(Token.NoToken, impl.Name + "Macro", new VariableSeq(), new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "", Bpl.Type.Bool), false));
-            prover.DefineMacro(macro, vcexpr);
-
-            // Store VC
-            impl2VC.Add(impl.Name, gen.Function(macro));
-
-            //Console.WriteLine("VC of {0}: {1}", impl.Name, vcexpr);
 
             // Find the assert
             impl2EndStateVars.Add(impl.Name, new List<VCExpr>());
@@ -756,17 +769,29 @@ namespace Microsoft.Boogie.Houdini {
                         .Iter(expr => impl2EndStateVars[impl.Name].Add(prover.Context.BoogieExprTranslator.Translate(expr)));
                 }
             }
-            Debug.Assert(found);
+
+            // It is possible that no assert is found in the procedure. It happens when the
+            // procedure doesn't return.
+            //Debug.Assert(found);
 
             // Grab summary predicates
             var visitor = new FindSummaryPred(prover.VCExprGen, assertId);
-            visitor.Mutate(vcexpr, true);
+            vcexpr = visitor.Mutate(vcexpr, true);
+
+            // Create a macro so that the VC can sit with the theorem prover
+            Macro macro = new Macro(Token.NoToken, impl.Name + "Macro", new VariableSeq(), new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "", Bpl.Type.Bool), false));
+            prover.DefineMacro(macro, vcexpr);
+
+            // Store VC
+            impl2VC.Add(impl.Name, gen.Function(macro));
+
+            //Console.WriteLine("VC of {0}: {1}", impl.Name, vcexpr);
 
             // check sanity: only one predicate for self-summary
             // (There may be none when the procedure doesn't return)
             Debug.Assert(visitor.summaryPreds.Count(tup => tup.Item2) <= 1);
 
-            impl2CalleeSummaries.Add(impl.Name, new List<Tuple<string, bool, VCExprNAry>>());
+            impl2CalleeSummaries.Add(impl.Name, new List<Tuple<string, bool, VCExprVar, VCExprNAry>>());
             visitor.summaryPreds.Iter(tup => impl2CalleeSummaries[impl.Name].Add(tup));
         }
     }
@@ -953,8 +978,8 @@ namespace Microsoft.Boogie.Houdini {
 
         public override string ToString()
         {
-            //if (name != null)
-            //    return name;
+            if (name != null)
+                return name;
 
             return expr.ToString();
         }
@@ -1134,7 +1159,7 @@ namespace Microsoft.Boogie.Houdini {
             throw new AbsHoudiniInternalError("Cannot handle this case");
         }
 
-        private VCExpr ToVcVar(string v, Dictionary<string, VCExpr> incarnations, bool tryOld)
+        private static VCExpr ToVcVar(string v, Dictionary<string, VCExpr> incarnations, bool tryOld)
         {
             if (tryOld)
             {
@@ -1152,6 +1177,91 @@ namespace Microsoft.Boogie.Houdini {
             }
 
             throw new AbsHoudiniInternalError("Cannot handle this case");
+        }
+
+        public static void FindUnsatPairs(VCExpressionGenerator gen, ProverInterface prover)
+        {
+            for (int i = 0; i < PrePreds["main"].Count(); i++)
+            {
+                for (int j = i + 1; j < PrePreds["main"].Count(); j++)
+                {
+                    if (!CheckIfUnsat(PrePreds["main"][i].expr, PrePreds["main"][j].expr, gen, prover))
+                        continue;
+                    Console.WriteLine("Proved UNSAT: {0}    {1}", PrePreds["main"][i].expr, PrePreds["main"][j].expr);
+                }
+            }
+
+        }
+
+        // Is a ^ b UNSAT?
+        private static bool CheckIfUnsat(Expr a, Expr b, VCExpressionGenerator gen, ProverInterface prover)
+        {
+            var gatherLitA = new GatherLiterals();
+            var gatherLitB = new GatherLiterals();
+
+            gatherLitA.Visit(a);
+            gatherLitB.Visit(b);
+
+            // Create fresh variables
+            var counter = 0;
+            var incarnations = new Dictionary<string, VCExpr>();
+            foreach (var literal in gatherLitA.literals.Concat(gatherLitB.literals))
+            {
+                if (incarnations.ContainsKey(literal.Item2.ToString()))
+                    continue;
+
+                //if(!literal.Item1.TypedIdent.Type.IsInt && !literal.Item1.TypedIdent.Type.IsBool)
+                var v = gen.Variable("UNSATCheck" + counter, literal.Item1.TypedIdent.Type);
+                incarnations.Add(literal.Item2.ToString(), v);
+                counter++;
+            }
+
+            var vc1 = ToVcExpr(a, incarnations, gen);
+            var vc2 = ToVcExpr(b, incarnations, gen);
+            var vc = gen.LabelPos("Temp", gen.And(vc1, vc2));
+
+            // check
+            prover.FlushAxiomsToTheoremProver();
+            prover.Push();
+            prover.Assert(vc, true);
+            prover.Check();
+            var outcome = prover.CheckOutcomeCore(new AbstractHoudiniErrorReporter());
+            prover.Pop();
+
+            if (outcome == ProverInterface.Outcome.Valid)
+                return true;
+            return false;
+        }
+
+        class GatherLiterals : StandardVisitor
+        {
+            public List<Tuple<Variable, Expr>> literals;
+            bool inOld;
+
+            public GatherLiterals()
+            {
+                literals = new List<Tuple<Variable, Expr>>();
+                inOld = false;
+            }
+
+            public override Expr VisitOldExpr(OldExpr node)
+            {
+                var prev = inOld;
+                inOld = true;
+                var ret = base.VisitOldExpr(node);
+                inOld = prev;
+                return ret;
+            }
+
+            public override Expr VisitIdentifierExpr(IdentifierExpr node)
+            {
+                if (inOld)
+                    literals.Add(Tuple.Create(node.Decl, new OldExpr(Token.NoToken, node) as Expr));
+                else
+                    literals.Add(Tuple.Create(node.Decl, node as Expr));
+
+                return node;
+            }
         }
 
         private object ToValue(Model.Element elem)
@@ -1192,7 +1302,7 @@ namespace Microsoft.Boogie.Houdini {
             return Substituter.ApplyReplacingOldExprs(substalways, substold, expr);
         }
 
-        private VCExpr ToVcExpr(Expr expr, Dictionary<string, VCExpr> incarnations, VCExpressionGenerator gen)
+        private static VCExpr ToVcExpr(Expr expr, Dictionary<string, VCExpr> incarnations, VCExpressionGenerator gen)
         {
             if (expr is LiteralExpr)
             {
@@ -1254,7 +1364,7 @@ namespace Microsoft.Boogie.Houdini {
             throw new NotImplementedException(string.Format("Expr of type {0} is not handled", expr.GetType().ToString()));
         }
 
-        private VCExprOp Translate(BinaryOperator op)
+        private static VCExprOp Translate(BinaryOperator op)
         {
             switch (op.Op)
             {
@@ -1670,13 +1780,14 @@ namespace Microsoft.Boogie.Houdini {
 
     class FindSummaryPred : MutatingVCExprVisitor<bool>
     {
-        public List<Tuple<string, bool, VCExprNAry>> summaryPreds;
+        public List<Tuple<string, bool, VCExprVar, VCExprNAry>> summaryPreds;
         int assertId;
+        private static int CounterId = 0;
 
         public FindSummaryPred(VCExpressionGenerator gen, int assertId)
             : base(gen)
         {
-            summaryPreds = new List<Tuple<string, bool, VCExprNAry>>();
+            summaryPreds = new List<Tuple<string, bool, VCExprVar, VCExprNAry>>();
             this.assertId = assertId;
         }
 
@@ -1698,7 +1809,6 @@ namespace Microsoft.Boogie.Houdini {
             VCExprNAry retnary = ret as VCExprNAry;
             if (retnary == null) return ret;
             var op = retnary.Op as VCExprBoogieFunctionOp;
-            var selfSummary = false;
 
             if (op == null)
             {
@@ -1707,13 +1817,21 @@ namespace Microsoft.Boogie.Houdini {
                 if (lop.pos) return ret;
                 if (!lop.label.Equals("@" + assertId.ToString())) return ret;
                 
-                var subexpr = retnary[0] as VCExprNAry;
-                if (subexpr == null) return ret;
-                op = subexpr.Op as VCExprBoogieFunctionOp;
-                if (op == null) return ret;
+                //var subexpr = retnary[0] as VCExprNAry;
+                //if (subexpr == null) return ret;
+                //op = subexpr.Op as VCExprBoogieFunctionOp;
+                //if (op == null) return ret;
 
-                selfSummary = true;
-                retnary = subexpr;
+                var subexpr = retnary[0] as VCExprVar;
+                if (subexpr == null) return ret;
+                if (!subexpr.Name.StartsWith("AbstractHoudiniControl")) return ret;
+
+                for (int i = 0; i < summaryPreds.Count; i++)
+                {
+                    if (summaryPreds[i].Item3 == subexpr)
+                        summaryPreds[i] = Tuple.Create(summaryPreds[i].Item1, true, summaryPreds[i].Item3, summaryPreds[i].Item4);
+                }
+                return ret;
             }
 
             string calleeName = op.Func.Name;
@@ -1721,21 +1839,13 @@ namespace Microsoft.Boogie.Houdini {
             if (!calleeName.EndsWith(AbstractHoudini.summaryPredSuffix))
                 return ret;
 
-            if (selfSummary)
-            {
-                // This summary pred would have been found twice
-                var nlist = new List<Tuple<string, bool, VCExprNAry>>();
-                foreach (var tup in summaryPreds)
-                {
-                    if (tup.Item3 != retnary) nlist.Add(tup);
-                }
-                summaryPreds = nlist;
-            }
+            var controlConst = Gen.Variable("AbstractHoudiniControl" + CounterId, Microsoft.Boogie.Type.Bool);
+            CounterId++;
 
-            summaryPreds.Add(Tuple.Create(calleeName.Substring(0, calleeName.Length - AbstractHoudini.summaryPredSuffix.Length), selfSummary, retnary));
+            summaryPreds.Add(Tuple.Create(calleeName.Substring(0, calleeName.Length - AbstractHoudini.summaryPredSuffix.Length), false, controlConst, retnary));
 
-
-            return ret;
+            return controlConst;
+            //return ret;
         }
 
     }
