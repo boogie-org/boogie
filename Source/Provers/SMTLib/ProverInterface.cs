@@ -840,6 +840,8 @@ namespace Microsoft.Boogie.SMTLib
             else
                 throw new VCExprEvaluationException();
         }
+        if (resp.Name == "-" && resp.ArgCount == 1)
+            return int.Parse("-" + resp.Arguments[0].Name);
         if (resp.ArgCount != 0)
             throw new VCExprEvaluationException();
         if (expr.Type.Equals(Boogie.Type.Bool))
