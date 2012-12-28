@@ -504,7 +504,7 @@ namespace Microsoft.Boogie {
 
     }
 
-    public virtual int Evaluate(VCExpr expr)
+    public virtual object Evaluate(VCExpr expr)
     {
         throw new NotImplementedException();
     }
