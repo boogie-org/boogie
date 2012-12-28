@@ -1020,7 +1020,7 @@ namespace Microsoft.Boogie.Houdini {
             foreach (Counterexample error in errors)
             {
                 RefutedAnnotation refutedAnnotation = ExtractRefutedAnnotation(error);
-                if (refutedAnnotation.Kind == RefutedAnnotationKind.ASSERT) continue;
+                if (refutedAnnotation == null || refutedAnnotation.Kind == RefutedAnnotationKind.ASSERT) continue;
                 refutedAnnotations.Add(refutedAnnotation);
             }
             foreach (var refutedAnnotation in refutedAnnotations)
