@@ -816,6 +816,36 @@ namespace Microsoft.Boogie.SMTLib
         SendThisVC("(set-option :SOFT_TIMEOUT " + ms.ToString() + ")\n");
     }
 
+    public override int Evaluate(VCExpr expr)
+    {
+        string vcString = VCExpr2String(expr, 1);
+        SendThisVC("(get-value (" + vcString + "))");
+        var resp = Process.GetProverResponse();
+        if (resp == null) throw  new VCExprEvaluationException();
+        if (!(resp.Name == "" && resp.ArgCount == 1)) throw new VCExprEvaluationException();
+        resp = resp.Arguments[0];
+        if (resp.Name == "")
+        {
+            // evaluating an expression
+            if (resp.ArgCount == 2)
+                resp = resp.Arguments[1];
+            else
+                throw new VCExprEvaluationException();
+        }
+        else
+        {
+            // evaluating a variable
+            if (resp.ArgCount == 1)
+                resp = resp.Arguments[0];
+            else
+                throw new VCExprEvaluationException();
+        }
+        if (resp.ArgCount != 0)
+            throw new VCExprEvaluationException();
+        var v = int.Parse(resp.Name);
+        return v;
+    }
+
     /// <summary>
     /// Extra state for ApiChecker (used by stratifiedInlining)
     /// </summary>

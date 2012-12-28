@@ -498,6 +498,16 @@ namespace Microsoft.Boogie {
     public virtual void DefineMacro(Macro fun, VCExpr vc) {
       throw new NotImplementedException();
     }
+
+    public class VCExprEvaluationException : Exception
+    {
+
+    }
+
+    public virtual int Evaluate(VCExpr expr)
+    {
+        throw new NotImplementedException();
+    }
   }
 
   public class ProverInterfaceContracts : ProverInterface {
