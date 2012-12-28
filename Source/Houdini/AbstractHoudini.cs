@@ -55,8 +55,12 @@ namespace Microsoft.Boogie.Houdini {
             this.impl2Summary = new Dictionary<string, ISummaryElement>();
             this.name2Impl = SimpleUtil.nameImplMapping(program);
 
+            if (CommandLineOptions.Clo.ProverKillTime > 0)
+                CommandLineOptions.Clo.ProverOptions.Add(string.Format("TIME_LIMIT={0}", CommandLineOptions.Clo.ProverKillTime));
+
             this.vcgen = new VCGen(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend);
-            this.prover = ProverInterface.CreateProver(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend, CommandLineOptions.Clo.ProverKillTime);
+            this.prover = ProverInterface.CreateProver(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend, -1);
+
             this.reporter = new AbstractHoudiniErrorReporter();
 
             this.proverTime = TimeSpan.Zero;
@@ -68,8 +72,8 @@ namespace Microsoft.Boogie.Houdini {
 
         public void computeSummaries(ISummaryElement summaryClass)
         {
-            //PredicateAbs.FindUnsatPairs(prover.VCExprGen, prover);
-            //throw new AbsHoudiniInternalError("Done");
+            // TODO: move this some place else
+            PredicateAbs.FindUnsatPairs(prover.VCExprGen, prover);
 
             this.summaryClass = summaryClass;
 
@@ -187,7 +191,7 @@ namespace Microsoft.Boogie.Houdini {
 
         // Obtain the summary expression for a procedure: used programmatically by clients
         // of AbstractHoudini
-        private Expr GetSummary(Program program, Procedure proc)
+        public Expr GetSummary(Program program, Procedure proc)
         {
             if (!impl2Summary.ContainsKey(proc.Name))
                 return Expr.True;
@@ -428,6 +432,7 @@ namespace Microsoft.Boogie.Houdini {
         {
             var ret = false;
             var gen = prover.VCExprGen;
+            var startTime = DateTime.Now;
 
             // construct summaries
             var env = VCExpressionGenerator.True;
@@ -484,7 +489,28 @@ namespace Microsoft.Boogie.Houdini {
                 //Console.WriteLine("Checking: {0}", vc);
                 if (CommandLineOptions.Clo.Trace)
                 {
-                    Console.WriteLine("Verifying {0}: {1}", impl.Name, query);
+                    Console.WriteLine("Verifying {0} ({1}): {2}", impl.Name, usedLower ? "lower" : "ac", query);
+                }
+
+                if ((DateTime.Now - startTime).TotalSeconds > CommandLineOptions.Clo.ProverKillTime &&
+                    CommandLineOptions.Clo.ProverKillTime > 0)
+                {
+                    if (UseBilateralAlgo)
+                    {
+                        if (CommandLineOptions.Clo.Trace)
+                            Console.WriteLine("Timeout/Spaceout while verifying " + impl.Name);
+                        impl2Summary[impl.Name] = upper;
+                        ret = true;
+                        break;
+                    }
+                    else
+                    {
+                        if (CommandLineOptions.Clo.Trace)
+                            Console.WriteLine("Timeout/Spaceout while verifying " + impl.Name);
+                        impl2Summary[impl.Name] = impl2Summary[impl.Name].GetTrueSummary(program, impl);
+                        ret = true;
+                        break;
+                    }
                 }
 
                 var start = DateTime.Now;
@@ -989,7 +1015,12 @@ namespace Microsoft.Boogie.Houdini {
     {
         public static Dictionary<string, List<NamedExpr>> PrePreds { get; private set; }
         public static Dictionary<string, List<NamedExpr>> PostPreds { get; private set; }
+        public static Dictionary<Tuple<string, int>, List<PredicateAbsDisjunct>> UpperCandidates;
         private static HashSet<string> boolConstants;
+        // {proc, pred-pair} -> polariry
+        public static HashSet<Tuple<string, int, int, bool, bool>> unsatPrePredPairs;
+        public static HashSet<Tuple<string, int, int, bool, bool>> unsatPostPredPairs;
+
         // Temporary: used during eval
         private static Model model = null;
 
@@ -1010,6 +1041,7 @@ namespace Microsoft.Boogie.Houdini {
             PrePreds = new Dictionary<string, List<NamedExpr>>();
             PostPreds = new Dictionary<string, List<NamedExpr>>();
             boolConstants = new HashSet<string>();
+            UpperCandidates = new Dictionary<Tuple<string, int>, List<PredicateAbsDisjunct>>();
 
             program.TopLevelDeclarations.OfType<Constant>()
                 .Where(c => c.TypedIdent.Type.IsBool)
@@ -1042,6 +1074,7 @@ namespace Microsoft.Boogie.Houdini {
             }
 
             program.TopLevelDeclarations.RemoveAll(decl => tempP.Contains(decl));
+            var upperPreds = new Dictionary<string, List<Expr>>();
 
             foreach (var impl in program.TopLevelDeclarations.OfType<Implementation>())
             {
@@ -1072,6 +1105,13 @@ namespace Microsoft.Boogie.Houdini {
                     {
                         PostPreds[impl.Name].Add(new NamedExpr(s, ens.Condition));
                     }
+                    else if (QKeyValue.FindBoolAttribute(ens.Attributes, "upper"))
+                    {
+                        var key = impl.Name;
+                        if (!upperPreds.ContainsKey(key))
+                            upperPreds.Add(key, new List<Expr>());
+                        upperPreds[key].Add(ens.Condition);
+                    }
                     else
                     {
                         nens.Add(ens);
@@ -1079,11 +1119,123 @@ namespace Microsoft.Boogie.Houdini {
                 }
                 impl.Proc.Ensures = nens;
             }
-            
+
+            foreach (var tup in upperPreds)
+            {
+                var procName = tup.Key;
+                var candidates = tup.Value;
+                if (!candidates.Any()) continue;
+
+                var strToPost = new Dictionary<string, int>();
+                for (int i = 0; i < PostPreds[procName].Count; i++)
+                {
+                    strToPost.Add(PostPreds[procName][i].expr.ToString(), i);
+                }
+
+                foreach (var expr in candidates)
+                {
+                    if (strToPost.ContainsKey(expr.ToString()))
+                    {
+                        var key = Tuple.Create(procName, strToPost[expr.ToString()]);
+                        if (!UpperCandidates.ContainsKey(key))
+                            UpperCandidates.Add(key, new List<PredicateAbsDisjunct>());
+                        UpperCandidates[key].Add(new PredicateAbsDisjunct(true, procName));
+                    }
+                    else
+                    {
+                        // Try parsing the expression as (pre-conjunct ==> post-pred)
+                        var parsed = ParseExpr(expr, procName);
+                        if (parsed != null && strToPost.ContainsKey(parsed.Item2.ToString()))
+                        {
+                            var key = Tuple.Create(procName, strToPost[parsed.Item2.ToString()]);
+                            if (!UpperCandidates.ContainsKey(key))
+                                UpperCandidates.Add(key, new List<PredicateAbsDisjunct>());
+                            UpperCandidates[key].Add(parsed.Item1);
+                        }
+                    }
+                }
+
+            }
             //Console.WriteLine("Running Abstract Houdini");
             //PostPreds.Iter(expr => Console.WriteLine("\tPost: {0}", expr));
             //PrePreds.Iter(expr => Console.WriteLine("\tPre: {0}", expr));
         }
+
+        // Try parsing the expression as (pre-conjunct ==> post-pred)
+        private static Tuple<PredicateAbsDisjunct, Expr> ParseExpr(Expr expr, string procName)
+        {
+            Expr postExpr = null;
+            Expr preExpr = null;
+
+            // Decompose outer Implies
+            var nexpr = expr as NAryExpr;
+            if (nexpr != null && (nexpr.Fun is BinaryOperator)
+                && (nexpr.Fun as BinaryOperator).Op == BinaryOperator.Opcode.Imp
+                && (nexpr.Args.Length == 2))
+            {
+                postExpr = nexpr.Args[1];
+                preExpr = nexpr.Args[0];
+            }
+            else
+            {
+                if(CommandLineOptions.Clo.Trace) Console.WriteLine("Failed to parse {0} (ignoring)", expr);
+                return null;
+            }
+
+
+            var atoms = DecomposeOuterAnd(preExpr);
+            var pos = new HashSet<int>();
+            var neg = new HashSet<int>();
+
+            foreach (var atom in atoms)
+            {
+                var index = PrePreds[procName].FindIndex(ne => ne.expr.ToString() == atom.ToString());
+                if (index == -1)
+                {
+                    index = PrePreds[procName].FindIndex(ne => Expr.Not(ne.expr).ToString() == atom.ToString());
+                    if (index == -1)
+                    {
+                        if(CommandLineOptions.Clo.Trace) Console.WriteLine("Failed to parse {0} (ignoring)", atom);
+                        return null;
+                    }
+                    else
+                    {
+                        neg.Add(index);
+                    }
+                }
+                else
+                {
+                    pos.Add(index);
+                }
+            }
+
+            var conj = new PredicateAbsConjunct(pos, neg, procName);
+            var conjls = new List<PredicateAbsConjunct>();
+            conjls.Add(conj);
+
+            return Tuple.Create(new PredicateAbsDisjunct(conjls, procName), postExpr);
+        }
+
+        // blah && blah ==> {blah, blah}
+        static IEnumerable<Expr> DecomposeOuterAnd(Expr expr)
+        {
+            var ret = new List<Expr>();
+
+            var nexpr = expr as NAryExpr;
+            if (nexpr == null
+                || (nexpr.Fun as BinaryOperator).Op != BinaryOperator.Opcode.And)
+            {
+                    ret.Add(expr);
+            }
+            else
+            {
+                foreach (Expr a in nexpr.Args)
+                    ret.AddRange(DecomposeOuterAnd(a));
+            }
+
+            return ret;
+        }
+
 
         private Model.Element Eval(Expr expr, Dictionary<string, Model.Element> state)
         {
@@ -1181,16 +1333,65 @@ namespace Microsoft.Boogie.Houdini {
 
         public static void FindUnsatPairs(VCExpressionGenerator gen, ProverInterface prover)
         {
-            for (int i = 0; i < PrePreds["main"].Count(); i++)
+            unsatPrePredPairs = new HashSet<Tuple<string, int, int, bool, bool>>();
+            unsatPostPredPairs = new HashSet<Tuple<string, int, int, bool, bool>>(); 
+
+            var cachePos = new HashSet<Tuple<string, string>>();
+            var cacheNeg = new HashSet<Tuple<string, string>>();
+            var record = new Action<object, string, int, int, bool, bool>(
+                (map, proc, e1, e2, p1, p2) => {
+                    var key = Tuple.Create(proc, e1, e2, p1, p2);
+                    if (map == PrePreds)
+                        unsatPrePredPairs.Add(key);
+                    else
+                        unsatPostPredPairs.Add(key);
+                }
+            );
+
+            var predMaps = new List<Dictionary<string, List<NamedExpr>>>();
+            predMaps.Add(PrePreds); predMaps.Add(PostPreds);
+
+            foreach (var map in predMaps)
             {
-                for (int j = i + 1; j < PrePreds["main"].Count(); j++)
+                foreach (var proc in map.Keys)
                 {
-                    if (!CheckIfUnsat(PrePreds["main"][i].expr, PrePreds["main"][j].expr, gen, prover))
-                        continue;
-                    Console.WriteLine("Proved UNSAT: {0}    {1}", PrePreds["main"][i].expr, PrePreds["main"][j].expr);
+                    for (int i = 0; i < 2 * map[proc].Count(); i++)
+                    {
+                        var p1 = (i % 2); // polarity
+                        var e1 = map[proc][i / 2].expr;
+                        if (p1 == 0) e1 = Expr.Not(e1);
+
+                        for (int j = 2 * ((i / 2) + 1); j < 2 * map[proc].Count(); j++)
+                        {
+                            var p2 = (j % 2); // polarity
+                            var e2 = map[proc][j / 2].expr;
+                            if (p2 == 0) e2 = Expr.Not(e2);
+
+                            var key = Tuple.Create(e1.ToString(), e2.ToString());
+                            if (cachePos.Contains(key))
+                            {
+                                record(map, proc, i / 2, j / 2, p1 == 1, p2 == 1);
+                                continue;
+                            }
+                            else if (cacheNeg.Contains(key))
+                            {
+                                continue;
+                            }
+
+                            if (!CheckIfUnsat(e1, e2, gen, prover))
+                            {
+                                cacheNeg.Add(key);
+                                continue;
+                            }
+                            cachePos.Add(key);
+                            record(map, proc, i / 2, j / 2, p1 == 1, p2 == 1);
+
+                            if (CommandLineOptions.Clo.Trace)
+                                Console.WriteLine("Proved UNSAT: {0}    {1}", e1, e2);
+                        }
+                    }
                 }
             }
-
         }
 
         // Is a ^ b UNSAT?
@@ -1202,6 +1403,13 @@ namespace Microsoft.Boogie.Houdini {
             gatherLitA.Visit(a);
             gatherLitB.Visit(b);
 
+            var seta = new HashSet<Variable>();
+            var setb = new HashSet<Variable>();
+            gatherLitA.literals.Iter(tup => seta.Add(tup.Item1));
+            gatherLitB.literals.Iter(tup => setb.Add(tup.Item1));
+            seta.IntersectWith(setb);
+            if (!seta.Any()) return false;
+            
             // Create fresh variables
             var counter = 0;
             var incarnations = new Dictionary<string, VCExpr>();
@@ -1221,7 +1429,7 @@ namespace Microsoft.Boogie.Houdini {
             var vc = gen.LabelPos("Temp", gen.And(vc1, vc2));
 
             // check
-            prover.FlushAxiomsToTheoremProver();
+            prover.AssertAxioms();
             prover.Push();
             prover.Assert(vc, true);
             prover.Check();
@@ -1412,7 +1620,7 @@ namespace Microsoft.Boogie.Houdini {
             var ret = "";
             if (isFalse) return "false";
             var first = true;
-            PredicateAbsConjunct.tempProcName = procName;
+
             for(int i = 0; i < PostPreds[procName].Count; i++) 
             {
                 if(value[i].isFalse) continue;
@@ -1440,7 +1648,7 @@ namespace Microsoft.Boogie.Houdini {
         {
             var ret = new PredicateAbs(impl.Name);
             ret.isFalse = false;
-            for (int i = 0; i < PostPreds[this.procName].Count; i++) ret.value[i] = new PredicateAbsDisjunct(false);
+            for (int i = 0; i < PostPreds[this.procName].Count; i++) ret.value[i] = new PredicateAbsDisjunct(false, impl.Name);
 
             return ret;
         }
@@ -1475,10 +1683,10 @@ namespace Microsoft.Boogie.Houdini {
                 // No hope for this post pred?
                 if (!isFalse && value[i].isFalse) continue;
 
-                var newDisj = new PredicateAbsDisjunct(true);
+                var newDisj = new PredicateAbsDisjunct(true, procName);
                 if (!postPredsVal[i])
                 {
-                    newDisj = new PredicateAbsDisjunct(indexSeq.Where(j => !prePredsVal[j]), indexSeq.Where(j => prePredsVal[j]));
+                    newDisj = new PredicateAbsDisjunct(indexSeq.Where(j => !prePredsVal[j]), indexSeq.Where(j => prePredsVal[j]), procName);
                 }
 
                 if (isFalse)
@@ -1492,7 +1700,7 @@ namespace Microsoft.Boogie.Houdini {
             //Console.WriteLine("Result of Join: {0}", this.ToString());
         }
 
-        // Precondition: the upper guys are just {true/false} ==> post-pred
+        // Precondition: the upper guys are just {true/false/upper-candidate} ==> post-pred
         public void Meet(ISummaryElement iother)
         {
             var other = iother as PredicateAbs;
@@ -1507,14 +1715,7 @@ namespace Microsoft.Boogie.Houdini {
 
             for (int i = 0; i < PostPreds[this.procName].Count; i++)
             {
-                // check precondition
-                if (!value[i].isTrue && !value[i].isFalse)
-                    throw new NotImplementedException("Invalid upper domain element");
-                if (!other.value[i].isTrue && !other.value[i].isFalse)
-                    throw new NotImplementedException("Invalid upper domain element");
-
-                if (value[i].isFalse && other.value[i].isTrue)
-                    value[i] = new PredicateAbsDisjunct(true);
+                value[i] = PredicateAbsDisjunct.Or(value[i], other.value[i]);
             }
         }
 
@@ -1523,33 +1724,33 @@ namespace Microsoft.Boogie.Houdini {
             return false;
         }
 
-        // Precondition: the upper guys are just {true/false} ==> post-pred
-        // Postcondition: the returned value is also of this form
+        // Precondition: the upper guys are just {true/false/upper-candidate} ==> post-pred
+        // Postcondition: the returned value is also of this form (for just one post-pred)
         public ISummaryElement AbstractConsequence(ISummaryElement iupper)
         {
             var upper = iupper as PredicateAbs;
 
             for (int i = 0; i < PostPreds[this.procName].Count; i++)
             {
-                // check precondition
-                if (!upper.value[i].isTrue && !upper.value[i].isFalse)
-                    throw new NotImplementedException("Invalid upper domain element");
+                if (upper.value[i].isTrue) continue;
+                if (!UpperCandidates.ContainsKey(Tuple.Create(procName, i))) continue;
 
-                if (upper.value[i].isTrue)
-                    continue;
+                foreach (var candidate in UpperCandidates[Tuple.Create(procName, i)])
+                {
+                    if (PredicateAbsDisjunct.syntacticLessThan(candidate, upper.value[i]))
+                        continue;
+                    if (!this.isFalse && !PredicateAbsDisjunct.syntacticLessThan(candidate, this.value[i]))
+                        continue;
 
-                var ret = new PredicateAbs(this.procName);
-                ret.isFalse = false;
-                for (int j = 0; j < PostPreds[this.procName].Count; j++)
-                    ret.value[j] = new PredicateAbsDisjunct(false);
+                    var ret = new PredicateAbs(this.procName);
+                    ret.isFalse = false;
+                    for (int j = 0; j < PostPreds[this.procName].Count; j++)
+                        ret.value[j] = new PredicateAbsDisjunct(false, this.procName);
 
-                ret.value[i] = new PredicateAbsDisjunct(true);
+                    ret.value[i] = candidate;
 
-                // check that this \lesseq ret 
-                if (isFalse) return ret;
-
-                if (value[i].isTrue)
                     return ret;
+                }
             }
 
             // Giveup: the abstract consequence is too difficult to compute
@@ -1589,9 +1790,10 @@ namespace Microsoft.Boogie.Houdini {
         #endregion
     }
 
-    class PredicateAbsDisjunct
+    public class PredicateAbsDisjunct
     {
         List<PredicateAbsConjunct> conjuncts;
+        string ProcName;
         public bool isTrue {get; private set;}
         public bool isFalse
         {
@@ -1602,25 +1804,47 @@ namespace Microsoft.Boogie.Houdini {
             }
         }
 
-        public PredicateAbsDisjunct(bool isTrue)
+        public PredicateAbsDisjunct(bool isTrue, string ProcName)
         {
             this.isTrue = isTrue;
+            this.ProcName = ProcName;
             conjuncts = new List<PredicateAbsConjunct>();
         }
 
-        private PredicateAbsDisjunct(List<PredicateAbsConjunct> conjuncts)
+        public PredicateAbsDisjunct(List<PredicateAbsConjunct> conjuncts, string ProcName)
         {
             isTrue = false;
             this.conjuncts = conjuncts;
+            this.ProcName = ProcName;
         }
 
         // Disjunct of singleton conjuncts
-        public PredicateAbsDisjunct(IEnumerable<int> pos, IEnumerable<int> neg)
+        public PredicateAbsDisjunct(IEnumerable<int> pos, IEnumerable<int> neg, string ProcName)
         {
+            this.ProcName = ProcName;
             conjuncts = new List<PredicateAbsConjunct>();
             isTrue = false;
-            pos.Iter(p => conjuncts.Add(PredicateAbsConjunct.Singleton(p, true)));
-            neg.Iter(p => conjuncts.Add(PredicateAbsConjunct.Singleton(p, false)));
+            pos.Iter(p => conjuncts.Add(PredicateAbsConjunct.Singleton(p, true, ProcName)));
+            neg.Iter(p => conjuncts.Add(PredicateAbsConjunct.Singleton(p, false, ProcName)));
+        }
+
+        // Does d1 describe a smaller set of states than d2? This is true when every conjunct of d1
+        // is smaller than some conjunct of d2
+        public static bool syntacticLessThan(PredicateAbsDisjunct d1, PredicateAbsDisjunct d2)
+        {
+            if (d2.isTrue) return true;
+            if (d1.isTrue) return false;
+            if (d1.isFalse) return true;
+            if (d2.isFalse) return false;
+
+            foreach (var c1 in d1.conjuncts)
+            {
+                if (d2.conjuncts.Any(c2 => PredicateAbsConjunct.syntacticLessThan(c1, c2)))
+                    continue;
+                else
+                    return false;
+            }
+            return true;
         }
 
         public static PredicateAbsDisjunct And(PredicateAbsDisjunct v1, PredicateAbsDisjunct v2)
@@ -1644,7 +1868,29 @@ namespace Microsoft.Boogie.Houdini {
                 }
             }
 
-            return new PredicateAbsDisjunct(result);
+            return new PredicateAbsDisjunct(result, v1.ProcName);
+        }
+
+        public static PredicateAbsDisjunct Or(PredicateAbsDisjunct v1, PredicateAbsDisjunct v2)
+        {
+            if (v1.isTrue) return v1;
+            if (v2.isTrue) return v2;
+            if (v1.isFalse) return v2;
+            if (v2.isFalse) return v1;
+
+            var result = new List<PredicateAbsConjunct>();
+            v1.conjuncts.Iter(c => result.Add(c));
+
+            foreach (var c in v2.conjuncts)
+            {
+                if (result.Any(cprime => c.implies(cprime))) continue;
+                var tmp = new List<PredicateAbsConjunct>();
+                tmp.Add(c);
+                result.Where(cprime => !cprime.implies(c)).Iter(cprime => tmp.Add(cprime));
+                result = tmp;
+            }
+
+            return new PredicateAbsDisjunct(result, v1.ProcName);
         }
 
         public VCExpr ToVcExpr(Func<int, VCExpr> predToExpr, VCExpressionGenerator gen)
@@ -1679,14 +1925,14 @@ namespace Microsoft.Boogie.Houdini {
         }
     }
 
-    class PredicateAbsConjunct
+    public class PredicateAbsConjunct
     {
-        static int ConjunctBound = 3;
-        public static string tempProcName = null;
+        static int ConjunctBound = 2;
 
         public bool isFalse { get; private set; }
         HashSet<int> posPreds;
         HashSet<int> negPreds;
+        string ProcName;
 
         public static void Initialize(int bound)
         {
@@ -1703,33 +1949,83 @@ namespace Microsoft.Boogie.Houdini {
             }
         }
 
-        public PredicateAbsConjunct(bool isFalse)
+        // Do this step only once in a while?
+        private void StrongNormalize()
+        {
+            if (isFalse) return;
+
+            var candidates = new List<Tuple<int, bool>>();
+            posPreds.Iter(p => candidates.Add(Tuple.Create(p, true)));
+            negPreds.Iter(p => candidates.Add(Tuple.Create(p, false)));
+            var drop = new HashSet<int>();
+            for (int i = 0; i < candidates.Count; i++)
+            {
+                for (int j = 0; j < candidates.Count; j++)
+                {
+                    if (i == j) continue;
+
+                    var key = Tuple.Create(ProcName, candidates[i].Item1, candidates[j].Item1,
+                        candidates[i].Item2, candidates[j].Item2);
+                    if (PredicateAbs.unsatPrePredPairs.Contains(key))
+                    {
+                        isFalse = true;
+                        posPreds = new HashSet<int>();
+                        negPreds = new HashSet<int>();
+                        return;
+                    }
+
+                    key = Tuple.Create(ProcName, candidates[i].Item1, candidates[j].Item1,
+                        candidates[i].Item2, !candidates[j].Item2);
+
+                    if (PredicateAbs.unsatPrePredPairs.Contains(key))
+                        drop.Add(candidates[j].Item1);
+                }
+            }
+
+            posPreds.ExceptWith(drop);
+            negPreds.ExceptWith(drop);
+        }
+
+        public PredicateAbsConjunct(bool isFalse, string ProcName)
         {
             posPreds = new HashSet<int>();
             negPreds = new HashSet<int>();
             this.isFalse = isFalse;
+            this.ProcName = ProcName;
         }
 
-        public static PredicateAbsConjunct Singleton(int v, bool isPositive)
+        // do we know that c1 is surely less than or equal to c2? That is, c1 describes a smaller
+        // concretization. We check that c2 is a sub-conjunct of c1
+        public static bool syntacticLessThan(PredicateAbsConjunct c1, PredicateAbsConjunct c2)
+        {
+            if (c1.isFalse) return true;
+            if (c2.isFalse) return false;
+            return (c2.posPreds.IsSubsetOf(c1.posPreds) && c2.negPreds.IsSubsetOf(c1.negPreds));
+        }
+
+        public static PredicateAbsConjunct Singleton(int v, bool isPositive, string ProcName)
         {
             if (isPositive)
-                return new PredicateAbsConjunct(new int[] { v }, new HashSet<int>());
+                return new PredicateAbsConjunct(new int[] { v }, new HashSet<int>(), ProcName);
             else
-                return new PredicateAbsConjunct(new HashSet<int>(), new int[] { v });
+                return new PredicateAbsConjunct(new HashSet<int>(), new int[] { v }, ProcName);
         }
 
-        public PredicateAbsConjunct(IEnumerable<int> pos, IEnumerable<int> neg)
+        public PredicateAbsConjunct(IEnumerable<int> pos, IEnumerable<int> neg, string ProcName)
         {
             isFalse = false;
             posPreds = new HashSet<int>(pos);
             negPreds = new HashSet<int>(neg);
+            this.ProcName = ProcName;
             Normalize();
         }
 
         public static PredicateAbsConjunct And(PredicateAbsConjunct v1, PredicateAbsConjunct v2)
         {
-            if (v1.isFalse || v2.isFalse) return new PredicateAbsConjunct(true);
-            return new PredicateAbsConjunct(v1.posPreds.Union(v2.posPreds), v1.negPreds.Union(v2.negPreds));
+            if (v1.isFalse || v2.isFalse) return new PredicateAbsConjunct(true, v1.ProcName);
+            var ret =  new PredicateAbsConjunct(v1.posPreds.Union(v2.posPreds), v1.negPreds.Union(v2.negPreds), v1.ProcName);
+            ret.StrongNormalize();
+            return ret;
         }
 
         public bool implies(PredicateAbsConjunct v)
@@ -1766,12 +2062,12 @@ namespace Microsoft.Boogie.Houdini {
             var first = true;
             foreach (var p in posPreds)
             {
-                ret += string.Format("{0}{1}", first ? "" : " && ", PredicateAbs.PrePreds[tempProcName][p]);
+                ret += string.Format("{0}{1}", first ? "" : " && ", PredicateAbs.PrePreds[ProcName][p]);
                 first = false;
             }
             foreach (var p in negPreds)
             {
-                ret += string.Format("{0}!{1}", first ? "" : " && ", PredicateAbs.PrePreds[tempProcName][p]);
+                ret += string.Format("{0}!{1}", first ? "" : " && ", PredicateAbs.PrePreds[ProcName][p]);
                 first = false;
             }
             return ret;

@@ -623,6 +623,7 @@ namespace Microsoft.Boogie {
               CommandLineOptions.Clo.PrintErrorModel = 1;
               CommandLineOptions.Clo.UseArrayTheory = true;
               CommandLineOptions.Clo.TypeEncodingMethod = CommandLineOptions.TypeEncoding.Monomorphic;
+              CommandLineOptions.Clo.ProverCCLimit = 1;
 
               // Run Abstract Houdini
               Houdini.PredicateAbs.Initialize(program);
