@@ -399,6 +399,7 @@ namespace Microsoft.Boogie {
     public bool UseUnsatCoreForContractInfer = false;
     public bool PrintAssignment = false;
     public int InlineDepth = -1;
+    public bool UseProverEvaluate = false; // Use ProverInterface's Evaluate method, instead of model to get variable values
     public bool UseUncheckedContracts = false;
     public bool SimplifyLogFileAppend = false;
     public bool SoundnessSmokeTest = false;
@@ -1215,6 +1216,7 @@ namespace Microsoft.Boogie {
               ps.CheckBooleanFlag("crossDependencies", ref HoudiniUseCrossDependencies) ||
               ps.CheckBooleanFlag("useUnsatCoreForContractInfer", ref UseUnsatCoreForContractInfer) ||
               ps.CheckBooleanFlag("printAssignment", ref PrintAssignment) ||
+              ps.CheckBooleanFlag("useProverEvaluate", ref UseProverEvaluate) ||
               ps.CheckBooleanFlag("nonUniformUnfolding", ref NonUniformUnfolding) ||
               ps.CheckBooleanFlag("deterministicExtractLoops", ref DeterministicExtractLoops)
               ) {
@@ -1275,6 +1277,8 @@ namespace Microsoft.Boogie {
         if (ProverName == "Z3API" || ProverName == "SMTLIB") {
           ProverCCLimit = 1;
         }
+        if (UseProverEvaluate)
+            StratifiedInliningWithoutModels = true;
       }
 
       if (Trace) {
