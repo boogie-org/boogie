@@ -37,3 +37,7 @@ echo -------------------- fundef.bpl --------------------
 echo -------------------- polyInline.bpl --------------------
 %BGEXE% %* /typeEncoding:predicates /logPrefix:p polyInline.bpl
 %BGEXE% %* /typeEncoding:arguments /logPrefix:a polyInline.bpl
+
+echo -------------------- InliningAndLoops.bpl --------------------
+%BGEXE% %* /loopUnroll:3 /soundLoopUnrolling InliningAndLoops.bpl
+
