@@ -133,8 +133,7 @@ namespace Microsoft.Boogie {
 
   public class ResolutionContext : CheckingContext {
     public ResolutionContext(IErrorSink errorSink)
-      : base(errorSink) {//BASEMOVEA
-      //:base(errorSink);
+      : base(errorSink) {
     }
 
     // ------------------------------  Boogie 2 Types  -------------------------
@@ -558,8 +557,7 @@ namespace Microsoft.Boogie {
     public IdentifierExprSeq Frame;  // used in checking the assignment targets of implementation bodies
 
     public TypecheckingContext(IErrorSink errorSink)
-      : base(errorSink) {//BASEMOVEA
-      //:base(errorSink);
+      : base(errorSink) {
     }
 
     public bool InFrame(Variable v) {

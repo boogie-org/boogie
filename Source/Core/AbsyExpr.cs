@@ -665,7 +665,6 @@ namespace Microsoft.Boogie {
       Contract.Requires(tok != null);
       Contract.Requires(name != null);
       Name = name;
-      // base(tok);
     }
     /// <summary>
     /// Creates an unresolved identifier expression.
@@ -680,7 +679,6 @@ namespace Microsoft.Boogie {
       Contract.Requires(type != null);
       Name = name;
       Type = type;
-      // base(tok);
     }
 
     /// <summary>
@@ -695,7 +693,6 @@ namespace Microsoft.Boogie {
       Name = cce.NonNull(d.Name);
       Decl = d;
       Type = d.TypedIdent.Type;
-      // base(tok);
     }
     [Pure]
     [Reads(ReadsAttribute.Reads.Nothing)]
@@ -797,7 +794,6 @@ namespace Microsoft.Boogie {
         Contract.Requires(c != null);
         Contract.Requires(ie != null);
         this.identifierExpr = ie;
-        // base();
       }
 
     }
@@ -2671,7 +2667,6 @@ namespace Microsoft.Boogie {
       Bitvector = bv;
       Start = start;
       End = end;
-      // base(tok);
     }
 
     [Pure]
@@ -2771,7 +2766,6 @@ namespace Microsoft.Boogie {
       Contract.Requires(e1 != null);
       E0 = e0;
       E1 = e1;
-      // base(tok);
     }
 
     [Pure]

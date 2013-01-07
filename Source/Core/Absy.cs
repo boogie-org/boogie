@@ -46,7 +46,6 @@ namespace Microsoft.Boogie.AbstractInterpretation {
 
     public ProcedureSummaryEntry() {
       this.ReturnPoints = new HashSet<CallSite>();
-      // base();
     }
 
   } // class
@@ -105,7 +104,6 @@ namespace Microsoft.Boogie {
       Contract.Requires(tok != null);
       this.tok = tok;
       this.uniqueId = AbsyNodeCount++;
-      // base();
     }
 
     private static int AbsyNodeCount = 0;
@@ -187,7 +185,6 @@ namespace Microsoft.Boogie {
     public Program()
       : base(Token.NoToken) {
       this.TopLevelDeclarations = new List<Declaration>();
-      // base(Token.NoToken);
     }
 
     public void Emit(TokenTextWriter stream) {
@@ -1062,23 +1059,20 @@ namespace Microsoft.Boogie {
       : this(tok, expr, null) {
       Contract.Requires(expr != null);
       Contract.Requires(tok != null);
-      //:this(tok, expr, null);//BASEMOVEA
     }
 
     public Axiom(IToken/*!*/ tok, Expr/*!*/ expr, string comment)
-      : base(tok) {//BASEMOVE DANGER
+      : base(tok) {
       Contract.Requires(tok != null);
       Contract.Requires(expr != null);
       Expr = expr;
       Comment = comment;
-      // :base(tok);
     }
 
     public Axiom(IToken tok, Expr expr, string comment, QKeyValue kv)
-      : this(tok, expr, comment) {//BASEMOVEA
+      : this(tok, expr, comment) {
       Contract.Requires(expr != null);
       Contract.Requires(tok != null);
-      //:this(tok, expr, comment);
       this.Attributes = kv;
     }
 
@@ -1145,7 +1139,6 @@ namespace Microsoft.Boogie {
       Contract.Requires(tok != null);
       Contract.Requires(name != null);
       this.name = name;
-      // base(tok);
     }
     [Pure]
     public override string ToString() {
@@ -1377,7 +1370,6 @@ namespace Microsoft.Boogie {
       Contract.Requires(tok != null);
       Contract.Requires(typedIdent != null);
       this.TypedIdent = typedIdent;
-      // base(tok, typedIdent.Name);
     }
 
     public Variable(IToken/*!*/ tok, TypedIdent/*!*/ typedIdent, QKeyValue kv)
@@ -1385,7 +1377,6 @@ namespace Microsoft.Boogie {
       Contract.Requires(tok != null);
       Contract.Requires(typedIdent != null);
       this.TypedIdent = typedIdent;
-      // base(tok, typedIdent.Name);
       this.Attributes = kv;
     }
 
@@ -1480,7 +1471,6 @@ namespace Microsoft.Boogie {
       Contract.Requires(typedIdent != null);
       Contract.Requires(typedIdent.Name != null && (!typedIdent.HasName || typedIdent.Name.Length > 0));
       Contract.Requires(typedIdent.WhereExpr == null);
-      // base(tok, typedIdent);
       this.Unique = true;
       this.Parents = null;
       this.ChildrenComplete = false;
@@ -1491,7 +1481,6 @@ namespace Microsoft.Boogie {
       Contract.Requires(typedIdent != null);
       Contract.Requires(typedIdent.Name != null && typedIdent.Name.Length > 0);
       Contract.Requires(typedIdent.WhereExpr == null);
-      // base(tok, typedIdent);
       this.Unique = unique;
       this.Parents = null;
       this.ChildrenComplete = false;
@@ -1506,7 +1495,6 @@ namespace Microsoft.Boogie {
       Contract.Requires(parents == null || cce.NonNullElements(parents));
       Contract.Requires(typedIdent.Name != null && typedIdent.Name.Length > 0);
       Contract.Requires(typedIdent.WhereExpr == null);
-      // base(tok, typedIdent);
       this.Unique = unique;
       this.Parents = parents;
       this.ChildrenComplete = childrenComplete;
@@ -1668,16 +1656,14 @@ namespace Microsoft.Boogie {
   }
   public class LocalVariable : Variable {
     public LocalVariable(IToken tok, TypedIdent typedIdent, QKeyValue kv)
-      : base(tok, typedIdent, kv) {//BASEMOVEA
+      : base(tok, typedIdent, kv) {
       Contract.Requires(typedIdent != null);
       Contract.Requires(tok != null);
-      //:base(tok, typedIdent, kv);
     }
     public LocalVariable(IToken tok, TypedIdent typedIdent)
-      : base(tok, typedIdent, null) {//BASEMOVEA
+      : base(tok, typedIdent, null) {
       Contract.Requires(typedIdent != null);
       Contract.Requires(tok != null);
-      //:base(tok, typedIdent, null);
     }
     public override bool IsMutable {
       get {
@@ -1709,11 +1695,10 @@ namespace Microsoft.Boogie {
   }
   public class BoundVariable : Variable {
     public BoundVariable(IToken tok, TypedIdent typedIdent)
-      : base(tok, typedIdent) {//BASEMOVEA
+      : base(tok, typedIdent) {
       Contract.Requires(typedIdent != null);
       Contract.Requires(tok != null);
       Contract.Requires(typedIdent.WhereExpr == null);
-      //:base(tok, typedIdent);  // here for aesthetic reasons
     }
     public override bool IsMutable {
       get {
@@ -1754,7 +1739,6 @@ namespace Microsoft.Boogie {
       this.TypeParameters = typeParams;
       this.InParams = inParams;
       this.OutParams = outParams;
-      // base(tok, name);
     }
 
     protected DeclWithFormals(DeclWithFormals that)
@@ -1763,7 +1747,6 @@ namespace Microsoft.Boogie {
       this.TypeParameters = that.TypeParameters;
       this.InParams = that.InParams;
       this.OutParams = that.OutParams;
-      // base(that.tok, (!) that.Name);
     }
 
     protected void EmitSignature(TokenTextWriter stream, bool shortRet) {
@@ -1955,7 +1938,6 @@ namespace Microsoft.Boogie {
       Contract.Requires(name != null);
       Contract.Requires(tok != null);
       Comment = comment;
-      // base(tok, name, args, new VariableSeq(result));
     }
     public Function(IToken tok, string name, TypeVariableSeq typeParams, VariableSeq args, Variable result,
                     string comment, QKeyValue kv)
@@ -2102,7 +2084,6 @@ namespace Microsoft.Boogie {
       this.Condition = condition;
       this.Comment = comment;
       this.Attributes = kv;
-      // base(token);
     }
 
     public Requires(IToken token, bool free, Expr condition, string comment)
@@ -2198,7 +2179,6 @@ namespace Microsoft.Boogie {
       this.Condition = condition;
       this.Comment = comment;
       this.Attributes = kv;
-      // base(token);
     }
 
     public Ensures(IToken token, bool free, Expr condition, string comment)
@@ -2560,8 +2540,6 @@ namespace Microsoft.Boogie {
       BlockPredecessorsComputed = false;
       scc = null;
       Attributes = kv;
-
-      // base(tok, name, inParams, outParams);
     }
 
     public Implementation(IToken tok, string name, TypeVariableSeq typeParams, VariableSeq inParams, VariableSeq outParams, VariableSeq localVariables, [Captured] List<Block/*!*/> block)
@@ -2595,8 +2573,6 @@ namespace Microsoft.Boogie {
       BlockPredecessorsComputed = false;
       scc = null;
       Attributes = kv;
-
-      //base(tok, name, inParams, outParams);
     }
 
     public override void Emit(TokenTextWriter stream, int level) {
@@ -3021,7 +2997,6 @@ namespace Microsoft.Boogie {
       this.Name = name;
       this.Type = type;
       this.WhereExpr = whereExpr;
-      // base(tok);
     }
     public bool HasName {
       get {
@@ -3619,7 +3594,6 @@ namespace Microsoft.Boogie {
     public Choice(RESeq operands) {
       Contract.Requires(operands != null);
       rs = operands;
-      // base();
     }
     public override void Emit(TokenTextWriter stream, int level) {
       //Contract.Requires(stream != null);

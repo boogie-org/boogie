@@ -152,10 +152,9 @@ namespace Boogie.Util {
 
 
     public IfdefReader([Captured] TextReader reader, [Captured] List<string/*!*/>/*!*/ defines)
-      : base(reader) {//BASEMOVEA
+      : base(reader) {
       Contract.Requires(reader != null);
       Contract.Requires(cce.NonNullElements(defines));
-      //:base(reader);
       this.defines = defines;
     }
 

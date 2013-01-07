@@ -30,7 +30,6 @@ namespace VC {
       Contract.Requires(ctxt != null);
       this.Label2absy = label2absy;
       this.Ctxt = ctxt;
-      // base();
     }
     
     public VCContext(Hashtable/*<int, Absy!>*/ label2absy, ProverContext ctxt, VCExpr controlFlowVariableExpr)

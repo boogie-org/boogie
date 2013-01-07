@@ -16,9 +16,8 @@ namespace Microsoft.Boogie {
   public class ProverOptions {
     public class OptionException : Exception {
       public OptionException(string msg)
-        : base(msg) {//BASEMOVEA
+        : base(msg) {
         Contract.Requires(msg != null);
-        //:base(msg);
       }
     }
 

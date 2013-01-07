@@ -689,7 +689,6 @@ namespace Microsoft.Boogie {
       this.thn = thn;
       this.elseIf = elseIf;
       this.elseBlock = elseBlock;
-      // base(tok);
     }
 
     public override void Emit(TokenTextWriter stream, int level) {
@@ -742,7 +741,6 @@ namespace Microsoft.Boogie {
       this.Guard = guard;
       this.Invariants = invariants;
       this.Body = body;
-      /// base(tok);
     }
 
     public override void Emit(TokenTextWriter stream, int level) {
@@ -779,7 +777,6 @@ namespace Microsoft.Boogie {
       : base(tok) {
       Contract.Requires(tok != null);
       this.Label = label;
-      // base(tok);
     }
 
     public override void Emit(TokenTextWriter stream, int level) {
@@ -855,7 +852,6 @@ namespace Microsoft.Boogie {
       this.liveVarsBefore = null;
       this.TraversingStatus = VisitState.ToVisit;
       this.iterations = 0;
-      // base(tok);
     }
 
     public void Emit(TokenTextWriter stream, int level) {
@@ -1076,7 +1072,6 @@ namespace Microsoft.Boogie {
       : base(Token.NoToken) {
       Contract.Requires(c != null);
       Comment = c;
-      // base(Token.NoToken);
     }
     public override void Emit(TokenTextWriter stream, int level) {
       
@@ -1116,11 +1111,10 @@ namespace Microsoft.Boogie {
 
 
     public AssignCmd(IToken tok, List<AssignLhs/*!*/>/*!*/ lhss, List<Expr/*!*/>/*!*/ rhss)
-      : base(tok) {//BASEMOVEA
+      : base(tok) {
       Contract.Requires(tok != null);
       Contract.Requires(cce.NonNullElements(rhss));
       Contract.Requires(cce.NonNullElements(lhss));
-      //base(tok);
       Lhss = lhss;
       Rhss = rhss;
     }
@@ -1333,7 +1327,6 @@ namespace Microsoft.Boogie {
       : base(tok) {
       Contract.Requires(assignedVariable != null);
       Contract.Requires(tok != null);
-      //base(tok);
       AssignedVariable = assignedVariable;
     }
     public override void Resolve(ResolutionContext rc) {
@@ -1413,8 +1406,7 @@ namespace Microsoft.Boogie {
     }
 
     public MapAssignLhs(IToken tok, AssignLhs map, List<Expr/*!*/>/*!*/ indexes)
-      : base(tok) {//BASEMOVEA
-      //:base(tok);
+      : base(tok) {
       Contract.Requires(map != null);
       Contract.Requires(tok != null);
       Contract.Requires(cce.NonNullElements(indexes));
@@ -1516,7 +1508,6 @@ namespace Microsoft.Boogie {
       Contract.Requires(tok != null);
       this.Locals = locals;
       this.Cmds = cmds;
-      // base(tok);
     }
 
     public override void Resolve(ResolutionContext rc) {
@@ -1639,7 +1630,6 @@ namespace Microsoft.Boogie {
     protected CallCommonality(IToken tok, QKeyValue kv)
       : base(tok) {
       Contract.Requires(tok != null);
-      //base(tok);
       Attributes = kv;
     }
 
@@ -1736,27 +1726,23 @@ namespace Microsoft.Boogie {
       //foreach (IdentifierExpr e in outs)
       //  if(e!=null)
       //  outsList.Add(e);
-      //this(tok, callee, insList, outsList);
-
     }
     public CallCmd(IToken tok, string callee, List<Expr> ins, List<IdentifierExpr> outs)
-      : base(tok, null) {//BASEMOVE DANGER
+      : base(tok, null) {
       Contract.Requires(outs != null);
       Contract.Requires(ins != null);
       Contract.Requires(callee != null);
       Contract.Requires(tok != null);
-      //base(tok, null);
       this.callee = callee;
       this.Ins = ins;
       this.Outs = outs;
     }
     public CallCmd(IToken tok, string callee, List<Expr> ins, List<IdentifierExpr> outs, QKeyValue kv)
-      : base(tok, kv) {//BASEMOVE DANGER
+      : base(tok, kv) {
       Contract.Requires(outs != null);
       Contract.Requires(ins != null);
       Contract.Requires(callee != null);
       Contract.Requires(tok != null);
-      //base(tok, kv);
       this.callee = callee;
       this.Ins = ins;
       this.Outs = outs;
@@ -2212,20 +2198,18 @@ namespace Microsoft.Boogie {
     public TypeSeq InstantiatedTypes;
 
     public CallForallCmd(IToken tok, string callee, List<Expr> ins)
-      : base(tok, null) {//BASEMOVEA
+      : base(tok, null) {
       Contract.Requires(ins != null);
       Contract.Requires(callee != null);
       Contract.Requires(tok != null);
-      //:base(tok, null);
       this.callee = callee;
       this.Ins = ins;
     }
     public CallForallCmd(IToken tok, string callee, List<Expr> ins, QKeyValue kv)
-      : base(tok, kv) {//BASEMOVEA
+      : base(tok, kv) {
       Contract.Requires(ins != null);
       Contract.Requires(callee != null);
       Contract.Requires(tok != null);
-      //:base(tok, kv);
       this.callee = callee;
       this.Ins = ins;
     }
@@ -2681,7 +2665,6 @@ namespace Microsoft.Boogie {
       Contract.Requires(requires != null);
       this.Call = call;
       this.Requires = requires;
-      // base(call.tok, @requires.Condition);
     }
 
     public override Absy StdDispatch(StandardVisitor visitor) {
@@ -2706,7 +2689,6 @@ namespace Microsoft.Boogie {
       : base(ens.tok, ens.Condition) {
       Contract.Requires(ens != null);
       this.Ensures = ens;
-      // base(ens.tok, ens.Condition);
     }
 
     public override Absy StdDispatch(StandardVisitor visitor) {

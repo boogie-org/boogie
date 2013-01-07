@@ -97,9 +97,9 @@ public Parser(Scanner/*!*/ scanner, Errors/*!*/ errors, bool disambiguation)
 private class BvBounds : Expr {
   public BigNum Lower;
   public BigNum Upper;
-  public BvBounds(IToken/*!*/ tok, BigNum lower, BigNum upper) :base(tok){//BASEMOVE
+  public BvBounds(IToken/*!*/ tok, BigNum lower, BigNum upper)
+    : base(tok) {
     Contract.Requires(tok != null);
-    //:base(tok);
     this.Lower = lower;
     this.Upper = upper;
   }

@@ -182,8 +182,6 @@ namespace Microsoft.Boogie {
 
       this.thmProver = prover;
       this.gen = prover.VCExprGen;
-
-      // base();
     }
 
 

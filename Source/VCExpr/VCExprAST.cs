@@ -1202,7 +1202,6 @@ namespace Microsoft.Boogie.VCExprAST {
       : base(op) {
       Contract.Requires(op != null);
       Contract.Requires(cce.NonNullElements(arguments));
-      //this(op, arguments, EMPTY_TYPE_LIST);
       this.Arguments = arguments;
       this.TypeArgumentsAttr = EMPTY_TYPE_LIST;
       this.ExprType = op.InferType(arguments, TypeArgumentsAttr);
