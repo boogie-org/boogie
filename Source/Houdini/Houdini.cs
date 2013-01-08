@@ -456,7 +456,6 @@ namespace Microsoft.Boogie.Houdini {
         public override Program VisitProgram(Program node)
         {
             assumedInImpl = new Dictionary<string, HashSet<Implementation>>();
-            inAssume = false;
             return base.VisitProgram(node);
         }
 
@@ -468,10 +467,7 @@ namespace Microsoft.Boogie.Houdini {
 
         public override Cmd VisitAssumeCmd(AssumeCmd node)
         {
-            inAssume = true;
-            var res = base.VisitAssumeCmd(node);
-            inAssume = false;
-            return res;
+            return base.VisitAssumeCmd(node);
         }
 
         public override Variable VisitVariable(Variable node)
@@ -491,7 +487,6 @@ namespace Microsoft.Boogie.Houdini {
 
         HashSet<Variable> constants;
         Implementation curImpl;
-        bool inAssume;
 
         // contant -> set of implementations that have an assume command with that constant
         public Dictionary<string, HashSet<Implementation>> assumedInImpl { get; private set; }
