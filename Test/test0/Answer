@@ -133,11 +133,12 @@ Types1.bpl(6,11): Error: undeclared type: x
 Types1.bpl(7,11): Error: undeclared type: x
 Types1.bpl(7,14): Error: undeclared type: x
 3 name resolution errors detected in Types1.bpl
-WhereParsing.bpl(14,37): error: where clause not allowed here
-WhereParsing.bpl(15,33): error: where clause not allowed here
-2 parse errors detected in WhereParsing.bpl
-WhereParsing0.bpl(17,38): error: where clause not allowed here
-WhereParsing0.bpl(18,38): error: where clause not allowed here
+WhereParsing.bpl(14,37): error: where clause not allowed on the 'implementation' copies of formals
+WhereParsing.bpl(15,33): error: where clause not allowed on the 'implementation' copies of formals
+WhereParsing.bpl(32,38): error: attributes are not allowed on the 'implementation' copies of formals
+3 parse errors detected in WhereParsing.bpl
+WhereParsing0.bpl(17,38): error: where clause not allowed on bound variables
+WhereParsing0.bpl(18,38): error: where clause not allowed on bound variables
 2 parse errors detected in WhereParsing0.bpl
 WhereParsing1.bpl(14,27): error: ")" expected
 1 parse errors detected in WhereParsing1.bpl

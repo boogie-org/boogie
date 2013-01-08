@@ -105,15 +105,14 @@ private class BvBounds : Expr {
   }
   public override Type/*!*/ ShallowType { get {Contract.Ensures(Contract.Result<Type>() != null); return Bpl.Type.Int; } }
   public override void Resolve(ResolutionContext/*!*/ rc) {
-  Contract.Requires(rc != null);
+    // Contract.Requires(rc != null);
     rc.Error(this, "bitvector bounds in illegal position");
   }
   public override void Emit(TokenTextWriter/*!*/ stream,
                             int contextBindingStrength, bool fragileContext) {
-    Contract.Requires(stream != null);
-    {Contract.Assert(false);throw new cce.UnreachableException();}
+    Contract.Assert(false);throw new cce.UnreachableException();
   }
-  public override void ComputeFreeVariables(GSet<object>/*!*/ freeVars) {Contract.Requires(freeVars != null); {Contract.Assert(false);throw new cce.UnreachableException();} }
+  public override void ComputeFreeVariables(GSet<object>/*!*/ freeVars) { Contract.Assert(false);throw new cce.UnreachableException(); }
 }
 
 /*--------------------------------------------------------------------------*/
@@ -201,49 +200,48 @@ BoogiePL
 
 /*------------------------------------------------------------------------*/
 GlobalVars<out VariableSeq/*!*/ ds>
-= (. Contract.Ensures(Contract.ValueAtReturn(out ds) != null); TypedIdentSeq/*!*/ tyds = new TypedIdentSeq(); ds = new VariableSeq(); QKeyValue kv = null; .)
+= (.
+    Contract.Ensures(Contract.ValueAtReturn(out ds) != null);
+    QKeyValue kv = null;
+    ds = new VariableSeq();
+    var dsx = ds;
+  .)
   "var"
   { Attribute<ref kv> }
-  IdsTypeWheres<true, tyds> ";"
-  (. foreach(TypedIdent/*!*/ tyd in tyds){
-       Contract.Assert(tyd != null);
-       ds.Add(new GlobalVariable(tyd.tok, tyd, kv));
-     }
-  .)
+  IdsTypeWheres<true, "global variables", delegate(TypedIdent tyd) { dsx.Add(new GlobalVariable(tyd.tok, tyd, kv)); } > ";"
   .
 
 LocalVars<VariableSeq/*!*/ ds>
-= (. Contract.Ensures(Contract.ValueAtReturn(out ds) != null); TypedIdentSeq/*!*/ tyds = new TypedIdentSeq(); QKeyValue kv = null; .)
+= (.
+    Contract.Ensures(Contract.ValueAtReturn(out ds) != null);
+    QKeyValue kv = null;
+  .)
   "var"
   { Attribute<ref kv> }
-  IdsTypeWheres<true, tyds> ";"
-  (. foreach(TypedIdent/*!*/ tyd in tyds){
-       Contract.Assert(tyd != null);
-       ds.Add(new LocalVariable(tyd.tok, tyd, kv));
-     }
-  .)
+  IdsTypeWheres<true, "local variables", delegate(TypedIdent tyd) { ds.Add(new LocalVariable(tyd.tok, tyd, kv)); } > ";"
   .
 
 ProcFormals<bool incoming, bool allowWhereClauses, out VariableSeq/*!*/ ds>
-= (.Contract.Ensures(Contract.ValueAtReturn(out ds) != null); TypedIdentSeq/*!*/ tyds = new TypedIdentSeq(); ds = new VariableSeq(); .)
-  "("
-  [ IdsTypeWheres<allowWhereClauses, tyds> ]
-  ")"
-  (. foreach(TypedIdent/*!*/ tyd in tyds){
-       Contract.Assert(tyd != null);
-       ds.Add(new Formal(tyd.tok, tyd, incoming));
-     }
+= (. Contract.Ensures(Contract.ValueAtReturn(out ds) != null);
+     ds = new VariableSeq();
+     var dsx = ds;
+     var context = allowWhereClauses ? "procedure formals" : "the 'implementation' copies of formals";
   .)
+  "("
+  [ AttrsIdsTypeWheres<allowWhereClauses, allowWhereClauses, context, delegate(TypedIdent tyd, QKeyValue kv) { dsx.Add(new Formal(tyd.tok, tyd, incoming, kv)); }>
+  ]
+  ")"
   .
 
 BoundVars<IToken/*!*/ x, out VariableSeq/*!*/ ds>
-= (. Contract.Requires(x != null); Contract.Ensures(Contract.ValueAtReturn(out ds) != null); TypedIdentSeq/*!*/ tyds = new TypedIdentSeq(); ds = new VariableSeq(); .)
-  IdsTypeWheres<false, tyds>
-  (. foreach(TypedIdent/*!*/ tyd in tyds){
-       Contract.Assert(tyd != null);
-       ds.Add(new BoundVariable(tyd.tok, tyd));
-     }
+= (.
+    Contract.Requires(x != null);
+    Contract.Ensures(Contract.ValueAtReturn(out ds) != null);
+    TypedIdentSeq/*!*/ tyds = new TypedIdentSeq();
+    ds = new VariableSeq();
+    var dsx = ds;
   .)
+  AttrsIdsTypeWheres<true, false, "bound variables", delegate(TypedIdent tyd, QKeyValue kv) { dsx.Add(new BoundVariable(tyd.tok, tyd, kv)); } >
   .
 
 /*------------------------------------------------------------------------*/
@@ -259,27 +257,44 @@ IdsType<out TypedIdentSeq/*!*/ tyds>
   .)
   .
 
-/* IdsTypeWheres is used with the declarations of global and local variables,
-   procedure parameters, and quantifier bound variables. */
-IdsTypeWheres<bool allowWhereClauses, TypedIdentSeq/*!*/ tyds>
-=(.Contract.Requires(tyds != null);.)
-  IdsTypeWhere<allowWhereClauses, tyds>
-  { "," IdsTypeWhere<allowWhereClauses, tyds> }
+/* AttrsIdsTypeWheres is used with the declarations of formals and bound variables */
+AttrsIdsTypeWheres<. bool allowAttributes, bool allowWhereClauses, string context, System.Action<TypedIdent, QKeyValue> action .>
+=
+  AttributesIdsTypeWhere<allowAttributes, allowWhereClauses, context, action>
+  { "," AttributesIdsTypeWhere<allowAttributes, allowWhereClauses, context, action> }
   .
 
-IdsTypeWhere<bool allowWhereClauses, TypedIdentSeq/*!*/ tyds>
-= (.Contract.Requires(tyds != null); TokenSeq/*!*/ ids;  Bpl.Type/*!*/ ty;  Expr wh = null;  Expr/*!*/ nne; .)
+IdsTypeWheres<. bool allowWhereClauses, string context, System.Action<TypedIdent> action .>
+=
+  IdsTypeWhere<allowWhereClauses, context, action>
+  { "," IdsTypeWhere<allowWhereClauses, context, action> }
+  .
+
+AttributesIdsTypeWhere<. bool allowAttributes, bool allowWhereClauses, string context, System.Action<TypedIdent, QKeyValue> action .>
+= (. QKeyValue kv = null; .)
+  { Attribute<ref kv>    (. if (!allowAttributes) {
+                              kv = null;
+                              this.SemErr("attributes are not allowed on " + context);
+                            }
+                         .)
+  }
+  IdsTypeWhere<allowWhereClauses, context, delegate(TypedIdent tyd) { action(tyd, kv); }>
+  .
+
+/* context is allowed to be null if allowWhereClauses is true */
+IdsTypeWhere<. bool allowWhereClauses, string context, System.Action<TypedIdent> action .>
+= (. TokenSeq/*!*/ ids;  Bpl.Type/*!*/ ty;  Expr wh = null;  Expr/*!*/ nne; .)
   Idents<out ids> ":" Type<out ty>
-  [ "where" Expression<out nne>  (. if (allowWhereClauses) {
-                                      wh = nne;
+  [ "where" Expression<out nne>  (. if (!allowWhereClauses) {
+                                      this.SemErr("where clause not allowed on " + context);
                                     } else {
-                                      this.SemErr("where clause not allowed here");
+                                      wh = nne;
                                     }
                                  .)
   ]
   (. foreach(Token/*!*/ id in ids){
        Contract.Assert(id != null);
-       tyds.Add(new TypedIdent(id, id.val, ty, wh));
+       action(new TypedIdent(id, id.val, ty, wh));
      }
   .)
   .
@@ -426,13 +441,14 @@ OrderSpec<.out bool ChildrenComplete, out List<ConstantParent/*!*/> Parents.>
 /*------------------------------------------------------------------------*/
 Function<out DeclarationSeq/*!*/ ds>
 = (. Contract.Ensures(Contract.ValueAtReturn(out ds) != null);
-ds = new DeclarationSeq(); IToken/*!*/ z;
+     ds = new DeclarationSeq(); IToken/*!*/ z;
      IToken/*!*/ typeParamTok;
-     TypeVariableSeq/*!*/ typeParams = new TypeVariableSeq();
-     VariableSeq arguments = new VariableSeq();
+     var typeParams = new TypeVariableSeq();
+     var arguments = new VariableSeq();
      TypedIdent/*!*/ tyd;
      TypedIdent retTyd = null;
      Type/*!*/ retTy;
+     QKeyValue argKv = null;
      QKeyValue kv = null;
      Expr definition = null;
      Expr/*!*/ tmp;
@@ -440,54 +456,56 @@ ds = new DeclarationSeq(); IToken/*!*/ z;
   "function" { Attribute<ref kv> } Ident<out z>
   [ TypeParams<out typeParamTok, out typeParams> ]
   "("
-  [ VarOrType<out tyd>      (. arguments.Add(new Formal(tyd.tok, tyd, true)); .)
-  { "," VarOrType<out tyd>  (. arguments.Add(new Formal(tyd.tok, tyd, true)); .)
+  [ VarOrType<out tyd, out argKv>      (. arguments.Add(new Formal(tyd.tok, tyd, true, argKv)); .)
+  { "," VarOrType<out tyd, out argKv>  (. arguments.Add(new Formal(tyd.tok, tyd, true, argKv)); .)
   } ] ")"
+  (. argKv = null; .)
   (
-    "returns" "(" VarOrType<out tyd> ")" (. retTyd = tyd; .)
+    "returns" "(" VarOrType<out retTyd, out argKv> ")"
     |
-    ":" Type<out retTy>   (. retTyd = new TypedIdent(retTy.tok, "", retTy); .)
+    ":" Type<out retTy>   (. retTyd = new TypedIdent(retTy.tok, TypedIdent.NoName, retTy); .)
   )
   ( "{" Expression<out tmp> (. definition = tmp; .) "}" | ";" )
   (.
     if (retTyd == null) {
       // construct a dummy type for the case of syntax error
-      tyd = new TypedIdent(t, "", new BasicType(t, SimpleType.Int));
-    } else {
-      tyd = retTyd;
+      retTyd = new TypedIdent(t, TypedIdent.NoName, new BasicType(t, SimpleType.Int));
     }
     Function/*!*/ func = new Function(z, z.val, typeParams, arguments,
-                           new Formal(tyd.tok, tyd, false), null, kv);
+                                      new Formal(retTyd.tok, retTyd, false, argKv), null, kv);
     Contract.Assert(func != null);
     ds.Add(func);
     bool allUnnamed = true;
     foreach(Formal/*!*/ f in arguments){
       Contract.Assert(f != null);
-      if (f.TypedIdent.Name != "") {
+      if (f.TypedIdent.HasName) {
         allUnnamed = false;
-	break;
+        break;
       }
     }
     if (!allUnnamed) {
       Type prevType = null;
-      for (int i = arguments.Length - 1; i >= 0; i--) {
+      for (int i = arguments.Length; 0 <= --i; ) {
         TypedIdent/*!*/ curr = cce.NonNull(arguments[i]).TypedIdent;
-        if (curr.Name == "") {
-	  if (prevType == null) {
-	    this.errors.SemErr(curr.tok, "the type of the last parameter is unspecified");
-	    break;
-	  }
-	  Type ty = curr.Type;
-          if (ty is UnresolvedTypeIdentifier &&
-              cce.NonNull(ty as UnresolvedTypeIdentifier).Arguments.Length == 0) {
-	    curr.Name = cce.NonNull(ty as UnresolvedTypeIdentifier).Name;
-	    curr.Type = prevType;
-	  } else {
-	    this.errors.SemErr(curr.tok, "expecting an identifier as parameter name");
-	  }
-	} else {
-	  prevType = curr.Type;
-	}
+        if (curr.HasName) {
+          // the argument was given as both an identifier and a type
+          prevType = curr.Type;
+        } else {
+          // the argument was given as just one "thing", which syntactically parsed as a type
+          if (prevType == null) {
+            this.errors.SemErr(curr.tok, "the type of the last parameter is unspecified");
+            break;
+          }
+          Type ty = curr.Type;
+          var uti = ty as UnresolvedTypeIdentifier;
+          if (uti != null && uti.Arguments.Length == 0) {
+            // the given "thing" was just an identifier, so let's use it as the name of the parameter
+            curr.Name = uti.Name;
+            curr.Type = prevType;
+          } else {
+            this.errors.SemErr(curr.tok, "expecting an identifier as parameter name");
+          }
+        }
       }
     }
     if (definition != null) {
@@ -514,7 +532,7 @@ ds = new DeclarationSeq(); IToken/*!*/ z;
         Expr call = new NAryExpr(z, new FunctionCall(new IdentifierExpr(z, z.val)), callArgs);
         // specify the type of the function, because it might be that
         // type parameters only occur in the output type
-        call = Expr.CoerceType(z, call, (Type)tyd.Type.Clone());
+        call = Expr.CoerceType(z, call, (Type)retTyd.Type.Clone());
         Expr def = Expr.Eq(call, definition);
         if (quantifiedTypeVars.Length != 0 || dummies.Length != 0) {
           def = new ForallExpr(z, quantifiedTypeVars, dummies,
@@ -528,12 +546,19 @@ ds = new DeclarationSeq(); IToken/*!*/ z;
   .)
   .
 
-VarOrType<out TypedIdent/*!*/ tyd>
-= (.Contract.Ensures(Contract.ValueAtReturn(out tyd) != null); string/*!*/ varName = ""; Bpl.Type/*!*/ ty; IToken/*!*/ tok; .)
+VarOrType<out TypedIdent/*!*/ tyd, out QKeyValue kv>
+= (.
+    Contract.Ensures(Contract.ValueAtReturn(out tyd) != null);
+    string/*!*/ varName = TypedIdent.NoName;
+    Bpl.Type/*!*/ ty;
+    IToken/*!*/ tok;
+    kv = null;
+  .)
+  { Attribute<ref kv> }
   Type<out ty>    (. tok = ty.tok; .)
-  [ ":"           (. if (ty is UnresolvedTypeIdentifier &&
-                         cce.NonNull(ty as UnresolvedTypeIdentifier).Arguments.Length == 0) {
-                       varName = cce.NonNull(ty as UnresolvedTypeIdentifier).Name;
+  [ ":"           (. var uti = ty as UnresolvedTypeIdentifier;
+                     if (uti != null && uti.Arguments.Length == 0) {
+                       varName = uti.Name;
                      } else {
                        this.SemErr("expected identifier before ':'");
                      }
@@ -1463,7 +1488,7 @@ IfThenElseExpression<out Expr/*!*/ e>
 QuantifierBody<IToken/*!*/ q, out TypeVariableSeq/*!*/ typeParams, out VariableSeq/*!*/ ds,
                out QKeyValue kv, out Trigger trig, out Expr/*!*/ body>
 = (. Contract.Requires(q != null); Contract.Ensures(Contract.ValueAtReturn(out typeParams) != null); Contract.Ensures(Contract.ValueAtReturn(out ds) != null); Contract.Ensures(Contract.ValueAtReturn(out body) != null);
-trig = null; typeParams = new TypeVariableSeq ();
+     trig = null; typeParams = new TypeVariableSeq ();
      IToken/*!*/ tok;
      kv = null;
      ds = new VariableSeq ();

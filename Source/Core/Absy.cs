@@ -1387,12 +1387,14 @@ namespace Microsoft.Boogie {
     public override void Emit(TokenTextWriter stream, int level) {
       //Contract.Requires(stream != null);
       stream.Write(this, level, "var ");
-      EmitAttributes(stream);
-      EmitVitals(stream, level);
+      EmitVitals(stream, level, true);
       stream.WriteLine(";");
     }
-    public void EmitVitals(TokenTextWriter stream, int level) {
+    public void EmitVitals(TokenTextWriter stream, int level, bool emitAttributes) {
       Contract.Requires(stream != null);
+      if (emitAttributes) {
+        EmitAttributes(stream);
+      }
       if (CommandLineOptions.Clo.PrintWithUniqueASTIds && this.TypedIdent.HasName) {
         stream.Write("h{0}^^", this.GetHashCode());  // the idea is that this will prepend the name printed by TypedIdent.Emit
       }
@@ -1511,7 +1513,7 @@ namespace Microsoft.Boogie {
       if (this.Unique) {
         stream.Write(this, level, "unique ");
       }
-      EmitVitals(stream, level);
+      EmitVitals(stream, level, false);
 
       if (Parents != null || ChildrenComplete) {
         stream.Write(this, level, " extends");
@@ -1615,11 +1617,16 @@ namespace Microsoft.Boogie {
   }
   public class Formal : Variable {
     public bool InComing;
-    public Formal(IToken tok, TypedIdent typedIdent, bool incoming)
-      : base(tok, typedIdent) {
+    public Formal(IToken tok, TypedIdent typedIdent, bool incoming, QKeyValue kv)
+      : base(tok, typedIdent, kv) {
       Contract.Requires(typedIdent != null);
       Contract.Requires(tok != null);
       InComing = incoming;
+    }
+    public Formal(IToken tok, TypedIdent typedIdent, bool incoming)
+      : this(tok, typedIdent, incoming, null) {
+      Contract.Requires(typedIdent != null);
+      Contract.Requires(tok != null);
     }
     public override bool IsMutable {
       get {
@@ -1632,7 +1639,8 @@ namespace Microsoft.Boogie {
     }
 
     /// <summary>
-    /// Given a sequence of Formal declarations, returns sequence of Formals like the given one but without where clauses.
+    /// Given a sequence of Formal declarations, returns sequence of Formals like the given one but without where clauses
+    /// and without any attributes.
     /// The Type of each Formal is cloned.
     /// </summary>
     public static VariableSeq StripWhereClauses(VariableSeq w) {
@@ -1643,7 +1651,7 @@ namespace Microsoft.Boogie {
         Contract.Assert(v != null);
         Formal f = (Formal)v;
         TypedIdent ti = f.TypedIdent;
-        s.Add(new Formal(f.tok, new TypedIdent(ti.tok, ti.Name, ti.Type.CloneUnresolved()), f.InComing));
+        s.Add(new Formal(f.tok, new TypedIdent(ti.tok, ti.Name, ti.Type.CloneUnresolved()), f.InComing, null));
       }
       return s;
     }
@@ -1696,6 +1704,12 @@ namespace Microsoft.Boogie {
   public class BoundVariable : Variable {
     public BoundVariable(IToken tok, TypedIdent typedIdent)
       : base(tok, typedIdent) {
+      Contract.Requires(typedIdent != null);
+      Contract.Requires(tok != null);
+      Contract.Requires(typedIdent.WhereExpr == null);
+    }
+    public BoundVariable(IToken tok, TypedIdent typedIdent, QKeyValue kv)
+      : base(tok, typedIdent, kv) {
       Contract.Requires(typedIdent != null);
       Contract.Requires(tok != null);
       Contract.Requires(typedIdent.WhereExpr == null);
@@ -1753,7 +1767,7 @@ namespace Microsoft.Boogie {
       Contract.Requires(stream != null);
       Type.EmitOptionalTypeParams(stream, TypeParameters);
       stream.Write("(");
-      InParams.Emit(stream);
+      InParams.Emit(stream, true);
       stream.Write(")");
 
       if (shortRet) {
@@ -1762,7 +1776,7 @@ namespace Microsoft.Boogie {
         cce.NonNull(OutParams[0]).TypedIdent.Type.Emit(stream);
       } else if (OutParams.Length > 0) {
         stream.Write(" returns (");
-        OutParams.Emit(stream);
+        OutParams.Emit(stream, true);
         stream.Write(")");
       }
     }
@@ -3112,14 +3126,14 @@ namespace Microsoft.Boogie {
         base[index] = value;
       }
     }
-    public void Emit(TokenTextWriter stream) {
+    public void Emit(TokenTextWriter stream, bool emitAttributes) {
       Contract.Requires(stream != null);
       string sep = "";
       foreach (Variable/*!*/ v in this) {
         Contract.Assert(v != null);
         stream.Write(sep);
         sep = ", ";
-        v.EmitVitals(stream, 0);
+        v.EmitVitals(stream, 0, emitAttributes);
       }
     }
     public TypeSeq/*!*/ ToTypeSeq {

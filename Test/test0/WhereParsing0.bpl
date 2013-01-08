@@ -26,3 +26,7 @@ procedure Q(x: int where x > 0) returns (y: int where y < 0)
     y := b;
     return;
 }
+
+axiom (forall yu: bool, {:myAttr} x: int :: x < 100);
+axiom (forall {:myAttr} x: int :: x < 100);
+axiom (forall <T> {:myAttr} x: T :: x == x);

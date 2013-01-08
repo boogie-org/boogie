@@ -125,15 +125,14 @@ private class BvBounds : Expr {
   }
   public override Type/*!*/ ShallowType { get {Contract.Ensures(Contract.Result<Type>() != null); return Bpl.Type.Int; } }
   public override void Resolve(ResolutionContext/*!*/ rc) {
-  Contract.Requires(rc != null);
+    // Contract.Requires(rc != null);
     rc.Error(this, "bitvector bounds in illegal position");
   }
   public override void Emit(TokenTextWriter/*!*/ stream,
                             int contextBindingStrength, bool fragileContext) {
-    Contract.Requires(stream != null);
-    {Contract.Assert(false);throw new cce.UnreachableException();}
+    Contract.Assert(false);throw new cce.UnreachableException();
   }
-  public override void ComputeFreeVariables(GSet<object>/*!*/ freeVars) {Contract.Requires(freeVars != null); {Contract.Assert(false);throw new cce.UnreachableException();} }
+  public override void ComputeFreeVariables(GSet<object>/*!*/ freeVars) { Contract.Assert(false);throw new cce.UnreachableException(); }
 }
 
 /*--------------------------------------------------------------------------*/
@@ -325,11 +324,12 @@ private class BvBounds : Expr {
 		Contract.Ensures(Contract.ValueAtReturn(out ds) != null);
 		ds = new DeclarationSeq(); IToken/*!*/ z;
 		IToken/*!*/ typeParamTok;
-		TypeVariableSeq/*!*/ typeParams = new TypeVariableSeq();
-		VariableSeq arguments = new VariableSeq();
+		var typeParams = new TypeVariableSeq();
+		var arguments = new VariableSeq();
 		TypedIdent/*!*/ tyd;
 		TypedIdent retTyd = null;
 		Type/*!*/ retTy;
+		QKeyValue argKv = null;
 		QKeyValue kv = null;
 		Expr definition = null;
 		Expr/*!*/ tmp;
@@ -344,25 +344,25 @@ private class BvBounds : Expr {
 		}
 		Expect(9);
 		if (StartOf(2)) {
-			VarOrType(out tyd);
-			arguments.Add(new Formal(tyd.tok, tyd, true)); 
+			VarOrType(out tyd, out argKv);
+			arguments.Add(new Formal(tyd.tok, tyd, true, argKv)); 
 			while (la.kind == 12) {
 				Get();
-				VarOrType(out tyd);
-				arguments.Add(new Formal(tyd.tok, tyd, true)); 
+				VarOrType(out tyd, out argKv);
+				arguments.Add(new Formal(tyd.tok, tyd, true, argKv)); 
 			}
 		}
 		Expect(10);
+		argKv = null; 
 		if (la.kind == 26) {
 			Get();
 			Expect(9);
-			VarOrType(out tyd);
+			VarOrType(out retTyd, out argKv);
 			Expect(10);
-			retTyd = tyd; 
 		} else if (la.kind == 11) {
 			Get();
 			Type(out retTy);
-			retTyd = new TypedIdent(retTy.tok, "", retTy); 
+			retTyd = new TypedIdent(retTy.tok, TypedIdent.NoName, retTy); 
 		} else SynErr(93);
 		if (la.kind == 27) {
 			Get();
@@ -374,42 +374,43 @@ private class BvBounds : Expr {
 		} else SynErr(94);
 		if (retTyd == null) {
 		 // construct a dummy type for the case of syntax error
-		 tyd = new TypedIdent(t, "", new BasicType(t, SimpleType.Int));
-		} else {
-		 tyd = retTyd;
+		 retTyd = new TypedIdent(t, TypedIdent.NoName, new BasicType(t, SimpleType.Int));
 		}
 		Function/*!*/ func = new Function(z, z.val, typeParams, arguments,
-		                      new Formal(tyd.tok, tyd, false), null, kv);
+		                                 new Formal(retTyd.tok, retTyd, false, argKv), null, kv);
 		Contract.Assert(func != null);
 		ds.Add(func);
 		bool allUnnamed = true;
 		foreach(Formal/*!*/ f in arguments){
 		 Contract.Assert(f != null);
-		 if (f.TypedIdent.Name != "") {
+		 if (f.TypedIdent.HasName) {
 		   allUnnamed = false;
-		break;
+		   break;
 		 }
 		}
 		if (!allUnnamed) {
 		 Type prevType = null;
-		 for (int i = arguments.Length - 1; i >= 0; i--) {
+		 for (int i = arguments.Length; 0 <= --i; ) {
 		   TypedIdent/*!*/ curr = cce.NonNull(arguments[i]).TypedIdent;
-		   if (curr.Name == "") {
-		if (prevType == null) {
-		this.errors.SemErr(curr.tok, "the type of the last parameter is unspecified");
-		break;
-		}
-		Type ty = curr.Type;
-		     if (ty is UnresolvedTypeIdentifier &&
-		         cce.NonNull(ty as UnresolvedTypeIdentifier).Arguments.Length == 0) {
-		curr.Name = cce.NonNull(ty as UnresolvedTypeIdentifier).Name;
-		curr.Type = prevType;
-		} else {
-		this.errors.SemErr(curr.tok, "expecting an identifier as parameter name");
-		}
-		} else {
-		prevType = curr.Type;
-		}
+		   if (curr.HasName) {
+		     // the argument was given as both an identifier and a type
+		     prevType = curr.Type;
+		   } else {
+		     // the argument was given as just one "thing", which syntactically parsed as a type
+		     if (prevType == null) {
+		       this.errors.SemErr(curr.tok, "the type of the last parameter is unspecified");
+		       break;
+		     }
+		     Type ty = curr.Type;
+		     var uti = ty as UnresolvedTypeIdentifier;
+		     if (uti != null && uti.Arguments.Length == 0) {
+		       // the given "thing" was just an identifier, so let's use it as the name of the parameter
+		       curr.Name = uti.Name;
+		       curr.Type = prevType;
+		     } else {
+		       this.errors.SemErr(curr.tok, "expecting an identifier as parameter name");
+		     }
+		   }
 		 }
 		}
 		if (definition != null) {
@@ -436,7 +437,7 @@ private class BvBounds : Expr {
 		   Expr call = new NAryExpr(z, new FunctionCall(new IdentifierExpr(z, z.val)), callArgs);
 		   // specify the type of the function, because it might be that
 		   // type parameters only occur in the output type
-		   call = Expr.CoerceType(z, call, (Type)tyd.Type.Clone());
+		   call = Expr.CoerceType(z, call, (Type)retTyd.Type.Clone());
 		   Expr def = Expr.Eq(call, definition);
 		   if (quantifiedTypeVars.Length != 0 || dummies.Length != 0) {
 		     def = new ForallExpr(z, quantifiedTypeVars, dummies,
@@ -479,18 +480,17 @@ private class BvBounds : Expr {
 	}
 
 	void GlobalVars(out VariableSeq/*!*/ ds) {
-		Contract.Ensures(Contract.ValueAtReturn(out ds) != null); TypedIdentSeq/*!*/ tyds = new TypedIdentSeq(); ds = new VariableSeq(); QKeyValue kv = null; 
+		Contract.Ensures(Contract.ValueAtReturn(out ds) != null);
+		QKeyValue kv = null;
+		ds = new VariableSeq();
+		var dsx = ds;
+		
 		Expect(7);
 		while (la.kind == 27) {
 			Attribute(ref kv);
 		}
-		IdsTypeWheres(true, tyds);
+		IdsTypeWheres(true, "global variables", delegate(TypedIdent tyd) { dsx.Add(new GlobalVariable(tyd.tok, tyd, kv)); } );
 		Expect(8);
-		foreach(TypedIdent/*!*/ tyd in tyds){
-		 Contract.Assert(tyd != null);
-		 ds.Add(new GlobalVariable(tyd.tok, tyd, kv));
-		}
-		
 	}
 
 	void Procedure(out Procedure/*!*/ proc, out /*maybe null*/ Implementation impl) {
@@ -545,52 +545,55 @@ private class BvBounds : Expr {
 		if (trig != null) this.SemErr("only attributes, not triggers, allowed here"); 
 	}
 
-	void IdsTypeWheres(bool allowWhereClauses, TypedIdentSeq/*!*/ tyds) {
-		Contract.Requires(tyds != null);
-		IdsTypeWhere(allowWhereClauses, tyds);
+	void IdsTypeWheres(bool allowWhereClauses, string context, System.Action<TypedIdent> action ) {
+		IdsTypeWhere(allowWhereClauses, context, action);
 		while (la.kind == 12) {
 			Get();
-			IdsTypeWhere(allowWhereClauses, tyds);
+			IdsTypeWhere(allowWhereClauses, context, action);
 		}
 	}
 
 	void LocalVars(VariableSeq/*!*/ ds) {
-		Contract.Ensures(Contract.ValueAtReturn(out ds) != null); TypedIdentSeq/*!*/ tyds = new TypedIdentSeq(); QKeyValue kv = null; 
+		Contract.Ensures(Contract.ValueAtReturn(out ds) != null);
+		QKeyValue kv = null;
+		
 		Expect(7);
 		while (la.kind == 27) {
 			Attribute(ref kv);
 		}
-		IdsTypeWheres(true, tyds);
+		IdsTypeWheres(true, "local variables", delegate(TypedIdent tyd) { ds.Add(new LocalVariable(tyd.tok, tyd, kv)); } );
 		Expect(8);
-		foreach(TypedIdent/*!*/ tyd in tyds){
-		 Contract.Assert(tyd != null);
-		 ds.Add(new LocalVariable(tyd.tok, tyd, kv));
-		}
-		
 	}
 
 	void ProcFormals(bool incoming, bool allowWhereClauses, out VariableSeq/*!*/ ds) {
-		Contract.Ensures(Contract.ValueAtReturn(out ds) != null); TypedIdentSeq/*!*/ tyds = new TypedIdentSeq(); ds = new VariableSeq(); 
+		Contract.Ensures(Contract.ValueAtReturn(out ds) != null);
+		ds = new VariableSeq();
+		var dsx = ds;
+		var context = allowWhereClauses ? "procedure formals" : "the 'implementation' copies of formals";
+		
 		Expect(9);
-		if (la.kind == 1) {
-			IdsTypeWheres(allowWhereClauses, tyds);
+		if (la.kind == 1 || la.kind == 27) {
+			AttrsIdsTypeWheres(allowWhereClauses, allowWhereClauses, context, delegate(TypedIdent tyd, QKeyValue kv) { dsx.Add(new Formal(tyd.tok, tyd, incoming, kv)); });
 		}
 		Expect(10);
-		foreach(TypedIdent/*!*/ tyd in tyds){
-		 Contract.Assert(tyd != null);
-		 ds.Add(new Formal(tyd.tok, tyd, incoming));
+	}
+
+	void AttrsIdsTypeWheres(bool allowAttributes, bool allowWhereClauses, string context, System.Action<TypedIdent, QKeyValue> action ) {
+		AttributesIdsTypeWhere(allowAttributes, allowWhereClauses, context, action);
+		while (la.kind == 12) {
+			Get();
+			AttributesIdsTypeWhere(allowAttributes, allowWhereClauses, context, action);
 		}
-		
 	}
 
 	void BoundVars(IToken/*!*/ x, out VariableSeq/*!*/ ds) {
-		Contract.Requires(x != null); Contract.Ensures(Contract.ValueAtReturn(out ds) != null); TypedIdentSeq/*!*/ tyds = new TypedIdentSeq(); ds = new VariableSeq(); 
-		IdsTypeWheres(false, tyds);
-		foreach(TypedIdent/*!*/ tyd in tyds){
-		 Contract.Assert(tyd != null);
-		 ds.Add(new BoundVariable(tyd.tok, tyd));
-		}
+		Contract.Requires(x != null);
+		Contract.Ensures(Contract.ValueAtReturn(out ds) != null);
+		TypedIdentSeq/*!*/ tyds = new TypedIdentSeq();
+		ds = new VariableSeq();
+		var dsx = ds;
 		
+		AttrsIdsTypeWheres(true, false, "bound variables", delegate(TypedIdent tyd, QKeyValue kv) { dsx.Add(new BoundVariable(tyd.tok, tyd, kv)); } );
 	}
 
 	void IdsType(out TypedIdentSeq/*!*/ tyds) {
@@ -624,7 +627,7 @@ private class BvBounds : Expr {
 		} else if (la.kind == 1) {
 			Ident(out tok);
 			TypeSeq/*!*/ args = new TypeSeq (); 
-			if (StartOf(2)) {
+			if (StartOf(6)) {
 				TypeArgs(args);
 			}
 			ty = new UnresolvedTypeIdentifier (tok, tok.val, args); 
@@ -633,24 +636,37 @@ private class BvBounds : Expr {
 		} else SynErr(96);
 	}
 
-	void IdsTypeWhere(bool allowWhereClauses, TypedIdentSeq/*!*/ tyds) {
-		Contract.Requires(tyds != null); TokenSeq/*!*/ ids;  Bpl.Type/*!*/ ty;  Expr wh = null;  Expr/*!*/ nne; 
+	void AttributesIdsTypeWhere(bool allowAttributes, bool allowWhereClauses, string context, System.Action<TypedIdent, QKeyValue> action ) {
+		QKeyValue kv = null; 
+		while (la.kind == 27) {
+			Attribute(ref kv);
+			if (!allowAttributes) {
+			 kv = null;
+			 this.SemErr("attributes are not allowed on " + context);
+			}
+			
+		}
+		IdsTypeWhere(allowWhereClauses, context, delegate(TypedIdent tyd) { action(tyd, kv); });
+	}
+
+	void IdsTypeWhere(bool allowWhereClauses, string context, System.Action<TypedIdent> action ) {
+		TokenSeq/*!*/ ids;  Bpl.Type/*!*/ ty;  Expr wh = null;  Expr/*!*/ nne; 
 		Idents(out ids);
 		Expect(11);
 		Type(out ty);
 		if (la.kind == 13) {
 			Get();
 			Expression(out nne);
-			if (allowWhereClauses) {
-			 wh = nne;
+			if (!allowWhereClauses) {
+			 this.SemErr("where clause not allowed on " + context);
 			} else {
-			 this.SemErr("where clause not allowed here");
+			 wh = nne;
 			}
 			
 		}
 		foreach(Token/*!*/ id in ids){
 		 Contract.Assert(id != null);
-		 tyds.Add(new TypedIdent(id, id.val, ty, wh));
+		 action(new TypedIdent(id, id.val, ty, wh));
 		}
 		
 	}
@@ -698,14 +714,14 @@ private class BvBounds : Expr {
 		if (StartOf(5)) {
 			TypeAtom(out ty);
 			ts.Add(ty); 
-			if (StartOf(2)) {
+			if (StartOf(6)) {
 				TypeArgs(ts);
 			}
 		} else if (la.kind == 1) {
 			Ident(out tok);
 			TypeSeq/*!*/ args = new TypeSeq ();
 			ts.Add(new UnresolvedTypeIdentifier (tok, tok.val, args)); 
-			if (StartOf(2)) {
+			if (StartOf(6)) {
 				TypeArgs(ts);
 			}
 		} else if (la.kind == 17 || la.kind == 19) {
@@ -727,7 +743,7 @@ private class BvBounds : Expr {
 		}
 		Expect(17);
 		if (tok == null) tok = t;  
-		if (StartOf(2)) {
+		if (StartOf(6)) {
 			Types(arguments);
 		}
 		Expect(18);
@@ -794,15 +810,23 @@ private class BvBounds : Expr {
 		}
 	}
 
-	void VarOrType(out TypedIdent/*!*/ tyd) {
-		Contract.Ensures(Contract.ValueAtReturn(out tyd) != null); string/*!*/ varName = ""; Bpl.Type/*!*/ ty; IToken/*!*/ tok; 
+	void VarOrType(out TypedIdent/*!*/ tyd, out QKeyValue kv) {
+		Contract.Ensures(Contract.ValueAtReturn(out tyd) != null);
+		string/*!*/ varName = TypedIdent.NoName;
+		Bpl.Type/*!*/ ty;
+		IToken/*!*/ tok;
+		kv = null;
+		
+		while (la.kind == 27) {
+			Attribute(ref kv);
+		}
 		Type(out ty);
 		tok = ty.tok; 
 		if (la.kind == 11) {
 			Get();
-			if (ty is UnresolvedTypeIdentifier &&
-			   cce.NonNull(ty as UnresolvedTypeIdentifier).Arguments.Length == 0) {
-			 varName = cce.NonNull(ty as UnresolvedTypeIdentifier).Name;
+			var uti = ty as UnresolvedTypeIdentifier;
+			if (uti != null && uti.Arguments.Length == 0) {
+			 varName = uti.Name;
 			} else {
 			 this.SemErr("expected identifier before ':'");
 			}
@@ -933,8 +957,8 @@ out VariableSeq/*!*/ ins, out VariableSeq/*!*/ outs, out QKeyValue kv) {
 		StructuredCmd ec = null;  StructuredCmd/*!*/ ecn;
 		TransferCmd tc = null;  TransferCmd/*!*/ tcn;
 		
-		while (StartOf(6)) {
-			if (StartOf(7)) {
+		while (StartOf(7)) {
+			if (StartOf(8)) {
 				LabelOrCmd(out c, out label);
 				if (c != null) {
 				 // LabelOrCmd read a Cmd
@@ -1157,7 +1181,7 @@ out VariableSeq/*!*/ ins, out VariableSeq/*!*/ outs, out QKeyValue kv) {
 		if (la.kind == 44) {
 			Get();
 			e = null; 
-		} else if (StartOf(8)) {
+		} else if (StartOf(9)) {
 			Expression(out ee);
 			e = ee; 
 		} else SynErr(105);
@@ -1232,7 +1256,7 @@ out VariableSeq/*!*/ ins, out VariableSeq/*!*/ outs, out QKeyValue kv) {
 			Ident(out first);
 			if (la.kind == 9) {
 				Get();
-				if (StartOf(9)) {
+				if (StartOf(10)) {
 					CallForallArg(out en);
 					es.Add(en); 
 					while (la.kind == 12) {
@@ -1268,7 +1292,7 @@ out VariableSeq/*!*/ ins, out VariableSeq/*!*/ outs, out QKeyValue kv) {
 				Expect(49);
 				Ident(out first);
 				Expect(9);
-				if (StartOf(9)) {
+				if (StartOf(10)) {
 					CallForallArg(out en);
 					es.Add(en); 
 					while (la.kind == 12) {
@@ -1285,7 +1309,7 @@ out VariableSeq/*!*/ ins, out VariableSeq/*!*/ outs, out QKeyValue kv) {
 			Ident(out first);
 			Expect(9);
 			args = new List<Expr>(); 
-			if (StartOf(9)) {
+			if (StartOf(10)) {
 				CallForallArg(out en);
 				args.Add(en); 
 				while (la.kind == 12) {
@@ -1322,7 +1346,7 @@ out VariableSeq/*!*/ ins, out VariableSeq/*!*/ outs, out QKeyValue kv) {
 			Expect(49);
 			Ident(out first);
 			Expect(9);
-			if (StartOf(9)) {
+			if (StartOf(10)) {
 				CallForallArg(out en);
 				es.Add(en); 
 				while (la.kind == 12) {
@@ -1342,7 +1366,7 @@ out VariableSeq/*!*/ ins, out VariableSeq/*!*/ outs, out QKeyValue kv) {
 		
 		Expect(17);
 		x = t; 
-		if (StartOf(8)) {
+		if (StartOf(9)) {
 			Expression(out e);
 			indexes.Add(e); 
 			while (la.kind == 12) {
@@ -1360,7 +1384,7 @@ out VariableSeq/*!*/ ins, out VariableSeq/*!*/ outs, out QKeyValue kv) {
 		
 		if (la.kind == 44) {
 			Get();
-		} else if (StartOf(8)) {
+		} else if (StartOf(9)) {
 			Expression(out e);
 			exprOptional = e; 
 		} else SynErr(109);
@@ -1392,7 +1416,7 @@ out VariableSeq/*!*/ ins, out VariableSeq/*!*/ outs, out QKeyValue kv) {
 	void ImpliesExpression(bool noExplies, out Expr/*!*/ e0) {
 		Contract.Ensures(Contract.ValueAtReturn(out e0) != null); IToken/*!*/ x; Expr/*!*/ e1; 
 		LogicalExpression(out e0);
-		if (StartOf(10)) {
+		if (StartOf(11)) {
 			if (la.kind == 54 || la.kind == 55) {
 				ImpliesOp();
 				x = t; 
@@ -1426,7 +1450,7 @@ out VariableSeq/*!*/ ins, out VariableSeq/*!*/ outs, out QKeyValue kv) {
 	void LogicalExpression(out Expr/*!*/ e0) {
 		Contract.Ensures(Contract.ValueAtReturn(out e0) != null); IToken/*!*/ x; Expr/*!*/ e1; 
 		RelationalExpression(out e0);
-		if (StartOf(11)) {
+		if (StartOf(12)) {
 			if (la.kind == 58 || la.kind == 59) {
 				AndOp();
 				x = t; 
@@ -1472,7 +1496,7 @@ out VariableSeq/*!*/ ins, out VariableSeq/*!*/ outs, out QKeyValue kv) {
 	void RelationalExpression(out Expr/*!*/ e0) {
 		Contract.Ensures(Contract.ValueAtReturn(out e0) != null); IToken/*!*/ x; Expr/*!*/ e1; BinaryOperator.Opcode op; 
 		BvTerm(out e0);
-		if (StartOf(12)) {
+		if (StartOf(13)) {
 			RelOp(out x, out op);
 			BvTerm(out e1);
 			e0 = Expr.Binary(x, op, e0, e1); 
@@ -1576,7 +1600,7 @@ out VariableSeq/*!*/ ins, out VariableSeq/*!*/ outs, out QKeyValue kv) {
 	void Factor(out Expr/*!*/ e0) {
 		Contract.Ensures(Contract.ValueAtReturn(out e0) != null); IToken/*!*/ x; Expr/*!*/ e1; BinaryOperator.Opcode op; 
 		Power(out e0);
-		while (StartOf(13)) {
+		while (StartOf(14)) {
 			MulOp(out x, out op);
 			Power(out e1);
 			e0 = Expr.Binary(x, op, e0, e1); 
@@ -1636,7 +1660,7 @@ out VariableSeq/*!*/ ins, out VariableSeq/*!*/ outs, out QKeyValue kv) {
 			x = t; 
 			UnaryExpression(out e);
 			e = Expr.Unary(x, UnaryOperator.Opcode.Not, e); 
-		} else if (StartOf(14)) {
+		} else if (StartOf(15)) {
 			CoercionExpression(out e);
 		} else SynErr(119);
 	}
@@ -1658,7 +1682,7 @@ out VariableSeq/*!*/ ins, out VariableSeq/*!*/ outs, out QKeyValue kv) {
 		while (la.kind == 11) {
 			Get();
 			x = t; 
-			if (StartOf(2)) {
+			if (StartOf(6)) {
 				Type(out coercedTo);
 				e = Expr.CoerceType(x, e, coercedTo); 
 			} else if (la.kind == 3) {
@@ -1686,8 +1710,8 @@ out VariableSeq/*!*/ ins, out VariableSeq/*!*/ outs, out QKeyValue kv) {
 			x = t; allArgs = new ExprSeq ();
 			allArgs.Add(e);
 			store = false; bvExtract = false; 
-			if (StartOf(15)) {
-				if (StartOf(8)) {
+			if (StartOf(16)) {
+				if (StartOf(9)) {
 					Expression(out index0);
 					if (index0 is BvBounds)
 					 bvExtract = true;
@@ -1781,7 +1805,7 @@ out VariableSeq/*!*/ ins, out VariableSeq/*!*/ outs, out QKeyValue kv) {
 			id = new IdentifierExpr(x, x.val);  e = id; 
 			if (la.kind == 9) {
 				Get();
-				if (StartOf(8)) {
+				if (StartOf(9)) {
 					Expressions(out es);
 					e = new NAryExpr(x, new FunctionCall(id), es); 
 				} else if (la.kind == 10) {
@@ -1820,7 +1844,7 @@ out VariableSeq/*!*/ ins, out VariableSeq/*!*/ outs, out QKeyValue kv) {
 		}
 		case 9: {
 			Get();
-			if (StartOf(8)) {
+			if (StartOf(9)) {
 				Expression(out e);
 				if (e is BvBounds)
 				 this.SemErr("parentheses around bitvector bounds " +
@@ -1914,10 +1938,10 @@ out QKeyValue kv, out Trigger trig, out Expr/*!*/ body) {
 		
 		if (la.kind == 19) {
 			TypeParams(out tok, out typeParams);
-			if (la.kind == 1) {
+			if (la.kind == 1 || la.kind == 27) {
 				BoundVars(q, out ds);
 			}
-		} else if (la.kind == 1) {
+		} else if (la.kind == 1 || la.kind == 27) {
 			BoundVars(q, out ds);
 		} else SynErr(127);
 		QSep();
@@ -1986,7 +2010,7 @@ out QKeyValue kv, out Trigger trig, out Expr/*!*/ body) {
 		
 		Ident(out x);
 		Expect(11);
-		while (StartOf(7)) {
+		while (StartOf(8)) {
 			LabelOrCmd(out c, out label);
 			if (c != null) {
 			 Contract.Assert(label == null);
@@ -2025,7 +2049,7 @@ out QKeyValue kv, out Trigger trig, out Expr/*!*/ body) {
 			Get();
 			Expect(1);
 			key = t.val;  parameters = new List<object/*!*/>(); 
-			if (StartOf(16)) {
+			if (StartOf(17)) {
 				AttributeParameter(out param);
 				parameters.Add(param); 
 				while (la.kind == 12) {
@@ -2053,7 +2077,7 @@ out QKeyValue kv, out Trigger trig, out Expr/*!*/ body) {
 			 }
 			}
 			
-		} else if (StartOf(8)) {
+		} else if (StartOf(9)) {
 			Expression(out e);
 			es = new ExprSeq(e); 
 			while (la.kind == 12) {
@@ -2079,7 +2103,7 @@ out QKeyValue kv, out Trigger trig, out Expr/*!*/ body) {
 		if (la.kind == 4) {
 			Get();
 			o = t.val.Substring(1, t.val.Length-2); 
-		} else if (StartOf(8)) {
+		} else if (StartOf(9)) {
 			Expression(out e);
 			o = e; 
 		} else SynErr(132);
@@ -2108,10 +2132,11 @@ out QKeyValue kv, out Trigger trig, out Expr/*!*/ body) {
 	static readonly bool[,]/*!*/ set = {
 		{T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x},
 		{x,x,x,x, x,x,x,T, x,x,x,x, x,x,x,x, x,x,x,x, x,T,x,x, x,T,x,x, x,T,T,x, T,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x},
-		{x,T,x,x, x,x,x,x, x,T,x,x, x,x,T,T, T,T,x,T, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x},
+		{x,T,x,x, x,x,x,x, x,T,x,x, x,x,T,T, T,T,x,T, x,x,x,x, x,x,x,T, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x},
 		{x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,T,T, T,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x},
 		{x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,T, x,x,x,x, x,x,T,T, T,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x},
 		{x,x,x,x, x,x,x,x, x,T,x,x, x,x,T,T, T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x},
+		{x,T,x,x, x,x,x,x, x,T,x,x, x,x,T,T, T,T,x,T, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x},
 		{x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,T, x,x,T,T, T,x,T,x, x,T,T,T, T,x,T,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x},
 		{x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,T, x,x,x,x, x,x,x,x, x,x,T,T, T,x,T,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x},
 		{x,T,T,T, x,T,T,x, x,T,x,x, x,x,T,T, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, T,x,x,x, x,T,T,T, T,T,T,x, x,x,x,x, x,x,x,x, x,x},

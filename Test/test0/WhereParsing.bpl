@@ -23,3 +23,12 @@ implementation P(xx: int where xx > 0)  // error: where not allowed in implement
     yy := b;
     return;
 }
+
+procedure {:myProcAttr} Attr(x: int, {:myParamAttr x, y} y: bool) returns (z: int, {:retAttr x} w: bool)
+{
+}
+
+procedure BadAttrs(x: int);
+implementation BadAttrs({:myParamAttr} x: int)  // error: attributes not allowed in implementation decl
+{
+}

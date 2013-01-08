@@ -2583,7 +2583,7 @@ namespace Microsoft.Boogie {
 
       if (this.LocVars.Length > 0) {
         stream.Write(level + 1, "var ");
-        this.LocVars.Emit(stream);
+        this.LocVars.Emit(stream, true);
         stream.WriteLine(";");
       }
 

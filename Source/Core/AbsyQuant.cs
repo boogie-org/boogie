@@ -116,7 +116,7 @@ namespace Microsoft.Boogie {
       this.EmitTypeHint(stream);
       Type.EmitOptionalTypeParams(stream, TypeParameters);
       stream.Write(this, " ");
-      this.Dummies.Emit(stream);
+      this.Dummies.Emit(stream, true);
       stream.Write(" :: ");
       for (QKeyValue kv = this.Attributes; kv != null; kv = kv.Next) {
         kv.Emit(stream);
