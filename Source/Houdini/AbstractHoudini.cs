@@ -31,6 +31,7 @@ namespace Microsoft.Boogie.Houdini {
         Dictionary<string, Implementation> name2Impl;
         // Use Bilateral algorithm
         public static bool UseBilateralAlgo = true;
+        public static int iterTimeLimit = -1; // ms
 
         public static readonly string summaryPredSuffix = "SummaryPred";
 
@@ -432,7 +433,6 @@ namespace Microsoft.Boogie.Houdini {
         {
             var ret = false;
             var gen = prover.VCExprGen;
-            var startTime = DateTime.Now;
 
             // construct summaries
             var env = VCExpressionGenerator.True;
@@ -452,12 +452,17 @@ namespace Microsoft.Boogie.Houdini {
                 env = gen.AndSimp(env, gen.Eq(tup.Item3, calleeSummary));
             }
 
+            var prev = impl2Summary[impl.Name].Copy();
             var upper = impl2Summary[impl.Name].GetTrueSummary(program, impl);
+            var sw = new Stopwatch();
+            sw.Start();
+            var lowerTime = TimeSpan.Zero;
 
             while(true)
             {
                 var usedLower = true;
                 var query = impl2Summary[impl.Name];
+                sw.Restart();
 
                 // construct self summaries
                 var summaryExpr = VCExpressionGenerator.True;
@@ -491,36 +496,46 @@ namespace Microsoft.Boogie.Houdini {
                 {
                     Console.WriteLine("Verifying {0} ({1}): {2}", impl.Name, usedLower ? "lower" : "ac", query);
                 }
-
-                if ((DateTime.Now - startTime).TotalSeconds > CommandLineOptions.Clo.ProverKillTime &&
-                    CommandLineOptions.Clo.ProverKillTime > 0)
+                
+                if (usedLower && lowerTime.TotalMilliseconds >= iterTimeLimit && iterTimeLimit >= 0)
                 {
                     if (UseBilateralAlgo)
                     {
                         if (CommandLineOptions.Clo.Trace)
                             Console.WriteLine("Timeout/Spaceout while verifying " + impl.Name);
+                        ret = prev.IsEqual(upper) ? false : true;
                         impl2Summary[impl.Name] = upper;
-                        ret = true;
                         break;
                     }
                     else
                     {
                         if (CommandLineOptions.Clo.Trace)
                             Console.WriteLine("Timeout/Spaceout while verifying " + impl.Name);
-                        impl2Summary[impl.Name] = impl2Summary[impl.Name].GetTrueSummary(program, impl);
-                        ret = true;
+                        var tt = impl2Summary[impl.Name].GetTrueSummary(program, impl);
+                        ret = prev.IsEqual(tt) ? false : true; ;
+                        impl2Summary[impl.Name] = tt;
                         break;
                     }
                 }
 
                 var start = DateTime.Now;
 
+                //prover.Push();
+                //prover.Assert(gen.Not(vc), true);
+                //prover.FlushAxiomsToTheoremProver();
+                //prover.Check();
+                //ProverInterface.Outcome proverOutcome = prover.CheckOutcome(reporter);
+                //prover.Pop();
+
                 prover.BeginCheck(impl.Name, vc, reporter);
                 ProverInterface.Outcome proverOutcome = prover.CheckOutcome(reporter);
-                
+
                 var inc = (DateTime.Now - start);
                 proverTime += inc;
                 numProverQueries++;
+
+                sw.Stop();
+                if (usedLower) lowerTime += sw.Elapsed;
 
                 if(CommandLineOptions.Clo.Trace)
                     Console.WriteLine("Time taken = " + inc.TotalSeconds.ToString()); 
@@ -531,8 +546,8 @@ namespace Microsoft.Boogie.Houdini {
                     {
                         if(CommandLineOptions.Clo.Trace)
                             Console.WriteLine("Timeout/Spaceout while verifying " + impl.Name);
+                        ret = prev.IsEqual(upper) ? false : true;
                         impl2Summary[impl.Name] = upper;
-                        ret = true;
                         break;
                     }
                     
@@ -556,8 +571,9 @@ namespace Microsoft.Boogie.Houdini {
                     {
                         if (CommandLineOptions.Clo.Trace)
                             Console.WriteLine("Timeout/Spaceout while verifying " + impl.Name);
-                        impl2Summary[impl.Name] = impl2Summary[impl.Name].GetTrueSummary(program, impl);
-                        ret = true;
+                        var tt = impl2Summary[impl.Name].GetTrueSummary(program, impl);
+                        ret = prev.IsEqual(tt) ? false : true; ;
+                        impl2Summary[impl.Name] = tt;
                         break;
                     }
 
@@ -824,6 +840,7 @@ namespace Microsoft.Boogie.Houdini {
 
     public interface ISummaryElement
     {
+        ISummaryElement Copy();
         ISummaryElement GetFlaseSummary(Program program, Implementation impl);
         void Join(Dictionary<string, Model.Element> state, Model model);
         VCExpr GetSummaryExpr(Dictionary<string, VCExpr> incarnations, VCExpressionGenerator gen);
@@ -983,6 +1000,15 @@ namespace Microsoft.Boogie.Houdini {
         }
 
         #endregion
+
+        #region ISummaryElement Members
+
+        public ISummaryElement Copy()
+        {
+            throw new NotImplementedException();
+        }
+
+        #endregion
     }
 
     public class NamedExpr 
@@ -1080,6 +1106,9 @@ namespace Microsoft.Boogie.Houdini {
             {
                 PrePreds.Add(impl.Name, new List<NamedExpr>());
                 PostPreds.Add(impl.Name, new List<NamedExpr>());
+
+                // Add "false" as the first post predicate
+                //PostPreds[impl.Name].Add(new NamedExpr(Expr.False));
 
                 preT.Iter(e => PrePreds[impl.Name].Add(e));
                 postT.Iter(e => PostPreds[impl.Name].Add(e));
@@ -1223,6 +1252,7 @@ namespace Microsoft.Boogie.Houdini {
 
             var nexpr = expr as NAryExpr;
             if (nexpr == null
+                || !(nexpr.Fun is BinaryOperator)
                 || (nexpr.Fun as BinaryOperator).Op != BinaryOperator.Opcode.And)
             {
                     ret.Add(expr);
@@ -1639,6 +1669,16 @@ namespace Microsoft.Boogie.Houdini {
 
         #region ISummaryElement Members
 
+        public ISummaryElement Copy()
+        {
+            var ret = new PredicateAbs(procName);
+            ret.isFalse = isFalse;
+            ret.value = new PredicateAbsDisjunct[value.Length];
+            for (int i = 0; i < value.Length; i++)
+                ret.value[i] = value[i];
+            return ret;
+        }
+
         public ISummaryElement GetFlaseSummary(Program program, Implementation impl)
         {
             return new PredicateAbs(impl.Name);
@@ -1691,10 +1731,51 @@ namespace Microsoft.Boogie.Houdini {
 
                 if (isFalse)
                     value[i] = newDisj;
-                else 
+                else
                     value[i] = PredicateAbsDisjunct.And(value[i], newDisj);
             }
 
+            /*
+            // do beta(model)
+            var that = new PredicateAbsDisjunct[PostPreds[procName].Count];
+            for (int i = 0; i < PostPreds[procName].Count; i++)
+            {
+                if (postPredsVal[i])
+                    that[i] = new PredicateAbsDisjunct(true, procName);
+                else if (i == 0)
+                {
+                    Debug.Assert(PostPreds[procName][0].ToString() == "false");
+                    var newDisj = new PredicateAbsDisjunct(true, procName);
+                    newDisj = new PredicateAbsDisjunct(indexSeq.Where(j => !prePredsVal[j]), indexSeq.Where(j => prePredsVal[j]), procName);
+                    that[i] = newDisj;
+                }
+                else
+                {
+                    // false
+                    that[i] = new PredicateAbsDisjunct(false, procName);
+                }
+            }
+
+            // Do join
+            for (int i = 0; i < PostPreds[procName].Count; i++)
+            {
+                if (isFalse)
+                    value[i] = that[i];
+                else
+                {
+                    if (i == 0)
+                        value[i] = PredicateAbsDisjunct.And(value[i], that[i]);
+                    else
+                    {
+                        var c1 = PredicateAbsDisjunct.And(value[i], that[i]);
+                        var c2 = PredicateAbsDisjunct.And(value[i], that[0]);
+                        var c3 = PredicateAbsDisjunct.And(value[0], that[i]);
+                        value[i] = PredicateAbsDisjunct.Or(c1, c2);
+                        value[i] = PredicateAbsDisjunct.Or(value[i], c3);
+                    }
+                }
+            }
+            */
             isFalse = false;
 
             //Console.WriteLine("Result of Join: {0}", this.ToString());
@@ -1721,7 +1802,16 @@ namespace Microsoft.Boogie.Houdini {
 
         public bool IsEqual(ISummaryElement other)
         {
-            return false;
+            var that = other as PredicateAbs;
+            if (isFalse && that.isFalse) return true;
+            if (isFalse || that.isFalse) return false;
+            for (int i = 0; i < PostPreds[procName].Count; i++)
+            {
+                if (!PredicateAbsDisjunct.syntacticLessThan(value[i], that.value[i]) ||
+                    !PredicateAbsDisjunct.syntacticLessThan(that.value[i], value[i]))
+                    return false;
+            }
+            return true;
         }
 
         // Precondition: the upper guys are just {true/false/upper-candidate} ==> post-pred
