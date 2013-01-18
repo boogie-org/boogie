@@ -1971,6 +1971,13 @@ namespace Microsoft.Boogie {
       }
       stream.Write(this, level, "function ");
       EmitAttributes(stream);
+      if (Body != null && !QKeyValue.FindBoolAttribute(Attributes, "inline")) {
+        // Boogie inlines any function whose .Body field is non-null.  The parser populates the .Body field
+        // is the :inline attribute is present, but if someone creates the Boogie file directly as an AST, then
+        // the :inline attribute may not be there.  We'll make sure it's printed, so one can see that this means
+        // that the body will be inlined.
+        stream.Write("{:inline} ");
+      }
       if (CommandLineOptions.Clo.PrintWithUniqueASTIds) {
         stream.Write("h{0}^^{1}", this.GetHashCode(), TokenTextWriter.SanitizeIdentifier(this.Name));
       } else {
@@ -2041,6 +2048,39 @@ namespace Microsoft.Boogie {
       //Contract.Requires(visitor != null);
       Contract.Ensures(Contract.Result<Absy>() != null);
       return visitor.VisitFunction(this);
+    }
+
+    public Axiom CreateDefinitionAxiom(Expr definition, QKeyValue kv = null) {
+      Contract.Requires(definition != null);
+
+      VariableSeq dummies = new VariableSeq();
+      ExprSeq callArgs = new ExprSeq();
+      int i = 0;
+      foreach (Formal/*!*/ f in InParams) {
+        Contract.Assert(f != null);
+        string nm = f.TypedIdent.HasName ? f.TypedIdent.Name : "_" + i;
+        dummies.Add(new BoundVariable(f.tok, new TypedIdent(f.tok, nm, f.TypedIdent.Type)));
+        callArgs.Add(new IdentifierExpr(f.tok, nm));
+        i++;
+      }
+      TypeVariableSeq/*!*/ quantifiedTypeVars = new TypeVariableSeq();
+      foreach (TypeVariable/*!*/ t in TypeParameters) {
+        Contract.Assert(t != null);
+        quantifiedTypeVars.Add(new TypeVariable(Token.NoToken, t.Name));
+      }
+
+      Expr call = new NAryExpr(tok, new FunctionCall(new IdentifierExpr(tok, Name)), callArgs);
+      // specify the type of the function, because it might be that
+      // type parameters only occur in the output type
+      call = Expr.CoerceType(tok, call, (Type)OutParams[0].TypedIdent.Type.Clone());
+      Expr def = Expr.Eq(call, definition);
+      if (quantifiedTypeVars.Length != 0 || dummies.Length != 0) {
+        def = new ForallExpr(tok, quantifiedTypeVars, dummies,
+                             kv,
+                             new Trigger(tok, true, new ExprSeq(call), null),
+                             def);
+      }
+      return new Axiom(tok, def);
     }
   }
 
