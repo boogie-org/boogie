@@ -36,19 +36,19 @@ namespace Microsoft.Boogie {
       DescriptiveToolName = descriptiveName;
     }
 
-    public static string/*!*/ VersionNumber {
+    public virtual string/*!*/ VersionNumber {
       get {
         Contract.Ensures(Contract.Result<string>() != null);
         return cce.NonNull(cce.NonNull(System.Diagnostics.FileVersionInfo.GetVersionInfo(System.Reflection.Assembly.GetExecutingAssembly().Location)).FileVersion);
       }
     }
-    public static string/*!*/ VersionSuffix {
+    public virtual string/*!*/ VersionSuffix {
       get {
         Contract.Ensures(Contract.Result<string>() != null);
-        return " version " + VersionNumber + ", Copyright (c) 2003-2012, Microsoft.";
+        return " version " + VersionNumber + ", Copyright (c) 2003-2013, Microsoft.";
       }
     }
-    public string/*!*/ Version {
+    public virtual string/*!*/ Version {
       get {
         Contract.Ensures(Contract.Result<string>() != null);
         return DescriptiveToolName + VersionSuffix;
