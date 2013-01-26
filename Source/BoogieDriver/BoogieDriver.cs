@@ -186,6 +186,11 @@ namespace Microsoft.Boogie {
           }
         }
 
+        OwickiGriesTransform ogTransform = new OwickiGriesTransform(program);
+        ogTransform.Transform();
+        LinearSetTransform linearTransform = new LinearSetTransform(program);
+        linearTransform.Transform();
+
         EliminateDeadVariablesAndInline(program);
 
         int errorCount, verified, inconclusives, timeOuts, outOfMemories;
@@ -200,7 +205,6 @@ namespace Microsoft.Boogie {
         }
       }
     }
-
 
     static void PrintBplFile(string filename, Program program, bool allowPrintDesugaring) {
       Contract.Requires(program != null);
@@ -374,6 +378,14 @@ namespace Microsoft.Boogie {
       if (errorCount != 0) {
         Console.WriteLine("{0} type checking errors detected in {1}", errorCount, bplFileName);
         return PipelineOutcome.TypeCheckingError;
+      }
+
+      LinearTypechecker linearTypechecker = new LinearTypechecker();
+      linearTypechecker.VisitProgram(program);
+      if (linearTypechecker.errorCount > 0)
+      {
+          Console.WriteLine("{0} type checking errors detected in {1}", errorCount, bplFileName);
+          return PipelineOutcome.TypeCheckingError;
       }
 
       if (CommandLineOptions.Clo.PrintFile != null && CommandLineOptions.Clo.PrintDesugarings) {

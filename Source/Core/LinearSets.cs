@@ -7,12 +7,19 @@ using Microsoft.Boogie;
 
 namespace Microsoft.Boogie
 {
-    class LinearTypechecker : StandardVisitor
+    public class LinearTypechecker : StandardVisitor
     {
+        public int errorCount;
         CheckingContext checkingContext;
         public LinearTypechecker()
         {
-            checkingContext = new CheckingContext(null);
+            this.errorCount = 0;
+            this.checkingContext = new CheckingContext(null);
+        }
+        private void Error(Absy node, string message)
+        {
+            checkingContext.Error(node, message);
+            errorCount++;
         }
 
         public override Cmd VisitAssignCmd(AssignCmd node)
@@ -26,13 +33,13 @@ namespace Microsoft.Boogie
                 SimpleAssignLhs salhs = lhs as SimpleAssignLhs;
                 if (salhs == null)
                 {
-                    checkingContext.Error(node, "Only simple assignment allowed on linear sets");
+                    Error(node, "Only simple assignment allowed on linear sets");
                     continue;
                 }
                 IdentifierExpr rhs = node.Rhss[i] as IdentifierExpr;
                 if (rhs == null)
                 {
-                    checkingContext.Error(node, "Only variable can be assigned to a linear set");
+                    Error(node, "Only variable can be assigned to a linear set");
                     continue;
                 }
                 string rhsDomainName = QKeyValue.FindStringAttribute(rhs.Decl.Attributes, "linear");
@@ -43,17 +50,17 @@ namespace Microsoft.Boogie
                 }
                 if (rhsDomainName == null)
                 {
-                    checkingContext.Error(node, "Only linear variable can be assigned to another linear variable");
+                    Error(node, "Only linear variable can be assigned to another linear variable");
                     continue;
                 }
                 if (domainName != rhsDomainName)
                 {
-                    checkingContext.Error(node, "Variable of one domain being assigned to a variable of another domain");
+                    Error(node, "Variable of one domain being assigned to a variable of another domain");
                     continue;
                 }
                 if (rhsVars.Contains(rhs.Decl))
                 {
-                    checkingContext.Error(node, "A linear set can occur only once in the rhs");
+                    Error(node, "A linear set can occur only once in the rhs");
                     continue;
                 }
                 rhsVars.Add(rhs.Decl);
@@ -73,7 +80,7 @@ namespace Microsoft.Boogie
                 IdentifierExpr actual = node.Ins[i] as IdentifierExpr;
                 if (actual == null)
                 {
-                    checkingContext.Error(node, "Only variable can be assigned to a linear set");
+                    Error(node, "Only variable can be assigned to a linear set");
                     continue;
                 }
                 string actualDomainName = QKeyValue.FindStringAttribute(actual.Decl.Attributes, "linear");
@@ -84,17 +91,17 @@ namespace Microsoft.Boogie
                 }
                 if (actualDomainName == null)
                 {
-                    checkingContext.Error(node, "Only a linear argument can be passed to a linear parameter");
+                    Error(node, "Only a linear argument can be passed to a linear parameter");
                     continue;
                 }
                 if (domainName != actualDomainName)
                 {
-                    checkingContext.Error(node, "The domains of formal and actual parameters must be the same");
+                    Error(node, "The domains of formal and actual parameters must be the same");
                     continue;
                 }
                 if (inVars.Contains(actual.Decl))
                 {
-                    checkingContext.Error(node, "A linear set can occur only once as an in parameter");
+                    Error(node, "A linear set can occur only once as an in parameter");
                     continue;
                 }
                 inVars.Add(actual.Decl);
@@ -109,19 +116,19 @@ namespace Microsoft.Boogie
                 string domainName = QKeyValue.FindStringAttribute(formal.Attributes, "linear");
                 if (domainName == null)
                 {
-                    checkingContext.Error(node, "Only a linear variable can be passed to a linear parameter");
+                    Error(node, "Only a linear variable can be passed to a linear parameter");
                     continue;
                 }
                 if (domainName != actualDomainName)
                 {
-                    checkingContext.Error(node, "The domains of formal and actual parameters must be the same");
+                    Error(node, "The domains of formal and actual parameters must be the same");
                 }
             }
             return base.VisitCallCmd(node);
         }
     }
 
-    class LinearSetTransform
+    public class LinearSetTransform
     {
         private Program program;
         private Dictionary<Variable, string> varToDomainName;
@@ -169,7 +176,7 @@ namespace Microsoft.Boogie
             domainNameToScope[domainName].Add(v);
         }
 
-        public void Transform(Program program)
+        public void Transform()
         {
             foreach (var decl in program.TopLevelDeclarations)
             {
@@ -232,7 +239,9 @@ namespace Microsoft.Boogie
 
                 {
                     // Loops
-                    Microsoft.Boogie.GraphUtil.Graph<Block> g = Program.GraphFromImpl(impl);
+                    impl.PruneUnreachableBlocks();
+                    impl.ComputePredecessorsForBlocks();
+                    GraphUtil.Graph<Block> g = Program.GraphFromImpl(impl);
                     g.ComputeLoops();
                     if (g.Reducible)
                     {
@@ -246,10 +255,6 @@ namespace Microsoft.Boogie
                             newCmds.AddRange(header.Cmds);
                             header.Cmds = newCmds;
                         }
-                    }
-                    else
-                    {
-                        Console.WriteLine("Warning: implementation {0} is not reducible", impl.Name);
                     }
                 }
 

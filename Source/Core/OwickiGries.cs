@@ -139,23 +139,29 @@ namespace Microsoft.Boogie
         }
     }
 
-    class OwickiGriesTransform
+    public class OwickiGriesTransform
     {
         Dictionary<string, ProcedureInfo> procNameToInfo;
         IdentifierExprSeq globalMods;
         Hashtable globalMap;
+        Program program;
 
         public OwickiGriesTransform(Program program)
         {
+            this.program = program;
             procNameToInfo = AsyncAndYieldTraverser.Traverse(program);
             AtomicTraverser.Traverse(program, procNameToInfo);
             globalMap = new Hashtable();
             globalMods = new IdentifierExprSeq();
-            foreach (Variable g in program.GlobalVariables())
+            bool workTodo = procNameToInfo.Values.Aggregate<ProcedureInfo, bool>(false, (b, info) => (b || (info.hasImplementation && !info.isAtomic)));
+            if (workTodo)
             {
-                var oldg = new GlobalVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("old_{0}", g.Name), g.TypedIdent.Type));
-                globalMap[g] = new IdentifierExpr(Token.NoToken, oldg);
-                globalMods.Add(new IdentifierExpr(Token.NoToken, g));
+                foreach (Variable g in program.GlobalVariables())
+                {
+                    var oldg = new GlobalVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("old_{0}", g.Name), g.TypedIdent.Type));
+                    globalMap[g] = new IdentifierExpr(Token.NoToken, oldg);
+                    globalMods.Add(new IdentifierExpr(Token.NoToken, g));
+                }
             }
         }
 
@@ -199,7 +205,7 @@ namespace Microsoft.Boogie
             }
         }
 
-        public void Transform(Program program)
+        public void Transform()
         {
             foreach (var decl in program.TopLevelDeclarations)
             {
