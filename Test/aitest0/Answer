@@ -24,14 +24,7 @@ implementation Join(b: bool)
     y := 4;
     z := x + y;
     assume {:inferred} GlobalFlag && x == 3 && y == 4 && z == 7;
-	goto Then, Else;
-
-  Then:
-    assume {:inferred} GlobalFlag && x == 3 && y == 4 && z == 7;
-    assume b <==> true;
-    x := x + 1;
-    assume {:inferred} GlobalFlag && x == 4 && y == 4 && z == 7 && b;
-    goto join;
+    goto Then, Else;
 
   Else:
     assume {:inferred} GlobalFlag && x == 3 && y == 4 && z == 7;
@@ -47,6 +40,13 @@ implementation Join(b: bool)
     assert GlobalFlag <==> true;
     assume {:inferred} GlobalFlag && 3 <= x && x < 5 && y == 4 && z == 7;
     return;
+
+  Then:
+    assume {:inferred} GlobalFlag && x == 3 && y == 4 && z == 7;
+    assume b <==> true;
+    x := x + 1;
+    assume {:inferred} GlobalFlag && x == 4 && y == 4 && z == 7 && b;
+    goto join;
 }
 
 
@@ -72,17 +72,17 @@ implementation Loop()
     assume {:inferred} c == 0 && 0 <= i && i < 11;
     goto Then, Else;
 
+  Else:
+    assume {:inferred} c == 0 && 0 <= i && i < 11;
+    assume {:inferred} c == 0 && 0 <= i && i < 11;
+    return;
+
   Then:
     assume {:inferred} c == 0 && 0 <= i && i < 11;
     assume i < 10;
     i := i + 1;
     assume {:inferred} c == 0 && 1 <= i && i < 11;
     goto test;
-
-  Else:
-    assume {:inferred} c == 0 && 0 <= i && i < 11;
-    assume {:inferred} c == 0 && 0 <= i && i < 11;
-    return;
 }
 
 
