@@ -2621,7 +2621,16 @@ namespace VC {
               var args = new List<object>();
               if (errModel == null && CommandLineOptions.Clo.UseProverEvaluate)
               {
-                  args.Add(theoremProver.Evaluate(expr));
+                  object exprv;
+                  try
+                  {
+                      exprv = theoremProver.Evaluate(expr);
+                  }
+                  catch (Exception)
+                  {
+                      exprv = null;
+                  }
+                  args.Add(exprv);
               }
               else
               {

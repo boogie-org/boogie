@@ -841,13 +841,13 @@ namespace Microsoft.Boogie.SMTLib
                 throw new VCExprEvaluationException();
         }
         if (resp.Name == "-" && resp.ArgCount == 1)
-            return int.Parse("-" + resp.Arguments[0].Name);
+            return Microsoft.Basetypes.BigNum.FromString("-" + resp.Arguments[0].Name);
         if (resp.ArgCount != 0)
             throw new VCExprEvaluationException();
         if (expr.Type.Equals(Boogie.Type.Bool))
             return bool.Parse(resp.Name);
         else if (expr.Type.Equals(Boogie.Type.Int))
-            return int.Parse(resp.Name);
+            return Microsoft.Basetypes.BigNum.FromString(resp.Name); 
         else
             return resp.Name;
     }
