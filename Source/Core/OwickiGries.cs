@@ -5,27 +5,109 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Boogie;
+using System.Diagnostics;
 
 namespace Microsoft.Boogie
 {
     class ProcedureInfo
     {
-        public bool hasImplementation;
-        public bool isAtomic;
+        // containsYield is true iff there is an implementation that contains a yield statement
         public bool containsYield;
+        // isThreadStart is true iff the procedure is labeled entrypoint or if there is an async call to the procedure
         public bool isThreadStart;
+        // isAtomic is true if there are no yields transitively in any implementation
+        public bool isAtomic;
         public Procedure yieldCheckerProc;
         public Implementation yieldCheckerImpl;
         public Procedure dummyAsyncTargetProc;
         public ProcedureInfo()
         {
-            hasImplementation = false;
-            isAtomic = true;
             containsYield = false;
             isThreadStart = false;
+            isAtomic = true;
             yieldCheckerProc = null;
             yieldCheckerImpl = null;
             dummyAsyncTargetProc = null;
+        }
+    }
+
+    class AsyncAndYieldTraverser : StandardVisitor
+    {
+        Dictionary<string, ProcedureInfo> procNameToInfo = new Dictionary<string, ProcedureInfo>();
+        Implementation currentImpl = null;
+        public static Dictionary<string, ProcedureInfo> Traverse(Program program)
+        {
+            AsyncAndYieldTraverser traverser = new AsyncAndYieldTraverser();
+            traverser.VisitProgram(program);
+            return traverser.procNameToInfo;
+        }
+        public override Procedure VisitProcedure(Procedure node)
+        {
+            if (!procNameToInfo.ContainsKey(node.Name))
+            {
+                procNameToInfo[node.Name] = new ProcedureInfo();
+            }
+            if (QKeyValue.FindBoolAttribute(node.Attributes, "entrypoint"))
+            {
+                procNameToInfo[node.Name].isThreadStart = true;
+                CreateYieldCheckerProcedure(node);
+            }
+            if (QKeyValue.FindBoolAttribute(node.Attributes, "yields"))
+            {
+                procNameToInfo[node.Name].isAtomic = false;
+            }
+            return base.VisitProcedure(node);
+        }
+        public override Implementation VisitImplementation(Implementation node)
+        {
+            currentImpl = node;
+            if (!procNameToInfo.ContainsKey(node.Name))
+            {
+                procNameToInfo[node.Name] = new ProcedureInfo();
+            }
+            if (QKeyValue.FindBoolAttribute(node.Attributes, "entrypoint"))
+            {
+                procNameToInfo[node.Name].isThreadStart = true;
+                CreateYieldCheckerProcedure(node.Proc);
+            }
+            return base.VisitImplementation(node);
+        }
+        public override Cmd VisitAssertCmd(AssertCmd node)
+        {
+            if (QKeyValue.FindBoolAttribute(node.Attributes, "yield"))
+            {
+                procNameToInfo[currentImpl.Name].containsYield = true;
+                procNameToInfo[currentImpl.Name].isAtomic = false;
+                CreateYieldCheckerProcedure(currentImpl.Proc);
+            }
+            return base.VisitAssertCmd(node);
+        }
+        public override Cmd VisitCallCmd(CallCmd node)
+        {
+            if (!procNameToInfo.ContainsKey(node.Proc.Name))
+            {
+                procNameToInfo[node.Proc.Name] = new ProcedureInfo();
+            }
+            if (QKeyValue.FindBoolAttribute(node.Attributes, "async"))
+            {
+                procNameToInfo[node.Proc.Name].isThreadStart = true;
+                CreateYieldCheckerProcedure(node.Proc);
+                if (procNameToInfo[node.Proc.Name].dummyAsyncTargetProc == null)
+                {
+                    var dummyAsyncTargetName = string.Format("DummyAsyncTarget_{0}", node.Proc.Name);
+                    var dummyAsyncTargetProc = new Procedure(Token.NoToken, dummyAsyncTargetName, node.Proc.TypeParameters, node.Proc.InParams, node.Proc.OutParams, node.Proc.Requires, new IdentifierExprSeq(), new EnsuresSeq());
+                    procNameToInfo[node.Proc.Name].dummyAsyncTargetProc = dummyAsyncTargetProc;
+                }
+            }
+            return base.VisitCallCmd(node);
+        }
+        private void CreateYieldCheckerProcedure(Procedure proc)
+        {
+            if (procNameToInfo[proc.Name].yieldCheckerProc != null) return;
+            var yieldCheckerName = string.Format("YieldChecker_{0}", proc.Name);
+            var yieldCheckerProc = new Procedure(Token.NoToken, yieldCheckerName, proc.TypeParameters, new VariableSeq(), new VariableSeq(), new RequiresSeq(), new IdentifierExprSeq(), new EnsuresSeq());
+            yieldCheckerProc.AddAttribute("inline", new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1)));
+            procNameToInfo[proc.Name].yieldCheckerProc = yieldCheckerProc;
         }
     }
 
@@ -56,84 +138,10 @@ namespace Microsoft.Boogie
         public override Cmd VisitCallCmd(CallCmd node)
         {
             ProcedureInfo info = procNameToInfo[node.callee];
-            if (!info.isAtomic)
+            if (!QKeyValue.FindBoolAttribute(node.Attributes, "async") && !info.isAtomic)
             {
                 procNameToInfo[currentImpl.Name].isAtomic = false;
                 moreProcessingRequired = true;
-            }
-            return base.VisitCallCmd(node);
-        }
-    }
-
-    class AsyncAndYieldTraverser : StandardVisitor
-    {
-        Dictionary<string, ProcedureInfo> procNameToInfo = new Dictionary<string, ProcedureInfo>();
-        Implementation currentImpl = null;
-        public static Dictionary<string, ProcedureInfo> Traverse(Program program)
-        {
-            AsyncAndYieldTraverser traverser = new AsyncAndYieldTraverser();
-            traverser.VisitProgram(program);
-            return traverser.procNameToInfo;
-        }
-        public override Procedure VisitProcedure(Procedure node)
-        {
-            if (!procNameToInfo.ContainsKey(node.Name))
-            {
-                procNameToInfo[node.Name] = new ProcedureInfo();
-            }
-            if (QKeyValue.FindBoolAttribute(node.Attributes, "entrypoint"))
-            {
-                procNameToInfo[node.Name].isThreadStart = true;
-            }
-            if (QKeyValue.FindBoolAttribute(node.Attributes, "yields"))
-            {
-                procNameToInfo[node.Name].containsYield = true;
-                procNameToInfo[node.Name].isAtomic = false;
-            }
-            return base.VisitProcedure(node);
-        }
-        public override Implementation VisitImplementation(Implementation node)
-        {
-            currentImpl = node;
-            if (!procNameToInfo.ContainsKey(node.Name))
-            {
-                procNameToInfo[node.Name] = new ProcedureInfo();
-            }
-            procNameToInfo[node.Name].hasImplementation = true;
-            if (QKeyValue.FindBoolAttribute(node.Attributes, "entrypoint"))
-            {
-                procNameToInfo[node.Name].isThreadStart = true;
-            }
-            return base.VisitImplementation(node);
-        }
-        public override Cmd VisitAssertCmd(AssertCmd node)
-        {
-            if (QKeyValue.FindBoolAttribute(node.Attributes, "yield") && !procNameToInfo[currentImpl.Name].containsYield)
-            {
-                procNameToInfo[currentImpl.Name].containsYield = true;
-                procNameToInfo[currentImpl.Name].isAtomic = false;
-                var yieldCheckerName = string.Format("YieldChecker_{0}", currentImpl.Name);
-                var yieldCheckerProc = new Procedure(Token.NoToken, yieldCheckerName, currentImpl.TypeParameters, new VariableSeq(), new VariableSeq(), new RequiresSeq(), new IdentifierExprSeq(), new EnsuresSeq());
-                yieldCheckerProc.AddAttribute("inline", new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1)));
-                procNameToInfo[currentImpl.Name].yieldCheckerProc = yieldCheckerProc;
-            }
-            return base.VisitAssertCmd(node);
-        }
-        public override Cmd VisitCallCmd(CallCmd node)
-        {
-            if (!procNameToInfo.ContainsKey(node.Proc.Name))
-            {
-                procNameToInfo[node.Proc.Name] = new ProcedureInfo();
-            }
-            if (QKeyValue.FindBoolAttribute(node.Attributes, "async"))
-            {
-                procNameToInfo[node.Proc.Name].isThreadStart = true;
-                if (procNameToInfo[node.Proc.Name].dummyAsyncTargetProc == null)
-                {
-                    var dummyAsyncTargetName = string.Format("DummyAsyncTarget_{0}", node.Proc.Name);
-                    var dummyAsyncTargetProc = new Procedure(Token.NoToken, dummyAsyncTargetName, node.Proc.TypeParameters, node.Proc.InParams, node.Proc.OutParams, node.Proc.Requires, new IdentifierExprSeq(), new EnsuresSeq());
-                    procNameToInfo[node.Proc.Name].dummyAsyncTargetProc = dummyAsyncTargetProc;
-                }
             }
             return base.VisitCallCmd(node);
         }
@@ -153,7 +161,7 @@ namespace Microsoft.Boogie
             AtomicTraverser.Traverse(program, procNameToInfo);
             globalMap = new Hashtable();
             globalMods = new IdentifierExprSeq();
-            bool workTodo = procNameToInfo.Values.Aggregate<ProcedureInfo, bool>(false, (b, info) => (b || (info.hasImplementation && !info.isAtomic)));
+            bool workTodo = procNameToInfo.Values.Aggregate<ProcedureInfo, bool>(false, (b, info) => (b || !info.isAtomic || info.isThreadStart));
             if (workTodo)
             {
                 foreach (Variable g in program.GlobalVariables())
@@ -169,7 +177,7 @@ namespace Microsoft.Boogie
         {
             foreach (ProcedureInfo info in procNameToInfo.Values)
             {
-                if (info.containsYield)
+                if (info.yieldCheckerProc != null)
                 {
                     CallCmd yieldCallCmd = new CallCmd(Token.NoToken, info.yieldCheckerProc.Name, new ExprSeq(), new IdentifierExprSeq());
                     yieldCallCmd.Proc = info.yieldCheckerProc;
@@ -211,7 +219,7 @@ namespace Microsoft.Boogie
             {
                 Implementation impl = decl as Implementation;
                 if (impl == null) continue;
-                if (procNameToInfo[impl.Name].isAtomic) continue;
+                if (procNameToInfo[impl.Name].isAtomic && !procNameToInfo[impl.Name].isThreadStart) continue;
 
                 // Add free requires
                 Expr freeRequiresExpr = Expr.True;
@@ -309,20 +317,20 @@ namespace Microsoft.Boogie
                             newCmds.Add(b.Cmds[i]);
                         }
                     }
-                    if (b.TransferCmd is ReturnCmd)
-                    {
-                        AddCallsToYieldCheckers(newCmds);
-                    }
-                    else if (cmds.Length > 0)
+                    if (cmds.Length > 0)
                     {
                         DesugarYield(cmds, newCmds);
                         yields.Add(cmds);
                         cmds = new CmdSeq();
+                    } 
+                    if (b.TransferCmd is ReturnCmd)
+                    {
+                        AddCallsToYieldCheckers(newCmds);
                     }
                     b.Cmds = newCmds;
                 }
 
-                if (!procNameToInfo[impl.Name].containsYield) continue;
+                if (!procNameToInfo[impl.Name].containsYield && !procNameToInfo[impl.Name].isThreadStart) continue;
 
                 // Create the body of the yield checker procedure
                 Substitution oldSubst = Substituter.SubstitutionFromHashtable(oldMap);
@@ -392,8 +400,9 @@ namespace Microsoft.Boogie
             }
             foreach (ProcedureInfo info in procNameToInfo.Values)
             {
-                if (info.containsYield)
+                if (info.yieldCheckerProc != null)
                 {
+                    Debug.Assert(info.yieldCheckerImpl != null);
                     program.TopLevelDeclarations.Add(info.yieldCheckerProc);
                     program.TopLevelDeclarations.Add(info.yieldCheckerImpl);
                 }

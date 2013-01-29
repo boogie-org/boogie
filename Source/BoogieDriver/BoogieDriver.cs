@@ -190,6 +190,7 @@ namespace Microsoft.Boogie {
         ogTransform.Transform();
         LinearSetTransform linearTransform = new LinearSetTransform(program);
         linearTransform.Transform();
+        PrintBplFile("OwickiGriesDesugared.bpl", program, false);
 
         EliminateDeadVariablesAndInline(program);
 
