@@ -186,12 +186,18 @@ namespace Microsoft.Boogie {
           }
         }
 
-        OwickiGriesTransform ogTransform = new OwickiGriesTransform(program);
-        ogTransform.Transform();
+        if (CommandLineOptions.Clo.OwickiGriesDesugaredOutputFile != null)
+        {
+            OwickiGriesTransform ogTransform = new OwickiGriesTransform(program);
+            ogTransform.Transform();
+            int oldPrintUnstructured = CommandLineOptions.Clo.PrintUnstructured;
+            CommandLineOptions.Clo.PrintUnstructured = 1;
+            PrintBplFile(CommandLineOptions.Clo.OwickiGriesDesugaredOutputFile, program, false);
+            CommandLineOptions.Clo.PrintUnstructured = oldPrintUnstructured;
+        }
         LinearSetTransform linearTransform = new LinearSetTransform(program);
         linearTransform.Transform();
-        PrintBplFile("OwickiGriesDesugared.bpl", program, false);
-
+          
         EliminateDeadVariablesAndInline(program);
 
         int errorCount, verified, inconclusives, timeOuts, outOfMemories;

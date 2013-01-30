@@ -472,6 +472,7 @@ namespace Microsoft.Boogie {
     public bool UseAbstractInterpretation = true;          // true iff the user want to use abstract interpretation
     public int  /*0..9*/StepsBeforeWidening = 0;           // The number of steps that must be done before applying a widen operator
 
+    public string OwickiGriesDesugaredOutputFile = null;
 
     public enum VCVariety {
       Structured,
@@ -688,6 +689,12 @@ namespace Microsoft.Boogie {
         case "print":
           if (ps.ConfirmArgumentCount(1)) {
             PrintFile = args[ps.i];
+          }
+          return true;
+
+        case "OwickiGries":
+          if (ps.ConfirmArgumentCount(1)) {
+              OwickiGriesDesugaredOutputFile = args[ps.i];
           }
           return true;
 

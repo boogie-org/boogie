@@ -166,7 +166,7 @@ namespace Microsoft.Boogie
             {
                 foreach (Variable g in program.GlobalVariables())
                 {
-                    var oldg = new GlobalVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("old_{0}", g.Name), g.TypedIdent.Type));
+                    var oldg = new GlobalVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_old_{0}", g.Name), g.TypedIdent.Type));
                     globalMap[g] = new IdentifierExpr(Token.NoToken, oldg);
                     globalMods.Add(new IdentifierExpr(Token.NoToken, g));
                 }
@@ -366,25 +366,7 @@ namespace Microsoft.Boogie
                     labelTargets.Add(yieldCheckerBlock);
                     yieldCheckerBlocks.Add(yieldCheckerBlock); 
                 }
-                IdentifierExprSeq ieSeq = new IdentifierExprSeq();
-                foreach (Variable local in locals)
-                {
-                    if (QKeyValue.FindStringAttribute(local.Attributes, "linear") != null)
-                    {
-                        ieSeq.Add(new IdentifierExpr(Token.NoToken, local));
-                    }
-                }
-                CmdSeq initCmds;
-                if (ieSeq.Length == 0)
-                {
-                    initCmds = new CmdSeq();
-                }
-                else
-                {
-                    initCmds = new CmdSeq(new HavocCmd(Token.NoToken, ieSeq));
-                }
-
-                yieldCheckerBlocks.Insert(0, new Block(Token.NoToken, "enter", initCmds, new GotoCmd(Token.NoToken, labels, labelTargets)));
+                yieldCheckerBlocks.Insert(0, new Block(Token.NoToken, "enter", new CmdSeq(), new GotoCmd(Token.NoToken, labels, labelTargets)));
                 
                 // Create the yield checker implementation
                 var yieldCheckerImpl = new Implementation(Token.NoToken, procNameToInfo[impl.Name].yieldCheckerProc.Name, impl.TypeParameters, new VariableSeq(), new VariableSeq(), locals, yieldCheckerBlocks);

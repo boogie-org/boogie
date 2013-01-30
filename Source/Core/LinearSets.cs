@@ -11,10 +11,12 @@ namespace Microsoft.Boogie
     {
         public int errorCount;
         CheckingContext checkingContext;
+        Dictionary<string, Type> domainNameToType;
         public LinearTypechecker()
         {
             this.errorCount = 0;
             this.checkingContext = new CheckingContext(null);
+            this.domainNameToType = new Dictionary<string, Type>();
         }
         private void Error(Absy node, string message)
         {
@@ -22,6 +24,40 @@ namespace Microsoft.Boogie
             errorCount++;
         }
 
+        public override Variable VisitVariable(Variable node)
+        {
+            string domainName = QKeyValue.FindStringAttribute(node.Attributes, "linear");
+            if (domainName != null)
+            {
+                Type type = node.TypedIdent.Type;
+                MapType mapType = type as MapType;
+                if (mapType != null)
+                {
+                    if (mapType.Arguments.Length > 1)
+                    {
+                        Error(node, "a linear domain can be attached to either a set or a scalar type");
+                    }
+                    type = mapType.Arguments[0];
+                }
+                if (domainNameToType.ContainsKey(domainName))
+                {
+                    if (!domainNameToType[domainName].Equals(type))
+                    {
+                        Error(node, "a linear domain must be consistently attached to variables of a particular type");
+                    }
+                }
+                else if (type is MapType)
+                {
+                    Error(node, "a linear domain can be attached to either a set or a scalar type");
+                }
+                else
+                {
+                    domainNameToType[domainName] = type;
+                }
+
+            }
+            return base.VisitVariable(node);
+        }
         public override Cmd VisitAssignCmd(AssignCmd node)
         {
             HashSet<Variable> rhsVars = new HashSet<Variable>();
@@ -65,7 +101,6 @@ namespace Microsoft.Boogie
                 }
                 rhsVars.Add(rhs.Decl);
             }
-
             return base.VisitAssignCmd(node);
         }
 
@@ -104,6 +139,11 @@ namespace Microsoft.Boogie
                     Error(node, "A linear set can occur only once as an in parameter");
                     continue;
                 }
+                if (actual.Decl is GlobalVariable)
+                {
+                    Error(node, "Only local linear variable can be an actual input parameter of a procedure call");
+                    continue;
+                }
                 inVars.Add(actual.Decl);
             }
 
@@ -122,6 +162,12 @@ namespace Microsoft.Boogie
                 if (domainName != actualDomainName)
                 {
                     Error(node, "The domains of formal and actual parameters must be the same");
+                    continue;
+                }
+                if (actual.Decl is GlobalVariable)
+                {
+                    Error(node, "Only local linear variable can be actual output parameter of a procedure call");
+                    continue;
                 }
             }
             return base.VisitCallCmd(node);
@@ -206,11 +252,18 @@ namespace Microsoft.Boogie
                         Cmd cmd = b.Cmds[i];
                         if (cmd is AssignCmd)
                         {
-                            TransformAssignCmd(newCmds, (AssignCmd)cmd, copies);
+                            TransformAssignCmd(newCmds, (AssignCmd)cmd, copies, domainNameToScope);
                         }
                         else if (cmd is HavocCmd)
                         {
-                            TransformHavocCmd(newCmds, (HavocCmd)cmd, copies, domainNameToScope);
+                            HavocCmd havocCmd = (HavocCmd)cmd;
+                            foreach (IdentifierExpr ie in havocCmd.Vars)
+                            {
+                                Variable v = ie.Decl;
+                                if (!varToDomainName.ContainsKey(v)) continue;
+                                Drain(newCmds, ie.Decl, varToDomainName[v]);
+                            }
+                            TransformHavocCmd(newCmds, havocCmd, copies, domainNameToScope);
                         }
                         else if (cmd is CallCmd)
                         {
@@ -261,15 +314,20 @@ namespace Microsoft.Boogie
                 {
                     // Initialization
                     CmdSeq newCmds = new CmdSeq();
+                    IdentifierExprSeq havocVars = new IdentifierExprSeq();
                     foreach (Variable v in impl.OutParams)
                     {
-                        if (varToDomainName.ContainsKey(v))
-                            Initialize(newCmds, v);
+                        if (!varToDomainName.ContainsKey(v)) continue;
+                        havocVars.Add(new IdentifierExpr(Token.NoToken, v));   
                     }
                     foreach (Variable v in impl.LocVars)
                     {
-                        if (varToDomainName.ContainsKey(v))
-                            Initialize(newCmds, v);
+                        if (!varToDomainName.ContainsKey(v)) continue;
+                        havocVars.Add(new IdentifierExpr(Token.NoToken, v));
+                    }
+                    if (havocVars.Length > 0)
+                    {
+                        TransformHavocCmd(newCmds, new HavocCmd(Token.NoToken, havocVars), copies, domainNameToScope);
                     }
                     newCmds.AddRange(impl.Blocks[0].Cmds);
                     impl.Blocks[0].Cmds = newCmds;
@@ -306,7 +364,8 @@ namespace Microsoft.Boogie
                     }
                     domainNameToInParams[domainName].Add(v);
                     var domain = linearDomains[domainName];
-                    Expr e = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapImpBool), new ExprSeq(new IdentifierExpr(Token.NoToken, v), new IdentifierExpr(Token.NoToken, domain.allocator)));
+                    IdentifierExpr ie = new IdentifierExpr(Token.NoToken, v);
+                    Expr e = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapImpBool), new ExprSeq(v.TypedIdent.Type is MapType ? ie : Singleton(ie, domainName), new IdentifierExpr(Token.NoToken, domain.allocator)));
                     e = Expr.Binary(BinaryOperator.Opcode.Eq, e, new NAryExpr(Token.NoToken, new FunctionCall(domain.mapConstBool), new ExprSeq(Expr.True)));
                     proc.Requires.Add(new Requires(true, e));
                 }
@@ -322,22 +381,21 @@ namespace Microsoft.Boogie
             }
         }
 
-        void Initialize(CmdSeq newCmds, Variable v)
+        private Expr Singleton(Expr e, string domainName)
         {
-            var domainName = varToDomainName[v];
             var domain = linearDomains[domainName];
-            List<AssignLhs> lhss = new List<AssignLhs>();
-            lhss.Add(new SimpleAssignLhs(Token.NoToken, new IdentifierExpr(Token.NoToken, v)));
-            List<Expr> rhss = new List<Expr>();
-            rhss.Add(new NAryExpr(Token.NoToken, new FunctionCall(domain.mapConstBool), new ExprSeq(Expr.False)));
-            newCmds.Add(new AssignCmd(Token.NoToken, lhss, rhss));
+            return Expr.Store(new NAryExpr(Token.NoToken, new FunctionCall(domain.mapConstBool), new ExprSeq(Expr.False)), e, Expr.True);
         }
 
         void Drain(CmdSeq newCmds, Variable v, string domainName)
         {
             var domain = linearDomains[domainName];
+            IdentifierExpr ie = new IdentifierExpr(Token.NoToken, v);
             List<AssignLhs> lhss = MkAssignLhss(domain.allocator);
-            List<Expr> rhss = MkExprs(new NAryExpr(Token.NoToken, new FunctionCall(domain.mapOrBool), new ExprSeq(new IdentifierExpr(Token.NoToken, domain.allocator), new IdentifierExpr(Token.NoToken, v))));
+            List<Expr> rhss = 
+                v.TypedIdent.Type is MapType
+                ? MkExprs(new NAryExpr(Token.NoToken, new FunctionCall(domain.mapOrBool), new ExprSeq(new IdentifierExpr(Token.NoToken, domain.allocator), ie)))
+                : MkExprs(Expr.Store(new IdentifierExpr(Token.NoToken, domain.allocator), ie, Expr.True));
             newCmds.Add(new AssignCmd(Token.NoToken, lhss, rhss));
         }
 
@@ -359,6 +417,8 @@ namespace Microsoft.Boogie
         void TransformHavocCmd(CmdSeq newCmds, HavocCmd havocCmd, Dictionary<Variable, LocalVariable> copies, Dictionary<string, HashSet<Variable>> domainNameToScope)
         {
             Dictionary<string, HashSet<Variable>> domainNameToHavocVars = new Dictionary<string, HashSet<Variable>>();
+            List<AssignLhs> lhss = new List<AssignLhs>();
+            List<Expr> rhss = new List<Expr>(); 
             foreach (IdentifierExpr ie in havocCmd.Vars)
             {
                 Variable v = ie.Decl;
@@ -369,39 +429,31 @@ namespace Microsoft.Boogie
                     domainNameToHavocVars[domainName] = new HashSet<Variable>();
                 }
                 domainNameToHavocVars[domainName].Add(v);
-                if (!copies.ContainsKey(v))
-                {
-                    copies[v] = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("copy_{0}", v.Name), v.TypedIdent.Type));
-                }
                 var allocator = linearDomains[domainName].allocator;
-                domainNameToHavocVars[domainName].Add(allocator);
                 if (!copies.ContainsKey(allocator))
                 {
                     copies[allocator] = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("copy_{0}", allocator.Name), allocator.TypedIdent.Type));
                 }
+                lhss.Add(new SimpleAssignLhs(Token.NoToken, new IdentifierExpr(Token.NoToken, copies[allocator])));
+                rhss.Add(new IdentifierExpr(Token.NoToken, allocator));
             }
-            foreach (var domainName in domainNameToHavocVars.Keys)
+            newCmds.Add(new AssignCmd(Token.NoToken, lhss, rhss));
+            foreach (string domainName in domainNameToHavocVars.Keys)
             {
-                List<AssignLhs> lhss = new List<AssignLhs>();
-                List<Expr> rhss = new List<Expr>();
-                foreach (var v in domainNameToHavocVars[domainName])
-                {
-                    lhss.Add(new SimpleAssignLhs(Token.NoToken, new IdentifierExpr(Token.NoToken, copies[v])));
-                    rhss.Add(new IdentifierExpr(Token.NoToken, v));
-                }
-                newCmds.Add(new AssignCmd(Token.NoToken, lhss, rhss));
-                havocCmd.Vars.Add(new IdentifierExpr(Token.NoToken, linearDomains[domainName].allocator));
+                var allocator = linearDomains[domainName].allocator;
+                havocCmd.Vars.Add(new IdentifierExpr(Token.NoToken, allocator));
             }
             newCmds.Add(havocCmd);
             foreach (string domainName in domainNameToHavocVars.Keys)
             {
                 var domain = linearDomains[domainName];
-                Expr oldExpr = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapConstBool), new ExprSeq(Expr.False));
-                Expr expr = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapConstBool), new ExprSeq(Expr.False));
+                var allocator = domain.allocator;
+                Expr oldExpr = new IdentifierExpr(Token.NoToken, copies[allocator]);
+                Expr expr = new IdentifierExpr(Token.NoToken, allocator);
                 foreach (var v in domainNameToHavocVars[domainName])
                 {
-                    oldExpr = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapOrBool), new ExprSeq(new IdentifierExpr(Token.NoToken, copies[v]), oldExpr));
-                    expr = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapOrBool), new ExprSeq(new IdentifierExpr(Token.NoToken, v), expr));
+                    IdentifierExpr ie = new IdentifierExpr(Token.NoToken, v);
+                    expr = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapOrBool), new ExprSeq(v.TypedIdent.Type is MapType ? ie : Singleton(ie, domainName), expr));
                 }
                 newCmds.Add(new AssumeCmd(Token.NoToken, Expr.Binary(BinaryOperator.Opcode.Eq, oldExpr, expr)));
                 newCmds.Add(new AssumeCmd(Token.NoToken, DisjointnessExpr(domainName, domainNameToScope[domainName])));
@@ -410,96 +462,70 @@ namespace Microsoft.Boogie
 
         void TransformCallCmd(CmdSeq newCmds, CallCmd callCmd, Dictionary<Variable, LocalVariable> copies, Dictionary<string, HashSet<Variable>> domainNameToScope)
         {
-            List<Expr> newIns = new List<Expr>();
-            for (int i = 0; i < callCmd.Ins.Count; i++)
+            HashSet<Variable> rhsVars = new HashSet<Variable>();
+            for (int i = 0; i < callCmd.Proc.InParams.Length; i++)
             {
-                IdentifierExpr ie = callCmd.Ins[i] as IdentifierExpr;
-                if (ie == null)
-                {
-                    newIns.Add(callCmd.Ins[i]);
-                    continue;
-                }
-                Variable source = ie.Decl;
                 Variable target = callCmd.Proc.InParams[i];
-                if (!varToDomainName.ContainsKey(source) || !varToDomainName.ContainsKey(target))
-                {
-                    newIns.Add(ie);
-                    continue;
-                }
-                if (!copies.ContainsKey(source))
-                {
-                    copies[source] = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("copy_{0}", source.Name), source.TypedIdent.Type));
-                }
-                newIns.Add(new IdentifierExpr(Token.NoToken, copies[source]));
-                newCmds.Add(new AssignCmd(Token.NoToken, MkAssignLhss(copies[source], source), MkExprs(new IdentifierExpr(Token.NoToken, source), new NAryExpr(Token.NoToken, new FunctionCall(linearDomains[varToDomainName[source]].mapConstBool), new ExprSeq(Expr.False)))));
+                if (!varToDomainName.ContainsKey(target)) continue;
+                IdentifierExpr ie = callCmd.Ins[i] as IdentifierExpr;
+                Variable source = ie.Decl;
+                rhsVars.Add(source);
             }
-            HashSet<Variable> drainedVars = new HashSet<Variable>();
+            HashSet<Variable> lhsVars = new HashSet<Variable>();
+            HashSet<string> domainNames = new HashSet<string>();
             foreach (IdentifierExpr ie in callCmd.Outs)
             {
                 Variable v = ie.Decl;
                 if (!varToDomainName.ContainsKey(v)) continue;
-                if (!copies.ContainsKey(v))
-                {
-                    copies[v] = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("copy_{0}", v.Name), v.TypedIdent.Type));
-                }
-                newCmds.Add(new AssignCmd(Token.NoToken, MkAssignLhss(copies[v]), MkExprs(new IdentifierExpr(Token.NoToken, v))));
-                drainedVars.Add(v);
+                lhsVars.Add(v);
+                domainNames.Add(varToDomainName[v]);
             }
-            callCmd.Ins = newIns;
+            foreach (Variable v in lhsVars.Except(rhsVars))
+            {
+                Drain(newCmds, v, varToDomainName[v]);
+            }
             newCmds.Add(callCmd);
-            foreach (Variable v in drainedVars)
+            IdentifierExprSeq havocExprs = new IdentifierExprSeq();
+            foreach (Variable v in rhsVars.Except(lhsVars))
             {
-                Drain(newCmds, copies[v], varToDomainName[v]);
+                havocExprs.Add(new IdentifierExpr(Token.NoToken, v));
             }
-            foreach (Variable v in drainedVars)
+            if (havocExprs.Length > 0)
             {
-                string domainName = varToDomainName[v];
+                TransformHavocCmd(newCmds, new HavocCmd(Token.NoToken, havocExprs), copies, domainNameToScope);
+            }
+            foreach (string domainName in domainNames)
+            {
                 newCmds.Add(new AssumeCmd(Token.NoToken, DisjointnessExpr(domainName, domainNameToScope[domainName])));
             }
         }
 
-        void TransformAssignCmd(CmdSeq newCmds, AssignCmd assignCmd, Dictionary<Variable, LocalVariable> copies)
+        void TransformAssignCmd(CmdSeq newCmds, AssignCmd assignCmd, Dictionary<Variable, LocalVariable> copies, Dictionary<string, HashSet<Variable>> domainNameToScope)
         {
-            List<Expr> newRhss = new List<Expr>();
-            for (int i = 0; i < assignCmd.Rhss.Count; i++)
+            HashSet<Variable> rhsVars = new HashSet<Variable>();
+            HashSet<Variable> lhsVars = new HashSet<Variable>();
+            for (int i = 0; i < assignCmd.Lhss.Count; i++)
             {
-                IdentifierExpr ie = assignCmd.Rhss[i] as IdentifierExpr;
-                if (ie == null)
-                {
-                    newRhss.Add(assignCmd.Rhss[i]);
-                    continue;
-                }
-                Variable source = ie.Decl;
                 Variable target = assignCmd.Lhss[i].DeepAssignedVariable;
-                if (!varToDomainName.ContainsKey(source) || !varToDomainName.ContainsKey(target))
-                {
-                    newRhss.Add(ie);
-                    continue;
-                }
-                if (!copies.ContainsKey(source))
-                {
-                    copies[source] = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("copy_{0}", source.Name), source.TypedIdent.Type));
-                }
-                newRhss.Add(new IdentifierExpr(Token.NoToken, copies[source]));
-                newCmds.Add(new AssignCmd(Token.NoToken, MkAssignLhss(copies[source], source), MkExprs(new IdentifierExpr(Token.NoToken, source), new NAryExpr(Token.NoToken, new FunctionCall(linearDomains[varToDomainName[source]].mapConstBool), new ExprSeq(Expr.False)))));
+                if (!varToDomainName.ContainsKey(target)) continue;
+                IdentifierExpr ie = assignCmd.Rhss[i] as IdentifierExpr;
+                Variable source = ie.Decl;
+                rhsVars.Add(source);
+                lhsVars.Add(target);
             }
-            HashSet<Variable> drainedVars = new HashSet<Variable>();
-            foreach (AssignLhs lhs in assignCmd.Lhss)
+            foreach (Variable v in lhsVars.Except(rhsVars))
             {
-                Variable v = lhs.DeepAssignedVariable;
-                if (!varToDomainName.ContainsKey(v)) continue;
-                if (!copies.ContainsKey(v))
-                {
-                    copies[v] = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("copy_{0}", v.Name), v.TypedIdent.Type));
-                } 
-                newCmds.Add(new AssignCmd(Token.NoToken, MkAssignLhss(copies[v]), MkExprs(new IdentifierExpr(Token.NoToken, v))));
-                drainedVars.Add(v);
+                Drain(newCmds, v, varToDomainName[v]);
             }
-            assignCmd.Rhss = newRhss;
             newCmds.Add(assignCmd);
-            foreach (Variable v in drainedVars)
+            IdentifierExprSeq havocExprs = new IdentifierExprSeq();
+            foreach (Variable v in rhsVars.Except(lhsVars))
             {
-                Drain(newCmds, copies[v], varToDomainName[v]);
+                havocExprs.Add(new IdentifierExpr(Token.NoToken, v));
+            }
+            if (havocExprs.Length > 0)
+            {
+                TransformHavocCmd(newCmds, new HavocCmd(Token.NoToken, havocExprs), copies, domainNameToScope);
             }
         }
 
@@ -509,11 +535,12 @@ namespace Microsoft.Boogie
             BoundVariable partition = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("partition_{0}", domainName), new MapType(Token.NoToken, new TypeVariableSeq(), new TypeSeq(domain.elementType), Microsoft.Boogie.Type.Int)));
             Expr disjointExpr = Expr.True;
             int count = 0;
-            foreach (Variable var in scope)
+            foreach (Variable v in scope)
             {
+                IdentifierExpr ie = new IdentifierExpr(Token.NoToken, v);
                 Expr e = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapConstInt), new ExprSeq(new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(count++))));
                 e = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapEqInt), new ExprSeq(new IdentifierExpr(Token.NoToken, partition), e));
-                e = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapImpBool), new ExprSeq(new IdentifierExpr(Token.NoToken, var), e));
+                e = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapImpBool), new ExprSeq(v.TypedIdent.Type is MapType ? ie : Singleton(ie, domainName), e));
                 e = Expr.Binary(BinaryOperator.Opcode.Eq, e, new NAryExpr(Token.NoToken, new FunctionCall(domain.mapConstBool), new ExprSeq(Expr.True)));
                 disjointExpr = Expr.Binary(BinaryOperator.Opcode.And, e, disjointExpr);
             }
@@ -533,8 +560,13 @@ namespace Microsoft.Boogie
 
         public LinearDomain(Program program, Variable var, string domainName)
         {
-            this.allocator = new GlobalVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("allocator_{0}", domainName), var.TypedIdent.Type));
-            this.elementType = ((MapType)var.TypedIdent.Type).Arguments[0];
+            this.elementType = var.TypedIdent.Type;
+            if (var.TypedIdent.Type is MapType)
+            {
+                MapType mapType = (MapType)var.TypedIdent.Type;
+                this.elementType = mapType.Arguments[0];
+            }
+            this.allocator = new GlobalVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("allocator_{0}", domainName), new MapType(Token.NoToken, new TypeVariableSeq(), new TypeSeq(this.elementType), Type.Bool)));
             foreach (var decl in program.TopLevelDeclarations)
             {
                 Function func = decl as Function;
