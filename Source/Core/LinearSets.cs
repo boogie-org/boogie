@@ -480,11 +480,15 @@ namespace Microsoft.Boogie
                 lhsVars.Add(v);
                 domainNames.Add(varToDomainName[v]);
             }
-            foreach (Variable v in lhsVars.Except(rhsVars))
+            foreach (Variable v in lhsVars.Union(rhsVars))
             {
                 Drain(newCmds, v, varToDomainName[v]);
             }
             newCmds.Add(callCmd);
+            foreach (string domainName in domainNames)
+            {
+                newCmds.Add(new AssumeCmd(Token.NoToken, DisjointnessExpr(domainName, domainNameToScope[domainName])));
+            } 
             IdentifierExprSeq havocExprs = new IdentifierExprSeq();
             foreach (Variable v in rhsVars.Except(lhsVars))
             {
@@ -493,10 +497,6 @@ namespace Microsoft.Boogie
             if (havocExprs.Length > 0)
             {
                 TransformHavocCmd(newCmds, new HavocCmd(Token.NoToken, havocExprs), copies, domainNameToScope);
-            }
-            foreach (string domainName in domainNames)
-            {
-                newCmds.Add(new AssumeCmd(Token.NoToken, DisjointnessExpr(domainName, domainNameToScope[domainName])));
             }
         }
 

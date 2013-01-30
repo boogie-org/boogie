@@ -151,7 +151,7 @@ namespace Microsoft.Boogie
     {
         Dictionary<string, ProcedureInfo> procNameToInfo;
         IdentifierExprSeq globalMods;
-        Hashtable globalMap;
+        Hashtable ogOldGlobalMap;
         Program program;
 
         public OwickiGriesTransform(Program program)
@@ -159,15 +159,15 @@ namespace Microsoft.Boogie
             this.program = program;
             procNameToInfo = AsyncAndYieldTraverser.Traverse(program);
             AtomicTraverser.Traverse(program, procNameToInfo);
-            globalMap = new Hashtable();
+            ogOldGlobalMap = new Hashtable();
             globalMods = new IdentifierExprSeq();
             bool workTodo = procNameToInfo.Values.Aggregate<ProcedureInfo, bool>(false, (b, info) => (b || !info.isAtomic || info.isThreadStart));
             if (workTodo)
             {
                 foreach (Variable g in program.GlobalVariables())
                 {
-                    var oldg = new GlobalVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_old_{0}", g.Name), g.TypedIdent.Type));
-                    globalMap[g] = new IdentifierExpr(Token.NoToken, oldg);
+                    var oldg = new GlobalVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og@global_old_{0}", g.Name), g.TypedIdent.Type));
+                    ogOldGlobalMap[g] = new IdentifierExpr(Token.NoToken, oldg);
                     globalMods.Add(new IdentifierExpr(Token.NoToken, g));
                 }
             }
@@ -190,9 +190,9 @@ namespace Microsoft.Boogie
         {
             List<AssignLhs> lhss = new List<AssignLhs>();
             List<Expr> rhss = new List<Expr>();
-            foreach (Variable g in globalMap.Keys)
+            foreach (Variable g in ogOldGlobalMap.Keys)
             {
-                lhss.Add(new SimpleAssignLhs(Token.NoToken, (IdentifierExpr)globalMap[g]));
+                lhss.Add(new SimpleAssignLhs(Token.NoToken, (IdentifierExpr)ogOldGlobalMap[g]));
                 rhss.Add(new IdentifierExpr(Token.NoToken, g));
             }
             newCmds.Add(new AssignCmd(Token.NoToken, lhss, rhss));
@@ -223,9 +223,9 @@ namespace Microsoft.Boogie
 
                 // Add free requires
                 Expr freeRequiresExpr = Expr.True;
-                foreach (Variable g in globalMap.Keys)
+                foreach (Variable g in ogOldGlobalMap.Keys)
                 {
-                    freeRequiresExpr = Expr.And(freeRequiresExpr, Expr.Eq(new IdentifierExpr(Token.NoToken, g), (IdentifierExpr)globalMap[g]));
+                    freeRequiresExpr = Expr.And(freeRequiresExpr, Expr.Eq(new IdentifierExpr(Token.NoToken, g), (IdentifierExpr)ogOldGlobalMap[g]));
                 }
                 impl.Proc.Requires.Add(new Requires(true, freeRequiresExpr));
 
@@ -250,10 +250,18 @@ namespace Microsoft.Boogie
                     locals.Add(copy);
                     map[local] = new IdentifierExpr(Token.NoToken, copy);
                 }
-                Hashtable oldMap = new Hashtable(map);
-                foreach (var global in globalMap.Keys)
+                Hashtable assumeMap = new Hashtable(map);
+                foreach (var global in ogOldGlobalMap.Keys)
                 {
-                    oldMap[global] = globalMap[global];
+                    assumeMap[global] = ogOldGlobalMap[global];
+                }
+
+                Hashtable ogOldLocalMap = new Hashtable();
+                foreach (var g in program.GlobalVariables())
+                {
+                    var copy = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og@local_old_{0}", g.Name), g.TypedIdent.Type));
+                    locals.Add(copy);
+                    ogOldLocalMap[g] = new IdentifierExpr(Token.NoToken, copy);
                 }
 
                 // Collect the yield predicates and desugar yields
@@ -333,7 +341,8 @@ namespace Microsoft.Boogie
                 if (!procNameToInfo[impl.Name].containsYield && !procNameToInfo[impl.Name].isThreadStart) continue;
 
                 // Create the body of the yield checker procedure
-                Substitution oldSubst = Substituter.SubstitutionFromHashtable(oldMap);
+                Substitution assumeSubst = Substituter.SubstitutionFromHashtable(assumeMap);
+                Substitution oldSubst = Substituter.SubstitutionFromHashtable(ogOldLocalMap);
                 Substitution subst = Substituter.SubstitutionFromHashtable(map);
                 List<Block> yieldCheckerBlocks = new List<Block>();
                 StringSeq labels = new StringSeq();
@@ -349,12 +358,12 @@ namespace Microsoft.Boogie
                     foreach (Cmd cmd in cs)
                     {
                         PredicateCmd predCmd = (PredicateCmd)cmd;
-                        newCmds.Add(new AssumeCmd(Token.NoToken, Substituter.Apply(oldSubst, predCmd.Expr)));
+                        newCmds.Add(new AssumeCmd(Token.NoToken, Substituter.ApplyReplacingOldExprs(assumeSubst, oldSubst, predCmd.Expr)));
                     }
                     foreach (Cmd cmd in cs)
                     {
                         PredicateCmd predCmd = (PredicateCmd)cmd;
-                        var newExpr = Substituter.Apply(subst, predCmd.Expr);
+                        var newExpr = Substituter.ApplyReplacingOldExprs(subst, oldSubst, predCmd.Expr);
                         if (predCmd is AssertCmd)
                             newCmds.Add(new AssertCmd(Token.NoToken, newExpr));
                         else
@@ -375,9 +384,9 @@ namespace Microsoft.Boogie
                 procNameToInfo[impl.Name].yieldCheckerImpl = yieldCheckerImpl;
             }
 
-            foreach (Variable v in globalMap.Keys)
+            foreach (Variable v in ogOldGlobalMap.Keys)
             {
-                IdentifierExpr ie = (IdentifierExpr) globalMap[v];
+                IdentifierExpr ie = (IdentifierExpr) ogOldGlobalMap[v];
                 program.TopLevelDeclarations.Add(ie.Decl);
             }
             foreach (ProcedureInfo info in procNameToInfo.Values)
