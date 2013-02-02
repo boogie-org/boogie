@@ -232,17 +232,19 @@ namespace Microsoft.Boogie
                 // Create substitution maps
                 Hashtable map = new Hashtable();
                 VariableSeq locals = new VariableSeq();
-                foreach (Variable inParam in impl.Proc.InParams)
+                for (int i = 0; i < impl.Proc.InParams.Length; i++)
                 {
+                    Variable inParam = impl.Proc.InParams[i];
                     var copy = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, inParam.Name, inParam.TypedIdent.Type));
                     locals.Add(copy);
-                    map[inParam] = new IdentifierExpr(Token.NoToken, copy);
+                    map[impl.InParams[i]] = new IdentifierExpr(Token.NoToken, copy);
                 }
-                foreach (Variable outParam in impl.Proc.OutParams)
+                for (int i = 0; i < impl.Proc.OutParams.Length; i++)
                 {
+                    Variable outParam = impl.Proc.OutParams[i];
                     var copy = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, outParam.Name, outParam.TypedIdent.Type), outParam.Attributes);
                     locals.Add(copy);
-                    map[outParam] = new IdentifierExpr(Token.NoToken, copy);
+                    map[impl.OutParams[i]] = new IdentifierExpr(Token.NoToken, copy);
                 }
                 foreach (Variable local in impl.LocVars)
                 {

@@ -197,7 +197,7 @@ namespace Microsoft.Boogie {
         }
         LinearSetTransform linearTransform = new LinearSetTransform(program);
         linearTransform.Transform();
-          
+
         EliminateDeadVariablesAndInline(program);
 
         int errorCount, verified, inconclusives, timeOuts, outOfMemories;

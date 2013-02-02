@@ -285,11 +285,6 @@ namespace Microsoft.Boogie
                     b.Cmds = newCmds;
                 }
 
-                foreach (var v in copies.Values)
-                {
-                    impl.LocVars.Add(v);
-                }
-
                 {
                     // Loops
                     impl.PruneUnreachableBlocks();
@@ -331,6 +326,11 @@ namespace Microsoft.Boogie
                     }
                     newCmds.AddRange(impl.Blocks[0].Cmds);
                     impl.Blocks[0].Cmds = newCmds;
+                }
+
+                foreach (var v in copies.Values)
+                {
+                    impl.LocVars.Add(v);
                 }
             }
 
@@ -437,7 +437,10 @@ namespace Microsoft.Boogie
                 lhss.Add(new SimpleAssignLhs(Token.NoToken, new IdentifierExpr(Token.NoToken, copies[allocator])));
                 rhss.Add(new IdentifierExpr(Token.NoToken, allocator));
             }
-            newCmds.Add(new AssignCmd(Token.NoToken, lhss, rhss));
+            if (lhss.Count > 0)
+            {
+                newCmds.Add(new AssignCmd(Token.NoToken, lhss, rhss));
+            }
             foreach (string domainName in domainNameToHavocVars.Keys)
             {
                 var allocator = linearDomains[domainName].allocator;

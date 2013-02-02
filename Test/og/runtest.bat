@@ -9,7 +9,7 @@ for %%f in (foo.bpl bar.bpl) do (
   %BGEXE% %* /nologo /noinfer /doModSetAnalysis /OwickiGries:OwickiGriesDesugared.bpl %%f
 )
 
-for %%f in (linear-set.bpl linear-set2.bpl) do (
+for %%f in (linear-set.bpl linear-set2.bpl FlanaganQadeer.bpl) do (
   echo.
   echo -------------------- %%f --------------------
   %BGEXE% %* /nologo /noinfer /typeEncoding:m /useArrayTheory /doModSetAnalysis  /OwickiGries:OwickiGriesDesugared.bpl %%f Maps.bpl
