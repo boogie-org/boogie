@@ -13,8 +13,10 @@ namespace Microsoft.Boogie
     {
         // containsYield is true iff there is an implementation that contains a yield statement
         public bool containsYield;
-        // isThreadStart is true iff the procedure is labeled entrypoint or if there is an async call to the procedure
+        // isThreadStart is true iff there is an async call to the procedure
         public bool isThreadStart;
+        // isEntrypoint is true iff the procedure is an entrypoint
+        public bool isEntrypoint;
         // isAtomic is true if there are no yields transitively in any implementation
         public bool isAtomic;
         public Procedure yieldCheckerProc;
@@ -49,8 +51,7 @@ namespace Microsoft.Boogie
             }
             if (QKeyValue.FindBoolAttribute(node.Attributes, "entrypoint"))
             {
-                procNameToInfo[node.Name].isThreadStart = true;
-                CreateYieldCheckerProcedure(node);
+                procNameToInfo[node.Name].isEntrypoint = true;
             }
             if (QKeyValue.FindBoolAttribute(node.Attributes, "yields"))
             {
@@ -67,8 +68,7 @@ namespace Microsoft.Boogie
             }
             if (QKeyValue.FindBoolAttribute(node.Attributes, "entrypoint"))
             {
-                procNameToInfo[node.Name].isThreadStart = true;
-                CreateYieldCheckerProcedure(node.Proc);
+                procNameToInfo[node.Name].isEntrypoint = true;
             }
             return base.VisitImplementation(node);
         }
@@ -161,15 +161,11 @@ namespace Microsoft.Boogie
             AtomicTraverser.Traverse(program, procNameToInfo);
             ogOldGlobalMap = new Hashtable();
             globalMods = new IdentifierExprSeq();
-            bool workTodo = procNameToInfo.Values.Aggregate<ProcedureInfo, bool>(false, (b, info) => (b || !info.isAtomic || info.isThreadStart));
-            if (workTodo)
+            foreach (Variable g in program.GlobalVariables())
             {
-                foreach (Variable g in program.GlobalVariables())
-                {
-                    var oldg = new GlobalVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og@global_old_{0}", g.Name), g.TypedIdent.Type));
-                    ogOldGlobalMap[g] = new IdentifierExpr(Token.NoToken, oldg);
-                    globalMods.Add(new IdentifierExpr(Token.NoToken, g));
-                }
+                var oldg = new GlobalVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og@global_old_{0}", g.Name), g.TypedIdent.Type));
+                ogOldGlobalMap[g] = new IdentifierExpr(Token.NoToken, oldg);
+                globalMods.Add(new IdentifierExpr(Token.NoToken, g));
             }
         }
 
@@ -219,15 +215,18 @@ namespace Microsoft.Boogie
             {
                 Implementation impl = decl as Implementation;
                 if (impl == null) continue;
-                if (procNameToInfo[impl.Name].isAtomic && !procNameToInfo[impl.Name].isThreadStart) continue;
+                ProcedureInfo info = procNameToInfo[impl.Name];
 
                 // Add free requires
-                Expr freeRequiresExpr = Expr.True;
-                foreach (Variable g in ogOldGlobalMap.Keys)
+                if (!info.isAtomic || info.isEntrypoint || info.isThreadStart)
                 {
-                    freeRequiresExpr = Expr.And(freeRequiresExpr, Expr.Eq(new IdentifierExpr(Token.NoToken, g), (IdentifierExpr)ogOldGlobalMap[g]));
+                    Expr freeRequiresExpr = Expr.True;
+                    foreach (Variable g in ogOldGlobalMap.Keys)
+                    {
+                        freeRequiresExpr = Expr.And(freeRequiresExpr, Expr.Eq(new IdentifierExpr(Token.NoToken, g), (IdentifierExpr)ogOldGlobalMap[g]));
+                    }
+                    impl.Proc.Requires.Add(new Requires(true, freeRequiresExpr));
                 }
-                impl.Proc.Requires.Add(new Requires(true, freeRequiresExpr));
 
                 // Create substitution maps
                 Hashtable map = new Hashtable();
@@ -340,7 +339,33 @@ namespace Microsoft.Boogie
                     b.Cmds = newCmds;
                 }
 
-                if (!procNameToInfo[impl.Name].containsYield && !procNameToInfo[impl.Name].isThreadStart) continue;
+                {
+                    // Loops
+                    impl.PruneUnreachableBlocks();
+                    impl.ComputePredecessorsForBlocks();
+                    GraphUtil.Graph<Block> g = Program.GraphFromImpl(impl);
+                    g.ComputeLoops();
+                    if (g.Reducible)
+                    {
+                        foreach (Block header in g.Headers)
+                        {
+                            foreach (Block pred in header.Predecessors)
+                            {
+                                AddCallsToYieldCheckers(pred.Cmds);
+                                AddUpdatesToOldGlobalVars(pred.Cmds);
+                            }
+                            CmdSeq newCmds = new CmdSeq();
+                            foreach (Variable v in ogOldGlobalMap.Keys)
+                            {
+                                newCmds.Add(new AssumeCmd(Token.NoToken, Expr.Binary(BinaryOperator.Opcode.Eq, new IdentifierExpr(Token.NoToken, v), (IdentifierExpr)ogOldGlobalMap[v])));
+                            }
+                            newCmds.AddRange(header.Cmds);
+                            header.Cmds = newCmds;
+                        }
+                    }
+                }
+
+                if (!info.containsYield && !info.isThreadStart) continue;
 
                 // Create the body of the yield checker procedure
                 Substitution assumeSubst = Substituter.SubstitutionFromHashtable(assumeMap);
