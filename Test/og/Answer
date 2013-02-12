@@ -1,0 +1,40 @@
+
+-------------------- foo.bpl --------------------
+OwickiGriesDesugared.bpl(179,4): Error BP5001: This assertion might not hold.
+Execution trace:
+    OwickiGriesDesugared.bpl(17,0): anon0
+    OwickiGriesDesugared.bpl(177,0): inline$YieldChecker_PC$0$L1
+
+Boogie program verifier finished with 3 verified, 1 error
+
+-------------------- bar.bpl --------------------
+OwickiGriesDesugared.bpl(171,4): Error BP5001: This assertion might not hold.
+Execution trace:
+    OwickiGriesDesugared.bpl(17,0): anon0
+    OwickiGriesDesugared.bpl(169,0): inline$YieldChecker_PC$0$L1
+OwickiGriesDesugared.bpl(171,4): Error BP5001: This assertion might not hold.
+Execution trace:
+    OwickiGriesDesugared.bpl(68,0): anon0
+    OwickiGriesDesugared.bpl(169,0): inline$YieldChecker_PC$0$L1
+
+Boogie program verifier finished with 2 verified, 2 errors
+
+-------------------- one.bpl --------------------
+
+Boogie program verifier finished with 2 verified, 0 errors
+
+-------------------- linear-set.bpl --------------------
+
+Boogie program verifier finished with 2 verified, 0 errors
+
+-------------------- linear-set2.bpl --------------------
+
+Boogie program verifier finished with 2 verified, 0 errors
+
+-------------------- FlanaganQadeer.bpl --------------------
+
+Boogie program verifier finished with 3 verified, 0 errors
+
+-------------------- DeviceCacheSimplified.bpl --------------------
+
+Boogie program verifier finished with 5 verified, 0 errors

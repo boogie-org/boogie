@@ -268,7 +268,7 @@ namespace Microsoft.Boogie
                 // Collect the yield predicates and desugar yields
                 HashSet<CmdSeq> yields = new HashSet<CmdSeq>();
                 CmdSeq cmds = new CmdSeq();
-                if (procNameToInfo[impl.Name].isThreadStart && impl.Proc.Requires.Length > 0)
+                if (info.isThreadStart && impl.Proc.Requires.Length > 0)
                 {
                     foreach (Requires r in impl.Proc.Requires)
                     {
@@ -332,13 +332,14 @@ namespace Microsoft.Boogie
                         yields.Add(cmds);
                         cmds = new CmdSeq();
                     } 
-                    if (b.TransferCmd is ReturnCmd)
+                    if (b.TransferCmd is ReturnCmd && (!info.isAtomic || info.isEntrypoint || info.isThreadStart))
                     {
                         AddCallsToYieldCheckers(newCmds);
                     }
                     b.Cmds = newCmds;
                 }
 
+                if (!info.isAtomic)
                 {
                     // Loops
                     impl.PruneUnreachableBlocks();
@@ -405,10 +406,10 @@ namespace Microsoft.Boogie
                 yieldCheckerBlocks.Insert(0, new Block(Token.NoToken, "enter", new CmdSeq(), new GotoCmd(Token.NoToken, labels, labelTargets)));
                 
                 // Create the yield checker implementation
-                var yieldCheckerImpl = new Implementation(Token.NoToken, procNameToInfo[impl.Name].yieldCheckerProc.Name, impl.TypeParameters, new VariableSeq(), new VariableSeq(), locals, yieldCheckerBlocks);
-                yieldCheckerImpl.Proc = procNameToInfo[impl.Name].yieldCheckerProc;
+                var yieldCheckerImpl = new Implementation(Token.NoToken, info.yieldCheckerProc.Name, impl.TypeParameters, new VariableSeq(), new VariableSeq(), locals, yieldCheckerBlocks);
+                yieldCheckerImpl.Proc = info.yieldCheckerProc;
                 yieldCheckerImpl.AddAttribute("inline", new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1)));
-                procNameToInfo[impl.Name].yieldCheckerImpl = yieldCheckerImpl;
+                info.yieldCheckerImpl = yieldCheckerImpl;
             }
 
             foreach (Variable v in ogOldGlobalMap.Keys)

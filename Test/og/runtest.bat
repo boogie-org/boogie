@@ -3,7 +3,7 @@ setlocal
 
 set BGEXE=..\..\Binaries\Boogie.exe
 
-for %%f in (foo.bpl bar.bpl) do (
+for %%f in (foo.bpl bar.bpl one.bpl) do (
   echo.
   echo -------------------- %%f --------------------
   %BGEXE% %* /nologo /noinfer /doModSetAnalysis /OwickiGries:OwickiGriesDesugared.bpl %%f
