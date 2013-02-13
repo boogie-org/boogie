@@ -23,7 +23,26 @@ namespace Microsoft.Boogie
             checkingContext.Error(node, message);
             errorCount++;
         }
-
+        private Dictionary<Variable, string> scope;
+        public override Implementation VisitImplementation(Implementation node)
+        {
+            scope = new Dictionary<Variable, string>();
+            for (int i = 0; i < node.OutParams.Length; i++)
+            {
+                string domainName = QKeyValue.FindStringAttribute(node.Proc.OutParams[i].Attributes, "linear");
+                if (domainName != null)
+                {
+                    scope[node.OutParams[i]] = domainName;
+                }
+            }
+            return base.VisitImplementation(node);
+        }
+        private string FindDomainName(Variable v)
+        {
+            if (scope.ContainsKey(v))
+                return scope[v]; 
+            return QKeyValue.FindStringAttribute(v.Attributes, "linear");
+        }
         public override Variable VisitVariable(Variable node)
         {
             string domainName = QKeyValue.FindStringAttribute(node.Attributes, "linear");
@@ -33,28 +52,29 @@ namespace Microsoft.Boogie
                 MapType mapType = type as MapType;
                 if (mapType != null)
                 {
-                    if (mapType.Arguments.Length > 1)
+                    if (mapType.Arguments.Length == 1 && mapType.Result.Equals(Type.Bool))
+                    {
+                        type = mapType.Arguments[0];
+                        if (type is MapType)
+                        {
+                            Error(node, "the domain of a linear set must be a scalar type");
+                            return base.VisitVariable(node);
+                        }
+                    }
+                    else
                     {
                         Error(node, "a linear domain can be attached to either a set or a scalar type");
-                    }
-                    type = mapType.Arguments[0];
-                }
-                if (domainNameToType.ContainsKey(domainName))
-                {
-                    if (!domainNameToType[domainName].Equals(type))
-                    {
-                        Error(node, "a linear domain must be consistently attached to variables of a particular type");
+                        return base.VisitVariable(node);
                     }
                 }
-                else if (type is MapType)
+                if (domainNameToType.ContainsKey(domainName) && !domainNameToType[domainName].Equals(type))
                 {
-                    Error(node, "a linear domain can be attached to either a set or a scalar type");
+                    Error(node, "a linear domain must be consistently attached to variables of a particular type");
                 }
                 else
                 {
                     domainNameToType[domainName] = type;
                 }
-
             }
             return base.VisitVariable(node);
         }
@@ -64,7 +84,7 @@ namespace Microsoft.Boogie
             for (int i = 0; i < node.Lhss.Count; i++)
             {
                 AssignLhs lhs = node.Lhss[i];
-                string domainName = QKeyValue.FindStringAttribute(lhs.DeepAssignedVariable.Attributes, "linear");
+                string domainName = FindDomainName(lhs.DeepAssignedVariable);
                 if (domainName == null) continue;
                 SimpleAssignLhs salhs = lhs as SimpleAssignLhs;
                 if (salhs == null)
@@ -75,15 +95,10 @@ namespace Microsoft.Boogie
                 IdentifierExpr rhs = node.Rhss[i] as IdentifierExpr;
                 if (rhs == null)
                 {
-                    Error(node, "Only variable can be assigned to a linear set");
+                    Error(node, "Only variable can be assigned to a linear variable");
                     continue;
                 }
-                string rhsDomainName = QKeyValue.FindStringAttribute(rhs.Decl.Attributes, "linear");
-                Formal formal = rhs.Decl as Formal;
-                if (formal != null && formal.InComing)
-                {
-                    rhsDomainName = null;
-                }
+                string rhsDomainName = FindDomainName(rhs.Decl);
                 if (rhsDomainName == null)
                 {
                     Error(node, "Only linear variable can be assigned to another linear variable");
@@ -115,15 +130,10 @@ namespace Microsoft.Boogie
                 IdentifierExpr actual = node.Ins[i] as IdentifierExpr;
                 if (actual == null)
                 {
-                    Error(node, "Only variable can be assigned to a linear set");
+                    Error(node, "Only variable can be assigned to a linear variable");
                     continue;
                 }
-                string actualDomainName = QKeyValue.FindStringAttribute(actual.Decl.Attributes, "linear");
-                Formal formal2 = actual.Decl as Formal;
-                if (formal2 != null && formal2.InComing)
-                {
-                    actualDomainName = null;
-                }
+                string actualDomainName = FindDomainName(actual.Decl);
                 if (actualDomainName == null)
                 {
                     Error(node, "Only a linear argument can be passed to a linear parameter");
@@ -150,7 +160,7 @@ namespace Microsoft.Boogie
             for (int i = 0; i < node.Proc.OutParams.Length; i++)
             {
                 IdentifierExpr actual = node.Outs[i];
-                string actualDomainName = QKeyValue.FindStringAttribute(actual.Decl.Attributes, "linear");
+                string actualDomainName = FindDomainName(actual.Decl);
                 if (actualDomainName == null) continue;
                 Variable formal = node.Proc.OutParams[i];
                 string domainName = QKeyValue.FindStringAttribute(formal.Attributes, "linear");
@@ -570,33 +580,36 @@ namespace Microsoft.Boogie
                 this.elementType = mapType.Arguments[0];
             }
             this.allocator = new GlobalVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("allocator_{0}", domainName), new MapType(Token.NoToken, new TypeVariableSeq(), new TypeSeq(this.elementType), Type.Bool)));
-            foreach (var decl in program.TopLevelDeclarations)
-            {
-                Function func = decl as Function;
-                if (func == null) continue;
-                var name = QKeyValue.FindStringAttribute(func.Attributes, "builtin");
-                if (name == null) continue;
-                MapType mapType = func.OutParams[0].TypedIdent.Type as MapType;
-                if (mapType == null) continue;
-                if (mapType.Arguments.Length > 1) continue;
-                if (!mapType.Arguments[0].Equals(elementType)) continue;
-                if (mapType.Result.Equals(Microsoft.Boogie.Type.Bool))
-                {
-                    if (name == "MapOr")
-                        this.mapOrBool = func;
-                    else if (name == "MapImp")
-                        this.mapImpBool = func;
-                    else if (name == "MapConst")
-                        this.mapConstBool = func;
-                    else if (name == "MapEq")
-                        this.mapEqInt = func;
-                }
-                else if (mapType.Result.Equals(Microsoft.Boogie.Type.Int))
-                {
-                    if (name == "MapConst")
-                        this.mapConstInt = func;
-                }
-            }
+
+            MapType mapTypeBool = new MapType(Token.NoToken, new TypeVariableSeq(), new TypeSeq(this.elementType), Type.Bool);
+            MapType mapTypeInt = new MapType(Token.NoToken, new TypeVariableSeq(), new TypeSeq(this.elementType), Type.Int);
+            this.mapOrBool = new Function(Token.NoToken, "linear@MapOr",
+                                          new VariableSeq(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "a", mapTypeBool), true),
+                                                          new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "b", mapTypeBool), true)),
+                                          new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "c", mapTypeBool), false));
+            this.mapOrBool.AddAttribute("builtin", "MapOr");
+
+            this.mapImpBool = new Function(Token.NoToken, "linear@MapImp",
+                                              new VariableSeq(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "a", mapTypeBool), true),
+                                                              new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "b", mapTypeBool), true)),
+                                              new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "c", mapTypeBool), false));
+            this.mapImpBool.AddAttribute("builtin", "MapImp");
+
+            this.mapConstBool = new Function(Token.NoToken, "linear@MapConstBool",
+                                              new VariableSeq(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "b", Type.Bool), true)),
+                                              new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "c", mapTypeBool), false));
+            this.mapConstBool.AddAttribute("builtin", "MapConst");
+
+            this.mapEqInt = new Function(Token.NoToken, "linear@MapEq",
+                                              new VariableSeq(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "a", mapTypeInt), true),
+                                                              new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "b", mapTypeInt), true)),
+                                              new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "c", mapTypeBool), false));
+            this.mapEqInt.AddAttribute("builtin", "MapEq");
+
+            this.mapConstInt = new Function(Token.NoToken, "linear@MapConstInt",
+                                          new VariableSeq(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "b", Type.Int), true)),
+                                          new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "c", mapTypeInt), false));
+            this.mapConstInt.AddAttribute("builtin", "MapConst");
         }
     }
 }

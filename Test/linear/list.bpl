@@ -1,3 +1,7 @@
+type X;
+function {:builtin "MapConst"} MapConstBool(bool) : [X]bool;
+function {:builtin "MapOr"} MapOr([X]bool, [X]bool) : [X]bool;
+
 var head: X;
 var tail: X;
 var {:linear "Mem"} D: [X]bool;

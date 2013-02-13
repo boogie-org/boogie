@@ -1,3 +1,5 @@
+type X;
+
 function {:inline} Inv(ghostLock: X, currsize: int, newsize: int) : (bool)
 {
     currsize <= newsize && (ghostLock == nil <==> currsize == newsize)

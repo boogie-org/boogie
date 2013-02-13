@@ -1,3 +1,5 @@
+type X;
+
 const nil: X;
 var l: X;
 var x: int;

@@ -1,12 +1,7 @@
-function {:inline} Subset(a: [X]bool, b: [X]bool) : bool
-{
-    MapImp(a, b) == MapConstBool(true)
-}
-
-function {:inline} In(a: X, b: [X]bool) : bool
-{
-    b[a]
-}
+type X;
+function {:builtin "MapConst"} MapConstInt(int) : [X]int;
+function {:builtin "MapConst"} MapConstBool(bool) : [X]bool;
+function {:builtin "MapOr"} MapOr([X]bool, [X]bool) : [X]bool;
 
 function {:inline} None() : [X]bool
 {
