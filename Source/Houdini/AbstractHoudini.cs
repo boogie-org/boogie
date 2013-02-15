@@ -190,6 +190,23 @@ namespace Microsoft.Boogie.Houdini {
             CommandLineOptions.Clo.TheProverFactory.Close();
         }
 
+        public HashSet<string> GetPredicates()
+        {
+            var ret = new HashSet<string>();
+            prover = ProverInterface.CreateProver(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend, -1);
+
+            foreach (var tup in impl2Summary)
+            {
+                var s = tup.Value as PredicateAbs;
+                if (s == null) continue;
+                ret.UnionWith(s.GetPredicates(program, prover.VCExprGen, prover));
+            }
+
+            prover.Close();
+            CommandLineOptions.Clo.TheProverFactory.Close();
+            return ret;
+        }
+
         // Obtain the summary expression for a procedure: used programmatically by clients
         // of AbstractHoudini
         public Expr GetSummary(Program program, Procedure proc)
@@ -208,6 +225,12 @@ namespace Microsoft.Boogie.Houdini {
             return impl2Summary[proc.Name].GetSummaryExpr(
                 v => { if (vars.ContainsKey(v)) return vars[v]; else return null; },
                 v => { if (vars.ContainsKey(v)) return new OldExpr(Token.NoToken, vars[v]); else return null; });
+        }
+
+        public ISummaryElement GetSummaryLowLevel(Procedure proc)
+        {
+            if (!impl2Summary.ContainsKey(proc.Name)) return null;
+            return impl2Summary[proc.Name];
         }
 
         // Produce a witness that proves that the inferred annotations are correct
@@ -1040,6 +1063,7 @@ namespace Microsoft.Boogie.Houdini {
     public class PredicateAbs : ISummaryElement
     {
         public static Dictionary<string, List<NamedExpr>> PrePreds { get; private set; }
+        public static Dictionary<string, HashSet<int>> PosPrePreds { get; private set; }
         public static Dictionary<string, List<NamedExpr>> PostPreds { get; private set; }
         public static Dictionary<Tuple<string, int>, List<PredicateAbsDisjunct>> UpperCandidates;
         private static HashSet<string> boolConstants;
@@ -1066,6 +1090,8 @@ namespace Microsoft.Boogie.Houdini {
         {
             PrePreds = new Dictionary<string, List<NamedExpr>>();
             PostPreds = new Dictionary<string, List<NamedExpr>>();
+            PosPrePreds = new Dictionary<string, HashSet<int>>();
+
             boolConstants = new HashSet<string>();
             UpperCandidates = new Dictionary<Tuple<string, int>, List<PredicateAbsDisjunct>>();
 
@@ -1076,6 +1102,7 @@ namespace Microsoft.Boogie.Houdini {
             // Add template pre-post to all procedures
             var preT = new List<NamedExpr>();
             var postT = new List<NamedExpr>();
+            var posPreT = new HashSet<int>();
             var tempP = new HashSet<Procedure>();
             foreach (var proc in
                 program.TopLevelDeclarations.OfType<Procedure>()
@@ -1084,14 +1111,23 @@ namespace Microsoft.Boogie.Houdini {
                 tempP.Add(proc);
                 foreach (var ens in proc.Ensures.OfType<Ensures>())
                 {
+                    var pos = QKeyValue.FindBoolAttribute(ens.Attributes, "positive");
+
                     if (QKeyValue.FindBoolAttribute(ens.Attributes, "pre"))
+                    {
                         preT.Add(new NamedExpr(null, ens.Condition));
+                        if (pos) posPreT.Add(preT.Count - 1);
+                    }
+
                     if (QKeyValue.FindBoolAttribute(ens.Attributes, "post"))
                         postT.Add(new NamedExpr(null, ens.Condition));
 
                     var s = QKeyValue.FindStringAttribute(ens.Attributes, "pre");
                     if (s != null)
+                    {
                         preT.Add(new NamedExpr(s, ens.Condition));
+                        if (pos) posPreT.Add(preT.Count - 1);
+                    }
 
                     s = QKeyValue.FindStringAttribute(ens.Attributes, "post");
                     if (s != null)
@@ -1106,21 +1142,26 @@ namespace Microsoft.Boogie.Houdini {
             {
                 PrePreds.Add(impl.Name, new List<NamedExpr>());
                 PostPreds.Add(impl.Name, new List<NamedExpr>());
+                PosPrePreds.Add(impl.Name, new HashSet<int>());
 
                 // Add "false" as the first post predicate
                 //PostPreds[impl.Name].Add(new NamedExpr(Expr.False));
 
                 preT.Iter(e => PrePreds[impl.Name].Add(e));
                 postT.Iter(e => PostPreds[impl.Name].Add(e));
+                PosPrePreds[impl.Name].UnionWith(posPreT);
 
                 // Pick up per-procedure pre-post
                 var nens = new EnsuresSeq();
                 foreach (var ens in impl.Proc.Ensures.OfType<Ensures>())
                 {
                     string s = null;
+                    var pos = QKeyValue.FindBoolAttribute(ens.Attributes, "positive");
+                    
                     if (QKeyValue.FindBoolAttribute(ens.Attributes, "pre"))
                     {
                         PrePreds[impl.Name].Add(new NamedExpr(ens.Condition));
+                        PosPrePreds[impl.Name].Add(PrePreds[impl.Name].Count - 1);
                     }
                     else if (QKeyValue.FindBoolAttribute(ens.Attributes, "post"))
                     {
@@ -1129,6 +1170,7 @@ namespace Microsoft.Boogie.Houdini {
                     else if ((s = QKeyValue.FindStringAttribute(ens.Attributes, "pre")) != null)
                     {
                         PrePreds[impl.Name].Add(new NamedExpr(s, ens.Condition));
+                        PosPrePreds[impl.Name].Add(PrePreds[impl.Name].Count - 1);
                     }
                     else if ((s = QKeyValue.FindStringAttribute(ens.Attributes, "post")) != null)
                     {
@@ -1441,9 +1483,19 @@ namespace Microsoft.Boogie.Houdini {
             if (!seta.Any()) return false;
             
             // Create fresh variables
+            return CheckIfUnsat(Expr.And(a, b), gen, prover);
+        }
+
+        // Is a UNSAT?
+        private static bool CheckIfUnsat(Expr a, VCExpressionGenerator gen, ProverInterface prover)
+        {
+            var gatherLitA = new GatherLiterals();
+            gatherLitA.Visit(a);
+
+            // Create fresh variables
             var counter = 0;
             var incarnations = new Dictionary<string, VCExpr>();
-            foreach (var literal in gatherLitA.literals.Concat(gatherLitB.literals))
+            foreach (var literal in gatherLitA.literals)
             {
                 if (incarnations.ContainsKey(literal.Item2.ToString()))
                     continue;
@@ -1455,8 +1507,7 @@ namespace Microsoft.Boogie.Houdini {
             }
 
             var vc1 = ToVcExpr(a, incarnations, gen);
-            var vc2 = ToVcExpr(b, incarnations, gen);
-            var vc = gen.LabelPos("Temp", gen.And(vc1, vc2));
+            var vc = gen.LabelPos("Temp", vc1);
 
             // check
             prover.AssertAxioms();
@@ -1470,6 +1521,7 @@ namespace Microsoft.Boogie.Houdini {
                 return true;
             return false;
         }
+
 
         class GatherLiterals : StandardVisitor
         {
@@ -1520,6 +1572,15 @@ namespace Microsoft.Boogie.Houdini {
             if (val is bool || val is int || val is Basetypes.BigNum)
                 return model.MkElement(val.ToString());
             throw new NotImplementedException("Cannot yet handle this value type");
+        }
+
+        // replace v by old(v)
+        private static Expr MakeOld(Expr expr)
+        {
+            var substalways = new Substitution(v => new OldExpr(Token.NoToken, Expr.Ident(v)));
+            var substold = new Substitution(v => Expr.Ident(v));
+
+            return Substituter.ApplyReplacingOldExprs(substalways, substold, expr);
         }
 
         private static Expr ToExpr(Expr expr, Func<string, Expr> always, Func<string, Expr> forold)
@@ -1645,11 +1706,73 @@ namespace Microsoft.Boogie.Houdini {
 
         }
 
+        // If "false" is a post-predicate, then remove its "pre" constraint from all others, whenever possible
+        public void Simplify()
+        {
+            // find "false"
+            var findex = PostPreds[procName].FindIndex(ne => (ne.expr is LiteralExpr) && (ne.expr as LiteralExpr).IsFalse);
+            if (findex < 0) return;
+            if (value[findex].isTrue)
+            {
+                // procedure doesn't return
+                for (int i = 0; i < value.Length; i++)
+                    if (i != findex) value[i] = new PredicateAbsDisjunct(false, procName);
+                return;
+            }
+            if (value[findex].isFalse)
+                return;
+
+            for (int i = 0; i < value.Length; i++)
+                if (i != findex) value[i].Subtract(value[findex]);
+        }
+
+        public HashSet<string> GetPredicates(Program program, VCExpressionGenerator gen, ProverInterface prover)
+        {
+            var ret = new HashSet<string>();
+            if (isFalse) return ret;
+            Simplify();
+
+            // Find the free expressions
+            var proc = program.TopLevelDeclarations.OfType<Procedure>().FirstOrDefault(p => p.Name == procName);
+            Contract.Assert(proc != null);
+            Expr freeSummary = Expr.True;
+            foreach (var req in proc.Requires.OfType<Requires>().Where(req => req.Free))
+            {
+                freeSummary = Expr.And(freeSummary, MakeOld(req.Condition));
+            }
+            foreach (var ens in proc.Ensures.OfType<Ensures>().Where(ens => ens.Free))
+            {
+                freeSummary = Expr.And(freeSummary, ens.Condition);
+            }
+            
+            for (int i = 0; i < PostPreds[procName].Count; i++)
+            {
+                if (value[i].isFalse) continue;
+                if (PostPreds[procName][i].expr is LiteralExpr && (PostPreds[procName][i].expr as LiteralExpr).IsFalse)
+                    continue;
+
+                if (value[i].isTrue)
+                    ret.Add(PostPreds[procName][i].expr.ToString());
+                else
+                {
+                    foreach (var c in value[i].GetConjuncts())
+                    {
+                        var s = Expr.Imp(c.ToExpr(j => PrePreds[procName][j].expr), PostPreds[procName][i].expr);
+                        if (CheckIfUnsat(Expr.And(freeSummary, Expr.Not(s)), gen, prover))
+                            continue;
+                        ret.Add(s.ToString());
+                    }
+                }
+            }
+            return ret;
+        }
+
         public override string ToString()
         {
             var ret = "";
             if (isFalse) return "false";
             var first = true;
+            Simplify();
 
             for(int i = 0; i < PostPreds[procName].Count; i++) 
             {
@@ -1726,7 +1849,7 @@ namespace Microsoft.Boogie.Houdini {
                 var newDisj = new PredicateAbsDisjunct(true, procName);
                 if (!postPredsVal[i])
                 {
-                    newDisj = new PredicateAbsDisjunct(indexSeq.Where(j => !prePredsVal[j]), indexSeq.Where(j => prePredsVal[j]), procName);
+                    newDisj = new PredicateAbsDisjunct(indexSeq.Where(j => !prePredsVal[j]), indexSeq.Where(j => prePredsVal[j] && !PosPrePreds[procName].Contains(j)), procName);
                 }
 
                 if (isFalse)
@@ -2013,6 +2136,24 @@ namespace Microsoft.Boogie.Houdini {
             }
             return ret;
         }
+
+        public void Subtract(PredicateAbsDisjunct that)
+        {
+            var ncon = new List<PredicateAbsConjunct>();
+            foreach (var c1 in conjuncts)
+            {
+                if (that.conjuncts.Any(c2 => c1.implies(c2)))
+                    continue;
+                ncon.Add(c1);
+            }
+            conjuncts = ncon;
+        }
+
+        public IEnumerable<PredicateAbsConjunct> GetConjuncts()
+        {
+            return conjuncts;
+        }
+
     }
 
     public class PredicateAbsConjunct
