@@ -12,7 +12,6 @@ rem set BGEXE=mono ..\..\Binaries\Boogie.exe
 %BGEXE% %* /noVerify Family.bpl
 %BGEXE% %* /noVerify AttributeTyping.bpl
 %BGEXE% %* /noVerify UpdateExprTyping.bpl
-%BGEXE% %* /noVerify CallForallResolve.bpl
 %BGEXE% %* /noVerify MapsTypeErrors.bpl
 %BGEXE% %* /noVerify Orderings.bpl
 %BGEXE% %* /noVerify EmptyCallArgs.bpl

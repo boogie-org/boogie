@@ -9,13 +9,6 @@ procedure CallP() {
   var z:C;
 
   call z := P(x, y);
-  call * := P(x, y);
-  call z := P(*, y);
-  call z := P(x, *);
-  call * := P(*, x);   // type error
-  call * := P(x, *);
-  call z := P(*, *);
-  call * := P(*, *);
 }
 
 procedure CallQ() {
@@ -24,8 +17,4 @@ procedure CallQ() {
   var z:bool;
 
   call x := Q(x, y);   // type error
-  call * := Q(x, y);
-  call x := Q(*, y);   // type error
-  call x := Q(x, *);
-  call * := Q(*, y);
 }

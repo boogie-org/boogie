@@ -107,8 +107,6 @@ UpdateExprTyping.bpl(36,28): Error: right-hand side in map store with wrong type
 UpdateExprTyping.bpl(38,27): Error: right-hand side in map store with wrong type: ref (expected: int)
 UpdateExprTyping.bpl(39,27): Error: right-hand side in map store with wrong type: int (expected: ref)
 12 type checking errors detected in UpdateExprTyping.bpl
-CallForallResolve.bpl(15,2): Error: call forall is allowed only on procedures with no modifies clause: Q
-1 type checking errors detected in CallForallResolve.bpl
 MapsTypeErrors.bpl(26,6): Error: command assigns to a global variable that is not in the enclosing method's modifies clause: m
 MapsTypeErrors.bpl(32,2): Error: mismatched types in assignment command (cannot assign int to []int)
 MapsTypeErrors.bpl(33,3): Error: mismatched types in assignment command (cannot assign []int to int)
@@ -127,10 +125,8 @@ MapsTypeErrors.bpl(122,4): Error: mismatched types in assignment command (cannot
 15 type checking errors detected in MapsTypeErrors.bpl
 Orderings.bpl(6,19): Error: parent of constant has incompatible type (int instead of C)
 1 type checking errors detected in Orderings.bpl
-EmptyCallArgs.bpl(15,17): Error: invalid type for argument 0 in call to P: int (expected: bool)
-EmptyCallArgs.bpl(26,7): Error: invalid type for out-parameter 0 in call to Q: int (expected: bool)
-EmptyCallArgs.bpl(28,7): Error: invalid type for out-parameter 0 in call to Q: int (expected: bool)
-3 type checking errors detected in EmptyCallArgs.bpl
+EmptyCallArgs.bpl(19,7): Error: invalid type for out-parameter 0 in call to Q: int (expected: bool)
+1 type checking errors detected in EmptyCallArgs.bpl
 FunBody.bpl(6,45): Error: function body with invalid type: bool (expected: int)
 FunBody.bpl(8,61): Error: function body with invalid type: int (expected: alpha)
 FunBody.bpl(10,58): Error: function body with invalid type: int (expected: alpha)

@@ -103,7 +103,7 @@ private class BvBounds : Expr {
     this.Lower = lower;
     this.Upper = upper;
   }
-  public override Type/*!*/ ShallowType { get {Contract.Ensures(Contract.Result<Type>() != null); return Bpl.Type.Int; } }
+  public override Bpl.Type/*!*/ ShallowType { get {Contract.Ensures(Contract.Result<Bpl.Type>() != null); return Bpl.Type.Int; } }
   public override void Resolve(ResolutionContext/*!*/ rc) {
     // Contract.Requires(rc != null);
     rc.Error(this, "bitvector bounds in illegal position");
@@ -313,7 +313,7 @@ Type<out Bpl.Type/*!*/ ty>
   .
 
 TypeArgs<TypeSeq/*!*/ ts>
-= (.Contract.Requires(ts != null); IToken/*!*/ tok; Type/*!*/ ty; .)
+= (.Contract.Requires(ts != null); IToken/*!*/ tok; Bpl.Type/*!*/ ty; .)
   (
     TypeAtom<out ty>     (. ts.Add(ty); .)
     [ TypeArgs<ts> ]
@@ -343,7 +343,7 @@ MapType<out Bpl.Type/*!*/ ty>
 = (.Contract.Ensures(Contract.ValueAtReturn(out ty) != null); IToken tok = null;
      IToken/*!*/ nnTok;
      TypeSeq/*!*/ arguments = new TypeSeq();
-     Type/*!*/ result;
+     Bpl.Type/*!*/ result;
      TypeVariableSeq/*!*/ typeParameters = new TypeVariableSeq();
    .)
   [ TypeParams<out nnTok, out typeParameters> (. tok = nnTok; .) ]
@@ -447,7 +447,7 @@ Function<out DeclarationSeq/*!*/ ds>
      var arguments = new VariableSeq();
      TypedIdent/*!*/ tyd;
      TypedIdent retTyd = null;
-     Type/*!*/ retTy;
+     Bpl.Type/*!*/ retTy;
      QKeyValue argKv = null;
      QKeyValue kv = null;
      Expr definition = null;
@@ -484,7 +484,7 @@ Function<out DeclarationSeq/*!*/ ds>
       }
     }
     if (!allUnnamed) {
-      Type prevType = null;
+      Bpl.Type prevType = null;
       for (int i = arguments.Length; 0 <= --i; ) {
         TypedIdent/*!*/ curr = cce.NonNull(arguments[i]).TypedIdent;
         if (curr.HasName) {
@@ -496,7 +496,7 @@ Function<out DeclarationSeq/*!*/ ds>
             this.errors.SemErr(curr.tok, "the type of the last parameter is unspecified");
             break;
           }
-          Type ty = curr.Type;
+          Bpl.Type ty = curr.Type;
           var uti = ty as UnresolvedTypeIdentifier;
           if (uti != null && uti.Arguments.Length == 0) {
             // the given "thing" was just an identifier, so let's use it as the name of the parameter
@@ -562,7 +562,7 @@ UserDefinedTypes<.out List<Declaration/*!*/>/*!*/ ts.>
 
 UserDefinedType<out Declaration/*!*/ decl, QKeyValue kv>
 = (. Contract.Ensures(Contract.ValueAtReturn(out decl) != null); IToken/*!*/ id; TokenSeq/*!*/ paramTokens = new TokenSeq ();
-     Type/*!*/ body = dummyType; bool synonym = false; .)
+     Bpl.Type/*!*/ body = dummyType; bool synonym = false; .)
   Ident<out id>
   [ WhiteSpaceIdents<out paramTokens> ]
   [
@@ -855,6 +855,10 @@ LabelOrCmd<out Cmd c, out IToken label>
     { Attribute<ref kv> }
     Proposition<out e>    (. c = new AssumeCmd(x, e, kv); .)
     ";"
+  | "yield"              (. x = t; .)
+    { Attribute<ref kv> }
+    Proposition<out e>    (. c = new YieldCmd(x, e, kv); .)
+    ";"
   | "havoc"               (. x = t; .)
     Idents<out xs> ";"    (. ids = new IdentifierExprSeq();
                              foreach(IToken/*!*/ y in xs){
@@ -927,92 +931,34 @@ CallCmd<out Cmd/*!*/ c>
      Expr en;  List<Expr> args;
      c = dummyCmd;
      bool isFree = false;
+     bool isAsync = false;
   .)
+  [ "async"          (. isAsync = true;  .)
+  ]
   [ "free"          (. isFree = true;  .)
   ]
   "call"                          (. x = t; .)
   { Attribute<ref kv> }
   ( Ident<out first>
     ( "("
-      [ CallForallArg<out en>       (. es.Add(en); .)
-        { "," CallForallArg<out en> (. es.Add(en); .)
+      [ Expression<out en>       (. es.Add(en); .)
+        { "," Expression<out en> (. es.Add(en); .)
         }
       ]
-      ")"                         (. c = new CallCmd(x, first.val, es, ids, kv); ((CallCmd) c).IsFree = isFree; .)
+      ")"                         (. c = new CallCmd(x, first.val, es, ids, kv); ((CallCmd) c).IsFree = isFree; ((CallCmd) c).IsAsync = isAsync; .)
     |
                                   (. ids.Add(new IdentifierExpr(first, first.val)); .)
-      [ "," CallOutIdent<out p>  (.
-                                     if (p==null) {
-                                        ids.Add(null);
-                                     } else {
-                                        ids.Add(new IdentifierExpr(p, p.val));
-                                     }
-                                  .)
-        { "," CallOutIdent<out p>  (.
-                                     if (p==null) {
-                                        ids.Add(null);
-                                     } else {
-                                        ids.Add(new IdentifierExpr(p, p.val));
-                                     }
-                                  .)
+      [ "," Ident<out p>  (. ids.Add(new IdentifierExpr(p, p.val)); .)
+        { "," Ident<out p>  (. ids.Add(new IdentifierExpr(p, p.val)); .)
         }
       ] ":="
       Ident<out first> "("
-      [ CallForallArg<out en>       (. es.Add(en); .)
-        { "," CallForallArg<out en> (. es.Add(en); .)
+      [ Expression<out en>       (. es.Add(en); .)
+        { "," Expression<out en> (. es.Add(en); .)
         }
       ]
-      ")"                         (. c = new CallCmd(x, first.val, es, ids, kv); ((CallCmd) c).IsFree = isFree; .)
+      ")"                         (. c = new CallCmd(x, first.val, es, ids, kv); ((CallCmd) c).IsFree = isFree; ((CallCmd) c).IsAsync = isAsync; .)
     )
-  | "forall"
-    Ident<out first> "("              (. args = new List<Expr>(); .)
-    [ CallForallArg<out en>       (. args.Add(en); .)
-      { "," CallForallArg<out en> (. args.Add(en); .)
-      }
-    ]
-    ")"                           (. c = new CallForallCmd(x, first.val, args, kv); ((CallForallCmd) c).IsFree = isFree; .)
-  | "*"
-                                  (. ids.Add(null); .)
-      [ "," CallOutIdent<out p>  (.
-                                     if (p==null) {
-                                        ids.Add(null);
-                                     } else {
-                                        ids.Add(new IdentifierExpr(p, p.val));
-                                     }
-                                  .)
-        { "," CallOutIdent<out p>  (.
-                                     if (p==null) {
-                                        ids.Add(null);
-                                     } else {
-                                        ids.Add(new IdentifierExpr(p, p.val));
-                                     }
-                                  .)
-        }
-      ] ":="
-      Ident<out first> "("
-      [ CallForallArg<out en>       (. es.Add(en); .)
-        { "," CallForallArg<out en> (. es.Add(en); .)
-        }
-      ]
-      ")"                         (. c = new CallCmd(x, first.val, es, ids, kv); ((CallCmd) c).IsFree = isFree; .)
-  )
-  .
-
-CallOutIdent<out IToken id>
-= (. id = null;
-     IToken/*!*/ p;
-  .)
-  ( "*"
-  | Ident<out p>                   (. id = p; .)
-  )
-  .
-
-CallForallArg<out Expr exprOptional>
-= (. exprOptional = null;
-     Expr/*!*/ e;
-  .)
-  ( "*"
-  | Expression<out e>             (. exprOptional = e; .)
   )
   .
 
@@ -1214,7 +1160,7 @@ NegOp = "!" | '\u00ac'.
 
 CoercionExpression<out Expr/*!*/ e>
 = (. Contract.Ensures(Contract.ValueAtReturn(out e) != null); IToken/*!*/ x;
-     Type/*!*/ coercedTo;
+     Bpl.Type/*!*/ coercedTo;
      BigNum bn;
     .)
   ArrayExpression<out e>

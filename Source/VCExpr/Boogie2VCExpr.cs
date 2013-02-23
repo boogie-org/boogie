@@ -647,12 +647,6 @@ namespace Microsoft.Boogie.VCExprAST {
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }
-    public override Cmd VisitCallForallCmd(CallForallCmd node) {
-      //Contract.Requires(node != null);
-      Contract.Ensures(Contract.Result<Cmd>() != null);
-      Contract.Assert(false);
-      throw new cce.UnreachableException();
-    }
     public override CmdSeq VisitCmdSeq(CmdSeq cmdSeq) {
       //Contract.Requires(cmdSeq != null);
       Contract.Ensures(Contract.Result<CmdSeq>() != null);

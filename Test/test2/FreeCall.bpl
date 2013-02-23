@@ -80,17 +80,3 @@ procedure FreeCall4()
     free call b := UncallableReturn(-1);
 }
 
-procedure NormalCall5()
-{
-    call forall TestCallForall(*);
-    assert T(true);
-    assert T(false); // error
-}
-
-procedure FreeCall5()
-{
-    free call forall TestCallForall(*);
-    assert T(true);
-    assert T(false);
-    assert false;
-}

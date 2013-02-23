@@ -1627,6 +1627,19 @@ namespace Microsoft.Boogie {
       }
     }
 
+    private bool isAsync = false;
+    public bool IsAsync
+    {
+        get
+        {
+            return isAsync;
+        }
+        set
+        {
+            isAsync = value;
+        }
+    }
+
     protected CallCommonality(IToken tok, QKeyValue kv)
       : base(tok) {
       Contract.Requires(tok != null);
@@ -2170,265 +2183,6 @@ namespace Microsoft.Boogie {
     }
   }
 
-  public class CallForallCmd : CallCommonality {
-    string/*!*/ callee;
-    public Procedure Proc;
-    public List<Expr>/*!*/ Ins;
-    [ContractInvariantMethod]
-    void ObjectInvariant() {
-      Contract.Invariant(callee != null);
-      Contract.Invariant(Ins != null);
-    }
-
-
-    // the types of the formal in-parameters after instantiating all
-    // type variables whose value could be inferred using the given
-    // actual non-wildcard arguments
-    public TypeSeq InstantiatedTypes;
-
-    public CallForallCmd(IToken tok, string callee, List<Expr> ins)
-      : base(tok, null) {
-      Contract.Requires(ins != null);
-      Contract.Requires(callee != null);
-      Contract.Requires(tok != null);
-      this.callee = callee;
-      this.Ins = ins;
-    }
-    public CallForallCmd(IToken tok, string callee, List<Expr> ins, QKeyValue kv)
-      : base(tok, kv) {
-      Contract.Requires(ins != null);
-      Contract.Requires(callee != null);
-      Contract.Requires(tok != null);
-      this.callee = callee;
-      this.Ins = ins;
-    }
-    public override void Emit(TokenTextWriter stream, int level) {
-      //Contract.Requires(stream != null);
-      stream.Write(this, level, "");
-      if (IsFree) {
-        stream.Write("free ");
-      }
-      stream.Write("call ");
-      EmitAttributes(stream, Attributes);
-      stream.Write("forall ");
-      stream.Write(TokenTextWriter.SanitizeIdentifier(callee));
-      stream.Write("(");
-      string sep = "";
-      foreach (Expr arg in Ins) {
-        stream.Write(sep);
-        sep = ", ";
-        if (arg == null) {
-          stream.Write("*");
-        } else {
-          arg.Emit(stream);
-        }
-      }
-      stream.WriteLine(");");
-      base.Emit(stream, level);
-    }
-    public override void Resolve(ResolutionContext rc) {
-      //Contract.Requires(rc != null);
-      if (Proc != null) {
-        // already resolved
-        return;
-      }
-      ResolveAttributes(Attributes, rc);
-      Proc = rc.LookUpProcedure(callee) as Procedure;
-      if (Proc == null) {
-        rc.Error(this, "call to undeclared procedure: {0}", callee);
-      }
-      foreach (Expr e in Ins) {
-        if (e != null) {
-          e.Resolve(rc);
-        }
-      }
-    }
-    public override void AddAssignedVariables(VariableSeq vars) {
-      //Contract.Requires(vars != null);
-    }
-    public override void Typecheck(TypecheckingContext tc) {
-      //Contract.Requires(tc != null);
-      TypecheckAttributes(Attributes, tc);
-      // typecheck in-parameters
-      foreach (Expr e in Ins) {
-        if (e != null) {
-          e.Typecheck(tc);
-        }
-      }
-
-      if (this.Proc == null) {
-        // called procedure didn't resolve, so bug out
-        return;
-      }
-
-      // match actuals with formals
-      if (Ins.Count != Proc.InParams.Length) {
-        tc.Error(this, "wrong number of in-parameters in call: {0}", callee);
-      } else {
-        // determine the lists of formal and actual arguments that need
-        // to be matched (stars are left out)
-        TypeSeq/*!*/ formalTypes = new TypeSeq();
-        ExprSeq/*!*/ actualArgs = new ExprSeq();
-        for (int i = 0; i < Ins.Count; i++)
-          if (Ins[i] != null) {
-            formalTypes.Add(cce.NonNull(Proc.InParams[i]).TypedIdent.Type);
-            actualArgs.Add(Ins[i]);
-          }
-        IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ subst =
-          Type.MatchArgumentTypes(Proc.TypeParameters,
-                                  formalTypes, actualArgs, null, null,
-                                  "call forall to " + callee, tc);
-        Contract.Assert(cce.NonNullDictionaryAndValues(subst));
-
-        InstantiatedTypes = new TypeSeq();
-        foreach (Variable/*!*/ var in Proc.InParams) {
-          Contract.Assert(var != null);
-          InstantiatedTypes.Add(var.TypedIdent.Type.Substitute(subst));
-        }
-      }
-
-      //      if (Proc.OutParams.Length != 0)
-      //      {
-      //        tc.Error(this, "call forall is allowed only on procedures with no out-parameters: {0}", callee);
-      //      }
-
-      if (Proc.Modifies.Length != 0) {
-        tc.Error(this, "call forall is allowed only on procedures with no modifies clause: {0}", callee);
-      }
-    }
-
-    protected override Cmd ComputeDesugaring() {
-      Contract.Ensures(Contract.Result<Cmd>() != null);
-      CmdSeq newBlockBody = new CmdSeq();
-      Hashtable /*Variable -> Expr*/ substMap = new Hashtable/*Variable -> Expr*/();
-      VariableSeq/*!*/ tempVars = new VariableSeq();
-
-      // proc P(ins) returns ()
-      //   requires Pre;
-      //   //modifies ;
-      //   ensures Post;
-      //
-      // call forall P(ains);
-
-      // ins    : formal in-parameters of procedure
-      // ains   : actual in-arguments passed to call
-      // cins   : new variables created just for this call, one per ains
-      // wildcardVars : the bound variables to be wrapped up in a quantification
-
-      #region Create cins; each one is an incarnation of the corresponding in parameter
-      VariableSeq cins = new VariableSeq();
-      VariableSeq wildcardVars = new VariableSeq();
-      Contract.Assume(this.Proc != null);
-      for (int i = 0, n = this.Proc.InParams.Length; i < n; i++) {
-        Variable param = cce.NonNull(this.Proc.InParams[i]);
-        Type/*!*/ paramType = cce.NonNull(this.InstantiatedTypes)[i]; // might contain type variables
-        bool isWildcard = this.Ins[i] == null;
-        Variable cin = CreateTemporaryVariable(tempVars, param, paramType,
-                                               isWildcard ? TempVarKind.Bound : TempVarKind.Formal);
-        if (isWildcard) {
-          cins.Add(null);
-          wildcardVars.Add(cin);
-        } else {
-          cins.Add(cin);
-        }
-        IdentifierExpr ie = new IdentifierExpr(cin.tok, cin);
-        substMap.Add(param, ie);
-      }
-      #endregion
-
-      #region call forall P(ains) becomes: (open outlining one level to see)
-      #region cins := ains
-      for (int i = 0, n = this.Ins.Count; i < n; i++) {
-        if (this.Ins[i] != null) {
-          IdentifierExpr/*!*/ cin_exp = new IdentifierExpr(cce.NonNull(cins[i]).tok, cce.NonNull(cins[i]));
-          AssignCmd assign = Cmd.SimpleAssign(Token.NoToken, cin_exp, cce.NonNull(this.Ins[i]));
-          newBlockBody.Add(assign);
-        }
-      }
-      #endregion
-
-      #region assert Pre[ins := cins]
-      Substitution s = Substituter.SubstitutionFromHashtable(substMap);
-      Expr preConjunction = null;
-      for (int i = 0; i < this.Proc.Requires.Length; i++) {
-        Requires/*!*/ req = cce.NonNull(this.Proc.Requires[i]);
-        if (!req.Free && !IsFree) {
-          Expr pre = Substituter.Apply(s, req.Condition);
-          if (preConjunction == null) {
-            preConjunction = pre;
-          } else {
-            preConjunction = Expr.And(preConjunction, pre);
-          }
-        }
-      }
-      if (preConjunction == null) {
-        preConjunction = Expr.True;
-      }
-      #endregion
-
-      #region Create couts
-      VariableSeq/*!*/ couts = new VariableSeq();
-      foreach (Variable/*!*/ param in this.Proc.OutParams) {
-        Contract.Assert(param != null);
-        Variable cout = CreateTemporaryVariable(tempVars, param,
-                                                param.TypedIdent.Type, TempVarKind.Bound);
-        couts.Add(cout);
-        IdentifierExpr ie = new IdentifierExpr(cout.tok, cout);
-        substMap.Add(param, ie);
-      }
-      // add the where clauses, now that we have the entire substitution map
-      foreach (Variable/*!*/ param in this.Proc.OutParams) {
-        Contract.Assert(param != null);
-        Expr w = param.TypedIdent.WhereExpr;
-        if (w != null) {
-          IdentifierExpr ie = (IdentifierExpr)cce.NonNull(substMap[param]);
-          Contract.Assert(ie.Decl != null);
-          ie.Decl.TypedIdent.WhereExpr = Substituter.Apply(Substituter.SubstitutionFromHashtable(substMap), w);
-        }
-      }
-      #endregion
-
-      #region assume Post[ins := cins]
-      s = Substituter.SubstitutionFromHashtable(substMap);
-      Expr postConjunction = null;
-      foreach (Ensures/*!*/ e in this.Proc.Ensures) {
-        Contract.Assert(e != null);
-        Expr post = Substituter.Apply(s, e.Condition);
-        if (postConjunction == null) {
-          postConjunction = post;
-        } else {
-          postConjunction = Expr.And(postConjunction, post);
-        }
-      }
-      if (postConjunction == null) {
-        postConjunction = Expr.True;
-      }
-      #endregion
-
-      #region assume (forall wildcardVars :: Pre ==> Post);
-      Expr body = postConjunction;
-      if (couts.Length > 0) {
-        body = new ExistsExpr(tok, couts, body);
-      }
-      body = Expr.Imp(preConjunction, body);
-      if (wildcardVars.Length != 0) {
-        TypeVariableSeq/*!*/ typeParams = Type.FreeVariablesIn(cce.NonNull(InstantiatedTypes));
-        body = new ForallExpr(tok, typeParams, wildcardVars, body);
-      }
-      newBlockBody.Add(new AssumeCmd(tok, body));
-      #endregion
-      #endregion
-
-      return new StateCmd(this.tok, tempVars, newBlockBody);
-    }
-
-    public override Absy StdDispatch(StandardVisitor visitor) {
-      //Contract.Requires(visitor != null);
-      Contract.Ensures(Contract.Result<Absy>() != null);
-      return visitor.VisitCallForallCmd(this);
-    }
-  }
-
   public abstract class PredicateCmd : Cmd {
     public QKeyValue Attributes;
     public /*readonly--except in StandardVisitor*/ Expr/*!*/ Expr;
@@ -2719,6 +2473,47 @@ namespace Microsoft.Boogie {
       Contract.Ensures(Contract.Result<Absy>() != null);
       return visitor.VisitAssumeCmd(this);
     }
+  }
+
+  public class YieldCmd : PredicateCmd
+  {
+      public YieldCmd(IToken/*!*/ tok, Expr/*!*/ expr)
+          : base(tok, expr)
+      {
+          Contract.Requires(tok != null);
+          Contract.Requires(expr != null);
+      }
+      public YieldCmd(IToken/*!*/ tok, Expr/*!*/ expr, QKeyValue kv)
+          : base(tok, expr, kv)
+      {
+          Contract.Requires(tok != null);
+          Contract.Requires(expr != null);
+      }
+      public override void Emit(TokenTextWriter stream, int level)
+      {
+          //Contract.Requires(stream != null);
+          stream.Write(this, level, "assume ");
+          EmitAttributes(stream, Attributes);
+          this.Expr.Emit(stream);
+          stream.WriteLine(";");
+      }
+      public override void Typecheck(TypecheckingContext tc)
+      {
+          //Contract.Requires(tc != null);
+          Expr.Typecheck(tc);
+          Contract.Assert(Expr.Type != null);  // follows from Expr.Typecheck postcondition
+          if (!Expr.Type.Unify(Type.Bool))
+          {
+              tc.Error(this, "an assumed expression must be of type bool (got: {0})", Expr.Type);
+          }
+      }
+
+      public override Absy StdDispatch(StandardVisitor visitor)
+      {
+          //Contract.Requires(visitor != null);
+          Contract.Ensures(Contract.Result<Absy>() != null);
+          return visitor.VisitYieldCmd(this);
+      }
   }
 
   public class ReturnExprCmd : ReturnCmd {

@@ -30,15 +30,4 @@ procedure injective<b>(heap : <a>[ref, Field a]a, obj0 : ref, obj1 : ref, f : Fi
    requires obj0 != obj1;
    ensures heap[obj0, f] != heap[obj1, f];
 
-procedure testCallForall(heap : <a>[ref, Field a]a) {
-  var f1 : Field int; var f2 : Field bool;
-
-  start:
-    call forall injective(heap, *, *, f1);
-    call forall injective(heap, *, *, f2);
-    call forall injective(heap, *, *, *);
-
-    call forall injective(heap, *, f1, *);  // error: wrong argument type
-}
-
 type ref;

@@ -55,8 +55,7 @@ PolyProcs0.bpl(21,30): Error: invalid type for argument 1 in call to FieldAccess
 PolyProcs0.bpl(21,34): Error: invalid type for argument 2 in call to FieldAccess: ref (expected: Field b)
 PolyProcs0.bpl(25,7): Error: invalid type for out-parameter 0 in call to FieldAccess: bool (expected: int)
 PolyProcs0.bpl(26,35): Error: invalid type for argument 2 in call to FieldAccess: ref (expected: Field b)
-PolyProcs0.bpl(41,35): Error: invalid type for argument 1 in call forall to injective: Field int (expected: ref)
-7 type checking errors detected in PolyProcs0.bpl
+6 type checking errors detected in PolyProcs0.bpl
 TypeSynonyms0.bpl(9,5): Error: type synonym could not be resolved because of cycles: Cyclic0 (replacing body with "bool" to continue resolving)
 TypeSynonyms0.bpl(10,5): Error: type synonym could not be resolved because of cycles: Cyclic1 (replacing body with "bool" to continue resolving)
 TypeSynonyms0.bpl(12,5): Error: type synonym could not be resolved because of cycles: AlsoCyclic (replacing body with "bool" to continue resolving)
