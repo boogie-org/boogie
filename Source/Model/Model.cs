@@ -145,7 +145,7 @@ namespace Microsoft.Boogie
         StringBuilder builder = new StringBuilder();
         builder.Append(ConstructorName + "(");
         int count = 0;
-        foreach (DatatypeValue arg in Arguments) {
+        foreach (Element arg in Arguments) {
           count++;
           builder.Append(arg);
           if (count < Arguments.Length)
