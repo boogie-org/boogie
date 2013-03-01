@@ -53,11 +53,10 @@ namespace Microsoft.Boogie {
       this._val = "anything so that it is nonnull";
     }
     public Token(int linenum, int colnum)
-      : base() {//BASEMOVE DANGER
+      : base() {
       this._line = linenum;
       this._col = colnum;
       this._val = "anything so that it is nonnull";
-      //:base();
     }
 
     public int kind {

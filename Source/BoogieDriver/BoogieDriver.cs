@@ -186,6 +186,18 @@ namespace Microsoft.Boogie {
           }
         }
 
+        if (CommandLineOptions.Clo.OwickiGriesDesugaredOutputFile != null)
+        {
+            OwickiGriesTransform ogTransform = new OwickiGriesTransform(program);
+            ogTransform.Transform();
+            int oldPrintUnstructured = CommandLineOptions.Clo.PrintUnstructured;
+            CommandLineOptions.Clo.PrintUnstructured = 1;
+            PrintBplFile(CommandLineOptions.Clo.OwickiGriesDesugaredOutputFile, program, false);
+            CommandLineOptions.Clo.PrintUnstructured = oldPrintUnstructured;
+        }
+        LinearSetTransform linearTransform = new LinearSetTransform(program);
+        linearTransform.Transform();
+
         EliminateDeadVariablesAndInline(program);
 
         int errorCount, verified, inconclusives, timeOuts, outOfMemories;
@@ -200,7 +212,6 @@ namespace Microsoft.Boogie {
         }
       }
     }
-
 
     static void PrintBplFile(string filename, Program program, bool allowPrintDesugaring) {
       Contract.Requires(program != null);
@@ -374,6 +385,14 @@ namespace Microsoft.Boogie {
       if (errorCount != 0) {
         Console.WriteLine("{0} type checking errors detected in {1}", errorCount, bplFileName);
         return PipelineOutcome.TypeCheckingError;
+      }
+
+      LinearTypechecker linearTypechecker = new LinearTypechecker();
+      linearTypechecker.VisitProgram(program);
+      if (linearTypechecker.errorCount > 0)
+      {
+          Console.WriteLine("{0} type checking errors detected in {1}", errorCount, bplFileName);
+          return PipelineOutcome.TypeCheckingError;
       }
 
       if (CommandLineOptions.Clo.PrintFile != null && CommandLineOptions.Clo.PrintDesugarings) {
@@ -623,6 +642,7 @@ namespace Microsoft.Boogie {
               CommandLineOptions.Clo.PrintErrorModel = 1;
               CommandLineOptions.Clo.UseArrayTheory = true;
               CommandLineOptions.Clo.TypeEncodingMethod = CommandLineOptions.TypeEncoding.Monomorphic;
+              CommandLineOptions.Clo.ProverCCLimit = 1;
 
               // Run Abstract Houdini
               Houdini.PredicateAbs.Initialize(program);

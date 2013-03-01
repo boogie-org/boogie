@@ -187,14 +187,13 @@ namespace Microsoft.Boogie {
 
     [NotDelayed]
     private LoopUnroll(int unrollMaxDepth, bool soundLoopUnrolling, Dictionary<GraphNode/*!*/, SCC<GraphNode/*!*/>>/*!*/ scc, List<Block/*!*/>/*!*/ newBlockSeqGlobal)
-      : base() {//BASEMOVE DANGER
+      : base() {
       Contract.Requires(cce.NonNullElements(newBlockSeqGlobal));
       Contract.Requires(cce.NonNullDictionaryAndValues(scc) && Contract.ForAll(scc.Values, v => cce.NonNullElements(v)));
       Contract.Requires(0 <= unrollMaxDepth);
       this.newBlockSeqGlobal = newBlockSeqGlobal;
       this.c = unrollMaxDepth;
       this.containingSCC = scc;
-      //:base();
       this.head = this;
       if (unrollMaxDepth != 0) {
         next = new LoopUnroll(unrollMaxDepth - 1, soundLoopUnrolling, scc, newBlockSeqGlobal, this);

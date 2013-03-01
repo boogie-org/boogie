@@ -424,11 +424,8 @@ FreeCall.bpl(66,5): Error BP5002: A precondition for this call might not hold.
 FreeCall.bpl(14,3): Related location: This is the precondition that might not hold.
 Execution trace:
     FreeCall.bpl(66,5): anon0
-FreeCall.bpl(87,5): Error BP5001: This assertion might not hold.
-Execution trace:
-    FreeCall.bpl(85,5): anon0
 
-Boogie program verifier finished with 8 verified, 5 errors
+Boogie program verifier finished with 7 verified, 4 errors
 
 -------------------- Arrays.bpl /typeEncoding:m --------------------
 Arrays.bpl(46,5): Error BP5003: A postcondition might not hold on this return path.
@@ -461,34 +458,6 @@ Boogie program verifier finished with 0 verified, 1 error
 -------------------- sk_hack.bpl --------------------
 
 Boogie program verifier finished with 1 verified, 0 errors
-
--------------------- CallForall.bpl --------------------
-CallForall.bpl(17,3): Error BP5001: This assertion might not hold.
-Execution trace:
-    CallForall.bpl(17,3): anon0
-CallForall.bpl(29,3): Error BP5001: This assertion might not hold.
-Execution trace:
-    CallForall.bpl(28,3): anon0
-CallForall.bpl(41,3): Error BP5001: This assertion might not hold.
-Execution trace:
-    CallForall.bpl(40,3): anon0
-CallForall.bpl(47,3): Error BP5001: This assertion might not hold.
-Execution trace:
-    CallForall.bpl(46,3): anon0
-CallForall.bpl(75,3): Error BP5001: This assertion might not hold.
-Execution trace:
-    CallForall.bpl(75,3): anon0
-CallForall.bpl(111,3): Error BP5001: This assertion might not hold.
-Execution trace:
-    CallForall.bpl(109,3): anon0
-CallForall.bpl(118,3): Error BP5001: This assertion might not hold.
-Execution trace:
-    CallForall.bpl(117,3): anon0
-CallForall.bpl(125,3): Error BP5001: This assertion might not hold.
-Execution trace:
-    CallForall.bpl(124,3): anon0
-
-Boogie program verifier finished with 10 verified, 8 errors
 
 -------------------- ContractEvaluationOrder.bpl --------------------
 ContractEvaluationOrder.bpl(8,1): Error BP5003: A postcondition might not hold on this return path.

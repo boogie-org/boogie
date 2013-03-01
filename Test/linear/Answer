@@ -1,0 +1,20 @@
+
+-------------------- typecheck.bpl --------------------
+typecheck.bpl(6,22): Error: a linear domain must be consistently attached to variables of a particular type
+typecheck.bpl(18,22): Error: a linear domain can be attached to either a set or a scalar type
+typecheck.bpl(31,9): Error: Only simple assignment allowed on linear sets
+typecheck.bpl(33,6): Error: Only variable can be assigned to a linear variable
+typecheck.bpl(35,6): Error: Only linear variable can be assigned to another linear variable
+typecheck.bpl(39,6): Error: Variable of one domain being assigned to a variable of another domain
+typecheck.bpl(45,9): Error: A linear set can occur only once in the rhs
+typecheck.bpl(49,4): Error: A linear set can occur only once as an in parameter
+typecheck.bpl(51,4): Error: Only variable can be assigned to a linear variable
+typecheck.bpl(53,4): Error: The domains of formal and actual parameters must be the same
+typecheck.bpl(55,4): Error: The domains of formal and actual parameters must be the same
+typecheck.bpl(57,4): Error: Only a linear argument can be passed to a linear parameter
+typecheck.bpl(64,6): Error: Only linear variable can be assigned to another linear variable
+0 type checking errors detected in typecheck.bpl
+
+-------------------- list.bpl --------------------
+
+Boogie program verifier finished with 2 verified, 0 errors

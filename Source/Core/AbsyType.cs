@@ -831,12 +831,10 @@ namespace Microsoft.Boogie {
       : base(token) {
       Contract.Requires(token != null);
       T = t;
-      // base(token);
     }
     public BasicType(SimpleType t)
       : base(Token.NoToken) {
       T = t;
-      // base(Token.NoToken);
     }
 
     //-----------  Cloning  ----------------------------------
@@ -1687,13 +1685,12 @@ Contract.Requires(that != null);
     }
 
     protected TypeProxy(IToken token, string givenName, string kind)
-      : base(token) {//BASEMOVE DANGER
+      : base(token) {
       Contract.Requires(kind != null);
       Contract.Requires(givenName != null);
       Contract.Requires(token != null);
       Name = givenName + "$" + kind + "#" + proxies;
       proxies++;
-      //:base(token);
     }
 
     private Type proxyFor;
@@ -2047,10 +2044,9 @@ Contract.Requires(that != null);
     }
 
     public BvTypeProxy(IToken token, string name, int minBits)
-      : base(token, name, "bv" + minBits + "proxy") {//BASEMOVEA
+      : base(token, name, "bv" + minBits + "proxy") {
       Contract.Requires(name != null);
       Contract.Requires(token != null);
-      //base(token, name, "bv" + minBits + "proxy");
       this.MinBits = minBits;
     }
 
@@ -2059,13 +2055,12 @@ Contract.Requires(that != null);
     /// be constructed.
     /// </summary>
     public BvTypeProxy(IToken token, string name, Type t0, Type t1)
-      : base(token, name, "bvproxy") {//BASEMOVEA
+      : base(token, name, "bvproxy") {
       Contract.Requires(t1 != null);
       Contract.Requires(t0 != null);
       Contract.Requires(name != null);
       Contract.Requires(token != null);
       Contract.Requires(t0.IsBv && t1.IsBv);
-      //:base(token, name, "bvproxy");
       t0 = FollowProxy(t0);
       t1 = FollowProxy(t1);
       this.MinBits = MinBitsFor(t0) + MinBitsFor(t1);
@@ -2078,19 +2073,17 @@ Contract.Requires(that != null);
     /// Construct a BvTypeProxy like p, but with minBits.
     /// </summary>
     private BvTypeProxy(BvTypeProxy p, int minBits)
-      : base(p.tok, p.Name, "") {//BASEMOVEA
+      : base(p.tok, p.Name, "") {
       Contract.Requires(p != null);
-      //:base(p.tok, p.Name, "");
       this.MinBits = minBits;
       this.constraints = p.constraints;
     }
 
     private BvTypeProxy(IToken token, string name, int minBits, List<BvTypeConstraint/*!*/> constraints)
-      : base(token, name, "") {//BASEMOVEA
+      : base(token, name, "") {
       Contract.Requires(cce.NonNullElements(constraints, true));
       Contract.Requires(name != null);
       Contract.Requires(token != null);
-      //:base(token, name, "");
       this.MinBits = minBits;
       this.constraints = constraints;
     }
@@ -2331,11 +2324,10 @@ Contract.Requires(that != null);
     }
 
     public MapTypeProxy(IToken token, string name, int arity)
-      : base(token, name, "mapproxy") {//BASEMOVEA
+      : base(token, name, "mapproxy") {
       Contract.Requires(name != null);
       Contract.Requires(token != null);
       Contract.Requires(0 <= arity);
-      //:base(token, name, "mapproxy");
       this.Arity = arity;
     }
 

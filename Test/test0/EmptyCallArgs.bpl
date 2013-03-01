@@ -9,13 +9,6 @@ procedure CallP() {
   var z:C;
 
   call z := P(x, y);
-  call * := P(x, y);
-  call z := P(*, y);
-  call z := P(x, *);
-  call * := P(*, y);
-  call * := P(x, *);
-  call z := P(*, *);
-  call * := P(*, *);
 }
 
 procedure CallQ() {
@@ -24,10 +17,4 @@ procedure CallQ() {
   var z:bool;
 
   call z := Q(x, y);
-  call * := Q(x, y);
-  call z := Q(*, y);
-  call z := Q(x, *);
-  call * := Q(*, y);
-  call * := Q(x, *);  // problem: type parameter cannot be inferred
-  call * := Q(*, *);  // problem: type parameter cannot be inferred
 }

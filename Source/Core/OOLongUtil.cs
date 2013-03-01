@@ -89,7 +89,7 @@ namespace Boogie.Util {
     }
     public override int Read() {
       cce.BeginExpose(this);
-      {
+      try {
         while (readAhead == null) {
           readAhead = reader.ReadLine();
           if (readAhead == null) {
@@ -105,8 +105,9 @@ namespace Boogie.Util {
           readAhead = null;
         }
         return res;
+      } finally {
+        cce.EndExpose();
       }
-      cce.EndExpose();
     }
     public override int Read(char[] buffer, int index, int count) {
       
@@ -152,10 +153,9 @@ namespace Boogie.Util {
 
 
     public IfdefReader([Captured] TextReader reader, [Captured] List<string/*!*/>/*!*/ defines)
-      : base(reader) {//BASEMOVEA
+      : base(reader) {
       Contract.Requires(reader != null);
       Contract.Requires(cce.NonNullElements(defines));
-      //:base(reader);
       this.defines = defines;
     }
 

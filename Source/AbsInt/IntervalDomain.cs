@@ -466,7 +466,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
           switch (op) {
             case BinaryOperator.Opcode.Eq:
             case BinaryOperator.Opcode.Iff: {
-                E c = null;
+                E_Common c = null;
                 if (IsVariable(arg0, out v)) {
                   BigInteger? lo, hi;
                   if (PartiallyEvaluate(arg1, state, out lo, out hi)) {
@@ -478,26 +478,26 @@ namespace Microsoft.Boogie.AbstractInterpretation
                   BigInteger? lo, hi;
                   if (PartiallyEvaluate(arg1, state, out lo, out hi)) {
                     var n = new Node(v, lo, hi);
-                    c = c == null ? new E(n) : (E)Meet(c, new E(n));
+                    c = c == null ? new E(n) : (E_Common)Meet(c, new E(n));
                   }
                 }
                 return c;
               }
             case BinaryOperator.Opcode.Neq: {
-                E c = null;
+              E_Common c = null;
                 if (IsVariable(arg0, out v)) {
                   c = ConstrainNeq(state, v, arg1);
                 }
                 if (IsVariable(arg1, out v)) {
                   var cc = ConstrainNeq(state, v, arg0);
                   if (cc != null) {
-                    c = c == null ? cc : (E)Meet(c, cc);
+                    c = c == null ? cc : (E_Common)Meet(c, cc);
                   }
                 }
                 return c;
               }
             case BinaryOperator.Opcode.Le: {
-                E c = null;
+                E_Common c = null;
                 if (IsVariable(arg1, out v)) {
                   BigInteger? lo, hi;
                   PartiallyEvaluate(arg0, state, out lo, out hi);
@@ -511,13 +511,13 @@ namespace Microsoft.Boogie.AbstractInterpretation
                   PartiallyEvaluate(arg1, state, out lo, out hi);
                   if (hi != null) {
                     var n = new Node(v, null, hi);
-                    c = c == null ? new E(n) : (E)Meet(c, new E(n));
+                    c = c == null ? new E(n) : (E_Common)Meet(c, new E(n));
                   }
                 }
                 return c;
               }
             case BinaryOperator.Opcode.Lt: {
-                E c = null;
+              E_Common c = null;
                 if (IsVariable(arg1, out v)) {
                   BigInteger? lo, hi;
                   PartiallyEvaluate(arg0, state, out lo, out hi);
@@ -531,7 +531,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
                   PartiallyEvaluate(arg1, state, out lo, out hi);
                   if (hi != null) {
                     var n = new Node(v, null, hi - 1);
-                    c = c == null ? new E(n) : (E)Meet(c, new E(n));
+                    c = c == null ? new E(n) : (E_Common)Meet(c, new E(n));
                   }
                 }
                 return c;

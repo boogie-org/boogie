@@ -2199,7 +2199,7 @@ namespace VC {
         }
 
         return extractLoopTraceRec(
-            new CalleeCounterexampleInfo(cex, new List<Model.Element>()),
+            new CalleeCounterexampleInfo(cex, new List<object>()),
             mainProcName, inlinedProcs, extractLoopMappingInfo).counterexample;
     }
 

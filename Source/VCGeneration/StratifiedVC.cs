@@ -477,7 +477,7 @@ namespace VC {
       }
 
       return extractLoopTraceRec(
-          new CalleeCounterexampleInfo(cex, new List<Model.Element>()),
+          new CalleeCounterexampleInfo(cex, new List<object>()),
           mainProcName, inlinedProcs, extractLoopMappingInfo).counterexample;
     }
 
@@ -2614,31 +2614,53 @@ namespace VC {
               }
             }
 
-            if (calleeName.StartsWith(recordProcName) && errModel != null) {
+            if (calleeName.StartsWith(recordProcName) && (errModel != null || CommandLineOptions.Clo.UseProverEvaluate)) {
               var expr = calls.recordExpr2Var[new BoogieCallExpr(naryExpr, candidateId)];
 
               // Record concrete value of the argument to this procedure
-              var args = new List<Model.Element>();
-              if (expr is VCExprIntLit) {
-                args.Add(errModel.MkElement((expr as VCExprIntLit).Val.ToString()));
+              var args = new List<object>();
+              if (errModel == null && CommandLineOptions.Clo.UseProverEvaluate)
+              {
+                  object exprv;
+                  try
+                  {
+                      exprv = theoremProver.Evaluate(expr);
+                  }
+                  catch (Exception)
+                  {
+                      exprv = null;
+                  }
+                  args.Add(exprv);
               }
-              else if (expr == VCExpressionGenerator.True) {
-                args.Add(errModel.MkElement("true"));
-              }
-              else if (expr == VCExpressionGenerator.False) {
-                args.Add(errModel.MkElement("false"));
-              }
-              else if (expr is VCExprVar) {
-                var idExpr = expr as VCExprVar;
-                string name = theoremProver.Context.Lookup(idExpr);
-                Contract.Assert(name != null);
-                Model.Func f = errModel.TryGetFunc(name);
-                if (f != null) {
-                  args.Add(f.GetConstant());
-                }
-              }
-              else {
-                Contract.Assert(false);
+              else
+              {
+                  if (expr is VCExprIntLit)
+                  {
+                      args.Add(errModel.MkElement((expr as VCExprIntLit).Val.ToString()));
+                  }
+                  else if (expr == VCExpressionGenerator.True)
+                  {
+                      args.Add(errModel.MkElement("true"));
+                  }
+                  else if (expr == VCExpressionGenerator.False)
+                  {
+                      args.Add(errModel.MkElement("false"));
+                  }
+                  else if (expr is VCExprVar)
+                  {
+                      var idExpr = expr as VCExprVar;
+                      string name = theoremProver.Context.Lookup(idExpr);
+                      Contract.Assert(name != null);
+                      Model.Func f = errModel.TryGetFunc(name);
+                      if (f != null)
+                      {
+                          args.Add(f.GetConstant());
+                      }
+                  }
+                  else
+                  {
+                      Contract.Assert(false);
+                  }
               }
               calleeCounterexamples[new TraceLocation(trace.Length - 1, i)] =
                    new CalleeCounterexampleInfo(null, args);
@@ -2659,7 +2681,7 @@ namespace VC {
               orderedStateIds.Add(new Tuple<int, int>(calleeId, StratifiedInliningErrorReporter.CALL));
               var calleeInfo = implName2StratifiedInliningInfo[calleeName];
               calleeCounterexamples[new TraceLocation(trace.Length - 1, i)] =
-                  new CalleeCounterexampleInfo(GenerateTrace(labels, errModel, calleeId, calleeInfo.impl, calleeInfo.mvInfo), new List<Model.Element>());
+                  new CalleeCounterexampleInfo(GenerateTrace(labels, errModel, calleeId, calleeInfo.impl, calleeInfo.mvInfo), new List<object>());
               orderedStateIds.Add(new Tuple<int, int>(candidateId, StratifiedInliningErrorReporter.RETURN));
             }
           }

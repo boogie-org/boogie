@@ -182,8 +182,6 @@ namespace Microsoft.Boogie {
 
       this.thmProver = prover;
       this.gen = prover.VCExprGen;
-
-      // base();
     }
 
 
@@ -497,6 +495,16 @@ namespace Microsoft.Boogie {
 
     public virtual void DefineMacro(Macro fun, VCExpr vc) {
       throw new NotImplementedException();
+    }
+
+    public class VCExprEvaluationException : Exception
+    {
+
+    }
+
+    public virtual object Evaluate(VCExpr expr)
+    {
+        throw new NotImplementedException();
     }
   }
 

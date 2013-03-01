@@ -101,6 +101,7 @@ implementation Main()
   inline$inc$0$Entry:
     inline$inc$0$x := x;
     inline$inc$0$i := 5;
+    havoc inline$inc$0$y;
     goto inline$inc$0$anon0;
 
   inline$inc$0$anon0:
@@ -119,6 +120,7 @@ implementation Main()
   inline$incdec$0$Entry:
     inline$incdec$0$x := x;
     inline$incdec$0$y := 2;
+    havoc inline$incdec$0$z;
     goto inline$incdec$0$anon0;
 
   inline$incdec$0$anon0:
@@ -129,6 +131,7 @@ implementation Main()
   inline$dec$0$Entry:
     inline$dec$0$x := inline$incdec$0$z;
     inline$dec$0$i := inline$incdec$0$y;
+    havoc inline$dec$0$y;
     goto inline$dec$0$anon0;
 
   inline$dec$0$anon0:
@@ -174,6 +177,7 @@ implementation {:inline 1} incdec(x: int, y: int) returns (z: int)
   inline$dec$0$Entry:
     inline$dec$0$x := z;
     inline$dec$0$i := y;
+    havoc inline$dec$0$y;
     goto inline$dec$0$anon0;
 
   inline$dec$0$anon0:
@@ -253,6 +257,7 @@ implementation calculate()
 
   inline$increase$0$Entry:
     inline$increase$0$i := y;
+    havoc inline$increase$0$j, inline$increase$0$k;
     inline$increase$0$glb := glb;
     goto inline$increase$0$anon0;
 
@@ -344,15 +349,11 @@ implementation recursivetest()
 
   inline$recursive$0$Entry:
     inline$recursive$0$x := glb;
+    havoc inline$recursive$0$k, inline$recursive$0$y;
     goto inline$recursive$0$anon0;
 
   inline$recursive$0$anon0:
     goto inline$recursive$0$anon3_Then, inline$recursive$0$anon3_Else;
-
-  inline$recursive$0$anon3_Then:
-    assume {:partition} inline$recursive$0$x == 0;
-    inline$recursive$0$y := 1;
-    goto inline$recursive$0$Return;
 
   inline$recursive$0$anon3_Else:
     assume {:partition} inline$recursive$0$x != 0;
@@ -360,15 +361,11 @@ implementation recursivetest()
 
   inline$recursive$1$Entry:
     inline$recursive$1$x := inline$recursive$0$x - 1;
+    havoc inline$recursive$1$k, inline$recursive$1$y;
     goto inline$recursive$1$anon0;
 
   inline$recursive$1$anon0:
     goto inline$recursive$1$anon3_Then, inline$recursive$1$anon3_Else;
-
-  inline$recursive$1$anon3_Then:
-    assume {:partition} inline$recursive$1$x == 0;
-    inline$recursive$1$y := 1;
-    goto inline$recursive$1$Return;
 
   inline$recursive$1$anon3_Else:
     assume {:partition} inline$recursive$1$x != 0;
@@ -376,20 +373,21 @@ implementation recursivetest()
 
   inline$recursive$2$Entry:
     inline$recursive$2$x := inline$recursive$1$x - 1;
+    havoc inline$recursive$2$k, inline$recursive$2$y;
     goto inline$recursive$2$anon0;
 
   inline$recursive$2$anon0:
     goto inline$recursive$2$anon3_Then, inline$recursive$2$anon3_Else;
 
-  inline$recursive$2$anon3_Then:
-    assume {:partition} inline$recursive$2$x == 0;
-    inline$recursive$2$y := 1;
-    goto inline$recursive$2$Return;
-
   inline$recursive$2$anon3_Else:
     assume {:partition} inline$recursive$2$x != 0;
     call inline$recursive$2$k := recursive(inline$recursive$2$x - 1);
     inline$recursive$2$y := inline$recursive$2$y + inline$recursive$2$k;
+    goto inline$recursive$2$Return;
+
+  inline$recursive$2$anon3_Then:
+    assume {:partition} inline$recursive$2$x == 0;
+    inline$recursive$2$y := 1;
     goto inline$recursive$2$Return;
 
   inline$recursive$2$Return:
@@ -400,12 +398,22 @@ implementation recursivetest()
     inline$recursive$1$y := inline$recursive$1$y + inline$recursive$1$k;
     goto inline$recursive$1$Return;
 
+  inline$recursive$1$anon3_Then:
+    assume {:partition} inline$recursive$1$x == 0;
+    inline$recursive$1$y := 1;
+    goto inline$recursive$1$Return;
+
   inline$recursive$1$Return:
     inline$recursive$0$k := inline$recursive$1$y;
     goto inline$recursive$0$anon3_Else$1;
 
   inline$recursive$0$anon3_Else$1:
     inline$recursive$0$y := inline$recursive$0$y + inline$recursive$0$k;
+    goto inline$recursive$0$Return;
+
+  inline$recursive$0$anon3_Then:
+    assume {:partition} inline$recursive$0$x == 0;
+    inline$recursive$0$y := 1;
     goto inline$recursive$0$Return;
 
   inline$recursive$0$Return:
@@ -437,26 +445,17 @@ implementation {:inline 3} recursive(x: int) returns (y: int)
   anon0:
     goto anon3_Then, anon3_Else;
 
-  anon3_Then:
-    assume {:partition} x == 0;
-    y := 1;
-    return;
-
   anon3_Else:
     assume {:partition} x != 0;
     goto inline$recursive$0$Entry;
 
   inline$recursive$0$Entry:
     inline$recursive$0$x := x - 1;
+    havoc inline$recursive$0$k, inline$recursive$0$y;
     goto inline$recursive$0$anon0;
 
   inline$recursive$0$anon0:
     goto inline$recursive$0$anon3_Then, inline$recursive$0$anon3_Else;
-
-  inline$recursive$0$anon3_Then:
-    assume {:partition} inline$recursive$0$x == 0;
-    inline$recursive$0$y := 1;
-    goto inline$recursive$0$Return;
 
   inline$recursive$0$anon3_Else:
     assume {:partition} inline$recursive$0$x != 0;
@@ -464,15 +463,11 @@ implementation {:inline 3} recursive(x: int) returns (y: int)
 
   inline$recursive$1$Entry:
     inline$recursive$1$x := inline$recursive$0$x - 1;
+    havoc inline$recursive$1$k, inline$recursive$1$y;
     goto inline$recursive$1$anon0;
 
   inline$recursive$1$anon0:
     goto inline$recursive$1$anon3_Then, inline$recursive$1$anon3_Else;
-
-  inline$recursive$1$anon3_Then:
-    assume {:partition} inline$recursive$1$x == 0;
-    inline$recursive$1$y := 1;
-    goto inline$recursive$1$Return;
 
   inline$recursive$1$anon3_Else:
     assume {:partition} inline$recursive$1$x != 0;
@@ -480,20 +475,21 @@ implementation {:inline 3} recursive(x: int) returns (y: int)
 
   inline$recursive$2$Entry:
     inline$recursive$2$x := inline$recursive$1$x - 1;
+    havoc inline$recursive$2$k, inline$recursive$2$y;
     goto inline$recursive$2$anon0;
 
   inline$recursive$2$anon0:
     goto inline$recursive$2$anon3_Then, inline$recursive$2$anon3_Else;
 
-  inline$recursive$2$anon3_Then:
-    assume {:partition} inline$recursive$2$x == 0;
-    inline$recursive$2$y := 1;
-    goto inline$recursive$2$Return;
-
   inline$recursive$2$anon3_Else:
     assume {:partition} inline$recursive$2$x != 0;
     call inline$recursive$2$k := recursive(inline$recursive$2$x - 1);
     inline$recursive$2$y := inline$recursive$2$y + inline$recursive$2$k;
+    goto inline$recursive$2$Return;
+
+  inline$recursive$2$anon3_Then:
+    assume {:partition} inline$recursive$2$x == 0;
+    inline$recursive$2$y := 1;
     goto inline$recursive$2$Return;
 
   inline$recursive$2$Return:
@@ -504,6 +500,11 @@ implementation {:inline 3} recursive(x: int) returns (y: int)
     inline$recursive$1$y := inline$recursive$1$y + inline$recursive$1$k;
     goto inline$recursive$1$Return;
 
+  inline$recursive$1$anon3_Then:
+    assume {:partition} inline$recursive$1$x == 0;
+    inline$recursive$1$y := 1;
+    goto inline$recursive$1$Return;
+
   inline$recursive$1$Return:
     inline$recursive$0$k := inline$recursive$1$y;
     goto inline$recursive$0$anon3_Else$1;
@@ -512,12 +513,22 @@ implementation {:inline 3} recursive(x: int) returns (y: int)
     inline$recursive$0$y := inline$recursive$0$y + inline$recursive$0$k;
     goto inline$recursive$0$Return;
 
+  inline$recursive$0$anon3_Then:
+    assume {:partition} inline$recursive$0$x == 0;
+    inline$recursive$0$y := 1;
+    goto inline$recursive$0$Return;
+
   inline$recursive$0$Return:
     k := inline$recursive$0$y;
     goto anon3_Else$1;
 
   anon3_Else$1:
     y := y + k;
+    return;
+
+  anon3_Then:
+    assume {:partition} x == 0;
+    y := 1;
     return;
 }
 
@@ -656,6 +667,7 @@ implementation main(x: int)
     inline$find$0$A := A;
     inline$find$0$size := size;
     inline$find$0$x := x;
+    havoc inline$find$0$i, inline$find$0$b, inline$find$0$ret, inline$find$0$found;
     goto inline$find$0$anon0;
 
   inline$find$0$anon0:
@@ -677,15 +689,11 @@ implementation main(x: int)
     inline$check$0$i := inline$find$0$i;
     inline$check$0$c := inline$find$0$x;
     assert inline$check$0$i >= 0;
+    havoc inline$check$0$ret;
     goto inline$check$0$anon0;
 
   inline$check$0$anon0:
     goto inline$check$0$anon4_Then, inline$check$0$anon4_Else;
-
-  inline$check$0$anon4_Then:
-    assume {:partition} inline$check$0$A[inline$check$0$i] == inline$check$0$c;
-    inline$check$0$ret := true;
-    goto inline$check$0$anon3;
 
   inline$check$0$anon4_Else:
     assume {:partition} inline$check$0$A[inline$check$0$i] != inline$check$0$c;
@@ -695,6 +703,11 @@ implementation main(x: int)
   inline$check$0$anon3:
     goto inline$check$0$Return;
 
+  inline$check$0$anon4_Then:
+    assume {:partition} inline$check$0$A[inline$check$0$i] == inline$check$0$c;
+    inline$check$0$ret := true;
+    goto inline$check$0$anon3;
+
   inline$check$0$Return:
     assert inline$check$0$A[inline$check$0$i] > inline$check$0$c ==> (inline$check$0$ret <==> true);
     inline$find$0$b := inline$check$0$ret;
@@ -703,22 +716,22 @@ implementation main(x: int)
   inline$find$0$anon4_LoopBody$1:
     goto inline$find$0$anon5_Then, inline$find$0$anon5_Else;
 
+  inline$find$0$anon5_Else:
+    assume {:partition} !inline$find$0$b;
+    goto inline$find$0$anon4_LoopHead;
+
   inline$find$0$anon5_Then:
     assume {:partition} inline$find$0$b;
     inline$find$0$ret := inline$find$0$i;
     inline$find$0$found := inline$find$0$b;
     goto inline$find$0$anon3;
 
-  inline$find$0$anon5_Else:
-    assume {:partition} !inline$find$0$b;
-    goto inline$find$0$anon4_LoopHead;
+  inline$find$0$anon3:
+    goto inline$find$0$Return;
 
   inline$find$0$anon4_LoopDone:
     assume {:partition} inline$find$0$size <= inline$find$0$i;
     goto inline$find$0$anon3;
-
-  inline$find$0$anon3:
-    goto inline$find$0$Return;
 
   inline$find$0$Return:
     i := inline$find$0$ret;
@@ -728,17 +741,17 @@ implementation main(x: int)
   anon0$1:
     goto anon3_Then, anon3_Else;
 
-  anon3_Then:
-    assume {:partition} b;
-    assert i > 0 && A[i] == x;
-    goto anon2;
-
   anon3_Else:
     assume {:partition} !b;
     goto anon2;
 
   anon2:
     return;
+
+  anon3_Then:
+    assume {:partition} b;
+    assert i > 0 && A[i] == x;
+    goto anon2;
 }
 
 
@@ -774,15 +787,11 @@ implementation {:inline 1} find(A: [int]int, size: int, x: int) returns (ret: in
     inline$check$0$i := i;
     inline$check$0$c := x;
     assert inline$check$0$i >= 0;
+    havoc inline$check$0$ret;
     goto inline$check$0$anon0;
 
   inline$check$0$anon0:
     goto inline$check$0$anon4_Then, inline$check$0$anon4_Else;
-
-  inline$check$0$anon4_Then:
-    assume {:partition} inline$check$0$A[inline$check$0$i] == inline$check$0$c;
-    inline$check$0$ret := true;
-    goto inline$check$0$anon3;
 
   inline$check$0$anon4_Else:
     assume {:partition} inline$check$0$A[inline$check$0$i] != inline$check$0$c;
@@ -792,6 +801,11 @@ implementation {:inline 1} find(A: [int]int, size: int, x: int) returns (ret: in
   inline$check$0$anon3:
     goto inline$check$0$Return;
 
+  inline$check$0$anon4_Then:
+    assume {:partition} inline$check$0$A[inline$check$0$i] == inline$check$0$c;
+    inline$check$0$ret := true;
+    goto inline$check$0$anon3;
+
   inline$check$0$Return:
     assert inline$check$0$A[inline$check$0$i] > inline$check$0$c ==> (inline$check$0$ret <==> true);
     b := inline$check$0$ret;
@@ -800,57 +814,57 @@ implementation {:inline 1} find(A: [int]int, size: int, x: int) returns (ret: in
   anon4_LoopBody$1:
     goto anon5_Then, anon5_Else;
 
+  anon5_Else:
+    assume {:partition} !b;
+    goto anon4_LoopHead;
+
   anon5_Then:
     assume {:partition} b;
     ret := i;
     found := b;
     goto anon3;
 
-  anon5_Else:
-    assume {:partition} !b;
-    goto anon4_LoopHead;
+  anon3:
+    return;
 
   anon4_LoopDone:
     assume {:partition} size <= i;
     goto anon3;
-
-  anon3:
-    return;
 }
 
 
-<console>(68,4): Error BP5003: A postcondition might not hold on this return path.
+<console>(70,4): Error BP5003: A postcondition might not hold on this return path.
 <console>(78,2): Related location: This is the postcondition that might not hold.
 Execution trace:
     <console>(19,0): anon0
-    <console>(28,0): inline$find$0$anon0
-    <console>(38,0): inline$find$0$anon4_LoopBody
-    <console>(42,0): inline$check$0$Entry
-    <console>(57,0): inline$check$0$anon4_Else
-    <console>(62,0): inline$check$0$anon3
-    <console>(65,0): inline$check$0$Return
-<console>(100,4): Error BP5001: This assertion might not hold.
+    <console>(29,0): inline$find$0$anon0
+    <console>(39,0): inline$find$0$anon4_LoopBody
+    <console>(43,0): inline$check$0$Entry
+    <console>(54,0): inline$check$0$anon4_Else
+    <console>(59,0): inline$check$0$anon3
+    <console>(67,0): inline$check$0$Return
+<console>(109,4): Error BP5001: This assertion might not hold.
 Execution trace:
     <console>(19,0): anon0
-    <console>(28,0): inline$find$0$anon0
-    <console>(38,0): inline$find$0$anon4_LoopBody
-    <console>(42,0): inline$check$0$Entry
-    <console>(52,0): inline$check$0$anon4_Then
-    <console>(65,0): inline$check$0$Return
-    <console>(73,0): inline$find$0$anon5_Then
-    <console>(87,0): inline$find$0$anon3
-    <console>(90,0): inline$find$0$Return
-    <console>(95,0): anon0$1
-    <console>(98,0): anon3_Then
-<console>(50,4): Error BP5003: A postcondition might not hold on this return path.
+    <console>(29,0): inline$find$0$anon0
+    <console>(39,0): inline$find$0$anon4_LoopBody
+    <console>(43,0): inline$check$0$Entry
+    <console>(62,0): inline$check$0$anon4_Then
+    <console>(67,0): inline$check$0$Return
+    <console>(79,0): inline$find$0$anon5_Then
+    <console>(85,0): inline$find$0$anon3
+    <console>(92,0): inline$find$0$Return
+    <console>(97,0): anon0$1
+    <console>(107,0): anon3_Then
+<console>(51,4): Error BP5003: A postcondition might not hold on this return path.
 <console>(78,2): Related location: This is the postcondition that might not hold.
 Execution trace:
     <console>(10,0): anon0
     <console>(20,0): anon4_LoopBody
     <console>(24,0): inline$check$0$Entry
-    <console>(39,0): inline$check$0$anon4_Else
-    <console>(44,0): inline$check$0$anon3
-    <console>(47,0): inline$check$0$Return
+    <console>(35,0): inline$check$0$anon4_Else
+    <console>(40,0): inline$check$0$anon3
+    <console>(48,0): inline$check$0$Return
 <console>(99,0): Error BP5003: A postcondition might not hold on this return path.
 <console>(78,2): Related location: This is the postcondition that might not hold.
 Execution trace:
@@ -1503,12 +1517,10 @@ function {:inline true} foo(x: int) : bool
 
 function {:inline false} foo2(x: int) : bool;
 
-// autogenerated definition axiom
 axiom (forall x: int :: {:inline false} { foo2(x): bool } foo2(x): bool == (x > 0));
 
 function foo3(x: int) : bool;
 
-// autogenerated definition axiom
 axiom (forall x: int :: { foo3(x): bool } foo3(x): bool == (x > 0));
 
 Boogie program verifier finished with 0 verified, 0 errors
@@ -1540,3 +1552,18 @@ Execution trace:
     polyInline.bpl(27,3): anon0
 
 Boogie program verifier finished with 0 verified, 2 errors
+-------------------- InliningAndLoops.bpl --------------------
+InliningAndLoops.bpl(12,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    InliningAndLoops.bpl(5,10): anon0#3
+    InliningAndLoops.bpl(6,3): anon4_LoopHead#3
+    InliningAndLoops.bpl(8,5): anon4_LoopBody#3
+    InliningAndLoops.bpl(8,5): anon4_LoopBody$1#3
+    InliningAndLoops.bpl(6,3): anon4_LoopHead#2
+    InliningAndLoops.bpl(8,5): anon4_LoopBody#2
+    InliningAndLoops.bpl(8,5): anon4_LoopBody$1#2
+    InliningAndLoops.bpl(6,3): anon4_LoopHead#1
+    InliningAndLoops.bpl(6,3): anon4_LoopDone#3
+    InliningAndLoops.bpl(12,5): anon5_Then#3
+
+Boogie program verifier finished with 0 verified, 1 error

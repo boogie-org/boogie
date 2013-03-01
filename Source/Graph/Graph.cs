@@ -1118,7 +1118,7 @@ namespace Microsoft.Boogie.GraphUtil {
       [NotDelayed]
       public StronglyConnectedComponents(System.Collections.IEnumerable/*<Node!>*/ graph, Adjacency<Node> preds, Adjacency<Node> succs)
           : base()
-      {//BASEMOVE DANGER
+      {
           Contract.Requires(succs != null);
           Contract.Requires(preds != null);
           Contract.Requires(graph != null);
@@ -1133,7 +1133,6 @@ namespace Microsoft.Boogie.GraphUtil {
           this.graph = dict;
           this.preds = preds;
           this.succs = succs;
-          //:base();
       }
 
       [Pure]

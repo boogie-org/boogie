@@ -454,6 +454,21 @@ namespace Microsoft.Boogie {
 
       VariableSeq locVars = cce.NonNull(impl.OriginalLocVars);
 
+      // havoc locals and out parameters in case procedure is invoked in a loop
+      IdentifierExprSeq havocVars = new IdentifierExprSeq();
+      foreach (Variable v in locVars)
+      {
+          havocVars.Add(codeCopier.Subst(v));
+      }
+      foreach (Variable v in impl.OutParams)
+      {
+          havocVars.Add(codeCopier.Subst(v));
+      }
+      if (havocVars.Length > 0)
+      {
+          inCmds.Add(new HavocCmd(Token.NoToken, havocVars));
+      }
+
       // add where clauses of local vars as assume
       for (int i = 0; i < locVars.Length; ++i) {
         Expr whereExpr = (cce.NonNull(locVars[i])).TypedIdent.WhereExpr;

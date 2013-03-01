@@ -59,14 +59,13 @@ namespace Microsoft.Boogie {
 
     public BinderExpr(IToken/*!*/ tok, TypeVariableSeq/*!*/ typeParameters,
                       VariableSeq/*!*/ dummies, QKeyValue kv, Expr/*!*/ body)
-      : base(tok)//BASEMOVEA
+      : base(tok)
       {
       Contract.Requires(tok != null);
       Contract.Requires(typeParameters != null);
       Contract.Requires(dummies != null);
       Contract.Requires(body != null);
       Contract.Requires(dummies.Length + typeParameters.Length > 0);
-      //base(tok);
       TypeParameters = typeParameters;
       Dummies = dummies;
       Attributes = kv;
@@ -117,7 +116,7 @@ namespace Microsoft.Boogie {
       this.EmitTypeHint(stream);
       Type.EmitOptionalTypeParams(stream, TypeParameters);
       stream.Write(this, " ");
-      this.Dummies.Emit(stream);
+      this.Dummies.Emit(stream, true);
       stream.Write(" :: ");
       for (QKeyValue kv = this.Attributes; kv != null; kv = kv.Next) {
         kv.Emit(stream);
@@ -217,11 +216,10 @@ namespace Microsoft.Boogie {
 
 
     public QKeyValue(IToken tok, string key, [Captured] List<object/*!*/>/*!*/ parameters, QKeyValue next)
-      : base(tok) {//BASEMOVEA
+      : base(tok) {
       Contract.Requires(key != null);
       Contract.Requires(tok != null);
       Contract.Requires(cce.NonNullElements(parameters));
-      //:base(tok);
       Key = key;
       Params = parameters;
       Next = next;
@@ -338,12 +336,11 @@ namespace Microsoft.Boogie {
     public Trigger Next;
 
     public Trigger(IToken tok, bool pos, ExprSeq tr)
-      : this(tok, pos, tr, null) {//BASEMOVEA
+      : this(tok, pos, tr, null) {
       Contract.Requires(tr != null);
       Contract.Requires(tok != null);
       Contract.Requires(1 <= tr.Length);
       Contract.Requires(pos || tr.Length == 1);
-      //:this(tok, pos, tr, null);
     }
 
     public Trigger(IToken/*!*/ tok, bool pos, ExprSeq/*!*/ tr, Trigger next)
@@ -355,7 +352,6 @@ namespace Microsoft.Boogie {
       this.Pos = pos;
       this.Tr = tr;
       this.Next = next;
-      // base(tok);
     }
 
     public void Emit(TokenTextWriter stream) {
@@ -426,38 +422,34 @@ namespace Microsoft.Boogie {
   public class ForallExpr : QuantifierExpr {
     public ForallExpr(IToken/*!*/ tok, TypeVariableSeq/*!*/ typeParams,
                       VariableSeq/*!*/ dummies, QKeyValue kv, Trigger triggers, Expr/*!*/ body)
-      : base(tok, typeParams, dummies, kv, triggers, body) {//BASEMOVEA
+      : base(tok, typeParams, dummies, kv, triggers, body) {
       Contract.Requires(tok != null);
       Contract.Requires(typeParams != null);
       Contract.Requires(dummies != null);
       Contract.Requires(body != null);
       Contract.Requires(dummies.Length + typeParams.Length > 0);
-      //:base(tok, typeParams, dummies, kv, triggers, body); // here for aesthetic reasons
     }
     public ForallExpr(IToken tok, VariableSeq dummies, Trigger triggers, Expr body)
-      : base(tok, new TypeVariableSeq(), dummies, null, triggers, body) {//BASEMOVEA
+      : base(tok, new TypeVariableSeq(), dummies, null, triggers, body) {
       Contract.Requires(body != null);
       Contract.Requires(dummies != null);
       Contract.Requires(tok != null);
       Contract.Requires(dummies.Length > 0);
-      //:base(tok, new TypeVariableSeq(), dummies, null, triggers, body); // here for aesthetic reasons
     }
     public ForallExpr(IToken tok, VariableSeq dummies, Expr body)
-      : base(tok, new TypeVariableSeq(), dummies, null, null, body) {//BASEMOVEA
+      : base(tok, new TypeVariableSeq(), dummies, null, null, body) {
       Contract.Requires(body != null);
       Contract.Requires(dummies != null);
       Contract.Requires(tok != null);
       Contract.Requires(dummies.Length > 0);
-      //:base(tok, new TypeVariableSeq(), dummies, null, null, body); // here for aesthetic reasons
     }
     public ForallExpr(IToken tok, TypeVariableSeq typeParams, VariableSeq dummies, Expr body)
-      : base(tok, typeParams, dummies, null, null, body) {//BASEMOVEA
+      : base(tok, typeParams, dummies, null, null, body) {
       Contract.Requires(body != null);
       Contract.Requires(dummies != null);
       Contract.Requires(typeParams != null);
       Contract.Requires(tok != null);
       Contract.Requires(dummies.Length + typeParams.Length > 0);
-      //:base(tok, typeParams, dummies, null, null, body); // here for aesthetic reasons
     }
 
     public override Absy StdDispatch(StandardVisitor visitor) {
@@ -476,29 +468,26 @@ namespace Microsoft.Boogie {
   public class ExistsExpr : QuantifierExpr {
     public ExistsExpr(IToken/*!*/ tok, TypeVariableSeq/*!*/ typeParams, VariableSeq/*!*/ dummies,
                       QKeyValue kv, Trigger triggers, Expr/*!*/ body)
-      : base(tok, typeParams, dummies, kv, triggers, body) {//BASEMOVEA
+      : base(tok, typeParams, dummies, kv, triggers, body) {
       Contract.Requires(tok != null);
       Contract.Requires(typeParams != null);
       Contract.Requires(dummies != null);
       Contract.Requires(body != null);
       Contract.Requires(dummies.Length + typeParams.Length > 0);
-      //:base(tok, typeParams, dummies, kv, triggers, body); // here for aesthetic reasons
     }
     public ExistsExpr(IToken tok, VariableSeq dummies, Trigger triggers, Expr body)
-      : base(tok, new TypeVariableSeq(), dummies, null, triggers, body) {//BASEMOVEA
+      : base(tok, new TypeVariableSeq(), dummies, null, triggers, body) {
       Contract.Requires(body != null);
       Contract.Requires(dummies != null);
       Contract.Requires(tok != null);
       Contract.Requires(dummies.Length > 0);
-      //:base(tok, new TypeVariableSeq(), dummies, null, triggers, body); // here for aesthetic reasons
     }
     public ExistsExpr(IToken tok, VariableSeq dummies, Expr body)
-      : base(tok, new TypeVariableSeq(), dummies, null, null, body) {//BASEMOVEA
+      : base(tok, new TypeVariableSeq(), dummies, null, null, body) {
       Contract.Requires(body != null);
       Contract.Requires(dummies != null);
       Contract.Requires(tok != null);
       Contract.Requires(dummies.Length > 0);
-      //:base(tok, new TypeVariableSeq(), dummies, null, null, body); // here for aesthetic reasons
     }
 
     public override Absy StdDispatch(StandardVisitor visitor) {
@@ -527,13 +516,12 @@ namespace Microsoft.Boogie {
 
     public QuantifierExpr(IToken/*!*/ tok, TypeVariableSeq/*!*/ typeParameters,
                           VariableSeq/*!*/ dummies, QKeyValue kv, Trigger triggers, Expr/*!*/ body)
-      : base(tok, typeParameters, dummies, kv, body) {//BASEMOVEA
+      : base(tok, typeParameters, dummies, kv, body) {
       Contract.Requires(tok != null);
       Contract.Requires(typeParameters != null);
       Contract.Requires(dummies != null);
       Contract.Requires(body != null);
       Contract.Requires(dummies.Length + typeParameters.Length > 0);
-      //:base(tok, typeParameters, dummies, kv, body);
 
       Contract.Assert((this is ForallExpr) || (this is ExistsExpr));
 
@@ -709,13 +697,12 @@ namespace Microsoft.Boogie {
   public class LambdaExpr : BinderExpr {
     public LambdaExpr(IToken/*!*/ tok, TypeVariableSeq/*!*/ typeParameters,
                       VariableSeq/*!*/ dummies, QKeyValue kv, Expr/*!*/ body)
-      : base(tok, typeParameters, dummies, kv, body) {//BASEMOVEA
+      : base(tok, typeParameters, dummies, kv, body) {
       Contract.Requires(tok != null);
       Contract.Requires(typeParameters != null);
       Contract.Requires(dummies != null);
       Contract.Requires(body != null);
       Contract.Requires(dummies.Length + typeParameters.Length > 0);
-      //:base(tok, typeParameters, dummies, kv, body);
     }
 
     public override BinderKind Kind {

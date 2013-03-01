@@ -84,6 +84,13 @@ namespace Microsoft.Boogie {
       node.Expr = this.VisitExpr(node.Expr);
       return node;
     }
+    public virtual Cmd VisitYieldCmd(YieldCmd node)
+    {
+        Contract.Requires(node != null);
+        Contract.Ensures(Contract.Result<Cmd>() != null);
+        node.Expr = this.VisitExpr(node.Expr);
+        return node;
+    }
     public virtual AtomicRE VisitAtomicRE(AtomicRE node) {
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<AtomicRE>() != null);
@@ -166,21 +173,6 @@ namespace Microsoft.Boogie {
       for (int i = 0; i < node.Outs.Count; ++i)
         if (node.Outs[i] != null)
           node.Outs[i] = (IdentifierExpr)this.VisitIdentifierExpr(cce.NonNull(node.Outs[i]));
-      return node;
-    }
-    public virtual Cmd VisitCallForallCmd(CallForallCmd node) {
-      Contract.Requires(node != null);
-      Contract.Ensures(Contract.Result<Cmd>() != null);
-      List<Expr> elist = new List<Expr>(node.Ins.Count);
-      foreach (Expr arg in node.Ins) {
-        if (arg == null) {
-          elist.Add(null);
-        } else {
-          elist.Add(this.VisitExpr(arg));
-        }
-      }
-      node.Ins = elist;
-      node.Proc = this.VisitProcedure(cce.NonNull(node.Proc));
       return node;
     }
     public virtual CmdSeq VisitCmdSeq(CmdSeq cmdSeq) {

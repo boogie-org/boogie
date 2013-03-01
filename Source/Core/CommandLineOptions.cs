@@ -36,19 +36,19 @@ namespace Microsoft.Boogie {
       DescriptiveToolName = descriptiveName;
     }
 
-    public static string/*!*/ VersionNumber {
+    public virtual string/*!*/ VersionNumber {
       get {
         Contract.Ensures(Contract.Result<string>() != null);
         return cce.NonNull(cce.NonNull(System.Diagnostics.FileVersionInfo.GetVersionInfo(System.Reflection.Assembly.GetExecutingAssembly().Location)).FileVersion);
       }
     }
-    public static string/*!*/ VersionSuffix {
+    public virtual string/*!*/ VersionSuffix {
       get {
         Contract.Ensures(Contract.Result<string>() != null);
-        return " version " + VersionNumber + ", Copyright (c) 2003-2012, Microsoft.";
+        return " version " + VersionNumber + ", Copyright (c) 2003-2013, Microsoft.";
       }
     }
-    public string/*!*/ Version {
+    public virtual string/*!*/ Version {
       get {
         Contract.Ensures(Contract.Result<string>() != null);
         return DescriptiveToolName + VersionSuffix;
@@ -399,6 +399,7 @@ namespace Microsoft.Boogie {
     public bool UseUnsatCoreForContractInfer = false;
     public bool PrintAssignment = false;
     public int InlineDepth = -1;
+    public bool UseProverEvaluate = false; // Use ProverInterface's Evaluate method, instead of model to get variable values
     public bool UseUncheckedContracts = false;
     public bool SimplifyLogFileAppend = false;
     public bool SoundnessSmokeTest = false;
@@ -471,6 +472,7 @@ namespace Microsoft.Boogie {
     public bool UseAbstractInterpretation = true;          // true iff the user want to use abstract interpretation
     public int  /*0..9*/StepsBeforeWidening = 0;           // The number of steps that must be done before applying a widen operator
 
+    public string OwickiGriesDesugaredOutputFile = null;
 
     public enum VCVariety {
       Structured,
@@ -687,6 +689,12 @@ namespace Microsoft.Boogie {
         case "print":
           if (ps.ConfirmArgumentCount(1)) {
             PrintFile = args[ps.i];
+          }
+          return true;
+
+        case "OwickiGries":
+          if (ps.ConfirmArgumentCount(1)) {
+              OwickiGriesDesugaredOutputFile = args[ps.i];
           }
           return true;
 
@@ -1215,6 +1223,7 @@ namespace Microsoft.Boogie {
               ps.CheckBooleanFlag("crossDependencies", ref HoudiniUseCrossDependencies) ||
               ps.CheckBooleanFlag("useUnsatCoreForContractInfer", ref UseUnsatCoreForContractInfer) ||
               ps.CheckBooleanFlag("printAssignment", ref PrintAssignment) ||
+              ps.CheckBooleanFlag("useProverEvaluate", ref UseProverEvaluate) ||
               ps.CheckBooleanFlag("nonUniformUnfolding", ref NonUniformUnfolding) ||
               ps.CheckBooleanFlag("deterministicExtractLoops", ref DeterministicExtractLoops)
               ) {
@@ -1275,6 +1284,8 @@ namespace Microsoft.Boogie {
         if (ProverName == "Z3API" || ProverName == "SMTLIB") {
           ProverCCLimit = 1;
         }
+        if (UseProverEvaluate)
+            StratifiedInliningWithoutModels = true;
       }
 
       if (Trace) {

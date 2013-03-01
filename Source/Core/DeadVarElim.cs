@@ -14,7 +14,7 @@ namespace Microsoft.Boogie {
     }
 
     private UnusedVarEliminator()
-      : base() {//BasemoveA
+      : base() {
 
     }
 
@@ -670,7 +670,7 @@ namespace Microsoft.Boogie {
 
 
     [NotDelayed]
-    public ICFG(Implementation impl) {//BASEMOVE DANGER
+    public ICFG(Implementation impl) {
       Contract.Requires(impl != null);
       this.graph = new Graph<Block/*!*/>();
       this.procsCalled = new Dictionary<string/*!*/, List<Block/*!*/>/*!*/>();
@@ -690,8 +690,6 @@ namespace Microsoft.Boogie {
 
       summary = GenKillWeight.zero();
       this.impl = impl;
-
-      //:base();
 
       Initialize(impl);
 
@@ -836,7 +834,7 @@ namespace Microsoft.Boogie {
 
 
     [NotDelayed]
-    public InterProcGenKill(Implementation impl, Program program) {//BASEMOVE DANGER
+    public InterProcGenKill(Implementation impl, Program program) {
       Contract.Requires(program != null);
       Contract.Requires(impl != null);
       this.program = program;
@@ -853,8 +851,6 @@ namespace Microsoft.Boogie {
       varsLiveAtExit.Clear();
       varsLiveAtEntry.Clear();
       varsLiveSummary.Clear();
-
-      //base();
 
       foreach (Declaration/*!*/ decl in program.TopLevelDeclarations) {
         Contract.Assert(decl != null);

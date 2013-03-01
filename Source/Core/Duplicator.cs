@@ -113,14 +113,6 @@ namespace Microsoft.Boogie {
       clone.Outs = new List<IdentifierExpr>(clone.Outs);
       return base.VisitCallCmd(clone);
     }
-    public override Cmd VisitCallForallCmd(CallForallCmd node) {
-      //Contract.Requires(node != null);
-      Contract.Ensures(Contract.Result<Cmd>() != null);
-      CallForallCmd/*!*/ clone = (CallForallCmd)node.Clone();
-      Contract.Assert(clone != null);
-      clone.Ins = new List<Expr>(clone.Ins);
-      return base.VisitCallForallCmd(clone);
-    }
     public override Choice VisitChoice(Choice node) {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Choice>() != null);
@@ -375,9 +367,9 @@ namespace Microsoft.Boogie {
       }
 
       public CreateSubstitutionClosure(Hashtable/*Variable!->Expr!*/ map)
-        : base() {//BASEMOVE DANGER
+        : base() {
         Contract.Requires(map != null);
-        this.map = map; //:base(); 
+        this.map = map;
       }
       public Expr/*?*/ Method(Variable v) {
         Contract.Requires(v != null);
@@ -447,10 +439,9 @@ namespace Microsoft.Boogie {
       }
 
       public NormalSubstituter(Substitution subst)
-        : base() {//BASEMOVE DANGER
+        : base() {
         Contract.Requires(subst != null);
         this.subst = subst;
-        //:base();
       }
 
       public override Expr VisitIdentifierExpr(IdentifierExpr node) {
@@ -471,12 +462,11 @@ namespace Microsoft.Boogie {
       }
 
       public ReplacingOldSubstituter(Substitution always, Substitution forold)
-        : base() {//BASEMOVE DANGER
+        : base() {
         Contract.Requires(forold != null);
         Contract.Requires(always != null);
         this.always = always;
         this.forold = forold;
-        //:base();
       }
 
       private bool insideOldExpr = false;

@@ -27,7 +27,7 @@ for %%f in (Arrays.bpl Lambda.bpl TypeEncodingM.bpl ) do (
 echo -------------------- sk_hack.bpl --------------------
 %BGEXE% %* /noinfer sk_hack.bpl
 
-for %%f in (CallForall.bpl ContractEvaluationOrder.bpl) do (
+for %%f in (ContractEvaluationOrder.bpl) do (
   echo.
   echo -------------------- %%f --------------------
   %BGEXE% %* %%f

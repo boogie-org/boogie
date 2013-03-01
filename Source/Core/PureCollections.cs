@@ -247,11 +247,10 @@ namespace PureCollections {
 
     [NotDelayed]
     public Map(params Pair[] ps)
-      : base() {//BASEMOVE DANGER
+      : base() {
       Contract.Requires(ps != null);
       elems = new Object[ps.Length * 2];
       vals = new Object[ps.Length * 2];
-      //base();
       card = 0;
       for (int i = 0; i < ps.Length; i++)
         Insert(cce.NonNull(ps[i]).First, cce.NonNull(ps[i]).Second);
@@ -548,9 +547,8 @@ namespace PureCollections {
       elems = ds;
     }
     public Sequence(Sequence seq)
-      : base(seq) {//BASEMOVEA
+      : base(seq) {
       Contract.Requires(seq != null);
-      //base(seq);
     }
     public Sequence(Capacity c) {
       elems = new object[c.capacity];

@@ -18,18 +18,18 @@ implementation SimpleLoop()
     assume {:inferred} 0 <= i && i < 11;
     goto Then, Else;
 
+  Else:
+    assume {:inferred} 0 <= i && i < 11;
+    assume !(i < 10);
+    assume {:inferred} 0 <= i && i < 11;
+    return;
+
   Then:
     assume {:inferred} 0 <= i && i < 11;
     assume i < 10;
     i := i + 1;
     assume {:inferred} 1 <= i && i < 11;
     goto test;
-
-  Else:
-    assume {:inferred} 0 <= i && i < 11;
-    assume !(i < 10);
-    assume {:inferred} 0 <= i && i < 11;
-    return;
 }
 
 
@@ -53,18 +53,18 @@ implementation VariableBoundLoop(n: int)
     assume {:inferred} 0 <= i;
     goto Then, Else;
 
+  Else:
+    assume {:inferred} 0 <= i;
+    assume !(i < n);
+    assume {:inferred} 0 <= i;
+    return;
+
   Then:
     assume {:inferred} 0 <= i;
     assume i < n;
     i := i + 1;
     assume {:inferred} 1 <= i && 1 <= n;
     goto test;
-
-  Else:
-    assume {:inferred} 0 <= i;
-    assume !(i < n);
-    assume {:inferred} 0 <= i;
-    return;
 }
 
 
@@ -238,14 +238,14 @@ implementation p()
     assume {:inferred} true;
     goto B, C;
 
-  B:
+  C:
     assume {:inferred} true;
-    x := x * x;
     assume {:inferred} true;
     return;
 
-  C:
+  B:
     assume {:inferred} true;
+    x := x * x;
     assume {:inferred} true;
     return;
 }
@@ -272,6 +272,11 @@ implementation p()
     assume {:inferred} -1 <= x;
     goto B, E;
 
+  E:
+    assume {:inferred} true;
+    assume {:inferred} true;
+    return;
+
   B:
     assume {:inferred} -1 <= x;
     assume x < y;
@@ -288,11 +293,6 @@ implementation p()
     assume {:inferred} x < 2 && 0 <= y;
     x := y;
     assume {:inferred} 0 <= x && 0 <= y;
-    return;
-
-  E:
-    assume {:inferred} true;
-    assume {:inferred} true;
     return;
 }
 
@@ -320,12 +320,6 @@ implementation p()
     assume {:inferred} x == 8;
     goto B, C;
 
-  B:
-    assume {:inferred} x == 8;
-    x := 9;
-    assume {:inferred} x == 9;
-    goto D;
-
   C:
     assume {:inferred} x == 8;
     x := 10;
@@ -336,6 +330,12 @@ implementation p()
     assume {:inferred} 9 <= x && x < 11;
     assume {:inferred} 9 <= x && x < 11;
     return;
+
+  B:
+    assume {:inferred} x == 8;
+    x := 9;
+    assume {:inferred} x == 9;
+    goto D;
 }
 
 
@@ -360,12 +360,6 @@ implementation p()
     assume {:inferred} true;
     goto B, C;
 
-  B:
-    assume {:inferred} true;
-    assume x <= 0;
-    assume {:inferred} x < 1;
-    goto D;
-
   C:
     assume {:inferred} true;
     assume y <= 0;
@@ -376,6 +370,12 @@ implementation p()
     assume {:inferred} true;
     assume {:inferred} true;
     return;
+
+  B:
+    assume {:inferred} true;
+    assume x <= 0;
+    assume {:inferred} x < 1;
+    goto D;
 }
 
 
