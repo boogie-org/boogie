@@ -105,6 +105,8 @@ namespace Microsoft.Boogie
                 CallCmd iter = node;
                 while (iter != null)
                 {
+                    procNameToInfo[iter.Proc.Name].isThreadStart = true;
+                    CreateYieldCheckerProcedure(iter.Proc);
                     procNameToInfo[iter.Proc.Name].inParallelCall = true;
                     iter = iter.InParallelWith;
                 }

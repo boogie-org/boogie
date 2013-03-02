@@ -24,8 +24,16 @@ Boogie program verifier finished with 2 verified, 2 errors
 Boogie program verifier finished with 2 verified, 0 errors
 
 -------------------- parallel1.bpl --------------------
+OwickiGriesDesugared.bpl(171,4): Error BP5001: This assertion might not hold.
+Execution trace:
+    OwickiGriesDesugared.bpl(17,0): anon0
+    OwickiGriesDesugared.bpl(169,0): inline$YieldChecker_PC$0$L1
+OwickiGriesDesugared.bpl(177,4): Error BP5001: This assertion might not hold.
+Execution trace:
+    OwickiGriesDesugared.bpl(17,0): anon0
+    OwickiGriesDesugared.bpl(175,0): inline$YieldChecker_PC$0$L2
 
-Boogie program verifier finished with 4 verified, 0 errors
+Boogie program verifier finished with 3 verified, 2 errors
 
 -------------------- linear-set.bpl --------------------
 
