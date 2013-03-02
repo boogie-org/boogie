@@ -855,10 +855,6 @@ LabelOrCmd<out Cmd c, out IToken label>
     { Attribute<ref kv> }
     Proposition<out e>    (. c = new AssumeCmd(x, e, kv); .)
     ";"
-  | "yield"              (. x = t; .)
-    { Attribute<ref kv> }
-    Proposition<out e>    (. c = new YieldCmd(x, e, kv); .)
-    ";"
   | "havoc"               (. x = t; .)
     Idents<out xs> ";"    (. ids = new IdentifierExprSeq();
                              foreach(IToken/*!*/ y in xs){
@@ -868,6 +864,8 @@ LabelOrCmd<out Cmd c, out IToken label>
                              c = new HavocCmd(x,ids);
                           .)
   | CallCmd<out cn> ";"   (. c = cn; .)
+  | "yield"               (. x = t; .)
+    ";"                   (. c = new YieldCmd(x); .)
   )
   .
 
@@ -923,15 +921,13 @@ MapAssignIndex<.out IToken/*!*/ x, out List<Expr/*!*/>/*!*/ indexes.>
   .
 
 /*------------------------------------------------------------------------*/
-CallCmd<out Cmd/*!*/ c>
-= (. Contract.Ensures(Contract.ValueAtReturn(out c) != null); IToken/*!*/ x; IToken/*!*/ first; IToken p;
-     List<IdentifierExpr>/*!*/ ids = new List<IdentifierExpr>();
-     List<Expr>/*!*/ es = new List<Expr>();
-     QKeyValue kv = null;
-     Expr en;  List<Expr> args;
-     c = dummyCmd;
-     bool isFree = false;
+CallCmd<out Cmd c>
+= (. Contract.Ensures(Contract.ValueAtReturn(out c) != null); 
+     IToken x; 
      bool isAsync = false;
+     bool isFree = false;
+     QKeyValue kv = null;
+     c = null;
   .)
   [ "async"          (. isAsync = true;  .)
   ]
@@ -939,13 +935,26 @@ CallCmd<out Cmd/*!*/ c>
   ]
   "call"                          (. x = t; .)
   { Attribute<ref kv> }
-  ( Ident<out first>
+  CallParams<isAsync, isFree, kv, x, ref c> (. .) 
+  { "|" CallParams<isAsync, isFree, kv, x, ref c> (. .) 
+  }
+  .
+
+CallParams<bool isAsync, bool isFree, QKeyValue kv, IToken x, ref Cmd c>
+= (. 
+    List<IdentifierExpr> ids = new List<IdentifierExpr>();
+    List<Expr> es = new List<Expr>();
+    Expr en;
+    IToken first; 
+    IToken p;
+  .)
+  Ident<out first>
     ( "("
       [ Expression<out en>       (. es.Add(en); .)
         { "," Expression<out en> (. es.Add(en); .)
         }
       ]
-      ")"                         (. c = new CallCmd(x, first.val, es, ids, kv); ((CallCmd) c).IsFree = isFree; ((CallCmd) c).IsAsync = isAsync; .)
+      ")"                         (. c = new CallCmd(x, first.val, es, ids, kv, (CallCmd) c); ((CallCmd) c).IsFree = isFree; ((CallCmd) c).IsAsync = isAsync; .)
     |
                                   (. ids.Add(new IdentifierExpr(first, first.val)); .)
       [ "," Ident<out p>  (. ids.Add(new IdentifierExpr(p, p.val)); .)
@@ -957,9 +966,8 @@ CallCmd<out Cmd/*!*/ c>
         { "," Expression<out en> (. es.Add(en); .)
         }
       ]
-      ")"                         (. c = new CallCmd(x, first.val, es, ids, kv); ((CallCmd) c).IsFree = isFree; ((CallCmd) c).IsAsync = isAsync; .)
+      ")"                         (. c = new CallCmd(x, first.val, es, ids, kv, (CallCmd) c); ((CallCmd) c).IsFree = isFree; ((CallCmd) c).IsAsync = isAsync; .)
     )
-  )
   .
 
 /*------------------------------------------------------------------------*/

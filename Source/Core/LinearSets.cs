@@ -17,6 +17,7 @@ namespace Microsoft.Boogie
             this.errorCount = 0;
             this.checkingContext = new CheckingContext(null);
             this.domainNameToType = new Dictionary<string, Type>();
+            this.parallelCallInvars = new HashSet<Variable>();
         }
         private void Error(Absy node, string message)
         {
@@ -118,7 +119,7 @@ namespace Microsoft.Boogie
             }
             return base.VisitAssignCmd(node);
         }
-
+        HashSet<Variable> parallelCallInvars;
         public override Cmd VisitCallCmd(CallCmd node)
         {
             HashSet<Variable> inVars = new HashSet<Variable>();
@@ -144,7 +145,7 @@ namespace Microsoft.Boogie
                     Error(node, "The domains of formal and actual parameters must be the same");
                     continue;
                 }
-                if (inVars.Contains(actual.Decl))
+                if (parallelCallInvars.Contains(actual.Decl))
                 {
                     Error(node, "A linear set can occur only once as an in parameter");
                     continue;
@@ -155,8 +156,8 @@ namespace Microsoft.Boogie
                     continue;
                 }
                 inVars.Add(actual.Decl);
+                parallelCallInvars.Add(actual.Decl);
             }
-
             for (int i = 0; i < node.Proc.OutParams.Length; i++)
             {
                 IdentifierExpr actual = node.Outs[i];
@@ -179,6 +180,14 @@ namespace Microsoft.Boogie
                     Error(node, "Only local linear variable can be actual output parameter of a procedure call");
                     continue;
                 }
+            }
+            if (node.InParallelWith != null)
+            {
+                VisitCallCmd(node.InParallelWith);
+            }
+            foreach (Variable v in inVars)
+            {
+                parallelCallInvars.Remove(v);
             }
             return base.VisitCallCmd(node);
         }

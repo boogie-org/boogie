@@ -944,18 +944,23 @@ namespace Microsoft.Boogie {
     }
     public abstract void Emit(TokenTextWriter/*!*/ stream, int level);
     public abstract void AddAssignedVariables(VariableSeq/*!*/ vars);
-    public void CheckAssignments(TypecheckingContext tc) {
-      Contract.Requires(tc != null);
-      VariableSeq/*!*/ vars = new VariableSeq();
-      this.AddAssignedVariables(vars);
-      foreach (Variable/*!*/ v in vars) {
-        Contract.Assert(v != null);
-        if (!v.IsMutable) {
-          tc.Error(this, "command assigns to an immutable variable: {0}", v.Name);
-        } else if (!CommandLineOptions.Clo.DoModSetAnalysis && v is GlobalVariable && !tc.InFrame(v)) {
-          tc.Error(this, "command assigns to a global variable that is not in the enclosing method's modifies clause: {0}", v.Name);
+    public void CheckAssignments(TypecheckingContext tc)
+    {
+        Contract.Requires(tc != null);
+        VariableSeq/*!*/ vars = new VariableSeq();
+        this.AddAssignedVariables(vars);
+        foreach (Variable/*!*/ v in vars)
+        {
+            Contract.Assert(v != null);
+            if (!v.IsMutable)
+            {
+                tc.Error(this, "command assigns to an immutable variable: {0}", v.Name);
+            }
+            else if (!CommandLineOptions.Clo.DoModSetAnalysis && v is GlobalVariable && !tc.InFrame(v))
+            {
+                tc.Error(this, "command assigns to a global variable that is not in the enclosing method's modifies clause: {0}", v.Name);
+            }
         }
-      }
     }
 
     // Methods to simulate the old SimpleAssignCmd and MapAssignCmd
@@ -1058,6 +1063,37 @@ namespace Microsoft.Boogie {
       }
       return buffer.ToString();
     }
+  }
+
+  public class YieldCmd : Cmd
+  {
+      public YieldCmd(IToken/*!*/ tok)
+          : base(tok)
+      {
+          Contract.Requires(tok != null);
+      }
+      public override void Emit(TokenTextWriter stream, int level)
+      {
+          //Contract.Requires(stream != null);
+          stream.Write(this, level, "yield;");
+      }
+      public override void Resolve(ResolutionContext rc)
+      {
+          // nothing to resolve
+      }
+      public override void Typecheck(TypecheckingContext tc)
+      {
+          // nothing to typecheck
+      }
+      public override void AddAssignedVariables(VariableSeq vars)
+      {
+          // nothing to add
+      }
+      public override Absy StdDispatch(StandardVisitor visitor)
+      {
+          Contract.Ensures(Contract.Result<Absy>() != null);
+          return visitor.VisitYieldCmd(this);
+      }
   }
 
   public class CommentCmd : Cmd // just a convenience for debugging
@@ -1688,6 +1724,7 @@ namespace Microsoft.Boogie {
   }
 
   public class CallCmd : CallCommonality, IPotentialErrorNode {
+    public CallCmd InParallelWith { get; private set; }
     public string/*!*/ callee { get; private set; }
     public Procedure Proc;
 
@@ -1761,6 +1798,18 @@ namespace Microsoft.Boogie {
       this.Outs = outs;
     }
 
+    public CallCmd(IToken tok, string callee, List<Expr> ins, List<IdentifierExpr> outs, QKeyValue kv, CallCmd inParallelWith)
+        : base(tok, kv)
+    {
+        Contract.Requires(outs != null);
+        Contract.Requires(ins != null);
+        Contract.Requires(callee != null);
+        Contract.Requires(tok != null);
+        this.callee = callee;
+        this.Ins = ins;
+        this.Outs = outs;
+        this.InParallelWith = inParallelWith;
+    }
     public override void Emit(TokenTextWriter stream, int level) {
       //Contract.Requires(stream != null);
       stream.Write(this, level, "");
@@ -1818,13 +1867,22 @@ namespace Microsoft.Boogie {
         if (ide != null) {
           ide.Resolve(rc);
           if (ide.Decl != null) {
-            if (actualOuts[ide.Decl]) {
+            if (/* actualOuts[ide.Decl] */ rc.parallelCallLhss.Contains(ide.Decl)) {
               rc.Error(this, "left-hand side of call command contains variable twice: {0}", ide.Name);
             } else {
               actualOuts.Add(ide.Decl);
+              rc.parallelCallLhss.Add(ide.Decl);
             }
           }
         }
+      }
+      if (InParallelWith != null)
+      {
+          InParallelWith.Resolve(rc);
+      }
+      foreach (Variable v in actualOuts)
+      {
+          rc.parallelCallLhss.Remove(v);
       }
 
       if (Proc == null)
@@ -1846,10 +1904,15 @@ namespace Microsoft.Boogie {
                  callee, Outs.Count);
         return;
       }
-      if (QKeyValue.FindBoolAttribute(this.Attributes, "async")) {
+      if (IsAsync) {
         if (Proc.OutParams.Length > 0) {
           rc.Error(this.tok, "a procedure called asynchronously can have no output parameters");
           return;
+        }
+        if (InParallelWith != null)
+        {
+            rc.Error(this.tok, "an asynchronous procedure call cannot be parallel");
+            return;
         }
       }
 
@@ -1941,6 +2004,10 @@ namespace Microsoft.Boogie {
       Contract.Assert(cce.NonNullElements(actualTypeParams));
       TypeParameters = SimpleTypeParamInstantiation.From(Proc.TypeParameters,
                                                          actualTypeParams);
+      if (InParallelWith != null)
+      {
+          InParallelWith.Typecheck(tc);
+      }
     }
 
     private IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ TypeParamSubstitution() {
@@ -2473,47 +2540,6 @@ namespace Microsoft.Boogie {
       Contract.Ensures(Contract.Result<Absy>() != null);
       return visitor.VisitAssumeCmd(this);
     }
-  }
-
-  public class YieldCmd : PredicateCmd
-  {
-      public YieldCmd(IToken/*!*/ tok, Expr/*!*/ expr)
-          : base(tok, expr)
-      {
-          Contract.Requires(tok != null);
-          Contract.Requires(expr != null);
-      }
-      public YieldCmd(IToken/*!*/ tok, Expr/*!*/ expr, QKeyValue kv)
-          : base(tok, expr, kv)
-      {
-          Contract.Requires(tok != null);
-          Contract.Requires(expr != null);
-      }
-      public override void Emit(TokenTextWriter stream, int level)
-      {
-          //Contract.Requires(stream != null);
-          stream.Write(this, level, "assume ");
-          EmitAttributes(stream, Attributes);
-          this.Expr.Emit(stream);
-          stream.WriteLine(";");
-      }
-      public override void Typecheck(TypecheckingContext tc)
-      {
-          //Contract.Requires(tc != null);
-          Expr.Typecheck(tc);
-          Contract.Assert(Expr.Type != null);  // follows from Expr.Typecheck postcondition
-          if (!Expr.Type.Unify(Type.Bool))
-          {
-              tc.Error(this, "an assumed expression must be of type bool (got: {0})", Expr.Type);
-          }
-      }
-
-      public override Absy StdDispatch(StandardVisitor visitor)
-      {
-          //Contract.Requires(visitor != null);
-          Contract.Ensures(Contract.Result<Absy>() != null);
-          return visitor.VisitYieldCmd(this);
-      }
   }
 
   public class ReturnExprCmd : ReturnCmd {

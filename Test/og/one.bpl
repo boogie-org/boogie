@@ -8,6 +8,7 @@ procedure A()
 procedure B()
 {
   x := 5;
-  assert{:yield} x == 5;
+  yield;
+  assert x == 5;
 }
 

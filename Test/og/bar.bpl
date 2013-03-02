@@ -8,7 +8,8 @@ procedure PB()
 procedure PC()
   ensures g == old(g);
 {
-  assert{:yield} g == old(g);
+  yield;
+  assert g == old(g);
 }
 
 procedure PD()
@@ -22,8 +23,8 @@ procedure{:entrypoint} Main2()
 {
   while (true)
   {
-    call{:async} PB();
-    call{:async} PC();
-    call{:async} PD();
+    async call PB();
+    async call PC();
+    async call PD();
   }
 }

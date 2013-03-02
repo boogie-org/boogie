@@ -13,7 +13,8 @@ ensures old(currsize) <= currsize;
 ensures tid == tid';
 {
     assume tid == tid';
-    assert {:yield} Inv(ghostLock, currsize, newsize);
+    yield;
+    assert Inv(ghostLock, currsize, newsize);
     assert old(currsize) <= currsize;
     assert tid != nil;
 }
@@ -31,7 +32,8 @@ ensures currsize <= i;
 ensures newsize == old(newsize);
 {
     assume tid == tid';
-    assert {:yield} Inv(ghostLock, currsize, newsize);
+    yield;
+    assert Inv(ghostLock, currsize, newsize);
     assert old(currsize) <= currsize;
     assert tid != nil;
     assert ghostLock == tid;
@@ -140,6 +142,6 @@ requires currsize == 0 && newsize == 0 && ghostLock == nil && lock == nil;
     {
         havoc tid;
 	assume tid != nil;
-        call {:async} thread(tid);
+        async call thread(tid);
     }
 }
