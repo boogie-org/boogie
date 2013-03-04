@@ -68,3 +68,7 @@ Execution trace:
     parallel4.bpl(12,3): anon0$2
 
 Boogie program verifier finished with 2 verified, 1 error
+
+-------------------- parallel5.bpl --------------------
+
+Boogie program verifier finished with 4 verified, 0 errors

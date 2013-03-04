@@ -319,15 +319,23 @@ namespace Microsoft.Boogie
                 {
                     Variable inParam = impl.Proc.InParams[i];
                     var copy = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, inParam.Name, inParam.TypedIdent.Type));
+                    var ie = new IdentifierExpr(Token.NoToken, copy);
                     locals.Add(copy);
-                    map[impl.InParams[i]] = new IdentifierExpr(Token.NoToken, copy);
+                    // substitute for both implementation and procedure parameters because yield predicates can be generated
+                    // either by assertions in the implementation or preconditions and postconditions in the procedure
+                    map[impl.InParams[i]] = ie;
+                    map[impl.Proc.InParams[i]] = ie;
                 }
                 for (int i = 0; i < impl.Proc.OutParams.Length; i++)
                 {
                     Variable outParam = impl.Proc.OutParams[i];
                     var copy = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, outParam.Name, outParam.TypedIdent.Type), outParam.Attributes);
+                    var ie = new IdentifierExpr(Token.NoToken, copy);
                     locals.Add(copy);
-                    map[impl.OutParams[i]] = new IdentifierExpr(Token.NoToken, copy);
+                    // substitute for both implementation and procedure parameters because yield predicates can be generated
+                    // either by assertions in the implementation or preconditions and postconditions in the procedure
+                    map[impl.OutParams[i]] = ie;
+                    map[impl.Proc.OutParams[i]] = ie;
                 }
                 foreach (Variable local in impl.LocVars)
                 {
