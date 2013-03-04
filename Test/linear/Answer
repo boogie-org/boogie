@@ -12,9 +12,17 @@ typecheck.bpl(51,4): Error: Only variable can be assigned to a linear variable
 typecheck.bpl(53,4): Error: The domains of formal and actual parameters must be the same
 typecheck.bpl(55,4): Error: The domains of formal and actual parameters must be the same
 typecheck.bpl(57,4): Error: Only a linear argument can be passed to a linear parameter
-typecheck.bpl(64,6): Error: Only linear variable can be assigned to another linear variable
+typecheck.bpl(61,4): Error: A linear set can occur only once as an in parameter
+typecheck.bpl(66,6): Error: Only linear variable can be assigned to another linear variable
 0 type checking errors detected in typecheck.bpl
 
 -------------------- list.bpl --------------------
 
 Boogie program verifier finished with 2 verified, 0 errors
+
+-------------------- allocator.bpl --------------------
+allocator.bpl(8,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    allocator.bpl(6,3): anon0
+
+Boogie program verifier finished with 0 verified, 1 error

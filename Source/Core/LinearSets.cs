@@ -393,7 +393,24 @@ namespace Microsoft.Boogie
                     proc.Requires.Add(new Requires(true, DisjointnessExpr(domainName, domainNameToInParams[domainName])));
                 }
             }
-
+            foreach (var decl in program.TopLevelDeclarations)
+            {
+                Procedure proc = decl as Procedure;
+                if (proc == null) continue;
+                HashSet<string> domainNamesForOutParams = new HashSet<string>();
+                foreach (Variable v in proc.OutParams)
+                {
+                    var domainName = QKeyValue.FindStringAttribute(v.Attributes, "linear");
+                    if (domainName == null) continue;
+                    if (!linearDomains.ContainsKey(domainName))
+                    {
+                        linearDomains[domainName] = new LinearDomain(program, v, domainName);
+                    }
+                    if (domainNamesForOutParams.Contains(domainName)) continue;
+                    domainNamesForOutParams.Add(domainName);
+                    proc.Modifies.Add(new IdentifierExpr(Token.NoToken, linearDomains[domainName].allocator));
+                }
+            }
             foreach (LinearDomain domain in linearDomains.Values)
             {
                 program.TopLevelDeclarations.Add(domain.allocator);

@@ -105,6 +105,10 @@ namespace Microsoft.Boogie
                 CallCmd iter = node;
                 while (iter != null)
                 {
+                    if (!procNameToInfo.ContainsKey(iter.Proc.Name))
+                    {
+                        procNameToInfo[iter.Proc.Name] = new ProcedureInfo();
+                    }
                     procNameToInfo[iter.Proc.Name].isThreadStart = true;
                     CreateYieldCheckerProcedure(iter.Proc);
                     procNameToInfo[iter.Proc.Name].inParallelCall = true;
@@ -353,7 +357,7 @@ namespace Microsoft.Boogie
                     foreach (Requires r in impl.Proc.Requires)
                     {
                         if (r.Free) continue;
-                        cmds.Add(new AssertCmd(Token.NoToken, r.Condition));
+                        cmds.Add(new AssertCmd(r.tok, r.Condition));
                     }
                     yields.Add(cmds);
                     cmds = new CmdSeq();
@@ -363,7 +367,7 @@ namespace Microsoft.Boogie
                     foreach (Ensures e in impl.Proc.Ensures)
                     {
                         if (e.Free) continue;
-                        cmds.Add(new AssertCmd(Token.NoToken, e.Condition));
+                        cmds.Add(new AssertCmd(e.tok, e.Condition));
                     }
                     yields.Add(cmds);
                     cmds = new CmdSeq();
@@ -385,15 +389,15 @@ namespace Microsoft.Boogie
                             PredicateCmd pcmd = cmd as PredicateCmd;
                             if (pcmd == null)
                             {
+                                DesugarYield(cmds, newCmds);
                                 if (cmds.Length > 0)
                                 {
-                                    DesugarYield(cmds, newCmds);
                                     yields.Add(cmds);
                                     cmds = new CmdSeq();
                                 }
                                 insideYield = false;
                             }
-                            else 
+                            else
                             {
                                 cmds.Add(pcmd);
                             }
@@ -433,11 +437,14 @@ namespace Microsoft.Boogie
                             newCmds.Add(cmd);
                         }
                     }
-                    if (cmds.Length > 0)
+                    if (insideYield)
                     {
                         DesugarYield(cmds, newCmds);
-                        yields.Add(cmds);
-                        cmds = new CmdSeq();
+                        if (cmds.Length > 0)
+                        {
+                            yields.Add(cmds);
+                            cmds = new CmdSeq();
+                        }
                     } 
                     if (b.TransferCmd is ReturnCmd && (!info.isAtomic || info.isEntrypoint || info.isThreadStart))
                     {
@@ -500,7 +507,7 @@ namespace Microsoft.Boogie
                         PredicateCmd predCmd = (PredicateCmd)cmd;
                         var newExpr = Substituter.ApplyReplacingOldExprs(subst, oldSubst, predCmd.Expr);
                         if (predCmd is AssertCmd)
-                            newCmds.Add(new AssertCmd(Token.NoToken, newExpr));
+                            newCmds.Add(new AssertCmd(predCmd.tok, newExpr));
                         else
                             newCmds.Add(new AssumeCmd(Token.NoToken, newExpr));
                     }

@@ -32,4 +32,5 @@ ensures old(a)[i] == a[i];
 {
     assume i == i';
     yield;
+    assert old(a)[i] == a[i];
 }

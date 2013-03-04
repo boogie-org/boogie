@@ -192,7 +192,7 @@ namespace Microsoft.Boogie {
             ogTransform.Transform();
             int oldPrintUnstructured = CommandLineOptions.Clo.PrintUnstructured;
             CommandLineOptions.Clo.PrintUnstructured = 1;
-            PrintBplFile(CommandLineOptions.Clo.OwickiGriesDesugaredOutputFile, program, false);
+            PrintBplFile(CommandLineOptions.Clo.OwickiGriesDesugaredOutputFile, program, false, false);
             CommandLineOptions.Clo.PrintUnstructured = oldPrintUnstructured;
         }
         LinearSetTransform linearTransform = new LinearSetTransform(program);
@@ -213,7 +213,7 @@ namespace Microsoft.Boogie {
       }
     }
 
-    static void PrintBplFile(string filename, Program program, bool allowPrintDesugaring) {
+    static void PrintBplFile(string filename, Program program, bool allowPrintDesugaring, bool setTokens = true) {
       Contract.Requires(program != null);
       Contract.Requires(filename != null);
       bool oldPrintDesugaring = CommandLineOptions.Clo.PrintDesugarings;
@@ -221,8 +221,8 @@ namespace Microsoft.Boogie {
         CommandLineOptions.Clo.PrintDesugarings = false;
       }
       using (TokenTextWriter writer = filename == "-" ?
-                                      new TokenTextWriter("<console>", Console.Out) :
-                                      new TokenTextWriter(filename)) {
+                                      new TokenTextWriter("<console>", Console.Out, setTokens) :
+                                      new TokenTextWriter(filename, setTokens)) {
         if (CommandLineOptions.Clo.ShowEnv != CommandLineOptions.ShowEnvironment.Never) {
           writer.WriteLine("// " + CommandLineOptions.Clo.Version);
           writer.WriteLine("// " + CommandLineOptions.Clo.Environment);

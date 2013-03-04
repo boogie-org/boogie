@@ -1,21 +1,21 @@
 
 -------------------- foo.bpl --------------------
-OwickiGriesDesugared.bpl(171,4): Error BP5001: This assertion might not hold.
+foo.bpl(13,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    OwickiGriesDesugared.bpl(17,0): anon0
-    OwickiGriesDesugared.bpl(169,0): inline$YieldChecker_PC$0$L1
+    foo.bpl(5,5): anon0
+    (0,0): inline$YieldChecker_PC$0$L1
 
 Boogie program verifier finished with 3 verified, 1 error
 
 -------------------- bar.bpl --------------------
-OwickiGriesDesugared.bpl(171,4): Error BP5001: This assertion might not hold.
+bar.bpl(12,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    OwickiGriesDesugared.bpl(17,0): anon0
-    OwickiGriesDesugared.bpl(169,0): inline$YieldChecker_PC$0$L1
-OwickiGriesDesugared.bpl(171,4): Error BP5001: This assertion might not hold.
+    bar.bpl(5,5): anon0
+    (0,0): inline$YieldChecker_PC$0$L1
+bar.bpl(12,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    OwickiGriesDesugared.bpl(68,0): anon0
-    OwickiGriesDesugared.bpl(169,0): inline$YieldChecker_PC$0$L1
+    bar.bpl(17,5): anon0
+    (0,0): inline$YieldChecker_PC$0$L1
 
 Boogie program verifier finished with 2 verified, 2 errors
 
@@ -24,16 +24,20 @@ Boogie program verifier finished with 2 verified, 2 errors
 Boogie program verifier finished with 2 verified, 0 errors
 
 -------------------- parallel1.bpl --------------------
-OwickiGriesDesugared.bpl(171,4): Error BP5001: This assertion might not hold.
+parallel1.bpl(9,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    OwickiGriesDesugared.bpl(17,0): anon0
-    OwickiGriesDesugared.bpl(169,0): inline$YieldChecker_PC$0$L1
-OwickiGriesDesugared.bpl(177,4): Error BP5001: This assertion might not hold.
+    parallel1.bpl(5,5): anon0
+    (0,0): inline$YieldChecker_PC$0$L1
+parallel1.bpl(13,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    OwickiGriesDesugared.bpl(17,0): anon0
-    OwickiGriesDesugared.bpl(175,0): inline$YieldChecker_PC$0$L2
+    parallel1.bpl(5,5): anon0
+    (0,0): inline$YieldChecker_PC$0$L2
 
 Boogie program verifier finished with 3 verified, 2 errors
+
+-------------------- parallel3.bpl --------------------
+
+Boogie program verifier finished with 3 verified, 0 errors
 
 -------------------- linear-set.bpl --------------------
 
@@ -54,3 +58,13 @@ Boogie program verifier finished with 5 verified, 0 errors
 -------------------- parallel2.bpl --------------------
 
 Boogie program verifier finished with 4 verified, 0 errors
+
+-------------------- parallel4.bpl --------------------
+parallel4.bpl(14,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    parallel4.bpl(12,3): anon0
+    (0,0): inline$YieldChecker_t$0$enter
+    (0,0): inline$YieldChecker_t$0$exit
+    parallel4.bpl(12,3): anon0$2
+
+Boogie program verifier finished with 2 verified, 1 error
