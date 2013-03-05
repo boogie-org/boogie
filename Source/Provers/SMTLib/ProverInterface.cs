@@ -195,69 +195,123 @@ namespace Microsoft.Boogie.SMTLib
         currentLogFile.WriteLine(s);
     }
 
+    private void FindDependentTypes(Type type, List<CtorType> dependentTypes)
+    {
+        MapType mapType = type as MapType;
+        if (mapType != null)
+        {
+            foreach (Type t in mapType.Arguments)
+            {
+                FindDependentTypes(t, dependentTypes);
+            }
+            FindDependentTypes(mapType.Result, dependentTypes);
+        }
+        CtorType ctorType = type as CtorType;
+        if (ctorType != null && ctx.KnownDatatypeConstructors.ContainsKey(ctorType))
+        {
+            dependentTypes.Add(ctorType);
+        }
+    }
+
     private void PrepareCommon()
     {
-      if (common.Length == 0) {
-        SendCommon("(set-option :print-success false)");
-        SendCommon("(set-info :smt-lib-version 2.0)");
-        if (options.ProduceModel())
-          SendCommon("(set-option :produce-models true)");
-        foreach (var opt in options.SmtOptions) {
-          SendCommon("(set-option :" + opt.Option + " " + opt.Value + ")");
-        }
-
-        if (!string.IsNullOrEmpty(options.Logic)) {
-          SendCommon("(set-logic " + options.Logic + ")");
-        }
-
-        SendCommon("; done setting options\n");
-        SendCommon(_backgroundPredicates);
-
-        if (options.UseTickleBool) {
-          SendCommon("(declare-fun tickleBool (Bool) Bool)");
-          SendCommon("(assert (and (tickleBool true) (tickleBool false)))");
-        }
-        
-        if (ctx.KnownDatatypeConstructors.Count > 0) {
-          string datatypeString = "";
-          foreach (CtorType datatype in ctx.KnownDatatypeConstructors.Keys) {
-            datatypeString += "(" + SMTLibExprLineariser.TypeToString(datatype) + " ";
-            foreach (Function f in ctx.KnownDatatypeConstructors[datatype]) {
-              string quotedConstructorName = Namer.GetQuotedName(f, f.Name);
-              if (f.InParams.Length == 0) {
-                datatypeString += quotedConstructorName + " ";
-              }
-              else {
-                datatypeString += "(" + quotedConstructorName + " ";
-                foreach (Variable v in f.InParams) {
-                  string quotedSelectorName = Namer.GetQuotedName(v, v.Name + "#" + f.Name);
-                  datatypeString += "(" + quotedSelectorName + " " + DeclCollector.TypeToStringReg(v.TypedIdent.Type) + ") ";
-                }
-                datatypeString += ") ";
-              }
+        if (common.Length == 0)
+        {
+            SendCommon("(set-option :print-success false)");
+            SendCommon("(set-info :smt-lib-version 2.0)");
+            if (options.ProduceModel())
+                SendCommon("(set-option :produce-models true)");
+            foreach (var opt in options.SmtOptions)
+            {
+                SendCommon("(set-option :" + opt.Option + " " + opt.Value + ")");
             }
-            datatypeString += ") ";
-          }
-          List<string> decls = DeclCollector.GetNewDeclarations();
-          foreach (string decl in decls) {
-            SendCommon(decl);
-          }
-          SendCommon("(declare-datatypes () (" + datatypeString + "))");
-        }
-      }
 
-      if (!AxiomsAreSetup) {
-        var axioms = ctx.Axioms;
-        var nary = axioms as VCExprNAry;
-        if (nary != null && nary.Op == VCExpressionGenerator.AndOp)
-          foreach (var expr in nary.UniformArguments) {
-            var str = VCExpr2String(expr, -1);
-            if (str != "true")
-              AddAxiom(str);
-          } else
-          AddAxiom(VCExpr2String(axioms, -1));
-        AxiomsAreSetup = true;
-      }
+            if (!string.IsNullOrEmpty(options.Logic))
+            {
+                SendCommon("(set-logic " + options.Logic + ")");
+            }
+
+            SendCommon("; done setting options\n");
+            SendCommon(_backgroundPredicates);
+
+            if (options.UseTickleBool)
+            {
+                SendCommon("(declare-fun tickleBool (Bool) Bool)");
+                SendCommon("(assert (and (tickleBool true) (tickleBool false)))");
+            }
+
+            if (ctx.KnownDatatypeConstructors.Count > 0)
+            {
+                GraphUtil.Graph<CtorType> dependencyGraph = new GraphUtil.Graph<CtorType>();
+                foreach (CtorType datatype in ctx.KnownDatatypeConstructors.Keys)
+                {
+                    dependencyGraph.AddSource(datatype);
+                    foreach (Function f in ctx.KnownDatatypeConstructors[datatype])
+                    {
+                        List<CtorType> dependentTypes = new List<CtorType>();
+                        foreach (Variable v in f.InParams)
+                        {
+                            FindDependentTypes(v.TypedIdent.Type, dependentTypes);
+                        }
+                        foreach (CtorType result in dependentTypes)
+                        {
+                            dependencyGraph.AddEdge(datatype, result);
+                        }
+                    }
+                }
+                GraphUtil.StronglyConnectedComponents<CtorType> sccs = new GraphUtil.StronglyConnectedComponents<CtorType>(dependencyGraph.Nodes, dependencyGraph.Predecessors, dependencyGraph.Successors);
+                sccs.Compute();
+                foreach (GraphUtil.SCC<CtorType> scc in sccs)
+                {
+                    string datatypeString = "";
+                    foreach (CtorType datatype in scc)
+                    {
+                        datatypeString += "(" + SMTLibExprLineariser.TypeToString(datatype) + " ";
+                        foreach (Function f in ctx.KnownDatatypeConstructors[datatype])
+                        {
+                            string quotedConstructorName = Namer.GetQuotedName(f, f.Name);
+                            if (f.InParams.Length == 0)
+                            {
+                                datatypeString += quotedConstructorName + " ";
+                            }
+                            else
+                            {
+                                datatypeString += "(" + quotedConstructorName + " ";
+                                foreach (Variable v in f.InParams)
+                                {
+                                    string quotedSelectorName = Namer.GetQuotedName(v, v.Name + "#" + f.Name);
+                                    datatypeString += "(" + quotedSelectorName + " " + DeclCollector.TypeToStringReg(v.TypedIdent.Type) + ") ";
+                                }
+                                datatypeString += ") ";
+                            }
+                        }
+                        datatypeString += ") ";
+                    }
+                    List<string> decls = DeclCollector.GetNewDeclarations();
+                    foreach (string decl in decls)
+                    {
+                        SendCommon(decl);
+                    }
+                    SendCommon("(declare-datatypes () (" + datatypeString + "))");
+                }
+            }
+        }
+
+        if (!AxiomsAreSetup)
+        {
+            var axioms = ctx.Axioms;
+            var nary = axioms as VCExprNAry;
+            if (nary != null && nary.Op == VCExpressionGenerator.AndOp)
+                foreach (var expr in nary.UniformArguments)
+                {
+                    var str = VCExpr2String(expr, -1);
+                    if (str != "true")
+                        AddAxiom(str);
+                }
+            else
+                AddAxiom(VCExpr2String(axioms, -1));
+            AxiomsAreSetup = true;
+        }
     }
 
     public override int FlushAxiomsToTheoremProver()
