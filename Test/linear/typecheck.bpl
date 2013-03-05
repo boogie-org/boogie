@@ -57,9 +57,13 @@ procedure D()
     call a, x := E(c, x);
 
     call c, x := E(a, x);
+
+    call a := F(a) | x := F(a);
 }
 
 procedure E({:linear "D"} a: X, {:linear "D"} b: X) returns ({:linear "D"} c: X, {:linear "D"} d: X)
 {
     c := a;
 }
+
+procedure F({:linear "D"} a: X) returns ({:linear "D"} c: X);

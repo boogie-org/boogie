@@ -84,13 +84,6 @@ namespace Microsoft.Boogie {
       node.Expr = this.VisitExpr(node.Expr);
       return node;
     }
-    public virtual Cmd VisitYieldCmd(YieldCmd node)
-    {
-        Contract.Requires(node != null);
-        Contract.Ensures(Contract.Result<Cmd>() != null);
-        node.Expr = this.VisitExpr(node.Expr);
-        return node;
-    }
     public virtual AtomicRE VisitAtomicRE(AtomicRE node) {
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<AtomicRE>() != null);
@@ -445,6 +438,12 @@ namespace Microsoft.Boogie {
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<ReturnCmd>() != null);
       return (ReturnCmd)this.VisitTransferCmd(node);
+    }
+    public virtual YieldCmd VisitYieldCmd(YieldCmd node)
+    {
+        Contract.Requires(node != null);
+        Contract.Ensures(Contract.Result<YieldCmd>() != null);
+        return node;
     }
     public virtual ReturnExprCmd VisitReturnExprCmd(ReturnExprCmd node) {
       Contract.Requires(node != null);

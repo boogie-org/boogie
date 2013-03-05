@@ -32,15 +32,16 @@ requires tidls' != None() && xls' == All();
     assume tidls' == tidls && xls' == xls;
 
     x := 42;
-    assert {:yield} xls == All();
+    yield;
+    assert xls == All();
     assert x == 42;
     call xls1, xls2 := Split(xls);
     havoc lsChild;
     assume (lsChild != None());
-    call {:async} thread(lsChild, xls1);
+    async call thread(lsChild, xls1);
     havoc lsChild;
     assume (lsChild != None());
-    call {:async} thread(lsChild, xls2);
+    async call thread(lsChild, xls2);
 }
 
 procedure thread({:linear "tid"} tidls': [X]bool, {:linear "x"} xls': [X]bool)
@@ -54,10 +55,13 @@ requires tidls' != None() && xls' != None();
 
     assume l == None();
     l := tidls;
-    assert {:yield} tidls != None() && xls != None();
+    yield;
+    assert tidls != None() && xls != None();
     x := 0;
-    assert {:yield} tidls != None() && xls != None();
+    yield;
+    assert tidls != None() && xls != None();
     assert x == 0;
-    assert {:yield} tidls != None() && xls != None();
+    yield;
+    assert tidls != None() && xls != None();
     l := None();
 }

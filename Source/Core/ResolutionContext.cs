@@ -551,6 +551,8 @@ namespace Microsoft.Boogie {
         cce.EndExpose();
       }
     }
+
+    public HashSet<Variable> parallelCallLhss = new HashSet<Variable>();
   }
 
   public class TypecheckingContext : CheckingContext {

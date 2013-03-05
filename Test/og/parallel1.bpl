@@ -24,8 +24,6 @@ procedure{:entrypoint} Main()
 {
   while (true)
   {
-    async call PB();
-    async call PC();
-    async call PD();
+    call PB() | PC() | PD();
   }
 }

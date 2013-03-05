@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Boogie;
 using System.Diagnostics;
+using System.Diagnostics.Contracts;
 
 namespace Microsoft.Boogie
 {
@@ -19,6 +20,8 @@ namespace Microsoft.Boogie
         public bool isEntrypoint;
         // isAtomic is true if there are no yields transitively in any implementation
         public bool isAtomic;
+        // inParallelCall is true iff this procedure is involved in some parallel call
+        public bool inParallelCall;
         public Procedure yieldCheckerProc;
         public Implementation yieldCheckerImpl;
         public Procedure dummyAsyncTargetProc;
@@ -27,6 +30,7 @@ namespace Microsoft.Boogie
             containsYield = false;
             isThreadStart = false;
             isAtomic = true;
+            inParallelCall = false;
             yieldCheckerProc = null;
             yieldCheckerImpl = null;
             dummyAsyncTargetProc = null;
@@ -72,15 +76,12 @@ namespace Microsoft.Boogie
             }
             return base.VisitImplementation(node);
         }
-        public override Cmd VisitAssertCmd(AssertCmd node)
+        public override YieldCmd VisitYieldCmd(YieldCmd node)
         {
-            if (QKeyValue.FindBoolAttribute(node.Attributes, "yield"))
-            {
-                procNameToInfo[currentImpl.Name].containsYield = true;
-                procNameToInfo[currentImpl.Name].isAtomic = false;
-                CreateYieldCheckerProcedure(currentImpl.Proc);
-            }
-            return base.VisitAssertCmd(node);
+            procNameToInfo[currentImpl.Name].containsYield = true;
+            procNameToInfo[currentImpl.Name].isAtomic = false;
+            CreateYieldCheckerProcedure(currentImpl.Proc);
+            return base.VisitYieldCmd(node);
         }
         public override Cmd VisitCallCmd(CallCmd node)
         {
@@ -88,7 +89,7 @@ namespace Microsoft.Boogie
             {
                 procNameToInfo[node.Proc.Name] = new ProcedureInfo();
             }
-            if (QKeyValue.FindBoolAttribute(node.Attributes, "async"))
+            if (node.IsAsync)
             {
                 procNameToInfo[node.Proc.Name].isThreadStart = true;
                 CreateYieldCheckerProcedure(node.Proc);
@@ -97,6 +98,21 @@ namespace Microsoft.Boogie
                     var dummyAsyncTargetName = string.Format("DummyAsyncTarget_{0}", node.Proc.Name);
                     var dummyAsyncTargetProc = new Procedure(Token.NoToken, dummyAsyncTargetName, node.Proc.TypeParameters, node.Proc.InParams, node.Proc.OutParams, node.Proc.Requires, new IdentifierExprSeq(), new EnsuresSeq());
                     procNameToInfo[node.Proc.Name].dummyAsyncTargetProc = dummyAsyncTargetProc;
+                }
+            }
+            if (node.InParallelWith != null)
+            {
+                CallCmd iter = node;
+                while (iter != null)
+                {
+                    if (!procNameToInfo.ContainsKey(iter.Proc.Name))
+                    {
+                        procNameToInfo[iter.Proc.Name] = new ProcedureInfo();
+                    }
+                    procNameToInfo[iter.Proc.Name].isThreadStart = true;
+                    CreateYieldCheckerProcedure(iter.Proc);
+                    procNameToInfo[iter.Proc.Name].inParallelCall = true;
+                    iter = iter.InParallelWith;
                 }
             }
             return base.VisitCallCmd(node);
@@ -138,7 +154,7 @@ namespace Microsoft.Boogie
         public override Cmd VisitCallCmd(CallCmd node)
         {
             ProcedureInfo info = procNameToInfo[node.callee];
-            if (!QKeyValue.FindBoolAttribute(node.Attributes, "async") && !info.isAtomic)
+            if (!node.IsAsync && !info.isAtomic)
             {
                 procNameToInfo[currentImpl.Name].isAtomic = false;
                 moreProcessingRequired = true;
@@ -153,6 +169,7 @@ namespace Microsoft.Boogie
         IdentifierExprSeq globalMods;
         Hashtable ogOldGlobalMap;
         Program program;
+        Dictionary<string, Procedure> parallelCallDesugarings; 
 
         public OwickiGriesTransform(Program program)
         {
@@ -167,6 +184,7 @@ namespace Microsoft.Boogie
                 ogOldGlobalMap[g] = new IdentifierExpr(Token.NoToken, oldg);
                 globalMods.Add(new IdentifierExpr(Token.NoToken, g));
             }
+            parallelCallDesugarings = new Dictionary<string, Procedure>();
         }
 
         private void AddCallsToYieldCheckers(CmdSeq newCmds)
@@ -209,6 +227,72 @@ namespace Microsoft.Boogie
             }
         }
 
+        public Procedure DesugarParallelCallCmd(CallCmd callCmd, out List<Expr> ins, out List<IdentifierExpr> outs)
+        {
+            List<string> parallelCalleeNames = new List<string>();
+            CallCmd iter = callCmd;
+            ins = new List<Expr>();
+            outs = new List<IdentifierExpr>();
+            while (iter != null)
+            {
+                parallelCalleeNames.Add(iter.Proc.Name);
+                ins.AddRange(iter.Ins);
+                outs.AddRange(iter.Outs);
+                iter = iter.InParallelWith;
+            }
+            parallelCalleeNames.Sort();
+            string procName = "og";
+            foreach (string calleeName in parallelCalleeNames)
+            {
+                procName = procName + "@" + calleeName;
+            }
+            if (parallelCallDesugarings.ContainsKey(procName))
+                return parallelCallDesugarings[procName];
+
+            VariableSeq inParams = new VariableSeq();
+            VariableSeq outParams = new VariableSeq();
+            RequiresSeq requiresSeq = new RequiresSeq();
+            EnsuresSeq ensuresSeq = new EnsuresSeq();
+            IdentifierExprSeq ieSeq = new IdentifierExprSeq();
+            int count = 0;
+            while (callCmd != null)
+            {
+                Hashtable map = new Hashtable();
+                foreach (Variable x in callCmd.Proc.InParams)
+                {
+                    Variable y = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "og@" + count + x.Name, x.TypedIdent.Type), true);
+                    inParams.Add(y);
+                    map[x] = new IdentifierExpr(Token.NoToken, y);
+                }
+                foreach (Variable x in callCmd.Proc.OutParams)
+                {
+                    Variable y = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "og@" + count + x.Name, x.TypedIdent.Type), false);
+                    outParams.Add(y);
+                    map[x] = new IdentifierExpr(Token.NoToken, y);
+                }
+                Contract.Assume(callCmd.Proc.TypeParameters.Length == 0);
+                Substitution subst = Substituter.SubstitutionFromHashtable(map);
+                foreach (Requires req in callCmd.Proc.Requires)
+                {
+                    requiresSeq.Add(new Requires(req.Free, Substituter.Apply(subst, req.Condition)));
+                }
+                foreach (IdentifierExpr ie in callCmd.Proc.Modifies)
+                {
+                    ieSeq.Add(ie);
+                }
+                foreach (Ensures ens in callCmd.Proc.Ensures)
+                {
+                    ensuresSeq.Add(new Ensures(ens.Free, Substituter.Apply(subst, ens.Condition)));
+                } 
+                count++;
+                callCmd = callCmd.InParallelWith;
+            }
+
+            Procedure proc = new Procedure(Token.NoToken, procName, new TypeVariableSeq(), inParams, outParams, requiresSeq, ieSeq, ensuresSeq);
+            parallelCallDesugarings[procName] = proc;
+            return proc;
+        }
+
         public void Transform()
         {
             foreach (var decl in program.TopLevelDeclarations)
@@ -235,15 +319,23 @@ namespace Microsoft.Boogie
                 {
                     Variable inParam = impl.Proc.InParams[i];
                     var copy = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, inParam.Name, inParam.TypedIdent.Type));
+                    var ie = new IdentifierExpr(Token.NoToken, copy);
                     locals.Add(copy);
-                    map[impl.InParams[i]] = new IdentifierExpr(Token.NoToken, copy);
+                    // substitute for both implementation and procedure parameters because yield predicates can be generated
+                    // either by assertions in the implementation or preconditions and postconditions in the procedure
+                    map[impl.InParams[i]] = ie;
+                    map[impl.Proc.InParams[i]] = ie;
                 }
                 for (int i = 0; i < impl.Proc.OutParams.Length; i++)
                 {
                     Variable outParam = impl.Proc.OutParams[i];
                     var copy = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, outParam.Name, outParam.TypedIdent.Type), outParam.Attributes);
+                    var ie = new IdentifierExpr(Token.NoToken, copy);
                     locals.Add(copy);
-                    map[impl.OutParams[i]] = new IdentifierExpr(Token.NoToken, copy);
+                    // substitute for both implementation and procedure parameters because yield predicates can be generated
+                    // either by assertions in the implementation or preconditions and postconditions in the procedure
+                    map[impl.OutParams[i]] = ie;
+                    map[impl.Proc.OutParams[i]] = ie;
                 }
                 foreach (Variable local in impl.LocVars)
                 {
@@ -273,7 +365,17 @@ namespace Microsoft.Boogie
                     foreach (Requires r in impl.Proc.Requires)
                     {
                         if (r.Free) continue;
-                        cmds.Add(new AssertCmd(Token.NoToken, r.Condition));
+                        cmds.Add(new AssertCmd(r.tok, r.Condition));
+                    }
+                    yields.Add(cmds);
+                    cmds = new CmdSeq();
+                }
+                if (info.inParallelCall && impl.Proc.Ensures.Length > 0)
+                {
+                    foreach (Ensures e in impl.Proc.Ensures)
+                    {
+                        if (e.Free) continue;
+                        cmds.Add(new AssertCmd(e.tok, e.Condition));
                     }
                     yields.Add(cmds);
                     cmds = new CmdSeq();
@@ -284,26 +386,43 @@ namespace Microsoft.Boogie
                     CmdSeq newCmds = new CmdSeq();
                     for (int i = 0; i < b.Cmds.Length; i++)
                     {
-                        PredicateCmd pcmd = b.Cmds[i] as PredicateCmd;
-                        if (pcmd == null || QKeyValue.FindBoolAttribute(pcmd.Attributes, "yield"))
+                        Cmd cmd = b.Cmds[i];
+                        if (cmd is YieldCmd)
                         {
-                            if (cmds.Length > 0)
-                            {
-                                DesugarYield(cmds, newCmds);
-                                yields.Add(cmds);
-                                cmds = new CmdSeq();
-                            }
-                            insideYield = (pcmd != null);
+                            insideYield = true;
+                            continue;
                         }
                         if (insideYield)
                         {
-                            cmds.Add(pcmd);
+                            PredicateCmd pcmd = cmd as PredicateCmd;
+                            if (pcmd == null)
+                            {
+                                DesugarYield(cmds, newCmds);
+                                if (cmds.Length > 0)
+                                {
+                                    yields.Add(cmds);
+                                    cmds = new CmdSeq();
+                                }
+                                insideYield = false;
+                            }
+                            else
+                            {
+                                cmds.Add(pcmd);
+                            }
                         }
-
-                        CallCmd callCmd = b.Cmds[i] as CallCmd;
+                        CallCmd callCmd = cmd as CallCmd;
                         if (callCmd != null)
                         {
-                            if (QKeyValue.FindBoolAttribute(callCmd.Attributes, "async"))
+                            if (callCmd.InParallelWith != null)
+                            {
+                                List<Expr> ins;
+                                List<IdentifierExpr> outs;
+                                Procedure dummyParallelCallDesugaring = DesugarParallelCallCmd(callCmd, out ins, out outs);
+                                CallCmd dummyCallCmd = new CallCmd(Token.NoToken, dummyParallelCallDesugaring.Name, ins, outs);
+                                dummyCallCmd.Proc = dummyParallelCallDesugaring;
+                                newCmds.Add(dummyCallCmd);
+                            }
+                            else if (callCmd.IsAsync)
                             {
                                 var dummyAsyncTargetProc = procNameToInfo[callCmd.callee].dummyAsyncTargetProc;
                                 CallCmd dummyCallCmd = new CallCmd(Token.NoToken, dummyAsyncTargetProc.Name, callCmd.Ins, callCmd.Outs);
@@ -323,14 +442,17 @@ namespace Microsoft.Boogie
                         }
                         else
                         {
-                            newCmds.Add(b.Cmds[i]);
+                            newCmds.Add(cmd);
                         }
                     }
-                    if (cmds.Length > 0)
+                    if (insideYield)
                     {
                         DesugarYield(cmds, newCmds);
-                        yields.Add(cmds);
-                        cmds = new CmdSeq();
+                        if (cmds.Length > 0)
+                        {
+                            yields.Add(cmds);
+                            cmds = new CmdSeq();
+                        }
                     } 
                     if (b.TransferCmd is ReturnCmd && (!info.isAtomic || info.isEntrypoint || info.isThreadStart))
                     {
@@ -393,7 +515,7 @@ namespace Microsoft.Boogie
                         PredicateCmd predCmd = (PredicateCmd)cmd;
                         var newExpr = Substituter.ApplyReplacingOldExprs(subst, oldSubst, predCmd.Expr);
                         if (predCmd is AssertCmd)
-                            newCmds.Add(new AssertCmd(Token.NoToken, newExpr));
+                            newCmds.Add(new AssertCmd(predCmd.tok, newExpr));
                         else
                             newCmds.Add(new AssumeCmd(Token.NoToken, newExpr));
                     }

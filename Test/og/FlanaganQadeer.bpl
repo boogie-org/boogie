@@ -13,7 +13,7 @@ procedure {:entrypoint} main()
     {
         havoc tid, val;
 	assume tid != nil;
-        call {:async} foo(tid, val);
+        async call foo(tid, val);
     }
 }
 
@@ -39,6 +39,7 @@ ensures tid == tid';
 ensures old(l) == tid ==> old(l) == l && old(x) == x;
 {
     assume tid == tid';
-    assert {:yield} tid != nil;
+    yield;
+    assert tid != nil;
     assert (old(l) == tid ==> old(l) == l && old(x) == x);
 }
