@@ -94,7 +94,9 @@ public class SmartBlockPredicator {
       cmdSeq.Add(aCmd);
     } else if (cmd is AssumeCmd) {
       var aCmd = (AssumeCmd)cmd;
-      cmdSeq.Add(new AssumeCmd(Token.NoToken, Expr.Imp(p, aCmd.Expr)));
+      Expr newExpr = new EnabledReplacementVisitor(p).VisitExpr(aCmd.Expr);
+      aCmd.Expr = QKeyValue.FindBoolAttribute(aCmd.Attributes, "do_not_predicate") ? newExpr : Expr.Imp(p, newExpr);
+      cmdSeq.Add(aCmd);
     } else if (cmd is HavocCmd) {
       var hCmd = (HavocCmd)cmd;
       foreach (IdentifierExpr v in hCmd.Vars) {
@@ -216,12 +218,22 @@ public class SmartBlockPredicator {
 
     while (i.MoveNext()) {
       var block = i.Current;
-      if (uni != null && uni.IsUniform(impl.Name, block.Item1))
-        continue;
+
       if (block.Item2) {
-        if (block.Item1 == header)
+        if (block.Item1 == header) {
           return;
-      } else {
+        }
+      }
+     
+      if (uni != null && uni.IsUniform(impl.Name, block.Item1)) {
+        if (blockGraph.Headers.Contains(block.Item1)) {
+          parentMap[block.Item1] = header;
+          AssignPredicates(blockGraph, dom, pdom, i, headPredicate, ref predCount);
+        }
+        continue;
+      }
+
+      if (!block.Item2) {
         if (blockGraph.Headers.Contains(block.Item1)) {
           parentMap[block.Item1] = header;
           var loopPred = FreshPredicate(ref predCount);
@@ -494,15 +506,18 @@ public class SmartBlockPredicator {
               .ToArray());
 
           if (impl == null) {
-            var newRequires = new RequiresSeq();
+            var fpIdentifierExpr = new IdentifierExpr(Token.NoToken, fpVar);
             foreach (Requires r in proc.Requires) {
-              newRequires.Add(new Requires(r.Free,
-                new EnabledReplacementVisitor(new IdentifierExpr(Token.NoToken, fpVar)).VisitExpr(r.Condition)));
+              new EnabledReplacementVisitor(fpIdentifierExpr).VisitExpr(r.Condition);
+              if (!QKeyValue.FindBoolAttribute(r.Attributes, "do_not_predicate")) {
+                r.Condition = Expr.Imp(fpIdentifierExpr, r.Condition);
+              }
             }
-            var newEnsures = new EnsuresSeq();
             foreach (Ensures e in proc.Ensures) {
-              newEnsures.Add(new Ensures(e.Free,
-                new EnabledReplacementVisitor(new IdentifierExpr(Token.NoToken, fpVar)).VisitExpr(e.Condition)));
+              new EnabledReplacementVisitor(new IdentifierExpr(Token.NoToken, fpVar)).VisitExpr(e.Condition);
+              if (!QKeyValue.FindBoolAttribute(e.Attributes, "do_not_predicate")) {
+                e.Condition = Expr.Imp(fpIdentifierExpr, e.Condition);
+              }
             }
           }
         }
