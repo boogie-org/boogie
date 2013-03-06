@@ -1,4 +1,0 @@
-Verification of FunctionPostcondition.chalice using parameters="" 
-
-The program did not typecheck.
-8.5: the postcondition of functions cannot contain unfolding expressions at the moment

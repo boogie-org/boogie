@@ -1,9 +1,0 @@
-class C {
-  method nullPointerException()
-  {
-    while (true)
-    {
-      fork nullPointerException(); // previously, fork without token inside a while loop introduced a nullpointer exception.
-    }
-  }
-}

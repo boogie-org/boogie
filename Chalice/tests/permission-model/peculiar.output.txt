@@ -1,8 +1,0 @@
-Verification of peculiar.chalice using parameters="" 
-
-  35.5: Assertion might not hold. Insufficient fraction at 35.12 for Cell.x.
-
-The program did not fully verify; the smoke warnings might be misleading if contradictions are introduced by failing proof attempts of the verification.
-  30.3: The end of method t4 is unreachable.
-
-Boogie program verifier finished with 1 errors and 1 smoke test warnings

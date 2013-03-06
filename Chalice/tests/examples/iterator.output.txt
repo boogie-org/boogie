@@ -1,4 +1,0 @@
-Verification of iterator.chalice using parameters="" 
-
-
-Boogie program verifier finished with 0 errors and 0 smoke test warnings

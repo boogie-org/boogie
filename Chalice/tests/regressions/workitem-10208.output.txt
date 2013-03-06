@@ -1,8 +1,0 @@
-Verification of workitem-10208.chalice using parameters="" 
-
-  26.5: Assertion might not hold. The expression at 26.12 might not evaluate to true.
-
-The program did not fully verify; the smoke warnings might be misleading if contradictions are introduced by failing proof attempts of the verification.
-  9.3: The end of method test is unreachable.
-
-Boogie program verifier finished with 1 errors and 1 smoke test warnings

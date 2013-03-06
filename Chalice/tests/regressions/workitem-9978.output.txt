@@ -1,6 +1,0 @@
-Verification of workitem-9978.chalice using parameters="" 
-
-
-  4.5: The statements after the while-loop are unreachable.
-
-Boogie program verifier finished with 0 errors and 1 smoke test warnings

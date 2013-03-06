@@ -12,14 +12,6 @@ if errorlevel 1 goto fail
 devenv ..\source\Boogie.sln /Build
 @echo off
 if errorlevel 1 goto fail
-@echo on
-devenv ..\Source\Dafny.sln /Clean
-@echo off
-if errorlevel 1 goto fail
-@echo on
-devenv ..\Source\Dafny.sln /Build
-@echo off
-if errorlevel 1 goto fail
 goto reg
 
 :Reg

@@ -1,5 +1,0 @@
-Verification of test4.chalice using parameters="" 
-
-  54.2: Assertion might not hold. The expression at 54.9 might not evaluate to true.
-
-Boogie program verifier finished with 1 errors and 0 smoke test warnings

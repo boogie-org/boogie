@@ -1,3 +1,0 @@
-Verification of predicate_error1.chalice using parameters="" 
-
-Error: Not supported: 17.5: Scaling epsilon permissions with non-full permissions is not possible.

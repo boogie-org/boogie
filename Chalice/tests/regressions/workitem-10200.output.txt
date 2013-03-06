@@ -1,5 +1,0 @@
-Verification of workitem-10200.chalice using parameters="" 
-
-  7.15: The heap of the callee might not be strictly smaller than the heap of the caller.
-
-Boogie program verifier finished with 1 errors and 0 smoke test warnings

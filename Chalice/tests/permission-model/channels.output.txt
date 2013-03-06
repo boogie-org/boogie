@@ -1,6 +1,0 @@
-Verification of channels.chalice using parameters="" 
-
-  8.5: The where clause at 44.24 might not hold. Insufficient fraction at 44.24 for C.f.
-  18.3: The postcondition at 20.13 might not hold. Insufficient fraction at 20.13 for C.f.
-
-Boogie program verifier finished with 2 errors and 0 smoke test warnings

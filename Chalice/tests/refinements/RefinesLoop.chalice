@@ -1,3 +1,0 @@
-class A refines B {}
-class B refines C {}
-class C refines A {}

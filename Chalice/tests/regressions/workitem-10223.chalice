@@ -1,8 +1,0 @@
-class Lala {
-    var next: Lala;
-    var x: int;
-    predicate inv {
-        acc(next) && acc(x) &&
-        (next != null ==> (next.inv && unfolding next.inv in this.x > next.x))
-    }
-}

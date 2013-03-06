@@ -1,8 +1,0 @@
-Verification of setset.chalice using parameters="" 
-
-  55.5: Assertion might not hold. The expression at 55.12 might not evaluate to true.
-
-The program did not fully verify; the smoke warnings might be misleading if contradictions are introduced by failing proof attempts of the verification.
-  27.3: The end of method main is unreachable.
-
-Boogie program verifier finished with 1 errors and 1 smoke test warnings
