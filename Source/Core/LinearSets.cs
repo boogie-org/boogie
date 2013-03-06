@@ -596,6 +596,7 @@ namespace Microsoft.Boogie
         public Function mapOrBool;
         public Function mapImpBool;
         public Function mapConstBool;
+        public List<Axiom> axioms;
 
         public LinearDomain(Program program, Variable var, string domainName)
         {
@@ -606,6 +607,7 @@ namespace Microsoft.Boogie
                 this.elementType = mapType.Arguments[0];
             }
             this.allocator = new GlobalVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("allocator_{0}", domainName), new MapType(Token.NoToken, new TypeVariableSeq(), new TypeSeq(this.elementType), Type.Bool)));
+            this.axioms = new List<Axiom>();
 
             MapType mapTypeBool = new MapType(Token.NoToken, new TypeVariableSeq(), new TypeSeq(this.elementType), Type.Bool);
             MapType mapTypeInt = new MapType(Token.NoToken, new TypeVariableSeq(), new TypeSeq(this.elementType), Type.Int);
