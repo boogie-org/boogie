@@ -330,17 +330,9 @@ namespace Microsoft.Boogie.GraphUtil {
 
     public Node LeastCommonAncestor(Node n1, Node n2)
     {
-        var nums = new HashSet<int>();
         int num1 = nodeToPostOrderNumber[n1], num2 = nodeToPostOrderNumber[n2];
-
-        while (true)
-        {
-            if (!nums.Add(num1))
-                return postOrderNumberToNode[num1].Val;
-            if (!nums.Add(num2))
-                return postOrderNumberToNode[num2].Val;
-            num1 = doms[num1]; num2 = doms[num2];
-        }
+        int lca = intersect(num1, num2, this.doms);
+        return postOrderNumberToNode[lca].Val;
     }
   }
 
