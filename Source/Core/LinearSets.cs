@@ -414,6 +414,10 @@ namespace Microsoft.Boogie
             foreach (LinearDomain domain in linearDomains.Values)
             {
                 program.TopLevelDeclarations.Add(domain.allocator);
+                foreach (Axiom axiom in domain.axioms)
+                {
+                    program.TopLevelDeclarations.Add(axiom);
+                }
             }
         }
 
@@ -615,29 +619,121 @@ namespace Microsoft.Boogie
                                           new VariableSeq(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "a", mapTypeBool), true),
                                                           new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "b", mapTypeBool), true)),
                                           new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "c", mapTypeBool), false));
-            this.mapOrBool.AddAttribute("builtin", "MapOr");
+            if (CommandLineOptions.Clo.UseArrayTheory)
+            {
+                this.mapOrBool.AddAttribute("builtin", "MapOr");
+            }
+            else
+            {
+                BoundVariable a = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, "a", mapTypeBool));
+                IdentifierExpr aie = new IdentifierExpr(Token.NoToken, a);
+                BoundVariable b = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, "b", mapTypeBool));
+                IdentifierExpr bie = new IdentifierExpr(Token.NoToken, b);
+                BoundVariable x = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, "x", elementType));
+                IdentifierExpr xie = new IdentifierExpr(Token.NoToken, x);
+                var lhsTerm = new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1), 
+                                           new ExprSeq(new NAryExpr(Token.NoToken, new FunctionCall(mapOrBool), new ExprSeq(aie, bie)), xie));
+                var rhsTerm = Expr.Binary(BinaryOperator.Opcode.Or,
+                                          new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1), new ExprSeq(aie, xie)),
+                                          new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1), new ExprSeq(bie, xie)));
+                var axiomExpr = new ForallExpr(Token.NoToken, new VariableSeq(a, b, x), Expr.Binary(BinaryOperator.Opcode.Eq, lhsTerm, rhsTerm));
+                axiomExpr.Typecheck(new TypecheckingContext(null));
+                axioms.Add(new Axiom(Token.NoToken, axiomExpr));
+            }
 
             this.mapImpBool = new Function(Token.NoToken, "linear@MapImp",
                                               new VariableSeq(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "a", mapTypeBool), true),
                                                               new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "b", mapTypeBool), true)),
                                               new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "c", mapTypeBool), false));
-            this.mapImpBool.AddAttribute("builtin", "MapImp");
+            if (CommandLineOptions.Clo.UseArrayTheory)
+            {
+                this.mapImpBool.AddAttribute("builtin", "MapImp");
+            }
+            else
+            {
+                BoundVariable a = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, "a", mapTypeBool));
+                IdentifierExpr aie = new IdentifierExpr(Token.NoToken, a);
+                BoundVariable b = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, "b", mapTypeBool));
+                IdentifierExpr bie = new IdentifierExpr(Token.NoToken, b);
+                BoundVariable x = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, "x", elementType));
+                IdentifierExpr xie = new IdentifierExpr(Token.NoToken, x);
+                var lhsTerm = new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1), 
+                                           new ExprSeq(new NAryExpr(Token.NoToken, new FunctionCall(mapImpBool), new ExprSeq(aie, bie)), xie));
+                var rhsTerm = Expr.Binary(BinaryOperator.Opcode.Imp,
+                                          new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1), new ExprSeq(aie, xie)),
+                                          new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1), new ExprSeq(bie, xie)));
+                var axiomExpr = new ForallExpr(Token.NoToken, new VariableSeq(a, b, x), Expr.Binary(BinaryOperator.Opcode.Eq, lhsTerm, rhsTerm));
+                axiomExpr.Typecheck(new TypecheckingContext(null));
+                axioms.Add(new Axiom(Token.NoToken, axiomExpr));
+            }
 
             this.mapConstBool = new Function(Token.NoToken, "linear@MapConstBool",
                                               new VariableSeq(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "b", Type.Bool), true)),
                                               new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "c", mapTypeBool), false));
-            this.mapConstBool.AddAttribute("builtin", "MapConst");
+            if (CommandLineOptions.Clo.UseArrayTheory)
+            {
+                this.mapConstBool.AddAttribute("builtin", "MapConst");
+            }
+            else
+            {
+                BoundVariable x = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, "x", elementType));
+                IdentifierExpr xie = new IdentifierExpr(Token.NoToken, x);
+                var trueTerm = new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1), 
+                                           new ExprSeq(new NAryExpr(Token.NoToken, new FunctionCall(mapConstBool), new ExprSeq(Expr.True)), xie));
+                var trueAxiomExpr = new ForallExpr(Token.NoToken, new VariableSeq(x), trueTerm);
+                trueAxiomExpr.Typecheck(new TypecheckingContext(null));
+                axioms.Add(new Axiom(Token.NoToken, trueAxiomExpr));
+                var falseTerm = new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1),
+                                           new ExprSeq(new NAryExpr(Token.NoToken, new FunctionCall(mapConstBool), new ExprSeq(Expr.False)), xie)); 
+                var falseAxiomExpr = new ForallExpr(Token.NoToken, new VariableSeq(x), Expr.Unary(Token.NoToken, UnaryOperator.Opcode.Not, falseTerm));
+                falseAxiomExpr.Typecheck(new TypecheckingContext(null));
+                axioms.Add(new Axiom(Token.NoToken, falseAxiomExpr));
+            }
 
             this.mapEqInt = new Function(Token.NoToken, "linear@MapEq",
                                               new VariableSeq(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "a", mapTypeInt), true),
                                                               new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "b", mapTypeInt), true)),
                                               new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "c", mapTypeBool), false));
-            this.mapEqInt.AddAttribute("builtin", "MapEq");
+            if (CommandLineOptions.Clo.UseArrayTheory)
+            {
+                this.mapEqInt.AddAttribute("builtin", "MapEq");
+            }
+            else
+            {
+                BoundVariable a = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, "a", mapTypeInt));
+                IdentifierExpr aie = new IdentifierExpr(Token.NoToken, a);
+                BoundVariable b = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, "b", mapTypeInt));
+                IdentifierExpr bie = new IdentifierExpr(Token.NoToken, b);
+                BoundVariable x = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, "x", elementType));
+                IdentifierExpr xie = new IdentifierExpr(Token.NoToken, x);
+                var lhsTerm = new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1), 
+                                           new ExprSeq(new NAryExpr(Token.NoToken, new FunctionCall(mapEqInt), new ExprSeq(aie, bie)), xie));
+                var rhsTerm = Expr.Binary(BinaryOperator.Opcode.Eq,
+                                          new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1), new ExprSeq(aie, xie)),
+                                          new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1), new ExprSeq(bie, xie)));
+                var axiomExpr = new ForallExpr(Token.NoToken, new VariableSeq(a, b, x), Expr.Binary(BinaryOperator.Opcode.Eq, lhsTerm, rhsTerm));
+                axiomExpr.Typecheck(new TypecheckingContext(null));
+                axioms.Add(new Axiom(Token.NoToken, axiomExpr));
+            }
 
             this.mapConstInt = new Function(Token.NoToken, "linear@MapConstInt",
                                           new VariableSeq(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "b", Type.Int), true)),
                                           new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "c", mapTypeInt), false));
-            this.mapConstInt.AddAttribute("builtin", "MapConst");
+            if (CommandLineOptions.Clo.UseArrayTheory)
+            {
+                this.mapConstInt.AddAttribute("builtin", "MapConst");
+            }
+            else
+            {
+                BoundVariable a = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, "a", Type.Int));
+                IdentifierExpr aie = new IdentifierExpr(Token.NoToken, a);
+                BoundVariable x = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, "x", elementType));
+                IdentifierExpr xie = new IdentifierExpr(Token.NoToken, x);
+                var lhsTerm = new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1), new ExprSeq(new NAryExpr(Token.NoToken, new FunctionCall(mapConstInt), new ExprSeq(aie)), xie));
+                var axiomExpr = new ForallExpr(Token.NoToken, new VariableSeq(a, x), Expr.Binary(BinaryOperator.Opcode.Eq, lhsTerm, aie));
+                axiomExpr.Typecheck(new TypecheckingContext(null));
+                axioms.Add(new Axiom(Token.NoToken, axiomExpr));
+            }
         }
     }
 }
