@@ -551,7 +551,7 @@ namespace Microsoft.Boogie.Houdini {
        */
     }
 
-    public bool MatchCandidate(Expr boogieExpr, out Variable candidateConstant) {
+    public static bool MatchCandidate(Expr boogieExpr, IEnumerable<string> candidates, out string candidateConstant) {
       candidateConstant = null;
       NAryExpr e = boogieExpr as NAryExpr;
       if (e != null && e.Fun is BinaryOperator && ((BinaryOperator)e.Fun).Op == BinaryOperator.Opcode.Imp) {
@@ -559,25 +559,29 @@ namespace Microsoft.Boogie.Houdini {
         Expr consequent = e.Args[1];
 
         IdentifierExpr id = antecedent as IdentifierExpr;
-        if (id != null && id.Decl is Constant && houdiniConstants.Select(item => item.Name).Contains(id.Decl.Name)) {
-          candidateConstant = id.Decl;
+        if (id != null && id.Decl is Constant && candidates.Contains(id.Decl.Name)) {
+          candidateConstant = id.Decl.Name;
           return true;
         }
 
-        if (MatchCandidate(consequent, out candidateConstant))
+        if (MatchCandidate(consequent, candidates, out candidateConstant))
           return true;
       }
       return false;
     }
 
-    public bool MatchCandidateByName(Expr boogieExpr, out string candidateConstant) {
+    public bool MatchCandidate(Expr boogieExpr, out Variable candidateConstant) {
       candidateConstant = null;
-      Variable c;
-      if(MatchCandidate(boogieExpr, out c)) {
-        candidateConstant = c.Name;
+      string candidateString;
+      if(MatchCandidate(boogieExpr, houdiniConstants.Select(item => item.Name), out candidateString)) {
+        candidateConstant = houdiniConstants.Where(item => item.Name.Equals(candidateString)).ToList()[0];
         return true;
       }
       return false;
+    }
+
+    public bool MatchCandidate(Expr boogieExpr, out string candidateConstant) {
+      return MatchCandidate(boogieExpr, houdiniConstants.Select(item => item.Name), out candidateConstant);
     }
 
     // For Explain houdini: it decorates the condition \phi as (vpos && (\phi || \not vneg))
@@ -1072,7 +1076,7 @@ namespace Microsoft.Boogie.Houdini {
         foreach (Cmd cmd in block.Cmds) {
           string c;
           AssertCmd assertCmd = cmd as AssertCmd;
-          if (assertCmd != null && MatchCandidateByName(assertCmd.Expr, out c)) {
+          if (assertCmd != null && MatchCandidate(assertCmd.Expr, out c)) {
             var cVar = currentHoudiniState.Assignment.Keys.Where(item => item.Name.Equals(c)).ToList()[0];
             if (currentHoudiniState.Assignment[cVar]) {
               Hashtable cToTrue = new Hashtable();
@@ -1120,7 +1124,7 @@ namespace Microsoft.Boogie.Houdini {
 
       private Expr ApplyAssignment(Expr e) {
         string c;
-        if (houdini.MatchCandidateByName(e, out c)) {
+        if (houdini.MatchCandidate(e, out c)) {
           var cVar = houdini.currentHoudiniState.Assignment.Keys.Where(item => item.Name.Equals(c)).ToList()[0];
           Hashtable cToTrue = new Hashtable();
           Variable cVarProg = prog.TopLevelDeclarations.OfType<Variable>().Where(item => item.Name.Equals(c)).ToList()[0];
