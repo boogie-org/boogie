@@ -1,4 +1,0 @@
-Verification of RockBand.chalice using parameters="-checkLeaks -defaults -autoFold" 
-
-
-Boogie program verifier finished with 0 errors and 0 smoke test warnings

@@ -12,3 +12,7 @@ Execution trace:
     t2.bpl(16,3): anon0
 
 Boogie program verifier finished with 0 verified, 1 error
+
+-------------------- ex.bpl --------------------
+
+Boogie program verifier finished with 1 verified, 0 errors

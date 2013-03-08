@@ -1,5 +1,0 @@
-Verification of workitem-10198.chalice using parameters="" 
-
-  12.2: Method might lock/unlock more than allowed.
-
-Boogie program verifier finished with 1 errors and 0 smoke test warnings

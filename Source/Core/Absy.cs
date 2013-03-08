@@ -2009,7 +2009,11 @@ namespace Microsoft.Boogie {
         RegisterFormals(OutParams, rc);
         ResolveAttributes(rc);
         if (Body != null)
-          Body.Resolve(rc);
+        {
+            rc.StateMode = ResolutionContext.State.StateLess;
+            Body.Resolve(rc);
+            rc.StateMode = ResolutionContext.State.Single;
+        }
         rc.PopVarContext();
         Type.CheckBoundVariableOccurrences(TypeParameters,
                                            InParams.ToTypeSeq, OutParams.ToTypeSeq,

@@ -1,8 +1,0 @@
-Verification of cell.chalice using parameters="" 
-
-  142.5: Assertion might not hold. Insufficient fraction at 142.12 for Cell.valid.
-
-The program did not fully verify; the smoke warnings might be misleading if contradictions are introduced by failing proof attempts of the verification.
-  135.3: The end of method main2 is unreachable.
-
-Boogie program verifier finished with 1 errors and 1 smoke test warnings

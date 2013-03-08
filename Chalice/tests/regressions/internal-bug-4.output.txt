@@ -1,6 +1,0 @@
-Verification of internal-bug-4.chalice using parameters="" 
-
-The program did not typecheck.
-7.3: the postcondition of functions cannot contain accessibility predicates (permissions are returned automatically)
-11.3: the postcondition of functions cannot contain accessibility predicates (permissions are returned automatically)
-15.3: the postcondition of functions cannot contain accessibility predicates (permissions are returned automatically)

@@ -1,2 +1,0 @@
-test0		 Use    Translation of Statements
-test1    Use    Some simple verification tests

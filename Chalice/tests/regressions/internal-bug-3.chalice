@@ -1,8 +1,0 @@
-class C
-{
-  var f: int
-  method M ()
-    requires acc(f, 100-rd(non_existing_field))
-  {
-  }
-}

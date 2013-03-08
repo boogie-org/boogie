@@ -1,6 +1,0 @@
-Verification of dining-philosophers.chalice using parameters="" 
-
-
-  24.5: The statements after the while-loop are unreachable.
-
-Boogie program verifier finished with 0 errors and 1 smoke test warnings

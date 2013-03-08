@@ -1,5 +1,0 @@
-Verification of UnboundedThreads.chalice using parameters="" 
-
-  40.17: The loop invariant at 40.17 might not be preserved by the loop. Insufficient epsilons at 40.27  for C.f.
-
-Boogie program verifier finished with 1 errors and 0 smoke test warnings

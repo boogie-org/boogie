@@ -1,33 +1,18 @@
 syntax: regexp
 ^Source/t$
 ^Source/_ReSharper\.Boogie$
-^(Source|BCT|Jennisys)/.*\.(user|suo|cache|vs10x)$
-^Source/(Core|Dafny)/(Parser|Scanner).cs.old$
+^Source/.*\.(user|suo|cache|vs10x)$
+^Source/Core/(Parser|Scanner).cs.old$
 ^Binaries/.*\.(dll|pdb|exe|manifest|config)$
 ^.*(bin|obj)/([^/]*/)?(Debug|Release|Checked|Debug All|DEBUG ALL)/.*$
-^Binaries/BytecodeTranslator$
-^BCT/Binaries/.*$
-^Chalice/tests/(examples|permission-model|refinements|general-tests|regressions|predicates)/.*\.bpl
 Test/.*/Output
 Test/([^/]*)/([^/]*)\.sx
-Test/(dafny0|dafny1|dafny2|VSI-Benchmarks|vacid0|VSComp2010|vstte2012)/(out\.cs|.*\.dll|.*\.pdb|.*\.exe|.*\.tmp.*)
 Test/desktop/
 ^.*~$
 syntax: glob
-BCT/TestResults/
-BCT/testimpactdata.sdf
 backup.diff
-BCT/Samples/CodeCounter/console/ClassDiagram1.cd
-Jennisys/Jennisys/examples/bak
-Chalice/project/boot
-Chalice/project/target
-Chalice/target
-Chalice/bin
-Chalice/scripts/create_release/release
-BCT/InternalBCT.sln
 *.pyc
 *.dll.mdb
 *.exe.mdb
 *.pidb
 *.userprefs
-Binaries/Dafny.suo

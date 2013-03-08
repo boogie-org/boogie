@@ -1,7 +1,0 @@
-Verification of producer-consumer.chalice using parameters="" 
-
-
-  42.5: The statements after the while-loop are unreachable.
-  81.5: The statements after the while-loop are unreachable.
-
-Boogie program verifier finished with 0 errors and 2 smoke test warnings

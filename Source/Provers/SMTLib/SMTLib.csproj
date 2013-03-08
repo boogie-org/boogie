@@ -171,6 +171,10 @@
       <Project>{B230A69C-C466-4065-B9C1-84D80E76D802}</Project>
       <Name>Core</Name>
     </ProjectReference>
+    <ProjectReference Include="..\..\Graph\Graph.csproj">
+      <Project>{69a2b0b8-bcac-4101-ae7a-556fcc58c06e}</Project>
+      <Name>Graph</Name>
+    </ProjectReference>
     <ProjectReference Include="..\..\Model\Model.csproj">
       <Project>{ACEF88D5-DADD-46DA-BAE1-2144D63F4C83}</Project>
       <Name>Model</Name>

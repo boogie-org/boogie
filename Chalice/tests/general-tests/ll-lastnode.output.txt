@@ -1,6 +1,0 @@
-Verification of ll-lastnode.chalice using parameters="" 
-
-
-  77.9: Assumption introduces a contradiction.
-
-Boogie program verifier finished with 0 errors and 1 smoke test warnings
