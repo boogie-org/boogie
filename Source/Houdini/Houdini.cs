@@ -12,6 +12,8 @@ using VC;
 using System.Collections;
 using System.IO;
 using Microsoft.Boogie.GraphUtil;
+using System.Linq;
+using System.Diagnostics;
 
 namespace Microsoft.Boogie.Houdini {
 
@@ -557,13 +559,23 @@ namespace Microsoft.Boogie.Houdini {
         Expr consequent = e.Args[1];
 
         IdentifierExpr id = antecedent as IdentifierExpr;
-        if (id != null && id.Decl is Constant && houdiniConstants.Contains((Constant)id.Decl)) {
+        if (id != null && id.Decl is Constant && houdiniConstants.Select(item => item.Name).Contains(id.Decl.Name)) {
           candidateConstant = id.Decl;
           return true;
         }
 
         if (MatchCandidate(consequent, out candidateConstant))
           return true;
+      }
+      return false;
+    }
+
+    public bool MatchCandidateByName(Expr boogieExpr, out string candidateConstant) {
+      candidateConstant = null;
+      Variable c;
+      if(MatchCandidate(boogieExpr, out c)) {
+        candidateConstant = c.Name;
+        return true;
       }
       return false;
     }
@@ -1040,6 +1052,86 @@ namespace Microsoft.Boogie.Houdini {
         }
       } 
     }
+
+    /// <summary>
+    /// Transforms given program based on Houdini assignment.  If a constant is assigned "true",
+    /// any preconditions or postconditions guarded by the constant are replaced with
+    /// regular conditions, and any assertions guarded by the constant are replaced with
+    /// assumptions.  If a constant is assigned "false", any preconditions or postconditions
+    /// guarded by the constant are replaced with "true", and assertions guarded by the constant
+    /// are removed.
+    /// 
+    /// In addition, all Houdini constants are removed.
+    /// </summary>
+    public void ApplyAssignment(Program prog) {
+
+      // Treat all assertions
+      // TODO: do we need to also consider assumptions?
+      foreach (Block block in prog.TopLevelDeclarations.OfType<Implementation>().Select(item => item.Blocks).SelectMany(item => item)) {
+        CmdSeq newCmds = new CmdSeq();
+        foreach (Cmd cmd in block.Cmds) {
+          string c;
+          AssertCmd assertCmd = cmd as AssertCmd;
+          if (assertCmd != null && MatchCandidateByName(assertCmd.Expr, out c)) {
+            var cVar = currentHoudiniState.Assignment.Keys.Where(item => item.Name.Equals(c)).ToList()[0];
+            if (currentHoudiniState.Assignment[cVar]) {
+              Hashtable cToTrue = new Hashtable();
+              Variable cVarProg = prog.TopLevelDeclarations.OfType<Variable>().Where(item => item.Name.Equals(c)).ToList()[0];
+              cToTrue[cVarProg] = Expr.True;
+              newCmds.Add(new AssumeCmd(assertCmd.tok,
+                Substituter.Apply(Substituter.SubstitutionFromHashtable(cToTrue), assertCmd.Expr),
+                assertCmd.Attributes));
+            }
+          }
+          else {
+            newCmds.Add(cmd);
+          }
+        }
+        block.Cmds = newCmds;
+      }
+
+      // Treat requires and ensures
+      new ApplyAssignmentVisitor(this, prog).VisitProgram(prog);
+
+      // Remove the existential constants
+      prog.TopLevelDeclarations.RemoveAll(item => (item is Variable) && 
+           (houdiniConstants.Select(c => c.Name).Contains((item as Variable).Name)));
+    }
+
+    class ApplyAssignmentVisitor : StandardVisitor {
+
+      private Houdini houdini;
+      private Program prog;
+
+      internal ApplyAssignmentVisitor(Houdini houdini, Program prog) {
+        this.houdini = houdini;
+        this.prog = prog;
+      }
+
+      public override Requires VisitRequires(Requires requires) {
+        requires.Condition = ApplyAssignment(requires.Condition);
+        return requires;
+      }
+
+      public override Ensures VisitEnsures(Ensures ensures) {
+        ensures.Condition = ApplyAssignment(ensures.Condition);
+        return ensures;
+      }
+
+      private Expr ApplyAssignment(Expr e) {
+        string c;
+        if (houdini.MatchCandidateByName(e, out c)) {
+          var cVar = houdini.currentHoudiniState.Assignment.Keys.Where(item => item.Name.Equals(c)).ToList()[0];
+          Hashtable cToTrue = new Hashtable();
+          Variable cVarProg = prog.TopLevelDeclarations.OfType<Variable>().Where(item => item.Name.Equals(c)).ToList()[0];
+          cToTrue[cVarProg] = houdini.currentHoudiniState.Assignment[cVar] ? Expr.True : Expr.False;
+          return Substituter.Apply(Substituter.SubstitutionFromHashtable(cToTrue), e);
+        }
+        return e;
+      }
+
+    }
+
   }
 
   public class VCGenOutcome {
