@@ -748,27 +748,25 @@ namespace Microsoft.Boogie
 
         line = line.Replace("(", " ( ");
         line = line.Replace(")", " ) ");
+        line = line.Replace(",", " ");
         var tuple = line.Split(seps, StringSplitOptions.RemoveEmptyEntries);
 
         List<object> newTuple = new List<object>();
-        Stack<List<object>> wordStack = new Stack<List<object>>();
+        Stack<int> wordStack = new Stack<int>();
         for (int i = 0; i < tuple.Length; i++) {
           string elem = tuple[i];
           if (elem == "(") {
-            List<object> ls = new List<object>();
-            wordStack.Push(ls);
+            wordStack.Push(newTuple.Count - 1);
           }
           else if (elem == ")") {
-            List<object> ls = wordStack.Pop();
-            if (wordStack.Count > 0) {
-              wordStack.Peek().Add(ls);
+            int openParenIndex = wordStack.Pop();
+            List<object> ls = new List<object>();
+            for (int j = openParenIndex; j < newTuple.Count; j++)
+            {
+                ls.Add(newTuple[j]);
             }
-            else {
-              newTuple.Add(ls);
-            }
-          }
-          else if (wordStack.Count > 0) {
-            wordStack.Peek().Add(elem);
+            newTuple.RemoveRange(openParenIndex, newTuple.Count - openParenIndex);
+            newTuple.Add(ls);
           }
           else {
             newTuple.Add(elem);
@@ -777,6 +775,67 @@ namespace Microsoft.Boogie
         return newTuple;
       }
 
+      /*
+      List<object> GetFunctionTuple(string newLine)
+      {
+          if (newLine == null)
+              return null;
+          newLine = bv.Replace(newLine, "bv${1}");
+          string line = newLine;
+          int openParenCounter = CountOpenParentheses(newLine, 0);
+          if (!newLine.Contains("}"))
+          {
+              while (openParenCounter > 0)
+              {
+                  newLine = ReadLine();
+                  if (newLine == null)
+                  {
+                      return null;
+                  }
+                  line += newLine;
+                  openParenCounter = CountOpenParentheses(newLine, openParenCounter);
+              }
+          }
+
+          line = line.Replace("(", " ( ");
+          line = line.Replace(")", " ) ");
+          var tuple = line.Split(seps, StringSplitOptions.RemoveEmptyEntries);
+
+          List<object> newTuple = new List<object>();
+          Stack<List<object>> wordStack = new Stack<List<object>>();
+          for (int i = 0; i < tuple.Length; i++)
+          {
+              string elem = tuple[i];
+              if (elem == "(")
+              {
+                  List<object> ls = new List<object>();
+                  wordStack.Push(ls);
+              }
+              else if (elem == ")")
+              {
+                  List<object> ls = wordStack.Pop();
+                  if (wordStack.Count > 0)
+                  {
+                      wordStack.Peek().Add(ls);
+                  }
+                  else
+                  {
+                      newTuple.Add(ls);
+                  }
+              }
+              else if (wordStack.Count > 0)
+              {
+                  wordStack.Peek().Add(elem);
+              }
+              else
+              {
+                  newTuple.Add(elem);
+              }
+          }
+          return newTuple;
+      }
+      */
+  
       string[] GetWords(string line)
       {
         if (line == null)
