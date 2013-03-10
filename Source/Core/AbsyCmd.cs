@@ -1816,6 +1816,9 @@ namespace Microsoft.Boogie {
       if (IsFree) {
         stream.Write("free ");
       }
+      if (IsAsync) {
+        stream.Write("async ");
+      }
       stream.Write("call ");
       EmitAttributes(stream, Attributes);
       string sep = "";
