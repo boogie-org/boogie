@@ -200,6 +200,9 @@ namespace Microsoft.Boogie.Houdini {
                 var s = tup.Value as PredicateAbs;
                 if (s == null) continue;
                 ret.UnionWith(s.GetPredicates(program, prover.VCExprGen, prover));
+                // debug output
+                //Console.WriteLine("Summary of {0}:", tup.Key);
+                //Console.WriteLine("{0}", tup.Value);
             }
 
             prover.Close();
@@ -516,10 +519,8 @@ namespace Microsoft.Boogie.Houdini {
                 
                 //Console.WriteLine("Checking: {0}", vc);
                 if (CommandLineOptions.Clo.Trace)
-                {
                     Console.WriteLine("Verifying {0} ({1}): {2}", impl.Name, usedLower ? "lower" : "ac", query);
-                }
-                
+
                 if (usedLower && lowerTime.TotalMilliseconds >= iterTimeLimit && iterTimeLimit >= 0)
                 {
                     if (UseBilateralAlgo)
@@ -1772,7 +1773,6 @@ namespace Microsoft.Boogie.Houdini {
             var ret = "";
             if (isFalse) return "false";
             var first = true;
-            Simplify();
 
             for(int i = 0; i < PostPreds[procName].Count; i++) 
             {
@@ -2158,7 +2158,7 @@ namespace Microsoft.Boogie.Houdini {
 
     public class PredicateAbsConjunct
     {
-        static int ConjunctBound = 2;
+        static int ConjunctBound = 3;
 
         public bool isFalse { get; private set; }
         HashSet<int> posPreds;
@@ -2279,8 +2279,10 @@ namespace Microsoft.Boogie.Houdini {
         {
             if (isFalse) return Expr.False;
             Expr ret = Expr.True;
-            posPreds.Iter(p => ret = Expr.And(ret, predToExpr(p)));
-            negPreds.Iter(p => ret = Expr.And(ret, Expr.Not(predToExpr(p)))); 
+            var pp = posPreds.ToList(); pp.Sort();
+            var np = negPreds.ToList(); np.Sort();
+            pp.Iter(p => ret = Expr.And(ret, predToExpr(p)));
+            np.Iter(p => ret = Expr.And(ret, Expr.Not(predToExpr(p)))); 
             return ret;
         }
 
