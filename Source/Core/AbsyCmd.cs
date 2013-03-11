@@ -1798,6 +1798,19 @@ namespace Microsoft.Boogie {
       this.Outs = outs;
     }
 
+    public CallCmd(IToken tok, string callee, List<Expr> ins, List<IdentifierExpr> outs, QKeyValue kv, bool IsAsync)
+        : base(tok, kv)
+    {
+        Contract.Requires(outs != null);
+        Contract.Requires(ins != null);
+        Contract.Requires(callee != null);
+        Contract.Requires(tok != null);
+        this.callee = callee;
+        this.Ins = ins;
+        this.Outs = outs;
+        this.IsAsync = IsAsync;
+    }
+
     public CallCmd(IToken tok, string callee, List<Expr> ins, List<IdentifierExpr> outs, QKeyValue kv, CallCmd inParallelWith)
         : base(tok, kv)
     {
