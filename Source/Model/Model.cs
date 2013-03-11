@@ -143,13 +143,9 @@ namespace Microsoft.Boogie
       public override ElementKind Kind { get { return ElementKind.DataValue; } }
       public override string ToString() {
         StringBuilder builder = new StringBuilder();
-        builder.Append(ConstructorName + "(");
-        int count = 0;
+        builder.Append("(").Append(ConstructorName);
         foreach (Element arg in Arguments) {
-          count++;
-          builder.Append(arg);
-          if (count < Arguments.Length)
-            builder.Append(", ");
+          builder.Append(" ").Append(arg);
         }
         builder.Append(")");
         return builder.ToString();
@@ -401,10 +397,9 @@ namespace Microsoft.Boogie
       public override string ToString()
       {
         var res = new StringBuilder();
-        res.Append(Func.Name).Append("(");
+        res.Append("(").Append(Func.Name);
         for (int i = 0; i < Args.Length; ++i) {
-          if (i != 0) res.Append(", ");
-          res.Append(Args[i]);
+          res.Append(" ").Append(Args[i]);
         }
         res.Append(") -> ").Append(Result);
         return res.ToString();
@@ -729,6 +724,7 @@ namespace Microsoft.Boogie
      
       static Regex bv = new Regex(@"\(_ BitVec (\d+)\)");
 
+      /*
       List<object> GetFunctionTuple(string newLine) {
         if (newLine == null)
           return null;
@@ -774,8 +770,8 @@ namespace Microsoft.Boogie
         }
         return newTuple;
       }
-
-      /*
+      */
+      
       List<object> GetFunctionTuple(string newLine)
       {
           if (newLine == null)
@@ -834,7 +830,6 @@ namespace Microsoft.Boogie
           }
           return newTuple;
       }
-      */
   
       string[] GetWords(string line)
       {
@@ -915,11 +910,17 @@ namespace Microsoft.Boogie
             for (; ; ) {
               var tmpline = ReadLine();
               if (tmpline == "*** END_STATE") break;
-              var tuple = GetWords(tmpline);
+              var tuple = GetFunctionTuple(tmpline);
               if (tuple == null) BadModel("EOF in state table");
-              if (tuple.Length == 0) continue;
-              if (tuple.Length != 3 || tuple[1] != "->") BadModel("invalid state tuple definition");
-              cs.AddBinding(tuple[0], GetElt(tuple[2]));
+              if (tuple.Count == 0) continue;
+              if (tuple.Count == 3 && tuple[0] is string && tuple[1] is string && ((string) tuple[1]) == "->")
+              {
+                  cs.AddBinding((string)tuple[0], GetElt(tuple[2]));
+              }
+              else
+              {
+                  BadModel("invalid state tuple definition");
+              }
             }
             continue;
           }
