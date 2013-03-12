@@ -552,6 +552,10 @@ namespace Microsoft.Boogie
                     program.TopLevelDeclarations.Add(info.dummyAsyncTargetProc);
                 }
             }
+            foreach (Procedure proc in parallelCallDesugarings.Values)
+            {
+                program.TopLevelDeclarations.Add(proc);
+            }
         }
     }
 }

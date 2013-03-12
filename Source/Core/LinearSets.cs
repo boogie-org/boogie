@@ -7,6 +7,22 @@ using Microsoft.Boogie;
 
 namespace Microsoft.Boogie
 {
+    public class LinearEraser : StandardVisitor
+    {
+        private QKeyValue Remove(QKeyValue iter)
+        {
+            if (iter == null) return null;
+            iter.Next = Remove(iter.Next);
+            return (QKeyValue.FindStringAttribute(iter, "linear") == null) ? iter : iter.Next;
+        }
+
+        public override Variable VisitVariable(Variable node)
+        {
+            node.Attributes = Remove(node.Attributes);
+            return base.VisitVariable(node);
+        }
+    }
+
     public class LinearTypechecker : StandardVisitor
     {
         public int errorCount;
@@ -414,11 +430,19 @@ namespace Microsoft.Boogie
             foreach (LinearDomain domain in linearDomains.Values)
             {
                 program.TopLevelDeclarations.Add(domain.allocator);
+                program.TopLevelDeclarations.Add(domain.mapConstBool);
+                program.TopLevelDeclarations.Add(domain.mapConstInt);
+                program.TopLevelDeclarations.Add(domain.mapEqInt);
+                program.TopLevelDeclarations.Add(domain.mapImpBool);
+                program.TopLevelDeclarations.Add(domain.mapOrBool);
                 foreach (Axiom axiom in domain.axioms)
                 {
                     program.TopLevelDeclarations.Add(axiom);
                 }
             }
+
+            var eraser = new LinearEraser();
+            eraser.VisitProgram(program);
         }
 
         private Expr Singleton(Expr e, string domainName)
@@ -464,18 +488,18 @@ namespace Microsoft.Boogie
                 Variable v = ie.Decl;
                 if (!varToDomainName.ContainsKey(v)) continue;
                 var domainName = varToDomainName[v];
-                if (!domainNameToHavocVars.ContainsKey(domainName))
-                {
-                    domainNameToHavocVars[domainName] = new HashSet<Variable>();
-                }
-                domainNameToHavocVars[domainName].Add(v);
                 var allocator = linearDomains[domainName].allocator;
                 if (!copies.ContainsKey(allocator))
                 {
                     copies[allocator] = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("copy_{0}", allocator.Name), allocator.TypedIdent.Type));
                 }
-                lhss.Add(new SimpleAssignLhs(Token.NoToken, new IdentifierExpr(Token.NoToken, copies[allocator])));
-                rhss.Add(new IdentifierExpr(Token.NoToken, allocator));
+                if (!domainNameToHavocVars.ContainsKey(domainName))
+                {
+                    domainNameToHavocVars[domainName] = new HashSet<Variable>();
+                    lhss.Add(new SimpleAssignLhs(Token.NoToken, new IdentifierExpr(Token.NoToken, copies[allocator])));
+                    rhss.Add(new IdentifierExpr(Token.NoToken, allocator));
+                }
+                domainNameToHavocVars[domainName].Add(v);
             }
             if (lhss.Count > 0)
             {
@@ -631,12 +655,14 @@ namespace Microsoft.Boogie
                 IdentifierExpr bie = new IdentifierExpr(Token.NoToken, b);
                 BoundVariable x = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, "x", elementType));
                 IdentifierExpr xie = new IdentifierExpr(Token.NoToken, x);
-                var lhsTerm = new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1), 
-                                           new ExprSeq(new NAryExpr(Token.NoToken, new FunctionCall(mapOrBool), new ExprSeq(aie, bie)), xie));
+                var mapApplTerm = new NAryExpr(Token.NoToken, new FunctionCall(mapOrBool), new ExprSeq(aie, bie));
+                var lhsTerm = new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1), new ExprSeq(mapApplTerm, xie));
                 var rhsTerm = Expr.Binary(BinaryOperator.Opcode.Or,
                                           new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1), new ExprSeq(aie, xie)),
                                           new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1), new ExprSeq(bie, xie)));
-                var axiomExpr = new ForallExpr(Token.NoToken, new VariableSeq(a, b, x), Expr.Binary(BinaryOperator.Opcode.Eq, lhsTerm, rhsTerm));
+                var axiomExpr = new ForallExpr(Token.NoToken, new TypeVariableSeq(), new VariableSeq(a, b), null, 
+                                               new Trigger(Token.NoToken, true, new ExprSeq(mapApplTerm)), 
+                                               new ForallExpr(Token.NoToken, new VariableSeq(x), Expr.Binary(BinaryOperator.Opcode.Eq, lhsTerm, rhsTerm)));
                 axiomExpr.Typecheck(new TypecheckingContext(null));
                 axioms.Add(new Axiom(Token.NoToken, axiomExpr));
             }
@@ -657,12 +683,14 @@ namespace Microsoft.Boogie
                 IdentifierExpr bie = new IdentifierExpr(Token.NoToken, b);
                 BoundVariable x = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, "x", elementType));
                 IdentifierExpr xie = new IdentifierExpr(Token.NoToken, x);
-                var lhsTerm = new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1), 
-                                           new ExprSeq(new NAryExpr(Token.NoToken, new FunctionCall(mapImpBool), new ExprSeq(aie, bie)), xie));
+                var mapApplTerm = new NAryExpr(Token.NoToken, new FunctionCall(mapImpBool), new ExprSeq(aie, bie));
+                var lhsTerm = new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1), new ExprSeq(mapApplTerm, xie));
                 var rhsTerm = Expr.Binary(BinaryOperator.Opcode.Imp,
                                           new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1), new ExprSeq(aie, xie)),
                                           new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1), new ExprSeq(bie, xie)));
-                var axiomExpr = new ForallExpr(Token.NoToken, new VariableSeq(a, b, x), Expr.Binary(BinaryOperator.Opcode.Eq, lhsTerm, rhsTerm));
+                var axiomExpr = new ForallExpr(Token.NoToken, new TypeVariableSeq(), new VariableSeq(a, b), null,
+                                               new Trigger(Token.NoToken, true, new ExprSeq(mapApplTerm)), 
+                                               new ForallExpr(Token.NoToken, new VariableSeq(x), Expr.Binary(BinaryOperator.Opcode.Eq, lhsTerm, rhsTerm)));
                 axiomExpr.Typecheck(new TypecheckingContext(null));
                 axioms.Add(new Axiom(Token.NoToken, axiomExpr));
             }
@@ -706,12 +734,14 @@ namespace Microsoft.Boogie
                 IdentifierExpr bie = new IdentifierExpr(Token.NoToken, b);
                 BoundVariable x = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, "x", elementType));
                 IdentifierExpr xie = new IdentifierExpr(Token.NoToken, x);
-                var lhsTerm = new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1), 
-                                           new ExprSeq(new NAryExpr(Token.NoToken, new FunctionCall(mapEqInt), new ExprSeq(aie, bie)), xie));
+                var mapApplTerm = new NAryExpr(Token.NoToken, new FunctionCall(mapEqInt), new ExprSeq(aie, bie));
+                var lhsTerm = new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1), new ExprSeq(mapApplTerm, xie));
                 var rhsTerm = Expr.Binary(BinaryOperator.Opcode.Eq,
                                           new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1), new ExprSeq(aie, xie)),
                                           new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1), new ExprSeq(bie, xie)));
-                var axiomExpr = new ForallExpr(Token.NoToken, new VariableSeq(a, b, x), Expr.Binary(BinaryOperator.Opcode.Eq, lhsTerm, rhsTerm));
+                var axiomExpr = new ForallExpr(Token.NoToken, new TypeVariableSeq(), new VariableSeq(a, b), null, 
+                                               new Trigger(Token.NoToken, true, new ExprSeq(mapApplTerm)), 
+                                               new ForallExpr(Token.NoToken, new VariableSeq(x), Expr.Binary(BinaryOperator.Opcode.Eq, lhsTerm, rhsTerm)));
                 axiomExpr.Typecheck(new TypecheckingContext(null));
                 axioms.Add(new Axiom(Token.NoToken, axiomExpr));
             }
