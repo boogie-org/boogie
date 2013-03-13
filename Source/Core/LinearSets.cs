@@ -41,9 +41,15 @@ namespace Microsoft.Boogie
             errorCount++;
         }
         private Dictionary<Variable, string> scope;
+        private HashSet<Variable> frame;
         public override Implementation VisitImplementation(Implementation node)
         {
             scope = new Dictionary<Variable, string>();
+            frame = new HashSet<Variable>();
+            foreach (IdentifierExpr ie in node.Proc.Modifies)
+            {
+                frame.Add(ie.Decl);
+            }
             for (int i = 0; i < node.OutParams.Length; i++)
             {
                 string domainName = QKeyValue.FindStringAttribute(node.Proc.OutParams[i].Attributes, "linear");
@@ -113,7 +119,7 @@ namespace Microsoft.Boogie
                 if (rhs == null)
                 {
                     Error(node, "Only variable can be assigned to a linear variable");
-                    continue;
+                    continue; 
                 }
                 string rhsDomainName = FindDomainName(rhs.Decl);
                 if (rhsDomainName == null)
@@ -132,6 +138,10 @@ namespace Microsoft.Boogie
                     continue;
                 }
                 rhsVars.Add(rhs.Decl);
+                if (!CommandLineOptions.Clo.DoModSetAnalysis && rhs.Decl is GlobalVariable && !frame.Contains(rhs.Decl))
+                {
+                    Error(node, "A linear variable on the right hand side of an assignment must be in the modifies set");
+                }
             }
             return base.VisitAssignCmd(node);
         }

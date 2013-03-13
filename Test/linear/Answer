@@ -14,6 +14,7 @@ typecheck.bpl(55,4): Error: The domains of formal and actual parameters must be 
 typecheck.bpl(57,4): Error: Only a linear argument can be passed to a linear parameter
 typecheck.bpl(61,4): Error: A linear set can occur only once as an in parameter
 typecheck.bpl(66,6): Error: Only linear variable can be assigned to another linear variable
+typecheck.bpl(75,4): Error: A linear variable on the right hand side of an assignment must be in the modifies set
 0 type checking errors detected in typecheck.bpl
 
 -------------------- list.bpl --------------------
