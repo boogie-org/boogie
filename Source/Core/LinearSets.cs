@@ -423,7 +423,7 @@ namespace Microsoft.Boogie
             {
                 Procedure proc = decl as Procedure;
                 if (proc == null) continue;
-                HashSet<string> domainNamesForOutParams = new HashSet<string>();
+                HashSet<string> domainNames = new HashSet<string>();
                 foreach (Variable v in proc.OutParams)
                 {
                     var domainName = QKeyValue.FindStringAttribute(v.Attributes, "linear");
@@ -432,8 +432,20 @@ namespace Microsoft.Boogie
                     {
                         linearDomains[domainName] = new LinearDomain(program, v, domainName);
                     }
-                    if (domainNamesForOutParams.Contains(domainName)) continue;
-                    domainNamesForOutParams.Add(domainName);
+                    domainNames.Add(domainName);
+                }
+                foreach (IdentifierExpr ie in proc.Modifies)
+                {
+                    var domainName = QKeyValue.FindStringAttribute(ie.Decl.Attributes, "linear");
+                    if (domainName == null) continue;
+                    if (!linearDomains.ContainsKey(domainName))
+                    {
+                        linearDomains[domainName] = new LinearDomain(program, ie.Decl, domainName);
+                    }
+                    domainNames.Add(domainName);
+                }
+                foreach (string domainName in domainNames)
+                {
                     proc.Modifies.Add(new IdentifierExpr(Token.NoToken, linearDomains[domainName].allocator));
                 }
             }
