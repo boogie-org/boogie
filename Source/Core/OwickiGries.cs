@@ -556,6 +556,8 @@ namespace Microsoft.Boogie
             {
                 program.TopLevelDeclarations.Add(proc);
             }
+
+            Microsoft.Boogie.ModSetCollector.DoModSetAnalysis(program);
         }
     }
 }

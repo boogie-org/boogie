@@ -453,6 +453,8 @@ namespace Microsoft.Boogie
 
             var eraser = new LinearEraser();
             eraser.VisitProgram(program);
+
+            Microsoft.Boogie.ModSetCollector.DoModSetAnalysis(program);
         }
 
         private Expr Singleton(Expr e, string domainName)
