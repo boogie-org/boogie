@@ -640,6 +640,8 @@ namespace Microsoft.Boogie {
           if (CommandLineOptions.Clo.AbstractHoudini != null)
           {
               //CommandLineOptions.Clo.PrintErrorModel = 1;
+              CommandLineOptions.Clo.UseProverEvaluate = true;
+              CommandLineOptions.Clo.ModelViewFile = "z3model";
               CommandLineOptions.Clo.UseArrayTheory = true;
               CommandLineOptions.Clo.TypeEncodingMethod = CommandLineOptions.TypeEncoding.Monomorphic;
               CommandLineOptions.Clo.ProverCCLimit = 1;

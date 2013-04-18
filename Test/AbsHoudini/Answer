@@ -1,11 +1,379 @@
 
--------------------- f1.bpl --------------------
-Summary of foo:
-g == old(g) + 1
-Summary of main:
-(old(g) == 0 ==> g == old(g) + 1)
-Prover time = 0.0260026
-Number of prover queries = 6
-Witness written to absHoudiniWitness.bpl
+-------------------- houd1.bpl --------------------
+function {:existential true} {:inline} b1(x: bool) : bool
+{
+  true
+}
+
+Boogie program verifier finished with 0 verified, 0 errors
+
+-------------------- houd2.bpl --------------------
+function {:existential true} {:inline} Assert(x: bool) : bool
+{
+  true
+}
+function {:existential true} {:inline} b1(x: bool) : bool
+{
+  true
+}
+function {:existential true} {:inline} b2(x: bool) : bool
+{
+  false
+}
+
+Boogie program verifier finished with 0 verified, 0 errors
+
+-------------------- houd3.bpl --------------------
+function {:existential true} {:inline} Assert(x: bool) : bool
+{
+  x
+}
+function {:existential true} {:inline} b1(x: bool) : bool
+{
+  true
+}
+function {:existential true} {:inline} b2(x: bool) : bool
+{
+  true
+}
+
+Boogie program verifier finished with 0 verified, 0 errors
+
+-------------------- houd4.bpl --------------------
+function {:existential true} {:inline} Assert() : bool
+{
+  false
+}
+function {:existential true} {:inline} b1() : bool
+{
+  false
+}
+function {:existential true} {:inline} b2(x: bool) : bool
+{
+  false
+}
+function {:existential true} {:inline} b3(x: bool) : bool
+{
+  false
+}
+function {:existential true} {:inline} b4(x: bool) : bool
+{
+  false
+}
+
+Boogie program verifier finished with 0 verified, 0 errors
+
+-------------------- houd5.bpl --------------------
+function {:existential true} {:inline} b1(x: bool) : bool
+{
+  !x
+}
+function {:existential true} {:inline} b2(x: bool) : bool
+{
+  x
+}
+function {:existential true} {:inline} b3(x: bool) : bool
+{
+  !x
+}
+function {:existential true} {:inline} b4(x: bool) : bool
+{
+  x
+}
+function {:existential true} {:inline} b5() : bool
+{
+  false
+}
+function {:existential true} {:inline} Assert() : bool
+{
+  false
+}
+
+Boogie program verifier finished with 0 verified, 0 errors
+
+-------------------- houd6.bpl --------------------
+function {:existential true} {:inline} b1() : bool
+{
+  true
+}
+function {:existential true} {:inline} b2() : bool
+{
+  true
+}
+function {:existential true} {:inline} b3() : bool
+{
+  true
+}
+function {:existential true} {:inline} b4() : bool
+{
+  true
+}
+function {:existential true} {:inline} b5() : bool
+{
+  true
+}
+function {:existential true} {:inline} b6() : bool
+{
+  true
+}
+function {:existential true} {:inline} b7() : bool
+{
+  true
+}
+function {:existential true} {:inline} b8() : bool
+{
+  true
+}
+function {:existential true} {:inline} Assert() : bool
+{
+  false
+}
+
+Boogie program verifier finished with 0 verified, 0 errors
+
+-------------------- houd7.bpl --------------------
+function {:existential true} {:inline} b1() : bool
+{
+  false
+}
+function {:existential true} {:inline} b2() : bool
+{
+  true
+}
+function {:existential true} {:inline} b3() : bool
+{
+  true
+}
+function {:existential true} {:inline} Assert() : bool
+{
+  false
+}
+
+Boogie program verifier finished with 0 verified, 0 errors
+
+-------------------- houd8.bpl --------------------
+function {:existential true} {:inline} b1() : bool
+{
+  false
+}
+function {:existential true} {:inline} b2() : bool
+{
+  true
+}
+function {:existential true} {:inline} b3() : bool
+{
+  true
+}
+
+Boogie program verifier finished with 0 verified, 0 errors
+
+-------------------- houd9.bpl --------------------
+Error opening file "houd9.bpl": Could not find file 'C:\Users\akashl\Documents\work\boogie\Test\AbsHoudini\houd9.bpl'.
+
+-------------------- houd10.bpl --------------------
+function {:existential true} {:inline} b1() : bool
+{
+  true
+}
+function {:existential true} {:inline} b2() : bool
+{
+  false
+}
+function {:existential true} {:inline} b3() : bool
+{
+  true
+}
+function {:existential true} {:inline} Assert() : bool
+{
+  true
+}
+
+Boogie program verifier finished with 0 verified, 0 errors
+
+-------------------- houd11.bpl --------------------
+function {:existential true} {:inline} Assert() : bool
+{
+  true
+}
+
+Boogie program verifier finished with 0 verified, 0 errors
+
+-------------------- houd12.bpl --------------------
+function {:existential true} {:inline} Assert() : bool
+{
+  false
+}
+function {:existential true} {:inline} b1() : bool
+{
+  true
+}
+function {:existential true} {:inline} b2() : bool
+{
+  false
+}
+function {:existential true} {:inline} b3() : bool
+{
+  false
+}
+function {:existential true} {:inline} b4() : bool
+{
+  false
+}
+function {:existential true} {:inline} b5() : bool
+{
+  false
+}
+function {:existential true} {:inline} b6() : bool
+{
+  true
+}
+function {:existential true} {:inline} b7() : bool
+{
+  true
+}
+
+Boogie program verifier finished with 0 verified, 0 errors
+.
+-------------------- test1.bpl --------------------
+function {:existential true} {:inline} b0() : bool
+{
+  false
+}
+function {:existential true} {:inline} b1() : bool
+{
+  true
+}
+function {:existential true} {:inline} b2() : bool
+{
+  true
+}
+function {:existential true} {:inline} Assert() : bool
+{
+  false
+}
+
+Boogie program verifier finished with 0 verified, 0 errors
+.
+-------------------- test2.bpl --------------------
+function {:existential true} {:inline} b0() : bool
+{
+  false
+}
+function {:existential true} {:inline} b1() : bool
+{
+  true
+}
+function {:existential true} {:inline} b2() : bool
+{
+  true
+}
+function {:existential true} {:inline} Assert() : bool
+{
+  false
+}
+
+Boogie program verifier finished with 0 verified, 0 errors
+.
+-------------------- test7.bpl --------------------
+function {:existential true} {:inline} Assert() : bool
+{
+  false
+}
+
+Boogie program verifier finished with 0 verified, 0 errors
+.
+-------------------- test8.bpl --------------------
+function {:existential true} {:inline} Assert() : bool
+{
+  false
+}
+
+Boogie program verifier finished with 0 verified, 0 errors
+.
+-------------------- test9.bpl --------------------
+function {:existential true} {:inline} b1() : bool
+{
+  true
+}
+function {:existential true} {:inline} b2() : bool
+{
+  true
+}
+function {:existential true} {:inline} b3() : bool
+{
+  true
+}
+function {:existential true} {:inline} b4() : bool
+{
+  false
+}
+function {:existential true} {:inline} b5() : bool
+{
+  true
+}
+function {:existential true} {:inline} b6() : bool
+{
+  false
+}
+function {:existential true} {:inline} b7() : bool
+{
+  true
+}
+function {:existential true} {:inline} b8() : bool
+{
+  true
+}
+function {:existential true} {:inline} b9() : bool
+{
+  true
+}
+function {:existential true} {:inline} b10() : bool
+{
+  false
+}
+function {:existential true} {:inline} b11() : bool
+{
+  true
+}
+function {:existential true} {:inline} b12() : bool
+{
+  false
+}
+function {:existential true} {:inline} b13() : bool
+{
+  true
+}
+function {:existential true} {:inline} b14() : bool
+{
+  true
+}
+function {:existential true} {:inline} b15() : bool
+{
+  true
+}
+function {:existential true} {:inline} b16() : bool
+{
+  true
+}
+
+Boogie program verifier finished with 0 verified, 0 errors
+.
+-------------------- test10.bpl --------------------
+function {:existential true} {:inline} b1() : bool
+{
+  false
+}
+function {:existential true} {:inline} b2() : bool
+{
+  false
+}
+function {:existential true} {:inline} b3() : bool
+{
+  false
+}
+function {:existential true} {:inline} b4() : bool
+{
+  false
+}
 
 Boogie program verifier finished with 0 verified, 0 errors

@@ -14,5 +14,4 @@ ensures b1(myVar>0);
   }
 }
 
-// expected output: Correct
-// expected end assigment: b1(x) = x
+// expected end assigment: b1(x) = true

@@ -82,6 +82,8 @@ namespace Microsoft.Boogie.Houdini {
             if (CommandLineOptions.Clo.ProverKillTime > 0)
                 CommandLineOptions.Clo.ProverOptions.Add(string.Format("TIME_LIMIT={0}", CommandLineOptions.Clo.ProverKillTime));
 
+            Inline();
+
             this.vcgen = new VCGen(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend);
             this.prover = ProverInterface.CreateProver(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend, -1);
 
@@ -337,6 +339,114 @@ namespace Microsoft.Boogie.Houdini {
             impl2VC.Add(impl.Name, gen.Function(macro));
         }
 
+        private void Inline()
+        {
+            if (CommandLineOptions.Clo.InlineDepth < 0)
+                return;
+
+            var callGraph = BuildCallGraph();
+
+            foreach (Implementation impl in callGraph.Nodes)
+            {
+                InlineRequiresVisitor inlineRequiresVisitor = new InlineRequiresVisitor();
+                inlineRequiresVisitor.Visit(impl);
+            }
+
+            foreach (Implementation impl in callGraph.Nodes)
+            {
+                FreeRequiresVisitor freeRequiresVisitor = new FreeRequiresVisitor();
+                freeRequiresVisitor.Visit(impl);
+            }
+
+            foreach (Implementation impl in callGraph.Nodes)
+            {
+                InlineEnsuresVisitor inlineEnsuresVisitor = new InlineEnsuresVisitor();
+                inlineEnsuresVisitor.Visit(impl);
+            }
+
+            foreach (Implementation impl in callGraph.Nodes)
+            {
+                impl.OriginalBlocks = impl.Blocks;
+                impl.OriginalLocVars = impl.LocVars;
+            }
+            foreach (Implementation impl in callGraph.Nodes)
+            {
+                CommandLineOptions.Inlining savedOption = CommandLineOptions.Clo.ProcedureInlining;
+                CommandLineOptions.Clo.ProcedureInlining = CommandLineOptions.Inlining.Spec;
+                Inliner.ProcessImplementationForHoudini(program, impl);
+                CommandLineOptions.Clo.ProcedureInlining = savedOption;
+            }
+            foreach (Implementation impl in callGraph.Nodes)
+            {
+                impl.OriginalBlocks = null;
+                impl.OriginalLocVars = null;
+            }
+
+            Graph<Implementation> oldCallGraph = callGraph;
+            callGraph = new Graph<Implementation>();
+            foreach (Implementation impl in oldCallGraph.Nodes)
+            {
+                callGraph.AddSource(impl);
+            }
+            foreach (Tuple<Implementation, Implementation> edge in oldCallGraph.Edges)
+            {
+                callGraph.AddEdge(edge.Item1, edge.Item2);
+            }
+            int count = CommandLineOptions.Clo.InlineDepth;
+            while (count > 0)
+            {
+                foreach (Implementation impl in oldCallGraph.Nodes)
+                {
+                    List<Implementation> newNodes = new List<Implementation>();
+                    foreach (Implementation succ in callGraph.Successors(impl))
+                    {
+                        newNodes.AddRange(oldCallGraph.Successors(succ));
+                    }
+                    foreach (Implementation newNode in newNodes)
+                    {
+                        callGraph.AddEdge(impl, newNode);
+                    }
+                }
+                count--;
+            }
+        }
+
+        private Graph<Implementation> BuildCallGraph()
+        {
+            Graph<Implementation> callGraph = new Graph<Implementation>();
+            Dictionary<Procedure, HashSet<Implementation>> procToImpls = new Dictionary<Procedure, HashSet<Implementation>>();
+            foreach (Declaration decl in program.TopLevelDeclarations)
+            {
+                Procedure proc = decl as Procedure;
+                if (proc == null) continue;
+                procToImpls[proc] = new HashSet<Implementation>();
+            }
+            foreach (Declaration decl in program.TopLevelDeclarations)
+            {
+                Implementation impl = decl as Implementation;
+                if (impl == null || impl.SkipVerification) continue;
+                callGraph.AddSource(impl);
+                procToImpls[impl.Proc].Add(impl);
+            }
+            foreach (Declaration decl in program.TopLevelDeclarations)
+            {
+                Implementation impl = decl as Implementation;
+                if (impl == null || impl.SkipVerification) continue;
+                foreach (Block b in impl.Blocks)
+                {
+                    foreach (Cmd c in b.Cmds)
+                    {
+                        CallCmd cc = c as CallCmd;
+                        if (cc == null) continue;
+                        foreach (Implementation callee in procToImpls[cc.Proc])
+                        {
+                            callGraph.AddEdge(impl, callee);
+                        }
+                    }
+                }
+            }
+            return callGraph;
+        }
 
     }
 

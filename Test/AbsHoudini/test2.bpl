@@ -3,7 +3,7 @@ var h: int;
 
 procedure foo() 
 modifies g, h;
-ensures b0 ==> old(g) == g;
+ensures b0() || old(g) == g;
 {
   call AcquireLock();
   call ReleaseLock();
@@ -11,7 +11,7 @@ ensures b0 ==> old(g) == g;
 
 procedure AcquireLock()
 modifies g, h;
-ensures b1 ==> old(g) == g;
+ensures b1() || old(g) == g;
 {
   h := g;
   g := 1;
@@ -19,7 +19,7 @@ ensures b1 ==> old(g) == g;
 
 procedure ReleaseLock()
 modifies g, h;
-ensures b2 ==> old(g) == g;
+ensures b2() || old(g) == g;
 {
   g := h;
 }
@@ -29,10 +29,12 @@ modifies g, h;
 {
   g := 0;
   call foo();
-  assert g == 0;
+  assert Assert() || g == 0;
 }
 
-const {:existential true} b0: bool;
-const {:existential true} b1: bool;
-const {:existential true } b2: bool;
+function {:existential true} b0(): bool;
+function {:existential true} b1(): bool;
+function {:existential true} b2(): bool;
+function {:existential true} Assert(): bool;
 
+// Expected: Assert = false, b0 = false, b1 = true, b2 = true
