@@ -639,15 +639,45 @@ namespace Microsoft.Boogie {
       {
           if (CommandLineOptions.Clo.AbstractHoudini != null)
           {
-              CommandLineOptions.Clo.PrintErrorModel = 1;
+              //CommandLineOptions.Clo.PrintErrorModel = 1;
               CommandLineOptions.Clo.UseArrayTheory = true;
               CommandLineOptions.Clo.TypeEncodingMethod = CommandLineOptions.TypeEncoding.Monomorphic;
               CommandLineOptions.Clo.ProverCCLimit = 1;
+              CommandLineOptions.Clo.UseSubsumption = CommandLineOptions.SubsumptionOption.Never;
+
+              // Declare abstract domains
+              var domains = new List<System.Tuple<string, Houdini.IAbstractDomain>>(new System.Tuple<string, Houdini.IAbstractDomain>[] {
+                  System.Tuple.Create("ConstantProp", Houdini.ConstantProp.GetBottom() as Houdini.IAbstractDomain),
+                  System.Tuple.Create("IA[ConstantProp]", new Houdini.IndependentAttribute<Houdini.ConstantProp>()  as Houdini.IAbstractDomain)
+              });
+
+              domains.Iter(tup => Houdini.AbstractDomainFactory.Register(tup.Item2));
+
+              // Find the abstract domain
+              Houdini.IAbstractDomain domain = null;
+              foreach (var tup in domains)
+              {
+                  if (tup.Item1 == CommandLineOptions.Clo.AbstractHoudini)
+                  {
+                      domain = tup.Item2;
+                      break;
+                  }
+              }
+              if (domain == null)
+              {
+                  Console.WriteLine("Domain {0} not found", CommandLineOptions.Clo.AbstractHoudini);
+                  Console.WriteLine("Supported domains are:");
+                  domains.Iter(tup => Console.WriteLine("  {0}", tup.Item1));
+                  throw new Houdini.AbsHoudiniInternalError("Domain not found");
+              }
 
               // Run Abstract Houdini
-              Houdini.PredicateAbs.Initialize(program);
-              var abs = new Houdini.AbstractHoudini(program);
-              abs.computeSummaries(new Houdini.PredicateAbs(program.TopLevelDeclarations.OfType<Implementation>().First().Name));
+              var abs = new Houdini.AbsHoudini(program, domain);
+              abs.ComputeSummaries();
+
+              //Houdini.PredicateAbs.Initialize(program);
+              //var abs = new Houdini.AbstractHoudini(program);
+              //abs.computeSummaries(new Houdini.PredicateAbs(program.TopLevelDeclarations.OfType<Implementation>().First().Name));
 
               return PipelineOutcome.Done;
           }

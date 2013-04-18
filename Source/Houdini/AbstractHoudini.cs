@@ -13,6 +13,610 @@ using Microsoft.Boogie.GraphUtil;
 
 namespace Microsoft.Boogie.Houdini {
 
+    public class AbsHoudini
+    {
+        // An element of the abstract domain
+        IAbstractDomain domainElement;
+        Dictionary<string, Function> existentialFunctions;
+        Program program;
+        Dictionary<string, Implementation> name2Impl;
+        Dictionary<string, VCExpr> impl2VC;
+        Dictionary<string, List<Tuple<string, Constant, NAryExpr>>> impl2FuncCalls;
+        // constant -> the naryexpr that it replaced
+        Dictionary<string, NAryExpr> constant2FuncCall;
+
+        // function -> its abstract value
+        Dictionary<string, IAbstractDomain> function2Value;
+
+        // impl -> functions assumed/asserted
+        Dictionary<string, HashSet<string>> impl2functionsAsserted, impl2functionsAssumed;
+
+        // funtions -> impls where assumed/asserted
+        Dictionary<string, HashSet<string>> function2implAssumed, function2implAsserted;
+
+        // impl -> handler, collector
+        Dictionary<string, Tuple<ProverInterface.ErrorHandler, ConditionGeneration.CounterexampleCollector>> impl2ErrorHandler;
+
+        // Essentials: VCGen, Prover
+        VCGen vcgen;
+        ProverInterface prover;
+
+        // Stats
+        TimeSpan proverTime;
+        int numProverQueries;
+
+        public AbsHoudini(Program program, IAbstractDomain elem)
+        {
+            this.program = program;
+            this.domainElement = elem;
+            this.impl2VC = new Dictionary<string, VCExpr>();
+            this.impl2FuncCalls = new Dictionary<string, List<Tuple<string, Constant, NAryExpr>>>();
+            this.existentialFunctions = new Dictionary<string, Function>();
+            this.name2Impl = new Dictionary<string, Implementation>();
+            this.impl2functionsAsserted = new Dictionary<string, HashSet<string>>();
+            this.impl2functionsAssumed = new Dictionary<string, HashSet<string>>();
+            this.function2implAsserted = new Dictionary<string, HashSet<string>>();
+            this.function2implAssumed = new Dictionary<string, HashSet<string>>();
+            this.impl2ErrorHandler = new Dictionary<string, Tuple<ProverInterface.ErrorHandler, ConditionGeneration.CounterexampleCollector>>();
+            this.constant2FuncCall = new Dictionary<string, NAryExpr>();
+
+            // Find the existential functions
+            foreach (var func in program.TopLevelDeclarations.OfType<Function>()
+                .Where(f => QKeyValue.FindBoolAttribute(f.Attributes, "existential")))
+                existentialFunctions.Add(func.Name, func);
+
+            this.function2Value = new Dictionary<string, IAbstractDomain>();
+            existentialFunctions.Keys.Iter(f => function2Value.Add(f, domainElement.Bottom()));
+            existentialFunctions.Keys.Iter(f => function2implAssumed.Add(f, new HashSet<string>()));
+            existentialFunctions.Keys.Iter(f => function2implAsserted.Add(f, new HashSet<string>()));
+
+            // type check
+            existentialFunctions.Values.Iter(func =>
+                {
+                    if (func.OutParams.Length != 1 || !func.OutParams[0].TypedIdent.Type.IsBool)
+                        throw new AbsHoudiniInternalError(string.Format("Existential function {0} must return bool", func.Name));
+                    if(func.Body != null)
+                        throw new AbsHoudiniInternalError(string.Format("Existential function {0} should not have a body", func.Name));
+                });
+
+            if (CommandLineOptions.Clo.ProverKillTime > 0)
+                CommandLineOptions.Clo.ProverOptions.Add(string.Format("TIME_LIMIT={0}", CommandLineOptions.Clo.ProverKillTime));
+
+            this.vcgen = new VCGen(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend);
+            this.prover = ProverInterface.CreateProver(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend, -1);
+
+            this.proverTime = TimeSpan.Zero;
+            this.numProverQueries = 0;
+
+            program.TopLevelDeclarations.OfType<Implementation>()
+                .Iter(impl => name2Impl.Add(impl.Name, impl));
+
+            // Let's do VC Gen (and also build dependencies)
+            name2Impl.Values.Iter(GenVC);
+        }
+
+        public void ComputeSummaries()
+        {
+            var worklist = new Queue<string>();
+            name2Impl.Keys.Iter(k => worklist.Enqueue(k));
+
+            while (worklist.Any())
+            {
+                var impl = worklist.Dequeue();
+                var gen = prover.VCExprGen;
+                Expr env = Expr.True;
+
+                foreach (var tup in impl2FuncCalls[impl])
+                {
+                    var controlVar = tup.Item2;
+                    var exprVars = tup.Item3;
+                    var varList = new List<Expr>();
+                    exprVars.Args.OfType<Expr>().Iter(v => varList.Add(v));
+
+                    env = Expr.And(env, 
+                        Expr.Eq(Expr.Ident(controlVar), function2Value[tup.Item1].Gamma(varList)));
+                }
+
+                env.Typecheck(new TypecheckingContext((IErrorSink)null));
+                var envVC = prover.Context.BoogieExprTranslator.Translate(env);
+                //Console.WriteLine("env: {0}", envVC);
+
+                var vc = gen.Implies(envVC, impl2VC[impl]);
+
+                if (CommandLineOptions.Clo.Trace)
+                    Console.Write("Verifying {0}: ", impl);
+
+                var handler = impl2ErrorHandler[impl].Item1;
+                var collector = impl2ErrorHandler[impl].Item2;
+                collector.examples.Clear(); 
+
+                var start = DateTime.Now;
+
+                prover.Push();
+                prover.Assert(gen.Not(vc), true);
+                prover.FlushAxiomsToTheoremProver();
+                prover.Check();
+                ProverInterface.Outcome proverOutcome = prover.CheckOutcomeCore(handler);
+
+                //prover.BeginCheck(impl, vc, handler);
+                //ProverInterface.Outcome proverOutcome = prover.CheckOutcomeCore(handler);
+
+                var inc = (DateTime.Now - start);
+                proverTime += inc;
+                numProverQueries++;
+
+                if (CommandLineOptions.Clo.Trace)
+                    Console.WriteLine("Time taken = " + inc.TotalSeconds.ToString());
+
+                if (proverOutcome == ProverInterface.Outcome.TimeOut || proverOutcome == ProverInterface.Outcome.OutOfMemory)
+                    throw new AbsHoudiniInternalError("Timeout/Spaceout while verifying " + impl);
+                
+                
+                if (collector.examples.Count == 0)
+                {
+                    if (CommandLineOptions.Clo.Trace)  Console.WriteLine("UNSAT");
+                    prover.Pop();
+                    continue;
+                }
+
+                if (CommandLineOptions.Clo.Trace)  Console.WriteLine("SAT");
+                Debug.Assert(collector.examples.Count == 1);
+                var error = collector.examples[0];
+
+                // Find the failing assert -- need to do a join there
+                var cex = ExtractState(impl, error);
+                var funcsChanged = new HashSet<string>();
+                foreach (var tup in cex)
+                {
+                    function2Value[tup.Item1] = function2Value[tup.Item1].Join(tup.Item2);
+                    funcsChanged.Add(tup.Item1);
+                }
+
+                // propagate dependent guys back into the worklist, including self
+                var deps = new HashSet<string>();
+                deps.Add(impl);
+                funcsChanged.Iter(f => deps.UnionWith(function2implAssumed[f]));
+
+                deps.RemoveWhere(s => worklist.Contains(s));
+                deps.Iter(s => worklist.Enqueue(s));
+
+                prover.Pop();
+            }
+
+            if (CommandLineOptions.Clo.PrintAssignment)
+            {
+                // Print the answer
+                var tt = new TokenTextWriter(Console.Out);
+                foreach (var function in existentialFunctions.Values)
+                {
+                    var invars = new List<Expr>(function.InParams.OfType<Variable>().Select(v => Expr.Ident(v)));
+                    function.Body = function2Value[function.Name].Gamma(invars);
+                    function.Emit(tt, 0);
+                }
+                tt.Close();
+            }
+        }
+
+        private List<Tuple<string, List<Model.Element>>> ExtractState(string impl, Counterexample error)
+        {
+            var lastBlock = error.Trace.Last() as Block;
+            AssertCmd failingAssert = null;
+
+            CallCounterexample callCounterexample = error as CallCounterexample;
+            if (callCounterexample != null)
+            {
+                Procedure failingProcedure = callCounterexample.FailingCall.Proc;
+                Requires failingRequires = callCounterexample.FailingRequires;
+                failingAssert = lastBlock.Cmds.OfType<AssertRequiresCmd>().FirstOrDefault(ac => ac.Requires == failingRequires);
+            }
+            ReturnCounterexample returnCounterexample = error as ReturnCounterexample;
+            if (returnCounterexample != null)
+            {
+                Ensures failingEnsures = returnCounterexample.FailingEnsures;
+                failingAssert = lastBlock.Cmds.OfType<AssertEnsuresCmd>().FirstOrDefault(ac => ac.Ensures == failingEnsures);
+            }
+            AssertCounterexample assertCounterexample = error as AssertCounterexample;
+            if (assertCounterexample != null)
+            {
+                failingAssert = lastBlock.Cmds.OfType<AssertCmd>().FirstOrDefault(ac => ac == assertCounterexample.FailingAssert);
+            }
+
+            Debug.Assert(failingAssert != null);
+            return ExtractState(impl, failingAssert.Expr, error.Model);
+        }
+
+        private List<Tuple<string, List<Model.Element>>> ExtractState(string impl, Expr expr, Model model)
+        {
+            var collect = new VariableCollector();
+            collect.VisitExpr(expr);
+
+            var ret = new List<Tuple<string, List<Model.Element>>>();
+
+            foreach (var constant in collect.usedVars.OfType<Constant>().Where(c => constant2FuncCall.ContainsKey(c.Name)))
+            {
+                var func = constant2FuncCall[constant.Name];
+                var funcName = (func.Fun as FunctionCall).FunctionName;
+                var vals = new List<Model.Element>();
+                prover.Context.BoogieExprTranslator.Translate(func.Args).Iter(ve => vals.Add(getValue(ve, model)));
+
+                ret.Add(Tuple.Create(funcName, vals));
+            }
+
+            return ret;
+        }
+
+        private Model.Element getValue(VCExpr arg, Model model)
+        {
+            
+            if (arg is VCExprLiteral)
+            {
+                //return model.GetElement(arg.ToString());
+                return model.MkElement(arg.ToString());
+            }
+            else if (arg is VCExprVar)
+            {
+                var el = model.TryGetFunc(prover.Context.Lookup(arg as VCExprVar));
+                if (el != null)
+                {
+                    Debug.Assert(el.Arity == 0 && el.AppCount == 1);
+                    return el.Apps.First().Result;
+                }
+                else
+                {
+                    // Variable not defined; assign arbitrary value
+                    if (arg.Type.IsBool)
+                        return model.MkElement("false");
+                    else if (arg.Type.IsInt)
+                        return model.MkIntElement(0);
+                    else
+                        return null;
+                }
+            }
+            else
+            {
+                var val = prover.Evaluate(arg);
+                if (val is int || val is bool)
+                {
+                    return model.MkElement(val.ToString());
+                }
+                else
+                {
+                    Debug.Assert(false);
+                }
+                return null;
+            }
+        }
+
+        private void GenVC(Implementation impl)
+        {
+            ModelViewInfo mvInfo;
+            System.Collections.Hashtable label2absy;
+            var collector = new ConditionGeneration.CounterexampleCollector();
+            collector.OnProgress("HdnVCGen", 0, 0, 0.0);
+
+            if (CommandLineOptions.Clo.Trace)
+            {
+                Console.WriteLine("Generating VC of {0}", impl.Name);
+            }
+
+            vcgen.ConvertCFG2DAG(impl);
+            var gotoCmdOrigins = vcgen.PassifyImpl(impl, out mvInfo);
+
+            // Intercept the FunctionCalls of the existential functions, and replace them with Boolean constants
+            var existentialFunctionNames = new HashSet<string>(existentialFunctions.Keys);
+            var fv = new ReplaceFunctionCalls(existentialFunctionNames);
+            fv.VisitBlockList(impl.Blocks);
+
+            impl2functionsAsserted.Add(impl.Name, fv.functionsAsserted);
+            impl2functionsAssumed.Add(impl.Name, fv.functionsAssumed);
+
+            fv.functionsAssumed.Iter(f => function2implAssumed[f].Add(impl.Name));
+            fv.functionsAsserted.Iter(f => function2implAsserted[f].Add(impl.Name));
+
+            impl2FuncCalls.Add(impl.Name, fv.functionsUsed);
+            fv.functionsUsed.Iter(tup => constant2FuncCall.Add(tup.Item2.Name, tup.Item3));
+
+            var gen = prover.VCExprGen;
+            var vcexpr = vcgen.GenerateVC(impl, null, out label2absy, prover.Context);
+
+            ProverInterface.ErrorHandler handler = null;
+            if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Local)
+                handler = new VCGen.ErrorReporterLocal(gotoCmdOrigins, label2absy, impl.Blocks, vcgen.incarnationOriginMap, collector, mvInfo, prover.Context, program);
+            else
+                handler = new VCGen.ErrorReporter(gotoCmdOrigins, label2absy, impl.Blocks, vcgen.incarnationOriginMap, collector, mvInfo, prover.Context, program);
+
+            impl2ErrorHandler.Add(impl.Name, Tuple.Create(handler, collector));
+
+            //Console.WriteLine("VC of {0}: {1}", impl.Name, vcexpr);
+
+            // Create a macro so that the VC can sit with the theorem prover
+            Macro macro = new Macro(Token.NoToken, impl.Name + "Macro", new VariableSeq(), new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "", Bpl.Type.Bool), false));
+            prover.DefineMacro(macro, vcexpr);
+
+            // Store VC
+            impl2VC.Add(impl.Name, gen.Function(macro));
+        }
+
+
+    }
+
+    class ReplaceFunctionCalls : StandardVisitor
+    {
+        public List<Tuple<string, Constant, NAryExpr>> functionsUsed;
+        public List<Constant> boolConstants;
+
+        public HashSet<string> functionsAssumed;
+        public HashSet<string> functionsAsserted;
+        HashSet<string> functionsToReplace;
+
+        private bool inAssume;
+        private bool inAssert;
+        private static int IdCounter = 0;
+
+        public ReplaceFunctionCalls(HashSet<string> functionsToReplace)
+        {
+            this.functionsUsed = new List<Tuple<string, Constant, NAryExpr>>();
+            this.functionsToReplace = functionsToReplace;
+            this.functionsAsserted = new HashSet<string>();
+            this.functionsAssumed = new HashSet<string>();
+            this.boolConstants = new List<Constant>();
+
+            inAssume = false;
+            inAssert = false;
+        }
+
+        public override Cmd VisitAssertCmd(AssertCmd node)
+        {
+            inAssert = true;
+            var ret = base.VisitAssertCmd(node);
+            inAssert = false;
+            return ret;
+        }
+
+        public override Cmd VisitAssertEnsuresCmd(AssertEnsuresCmd node)
+        {
+            return this.VisitAssertCmd(node);
+        }
+
+        public override Cmd VisitAssertRequiresCmd(AssertRequiresCmd node)
+        {
+            return this.VisitAssertCmd(node);
+        }
+
+        public override Cmd VisitAssumeCmd(AssumeCmd node)
+        {
+            inAssume = true;
+            var ret = base.VisitAssumeCmd(node);
+            inAssume = false;
+            return ret;
+        }
+
+        public override Expr VisitNAryExpr(NAryExpr node)
+        {
+            if (node.Fun is FunctionCall && functionsToReplace.Contains((node.Fun as FunctionCall).FunctionName))
+            {
+                found((node.Fun as FunctionCall).FunctionName);
+                // create boolean constant to replace this guy
+                var constant = new Constant(Token.NoToken, new TypedIdent(Token.NoToken, "AbsHoudiniConstant" + IdCounter, Microsoft.Boogie.Type.Bool), false);
+                IdCounter++;
+
+                functionsUsed.Add(Tuple.Create((node.Fun as FunctionCall).FunctionName, constant, node));
+                boolConstants.Add(constant);
+                return Expr.Ident(constant);
+            }
+            return base.VisitNAryExpr(node);
+        }
+
+        private void found(string func)
+        {
+            if (inAssume) functionsAssumed.Add(func);
+            if (inAssert) functionsAsserted.Add(func);
+        }
+
+    }
+
+    public class ConstantProp : IAbstractDomain
+    {
+        object val;
+        bool isBottom;
+        bool isTop;
+
+        private ConstantProp(object val, bool isTop, bool isBottom)
+        {
+            this.val = val;
+            this.isBottom = isBottom;
+            this.isTop = isTop;
+            Debug.Assert(!(isTop && isBottom));
+            Debug.Assert(val == null || (val is int) || (val is bool));
+        }
+
+        public static ConstantProp GetExtObj(object val)
+        {
+            Debug.Assert(val != null);
+            return new ConstantProp(val, false, false);
+        }
+
+        public static ConstantProp GetTop()
+        {
+            return new ConstantProp(null, true, false);
+        }
+
+        public static ConstantProp GetBottom()
+        {
+            return new ConstantProp(null, false, true);
+        }
+
+        private ConstantProp Join(ConstantProp that)
+        {
+            if (isBottom) return that;
+            if (isTop) return this;
+            if (that.isBottom) return this;
+            if (that.isTop) return that;
+
+            if ((val is int) && !(that.val is int))
+                throw new AbsHoudiniInternalError("Type mismatch in ExtObj");
+
+            if ((val is bool) && !(that.val is bool))
+                throw new AbsHoudiniInternalError("Type mismatch in ExtObj");
+
+            if (val is int)
+            {
+                var v1 = (int)val;
+                var v2 = (int)that.val;
+                if (v1 != v2) return GetTop();
+                return this;
+            }
+            else if (val is bool)
+            {
+                var v1 = (bool)val;
+                var v2 = (bool)that.val;
+                if (v1 != v2) return GetTop();
+                return this;
+            }
+            throw new AbsHoudiniInternalError("Illegal val type in ExtObj");
+        }
+
+        public IAbstractDomain Bottom()
+        {
+            return GetBottom();
+        }
+
+        public IAbstractDomain Join(List<Model.Element> states)
+        {
+            Debug.Assert(states.Count == 1);
+            var state = states[0];
+            ConstantProp that = null;
+
+            if (state is Model.Integer)
+            {
+                that = GetExtObj((state as Model.Integer).AsInt());
+            }
+            else if (state is Model.Boolean)
+            {
+                that = GetExtObj((state as Model.Boolean).Value);
+            }
+            else
+            {
+                throw new AbsHoudiniInternalError("Illegal type " + state.GetType().ToString());
+            }
+
+            return Join(that);
+        }
+
+        public Expr Gamma(List<Expr> vars)
+        {
+            Debug.Assert(vars.Count == 1);
+            var v = vars[0];
+            if (isBottom) return Expr.False;
+            if (isTop) return Expr.True;
+            if (val is int)
+                return Expr.Eq(v, Expr.Literal((int)val));
+            if (val is bool && (bool)val)
+                return v;
+            if (val is bool && !(bool)val)
+                return Expr.Not(v);
+
+            return null;
+        }
+    }
+
+
+    public class IndependentAttribute<T> : IAbstractDomain where T : class, IAbstractDomain
+    {
+        bool isBottom;
+        int numVars;
+        List<T> varVal;
+        T underlyingInstance;
+
+        public IndependentAttribute()
+        {
+            isBottom = true;
+            numVars = 0;
+            varVal = new List<T>();
+            underlyingInstance = null;
+        }
+
+        public IAbstractDomain Bottom()
+        {
+            return new IndependentAttribute<T>();
+        }
+
+        public IAbstractDomain Join(List<Model.Element> state)
+        {
+            SetUnderlyingInstance();
+
+            if (!isBottom && numVars != state.Count)
+            {
+                throw new AbsHoudiniInternalError(
+                    string.Format("Got illegal number of arguments ({0}), expected {1}", state.Count, numVars));
+            }
+
+            var ret = new IndependentAttribute<T>();
+            ret.isBottom = false;
+            ret.numVars = state.Count;
+            for(int i = 0; i < state.Count; i++)
+            {
+                var sl = new List<Model.Element>();
+                sl.Add(state[i]);
+                T prev = isBottom ? underlyingInstance.Bottom() as T : varVal[i];
+                ret.varVal.Add(prev.Join(sl) as T);
+            }
+
+            return ret;
+        }
+
+        public Expr Gamma(List<Expr> vars)
+        {
+            if (isBottom) return Expr.False;
+            if (numVars != vars.Count)
+                throw new AbsHoudiniInternalError(
+                    string.Format("Got illegal number of arguments ({0}), expected {1}", vars.Count, numVars));
+
+            Expr ret = Expr.True;
+            for (int i = 0; i < numVars; i++)
+            {
+                var sl = new List<Expr>(); sl.Add(vars[i]);
+                ret = Expr.And(ret, varVal[i].Gamma(sl));
+            }
+
+            return ret;
+        }
+
+        private void SetUnderlyingInstance()
+        {
+            if (underlyingInstance != null) return;
+            var tt = typeof(T);
+            underlyingInstance = AbstractDomainFactory.GetInstance(tt) as T;
+        }
+    }
+
+    public class AbstractDomainFactory
+    {
+        // Type name -> Instance
+        private static Dictionary<string, IAbstractDomain> abstractDomainInstances = new Dictionary<string, IAbstractDomain>();
+
+        public static void Register(IAbstractDomain instance)
+        {
+            var Name = instance.GetType().FullName;
+            Debug.Assert(!abstractDomainInstances.ContainsKey(Name));
+            abstractDomainInstances.Add(Name, instance);
+        }
+
+        public static IAbstractDomain GetInstance(System.Type type)
+        {
+            var Name = type.FullName;
+            Debug.Assert(abstractDomainInstances.ContainsKey(Name));
+            return abstractDomainInstances[Name] as IAbstractDomain;
+        }
+    }
+
+    public interface IAbstractDomain
+    {
+        IAbstractDomain Bottom();
+        IAbstractDomain Join(List<Model.Element> state);
+        Expr Gamma(List<Expr> vars);
+    }
+
     public class AbstractHoudini
     {
         // Input Program
@@ -2379,6 +2983,54 @@ namespace Microsoft.Boogie.Houdini {
 
     }
 
+    class FindExistentialFunctions : MutatingVCExprVisitor<bool>
+    {
+        public List<Tuple<string, VCExprVar, VCExprNAry>> funcCalls;
+        private HashSet<string> existentialFunctions;
+        private static int CounterId = 0;
+
+        public FindExistentialFunctions(VCExpressionGenerator gen, HashSet<string> existentialFunctions)
+            : base(gen)
+        {
+            funcCalls = new List<Tuple<string, VCExprVar, VCExprNAry>>();
+            this.existentialFunctions = existentialFunctions;
+        }
+
+        protected override VCExpr/*!*/ UpdateModifiedNode(VCExprNAry/*!*/ originalNode,
+                                              List<VCExpr/*!*/>/*!*/ newSubExprs,
+            // has any of the subexpressions changed?
+                                              bool changed,
+                                              bool arg)
+        {
+            Contract.Ensures(Contract.Result<VCExpr>() != null);
+
+            VCExpr ret;
+            if (changed)
+                ret = Gen.Function(originalNode.Op,
+                                   newSubExprs, originalNode.TypeArguments);
+            else
+                ret = originalNode;
+
+            VCExprNAry retnary = ret as VCExprNAry;
+            if (retnary == null) return ret;
+            var op = retnary.Op as VCExprBoogieFunctionOp;
+            if (op == null) return ret;
+
+            string calleeName = op.Func.Name;
+
+            if (!existentialFunctions.Contains(calleeName))
+                return ret;
+
+            var controlConst = Gen.Variable("AbsHoudiniControl" + CounterId, Microsoft.Boogie.Type.Bool);
+            CounterId++;
+
+            funcCalls.Add(Tuple.Create(calleeName, controlConst, retnary));
+
+            return controlConst;
+        }
+
+    }
+
     class AbstractHoudiniErrorReporter : ProverInterface.ErrorHandler
     {
         public Model model;
@@ -2396,6 +3048,9 @@ namespace Microsoft.Boogie.Houdini {
         }
     }
 
+    public class AbsHoudiniAssemblyLocator
+    {
+    }
 
     public class AbsHoudiniInternalError : System.ApplicationException
     {
