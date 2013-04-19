@@ -160,14 +160,14 @@ namespace Microsoft.Boogie
             globalMods = new IdentifierExprSeq();
             foreach (Variable g in program.GlobalVariables())
             {
-                var oldg = new GlobalVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og@global_old_{0}", g.Name), g.TypedIdent.Type));
+                var oldg = new GlobalVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_global_old_{0}", g.Name), g.TypedIdent.Type));
                 ogOldGlobalMap[g] = new IdentifierExpr(Token.NoToken, oldg);
                 globalMods.Add(new IdentifierExpr(Token.NoToken, g));
             }
             asyncAndParallelCallDesugarings = new Dictionary<string, Procedure>();
             yieldCheckerProcs = new List<Procedure>();
             yieldCheckerImpls = new List<Implementation>();
-            yieldProc = new Procedure(Token.NoToken, "og@yield", new TypeVariableSeq(), new VariableSeq(), new VariableSeq(), new RequiresSeq(), new IdentifierExprSeq(), new EnsuresSeq());
+            yieldProc = new Procedure(Token.NoToken, "og_yield", new TypeVariableSeq(), new VariableSeq(), new VariableSeq(), new RequiresSeq(), new IdentifierExprSeq(), new EnsuresSeq());
             yieldProc.AddAttribute("inline", new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1)));
         }
 
@@ -222,7 +222,7 @@ namespace Microsoft.Boogie
             string procName = "og";
             foreach (string calleeName in parallelCalleeNames)
             {
-                procName = procName + "@" + calleeName;
+                procName = procName + "_" + calleeName;
             }
             if (asyncAndParallelCallDesugarings.ContainsKey(procName))
                 return asyncAndParallelCallDesugarings[procName];
@@ -238,13 +238,13 @@ namespace Microsoft.Boogie
                 Hashtable map = new Hashtable();
                 foreach (Variable x in callCmd.Proc.InParams)
                 {
-                    Variable y = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "og@" + count + x.Name, x.TypedIdent.Type), true);
+                    Variable y = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "og_" + count + x.Name, x.TypedIdent.Type), true);
                     inParams.Add(y);
                     map[x] = new IdentifierExpr(Token.NoToken, y);
                 }
                 foreach (Variable x in callCmd.Proc.OutParams)
                 {
-                    Variable y = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "og@" + count + x.Name, x.TypedIdent.Type), false);
+                    Variable y = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "og_" + count + x.Name, x.TypedIdent.Type), false);
                     outParams.Add(y);
                     map[x] = new IdentifierExpr(Token.NoToken, y);
                 }
@@ -374,7 +374,7 @@ namespace Microsoft.Boogie
             Hashtable ogOldLocalMap = new Hashtable();
             foreach (var g in program.GlobalVariables())
             {
-                var copy = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og@local_old_{0}", g.Name), g.TypedIdent.Type));
+                var copy = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_local_old_{0}", g.Name), g.TypedIdent.Type));
                 locals.Add(copy);
                 ogOldLocalMap[g] = new IdentifierExpr(Token.NoToken, copy);
             }
@@ -529,7 +529,7 @@ namespace Microsoft.Boogie
             Hashtable ogOldLocalMap = new Hashtable();
             foreach (var g in program.GlobalVariables())
             {
-                var copy = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og@local_old_{0}", g.Name), g.TypedIdent.Type));
+                var copy = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_local_old_{0}", g.Name), g.TypedIdent.Type));
                 locals.Add(copy);
                 ogOldLocalMap[g] = new IdentifierExpr(Token.NoToken, copy);
             }
