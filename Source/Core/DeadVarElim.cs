@@ -200,6 +200,11 @@ namespace Microsoft.Boogie {
       moreProcessingRequired = true;
       modSets[localProc].Add(var);
     }
+    public override Expr VisitCodeExpr(CodeExpr node) {
+      // don't go into the code expression, since it can only modify variables local to the code expression,
+      // and the mod-set analysis is interested in global variables
+      return node;
+    }
   }
 
   public class VariableCollector : StandardVisitor {
