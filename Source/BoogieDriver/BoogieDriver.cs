@@ -644,13 +644,15 @@ namespace Microsoft.Boogie {
               CommandLineOptions.Clo.ModelViewFile = "z3model";
               CommandLineOptions.Clo.UseArrayTheory = true;
               CommandLineOptions.Clo.TypeEncodingMethod = CommandLineOptions.TypeEncoding.Monomorphic;
+              // Because we use ProverEvaluate, we need to restrict counterexamples to 1 otherwise the model
+              // goes away for UseProverEvaluate
               CommandLineOptions.Clo.ProverCCLimit = 1;
-              CommandLineOptions.Clo.UseSubsumption = CommandLineOptions.SubsumptionOption.Never;
-
               // Declare abstract domains
               var domains = new List<System.Tuple<string, Houdini.IAbstractDomain>>(new System.Tuple<string, Houdini.IAbstractDomain>[] {
+                  System.Tuple.Create("Intervals", new Houdini.Intervals() as Houdini.IAbstractDomain),
                   System.Tuple.Create("ConstantProp", Houdini.ConstantProp.GetBottom() as Houdini.IAbstractDomain),
-                  System.Tuple.Create("IA[ConstantProp]", new Houdini.IndependentAttribute<Houdini.ConstantProp>()  as Houdini.IAbstractDomain)
+                  System.Tuple.Create("IA[ConstantProp]", new Houdini.IndependentAttribute<Houdini.ConstantProp>()  as Houdini.IAbstractDomain),
+                  System.Tuple.Create("IA[Intervals]", new Houdini.IndependentAttribute<Houdini.Intervals>()  as Houdini.IAbstractDomain)
               });
 
               domains.Iter(tup => Houdini.AbstractDomainFactory.Register(tup.Item2));

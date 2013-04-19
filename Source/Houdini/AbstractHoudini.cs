@@ -79,8 +79,8 @@ namespace Microsoft.Boogie.Houdini {
                         throw new AbsHoudiniInternalError(string.Format("Existential function {0} should not have a body", func.Name));
                 });
 
-            if (CommandLineOptions.Clo.ProverKillTime > 0)
-                CommandLineOptions.Clo.ProverOptions.Add(string.Format("TIME_LIMIT={0}", CommandLineOptions.Clo.ProverKillTime));
+            //if (CommandLineOptions.Clo.ProverKillTime > 0)
+            //    CommandLineOptions.Clo.ProverOptions.Add(string.Format("TIME_LIMIT={0}", CommandLineOptions.Clo.ProverKillTime));
 
             Inline();
 
@@ -91,6 +91,7 @@ namespace Microsoft.Boogie.Houdini {
             this.numProverQueries = 0;
 
             program.TopLevelDeclarations.OfType<Implementation>()
+                .Where(impl => !impl.SkipVerification)
                 .Iter(impl => name2Impl.Add(impl.Name, impl));
 
             // Let's do VC Gen (and also build dependencies)
@@ -99,12 +100,47 @@ namespace Microsoft.Boogie.Houdini {
 
         public void ComputeSummaries()
         {
-            var worklist = new Queue<string>();
-            name2Impl.Keys.Iter(k => worklist.Enqueue(k));
+            // Compute SCCs and determine a priority order for impls
+            var Succ = new Dictionary<string, HashSet<string>>();
+            var Pred = new Dictionary<string, HashSet<string>>();
+            name2Impl.Keys.Iter(s => Succ[s] = new HashSet<string>());
+            name2Impl.Keys.Iter(s => Pred[s] = new HashSet<string>());
+
+            foreach(var impl in name2Impl.Keys) {
+                Succ[impl] = new HashSet<string>();
+                impl2functionsAsserted[impl].Iter(f => 
+                    function2implAssumed[f].Iter(succ =>
+                        {
+                            Succ[impl].Add(succ);
+                            Pred[succ].Add(impl);
+                        }));
+            }
+
+            var sccs = new StronglyConnectedComponents<string>(name2Impl.Keys,
+                new Adjacency<string>(n => Pred[n]),
+                new Adjacency<string>(n => Succ[n]));
+            sccs.Compute();
+            
+            // impl -> priority
+            var impl2Priority = new Dictionary<string, int>();
+            int p = 0;
+            foreach (var scc in sccs)
+            {
+                foreach (var impl in scc)
+                {
+                    impl2Priority.Add(impl, p);
+                    p++;
+                }
+            }
+
+            var worklist = new SortedSet<Tuple<int, string>>();
+            name2Impl.Keys.Iter(k => worklist.Add(Tuple.Create(impl2Priority[k], k)));
 
             while (worklist.Any())
             {
-                var impl = worklist.Dequeue();
+                var impl = worklist.First().Item2;
+                worklist.Remove(worklist.First());
+
                 var gen = prover.VCExprGen;
                 Expr env = Expr.True;
 
@@ -121,12 +157,14 @@ namespace Microsoft.Boogie.Houdini {
 
                 env.Typecheck(new TypecheckingContext((IErrorSink)null));
                 var envVC = prover.Context.BoogieExprTranslator.Translate(env);
-                //Console.WriteLine("env: {0}", envVC);
 
                 var vc = gen.Implies(envVC, impl2VC[impl]);
 
                 if (CommandLineOptions.Clo.Trace)
-                    Console.Write("Verifying {0}: ", impl);
+                {
+                    Console.WriteLine("Verifying {0}: ", impl);
+                    Console.WriteLine("env: {0}", envVC);
+                }
 
                 var handler = impl2ErrorHandler[impl].Item1;
                 var collector = impl2ErrorHandler[impl].Item2;
@@ -162,16 +200,17 @@ namespace Microsoft.Boogie.Houdini {
                 }
 
                 if (CommandLineOptions.Clo.Trace)  Console.WriteLine("SAT");
-                Debug.Assert(collector.examples.Count == 1);
-                var error = collector.examples[0];
 
-                // Find the failing assert -- need to do a join there
-                var cex = ExtractState(impl, error);
                 var funcsChanged = new HashSet<string>();
-                foreach (var tup in cex)
+                foreach (var error in collector.examples)
                 {
-                    function2Value[tup.Item1] = function2Value[tup.Item1].Join(tup.Item2);
-                    funcsChanged.Add(tup.Item1);
+                    // Find the failing assert -- need to do a join there
+                    var cex = ExtractState(impl, error);                    
+                    foreach (var tup in cex)
+                    {
+                        function2Value[tup.Item1] = function2Value[tup.Item1].Join(tup.Item2);
+                        funcsChanged.Add(tup.Item1);
+                    }
                 }
 
                 // propagate dependent guys back into the worklist, including self
@@ -179,10 +218,14 @@ namespace Microsoft.Boogie.Houdini {
                 deps.Add(impl);
                 funcsChanged.Iter(f => deps.UnionWith(function2implAssumed[f]));
 
-                deps.RemoveWhere(s => worklist.Contains(s));
-                deps.Iter(s => worklist.Enqueue(s));
-
+                deps.Iter(s => worklist.Add(Tuple.Create(impl2Priority[s], s)));
                 prover.Pop();
+            }
+
+            if (CommandLineOptions.Clo.Trace)
+            {
+                Console.WriteLine("Prover time = {0}", proverTime.TotalSeconds.ToString("F2"));
+                Console.WriteLine("Number of prover queries = " + numProverQueries);
             }
 
             if (CommandLineOptions.Clo.PrintAssignment)
@@ -521,6 +564,89 @@ namespace Microsoft.Boogie.Houdini {
         {
             if (inAssume) functionsAssumed.Add(func);
             if (inAssert) functionsAsserted.Add(func);
+        }
+
+    }
+
+    public class Intervals : IAbstractDomain
+    {
+        // [lower, upper]
+        int upper;
+        int lower;
+        // or: \bot
+        bool isBottom;
+        // number of times join has been performed
+        int nJoin;
+        // number of times before we widen
+        readonly static int maxJoin = 5;
+
+        public Intervals()
+        {
+            this.upper = 0;
+            this.lower = 0;
+            this.nJoin = 0;
+            this.isBottom = true;
+        }
+
+        private Intervals(int lower, int upper, int nJoin)
+        {
+            this.upper = upper;
+            this.lower = lower;
+            this.nJoin = nJoin;
+        }
+
+        public IAbstractDomain Bottom()
+        {
+            return new Intervals();
+        }
+
+        public IAbstractDomain Join(List<Model.Element> states)
+        {
+            Debug.Assert(states.Count == 1);
+            var state = states[0] as Model.Integer;
+            if (state == null)
+                throw new AbsHoudiniInternalError("Incorrect type, expected int");
+            var intval = state.AsInt();
+
+            if (isBottom)
+            {
+                return new Intervals(intval, intval, 1);
+            }
+
+            if(intval >= lower && intval <= upper)
+                return this;
+
+            if (nJoin > maxJoin)
+            {
+                // widen
+                if (intval > upper)
+                    return new Intervals(lower, Int32.MaxValue, 1);
+                if(intval < lower)
+                    return new Intervals(Int32.MinValue, upper, 1);
+
+                Debug.Assert(false);
+            }
+
+            if (intval > upper)
+                return new Intervals(lower, intval, nJoin + 1);
+            if (intval < lower)
+                return new Intervals(intval, upper, nJoin + 1);
+
+            Debug.Assert(false);
+            return null;
+        }
+
+        public Expr Gamma(List<Expr> vars)
+        {
+            Debug.Assert(vars.Count == 1);
+            var v = vars[0];
+            if (isBottom) return Expr.False;
+            Expr ret = Expr.True;
+            if (lower != Int32.MinValue)
+                ret = Expr.And(ret, Expr.Ge(v, Expr.Literal(lower)));
+            if (upper != Int32.MaxValue)
+                ret = Expr.And(ret, Expr.Le(v, Expr.Literal(upper)));
+            return ret;
         }
 
     }
