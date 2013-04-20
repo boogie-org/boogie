@@ -63,6 +63,7 @@ Boogie program verifier finished with 4 verified, 0 errors
 parallel4.bpl(14,3): Error BP5001: This assertion might not hold.
 Execution trace:
     parallel4.bpl(12,3): anon0
+    (0,0): inline$og_yield$0$Return
     parallel4.bpl(12,3): anon0$1
 
 Boogie program verifier finished with 2 verified, 1 error

@@ -381,9 +381,8 @@ namespace Microsoft.Boogie
 
             foreach (var decl in program.TopLevelDeclarations)
             {
-                Implementation impl = decl as Implementation;
-                if (impl == null) continue;
-                Procedure proc = impl.Proc;
+                Procedure proc = decl as Procedure;
+                if (proc == null) continue;
 
                 Dictionary<string, HashSet<Variable>> domainNameToScope = new Dictionary<string, HashSet<Variable>>();
                 foreach (Variable v in program.GlobalVariables())
@@ -418,12 +417,7 @@ namespace Microsoft.Boogie
                 {
                     proc.Requires.Add(new Requires(true, DisjointnessExpr(domainName, domainNameToInParams[domainName])));
                 }
-            }
-            foreach (var decl in program.TopLevelDeclarations)
-            {
-                Procedure proc = decl as Procedure;
-                if (proc == null) continue;
-                HashSet<string> domainNames = new HashSet<string>();
+                Dictionary<string, HashSet<Variable>> domainNameToOutParams = new Dictionary<string, HashSet<Variable>>();
                 foreach (Variable v in proc.OutParams)
                 {
                     var domainName = QKeyValue.FindStringAttribute(v.Attributes, "linear");
@@ -432,23 +426,41 @@ namespace Microsoft.Boogie
                     {
                         linearDomains[domainName] = new LinearDomain(program, v, domainName);
                     }
-                    domainNames.Add(domainName);
-                }
-                foreach (IdentifierExpr ie in proc.Modifies)
-                {
-                    var domainName = QKeyValue.FindStringAttribute(ie.Decl.Attributes, "linear");
-                    if (domainName == null) continue;
-                    if (!linearDomains.ContainsKey(domainName))
+                    if (!domainNameToOutParams.ContainsKey(domainName))
                     {
-                        linearDomains[domainName] = new LinearDomain(program, ie.Decl, domainName);
+                        domainNameToOutParams[domainName] = new HashSet<Variable>();
                     }
-                    domainNames.Add(domainName);
+                    domainNameToOutParams[domainName].Add(v);
                 }
-                foreach (string domainName in domainNames)
+                foreach (string domainName in linearDomains.Keys)
                 {
-                    proc.Modifies.Add(new IdentifierExpr(Token.NoToken, linearDomains[domainName].allocator));
+                    LinearDomain domain = linearDomains[domainName];
+                    var allocator = domain.allocator;
+                    proc.Modifies.Add(new IdentifierExpr(Token.NoToken, allocator));
+                    Expr oldExpr = new OldExpr(Token.NoToken, new IdentifierExpr(Token.NoToken, allocator));
+                    Expr newExpr = new IdentifierExpr(Token.NoToken, allocator);
+                    if (domainNameToScope.ContainsKey(domainName))
+                    {
+                        foreach (Variable v in domainNameToScope[domainName])
+                        {
+                            Expr oldVarExpr = new OldExpr(Token.NoToken, new IdentifierExpr(Token.NoToken, v));
+                            Expr newVarExpr = new IdentifierExpr(Token.NoToken, v);
+                            oldExpr = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapOrBool), new ExprSeq(v.TypedIdent.Type is MapType ? oldVarExpr : Singleton(oldVarExpr, domainName), oldExpr));
+                            newExpr = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapOrBool), new ExprSeq(v.TypedIdent.Type is MapType ? newVarExpr : Singleton(newVarExpr, domainName), newExpr));
+                        }
+                    }
+                    if (domainNameToOutParams.ContainsKey(domainName))
+                    {
+                        foreach (Variable v in domainNameToOutParams[domainName])
+                        {
+                            Expr newVarExpr = new IdentifierExpr(Token.NoToken, v);
+                            newExpr = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapOrBool), new ExprSeq(v.TypedIdent.Type is MapType ? newVarExpr : Singleton(newVarExpr, domainName), newExpr));
+                        }
+                    }
+                    proc.Ensures.Add(new Ensures(true, Expr.Binary(BinaryOperator.Opcode.Eq, oldExpr, newExpr)));
                 }
             }
+            
             foreach (LinearDomain domain in linearDomains.Values)
             {
                 program.TopLevelDeclarations.Add(domain.allocator);
@@ -465,8 +477,6 @@ namespace Microsoft.Boogie
 
             var eraser = new LinearEraser();
             eraser.VisitProgram(program);
-
-            Microsoft.Boogie.ModSetCollector.DoModSetAnalysis(program);
         }
 
         private Expr Singleton(Expr e, string domainName)
