@@ -320,7 +320,7 @@ namespace Microsoft.Boogie.Houdini {
             else
             {
                 var val = prover.Evaluate(arg);
-                if (val is int || val is bool)
+                if (val is int || val is bool || val is Microsoft.Basetypes.BigNum)
                 {
                     return model.MkElement(val.ToString());
                 }
@@ -362,7 +362,15 @@ namespace Microsoft.Boogie.Houdini {
             fv.functionsUsed.Iter(tup => constant2FuncCall.Add(tup.Item2.Name, tup.Item3));
 
             var gen = prover.VCExprGen;
-            var vcexpr = vcgen.GenerateVC(impl, null, out label2absy, prover.Context);
+            VCExpr controlFlowVariableExpr = CommandLineOptions.Clo.UseLabels ? null : gen.Integer(Microsoft.Basetypes.BigNum.ZERO);
+
+            var vcexpr = vcgen.GenerateVC(impl, controlFlowVariableExpr, out label2absy, prover.Context);
+            if (!CommandLineOptions.Clo.UseLabels)
+            {
+                VCExpr controlFlowFunctionAppl = gen.ControlFlowFunctionApplication(gen.Integer(Microsoft.Basetypes.BigNum.ZERO), gen.Integer(Microsoft.Basetypes.BigNum.ZERO));
+                VCExpr eqExpr = gen.Eq(controlFlowFunctionAppl, gen.Integer(Microsoft.Basetypes.BigNum.FromInt(impl.Blocks[0].UniqueId)));
+                vcexpr = gen.Implies(eqExpr, vcexpr);
+            }
 
             ProverInterface.ErrorHandler handler = null;
             if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Local)
@@ -380,6 +388,19 @@ namespace Microsoft.Boogie.Houdini {
 
             // Store VC
             impl2VC.Add(impl.Name, gen.Function(macro));
+
+            // HACK: push the definitions of constants involved in function calls
+            // It is possible that some constants only appear in function calls. Thus, when
+            // they are replaced by Boolean constants, it is possible that (get-value) will 
+            // fail if the expression involves such constants. All we need to do is make sure
+            // these constants are declared, because otherwise, semantically we are doing
+            // the right thing.
+            foreach (var tup in fv.functionsUsed)
+            {
+                var tt = prover.Context.BoogieExprTranslator.Translate(tup.Item3);
+                tt = prover.VCExprGen.Or(VCExpressionGenerator.True, tt);
+                prover.Assert(tt, true);
+            }
         }
 
         private void Inline()
@@ -650,6 +671,64 @@ namespace Microsoft.Boogie.Houdini {
         }
 
     }
+
+    // [false -- (x == true) -- true]
+    public class HoudiniConst : IAbstractDomain
+    {
+        bool isBottom;
+        bool isTop;
+
+        private HoudiniConst(bool isTop, bool isBottom)
+        {
+            this.isBottom = isBottom;
+            this.isTop = isTop;
+            Debug.Assert(!(isTop && isBottom));
+        }
+
+        public static HoudiniConst GetExtObj()
+        {
+            return new HoudiniConst(false, false);
+        }
+
+        public static HoudiniConst GetTop()
+        {
+            return new HoudiniConst(true, false);
+        }
+
+        public static HoudiniConst GetBottom()
+        {
+            return new HoudiniConst(false, true);
+        }
+
+        public IAbstractDomain Bottom()
+        {
+            return GetBottom();
+        }
+
+        public IAbstractDomain Join(List<Model.Element> states)
+        {
+            Debug.Assert(states.Count == 1);
+            var state = states[0];
+
+            if (state is Model.Boolean)
+            {
+                if ((state as Model.Boolean).Value)
+                    return GetExtObj();
+            }
+
+            return GetTop();
+        }
+
+        public Expr Gamma(List<Expr> vars)
+        {
+            Debug.Assert(vars.Count == 1);
+            var v = vars[0];
+            if (isBottom) return Expr.False;
+            if (isTop) return Expr.True;
+            return v;
+        }
+    }
+
 
     public class ConstantProp : IAbstractDomain
     {
