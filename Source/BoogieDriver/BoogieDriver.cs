@@ -652,6 +652,7 @@ namespace Microsoft.Boogie {
                   System.Tuple.Create("HoudiniConst", Houdini.HoudiniConst.GetBottom() as Houdini.IAbstractDomain),
                   System.Tuple.Create("Intervals", new Houdini.Intervals() as Houdini.IAbstractDomain),
                   System.Tuple.Create("ConstantProp", Houdini.ConstantProp.GetBottom() as Houdini.IAbstractDomain),
+                  System.Tuple.Create("PredicateAbs", new Houdini.PredicateAbsElem() as Houdini.IAbstractDomain),
                   System.Tuple.Create("IA[HoudiniConst]", new Houdini.IndependentAttribute<Houdini.HoudiniConst>()  as Houdini.IAbstractDomain),
                   System.Tuple.Create("IA[ConstantProp]", new Houdini.IndependentAttribute<Houdini.ConstantProp>()  as Houdini.IAbstractDomain),
                   System.Tuple.Create("IA[Intervals]", new Houdini.IndependentAttribute<Houdini.Intervals>()  as Houdini.IAbstractDomain)

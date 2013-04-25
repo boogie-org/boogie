@@ -347,6 +347,11 @@ namespace Microsoft.Boogie.Houdini {
             vcgen.ConvertCFG2DAG(impl);
             var gotoCmdOrigins = vcgen.PassifyImpl(impl, out mvInfo);
 
+            //CommandLineOptions.Clo.PrintInstrumented = true;
+            //var tt = new TokenTextWriter(Console.Out);
+            //impl.Emit(tt, 0);
+            //tt.Close();
+
             // Intercept the FunctionCalls of the existential functions, and replace them with Boolean constants
             var existentialFunctionNames = new HashSet<string>(existentialFunctions.Keys);
             var fv = new ReplaceFunctionCalls(existentialFunctionNames);
@@ -670,6 +675,159 @@ namespace Microsoft.Boogie.Houdini {
             return ret;
         }
 
+    }
+
+    public class PredicateAbsElem : IAbstractDomain
+    {
+        public static class ExprExt
+        {
+            public static Expr AndSimp(Expr e1, Expr e2)
+            {
+                if (e1 == Expr.True) return e2;
+                if (e2 == Expr.True) return e1;
+                if (e1 == Expr.False || e2 == Expr.False) return Expr.False;
+                return Expr.And(e1, e2);
+            }
+
+            public static Expr OrSimp(Expr e1, Expr e2)
+            {
+                if (e1 == Expr.False) return e2;
+                if (e2 == Expr.False) return e1;
+                if (e1 == Expr.True || e2 == Expr.True) return Expr.True;
+                return Expr.Or(e1, e2); 
+            }
+        }
+
+        class Disjunct
+        {
+            public static int DisjunctBound = 3;
+            HashSet<int> pos;
+            HashSet<int> neg;
+            bool isTrue;
+
+            public Disjunct()
+            {
+                isTrue = true;
+                pos = new HashSet<int>();
+                neg = new HashSet<int>();
+            }
+
+            public Disjunct(IEnumerable<int> pos, IEnumerable<int> neg)
+            {
+                this.isTrue = false;
+                this.pos = new HashSet<int>(pos);
+                this.neg = new HashSet<int>(neg);
+                if (this.pos.Overlaps(this.neg))
+                {
+                    this.isTrue = true;
+                    this.pos = new HashSet<int>();
+                    this.neg = new HashSet<int>();
+                }
+                if (this.pos.Count + this.neg.Count > DisjunctBound)
+                {
+                    // Set to true
+                    this.isTrue = true;
+                    this.pos = new HashSet<int>();
+                    this.neg = new HashSet<int>();
+                }
+
+            }
+
+            public Disjunct OR(Disjunct that)
+            {
+                if (isTrue)
+                    return this;
+                if (that.isTrue)
+                    return that;
+
+                return new Disjunct(this.pos.Concat(that.pos), this.neg.Concat(that.neg));
+            }
+
+            public bool Implies(Disjunct that)
+            {
+                if (isTrue) return that.isTrue;
+                if (that.isTrue) return true;
+
+                return pos.IsSubsetOf(that.pos) && neg.IsSubsetOf(that.neg);
+            }
+
+            public Expr Gamma(List<Expr> vars)
+            {
+                if (isTrue) return Expr.True;
+                Expr ret = Expr.False;
+                pos.Iter(i => ret = ExprExt.OrSimp(ret, vars[i]));
+                neg.Iter(i => ret = ExprExt.OrSimp(ret, Expr.Not(vars[i])));
+                return ret;
+            }
+        }
+
+        // Conjunction of Disjuncts
+        List<Disjunct> conjuncts;
+        bool isFalse;
+
+        public PredicateAbsElem()
+        {
+            this.conjuncts = new List<Disjunct>();
+            this.isFalse = true;
+        }
+
+        public IAbstractDomain Bottom()
+        {
+            return new PredicateAbsElem();
+        }
+
+        public IAbstractDomain Join(List<Model.Element> state)
+        {
+            if (state.Any(me => !(me is Model.Boolean)))
+                throw new AbsHoudiniInternalError("Predicate Abstraction requires that each argument be of type bool");
+
+            // quick return if this == true
+            if (!this.isFalse && conjuncts.Count == 0)
+                return this;
+
+            var ret = new PredicateAbsElem();
+            ret.isFalse = false;
+
+            for (int i = 0; i < state.Count; i++)
+            {
+                var b = (state[i] as Model.Boolean).Value;
+                Disjunct d = null;
+                if (b) d = new Disjunct(new int[] { i }, new int[] { });
+                else d = new Disjunct(new int[] { }, new int[] { i });
+
+                if (isFalse)
+                    ret.AddDisjunct(d);
+                else
+                {
+                    conjuncts.Iter(c => ret.AddDisjunct(c.OR(d)));
+                }
+            }
+
+            return ret;
+
+        }
+
+        public Expr Gamma(List<Expr> vars)
+        {
+            if (isFalse) return Expr.False;
+            Expr ret = Expr.True;
+
+            foreach (var c in conjuncts)
+            {
+                ret = ExprExt.AndSimp(ret, c.Gamma(vars));
+            }
+
+            return ret;
+        }
+
+        private void AddDisjunct(Disjunct d)
+        {
+            if (conjuncts.Any(c => c.Implies(d)))
+                return;
+
+            conjuncts.RemoveAll(c => d.Implies(c));
+            conjuncts.Add(d);
+        }
     }
 
     // [false -- (x == true) -- true]
