@@ -644,9 +644,6 @@ namespace Microsoft.Boogie {
               CommandLineOptions.Clo.ModelViewFile = "z3model";
               CommandLineOptions.Clo.UseArrayTheory = true;
               CommandLineOptions.Clo.TypeEncodingMethod = CommandLineOptions.TypeEncoding.Monomorphic;
-              // Because we use ProverEvaluate, we need to restrict counterexamples to 1 otherwise the model
-              // goes away for UseProverEvaluate
-              CommandLineOptions.Clo.ProverCCLimit = 1;
               // Declare abstract domains
               var domains = new List<System.Tuple<string, Houdini.IAbstractDomain>>(new System.Tuple<string, Houdini.IAbstractDomain>[] {
                   System.Tuple.Create("HoudiniConst", Houdini.HoudiniConst.GetBottom() as Houdini.IAbstractDomain),

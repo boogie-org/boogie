@@ -35,7 +35,7 @@ namespace Microsoft.Boogie.Houdini {
         Dictionary<string, HashSet<string>> function2implAssumed, function2implAsserted;
 
         // impl -> handler, collector
-        Dictionary<string, Tuple<ProverInterface.ErrorHandler, ConditionGeneration.CounterexampleCollector>> impl2ErrorHandler;
+        Dictionary<string, Tuple<ProverInterface.ErrorHandler, AbsHoudiniCounterexampleCollector>> impl2ErrorHandler;
 
         // Essentials: VCGen, Prover
         VCGen vcgen;
@@ -57,7 +57,7 @@ namespace Microsoft.Boogie.Houdini {
             this.impl2functionsAssumed = new Dictionary<string, HashSet<string>>();
             this.function2implAsserted = new Dictionary<string, HashSet<string>>();
             this.function2implAssumed = new Dictionary<string, HashSet<string>>();
-            this.impl2ErrorHandler = new Dictionary<string, Tuple<ProverInterface.ErrorHandler, ConditionGeneration.CounterexampleCollector>>();
+            this.impl2ErrorHandler = new Dictionary<string, Tuple<ProverInterface.ErrorHandler, AbsHoudiniCounterexampleCollector>>();
             this.constant2FuncCall = new Dictionary<string, NAryExpr>();
 
             // Find the existential functions
@@ -168,7 +168,7 @@ namespace Microsoft.Boogie.Houdini {
 
                 var handler = impl2ErrorHandler[impl].Item1;
                 var collector = impl2ErrorHandler[impl].Item2;
-                collector.examples.Clear(); 
+                collector.Reset(impl);
 
                 var start = DateTime.Now;
 
@@ -190,35 +190,22 @@ namespace Microsoft.Boogie.Houdini {
 
                 if (proverOutcome == ProverInterface.Outcome.TimeOut || proverOutcome == ProverInterface.Outcome.OutOfMemory)
                     throw new AbsHoudiniInternalError("Timeout/Spaceout while verifying " + impl);
-                
-                
-                if (collector.examples.Count == 0)
+
+                if (CommandLineOptions.Clo.Trace)
+                    Console.WriteLine(collector.numErrors > 0 ? "SAT" : "UNSAT");
+
+                if (collector.numErrors > 0)
                 {
-                    if (CommandLineOptions.Clo.Trace)  Console.WriteLine("UNSAT");
-                    prover.Pop();
-                    continue;
+                    var funcsChanged = collector.funcsChanged;
+
+                    // propagate dependent guys back into the worklist, including self
+                    var deps = new HashSet<string>();
+                    deps.Add(impl);
+                    funcsChanged.Iter(f => deps.UnionWith(function2implAssumed[f]));
+
+                    deps.Iter(s => worklist.Add(Tuple.Create(impl2Priority[s], s)));
                 }
 
-                if (CommandLineOptions.Clo.Trace)  Console.WriteLine("SAT");
-
-                var funcsChanged = new HashSet<string>();
-                foreach (var error in collector.examples)
-                {
-                    // Find the failing assert -- need to do a join there
-                    var cex = ExtractState(impl, error);                    
-                    foreach (var tup in cex)
-                    {
-                        function2Value[tup.Item1] = function2Value[tup.Item1].Join(tup.Item2);
-                        funcsChanged.Add(tup.Item1);
-                    }
-                }
-
-                // propagate dependent guys back into the worklist, including self
-                var deps = new HashSet<string>();
-                deps.Add(impl);
-                funcsChanged.Iter(f => deps.UnionWith(function2implAssumed[f]));
-
-                deps.Iter(s => worklist.Add(Tuple.Create(impl2Priority[s], s)));
                 prover.Pop();
             }
 
@@ -240,6 +227,20 @@ namespace Microsoft.Boogie.Houdini {
                 }
                 tt.Close();
             }
+        }
+
+        public HashSet<string> HandleCounterExample(string impl, Counterexample error)
+        {
+            var funcsChanged = new HashSet<string>();
+            // Find the failing assert -- need to do a join there
+            // return the set of functions whose definition has changed
+            var cex = ExtractState(impl, error);
+            foreach (var tup in cex)
+            {
+                function2Value[tup.Item1] = function2Value[tup.Item1].Join(tup.Item2);
+                funcsChanged.Add(tup.Item1);
+            }
+            return funcsChanged;
         }
 
         private List<Tuple<string, List<Model.Element>>> ExtractState(string impl, Counterexample error)
@@ -332,11 +333,41 @@ namespace Microsoft.Boogie.Houdini {
             }
         }
 
+        class AbsHoudiniCounterexampleCollector : VerifierCallback
+        {
+            public HashSet<string> funcsChanged;
+            public string currImpl;
+            public int numErrors;
+
+            AbsHoudini container;
+
+            public AbsHoudiniCounterexampleCollector(AbsHoudini container)
+            {
+                this.container = container;
+                Reset(null);
+            }
+
+            public void Reset(string impl)
+            {
+                funcsChanged = new HashSet<string>();
+                currImpl = impl;
+                numErrors = 0;
+            }
+
+            public override void OnCounterexample(Counterexample ce, string reason)
+            {
+                numErrors++;
+
+                funcsChanged.UnionWith(
+                    container.HandleCounterExample(currImpl, ce));
+            }
+        }
+
         private void GenVC(Implementation impl)
         {
             ModelViewInfo mvInfo;
             System.Collections.Hashtable label2absy;
-            var collector = new ConditionGeneration.CounterexampleCollector();
+            var collector = new AbsHoudiniCounterexampleCollector(this);
             collector.OnProgress("HdnVCGen", 0, 0, 0.0);
 
             if (CommandLineOptions.Clo.Trace)
