@@ -163,7 +163,10 @@ namespace Microsoft.Boogie.Houdini {
                 if (CommandLineOptions.Clo.Trace)
                 {
                     Console.WriteLine("Verifying {0}: ", impl);
-                    Console.WriteLine("env: {0}", envVC);
+                    //Console.WriteLine("env: {0}", envVC);
+                    var envFuncs = new HashSet<string>();
+                    impl2FuncCalls[impl].Iter(tup => envFuncs.Add(tup.Item1));
+                    envFuncs.Iter(f => PrintFunction(existentialFunctions[f]));
                 }
 
                 var handler = impl2ErrorHandler[impl].Item1;
@@ -218,15 +221,17 @@ namespace Microsoft.Boogie.Houdini {
             if (CommandLineOptions.Clo.PrintAssignment)
             {
                 // Print the answer
-                var tt = new TokenTextWriter(Console.Out);
-                foreach (var function in existentialFunctions.Values)
-                {
-                    var invars = new List<Expr>(function.InParams.OfType<Variable>().Select(v => Expr.Ident(v)));
-                    function.Body = function2Value[function.Name].Gamma(invars);
-                    function.Emit(tt, 0);
-                }
-                tt.Close();
+                existentialFunctions.Values.Iter(PrintFunction);
             }
+        }
+
+        private void PrintFunction(Function function)
+        {
+            var tt = new TokenTextWriter(Console.Out);
+            var invars = new List<Expr>(function.InParams.OfType<Variable>().Select(v => Expr.Ident(v)));
+            function.Body = function2Value[function.Name].Gamma(invars);
+            function.Emit(tt, 0);
+            tt.Close();
         }
 
         public HashSet<string> HandleCounterExample(string impl, Counterexample error)
@@ -898,6 +903,8 @@ namespace Microsoft.Boogie.Houdini {
         {
             Debug.Assert(states.Count == 1);
             var state = states[0];
+
+            if (isTop) return this;
 
             if (state is Model.Boolean)
             {
