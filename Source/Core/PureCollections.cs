@@ -569,7 +569,7 @@ namespace PureCollections {
       object[] n = new object[card];
       int ct = 0;
       Contract.Assert(this.elems != null);
-      for (int i = 0; i < elems.Length; i++)
+      for (int i = 0; i < card; i++)
         n[ct++] = elems[i];
       return n;
     }

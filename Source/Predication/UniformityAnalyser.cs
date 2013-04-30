@@ -13,7 +13,7 @@ namespace Microsoft.Boogie
     {
         private Program prog;
 
-        private bool doAnalysis, unstructured;
+        private bool doAnalysis;
 
         private ISet<Implementation> entryPoints;
 
@@ -32,10 +32,6 @@ namespace Microsoft.Boogie
         private Dictionary<string, List<string>> inParameters;
 
         private Dictionary<string, List<string>> outParameters;
-
-        private List<WhileCmd> loopStack;
-
-        private bool hitNonuniformReturn;
 
         /// <summary>
         /// Simplifies the CFG of the given implementation impl by merging each
@@ -72,11 +68,10 @@ namespace Microsoft.Boogie
             }
         }
 
-        public UniformityAnalyser(Program prog, bool doAnalysis, bool unstructured, ISet<Implementation> entryPoints, IEnumerable<Variable> nonUniformVars)
+        public UniformityAnalyser(Program prog, bool doAnalysis, ISet<Implementation> entryPoints, IEnumerable<Variable> nonUniformVars)
         {
             this.prog = prog;
             this.doAnalysis = doAnalysis;
-            this.unstructured = unstructured;
             this.entryPoints = entryPoints;
             this.nonUniformVars = nonUniformVars;
             uniformityInfo = new Dictionary<string, KeyValuePair<bool, Dictionary<string, bool>>>();
@@ -85,7 +80,6 @@ namespace Microsoft.Boogie
             loopsWithNonuniformReturn = new Dictionary<string, HashSet<int>>();
             inParameters = new Dictionary<string, List<string>>();
             outParameters = new Dictionary<string, List<string>>();
-            loopStack = new List<WhileCmd>();
         }
 
         public void Analyse()
@@ -195,7 +189,6 @@ namespace Microsoft.Boogie
 
                     foreach (var Impl in impls)
                     {
-                        hitNonuniformReturn = false;
                         Analyse(Impl, uniformityInfo[Impl.Name].Key);
                     }
                 }
@@ -218,89 +211,55 @@ namespace Microsoft.Boogie
 
         private void Analyse(Implementation Impl, bool ControlFlowIsUniform)
         {
-            if (unstructured)
+            if (!ControlFlowIsUniform)
             {
-                if (!ControlFlowIsUniform)
-                {
-                    nonUniformBlocks[Impl.Name] = new HashSet<Block>(Impl.Blocks);
+                nonUniformBlocks[Impl.Name] = new HashSet<Block>(Impl.Blocks);
 
-                    foreach (Variable v in Impl.LocVars) {
-                        if (IsUniform(Impl.Name, v.Name)) {
-                            SetNonUniform(Impl.Name, v.Name);
-                        }
+                foreach (Variable v in Impl.LocVars) {
+                    if (IsUniform(Impl.Name, v.Name)) {
+                        SetNonUniform(Impl.Name, v.Name);
                     }
-
-                    foreach (Variable v in Impl.InParams) {
-                        if (IsUniform(Impl.Name, v.Name)) {
-                            SetNonUniform(Impl.Name, v.Name);
-                        }
-                    }
-
-                    foreach (Variable v in Impl.OutParams) {
-                      if (IsUniform(Impl.Name, v.Name)) {
-                         SetNonUniform(Impl.Name, v.Name);
-                      }
-                    }
-                        
-                    return;
                 }
 
-                Graph<Block> blockGraph = prog.ProcessLoops(Impl);
-                var ctrlDep = blockGraph.ControlDependence();
-
-                // Compute transitive closure of control dependence info.
-                bool changed;
-                do
-                {
-                    changed = false;
-                    foreach (var depEntry in ctrlDep)
-                    {
-                        var newDepSet = new HashSet<Block>(depEntry.Value);
-                        foreach (var dep in depEntry.Value)
-                        {
-                            if (ctrlDep.ContainsKey(dep))
-                                newDepSet.UnionWith(ctrlDep[dep]);
-                        }
-                        if (newDepSet.Count != depEntry.Value.Count)
-                        {
-                            depEntry.Value.UnionWith(newDepSet);
-                            changed = true;
-                        }
+                foreach (Variable v in Impl.InParams) {
+                    if (IsUniform(Impl.Name, v.Name)) {
+                        SetNonUniform(Impl.Name, v.Name);
                     }
-                } while (changed);
+                }
 
-                var nonUniformBlockSet = new HashSet<Block>();
-                nonUniformBlocks[Impl.Name] = nonUniformBlockSet;
-
-                do {
-                  changed = false;
-                  foreach (var block in Impl.Blocks) {
-                    bool uniform = !nonUniformBlockSet.Contains(block);
-                    bool newUniform = Analyse(Impl, block.Cmds, uniform);
-                    if (uniform && !newUniform) {
-                      changed = true;
-                      nonUniformBlockSet.Add(block);
-                      Block pred = blockGraph.Predecessors(block).Single();
-                      if (ctrlDep.ContainsKey(pred))
-                        nonUniformBlockSet.UnionWith(ctrlDep[pred]);
-                    }
+                foreach (Variable v in Impl.OutParams) {
+                  if (IsUniform(Impl.Name, v.Name)) {
+                      SetNonUniform(Impl.Name, v.Name);
                   }
-                } while (changed);
+                }
+                        
+                return;
             }
-            else
-            {
-                Analyse(Impl, Impl.StructuredStmts, ControlFlowIsUniform);
-            }
-        }
 
+            Graph<Block> blockGraph = prog.ProcessLoops(Impl);
+            var ctrlDep = blockGraph.ControlDependence();
 
-        private void Analyse(Implementation impl, StmtList stmtList, bool ControlFlowIsUniform)
-        {
-            ControlFlowIsUniform &= !hitNonuniformReturn;
-            foreach (BigBlock bb in stmtList.BigBlocks)
-            {
-                Analyse(impl, bb, ControlFlowIsUniform);
-            }
+            // Compute transitive closure of control dependence info.
+            ctrlDep.TransitiveClosure();
+
+            var nonUniformBlockSet = new HashSet<Block>();
+            nonUniformBlocks[Impl.Name] = nonUniformBlockSet;
+
+            bool changed;
+            do {
+              changed = false;
+              foreach (var block in Impl.Blocks) {
+                bool uniform = !nonUniformBlockSet.Contains(block);
+                bool newUniform = Analyse(Impl, block.Cmds, uniform);
+                if (uniform && !newUniform) {
+                  changed = true;
+                  nonUniformBlockSet.Add(block);
+                  Block pred = blockGraph.Predecessors(block).Single();
+                  if (ctrlDep.ContainsKey(pred))
+                    nonUniformBlockSet.UnionWith(ctrlDep[pred]);
+                }
+              }
+            } while (changed);
         }
 
         private Procedure GetProcedure(string procedureName)
@@ -314,50 +273,6 @@ namespace Microsoft.Boogie
             }
             Debug.Assert(false);
             return null;
-        }
-
-        private void Analyse(Implementation impl, BigBlock bb, bool ControlFlowIsUniform)
-        {
-            ControlFlowIsUniform &= !hitNonuniformReturn;
-            Analyse(impl, bb.simpleCmds, ControlFlowIsUniform);
-
-            if (bb.ec is WhileCmd)
-            {
-                WhileCmd wc = bb.ec as WhileCmd;
-                loopStack.Add(wc);
-                Analyse(impl, wc.Body, ControlFlowIsUniform && IsUniform(impl.Name, wc.Guard) && 
-                    !nonUniformLoops[impl.Name].Contains(GetLoopId(wc)));
-                loopStack.RemoveAt(loopStack.Count - 1);
-            }
-            else if (bb.ec is IfCmd)
-            {
-                IfCmd ifCmd = bb.ec as IfCmd;
-                Analyse(impl, ifCmd.thn, ControlFlowIsUniform && IsUniform(impl.Name, ifCmd.Guard));
-                if (ifCmd.elseBlock != null)
-                {
-                    Analyse(impl, ifCmd.elseBlock, ControlFlowIsUniform && IsUniform(impl.Name, ifCmd.Guard));
-                }
-                Debug.Assert(ifCmd.elseIf == null);
-            }
-            else if (bb.ec is BreakCmd)
-            {
-                if (!ControlFlowIsUniform && !nonUniformLoops[impl.Name].Contains(GetLoopId(loopStack[loopStack.Count - 1])))
-                {
-                    SetNonUniform(impl.Name, loopStack[loopStack.Count - 1]);
-                }
-            }
-
-            if (bb.tc is ReturnCmd && !ControlFlowIsUniform)
-            {
-                hitNonuniformReturn = true;
-                if (loopStack.Count > 0 && !nonUniformLoops[impl.Name].Contains(GetLoopId(loopStack[0])))
-                {
-                    SetNonUniform(impl.Name, loopStack[0]);
-                    loopsWithNonuniformReturn[impl.Name].Add(GetLoopId(loopStack[0]));
-                }
-            }
-
-
         }
 
         private bool Analyse(Implementation impl, CmdSeq cmdSeq, bool ControlFlowIsUniform)
@@ -612,18 +527,6 @@ namespace Microsoft.Boogie
           }
         }
 
-        public bool IsUniform(string proc, WhileCmd wc)
-        {
-            if (unstructured)
-                return false;
-
-            return !nonUniformLoops[proc].Contains(GetLoopId(wc));
-        }
-
-        public bool HasNonuniformReturn(string proc, WhileCmd whileCmd)
-        {
-            return loopsWithNonuniformReturn[proc].Contains(GetLoopId(whileCmd));
-        }
     }
 
 }

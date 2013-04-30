@@ -328,7 +328,7 @@ namespace Microsoft.Boogie.Houdini {
       
       if (CommandLineOptions.Clo.Trace)
         Console.WriteLine("Building call graph...");
-      this.callGraph = BuildCallGraph();
+      this.callGraph = Program.BuildCallGraph(program);
       if (CommandLineOptions.Clo.Trace)
         Console.WriteLine("Number of implementations = {0}", callGraph.Nodes.Count);
 
@@ -492,36 +492,6 @@ namespace Microsoft.Boogie.Houdini {
 
         // contant -> set of implementations that have an assume command with that constant
         public Dictionary<string, HashSet<Implementation>> assumedInImpl { get; private set; }
-    }
-      
-    private Graph<Implementation> BuildCallGraph() {
-      Graph<Implementation> callGraph = new Graph<Implementation>();
-      Dictionary<Procedure, HashSet<Implementation>> procToImpls = new Dictionary<Procedure, HashSet<Implementation>>();
-      foreach (Declaration decl in program.TopLevelDeclarations) {
-        Procedure proc = decl as Procedure;
-        if (proc == null) continue;
-        procToImpls[proc] = new HashSet<Implementation>();
-      } 
-      foreach (Declaration decl in program.TopLevelDeclarations) {
-        Implementation impl = decl as Implementation;
-        if (impl == null || impl.SkipVerification) continue;
-        callGraph.AddSource(impl);
-        procToImpls[impl.Proc].Add(impl);
-      }
-      foreach (Declaration decl in program.TopLevelDeclarations) {
-        Implementation impl = decl as Implementation;
-        if (impl == null || impl.SkipVerification) continue;
-        foreach (Block b in impl.Blocks) {
-          foreach (Cmd c in b.Cmds) {
-            CallCmd cc = c as CallCmd;
-            if (cc == null) continue;
-            foreach (Implementation callee in procToImpls[cc.Proc]) {
-              callGraph.AddEdge(impl, callee);
-            }
-          }
-        }
-      }
-      return callGraph;
     }
     
     private WorkQueue BuildWorkList(Program program) {
@@ -1059,9 +1029,10 @@ namespace Microsoft.Boogie.Houdini {
 
     /// <summary>
     /// Transforms given program based on Houdini assignment.  If a constant is assigned "true",
-    /// any preconditions or postconditions guarded by the constant are replaced with
-    /// regular conditions, and any assertions guarded by the constant are replaced with
-    /// assumptions.  If a constant is assigned "false", any preconditions or postconditions
+    /// any preconditions or postconditions guarded by the constant are made free, and any assertions 
+    /// guarded by the constant are replaced with assumptions.
+    /// 
+    /// If a constant is assigned "false", any preconditions or postconditions
     /// guarded by the constant are replaced with "true", and assertions guarded by the constant
     /// are removed.
     /// 
@@ -1094,46 +1065,51 @@ namespace Microsoft.Boogie.Houdini {
         block.Cmds = newCmds;
       }
 
-      // Treat requires and ensures
-      new ApplyAssignmentVisitor(this, prog).VisitProgram(prog);
+      foreach (var proc in prog.TopLevelDeclarations.OfType<Procedure>()) {
+        RequiresSeq newRequires = new RequiresSeq();
+        foreach (Requires r in proc.Requires) {
+          string c;
+          if (MatchCandidate(r.Condition, out c)) {
+            var cVar = currentHoudiniState.Assignment.Keys.Where(item => item.Name.Equals(c)).ToList()[0];
+            if (currentHoudiniState.Assignment[cVar]) {
+              Variable cVarProg = prog.TopLevelDeclarations.OfType<Variable>().Where(item => item.Name.Equals(c)).ToList()[0];
+              Hashtable subst = new Hashtable();
+              subst[cVarProg] = Expr.True;
+              newRequires.Add(new Requires(Token.NoToken, true,
+                Substituter.Apply(Substituter.SubstitutionFromHashtable(subst), r.Condition),
+                r.Comment, r.Attributes));
+            }
+          }
+          else {
+            newRequires.Add(r);
+          }
+        }
+        proc.Requires = newRequires;
+
+        EnsuresSeq newEnsures = new EnsuresSeq();
+        foreach (Ensures e in proc.Ensures) {
+          string c;
+          if (MatchCandidate(e.Condition, out c)) {
+            var cVar = currentHoudiniState.Assignment.Keys.Where(item => item.Name.Equals(c)).ToList()[0];
+            if (currentHoudiniState.Assignment[cVar]) {
+              Variable cVarProg = prog.TopLevelDeclarations.OfType<Variable>().Where(item => item.Name.Equals(c)).ToList()[0];
+              Hashtable subst = new Hashtable();
+              subst[cVarProg] = Expr.True;
+              newEnsures.Add(new Ensures(Token.NoToken, true,
+                Substituter.Apply(Substituter.SubstitutionFromHashtable(subst), e.Condition),
+                e.Comment, e.Attributes));
+            }
+          }
+          else {
+            newEnsures.Add(e);
+          }
+        }
+        proc.Ensures = newEnsures;
+      }
 
       // Remove the existential constants
       prog.TopLevelDeclarations.RemoveAll(item => (item is Variable) && 
            (houdiniConstants.Select(c => c.Name).Contains((item as Variable).Name)));
-    }
-
-    class ApplyAssignmentVisitor : StandardVisitor {
-
-      private Houdini houdini;
-      private Program prog;
-
-      internal ApplyAssignmentVisitor(Houdini houdini, Program prog) {
-        this.houdini = houdini;
-        this.prog = prog;
-      }
-
-      public override Requires VisitRequires(Requires requires) {
-        requires.Condition = ApplyAssignment(requires.Condition);
-        return requires;
-      }
-
-      public override Ensures VisitEnsures(Ensures ensures) {
-        ensures.Condition = ApplyAssignment(ensures.Condition);
-        return ensures;
-      }
-
-      private Expr ApplyAssignment(Expr e) {
-        string c;
-        if (houdini.MatchCandidate(e, out c)) {
-          var cVar = houdini.currentHoudiniState.Assignment.Keys.Where(item => item.Name.Equals(c)).ToList()[0];
-          Hashtable cToTrue = new Hashtable();
-          Variable cVarProg = prog.TopLevelDeclarations.OfType<Variable>().Where(item => item.Name.Equals(c)).ToList()[0];
-          cToTrue[cVarProg] = houdini.currentHoudiniState.Assignment[cVar] ? Expr.True : Expr.False;
-          return Substituter.Apply(Substituter.SubstitutionFromHashtable(cToTrue), e);
-        }
-        return e;
-      }
-
     }
 
   }

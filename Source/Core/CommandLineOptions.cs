@@ -395,6 +395,7 @@ namespace Microsoft.Boogie {
     public bool ContractInfer = false;
     public bool ExplainHoudini = false;
     public bool HoudiniUseCrossDependencies = false;
+    public int StagedHoudini = 0;
     public string AbstractHoudini = null;
     public bool UseUnsatCoreForContractInfer = false;
     public bool PrintAssignment = false;
@@ -490,6 +491,7 @@ namespace Microsoft.Boogie {
 
     public bool RemoveEmptyBlocks = true;
     public bool CoalesceBlocks = true;
+    public bool PruneInfeasibleEdges = true;
 
     [Rep]
     public ProverFactory TheProverFactory;
@@ -857,6 +859,21 @@ namespace Microsoft.Boogie {
             int cb = 0;
             if (ps.GetNumericArgument(ref cb, 2)) {
               CoalesceBlocks = cb == 1;
+            }
+            return true;
+          }
+
+        case "noPruneInfeasibleEdges": {
+            if (ps.ConfirmArgumentCount(0)) {
+              PruneInfeasibleEdges = false;
+            }
+            return true;
+        }
+
+        case "stagedHoudini": {
+            int sh = 0;
+            if (ps.GetNumericArgument(ref sh, 3)) {
+              StagedHoudini = sh;
             }
             return true;
           }

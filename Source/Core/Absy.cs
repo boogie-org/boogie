@@ -739,6 +739,36 @@ namespace Microsoft.Boogie {
         fullMap[procName][blockName] = block;
     }
 
+    public static Graph<Implementation> BuildCallGraph(Program program) {
+      Graph<Implementation> callGraph = new Graph<Implementation>();
+      Dictionary<Procedure, HashSet<Implementation>> procToImpls = new Dictionary<Procedure, HashSet<Implementation>>();
+      foreach (Declaration decl in program.TopLevelDeclarations) {
+        Procedure proc = decl as Procedure;
+        if (proc == null) continue;
+        procToImpls[proc] = new HashSet<Implementation>();
+      }
+      foreach (Declaration decl in program.TopLevelDeclarations) {
+        Implementation impl = decl as Implementation;
+        if (impl == null || impl.SkipVerification) continue;
+        callGraph.AddSource(impl);
+        procToImpls[impl.Proc].Add(impl);
+      }
+      foreach (Declaration decl in program.TopLevelDeclarations) {
+        Implementation impl = decl as Implementation;
+        if (impl == null || impl.SkipVerification) continue;
+        foreach (Block b in impl.Blocks) {
+          foreach (Cmd c in b.Cmds) {
+            CallCmd cc = c as CallCmd;
+            if (cc == null) continue;
+            foreach (Implementation callee in procToImpls[cc.Proc]) {
+              callGraph.AddEdge(impl, callee);
+            }
+          }
+        }
+      }
+      return callGraph;
+    }
+
     public static Graph<Block/*!*/>/*!*/ GraphFromImpl(Implementation impl) {
       Contract.Requires(impl != null);
       Contract.Ensures(cce.NonNullElements(Contract.Result<Graph<Block>>().TopologicalSort()));
@@ -896,16 +926,17 @@ namespace Microsoft.Boogie {
 
     private int invariantGenerationCounter = 0;
 
-    public Constant MakeExistentialBoolean() {
+    public Constant MakeExistentialBoolean(int StageId) {
       Constant ExistentialBooleanConstant = new Constant(Token.NoToken, new TypedIdent(tok, "_b" + invariantGenerationCounter, Microsoft.Boogie.Type.Bool), false);
       invariantGenerationCounter++;
       ExistentialBooleanConstant.AddAttribute("existential", new object[] { Expr.True });
+      ExistentialBooleanConstant.AddAttribute("stage_id", new object[] { new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(StageId)) });
       TopLevelDeclarations.Add(ExistentialBooleanConstant);
       return ExistentialBooleanConstant;
     }
 
-    public PredicateCmd CreateCandidateInvariant(Expr e, string tag = null) {
-      Constant ExistentialBooleanConstant = MakeExistentialBoolean();
+    public PredicateCmd CreateCandidateInvariant(Expr e, string tag = null, int StageId = 0) {
+      Constant ExistentialBooleanConstant = MakeExistentialBoolean(StageId);
       IdentifierExpr ExistentialBoolean = new IdentifierExpr(Token.NoToken, ExistentialBooleanConstant);
       PredicateCmd invariant = new AssertCmd(Token.NoToken, Expr.Imp(ExistentialBoolean, e));
       if (tag != null)
@@ -2907,6 +2938,7 @@ namespace Microsoft.Boogie {
       this.scc = new StronglyConnectedComponents<Block/*!*/>(this.Blocks, next, prev);
       scc.Compute();
 
+
       foreach (Block/*!*/ block in this.Blocks) {
         Contract.Assert(block != null);
         block.Predecessors = new BlockSeq();
@@ -2991,15 +3023,17 @@ namespace Microsoft.Boogie {
           reachableBlocks.Add(b);
           reachable.Add(b);
           if (b.TransferCmd is GotoCmd) {
-            foreach (Cmd/*!*/ s in b.Cmds) {
-              Contract.Assert(s != null);
-              if (s is PredicateCmd) {
-                LiteralExpr e = ((PredicateCmd)s).Expr as LiteralExpr;
-                if (e != null && e.IsFalse) {
-                  // This statement sequence will never reach the end, because of this "assume false" or "assert false".
-                  // Hence, it does not reach its successors.
-                  b.TransferCmd = new ReturnCmd(b.TransferCmd.tok);
-                  goto NEXT_BLOCK;
+            if (CommandLineOptions.Clo.PruneInfeasibleEdges) {
+              foreach (Cmd/*!*/ s in b.Cmds) {
+                Contract.Assert(s != null);
+                if (s is PredicateCmd) {
+                  LiteralExpr e = ((PredicateCmd)s).Expr as LiteralExpr;
+                  if (e != null && e.IsFalse) {
+                    // This statement sequence will never reach the end, because of this "assume false" or "assert false".
+                    // Hence, it does not reach its successors.
+                    b.TransferCmd = new ReturnCmd(b.TransferCmd.tok);
+                    goto NEXT_BLOCK;
+                  }
                 }
               }
             }
@@ -3153,7 +3187,7 @@ namespace Microsoft.Boogie {
     }
   }
 
-  public sealed class VariableSeq : PureCollections.Sequence {
+  public sealed class VariableSeq : List<Variable> {
     public VariableSeq(params Variable[]/*!*/ args)
       : base(args) {
       Contract.Requires(args != null);
@@ -3190,6 +3224,11 @@ namespace Microsoft.Boogie {
           res.Add(v.TypedIdent.Type);
         }
         return res;
+      }
+    }
+    public int Length {
+      get {
+        return Count;
       }
     }
   }

@@ -195,10 +195,22 @@ namespace Microsoft.Boogie {
             PrintBplFile(CommandLineOptions.Clo.OwickiGriesDesugaredOutputFile, program, false, false);
             CommandLineOptions.Clo.PrintUnstructured = oldPrintUnstructured;
         }
+
         LinearSetTransform linearTransform = new LinearSetTransform(program);
         linearTransform.Transform();
 
         EliminateDeadVariablesAndInline(program);
+
+        if (CommandLineOptions.Clo.StagedHoudini > 0) {
+          var candidateDependenceAnalyser = new CandidateDependenceAnalyser(program);
+          candidateDependenceAnalyser.Analyse();
+          candidateDependenceAnalyser.ApplyStages();
+          if (CommandLineOptions.Clo.Trace) {
+            candidateDependenceAnalyser.dump();
+          }
+          PrintBplFile("staged.bpl", program, false, false);
+          Environment.Exit(0);
+        }
 
         int errorCount, verified, inconclusives, timeOuts, outOfMemories;
         oc = InferAndVerify(program, out errorCount, out verified, out inconclusives, out timeOuts, out outOfMemories);

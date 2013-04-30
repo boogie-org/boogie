@@ -55,16 +55,16 @@ namespace Microsoft.Boogie {
 
       if (CommandLineOptions.Clo.Trace)
       {
-          Console.WriteLine();
-          Console.WriteLine("Running modset analysis ...");
-          int procCount = 0;
-          foreach (Declaration/*!*/ decl in program.TopLevelDeclarations)
-          {
-              Contract.Assert(decl != null);
-              if (decl is Procedure)
-                  procCount++;
-          }
-          Console.WriteLine("Number of procedures = {0}", procCount);
+//          Console.WriteLine();
+//          Console.WriteLine("Running modset analysis ...");
+//          int procCount = 0;
+//          foreach (Declaration/*!*/ decl in program.TopLevelDeclarations)
+//          {
+//              Contract.Assert(decl != null);
+//              if (decl is Procedure)
+//                  procCount++;
+//          }
+//          Console.WriteLine("Number of procedures = {0}", procCount);*/
       }
 
       modSets = new Dictionary<Procedure/*!*/, HashSet<Variable/*!*/>/*!*/>();
@@ -115,8 +115,8 @@ namespace Microsoft.Boogie {
           }
       }
 
-      if (CommandLineOptions.Clo.Trace)
-      {
+      if (false /*CommandLineOptions.Clo.Trace*/)      {
+
           Console.WriteLine("Number of procedures with nonempty modsets = {0}", modSets.Keys.Count);
           foreach (Procedure/*!*/ x in modSets.Keys)
           {

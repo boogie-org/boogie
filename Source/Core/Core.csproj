@@ -168,6 +168,7 @@
     <Compile Include="StandardVisitor.cs" />
     <Compile Include="TypeAmbiguitySeeker.cs" />
     <Compile Include="Util.cs" />
+    <Compile Include="VariableDependenceAnalyser.cs" />
     <Compile Include="VCExp.cs" />
     <Compile Include="..\version.cs" />
     <Compile Include="Xml.cs" />

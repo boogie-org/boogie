@@ -974,6 +974,7 @@ namespace Microsoft.Boogie.GraphUtil {
       {
           Graph<Node> dual = g.Dual(new Node());
           DomRelation<Node> pdom = dual.DominatorMap;
+
           var result = new Dictionary<Node, HashSet<Node>>();
 
           var S = g.Edges.Where(e => !pdom.DominatedBy(e.Item1, e.Item2));
@@ -1001,7 +1002,26 @@ namespace Microsoft.Boogie.GraphUtil {
                   result[edge.Item1] = new HashSet<Node>(deps);
               }
           }
+
           return result;
+      }
+
+      public static void TransitiveClosure<Node>(this Dictionary<Node, HashSet<Node>> graph) where Node : class {
+        bool changed;
+        do {
+          changed = false;
+          foreach (var entry in graph) {
+            var newSuccessors = new HashSet<Node>(entry.Value);
+            foreach (var successor in entry.Value) {
+              if (graph.ContainsKey(successor))
+                newSuccessors.UnionWith(graph[successor]);
+            }
+            if (newSuccessors.Count != entry.Value.Count) {
+              entry.Value.UnionWith(newSuccessors);
+              changed = true;
+            }
+          }
+        } while (changed);
       }
 
   }
