@@ -74,7 +74,7 @@ namespace Microsoft.Boogie {
       this.inlineCallback = cb;
     }
 
-    private static void ProcessImplementation(Program program, Implementation impl, Inliner inliner) {
+    protected static void ProcessImplementation(Program program, Implementation impl, Inliner inliner) {
       Contract.Requires(impl != null);
       Contract.Requires(program != null);
       Contract.Requires(impl.Proc != null);
@@ -162,6 +162,12 @@ namespace Microsoft.Boogie {
       impl.Typecheck(tc);
     }
 
+    // Redundant for this class; but gives a chance for other classes to
+    // override this and implement their own inlining policy
+    protected virtual int GetInlineCount(CallCmd callCmd, Implementation impl)
+    {
+        return GetInlineCount(impl);
+    }
 
     // returns true if it is ok to further unroll the procedure
     // otherwise, the procedure is not inlined at the call site
@@ -202,7 +208,7 @@ namespace Microsoft.Boogie {
       }
     }
 
-    private List<Block/*!*/>/*!*/ DoInlineBlocks(List<Block/*!*/>/*!*/ blocks, Program/*!*/ program,
+    protected virtual List<Block/*!*/>/*!*/ DoInlineBlocks(List<Block/*!*/>/*!*/ blocks, Program/*!*/ program,
                                                  VariableSeq/*!*/ newLocalVars, IdentifierExprSeq/*!*/ newModifies, 
                                                  ref bool inlinedSomething) {
       Contract.Requires(cce.NonNullElements(blocks));
@@ -237,7 +243,7 @@ namespace Microsoft.Boogie {
               continue;
             }
 
-            int inline = inlineDepth >= 0 ? inlineDepth : GetInlineCount(impl);
+            int inline = inlineDepth >= 0 ? inlineDepth : GetInlineCount(callCmd, impl);
 
             if (inline > 0) { // at least one block should exist
               Contract.Assume(impl != null);

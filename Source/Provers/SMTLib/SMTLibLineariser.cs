@@ -709,14 +709,18 @@ namespace Microsoft.Boogie.SMTLib
         var builtin = ExtractBuiltin(op.Func);
         var datatype = ExtractDatatype(op.Func);
         if (builtin != null)
-          printedName = builtin;
+        {
+            printedName = CheckMapApply(builtin, node);
+        }
         else if (datatype != null)
-          printedName = datatype;
+        {
+            printedName = datatype;
+        }
         else
-          printedName = ExprLineariser.Namer.GetQuotedName(op.Func, op.Func.Name);
+        { 
+            printedName = ExprLineariser.Namer.GetQuotedName(op.Func, op.Func.Name); 
+        }
         Contract.Assert(printedName != null);
-
-        printedName = CheckMapApply(printedName, node);
 
         WriteApplication(printedName, node, options);
 

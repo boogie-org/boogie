@@ -3,7 +3,13 @@ setlocal
 
 set BGEXE=..\..\Binaries\Boogie.exe
 
-for %%f in (typecheck.bpl list.bpl allocator.bpl) do (
+for %%f in (typecheck.bpl) do (
+  echo.
+  echo -------------------- %%f --------------------
+  %BGEXE% %* /nologo /noinfer /typeEncoding:m /useArrayTheory %%f
+)
+
+for %%f in (list.bpl allocator.bpl) do (
   echo.
   echo -------------------- %%f --------------------
   %BGEXE% %* /nologo /noinfer /typeEncoding:m /useArrayTheory /doModSetAnalysis %%f

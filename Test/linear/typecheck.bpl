@@ -67,3 +67,10 @@ procedure E({:linear "D"} a: X, {:linear "D"} b: X) returns ({:linear "D"} c: X,
 }
 
 procedure F({:linear "D"} a: X) returns ({:linear "D"} c: X);
+
+var{:linear "x"} g:int;
+
+procedure G(i:int) returns({:linear "x"} r:int)
+{
+  r := g;
+}

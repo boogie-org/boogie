@@ -143,13 +143,9 @@ namespace Microsoft.Boogie
       public override ElementKind Kind { get { return ElementKind.DataValue; } }
       public override string ToString() {
         StringBuilder builder = new StringBuilder();
-        builder.Append(ConstructorName + "(");
-        int count = 0;
+        builder.Append("(").Append(ConstructorName);
         foreach (Element arg in Arguments) {
-          count++;
-          builder.Append(arg);
-          if (count < Arguments.Length)
-            builder.Append(", ");
+          builder.Append(" ").Append(arg);
         }
         builder.Append(")");
         return builder.ToString();
@@ -401,10 +397,9 @@ namespace Microsoft.Boogie
       public override string ToString()
       {
         var res = new StringBuilder();
-        res.Append(Func.Name).Append("(");
+        res.Append("(").Append(Func.Name);
         for (int i = 0; i < Args.Length; ++i) {
-          if (i != 0) res.Append(", ");
-          res.Append(Args[i]);
+          res.Append(" ").Append(Args[i]);
         }
         res.Append(") -> ").Append(Result);
         return res.ToString();
@@ -729,6 +724,7 @@ namespace Microsoft.Boogie
      
       static Regex bv = new Regex(@"\(_ BitVec (\d+)\)");
 
+      /*
       List<object> GetFunctionTuple(string newLine) {
         if (newLine == null)
           return null;
@@ -748,27 +744,25 @@ namespace Microsoft.Boogie
 
         line = line.Replace("(", " ( ");
         line = line.Replace(")", " ) ");
+        line = line.Replace(",", " ");
         var tuple = line.Split(seps, StringSplitOptions.RemoveEmptyEntries);
 
         List<object> newTuple = new List<object>();
-        Stack<List<object>> wordStack = new Stack<List<object>>();
+        Stack<int> wordStack = new Stack<int>();
         for (int i = 0; i < tuple.Length; i++) {
           string elem = tuple[i];
           if (elem == "(") {
-            List<object> ls = new List<object>();
-            wordStack.Push(ls);
+            wordStack.Push(newTuple.Count - 1);
           }
           else if (elem == ")") {
-            List<object> ls = wordStack.Pop();
-            if (wordStack.Count > 0) {
-              wordStack.Peek().Add(ls);
+            int openParenIndex = wordStack.Pop();
+            List<object> ls = new List<object>();
+            for (int j = openParenIndex; j < newTuple.Count; j++)
+            {
+                ls.Add(newTuple[j]);
             }
-            else {
-              newTuple.Add(ls);
-            }
-          }
-          else if (wordStack.Count > 0) {
-            wordStack.Peek().Add(elem);
+            newTuple.RemoveRange(openParenIndex, newTuple.Count - openParenIndex);
+            newTuple.Add(ls);
           }
           else {
             newTuple.Add(elem);
@@ -776,7 +770,67 @@ namespace Microsoft.Boogie
         }
         return newTuple;
       }
+      */
+      
+      List<object> GetFunctionTuple(string newLine)
+      {
+          if (newLine == null)
+              return null;
+          newLine = bv.Replace(newLine, "bv${1}");
+          string line = newLine;
+          int openParenCounter = CountOpenParentheses(newLine, 0);
+          if (!newLine.Contains("}"))
+          {
+              while (openParenCounter > 0)
+              {
+                  newLine = ReadLine();
+                  if (newLine == null)
+                  {
+                      return null;
+                  }
+                  line += newLine;
+                  openParenCounter = CountOpenParentheses(newLine, openParenCounter);
+              }
+          }
 
+          line = line.Replace("(", " ( ");
+          line = line.Replace(")", " ) ");
+          var tuple = line.Split(seps, StringSplitOptions.RemoveEmptyEntries);
+
+          List<object> newTuple = new List<object>();
+          Stack<List<object>> wordStack = new Stack<List<object>>();
+          for (int i = 0; i < tuple.Length; i++)
+          {
+              string elem = tuple[i];
+              if (elem == "(")
+              {
+                  List<object> ls = new List<object>();
+                  wordStack.Push(ls);
+              }
+              else if (elem == ")")
+              {
+                  List<object> ls = wordStack.Pop();
+                  if (wordStack.Count > 0)
+                  {
+                      wordStack.Peek().Add(ls);
+                  }
+                  else
+                  {
+                      newTuple.Add(ls);
+                  }
+              }
+              else if (wordStack.Count > 0)
+              {
+                  wordStack.Peek().Add(elem);
+              }
+              else
+              {
+                  newTuple.Add(elem);
+              }
+          }
+          return newTuple;
+      }
+  
       string[] GetWords(string line)
       {
         if (line == null)
@@ -856,11 +910,17 @@ namespace Microsoft.Boogie
             for (; ; ) {
               var tmpline = ReadLine();
               if (tmpline == "*** END_STATE") break;
-              var tuple = GetWords(tmpline);
+              var tuple = GetFunctionTuple(tmpline);
               if (tuple == null) BadModel("EOF in state table");
-              if (tuple.Length == 0) continue;
-              if (tuple.Length != 3 || tuple[1] != "->") BadModel("invalid state tuple definition");
-              cs.AddBinding(tuple[0], GetElt(tuple[2]));
+              if (tuple.Count == 0) continue;
+              if (tuple.Count == 3 && tuple[0] is string && tuple[1] is string && ((string) tuple[1]) == "->")
+              {
+                  cs.AddBinding((string)tuple[0], GetElt(tuple[2]));
+              }
+              else
+              {
+                  BadModel("invalid state tuple definition");
+              }
             }
             continue;
           }

@@ -3,7 +3,7 @@
 foo.bpl(13,3): Error BP5001: This assertion might not hold.
 Execution trace:
     foo.bpl(5,5): anon0
-    (0,0): inline$YieldChecker_PC$0$L1
+    (0,0): inline$Impl_YieldChecker_PC$0$L0
 
 Boogie program verifier finished with 3 verified, 1 error
 
@@ -11,11 +11,11 @@ Boogie program verifier finished with 3 verified, 1 error
 bar.bpl(12,3): Error BP5001: This assertion might not hold.
 Execution trace:
     bar.bpl(5,5): anon0
-    (0,0): inline$YieldChecker_PC$0$L1
+    (0,0): inline$Impl_YieldChecker_PC$0$L0
 bar.bpl(12,3): Error BP5001: This assertion might not hold.
 Execution trace:
     bar.bpl(17,5): anon0
-    (0,0): inline$YieldChecker_PC$0$L1
+    (0,0): inline$Impl_YieldChecker_PC$0$L0
 
 Boogie program verifier finished with 2 verified, 2 errors
 
@@ -27,11 +27,11 @@ Boogie program verifier finished with 2 verified, 0 errors
 parallel1.bpl(9,3): Error BP5001: This assertion might not hold.
 Execution trace:
     parallel1.bpl(5,5): anon0
-    (0,0): inline$YieldChecker_PC$0$L1
+    (0,0): inline$Proc_YieldChecker_PC$0$L0
 parallel1.bpl(13,3): Error BP5001: This assertion might not hold.
 Execution trace:
     parallel1.bpl(5,5): anon0
-    (0,0): inline$YieldChecker_PC$0$L2
+    (0,0): inline$Impl_YieldChecker_PC$0$L0
 
 Boogie program verifier finished with 3 verified, 2 errors
 
@@ -63,12 +63,19 @@ Boogie program verifier finished with 4 verified, 0 errors
 parallel4.bpl(14,3): Error BP5001: This assertion might not hold.
 Execution trace:
     parallel4.bpl(12,3): anon0
-    (0,0): inline$YieldChecker_t$0$enter
-    (0,0): inline$YieldChecker_t$0$exit
-    parallel4.bpl(12,3): anon0$2
+    (0,0): inline$og_yield$0$Return
+    parallel4.bpl(12,3): anon0$1
 
 Boogie program verifier finished with 2 verified, 1 error
 
 -------------------- parallel5.bpl --------------------
 
 Boogie program verifier finished with 4 verified, 0 errors
+
+-------------------- parallel6.bpl --------------------
+
+Boogie program verifier finished with 1 verified, 0 errors
+
+-------------------- parallel7.bpl --------------------
+
+Boogie program verifier finished with 1 verified, 0 errors
