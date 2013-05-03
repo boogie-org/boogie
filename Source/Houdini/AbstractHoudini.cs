@@ -225,6 +225,18 @@ namespace Microsoft.Boogie.Houdini {
             }
         }
 
+        public IEnumerable<Function> GetAssignment()
+        {
+            var ret = new List<Function>();
+            foreach (var func in existentialFunctions.Values)
+            {
+                var invars = new List<Expr>(func.InParams.OfType<Variable>().Select(v => Expr.Ident(v)));
+                func.Body = function2Value[func.Name].Gamma(invars);
+                ret.Add(func);
+            }
+            return ret;
+        }
+
         private void PrintFunction(Function function)
         {
             var tt = new TokenTextWriter(Console.Out);
@@ -1119,6 +1131,42 @@ namespace Microsoft.Boogie.Houdini {
             Debug.Assert(abstractDomainInstances.ContainsKey(Name));
             return abstractDomainInstances[Name] as IAbstractDomain;
         }
+
+        public static IAbstractDomain Initialize(string domainName)
+        {
+            // Declare abstract domains
+            var domains = new List<System.Tuple<string, IAbstractDomain>>(new System.Tuple<string, IAbstractDomain>[] {
+                  System.Tuple.Create("HoudiniConst", HoudiniConst.GetBottom() as IAbstractDomain),
+                  System.Tuple.Create("Intervals", new Intervals() as IAbstractDomain),
+                  System.Tuple.Create("ConstantProp", ConstantProp.GetBottom() as IAbstractDomain),
+                  System.Tuple.Create("PredicateAbs", new PredicateAbsElem() as IAbstractDomain),
+                  System.Tuple.Create("IA[HoudiniConst]", new IndependentAttribute<HoudiniConst>()  as IAbstractDomain),
+                  System.Tuple.Create("IA[ConstantProp]", new IndependentAttribute<ConstantProp>()  as IAbstractDomain),
+                  System.Tuple.Create("IA[Intervals]", new IndependentAttribute<Intervals>()  as IAbstractDomain)
+              });
+
+            domains.Iter(tup => AbstractDomainFactory.Register(tup.Item2));
+
+            // Find the abstract domain
+            IAbstractDomain domain = null;
+            foreach (var tup in domains)
+            {
+                if (tup.Item1 == domainName)
+                {
+                    domain = tup.Item2;
+                    break;
+                }
+            }
+            if (domain == null)
+            {
+                Console.WriteLine("Domain {0} not found", CommandLineOptions.Clo.AbstractHoudini);
+                Console.WriteLine("Supported domains are:");
+                domains.Iter(tup => Console.WriteLine("  {0}", tup.Item1));
+                throw new AbsHoudiniInternalError("Domain not found");
+            }
+            return domain;
+        }
+
     }
 
     public interface IAbstractDomain
@@ -3557,10 +3605,6 @@ namespace Microsoft.Boogie.Houdini {
             //model.Write(Console.Out);
             this.model = model;
         }
-    }
-
-    public class AbsHoudiniAssemblyLocator
-    {
     }
 
     public class AbsHoudiniInternalError : System.ApplicationException

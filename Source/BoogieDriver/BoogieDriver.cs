@@ -656,36 +656,7 @@ namespace Microsoft.Boogie {
               CommandLineOptions.Clo.ModelViewFile = "z3model";
               CommandLineOptions.Clo.UseArrayTheory = true;
               CommandLineOptions.Clo.TypeEncodingMethod = CommandLineOptions.TypeEncoding.Monomorphic;
-              // Declare abstract domains
-              var domains = new List<System.Tuple<string, Houdini.IAbstractDomain>>(new System.Tuple<string, Houdini.IAbstractDomain>[] {
-                  System.Tuple.Create("HoudiniConst", Houdini.HoudiniConst.GetBottom() as Houdini.IAbstractDomain),
-                  System.Tuple.Create("Intervals", new Houdini.Intervals() as Houdini.IAbstractDomain),
-                  System.Tuple.Create("ConstantProp", Houdini.ConstantProp.GetBottom() as Houdini.IAbstractDomain),
-                  System.Tuple.Create("PredicateAbs", new Houdini.PredicateAbsElem() as Houdini.IAbstractDomain),
-                  System.Tuple.Create("IA[HoudiniConst]", new Houdini.IndependentAttribute<Houdini.HoudiniConst>()  as Houdini.IAbstractDomain),
-                  System.Tuple.Create("IA[ConstantProp]", new Houdini.IndependentAttribute<Houdini.ConstantProp>()  as Houdini.IAbstractDomain),
-                  System.Tuple.Create("IA[Intervals]", new Houdini.IndependentAttribute<Houdini.Intervals>()  as Houdini.IAbstractDomain)
-              });
-
-              domains.Iter(tup => Houdini.AbstractDomainFactory.Register(tup.Item2));
-
-              // Find the abstract domain
-              Houdini.IAbstractDomain domain = null;
-              foreach (var tup in domains)
-              {
-                  if (tup.Item1 == CommandLineOptions.Clo.AbstractHoudini)
-                  {
-                      domain = tup.Item2;
-                      break;
-                  }
-              }
-              if (domain == null)
-              {
-                  Console.WriteLine("Domain {0} not found", CommandLineOptions.Clo.AbstractHoudini);
-                  Console.WriteLine("Supported domains are:");
-                  domains.Iter(tup => Console.WriteLine("  {0}", tup.Item1));
-                  throw new Houdini.AbsHoudiniInternalError("Domain not found");
-              }
+              var domain = Houdini.AbstractDomainFactory.Initialize(CommandLineOptions.Clo.AbstractHoudini);
 
               // Run Abstract Houdini
               var abs = new Houdini.AbsHoudini(program, domain);
