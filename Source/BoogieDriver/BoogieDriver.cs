@@ -157,71 +157,86 @@ namespace Microsoft.Boogie {
 
     static void ProcessFiles(List<string> fileNames) {
       Contract.Requires(cce.NonNullElements(fileNames));
-      using (XmlFileScope xf = new XmlFileScope(CommandLineOptions.Clo.XmlSink, fileNames[fileNames.Count - 1])) {
-        //BoogiePL.Errors.count = 0;
-        Program program = ParseBoogieProgram(fileNames, false);
-        if (program == null)
-          return;
-        if (CommandLineOptions.Clo.PrintFile != null) {
-          PrintBplFile(CommandLineOptions.Clo.PrintFile, program, false);
-        }
-
-        PipelineOutcome oc = ResolveAndTypecheck(program, fileNames[fileNames.Count - 1]);
-        if (oc != PipelineOutcome.ResolvedAndTypeChecked)
-          return;
-        //BoogiePL.Errors.count = 0;
-
-        // Do bitvector analysis
-        if (CommandLineOptions.Clo.DoBitVectorAnalysis) {
-          Microsoft.Boogie.BitVectorAnalysis.DoBitVectorAnalysis(program);
-          PrintBplFile(CommandLineOptions.Clo.BitVectorAnalysisOutputBplFile, program, false);
-          return;
-        }
-
-        if (CommandLineOptions.Clo.PrintCFGPrefix != null) {
-          foreach (var impl in program.TopLevelDeclarations.OfType<Implementation>()) {
-            using (StreamWriter sw = new StreamWriter(CommandLineOptions.Clo.PrintCFGPrefix + "." + impl.Name + ".dot")) {
-              sw.Write(program.ProcessLoops(impl).ToDot());
-            }
+      using (XmlFileScope xf = new XmlFileScope(CommandLineOptions.Clo.XmlSink, fileNames[fileNames.Count - 1]))
+      {
+          //BoogiePL.Errors.count = 0;
+          Program program = ParseBoogieProgram(fileNames, false);
+          if (program == null)
+              return;
+          if (CommandLineOptions.Clo.PrintFile != null)
+          {
+              PrintBplFile(CommandLineOptions.Clo.PrintFile, program, false);
           }
-        }
 
-        if (CommandLineOptions.Clo.OwickiGriesDesugaredOutputFile != null)
-        {
-            OwickiGriesTransform ogTransform = new OwickiGriesTransform(program);
-            ogTransform.Transform();
-            int oldPrintUnstructured = CommandLineOptions.Clo.PrintUnstructured;
-            CommandLineOptions.Clo.PrintUnstructured = 1;
-            PrintBplFile(CommandLineOptions.Clo.OwickiGriesDesugaredOutputFile, program, false, false);
-            CommandLineOptions.Clo.PrintUnstructured = oldPrintUnstructured;
-        }
+          PipelineOutcome oc = ResolveAndTypecheck(program, fileNames[fileNames.Count - 1]);
+          if (oc != PipelineOutcome.ResolvedAndTypeChecked)
+              return;
+          //BoogiePL.Errors.count = 0;
 
-        LinearSetTransform linearTransform = new LinearSetTransform(program);
-        linearTransform.Transform();
-
-        EliminateDeadVariablesAndInline(program);
-
-        if (CommandLineOptions.Clo.StagedHoudini > 0) {
-          var candidateDependenceAnalyser = new CandidateDependenceAnalyser(program);
-          candidateDependenceAnalyser.Analyse();
-          candidateDependenceAnalyser.ApplyStages();
-          if (CommandLineOptions.Clo.Trace) {
-            candidateDependenceAnalyser.dump();
+          // Do bitvector analysis
+          if (CommandLineOptions.Clo.DoBitVectorAnalysis)
+          {
+              Microsoft.Boogie.BitVectorAnalysis.DoBitVectorAnalysis(program);
+              PrintBplFile(CommandLineOptions.Clo.BitVectorAnalysisOutputBplFile, program, false);
+              return;
           }
-          PrintBplFile("staged.bpl", program, false, false);
-          Environment.Exit(0);
-        }
 
-        int errorCount, verified, inconclusives, timeOuts, outOfMemories;
-        oc = InferAndVerify(program, out errorCount, out verified, out inconclusives, out timeOuts, out outOfMemories);
-        switch (oc) {
-          case PipelineOutcome.Done:
-          case PipelineOutcome.VerificationCompleted:
-            WriteTrailer(verified, errorCount, inconclusives, timeOuts, outOfMemories);
-            break;
-          default:
-            break;
-        }
+          if (CommandLineOptions.Clo.PrintCFGPrefix != null)
+          {
+              foreach (var impl in program.TopLevelDeclarations.OfType<Implementation>())
+              {
+                  using (StreamWriter sw = new StreamWriter(CommandLineOptions.Clo.PrintCFGPrefix + "." + impl.Name + ".dot"))
+                  {
+                      sw.Write(program.ProcessLoops(impl).ToDot());
+                  }
+              }
+          }
+
+          if (CommandLineOptions.Clo.OwickiGriesDesugaredOutputFile != null)
+          {
+              OwickiGriesTransform ogTransform = new OwickiGriesTransform(program);
+              ogTransform.Transform();
+              int oldPrintUnstructured = CommandLineOptions.Clo.PrintUnstructured;
+              CommandLineOptions.Clo.PrintUnstructured = 1;
+              PrintBplFile(CommandLineOptions.Clo.OwickiGriesDesugaredOutputFile, program, false, false);
+              CommandLineOptions.Clo.PrintUnstructured = oldPrintUnstructured;
+          }
+
+          {
+              LinearSetTransform linearTransform = new LinearSetTransform(program);
+              linearTransform.Transform();
+              //int oldPrintUnstructured = CommandLineOptions.Clo.PrintUnstructured;
+              //CommandLineOptions.Clo.PrintUnstructured = 1;
+              //PrintBplFile("lsd.bpl", program, false, false);
+              //CommandLineOptions.Clo.PrintUnstructured = oldPrintUnstructured;
+          }
+
+          EliminateDeadVariablesAndInline(program);
+
+          if (CommandLineOptions.Clo.StagedHoudini > 0)
+          {
+              var candidateDependenceAnalyser = new CandidateDependenceAnalyser(program);
+              candidateDependenceAnalyser.Analyse();
+              candidateDependenceAnalyser.ApplyStages();
+              if (CommandLineOptions.Clo.Trace)
+              {
+                  candidateDependenceAnalyser.dump();
+              }
+              PrintBplFile("staged.bpl", program, false, false);
+              Environment.Exit(0);
+          }
+
+          int errorCount, verified, inconclusives, timeOuts, outOfMemories;
+          oc = InferAndVerify(program, out errorCount, out verified, out inconclusives, out timeOuts, out outOfMemories);
+          switch (oc)
+          {
+              case PipelineOutcome.Done:
+              case PipelineOutcome.VerificationCompleted:
+                  WriteTrailer(verified, errorCount, inconclusives, timeOuts, outOfMemories);
+                  break;
+              default:
+                  break;
+          }
       }
     }
 

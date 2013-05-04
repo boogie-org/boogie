@@ -566,8 +566,7 @@ namespace Microsoft.Boogie
             HashSet<Variable> rhsVars = new HashSet<Variable>();
             for (int i = 0; i < callCmd.Proc.InParams.Length; i++)
             {
-                Variable target = callCmd.Proc.InParams[i];
-                if (!varToDomainName.ContainsKey(target)) continue;
+                if (QKeyValue.FindStringAttribute(callCmd.Proc.InParams[i].Attributes, "linear") == null) continue;
                 IdentifierExpr ie = callCmd.Ins[i] as IdentifierExpr;
                 Variable source = ie.Decl;
                 rhsVars.Add(source);

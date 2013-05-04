@@ -14,11 +14,16 @@ procedure A({:linear "tid"} tid_in: int) returns ({:linear "tid"} tid_out: int)
 
     g := 0;
     yield;
-    assert g == 0 && x == mapconstbool(true);    
+    assert x == mapconstbool(true);    
+    assert g == 0;    
 
     yield;
     assume tid_child != 0;
     async call B(tid_child, x);
+
+    yield;
+    assert x == mapconstbool(true);    
+    assert g == 0;
 
     yield;
     h := 0;
@@ -39,10 +44,6 @@ requires x_in != mapconstbool(false);
     assume x_in == x;    
 
     g := 1;
-
-    yield;
-
-    g := 2;
 }
 
 procedure C({:linear "tid"} tid_in: int, {:linear "2"} y_in: [int]bool) 
@@ -54,8 +55,4 @@ requires y_in != mapconstbool(false);
     assume y_in == y;    
 
     h := 1;
-
-    yield;
-
-    h := 2;
 }
