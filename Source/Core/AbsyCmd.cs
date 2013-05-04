@@ -1075,7 +1075,7 @@ namespace Microsoft.Boogie {
       public override void Emit(TokenTextWriter stream, int level)
       {
           //Contract.Requires(stream != null);
-          stream.Write(this, level, "yield;");
+          stream.WriteLine(this, level, "yield;");
       }
       public override void Resolve(ResolutionContext rc)
       {
