@@ -2632,9 +2632,12 @@ namespace Microsoft.Boogie {
     }
     public override void Typecheck(TypecheckingContext tc) {
       //Contract.Requires(tc != null);
+      foreach (IdentifierExpr ie in Vars)
+      {
+          ie.Typecheck(tc);
+      }
       this.CheckAssignments(tc);
     }
-
 
     public override Absy StdDispatch(StandardVisitor visitor) {
       //Contract.Requires(visitor != null);
