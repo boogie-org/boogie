@@ -27,3 +27,14 @@ Execution trace:
     allocator.bpl(6,3): anon0
 
 Boogie program verifier finished with 0 verified, 1 error
+
+-------------------- f1.bpl --------------------
+
+Boogie program verifier finished with 2 verified, 0 errors
+
+-------------------- f2.bpl --------------------
+f2.bpl(18,4): Error BP5001: This assertion might not hold.
+Execution trace:
+    f2.bpl(14,4): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
