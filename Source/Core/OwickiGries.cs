@@ -180,6 +180,7 @@ namespace Microsoft.Boogie
 
         private void AddUpdatesToOldGlobalVars(CmdSeq newCmds)
         {
+            if (ogOldGlobalMap.Count == 0) return;
             List<AssignLhs> lhss = new List<AssignLhs>();
             List<Expr> rhss = new List<Expr>();
             foreach (Variable g in ogOldGlobalMap.Keys)
@@ -194,8 +195,10 @@ namespace Microsoft.Boogie
         {
             AddCallToYieldProc(newCmds);
 
-            newCmds.Add(new HavocCmd(Token.NoToken, globalMods));
-
+            if (globalMods.Length > 0)
+            {
+                newCmds.Add(new HavocCmd(Token.NoToken, globalMods));
+            }
             AddUpdatesToOldGlobalVars(newCmds);
 
             for (int j = 0; j < cmds.Length; j++)
