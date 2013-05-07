@@ -671,7 +671,8 @@ namespace Microsoft.Boogie {
               CommandLineOptions.Clo.ModelViewFile = "z3model";
               CommandLineOptions.Clo.UseArrayTheory = true;
               CommandLineOptions.Clo.TypeEncodingMethod = CommandLineOptions.TypeEncoding.Monomorphic;
-              var domain = Houdini.AbstractDomainFactory.Initialize(CommandLineOptions.Clo.AbstractHoudini);
+              Houdini.AbstractDomainFactory.Initialize();
+              var domain = Houdini.AbstractDomainFactory.GetInstance(CommandLineOptions.Clo.AbstractHoudini);
 
               // Run Abstract Houdini
               var abs = new Houdini.AbsHoudini(program, domain);

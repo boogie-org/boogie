@@ -15,8 +15,6 @@ namespace Microsoft.Boogie.Houdini {
 
     public class AbsHoudini
     {
-        // An element of the abstract domain
-        IAbstractDomain domainElement;
         Dictionary<string, Function> existentialFunctions;
         Program program;
         Dictionary<string, Implementation> name2Impl;
@@ -45,10 +43,9 @@ namespace Microsoft.Boogie.Houdini {
         TimeSpan proverTime;
         int numProverQueries;
 
-        public AbsHoudini(Program program, IAbstractDomain elem)
+        public AbsHoudini(Program program, IAbstractDomain defaultElem)
         {
             this.program = program;
-            this.domainElement = elem;
             this.impl2VC = new Dictionary<string, VCExpr>();
             this.impl2FuncCalls = new Dictionary<string, List<Tuple<string, Constant, NAryExpr>>>();
             this.existentialFunctions = new Dictionary<string, Function>();
@@ -66,7 +63,19 @@ namespace Microsoft.Boogie.Houdini {
                 existentialFunctions.Add(func.Name, func);
 
             this.function2Value = new Dictionary<string, IAbstractDomain>();
-            existentialFunctions.Keys.Iter(f => function2Value.Add(f, domainElement.Bottom()));
+            foreach (var func in existentialFunctions.Values)
+            {
+                // Find if the function wishes to use a specific abstract domain
+                var domain = QKeyValue.FindStringAttribute(func.Attributes, "absdomain");
+                if (domain == null)
+                {
+                    function2Value[func.Name] = defaultElem.Bottom();
+                }
+                else
+                {
+                    function2Value[func.Name] = AbstractDomainFactory.GetInstance(domain);
+                }
+            }
             existentialFunctions.Keys.Iter(f => function2implAssumed.Add(f, new HashSet<string>()));
             existentialFunctions.Keys.Iter(f => function2implAsserted.Add(f, new HashSet<string>()));
 
@@ -77,6 +86,11 @@ namespace Microsoft.Boogie.Houdini {
                         throw new AbsHoudiniInternalError(string.Format("Existential function {0} must return bool", func.Name));
                     if(func.Body != null)
                         throw new AbsHoudiniInternalError(string.Format("Existential function {0} should not have a body", func.Name));
+                    var args = new List<Type>();
+                    func.InParams.Iter(v => args.Add(v.TypedIdent.Type));
+                    string msg = "";
+                    if (!function2Value[func.Name].TypeCheck(args, out msg))
+                        throw new AbsHoudiniInternalError("TypeError: " + msg);
                 });
 
             //if (CommandLineOptions.Clo.ProverKillTime > 0)
@@ -723,6 +737,21 @@ namespace Microsoft.Boogie.Houdini {
             return ret;
         }
 
+        public bool TypeCheck(List<Type> argTypes, out string msg)
+        {
+            msg = "";
+            if (argTypes.Count != 1)
+            {
+                msg = "Illegal number of arguments";
+                return false;
+            }
+            if (!argTypes[0].IsInt)
+            {
+                msg = "Illegal type, expecting int";
+                return false;
+            }
+            return true;
+        }
     }
 
     public class PredicateAbsElem : IAbstractDomain
@@ -868,6 +897,17 @@ namespace Microsoft.Boogie.Houdini {
             return ret;
         }
 
+        public bool TypeCheck(List<Type> argTypes, out string msg)
+        {
+            msg = "";
+            if (argTypes.Any(t => !t.IsBool))
+            {
+                msg = "Illegal type, expecting bool";
+                return false;
+            }
+            return true;
+        }
+
         private void AddDisjunct(Disjunct d)
         {
             if (conjuncts.Any(c => c.Implies(d)))
@@ -934,6 +974,22 @@ namespace Microsoft.Boogie.Houdini {
             if (isBottom) return Expr.False;
             if (isTop) return Expr.True;
             return v;
+        }
+
+        public bool TypeCheck(List<Type> argTypes, out string msg)
+        {
+            msg = "";
+            if (argTypes.Count != 1)
+            {
+                msg = "Illegal number of arguments, expecting 1";
+                return false;
+            }
+            if (!argTypes[0].IsBool)
+            {
+                msg = "Illegal type, expecting bool";
+                return false;
+            }
+            return true;
         }
     }
 
@@ -1041,6 +1097,22 @@ namespace Microsoft.Boogie.Houdini {
 
             return null;
         }
+
+        public bool TypeCheck(List<Type> argTypes, out string msg)
+        {
+            msg = "";
+            if (argTypes.Count != 1)
+            {
+                msg = "Illegal number of arguments, expecting 1";
+                return false;
+            }
+            if (!argTypes[0].IsInt && ! argTypes[0].IsBool)
+            {
+                msg = "Illegal type, expecting int or bool";
+                return false;
+            }
+            return true;
+        }
     }
 
 
@@ -1111,18 +1183,33 @@ namespace Microsoft.Boogie.Houdini {
             var tt = typeof(T);
             underlyingInstance = AbstractDomainFactory.GetInstance(tt) as T;
         }
+
+        public bool TypeCheck(List<Type> argTypes, out string msg)
+        {
+            SetUnderlyingInstance();
+
+            msg = "";
+            foreach(var t in argTypes) 
+            {
+                if(!underlyingInstance.TypeCheck(new List<Type>(new Type[] { t }), out msg))
+                    return false;
+            }
+            return true;
+        }
     }
 
     public class AbstractDomainFactory
     {
         // Type name -> Instance
         private static Dictionary<string, IAbstractDomain> abstractDomainInstances = new Dictionary<string, IAbstractDomain>();
+        private static Dictionary<string, IAbstractDomain> abstractDomainInstancesFriendly = new Dictionary<string, IAbstractDomain>();
 
-        public static void Register(IAbstractDomain instance)
+        public static void Register(string friendlyName, IAbstractDomain instance)
         {
             var Name = instance.GetType().FullName;
             Debug.Assert(!abstractDomainInstances.ContainsKey(Name));
             abstractDomainInstances.Add(Name, instance);
+            abstractDomainInstancesFriendly.Add(friendlyName, instance);
         }
 
         public static IAbstractDomain GetInstance(System.Type type)
@@ -1132,7 +1219,19 @@ namespace Microsoft.Boogie.Houdini {
             return abstractDomainInstances[Name] as IAbstractDomain;
         }
 
-        public static IAbstractDomain Initialize(string domainName)
+        public static IAbstractDomain GetInstance(string friendlyName)
+        {
+            if (!abstractDomainInstancesFriendly.ContainsKey(friendlyName))
+            {
+                Console.WriteLine("Domain {0} not found", CommandLineOptions.Clo.AbstractHoudini);
+                Console.WriteLine("Supported domains are:");
+                abstractDomainInstancesFriendly.Keys.Iter(tup => Console.WriteLine("  {0}", tup));
+                throw new AbsHoudiniInternalError("Domain not found");
+            }
+            return abstractDomainInstancesFriendly[friendlyName] as IAbstractDomain;
+        }
+
+        public static void Initialize()
         {
             // Declare abstract domains
             var domains = new List<System.Tuple<string, IAbstractDomain>>(new System.Tuple<string, IAbstractDomain>[] {
@@ -1145,26 +1244,7 @@ namespace Microsoft.Boogie.Houdini {
                   System.Tuple.Create("IA[Intervals]", new IndependentAttribute<Intervals>()  as IAbstractDomain)
               });
 
-            domains.Iter(tup => AbstractDomainFactory.Register(tup.Item2));
-
-            // Find the abstract domain
-            IAbstractDomain domain = null;
-            foreach (var tup in domains)
-            {
-                if (tup.Item1 == domainName)
-                {
-                    domain = tup.Item2;
-                    break;
-                }
-            }
-            if (domain == null)
-            {
-                Console.WriteLine("Domain {0} not found", CommandLineOptions.Clo.AbstractHoudini);
-                Console.WriteLine("Supported domains are:");
-                domains.Iter(tup => Console.WriteLine("  {0}", tup.Item1));
-                throw new AbsHoudiniInternalError("Domain not found");
-            }
-            return domain;
+            domains.Iter(tup => AbstractDomainFactory.Register(tup.Item1, tup.Item2));
         }
 
     }
@@ -1174,6 +1254,7 @@ namespace Microsoft.Boogie.Houdini {
         IAbstractDomain Bottom();
         IAbstractDomain Join(List<Model.Element> state);
         Expr Gamma(List<Expr> vars);
+        bool TypeCheck(List<Type> argTypes, out string msg);
     }
 
     public class AbstractHoudini
