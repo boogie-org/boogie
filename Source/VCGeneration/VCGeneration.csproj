@@ -147,7 +147,10 @@
     <Compile Include="Check.cs" />
     <Compile Include="ConditionGeneration.cs" />
     <Compile Include="Context.cs" />
+    <Compile Include="ExprExtensions.cs" />
+    <Compile Include="FixedpointVC.cs" />
     <Compile Include="OrderingAxioms.cs" />
+    <Compile Include="RPFP.cs" />
     <Compile Include="StratifiedVC.cs" />
     <Compile Include="VC.cs" />
     <Compile Include="..\version.cs" />

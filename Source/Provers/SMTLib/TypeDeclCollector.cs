@@ -20,6 +20,7 @@ namespace Microsoft.Boogie.SMTLib
 
     private readonly UniqueNamer Namer;
     private readonly SMTLibProverOptions Options;
+    private HashSet<Function/*!*/>/*!*/ RegisteredRelations = new HashSet<Function>();
 
     [ContractInvariantMethod]
 void ObjectInvariant() 
@@ -170,6 +171,13 @@ void ObjectInvariant()
       KnownFunctions.Add(func);
     }
 
+    public void RegisterRelation(Function func)
+    {
+      if (RegisteredRelations.Contains(func))
+        return;
+      RegisteredRelations.Add(func);
+    }
+
     public override bool Visit(VCExprNAry node, bool arg) {
       Contract.Requires(node != null);
 
@@ -190,7 +198,11 @@ void ObjectInvariant()
 
             Contract.Assert(f.OutParams.Length == 1);
             var argTypes = f.InParams.Cast<Variable>().MapConcat(p => TypeToStringReg(p.TypedIdent.Type), " ");
-            string decl = "(declare-fun " + printedName + " (" + argTypes + ") " + TypeToStringReg(f.OutParams[0].TypedIdent.Type) + ")";
+            string decl;
+            if(RegisteredRelations.Contains(op.Func))
+                decl = "(declare-rel " + printedName + " (" + argTypes + ") " + ")";
+            else
+                decl = "(declare-fun " + printedName + " (" + argTypes + ") " + TypeToStringReg(f.OutParams[0].TypedIdent.Type) + ")";
             AddDeclaration(decl);
           }
           KnownFunctions.Add(f);

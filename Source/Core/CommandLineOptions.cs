@@ -574,6 +574,7 @@ namespace Microsoft.Boogie {
     public bool ExtractLoops = false;
     public bool DeterministicExtractLoops = false;
     public int StratifiedInlining = 0;
+    public string FixedPointEngine = null;
     public int StratifiedInliningOption = 0;
     public bool StratifiedInliningWithoutModels = false; // disable model generation for SI
     public int StratifiedInliningVerbose = 0; // verbosity level
@@ -582,6 +583,16 @@ namespace Microsoft.Boogie {
     public string inferLeastForUnsat = null;
     public string CoverageReporterPath = null;
     public Process coverageReporter = null; // used internally for debugging
+
+    // Inference mode for fixed point engine
+    public enum FixedPointInferenceMode {
+       Corral,
+       OldCorral,
+       Flat,
+       Procedure,
+       Call
+    };
+    public FixedPointInferenceMode FixedPointMode = FixedPointInferenceMode.Procedure;
 
     public enum TypeEncoding {
       None,
@@ -1000,6 +1011,38 @@ namespace Microsoft.Boogie {
                 //ps.Error("Invalid argument \"{0}\" to option {1}", args[ps.i], ps.s);
                 break;
             }
+          }
+          return true;
+        case "fixedPointEngine":
+          if (ps.ConfirmArgumentCount(1))
+          {
+              FixedPointEngine = args[ps.i];
+          }
+          return true;
+        case "fixedPointInfer":
+          if (ps.ConfirmArgumentCount(1))
+          {
+              switch (args[ps.i])
+              {
+                  case "corral":
+                      FixedPointMode = FixedPointInferenceMode.Corral;
+                      break;
+                  case "oldCorral":
+                      FixedPointMode = FixedPointInferenceMode.OldCorral;
+                      break;
+                  case "flat":
+                      FixedPointMode = FixedPointInferenceMode.Flat;
+                      break;
+                  case "procedure":
+                      FixedPointMode = FixedPointInferenceMode.Procedure;
+                      break;
+                  case "call":
+                      FixedPointMode = FixedPointInferenceMode.Call;
+                      break;
+                  default:
+                      ps.Error("Invalid argument \"{0}\" to option {1}", args[ps.i], ps.s);
+                      break;
+              }
           }
           return true;
         case "siVerbose":
@@ -1574,6 +1617,8 @@ namespace Microsoft.Boogie {
                 Use the lazy inlining algorithm
   /stratifiedInline:1
                 Use the stratified inlining algorithm
+  /fixedPointEngine:<engine>
+                Use the specified fixed point engine for inference
   /recursionBound:<n>
                 Set the recursion bound for stratified inlining to
                 be n (default 500)

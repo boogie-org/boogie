@@ -19,6 +19,8 @@ using Microsoft.Boogie.Clustering;
 using Microsoft.Boogie.TypeErasure;
 using System.Text;
 
+using RPFP = Microsoft.Boogie.RPFP;
+
 namespace Microsoft.Boogie.SMTLib
 {
   public class SMTLibProcessTheoremProver : ProverInterface
@@ -27,6 +29,7 @@ namespace Microsoft.Boogie.SMTLib
     private readonly VCExpressionGenerator gen;
     private readonly SMTLibProverOptions options;
     private bool usingUnsatCore;
+    private RPFP rpfp = null;
 
     [ContractInvariantMethod]
     void ObjectInvariant()
@@ -361,6 +364,7 @@ namespace Microsoft.Boogie.SMTLib
       //Contract.Requires(descriptiveName != null);
       //Contract.Requires(vc != null);
       //Contract.Requires(handler != null);
+      rpfp = null;
 
       if (options.SeparateLogFiles) CloseLogFile(); // shouldn't really happen
 
@@ -389,6 +393,191 @@ namespace Microsoft.Boogie.SMTLib
 
       SendThisVC("(check-sat)");
       FlushLogFile();
+    }
+
+    private RPFP.Node SExprToCex(SExpr resp, ErrorHandler handler)
+    {
+        Dictionary<string, RPFP.Node> nmap = new Dictionary<string,RPFP.Node>();
+        Dictionary<string, RPFP.Node> pmap = new Dictionary<string,RPFP.Node>();
+
+        foreach(var node in rpfp.nodes)
+            pmap.Add((node.Name as VCExprBoogieFunctionOp).Func.Name,node);
+
+        RPFP.Node topnode = null;
+        var lines = resp.Arguments;
+
+        // last line of derivation is from query, skip it
+        for (int i = 0; i < lines.Length-1; i++)
+        {
+            var line = lines[i];
+            if (line.ArgCount != 5)
+            {
+                HandleProverError("bad derivation line from prover: " + line.ToString());
+                return null;
+            }
+            var name = line[0];
+            var conseq = line[1];
+            var subst = line[2];
+            var labs = line[3];
+            var refs = line[4];
+            var predName = conseq.Name;
+            RPFP.Node node = null;
+            if (!pmap.TryGetValue(predName, out node))
+            {
+                HandleProverError("unknown predicate from prover: " + predName.ToString());
+                return null;
+            }
+            RPFP.Node cexnode = rpfp.CloneNode(node);
+            cexnode.map = node;
+            nmap.Add(name.Name, cexnode);
+            List<RPFP.Node> Chs = new List<RPFP.Node>();
+
+            if (refs.Name != "ref")
+            {
+                HandleProverError("bad references from prover: " + refs.ToString());
+                return null;
+            }
+            foreach (var c in refs.Arguments)
+            {
+                if (c.Name == "true")
+                    Chs.Add(null);
+                else
+                {
+                    RPFP.Node ch = null;
+                    if (!nmap.TryGetValue(c.Name, out ch))
+                    {
+                        HandleProverError("unknown reference from prover: " + c.ToString());
+                        return null;
+                    }
+                    Chs.Add(ch);
+                }
+            }
+            RPFP.Edge e = rpfp.CreateEdge(cexnode, node.Outgoing.F, Chs.ToArray());
+            topnode = cexnode;
+
+            if (labs.Name != "labels")
+            {
+                HandleProverError("bad labels from prover: " + refs.ToString());
+                return null;
+            }
+            e.labels = new HashSet<string>();
+            foreach (var l in labs.Arguments)
+                e.labels.Add(l.Name);
+
+        }
+        if (topnode == null)
+        {
+            HandleProverError("empty derivation from prover: " + resp.ToString());
+        }
+        return topnode;
+    }
+
+    public override Outcome CheckRPFP(string descriptiveName, RPFP _rpfp, ErrorHandler handler, out RPFP.Node cex)
+    {
+        //Contract.Requires(descriptiveName != null);
+        //Contract.Requires(vc != null);
+        //Contract.Requires(handler != null);
+        rpfp = _rpfp;
+        cex = null;
+
+        if (options.SeparateLogFiles) CloseLogFile(); // shouldn't really happen
+
+        if (options.LogFilename != null && currentLogFile == null)
+        {
+            currentLogFile = OpenOutputFile(descriptiveName);
+            currentLogFile.Write(common.ToString());
+        }
+
+        foreach (var node in rpfp.nodes)
+        {
+            DeclCollector.RegisterRelation((node.Name as VCExprBoogieFunctionOp).Func);
+        }
+
+        PrepareCommon();
+
+        LineariserOptions.Default.LabelsBelowQuantifiers = true;
+        List<string> ruleStrings = new List<string>();
+        foreach (var edge in rpfp.edges)
+        {
+            string ruleString = "(rule " + VCExpr2String(rpfp.GetRule(edge), 1) + "\n)";
+            ruleStrings.Add(ruleString);
+        }
+        string queryString = "(query " + VCExpr2String(rpfp.GetQuery(), 1) + "\n   :engine duality\n  :print-certificate true\n)";
+        LineariserOptions.Default.LabelsBelowQuantifiers = false;
+        FlushAxioms();
+
+        PossiblyRestart();
+
+        SendThisVC("(set-info :boogie-vc-id " + SMTLibNamer.QuoteId(descriptiveName) + ")");
+        foreach(var rs in ruleStrings)
+            SendThisVC(rs);
+        FlushLogFile();
+
+        if (Process != null)
+        {
+            Process.PingPong(); // flush any errors
+
+#if false
+            // TODO: this is not going to work
+            if (Process.Inspector != null)
+                Process.Inspector.NewProblem(descriptiveName, vc, handler);
+#endif
+        }
+
+        SendThisVC(queryString);
+        FlushLogFile();
+
+        var result = Outcome.Undetermined;
+
+        if (Process != null)
+        {
+            
+            var resp = Process.GetProverResponse();
+            
+            switch (resp.Name)
+            {
+                case "unsat":
+                    result = Outcome.Valid;
+                    break;
+                case "sat":
+                    result = Outcome.Invalid;
+                    break;
+                case "unknown":
+                    result = Outcome.Invalid;
+                    break;
+                default:
+                    HandleProverError("Unexpected prover response: " + resp.ToString());
+                    break;
+            }
+            
+            switch (result)
+            {
+                case Outcome.Invalid:
+                    {
+                        resp = Process.GetProverResponse();
+                        if (resp.Name == "derivation")
+                        {
+                            cex = SExprToCex(resp, handler);
+                        }
+                        else
+                            HandleProverError("Unexpected prover response: " + resp.ToString());
+                        break;
+                    }
+                default:
+                    break;
+            }
+
+#if false
+            while (true)
+            {
+                resp = Process.GetProverResponse();
+                if (resp == null || Process.IsPong(resp))
+                    break;
+                HandleProverError("Unexpected prover response: " + resp.ToString());
+            }
+#endif
+        }
+        return result;
     }
 
     private static HashSet<string> usedLogNames = new HashSet<string>();

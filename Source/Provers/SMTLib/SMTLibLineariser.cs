@@ -23,7 +23,8 @@ namespace Microsoft.Boogie.SMTLib
   // Options for the linearisation
   public class LineariserOptions
   {
-    public static readonly LineariserOptions Default = new LineariserOptions();
+    public static LineariserOptions Default = new LineariserOptions();
+    public bool LabelsBelowQuantifiers = false;
   }
 
 
@@ -518,23 +519,28 @@ namespace Microsoft.Boogie.SMTLib
 
       public bool VisitLabelOp(VCExprNAry node, LineariserOptions options)
       {
-        if (ExprLineariser.UnderQuantifier > 0) {
+        if (ExprLineariser.UnderQuantifier > 0 && !options.LabelsBelowQuantifiers) {
           ExprLineariser.Linearise(node[0], options);
           return true;
         }
 
         var op = (VCExprLabelOp)node.Op;
-        if (CommandLineOptions.Clo.UseLabels) {
-          // Z3 extension
-          //wr.Write("({0} {1} ", op.pos ? "lblpos" : "lblneg", SMTLibNamer.QuoteId(op.label));
-          wr.Write("(! ");
+
+        if (CommandLineOptions.Clo.UseLabels)
+        {
+            // Z3 extension
+            //wr.Write("({0} {1} ", op.pos ? "lblpos" : "lblneg", SMTLibNamer.QuoteId(op.label));
+            wr.Write("(! ");
         }
 
-        wr.Write("({0} {1} ", op.pos ? "and" : "or", SMTLibNamer.QuoteId(SMTLibNamer.LabelVar(op.label)));
-            
+        if(!options.LabelsBelowQuantifiers)
+            wr.Write("({0} {1} ", op.pos ? "and" : "or", SMTLibNamer.QuoteId(SMTLibNamer.LabelVar(op.label)));
+
         ExprLineariser.Linearise(node[0], options);
 
-        wr.Write(")");
+
+        if (!options.LabelsBelowQuantifiers) 
+            wr.Write(")");
 
         if (CommandLineOptions.Clo.UseLabels)
           wr.Write(" :{0} {1})", op.pos ? "lblpos" : "lblneg", SMTLibNamer.QuoteId(op.label));

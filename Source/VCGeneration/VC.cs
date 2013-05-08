@@ -1356,7 +1356,7 @@ namespace VC {
           vc = NestedBlockVC(impl, label2absy, true, proverContext, out assertionCount);
           break;
         case CommandLineOptions.VCVariety.Dag:
-          if (cce.NonNull(CommandLineOptions.Clo.TheProverFactory).SupportsDags) {
+          if (cce.NonNull(CommandLineOptions.Clo.TheProverFactory).SupportsDags || CommandLineOptions.Clo.FixedPointEngine != null) {
             vc = DagVC(cce.NonNull(impl.Blocks[0]), controlFlowVariableExpr, label2absy, new Hashtable/*<Block, VCExpr!>*/(), proverContext, out assertionCount);
           } else {
             vc = LetVC(cce.NonNull(impl.Blocks[0]), controlFlowVariableExpr, label2absy, proverContext, out assertionCount);
