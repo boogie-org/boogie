@@ -9,7 +9,7 @@ for %%f in (typecheck.bpl) do (
   %BGEXE% %* /nologo /noinfer /typeEncoding:m /useArrayTheory %%f
 )
 
-for %%f in (list.bpl allocator.bpl) do (
+for %%f in (list.bpl allocator.bpl f1.bpl f2.bpl) do (
   echo.
   echo -------------------- %%f --------------------
   %BGEXE% %* /nologo /noinfer /typeEncoding:m /useArrayTheory /doModSetAnalysis %%f

@@ -1075,7 +1075,7 @@ namespace Microsoft.Boogie {
       public override void Emit(TokenTextWriter stream, int level)
       {
           //Contract.Requires(stream != null);
-          stream.Write(this, level, "yield;");
+          stream.WriteLine(this, level, "yield;");
       }
       public override void Resolve(ResolutionContext rc)
       {
@@ -2632,9 +2632,12 @@ namespace Microsoft.Boogie {
     }
     public override void Typecheck(TypecheckingContext tc) {
       //Contract.Requires(tc != null);
+      foreach (IdentifierExpr ie in Vars)
+      {
+          ie.Typecheck(tc);
+      }
       this.CheckAssignments(tc);
     }
-
 
     public override Absy StdDispatch(StandardVisitor visitor) {
       //Contract.Requires(visitor != null);

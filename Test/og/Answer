@@ -79,3 +79,18 @@ Boogie program verifier finished with 1 verified, 0 errors
 -------------------- parallel7.bpl --------------------
 
 Boogie program verifier finished with 1 verified, 0 errors
+
+-------------------- akash.bpl --------------------
+
+Boogie program verifier finished with 3 verified, 0 errors
+
+-------------------- t1.bpl --------------------
+t1.bpl(25,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    t1.bpl(11,5): anon0
+    (0,0): inline$Proc_YieldChecker_B$0$Return
+    (0,0): inline$og_yield$0$L_0$1
+    (0,0): inline$og_yield$0$Return
+    t1.bpl(11,5): anon0$1
+
+Boogie program verifier finished with 2 verified, 1 error
