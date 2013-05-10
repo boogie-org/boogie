@@ -5,7 +5,7 @@ function {:existential true} {:inline} b1(x: bool) : bool
   true
 }
 
-Boogie program verifier finished with 0 verified, 0 errors
+Boogie program verifier finished with 1 verified, 0 errors
 
 -------------------- houd2.bpl --------------------
 function {:existential true} {:inline} Assert(x: bool) : bool
@@ -21,7 +21,7 @@ function {:existential true} {:inline} b2(x: bool) : bool
   false
 }
 
-Boogie program verifier finished with 0 verified, 0 errors
+Boogie program verifier finished with 1 verified, 0 errors
 
 -------------------- houd3.bpl --------------------
 function {:existential true} {:inline} Assert(x: bool) : bool
@@ -37,7 +37,7 @@ function {:existential true} {:inline} b2(x: bool) : bool
   true
 }
 
-Boogie program verifier finished with 0 verified, 0 errors
+Boogie program verifier finished with 1 verified, 0 errors
 
 -------------------- houd4.bpl --------------------
 function {:existential true} {:inline} Assert() : bool
@@ -61,7 +61,7 @@ function {:existential true} {:inline} b4(x: bool) : bool
   false
 }
 
-Boogie program verifier finished with 0 verified, 0 errors
+Boogie program verifier finished with 1 verified, 0 errors
 
 -------------------- houd5.bpl --------------------
 function {:existential true} {:inline} b1(x: bool) : bool
@@ -89,7 +89,7 @@ function {:existential true} {:inline} Assert() : bool
   false
 }
 
-Boogie program verifier finished with 0 verified, 0 errors
+Boogie program verifier finished with 1 verified, 0 errors
 
 -------------------- houd6.bpl --------------------
 function {:existential true} {:inline} b1() : bool
@@ -129,7 +129,7 @@ function {:existential true} {:inline} Assert() : bool
   false
 }
 
-Boogie program verifier finished with 0 verified, 0 errors
+Boogie program verifier finished with 1 verified, 0 errors
 
 -------------------- houd7.bpl --------------------
 function {:existential true} {:inline} b1() : bool
@@ -149,7 +149,7 @@ function {:existential true} {:inline} Assert() : bool
   false
 }
 
-Boogie program verifier finished with 0 verified, 0 errors
+Boogie program verifier finished with 1 verified, 0 errors
 
 -------------------- houd8.bpl --------------------
 function {:existential true} {:inline} b1() : bool
@@ -165,10 +165,7 @@ function {:existential true} {:inline} b3() : bool
   true
 }
 
-Boogie program verifier finished with 0 verified, 0 errors
-
--------------------- houd9.bpl --------------------
-Error opening file "houd9.bpl": Could not find file 'C:\Users\akashl\Documents\work\boogie\Test\AbsHoudini\houd9.bpl'.
+Boogie program verifier finished with 1 verified, 0 errors
 
 -------------------- houd10.bpl --------------------
 function {:existential true} {:inline} b1() : bool
@@ -188,7 +185,7 @@ function {:existential true} {:inline} Assert() : bool
   true
 }
 
-Boogie program verifier finished with 0 verified, 0 errors
+Boogie program verifier finished with 1 verified, 0 errors
 
 -------------------- houd11.bpl --------------------
 function {:existential true} {:inline} Assert() : bool
@@ -196,7 +193,7 @@ function {:existential true} {:inline} Assert() : bool
   true
 }
 
-Boogie program verifier finished with 0 verified, 0 errors
+Boogie program verifier finished with 1 verified, 0 errors
 
 -------------------- houd12.bpl --------------------
 function {:existential true} {:inline} Assert() : bool
@@ -232,7 +229,20 @@ function {:existential true} {:inline} b7() : bool
   true
 }
 
-Boogie program verifier finished with 0 verified, 0 errors
+Boogie program verifier finished with 1 verified, 0 errors
+
+-------------------- fail1.bpl --------------------
+function {:existential true} {:inline} b1(x: bool) : bool
+{
+  false
+}
+fail1.bpl(14,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    fail1.bpl(9,3): anon0
+    fail1.bpl(10,11): anon4_Then
+    fail1.bpl(14,3): anon3
+
+Boogie program verifier finished with 0 verified, 1 error
 .
 -------------------- test1.bpl --------------------
 function {:existential true} {:inline} b0() : bool
@@ -252,7 +262,7 @@ function {:existential true} {:inline} Assert() : bool
   false
 }
 
-Boogie program verifier finished with 0 verified, 0 errors
+Boogie program verifier finished with 1 verified, 0 errors
 .
 -------------------- test2.bpl --------------------
 function {:existential true} {:inline} b0() : bool
@@ -272,7 +282,7 @@ function {:existential true} {:inline} Assert() : bool
   false
 }
 
-Boogie program verifier finished with 0 verified, 0 errors
+Boogie program verifier finished with 1 verified, 0 errors
 .
 -------------------- test7.bpl --------------------
 function {:existential true} {:inline} Assert() : bool
@@ -280,7 +290,7 @@ function {:existential true} {:inline} Assert() : bool
   false
 }
 
-Boogie program verifier finished with 0 verified, 0 errors
+Boogie program verifier finished with 1 verified, 0 errors
 .
 -------------------- test8.bpl --------------------
 function {:existential true} {:inline} Assert() : bool
@@ -288,7 +298,7 @@ function {:existential true} {:inline} Assert() : bool
   false
 }
 
-Boogie program verifier finished with 0 verified, 0 errors
+Boogie program verifier finished with 1 verified, 0 errors
 .
 -------------------- test9.bpl --------------------
 function {:existential true} {:inline} b1() : bool
@@ -356,7 +366,7 @@ function {:existential true} {:inline} b16() : bool
   true
 }
 
-Boogie program verifier finished with 0 verified, 0 errors
+Boogie program verifier finished with 1 verified, 0 errors
 .
 -------------------- test10.bpl --------------------
 function {:existential true} {:inline} b1() : bool
@@ -376,4 +386,56 @@ function {:existential true} {:inline} b4() : bool
   false
 }
 
-Boogie program verifier finished with 0 verified, 0 errors
+Boogie program verifier finished with 1 verified, 0 errors
+.
+-------------------- pred1.bpl --------------------
+function {:existential true} {:inline} b0(x: bool, y: bool) : bool
+{
+  x && !y
+}
+function {:existential true} {:inline} b1(x: bool, y: bool) : bool
+{
+  (y || x) && (!x || !y)
+}
+function {:existential true} {:inline} b2(x: bool, y: bool) : bool
+{
+  x && !y
+}
+
+Boogie program verifier finished with 1 verified, 0 errors
+.
+-------------------- pred2.bpl --------------------
+function {:existential true} {:inline} b0(x: bool) : bool
+{
+  x
+}
+
+Boogie program verifier finished with 1 verified, 0 errors
+.
+-------------------- pred3.bpl --------------------
+function {:existential true} {:inline} b0(x: bool, y: bool) : bool
+{
+  x && !y
+}
+function {:existential true} {:inline} b1(x: bool, y: bool) : bool
+{
+  (y || x) && (!x || !y)
+}
+function {:existential true} {:inline} b2(x: bool, y: bool) : bool
+{
+  x && !y
+}
+
+Boogie program verifier finished with 1 verified, 0 errors
+.
+-------------------- pred4.bpl --------------------
+function {:existential true} {:inline} b1(x: bool, y: bool) : bool
+{
+  (y || x) && (!x || !y)
+}
+function {:existential true} {:absdomain "Intervals"} {:inline} b3(x: int) : bool
+{
+  x >= 0 && x <= 0
+}
+
+Boogie program verifier finished with 1 verified, 0 errors

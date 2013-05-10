@@ -112,8 +112,10 @@ namespace Microsoft.Boogie.Houdini {
             name2Impl.Values.Iter(GenVC);
         }
 
-        public void ComputeSummaries()
+        public VCGenOutcome ComputeSummaries()
         {
+            var overallOutcome = new VCGenOutcome(ProverInterface.Outcome.Valid, new List<Counterexample>());
+
             // Compute SCCs and determine a priority order for impls
             var Succ = new Dictionary<string, HashSet<string>>();
             var Pred = new Dictionary<string, HashSet<string>>();
@@ -206,7 +208,7 @@ namespace Microsoft.Boogie.Houdini {
                     Console.WriteLine("Time taken = " + inc.TotalSeconds.ToString());
 
                 if (proverOutcome == ProverInterface.Outcome.TimeOut || proverOutcome == ProverInterface.Outcome.OutOfMemory)
-                    throw new AbsHoudiniInternalError("Timeout/Spaceout while verifying " + impl);
+                    return new VCGenOutcome(proverOutcome, new List<Counterexample>());
 
                 if (CommandLineOptions.Clo.Trace)
                     Console.WriteLine(collector.numErrors > 0 ? "SAT" : "UNSAT");
@@ -214,6 +216,11 @@ namespace Microsoft.Boogie.Houdini {
                 if (collector.numErrors > 0)
                 {
                     var funcsChanged = collector.funcsChanged;
+                    if (funcsChanged.Count == 0)
+                    {
+                        overallOutcome = new VCGenOutcome(ProverInterface.Outcome.Invalid, collector.errors);
+                        break;
+                    }
 
                     // propagate dependent guys back into the worklist, including self
                     var deps = new HashSet<string>();
@@ -237,6 +244,8 @@ namespace Microsoft.Boogie.Houdini {
                 // Print the answer
                 existentialFunctions.Values.Iter(PrintFunction);
             }
+
+            return overallOutcome;
         }
 
         public IEnumerable<Function> GetAssignment()
@@ -369,6 +378,7 @@ namespace Microsoft.Boogie.Houdini {
             public HashSet<string> funcsChanged;
             public string currImpl;
             public int numErrors;
+            public List<Counterexample> errors;
 
             AbsHoudini container;
 
@@ -383,11 +393,13 @@ namespace Microsoft.Boogie.Houdini {
                 funcsChanged = new HashSet<string>();
                 currImpl = impl;
                 numErrors = 0;
+                errors = new List<Counterexample>();
             }
 
             public override void OnCounterexample(Counterexample ce, string reason)
             {
                 numErrors++;
+                errors.Add(ce);
 
                 funcsChanged.UnionWith(
                     container.HandleCounterExample(currImpl, ce));

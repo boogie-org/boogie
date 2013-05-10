@@ -676,7 +676,8 @@ namespace Microsoft.Boogie {
 
               // Run Abstract Houdini
               var abs = new Houdini.AbsHoudini(program, domain);
-              abs.ComputeSummaries();
+              var absout = abs.ComputeSummaries();
+              ProcessOutcome(absout.outcome, absout.errors, "", ref errorCount, ref verified, ref inconclusives, ref timeOuts, ref outOfMemories);
 
               //Houdini.PredicateAbs.Initialize(program);
               //var abs = new Houdini.AbstractHoudini(program);
