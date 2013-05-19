@@ -3,7 +3,7 @@ procedure A({:linear "tid"} i': int) returns ({:linear "tid"} i: int);
 
 procedure{:entrypoint} B({:linear "tid"} i': int) returns ({:linear "tid"} i: int) 
 {
-  assume i == i';
+  i := i';
   call i := A(i);
   assert false;
 }

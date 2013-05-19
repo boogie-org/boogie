@@ -12,7 +12,7 @@ ensures Inv(ghostLock, currsize, newsize);
 ensures old(currsize) <= currsize;
 ensures tid == tid';
 {
-    assume tid == tid';
+    tid := tid';
     yield;
     assert Inv(ghostLock, currsize, newsize);
     assert old(currsize) <= currsize;
@@ -31,7 +31,7 @@ ensures ghostLock == tid;
 ensures currsize <= i;
 ensures newsize == old(newsize);
 {
-    assume tid == tid';
+    tid := tid';
     yield;
     assert Inv(ghostLock, currsize, newsize);
     assert old(currsize) <= currsize;
@@ -65,7 +65,7 @@ ensures 0 <= bytesread && bytesread <= size;
     var copy_currsize: int;
     var i, j, tmp : int;
     var {:linear "tid"} tid: X;
-    assume tid == tid';
+    tid := tid';
 
     bytesread := size;
     call acquire(tid);
@@ -127,7 +127,7 @@ requires Inv(ghostLock, currsize, newsize);
     var start, size, bytesread: int;
     var {:linear "tid"} tid: X;
 
-    assume tid == tid';
+    tid := tid';
     havoc start, size;
     assume (0 <= start && 0 <= size);
     call bytesread := Read(tid, start, size);
@@ -140,8 +140,10 @@ requires currsize == 0 && newsize == 0 && ghostLock == nil && lock == nil;
 
     while (*)
     {
-        havoc tid;
-	assume tid != nil;
+        call tid := Allocate();
         async call thread(tid);
     }
 }
+
+procedure Allocate() returns ({:linear "tid"} xls: X);
+ensures xls != nil;

@@ -60,11 +60,10 @@ Boogie program verifier finished with 5 verified, 0 errors
 Boogie program verifier finished with 4 verified, 0 errors
 
 -------------------- parallel4.bpl --------------------
-parallel4.bpl(14,3): Error BP5001: This assertion might not hold.
+parallel4.bpl(18,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    parallel4.bpl(12,3): anon0
-    (0,0): inline$og_yield$0$Return
-    parallel4.bpl(12,3): anon0$1
+    parallel4.bpl(16,5): anon0
+    parallel4.bpl(16,5): anon0$1
 
 Boogie program verifier finished with 2 verified, 1 error
 
@@ -85,12 +84,17 @@ Boogie program verifier finished with 1 verified, 0 errors
 Boogie program verifier finished with 3 verified, 0 errors
 
 -------------------- t1.bpl --------------------
-t1.bpl(25,5): Error BP5001: This assertion might not hold.
+t1.bpl(35,5): Error BP5001: This assertion might not hold.
 Execution trace:
-    t1.bpl(11,5): anon0
-    (0,0): inline$Proc_YieldChecker_B$0$Return
-    (0,0): inline$og_yield$0$L_0$1
-    (0,0): inline$og_yield$0$Return
-    t1.bpl(11,5): anon0$1
+    t1.bpl(53,13): anon0
+    (0,0): inline$Impl_YieldChecker_A$0$L1
 
 Boogie program verifier finished with 2 verified, 1 error
+
+-------------------- new1.bpl --------------------
+
+Boogie program verifier finished with 2 verified, 0 errors
+
+-------------------- perm.bpl --------------------
+
+Boogie program verifier finished with 2 verified, 0 errors
