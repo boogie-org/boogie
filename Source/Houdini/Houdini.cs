@@ -38,6 +38,7 @@ namespace Microsoft.Boogie.Houdini {
 
   public abstract class HoudiniObserver {
     public virtual void UpdateStart(Program program, int numConstants) { }
+    public virtual void UpdateStage(int stage) { }
     public virtual void UpdateIteration() { }
     public virtual void UpdateImplementation(Implementation implementation) { }
     public virtual void UpdateAssignment(Dictionary<Variable, bool> assignment) { }
@@ -132,6 +133,10 @@ namespace Microsoft.Boogie.Houdini {
       currentIteration = -1;
       wr.Flush();
     }
+    public override void UpdateStage(int stage) {
+      wr.WriteLine("Houdini stage " + stage);
+      wr.Flush();
+    }
     public override void UpdateIteration() {
       currentIteration++;
       wr.WriteLine("---------------------------------------");
@@ -209,6 +214,9 @@ namespace Microsoft.Boogie.Houdini {
     protected void NotifyStart(Program program, int numConstants) {
       NotifyDelegate notifyDelegate = (NotifyDelegate)delegate(HoudiniObserver r) { r.UpdateStart(program, numConstants); };
       Notify(notifyDelegate);
+    }
+    protected void NotifyStage(int stage) {
+      Notify((NotifyDelegate)delegate(HoudiniObserver r) { r.UpdateStage(stage); });
     }
     protected void NotifyIteration() {
       Notify((NotifyDelegate)delegate(HoudiniObserver r) { r.UpdateIteration(); });
@@ -540,6 +548,38 @@ namespace Microsoft.Boogie.Houdini {
       return false;
     }
 
+    private static Expr AddConditionToCandidateRec(Expr boogieExpr, Expr condition, string candidateConstant, List<Expr> implicationStack)
+    {
+        NAryExpr e = boogieExpr as NAryExpr;
+        if (e != null && e.Fun is BinaryOperator && ((BinaryOperator)e.Fun).Op == BinaryOperator.Opcode.Imp)
+        {
+            Expr antecedent = e.Args[0];
+            Expr consequent = e.Args[1];
+
+            IdentifierExpr id = antecedent as IdentifierExpr;
+            if (id != null && id.Decl is Constant && id.Decl.Name.Equals(candidateConstant))
+            {
+                Expr result = Expr.Imp(antecedent, Expr.Imp(condition, consequent));
+                implicationStack.Reverse();
+                foreach (var expr in implicationStack)
+                {
+                    result = Expr.Imp(expr, result);
+                }
+                return result;
+            }
+
+            implicationStack.Add(antecedent);
+            return AddConditionToCandidateRec(consequent, condition, candidateConstant,
+                implicationStack);
+        }
+        return boogieExpr;
+    }
+
+    public static Expr AddConditionToCandidate(Expr boogieExpr, Expr condition, string candidateConstant)
+    {
+        return AddConditionToCandidateRec(boogieExpr, condition, candidateConstant, new List<Expr>());
+    }
+
     public bool MatchCandidate(Expr boogieExpr, out Variable candidateConstant) {
       candidateConstant = null;
       string candidateString;
@@ -761,12 +801,14 @@ namespace Microsoft.Boogie.Houdini {
       private WorkQueue _workQueue;
       private HashSet<string> blackList;
       private Dictionary<Variable, bool> _assignment;
+      private int _stage;
       private Implementation _implementation;
       private HoudiniOutcome _outcome;
 
       public HoudiniState(WorkQueue workQueue, Dictionary<Variable, bool> currentAssignment) {
         this._workQueue = workQueue;
         this._assignment = currentAssignment;
+        this._stage = 0;
         this._implementation = null;
         this._outcome = new HoudiniOutcome();
         this.blackList = new HashSet<string>();
@@ -777,6 +819,9 @@ namespace Microsoft.Boogie.Houdini {
       }
       public Dictionary<Variable, bool> Assignment {
         get { return this._assignment; }
+      }
+      public int Stage {
+        get { return this._stage; }
       }
       public Implementation Implementation {
         get { return this._implementation; }
@@ -791,6 +836,9 @@ namespace Microsoft.Boogie.Houdini {
       public void addToBlackList(string funcName) {
         blackList.Add(funcName);
       }
+      internal void incrementStage() {
+        _stage++;
+      }
     }
 
     public HoudiniOutcome PerformHoudiniInference() {
@@ -799,15 +847,36 @@ namespace Microsoft.Boogie.Houdini {
         currentHoudiniState.addToBlackList(impl.Name);
       }
 
-      while (currentHoudiniState.WorkQueue.Count > 0) {
-        this.NotifyIteration();
+      while(currentHoudiniState.Stage < NumberOfStages()) {
 
-        currentHoudiniState.Implementation = currentHoudiniState.WorkQueue.Peek();
-        this.NotifyImplementation(currentHoudiniState.Implementation);
+        if (CommandLineOptions.Clo.Trace) {
+          Console.WriteLine("Current stage is " + currentHoudiniState.Stage + " of " + (NumberOfStages() - 1));
+        }
 
-        HoudiniSession session;
-        this.houdiniSessions.TryGetValue(currentHoudiniState.Implementation, out session);
-        HoudiniVerifyCurrent(session);
+        this.NotifyStage(currentHoudiniState.Stage);
+
+        while (currentHoudiniState.WorkQueue.Count > 0) {
+          this.NotifyIteration();
+
+          currentHoudiniState.Implementation = currentHoudiniState.WorkQueue.Peek();
+          this.NotifyImplementation(currentHoudiniState.Implementation);
+
+          HoudiniSession session;
+          this.houdiniSessions.TryGetValue(currentHoudiniState.Implementation, out session);
+          HoudiniVerifyCurrent(session);
+        }
+
+        currentHoudiniState.incrementStage();
+
+        #region Re-populate work list for next stage
+        if (currentHoudiniState.Stage < NumberOfStages()) {
+          var workList = BuildWorkList(program);
+          while(workList.Count > 0) {
+            currentHoudiniState.WorkQueue.Enqueue(workList.Dequeue());
+          }
+        }
+        #endregion
+
       }
       this.NotifyEnd(true);
       Dictionary<string, bool> assignment = new Dictionary<string, bool>();
@@ -822,6 +891,15 @@ namespace Microsoft.Boogie.Houdini {
           explainHoudiniDottyFile.Close();
       }
       return currentHoudiniState.Outcome;
+    }
+
+    private int NumberOfStages()
+    {
+      int result = 1;
+      foreach(var c in program.TopLevelDeclarations.OfType<Constant>()) {
+        result = Math.Max(result, 1 + QKeyValue.FindIntAttribute(c.Attributes, "stage_active", -1));
+      }
+      return result;
     }
 
     private List<Implementation> FindImplementationsToEnqueue(RefutedAnnotation refutedAnnotation, Implementation currentImplementation) {
@@ -970,7 +1048,7 @@ namespace Microsoft.Boogie.Houdini {
     private ProverInterface.Outcome TryCatchVerify(HoudiniSession session, out List<Counterexample> errors) {
       ProverInterface.Outcome outcome;
       try {
-        outcome = session.Verify(proverInterface, currentHoudiniState.Assignment, out errors);
+        outcome = session.Verify(proverInterface, GetAssignmentWithStages(), out errors);
       }
       catch (UnexpectedProverOutputException upo) {
         Contract.Assume(upo != null);
@@ -978,6 +1056,25 @@ namespace Microsoft.Boogie.Houdini {
         outcome = ProverInterface.Outcome.Undetermined;
       }
       return outcome;
+    }
+
+    private Dictionary<Variable, bool> GetAssignmentWithStages()
+    {
+      Dictionary<Variable, bool> result = new Dictionary<Variable, bool>(currentHoudiniState.Assignment);
+      foreach (var c in program.TopLevelDeclarations.OfType<Constant>())
+      {
+        int stageActive = QKeyValue.FindIntAttribute(c.Attributes, "stage_active", -1);
+        if (stageActive != -1)
+        {
+          result[c] = (stageActive == currentHoudiniState.Stage);
+        }
+        int stageComplete = QKeyValue.FindIntAttribute(c.Attributes, "stage_complete", -1);
+        if (stageComplete != -1)
+        {
+          result[c] = (stageComplete < currentHoudiniState.Stage);
+        }
+      }
+      return result;
     }
 
     private void HoudiniVerifyCurrent(HoudiniSession session) {

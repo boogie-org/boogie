@@ -256,28 +256,144 @@ namespace Microsoft.Boogie {
 
     public void ApplyStages() {
 
-      IEnumerable<Constant> candidates = prog.TopLevelDeclarations.OfType<Constant>().
-        Where(Item => QKeyValue.FindBoolAttribute(Item.Attributes, "existential"));
+        if (NoStages())
+        {
+            return;
+        }
 
-      if (candidates.Count() == 0) {
-        return;
-      }
-
-      if (StagesDAG.Nodes.Count() == 0) {
-        return;
-      }
-
-      
-      Debug.Assert(CommandLineOptions.Clo.StagedHoudini == COARSE_STAGES ||
+        #region Assign candidates to stages at a given level of granularity
+        Debug.Assert(CommandLineOptions.Clo.StagedHoudini == COARSE_STAGES ||
                    CommandLineOptions.Clo.StagedHoudini == FINE_STAGES);
+        Dictionary<string, int> candidateToStage =
+            (CommandLineOptions.Clo.StagedHoudini == COARSE_STAGES) ? ComputeCoarseStages()
+            : ComputeFineStages();
+        #endregion
 
-      if (CommandLineOptions.Clo.StagedHoudini == COARSE_STAGES) {
-        SCC<string> start = null;
-        foreach (var n in StagesDAG.Nodes) {
-          if (StagesDAG.Successors(n).Count() == 0) {
-            start = n;
-            break;
+        #region Generate boolean variables to control stages
+        var stageToActiveBoolean = new Dictionary<int, Constant>();
+        var stageToCompleteBoolean = new Dictionary<int, Constant>();
+
+        foreach (var stage in new HashSet<int>(candidateToStage.Values))
+        {
+            var stageActive = new Constant(Token.NoToken,
+                new TypedIdent(Token.NoToken, "_stage_" + stage + "_active", Type.Bool),
+                false);
+            stageActive.AddAttribute("stage_active", new object[] { new LiteralExpr(Token.NoToken, BigNum.FromInt(stage)) });
+            prog.TopLevelDeclarations.Add(stageActive);
+            stageToActiveBoolean[stage] = stageActive;
+
+            var stageComplete = new Constant(Token.NoToken, 
+                new TypedIdent(Token.NoToken, "_stage_" + stage + "_complete", Type.Bool),
+                false);
+            stageComplete.AddAttribute("stage_complete", new object[] { new LiteralExpr(Token.NoToken, BigNum.FromInt(stage)) });
+            prog.TopLevelDeclarations.Add(stageComplete);
+            stageToCompleteBoolean[stage] = stageComplete;
+        }
+        #endregion
+
+        #region Adapt candidate assertions to take account of stages
+        foreach (var b in prog.TopLevelDeclarations.OfType<Implementation>().Select(Item => Item.Blocks).SelectMany(Item => Item))
+        {
+            CmdSeq newCmds = new CmdSeq();
+            foreach (var cmd in b.Cmds)
+            {
+                var a = cmd as AssertCmd;
+                string c;
+                if (a != null && (Houdini.Houdini.MatchCandidate(a.Expr, candidates, out c)))
+                {
+                    newCmds.Add(new AssertCmd(a.tok, Houdini.Houdini.AddConditionToCandidate(a.Expr,
+                        new IdentifierExpr(Token.NoToken, stageToActiveBoolean[candidateToStage[c]]), c), a.Attributes));
+                    newCmds.Add(new AssumeCmd(a.tok, Houdini.Houdini.AddConditionToCandidate(a.Expr,
+                        new IdentifierExpr(Token.NoToken, stageToCompleteBoolean[candidateToStage[c]]), c), a.Attributes));
+                }
+                else
+                {
+                    newCmds.Add(cmd);
+                }
+            }
+            b.Cmds = newCmds;
+        }
+        #endregion
+
+        #region Adapt candidate pre/postconditions to take account of stages
+        foreach (var p in prog.TopLevelDeclarations.OfType<Procedure>())
+        {
+
+          #region Handle the preconditions
+          RequiresSeq newRequires = new RequiresSeq();
+          foreach(Requires r in p.Requires) {
+            string c;
+            if (Houdini.Houdini.MatchCandidate(r.Condition, candidates, out c)) {
+              newRequires.Add(new Requires(r.tok, false, 
+                Houdini.Houdini.AddConditionToCandidate(r.Condition,
+                new IdentifierExpr(Token.NoToken, stageToActiveBoolean[candidateToStage[c]]), c),
+                r.Comment, r.Attributes));
+              newRequires.Add(new Requires(r.tok, true, 
+                Houdini.Houdini.AddConditionToCandidate(r.Condition,
+                new IdentifierExpr(Token.NoToken, stageToCompleteBoolean[candidateToStage[c]]), c),
+                r.Comment, r.Attributes));
+            } else {
+              newRequires.Add(r);
+            }
           }
+          p.Requires = newRequires;
+          #endregion
+
+          #region Handle the postconditions
+          EnsuresSeq newEnsures = new EnsuresSeq();
+          foreach(Ensures e in p.Ensures) {
+            string c;
+            if (Houdini.Houdini.MatchCandidate(e.Condition, candidates, out c)) {
+              newEnsures.Add(new Ensures(e.tok, false, 
+                Houdini.Houdini.AddConditionToCandidate(e.Condition,
+                new IdentifierExpr(Token.NoToken, stageToActiveBoolean[candidateToStage[c]]), c),
+                e.Comment, e.Attributes));
+              newEnsures.Add(new Ensures(e.tok, true, 
+                Houdini.Houdini.AddConditionToCandidate(e.Condition,
+                new IdentifierExpr(Token.NoToken, stageToCompleteBoolean[candidateToStage[c]]), c),
+                e.Comment, e.Attributes));
+            } else {
+              newRequires.Add(e);
+            }
+          }
+          p.Ensures = newEnsures;
+          #endregion
+
+        }
+        #endregion
+
+    }
+
+    private Dictionary<string, int> ComputeFineStages()
+    {
+        var result = new Dictionary<string, int>();
+        List<SCC<string>> components = StagesDAG.TopologicalSort().ToList();
+        components.Reverse();
+
+        System.Diagnostics.Debug.Assert(components[0].Count() == 0);
+        for (int i = 1; i < components.Count(); i++)
+        {
+            foreach (var c in components[i])
+            {
+                result[c] = i - 1;
+            }
+
+        }
+        return result;
+
+    }
+
+    private Dictionary<string, int> ComputeCoarseStages()
+    {
+        var result = new Dictionary<string, int>();
+        SCC<string> start = null;
+        foreach (var n in StagesDAG.Nodes)
+        {
+            if (StagesDAG.Successors(n).Count() == 0)
+            {
+                start = n;
+                break;
+            }
         }
         System.Diagnostics.Debug.Assert(start != null);
 
@@ -286,60 +402,48 @@ namespace Microsoft.Boogie {
 
         bool finished = false;
         int stageId = 0;
-        while (!finished) {
-          finished = true;
-          HashSet<SCC<string>> stage = new HashSet<SCC<string>>();
-          foreach (var n in StagesDAG.Nodes) {
-            if (!done.Contains(n)) {
-              finished = false;
-              bool ready = true;
-              foreach (var m in StagesDAG.Successors(n)) {
-                if (!done.Contains(m)) {
-                  ready = false;
-                  break;
+        while (!finished)
+        {
+            finished = true;
+            HashSet<SCC<string>> stage = new HashSet<SCC<string>>();
+            foreach (var n in StagesDAG.Nodes)
+            {
+                if (!done.Contains(n))
+                {
+                    finished = false;
+                    bool ready = true;
+                    foreach (var m in StagesDAG.Successors(n))
+                    {
+                        if (!done.Contains(m))
+                        {
+                            ready = false;
+                            break;
+                        }
+                    }
+                    if (ready)
+                    {
+                        stage.Add(n);
+                        done.Add(n);
+                    }
                 }
-              }
-              if (ready) {
-                stage.Add(n);
-                done.Add(n);
-              }
             }
-          }
 
-          foreach (var scc in stage) {
-            foreach (var candidate in candidates) {
-              if (scc.Contains(candidate.Name)) {
-                candidate.Attributes = new QKeyValue(Token.NoToken, "stage_id", new List<object>() {
-                  new LiteralExpr(Token.NoToken, BigNum.FromInt(stageId))
-                }, candidate.Attributes);
-              }
+            foreach (var scc in stage)
+            {
+                foreach (var c in scc)
+                {
+                    result[c] = stageId;
+                }
             }
-          }
 
-          stageId++;
+            stageId++;
         }
+        return result;
+    }
 
-      }
-      else {
-        List<SCC<string>> components = StagesDAG.TopologicalSort().ToList();
-        components.Reverse();
-
-        System.Diagnostics.Debug.Assert(components[0].Count() == 0);
-        for (int i = 1; i < components.Count(); i++) {
-          foreach (var c in candidates) {
-            if (components[i].Contains(c.Name)) {
-              c.Attributes = new QKeyValue(Token.NoToken, "stage_id", new List<object>() {
-              new LiteralExpr(Token.NoToken, BigNum.FromInt(i - 1))
-            }, c.Attributes);
-            }
-          }
-
-        }
-
-      }
-
-
-
+    private bool NoStages()
+    {
+        return candidates.Count() == 0 || StagesDAG.Nodes.Count() == 0;
     }
   }
 

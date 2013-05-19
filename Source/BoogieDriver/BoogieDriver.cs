@@ -213,10 +213,12 @@ namespace Microsoft.Boogie {
               candidateDependenceAnalyser.ApplyStages();
               if (CommandLineOptions.Clo.Trace)
               {
-                  candidateDependenceAnalyser.dump();
+                candidateDependenceAnalyser.dump();
+                int oldPrintUnstructured = CommandLineOptions.Clo.PrintUnstructured;
+                CommandLineOptions.Clo.PrintUnstructured = 2;
+                PrintBplFile("staged.bpl", program, false, false);
+                CommandLineOptions.Clo.PrintUnstructured = oldPrintUnstructured;
               }
-              PrintBplFile("staged.bpl", program, false, false);
-              Environment.Exit(0);
           }
 
           int errorCount, verified, inconclusives, timeOuts, outOfMemories;
