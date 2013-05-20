@@ -139,9 +139,28 @@ namespace Microsoft.Boogie.ExprExtensions
             return Function(f, args);
         }
 
+        public Term MkApp(FuncDecl f, Term[] args, Type[]/*!*/ typeArguments)
+        {
+            return Function(f, args, typeArguments);
+        }
+
         public Term MkApp(FuncDecl f, Term arg)
         {
             return Function(f, arg);
+        }
+
+        public Term CloneApp(Term t, Term[] args)
+        {
+            var f = t.GetAppDecl();
+            var typeArgs = (t as VCExprNAry).TypeArguments;
+            if (typeArgs != null && typeArgs.Count > 0)
+            {
+                return MkApp(f, args, typeArgs.ToArray());
+            }
+            else
+            {
+                return MkApp(f, args);
+            }
         }
         
         public Term MkAnd(Term[] args)

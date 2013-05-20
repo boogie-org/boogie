@@ -395,7 +395,8 @@ namespace Microsoft.Boogie.SMTLib
       FlushLogFile();
     }
 
-    private RPFP.Node SExprToCex(SExpr resp, ErrorHandler handler)
+    private RPFP.Node SExprToCex(SExpr resp, ErrorHandler handler, 
+                                 Dictionary<int,Dictionary<string,string>> varSubst)
     {
         Dictionary<string, RPFP.Node> nmap = new Dictionary<string,RPFP.Node>();
         Dictionary<string, RPFP.Node> pmap = new Dictionary<string,RPFP.Node>();
@@ -410,16 +411,17 @@ namespace Microsoft.Boogie.SMTLib
         for (int i = 0; i < lines.Length-1; i++)
         {
             var line = lines[i];
-            if (line.ArgCount != 5)
+            if (line.ArgCount != 6)
             {
                 HandleProverError("bad derivation line from prover: " + line.ToString());
                 return null;
             }
             var name = line[0];
             var conseq = line[1];
-            var subst = line[2];
-            var labs = line[3];
-            var refs = line[4];
+            var rule = line[2];
+            var subst = line[3];
+            var labs = line[4];
+            var refs = line[5];
             var predName = conseq.Name;
             RPFP.Node node = null;
             if (!pmap.TryGetValue(predName, out node))
@@ -452,17 +454,53 @@ namespace Microsoft.Boogie.SMTLib
                     Chs.Add(ch);
                 }
             }
-            RPFP.Edge e = rpfp.CreateEdge(cexnode, node.Outgoing.F, Chs.ToArray());
+
+            if (!rule.Name.StartsWith("rule!"))
+            {
+                HandleProverError("bad rule name from prover: " + refs.ToString());
+                return null;
+            }
+            int ruleNum = Convert.ToInt32(rule.Name.Substring(5)) - 1;
+            if(ruleNum < 0 || ruleNum > rpfp.edges.Count)
+            {
+                HandleProverError("bad rule name from prover: " + refs.ToString());
+                return null;
+            }
+            RPFP.Edge orig_edge = rpfp.edges[ruleNum];
+            RPFP.Edge e = rpfp.CreateEdge(cexnode, orig_edge.F, Chs.ToArray());
+            e.map = orig_edge;
             topnode = cexnode;
 
             if (labs.Name != "labels")
             {
-                HandleProverError("bad labels from prover: " + refs.ToString());
+                HandleProverError("bad labels from prover: " + labs.ToString());
                 return null;
             }
             e.labels = new HashSet<string>();
             foreach (var l in labs.Arguments)
                 e.labels.Add(l.Name);
+
+            if (subst.Name != "subst")
+            {
+                HandleProverError("bad subst from prover: " + subst.ToString());
+                return null;
+            }
+            Dictionary<string, string> dict = new Dictionary<string, string>();
+            varSubst[e.number] = dict;
+            foreach (var s in subst.Arguments)
+            {
+                if(s.Name != "=" || s.Arguments.Length != 2)
+                {
+                    HandleProverError("bad equation from prover: " + s.ToString());
+                    return null;
+                }
+                string uniqueName = s.Arguments[0].Name;
+                string spacer = "@@"; // Hack! UniqueNamer is adding these and I can't stop it!
+                int pos = uniqueName.LastIndexOf(spacer);
+                if (pos >= 0)
+                    uniqueName = uniqueName.Substring(0, pos);
+                dict.Add(uniqueName, s.Arguments[1].ToString());
+            }
 
         }
         if (topnode == null)
@@ -472,7 +510,41 @@ namespace Microsoft.Boogie.SMTLib
         return topnode;
     }
 
-    public override Outcome CheckRPFP(string descriptiveName, RPFP _rpfp, ErrorHandler handler, out RPFP.Node cex)
+    private string QuantifiedVCExpr2String(VCExpr x)
+    {
+        return VCExpr2String(x, 1); 
+#if false
+        if (!(x is VCExprQuantifier))
+            return VCExpr2String(x, 1);
+        VCExprQuantifier node = (x as VCExprQuantifier);
+        if(node.BoundVars.Count == 0)
+            return VCExpr2String(x, 1);
+
+        StringWriter wr = new StringWriter();
+
+        string kind = node.Quan == Quantifier.ALL ? "forall" : "exists"; 
+        wr.Write("({0} (", kind);
+
+        for (int i = 0; i < node.BoundVars.Count; i++)
+        {
+            VCExprVar var = node.BoundVars[i];
+            Contract.Assert(var != null);
+            string printedName = Namer.GetQuotedName(var, var.Name);
+            Contract.Assert(printedName != null);
+            wr.Write("({0} {1}) ", printedName, SMTLibExprLineariser.TypeToString(var.Type));
+        }
+
+        wr.Write(") ");
+        wr.Write(VCExpr2String(node.Body, 1));
+        wr.Write(")");
+        string res = wr.ToString();
+        return res;
+#endif
+    }
+
+    public override Outcome CheckRPFP(string descriptiveName, RPFP _rpfp, ErrorHandler handler, 
+                                      out RPFP.Node cex,
+                                      Dictionary<int,Dictionary<string,string>> varSubst)
     {
         //Contract.Requires(descriptiveName != null);
         //Contract.Requires(vc != null);
@@ -499,10 +571,10 @@ namespace Microsoft.Boogie.SMTLib
         List<string> ruleStrings = new List<string>();
         foreach (var edge in rpfp.edges)
         {
-            string ruleString = "(rule " + VCExpr2String(rpfp.GetRule(edge), 1) + "\n)";
+            string ruleString = "(rule " + QuantifiedVCExpr2String(rpfp.GetRule(edge)) + "\n)";
             ruleStrings.Add(ruleString);
         }
-        string queryString = "(query " + VCExpr2String(rpfp.GetQuery(), 1) + "\n   :engine duality\n  :print-certificate true\n)";
+        string queryString = "(query " + QuantifiedVCExpr2String(rpfp.GetQuery()) + "\n   :engine duality\n  :print-certificate true\n)";
         LineariserOptions.Default.LabelsBelowQuantifiers = false;
         FlushAxioms();
 
@@ -557,7 +629,7 @@ namespace Microsoft.Boogie.SMTLib
                         resp = Process.GetProverResponse();
                         if (resp.Name == "derivation")
                         {
-                            cex = SExprToCex(resp, handler);
+                            cex = SExprToCex(resp, handler,varSubst);
                         }
                         else
                             HandleProverError("Unexpected prover response: " + resp.ToString());
