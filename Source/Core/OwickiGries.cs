@@ -30,18 +30,7 @@ namespace Microsoft.Boogie
             inParallelCall = false;
         }
     }
-    /*
-    struct YieldInfo
-    {
-        public YieldCmd yieldCmd;
-        public CmdSeq cmds;
-        public YieldInfo(YieldCmd yieldCmd, CmdSeq cmds)
-        {
-            this.yieldCmd = yieldCmd;
-            this.cmds = cmds;
-        }
-    }
-    */
+    
     class AsyncAndYieldTraverser : StandardVisitor
     {
         Dictionary<string, ProcedureInfo> procNameToInfo = new Dictionary<string, ProcedureInfo>();
