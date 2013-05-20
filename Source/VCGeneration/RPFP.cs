@@ -159,8 +159,7 @@ namespace Microsoft.Boogie
             public Edge map;
             public HashSet<string> labels;
             internal Term dual;
-            internal Dictionary<FuncDecl,int> relMap;
-            internal Dictionary<Term,Term> varMap;
+            internal Dictionary<Term,Term> valuation;
         }
 
         
@@ -262,10 +261,23 @@ namespace Microsoft.Boogie
 
         public Term Eval(Edge e, Term t)
         {
-            return ctx.MkFalse(); // TODO
+            if (e.valuation == null)
+                e.valuation = new Dictionary<Term, Term>();
+            if (e.valuation.ContainsKey(t))
+                return e.valuation[t];
+            return null; // TODO
         }
 
-        
+        /** Sets the value in the counterexample of a symbol occuring in the transformer formula of
+         *  a given edge. */
+
+        public void SetValue(Edge e, Term variable, Term value)
+        {
+            if (e.valuation == null)
+                e.valuation = new Dictionary<Term, Term>(); 
+            e.valuation.Add(variable, value);
+        }
+
 
         /** Returns true if the given node is empty in the primal solution. For proecudure summaries,
          this means that the procedure is not called in the current counter-model. */
@@ -374,7 +386,7 @@ namespace Microsoft.Boogie
                 }
                 var args = t.GetAppArgs();
                 args = args.Select(x => CollectParamsRec(memo, x, parms, nodes)).ToArray();
-                res = ctx.MkApp(f, args);
+                res = ctx.CloneApp(t, args);
             } // TODO: handle quantifiers
             else
                 res = t;
@@ -521,8 +533,13 @@ namespace Microsoft.Boogie
                 FuncDecl nf = null;
                 var f = t.GetAppDecl();
                 if (subst.TryGetValue(f, out nf))
-                    f = nf;
-                res = ctx.MkApp(f, args);
+                {
+                    res = ctx.MkApp(nf, args);
+                }
+                else
+                {
+                    res = ctx.CloneApp(t, args);
+                }
             } // TODO: handle quantifiers
             else
                 res = t;
