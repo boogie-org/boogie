@@ -35,53 +35,20 @@ namespace Microsoft.Boogie {
 
       candidates = GetCandidates();
 
-      if (CommandLineOptions.Clo.Trace) {
-        Console.WriteLine("Candidate dependence analysis: Working out what candidates depend on");
-      }
-      candidateDependsOn = new Dictionary<string, HashSet<VariableDescriptor>>();
-      variableDirectlyReferredToByCandidates = new Dictionary<VariableDescriptor, HashSet<string>>();
-      foreach (var c in candidates) {
-        candidateDependsOn[c] = new HashSet<VariableDescriptor>();
-      }
+      DetermineCandidateVariableDependences();
 
-      // Candidate loop invariants
-      foreach(var impl in prog.TopLevelDeclarations.OfType<Implementation>()) {
-        foreach(var b in impl.Blocks) {
-          foreach (Cmd c in b.Cmds) {
-            var p = c as PredicateCmd;
-            if (p != null) {
-              CheckExpr(impl.Name, p.Expr);
-            }
-          }
-        }
-      }
+      //ConstructCandidateReachabilityGraph();
 
-      foreach (var proc in prog.TopLevelDeclarations.OfType<Procedure>()) {
-        foreach (Requires r in proc.Requires) {
-          CheckExpr(proc.Name, r.Condition);
-        }
-        foreach (Ensures e in proc.Ensures) {
-          CheckExpr(proc.Name, e.Condition);
-        }
-      }
+      ConstructCandidateDependenceGraph();
 
-      if (CommandLineOptions.Clo.Trace) {
-        Console.WriteLine("Candidate dependence analysis: Building dependence graph");
-      }
+      ConstructStagesDAG();
 
-      CandidateDependences = new Graph<string>();
+    }
 
-      foreach (var c in candidates) {
-        foreach (var vd in candidateDependsOn[c]) {
-          if (variableDirectlyReferredToByCandidates.ContainsKey(vd)) {
-            foreach (var d in variableDirectlyReferredToByCandidates[vd]) {
-              CandidateDependences.AddEdge(c, d);
-            }
-          }
-        }
-      }
-
-      if (CommandLineOptions.Clo.Trace) {
+    private void ConstructStagesDAG()
+    {
+      if (CommandLineOptions.Clo.Trace)
+      {
         Console.WriteLine("Candidate dependence analysis: Computing SCCs");
       }
 
@@ -91,30 +58,271 @@ namespace Microsoft.Boogie {
         CandidateDependences.Nodes, next, prev);
       SCCs.Compute();
 
-      if (CommandLineOptions.Clo.Trace) {
+      if (CommandLineOptions.Clo.Trace)
+      {
         Console.WriteLine("Candidate dependence analysis: Building stages DAG");
       }
 
       Dictionary<string, SCC<string>> rep = new Dictionary<string, SCC<string>>();
-      foreach (var scc in SCCs) {
-        foreach (var s in scc) {
+      foreach (var scc in SCCs)
+      {
+        foreach (var s in scc)
+        {
           rep[s] = scc;
         }
       }
 
       StagesDAG = new Graph<SCC<string>>();
 
-      foreach (var edge in CandidateDependences.Edges) {
-        if (rep[edge.Item1] != rep[edge.Item2]) {
+      foreach (var edge in CandidateDependences.Edges)
+      {
+        if (rep[edge.Item1] != rep[edge.Item2])
+        {
           StagesDAG.AddEdge(rep[edge.Item1], rep[edge.Item2]);
         }
       }
 
       SCC<string> dummy = new SCC<string>();
-      foreach (var scc in SCCs) {
+      foreach (var scc in SCCs)
+      {
         StagesDAG.AddEdge(scc, dummy);
       }
+    }
 
+    private void ConstructCandidateDependenceGraph()
+    {
+      if (CommandLineOptions.Clo.Trace)
+      {
+        Console.WriteLine("Candidate dependence analysis: Building dependence graph");
+      }
+
+      CandidateDependences = new Graph<string>();
+      foreach (var c in candidates)
+      {
+        CandidateDependences.AddEdge(c, c);
+        foreach (var vd in candidateDependsOn[c])
+        {
+          if (variableDirectlyReferredToByCandidates.ContainsKey(vd))
+          {
+            foreach (var d in variableDirectlyReferredToByCandidates[vd])
+            {
+              if (MayReach(c, d))
+              {
+                CandidateDependences.AddEdge(c, d);
+              }
+            }
+          }
+        }
+      }
+    }
+
+    private void ConstructCandidateReachabilityGraph()
+    {
+      Dictionary<string, List<Block>> procedureCFGs = new Dictionary<string, List<Block>>();
+      Dictionary<string, HashSet<Block>> candidateToUse = new Dictionary<string, HashSet<Block>>();
+
+      #region Prepare implementations
+      foreach (var impl in prog.TopLevelDeclarations.OfType<Implementation>()) {
+        procedureCFGs[impl.Name] = PrepareImplementationForCandidateReachability(impl);
+      }
+      #endregion
+
+      #region Prepare any procedures that do not have implementations
+      foreach (var proc in prog.TopLevelDeclarations.OfType<Procedure>()) {
+        if(!procedureCFGs.ContainsKey(proc.Name)) {
+          procedureCFGs[proc.Name] = PrepareProcedureForCandidateReachability(proc);
+        }
+      }
+      #endregion
+
+      #region Transform prepared CFGs so that every call is in its own basic block
+      foreach(var proc in procedureCFGs.Keys) {
+        List<Block> newCFG = new List<Block>();
+        Dictionary<Block, Block> oldToNew = new Dictionary<Block, Block>();
+
+        foreach(var bb in procedureCFGs[proc]) {
+          List<List<Cmd>> partition = new List<List<Cmd>>();
+          List<Cmd> current = new List<Cmd>();
+          partition.Add(current);
+          foreach(Cmd cmd in bb.Cmds) {
+            if(cmd is CallCmd && current.Count > 0) {
+              current = new List<Cmd>();
+              partition.Add(current);
+            }
+            current.Add(cmd);
+          }
+
+          if(partition.Count > 1) {
+            Block last = null;
+            int i = 0;
+            foreach(var cmdList in partition) {
+              Block newBB = new Block(bb.tok, bb.Label + "_" + i, new CmdSeq(cmdList.ToArray()), null);
+              newCFG.Add(newBB);
+              if(last == null) {
+                oldToNew[bb] = newBB;
+              } else {
+                oldToNew[newBB] = newBB;
+                last.TransferCmd = new GotoCmd(last.tok, new BlockSeq { newBB });
+              }
+              last = newBB;
+              i++;
+            }
+            Debug.Assert(last != null);
+            Debug.Assert(last.TransferCmd == null);
+            last.TransferCmd = bb.TransferCmd;
+          } else {
+            newCFG.Add(bb);
+            oldToNew[bb] = bb;
+          }
+
+        }
+
+        ApplyPatchupMap(newCFG, oldToNew);
+        procedureCFGs[proc] = newCFG;
+
+      }
+      #endregion
+
+      #region Replace calls with inter-procedural edges
+      foreach(var bb in procedureCFGs.Values.SelectMany(Item => Item)) {
+        if(bb.Cmds.Length == 1 && bb.Cmds[0] is CallCmd) {
+          Debug.Assert(bb.TransferCmd is GotoCmd);
+          string proc = (bb.Cmds[0] as CallCmd).callee;
+
+          Block returnBB = procedureCFGs[proc].Last();
+          if(returnBB.TransferCmd is ReturnCmd) {
+            returnBB.TransferCmd = bb.TransferCmd;
+          } else {
+            Debug.Assert(returnBB.TransferCmd is GotoCmd);
+            GotoCmd gotoCmd = returnBB.TransferCmd as GotoCmd;
+            gotoCmd.labelTargets.AddRange(((GotoCmd)bb.TransferCmd).labelTargets);
+          }
+
+          Block entryBB = procedureCFGs[proc].First();
+          bb.TransferCmd = new GotoCmd(Token.NoToken, new BlockSeq { entryBB });
+        }
+      }
+      #endregion
+
+      throw new NotImplementedException();
+
+    }
+
+    private static List<Block> PrepareProcedureForCandidateReachability(Procedure proc)
+    {
+      Block ensuresBlock = new Block(proc.tok, "postconditions",
+        EnsuresToAssertSequence(proc.Ensures),
+          new ReturnCmd(Token.NoToken));
+      Block requiresBlock = new Block(proc.tok, "preconditions",
+        RequiresToAssertSequence(proc.Requires),
+          new GotoCmd(Token.NoToken, new BlockSeq { ensuresBlock }));
+      return new List<Block> { requiresBlock, ensuresBlock };
+    }
+
+    private static List<Block> PrepareImplementationForCandidateReachability(Implementation impl)
+    {
+      // Clone the BBs and keep patchup map
+      List<Block> newBBs = new List<Block>();
+      Dictionary<Block, Block> oldToNew = new Dictionary<Block, Block>();
+      foreach (var bb in impl.Blocks)
+      {
+        Block newBB = new Block(bb.tok, bb.Label, bb.Cmds, bb.TransferCmd);
+        oldToNew[bb] = newBB;
+        newBBs.Add(newBB);
+      }
+      ApplyPatchupMap(newBBs, oldToNew);
+      Block newEntry = new Block(Token.NoToken, "preconditions",
+        RequiresToAssertSequence(impl.Proc.Requires),
+        new GotoCmd(Token.NoToken, new BlockSeq { newBBs[0] }));
+
+      Block newExit = new Block(Token.NoToken, "postconditions",
+        EnsuresToAssertSequence(impl.Proc.Ensures),
+        new ReturnCmd(Token.NoToken));
+
+      foreach (var newBB in newBBs)
+      {
+        if (newBB.TransferCmd is ReturnCmd ||
+           (newBB.TransferCmd is GotoCmd && ((GotoCmd)newBB.TransferCmd).labelTargets.Length == 0))
+        {
+          newBB.TransferCmd = new GotoCmd(Token.NoToken, new BlockSeq { newExit });
+        }
+      }
+
+      newBBs.Insert(0, newEntry);
+      newBBs.Add(newExit);
+      return newBBs;
+    }
+
+    private static void ApplyPatchupMap(List<Block> newBBs, Dictionary<Block, Block> oldToNew)
+    {
+      foreach (var newBB in newBBs)
+      {
+        GotoCmd gotoCmd = newBB.TransferCmd as GotoCmd;
+        if (gotoCmd != null)
+        {
+          gotoCmd.labelTargets = new BlockSeq(((Block[])gotoCmd.labelTargets.ToArray()).
+            Select(Item => oldToNew[Item]).ToArray());
+        }
+      }
+    }
+
+    private static CmdSeq RequiresToAssertSequence(RequiresSeq Requires)
+    {
+      return new CmdSeq(((Requires[])Requires.ToArray()).Select(
+                Item => new AssertCmd(Item.tok, Item.Condition)).ToArray());
+    }
+
+    private static CmdSeq EnsuresToAssertSequence(EnsuresSeq Ensures)
+    {
+      return new CmdSeq(((Ensures[])Ensures.ToArray()).Select(
+                Item => new AssertCmd(Item.tok, Item.Condition)).ToArray());
+    }
+
+    private bool MayReach(string c, string d)
+    {
+      return true;
+    }
+
+    private void DetermineCandidateVariableDependences()
+    {
+      if (CommandLineOptions.Clo.Trace)
+      {
+        Console.WriteLine("Candidate dependence analysis: Working out what candidates depend on");
+      }
+      candidateDependsOn = new Dictionary<string, HashSet<VariableDescriptor>>();
+      variableDirectlyReferredToByCandidates = new Dictionary<VariableDescriptor, HashSet<string>>();
+      foreach (var c in candidates)
+      {
+        candidateDependsOn[c] = new HashSet<VariableDescriptor>();
+      }
+
+      // Candidate loop invariants
+      foreach (var impl in prog.TopLevelDeclarations.OfType<Implementation>())
+      {
+        foreach (var b in impl.Blocks)
+        {
+          foreach (Cmd c in b.Cmds)
+          {
+            var p = c as PredicateCmd;
+            if (p != null)
+            {
+              CheckExpr(impl.Name, p.Expr);
+            }
+          }
+        }
+      }
+
+      foreach (var proc in prog.TopLevelDeclarations.OfType<Procedure>())
+      {
+        foreach (Requires r in proc.Requires)
+        {
+          CheckExpr(proc.Name, r.Condition);
+        }
+        foreach (Ensures e in proc.Ensures)
+        {
+          CheckExpr(proc.Name, e.Condition);
+        }
+      }
     }
 
     private bool FindInDAG(Graph<SCC<string>> DAG, SCC<string> toFind, SCC<string> start) {
@@ -267,6 +475,10 @@ namespace Microsoft.Boogie {
         Dictionary<string, int> candidateToStage =
             (CommandLineOptions.Clo.StagedHoudini == COARSE_STAGES) ? ComputeCoarseStages()
             : ComputeFineStages();
+        
+        foreach(var c in candidates) {
+          Debug.Assert(candidateToStage.ContainsKey(c));
+        }
         #endregion
 
         #region Generate boolean variables to control stages
@@ -344,16 +556,18 @@ namespace Microsoft.Boogie {
           foreach(Ensures e in p.Ensures) {
             string c;
             if (Houdini.Houdini.MatchCandidate(e.Condition, candidates, out c)) {
+              int stage = candidateToStage[c];
+              Constant activeBoolean = stageToActiveBoolean[stage];
               newEnsures.Add(new Ensures(e.tok, false, 
                 Houdini.Houdini.AddConditionToCandidate(e.Condition,
-                new IdentifierExpr(Token.NoToken, stageToActiveBoolean[candidateToStage[c]]), c),
+                new IdentifierExpr(Token.NoToken, activeBoolean), c),
                 e.Comment, e.Attributes));
               newEnsures.Add(new Ensures(e.tok, true, 
                 Houdini.Houdini.AddConditionToCandidate(e.Condition,
                 new IdentifierExpr(Token.NoToken, stageToCompleteBoolean[candidateToStage[c]]), c),
                 e.Comment, e.Attributes));
             } else {
-              newRequires.Add(e);
+              newEnsures.Add(e);
             }
           }
           p.Ensures = newEnsures;
@@ -366,6 +580,7 @@ namespace Microsoft.Boogie {
 
     private Dictionary<string, int> ComputeFineStages()
     {
+      
         var result = new Dictionary<string, int>();
         List<SCC<string>> components = StagesDAG.TopologicalSort().ToList();
         components.Reverse();
@@ -379,6 +594,11 @@ namespace Microsoft.Boogie {
             }
 
         }
+
+        foreach(var c in candidates) {
+          Debug.Assert(result.ContainsKey(c));
+        }
+
         return result;
 
     }
