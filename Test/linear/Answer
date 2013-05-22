@@ -6,16 +6,17 @@ typecheck.bpl(31,9): Error: Only simple assignment allowed on linear sets
 typecheck.bpl(33,6): Error: Only variable can be assigned to a linear variable
 typecheck.bpl(35,6): Error: Only linear variable can be assigned to another linear variable
 typecheck.bpl(39,6): Error: Variable of one domain being assigned to a variable of another domain
-typecheck.bpl(45,9): Error: A linear set can occur only once in the rhs
+typecheck.bpl(45,9): Error: A linear variable can occur only once in the rhs
 typecheck.bpl(49,4): Error: A linear set can occur only once as an in parameter
 typecheck.bpl(51,4): Error: Only variable can be assigned to a linear variable
 typecheck.bpl(53,4): Error: The domains of formal and actual parameters must be the same
 typecheck.bpl(55,4): Error: The domains of formal and actual parameters must be the same
 typecheck.bpl(57,4): Error: Only a linear argument can be passed to a linear parameter
 typecheck.bpl(61,4): Error: A linear set can occur only once as an in parameter
-typecheck.bpl(66,6): Error: Only linear variable can be assigned to another linear variable
-typecheck.bpl(75,4): Error: A linear variable on the right hand side of an assignment must be in the modifies set
-0 type checking errors detected in typecheck.bpl
+typecheck.bpl(66,6): Error: output variable must be available at a return
+typecheck.bpl(75,4): Error: Linear global variable cannot be read from
+typecheck.bpl(81,4): Error: Linear global variable cannot be written to
+16 type checking errors detected in typecheck.bpl
 
 -------------------- list.bpl --------------------
 
@@ -24,17 +25,20 @@ Boogie program verifier finished with 2 verified, 0 errors
 -------------------- allocator.bpl --------------------
 allocator.bpl(8,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    allocator.bpl(6,3): anon0
+    allocator.bpl(6,5): anon0
 
 Boogie program verifier finished with 0 verified, 1 error
 
 -------------------- f1.bpl --------------------
+f1.bpl(33,4): Error BP5001: This assertion might not hold.
+Execution trace:
+    f1.bpl(27,6): anon0
 
-Boogie program verifier finished with 2 verified, 0 errors
+Boogie program verifier finished with 1 verified, 1 error
 
 -------------------- f2.bpl --------------------
-f2.bpl(18,4): Error BP5001: This assertion might not hold.
+f2.bpl(19,4): Error BP5001: This assertion might not hold.
 Execution trace:
-    f2.bpl(14,4): anon0
+    f2.bpl(15,4): anon0
 
 Boogie program verifier finished with 0 verified, 1 error

@@ -419,7 +419,7 @@ namespace Microsoft.Boogie {
       }
       else
       {
-          Console.WriteLine("{0} type checking errors detected in {1}", errorCount, bplFileName);
+          Console.WriteLine("{0} type checking errors detected in {1}", linearTypechecker.errorCount, bplFileName);
           return PipelineOutcome.TypeCheckingError;
       }
 
