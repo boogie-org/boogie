@@ -1,5 +1,14 @@
 function {:builtin "MapConst"} mapconstbool(bool) : [int]bool;
 
+procedure Allocate() returns ({:linear "tid"} xls: int);
+ensures xls != 0;
+
+procedure Allocate_1() returns ({:linear "1"} xls: [int]bool);
+ensures xls == mapconstbool(true);
+
+procedure Allocate_2() returns ({:linear "2"} xls: [int]bool);
+ensures xls == mapconstbool(true);
+
 var g: int;
 var h: int;
 
@@ -8,9 +17,9 @@ procedure A({:linear "tid"} tid_in: int) returns ({:linear "tid"} tid_out: int)
     var {:linear "1"} x: [int]bool;
     var {:linear "2"} y: [int]bool;
     var {:linear "tid"} tid_child: int;
-    assume tid_in == tid_out;    
-    assume x == mapconstbool(true);
-    assume y == mapconstbool(true);
+    tid_out := tid_in;
+    call x := Allocate_1();
+    call y := Allocate_2();
 
     g := 0;
     yield;
@@ -18,7 +27,7 @@ procedure A({:linear "tid"} tid_in: int) returns ({:linear "tid"} tid_out: int)
     assert g == 0;    
 
     yield;
-    assume tid_child != 0;
+    call tid_child := Allocate();
     async call B(tid_child, x);
 
     yield;
@@ -32,6 +41,7 @@ procedure A({:linear "tid"} tid_in: int) returns ({:linear "tid"} tid_out: int)
     assert h == 0 && y == mapconstbool(true);    
 
     yield;
+    call tid_child := Allocate();
     async call C(tid_child, y);
 }
 
@@ -40,8 +50,8 @@ requires x_in != mapconstbool(false);
 {
     var {:linear "tid"} tid_out: int;
     var {:linear "1"} x: [int]bool;
-    assume tid_in == tid_out;
-    assume x_in == x;    
+    tid_out := tid_in;
+    x := x_in;    
 
     g := 1;
 }
@@ -51,8 +61,8 @@ requires y_in != mapconstbool(false);
 {
     var {:linear "tid"} tid_out: int;
     var {:linear "2"} y: [int]bool;
-    assume tid_in == tid_out;
-    assume y_in == y;    
+    tid_out := tid_in;
+    y := y_in;   
 
     h := 1;
 }

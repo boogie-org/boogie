@@ -194,21 +194,14 @@ namespace Microsoft.Boogie {
 
           if (CommandLineOptions.Clo.OwickiGriesDesugaredOutputFile != null)
           {
-              OwickiGriesTransform ogTransform = new OwickiGriesTransform(program);
+              OwickiGriesTransform ogTransform = new OwickiGriesTransform(linearTypechecker);
               ogTransform.Transform();
+              var eraser = new LinearEraser();
+              eraser.VisitProgram(program);
               int oldPrintUnstructured = CommandLineOptions.Clo.PrintUnstructured;
               CommandLineOptions.Clo.PrintUnstructured = 1;
               PrintBplFile(CommandLineOptions.Clo.OwickiGriesDesugaredOutputFile, program, false, false);
               CommandLineOptions.Clo.PrintUnstructured = oldPrintUnstructured;
-          }
-
-          {
-              LinearSetTransform linearTransform = new LinearSetTransform(program);
-              linearTransform.Transform();
-              //int oldPrintUnstructured = CommandLineOptions.Clo.PrintUnstructured;
-              //CommandLineOptions.Clo.PrintUnstructured = 1;
-              //PrintBplFile("lsd.bpl", program, false, false);
-              //CommandLineOptions.Clo.PrintUnstructured = oldPrintUnstructured;
           }
 
           EliminateDeadVariablesAndInline(program);
@@ -381,6 +374,8 @@ namespace Microsoft.Boogie {
       VerificationCompleted
     }
 
+    static LinearTypechecker linearTypechecker;
+
     /// <summary>
     /// Resolves and type checks the given Boogie program.  Any errors are reported to the
     /// console.  Returns:
@@ -416,9 +411,13 @@ namespace Microsoft.Boogie {
         return PipelineOutcome.TypeCheckingError;
       }
 
-      LinearTypechecker linearTypechecker = new LinearTypechecker();
-      linearTypechecker.VisitProgram(program);
-      if (linearTypechecker.errorCount > 0)
+      linearTypechecker = new LinearTypechecker(program);
+      linearTypechecker.Typecheck();
+      if (linearTypechecker.errorCount == 0)
+      {
+          linearTypechecker.Transform();
+      }
+      else
       {
           Console.WriteLine("{0} type checking errors detected in {1}", errorCount, bplFileName);
           return PipelineOutcome.TypeCheckingError;

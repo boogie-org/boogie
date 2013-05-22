@@ -4,6 +4,9 @@ const nil: X;
 var l: X;
 var x: int;
 
+procedure Allocate() returns ({:linear "tid"} xls: X);
+ensures xls != nil;
+
 procedure {:entrypoint} main()
 {
     var {:linear "tid"} tid: X;
@@ -11,8 +14,8 @@ procedure {:entrypoint} main()
 
     while (*) 
     {
-        havoc tid, val;
-	assume tid != nil;
+        call tid := Allocate();
+        havoc val;
         async call foo(tid, val);
     }
 }
@@ -21,7 +24,7 @@ procedure foo({:linear "tid"} tid': X, val: int)
 requires tid' != nil;
 {
     var {:linear "tid"} tid: X;
-    assume tid == tid';
+    tid := tid';
     
     assume l == nil;
     l := tid;
@@ -38,7 +41,7 @@ requires tid' != nil;
 ensures tid == tid';
 ensures old(l) == tid ==> old(l) == l && old(x) == x;
 {
-    assume tid == tid';
+    tid := tid';
     yield;
     assert tid != nil;
     assert (old(l) == tid ==> old(l) == l && old(x) == x);

@@ -30,7 +30,7 @@ namespace Microsoft.Boogie
             inParallelCall = false;
         }
     }
-
+    
     class AsyncAndYieldTraverser : StandardVisitor
     {
         Dictionary<string, ProcedureInfo> procNameToInfo = new Dictionary<string, ProcedureInfo>();
@@ -144,62 +144,105 @@ namespace Microsoft.Boogie
     {
         Dictionary<string, ProcedureInfo> procNameToInfo;
         IdentifierExprSeq globalMods;
-        Hashtable ogOldGlobalMap;
-        Program program;
+        LinearTypechecker linearTypechecker;
         Dictionary<string, Procedure> asyncAndParallelCallDesugarings;
         List<Procedure> yieldCheckerProcs;
         List<Implementation> yieldCheckerImpls;
         Procedure yieldProc;
 
-        public OwickiGriesTransform(Program program)
+        public OwickiGriesTransform(LinearTypechecker linearTypechecker)
         {
-            this.program = program;
+            this.linearTypechecker = linearTypechecker;
+            Program program = linearTypechecker.program;
             procNameToInfo = AsyncAndYieldTraverser.Traverse(program);
             AtomicTraverser.Traverse(program, procNameToInfo);
-            ogOldGlobalMap = new Hashtable();
             globalMods = new IdentifierExprSeq();
             foreach (Variable g in program.GlobalVariables())
             {
-                var oldg = new GlobalVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_global_old_{0}", g.Name), g.TypedIdent.Type));
-                ogOldGlobalMap[g] = new IdentifierExpr(Token.NoToken, oldg);
                 globalMods.Add(new IdentifierExpr(Token.NoToken, g));
             }
             asyncAndParallelCallDesugarings = new Dictionary<string, Procedure>();
             yieldCheckerProcs = new List<Procedure>();
             yieldCheckerImpls = new List<Implementation>();
-            yieldProc = new Procedure(Token.NoToken, "og_yield", new TypeVariableSeq(), new VariableSeq(), new VariableSeq(), new RequiresSeq(), new IdentifierExprSeq(), new EnsuresSeq());
+            VariableSeq inputs = new VariableSeq();
+            foreach (string domainName in linearTypechecker.linearDomains.Keys)
+            {
+                var domain = linearTypechecker.linearDomains[domainName];
+                Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, domainName + "_in", new MapType(Token.NoToken, new TypeVariableSeq(), new TypeSeq(domain.elementType), Type.Bool)), true);
+                inputs.Add(f);
+            }
+            foreach (IdentifierExpr ie in globalMods)
+            {
+                Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_global_old_{0}", ie.Decl.Name), ie.Decl.TypedIdent.Type), true);
+                inputs.Add(f);
+            }
+            yieldProc = new Procedure(Token.NoToken, "og_yield", new TypeVariableSeq(), inputs, new VariableSeq(), new RequiresSeq(), new IdentifierExprSeq(), new EnsuresSeq());
             yieldProc.AddAttribute("inline", new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1)));
         }
 
-        private void AddCallToYieldProc(CmdSeq newCmds)
+        private void AddCallToYieldProc(CmdSeq newCmds, Dictionary<Variable, Variable> ogOldGlobalMap, Dictionary<string, Variable> domainNameToLocalVar)
         {
-            CallCmd yieldCallCmd = new CallCmd(Token.NoToken, yieldProc.Name, new ExprSeq(), new IdentifierExprSeq());
+            ExprSeq exprSeq = new ExprSeq();
+            foreach (string domainName in linearTypechecker.linearDomains.Keys)
+            {
+                exprSeq.Add(Expr.Ident(domainNameToLocalVar[domainName]));
+            }
+            foreach (IdentifierExpr ie in globalMods)
+            {
+                exprSeq.Add(Expr.Ident(ogOldGlobalMap[ie.Decl]));
+            } 
+            CallCmd yieldCallCmd = new CallCmd(Token.NoToken, yieldProc.Name, exprSeq, new IdentifierExprSeq());
             yieldCallCmd.Proc = yieldProc;
             newCmds.Add(yieldCallCmd);
         }
 
-        private void AddUpdatesToOldGlobalVars(CmdSeq newCmds)
+        private Dictionary<string, Expr> ComputeAvailableExprs(HashSet<Variable> availableLocalLinearVars, Dictionary<string, Variable> domainNameToInputVar)
         {
-            if (ogOldGlobalMap.Count == 0) return;
-            List<AssignLhs> lhss = new List<AssignLhs>();
-            List<Expr> rhss = new List<Expr>();
-            foreach (Variable g in ogOldGlobalMap.Keys)
+            Dictionary<string, Expr> domainNameToExpr = new Dictionary<string, Expr>();
+            foreach (var domainName in linearTypechecker.linearDomains.Keys)
             {
-                lhss.Add(new SimpleAssignLhs(Token.NoToken, (IdentifierExpr)ogOldGlobalMap[g]));
-                rhss.Add(new IdentifierExpr(Token.NoToken, g));
+                domainNameToExpr[domainName] = new IdentifierExpr(Token.NoToken, domainNameToInputVar[domainName]);
             }
-            newCmds.Add(new AssignCmd(Token.NoToken, lhss, rhss));
+            foreach (Variable v in availableLocalLinearVars)
+            {
+                var domainName = linearTypechecker.FindDomainName(v);
+                var domain = linearTypechecker.linearDomains[domainName];
+                IdentifierExpr ie = new IdentifierExpr(Token.NoToken, v);
+                domainNameToExpr[domainName] = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapOrBool), new ExprSeq(v.TypedIdent.Type is MapType ? ie : linearTypechecker.Singleton(ie, domainName), domainNameToExpr[domainName]));
+            }
+            return domainNameToExpr;
         }
 
-        private void DesugarYield(CmdSeq cmds, CmdSeq newCmds)
+        private void AddUpdatesToOldGlobalVars(CmdSeq newCmds, Dictionary<Variable, Variable> ogOldGlobalMap, Dictionary<string, Variable> domainNameToLocalVar, Dictionary<string, Expr> domainNameToExpr)
         {
-            AddCallToYieldProc(newCmds);
+            List<AssignLhs> lhss = new List<AssignLhs>();
+            List<Expr> rhss = new List<Expr>();
+            foreach (var domainName in linearTypechecker.linearDomains.Keys)
+            {
+                lhss.Add(new SimpleAssignLhs(Token.NoToken, new IdentifierExpr(Token.NoToken, domainNameToLocalVar[domainName])));
+                rhss.Add(domainNameToExpr[domainName]);
+            }
+            foreach (Variable g in ogOldGlobalMap.Keys)
+            {
+                lhss.Add(new SimpleAssignLhs(Token.NoToken, Expr.Ident(ogOldGlobalMap[g])));
+                rhss.Add(new IdentifierExpr(Token.NoToken, g));
+            } 
+            if (lhss.Count > 0)
+            {
+                newCmds.Add(new AssignCmd(Token.NoToken, lhss, rhss));
+            }
+        }
+
+        private void DesugarYield(YieldCmd yieldCmd, CmdSeq cmds, CmdSeq newCmds, Dictionary<Variable, Variable> ogOldGlobalMap, Dictionary<string, Variable> domainNameToInputVar, Dictionary<string, Variable> domainNameToLocalVar)
+        {
+            AddCallToYieldProc(newCmds, ogOldGlobalMap, domainNameToLocalVar);
 
             if (globalMods.Length > 0)
             {
                 newCmds.Add(new HavocCmd(Token.NoToken, globalMods));
             }
-            AddUpdatesToOldGlobalVars(newCmds);
+            Dictionary<string, Expr> domainNameToExpr = ComputeAvailableExprs(linearTypechecker.availableLocalLinearVars[yieldCmd], domainNameToInputVar);
+            AddUpdatesToOldGlobalVars(newCmds, ogOldGlobalMap, domainNameToLocalVar, domainNameToExpr);
 
             for (int j = 0; j < cmds.Length; j++)
             {
@@ -274,11 +317,56 @@ namespace Microsoft.Boogie
             return proc;
         }
 
-        private void CreateYieldCheckerImpl(DeclWithFormals decl, List<CmdSeq> yields, VariableSeq locals, Hashtable map, Hashtable assumeMap, Hashtable ogOldLocalMap)
+        private void CreateYieldCheckerImpl(DeclWithFormals decl, List<CmdSeq> yields, Hashtable map)
         {
             if (yields.Count == 0) return;
 
+            Program program = linearTypechecker.program;
             ProcedureInfo info = procNameToInfo[decl.Name];
+            VariableSeq locals = new VariableSeq();
+            VariableSeq inputs = new VariableSeq();
+            foreach (IdentifierExpr ie in map.Values)
+            {
+                locals.Add(ie.Decl);
+            }
+            for (int i = 0; i < decl.InParams.Length - linearTypechecker.linearDomains.Count; i++)
+            {
+                Variable inParam = decl.InParams[i];
+                Variable copy = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, inParam.Name, inParam.TypedIdent.Type));
+                locals.Add(copy);
+                map[decl.InParams[i]] = new IdentifierExpr(Token.NoToken, copy);
+            }
+            {
+                int i = decl.InParams.Length - linearTypechecker.linearDomains.Count;
+                foreach (string domainName in linearTypechecker.linearDomains.Keys)
+                {
+                    Variable inParam = decl.InParams[i];
+                    Variable copy = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, inParam.Name, inParam.TypedIdent.Type), true);
+                    inputs.Add(copy);
+                    map[decl.InParams[i]] = new IdentifierExpr(Token.NoToken, copy);
+                    i++;
+                }
+            }
+            for (int i = 0; i < decl.OutParams.Length; i++)
+            {
+                Variable outParam = decl.OutParams[i];
+                var copy = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, outParam.Name, outParam.TypedIdent.Type));
+                locals.Add(copy);
+                map[decl.OutParams[i]] = new IdentifierExpr(Token.NoToken, copy);
+            }
+            Hashtable ogOldLocalMap = new Hashtable();
+            Hashtable assumeMap = new Hashtable(map);
+            foreach (IdentifierExpr ie in globalMods)
+            {
+                Variable g = ie.Decl;
+                var copy = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_local_old_{0}", g.Name), g.TypedIdent.Type));
+                locals.Add(copy);
+                ogOldLocalMap[g] = Expr.Ident(copy);
+                Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_global_old_{0}", g.Name), g.TypedIdent.Type), true);
+                inputs.Add(f);
+                assumeMap[g] = Expr.Ident(f);
+            }
+            
             Substitution assumeSubst = Substituter.SubstitutionFromHashtable(assumeMap);
             Substitution oldSubst = Substituter.SubstitutionFromHashtable(ogOldLocalMap);
             Substitution subst = Substituter.SubstitutionFromHashtable(map);
@@ -292,6 +380,7 @@ namespace Microsoft.Boogie
             int yieldCount = 0;
             foreach (CmdSeq cs in yields)
             {
+                var linearDomains = linearTypechecker.linearDomains;
                 CmdSeq newCmds = new CmdSeq();
                 foreach (Cmd cmd in cs)
                 {
@@ -317,12 +406,12 @@ namespace Microsoft.Boogie
 
             // Create the yield checker procedure
             var yieldCheckerName = string.Format("{0}_YieldChecker_{1}", decl is Procedure ? "Proc" : "Impl", decl.Name);
-            var yieldCheckerProc = new Procedure(Token.NoToken, yieldCheckerName, decl.TypeParameters, new VariableSeq(), new VariableSeq(), new RequiresSeq(), new IdentifierExprSeq(), new EnsuresSeq());
+            var yieldCheckerProc = new Procedure(Token.NoToken, yieldCheckerName, decl.TypeParameters, inputs, new VariableSeq(), new RequiresSeq(), new IdentifierExprSeq(), new EnsuresSeq());
             yieldCheckerProc.AddAttribute("inline", new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1)));
             yieldCheckerProcs.Add(yieldCheckerProc);
 
             // Create the yield checker implementation
-            var yieldCheckerImpl = new Implementation(Token.NoToken, yieldCheckerName, decl.TypeParameters, new VariableSeq(), new VariableSeq(), locals, yieldCheckerBlocks);
+            var yieldCheckerImpl = new Implementation(Token.NoToken, yieldCheckerName, decl.TypeParameters, inputs, new VariableSeq(), locals, yieldCheckerBlocks);
             yieldCheckerImpl.Proc = yieldCheckerProc;
             yieldCheckerImpl.AddAttribute("inline", new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1)));
             yieldCheckerImpls.Add(yieldCheckerImpl);
@@ -330,56 +419,36 @@ namespace Microsoft.Boogie
 
         private void TransformImpl(Implementation impl)
         {
+            Program program = linearTypechecker.program;
             ProcedureInfo info = procNameToInfo[impl.Name];
 
-            // Add free requires
-            if (!info.isAtomic || info.isEntrypoint || info.isThreadStart)
-            {
-                Expr freeRequiresExpr = Expr.True;
-                foreach (Variable g in ogOldGlobalMap.Keys)
-                {
-                    freeRequiresExpr = Expr.And(freeRequiresExpr, Expr.Eq(new IdentifierExpr(Token.NoToken, g), (IdentifierExpr)ogOldGlobalMap[g]));
-                }
-                impl.Proc.Requires.Add(new Requires(true, freeRequiresExpr));
-            }
-
-            // Create substitution maps
             Hashtable map = new Hashtable();
-            VariableSeq locals = new VariableSeq();
-            for (int i = 0; i < impl.Proc.InParams.Length; i++)
-            {
-                Variable inParam = impl.Proc.InParams[i];
-                var copy = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, inParam.Name, inParam.TypedIdent.Type));
-                var ie = new IdentifierExpr(Token.NoToken, copy);
-                locals.Add(copy);
-                map[impl.InParams[i]] = ie;
-            }
-            for (int i = 0; i < impl.Proc.OutParams.Length; i++)
-            {
-                Variable outParam = impl.Proc.OutParams[i];
-                var copy = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, outParam.Name, outParam.TypedIdent.Type), outParam.Attributes);
-                var ie = new IdentifierExpr(Token.NoToken, copy);
-                locals.Add(copy);
-                map[impl.OutParams[i]] = ie;
-            }
             foreach (Variable local in impl.LocVars)
             {
-                var copy = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, local.Name, local.TypedIdent.Type), local.Attributes);
-                locals.Add(copy);
+                var copy = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, local.Name, local.TypedIdent.Type));
                 map[local] = new IdentifierExpr(Token.NoToken, copy);
             }
-            Hashtable assumeMap = new Hashtable(map);
-            foreach (var global in ogOldGlobalMap.Keys)
+            Dictionary<Variable, Variable> ogOldGlobalMap = new Dictionary<Variable, Variable>();
+            foreach (IdentifierExpr ie in globalMods)
             {
-                assumeMap[global] = ogOldGlobalMap[global];
+                Variable g = ie.Decl;
+                LocalVariable l = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_global_old_{0}", g.Name), g.TypedIdent.Type));
+                ogOldGlobalMap[g] = l;
+                impl.LocVars.Add(l);
             }
-
-            Hashtable ogOldLocalMap = new Hashtable();
-            foreach (var g in program.GlobalVariables())
+            Dictionary<string, Variable> domainNameToInputVar = new Dictionary<string, Variable>();
+            Dictionary<string, Variable> domainNameToLocalVar = new Dictionary<string, Variable>();
             {
-                var copy = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_local_old_{0}", g.Name), g.TypedIdent.Type));
-                locals.Add(copy);
-                ogOldLocalMap[g] = new IdentifierExpr(Token.NoToken, copy);
+                int i = impl.InParams.Length - linearTypechecker.linearDomains.Count;
+                foreach (string domainName in linearTypechecker.linearDomains.Keys)
+                {
+                    Variable inParam = impl.InParams[i];
+                    domainNameToInputVar[domainName] = inParam;
+                    Variable l = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, inParam.Name + "_local", inParam.TypedIdent.Type));
+                    domainNameToLocalVar[domainName] = l;
+                    impl.LocVars.Add(l);
+                    i++;
+                }
             }
 
             // Collect the yield predicates and desugar yields
@@ -387,28 +456,28 @@ namespace Microsoft.Boogie
             CmdSeq cmds = new CmdSeq();
             foreach (Block b in impl.Blocks)
             {
-                bool insideYield = false;
+                YieldCmd yieldCmd = null;
                 CmdSeq newCmds = new CmdSeq();
                 for (int i = 0; i < b.Cmds.Length; i++)
                 {
                     Cmd cmd = b.Cmds[i];
                     if (cmd is YieldCmd)
                     {
-                        insideYield = true;
+                        yieldCmd = (YieldCmd)cmd;
                         continue;
                     }
-                    if (insideYield)
+                    if (yieldCmd != null)
                     {
                         PredicateCmd pcmd = cmd as PredicateCmd;
                         if (pcmd == null)
                         {
-                            DesugarYield(cmds, newCmds);
+                            DesugarYield(yieldCmd, cmds, newCmds, ogOldGlobalMap, domainNameToInputVar, domainNameToLocalVar);
                             if (cmds.Length > 0)
                             {
                                 yields.Add(cmds);
                                 cmds = new CmdSeq();
                             }
-                            insideYield = false;
+                            yieldCmd = null;
                         }
                         else
                         {
@@ -444,9 +513,16 @@ namespace Microsoft.Boogie
                         }
                         else
                         {
-                            AddCallToYieldProc(newCmds);
+                            AddCallToYieldProc(newCmds, ogOldGlobalMap, domainNameToLocalVar);
                             newCmds.Add(callCmd);
-                            AddUpdatesToOldGlobalVars(newCmds);
+                            HashSet<Variable> availableLocalLinearVars = new HashSet<Variable>(linearTypechecker.availableLocalLinearVars[callCmd]);
+                            foreach (IdentifierExpr ie in callCmd.Outs)
+                            {
+                                if (linearTypechecker.FindDomainName(ie.Decl) == null) continue;
+                                availableLocalLinearVars.Add(ie.Decl);
+                            }
+                            Dictionary<string, Expr> domainNameToExpr = ComputeAvailableExprs(availableLocalLinearVars, domainNameToInputVar);
+                            AddUpdatesToOldGlobalVars(newCmds, ogOldGlobalMap, domainNameToLocalVar, domainNameToExpr);
                         }
                     }
                     else
@@ -454,9 +530,9 @@ namespace Microsoft.Boogie
                         newCmds.Add(cmd);
                     }
                 }
-                if (insideYield)
+                if (yieldCmd != null)
                 {
-                    DesugarYield(cmds, newCmds);
+                    DesugarYield(yieldCmd, cmds, newCmds, ogOldGlobalMap, domainNameToInputVar, domainNameToLocalVar);
                     if (cmds.Length > 0)
                     {
                         yields.Add(cmds);
@@ -465,7 +541,7 @@ namespace Microsoft.Boogie
                 }
                 if (b.TransferCmd is ReturnCmd && (!info.isAtomic || info.isEntrypoint || info.isThreadStart))
                 {
-                    AddCallToYieldProc(newCmds);
+                    AddCallToYieldProc(newCmds, ogOldGlobalMap, domainNameToLocalVar);
                 }
                 b.Cmds = newCmds;
             }
@@ -481,60 +557,81 @@ namespace Microsoft.Boogie
                 {
                     foreach (Block header in g.Headers)
                     {
+                        Dictionary<string, Expr> domainNameToExpr = ComputeAvailableExprs(linearTypechecker.availableLocalLinearVars[header], domainNameToInputVar);
                         foreach (Block pred in header.Predecessors)
                         {
-                            AddCallToYieldProc(pred.Cmds);
-                            AddUpdatesToOldGlobalVars(pred.Cmds);
+                            AddCallToYieldProc(pred.Cmds, ogOldGlobalMap, domainNameToLocalVar);
+                            AddUpdatesToOldGlobalVars(pred.Cmds, ogOldGlobalMap, domainNameToLocalVar, domainNameToExpr);
                         }
                         CmdSeq newCmds = new CmdSeq();
+                        foreach (string domainName in linearTypechecker.linearDomains.Keys)
+                        {
+                            newCmds.Add(new AssumeCmd(Token.NoToken, Expr.Binary(BinaryOperator.Opcode.Eq, Expr.Ident(domainNameToLocalVar[domainName]), domainNameToExpr[domainName])));
+                        }
                         foreach (Variable v in ogOldGlobalMap.Keys)
                         {
-                            newCmds.Add(new AssumeCmd(Token.NoToken, Expr.Binary(BinaryOperator.Opcode.Eq, new IdentifierExpr(Token.NoToken, v), (IdentifierExpr)ogOldGlobalMap[v])));
-                        }
+                            newCmds.Add(new AssumeCmd(Token.NoToken, Expr.Binary(BinaryOperator.Opcode.Eq, new IdentifierExpr(Token.NoToken, v), Expr.Ident(ogOldGlobalMap[v]))));
+                        } 
                         newCmds.AddRange(header.Cmds);
                         header.Cmds = newCmds;
                     }
                 }
             }
-            CreateYieldCheckerImpl(impl, yields, locals, map, assumeMap, ogOldLocalMap);
+
+            if (!info.isAtomic || info.isEntrypoint || info.isThreadStart)
+            {
+                // Add initial block
+                List<AssignLhs> lhss = new List<AssignLhs>();
+                List<Expr> rhss = new List<Expr>();
+                Dictionary<string, Expr> domainNameToExpr = new Dictionary<string, Expr>();
+                foreach (var domainName in linearTypechecker.linearDomains.Keys)
+                {
+                    domainNameToExpr[domainName] = new IdentifierExpr(Token.NoToken, domainNameToInputVar[domainName]);
+                }
+                for (int i = 0; i < impl.InParams.Length - linearTypechecker.linearDomains.Count; i++)
+                {
+                    Variable v = impl.InParams[i];
+                    var domainName = linearTypechecker.FindDomainName(v);
+                    if (domainName == null) continue;
+                    var domain = linearTypechecker.linearDomains[domainName];
+                    IdentifierExpr ie = new IdentifierExpr(Token.NoToken, v);
+                    domainNameToExpr[domainName] = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapOrBool), new ExprSeq(v.TypedIdent.Type is MapType ? ie : linearTypechecker.Singleton(ie, domainName), domainNameToExpr[domainName]));
+                }
+                foreach (string domainName in linearTypechecker.linearDomains.Keys)
+                {
+                    lhss.Add(new SimpleAssignLhs(Token.NoToken, new IdentifierExpr(Token.NoToken, domainNameToLocalVar[domainName])));
+                    rhss.Add(domainNameToExpr[domainName]);
+                }
+                foreach (Variable g in ogOldGlobalMap.Keys)
+                {
+                    lhss.Add(new SimpleAssignLhs(Token.NoToken, Expr.Ident(ogOldGlobalMap[g])));
+                    rhss.Add(Expr.Ident(g));
+                } 
+                if (lhss.Count > 0)
+                {
+                    Block initBlock = new Block(Token.NoToken, "og_init", new CmdSeq(new AssignCmd(Token.NoToken, lhss, rhss)), new GotoCmd(Token.NoToken, new StringSeq(impl.Blocks[0].Label), new BlockSeq(impl.Blocks[0])));
+                    impl.Blocks.Insert(0, initBlock);
+                }
+            }
+
+            CreateYieldCheckerImpl(impl, yields, map);
         }
 
         public void TransformProc(Procedure proc)
         {
+            Program program = linearTypechecker.program;
             ProcedureInfo info = procNameToInfo[proc.Name];
             if (!info.isThreadStart) return;
 
-            // Create substitution maps
-            Hashtable map = new Hashtable();
-            VariableSeq locals = new VariableSeq();
-            for (int i = 0; i < proc.InParams.Length; i++)
+            Dictionary<string, Variable> domainNameToInputVar = new Dictionary<string, Variable>();
             {
-                Variable inParam = proc.InParams[i];
-                var copy = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, inParam.Name, inParam.TypedIdent.Type));
-                var ie = new IdentifierExpr(Token.NoToken, copy);
-                locals.Add(copy);
-                map[proc.InParams[i]] = ie;
-            }
-            for (int i = 0; i < proc.OutParams.Length; i++)
-            {
-                Variable outParam = proc.OutParams[i];
-                var copy = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, outParam.Name, outParam.TypedIdent.Type), outParam.Attributes);
-                var ie = new IdentifierExpr(Token.NoToken, copy);
-                locals.Add(copy);
-                map[proc.OutParams[i]] = ie;
-            }
-            Hashtable assumeMap = new Hashtable(map);
-            foreach (var global in ogOldGlobalMap.Keys)
-            {
-                assumeMap[global] = ogOldGlobalMap[global];
-            }
-
-            Hashtable ogOldLocalMap = new Hashtable();
-            foreach (var g in program.GlobalVariables())
-            {
-                var copy = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_local_old_{0}", g.Name), g.TypedIdent.Type));
-                locals.Add(copy);
-                ogOldLocalMap[g] = new IdentifierExpr(Token.NoToken, copy);
+                int i = proc.InParams.Length - linearTypechecker.linearDomains.Count;
+                foreach (string domainName in linearTypechecker.linearDomains.Keys)
+                {
+                    Variable inParam = proc.InParams[i];
+                    domainNameToInputVar[domainName] = inParam;
+                    i++;
+                }
             }
 
             // Collect the yield predicates and desugar yields
@@ -542,29 +639,100 @@ namespace Microsoft.Boogie
             CmdSeq cmds = new CmdSeq();
             if (proc.Requires.Length > 0)
             {
+                Dictionary<string, HashSet<Variable>> domainNameToScope = new Dictionary<string, HashSet<Variable>>();
+                foreach (var domainName in linearTypechecker.linearDomains.Keys)
+                {
+                    domainNameToScope[domainName] = new HashSet<Variable>();
+                    domainNameToScope[domainName].Add(domainNameToInputVar[domainName]);
+                }
+                foreach (Variable v in program.GlobalVariables())
+                {
+                    var domainName = linearTypechecker.FindDomainName(v);
+                    if (domainName == null) continue;
+                    domainNameToScope[domainName].Add(v);
+                }
+                for (int i = 0; i < proc.InParams.Length - linearTypechecker.linearDomains.Count; i++)
+                {
+                    Variable v = proc.InParams[i];
+                    var domainName = linearTypechecker.FindDomainName(v);
+                    if (domainName == null) continue;
+                    domainNameToScope[domainName].Add(v);
+                }
+                foreach (string domainName in linearTypechecker.linearDomains.Keys)
+                {
+                    cmds.Add(new AssumeCmd(Token.NoToken, linearTypechecker.DisjointnessExpr(domainName, domainNameToScope[domainName])));
+                }
                 foreach (Requires r in proc.Requires)
                 {
-                    if (r.Free) continue;
-                    cmds.Add(new AssertCmd(r.tok, r.Condition));
+                    if (r.Free)
+                    {
+                        cmds.Add(new AssumeCmd(r.tok, r.Condition));
+                    }
+                    else
+                    {
+                        cmds.Add(new AssertCmd(r.tok, r.Condition));
+                    }
                 }
                 yields.Add(cmds);
                 cmds = new CmdSeq();
             }
             if (info.inParallelCall && proc.Ensures.Length > 0)
             {
+                Dictionary<string, HashSet<Variable>> domainNameToScope = new Dictionary<string, HashSet<Variable>>();
+                foreach (var domainName in linearTypechecker.linearDomains.Keys)
+                {
+                    domainNameToScope[domainName] = new HashSet<Variable>();
+                    domainNameToScope[domainName].Add(domainNameToInputVar[domainName]);
+                }
+                foreach (Variable v in program.GlobalVariables())
+                {
+                    var domainName = linearTypechecker.FindDomainName(v);
+                    if (domainName == null) continue;
+                    domainNameToScope[domainName].Add(v);
+                }
+                for (int i = 0; i < proc.OutParams.Length; i++)
+                {
+                    Variable v = proc.OutParams[i];
+                    var domainName = linearTypechecker.FindDomainName(v);
+                    if (domainName == null) continue;
+                    domainNameToScope[domainName].Add(v);
+                }
+                foreach (string domainName in linearTypechecker.linearDomains.Keys)
+                {
+                    cmds.Add(new AssumeCmd(Token.NoToken, linearTypechecker.DisjointnessExpr(domainName, domainNameToScope[domainName])));
+                }
                 foreach (Ensures e in proc.Ensures)
                 {
-                    if (e.Free) continue;
-                    cmds.Add(new AssertCmd(e.tok, e.Condition));
+                    if (e.Free)
+                    {
+                        cmds.Add(new AssumeCmd(e.tok, e.Condition));
+                    }
+                    else
+                    {
+                        cmds.Add(new AssertCmd(e.tok, e.Condition));
+                    }
                 }
                 yields.Add(cmds);
                 cmds = new CmdSeq();
             }
-            CreateYieldCheckerImpl(proc, yields, locals, map, assumeMap, ogOldLocalMap);
+            CreateYieldCheckerImpl(proc, yields, new Hashtable());
         }
 
         private void AddYieldProcAndImpl() 
         {
+            Program program = linearTypechecker.program;
+            VariableSeq inputs = new VariableSeq();
+            foreach (string domainName in linearTypechecker.linearDomains.Keys)
+            {
+                var domain = linearTypechecker.linearDomains[domainName];
+                Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, domainName + "_in", new MapType(Token.NoToken, new TypeVariableSeq(), new TypeSeq(domain.elementType), Type.Bool)), true);
+                inputs.Add(f);
+            }
+            foreach (IdentifierExpr ie in globalMods)
+            {
+                Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_global_old_{0}", ie.Decl.Name), ie.Decl.TypedIdent.Type), true);
+                inputs.Add(f);
+            } 
             List<Block> blocks = new List<Block>();
             TransferCmd transferCmd = new ReturnCmd(Token.NoToken);
             if (yieldCheckerProcs.Count > 0)
@@ -574,7 +742,12 @@ namespace Microsoft.Boogie
                 int labelCount = 0;
                 foreach (Procedure proc in yieldCheckerProcs)
                 {
-                    CallCmd callCmd = new CallCmd(Token.NoToken, proc.Name, new ExprSeq(), new IdentifierExprSeq());
+                    ExprSeq exprSeq = new ExprSeq();
+                    foreach (Variable v in inputs)
+                    {
+                        exprSeq.Add(new IdentifierExpr(Token.NoToken, v));
+                    }
+                    CallCmd callCmd = new CallCmd(Token.NoToken, proc.Name, exprSeq, new IdentifierExprSeq());
                     callCmd.Proc = proc;
                     string label = string.Format("L_{0}", labelCount++);
                     Block block = new Block(Token.NoToken, label, new CmdSeq(callCmd), new ReturnCmd(Token.NoToken));
@@ -585,7 +758,8 @@ namespace Microsoft.Boogie
                 transferCmd = new GotoCmd(Token.NoToken, labelTargets, blockTargets);
             }
             blocks.Insert(0, new Block(Token.NoToken, "enter", new CmdSeq(), transferCmd));
-            var yieldImpl = new Implementation(Token.NoToken, yieldProc.Name, new TypeVariableSeq(), new VariableSeq(), new VariableSeq(), new VariableSeq(), blocks);
+            
+            var yieldImpl = new Implementation(Token.NoToken, yieldProc.Name, new TypeVariableSeq(), inputs, new VariableSeq(), new VariableSeq(), blocks);
             yieldImpl.Proc = yieldProc;
             yieldImpl.AddAttribute("inline", new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1)));
             program.TopLevelDeclarations.Add(yieldProc);
@@ -594,6 +768,7 @@ namespace Microsoft.Boogie
 
         public void Transform()
         {
+            Program program = linearTypechecker.program;
             foreach (var decl in program.TopLevelDeclarations)
             {
                 Procedure proc = decl as Procedure;
@@ -608,11 +783,6 @@ namespace Microsoft.Boogie
                 TransformImpl(impl);
             }
 
-            foreach (Variable v in ogOldGlobalMap.Keys)
-            {
-                IdentifierExpr ie = (IdentifierExpr) ogOldGlobalMap[v];
-                program.TopLevelDeclarations.Add(ie.Decl);
-            }
             foreach (Procedure proc in yieldCheckerProcs)
             {
                 program.TopLevelDeclarations.Add(proc);

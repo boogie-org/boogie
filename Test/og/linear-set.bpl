@@ -19,6 +19,8 @@ var l: [X]bool;
 procedure Split({:linear "x"} xls: [X]bool) returns ({:linear "x"} xls1: [X]bool, {:linear "x"} xls2: [X]bool);
 ensures xls == MapOr(xls1, xls2) && xls1 != None() && xls2 != None();
 
+procedure Allocate() returns ({:linear "tid"} xls: [X]bool);
+
 procedure {:entrypoint} main({:linear "tid"} tidls': [X]bool, {:linear "x"} xls': [X]bool) 
 requires tidls' != None() && xls' == All();
 {
@@ -28,18 +30,18 @@ requires tidls' != None() && xls' == All();
     var {:linear "x"} xls1: [X]bool;
     var {:linear "x"} xls2: [X]bool;
 
-    havoc tidls, xls;
-    assume tidls' == tidls && xls' == xls;
+    tidls := tidls';
+    xls := xls';
 
     x := 42;
     yield;
     assert xls == All();
     assert x == 42;
     call xls1, xls2 := Split(xls);
-    havoc lsChild;
+    call lsChild := Allocate();
     assume (lsChild != None());
     async call thread(lsChild, xls1);
-    havoc lsChild;
+    call lsChild := Allocate();
     assume (lsChild != None());
     async call thread(lsChild, xls2);
 }
@@ -50,8 +52,8 @@ requires tidls' != None() && xls' != None();
     var {:linear "x"} xls: [X]bool;
     var {:linear "tid"} tidls: [X]bool;
 
-    havoc tidls, xls;
-    assume tidls' == tidls && xls' == xls;
+    tidls := tidls';
+    xls := xls';
 
     assume l == None();
     l := tidls;

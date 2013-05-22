@@ -74,3 +74,9 @@ procedure G(i:int) returns({:linear "x"} r:int)
 {
   r := g;
 }
+
+procedure H(i:int) returns({:linear "x"} r:int)
+modifies g;
+{
+  g := r;
+}

@@ -24,9 +24,7 @@ procedure {:entrypoint} main({:linear "1"} x_in: [int]bool)
   requires b1 ==> x_in != mapconstbool(false);
 {
    var {:linear "1"} x: [int] bool;
-   assume x == x_in;
-
-   assume x == mapconstbool(true);
+   x := x_in;
 
    call foo(x);
    
@@ -40,7 +38,7 @@ procedure foo({:linear "1"} x_in: [int]bool)
   requires b3 ==> x_in != mapconstbool(false);
 {
    var {:linear "1"} x: [int] bool;
-   assume x == x_in;
+   x := x_in;
 
    assert b4 ==> x == mapconstbool(true);
    assert b5 ==> x != mapconstbool(false);
