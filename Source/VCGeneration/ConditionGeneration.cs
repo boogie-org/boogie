@@ -299,13 +299,31 @@ namespace Microsoft.Boogie {
   }
 
   public class CounterexampleComparer : IComparer<Counterexample> {
-    public int Compare(Counterexample c1, Counterexample c2) {
+    public int Compare(Counterexample c1, Counterexample c2)
+    {
       //Contract.Requires(c1 != null);
       //Contract.Requires(c2 != null);
       if (c1.GetLocation() == c2.GetLocation())
+      {
+        // TODO(wuestholz): Generalize this to compare all IPotentialErrorNodes of the counterexample.
+        var a1 = c1 as AssertCounterexample;
+        var a2 = c2 as AssertCounterexample;
+        if (a1 != null && a2 != null)
+        {
+          var s1 = a1.FailingAssert.ErrorData as string;
+          var s2 = a2.FailingAssert.ErrorData as string;
+          if (s1 != null && s2 != null)
+          {
+            return s1.CompareTo(s2);
+          }
+        }
+
         return 0;
+      }
       if (c1.GetLocation() > c2.GetLocation())
+      {
         return 1;
+      }
       return -1;
     }
   }
