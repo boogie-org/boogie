@@ -4,7 +4,7 @@
 z3mutl.bpl(20,5): Error BP5001: This assertion might not hold.
 Execution trace:
     z3mutl.bpl(5,1): start
-    z3mutl.bpl(14,1): L3
+    z3mutl.bpl(8,1): L1
     z3mutl.bpl(20,1): L5
 z3mutl.bpl(20,5): Error BP5001: This assertion might not hold.
 Execution trace:
@@ -14,7 +14,7 @@ Execution trace:
 z3mutl.bpl(20,5): Error BP5001: This assertion might not hold.
 Execution trace:
     z3mutl.bpl(5,1): start
-    z3mutl.bpl(8,1): L1
+    z3mutl.bpl(14,1): L3
     z3mutl.bpl(20,1): L5
 
 Boogie program verifier finished with 0 verified, 3 errors

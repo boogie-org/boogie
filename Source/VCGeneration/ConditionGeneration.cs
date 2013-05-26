@@ -299,12 +299,46 @@ namespace Microsoft.Boogie {
   }
 
   public class CounterexampleComparer : IComparer<Counterexample> {
+
+    private int Compare(BlockSeq bs1, BlockSeq bs2)
+    {
+      if (bs1.Length < bs2.Length)
+      {
+        return -1;
+      }
+      else if (bs2.Length < bs1.Length)
+      {
+        return 1;
+      }
+
+      for (int i = 0; i < bs1.Length; i++)
+      {
+        var b1 = bs1[i];
+        var b2 = bs2[i];
+        if (b1.tok.pos < b2.tok.pos)
+        {
+          return -1;
+        }
+        else if (b2.tok.pos < b1.tok.pos)
+        {
+          return 1;
+        }
+      }
+
+      return 0;
+    }
+
     public int Compare(Counterexample c1, Counterexample c2)
     {
       //Contract.Requires(c1 != null);
       //Contract.Requires(c2 != null);
       if (c1.GetLocation() == c2.GetLocation())
       {
+        var c = Compare(c1.Trace, c2.Trace);
+        if (c != 0)
+        {
+          return c;
+        }
         // TODO(wuestholz): Generalize this to compare all IPotentialErrorNodes of the counterexample.
         var a1 = c1 as AssertCounterexample;
         var a2 = c2 as AssertCounterexample;
