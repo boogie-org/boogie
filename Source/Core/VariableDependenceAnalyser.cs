@@ -15,6 +15,8 @@ namespace Microsoft.Boogie {
     VariableDescriptor MakeDescriptor(string proc, Variable v);
     HashSet<VariableDescriptor> DependsOn(VariableDescriptor v);
     void dump();
+    void ShowDependencyChain(VariableDescriptor source, VariableDescriptor target);
+    bool VariableRelevantToAnalysis(Variable v, string proc);
 
   }
 
@@ -40,8 +42,7 @@ namespace Microsoft.Boogie {
         return false;
       }
 
-      return base.Equals(thatDescriptor) &&
-        this.Name.Equals(thatDescriptor.Name);
+      return this.Name.Equals(thatDescriptor.Name);
     }
 
     public override int GetHashCode() {
@@ -54,9 +55,9 @@ namespace Microsoft.Boogie {
 
   }
 
-  class LocalDescriptor : VariableDescriptor {
+  public class LocalDescriptor : VariableDescriptor {
     internal readonly string Proc;
-    internal LocalDescriptor(string Proc, string Name)
+    public LocalDescriptor(string Proc, string Name)
       : base(Name) {
       this.Proc = Proc;
     }
@@ -89,8 +90,8 @@ namespace Microsoft.Boogie {
 
   }
 
-  class GlobalDescriptor : VariableDescriptor {
-    internal GlobalDescriptor(string name) : base(name) { }
+  public class GlobalDescriptor : VariableDescriptor {
+    public GlobalDescriptor(string name) : base(name) { }
 
     public override bool Equals(object that) {
 
@@ -133,7 +134,7 @@ namespace Microsoft.Boogie {
 
     private void Initialise() {
       foreach (var descriptor in
-        prog.TopLevelDeclarations.OfType<Variable>().Where(Item => !(Item is Constant)).
+        prog.TopLevelDeclarations.OfType<Variable>().Where(Item => VariableRelevantToAnalysis(Item, null)).
           Select(Variable => Variable.Name).
           Select(Name => new GlobalDescriptor(Name))) {
         dependsOnNonTransitive.AddEdge(descriptor, descriptor);
@@ -169,6 +170,46 @@ namespace Microsoft.Boogie {
     private IEnumerable<Implementation> NonInlinedImplementations() {
       return prog.TopLevelDeclarations.OfType<Implementation>().
         Where(Item => QKeyValue.FindIntAttribute(Item.Proc.Attributes, "inline", -1) == -1);
+    }
+
+    private List<VariableDescriptor> ComputeDependencyChain(VariableDescriptor source, VariableDescriptor target, HashSet<VariableDescriptor> visited) {
+      if(source.Equals(target)) {
+        return new List<VariableDescriptor> { target };
+      }
+
+      visited.Add(source);
+
+      foreach(var w in dependsOnNonTransitive.Successors(source)) {
+        if(visited.Contains(w)) {
+          continue;
+        }
+        var result = ComputeDependencyChain(w, target, visited);
+        if(result != null) {
+          result.Insert(0, source);
+          return result;
+        }
+      }
+
+      return null;
+
+    }
+
+    public void ShowDependencyChain(VariableDescriptor source, VariableDescriptor target) {
+      var chain = ComputeDependencyChain(source, target, new HashSet<VariableDescriptor>());
+      if(chain == null) {
+        Console.WriteLine("No chain between " + source + " and " + target);
+      } else {
+        bool first = true;
+        foreach(var v in chain) {
+          if(first) {
+            first = false;
+          } else {
+            Console.Write(" -> ");
+          }
+          Console.Write(v);
+        }
+      }
+      Console.WriteLine("\n");
     }
 
     public void Analyse() {
@@ -250,44 +291,53 @@ namespace Microsoft.Boogie {
     private void HandleCall(string proc, Block b, CallCmd call) {
       foreach (var formalActualPair in call.Proc.InParams.Zip(call.Ins)) {
         var formalIn = MakeDescriptor(call.callee, formalActualPair.Item1);
-        AddDependences(formalIn, GetReferencedVariables(formalActualPair.Item2, proc));
-        AddControlDependences(b, formalIn);
+        AddDependences(formalIn, GetReferencedVariables(formalActualPair.Item2, proc),
+          "referenced in in-param in call to " + proc, call.tok);
+        AddControlDependences(b, formalIn, " in param assigned under control dependence in call to " + proc, call.tok);
       }
 
       foreach (var formalActualPair in call.Proc.OutParams.Zip(call.Outs)) {
         var actualOut = MakeDescriptor(proc, formalActualPair.Item2.Decl);
-        AddDependences(actualOut, GetReferencedVariables(new IdentifierExpr(Token.NoToken, formalActualPair.Item1), call.callee));
-        AddControlDependences(b, actualOut);
+        AddDependences(actualOut, GetReferencedVariables(new IdentifierExpr(Token.NoToken, formalActualPair.Item1), call.callee),
+                    "receiving variable for out-param in call to " + proc, call.tok);
+        AddControlDependences(b, actualOut, " receiving variable assigned under control dependence in call to " + proc, call.tok);
       }
 
     }
 
     private void HandleAssign(string proc, Block b, AssignCmd assign) {
-      foreach (var assignPair in assign.Lhss.Zip(assign.Rhss)) {
+      foreach (var assignPair in assign.Lhss.Zip(assign.Rhss).Where
+            (Item => VariableRelevantToAnalysis(Item.Item1.DeepAssignedVariable, proc))) {
         VariableDescriptor assignedVariable = MakeDescriptor(proc, assignPair.Item1.DeepAssignedVariable);
-        AddDependences(assignedVariable, GetReferencedVariables(assignPair.Item1, proc));
-        AddDependences(assignedVariable, GetReferencedVariables(assignPair.Item2, proc));
-        AddControlDependences(b, assignedVariable);
+        AddDependences(assignedVariable, GetReferencedVariables(assignPair.Item1, proc),
+          "LHS of assignment", assign.tok);
+        AddDependences(assignedVariable, GetReferencedVariables(assignPair.Item2, proc),
+          "RHS of assignment", assign.tok);
+        AddControlDependences(b, assignedVariable, "Variable assigned under control dependence", assign.tok);
       }
     }
 
-    private void AddControlDependences(Block b, VariableDescriptor v) {
+    private void AddControlDependences(Block b, VariableDescriptor v, string reason, IToken tok) {
       if (!BlockToControllingBlocks.ContainsKey(b)) {
         return;
       }
       foreach (var controller in BlockToControllingBlocks[b]) {
-        AddDependences(v, ControllingBlockToVariables[controller]);
+        AddDependences(v, ControllingBlockToVariables[controller], reason + " controlling block at (" + controller.tok.line + ":" + controller.tok.col + ")", tok);
       }
     }
 
     private IEnumerable<VariableDescriptor> GetReferencedVariables(Absy node, string proc) {
       var VarCollector = new VariableCollector();
       VarCollector.Visit(node);
-      return VarCollector.usedVars.Where(Item => !(Item is Constant)).Select(Item => MakeDescriptor(proc, Item));
+      return VarCollector.usedVars.Where(Item => VariableRelevantToAnalysis(Item, proc)).
+        Select(Item => MakeDescriptor(proc, Item));
     }
 
-    void AddDependences(VariableDescriptor v, IEnumerable<VariableDescriptor> vs) {
+    void AddDependences(VariableDescriptor v, IEnumerable<VariableDescriptor> vs, string reason, IToken tok) {
       foreach (var n in vs) {
+        if(CommandLineOptions.Clo.DebugStagedHoudini) {
+          Console.WriteLine("Adding dependence " + v + " -> " + n + ", reason: " + reason + "(" + tok.line + ":" + tok.col + ")");
+        }
         dependsOnNonTransitive.AddEdge(v, n);
       }
     }
@@ -316,8 +366,8 @@ namespace Microsoft.Boogie {
             if (a != null && QKeyValue.FindBoolAttribute(a.Attributes, "partition")) {
               var VarCollector = new VariableCollector();
               VarCollector.VisitExpr(a.Expr);
-              result.UnionWith(VarCollector.usedVars.Where(Item => !(Item is Constant)).Select(
-                Item => MakeDescriptor(proc, Item)));
+              result.UnionWith(VarCollector.usedVars.Where(Item => VariableRelevantToAnalysis(Item, proc)).
+                Select(Item => MakeDescriptor(proc, Item)));
             }
             else {
               break;
@@ -326,6 +376,59 @@ namespace Microsoft.Boogie {
         }
       }
       return result;
+    }
+
+    private HashSet<VariableDescriptor> IgnoredVariables = null;
+
+    public bool VariableRelevantToAnalysis(Variable v, string proc) {
+      if (v is Constant) {
+        return false;
+      }
+
+      if (IgnoredVariables == null) {
+        MakeIgnoreList();
+      }
+
+      if(proc != null && IgnoredVariables.Contains(new LocalDescriptor(proc, v.Name))) {
+        return false;
+      }
+
+      if(IgnoredVariables.Contains(new GlobalDescriptor(v.Name))) {
+        return false;
+      }
+
+      return true;
+
+    }
+
+    private void MakeIgnoreList()
+    {
+      IgnoredVariables = new HashSet<VariableDescriptor>();
+      if(CommandLineOptions.Clo.VariableDependenceIgnore == null) {
+        return;
+      }
+      try {
+        var file = System.IO.File.OpenText(CommandLineOptions.Clo.VariableDependenceIgnore);
+        while(!file.EndOfStream) {
+          string line = file.ReadLine();
+          string[] tokens = line.Split(' ');
+          if(tokens.Count() == 0) {
+            continue;
+          }
+          if(tokens.Count() > 2) {
+            Console.Error.WriteLine("Ignoring malformed line of ignored variables file: " + line); 
+            continue;
+          }
+          if(tokens.Count() == 1) {
+            IgnoredVariables.Add(new GlobalDescriptor(tokens[0]));
+            continue;
+          }
+          Debug.Assert(tokens.Count() == 2);
+          IgnoredVariables.Add(new LocalDescriptor(tokens[0], tokens[1]));
+        }
+      } catch(System.IO.IOException e) {
+        Console.Error.WriteLine("Error reading from ignored variables file " + CommandLineOptions.Clo.VariableDependenceIgnore + ": " + e);
+      }
     }
 
     private Dictionary<Block, HashSet<Block>> ComputeGlobalControlDependences() {
@@ -533,340 +636,5 @@ namespace Microsoft.Boogie {
     }
 
   }
-  
 
-  /// <summary>
-  /// Given a Boogie program, computes a graph that over-approximates dependences
-  /// between program variables.
-  /// </summary>
-  public class OldVariableDependenceAnalyser : IVariableDependenceAnalyser {
-
-    private Program prog;
-
-    public Dictionary<VariableDescriptor, HashSet<VariableDescriptor>> dependsOn;
-
-    private Dictionary<string, HashSet<VariableDescriptor>> callControlDependences;
-
-    private bool ProcedureChanged;
-
-    public OldVariableDependenceAnalyser(Program prog) {
-      this.prog = prog;
-      dependsOn = new Dictionary<VariableDescriptor, HashSet<VariableDescriptor>>();
-      callControlDependences = new Dictionary<string, HashSet<VariableDescriptor>>();
-    }
-    
-    public void Analyse() {
-
-      Initialise();
-
-      ProcedureChanged = true;
-      while (ProcedureChanged) {
-        ProcedureChanged = false;
-
-        foreach (var Impl in NonInlinedImplementations()) {
-          Analyse(Impl);
-        }
-
-      }
-
-    }
-
-    private Dictionary<string, int> temp = new Dictionary<string,int>();
-
-    private void Analyse(Implementation Impl) {
-
-      if (!temp.ContainsKey(Impl.Name)) {
-        temp[Impl.Name] = 0;
-      }
-
-      temp[Impl.Name]++;
-
-      var ctrlDep = GetControlDependenceTransitiveClosure(Impl);
-
-      var orderedBlocks = GetOrderedBlocks(Impl);
-
-      bool changed;
-      do {
-        changed = false;
-        foreach (Block block in orderedBlocks) {
-          Analyse(Impl, block, ctrlDep, ref changed);
-        }
-      } while (changed);
-
-    }
-
-    private void Analyse(Implementation Impl, Block block, 
-          Dictionary<Block, HashSet<Block>> ctrlDep, ref bool changed) {
-
-      // First, work out the set of all variables that are involved in tests on which
-      // this block is control-dependent
-      HashSet<VariableDescriptor> ctrlDepVars = GetControlDependencyVariables(block, Impl.Name, ctrlDep);
-      // Take incoming control dependences for the procedure
-      ctrlDepVars.UnionWith(callControlDependences[Impl.Name]);
-
-      var ControlInflucencingVariables = GetDependentVariables(ctrlDepVars);
-
-      foreach (var c in block.Cmds) {
-
-        var assign = c as AssignCmd;
-        if (assign != null) {
-
-          foreach (var assignPair in assign.Lhss.Zip(assign.Rhss)) {
-            VariableDescriptor assignedVariable = MakeDescriptor(Impl.Name, assignPair.Item1.DeepAssignedVariable);
-            AddDependences(assignedVariable, GetDependentVariables(GetReferencedVariables(assignPair.Item1, Impl.Name)), ref changed);
-            AddDependences(assignedVariable, GetDependentVariables(GetReferencedVariables(assignPair.Item2, Impl.Name)), ref changed);
-            AddDependences(assignedVariable, ControlInflucencingVariables, ref changed);
-          }
-        }
-
-        var call = c as CallCmd;
-        if (call != null) {
-          AddCallControlDependences(call.callee, ctrlDepVars);
-
-          foreach(var formalActualPair in call.Proc.InParams.Zip(call.Ins)) {
-            bool unused = false; // When we find that the in parameters of the called procedure have been changed, we do not need to necessarily continue processing this procedure
-            AddDependences(MakeDescriptor(call.callee, formalActualPair.Item1),
-              GetDependentVariables(GetReferencedVariables(formalActualPair.Item2, Impl.Name)), ref unused);
-            AddDependences(MakeDescriptor(call.callee, formalActualPair.Item1),
-              ControlInflucencingVariables, ref unused);
-          }
-
-          foreach (var formalActualPair in call.Proc.OutParams.Zip(call.Outs)) {
-            AddDependences(MakeDescriptor(Impl.Name, formalActualPair.Item2.Decl),
-              GetDependentVariables(GetReferencedVariables(new IdentifierExpr(Token.NoToken, formalActualPair.Item1), call.callee)), ref changed);
-            AddDependences(MakeDescriptor(Impl.Name, formalActualPair.Item2.Decl),
-              ControlInflucencingVariables, ref changed);
-          }
-
-        }
-
-      }
-
-    }
-
-    private IEnumerable<VariableDescriptor> GetDependentVariables(IEnumerable<VariableDescriptor> vars) {
-      HashSet<VariableDescriptor> result = new HashSet<VariableDescriptor>();
-      foreach (var v in vars) {
-        result.UnionWith(dependsOn[v]);
-      }
-      return result;
-    }
-
-    private IEnumerable<VariableDescriptor> GetReferencedVariables(Absy node, string proc) {
-      var VarCollector = new VariableCollector();
-      VarCollector.Visit(node);
-      IEnumerable<VariableDescriptor> result = VarCollector.usedVars.Where(Item => !(Item is Constant)).Select(Item => MakeDescriptor(proc, Item));
-      return result;
-    }
-
-    public VariableDescriptor MakeDescriptor(string proc, Variable v) {
-
-      // Check whether there is an (Impl, v) match
-      var MatchingLocals = dependsOn.Keys.Where(Item => Item is LocalDescriptor).Select(
-        Item => (LocalDescriptor)Item).Where(Item => Item.Proc.Equals(proc) &&
-          Item.Name.Equals(v.Name));
-      if(MatchingLocals.Count() > 0) {
-        Debug.Assert(MatchingLocals.Count() == 1);
-        return MatchingLocals.ToArray()[0];
-      }
-
-      // It must be a global with same name as v
-      return dependsOn.Keys.Where(Item => Item is GlobalDescriptor &&
-        Item.Name.Equals(v.Name)).ToArray()[0];
-    }
-
-    private Dictionary<Block, HashSet<VariableDescriptor>> ControlDependencyVariablesCache = new Dictionary<Block,HashSet<VariableDescriptor>>();
-
-    private HashSet<VariableDescriptor> GetControlDependencyVariables(Block b, string proc, Dictionary<Block, HashSet<Block>> ctrlDep) {
-
-      if (!ControlDependencyVariablesCache.ContainsKey(b)) {
-        HashSet<VariableDescriptor> ctrlDepVars = new HashSet<VariableDescriptor>();
-        foreach (var k in ctrlDep.Keys) {
-          if (ctrlDep[k].Contains(b)) {
-            foreach (Variable v in GetControlDependencyVariables(k)) {
-              ctrlDepVars.Add(MakeDescriptor(proc, v));
-            }
-          }
-        }
-        ControlDependencyVariablesCache[b] = ctrlDepVars;
-      }
-
-      return ControlDependencyVariablesCache[b];
-    }
-
-    private static HashSet<Variable> GetControlDependencyVariables(Block b) {
-
-      // This method works under the assumption that assume statements
-      // relevant to control flow between basic blocks have the "partition" attribute
-
-      HashSet<Variable> result = new HashSet<Variable>();
-      if (b.TransferCmd is GotoCmd) {
-        foreach (Block succ in ((GotoCmd)b.TransferCmd).labelTargets) {
-          foreach (Cmd c in succ.Cmds) {
-            AssumeCmd a = c as AssumeCmd;
-            if (a != null && QKeyValue.FindBoolAttribute(a.Attributes, "partition")) {
-              var VarCollector = new VariableCollector();
-              VarCollector.VisitExpr(a.Expr);
-              result.UnionWith(VarCollector.usedVars.Where(Item => !(Item is Constant)));
-            }
-            else {
-              break;
-            }
-          }
-        }
-      }
-      return result;
-    }
-
-    private void Initialise() {
-      foreach (var descriptor in
-        prog.TopLevelDeclarations.OfType<Variable>().Where(Item => !(Item is Constant)).
-          Select(Variable => Variable.Name).
-          Select(Name => new GlobalDescriptor(Name))) {
-        dependsOn.Add(descriptor, new HashSet<VariableDescriptor> { descriptor });
-      }
-
-      foreach (var Proc in NonInlinedProcedures()) {
-
-        callControlDependences[Proc.Name] = new HashSet<VariableDescriptor>();
-
-        List<Variable> parameters = new List<Variable>();
-        parameters.AddRange(Proc.InParams);
-        parameters.AddRange(Proc.OutParams);
-        foreach (var descriptor in
-          parameters.Select(Variable => Variable.Name).Select(Name => new LocalDescriptor(Proc.Name, Name))) {
-          dependsOn.Add(descriptor, new HashSet<VariableDescriptor> { descriptor });
-        }
-      }
-
-      foreach (var Impl in NonInlinedImplementations()) {
-
-        List<Variable> locals = new List<Variable>();
-        locals.AddRange(Impl.LocVars);
-        foreach (var descriptor in
-          locals.Select(Variable => Variable.Name).Select(Name => new LocalDescriptor(Impl.Name, Name))) {
-          dependsOn.Add(descriptor, new HashSet<VariableDescriptor> { descriptor });
-        }
-      }
-    }
-
-    private IEnumerable<Procedure> NonInlinedProcedures() {
-      return prog.TopLevelDeclarations.OfType<Procedure>().
-        Where(Item => QKeyValue.FindIntAttribute(Item.Attributes, "inline", -1) == -1);
-    }
-
-    private IEnumerable<Implementation> NonInlinedImplementations() {
-      return prog.TopLevelDeclarations.OfType<Implementation>().
-        Where(Item => QKeyValue.FindIntAttribute(Item.Proc.Attributes, "inline", -1) == -1);
-    }
-
-
-
-    public void dump() {
-
-      Console.WriteLine("Variable dependence information");
-      Console.WriteLine("===============================");
-
-      Console.WriteLine("Global variables");
-      Console.WriteLine("================");
-
-      foreach (var GlobalEntry in dependsOn.Where(Item => Item.Key is GlobalDescriptor)) {
-        dump(GlobalEntry);
-      }
-
-      foreach (var proc in Procedures()) {
-        Console.WriteLine("Variables of " + proc);
-        Console.WriteLine("=====================");
-        foreach (var LocalEntry in dependsOn.Where(Item => Item.Key is LocalDescriptor
-          && ((LocalDescriptor)Item.Key).Proc.Equals(proc))) {
-          dump(LocalEntry);
-        }
-      }
-    }
-
-    private static void dump(KeyValuePair<VariableDescriptor,HashSet<VariableDescriptor>> Entry)
-    {
-        Console.Write(Entry.Key + " <- {");
-        bool first = true;
-
-        var SortedDependents = Entry.Value.ToList();
-        SortedDependents.Sort();
-      
-        foreach(var Descriptor in SortedDependents) {
-          Console.Write((first ? "" : ",") + "\n  " + Descriptor);
-          if (first) {
-            first = false;
-          }
-        }
-        Console.WriteLine("\n}\n");
-    }
-    
-    private HashSet<string> Procedures() {
-      return new HashSet<string>(dependsOn.Where(Item =>
-              Item.Key is LocalDescriptor).Select(Item => ((LocalDescriptor)Item.Key).Proc));
-    }
-
-    void AddDependences(VariableDescriptor v, IEnumerable<VariableDescriptor> vs, ref bool Changed) {
-      foreach (var n in vs) {
-        if (!dependsOn[v].Contains(n)) {
-          dependsOn[v].Add(n);
-          ProcedureChanged = true;
-          Changed = true;
-        }
-      }
-    }
-
-    private void AddCallControlDependences(string Proc, HashSet<VariableDescriptor> ctrlDepVars) {
-      foreach (var n in ctrlDepVars) {
-        if (!callControlDependences[Proc].Contains(n)) {
-          callControlDependences[Proc].Add(n);
-          ProcedureChanged = true;
-        }
-      }
-    }
-
-
-    private Dictionary<string, Dictionary<Block, HashSet<Block>>> ControlDependenceCache = new Dictionary<string, Dictionary<Block, HashSet<Block>>>();
-
-    private Dictionary<Block, HashSet<Block>> GetControlDependenceTransitiveClosure(Implementation Impl) {
-      if (!ControlDependenceCache.ContainsKey(Impl.Name)) {
-        Graph<Block> blockGraph = prog.ProcessLoops(Impl);
-        Dictionary<Block, HashSet<Block>> ctrlDep = blockGraph.ControlDependence();
-        ctrlDep.TransitiveClosure();
-        ControlDependenceCache[Impl.Name] = ctrlDep;
-      }
-      return ControlDependenceCache[Impl.Name];
-    }
-
-    private Dictionary<string, List<Block>> OrderedBlocksCache = new Dictionary<string,List<Block>>();
-
-    private List<Block> GetOrderedBlocks(Implementation Impl) {
-      if (!OrderedBlocksCache.ContainsKey(Impl.Name)) {
-        List<Block> orderedBlocks = PostOrder(Impl.Blocks[0], new HashSet<Block>());
-        Debug.Assert(orderedBlocks.Count() == Impl.Blocks.Count());
-        orderedBlocks.Reverse();
-        OrderedBlocksCache[Impl.Name] = orderedBlocks;
-      }
-      return OrderedBlocksCache[Impl.Name];
-    }
-
-    private List<Block> PostOrder(Block b, HashSet<Block> seen) {
-      seen.Add(b);
-      List<Block> result = new List<Block>();
-      if(b.TransferCmd is GotoCmd) {
-        foreach (Block c in ((GotoCmd)b.TransferCmd).labelTargets) {
-          if (!seen.Contains(c)) {
-            result.AddRange(PostOrder(c, seen));
-          }
-        }
-      }
-      result.Add(b);
-      return result;
-    }
-
-    public HashSet<VariableDescriptor> DependsOn(VariableDescriptor vd) {
-      return dependsOn[vd];
-    }
-
-  }
 }

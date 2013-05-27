@@ -396,6 +396,8 @@ namespace Microsoft.Boogie {
     public bool ExplainHoudini = false;
     public bool HoudiniUseCrossDependencies = false;
     public int StagedHoudini = 0;
+    public bool DebugStagedHoudini = false;
+    public string VariableDependenceIgnore = null;
     public string AbstractHoudini = null;
     public bool UseUnsatCoreForContractInfer = false;
     public bool PrintAssignment = false;
@@ -885,6 +887,20 @@ namespace Microsoft.Boogie {
             int sh = 0;
             if (ps.GetNumericArgument(ref sh, 3)) {
               StagedHoudini = sh;
+            }
+            return true;
+          }
+
+        case "debugStagedHoudini": {
+            if (ps.ConfirmArgumentCount(0)) {
+              DebugStagedHoudini = true;
+            }
+            return true;
+          }
+
+        case "variableDependenceIgnore": {
+            if (ps.ConfirmArgumentCount(1)) {
+              VariableDependenceIgnore = args[ps.i];
             }
             return true;
           }

@@ -344,7 +344,7 @@ namespace Microsoft.Boogie {
         VariableCollector vc = new VariableCollector();
         vc.VisitExpr(e);
 
-        foreach (var v in vc.usedVars.Where(Item => !(Item is Constant))) {
+        foreach (var v in vc.usedVars.Where(Item => varDepAnalyser.VariableRelevantToAnalysis(Item, proc))) {
           VariableDescriptor vd =
             varDepAnalyser.MakeDescriptor(proc, v);
           if (!variableDirectlyReferredToByCandidates.ContainsKey(vd)) {
@@ -373,7 +373,9 @@ namespace Microsoft.Boogie {
 
     public void dump() {
 
-      varDepAnalyser.dump();
+      if(CommandLineOptions.Clo.DebugStagedHoudini) {
+        varDepAnalyser.dump();
+      }
 
       /*Console.WriteLine("Candidates and the variables they depend on");
       Console.WriteLine("===========================================");
