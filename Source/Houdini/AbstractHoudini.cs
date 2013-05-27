@@ -19,7 +19,7 @@ namespace Microsoft.Boogie.Houdini {
         Program program;
         Dictionary<string, Implementation> name2Impl;
         Dictionary<string, VCExpr> impl2VC;
-        Dictionary<string, List<Tuple<string, Constant, NAryExpr>>> impl2FuncCalls;
+        Dictionary<string, List<Tuple<string, Function, NAryExpr>>> impl2FuncCalls;
         // constant -> the naryexpr that it replaced
         Dictionary<string, NAryExpr> constant2FuncCall;
 
@@ -47,7 +47,7 @@ namespace Microsoft.Boogie.Houdini {
         {
             this.program = program;
             this.impl2VC = new Dictionary<string, VCExpr>();
-            this.impl2FuncCalls = new Dictionary<string, List<Tuple<string, Constant, NAryExpr>>>();
+            this.impl2FuncCalls = new Dictionary<string, List<Tuple<string, Function, NAryExpr>>>();
             this.existentialFunctions = new Dictionary<string, Function>();
             this.name2Impl = new Dictionary<string, Implementation>();
             this.impl2functionsAsserted = new Dictionary<string, HashSet<string>>();
@@ -166,9 +166,20 @@ namespace Microsoft.Boogie.Houdini {
                     var exprVars = tup.Item3;
                     var varList = new List<Expr>();
                     exprVars.Args.OfType<Expr>().Iter(v => varList.Add(v));
+                    
+                    var args = new ExprSeq();
+                    controlVar.InParams.Iter(v => args.Add(Expr.Ident(v)));
+                    Expr term = Expr.Eq(new NAryExpr(Token.NoToken, new FunctionCall(controlVar), args),
+                                 function2Value[tup.Item1].Gamma(varList));
 
-                    env = Expr.And(env, 
-                        Expr.Eq(Expr.Ident(controlVar), function2Value[tup.Item1].Gamma(varList)));
+                    if (controlVar.InParams.Count != 0)
+                    {
+                        term = new ForallExpr(Token.NoToken, new VariableSeq(controlVar.InParams.ToArray()),
+                            new Trigger(Token.NoToken, true, new ExprSeq(new NAryExpr(Token.NoToken, new FunctionCall(controlVar), args))),
+                            term);
+                    }
+
+                    env = Expr.And(env, term);
                 }
 
                 env.Typecheck(new TypecheckingContext((IErrorSink)null));
@@ -311,21 +322,79 @@ namespace Microsoft.Boogie.Houdini {
             return ExtractState(impl, failingAssert.Expr, error.Model);
         }
 
+        private static int existentialConstCounter = 0;
+
         private List<Tuple<string, List<Model.Element>>> ExtractState(string impl, Expr expr, Model model)
         {
-            var collect = new VariableCollector();
-            collect.VisitExpr(expr);
+            var funcsUsed = FunctionCollector.Collect(expr);
 
             var ret = new List<Tuple<string, List<Model.Element>>>();
 
-            foreach (var constant in collect.usedVars.OfType<Constant>().Where(c => constant2FuncCall.ContainsKey(c.Name)))
+            foreach (var tup in funcsUsed.Where(t => t.Item2 == null))
             {
+                var constant = tup.Item1;
+                if (!constant2FuncCall.ContainsKey(constant.Name))
+                    continue;
+
                 var func = constant2FuncCall[constant.Name];
                 var funcName = (func.Fun as FunctionCall).FunctionName;
                 var vals = new List<Model.Element>();
                 prover.Context.BoogieExprTranslator.Translate(func.Args).Iter(ve => vals.Add(getValue(ve, model)));
-
                 ret.Add(Tuple.Create(funcName, vals));
+            }
+
+            foreach (var tup in funcsUsed.Where(t => t.Item2 != null))
+            {
+                var constant = tup.Item1;
+                var boundExpr = tup.Item2;
+
+                if (!constant2FuncCall.ContainsKey(constant.Name))
+                    continue;
+
+                // There are some bound variables (because the existential function was inside an \exists).
+                // We must find an assignment for bound varibles 
+
+                // First, peice apart the existential functions
+                var cd = new Duplicator();
+                var tup2 = ExistentialExprModelMassage.Massage(cd.VisitExpr(boundExpr.Body));
+                var be = tup2.Item1;
+                Expr env = Expr.True;
+                foreach (var ahFunc in tup2.Item2)
+                {
+                    var tup3 = impl2FuncCalls[impl].First(t => t.Item2.Name == ahFunc.Name);
+                    var varList = new List<Expr>();
+                    tup3.Item3.Args.OfType<Expr>().Iter(v => varList.Add(v));
+
+                    env = Expr.And(env, function2Value[tup3.Item1].Gamma(varList));
+                }
+                be = Expr.And(be, Expr.Not(env));
+
+                // map formals to constants
+                var formalToConstant = new Dictionary<string, Constant>();
+                foreach (var f in boundExpr.Dummies.OfType<Variable>())
+                    formalToConstant.Add(f.Name, new Constant(Token.NoToken, new TypedIdent(Token.NoToken, f.Name + "@subst@" + (existentialConstCounter++), f.TypedIdent.Type), false));
+                be = Substituter.Apply(new Substitution(v => formalToConstant.ContainsKey(v.Name) ? Expr.Ident(formalToConstant[v.Name]) : Expr.Ident(v)), be);
+                formalToConstant.Values.Iter(v => prover.Context.DeclareConstant(v, false, null));
+
+                var reporter = new AbstractHoudiniErrorReporter();
+                var ve = prover.Context.BoogieExprTranslator.Translate(be);
+                prover.Assert(ve, true);
+                prover.Check();
+                var proverOutcome = prover.CheckOutcomeCore(reporter);
+                if (proverOutcome != ProverInterface.Outcome.Invalid)
+                    continue;
+                model = reporter.model;
+
+                var func = constant2FuncCall[constant.Name];
+                var funcName = (func.Fun as FunctionCall).FunctionName;
+                var vals = new List<Model.Element>();
+                foreach (var funcArg in func.Args.OfType<Expr>())
+                {
+                    var arg = Substituter.Apply(new Substitution(v => formalToConstant.ContainsKey(v.Name) ? Expr.Ident(formalToConstant[v.Name]) : Expr.Ident(v)), funcArg);
+                    vals.Add(getValue(prover.Context.BoogieExprTranslator.Translate(arg), model));
+                }
+                ret.Add(Tuple.Create(funcName, vals));
+
             }
 
             return ret;
@@ -370,6 +439,83 @@ namespace Microsoft.Boogie.Houdini {
                     Debug.Assert(false);
                 }
                 return null;
+            }
+        }
+
+        // Remove functions AbsHoudiniConstant from the expressions and substitute them with "true"
+        class ExistentialExprModelMassage : StandardVisitor
+        {
+            List<Function> ahFuncs;
+
+            public ExistentialExprModelMassage()
+            {
+                ahFuncs = new List<Function>();
+            }
+
+            public static Tuple<Expr, List<Function>> Massage(Expr expr)
+            {
+                var ee = new ExistentialExprModelMassage();
+                expr = ee.VisitExpr(expr);
+                return Tuple.Create(expr, ee.ahFuncs);
+            }
+
+            public override Expr VisitNAryExpr(NAryExpr node)
+            {
+                if (node.Fun is FunctionCall && (node.Fun as FunctionCall).FunctionName.StartsWith("AbsHoudiniConstant"))
+                {
+                    ahFuncs.Add((node.Fun as FunctionCall).Func);
+                    return Expr.True;
+                }
+
+                return base.VisitNAryExpr(node);
+            }
+        }
+
+        class FunctionCollector : StandardVisitor
+        {
+            public List<Tuple<Function, ExistsExpr>> functionsUsed;
+            ExistsExpr existentialExpr;
+
+            public FunctionCollector()
+            {
+                functionsUsed = new List<Tuple<Function, ExistsExpr>>();
+                existentialExpr = null;
+            }
+
+            public static List<Tuple<Function, ExistsExpr>> Collect(Expr expr)
+            {
+                var fv = new FunctionCollector();
+                fv.VisitExpr(expr);
+                return fv.functionsUsed;
+            }
+
+            public override QuantifierExpr VisitQuantifierExpr(QuantifierExpr node)
+            {
+                var oldE = existentialExpr;
+
+                if (node is ExistsExpr)
+                    existentialExpr = (node as ExistsExpr);
+
+                node = base.VisitQuantifierExpr(node);
+
+                existentialExpr = oldE;
+                return node;
+            }
+
+            public override Expr VisitNAryExpr(NAryExpr node)
+            {
+                if (node.Fun is FunctionCall)
+                {
+                    var collector = new VariableCollector();
+                    collector.Visit(node);
+
+                    if(existentialExpr != null && existentialExpr.Dummies.Intersect(collector.usedVars).Any())
+                        functionsUsed.Add(Tuple.Create((node.Fun as FunctionCall).Func, existentialExpr));
+                    else
+                        functionsUsed.Add(Tuple.Create<Function, ExistsExpr>((node.Fun as FunctionCall).Func, null));
+                }
+
+                return base.VisitNAryExpr(node);
             }
         }
 
@@ -420,6 +566,9 @@ namespace Microsoft.Boogie.Houdini {
 
             vcgen.ConvertCFG2DAG(impl);
             var gotoCmdOrigins = vcgen.PassifyImpl(impl, out mvInfo);
+
+            ExtractQuantifiedExprs(impl);
+            StripOutermostForall(impl);
 
             //CommandLineOptions.Clo.PrintInstrumented = true;
             //var tt = new TokenTextWriter(Console.Out);
@@ -476,9 +625,42 @@ namespace Microsoft.Boogie.Houdini {
             // the right thing.
             foreach (var tup in fv.functionsUsed)
             {
-                var tt = prover.Context.BoogieExprTranslator.Translate(tup.Item3);
-                tt = prover.VCExprGen.Or(VCExpressionGenerator.True, tt);
-                prover.Assert(tt, true);
+                //var tt = prover.Context.BoogieExprTranslator.Translate(tup.Item3);
+                //tt = prover.VCExprGen.Or(VCExpressionGenerator.True, tt);
+                //prover.Assert(tt, true);
+            }
+        }
+
+        // convert "foo(... forall e ...) to:
+        //    (p iff forall e) ==> foo(... p ...) 
+        // where p is a fresh boolean variable and foo is an existential constant
+        private void ExtractQuantifiedExprs(Implementation impl)
+        {
+            var funcs = new HashSet<string>(existentialFunctions.Keys);
+            foreach (var blk in impl.Blocks)
+            {
+                foreach (var acmd in blk.Cmds.OfType<AssertCmd>())
+                {
+                    var ret = ExtractQuantifiers.Extract(acmd.Expr, funcs);
+                    acmd.Expr = ret.Item1;
+                    impl.LocVars.AddRange(ret.Item2);
+                }
+            }
+        }
+
+        // convert "assert e1 && forall x: e2" to
+        //    assert e1 && e2[x <- x@bound]
+        private void StripOutermostForall(Implementation impl)
+        {
+            var funcs = new HashSet<string>(existentialFunctions.Keys);
+            foreach (var blk in impl.Blocks)
+            {
+                foreach (var acmd in blk.Cmds.OfType<AssertCmd>())
+                {
+                    var ret = StripQuantifiers.Run(acmd.Expr, funcs);
+                    acmd.Expr = ret.Item1;
+                    impl.LocVars.AddRange(ret.Item2);
+                }
             }
         }
 
@@ -595,8 +777,8 @@ namespace Microsoft.Boogie.Houdini {
 
     class ReplaceFunctionCalls : StandardVisitor
     {
-        public List<Tuple<string, Constant, NAryExpr>> functionsUsed;
-        public List<Constant> boolConstants;
+        public List<Tuple<string, Function, NAryExpr>> functionsUsed;
+        public List<Function> boolConstants;
 
         public HashSet<string> functionsAssumed;
         public HashSet<string> functionsAsserted;
@@ -604,18 +786,22 @@ namespace Microsoft.Boogie.Houdini {
 
         private bool inAssume;
         private bool inAssert;
+        private bool inFunction;
+        private List<Dictionary<string, Variable>> boundVars;
         private static int IdCounter = 0;
 
         public ReplaceFunctionCalls(HashSet<string> functionsToReplace)
         {
-            this.functionsUsed = new List<Tuple<string, Constant, NAryExpr>>();
+            this.functionsUsed = new List<Tuple<string, Function, NAryExpr>>();
             this.functionsToReplace = functionsToReplace;
             this.functionsAsserted = new HashSet<string>();
             this.functionsAssumed = new HashSet<string>();
-            this.boolConstants = new List<Constant>();
+            this.boolConstants = new List<Function>();
+            this.boundVars = new List<Dictionary<string, Variable>>();
 
             inAssume = false;
             inAssert = false;
+            inFunction = false;
         }
 
         public override Cmd VisitAssertCmd(AssertCmd node)
@@ -644,26 +830,278 @@ namespace Microsoft.Boogie.Houdini {
             return ret;
         }
 
+        public override QuantifierExpr VisitQuantifierExpr(QuantifierExpr node)
+        {
+            // gather the quantified variables
+            var dummies = new Dictionary<string, Variable>();
+            node.Dummies.Iter(v => dummies.Add(v.Name, v));
+
+            boundVars.Add(dummies);
+
+            node = base.VisitQuantifierExpr(node);
+
+            boundVars.RemoveAt(boundVars.Count - 1);
+
+            return node;
+        }
+
         public override Expr VisitNAryExpr(NAryExpr node)
         {
-            if (node.Fun is FunctionCall && functionsToReplace.Contains((node.Fun as FunctionCall).FunctionName))
-            {
-                found((node.Fun as FunctionCall).FunctionName);
-                // create boolean constant to replace this guy
-                var constant = new Constant(Token.NoToken, new TypedIdent(Token.NoToken, "AbsHoudiniConstant" + IdCounter, Microsoft.Boogie.Type.Bool), false);
-                IdCounter++;
+            var inF = inFunction;
 
+            if (node.Fun is FunctionCall && functionsToReplace.Contains((node.Fun as FunctionCall).FunctionName))
+            {                
+                found((node.Fun as FunctionCall).FunctionName);
+                inFunction = true;
+
+                // collect all the variables used by this function
+                var collector = new VariableCollector();
+                collector.VisitExpr(node);
+
+                // Find the outermost bound variables
+                var bound = new VariableSeq();
+                if(boundVars.Count > 0) 
+                    bound.AddRange(collector.usedVars.Intersect(boundVars[0].Values));
+
+                // create boolean function to replace this guy
+                var constant = new Function(Token.NoToken, "AbsHoudiniConstant" + IdCounter, bound,
+                    new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "r", Microsoft.Boogie.Type.Bool), false));
+                IdCounter++;
+                
                 functionsUsed.Add(Tuple.Create((node.Fun as FunctionCall).FunctionName, constant, node));
                 boolConstants.Add(constant);
-                return Expr.Ident(constant);
+
+                var args = new ExprSeq();
+                bound.OfType<Variable>().Select(v => Expr.Ident(v)).Iter(v => args.Add(v));
+                return new NAryExpr(Token.NoToken, new FunctionCall(constant), args);
             }
-            return base.VisitNAryExpr(node);
+            var ret = base.VisitNAryExpr(node);
+
+            inFunction = inF;
+
+            return ret;
+        }
+
+        public override Expr VisitIdentifierExpr(IdentifierExpr node)
+        {
+            if (inFunction)
+            {
+                // Inside functions we can only refer to the outermost bound variables
+                for (int i = boundVars.Count - 1; i >= 1; i--)
+                {
+                    if (boundVars[i].ContainsKey(node.Name))
+                        throw new AbsHoudiniInternalError("Existential functions can only refer to outermost bound variables in an expression");
+                }
+            }
+
+            return base.VisitIdentifierExpr(node);
         }
 
         private void found(string func)
         {
             if (inAssume) functionsAssumed.Add(func);
             if (inAssert) functionsAsserted.Add(func);
+        }
+
+    }
+
+    // convert "foo(... forall e ...) to:
+    //    (p iff forall e) ==> foo(... p ...) 
+    // where p is a fresh boolean variable and foo is an existential constant
+    class ExtractQuantifiers : StandardVisitor
+    {
+        static int freshConstCounter = 0;
+        HashSet<string> existentialFunctions;
+        bool insideExistential;
+        Dictionary<Constant, Expr> newConstants;
+
+        private ExtractQuantifiers(HashSet<string> existentialFunctions)
+        {
+            this.existentialFunctions = existentialFunctions;
+            insideExistential = false;
+            newConstants = new Dictionary<Constant, Expr>();
+        }
+
+        public static Tuple<Expr, IEnumerable<Constant>> Extract(Expr expr, HashSet<string> existentialFunctions)
+        {
+            var eq = new ExtractQuantifiers(existentialFunctions);
+            expr = eq.VisitExpr(expr);
+            Expr ret = Expr.True;
+            foreach (var tup in eq.newConstants)
+            {
+                ret = Expr.And(ret, Expr.Eq(Expr.Ident(tup.Key), tup.Value));
+            }
+            ret = Expr.Imp(ret, expr);
+            return Tuple.Create(ret, eq.newConstants.Keys.AsEnumerable());
+        }
+
+        public override Expr VisitNAryExpr(NAryExpr node)
+        {
+            var oldIE = insideExistential;
+
+            if (node.Fun is FunctionCall && existentialFunctions.Contains((node.Fun as FunctionCall).FunctionName))
+                insideExistential = true;
+
+            var ret = base.VisitNAryExpr(node);
+
+            insideExistential = oldIE;
+            return ret;
+        }
+
+        public override Expr VisitExpr(Expr node)
+        {
+            if (node is QuantifierExpr)
+            {
+                return MyVisitQuantifierExpr(node as QuantifierExpr);
+            }
+            return base.VisitExpr(node);
+        }
+
+        public Expr MyVisitQuantifierExpr(QuantifierExpr node)
+        {
+            node = base.VisitQuantifierExpr(node);
+
+            if (insideExistential)
+            {
+                var constant = new Constant(Token.NoToken, new TypedIdent(Token.NoToken,
+                    "quant@const" + freshConstCounter, Microsoft.Boogie.Type.Bool), false);
+                freshConstCounter++;
+
+                newConstants.Add(constant, node);
+
+                return Expr.Ident(constant);                
+            }
+
+            return node;
+        }
+    }
+
+    // convert "assert e1 && forall x: e2" to
+    //    assert e1 && e2[x <- x@bound]
+    // only if e2 has an existential function
+    class StripQuantifiers : StandardVisitor
+    {
+        static int boundVarCounter = 0;
+        
+        // 0 -> None, 1 -> Forall, 2 -> Exists, 3 -> Nested
+        int insideQuantifier; 
+
+        bool searchExistentialFunction;
+        bool foundExistentialFunction;
+
+        HashSet<string> existentialFunctions;
+        Dictionary<string, LocalVariable> subst;
+        List<LocalVariable> LocalsToAdd;
+
+        private StripQuantifiers(HashSet<string> existentialFunctions)
+        {
+            this.existentialFunctions = existentialFunctions;
+            insideQuantifier = 0;
+            searchExistentialFunction = false;
+            foundExistentialFunction = false;
+            LocalsToAdd = new List<LocalVariable>();
+            subst = null;
+        }
+
+        public static Tuple<Expr,List<LocalVariable>> Run(Expr expr, HashSet<string> existentialFunctions)
+        {
+            // check for type errors first
+            var sq = new StripQuantifiers(existentialFunctions);
+            var ret = sq.VisitExpr(expr);
+
+            return Tuple.Create(ret, sq.LocalsToAdd);
+        }
+
+        public override Expr VisitExpr(Expr node)
+        {
+            if (node is QuantifierExpr)
+            {
+                return MyVisitQuantifierExpr(node as QuantifierExpr);
+            }
+
+            return base.VisitExpr(node);
+        }
+
+        private Expr MyVisitQuantifierExpr(QuantifierExpr node)
+        {
+            var oldIQ = insideQuantifier;
+            Expr ret = node;
+
+            // update "insideQuantifier"
+            if (insideQuantifier == 0)
+            {
+                if (node is ForallExpr) insideQuantifier = 1;
+                else insideQuantifier = 2;
+            }
+            else if (insideQuantifier > 0)
+            {
+                insideQuantifier = 3;
+            }
+
+            // Going inside Forall?
+            if (insideQuantifier == 1)
+            {
+                // see if there is any existential function inside
+                searchExistentialFunction = true;
+                foundExistentialFunction = false;
+                base.VisitQuantifierExpr(node);
+
+                if (foundExistentialFunction)
+                {
+                    // create substitution to apply
+                    subst = new Dictionary<string, LocalVariable>();
+                    foreach (var bv in node.Dummies.OfType<Variable>())
+                    {
+                        var lv = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken,
+                            bv + "@bound" + boundVarCounter, bv.TypedIdent.Type));
+                        boundVarCounter++;
+                        subst.Add(bv.Name, lv);
+                        LocalsToAdd.Add(lv);
+                    }
+
+                    // apply the subst
+                    var body = base.VisitExpr(node.Body);
+                    ret = body;
+
+                    subst = null;
+                }
+                else
+                {
+                    ret = base.VisitQuantifierExpr(node);
+                }
+
+                searchExistentialFunction = false;
+                foundExistentialFunction = false;
+            }
+            else
+            {
+                ret = base.VisitQuantifierExpr(node);
+            }
+
+            insideQuantifier = oldIQ;
+            return ret;
+        }
+
+        public override Expr VisitNAryExpr(NAryExpr node)
+        {
+            if (node.Fun is FunctionCall && existentialFunctions.Contains((node.Fun as FunctionCall).FunctionName))
+            {
+                if (insideQuantifier == 3)
+                    throw new AbsHoudiniInternalError("Existential function found inside exists, or nested foralls");
+
+                if (searchExistentialFunction)
+                    foundExistentialFunction = true;
+
+            }
+
+            return base.VisitNAryExpr(node);
+        }
+
+        public override Expr VisitIdentifierExpr(IdentifierExpr node)
+        {
+            if (subst != null && subst.ContainsKey(node.Name))
+                return Expr.Ident(subst[node.Name]);
+            return base.VisitIdentifierExpr(node);
         }
 
     }
@@ -1235,7 +1673,7 @@ namespace Microsoft.Boogie.Houdini {
         {
             if (!abstractDomainInstancesFriendly.ContainsKey(friendlyName))
             {
-                Console.WriteLine("Domain {0} not found", CommandLineOptions.Clo.AbstractHoudini);
+                Console.WriteLine("Domain {0} not found", friendlyName);
                 Console.WriteLine("Supported domains are:");
                 abstractDomainInstancesFriendly.Keys.Iter(tup => Console.WriteLine("  {0}", tup));
                 throw new AbsHoudiniInternalError("Domain not found");
@@ -3695,7 +4133,7 @@ namespace Microsoft.Boogie.Houdini {
         public override void OnModel(IList<string> labels, Model model)
         {
             Debug.Assert(model != null);
-            //model.Write(Console.Out);
+            if(CommandLineOptions.Clo.PrintErrorModel >= 1) model.Write(Console.Out);
             this.model = model;
         }
     }

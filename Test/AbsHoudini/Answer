@@ -439,3 +439,51 @@ function {:existential true} {:absdomain "Intervals"} {:inline} b3(x: int) : boo
 }
 
 Boogie program verifier finished with 1 verified, 0 errors
+.
+-------------------- pred5.bpl --------------------
+function {:existential true} {:inline} b1(x: bool) : bool
+{
+  x
+}
+
+Boogie program verifier finished with 1 verified, 0 errors
+.
+-------------------- quant1.bpl --------------------
+function {:existential true} {:absdomain "IA[Intervals]"} {:inline} b1(x: int) : bool
+{
+  x >= 0 && x <= 2
+}
+
+Boogie program verifier finished with 1 verified, 0 errors
+.
+-------------------- quant2.bpl --------------------
+function {:existential true} {:absdomain "Intervals"} {:inline} b1(x: int) : bool
+{
+  x >= 0 && x <= 1
+}
+
+Boogie program verifier finished with 1 verified, 0 errors
+.
+-------------------- quant3.bpl --------------------
+function {:existential true} {:absdomain "Intervals"} {:inline} b1(x: int) : bool
+{
+  x >= 0 && x <= 0
+}
+
+Boogie program verifier finished with 1 verified, 0 errors
+.
+-------------------- quant4.bpl --------------------
+function {:existential true} {:absdomain "IA[HoudiniConst]"} {:inline} b1() : bool
+{
+  true
+}
+
+Boogie program verifier finished with 1 verified, 0 errors
+.
+-------------------- quant5.bpl --------------------
+function {:existential true} {:absdomain "Intervals"} {:inline} b1(x: int) : bool
+{
+  x >= 5 && x <= 5
+}
+
+Boogie program verifier finished with 1 verified, 0 errors
