@@ -460,6 +460,7 @@ namespace Microsoft.Boogie {
     public string PrintCFGPrefix = null;
     public bool ForceBplErrors = false; // if true, boogie error is shown even if "msg" attribute is present
     public bool UseArrayTheory = false;
+    public bool WeakArrayTheory = false;
     public bool UseLabels = true;
     public bool MonomorphicArrays {
       get {
@@ -1276,6 +1277,7 @@ namespace Microsoft.Boogie {
               ps.CheckBooleanFlag("z3multipleErrors", ref z3AtFlag, false) ||
               ps.CheckBooleanFlag("monomorphize", ref Monomorphize) ||
               ps.CheckBooleanFlag("useArrayTheory", ref UseArrayTheory) ||
+              ps.CheckBooleanFlag("weakArrayTheory", ref WeakArrayTheory) || 
               ps.CheckBooleanFlag("doModSetAnalysis", ref DoModSetAnalysis) ||
               ps.CheckBooleanFlag("doNotUseLabels", ref UseLabels, false) ||
               ps.CheckBooleanFlag("contractInfer", ref ContractInfer) ||

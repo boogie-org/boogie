@@ -259,6 +259,12 @@ namespace Microsoft.Boogie.SMTLib
                 if (options.Inspector != null)
                     options.AddWeakSmtOption("PROGRESS_SAMPLING_FREQ", "200");
 
+                if (CommandLineOptions.Clo.WeakArrayTheory)
+                {
+                    // TODO: these options don't seem to exist in recent Z3
+                    // options.AddWeakSmtOption("ARRAY_WEAK", "true");
+                    // options.AddWeakSmtOption("ARRAY_EXTENSIONAL", "false");
+                } 
             }
             else
             {
@@ -320,8 +326,13 @@ namespace Microsoft.Boogie.SMTLib
 
                 if (options.Inspector != null)
                     options.AddWeakSmtOption("PROGRESS_SAMPLING_FREQ", "200");
-
-
+                
+                if (CommandLineOptions.Clo.WeakArrayTheory)
+                {
+                    options.AddWeakSmtOption("ARRAY_WEAK", "true");
+                    options.AddWeakSmtOption("ARRAY_EXTENSIONAL", "false");
+                }
+                
             }
 
             // legacy option handling

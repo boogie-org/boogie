@@ -205,6 +205,8 @@ namespace Microsoft.Boogie.ExprExtensions
 
         public Term MkForall(Term[] bounds, Term body)
         {
+            if (bounds.Length == 0)
+                return body;
             List<VCExprVar> vbs = new List<VCExprVar>();
             foreach(var v in bounds)
                 vbs.Add(v as VCExprVar);
@@ -213,10 +215,110 @@ namespace Microsoft.Boogie.ExprExtensions
 
         public Term MkExists(Term[] bounds, Term body)
         {
+            if (bounds.Length == 0)
+                return body; 
             List<VCExprVar> vbs = new List<VCExprVar>();
             foreach (var v in bounds)
                 vbs.Add(v as VCExprVar);
             return Exists(vbs, new List<VCTrigger>(), body);
         }
+
+        private class Letifier
+        {
+            private class counter
+            {
+                public int cnt = 0;
+            }
+            Dictionary<Term, counter> refcnt = new Dictionary<Term, counter>();
+            List<VCExprLetBinding> bindings = new List<VCExprLetBinding>();
+            Dictionary<Term, VCExprVar> bindingMap = new Dictionary<Term, VCExprVar>();
+            int letcnt = 0;
+            Context ctx;
+
+            public Letifier(Context _ctx) { ctx = _ctx; }
+
+            private void RefCnt(Term t)
+            {
+                counter cnt;
+                if (!refcnt.TryGetValue(t, out cnt))
+                {
+                    cnt = new counter();
+                    refcnt.Add(t, cnt);
+                }
+                cnt.cnt++;
+                if (cnt.cnt == 1)
+                {
+                    var kind = t.GetKind();
+                    if (kind == TermKind.App)
+                    {
+                        var args = t.GetAppArgs();
+                        foreach (var arg in args)
+                            RefCnt(arg);
+                    }
+                    else if (t is VCExprQuantifier)
+                    {
+                        RefCnt((t as VCExprQuantifier).Body);
+                    }
+                }
+            }
+
+            private Term Doit(Term t)
+            {
+                VCExprVar v;
+                if (bindingMap.TryGetValue(t, out v))
+                {
+                    return v;
+                }
+                Term res = null;
+                var kind = t.GetKind();
+                bool letok = false;
+                if (kind == TermKind.App)
+                {
+                    var f = t.GetAppDecl();
+                    var args = t.GetAppArgs();
+                    args = args.Select(x => Doit(x)).ToArray();
+                    res = ctx.MkApp(f, args);
+                    letok = true;
+                }
+                else if (t is VCExprQuantifier)
+                {
+                    var q = t as VCExprQuantifier;
+                    var newbody = ctx.Letify(q.Body);
+                    if (q.Quan == Quantifier.ALL)
+                        res = ctx.Forall(q.BoundVars, q.Triggers, newbody);
+                    else
+                        res = ctx.Exists(q.BoundVars, q.Triggers, newbody);
+                    letok = true;
+                }
+                else res = t;
+                if (letok && refcnt[t].cnt > 1)
+                {
+                    VCExprVar lv = ctx.MkConst("fpvc$" + Convert.ToString(letcnt), t.GetSort()) as VCExprVar;
+                    VCExprLetBinding b = ctx.LetBinding(lv, res);
+                    bindings.Add(b);
+                    bindingMap.Add(t, lv);
+                    res = lv;
+                    letcnt++;
+                }
+                return res;
+            }
+
+            public Term Letify(Term t)
+            {
+                RefCnt(t);
+                Term res = Doit(t);
+                if (bindings.Count > 0)
+                    res = ctx.Let(bindings, res);
+                return res;
+            }
+
+        }
+
+        public Term Letify(Term t)
+        {
+            var thing = new Letifier(this);
+            return thing.Letify(t);
+        }
+
     };
 }

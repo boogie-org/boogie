@@ -560,6 +560,7 @@ namespace Microsoft.Boogie.SMTLib
             currentLogFile.Write(common.ToString());
         }
 
+        SendThisVC("(fixedpoint-push)");
         foreach (var node in rpfp.nodes)
         {
             DeclCollector.RegisterRelation((node.Name as VCExprBoogieFunctionOp).Func);
@@ -649,6 +650,7 @@ namespace Microsoft.Boogie.SMTLib
             }
 #endif
         }
+        SendThisVC("(fixedpoint-pop)");
         return result;
     }
 

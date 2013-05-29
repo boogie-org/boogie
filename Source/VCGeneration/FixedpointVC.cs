@@ -615,7 +615,7 @@ namespace Microsoft.Boogie
                             exprs.Add(ie);
                         }
                         Expr freePostExpr = new NAryExpr(Token.NoToken, new FunctionCall(info.function), exprs);
-#if false
+#if true
                         if(mode == Mode.Corral || mode == Mode.OldCorral)
                             proc.Ensures.Add(new Ensures(Token.NoToken, true, freePostExpr, "", new QKeyValue(Token.NoToken, "si_fcall", new List<object>(), null)));
 #endif
@@ -1061,6 +1061,7 @@ namespace Microsoft.Boogie
                 FuncDecl R = boogieContext.VCExprToTerm(info.funcExpr, linOptions).GetAppDecl();
                 relationToProc.Add(R, info);
                 info.node = rpfp.CreateNode(boogieContext.VCExprToTerm(info.funcExpr, linOptions));
+                rpfp.nodes.Add(info.node);
                 if (info.isMain || QKeyValue.FindBoolAttribute(impl.Attributes, "entrypoint"))
                     info.node.Bound.Formula = ctx.MkFalse();
             }
@@ -1117,6 +1118,7 @@ namespace Microsoft.Boogie
             // vcTerm = foo.Item1;
             info.F = rpfp.CreateTransformer(relParams.ToArray(), paramTerms, vcTerm);
             info.edge = rpfp.CreateEdge(info.node, info.F, nodeParams.ToArray());
+            rpfp.edges.Add(info.edge);
             // TODO labels[info.edge.number] = foo.Item2;
         }
 
@@ -1191,6 +1193,8 @@ namespace Microsoft.Boogie
         public void Generate()
         {
 
+            var oldDagOption = CommandLineOptions.Clo.vcVariety;
+            CommandLineOptions.Clo.vcVariety = CommandLineOptions.VCVariety.Dag;
 
             // Run live variable analysis (TODO: should this be here?)
 #if false
@@ -1348,8 +1352,11 @@ namespace Microsoft.Boogie
 
             // save some information for debugging purposes
             // TODO rpfp.ls.SetAnnotationInfo(annotationInfo);
+
+            CommandLineOptions.Clo.vcVariety = oldDagOption;
         }
 
+        
         private class ErrorHandler : ProverInterface.ErrorHandler
         {
             //TODO: anything we need to handle?
@@ -1404,7 +1411,7 @@ namespace Microsoft.Boogie
             if (mode == Mode.OldCorral)
                 needToCheck = proc.FindExprAttribute("inline") == null && !(proc is LoopProcedure);
             else if (mode == Mode.Corral)
-                needToCheck = proc.FindExprAttribute("entrypoint") != null && !(proc is LoopProcedure);
+                needToCheck = QKeyValue.FindBoolAttribute(impl.Attributes, "entrypoint") && !(proc is LoopProcedure);
             else
                 needToCheck = impl.Name == main_proc_name;
 
@@ -1423,7 +1430,7 @@ namespace Microsoft.Boogie
                         // start = DateTime.Now;
                         Counterexample cex = CreateBoogieCounterExample(cexroot.owner, cexroot, impl);
                         // cexroot.owner.DisposeDualModel();
-                        // cex.Print(0);  // TODO: just for testing
+                        cex.Print(0);  // TODO: just for testing
                         collector.OnCounterexample(cex, "assertion failure");
                         Console.WriteLine("cex: {0}s", (DateTime.Now - start).TotalSeconds);
                         return VC.ConditionGeneration.Outcome.Errors;
@@ -1748,6 +1755,54 @@ namespace Microsoft.Boogie
             }
 
             
+        }
+
+        public override Counterexample extractLoopTrace(Counterexample cex, string mainProcName, Program program, Dictionary<string, Dictionary<string, Block>> extractLoopMappingInfo)
+        {
+            // Construct the set of inlined procs in the original program
+            var inlinedProcs = new HashSet<string>();
+            foreach (var decl in program.TopLevelDeclarations)
+            {
+                // Implementations
+                if (decl is Implementation)
+                {
+                    var impl = decl as Implementation;
+                    if (!(impl.Proc is LoopProcedure))
+                    {
+                        inlinedProcs.Add(impl.Name);
+                    }
+                }
+
+                // And recording procedures
+                if (decl is Procedure)
+                {
+                    var proc = decl as Procedure;
+                    if (proc.Name.StartsWith(recordProcName))
+                    {
+                        // Debug.Assert(!(decl is LoopProcedure));
+                        inlinedProcs.Add(proc.Name);
+                    }
+                }
+            }
+            return extractLoopTraceRec(
+              new CalleeCounterexampleInfo(cex, new List<object>()),
+              mainProcName, inlinedProcs, extractLoopMappingInfo).counterexample;
+        }
+
+        protected override bool elIsLoop(string procname)
+        {
+            StratifiedInliningInfo info = null;
+            if (implName2StratifiedInliningInfo.ContainsKey(procname))
+            {
+                info = implName2StratifiedInliningInfo[procname];
+            }
+
+            if (info == null) return false;
+
+            var lp = info.impl.Proc as LoopProcedure;
+
+            if (lp == null) return false;
+            return true;
         }
 
         private void NumberCexEdges(RPFP.Node node, Dictionary<int,RPFP.Edge> map)

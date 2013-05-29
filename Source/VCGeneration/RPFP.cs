@@ -174,7 +174,8 @@ namespace Microsoft.Boogie
             e.number = ++edgeCount;
             _Parent.Outgoing = e;
             foreach (var c in _Children)
-                c.Incoming.Add(e);
+                if(c != null)
+                  c.Incoming.Add(e);
             return e;
         }
 
@@ -482,7 +483,9 @@ namespace Microsoft.Boogie
                 predSubst.Add(edge.F.RelParams[i], edge.Children[i].Name);
             Term body = SubstPreds(predSubst, edge.F.Formula);
             Term head = ctx.MkApp(edge.Parent.Name, edge.F.IndParams);
-            return BindVariables(ctx.MkImplies(body, head));
+            var rule = BindVariables(ctx.MkImplies(body, head));
+            rule = ctx.Letify(rule); // put in let bindings for theorem prover
+            return rule;
         }
 
         /** Get the Z3 query corresponding to the conjunction of the node bounds. */
@@ -496,7 +499,9 @@ namespace Microsoft.Boogie
                     conjuncts.Add(ctx.MkImplies(ctx.MkApp(node.Name, node.Bound.IndParams), node.Bound.Formula));
             }
             Term query = ctx.MkNot(ctx.MkAnd(conjuncts.ToArray()));
-            return BindVariables(query,false); // bind variables existentially
+            query = BindVariables(query,false); // bind variables existentially
+            query = ctx.Letify(query); // put in let bindings for theorem prover
+            return query;
         }
 
         private void CollectVariables(Dictionary<Term, bool> memo, Term t, List<Term> vars)
