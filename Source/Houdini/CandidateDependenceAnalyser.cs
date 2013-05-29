@@ -37,8 +37,6 @@ namespace Microsoft.Boogie {
 
       DetermineCandidateVariableDependences();
 
-      //ConstructCandidateReachabilityGraph();
-
       ConstructCandidateDependenceGraph();
 
       ConstructStagesDAG();
@@ -96,6 +94,14 @@ namespace Microsoft.Boogie {
         Console.WriteLine("Candidate dependence analysis: Building dependence graph");
       }
 
+      ICandidateReachabilityChecker reachabilityChecker;
+      
+      if(CommandLineOptions.Clo.StagedHoudiniReachabilityAnalysis) {
+        reachabilityChecker = new CandidateReachabilityChecker(prog, candidates);
+      } else {
+        reachabilityChecker = new DummyCandidateReachabilityChecker();
+      }
+
       CandidateDependences = new Graph<string>();
       foreach (var c in candidates)
       {
@@ -106,7 +112,7 @@ namespace Microsoft.Boogie {
           {
             foreach (var d in variableDirectlyReferredToByCandidates[vd])
             {
-              if (MayReach(c, d))
+              if(reachabilityChecker.MayReach(d, c))
               {
                 CandidateDependences.AddEdge(c, d);
               }
@@ -116,172 +122,7 @@ namespace Microsoft.Boogie {
       }
     }
 
-    private void ConstructCandidateReachabilityGraph()
-    {
-      Dictionary<string, List<Block>> procedureCFGs = new Dictionary<string, List<Block>>();
-      Dictionary<string, HashSet<Block>> candidateToUse = new Dictionary<string, HashSet<Block>>();
 
-      #region Prepare implementations
-      foreach (var impl in prog.TopLevelDeclarations.OfType<Implementation>()) {
-        procedureCFGs[impl.Name] = PrepareImplementationForCandidateReachability(impl);
-      }
-      #endregion
-
-      #region Prepare any procedures that do not have implementations
-      foreach (var proc in prog.TopLevelDeclarations.OfType<Procedure>()) {
-        if(!procedureCFGs.ContainsKey(proc.Name)) {
-          procedureCFGs[proc.Name] = PrepareProcedureForCandidateReachability(proc);
-        }
-      }
-      #endregion
-
-      #region Transform prepared CFGs so that every call is in its own basic block
-      foreach(var proc in procedureCFGs.Keys) {
-        List<Block> newCFG = new List<Block>();
-        Dictionary<Block, Block> oldToNew = new Dictionary<Block, Block>();
-
-        foreach(var bb in procedureCFGs[proc]) {
-          List<List<Cmd>> partition = new List<List<Cmd>>();
-          List<Cmd> current = new List<Cmd>();
-          partition.Add(current);
-          foreach(Cmd cmd in bb.Cmds) {
-            if(cmd is CallCmd && current.Count > 0) {
-              current = new List<Cmd>();
-              partition.Add(current);
-            }
-            current.Add(cmd);
-          }
-
-          if(partition.Count > 1) {
-            Block last = null;
-            int i = 0;
-            foreach(var cmdList in partition) {
-              Block newBB = new Block(bb.tok, bb.Label + "_" + i, new CmdSeq(cmdList.ToArray()), null);
-              newCFG.Add(newBB);
-              if(last == null) {
-                oldToNew[bb] = newBB;
-              } else {
-                oldToNew[newBB] = newBB;
-                last.TransferCmd = new GotoCmd(last.tok, new BlockSeq { newBB });
-              }
-              last = newBB;
-              i++;
-            }
-            Debug.Assert(last != null);
-            Debug.Assert(last.TransferCmd == null);
-            last.TransferCmd = bb.TransferCmd;
-          } else {
-            newCFG.Add(bb);
-            oldToNew[bb] = bb;
-          }
-
-        }
-
-        ApplyPatchupMap(newCFG, oldToNew);
-        procedureCFGs[proc] = newCFG;
-
-      }
-      #endregion
-
-      #region Replace calls with inter-procedural edges
-      foreach(var bb in procedureCFGs.Values.SelectMany(Item => Item)) {
-        if(bb.Cmds.Length == 1 && bb.Cmds[0] is CallCmd) {
-          Debug.Assert(bb.TransferCmd is GotoCmd);
-          string proc = (bb.Cmds[0] as CallCmd).callee;
-
-          Block returnBB = procedureCFGs[proc].Last();
-          if(returnBB.TransferCmd is ReturnCmd) {
-            returnBB.TransferCmd = bb.TransferCmd;
-          } else {
-            Debug.Assert(returnBB.TransferCmd is GotoCmd);
-            GotoCmd gotoCmd = returnBB.TransferCmd as GotoCmd;
-            gotoCmd.labelTargets.AddRange(((GotoCmd)bb.TransferCmd).labelTargets);
-          }
-
-          Block entryBB = procedureCFGs[proc].First();
-          bb.TransferCmd = new GotoCmd(Token.NoToken, new BlockSeq { entryBB });
-        }
-      }
-      #endregion
-
-      throw new NotImplementedException();
-
-    }
-
-    private static List<Block> PrepareProcedureForCandidateReachability(Procedure proc)
-    {
-      Block ensuresBlock = new Block(proc.tok, "postconditions",
-        EnsuresToAssertSequence(proc.Ensures),
-          new ReturnCmd(Token.NoToken));
-      Block requiresBlock = new Block(proc.tok, "preconditions",
-        RequiresToAssertSequence(proc.Requires),
-          new GotoCmd(Token.NoToken, new BlockSeq { ensuresBlock }));
-      return new List<Block> { requiresBlock, ensuresBlock };
-    }
-
-    private static List<Block> PrepareImplementationForCandidateReachability(Implementation impl)
-    {
-      // Clone the BBs and keep patchup map
-      List<Block> newBBs = new List<Block>();
-      Dictionary<Block, Block> oldToNew = new Dictionary<Block, Block>();
-      foreach (var bb in impl.Blocks)
-      {
-        Block newBB = new Block(bb.tok, bb.Label, bb.Cmds, bb.TransferCmd);
-        oldToNew[bb] = newBB;
-        newBBs.Add(newBB);
-      }
-      ApplyPatchupMap(newBBs, oldToNew);
-      Block newEntry = new Block(Token.NoToken, "preconditions",
-        RequiresToAssertSequence(impl.Proc.Requires),
-        new GotoCmd(Token.NoToken, new BlockSeq { newBBs[0] }));
-
-      Block newExit = new Block(Token.NoToken, "postconditions",
-        EnsuresToAssertSequence(impl.Proc.Ensures),
-        new ReturnCmd(Token.NoToken));
-
-      foreach (var newBB in newBBs)
-      {
-        if (newBB.TransferCmd is ReturnCmd ||
-           (newBB.TransferCmd is GotoCmd && ((GotoCmd)newBB.TransferCmd).labelTargets.Length == 0))
-        {
-          newBB.TransferCmd = new GotoCmd(Token.NoToken, new BlockSeq { newExit });
-        }
-      }
-
-      newBBs.Insert(0, newEntry);
-      newBBs.Add(newExit);
-      return newBBs;
-    }
-
-    private static void ApplyPatchupMap(List<Block> newBBs, Dictionary<Block, Block> oldToNew)
-    {
-      foreach (var newBB in newBBs)
-      {
-        GotoCmd gotoCmd = newBB.TransferCmd as GotoCmd;
-        if (gotoCmd != null)
-        {
-          gotoCmd.labelTargets = new BlockSeq(((Block[])gotoCmd.labelTargets.ToArray()).
-            Select(Item => oldToNew[Item]).ToArray());
-        }
-      }
-    }
-
-    private static CmdSeq RequiresToAssertSequence(RequiresSeq Requires)
-    {
-      return new CmdSeq(((Requires[])Requires.ToArray()).Select(
-                Item => new AssertCmd(Item.tok, Item.Condition)).ToArray());
-    }
-
-    private static CmdSeq EnsuresToAssertSequence(EnsuresSeq Ensures)
-    {
-      return new CmdSeq(((Ensures[])Ensures.ToArray()).Select(
-                Item => new AssertCmd(Item.tok, Item.Condition)).ToArray());
-    }
-
-    private bool MayReach(string c, string d)
-    {
-      return true;
-    }
 
     private void DetermineCandidateVariableDependences()
     {
@@ -666,6 +507,117 @@ namespace Microsoft.Boogie {
     private bool NoStages()
     {
         return candidates.Count() == 0 || StagesDAG.Nodes.Count() == 0;
+    }
+  }
+
+  interface ICandidateReachabilityChecker {
+    bool MayReach(string c, string d);
+  }
+
+  class DummyCandidateReachabilityChecker : ICandidateReachabilityChecker {
+    public bool MayReach(string c, string d) {
+      return true;
+    }
+  }
+
+  class CandidateReachabilityChecker : ICandidateReachabilityChecker {
+
+    private enum PrePost {
+      PRE, POST
+    }
+
+    private Program prog;
+    private IEnumerable<string> candidates;
+    private IInterproceduralReachabilityGraph reachabilityGraph;
+    private Dictionary<string, HashSet<object>> candidateToOccurences;
+
+    internal CandidateReachabilityChecker(Program prog, IEnumerable<string> candidates) {
+      this.prog = prog;
+      this.candidates = candidates;
+      this.reachabilityGraph = new InterproceduralReachabilityGraph(prog);
+      this.candidateToOccurences = new Dictionary<string,HashSet<object>>();
+      
+      // Add all candidate occurrences in blocks
+      foreach(Block b in prog.TopLevelDeclarations.OfType<Implementation>().Select(Item => Item.Blocks).SelectMany(Item => Item)) {
+        foreach(Cmd cmd in b.Cmds) {
+          AssertCmd assertCmd = cmd as AssertCmd;
+          if(assertCmd != null) {
+            string c;
+            if(Houdini.Houdini.MatchCandidate(assertCmd.Expr, candidates, out c)) {
+              AddCandidateOccurrence(c, b);
+            }
+          }
+        }
+      }
+
+      // Add all candidate occurrences in preconditions
+      foreach(var proc in prog.TopLevelDeclarations.OfType<Procedure>()) {
+        foreach(Requires r in proc.Requires) {
+          string c;
+          if(Houdini.Houdini.MatchCandidate(r.Condition, candidates, out c)) {
+            AddCandidateOccurrence(c, new Tuple<string, PrePost>(proc.Name, PrePost.PRE));
+          }
+        }
+      }
+
+      // Add all candidate occurrences in preconditions
+      foreach(var proc in prog.TopLevelDeclarations.OfType<Procedure>()) {
+        foreach(Ensures e in proc.Ensures) {
+          string c;
+          if(Houdini.Houdini.MatchCandidate(e.Condition, candidates, out c)) {
+            AddCandidateOccurrence(c, new Tuple<string, PrePost>(proc.Name, PrePost.POST));
+          }
+        }
+      }
+      
+    }
+
+    private void AddCandidateOccurrence(string c, object o) {
+      Debug.Assert(o is Block || o is Tuple<string, PrePost>);
+      if(!candidateToOccurences.ContainsKey(c)) {
+        candidateToOccurences[c] = new HashSet<object>();
+      }
+      candidateToOccurences[c].Add(o);
+    }
+
+    public bool MayReach(string c, string d) {
+      foreach(object cOccurrence in candidateToOccurences[c]) {
+        foreach(object dOccurrence in candidateToOccurences[d]) {
+          if(OccurrencesMayReach(cOccurrence, dOccurrence)) {
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+
+    private bool OccurrencesMayReach(object cOccurrence, object dOccurrence) {
+      Debug.Assert(cOccurrence is Block || cOccurrence is Tuple<string, PrePost>);
+      Debug.Assert(dOccurrence is Block || dOccurrence is Tuple<string, PrePost>);
+
+      Block cInterproceduralBlock = GetInterproceduralBlock(cOccurrence);
+      Block dInterproceduralBlock = GetInterproceduralBlock(dOccurrence);
+
+      return reachabilityGraph.MayReach(cInterproceduralBlock, dInterproceduralBlock);
+
+      throw new NotImplementedException();
+    }
+
+    private Block GetInterproceduralBlock(object cOccurrence)
+    {
+      Debug.Assert(cOccurrence is Block || cOccurrence is Tuple<string, PrePost>);
+
+      var stringPrePostPair = cOccurrence as Tuple<string, PrePost>;
+      if(stringPrePostPair != null) {
+        if(stringPrePostPair.Item2 == PrePost.PRE) {
+          return reachabilityGraph.GetNewEntryBlock(stringPrePostPair.Item1);
+        } else {
+          return reachabilityGraph.GetNewExitBlock(stringPrePostPair.Item1);
+        }
+      }
+
+      return reachabilityGraph.GetNewBlock((Block)cOccurrence);
+
     }
   }
 

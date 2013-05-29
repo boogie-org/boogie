@@ -152,6 +152,7 @@
     <Compile Include="AbsyQuant.cs" />
     <Compile Include="AbsyType.cs" />
     <Compile Include="BitvectorAnalysis.cs" />
+    <Compile Include="InterProceduralReachabilityGraph.cs" />
     <Compile Include="CommandLineOptions.cs" />
     <Compile Include="DeadVarElim.cs" />
     <Compile Include="Duplicator.cs" />

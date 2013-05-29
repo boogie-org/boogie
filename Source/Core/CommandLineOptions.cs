@@ -397,6 +397,7 @@ namespace Microsoft.Boogie {
     public bool HoudiniUseCrossDependencies = false;
     public int StagedHoudini = 0;
     public bool DebugStagedHoudini = false;
+    public bool StagedHoudiniReachabilityAnalysis = false;
     public string VariableDependenceIgnore = null;
     public string AbstractHoudini = null;
     public bool UseUnsatCoreForContractInfer = false;
@@ -887,6 +888,13 @@ namespace Microsoft.Boogie {
             int sh = 0;
             if (ps.GetNumericArgument(ref sh, 3)) {
               StagedHoudini = sh;
+            }
+            return true;
+          }
+
+        case "stagedHoudiniReachabilityAnalysis": {
+            if (ps.ConfirmArgumentCount(0)) {
+              StagedHoudiniReachabilityAnalysis = true;
             }
             return true;
           }
