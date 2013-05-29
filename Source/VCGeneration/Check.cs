@@ -406,7 +406,9 @@ namespace Microsoft.Boogie {
     }
     public abstract void BeginCheck(string descriptiveName, VCExpr vc, ErrorHandler handler);
     
-    public virtual Outcome CheckRPFP(string descriptiveName, RPFP vc, ErrorHandler handler, out RPFP.Node cex)
+    public virtual Outcome CheckRPFP(string descriptiveName, RPFP vc, ErrorHandler handler,
+                                     out RPFP.Node cex,
+                                     Dictionary<int, Dictionary<string, string>> varSubst)
     {
         throw new System.NotImplementedException();
     }

@@ -1754,7 +1754,17 @@ namespace VC {
         }
       }
     }
-    public void ConvertCFG2DAG(Implementation impl)
+
+      private void RecordCutEdge(Dictionary<Block,List<Block>> edgesCut, Block from, Block to){
+          if (edgesCut != null)
+          {
+              if (!edgesCut.ContainsKey(from))
+                  edgesCut.Add(from, new List<Block>());
+              edgesCut[from].Add(to);
+          }
+      }
+
+    public void ConvertCFG2DAG(Implementation impl, Dictionary<Block,List<Block>> edgesCut = null)
     {
     Contract.Requires(impl != null);
       impl.PruneUnreachableBlocks();  // This is needed for VCVariety.BlockNested, and is otherwise just an optimization
@@ -1893,11 +1903,13 @@ namespace VC {
             Contract.Assume( gtc.labelNames != null);
             for (int i = 0, n = gtc.labelTargets.Length; i < n; i++)
             {
-              if ( gtc.labelTargets[i] != header )
-              {
-                remainingTargets.Add(gtc.labelTargets[i]);
-                remainingLabels.Add(gtc.labelNames[i]);
-              }
+                if (gtc.labelTargets[i] != header)
+                {
+                    remainingTargets.Add(gtc.labelTargets[i]);
+                    remainingLabels.Add(gtc.labelNames[i]);
+                }
+                else
+                    RecordCutEdge(edgesCut,backEdgeNode, header);
             }
             gtc.labelTargets = remainingTargets;
             gtc.labelNames = remainingLabels;
@@ -1910,6 +1922,8 @@ namespace VC {
             AssumeCmd ac = new AssumeCmd(Token.NoToken,Expr.False);
             backEdgeNode.Cmds.Add(ac);
             backEdgeNode.TransferCmd = new ReturnCmd(Token.NoToken);
+            if (gtc != null && gtc.labelTargets != null && gtc.labelTargets.Length == 1)
+                RecordCutEdge(edgesCut, backEdgeNode, gtc.labelTargets[0]);
           }
           #region Remove the backedge node from the list of predecessor nodes in the header
           BlockSeq newPreds = new BlockSeq();
