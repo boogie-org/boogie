@@ -73,3 +73,21 @@ procedure Thresholds4()
   assert i * 2 == 400;  // error: this would hold in an execution, but /infer:j is too weak to infer invariant i<=200
 }
 
+procedure UnaryNegation0() returns (x: int)  // this was once buggy
+{
+  x := -1;
+  loop_head:
+    x := x;
+    goto loop_head, after_loop;
+  after_loop:
+  assert x == -1;
+}
+procedure UnaryNegation1() returns (x: int)  // this was once buggy
+{
+  x := -1;
+  loop_head:
+    x := x;
+    goto loop_head, after_loop;
+  after_loop:
+  assert x == 1;  // error
+}

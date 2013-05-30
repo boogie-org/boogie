@@ -119,5 +119,10 @@ Execution trace:
     Intervals.bpl(68,5): anon0
     Intervals.bpl(69,3): anon3_LoopHead
     Intervals.bpl(69,3): anon3_LoopDone
+Intervals.bpl(92,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Intervals.bpl(87,5): anon0
+    Intervals.bpl(88,3): loop_head
+    Intervals.bpl(91,3): after_loop
 
-Boogie program verifier finished with 4 verified, 2 errors
+Boogie program verifier finished with 5 verified, 3 errors
