@@ -520,94 +520,132 @@ namespace Microsoft.Boogie {
           if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Doomed) {
             Inform(String.Format("{0}doomed", timeIndication));
             errorCount++;
-          } //else {
-          Contract.Assert(errors != null);  // guaranteed by postcondition of VerifyImplementation
-
-              {
-            // BP1xxx: Parsing errors
-            // BP2xxx: Name resolution errors
-            // BP3xxx: Typechecking errors
-            // BP4xxx: Abstract interpretation errors (Is there such a thing?)
-            // BP5xxx: Verification errors
-
-            errors.Sort(new CounterexampleComparer());
-            foreach (Counterexample error in errors) {
-              if (error is CallCounterexample) {
-                CallCounterexample err = (CallCounterexample)error;
-                if (!CommandLineOptions.Clo.ForceBplErrors && err.FailingRequires.ErrorMessage != null) {
-                  ReportBplError(err.FailingRequires, err.FailingRequires.ErrorMessage, true, false);
-                }
-                else {
-                  ReportBplError(err.FailingCall, "Error BP5002: A precondition for this call might not hold.", true, true);
-                  ReportBplError(err.FailingRequires, "Related location: This is the precondition that might not hold.", false, true);
-                }
-                if (CommandLineOptions.Clo.XmlSink != null) {
-                  CommandLineOptions.Clo.XmlSink.WriteError("precondition violation", err.FailingCall.tok, err.FailingRequires.tok, error.Trace);
-                }
-              }
-              else if (error is ReturnCounterexample) {
-                ReturnCounterexample err = (ReturnCounterexample)error;
-                if (!CommandLineOptions.Clo.ForceBplErrors && err.FailingEnsures.ErrorMessage != null) {
-                  ReportBplError(err.FailingEnsures, err.FailingEnsures.ErrorMessage, true, false);
-                }
-                else {
-                  ReportBplError(err.FailingReturn, "Error BP5003: A postcondition might not hold on this return path.", true, true);
-                  ReportBplError(err.FailingEnsures, "Related location: This is the postcondition that might not hold.", false, true);
-                }
-                if (CommandLineOptions.Clo.XmlSink != null) {
-                  CommandLineOptions.Clo.XmlSink.WriteError("postcondition violation", err.FailingReturn.tok, err.FailingEnsures.tok, error.Trace);
-                }
-              }
-              else // error is AssertCounterexample
-                    {
-                AssertCounterexample err = (AssertCounterexample)error;
-                if (err.FailingAssert is LoopInitAssertCmd) {
-                  ReportBplError(err.FailingAssert, "Error BP5004: This loop invariant might not hold on entry.", true, true);
-                  if (CommandLineOptions.Clo.XmlSink != null) {
-                    CommandLineOptions.Clo.XmlSink.WriteError("loop invariant entry violation", err.FailingAssert.tok, null, error.Trace);
-                  }
-                }
-                else if (err.FailingAssert is LoopInvMaintainedAssertCmd) {
-                  // this assertion is a loop invariant which is not maintained
-                  ReportBplError(err.FailingAssert, "Error BP5005: This loop invariant might not be maintained by the loop.", true, true);
-                  if (CommandLineOptions.Clo.XmlSink != null) {
-                    CommandLineOptions.Clo.XmlSink.WriteError("loop invariant maintenance violation", err.FailingAssert.tok, null, error.Trace);
-                  }
-                }
-                else {
-                  if (!CommandLineOptions.Clo.ForceBplErrors && err.FailingAssert.ErrorMessage != null) {
-                    ReportBplError(err.FailingAssert, err.FailingAssert.ErrorMessage, true, false);
-                  }
-                  else if (err.FailingAssert.ErrorData is string) {
-                    ReportBplError(err.FailingAssert, (string)err.FailingAssert.ErrorData, true, true);
-                  }
-                  else {
-                    ReportBplError(err.FailingAssert, "Error BP5001: This assertion might not hold.", true, true);
-                  }
-                  if (CommandLineOptions.Clo.XmlSink != null) {
-                    CommandLineOptions.Clo.XmlSink.WriteError("assertion violation", err.FailingAssert.tok, null, error.Trace);
-                  }
-                }
-              }
-              if (CommandLineOptions.Clo.EnhancedErrorMessages == 1) {
-                foreach (string info in error.relatedInformation) {
-                  Contract.Assert(info != null);
-                  Console.WriteLine("       " + info);
-                }
-              }
-              if (CommandLineOptions.Clo.ErrorTrace > 0) {
-                Console.WriteLine("Execution trace:");
-                error.Print(4);
-              }
-              if (CommandLineOptions.Clo.ModelViewFile != null) {
-                error.PrintModel();
-              }
-              errorCount++;
-            }
-            //}
-            Inform(String.Format("{0}error{1}", timeIndication, errors.Count == 1 ? "" : "s"));
           }
-              break;
+          Contract.Assert(errors != null);  // guaranteed by postcondition of VerifyImplementation
+          break;
+      }
+      if (errors != null)      
+      {
+        // BP1xxx: Parsing errors
+        // BP2xxx: Name resolution errors
+        // BP3xxx: Typechecking errors
+        // BP4xxx: Abstract interpretation errors (Is there such a thing?)
+        // BP5xxx: Verification errors
+
+        var cause = "Error";
+        if (outcome == VCGen.Outcome.TimedOut)
+        {
+          cause = "Timed out on";
+        }
+        else if (outcome == VCGen.Outcome.OutOfMemory)
+        {
+          cause = "Out of memory on";
+        }
+        // TODO(wuestholz): Take the error cause into account when writing to the XML sink.
+
+        errors.Sort(new CounterexampleComparer());
+        foreach (Counterexample error in errors)
+        {
+          if (error is CallCounterexample)
+          {
+            CallCounterexample err = (CallCounterexample)error;
+            if (!CommandLineOptions.Clo.ForceBplErrors && err.FailingRequires.ErrorMessage != null)
+            {
+              ReportBplError(err.FailingRequires, err.FailingRequires.ErrorMessage, true, false);
+            }
+            else
+            {
+              ReportBplError(err.FailingCall, cause + " BP5002: A precondition for this call might not hold.", true, true);
+              ReportBplError(err.FailingRequires, "Related location: This is the precondition that might not hold.", false, true);
+            }
+            if (CommandLineOptions.Clo.XmlSink != null)
+            {
+              CommandLineOptions.Clo.XmlSink.WriteError("precondition violation", err.FailingCall.tok, err.FailingRequires.tok, error.Trace);
+            }
+          }
+          else if (error is ReturnCounterexample)
+          {
+            ReturnCounterexample err = (ReturnCounterexample)error;
+            if (!CommandLineOptions.Clo.ForceBplErrors && err.FailingEnsures.ErrorMessage != null)
+            {
+              ReportBplError(err.FailingEnsures, err.FailingEnsures.ErrorMessage, true, false);
+            }
+            else
+            {
+              ReportBplError(err.FailingReturn, cause + " BP5003: A postcondition might not hold on this return path.", true, true);
+              ReportBplError(err.FailingEnsures, "Related location: This is the postcondition that might not hold.", false, true);
+            }
+            if (CommandLineOptions.Clo.XmlSink != null)
+            {
+              CommandLineOptions.Clo.XmlSink.WriteError("postcondition violation", err.FailingReturn.tok, err.FailingEnsures.tok, error.Trace);
+            }
+          }
+          else // error is AssertCounterexample
+          {
+            AssertCounterexample err = (AssertCounterexample)error;
+            if (err.FailingAssert is LoopInitAssertCmd)
+            {
+              ReportBplError(err.FailingAssert, cause + " BP5004: This loop invariant might not hold on entry.", true, true);
+              if (CommandLineOptions.Clo.XmlSink != null)
+              {
+                CommandLineOptions.Clo.XmlSink.WriteError("loop invariant entry violation", err.FailingAssert.tok, null, error.Trace);
+              }
+            }
+            else if (err.FailingAssert is LoopInvMaintainedAssertCmd)
+            {
+              // this assertion is a loop invariant which is not maintained
+              ReportBplError(err.FailingAssert, cause + " BP5005: This loop invariant might not be maintained by the loop.", true, true);
+              if (CommandLineOptions.Clo.XmlSink != null)
+              {
+                CommandLineOptions.Clo.XmlSink.WriteError("loop invariant maintenance violation", err.FailingAssert.tok, null, error.Trace);
+              }
+            }
+            else
+            {
+              if (!CommandLineOptions.Clo.ForceBplErrors && err.FailingAssert.ErrorMessage != null)
+              {
+                ReportBplError(err.FailingAssert, err.FailingAssert.ErrorMessage, true, false);
+              }
+              else if (err.FailingAssert.ErrorData is string)
+              {
+                ReportBplError(err.FailingAssert, (string)err.FailingAssert.ErrorData, true, true);
+              }
+              else
+              {
+                ReportBplError(err.FailingAssert, cause + " BP5001: This assertion might not hold.", true, true);
+              }
+              if (CommandLineOptions.Clo.XmlSink != null)
+              {
+                CommandLineOptions.Clo.XmlSink.WriteError("assertion violation", err.FailingAssert.tok, null, error.Trace);
+              }
+            }
+          }
+          if (CommandLineOptions.Clo.EnhancedErrorMessages == 1)
+          {
+            foreach (string info in error.relatedInformation)
+            {
+              Contract.Assert(info != null);
+              Console.WriteLine("       " + info);
+            }
+          }
+          if (CommandLineOptions.Clo.ErrorTrace > 0)
+          {
+            Console.WriteLine("Execution trace:");
+            error.Print(4);
+          }
+          if (CommandLineOptions.Clo.ModelViewFile != null)
+          {
+            error.PrintModel();
+          }
+          if (cause == "Error")
+          {
+            errorCount++;
+          }
+        }
+        if (cause == "Error")
+        {
+          Inform(String.Format("{0}error{1}", timeIndication, errors.Count == 1 ? "" : "s"));
+        }
       }
     }
 

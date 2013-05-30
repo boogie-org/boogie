@@ -776,7 +776,7 @@ namespace Microsoft.Boogie.SMTLib
           if (globalResult == Outcome.Undetermined)
             globalResult = result;
 
-          if (result == Outcome.Invalid) {
+          if (result == Outcome.Invalid || result == Outcome.TimeOut || result == Outcome.OutOfMemory) {
             IList<string> xlabels;
             if (CommandLineOptions.Clo.UseLabels) {
               labels = GetLabelsInfo();
