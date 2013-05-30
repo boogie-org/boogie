@@ -790,7 +790,7 @@ namespace Microsoft.Boogie.SMTLib
             handler.OnModel(xlabels, model);
           }
 
-          if (labels == null || errorsLeft == 0) break;
+          if (labels == null || !labels.Any() || errorsLeft == 0) break;
 
           if (CommandLineOptions.Clo.UseLabels) {
             var negLabels = labels.Where(l => l.StartsWith("@")).ToArray();
@@ -800,6 +800,10 @@ namespace Microsoft.Boogie.SMTLib
               posLabels = Enumerable.Empty<string>();
             var conjuncts = posLabels.Select(s => "(not " + lbl(s) + ")").Concat(negLabels.Select(lbl)).ToArray();
             var expr = conjuncts.Length == 1 ? conjuncts[0] : ("(or " + conjuncts.Concat(" ") + ")");
+            if (!conjuncts.Any())
+            {
+              expr = "false";
+            }
             SendThisVC("(assert " + expr + ")");
             SendThisVC("(check-sat)");
           }
