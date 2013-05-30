@@ -597,7 +597,7 @@ namespace VC {
 
       CounterexampleCollector collector = new CounterexampleCollector();
       Outcome outcome = VerifyImplementation(impl, collector);
-      if (outcome == Outcome.Errors) {
+      if (outcome == Outcome.Errors || outcome == Outcome.TimedOut || outcome == Outcome.OutOfMemory) {
         errors = collector.examples;
       } else {
         errors = null;
