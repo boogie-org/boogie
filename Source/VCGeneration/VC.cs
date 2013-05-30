@@ -1789,13 +1789,15 @@ namespace VC {
       }
       #endregion
 
+      // Recompute the predecessors, but first insert a dummy start node that is sure not to be the target of any goto (because the cutting of back edges
+      // below assumes that the start node has no predecessor)
+      impl.Blocks.Insert(0, new Block(new Token(-17, -4), "0", new CmdSeq(), new GotoCmd(Token.NoToken, new StringSeq(impl.Blocks[0].Label), new BlockSeq(impl.Blocks[0]))));
       ResetPredecessors(impl.Blocks);
       
       #region Convert program CFG into a DAG
 
       #region Use the graph library to figure out where the (natural) loops are
 
-      
       #region Create the graph by adding the source node and each edge
       Graph<Block> g = Program.GraphFromImpl(impl);
       #endregion
