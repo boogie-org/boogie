@@ -566,10 +566,21 @@ namespace Microsoft.Boogie
             public List<Node> nodes = new List<Node>();
         };
 
+        /** Set the model of the background theory used in a counterexample. */
+        public void SetBackgroundModel(Model m)
+        {
+            dualModel = m;
+        }
+
+        /** Set the model of the background theory used in a counterexample. */
+        public Model GetBackgroundModel()
+        {
+            return dualModel;
+        }
 
         private int nodeCount = 0;
         private int edgeCount = 0;
-        // private Model dualModel;
+        private Model dualModel;
         // private LabeledLiterals dualLabels;
         private Stack<stack_entry> stack;
         public List<Node> nodes = new List<Node>();

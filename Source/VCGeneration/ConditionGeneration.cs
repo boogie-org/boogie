@@ -188,12 +188,14 @@ namespace Microsoft.Boogie {
 
     public static bool firstModelFile = true;
 
+    public bool ModelHasStatesAlready = false;
+
     public void PrintModel()
     {
       var filename = CommandLineOptions.Clo.ModelViewFile;
       if (Model == null || filename == null || CommandLineOptions.Clo.StratifiedInlining > 0) return;
 
-      var m = this.GetModelWithStates();
+      var m = ModelHasStatesAlready ? Model : this.GetModelWithStates();
 
       if (filename == "-") {
         m.Write(Console.Out);

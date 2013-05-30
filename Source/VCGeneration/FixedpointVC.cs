@@ -52,7 +52,7 @@ namespace Microsoft.Boogie
 
         Context ctx;
         RPFP rpfp;
-        Program program;
+        // Program program;
         Microsoft.Boogie.ProverContext boogieContext;
         Microsoft.Boogie.VCExpressionGenerator gen;
         public readonly static string recordProcName = "boogie_si_record"; // TODO: this really needed?
@@ -515,7 +515,7 @@ namespace Microsoft.Boogie
 
 
             public List<VCExprVar> interfaceExprVars; 
-            public List<VCExprVar> privateVars;
+            // public List<VCExprVar> privateVars;
             public VCExpr funcExpr;
             public VCExpr falseExpr;
             public RPFP.Transformer F;
@@ -1004,7 +1004,7 @@ namespace Microsoft.Boogie
             Contract.Assert(gen != null);
             VCExpr vcexpr;
             if(NoLabels){
-                int assertionCount = 0;
+                // int assertionCount = 0;
                 VCExpr startCorrect = null; /* VC.VCGen.LetVC(cce.NonNull(impl.Blocks[0]), null, null, info.blockVariables, info.bindings,
                     info.ctxt, out assertionCount); */
                 vcexpr = gen.Let(info.bindings, startCorrect);
@@ -1017,7 +1017,7 @@ namespace Microsoft.Boogie
             info.mvInfo = mvInfo;
             List<VCExpr> interfaceExprs = new List<VCExpr>();
 
-            if (true || !info.isMain)
+            if (true /* was:  !info.isMain */)
             {
                 Boogie2VCExprTranslator translator = checker.TheoremProver.Context.BoogieExprTranslator;
                 Contract.Assert(translator != null);
@@ -1129,7 +1129,7 @@ namespace Microsoft.Boogie
 
         public class CyclicLiveVariableAnalysis : Microsoft.Boogie.LiveVariableAnalysis
         {
-            public static void ComputeLiveVariables(Implementation impl)
+            public new static void ComputeLiveVariables(Implementation impl)
             {
 
                 bool some_change = true;
@@ -1538,6 +1538,7 @@ namespace Microsoft.Boogie
             }
         }
 
+
         public Counterexample CreateBoogieCounterExample(RPFP rpfp, RPFP.Node root, Implementation mainImpl)
         {
             FindLabels();
@@ -1546,10 +1547,11 @@ namespace Microsoft.Boogie
               GenerateTrace(rpfp, root, orderedStateIds, mainImpl,true);
             if (CommandLineOptions.Clo.ModelViewFile != null)
             {
-                Model m = new Model();
+                Model m = root.owner.GetBackgroundModel();
                 GetModelWithStates(m, root, implName2StratifiedInliningInfo[mainImpl.Name],
                                    orderedStateIds, varSubst);
                 newCounterexample.Model = m;
+                newCounterexample.ModelHasStatesAlready = true;
             }
             return newCounterexample;
         }

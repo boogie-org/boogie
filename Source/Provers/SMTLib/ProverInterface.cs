@@ -510,6 +510,19 @@ namespace Microsoft.Boogie.SMTLib
         return topnode;
     }
 
+    private Model SExprToModel(SExpr resp, ErrorHandler handler)
+    {
+        // Concatenate all the arguments
+        string modelString = resp[0].Name;
+        // modelString = modelString.Substring(7, modelString.Length - 8); // remove "(model " and final ")"
+        var models = Model.ParseModels(new StringReader("Z3 error model: \n" + modelString));
+        if (models == null || models.Count == 0)
+        {
+            HandleProverError("no model from prover: " + resp.ToString());
+        }
+        return models[0];
+    }
+
     private string QuantifiedVCExpr2String(VCExpr x)
     {
         return VCExpr2String(x, 1); 
@@ -631,6 +644,14 @@ namespace Microsoft.Boogie.SMTLib
                         if (resp.Name == "derivation")
                         {
                             cex = SExprToCex(resp, handler,varSubst);
+                        }
+                        else
+                            HandleProverError("Unexpected prover response: " + resp.ToString());
+                        resp = Process.GetProverResponse();
+                        if (resp.Name == "model")
+                        {
+                            var model = SExprToModel(resp, handler);
+                            cex.owner.SetBackgroundModel(model);
                         }
                         else
                             HandleProverError("Unexpected prover response: " + resp.ToString());
