@@ -23,7 +23,7 @@ namespace Microsoft.Boogie {
   using VC;
   using BoogiePL = Microsoft.Boogie;
 
-  /* 
+  /*
     The following assemblies are referenced because they are needed at runtime, not at compile time:
       BaseTypes
       Provers.Z3
@@ -31,8 +31,6 @@ namespace Microsoft.Boogie {
   */
 
   public class OnlyBoogie {
-    // ------------------------------------------------------------------------
-    // Main
 
     public static void Main(string[] args) {
       Contract.Requires(cce.NonNullElements(args));
@@ -107,54 +105,6 @@ namespace Microsoft.Boogie {
       }
     }
 
-    public static void ErrorWriteLine(string s) {
-      Contract.Requires(s != null);
-      if (!s.Contains("Error: ") && !s.Contains("Error BP")) {
-        Console.WriteLine(s);
-        return;
-      }
-
-      // split the string up into its first line and the remaining lines
-      string remaining = null;
-      int i = s.IndexOf('\r');
-      if (0 <= i) {
-        remaining = s.Substring(i + 1);
-        if (remaining.StartsWith("\n")) {
-          remaining = remaining.Substring(1);
-        }
-        s = s.Substring(0, i);
-      }
-
-      ConsoleColor col = Console.ForegroundColor;
-      Console.ForegroundColor = ConsoleColor.Red;
-      Console.WriteLine(s);
-      Console.ForegroundColor = col;
-
-      if (remaining != null) {
-        Console.WriteLine(remaining);
-      }
-    }
-
-    public static void ErrorWriteLine(string format, params object[] args) {
-      Contract.Requires(format != null);
-      string s = string.Format(format, args);
-      ErrorWriteLine(s);
-    }
-
-    public static void AdvisoryWriteLine(string format, params object[] args) {
-      Contract.Requires(format != null);
-      ConsoleColor col = Console.ForegroundColor;
-      Console.ForegroundColor = ConsoleColor.Yellow;
-      Console.WriteLine(format, args);
-      Console.ForegroundColor = col;
-    }
-
-    enum FileType {
-      Unknown,
-      Cil,
-      Bpl,
-      Dafny
-    };
 
     static void ProcessFiles(List<string> fileNames, bool lookForSnapshots = true) {
       Contract.Requires(cce.NonNullElements(fileNames));
@@ -268,6 +218,7 @@ namespace Microsoft.Boogie {
       }
     }
 
+
     static void PrintBplFile(string filename, Program program, bool allowPrintDesugaring, bool setTokens = true) {
       Contract.Requires(program != null);
       Contract.Requires(filename != null);
@@ -289,47 +240,6 @@ namespace Microsoft.Boogie {
     }
 
 
-    static bool ProgramHasDebugInfo(Program program) {
-      Contract.Requires(program != null);
-      // We inspect the last declaration because the first comes from the prelude and therefore always has source context.
-      return program.TopLevelDeclarations.Count > 0 &&
-          ((cce.NonNull(program.TopLevelDeclarations)[program.TopLevelDeclarations.Count - 1]).tok.IsValid);
-    }
-
-
-    /// <summary>
-    /// Inform the user about something and proceed with translation normally.
-    /// Print newline after the message.
-    /// </summary>
-    public static void Inform(string s) {
-      if (CommandLineOptions.Clo.Trace || CommandLineOptions.Clo.TraceProofObligations) {
-        Console.WriteLine(s);
-      }
-    }
-
-    static void WriteTrailer(int verified, int errors, int inconclusives, int timeOuts, int outOfMemories) {
-      Contract.Requires(0 <= errors && 0 <= inconclusives && 0 <= timeOuts && 0 <= outOfMemories);
-      Console.WriteLine();
-      if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Doomed) {
-        Console.Write("{0} finished with {1} credible, {2} doomed{3}", CommandLineOptions.Clo.DescriptiveToolName, verified, errors, errors == 1 ? "" : "s");
-      } else {
-        Console.Write("{0} finished with {1} verified, {2} error{3}", CommandLineOptions.Clo.DescriptiveToolName, verified, errors, errors == 1 ? "" : "s");
-      }
-      if (inconclusives != 0) {
-        Console.Write(", {0} inconclusive{1}", inconclusives, inconclusives == 1 ? "" : "s");
-      }
-      if (timeOuts != 0) {
-        Console.Write(", {0} time out{1}", timeOuts, timeOuts == 1 ? "" : "s");
-      }
-      if (outOfMemories != 0) {
-        Console.Write(", {0} out of memory", outOfMemories);
-      }
-      Console.WriteLine();
-      Console.Out.Flush();
-    }
-
-
-
     static void ReportBplError(Absy node, string message, bool error, bool showBplLocation) {
       Contract.Requires(message != null);
       Contract.Requires(node != null);
@@ -346,6 +256,7 @@ namespace Microsoft.Boogie {
         Console.WriteLine(s);
       }
     }
+
 
     /// <summary>
     /// Parse the given files into one Boogie program.  If an I/O or parse error occurs, an error will be printed
@@ -407,7 +318,9 @@ namespace Microsoft.Boogie {
       VerificationCompleted
     }
 
+
     static LinearTypechecker linearTypechecker;
+
 
     /// <summary>
     /// Resolves and type checks the given Boogie program.  Any errors are reported to the
@@ -464,6 +377,7 @@ namespace Microsoft.Boogie {
       return PipelineOutcome.ResolvedAndTypeChecked;
     }
 
+
     static void EliminateDeadVariablesAndInline(Program program) {
       Contract.Requires(program != null);
       // Eliminate dead variables
@@ -483,7 +397,7 @@ namespace Microsoft.Boogie {
 
       // Inline
       var TopLevelDeclarations = cce.NonNull(program.TopLevelDeclarations);
-      
+
       if (CommandLineOptions.Clo.ProcedureInlining != CommandLineOptions.Inlining.None) {
         bool inline = false;
         foreach (var d in TopLevelDeclarations) {
@@ -516,8 +430,9 @@ namespace Microsoft.Boogie {
       }
     }
 
+
     static void ProcessOutcome(VC.VCGen.Outcome outcome, List<Counterexample> errors, string timeIndication,
-                       ref int errorCount, ref int verified, ref int inconclusives, ref int timeOuts, ref int outOfMemories) {
+                               ref int errorCount, ref int verified, ref int inconclusives, ref int timeOuts, ref int outOfMemories) {
       switch (outcome) {
         default:
           Contract.Assert(false);  // unexpected outcome
@@ -557,7 +472,7 @@ namespace Microsoft.Boogie {
           Contract.Assert(errors != null);  // guaranteed by postcondition of VerifyImplementation
           break;
       }
-      if (errors != null)      
+      if (errors != null)
       {
         // BP1xxx: Parsing errors
         // BP2xxx: Name resolution errors
@@ -683,23 +598,6 @@ namespace Microsoft.Boogie {
     }
 
 
-    internal struct VerificationResult
-    {
-      internal VerificationResult(string checksum, ConditionGeneration.Outcome outcome, List<Counterexample> errors)
-      {
-        Checksum = checksum;
-        Outcome = outcome;
-        Errors = errors;
-      }
-
-      public readonly string Checksum;
-      public readonly ConditionGeneration.Outcome Outcome;
-      public readonly List<Counterexample> Errors;
-    }
-
-
-    static readonly ConcurrentDictionary<string, VerificationResult> VerificationResultCache = new ConcurrentDictionary<string, VerificationResult>();
-
 
     /// <summary>
     /// Given a resolved and type checked Boogie program, infers invariants for the program
@@ -710,7 +608,7 @@ namespace Microsoft.Boogie {
     ///    parameters contain meaningful values
     /// </summary>
     static PipelineOutcome InferAndVerify(Program program,
-                                           out int errorCount, out int verified, out int inconclusives, out int timeOuts, out int outOfMemories) {
+                                          out int errorCount, out int verified, out int inconclusives, out int timeOuts, out int outOfMemories) {
       Contract.Requires(program != null);
       Contract.Ensures(0 <= Contract.ValueAtReturn(out inconclusives) && 0 <= Contract.ValueAtReturn(out timeOuts));
 
@@ -965,7 +863,7 @@ namespace Microsoft.Boogie {
           Console.Out.Flush();
         }
       }
-        
+
       vcgen.Close();
       cce.NonNull(CommandLineOptions.Clo.TheProverFactory).Close();
 
@@ -973,6 +871,140 @@ namespace Microsoft.Boogie {
       #endregion
 
       return PipelineOutcome.VerificationCompleted;
+                                           }
+
+
+    #region Console output
+
+    public static void ErrorWriteLine(string s)
+    {
+      Contract.Requires(s != null);
+      if (!s.Contains("Error: ") && !s.Contains("Error BP"))
+      {
+        Console.WriteLine(s);
+        return;
+      }
+
+      // split the string up into its first line and the remaining lines
+      string remaining = null;
+      int i = s.IndexOf('\r');
+      if (0 <= i)
+      {
+        remaining = s.Substring(i + 1);
+        if (remaining.StartsWith("\n"))
+        {
+          remaining = remaining.Substring(1);
+        }
+        s = s.Substring(0, i);
+      }
+
+      ConsoleColor col = Console.ForegroundColor;
+      Console.ForegroundColor = ConsoleColor.Red;
+      Console.WriteLine(s);
+      Console.ForegroundColor = col;
+
+      if (remaining != null)
+      {
+        Console.WriteLine(remaining);
+      }
     }
+
+
+    public static void ErrorWriteLine(string format, params object[] args)
+    {
+      Contract.Requires(format != null);
+      string s = string.Format(format, args);
+      ErrorWriteLine(s);
+    }
+
+
+    public static void AdvisoryWriteLine(string format, params object[] args)
+    {
+      Contract.Requires(format != null);
+      ConsoleColor col = Console.ForegroundColor;
+      Console.ForegroundColor = ConsoleColor.Yellow;
+      Console.WriteLine(format, args);
+      Console.ForegroundColor = col;
+    }
+
+
+    /// <summary>
+    /// Inform the user about something and proceed with translation normally.
+    /// Print newline after the message.
+    /// </summary>
+    public static void Inform(string s) {
+      if (CommandLineOptions.Clo.Trace || CommandLineOptions.Clo.TraceProofObligations) {
+        Console.WriteLine(s);
+      }
+    }
+
+
+    static void WriteTrailer(int verified, int errors, int inconclusives, int timeOuts, int outOfMemories) {
+      Contract.Requires(0 <= errors && 0 <= inconclusives && 0 <= timeOuts && 0 <= outOfMemories);
+      Console.WriteLine();
+      if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Doomed) {
+        Console.Write("{0} finished with {1} credible, {2} doomed{3}", CommandLineOptions.Clo.DescriptiveToolName, verified, errors, errors == 1 ? "" : "s");
+      } else {
+        Console.Write("{0} finished with {1} verified, {2} error{3}", CommandLineOptions.Clo.DescriptiveToolName, verified, errors, errors == 1 ? "" : "s");
+      }
+      if (inconclusives != 0) {
+        Console.Write(", {0} inconclusive{1}", inconclusives, inconclusives == 1 ? "" : "s");
+      }
+      if (timeOuts != 0) {
+        Console.Write(", {0} time out{1}", timeOuts, timeOuts == 1 ? "" : "s");
+      }
+      if (outOfMemories != 0) {
+        Console.Write(", {0} out of memory", outOfMemories);
+      }
+      Console.WriteLine();
+      Console.Out.Flush();
+    }
+
+    #endregion
+
+
+    #region Verification result caching
+
+    private struct VerificationResult
+    {
+      internal VerificationResult(string checksum, ConditionGeneration.Outcome outcome, List<Counterexample> errors)
+      {
+        Checksum = checksum;
+        Outcome = outcome;
+        Errors = errors;
+      }
+
+      public readonly string Checksum;
+      public readonly ConditionGeneration.Outcome Outcome;
+      public readonly List<Counterexample> Errors;
+    }
+
+
+    private static readonly ConcurrentDictionary<string, VerificationResult> VerificationResultCache = new ConcurrentDictionary<string, VerificationResult>();
+
+    #endregion
+
+
+    #region // TODO: Is this still used?
+
+    enum FileType
+    {
+      Unknown,
+      Cil,
+      Bpl,
+      Dafny
+    };
+
+
+    static bool ProgramHasDebugInfo(Program program)
+    {
+      Contract.Requires(program != null);
+      // We inspect the last declaration because the first comes from the prelude and therefore always has source context.
+      return program.TopLevelDeclarations.Count > 0 &&
+          ((cce.NonNull(program.TopLevelDeclarations)[program.TopLevelDeclarations.Count - 1]).tok.IsValid);
+    }
+
+    #endregion
+
   }
 }
