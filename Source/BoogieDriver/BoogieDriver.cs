@@ -22,6 +22,7 @@ namespace Microsoft.Boogie {
   using System.Linq;
   using VC;
   using BoogiePL = Microsoft.Boogie;
+  using Core;
 
   /*
     The following assemblies are referenced because they are needed at runtime, not at compile time:
@@ -41,13 +42,13 @@ namespace Microsoft.Boogie {
         goto END;
       }
       if (CommandLineOptions.Clo.Files.Count == 0) {
-        ErrorWriteLine("*** Error: No input files were specified.");
+        printer.ErrorWriteLine("*** Error: No input files were specified.");
         goto END;
       }
       if (CommandLineOptions.Clo.XmlSink != null) {
         string errMsg = CommandLineOptions.Clo.XmlSink.Open();
         if (errMsg != null) {
-          ErrorWriteLine("*** Error: " + errMsg);
+          printer.ErrorWriteLine("*** Error: " + errMsg);
           goto END;
         }
       }
@@ -88,7 +89,7 @@ namespace Microsoft.Boogie {
           extension = extension.ToLower();
         }
         if (extension != ".bpl") {
-          ErrorWriteLine("*** Error: '{0}': Filename extension '{1}' is not supported. Input files must be BoogiePL programs (.bpl).", file,
+          printer.ErrorWriteLine("*** Error: '{0}': Filename extension '{1}' is not supported. Input files must be BoogiePL programs (.bpl).", file,
               extension == null ? "" : extension);
           goto END;
         }
@@ -210,7 +211,7 @@ namespace Microsoft.Boogie {
           {
               case PipelineOutcome.Done:
               case PipelineOutcome.VerificationCompleted:
-                  WriteTrailer(verified, errorCount, inconclusives, timeOuts, outOfMemories);
+                  printer.WriteTrailer(verified, errorCount, inconclusives, timeOuts, outOfMemories);
                   break;
               default:
                   break;
@@ -251,7 +252,7 @@ namespace Microsoft.Boogie {
         s = message;
       }
       if (error) {
-        ErrorWriteLine(s);
+        printer.ErrorWriteLine(s);
       } else {
         Console.WriteLine(s);
       }
@@ -289,7 +290,7 @@ namespace Microsoft.Boogie {
             continue;
           }
         } catch (IOException e) {
-          ErrorWriteLine("Error opening file \"{0}\": {1}", bplFileName, e.Message);
+          printer.ErrorWriteLine("Error opening file \"{0}\": {1}", bplFileName, e.Message);
           okay = false;
           continue;
         }
@@ -306,16 +307,6 @@ namespace Microsoft.Boogie {
       } else {
         return program;
       }
-    }
-
-
-    enum PipelineOutcome {
-      Done,
-      ResolutionError,
-      TypeCheckingError,
-      ResolvedAndTypeChecked,
-      FatalError,
-      VerificationCompleted
     }
 
 
@@ -438,35 +429,35 @@ namespace Microsoft.Boogie {
           Contract.Assert(false);  // unexpected outcome
           throw new cce.UnreachableException();
         case VCGen.Outcome.ReachedBound:
-          Inform(String.Format("{0}verified", timeIndication));
+          printer.Inform(String.Format("{0}verified", timeIndication));
           Console.WriteLine(string.Format("Stratified Inlining: Reached recursion bound of {0}", CommandLineOptions.Clo.RecursionBound));
           verified++;
           break;
         case VCGen.Outcome.Correct:
           if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Doomed) {
-            Inform(String.Format("{0}credible", timeIndication));
+            printer.Inform(String.Format("{0}credible", timeIndication));
             verified++;
           }
           else {
-            Inform(String.Format("{0}verified", timeIndication));
+            printer.Inform(String.Format("{0}verified", timeIndication));
             verified++;
           }
           break;
         case VCGen.Outcome.TimedOut:
           timeOuts++;
-          Inform(String.Format("{0}timed out", timeIndication));
+          printer.Inform(String.Format("{0}timed out", timeIndication));
           break;
         case VCGen.Outcome.OutOfMemory:
           outOfMemories++;
-          Inform(String.Format("{0}out of memory", timeIndication));
+          printer.Inform(String.Format("{0}out of memory", timeIndication));
           break;
         case VCGen.Outcome.Inconclusive:
           inconclusives++;
-          Inform(String.Format("{0}inconclusive", timeIndication));
+          printer.Inform(String.Format("{0}inconclusive", timeIndication));
           break;
         case VCGen.Outcome.Errors:
           if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Doomed) {
-            Inform(String.Format("{0}doomed", timeIndication));
+            printer.Inform(String.Format("{0}doomed", timeIndication));
             errorCount++;
           }
           Contract.Assert(errors != null);  // guaranteed by postcondition of VerifyImplementation
@@ -592,11 +583,10 @@ namespace Microsoft.Boogie {
         }
         if (cause == "Error")
         {
-          Inform(String.Format("{0}error{1}", timeIndication, errors.Count == 1 ? "" : "s"));
+          printer.Inform(String.Format("{0}error{1}", timeIndication, errors.Count == 1 ? "" : "s"));
         }
       }
     }
-
 
 
     /// <summary>
@@ -734,7 +724,7 @@ namespace Microsoft.Boogie {
             vcgen = new VCGen(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend);
         }
       } catch (ProverException e) {
-        ErrorWriteLine("Fatal Error: ProverException: {0}", e);
+        printer.ErrorWriteLine("Fatal Error: ProverException: {0}", e);
         return PipelineOutcome.FatalError;
       }
 
@@ -827,7 +817,7 @@ namespace Microsoft.Boogie {
         }
         catch (UnexpectedProverOutputException upo)
         {
-          AdvisoryWriteLine("Advisory: {0} SKIPPED because of internal error: unexpected prover output: {1}", impl.Name, upo.Message);
+          printer.AdvisoryWriteLine("Advisory: {0} SKIPPED because of internal error: unexpected prover output: {1}", impl.Name, upo.Message);
           errors = null;
           outcome = VCGen.Outcome.Inconclusive;
         }
@@ -876,89 +866,7 @@ namespace Microsoft.Boogie {
 
     #region Console output
 
-    public static void ErrorWriteLine(string s)
-    {
-      Contract.Requires(s != null);
-      if (!s.Contains("Error: ") && !s.Contains("Error BP"))
-      {
-        Console.WriteLine(s);
-        return;
-      }
-
-      // split the string up into its first line and the remaining lines
-      string remaining = null;
-      int i = s.IndexOf('\r');
-      if (0 <= i)
-      {
-        remaining = s.Substring(i + 1);
-        if (remaining.StartsWith("\n"))
-        {
-          remaining = remaining.Substring(1);
-        }
-        s = s.Substring(0, i);
-      }
-
-      ConsoleColor col = Console.ForegroundColor;
-      Console.ForegroundColor = ConsoleColor.Red;
-      Console.WriteLine(s);
-      Console.ForegroundColor = col;
-
-      if (remaining != null)
-      {
-        Console.WriteLine(remaining);
-      }
-    }
-
-
-    public static void ErrorWriteLine(string format, params object[] args)
-    {
-      Contract.Requires(format != null);
-      string s = string.Format(format, args);
-      ErrorWriteLine(s);
-    }
-
-
-    public static void AdvisoryWriteLine(string format, params object[] args)
-    {
-      Contract.Requires(format != null);
-      ConsoleColor col = Console.ForegroundColor;
-      Console.ForegroundColor = ConsoleColor.Yellow;
-      Console.WriteLine(format, args);
-      Console.ForegroundColor = col;
-    }
-
-
-    /// <summary>
-    /// Inform the user about something and proceed with translation normally.
-    /// Print newline after the message.
-    /// </summary>
-    public static void Inform(string s) {
-      if (CommandLineOptions.Clo.Trace || CommandLineOptions.Clo.TraceProofObligations) {
-        Console.WriteLine(s);
-      }
-    }
-
-
-    static void WriteTrailer(int verified, int errors, int inconclusives, int timeOuts, int outOfMemories) {
-      Contract.Requires(0 <= errors && 0 <= inconclusives && 0 <= timeOuts && 0 <= outOfMemories);
-      Console.WriteLine();
-      if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Doomed) {
-        Console.Write("{0} finished with {1} credible, {2} doomed{3}", CommandLineOptions.Clo.DescriptiveToolName, verified, errors, errors == 1 ? "" : "s");
-      } else {
-        Console.Write("{0} finished with {1} verified, {2} error{3}", CommandLineOptions.Clo.DescriptiveToolName, verified, errors, errors == 1 ? "" : "s");
-      }
-      if (inconclusives != 0) {
-        Console.Write(", {0} inconclusive{1}", inconclusives, inconclusives == 1 ? "" : "s");
-      }
-      if (timeOuts != 0) {
-        Console.Write(", {0} time out{1}", timeOuts, timeOuts == 1 ? "" : "s");
-      }
-      if (outOfMemories != 0) {
-        Console.Write(", {0} out of memory", outOfMemories);
-      }
-      Console.WriteLine();
-      Console.Out.Flush();
-    }
+    static OutputPrinter printer = new ConsolePrinter();
 
     #endregion
 
