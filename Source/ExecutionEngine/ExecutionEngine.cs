@@ -301,7 +301,7 @@ namespace Microsoft.Boogie
     /// Parse the given files into one Boogie program.  If an I/O or parse error occurs, an error will be printed
     /// and null will be returned.  On success, a non-null program is returned.
     /// </summary>
-    static Program ParseBoogieProgram(List<string> fileNames, bool suppressTraceOutput)
+    public static Program ParseBoogieProgram(List<string> fileNames, bool suppressTraceOutput)
     {
       Contract.Requires(cce.NonNullElements(fileNames));
       //BoogiePL.Errors.count = 0;
