@@ -161,16 +161,27 @@ namespace Microsoft.Boogie {
 
       if (CommandLineOptions.Clo.VerifySnapshots && lookForSnapshots)
       {
-        var snapshots =
-          from n in fileNames
-          from f in Directory.GetFiles(Path.GetDirectoryName(Path.GetFullPath(n)), Path.GetFileNameWithoutExtension(n) + ".*" + Path.GetExtension(n))
-          select f;
-
-        var snapshotsByVersion =
-          from n in snapshots
-          group n by Path.GetFileNameWithoutExtension(n).Substring(Path.GetFileNameWithoutExtension(n).LastIndexOf(".")) into g
-          orderby g.Key
-          select g;
+        var snapshotsByVersion = new List<List<string>>();
+        for (int version = 0; true; version++)
+        {
+          var nextSnapshot = new List<string>();
+          foreach (var name in fileNames)
+          {
+            var versionedName = name.Replace(Path.GetExtension(name), ".v" + version + Path.GetExtension(name));
+            if (File.Exists(versionedName))
+            {
+              nextSnapshot.Add(versionedName);
+            }
+          }
+          if (nextSnapshot.Any())
+          {
+            snapshotsByVersion.Add(nextSnapshot);
+          }
+          else
+          {
+            break;
+          }
+        }
 
         foreach (var s in snapshotsByVersion)
         {
