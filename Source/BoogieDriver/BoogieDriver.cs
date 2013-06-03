@@ -11,17 +11,8 @@
 namespace Microsoft.Boogie {
   using System;
   using System.IO;
-  using System.Collections;
-  using System.Collections.Concurrent;
   using System.Collections.Generic;
-  using PureCollections;
-  using Microsoft.Boogie;
-  using Microsoft.Boogie.AbstractInterpretation;
   using System.Diagnostics.Contracts;
-  using System.Diagnostics;
-  using System.Linq;
-  using VC;
-  using BoogiePL = Microsoft.Boogie;
 
   /*
     The following assemblies are referenced because they are needed at runtime, not at compile time:

@@ -1,15 +1,12 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.IO;
 using System.Linq;
-using System.Text;
-using Microsoft.Boogie;
-using Microsoft.Boogie.AbstractInterpretation;
 using VC;
 using BoogiePL = Microsoft.Boogie;
+
 
 namespace Microsoft.Boogie
 {

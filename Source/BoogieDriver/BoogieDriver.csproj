@@ -210,10 +210,6 @@
     <Compile Include="..\version.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\AbsInt\AbsInt.csproj">
-      <Project>{0EFA3E43-690B-48DC-A72C-384A3EA7F31F}</Project>
-      <Name>AbsInt</Name>
-    </ProjectReference>
     <ProjectReference Include="..\Basetypes\Basetypes.csproj">
       <Project>{43DFAD18-3E35-4558-9BE2-CAFF6B5BA8A0}</Project>
       <Name>Basetypes</Name>
@@ -226,37 +222,13 @@
       <Project>{B230A69C-C466-4065-B9C1-84D80E76D802}</Project>
       <Name>Core</Name>
     </ProjectReference>
-    <ProjectReference Include="..\Doomed\Doomed.csproj">
-      <Project>{884386a3-58e9-40bb-a273-b24976775553}</Project>
-      <Name>Doomed</Name>
-    </ProjectReference>
     <ProjectReference Include="..\ExecutionEngine\ExecutionEngine.csproj">
       <Project>{eaa5eb79-d475-4601-a59b-825c191cd25f}</Project>
       <Name>ExecutionEngine</Name>
     </ProjectReference>
-    <ProjectReference Include="..\Graph\Graph.csproj">
-      <Project>{69A2B0B8-BCAC-4101-AE7A-556FCC58C06E}</Project>
-      <Name>Graph</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Houdini\Houdini.csproj">
-      <Project>{CF41E903-78EB-43BA-A355-E5FEB5ECECD4}</Project>
-      <Name>Houdini</Name>
-    </ProjectReference>
     <ProjectReference Include="..\ParserHelper\ParserHelper.csproj">
-      <Project>{FCD3AC7F-9DFD-46C8-AB1E-09F0B0F16DC5}</Project>
+      <Project>{fcd3ac7f-9dfd-46c8-ab1e-09f0b0f16dc5}</Project>
       <Name>ParserHelper</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Predication\Predication.csproj">
-      <Project>{afaa5ce1-c41b-44f0-88f8-fd8a43826d44}</Project>
-      <Name>Predication</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Provers\SMTLib\SMTLib.csproj">
-      <Project>{9B163AA3-36BC-4AFB-88AB-79BC9E97E401}</Project>
-      <Name>SMTLib</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\VCGeneration\VCGeneration.csproj">
-      <Project>{E1F10180-C7B9-4147-B51F-FA1B701966DC}</Project>
-      <Name>VCGeneration</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>

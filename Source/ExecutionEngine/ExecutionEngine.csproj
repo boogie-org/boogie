@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
@@ -36,7 +36,6 @@
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
-    <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ExecutionEngine.cs" />
@@ -78,10 +77,6 @@
     <ProjectReference Include="..\Predication\Predication.csproj">
       <Project>{afaa5ce1-c41b-44f0-88f8-fd8a43826d44}</Project>
       <Name>Predication</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Provers\SMTLib\SMTLib.csproj">
-      <Project>{9b163aa3-36bc-4afb-88ab-79bc9e97e401}</Project>
-      <Name>SMTLib</Name>
     </ProjectReference>
     <ProjectReference Include="..\VCGeneration\VCGeneration.csproj">
       <Project>{e1f10180-c7b9-4147-b51f-fa1b701966dc}</Project>
