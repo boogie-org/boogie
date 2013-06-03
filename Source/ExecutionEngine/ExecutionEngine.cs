@@ -247,7 +247,7 @@ namespace Microsoft.Boogie
     }
 
 
-    static void PrintBplFile(string filename, Program program, bool allowPrintDesugaring, bool setTokens = true)
+    public static void PrintBplFile(string filename, Program program, bool allowPrintDesugaring, bool setTokens = true)
     {
       Contract.Requires(program != null);
       Contract.Requires(filename != null);
@@ -376,7 +376,7 @@ namespace Microsoft.Boogie
     ///  - TypeCheckingError if a type checking error occurred
     ///  - ResolvedAndTypeChecked if both resolution and type checking succeeded
     /// </summary>
-    static PipelineOutcome ResolveAndTypecheck(Program program, string bplFileName)
+    public static PipelineOutcome ResolveAndTypecheck(Program program, string bplFileName)
     {
       Contract.Requires(program != null);
       Contract.Requires(bplFileName != null);
@@ -430,7 +430,7 @@ namespace Microsoft.Boogie
     }
 
 
-    static void EliminateDeadVariablesAndInline(Program program)
+    public static void EliminateDeadVariablesAndInline(Program program)
     {
       Contract.Requires(program != null);
       // Eliminate dead variables
@@ -676,8 +676,8 @@ namespace Microsoft.Boogie
     ///  - VerificationCompleted if inference and verification completed, in which the out
     ///    parameters contain meaningful values
     /// </summary>
-    static PipelineOutcome InferAndVerify(Program program,
-                                          out int errorCount, out int verified, out int inconclusives, out int timeOuts, out int outOfMemories)
+    public static PipelineOutcome InferAndVerify(Program program,
+                                                 out int errorCount, out int verified, out int inconclusives, out int timeOuts, out int outOfMemories)
     {
       Contract.Requires(program != null);
       Contract.Ensures(0 <= Contract.ValueAtReturn(out inconclusives) && 0 <= Contract.ValueAtReturn(out timeOuts));
