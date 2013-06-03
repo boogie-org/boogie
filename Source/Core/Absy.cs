@@ -2567,6 +2567,41 @@ namespace Microsoft.Boogie {
       }
     }
 
+    public string Checksum
+    {
+      get
+      {
+        return FindStringAttribute("checksum");
+      }
+    }
+
+    public string Id
+    {
+      get
+      {
+        var id = FindStringAttribute("id");
+        if (id == null)
+        {
+          id = Name + ":0";
+        }
+        return id;
+      }
+    }
+
+    public int Priority
+    {
+      get
+      {
+        int priority = 0;
+        CheckIntAttribute("priority", ref priority);
+        if (priority <= 0)
+        {
+          priority = 1;
+        }
+        return priority;
+      }
+    }
+
     public Implementation(IToken tok, string name, TypeVariableSeq typeParams, VariableSeq inParams, VariableSeq outParams, VariableSeq localVariables, [Captured] StmtList structuredStmts, QKeyValue kv)
       : this(tok, name, typeParams, inParams, outParams, localVariables, structuredStmts, kv, new Errors()) {
       Contract.Requires(structuredStmts != null);

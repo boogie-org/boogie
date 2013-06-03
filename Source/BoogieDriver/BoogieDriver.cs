@@ -12,6 +12,7 @@ namespace Microsoft.Boogie {
   using System;
   using System.IO;
   using System.Collections;
+  using System.Collections.Concurrent;
   using System.Collections.Generic;
   using PureCollections;
   using Microsoft.Boogie;
@@ -155,8 +156,29 @@ namespace Microsoft.Boogie {
       Dafny
     };
 
-    static void ProcessFiles(List<string> fileNames) {
+    static void ProcessFiles(List<string> fileNames, bool lookForSnapshots = true) {
       Contract.Requires(cce.NonNullElements(fileNames));
+
+      if (CommandLineOptions.Clo.VerifySnapshots && lookForSnapshots)
+      {
+        var snapshots =
+          from n in fileNames
+          from f in Directory.GetFiles(Path.GetDirectoryName(Path.GetFullPath(n)), Path.GetFileNameWithoutExtension(n) + ".*" + Path.GetExtension(n))
+          select f;
+
+        var snapshotsByVersion =
+          from n in snapshots
+          group n by Path.GetFileNameWithoutExtension(n).Substring(Path.GetFileNameWithoutExtension(n).LastIndexOf(".")) into g
+          orderby g.Key
+          select g;
+
+        foreach (var s in snapshotsByVersion)
+        {
+          ProcessFiles(new List<string>(s), false);
+        }
+        return;
+      }
+
       using (XmlFileScope xf = new XmlFileScope(CommandLineOptions.Clo.XmlSink, fileNames[fileNames.Count - 1]))
       {
           //BoogiePL.Errors.count = 0;
@@ -649,6 +671,25 @@ namespace Microsoft.Boogie {
       }
     }
 
+
+    internal struct VerificationResult
+    {
+      internal VerificationResult(string checksum, ConditionGeneration.Outcome outcome, List<Counterexample> errors)
+      {
+        Checksum = checksum;
+        Outcome = outcome;
+        Errors = errors;
+      }
+
+      public readonly string Checksum;
+      public readonly ConditionGeneration.Outcome Outcome;
+      public readonly List<Counterexample> Errors;
+    }
+
+
+    static readonly ConcurrentDictionary<string, VerificationResult> VerificationResultCache = new ConcurrentDictionary<string, VerificationResult>();
+
+
     /// <summary>
     /// Given a resolved and type checked Boogie program, infers invariants for the program
     /// and then attempts to verify it.  Returns:
@@ -790,83 +831,127 @@ namespace Microsoft.Boogie {
 
       // operate on a stable copy, in case it gets updated while we're running
       var decls = program.TopLevelDeclarations.ToArray();
-      foreach (Declaration decl in decls) {
-        Contract.Assert(decl != null);
+
+      var impls =
+        from d in decls
+        where d != null && d is Implementation && CommandLineOptions.Clo.UserWantsToCheckRoutine(cce.NonNull(((Implementation)d).Name)) && !((Implementation)d).SkipVerification
+        select (Implementation)d;
+
+      var prioritizedImpls =
+        from i in impls
+        orderby i.Priority descending
+        select i;
+
+      foreach (var impl in prioritizedImpls)
+      {
         int prevAssertionCount = vcgen.CumulativeAssertionCount;
-        Implementation impl = decl as Implementation;
-        if (impl != null && CommandLineOptions.Clo.UserWantsToCheckRoutine(cce.NonNull(impl.Name)) && !impl.SkipVerification) {
-          List<Counterexample/*!*/>/*?*/ errors;
+        List<Counterexample/*!*/>/*?*/ errors;
 
-          DateTime start = new DateTime();  // to please compiler's definite assignment rules
-          if (CommandLineOptions.Clo.Trace || CommandLineOptions.Clo.TraceProofObligations || CommandLineOptions.Clo.XmlSink != null) {
-            start = DateTime.UtcNow;
-            if (CommandLineOptions.Clo.Trace || CommandLineOptions.Clo.TraceProofObligations) {
-              Console.WriteLine();
-              Console.WriteLine("Verifying {0} ...", impl.Name);
-            }
-            if (CommandLineOptions.Clo.XmlSink != null) {
-              CommandLineOptions.Clo.XmlSink.WriteStartMethod(impl.Name, start);
-            }
+        DateTime start = new DateTime();  // to please compiler's definite assignment rules
+        if (CommandLineOptions.Clo.Trace || CommandLineOptions.Clo.TraceProofObligations || CommandLineOptions.Clo.XmlSink != null)
+        {
+          start = DateTime.UtcNow;
+          if (CommandLineOptions.Clo.Trace || CommandLineOptions.Clo.TraceProofObligations)
+          {
+            Console.WriteLine();
+            Console.WriteLine("Verifying {0} ...", impl.Name);
           }
+          if (CommandLineOptions.Clo.XmlSink != null)
+          {
+            CommandLineOptions.Clo.XmlSink.WriteStartMethod(impl.Name, start);
+          }
+        }
 
-          VCGen.Outcome outcome;
-          try {
-            if (CommandLineOptions.Clo.inferLeastForUnsat != null) {
-              var svcgen = vcgen as VC.StratifiedVCGen;
-              Contract.Assert(svcgen != null);
-              var ss = new HashSet<string>();
-              foreach (var tdecl in program.TopLevelDeclarations) {
-                var c = tdecl as Constant;
-                if (c == null || !c.Name.StartsWith(CommandLineOptions.Clo.inferLeastForUnsat)) continue;
-                ss.Add(c.Name);
-              }
-              outcome = svcgen.FindLeastToVerify(impl, ref ss);
-              errors = new List<Counterexample>();
-              Console.Write("Result: ");
-              foreach (var s in ss) {
-                Console.Write("{0} ", s);
-              }
-              Console.WriteLine();
+        VCGen.Outcome outcome;
+        try
+        {
+          if (CommandLineOptions.Clo.inferLeastForUnsat != null)
+          {
+            var svcgen = vcgen as VC.StratifiedVCGen;
+            Contract.Assert(svcgen != null);
+            var ss = new HashSet<string>();
+            foreach (var tdecl in program.TopLevelDeclarations)
+            {
+              var c = tdecl as Constant;
+              if (c == null || !c.Name.StartsWith(CommandLineOptions.Clo.inferLeastForUnsat)) continue;
+              ss.Add(c.Name);
             }
-            else {
+            outcome = svcgen.FindLeastToVerify(impl, ref ss);
+            errors = new List<Counterexample>();
+            Console.Write("Result: ");
+            foreach (var s in ss)
+            {
+              Console.Write("{0} ", s);
+            }
+            Console.WriteLine();
+          }
+          else
+          {
+            if (!VerificationResultCache.ContainsKey(impl.Id) || VerificationResultCache[impl.Id].Checksum != impl.Checksum)
+            {
               outcome = vcgen.VerifyImplementation(impl, out errors);
-              if (CommandLineOptions.Clo.ExtractLoops && vcgen is VCGen && errors != null) {
-                for (int i = 0; i < errors.Count; i++) {
-                  errors[i] = (vcgen as VCGen).extractLoopTrace(errors[i], impl.Name, program, extractLoopMappingInfo);
-                }
+            }
+            else
+            {
+              if (CommandLineOptions.Clo.Trace)
+              {
+                Console.WriteLine("Retrieving cached verification result for implementation {0}...", impl.Name);
+              }
+              var result = VerificationResultCache[impl.Id];
+              outcome = result.Outcome;
+              errors = result.Errors;
+            }
+            if (CommandLineOptions.Clo.ExtractLoops && vcgen is VCGen && errors != null)
+            {
+              for (int i = 0; i < errors.Count; i++)
+              {
+                errors[i] = (vcgen as VCGen).extractLoopTrace(errors[i], impl.Name, program, extractLoopMappingInfo);
               }
             }
           }
-          catch (VCGenException e) {
-            ReportBplError(impl, String.Format("Error BP5010: {0}  Encountered in implementation {1}.", e.Message, impl.Name), true, true);
-            errors = null;
-            outcome = VCGen.Outcome.Inconclusive;
-          }
-          catch (UnexpectedProverOutputException upo) {
-            AdvisoryWriteLine("Advisory: {0} SKIPPED because of internal error: unexpected prover output: {1}", impl.Name, upo.Message);
-            errors = null;
-            outcome = VCGen.Outcome.Inconclusive;
-          }
+        }
+        catch (VCGenException e)
+        {
+          ReportBplError(impl, String.Format("Error BP5010: {0}  Encountered in implementation {1}.", e.Message, impl.Name), true, true);
+          errors = null;
+          outcome = VCGen.Outcome.Inconclusive;
+        }
+        catch (UnexpectedProverOutputException upo)
+        {
+          AdvisoryWriteLine("Advisory: {0} SKIPPED because of internal error: unexpected prover output: {1}", impl.Name, upo.Message);
+          errors = null;
+          outcome = VCGen.Outcome.Inconclusive;
+        }
 
-          string timeIndication = "";
-          DateTime end = DateTime.UtcNow;
-          TimeSpan elapsed = end - start;
-          if (CommandLineOptions.Clo.Trace) {
-            int poCount = vcgen.CumulativeAssertionCount - prevAssertionCount;
-            timeIndication = string.Format("  [{0:F3} s, {1} proof obligation{2}]  ", elapsed.TotalSeconds, poCount, poCount == 1 ? "" : "s");
-          } else if (CommandLineOptions.Clo.TraceProofObligations) {
-            int poCount = vcgen.CumulativeAssertionCount - prevAssertionCount;
-            timeIndication = string.Format("  [{0} proof obligation{1}]  ", poCount, poCount == 1 ? "" : "s");
-          }
+        string timeIndication = "";
+        DateTime end = DateTime.UtcNow;
+        TimeSpan elapsed = end - start;
+        if (CommandLineOptions.Clo.Trace)
+        {
+          int poCount = vcgen.CumulativeAssertionCount - prevAssertionCount;
+          timeIndication = string.Format("  [{0:F3} s, {1} proof obligation{2}]  ", elapsed.TotalSeconds, poCount, poCount == 1 ? "" : "s");
+        }
+        else if (CommandLineOptions.Clo.TraceProofObligations)
+        {
+          int poCount = vcgen.CumulativeAssertionCount - prevAssertionCount;
+          timeIndication = string.Format("  [{0} proof obligation{1}]  ", poCount, poCount == 1 ? "" : "s");
+        }
 
-          ProcessOutcome(outcome, errors, timeIndication, ref errorCount, ref verified, ref inconclusives, ref timeOuts, ref outOfMemories);
+        if (CommandLineOptions.Clo.VerifySnapshots && !string.IsNullOrEmpty(impl.Checksum))
+        {
+          var result = new VerificationResult(impl.Checksum, outcome, errors);
+          VerificationResultCache[impl.Id] = result;
+        }
 
-          if (CommandLineOptions.Clo.XmlSink != null) {
-            CommandLineOptions.Clo.XmlSink.WriteEndMethod(outcome.ToString().ToLowerInvariant(), end, elapsed);
-          }
-          if (outcome == VCGen.Outcome.Errors || CommandLineOptions.Clo.Trace) {
-            Console.Out.Flush();
-          }
+        ProcessOutcome(outcome, errors, timeIndication, ref errorCount, ref verified, ref inconclusives, ref timeOuts, ref outOfMemories);
+
+        if (CommandLineOptions.Clo.XmlSink != null)
+        {
+          CommandLineOptions.Clo.XmlSink.WriteEndMethod(outcome.ToString().ToLowerInvariant(), end, elapsed);
+        }
+        if (outcome == VCGen.Outcome.Errors || CommandLineOptions.Clo.Trace)
+        {
+          Console.Out.Flush();
         }
       }
         

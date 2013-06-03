@@ -363,6 +363,7 @@ namespace Microsoft.Boogie {
       Contract.Invariant(0 <= PrintUnstructured && PrintUnstructured < 3);  // 0 = print only structured,  1 = both structured and unstructured,  2 = only unstructured
     }
 
+    public bool VerifySnapshots;
     public string PrintFile = null;
     public int PrintUnstructured = 0;
     public int DoomStrategy = -1;
@@ -1311,7 +1312,8 @@ namespace Microsoft.Boogie {
               ps.CheckBooleanFlag("printAssignment", ref PrintAssignment) ||
               ps.CheckBooleanFlag("useProverEvaluate", ref UseProverEvaluate) ||
               ps.CheckBooleanFlag("nonUniformUnfolding", ref NonUniformUnfolding) ||
-              ps.CheckBooleanFlag("deterministicExtractLoops", ref DeterministicExtractLoops)
+              ps.CheckBooleanFlag("deterministicExtractLoops", ref DeterministicExtractLoops) ||
+              ps.CheckBooleanFlag("verifySnapshots", ref VerifySnapshots)
               ) {
             // one of the boolean flags matched
             return true;
