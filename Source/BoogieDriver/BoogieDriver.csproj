@@ -230,6 +230,10 @@
       <Project>{884386a3-58e9-40bb-a273-b24976775553}</Project>
       <Name>Doomed</Name>
     </ProjectReference>
+    <ProjectReference Include="..\ExecutionEngine\ExecutionEngine.csproj">
+      <Project>{eaa5eb79-d475-4601-a59b-825c191cd25f}</Project>
+      <Name>ExecutionEngine</Name>
+    </ProjectReference>
     <ProjectReference Include="..\Graph\Graph.csproj">
       <Project>{69A2B0B8-BCAC-4101-AE7A-556FCC58C06E}</Project>
       <Name>Graph</Name>
