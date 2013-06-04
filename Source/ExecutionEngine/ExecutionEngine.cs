@@ -175,6 +175,9 @@ namespace Microsoft.Boogie
   {
     public static OutputPrinter printer;
 
+    static LinearTypechecker linearTypechecker;
+
+
     public static void ProcessFiles(List<string> fileNames, bool lookForSnapshots = true)
     {
       Contract.Requires(cce.NonNullElements(fileNames));
@@ -382,9 +385,6 @@ namespace Microsoft.Boogie
     }
 
 
-    static LinearTypechecker linearTypechecker;
-
-
     /// <summary>
     /// Resolves and type checks the given Boogie program.  Any errors are reported to the
     /// console.  Returns:
@@ -508,180 +508,6 @@ namespace Microsoft.Boogie
               impl.OriginalLocVars = null;
             }
           }
-        }
-      }
-    }
-
-
-    static void ProcessOutcome(VC.VCGen.Outcome outcome, List<Counterexample> errors, string timeIndication,
-                               ref int errorCount, ref int verified, ref int inconclusives, ref int timeOuts, ref int outOfMemories)
-    {
-      switch (outcome)
-      {
-        default:
-          Contract.Assert(false);  // unexpected outcome
-          throw new cce.UnreachableException();
-        case VCGen.Outcome.ReachedBound:
-          printer.Inform(String.Format("{0}verified", timeIndication));
-          Console.WriteLine(string.Format("Stratified Inlining: Reached recursion bound of {0}", CommandLineOptions.Clo.RecursionBound));
-          verified++;
-          break;
-        case VCGen.Outcome.Correct:
-          if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Doomed)
-          {
-            printer.Inform(String.Format("{0}credible", timeIndication));
-            verified++;
-          }
-          else
-          {
-            printer.Inform(String.Format("{0}verified", timeIndication));
-            verified++;
-          }
-          break;
-        case VCGen.Outcome.TimedOut:
-          timeOuts++;
-          printer.Inform(String.Format("{0}timed out", timeIndication));
-          break;
-        case VCGen.Outcome.OutOfMemory:
-          outOfMemories++;
-          printer.Inform(String.Format("{0}out of memory", timeIndication));
-          break;
-        case VCGen.Outcome.Inconclusive:
-          inconclusives++;
-          printer.Inform(String.Format("{0}inconclusive", timeIndication));
-          break;
-        case VCGen.Outcome.Errors:
-          if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Doomed)
-          {
-            printer.Inform(String.Format("{0}doomed", timeIndication));
-            errorCount++;
-          }
-          Contract.Assert(errors != null);  // guaranteed by postcondition of VerifyImplementation
-          break;
-      }
-      if (errors != null)
-      {
-        // BP1xxx: Parsing errors
-        // BP2xxx: Name resolution errors
-        // BP3xxx: Typechecking errors
-        // BP4xxx: Abstract interpretation errors (Is there such a thing?)
-        // BP5xxx: Verification errors
-
-        var cause = "Error";
-        if (outcome == VCGen.Outcome.TimedOut)
-        {
-          cause = "Timed out on";
-        }
-        else if (outcome == VCGen.Outcome.OutOfMemory)
-        {
-          cause = "Out of memory on";
-        }
-        // TODO(wuestholz): Take the error cause into account when writing to the XML sink.
-
-        errors.Sort(new CounterexampleComparer());
-        foreach (Counterexample error in errors)
-        {
-          if (error is CallCounterexample)
-          {
-            CallCounterexample err = (CallCounterexample)error;
-            if (!CommandLineOptions.Clo.ForceBplErrors && err.FailingRequires.ErrorMessage != null)
-            {
-              printer.ReportBplError(err.FailingRequires.tok, err.FailingRequires.ErrorMessage, true, false);
-            }
-            else
-            {
-              printer.ReportBplError(err.FailingCall.tok, cause + " BP5002: A precondition for this call might not hold.", true, true);
-              printer.ReportBplError(err.FailingRequires.tok, "Related location: This is the precondition that might not hold.", false, true);
-            }
-            if (CommandLineOptions.Clo.XmlSink != null)
-            {
-              CommandLineOptions.Clo.XmlSink.WriteError("precondition violation", err.FailingCall.tok, err.FailingRequires.tok, error.Trace);
-            }
-          }
-          else if (error is ReturnCounterexample)
-          {
-            ReturnCounterexample err = (ReturnCounterexample)error;
-            if (!CommandLineOptions.Clo.ForceBplErrors && err.FailingEnsures.ErrorMessage != null)
-            {
-              printer.ReportBplError(err.FailingEnsures.tok, err.FailingEnsures.ErrorMessage, true, false);
-            }
-            else
-            {
-              printer.ReportBplError(err.FailingReturn.tok, cause + " BP5003: A postcondition might not hold on this return path.", true, true);
-              printer.ReportBplError(err.FailingEnsures.tok, "Related location: This is the postcondition that might not hold.", false, true);
-            }
-            printer.ReportAllBplErrors(err.FailingEnsures.Attributes);
-            if (CommandLineOptions.Clo.XmlSink != null)
-            {
-              CommandLineOptions.Clo.XmlSink.WriteError("postcondition violation", err.FailingReturn.tok, err.FailingEnsures.tok, error.Trace);
-            }
-          }
-          else // error is AssertCounterexample
-          {
-            AssertCounterexample err = (AssertCounterexample)error;
-            if (err.FailingAssert is LoopInitAssertCmd)
-            {
-              printer.ReportBplError(err.FailingAssert.tok, cause + " BP5004: This loop invariant might not hold on entry.", true, true);
-              if (CommandLineOptions.Clo.XmlSink != null)
-              {
-                CommandLineOptions.Clo.XmlSink.WriteError("loop invariant entry violation", err.FailingAssert.tok, null, error.Trace);
-              }
-            }
-            else if (err.FailingAssert is LoopInvMaintainedAssertCmd)
-            {
-              // this assertion is a loop invariant which is not maintained
-              printer.ReportBplError(err.FailingAssert.tok, cause + " BP5005: This loop invariant might not be maintained by the loop.", true, true);
-              if (CommandLineOptions.Clo.XmlSink != null)
-              {
-                CommandLineOptions.Clo.XmlSink.WriteError("loop invariant maintenance violation", err.FailingAssert.tok, null, error.Trace);
-              }
-            }
-            else
-            {
-              if (!CommandLineOptions.Clo.ForceBplErrors && err.FailingAssert.ErrorMessage != null)
-              {
-                printer.ReportBplError(err.FailingAssert.tok, err.FailingAssert.ErrorMessage, true, false);
-              }
-              else if (err.FailingAssert.ErrorData is string)
-              {
-                printer.ReportBplError(err.FailingAssert.tok, (string)err.FailingAssert.ErrorData, true, true);
-              }
-              else
-              {
-                printer.ReportBplError(err.FailingAssert.tok, cause + " BP5001: This assertion might not hold.", true, true);
-              }
-              printer.ReportAllBplErrors(err.FailingAssert.Attributes);
-              if (CommandLineOptions.Clo.XmlSink != null)
-              {
-                CommandLineOptions.Clo.XmlSink.WriteError("assertion violation", err.FailingAssert.tok, null, error.Trace);
-              }
-            }
-          }
-          if (CommandLineOptions.Clo.EnhancedErrorMessages == 1)
-          {
-            foreach (string info in error.relatedInformation)
-            {
-              Contract.Assert(info != null);
-              Console.WriteLine("       " + info);
-            }
-          }
-          if (CommandLineOptions.Clo.ErrorTrace > 0)
-          {
-            Console.WriteLine("Execution trace:");
-            error.Print(4);
-          }
-          if (CommandLineOptions.Clo.ModelViewFile != null)
-          {
-            error.PrintModel();
-          }
-          if (cause == "Error")
-          {
-            errorCount++;
-          }
-        }
-        if (cause == "Error")
-        {
-          printer.Inform(String.Format("{0}error{1}", timeIndication, errors.Count == 1 ? "" : "s"));
         }
       }
     }
@@ -973,6 +799,180 @@ namespace Microsoft.Boogie
     }
 
 
+    static void ProcessOutcome(VC.VCGen.Outcome outcome, List<Counterexample> errors, string timeIndication,
+                           ref int errorCount, ref int verified, ref int inconclusives, ref int timeOuts, ref int outOfMemories)
+    {
+      switch (outcome)
+      {
+        default:
+          Contract.Assert(false);  // unexpected outcome
+          throw new cce.UnreachableException();
+        case VCGen.Outcome.ReachedBound:
+          printer.Inform(String.Format("{0}verified", timeIndication));
+          Console.WriteLine(string.Format("Stratified Inlining: Reached recursion bound of {0}", CommandLineOptions.Clo.RecursionBound));
+          verified++;
+          break;
+        case VCGen.Outcome.Correct:
+          if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Doomed)
+          {
+            printer.Inform(String.Format("{0}credible", timeIndication));
+            verified++;
+          }
+          else
+          {
+            printer.Inform(String.Format("{0}verified", timeIndication));
+            verified++;
+          }
+          break;
+        case VCGen.Outcome.TimedOut:
+          timeOuts++;
+          printer.Inform(String.Format("{0}timed out", timeIndication));
+          break;
+        case VCGen.Outcome.OutOfMemory:
+          outOfMemories++;
+          printer.Inform(String.Format("{0}out of memory", timeIndication));
+          break;
+        case VCGen.Outcome.Inconclusive:
+          inconclusives++;
+          printer.Inform(String.Format("{0}inconclusive", timeIndication));
+          break;
+        case VCGen.Outcome.Errors:
+          if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Doomed)
+          {
+            printer.Inform(String.Format("{0}doomed", timeIndication));
+            errorCount++;
+          }
+          Contract.Assert(errors != null);  // guaranteed by postcondition of VerifyImplementation
+          break;
+      }
+      if (errors != null)
+      {
+        // BP1xxx: Parsing errors
+        // BP2xxx: Name resolution errors
+        // BP3xxx: Typechecking errors
+        // BP4xxx: Abstract interpretation errors (Is there such a thing?)
+        // BP5xxx: Verification errors
+
+        var cause = "Error";
+        if (outcome == VCGen.Outcome.TimedOut)
+        {
+          cause = "Timed out on";
+        }
+        else if (outcome == VCGen.Outcome.OutOfMemory)
+        {
+          cause = "Out of memory on";
+        }
+        // TODO(wuestholz): Take the error cause into account when writing to the XML sink.
+
+        errors.Sort(new CounterexampleComparer());
+        foreach (Counterexample error in errors)
+        {
+          if (error is CallCounterexample)
+          {
+            CallCounterexample err = (CallCounterexample)error;
+            if (!CommandLineOptions.Clo.ForceBplErrors && err.FailingRequires.ErrorMessage != null)
+            {
+              printer.ReportBplError(err.FailingRequires.tok, err.FailingRequires.ErrorMessage, true, false);
+            }
+            else
+            {
+              printer.ReportBplError(err.FailingCall.tok, cause + " BP5002: A precondition for this call might not hold.", true, true);
+              printer.ReportBplError(err.FailingRequires.tok, "Related location: This is the precondition that might not hold.", false, true);
+            }
+            if (CommandLineOptions.Clo.XmlSink != null)
+            {
+              CommandLineOptions.Clo.XmlSink.WriteError("precondition violation", err.FailingCall.tok, err.FailingRequires.tok, error.Trace);
+            }
+          }
+          else if (error is ReturnCounterexample)
+          {
+            ReturnCounterexample err = (ReturnCounterexample)error;
+            if (!CommandLineOptions.Clo.ForceBplErrors && err.FailingEnsures.ErrorMessage != null)
+            {
+              printer.ReportBplError(err.FailingEnsures.tok, err.FailingEnsures.ErrorMessage, true, false);
+            }
+            else
+            {
+              printer.ReportBplError(err.FailingReturn.tok, cause + " BP5003: A postcondition might not hold on this return path.", true, true);
+              printer.ReportBplError(err.FailingEnsures.tok, "Related location: This is the postcondition that might not hold.", false, true);
+            }
+            printer.ReportAllBplErrors(err.FailingEnsures.Attributes);
+            if (CommandLineOptions.Clo.XmlSink != null)
+            {
+              CommandLineOptions.Clo.XmlSink.WriteError("postcondition violation", err.FailingReturn.tok, err.FailingEnsures.tok, error.Trace);
+            }
+          }
+          else // error is AssertCounterexample
+          {
+            AssertCounterexample err = (AssertCounterexample)error;
+            if (err.FailingAssert is LoopInitAssertCmd)
+            {
+              printer.ReportBplError(err.FailingAssert.tok, cause + " BP5004: This loop invariant might not hold on entry.", true, true);
+              if (CommandLineOptions.Clo.XmlSink != null)
+              {
+                CommandLineOptions.Clo.XmlSink.WriteError("loop invariant entry violation", err.FailingAssert.tok, null, error.Trace);
+              }
+            }
+            else if (err.FailingAssert is LoopInvMaintainedAssertCmd)
+            {
+              // this assertion is a loop invariant which is not maintained
+              printer.ReportBplError(err.FailingAssert.tok, cause + " BP5005: This loop invariant might not be maintained by the loop.", true, true);
+              if (CommandLineOptions.Clo.XmlSink != null)
+              {
+                CommandLineOptions.Clo.XmlSink.WriteError("loop invariant maintenance violation", err.FailingAssert.tok, null, error.Trace);
+              }
+            }
+            else
+            {
+              if (!CommandLineOptions.Clo.ForceBplErrors && err.FailingAssert.ErrorMessage != null)
+              {
+                printer.ReportBplError(err.FailingAssert.tok, err.FailingAssert.ErrorMessage, true, false);
+              }
+              else if (err.FailingAssert.ErrorData is string)
+              {
+                printer.ReportBplError(err.FailingAssert.tok, (string)err.FailingAssert.ErrorData, true, true);
+              }
+              else
+              {
+                printer.ReportBplError(err.FailingAssert.tok, cause + " BP5001: This assertion might not hold.", true, true);
+              }
+              printer.ReportAllBplErrors(err.FailingAssert.Attributes);
+              if (CommandLineOptions.Clo.XmlSink != null)
+              {
+                CommandLineOptions.Clo.XmlSink.WriteError("assertion violation", err.FailingAssert.tok, null, error.Trace);
+              }
+            }
+          }
+          if (CommandLineOptions.Clo.EnhancedErrorMessages == 1)
+          {
+            foreach (string info in error.relatedInformation)
+            {
+              Contract.Assert(info != null);
+              Console.WriteLine("       " + info);
+            }
+          }
+          if (CommandLineOptions.Clo.ErrorTrace > 0)
+          {
+            Console.WriteLine("Execution trace:");
+            error.Print(4);
+          }
+          if (CommandLineOptions.Clo.ModelViewFile != null)
+          {
+            error.PrintModel();
+          }
+          if (cause == "Error")
+          {
+            errorCount++;
+          }
+        }
+        if (cause == "Error")
+        {
+          printer.Inform(String.Format("{0}error{1}", timeIndication, errors.Count == 1 ? "" : "s"));
+        }
+      }
+    }
+
+
     #region Verification result caching
 
     private struct VerificationResult
@@ -994,4 +994,5 @@ namespace Microsoft.Boogie
 
     #endregion
   }
+
 }
