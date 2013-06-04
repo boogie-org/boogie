@@ -927,7 +927,7 @@ namespace Microsoft.Boogie
           printer.Inform(String.Format("{0}timed out", timeIndication));
           if (er != null && impl != null)
           {
-            er(errorInformationFactory.CreateErrorInformation(impl.tok, "Verification timed out (" + impl.Name + ")"));
+            er(errorInformationFactory.CreateErrorInformation(impl.tok, string.Format("Verification timed out after {0} seconds ({1})", CommandLineOptions.Clo.ProverKillTime, impl.Name)));
           }
           break;
         case VCGen.Outcome.OutOfMemory:
@@ -992,7 +992,7 @@ namespace Microsoft.Boogie
               printer.ReportBplError(err.FailingRequires.tok, "Related location: This is the precondition that might not hold.", false, true);
             }
 
-            errorInfo = errorInformationFactory.CreateErrorInformation(err.FailingCall.tok, err.FailingCall.ErrorData as string ?? "A precondition for this call might not hold.");
+            errorInfo = errorInformationFactory.CreateErrorInformation(err.FailingCall.tok, cause + ": " + err.FailingCall.ErrorData as string ?? "A precondition for this call might not hold.");
             errorInfo.AddAuxInfo(err.FailingRequires.tok, err.FailingRequires.ErrorData as string ?? "Related location: This is the precondition that might not hold.");
 
             if (CommandLineOptions.Clo.XmlSink != null)
@@ -1014,7 +1014,7 @@ namespace Microsoft.Boogie
             }
             printer.ReportAllBplErrors(err.FailingEnsures.Attributes);
 
-            errorInfo = errorInformationFactory.CreateErrorInformation(err.FailingReturn.tok, "A postcondition might not hold on this return path.");
+            errorInfo = errorInformationFactory.CreateErrorInformation(err.FailingReturn.tok, cause + ": " + "A postcondition might not hold on this return path.");
             errorInfo.AddAuxInfo(err.FailingEnsures.tok, err.FailingEnsures.ErrorData as string ?? "Related location: This is the postcondition that might not hold.");
             errorInfo.AddAuxInfo(err.FailingEnsures.Attributes);
 
@@ -1030,7 +1030,7 @@ namespace Microsoft.Boogie
             {
               printer.ReportBplError(err.FailingAssert.tok, cause + " BP5004: This loop invariant might not hold on entry.", true, true);
 
-              errorInfo = errorInformationFactory.CreateErrorInformation(err.FailingAssert.tok, "This loop invariant might not hold on entry.");
+              errorInfo = errorInformationFactory.CreateErrorInformation(err.FailingAssert.tok, cause + ": " + "This loop invariant might not hold on entry.");
 
               if (CommandLineOptions.Clo.XmlSink != null)
               {
@@ -1042,7 +1042,7 @@ namespace Microsoft.Boogie
               // this assertion is a loop invariant which is not maintained
               printer.ReportBplError(err.FailingAssert.tok, cause + " BP5005: This loop invariant might not be maintained by the loop.", true, true);
 
-              errorInfo = errorInformationFactory.CreateErrorInformation(err.FailingAssert.tok, "This loop invariant might not be maintained by the loop.");
+              errorInfo = errorInformationFactory.CreateErrorInformation(err.FailingAssert.tok, cause + ": " + "This loop invariant might not be maintained by the loop.");
 
               if (CommandLineOptions.Clo.XmlSink != null)
               {
@@ -1070,7 +1070,7 @@ namespace Microsoft.Boogie
               {
                 msg = "This assertion might not hold.";
               }
-              errorInfo = errorInformationFactory.CreateErrorInformation(err.FailingAssert.tok, msg);
+              errorInfo = errorInformationFactory.CreateErrorInformation(err.FailingAssert.tok, cause + ": " + msg);
               errorInfo.AddAuxInfo(err.FailingAssert.Attributes);
 
               if (CommandLineOptions.Clo.XmlSink != null)
