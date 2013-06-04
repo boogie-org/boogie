@@ -11,6 +11,8 @@ using BoogiePL = Microsoft.Boogie;
 namespace Microsoft.Boogie
 {
 
+  #region Output printing
+
   public interface OutputPrinter
   {
     void ErrorWriteLine(string s);
@@ -159,6 +161,8 @@ namespace Microsoft.Boogie
     }
   }
 
+  #endregion
+
 
   public enum PipelineOutcome
   {
@@ -171,9 +175,102 @@ namespace Microsoft.Boogie
   }
 
 
+  #region Error reporting
+
+  public delegate void ErrorReporterDelegate(ErrorInformation errInfo);
+
+
+  public class ErrorInformationFactory
+  {
+    public virtual ErrorInformation CreateErrorInformation(IToken tok, string msg)
+    {
+      Contract.Requires(tok != null);
+      Contract.Requires(1 <= tok.line && 1 <= tok.col);
+      Contract.Requires(msg != null);
+
+      return ErrorInformation.CreateErrorInformation(tok, msg);
+    }
+  }
+
+
+  public class ErrorInformation
+  {
+    public IToken Tok;
+    public string Msg;
+    public readonly List<AuxErrorInfo> Aux = new List<AuxErrorInfo>();
+
+    public struct AuxErrorInfo
+    {
+      public readonly IToken Tok;
+      public readonly string Msg;
+
+      public AuxErrorInfo(IToken tok, string msg)
+      {
+        Tok = tok;
+        Msg = CleanUp(msg);
+      }
+    }
+
+    protected ErrorInformation(IToken tok, string msg)
+    {
+      Contract.Requires(tok != null);
+      Contract.Requires(1 <= tok.line && 1 <= tok.col);
+      Contract.Requires(msg != null);
+
+      Tok = tok;
+      Msg = CleanUp(msg);
+    }
+
+    internal static ErrorInformation CreateErrorInformation(IToken tok, string msg)
+    {
+      return new ErrorInformation(tok, msg);
+    }
+
+    public virtual void AddAuxInfo(IToken tok, string msg)
+    {
+      Contract.Requires(tok != null);
+      Contract.Requires(1 <= tok.line && 1 <= tok.col);
+      Contract.Requires(msg != null);
+      Aux.Add(new AuxErrorInfo(tok, msg));
+    }
+
+    public void AddAuxInfo(QKeyValue attr)
+    {
+      while (attr != null)
+      {
+        if (attr.Key == "msg" && attr.Params.Count == 1 && attr.tok.line != 0 && attr.tok.col != 0)
+        {
+          var str = attr.Params[0] as string;
+          if (str != null)
+          {
+            AddAuxInfo(attr.tok, str);
+          }
+        }
+        attr = attr.Next;
+      }
+    }
+
+    protected static string CleanUp(string msg)
+    {
+      if (msg.ToLower().StartsWith("error: "))
+      {
+        return msg.Substring(7);
+      }
+      else
+      {
+        return msg;
+      }
+    }
+  }
+
+  #endregion
+
+
   public class ExecutionEngine
   {
     public static OutputPrinter printer;
+
+    public static ErrorInformationFactory errorInformationFactory = new ErrorInformationFactory();
 
     static LinearTypechecker linearTypechecker;
 
@@ -522,7 +619,8 @@ namespace Microsoft.Boogie
     ///    parameters contain meaningful values
     /// </summary>
     public static PipelineOutcome InferAndVerify(Program program,
-                                                 out int errorCount, out int verified, out int inconclusives, out int timeOuts, out int outOfMemories)
+                                                 out int errorCount, out int verified, out int inconclusives, out int timeOuts, out int outOfMemories,
+                                                 ErrorReporterDelegate er = null)
     {
       Contract.Requires(program != null);
       Contract.Ensures(0 <= Contract.ValueAtReturn(out inconclusives) && 0 <= Contract.ValueAtReturn(out timeOuts));
@@ -587,7 +685,7 @@ namespace Microsoft.Boogie
           // Run Abstract Houdini
           var abs = new Houdini.AbsHoudini(program, domain);
           var absout = abs.ComputeSummaries();
-          ProcessOutcome(absout.outcome, absout.errors, "", ref errorCount, ref verified, ref inconclusives, ref timeOuts, ref outOfMemories);
+          ProcessOutcome(absout.outcome, absout.errors, "", ref errorCount, ref verified, ref inconclusives, ref timeOuts, ref outOfMemories, er);
 
           //Houdini.PredicateAbs.Initialize(program);
           //var abs = new Houdini.AbstractHoudini(program);
@@ -624,7 +722,7 @@ namespace Microsoft.Boogie
 
         foreach (Houdini.VCGenOutcome x in outcome.implementationOutcomes.Values)
         {
-          ProcessOutcome(x.outcome, x.errors, "", ref errorCount, ref verified, ref inconclusives, ref timeOuts, ref outOfMemories);
+          ProcessOutcome(x.outcome, x.errors, "", ref errorCount, ref verified, ref inconclusives, ref timeOuts, ref outOfMemories, er);
         }
         //errorCount = outcome.ErrorCount;
         //verified = outcome.Verified;
@@ -777,7 +875,7 @@ namespace Microsoft.Boogie
           VerificationResultCache[impl.Id] = result;
         }
 
-        ProcessOutcome(outcome, errors, timeIndication, ref errorCount, ref verified, ref inconclusives, ref timeOuts, ref outOfMemories);
+        ProcessOutcome(outcome, errors, timeIndication, ref errorCount, ref verified, ref inconclusives, ref timeOuts, ref outOfMemories, er, impl);
 
         if (CommandLineOptions.Clo.XmlSink != null)
         {
@@ -800,7 +898,7 @@ namespace Microsoft.Boogie
 
 
     static void ProcessOutcome(VC.VCGen.Outcome outcome, List<Counterexample> errors, string timeIndication,
-                           ref int errorCount, ref int verified, ref int inconclusives, ref int timeOuts, ref int outOfMemories)
+                               ref int errorCount, ref int verified, ref int inconclusives, ref int timeOuts, ref int outOfMemories, ErrorReporterDelegate er = null, Implementation impl = null)
     {
       switch (outcome)
       {
@@ -827,14 +925,26 @@ namespace Microsoft.Boogie
         case VCGen.Outcome.TimedOut:
           timeOuts++;
           printer.Inform(String.Format("{0}timed out", timeIndication));
+          if (er != null && impl != null)
+          {
+            er(errorInformationFactory.CreateErrorInformation(impl.tok, "Verification timed out (" + impl.Name + ")"));
+          }
           break;
         case VCGen.Outcome.OutOfMemory:
           outOfMemories++;
           printer.Inform(String.Format("{0}out of memory", timeIndication));
+          if (er != null && impl != null)
+          {
+            er(errorInformationFactory.CreateErrorInformation(impl.tok, "Verification out of memory (" + impl.Name + ")"));
+          }
           break;
         case VCGen.Outcome.Inconclusive:
           inconclusives++;
           printer.Inform(String.Format("{0}inconclusive", timeIndication));
+          if (er != null && impl != null)
+          {
+            er(errorInformationFactory.CreateErrorInformation(impl.tok, "Verification inconclusive (" + impl.Name + ")"));
+          }
           break;
         case VCGen.Outcome.Errors:
           if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Doomed)
@@ -867,6 +977,8 @@ namespace Microsoft.Boogie
         errors.Sort(new CounterexampleComparer());
         foreach (Counterexample error in errors)
         {
+          ErrorInformation errorInfo;
+
           if (error is CallCounterexample)
           {
             CallCounterexample err = (CallCounterexample)error;
@@ -879,6 +991,10 @@ namespace Microsoft.Boogie
               printer.ReportBplError(err.FailingCall.tok, cause + " BP5002: A precondition for this call might not hold.", true, true);
               printer.ReportBplError(err.FailingRequires.tok, "Related location: This is the precondition that might not hold.", false, true);
             }
+
+            errorInfo = errorInformationFactory.CreateErrorInformation(err.FailingCall.tok, err.FailingCall.ErrorData as string ?? "A precondition for this call might not hold.");
+            errorInfo.AddAuxInfo(err.FailingRequires.tok, err.FailingRequires.ErrorData as string ?? "Related location: This is the precondition that might not hold.");
+
             if (CommandLineOptions.Clo.XmlSink != null)
             {
               CommandLineOptions.Clo.XmlSink.WriteError("precondition violation", err.FailingCall.tok, err.FailingRequires.tok, error.Trace);
@@ -897,6 +1013,11 @@ namespace Microsoft.Boogie
               printer.ReportBplError(err.FailingEnsures.tok, "Related location: This is the postcondition that might not hold.", false, true);
             }
             printer.ReportAllBplErrors(err.FailingEnsures.Attributes);
+
+            errorInfo = errorInformationFactory.CreateErrorInformation(err.FailingReturn.tok, "A postcondition might not hold on this return path.");
+            errorInfo.AddAuxInfo(err.FailingEnsures.tok, err.FailingEnsures.ErrorData as string ?? "Related location: This is the postcondition that might not hold.");
+            errorInfo.AddAuxInfo(err.FailingEnsures.Attributes);
+
             if (CommandLineOptions.Clo.XmlSink != null)
             {
               CommandLineOptions.Clo.XmlSink.WriteError("postcondition violation", err.FailingReturn.tok, err.FailingEnsures.tok, error.Trace);
@@ -908,6 +1029,9 @@ namespace Microsoft.Boogie
             if (err.FailingAssert is LoopInitAssertCmd)
             {
               printer.ReportBplError(err.FailingAssert.tok, cause + " BP5004: This loop invariant might not hold on entry.", true, true);
+
+              errorInfo = errorInformationFactory.CreateErrorInformation(err.FailingAssert.tok, "This loop invariant might not hold on entry.");
+
               if (CommandLineOptions.Clo.XmlSink != null)
               {
                 CommandLineOptions.Clo.XmlSink.WriteError("loop invariant entry violation", err.FailingAssert.tok, null, error.Trace);
@@ -917,6 +1041,9 @@ namespace Microsoft.Boogie
             {
               // this assertion is a loop invariant which is not maintained
               printer.ReportBplError(err.FailingAssert.tok, cause + " BP5005: This loop invariant might not be maintained by the loop.", true, true);
+
+              errorInfo = errorInformationFactory.CreateErrorInformation(err.FailingAssert.tok, "This loop invariant might not be maintained by the loop.");
+
               if (CommandLineOptions.Clo.XmlSink != null)
               {
                 CommandLineOptions.Clo.XmlSink.WriteError("loop invariant maintenance violation", err.FailingAssert.tok, null, error.Trace);
@@ -937,6 +1064,15 @@ namespace Microsoft.Boogie
                 printer.ReportBplError(err.FailingAssert.tok, cause + " BP5001: This assertion might not hold.", true, true);
               }
               printer.ReportAllBplErrors(err.FailingAssert.Attributes);
+
+              var msg = err.FailingAssert.ErrorData as string;
+              if (msg == null)
+              {
+                msg = "This assertion might not hold.";
+              }
+              errorInfo = errorInformationFactory.CreateErrorInformation(err.FailingAssert.tok, msg);
+              errorInfo.AddAuxInfo(err.FailingAssert.Attributes);
+
               if (CommandLineOptions.Clo.XmlSink != null)
               {
                 CommandLineOptions.Clo.XmlSink.WriteError("assertion violation", err.FailingAssert.tok, null, error.Trace);
@@ -955,6 +1091,14 @@ namespace Microsoft.Boogie
           {
             Console.WriteLine("Execution trace:");
             error.Print(4);
+
+            foreach (Block b in error.Trace)
+            {
+              if (!(CommandLineOptions.Clo.ErrorTrace == 1 && b.tok.line == -17 && b.tok.col == -4))
+              {
+                errorInfo.AddAuxInfo(b.tok, "Execution trace: " + b.Label);
+              }
+            }
           }
           if (CommandLineOptions.Clo.ModelViewFile != null)
           {
@@ -963,6 +1107,10 @@ namespace Microsoft.Boogie
           if (cause == "Error")
           {
             errorCount++;
+          }
+          if (er != null)
+          {
+            er(errorInfo);
           }
         }
         if (cause == "Error")
