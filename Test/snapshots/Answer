@@ -1,3 +1,4 @@
+-------------------- Snapshots0.bpl --------------------
 Snapshots0.v0.bpl(41,5): Error BP5001: This assertion might not hold.
 Execution trace:
     Snapshots0.v0.bpl(41,5): anon0
@@ -25,3 +26,35 @@ Execution trace:
     Snapshots0.v0.bpl(41,5): anon0
 
 Boogie program verifier finished with 2 verified, 1 error
+
+-------------------- Snapshots1.bpl --------------------
+Snapshots1.v0.bpl(13,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    Snapshots1.v0.bpl(13,5): anon0
+
+Boogie program verifier finished with 1 verified, 1 error
+Snapshots1.v1.bpl(13,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    Snapshots1.v1.bpl(13,5): anon0
+
+Boogie program verifier finished with 1 verified, 1 error
+Snapshots1.v2.bpl(5,5): Error BP5002: A precondition for this call might not hold.
+Snapshots1.v2.bpl(10,3): Related location: This is the precondition that might not hold.
+Execution trace:
+    Snapshots1.v2.bpl(5,5): anon0
+
+Boogie program verifier finished with 1 verified, 1 error
+
+-------------------- Snapshots2.bpl --------------------
+
+Boogie program verifier finished with 1 verified, 0 errors
+
+Boogie program verifier finished with 1 verified, 0 errors
+
+Boogie program verifier finished with 1 verified, 0 errors
+
+Boogie program verifier finished with 1 verified, 0 errors
+
+Boogie program verifier finished with 1 verified, 0 errors
+
+Boogie program verifier finished with 1 verified, 0 errors

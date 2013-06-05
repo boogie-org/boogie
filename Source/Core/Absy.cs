@@ -1794,6 +1794,14 @@ namespace Microsoft.Boogie {
       this.OutParams = that.OutParams;
     }
 
+    public string Checksum
+    {
+      get
+      {
+        return FindStringAttribute("checksum");
+      }
+    }
+
     protected void EmitSignature(TokenTextWriter stream, bool shortRet) {
       Contract.Requires(stream != null);
       Type.EmitOptionalTypeParams(stream, TypeParameters);
@@ -2564,14 +2572,6 @@ namespace Microsoft.Boogie {
         }
 
         return false;
-      }
-    }
-
-    public string Checksum
-    {
-      get
-      {
-        return FindStringAttribute("checksum");
       }
     }
 

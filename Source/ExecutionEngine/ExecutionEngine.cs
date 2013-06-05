@@ -795,6 +795,11 @@ namespace Microsoft.Boogie
         }
 
         VCGen.Outcome outcome;
+        string depsChecksum = null;
+        if (CommandLineOptions.Clo.VerifySnapshots)
+        {
+          depsChecksum = DependenciesChecksum(impl);
+        }
         try
         {
           if (CommandLineOptions.Clo.inferLeastForUnsat != null)
@@ -819,7 +824,7 @@ namespace Microsoft.Boogie
           }
           else
           {
-            if (!VerificationResultCache.ContainsKey(impl.Id) || VerificationResultCache[impl.Id].Checksum != impl.Checksum)
+            if (!CommandLineOptions.Clo.VerifySnapshots || NeedsToBeVerified(impl))
             {
               outcome = vcgen.VerifyImplementation(impl, out errors);
             }
@@ -871,7 +876,7 @@ namespace Microsoft.Boogie
 
         if (CommandLineOptions.Clo.VerifySnapshots && !string.IsNullOrEmpty(impl.Checksum))
         {
-          var result = new VerificationResult(impl.Checksum, outcome, errors);
+          var result = new VerificationResult(impl.Checksum, depsChecksum, outcome, errors);
           VerificationResultCache[impl.Id] = result;
         }
 
@@ -1123,22 +1128,104 @@ namespace Microsoft.Boogie
 
     #region Verification result caching
 
+    class DependencyCollector : StandardVisitor
+    {
+      public HashSet<DeclWithFormals> dependencies;
+
+      public DependencyCollector()
+      {
+        dependencies = new HashSet<DeclWithFormals>();
+      }
+
+      public static void Collect(Absy node, out List<DeclWithFormals> dependencies)
+      {
+        var dc = new DependencyCollector();
+        dc.Visit(node);
+        dependencies = dc.dependencies.ToList();
+      }
+
+      public override Procedure VisitProcedure(Procedure node)
+      {
+        var result = base.VisitProcedure(node);
+
+        dependencies.Add(node);
+
+        return result;
+      }
+
+      public override Cmd VisitCallCmd(CallCmd node)
+      {
+        var result = base.VisitCallCmd(node);
+
+        dependencies.Add(node.Proc);
+
+        return result;
+      }
+
+      public override Expr VisitNAryExpr(NAryExpr node)
+      {
+        var result = base.VisitNAryExpr(node);
+
+        var funCall = node.Fun as FunctionCall;
+        if (funCall != null)
+        {
+          dependencies.Add(funCall.Func);
+        }
+
+        return result;
+      }
+    }
+
+
     private struct VerificationResult
     {
-      internal VerificationResult(string checksum, ConditionGeneration.Outcome outcome, List<Counterexample> errors)
+      internal VerificationResult(string checksum, string depsChecksum, ConditionGeneration.Outcome outcome, List<Counterexample> errors)
       {
         Checksum = checksum;
+        DependeciesChecksum = depsChecksum;
         Outcome = outcome;
         Errors = errors;
       }
 
       public readonly string Checksum;
+      public readonly string DependeciesChecksum;
       public readonly ConditionGeneration.Outcome Outcome;
       public readonly List<Counterexample> Errors;
     }
 
 
     private static readonly ConcurrentDictionary<string, VerificationResult> VerificationResultCache = new ConcurrentDictionary<string, VerificationResult>();
+
+
+    public static void EmptyCache()
+    {
+      VerificationResultCache.Clear();
+    }
+
+
+    private static string DependenciesChecksum(Implementation impl)
+    {
+      List<DeclWithFormals> deps;
+      DependencyCollector.Collect(impl, out deps);
+      if (deps.Any(dep => dep.Checksum == null))
+      {
+        return null;
+      }
+
+      return string.Join("", deps.Select(dep => dep.Checksum));
+    }
+
+    private static bool NeedsToBeVerified(Implementation impl)
+    {
+      if (!VerificationResultCache.ContainsKey(impl.Id)
+          || VerificationResultCache[impl.Id].Checksum != impl.Checksum)
+      {
+        return true;
+      }
+
+      var depsChecksum = DependenciesChecksum(impl);
+      return depsChecksum == null || VerificationResultCache[impl.Id].DependeciesChecksum != depsChecksum;
+    }
 
     #endregion
   }
