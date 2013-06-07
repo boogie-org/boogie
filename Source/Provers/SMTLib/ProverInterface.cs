@@ -780,7 +780,14 @@ namespace Microsoft.Boogie.SMTLib
             IList<string> xlabels;
             if (CommandLineOptions.Clo.UseLabels) {
               labels = GetLabelsInfo();
-              xlabels = labels.Select(a => a.Replace("@", "").Replace("+", "")).ToList();
+              if (labels == null)
+              {
+                xlabels = new string[] { };
+              }
+              else
+              {
+                xlabels = labels.Select(a => a.Replace("@", "").Replace("+", "")).ToList();
+              }
             }
             else {
               labels = CalculatePath(handler.StartingProcId());
