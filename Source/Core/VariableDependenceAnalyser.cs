@@ -17,6 +17,7 @@ namespace Microsoft.Boogie {
     void dump();
     void ShowDependencyChain(VariableDescriptor source, VariableDescriptor target);
     bool VariableRelevantToAnalysis(Variable v, string proc);
+    bool Ignoring(Variable v, string proc);
 
   }
 
@@ -380,25 +381,26 @@ namespace Microsoft.Boogie {
 
     private HashSet<VariableDescriptor> IgnoredVariables = null;
 
-    public bool VariableRelevantToAnalysis(Variable v, string proc) {
-      if (v is Constant) {
-        return false;
-      }
+    public bool Ignoring(Variable v, string proc) {
 
       if (IgnoredVariables == null) {
         MakeIgnoreList();
       }
 
       if(proc != null && IgnoredVariables.Contains(new LocalDescriptor(proc, v.Name))) {
-        return false;
+        return true;
       }
 
       if(IgnoredVariables.Contains(new GlobalDescriptor(v.Name))) {
-        return false;
+        return true;
       }
 
-      return true;
+      return false;
 
+    }
+
+    public bool VariableRelevantToAnalysis(Variable v, string proc) {
+      return !(v is Constant || Ignoring(v, proc));
     }
 
     private void MakeIgnoreList()

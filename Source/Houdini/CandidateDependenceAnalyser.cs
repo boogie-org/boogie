@@ -12,6 +12,7 @@ namespace Microsoft.Boogie {
 
     private const int COARSE_STAGES = 1;
     private const int FINE_STAGES = 2;
+    private const int BALANCED_STAGES = 3;
 
     private Program prog;
     private IVariableDependenceAnalyser varDepAnalyser;
@@ -120,6 +121,44 @@ namespace Microsoft.Boogie {
           }
         }
       }
+
+      if(CommandLineOptions.Clo.StagedHoudiniMergeIgnoredCandidates) {
+        MergeIgnoredCandidates();
+      }
+
+    }
+
+    private void MergeIgnoredCandidates()
+    {
+      var IgnoredCandidatesToVariables = new Dictionary<string, HashSet<Variable>>();
+      foreach(var c in candidates) {
+        IgnoredCandidatesToVariables[c] = new HashSet<Variable>();
+      }
+      foreach(var ci in CandidateInstances()) {
+        if(!IgnoredCandidatesToVariables.ContainsKey(ci.Candidate)) {
+          continue;
+        }
+        VariableCollector vc = new VariableCollector();
+        vc.Visit(ci.Expr);
+        if(vc.usedVars.Select(Item => varDepAnalyser.VariableRelevantToAnalysis(Item, ci.Proc)).Count() != 0) {
+          continue;
+        }
+        foreach(var v in vc.usedVars) {
+          if(varDepAnalyser.Ignoring(v, ci.Proc)) {
+            IgnoredCandidatesToVariables[ci.Candidate].Add(v);
+          }
+        }
+      }
+      foreach(var c in IgnoredCandidatesToVariables.Keys) {
+        foreach(var d in IgnoredCandidatesToVariables.Keys) {
+          if(c == d) {
+            continue;
+          }
+          if(IgnoredCandidatesToVariables[c].Equals(IgnoredCandidatesToVariables[d])) {
+            CandidateDependences.AddEdge(c, d);
+          }
+        }
+      }
     }
 
 
@@ -137,17 +176,26 @@ namespace Microsoft.Boogie {
         candidateDependsOn[c] = new HashSet<VariableDescriptor>();
       }
 
-      // Candidate loop invariants
+      foreach(var candidateInstance in CandidateInstances()) {
+        AddDependences(candidateInstance);
+      }
+
+    }
+
+    private IEnumerable<CandidateInstance> CandidateInstances()
+    {
       foreach (var impl in prog.TopLevelDeclarations.OfType<Implementation>())
       {
-        foreach (var b in impl.Blocks)
-        {
-          foreach (Cmd c in b.Cmds)
+        foreach (var b in impl.Blocks) {
+          foreach (Cmd cmd in b.Cmds)
           {
-            var p = c as PredicateCmd;
+            var p = cmd as PredicateCmd;
             if (p != null)
             {
-              CheckExpr(impl.Name, p.Expr);
+              string c;
+              if(Houdini.Houdini.MatchCandidate(p.Expr, candidates, out c)) {
+                yield return new CandidateInstance(c, impl.Name, p.Expr);
+              }
             }
           }
         }
@@ -157,11 +205,17 @@ namespace Microsoft.Boogie {
       {
         foreach (Requires r in proc.Requires)
         {
-          CheckExpr(proc.Name, r.Condition);
+          string c;
+          if(Houdini.Houdini.MatchCandidate(r.Condition, candidates, out c)) {
+            yield return new CandidateInstance(c, proc.Name, r.Condition);
+          }
         }
         foreach (Ensures e in proc.Ensures)
         {
-          CheckExpr(proc.Name, e.Condition);
+          string c;
+          if(Houdini.Houdini.MatchCandidate(e.Condition, candidates, out c)) {
+            yield return new CandidateInstance(c, proc.Name, e.Condition);
+          }
         }
       }
     }
@@ -178,24 +232,20 @@ namespace Microsoft.Boogie {
       return false;
     }
 
-    private void CheckExpr(string proc, Expr e) {
-      string candidate;
-      Houdini.Houdini.MatchCandidate(e, candidates, out candidate);
-      if (candidate != null) {
-        VariableCollector vc = new VariableCollector();
-        vc.VisitExpr(e);
+    private void AddDependences(CandidateInstance ci) {
+      VariableCollector vc = new VariableCollector();
+      vc.VisitExpr(ci.Expr);
 
-        foreach (var v in vc.usedVars.Where(Item => varDepAnalyser.VariableRelevantToAnalysis(Item, proc))) {
-          VariableDescriptor vd =
-            varDepAnalyser.MakeDescriptor(proc, v);
-          if (!variableDirectlyReferredToByCandidates.ContainsKey(vd)) {
-            variableDirectlyReferredToByCandidates[vd] = new HashSet<string>();
-          }
-          variableDirectlyReferredToByCandidates[vd].Add(candidate);
+      foreach (var v in vc.usedVars.Where(Item => varDepAnalyser.VariableRelevantToAnalysis(Item, ci.Proc))) {
+        VariableDescriptor vd =
+          varDepAnalyser.MakeDescriptor(ci.Proc, v);
+        if (!variableDirectlyReferredToByCandidates.ContainsKey(vd)) {
+          variableDirectlyReferredToByCandidates[vd] = new HashSet<string>();
+        }
+        variableDirectlyReferredToByCandidates[vd].Add(ci.Candidate);
 
-          foreach (var w in varDepAnalyser.DependsOn(vd)) {
-            candidateDependsOn[candidate].Add(w);
-          }
+        foreach (var w in varDepAnalyser.DependsOn(vd)) {
+          candidateDependsOn[ci.Candidate].Add(w);
         }
       }
     }
@@ -313,11 +363,24 @@ namespace Microsoft.Boogie {
         }
 
         #region Assign candidates to stages at a given level of granularity
-        Debug.Assert(CommandLineOptions.Clo.StagedHoudini == COARSE_STAGES ||
-                   CommandLineOptions.Clo.StagedHoudini == FINE_STAGES);
-        Dictionary<string, int> candidateToStage =
-            (CommandLineOptions.Clo.StagedHoudini == COARSE_STAGES) ? ComputeCoarseStages()
-            : ComputeFineStages();
+
+        Dictionary<string, int> candidateToStage;
+      
+        switch(CommandLineOptions.Clo.StagedHoudini) {
+          case COARSE_STAGES:
+            candidateToStage = ComputeCoarseStages();
+            break;
+          case FINE_STAGES:
+            candidateToStage = ComputeFineStages();
+            break;
+          case BALANCED_STAGES:
+            candidateToStage = ComputeBalancedStages();
+            break;
+          default:
+            Debug.Assert(false);
+            candidateToStage = null;
+            break;
+        }
         
         foreach(var c in candidates) {
           Debug.Assert(candidateToStage.ContainsKey(c));
@@ -421,6 +484,60 @@ namespace Microsoft.Boogie {
 
     }
 
+    private int FindLargestStage() {
+      return StagesDAG.Nodes.Select(Item => Item.Count()).Max();
+    }
+
+
+    private Dictionary<string, int> ComputeCoarseStages()
+    {
+        var result = new Dictionary<string, int>();
+        HashSet<SCC<string>> done = new HashSet<SCC<string>> { GetStartNodeOfStagesDAG() };
+        for(int stageId = 0; done.Count() != StagesDAG.Nodes.Count(); stageId++)
+        {
+            foreach (var n in StagesDAG.Nodes.Where(Item => !done.Contains(Item)))
+            {
+              if(StagesDAG.Successors(n).Where(Item => !done.Contains(Item)).Count() == 0) {
+                foreach (var c in n)
+                {
+                    result[c] = stageId;
+                }
+                done.Add(n);
+              }
+            }
+        }
+        return result;
+    }
+
+    private Dictionary<string, int> ComputeBalancedStages()
+    {
+        int maxStageSize = 200;
+        var result = new Dictionary<string, int>();
+        HashSet<SCC<string>> done = new HashSet<SCC<string>> { GetStartNodeOfStagesDAG() };
+        for(int stageId = 0; done.Count() != StagesDAG.Nodes.Count(); stageId++)
+        {
+          int stageSize = 0;
+          foreach (var n in StagesDAG.Nodes.Where(Item => !done.Contains(Item)))
+          {
+            if(stageSize + n.Count() > maxStageSize) {
+              continue;
+            }
+            if(StagesDAG.Successors(n).Where(Item => !done.Contains(Item)).Count() == 0) {
+              foreach (var c in n)
+              {
+                result[c] = stageId;
+                stageSize++;
+              }
+              done.Add(n);
+            }
+          }
+          if(stageSize == 0) {
+            maxStageSize *= 2;
+          }
+        }
+        return result;
+    }
+
     private Dictionary<string, int> ComputeFineStages()
     {
       
@@ -446,62 +563,10 @@ namespace Microsoft.Boogie {
 
     }
 
-    private Dictionary<string, int> ComputeCoarseStages()
+    private SCC<string> GetStartNodeOfStagesDAG()
     {
-        var result = new Dictionary<string, int>();
-        SCC<string> start = null;
-        foreach (var n in StagesDAG.Nodes)
-        {
-            if (StagesDAG.Successors(n).Count() == 0)
-            {
-                start = n;
-                break;
-            }
-        }
-        System.Diagnostics.Debug.Assert(start != null);
-
-        HashSet<SCC<string>> done = new HashSet<SCC<string>>();
-        done.Add(start);
-
-        bool finished = false;
-        int stageId = 0;
-        while (!finished)
-        {
-            finished = true;
-            HashSet<SCC<string>> stage = new HashSet<SCC<string>>();
-            foreach (var n in StagesDAG.Nodes)
-            {
-                if (!done.Contains(n))
-                {
-                    finished = false;
-                    bool ready = true;
-                    foreach (var m in StagesDAG.Successors(n))
-                    {
-                        if (!done.Contains(m))
-                        {
-                            ready = false;
-                            break;
-                        }
-                    }
-                    if (ready)
-                    {
-                        stage.Add(n);
-                        done.Add(n);
-                    }
-                }
-            }
-
-            foreach (var scc in stage)
-            {
-                foreach (var c in scc)
-                {
-                    result[c] = stageId;
-                }
-            }
-
-            stageId++;
-        }
-        return result;
+      return StagesDAG.Nodes.Where(Item => StagesDAG.Successors(Item).Count() == 0).
+        ToList()[0];
     }
 
     private bool NoStages()
@@ -536,7 +601,7 @@ namespace Microsoft.Boogie {
       this.candidates = candidates;
       this.reachabilityGraph = new InterproceduralReachabilityGraph(prog);
       this.candidateToOccurences = new Dictionary<string,HashSet<object>>();
-      
+
       // Add all candidate occurrences in blocks
       foreach(Block b in prog.TopLevelDeclarations.OfType<Implementation>().Select(Item => Item.Blocks).SelectMany(Item => Item)) {
         foreach(Cmd cmd in b.Cmds) {
@@ -618,6 +683,18 @@ namespace Microsoft.Boogie {
 
       return reachabilityGraph.GetNewBlock((Block)cOccurrence);
 
+    }
+  }
+
+  class CandidateInstance {
+    public string Candidate;
+    public string Proc;
+    public Expr Expr;
+
+    internal CandidateInstance(string Candidate, string Proc, Expr Expr) {
+      this.Candidate = Candidate;
+      this.Proc = Proc;
+      this.Expr = Expr;
     }
   }
 
