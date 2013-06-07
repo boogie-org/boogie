@@ -52,7 +52,7 @@ namespace Microsoft.Boogie
 
         Context ctx;
         RPFP rpfp;
-        Program program;
+        // Program program;
         Microsoft.Boogie.ProverContext boogieContext;
         Microsoft.Boogie.VCExpressionGenerator gen;
         public readonly static string recordProcName = "boogie_si_record"; // TODO: this really needed?
@@ -65,6 +65,7 @@ namespace Microsoft.Boogie
         Dictionary<string, Term> labels = new Dictionary<string, Term> ();
         List<Term> DualityVCs = new List<Term>();
         Dictionary<string, bool> summaries = new Dictionary<string, bool>();
+        Dictionary<Block, List<Block>> edgesCut = new Dictionary<Block, List<Block>>();
         string main_proc_name = "main";
         
         
@@ -185,9 +186,12 @@ namespace Microsoft.Boogie
 #endif
                 foreach (Variable v in /* impl.LocVars */ header.liveVarsBefore)
                 {
-                    vars.Add(v);
-                    names.Add(v.ToString()); 
-                    exprs.Add(new IdentifierExpr(Token.NoToken, v));
+                    if (!(v is BoundVariable))
+                    {
+                        vars.Add(v);
+                        names.Add(v.ToString());
+                        exprs.Add(new IdentifierExpr(Token.NoToken, v));
+                    }
                 }
             }
             else
@@ -511,7 +515,7 @@ namespace Microsoft.Boogie
 
 
             public List<VCExprVar> interfaceExprVars; 
-            public List<VCExprVar> privateVars;
+            // public List<VCExprVar> privateVars;
             public VCExpr funcExpr;
             public VCExpr falseExpr;
             public RPFP.Transformer F;
@@ -611,7 +615,7 @@ namespace Microsoft.Boogie
                             exprs.Add(ie);
                         }
                         Expr freePostExpr = new NAryExpr(Token.NoToken, new FunctionCall(info.function), exprs);
-#if false
+#if true
                         if(mode == Mode.Corral || mode == Mode.OldCorral)
                             proc.Ensures.Add(new Ensures(Token.NoToken, true, freePostExpr, "", new QKeyValue(Token.NoToken, "si_fcall", new List<object>(), null)));
 #endif
@@ -656,7 +660,7 @@ namespace Microsoft.Boogie
             }
         }
 
-        private Term ExtractSmallerVCsRec(Dictionary<Term, Term> memo, Term t, List<Term> small)
+        private Term ExtractSmallerVCsRec(Dictionary<Term, Term> memo, Term t, List<Term> small, Term lbl = null)
         {
             Term res;
             if (memo.TryGetValue(t, out res))
@@ -677,7 +681,7 @@ namespace Microsoft.Boogie
                             {
                                 q = ctx.MkImplies(lhsargs[i], q);
                             }
-                            res = ExtractSmallerVCsRec(memo, q, small);
+                            res = ExtractSmallerVCsRec(memo, q, small,lbl);
                             goto done;
                         }
                         if (r.GetKind() == DeclKind.Label)
@@ -689,6 +693,8 @@ namespace Microsoft.Boogie
                             if (!(annotationInfo.ContainsKey(arg.GetAppDecl().GetDeclName()) && annotationInfo[arg.GetAppDecl().GetDeclName()].type == AnnotationInfo.AnnotationType.LoopInvariant))
                                 goto normal;
                             var sm = ctx.MkImplies(lhs, ExtractSmallerVCsRec(memo, t.GetAppArgs()[1], small));
+                            if (lbl != null)
+                                sm = ctx.MkImplies(lbl, sm);
                             small.Add(sm);
                             res = ctx.MkTrue();
                             goto done;
@@ -699,13 +705,18 @@ namespace Microsoft.Boogie
                             if (!(annotationInfo.ContainsKey(arg.GetAppDecl().GetDeclName()) && annotationInfo[arg.GetAppDecl().GetDeclName()].type == AnnotationInfo.AnnotationType.LoopInvariant))
                                 goto normal;
                             var sm = ctx.MkImplies(lhs,ExtractSmallerVCsRec(memo,t.GetAppArgs()[1],small));
+                            if (lbl != null)
+                                sm = ctx.MkImplies(lbl, sm); 
                             small.Add(sm);
                             res = ctx.MkTrue();
                             goto done;
                         }
                     }
                 normal:
-                    res = ctx.MkImplies(lhs,ExtractSmallerVCsRec(memo,t.GetAppArgs()[1],small));
+                    Term newlbl = null;
+                    if (lhs.IsLabel() && lhs.GetAppArgs()[0] == ctx.MkTrue())
+                        newlbl = lhs;
+                    res = ctx.MkImplies(lhs,ExtractSmallerVCsRec(memo,t.GetAppArgs()[1],small,newlbl));
                 }
                 else if (f.GetKind() == DeclKind.And)
                 {
@@ -870,9 +881,9 @@ namespace Microsoft.Boogie
             var kind = t.GetKind();
             if (kind == TermKind.App)
             {
-                var f = t.GetAppDecl();
+                // var f = t.GetAppDecl();
                 var args = t.GetAppArgs().Select(x => SubstRec(memo, x)).ToArray();
-                res = ctx.MkApp(f, args);
+                res = ctx.CloneApp(t, args);
             }
             else res = t;
             memo.Add(t, res);
@@ -985,7 +996,7 @@ namespace Microsoft.Boogie
             if (mode == Mode.Boogie && style == AnnotationStyle.Flat && impl.Name != main_proc_name)
                 return;
             Contract.Assert(impl != null);
-            ConvertCFG2DAG(impl);
+            ConvertCFG2DAG(impl,edgesCut);
             VC.ModelViewInfo mvInfo;
             PassifyImpl(impl, out mvInfo);
             Hashtable/*<int, Absy!>*/ label2absy = null;
@@ -993,7 +1004,7 @@ namespace Microsoft.Boogie
             Contract.Assert(gen != null);
             VCExpr vcexpr;
             if(NoLabels){
-                int assertionCount = 0;
+                // int assertionCount = 0;
                 VCExpr startCorrect = null; /* VC.VCGen.LetVC(cce.NonNull(impl.Blocks[0]), null, null, info.blockVariables, info.bindings,
                     info.ctxt, out assertionCount); */
                 vcexpr = gen.Let(info.bindings, startCorrect);
@@ -1006,7 +1017,7 @@ namespace Microsoft.Boogie
             info.mvInfo = mvInfo;
             List<VCExpr> interfaceExprs = new List<VCExpr>();
 
-            if (true || !info.isMain)
+            if (true /* was:  !info.isMain */)
             {
                 Boogie2VCExprTranslator translator = checker.TheoremProver.Context.BoogieExprTranslator;
                 Contract.Assert(translator != null);
@@ -1050,6 +1061,7 @@ namespace Microsoft.Boogie
                 FuncDecl R = boogieContext.VCExprToTerm(info.funcExpr, linOptions).GetAppDecl();
                 relationToProc.Add(R, info);
                 info.node = rpfp.CreateNode(boogieContext.VCExprToTerm(info.funcExpr, linOptions));
+                rpfp.nodes.Add(info.node);
                 if (info.isMain || QKeyValue.FindBoolAttribute(impl.Attributes, "entrypoint"))
                     info.node.Bound.Formula = ctx.MkFalse();
             }
@@ -1075,16 +1087,18 @@ namespace Microsoft.Boogie
             if (kind == TermKind.App)
             {
                 var f = t.GetAppDecl();
+                var args = t.GetAppArgs();
+                args = args.Select(x => CollectParamsRec(memo, x, parms, nodes)).ToArray();
                 StratifiedInliningInfo info;
                 if (relationToProc.TryGetValue(f, out info))
                 {
                     f = SuffixFuncDecl(t, parms.Count);
                     parms.Add(f);
                     nodes.Add(info.node);
+                    res = ctx.MkApp(f, args);
                 }
-                var args = t.GetAppArgs();
-                args = args.Select(x => CollectParamsRec(memo, x, parms, nodes)).ToArray();
-                res = ctx.MkApp(f, args);
+                else
+                    res = ctx.CloneApp(t, args);
             } // TODO: handle quantifiers
             else res = t;
             memo.Add(t, res);
@@ -1104,6 +1118,7 @@ namespace Microsoft.Boogie
             // vcTerm = foo.Item1;
             info.F = rpfp.CreateTransformer(relParams.ToArray(), paramTerms, vcTerm);
             info.edge = rpfp.CreateEdge(info.node, info.F, nodeParams.ToArray());
+            rpfp.edges.Add(info.edge);
             // TODO labels[info.edge.number] = foo.Item2;
         }
 
@@ -1114,7 +1129,7 @@ namespace Microsoft.Boogie
 
         public class CyclicLiveVariableAnalysis : Microsoft.Boogie.LiveVariableAnalysis
         {
-            public static void ComputeLiveVariables(Implementation impl)
+            public new static void ComputeLiveVariables(Implementation impl)
             {
 
                 bool some_change = true;
@@ -1178,6 +1193,8 @@ namespace Microsoft.Boogie
         public void Generate()
         {
 
+            var oldDagOption = CommandLineOptions.Clo.vcVariety;
+            CommandLineOptions.Clo.vcVariety = CommandLineOptions.VCVariety.Dag;
 
             // Run live variable analysis (TODO: should this be here?)
 #if false
@@ -1190,8 +1207,9 @@ namespace Microsoft.Boogie
             #region In Boogie mode, annotate the program
             if (mode == Mode.Boogie)
             {
+
                 // find the name of the main procedure
-                main_proc_name = "main"; // default in case no entry point defined
+                main_proc_name = null; // default in case no entry point defined
                 foreach (var d in program.TopLevelDeclarations)
                 {
                     var impl = d as Implementation;
@@ -1201,6 +1219,21 @@ namespace Microsoft.Boogie
                             main_proc_name = impl.Proc.Name;
                     }
                 }
+                if (main_proc_name == null)
+                {
+                    foreach (var d in program.TopLevelDeclarations)
+                    {
+                        var impl = d as Implementation;
+                        if (impl != null)
+                        {
+                            if (impl.Proc.Name == "main" || impl.Proc.Name.EndsWith(".main"))
+                                main_proc_name = impl.Proc.Name;
+                        }
+                    }
+                }
+                if (main_proc_name == null)
+                    main_proc_name = "main";
+
                 if (style == AnnotationStyle.Flat)
                 {
                     InlineAll();
@@ -1319,12 +1352,17 @@ namespace Microsoft.Boogie
 
             // save some information for debugging purposes
             // TODO rpfp.ls.SetAnnotationInfo(annotationInfo);
+
+            CommandLineOptions.Clo.vcVariety = oldDagOption;
         }
 
+        
         private class ErrorHandler : ProverInterface.ErrorHandler
         {
             //TODO: anything we need to handle?
         }
+
+        Dictionary<int, Dictionary<string, string>> varSubst = null;
 
         /** Check the RPFP, and return a counterexample if there is one. */
 
@@ -1334,7 +1372,9 @@ namespace Microsoft.Boogie
 
             ErrorHandler handler = new ErrorHandler();
             RPFP.Node cex;
-            ProverInterface.Outcome outcome = checker.TheoremProver.CheckRPFP("name", rpfp, handler, out cex);
+            varSubst = new Dictionary<int,Dictionary<string,string>>();
+            ProverInterface.Outcome outcome =
+                 checker.TheoremProver.CheckRPFP("name", rpfp, handler, out cex, varSubst);
             cexroot = cex;
           
             Console.WriteLine("solve: {0}s", (DateTime.Now - start).TotalSeconds);
@@ -1350,8 +1390,19 @@ namespace Microsoft.Boogie
             }
         }
 
+        private bool generated = false;
+
         public override VC.VCGen.Outcome VerifyImplementation(Implementation impl, VerifierCallback collector)
         {
+            var start = DateTime.Now; 
+            
+            if (!generated)
+            {
+                Generate();
+                Console.WriteLine("generate: {0}s", (DateTime.Now - start).TotalSeconds);
+                generated = true;
+            }
+            
             Procedure proc = impl.Proc;
             
             // we verify all the impls at once, so we need to execute only once
@@ -1360,16 +1411,12 @@ namespace Microsoft.Boogie
             if (mode == Mode.OldCorral)
                 needToCheck = proc.FindExprAttribute("inline") == null && !(proc is LoopProcedure);
             else if (mode == Mode.Corral)
-                needToCheck = proc.FindExprAttribute("entrypoint") != null && !(proc is LoopProcedure);
+                needToCheck = QKeyValue.FindBoolAttribute(impl.Attributes, "entrypoint") && !(proc is LoopProcedure);
             else
                 needToCheck = impl.Name == main_proc_name;
 
             if (needToCheck)
             {
-                var start = DateTime.Now;
-                Generate(); 
-                Console.WriteLine("generate: {0}s", (DateTime.Now - start).TotalSeconds);
-
                 Console.WriteLine("Verifying {0}...", impl.Name);
 
                 RPFP.Node cexroot = null;
@@ -1383,7 +1430,7 @@ namespace Microsoft.Boogie
                         // start = DateTime.Now;
                         Counterexample cex = CreateBoogieCounterExample(cexroot.owner, cexroot, impl);
                         // cexroot.owner.DisposeDualModel();
-                        // cex.Print(0);  // TODO: just for testing
+                        cex.Print(0);  // TODO: just for testing
                         collector.OnCounterexample(cex, "assertion failure");
                         Console.WriteLine("cex: {0}s", (DateTime.Now - start).TotalSeconds);
                         return VC.ConditionGeneration.Outcome.Errors;
@@ -1477,17 +1524,42 @@ namespace Microsoft.Boogie
             return CodeLabelTrue(rpfp, root, code, info, prefix);
         }
 
+
+        private class StateId
+        {
+            public RPFP.Edge edge;
+            public int capturePoint;
+            public StratifiedInliningInfo info;
+            public StateId(RPFP.Edge e, int c, StratifiedInliningInfo i)
+            {
+                edge = e;
+                capturePoint = c;
+                info = i;
+            }
+        }
+
+
         public Counterexample CreateBoogieCounterExample(RPFP rpfp, RPFP.Node root, Implementation mainImpl)
         {
             FindLabels();
-            var orderedStateIds = new List<Tuple<int, int>>();
+            var orderedStateIds = new List<StateId>();
             Counterexample newCounterexample =
               GenerateTrace(rpfp, root, orderedStateIds, mainImpl,true);
+            if (CommandLineOptions.Clo.ModelViewFile != null)
+            {
+                Model m = root.owner.GetBackgroundModel();
+                GetModelWithStates(m, root, implName2StratifiedInliningInfo[mainImpl.Name],
+                                   orderedStateIds, varSubst);
+                newCounterexample.Model = m;
+                newCounterexample.ModelHasStatesAlready = true;
+            }
             return newCounterexample;
         }
 
+        
+
         private Counterexample GenerateTrace(RPFP rpfp, RPFP.Node root,
-                                                 List<Tuple<int, int>> orderedStateIds, Implementation procImpl, bool toplevel)
+                                                 List<StateId> orderedStateIds, Implementation procImpl, bool toplevel)
         {
             Contract.Requires(procImpl != null);
 
@@ -1497,12 +1569,12 @@ namespace Microsoft.Boogie
             var info = implName2StratifiedInliningInfo[procImpl.Name]; 
             Block entryBlock = cce.NonNull(procImpl.Blocks[0]);
             Contract.Assert(entryBlock != null);
-            if (!CodeLabelFalse(rpfp, root, entryBlock, info, "+"))
-                Contract.Assert(false);
+           
             BlockSeq trace = new BlockSeq(); 
             trace.Add(entryBlock);
 
             var calleeCounterexamples = new Dictionary<TraceLocation, CalleeCounterexampleInfo>();
+
             Counterexample newCounterexample =
                 GenerateTraceRec(rpfp, root, orderedStateIds, entryBlock, trace, calleeCounterexamples, info, toplevel);
 
@@ -1533,7 +1605,7 @@ namespace Microsoft.Boogie
         
         private Counterexample GenerateTraceRec(
                               RPFP rpfp, RPFP.Node root,
-                              List<Tuple<int, int>> orderedStateIds,
+                              List<StateId> orderedStateIds,
                               Block/*!*/ b, BlockSeq/*!*/ trace,
                               Dictionary<TraceLocation/*!*/, CalleeCounterexampleInfo/*!*/>/*!*/ calleeCounterexamples,
                               StratifiedInliningInfo info,
@@ -1542,9 +1614,32 @@ namespace Microsoft.Boogie
             Contract.Requires(b != null);
             Contract.Requires(trace != null);
             Contract.Requires(cce.NonNullDictionaryAndValues(calleeCounterexamples));
+
+            Stack<RPFP.Node> continuation_stack = new Stack<RPFP.Node>();
+
+            // If our block is not present, try diving into precondition
+            // and push a continuation.
+            // TODO: is the precondition always the first child?
+            while (!CodeLabelFalse(rpfp, root, b, info, "+"))
+            {
+                if (root.Outgoing != null && root.Outgoing.Children.Length > 0)
+                {
+                    continuation_stack.Push(root);
+                    root = root.Outgoing.Children[0];
+                }
+                else
+                {
+                    // can't find our block
+                    Contract.Assert(false);
+                    return null;
+                }
+            }
+
             // After translation, all potential errors come from asserts.
             while (true)
             {
+
+
                 CmdSeq cmds = b.Cmds;
                 TransferCmd transferCmd = cce.NonNull(b.TransferCmd);
                 for (int i = 0; i < cmds.Length; i++)
@@ -1560,11 +1655,19 @@ namespace Microsoft.Boogie
                         else
                             is_failed_assertion = CodeLabelTrue(rpfp, root, cmd, info, "@");
 
-                        Counterexample newCounterexample =
-                            AssertCmdToCounterexample((AssertCmd)cmd, transferCmd, trace, new Microsoft.Boogie.Model(), info.mvInfo,
-                            boogieContext);
-                        newCounterexample.AddCalleeCounterexample(calleeCounterexamples);
-                        return newCounterexample;
+                        if (is_failed_assertion)
+                        {
+                            if (continuation_stack.Count == 0)
+                            {
+                                Counterexample newCounterexample =
+                                    AssertCmdToCounterexample((AssertCmd)cmd, transferCmd, trace, new Microsoft.Boogie.Model(), info.mvInfo,
+                                    boogieContext);
+                                newCounterexample.AddCalleeCounterexample(calleeCounterexamples);
+                                return newCounterexample;
+                            }
+                            root = continuation_stack.Pop();
+                        }
+                        continue;
                     }
 
                     // Counterexample generation for inlined procedures
@@ -1588,7 +1691,7 @@ namespace Microsoft.Boogie
                             LiteralExpr x = mvStateExpr.Args[1] as LiteralExpr;
                             // Debug.Assert(x != null);
                             int foo = x.asBigNum.ToInt;
-                            orderedStateIds.Add(new Tuple<int, int>(root.number, foo));
+                            orderedStateIds.Add(new StateId(root.Outgoing,foo,info));
                         }
                     }
 
@@ -1600,29 +1703,34 @@ namespace Microsoft.Boogie
 
                     {
                         Term code = CodeLabeledExpr(rpfp, root, cmd, info, "+si_fcall_");
-                        int pos = TransformerArgPosition(rpfp,root,code);
-                        if(pos >= 0)
+                        int pos = TransformerArgPosition(rpfp, root, code);
+                        if (pos >= 0)
                         {
                             RPFP.Node callee = root.Outgoing.Children[pos];
-                            orderedStateIds.Add(new Tuple<int, int>(callee.number, VC.StratifiedVCGen.StratifiedInliningErrorReporter.CALL));
+                            orderedStateIds.Add(new StateId(callee.Outgoing, CALL,info));
                             calleeCounterexamples[new TraceLocation(trace.Length - 1, i)] =
                                 new CalleeCounterexampleInfo(
-                                    cce.NonNull(GenerateTrace(rpfp, callee, orderedStateIds, 
-                                                implName2StratifiedInliningInfo[calleeName].impl,false)),
+                                    cce.NonNull(GenerateTrace(rpfp, callee, orderedStateIds,
+                                                implName2StratifiedInliningInfo[calleeName].impl, false)),
                                     new List<object>());
-                            orderedStateIds.Add(new Tuple<int, int>(root.number, VC.StratifiedVCGen.StratifiedInliningErrorReporter.RETURN));
+                            orderedStateIds.Add(new StateId(root.Outgoing, RETURN,info));
                         }
                     }
                 }
 
                 GotoCmd gotoCmd = transferCmd as GotoCmd;
+                List<Block> cuts = null;
+                if (edgesCut.ContainsKey(b))
+                    cuts = edgesCut[b];
+                b = null; 
+                
                 if (gotoCmd != null)
-                {
-                    b = null;
+                {    
+
                     foreach (Block bb in cce.NonNull(gotoCmd.labelTargets))
                     {
                         Contract.Assert(bb != null);
-                        if (CodeLabelFalse(rpfp,root,bb,info,"+"))
+                        if (CodeLabelFalse(rpfp, root, bb, info, "+"))
                         {
                             trace.Add(bb);
                             b = bb;
@@ -1631,11 +1739,185 @@ namespace Microsoft.Boogie
                     }
                     if (b != null) continue;
                 }
+                // HACK: we have to try edges that were cut in generating the VC
+
+                if (cuts != null)
+                    foreach (var bb in cuts)
+                    {
+                        if (CodeLabelFalse(rpfp, root, bb, info, "+"))
+                        {
+                            trace.Add(bb);
+                            b = bb;
+                            break;
+                        }
+                    }
+                if (b != null) continue;
+
                 return null;
             }
 
             
         }
+
+        public override Counterexample extractLoopTrace(Counterexample cex, string mainProcName, Program program, Dictionary<string, Dictionary<string, Block>> extractLoopMappingInfo)
+        {
+            // Construct the set of inlined procs in the original program
+            var inlinedProcs = new HashSet<string>();
+            foreach (var decl in program.TopLevelDeclarations)
+            {
+                // Implementations
+                if (decl is Implementation)
+                {
+                    var impl = decl as Implementation;
+                    if (!(impl.Proc is LoopProcedure))
+                    {
+                        inlinedProcs.Add(impl.Name);
+                    }
+                }
+
+                // And recording procedures
+                if (decl is Procedure)
+                {
+                    var proc = decl as Procedure;
+                    if (proc.Name.StartsWith(recordProcName))
+                    {
+                        // Debug.Assert(!(decl is LoopProcedure));
+                        inlinedProcs.Add(proc.Name);
+                    }
+                }
+            }
+            return extractLoopTraceRec(
+              new CalleeCounterexampleInfo(cex, new List<object>()),
+              mainProcName, inlinedProcs, extractLoopMappingInfo).counterexample;
+        }
+
+        protected override bool elIsLoop(string procname)
+        {
+            StratifiedInliningInfo info = null;
+            if (implName2StratifiedInliningInfo.ContainsKey(procname))
+            {
+                info = implName2StratifiedInliningInfo[procname];
+            }
+
+            if (info == null) return false;
+
+            var lp = info.impl.Proc as LoopProcedure;
+
+            if (lp == null) return false;
+            return true;
+        }
+
+        private void NumberCexEdges(RPFP.Node node, Dictionary<int,RPFP.Edge> map)
+        {
+            if (node.Outgoing == null)
+                return; // shouldn't happen
+            RPFP.Edge edge = node.Outgoing;
+            map[edge.number] = edge;
+            foreach (var c in edge.Children)
+                NumberCexEdges(c, map);
+        }
+
+        private void GetModelWithStates(Model m, RPFP.Node cex, StratifiedInliningInfo mainInfo,
+                                        List<StateId> orderedStateIds,
+                                        Dictionary<int,Dictionary<string,string>> varSubst)
+        {
+            if (m == null) return;
+            var mvInfo = mainInfo.mvInfo;
+            
+
+            foreach (Variable v in mvInfo.AllVariables)
+            {
+                m.InitialState.AddBinding(v.Name, GetModelValue(m, v, varSubst[cex.Outgoing.number]));
+            }
+
+            Dictionary<int, RPFP.Edge> edgeNumbering = new Dictionary<int,RPFP.Edge>();
+            NumberCexEdges(cex, edgeNumbering);
+
+            int lastCandidate = 0;
+            int lastCapturePoint = CALL;
+            for (int i = 0; i < orderedStateIds.Count; ++i)
+            {
+                var s = orderedStateIds[i];
+                RPFP.Edge edge = s.edge;
+                int candidate = edge.number;
+                int capturePoint = s.capturePoint;
+                Dictionary<string, string> subst = varSubst[candidate];
+
+                string implName = edge.Parent.Name.GetDeclName();
+                var info = s.info.mvInfo;
+
+                if (capturePoint == CALL || capturePoint == RETURN)
+                {
+                    lastCandidate = candidate;
+                    lastCapturePoint = capturePoint;
+                    continue;
+                }
+
+                Contract.Assume(0 <= capturePoint && capturePoint < info.CapturePoints.Count);
+                VC.ModelViewInfo.Mapping map = info.CapturePoints[capturePoint];
+                var prevInc = (lastCapturePoint != CALL && lastCapturePoint != RETURN && candidate == lastCandidate)
+                  ? info.CapturePoints[lastCapturePoint].IncarnationMap : new Hashtable();
+                var cs = m.MkState(map.Description);
+
+                foreach (Variable v in info.AllVariables)
+                {
+                    var e = (Expr)map.IncarnationMap[v];
+
+                    if (e == null)
+                    {
+                        if (lastCapturePoint == CALL || lastCapturePoint == RETURN)
+                        {
+                            cs.AddBinding(v.Name, GetModelValue(m, v, subst));
+                        }
+                        continue;
+                    }
+
+                    if (lastCapturePoint != CALL && lastCapturePoint != RETURN && prevInc[v] == e) continue; // skip unchanged variables
+
+                    Model.Element elt;
+                    if (e is IdentifierExpr)
+                    {
+                        IdentifierExpr ide = (IdentifierExpr)e;
+                        elt = GetModelValue(m, ide.Decl, subst);
+                    }
+                    else if (e is LiteralExpr)
+                    {
+                        LiteralExpr lit = (LiteralExpr)e;
+                        elt = m.MkElement(lit.Val.ToString());
+                    }
+                    else
+                    {
+                        Contract.Assume(false);
+                        elt = m.MkFunc(e.ToString(), 0).GetConstant();
+                    }
+                    cs.AddBinding(v.Name, elt);
+                }
+
+                lastCandidate = candidate;
+                lastCapturePoint = capturePoint;
+            }
+
+            return;
+        }
+
+
+        public readonly static int CALL = -1;
+        public readonly static int RETURN = -2;
+
+        private Model.Element GetModelValue(Model m, Variable v, Dictionary<string,string> subst)
+        {
+            // first, get the unique name
+            string uniqueName;
+
+            VCExprVar vvar = boogieContext.BoogieExprTranslator.TryLookupVariable(v);
+            
+            uniqueName = v.Name;
+            
+            if(subst.ContainsKey(uniqueName))
+                return m.MkElement(subst[uniqueName]);
+            return m.MkFunc("@undefined", 0).GetConstant();
+        }
+
 
     }
 

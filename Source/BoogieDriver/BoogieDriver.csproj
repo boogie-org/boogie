@@ -211,7 +211,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\AbsInt\AbsInt.csproj">
-      <Project>{0EFA3E43-690B-48DC-A72C-384A3EA7F31F}</Project>
+      <Project>{0efa3e43-690b-48dc-a72c-384a3ea7f31f}</Project>
       <Name>AbsInt</Name>
     </ProjectReference>
     <ProjectReference Include="..\Basetypes\Basetypes.csproj">
@@ -230,16 +230,20 @@
       <Project>{884386a3-58e9-40bb-a273-b24976775553}</Project>
       <Name>Doomed</Name>
     </ProjectReference>
+    <ProjectReference Include="..\ExecutionEngine\ExecutionEngine.csproj">
+      <Project>{eaa5eb79-d475-4601-a59b-825c191cd25f}</Project>
+      <Name>ExecutionEngine</Name>
+    </ProjectReference>
     <ProjectReference Include="..\Graph\Graph.csproj">
-      <Project>{69A2B0B8-BCAC-4101-AE7A-556FCC58C06E}</Project>
+      <Project>{69a2b0b8-bcac-4101-ae7a-556fcc58c06e}</Project>
       <Name>Graph</Name>
     </ProjectReference>
     <ProjectReference Include="..\Houdini\Houdini.csproj">
-      <Project>{CF41E903-78EB-43BA-A355-E5FEB5ECECD4}</Project>
+      <Project>{cf41e903-78eb-43ba-a355-e5feb5ececd4}</Project>
       <Name>Houdini</Name>
     </ProjectReference>
     <ProjectReference Include="..\ParserHelper\ParserHelper.csproj">
-      <Project>{FCD3AC7F-9DFD-46C8-AB1E-09F0B0F16DC5}</Project>
+      <Project>{fcd3ac7f-9dfd-46c8-ab1e-09f0b0f16dc5}</Project>
       <Name>ParserHelper</Name>
     </ProjectReference>
     <ProjectReference Include="..\Predication\Predication.csproj">
@@ -247,11 +251,15 @@
       <Name>Predication</Name>
     </ProjectReference>
     <ProjectReference Include="..\Provers\SMTLib\SMTLib.csproj">
-      <Project>{9B163AA3-36BC-4AFB-88AB-79BC9E97E401}</Project>
+      <Project>{9b163aa3-36bc-4afb-88ab-79bc9e97e401}</Project>
       <Name>SMTLib</Name>
     </ProjectReference>
+    <ProjectReference Include="..\VCExpr\VCExpr.csproj">
+      <Project>{56ffdbca-7d14-43b8-a6ca-22a20e417ee1}</Project>
+      <Name>VCExpr</Name>
+    </ProjectReference>
     <ProjectReference Include="..\VCGeneration\VCGeneration.csproj">
-      <Project>{E1F10180-C7B9-4147-B51F-FA1B701966DC}</Project>
+      <Project>{e1f10180-c7b9-4147-b51f-fa1b701966dc}</Project>
       <Name>VCGeneration</Name>
     </ProjectReference>
   </ItemGroup>

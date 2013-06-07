@@ -1,9 +1,9 @@
 
 -------------------- NullInModel --------------------
 *** MODEL
-%lbl%@45 -> false
+%lbl%@47 -> false
 %lbl%+24 -> true
-%lbl%+35 -> true
+%lbl%+37 -> true
 boolType -> T@T!val!2
 intType -> T@T!val!0
 null -> T@U!val!0
@@ -35,9 +35,9 @@ Boogie program verifier finished with 0 verified, 1 error
 
 -------------------- IntInModel --------------------
 *** MODEL
-%lbl%@37 -> false
+%lbl%@39 -> false
 %lbl%+23 -> true
-%lbl%+27 -> true
+%lbl%+29 -> true
 boolType -> T@T!val!2
 i -> 0
 intType -> T@T!val!0
@@ -62,9 +62,9 @@ Boogie program verifier finished with 0 verified, 1 error
 
 -------------------- ModelTest --------------------
 *** MODEL
-%lbl%@145 -> false
+%lbl%@147 -> false
 %lbl%+64 -> true
-%lbl%+82 -> true
+%lbl%+84 -> true
 boolType -> T@T!val!2
 i@0 -> 1
 intType -> T@T!val!0
@@ -120,11 +120,11 @@ Execution trace:
     CaptureState.bpl(16,5): anon4_Then
     CaptureState.bpl(24,5): anon3
 *** MODEL
-%lbl%@291 -> false
+%lbl%@293 -> false
 %lbl%+112 -> true
 %lbl%+114 -> true
 %lbl%+118 -> true
-%lbl%+146 -> true
+%lbl%+148 -> true
 @MV_state_const -> 6
 boolType -> T@T!val!2
 F -> T@U!val!2
@@ -133,7 +133,7 @@ Heap -> T@U!val!0
 intType -> T@T!val!0
 m -> **m
 m@0 -> -451
-m@2 -> -450
+m@1 -> -450
 m@3 -> -450
 r -> **r
 r@0 -> -900
@@ -155,8 +155,8 @@ type -> {
 }
 @MV_state -> {
   6 0 -> true
-  6 3 -> true
-  6 4 -> true
+  6 1 -> true
+  6 2 -> true
   6 5 -> true
   else -> true
 }

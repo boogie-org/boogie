@@ -159,8 +159,7 @@ namespace Microsoft.Boogie
             public Edge map;
             public HashSet<string> labels;
             internal Term dual;
-            internal Dictionary<FuncDecl,int> relMap;
-            internal Dictionary<Term,Term> varMap;
+            internal Dictionary<Term,Term> valuation;
         }
 
         
@@ -175,7 +174,8 @@ namespace Microsoft.Boogie
             e.number = ++edgeCount;
             _Parent.Outgoing = e;
             foreach (var c in _Children)
-                c.Incoming.Add(e);
+                if(c != null)
+                  c.Incoming.Add(e);
             return e;
         }
 
@@ -262,10 +262,23 @@ namespace Microsoft.Boogie
 
         public Term Eval(Edge e, Term t)
         {
-            return ctx.MkFalse(); // TODO
+            if (e.valuation == null)
+                e.valuation = new Dictionary<Term, Term>();
+            if (e.valuation.ContainsKey(t))
+                return e.valuation[t];
+            return null; // TODO
         }
 
-        
+        /** Sets the value in the counterexample of a symbol occuring in the transformer formula of
+         *  a given edge. */
+
+        public void SetValue(Edge e, Term variable, Term value)
+        {
+            if (e.valuation == null)
+                e.valuation = new Dictionary<Term, Term>(); 
+            e.valuation.Add(variable, value);
+        }
+
 
         /** Returns true if the given node is empty in the primal solution. For proecudure summaries,
          this means that the procedure is not called in the current counter-model. */
@@ -374,7 +387,7 @@ namespace Microsoft.Boogie
                 }
                 var args = t.GetAppArgs();
                 args = args.Select(x => CollectParamsRec(memo, x, parms, nodes)).ToArray();
-                res = ctx.MkApp(f, args);
+                res = ctx.CloneApp(t, args);
             } // TODO: handle quantifiers
             else
                 res = t;
@@ -470,7 +483,9 @@ namespace Microsoft.Boogie
                 predSubst.Add(edge.F.RelParams[i], edge.Children[i].Name);
             Term body = SubstPreds(predSubst, edge.F.Formula);
             Term head = ctx.MkApp(edge.Parent.Name, edge.F.IndParams);
-            return BindVariables(ctx.MkImplies(body, head));
+            var rule = BindVariables(ctx.MkImplies(body, head));
+            rule = ctx.Letify(rule); // put in let bindings for theorem prover
+            return rule;
         }
 
         /** Get the Z3 query corresponding to the conjunction of the node bounds. */
@@ -484,7 +499,9 @@ namespace Microsoft.Boogie
                     conjuncts.Add(ctx.MkImplies(ctx.MkApp(node.Name, node.Bound.IndParams), node.Bound.Formula));
             }
             Term query = ctx.MkNot(ctx.MkAnd(conjuncts.ToArray()));
-            return BindVariables(query,false); // bind variables existentially
+            query = BindVariables(query,false); // bind variables existentially
+            query = ctx.Letify(query); // put in let bindings for theorem prover
+            return query;
         }
 
         private void CollectVariables(Dictionary<Term, bool> memo, Term t, List<Term> vars)
@@ -521,8 +538,13 @@ namespace Microsoft.Boogie
                 FuncDecl nf = null;
                 var f = t.GetAppDecl();
                 if (subst.TryGetValue(f, out nf))
-                    f = nf;
-                res = ctx.MkApp(f, args);
+                {
+                    res = ctx.MkApp(nf, args);
+                }
+                else
+                {
+                    res = ctx.CloneApp(t, args);
+                }
             } // TODO: handle quantifiers
             else
                 res = t;
@@ -544,10 +566,21 @@ namespace Microsoft.Boogie
             public List<Node> nodes = new List<Node>();
         };
 
+        /** Set the model of the background theory used in a counterexample. */
+        public void SetBackgroundModel(Model m)
+        {
+            dualModel = m;
+        }
+
+        /** Set the model of the background theory used in a counterexample. */
+        public Model GetBackgroundModel()
+        {
+            return dualModel;
+        }
 
         private int nodeCount = 0;
         private int edgeCount = 0;
-        // private Model dualModel;
+        private Model dualModel;
         // private LabeledLiterals dualLabels;
         private Stack<stack_entry> stack;
         public List<Node> nodes = new List<Node>();

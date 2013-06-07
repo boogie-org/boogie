@@ -363,6 +363,7 @@ namespace Microsoft.Boogie {
       Contract.Invariant(0 <= PrintUnstructured && PrintUnstructured < 3);  // 0 = print only structured,  1 = both structured and unstructured,  2 = only unstructured
     }
 
+    public bool VerifySnapshots;
     public string PrintFile = null;
     public int PrintUnstructured = 0;
     public int DoomStrategy = -1;
@@ -464,6 +465,7 @@ namespace Microsoft.Boogie {
     public string PrintCFGPrefix = null;
     public bool ForceBplErrors = false; // if true, boogie error is shown even if "msg" attribute is present
     public bool UseArrayTheory = false;
+    public bool WeakArrayTheory = false;
     public bool UseLabels = true;
     public bool MonomorphicArrays {
       get {
@@ -1308,6 +1310,7 @@ namespace Microsoft.Boogie {
               ps.CheckBooleanFlag("z3multipleErrors", ref z3AtFlag, false) ||
               ps.CheckBooleanFlag("monomorphize", ref Monomorphize) ||
               ps.CheckBooleanFlag("useArrayTheory", ref UseArrayTheory) ||
+              ps.CheckBooleanFlag("weakArrayTheory", ref WeakArrayTheory) || 
               ps.CheckBooleanFlag("doModSetAnalysis", ref DoModSetAnalysis) ||
               ps.CheckBooleanFlag("doNotUseLabels", ref UseLabels, false) ||
               ps.CheckBooleanFlag("contractInfer", ref ContractInfer) ||
@@ -1317,7 +1320,8 @@ namespace Microsoft.Boogie {
               ps.CheckBooleanFlag("printAssignment", ref PrintAssignment) ||
               ps.CheckBooleanFlag("useProverEvaluate", ref UseProverEvaluate) ||
               ps.CheckBooleanFlag("nonUniformUnfolding", ref NonUniformUnfolding) ||
-              ps.CheckBooleanFlag("deterministicExtractLoops", ref DeterministicExtractLoops)
+              ps.CheckBooleanFlag("deterministicExtractLoops", ref DeterministicExtractLoops) ||
+              ps.CheckBooleanFlag("verifySnapshots", ref VerifySnapshots)
               ) {
             // one of the boolean flags matched
             return true;

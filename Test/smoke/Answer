@@ -5,6 +5,9 @@ implementation b(x: int)
   var y: int;
 
 
+  0:
+    goto anon0;
+
   anon0:
     goto anon3_Then;
 

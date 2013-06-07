@@ -667,7 +667,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
               Lo = 1 - hi;
             }
             if (lo != null) {
-              Hi = -lo;
+              Hi = 1 - lo;
             }
           }
           else if (op.Op == UnaryOperator.Opcode.Not) {

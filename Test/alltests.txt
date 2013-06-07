@@ -28,3 +28,4 @@ stratifiedinline Use    Stratified inlining benchmarks
 extractloops     Use    Extract loops benchmarks
 havoc0           Use    HAVOC-generated bpl files
 AbsHoudini       Postponed    Test for abstract houdini
+snapshots        Use    Tests for program snapshot verification

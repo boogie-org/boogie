@@ -1,0 +1,27 @@
+Snapshots0.v0.bpl(41,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    Snapshots0.v0.bpl(41,5): anon0
+Snapshots0.v0.bpl(8,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    Snapshots0.v0.bpl(8,5): anon0
+Snapshots0.v0.bpl(19,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    Snapshots0.v0.bpl(19,5): anon0
+Snapshots0.v0.bpl(30,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    Snapshots0.v0.bpl(30,5): anon0
+
+Boogie program verifier finished with 0 verified, 4 errors
+Snapshots0.v0.bpl(41,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    Snapshots0.v0.bpl(41,5): anon0
+Snapshots0.v1.bpl(30,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    Snapshots0.v1.bpl(30,5): anon0
+
+Boogie program verifier finished with 2 verified, 2 errors
+Snapshots0.v0.bpl(41,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    Snapshots0.v0.bpl(41,5): anon0
+
+Boogie program verifier finished with 2 verified, 1 error

@@ -153,8 +153,15 @@ CutBackEdge.bpl(10,5): Error BP5005: This loop invariant might not be maintained
 Execution trace:
     CutBackEdge.bpl(5,3): entry
     CutBackEdge.bpl(9,3): block850
+CutBackEdge.bpl(20,5): Error BP5004: This loop invariant might not hold on entry.
+Execution trace:
+CutBackEdge.bpl(26,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    CutBackEdge.bpl(25,3): L
+CutBackEdge.bpl(38,5): Error BP5004: This loop invariant might not hold on entry.
+Execution trace:
 
-Boogie program verifier finished with 0 verified, 1 error
+Boogie program verifier finished with 1 verified, 4 errors
 
 -------------------- False.bpl --------------------
 
@@ -473,3 +480,27 @@ Execution trace:
     ContractEvaluationOrder.bpl(23,5): anon0
 
 Boogie program verifier finished with 1 verified, 3 errors
+
+-------------------- Timeouts0.bpl --------------------
+Timeouts0.bpl(12,7): Timed out on BP5005: This loop invariant might not be maintained by the loop.
+Execution trace:
+    Timeouts0.bpl(8,7): anon0
+    Timeouts0.bpl(10,5): anon4_LoopHead
+    Timeouts0.bpl(14,20): anon4_LoopBody
+Timeouts0.bpl(19,5): Timed out on BP5003: A postcondition might not hold on this return path.
+Timeouts0.bpl(4,3): Related location: This is the postcondition that might not hold.
+Execution trace:
+    Timeouts0.bpl(8,7): anon0
+    Timeouts0.bpl(10,5): anon4_LoopHead
+    Timeouts0.bpl(10,5): anon4_LoopDone
+    Timeouts0.bpl(19,5): anon5_LoopHead
+    Timeouts0.bpl(19,5): anon5_LoopDone
+Timeouts0.bpl(21,7): Timed out on BP5005: This loop invariant might not be maintained by the loop.
+Execution trace:
+    Timeouts0.bpl(8,7): anon0
+    Timeouts0.bpl(10,5): anon4_LoopHead
+    Timeouts0.bpl(10,5): anon4_LoopDone
+    Timeouts0.bpl(19,5): anon5_LoopHead
+    Timeouts0.bpl(23,11): anon5_LoopBody
+
+Boogie program verifier finished with 0 verified, 0 errors, 1 time out

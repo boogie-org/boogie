@@ -32,3 +32,7 @@ for %%f in (ContractEvaluationOrder.bpl) do (
   echo -------------------- %%f --------------------
   %BGEXE% %* %%f
 )
+
+echo.
+echo -------------------- Timeouts0.bpl --------------------
+%BGEXE% %* /timeLimit:4 Timeouts0.bpl
