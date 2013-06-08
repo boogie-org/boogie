@@ -80,6 +80,7 @@ namespace Microsoft.Boogie {
     public ProverContext Context;
     [Peer]
     public List<string>/*!>!*/ relatedInformation;
+    public string RequestId;
 
     public Dictionary<TraceLocation, CalleeCounterexampleInfo> calleeCounterexamples;
 
@@ -587,7 +588,7 @@ namespace VC {
     /// each counterexample consisting of an array of labels.
     /// </summary>
     /// <param name="impl"></param>
-    public Outcome VerifyImplementation(Implementation impl, out List<Counterexample>/*?*/ errors) {
+    public Outcome VerifyImplementation(Implementation impl, out List<Counterexample>/*?*/ errors, string requestId = null) {
       Contract.Requires(impl != null);
 
       Contract.Ensures(Contract.ValueAtReturn(out errors) == null || Contract.ForAll(Contract.ValueAtReturn(out errors), i => i != null));
@@ -596,6 +597,7 @@ namespace VC {
       Helpers.ExtraTraceInformation("Starting implementation verification");
 
       CounterexampleCollector collector = new CounterexampleCollector();
+      collector.RequestId = requestId;
       Outcome outcome = VerifyImplementation(impl, collector);
       if (outcome == Outcome.Errors || outcome == Outcome.TimedOut || outcome == Outcome.OutOfMemory) {
         errors = collector.examples;
@@ -996,9 +998,15 @@ namespace VC {
         Contract.Invariant(cce.NonNullElements(examples));
       }
 
+      public string RequestId;
+
       public readonly List<Counterexample>/*!>!*/ examples = new List<Counterexample>();
       public override void OnCounterexample(Counterexample ce, string/*?*/ reason) {
         //Contract.Requires(ce != null);
+        if (RequestId != null)
+        {
+          ce.RequestId = RequestId;
+        }
         examples.Add(ce);
       }
 

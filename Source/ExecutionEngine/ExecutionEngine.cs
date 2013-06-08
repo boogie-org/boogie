@@ -182,13 +182,13 @@ namespace Microsoft.Boogie
 
   public class ErrorInformationFactory
   {
-    public virtual ErrorInformation CreateErrorInformation(IToken tok, string msg)
+    public virtual ErrorInformation CreateErrorInformation(IToken tok, string msg, string requestId = null)
     {
       Contract.Requires(tok != null);
       Contract.Requires(1 <= tok.line && 1 <= tok.col);
       Contract.Requires(msg != null);
 
-      return ErrorInformation.CreateErrorInformation(tok, msg);
+      return ErrorInformation.CreateErrorInformation(tok, msg, requestId);
     }
   }
 
@@ -198,6 +198,7 @@ namespace Microsoft.Boogie
     public IToken Tok;
     public string Msg;
     public readonly List<AuxErrorInfo> Aux = new List<AuxErrorInfo>();
+    public string RequestId { get; set; }
 
     public struct AuxErrorInfo
     {
@@ -221,9 +222,11 @@ namespace Microsoft.Boogie
       Msg = CleanUp(msg);
     }
 
-    internal static ErrorInformation CreateErrorInformation(IToken tok, string msg)
+    internal static ErrorInformation CreateErrorInformation(IToken tok, string msg, string requestId = null)
     {
-      return new ErrorInformation(tok, msg);
+      var result = new ErrorInformation(tok, msg);
+      result.RequestId = requestId;
+      return result;
     }
 
     public virtual void AddAuxInfo(IToken tok, string msg)
@@ -620,7 +623,7 @@ namespace Microsoft.Boogie
     /// </summary>
     public static PipelineOutcome InferAndVerify(Program program,
                                                  out int errorCount, out int verified, out int inconclusives, out int timeOuts, out int outOfMemories,
-                                                 ErrorReporterDelegate er = null)
+                                                 ErrorReporterDelegate er = null, string requestId = null)
     {
       Contract.Requires(program != null);
       Contract.Ensures(0 <= Contract.ValueAtReturn(out inconclusives) && 0 <= Contract.ValueAtReturn(out timeOuts));
@@ -826,7 +829,7 @@ namespace Microsoft.Boogie
           {
             if (!CommandLineOptions.Clo.VerifySnapshots || NeedsToBeVerified(impl))
             {
-              outcome = vcgen.VerifyImplementation(impl, out errors);
+              outcome = vcgen.VerifyImplementation(impl, out errors, requestId);
             }
             else
             {
@@ -876,11 +879,11 @@ namespace Microsoft.Boogie
 
         if (CommandLineOptions.Clo.VerifySnapshots && !string.IsNullOrEmpty(impl.Checksum))
         {
-          var result = new VerificationResult(impl.Checksum, depsChecksum, outcome, errors);
+          var result = new VerificationResult(requestId, impl.Checksum, depsChecksum, outcome, errors);
           VerificationResultCache[impl.Id] = result;
         }
 
-        ProcessOutcome(outcome, errors, timeIndication, ref errorCount, ref verified, ref inconclusives, ref timeOuts, ref outOfMemories, er, impl);
+        ProcessOutcome(outcome, errors, timeIndication, ref errorCount, ref verified, ref inconclusives, ref timeOuts, ref outOfMemories, er, impl, requestId);
 
         if (CommandLineOptions.Clo.XmlSink != null)
         {
@@ -903,7 +906,7 @@ namespace Microsoft.Boogie
 
 
     static void ProcessOutcome(VC.VCGen.Outcome outcome, List<Counterexample> errors, string timeIndication,
-                               ref int errorCount, ref int verified, ref int inconclusives, ref int timeOuts, ref int outOfMemories, ErrorReporterDelegate er = null, Implementation impl = null)
+                               ref int errorCount, ref int verified, ref int inconclusives, ref int timeOuts, ref int outOfMemories, ErrorReporterDelegate er = null, Implementation impl = null, string requestId = null)
     {
       switch (outcome)
       {
@@ -932,7 +935,7 @@ namespace Microsoft.Boogie
           printer.Inform(String.Format("{0}timed out", timeIndication));
           if (er != null && impl != null)
           {
-            er(errorInformationFactory.CreateErrorInformation(impl.tok, string.Format("Verification timed out after {0} seconds ({1})", CommandLineOptions.Clo.ProverKillTime, impl.Name)));
+            er(errorInformationFactory.CreateErrorInformation(impl.tok, string.Format("Verification timed out after {0} seconds ({1})", CommandLineOptions.Clo.ProverKillTime, impl.Name), requestId));
           }
           break;
         case VCGen.Outcome.OutOfMemory:
@@ -940,7 +943,7 @@ namespace Microsoft.Boogie
           printer.Inform(String.Format("{0}out of memory", timeIndication));
           if (er != null && impl != null)
           {
-            er(errorInformationFactory.CreateErrorInformation(impl.tok, "Verification out of memory (" + impl.Name + ")"));
+            er(errorInformationFactory.CreateErrorInformation(impl.tok, "Verification out of memory (" + impl.Name + ")", requestId));
           }
           break;
         case VCGen.Outcome.Inconclusive:
@@ -948,7 +951,7 @@ namespace Microsoft.Boogie
           printer.Inform(String.Format("{0}inconclusive", timeIndication));
           if (er != null && impl != null)
           {
-            er(errorInformationFactory.CreateErrorInformation(impl.tok, "Verification inconclusive (" + impl.Name + ")"));
+            er(errorInformationFactory.CreateErrorInformation(impl.tok, "Verification inconclusive (" + impl.Name + ")", requestId));
           }
           break;
         case VCGen.Outcome.Errors:
@@ -997,7 +1000,7 @@ namespace Microsoft.Boogie
               printer.ReportBplError(err.FailingRequires.tok, "Related location: This is the precondition that might not hold.", false, true);
             }
 
-            errorInfo = errorInformationFactory.CreateErrorInformation(err.FailingCall.tok, cause + ": " + err.FailingCall.ErrorData as string ?? "A precondition for this call might not hold.");
+            errorInfo = errorInformationFactory.CreateErrorInformation(err.FailingCall.tok, cause + ": " + (err.FailingCall.ErrorData as string ?? "A precondition for this call might not hold."), err.RequestId);
             errorInfo.AddAuxInfo(err.FailingRequires.tok, err.FailingRequires.ErrorData as string ?? "Related location: This is the precondition that might not hold.");
 
             if (CommandLineOptions.Clo.XmlSink != null)
@@ -1019,7 +1022,7 @@ namespace Microsoft.Boogie
             }
             printer.ReportAllBplErrors(err.FailingEnsures.Attributes);
 
-            errorInfo = errorInformationFactory.CreateErrorInformation(err.FailingReturn.tok, cause + ": " + "A postcondition might not hold on this return path.");
+            errorInfo = errorInformationFactory.CreateErrorInformation(err.FailingReturn.tok, cause + ": " + "A postcondition might not hold on this return path.", err.RequestId);
             errorInfo.AddAuxInfo(err.FailingEnsures.tok, err.FailingEnsures.ErrorData as string ?? "Related location: This is the postcondition that might not hold.");
             errorInfo.AddAuxInfo(err.FailingEnsures.Attributes);
 
@@ -1035,7 +1038,7 @@ namespace Microsoft.Boogie
             {
               printer.ReportBplError(err.FailingAssert.tok, cause + " BP5004: This loop invariant might not hold on entry.", true, true);
 
-              errorInfo = errorInformationFactory.CreateErrorInformation(err.FailingAssert.tok, cause + ": " + "This loop invariant might not hold on entry.");
+              errorInfo = errorInformationFactory.CreateErrorInformation(err.FailingAssert.tok, cause + ": " + "This loop invariant might not hold on entry.", err.RequestId);
 
               if (CommandLineOptions.Clo.XmlSink != null)
               {
@@ -1047,7 +1050,7 @@ namespace Microsoft.Boogie
               // this assertion is a loop invariant which is not maintained
               printer.ReportBplError(err.FailingAssert.tok, cause + " BP5005: This loop invariant might not be maintained by the loop.", true, true);
 
-              errorInfo = errorInformationFactory.CreateErrorInformation(err.FailingAssert.tok, cause + ": " + "This loop invariant might not be maintained by the loop.");
+              errorInfo = errorInformationFactory.CreateErrorInformation(err.FailingAssert.tok, cause + ": " + "This loop invariant might not be maintained by the loop.", err.RequestId);
 
               if (CommandLineOptions.Clo.XmlSink != null)
               {
@@ -1075,7 +1078,7 @@ namespace Microsoft.Boogie
               {
                 msg = "This assertion might not hold.";
               }
-              errorInfo = errorInformationFactory.CreateErrorInformation(err.FailingAssert.tok, cause + ": " + msg);
+              errorInfo = errorInformationFactory.CreateErrorInformation(err.FailingAssert.tok, cause + ": " + msg, err.RequestId);
               errorInfo.AddAuxInfo(err.FailingAssert.Attributes);
 
               if (CommandLineOptions.Clo.XmlSink != null)
@@ -1179,16 +1182,18 @@ namespace Microsoft.Boogie
 
     private struct VerificationResult
     {
-      internal VerificationResult(string checksum, string depsChecksum, ConditionGeneration.Outcome outcome, List<Counterexample> errors)
+      internal VerificationResult(string requestId, string checksum, string depsChecksum, ConditionGeneration.Outcome outcome, List<Counterexample> errors)
       {
         Checksum = checksum;
         DependeciesChecksum = depsChecksum;
         Outcome = outcome;
         Errors = errors;
+        RequestId = requestId;
       }
 
       public readonly string Checksum;
       public readonly string DependeciesChecksum;
+      public readonly string RequestId;
       public readonly ConditionGeneration.Outcome Outcome;
       public readonly List<Counterexample> Errors;
     }

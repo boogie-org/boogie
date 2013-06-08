@@ -70,6 +70,10 @@
       <Project>{cf41e903-78eb-43ba-a355-e5feb5ececd4}</Project>
       <Name>Houdini</Name>
     </ProjectReference>
+    <ProjectReference Include="..\Model\Model.csproj">
+      <Project>{acef88d5-dadd-46da-bae1-2144d63f4c83}</Project>
+      <Name>Model</Name>
+    </ProjectReference>
     <ProjectReference Include="..\ParserHelper\ParserHelper.csproj">
       <Project>{fcd3ac7f-9dfd-46c8-ab1e-09f0b0f16dc5}</Project>
       <Name>ParserHelper</Name>
