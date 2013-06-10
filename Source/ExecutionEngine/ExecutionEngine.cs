@@ -219,22 +219,6 @@ namespace Microsoft.Boogie
       Aux.Add(new AuxErrorInfo(tok, msg));
     }
 
-    public void AddAuxInfo(QKeyValue attr)
-    {
-      while (attr != null)
-      {
-        if (attr.Key == "msg" && attr.Params.Count == 1 && attr.tok.line != 0 && attr.tok.col != 0)
-        {
-          var str = attr.Params[0] as string;
-          if (str != null)
-          {
-            AddAuxInfo(attr.tok, str);
-          }
-        }
-        attr = attr.Next;
-      }
-    }
-
     protected static string CleanUp(string msg)
     {
       if (msg.ToLower().StartsWith("error: "))
@@ -1005,7 +989,6 @@ namespace Microsoft.Boogie
 
             errorInfo = errorInformationFactory.CreateErrorInformation(err.FailingReturn.tok, cause + ": " + "A postcondition might not hold on this return path.", err.RequestId);
             errorInfo.AddAuxInfo(err.FailingEnsures.tok, err.FailingEnsures.ErrorData as string ?? "Related location: This is the postcondition that might not hold.");
-            errorInfo.AddAuxInfo(err.FailingEnsures.Attributes);
 
             if (CommandLineOptions.Clo.XmlSink != null)
             {
@@ -1059,7 +1042,6 @@ namespace Microsoft.Boogie
                 msg = "This assertion might not hold.";
               }
               errorInfo = errorInformationFactory.CreateErrorInformation(err.FailingAssert.tok, cause + ": " + msg, err.RequestId);
-              errorInfo.AddAuxInfo(err.FailingAssert.Attributes);
 
               if (CommandLineOptions.Clo.XmlSink != null)
               {
