@@ -20,7 +20,6 @@ namespace Microsoft.Boogie
     void AdvisoryWriteLine(string format, params object[] args);
     void Inform(string s);
     void WriteTrailer(int verified, int errors, int inconclusives, int timeOuts, int outOfMemories);
-    void ReportAllBplErrors(QKeyValue attr);
     void ReportBplError(IToken tok, string message, bool error, bool showBplLocation);
   }
 
@@ -118,23 +117,6 @@ namespace Microsoft.Boogie
       }
       Console.WriteLine();
       Console.Out.Flush();
-    }
-
-
-    public void ReportAllBplErrors(QKeyValue attr)
-    {
-      while (attr != null)
-      {
-        if (attr.Key == "msg" && attr.Params.Count == 1)
-        {
-          var str = attr.Params[0] as string;
-          if (str != null)
-          {
-            ReportBplError(attr.tok, "Error: " + str, false, true);
-          }
-        }
-        attr = attr.Next;
-      }
     }
 
 
@@ -1020,7 +1002,6 @@ namespace Microsoft.Boogie
               printer.ReportBplError(err.FailingReturn.tok, cause + " BP5003: A postcondition might not hold on this return path.", true, true);
               printer.ReportBplError(err.FailingEnsures.tok, "Related location: This is the postcondition that might not hold.", false, true);
             }
-            printer.ReportAllBplErrors(err.FailingEnsures.Attributes);
 
             errorInfo = errorInformationFactory.CreateErrorInformation(err.FailingReturn.tok, cause + ": " + "A postcondition might not hold on this return path.", err.RequestId);
             errorInfo.AddAuxInfo(err.FailingEnsures.tok, err.FailingEnsures.ErrorData as string ?? "Related location: This is the postcondition that might not hold.");
@@ -1071,7 +1052,6 @@ namespace Microsoft.Boogie
               {
                 printer.ReportBplError(err.FailingAssert.tok, cause + " BP5001: This assertion might not hold.", true, true);
               }
-              printer.ReportAllBplErrors(err.FailingAssert.Attributes);
 
               var msg = err.FailingAssert.ErrorData as string;
               if (msg == null)
