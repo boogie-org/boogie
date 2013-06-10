@@ -1953,6 +1953,7 @@ namespace Microsoft.Boogie {
 
     // the body is only set if the function is declared with {:inline}
     public Expr Body;
+    public Axiom DefinitionAxiom;
     public bool doingExpansion;
 
     private bool neverTrigger;
@@ -2123,7 +2124,8 @@ namespace Microsoft.Boogie {
                              new Trigger(tok, true, new ExprSeq(call), null),
                              def);
       }
-      return new Axiom(tok, def);
+      DefinitionAxiom = new Axiom(tok, def);
+      return DefinitionAxiom;
     }
   }
 

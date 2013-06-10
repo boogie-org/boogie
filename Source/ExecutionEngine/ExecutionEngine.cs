@@ -1111,18 +1111,27 @@ namespace Microsoft.Boogie
 
       public override Procedure VisitProcedure(Procedure node)
       {
-        var result = base.VisitProcedure(node);
-
         dependencies.Add(node);
 
-        return result;
+        return base.VisitProcedure(node);
+      }
+
+      public override Function VisitFunction(Function node)
+      {
+        dependencies.Add(node);
+
+        return base.VisitFunction(node);
       }
 
       public override Cmd VisitCallCmd(CallCmd node)
       {
         var result = base.VisitCallCmd(node);
 
-        dependencies.Add(node.Proc);
+        var visited = dependencies.Contains(node.Proc);
+        if (!visited)
+        {
+          VisitProcedure(node.Proc);
+        }
 
         return result;
       }
@@ -1134,7 +1143,15 @@ namespace Microsoft.Boogie
         var funCall = node.Fun as FunctionCall;
         if (funCall != null)
         {
-          dependencies.Add(funCall.Func);
+          var visited = dependencies.Contains(funCall.Func);
+          if (!visited)
+          {
+            VisitFunction(funCall.Func);
+            if (funCall.Func.DefinitionAxiom != null)
+            {
+              VisitAxiom(funCall.Func.DefinitionAxiom);
+            }
+          }
         }
 
         return result;
