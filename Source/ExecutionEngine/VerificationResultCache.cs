@@ -35,7 +35,10 @@ namespace Microsoft.Boogie
         return null;
       }
 
-      return string.Join("", deps.Select(dep => dep.Checksum));
+      var md5 = System.Security.Cryptography.MD5.Create();
+      var data = Encoding.UTF8.GetBytes(deps.MapConcat(dep => dep.Checksum, ""));
+      var hashedData = md5.ComputeHash(data);
+      return BitConverter.ToString(hashedData);
     }
 
     public override Procedure VisitProcedure(Procedure node)
