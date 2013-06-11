@@ -242,6 +242,8 @@ namespace Microsoft.Boogie
 
     public static ErrorInformationFactory errorInformationFactory = new ErrorInformationFactory();
 
+    public readonly static VerificationResultCache Cache = new VerificationResultCache();
+
     static LinearTypechecker linearTypechecker;
 
 
@@ -768,7 +770,7 @@ namespace Microsoft.Boogie
         string depsChecksum = null;
         if (CommandLineOptions.Clo.VerifySnapshots)
         {
-          depsChecksum = DependenciesChecksum(impl);
+          depsChecksum = DependencyCollector.DependenciesChecksum(impl);
         }
         try
         {
@@ -794,7 +796,7 @@ namespace Microsoft.Boogie
           }
           else
           {
-            if (!CommandLineOptions.Clo.VerifySnapshots || NeedsToBeVerified(impl))
+            if (!CommandLineOptions.Clo.VerifySnapshots || Cache.NeedsToBeVerified(impl))
             {
               outcome = vcgen.VerifyImplementation(impl, out errors, requestId);
             }
@@ -804,7 +806,8 @@ namespace Microsoft.Boogie
               {
                 Console.WriteLine("Retrieving cached verification result for implementation {0}...", impl.Name);
               }
-              var result = VerificationResultCache[impl.Id];
+              var result = Cache.Lookup(impl.Id);
+              Contract.Assert(result != null);
               outcome = result.Outcome;
               errors = result.Errors;
             }
@@ -847,7 +850,7 @@ namespace Microsoft.Boogie
         if (CommandLineOptions.Clo.VerifySnapshots && !string.IsNullOrEmpty(impl.Checksum))
         {
           var result = new VerificationResult(requestId, impl.Checksum, depsChecksum, outcome, errors);
-          VerificationResultCache[impl.Id] = result;
+          Cache.Insert(impl.Id, result);
         }
 
         ProcessOutcome(outcome, errors, timeIndication, ref errorCount, ref verified, ref inconclusives, ref timeOuts, ref outOfMemories, er, impl, requestId);
@@ -864,7 +867,6 @@ namespace Microsoft.Boogie
 
       vcgen.Close();
       cce.NonNull(CommandLineOptions.Clo.TheProverFactory).Close();
-
 
       #endregion
 
@@ -1091,141 +1093,6 @@ namespace Microsoft.Boogie
       }
     }
 
-
-    #region Verification result caching
-
-    class DependencyCollector : StandardVisitor
-    {
-      public HashSet<DeclWithFormals> dependencies;
-
-      public DependencyCollector()
-      {
-        dependencies = new HashSet<DeclWithFormals>();
-      }
-
-      public static void Collect(Absy node, out List<DeclWithFormals> dependencies)
-      {
-        var dc = new DependencyCollector();
-        dc.Visit(node);
-        dependencies = dc.dependencies.ToList();
-      }
-
-      public override Procedure VisitProcedure(Procedure node)
-      {
-        dependencies.Add(node);
-
-        return base.VisitProcedure(node);
-      }
-
-      public override Function VisitFunction(Function node)
-      {
-        dependencies.Add(node);
-
-        return base.VisitFunction(node);
-      }
-
-      public override Cmd VisitCallCmd(CallCmd node)
-      {
-        var result = base.VisitCallCmd(node);
-
-        var visited = dependencies.Contains(node.Proc);
-        if (!visited)
-        {
-          VisitProcedure(node.Proc);
-        }
-
-        return result;
-      }
-
-      public override Expr VisitNAryExpr(NAryExpr node)
-      {
-        var result = base.VisitNAryExpr(node);
-
-        var funCall = node.Fun as FunctionCall;
-        if (funCall != null)
-        {
-          var visited = dependencies.Contains(funCall.Func);
-          if (!visited)
-          {
-            VisitFunction(funCall.Func);
-            if (funCall.Func.DefinitionAxiom != null)
-            {
-              VisitAxiom(funCall.Func.DefinitionAxiom);
-            }
-          }
-        }
-
-        return result;
-      }
-    }
-
-
-    private struct VerificationResult
-    {
-      internal VerificationResult(string requestId, string checksum, string depsChecksum, ConditionGeneration.Outcome outcome, List<Counterexample> errors)
-      {
-        Checksum = checksum;
-        DependeciesChecksum = depsChecksum;
-        Outcome = outcome;
-        Errors = errors;
-        RequestId = requestId;
-      }
-
-      public readonly string Checksum;
-      public readonly string DependeciesChecksum;
-      public readonly string RequestId;
-      public readonly ConditionGeneration.Outcome Outcome;
-      public readonly List<Counterexample> Errors;
-    }
-
-
-    private static readonly ConcurrentDictionary<string, VerificationResult> VerificationResultCache = new ConcurrentDictionary<string, VerificationResult>();
-
-
-    public static void EmptyCache()
-    {
-      VerificationResultCache.Clear();
-    }
-
-
-    public static void RemoveMatchingKeysFromCache(Regex pattern)
-    {
-      foreach (var kv in VerificationResultCache)
-      {
-        if (pattern.IsMatch(kv.Key))
-        {
-          VerificationResult res;
-          VerificationResultCache.TryRemove(kv.Key, out res);
-        }
-      }
-    }
-
-
-    private static string DependenciesChecksum(Implementation impl)
-    {
-      List<DeclWithFormals> deps;
-      DependencyCollector.Collect(impl, out deps);
-      if (deps.Any(dep => dep.Checksum == null))
-      {
-        return null;
-      }
-
-      return string.Join("", deps.Select(dep => dep.Checksum));
-    }
-
-    private static bool NeedsToBeVerified(Implementation impl)
-    {
-      if (!VerificationResultCache.ContainsKey(impl.Id)
-          || VerificationResultCache[impl.Id].Checksum != impl.Checksum)
-      {
-        return true;
-      }
-
-      var depsChecksum = DependenciesChecksum(impl);
-      return depsChecksum == null || VerificationResultCache[impl.Id].DependeciesChecksum != depsChecksum;
-    }
-
-    #endregion
   }
 
 }
