@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using VC;
 using BoogiePL = Microsoft.Boogie;
 
@@ -1184,6 +1185,19 @@ namespace Microsoft.Boogie
     public static void EmptyCache()
     {
       VerificationResultCache.Clear();
+    }
+
+
+    public static void RemoveMatchingKeysFromCache(Regex pattern)
+    {
+      foreach (var kv in VerificationResultCache)
+      {
+        if (pattern.IsMatch(kv.Key))
+        {
+          VerificationResult res;
+          VerificationResultCache.TryRemove(kv.Key, out res);
+        }
+      }
     }
 
 
