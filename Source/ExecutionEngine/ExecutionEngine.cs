@@ -682,22 +682,22 @@ namespace Microsoft.Boogie
 
       #endregion
 
-      #region Verify each implementation
-
-      // operate on a stable copy, in case it gets updated while we're running
-      var decls = program.TopLevelDeclarations.ToArray();
-
-      var impls =
-        from d in decls
-        where d != null && d is Implementation && CommandLineOptions.Clo.UserWantsToCheckRoutine(cce.NonNull(((Implementation)d).Name)) && !((Implementation)d).SkipVerification
-        select (Implementation)d;
+      #region Select and prioritize implementations that should be verified
 
       var prioritizedImpls =
-        from i in impls
-        orderby i.Priority descending
-        select i;
+        from impl in program.TopLevelDeclarations.OfType<Implementation>()
+        where impl != null && CommandLineOptions.Clo.UserWantsToCheckRoutine(cce.NonNull(impl.Name)) && !impl.SkipVerification
+        orderby impl.Priority descending
+        select impl;
 
-      foreach (var impl in prioritizedImpls)
+      // operate on a stable copy, in case it gets updated while we're running
+      var stablePrioritizedImpls = prioritizedImpls.ToArray();
+
+      #endregion
+
+      #region Verify each implementation
+
+      foreach (var impl in stablePrioritizedImpls)
       {
         List<Counterexample/*!*/>/*?*/ errors;
         VCGen.Outcome outcome;
@@ -705,19 +705,13 @@ namespace Microsoft.Boogie
         #region Initialize counters and print trace output
 
         int prevAssertionCount = vcgen.CumulativeAssertionCount;
-
         DateTime start = DateTime.UtcNow;
-        if (CommandLineOptions.Clo.Trace || CommandLineOptions.Clo.TraceProofObligations || CommandLineOptions.Clo.XmlSink != null)
+
+        printer.Inform(string.Format("\nVerifying {0} ...", impl.Name));
+
+        if (CommandLineOptions.Clo.XmlSink != null)
         {
-          if (CommandLineOptions.Clo.Trace || CommandLineOptions.Clo.TraceProofObligations)
-          {
-            Console.WriteLine();
-            Console.WriteLine("Verifying {0} ...", impl.Name);
-          }
-          if (CommandLineOptions.Clo.XmlSink != null)
-          {
-            CommandLineOptions.Clo.XmlSink.WriteStartMethod(impl.Name, start);
-          }
+          CommandLineOptions.Clo.XmlSink.WriteStartMethod(impl.Name, start);
         }
 
         #endregion
@@ -749,12 +743,7 @@ namespace Microsoft.Boogie
             }
             outcome = svcgen.FindLeastToVerify(impl, ref ss);
             errors = new List<Counterexample>();
-            Console.Write("Result: ");
-            foreach (var s in ss)
-            {
-              Console.Write("{0} ", s);
-            }
-            Console.WriteLine();
+            Console.WriteLine("Result: {0}", string.Join(" ", ss));
           }
           else
           {
@@ -837,6 +826,7 @@ namespace Microsoft.Boogie
 
       return PipelineOutcome.VerificationCompleted;
     }
+
 
     private static PipelineOutcome RunHoudini(Program program, ref int errorCount, ref int verified, ref int inconclusives, ref int timeOuts, ref int outOfMemories, ErrorReporterDelegate er)
     {
