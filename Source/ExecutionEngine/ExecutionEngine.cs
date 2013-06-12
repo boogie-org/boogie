@@ -599,9 +599,9 @@ namespace Microsoft.Boogie
 
       errorCount = verified = inconclusives = timeOuts = outOfMemories = 0;
 
-      // ---------- Infer invariants --------------------------------------------------------
+      #region Infer invariants using Abstract Interpretation
 
-      // Abstract interpretation -> Always use (at least) intervals, if not specified otherwise (e.g. with the "/noinfer" switch)
+      // Always use (at least) intervals, if not specified otherwise (e.g. with the "/noinfer" switch)
       if (CommandLineOptions.Clo.UseAbstractInterpretation)
       {
         if (!CommandLineOptions.Clo.Ai.J_Intervals && !CommandLineOptions.Clo.Ai.J_Trivial)
@@ -611,6 +611,10 @@ namespace Microsoft.Boogie
         }
       }
       Microsoft.Boogie.AbstractInterpretation.NativeAbstractInterpretation.RunAbstractInterpretation(program);
+
+      #endregion
+
+      #region Do some preprocessing on the program (e.g., loop unrolling, lambda expansion)
 
       if (CommandLineOptions.Clo.LoopUnrollCount != -1)
       {
@@ -634,7 +638,7 @@ namespace Microsoft.Boogie
         //PrintBplFile ("-", program, true);
       }
 
-      // ---------- Verify ------------------------------------------------------------
+      #endregion
 
       if (!CommandLineOptions.Clo.Verify)
       {
@@ -644,68 +648,11 @@ namespace Microsoft.Boogie
       #region Run Houdini and verify
       if (CommandLineOptions.Clo.ContractInfer)
       {
-        if (CommandLineOptions.Clo.AbstractHoudini != null)
-        {
-          //CommandLineOptions.Clo.PrintErrorModel = 1;
-          CommandLineOptions.Clo.UseProverEvaluate = true;
-          CommandLineOptions.Clo.ModelViewFile = "z3model";
-          CommandLineOptions.Clo.UseArrayTheory = true;
-          CommandLineOptions.Clo.TypeEncodingMethod = CommandLineOptions.TypeEncoding.Monomorphic;
-          Houdini.AbstractDomainFactory.Initialize();
-          var domain = Houdini.AbstractDomainFactory.GetInstance(CommandLineOptions.Clo.AbstractHoudini);
-
-          // Run Abstract Houdini
-          var abs = new Houdini.AbsHoudini(program, domain);
-          var absout = abs.ComputeSummaries();
-          ProcessOutcome(absout.outcome, absout.errors, "", ref errorCount, ref verified, ref inconclusives, ref timeOuts, ref outOfMemories, er);
-
-          //Houdini.PredicateAbs.Initialize(program);
-          //var abs = new Houdini.AbstractHoudini(program);
-          //abs.computeSummaries(new Houdini.PredicateAbs(program.TopLevelDeclarations.OfType<Implementation>().First().Name));
-
-          return PipelineOutcome.Done;
-        }
-        Houdini.Houdini houdini = new Houdini.Houdini(program);
-        Houdini.HoudiniOutcome outcome = houdini.PerformHoudiniInference();
-        if (CommandLineOptions.Clo.PrintAssignment)
-        {
-          Console.WriteLine("Assignment computed by Houdini:");
-          foreach (var x in outcome.assignment)
-          {
-            Console.WriteLine(x.Key + " = " + x.Value);
-          }
-        }
-        if (CommandLineOptions.Clo.Trace)
-        {
-          int numTrueAssigns = 0;
-          foreach (var x in outcome.assignment)
-          {
-            if (x.Value)
-              numTrueAssigns++;
-          }
-          Console.WriteLine("Number of true assignments = " + numTrueAssigns);
-          Console.WriteLine("Number of false assignments = " + (outcome.assignment.Count - numTrueAssigns));
-          Console.WriteLine("Prover time = " + Houdini.HoudiniSession.proverTime.ToString("F2"));
-          Console.WriteLine("Unsat core prover time = " + Houdini.HoudiniSession.unsatCoreProverTime.ToString("F2"));
-          Console.WriteLine("Number of prover queries = " + Houdini.HoudiniSession.numProverQueries);
-          Console.WriteLine("Number of unsat core prover queries = " + Houdini.HoudiniSession.numUnsatCoreProverQueries);
-          Console.WriteLine("Number of unsat core prunings = " + Houdini.HoudiniSession.numUnsatCorePrunings);
-        }
-
-        foreach (Houdini.VCGenOutcome x in outcome.implementationOutcomes.Values)
-        {
-          ProcessOutcome(x.outcome, x.errors, "", ref errorCount, ref verified, ref inconclusives, ref timeOuts, ref outOfMemories, er);
-        }
-        //errorCount = outcome.ErrorCount;
-        //verified = outcome.Verified;
-        //inconclusives = outcome.Inconclusives;
-        //timeOuts = outcome.TimeOuts;
-        //outOfMemories = 0;
-        return PipelineOutcome.Done;
+        return RunHoudini(program, ref errorCount, ref verified, ref inconclusives, ref timeOuts, ref outOfMemories, er);
       }
       #endregion
 
-      #region Verify each implementation
+      #region Set up the VC generation
 
       ConditionGeneration vcgen = null;
       try
@@ -733,6 +680,10 @@ namespace Microsoft.Boogie
         return PipelineOutcome.FatalError;
       }
 
+      #endregion
+
+      #region Verify each implementation
+
       // operate on a stable copy, in case it gets updated while we're running
       var decls = program.TopLevelDeclarations.ToArray();
 
@@ -748,13 +699,16 @@ namespace Microsoft.Boogie
 
       foreach (var impl in prioritizedImpls)
       {
-        int prevAssertionCount = vcgen.CumulativeAssertionCount;
         List<Counterexample/*!*/>/*?*/ errors;
+        VCGen.Outcome outcome;
 
-        DateTime start = new DateTime();  // to please compiler's definite assignment rules
+        #region Initialize counters and print trace output
+
+        int prevAssertionCount = vcgen.CumulativeAssertionCount;
+
+        DateTime start = DateTime.UtcNow;
         if (CommandLineOptions.Clo.Trace || CommandLineOptions.Clo.TraceProofObligations || CommandLineOptions.Clo.XmlSink != null)
         {
-          start = DateTime.UtcNow;
           if (CommandLineOptions.Clo.Trace || CommandLineOptions.Clo.TraceProofObligations)
           {
             Console.WriteLine();
@@ -766,12 +720,20 @@ namespace Microsoft.Boogie
           }
         }
 
-        VCGen.Outcome outcome;
+        #endregion
+
+        #region Record the checksum of the dependencies of this implementation
+
         string depsChecksum = null;
         if (CommandLineOptions.Clo.VerifySnapshots)
         {
           depsChecksum = DependencyCollector.DependenciesChecksum(impl);
         }
+
+        #endregion
+
+        #region Verify the implementation
+
         try
         {
           if (CommandLineOptions.Clo.inferLeastForUnsat != null)
@@ -796,27 +758,30 @@ namespace Microsoft.Boogie
           }
           else
           {
-            if (!CommandLineOptions.Clo.VerifySnapshots || Cache.NeedsToBeVerified(impl))
+            if (!CommandLineOptions.Clo.VerifySnapshots || Cache.NeedsToBeVerified(impl, depsChecksum))
             {
               outcome = vcgen.VerifyImplementation(impl, out errors, requestId);
+
+              if (CommandLineOptions.Clo.ExtractLoops && errors != null)
+              {
+                var vcg = vcgen as VCGen;
+                if (vcg != null)
+                {
+                  for (int i = 0; i < errors.Count; i++)
+                  {
+                    errors[i] = vcg.extractLoopTrace(errors[i], impl.Name, program, extractLoopMappingInfo);
+                  }
+                }
+              }
             }
             else
             {
-              if (CommandLineOptions.Clo.Trace)
-              {
-                Console.WriteLine("Retrieving cached verification result for implementation {0}...", impl.Name);
-              }
+              printer.Inform(string.Format("Retrieving cached verification result for implementation {0}...", impl.Name));
+
               var result = Cache.Lookup(impl.Id);
               Contract.Assert(result != null);
               outcome = result.Outcome;
               errors = result.Errors;
-            }
-            if (CommandLineOptions.Clo.ExtractLoops && vcgen is VCGen && errors != null)
-            {
-              for (int i = 0; i < errors.Count; i++)
-              {
-                errors[i] = (vcgen as VCGen).extractLoopTrace(errors[i], impl.Name, program, extractLoopMappingInfo);
-              }
             }
           }
         }
@@ -833,25 +798,23 @@ namespace Microsoft.Boogie
           outcome = VCGen.Outcome.Inconclusive;
         }
 
-        string timeIndication = "";
-        DateTime end = DateTime.UtcNow;
-        TimeSpan elapsed = end - start;
-        if (CommandLineOptions.Clo.Trace)
-        {
-          int poCount = vcgen.CumulativeAssertionCount - prevAssertionCount;
-          timeIndication = string.Format("  [{0:F3} s, {1} proof obligation{2}]  ", elapsed.TotalSeconds, poCount, poCount == 1 ? "" : "s");
-        }
-        else if (CommandLineOptions.Clo.TraceProofObligations)
-        {
-          int poCount = vcgen.CumulativeAssertionCount - prevAssertionCount;
-          timeIndication = string.Format("  [{0} proof obligation{1}]  ", poCount, poCount == 1 ? "" : "s");
-        }
+        #endregion
+
+        #region Cache the verification result
 
         if (CommandLineOptions.Clo.VerifySnapshots && !string.IsNullOrEmpty(impl.Checksum))
         {
-          var result = new VerificationResult(requestId, impl.Checksum, depsChecksum, outcome, errors);
-          Cache.Insert(impl.Id, result);
+          Cache.Insert(impl.Id, new VerificationResult(requestId, impl.Checksum, depsChecksum, outcome, errors));
         }
+
+        #endregion
+
+        #region Process the verification results and statistics
+
+        string timeIndication;
+        DateTime end;
+        TimeSpan elapsed;
+        CollectTimeStatistics(vcgen.CumulativeAssertionCount - prevAssertionCount, start, out timeIndication, out end, out elapsed);
 
         ProcessOutcome(outcome, errors, timeIndication, ref errorCount, ref verified, ref inconclusives, ref timeOuts, ref outOfMemories, er, impl, requestId);
 
@@ -863,6 +826,8 @@ namespace Microsoft.Boogie
         {
           Console.Out.Flush();
         }
+
+        #endregion
       }
 
       vcgen.Close();
@@ -873,9 +838,96 @@ namespace Microsoft.Boogie
       return PipelineOutcome.VerificationCompleted;
     }
 
+    private static PipelineOutcome RunHoudini(Program program, ref int errorCount, ref int verified, ref int inconclusives, ref int timeOuts, ref int outOfMemories, ErrorReporterDelegate er)
+    {
+      if (CommandLineOptions.Clo.AbstractHoudini != null)
+      {
+        return RunAbstractHoudini(program, ref errorCount, ref verified, ref inconclusives, ref timeOuts, ref outOfMemories, er);
+      }
 
-    static void ProcessOutcome(VC.VCGen.Outcome outcome, List<Counterexample> errors, string timeIndication,
-                               ref int errorCount, ref int verified, ref int inconclusives, ref int timeOuts, ref int outOfMemories, ErrorReporterDelegate er = null, Implementation impl = null, string requestId = null)
+      Houdini.Houdini houdini = new Houdini.Houdini(program);
+      Houdini.HoudiniOutcome outcome = houdini.PerformHoudiniInference();
+
+      if (CommandLineOptions.Clo.PrintAssignment)
+      {
+        Console.WriteLine("Assignment computed by Houdini:");
+        foreach (var x in outcome.assignment)
+        {
+          Console.WriteLine(x.Key + " = " + x.Value);
+        }
+      }
+
+      if (CommandLineOptions.Clo.Trace)
+      {
+        int numTrueAssigns = 0;
+        foreach (var x in outcome.assignment)
+        {
+          if (x.Value)
+            numTrueAssigns++;
+        }
+        Console.WriteLine("Number of true assignments = " + numTrueAssigns);
+        Console.WriteLine("Number of false assignments = " + (outcome.assignment.Count - numTrueAssigns));
+        Console.WriteLine("Prover time = " + Houdini.HoudiniSession.proverTime.ToString("F2"));
+        Console.WriteLine("Unsat core prover time = " + Houdini.HoudiniSession.unsatCoreProverTime.ToString("F2"));
+        Console.WriteLine("Number of prover queries = " + Houdini.HoudiniSession.numProverQueries);
+        Console.WriteLine("Number of unsat core prover queries = " + Houdini.HoudiniSession.numUnsatCoreProverQueries);
+        Console.WriteLine("Number of unsat core prunings = " + Houdini.HoudiniSession.numUnsatCorePrunings);
+      }
+
+      foreach (Houdini.VCGenOutcome x in outcome.implementationOutcomes.Values)
+      {
+        ProcessOutcome(x.outcome, x.errors, "", ref errorCount, ref verified, ref inconclusives, ref timeOuts, ref outOfMemories, er);
+      }
+      //errorCount = outcome.ErrorCount;
+      //verified = outcome.Verified;
+      //inconclusives = outcome.Inconclusives;
+      //timeOuts = outcome.TimeOuts;
+      //outOfMemories = 0;
+      return PipelineOutcome.Done;
+    }
+
+
+    private static PipelineOutcome RunAbstractHoudini(Program program, ref int errorCount, ref int verified, ref int inconclusives, ref int timeOuts, ref int outOfMemories, ErrorReporterDelegate er)
+    {
+      //CommandLineOptions.Clo.PrintErrorModel = 1;
+      CommandLineOptions.Clo.UseProverEvaluate = true;
+      CommandLineOptions.Clo.ModelViewFile = "z3model";
+      CommandLineOptions.Clo.UseArrayTheory = true;
+      CommandLineOptions.Clo.TypeEncodingMethod = CommandLineOptions.TypeEncoding.Monomorphic;
+      Houdini.AbstractDomainFactory.Initialize();
+      var domain = Houdini.AbstractDomainFactory.GetInstance(CommandLineOptions.Clo.AbstractHoudini);
+
+      // Run Abstract Houdini
+      var abs = new Houdini.AbsHoudini(program, domain);
+      var absout = abs.ComputeSummaries();
+      ProcessOutcome(absout.outcome, absout.errors, "", ref errorCount, ref verified, ref inconclusives, ref timeOuts, ref outOfMemories, er);
+
+      //Houdini.PredicateAbs.Initialize(program);
+      //var abs = new Houdini.AbstractHoudini(program);
+      //abs.computeSummaries(new Houdini.PredicateAbs(program.TopLevelDeclarations.OfType<Implementation>().First().Name));
+
+      return PipelineOutcome.Done;
+    }
+
+
+    private static void CollectTimeStatistics(int proofObligationCount, DateTime start, out string timeIndication, out DateTime end, out TimeSpan elapsed)
+    {
+      timeIndication = "";
+      end = DateTime.UtcNow;
+      elapsed = end - start;
+      if (CommandLineOptions.Clo.Trace)
+      {
+        timeIndication = string.Format("  [{0:F3} s, {1} proof obligation{2}]  ", elapsed.TotalSeconds, proofObligationCount, proofObligationCount == 1 ? "" : "s");
+      }
+      else if (CommandLineOptions.Clo.TraceProofObligations)
+      {
+        timeIndication = string.Format("  [{0} proof obligation{1}]  ", proofObligationCount, proofObligationCount == 1 ? "" : "s");
+      }
+    }
+
+
+    private static void ProcessOutcome(VC.VCGen.Outcome outcome, List<Counterexample> errors, string timeIndication,
+                                       ref int errorCount, ref int verified, ref int inconclusives, ref int timeOuts, ref int outOfMemories, ErrorReporterDelegate er = null, Implementation impl = null, string requestId = null)
     {
       switch (outcome)
       {

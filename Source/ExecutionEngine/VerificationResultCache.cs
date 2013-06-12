@@ -151,16 +151,14 @@ namespace Microsoft.Boogie
     }
 
 
-    public bool NeedsToBeVerified(Implementation impl)
+    public bool NeedsToBeVerified(Implementation impl, string depsChecksumOfImpl)
     {
       if (!Cache.ContainsKey(impl.Id)
           || Cache[impl.Id].Checksum != impl.Checksum)
       {
         return true;
       }
-
-      var depsChecksum = DependencyCollector.DependenciesChecksum(impl);
-      return depsChecksum == null || Cache[impl.Id].DependeciesChecksum != depsChecksum;
+      return depsChecksumOfImpl == null || Cache[impl.Id].DependeciesChecksum != depsChecksumOfImpl;
     }
 
   }
