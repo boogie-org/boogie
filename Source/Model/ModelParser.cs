@@ -281,6 +281,7 @@ namespace Microsoft.Boogie
 	{
 		protected string[] tokens;
 		protected List<string> output;
+		protected int arrayNum;
 
 		protected string GetValue(int idx)
 		{
@@ -298,28 +299,11 @@ namespace Microsoft.Boogie
 			return value;
 		}
 
-		abstract protected void ParseLeftParenthesis(ref int i);
 		abstract protected void ParseITE(ref int i);
 		abstract protected void ParseArray(ref int i);
+		abstract protected void ParseTokens();
 
-		protected void ParseBitVector(ref int i)
-		{
-			i++;
-
-			if (tokens[i] == "BitVec")
-			{
-				output.Add("->");
-				i += 3;
-			}
-
-			if (tokens[i].Contains("bv"))
-			{
-				output.Add(GetValue(i + 1));
-				i += 2;
-			}
-		}
-
-		void ParseDefineFun(ref int i)
+		protected void ParseDefineFun(ref int i)
 		{
 			i++;
 
@@ -329,7 +313,7 @@ namespace Microsoft.Boogie
 			i++;
 		}
 
-		void ParseRightParenthesis(ref int i)
+		protected void ParseRightParenthesis(ref int i)
 		{
 			i++;
 
@@ -355,42 +339,7 @@ namespace Microsoft.Boogie
 			}
 		}
 
-		void ParseTokens()
-		{
-			var i = 0;
-			bool doneParsing = false;
-
-			while(!doneParsing)
-			{
-				switch (tokens[i])
-				{
-				case ")":
-					ParseRightParenthesis(ref i);
-					break;
-
-				case "(":
-					ParseLeftParenthesis(ref i);
-					break;
-
-				case "declare-sort":
-					doneParsing = true;
-					break;
-
-				case "define-fun":
-					ParseDefineFun(ref i);
-					break;
-
-				default:
-					i++;
-					break;
-				}
-
-				if (i == tokens.Length)
-					doneParsing = true;
-			}
-		}
-
-		protected List<string> GetParsedTokens(string newLine)
+		List<string> GetParsedTokens(string newLine)
 		{
 			if (newLine == null)
 				return null;
@@ -420,155 +369,12 @@ namespace Microsoft.Boogie
 
 			return output;
 		}
-	}
-
-	internal class ParserZ3 : ParserSMT
-	{
-		protected override void ParseITE(ref int i)
-		{
-			for (; ; )
-			{
-				if (tokens[i] == "ite")
-				{
-					i++;
-
-					for (; ; )
-					{
-						if (tokens[i] == "(" && tokens[i + 1] == "and")
-							i += 2;
-
-						if (tokens[i] == "(" && tokens[i + 1] == "=")
-						{
-							if (tokens[i + 3] == "(" && tokens[i + 4] == "-")
-							{
-								i += 7;
-								output.Add(GetValue(i - 2));
-							}
-							if (tokens[i + 3] == "(" && tokens[i + 4] == "_")
-							{
-								i += 8;
-								output.Add(GetValue(i - 2));
-							}
-							else
-							{
-								i += 4;
-								output.Add(GetValue(i - 1));
-							}
-
-							i++;
-							continue;
-						}
-
-						output.Add("->");
-
-						if (tokens[i] == ")") i++;
-
-						if (tokens[i] == "(" && tokens[i + 1] == "-")
-						{
-							i += 3;
-							output.Add(GetValue(i - 1));
-						}
-						else if (tokens[i] == "(" && tokens[i + 1] == "_")
-						{
-							i += 4;
-							output.Add(GetValue(i - 1));
-						}
-						else
-						{
-							i++;
-							output.Add(GetValue(i - 1));
-						}
-
-						output.Add(" ");
-						break;
-					}
-				}
-
-				if (tokens[i] == "(" && tokens[i + 1] == "-")
-				{
-					i += 2;
-					output.Add("else");
-					output.Add("->");
-					output.Add(GetValue(i));
-					break;
-				}
-				else if (tokens[i] == "(" && tokens[i + 1] == "_")
-				{
-					i += 3;
-					output.Add("else");
-					output.Add("->");
-					output.Add(GetValue(i));
-					break;
-				}
-				else if (tokens[i] == ")" && tokens[i - 2] == "-")
-				{
-					i++;
-					continue;
-				}
-				else if (tokens[i] == ")" && tokens[i - 3] == "_")
-				{
-					i++;
-					continue;
-				}
-				else if (tokens[i] != "(")
-				{
-					output.Add("else");
-					output.Add("->");
-					output.Add(GetValue(i));
-					break;
-				}
-				else i++;
-			}
-		}
-
-		void ParseArgument(ref int i)
-		{
-			output.Add("{");
-			output.Add(" ");
-
-			i++;
-		}
-
-
-		protected override void ParseArray(ref int i)
-		{
-			while (tokens[i] != "as-array")
-				i++;
-
-			output.Add("as-array[" + tokens[i + 1] + "]");
-		}
-
-		protected override void ParseLeftParenthesis(ref int i)
-		{
-			i++;
-
-			switch (tokens[i])
-			{
-			case "ite":
-				ParseITE(ref i);
-				break;
-
-			case "Array":
-				ParseArray(ref i);
-				break;
-
-			case "x!1":
-				ParseArgument(ref i);
-				break;
-
-			case "_":
-				ParseBitVector(ref i);
-				break;
-
-			default:
-				break;
-			}
-		}
 
 		internal override void Run()
 		{
 			var selectFunctions = new Dictionary<int, Model.Func>();
 			var storeFunctions = new Dictionary<int, Model.Func>();
+			arrayNum = 0;
 
 			for (; ; )
 			{
@@ -601,13 +407,26 @@ namespace Microsoft.Boogie
 				{
 					var funName = (string) words[0];
 					Model.Func fn = null;
+					int i = 4;
 
-					if (words[2] != "{")
+					if (words.Contains("@SPLIT"))
+					{
+						arrayNum++;
+
+						fn = currModel.MkFunc(funName, 0);
+						fn.SetConstant(GetElt(words[2]));
+
+						i = 8;
+
+						funName = (string) words[4];
+						fn = null;
+					}
+
+					if (words[2] != "{" && words[6] != "{")
 						BadModel("unidentified function definition 5");
 
 					fn = currModel.TryGetFunc(funName);
 
-					int i = 4;
 					for (; ; )
 					{
 						if (words[i] == "}")
@@ -633,9 +452,7 @@ namespace Microsoft.Boogie
 								break;
 							}
 
-							if (i == 4 && words[3] == " " && words[5] == " ") {
-								if (fn == null)
-									fn = currModel.MkFunc(funName, 1);
+							if ((i == 4 || i == 8)  && words[i - 1] == " " && words[i + 1] == " ") {
 								if (fn.Else == null)
 									fn.Else = GetElt(words[i]);
 								i++;
@@ -742,9 +559,163 @@ namespace Microsoft.Boogie
 		}
 	}
 
+	internal class ParserZ3 : ParserSMT
+	{
+		protected override void ParseITE(ref int i)
+		{
+			for (; ; )
+			{
+				if (tokens[i] == "ite")
+				{
+					i++;
+
+					for (; ; )
+					{
+						if (tokens[i] == "(" && tokens[i + 1] == "and")
+							i += 2;
+
+						if (tokens[i] == "(" && tokens[i + 1] == "=")
+						{
+							if (tokens[i + 3] == "(" && tokens[i + 4] == "-")
+							{
+								i += 7;
+								output.Add(GetValue(i - 2));
+							}
+							else if (tokens[i + 3] == "(" && tokens[i + 4] == "_")
+							{
+								i += 8;
+								output.Add(GetValue(i - 2));
+							}
+							else
+							{
+								i += 4;
+								output.Add(GetValue(i - 1));
+							}
+
+							i++;
+							continue;
+						}
+
+						output.Add("->");
+
+						if (tokens[i] == ")") i++;
+
+						if (tokens[i] == "(" && tokens[i + 1] == "-")
+						{
+							i += 3;
+							output.Add(GetValue(i - 1));
+						}
+						else if (tokens[i] == "(" && tokens[i + 1] == "_")
+						{
+							i += 4;
+							output.Add(GetValue(i - 1));
+						}
+						else
+						{
+							i++;
+							output.Add(GetValue(i - 1));
+						}
+
+						output.Add(" ");
+						break;
+					}
+				}
+
+				if (tokens[i] == "(" && tokens[i + 1] == "-")
+				{
+					i += 2;
+					output.Add("else");
+					output.Add("->");
+					output.Add(GetValue(i));
+					break;
+				}
+				else if (tokens[i] == "(" && tokens[i + 1] == "_")
+				{
+					i += 3;
+					output.Add("else");
+					output.Add("->");
+					output.Add(GetValue(i));
+					break;
+				}
+				else if (tokens[i] == ")" && tokens[i - 2] == "-")
+				{
+					i++;
+					continue;
+				}
+				else if (tokens[i] == ")" && tokens[i - 3] == "_")
+				{
+					i++;
+					continue;
+				}
+				else if (tokens[i] != "(")
+				{
+					output.Add("else");
+					output.Add("->");
+					output.Add(GetValue(i));
+					break;
+				}
+				else i++;
+			}
+		}
+
+		void ParseArgument(ref int i)
+		{
+			output.Add("{");
+			output.Add(" ");
+
+			i++;
+		}
+
+		protected override void ParseArray(ref int i)
+		{
+			while (tokens[i] != "as-array")
+				i++;
+
+			output.Add("as-array[" + tokens[i + 1] + "]");
+		}
+
+		protected override void ParseTokens()
+		{
+			var i = 0;
+			bool doneParsing = false;
+
+			while(!doneParsing)
+			{
+				switch (tokens[i])
+				{
+				case ")":
+					ParseRightParenthesis(ref i);
+					break;
+
+				case "define-fun":
+					ParseDefineFun(ref i);
+					break;
+
+				case "Array":
+					ParseArray(ref i);
+					break;
+
+				case "ite":
+					ParseITE(ref i);
+					break;
+
+				case "x!1":
+					ParseArgument(ref i);
+					break;
+
+				default:
+					i++;
+					break;
+				}
+
+				if (i == tokens.Length)
+					doneParsing = true;
+			}
+		}
+	}
+
 	internal class ParserCVC4 : ParserSMT
 	{
-		int arrayNum;
 		int arity;
 
 		void FindArity()
@@ -944,221 +915,47 @@ namespace Microsoft.Boogie
 				}
 				else if (tokens[i] == ",")
 				{
-					i += 2;
-					ParseBitVector(ref i);
+					//i += 2;
+					//ParseBitVector(ref i);
+					output.Add(GetValue(i + 4));
+					i += 5;
 					break;
 				}
 			}
 		}
 
-		protected override void ParseLeftParenthesis(ref int i)
+		protected override void ParseTokens()
 		{
-			i++;
+			var i = 0;
+			bool doneParsing = false;
 
-			switch (tokens[i])
+			while(!doneParsing)
 			{
-			case "ite":
-				ParseITE(ref i);
-				break;
-
-			case "Array":
-				ParseArray(ref i);
-				break;
-
-			case "_":
-				ParseBitVector(ref i);
-				break;
-
-			default:
-				break;
-			}
-		}
-
-		internal override void Run()
-		{
-			var selectFunctions = new Dictionary<int, Model.Func>();
-			var storeFunctions = new Dictionary<int, Model.Func>();
-			arrayNum = 0;
-
-			for (; ; )
-			{
-				var line = ReadLine();
-				if (line == null) break; // end of model, everything fine
-				if (line == "Counterexample:" || line == "Error model: " || line == "*** MODEL")
+				switch (tokens[i])
 				{
-					NewModel();
-					continue;
-				}
-				if (line.EndsWith(": Invalid.") || line.EndsWith(": Valid.")|| line.StartsWith("labels:"))
-					continue;
-				if (line == "END_OF_MODEL" || line == "." || line == "*** END_MODEL")
-					continue;
+					case ")":
+					ParseRightParenthesis(ref i);
+					break;
 
-				var words = GetParsedTokens(line);
+					case "define-fun":
+					ParseDefineFun(ref i);
+					break;
 
-				Console.WriteLine("");
-				for (int i = 0; i < words.Count; i++)
-				{
-					Console.Write(words[i] + " ");
+					case "Array":
+					ParseArray(ref i);
+					break;
+
+					case "ite":
+					ParseITE(ref i);
+					break;
+
+					default:
+					i++;
+					break;
 				}
 
-				if (words.Count == 0) continue;
-				var lastToken = words[words.Count - 1];
-				if (currModel == null)
-					BadModel("model begin marker not found");
-
-				if (words.Count > 3 && words[1] == "->")
-				{
-					var funName = (string) words[0];
-					Model.Func fn = null;
-					int i = 4;
-
-					if (words.Contains("@SPLIT"))
-					{
-						arrayNum++;
-
-						fn = currModel.MkFunc(funName, 0);
-						fn.SetConstant(GetElt(words[2]));
-
-						i = 8;
-
-						funName = (string) words[4];
-						fn = null;
-					}
-
-					if (words[2] != "{" && words[6] != "{")
-						BadModel("unidentified function definition 5");
-
-					fn = currModel.TryGetFunc(funName);
-
-					for (; ; )
-					{
-						if (words[i] == "}")
-						{
-							if (i == words.Count - 1)
-							{
-								if (fn == null)
-									fn = currModel.MkFunc(funName, 1);
-								break;
-							}
-							else
-							{
-								i++;
-								continue;
-							}
-						}
-
-						for (; ; )
-						{
-							if (words[i] == " ")
-							{
-								i++;
-								break;
-							}
-
-							if ((i == 4 || i == 8)  && words[i - 1] == " " && words[i + 1] == " ") {
-								if (fn.Else == null)
-									fn.Else = GetElt(words[i]);
-								i++;
-								continue;
-							}
-
-							if (words[i] == "else")
-							{
-								if (words[i + 1] == "->")
-								{
-									i += 2;
-
-									if (words[i] == "}")
-										BadModel("unidentified function definition 1");
-
-									if (words[i] == "{")
-									{
-										i++;
-										continue;
-									}
-									else
-									{
-										if (fn != null && !(words[i] == "#unspecified") && fn.Else == null)
-											fn.Else = GetElt(words[i]);
-										i++;
-										continue;
-									}
-								}
-								else
-									BadModel("unidentified function definition 2");
-							}
-
-							int arity = 0;
-							for (; ; )
-							{
-								arity++;
-								if (words[arity + i] == " ")
-								{
-									arity -= 2;
-									break;
-								}
-							}
-
-							if (words[i + arity] == "->")
-							{
-								i += arity + 1;
-
-								if (words[i] == "}")
-									BadModel("unidentified function definition 3");
-							}
-							else
-								BadModel("unidentified function definition 4");
-
-							if (fn == null)
-							{
-								if (Regex.IsMatch(funName, "^MapType[0-9]*Select$"))
-								{
-									funName = string.Format("[{0}]", arity);
-
-									if (!selectFunctions.TryGetValue(arity, out fn))
-									{
-										fn = currModel.MkFunc(funName, arity);
-										selectFunctions.Add(arity, fn);
-									}
-								}
-								else if (Regex.IsMatch(funName, "^MapType[0-9]*Store$"))
-								{
-									funName = string.Format("[{0}:=]", arity);
-
-									if (!storeFunctions.TryGetValue(arity, out fn)) {
-										fn = currModel.MkFunc(funName, arity);
-										storeFunctions.Add(arity, fn);
-									}
-								}
-								else
-								{
-									fn = currModel.MkFunc(funName, arity);
-								}
-							}
-
-							var args = new Model.Element[fn.Arity];
-
-							for (var idx = 0; idx < fn.Arity; ++idx)
-								args[idx] = GetElt(words[idx + i - arity - 1]);
-
-							fn.AddApp(GetElt(words[i]), args);
-
-							i++;
-							break;
-						}
-					}
-				}
-				else if (words.Count == 3 && words[1] == "->")
-				{
-					var funName = (string) words[0];
-					Model.Func fn = null;
-
-					fn = currModel.MkFunc(funName, 0);
-					fn.SetConstant(GetElt(lastToken));
-				}
-				else
-					BadModel("unidentified line");
+				if (i == tokens.Length)
+					doneParsing = true;
 			}
 		}
 	}
