@@ -22,6 +22,7 @@ namespace Microsoft.Boogie
 
 		string lastLine = "";
 		protected static char[] seps = new char[] { ' ' };
+		protected static Regex bv = new Regex(@"\(_ BitVec (\d+)\)");
 
 		protected void NewModel()
 		{
@@ -90,8 +91,6 @@ namespace Microsoft.Boogie
 
 	class ParserZ3_2 : ModelParser
 	{
-		static Regex bv = new Regex(@"\(_ BitVec (\d+)\)");
-
 		List<object> GetFunctionTokens(string newLine)
 		{
 			if (newLine == null)
@@ -395,6 +394,8 @@ namespace Microsoft.Boogie
 		{
 			if (newLine == null)
 				return null;
+
+			newLine = bv.Replace(newLine, "bv${1}");
 
 			string line = newLine;
 			int openParenCounter = CountOpenParentheses(newLine, 0);
