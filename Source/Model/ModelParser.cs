@@ -169,13 +169,13 @@ namespace Microsoft.Boogie
 					continue;
 
 				var words = GetFunctionTokens(line);
-
+				/*
 				Console.WriteLine("");
 				for (int i = 0; i < words.Count; i++)
 				{
 					Console.Write(words[i] + " ");
 				}
-
+*/
 				if (words.Count == 0) continue;
 				var lastWord = words[words.Count - 1];
 
@@ -215,13 +215,13 @@ namespace Microsoft.Boogie
 						fn = currModel.TryGetFunc(funName);
 						for ( ; ; ) {
 							var tuple = GetFunctionTokens(ReadLine());
-
+							/*
 							Console.WriteLine("");
 							for (int i = 0; i < tuple.Count; i++)
 							{
 								Console.Write(tuple[i] + " ");
 							}
-
+*/
 							if (tuple == null) BadModel("EOF in function table");
 							if (tuple.Count == 0) continue;
 							string tuple0 = tuple[0] as string;
@@ -598,13 +598,13 @@ namespace Microsoft.Boogie
 					continue;
 
 				var words = GetParsedTokens(line);
-
+				/*
 				Console.WriteLine("");
 				for (int i = 0; i < words.Count; i++)
 				{
 					Console.Write(words[i] + " ");
 				}
-
+*/
 				if (words.Count == 0) continue;
 				var lastToken = words[words.Count - 1];
 				if (currModel == null)

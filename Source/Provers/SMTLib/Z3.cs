@@ -274,7 +274,8 @@ namespace Microsoft.Boogie.SMTLib
                 //options.AddWeakSmtOption("MODEL_PARTIAL", "true");
                 //options.WeakAddSmtOption("MODEL_VALUE_COMPLETION", "false");
                 options.AddWeakSmtOption("MODEL_HIDE_UNUSED_PARTITIONS", "false");
-                options.AddWeakSmtOption("MODEL_V2", "true");
+                //options.AddWeakSmtOption("MODEL_V2", "true");
+				options.AddWeakSmtOption("pp-bv-literals", "false");
                 options.AddWeakSmtOption("ASYNC_COMMANDS", "false");
 
                 if (!options.OptimizeForBv)
