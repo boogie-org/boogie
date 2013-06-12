@@ -97,6 +97,8 @@
     <ErrorReport>prompt</ErrorReport>
     <CodeAnalysisRuleSet>Migrated rules for BoogieDriver.ruleset</CodeAnalysisRuleSet>
     <CodeAnalysisIgnoreBuiltInRules>true</CodeAnalysisIgnoreBuiltInRules>
+    <WarningLevel>4</WarningLevel>
+    <Optimize>false</Optimize>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Checked|AnyCPU'">
     <DebugSymbols>true</DebugSymbols>
@@ -137,6 +139,8 @@
     <CodeContractsRuntimeCheckingLevel>Full</CodeContractsRuntimeCheckingLevel>
     <CodeContractsReferenceAssembly>Build</CodeContractsReferenceAssembly>
     <CodeContractsAnalysisWarningLevel>0</CodeContractsAnalysisWarningLevel>
+    <WarningLevel>4</WarningLevel>
+    <Optimize>false</Optimize>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x86'">
     <DebugSymbols>true</DebugSymbols>
@@ -152,6 +156,8 @@
     <CodeAnalysisRuleSetDirectories>;C:\Program Files (x86)\Microsoft Visual Studio 10.0\Team Tools\Static Analysis Tools\\Rule Sets</CodeAnalysisRuleSetDirectories>
     <CodeAnalysisIgnoreBuiltInRuleSets>false</CodeAnalysisIgnoreBuiltInRuleSets>
     <CodeAnalysisRuleDirectories>;C:\Program Files (x86)\Microsoft Visual Studio 10.0\Team Tools\Static Analysis Tools\FxCop\\Rules</CodeAnalysisRuleDirectories>
+    <WarningLevel>4</WarningLevel>
+    <Optimize>false</Optimize>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x86'">
     <OutputPath>bin\x86\Release\</OutputPath>
@@ -168,6 +174,7 @@
     <CodeAnalysisIgnoreBuiltInRuleSets>false</CodeAnalysisIgnoreBuiltInRuleSets>
     <CodeAnalysisRuleDirectories>;C:\Program Files (x86)\Microsoft Visual Studio 10.0\Team Tools\Static Analysis Tools\FxCop\\Rules</CodeAnalysisRuleDirectories>
     <CodeAnalysisIgnoreBuiltInRules>false</CodeAnalysisIgnoreBuiltInRules>
+    <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'z3apidebug|x86'">
     <DebugSymbols>true</DebugSymbols>
@@ -183,6 +190,8 @@
     <CodeAnalysisRuleSetDirectories>;C:\Program Files (x86)\Microsoft Visual Studio 10.0\Team Tools\Static Analysis Tools\\Rule Sets</CodeAnalysisRuleSetDirectories>
     <CodeAnalysisIgnoreBuiltInRuleSets>false</CodeAnalysisIgnoreBuiltInRuleSets>
     <CodeAnalysisIgnoreBuiltInRules>true</CodeAnalysisIgnoreBuiltInRules>
+    <WarningLevel>4</WarningLevel>
+    <Optimize>false</Optimize>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Checked|x86'">
     <DebugSymbols>true</DebugSymbols>
@@ -199,6 +208,8 @@
     <CodeAnalysisIgnoreBuiltInRuleSets>false</CodeAnalysisIgnoreBuiltInRuleSets>
     <CodeAnalysisRuleDirectories>;C:\Program Files (x86)\Microsoft Visual Studio 10.0\Team Tools\Static Analysis Tools\FxCop\\Rules;C:\Program Files (x86)\Microsoft Visual Studio 10.0\Team Tools\Static Analysis Tools\FxCop\\Rules</CodeAnalysisRuleDirectories>
     <CodeAnalysisIgnoreBuiltInRules>false</CodeAnalysisIgnoreBuiltInRules>
+    <WarningLevel>4</WarningLevel>
+    <Optimize>false</Optimize>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
@@ -211,7 +222,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\AbsInt\AbsInt.csproj">
-      <Project>{0efa3e43-690b-48dc-a72c-384a3ea7f31f}</Project>
+      <Project>{0EFA3E43-690B-48DC-A72C-384A3EA7F31F}</Project>
       <Name>AbsInt</Name>
     </ProjectReference>
     <ProjectReference Include="..\Basetypes\Basetypes.csproj">
@@ -227,39 +238,39 @@
       <Name>Core</Name>
     </ProjectReference>
     <ProjectReference Include="..\Doomed\Doomed.csproj">
-      <Project>{884386a3-58e9-40bb-a273-b24976775553}</Project>
+      <Project>{884386A3-58E9-40BB-A273-B24976775553}</Project>
       <Name>Doomed</Name>
     </ProjectReference>
     <ProjectReference Include="..\ExecutionEngine\ExecutionEngine.csproj">
-      <Project>{eaa5eb79-d475-4601-a59b-825c191cd25f}</Project>
+      <Project>{EAA5EB79-D475-4601-A59B-825C191CD25F}</Project>
       <Name>ExecutionEngine</Name>
     </ProjectReference>
     <ProjectReference Include="..\Graph\Graph.csproj">
-      <Project>{69a2b0b8-bcac-4101-ae7a-556fcc58c06e}</Project>
+      <Project>{69A2B0B8-BCAC-4101-AE7A-556FCC58C06E}</Project>
       <Name>Graph</Name>
     </ProjectReference>
     <ProjectReference Include="..\Houdini\Houdini.csproj">
-      <Project>{cf41e903-78eb-43ba-a355-e5feb5ececd4}</Project>
+      <Project>{CF41E903-78EB-43BA-A355-E5FEB5ECECD4}</Project>
       <Name>Houdini</Name>
     </ProjectReference>
     <ProjectReference Include="..\ParserHelper\ParserHelper.csproj">
-      <Project>{fcd3ac7f-9dfd-46c8-ab1e-09f0b0f16dc5}</Project>
+      <Project>{FCD3AC7F-9DFD-46C8-AB1E-09F0B0F16DC5}</Project>
       <Name>ParserHelper</Name>
     </ProjectReference>
     <ProjectReference Include="..\Predication\Predication.csproj">
-      <Project>{afaa5ce1-c41b-44f0-88f8-fd8a43826d44}</Project>
+      <Project>{AFAA5CE1-C41B-44F0-88F8-FD8A43826D44}</Project>
       <Name>Predication</Name>
     </ProjectReference>
     <ProjectReference Include="..\Provers\SMTLib\SMTLib.csproj">
-      <Project>{9b163aa3-36bc-4afb-88ab-79bc9e97e401}</Project>
+      <Project>{9B163AA3-36BC-4AFB-88AB-79BC9E97E401}</Project>
       <Name>SMTLib</Name>
     </ProjectReference>
     <ProjectReference Include="..\VCExpr\VCExpr.csproj">
-      <Project>{56ffdbca-7d14-43b8-a6ca-22a20e417ee1}</Project>
+      <Project>{56FFDBCA-7D14-43B8-A6CA-22A20E417EE1}</Project>
       <Name>VCExpr</Name>
     </ProjectReference>
     <ProjectReference Include="..\VCGeneration\VCGeneration.csproj">
-      <Project>{e1f10180-c7b9-4147-b51f-fa1b701966dc}</Project>
+      <Project>{E1F10180-C7B9-4147-B51F-FA1B701966DC}</Project>
       <Name>VCGeneration</Name>
     </ProjectReference>
   </ItemGroup>

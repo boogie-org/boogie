@@ -97,27 +97,27 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
-    ProcessStartInfo ComputeProcessStartInfo()
-    {
-      var path = this.options.ProverPath;
-      switch (options.Solver) {
-        case SolverKind.Z3:
-          if (path == null)
-            path = Z3.ExecutablePath();
-          return SMTLibProcess.ComputerProcessStartInfo(path, "AUTO_CONFIG=false -smt2 -in");
-        case SolverKind.CVC3:
-          if (path == null)
-            path = "cvc3";
-          return SMTLibProcess.ComputerProcessStartInfo(path, "-lang smt2 +interactive -showPrompt");
-        case SolverKind.CVC4:
-          if (path == null)
-            path = "cvc4";
-          return SMTLibProcess.ComputerProcessStartInfo(path, "--smtlib2 --no-strict-parsing");
-        default:
-          Debug.Assert(false);
-          return null;
-      }
-    }
+	ProcessStartInfo ComputeProcessStartInfo()
+	{
+		var path = this.options.ProverPath;
+		var solverOptions = "";
+
+		switch (options.Solver) {
+			case SolverKind.Z3:
+			solverOptions = "AUTO_CONFIG=false -smt2 -in";
+			if (path == null)
+				path = Z3.ExecutablePath();
+			return SMTLibProcess.ComputerProcessStartInfo(path, solverOptions);
+			case SolverKind.CVC4:
+			solverOptions = "--lang=smt --no-strict-parsing --no-condense-function-values --incremental";
+			if (path == null)
+				path = CVC4.ExecutablePath();
+			return SMTLibProcess.ComputerProcessStartInfo(path, solverOptions);
+			default:
+			Debug.Assert(false);
+			return null;
+		}
+	}
 
     void SetupProcess()
     {
@@ -873,18 +873,34 @@ namespace Microsoft.Boogie.SMTLib
         
         string modelStr = null;
         if (resp.Name == "model" && resp.ArgCount >= 1) {
-          modelStr = resp[0].Name;
+					modelStr = resp.Arguments[0] + "\n";
+					for (int i = 1; i < resp.ArgCount; i++) {
+						if (resp.Arguments[i].ToString().Contains("define-fun"))
+							modelStr += resp.Arguments[i] + "\n";
+					}
+					//Console.WriteLine(modelStr);
         }
         else if (resp.ArgCount == 0 && resp.Name.Contains("->")) {
           modelStr = resp.Name;
+					//Console.WriteLine(modelStr);
         }
         else {
           HandleProverError("Unexpected prover response getting model: " + resp.ToString());
         }
         List<Model> models = null;
-        try {
-          models = Model.ParseModels(new StringReader("Z3 error model: \n" + modelStr));
-        }
+				try {
+					switch (options.Solver) {
+					case SolverKind.Z3:
+						models = Model.ParseModels(new StringReader("Error model: \n" + modelStr), "Z3");
+						break;
+					case SolverKind.CVC4:
+						models = Model.ParseModels(new StringReader("Error model: \n" + modelStr), "CVC4");
+						break;
+					default:
+						Debug.Assert(false);
+						return null;
+					}
+				}
         catch (ArgumentException exn) {
           HandleProverError("Model parsing error: " + exn.Message);
         }

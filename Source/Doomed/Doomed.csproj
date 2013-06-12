@@ -12,6 +12,8 @@
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <TargetFrameworkProfile>Client</TargetFrameworkProfile>
+    <ProductVersion>12.0.0</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -55,35 +57,35 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Basetypes\Basetypes.csproj">
-      <Project>{43dfad18-3e35-4558-9be2-caff6b5ba8a0}</Project>
+      <Project>{43DFAD18-3E35-4558-9BE2-CAFF6B5BA8A0}</Project>
       <Name>Basetypes</Name>
     </ProjectReference>
     <ProjectReference Include="..\CodeContractsExtender\CodeContractsExtender.csproj">
-      <Project>{accc0156-0921-43ed-8f67-ad8bdc8cde31}</Project>
+      <Project>{ACCC0156-0921-43ED-8F67-AD8BDC8CDE31}</Project>
       <Name>CodeContractsExtender</Name>
     </ProjectReference>
     <ProjectReference Include="..\Core\Core.csproj">
-      <Project>{b230a69c-c466-4065-b9c1-84d80e76d802}</Project>
+      <Project>{B230A69C-C466-4065-B9C1-84D80E76D802}</Project>
       <Name>Core</Name>
     </ProjectReference>
     <ProjectReference Include="..\Graph\Graph.csproj">
-      <Project>{69a2b0b8-bcac-4101-ae7a-556fcc58c06e}</Project>
+      <Project>{69A2B0B8-BCAC-4101-AE7A-556FCC58C06E}</Project>
       <Name>Graph</Name>
     </ProjectReference>
     <ProjectReference Include="..\Model\Model.csproj">
-      <Project>{acef88d5-dadd-46da-bae1-2144d63f4c83}</Project>
+      <Project>{ACEF88D5-DADD-46DA-BAE1-2144D63F4C83}</Project>
       <Name>Model</Name>
     </ProjectReference>
     <ProjectReference Include="..\ParserHelper\ParserHelper.csproj">
-      <Project>{fcd3ac7f-9dfd-46c8-ab1e-09f0b0f16dc5}</Project>
+      <Project>{FCD3AC7F-9DFD-46C8-AB1E-09F0B0F16DC5}</Project>
       <Name>ParserHelper</Name>
     </ProjectReference>
     <ProjectReference Include="..\VCExpr\VCExpr.csproj">
-      <Project>{56ffdbca-7d14-43b8-a6ca-22a20e417ee1}</Project>
+      <Project>{56FFDBCA-7D14-43B8-A6CA-22A20E417EE1}</Project>
       <Name>VCExpr</Name>
     </ProjectReference>
     <ProjectReference Include="..\VCGeneration\VCGeneration.csproj">
-      <Project>{e1f10180-c7b9-4147-b51f-fa1b701966dc}</Project>
+      <Project>{E1F10180-C7B9-4147-B51F-FA1B701966DC}</Project>
       <Name>VCGeneration</Name>
     </ProjectReference>
   </ItemGroup>
