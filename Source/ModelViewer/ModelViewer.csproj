@@ -125,7 +125,7 @@
       <DependentUpon>Main.cs</DependentUpon>
     </Compile>
     <Compile Include="..\Model\Model.cs" />
-	<Compile Include="..\Model\ModelParser.cs" />
+    <Compile Include="..\Model\ModelParser.cs" />
     <Compile Include="Namer.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
