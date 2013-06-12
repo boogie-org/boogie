@@ -409,6 +409,7 @@ namespace Microsoft.Boogie {
     public bool SimplifyLogFileAppend = false;
     public bool SoundnessSmokeTest = false;
     public string Z3ExecutablePath = null;
+	public string CVC4ExecutablePath = null;
 
     public enum ProverWarnings {
       None,
@@ -1259,6 +1260,12 @@ namespace Microsoft.Boogie {
           }
           return true;
 
+		case "cvc4exe":
+			if (ps.ConfirmArgumentCount(1)) {
+				CVC4ExecutablePath = args[ps.i];
+			}
+			return true;
+
         case "doBitVectorAnalysis":
           DoBitVectorAnalysis = true;
           if (ps.ConfirmArgumentCount(1)) {
@@ -1806,6 +1813,10 @@ namespace Microsoft.Boogie {
                 3 - (default) any
   /z3exe:<path>
                 path to Z3 executable
+
+  CVC4 specific options:
+  /cvc4exe:<path>
+                path to CVC4 executable
 ");
     }
   }
