@@ -169,13 +169,6 @@ namespace Microsoft.Boogie
 					continue;
 
 				var words = GetFunctionTokens(line);
-				/*
-				Console.WriteLine("");
-				for (int i = 0; i < words.Count; i++)
-				{
-					Console.Write(words[i] + " ");
-				}
-*/
 				if (words.Count == 0) continue;
 				var lastWord = words[words.Count - 1];
 
@@ -215,13 +208,6 @@ namespace Microsoft.Boogie
 						fn = currModel.TryGetFunc(funName);
 						for ( ; ; ) {
 							var tuple = GetFunctionTokens(ReadLine());
-							/*
-							Console.WriteLine("");
-							for (int i = 0; i < tuple.Count; i++)
-							{
-								Console.Write(tuple[i] + " ");
-							}
-*/
 							if (tuple == null) BadModel("EOF in function table");
 							if (tuple.Count == 0) continue;
 							string tuple0 = tuple[0] as string;
@@ -443,13 +429,13 @@ namespace Microsoft.Boogie
 					continue;
 
 				var words = GetParsedTokens(line);
-
+				/*
 				Console.WriteLine("");
 				for (int i = 0; i < words.Count; i++)
 				{
 					Console.Write(words[i] + " ");
 				}
-
+*/
 				if (words.Count == 0) continue;
 				var lastToken = words[words.Count - 1];
 				if (currModel == null)
@@ -715,32 +701,81 @@ namespace Microsoft.Boogie
 			output.Add("{");
 			output.Add(" ");
 
-			for (; ; )
-			{
+			while (tokens[i] != "store" && tokens[i] != "__array_store_all__")
 				i++;
 
-				if (tokens[i] == "store")
+			if (tokens[i] == "store")
+			{
+				List<string> args = new List<string>();
+				int p_count = 1;
+				i += 4;
+
+				while (p_count > 0)
 				{
-					while (tokens[i] != ",")
-						i++;
-
-					output.Add(GetValue(i + 10));
-					output.Add("->");
-					output.Add(GetValue(i + 15));
-					output.Add(" ");
-					output.Add("else");
-					output.Add("->");
-					output.Add(GetValue(i + 4));
-
-					i += 15;
-
-					break;
+					if (tokens[i] == ")")
+						p_count--;
+					else if (tokens[i] == "(")
+						p_count++;
+					i++;
 				}
-				else if (tokens[i] == ",")
+
+				while(args.Count < 3)
 				{
-					output.Add(GetValue(i + 4));
+					if (tokens[i] == ")")
+						i++;
+					else if (tokens[i] == "(" && tokens[i + 1] == "_")
+					{
+						args.Add(GetValue(i + 3));
+						i += 5;
+					}
+					else if (tokens[i + 1] == "(" && tokens[i + 1] == "-")
+					{
+						args.Add(GetValue(i + 2));
+						i += 4;
+					}
+					else
+					{
+						args.Add(GetValue(i));
+						i++;
+					}
+				}
+
+				output.Add(args[1]);
+				output.Add("->");
+				output.Add(args[2]);
+				output.Add(" ");
+				output.Add("else");
+				output.Add("->");
+				output.Add(args[0]);
+			}
+			else if (tokens[i] == "__array_store_all__")
+			{
+				int p_count = 1;
+				i += 2;
+
+				while (p_count > 0)
+				{
+					if (tokens[i] == ")")
+						p_count--;
+					else if (tokens[i] == "(")
+						p_count++;
+					i++;
+				}
+
+				if (tokens[i] == "(" && tokens[i + 1] == "_")
+				{
+					output.Add(GetValue(i + 3));
 					i += 5;
-					break;
+				}
+				else if (tokens[i] == "(" && tokens[i + 1] == "-")
+				{
+					output.Add(GetValue(i + 2));
+					i += 4;
+				}
+				else
+				{
+					output.Add(GetValue(i));
+					i++;
 				}
 			}
 		}
@@ -759,142 +794,76 @@ namespace Microsoft.Boogie
 				if (tok == "_ufmt_1") occurrences++;
 			}
 
-			if (occurrences > 2)
+			for (; ; )
 			{
-				for (; ; )
+				i++;
+
+				if (tokens[i] == "=")
 				{
-					i++;
-
-					if (tokens[i] == "=")
+					if (tokens[i + 2] == "(" && tokens[i + 3] == "_")
 					{
-						if (tokens[i + 2] == "(" && tokens[i + 3] == "_")
-						{
-							args.Add(GetValue(i + 5));
-							i += 6;
-						}
-						else if (tokens[i + 2] == "(" && tokens[i + 3] == "-")
-						{
-							args.Add(GetValue(i + 4));
-							i += 5;
-						}
-						else
-						{
-							args.Add(GetValue(i + 2));
-							i += 3;
-						}
+						args.Add(GetValue(i + 5));
+						i += 6;
 					}
-
-					if (args.Count > 0 && args.Count % arity == 0)
+					else if (tokens[i + 2] == "(" && tokens[i + 3] == "-")
 					{
-						if (tokens[i + 2] == "(" && tokens[i + 3] == "_")
-						{
-							results.Add(GetValue(i + 5));
-							i += 6;
-						}
-						else if (tokens[i + 2] == "(" && tokens[i + 3] == "-")
-						{
-							results.Add(GetValue(i + 4));
-							i += 5;
-						}
-						else
-						{
-							results.Add(GetValue(i + 2));
-							i += 3;
-						}
-
-						while (i < tokens.Length - 1 && tokens[i + 1] != "=")
-						{
-							i++;
-						}
-
-						if (i == tokens.Length - 1)
-						{
-							while (tokens[i] == ")")
-								i += -1;
-							results.Add(GetValue(i));
-							break;
-						}
+						args.Add(GetValue(i + 4));
+						i += 5;
+					}
+					else
+					{
+						args.Add(GetValue(i + 2));
+						i += 2;
 					}
 				}
 
-				int idx = 0;
-				for (int j = 0; j < results.Count - 1; j++)
+				if ((args.Count > 0 && args.Count % arity == 0) ||
+				    (results.Count > 0 && occurrences <= 2))
+				{
+					if (tokens[i + 2] == "(" && tokens[i + 3] == "_")
+					{
+						results.Add(GetValue(i + 5));
+						i += 6;
+					}
+					else if (tokens[i + 2] == "(" && tokens[i + 3] == "-")
+					{
+						results.Add(GetValue(i + 4));
+						i += 5;
+					}
+					else
+					{
+						results.Add(GetValue(i + 2));
+						i += 2;
+					}
+
+					while (i < tokens.Length - 1 && tokens[i + 1] != "=")
+					{
+						i++;
+					}
+
+					if (i == tokens.Length - 1)
+					{
+						while (tokens[i] == ")")
+							i += -1;
+						results.Add(GetValue(i));
+						break;
+					}
+				}
+			}
+
+			int idx = 0;
+
+			for (int j = 0; j < results.Count - 1; j++)
+			{
+				if (occurrences > 2)
 				{
 					for (int r = 0; r < arity; r++)
 					{
 						output.Add(args[idx]);
 						idx++;
 					}
-
-					output.Add("->");
-					output.Add(results[j]);
-					output.Add(" ");
 				}
-
-				output.Add("else");
-				output.Add("->");
-				output.Add(results[results.Count - 1]);
-			}
-			else
-			{
-				for (; ; )
-				{
-					i++;
-
-					if (tokens[i] == "=")
-					{
-						if (tokens[i + 2] == "(" && tokens[i + 3] == "_")
-						{
-							args.Add(GetValue(i + 5));
-							i += 6;
-						}
-						else if (tokens[i + 2] == "(" && tokens[i + 3] == "-")
-						{
-							args.Add(GetValue(i + 4));
-							i += 5;
-						}
-						else
-						{
-							args.Add(GetValue(i + 2));
-							i += 2;
-						}
-					}
-
-					if ((args.Count > 0 && args.Count % arity == 0) || results.Count > 0)
-					{
-						if (tokens[i + 2] == "(" && tokens[i + 3] == "_")
-						{
-							results.Add(GetValue(i + 5));
-							i += 6;
-						}
-						else if (tokens[i + 2] == "(" && tokens[i + 3] == "-")
-						{
-							results.Add(GetValue(i + 4));
-							i += 5;
-						}
-						else
-						{
-							results.Add(GetValue(i + 2));
-							i += 2;
-						}
-
-						while (i < tokens.Length - 1 && tokens[i + 1] != "=")
-						{
-							i++;
-						}
-
-						if (i == tokens.Length - 1)
-						{
-							while (tokens[i] == ")")
-								i += -1;
-							results.Add(GetValue(i));
-							break;
-						}
-					}
-				}
-
-				int idx = 0;
-				for (int j = 0; j < results.Count - 1; j++)
+				else
 				{
 					if (arity == 1)
 					{
@@ -911,16 +880,16 @@ namespace Microsoft.Boogie
 							output.Add(args[idx]);
 						}
 					}
-
-					output.Add("->");
-					output.Add(results[j]);
-					output.Add(" ");
 				}
 
-				output.Add("else");
 				output.Add("->");
-				output.Add(results[results.Count - 1]);
+				output.Add(results[j]);
+				output.Add(" ");
 			}
+
+			output.Add("else");
+			output.Add("->");
+			output.Add(results[results.Count - 1]);
 		}
 	}
 }
