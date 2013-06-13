@@ -100,27 +100,5 @@ namespace Microsoft.Boogie {
         Console.ReadLine();
       }
     }
-    
-
-    #region // TODO: Is this still used?
-
-    enum FileType
-    {
-      Unknown,
-      Cil,
-      Bpl,
-      Dafny
-    };
-
-
-    static bool ProgramHasDebugInfo(Program program)
-    {
-      Contract.Requires(program != null);
-      // We inspect the last declaration because the first comes from the prelude and therefore always has source context.
-      return program.TopLevelDeclarations.Count > 0 &&
-          ((cce.NonNull(program.TopLevelDeclarations)[program.TopLevelDeclarations.Count - 1]).tok.IsValid);
-    }
-
-    #endregion
   }
 }
