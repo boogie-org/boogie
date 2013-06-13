@@ -684,14 +684,22 @@ namespace Microsoft.Boogie
 
       #region Select and prioritize implementations that should be verified
 
-      var prioritizedImpls =
-        from impl in program.TopLevelDeclarations.OfType<Implementation>()
-        where impl != null && CommandLineOptions.Clo.UserWantsToCheckRoutine(cce.NonNull(impl.Name)) && !impl.SkipVerification
-        orderby impl.Priority descending
-        select impl;
+      var impls = program.TopLevelDeclarations.OfType<Implementation>().Where(
+        impl => impl != null && CommandLineOptions.Clo.UserWantsToCheckRoutine(cce.NonNull(impl.Name)) && !impl.SkipVerification);
 
       // operate on a stable copy, in case it gets updated while we're running
-      var stablePrioritizedImpls = prioritizedImpls.ToArray();
+      Implementation[] stablePrioritizedImpls = null;
+      IDictionary<Implementation, string> depsChecksums = null;
+      if (CommandLineOptions.Clo.VerifySnapshots)
+      {
+        depsChecksums = impls.ToDictionary(impl => impl, impl => DependencyCollector.DependenciesChecksum(impl));
+        stablePrioritizedImpls = impls.OrderByDescending(
+          impl => impl.Priority != 1 ? impl.Priority : Cache.VerificationPriority(impl, depsChecksums[impl])).ToArray();
+      }
+      else
+      {
+        stablePrioritizedImpls = impls.OrderByDescending(impl => impl.Priority).ToArray();
+      }
 
       #endregion
 
@@ -712,16 +720,6 @@ namespace Microsoft.Boogie
         if (CommandLineOptions.Clo.XmlSink != null)
         {
           CommandLineOptions.Clo.XmlSink.WriteStartMethod(impl.Name, start);
-        }
-
-        #endregion
-
-        #region Record the checksum of the dependencies of this implementation
-
-        string depsChecksum = null;
-        if (CommandLineOptions.Clo.VerifySnapshots)
-        {
-          depsChecksum = DependencyCollector.DependenciesChecksum(impl);
         }
 
         #endregion
@@ -747,7 +745,7 @@ namespace Microsoft.Boogie
           }
           else
           {
-            if (!CommandLineOptions.Clo.VerifySnapshots || Cache.NeedsToBeVerified(impl, depsChecksum))
+            if (!CommandLineOptions.Clo.VerifySnapshots || Cache.NeedsToBeVerified(impl, depsChecksums[impl]))
             {
               outcome = vcgen.VerifyImplementation(impl, out errors, requestId);
 
@@ -793,7 +791,7 @@ namespace Microsoft.Boogie
 
         if (CommandLineOptions.Clo.VerifySnapshots && !string.IsNullOrEmpty(impl.Checksum))
         {
-          Cache.Insert(impl.Id, new VerificationResult(requestId, impl.Checksum, depsChecksum, outcome, errors));
+          Cache.Insert(impl.Id, new VerificationResult(requestId, impl.Checksum, depsChecksums[impl], outcome, errors));
         }
 
         #endregion

@@ -153,12 +153,28 @@ namespace Microsoft.Boogie
 
     public bool NeedsToBeVerified(Implementation impl, string depsChecksumOfImpl)
     {
-      if (!Cache.ContainsKey(impl.Id)
-          || Cache[impl.Id].Checksum != impl.Checksum)
+      return 0 < VerificationPriority(impl, depsChecksumOfImpl);
+    }
+
+
+    public int VerificationPriority(Implementation impl, string depsChecksumOfImpl)
+    {
+      if (!Cache.ContainsKey(impl.Id))
       {
-        return true;
+        return 3;  // high priority (has been never verified before)
       }
-      return depsChecksumOfImpl == null || Cache[impl.Id].DependeciesChecksum != depsChecksumOfImpl;
+      else if (Cache[impl.Id].Checksum != impl.Checksum)
+      {
+        return 2;  // medium priority (old snapshot has been verified before)
+      }
+      else if (depsChecksumOfImpl == null || Cache[impl.Id].DependeciesChecksum != depsChecksumOfImpl)
+      {
+        return 1;  // low priority (the same snapshot has been verified before, but a callee has changed)
+      }
+      else
+      {
+        return 0;  // skip verification
+      }
     }
 
   }
