@@ -1443,6 +1443,79 @@ namespace Microsoft.Boogie.Houdini {
         }
     }
 
+    // foo(a,b) \in {false, \not a, a ==> b, true}
+    public class ImplicationDomain : IAbstractDomain
+    {
+        enum Val {FALSE, NOT_A, A_IMP_B, TRUE};
+        Val val;
+
+        private ImplicationDomain(Val val)
+        {
+            this.val = val;
+        }
+
+        public static ImplicationDomain GetBottom()
+        {
+            return new ImplicationDomain(Val.FALSE);
+        }
+
+        public IAbstractDomain Bottom()
+        {
+            return GetBottom();
+        }
+
+        public IAbstractDomain Join(List<Model.Element> states)
+        {
+            Debug.Assert(states.Count == 2);
+            var v1 = (states[0] as Model.Boolean).Value;
+            var v2 = (states[1] as Model.Boolean).Value;
+
+            if (val == Val.TRUE) return this;
+
+            var that = Val.TRUE;
+            if (!v1) that = Val.NOT_A;
+            else if (!v1 || v2) that = Val.A_IMP_B;
+
+            if (that == Val.TRUE || val == Val.FALSE)
+                return new ImplicationDomain(that);
+
+            // Now, neither this or that is FALSE or TRUE
+            if (val == that)
+                return this;
+
+            Debug.Assert(val == Val.A_IMP_B || that == Val.A_IMP_B);
+            return new ImplicationDomain(Val.A_IMP_B);
+        }
+
+        public Expr Gamma(List<Expr> vars)
+        {
+            Debug.Assert(vars.Count == 2);
+
+            var v1 = vars[0];
+            var v2 = vars[1];
+
+            if (val == Val.FALSE) return Expr.False;
+            if (val == Val.TRUE) return Expr.True;
+            if (val == Val.NOT_A) return Expr.Not(v1);
+            return Expr.Imp(v1, v2);
+        }
+
+        public bool TypeCheck(List<Type> argTypes, out string msg)
+        {
+            msg = "";
+            if (argTypes.Count != 2)
+            {
+                msg = "Illegal number of arguments, expecting 2";
+                return false;
+            }
+            if (argTypes.Any(tt => !tt.IsBool))
+            {
+                msg = "Illegal type, expecting bool";
+                return false;
+            }
+            return true;
+        }
+    }
 
     public class ConstantProp : IAbstractDomain
     {
@@ -1689,6 +1762,7 @@ namespace Microsoft.Boogie.Houdini {
                   System.Tuple.Create("Intervals", new Intervals() as IAbstractDomain),
                   System.Tuple.Create("ConstantProp", ConstantProp.GetBottom() as IAbstractDomain),
                   System.Tuple.Create("PredicateAbs", new PredicateAbsElem() as IAbstractDomain),
+                  System.Tuple.Create("ImplicationDomain", ImplicationDomain.GetBottom() as IAbstractDomain),
                   System.Tuple.Create("IA[HoudiniConst]", new IndependentAttribute<HoudiniConst>()  as IAbstractDomain),
                   System.Tuple.Create("IA[ConstantProp]", new IndependentAttribute<ConstantProp>()  as IAbstractDomain),
                   System.Tuple.Create("IA[Intervals]", new IndependentAttribute<Intervals>()  as IAbstractDomain)
