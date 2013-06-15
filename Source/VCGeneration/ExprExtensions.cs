@@ -21,6 +21,35 @@ using Microsoft.Boogie.VCExprAST;
 
 namespace Microsoft.Boogie.ExprExtensions
 {
+    class ReferenceComparer<T> : IEqualityComparer<T> where T : class
+    {
+        private static ReferenceComparer<T> m_instance;
+
+        public static ReferenceComparer<T> Instance
+        {
+            get
+            {
+                return m_instance ?? (m_instance = new ReferenceComparer<T>());
+            }
+        }
+
+        public bool Equals(T x, T y)
+        {
+            return ReferenceEquals(x, y);
+        }
+
+        public int GetHashCode(T obj)
+        {
+            return System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(obj);
+        }
+    }
+
+    public class TermDict<T> : Dictionary<Term, T> 
+    {
+        public TermDict() : base(ReferenceComparer<Term>.Instance) { }
+    }
+
+        
 
     public enum TermKind { App, Other };
 
@@ -229,9 +258,9 @@ namespace Microsoft.Boogie.ExprExtensions
             {
                 public int cnt = 0;
             }
-            Dictionary<Term, counter> refcnt = new Dictionary<Term, counter>();
+            TermDict<counter> refcnt = new TermDict<counter>();
             List<VCExprLetBinding> bindings = new List<VCExprLetBinding>();
-            Dictionary<Term, VCExprVar> bindingMap = new Dictionary<Term, VCExprVar>();
+            TermDict< VCExprVar> bindingMap = new TermDict< VCExprVar>();
             int letcnt = 0;
             Context ctx;
 

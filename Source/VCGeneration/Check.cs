@@ -137,40 +137,7 @@ namespace Microsoft.Boogie {
       } else {
         if (ctx == null) ctx = (ProverContext)CommandLineOptions.Clo.TheProverFactory.NewProverContext(options);
 
-        // set up the context
-        foreach (Declaration decl in prog.TopLevelDeclarations) {
-          Contract.Assert(decl != null);
-          TypeCtorDecl t = decl as TypeCtorDecl;
-          if (t != null) {
-            ctx.DeclareType(t, null);
-          }
-        }
-        foreach (Declaration decl in prog.TopLevelDeclarations) {
-          Contract.Assert(decl != null);
-          Constant c = decl as Constant;
-          if (c != null) {
-            ctx.DeclareConstant(c, c.Unique, null);
-          } else {
-            Function f = decl as Function;
-            if (f != null) {
-              ctx.DeclareFunction(f, null);
-            }
-          }
-        }
-        foreach (Declaration decl in prog.TopLevelDeclarations) {
-          Contract.Assert(decl != null);
-          Axiom ax = decl as Axiom;
-          if (ax != null) {
-            ctx.AddAxiom(ax, null);
-          }
-        }
-        foreach (Declaration decl in prog.TopLevelDeclarations) {
-          Contract.Assert(decl != null);
-          GlobalVariable v = decl as GlobalVariable;
-          if (v != null) {
-            ctx.DeclareGlobalVariable(v, null);
-          }
-        }
+        Setup(prog, ctx);
 
         // we first generate the prover and then store a clone of the
         // context in the cache, so that the prover can setup stuff in
@@ -182,6 +149,61 @@ namespace Microsoft.Boogie {
 
       this.thmProver = prover;
       this.gen = prover.VCExprGen;
+    }
+
+    public void Retarget(Program prog, ProverContext ctx)
+    {
+        ctx.Clear();
+        Setup(prog, ctx);
+    }
+
+    private static void Setup(Program prog, ProverContext ctx)
+    {
+        // set up the context
+        foreach (Declaration decl in prog.TopLevelDeclarations)
+        {
+            Contract.Assert(decl != null);
+            TypeCtorDecl t = decl as TypeCtorDecl;
+            if (t != null)
+            {
+                ctx.DeclareType(t, null);
+            }
+        }
+        foreach (Declaration decl in prog.TopLevelDeclarations)
+        {
+            Contract.Assert(decl != null);
+            Constant c = decl as Constant;
+            if (c != null)
+            {
+                ctx.DeclareConstant(c, c.Unique, null);
+            }
+            else
+            {
+                Function f = decl as Function;
+                if (f != null)
+                {
+                    ctx.DeclareFunction(f, null);
+                }
+            }
+        }
+        foreach (Declaration decl in prog.TopLevelDeclarations)
+        {
+            Contract.Assert(decl != null);
+            Axiom ax = decl as Axiom;
+            if (ax != null)
+            {
+                ctx.AddAxiom(ax, null);
+            }
+        }
+        foreach (Declaration decl in prog.TopLevelDeclarations)
+        {
+            Contract.Assert(decl != null);
+            GlobalVariable v = decl as GlobalVariable;
+            if (v != null)
+            {
+                ctx.DeclareGlobalVariable(v, null);
+            }
+        }
     }
 
 

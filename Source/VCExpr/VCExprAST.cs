@@ -1868,6 +1868,14 @@ namespace Microsoft.Boogie.VCExprAST {
     }
   }
 
+  public class VCExprConstant : VCExprVar
+  {
+      internal VCExprConstant(string name, Type type) : base(name,type) {
+      Contract.Requires(type != null);
+      Contract.Requires(name != null);
+    }
+  }
+
   public abstract class VCExprBinder : VCExpr {
     public readonly VCExpr/*!*/ Body;
     public readonly List<TypeVariable/*!*/>/*!*/ TypeParameters;
