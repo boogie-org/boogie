@@ -823,7 +823,7 @@ namespace Microsoft.Boogie.SMTLib
             if (!options.MultiTraces)
               posLabels = Enumerable.Empty<string>();
             var conjuncts = posLabels.Select(s => "(not " + lbl(s) + ")").Concat(negLabels.Select(lbl)).ToArray();
-            string expr;
+            string expr = conjuncts.Length == 1 ? conjuncts[0] : ("(or " + conjuncts.Concat(" ") + ")"); ;
             if (!conjuncts.Any())
             {
               expr = "false";
