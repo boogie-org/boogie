@@ -147,7 +147,7 @@ namespace Microsoft.Boogie {
         return naryExpr.Fun.FunctionName;
     }
 
-    public void Print(int indent) {
+    public void Print(int indent, Action<Block> blockAction = null) {
       int numBlock = -1;
       string ind = new string(' ', indent);
       foreach (Block b in Trace) {
@@ -160,7 +160,13 @@ namespace Microsoft.Boogie {
           // do not print tokens with -17:-4 as their location because they have been
           // introduced in the translation and do not give any useful feedback to the user
           if (!(CommandLineOptions.Clo.ErrorTrace == 1 && b.tok.line == -17 && b.tok.col == -4)) {
+            if (blockAction != null)
+            {
+                blockAction(b);
+            }
+
             Console.WriteLine("{4}{0}({1},{2}): {3}", b.tok.filename, b.tok.line, b.tok.col, b.Label, ind);
+
             for (int numInstr = 0; numInstr < b.Cmds.Length; numInstr++)
             {
                 var loc = new TraceLocation(numBlock, numInstr);

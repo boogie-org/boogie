@@ -1802,6 +1802,8 @@ namespace Microsoft.Boogie {
       }
     }
 
+    public string DependenciesChecksum { get; set; }
+
     protected void EmitSignature(TokenTextWriter stream, bool shortRet) {
       Contract.Requires(stream != null);
       Type.EmitOptionalTypeParams(stream, TypeParameters);

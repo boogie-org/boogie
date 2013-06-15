@@ -91,25 +91,6 @@ namespace Microsoft.Boogie
   }
 
 
-  public class VerificationResult
-  {
-    public readonly string Checksum;
-    public readonly string DependeciesChecksum;
-    public readonly string RequestId;
-    public readonly ConditionGeneration.Outcome Outcome;
-    public readonly List<Counterexample> Errors;
-
-    public VerificationResult(string requestId, string checksum, string depsChecksum, ConditionGeneration.Outcome outcome, List<Counterexample> errors)
-    {
-      Checksum = checksum;
-      DependeciesChecksum = depsChecksum;
-      Outcome = outcome;
-      Errors = errors;
-      RequestId = requestId;
-    }
-  }
-
-
   public class VerificationResultCache
   {
     private readonly ConcurrentDictionary<string, VerificationResult> Cache = new ConcurrentDictionary<string, VerificationResult>();
@@ -151,13 +132,13 @@ namespace Microsoft.Boogie
     }
 
 
-    public bool NeedsToBeVerified(Implementation impl, string depsChecksumOfImpl)
+    public bool NeedsToBeVerified(Implementation impl)
     {
-      return 0 < VerificationPriority(impl, depsChecksumOfImpl);
+      return 0 < VerificationPriority(impl);
     }
 
 
-    public int VerificationPriority(Implementation impl, string depsChecksumOfImpl)
+    public int VerificationPriority(Implementation impl)
     {
       if (!Cache.ContainsKey(impl.Id))
       {
@@ -167,7 +148,7 @@ namespace Microsoft.Boogie
       {
         return 2;  // medium priority (old snapshot has been verified before)
       }
-      else if (depsChecksumOfImpl == null || Cache[impl.Id].DependeciesChecksum != depsChecksumOfImpl)
+      else if (impl.DependenciesChecksum == null || Cache[impl.Id].DependeciesChecksum != impl.DependenciesChecksum)
       {
         return 1;  // low priority (the same snapshot has been verified before, but a callee has changed)
       }
