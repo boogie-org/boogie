@@ -882,7 +882,7 @@ namespace Microsoft.Boogie
       CommandLineOptions.Clo.ModelViewFile = "z3model";
       CommandLineOptions.Clo.UseArrayTheory = true;
       CommandLineOptions.Clo.TypeEncodingMethod = CommandLineOptions.TypeEncoding.Monomorphic;
-      Houdini.AbstractDomainFactory.Initialize();
+      Houdini.AbstractDomainFactory.Initialize(program);
       var domain = Houdini.AbstractDomainFactory.GetInstance(CommandLineOptions.Clo.AbstractHoudini);
 
       // Run Abstract Houdini
