@@ -21,6 +21,7 @@ namespace Microsoft.Boogie
     void AdvisoryWriteLine(string format, params object[] args);
     void Inform(string s);
     void WriteTrailer(int verified, int errors, int inconclusives, int timeOuts, int outOfMemories);
+    void WriteErrorInformation(ErrorInformation errorInfo, bool isError, bool showBplLocation);
     void ReportBplError(IToken tok, string message, bool error, bool showBplLocation, string category = null);
   }
 
@@ -38,11 +39,15 @@ namespace Microsoft.Boogie
 
       // split the string up into its first line and the remaining lines
       string remaining = null;
-      var parts = s.Split(new string[] { Environment.NewLine }, 2, StringSplitOptions.RemoveEmptyEntries);
-      if (1 < parts.Length)
+      int i = s.IndexOf('\r');
+      if (0 <= i)
       {
-        remaining = parts[1];
-        s = parts[0];
+        remaining = s.Substring(i + 1);
+        if (remaining.StartsWith("\n"))
+        {
+          remaining = remaining.Substring(1);
+        }
+        s = s.Substring(0, i);
       }
 
       ConsoleColor col = Console.ForegroundColor;
@@ -117,6 +122,19 @@ namespace Microsoft.Boogie
     }
 
 
+    public void WriteErrorInformation(ErrorInformation errorInfo, bool isError, bool showBplLocation)
+    {
+      Contract.Requires(errorInfo != null);
+
+      ReportBplError(errorInfo.Tok, errorInfo.FullMsg, isError, showBplLocation);
+
+      foreach (var e in errorInfo.Aux)
+      {
+        ReportBplError(e.Tok, e.FullMsg, false, showBplLocation);
+      }
+    }
+
+
     public virtual void ReportBplError(IToken tok, string message, bool error, bool showBplLocation, string category = null)
     {
       Contract.Requires(message != null);
@@ -172,7 +190,7 @@ namespace Microsoft.Boogie
       Contract.Requires(1 <= tok.line && 1 <= tok.col);
       Contract.Requires(msg != null);
 
-      return ErrorInformation.CreateErrorInformation(tok, msg, requestId);
+      return ErrorInformation.CreateErrorInformation(tok, msg, requestId, category);
     }
   }
 
@@ -182,6 +200,7 @@ namespace Microsoft.Boogie
     public readonly IToken Tok;
     public string Msg;
     public string Category { get; set; }
+    public string BoogieErrorCode { get; set; }
     public readonly List<AuxErrorInfo> Aux = new List<AuxErrorInfo>();
     public string RequestId { get; set; }
 
@@ -189,7 +208,12 @@ namespace Microsoft.Boogie
     {
       get
       {
-        return Category != null ? string.Format("{0}: {1}", Category, Msg) : Msg;
+        var prefix = Category;
+        if (BoogieErrorCode != null)
+        {
+          prefix = prefix == null ? BoogieErrorCode : prefix + " " + BoogieErrorCode;
+        }
+        return prefix != null ? string.Format("{0}: {1}", prefix, Msg) : Msg;
       }
     }
 
@@ -238,7 +262,7 @@ namespace Microsoft.Boogie
       Contract.Requires(tok != null);
       Contract.Requires(1 <= tok.line && 1 <= tok.col);
       Contract.Requires(msg != null);
-      Aux.Add(new AuxErrorInfo(tok, msg));
+      Aux.Add(new AuxErrorInfo(tok, msg, category));
     }
 
     protected static string CleanUp(string msg)
@@ -1085,24 +1109,22 @@ namespace Microsoft.Boogie
       // BP5xxx: Verification errors
 
       ErrorInformation errorInfo;
+      var showBplLocation = true;
 
       var callError = error as CallCounterexample;
       var returnError = error as ReturnCounterexample;
       var assertError = error as AssertCounterexample;
       if (callError != null)
       {
+        errorInfo = errorInformationFactory.CreateErrorInformation(callError.FailingCall.tok, callError.FailingCall.ErrorData as string ?? "A precondition for this call might not hold.", callError.RequestId, cause);
+        errorInfo.BoogieErrorCode = "BP5002";
+        errorInfo.AddAuxInfo(callError.FailingRequires.tok, callError.FailingRequires.ErrorData as string ?? "This is the precondition that might not hold.", "Related location");
+
         if (!CommandLineOptions.Clo.ForceBplErrors && callError.FailingRequires.ErrorMessage != null)
         {
-          printer.ReportBplError(callError.FailingRequires.tok, callError.FailingRequires.ErrorMessage, true, false);
+          errorInfo = errorInformationFactory.CreateErrorInformation(callError.FailingRequires.tok, callError.FailingRequires.ErrorMessage, callError.RequestId, cause);
+          showBplLocation = false;
         }
-        else
-        {
-          printer.ReportBplError(callError.FailingCall.tok, "A precondition for this call might not hold.", true, true, cause + " BP5002");
-          printer.ReportBplError(callError.FailingRequires.tok, "This is the precondition that might not hold.", false, true, "Related location");
-        }
-
-        errorInfo = errorInformationFactory.CreateErrorInformation(callError.FailingCall.tok, callError.FailingCall.ErrorData as string ?? "A precondition for this call might not hold.", callError.RequestId, cause);
-        errorInfo.AddAuxInfo(callError.FailingRequires.tok, callError.FailingRequires.ErrorData as string ?? "This is the precondition that might not hold.", "Related location");
 
         if (CommandLineOptions.Clo.XmlSink != null)
         {
@@ -1111,18 +1133,15 @@ namespace Microsoft.Boogie
       }
       else if (returnError != null)
       {
+        errorInfo = errorInformationFactory.CreateErrorInformation(returnError.FailingReturn.tok, "A postcondition might not hold on this return path.", returnError.RequestId, cause);
+        errorInfo.BoogieErrorCode = "BP5003";
+        errorInfo.AddAuxInfo(returnError.FailingEnsures.tok, returnError.FailingEnsures.ErrorData as string ?? "This is the postcondition that might not hold.", "Related location");
+
         if (!CommandLineOptions.Clo.ForceBplErrors && returnError.FailingEnsures.ErrorMessage != null)
         {
-          printer.ReportBplError(returnError.FailingEnsures.tok, returnError.FailingEnsures.ErrorMessage, true, false);
+          errorInfo = errorInformationFactory.CreateErrorInformation(returnError.FailingEnsures.tok, returnError.FailingEnsures.ErrorMessage, returnError.RequestId, cause);
+          showBplLocation = false;
         }
-        else
-        {
-          printer.ReportBplError(returnError.FailingReturn.tok, "A postcondition might not hold on this return path.", true, true, cause + " BP5003");
-          printer.ReportBplError(returnError.FailingEnsures.tok, "This is the postcondition that might not hold.", false, true, "Related location");
-        }
-
-        errorInfo = errorInformationFactory.CreateErrorInformation(returnError.FailingReturn.tok, "A postcondition might not hold on this return path.", returnError.RequestId, cause);
-        errorInfo.AddAuxInfo(returnError.FailingEnsures.tok, returnError.FailingEnsures.ErrorData as string ?? "This is the postcondition that might not hold.", "Related location");
 
         if (CommandLineOptions.Clo.XmlSink != null)
         {
@@ -1133,9 +1152,8 @@ namespace Microsoft.Boogie
       {
         if (assertError.FailingAssert is LoopInitAssertCmd)
         {
-          printer.ReportBplError(assertError.FailingAssert.tok, "This loop invariant might not hold on entry.", true, true, cause + " BP5004");
-
           errorInfo = errorInformationFactory.CreateErrorInformation(assertError.FailingAssert.tok, "This loop invariant might not hold on entry.", assertError.RequestId, cause);
+          errorInfo.BoogieErrorCode = "BP5004";
 
           if (CommandLineOptions.Clo.XmlSink != null)
           {
@@ -1144,9 +1162,8 @@ namespace Microsoft.Boogie
         }
         else if (assertError.FailingAssert is LoopInvMaintainedAssertCmd)
         {
-          printer.ReportBplError(assertError.FailingAssert.tok, "This loop invariant might not be maintained by the loop.", true, true, cause + " BP5005");
-
           errorInfo = errorInformationFactory.CreateErrorInformation(assertError.FailingAssert.tok, "This loop invariant might not be maintained by the loop.", assertError.RequestId, cause);
+          errorInfo.BoogieErrorCode = "BP5005";
 
           if (CommandLineOptions.Clo.XmlSink != null)
           {
@@ -1155,22 +1172,20 @@ namespace Microsoft.Boogie
         }
         else
         {
-          var msg = assertError.FailingAssert.ErrorData as string;
           if (!CommandLineOptions.Clo.ForceBplErrors && assertError.FailingAssert.ErrorMessage != null)
           {
-            printer.ReportBplError(assertError.FailingAssert.tok, assertError.FailingAssert.ErrorMessage, true, false);
+            showBplLocation = false;
           }
-          else if (msg != null)
-          {
-            printer.ReportBplError(assertError.FailingAssert.tok, msg, true, true);
-          }
-          else
+          var msg = assertError.FailingAssert.ErrorData as string;
+          string bec = null;
+          if (msg == null)
           {
             msg = "This assertion might not hold.";
-            printer.ReportBplError(assertError.FailingAssert.tok, msg, true, true, cause + " BP5001");
+            bec = "BP5001";
           }
 
           errorInfo = errorInformationFactory.CreateErrorInformation(assertError.FailingAssert.tok, msg, assertError.RequestId, cause);
+          errorInfo.BoogieErrorCode = bec;
 
           if (CommandLineOptions.Clo.XmlSink != null)
           {
@@ -1178,6 +1193,7 @@ namespace Microsoft.Boogie
           }
         }
       }
+      printer.WriteErrorInformation(errorInfo, true, showBplLocation);
       return errorInfo;
     }
 
