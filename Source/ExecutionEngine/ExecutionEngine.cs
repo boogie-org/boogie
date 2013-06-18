@@ -743,40 +743,46 @@ namespace Microsoft.Boogie
 
       foreach (var impl in stablePrioritizedImpls)
       {
-        var verificationResult = new VerificationResult(requestId, impl.Checksum, impl.DependenciesChecksum);
+        VerificationResult verificationResult = null;
 
         printer.Inform(string.Format("\nVerifying {0} ...", impl.Name));
 
-        if (CommandLineOptions.Clo.XmlSink != null)
+        if (CommandLineOptions.Clo.VerifySnapshots)
         {
-          CommandLineOptions.Clo.XmlSink.WriteStartMethod(impl.Name, verificationResult.Start);
+          verificationResult = Cache.Lookup(impl);
         }
 
-        #region Verify the implementation
-
-        verificationResult.ProofObligationCountBefore = vcgen.CumulativeAssertionCount;
-        verificationResult.Start = DateTime.UtcNow;
-
-        try
+        if (verificationResult == null)
         {
-          if (CommandLineOptions.Clo.inferLeastForUnsat != null)
+          #region Verify the implementation
+
+          verificationResult = new VerificationResult(requestId, impl.Checksum, impl.DependenciesChecksum);
+          verificationResult.ProofObligationCountBefore = vcgen.CumulativeAssertionCount;
+          verificationResult.Start = DateTime.UtcNow;
+
+          if (CommandLineOptions.Clo.XmlSink != null)
           {
-            var svcgen = vcgen as VC.StratifiedVCGen;
-            Contract.Assert(svcgen != null);
-            var ss = new HashSet<string>();
-            foreach (var tdecl in program.TopLevelDeclarations)
-            {
-              var c = tdecl as Constant;
-              if (c == null || !c.Name.StartsWith(CommandLineOptions.Clo.inferLeastForUnsat)) continue;
-              ss.Add(c.Name);
-            }
-            verificationResult.Outcome = svcgen.FindLeastToVerify(impl, ref ss);
-            verificationResult.Errors = new List<Counterexample>();
-            Console.WriteLine("Result: {0}", string.Join(" ", ss));
+            CommandLineOptions.Clo.XmlSink.WriteStartMethod(impl.Name, verificationResult.Start);
           }
-          else
+
+          try
           {
-            if (!CommandLineOptions.Clo.VerifySnapshots || Cache.NeedsToBeVerified(impl))
+            if (CommandLineOptions.Clo.inferLeastForUnsat != null)
+            {
+              var svcgen = vcgen as VC.StratifiedVCGen;
+              Contract.Assert(svcgen != null);
+              var ss = new HashSet<string>();
+              foreach (var tdecl in program.TopLevelDeclarations)
+              {
+                var c = tdecl as Constant;
+                if (c == null || !c.Name.StartsWith(CommandLineOptions.Clo.inferLeastForUnsat)) continue;
+                ss.Add(c.Name);
+              }
+              verificationResult.Outcome = svcgen.FindLeastToVerify(impl, ref ss);
+              verificationResult.Errors = new List<Counterexample>();
+              Console.WriteLine("Result: {0}", string.Join(" ", ss));
+            }
+            else
             {
               verificationResult.Outcome = vcgen.VerifyImplementation(impl, out verificationResult.Errors, requestId);
 
@@ -792,45 +798,40 @@ namespace Microsoft.Boogie
                 }
               }
             }
-            else
-            {
-              printer.Inform(string.Format("Retrieving cached verification result for implementation {0}...", impl.Name));
-
-              var result = Cache.Lookup(impl.Id);
-              Contract.Assert(result != null);
-              verificationResult.Outcome = result.Outcome;
-              verificationResult.Errors = result.Errors;
-            }
           }
+          catch (VCGenException e)
+          {
+            printer.ReportBplError(impl.tok, String.Format("Error BP5010: {0}  Encountered in implementation {1}.", e.Message, impl.Name), true, true);
+            verificationResult.Errors = null;
+            verificationResult.Outcome = VCGen.Outcome.Inconclusive;
+          }
+          catch (UnexpectedProverOutputException upo)
+          {
+            printer.AdvisoryWriteLine("Advisory: {0} SKIPPED because of internal error: unexpected prover output: {1}", impl.Name, upo.Message);
+            verificationResult.Errors = null;
+            verificationResult.Outcome = VCGen.Outcome.Inconclusive;
+          }
+
+          verificationResult.ProofObligationCountAfter = vcgen.CumulativeAssertionCount;
+          verificationResult.End = DateTime.UtcNow;
+
+          #endregion
+
+          #region Cache the verification result
+
+          if (CommandLineOptions.Clo.VerifySnapshots && !string.IsNullOrEmpty(impl.Checksum))
+          {
+            Cache.Insert(impl.Id, verificationResult);
+          }
+
+          #endregion
         }
-        catch (VCGenException e)
+        else
         {
-          printer.ReportBplError(impl.tok, String.Format("Error BP5010: {0}  Encountered in implementation {1}.", e.Message, impl.Name), true, true);
-          verificationResult.Errors = null;
-          verificationResult.Outcome = VCGen.Outcome.Inconclusive;
+          printer.Inform(string.Format("Retrieving cached verification result for implementation {0}...", impl.Name));
         }
-        catch (UnexpectedProverOutputException upo)
-        {
-          printer.AdvisoryWriteLine("Advisory: {0} SKIPPED because of internal error: unexpected prover output: {1}", impl.Name, upo.Message);
-          verificationResult.Errors = null;
-          verificationResult.Outcome = VCGen.Outcome.Inconclusive;
-        }
-
-        #endregion
-
-        #region Cache the verification result
-
-        if (CommandLineOptions.Clo.VerifySnapshots && !string.IsNullOrEmpty(impl.Checksum))
-        {
-          Cache.Insert(impl.Id, verificationResult);
-        }
-
-        #endregion
 
         #region Process the verification results and statistics
-
-        verificationResult.ProofObligationCountAfter = vcgen.CumulativeAssertionCount;
-        verificationResult.End = DateTime.UtcNow;
 
         ProcessOutcome(verificationResult.Outcome, verificationResult.Errors, TimeIndication(verificationResult), ref errorCount, ref verified, ref inconclusives, ref timeOuts, ref outOfMemories, er, impl, verificationResult.RequestId);
 
@@ -1008,12 +1009,6 @@ namespace Microsoft.Boogie
     {
       Contract.Requires(errors != null);
 
-      // BP1xxx: Parsing errors
-      // BP2xxx: Name resolution errors
-      // BP3xxx: Typechecking errors
-      // BP4xxx: Abstract interpretation errors (Is there such a thing?)
-      // BP5xxx: Verification errors
-
       var cause = "Error";
       if (outcome == VCGen.Outcome.TimedOut)
       {
@@ -1057,6 +1052,12 @@ namespace Microsoft.Boogie
 
     private static ErrorInformation ReportCounterexample(string cause, Counterexample error)
     {
+      // BP1xxx: Parsing errors
+      // BP2xxx: Name resolution errors
+      // BP3xxx: Typechecking errors
+      // BP4xxx: Abstract interpretation errors (Is there such a thing?)
+      // BP5xxx: Verification errors
+
       ErrorInformation errorInfo;
 
       var callError = error as CallCounterexample;

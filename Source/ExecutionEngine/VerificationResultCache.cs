@@ -113,6 +113,19 @@ namespace Microsoft.Boogie
     }
 
 
+    public VerificationResult Lookup(Implementation impl)
+    {
+      if (!NeedsToBeVerified(impl))
+      {
+        return Lookup(impl.Id);
+      }
+      else
+      {
+        return null;
+      }
+    }
+
+
     public void Clear()
     {
       Cache.Clear();
@@ -157,7 +170,6 @@ namespace Microsoft.Boogie
         return 0;  // skip verification
       }
     }
-
   }
 
 }
