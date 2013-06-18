@@ -828,6 +828,11 @@ namespace Microsoft.Boogie
         }
         else
         {
+          if (CommandLineOptions.Clo.XmlSink != null)
+          {
+            CommandLineOptions.Clo.XmlSink.WriteStartMethod(impl.Name, verificationResult.Start);
+          }
+
           printer.Inform(string.Format("Retrieving cached verification result for implementation {0}...", impl.Name));
         }
 
