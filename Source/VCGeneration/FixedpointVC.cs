@@ -76,6 +76,8 @@ namespace Microsoft.Boogie
         Mode mode;
         AnnotationStyle style;
 
+        private static Checker old_checker = null;
+
         public FixedpointVC( Program _program, string/*?*/ logFilePath, bool appendLogFile)
             : base(_program, logFilePath, appendLogFile) 
         {
@@ -106,7 +108,13 @@ namespace Microsoft.Boogie
             rpfp = new RPFP(RPFP.CreateLogicSolver(ctx));
             program = _program;
             gen = ctx;
-            checker = new Checker(this, program, logFilePath, appendLogFile, 0, null);
+            if(old_checker == null)
+              checker = new Checker(this, program, logFilePath, appendLogFile, 0, null);
+            else {
+                checker = old_checker;
+                checker.Retarget(program,checker.TheoremProver.Context);
+            }
+            old_checker = checker;
             boogieContext = checker.TheoremProver.Context;
             linOptions = null; //  new Microsoft.Boogie.Z3.Z3LineariserOptions(false, options, new List<VCExprVar>());
         }
@@ -660,7 +668,7 @@ namespace Microsoft.Boogie
             }
         }
 
-        private Term ExtractSmallerVCsRec(Dictionary<Term, Term> memo, Term t, List<Term> small, Term lbl = null)
+        private Term ExtractSmallerVCsRec(TermDict< Term> memo, Term t, List<Term> small, Term lbl = null)
         {
             Term res;
             if (memo.TryGetValue(t, out res))
@@ -733,7 +741,7 @@ namespace Microsoft.Boogie
         }
 
         private void ExtractSmallerVCs(Term t, List<Term> small){
-            Dictionary<Term, Term> memo = new Dictionary<Term, Term>();
+            TermDict< Term> memo = new TermDict< Term>();
             Term top = ExtractSmallerVCsRec(memo, t, small);
             small.Add(top);
         }
@@ -763,7 +771,7 @@ namespace Microsoft.Boogie
             return ctx.MkImplies(ctx.MkAnd(eqns), ctx.MkApp(label, ctx.MkApp(f, tvars)));
         }
 
-        private Term MergeGoalsRec(Dictionary<Term, Term> memo, Term t)
+        private Term MergeGoalsRec(TermDict< Term> memo, Term t)
         {
             Term res;
             if (memo.TryGetValue(t, out res))
@@ -803,11 +811,11 @@ namespace Microsoft.Boogie
 
         private Term MergeGoals(Term t)
         {
-            Dictionary<Term, Term> memo = new Dictionary<Term, Term>();
+            TermDict< Term> memo = new TermDict< Term>();
             return MergeGoalsRec(memo, t);
         }
 
-        private Term CollectGoalsRec(Dictionary<Term, Term> memo, Term t, List<Term> goals, List<Term> cruft)
+        private Term CollectGoalsRec(TermDict< Term> memo, Term t, List<Term> goals, List<Term> cruft)
         {
             Term res;
             if (memo.TryGetValue(t, out res))
@@ -869,11 +877,11 @@ namespace Microsoft.Boogie
 
         private void CollectGoals(Term t, List<Term> goals, List<Term> cruft)
         {
-            Dictionary<Term, Term> memo = new Dictionary<Term, Term>();
+            TermDict< Term> memo = new TermDict< Term>();
             CollectGoalsRec(memo, t.GetAppArgs()[1], goals, cruft);
         }
 
-        private Term SubstRec(Dictionary<Term, Term> memo, Term t)
+        private Term SubstRec(TermDict< Term> memo, Term t)
         {
             Term res;
             if (memo.TryGetValue(t, out res))
@@ -890,7 +898,7 @@ namespace Microsoft.Boogie
             return res;
         }
 
-        private Term SubstRecGoals(Dictionary<Term, Term> memo, Term t)
+        private Term SubstRecGoals(TermDict< Term> memo, Term t)
         {
             Term res;
             if (memo.TryGetValue(t, out res))
@@ -957,7 +965,7 @@ namespace Microsoft.Boogie
                 CollectGoals(sm, goals,cruft);
                 foreach (var goal in goals)
                 {
-                    Dictionary<Term, Term> memo = new Dictionary<Term, Term>();
+                    TermDict< Term> memo = new TermDict< Term>();
                     foreach (var othergoal in goals)
                         memo.Add(othergoal, othergoal.Equals(goal) ? ctx.MkFalse() : ctx.MkTrue());
                     foreach (var thing in cruft)
@@ -967,7 +975,7 @@ namespace Microsoft.Boogie
                     vcs.Add(vc);
                 }
                 {
-                    Dictionary<Term, Term> memo = new Dictionary<Term, Term>();
+                    TermDict< Term> memo = new TermDict< Term>();
                     foreach (var othergoal in goals)
                         memo.Add(othergoal, ctx.MkTrue());
                     var vc = SubstRecGoals(memo, sm);
@@ -1078,7 +1086,7 @@ namespace Microsoft.Boogie
 
         // Collect the relational paremeters
 
-        private Term CollectParamsRec(Dictionary<Term, Term> memo, Term t, List<FuncDecl> parms, List<RPFP.Node> nodes)
+        private Term CollectParamsRec(TermDict<Term> memo, Term t, List<FuncDecl> parms, List<RPFP.Node> nodes, Dictionary<Term,Term> done)
         {
             Term res;
             if (memo.TryGetValue(t, out res))
@@ -1088,14 +1096,20 @@ namespace Microsoft.Boogie
             {
                 var f = t.GetAppDecl();
                 var args = t.GetAppArgs();
-                args = args.Select(x => CollectParamsRec(memo, x, parms, nodes)).ToArray();
+                args = args.Select(x => CollectParamsRec(memo, x, parms, nodes, done)).ToArray();
                 StratifiedInliningInfo info;
                 if (relationToProc.TryGetValue(f, out info))
                 {
-                    f = SuffixFuncDecl(t, parms.Count);
-                    parms.Add(f);
-                    nodes.Add(info.node);
-                    res = ctx.MkApp(f, args);
+                    if (done.ContainsKey(t))
+                        res = done[t];
+                    else
+                    {
+                        f = SuffixFuncDecl(t, parms.Count);
+                        parms.Add(f);
+                        nodes.Add(info.node);
+                        res = ctx.MkApp(f, args);
+                        done.Add(t,res); // don't count same expression twice!
+                    }
                 }
                 else
                     res = ctx.CloneApp(t, args);
@@ -1111,8 +1125,9 @@ namespace Microsoft.Boogie
             Term[] paramTerms = info.interfaceExprVars.Select(x => boogieContext.VCExprToTerm(x, linOptions)).ToArray();
             var relParams = new List<FuncDecl>();
             var nodeParams = new List<RPFP.Node>();
-            var memo = new Dictionary<Term, Term>();
-            vcTerm = CollectParamsRec(memo, vcTerm, relParams, nodeParams);
+            var memo = new TermDict< Term>();
+            var done = new Dictionary<Term,Term>(); // note this hashes on equality, not reference!
+            vcTerm = CollectParamsRec(memo, vcTerm, relParams, nodeParams,done);
             // var ops = new Util.ContextOps(ctx);
             // var foo = ops.simplify_lhs(vcTerm);
             // vcTerm = foo.Item1;
@@ -1430,7 +1445,7 @@ namespace Microsoft.Boogie
                         // start = DateTime.Now;
                         Counterexample cex = CreateBoogieCounterExample(cexroot.owner, cexroot, impl);
                         // cexroot.owner.DisposeDualModel();
-                        cex.Print(0);  // TODO: just for testing
+                        // cex.Print(0);  // just for testing
                         collector.OnCounterexample(cex, "assertion failure");
                         Console.WriteLine("cex: {0}s", (DateTime.Now - start).TotalSeconds);
                         return VC.ConditionGeneration.Outcome.Errors;
@@ -1471,7 +1486,7 @@ namespace Microsoft.Boogie
             labels = new Dictionary<string, Term>();
             foreach(var e in rpfp.edges){
                 int id = e.number;
-                HashSet<Term> memo = new HashSet<Term>();
+                HashSet<Term> memo = new HashSet<Term>(ReferenceComparer<Term>.Instance);
                 FindLabelsRec(memo, e.F.Formula, labels);
             }
         }

@@ -187,6 +187,16 @@ namespace Microsoft.Boogie.SMTLib
             minor = Z3MinorVersion;
         }
 
+        public static string SetTimeoutOption()
+        {
+            int major, minor;
+            GetVersion(out major, out minor);
+            if (major > 4 || major == 4 && minor >= 3)
+                return "TIMEOUT";
+            else
+                return "SOFT_TIMEOUT";
+        }
+
         // options that work only on the command line
         static string[] commandLineOnly = { "TRACE", "PROOF_MODE" };
 
@@ -251,7 +261,7 @@ namespace Microsoft.Boogie.SMTLib
 
                 if (options.TimeLimit > 0)
                 {
-                    options.AddWeakSmtOption("SOFT_TIMEOUT", options.TimeLimit.ToString());
+                    options.AddWeakSmtOption("TIMEOUT", options.TimeLimit.ToString());
                     // This kills the Z3 *instance* after the specified time, not a particular query, so we cannot use it.
                     // options.AddSolverArgument("/T:" + (options.TimeLimit + 1000) / 1000);
                 }
@@ -261,9 +271,8 @@ namespace Microsoft.Boogie.SMTLib
 
                 if (CommandLineOptions.Clo.WeakArrayTheory)
                 {
-                    // TODO: these options don't seem to exist in recent Z3
-                    // options.AddWeakSmtOption("ARRAY_WEAK", "true");
-                    // options.AddWeakSmtOption("ARRAY_EXTENSIONAL", "false");
+                    options.AddWeakSmtOption("smt.array.weak", "true");
+                    options.AddWeakSmtOption("smt.array.extensional", "false");
                 } 
             }
             else

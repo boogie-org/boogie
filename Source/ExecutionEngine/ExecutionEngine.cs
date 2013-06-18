@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using VC;
 using BoogiePL = Microsoft.Boogie;
 
@@ -20,7 +21,6 @@ namespace Microsoft.Boogie
     void AdvisoryWriteLine(string format, params object[] args);
     void Inform(string s);
     void WriteTrailer(int verified, int errors, int inconclusives, int timeOuts, int outOfMemories);
-    void ReportAllBplErrors(QKeyValue attr);
     void ReportBplError(IToken tok, string message, bool error, bool showBplLocation);
   }
 
@@ -121,23 +121,6 @@ namespace Microsoft.Boogie
     }
 
 
-    public void ReportAllBplErrors(QKeyValue attr)
-    {
-      while (attr != null)
-      {
-        if (attr.Key == "msg" && attr.Params.Count == 1)
-        {
-          var str = attr.Params[0] as string;
-          if (str != null)
-          {
-            ReportBplError(attr.tok, "Error: " + str, false, true);
-          }
-        }
-        attr = attr.Next;
-      }
-    }
-
-
     public virtual void ReportBplError(IToken tok, string message, bool error, bool showBplLocation)
     {
       Contract.Requires(message != null);
@@ -182,13 +165,13 @@ namespace Microsoft.Boogie
 
   public class ErrorInformationFactory
   {
-    public virtual ErrorInformation CreateErrorInformation(IToken tok, string msg)
+    public virtual ErrorInformation CreateErrorInformation(IToken tok, string msg, string requestId = null)
     {
       Contract.Requires(tok != null);
       Contract.Requires(1 <= tok.line && 1 <= tok.col);
       Contract.Requires(msg != null);
 
-      return ErrorInformation.CreateErrorInformation(tok, msg);
+      return ErrorInformation.CreateErrorInformation(tok, msg, requestId);
     }
   }
 
@@ -198,6 +181,7 @@ namespace Microsoft.Boogie
     public IToken Tok;
     public string Msg;
     public readonly List<AuxErrorInfo> Aux = new List<AuxErrorInfo>();
+    public string RequestId { get; set; }
 
     public struct AuxErrorInfo
     {
@@ -221,9 +205,11 @@ namespace Microsoft.Boogie
       Msg = CleanUp(msg);
     }
 
-    internal static ErrorInformation CreateErrorInformation(IToken tok, string msg)
+    internal static ErrorInformation CreateErrorInformation(IToken tok, string msg, string requestId = null)
     {
-      return new ErrorInformation(tok, msg);
+      var result = new ErrorInformation(tok, msg);
+      result.RequestId = requestId;
+      return result;
     }
 
     public virtual void AddAuxInfo(IToken tok, string msg)
@@ -232,22 +218,6 @@ namespace Microsoft.Boogie
       Contract.Requires(1 <= tok.line && 1 <= tok.col);
       Contract.Requires(msg != null);
       Aux.Add(new AuxErrorInfo(tok, msg));
-    }
-
-    public void AddAuxInfo(QKeyValue attr)
-    {
-      while (attr != null)
-      {
-        if (attr.Key == "msg" && attr.Params.Count == 1 && attr.tok.line != 0 && attr.tok.col != 0)
-        {
-          var str = attr.Params[0] as string;
-          if (str != null)
-          {
-            AddAuxInfo(attr.tok, str);
-          }
-        }
-        attr = attr.Next;
-      }
     }
 
     protected static string CleanUp(string msg)
@@ -266,11 +236,50 @@ namespace Microsoft.Boogie
   #endregion
 
 
+  public class VerificationResult
+  {
+    public readonly string Checksum;
+    public readonly string DependeciesChecksum;
+    public readonly string RequestId;
+
+    public DateTime Start { get; set; }
+    public DateTime End { get; set; }
+
+    public int ProofObligationCount { get { return ProofObligationCountAfter - ProofObligationCountBefore; } }
+    public int ProofObligationCountBefore { get; set; }
+    public int ProofObligationCountAfter { get; set; }
+    public int ErrorCount { get; set; }
+    public int VerifiedCount { get; set; }
+    public int InconclusiveCount { get; set; }
+    public int TimeOutCount { get; set; }
+    public int OutOfMemoryCount { get; set; }
+
+    public ConditionGeneration.Outcome Outcome;
+    public List<Counterexample> Errors;
+
+    public VerificationResult(string requestId, string checksum, string depsChecksum, ConditionGeneration.Outcome outcome, List<Counterexample> errors)
+      : this(requestId, checksum, depsChecksum)
+    {
+      Outcome = outcome;
+      Errors = errors;
+    }
+
+    public VerificationResult(string requestId, string checksum, string depsChecksum)
+    {
+      Checksum = checksum;
+      DependeciesChecksum = depsChecksum;
+      RequestId = requestId;
+    }
+  }
+
+
   public class ExecutionEngine
   {
     public static OutputPrinter printer;
 
     public static ErrorInformationFactory errorInformationFactory = new ErrorInformationFactory();
+
+    public readonly static VerificationResultCache Cache = new VerificationResultCache();
 
     static LinearTypechecker linearTypechecker;
 
@@ -620,16 +629,16 @@ namespace Microsoft.Boogie
     /// </summary>
     public static PipelineOutcome InferAndVerify(Program program,
                                                  out int errorCount, out int verified, out int inconclusives, out int timeOuts, out int outOfMemories,
-                                                 ErrorReporterDelegate er = null)
+                                                 ErrorReporterDelegate er = null, string requestId = null)
     {
       Contract.Requires(program != null);
       Contract.Ensures(0 <= Contract.ValueAtReturn(out inconclusives) && 0 <= Contract.ValueAtReturn(out timeOuts));
 
       errorCount = verified = inconclusives = timeOuts = outOfMemories = 0;
 
-      // ---------- Infer invariants --------------------------------------------------------
+      #region Infer invariants using Abstract Interpretation
 
-      // Abstract interpretation -> Always use (at least) intervals, if not specified otherwise (e.g. with the "/noinfer" switch)
+      // Always use (at least) intervals, if not specified otherwise (e.g. with the "/noinfer" switch)
       if (CommandLineOptions.Clo.UseAbstractInterpretation)
       {
         if (!CommandLineOptions.Clo.Ai.J_Intervals && !CommandLineOptions.Clo.Ai.J_Trivial)
@@ -639,6 +648,10 @@ namespace Microsoft.Boogie
         }
       }
       Microsoft.Boogie.AbstractInterpretation.NativeAbstractInterpretation.RunAbstractInterpretation(program);
+
+      #endregion
+
+      #region Do some preprocessing on the program (e.g., loop unrolling, lambda expansion)
 
       if (CommandLineOptions.Clo.LoopUnrollCount != -1)
       {
@@ -662,7 +675,7 @@ namespace Microsoft.Boogie
         //PrintBplFile ("-", program, true);
       }
 
-      // ---------- Verify ------------------------------------------------------------
+      #endregion
 
       if (!CommandLineOptions.Clo.Verify)
       {
@@ -672,68 +685,11 @@ namespace Microsoft.Boogie
       #region Run Houdini and verify
       if (CommandLineOptions.Clo.ContractInfer)
       {
-        if (CommandLineOptions.Clo.AbstractHoudini != null)
-        {
-          //CommandLineOptions.Clo.PrintErrorModel = 1;
-          CommandLineOptions.Clo.UseProverEvaluate = true;
-          CommandLineOptions.Clo.ModelViewFile = "z3model";
-          CommandLineOptions.Clo.UseArrayTheory = true;
-          CommandLineOptions.Clo.TypeEncodingMethod = CommandLineOptions.TypeEncoding.Monomorphic;
-          Houdini.AbstractDomainFactory.Initialize();
-          var domain = Houdini.AbstractDomainFactory.GetInstance(CommandLineOptions.Clo.AbstractHoudini);
-
-          // Run Abstract Houdini
-          var abs = new Houdini.AbsHoudini(program, domain);
-          var absout = abs.ComputeSummaries();
-          ProcessOutcome(absout.outcome, absout.errors, "", ref errorCount, ref verified, ref inconclusives, ref timeOuts, ref outOfMemories, er);
-
-          //Houdini.PredicateAbs.Initialize(program);
-          //var abs = new Houdini.AbstractHoudini(program);
-          //abs.computeSummaries(new Houdini.PredicateAbs(program.TopLevelDeclarations.OfType<Implementation>().First().Name));
-
-          return PipelineOutcome.Done;
-        }
-        Houdini.Houdini houdini = new Houdini.Houdini(program);
-        Houdini.HoudiniOutcome outcome = houdini.PerformHoudiniInference();
-        if (CommandLineOptions.Clo.PrintAssignment)
-        {
-          Console.WriteLine("Assignment computed by Houdini:");
-          foreach (var x in outcome.assignment)
-          {
-            Console.WriteLine(x.Key + " = " + x.Value);
-          }
-        }
-        if (CommandLineOptions.Clo.Trace)
-        {
-          int numTrueAssigns = 0;
-          foreach (var x in outcome.assignment)
-          {
-            if (x.Value)
-              numTrueAssigns++;
-          }
-          Console.WriteLine("Number of true assignments = " + numTrueAssigns);
-          Console.WriteLine("Number of false assignments = " + (outcome.assignment.Count - numTrueAssigns));
-          Console.WriteLine("Prover time = " + Houdini.HoudiniSession.proverTime.ToString("F2"));
-          Console.WriteLine("Unsat core prover time = " + Houdini.HoudiniSession.unsatCoreProverTime.ToString("F2"));
-          Console.WriteLine("Number of prover queries = " + Houdini.HoudiniSession.numProverQueries);
-          Console.WriteLine("Number of unsat core prover queries = " + Houdini.HoudiniSession.numUnsatCoreProverQueries);
-          Console.WriteLine("Number of unsat core prunings = " + Houdini.HoudiniSession.numUnsatCorePrunings);
-        }
-
-        foreach (Houdini.VCGenOutcome x in outcome.implementationOutcomes.Values)
-        {
-          ProcessOutcome(x.outcome, x.errors, "", ref errorCount, ref verified, ref inconclusives, ref timeOuts, ref outOfMemories, er);
-        }
-        //errorCount = outcome.ErrorCount;
-        //verified = outcome.Verified;
-        //inconclusives = outcome.Inconclusives;
-        //timeOuts = outcome.TimeOuts;
-        //outOfMemories = 0;
-        return PipelineOutcome.Done;
+        return RunHoudini(program, ref errorCount, ref verified, ref inconclusives, ref timeOuts, ref outOfMemories, er);
       }
       #endregion
 
-      #region Verify each implementation
+      #region Set up the VC generation
 
       ConditionGeneration vcgen = null;
       try
@@ -761,135 +717,143 @@ namespace Microsoft.Boogie
         return PipelineOutcome.FatalError;
       }
 
+      #endregion
+
+      #region Select and prioritize implementations that should be verified
+
+      var impls = program.TopLevelDeclarations.OfType<Implementation>().Where(
+        impl => impl != null && CommandLineOptions.Clo.UserWantsToCheckRoutine(cce.NonNull(impl.Name)) && !impl.SkipVerification);
+
       // operate on a stable copy, in case it gets updated while we're running
-      var decls = program.TopLevelDeclarations.ToArray();
-
-      var impls =
-        from d in decls
-        where d != null && d is Implementation && CommandLineOptions.Clo.UserWantsToCheckRoutine(cce.NonNull(((Implementation)d).Name)) && !((Implementation)d).SkipVerification
-        select (Implementation)d;
-
-      var prioritizedImpls =
-        from i in impls
-        orderby i.Priority descending
-        select i;
-
-      foreach (var impl in prioritizedImpls)
+      Implementation[] stablePrioritizedImpls = null;
+      if (CommandLineOptions.Clo.VerifySnapshots)
       {
-        int prevAssertionCount = vcgen.CumulativeAssertionCount;
-        List<Counterexample/*!*/>/*?*/ errors;
+        impls.Iter(impl => { impl.DependenciesChecksum = DependencyCollector.DependenciesChecksum(impl); });
+        stablePrioritizedImpls = impls.OrderByDescending(
+          impl => impl.Priority != 1 ? impl.Priority : Cache.VerificationPriority(impl)).ToArray();
+      }
+      else
+      {
+        stablePrioritizedImpls = impls.OrderByDescending(impl => impl.Priority).ToArray();
+      }
 
-        DateTime start = new DateTime();  // to please compiler's definite assignment rules
-        if (CommandLineOptions.Clo.Trace || CommandLineOptions.Clo.TraceProofObligations || CommandLineOptions.Clo.XmlSink != null)
+      #endregion
+
+      #region Verify each implementation
+
+      foreach (var impl in stablePrioritizedImpls)
+      {
+        VerificationResult verificationResult = null;
+
+        printer.Inform(string.Format("\nVerifying {0} ...", impl.Name));
+
+        if (CommandLineOptions.Clo.VerifySnapshots)
         {
-          start = DateTime.UtcNow;
-          if (CommandLineOptions.Clo.Trace || CommandLineOptions.Clo.TraceProofObligations)
-          {
-            Console.WriteLine();
-            Console.WriteLine("Verifying {0} ...", impl.Name);
-          }
-          if (CommandLineOptions.Clo.XmlSink != null)
-          {
-            CommandLineOptions.Clo.XmlSink.WriteStartMethod(impl.Name, start);
-          }
+          verificationResult = Cache.Lookup(impl);
         }
 
-        VCGen.Outcome outcome;
-        try
+        if (verificationResult == null)
         {
-          if (CommandLineOptions.Clo.inferLeastForUnsat != null)
+          #region Verify the implementation
+
+          verificationResult = new VerificationResult(requestId, impl.Checksum, impl.DependenciesChecksum);
+          verificationResult.ProofObligationCountBefore = vcgen.CumulativeAssertionCount;
+          verificationResult.Start = DateTime.UtcNow;
+
+          if (CommandLineOptions.Clo.XmlSink != null)
           {
-            var svcgen = vcgen as VC.StratifiedVCGen;
-            Contract.Assert(svcgen != null);
-            var ss = new HashSet<string>();
-            foreach (var tdecl in program.TopLevelDeclarations)
-            {
-              var c = tdecl as Constant;
-              if (c == null || !c.Name.StartsWith(CommandLineOptions.Clo.inferLeastForUnsat)) continue;
-              ss.Add(c.Name);
-            }
-            outcome = svcgen.FindLeastToVerify(impl, ref ss);
-            errors = new List<Counterexample>();
-            Console.Write("Result: ");
-            foreach (var s in ss)
-            {
-              Console.Write("{0} ", s);
-            }
-            Console.WriteLine();
+            CommandLineOptions.Clo.XmlSink.WriteStartMethod(impl.Name, verificationResult.Start);
           }
-          else
+
+          try
           {
-            if (!VerificationResultCache.ContainsKey(impl.Id) || VerificationResultCache[impl.Id].Checksum != impl.Checksum)
+            if (CommandLineOptions.Clo.inferLeastForUnsat != null)
             {
-              outcome = vcgen.VerifyImplementation(impl, out errors);
+              var svcgen = vcgen as VC.StratifiedVCGen;
+              Contract.Assert(svcgen != null);
+              var ss = new HashSet<string>();
+              foreach (var tdecl in program.TopLevelDeclarations)
+              {
+                var c = tdecl as Constant;
+                if (c == null || !c.Name.StartsWith(CommandLineOptions.Clo.inferLeastForUnsat)) continue;
+                ss.Add(c.Name);
+              }
+              verificationResult.Outcome = svcgen.FindLeastToVerify(impl, ref ss);
+              verificationResult.Errors = new List<Counterexample>();
+              Console.WriteLine("Result: {0}", string.Join(" ", ss));
             }
             else
             {
-              if (CommandLineOptions.Clo.Trace)
+              verificationResult.Outcome = vcgen.VerifyImplementation(impl, out verificationResult.Errors, requestId);
+
+              if (CommandLineOptions.Clo.ExtractLoops && verificationResult.Errors != null)
               {
-                Console.WriteLine("Retrieving cached verification result for implementation {0}...", impl.Name);
-              }
-              var result = VerificationResultCache[impl.Id];
-              outcome = result.Outcome;
-              errors = result.Errors;
-            }
-            if (CommandLineOptions.Clo.ExtractLoops && vcgen is VCGen && errors != null)
-            {
-              for (int i = 0; i < errors.Count; i++)
-              {
-                errors[i] = (vcgen as VCGen).extractLoopTrace(errors[i], impl.Name, program, extractLoopMappingInfo);
+                var vcg = vcgen as VCGen;
+                if (vcg != null)
+                {
+                  for (int i = 0; i < verificationResult.Errors.Count; i++)
+                  {
+                    verificationResult.Errors[i] = vcg.extractLoopTrace(verificationResult.Errors[i], impl.Name, program, extractLoopMappingInfo);
+                  }
+                }
               }
             }
           }
+          catch (VCGenException e)
+          {
+            printer.ReportBplError(impl.tok, String.Format("Error BP5010: {0}  Encountered in implementation {1}.", e.Message, impl.Name), true, true);
+            verificationResult.Errors = null;
+            verificationResult.Outcome = VCGen.Outcome.Inconclusive;
+          }
+          catch (UnexpectedProverOutputException upo)
+          {
+            printer.AdvisoryWriteLine("Advisory: {0} SKIPPED because of internal error: unexpected prover output: {1}", impl.Name, upo.Message);
+            verificationResult.Errors = null;
+            verificationResult.Outcome = VCGen.Outcome.Inconclusive;
+          }
+
+          verificationResult.ProofObligationCountAfter = vcgen.CumulativeAssertionCount;
+          verificationResult.End = DateTime.UtcNow;
+
+          #endregion
+
+          #region Cache the verification result
+
+          if (CommandLineOptions.Clo.VerifySnapshots && !string.IsNullOrEmpty(impl.Checksum))
+          {
+            Cache.Insert(impl.Id, verificationResult);
+          }
+
+          #endregion
         }
-        catch (VCGenException e)
+        else
         {
-          printer.ReportBplError(impl.tok, String.Format("Error BP5010: {0}  Encountered in implementation {1}.", e.Message, impl.Name), true, true);
-          errors = null;
-          outcome = VCGen.Outcome.Inconclusive;
-        }
-        catch (UnexpectedProverOutputException upo)
-        {
-          printer.AdvisoryWriteLine("Advisory: {0} SKIPPED because of internal error: unexpected prover output: {1}", impl.Name, upo.Message);
-          errors = null;
-          outcome = VCGen.Outcome.Inconclusive;
+          if (CommandLineOptions.Clo.XmlSink != null)
+          {
+            CommandLineOptions.Clo.XmlSink.WriteStartMethod(impl.Name, verificationResult.Start);
+          }
+
+          printer.Inform(string.Format("Retrieving cached verification result for implementation {0}...", impl.Name));
         }
 
-        string timeIndication = "";
-        DateTime end = DateTime.UtcNow;
-        TimeSpan elapsed = end - start;
-        if (CommandLineOptions.Clo.Trace)
-        {
-          int poCount = vcgen.CumulativeAssertionCount - prevAssertionCount;
-          timeIndication = string.Format("  [{0:F3} s, {1} proof obligation{2}]  ", elapsed.TotalSeconds, poCount, poCount == 1 ? "" : "s");
-        }
-        else if (CommandLineOptions.Clo.TraceProofObligations)
-        {
-          int poCount = vcgen.CumulativeAssertionCount - prevAssertionCount;
-          timeIndication = string.Format("  [{0} proof obligation{1}]  ", poCount, poCount == 1 ? "" : "s");
-        }
+        #region Process the verification results and statistics
 
-        if (CommandLineOptions.Clo.VerifySnapshots && !string.IsNullOrEmpty(impl.Checksum))
-        {
-          var result = new VerificationResult(impl.Checksum, outcome, errors);
-          VerificationResultCache[impl.Id] = result;
-        }
-
-        ProcessOutcome(outcome, errors, timeIndication, ref errorCount, ref verified, ref inconclusives, ref timeOuts, ref outOfMemories, er, impl);
+        ProcessOutcome(verificationResult.Outcome, verificationResult.Errors, TimeIndication(verificationResult), ref errorCount, ref verified, ref inconclusives, ref timeOuts, ref outOfMemories, er, impl, verificationResult.RequestId);
 
         if (CommandLineOptions.Clo.XmlSink != null)
         {
-          CommandLineOptions.Clo.XmlSink.WriteEndMethod(outcome.ToString().ToLowerInvariant(), end, elapsed);
+          CommandLineOptions.Clo.XmlSink.WriteEndMethod(verificationResult.Outcome.ToString().ToLowerInvariant(), verificationResult.End, verificationResult.End - verificationResult.Start);
         }
-        if (outcome == VCGen.Outcome.Errors || CommandLineOptions.Clo.Trace)
+        if (verificationResult.Outcome == VCGen.Outcome.Errors || CommandLineOptions.Clo.Trace)
         {
           Console.Out.Flush();
         }
+
+        #endregion
       }
 
       vcgen.Close();
       cce.NonNull(CommandLineOptions.Clo.TheProverFactory).Close();
-
 
       #endregion
 
@@ -897,8 +861,95 @@ namespace Microsoft.Boogie
     }
 
 
-    static void ProcessOutcome(VC.VCGen.Outcome outcome, List<Counterexample> errors, string timeIndication,
-                               ref int errorCount, ref int verified, ref int inconclusives, ref int timeOuts, ref int outOfMemories, ErrorReporterDelegate er = null, Implementation impl = null)
+    private static PipelineOutcome RunHoudini(Program program, ref int errorCount, ref int verified, ref int inconclusives, ref int timeOuts, ref int outOfMemories, ErrorReporterDelegate er)
+    {
+      if (CommandLineOptions.Clo.AbstractHoudini != null)
+      {
+        return RunAbstractHoudini(program, ref errorCount, ref verified, ref inconclusives, ref timeOuts, ref outOfMemories, er);
+      }
+
+      Houdini.Houdini houdini = new Houdini.Houdini(program);
+      Houdini.HoudiniOutcome outcome = houdini.PerformHoudiniInference();
+
+      if (CommandLineOptions.Clo.PrintAssignment)
+      {
+        Console.WriteLine("Assignment computed by Houdini:");
+        foreach (var x in outcome.assignment)
+        {
+          Console.WriteLine(x.Key + " = " + x.Value);
+        }
+      }
+
+      if (CommandLineOptions.Clo.Trace)
+      {
+        int numTrueAssigns = 0;
+        foreach (var x in outcome.assignment)
+        {
+          if (x.Value)
+            numTrueAssigns++;
+        }
+        Console.WriteLine("Number of true assignments = " + numTrueAssigns);
+        Console.WriteLine("Number of false assignments = " + (outcome.assignment.Count - numTrueAssigns));
+        Console.WriteLine("Prover time = " + Houdini.HoudiniSession.proverTime.ToString("F2"));
+        Console.WriteLine("Unsat core prover time = " + Houdini.HoudiniSession.unsatCoreProverTime.ToString("F2"));
+        Console.WriteLine("Number of prover queries = " + Houdini.HoudiniSession.numProverQueries);
+        Console.WriteLine("Number of unsat core prover queries = " + Houdini.HoudiniSession.numUnsatCoreProverQueries);
+        Console.WriteLine("Number of unsat core prunings = " + Houdini.HoudiniSession.numUnsatCorePrunings);
+      }
+
+      foreach (Houdini.VCGenOutcome x in outcome.implementationOutcomes.Values)
+      {
+        ProcessOutcome(x.outcome, x.errors, "", ref errorCount, ref verified, ref inconclusives, ref timeOuts, ref outOfMemories, er);
+      }
+      //errorCount = outcome.ErrorCount;
+      //verified = outcome.Verified;
+      //inconclusives = outcome.Inconclusives;
+      //timeOuts = outcome.TimeOuts;
+      //outOfMemories = 0;
+      return PipelineOutcome.Done;
+    }
+
+
+    private static PipelineOutcome RunAbstractHoudini(Program program, ref int errorCount, ref int verified, ref int inconclusives, ref int timeOuts, ref int outOfMemories, ErrorReporterDelegate er)
+    {
+      //CommandLineOptions.Clo.PrintErrorModel = 1;
+      CommandLineOptions.Clo.UseProverEvaluate = true;
+      CommandLineOptions.Clo.ModelViewFile = "z3model";
+      CommandLineOptions.Clo.UseArrayTheory = true;
+      CommandLineOptions.Clo.TypeEncodingMethod = CommandLineOptions.TypeEncoding.Monomorphic;
+      Houdini.AbstractDomainFactory.Initialize(program);
+      var domain = Houdini.AbstractDomainFactory.GetInstance(CommandLineOptions.Clo.AbstractHoudini);
+
+      // Run Abstract Houdini
+      var abs = new Houdini.AbsHoudini(program, domain);
+      var absout = abs.ComputeSummaries();
+      ProcessOutcome(absout.outcome, absout.errors, "", ref errorCount, ref verified, ref inconclusives, ref timeOuts, ref outOfMemories, er);
+
+      //Houdini.PredicateAbs.Initialize(program);
+      //var abs = new Houdini.AbstractHoudini(program);
+      //abs.computeSummaries(new Houdini.PredicateAbs(program.TopLevelDeclarations.OfType<Implementation>().First().Name));
+
+      return PipelineOutcome.Done;
+    }
+
+
+    private static string TimeIndication(VerificationResult verificationResult)
+    {
+      var result = "";
+      if (CommandLineOptions.Clo.Trace)
+      {
+        result = string.Format("  [{0:F3} s, {1} proof obligation{2}]  ", (verificationResult.End - verificationResult.Start).TotalSeconds, verificationResult.ProofObligationCount, verificationResult.ProofObligationCount == 1 ? "" : "s");
+      }
+      else if (CommandLineOptions.Clo.TraceProofObligations)
+      {
+        result = string.Format("  [{0} proof obligation{1}]  ", verificationResult.ProofObligationCount, verificationResult.ProofObligationCount == 1 ? "" : "s");
+      }
+      return result;
+    }
+
+
+    private static void ProcessOutcome(VC.VCGen.Outcome outcome, List<Counterexample> errors, string timeIndication,
+                                       ref int errorCount, ref int verified, ref int inconclusives, ref int timeOuts, ref int outOfMemories, ErrorReporterDelegate er = null, Implementation impl = null, string requestId = null)
     {
       switch (outcome)
       {
@@ -906,28 +957,20 @@ namespace Microsoft.Boogie
           Contract.Assert(false);  // unexpected outcome
           throw new cce.UnreachableException();
         case VCGen.Outcome.ReachedBound:
+          verified++;
           printer.Inform(String.Format("{0}verified", timeIndication));
           Console.WriteLine(string.Format("Stratified Inlining: Reached recursion bound of {0}", CommandLineOptions.Clo.RecursionBound));
-          verified++;
           break;
         case VCGen.Outcome.Correct:
-          if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Doomed)
-          {
-            printer.Inform(String.Format("{0}credible", timeIndication));
-            verified++;
-          }
-          else
-          {
-            printer.Inform(String.Format("{0}verified", timeIndication));
-            verified++;
-          }
+          verified++;
+          printer.Inform(timeIndication + (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Doomed ? "credible" : "verified"));
           break;
         case VCGen.Outcome.TimedOut:
           timeOuts++;
           printer.Inform(String.Format("{0}timed out", timeIndication));
           if (er != null && impl != null)
           {
-            er(errorInformationFactory.CreateErrorInformation(impl.tok, string.Format("Verification timed out after {0} seconds ({1})", CommandLineOptions.Clo.ProverKillTime, impl.Name)));
+            er(errorInformationFactory.CreateErrorInformation(impl.tok, string.Format("Verification timed out after {0} seconds ({1})", CommandLineOptions.Clo.ProverKillTime, impl.Name), requestId));
           }
           break;
         case VCGen.Outcome.OutOfMemory:
@@ -935,7 +978,7 @@ namespace Microsoft.Boogie
           printer.Inform(String.Format("{0}out of memory", timeIndication));
           if (er != null && impl != null)
           {
-            er(errorInformationFactory.CreateErrorInformation(impl.tok, "Verification out of memory (" + impl.Name + ")"));
+            er(errorInformationFactory.CreateErrorInformation(impl.tok, "Verification out of memory (" + impl.Name + ")", requestId));
           }
           break;
         case VCGen.Outcome.Inconclusive:
@@ -943,204 +986,181 @@ namespace Microsoft.Boogie
           printer.Inform(String.Format("{0}inconclusive", timeIndication));
           if (er != null && impl != null)
           {
-            er(errorInformationFactory.CreateErrorInformation(impl.tok, "Verification inconclusive (" + impl.Name + ")"));
+            er(errorInformationFactory.CreateErrorInformation(impl.tok, "Verification inconclusive (" + impl.Name + ")", requestId));
           }
           break;
         case VCGen.Outcome.Errors:
+          Contract.Assert(errors != null);  // guaranteed by postcondition of VerifyImplementation
           if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Doomed)
           {
-            printer.Inform(String.Format("{0}doomed", timeIndication));
             errorCount++;
+            printer.Inform(String.Format("{0}doomed", timeIndication));
           }
-          Contract.Assert(errors != null);  // guaranteed by postcondition of VerifyImplementation
+          else
+          {
+            errorCount += errors.Count;
+          }
+          printer.Inform(String.Format("{0}error{1}", timeIndication, errors.Count == 1 ? "" : "s"));
           break;
       }
       if (errors != null)
       {
-        // BP1xxx: Parsing errors
-        // BP2xxx: Name resolution errors
-        // BP3xxx: Typechecking errors
-        // BP4xxx: Abstract interpretation errors (Is there such a thing?)
-        // BP5xxx: Verification errors
-
-        var cause = "Error";
-        if (outcome == VCGen.Outcome.TimedOut)
-        {
-          cause = "Timed out on";
-        }
-        else if (outcome == VCGen.Outcome.OutOfMemory)
-        {
-          cause = "Out of memory on";
-        }
-        // TODO(wuestholz): Take the error cause into account when writing to the XML sink.
-
-        errors.Sort(new CounterexampleComparer());
-        foreach (Counterexample error in errors)
-        {
-          ErrorInformation errorInfo;
-
-          if (error is CallCounterexample)
-          {
-            CallCounterexample err = (CallCounterexample)error;
-            if (!CommandLineOptions.Clo.ForceBplErrors && err.FailingRequires.ErrorMessage != null)
-            {
-              printer.ReportBplError(err.FailingRequires.tok, err.FailingRequires.ErrorMessage, true, false);
-            }
-            else
-            {
-              printer.ReportBplError(err.FailingCall.tok, cause + " BP5002: A precondition for this call might not hold.", true, true);
-              printer.ReportBplError(err.FailingRequires.tok, "Related location: This is the precondition that might not hold.", false, true);
-            }
-
-            errorInfo = errorInformationFactory.CreateErrorInformation(err.FailingCall.tok, cause + ": " + err.FailingCall.ErrorData as string ?? "A precondition for this call might not hold.");
-            errorInfo.AddAuxInfo(err.FailingRequires.tok, err.FailingRequires.ErrorData as string ?? "Related location: This is the precondition that might not hold.");
-
-            if (CommandLineOptions.Clo.XmlSink != null)
-            {
-              CommandLineOptions.Clo.XmlSink.WriteError("precondition violation", err.FailingCall.tok, err.FailingRequires.tok, error.Trace);
-            }
-          }
-          else if (error is ReturnCounterexample)
-          {
-            ReturnCounterexample err = (ReturnCounterexample)error;
-            if (!CommandLineOptions.Clo.ForceBplErrors && err.FailingEnsures.ErrorMessage != null)
-            {
-              printer.ReportBplError(err.FailingEnsures.tok, err.FailingEnsures.ErrorMessage, true, false);
-            }
-            else
-            {
-              printer.ReportBplError(err.FailingReturn.tok, cause + " BP5003: A postcondition might not hold on this return path.", true, true);
-              printer.ReportBplError(err.FailingEnsures.tok, "Related location: This is the postcondition that might not hold.", false, true);
-            }
-            printer.ReportAllBplErrors(err.FailingEnsures.Attributes);
-
-            errorInfo = errorInformationFactory.CreateErrorInformation(err.FailingReturn.tok, cause + ": " + "A postcondition might not hold on this return path.");
-            errorInfo.AddAuxInfo(err.FailingEnsures.tok, err.FailingEnsures.ErrorData as string ?? "Related location: This is the postcondition that might not hold.");
-            errorInfo.AddAuxInfo(err.FailingEnsures.Attributes);
-
-            if (CommandLineOptions.Clo.XmlSink != null)
-            {
-              CommandLineOptions.Clo.XmlSink.WriteError("postcondition violation", err.FailingReturn.tok, err.FailingEnsures.tok, error.Trace);
-            }
-          }
-          else // error is AssertCounterexample
-          {
-            AssertCounterexample err = (AssertCounterexample)error;
-            if (err.FailingAssert is LoopInitAssertCmd)
-            {
-              printer.ReportBplError(err.FailingAssert.tok, cause + " BP5004: This loop invariant might not hold on entry.", true, true);
-
-              errorInfo = errorInformationFactory.CreateErrorInformation(err.FailingAssert.tok, cause + ": " + "This loop invariant might not hold on entry.");
-
-              if (CommandLineOptions.Clo.XmlSink != null)
-              {
-                CommandLineOptions.Clo.XmlSink.WriteError("loop invariant entry violation", err.FailingAssert.tok, null, error.Trace);
-              }
-            }
-            else if (err.FailingAssert is LoopInvMaintainedAssertCmd)
-            {
-              // this assertion is a loop invariant which is not maintained
-              printer.ReportBplError(err.FailingAssert.tok, cause + " BP5005: This loop invariant might not be maintained by the loop.", true, true);
-
-              errorInfo = errorInformationFactory.CreateErrorInformation(err.FailingAssert.tok, cause + ": " + "This loop invariant might not be maintained by the loop.");
-
-              if (CommandLineOptions.Clo.XmlSink != null)
-              {
-                CommandLineOptions.Clo.XmlSink.WriteError("loop invariant maintenance violation", err.FailingAssert.tok, null, error.Trace);
-              }
-            }
-            else
-            {
-              if (!CommandLineOptions.Clo.ForceBplErrors && err.FailingAssert.ErrorMessage != null)
-              {
-                printer.ReportBplError(err.FailingAssert.tok, err.FailingAssert.ErrorMessage, true, false);
-              }
-              else if (err.FailingAssert.ErrorData is string)
-              {
-                printer.ReportBplError(err.FailingAssert.tok, (string)err.FailingAssert.ErrorData, true, true);
-              }
-              else
-              {
-                printer.ReportBplError(err.FailingAssert.tok, cause + " BP5001: This assertion might not hold.", true, true);
-              }
-              printer.ReportAllBplErrors(err.FailingAssert.Attributes);
-
-              var msg = err.FailingAssert.ErrorData as string;
-              if (msg == null)
-              {
-                msg = "This assertion might not hold.";
-              }
-              errorInfo = errorInformationFactory.CreateErrorInformation(err.FailingAssert.tok, cause + ": " + msg);
-              errorInfo.AddAuxInfo(err.FailingAssert.Attributes);
-
-              if (CommandLineOptions.Clo.XmlSink != null)
-              {
-                CommandLineOptions.Clo.XmlSink.WriteError("assertion violation", err.FailingAssert.tok, null, error.Trace);
-              }
-            }
-          }
-          if (CommandLineOptions.Clo.EnhancedErrorMessages == 1)
-          {
-            foreach (string info in error.relatedInformation)
-            {
-              Contract.Assert(info != null);
-              Console.WriteLine("       " + info);
-            }
-          }
-          if (CommandLineOptions.Clo.ErrorTrace > 0)
-          {
-            Console.WriteLine("Execution trace:");
-            error.Print(4);
-
-            foreach (Block b in error.Trace)
-            {
-              if (!(CommandLineOptions.Clo.ErrorTrace == 1 && b.tok.line == -17 && b.tok.col == -4))
-              {
-                errorInfo.AddAuxInfo(b.tok, "Execution trace: " + b.Label);
-              }
-            }
-          }
-          if (CommandLineOptions.Clo.ModelViewFile != null)
-          {
-            error.PrintModel();
-          }
-          if (cause == "Error")
-          {
-            errorCount++;
-          }
-          if (er != null)
-          {
-            er(errorInfo);
-          }
-        }
-        if (cause == "Error")
-        {
-          printer.Inform(String.Format("{0}error{1}", timeIndication, errors.Count == 1 ? "" : "s"));
-        }
+        ProcessErrors(outcome, errors, er);
       }
     }
 
 
-    #region Verification result caching
-
-    private struct VerificationResult
+    private static void ProcessErrors(VC.VCGen.Outcome outcome, List<Counterexample> errors, ErrorReporterDelegate er)
     {
-      internal VerificationResult(string checksum, ConditionGeneration.Outcome outcome, List<Counterexample> errors)
-      {
-        Checksum = checksum;
-        Outcome = outcome;
-        Errors = errors;
-      }
+      Contract.Requires(errors != null);
 
-      public readonly string Checksum;
-      public readonly ConditionGeneration.Outcome Outcome;
-      public readonly List<Counterexample> Errors;
+      var cause = "Error";
+      if (outcome == VCGen.Outcome.TimedOut)
+      {
+        cause = "Timed out on";
+      }
+      else if (outcome == VCGen.Outcome.OutOfMemory)
+      {
+        cause = "Out of memory on";
+      }
+      // TODO(wuestholz): Take the error cause into account when writing to the XML sink.
+
+      errors.Sort(new CounterexampleComparer());
+      foreach (Counterexample error in errors)
+      {
+        var errorInfo = ReportCounterexample(cause, error);
+
+        if (CommandLineOptions.Clo.EnhancedErrorMessages == 1)
+        {
+          foreach (string info in error.relatedInformation)
+          {
+            Contract.Assert(info != null);
+            Console.WriteLine("       " + info);
+          }
+        }
+        if (CommandLineOptions.Clo.ErrorTrace > 0)
+        {
+          Console.WriteLine("Execution trace:");
+          error.Print(4, b => { errorInfo.AddAuxInfo(b.tok, "Execution trace: " + b.Label); });
+        }
+        if (CommandLineOptions.Clo.ModelViewFile != null)
+        {
+          error.PrintModel();
+        }
+        if (er != null)
+        {
+          er(errorInfo);
+        }
+      }
     }
 
 
-    private static readonly ConcurrentDictionary<string, VerificationResult> VerificationResultCache = new ConcurrentDictionary<string, VerificationResult>();
+    private static ErrorInformation ReportCounterexample(string cause, Counterexample error)
+    {
+      // BP1xxx: Parsing errors
+      // BP2xxx: Name resolution errors
+      // BP3xxx: Typechecking errors
+      // BP4xxx: Abstract interpretation errors (Is there such a thing?)
+      // BP5xxx: Verification errors
 
-    #endregion
+      ErrorInformation errorInfo;
+
+      var callError = error as CallCounterexample;
+      var returnError = error as ReturnCounterexample;
+      var assertError = error as AssertCounterexample;
+      if (callError != null)
+      {
+        if (!CommandLineOptions.Clo.ForceBplErrors && callError.FailingRequires.ErrorMessage != null)
+        {
+          printer.ReportBplError(callError.FailingRequires.tok, callError.FailingRequires.ErrorMessage, true, false);
+        }
+        else
+        {
+          printer.ReportBplError(callError.FailingCall.tok, cause + " BP5002: A precondition for this call might not hold.", true, true);
+          printer.ReportBplError(callError.FailingRequires.tok, "Related location: This is the precondition that might not hold.", false, true);
+        }
+
+        errorInfo = errorInformationFactory.CreateErrorInformation(callError.FailingCall.tok, cause + ": " + (callError.FailingCall.ErrorData as string ?? "A precondition for this call might not hold."), callError.RequestId);
+        errorInfo.AddAuxInfo(callError.FailingRequires.tok, callError.FailingRequires.ErrorData as string ?? "Related location: This is the precondition that might not hold.");
+
+        if (CommandLineOptions.Clo.XmlSink != null)
+        {
+          CommandLineOptions.Clo.XmlSink.WriteError("precondition violation", callError.FailingCall.tok, callError.FailingRequires.tok, error.Trace);
+        }
+      }
+      else if (returnError != null)
+      {
+        if (!CommandLineOptions.Clo.ForceBplErrors && returnError.FailingEnsures.ErrorMessage != null)
+        {
+          printer.ReportBplError(returnError.FailingEnsures.tok, returnError.FailingEnsures.ErrorMessage, true, false);
+        }
+        else
+        {
+          printer.ReportBplError(returnError.FailingReturn.tok, cause + " BP5003: A postcondition might not hold on this return path.", true, true);
+          printer.ReportBplError(returnError.FailingEnsures.tok, "Related location: This is the postcondition that might not hold.", false, true);
+        }
+
+        errorInfo = errorInformationFactory.CreateErrorInformation(returnError.FailingReturn.tok, cause + ": " + "A postcondition might not hold on this return path.", returnError.RequestId);
+        errorInfo.AddAuxInfo(returnError.FailingEnsures.tok, returnError.FailingEnsures.ErrorData as string ?? "Related location: This is the postcondition that might not hold.");
+
+        if (CommandLineOptions.Clo.XmlSink != null)
+        {
+          CommandLineOptions.Clo.XmlSink.WriteError("postcondition violation", returnError.FailingReturn.tok, returnError.FailingEnsures.tok, error.Trace);
+        }
+      }
+      else // error is AssertCounterexample
+      {
+        if (assertError.FailingAssert is LoopInitAssertCmd)
+        {
+          printer.ReportBplError(assertError.FailingAssert.tok, cause + " BP5004: This loop invariant might not hold on entry.", true, true);
+
+          errorInfo = errorInformationFactory.CreateErrorInformation(assertError.FailingAssert.tok, cause + ": " + "This loop invariant might not hold on entry.", assertError.RequestId);
+
+          if (CommandLineOptions.Clo.XmlSink != null)
+          {
+            CommandLineOptions.Clo.XmlSink.WriteError("loop invariant entry violation", assertError.FailingAssert.tok, null, error.Trace);
+          }
+        }
+        else if (assertError.FailingAssert is LoopInvMaintainedAssertCmd)
+        {
+          printer.ReportBplError(assertError.FailingAssert.tok, cause + " BP5005: This loop invariant might not be maintained by the loop.", true, true);
+
+          errorInfo = errorInformationFactory.CreateErrorInformation(assertError.FailingAssert.tok, cause + ": " + "This loop invariant might not be maintained by the loop.", assertError.RequestId);
+
+          if (CommandLineOptions.Clo.XmlSink != null)
+          {
+            CommandLineOptions.Clo.XmlSink.WriteError("loop invariant maintenance violation", assertError.FailingAssert.tok, null, error.Trace);
+          }
+        }
+        else
+        {
+
+          var msg = assertError.FailingAssert.ErrorData as string;
+          if (!CommandLineOptions.Clo.ForceBplErrors && assertError.FailingAssert.ErrorMessage != null)
+          {
+            printer.ReportBplError(assertError.FailingAssert.tok, assertError.FailingAssert.ErrorMessage, true, false);
+          }
+          else if (msg != null)
+          {
+            printer.ReportBplError(assertError.FailingAssert.tok, msg, true, true);
+          }
+          else
+          {
+            msg = "This assertion might not hold.";
+            printer.ReportBplError(assertError.FailingAssert.tok, cause + " BP5001: " + msg, true, true);
+          }
+
+          errorInfo = errorInformationFactory.CreateErrorInformation(assertError.FailingAssert.tok, cause + ": " + msg, assertError.RequestId);
+
+          if (CommandLineOptions.Clo.XmlSink != null)
+          {
+            CommandLineOptions.Clo.XmlSink.WriteError("assertion violation", assertError.FailingAssert.tok, null, error.Trace);
+          }
+        }
+      }
+      return errorInfo;
+    }
+
   }
 
 }

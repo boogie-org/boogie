@@ -80,6 +80,7 @@ namespace Microsoft.Boogie {
     public ProverContext Context;
     [Peer]
     public List<string>/*!>!*/ relatedInformation;
+    public string RequestId;
 
     public Dictionary<TraceLocation, CalleeCounterexampleInfo> calleeCounterexamples;
 
@@ -146,7 +147,7 @@ namespace Microsoft.Boogie {
         return naryExpr.Fun.FunctionName;
     }
 
-    public void Print(int indent) {
+    public void Print(int indent, Action<Block> blockAction = null) {
       int numBlock = -1;
       string ind = new string(' ', indent);
       foreach (Block b in Trace) {
@@ -159,7 +160,13 @@ namespace Microsoft.Boogie {
           // do not print tokens with -17:-4 as their location because they have been
           // introduced in the translation and do not give any useful feedback to the user
           if (!(CommandLineOptions.Clo.ErrorTrace == 1 && b.tok.line == -17 && b.tok.col == -4)) {
+            if (blockAction != null)
+            {
+                blockAction(b);
+            }
+
             Console.WriteLine("{4}{0}({1},{2}): {3}", b.tok.filename, b.tok.line, b.tok.col, b.Label, ind);
+
             for (int numInstr = 0; numInstr < b.Cmds.Length; numInstr++)
             {
                 var loc = new TraceLocation(numBlock, numInstr);
@@ -587,7 +594,7 @@ namespace VC {
     /// each counterexample consisting of an array of labels.
     /// </summary>
     /// <param name="impl"></param>
-    public Outcome VerifyImplementation(Implementation impl, out List<Counterexample>/*?*/ errors) {
+    public Outcome VerifyImplementation(Implementation impl, out List<Counterexample>/*?*/ errors, string requestId = null) {
       Contract.Requires(impl != null);
 
       Contract.Ensures(Contract.ValueAtReturn(out errors) == null || Contract.ForAll(Contract.ValueAtReturn(out errors), i => i != null));
@@ -596,6 +603,7 @@ namespace VC {
       Helpers.ExtraTraceInformation("Starting implementation verification");
 
       CounterexampleCollector collector = new CounterexampleCollector();
+      collector.RequestId = requestId;
       Outcome outcome = VerifyImplementation(impl, collector);
       if (outcome == Outcome.Errors || outcome == Outcome.TimedOut || outcome == Outcome.OutOfMemory) {
         errors = collector.examples;
@@ -996,9 +1004,15 @@ namespace VC {
         Contract.Invariant(cce.NonNullElements(examples));
       }
 
+      public string RequestId;
+
       public readonly List<Counterexample>/*!>!*/ examples = new List<Counterexample>();
       public override void OnCounterexample(Counterexample ce, string/*?*/ reason) {
         //Contract.Requires(ce != null);
+        if (RequestId != null)
+        {
+          ce.RequestId = RequestId;
+        }
         examples.Add(ce);
       }
 

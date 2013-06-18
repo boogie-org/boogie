@@ -1451,6 +1451,9 @@ namespace Microsoft.Boogie {
       one of them to keep; otherwise, Boogie ignore the :extern declaration
       and keeps the other.
 
+    {:checksum <string>}
+      Attach a checksum to be used for verification result caching.
+
   ---- On implementations and procedures -------------------------------------
 
      {:inline N}
@@ -1477,6 +1480,14 @@ namespace Microsoft.Boogie {
        Thus, ""assume {:start_checking_here} something;"" becomes an inverse
        of ""assume false;"": the first one disables all verification before
        it, and the second one disables all verification after.
+
+     {:priority N}
+       Assign a positive priority 'N' to an implementation to control the order
+       in which implementations are verified (default: N = 1).
+
+     {:id <string>}
+       Assign a unique ID to an implementation to be used for verification
+       result caching (default: ""<impl. name>:0"").
 
   ---- On functions ----------------------------------------------------------
 
@@ -1619,6 +1630,9 @@ namespace Microsoft.Boogie {
                 1 = perform live variable analysis (default)
                 2 = perform interprocedural live variable analysis
   /noVerify     skip VC generation and invocation of the theorem prover
+  /verifySnapshots
+                verify several program snapshots (named <filename>.v0.bpl
+                to <filename>.vN.bpl) using verification result caching
   /removeEmptyBlocks:<c>
                 0 - do not remove empty blocks during VC generation
                 1 - remove empty blocks (default)
