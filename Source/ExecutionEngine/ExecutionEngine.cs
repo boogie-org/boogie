@@ -5,6 +5,7 @@ using System.Diagnostics.Contracts;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading;
 using VC;
 using BoogiePL = Microsoft.Boogie;
 
@@ -21,8 +22,8 @@ namespace Microsoft.Boogie
     void AdvisoryWriteLine(string format, params object[] args);
     void Inform(string s);
     void WriteTrailer(int verified, int errors, int inconclusives, int timeOuts, int outOfMemories);
-    void WriteErrorInformation(ErrorInformation errorInfo, bool showBplLocation);
-    void ReportBplError(IToken tok, string message, bool error, bool showBplLocation, string category = null);
+    void WriteErrorInformation(ErrorInformation errorInfo);
+    void ReportBplError(IToken tok, string message, bool error, string category = null);
   }
 
 
@@ -122,20 +123,20 @@ namespace Microsoft.Boogie
     }
 
 
-    public void WriteErrorInformation(ErrorInformation errorInfo, bool showBplLocation)
+    public void WriteErrorInformation(ErrorInformation errorInfo)
     {
       Contract.Requires(errorInfo != null);
 
-      ReportBplError(errorInfo.Tok, errorInfo.FullMsg, true, showBplLocation);
+      ReportBplError(errorInfo.Tok, errorInfo.FullMsg, true);
 
       foreach (var e in errorInfo.Aux)
       {
-        ReportBplError(e.Tok, e.FullMsg, false, showBplLocation);
+        ReportBplError(e.Tok, e.FullMsg, false);
       }
     }
 
 
-    public virtual void ReportBplError(IToken tok, string message, bool error, bool showBplLocation, string category = null)
+    public virtual void ReportBplError(IToken tok, string message, bool error, string category = null)
     {
       Contract.Requires(message != null);
 
@@ -144,7 +145,7 @@ namespace Microsoft.Boogie
         message = string.Format("{0}: {1}", category, message);
       }
       string s;
-      if (tok != null && showBplLocation)
+      if (tok != null)
       {
         s = string.Format("{0}({1},{2}): {3}", tok.filename, tok.line, tok.col, message);
       }
@@ -196,7 +197,6 @@ namespace Microsoft.Boogie
   {
     public virtual ErrorInformation CreateErrorInformation(IToken tok, string msg, string requestId = null, string category = null)
     {
-      Contract.Requires(tok != null);
       Contract.Requires(1 <= tok.line && 1 <= tok.col);
       Contract.Requires(msg != null);
 
@@ -808,7 +808,16 @@ namespace Microsoft.Boogie
           verificationResult = Cache.Lookup(impl);
         }
 
-        if (verificationResult == null)
+        if (verificationResult != null)
+        {
+          if (CommandLineOptions.Clo.XmlSink != null)
+          {
+            CommandLineOptions.Clo.XmlSink.WriteStartMethod(impl.Name, verificationResult.Start);
+          }
+
+          printer.Inform(string.Format("Retrieving cached verification result for implementation {0}...", impl.Name));
+        }
+        else
         {
           #region Verify the implementation
 
@@ -859,7 +868,14 @@ namespace Microsoft.Boogie
           {
             var errorInfo = errorInformationFactory.CreateErrorInformation(impl.tok, String.Format("{0} (encountered in implementation {1}).", e.Message, impl.Name), requestId, "Error");
             errorInfo.BoogieErrorCode = "BP5010";
-            printer.WriteErrorInformation(errorInfo, true);
+            printer.WriteErrorInformation(errorInfo);
+            if (er != null)
+            {
+              lock (er)
+              {
+                er(errorInfo);
+              }
+            }
             verificationResult.Errors = null;
             verificationResult.Outcome = VCGen.Outcome.Inconclusive;
           }
@@ -884,24 +900,18 @@ namespace Microsoft.Boogie
 
           #endregion
         }
-        else
-        {
-          if (CommandLineOptions.Clo.XmlSink != null)
-          {
-            CommandLineOptions.Clo.XmlSink.WriteStartMethod(impl.Name, verificationResult.Start);
-          }
-
-          printer.Inform(string.Format("Retrieving cached verification result for implementation {0}...", impl.Name));
-        }
 
         #region Process the verification results and statistics
 
         ProcessOutcome(verificationResult.Outcome, verificationResult.Errors, TimeIndication(verificationResult), ref errorCount, ref verified, ref inconclusives, ref timeOuts, ref outOfMemories, er, impl, verificationResult.RequestId);
 
+        ProcessErrors(verificationResult.Errors, verificationResult.Outcome, er);
+
         if (CommandLineOptions.Clo.XmlSink != null)
         {
           CommandLineOptions.Clo.XmlSink.WriteEndMethod(verificationResult.Outcome.ToString().ToLowerInvariant(), verificationResult.End, verificationResult.End - verificationResult.Start);
         }
+
         if (verificationResult.Outcome == VCGen.Outcome.Errors || CommandLineOptions.Clo.Trace)
         {
           Console.Out.Flush();
@@ -960,6 +970,7 @@ namespace Microsoft.Boogie
       foreach (Houdini.VCGenOutcome x in outcome.implementationOutcomes.Values)
       {
         ProcessOutcome(x.outcome, x.errors, "", ref errorCount, ref verified, ref inconclusives, ref timeOuts, ref outOfMemories, er);
+        ProcessErrors(x.errors, x.outcome, er);
       }
       //errorCount = outcome.ErrorCount;
       //verified = outcome.Verified;
@@ -984,6 +995,7 @@ namespace Microsoft.Boogie
       var abs = new Houdini.AbsHoudini(program, domain);
       var absout = abs.ComputeSummaries();
       ProcessOutcome(absout.outcome, absout.errors, "", ref errorCount, ref verified, ref inconclusives, ref timeOuts, ref outOfMemories, er);
+      ProcessErrors(absout.errors, absout.outcome, er);
 
       //Houdini.PredicateAbs.Initialize(program);
       //var abs = new Houdini.AbstractHoudini(program);
@@ -1013,94 +1025,161 @@ namespace Microsoft.Boogie
     private static void ProcessOutcome(VC.VCGen.Outcome outcome, List<Counterexample> errors, string timeIndication,
                                        ref int errorCount, ref int verified, ref int inconclusives, ref int timeOuts, ref int outOfMemories, ErrorReporterDelegate er = null, Implementation impl = null, string requestId = null)
     {
+      UpdateOverallStatistics(outcome, errors, ref errorCount, ref verified, ref inconclusives, ref timeOuts, ref outOfMemories);
+
+      printer.Inform(timeIndication + OutcomeIndication(outcome, errors));
+
+      ReportOutcome(outcome, er, impl, requestId);
+    }
+
+
+    private static void ReportOutcome(VC.VCGen.Outcome outcome, ErrorReporterDelegate er, Implementation impl, string requestId)
+    {
+      ErrorInformation errorInfo = null;
+
+      switch (outcome)
+      {
+        case VCGen.Outcome.ReachedBound:
+          Console.WriteLine(string.Format("Stratified Inlining: Reached recursion bound of {0}", CommandLineOptions.Clo.RecursionBound));
+          break;
+        case VCGen.Outcome.TimedOut:
+          if (impl != null)
+          {
+            errorInfo = errorInformationFactory.CreateErrorInformation(impl.tok, string.Format("Verification timed out after {0} seconds ({1})", CommandLineOptions.Clo.ProverKillTime, impl.Name), requestId);
+          }
+          break;
+        case VCGen.Outcome.OutOfMemory:
+          if (impl != null)
+          {
+            errorInfo = errorInformationFactory.CreateErrorInformation(impl.tok, "Verification out of memory (" + impl.Name + ")", requestId);
+          }
+          break;
+        case VCGen.Outcome.Inconclusive:
+          if (impl != null)
+          {
+            errorInfo = errorInformationFactory.CreateErrorInformation(impl.tok, "Verification inconclusive (" + impl.Name + ")", requestId);
+          }
+          break;
+      }
+
+      if (er != null && errorInfo != null)
+      {
+        lock (er)
+        {
+          er(errorInfo);
+        }
+      }
+    }
+
+
+    private static string OutcomeIndication(VC.VCGen.Outcome outcome, List<Counterexample> errors)
+    {
+      string traceOutput = "";
       switch (outcome)
       {
         default:
           Contract.Assert(false);  // unexpected outcome
           throw new cce.UnreachableException();
         case VCGen.Outcome.ReachedBound:
-          verified++;
-          printer.Inform(String.Format("{0}verified", timeIndication));
-          Console.WriteLine(string.Format("Stratified Inlining: Reached recursion bound of {0}", CommandLineOptions.Clo.RecursionBound));
+          traceOutput = "verified";
           break;
         case VCGen.Outcome.Correct:
-          verified++;
-          printer.Inform(timeIndication + (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Doomed ? "credible" : "verified"));
+          traceOutput = (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Doomed ? "credible" : "verified");
           break;
         case VCGen.Outcome.TimedOut:
-          timeOuts++;
-          printer.Inform(String.Format("{0}timed out", timeIndication));
-          if (er != null && impl != null)
-          {
-            er(errorInformationFactory.CreateErrorInformation(impl.tok, string.Format("Verification timed out after {0} seconds ({1})", CommandLineOptions.Clo.ProverKillTime, impl.Name), requestId));
-          }
+          traceOutput = "timed out";
           break;
         case VCGen.Outcome.OutOfMemory:
-          outOfMemories++;
-          printer.Inform(String.Format("{0}out of memory", timeIndication));
-          if (er != null && impl != null)
-          {
-            er(errorInformationFactory.CreateErrorInformation(impl.tok, "Verification out of memory (" + impl.Name + ")", requestId));
-          }
+          traceOutput = "out of memory";
           break;
         case VCGen.Outcome.Inconclusive:
-          inconclusives++;
-          printer.Inform(String.Format("{0}inconclusive", timeIndication));
-          if (er != null && impl != null)
-          {
-            er(errorInformationFactory.CreateErrorInformation(impl.tok, "Verification inconclusive (" + impl.Name + ")", requestId));
-          }
+          traceOutput = "inconclusive";
           break;
         case VCGen.Outcome.Errors:
-          Contract.Assert(errors != null);  // guaranteed by postcondition of VerifyImplementation
+          Contract.Assert(errors != null);
+          traceOutput = (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Doomed ? "doomed" : string.Format("error{0}", errors.Count == 1 ? "" : "s"));
+          break;
+      }
+      return traceOutput;
+    }
+
+
+    private static void UpdateOverallStatistics(VC.VCGen.Outcome outcome, List<Counterexample> errors, ref int errorCount, ref int verified, ref int inconclusives, ref int timeOuts, ref int outOfMemories)
+    {
+      switch (outcome)
+      {
+        default:
+          Contract.Assert(false);  // unexpected outcome
+          throw new cce.UnreachableException();
+        case VCGen.Outcome.ReachedBound:
+          Interlocked.Increment(ref verified);
+          break;
+        case VCGen.Outcome.Correct:
+          Interlocked.Increment(ref verified);
+          break;
+        case VCGen.Outcome.TimedOut:
+          Interlocked.Increment(ref timeOuts);
+          break;
+        case VCGen.Outcome.OutOfMemory:
+          Interlocked.Increment(ref outOfMemories);
+          break;
+        case VCGen.Outcome.Inconclusive:
+          Interlocked.Increment(ref inconclusives);
+          break;
+        case VCGen.Outcome.Errors:
           if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Doomed)
           {
-            errorCount++;
-            printer.Inform(String.Format("{0}doomed", timeIndication));
+            Interlocked.Increment(ref errorCount);
           }
           else
           {
-            errorCount += errors.Count;
+            Interlocked.Add(ref errorCount, errors.Count);
           }
-          printer.Inform(String.Format("{0}error{1}", timeIndication, errors.Count == 1 ? "" : "s"));
           break;
-      }
-      if (errors != null)
-      {
-        ProcessErrors(errors, outcome, er);
       }
     }
 
 
     private static void ProcessErrors(List<Counterexample> errors, VC.VCGen.Outcome outcome, ErrorReporterDelegate er)
     {
-      Contract.Requires(errors != null);
-
-      errors.Sort(new CounterexampleComparer());
-      foreach (Counterexample error in errors)
+      if (errors != null)
       {
-        var errorInfo = CreateErrorInformation(error, outcome);
+        errors.Sort(new CounterexampleComparer());
+        foreach (Counterexample error in errors)
+        {
+          var errorInfo = CreateErrorInformation(error, outcome);
 
-        if (CommandLineOptions.Clo.EnhancedErrorMessages == 1)
-        {
-          foreach (string info in error.relatedInformation)
+          printer.WriteErrorInformation(errorInfo);
+
+          if (CommandLineOptions.Clo.XmlSink != null)
           {
-            Contract.Assert(info != null);
-            Console.WriteLine("       " + info);
+            WriteErrorInformationToXmlSink(errorInfo, error.Trace);
           }
-        }
-        if (CommandLineOptions.Clo.ErrorTrace > 0)
-        {
-          Console.WriteLine("Execution trace:");
-          error.Print(4, b => { errorInfo.AddAuxInfo(b.tok, b.Label, "Execution trace"); });
-        }
-        if (CommandLineOptions.Clo.ModelViewFile != null)
-        {
-          error.PrintModel();
-        }
-        if (er != null)
-        {
-          er(errorInfo);
+
+          if (CommandLineOptions.Clo.EnhancedErrorMessages == 1)
+          {
+            foreach (string info in error.relatedInformation)
+            {
+              Contract.Assert(info != null);
+              Console.WriteLine("       " + info);
+            }
+          }
+          if (CommandLineOptions.Clo.ErrorTrace > 0)
+          {
+            Console.WriteLine("Execution trace:");
+            error.Print(4, b => { errorInfo.AddAuxInfo(b.tok, b.Label, "Execution trace"); });
+          }
+          if (CommandLineOptions.Clo.ModelViewFile != null)
+          {
+            error.PrintModel();
+          }
+          if (er != null)
+          {
+            lock (er)
+            {
+              er(errorInfo);
+            }
+          }
         }
       }
     }
@@ -1138,8 +1217,7 @@ namespace Microsoft.Boogie
 
         if (!CommandLineOptions.Clo.ForceBplErrors && callError.FailingRequires.ErrorMessage != null)
         {
-          errorInfo = errorInformationFactory.CreateErrorInformation(callError.FailingRequires.tok, callError.FailingRequires.ErrorMessage, callError.RequestId, cause);
-          showBplLocation = false;
+          errorInfo = errorInformationFactory.CreateErrorInformation(null, callError.FailingRequires.ErrorMessage, callError.RequestId, cause);
         }
       }
       else if (returnError != null)
@@ -1151,8 +1229,7 @@ namespace Microsoft.Boogie
 
         if (!CommandLineOptions.Clo.ForceBplErrors && returnError.FailingEnsures.ErrorMessage != null)
         {
-          errorInfo = errorInformationFactory.CreateErrorInformation(returnError.FailingEnsures.tok, returnError.FailingEnsures.ErrorMessage, returnError.RequestId, cause);
-          showBplLocation = false;
+          errorInfo = errorInformationFactory.CreateErrorInformation(null, returnError.FailingEnsures.ErrorMessage, returnError.RequestId, cause);
         }
       }
       else // error is AssertCounterexample
@@ -1172,10 +1249,11 @@ namespace Microsoft.Boogie
         else
         {
           var msg = assertError.FailingAssert.ErrorData as string;
+          var tok = assertError.FailingAssert.tok;
           if (!CommandLineOptions.Clo.ForceBplErrors && assertError.FailingAssert.ErrorMessage != null)
           {
             msg = assertError.FailingAssert.ErrorMessage;
-            showBplLocation = false;
+            tok = null;
             if (cause == "Error")
             {
               cause = null;
@@ -1188,25 +1266,17 @@ namespace Microsoft.Boogie
             bec = "BP5001";
           }
 
-          errorInfo = errorInformationFactory.CreateErrorInformation(assertError.FailingAssert.tok, msg, assertError.RequestId, cause);
+          errorInfo = errorInformationFactory.CreateErrorInformation(tok, msg, assertError.RequestId, cause);
           errorInfo.BoogieErrorCode = bec;
           errorInfo.Kind = ErrorKind.Assertion;
         }
-      }
-
-      printer.WriteErrorInformation(errorInfo, showBplLocation);
-
-      if (CommandLineOptions.Clo.XmlSink != null)
-      {
-        // TODO(wuestholz): Take the error cause into account when writing to the XML sink.
-        WriteErrorInformationToXmlSink(error.Trace, errorInfo);
       }
 
       return errorInfo;
     }
 
 
-    private static void WriteErrorInformationToXmlSink(BlockSeq trace, ErrorInformation errorInfo)
+    private static void WriteErrorInformationToXmlSink(ErrorInformation errorInfo, BlockSeq trace)
     {
       var msg = "assertion violation";
       switch (errorInfo.Kind)
