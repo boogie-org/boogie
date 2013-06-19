@@ -402,12 +402,14 @@ namespace Microsoft.Boogie.Houdini {
 
         private Model.Element getValue(VCExpr arg, Model model)
         {
-            
+
+
             if (arg is VCExprLiteral)
             {
                 //return model.GetElement(arg.ToString());
                 return model.MkElement(arg.ToString());
             }
+
             else if (arg is VCExprVar)
             {
                 var el = model.TryGetFunc(prover.Context.Lookup(arg as VCExprVar));
@@ -427,19 +429,27 @@ namespace Microsoft.Boogie.Houdini {
                         return null;
                 }
             }
+            else if (arg is VCExprNAry && (arg as VCExprNAry).Op is VCExprBvOp)
+            {
+                // support for BV constants
+                var bvc = (arg as VCExprNAry)[0] as VCExprLiteral;
+                if (bvc != null)
+                {
+                    var ret = model.TryMkElement(bvc.ToString() + arg.Type.ToString());
+                    if (ret != null && (ret is Model.BitVector)) return ret;
+                }
+            }
+
+            var val = prover.Evaluate(arg);
+            if (val is int || val is bool || val is Microsoft.Basetypes.BigNum)
+            {
+                return model.MkElement(val.ToString());
+            }
             else
             {
-                var val = prover.Evaluate(arg);
-                if (val is int || val is bool || val is Microsoft.Basetypes.BigNum)
-                {
-                    return model.MkElement(val.ToString());
-                }
-                else
-                {
-                    Debug.Assert(false);
-                }
-                return null;
+                Debug.Assert(false);
             }
+            return null;
         }
 
         // Remove functions AbsHoudiniConstant from the expressions and substitute them with "true"
@@ -1983,7 +1993,7 @@ namespace Microsoft.Boogie.Houdini {
 
         private static void RegisterFunction(Function func)
         {
-            var attr = QKeyValue.FindStringAttribute(func.Attributes, "builtin");
+            var attr = QKeyValue.FindStringAttribute(func.Attributes, "bvbuiltin");
             if (attr != null && attr == "bvslt" && func.InParams.Count == 2 && func.InParams[0].TypedIdent.Type.IsBv)
                 bvslt.Add(func.InParams[0].TypedIdent.Type.BvBits, func);
         }
