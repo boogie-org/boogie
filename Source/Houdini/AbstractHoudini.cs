@@ -625,9 +625,11 @@ namespace Microsoft.Boogie.Houdini {
             // the right thing.
             foreach (var tup in fv.functionsUsed)
             {
-                //var tt = prover.Context.BoogieExprTranslator.Translate(tup.Item3);
-                //tt = prover.VCExprGen.Or(VCExpressionGenerator.True, tt);
-                //prover.Assert(tt, true);
+                // Ignore ones with bound varibles
+                if (tup.Item2.InParams.Count > 0) continue;
+                var tt = prover.Context.BoogieExprTranslator.Translate(tup.Item3);
+                tt = prover.VCExprGen.Or(VCExpressionGenerator.True, tt);
+                prover.Assert(tt, true);
             }
         }
 
