@@ -1172,11 +1172,16 @@ namespace Microsoft.Boogie
         }
         else
         {
+          var msg = assertError.FailingAssert.ErrorData as string;
           if (!CommandLineOptions.Clo.ForceBplErrors && assertError.FailingAssert.ErrorMessage != null)
           {
+            msg = assertError.FailingAssert.ErrorMessage;
             showBplLocation = false;
+            if (cause == "Error")
+            {
+              cause = null;
+            }
           }
-          var msg = assertError.FailingAssert.ErrorData as string;
           string bec = null;
           if (msg == null)
           {
@@ -1193,7 +1198,9 @@ namespace Microsoft.Boogie
           }
         }
       }
+
       printer.WriteErrorInformation(errorInfo, true, showBplLocation);
+
       return errorInfo;
     }
 
