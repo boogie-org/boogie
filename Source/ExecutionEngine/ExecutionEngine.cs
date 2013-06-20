@@ -21,7 +21,7 @@ namespace Microsoft.Boogie
     void ErrorWriteLine(string format, params object[] args);
     void AdvisoryWriteLine(string format, params object[] args);
     void Inform(string s);
-    void WriteTrailer(int verified, int errors, int inconclusives, int timeOuts, int outOfMemories);
+    void WriteTrailer(PipelineStatistics stats);
     void WriteErrorInformation(ErrorInformation errorInfo);
     void ReportBplError(IToken tok, string message, bool error, string category = null);
   }
@@ -94,29 +94,31 @@ namespace Microsoft.Boogie
     }
 
 
-    public void WriteTrailer(int verified, int errors, int inconclusives, int timeOuts, int outOfMemories)
+    public void WriteTrailer(PipelineStatistics stats)
     {
-      Contract.Requires(0 <= errors && 0 <= inconclusives && 0 <= timeOuts && 0 <= outOfMemories);
+      Contract.Requires(stats != null);
+      Contract.Requires(0 <= stats.VerifiedCount && 0 <= stats.ErrorCount && 0 <= stats.InconclusiveCount && 0 <= stats.TimeoutCount && 0 <= stats.OutOfMemoryCount);
+
       Console.WriteLine();
       if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Doomed)
       {
-        Console.Write("{0} finished with {1} credible, {2} doomed{3}", CommandLineOptions.Clo.DescriptiveToolName, verified, errors, errors == 1 ? "" : "s");
+        Console.Write("{0} finished with {1} credible, {2} doomed{3}", CommandLineOptions.Clo.DescriptiveToolName, stats.VerifiedCount, stats.ErrorCount, stats.ErrorCount == 1 ? "" : "s");
       }
       else
       {
-        Console.Write("{0} finished with {1} verified, {2} error{3}", CommandLineOptions.Clo.DescriptiveToolName, verified, errors, errors == 1 ? "" : "s");
+        Console.Write("{0} finished with {1} verified, {2} error{3}", CommandLineOptions.Clo.DescriptiveToolName, stats.VerifiedCount, stats.ErrorCount, stats.ErrorCount == 1 ? "" : "s");
       }
-      if (inconclusives != 0)
+      if (stats.InconclusiveCount != 0)
       {
-        Console.Write(", {0} inconclusive{1}", inconclusives, inconclusives == 1 ? "" : "s");
+        Console.Write(", {0} inconclusive{1}", stats.InconclusiveCount, stats.InconclusiveCount == 1 ? "" : "s");
       }
-      if (timeOuts != 0)
+      if (stats.TimeoutCount != 0)
       {
-        Console.Write(", {0} time out{1}", timeOuts, timeOuts == 1 ? "" : "s");
+        Console.Write(", {0} time out{1}", stats.TimeoutCount, stats.TimeoutCount == 1 ? "" : "s");
       }
-      if (outOfMemories != 0)
+      if (stats.OutOfMemoryCount != 0)
       {
-        Console.Write(", {0} out of memory", outOfMemories);
+        Console.Write(", {0} out of memory", stats.OutOfMemoryCount);
       }
       Console.WriteLine();
       Console.Out.Flush();
@@ -175,6 +177,16 @@ namespace Microsoft.Boogie
     ResolvedAndTypeChecked,
     FatalError,
     VerificationCompleted
+  }
+
+
+  public class PipelineStatistics
+  {
+    public int ErrorCount;
+    public int VerifiedCount;
+    public int InconclusiveCount;
+    public int TimeoutCount;
+    public int OutOfMemoryCount;
   }
 
 
@@ -439,13 +451,13 @@ namespace Microsoft.Boogie
           }
         }
 
-        int errorCount, verified, inconclusives, timeOuts, outOfMemories;
-        oc = InferAndVerify(program, out errorCount, out verified, out inconclusives, out timeOuts, out outOfMemories);
+        var stats = new PipelineStatistics();
+        oc = InferAndVerify(program, stats);
         switch (oc)
         {
           case PipelineOutcome.Done:
           case PipelineOutcome.VerificationCompleted:
-            printer.WriteTrailer(verified, errorCount, inconclusives, timeOuts, outOfMemories);
+            printer.WriteTrailer(stats);
             break;
           default:
             break;
@@ -684,13 +696,12 @@ namespace Microsoft.Boogie
     ///    parameters contain meaningful values
     /// </summary>
     public static PipelineOutcome InferAndVerify(Program program,
-                                                 out int errorCount, out int verified, out int inconclusives, out int timeOuts, out int outOfMemories,
+                                                 PipelineStatistics stats,
                                                  ErrorReporterDelegate er = null, string requestId = null)
     {
       Contract.Requires(program != null);
-      Contract.Ensures(0 <= Contract.ValueAtReturn(out inconclusives) && 0 <= Contract.ValueAtReturn(out timeOuts));
-
-      errorCount = verified = inconclusives = timeOuts = outOfMemories = 0;
+      Contract.Requires(stats != null);
+      Contract.Ensures(0 <= Contract.ValueAtReturn(out stats.InconclusiveCount) && 0 <= Contract.ValueAtReturn(out stats.TimeoutCount));
 
       #region Infer invariants using Abstract Interpretation
 
@@ -741,7 +752,7 @@ namespace Microsoft.Boogie
       #region Run Houdini and verify
       if (CommandLineOptions.Clo.ContractInfer)
       {
-        return RunHoudini(program, ref errorCount, ref verified, ref inconclusives, ref timeOuts, ref outOfMemories, er);
+        return RunHoudini(program, stats, er);
       }
       #endregion
 
@@ -903,7 +914,7 @@ namespace Microsoft.Boogie
 
         #region Process the verification results and statistics
 
-        ProcessOutcome(verificationResult.Outcome, verificationResult.Errors, TimeIndication(verificationResult), ref errorCount, ref verified, ref inconclusives, ref timeOuts, ref outOfMemories, er, impl, verificationResult.RequestId);
+        ProcessOutcome(verificationResult.Outcome, verificationResult.Errors, TimeIndication(verificationResult), stats, er, impl, verificationResult.RequestId);
 
         ProcessErrors(verificationResult.Errors, verificationResult.Outcome, er);
 
@@ -931,11 +942,13 @@ namespace Microsoft.Boogie
 
     #region Houdini
 
-    private static PipelineOutcome RunHoudini(Program program, ref int errorCount, ref int verified, ref int inconclusives, ref int timeOuts, ref int outOfMemories, ErrorReporterDelegate er)
+    private static PipelineOutcome RunHoudini(Program program, PipelineStatistics stats, ErrorReporterDelegate er)
     {
+      Contract.Requires(stats != null);
+
       if (CommandLineOptions.Clo.AbstractHoudini != null)
       {
-        return RunAbstractHoudini(program, ref errorCount, ref verified, ref inconclusives, ref timeOuts, ref outOfMemories, er);
+        return RunAbstractHoudini(program, stats, er);
       }
 
       Houdini.Houdini houdini = new Houdini.Houdini(program);
@@ -969,7 +982,7 @@ namespace Microsoft.Boogie
 
       foreach (Houdini.VCGenOutcome x in outcome.implementationOutcomes.Values)
       {
-        ProcessOutcome(x.outcome, x.errors, "", ref errorCount, ref verified, ref inconclusives, ref timeOuts, ref outOfMemories, er);
+        ProcessOutcome(x.outcome, x.errors, "", stats, er);
         ProcessErrors(x.errors, x.outcome, er);
       }
       //errorCount = outcome.ErrorCount;
@@ -981,8 +994,10 @@ namespace Microsoft.Boogie
     }
 
 
-    private static PipelineOutcome RunAbstractHoudini(Program program, ref int errorCount, ref int verified, ref int inconclusives, ref int timeOuts, ref int outOfMemories, ErrorReporterDelegate er)
+    private static PipelineOutcome RunAbstractHoudini(Program program, PipelineStatistics stats, ErrorReporterDelegate er)
     {
+      Contract.Requires(stats != null);
+
       //CommandLineOptions.Clo.PrintErrorModel = 1;
       CommandLineOptions.Clo.UseProverEvaluate = true;
       CommandLineOptions.Clo.ModelViewFile = "z3model";
@@ -994,7 +1009,7 @@ namespace Microsoft.Boogie
       // Run Abstract Houdini
       var abs = new Houdini.AbsHoudini(program, domain);
       var absout = abs.ComputeSummaries();
-      ProcessOutcome(absout.outcome, absout.errors, "", ref errorCount, ref verified, ref inconclusives, ref timeOuts, ref outOfMemories, er);
+      ProcessOutcome(absout.outcome, absout.errors, "", stats, er);
       ProcessErrors(absout.errors, absout.outcome, er);
 
       //Houdini.PredicateAbs.Initialize(program);
@@ -1023,9 +1038,11 @@ namespace Microsoft.Boogie
 
 
     private static void ProcessOutcome(VC.VCGen.Outcome outcome, List<Counterexample> errors, string timeIndication,
-                                       ref int errorCount, ref int verified, ref int inconclusives, ref int timeOuts, ref int outOfMemories, ErrorReporterDelegate er = null, Implementation impl = null, string requestId = null)
+                                       PipelineStatistics stats, ErrorReporterDelegate er = null, Implementation impl = null, string requestId = null)
     {
-      UpdateOverallStatistics(outcome, errors, ref errorCount, ref verified, ref inconclusives, ref timeOuts, ref outOfMemories);
+      Contract.Requires(stats != null);
+
+      UpdateStatistics(stats, outcome, errors);
 
       printer.Inform(timeIndication + OutcomeIndication(outcome, errors));
 
@@ -1104,36 +1121,38 @@ namespace Microsoft.Boogie
     }
 
 
-    private static void UpdateOverallStatistics(VC.VCGen.Outcome outcome, List<Counterexample> errors, ref int errorCount, ref int verified, ref int inconclusives, ref int timeOuts, ref int outOfMemories)
+    private static void UpdateStatistics(PipelineStatistics stats, VC.VCGen.Outcome outcome, List<Counterexample> errors)
     {
+      Contract.Requires(stats != null);
+
       switch (outcome)
       {
         default:
           Contract.Assert(false);  // unexpected outcome
           throw new cce.UnreachableException();
         case VCGen.Outcome.ReachedBound:
-          Interlocked.Increment(ref verified);
+          Interlocked.Increment(ref stats.VerifiedCount);
           break;
         case VCGen.Outcome.Correct:
-          Interlocked.Increment(ref verified);
+          Interlocked.Increment(ref stats.VerifiedCount);
           break;
         case VCGen.Outcome.TimedOut:
-          Interlocked.Increment(ref timeOuts);
+          Interlocked.Increment(ref stats.TimeoutCount);
           break;
         case VCGen.Outcome.OutOfMemory:
-          Interlocked.Increment(ref outOfMemories);
+          Interlocked.Increment(ref stats.OutOfMemoryCount);
           break;
         case VCGen.Outcome.Inconclusive:
-          Interlocked.Increment(ref inconclusives);
+          Interlocked.Increment(ref stats.InconclusiveCount);
           break;
         case VCGen.Outcome.Errors:
           if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Doomed)
           {
-            Interlocked.Increment(ref errorCount);
+            Interlocked.Increment(ref stats.ErrorCount);
           }
           else
           {
-            Interlocked.Add(ref errorCount, errors.Count);
+            Interlocked.Add(ref stats.ErrorCount, errors.Count);
           }
           break;
       }
@@ -1194,7 +1213,6 @@ namespace Microsoft.Boogie
       // BP5xxx: Verification errors
 
       ErrorInformation errorInfo;
-      var showBplLocation = true;
       var cause = "Error";
       if (outcome == VCGen.Outcome.TimedOut)
       {
