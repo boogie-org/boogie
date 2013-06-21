@@ -226,6 +226,7 @@ namespace Microsoft.Boogie
     public readonly List<AuxErrorInfo> Aux = new List<AuxErrorInfo>();
     public string RequestId { get; set; }
     public ErrorKind Kind { get; set; }
+    public string ImplementationName { get; set; }
 
     public string FullMsg
     {
@@ -316,14 +317,12 @@ namespace Microsoft.Boogie
     public int ProofObligationCount { get { return ProofObligationCountAfter - ProofObligationCountBefore; } }
     public int ProofObligationCountBefore { get; set; }
     public int ProofObligationCountAfter { get; set; }
-    public int ErrorCount { get; set; }
-    public int VerifiedCount { get; set; }
-    public int InconclusiveCount { get; set; }
-    public int TimeOutCount { get; set; }
-    public int OutOfMemoryCount { get; set; }
 
     public ConditionGeneration.Outcome Outcome;
     public List<Counterexample> Errors;
+
+    public string ImplementationName { get; set; }
+    public IToken ImplementationToken { get; set; }
 
     public VerificationResult(string requestId, string checksum, string depsChecksum, ConditionGeneration.Outcome outcome, List<Counterexample> errors)
       : this(requestId, checksum, depsChecksum)
@@ -833,6 +832,8 @@ namespace Microsoft.Boogie
           #region Verify the implementation
 
           verificationResult = new VerificationResult(requestId, impl.Checksum, impl.DependenciesChecksum);
+          verificationResult.ImplementationName = impl.Name;
+          verificationResult.ImplementationToken = impl.tok;
           verificationResult.ProofObligationCountBefore = vcgen.CumulativeAssertionCount;
           verificationResult.Start = DateTime.UtcNow;
 
@@ -879,6 +880,7 @@ namespace Microsoft.Boogie
           {
             var errorInfo = errorInformationFactory.CreateErrorInformation(impl.tok, String.Format("{0} (encountered in implementation {1}).", e.Message, impl.Name), requestId, "Error");
             errorInfo.BoogieErrorCode = "BP5010";
+            errorInfo.ImplementationName = impl.Name;
             printer.WriteErrorInformation(errorInfo);
             if (er != null)
             {
@@ -914,9 +916,9 @@ namespace Microsoft.Boogie
 
         #region Process the verification results and statistics
 
-        ProcessOutcome(verificationResult.Outcome, verificationResult.Errors, TimeIndication(verificationResult), stats, er, impl, verificationResult.RequestId);
+        ProcessOutcome(verificationResult.Outcome, verificationResult.Errors, TimeIndication(verificationResult), stats, er, verificationResult.ImplementationName, verificationResult.ImplementationToken, verificationResult.RequestId);
 
-        ProcessErrors(verificationResult.Errors, verificationResult.Outcome, er);
+        ProcessErrors(verificationResult.Errors, verificationResult.Outcome, er, impl);
 
         if (CommandLineOptions.Clo.XmlSink != null)
         {
@@ -1038,7 +1040,7 @@ namespace Microsoft.Boogie
 
 
     private static void ProcessOutcome(VC.VCGen.Outcome outcome, List<Counterexample> errors, string timeIndication,
-                                       PipelineStatistics stats, ErrorReporterDelegate er = null, Implementation impl = null, string requestId = null)
+                                       PipelineStatistics stats, ErrorReporterDelegate er = null, string implName = null, IToken implTok = null, string requestId = null)
     {
       Contract.Requires(stats != null);
 
@@ -1046,11 +1048,11 @@ namespace Microsoft.Boogie
 
       printer.Inform(timeIndication + OutcomeIndication(outcome, errors));
 
-      ReportOutcome(outcome, er, impl, requestId);
+      ReportOutcome(outcome, er, implName, implTok, requestId);
     }
 
 
-    private static void ReportOutcome(VC.VCGen.Outcome outcome, ErrorReporterDelegate er, Implementation impl, string requestId)
+    private static void ReportOutcome(VC.VCGen.Outcome outcome, ErrorReporterDelegate er, string implName, IToken implTok, string requestId)
     {
       ErrorInformation errorInfo = null;
 
@@ -1060,27 +1062,28 @@ namespace Microsoft.Boogie
           Console.WriteLine(string.Format("Stratified Inlining: Reached recursion bound of {0}", CommandLineOptions.Clo.RecursionBound));
           break;
         case VCGen.Outcome.TimedOut:
-          if (impl != null)
+          if (implName != null && implTok != null)
           {
-            errorInfo = errorInformationFactory.CreateErrorInformation(impl.tok, string.Format("Verification timed out after {0} seconds ({1})", CommandLineOptions.Clo.ProverKillTime, impl.Name), requestId);
+            errorInfo = errorInformationFactory.CreateErrorInformation(implTok, string.Format("Verification timed out after {0} seconds ({1})", CommandLineOptions.Clo.ProverKillTime, implName), requestId);
           }
           break;
         case VCGen.Outcome.OutOfMemory:
-          if (impl != null)
+          if (implName != null && implTok != null)
           {
-            errorInfo = errorInformationFactory.CreateErrorInformation(impl.tok, "Verification out of memory (" + impl.Name + ")", requestId);
+            errorInfo = errorInformationFactory.CreateErrorInformation(implTok, "Verification out of memory (" + implName + ")", requestId);
           }
           break;
         case VCGen.Outcome.Inconclusive:
-          if (impl != null)
+          if (implName != null && implTok != null)
           {
-            errorInfo = errorInformationFactory.CreateErrorInformation(impl.tok, "Verification inconclusive (" + impl.Name + ")", requestId);
+            errorInfo = errorInformationFactory.CreateErrorInformation(implTok, "Verification inconclusive (" + implName + ")", requestId);
           }
           break;
       }
 
       if (er != null && errorInfo != null)
       {
+        errorInfo.ImplementationName = implName;
         lock (er)
         {
           er(errorInfo);
@@ -1159,14 +1162,17 @@ namespace Microsoft.Boogie
     }
 
 
-    private static void ProcessErrors(List<Counterexample> errors, VC.VCGen.Outcome outcome, ErrorReporterDelegate er)
+    private static void ProcessErrors(List<Counterexample> errors, VC.VCGen.Outcome outcome, ErrorReporterDelegate er, Implementation impl = null)
     {
+      var implName = impl != null ? impl.Name : null;
+
       if (errors != null)
       {
         errors.Sort(new CounterexampleComparer());
         foreach (Counterexample error in errors)
         {
           var errorInfo = CreateErrorInformation(error, outcome);
+          errorInfo.ImplementationName = implName;
 
           printer.WriteErrorInformation(errorInfo);
 

@@ -147,7 +147,7 @@ namespace Microsoft.Boogie
 
     public bool NeedsToBeVerified(Implementation impl)
     {
-      return 0 < VerificationPriority(impl);
+      return VerificationPriority(impl) < int.MaxValue;
     }
 
 
@@ -167,7 +167,7 @@ namespace Microsoft.Boogie
       }
       else
       {
-        return 0;  // skip verification
+        return int.MaxValue;  // skip verification (highest priority to get them done as soon as possible)
       }
     }
   }
