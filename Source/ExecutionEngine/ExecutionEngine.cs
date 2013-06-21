@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
+using System.Threading.Tasks;
 using VC;
 using BoogiePL = Microsoft.Boogie;
 
@@ -17,24 +18,24 @@ namespace Microsoft.Boogie
 
   public interface OutputPrinter
   {
-    void ErrorWriteLine(string s);
-    void ErrorWriteLine(string format, params object[] args);
+    void ErrorWriteLine(TextWriter tw, string s);
+    void ErrorWriteLine(TextWriter tw, string format, params object[] args);
     void AdvisoryWriteLine(string format, params object[] args);
-    void Inform(string s);
+    void Inform(string s, TextWriter tw);
     void WriteTrailer(PipelineStatistics stats);
-    void WriteErrorInformation(ErrorInformation errorInfo);
-    void ReportBplError(IToken tok, string message, bool error, string category = null);
+    void WriteErrorInformation(ErrorInformation errorInfo, TextWriter tw, bool skipExecutionTrace = true);
+    void ReportBplError(IToken tok, string message, bool error, TextWriter tw, string category = null);
   }
 
 
   public class ConsolePrinter : OutputPrinter
   {
-    public void ErrorWriteLine(string s)
+    public void ErrorWriteLine(TextWriter tw, string s)
     {
       Contract.Requires(s != null);
       if (!s.Contains("Error: ") && !s.Contains("Error BP"))
       {
-        Console.WriteLine(s);
+        tw.WriteLine(s);
         return;
       }
 
@@ -53,21 +54,21 @@ namespace Microsoft.Boogie
 
       ConsoleColor col = Console.ForegroundColor;
       Console.ForegroundColor = ConsoleColor.Red;
-      Console.WriteLine(s);
+      tw.WriteLine(s);
       Console.ForegroundColor = col;
 
       if (remaining != null)
       {
-        Console.WriteLine(remaining);
+        tw.WriteLine(remaining);
       }
     }
 
 
-    public void ErrorWriteLine(string format, params object[] args)
+    public void ErrorWriteLine(TextWriter tw, string format, params object[] args)
     {
       Contract.Requires(format != null);
       string s = string.Format(format, args);
-      ErrorWriteLine(s);
+      ErrorWriteLine(tw, s);
     }
 
 
@@ -85,11 +86,11 @@ namespace Microsoft.Boogie
     /// Inform the user about something and proceed with translation normally.
     /// Print newline after the message.
     /// </summary>
-    public void Inform(string s)
+    public void Inform(string s, TextWriter tw)
     {
       if (CommandLineOptions.Clo.Trace || CommandLineOptions.Clo.TraceProofObligations)
       {
-        Console.WriteLine(s);
+        tw.WriteLine(s);
       }
     }
 
@@ -125,20 +126,26 @@ namespace Microsoft.Boogie
     }
 
 
-    public void WriteErrorInformation(ErrorInformation errorInfo)
+    public void WriteErrorInformation(ErrorInformation errorInfo, TextWriter tw, bool skipExecutionTrace = true)
     {
       Contract.Requires(errorInfo != null);
 
-      ReportBplError(errorInfo.Tok, errorInfo.FullMsg, true);
+      ReportBplError(errorInfo.Tok, errorInfo.FullMsg, true, tw);
 
       foreach (var e in errorInfo.Aux)
       {
-        ReportBplError(e.Tok, e.FullMsg, false);
+        if (!(skipExecutionTrace && e.Category.Contains("Execution trace")))
+        {
+          ReportBplError(e.Tok, e.FullMsg, false, tw);
+        }
       }
+
+      tw.Write(errorInfo.Out.ToString());
+      tw.Flush();
     }
 
 
-    public virtual void ReportBplError(IToken tok, string message, bool error, string category = null)
+    public virtual void ReportBplError(IToken tok, string message, bool error, TextWriter tw, string category = null)
     {
       Contract.Requires(message != null);
 
@@ -157,11 +164,11 @@ namespace Microsoft.Boogie
       }
       if (error)
       {
-        ErrorWriteLine(s);
+        ErrorWriteLine(tw, s);
       }
       else
       {
-        Console.WriteLine(s);
+        tw.WriteLine(s);
       }
     }
   }
@@ -227,6 +234,7 @@ namespace Microsoft.Boogie
     public string RequestId { get; set; }
     public ErrorKind Kind { get; set; }
     public string ImplementationName { get; set; }
+    public TextWriter Out = new StringWriter();
 
     public string FullMsg
     {
@@ -497,7 +505,7 @@ namespace Microsoft.Boogie
     public static Program ParseBoogieProgram(List<string> fileNames, bool suppressTraceOutput)
     {
       Contract.Requires(cce.NonNullElements(fileNames));
-      //BoogiePL.Errors.count = 0;
+
       Program program = null;
       bool okay = true;
       for (int fileId = 0; fileId < fileNames.Count; fileId++)
@@ -530,7 +538,7 @@ namespace Microsoft.Boogie
         }
         catch (IOException e)
         {
-          printer.ErrorWriteLine("Error opening file \"{0}\": {1}", bplFileName, e.Message);
+          printer.ErrorWriteLine(Console.Out, "Error opening file \"{0}\": {1}", bplFileName, e.Message);
           okay = false;
           continue;
         }
@@ -655,31 +663,22 @@ namespace Microsoft.Boogie
         }
         if (inline)
         {
-          foreach (var d in TopLevelDeclarations)
+          foreach (var impl in TopLevelDeclarations.OfType<Implementation>())
           {
-            var impl = d as Implementation;
-            if (impl != null)
-            {
-              impl.OriginalBlocks = impl.Blocks;
-              impl.OriginalLocVars = impl.LocVars;
-            }
+            impl.OriginalBlocks = impl.Blocks;
+            impl.OriginalLocVars = impl.LocVars;
           }
-          foreach (var d in TopLevelDeclarations)
+          foreach (var impl in TopLevelDeclarations.OfType<Implementation>())
           {
-            var impl = d as Implementation;
-            if (impl != null && !impl.SkipVerification)
+            if (!impl.SkipVerification)
             {
               Inliner.ProcessImplementation(program, impl);
             }
           }
-          foreach (var d in TopLevelDeclarations)
+          foreach (var impl in TopLevelDeclarations.OfType<Implementation>())
           {
-            var impl = d as Implementation;
-            if (impl != null)
-            {
-              impl.OriginalBlocks = null;
-              impl.OriginalLocVars = null;
-            }
+            impl.OriginalBlocks = null;
+            impl.OriginalLocVars = null;
           }
         }
       }
@@ -755,36 +754,6 @@ namespace Microsoft.Boogie
       }
       #endregion
 
-      #region Set up the VC generation
-
-      ConditionGeneration vcgen = null;
-      try
-      {
-        if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Doomed)
-        {
-          vcgen = new DCGen(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend);
-        }
-        else if (CommandLineOptions.Clo.FixedPointEngine != null)
-        {
-          vcgen = new FixedpointVC(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend);
-        }
-        else if (CommandLineOptions.Clo.StratifiedInlining > 0)
-        {
-          vcgen = new StratifiedVCGen(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend);
-        }
-        else
-        {
-          vcgen = new VCGen(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend);
-        }
-      }
-      catch (ProverException e)
-      {
-        printer.ErrorWriteLine("Fatal Error: ProverException: {0}", e);
-        return PipelineOutcome.FatalError;
-      }
-
-      #endregion
-
       #region Select and prioritize implementations that should be verified
 
       var impls = program.TopLevelDeclarations.OfType<Implementation>().Where(
@@ -807,138 +776,195 @@ namespace Microsoft.Boogie
 
       #region Verify each implementation
 
-      foreach (var impl in stablePrioritizedImpls)
+      var outputs = new StringWriter[stablePrioritizedImpls.Count()];
+      var nextPrintableIndex = 0;
+
+      try
       {
-        VerificationResult verificationResult = null;
-
-        printer.Inform(string.Format("\nVerifying {0} ...", impl.Name));
-
-        if (CommandLineOptions.Clo.VerifySnapshots)
+        Parallel.For(0, stablePrioritizedImpls.Count(), new ParallelOptions { MaxDegreeOfParallelism = 1 }, index =>
         {
-          verificationResult = Cache.Lookup(impl);
-        }
+          Implementation impl = stablePrioritizedImpls[index];
+          VerificationResult verificationResult = null;
+          var output = new StringWriter();
 
-        if (verificationResult != null)
-        {
-          if (CommandLineOptions.Clo.XmlSink != null)
+          printer.Inform(string.Format("\nVerifying {0} ...", impl.Name), output);
+
+          if (CommandLineOptions.Clo.VerifySnapshots)
           {
-            CommandLineOptions.Clo.XmlSink.WriteStartMethod(impl.Name, verificationResult.Start);
+            verificationResult = Cache.Lookup(impl);
           }
 
-          printer.Inform(string.Format("Retrieving cached verification result for implementation {0}...", impl.Name));
-        }
-        else
-        {
-          #region Verify the implementation
-
-          verificationResult = new VerificationResult(requestId, impl.Checksum, impl.DependenciesChecksum);
-          verificationResult.ImplementationName = impl.Name;
-          verificationResult.ImplementationToken = impl.tok;
-          verificationResult.ProofObligationCountBefore = vcgen.CumulativeAssertionCount;
-          verificationResult.Start = DateTime.UtcNow;
-
-          if (CommandLineOptions.Clo.XmlSink != null)
+          if (verificationResult != null)
           {
-            CommandLineOptions.Clo.XmlSink.WriteStartMethod(impl.Name, verificationResult.Start);
-          }
-
-          try
-          {
-            if (CommandLineOptions.Clo.inferLeastForUnsat != null)
+            if (CommandLineOptions.Clo.XmlSink != null)
             {
-              var svcgen = vcgen as VC.StratifiedVCGen;
-              Contract.Assert(svcgen != null);
-              var ss = new HashSet<string>();
-              foreach (var tdecl in program.TopLevelDeclarations)
-              {
-                var c = tdecl as Constant;
-                if (c == null || !c.Name.StartsWith(CommandLineOptions.Clo.inferLeastForUnsat)) continue;
-                ss.Add(c.Name);
-              }
-              verificationResult.Outcome = svcgen.FindLeastToVerify(impl, ref ss);
-              verificationResult.Errors = new List<Counterexample>();
-              Console.WriteLine("Result: {0}", string.Join(" ", ss));
+              CommandLineOptions.Clo.XmlSink.WriteStartMethod(impl.Name, verificationResult.Start);
             }
-            else
-            {
-              verificationResult.Outcome = vcgen.VerifyImplementation(impl, out verificationResult.Errors, requestId);
 
-              if (CommandLineOptions.Clo.ExtractLoops && verificationResult.Errors != null)
+            printer.Inform(string.Format("Retrieving cached verification result for implementation {0}...", impl.Name), output);
+          }
+          else
+          {
+            #region Verify the implementation
+
+            verificationResult = new VerificationResult(requestId, impl.Checksum, impl.DependenciesChecksum);
+            verificationResult.ImplementationName = impl.Name;
+            verificationResult.ImplementationToken = impl.tok;
+
+            using (var vcgen = CreateVCGen(program))
+            {
+              verificationResult.ProofObligationCountBefore = vcgen.CumulativeAssertionCount;
+              verificationResult.Start = DateTime.UtcNow;
+
+              if (CommandLineOptions.Clo.XmlSink != null)
               {
-                var vcg = vcgen as VCGen;
-                if (vcg != null)
+                CommandLineOptions.Clo.XmlSink.WriteStartMethod(impl.Name, verificationResult.Start);
+              }
+              try
+              {
+                if (CommandLineOptions.Clo.inferLeastForUnsat != null)
                 {
-                  for (int i = 0; i < verificationResult.Errors.Count; i++)
+                  var svcgen = vcgen as VC.StratifiedVCGen;
+                  Contract.Assert(svcgen != null);
+                  var ss = new HashSet<string>();
+                  foreach (var tdecl in program.TopLevelDeclarations)
                   {
-                    verificationResult.Errors[i] = vcg.extractLoopTrace(verificationResult.Errors[i], impl.Name, program, extractLoopMappingInfo);
+                    var c = tdecl as Constant;
+                    if (c == null || !c.Name.StartsWith(CommandLineOptions.Clo.inferLeastForUnsat)) continue;
+                    ss.Add(c.Name);
+                  }
+                  verificationResult.Outcome = svcgen.FindLeastToVerify(impl, ref ss);
+                  verificationResult.Errors = new List<Counterexample>();
+                  output.WriteLine("Result: {0}", string.Join(" ", ss));
+                }
+                else
+                {
+                  verificationResult.Outcome = vcgen.VerifyImplementation(impl, out verificationResult.Errors, requestId);
+                  if (CommandLineOptions.Clo.ExtractLoops && verificationResult.Errors != null)
+                  {
+                    var vcg = vcgen as VCGen;
+                    if (vcg != null)
+                    {
+                      for (int i = 0; i < verificationResult.Errors.Count; i++)
+                      {
+                        verificationResult.Errors[i] = vcg.extractLoopTrace(verificationResult.Errors[i], impl.Name, program, extractLoopMappingInfo);
+                      }
+                    }
                   }
                 }
               }
-            }
-          }
-          catch (VCGenException e)
-          {
-            var errorInfo = errorInformationFactory.CreateErrorInformation(impl.tok, String.Format("{0} (encountered in implementation {1}).", e.Message, impl.Name), requestId, "Error");
-            errorInfo.BoogieErrorCode = "BP5010";
-            errorInfo.ImplementationName = impl.Name;
-            printer.WriteErrorInformation(errorInfo);
-            if (er != null)
-            {
-              lock (er)
+              catch (VCGenException e)
               {
-                er(errorInfo);
+                var errorInfo = errorInformationFactory.CreateErrorInformation(impl.tok, String.Format("{0} (encountered in implementation {1}).", e.Message, impl.Name), requestId, "Error");
+                errorInfo.BoogieErrorCode = "BP5010";
+                errorInfo.ImplementationName = impl.Name;
+                printer.WriteErrorInformation(errorInfo, output);
+                if (er != null)
+                {
+                  lock (er)
+                  {
+                    er(errorInfo);
+                  }
+                }
+                verificationResult.Errors = null;
+                verificationResult.Outcome = VCGen.Outcome.Inconclusive;
               }
+              catch (UnexpectedProverOutputException upo)
+              {
+                printer.AdvisoryWriteLine("Advisory: {0} SKIPPED because of internal error: unexpected prover output: {1}", impl.Name, upo.Message);
+                verificationResult.Errors = null;
+                verificationResult.Outcome = VCGen.Outcome.Inconclusive;
+              }
+
+              verificationResult.ProofObligationCountAfter = vcgen.CumulativeAssertionCount;
+              verificationResult.End = DateTime.UtcNow;
             }
-            verificationResult.Errors = null;
-            verificationResult.Outcome = VCGen.Outcome.Inconclusive;
-          }
-          catch (UnexpectedProverOutputException upo)
-          {
-            printer.AdvisoryWriteLine("Advisory: {0} SKIPPED because of internal error: unexpected prover output: {1}", impl.Name, upo.Message);
-            verificationResult.Errors = null;
-            verificationResult.Outcome = VCGen.Outcome.Inconclusive;
+
+            #endregion
+
+            #region Cache the verification result
+
+            if (CommandLineOptions.Clo.VerifySnapshots && !string.IsNullOrEmpty(impl.Checksum))
+            {
+              Cache.Insert(impl.Id, verificationResult);
+            }
+
+            #endregion
           }
 
-          verificationResult.ProofObligationCountAfter = vcgen.CumulativeAssertionCount;
-          verificationResult.End = DateTime.UtcNow;
+          #region Process the verification results and statistics
+
+          ProcessOutcome(verificationResult.Outcome, verificationResult.Errors, TimeIndication(verificationResult), stats, output, er, verificationResult.ImplementationName, verificationResult.ImplementationToken, verificationResult.RequestId);
+
+          ProcessErrors(verificationResult.Errors, verificationResult.Outcome, output, er, impl);
+
+          if (CommandLineOptions.Clo.XmlSink != null)
+          {
+            CommandLineOptions.Clo.XmlSink.WriteEndMethod(verificationResult.Outcome.ToString().ToLowerInvariant(), verificationResult.End, verificationResult.End - verificationResult.Start);
+          }
+
+          outputs[index] = output;
+
+          lock (outputs)
+          {
+            for (; nextPrintableIndex < stablePrioritizedImpls.Count() && outputs[nextPrintableIndex] != null; nextPrintableIndex++)
+            {
+              Console.Write(outputs[nextPrintableIndex].ToString());
+              Console.Out.Flush();
+            }
+          }
+
+          if (verificationResult.Outcome == VCGen.Outcome.Errors || CommandLineOptions.Clo.Trace)
+          {
+            Console.Out.Flush();
+          }
 
           #endregion
-
-          #region Cache the verification result
-
-          if (CommandLineOptions.Clo.VerifySnapshots && !string.IsNullOrEmpty(impl.Checksum))
-          {
-            Cache.Insert(impl.Id, verificationResult);
-          }
-
-          #endregion
-        }
-
-        #region Process the verification results and statistics
-
-        ProcessOutcome(verificationResult.Outcome, verificationResult.Errors, TimeIndication(verificationResult), stats, er, verificationResult.ImplementationName, verificationResult.ImplementationToken, verificationResult.RequestId);
-
-        ProcessErrors(verificationResult.Errors, verificationResult.Outcome, er, impl);
-
-        if (CommandLineOptions.Clo.XmlSink != null)
-        {
-          CommandLineOptions.Clo.XmlSink.WriteEndMethod(verificationResult.Outcome.ToString().ToLowerInvariant(), verificationResult.End, verificationResult.End - verificationResult.Start);
-        }
-
-        if (verificationResult.Outcome == VCGen.Outcome.Errors || CommandLineOptions.Clo.Trace)
-        {
-          Console.Out.Flush();
-        }
-
-        #endregion
+        });
+      }
+      catch (ProverException e)
+      {
+        printer.ErrorWriteLine(Console.Out, "Fatal Error: ProverException: {0}", e);
+        return PipelineOutcome.FatalError;
       }
 
-      vcgen.Close();
       cce.NonNull(CommandLineOptions.Clo.TheProverFactory).Close();
+
+      lock (outputs)
+      {
+        for (; nextPrintableIndex < stablePrioritizedImpls.Count() && nextPrintableIndex != null; nextPrintableIndex++)
+        {
+          Console.Write(outputs[nextPrintableIndex].ToString());
+          Console.Out.Flush();
+        }
+      }
 
       #endregion
 
       return PipelineOutcome.VerificationCompleted;
+    }
+
+
+    private static ConditionGeneration CreateVCGen(Program program)
+    {
+      ConditionGeneration vcgen = null;
+      if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Doomed)
+      {
+        vcgen = new DCGen(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend);
+      }
+      else if (CommandLineOptions.Clo.FixedPointEngine != null)
+      {
+        vcgen = new FixedpointVC(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend);
+      }
+      else if (CommandLineOptions.Clo.StratifiedInlining > 0)
+      {
+        vcgen = new StratifiedVCGen(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend);
+      }
+      else
+      {
+        vcgen = new VCGen(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend);
+      }
+      return vcgen;
     }
 
 
@@ -984,8 +1010,8 @@ namespace Microsoft.Boogie
 
       foreach (Houdini.VCGenOutcome x in outcome.implementationOutcomes.Values)
       {
-        ProcessOutcome(x.outcome, x.errors, "", stats, er);
-        ProcessErrors(x.errors, x.outcome, er);
+        ProcessOutcome(x.outcome, x.errors, "", stats, Console.Out, er);
+        ProcessErrors(x.errors, x.outcome, Console.Out, er);
       }
       //errorCount = outcome.ErrorCount;
       //verified = outcome.Verified;
@@ -1011,8 +1037,8 @@ namespace Microsoft.Boogie
       // Run Abstract Houdini
       var abs = new Houdini.AbsHoudini(program, domain);
       var absout = abs.ComputeSummaries();
-      ProcessOutcome(absout.outcome, absout.errors, "", stats, er);
-      ProcessErrors(absout.errors, absout.outcome, er);
+      ProcessOutcome(absout.outcome, absout.errors, "", stats, Console.Out, er);
+      ProcessErrors(absout.errors, absout.outcome, Console.Out, er);
 
       //Houdini.PredicateAbs.Initialize(program);
       //var abs = new Houdini.AbstractHoudini(program);
@@ -1040,26 +1066,26 @@ namespace Microsoft.Boogie
 
 
     private static void ProcessOutcome(VC.VCGen.Outcome outcome, List<Counterexample> errors, string timeIndication,
-                                       PipelineStatistics stats, ErrorReporterDelegate er = null, string implName = null, IToken implTok = null, string requestId = null)
+                                       PipelineStatistics stats, TextWriter tw, ErrorReporterDelegate er = null, string implName = null, IToken implTok = null, string requestId = null)
     {
       Contract.Requires(stats != null);
 
       UpdateStatistics(stats, outcome, errors);
 
-      printer.Inform(timeIndication + OutcomeIndication(outcome, errors));
+      printer.Inform(timeIndication + OutcomeIndication(outcome, errors), tw);
 
-      ReportOutcome(outcome, er, implName, implTok, requestId);
+      ReportOutcome(outcome, er, implName, implTok, requestId, tw);
     }
 
 
-    private static void ReportOutcome(VC.VCGen.Outcome outcome, ErrorReporterDelegate er, string implName, IToken implTok, string requestId)
+    private static void ReportOutcome(VC.VCGen.Outcome outcome, ErrorReporterDelegate er, string implName, IToken implTok, string requestId, TextWriter tw)
     {
       ErrorInformation errorInfo = null;
 
       switch (outcome)
       {
         case VCGen.Outcome.ReachedBound:
-          Console.WriteLine(string.Format("Stratified Inlining: Reached recursion bound of {0}", CommandLineOptions.Clo.RecursionBound));
+          tw.WriteLine(string.Format("Stratified Inlining: Reached recursion bound of {0}", CommandLineOptions.Clo.RecursionBound));
           break;
         case VCGen.Outcome.TimedOut:
           if (implName != null && implTok != null)
@@ -1081,12 +1107,15 @@ namespace Microsoft.Boogie
           break;
       }
 
-      if (er != null && errorInfo != null)
+      if (errorInfo != null)
       {
         errorInfo.ImplementationName = implName;
-        lock (er)
+        if (er != null)
         {
-          er(errorInfo);
+          lock (er)
+          {
+            er(errorInfo);
+          }
         }
       }
     }
@@ -1162,7 +1191,7 @@ namespace Microsoft.Boogie
     }
 
 
-    private static void ProcessErrors(List<Counterexample> errors, VC.VCGen.Outcome outcome, ErrorReporterDelegate er, Implementation impl = null)
+    private static void ProcessErrors(List<Counterexample> errors, VC.VCGen.Outcome outcome, TextWriter tw, ErrorReporterDelegate er, Implementation impl = null)
     {
       var implName = impl != null ? impl.Name : null;
 
@@ -1174,8 +1203,6 @@ namespace Microsoft.Boogie
           var errorInfo = CreateErrorInformation(error, outcome);
           errorInfo.ImplementationName = implName;
 
-          printer.WriteErrorInformation(errorInfo);
-
           if (CommandLineOptions.Clo.XmlSink != null)
           {
             WriteErrorInformationToXmlSink(errorInfo, error.Trace);
@@ -1186,18 +1213,21 @@ namespace Microsoft.Boogie
             foreach (string info in error.relatedInformation)
             {
               Contract.Assert(info != null);
-              Console.WriteLine("       " + info);
+              errorInfo.Out.WriteLine("       " + info);
             }
           }
           if (CommandLineOptions.Clo.ErrorTrace > 0)
           {
-            Console.WriteLine("Execution trace:");
-            error.Print(4, b => { errorInfo.AddAuxInfo(b.tok, b.Label, "Execution trace"); });
+            errorInfo.Out.WriteLine("Execution trace:");
+            error.Print(4, errorInfo.Out, b => { errorInfo.AddAuxInfo(b.tok, b.Label, "Execution trace"); });
           }
           if (CommandLineOptions.Clo.ModelViewFile != null)
           {
-            error.PrintModel();
+            error.PrintModel(errorInfo.Out);
           }
+
+          printer.WriteErrorInformation(errorInfo, tw);
+
           if (er != null)
           {
             lock (er)

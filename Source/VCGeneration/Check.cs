@@ -4,6 +4,7 @@
 //
 //-----------------------------------------------------------------------------
 using System;
+using System.Linq;
 using System.Collections;
 using System.Collections.Generic;
 using System.Threading;
@@ -159,53 +160,37 @@ namespace Microsoft.Boogie {
 
     private static void Setup(Program prog, ProverContext ctx)
     {
-        // set up the context
-        foreach (Declaration decl in prog.TopLevelDeclarations)
+      // set up the context
+      foreach (Declaration decl in prog.TopLevelDeclarations.ToList())
+      {
+        Contract.Assert(decl != null);
+        var typeDecl = decl as TypeCtorDecl;
+        var constDecl = decl as Constant;
+        var funDecl = decl as Function;
+        var axiomDecl = decl as Axiom;
+        var glVarDecl = decl as GlobalVariable;
+        if (typeDecl != null)
         {
-            Contract.Assert(decl != null);
-            TypeCtorDecl t = decl as TypeCtorDecl;
-            if (t != null)
-            {
-                ctx.DeclareType(t, null);
-            }
+          ctx.DeclareType(typeDecl, null);
         }
-        foreach (Declaration decl in prog.TopLevelDeclarations)
+        else if (constDecl != null)
         {
-            Contract.Assert(decl != null);
-            Constant c = decl as Constant;
-            if (c != null)
-            {
-                ctx.DeclareConstant(c, c.Unique, null);
-            }
-            else
-            {
-                Function f = decl as Function;
-                if (f != null)
-                {
-                    ctx.DeclareFunction(f, null);
-                }
-            }
+          ctx.DeclareConstant(constDecl, constDecl.Unique, null);
         }
-        foreach (Declaration decl in prog.TopLevelDeclarations)
+        else if (funDecl != null)
         {
-            Contract.Assert(decl != null);
-            Axiom ax = decl as Axiom;
-            if (ax != null)
-            {
-                ctx.AddAxiom(ax, null);
-            }
+          ctx.DeclareFunction(funDecl, null);
         }
-        foreach (Declaration decl in prog.TopLevelDeclarations)
+        else if (axiomDecl != null)
         {
-            Contract.Assert(decl != null);
-            GlobalVariable v = decl as GlobalVariable;
-            if (v != null)
-            {
-                ctx.DeclareGlobalVariable(v, null);
-            }
+          ctx.AddAxiom(axiomDecl, null);
         }
+        else if (glVarDecl != null)
+        {
+          ctx.DeclareGlobalVariable(glVarDecl, null);
+        }
+      }
     }
-
 
     /// <summary>
     /// Clean-up.

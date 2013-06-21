@@ -1410,7 +1410,11 @@ namespace VC {
       }
 
       ModelViewInfo mvInfo;
-      Hashtable/*TransferCmd->ReturnCmd*/ gotoCmdOrigins = PassifyImpl(impl, out mvInfo);
+      Hashtable/*TransferCmd->ReturnCmd*/ gotoCmdOrigins;
+      lock (program)
+      {
+        gotoCmdOrigins = PassifyImpl(impl, out mvInfo);
+      }
 
       double max_vc_cost = CommandLineOptions.Clo.VcsMaxCost;
       int tmp_max_vc_cost = -1, max_splits = CommandLineOptions.Clo.VcsMaxSplits, 

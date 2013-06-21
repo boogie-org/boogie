@@ -37,13 +37,13 @@ namespace Microsoft.Boogie {
         goto END;
       }
       if (CommandLineOptions.Clo.Files.Count == 0) {
-        ExecutionEngine.printer.ErrorWriteLine("*** Error: No input files were specified.");
+        ExecutionEngine.printer.ErrorWriteLine(Console.Out, "*** Error: No input files were specified.");
         goto END;
       }
       if (CommandLineOptions.Clo.XmlSink != null) {
         string errMsg = CommandLineOptions.Clo.XmlSink.Open();
         if (errMsg != null) {
-          ExecutionEngine.printer.ErrorWriteLine("*** Error: " + errMsg);
+          ExecutionEngine.printer.ErrorWriteLine(Console.Out, "*** Error: " + errMsg);
           goto END;
         }
       }
@@ -84,7 +84,7 @@ namespace Microsoft.Boogie {
           extension = extension.ToLower();
         }
         if (extension != ".bpl") {
-          ExecutionEngine.printer.ErrorWriteLine("*** Error: '{0}': Filename extension '{1}' is not supported. Input files must be BoogiePL programs (.bpl).", file,
+          ExecutionEngine.printer.ErrorWriteLine(Console.Out, "*** Error: '{0}': Filename extension '{1}' is not supported. Input files must be BoogiePL programs (.bpl).", file,
               extension == null ? "" : extension);
           goto END;
         }
