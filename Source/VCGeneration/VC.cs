@@ -18,6 +18,7 @@ using Microsoft.Boogie.VCExprAST;
 
 namespace VC {
   using Bpl = Microsoft.Boogie;
+  using System.Threading.Tasks;
 
   public class VCGen : ConditionGeneration {
       private const bool _print_time = false;
@@ -312,7 +313,7 @@ namespace VC {
           Emit();
         }
         ch.BeginCheck(cce.NonNull(impl.Name + "_smoke" + id++), vc, new ErrorHandler(label2Absy, this.callback));
-        ch.ProverDone.WaitOne();
+        ch.ProverTask.Wait();
         ProverInterface.Outcome outcome = ch.ReadOutcome();
         parent.CurrentLocalVariables = null;
 
@@ -1135,10 +1136,10 @@ namespace VC {
         }
       }
 
-      public WaitHandle ProverDone {
+      public Task ProverTask {
         get {
           Contract.Assert(checker != null);
-          return checker.ProverDone;
+          return checker.ProverTask;
         }
       }
 
@@ -1445,11 +1446,11 @@ namespace VC {
         remaining_cost = work.Peek().Cost;
       }
 
-      while (work.Count > 0 || currently_running.Count > 0) {
+      while (work.Any() || currently_running.Any()) {
         bool prover_failed = false;
         Split s;
 
-        if (work.Count > 0 && currently_running.Count < cores) {
+        if (work.Any() && currently_running.Count < cores) {
           s = work.Pop();
 
           if (first_round && max_splits > 1) {
@@ -1473,11 +1474,9 @@ namespace VC {
             currently_running.Add(s);
           }
         } else {
-          WaitHandle[] handles = new WaitHandle[currently_running.Count];
-          for (int i = 0; i < currently_running.Count; ++i) {
-            handles[i] = currently_running[i].ProverDone;
-          }
-          int index = WaitHandle.WaitAny(handles);
+          // Wait for one split to terminate.
+          var tasks = currently_running.Select(splt => splt.ProverTask).ToArray();
+          int index = Task.WaitAny(tasks);          
           s = currently_running[index];
           currently_running.RemoveAt(index);
 

@@ -15,6 +15,7 @@ using System.Diagnostics.Contracts;
 using Microsoft.Boogie.AbstractInterpretation;
 using Microsoft.Boogie.VCExprAST;
 using Microsoft.Basetypes;
+using System.Threading.Tasks;
 
 namespace Microsoft.Boogie {
   /// <summary>
@@ -28,7 +29,6 @@ namespace Microsoft.Boogie {
     void ObjectInvariant() {
       Contract.Invariant(gen != null);
       Contract.Invariant(thmProver != null);
-      Contract.Invariant(ProverDone != null);
     }
 
     private readonly VCExpressionGenerator gen;
@@ -46,7 +46,7 @@ namespace Microsoft.Boogie {
     private volatile ProverInterface.ErrorHandler handler;
     private volatile bool closed;
 
-    public readonly AutoResetEvent ProverDone = new AutoResetEvent(false);
+    public Task ProverTask { get; set; }
 
     public bool WillingToHandle(Implementation impl, int timeout) {
       return !closed && timeout == this.timeout;
@@ -262,8 +262,6 @@ namespace Microsoft.Boogie {
       Contract.Assert(busy);
       hasOutput = true;
       proverRunTime = DateTime.UtcNow - proverStart;
-
-      ProverDone.Set();
     }
 
     public void BeginCheck(string descriptiveName, VCExpr vc, ProverInterface.ErrorHandler handler) {
@@ -282,7 +280,7 @@ namespace Microsoft.Boogie {
       thmProver.BeginCheck(descriptiveName, vc, handler);
       //  gen.ClearSharedFormulas();    PR: don't know yet what to do with this guy
 
-      ThreadPool.QueueUserWorkItem(WaitForOutput);
+      ProverTask = Task.Factory.StartNew(() => { WaitForOutput(null); });
     }
 
     public ProverInterface.Outcome ReadOutcome() {

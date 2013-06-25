@@ -117,7 +117,7 @@ void ObjectInvariant()
             outcome = ProverInterface.Outcome.Undetermined;
             Contract.Assert( m_ErrorHandler !=null);
             m_Checker.BeginCheck(lv[0].Name, vc, m_ErrorHandler);
-            m_Checker.ProverDone.WaitOne();
+            m_Checker.ProverTask.Wait();
             
             try {
               outcome = m_Checker.ReadOutcome();

@@ -970,23 +970,30 @@ namespace VC {
     #endregion
 
 
-    protected Checker FindCheckerFor(Implementation impl, int timeout) {
+    protected Checker FindCheckerFor(Implementation impl, int timeout)
+    {
       Contract.Ensures(Contract.Result<Checker>() != null);
 
-      int i = 0;
-      while (i < checkers.Count) {
-        if (checkers[i].Closed) {
+      // Look for existing checker.
+      for (int i = 0; i < checkers.Count; i++)
+      {
+        if (checkers[i].Closed)
+        {
           checkers.RemoveAt(i);
           continue;
-        } else {
-          if (!checkers[i].IsBusy && checkers[i].WillingToHandle(impl, timeout))
-            return checkers[i];
         }
-        ++i;
+        if (!checkers[i].IsBusy && checkers[i].WillingToHandle(impl, timeout))
+        {
+          return checkers[i];
+        }
       }
+
+      // Create a new checker.
       string log = logFilePath;
       if (log != null && !log.Contains("@PROC@") && checkers.Count > 0)
+      {
         log = log + "." + checkers.Count;
+      }
       Checker ch = new Checker(this, program, log, appendLogFile, timeout);
       Contract.Assert(ch != null);
       checkers.Add(ch);

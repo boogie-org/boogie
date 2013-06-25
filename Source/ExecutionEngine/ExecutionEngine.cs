@@ -396,7 +396,6 @@ namespace Microsoft.Boogie
 
       using (XmlFileScope xf = new XmlFileScope(CommandLineOptions.Clo.XmlSink, fileNames[fileNames.Count - 1]))
       {
-        //BoogiePL.Errors.count = 0;
         Program program = ParseBoogieProgram(fileNames, false);
         if (program == null)
           return;
@@ -408,7 +407,6 @@ namespace Microsoft.Boogie
         PipelineOutcome oc = ResolveAndTypecheck(program, fileNames[fileNames.Count - 1]);
         if (oc != PipelineOutcome.ResolvedAndTypeChecked)
           return;
-        //BoogiePL.Errors.count = 0;
 
         // Do bitvector analysis
         if (CommandLineOptions.Clo.DoBitVectorAnalysis)
@@ -776,172 +774,215 @@ namespace Microsoft.Boogie
 
       #region Verify each implementation
 
-      var outputs = new StringWriter[stablePrioritizedImpls.Count()];
-      var nextPrintableIndex = 0;
-
-      try
+      var outputCollector = new OutputCollector(stablePrioritizedImpls);
+      var outcome = PipelineOutcome.VerificationCompleted;
+      var tasks = new Task[stablePrioritizedImpls.Length];
+      for (int i = 0; i < stablePrioritizedImpls.Length && outcome != PipelineOutcome.FatalError; i++)
       {
-        Parallel.For(0, stablePrioritizedImpls.Count(), new ParallelOptions { MaxDegreeOfParallelism = 1 }, index =>
+        var taskIndex = i;
+        var t = Task.Factory.StartNew(() =>
         {
-          Implementation impl = stablePrioritizedImpls[index];
-          VerificationResult verificationResult = null;
-          var output = new StringWriter();
-
-          printer.Inform(string.Format("\nVerifying {0} ...", impl.Name), output);
-
-          if (CommandLineOptions.Clo.VerifySnapshots)
-          {
-            verificationResult = Cache.Lookup(impl);
-          }
-
-          if (verificationResult != null)
-          {
-            if (CommandLineOptions.Clo.XmlSink != null)
-            {
-              CommandLineOptions.Clo.XmlSink.WriteStartMethod(impl.Name, verificationResult.Start);
-            }
-
-            printer.Inform(string.Format("Retrieving cached verification result for implementation {0}...", impl.Name), output);
-          }
-          else
-          {
-            #region Verify the implementation
-
-            verificationResult = new VerificationResult(requestId, impl.Checksum, impl.DependenciesChecksum);
-            verificationResult.ImplementationName = impl.Name;
-            verificationResult.ImplementationToken = impl.tok;
-
-            using (var vcgen = CreateVCGen(program))
-            {
-              verificationResult.ProofObligationCountBefore = vcgen.CumulativeAssertionCount;
-              verificationResult.Start = DateTime.UtcNow;
-
-              if (CommandLineOptions.Clo.XmlSink != null)
-              {
-                CommandLineOptions.Clo.XmlSink.WriteStartMethod(impl.Name, verificationResult.Start);
-              }
-              try
-              {
-                if (CommandLineOptions.Clo.inferLeastForUnsat != null)
-                {
-                  var svcgen = vcgen as VC.StratifiedVCGen;
-                  Contract.Assert(svcgen != null);
-                  var ss = new HashSet<string>();
-                  foreach (var tdecl in program.TopLevelDeclarations)
-                  {
-                    var c = tdecl as Constant;
-                    if (c == null || !c.Name.StartsWith(CommandLineOptions.Clo.inferLeastForUnsat)) continue;
-                    ss.Add(c.Name);
-                  }
-                  verificationResult.Outcome = svcgen.FindLeastToVerify(impl, ref ss);
-                  verificationResult.Errors = new List<Counterexample>();
-                  output.WriteLine("Result: {0}", string.Join(" ", ss));
-                }
-                else
-                {
-                  verificationResult.Outcome = vcgen.VerifyImplementation(impl, out verificationResult.Errors, requestId);
-                  if (CommandLineOptions.Clo.ExtractLoops && verificationResult.Errors != null)
-                  {
-                    var vcg = vcgen as VCGen;
-                    if (vcg != null)
-                    {
-                      for (int i = 0; i < verificationResult.Errors.Count; i++)
-                      {
-                        verificationResult.Errors[i] = vcg.extractLoopTrace(verificationResult.Errors[i], impl.Name, program, extractLoopMappingInfo);
-                      }
-                    }
-                  }
-                }
-              }
-              catch (VCGenException e)
-              {
-                var errorInfo = errorInformationFactory.CreateErrorInformation(impl.tok, String.Format("{0} (encountered in implementation {1}).", e.Message, impl.Name), requestId, "Error");
-                errorInfo.BoogieErrorCode = "BP5010";
-                errorInfo.ImplementationName = impl.Name;
-                printer.WriteErrorInformation(errorInfo, output);
-                if (er != null)
-                {
-                  lock (er)
-                  {
-                    er(errorInfo);
-                  }
-                }
-                verificationResult.Errors = null;
-                verificationResult.Outcome = VCGen.Outcome.Inconclusive;
-              }
-              catch (UnexpectedProverOutputException upo)
-              {
-                printer.AdvisoryWriteLine("Advisory: {0} SKIPPED because of internal error: unexpected prover output: {1}", impl.Name, upo.Message);
-                verificationResult.Errors = null;
-                verificationResult.Outcome = VCGen.Outcome.Inconclusive;
-              }
-
-              verificationResult.ProofObligationCountAfter = vcgen.CumulativeAssertionCount;
-              verificationResult.End = DateTime.UtcNow;
-            }
-
-            #endregion
-
-            #region Cache the verification result
-
-            if (CommandLineOptions.Clo.VerifySnapshots && !string.IsNullOrEmpty(impl.Checksum))
-            {
-              Cache.Insert(impl.Id, verificationResult);
-            }
-
-            #endregion
-          }
-
-          #region Process the verification results and statistics
-
-          ProcessOutcome(verificationResult.Outcome, verificationResult.Errors, TimeIndication(verificationResult), stats, output, er, verificationResult.ImplementationName, verificationResult.ImplementationToken, verificationResult.RequestId);
-
-          ProcessErrors(verificationResult.Errors, verificationResult.Outcome, output, er, impl);
-
-          if (CommandLineOptions.Clo.XmlSink != null)
-          {
-            CommandLineOptions.Clo.XmlSink.WriteEndMethod(verificationResult.Outcome.ToString().ToLowerInvariant(), verificationResult.End, verificationResult.End - verificationResult.Start);
-          }
-
-          outputs[index] = output;
-
-          lock (outputs)
-          {
-            for (; nextPrintableIndex < stablePrioritizedImpls.Count() && outputs[nextPrintableIndex] != null; nextPrintableIndex++)
-            {
-              Console.Write(outputs[nextPrintableIndex].ToString());
-              Console.Out.Flush();
-            }
-          }
-
-          if (verificationResult.Outcome == VCGen.Outcome.Errors || CommandLineOptions.Clo.Trace)
-          {
-            Console.Out.Flush();
-          }
-
-          #endregion
+          VerifyImplementation(program, stats, er, requestId, extractLoopMappingInfo, stablePrioritizedImpls, taskIndex, outputCollector);
         });
-      }
-      catch (ProverException e)
-      {
-        printer.ErrorWriteLine(Console.Out, "Fatal Error: ProverException: {0}", e);
-        return PipelineOutcome.FatalError;
+        tasks[taskIndex] = t;
+        try
+        {
+          Task.WaitAll(new Task[] { t });
+        }
+        catch (AggregateException ae)
+        {
+          ae.Handle(e =>
+          {
+            var pe = e as ProverException;
+            if (pe != null)
+            {
+              printer.ErrorWriteLine(Console.Out, "Fatal Error: ProverException: {0}", e);
+              outcome = PipelineOutcome.FatalError;
+              return true;
+            }
+            return false;
+          });
+        }
       }
 
       cce.NonNull(CommandLineOptions.Clo.TheProverFactory).Close();
 
-      lock (outputs)
-      {
-        for (; nextPrintableIndex < stablePrioritizedImpls.Count() && nextPrintableIndex != null; nextPrintableIndex++)
-        {
-          Console.Write(outputs[nextPrintableIndex].ToString());
-          Console.Out.Flush();
-        }
-      }
+      outputCollector.WriteMoreOutput();
 
       #endregion
 
-      return PipelineOutcome.VerificationCompleted;
+      return outcome;
+    }
+
+
+    private static void VerifyImplementation(Program program, PipelineStatistics stats, ErrorReporterDelegate er, string requestId, Dictionary<string, Dictionary<string, Block>> extractLoopMappingInfo, Implementation[] stablePrioritizedImpls, int index, OutputCollector outputCollector)
+    {
+      Implementation impl = stablePrioritizedImpls[index];
+      VerificationResult verificationResult = null;
+      var output = new StringWriter();
+
+      printer.Inform(string.Format("\nVerifying {0} ...", impl.Name), output);
+
+      if (CommandLineOptions.Clo.VerifySnapshots)
+      {
+        verificationResult = Cache.Lookup(impl);
+      }
+
+      if (verificationResult != null)
+      {
+        if (CommandLineOptions.Clo.XmlSink != null)
+        {
+          CommandLineOptions.Clo.XmlSink.WriteStartMethod(impl.Name, verificationResult.Start);
+        }
+
+        printer.Inform(string.Format("Retrieving cached verification result for implementation {0}...", impl.Name), output);
+      }
+      else
+      {
+        #region Verify the implementation
+
+        verificationResult = new VerificationResult(requestId, impl.Checksum, impl.DependenciesChecksum);
+        verificationResult.ImplementationName = impl.Name;
+        verificationResult.ImplementationToken = impl.tok;
+
+        using (var vcgen = CreateVCGen(program))
+        {
+          verificationResult.ProofObligationCountBefore = vcgen.CumulativeAssertionCount;
+          verificationResult.Start = DateTime.UtcNow;
+
+          if (CommandLineOptions.Clo.XmlSink != null)
+          {
+            CommandLineOptions.Clo.XmlSink.WriteStartMethod(impl.Name, verificationResult.Start);
+          }
+          try
+          {
+            if (CommandLineOptions.Clo.inferLeastForUnsat != null)
+            {
+              var svcgen = vcgen as VC.StratifiedVCGen;
+              Contract.Assert(svcgen != null);
+              var ss = new HashSet<string>();
+              foreach (var tdecl in program.TopLevelDeclarations)
+              {
+                var c = tdecl as Constant;
+                if (c == null || !c.Name.StartsWith(CommandLineOptions.Clo.inferLeastForUnsat)) continue;
+                ss.Add(c.Name);
+              }
+              verificationResult.Outcome = svcgen.FindLeastToVerify(impl, ref ss);
+              verificationResult.Errors = new List<Counterexample>();
+              output.WriteLine("Result: {0}", string.Join(" ", ss));
+            }
+            else
+            {
+              verificationResult.Outcome = vcgen.VerifyImplementation(impl, out verificationResult.Errors, requestId);
+              if (CommandLineOptions.Clo.ExtractLoops && verificationResult.Errors != null)
+              {
+                var vcg = vcgen as VCGen;
+                if (vcg != null)
+                {
+                  for (int i = 0; i < verificationResult.Errors.Count; i++)
+                  {
+                    verificationResult.Errors[i] = vcg.extractLoopTrace(verificationResult.Errors[i], impl.Name, program, extractLoopMappingInfo);
+                  }
+                }
+              }
+            }
+          }
+          catch (VCGenException e)
+          {
+            var errorInfo = errorInformationFactory.CreateErrorInformation(impl.tok, String.Format("{0} (encountered in implementation {1}).", e.Message, impl.Name), requestId, "Error");
+            errorInfo.BoogieErrorCode = "BP5010";
+            errorInfo.ImplementationName = impl.Name;
+            printer.WriteErrorInformation(errorInfo, output);
+            if (er != null)
+            {
+              lock (er)
+              {
+                er(errorInfo);
+              }
+            }
+            verificationResult.Errors = null;
+            verificationResult.Outcome = VCGen.Outcome.Inconclusive;
+          }
+          catch (UnexpectedProverOutputException upo)
+          {
+            printer.AdvisoryWriteLine("Advisory: {0} SKIPPED because of internal error: unexpected prover output: {1}", impl.Name, upo.Message);
+            verificationResult.Errors = null;
+            verificationResult.Outcome = VCGen.Outcome.Inconclusive;
+          }
+
+          verificationResult.ProofObligationCountAfter = vcgen.CumulativeAssertionCount;
+          verificationResult.End = DateTime.UtcNow;
+        }
+
+        #endregion
+
+        #region Cache the verification result
+
+        if (CommandLineOptions.Clo.VerifySnapshots && !string.IsNullOrEmpty(impl.Checksum))
+        {
+          Cache.Insert(impl.Id, verificationResult);
+        }
+
+        #endregion
+      }
+
+      #region Process the verification results and statistics
+
+      ProcessOutcome(verificationResult.Outcome, verificationResult.Errors, TimeIndication(verificationResult), stats, output, er, verificationResult.ImplementationName, verificationResult.ImplementationToken, verificationResult.RequestId);
+
+      ProcessErrors(verificationResult.Errors, verificationResult.Outcome, output, er, impl);
+
+      if (CommandLineOptions.Clo.XmlSink != null)
+      {
+        CommandLineOptions.Clo.XmlSink.WriteEndMethod(verificationResult.Outcome.ToString().ToLowerInvariant(), verificationResult.End, verificationResult.End - verificationResult.Start);
+      }
+
+      outputCollector.Add(index, output);
+
+      outputCollector.WriteMoreOutput();
+
+      if (verificationResult.Outcome == VCGen.Outcome.Errors || CommandLineOptions.Clo.Trace)
+      {
+        Console.Out.Flush();
+      }
+
+      #endregion
+    }
+
+
+    class OutputCollector
+    {
+      StringWriter[] outputs;
+
+      int nextPrintableIndex = 0;
+
+      public OutputCollector(Implementation[] implementations)
+      {
+        outputs = new StringWriter[implementations.Length];
+      }
+
+      public void WriteMoreOutput()
+      {
+        lock (outputs)
+        {
+          for (; nextPrintableIndex < outputs.Count() && outputs[nextPrintableIndex] != null; nextPrintableIndex++)
+          {
+            Console.Write(outputs[nextPrintableIndex].ToString());
+            Console.Out.Flush();
+          }
+        }
+      }
+
+      public void Add(int index, StringWriter output)
+      {
+        Contract.Requires(0 <= index && index < outputs.Length);
+        Contract.Requires(output != null);
+
+        lock (this)
+        {
+          outputs[index] = output;
+        }
+      }
     }
 
 
