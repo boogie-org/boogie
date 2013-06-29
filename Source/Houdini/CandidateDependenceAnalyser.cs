@@ -310,7 +310,7 @@ namespace Microsoft.Boogie {
       for (int i = 0; i < Components.Count(); i++) {
         Console.Write(i + ": ");
         DumpSCC(Components[i]);
-        Console.WriteLine("\n");
+        Console.WriteLine(); Console.WriteLine();
       }
 
       Console.WriteLine("Stages DAG");

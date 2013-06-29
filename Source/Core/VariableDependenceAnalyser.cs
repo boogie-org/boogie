@@ -210,7 +210,7 @@ namespace Microsoft.Boogie {
           Console.Write(v);
         }
       }
-      Console.WriteLine("\n");
+      Console.WriteLine(); Console.WriteLine();
     }
 
     public void Analyse() {

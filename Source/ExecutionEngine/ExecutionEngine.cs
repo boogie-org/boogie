@@ -821,7 +821,8 @@ namespace Microsoft.Boogie
       VerificationResult verificationResult = null;
       var output = new StringWriter();
 
-      printer.Inform(string.Format("\nVerifying {0} ...", impl.Name), output);
+      printer.Inform("", output);  // newline
+      printer.Inform(string.Format("Verifying {0} ...", impl.Name), output);
 
       if (CommandLineOptions.Clo.VerifySnapshots)
       {
