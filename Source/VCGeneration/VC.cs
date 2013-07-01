@@ -26,8 +26,8 @@ namespace VC {
     /// Constructor.  Initializes the theorem prover.
     /// </summary>
     [NotDelayed]
-    public VCGen(Program program, string/*?*/ logFilePath, bool appendLogFile)
-      : base(program)
+    public VCGen(Program program, string/*?*/ logFilePath, bool appendLogFile, List<Checker> checkers)
+      : base(program, checkers)
     {
       Contract.Requires(program != null);
       this.appendLogFile = appendLogFile;
@@ -291,7 +291,7 @@ namespace VC {
         ModelViewInfo mvInfo;
         parent.PassifyImpl(impl, out mvInfo);
         Hashtable label2Absy;
-        Checker ch = parent.FindCheckerFor(impl, CommandLineOptions.Clo.SmokeTimeout);
+        Checker ch = parent.FindCheckerFor(CommandLineOptions.Clo.SmokeTimeout);
         Contract.Assert(ch != null);
 
         var exprGen = ch.TheoremProver.Context.ExprGen;
@@ -315,6 +315,7 @@ namespace VC {
         ch.BeginCheck(cce.NonNull(impl.Name + "_smoke" + id++), vc, new ErrorHandler(label2Absy, this.callback));
         ch.ProverTask.Wait();
         ProverInterface.Outcome outcome = ch.ReadOutcome();
+        ch.GoBackToIdle();
         parent.CurrentLocalVariables = null;
 
         DateTime end = DateTime.UtcNow;
@@ -1192,7 +1193,7 @@ namespace VC {
 
         impl.Blocks = blocks;
 
-        checker = parent.FindCheckerFor(impl, timeout);
+        checker = parent.FindCheckerFor(timeout);
         Hashtable/*<int, Absy!>*/ label2absy = new Hashtable/*<int, Absy!>*/();
 
         ProverInterface tp = checker.TheoremProver;
@@ -1201,7 +1202,7 @@ namespace VC {
         bet.SetCodeExprConverter(
           new CodeExprConverter(
           delegate (CodeExpr codeExpr, Hashtable/*<Block, VCExprVar!>*/ blockVariables, List<VCExprLetBinding/*!*/> bindings) {
-            VCGen vcgen = new VCGen(new Program(), null, false);
+            VCGen vcgen = new VCGen(new Program(), null, false, parent.checkers);
             vcgen.variable2SequenceNumber = new Hashtable/*Variable -> int*/();
             vcgen.incarnationOriginMap = new Dictionary<Incarnation, Absy>();
             vcgen.CurrentLocalVariables = codeExpr.LocVars;
@@ -1506,6 +1507,8 @@ namespace VC {
             outcome = Outcome.Errors;
             break;
           }
+
+          s.Checker.GoBackToIdle();
 
           Contract.Assert( prover_failed || outcome == Outcome.Correct || outcome == Outcome.Errors || outcome == Outcome.Inconclusive);
         }
