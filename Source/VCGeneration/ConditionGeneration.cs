@@ -590,6 +590,7 @@ namespace VC {
       Contract.Requires(p != null && checkers != null && cce.NonNullElements(checkers));
       program = p;
       this.checkers = checkers;
+      Cores = 1;
     }
 
     /// <summary>
@@ -991,17 +992,21 @@ namespace VC {
             }
             else if (c.IsIdle || c.IsClosed)
             {
-              checkers.RemoveAt(i);
               if (c.IsIdle)
               {
-                c.Close();
+                c.Retarget(program, c.TheoremProver.Context, timeout);
+                return c;
+              }
+              else
+              {
+                checkers.RemoveAt(i);
               }
               continue;
             }
           }
         }
 
-        if (1 < checkers.Count)
+        if (Cores <= checkers.Count)
         {
           Monitor.Wait(checkers, 50);
           goto retry;
@@ -1671,6 +1676,8 @@ namespace VC {
         _disposed = true;
       }
     }
+
+    public int Cores { get; set; }
   }
 
   public class ModelViewInfo

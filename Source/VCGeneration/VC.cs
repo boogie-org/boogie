@@ -1430,7 +1430,7 @@ namespace VC {
 
       Outcome outcome = Outcome.Correct;
 
-      int cores = CommandLineOptions.Clo.VcsCores;
+      Cores = CommandLineOptions.Clo.VcsCores;
       Stack<Split> work = new Stack<Split>();
       List<Split> currently_running = new List<Split>();
       ResetPredecessors(impl.Blocks);
@@ -1451,7 +1451,7 @@ namespace VC {
         bool prover_failed = false;
         Split s;
 
-        if (work.Any() && currently_running.Count < cores) {
+        if (work.Any() && currently_running.Count < Cores) {
           s = work.Pop();
 
           if (first_round && max_splits > 1) {
@@ -1465,10 +1465,13 @@ namespace VC {
             callback.OnProgress("VCprove", no < 0 ? 0 : no, total, proven_cost / (remaining_cost + proven_cost));
 
             Contract.Assert(s.parent == this);
-            s.BeginCheck(callback, mvInfo, no, 
-              (keep_going && s.LastChance) ? CommandLineOptions.Clo.VcsFinalAssertTimeout :
-                keep_going ? CommandLineOptions.Clo.VcsKeepGoingTimeout :
-                             CommandLineOptions.Clo.ProverKillTime);
+            lock (program)
+            {
+              s.BeginCheck(callback, mvInfo, no,
+                (keep_going && s.LastChance) ? CommandLineOptions.Clo.VcsFinalAssertTimeout :
+                  keep_going ? CommandLineOptions.Clo.VcsKeepGoingTimeout :
+                               CommandLineOptions.Clo.ProverKillTime);
+            }
 
             no++;
 
@@ -1553,7 +1556,10 @@ namespace VC {
       }
 
       if (outcome == Outcome.Correct && smoke_tester != null) {
-        smoke_tester.Test();
+        lock (program)
+        {
+          smoke_tester.Test();
+        }
       }
 
       callback.OnProgress("done", 0, 0, 1.0);

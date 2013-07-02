@@ -176,10 +176,18 @@ namespace Microsoft.Boogie {
       this.gen = prover.VCExprGen;
     }
 
-    public void Retarget(Program prog, ProverContext ctx)
+    public void Retarget(Program prog, ProverContext ctx, int timeout = 0)
     {
         ctx.Clear();
         Setup(prog, ctx);
+        if (0 < timeout)
+        {
+          TheoremProver.SetTimeOut(timeout * 1000);
+        }
+        else
+        {
+          TheoremProver.SetTimeOut(0);
+        }
     }
 
     private static void Setup(Program prog, ProverContext ctx)
@@ -310,7 +318,7 @@ namespace Microsoft.Boogie {
       thmProver.BeginCheck(descriptiveName, vc, handler);
       //  gen.ClearSharedFormulas();    PR: don't know yet what to do with this guy
 
-      ProverTask = Task.Factory.StartNew(() => { WaitForOutput(null); }/* , TaskCreationOptions.LongRunning*/);
+      ProverTask = Task.Factory.StartNew(() => { WaitForOutput(null); } , TaskCreationOptions.LongRunning);
     }
 
     public ProverInterface.Outcome ReadOutcome() {

@@ -784,33 +784,36 @@ namespace Microsoft.Boogie
         var t = Task.Factory.StartNew(() =>
         {
           VerifyImplementation(program, stats, er, requestId, extractLoopMappingInfo, stablePrioritizedImpls, taskIndex, outputCollector, checkers);
-        });
+        }, TaskCreationOptions.LongRunning);
         tasks[taskIndex] = t;
-        try
-        {
-          Task.WaitAll(t);
-        }
-        catch (AggregateException ae)
-        {
-          ae.Handle(e =>
-          {
-            var pe = e as ProverException;
-            if (pe != null)
-            {
-              printer.ErrorWriteLine(Console.Out, "Fatal Error: ProverException: {0}", e);
-              outcome = PipelineOutcome.FatalError;
-              return true;
-            }
-            return false;
-          });
-        }
       }
-      lock (checkers)
+      try
       {
-        foreach (Checker checker in checkers)
+        Task.WaitAll(tasks);
+      }
+      catch (AggregateException ae)
+      {
+        ae.Handle(e =>
         {
-          Contract.Assert(checker != null);
-          checker.Close();
+          var pe = e as ProverException;
+          if (pe != null)
+          {
+            printer.ErrorWriteLine(Console.Out, "Fatal Error: ProverException: {0}", e);
+            outcome = PipelineOutcome.FatalError;
+            return true;
+          }
+          return false;
+        });
+      }
+      finally
+      {
+        lock (checkers)
+        {
+          foreach (Checker checker in checkers)
+          {
+            Contract.Assert(checker != null);
+            checker.Close();
+          }
         }
       }
 
