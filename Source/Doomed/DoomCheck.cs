@@ -121,6 +121,7 @@ void ObjectInvariant()
             
             try {
               outcome = m_Checker.ReadOutcome();
+              m_Checker.GoBackToIdle();
             } catch (UnexpectedProverOutputException e)
             {
               if (CommandLineOptions.Clo.TraceVerify) { 

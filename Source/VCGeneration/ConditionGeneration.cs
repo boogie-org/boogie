@@ -527,8 +527,8 @@ namespace VC {
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
       throw new NotImplementedException();
     }
-    public ConditionGenerationContracts(Program p)
-      : base(p) {
+    public ConditionGenerationContracts(Program p, List<Checker> checkers)
+      : base(p, checkers) {
     }
   }
 
@@ -570,7 +570,7 @@ namespace VC {
 
     public int CumulativeAssertionCount;  // for statistics
 
-    protected readonly List<Checker>/*!>!*/ checkers = new List<Checker>();
+    protected readonly List<Checker>/*!>!*/ checkers;
 
     private bool _disposed;
 
@@ -586,9 +586,11 @@ namespace VC {
 
     public static List<Model> errorModelList;
 
-    public ConditionGeneration(Program p) {
-      Contract.Requires(p != null);
+    public ConditionGeneration(Program p, List<Checker> checkers) {
+      Contract.Requires(p != null && checkers != null && cce.NonNullElements(checkers));
       program = p;
+      this.checkers = checkers;
+      Cores = 1;
     }
 
     /// <summary>
@@ -970,42 +972,61 @@ namespace VC {
     #endregion
 
 
-    protected Checker FindCheckerFor(Implementation impl, int timeout)
+    protected Checker FindCheckerFor(int timeout)
     {
       Contract.Ensures(Contract.Result<Checker>() != null);
 
-      // Look for existing checker.
-      for (int i = 0; i < checkers.Count; i++)
+      lock (checkers)
       {
-        if (checkers[i].Closed)
+      retry:
+        // Look for existing checker.
+        for (int i = 0; i < checkers.Count; i++)
         {
-          checkers.RemoveAt(i);
-          continue;
+          var c = checkers.ElementAt(i);
+          lock (c)
+          {
+            if (c.WillingToHandle(timeout, program))
+            {
+              c.GetReady();
+              return c;
+            }
+            else if (c.IsIdle || c.IsClosed)
+            {
+              if (c.IsIdle)
+              {
+                c.Retarget(program, c.TheoremProver.Context, timeout);
+                return c;
+              }
+              else
+              {
+                checkers.RemoveAt(i);
+              }
+              continue;
+            }
+          }
         }
-        if (!checkers[i].IsBusy && checkers[i].WillingToHandle(impl, timeout))
-        {
-          return checkers[i];
-        }
-      }
 
-      // Create a new checker.
-      string log = logFilePath;
-      if (log != null && !log.Contains("@PROC@") && checkers.Count > 0)
-      {
-        log = log + "." + checkers.Count;
-      }
-      Checker ch = new Checker(this, program, log, appendLogFile, timeout);
-      Contract.Assert(ch != null);
-      checkers.Add(ch);
-      return ch;
+        if (Cores <= checkers.Count)
+        {
+          Monitor.Wait(checkers, 50);
+          goto retry;
+        }
+
+        // Create a new checker.
+        string log = logFilePath;
+        if (log != null && !log.Contains("@PROC@") && checkers.Count > 0)
+        {
+          log = log + "." + checkers.Count;
+        }
+        Checker ch = new Checker(this, program, log, appendLogFile, timeout);
+        ch.GetReady();
+        checkers.Add(ch);
+        return ch;
+      }      
     }
 
 
     virtual public void Close() {
-      foreach (Checker checker in checkers) {
-        Contract.Assert(checker != null);
-        checker.Close();
-      }
     }
 
 
@@ -1655,6 +1676,8 @@ namespace VC {
         _disposed = true;
       }
     }
+
+    public int Cores { get; set; }
   }
 
   public class ModelViewInfo

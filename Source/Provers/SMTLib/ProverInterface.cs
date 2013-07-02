@@ -1179,7 +1179,7 @@ namespace Microsoft.Boogie.SMTLib
 
     public override void SetTimeOut(int ms)
     {
-        SendThisVC("(set-option " + Z3.SetTimeoutOption() + "  " + ms.ToString() + ")\n");
+        SendThisVC("(set-option :" + Z3.SetTimeoutOption() + " " + ms.ToString() + ")");
     }
 
     public override object Evaluate(VCExpr expr)

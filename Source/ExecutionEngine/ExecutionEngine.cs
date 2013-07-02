@@ -776,32 +776,44 @@ namespace Microsoft.Boogie
 
       var outputCollector = new OutputCollector(stablePrioritizedImpls);
       var outcome = PipelineOutcome.VerificationCompleted;
+      var checkers = new List<Checker>();
       var tasks = new Task[stablePrioritizedImpls.Length];
       for (int i = 0; i < stablePrioritizedImpls.Length && outcome != PipelineOutcome.FatalError; i++)
       {
         var taskIndex = i;
         var t = Task.Factory.StartNew(() =>
         {
-          VerifyImplementation(program, stats, er, requestId, extractLoopMappingInfo, stablePrioritizedImpls, taskIndex, outputCollector);
-        });
+          VerifyImplementation(program, stats, er, requestId, extractLoopMappingInfo, stablePrioritizedImpls, taskIndex, outputCollector, checkers);
+        }, TaskCreationOptions.LongRunning);
         tasks[taskIndex] = t;
-        try
+      }
+      try
+      {
+        Task.WaitAll(tasks);
+      }
+      catch (AggregateException ae)
+      {
+        ae.Handle(e =>
         {
-          Task.WaitAll(new Task[] { t });
-        }
-        catch (AggregateException ae)
-        {
-          ae.Handle(e =>
+          var pe = e as ProverException;
+          if (pe != null)
           {
-            var pe = e as ProverException;
-            if (pe != null)
-            {
-              printer.ErrorWriteLine(Console.Out, "Fatal Error: ProverException: {0}", e);
-              outcome = PipelineOutcome.FatalError;
-              return true;
-            }
-            return false;
-          });
+            printer.ErrorWriteLine(Console.Out, "Fatal Error: ProverException: {0}", e);
+            outcome = PipelineOutcome.FatalError;
+            return true;
+          }
+          return false;
+        });
+      }
+      finally
+      {
+        lock (checkers)
+        {
+          foreach (Checker checker in checkers)
+          {
+            Contract.Assert(checker != null);
+            checker.Close();
+          }
         }
       }
 
@@ -815,13 +827,14 @@ namespace Microsoft.Boogie
     }
 
 
-    private static void VerifyImplementation(Program program, PipelineStatistics stats, ErrorReporterDelegate er, string requestId, Dictionary<string, Dictionary<string, Block>> extractLoopMappingInfo, Implementation[] stablePrioritizedImpls, int index, OutputCollector outputCollector)
+    private static void VerifyImplementation(Program program, PipelineStatistics stats, ErrorReporterDelegate er, string requestId, Dictionary<string, Dictionary<string, Block>> extractLoopMappingInfo, Implementation[] stablePrioritizedImpls, int index, OutputCollector outputCollector, List<Checker> checkers)
     {
       Implementation impl = stablePrioritizedImpls[index];
       VerificationResult verificationResult = null;
       var output = new StringWriter();
 
-      printer.Inform(string.Format("\nVerifying {0} ...", impl.Name), output);
+      printer.Inform("", output);  // newline
+      printer.Inform(string.Format("Verifying {0} ...", impl.Name), output);
 
       if (CommandLineOptions.Clo.VerifySnapshots)
       {
@@ -845,7 +858,7 @@ namespace Microsoft.Boogie
         verificationResult.ImplementationName = impl.Name;
         verificationResult.ImplementationToken = impl.tok;
 
-        using (var vcgen = CreateVCGen(program))
+        using (var vcgen = CreateVCGen(program, checkers))
         {
           verificationResult.ProofObligationCountBefore = vcgen.CumulativeAssertionCount;
           verificationResult.Start = DateTime.UtcNow;
@@ -986,24 +999,24 @@ namespace Microsoft.Boogie
     }
 
 
-    private static ConditionGeneration CreateVCGen(Program program)
+    private static ConditionGeneration CreateVCGen(Program program, List<Checker> checkers)
     {
       ConditionGeneration vcgen = null;
       if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Doomed)
       {
-        vcgen = new DCGen(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend);
+        vcgen = new DCGen(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend, checkers);
       }
       else if (CommandLineOptions.Clo.FixedPointEngine != null)
       {
-        vcgen = new FixedpointVC(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend);
+        vcgen = new FixedpointVC(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend, checkers);
       }
       else if (CommandLineOptions.Clo.StratifiedInlining > 0)
       {
-        vcgen = new StratifiedVCGen(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend);
+        vcgen = new StratifiedVCGen(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend, checkers);
       }
       else
       {
-        vcgen = new VCGen(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend);
+        vcgen = new VCGen(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend, checkers);
       }
       return vcgen;
     }

@@ -34,8 +34,8 @@ namespace VC {
     /// <summary>
     /// Constructor.  Initializes the theorem prover.
     /// </summary>
-    public DCGen(Program program, string/*?*/ logFilePath, bool appendLogFile)
-      : base(program) {
+    public DCGen(Program program, string/*?*/ logFilePath, bool appendLogFile, List<Checker> checkers)
+      : base(program, checkers) {
       Contract.Requires(program != null);
 
       this.appendLogFile = appendLogFile;
@@ -115,7 +115,7 @@ namespace VC {
 
       //Impl2Dot(impl, String.Format("c:/dot/{0}_fin.dot", impl.Name));
     
-      Checker checker = FindCheckerFor(impl, 1000);
+      Checker checker = FindCheckerFor(1000);
       Contract.Assert(checker != null);
       int assertionCount;
       DoomCheck dc = new DoomCheck(impl, this.exitBlock, checker, m_UncheckableBlocks, out assertionCount);
@@ -173,7 +173,7 @@ namespace VC {
         if (restartTP)
         {
             checker.Close();
-            checker = FindCheckerFor(impl, 1000);
+            checker = FindCheckerFor(1000);
             dc.RespawnChecker(impl, checker);
             dc.ErrorHandler = new DoomErrorHandler(dc.Label2Absy, callback);
         }

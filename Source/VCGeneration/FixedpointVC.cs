@@ -78,8 +78,8 @@ namespace Microsoft.Boogie
 
         private static Checker old_checker = null;
 
-        public FixedpointVC( Program _program, string/*?*/ logFilePath, bool appendLogFile)
-            : base(_program, logFilePath, appendLogFile) 
+        public FixedpointVC( Program _program, string/*?*/ logFilePath, bool appendLogFile, List<Checker> checkers)
+            : base(_program, logFilePath, appendLogFile, checkers) 
         {
             switch (CommandLineOptions.Clo.FixedPointMode)
             {
