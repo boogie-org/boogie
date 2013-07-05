@@ -1506,6 +1506,14 @@ namespace Microsoft.Boogie {
        trigger annotations. Internally it works by adding {:nopats ...}
        annotations to quantifiers.
 
+     {:identity}
+     {:identity true}
+       If the function has 1 argument and the use of it has type X->X for
+       some X, then the abstract interpreter will treat the function as an
+       identity function.  Note, the abstract interpreter trusts the
+       attribute--it does not try to verify that the function really is an
+       identity function.
+
   ---- On variables ----------------------------------------------------------
 
      {:existential true}

@@ -857,6 +857,14 @@ namespace Microsoft.Boogie.AbstractInterpretation
             Lo = Node.Min(lo0, lo1, false);
             Hi = Node.Max(hi0, hi1, false);
           }
+        } else if (node.Fun is FunctionCall) {
+          var call = (FunctionCall)node.Fun;
+          // See if this is an identity function, which we do by checking: that the function has
+          // exactly one argument and the function has been marked by the user with the attribute {:identity}
+          bool claimsToBeIdentity = false;
+          if (call.ArgumentCount == 1 && call.Func.CheckBooleanAttribute("identity", ref claimsToBeIdentity) && claimsToBeIdentity && node.Args[0].Type.Equals(node.Type)) {
+            VisitExpr(node.Args[0]);
+          }
         }
         return node;
       }
