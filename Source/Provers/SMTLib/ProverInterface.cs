@@ -395,6 +395,15 @@ namespace Microsoft.Boogie.SMTLib
       FlushLogFile();
     }
 
+    public void Reset()
+    {
+      SendThisVC("(reset)");
+      common.Clear();
+      AxiomsAreSetup = false;
+      ctx.Clear();
+      DeclCollector.Reset();
+    }
+
     private RPFP.Node SExprToCex(SExpr resp, ErrorHandler handler, 
                                  Dictionary<int,Dictionary<string,string>> varSubst)
     {

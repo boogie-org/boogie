@@ -63,12 +63,14 @@ namespace Microsoft.Boogie.SMTLib
 
 
       try {
-        prover = Process.Start(psi);
+        prover = new Process();
+        prover.StartInfo = psi;        
         prover.ErrorDataReceived += prover_ErrorDataReceived;
-        prover.OutputDataReceived += prover_OutputDataReceived;        
-        prover.BeginErrorReadLine();
-        prover.BeginOutputReadLine();
+        prover.OutputDataReceived += prover_OutputDataReceived;
+        prover.Start();
         toProver = prover.StandardInput;
+        prover.BeginErrorReadLine();
+        prover.BeginOutputReadLine();        
       } catch (System.ComponentModel.Win32Exception e) {
         throw new ProverException(string.Format("Unable to start the process {0}: {1}", psi.FileName, e.Message));
       }

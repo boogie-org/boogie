@@ -101,6 +101,19 @@ void ObjectInvariant()
         _KnownLBL.Push(new HashSet<string>());
     }
 
+    public void Reset()
+    {
+      _KnownFunctions.Clear();
+      _KnownVariables.Clear();
+      _KnownTypes.Clear();
+      _KnownStoreFunctions.Clear();
+      _KnownSelectFunctions.Clear();
+      _KnownLBL.Clear();
+      AllDecls.Clear();
+      IncDecls.Clear();
+      InitializeKnownDecls();
+    }
+
     public void Push()
     {
         Contract.Assert(_KnownFunctions.Count > 0);

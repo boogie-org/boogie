@@ -160,10 +160,10 @@ namespace Microsoft.Boogie.SMTLib
                 proc.StartInfo.UseShellExecute = false;
                 proc.StartInfo.CreateNoWindow = true;
                 proc.Start();
+                string answer = proc.StandardOutput.ReadToEnd();
                 proc.WaitForExit();
                 if (proc.ExitCode == 0)
-                {
-                    string answer = proc.StandardOutput.ReadToEnd();
+                {                    
                     var firstdot = answer.IndexOf('.');
                     if (firstdot >= 0)
                     {

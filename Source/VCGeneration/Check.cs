@@ -188,6 +188,7 @@ namespace Microsoft.Boogie {
         {
           TheoremProver.SetTimeOut(0);
         }
+        TheoremProver.Reset();
     }
 
     private static void Setup(Program prog, ProverContext ctx)
@@ -463,6 +464,10 @@ namespace Microsoft.Boogie {
       Contract.Requires(comment != null);
     }
     public virtual void Close() {
+    }
+
+    public void Reset()
+    {
     }
 
     /// <summary>
