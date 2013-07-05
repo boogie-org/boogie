@@ -395,7 +395,13 @@ namespace Microsoft.Boogie.SMTLib
       FlushLogFile();
     }
 
-    public void Reset()
+    public override void Reset()
+    {
+      SendThisVC("(reset)");
+      Process.Send(common.ToString());
+    }
+
+    public override void FullReset()
     {
       SendThisVC("(reset)");
       common.Clear();
