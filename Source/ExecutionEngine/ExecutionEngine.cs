@@ -363,6 +363,15 @@ namespace Microsoft.Boogie
     {
       Contract.Requires(cce.NonNullElements(fileNames));
 
+      if (CommandLineOptions.Clo.VerifySeparately && 1 < fileNames.Count)
+      {
+        foreach (var f in fileNames)
+        {
+          ProcessFiles(new List<string> { f }, lookForSnapshots);
+        }
+        return;
+      }
+
       if (CommandLineOptions.Clo.VerifySnapshots && lookForSnapshots)
       {
         var snapshotsByVersion = new List<List<string>>();

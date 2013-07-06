@@ -364,6 +364,7 @@ namespace Microsoft.Boogie {
     }
 
     public bool VerifySnapshots;
+    public bool VerifySeparately;
     public string PrintFile = null;
     public int PrintUnstructured = 0;
     public int DoomStrategy = -1;
@@ -1321,7 +1322,8 @@ namespace Microsoft.Boogie {
               ps.CheckBooleanFlag("useProverEvaluate", ref UseProverEvaluate) ||
               ps.CheckBooleanFlag("nonUniformUnfolding", ref NonUniformUnfolding) ||
               ps.CheckBooleanFlag("deterministicExtractLoops", ref DeterministicExtractLoops) ||
-              ps.CheckBooleanFlag("verifySnapshots", ref VerifySnapshots)
+              ps.CheckBooleanFlag("verifySnapshots", ref VerifySnapshots) ||
+              ps.CheckBooleanFlag("verifySeparately", ref VerifySeparately)
               ) {
             // one of the boolean flags matched
             return true;
@@ -1641,6 +1643,8 @@ namespace Microsoft.Boogie {
   /verifySnapshots
                 verify several program snapshots (named <filename>.v0.bpl
                 to <filename>.vN.bpl) using verification result caching
+  /verifySeparately
+                verify each input program separately
   /removeEmptyBlocks:<c>
                 0 - do not remove empty blocks during VC generation
                 1 - remove empty blocks (default)
