@@ -349,7 +349,7 @@ namespace Microsoft.Boogie.Houdini {
 
       Inline();
 
-      this.vcgen = new VCGen(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend);
+      this.vcgen = new VCGen(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend, new List<Checker>());
       this.proverInterface = ProverInterface.CreateProver(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend, CommandLineOptions.Clo.ProverKillTime);
 
       vcgenFailures = new HashSet<Implementation>();
@@ -543,6 +543,28 @@ namespace Microsoft.Boogie.Houdini {
         }
 
         if (MatchCandidate(consequent, candidates, out candidateConstant))
+          return true;
+      }
+      return false;
+    }
+
+    public static bool GetCandidateWithoutConstant(Expr boogieExpr, IEnumerable<string> candidates, out string candidateConstant, out Expr exprWithoutConstant) {
+      candidateConstant = null;
+      exprWithoutConstant = null;
+      NAryExpr e = boogieExpr as NAryExpr;
+      if (e != null && e.Fun is BinaryOperator && ((BinaryOperator)e.Fun).Op == BinaryOperator.Opcode.Imp) {
+        Expr antecedent = e.Args[0];
+        Expr consequent = e.Args[1];
+
+        IdentifierExpr id = antecedent as IdentifierExpr;
+        if (id != null && id.Decl is Constant && candidates.Contains(id.Decl.Name)) {
+          candidateConstant = id.Decl.Name;
+          exprWithoutConstant = consequent;
+          return true;
+        }
+
+        if (GetCandidateWithoutConstant(consequent, candidates, out candidateConstant, out exprWithoutConstant))
+          exprWithoutConstant = Expr.Imp(antecedent, exprWithoutConstant);
           return true;
       }
       return false;

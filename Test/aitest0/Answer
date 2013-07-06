@@ -124,5 +124,45 @@ Execution trace:
     Intervals.bpl(87,5): anon0
     Intervals.bpl(88,3): loop_head
     Intervals.bpl(91,3): after_loop
+Intervals.bpl(138,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Intervals.bpl(133,5): anon0
+    Intervals.bpl(134,3): anon3_LoopHead
+    Intervals.bpl(134,3): anon3_LoopDone
+Intervals.bpl(149,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Intervals.bpl(144,5): anon0
+    Intervals.bpl(145,3): anon3_LoopHead
+    Intervals.bpl(145,3): anon3_LoopDone
+Intervals.bpl(200,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Intervals.bpl(190,8): anon0
+    Intervals.bpl(191,3): anon4_LoopHead
+    Intervals.bpl(191,3): anon4_LoopDone
+Intervals.bpl(238,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Intervals.bpl(233,5): anon0
+    Intervals.bpl(234,3): anon3_LoopHead
+    Intervals.bpl(234,3): anon3_LoopDone
+Intervals.bpl(250,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Intervals.bpl(244,8): anon0
+    Intervals.bpl(245,3): anon3_LoopHead
+    Intervals.bpl(245,3): anon3_LoopDone
+Intervals.bpl(261,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Intervals.bpl(256,5): anon0
+    Intervals.bpl(257,3): anon3_LoopHead
+    Intervals.bpl(257,3): anon3_LoopDone
+Intervals.bpl(283,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Intervals.bpl(278,5): anon0
+    Intervals.bpl(279,3): anon3_LoopHead
+    Intervals.bpl(279,3): anon3_LoopDone
+Intervals.bpl(305,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Intervals.bpl(300,5): anon0
+    Intervals.bpl(301,3): anon3_LoopHead
+    Intervals.bpl(301,3): anon3_LoopDone
 
-Boogie program verifier finished with 5 verified, 3 errors
+Boogie program verifier finished with 15 verified, 11 errors

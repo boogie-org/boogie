@@ -4,6 +4,7 @@
 //
 //-----------------------------------------------------------------------------
 using System;
+using System.Linq;
 using System.Collections;
 using System.Collections.Generic;
 using System.Threading;
@@ -14,8 +15,18 @@ using System.Diagnostics.Contracts;
 using Microsoft.Boogie.AbstractInterpretation;
 using Microsoft.Boogie.VCExprAST;
 using Microsoft.Basetypes;
+using System.Threading.Tasks;
 
 namespace Microsoft.Boogie {
+
+  enum CheckerStatus
+  {
+    Idle,
+    Ready,
+    Busy,
+    Closed
+  }
+
   /// <summary>
   /// Interface to the theorem prover specialized to Boogie.
   ///
@@ -27,7 +38,6 @@ namespace Microsoft.Boogie {
     void ObjectInvariant() {
       Contract.Invariant(gen != null);
       Contract.Invariant(thmProver != null);
-      Contract.Invariant(ProverDone != null);
     }
 
     private readonly VCExpressionGenerator gen;
@@ -37,18 +47,32 @@ namespace Microsoft.Boogie {
 
     // state for the async interface
     private volatile ProverInterface.Outcome outcome;
-    private volatile bool busy;
     private volatile bool hasOutput;
     private volatile UnexpectedProverOutputException outputExn;
     private DateTime proverStart;
     private TimeSpan proverRunTime;
     private volatile ProverInterface.ErrorHandler handler;
-    private volatile bool closed;
+    private volatile CheckerStatus status;
+    public readonly Program Program;
 
-    public readonly AutoResetEvent ProverDone = new AutoResetEvent(false);
+    public void GetReady()
+    {
+      Contract.Requires(status == CheckerStatus.Idle);
 
-    public bool WillingToHandle(Implementation impl, int timeout) {
-      return !closed && timeout == this.timeout;
+      status = CheckerStatus.Ready;
+    }
+
+    public void GoBackToIdle()
+    {
+      Contract.Requires(IsBusy);
+
+      status = CheckerStatus.Idle;
+    }
+
+    public Task ProverTask { get; set; }
+
+    public bool WillingToHandle(int timeout, Program prog) {
+      return status == CheckerStatus.Idle && timeout == this.timeout && (prog == null || Program == prog);
     }
 
     public VCExpressionGenerator VCExprGen {
@@ -106,6 +130,7 @@ namespace Microsoft.Boogie {
       Contract.Requires(vcgen != null);
       Contract.Requires(prog != null);
       this.timeout = timeout;
+      this.Program = prog;
 
       ProverOptions options = cce.NonNull(CommandLineOptions.Clo.TheProverFactory).BlankProverOptions();
 
@@ -137,40 +162,7 @@ namespace Microsoft.Boogie {
       } else {
         if (ctx == null) ctx = (ProverContext)CommandLineOptions.Clo.TheProverFactory.NewProverContext(options);
 
-        // set up the context
-        foreach (Declaration decl in prog.TopLevelDeclarations) {
-          Contract.Assert(decl != null);
-          TypeCtorDecl t = decl as TypeCtorDecl;
-          if (t != null) {
-            ctx.DeclareType(t, null);
-          }
-        }
-        foreach (Declaration decl in prog.TopLevelDeclarations) {
-          Contract.Assert(decl != null);
-          Constant c = decl as Constant;
-          if (c != null) {
-            ctx.DeclareConstant(c, c.Unique, null);
-          } else {
-            Function f = decl as Function;
-            if (f != null) {
-              ctx.DeclareFunction(f, null);
-            }
-          }
-        }
-        foreach (Declaration decl in prog.TopLevelDeclarations) {
-          Contract.Assert(decl != null);
-          Axiom ax = decl as Axiom;
-          if (ax != null) {
-            ctx.AddAxiom(ax, null);
-          }
-        }
-        foreach (Declaration decl in prog.TopLevelDeclarations) {
-          Contract.Assert(decl != null);
-          GlobalVariable v = decl as GlobalVariable;
-          if (v != null) {
-            ctx.DeclareGlobalVariable(v, null);
-          }
-        }
+        Setup(prog, ctx);
 
         // we first generate the prover and then store a clone of the
         // context in the cache, so that the prover can setup stuff in
@@ -184,13 +176,61 @@ namespace Microsoft.Boogie {
       this.gen = prover.VCExprGen;
     }
 
+    public void Retarget(Program prog, ProverContext ctx, int timeout = 0)
+    {
+        ctx.Clear();
+        Setup(prog, ctx);
+        if (0 < timeout)
+        {
+          TheoremProver.SetTimeOut(timeout * 1000);
+        }
+        else
+        {
+          TheoremProver.SetTimeOut(0);
+        }
+        TheoremProver.FullReset();
+    }
+
+    private static void Setup(Program prog, ProverContext ctx)
+    {
+      // set up the context
+      foreach (Declaration decl in prog.TopLevelDeclarations.ToList())
+      {
+        Contract.Assert(decl != null);
+        var typeDecl = decl as TypeCtorDecl;
+        var constDecl = decl as Constant;
+        var funDecl = decl as Function;
+        var axiomDecl = decl as Axiom;
+        var glVarDecl = decl as GlobalVariable;
+        if (typeDecl != null)
+        {
+          ctx.DeclareType(typeDecl, null);
+        }
+        else if (constDecl != null)
+        {
+          ctx.DeclareConstant(constDecl, constDecl.Unique, null);
+        }
+        else if (funDecl != null)
+        {
+          ctx.DeclareFunction(funDecl, null);
+        }
+        else if (axiomDecl != null)
+        {
+          ctx.AddAxiom(axiomDecl, null);
+        }
+        else if (glVarDecl != null)
+        {
+          ctx.DeclareGlobalVariable(glVarDecl, null);
+        }
+      }
+    }
 
     /// <summary>
     /// Clean-up.
     /// </summary>
-    public void Close() {
-      this.closed = true;
+    public void Close() {      
       thmProver.Close();
+      status = CheckerStatus.Closed;
     }
 
     /// <summary>
@@ -205,13 +245,21 @@ namespace Microsoft.Boogie {
 
     public bool IsBusy {
       get {
-        return busy;
+        return status == CheckerStatus.Busy;
       }
     }
 
-    public bool Closed {
+    public bool IsClosed {
       get {
-        return closed;
+        return status == CheckerStatus.Closed;
+      }
+    }
+
+    public bool IsIdle
+    {
+      get
+      {
+        return status == CheckerStatus.Idle;
       }
     }
 
@@ -252,39 +300,35 @@ namespace Microsoft.Boogie {
           break;
       }
 
-      Contract.Assert(busy);
       hasOutput = true;
       proverRunTime = DateTime.UtcNow - proverStart;
-
-      ProverDone.Set();
     }
 
     public void BeginCheck(string descriptiveName, VCExpr vc, ProverInterface.ErrorHandler handler) {
       Contract.Requires(descriptiveName != null);
       Contract.Requires(vc != null);
       Contract.Requires(handler != null);
+      Contract.Requires(status == CheckerStatus.Ready);
 
-      Contract.Requires(!IsBusy);
-      Contract.Assert(!busy);
-      busy = true;
+      status = CheckerStatus.Busy;
       hasOutput = false;
       outputExn = null;
       this.handler = handler;
 
+      thmProver.Reset();
       proverStart = DateTime.UtcNow;
       thmProver.BeginCheck(descriptiveName, vc, handler);
       //  gen.ClearSharedFormulas();    PR: don't know yet what to do with this guy
 
-      ThreadPool.QueueUserWorkItem(WaitForOutput);
+      ProverTask = Task.Factory.StartNew(() => { WaitForOutput(null); } , TaskCreationOptions.LongRunning);
     }
 
     public ProverInterface.Outcome ReadOutcome() {
-
       Contract.Requires(IsBusy);
       Contract.Requires(HasOutput);
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
+
       hasOutput = false;
-      busy = false;
 
       if (outputExn != null) {
         throw outputExn;
@@ -423,6 +467,10 @@ namespace Microsoft.Boogie {
     public virtual void Close() {
     }
 
+    public abstract void Reset();
+
+    public abstract void FullReset();
+
     /// <summary>
     /// MSchaef: Allows to Push a VCExpression as Axiom on the prover stack (beta)
     /// for now it is only implemented by ProcessTheoremProver and still requires some
@@ -539,6 +587,16 @@ namespace Microsoft.Boogie {
     public override Outcome CheckOutcome(ErrorHandler handler) {
       //Contract.Requires(handler != null);
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
+      throw new NotImplementedException();
+    }
+
+    public override void Reset()
+    {
+      throw new NotImplementedException();
+    }
+
+    public override void FullReset()
+    {
       throw new NotImplementedException();
     }
   }

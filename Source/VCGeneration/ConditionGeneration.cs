@@ -4,6 +4,7 @@
 //
 //-----------------------------------------------------------------------------
 using System;
+using System.Linq;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -147,20 +148,26 @@ namespace Microsoft.Boogie {
         return naryExpr.Fun.FunctionName;
     }
 
-    public void Print(int indent) {
+    public void Print(int indent, TextWriter tw, Action<Block> blockAction = null) {
       int numBlock = -1;
       string ind = new string(' ', indent);
       foreach (Block b in Trace) {
         Contract.Assert(b != null);
         numBlock++;
         if (b.tok == null) {
-          Console.WriteLine("{0}<intermediate block>", ind);
+          tw.WriteLine("{0}<intermediate block>", ind);
         } else {
           // for ErrorTrace == 1 restrict the output;
           // do not print tokens with -17:-4 as their location because they have been
           // introduced in the translation and do not give any useful feedback to the user
           if (!(CommandLineOptions.Clo.ErrorTrace == 1 && b.tok.line == -17 && b.tok.col == -4)) {
-            Console.WriteLine("{4}{0}({1},{2}): {3}", b.tok.filename, b.tok.line, b.tok.col, b.Label, ind);
+            if (blockAction != null)
+            {
+                blockAction(b);
+            }
+
+            tw.WriteLine("{4}{0}({1},{2}): {3}", b.tok.filename, b.tok.line, b.tok.col, b.Label, ind);
+
             for (int numInstr = 0; numInstr < b.Cmds.Length; numInstr++)
             {
                 var loc = new TraceLocation(numBlock, numInstr);
@@ -172,13 +179,13 @@ namespace Microsoft.Boogie {
                     {
                         Contract.Assert(calleeCounterexamples[loc].args.Count == 1);
                         var arg = calleeCounterexamples[loc].args[0];
-                        Console.WriteLine("{0}value = {1}", ind, arg.ToString());
+                        tw.WriteLine("{0}value = {1}", ind, arg.ToString());
                     }
                     else
                     {
-                        Console.WriteLine("{1}Inlined call to procedure {0} begins", calleeName, ind);
-                        calleeCounterexamples[loc].counterexample.Print(indent + 4);
-                        Console.WriteLine("{1}Inlined call to procedure {0} ends", calleeName, ind);
+                        tw.WriteLine("{1}Inlined call to procedure {0} begins", calleeName, ind);
+                        calleeCounterexamples[loc].counterexample.Print(indent + 4, tw);
+                        tw.WriteLine("{1}Inlined call to procedure {0} ends", calleeName, ind);
                     }
                 }
             }
@@ -191,7 +198,7 @@ namespace Microsoft.Boogie {
 
     public bool ModelHasStatesAlready = false;
 
-    public void PrintModel()
+    public void PrintModel(TextWriter tw)
     {
       var filename = CommandLineOptions.Clo.ModelViewFile;
       if (Model == null || filename == null || CommandLineOptions.Clo.StratifiedInlining > 0) return;
@@ -199,8 +206,8 @@ namespace Microsoft.Boogie {
       var m = ModelHasStatesAlready ? Model : this.GetModelWithStates();
 
       if (filename == "-") {
-        m.Write(Console.Out);
-        Console.Out.Flush();
+        m.Write(tw);
+        tw.Flush();
       } else {
         using (var wr = new StreamWriter(filename, !firstModelFile)) {
           firstModelFile = false;
@@ -520,13 +527,13 @@ namespace VC {
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
       throw new NotImplementedException();
     }
-    public ConditionGenerationContracts(Program p)
-      : base(p) {
+    public ConditionGenerationContracts(Program p, List<Checker> checkers)
+      : base(p, checkers) {
     }
   }
 
   [ContractClass(typeof(ConditionGenerationContracts))]
-  public abstract class ConditionGeneration {
+  public abstract class ConditionGeneration : IDisposable {
     protected internal object CheckerCommonState;
 
     public enum Outcome {
@@ -563,7 +570,10 @@ namespace VC {
 
     public int CumulativeAssertionCount;  // for statistics
 
-    protected readonly List<Checker>/*!>!*/ checkers = new List<Checker>();
+    protected readonly List<Checker>/*!>!*/ checkers;
+
+    private bool _disposed;
+
     protected VariableSeq CurrentLocalVariables = null;
 
     // shared across each implementation; created anew for each implementation
@@ -576,9 +586,11 @@ namespace VC {
 
     public static List<Model> errorModelList;
 
-    public ConditionGeneration(Program p) {
-      Contract.Requires(p != null);
+    public ConditionGeneration(Program p, List<Checker> checkers) {
+      Contract.Requires(p != null && checkers != null && cce.NonNullElements(checkers));
       program = p;
+      this.checkers = checkers;
+      Cores = 1;
     }
 
     /// <summary>
@@ -960,35 +972,61 @@ namespace VC {
     #endregion
 
 
-    protected Checker FindCheckerFor(Implementation impl, int timeout) {
+    protected Checker FindCheckerFor(int timeout)
+    {
       Contract.Ensures(Contract.Result<Checker>() != null);
 
-      int i = 0;
-      while (i < checkers.Count) {
-        if (checkers[i].Closed) {
-          checkers.RemoveAt(i);
-          continue;
-        } else {
-          if (!checkers[i].IsBusy && checkers[i].WillingToHandle(impl, timeout))
-            return checkers[i];
+      lock (checkers)
+      {
+      retry:
+        // Look for existing checker.
+        for (int i = 0; i < checkers.Count; i++)
+        {
+          var c = checkers.ElementAt(i);
+          lock (c)
+          {
+            if (c.WillingToHandle(timeout, program))
+            {
+              c.GetReady();
+              return c;
+            }
+            else if (c.IsIdle || c.IsClosed)
+            {
+              if (c.IsIdle)
+              {
+                c.Retarget(program, c.TheoremProver.Context, timeout);
+                return c;
+              }
+              else
+              {
+                checkers.RemoveAt(i);
+              }
+              continue;
+            }
+          }
         }
-        ++i;
-      }
-      string log = logFilePath;
-      if (log != null && !log.Contains("@PROC@") && checkers.Count > 0)
-        log = log + "." + checkers.Count;
-      Checker ch = new Checker(this, program, log, appendLogFile, timeout);
-      Contract.Assert(ch != null);
-      checkers.Add(ch);
-      return ch;
+
+        if (Cores <= checkers.Count)
+        {
+          Monitor.Wait(checkers, 50);
+          goto retry;
+        }
+
+        // Create a new checker.
+        string log = logFilePath;
+        if (log != null && !log.Contains("@PROC@") && checkers.Count > 0)
+        {
+          log = log + "." + checkers.Count;
+        }
+        Checker ch = new Checker(this, program, log, appendLogFile, timeout);
+        ch.GetReady();
+        checkers.Add(ch);
+        return ch;
+      }      
     }
 
 
     virtual public void Close() {
-      foreach (Checker checker in checkers) {
-        Contract.Assert(checker != null);
-        checker.Close();
-      }
     }
 
 
@@ -1620,6 +1658,26 @@ namespace VC {
       #endregion
     }
 
+
+    public void Dispose()
+    {
+      Dispose(true);
+      GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+      if (!_disposed)
+      {
+        if (disposing)
+        {
+          Close();
+        }
+        _disposed = true;
+      }
+    }
+
+    public int Cores { get; set; }
   }
 
   public class ModelViewInfo
@@ -1637,10 +1695,10 @@ namespace VC {
       Contract.Requires(impl != null);
 
       // global variables
-      foreach (Declaration d in program.TopLevelDeclarations) {
-        if (d is Constant) continue;
-        if (d is Variable) {
-          AllVariables.Add((Variable)d);
+      foreach (Variable v in program.TopLevelDeclarations.OfType<Variable>()) {
+        if (!(v is Constant))
+        {
+          AllVariables.Add(v);
         }
       }
       // implementation parameters

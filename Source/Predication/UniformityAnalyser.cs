@@ -232,6 +232,17 @@ namespace Microsoft.Boogie
                       SetNonUniform(Impl.Name, v.Name);
                   }
                 }
+
+                foreach (Block b in Impl.Blocks) {
+                  foreach (Cmd c in b.Cmds) {
+                    CallCmd callCmd = c as CallCmd;
+                    if (callCmd != null) {
+                      if (IsUniform(callCmd.callee)) {
+                        SetNonUniform(callCmd.callee);
+                      }
+                    }
+                  }
+                }
                         
                 return;
             }
@@ -243,6 +254,12 @@ namespace Microsoft.Boogie
             ctrlDep.TransitiveClosure();
 
             var nonUniformBlockSet = new HashSet<Block>();
+            /*// If procedure is non-uniform, so are all of its blocks
+            if (!uniformityInfo[Impl.Name].Key) {
+              foreach (var block in Impl.Blocks) {
+                nonUniformBlockSet.Add(block);
+              }
+            }*/
             nonUniformBlocks[Impl.Name] = nonUniformBlockSet;
 
             bool changed;
@@ -314,32 +331,32 @@ namespace Microsoft.Boogie
                     DeclWithFormals Callee = GetProcedure(callCmd.callee);
                     Debug.Assert(Callee != null);
 
-                        if (!ControlFlowIsUniform)
+                    if (!ControlFlowIsUniform)
+                    {
+                        if (IsUniform(callCmd.callee))
                         {
-                            if (IsUniform(callCmd.callee))
-                            {
-                                SetNonUniform(callCmd.callee);
-                            }
+                            SetNonUniform(callCmd.callee);
                         }
+                    }
                     for (int i = 0; i < Callee.InParams.Length; i++)
-                        {
+                    {
                         if (IsUniform(callCmd.callee, Callee.InParams[i].Name)
-                                && !IsUniform(impl.Name, callCmd.Ins[i]))
-                            {
+                            && !IsUniform(impl.Name, callCmd.Ins[i]))
+                        {
                             SetNonUniform(callCmd.callee, Callee.InParams[i].Name);
-                            }
                         }
+                    }
 
                     for (int i = 0; i < Callee.OutParams.Length; i++)
+                    {
+                        if (IsUniform(impl.Name, callCmd.Outs[i].Name)
+                        && !IsUniform(callCmd.callee, Callee.OutParams[i].Name))
                         {
-                            if (IsUniform(impl.Name, callCmd.Outs[i].Name)
-                            && !IsUniform(callCmd.callee, Callee.OutParams[i].Name))
-                            {
-                                SetNonUniform(impl.Name, callCmd.Outs[i].Name);
-                            }
+                            SetNonUniform(impl.Name, callCmd.Outs[i].Name);
                         }
-
                     }
+
+                }
                 else if (c is AssumeCmd)
                 {
                     var ac = (AssumeCmd)c;

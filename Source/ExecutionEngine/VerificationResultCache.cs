@@ -91,25 +91,6 @@ namespace Microsoft.Boogie
   }
 
 
-  public class VerificationResult
-  {
-    public readonly string Checksum;
-    public readonly string DependeciesChecksum;
-    public readonly string RequestId;
-    public readonly ConditionGeneration.Outcome Outcome;
-    public readonly List<Counterexample> Errors;
-
-    public VerificationResult(string requestId, string checksum, string depsChecksum, ConditionGeneration.Outcome outcome, List<Counterexample> errors)
-    {
-      Checksum = checksum;
-      DependeciesChecksum = depsChecksum;
-      Outcome = outcome;
-      Errors = errors;
-      RequestId = requestId;
-    }
-  }
-
-
   public class VerificationResultCache
   {
     private readonly ConcurrentDictionary<string, VerificationResult> Cache = new ConcurrentDictionary<string, VerificationResult>();
@@ -129,6 +110,19 @@ namespace Microsoft.Boogie
       VerificationResult result;
       var success = Cache.TryGetValue(key, out result);
       return success ? result : null;
+    }
+
+
+    public VerificationResult Lookup(Implementation impl)
+    {
+      if (!NeedsToBeVerified(impl))
+      {
+        return Lookup(impl.Id);
+      }
+      else
+      {
+        return null;
+      }
     }
 
 
@@ -153,16 +147,29 @@ namespace Microsoft.Boogie
 
     public bool NeedsToBeVerified(Implementation impl)
     {
-      if (!Cache.ContainsKey(impl.Id)
-          || Cache[impl.Id].Checksum != impl.Checksum)
-      {
-        return true;
-      }
-
-      var depsChecksum = DependencyCollector.DependenciesChecksum(impl);
-      return depsChecksum == null || Cache[impl.Id].DependeciesChecksum != depsChecksum;
+      return VerificationPriority(impl) < int.MaxValue;
     }
 
+
+    public int VerificationPriority(Implementation impl)
+    {
+      if (!Cache.ContainsKey(impl.Id))
+      {
+        return 3;  // high priority (has been never verified before)
+      }
+      else if (Cache[impl.Id].Checksum != impl.Checksum)
+      {
+        return 2;  // medium priority (old snapshot has been verified before)
+      }
+      else if (impl.DependenciesChecksum == null || Cache[impl.Id].DependeciesChecksum != impl.DependenciesChecksum)
+      {
+        return 1;  // low priority (the same snapshot has been verified before, but a callee has changed)
+      }
+      else
+      {
+        return int.MaxValue;  // skip verification (highest priority to get them done as soon as possible)
+      }
+    }
   }
 
 }

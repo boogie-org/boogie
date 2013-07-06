@@ -395,6 +395,21 @@ namespace Microsoft.Boogie.SMTLib
       FlushLogFile();
     }
 
+    public override void Reset()
+    {
+      SendThisVC("(reset)");
+      Process.Send(common.ToString());
+    }
+
+    public override void FullReset()
+    {
+      SendThisVC("(reset)");
+      common.Clear();
+      AxiomsAreSetup = false;
+      ctx.Clear();
+      DeclCollector.Reset();
+    }
+
     private RPFP.Node SExprToCex(SExpr resp, ErrorHandler handler, 
                                  Dictionary<int,Dictionary<string,string>> varSubst)
     {
@@ -423,6 +438,12 @@ namespace Microsoft.Boogie.SMTLib
             var labs = line[4];
             var refs = line[5];
             var predName = conseq.Name;
+            {
+                string spacer = "@@"; // Hack! UniqueNamer is adding these and I can't stop it!
+                int pos = predName.LastIndexOf(spacer);
+                if (pos >= 0)
+                    predName = predName.Substring(0, pos);
+            }
             RPFP.Node node = null;
             if (!pmap.TryGetValue(predName, out node))
             {
@@ -461,7 +482,7 @@ namespace Microsoft.Boogie.SMTLib
                 return null;
             }
             int ruleNum = Convert.ToInt32(rule.Name.Substring(5)) - 1;
-            if(ruleNum < 0 || ruleNum > rpfp.edges.Count)
+            if (ruleNum < 0 || ruleNum > rpfp.edges.Count)
             {
                 HandleProverError("bad rule name from prover: " + refs.ToString());
                 return null;
@@ -489,7 +510,7 @@ namespace Microsoft.Boogie.SMTLib
             varSubst[e.number] = dict;
             foreach (var s in subst.Arguments)
             {
-                if(s.Name != "=" || s.Arguments.Length != 2)
+                if (s.Name != "=" || s.Arguments.Length != 2)
                 {
                     HandleProverError("bad equation from prover: " + s.ToString());
                     return null;
@@ -573,6 +594,7 @@ namespace Microsoft.Boogie.SMTLib
             currentLogFile.Write(common.ToString());
         }
 
+        Push();
         SendThisVC("(fixedpoint-push)");
         foreach (var node in rpfp.nodes)
         {
@@ -588,7 +610,15 @@ namespace Microsoft.Boogie.SMTLib
             string ruleString = "(rule " + QuantifiedVCExpr2String(rpfp.GetRule(edge)) + "\n)";
             ruleStrings.Add(ruleString);
         }
-        string queryString = "(query " + QuantifiedVCExpr2String(rpfp.GetQuery()) + "\n   :engine duality\n  :print-certificate true\n)";
+        string queryString = "(query " + QuantifiedVCExpr2String(rpfp.GetQuery()) + "\n   :engine duality\n  :print-certificate true\n";
+       
+#if true
+        if (CommandLineOptions.Clo.StratifiedInlining != 0)
+            queryString += "    :stratified-inlining true\n";
+        if (CommandLineOptions.Clo.RecursionBound > 0)
+            queryString += "    :recursion-bound " + Convert.ToString(CommandLineOptions.Clo.RecursionBound) + "\n";
+#endif
+        queryString += ")";
         LineariserOptions.Default.LabelsBelowQuantifiers = false;
         FlushAxioms();
 
@@ -672,6 +702,8 @@ namespace Microsoft.Boogie.SMTLib
 #endif
         }
         SendThisVC("(fixedpoint-pop)");
+        Pop();
+        AxiomsAreSetup = false;
         return result;
     }
 
@@ -806,7 +838,7 @@ namespace Microsoft.Boogie.SMTLib
             if (!options.MultiTraces)
               posLabels = Enumerable.Empty<string>();
             var conjuncts = posLabels.Select(s => "(not " + lbl(s) + ")").Concat(negLabels.Select(lbl)).ToArray();
-            var expr = conjuncts.Length == 1 ? conjuncts[0] : ("(or " + conjuncts.Concat(" ") + ")");
+            string expr = conjuncts.Length == 1 ? conjuncts[0] : ("(or " + conjuncts.Concat(" ") + ")"); ;
             if (!conjuncts.Any())
             {
               expr = "false";
@@ -983,7 +1015,7 @@ namespace Microsoft.Boogie.SMTLib
                 result = Outcome.OutOfMemory;
                 Process.NeedsRestart = true;
                 break;
-              case "timeout":
+                case "timeout": case "canceled":
                 currentErrorHandler.OnResourceExceeded("timeout");
                 result = Outcome.TimeOut;
                 break;
@@ -1178,7 +1210,7 @@ namespace Microsoft.Boogie.SMTLib
 
     public override void SetTimeOut(int ms)
     {
-        SendThisVC("(set-option :SOFT_TIMEOUT " + ms.ToString() + ")\n");
+        SendThisVC("(set-option :" + Z3.SetTimeoutOption() + " " + ms.ToString() + ")");
     }
 
     public override object Evaluate(VCExpr expr)

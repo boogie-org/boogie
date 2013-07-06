@@ -979,21 +979,43 @@ namespace Microsoft.Boogie {
       }
     }
 
-    // Look for {:name true} or {:name false} in list of attributes. Return result in 'result'
-    // (which is not touched if there is no attribute specified).
-    //
-    // Returns false is there was an error processing the flag, true otherwise.
+    /// <summary>
+    /// If the declaration has an attribute {:name} or {:name true}, then set "result" to "true" and return "true".
+    /// If the declaration has an attribute {:name false}, then set "result" to "false" and return "true".
+    /// Otherwise, return "false" and leave "result" unchanged (which gives the caller an easy way to indicate
+    /// a default value if the attribute is not mentioned).
+    /// If there is more than one attribute called :name, then the last attribute rules.
+    /// </summary>
     public bool CheckBooleanAttribute(string name, ref bool result) {
       Contract.Requires(name != null);
-      Expr expr = FindExprAttribute(name);
-      if (expr != null) {
-        if (expr is LiteralExpr && ((LiteralExpr)expr).isBool) {
-          result = ((LiteralExpr)expr).asBool;
-        } else {
-          return false;
+      var kv = FindAttribute(name);
+      if (kv != null) {
+        if (kv.Params.Count == 0) {
+          result = true;
+          return true;
+        } else if (kv.Params.Count == 1) {
+          var lit = kv.Params[0] as LiteralExpr;
+          if (lit != null && lit.isBool) {
+            result = lit.asBool;
+            return true;
+          }
         }
       }
-      return true;
+      return false;
+    }
+
+    /// <summary>
+    /// Find and return the last occurrence of an attribute with the name "name", if any.  If none, return null.
+    /// </summary>
+    public QKeyValue FindAttribute(string name) {
+      Contract.Requires(name != null);
+      QKeyValue res = null;
+      for (QKeyValue kv = this.Attributes; kv != null; kv = kv.Next) {
+        if (kv.Key == name) {
+          res = kv;
+        }
+      }
+      return res;
     }
 
     // Look for {:name expr} in list of attributes.
@@ -1801,6 +1823,8 @@ namespace Microsoft.Boogie {
         return FindStringAttribute("checksum");
       }
     }
+
+    public string DependenciesChecksum { get; set; }
 
     protected void EmitSignature(TokenTextWriter stream, bool shortRet) {
       Contract.Requires(stream != null);

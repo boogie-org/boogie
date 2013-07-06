@@ -272,7 +272,10 @@ namespace Microsoft.Boogie.VCExprAST {
       // global variables, local variables, incarnations, etc. are
       // bound the first time they occur
       if (!UnboundVariables.TryGetValue(boogieVar, out res)) {
-        res = new VCExprVar(boogieVar.Name, boogieVar.TypedIdent.Type);
+        if (boogieVar is Constant)
+          res = new VCExprConstant(boogieVar.Name, boogieVar.TypedIdent.Type);
+        else 
+          res = new VCExprVar(boogieVar.Name, boogieVar.TypedIdent.Type);
         UnboundVariables.Bind(boogieVar, res);
       }
       return cce.NonNull(res);

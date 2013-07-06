@@ -309,8 +309,8 @@ namespace VC {
     public Dictionary<string, StratifiedInliningInfo> implName2StratifiedInliningInfo;
     public ProverInterface prover;
 
-    public StratifiedVCGenBase(Program program, string/*?*/ logFilePath, bool appendLogFile)
-      : base(program, logFilePath, appendLogFile) {
+    public StratifiedVCGenBase(Program program, string/*?*/ logFilePath, bool appendLogFile, List<Checker> checkers)
+      : base(program, logFilePath, appendLogFile, checkers) {
       implName2StratifiedInliningInfo = new Dictionary<string, StratifiedInliningInfo>();
       prover = ProverInterface.CreateProver(program, logFilePath, appendLogFile, CommandLineOptions.Clo.ProverKillTime);
       foreach (Declaration decl in program.TopLevelDeclarations) {
@@ -510,8 +510,8 @@ namespace VC {
 
     public StratifiedVCGen(bool usePrevCallTree, Dictionary<string, int> prevCallTree, 
                            HashSet<string> procsToSkip, Dictionary<string, int> extraRecBound,
-                           Program program, string/*?*/ logFilePath, bool appendLogFile) 
-    : this(program, logFilePath, appendLogFile)
+                           Program program, string/*?*/ logFilePath, bool appendLogFile, List<Checker> checkers) 
+    : this(program, logFilePath, appendLogFile, checkers)
     {
       this.procsToSkip = new HashSet<string>(procsToSkip);
       this.extraRecBound = new Dictionary<string, int>(extraRecBound);
@@ -525,8 +525,8 @@ namespace VC {
       }
     }
 
-    public StratifiedVCGen(Program program, string/*?*/ logFilePath, bool appendLogFile)
-      : base(program, logFilePath, appendLogFile) {
+    public StratifiedVCGen(Program program, string/*?*/ logFilePath, bool appendLogFile, List<Checker> checkers)
+      : base(program, logFilePath, appendLogFile, checkers) {
       PersistCallTree = false;
       useSummary = false;
       procsThatReachedRecBound = new HashSet<string>();

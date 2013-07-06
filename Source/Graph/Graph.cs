@@ -866,25 +866,56 @@ namespace Microsoft.Boogie.GraphUtil {
       s.AppendLine("}");
       return s.ToString();
     }
+
+    public ICollection<Node> ComputeReachable() {
+      ICollection<Node> result = new HashSet<Node>();
+      Stack<Node> stack = new Stack<Node>();
+      stack.Push(source);
+      while(!(stack.Count() == 0)) {
+        Node n = stack.Pop();
+        result.Add(n);
+        foreach(var m in Successors(n)) {
+          if(!result.Contains(m)) {
+            stack.Push(m);
+          }
+        }
+      }
+      return result;
+    }
+
   } // end: class Graph
 
   public static class GraphAlgorithms
   {
 
+
       public static Graph<Node> Dual<Node>(this Graph<Node> g, Node dummySource)
       {
           var exits = g.Nodes.Where(n => g.Successors(n).Count() == 0).ToList();
+          Node source;
           if (exits.Count == 0)
-              return null;
+              exits.Add(dummySource);
           var dual = new Graph<Node>(new HashSet<Tuple<Node, Node>>(g.Edges.Select(e => new Tuple<Node, Node>(e.Item2, e.Item1))));
           if (exits.Count == 1)
+          {
               dual.AddSource(exits[0]);
+              source = exits[0];
+          }
           else
           {
               dual.AddSource(dummySource);
+              source = dummySource;
               foreach (var exit in exits)
                   dual.AddEdge(dummySource, exit);
           }
+
+          #region Dual graph may not be connected, so add an edge from the dual graph's soure node to any unreachable node
+          foreach (var n in dual.Nodes.Where(Item => !dual.ComputeReachable().Contains(Item)))
+          {
+              dual.AddEdge(source, n);
+          }
+          #endregion
+
           return dual;
       }
 

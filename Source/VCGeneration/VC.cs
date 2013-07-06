@@ -18,6 +18,7 @@ using Microsoft.Boogie.VCExprAST;
 
 namespace VC {
   using Bpl = Microsoft.Boogie;
+  using System.Threading.Tasks;
 
   public class VCGen : ConditionGeneration {
       private const bool _print_time = false;
@@ -25,8 +26,8 @@ namespace VC {
     /// Constructor.  Initializes the theorem prover.
     /// </summary>
     [NotDelayed]
-    public VCGen(Program program, string/*?*/ logFilePath, bool appendLogFile)
-      : base(program)
+    public VCGen(Program program, string/*?*/ logFilePath, bool appendLogFile, List<Checker> checkers)
+      : base(program, checkers)
     {
       Contract.Requires(program != null);
       this.appendLogFile = appendLogFile;
@@ -290,7 +291,7 @@ namespace VC {
         ModelViewInfo mvInfo;
         parent.PassifyImpl(impl, out mvInfo);
         Hashtable label2Absy;
-        Checker ch = parent.FindCheckerFor(impl, CommandLineOptions.Clo.SmokeTimeout);
+        Checker ch = parent.FindCheckerFor(CommandLineOptions.Clo.SmokeTimeout);
         Contract.Assert(ch != null);
 
         var exprGen = ch.TheoremProver.Context.ExprGen;
@@ -312,8 +313,9 @@ namespace VC {
           Emit();
         }
         ch.BeginCheck(cce.NonNull(impl.Name + "_smoke" + id++), vc, new ErrorHandler(label2Absy, this.callback));
-        ch.ProverDone.WaitOne();
+        ch.ProverTask.Wait();
         ProverInterface.Outcome outcome = ch.ReadOutcome();
+        ch.GoBackToIdle();
         parent.CurrentLocalVariables = null;
 
         DateTime end = DateTime.UtcNow;
@@ -1135,10 +1137,10 @@ namespace VC {
         }
       }
 
-      public WaitHandle ProverDone {
+      public Task ProverTask {
         get {
           Contract.Assert(checker != null);
-          return checker.ProverDone;
+          return checker.ProverTask;
         }
       }
 
@@ -1191,7 +1193,7 @@ namespace VC {
 
         impl.Blocks = blocks;
 
-        checker = parent.FindCheckerFor(impl, timeout);
+        checker = parent.FindCheckerFor(timeout);
         Hashtable/*<int, Absy!>*/ label2absy = new Hashtable/*<int, Absy!>*/();
 
         ProverInterface tp = checker.TheoremProver;
@@ -1200,7 +1202,7 @@ namespace VC {
         bet.SetCodeExprConverter(
           new CodeExprConverter(
           delegate (CodeExpr codeExpr, Hashtable/*<Block, VCExprVar!>*/ blockVariables, List<VCExprLetBinding/*!*/> bindings) {
-            VCGen vcgen = new VCGen(new Program(), null, false);
+            VCGen vcgen = new VCGen(new Program(), null, false, parent.checkers);
             vcgen.variable2SequenceNumber = new Hashtable/*Variable -> int*/();
             vcgen.incarnationOriginMap = new Dictionary<Incarnation, Absy>();
             vcgen.CurrentLocalVariables = codeExpr.LocVars;
@@ -1410,7 +1412,11 @@ namespace VC {
       }
 
       ModelViewInfo mvInfo;
-      Hashtable/*TransferCmd->ReturnCmd*/ gotoCmdOrigins = PassifyImpl(impl, out mvInfo);
+      Hashtable/*TransferCmd->ReturnCmd*/ gotoCmdOrigins;
+      lock (program)
+      {
+        gotoCmdOrigins = PassifyImpl(impl, out mvInfo);
+      }
 
       double max_vc_cost = CommandLineOptions.Clo.VcsMaxCost;
       int tmp_max_vc_cost = -1, max_splits = CommandLineOptions.Clo.VcsMaxSplits, 
@@ -1424,7 +1430,7 @@ namespace VC {
 
       Outcome outcome = Outcome.Correct;
 
-      int cores = CommandLineOptions.Clo.VcsCores;
+      Cores = CommandLineOptions.Clo.VcsCores;
       Stack<Split> work = new Stack<Split>();
       List<Split> currently_running = new List<Split>();
       ResetPredecessors(impl.Blocks);
@@ -1441,11 +1447,11 @@ namespace VC {
         remaining_cost = work.Peek().Cost;
       }
 
-      while (work.Count > 0 || currently_running.Count > 0) {
+      while (work.Any() || currently_running.Any()) {
         bool prover_failed = false;
         Split s;
 
-        if (work.Count > 0 && currently_running.Count < cores) {
+        if (work.Any() && currently_running.Count < Cores) {
           s = work.Pop();
 
           if (first_round && max_splits > 1) {
@@ -1459,21 +1465,22 @@ namespace VC {
             callback.OnProgress("VCprove", no < 0 ? 0 : no, total, proven_cost / (remaining_cost + proven_cost));
 
             Contract.Assert(s.parent == this);
-            s.BeginCheck(callback, mvInfo, no, 
-              (keep_going && s.LastChance) ? CommandLineOptions.Clo.VcsFinalAssertTimeout :
-                keep_going ? CommandLineOptions.Clo.VcsKeepGoingTimeout :
-                             CommandLineOptions.Clo.ProverKillTime);
+            lock (program)
+            {
+              s.BeginCheck(callback, mvInfo, no,
+                (keep_going && s.LastChance) ? CommandLineOptions.Clo.VcsFinalAssertTimeout :
+                  keep_going ? CommandLineOptions.Clo.VcsKeepGoingTimeout :
+                               CommandLineOptions.Clo.ProverKillTime);
+            }
 
             no++;
 
             currently_running.Add(s);
           }
         } else {
-          WaitHandle[] handles = new WaitHandle[currently_running.Count];
-          for (int i = 0; i < currently_running.Count; ++i) {
-            handles[i] = currently_running[i].ProverDone;
-          }
-          int index = WaitHandle.WaitAny(handles);
+          // Wait for one split to terminate.
+          var tasks = currently_running.Select(splt => splt.ProverTask).ToArray();
+          int index = Task.WaitAny(tasks);          
           s = currently_running[index];
           currently_running.RemoveAt(index);
 
@@ -1503,6 +1510,8 @@ namespace VC {
             outcome = Outcome.Errors;
             break;
           }
+
+          s.Checker.GoBackToIdle();
 
           Contract.Assert( prover_failed || outcome == Outcome.Correct || outcome == Outcome.Errors || outcome == Outcome.Inconclusive);
         }
@@ -1547,7 +1556,10 @@ namespace VC {
       }
 
       if (outcome == Outcome.Correct && smoke_tester != null) {
-        smoke_tester.Test();
+        lock (program)
+        {
+          smoke_tester.Test();
+        }
       }
 
       callback.OnProgress("done", 0, 0, 1.0);

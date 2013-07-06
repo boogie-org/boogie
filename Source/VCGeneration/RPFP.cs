@@ -159,7 +159,7 @@ namespace Microsoft.Boogie
             public Edge map;
             public HashSet<string> labels;
             internal Term dual;
-            internal Dictionary<Term,Term> valuation;
+            internal TermDict<Term> valuation;
         }
 
         
@@ -263,7 +263,7 @@ namespace Microsoft.Boogie
         public Term Eval(Edge e, Term t)
         {
             if (e.valuation == null)
-                e.valuation = new Dictionary<Term, Term>();
+                e.valuation = new TermDict< Term>();
             if (e.valuation.ContainsKey(t))
                 return e.valuation[t];
             return null; // TODO
@@ -275,7 +275,7 @@ namespace Microsoft.Boogie
         public void SetValue(Edge e, Term variable, Term value)
         {
             if (e.valuation == null)
-                e.valuation = new Dictionary<Term, Term>(); 
+                e.valuation = new TermDict< Term>(); 
             e.valuation.Add(variable, value);
         }
 
@@ -369,8 +369,8 @@ namespace Microsoft.Boogie
         // Collect the relational paremeters
 
         Dictionary<FuncDecl, Node> relationToNode = new Dictionary<FuncDecl, Node>();
-        
-        private Term CollectParamsRec(Dictionary<Term, Term> memo, Term t, List<FuncDecl> parms, List<RPFP.Node> nodes)
+
+        private Term CollectParamsRec(TermDict<Term> memo, Term t, List<FuncDecl> parms, List<RPFP.Node> nodes, Dictionary<Term, Term> done)
         {
             Term res;
             if (memo.TryGetValue(t, out res))
@@ -381,12 +381,18 @@ namespace Microsoft.Boogie
                 Node node;
                 if (relationToNode.TryGetValue(f, out node))
                 {
-                    f = SuffixFuncDecl(t, parms.Count);
-                    parms.Add(f);
-                    nodes.Add(node);
+                    if (done.ContainsKey(t))
+                        res = done[t];
+                    else
+                    {
+                        f = SuffixFuncDecl(t, parms.Count);
+                        parms.Add(f);
+                        nodes.Add(node);
+                        done.Add(t,res); // don't count same expression twice!
+                    }
                 }
                 var args = t.GetAppArgs();
-                args = args.Select(x => CollectParamsRec(memo, x, parms, nodes)).ToArray();
+                args = args.Select(x => CollectParamsRec(memo, x, parms, nodes, done)).ToArray();
                 res = ctx.CloneApp(t, args);
             } // TODO: handle quantifiers
             else
@@ -399,7 +405,7 @@ namespace Microsoft.Boogie
         {
             // TODO: is this right?
             // return t.IsFunctionApp() && t.GetAppArgs().Length == 0;
-            return t is VCExprVar;
+            return t is VCExprVar && !(t is VCExprConstant);
         }
 
         private Edge GetEdgeFromClause(Term t, FuncDecl failName)
@@ -428,8 +434,9 @@ namespace Microsoft.Boogie
                 }
             var relParams = new List<FuncDecl>();
             var nodeParams = new List<RPFP.Node>();
-            var memo = new Dictionary<Term, Term>();
-            body = CollectParamsRec(memo, body, relParams, nodeParams);
+            var memo = new TermDict< Term>();
+            var done = new Dictionary<Term, Term>(); // note this hashes on equality, not reference!
+            body = CollectParamsRec(memo, body, relParams, nodeParams,done);
             Transformer F = CreateTransformer(relParams.ToArray(), _IndParams, body);
             Node parent = relationToNode[Name];
             return CreateEdge(parent, F, nodeParams.ToArray());
@@ -504,7 +511,7 @@ namespace Microsoft.Boogie
             return query;
         }
 
-        private void CollectVariables(Dictionary<Term, bool> memo, Term t, List<Term> vars)
+        private void CollectVariables(TermDict< bool> memo, Term t, List<Term> vars)
         {
             if (memo.ContainsKey(t))
                 return;
@@ -520,13 +527,13 @@ namespace Microsoft.Boogie
 
         private Term BindVariables(Term t, bool universal = true)
         {
-            Dictionary<Term, bool> memo = new Dictionary<Term,bool>();
+            TermDict< bool> memo = new TermDict<bool>();
             List<Term> vars = new List<Term>();
             CollectVariables(memo,t,vars);
             return universal ? ctx.MkForall(vars.ToArray(), t) : ctx.MkExists(vars.ToArray(), t);
         }
 
-        private Term SubstPredsRec(Dictionary<Term, Term> memo, Dictionary<FuncDecl,FuncDecl> subst, Term t)
+        private Term SubstPredsRec(TermDict< Term> memo, Dictionary<FuncDecl,FuncDecl> subst, Term t)
         {
             Term res;
             if (memo.TryGetValue(t, out res))
@@ -554,7 +561,7 @@ namespace Microsoft.Boogie
 
         private Term SubstPreds(Dictionary<FuncDecl, FuncDecl> subst, Term t)
         {
-            Dictionary<Term, Term> memo = new Dictionary<Term, Term>();
+            TermDict< Term> memo = new TermDict< Term>();
             return SubstPredsRec(memo, subst, t);
         }
 

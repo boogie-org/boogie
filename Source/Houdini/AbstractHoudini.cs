@@ -98,7 +98,7 @@ namespace Microsoft.Boogie.Houdini {
 
             Inline();
 
-            this.vcgen = new VCGen(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend);
+            this.vcgen = new VCGen(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend, new List<Checker>());
             this.prover = ProverInterface.CreateProver(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend, -1);
 
             this.proverTime = TimeSpan.Zero;
@@ -402,12 +402,14 @@ namespace Microsoft.Boogie.Houdini {
 
         private Model.Element getValue(VCExpr arg, Model model)
         {
-            
+
+
             if (arg is VCExprLiteral)
             {
                 //return model.GetElement(arg.ToString());
                 return model.MkElement(arg.ToString());
             }
+
             else if (arg is VCExprVar)
             {
                 var el = model.TryGetFunc(prover.Context.Lookup(arg as VCExprVar));
@@ -427,19 +429,27 @@ namespace Microsoft.Boogie.Houdini {
                         return null;
                 }
             }
+            else if (arg is VCExprNAry && (arg as VCExprNAry).Op is VCExprBvOp)
+            {
+                // support for BV constants
+                var bvc = (arg as VCExprNAry)[0] as VCExprLiteral;
+                if (bvc != null)
+                {
+                    var ret = model.TryMkElement(bvc.ToString() + arg.Type.ToString());
+                    if (ret != null && (ret is Model.BitVector)) return ret;
+                }
+            }
+
+            var val = prover.Evaluate(arg);
+            if (val is int || val is bool || val is Microsoft.Basetypes.BigNum)
+            {
+                return model.MkElement(val.ToString());
+            }
             else
             {
-                var val = prover.Evaluate(arg);
-                if (val is int || val is bool || val is Microsoft.Basetypes.BigNum)
-                {
-                    return model.MkElement(val.ToString());
-                }
-                else
-                {
-                    Debug.Assert(false);
-                }
-                return null;
+                Debug.Assert(false);
             }
+            return null;
         }
 
         // Remove functions AbsHoudiniConstant from the expressions and substitute them with "true"
@@ -625,9 +635,11 @@ namespace Microsoft.Boogie.Houdini {
             // the right thing.
             foreach (var tup in fv.functionsUsed)
             {
-                //var tt = prover.Context.BoogieExprTranslator.Translate(tup.Item3);
-                //tt = prover.VCExprGen.Or(VCExpressionGenerator.True, tt);
-                //prover.Assert(tt, true);
+                // Ignore ones with bound varibles
+                if (tup.Item2.InParams.Count > 0) continue;
+                var tt = prover.Context.BoogieExprTranslator.Translate(tup.Item3);
+                tt = prover.VCExprGen.Or(VCExpressionGenerator.True, tt);
+                prover.Assert(tt, true);
             }
         }
 
@@ -1443,6 +1455,279 @@ namespace Microsoft.Boogie.Houdini {
         }
     }
 
+    // foo(x) = x < 2^j for some j <= 16
+    public class PowDomain : IAbstractDomain
+    {
+        enum Val { FALSE, NEITHER, TRUE };
+        Val tlevel;
+        bool isBottom { get { return tlevel == Val.FALSE; } }
+        bool isTop { get { return tlevel == Val.TRUE; } }
+
+        readonly int Max = 16;
+
+        int upper; // <= Max
+
+        private PowDomain(Val tlevel) :
+            this(tlevel, 0) { }
+
+        private PowDomain(Val tlevel, int upper)
+        {
+            this.tlevel = tlevel;
+            this.upper = upper;
+        }
+
+        public static IAbstractDomain GetBottom()
+        {
+            return new PowDomain(Val.FALSE) as IAbstractDomain;
+        }
+
+        IAbstractDomain IAbstractDomain.Bottom()
+        {
+            return GetBottom();
+        }
+
+        IAbstractDomain IAbstractDomain.Join(List<Model.Element> state)
+        {
+            if (isTop) return this;
+            
+            int v = 0;
+            if (state[0] is Model.BitVector)
+                v = (state[0] as Model.BitVector).AsInt();
+            else if (state[0] is Model.Integer)
+                v = (state[0] as Model.Integer).AsInt();
+            else Debug.Assert(false);
+
+            var nupper = upper;
+            while ((1 << nupper) < v) nupper++;
+            var ntlevel = Val.NEITHER;
+            if (nupper > Max) ntlevel = Val.TRUE;
+            return new PowDomain(ntlevel, nupper);
+        }
+
+        Expr IAbstractDomain.Gamma(List<Expr> vars)
+        {
+            if (isBottom) return Expr.False;
+            if (isTop) return Expr.True;
+            var v = vars[0];
+            if (v.Type.IsBv)
+            {
+                var bits = v.Type.BvBits;
+                if (!AbstractDomainFactory.bvslt.ContainsKey(bits))
+                    throw new AbsHoudiniInternalError("No builtin function found for bv" + bits.ToString());
+                var bvslt = AbstractDomainFactory.bvslt[bits];
+                return new NAryExpr(Token.NoToken, new FunctionCall(bvslt), new ExprSeq(v,
+                    new LiteralExpr(Token.NoToken, Basetypes.BigNum.FromInt(1 << (upper+1)), 32)));
+            }
+            else
+            {
+                return Expr.Lt(v, Expr.Literal(1 << (upper+1)));
+            }
+        }
+
+        bool IAbstractDomain.TypeCheck(List<Type> argTypes, out string msg)
+        {
+            msg = "";
+            if (argTypes.Count != 1)
+            {
+                msg = "Illegal number of arguments, expecting 1";
+                return false;
+            }
+            if (argTypes.Any(tt => !tt.IsInt && !tt.IsBv))
+            {
+                msg = "Illegal type, expecting int or bv";
+                return false;
+            }
+            return true;
+        }
+    }
+
+    // foo(x_i) = all equalities that hold
+    public class EqualitiesDomain : IAbstractDomain
+    {
+        bool isBottom;
+        List<HashSet<int>> equalities;
+
+        public EqualitiesDomain(bool isBottom, List<HashSet<int>> eq)
+        {
+            this.isBottom = isBottom;
+            this.equalities = eq;
+        }
+
+        public static IAbstractDomain GetBottom()
+        {
+            return new EqualitiesDomain(true, new List<HashSet<int>>());
+        }
+
+        IAbstractDomain IAbstractDomain.Bottom()
+        {
+            return GetBottom();
+        }
+
+        IAbstractDomain IAbstractDomain.Join(List<Model.Element> state)
+        {
+            // find the guys that are equal
+            var eq = new List<HashSet<int>>();
+            for (int i = 0; i < state.Count; i++)
+            {
+                var added = false;
+                foreach (var s in eq)
+                {
+                    var sv = s.First();
+                    if (state[i].ToString() == state[sv].ToString())
+                    {
+                        s.Add(i);
+                        added = true;
+                        break;
+                    }
+                }
+                if (!added) eq.Add(new HashSet<int>(new int[] { i }));
+            }
+            
+            if (isBottom)
+            {
+                return new EqualitiesDomain(false, eq);
+            }
+
+            // intersect two partitions equalities and eq
+            var m1 = GetMap(equalities, state.Count);
+            var m2 = GetMap(eq, state.Count);
+
+            for (int i = 0; i < state.Count; i++)
+                m2[i] = new HashSet<int>(m2[i].Intersect(m1[i]));
+
+
+            // map from representative to set
+            var repToSet = new Dictionary<int, HashSet<int>>();
+
+            for (int i = 0; i < state.Count; i++)
+            {
+                var rep = m2[i].Min();
+                if (!repToSet.ContainsKey(rep))
+                    repToSet[rep] = m2[i];
+            }
+
+            var ret = new List<HashSet<int>>();
+            repToSet.Values.Iter(s => ret.Add(s));
+
+            return new EqualitiesDomain(false, ret);
+        }
+
+        Expr IAbstractDomain.Gamma(List<Expr> vars)
+        {
+            if (isBottom) return Expr.False;
+            Expr ret = Expr.True;
+            foreach (var eq in equalities.Select(hs => hs.ToList()))
+            {
+                if (eq.Count == 1) continue;
+                var prev = eq[0];
+                for (int i = 1; i < eq.Count; i++)
+                {
+                    ret = Expr.And(ret, Expr.Eq(vars[prev], vars[eq[i]]));
+                    prev = eq[i];
+                }
+            }
+            return ret;
+        }
+
+        bool IAbstractDomain.TypeCheck(List<Type> argTypes, out string msg)
+        {
+            msg = "";
+            if (argTypes.Count == 0) return true;
+            var ot = argTypes[0];
+
+            if (argTypes.Any(tt => !tt.Equals(ot)))
+            {
+                msg = string.Format("Illegal type, expecting type {0}, got {1}", ot, argTypes.First(tt => !tt.Equals(ot)));
+                return false;
+            }
+            return true;
+        }
+
+        private HashSet<int>[] GetMap(List<HashSet<int>> eq, int n)
+        {
+            var ret = new HashSet<int>[n];
+            foreach (var s in eq)
+            {
+                foreach (var i in s)
+                    ret[i] = s;
+            }
+            return ret;
+        }
+    }
+
+    // foo(a,b) \in {false, \not a, a ==> b, true}
+    public class ImplicationDomain : IAbstractDomain
+    {
+        enum Val {FALSE, NOT_A, A_IMP_B, TRUE};
+        Val val;
+
+        private ImplicationDomain(Val val)
+        {
+            this.val = val;
+        }
+
+        public static ImplicationDomain GetBottom()
+        {
+            return new ImplicationDomain(Val.FALSE);
+        }
+
+        public IAbstractDomain Bottom()
+        {
+            return GetBottom();
+        }
+
+        public IAbstractDomain Join(List<Model.Element> states)
+        {
+            Debug.Assert(states.Count == 2);
+            var v1 = (states[0] as Model.Boolean).Value;
+            var v2 = (states[1] as Model.Boolean).Value;
+
+            if (val == Val.TRUE) return this;
+
+            var that = Val.TRUE;
+            if (!v1) that = Val.NOT_A;
+            else if (!v1 || v2) that = Val.A_IMP_B;
+
+            if (that == Val.TRUE || val == Val.FALSE)
+                return new ImplicationDomain(that);
+
+            // Now, neither this or that is FALSE or TRUE
+            if (val == that)
+                return this;
+
+            Debug.Assert(val == Val.A_IMP_B || that == Val.A_IMP_B);
+            return new ImplicationDomain(Val.A_IMP_B);
+        }
+
+        public Expr Gamma(List<Expr> vars)
+        {
+            Debug.Assert(vars.Count == 2);
+
+            var v1 = vars[0];
+            var v2 = vars[1];
+
+            if (val == Val.FALSE) return Expr.False;
+            if (val == Val.TRUE) return Expr.True;
+            if (val == Val.NOT_A) return Expr.Not(v1);
+            return Expr.Imp(v1, v2);
+        }
+
+        public bool TypeCheck(List<Type> argTypes, out string msg)
+        {
+            msg = "";
+            if (argTypes.Count != 2)
+            {
+                msg = "Illegal number of arguments, expecting 2";
+                return false;
+            }
+            if (argTypes.Any(tt => !tt.IsBool))
+            {
+                msg = "Illegal type, expecting bool";
+                return false;
+            }
+            return true;
+        }
+    }
 
     public class ConstantProp : IAbstractDomain
     {
@@ -1653,6 +1938,9 @@ namespace Microsoft.Boogie.Houdini {
         // Type name -> Instance
         private static Dictionary<string, IAbstractDomain> abstractDomainInstances = new Dictionary<string, IAbstractDomain>();
         private static Dictionary<string, IAbstractDomain> abstractDomainInstancesFriendly = new Dictionary<string, IAbstractDomain>();
+        
+        // bitvector operations
+        public static Dictionary<int, Function> bvslt = new Dictionary<int, Function>();
 
         public static void Register(string friendlyName, IAbstractDomain instance)
         {
@@ -1681,7 +1969,7 @@ namespace Microsoft.Boogie.Houdini {
             return abstractDomainInstancesFriendly[friendlyName] as IAbstractDomain;
         }
 
-        public static void Initialize()
+        public static void Initialize(Program program)
         {
             // Declare abstract domains
             var domains = new List<System.Tuple<string, IAbstractDomain>>(new System.Tuple<string, IAbstractDomain>[] {
@@ -1689,14 +1977,26 @@ namespace Microsoft.Boogie.Houdini {
                   System.Tuple.Create("Intervals", new Intervals() as IAbstractDomain),
                   System.Tuple.Create("ConstantProp", ConstantProp.GetBottom() as IAbstractDomain),
                   System.Tuple.Create("PredicateAbs", new PredicateAbsElem() as IAbstractDomain),
+                  System.Tuple.Create("ImplicationDomain", ImplicationDomain.GetBottom() as IAbstractDomain),
+                  System.Tuple.Create("PowDomain", PowDomain.GetBottom() as IAbstractDomain),
+                  System.Tuple.Create("EqualitiesDomain", EqualitiesDomain.GetBottom() as IAbstractDomain),
                   System.Tuple.Create("IA[HoudiniConst]", new IndependentAttribute<HoudiniConst>()  as IAbstractDomain),
                   System.Tuple.Create("IA[ConstantProp]", new IndependentAttribute<ConstantProp>()  as IAbstractDomain),
-                  System.Tuple.Create("IA[Intervals]", new IndependentAttribute<Intervals>()  as IAbstractDomain)
+                  System.Tuple.Create("IA[Intervals]", new IndependentAttribute<Intervals>()  as IAbstractDomain),
+                  System.Tuple.Create("IA[PowDomain]", new IndependentAttribute<PowDomain>() as IAbstractDomain),
               });
 
             domains.Iter(tup => AbstractDomainFactory.Register(tup.Item1, tup.Item2));
+            program.TopLevelDeclarations.OfType<Function>()
+                .Iter(RegisterFunction);
         }
 
+        private static void RegisterFunction(Function func)
+        {
+            var attr = QKeyValue.FindStringAttribute(func.Attributes, "bvbuiltin");
+            if (attr != null && attr == "bvslt" && func.InParams.Count == 2 && func.InParams[0].TypedIdent.Type.IsBv)
+                bvslt.Add(func.InParams[0].TypedIdent.Type.BvBits, func);
+        }
     }
 
     public interface IAbstractDomain
@@ -1753,7 +2053,7 @@ namespace Microsoft.Boogie.Houdini {
             if (CommandLineOptions.Clo.ProverKillTime > 0)
                 CommandLineOptions.Clo.ProverOptions.Add(string.Format("TIME_LIMIT={0}", CommandLineOptions.Clo.ProverKillTime));
 
-            this.vcgen = new VCGen(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend);
+            this.vcgen = new VCGen(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend, new List<Checker>());
             this.prover = ProverInterface.CreateProver(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend, -1);
 
             this.reporter = new AbstractHoudiniErrorReporter();
