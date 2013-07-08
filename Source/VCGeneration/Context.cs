@@ -104,10 +104,8 @@ public abstract class ProverContextContracts:ProverContext{
       this.genOptions = genOptions;
       Boogie2VCExprTranslator t = new Boogie2VCExprTranslator (gen, genOptions);
       this.translator = t;
-      OrderingAxiomBuilder oab = new OrderingAxiomBuilder(gen, t);
-      Contract.Assert(oab != null);
-      oab.Setup();
-      this.orderingAxiomBuilder = oab;
+
+      SetupOrderingAxiomBuilder(gen, t);
 
       distincts = new List<Variable>();
       axiomConjuncts = new List<VCExpr>();
@@ -115,8 +113,17 @@ public abstract class ProverContextContracts:ProverContext{
       exprTranslator = null;
     }
 
+    private void SetupOrderingAxiomBuilder(VCExpressionGenerator gen, Boogie2VCExprTranslator t)
+    {
+      OrderingAxiomBuilder oab = new OrderingAxiomBuilder(gen, t);
+      Contract.Assert(oab != null);
+      oab.Setup();
+      this.orderingAxiomBuilder = oab;
+    }
+
     public override void Clear()
     {
+        SetupOrderingAxiomBuilder(gen, translator);
         distincts = new List<Variable>();
         axiomConjuncts = new List<VCExpr>();
     }

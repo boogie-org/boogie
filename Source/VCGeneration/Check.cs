@@ -178,17 +178,23 @@ namespace Microsoft.Boogie {
 
     public void Retarget(Program prog, ProverContext ctx, int timeout = 0)
     {
+        TheoremProver.FullReset();
         ctx.Clear();
         Setup(prog, ctx);
-        if (0 < timeout)
-        {
-          TheoremProver.SetTimeOut(timeout * 1000);
-        }
-        else
-        {
-          TheoremProver.SetTimeOut(0);
-        }
-        TheoremProver.FullReset();
+        this.timeout = timeout;
+        SetTimeout();
+    }
+
+    public void SetTimeout()
+    {
+      if (0 < timeout)
+      {
+        TheoremProver.SetTimeOut(timeout * 1000);
+      }
+      else
+      {
+        TheoremProver.SetTimeOut(0);
+      }
     }
 
     private static void Setup(Program prog, ProverContext ctx)
@@ -316,6 +322,7 @@ namespace Microsoft.Boogie {
       this.handler = handler;
 
       thmProver.Reset();
+      SetTimeout();
       proverStart = DateTime.UtcNow;
       thmProver.BeginCheck(descriptiveName, vc, handler);
       //  gen.ClearSharedFormulas();    PR: don't know yet what to do with this guy

@@ -53,6 +53,15 @@ namespace Microsoft.Boogie.VCExprAST {
       return new UniqueNamer(this);
     }
 
+    public void Reset()
+    {
+      GlobalNames.Clear();
+      LocalNames.Clear();
+      UsedNames.Clear();
+      CurrentCounters.Clear();
+      GlobalPlusLocalNames.Clear();
+    }
+
     ////////////////////////////////////////////////////////////////////////////
 
     private readonly IDictionary<Object/*!*/, string/*!*/>/*!*/ GlobalNames;
