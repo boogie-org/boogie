@@ -397,17 +397,23 @@ namespace Microsoft.Boogie.SMTLib
 
     public override void Reset()
     {
-      SendThisVC("(reset)");
-      Process.Send(common.ToString());
+	  if (options.Solver == SolverKind.Z3)
+	  {
+        SendThisVC("(reset)");
+        Process.Send(common.ToString());
+	  }
     }
 
     public override void FullReset()
     {
-      SendThisVC("(reset)");
-      common.Clear();
-      AxiomsAreSetup = false;
-      ctx.Clear();
-      DeclCollector.Reset();
+	  if (options.Solver == SolverKind.Z3)
+	  {
+	    SendThisVC("(reset)");
+	    common.Clear();
+	    AxiomsAreSetup = false;
+	    ctx.Clear();
+	    DeclCollector.Reset();
+	  }
     }
 
     private RPFP.Node SExprToCex(SExpr resp, ErrorHandler handler, 
