@@ -99,7 +99,7 @@ namespace Microsoft.Boogie.ModelViewer
 
       if (!string.IsNullOrWhiteSpace(modelFileName) && File.Exists(modelFileName)) {
         using (var rd = File.OpenText(modelFileName)) {
-          allModels = Model.ParseModels(rd).ToArray();
+          allModels = Model.ParseModels(rd,"").ToArray();
         }
 
         modelId = setModelIdTo;
