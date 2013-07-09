@@ -1216,6 +1216,8 @@ namespace Microsoft.Boogie.SMTLib
     {
         var name = Z3.SetTimeoutOption();
         var value = ms.ToString();
+        options.TimeLimit = ms;
+        options.SmtOptions.RemoveAll(ov => ov.Option == name);
         options.AddSmtOption(name, value);
         SendThisVC(string.Format("(set-option :{0} {1})", name, value));
     }
