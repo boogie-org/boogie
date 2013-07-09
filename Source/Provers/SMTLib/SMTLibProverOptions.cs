@@ -27,7 +27,7 @@ namespace Microsoft.Boogie.SMTLib
     }
   }
 
-  public enum SolverKind { Z3, CVC3, CVC4 };
+  public enum SolverKind { Z3, CVC4 };
 
   public class SMTLibProverOptions : ProverOptions
   {
@@ -89,10 +89,6 @@ namespace Microsoft.Boogie.SMTLib
           case "z3":
             Solver = SolverKind.Z3;
             break;
-          case "cvc3":
-            Solver = SolverKind.CVC3;
-            Logic = "ALL";
-            break;
           case "cvc4":
             Solver = SolverKind.CVC4;
             Logic = "ALL_SUPPORTED";
@@ -143,7 +139,7 @@ USE_WEIGHTS=<bool>        Pass :weight annotations on quantified formulas (defau
 VERBOSITY=<int>           1 - print prover output (default: 0)
 O:<name>=<value>          Pass (set-option :<name> <value>) to the SMT solver.
 C:<string>                Pass <string> to the SMT on the command line. 
-LOGIC=<string>            Pass (set-logic <string>) to the prover (default: empty, 'ALL' for CVC3 or 'ALL_SUPPORTED' for CVC4)
+LOGIC=<string>            Pass (set-logic <string>) to the prover (default: empty, 'ALL_SUPPORTED' for CVC4)
 
 Z3-specific options:
 ~~~~~~~~~~~~~~~~~~~~
