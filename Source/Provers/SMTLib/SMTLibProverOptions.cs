@@ -43,6 +43,7 @@ namespace Microsoft.Boogie.SMTLib
     // Z3 specific (at the moment; some of them make sense also for other provers)
     public string Inspector = null;
     public bool OptimizeForBv = false;
+	public bool SMTLib2Model = false;
 
     public bool ProduceModel() {
       return !CommandLineOptions.Clo.UseLabels || CommandLineOptions.Clo.ExplainHoudini || CommandLineOptions.Clo.UseProverEvaluate ||
@@ -94,7 +95,7 @@ namespace Microsoft.Boogie.SMTLib
             Logic = "ALL_SUPPORTED";
             break;
           default:
-            ReportError("Invalid SOLVER value; must be 'z3', 'cvc3' or 'cvc4'");
+            ReportError("Invalid SOLVER value; must be 'z3' or 'cvc4'");
             return false;
         }
         return true;
@@ -115,6 +116,7 @@ namespace Microsoft.Boogie.SMTLib
         ParseBool(opt, "USE_WEIGHTS", ref UseWeights) ||
         ParseString(opt, "INSPECTOR", ref Inspector) ||
         ParseBool(opt, "OPTIMIZE_FOR_BV", ref OptimizeForBv) ||
+		ParseBool(opt, "SMTLIB2_MODEL", ref SMTLib2Model) ||
         ParseString(opt, "LOGIC", ref Logic) ||
         base.Parse(opt);
     }
@@ -134,7 +136,7 @@ namespace Microsoft.Boogie.SMTLib
 @"
 SMT-specific options:
 ~~~~~~~~~~~~~~~~~~~~~
-SOLVER=<string>           Use the given SMT solver (z3, cvc3, cvc4; default: z3)
+SOLVER=<string>           Use the given SMT solver (z3 or cvc4; default: z3)
 USE_WEIGHTS=<bool>        Pass :weight annotations on quantified formulas (default: true)
 VERBOSITY=<int>           1 - print prover output (default: 0)
 O:<name>=<value>          Pass (set-option :<name> <value>) to the SMT solver.
@@ -146,6 +148,7 @@ Z3-specific options:
 MULTI_TRACES=<bool>       Report errors with multiple paths leading to the same assertion.
 INSPECTOR=<string>        Use the specified Z3Inspector binary.
 OPTIMIZE_FOR_BV=<bool>    Optimize Z3 options for bitvector reasoning, and not quantifier instantiation. Defaults to false.
+SMTLIB2_MODEL=<bool>      Use the SMTLIB2 output model. Defaults to false.
 " + base.Help;
       }
     }

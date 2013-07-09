@@ -695,32 +695,22 @@ namespace Microsoft.Boogie
       foreach (var f in functions) f.Substitute(mapping);
     }
 
-	public static List<Model> ParseModels(System.IO.TextReader rd, string modelType)
+	public static List<Model> ParseModels(System.IO.TextReader rd, string prover)
 	{
 		ModelParser p;
-
-		switch (modelType)
+		
+		switch (prover)
 		{
-			case "Z3":
-			p = new ParserZ3();
+			case "Z3_SMTLIB2":
+			p = new ParserZ3_SMTLIB2();
 			break;
 			case "CVC4":
 			p = new ParserCVC4();
 			break;
 			default:
-			p = new ParserZ3_2();
+			p = new ParserZ3();
 			break;
 		}
-
-		p.rd = rd;
-		p.Run();
-
-		return p.resModels;
-	}
-
-	public static List<Model> ParseModels(System.IO.TextReader rd)
-	{
-		ModelParser p = new ParserZ3_2();
 
 		p.rd = rd;
 		p.Run();

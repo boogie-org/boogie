@@ -89,7 +89,7 @@ namespace Microsoft.Boogie
 		abstract internal void Run();
 	}
 
-	class ParserZ3_2 : ModelParser
+	class ParserZ3 : ModelParser
 	{
 		List<object> GetFunctionTokens(string newLine)
 		{
@@ -597,7 +597,7 @@ namespace Microsoft.Boogie
 		}
 	}
 
-	internal class ParserZ3 : ParserSMT
+	internal class ParserZ3_SMTLIB2 : ParserSMT
 	{
 		protected override void ParseArray(ref int i)
 		{
