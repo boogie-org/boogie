@@ -2608,7 +2608,7 @@ namespace Microsoft.Boogie {
         var id = FindStringAttribute("id");
         if (id == null)
         {
-          id = Name + ":0";
+          id = Name + GetHashCode().ToString() + ":0";
         }
         return id;
       }

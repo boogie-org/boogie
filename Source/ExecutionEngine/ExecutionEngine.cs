@@ -358,6 +358,12 @@ namespace Microsoft.Boogie
 
     static LinearTypechecker linearTypechecker;
 
+    static List<Checker> Checkers = new List<Checker>();
+
+    static IDictionary<string, CancellationTokenSource> ImplIdToCancellationTokenSource = new ConcurrentDictionary<string, CancellationTokenSource>();
+
+    static IDictionary<string, IList<CancellationTokenSource>> RequestIdToCancellationTokenSources = new ConcurrentDictionary<string, IList<CancellationTokenSource>>();
+
 
     public static void ProcessFiles(List<string> fileNames, bool lookForSnapshots = true)
     {
@@ -702,11 +708,17 @@ namespace Microsoft.Boogie
     /// </summary>
     public static PipelineOutcome InferAndVerify(Program program,
                                                  PipelineStatistics stats,
-                                                 ErrorReporterDelegate er = null, string requestId = null)
+                                                 ErrorReporterDelegate er = null, string requestId = "unknown")
     {
       Contract.Requires(program != null);
       Contract.Requires(stats != null);
       Contract.Ensures(0 <= Contract.ValueAtReturn(out stats.InconclusiveCount) && 0 <= Contract.ValueAtReturn(out stats.TimeoutCount));
+
+      if (requestId == null)
+      {
+        requestId = "unknown";
+      }
+      RequestIdToCancellationTokenSources[requestId] = new List<CancellationTokenSource>();
 
       #region Infer invariants using Abstract Interpretation
 
@@ -785,15 +797,24 @@ namespace Microsoft.Boogie
 
       var outputCollector = new OutputCollector(stablePrioritizedImpls);
       var outcome = PipelineOutcome.VerificationCompleted;
-      var checkers = new List<Checker>();
       var tasks = new Task[stablePrioritizedImpls.Length];
       for (int i = 0; i < stablePrioritizedImpls.Length && outcome != PipelineOutcome.FatalError; i++)
       {
         var taskIndex = i;
-        var t = Task.Factory.StartNew(() =>
+        var id = stablePrioritizedImpls[i].Id;
+        CancellationTokenSource src;
+        if (ImplIdToCancellationTokenSource.TryGetValue(id, out src))
         {
-          VerifyImplementation(program, stats, er, requestId, extractLoopMappingInfo, stablePrioritizedImpls, taskIndex, outputCollector, checkers);
-        }, TaskCreationOptions.LongRunning);
+          src.Cancel();
+        }
+        src = new CancellationTokenSource();
+        RequestIdToCancellationTokenSources[requestId].Add(src);
+        ImplIdToCancellationTokenSource[id] = src;
+        var t = Task.Factory.StartNew((dummy) =>
+        {
+          VerifyImplementation(program, stats, er, requestId, extractLoopMappingInfo, stablePrioritizedImpls, taskIndex, outputCollector, Checkers, src.Token);
+          ImplIdToCancellationTokenSource.Remove(id);
+        }, src.Token, TaskCreationOptions.LongRunning);
         tasks[taskIndex] = t;
       }
       try
@@ -811,19 +832,17 @@ namespace Microsoft.Boogie
             outcome = PipelineOutcome.FatalError;
             return true;
           }
+          var oce = e as OperationCanceledException;
+          if (oce != null)
+          {
+            return true;
+          }
           return false;
         });
       }
       finally
       {
-        lock (checkers)
-        {
-          foreach (Checker checker in checkers)
-          {
-            Contract.Assert(checker != null);
-            checker.Close();
-          }
-        }
+        CleanupCheckers(requestId);
       }
 
       cce.NonNull(CommandLineOptions.Clo.TheProverFactory).Close();
@@ -836,8 +855,50 @@ namespace Microsoft.Boogie
     }
 
 
-    private static void VerifyImplementation(Program program, PipelineStatistics stats, ErrorReporterDelegate er, string requestId, Dictionary<string, Dictionary<string, Block>> extractLoopMappingInfo, Implementation[] stablePrioritizedImpls, int index, OutputCollector outputCollector, List<Checker> checkers)
+    public static void CancelRequest(string requestId)
     {
+      Contract.Requires(requestId != null);
+
+      IList<CancellationTokenSource> ctss;
+      if (RequestIdToCancellationTokenSources.TryGetValue(requestId, out ctss))
+      {
+        ctss.Iter(cts => cts.Cancel());
+
+        CleanupCheckers(requestId);
+      }
+    }
+
+
+    private static void CleanupCheckers(string requestId)
+    {
+      lock (RequestIdToCancellationTokenSources)
+      {
+        if (RequestIdToCancellationTokenSources.Count == 1)
+        {
+          lock (Checkers)
+          {
+            foreach (Checker checker in Checkers)
+            {
+              Contract.Assert(checker != null);
+              checker.Close();
+            }
+          }
+        }
+        if (requestId != null)
+        {
+          RequestIdToCancellationTokenSources.Remove(requestId);
+        }
+      }
+    }
+
+
+    private static void VerifyImplementation(Program program, PipelineStatistics stats, ErrorReporterDelegate er, string requestId, Dictionary<string, Dictionary<string, Block>> extractLoopMappingInfo, Implementation[] stablePrioritizedImpls, int index, OutputCollector outputCollector, List<Checker> checkers, CancellationToken ct)
+    {
+      if (ct.IsCancellationRequested)
+      {
+        ct.ThrowIfCancellationRequested();
+      }
+
       Implementation impl = stablePrioritizedImpls[index];
       VerificationResult verificationResult = null;
       var output = new StringWriter();
