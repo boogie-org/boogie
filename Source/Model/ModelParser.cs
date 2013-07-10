@@ -432,6 +432,8 @@ namespace Microsoft.Boogie
 				if (line == "END_OF_MODEL" || line == "." || line == "*** END_MODEL")
 					continue;
 
+				//Console.WriteLine("\n\n# :: " + line);
+
 				var words = GetParsedTokens (line);
 				if (words.Count == 0)
 					continue;
@@ -709,118 +711,38 @@ namespace Microsoft.Boogie
 					output.Add (args [0]);
 				}
 			} else if (tokens [i] == "__array_store_all__") {
-				int p_count = 1;
-				i += 2;
+				while (tokens[i] == "__array_store_all__") {
+					int p_count = 1;
+					i += 2;
 
-				while (p_count > 0) {
-					if (tokens [i] == ")")
-						p_count--;
-					else if (tokens [i] == "(")
-						p_count++;
-					i++;
-				}
+					while (p_count > 0) {
+						if (tokens [i] == ")")
+							p_count--;
+						else if (tokens [i] == "(")
+							p_count++;
+						i++;
+					}
 
-				if (tokens [i] == "(" && tokens [i + 1] == "_") {
-					output.Add (GetValue (i + 3));
-					i += 5;
-				} else if (tokens [i] == "(" && tokens [i + 1] == "-") {
-					output.Add (GetValue (i + 2));
-					i += 4;
-				} else {
-					output.Add (GetValue (i));
-					i++;
+					if (tokens [i] == "(" && tokens [i + 1] == "__array_store_all__") {
+						output.Add ("as-array[k!" + arrayNum + "]");
+						SplitArrayExpression ();
+						i++;
+					} else {
+						if (tokens [i] == "(" && tokens [i + 1] == "_") {
+							output.Add (GetValue (i + 3));
+							i += 5;
+						} else if (tokens [i] == "(" && tokens [i + 1] == "-") {
+							output.Add (GetValue (i + 2));
+							i += 4;
+						} else {
+							output.Add (GetValue (i));
+							i++;
+						}
+					}
 				}
 			}
 		}
-		/*
-		protected override void ParseArray(ref int i)
-		{
-			output.Add("as-array[k!" + arrayNum + "]");
-			output.Add("@SPLIT");
-			output.Add("k!" + arrayNum);
-			output.Add("->");
-			output.Add("{");
-			output.Add(" ");
 
-			while (tokens[i] != "store" && tokens[i] != "__array_store_all__")
-				i++;
-
-			if (tokens[i] == "store")
-			{
-				List<string> args = new List<string>();
-				int p_count = 1;
-				i += 4;
-
-				while (p_count > 0)
-				{
-					if (tokens[i] == ")")
-						p_count--;
-					else if (tokens[i] == "(")
-						p_count++;
-					i++;
-				}
-
-				while(args.Count < 3)
-				{
-					if (tokens[i] == ")")
-						i++;
-					else if (tokens[i] == "(" && tokens[i + 1] == "_")
-					{
-						args.Add(GetValue(i + 3));
-						i += 5;
-					}
-					else if (tokens[i + 1] == "(" && tokens[i + 1] == "-")
-					{
-						args.Add(GetValue(i + 2));
-						i += 4;
-					}
-					else
-					{
-						args.Add(GetValue(i));
-						i++;
-					}
-				}
-
-				output.Add(args[1]);
-				output.Add("->");
-				output.Add(args[2]);
-				output.Add(" ");
-				output.Add("else");
-				output.Add("->");
-				output.Add(args[0]);
-			}
-			else if (tokens[i] == "__array_store_all__")
-			{
-				int p_count = 1;
-				i += 2;
-
-				while (p_count > 0)
-				{
-					if (tokens[i] == ")")
-						p_count--;
-					else if (tokens[i] == "(")
-						p_count++;
-					i++;
-				}
-
-				if (tokens[i] == "(" && tokens[i + 1] == "_")
-				{
-					output.Add(GetValue(i + 3));
-					i += 5;
-				}
-				else if (tokens[i] == "(" && tokens[i + 1] == "-")
-				{
-					output.Add(GetValue(i + 2));
-					i += 4;
-				}
-				else
-				{
-					output.Add(GetValue(i));
-					i++;
-				}
-			}
-		}
-		*/
 		protected override void ParseITE (ref int i)
 		{
 			List<string> args = new List<string> ();
