@@ -891,6 +891,8 @@ namespace Microsoft.Boogie.SMTLib
         else if (resp.ArgCount != 0)
           break;
         path.Add(v);
+		if (v.Equals("0"))
+		  throw new UnexpectedProverOutputException("because of (get-value ((ControlFlow " + controlFlowConstant + " " + v + ")))");
         SendThisVC("(get-value ((ControlFlow " + controlFlowConstant + " " + v + ")))");
       }
       return path.ToArray();
@@ -913,7 +915,7 @@ namespace Microsoft.Boogie.SMTLib
         if (resp.Name == "model" && resp.ArgCount >= 1) {
 					modelStr = resp.Arguments[0] + "\n";
 					for (int i = 1; i < resp.ArgCount; i++) {
-						if (resp.Arguments[i].ToString().Contains("define-fun"))
+						if (resp.Arguments[i].ToString().Contains("define-fun") &&!resp.Arguments[i].ToString().Contains("not"))
 							modelStr += resp.Arguments[i] + "\n";
 					}
 					//Console.WriteLine(modelStr);
