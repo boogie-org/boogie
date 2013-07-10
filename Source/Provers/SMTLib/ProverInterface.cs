@@ -922,7 +922,6 @@ namespace Microsoft.Boogie.SMTLib
         }
         else if (resp.ArgCount == 0 && resp.Name.Contains("->")) {
           modelStr = resp.Name;
-					//Console.WriteLine(modelStr);
         }
         else {
           HandleProverError("Unexpected prover response getting model: " + resp.ToString());
