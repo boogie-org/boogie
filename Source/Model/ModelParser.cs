@@ -681,6 +681,9 @@ namespace Microsoft.Boogie
 				if (tokens [i] == "(" && tokens [i + 1] == "__array_store_all__") {
 					output.Add ("as-array[k!" + arrayNum + "]");
 					SplitArrayExpression ();
+				} else if (tokens [i] == "(" && tokens [i + 1] == "store") {
+					output.Add ("as-array[k!" + arrayNum + "]");
+					SplitArrayExpression ();
 				} else {
 					while (args.Count < 3) {
 						if (tokens [i] == ")")
