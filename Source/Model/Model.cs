@@ -701,14 +701,11 @@ namespace Microsoft.Boogie
 		
 		switch (prover)
 		{
-			case "Z3_SMTLIB2":
-			p = new ParserZ3_SMTLIB2();
-			break;
-			case "CVC4":
-			p = new ParserCVC4();
+			case "SMTLIB2":
+				p = new ParserSMT();
 			break;
 			default:
-			p = new ParserZ3();
+				p = new ParserZ3();
 			break;
 		}
 

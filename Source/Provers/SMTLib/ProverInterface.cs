@@ -929,17 +929,14 @@ namespace Microsoft.Boogie.SMTLib
 				try {
 					switch (options.Solver) {
 					case SolverKind.Z3:
-						if (options.SMTLib2Model)
-						{
-							models = Model.ParseModels(new StringReader("Error model: \n" + modelStr), "Z3_SMTLIB2");
-						}
-						else
-						{
+						if (options.SMTLib2Model) {
+							models = Model.ParseModels(new StringReader("Error model: \n" + modelStr), "SMTLIB2");
+						} else {
 							models = Model.ParseModels(new StringReader("Error model: \n" + modelStr), "");
 						}
 						break;
 					case SolverKind.CVC4:
-						models = Model.ParseModels(new StringReader("Error model: \n" + modelStr), "CVC4");
+						models = Model.ParseModels(new StringReader("Error model: \n" + modelStr), "SMTLIB2");
 						break;
 					default:
 						Debug.Assert(false);

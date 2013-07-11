@@ -256,17 +256,15 @@ namespace Microsoft.Boogie
 		}
 	}
 
-	abstract class ParserSMT : ModelParser
+	class ParserSMT : ModelParser
 	{
-		protected string[] tokens;
-		protected List<string> output;
-		protected int arity;
-		protected int arrayNum;
-		protected int index;
+		string[] tokens;
+		List<string> output;
+		int arity;
+		int arrayNum;
+		int index;
 
-		abstract protected void ParseIteExpr ();
-
-		protected void FindArity ()
+		void FindArity ()
 		{
 			arity = 0;
 			int p_count = 1;
@@ -286,7 +284,7 @@ namespace Microsoft.Boogie
 			}
 		}
 
-		protected string GetValue (int idx)
+		string GetValue (int idx)
 		{
 			string value = tokens [idx];
 
@@ -301,6 +299,8 @@ namespace Microsoft.Boogie
 
 		void SplitArrayExpression ()
 		{
+			output.Add ("as-array[k!" + arrayNum + "]");
+
 			if (output.Contains ("@SPLIT")) {
 				output.Add (" ");
 				output.Add ("}");
@@ -321,7 +321,6 @@ namespace Microsoft.Boogie
 				index++;
 
 			if (tokens [index] == "store") {
-				output.Add ("as-array[k!" + arrayNum + "]");
 				SplitArrayExpression ();
 
 				List<string> args = new List<string> ();
@@ -336,26 +335,22 @@ namespace Microsoft.Boogie
 					index++;
 				}
 
-				if (tokens [index] == "(" && tokens [index + 1] == "__array_store_all__") {
-					output.Add ("as-array[k!" + arrayNum + "]");
-					SplitArrayExpression ();
-				} else if (tokens [index] == "(" && tokens [index + 1] == "store") {
-					output.Add ("as-array[k!" + arrayNum + "]");
+				if ((tokens [index] == "(" && tokens [index + 1] == "__array_store_all__") ||
+				    (tokens [index] == "(" && tokens [index + 1] == "store")) {
 					SplitArrayExpression ();
 				} else {
 					while (args.Count < 3) {
 						if (tokens [index] == ")")
 							index++;
-						else if (tokens [index] == "(" && tokens [index + 1] == "_") {
-							args.Add (GetValue (index + 3));
-							index += 5;
-						} else if (tokens [index + 1] == "(" && tokens [index + 1] == "-") {
-							args.Add (GetValue (index + 2));
-							index += 4;
+						else if (tokens [index] == "(") {
+							while (tokens [index] != ")")
+								index++;
+							args.Add (GetValue (index - 1));
 						} else {
 							args.Add (GetValue (index));
-							index++;
 						}
+
+						index++;
 					}
 
 					output.Add (args [1]);
@@ -367,7 +362,6 @@ namespace Microsoft.Boogie
 					output.Add (args [0]);
 				}
 			} else if (tokens [index] == "__array_store_all__") {
-				output.Add ("as-array[k!" + arrayNum + "]");
 				SplitArrayExpression ();
 
 				while (tokens[index] == "__array_store_all__") {
@@ -383,25 +377,115 @@ namespace Microsoft.Boogie
 					}
 
 					if (tokens [index] == "(" && tokens [index + 1] == "__array_store_all__") {
-						output.Add ("as-array[k!" + arrayNum + "]");
 						SplitArrayExpression ();
 						index++;
 					} else {
-						if (tokens [index] == "(" && tokens [index + 1] == "_") {
-							output.Add (GetValue (index + 3));
-							index += 5;
-						} else if (tokens [index] == "(" && tokens [index + 1] == "-") {
-							output.Add (GetValue (index + 2));
-							index += 4;
+						if (tokens [index] == ")")
+							index++;
+						else if (tokens [index] == "(") {
+							while (tokens [index] != ")")
+								index++;
+							output.Add (GetValue (index - 1));
 						} else {
 							output.Add (GetValue (index));
-							index++;
 						}
+
+						index++;
 					}
 				}
 			} else if (tokens [index] == "as-array") {
 				output.Add ("as-array[" + tokens [index + 1] + "]");
 			}
+		}
+
+		void ParseIteExpr ()
+		{
+			List<string> args = new List<string> ();
+			List<string> results = new List<string> ();
+
+			FindArity ();
+
+			int occurrences = 0;
+
+			foreach (string tok in tokens) {
+				if (tok == "_ufmt_1")
+					occurrences++;
+			}
+
+			for (; ;) {
+				index++;
+
+				if (tokens [index] == "=") {
+					index += 2;
+
+					if (tokens [index] == "(") {
+						while (tokens [index] != ")")
+							index++;
+						args.Add (GetValue (index - 1));
+					} else {
+						args.Add (GetValue (index));
+					}
+				}
+
+				if ((args.Count > 0 && args.Count % arity == 0) ||
+				    (results.Count > 0 && occurrences <= 2 && occurrences > 0)) {
+					index += 2;
+
+					if (tokens [index] == "(") {
+						while (tokens [index] != ")")
+							index++;
+						results.Add (GetValue (index - 1));
+					} else {
+						results.Add (GetValue (index));
+					}
+
+					while (index < tokens.Length - 1 && tokens[index + 1] != "=")
+						index++;
+
+					if (index == tokens.Length - 1) {
+						while (tokens[index] == ")")
+							index += -1;
+						results.Add (GetValue (index));
+						break;
+					}
+				}
+			}
+
+			int i = 0;
+
+			for (int j = 0; j < results.Count - 1; j++) {
+				if (occurrences > 2) {
+					for (int r = 0; r < arity; r++) {
+						output.Add (args [i]);
+						i++;
+					}
+				} else if (occurrences > 0) {
+					if (arity == 1) {
+						output.Add (args [i]);
+						i++;
+					} else {
+						output.Add (args [0]);
+
+						for (int r = 1; r < arity; r++) {
+							i++;
+							output.Add (args [i]);
+						}
+					}
+				} else {
+					for (int r = 0; r < arity; r++) {
+						output.Add (args [i]);
+						i++;
+					}
+				}
+
+				output.Add ("->");
+				output.Add (results [j]);
+				output.Add (" ");
+			}
+
+			output.Add ("else");
+			output.Add ("->");
+			output.Add (results [results.Count - 1]);
 		}
 
 		void ParseEndOfExpr ()
@@ -666,159 +750,6 @@ namespace Microsoft.Boogie
 						BadModel ("unidentified line");
 				}
 			}
-		}
-	}
-
-	internal class ParserZ3_SMTLIB2 : ParserSMT
-	{
-		protected override void ParseIteExpr ()
-		{
-			List<string> args = new List<string> ();
-			List<string> results = new List<string> ();
-
-			FindArity ();
-
-			for (; ;) {
-				index++;
-
-				if (tokens [index] == "=") {
-					index += 2;
-
-					if (tokens [index] == "(") {
-						while (tokens [index] != ")")
-							index++;
-						args.Add (GetValue (index - 1));
-					} else {
-						args.Add (GetValue (index));
-					}
-				}
-
-				if (args.Count > 0 && args.Count % arity == 0) {
-					index += 2;
-
-					if (tokens [index] == "(") {
-						while (tokens [index] != ")")
-							index++;
-						results.Add (GetValue (index - 1));
-					} else {
-						results.Add (GetValue (index));
-					}
-
-					while (index < tokens.Length - 1 && tokens[index + 1] != "=")
-						index++;
-
-					if (index == tokens.Length - 1) {
-						while (tokens[index] == ")")
-							index += -1;
-						results.Add (GetValue (index));
-						break;
-					}
-				}
-			}
-
-			int idx = 0;
-			for (int j = 0; j < results.Count - 1; j++) {
-				for (int r = 0; r < arity; r++) {
-					output.Add (args [idx]);
-					idx++;
-				}
-
-				output.Add ("->");
-				output.Add (results [j]);
-				output.Add (" ");
-			}
-
-			output.Add ("else");
-			output.Add ("->");
-			output.Add (results [results.Count - 1]);
-		}
-	}
-
-	internal class ParserCVC4 : ParserSMT
-	{
-		protected override void ParseIteExpr ()
-		{
-			List<string> args = new List<string> ();
-			List<string> results = new List<string> ();
-
-			FindArity ();
-
-			int occurrences = 0;
-
-			foreach (string tok in tokens) {
-				if (tok == "_ufmt_1")
-					occurrences++;
-			}
-
-			for (; ;) {
-				index++;
-
-				if (tokens [index] == "=") {
-					index += 2;
-
-					if (tokens [index] == "(") {
-						while (tokens [index] != ")")
-							index++;
-						args.Add (GetValue (index - 1));
-					} else {
-						args.Add (GetValue (index));
-					}
-				}
-
-				if ((args.Count > 0 && args.Count % arity == 0) ||
-				    (results.Count > 0 && occurrences <= 2)) {
-					index += 2;
-
-					if (tokens [index] == "(") {
-						while (tokens [index] != ")")
-							index++;
-						results.Add (GetValue (index - 1));
-					} else {
-						results.Add (GetValue (index));
-					}
-
-					while (index < tokens.Length - 1 && tokens[index + 1] != "=")
-						index++;
-
-					if (index == tokens.Length - 1) {
-						while (tokens[index] == ")")
-							index += -1;
-						results.Add (GetValue (index));
-						break;
-					}
-				}
-			}
-
-			int i = 0;
-
-			for (int j = 0; j < results.Count - 1; j++) {
-				if (occurrences > 2) {
-					for (int r = 0; r < arity; r++) {
-						output.Add (args [i]);
-						i++;
-					}
-				} else {
-					if (arity == 1) {
-						output.Add (args [i]);
-						i++;
-					} else {
-						output.Add (args [0]);
-
-						for (int r = 1; r < arity; r++) {
-							i++;
-							output.Add (args [i]);
-						}
-					}
-				}
-
-				output.Add ("->");
-				output.Add (results [j]);
-				output.Add (" ");
-			}
-
-			output.Add ("else");
-			output.Add ("->");
-			output.Add (results [results.Count - 1]);
 		}
 	}
 }
