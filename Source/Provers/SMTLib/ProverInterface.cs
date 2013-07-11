@@ -918,7 +918,6 @@ namespace Microsoft.Boogie.SMTLib
 						if (resp.Arguments[i].ToString().Contains("define-fun") &&!resp.Arguments[i].ToString().Contains("not"))
 							modelStr += resp.Arguments[i] + "\n";
 					}
-					//Console.WriteLine(modelStr);
         }
         else if (resp.ArgCount == 0 && resp.Name.Contains("->")) {
           modelStr = resp.Name;
