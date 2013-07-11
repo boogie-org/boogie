@@ -312,10 +312,22 @@ namespace VC {
             System.Console.WriteLine(" --- smoke #{0}, after passify", id);
             Emit();
           }
-          ch.BeginCheck(cce.NonNull(impl.Name + "_smoke" + id++), vc, new ErrorHandler(label2Absy, this.callback));
-          ch.ProverTask.Wait();
+          try
+          {
+            ch.BeginCheck(cce.NonNull(impl.Name + "_smoke" + id++), vc, new ErrorHandler(label2Absy, this.callback));
+            ch.ProverTask.Wait();
+          }
+          catch
+          {
+            throw;
+          }
+          finally
+          {
+            ch.GoBackToIdle();
+          }
+          
           ProverInterface.Outcome outcome = ch.ReadOutcome();
-          ch.GoBackToIdle();
+          
           parent.CurrentLocalVariables = null;
 
           DateTime end = DateTime.UtcNow;
@@ -1190,13 +1202,16 @@ namespace VC {
       /// <summary>
       /// As a side effect, updates "this.parent.CumulativeAssertionCount".
       /// </summary>
-      public void BeginCheck(VerifierCallback callback, ModelViewInfo mvInfo, int no, int timeout) {
+      public void BeginCheck(Checker checker, VerifierCallback callback, ModelViewInfo mvInfo, int no, int timeout) {
+        Contract.Requires(checker != null);
         Contract.Requires(callback != null);
+
         splitNo = no;
 
         impl.Blocks = blocks;
 
-        checker = parent.FindCheckerFor(timeout);
+        this.checker = checker;
+
         lock (checker)
         {
           Hashtable/*<int, Absy!>*/ label2absy = new Hashtable/*<int, Absy!>*/();
@@ -1240,7 +1255,7 @@ namespace VC {
               }
               return vce;
             }
-        ));
+          ));
 
           var exprGen = ctx.ExprGen;
           VCExpr controlFlowVariableExpr = CommandLineOptions.Clo.UseLabels ? null : exprGen.Integer(BigNum.ZERO);
@@ -1457,101 +1472,155 @@ namespace VC {
         remaining_cost = work.Peek().Cost;
       }
 
-      while (work.Any() || currently_running.Any()) {
+      while (work.Any() || currently_running.Any())
+      {
         bool prover_failed = false;
-        Split s;
+        Split s = null;
+        var isWaiting = !work.Any();
 
-        if (work.Any() && currently_running.Count < Cores) {
-          s = work.Pop();
+        if (!isWaiting)
+        {
+          s = work.Peek();
 
-          if (first_round && max_splits > 1) {
+          if (first_round && max_splits > 1)
+          {
             prover_failed = true;
             remaining_cost -= s.Cost;
-          } else {
-            if (CommandLineOptions.Clo.Trace && no >= 0) {
-              System.Console.WriteLine("    checking split {1}/{2}, {3:0.00}%, {0} ...", 
+          }
+          else
+          {
+            var timeout = (keep_going && s.LastChance) ? CommandLineOptions.Clo.VcsFinalAssertTimeout :
+                  keep_going ? CommandLineOptions.Clo.VcsKeepGoingTimeout :
+                  CommandLineOptions.Clo.ProverKillTime;
+
+            var checker = s.parent.FindCheckerFor(timeout, false);
+            if (checker == null)
+            {
+              isWaiting = true;
+              goto waiting;
+            }
+            else
+            {
+              s = work.Pop();
+            }
+
+            if (CommandLineOptions.Clo.Trace && no >= 0)
+            {
+              System.Console.WriteLine("    checking split {1}/{2}, {3:0.00}%, {0} ...",
                                    s.Stats, no + 1, total, 100 * proven_cost / (proven_cost + remaining_cost));
             }
             callback.OnProgress("VCprove", no < 0 ? 0 : no, total, proven_cost / (remaining_cost + proven_cost));
 
             Contract.Assert(s.parent == this);
-            s.BeginCheck(callback, mvInfo, no,
-                (keep_going && s.LastChance) ? CommandLineOptions.Clo.VcsFinalAssertTimeout :
-                  keep_going ? CommandLineOptions.Clo.VcsKeepGoingTimeout :
-                  CommandLineOptions.Clo.ProverKillTime);
+            s.BeginCheck(checker, callback, mvInfo, no, timeout);
 
             no++;
 
             currently_running.Add(s);
           }
-        } else {
-          // Wait for one split to terminate.
-          var tasks = currently_running.Select(splt => splt.ProverTask).ToArray();
-          int index = Task.WaitAny(tasks);          
-          s = currently_running[index];
-          currently_running.RemoveAt(index);
-
-          if (do_splitting) {
-            remaining_cost -= s.Cost;
-          }
-
-          s.ReadOutcome(ref outcome, out prover_failed);
-
-          if (do_splitting) {
-            if (prover_failed) {
-              // even if the prover fails, we have learned something, i.e., it is 
-              // annoying to watch Boogie say Timeout, 0.00% a couple of times
-              proven_cost += s.Cost / 100;
-            } else {
-              proven_cost += s.Cost;
-            }
-          }
-          callback.OnProgress("VCprove", no < 0 ? 0 : no, total, proven_cost / (remaining_cost + proven_cost));
-
-          if (prover_failed && !first_round && s.LastChance) {
-            string msg = "some timeout";
-            if (s.reporter != null && s.reporter.resourceExceededMessage != null) {
-              msg = s.reporter.resourceExceededMessage;
-            }
-            callback.OnCounterexample(s.ToCounterexample(s.Checker.TheoremProver.Context), msg);
-            outcome = Outcome.Errors;
-            break;
-          }
-
-          s.Checker.GoBackToIdle();
-
-          Contract.Assert( prover_failed || outcome == Outcome.Correct || outcome == Outcome.Errors || outcome == Outcome.Inconclusive);
         }
 
-        if (prover_failed) { 
+      waiting:
+        if (isWaiting)
+        {
+          // Wait for one split to terminate.
+          var tasks = currently_running.Select(splt => splt.ProverTask).ToArray();
+
+          if (tasks.Any())
+          {
+            try
+            {
+              int index = Task.WaitAny(tasks);
+              s = currently_running[index];
+              currently_running.RemoveAt(index);
+
+              if (do_splitting)
+              {
+                remaining_cost -= s.Cost;
+              }
+
+              s.ReadOutcome(ref outcome, out prover_failed);
+
+              if (do_splitting)
+              {
+                if (prover_failed)
+                {
+                  // even if the prover fails, we have learned something, i.e., it is 
+                  // annoying to watch Boogie say Timeout, 0.00% a couple of times
+                  proven_cost += s.Cost / 100;
+                }
+                else
+                {
+                  proven_cost += s.Cost;
+                }
+              }
+              callback.OnProgress("VCprove", no < 0 ? 0 : no, total, proven_cost / (remaining_cost + proven_cost));
+
+              if (prover_failed && !first_round && s.LastChance)
+              {
+                string msg = "some timeout";
+                if (s.reporter != null && s.reporter.resourceExceededMessage != null)
+                {
+                  msg = s.reporter.resourceExceededMessage;
+                }
+                callback.OnCounterexample(s.ToCounterexample(s.Checker.TheoremProver.Context), msg);
+                outcome = Outcome.Errors;
+                break;
+              }
+            }
+            catch
+            {
+              throw;
+            }
+            finally
+            {
+              s.Checker.GoBackToIdle();
+            }
+
+            Contract.Assert(prover_failed || outcome == Outcome.Correct || outcome == Outcome.Errors || outcome == Outcome.Inconclusive);
+          }
+        }
+
+        if (prover_failed)
+        {
           int splits = first_round && max_splits > 1 ? max_splits : max_kg_splits;
 
-          if (splits > 1) {
+          if (splits > 1)
+          {
             List<Split> tmp = Split.DoSplit(s, max_vc_cost, splits);
             Contract.Assert(tmp != null);
             max_vc_cost = 1.0; // for future
             first_round = false;
             //tmp.Sort(new Comparison<Split!>(Split.Compare));
-            foreach (Split a in tmp) {
+            foreach (Split a in tmp)
+            {
               Contract.Assert(a != null);
               work.Push(a);
               total++;
               remaining_cost += a.Cost;
             }
-            if (outcome != Outcome.Errors) {
+            if (outcome != Outcome.Errors)
+            {
               outcome = Outcome.Correct;
             }
-          } else {
-            Contract.Assert( outcome != Outcome.Correct);
-            if (outcome == Outcome.TimedOut) {
+          }
+          else
+          {
+            Contract.Assert(outcome != Outcome.Correct);
+            if (outcome == Outcome.TimedOut)
+            {
               string msg = "some timeout";
-              if (s.reporter != null && s.reporter.resourceExceededMessage != null) {
+              if (s.reporter != null && s.reporter.resourceExceededMessage != null)
+              {
                 msg = s.reporter.resourceExceededMessage;
               }
               callback.OnTimeout(msg);
-            } else if (outcome == Outcome.OutOfMemory) {
+            }
+            else if (outcome == Outcome.OutOfMemory)
+            {
               string msg = "out of memory";
-              if (s.reporter != null && s.reporter.resourceExceededMessage != null) {
+              if (s.reporter != null && s.reporter.resourceExceededMessage != null)
+              {
                 msg = s.reporter.resourceExceededMessage;
               }
               callback.OnOutOfMemory(msg);
