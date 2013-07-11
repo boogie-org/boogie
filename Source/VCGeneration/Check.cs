@@ -53,7 +53,7 @@ namespace Microsoft.Boogie {
     private TimeSpan proverRunTime;
     private volatile ProverInterface.ErrorHandler handler;
     private volatile CheckerStatus status;
-    public readonly Program Program;
+    public volatile Program Program;
 
     public void GetReady()
     {
@@ -197,36 +197,42 @@ namespace Microsoft.Boogie {
       }
     }
 
-    private static void Setup(Program prog, ProverContext ctx)
+    /// <summary>
+    /// Set up the context.
+    /// </summary>
+    private void Setup(Program prog, ProverContext ctx)
     {
-      // set up the context
-      foreach (Declaration decl in prog.TopLevelDeclarations.ToList())
+      Program = prog;
+      lock (Program.TopLevelDeclarations)
       {
-        Contract.Assert(decl != null);
-        var typeDecl = decl as TypeCtorDecl;
-        var constDecl = decl as Constant;
-        var funDecl = decl as Function;
-        var axiomDecl = decl as Axiom;
-        var glVarDecl = decl as GlobalVariable;
-        if (typeDecl != null)
+        foreach (Declaration decl in Program.TopLevelDeclarations)
         {
-          ctx.DeclareType(typeDecl, null);
-        }
-        else if (constDecl != null)
-        {
-          ctx.DeclareConstant(constDecl, constDecl.Unique, null);
-        }
-        else if (funDecl != null)
-        {
-          ctx.DeclareFunction(funDecl, null);
-        }
-        else if (axiomDecl != null)
-        {
-          ctx.AddAxiom(axiomDecl, null);
-        }
-        else if (glVarDecl != null)
-        {
-          ctx.DeclareGlobalVariable(glVarDecl, null);
+          Contract.Assert(decl != null);
+          var typeDecl = decl as TypeCtorDecl;
+          var constDecl = decl as Constant;
+          var funDecl = decl as Function;
+          var axiomDecl = decl as Axiom;
+          var glVarDecl = decl as GlobalVariable;
+          if (typeDecl != null)
+          {
+            ctx.DeclareType(typeDecl, null);
+          }
+          else if (constDecl != null)
+          {
+            ctx.DeclareConstant(constDecl, constDecl.Unique, null);
+          }
+          else if (funDecl != null)
+          {
+            ctx.DeclareFunction(funDecl, null);
+          }
+          else if (axiomDecl != null)
+          {
+            ctx.AddAxiom(axiomDecl, null);
+          }
+          else if (glVarDecl != null)
+          {
+            ctx.DeclareGlobalVariable(glVarDecl, null);
+          }
         }
       }
     }

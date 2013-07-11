@@ -1125,43 +1125,50 @@ namespace Microsoft.Boogie.VCExprAST {
       Contract.Requires(cce.NonNullElements(typeArgs));
       Contract.Assert(app.Func != null);    // resolution must have happened
 
-      if (app.Func.doingExpansion) {
-        System.Console.WriteLine("*** detected expansion loop on {0}", app.Func);
-        return null;
+      lock (app.Func)
+      {
+        if (app.Func.doingExpansion)
+        {
+          System.Console.WriteLine("*** detected expansion loop on {0}", app.Func);
+          return null;
+        }
+
+        var exp = app.Func.Body;
+        if (exp == null)
+          return null;
+
+        VCExpr/*!*/ translatedBody;
+        VCExprSubstitution/*!*/ subst = new VCExprSubstitution();
+        try
+        {
+          BaseTranslator.PushFormalsScope();
+          BaseTranslator.PushBoundVariableScope();
+          app.Func.doingExpansion = true;
+
+          // first bind the formals to VCExpr variables, which are later
+          // substituted with the actual parameters
+          var inParams = app.Func.InParams;
+          for (int i = 0; i < inParams.Length; ++i)
+            subst[BaseTranslator.BindVariable(inParams[i])] = args[i];
+
+          // recursively translate the body of the expansion
+          translatedBody = BaseTranslator.Translate(exp);
+        }
+        finally
+        {
+          BaseTranslator.PopFormalsScope();
+          BaseTranslator.PopBoundVariableScope();
+          app.Func.doingExpansion = false;
+        }
+
+        // substitute the formals with the actual parameters in the body
+        var tparms = app.Func.TypeParameters;
+        Contract.Assert(typeArgs.Count == tparms.Length);
+        for (int i = 0; i < typeArgs.Count; ++i)
+          subst[tparms[i]] = typeArgs[i];
+        SubstitutingVCExprVisitor/*!*/ substituter = new SubstitutingVCExprVisitor(Gen);
+        return substituter.Mutate(translatedBody, subst);
       }
-
-      var exp = app.Func.Body;
-      if (exp == null)
-        return null;
-
-      VCExpr/*!*/ translatedBody;
-      VCExprSubstitution/*!*/ subst = new VCExprSubstitution();
-      try {
-        BaseTranslator.PushFormalsScope();
-        BaseTranslator.PushBoundVariableScope();
-        app.Func.doingExpansion = true;
-
-        // first bind the formals to VCExpr variables, which are later
-        // substituted with the actual parameters
-        var inParams = app.Func.InParams;
-        for (int i = 0; i < inParams.Length; ++i)
-          subst[BaseTranslator.BindVariable(inParams[i])] = args[i];
-
-        // recursively translate the body of the expansion
-        translatedBody = BaseTranslator.Translate(exp);
-      } finally {
-        BaseTranslator.PopFormalsScope();
-        BaseTranslator.PopBoundVariableScope();
-        app.Func.doingExpansion = false;
-      }
-
-      // substitute the formals with the actual parameters in the body
-      var tparms = app.Func.TypeParameters;
-      Contract.Assert(typeArgs.Count == tparms.Length);
-      for (int i = 0; i < typeArgs.Count; ++i)
-        subst[tparms[i]] = typeArgs[i];
-      SubstitutingVCExprVisitor/*!*/ substituter = new SubstitutingVCExprVisitor(Gen);
-      return substituter.Mutate(translatedBody, subst);
     }
   }
 }
