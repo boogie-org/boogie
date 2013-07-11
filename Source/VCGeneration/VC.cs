@@ -66,7 +66,6 @@ namespace VC {
         Contract.Invariant(parent != null);
         Contract.Invariant(impl != null);
         Contract.Invariant(initial != null);
-        Contract.Invariant(program != null);
         Contract.Invariant(cce.NonNullDictionaryAndValues(copies));
         Contract.Invariant(cce.NonNull(visited));
         Contract.Invariant(callback != null);
@@ -75,21 +74,18 @@ namespace VC {
       VCGen parent;
       Implementation impl;
       Block initial;
-      Program program;
       int id;
       Dictionary<Block, Block> copies = new Dictionary<Block, Block>();
       HashSet<Block> visited = new HashSet<Block>();
       VerifierCallback callback;
 
-      internal SmokeTester(VCGen par, Implementation i, Program prog, VerifierCallback callback) {
+      internal SmokeTester(VCGen par, Implementation i, VerifierCallback callback) {
         Contract.Requires(par != null);
         Contract.Requires(i != null);
-        Contract.Requires(prog != null);
         Contract.Requires(callback != null);
         parent = par;
         impl = i;
         initial = i.Blocks[0];
-        program = prog;
         this.callback = callback;
       }
 
@@ -1196,8 +1192,7 @@ namespace VC {
         checker = parent.FindCheckerFor(timeout);
         Hashtable/*<int, Absy!>*/ label2absy = new Hashtable/*<int, Absy!>*/();
 
-        ProverInterface tp = checker.TheoremProver;
-        ProverContext ctx = tp.Context;
+        ProverContext ctx = checker.TheoremProver.Context;
         Boogie2VCExprTranslator bet = ctx.BoogieExprTranslator;
         bet.SetCodeExprConverter(
           new CodeExprConverter(
@@ -1407,16 +1402,12 @@ namespace VC {
 
       SmokeTester smoke_tester = null;
       if (CommandLineOptions.Clo.SoundnessSmokeTest) {
-        smoke_tester = new SmokeTester(this, impl, program, callback);
+        smoke_tester = new SmokeTester(this, impl, callback);
         smoke_tester.Copy();
       }
 
       ModelViewInfo mvInfo;
-      Hashtable/*TransferCmd->ReturnCmd*/ gotoCmdOrigins;
-      lock (program)
-      {
-        gotoCmdOrigins = PassifyImpl(impl, out mvInfo);
-      }
+      var gotoCmdOrigins = PassifyImpl(impl, out mvInfo);
 
       double max_vc_cost = CommandLineOptions.Clo.VcsMaxCost;
       int tmp_max_vc_cost = -1, max_splits = CommandLineOptions.Clo.VcsMaxSplits, 
@@ -1661,7 +1652,7 @@ namespace VC {
         Contract.Assert(traceNodes.Contains(entryBlock));
         trace.Add(entryBlock);
 
-        Counterexample newCounterexample = TraceCounterexample(entryBlock, traceNodes, trace, model, MvInfo, incarnationOriginMap, context, program, new Dictionary<TraceLocation, CalleeCounterexampleInfo>());
+        Counterexample newCounterexample = TraceCounterexample(entryBlock, traceNodes, trace, model, MvInfo, incarnationOriginMap, context, new Dictionary<TraceLocation, CalleeCounterexampleInfo>());
 
         if (newCounterexample == null)
           return;
@@ -2039,11 +2030,15 @@ namespace VC {
       {
         CmdSeq cc = new CmdSeq();
         // where clauses of global variables
-        foreach (Declaration d in program.TopLevelDeclarations) {
-          GlobalVariable gvar = d as GlobalVariable;
-          if (gvar != null && gvar.TypedIdent.WhereExpr != null) {
-            Cmd c = new AssumeCmd(gvar.tok, gvar.TypedIdent.WhereExpr);
-            cc.Add(c);
+        lock (program.TopLevelDeclarations)
+        {
+          foreach (var gvar in program.TopLevelDeclarations.OfType<GlobalVariable>())
+          {
+            if (gvar != null && gvar.TypedIdent.WhereExpr != null)
+            {
+              Cmd c = new AssumeCmd(gvar.tok, gvar.TypedIdent.WhereExpr);
+              cc.Add(c);
+            }
           }
         }
         // where clauses of in- and out-parameters
@@ -2118,7 +2113,10 @@ namespace VC {
         List<Expr> axioms;
         List<Function> functions;
         LambdaHelper.Desugar(impl, out axioms, out functions);
-        program.TopLevelDeclarations.AddRange(functions);
+        lock (program.TopLevelDeclarations)
+        {
+          program.TopLevelDeclarations.AddRange(functions);
+        }
 
         if (axioms.Count > 0) {
           CmdSeq cmds = new CmdSeq();
@@ -2364,7 +2362,7 @@ namespace VC {
     static Counterexample TraceCounterexample(
                           Block/*!*/ b, Hashtable/*!*/ traceNodes, BlockSeq/*!*/ trace, Model errModel, ModelViewInfo mvInfo,
                           Dictionary<Incarnation, Absy/*!*/>/*!*/ incarnationOriginMap,
-                          ProverContext/*!*/ context, Program/*!*/ program,
+                          ProverContext/*!*/ context,
                           Dictionary<TraceLocation/*!*/, CalleeCounterexampleInfo/*!*/>/*!*/ calleeCounterexamples)
     {
       Contract.Requires(b != null);
@@ -2372,7 +2370,6 @@ namespace VC {
       Contract.Requires(trace != null);
       Contract.Requires(cce.NonNullDictionaryAndValues(incarnationOriginMap));
       Contract.Requires(context != null);
-      Contract.Requires(program != null);
       Contract.Requires(cce.NonNullDictionaryAndValues(calleeCounterexamples));
       // After translation, all potential errors come from asserts.
       CmdSeq cmds = b.Cmds;
@@ -2400,7 +2397,7 @@ namespace VC {
           Contract.Assert(bb != null);
           if (traceNodes.Contains(bb)){
             trace.Add(bb);
-            return TraceCounterexample(bb, traceNodes, trace, errModel, mvInfo, incarnationOriginMap, context, program, calleeCounterexamples);
+            return TraceCounterexample(bb, traceNodes, trace, errModel, mvInfo, incarnationOriginMap, context, calleeCounterexamples);
           }
         }
       }

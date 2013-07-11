@@ -355,9 +355,7 @@ namespace Microsoft.Boogie
     public static ErrorInformationFactory errorInformationFactory = new ErrorInformationFactory();
 
     public readonly static VerificationResultCache Cache = new VerificationResultCache();
-
-    static LinearTypechecker linearTypechecker;
-
+    
     static List<Checker> Checkers = new List<Checker>();
 
     static IDictionary<string, CancellationTokenSource> ImplIdToCancellationTokenSource = new ConcurrentDictionary<string, CancellationTokenSource>();
@@ -419,7 +417,8 @@ namespace Microsoft.Boogie
           PrintBplFile(CommandLineOptions.Clo.PrintFile, program, false);
         }
 
-        PipelineOutcome oc = ResolveAndTypecheck(program, fileNames[fileNames.Count - 1]);
+        LinearTypechecker linearTypechecker;
+        PipelineOutcome oc = ResolveAndTypecheck(program, fileNames[fileNames.Count - 1], out linearTypechecker);
         if (oc != PipelineOutcome.ResolvedAndTypeChecked)
           return;
 
@@ -587,10 +586,13 @@ namespace Microsoft.Boogie
     ///  - TypeCheckingError if a type checking error occurred
     ///  - ResolvedAndTypeChecked if both resolution and type checking succeeded
     /// </summary>
-    public static PipelineOutcome ResolveAndTypecheck(Program program, string bplFileName)
+    public static PipelineOutcome ResolveAndTypecheck(Program program, string bplFileName, out LinearTypechecker linearTypechecker)
     {
       Contract.Requires(program != null);
       Contract.Requires(bplFileName != null);
+
+      linearTypechecker = null;
+
       // ---------- Resolve ------------------------------------------------------------
 
       if (CommandLineOptions.Clo.NoResolve)

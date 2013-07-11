@@ -423,7 +423,7 @@ namespace Microsoft.Boogie.SMTLib
       Axioms.Clear();
       TypeDecls.Clear();
       AxiomsAreSetup = false;
-      ctx.Clear();
+      ctx.Reset();
       ctx.KnownDatatypeConstructors.Clear();
       ctx.parent = this;
       DeclCollector.Reset();

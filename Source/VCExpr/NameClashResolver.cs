@@ -33,15 +33,13 @@ namespace Microsoft.Boogie.VCExprAST {
 
     private UniqueNamer(UniqueNamer namer) {
       Contract.Requires(namer != null);
+
       Spacer = namer.Spacer;
       GlobalNames = new Dictionary<Object, string>(namer.GlobalNames);
-
-      List<IDictionary<Object/*!*/, string/*!*/>/*!*/>/*!*/ localNames =
-        new List<IDictionary<Object, string>>();
-      LocalNames = localNames;
+      LocalNames = new List<IDictionary<Object, string>>();
 
       foreach (IDictionary<Object/*!*/, string/*!*/>/*!*/ d in namer.LocalNames)
-        localNames.Add(new Dictionary<Object/*!*/, string/*!*/>(d));
+        LocalNames.Add(new Dictionary<Object/*!*/, string/*!*/>(d));
 
       UsedNames = new HashSet<string>(namer.UsedNames);
       CurrentCounters = new Dictionary<string, int>(namer.CurrentCounters);
@@ -57,6 +55,7 @@ namespace Microsoft.Boogie.VCExprAST {
     {
       GlobalNames.Clear();
       LocalNames.Clear();
+      LocalNames.Add(new Dictionary<Object/*!*/, string/*!*/>());
       UsedNames.Clear();
       CurrentCounters.Clear();
       GlobalPlusLocalNames.Clear();

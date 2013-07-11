@@ -1695,10 +1695,14 @@ namespace VC {
       Contract.Requires(impl != null);
 
       // global variables
-      foreach (Variable v in program.TopLevelDeclarations.OfType<Variable>()) {
-        if (!(v is Constant))
+      lock (program.TopLevelDeclarations)
+      {
+        foreach (Variable v in program.TopLevelDeclarations.OfType<Variable>())
         {
-          AllVariables.Add(v);
+          if (!(v is Constant))
+          {
+            AllVariables.Add(v);
+          }
         }
       }
       // implementation parameters

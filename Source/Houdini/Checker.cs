@@ -134,7 +134,7 @@ namespace Microsoft.Boogie.Houdini {
 
       vcgen.ConvertCFG2DAG(impl);
       ModelViewInfo mvInfo;
-      Hashtable/*TransferCmd->ReturnCmd*/ gotoCmdOrigins = vcgen.PassifyImpl(impl, out mvInfo);
+      var gotoCmdOrigins = vcgen.PassifyImpl(impl, out mvInfo);
 
       ExistentialConstantCollector ecollector;
       ExistentialConstantCollector.CollectHoudiniConstants(houdini, impl, out ecollector);

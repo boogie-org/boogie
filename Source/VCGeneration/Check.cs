@@ -179,7 +179,7 @@ namespace Microsoft.Boogie {
     public void Retarget(Program prog, ProverContext ctx, int timeout = 0)
     {
         TheoremProver.FullReset();
-        ctx.Clear();
+        ctx.Reset();
         Setup(prog, ctx);
         this.timeout = timeout;
         SetTimeout();
