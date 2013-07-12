@@ -141,6 +141,7 @@ namespace Microsoft.Boogie
       }
 
       tw.Write(errorInfo.Out.ToString());
+      tw.Write(errorInfo.Model.ToString());
       tw.Flush();
     }
 
@@ -235,6 +236,7 @@ namespace Microsoft.Boogie
     public ErrorKind Kind { get; set; }
     public string ImplementationName { get; set; }
     public TextWriter Out = new StringWriter();
+    public TextWriter Model = new StringWriter();
 
     public string FullMsg
     {
@@ -1349,7 +1351,7 @@ namespace Microsoft.Boogie
           }
           if (CommandLineOptions.Clo.ModelViewFile != null)
           {
-            error.PrintModel(errorInfo.Out);
+            error.PrintModel(errorInfo.Model);
           }
 
           printer.WriteErrorInformation(errorInfo, tw);
