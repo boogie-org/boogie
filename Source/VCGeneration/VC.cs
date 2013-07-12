@@ -317,10 +317,6 @@ namespace VC {
             ch.BeginCheck(cce.NonNull(impl.Name + "_smoke" + id++), vc, new ErrorHandler(label2Absy, this.callback));
             ch.ProverTask.Wait();
           }
-          catch
-          {
-            throw;
-          }
           finally
           {
             ch.GoBackToIdle();
@@ -1567,10 +1563,6 @@ namespace VC {
                 outcome = Outcome.Errors;
                 break;
               }
-            }
-            catch
-            {
-              throw;
             }
             finally
             {

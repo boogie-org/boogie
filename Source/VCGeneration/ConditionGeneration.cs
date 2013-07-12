@@ -984,25 +984,32 @@ namespace VC {
         for (int i = 0; i < checkers.Count; i++)
         {
           var c = checkers.ElementAt(i);
-          lock (c)
+          if (Monitor.TryEnter(c))
           {
-            if (c.WillingToHandle(timeout, program))
+            try
             {
-              c.GetReady();
-              return c;
-            }
-            else if (c.IsIdle || c.IsClosed)
-            {
-              if (c.IsIdle)
+              if (c.WillingToHandle(timeout, program))
               {
-                c.Retarget(program, c.TheoremProver.Context, timeout);
+                c.GetReady();
                 return c;
               }
-              else
+              else if (c.IsIdle || c.IsClosed)
               {
-                checkers.RemoveAt(i);
+                if (c.IsIdle)
+                {
+                  c.Retarget(program, c.TheoremProver.Context, timeout);
+                  return c;
+                }
+                else
+                {
+                  checkers.RemoveAt(i);
+                }
+                continue;
               }
-              continue;
+            }
+            finally
+            {
+              Monitor.Exit(c);
             }
           }
         }
