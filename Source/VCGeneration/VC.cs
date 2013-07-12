@@ -252,18 +252,21 @@ namespace VC {
         return BooleanEval(e, ref val) && !val;
       }
 
-      bool CheckUnreachable(Block cur, CmdSeq seq) {
+      bool CheckUnreachable(Block cur, CmdSeq seq)
+      {
         Contract.Requires(cur != null);
         Contract.Requires(seq != null);
         Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
-        foreach (Cmd cmd in seq) {
+        foreach (Cmd cmd in seq)
+        {
           AssertCmd assrt = cmd as AssertCmd;
           if (assrt != null && QKeyValue.FindBoolAttribute(assrt.Attributes, "PossiblyUnreachable"))
             return false;
         }
 
         DateTime start = DateTime.UtcNow;
-        if (CommandLineOptions.Clo.Trace) {
+        if (CommandLineOptions.Clo.Trace)
+        {
           System.Console.Write("    soundness smoke test #{0} ... ", id);
         }
         callback.OnProgress("smoke", id, id, 0.0);
@@ -278,7 +281,8 @@ namespace VC {
         Contract.Assert(backup != null);
         impl.Blocks = GetCopiedBlocks();
         copy.TransferCmd = new ReturnCmd(Token.NoToken);
-        if (CommandLineOptions.Clo.TraceVerify) {
+        if (CommandLineOptions.Clo.TraceVerify)
+        {
           System.Console.WriteLine();
           System.Console.WriteLine(" --- smoke #{0}, before passify", id);
           Emit();
@@ -290,64 +294,70 @@ namespace VC {
         Checker ch = parent.FindCheckerFor(CommandLineOptions.Clo.SmokeTimeout);
         Contract.Assert(ch != null);
 
-        lock (ch)
+        ProverInterface.Outcome outcome = ProverInterface.Outcome.Undetermined;
+        try
         {
-          var exprGen = ch.TheoremProver.Context.ExprGen;
-          VCExpr controlFlowVariableExpr = CommandLineOptions.Clo.UseLabels ? null : exprGen.Integer(BigNum.ZERO);
-
-          VCExpr vc = parent.GenerateVC(impl, controlFlowVariableExpr, out label2Absy, ch.TheoremProver.Context);
-          Contract.Assert(vc != null);
-
-          if (!CommandLineOptions.Clo.UseLabels)
+          lock (ch)
           {
-            VCExpr controlFlowFunctionAppl = exprGen.ControlFlowFunctionApplication(exprGen.Integer(BigNum.ZERO), exprGen.Integer(BigNum.ZERO));
-            VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl, exprGen.Integer(BigNum.FromInt(impl.Blocks[0].UniqueId)));
-            vc = exprGen.Implies(eqExpr, vc);
-          }
+            var exprGen = ch.TheoremProver.Context.ExprGen;
+            VCExpr controlFlowVariableExpr = CommandLineOptions.Clo.UseLabels ? null : exprGen.Integer(BigNum.ZERO);
 
-          impl.Blocks = backup;
+            VCExpr vc = parent.GenerateVC(impl, controlFlowVariableExpr, out label2Absy, ch.TheoremProver.Context);
+            Contract.Assert(vc != null);
 
-          if (CommandLineOptions.Clo.TraceVerify)
-          {
-            System.Console.WriteLine(" --- smoke #{0}, after passify", id);
-            Emit();
-          }
-          try
-          {
-            ch.BeginCheck(cce.NonNull(impl.Name + "_smoke" + id++), vc, new ErrorHandler(label2Absy, this.callback));
-            ch.ProverTask.Wait();
-          }
-          finally
-          {
-            ch.GoBackToIdle();
-          }
-          
-          ProverInterface.Outcome outcome = ch.ReadOutcome();
-          
-          parent.CurrentLocalVariables = null;
+            if (!CommandLineOptions.Clo.UseLabels)
+            {
+              VCExpr controlFlowFunctionAppl = exprGen.ControlFlowFunctionApplication(exprGen.Integer(BigNum.ZERO), exprGen.Integer(BigNum.ZERO));
+              VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl, exprGen.Integer(BigNum.FromInt(impl.Blocks[0].UniqueId)));
+              vc = exprGen.Implies(eqExpr, vc);
+            }
 
-          DateTime end = DateTime.UtcNow;
-          TimeSpan elapsed = end - start;
-          if (CommandLineOptions.Clo.Trace)
-          {
-            System.Console.WriteLine("  [{0} s] {1}", elapsed.TotalSeconds,
-              outcome == ProverInterface.Outcome.Valid ? "OOPS" :
-                "OK" + (outcome == ProverInterface.Outcome.Invalid ? "" : " (" + outcome + ")"));
-          }
-
-          if (outcome == ProverInterface.Outcome.Valid)
-          {
-            // copy it again, so we get the version with calls, assignments and such
-            copy = CopyBlock(cur);
-            copy.Cmds = seq;
-            impl.Blocks = GetCopiedBlocks();
-            TopologicalSortImpl();
-            callback.OnUnreachableCode(impl);
             impl.Blocks = backup;
-            return true;
+
+            if (CommandLineOptions.Clo.TraceVerify)
+            {
+              System.Console.WriteLine(" --- smoke #{0}, after passify", id);
+              Emit();
+            }
+
+            ch.BeginCheck(cce.NonNull(impl.Name + "_smoke" + id++), vc, new ErrorHandler(label2Absy, this.callback));
           }
-          return false;
+
+          ch.ProverTask.Wait();
+
+          lock (ch)
+          {
+             outcome = ch.ReadOutcome();
+          }
         }
+        finally
+        {
+          ch.GoBackToIdle();
+        }
+
+        parent.CurrentLocalVariables = null;
+
+        DateTime end = DateTime.UtcNow;
+        TimeSpan elapsed = end - start;
+        if (CommandLineOptions.Clo.Trace)
+        {
+          System.Console.WriteLine("  [{0} s] {1}", elapsed.TotalSeconds,
+            outcome == ProverInterface.Outcome.Valid ? "OOPS" :
+              "OK" + (outcome == ProverInterface.Outcome.Invalid ? "" : " (" + outcome + ")"));
+        }
+
+        if (outcome == ProverInterface.Outcome.Valid)
+        {
+          // copy it again, so we get the version with calls, assignments and such
+          copy = CopyBlock(cur);
+          copy.Cmds = seq;
+          impl.Blocks = GetCopiedBlocks();
+          TopologicalSortImpl();
+          callback.OnUnreachableCode(impl);
+          impl.Blocks = backup;
+          return true;
+        }
+        return false;
       }
 
       const bool turnAssertIntoAssumes = false;
@@ -1198,7 +1208,8 @@ namespace VC {
       /// <summary>
       /// As a side effect, updates "this.parent.CumulativeAssertionCount".
       /// </summary>
-      public void BeginCheck(Checker checker, VerifierCallback callback, ModelViewInfo mvInfo, int no, int timeout) {
+      public void BeginCheck(Checker checker, VerifierCallback callback, ModelViewInfo mvInfo, int no, int timeout)
+      {
         Contract.Requires(checker != null);
         Contract.Requires(callback != null);
 
@@ -1208,84 +1219,81 @@ namespace VC {
 
         this.checker = checker;
 
-        lock (checker)
-        {
-          Hashtable/*<int, Absy!>*/ label2absy = new Hashtable/*<int, Absy!>*/();
+        Hashtable/*<int, Absy!>*/ label2absy = new Hashtable/*<int, Absy!>*/();
 
-          ProverContext ctx = checker.TheoremProver.Context;
-          Boogie2VCExprTranslator bet = ctx.BoogieExprTranslator;
-          bet.SetCodeExprConverter(
-            new CodeExprConverter(
-            delegate(CodeExpr codeExpr, Hashtable/*<Block, VCExprVar!>*/ blockVariables, List<VCExprLetBinding/*!*/> bindings)
+        ProverContext ctx = checker.TheoremProver.Context;
+        Boogie2VCExprTranslator bet = ctx.BoogieExprTranslator;
+        bet.SetCodeExprConverter(
+          new CodeExprConverter(
+          delegate(CodeExpr codeExpr, Hashtable/*<Block, VCExprVar!>*/ blockVariables, List<VCExprLetBinding/*!*/> bindings)
+          {
+            VCGen vcgen = new VCGen(new Program(), null, false, parent.checkers);
+            vcgen.variable2SequenceNumber = new Hashtable/*Variable -> int*/();
+            vcgen.incarnationOriginMap = new Dictionary<Incarnation, Absy>();
+            vcgen.CurrentLocalVariables = codeExpr.LocVars;
+            // codeExpr.Blocks.PruneUnreachableBlocks();  // This is needed for VCVariety.BlockNested, and is otherwise just an optimization
+
+            ResetPredecessors(codeExpr.Blocks);
+            vcgen.AddBlocksBetween(codeExpr.Blocks);
+            Hashtable/*TransferCmd->ReturnCmd*/ gotoCmdOrigins = vcgen.ConvertBlocks2PassiveCmd(codeExpr.Blocks, new IdentifierExprSeq(), new ModelViewInfo(codeExpr));
+            int ac;  // computed, but then ignored for this CodeExpr
+            VCExpr startCorrect = VCGen.LetVC(codeExpr.Blocks[0], null, label2absy, blockVariables, bindings, ctx, out ac);
+            VCExpr vce = ctx.ExprGen.Let(bindings, startCorrect);
+
+            if (vcgen.CurrentLocalVariables.Length != 0)
             {
-              VCGen vcgen = new VCGen(new Program(), null, false, parent.checkers);
-              vcgen.variable2SequenceNumber = new Hashtable/*Variable -> int*/();
-              vcgen.incarnationOriginMap = new Dictionary<Incarnation, Absy>();
-              vcgen.CurrentLocalVariables = codeExpr.LocVars;
-              // codeExpr.Blocks.PruneUnreachableBlocks();  // This is needed for VCVariety.BlockNested, and is otherwise just an optimization
-
-              ResetPredecessors(codeExpr.Blocks);
-              vcgen.AddBlocksBetween(codeExpr.Blocks);
-              Hashtable/*TransferCmd->ReturnCmd*/ gotoCmdOrigins = vcgen.ConvertBlocks2PassiveCmd(codeExpr.Blocks, new IdentifierExprSeq(), new ModelViewInfo(codeExpr));
-              int ac;  // computed, but then ignored for this CodeExpr
-              VCExpr startCorrect = VCGen.LetVC(codeExpr.Blocks[0], null, label2absy, blockVariables, bindings, ctx, out ac);
-              VCExpr vce = ctx.ExprGen.Let(bindings, startCorrect);
-
-              if (vcgen.CurrentLocalVariables.Length != 0)
+              Boogie2VCExprTranslator translator = checker.TheoremProver.Context.BoogieExprTranslator;
+              List<VCExprVar> boundVars = new List<VCExprVar>();
+              foreach (Variable v in vcgen.CurrentLocalVariables)
               {
-                Boogie2VCExprTranslator translator = checker.TheoremProver.Context.BoogieExprTranslator;
-                List<VCExprVar> boundVars = new List<VCExprVar>();
-                foreach (Variable v in vcgen.CurrentLocalVariables)
+                Contract.Assert(v != null);
+                VCExprVar ev = translator.LookupVariable(v);
+                Contract.Assert(ev != null);
+                boundVars.Add(ev);
+                if (v.TypedIdent.Type.Equals(Bpl.Type.Bool))
                 {
-                  Contract.Assert(v != null);
-                  VCExprVar ev = translator.LookupVariable(v);
-                  Contract.Assert(ev != null);
-                  boundVars.Add(ev);
-                  if (v.TypedIdent.Type.Equals(Bpl.Type.Bool))
-                  {
-                    // add an antecedent (tickleBool ev) to help the prover find a possible trigger
-                    vce = checker.VCExprGen.Implies(checker.VCExprGen.Function(VCExpressionGenerator.TickleBoolOp, ev), vce);
-                  }
+                  // add an antecedent (tickleBool ev) to help the prover find a possible trigger
+                  vce = checker.VCExprGen.Implies(checker.VCExprGen.Function(VCExpressionGenerator.TickleBoolOp, ev), vce);
                 }
-                vce = checker.VCExprGen.Forall(boundVars, new List<VCTrigger>(), vce);
               }
-              return vce;
+              vce = checker.VCExprGen.Forall(boundVars, new List<VCTrigger>(), vce);
             }
-          ));
-
-          var exprGen = ctx.ExprGen;
-          VCExpr controlFlowVariableExpr = CommandLineOptions.Clo.UseLabels ? null : exprGen.Integer(BigNum.ZERO);
-
-          VCExpr vc = parent.GenerateVCAux(impl, controlFlowVariableExpr, label2absy, checker.TheoremProver.Context);
-          Contract.Assert(vc != null);
-
-          if (!CommandLineOptions.Clo.UseLabels)
-          {
-            VCExpr controlFlowFunctionAppl = exprGen.ControlFlowFunctionApplication(exprGen.Integer(BigNum.ZERO), exprGen.Integer(BigNum.ZERO));
-            VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl, exprGen.Integer(BigNum.FromInt(impl.Blocks[0].UniqueId)));
-            vc = exprGen.Implies(eqExpr, vc);
+            return vce;
           }
+        ));
 
-          if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Local)
-          {
-            reporter = new ErrorReporterLocal(gotoCmdOrigins, label2absy, impl.Blocks, parent.incarnationOriginMap, callback, mvInfo, cce.NonNull(this.Checker.TheoremProver.Context), parent.program);
-          }
-          else
-          {
-            reporter = new ErrorReporter(gotoCmdOrigins, label2absy, impl.Blocks, parent.incarnationOriginMap, callback, mvInfo, this.Checker.TheoremProver.Context, parent.program);
-          }
+        var exprGen = ctx.ExprGen;
+        VCExpr controlFlowVariableExpr = CommandLineOptions.Clo.UseLabels ? null : exprGen.Integer(BigNum.ZERO);
 
-          if (CommandLineOptions.Clo.TraceVerify && no >= 0)
-          {
-            Console.WriteLine("-- after split #{0}", no);
-            Print();
-          }
+        VCExpr vc = parent.GenerateVCAux(impl, controlFlowVariableExpr, label2absy, checker.TheoremProver.Context);
+        Contract.Assert(vc != null);
 
-          string desc = cce.NonNull(impl.Name);
-          if (no >= 0)
-            desc += "_split" + no;
-          checker.BeginCheck(desc, vc, reporter);
+        if (!CommandLineOptions.Clo.UseLabels)
+        {
+          VCExpr controlFlowFunctionAppl = exprGen.ControlFlowFunctionApplication(exprGen.Integer(BigNum.ZERO), exprGen.Integer(BigNum.ZERO));
+          VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl, exprGen.Integer(BigNum.FromInt(impl.Blocks[0].UniqueId)));
+          vc = exprGen.Implies(eqExpr, vc);
         }
+
+        if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Local)
+        {
+          reporter = new ErrorReporterLocal(gotoCmdOrigins, label2absy, impl.Blocks, parent.incarnationOriginMap, callback, mvInfo, cce.NonNull(this.Checker.TheoremProver.Context), parent.program);
+        }
+        else
+        {
+          reporter = new ErrorReporter(gotoCmdOrigins, label2absy, impl.Blocks, parent.incarnationOriginMap, callback, mvInfo, this.Checker.TheoremProver.Context, parent.program);
+        }
+
+        if (CommandLineOptions.Clo.TraceVerify && no >= 0)
+        {
+          Console.WriteLine("-- after split #{0}", no);
+          Print();
+        }
+
+        string desc = cce.NonNull(impl.Name);
+        if (no >= 0)
+          desc += "_split" + no;
+        checker.BeginCheck(desc, vc, reporter);
       }
 
       private void SoundnessCheck(HashSet<PureCollections.Tuple/*!*/>/*!*/ cache, Block/*!*/ orig, List<Block/*!*/>/*!*/ copies) {
@@ -1508,7 +1516,10 @@ namespace VC {
             callback.OnProgress("VCprove", no < 0 ? 0 : no, total, proven_cost / (remaining_cost + proven_cost));
 
             Contract.Assert(s.parent == this);
-            s.BeginCheck(checker, callback, mvInfo, no, timeout);
+            lock (checker)
+            {
+              s.BeginCheck(checker, callback, mvInfo, no, timeout);
+            }
 
             no++;
 
@@ -1535,7 +1546,10 @@ namespace VC {
                 remaining_cost -= s.Cost;
               }
 
-              s.ReadOutcome(ref outcome, out prover_failed);
+              lock (s.Checker)
+              {
+                s.ReadOutcome(ref outcome, out prover_failed);
+              }
 
               if (do_splitting)
               {

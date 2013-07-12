@@ -178,11 +178,18 @@ namespace Microsoft.Boogie {
 
     public void Retarget(Program prog, ProverContext ctx, int timeout = 0)
     {
+      lock (this)
+      {
+        hasOutput = default(bool);
+        outcome = default(ProverInterface.Outcome);
+        outputExn = default(UnexpectedProverOutputException);
+        handler = default(ProverInterface.ErrorHandler);
         TheoremProver.FullReset();
         ctx.Reset();
         Setup(prog, ctx);
         this.timeout = timeout;
         SetTimeout();
+      }
     }
 
     public void SetTimeout()
@@ -288,32 +295,39 @@ namespace Microsoft.Boogie {
     }
 
     private void WaitForOutput(object dummy) {
-      try {
-        outcome = thmProver.CheckOutcome(cce.NonNull(handler));
-      } catch (UnexpectedProverOutputException e) {
-        outputExn = e;
-      }
+      lock (this)
+      {
+        try
+        {
+          outcome = thmProver.CheckOutcome(cce.NonNull(handler));
+        }
+        catch (UnexpectedProverOutputException e)
+        {
+          outputExn = e;
+        }
 
-      switch (outcome) {
-        case ProverInterface.Outcome.Valid:
-          thmProver.LogComment("Valid");
-          break;
-        case ProverInterface.Outcome.Invalid:
-          thmProver.LogComment("Invalid");
-          break;
-        case ProverInterface.Outcome.TimeOut:
-          thmProver.LogComment("Timed out");
-          break;
-        case ProverInterface.Outcome.OutOfMemory:
-          thmProver.LogComment("Out of memory");
-          break;
-        case ProverInterface.Outcome.Undetermined:
-          thmProver.LogComment("Undetermined");
-          break;
-      }
+        switch (outcome)
+        {
+          case ProverInterface.Outcome.Valid:
+            thmProver.LogComment("Valid");
+            break;
+          case ProverInterface.Outcome.Invalid:
+            thmProver.LogComment("Invalid");
+            break;
+          case ProverInterface.Outcome.TimeOut:
+            thmProver.LogComment("Timed out");
+            break;
+          case ProverInterface.Outcome.OutOfMemory:
+            thmProver.LogComment("Out of memory");
+            break;
+          case ProverInterface.Outcome.Undetermined:
+            thmProver.LogComment("Undetermined");
+            break;
+        }
 
-      hasOutput = true;
-      proverRunTime = DateTime.UtcNow - proverStart;
+        hasOutput = true;
+        proverRunTime = DateTime.UtcNow - proverStart;
+      }
     }
 
     public void BeginCheck(string descriptiveName, VCExpr vc, ProverInterface.ErrorHandler handler) {

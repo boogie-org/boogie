@@ -983,7 +983,7 @@ namespace VC {
         // Look for existing checker.
         for (int i = 0; i < checkers.Count; i++)
         {
-          var c = checkers.ElementAt(i);
+          var c = checkers[i];
           if (Monitor.TryEnter(c))
           {
             try
@@ -998,13 +998,13 @@ namespace VC {
                 if (c.IsIdle)
                 {
                   c.Retarget(program, c.TheoremProver.Context, timeout);
+                  c.GetReady();
                   return c;
                 }
                 else
                 {
                   checkers.RemoveAt(i);
                 }
-                continue;
               }
             }
             finally
