@@ -1495,7 +1495,7 @@ namespace VC {
           {
             var timeout = (keep_going && s.LastChance) ? CommandLineOptions.Clo.VcsFinalAssertTimeout :
                   keep_going ? CommandLineOptions.Clo.VcsKeepGoingTimeout :
-                  CommandLineOptions.Clo.ProverKillTime;
+                  impl.TimeLimit;
 
             var checker = s.parent.FindCheckerFor(timeout, false);
             if (checker == null)

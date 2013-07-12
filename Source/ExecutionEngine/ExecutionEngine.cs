@@ -1013,7 +1013,7 @@ namespace Microsoft.Boogie
 
       #region Process the verification results and statistics
 
-      ProcessOutcome(verificationResult.Outcome, verificationResult.Errors, TimeIndication(verificationResult), stats, output, er, verificationResult.ImplementationName, verificationResult.ImplementationToken, verificationResult.RequestId);
+      ProcessOutcome(verificationResult.Outcome, verificationResult.Errors, TimeIndication(verificationResult), stats, output, impl.TimeLimit, er, verificationResult.ImplementationName, verificationResult.ImplementationToken, verificationResult.RequestId);
 
       ProcessErrors(verificationResult.Errors, verificationResult.Outcome, output, er, impl);
 
@@ -1136,7 +1136,7 @@ namespace Microsoft.Boogie
 
       foreach (Houdini.VCGenOutcome x in outcome.implementationOutcomes.Values)
       {
-        ProcessOutcome(x.outcome, x.errors, "", stats, Console.Out, er);
+        ProcessOutcome(x.outcome, x.errors, "", stats, Console.Out, CommandLineOptions.Clo.ProverKillTime, er);
         ProcessErrors(x.errors, x.outcome, Console.Out, er);
       }
       //errorCount = outcome.ErrorCount;
@@ -1163,7 +1163,7 @@ namespace Microsoft.Boogie
       // Run Abstract Houdini
       var abs = new Houdini.AbsHoudini(program, domain);
       var absout = abs.ComputeSummaries();
-      ProcessOutcome(absout.outcome, absout.errors, "", stats, Console.Out, er);
+      ProcessOutcome(absout.outcome, absout.errors, "", stats, Console.Out, CommandLineOptions.Clo.ProverKillTime, er);
       ProcessErrors(absout.errors, absout.outcome, Console.Out, er);
 
       //Houdini.PredicateAbs.Initialize(program);
@@ -1192,7 +1192,7 @@ namespace Microsoft.Boogie
 
 
     private static void ProcessOutcome(VC.VCGen.Outcome outcome, List<Counterexample> errors, string timeIndication,
-                                       PipelineStatistics stats, TextWriter tw, ErrorReporterDelegate er = null, string implName = null, IToken implTok = null, string requestId = null)
+                                       PipelineStatistics stats, TextWriter tw, int timeLimit, ErrorReporterDelegate er = null, string implName = null, IToken implTok = null, string requestId = null)
     {
       Contract.Requires(stats != null);
 
@@ -1200,11 +1200,11 @@ namespace Microsoft.Boogie
 
       printer.Inform(timeIndication + OutcomeIndication(outcome, errors), tw);
 
-      ReportOutcome(outcome, er, implName, implTok, requestId, tw);
+      ReportOutcome(outcome, er, implName, implTok, requestId, tw, timeLimit);
     }
 
 
-    private static void ReportOutcome(VC.VCGen.Outcome outcome, ErrorReporterDelegate er, string implName, IToken implTok, string requestId, TextWriter tw)
+    private static void ReportOutcome(VC.VCGen.Outcome outcome, ErrorReporterDelegate er, string implName, IToken implTok, string requestId, TextWriter tw, int timeLimit)
     {
       ErrorInformation errorInfo = null;
 
@@ -1216,7 +1216,7 @@ namespace Microsoft.Boogie
         case VCGen.Outcome.TimedOut:
           if (implName != null && implTok != null)
           {
-            errorInfo = errorInformationFactory.CreateErrorInformation(implTok, string.Format("Verification timed out after {0} seconds ({1})", CommandLineOptions.Clo.ProverKillTime, implName), requestId);
+            errorInfo = errorInformationFactory.CreateErrorInformation(implTok, string.Format("Verification timed out after {0} seconds ({1})", timeLimit, implName), requestId);
           }
           break;
         case VCGen.Outcome.OutOfMemory:
