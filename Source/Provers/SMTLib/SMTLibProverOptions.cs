@@ -92,7 +92,7 @@ namespace Microsoft.Boogie.SMTLib
             break;
           case "cvc4":
             Solver = SolverKind.CVC4;
-            Logic = "ALL_SUPPORTED";
+            Logic = "QF_ALL_SUPPORTED";
             break;
           default:
             ReportError("Invalid SOLVER value; must be 'z3' or 'cvc4'");
