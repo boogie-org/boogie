@@ -10,6 +10,7 @@ using System.Windows.Forms;
 
 using System.IO;
 using Microsoft.Boogie;
+using System.Diagnostics.Contracts;
 
 namespace Microsoft.Boogie.ModelViewer
 {
@@ -92,6 +93,18 @@ namespace Microsoft.Boogie.ModelViewer
       }
     }
 
+    public void ReadModel(string model, int setModelIdTo = 0)
+    {
+      Contract.Requires(model != null);
+
+      using (var rd = new StringReader(model))
+      {
+        allModels = Model.ParseModels(rd).ToArray();
+      }
+
+      AddAndLoadModel(setModelIdTo);
+    }
+
     public void ReadModels(string modelFileName, int setModelIdTo)
     {
       this.lastModelFileName = modelFileName;
@@ -102,28 +115,34 @@ namespace Microsoft.Boogie.ModelViewer
           allModels = Model.ParseModels(rd).ToArray();
         }
 
-        modelId = setModelIdTo;
-
-        if (modelId >= allModels.Length)
-          modelId = 0;
-
-        currentModel = allModels[modelId];
-        AddModelMenu();
-
-        foreach (var p in Providers()) {
-          if (p.IsMyModel(currentModel)) {
-            this.langProvider = p;
-            break;
-          }
-        }
-
-        LoadModel(modelId);
+        AddAndLoadModel(setModelIdTo);
       } else {
         currentModel = new Model();
       }
 
       this.SetWindowTitle(modelFileName);
+    }
 
+    private void AddAndLoadModel(int setModelIdTo)
+    {
+      modelId = setModelIdTo;
+
+      if (modelId >= allModels.Length)
+        modelId = 0;
+
+      currentModel = allModels[modelId];
+      AddModelMenu();
+
+      foreach (var p in Providers())
+      {
+        if (p.IsMyModel(currentModel))
+        {
+          this.langProvider = p;
+          break;
+        }
+      }
+
+      LoadModel(modelId);
     }
 
     private void LoadModel(int idx)
