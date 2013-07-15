@@ -13,7 +13,8 @@ import zipfile;
 
 
 #PROVER_NAME = "smt"
-PROVER_NAME = "simplify"
+#PROVER_NAME = "simplify"
+PROVER_NAME = "cvc4"
 
 # constants
 # prefix of temporary files created by boogie
@@ -25,6 +26,7 @@ PREFIX_PGK = "boogie"
 # arguments to runtest so that boogie creates problem specifications
 BOOGIE_ARG0 = "/prover:blank /print:" + PREFIX_TMP + ".@TIME@.bpl /proverLog:" + PREFIX_TMP + ".@TIME@.simplify"
 BOOGIE_ARG1 = "/prover:smt /print:" + PREFIX_TMP + ".@TIME@.bpl /proverLog:" + PREFIX_TMP + ".@TIME@.jjsmt"
+BOOGIE_ARG2 = "/prover:cvc4 /print:" + PREFIX_TMP + ".@TIME@.bpl /proverLog:" + PREFIX_TMP + ".@TIME@.cvc4"
 
 # file containing the directories with tests
 TESTS_FILE = "alltests.txt"
@@ -51,10 +53,12 @@ def runtests(parameters):
      boogie_arg = BOOGIE_ARG0
   if PROVER_NAME == "smt":
      boogie_arg = BOOGIE_ARG1
+  if PROVER_NAME == "cvc4":
+     boogie_arg = BOOGIE_ARG2
   if os.name == "nt":
     command = "runtestall.bat "  + " ".join(parameters) + " " + boogie_arg
   else:
-    command = "./rtestall "  + " ".join(parameters) + " " + boogie_arg
+    command = "sh rtestall.sh "  + " ".join(parameters) + " " + boogie_arg
   
   print command
 

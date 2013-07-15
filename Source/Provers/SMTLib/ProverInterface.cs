@@ -8,6 +8,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Threading;
 using System.IO;
+
 //using ExternalProver;
 using System.Linq;
 using System.Diagnostics;
@@ -18,555 +19,509 @@ using Microsoft.Boogie.VCExprAST;
 using Microsoft.Boogie.Clustering;
 using Microsoft.Boogie.TypeErasure;
 using System.Text;
-
 using RPFP = Microsoft.Boogie.RPFP;
 
 namespace Microsoft.Boogie.SMTLib
 {
-  public class SMTLibProcessTheoremProver : ProverInterface
-  {
-    private readonly SMTLibProverContext ctx;
-    private readonly VCExpressionGenerator gen;
-    private readonly SMTLibProverOptions options;
-    private bool usingUnsatCore;
-    private RPFP rpfp = null;
+	public class SMTLibProcessTheoremProver : ProverInterface
+	{
+		private readonly SMTLibProverContext ctx;
+		private readonly VCExpressionGenerator gen;
+		private readonly SMTLibProverOptions options;
+		private bool usingUnsatCore;
+		private RPFP rpfp = null;
 
-    [ContractInvariantMethod]
-    void ObjectInvariant()
-    {
-      Contract.Invariant(ctx != null);
-      Contract.Invariant(AxBuilder != null);
-      Contract.Invariant(Namer != null);
-      Contract.Invariant(DeclCollector != null);
-      Contract.Invariant(cce.NonNullElements(Axioms));
-      Contract.Invariant(cce.NonNullElements(TypeDecls));
-      Contract.Invariant(_backgroundPredicates != null);
+		[ContractInvariantMethod]
+		void ObjectInvariant ()
+		{
+			Contract.Invariant (ctx != null);
+			Contract.Invariant (AxBuilder != null);
+			Contract.Invariant (Namer != null);
+			Contract.Invariant (DeclCollector != null);
+			Contract.Invariant (cce.NonNullElements (Axioms));
+			Contract.Invariant (cce.NonNullElements (TypeDecls));
+			Contract.Invariant (_backgroundPredicates != null);
 
-    }
+		}
 
+		[NotDelayed]
+		public SMTLibProcessTheoremProver (ProverOptions options, VCExpressionGenerator gen,
+		                                    SMTLibProverContext ctx)
+		{
+			Contract.Requires (options != null);
+			Contract.Requires (gen != null);
+			Contract.Requires (ctx != null);
+			InitializeGlobalInformation ("UnivBackPred2.smt2");
 
-    [NotDelayed]
-    public SMTLibProcessTheoremProver(ProverOptions options, VCExpressionGenerator gen,
-                                      SMTLibProverContext ctx)
-    {
-      Contract.Requires(options != null);
-      Contract.Requires(gen != null);
-      Contract.Requires(ctx != null);
-      InitializeGlobalInformation("UnivBackPred2.smt2");
+			this.options = (SMTLibProverOptions)options;
+			this.ctx = ctx;
+			this.gen = gen;
+			this.usingUnsatCore = false;
 
-      this.options = (SMTLibProverOptions)options;
-      this.ctx = ctx;
-      this.gen = gen;
-      this.usingUnsatCore = false;
+			SetupAxiomBuilder (gen);
 
-      SetupAxiomBuilder(gen);
+			Namer = new SMTLibNamer ();
+			ctx.parent = this;
+			this.DeclCollector = new TypeDeclCollector ((SMTLibProverOptions)options, Namer);
 
-      Namer = new SMTLibNamer();
-      ctx.parent = this;
-      this.DeclCollector = new TypeDeclCollector((SMTLibProverOptions)options, Namer);
+			SetupProcess ();
 
-      SetupProcess();
+			if (CommandLineOptions.Clo.StratifiedInlining > 0 || CommandLineOptions.Clo.ContractInfer) {
+				// Prepare for ApiChecker usage
+				if (options.LogFilename != null && currentLogFile == null) {
+					currentLogFile = OpenOutputFile ("");
+				}
+				if (CommandLineOptions.Clo.ContractInfer) {
+					SendThisVC ("(set-option :produce-unsat-cores true)");
+					this.usingUnsatCore = true;
+				}
+				PrepareCommon ();
+			}
+		}
 
-      if (CommandLineOptions.Clo.StratifiedInlining > 0 || CommandLineOptions.Clo.ContractInfer)
-      {
-          // Prepare for ApiChecker usage
-          if (options.LogFilename != null && currentLogFile == null)
-          {
-              currentLogFile = OpenOutputFile("");
-          }
-          if (CommandLineOptions.Clo.ContractInfer)
-          {
-              SendThisVC("(set-option :produce-unsat-cores true)");
-              this.usingUnsatCore = true;
-          }
-          PrepareCommon();
-      }
-    }
+		private void SetupAxiomBuilder (VCExpressionGenerator gen)
+		{
+			switch (CommandLineOptions.Clo.TypeEncodingMethod) {
+			case CommandLineOptions.TypeEncoding.Arguments:
+				AxBuilder = new TypeAxiomBuilderArguments (gen);
+				AxBuilder.Setup ();
+				break;
+			case CommandLineOptions.TypeEncoding.Monomorphic:
+				AxBuilder = new TypeAxiomBuilderPremisses (gen);
+				break;
+			default:
+				AxBuilder = new TypeAxiomBuilderPremisses (gen);
+				AxBuilder.Setup ();
+				break;
+			}
+		}
 
-    private void SetupAxiomBuilder(VCExpressionGenerator gen)
-    {
-      switch (CommandLineOptions.Clo.TypeEncodingMethod)
-      {
-        case CommandLineOptions.TypeEncoding.Arguments:
-          AxBuilder = new TypeAxiomBuilderArguments(gen);
-          AxBuilder.Setup();
-          break;
-        case CommandLineOptions.TypeEncoding.Monomorphic:
-          AxBuilder = new TypeAxiomBuilderPremisses(gen);
-          break;
-        default:
-          AxBuilder = new TypeAxiomBuilderPremisses(gen);
-          AxBuilder.Setup();
-          break;
-      }
-    }
+		ProcessStartInfo ComputeProcessStartInfo ()
+		{
+			var path = this.options.ProverPath;
+			switch (options.Solver) {
+			case SolverKind.Z3:
+				if (path == null)
+					path = Z3.ExecutablePath ();
+				return SMTLibProcess.ComputerProcessStartInfo (path, "AUTO_CONFIG=false -smt2 -in");
+			case SolverKind.CVC4:
+				if (path == null)
+					path = "cvc4";
+				return SMTLibProcess.ComputerProcessStartInfo (path, "--lang=smt --no-strict-parsing --no-condense-function-values --incremental");
+			default:
+				Debug.Assert (false);
+				return null;
+			}
+		}
 
-    ProcessStartInfo ComputeProcessStartInfo()
-    {
-      var path = this.options.ProverPath;
-      switch (options.Solver) {
-        case SolverKind.Z3:
-          if (path == null)
-            path = Z3.ExecutablePath();
-          return SMTLibProcess.ComputerProcessStartInfo(path, "AUTO_CONFIG=false -smt2 -in");
-        case SolverKind.CVC3:
-          if (path == null)
-            path = "cvc3";
-          return SMTLibProcess.ComputerProcessStartInfo(path, "-lang smt2 +interactive -showPrompt");
-        case SolverKind.CVC4:
-          if (path == null)
-            path = "cvc4";
-          return SMTLibProcess.ComputerProcessStartInfo(path, "--smtlib2 --no-strict-parsing");
-        default:
-          Debug.Assert(false);
-          return null;
-      }
-    }
+		void SetupProcess ()
+		{
+			if (Process != null)
+				return;
 
-    void SetupProcess()
-    {
-      if (Process != null) return;
+			var psi = ComputeProcessStartInfo ();
+			Process = new SMTLibProcess (psi, this.options);
+			Process.ErrorHandler += this.HandleProverError;
+		}
 
-      var psi = ComputeProcessStartInfo();
-      Process = new SMTLibProcess(psi, this.options);
-      Process.ErrorHandler += this.HandleProverError;
-    }
+		void PossiblyRestart ()
+		{
+			if (Process != null && Process.NeedsRestart) {
+				Process.Close ();
+				Process = null;
+				SetupProcess ();
+				Process.Send (common.ToString ());
+			}
+		}
 
+		public override ProverContext Context {
+			get {
+				Contract.Ensures (Contract.Result<ProverContext> () != null);
 
-    void PossiblyRestart()
-    {
-      if (Process != null && Process.NeedsRestart) {
-        Process.Close();
-        Process = null;
-        SetupProcess();
-        Process.Send(common.ToString());
-      }
-    }
+				return ctx;
+			}
+		}
 
-    public override ProverContext Context
-    {
-      get
-      {
-        Contract.Ensures(Contract.Result<ProverContext>() != null);
+		internal TypeAxiomBuilder AxBuilder { get; private set; }
 
-        return ctx;
-      }
-    }
+		internal readonly UniqueNamer Namer;
+		readonly TypeDeclCollector DeclCollector;
+		SMTLibProcess Process;
+		readonly List<string> proverErrors = new List<string> ();
+		readonly List<string> proverWarnings = new List<string> ();
+		readonly StringBuilder common = new StringBuilder ();
+		TextWriter currentLogFile;
+		volatile ErrorHandler currentErrorHandler;
 
-    internal TypeAxiomBuilder AxBuilder { get; private set; }
-    internal readonly UniqueNamer Namer;
-    readonly TypeDeclCollector DeclCollector;
-    SMTLibProcess Process;
-    readonly List<string> proverErrors = new List<string>();
-    readonly List<string> proverWarnings = new List<string>();
-    readonly StringBuilder common = new StringBuilder();
-    TextWriter currentLogFile;
-    volatile ErrorHandler currentErrorHandler;
+		private void FeedTypeDeclsToProver ()
+		{
+			foreach (string s in DeclCollector.GetNewDeclarations()) {
+				Contract.Assert (s != null);
+				AddTypeDecl (s);
+			}
+		}
 
-    private void FeedTypeDeclsToProver()
-    {
-      foreach (string s in DeclCollector.GetNewDeclarations()) {
-        Contract.Assert(s != null);
-        AddTypeDecl(s);
-      }
-    }
+		private string Sanitize (string msg)
+		{
+			var idx = msg.IndexOf ('\n');
+			if (idx > 0)
+				msg = msg.Replace ("\r", "").Replace ("\n", "\r\n");
+			return msg;
+		}
 
-    private string Sanitize(string msg)
-    {
-      var idx = msg.IndexOf('\n');
-      if (idx > 0)
-        msg = msg.Replace("\r", "").Replace("\n", "\r\n");
-      return msg;
-    }
+		private void SendCommon (string s)
+		{
+			Send (s, true);
+		}
 
-    private void SendCommon(string s)
-    {
-      Send(s, true);
-    }
+		private void SendThisVC (string s)
+		{
+			Send (s, false);
+		}
 
-    private void SendThisVC(string s)
-    {
-      Send(s, false);
-    }
+		private void Send (string s, bool isCommon)
+		{
+			s = Sanitize (s);
 
-    private void Send(string s, bool isCommon)
-    {
-      s = Sanitize(s);
+			if (isCommon)
+				common.Append (s).Append ("\r\n");
 
-      if (isCommon)
-        common.Append(s).Append("\r\n");
+			if (Process != null)
+				Process.Send (s);
+			if (currentLogFile != null)
+				currentLogFile.WriteLine (s);
+		}
 
-      if (Process != null)
-        Process.Send(s);
-      if (currentLogFile != null)
-        currentLogFile.WriteLine(s);
-    }
+		private void FindDependentTypes (Type type, List<CtorType> dependentTypes)
+		{
+			MapType mapType = type as MapType;
+			if (mapType != null) {
+				foreach (Type t in mapType.Arguments) {
+					FindDependentTypes (t, dependentTypes);
+				}
+				FindDependentTypes (mapType.Result, dependentTypes);
+			}
+			CtorType ctorType = type as CtorType;
+			if (ctorType != null && ctx.KnownDatatypeConstructors.ContainsKey (ctorType)) {
+				dependentTypes.Add (ctorType);
+			}
+		}
 
-    private void FindDependentTypes(Type type, List<CtorType> dependentTypes)
-    {
-        MapType mapType = type as MapType;
-        if (mapType != null)
-        {
-            foreach (Type t in mapType.Arguments)
-            {
-                FindDependentTypes(t, dependentTypes);
-            }
-            FindDependentTypes(mapType.Result, dependentTypes);
-        }
-        CtorType ctorType = type as CtorType;
-        if (ctorType != null && ctx.KnownDatatypeConstructors.ContainsKey(ctorType))
-        {
-            dependentTypes.Add(ctorType);
-        }
-    }
+		private void PrepareCommon ()
+		{
+			if (common.Length == 0) {
+				SendCommon ("(set-option :print-success false)");
+				SendCommon ("(set-info :smt-lib-version 2.0)");
+				if (options.ProduceModel ())
+					SendCommon ("(set-option :produce-models true)");
+				foreach (var opt in options.SmtOptions) {
+					SendCommon ("(set-option :" + opt.Option + " " + opt.Value + ")");
+				}
 
-    private void PrepareCommon()
-    {
-      if (common.Length == 0)
-      {
-        SendCommon("(set-option :print-success false)");
-        SendCommon("(set-info :smt-lib-version 2.0)");
-        if (options.ProduceModel())
-          SendCommon("(set-option :produce-models true)");
-        foreach (var opt in options.SmtOptions)
-        {
-          SendCommon("(set-option :" + opt.Option + " " + opt.Value + ")");
-        }
+				if (!string.IsNullOrEmpty (options.Logic)) {
+					SendCommon ("(set-logic " + options.Logic + ")");
+				}
 
-        if (!string.IsNullOrEmpty(options.Logic))
-        {
-          SendCommon("(set-logic " + options.Logic + ")");
-        }
+				SendCommon ("; done setting options\n");
+				SendCommon (_backgroundPredicates);
 
-        SendCommon("; done setting options\n");
-        SendCommon(_backgroundPredicates);
+				if (options.UseTickleBool) {
+					SendCommon ("(declare-fun tickleBool (Bool) Bool)");
+					SendCommon ("(assert (and (tickleBool true) (tickleBool false)))");
+				}
 
-        if (options.UseTickleBool)
-        {
-          SendCommon("(declare-fun tickleBool (Bool) Bool)");
-          SendCommon("(assert (and (tickleBool true) (tickleBool false)))");
-        }
+				if (ctx.KnownDatatypeConstructors.Count > 0) {
+					GraphUtil.Graph<CtorType> dependencyGraph = new GraphUtil.Graph<CtorType> ();
+					foreach (CtorType datatype in ctx.KnownDatatypeConstructors.Keys) {
+						dependencyGraph.AddSource (datatype);
+						foreach (Function f in ctx.KnownDatatypeConstructors[datatype]) {
+							List<CtorType> dependentTypes = new List<CtorType> ();
+							foreach (Variable v in f.InParams) {
+								FindDependentTypes (v.TypedIdent.Type, dependentTypes);
+							}
+							foreach (CtorType result in dependentTypes) {
+								dependencyGraph.AddEdge (datatype, result);
+							}
+						}
+					}
+					GraphUtil.StronglyConnectedComponents<CtorType> sccs = new GraphUtil.StronglyConnectedComponents<CtorType> (dependencyGraph.Nodes, dependencyGraph.Predecessors, dependencyGraph.Successors);
+					sccs.Compute ();
+					foreach (GraphUtil.SCC<CtorType> scc in sccs) {
+						string datatypeString = "";
+						foreach (CtorType datatype in scc) {
+							datatypeString += "(" + SMTLibExprLineariser.TypeToString (datatype) + " ";
+							foreach (Function f in ctx.KnownDatatypeConstructors[datatype]) {
+								string quotedConstructorName = Namer.GetQuotedName (f, f.Name);
+								if (f.InParams.Length == 0) {
+									datatypeString += quotedConstructorName + " ";
+								} else {
+									datatypeString += "(" + quotedConstructorName + " ";
+									foreach (Variable v in f.InParams) {
+										string quotedSelectorName = Namer.GetQuotedName (v, v.Name + "#" + f.Name);
+										datatypeString += "(" + quotedSelectorName + " " + DeclCollector.TypeToStringReg (v.TypedIdent.Type) + ") ";
+									}
+									datatypeString += ") ";
+								}
+							}
+							datatypeString += ") ";
+						}
+						List<string> decls = DeclCollector.GetNewDeclarations ();
+						foreach (string decl in decls) {
+							SendCommon (decl);
+						}
+						SendCommon ("(declare-datatypes () (" + datatypeString + "))");
+					}
+				}
+			}
 
-        if (ctx.KnownDatatypeConstructors.Count > 0)
-        {
-          GraphUtil.Graph<CtorType> dependencyGraph = new GraphUtil.Graph<CtorType>();
-          foreach (CtorType datatype in ctx.KnownDatatypeConstructors.Keys)
-          {
-            dependencyGraph.AddSource(datatype);
-            foreach (Function f in ctx.KnownDatatypeConstructors[datatype])
-            {
-              List<CtorType> dependentTypes = new List<CtorType>();
-              foreach (Variable v in f.InParams)
-              {
-                FindDependentTypes(v.TypedIdent.Type, dependentTypes);
-              }
-              foreach (CtorType result in dependentTypes)
-              {
-                dependencyGraph.AddEdge(datatype, result);
-              }
-            }
-          }
-          GraphUtil.StronglyConnectedComponents<CtorType> sccs = new GraphUtil.StronglyConnectedComponents<CtorType>(dependencyGraph.Nodes, dependencyGraph.Predecessors, dependencyGraph.Successors);
-          sccs.Compute();
-          foreach (GraphUtil.SCC<CtorType> scc in sccs)
-          {
-            string datatypeString = "";
-            foreach (CtorType datatype in scc)
-            {
-              datatypeString += "(" + SMTLibExprLineariser.TypeToString(datatype) + " ";
-              foreach (Function f in ctx.KnownDatatypeConstructors[datatype])
-              {
-                string quotedConstructorName = Namer.GetQuotedName(f, f.Name);
-                if (f.InParams.Length == 0)
-                {
-                  datatypeString += quotedConstructorName + " ";
-                }
-                else
-                {
-                  datatypeString += "(" + quotedConstructorName + " ";
-                  foreach (Variable v in f.InParams)
-                  {
-                    string quotedSelectorName = Namer.GetQuotedName(v, v.Name + "#" + f.Name);
-                    datatypeString += "(" + quotedSelectorName + " " + DeclCollector.TypeToStringReg(v.TypedIdent.Type) + ") ";
-                  }
-                  datatypeString += ") ";
-                }
-              }
-              datatypeString += ") ";
-            }
-            List<string> decls = DeclCollector.GetNewDeclarations();
-            foreach (string decl in decls)
-            {
-              SendCommon(decl);
-            }
-            SendCommon("(declare-datatypes () (" + datatypeString + "))");
-          }
-        }
-      }
+			if (!AxiomsAreSetup) {
+				var axioms = ctx.Axioms;
+				var nary = axioms as VCExprNAry;
+				if (nary != null && nary.Op == VCExpressionGenerator.AndOp)
+					foreach (var expr in nary.UniformArguments) {
+						var str = VCExpr2String (expr, -1);
+						if (str != "true")
+							AddAxiom (str);
+					}
+				else
+					AddAxiom (VCExpr2String (axioms, -1));
+				AxiomsAreSetup = true;
+			}
+		}
 
-      if (!AxiomsAreSetup)
-      {
-        var axioms = ctx.Axioms;
-        var nary = axioms as VCExprNAry;
-        if (nary != null && nary.Op == VCExpressionGenerator.AndOp)
-          foreach (var expr in nary.UniformArguments)
-          {
-            var str = VCExpr2String(expr, -1);
-            if (str != "true")
-              AddAxiom(str);
-          }
-        else
-          AddAxiom(VCExpr2String(axioms, -1));
-        AxiomsAreSetup = true;
-      }
-    }
+		public override int FlushAxiomsToTheoremProver ()
+		{
+			// we feed the axioms when begincheck is called.
+			return 0;
+		}
 
-    public override int FlushAxiomsToTheoremProver()
-    {
-      // we feed the axioms when begincheck is called.
-      return 0;
-    }
+		private void FlushAxioms ()
+		{
+			TypeDecls.Iter (SendCommon);
+			TypeDecls.Clear ();
+			foreach (string s in Axioms) {
+				Contract.Assert (s != null);
+				if (s != "true")
+					SendCommon ("(assert " + s + ")");
+			}
+			Axioms.Clear ();
+			//FlushPushedAssertions();
+		}
 
-    private void FlushAxioms()
-    {
-      TypeDecls.Iter(SendCommon);
-      TypeDecls.Clear();
-      foreach (string s in Axioms) {
-        Contract.Assert(s != null);
-        if (s != "true")
-          SendCommon("(assert " + s + ")");
-      }
-      Axioms.Clear();
-      //FlushPushedAssertions();
-    }
+		private void CloseLogFile ()
+		{
+			if (currentLogFile != null) {
+				currentLogFile.Close ();
+				currentLogFile = null;
+			}
+		}
 
-    private void CloseLogFile()
-    {
-      if (currentLogFile != null) {
-        currentLogFile.Close();
-        currentLogFile = null;
-      }
-    }
+		private void FlushLogFile ()
+		{
+			if (currentLogFile != null) {
+				currentLogFile.Flush ();
+			}
+		}
 
-    private void FlushLogFile()
-    {
-      if (currentLogFile != null) {
-        currentLogFile.Flush();
-      }
-    }
+		public override void Close ()
+		{
+			base.Close ();
+			CloseLogFile ();
+			if (Process != null)
+				Process.Close ();
+		}
 
-    public override void Close()
-    {
-      base.Close();
-      CloseLogFile();
-      if (Process != null)
-        Process.Close();
-    }
+		public override void BeginCheck (string descriptiveName, VCExpr vc, ErrorHandler handler)
+		{
+			//Contract.Requires(descriptiveName != null);
+			//Contract.Requires(vc != null);
+			//Contract.Requires(handler != null);
+			rpfp = null;
 
-    public override void BeginCheck(string descriptiveName, VCExpr vc, ErrorHandler handler)
-    {
-      //Contract.Requires(descriptiveName != null);
-      //Contract.Requires(vc != null);
-      //Contract.Requires(handler != null);
-      rpfp = null;
+			if (options.SeparateLogFiles)
+				CloseLogFile (); // shouldn't really happen
 
-      if (options.SeparateLogFiles) CloseLogFile(); // shouldn't really happen
+			if (options.LogFilename != null && currentLogFile == null) {
+				currentLogFile = OpenOutputFile (descriptiveName);
+				currentLogFile.Write (common.ToString ());
+			}
 
-      if (options.LogFilename != null && currentLogFile == null)
-      {
-        currentLogFile = OpenOutputFile(descriptiveName);
-        currentLogFile.Write(common.ToString());
-      }
+			PrepareCommon ();
+			string vcString = "(assert (not\n" + VCExpr2String (vc, 1) + "\n))";
+			FlushAxioms ();
 
-      PrepareCommon();
-      string vcString = "(assert (not\n" + VCExpr2String(vc, 1) + "\n))";
-      FlushAxioms();
+			PossiblyRestart ();
 
-      PossiblyRestart();
+			SendThisVC ("(push 1)");
+			SendThisVC ("(set-info :boogie-vc-id " + SMTLibNamer.QuoteId (descriptiveName) + ")");
+			SendThisVC (vcString);
+			FlushLogFile ();
 
-      SendThisVC("(push 1)");
-      SendThisVC("(set-info :boogie-vc-id " + SMTLibNamer.QuoteId(descriptiveName) + ")");
-      SendThisVC(vcString);
-      FlushLogFile();
+			if (Process != null) {
+				Process.PingPong (); // flush any errors
 
-      if (Process != null) {
-        Process.PingPong(); // flush any errors
+				if (Process.Inspector != null)
+					Process.Inspector.NewProblem (descriptiveName, vc, handler);
+			}
 
-        if (Process.Inspector != null)
-          Process.Inspector.NewProblem(descriptiveName, vc, handler);
-      }
+			SendThisVC ("(check-sat)");
+			FlushLogFile ();
+		}
 
-      SendThisVC("(check-sat)");
-      FlushLogFile();
-    }
-
-    public override void Reset()
-    {
-      SendThisVC("(reset)");
+		public override void Reset ()
+		{
+			if (options.Solver == SolverKind.Z3) {
+				SendThisVC ("(reset)");
       
-      if (0 < common.Length)
-      {
-        var c = common.ToString();
-        Process.Send(c);
-        if (currentLogFile != null)
-        {
-          currentLogFile.WriteLine(c);
-        }
-      }
-    }
+				if (0 < common.Length) {
+					var c = common.ToString ();
+					Process.Send (c);
+					if (currentLogFile != null) {
+						currentLogFile.WriteLine (c);
+					}
+				}
+			}
+		}
 
-    public override void FullReset()
-    {
-      Namer.Reset();
-      common.Clear();
-      SetupAxiomBuilder(gen);
-      Axioms.Clear();
-      TypeDecls.Clear();
-      AxiomsAreSetup = false;
-      ctx.Reset();
-      ctx.KnownDatatypeConstructors.Clear();
-      ctx.parent = this;
-      DeclCollector.Reset();
-      SendThisVC("; doing a full reset...");
-    }
+		public override void FullReset ()
+		{
+			if (options.Solver == SolverKind.Z3) {
+				Namer.Reset ();
+				common.Clear ();
+				SetupAxiomBuilder (gen);
+				Axioms.Clear ();
+				TypeDecls.Clear ();
+				AxiomsAreSetup = false;
+				ctx.Reset ();
+				ctx.KnownDatatypeConstructors.Clear ();
+				ctx.parent = this;
+				DeclCollector.Reset ();
+				SendThisVC ("; doing a full reset...");
+			}
+		}
 
-    private RPFP.Node SExprToCex(SExpr resp, ErrorHandler handler, 
-                                 Dictionary<int,Dictionary<string,string>> varSubst)
-    {
-        Dictionary<string, RPFP.Node> nmap = new Dictionary<string,RPFP.Node>();
-        Dictionary<string, RPFP.Node> pmap = new Dictionary<string,RPFP.Node>();
+		private RPFP.Node SExprToCex (SExpr resp, ErrorHandler handler, 
+		                               Dictionary<int,Dictionary<string,string>> varSubst)
+		{
+			Dictionary<string, RPFP.Node> nmap = new Dictionary<string,RPFP.Node> ();
+			Dictionary<string, RPFP.Node> pmap = new Dictionary<string,RPFP.Node> ();
 
-        foreach(var node in rpfp.nodes)
-            pmap.Add((node.Name as VCExprBoogieFunctionOp).Func.Name,node);
+			foreach (var node in rpfp.nodes)
+				pmap.Add ((node.Name as VCExprBoogieFunctionOp).Func.Name, node);
 
-        RPFP.Node topnode = null;
-        var lines = resp.Arguments;
+			RPFP.Node topnode = null;
+			var lines = resp.Arguments;
 
-        // last line of derivation is from query, skip it
-        for (int i = 0; i < lines.Length-1; i++)
-        {
-            var line = lines[i];
-            if (line.ArgCount != 6)
-            {
-                HandleProverError("bad derivation line from prover: " + line.ToString());
-                return null;
-            }
-            var name = line[0];
-            var conseq = line[1];
-            var rule = line[2];
-            var subst = line[3];
-            var labs = line[4];
-            var refs = line[5];
-            var predName = conseq.Name;
-            {
-                string spacer = "@@"; // Hack! UniqueNamer is adding these and I can't stop it!
-                int pos = predName.LastIndexOf(spacer);
-                if (pos >= 0)
-                    predName = predName.Substring(0, pos);
-            }
-            RPFP.Node node = null;
-            if (!pmap.TryGetValue(predName, out node))
-            {
-                HandleProverError("unknown predicate from prover: " + predName.ToString());
-                return null;
-            }
-            RPFP.Node cexnode = rpfp.CloneNode(node);
-            cexnode.map = node;
-            nmap.Add(name.Name, cexnode);
-            List<RPFP.Node> Chs = new List<RPFP.Node>();
+			// last line of derivation is from query, skip it
+			for (int i = 0; i < lines.Length-1; i++) {
+				var line = lines [i];
+				if (line.ArgCount != 6) {
+					HandleProverError ("bad derivation line from prover: " + line.ToString ());
+					return null;
+				}
+				var name = line [0];
+				var conseq = line [1];
+				var rule = line [2];
+				var subst = line [3];
+				var labs = line [4];
+				var refs = line [5];
+				var predName = conseq.Name;
+				{
+					string spacer = "@@"; // Hack! UniqueNamer is adding these and I can't stop it!
+					int pos = predName.LastIndexOf (spacer);
+					if (pos >= 0)
+						predName = predName.Substring (0, pos);
+				}
+				RPFP.Node node = null;
+				if (!pmap.TryGetValue (predName, out node)) {
+					HandleProverError ("unknown predicate from prover: " + predName.ToString ());
+					return null;
+				}
+				RPFP.Node cexnode = rpfp.CloneNode (node);
+				cexnode.map = node;
+				nmap.Add (name.Name, cexnode);
+				List<RPFP.Node> Chs = new List<RPFP.Node> ();
 
-            if (refs.Name != "ref")
-            {
-                HandleProverError("bad references from prover: " + refs.ToString());
-                return null;
-            }
-            foreach (var c in refs.Arguments)
-            {
-                if (c.Name == "true")
-                    Chs.Add(null);
-                else
-                {
-                    RPFP.Node ch = null;
-                    if (!nmap.TryGetValue(c.Name, out ch))
-                    {
-                        HandleProverError("unknown reference from prover: " + c.ToString());
-                        return null;
-                    }
-                    Chs.Add(ch);
-                }
-            }
+				if (refs.Name != "ref") {
+					HandleProverError ("bad references from prover: " + refs.ToString ());
+					return null;
+				}
+				foreach (var c in refs.Arguments) {
+					if (c.Name == "true")
+						Chs.Add (null);
+					else {
+						RPFP.Node ch = null;
+						if (!nmap.TryGetValue (c.Name, out ch)) {
+							HandleProverError ("unknown reference from prover: " + c.ToString ());
+							return null;
+						}
+						Chs.Add (ch);
+					}
+				}
 
-            if (!rule.Name.StartsWith("rule!"))
-            {
-                HandleProverError("bad rule name from prover: " + refs.ToString());
-                return null;
-            }
-            int ruleNum = Convert.ToInt32(rule.Name.Substring(5)) - 1;
-            if (ruleNum < 0 || ruleNum > rpfp.edges.Count)
-            {
-                HandleProverError("bad rule name from prover: " + refs.ToString());
-                return null;
-            }
-            RPFP.Edge orig_edge = rpfp.edges[ruleNum];
-            RPFP.Edge e = rpfp.CreateEdge(cexnode, orig_edge.F, Chs.ToArray());
-            e.map = orig_edge;
-            topnode = cexnode;
+				if (!rule.Name.StartsWith ("rule!")) {
+					HandleProverError ("bad rule name from prover: " + refs.ToString ());
+					return null;
+				}
+				int ruleNum = Convert.ToInt32 (rule.Name.Substring (5)) - 1;
+				if (ruleNum < 0 || ruleNum > rpfp.edges.Count) {
+					HandleProverError ("bad rule name from prover: " + refs.ToString ());
+					return null;
+				}
+				RPFP.Edge orig_edge = rpfp.edges [ruleNum];
+				RPFP.Edge e = rpfp.CreateEdge (cexnode, orig_edge.F, Chs.ToArray ());
+				e.map = orig_edge;
+				topnode = cexnode;
 
-            if (labs.Name != "labels")
-            {
-                HandleProverError("bad labels from prover: " + labs.ToString());
-                return null;
-            }
-            e.labels = new HashSet<string>();
-            foreach (var l in labs.Arguments)
-                e.labels.Add(l.Name);
+				if (labs.Name != "labels") {
+					HandleProverError ("bad labels from prover: " + labs.ToString ());
+					return null;
+				}
+				e.labels = new HashSet<string> ();
+				foreach (var l in labs.Arguments)
+					e.labels.Add (l.Name);
 
-            if (subst.Name != "subst")
-            {
-                HandleProverError("bad subst from prover: " + subst.ToString());
-                return null;
-            }
-            Dictionary<string, string> dict = new Dictionary<string, string>();
-            varSubst[e.number] = dict;
-            foreach (var s in subst.Arguments)
-            {
-                if (s.Name != "=" || s.Arguments.Length != 2)
-                {
-                    HandleProverError("bad equation from prover: " + s.ToString());
-                    return null;
-                }
-                string uniqueName = s.Arguments[0].Name;
-                string spacer = "@@"; // Hack! UniqueNamer is adding these and I can't stop it!
-                int pos = uniqueName.LastIndexOf(spacer);
-                if (pos >= 0)
-                    uniqueName = uniqueName.Substring(0, pos);
-                dict.Add(uniqueName, s.Arguments[1].ToString());
-            }
+				if (subst.Name != "subst") {
+					HandleProverError ("bad subst from prover: " + subst.ToString ());
+					return null;
+				}
+				Dictionary<string, string> dict = new Dictionary<string, string> ();
+				varSubst [e.number] = dict;
+				foreach (var s in subst.Arguments) {
+					if (s.Name != "=" || s.Arguments.Length != 2) {
+						HandleProverError ("bad equation from prover: " + s.ToString ());
+						return null;
+					}
+					string uniqueName = s.Arguments [0].Name;
+					string spacer = "@@"; // Hack! UniqueNamer is adding these and I can't stop it!
+					int pos = uniqueName.LastIndexOf (spacer);
+					if (pos >= 0)
+						uniqueName = uniqueName.Substring (0, pos);
+					dict.Add (uniqueName, s.Arguments [1].ToString ());
+				}
 
-        }
-        if (topnode == null)
-        {
-            HandleProverError("empty derivation from prover: " + resp.ToString());
-        }
-        return topnode;
-    }
+			}
+			if (topnode == null) {
+				HandleProverError ("empty derivation from prover: " + resp.ToString ());
+			}
+			return topnode;
+		}
 
-    private Model SExprToModel(SExpr resp, ErrorHandler handler)
-    {
-        // Concatenate all the arguments
-        string modelString = resp[0].Name;
-        // modelString = modelString.Substring(7, modelString.Length - 8); // remove "(model " and final ")"
-        var models = Model.ParseModels(new StringReader("Z3 error model: \n" + modelString));
-        if (models == null || models.Count == 0)
-        {
-            HandleProverError("no model from prover: " + resp.ToString());
-        }
-        return models[0];
-    }
+		private Model SExprToModel (SExpr resp, ErrorHandler handler)
+		{
+			// Concatenate all the arguments
+			string modelString = resp [0].Name;
+			// modelString = modelString.Substring(7, modelString.Length - 8); // remove "(model " and final ")"
+			var models = Model.ParseModels (new StringReader ("Z3 error model: \n" + modelString), "");
+			if (models == null || models.Count == 0) {
+				HandleProverError ("no model from prover: " + resp.ToString ());
+			}
+			return models [0];
+		}
 
-    private string QuantifiedVCExpr2String(VCExpr x)
-    {
-        return VCExpr2String(x, 1); 
+		private string QuantifiedVCExpr2String (VCExpr x)
+		{
+			return VCExpr2String (x, 1); 
 #if false
         if (!(x is VCExprQuantifier))
             return VCExpr2String(x, 1);
@@ -594,122 +549,112 @@ namespace Microsoft.Boogie.SMTLib
         string res = wr.ToString();
         return res;
 #endif
-    }
+		}
 
-    public override Outcome CheckRPFP(string descriptiveName, RPFP _rpfp, ErrorHandler handler, 
-                                      out RPFP.Node cex,
-                                      Dictionary<int,Dictionary<string,string>> varSubst)
-    {
-        //Contract.Requires(descriptiveName != null);
-        //Contract.Requires(vc != null);
-        //Contract.Requires(handler != null);
-        rpfp = _rpfp;
-        cex = null;
+		public override Outcome CheckRPFP (string descriptiveName, RPFP _rpfp, ErrorHandler handler, 
+		                                    out RPFP.Node cex,
+		                                    Dictionary<int,Dictionary<string,string>> varSubst)
+		{
+			//Contract.Requires(descriptiveName != null);
+			//Contract.Requires(vc != null);
+			//Contract.Requires(handler != null);
+			rpfp = _rpfp;
+			cex = null;
 
-        if (options.SeparateLogFiles) CloseLogFile(); // shouldn't really happen
+			if (options.SeparateLogFiles)
+				CloseLogFile (); // shouldn't really happen
 
-        if (options.LogFilename != null && currentLogFile == null)
-        {
-            currentLogFile = OpenOutputFile(descriptiveName);
-            currentLogFile.Write(common.ToString());
-        }
+			if (options.LogFilename != null && currentLogFile == null) {
+				currentLogFile = OpenOutputFile (descriptiveName);
+				currentLogFile.Write (common.ToString ());
+			}
 
-        Push();
-        SendThisVC("(fixedpoint-push)");
-        foreach (var node in rpfp.nodes)
-        {
-            DeclCollector.RegisterRelation((node.Name as VCExprBoogieFunctionOp).Func);
-        }
+			Push ();
+			SendThisVC ("(fixedpoint-push)");
+			foreach (var node in rpfp.nodes) {
+				DeclCollector.RegisterRelation ((node.Name as VCExprBoogieFunctionOp).Func);
+			}
 
-        PrepareCommon();
+			PrepareCommon ();
 
-        LineariserOptions.Default.LabelsBelowQuantifiers = true;
-        List<string> ruleStrings = new List<string>();
-        foreach (var edge in rpfp.edges)
-        {
-            string ruleString = "(rule " + QuantifiedVCExpr2String(rpfp.GetRule(edge)) + "\n)";
-            ruleStrings.Add(ruleString);
-        }
-        string queryString = "(query " + QuantifiedVCExpr2String(rpfp.GetQuery()) + "\n   :engine duality\n  :print-certificate true\n";
+			LineariserOptions.Default.LabelsBelowQuantifiers = true;
+			List<string> ruleStrings = new List<string> ();
+			foreach (var edge in rpfp.edges) {
+				string ruleString = "(rule " + QuantifiedVCExpr2String (rpfp.GetRule (edge)) + "\n)";
+				ruleStrings.Add (ruleString);
+			}
+			string queryString = "(query " + QuantifiedVCExpr2String (rpfp.GetQuery ()) + "\n   :engine duality\n  :print-certificate true\n";
        
 #if true
-        if (CommandLineOptions.Clo.StratifiedInlining != 0)
-            queryString += "    :stratified-inlining true\n";
-        if (CommandLineOptions.Clo.RecursionBound > 0)
-            queryString += "    :recursion-bound " + Convert.ToString(CommandLineOptions.Clo.RecursionBound) + "\n";
+			if (CommandLineOptions.Clo.StratifiedInlining != 0)
+				queryString += "    :stratified-inlining true\n";
+			if (CommandLineOptions.Clo.RecursionBound > 0)
+				queryString += "    :recursion-bound " + Convert.ToString (CommandLineOptions.Clo.RecursionBound) + "\n";
 #endif
-        queryString += ")";
-        LineariserOptions.Default.LabelsBelowQuantifiers = false;
-        FlushAxioms();
+			queryString += ")";
+			LineariserOptions.Default.LabelsBelowQuantifiers = false;
+			FlushAxioms ();
 
-        PossiblyRestart();
+			PossiblyRestart ();
 
-        SendThisVC("(set-info :boogie-vc-id " + SMTLibNamer.QuoteId(descriptiveName) + ")");
-        foreach(var rs in ruleStrings)
-            SendThisVC(rs);
-        FlushLogFile();
+			SendThisVC ("(set-info :boogie-vc-id " + SMTLibNamer.QuoteId (descriptiveName) + ")");
+			foreach (var rs in ruleStrings)
+				SendThisVC (rs);
+			FlushLogFile ();
 
-        if (Process != null)
-        {
-            Process.PingPong(); // flush any errors
+			if (Process != null) {
+				Process.PingPong (); // flush any errors
 
 #if false
             // TODO: this is not going to work
             if (Process.Inspector != null)
                 Process.Inspector.NewProblem(descriptiveName, vc, handler);
 #endif
-        }
+			}
 
-        SendThisVC(queryString);
-        FlushLogFile();
+			SendThisVC (queryString);
+			FlushLogFile ();
 
-        var result = Outcome.Undetermined;
+			var result = Outcome.Undetermined;
 
-        if (Process != null)
-        {
+			if (Process != null) {
             
-            var resp = Process.GetProverResponse();
+				var resp = Process.GetProverResponse ();
             
-            switch (resp.Name)
-            {
-                case "unsat":
-                    result = Outcome.Valid;
-                    break;
-                case "sat":
-                    result = Outcome.Invalid;
-                    break;
-                case "unknown":
-                    result = Outcome.Invalid;
-                    break;
-                default:
-                    HandleProverError("Unexpected prover response: " + resp.ToString());
-                    break;
-            }
+				switch (resp.Name) {
+				case "unsat":
+					result = Outcome.Valid;
+					break;
+				case "sat":
+					result = Outcome.Invalid;
+					break;
+				case "unknown":
+					result = Outcome.Invalid;
+					break;
+				default:
+					HandleProverError ("Unexpected prover response: " + resp.ToString ());
+					break;
+				}
             
-            switch (result)
-            {
-                case Outcome.Invalid:
-                    {
-                        resp = Process.GetProverResponse();
-                        if (resp.Name == "derivation")
-                        {
-                            cex = SExprToCex(resp, handler,varSubst);
-                        }
-                        else
-                            HandleProverError("Unexpected prover response: " + resp.ToString());
-                        resp = Process.GetProverResponse();
-                        if (resp.Name == "model")
-                        {
-                            var model = SExprToModel(resp, handler);
-                            cex.owner.SetBackgroundModel(model);
-                        }
-                        else
-                            HandleProverError("Unexpected prover response: " + resp.ToString());
-                        break;
-                    }
-                default:
-                    break;
-            }
+				switch (result) {
+				case Outcome.Invalid:
+					{
+						resp = Process.GetProverResponse ();
+						if (resp.Name == "derivation") {
+							cex = SExprToCex (resp, handler, varSubst);
+						} else
+							HandleProverError ("Unexpected prover response: " + resp.ToString ());
+						resp = Process.GetProverResponse ();
+						if (resp.Name == "model") {
+							var model = SExprToModel (resp, handler);
+							cex.owner.SetBackgroundModel (model);
+						} else
+							HandleProverError ("Unexpected prover response: " + resp.ToString ());
+						break;
+					}
+				default:
+					break;
+				}
 
 #if false
             while (true)
@@ -720,121 +665,121 @@ namespace Microsoft.Boogie.SMTLib
                 HandleProverError("Unexpected prover response: " + resp.ToString());
             }
 #endif
-        }
-        SendThisVC("(fixedpoint-pop)");
-        Pop();
-        AxiomsAreSetup = false;
-        return result;
-    }
+			}
+			SendThisVC ("(fixedpoint-pop)");
+			Pop ();
+			AxiomsAreSetup = false;
+			return result;
+		}
 
-    private static HashSet<string> usedLogNames = new HashSet<string>();
+		private static HashSet<string> usedLogNames = new HashSet<string> ();
 
-    private TextWriter OpenOutputFile(string descriptiveName)
-    {
-      Contract.Requires(descriptiveName != null);
-      Contract.Ensures(Contract.Result<TextWriter>() != null);
+		private TextWriter OpenOutputFile (string descriptiveName)
+		{
+			Contract.Requires (descriptiveName != null);
+			Contract.Ensures (Contract.Result<TextWriter> () != null);
 
-      string filename = options.LogFilename;
-      filename = Helpers.SubstituteAtPROC(descriptiveName, cce.NonNull(filename));
-      var curFilename = filename;
+			string filename = options.LogFilename;
+			filename = Helpers.SubstituteAtPROC (descriptiveName, cce.NonNull (filename));
+			var curFilename = filename;
 
-      lock (usedLogNames) {
-        int n = 1;
-        while (usedLogNames.Contains(curFilename)) {
-          curFilename = filename + "." + n++;
-        }
-        usedLogNames.Add(curFilename);
-      }
+			lock (usedLogNames) {
+				int n = 1;
+				while (usedLogNames.Contains(curFilename)) {
+					curFilename = filename + "." + n++;
+				}
+				usedLogNames.Add (curFilename);
+			}
 
-      return new StreamWriter(curFilename, false);
-    }
+			return new StreamWriter (curFilename, false);
+		}
 
-    private void FlushProverWarnings()
-    {
-      var handler = currentErrorHandler;
-      if (handler != null) {
-        lock (proverWarnings) {
-          proverWarnings.Iter(handler.OnProverWarning);
-          proverWarnings.Clear();
-        }
-      }
-    }
+		private void FlushProverWarnings ()
+		{
+			var handler = currentErrorHandler;
+			if (handler != null) {
+				lock (proverWarnings) {
+					proverWarnings.Iter (handler.OnProverWarning);
+					proverWarnings.Clear ();
+				}
+			}
+		}
 
-    private void HandleProverError(string s)
-    {
-      s = s.Replace("\r", "");
-      lock (proverWarnings) {
-        while (s.StartsWith("WARNING: ")) {
-          var idx = s.IndexOf('\n');
-          var warn = s;
-          if (idx > 0) {
-            warn = s.Substring(0, idx);
-            s = s.Substring(idx + 1);
-          } else {
-            s = "";
-          }
-          warn = warn.Substring(9);
-          proverWarnings.Add(warn);
-        }
-      }
+		private void HandleProverError (string s)
+		{
+			s = s.Replace ("\r", "");
+			lock (proverWarnings) {
+				while (s.StartsWith("WARNING: ")) {
+					var idx = s.IndexOf ('\n');
+					var warn = s;
+					if (idx > 0) {
+						warn = s.Substring (0, idx);
+						s = s.Substring (idx + 1);
+					} else {
+						s = "";
+					}
+					warn = warn.Substring (9);
+					proverWarnings.Add (warn);
+				}
+			}
 
-      FlushProverWarnings();
+			FlushProverWarnings ();
 
-      if (s == "") return;
+			if (s == "")
+				return;
 
-      lock (proverErrors) {
-        proverErrors.Add(s);
-        Console.WriteLine("Prover error: " + s);
-      }
-    }
+			lock (proverErrors) {
+				proverErrors.Add (s);
+				Console.WriteLine ("Prover error: " + s);
+			}
+		}
 
-    [NoDefaultContract]
-    public override Outcome CheckOutcome(ErrorHandler handler)
-    {
-      Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
+		[NoDefaultContract]
+		public override Outcome CheckOutcome (ErrorHandler handler)
+		{
+			Contract.EnsuresOnThrow<UnexpectedProverOutputException> (true);
 
-      var result = CheckOutcomeCore(handler);
-      SendThisVC("(pop 1)");
-      FlushLogFile();
+			var result = CheckOutcomeCore (handler);
+			SendThisVC ("(pop 1)");
+			FlushLogFile ();
 
-      return result;
-    }
+			return result;
+		}
 
-    [NoDefaultContract]
-    public override Outcome CheckOutcomeCore(ErrorHandler handler)
-    {  
-      Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
+		[NoDefaultContract]
+		public override Outcome CheckOutcomeCore (ErrorHandler handler)
+		{  
+			Contract.EnsuresOnThrow<UnexpectedProverOutputException> (true);
       
-      var result = Outcome.Undetermined;
+			var result = Outcome.Undetermined;
 
-      if (Process == null)
-        return result;
+			if (Process == null)
+				return result;
 
-      try {
-        currentErrorHandler = handler;
-        FlushProverWarnings();
+			try {
+				currentErrorHandler = handler;
+				FlushProverWarnings ();
 
-        var errorsLeft = CommandLineOptions.Clo.ProverCCLimit;
-        if (errorsLeft < 1)
-          errorsLeft = 1;
+				var errorsLeft = CommandLineOptions.Clo.ProverCCLimit;
+				if (errorsLeft < 1)
+					errorsLeft = 1;
 
-        var globalResult = Outcome.Undetermined;
+				var globalResult = Outcome.Undetermined;
 
-        while (true) {
-          errorsLeft--;
-          string[] labels = null;
+				while (true) {
+					errorsLeft--;
+					string[] labels = null;
 
-          result = GetResponse();
-          if (globalResult == Outcome.Undetermined)
-            globalResult = result;
+					result = GetResponse ();
+					if (globalResult == Outcome.Undetermined)
+						globalResult = result;
 
-          if (result == Outcome.Invalid || result == Outcome.TimeOut || result == Outcome.OutOfMemory) {
-            IList<string> xlabels;
-            if (CommandLineOptions.Clo.UseLabels) {
-              labels = GetLabelsInfo();
-              if (labels == null)
-              {
-                xlabels = new string[] { };
+					if (result == Outcome.Invalid || result == Outcome.TimeOut || result == Outcome.OutOfMemory) {
+						IList<string> xlabels;
+						if (CommandLineOptions.Clo.UseLabels) {
+							labels = GetLabelsInfo ();
+							if (labels == null) {
+								xlabels = new string[] { };
               }
               else
               {
@@ -905,6 +850,8 @@ namespace Microsoft.Boogie.SMTLib
         else if (resp.ArgCount != 0)
           break;
         path.Add(v);
+		if (v.Equals("0"))
+		  throw new UnexpectedProverOutputException("because of (get-value ((ControlFlow " + controlFlowConstant + " " + v + ")))");
         SendThisVC("(get-value ((ControlFlow " + controlFlowConstant + " " + v + ")))");
       }
       return path.ToArray();
@@ -925,7 +872,11 @@ namespace Microsoft.Boogie.SMTLib
         
         string modelStr = null;
         if (resp.Name == "model" && resp.ArgCount >= 1) {
-          modelStr = resp[0].Name;
+					modelStr = resp.Arguments[0] + "\n";
+					for (int i = 1; i < resp.ArgCount; i++) {
+						if (resp.Arguments[i].ToString().Contains("define-fun") &&!resp.Arguments[i].ToString().Contains("not"))
+							modelStr += resp.Arguments[i] + "\n";
+					}
         }
         else if (resp.ArgCount == 0 && resp.Name.Contains("->")) {
           modelStr = resp.Name;
@@ -934,9 +885,23 @@ namespace Microsoft.Boogie.SMTLib
           HandleProverError("Unexpected prover response getting model: " + resp.ToString());
         }
         List<Model> models = null;
-        try {
-          models = Model.ParseModels(new StringReader("Z3 error model: \n" + modelStr));
-        }
+				try {
+					switch (options.Solver) {
+					case SolverKind.Z3:
+						if (options.SMTLib2Model) {
+							models = Model.ParseModels(new StringReader("Error model: \n" + modelStr), "SMTLIB2");
+						} else {
+							models = Model.ParseModels(new StringReader("Error model: \n" + modelStr), "");
+						}
+						break;
+					case SolverKind.CVC4:
+						models = Model.ParseModels(new StringReader("Error model: \n" + modelStr), "SMTLIB2");
+						break;
+					default:
+						Debug.Assert(false);
+						return null;
+					}
+				}
         catch (ArgumentException exn) {
           HandleProverError("Model parsing error: " + exn.Message);
         }

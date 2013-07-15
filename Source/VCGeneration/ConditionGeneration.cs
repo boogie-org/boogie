@@ -234,7 +234,7 @@ namespace Microsoft.Boogie {
       Model m = Model;
       ApplyRedirections(m); 
 
-      var mvstates = m.TryGetFunc("@MV_state");
+      var mvstates = m.TryGetFunc("$mv_state");
       if (MvInfo == null || mvstates == null)
         return m;
 
@@ -1700,11 +1700,11 @@ namespace VC {
   {
     public readonly List<Variable> AllVariables = new List<Variable>();
     public readonly List<Mapping> CapturePoints = new List<Mapping>();
-    public static readonly Function MVState_FunctionDef = new Function(Token.NoToken, "@MV_state",
+    public static readonly Function MVState_FunctionDef = new Function(Token.NoToken, "$mv_state",
       new VariableSeq(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, TypedIdent.NoName, Bpl.Type.Int), true),
                       new Formal(Token.NoToken, new TypedIdent(Token.NoToken, TypedIdent.NoName, Bpl.Type.Int), true)),
       new Formal(Token.NoToken, new TypedIdent(Token.NoToken, TypedIdent.NoName, Bpl.Type.Bool), false));
-    public static readonly Constant MVState_ConstantDef = new Constant(Token.NoToken, new TypedIdent(Token.NoToken, "@MV_state_const", Bpl.Type.Int));
+    public static readonly Constant MVState_ConstantDef = new Constant(Token.NoToken, new TypedIdent(Token.NoToken, "$mv_state_const", Bpl.Type.Int));
 
     public ModelViewInfo(Program program, Implementation impl) {
       Contract.Requires(program != null);

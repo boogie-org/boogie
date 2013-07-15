@@ -97,6 +97,8 @@
     <CodeContractsRuntimeCheckingLevel>Full</CodeContractsRuntimeCheckingLevel>
     <CodeContractsReferenceAssembly>Build</CodeContractsReferenceAssembly>
     <CodeContractsAnalysisWarningLevel>0</CodeContractsAnalysisWarningLevel>
+    <WarningLevel>4</WarningLevel>
+    <Optimize>false</Optimize>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
@@ -123,6 +125,7 @@
       <DependentUpon>Main.cs</DependentUpon>
     </Compile>
     <Compile Include="..\Model\Model.cs" />
+    <Compile Include="..\Model\ModelParser.cs" />
     <Compile Include="Namer.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

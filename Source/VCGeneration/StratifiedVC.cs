@@ -2444,7 +2444,7 @@ namespace VC {
       private void GetModelWithStates(Model m) {
         if (m == null) return;
         var mvInfo = mainInfo.mvInfo;
-        var mvstates = m.TryGetFunc("@MV_state");
+        var mvstates = m.TryGetFunc("$mv_state");
         if (mvstates == null)
           return;
 
