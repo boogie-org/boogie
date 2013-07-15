@@ -156,24 +156,33 @@ namespace Microsoft.Boogie
                 else if (cmd is CallCmd)
                 {
                     CallCmd callCmd = (CallCmd)cmd;
-                    for (int i = 0; i < callCmd.Proc.InParams.Count; i++)
+                    while (callCmd != null)
                     {
-                        if (FindDomainName(callCmd.Proc.InParams[i]) == null) continue;
-                        IdentifierExpr ie = callCmd.Ins[i] as IdentifierExpr;
-                        if (start.Contains(ie.Decl))
+                        for (int i = 0; i < callCmd.Proc.InParams.Count; i++)
                         {
-                            start.Remove(ie.Decl);
+                            if (FindDomainName(callCmd.Proc.InParams[i]) == null) continue;
+                            IdentifierExpr ie = callCmd.Ins[i] as IdentifierExpr;
+                            if (start.Contains(ie.Decl))
+                            {
+                                start.Remove(ie.Decl);
+                            }
+                            else
+                            {
+                                Error(ie, "unavailable source for a linear read");
+                            }
                         }
-                        else
-                        {
-                            Error(ie, "unavailable source for a linear read");
-                        }
+                        callCmd = callCmd.InParallelWith;
                     }
+                    callCmd = (CallCmd)cmd;
                     availableLocalLinearVars[callCmd] = new HashSet<Variable>(start);
-                    foreach (IdentifierExpr ie in callCmd.Outs)
+                    while (callCmd != null)
                     {
-                        if (FindDomainName(ie.Decl) == null) continue;
-                        start.Add(ie.Decl);
+                        foreach (IdentifierExpr ie in callCmd.Outs)
+                        {
+                            if (FindDomainName(ie.Decl) == null) continue;
+                            start.Add(ie.Decl);
+                        }
+                        callCmd = callCmd.InParallelWith;
                     }
                 }
                 else if (cmd is HavocCmd)
@@ -356,19 +365,6 @@ namespace Microsoft.Boogie
             return base.VisitCallCmd(node);
         }
 
-        private void TransformCallCmd(CallCmd callCmd, Dictionary<string, Expr> domainNameToExpr)
-        {
-            foreach (var domainName in linearDomains.Keys)
-            {
-                callCmd.Ins.Add(domainNameToExpr[domainName]);
-            }
-            CallCmd parallelCallCmd = callCmd.InParallelWith;
-            if (parallelCallCmd != null)
-            {
-                TransformCallCmd(parallelCallCmd, domainNameToExpr);
-            }
-        }
-
         private void AddDisjointnessExpr(CmdSeq newCmds, Absy absy, Dictionary<string, Variable> domainNameToInputVar)
         {
             Dictionary<string, HashSet<Variable>> domainNameToScope = new Dictionary<string, HashSet<Variable>>();
@@ -427,6 +423,18 @@ namespace Microsoft.Boogie
                                     callCmd.Ins.Add(new NAryExpr(Token.NoToken, new FunctionCall(domain.mapConstBool), new ExprSeq(Expr.False)));
                                 }
                             }
+                            else if (callCmd.InParallelWith != null)
+                            {
+                                while (callCmd != null)
+                                {
+                                    foreach (var domainName in linearDomains.Keys)
+                                    {
+                                        var domain = linearDomains[domainName];
+                                        callCmd.Ins.Add(new NAryExpr(Token.NoToken, new FunctionCall(domain.mapConstBool), new ExprSeq(Expr.False)));
+                                    }
+                                    callCmd = callCmd.InParallelWith;
+                                }
+                            }
                             else
                             {
                                 Dictionary<string, Expr> domainNameToExpr = new Dictionary<string, Expr>();
@@ -441,7 +449,10 @@ namespace Microsoft.Boogie
                                     IdentifierExpr ie = new IdentifierExpr(Token.NoToken, v);
                                     domainNameToExpr[domainName] = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapOrBool), new ExprSeq(v.TypedIdent.Type is MapType ? ie : Singleton(ie, domainName), domainNameToExpr[domainName]));
                                 }
-                                TransformCallCmd(callCmd, domainNameToExpr);
+                                foreach (var domainName in linearDomains.Keys)
+                                {
+                                    callCmd.Ins.Add(domainNameToExpr[domainName]);
+                                }
                             }
                         }
                         else if (cmd is YieldCmd)

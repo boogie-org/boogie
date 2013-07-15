@@ -80,3 +80,24 @@ modifies g;
 {
   g := r;
 }
+
+procedure I({:linear ""} x:int) returns({:linear ""} x':int)
+{
+  x' := x;
+}
+
+procedure J()
+{
+}
+
+procedure P1({:linear ""} x:int) returns({:linear ""} x':int)
+{
+  call x' := I(x) | J();
+  call x' := I(x');
+}
+
+procedure P2({:linear ""} x:int) returns({:linear ""} x':int)
+{
+  call x' := I(x);
+  call x' := I(x') | J();
+}
