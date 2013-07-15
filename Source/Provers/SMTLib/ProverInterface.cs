@@ -46,7 +46,7 @@ namespace Microsoft.Boogie.SMTLib
 
 		[NotDelayed]
 		public SMTLibProcessTheoremProver (ProverOptions options, VCExpressionGenerator gen,
-		                                    SMTLibProverContext ctx)
+		                                   SMTLibProverContext ctx)
 		{
 			Contract.Requires (options != null);
 			Contract.Requires (gen != null);
@@ -401,7 +401,7 @@ namespace Microsoft.Boogie.SMTLib
 		}
 
 		private RPFP.Node SExprToCex (SExpr resp, ErrorHandler handler, 
-		                               Dictionary<int,Dictionary<string,string>> varSubst)
+		                              Dictionary<int,Dictionary<string,string>> varSubst)
 		{
 			Dictionary<string, RPFP.Node> nmap = new Dictionary<string,RPFP.Node> ();
 			Dictionary<string, RPFP.Node> pmap = new Dictionary<string,RPFP.Node> ();
@@ -552,8 +552,8 @@ namespace Microsoft.Boogie.SMTLib
 		}
 
 		public override Outcome CheckRPFP (string descriptiveName, RPFP _rpfp, ErrorHandler handler, 
-		                                    out RPFP.Node cex,
-		                                    Dictionary<int,Dictionary<string,string>> varSubst)
+		                                   out RPFP.Node cex,
+		                                   Dictionary<int,Dictionary<string,string>> varSubst)
 		{
 			//Contract.Requires(descriptiveName != null);
 			//Contract.Requires(vc != null);
@@ -1179,12 +1179,14 @@ namespace Microsoft.Boogie.SMTLib
 
     public override void SetTimeOut(int ms)
     {
+	if (options.Solver == SolverKind.Z3) {
         var name = Z3.SetTimeoutOption();
         var value = ms.ToString();
         options.TimeLimit = ms;
         options.SmtOptions.RemoveAll(ov => ov.Option == name);
         options.AddSmtOption(name, value);
         SendThisVC(string.Format("(set-option :{0} {1})", name, value));
+	}
     }
 
     public override object Evaluate(VCExpr expr)
