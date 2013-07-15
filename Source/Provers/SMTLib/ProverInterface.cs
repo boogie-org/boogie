@@ -1179,14 +1179,14 @@ namespace Microsoft.Boogie.SMTLib
 
     public override void SetTimeOut(int ms)
     {
-	if (options.Solver == SolverKind.Z3) {
-        var name = Z3.SetTimeoutOption();
-        var value = ms.ToString();
-        options.TimeLimit = ms;
-        options.SmtOptions.RemoveAll(ov => ov.Option == name);
-        options.AddSmtOption(name, value);
-        SendThisVC(string.Format("(set-option :{0} {1})", name, value));
-	}
+		if (options.Solver == SolverKind.Z3) {
+        	var name = Z3.SetTimeoutOption();
+        	var value = ms.ToString();
+        	options.TimeLimit = ms;
+        	options.SmtOptions.RemoveAll(ov => ov.Option == name);
+        	options.AddSmtOption(name, value);
+        	SendThisVC(string.Format("(set-option :{0} {1})", name, value));
+		}
     }
 
     public override object Evaluate(VCExpr expr)
