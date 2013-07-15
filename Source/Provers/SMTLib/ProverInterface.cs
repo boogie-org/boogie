@@ -106,7 +106,7 @@ namespace Microsoft.Boogie.SMTLib
 				return SMTLibProcess.ComputerProcessStartInfo (path, "AUTO_CONFIG=false -smt2 -in");
 			case SolverKind.CVC4:
 				if (path == null)
-					path = "cvc4";
+					path = CVC4.ExecutablePath ();
 				return SMTLibProcess.ComputerProcessStartInfo (path, "--lang=smt --no-strict-parsing --no-condense-function-values --incremental");
 			default:
 				Debug.Assert (false);
