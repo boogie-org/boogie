@@ -327,7 +327,7 @@ namespace Microsoft.Boogie.Houdini {
 
     public static TextWriter explainHoudiniDottyFile;
 
-    public Houdini(Program program) {
+    public Houdini(Program program, HoudiniSession.HoudiniStatistics stats) {
       this.program = program;
 
       if (CommandLineOptions.Clo.Trace)
@@ -360,7 +360,7 @@ namespace Microsoft.Boogie.Houdini {
         try {
           if (CommandLineOptions.Clo.Trace)
             Console.WriteLine("Generating VC for {0}", impl.Name);
-          HoudiniSession session = new HoudiniSession(this, vcgen, proverInterface, program, impl);
+          HoudiniSession session = new HoudiniSession(this, vcgen, proverInterface, program, impl, stats);
           houdiniSessions.Add(impl, session);
         }
         catch (VCGenException) {
