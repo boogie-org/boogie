@@ -972,44 +972,60 @@ namespace VC {
     #endregion
 
 
-    protected Checker FindCheckerFor(int timeout)
+    protected Checker FindCheckerFor(int timeout, bool isBlocking = true)
     {
       Contract.Ensures(Contract.Result<Checker>() != null);
 
+      var maxRetries = 3;
       lock (checkers)
       {
       retry:
         // Look for existing checker.
         for (int i = 0; i < checkers.Count; i++)
         {
-          var c = checkers.ElementAt(i);
-          lock (c)
+          var c = checkers[i];
+          if (Monitor.TryEnter(c))
           {
-            if (c.WillingToHandle(timeout, program))
+            try
             {
-              c.GetReady();
-              return c;
-            }
-            else if (c.IsIdle || c.IsClosed)
-            {
-              if (c.IsIdle)
+              if (c.WillingToHandle(timeout, program))
               {
-                c.Retarget(program, c.TheoremProver.Context, timeout);
+                c.GetReady();
                 return c;
               }
-              else
+              else if (c.IsIdle || c.IsClosed)
               {
-                checkers.RemoveAt(i);
+                if (c.IsIdle)
+                {
+                  c.Retarget(program, c.TheoremProver.Context, timeout);
+                  c.GetReady();
+                  return c;
+                }
+                else
+                {
+                  checkers.RemoveAt(i);
+                }
               }
-              continue;
+            }
+            finally
+            {
+              Monitor.Exit(c);
             }
           }
         }
 
         if (Cores <= checkers.Count)
         {
-          Monitor.Wait(checkers, 50);
-          goto retry;
+          if (isBlocking || 0 < maxRetries)
+          {
+            Monitor.Wait(checkers, 50);
+            maxRetries--;
+            goto retry;
+          }
+          else
+          {
+            return null;
+          }
         }
 
         // Create a new checker.

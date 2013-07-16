@@ -98,3 +98,12 @@ Boogie program verifier finished with 2 verified, 0 errors
 -------------------- perm.bpl --------------------
 
 Boogie program verifier finished with 2 verified, 0 errors
+
+-------------------- async.bpl --------------------
+async.bpl(13,1): Error BP5001: This assertion might not hold.
+Execution trace:
+    async.bpl(6,3): anon0
+    async.bpl(6,3): anon0$1
+    (0,0): inline$Proc_YieldChecker_P$1$L0
+
+Boogie program verifier finished with 1 verified, 1 error

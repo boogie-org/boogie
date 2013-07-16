@@ -131,7 +131,7 @@ namespace Microsoft.Boogie
         public override Cmd VisitCallCmd(CallCmd node)
         {
             ProcedureInfo info = procNameToInfo[node.callee];
-            if (!node.IsAsync && !info.isAtomic)
+            if (node.InParallelWith != null || node.IsAsync || !info.isAtomic)
             {
                 procNameToInfo[currentImpl.Name].isAtomic = false;
                 moreProcessingRequired = true;
@@ -487,6 +487,10 @@ namespace Microsoft.Boogie
                     CallCmd callCmd = cmd as CallCmd;
                     if (callCmd != null)
                     {
+                        if (callCmd.InParallelWith != null || callCmd.IsAsync || !procNameToInfo[callCmd.callee].isAtomic)
+                        {
+                            AddCallToYieldProc(newCmds, ogOldGlobalMap, domainNameToLocalVar);
+                        }
                         if (callCmd.InParallelWith != null)
                         {
                             List<Expr> ins;
@@ -507,14 +511,12 @@ namespace Microsoft.Boogie
                             dummyCallCmd.Proc = dummyAsyncTargetProc;
                             newCmds.Add(dummyCallCmd);
                         }
-                        else if (procNameToInfo[callCmd.callee].isAtomic)
+                        else
                         {
                             newCmds.Add(callCmd);
                         }
-                        else
+                        if (callCmd.InParallelWith != null || callCmd.IsAsync || !procNameToInfo[callCmd.callee].isAtomic)
                         {
-                            AddCallToYieldProc(newCmds, ogOldGlobalMap, domainNameToLocalVar);
-                            newCmds.Add(callCmd);
                             HashSet<Variable> availableLocalLinearVars = new HashSet<Variable>(linearTypechecker.availableLocalLinearVars[callCmd]);
                             foreach (IdentifierExpr ie in callCmd.Outs)
                             {

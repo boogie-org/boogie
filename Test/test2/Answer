@@ -502,5 +502,45 @@ Execution trace:
     Timeouts0.bpl(10,5): anon4_LoopDone
     Timeouts0.bpl(19,5): anon5_LoopHead
     Timeouts0.bpl(23,11): anon5_LoopBody
+Timeouts0.bpl(41,7): Timed out on BP5005: This loop invariant might not be maintained by the loop.
+Execution trace:
+    Timeouts0.bpl(37,7): anon0
+    Timeouts0.bpl(39,5): anon4_LoopHead
+    Timeouts0.bpl(43,20): anon4_LoopBody
+Timeouts0.bpl(48,5): Timed out on BP5003: A postcondition might not hold on this return path.
+Timeouts0.bpl(31,3): Related location: This is the postcondition that might not hold.
+Execution trace:
+    Timeouts0.bpl(37,7): anon0
+    Timeouts0.bpl(39,5): anon4_LoopHead
+    Timeouts0.bpl(39,5): anon4_LoopDone
+    Timeouts0.bpl(48,5): anon5_LoopHead
+    Timeouts0.bpl(48,5): anon5_LoopDone
+Timeouts0.bpl(50,7): Timed out on BP5005: This loop invariant might not be maintained by the loop.
+Execution trace:
+    Timeouts0.bpl(37,7): anon0
+    Timeouts0.bpl(39,5): anon4_LoopHead
+    Timeouts0.bpl(39,5): anon4_LoopDone
+    Timeouts0.bpl(48,5): anon5_LoopHead
+    Timeouts0.bpl(52,11): anon5_LoopBody
+Timeouts0.bpl(70,7): Timed out on BP5005: This loop invariant might not be maintained by the loop.
+Execution trace:
+    Timeouts0.bpl(66,7): anon0
+    Timeouts0.bpl(68,5): anon4_LoopHead
+    Timeouts0.bpl(72,20): anon4_LoopBody
+Timeouts0.bpl(77,5): Timed out on BP5003: A postcondition might not hold on this return path.
+Timeouts0.bpl(60,3): Related location: This is the postcondition that might not hold.
+Execution trace:
+    Timeouts0.bpl(66,7): anon0
+    Timeouts0.bpl(68,5): anon4_LoopHead
+    Timeouts0.bpl(68,5): anon4_LoopDone
+    Timeouts0.bpl(77,5): anon5_LoopHead
+    Timeouts0.bpl(77,5): anon5_LoopDone
+Timeouts0.bpl(79,7): Timed out on BP5005: This loop invariant might not be maintained by the loop.
+Execution trace:
+    Timeouts0.bpl(66,7): anon0
+    Timeouts0.bpl(68,5): anon4_LoopHead
+    Timeouts0.bpl(68,5): anon4_LoopDone
+    Timeouts0.bpl(77,5): anon5_LoopHead
+    Timeouts0.bpl(81,11): anon5_LoopBody
 
-Boogie program verifier finished with 0 verified, 0 errors, 1 time out
+Boogie program verifier finished with 0 verified, 0 errors, 3 time outs

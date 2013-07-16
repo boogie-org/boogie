@@ -1496,6 +1496,9 @@ namespace Microsoft.Boogie {
        Assign a unique ID to an implementation to be used for verification
        result caching (default: ""<impl. name>:0"").
 
+     {:timeLimit N}
+       Set the time limit for a given implementation.
+
   ---- On functions ----------------------------------------------------------
 
      {:builtin ""spec""}

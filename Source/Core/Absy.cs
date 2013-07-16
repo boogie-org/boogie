@@ -1186,6 +1186,15 @@ namespace Microsoft.Boogie {
       }
     }
 
+    public int TimeLimit
+    {
+      get
+      {
+        int tl = CommandLineOptions.Clo.ProverKillTime;
+        CheckIntAttribute("timeLimit", ref tl);
+        return tl;
+      }
+    }
 
     public NamedDeclaration(IToken/*!*/ tok, string/*!*/ name)
       : base(tok) {

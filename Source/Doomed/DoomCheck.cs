@@ -115,21 +115,26 @@ void ObjectInvariant()
 
             // Todo: Check if vc is trivial true or false            
             outcome = ProverInterface.Outcome.Undetermined;
-            Contract.Assert( m_ErrorHandler !=null);
-            m_Checker.BeginCheck(lv[0].Name, vc, m_ErrorHandler);
-            m_Checker.ProverTask.Wait();
-            
-            try {
-              outcome = m_Checker.ReadOutcome();
-              m_Checker.GoBackToIdle();
-            } catch (UnexpectedProverOutputException e)
+            Contract.Assert(m_ErrorHandler != null);
+            try
             {
-              if (CommandLineOptions.Clo.TraceVerify) { 
+              m_Checker.BeginCheck(lv[0].Name, vc, m_ErrorHandler);
+              m_Checker.ProverTask.Wait();
+              outcome = m_Checker.ReadOutcome();
+            }
+            catch (UnexpectedProverOutputException e)
+            {
+              if (CommandLineOptions.Clo.TraceVerify)
+              {
                 Console.WriteLine("Prover is unable to check {0}! Reason:", lv[0].Name);
                 Console.WriteLine(e.ToString());
               }
               return false;
-            }                        
+            }
+            finally
+            {
+              m_Checker.GoBackToIdle();
+            }
             return true;
         }
     }
