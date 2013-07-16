@@ -115,9 +115,6 @@ namespace Microsoft.Boogie.Houdini {
     private HashSet<Variable> explainConstantsNegative;
     private Dictionary<string, Tuple<Variable, Variable>> constantToControl;
 
-    Houdini houdini;
-    Implementation implementation;
-
     public bool InUnsatCore(Variable constant) {
       if (unsatCoreSet == null)
         return true;
@@ -170,8 +167,6 @@ namespace Microsoft.Boogie.Houdini {
         handler = new VCGen.ErrorReporter(gotoCmdOrigins, label2absy, impl.Blocks, vcgen.incarnationOriginMap, collector, mvInfo, proverInterface.Context, program);
       }
 
-      this.houdini = houdini;
-      this.implementation = impl;
     }
 
     private VCExpr BuildAxiom(ProverInterface proverInterface, Dictionary<Variable, bool> currentAssignment) {
@@ -387,13 +382,13 @@ namespace Microsoft.Boogie.Houdini {
             }
             foreach (var r in reason)
             {
-                Houdini.explainHoudiniDottyFile.WriteLine("{0} -> {1} [ label = \"{2}\" color=red ];", refutedConstant.Name, r, implementation.Name);
+                Houdini.explainHoudiniDottyFile.WriteLine("{0} -> {1} [ label = \"{2}\" color=red ];", refutedConstant.Name, r, descriptiveName);
             }
         } while (false);
 
         if (outcome == ProverInterface.Outcome.TimeOut || outcome == ProverInterface.Outcome.OutOfMemory || outcome == ProverInterface.Outcome.Undetermined)
         {
-            Houdini.explainHoudiniDottyFile.WriteLine("{0} -> {1} [ label = \"{2}\" color=red ];", refutedConstant.Name, "TimeOut", implementation.Name);
+            Houdini.explainHoudiniDottyFile.WriteLine("{0} -> {1} [ label = \"{2}\" color=red ];", refutedConstant.Name, "TimeOut", descriptiveName);
         }
 
         CommandLineOptions.Clo.ProverCCLimit = el;
