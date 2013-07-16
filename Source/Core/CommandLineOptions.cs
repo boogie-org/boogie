@@ -397,7 +397,7 @@ namespace Microsoft.Boogie {
     public bool ContractInfer = false;
     public bool ExplainHoudini = false;
     public bool HoudiniUseCrossDependencies = false;
-    public int StagedHoudini = 0;
+    public string StagedHoudini = null;
     public bool DebugStagedHoudini = false;
     public bool StagedHoudiniReachabilityAnalysis = false;
     public bool StagedHoudiniMergeIgnoredCandidates = false;
@@ -889,12 +889,17 @@ namespace Microsoft.Boogie {
         }
 
         case "stagedHoudini": {
-            int sh = 0;
-            if (ps.GetNumericArgument(ref sh, 4)) {
-              StagedHoudini = sh;
+            if (ps.ConfirmArgumentCount(1)) {
+                if(args[ps.i] == "COARSE" ||
+                   args[ps.i] == "FINE" ||
+                   args[ps.i] == "BALANCED") {
+                    StagedHoudini = args[ps.i];
+                } else {
+                    ps.Error("Invalid argument \"{0}\" to option {1}", args[ps.i], ps.s);
+                }
             }
             return true;
-          }
+        }
 
         case "stagedHoudiniReachabilityAnalysis": {
             if (ps.ConfirmArgumentCount(0)) {

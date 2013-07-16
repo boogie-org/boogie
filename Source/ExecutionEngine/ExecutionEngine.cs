@@ -455,21 +455,6 @@ namespace Microsoft.Boogie
 
         EliminateDeadVariablesAndInline(program);
 
-        if (CommandLineOptions.Clo.StagedHoudini > 0)
-        {
-          var candidateDependenceAnalyser = new CandidateDependenceAnalyser(program);
-          candidateDependenceAnalyser.Analyse();
-          candidateDependenceAnalyser.ApplyStages();
-          if (CommandLineOptions.Clo.Trace)
-          {
-            candidateDependenceAnalyser.dump();
-            int oldPrintUnstructured = CommandLineOptions.Clo.PrintUnstructured;
-            CommandLineOptions.Clo.PrintUnstructured = 2;
-            PrintBplFile("staged.bpl", program, false, false);
-            CommandLineOptions.Clo.PrintUnstructured = oldPrintUnstructured;
-          }
-        }
-
         var stats = new PipelineStatistics();
         oc = InferAndVerify(program, stats);
         switch (oc)
@@ -721,6 +706,24 @@ namespace Microsoft.Boogie
         requestId = "unknown";
       }
       RequestIdToCancellationTokenSources[requestId] = new List<CancellationTokenSource>();
+
+      #region Compute information required to run staged Houdini
+      StagedHoudiniPlan stagedHoudiniPlan = null;
+      if (CommandLineOptions.Clo.StagedHoudini != null)
+      {
+        var candidateDependenceAnalyser = new CandidateDependenceAnalyser(program);
+        candidateDependenceAnalyser.Analyse();
+        stagedHoudiniPlan = candidateDependenceAnalyser.ApplyStages();
+        if (CommandLineOptions.Clo.Trace)
+        {
+          candidateDependenceAnalyser.dump();
+          int oldPrintUnstructured = CommandLineOptions.Clo.PrintUnstructured;
+          CommandLineOptions.Clo.PrintUnstructured = 2;
+          PrintBplFile("staged.bpl", program, false, false);
+          CommandLineOptions.Clo.PrintUnstructured = oldPrintUnstructured;
+        }
+      }
+      #endregion
 
       #region Infer invariants using Abstract Interpretation
 
