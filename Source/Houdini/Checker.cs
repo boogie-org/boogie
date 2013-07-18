@@ -215,6 +215,10 @@ namespace Microsoft.Boogie.Houdini {
       }
        */
 
+      if(CommandLineOptions.Clo.Trace) {
+        Console.WriteLine("Houdini assignment axiom: " + expr);
+      }
+
       return expr;
     }
 
