@@ -203,15 +203,18 @@ namespace Microsoft.Boogie {
       var filename = CommandLineOptions.Clo.ModelViewFile;
       if (Model == null || filename == null || CommandLineOptions.Clo.StratifiedInlining > 0) return;
 
-      var m = ModelHasStatesAlready ? Model : this.GetModelWithStates();
+      if (!ModelHasStatesAlready) {
+        PopulateModelWithStates();
+        ModelHasStatesAlready = true;
+      }
 
       if (filename == "-") {
-        m.Write(tw);
+        Model.Write(tw);
         tw.Flush();
       } else {
         using (var wr = new StreamWriter(filename, !firstModelFile)) {
           firstModelFile = false;
-          m.Write(wr);
+          Model.Write(wr);
         }
       }
     }
@@ -227,16 +230,16 @@ namespace Microsoft.Boogie {
       m.Substitute(mapping);
     }
 
-    public Model GetModelWithStates()
+    public void PopulateModelWithStates()
     {
-      if (Model == null) return null;
+      Contract.Requires(Model != null);
 
       Model m = Model;
       ApplyRedirections(m); 
 
       var mvstates = m.TryGetFunc("@MV_state");
       if (MvInfo == null || mvstates == null)
-        return m;
+        return;
 
       Contract.Assert(mvstates.Arity == 2);
 
@@ -282,8 +285,6 @@ namespace Microsoft.Boogie {
           Contract.Assume(false);
         }
       }
-
-      return m;
     }
 
     private Model.Element GetModelValue(Model m, Variable v) {
