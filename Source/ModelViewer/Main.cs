@@ -99,7 +99,7 @@ namespace Microsoft.Boogie.ModelViewer
 
       using (var rd = new StringReader(model))
       {
-        allModels = Model.ParseModels(rd).ToArray();
+        allModels = Model.ParseModels(rd, "").ToArray();
       }
 
       AddAndLoadModel(setModelIdTo);
