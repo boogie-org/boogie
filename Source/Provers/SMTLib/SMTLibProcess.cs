@@ -114,6 +114,7 @@ namespace Microsoft.Boogie.SMTLib
         var sx = GetProverResponse();
         if (sx == null) {
           this.NeedsRestart = true;
+          Debug.Assert(false);
           HandleError("Prover died");
           return;
         }

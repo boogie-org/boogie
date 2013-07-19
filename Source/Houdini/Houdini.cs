@@ -38,7 +38,6 @@ namespace Microsoft.Boogie.Houdini {
 
   public abstract class HoudiniObserver {
     public virtual void UpdateStart(Program program, int numConstants) { }
-    public virtual void UpdateStage(int stage) { }
     public virtual void UpdateIteration() { }
     public virtual void UpdateImplementation(Implementation implementation) { }
     public virtual void UpdateAssignment(Dictionary<Variable, bool> assignment) { }
@@ -133,10 +132,6 @@ namespace Microsoft.Boogie.Houdini {
       currentIteration = -1;
       wr.Flush();
     }
-    public override void UpdateStage(int stage) {
-      wr.WriteLine("Houdini stage " + stage);
-      wr.Flush();
-    }
     public override void UpdateIteration() {
       currentIteration++;
       wr.WriteLine("---------------------------------------");
@@ -214,9 +209,6 @@ namespace Microsoft.Boogie.Houdini {
     protected void NotifyStart(Program program, int numConstants) {
       NotifyDelegate notifyDelegate = (NotifyDelegate)delegate(HoudiniObserver r) { r.UpdateStart(program, numConstants); };
       Notify(notifyDelegate);
-    }
-    protected void NotifyStage(int stage) {
-      Notify((NotifyDelegate)delegate(HoudiniObserver r) { r.UpdateStage(stage); });
     }
     protected void NotifyIteration() {
       Notify((NotifyDelegate)delegate(HoudiniObserver r) { r.UpdateIteration(); });
@@ -323,12 +315,15 @@ namespace Microsoft.Boogie.Houdini {
     private HoudiniState currentHoudiniState;
     private CrossDependencies crossDependencies;
 
+    private string cexTraceFile;
+
     public HoudiniState CurrentHoudiniState { get { return currentHoudiniState; } }    
 
     public static TextWriter explainHoudiniDottyFile;
 
-    public Houdini(Program program) {
+    public Houdini(Program program, HoudiniSession.HoudiniStatistics stats, string cexTraceFile = "houdiniCexTrace.bpl") {
       this.program = program;
+      this.cexTraceFile = cexTraceFile;
 
       if (CommandLineOptions.Clo.Trace)
         Console.WriteLine("Collecting existential constants...");
@@ -360,7 +355,7 @@ namespace Microsoft.Boogie.Houdini {
         try {
           if (CommandLineOptions.Clo.Trace)
             Console.WriteLine("Generating VC for {0}", impl.Name);
-          HoudiniSession session = new HoudiniSession(this, vcgen, proverInterface, program, impl);
+          HoudiniSession session = new HoudiniSession(this, vcgen, proverInterface, program, impl, stats);
           houdiniSessions.Add(impl, session);
         }
         catch (VCGenException) {
@@ -370,7 +365,6 @@ namespace Microsoft.Boogie.Houdini {
         }
       }
       this.houdiniSessions = new ReadOnlyDictionary<Implementation, HoudiniSession>(houdiniSessions);
-      currentHoudiniState = new HoudiniState(BuildWorkList(program), BuildAssignment(houdiniConstants));
 
       if (CommandLineOptions.Clo.ExplainHoudini)
       {
@@ -683,7 +677,7 @@ namespace Microsoft.Boogie.Houdini {
       return nonCandidateErrors.Count > 0;
     }
 
-    private void FlushWorkList() {
+    private void FlushWorkList(int stage, IEnumerable<int> completedStages) {
       this.NotifyFlushStart();
       while (currentHoudiniState.WorkQueue.Count > 0) {
         this.NotifyIteration();
@@ -694,7 +688,7 @@ namespace Microsoft.Boogie.Houdini {
         HoudiniSession session;
         houdiniSessions.TryGetValue(currentHoudiniState.Implementation, out session);
         List<Counterexample> errors;
-        ProverInterface.Outcome outcome = TryCatchVerify(session, out errors);
+        ProverInterface.Outcome outcome = TryCatchVerify(session, stage, completedStages, out errors);
         UpdateHoudiniOutcome(currentHoudiniState.Outcome, currentHoudiniState.Implementation, outcome, errors);
         this.NotifyOutcome(outcome);
 
@@ -707,7 +701,7 @@ namespace Microsoft.Boogie.Houdini {
     private void UpdateAssignment(RefutedAnnotation refAnnot) {
       if (CommandLineOptions.Clo.Trace) {
         Console.WriteLine("Removing " + refAnnot.Constant);
-        using (var cexWriter = new System.IO.StreamWriter("houdiniCexTrace.bpl", true))
+        using (var cexWriter = new System.IO.StreamWriter(cexTraceFile, true))
             cexWriter.WriteLine("Removing " + refAnnot.Constant);
       }
       currentHoudiniState.Assignment.Remove(refAnnot.Constant);
@@ -750,7 +744,7 @@ namespace Microsoft.Boogie.Houdini {
                       #region Extra debugging output
                       if (CommandLineOptions.Clo.Trace)
                       {
-                          using (var cexWriter = new System.IO.StreamWriter("houdiniCexTrace.bpl", true))
+                          using (var cexWriter = new System.IO.StreamWriter(cexTraceFile, true))
                           {
                               cexWriter.WriteLine("Counter example for " + refutedAnnotation.Constant);
                               cexWriter.Write(error.ToString());
@@ -820,17 +814,15 @@ namespace Microsoft.Boogie.Houdini {
     }
 
     public class HoudiniState {
-      private WorkQueue _workQueue;
-      private HashSet<string> blackList;
-      private Dictionary<Variable, bool> _assignment;
-      private int _stage;
-      private Implementation _implementation;
-      private HoudiniOutcome _outcome;
+      public WorkQueue _workQueue;
+      public HashSet<string> blackList;
+      public Dictionary<Variable, bool> _assignment;
+      public Implementation _implementation;
+      public HoudiniOutcome _outcome;
 
       public HoudiniState(WorkQueue workQueue, Dictionary<Variable, bool> currentAssignment) {
         this._workQueue = workQueue;
         this._assignment = currentAssignment;
-        this._stage = 0;
         this._implementation = null;
         this._outcome = new HoudiniOutcome();
         this.blackList = new HashSet<string>();
@@ -841,9 +833,6 @@ namespace Microsoft.Boogie.Houdini {
       }
       public Dictionary<Variable, bool> Assignment {
         get { return this._assignment; }
-      }
-      public int Stage {
-        get { return this._stage; }
       }
       public Implementation Implementation {
         get { return this._implementation; }
@@ -858,53 +847,45 @@ namespace Microsoft.Boogie.Houdini {
       public void addToBlackList(string funcName) {
         blackList.Add(funcName);
       }
-      internal void incrementStage() {
-        _stage++;
-      }
     }
 
-    public HoudiniOutcome PerformHoudiniInference() {
+    public HoudiniOutcome PerformHoudiniInference(int stage = 0, 
+                                                  IEnumerable<int> completedStages = null,
+                                                  Dictionary<string, bool> initialAssignment = null) {
       this.NotifyStart(program, houdiniConstants.Count);
+
+      currentHoudiniState = new HoudiniState(BuildWorkList(program), BuildAssignment(houdiniConstants));
+
+      if(initialAssignment != null) {
+        foreach(var v in CurrentHoudiniState.Assignment.Keys.ToList()) {
+          CurrentHoudiniState.Assignment[v] = initialAssignment[v.Name];
+        }
+      }
+
       foreach (Implementation impl in vcgenFailures) {
         currentHoudiniState.addToBlackList(impl.Name);
       }
 
-      while(currentHoudiniState.Stage < NumberOfStages()) {
+      while (currentHoudiniState.WorkQueue.Count > 0) {
+        this.NotifyIteration();
 
-        if (CommandLineOptions.Clo.Trace) {
-          Console.WriteLine("Current stage is " + currentHoudiniState.Stage + " of " + (NumberOfStages() - 1));
-        }
+        currentHoudiniState.Implementation = currentHoudiniState.WorkQueue.Peek();
+        this.NotifyImplementation(currentHoudiniState.Implementation);
 
-        this.NotifyStage(currentHoudiniState.Stage);
-
-        while (currentHoudiniState.WorkQueue.Count > 0) {
-          this.NotifyIteration();
-
-          currentHoudiniState.Implementation = currentHoudiniState.WorkQueue.Peek();
-          this.NotifyImplementation(currentHoudiniState.Implementation);
-
-          HoudiniSession session;
-          this.houdiniSessions.TryGetValue(currentHoudiniState.Implementation, out session);
-          HoudiniVerifyCurrent(session);
-        }
-
-        currentHoudiniState.incrementStage();
-
-        #region Re-populate work list for next stage
-        if (currentHoudiniState.Stage < NumberOfStages()) {
-          var workList = BuildWorkList(program);
-          while(workList.Count > 0) {
-            currentHoudiniState.WorkQueue.Enqueue(workList.Dequeue());
-          }
-        }
-        #endregion
-
+        HoudiniSession session;
+        this.houdiniSessions.TryGetValue(currentHoudiniState.Implementation, out session);
+        HoudiniVerifyCurrent(session, stage, completedStages);
       }
+
       this.NotifyEnd(true);
       Dictionary<string, bool> assignment = new Dictionary<string, bool>();
       foreach (var x in currentHoudiniState.Assignment)
         assignment[x.Key.Name] = x.Value;
       currentHoudiniState.Outcome.assignment = assignment;
+      return currentHoudiniState.Outcome;
+    }
+
+    public void Close() {
       vcgen.Close();
       proverInterface.Close();
       if (CommandLineOptions.Clo.ExplainHoudini)
@@ -912,7 +893,6 @@ namespace Microsoft.Boogie.Houdini {
           explainHoudiniDottyFile.WriteLine("};");
           explainHoudiniDottyFile.Close();
       }
-      return currentHoudiniState.Outcome;
     }
 
     private int NumberOfStages()
@@ -1067,10 +1047,10 @@ namespace Microsoft.Boogie.Houdini {
       return null;
     }
 
-    private ProverInterface.Outcome TryCatchVerify(HoudiniSession session, out List<Counterexample> errors) {
+    private ProverInterface.Outcome TryCatchVerify(HoudiniSession session, int stage, IEnumerable<int> completedStages, out List<Counterexample> errors) {
       ProverInterface.Outcome outcome;
       try {
-        outcome = session.Verify(proverInterface, GetAssignmentWithStages(), out errors);
+        outcome = session.Verify(proverInterface, GetAssignmentWithStages(stage, completedStages), out errors);
       }
       catch (UnexpectedProverOutputException upo) {
         Contract.Assume(upo != null);
@@ -1080,7 +1060,7 @@ namespace Microsoft.Boogie.Houdini {
       return outcome;
     }
 
-    private Dictionary<Variable, bool> GetAssignmentWithStages()
+    private Dictionary<Variable, bool> GetAssignmentWithStages(int currentStage, IEnumerable<int> completedStages)
     {
       Dictionary<Variable, bool> result = new Dictionary<Variable, bool>(currentHoudiniState.Assignment);
       foreach (var c in program.TopLevelDeclarations.OfType<Constant>())
@@ -1088,24 +1068,24 @@ namespace Microsoft.Boogie.Houdini {
         int stageActive = QKeyValue.FindIntAttribute(c.Attributes, "stage_active", -1);
         if (stageActive != -1)
         {
-          result[c] = (stageActive == currentHoudiniState.Stage);
+          result[c] = (stageActive == currentStage);
         }
         int stageComplete = QKeyValue.FindIntAttribute(c.Attributes, "stage_complete", -1);
         if (stageComplete != -1)
         {
-          result[c] = (stageComplete < currentHoudiniState.Stage);
+          result[c] = (completedStages.Contains(stageComplete));
         }
       }
       return result;
     }
 
-    private void HoudiniVerifyCurrent(HoudiniSession session) {
+    private void HoudiniVerifyCurrent(HoudiniSession session, int stage, IEnumerable<int> completedStages) {
       while (true) {
         this.NotifyAssignment(currentHoudiniState.Assignment);
 
         //check the VC with the current assignment
         List<Counterexample> errors;
-        ProverInterface.Outcome outcome = TryCatchVerify(session, out errors);
+        ProverInterface.Outcome outcome = TryCatchVerify(session, stage, completedStages, out errors);
         this.NotifyOutcome(outcome);
 
         DebugRefutedCandidates(currentHoudiniState.Implementation, errors);
@@ -1133,7 +1113,7 @@ namespace Microsoft.Boogie.Houdini {
         if (UpdateHoudiniOutcome(currentHoudiniState.Outcome, currentHoudiniState.Implementation, outcome, errors)) { // abort
           currentHoudiniState.WorkQueue.Dequeue();
           this.NotifyDequeue();
-          FlushWorkList();
+          FlushWorkList(stage, completedStages);
           return;
         }
         else if (UpdateAssignmentWorkList(outcome, errors)) {

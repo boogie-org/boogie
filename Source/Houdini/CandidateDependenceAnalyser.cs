@@ -6,13 +6,13 @@ using Microsoft.Boogie.GraphUtil;
 using Microsoft.Basetypes;
 using System.Diagnostics;
 
-namespace Microsoft.Boogie {
+namespace Microsoft.Boogie.Houdini {
 
   public class CandidateDependenceAnalyser {
 
-    private const int COARSE_STAGES = 1;
-    private const int FINE_STAGES = 2;
-    private const int BALANCED_STAGES = 3;
+    private const string COARSE_STAGES = "COARSE";
+    private const string FINE_STAGES = "FINE";
+    private const string BALANCED_STAGES = "BALANCED";
 
     private Program prog;
     private IVariableDependenceAnalyser varDepAnalyser;
@@ -22,6 +22,7 @@ namespace Microsoft.Boogie {
     private Graph<string> CandidateDependences;
     private StronglyConnectedComponents<string> SCCs;
     private Graph<SCC<string>> StagesDAG;
+    private StagedHoudiniPlan Plan;
 
     public CandidateDependenceAnalyser(Program prog) {
       this.prog = prog;
@@ -193,7 +194,7 @@ namespace Microsoft.Boogie {
             if (p != null)
             {
               string c;
-              if(Houdini.Houdini.MatchCandidate(p.Expr, candidates, out c)) {
+              if(Houdini.MatchCandidate(p.Expr, candidates, out c)) {
                 yield return new CandidateInstance(c, impl.Name, p.Expr);
               }
             }
@@ -206,14 +207,14 @@ namespace Microsoft.Boogie {
         foreach (Requires r in proc.Requires)
         {
           string c;
-          if(Houdini.Houdini.MatchCandidate(r.Condition, candidates, out c)) {
+          if(Houdini.MatchCandidate(r.Condition, candidates, out c)) {
             yield return new CandidateInstance(c, proc.Name, r.Condition);
           }
         }
         foreach (Ensures e in proc.Ensures)
         {
           string c;
-          if(Houdini.Houdini.MatchCandidate(e.Condition, candidates, out c)) {
+          if(Houdini.MatchCandidate(e.Condition, candidates, out c)) {
             yield return new CandidateInstance(c, proc.Name, e.Condition);
           }
         }
@@ -355,35 +356,33 @@ namespace Microsoft.Boogie {
     }
 
 
-    public void ApplyStages() {
+    public StagedHoudiniPlan ApplyStages() {
 
         if (NoStages())
         {
-            return;
+            return null;
         }
 
         #region Assign candidates to stages at a given level of granularity
-
-        Dictionary<string, int> candidateToStage;
       
         switch(CommandLineOptions.Clo.StagedHoudini) {
           case COARSE_STAGES:
-            candidateToStage = ComputeCoarseStages();
+            Plan = ComputeCoarseStages();
             break;
           case FINE_STAGES:
-            candidateToStage = ComputeFineStages();
+            Plan = ComputeFineStages();
             break;
           case BALANCED_STAGES:
-            candidateToStage = ComputeBalancedStages();
+            Plan = ComputeBalancedStages();
             break;
           default:
             Debug.Assert(false);
-            candidateToStage = null;
+            Plan = null;
             break;
         }
         
         foreach(var c in candidates) {
-          Debug.Assert(candidateToStage.ContainsKey(c));
+          Debug.Assert(Plan.StageForCandidate(c) != null);
         }
         #endregion
 
@@ -391,21 +390,21 @@ namespace Microsoft.Boogie {
         var stageToActiveBoolean = new Dictionary<int, Constant>();
         var stageToCompleteBoolean = new Dictionary<int, Constant>();
 
-        foreach (var stage in new HashSet<int>(candidateToStage.Values))
+        foreach (var stage in Plan)
         {
             var stageActive = new Constant(Token.NoToken,
-                new TypedIdent(Token.NoToken, "_stage_" + stage + "_active", Type.Bool),
+                new TypedIdent(Token.NoToken, "_stage_" + stage.GetId() + "_active", Type.Bool),
                 false);
-            stageActive.AddAttribute("stage_active", new object[] { new LiteralExpr(Token.NoToken, BigNum.FromInt(stage)) });
+            stageActive.AddAttribute("stage_active", new object[] { new LiteralExpr(Token.NoToken, BigNum.FromInt(stage.GetId())) });
             prog.TopLevelDeclarations.Add(stageActive);
-            stageToActiveBoolean[stage] = stageActive;
+            stageToActiveBoolean[stage.GetId()] = stageActive;
 
             var stageComplete = new Constant(Token.NoToken, 
-                new TypedIdent(Token.NoToken, "_stage_" + stage + "_complete", Type.Bool),
+                new TypedIdent(Token.NoToken, "_stage_" + stage.GetId() + "_complete", Type.Bool),
                 false);
-            stageComplete.AddAttribute("stage_complete", new object[] { new LiteralExpr(Token.NoToken, BigNum.FromInt(stage)) });
+            stageComplete.AddAttribute("stage_complete", new object[] { new LiteralExpr(Token.NoToken, BigNum.FromInt(stage.GetId())) });
             prog.TopLevelDeclarations.Add(stageComplete);
-            stageToCompleteBoolean[stage] = stageComplete;
+            stageToCompleteBoolean[stage.GetId()] = stageComplete;
         }
         #endregion
 
@@ -417,12 +416,12 @@ namespace Microsoft.Boogie {
             {
                 var a = cmd as AssertCmd;
                 string c;
-                if (a != null && (Houdini.Houdini.MatchCandidate(a.Expr, candidates, out c)))
+                if (a != null && (Houdini.MatchCandidate(a.Expr, candidates, out c)))
                 {
-                    newCmds.Add(new AssertCmd(a.tok, Houdini.Houdini.AddConditionToCandidate(a.Expr,
-                        new IdentifierExpr(Token.NoToken, stageToActiveBoolean[candidateToStage[c]]), c), a.Attributes));
-                    newCmds.Add(new AssumeCmd(a.tok, Houdini.Houdini.AddConditionToCandidate(a.Expr,
-                        new IdentifierExpr(Token.NoToken, stageToCompleteBoolean[candidateToStage[c]]), c), a.Attributes));
+                    newCmds.Add(new AssertCmd(a.tok, Houdini.AddConditionToCandidate(a.Expr,
+                        new IdentifierExpr(Token.NoToken, stageToActiveBoolean[Plan.StageForCandidate(c).GetId()]), c), a.Attributes));
+                    newCmds.Add(new AssumeCmd(a.tok, Houdini.AddConditionToCandidate(a.Expr,
+                        new IdentifierExpr(Token.NoToken, stageToCompleteBoolean[Plan.StageForCandidate(c).GetId()]), c), a.Attributes));
                 }
                 else
                 {
@@ -441,14 +440,14 @@ namespace Microsoft.Boogie {
           RequiresSeq newRequires = new RequiresSeq();
           foreach(Requires r in p.Requires) {
             string c;
-            if (Houdini.Houdini.MatchCandidate(r.Condition, candidates, out c)) {
+            if (Houdini.MatchCandidate(r.Condition, candidates, out c)) {
               newRequires.Add(new Requires(r.tok, false, 
-                Houdini.Houdini.AddConditionToCandidate(r.Condition,
-                new IdentifierExpr(Token.NoToken, stageToActiveBoolean[candidateToStage[c]]), c),
+                Houdini.AddConditionToCandidate(r.Condition,
+                new IdentifierExpr(Token.NoToken, stageToActiveBoolean[Plan.StageForCandidate(c).GetId()]), c),
                 r.Comment, r.Attributes));
               newRequires.Add(new Requires(r.tok, true, 
-                Houdini.Houdini.AddConditionToCandidate(r.Condition,
-                new IdentifierExpr(Token.NoToken, stageToCompleteBoolean[candidateToStage[c]]), c),
+                Houdini.AddConditionToCandidate(r.Condition,
+                new IdentifierExpr(Token.NoToken, stageToCompleteBoolean[Plan.StageForCandidate(c).GetId()]), c),
                 r.Comment, r.Attributes));
             } else {
               newRequires.Add(r);
@@ -461,16 +460,16 @@ namespace Microsoft.Boogie {
           EnsuresSeq newEnsures = new EnsuresSeq();
           foreach(Ensures e in p.Ensures) {
             string c;
-            if (Houdini.Houdini.MatchCandidate(e.Condition, candidates, out c)) {
-              int stage = candidateToStage[c];
+            if (Houdini.MatchCandidate(e.Condition, candidates, out c)) {
+              int stage = Plan.StageForCandidate(c).GetId();
               Constant activeBoolean = stageToActiveBoolean[stage];
               newEnsures.Add(new Ensures(e.tok, false, 
-                Houdini.Houdini.AddConditionToCandidate(e.Condition,
+                Houdini.AddConditionToCandidate(e.Condition,
                 new IdentifierExpr(Token.NoToken, activeBoolean), c),
                 e.Comment, e.Attributes));
               newEnsures.Add(new Ensures(e.tok, true, 
-                Houdini.Houdini.AddConditionToCandidate(e.Condition,
-                new IdentifierExpr(Token.NoToken, stageToCompleteBoolean[candidateToStage[c]]), c),
+                Houdini.AddConditionToCandidate(e.Condition,
+                new IdentifierExpr(Token.NoToken, stageToCompleteBoolean[stage]), c),
                 e.Comment, e.Attributes));
             } else {
               newEnsures.Add(e);
@@ -482,6 +481,8 @@ namespace Microsoft.Boogie {
         }
         #endregion
 
+        return Plan;
+
     }
 
     private int FindLargestStage() {
@@ -489,78 +490,110 @@ namespace Microsoft.Boogie {
     }
 
 
-    private Dictionary<string, int> ComputeCoarseStages()
+    private StagedHoudiniPlan ComputeCoarseStages()
     {
-        var result = new Dictionary<string, int>();
-        HashSet<SCC<string>> done = new HashSet<SCC<string>> { GetStartNodeOfStagesDAG() };
-        for(int stageId = 0; done.Count() != StagesDAG.Nodes.Count(); stageId++)
+        foreach(var n in StagesDAG.Nodes) {
+          Debug.Assert(!StagesDAG.Successors(n).Contains(n));
+        }
+
+        Graph<ScheduledStage> Dependences = new Graph<ScheduledStage>();
+
+        var done = new Dictionary<SCC<string>, ScheduledStage>();
+        done[GetStartNodeOfStagesDAG()] = new ScheduledStage(0, new HashSet<string>());
+
+        for(int stageId = 1; done.Count() != StagesDAG.Nodes.Count(); stageId++)
         {
-            foreach (var n in StagesDAG.Nodes.Where(Item => !done.Contains(Item)))
+            var Stage = new ScheduledStage(stageId, new HashSet<string>());
+            HashSet<SCC<string>> AssignedToThisStage = new HashSet<SCC<string>>();
+
+            foreach (var n in StagesDAG.Nodes.Where(Item => !done.ContainsKey(Item)))
             {
-              if(StagesDAG.Successors(n).Where(Item => !done.Contains(Item)).Count() == 0) {
+              if(StagesDAG.Successors(n).Where(Item => !done.ContainsKey(Item)).Count() == 0) {
+                foreach(var s in StagesDAG.Successors(n)) {
+                  Debug.Assert(s != n);
+                  Debug.Assert(Stage != done[s]);
+                  Dependences.AddEdge(Stage, done[s]);
+                }
                 foreach (var c in n)
                 {
-                    result[c] = stageId;
+                  Stage.AddCandidate(c);
                 }
-                done.Add(n);
+                Console.Write(n.Count() + ", ");
+                AssignedToThisStage.Add(n);
               }
             }
+
+            Console.WriteLine("total: " + Stage.Count());
+
+            foreach(var n in AssignedToThisStage) {
+              done[n] = Stage;
+            }
         }
-        return result;
+        return new StagedHoudiniPlan(Dependences);
     }
 
-    private Dictionary<string, int> ComputeBalancedStages()
+    private StagedHoudiniPlan ComputeBalancedStages()
     {
-        int maxStageSize = 200;
-        var result = new Dictionary<string, int>();
-        HashSet<SCC<string>> done = new HashSet<SCC<string>> { GetStartNodeOfStagesDAG() };
-        for(int stageId = 0; done.Count() != StagesDAG.Nodes.Count(); stageId++)
-        {
-          int stageSize = 0;
-          foreach (var n in StagesDAG.Nodes.Where(Item => !done.Contains(Item)))
-          {
-            if(stageSize + n.Count() > maxStageSize) {
-              continue;
-            }
-            if(StagesDAG.Successors(n).Where(Item => !done.Contains(Item)).Count() == 0) {
-              foreach (var c in n)
-              {
-                result[c] = stageId;
-                stageSize++;
-              }
-              done.Add(n);
-            }
-          }
-          if(stageSize == 0) {
-            maxStageSize *= 2;
-          }
-        }
-        return result;
-    }
+      Graph<ScheduledStage> Dependences = new Graph<ScheduledStage>();
+      var done = new Dictionary<SCC<string>, ScheduledStage>();
+      done[GetStartNodeOfStagesDAG()] = new ScheduledStage(0, new HashSet<string>());
 
-    private Dictionary<string, int> ComputeFineStages()
-    {
-      
-        var result = new Dictionary<string, int>();
-        List<SCC<string>> components = StagesDAG.TopologicalSort().ToList();
-        components.Reverse();
+      int maxStageSize = 200;
 
-        System.Diagnostics.Debug.Assert(components[0].Count() == 0);
-        for (int i = 1; i < components.Count(); i++)
+      for(int stageId = 1; done.Count() != StagesDAG.Nodes.Count(); stageId++)
+      {
+        int stageSize = 0;
+        ScheduledStage Stage = new ScheduledStage(stageId, new HashSet<string>());
+        HashSet<SCC<string>> AddedToThisStage = new HashSet<SCC<string>>();
+
+        foreach (var n in StagesDAG.Nodes.Where(Item => !done.ContainsKey(Item)))
         {
-            foreach (var c in components[i])
+          if(stageSize + n.Count() > maxStageSize) {
+            continue;
+          }
+          if(StagesDAG.Successors(n).Where(Item => !done.ContainsKey(Item)).Count() == 0) {
+            foreach (var c in n)
             {
-                result[c] = i - 1;
+              Stage.AddCandidate(c);
+              stageSize++;
             }
-
+            foreach(var s in StagesDAG.Successors(n)) {
+              Dependences.AddEdge(Stage, done[s]);
+            }
+            AddedToThisStage.Add(n);
+          }
         }
-
-        foreach(var c in candidates) {
-          Debug.Assert(result.ContainsKey(c));
+        foreach(var n in AddedToThisStage) {
+          done[n] = Stage;
         }
+        if(stageSize == 0) {
+          maxStageSize *= 2;
+        }
+      }
+      return new StagedHoudiniPlan(Dependences);
+    }
 
-        return result;
+    private StagedHoudiniPlan ComputeFineStages()
+    {
+      Graph<ScheduledStage> Dependences = new Graph<ScheduledStage>();
+      var done = new Dictionary<SCC<string>, ScheduledStage>();
 
+      List<SCC<string>> components = StagesDAG.TopologicalSort().ToList();
+      components.Reverse();
+
+      for (int i = 0; i < components.Count(); i++)
+      {
+        ScheduledStage Stage = new ScheduledStage(i, new HashSet<string>());
+        done[components[i]] = Stage;
+        foreach (var c in components[i])
+        {
+          Stage.AddCandidate(c);
+        }
+        foreach(var s in StagesDAG.Successors(components[i])) {
+          Dependences.AddEdge(Stage, done[s]);
+        }
+      }
+      return new StagedHoudiniPlan(Dependences);
     }
 
     private SCC<string> GetStartNodeOfStagesDAG()
@@ -608,7 +641,7 @@ namespace Microsoft.Boogie {
           AssertCmd assertCmd = cmd as AssertCmd;
           if(assertCmd != null) {
             string c;
-            if(Houdini.Houdini.MatchCandidate(assertCmd.Expr, candidates, out c)) {
+            if(Houdini.MatchCandidate(assertCmd.Expr, candidates, out c)) {
               AddCandidateOccurrence(c, b);
             }
           }
@@ -619,7 +652,7 @@ namespace Microsoft.Boogie {
       foreach(var proc in prog.TopLevelDeclarations.OfType<Procedure>()) {
         foreach(Requires r in proc.Requires) {
           string c;
-          if(Houdini.Houdini.MatchCandidate(r.Condition, candidates, out c)) {
+          if(Houdini.MatchCandidate(r.Condition, candidates, out c)) {
             AddCandidateOccurrence(c, new Tuple<string, PrePost>(proc.Name, PrePost.PRE));
           }
         }
@@ -629,7 +662,7 @@ namespace Microsoft.Boogie {
       foreach(var proc in prog.TopLevelDeclarations.OfType<Procedure>()) {
         foreach(Ensures e in proc.Ensures) {
           string c;
-          if(Houdini.Houdini.MatchCandidate(e.Condition, candidates, out c)) {
+          if(Houdini.MatchCandidate(e.Condition, candidates, out c)) {
             AddCandidateOccurrence(c, new Tuple<string, PrePost>(proc.Name, PrePost.POST));
           }
         }

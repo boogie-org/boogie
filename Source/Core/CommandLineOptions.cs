@@ -401,6 +401,7 @@ namespace Microsoft.Boogie {
     public bool DebugStagedHoudini = false;
     public bool StagedHoudiniReachabilityAnalysis = false;
     public bool StagedHoudiniMergeIgnoredCandidates = false;
+    public int StagedHoudiniThreads = 2;
     public string VariableDependenceIgnore = null;
     public string AbstractHoudini = null;
     public bool UseUnsatCoreForContractInfer = false;
@@ -900,6 +901,11 @@ namespace Microsoft.Boogie {
                     ps.Error("Invalid argument \"{0}\" to option {1}", args[ps.i], ps.s);
                 }
             }
+            return true;
+        }
+
+        case "stagedHoudiniThreads": {
+            ps.GetNumericArgument(ref StagedHoudiniThreads);
             return true;
         }
 

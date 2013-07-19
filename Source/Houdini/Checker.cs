@@ -94,14 +94,20 @@ namespace Microsoft.Boogie.Houdini {
     }
   }
 
+
+
   public class HoudiniSession {
-    public static double proverTime = 0;
-    public static int numProverQueries = 0;
-    public static double unsatCoreProverTime = 0;
-    public static int numUnsatCoreProverQueries = 0;
-    public static int numUnsatCorePrunings = 0;
+
+    public class HoudiniStatistics {
+      public double proverTime = 0;
+      public int numProverQueries = 0;
+      public double unsatCoreProverTime = 0;
+      public int numUnsatCoreProverQueries = 0;
+      public int numUnsatCorePrunings = 0;
+    }
 
     public string descriptiveName;
+    public HoudiniStatistics stats;
     private VCExpr conjecture;
     private ProverInterface.ErrorHandler handler;
     ConditionGeneration.CounterexampleCollector collector;
@@ -115,20 +121,18 @@ namespace Microsoft.Boogie.Houdini {
     private HashSet<Variable> explainConstantsNegative;
     private Dictionary<string, Tuple<Variable, Variable>> constantToControl;
 
-    Houdini houdini;
-    Implementation implementation;
-
     public bool InUnsatCore(Variable constant) {
       if (unsatCoreSet == null)
         return true;
       if (unsatCoreSet.Contains(constant))
         return true;
-      numUnsatCorePrunings++;
+      stats.numUnsatCorePrunings++;
       return false;
     }
 
-    public HoudiniSession(Houdini houdini, VCGen vcgen, ProverInterface proverInterface, Program program, Implementation impl) {
-      descriptiveName = impl.Name;
+    public HoudiniSession(Houdini houdini, VCGen vcgen, ProverInterface proverInterface, Program program, Implementation impl, HoudiniStatistics stats) {
+      this.descriptiveName = impl.Name;
+      this.stats = stats;
       collector = new ConditionGeneration.CounterexampleCollector();
       collector.OnProgress("HdnVCGen", 0, 0, 0.0);
 
@@ -170,8 +174,6 @@ namespace Microsoft.Boogie.Houdini {
         handler = new VCGen.ErrorReporter(gotoCmdOrigins, label2absy, impl.Blocks, vcgen.incarnationOriginMap, collector, mvInfo, proverInterface.Context, program);
       }
 
-      this.houdini = houdini;
-      this.implementation = impl;
     }
 
     private VCExpr BuildAxiom(ProverInterface proverInterface, Dictionary<Variable, bool> currentAssignment) {
@@ -213,6 +215,10 @@ namespace Microsoft.Boogie.Houdini {
       }
        */
 
+      if(CommandLineOptions.Clo.Trace) {
+        Console.WriteLine("Houdini assignment axiom: " + expr);
+      }
+
       return expr;
     }
 
@@ -229,8 +235,8 @@ namespace Microsoft.Boogie.Houdini {
       ProverInterface.Outcome proverOutcome = proverInterface.CheckOutcome(handler);
 
       double queryTime = (DateTime.UtcNow - now).TotalSeconds;
-      proverTime += queryTime;
-      numProverQueries++;
+      stats.proverTime += queryTime;
+      stats.numProverQueries++;
       if (CommandLineOptions.Clo.Trace) {
         Console.WriteLine("Time taken = " + queryTime);
       }
@@ -387,20 +393,20 @@ namespace Microsoft.Boogie.Houdini {
             }
             foreach (var r in reason)
             {
-                Houdini.explainHoudiniDottyFile.WriteLine("{0} -> {1} [ label = \"{2}\" color=red ];", refutedConstant.Name, r, implementation.Name);
+                Houdini.explainHoudiniDottyFile.WriteLine("{0} -> {1} [ label = \"{2}\" color=red ];", refutedConstant.Name, r, descriptiveName);
             }
         } while (false);
 
         if (outcome == ProverInterface.Outcome.TimeOut || outcome == ProverInterface.Outcome.OutOfMemory || outcome == ProverInterface.Outcome.Undetermined)
         {
-            Houdini.explainHoudiniDottyFile.WriteLine("{0} -> {1} [ label = \"{2}\" color=red ];", refutedConstant.Name, "TimeOut", implementation.Name);
+            Houdini.explainHoudiniDottyFile.WriteLine("{0} -> {1} [ label = \"{2}\" color=red ];", refutedConstant.Name, "TimeOut", descriptiveName);
         }
 
         CommandLineOptions.Clo.ProverCCLimit = el;
 
         double queryTime = (DateTime.UtcNow - now).TotalSeconds;
-        proverTime += queryTime;
-        numProverQueries++;
+        stats.proverTime += queryTime;
+        stats.numProverQueries++;
         if (CommandLineOptions.Clo.Trace)
         {
             Console.WriteLine("Time taken = " + queryTime);
@@ -434,8 +440,8 @@ namespace Microsoft.Boogie.Houdini {
       proverInterface.Pop();
 
       double unsatCoreQueryTime = (DateTime.UtcNow - now).TotalSeconds;
-      unsatCoreProverTime += unsatCoreQueryTime;
-      numUnsatCoreProverQueries++;
+      stats.unsatCoreProverTime += unsatCoreQueryTime;
+      stats.numUnsatCoreProverQueries++;
     }
 
   }
