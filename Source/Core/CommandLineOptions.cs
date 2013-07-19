@@ -397,7 +397,7 @@ namespace Microsoft.Boogie {
     public bool ContractInfer = false;
     public bool ExplainHoudini = false;
     public bool HoudiniUseCrossDependencies = false;
-    public int StagedHoudini = 0;
+    public string StagedHoudini = null;
     public bool DebugStagedHoudini = false;
     public bool StagedHoudiniReachabilityAnalysis = false;
     public bool StagedHoudiniMergeIgnoredCandidates = false;
@@ -467,6 +467,7 @@ namespace Microsoft.Boogie {
     public string PrintCFGPrefix = null;
     public bool ForceBplErrors = false; // if true, boogie error is shown even if "msg" attribute is present
     public bool UseArrayTheory = false;
+	public bool UseSmtOutputFormat = false;
     public bool WeakArrayTheory = false;
     public bool UseLabels = true;
     public bool MonomorphicArrays {
@@ -890,12 +891,17 @@ namespace Microsoft.Boogie {
         }
 
         case "stagedHoudini": {
-            int sh = 0;
-            if (ps.GetNumericArgument(ref sh, 4)) {
-              StagedHoudini = sh;
+            if (ps.ConfirmArgumentCount(1)) {
+                if(args[ps.i] == "COARSE" ||
+                   args[ps.i] == "FINE" ||
+                   args[ps.i] == "BALANCED") {
+                    StagedHoudini = args[ps.i];
+                } else {
+                    ps.Error("Invalid argument \"{0}\" to option {1}", args[ps.i], ps.s);
+                }
             }
             return true;
-          }
+        }
 
         case "stagedHoudiniReachabilityAnalysis": {
             if (ps.ConfirmArgumentCount(0)) {
@@ -1231,7 +1237,14 @@ namespace Microsoft.Boogie {
         case "errorLimit":
           ps.GetNumericArgument(ref ProverCCLimit);
           return true;
-
+		
+		case "useSmtOutputFormat": {
+		  if (ps.ConfirmArgumentCount(0)) {
+			UseSmtOutputFormat = true;
+		  }
+	      return true;
+		}
+		
         case "z3opt":
           if (ps.ConfirmArgumentCount(1)) {
             Z3Options.Add(cce.NonNull(args[ps.i]));
@@ -1844,7 +1857,8 @@ namespace Microsoft.Boogie {
   /useArrayTheory
                 use Z3's native theory (as opposed to axioms).  Currently
                 implies /monomorphize.
-
+  /useSmtOutputFormat
+                Z3 outputs a model in the SMTLIB2 format.
   /z3types      generate multi-sorted VC that make use of Z3 types
   /z3lets:<n>   0 - no LETs, 1 - only LET TERM, 2 - only LET FORMULA,
                 3 - (default) any

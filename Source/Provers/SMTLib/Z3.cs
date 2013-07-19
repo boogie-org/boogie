@@ -285,12 +285,9 @@ namespace Microsoft.Boogie.SMTLib
                 options.AddWeakSmtOption("MODEL_HIDE_UNUSED_PARTITIONS", "false");
                 options.AddWeakSmtOption("ASYNC_COMMANDS", "false");
 
-				if (options.SMTLib2Model)
-				{
+				if (CommandLineOptions.Clo.UseSmtOutputFormat) {
 					options.AddWeakSmtOption("pp-bv-literals", "false");;
-				}
-				else
-				{
+				} else {
 					options.AddWeakSmtOption("MODEL_V2", "true");
 				}
 

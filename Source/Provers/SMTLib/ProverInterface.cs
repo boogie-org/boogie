@@ -888,7 +888,7 @@ namespace Microsoft.Boogie.SMTLib
 				try {
 					switch (options.Solver) {
 					case SolverKind.Z3:
-						if (options.SMTLib2Model) {
+						if (CommandLineOptions.Clo.UseSmtOutputFormat) {
 							models = Model.ParseModels(new StringReader("Error model: \n" + modelStr), "SMTLIB2");
 						} else {
 							models = Model.ParseModels(new StringReader("Error model: \n" + modelStr), "");
