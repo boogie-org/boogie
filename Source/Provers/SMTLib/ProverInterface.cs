@@ -109,14 +109,10 @@ namespace Microsoft.Boogie.SMTLib
           if (path == null)
             path = Z3.ExecutablePath();
           return SMTLibProcess.ComputerProcessStartInfo(path, "AUTO_CONFIG=false -smt2 -in");
-        case SolverKind.CVC3:
-          if (path == null)
-            path = "cvc3";
-          return SMTLibProcess.ComputerProcessStartInfo(path, "-lang smt2 +interactive -showPrompt");
         case SolverKind.CVC4:
           if (path == null)
             path = "cvc4";
-          return SMTLibProcess.ComputerProcessStartInfo(path, "--smtlib2 --no-strict-parsing");
+          return SMTLibProcess.ComputerProcessStartInfo(path, "--lang=smt --no-strict-parsing --no-condense-function-values --incremental");
         default:
           Debug.Assert(false);
           return null;
@@ -560,7 +556,7 @@ namespace Microsoft.Boogie.SMTLib
         // Concatenate all the arguments
         string modelString = resp[0].Name;
         // modelString = modelString.Substring(7, modelString.Length - 8); // remove "(model " and final ")"
-        var models = Model.ParseModels(new StringReader("Z3 error model: \n" + modelString));
+        var models = Model.ParseModels(new StringReader("Z3 error model: \n" + modelString), "");
         if (models == null || models.Count == 0)
         {
             HandleProverError("no model from prover: " + resp.ToString());
