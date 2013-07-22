@@ -447,9 +447,9 @@ namespace Microsoft.Boogie {
       Contract.Requires(actualArgs != null);
       Contract.Requires(opName != null);
       Contract.Requires(tc != null);
-      Contract.Requires(formalArgs.Length == actualArgs.Length);
+      Contract.Requires(formalArgs.Count == actualArgs.Length);
       Contract.Requires((formalOuts == null) == (actualOuts == null));
-      Contract.Requires(formalOuts == null || formalOuts.Length == cce.NonNull(actualOuts).Length);
+      Contract.Requires(formalOuts == null || formalOuts.Count == cce.NonNull(actualOuts).Length);
       Contract.Requires(tc == null || opName != null);//Redundant
       Contract.Ensures(cce.NonNullDictionaryAndValues(Contract.Result<IDictionary<TypeVariable, Type>>()));
 
@@ -462,7 +462,7 @@ namespace Microsoft.Boogie {
         subst.Add(tv, proxy);
       }
 
-      for (int i = 0; i < formalArgs.Length; i++) {
+      for (int i = 0; i < formalArgs.Count; i++) {
         Type formal = formalArgs[i].Substitute(subst);
         Type actual = cce.NonNull(cce.NonNull(actualArgs[i]).Type);
         // if the type variables to be matched occur in the actual
@@ -479,7 +479,7 @@ namespace Microsoft.Boogie {
       }
 
       if (formalOuts != null) {
-        for (int i = 0; i < formalOuts.Length; ++i) {
+        for (int i = 0; i < formalOuts.Count; ++i) {
           Type formal = formalOuts[i].Substitute(subst);
           Type actual = cce.NonNull(cce.NonNull(actualOuts)[i].Type);
           // if the type variables to be matched occur in the actual
@@ -524,13 +524,13 @@ namespace Microsoft.Boogie {
       Contract.Requires(opName != null);Contract.Ensures(cce.NonNullElements(Contract.ValueAtReturn(out actualTypeParams)));
       actualTypeParams = new List<Type/*!*/>();
 
-      if (formalIns.Length != actualIns.Length) {
+      if (formalIns.Count != actualIns.Length) {
         tc.Error(typeCheckingSubject, "wrong number of arguments in {0}: {1}",
                  opName, actualIns.Length);
         // if there are no type parameters, we can still return the result
         // type and hope that the type checking proceeds
         return typeParams.Length == 0 ? formalOuts : null;
-      } else if (actualOuts != null && formalOuts.Length != actualOuts.Length) {
+      } else if (actualOuts != null && formalOuts.Count != actualOuts.Length) {
         tc.Error(typeCheckingSubject, "wrong number of result variables in {0}: {1}",
                  opName, actualOuts.Length);
         // if there are no type parameters, we can still return the result
@@ -638,7 +638,7 @@ namespace Microsoft.Boogie {
                                       TypeSeq/*!*/ actualArgs) {
       Contract.Requires(typeParams != null);
       Contract.Requires(formalArgs != null);
-      Contract.Requires(actualArgs != null);Contract.Requires(formalArgs.Length == actualArgs.Length);
+      Contract.Requires(actualArgs != null);Contract.Requires(formalArgs.Count == actualArgs.Count);
       Contract.Ensures(cce.NonNullDictionaryAndValues(Contract.Result<IDictionary<TypeVariable, Type>>()));
 
       
@@ -651,7 +651,7 @@ namespace Microsoft.Boogie {
         subst.Add(tv, proxy);
       }
 
-      for (int i = 0; i < formalArgs.Length; i++) {
+      for (int i = 0; i < formalArgs.Count; i++) {
         Type formal = formalArgs[i].Substitute(subst);
         Type actual = actualArgs[i];
         // if the type variables to be matched occur in the actual
@@ -1296,7 +1296,7 @@ Contract.Requires(that != null);
           }
         }
         if (is_bv) {
-          if (Arguments.Length > 0) {
+          if (Arguments.Count > 0) {
             rc.Error(this,
                      "bitvector types must not be applied to arguments: {0}",
                      Name);
@@ -1308,7 +1308,7 @@ Contract.Requires(that != null);
       // second case: the identifier is resolved to a type variable
       TypeVariable var = rc.LookUpTypeBinder(Name);
       if (var != null) {
-        if (Arguments.Length > 0) {
+        if (Arguments.Count > 0) {
           rc.Error(this,
                    "type variables must not be applied to arguments: {0}",
                    var);
@@ -1320,7 +1320,7 @@ Contract.Requires(that != null);
       // recursively resolve the arguments
       TypeCtorDecl ctorDecl = rc.LookUpType(Name);
       if (ctorDecl != null) {
-        if (Arguments.Length != ctorDecl.Arity) {
+        if (Arguments.Count != ctorDecl.Arity) {
           rc.Error(this,
                    "type constructor received wrong number of arguments: {0}",
                    ctorDecl);
@@ -1332,7 +1332,7 @@ Contract.Requires(that != null);
       // fourth case: the identifier denotes a type synonym
       TypeSynonymDecl synDecl = rc.LookUpTypeSynonym(Name);
       if (synDecl != null) {
-        if (Arguments.Length != synDecl.TypeParameters.Length) {
+        if (Arguments.Count != synDecl.TypeParameters.Length) {
           rc.Error(this,
                    "type synonym received wrong number of arguments: {0}",
                    synDecl);
@@ -2304,7 +2304,7 @@ Contract.Requires(that != null);
         Contract.Requires(unifiableVariables != null);
         Contract.Requires(cce.NonNullDictionaryAndValues(result));
         Contract.Requires(that != null);
-        Contract.Requires(Arguments.Length == that.Arguments.Length);
+        Contract.Requires(Arguments.Count == that.Arguments.Count);
         Dictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ subst = new Dictionary<TypeVariable/*!*/, Type/*!*/>();
         foreach (TypeVariable/*!*/ tv in that.TypeParameters) {
           Contract.Assert(tv != null);
@@ -2313,7 +2313,7 @@ Contract.Requires(that != null);
         }
 
         bool good = true;
-        for (int i = 0; i < that.Arguments.Length; i++) {
+        for (int i = 0; i < that.Arguments.Count; i++) {
           Type t0 = that.Arguments[i].Substitute(subst);
           Type t1 = this.Arguments[i];
           good &= t0.Unify(t1, unifiableVariables, result);
@@ -2332,7 +2332,7 @@ Contract.Requires(that != null);
     }
 
     private void AddConstraint(Constraint c) {
-      Contract.Requires(c.Arguments.Length == Arity);
+      Contract.Requires(c.Arguments.Count == Arity);
 
       Type f = ProxyFor;
       MapType mf = f as MapType;
@@ -2462,7 +2462,7 @@ Contract.Requires(that != null);
         return true;
       } else if (that is MapType) {
         MapType mapType = (MapType)that;
-        if (mapType.Arguments.Length == Arity) {
+        if (mapType.Arguments.Count == Arity) {
           bool good = true;
           foreach (Constraint c in constraints)
             good &= c.Unify(mapType, unifiableVariables, result);
@@ -2500,7 +2500,7 @@ Contract.Requires(that != null);
         // of the substituted variables (otherwise, we are in big trouble)
         Contract.Assert(Contract.ForAll(constraints, c =>
                Contract.ForAll(subst.Keys, var =>
-               Contract.ForAll(0, c.Arguments.Length, t => !c.Arguments[t].FreeVariables.Has(var)) &&
+               Contract.ForAll(0, c.Arguments.Count, t => !c.Arguments[t].FreeVariables.Has(var)) &&
                      !c.Result.FreeVariables.Has(var))));
       }
       return base.Substitute(subst);
@@ -2566,7 +2566,7 @@ Contract.Requires(that != null);
       Contract.Requires(token != null);
       Contract.Requires(decl != null);
       Contract.Requires(arguments != null);
-      Contract.Requires(arguments.Length == decl.TypeParameters.Length);
+      Contract.Requires(arguments.Count == decl.TypeParameters.Length);
       this.Decl = decl;
       this.Arguments = arguments;
 
@@ -2574,7 +2574,7 @@ Contract.Requires(that != null);
       // the type synonym
       IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ subst =
         new Dictionary<TypeVariable/*!*/, Type/*!*/>();
-      for (int i = 0; i < arguments.Length; ++i)
+      for (int i = 0; i < arguments.Count; ++i)
         subst.Add(decl.TypeParameters[i], arguments[i]);
 
       ExpandedType = decl.Body.Substitute(subst);
@@ -2830,7 +2830,7 @@ Contract.Requires(that != null);
       Contract.Requires(token != null);
       Contract.Requires(decl != null);
       Contract.Requires(arguments != null);
-      Contract.Requires(arguments.Length == decl.Arity);
+      Contract.Requires(arguments.Count == decl.Arity);
       this.Decl = decl;
       this.Arguments = arguments;
     }
@@ -2878,7 +2878,7 @@ Contract.Requires(that != null);
       CtorType thatCtorType = thatType as CtorType;
       if (thatCtorType == null || !this.Decl.Equals(thatCtorType.Decl))
         return false;
-      if (Arguments.Length == 0)
+      if (Arguments.Count == 0)
         return true;
       return base.Equals(thatType);
     }
@@ -2891,7 +2891,7 @@ Contract.Requires(that != null);
       CtorType thatCtorType = that as CtorType;
       if (thatCtorType == null || !this.Decl.Equals(thatCtorType.Decl))
         return false;
-      for (int i = 0; i < Arguments.Length; ++i) {
+      for (int i = 0; i < Arguments.Count; ++i) {
         if (!Arguments[i].Equals(thatCtorType.Arguments[i],
                                  thisBoundVariables, thatBoundVariables))
           return false;
@@ -2913,7 +2913,7 @@ Contract.Requires(that != null);
         return false;
       } else {
         bool good = true;
-        for (int i = 0; i < Arguments.Length; ++i)
+        for (int i = 0; i < Arguments.Count; ++i)
           good &= Arguments[i].Unify(thatCtorType.Arguments[i], unifiableVariables, result);
         return good;
       }
@@ -2982,12 +2982,12 @@ Contract.Requires(that != null);
       Contract.Requires(stream != null);
       Contract.Requires(args != null);
       Contract.Requires(name != null);
-      int opBindingStrength = args.Length > 0 ? 0 : 2;
+      int opBindingStrength = args.Count > 0 ? 0 : 2;
       if (opBindingStrength < contextBindingStrength)
         stream.Write("(");
 
       stream.Write("{0}", TokenTextWriter.SanitizeIdentifier(name));
-      int i = args.Length;
+      int i = args.Count;
       foreach (Type/*!*/ t in args) {
         Contract.Assert(t != null);
         stream.Write(" ");
@@ -3151,7 +3151,7 @@ Contract.Requires(that != null);
       MapType thatMapType = that as MapType;
       if (thatMapType == null ||
           this.TypeParameters.Length != thatMapType.TypeParameters.Length ||
-          this.Arguments.Length != thatMapType.Arguments.Length)
+          this.Arguments.Count != thatMapType.Arguments.Count)
         return false;
 
       foreach (TypeVariable/*!*/ var in this.TypeParameters) {
@@ -3165,7 +3165,7 @@ Contract.Requires(that != null);
 
       try {
 
-        for (int i = 0; i < Arguments.Length; ++i) {
+        for (int i = 0; i < Arguments.Count; ++i) {
           if (!Arguments[i].Equals(thatMapType.Arguments[i],
                                    thisBoundVariables, thatBoundVariables))
             return false;
@@ -3197,7 +3197,7 @@ Contract.Requires(that != null);
       MapType thatMapType = that as MapType;
       if (thatMapType == null ||
           this.TypeParameters.Length != thatMapType.TypeParameters.Length ||
-          this.Arguments.Length != thatMapType.Arguments.Length)
+          this.Arguments.Count != thatMapType.Arguments.Count)
         return false;
 
       // treat the bound variables of the two map types as equal...
@@ -3216,7 +3216,7 @@ Contract.Requires(that != null);
       }
       // ... and then unify the domain and range types
       bool good = true;
-      for (int i = 0; i < this.Arguments.Length; i++) {
+      for (int i = 0; i < this.Arguments.Count; i++) {
         Type t0 = this.Arguments[i].Substitute(subst0);
         Type t1 = thatMapType.Arguments[i].Substitute(subst1);
         good &= t0.Unify(t1, unifiableVariables, result);
@@ -3357,7 +3357,7 @@ Contract.Assert(var != null);
     [Pure]
     public override int GetHashCode(TypeVariableSeq boundVariables) {
       //Contract.Requires(boundVariables != null);
-      int res = 7643761 * TypeParameters.Length + 65121 * Arguments.Length;
+      int res = 7643761 * TypeParameters.Length + 65121 * Arguments.Count;
 
       foreach (TypeVariable/*!*/ var in this.TypeParameters) {
         Contract.Assert(var != null);
@@ -3470,7 +3470,7 @@ Contract.Assert(var != null);
     }
     public override int MapArity {
       get {
-        return Arguments.Length;
+        return Arguments.Count;
       }
     }
 
@@ -3498,7 +3498,7 @@ Contract.Ensures(Contract.ValueAtReturn(out tpInstantiation) != null);
         tpInstantiation = SimpleTypeParamInstantiation.EMPTY;
         return null;
       } else {
-        Contract.Assert(actualResult.Length == 1);
+        Contract.Assert(actualResult.Count == 1);
         tpInstantiation = SimpleTypeParamInstantiation.From(TypeParameters, actualTypeParams);
         return actualResult[0];
       }

@@ -180,7 +180,7 @@ Contract.Ensures(Contract.ValueAtReturn(out store) != null);
       int typeParamNum = abstractedType.FreeVariables.Length +
                          abstractedType.TypeParameters.Length;
 
-      int arity = typeParamNum + abstractedType.Arguments.Length;
+      int arity = typeParamNum + abstractedType.Arguments.Count;
 
       Type/*!*/[]/*!*/ selectTypes = new Type/*!*/ [arity + 2];
       Type/*!*/[]/*!*/ storeTypes = new Type/*!*/ [arity + 3];

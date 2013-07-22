@@ -403,7 +403,7 @@ private class BvBounds : Expr {
 		     }
 		     Bpl.Type ty = curr.Type;
 		     var uti = ty as UnresolvedTypeIdentifier;
-		     if (uti != null && uti.Arguments.Length == 0) {
+		     if (uti != null && uti.Arguments.Count == 0) {
 		       // the given "thing" was just an identifier, so let's use it as the name of the parameter
 		       curr.Name = uti.Name;
 		       curr.Type = prevType;
@@ -798,7 +798,7 @@ private class BvBounds : Expr {
 		if (la.kind == 11) {
 			Get();
 			var uti = ty as UnresolvedTypeIdentifier;
-			if (uti != null && uti.Arguments.Length == 0) {
+			if (uti != null && uti.Arguments.Count == 0) {
 			 varName = uti.Name;
 			} else {
 			 this.SemErr("expected identifier before ':'");

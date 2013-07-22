@@ -3233,14 +3233,6 @@ namespace Microsoft.Boogie {
       : base(varSeq) {
       Contract.Requires(varSeq != null);
     }
-    public new Variable this[int index] {
-      get {
-        return (Variable)base[index];
-      }
-      set {
-        base[index] = value;
-      }
-    }
     public void Emit(TokenTextWriter stream, bool emitAttributes) {
       Contract.Requires(stream != null);
       string sep = "";
@@ -3270,7 +3262,7 @@ namespace Microsoft.Boogie {
     }
   }
 
-  public sealed class TypeSeq : PureCollections.Sequence {
+  public sealed class TypeSeq : List<Type> {
     public TypeSeq(params Type[]/*!*/ args)
       : base(args) {
       Contract.Requires(args != null);
@@ -3279,19 +3271,9 @@ namespace Microsoft.Boogie {
       : base(varSeq) {
       Contract.Requires(varSeq != null);
     }
-    public new Type/*!*/ this[int index] {
-      get {
-        Contract.Ensures(Contract.Result<Type>() != null);
-
-        return cce.NonNull((Type/*!*/)base[index]);
-      }
-      set {
-        base[index] = value;
-      }
-    }
     public List<Type/*!*/>/*!*/ ToList() {
       Contract.Ensures(cce.NonNullElements(Contract.Result<List<Type>>()));
-      List<Type/*!*/>/*!*/ res = new List<Type/*!*/>(Length);
+      List<Type/*!*/>/*!*/ res = new List<Type/*!*/>(Count);
       foreach (Type/*!*/ t in this) {
         Contract.Assert(t != null);
         res.Add(t);

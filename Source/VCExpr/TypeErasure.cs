@@ -469,7 +469,7 @@ namespace Microsoft.Boogie.TypeErasure {
         //
         CtorType ctype = type.AsCtor;
         Function/*!*/ repr = GetTypeCtorRepr(ctype.Decl);
-        List<VCExpr/*!*/>/*!*/ args = new List<VCExpr/*!*/>(ctype.Arguments.Length);
+        List<VCExpr/*!*/>/*!*/ args = new List<VCExpr/*!*/>(ctype.Arguments.Count);
         foreach (Type/*!*/ t in ctype.Arguments) {
           Contract.Assert(t != null);
           args.Add(Type2Term(t, varMapping));
@@ -970,7 +970,7 @@ namespace Microsoft.Boogie.TypeErasure {
       MapType/*!*/ abstraction = ThinOutMapType(rawType, instantiations);
 
       MapTypeClassRepresentation repr = GetClassRepresentation(abstraction);
-      Contract.Assume(repr.RepresentingType.Arity == instantiations.Length);
+      Contract.Assume(repr.RepresentingType.Arity == instantiations.Count);
       return new CtorType(Token.NoToken, repr.RepresentingType, instantiations);
     }
 
@@ -1004,7 +1004,7 @@ namespace Microsoft.Boogie.TypeErasure {
         // Bingo!
         // if the type does not contain any bound variables, we can simply
         // replace it with a type variable
-        TypeVariable/*!*/ abstractionVar = AbstractionVariable(instantiations.Length);
+        TypeVariable/*!*/ abstractionVar = AbstractionVariable(instantiations.Count);
         Contract.Assume(!boundTypeParams.Has(abstractionVar));
         instantiations.Add(rawType);
         return abstractionVar;

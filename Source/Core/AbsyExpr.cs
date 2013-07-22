@@ -1817,7 +1817,7 @@ namespace Microsoft.Boogie {
         tpInstantiation = SimpleTypeParamInstantiation.EMPTY;
         return null;
       } else {
-        Contract.Assert(actualResultType.Length == 1);
+        Contract.Assert(actualResultType.Count == 1);
         tpInstantiation =
           SimpleTypeParamInstantiation.From(Func.TypeParameters, resultingTypeArgs);
         return actualResultType[0];

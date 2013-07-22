@@ -216,7 +216,7 @@ namespace Microsoft.Boogie
                 MapType mapType = type as MapType;
                 if (mapType != null)
                 {
-                    if (mapType.Arguments.Length == 1 && mapType.Result.Equals(Type.Bool))
+                    if (mapType.Arguments.Count == 1 && mapType.Result.Equals(Type.Bool))
                     {
                         type = mapType.Arguments[0];
                         if (type is MapType)

@@ -194,7 +194,7 @@ namespace Microsoft.Boogie {
     public virtual CtorType VisitCtorType(CtorType node) {
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<CtorType>() != null);
-      for (int i = 0; i < node.Arguments.Length; ++i)
+      for (int i = 0; i < node.Arguments.Count; ++i)
         node.Arguments[i] = cce.NonNull((Type/*!*/)this.Visit(node.Arguments[i]));
       return node;
     }
@@ -362,7 +362,7 @@ namespace Microsoft.Boogie {
       //
       // NOTE: when overriding this method, you have to make sure that
       // the bound variables of the map type are updated correctly
-      for (int i = 0; i < node.Arguments.Length; ++i)
+      for (int i = 0; i < node.Arguments.Count; ++i)
         node.Arguments[i] = cce.NonNull((Type/*!*/)this.Visit(node.Arguments[i]));
       node.Result = cce.NonNull((Type/*!*/)this.Visit(node.Result));
       return node;
@@ -512,7 +512,7 @@ namespace Microsoft.Boogie {
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Type>() != null);
       node.ExpandedType = cce.NonNull((Type/*!*/)this.Visit(node.ExpandedType));
-      for (int i = 0; i < node.Arguments.Length; ++i)
+      for (int i = 0; i < node.Arguments.Count; ++i)
         node.Arguments[i] = cce.NonNull((Type/*!*/)this.Visit(node.Arguments[i]));
       return node;
     }

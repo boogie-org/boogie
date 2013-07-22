@@ -307,11 +307,11 @@ namespace Microsoft.Boogie.TypeErasure
         // nothing
       } else if (completeType.IsCtor) {
         CtorType/*!*/ ctorType = completeType.AsCtor;
-        if (ctorType.Arguments.Length > 0) {
+        if (ctorType.Arguments.Count > 0) {
           // otherwise there are no chances of extracting any
           // instantiations from this type
           TypeCtorRepr repr = GetTypeCtorReprStruct(ctorType.Decl);
-          for (int i = 0; i < ctorType.Arguments.Length; ++i) {
+          for (int i = 0; i < ctorType.Arguments.Count; ++i) {
             VCExpr/*!*/ newInnerTerm = Gen.Function(repr.Dtors[i], innerTerm);
             Contract.Assert(newInnerTerm != null);
             TypeVarExtractors(var, ctorType.Arguments[i], newInnerTerm, extractors);
@@ -644,7 +644,7 @@ namespace Microsoft.Boogie.TypeErasure
       typeParams.AddRange(abstractedType.TypeParameters.ToList());
       typeParams.AddRange(abstractedType.FreeVariables.ToList());
 
-      originalIndexTypes = new List<Type/*!*/>(abstractedType.Arguments.Length + 1);
+      originalIndexTypes = new List<Type/*!*/>(abstractedType.Arguments.Count + 1);
       TypeSeq/*!*/ mapTypeParams = new TypeSeq();
       foreach (TypeVariable/*!*/ var in abstractedType.FreeVariables) {
         Contract.Assert(var != null);
