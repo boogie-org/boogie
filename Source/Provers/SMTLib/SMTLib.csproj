@@ -97,6 +97,8 @@
     <ErrorReport>prompt</ErrorReport>
     <CodeAnalysisRuleSet>Migrated rules for SMTLib.ruleset</CodeAnalysisRuleSet>
     <CodeAnalysisIgnoreBuiltInRules>true</CodeAnalysisIgnoreBuiltInRules>
+    <WarningLevel>4</WarningLevel>
+    <Optimize>false</Optimize>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Checked|AnyCPU'">
     <DebugSymbols>true</DebugSymbols>
@@ -137,6 +139,8 @@
     <CodeContractsRuntimeCheckingLevel>Full</CodeContractsRuntimeCheckingLevel>
     <CodeContractsReferenceAssembly>Build</CodeContractsReferenceAssembly>
     <CodeContractsAnalysisWarningLevel>0</CodeContractsAnalysisWarningLevel>
+    <WarningLevel>4</WarningLevel>
+    <Optimize>false</Optimize>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
@@ -157,6 +161,7 @@
     <Compile Include="TypeDeclCollector.cs" />
     <Compile Include="..\..\version.cs" />
     <Compile Include="Z3.cs" />
+    <Compile Include="CVC4.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Basetypes\Basetypes.csproj">
@@ -172,7 +177,7 @@
       <Name>Core</Name>
     </ProjectReference>
     <ProjectReference Include="..\..\Graph\Graph.csproj">
-      <Project>{69a2b0b8-bcac-4101-ae7a-556fcc58c06e}</Project>
+      <Project>{69A2B0B8-BCAC-4101-AE7A-556FCC58C06E}</Project>
       <Name>Graph</Name>
     </ProjectReference>
     <ProjectReference Include="..\..\Model\Model.csproj">

@@ -109,14 +109,10 @@ namespace Microsoft.Boogie.SMTLib
           if (path == null)
             path = Z3.ExecutablePath();
           return SMTLibProcess.ComputerProcessStartInfo(path, "AUTO_CONFIG=false -smt2 -in");
-        case SolverKind.CVC3:
-          if (path == null)
-            path = "cvc3";
-          return SMTLibProcess.ComputerProcessStartInfo(path, "-lang smt2 +interactive -showPrompt");
         case SolverKind.CVC4:
           if (path == null)
             path = "cvc4";
-          return SMTLibProcess.ComputerProcessStartInfo(path, "--smtlib2 --no-strict-parsing");
+          return SMTLibProcess.ComputerProcessStartInfo(path, "--lang=smt --no-strict-parsing --no-condense-function-values --incremental");
         default:
           Debug.Assert(false);
           return null;
@@ -400,34 +396,38 @@ namespace Microsoft.Boogie.SMTLib
       FlushLogFile();
     }
 
-    public override void Reset()
+    public override void Reset ()
     {
-      SendThisVC("(reset)");
-      
-      if (0 < common.Length)
-      {
-        var c = common.ToString();
-        Process.Send(c);
-        if (currentLogFile != null)
-        {
-          currentLogFile.WriteLine(c);
+      if (options.Solver == SolverKind.Z3) {
+        SendThisVC ("(reset)");
+		
+	    if (0 < common.Length)
+		{
+          var c = common.ToString ();
+          Process.Send (c);
+          if (currentLogFile != null)
+		  {
+            currentLogFile.WriteLine (c);
+          }
         }
       }
     }
-
-    public override void FullReset()
+	
+    public override void FullReset ()
     {
-      Namer.Reset();
-      common.Clear();
-      SetupAxiomBuilder(gen);
-      Axioms.Clear();
-      TypeDecls.Clear();
-      AxiomsAreSetup = false;
-      ctx.Reset();
-      ctx.KnownDatatypeConstructors.Clear();
-      ctx.parent = this;
-      DeclCollector.Reset();
-      SendThisVC("; doing a full reset...");
+      if (options.Solver == SolverKind.Z3) {
+        Namer.Reset ();
+        common.Clear ();
+        SetupAxiomBuilder (gen);
+        Axioms.Clear ();
+        TypeDecls.Clear ();
+        AxiomsAreSetup = false;
+        ctx.Reset ();
+        ctx.KnownDatatypeConstructors.Clear ();
+        ctx.parent = this;
+        DeclCollector.Reset ();
+        SendThisVC ("; doing a full reset...");
+      }
     }
 
     private RPFP.Node SExprToCex(SExpr resp, ErrorHandler handler, 
@@ -556,7 +556,7 @@ namespace Microsoft.Boogie.SMTLib
         // Concatenate all the arguments
         string modelString = resp[0].Name;
         // modelString = modelString.Substring(7, modelString.Length - 8); // remove "(model " and final ")"
-        var models = Model.ParseModels(new StringReader("Z3 error model: \n" + modelString));
+        var models = Model.ParseModels(new StringReader("Z3 error model: \n" + modelString), "");
         if (models == null || models.Count == 0)
         {
             HandleProverError("no model from prover: " + resp.ToString());
@@ -923,9 +923,14 @@ namespace Microsoft.Boogie.SMTLib
         if (theModel != null)
           HandleProverError("Expecting only one model but got many");
         
+		
         string modelStr = null;
         if (resp.Name == "model" && resp.ArgCount >= 1) {
-          modelStr = resp[0].Name;
+          modelStr = resp.Arguments[0] + "\n";
+          for (int i = 1; i < resp.ArgCount; i++) {
+            if (resp.Arguments[i].ToString().Contains("define-fun") &&!resp.Arguments[i].ToString().Contains("not"))
+              modelStr += resp.Arguments[i] + "\n";
+          }
         }
         else if (resp.ArgCount == 0 && resp.Name.Contains("->")) {
           modelStr = resp.Name;
@@ -933,9 +938,24 @@ namespace Microsoft.Boogie.SMTLib
         else {
           HandleProverError("Unexpected prover response getting model: " + resp.ToString());
         }
+        
         List<Model> models = null;
         try {
-          models = Model.ParseModels(new StringReader("Z3 error model: \n" + modelStr));
+          switch (options.Solver) {
+            case SolverKind.Z3:
+              if (CommandLineOptions.Clo.UseSmtOutputFormat) {
+                models = Model.ParseModels(new StringReader("Error model: \n" + modelStr), "SMTLIB2");
+              } else {
+                models = Model.ParseModels(new StringReader("Error model: \n" + modelStr), "");
+              }
+              break;
+            case SolverKind.CVC4:
+              models = Model.ParseModels(new StringReader("Error model: \n" + modelStr), "SMTLIB2");
+              break;
+            default:
+              Debug.Assert(false);
+              return null;
+          }
         }
         catch (ArgumentException exn) {
           HandleProverError("Model parsing error: " + exn.Message);
@@ -1211,15 +1231,17 @@ namespace Microsoft.Boogie.SMTLib
         SendThisVC("(check-sat)");
         FlushLogFile();
     }
-
+	
     public override void SetTimeOut(int ms)
     {
-        var name = Z3.SetTimeoutOption();
-        var value = ms.ToString();
-        options.TimeLimit = ms;
-        options.SmtOptions.RemoveAll(ov => ov.Option == name);
-        options.AddSmtOption(name, value);
-        SendThisVC(string.Format("(set-option :{0} {1})", name, value));
+	    if (options.Solver == SolverKind.Z3) {
+            var name = Z3.SetTimeoutOption();
+            var value = ms.ToString();
+            options.TimeLimit = ms;
+            options.SmtOptions.RemoveAll(ov => ov.Option == name);
+            options.AddSmtOption(name, value);
+            SendThisVC(string.Format("(set-option :{0} {1})", name, value));
+	    }
     }
 
     public override object Evaluate(VCExpr expr)

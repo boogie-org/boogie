@@ -412,6 +412,7 @@ namespace Microsoft.Boogie {
     public bool SimplifyLogFileAppend = false;
     public bool SoundnessSmokeTest = false;
     public string Z3ExecutablePath = null;
+	public string CVC4ExecutablePath = null;
 
     public enum ProverWarnings {
       None,
@@ -467,6 +468,7 @@ namespace Microsoft.Boogie {
     public string PrintCFGPrefix = null;
     public bool ForceBplErrors = false; // if true, boogie error is shown even if "msg" attribute is present
     public bool UseArrayTheory = false;
+	public bool UseSmtOutputFormat = false;
     public bool WeakArrayTheory = false;
     public bool UseLabels = true;
     public bool MonomorphicArrays {
@@ -1241,7 +1243,14 @@ namespace Microsoft.Boogie {
         case "errorLimit":
           ps.GetNumericArgument(ref ProverCCLimit);
           return true;
-
+		
+		case "useSmtOutputFormat": {
+		  if (ps.ConfirmArgumentCount(0)) {
+			UseSmtOutputFormat = true;
+		  }
+	      return true;
+		}
+		
         case "z3opt":
           if (ps.ConfirmArgumentCount(1)) {
             Z3Options.Add(cce.NonNull(args[ps.i]));
@@ -1278,6 +1287,12 @@ namespace Microsoft.Boogie {
             Z3ExecutablePath = args[ps.i];
           }
           return true;
+
+		case "cvc4exe":
+			if (ps.ConfirmArgumentCount(1)) {
+				CVC4ExecutablePath = args[ps.i];
+			}
+			return true;
 
         case "doBitVectorAnalysis":
           DoBitVectorAnalysis = true;
@@ -1848,12 +1863,17 @@ namespace Microsoft.Boogie {
   /useArrayTheory
                 use Z3's native theory (as opposed to axioms).  Currently
                 implies /monomorphize.
-
+  /useSmtOutputFormat
+                Z3 outputs a model in the SMTLIB2 format.
   /z3types      generate multi-sorted VC that make use of Z3 types
   /z3lets:<n>   0 - no LETs, 1 - only LET TERM, 2 - only LET FORMULA,
                 3 - (default) any
   /z3exe:<path>
                 path to Z3 executable
+
+  CVC4 specific options:
+  /cvc4exe:<path>
+                path to CVC4 executable
 ");
     }
   }

@@ -25,8 +25,8 @@ fi
 for t in ${ALL_TESTS} ; do
   # ${TIME_CMD} bash rtest $t "$@"
   if [ "${TIME_CMD}" == "" ] ; then
-    ./runtest.bat $t "$@"
+    sh runtest.sh $t "$@"
   else
-    time -p ./runtest.bat $t "$@"
+    time -p sh runtest.sh $t "$@"
   fi
 done

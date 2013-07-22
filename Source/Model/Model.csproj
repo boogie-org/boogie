@@ -36,7 +36,7 @@
     <SignAssembly>true</SignAssembly>
   </PropertyGroup>
   <PropertyGroup>
-    <AssemblyOriginatorKeyFile>../InterimKey.snk</AssemblyOriginatorKeyFile>
+    <AssemblyOriginatorKeyFile>..\InterimKey.snk</AssemblyOriginatorKeyFile>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Checked|AnyCPU'">
     <DebugSymbols>true</DebugSymbols>
@@ -77,12 +77,15 @@
     <CodeContractsRuntimeCheckingLevel>Full</CodeContractsRuntimeCheckingLevel>
     <CodeContractsReferenceAssembly>Build</CodeContractsReferenceAssembly>
     <CodeContractsAnalysisWarningLevel>0</CodeContractsAnalysisWarningLevel>
+    <WarningLevel>4</WarningLevel>
+    <Optimize>false</Optimize>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Model.cs" />
+    <Compile Include="ModelParser.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="..\version.cs" />
   </ItemGroup>

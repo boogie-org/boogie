@@ -274,7 +274,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       new string[] {
       "$_pow2", "$as_composite_field", "$as_field_with_type", "$as_in_range_t",
       "$as_primitive_field", "$base", "$call_transition", "tickleBool", "Ctor",
-      "@MV_state", "$field", "$field_arr_root", "$field_kind", "$field_offset",
+      "$mv_state", "$field", "$field_arr_root", "$field_kind", "$field_offset",
       "$field_parent_type", "$field_type", "$file_name_is", "$good_state",
       "$good_state_ext", "$function_arg_type", "$has_field_at0", "$map_domain",
       "$map_range", "$map_t", "$ptr_to", "$ptr_to_i1", "$ptr_to_i2",
