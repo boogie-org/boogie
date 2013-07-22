@@ -335,7 +335,7 @@ namespace VC
             {
                 current = todo[0];
                 todo.Remove(current);
-                BlockSeq pre = m_Predecessors(current, forward);
+                List<Block> pre = m_Predecessors(current, forward);
                 bool ready = true;
                 if (pre != null)
                 {
@@ -356,7 +356,7 @@ namespace VC
                 done.Add(current);
                 unavoidableBlocks[current].Add(current);
 
-                BlockSeq suc = m_Succecessors(current, forward);
+                List<Block> suc = m_Succecessors(current, forward);
                 if (suc == null) continue;
                 foreach (Block bsuc in suc)
                 {
@@ -402,7 +402,7 @@ namespace VC
             return ret;
         }
 
-        private BlockSeq m_Predecessors(Block b, bool forward)
+        private List<Block> m_Predecessors(Block b, bool forward)
         {
             if (forward) return b.Predecessors;
             GotoCmd gc = b.TransferCmd as GotoCmd;
@@ -413,7 +413,7 @@ namespace VC
             return null;
         }
 
-        private BlockSeq m_Succecessors(Block b, bool forward)
+        private List<Block> m_Succecessors(Block b, bool forward)
         {
             return m_Predecessors(b, !forward);
         }

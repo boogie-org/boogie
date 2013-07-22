@@ -625,7 +625,7 @@ namespace Microsoft.Boogie {
           GotoCmd gotoCmd = source.TransferCmd as GotoCmd;
           Contract.Assert(gotoCmd != null && gotoCmd.labelNames != null && gotoCmd.labelTargets != null && gotoCmd.labelTargets.Count >= 1);
           List<String>/*!*/ newLabels = new List<String>();
-          BlockSeq/*!*/ newTargets = new BlockSeq();
+          List<Block>/*!*/ newTargets = new List<Block>();
           for (int i = 0; i < gotoCmd.labelTargets.Count; i++) {
             if (gotoCmd.labelTargets[i] == header)
               continue;
@@ -642,12 +642,12 @@ namespace Microsoft.Boogie {
         Block exit = new Block(Token.NoToken, "exit", new List<Cmd>(), new ReturnCmd(Token.NoToken));
         GotoCmd cmd = new GotoCmd(Token.NoToken,
                                     new List<String> { cce.NonNull(blockMap[header]).Label, exit.Label },
-                                    new BlockSeq(blockMap[header], exit));
+                                    new List<Block> { blockMap[header], exit });
 
         if (detLoopExtract) //cutting the non-determinism
             cmd = new GotoCmd(Token.NoToken,
                                     new List<String> { cce.NonNull(blockMap[header]).Label },
-                                    new BlockSeq(blockMap[header]));
+                                    new List<Block> { blockMap[header] });
 
         Block entry;
         List<Cmd> initCmds = new List<Cmd>();
@@ -668,7 +668,7 @@ namespace Microsoft.Boogie {
           } else {
             Contract.Assume(gotoCmd.labelNames != null && gotoCmd.labelTargets != null);
             List<String> newLabels = new List<String>();
-            BlockSeq newTargets = new BlockSeq();
+            List<Block> newTargets = new List<Block>();
             for (int i = 0; i < gotoCmd.labelTargets.Count; i++) {
               Block target = gotoCmd.labelTargets[i];
               if (blockMap.ContainsKey(target)) {
@@ -701,7 +701,7 @@ namespace Microsoft.Boogie {
         Block lastIterBlock = new Block(Token.NoToken, lastIterBlockName, header.Cmds, header.TransferCmd);
         newBlocksCreated[header] = lastIterBlock;
         header.Cmds = new List<Cmd> { loopHeaderToCallCmd1[header] };
-        header.TransferCmd = new GotoCmd(Token.NoToken, new List<String> { lastIterBlockName }, new BlockSeq(lastIterBlock));
+        header.TransferCmd = new GotoCmd(Token.NoToken, new List<String> { lastIterBlockName }, new List<Block> { lastIterBlock });
         impl.Blocks.Add(lastIterBlock);
         blockMap[origHeader] = blockMap[header];
         blockMap.Remove(header);
@@ -830,7 +830,7 @@ namespace Microsoft.Boogie {
           else {
             List<String> newLabelNames = new List<String>();
             newLabelNames.AddRange(splitGotoCmd.labelNames);
-            BlockSeq newLabelTargets = new BlockSeq();
+            List<Block> newLabelTargets = new List<Block>();
             newLabelTargets.AddRange(splitGotoCmd.labelTargets);
             newTransferCmd = new GotoCmd(splitCandidate.tok, newLabelNames, newLabelTargets);
           }
@@ -3016,7 +3016,7 @@ namespace Microsoft.Boogie {
 
       foreach (Block/*!*/ block in this.Blocks) {
         Contract.Assert(block != null);
-        block.Predecessors = new BlockSeq();
+        block.Predecessors = new List<Block>();
       }
 
     }
@@ -3070,7 +3070,7 @@ namespace Microsoft.Boogie {
     /// </summary>
     public void ComputePredecessorsForBlocks() {
       foreach (Block b in this.Blocks) {
-        b.Predecessors = new BlockSeq();
+        b.Predecessors = new List<Block>();
       }
       foreach (Block b in this.Blocks) {
         GotoCmd gtc = b.TransferCmd as GotoCmd;
@@ -3261,17 +3261,6 @@ namespace Microsoft.Boogie {
       for (int i = 0; i < t.Count; i++)
         n[s.Count + i] = t[i];
       return new ExprSeq(n);
-    }
-  }
-
-  public sealed class BlockSeq : List<Block> {
-    public BlockSeq(params Block[]/*!*/ args)
-      : base(args) {
-      Contract.Requires(args != null);
-    }
-    public BlockSeq(BlockSeq blockSeq)
-      : base(blockSeq) {
-      Contract.Requires(blockSeq != null);
     }
   }
 

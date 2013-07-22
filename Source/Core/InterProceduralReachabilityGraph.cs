@@ -82,7 +82,7 @@ namespace Microsoft.Boogie
             (newProcedureExitNodes[proc].TransferCmd as GotoCmd).labelTargets.Add(gotoCmd.labelTargets[i]);
             (newProcedureExitNodes[proc].TransferCmd as GotoCmd).labelNames.Add(gotoCmd.labelNames[i]);
           }
-          gotoCmd.labelTargets = new BlockSeq { newProcedureEntryNodes[proc] };
+          gotoCmd.labelTargets = new List<Block> { newProcedureEntryNodes[proc] };
           gotoCmd.labelNames = new List<String> { newProcedureEntryNodes[proc].Label };
         }
       }
@@ -97,7 +97,7 @@ namespace Microsoft.Boogie
         var gotoCmd = n.TransferCmd as GotoCmd;
         if (gotoCmd != null)
         {
-          BlockSeq newTargets = new BlockSeq();
+          List<Block> newTargets = new List<Block>();
           foreach (Block t in gotoCmd.labelTargets)
           {
             if (originalToNew.ContainsKey(t))
@@ -122,7 +122,7 @@ namespace Microsoft.Boogie
       {
         if (!newProcedureEntryNodes.ContainsKey(proc.Name))
         {
-          Block newBlock = new Block(Token.NoToken, proc + "__dummy_node", new List<Cmd>(), new GotoCmd(Token.NoToken, new BlockSeq()));
+          Block newBlock = new Block(Token.NoToken, proc + "__dummy_node", new List<Cmd>(), new GotoCmd(Token.NoToken, new List<Block>()));
           nodes.Add(newBlock);
           newProcedureEntryNodes[proc.Name] = newBlock;
           newProcedureExitNodes[proc.Name] = newBlock;
@@ -137,7 +137,7 @@ namespace Microsoft.Boogie
       foreach (var impl in prog.TopLevelDeclarations.OfType<Implementation>())
       {
         string exitLabel = "__" + impl.Name + "_newExit";
-        Block newExit = new Block(Token.NoToken, exitLabel, new List<Cmd>(), new GotoCmd(Token.NoToken, new BlockSeq()));
+        Block newExit = new Block(Token.NoToken, exitLabel, new List<Cmd>(), new GotoCmd(Token.NoToken, new List<Block>()));
         nodes.Add(newExit);
         newProcedureExitNodes[impl.Name] = newExit;
         foreach (Block b in impl.Blocks)
@@ -164,7 +164,7 @@ namespace Microsoft.Boogie
               newBlock = new Block(b.tok, label, new List<Cmd>(cmds.ToArray()), null);
               nodes.Add(newBlock);
               originalToNew[newBlock] = newBlock;
-              prev.TransferCmd = new GotoCmd(Token.NoToken, new List<String> { label }, new BlockSeq { newBlock });
+              prev.TransferCmd = new GotoCmd(Token.NoToken, new List<String> { label }, new List<Block> { newBlock });
             }
             prev = newBlock;
             i++;
@@ -173,7 +173,7 @@ namespace Microsoft.Boogie
           if (b.TransferCmd is ReturnCmd || (b.TransferCmd is GotoCmd &&
               ((GotoCmd)b.TransferCmd).labelTargets.Count == 0))
           {
-            prev.TransferCmd = new GotoCmd(Token.NoToken, new List<String> { exitLabel }, new BlockSeq { newExit });
+            prev.TransferCmd = new GotoCmd(Token.NoToken, new List<String> { exitLabel }, new List<Block> { newExit });
           }
           else
           {

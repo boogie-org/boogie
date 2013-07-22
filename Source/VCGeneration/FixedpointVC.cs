@@ -1585,7 +1585,7 @@ namespace Microsoft.Boogie
             Block entryBlock = cce.NonNull(procImpl.Blocks[0]);
             Contract.Assert(entryBlock != null);
            
-            BlockSeq trace = new BlockSeq(); 
+            List<Block> trace = new List<Block>(); 
             trace.Add(entryBlock);
 
             var calleeCounterexamples = new Dictionary<TraceLocation, CalleeCounterexampleInfo>();
@@ -1621,7 +1621,7 @@ namespace Microsoft.Boogie
         private Counterexample GenerateTraceRec(
                               RPFP rpfp, RPFP.Node root,
                               List<StateId> orderedStateIds,
-                              Block/*!*/ b, BlockSeq/*!*/ trace,
+                              Block/*!*/ b, List<Block>/*!*/ trace,
                               Dictionary<TraceLocation/*!*/, CalleeCounterexampleInfo/*!*/>/*!*/ calleeCounterexamples,
                               StratifiedInliningInfo info,
                               bool toplevel)

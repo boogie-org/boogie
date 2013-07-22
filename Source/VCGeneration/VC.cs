@@ -194,7 +194,7 @@ namespace VC {
             res.Add(kv.Value);
           }
           if (go != null) {
-            GotoCmd copy = new GotoCmd(go.tok, new List<String>(), new BlockSeq());
+            GotoCmd copy = new GotoCmd(go.tok, new List<String>(), new List<Block>());
             kv.Value.TransferCmd = copy;
             foreach (Block b in cce.NonNull(go.labelTargets)) {
               Contract.Assert(b != null);
@@ -744,7 +744,7 @@ namespace VC {
           GotoCmd gt = b.TransferCmd as GotoCmd;
           if (gt == null)
             continue;
-          BlockSeq targ = cce.NonNull(gt.labelTargets);
+          List<Block> targ = cce.NonNull(gt.labelTargets);
           if (targ.Count < 2)
             continue;
           // caution, we only consider two first exits
@@ -950,7 +950,7 @@ namespace VC {
         GotoCmd gt = b.TransferCmd as GotoCmd;
         copies[b] = res;
         if (gt != null) {
-          GotoCmd newGoto = new GotoCmd(gt.tok, new List<String>(), new BlockSeq());
+          GotoCmd newGoto = new GotoCmd(gt.tok, new List<String>(), new List<Block>());
           res.TransferCmd = newGoto;
           int pos = 0;
           foreach (Block ch in cce.NonNull(gt.labelTargets)) {
@@ -1038,7 +1038,7 @@ namespace VC {
         Contract.Requires(context != null);
         Contract.Ensures(Contract.Result<Counterexample>() != null);
 
-        BlockSeq trace = new BlockSeq();
+        List<Block> trace = new List<Block>();
         foreach (Block b in blocks) {
           Contract.Assert(b != null);
           trace.Add(b);
@@ -1735,7 +1735,7 @@ namespace VC {
             traceNodes.Add(absy, null);
         }
 
-        BlockSeq trace = new BlockSeq();
+        List<Block> trace = new List<Block>();
         Block entryBlock = cce.NonNull(this.blocks[0]);
         Contract.Assert(traceNodes.Contains(entryBlock));
         trace.Add(entryBlock);
@@ -1831,7 +1831,7 @@ namespace VC {
           // find the corresponding Block (assertNodes.Count is likely to be 1, or small in any case, so just do a linear search here)
           foreach (Block b in traceNodes) {
             if (b.Cmds.Contains(a)) {
-              BlockSeq trace = new BlockSeq();
+              List<Block> trace = new List<Block>();
               trace.Add(b);
               Counterexample newCounterexample = AssertCmdToCounterexample(a, cce.NonNull(b.TransferCmd), trace, model, MvInfo, context);
               callback.OnCounterexample(newCounterexample, null);
@@ -1882,7 +1882,7 @@ namespace VC {
 
       // Recompute the predecessors, but first insert a dummy start node that is sure not to be the target of any goto (because the cutting of back edges
       // below assumes that the start node has no predecessor)
-      impl.Blocks.Insert(0, new Block(new Token(-17, -4), "0", new List<Cmd>(), new GotoCmd(Token.NoToken, new List<String> { impl.Blocks[0].Label }, new BlockSeq(impl.Blocks[0]))));
+      impl.Blocks.Insert(0, new Block(new Token(-17, -4), "0", new List<Cmd>(), new GotoCmd(Token.NoToken, new List<String> { impl.Blocks[0].Label }, new List<Block> { impl.Blocks[0] })));
       ResetPredecessors(impl.Blocks);
       
       #region Convert program CFG into a DAG
@@ -1991,7 +1991,7 @@ namespace VC {
           if (gtc != null && gtc.labelTargets != null && gtc.labelTargets.Count > 1 )
           {
             // then remove the backedge by removing the target block from the list of gotos
-            BlockSeq remainingTargets = new BlockSeq();
+            List<Block> remainingTargets = new List<Block>();
             List<String> remainingLabels = new List<String>();
             Contract.Assume( gtc.labelNames != null);
             for (int i = 0, n = gtc.labelTargets.Count; i < n; i++)
@@ -2019,7 +2019,7 @@ namespace VC {
                 RecordCutEdge(edgesCut, backEdgeNode, gtc.labelTargets[0]);
           }
           #region Remove the backedge node from the list of predecessor nodes in the header
-          BlockSeq newPreds = new BlockSeq();
+          List<Block> newPreds = new List<Block>();
           foreach ( Block p in header.Predecessors )
           {
             if ( p != backEdgeNode )
@@ -2328,7 +2328,7 @@ namespace VC {
         var cex = cexInfo.counterexample;
         // Go through all blocks in the trace, map them back to blocks in the original program (if there is one)
         var ret = cex.Clone();
-        ret.Trace = new BlockSeq();
+        ret.Trace = new List<Block>();
         ret.calleeCounterexamples = new Dictionary<TraceLocation, CalleeCounterexampleInfo>();
 
         for (int numBlock = 0; numBlock < cex.Trace.Count; numBlock ++ )
@@ -2448,7 +2448,7 @@ namespace VC {
     }
 
     static Counterexample TraceCounterexample(
-                          Block/*!*/ b, Hashtable/*!*/ traceNodes, BlockSeq/*!*/ trace, Model errModel, ModelViewInfo mvInfo,
+                          Block/*!*/ b, Hashtable/*!*/ traceNodes, List<Block>/*!*/ trace, Model errModel, ModelViewInfo mvInfo,
                           Dictionary<Incarnation, Absy/*!*/>/*!*/ incarnationOriginMap,
                           ProverContext/*!*/ context,
                           Dictionary<TraceLocation/*!*/, CalleeCounterexampleInfo/*!*/>/*!*/ calleeCounterexamples)
@@ -2493,7 +2493,7 @@ namespace VC {
       return null;
     }
 
-    public static Counterexample AssertCmdToCounterexample(AssertCmd cmd, TransferCmd transferCmd, BlockSeq trace, Model errModel, ModelViewInfo mvInfo, ProverContext context) 
+    public static Counterexample AssertCmdToCounterexample(AssertCmd cmd, TransferCmd transferCmd, List<Block> trace, Model errModel, ModelViewInfo mvInfo, ProverContext context) 
     {
       Contract.Requires(cmd != null);
       Contract.Requires(transferCmd != null);
@@ -3024,13 +3024,13 @@ namespace VC {
     /// Remove the empty blocks reachable from the block.
     /// It changes the visiting state of the blocks, so that if you want to visit again the blocks, you have to reset them...
     /// </summary>
-    static BlockSeq RemoveEmptyBlocks(Block b) {
+    static List<Block> RemoveEmptyBlocks(Block b) {
       Contract.Requires(b != null);
-      Contract.Ensures(Contract.Result<BlockSeq>() != null);
+      Contract.Ensures(Contract.Result<List<Block>>() != null);
 
       Contract.Assert(b.TraversingStatus == Block.VisitState.ToVisit);
       Block renameInfo;
-      BlockSeq retVal = removeEmptyBlocksWorker(b, true, out renameInfo);
+      List<Block> retVal = removeEmptyBlocksWorker(b, true, out renameInfo);
       if (renameInfo != null && !b.tok.IsValid) {
         bool onlyAssumes = true;
         foreach (Cmd c in b.Cmds) {
@@ -3054,14 +3054,14 @@ namespace VC {
     /// If renameInfoForStartBlock is non-null, it denotes an empty block with location information, and that
     /// information would be appropriate to display
     /// </summary>
-    private static BlockSeq removeEmptyBlocksWorker(Block b, bool startNode, out Block renameInfoForStartBlock)
+    private static List<Block> removeEmptyBlocksWorker(Block b, bool startNode, out Block renameInfoForStartBlock)
   {
       Contract.Requires(b != null);
       Contract.Ensures(Contract.ValueAtReturn(out renameInfoForStartBlock) == null || Contract.ValueAtReturn(out renameInfoForStartBlock).tok.IsValid);
       // ensures: b in result ==> renameInfoForStartBlock == null;
     
       renameInfoForStartBlock = null;
-      BlockSeq bs = new BlockSeq();
+      List<Block> bs = new List<Block>();
       GotoCmd gtc = b.TransferCmd as GotoCmd;
 
       // b has no successors
@@ -3103,7 +3103,7 @@ namespace VC {
         int m = 0;  // in the following loop, set renameInfoForStartBlock to the value that all recursive calls agree on, if possible; otherwise, null
         foreach (Block dest in gtc.labelTargets){Contract.Assert(dest != null);
           Block renameInfo;
-          BlockSeq ys = removeEmptyBlocksWorker(dest, false, out renameInfo);
+          List<Block> ys = removeEmptyBlocksWorker(dest, false, out renameInfo);
           Contract.Assert(ys != null);
           if (m == 0) {
             renameInfoForStartBlock = renameInfo;
@@ -3118,7 +3118,7 @@ namespace VC {
         }
         b.TraversingStatus = Block.VisitState.AlreadyVisited;
 
-        BlockSeq setOfSuccessors = new BlockSeq();
+        List<Block> setOfSuccessors = new List<Block>();
         foreach (Block d in mergedSuccessors)
           setOfSuccessors.Add(d);
         if (b.Cmds.Count == 0 && !startNode) {
@@ -3137,11 +3137,11 @@ namespace VC {
         if (!startNode) {
           renameInfoForStartBlock = null;
         }
-        return new BlockSeq(b);
+        return new List<Block> { b };
       }
       else // b has some successors, but we are already visiting it, or we have already visited it...
       {
-        return new BlockSeq(b);
+        return new List<Block> { b };
       }
     }
 

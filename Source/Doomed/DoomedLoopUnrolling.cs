@@ -338,11 +338,11 @@ namespace VC
                 Block b = kvp.Key;
                 if (UncheckableNodes.Contains(GraphMap[b])) uncheckables.Add(b);
                 blocks.Add(b);
-                b.Predecessors = new BlockSeq();
+                b.Predecessors = new List<Block>();
                 foreach (GraphNode p in kvp.Value.Pre) b.Predecessors.Add(p.Label);
                 if (kvp.Value.Suc.Count > 0)
                 {
-                    BlockSeq bs = new BlockSeq();                    
+                    List<Block> bs = new List<Block>();                    
                     foreach (GraphNode s in kvp.Value.Suc) bs.Add(s.Label);                    
                     b.TransferCmd = new GotoCmd(b.tok, bs);
                 }

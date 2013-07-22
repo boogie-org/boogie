@@ -816,7 +816,7 @@ namespace Microsoft.Boogie {
     public int iterations;         // Count the number of time we visited the block during fixpoint computation. Used to decide if we widen or not
 
     // VC generation and SCC computation
-    public BlockSeq/*!*/ Predecessors;
+    public List<Block>/*!*/ Predecessors;
 
     // This field is used during passification to null-out entries in block2Incartion hashtable early
     public int succCount;
@@ -849,7 +849,7 @@ namespace Microsoft.Boogie {
       this.Label = label;
       this.Cmds = cmds;
       this.TransferCmd = transferCmd;
-      this.Predecessors = new BlockSeq();
+      this.Predecessors = new List<Block>();
       this.liveVarsBefore = null;
       this.TraversingStatus = VisitState.ToVisit;
       this.iterations = 0;
@@ -2690,7 +2690,7 @@ namespace Microsoft.Boogie {
     [Rep]
     public List<String> labelNames;
     [Rep]
-    public BlockSeq labelTargets;
+    public List<Block> labelTargets;
 
     [ContractInvariantMethod]
     void ObjectInvariant() {
@@ -2704,7 +2704,7 @@ namespace Microsoft.Boogie {
       Contract.Requires(labelSeq != null);
       this.labelNames = labelSeq;
     }
-    public GotoCmd(IToken/*!*/ tok, List<String>/*!*/ labelSeq, BlockSeq/*!*/ blockSeq)
+    public GotoCmd(IToken/*!*/ tok, List<String>/*!*/ labelSeq, List<Block>/*!*/ blockSeq)
       : base(tok) {
       Contract.Requires(tok != null);
       Contract.Requires(labelSeq != null);
@@ -2717,7 +2717,7 @@ namespace Microsoft.Boogie {
       this.labelNames = labelSeq;
       this.labelTargets = blockSeq;
     }
-    public GotoCmd(IToken/*!*/ tok, BlockSeq/*!*/ blockSeq)
+    public GotoCmd(IToken/*!*/ tok, List<Block>/*!*/ blockSeq)
       : base(tok) { //requires (blockSeq[i] != null ==> blockSeq[i].Label != null);
       Contract.Requires(tok != null);
       Contract.Requires(blockSeq != null);
@@ -2767,7 +2767,7 @@ namespace Microsoft.Boogie {
         return;
       }
       Contract.Assume(this.labelNames != null);
-      labelTargets = new BlockSeq();
+      labelTargets = new List<Block>();
       foreach (string/*!*/ lbl in labelNames) {
         Contract.Assert(lbl != null);
         Block b = rc.LookUpBlock(lbl);

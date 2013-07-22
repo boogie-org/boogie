@@ -73,7 +73,7 @@ namespace Microsoft.Boogie {
         Contract.Assert(b != null);
         GotoCmd g = b.TransferCmd as GotoCmd;
         if (g != null) {
-          BlockSeq targets = new BlockSeq();
+          List<Block> targets = new List<Block>();
           foreach (Block t in cce.NonNull(g.labelTargets)) {
             Block nt = subst[t];
             targets.Add(nt);
@@ -83,10 +83,10 @@ namespace Microsoft.Boogie {
       }
       return clone;
     }
-    public override BlockSeq VisitBlockSeq(BlockSeq blockSeq) {
+    public override List<Block> VisitBlockSeq(List<Block> blockSeq) {
       //Contract.Requires(blockSeq != null);
-      Contract.Ensures(Contract.Result<BlockSeq>() != null);
-      return base.VisitBlockSeq(new BlockSeq(blockSeq));
+      Contract.Ensures(Contract.Result<List<Block>>() != null);
+      return base.VisitBlockSeq(new List<Block>(blockSeq));
     }
     public override List<Block/*!*/>/*!*/ VisitBlockList(List<Block/*!*/>/*!*/ blocks) {
       //Contract.Requires(cce.NonNullElements(blocks));

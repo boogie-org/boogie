@@ -248,7 +248,7 @@ namespace Microsoft.Boogie {
 
         } else {
           body = node.Body;
-          BlockSeq newSuccs = new BlockSeq();
+          List<Block> newSuccs = new List<Block>();
 
           foreach (GraphNode succ in node.ForwardEdges) {
             Block s;

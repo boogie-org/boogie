@@ -372,7 +372,7 @@ namespace Microsoft.Boogie
             Substitution subst = Substituter.SubstitutionFromHashtable(map);
             List<Block> yieldCheckerBlocks = new List<Block>();
             List<String> labels = new List<String>();
-            BlockSeq labelTargets = new BlockSeq();
+            List<Block> labelTargets = new List<Block>();
             Block yieldCheckerBlock = new Block(Token.NoToken, "exit", new List<Cmd>(), new ReturnCmd(Token.NoToken));
             labels.Add(yieldCheckerBlock.Label);
             labelTargets.Add(yieldCheckerBlock);
@@ -611,7 +611,7 @@ namespace Microsoft.Boogie
                 } 
                 if (lhss.Count > 0)
                 {
-                    Block initBlock = new Block(Token.NoToken, "og_init", new List<Cmd> { new AssignCmd(Token.NoToken, lhss, rhss) }, new GotoCmd(Token.NoToken, new List<String> { impl.Blocks[0].Label }, new BlockSeq(impl.Blocks[0])));
+                    Block initBlock = new Block(Token.NoToken, "og_init", new List<Cmd> { new AssignCmd(Token.NoToken, lhss, rhss) }, new GotoCmd(Token.NoToken, new List<String> { impl.Blocks[0].Label }, new List<Block> { impl.Blocks[0] }));
                     impl.Blocks.Insert(0, initBlock);
                 }
             }
@@ -739,7 +739,7 @@ namespace Microsoft.Boogie
             TransferCmd transferCmd = new ReturnCmd(Token.NoToken);
             if (yieldCheckerProcs.Count > 0)
             {
-                BlockSeq blockTargets = new BlockSeq();
+                List<Block> blockTargets = new List<Block>();
                 List<String> labelTargets = new List<String>();
                 int labelCount = 0;
                 foreach (Procedure proc in yieldCheckerProcs)

@@ -1499,7 +1499,7 @@ namespace Microsoft.Boogie
     }
 
 
-    private static void WriteErrorInformationToXmlSink(ErrorInformation errorInfo, BlockSeq trace)
+    private static void WriteErrorInformationToXmlSink(ErrorInformation errorInfo, List<Block> trace)
     {
       var msg = "assertion violation";
       switch (errorInfo.Kind)

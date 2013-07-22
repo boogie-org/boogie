@@ -75,7 +75,7 @@ namespace Microsoft.Boogie {
     }
 
     [Peer]
-    public BlockSeq Trace;
+    public List<Block> Trace;
     public Model Model;
     public VC.ModelViewInfo MvInfo;
     public ProverContext Context;
@@ -85,7 +85,7 @@ namespace Microsoft.Boogie {
 
     public Dictionary<TraceLocation, CalleeCounterexampleInfo> calleeCounterexamples;
 
-    internal Counterexample(BlockSeq trace, Model model, VC.ModelViewInfo mvInfo, ProverContext context) {
+    internal Counterexample(List<Block> trace, Model model, VC.ModelViewInfo mvInfo, ProverContext context) {
       Contract.Requires(trace != null);
       Contract.Requires(context != null);
       this.Trace = trace;
@@ -312,7 +312,7 @@ namespace Microsoft.Boogie {
 
   public class CounterexampleComparer : IComparer<Counterexample> {
 
-    private int Compare(BlockSeq bs1, BlockSeq bs2)
+    private int Compare(List<Block> bs1, List<Block> bs2)
     {
       if (bs1.Count < bs2.Count)
       {
@@ -383,7 +383,7 @@ namespace Microsoft.Boogie {
     }
 
 
-    public AssertCounterexample(BlockSeq trace, AssertCmd failingAssert, Model model, VC.ModelViewInfo mvInfo, ProverContext context)
+    public AssertCounterexample(List<Block> trace, AssertCmd failingAssert, Model model, VC.ModelViewInfo mvInfo, ProverContext context)
       : base(trace, model, mvInfo, context) {
       Contract.Requires(trace != null);
       Contract.Requires(failingAssert != null);
@@ -413,7 +413,7 @@ namespace Microsoft.Boogie {
     }
 
 
-    public CallCounterexample(BlockSeq trace, CallCmd failingCall, Requires failingRequires, Model model, VC.ModelViewInfo mvInfo, ProverContext context)
+    public CallCounterexample(List<Block> trace, CallCmd failingCall, Requires failingRequires, Model model, VC.ModelViewInfo mvInfo, ProverContext context)
       : base(trace, model, mvInfo, context) {
       Contract.Requires(!failingRequires.Free);
       Contract.Requires(trace != null);
@@ -446,7 +446,7 @@ namespace Microsoft.Boogie {
     }
 
 
-    public ReturnCounterexample(BlockSeq trace, TransferCmd failingReturn, Ensures failingEnsures, Model model, VC.ModelViewInfo mvInfo, ProverContext context)
+    public ReturnCounterexample(List<Block> trace, TransferCmd failingReturn, Ensures failingEnsures, Model model, VC.ModelViewInfo mvInfo, ProverContext context)
       : base(trace, model, mvInfo, context) {
       Contract.Requires(trace != null);
       Contract.Requires(context != null);
@@ -679,7 +679,7 @@ namespace VC {
           }
           b.TransferCmd = new GotoCmd(Token.NoToken,
             new List<String> { targetBlock.Label },
-            new BlockSeq(targetBlock));
+            new List<Block> { targetBlock });
           targetBlock.Predecessors.Add(b);
         }
         impl.Blocks.Add(b);
@@ -724,7 +724,7 @@ namespace VC {
       Block origStartBlock = impl.Blocks[0];
       Block insertionPoint = new Block(
         new Token(-17, -4), blockLabel, startCmds,
-        new GotoCmd(Token.NoToken, new List<String> { origStartBlock.Label }, new BlockSeq(origStartBlock)));
+        new GotoCmd(Token.NoToken, new List<String> { origStartBlock.Label }, new List<Block> { origStartBlock }));
 
       impl.Blocks[0] = insertionPoint;  // make insertionPoint the start block
       impl.Blocks.Add(origStartBlock);  // and put the previous start block at the end of the list
@@ -808,7 +808,7 @@ namespace VC {
             ThreadInCodeExpr(impl, nextIP, be, true, debugWriter);
             // Third, make the old insertion-point block goto the entry block of the CodeExpr
             Block beEntry = cce.NonNull(be.Blocks[0]);
-            insertionPoint.TransferCmd = new GotoCmd(Token.NoToken, new List<String> { beEntry.Label }, new BlockSeq(beEntry));
+            insertionPoint.TransferCmd = new GotoCmd(Token.NoToken, new List<String> { beEntry.Label }, new List<Block> { beEntry });
             beEntry.Predecessors.Add(insertionPoint);
             // Fourth, update the insertion point
             insertionPoint = nextIP;
@@ -1110,7 +1110,7 @@ namespace VC {
             if (b.TransferCmd is ReturnCmd) {
               List<String> labels = new List<String>();
               labels.Add(unifiedExitLabel);
-              BlockSeq bs = new BlockSeq();
+              List<Block> bs = new List<Block>();
               bs.Add(unifiedExit);
               GotoCmd go = new GotoCmd(Token.NoToken, labels, bs);
               gotoCmdOrigins[go] = (ReturnCmd)b.TransferCmd;
@@ -1132,7 +1132,7 @@ namespace VC {
       Contract.Requires(blocks != null);
       foreach (Block b in blocks) {
         Contract.Assert(b != null);
-        b.Predecessors = new BlockSeq();
+        b.Predecessors = new List<Block>();
       }
       foreach (Block b in blocks) {
         Contract.Assert(b != null);
@@ -1621,7 +1621,7 @@ namespace VC {
       // successor of newBlock list
       List<String> ls = new List<String>();
       ls.Add(succ.Label);
-      BlockSeq bs = new BlockSeq();
+      List<Block> bs = new List<Block>();
       bs.Add(succ);
 
       Block newBlock = new Block(
@@ -1632,7 +1632,7 @@ namespace VC {
           );
 
       // predecessors of newBlock
-      BlockSeq ps = new BlockSeq();
+      List<Block> ps = new List<Block>();
       ps.Add(pred);
       newBlock.Predecessors = ps;
 

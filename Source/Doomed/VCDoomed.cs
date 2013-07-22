@@ -791,7 +791,7 @@ namespace VC {
         // update the successors and predecessors
         foreach (Block b in lb)
         {
-            BlockSeq newpreds = new BlockSeq();
+            List<Block> newpreds = new List<Block>();
             foreach (Block b_ in b.Predecessors)
             {
                 newpreds.Add(clonemap[b_]);
@@ -802,7 +802,7 @@ namespace VC {
             if (gc != null)
             {
                 List<String> lseq = new List<String>();
-                BlockSeq bseq = new BlockSeq();
+                List<Block> bseq = new List<Block>();
                 foreach (string s in gc.labelNames) lseq.Add(s);
                 foreach (Block b_ in gc.labelTargets) bseq.Add(clonemap[b_]);
                 GotoCmd tcmd = new GotoCmd(gc.tok, lseq, bseq);

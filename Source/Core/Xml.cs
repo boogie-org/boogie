@@ -103,7 +103,7 @@ namespace Microsoft.Boogie {
       cce.EndExpose();
     }
 
-    public void WriteError(string message, IToken errorToken, IToken relatedToken, BlockSeq trace) {
+    public void WriteError(string message, IToken errorToken, IToken relatedToken, List<Block> trace) {
       Contract.Requires(errorToken != null);
       Contract.Requires(message != null);
       Contract.Requires(IsOpen && (trace == null || cce.Owner.Different(this, trace)));
@@ -143,7 +143,7 @@ namespace Microsoft.Boogie {
     }
 
 #if CCI
-    public void WriteError(string message, Cci.Node offendingNode, BlockSeq trace) {
+    public void WriteError(string message, Cci.Node offendingNode, List<Block> trace) {
       Contract.Requires(offendingNode != null);
       Contract.Requires(message != null);
       Contract.Requires(IsOpen && cce.Owner.Different(this, offendingNode));

@@ -51,9 +51,9 @@ public class BlockPredicator {
       contBlock.Label = block.Label + ".call.cont";
 
       block.TransferCmd =
-        new GotoCmd(Token.NoToken, new BlockSeq(trueBlock, falseBlock));
+        new GotoCmd(Token.NoToken, new List<Block> { trueBlock, falseBlock });
       trueBlock.TransferCmd = falseBlock.TransferCmd =
-        new GotoCmd(Token.NoToken, new BlockSeq(contBlock));
+        new GotoCmd(Token.NoToken, new List<Block> { contBlock });
       nextBlock = contBlock;
     } else {
       PredicateCmd(block.Cmds, cmd);
@@ -217,7 +217,7 @@ public class BlockPredicator {
           Expr.Eq(cur, blockIds[n.Item1]),
           new QKeyValue(Token.NoToken, "backedge", new List<object>(), null)) };
         backedgeBlock.TransferCmd = new GotoCmd(Token.NoToken,
-                                                new BlockSeq(n.Item1));
+                                                new List<Block> { n.Item1 });
 
         var tailBlock = new Block();
         newBlocks.Add(tailBlock);
@@ -227,7 +227,7 @@ public class BlockPredicator {
                                              Expr.Neq(cur, blockIds[n.Item1])) };
 
         prevBlock.TransferCmd = new GotoCmd(Token.NoToken,
-                                        new BlockSeq(backedgeBlock, tailBlock));
+                                        new List<Block> { backedgeBlock, tailBlock });
         prevBlock = tailBlock;
       } else {
         var runBlock = n.Item1;
@@ -235,7 +235,7 @@ public class BlockPredicator {
         runBlock.Cmds = new List<Cmd>();
         newBlocks.Add(runBlock);
         prevBlock.TransferCmd = new GotoCmd(Token.NoToken,
-                                            new BlockSeq(runBlock));
+                                            new List<Block> { runBlock });
 
         pExpr = Expr.Eq(cur, blockIds[runBlock]);
         if (createCandidateInvariants && blockGraph.Headers.Contains(runBlock)) {

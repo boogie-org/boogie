@@ -2558,7 +2558,7 @@ namespace VC {
             traceNodes.Add(absy, null);
         }
 
-        BlockSeq trace = new BlockSeq();
+        List<Block> trace = new List<Block>();
         Block entryBlock = cce.NonNull(procImpl.Blocks[0]);
         Contract.Assert(entryBlock != null);
         Contract.Assert(traceNodes.Contains(entryBlock));
@@ -2573,7 +2573,7 @@ namespace VC {
       private Counterexample GenerateTraceRec(
                             IList<string/*!*/>/*!*/ labels, Model/*!*/ errModel, ModelViewInfo mvInfo,
                             int candidateId,
-                            Block/*!*/ b, Hashtable/*!*/ traceNodes, BlockSeq/*!*/ trace,
+                            Block/*!*/ b, Hashtable/*!*/ traceNodes, List<Block>/*!*/ trace,
                             Dictionary<TraceLocation/*!*/, CalleeCounterexampleInfo/*!*/>/*!*/ calleeCounterexamples) {
         Contract.Requires(cce.NonNullElements(labels));
         Contract.Requires(b != null);

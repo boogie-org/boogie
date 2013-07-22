@@ -136,9 +136,9 @@ namespace Microsoft.Boogie {
       node.Blocks = this.VisitBlockList(node.Blocks);
       return node;
     }
-    public virtual BlockSeq VisitBlockSeq(BlockSeq blockSeq) {
+    public virtual List<Block> VisitBlockSeq(List<Block> blockSeq) {
       Contract.Requires(blockSeq != null);
-      Contract.Ensures(Contract.Result<BlockSeq>() != null);
+      Contract.Ensures(Contract.Result<List<Block>>() != null);
       for (int i = 0, n = blockSeq.Count; i < n; i++)
         blockSeq[i] = this.VisitBlock(cce.NonNull(blockSeq[i]));
       return blockSeq;

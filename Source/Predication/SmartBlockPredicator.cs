@@ -62,9 +62,9 @@ public class SmartBlockPredicator {
       contBlock.Label = block.Label + ".call.cont";
 
       block.TransferCmd =
-        new GotoCmd(Token.NoToken, new BlockSeq(trueBlock, falseBlock));
+        new GotoCmd(Token.NoToken, new List<Block> { trueBlock, falseBlock });
       trueBlock.TransferCmd = falseBlock.TransferCmd =
-        new GotoCmd(Token.NoToken, new BlockSeq(contBlock));
+        new GotoCmd(Token.NoToken, new List<Block> { contBlock });
       nextBlock = contBlock;
     } else {
       PredicateCmd(p, block.Cmds, cmd);
@@ -389,7 +389,7 @@ public class SmartBlockPredicator {
           backedgeBlock.Cmds = new List<Cmd> { new AssumeCmd(Token.NoToken, pExpr,
             new QKeyValue(Token.NoToken, "backedge", new List<object>(), null)) };
           backedgeBlock.TransferCmd = new GotoCmd(Token.NoToken,
-                                                  new BlockSeq(n.Item1));
+                                                  new List<Block> { n.Item1 });
 
           var tailBlock = new Block();
           newBlocks.Add(tailBlock);
@@ -405,7 +405,7 @@ public class SmartBlockPredicator {
 
           if (prevBlock != null)
             prevBlock.TransferCmd = new GotoCmd(Token.NoToken,
-                                          new BlockSeq(backedgeBlock, tailBlock));
+                                          new List<Block> { backedgeBlock, tailBlock });
           prevBlock = tailBlock;
         } else {
           PredicateBlock(pExpr, n.Item1, newBlocks, ref prevBlock);
@@ -430,7 +430,7 @@ public class SmartBlockPredicator {
     block.Cmds = new List<Cmd>();
     newBlocks.Add(block);
     if (prevBlock != null) {
-      prevBlock.TransferCmd = new GotoCmd(Token.NoToken, new BlockSeq(block));
+      prevBlock.TransferCmd = new GotoCmd(Token.NoToken, new List<Block> { block });
     }
 
     if (parentMap.ContainsKey(block)) {

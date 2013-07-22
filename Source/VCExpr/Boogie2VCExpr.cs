@@ -626,9 +626,9 @@ namespace Microsoft.Boogie.VCExprAST {
       Push(e);
       return codeExpr;
     }
-    public override BlockSeq VisitBlockSeq(BlockSeq blockSeq) {
+    public override List<Block> VisitBlockSeq(List<Block> blockSeq) {
       //Contract.Requires(blockSeq != null);
-      Contract.Ensures(Contract.Result<BlockSeq>() != null);
+      Contract.Ensures(Contract.Result<List<Block>>() != null);
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }
