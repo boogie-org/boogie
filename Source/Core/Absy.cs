@@ -624,7 +624,7 @@ namespace Microsoft.Boogie {
 
           GotoCmd gotoCmd = source.TransferCmd as GotoCmd;
           Contract.Assert(gotoCmd != null && gotoCmd.labelNames != null && gotoCmd.labelTargets != null && gotoCmd.labelTargets.Count >= 1);
-          StringSeq/*!*/ newLabels = new StringSeq();
+          List<String>/*!*/ newLabels = new List<String>();
           BlockSeq/*!*/ newTargets = new BlockSeq();
           for (int i = 0; i < gotoCmd.labelTargets.Count; i++) {
             if (gotoCmd.labelTargets[i] == header)
@@ -641,12 +641,12 @@ namespace Microsoft.Boogie {
         List<Block/*!*/>/*!*/ blocks = new List<Block/*!*/>();
         Block exit = new Block(Token.NoToken, "exit", new List<Cmd>(), new ReturnCmd(Token.NoToken));
         GotoCmd cmd = new GotoCmd(Token.NoToken,
-                                    new StringSeq(cce.NonNull(blockMap[header]).Label, exit.Label),
+                                    new List<String> { cce.NonNull(blockMap[header]).Label, exit.Label },
                                     new BlockSeq(blockMap[header], exit));
 
         if (detLoopExtract) //cutting the non-determinism
             cmd = new GotoCmd(Token.NoToken,
-                                    new StringSeq(cce.NonNull(blockMap[header]).Label),
+                                    new List<String> { cce.NonNull(blockMap[header]).Label },
                                     new BlockSeq(blockMap[header]));
 
         Block entry;
@@ -667,7 +667,7 @@ namespace Microsoft.Boogie {
             newBlock.TransferCmd = new ReturnCmd(Token.NoToken);
           } else {
             Contract.Assume(gotoCmd.labelNames != null && gotoCmd.labelTargets != null);
-            StringSeq newLabels = new StringSeq();
+            List<String> newLabels = new List<String>();
             BlockSeq newTargets = new BlockSeq();
             for (int i = 0; i < gotoCmd.labelTargets.Count; i++) {
               Block target = gotoCmd.labelTargets[i];
@@ -701,7 +701,7 @@ namespace Microsoft.Boogie {
         Block lastIterBlock = new Block(Token.NoToken, lastIterBlockName, header.Cmds, header.TransferCmd);
         newBlocksCreated[header] = lastIterBlock;
         header.Cmds = new List<Cmd> { loopHeaderToCallCmd1[header] };
-        header.TransferCmd = new GotoCmd(Token.NoToken, new StringSeq(lastIterBlockName), new BlockSeq(lastIterBlock));
+        header.TransferCmd = new GotoCmd(Token.NoToken, new List<String> { lastIterBlockName }, new BlockSeq(lastIterBlock));
         impl.Blocks.Add(lastIterBlock);
         blockMap[origHeader] = blockMap[header];
         blockMap.Remove(header);
@@ -828,7 +828,7 @@ namespace Microsoft.Boogie {
             newTransferCmd = new ReturnCmd(splitCandidate.tok);
           }
           else {
-            StringSeq newLabelNames = new StringSeq();
+            List<String> newLabelNames = new List<String>();
             newLabelNames.AddRange(splitGotoCmd.labelNames);
             BlockSeq newLabelTargets = new BlockSeq();
             newLabelTargets.AddRange(splitGotoCmd.labelTargets);
@@ -3264,13 +3264,6 @@ namespace Microsoft.Boogie {
     }
   }
 
-  public sealed class StringSeq : List<String> {
-    public StringSeq(params string[]/*!*/ args)
-      : base(args) {
-      Contract.Requires(args != null);
-    }
-  }
-
   public sealed class BlockSeq : List<Block> {
     public BlockSeq(params Block[]/*!*/ args)
       : base(args) {
@@ -3299,7 +3292,7 @@ namespace Microsoft.Boogie {
       }
     }
 
-    public static void Emit(this StringSeq ss, TokenTextWriter stream) {
+    public static void Emit(this List<String> ss, TokenTextWriter stream) {
       Contract.Requires(stream != null);
       string sep = "";
       foreach (string/*!*/ s in ss) {

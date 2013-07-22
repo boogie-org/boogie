@@ -1074,7 +1074,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 	void TransferCmd(out TransferCmd/*!*/ tc) {
 		Contract.Ensures(Contract.ValueAtReturn(out tc) != null); tc = dummyTransferCmd;
 		Token y;  List<IToken>/*!*/ xs;
-		StringSeq ss = new StringSeq();
+		List<String> ss = new List<String>();
 		
 		if (la.kind == 38) {
 			Get();
@@ -1926,7 +1926,7 @@ out QKeyValue kv, out Trigger trig, out Expr/*!*/ body) {
 		Cmd c;  IToken label;
 		List<Cmd> cs = new List<Cmd>();
 		List<IToken>/*!*/ xs;
-		StringSeq ss = new StringSeq();
+		List<String> ss = new List<String>();
 		b = dummyBlock;
 		Expr/*!*/ e;
 		

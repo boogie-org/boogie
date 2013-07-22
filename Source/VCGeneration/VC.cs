@@ -194,7 +194,7 @@ namespace VC {
             res.Add(kv.Value);
           }
           if (go != null) {
-            GotoCmd copy = new GotoCmd(go.tok, new StringSeq(), new BlockSeq());
+            GotoCmd copy = new GotoCmd(go.tok, new List<String>(), new BlockSeq());
             kv.Value.TransferCmd = copy;
             foreach (Block b in cce.NonNull(go.labelTargets)) {
               Contract.Assert(b != null);
@@ -950,7 +950,7 @@ namespace VC {
         GotoCmd gt = b.TransferCmd as GotoCmd;
         copies[b] = res;
         if (gt != null) {
-          GotoCmd newGoto = new GotoCmd(gt.tok, new StringSeq(), new BlockSeq());
+          GotoCmd newGoto = new GotoCmd(gt.tok, new List<String>(), new BlockSeq());
           res.TransferCmd = newGoto;
           int pos = 0;
           foreach (Block ch in cce.NonNull(gt.labelTargets)) {
@@ -1882,7 +1882,7 @@ namespace VC {
 
       // Recompute the predecessors, but first insert a dummy start node that is sure not to be the target of any goto (because the cutting of back edges
       // below assumes that the start node has no predecessor)
-      impl.Blocks.Insert(0, new Block(new Token(-17, -4), "0", new List<Cmd>(), new GotoCmd(Token.NoToken, new StringSeq(impl.Blocks[0].Label), new BlockSeq(impl.Blocks[0]))));
+      impl.Blocks.Insert(0, new Block(new Token(-17, -4), "0", new List<Cmd>(), new GotoCmd(Token.NoToken, new List<String> { impl.Blocks[0].Label }, new BlockSeq(impl.Blocks[0]))));
       ResetPredecessors(impl.Blocks);
       
       #region Convert program CFG into a DAG
@@ -1992,7 +1992,7 @@ namespace VC {
           {
             // then remove the backedge by removing the target block from the list of gotos
             BlockSeq remainingTargets = new BlockSeq();
-            StringSeq remainingLabels = new StringSeq();
+            List<String> remainingLabels = new List<String>();
             Contract.Assume( gtc.labelNames != null);
             for (int i = 0, n = gtc.labelTargets.Count; i < n; i++)
             {
@@ -3130,7 +3130,7 @@ namespace VC {
         }
         // otherwise, update the list of successors of b to be the blocks in setOfSuccessors
         gtc.labelTargets = setOfSuccessors;
-        gtc.labelNames = new StringSeq();
+        gtc.labelNames = new List<String>();
         foreach (Block d in setOfSuccessors){
           Contract.Assert(d != null);
           gtc.labelNames.Add(d.Label);}

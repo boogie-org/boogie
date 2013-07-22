@@ -678,7 +678,7 @@ namespace VC {
             b.Cmds.Add(new AssumeCmd(rec.tok, rec.Expr));
           }
           b.TransferCmd = new GotoCmd(Token.NoToken,
-            new StringSeq(targetBlock.Label),
+            new List<String> { targetBlock.Label },
             new BlockSeq(targetBlock));
           targetBlock.Predecessors.Add(b);
         }
@@ -724,7 +724,7 @@ namespace VC {
       Block origStartBlock = impl.Blocks[0];
       Block insertionPoint = new Block(
         new Token(-17, -4), blockLabel, startCmds,
-        new GotoCmd(Token.NoToken, new StringSeq(origStartBlock.Label), new BlockSeq(origStartBlock)));
+        new GotoCmd(Token.NoToken, new List<String> { origStartBlock.Label }, new BlockSeq(origStartBlock)));
 
       impl.Blocks[0] = insertionPoint;  // make insertionPoint the start block
       impl.Blocks.Add(origStartBlock);  // and put the previous start block at the end of the list
@@ -808,7 +808,7 @@ namespace VC {
             ThreadInCodeExpr(impl, nextIP, be, true, debugWriter);
             // Third, make the old insertion-point block goto the entry block of the CodeExpr
             Block beEntry = cce.NonNull(be.Blocks[0]);
-            insertionPoint.TransferCmd = new GotoCmd(Token.NoToken, new StringSeq(beEntry.Label), new BlockSeq(beEntry));
+            insertionPoint.TransferCmd = new GotoCmd(Token.NoToken, new List<String> { beEntry.Label }, new BlockSeq(beEntry));
             beEntry.Predecessors.Add(insertionPoint);
             // Fourth, update the insertion point
             insertionPoint = nextIP;
@@ -1108,7 +1108,7 @@ namespace VC {
           Contract.Assert(unifiedExit != null);
           foreach (Block b in impl.Blocks) {
             if (b.TransferCmd is ReturnCmd) {
-              StringSeq labels = new StringSeq();
+              List<String> labels = new List<String>();
               labels.Add(unifiedExitLabel);
               BlockSeq bs = new BlockSeq();
               bs.Add(unifiedExit);
@@ -1619,7 +1619,7 @@ namespace VC {
       string newBlockLabel = pred.Label + "_@2_" + succ.Label;
 
       // successor of newBlock list
-      StringSeq ls = new StringSeq();
+      List<String> ls = new List<String>();
       ls.Add(succ.Label);
       BlockSeq bs = new BlockSeq();
       bs.Add(succ);

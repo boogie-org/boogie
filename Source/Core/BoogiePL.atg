@@ -750,7 +750,7 @@ StmtList<out StmtList/*!*/ stmtList>
 TransferCmd<out TransferCmd/*!*/ tc>
 = (. Contract.Ensures(Contract.ValueAtReturn(out tc) != null); tc = dummyTransferCmd;
      Token y;  List<IToken>/*!*/ xs;
-     StringSeq ss = new StringSeq();
+     List<String> ss = new List<String>();
   .)
   ( "goto"             (. y = t; .)
     Idents<out xs>     (. foreach(IToken/*!*/ s in xs){
@@ -1316,7 +1316,7 @@ SpecBlock<out Block/*!*/ b>
      Cmd c;  IToken label;
      List<Cmd> cs = new List<Cmd>();
      List<IToken>/*!*/ xs;
-     StringSeq ss = new StringSeq();
+     List<String> ss = new List<String>();
      b = dummyBlock;
      Expr/*!*/ e;
   .)

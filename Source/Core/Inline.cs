@@ -289,7 +289,7 @@ namespace Microsoft.Boogie {
               Block/*!*/ startBlock = inlinedBlocks[0];
               Contract.Assert(startBlock != null);
 
-              GotoCmd gotoCmd = new GotoCmd(Token.NoToken, new StringSeq(startBlock.Label));
+              GotoCmd gotoCmd = new GotoCmd(Token.NoToken, new List<String> { startBlock.Label });
               newBlock = new Block(block.tok, ((lblCount == 0) ? (label) : (label + "$" + lblCount)), newCmds, gotoCmd);
 
               newBlocks.Add(newBlock);
@@ -509,7 +509,7 @@ namespace Microsoft.Boogie {
         inCmds.Add(assign);
       }
 
-      GotoCmd inGotoCmd = new GotoCmd(callCmd.tok, new StringSeq(GetInlinedProcLabel(proc.Name) + "$" + startLabel));
+      GotoCmd inGotoCmd = new GotoCmd(callCmd.tok, new List<String> { GetInlinedProcLabel(proc.Name) + "$" + startLabel });
       Block inBlock = new Block(impl.tok, GetInlinedProcLabel(proc.Name) + "$Entry", inCmds, inGotoCmd);
       inlinedBlocks.Add(inBlock);
 
@@ -542,7 +542,7 @@ namespace Microsoft.Boogie {
       }
 
       // create out block
-      GotoCmd outGotoCmd = new GotoCmd(Token.NoToken, new StringSeq(nextBlockLabel));
+      GotoCmd outGotoCmd = new GotoCmd(Token.NoToken, new List<String> { nextBlockLabel });
       Block outBlock = new Block(impl.tok, GetInlinedProcLabel(proc.Name) + "$Return", outCmds, outGotoCmd);
       inlinedBlocks.Add(outBlock);
 
@@ -556,15 +556,15 @@ namespace Microsoft.Boogie {
 
       GotoCmd gotoCmd = transferCmd as GotoCmd;
       if (gotoCmd != null) {
-        StringSeq gotoSeq = gotoCmd.labelNames;
-        StringSeq newGotoSeq = new StringSeq();
+        List<String> gotoSeq = gotoCmd.labelNames;
+        List<String> newGotoSeq = new List<String>();
         foreach (string/*!*/ blockLabel in cce.NonNull(gotoSeq)) {
           Contract.Assert(blockLabel != null);
           newGotoSeq.Add(procLabel + "$" + blockLabel);
         }
         newTransferCmd = new GotoCmd(transferCmd.tok, newGotoSeq);
       } else {
-        newTransferCmd = new GotoCmd(transferCmd.tok, new StringSeq(procLabel + "$Return"));
+        newTransferCmd = new GotoCmd(transferCmd.tok, new List<String> { procLabel + "$Return" });
       }
 
       return newTransferCmd;
@@ -621,7 +621,7 @@ namespace Microsoft.Boogie {
       GotoCmd gotocmd = cmd as GotoCmd;
       if (gotocmd != null) {
         Contract.Assert(gotocmd.labelNames != null);
-        StringSeq labels = new StringSeq();
+        List<String> labels = new List<String>();
         labels.AddRange(gotocmd.labelNames);
         transferCmd = new GotoCmd(cmd.tok, labels);
       } else {

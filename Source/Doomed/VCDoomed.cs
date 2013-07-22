@@ -801,7 +801,7 @@ namespace VC {
             ReturnCmd rc = b.TransferCmd as ReturnCmd;
             if (gc != null)
             {
-                StringSeq lseq = new StringSeq();
+                List<String> lseq = new List<String>();
                 BlockSeq bseq = new BlockSeq();
                 foreach (string s in gc.labelNames) lseq.Add(s);
                 foreach (Block b_ in gc.labelTargets) bseq.Add(clonemap[b_]);

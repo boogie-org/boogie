@@ -479,7 +479,7 @@ namespace Microsoft.Boogie {
           TransferCmd trCmd;
           if (n == 0 && runOffTheEndLabel != null) {
             // goto the given label instead of the textual successor block
-            trCmd = new GotoCmd(stmtList.EndCurly, new StringSeq(runOffTheEndLabel));
+            trCmd = new GotoCmd(stmtList.EndCurly, new List<String> { runOffTheEndLabel });
           } else {
             trCmd = GotoSuccessor(stmtList.EndCurly, b);
           }
@@ -515,7 +515,7 @@ namespace Microsoft.Boogie {
           bool bodyGuardTakenCareOf = wcmd.Body.PrefixFirstBlock(ssBody, ref loopBodyLabel);
 
           // ... goto LoopHead;
-          Block block = new Block(b.tok, b.LabelName, theSimpleCmds, new GotoCmd(wcmd.tok, new StringSeq(loopHeadLabel)));
+          Block block = new Block(b.tok, b.LabelName, theSimpleCmds, new GotoCmd(wcmd.tok, new List<String> { loopHeadLabel }));
           blocks.Add(block);
 
           // LoopHead: assert/assume loop_invariant; goto LoopDone, LoopBody;
@@ -523,12 +523,12 @@ namespace Microsoft.Boogie {
           foreach (PredicateCmd inv in wcmd.Invariants) {
             ssHead.Add(inv);
           }
-          block = new Block(wcmd.tok, loopHeadLabel, ssHead, new GotoCmd(wcmd.tok, new StringSeq(loopDoneLabel, loopBodyLabel)));
+          block = new Block(wcmd.tok, loopHeadLabel, ssHead, new GotoCmd(wcmd.tok, new List<String> { loopDoneLabel, loopBodyLabel }));
           blocks.Add(block);
 
           if (!bodyGuardTakenCareOf) {
             // LoopBody: assume guard; goto firstLoopBlock;
-            block = new Block(wcmd.tok, loopBodyLabel, ssBody, new GotoCmd(wcmd.tok, new StringSeq(wcmd.Body.BigBlocks[0].LabelName)));
+            block = new Block(wcmd.tok, loopBodyLabel, ssBody, new GotoCmd(wcmd.tok, new List<String> { wcmd.Body.BigBlocks[0].LabelName }));
             blocks.Add(block);
           }
 
@@ -539,7 +539,7 @@ namespace Microsoft.Boogie {
           TransferCmd trCmd;
           if (n == 0 && runOffTheEndLabel != null) {
             // goto the given label instead of the textual successor block
-            trCmd = new GotoCmd(wcmd.tok, new StringSeq(runOffTheEndLabel));
+            trCmd = new GotoCmd(wcmd.tok, new List<String> { runOffTheEndLabel });
           } else {
             trCmd = GotoSuccessor(wcmd.tok, b);
           }
@@ -579,12 +579,12 @@ namespace Microsoft.Boogie {
 
             // ... goto Then, Else;
             Block block = new Block(b.tok, predLabel, predCmds,
-              new GotoCmd(ifcmd.tok, new StringSeq(thenLabel, elseLabel)));
+              new GotoCmd(ifcmd.tok, new List<String> { thenLabel, elseLabel }));
             blocks.Add(block);
 
             if (!thenGuardTakenCareOf) {
               // Then: assume guard; goto firstThenBlock;
-              block = new Block(ifcmd.tok, thenLabel, ssThen, new GotoCmd(ifcmd.tok, new StringSeq(ifcmd.thn.BigBlocks[0].LabelName)));
+              block = new Block(ifcmd.tok, thenLabel, ssThen, new GotoCmd(ifcmd.tok, new List<String> { ifcmd.thn.BigBlocks[0].LabelName }));
               blocks.Add(block);
             }
 
@@ -595,7 +595,7 @@ namespace Microsoft.Boogie {
               Contract.Assert(ifcmd.elseIf == null);
               if (!elseGuardTakenCareOf) {
                 // Else: assume !guard; goto firstElseBlock;
-                block = new Block(ifcmd.tok, elseLabel, ssElse, new GotoCmd(ifcmd.tok, new StringSeq(ifcmd.elseBlock.BigBlocks[0].LabelName)));
+                block = new Block(ifcmd.tok, elseLabel, ssElse, new GotoCmd(ifcmd.tok, new List<String> { ifcmd.elseBlock.BigBlocks[0].LabelName }));
                 blocks.Add(block);
               }
 
@@ -618,7 +618,7 @@ namespace Microsoft.Boogie {
               TransferCmd trCmd;
               if (n == 0 && runOffTheEndLabel != null) {
                 // goto the given label instead of the textual successor block
-                trCmd = new GotoCmd(ifcmd.tok, new StringSeq(runOffTheEndLabel));
+                trCmd = new GotoCmd(ifcmd.tok, new List<String> { runOffTheEndLabel });
               } else {
                 trCmd = GotoSuccessor(ifcmd.tok, b);
               }
@@ -635,7 +635,7 @@ namespace Microsoft.Boogie {
       Contract.Requires(tok != null);
       Contract.Ensures(Contract.Result<TransferCmd>() != null);
       if (b.successorBigBlock != null) {
-        return new GotoCmd(tok, new StringSeq(b.successorBigBlock.LabelName));
+        return new GotoCmd(tok, new List<String> { b.successorBigBlock.LabelName });
       } else {
         return new ReturnCmd(tok);
       }
@@ -2688,7 +2688,7 @@ namespace Microsoft.Boogie {
 
   public class GotoCmd : TransferCmd {
     [Rep]
-    public StringSeq labelNames;
+    public List<String> labelNames;
     [Rep]
     public BlockSeq labelTargets;
 
@@ -2698,13 +2698,13 @@ namespace Microsoft.Boogie {
     }
 
     [NotDelayed]
-    public GotoCmd(IToken/*!*/ tok, StringSeq/*!*/ labelSeq)
+    public GotoCmd(IToken/*!*/ tok, List<String>/*!*/ labelSeq)
       : base(tok) {
       Contract.Requires(tok != null);
       Contract.Requires(labelSeq != null);
       this.labelNames = labelSeq;
     }
-    public GotoCmd(IToken/*!*/ tok, StringSeq/*!*/ labelSeq, BlockSeq/*!*/ blockSeq)
+    public GotoCmd(IToken/*!*/ tok, List<String>/*!*/ labelSeq, BlockSeq/*!*/ blockSeq)
       : base(tok) {
       Contract.Requires(tok != null);
       Contract.Requires(labelSeq != null);
@@ -2721,7 +2721,7 @@ namespace Microsoft.Boogie {
       : base(tok) { //requires (blockSeq[i] != null ==> blockSeq[i].Label != null);
       Contract.Requires(tok != null);
       Contract.Requires(blockSeq != null);
-      StringSeq labelSeq = new StringSeq();
+      List<String> labelSeq = new List<String>();
       for (int i = 0; i < blockSeq.Count; i++)
         labelSeq.Add(cce.NonNull(blockSeq[i]).Label);
       this.labelNames = labelSeq;
