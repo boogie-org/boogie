@@ -470,9 +470,9 @@ private class BvBounds : Expr {
 		Contract.Ensures(Contract.ValueAtReturn(out proc) != null); IToken/*!*/ x;
 		TypeVariableSeq/*!*/ typeParams;
 		VariableSeq/*!*/ ins, outs;
-		RequiresSeq/*!*/ pre = new RequiresSeq();
+		List<Requires>/*!*/ pre = new List<Requires>();
 		IdentifierExprSeq/*!*/ mods = new IdentifierExprSeq();
-		EnsuresSeq/*!*/ post = new EnsuresSeq();
+		List<Ensures>/*!*/ post = new List<Ensures>();
 		
 		VariableSeq/*!*/ locals = new VariableSeq();
 		StmtList/*!*/ stmtList;
@@ -867,7 +867,7 @@ out VariableSeq/*!*/ ins, out VariableSeq/*!*/ outs, out QKeyValue kv) {
 		}
 	}
 
-	void Spec(RequiresSeq/*!*/ pre, IdentifierExprSeq/*!*/ mods, EnsuresSeq/*!*/ post) {
+	void Spec(List<Requires>/*!*/ pre, IdentifierExprSeq/*!*/ mods, List<Ensures>/*!*/ post) {
 		Contract.Requires(pre != null); Contract.Requires(mods != null); Contract.Requires(post != null); TokenSeq/*!*/ ms; 
 		if (la.kind == 34) {
 			Get();
@@ -897,7 +897,7 @@ out VariableSeq/*!*/ ins, out VariableSeq/*!*/ outs, out QKeyValue kv) {
 		StmtList(out stmtList);
 	}
 
-	void SpecPrePost(bool free, RequiresSeq/*!*/ pre, EnsuresSeq/*!*/ post) {
+	void SpecPrePost(bool free, List<Requires>/*!*/ pre, List<Ensures>/*!*/ post) {
 		Contract.Requires(pre != null); Contract.Requires(post != null); Expr/*!*/ e; Token tok = null; QKeyValue kv = null; 
 		if (la.kind == 36) {
 			Get();

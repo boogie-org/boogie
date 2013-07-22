@@ -704,9 +704,9 @@ namespace Microsoft.Boogie.VCExprAST {
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }
-    public override RequiresSeq VisitRequiresSeq(RequiresSeq requiresSeq) {
+    public override List<Requires> VisitRequiresSeq(List<Requires> requiresSeq) {
       //Contract.Requires(requiresSeq != null);
-      Contract.Ensures(Contract.Result<RequiresSeq>() != null);
+      Contract.Ensures(Contract.Result<List<Requires>>() != null);
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }
@@ -716,9 +716,9 @@ namespace Microsoft.Boogie.VCExprAST {
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }
-    public override EnsuresSeq VisitEnsuresSeq(EnsuresSeq ensuresSeq) {
+    public override List<Ensures> VisitEnsuresSeq(List<Ensures> ensuresSeq) {
       //Contract.Requires(ensuresSeq != null);
-      Contract.Ensures(Contract.Result<EnsuresSeq>() != null);
+      Contract.Ensures(Contract.Result<List<Ensures>>() != null);
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }

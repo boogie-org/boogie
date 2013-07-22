@@ -2113,7 +2113,7 @@ namespace Microsoft.Boogie {
       Substitution s = Substituter.SubstitutionFromHashtable(substMapBound);
       bool hasWildcard = (wildcardVars.Length != 0);
       Expr preConjunction = null;
-      for (int i = 0; i < this.Proc.Requires.Length; i++) {
+      for (int i = 0; i < this.Proc.Requires.Count; i++) {
         Requires/*!*/ req = cce.NonNull(this.Proc.Requires[i]);
         if (!req.Free && !IsFree) {
           if (hasWildcard) {
@@ -2149,7 +2149,7 @@ namespace Microsoft.Boogie {
       #region assume Pre[ins := cins] with formal paramters
       if (hasWildcard) {
         s = Substituter.SubstitutionFromHashtable(substMap);
-        for (int i = 0; i < this.Proc.Requires.Length; i++) {
+        for (int i = 0; i < this.Proc.Requires.Count; i++) {
           Requires/*!*/ req = cce.NonNull(this.Proc.Requires[i]);
           if (!req.Free) {
             Requires/*!*/ reqCopy = (Requires/*!*/)cce.NonNull(req.Clone());

@@ -1165,7 +1165,7 @@ namespace Microsoft.Boogie.Houdini {
       }
 
       foreach (var proc in prog.TopLevelDeclarations.OfType<Procedure>()) {
-        RequiresSeq newRequires = new RequiresSeq();
+        List<Requires> newRequires = new List<Requires>();
         foreach (Requires r in proc.Requires) {
           string c;
           if (MatchCandidate(r.Condition, out c)) {
@@ -1185,7 +1185,7 @@ namespace Microsoft.Boogie.Houdini {
         }
         proc.Requires = newRequires;
 
-        EnsuresSeq newEnsures = new EnsuresSeq();
+        List<Ensures> newEnsures = new List<Ensures>();
         foreach (Ensures e in proc.Ensures) {
           string c;
           if (MatchCandidate(e.Condition, out c)) {

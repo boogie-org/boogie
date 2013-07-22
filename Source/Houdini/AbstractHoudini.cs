@@ -2238,7 +2238,7 @@ namespace Microsoft.Boogie.Houdini {
 
             foreach (var proc in program.TopLevelDeclarations.OfType<Procedure>())
             {
-                var nensures = new EnsuresSeq();
+                var nensures = new List<Ensures>();
                 proc.Ensures.OfType<Ensures>()
                 .Where(ens => !QKeyValue.FindBoolAttribute(ens.Attributes, "ah") &&
                     !QKeyValue.FindBoolAttribute(ens.Attributes, "pre") &&
@@ -3147,7 +3147,7 @@ namespace Microsoft.Boogie.Houdini {
                 PosPrePreds[impl.Name].UnionWith(posPreT);
 
                 // Pick up per-procedure pre-post
-                var nens = new EnsuresSeq();
+                var nens = new List<Ensures>();
                 foreach (var ens in impl.Proc.Ensures.OfType<Ensures>())
                 {
                     string s = null;

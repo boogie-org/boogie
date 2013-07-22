@@ -2359,9 +2359,9 @@ namespace Microsoft.Boogie {
   }
 
   public class Procedure : DeclWithFormals {
-    public RequiresSeq/*!*/ Requires;
+    public List<Requires>/*!*/ Requires;
     public IdentifierExprSeq/*!*/ Modifies;
-    public EnsuresSeq/*!*/ Ensures;
+    public List<Ensures>/*!*/ Ensures;
     [ContractInvariantMethod]
     void ObjectInvariant() {
       Contract.Invariant(Requires != null);
@@ -2376,7 +2376,7 @@ namespace Microsoft.Boogie {
     public readonly ProcedureSummary/*!*/ Summary;
 
     public Procedure(IToken/*!*/ tok, string/*!*/ name, TypeVariableSeq/*!*/ typeParams, VariableSeq/*!*/ inParams, VariableSeq/*!*/ outParams,
-      RequiresSeq/*!*/ requires, IdentifierExprSeq/*!*/ modifies, EnsuresSeq/*!*/ ensures)
+      List<Requires>/*!*/ requires, IdentifierExprSeq/*!*/ modifies, List<Ensures>/*!*/ ensures)
       : this(tok, name, typeParams, inParams, outParams, requires, modifies, ensures, null) {
       Contract.Requires(tok != null);
       Contract.Requires(name != null);
@@ -2390,7 +2390,7 @@ namespace Microsoft.Boogie {
     }
 
     public Procedure(IToken/*!*/ tok, string/*!*/ name, TypeVariableSeq/*!*/ typeParams, VariableSeq/*!*/ inParams, VariableSeq/*!*/ outParams,
-      RequiresSeq/*!*/ @requires, IdentifierExprSeq/*!*/ @modifies, EnsuresSeq/*!*/ @ensures, QKeyValue kv
+      List<Requires>/*!*/ @requires, IdentifierExprSeq/*!*/ @modifies, List<Ensures>/*!*/ @ensures, QKeyValue kv
       )
       : base(tok, name, typeParams, inParams, outParams) {
       Contract.Requires(tok != null);
@@ -2531,7 +2531,7 @@ namespace Microsoft.Boogie {
                            VariableSeq inputs, VariableSeq outputs, IdentifierExprSeq globalMods)
           : base(Token.NoToken, impl.Name + "_loop_" + header.ToString(),
                new TypeVariableSeq(), inputs, outputs,
-               new RequiresSeq(), globalMods, new EnsuresSeq())
+               new List<Requires>(), globalMods, new List<Ensures>())
       {
           enclosingImpl = impl;
       }
@@ -3221,18 +3221,6 @@ namespace Microsoft.Boogie {
       set {
         base[index] = value;
       }
-    }
-  }
-
-  public sealed class RequiresSeq : List<Requires> {
-    public int Length {
-      get { return Count; }
-    }
-  }
-
-  public sealed class EnsuresSeq : List<Ensures> {
-    public int Length {
-      get { return Count; }
     }
   }
 

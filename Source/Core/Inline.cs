@@ -453,7 +453,7 @@ namespace Microsoft.Boogie {
       }
 
       // inject requires
-      for (int i = 0; i < proc.Requires.Length; i++) {
+      for (int i = 0; i < proc.Requires.Count; i++) {
         Requires/*!*/ req = cce.NonNull(proc.Requires[i]);
         inCmds.Add(InlinedRequires(callCmd, req));
       }
@@ -529,7 +529,7 @@ namespace Microsoft.Boogie {
       CmdSeq outCmds = new CmdSeq();
 
       // inject ensures
-      for (int i = 0; i < proc.Ensures.Length; i++) {
+      for (int i = 0; i < proc.Ensures.Count; i++) {
         Ensures/*!*/ ens = cce.NonNull(proc.Ensures[i]);
         outCmds.Add(InlinedEnsures(callCmd, ens));
       }
