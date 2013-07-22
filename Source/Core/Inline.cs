@@ -328,7 +328,7 @@ namespace Microsoft.Boogie {
       Contract.Requires(newModifies != null);
       Contract.Requires(newLocalVars != null);
       
-      Hashtable substMap = new Hashtable();
+      Dictionary<Variable, Expr> substMap = new Dictionary<Variable, Expr>();
       Procedure proc = impl.Proc;
 
       foreach (Variable/*!*/ locVar in cce.NonNull(impl.OriginalLocVars)) {
@@ -365,7 +365,7 @@ namespace Microsoft.Boogie {
         }
       }
 
-      Hashtable /*Variable -> Expr*/ substMapOld = new Hashtable/*Variable -> Expr*/();
+      Dictionary<Variable, Expr> substMapOld = new Dictionary<Variable, Expr>();
 
       foreach (IdentifierExpr/*!*/ mie in proc.Modifies) {
         Contract.Assert(mie != null);
@@ -588,12 +588,12 @@ namespace Microsoft.Boogie {
     public Substitution Subst;
     public Substitution OldSubst;
 
-    public CodeCopier(Hashtable substMap) {
+    public CodeCopier(Dictionary<Variable, Expr> substMap) {
       Contract.Requires(substMap != null);
       Subst = Substituter.SubstitutionFromHashtable(substMap);
     }
 
-    public CodeCopier(Hashtable substMap, Hashtable oldSubstMap) {
+    public CodeCopier(Dictionary<Variable, Expr> substMap, Dictionary<Variable, Expr> oldSubstMap) {
       Contract.Requires(oldSubstMap != null);
       Contract.Requires(substMap != null);
       Subst = Substituter.SubstitutionFromHashtable(substMap);

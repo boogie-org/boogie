@@ -2040,9 +2040,9 @@ namespace Microsoft.Boogie {
     protected override Cmd ComputeDesugaring() {
       Contract.Ensures(Contract.Result<Cmd>() != null);
       CmdSeq newBlockBody = new CmdSeq();
-      Hashtable /*Variable -> Expr*/ substMap = new Hashtable/*Variable -> Expr*/();
-      Hashtable /*Variable -> Expr*/ substMapOld = new Hashtable/*Variable -> Expr*/();
-      Hashtable /*Variable -> Expr*/ substMapBound = new Hashtable/*Variable -> Expr*/();
+      Dictionary<Variable, Expr> substMap = new Dictionary<Variable, Expr>();
+      Dictionary<Variable, Expr> substMapOld = new Dictionary<Variable, Expr>();
+      Dictionary<Variable, Expr> substMapBound = new Dictionary<Variable, Expr>();
       VariableSeq/*!*/ tempVars = new VariableSeq();
 
       // proc P(ins) returns (outs)
@@ -2335,7 +2335,7 @@ namespace Microsoft.Boogie {
 
   public class AssertCmd : PredicateCmd, IPotentialErrorNode {
     public Expr OrigExpr;
-    public Hashtable /*Variable -> Expr*/ IncarnationMap;
+    public Dictionary<Variable, Expr> IncarnationMap;
 
     // TODO: convert to use generics
     private object errorData;

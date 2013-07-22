@@ -257,7 +257,7 @@ namespace Microsoft.Boogie {
         var s = states[i];
         if (0 <= s && s < MvInfo.CapturePoints.Count) {
           VC.ModelViewInfo.Mapping map = MvInfo.CapturePoints[s];
-          var prevInc = i > 0 ? MvInfo.CapturePoints[states[i - 1]].IncarnationMap : new Hashtable();
+          var prevInc = i > 0 ? MvInfo.CapturePoints[states[i - 1]].IncarnationMap : new Dictionary<Variable, Expr>();
           var cs = m.MkState(map.Description);
 
           foreach (Variable v in MvInfo.AllVariables) {
@@ -756,7 +756,7 @@ namespace VC {
     /// already been constructed for the implementation (and so
     /// is already an element of impl.Blocks)
     /// </param>
-    protected static Block InjectPostConditions(Implementation impl, Block unifiedExitBlock, Hashtable/*TransferCmd->ReturnCmd*/ gotoCmdOrigins) {
+    protected static Block InjectPostConditions(Implementation impl, Block unifiedExitBlock, Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins) {
       Contract.Requires(impl != null);
       Contract.Requires(unifiedExitBlock != null);
       Contract.Requires(gotoCmdOrigins != null);
@@ -1085,7 +1085,7 @@ namespace VC {
     }
 
 
-    protected Block GenerateUnifiedExit(Implementation impl, Hashtable gotoCmdOrigins) {
+    protected Block GenerateUnifiedExit(Implementation impl, Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins) {
       Contract.Requires(impl != null);
       Contract.Requires(gotoCmdOrigins != null);
       Contract.Ensures(Contract.Result<Block>() != null);
@@ -1112,7 +1112,7 @@ namespace VC {
               BlockSeq bs = new BlockSeq();
               bs.Add(unifiedExit);
               GotoCmd go = new GotoCmd(Token.NoToken, labels, bs);
-              gotoCmdOrigins[go] = b.TransferCmd;
+              gotoCmdOrigins[go] = (ReturnCmd)b.TransferCmd;
               b.TransferCmd = go;
               unifiedExit.Predecessors.Add(b);
             }
@@ -1187,31 +1187,31 @@ namespace VC {
     /// <param name="b"></param>
     /// <param name="block2Incarnation">Gives incarnation maps for b's predecessors.</param>
     /// <returns></returns>
-    protected Hashtable /*Variable -> Expr*/ ComputeIncarnationMap(Block b, Hashtable /*Variable -> Expr*/ block2Incarnation) {
+    protected Dictionary<Variable, Expr> ComputeIncarnationMap(Block b, Dictionary<Block, Dictionary<Variable, Expr>> block2Incarnation) {
       Contract.Requires(b != null);
       Contract.Requires(block2Incarnation != null);
       Contract.Ensures(Contract.Result<Hashtable>() != null);
 
       if (b.Predecessors.Length == 0) {
-        return new Hashtable();
+        return new Dictionary<Variable, Expr>();
       }
 
-      Hashtable /*Variable -> Expr*/ incarnationMap = null;
+      Dictionary<Variable, Expr> incarnationMap = null;
       Set /*Variable*/ fixUps = new Set /*Variable*/ ();
       foreach (Block pred in b.Predecessors) {
         Contract.Assert(pred != null);
-        Contract.Assert(block2Incarnation.Contains(pred));  // otherwise, Passive Transformation found a block whose predecessors have not been processed yet
-        Hashtable /*Variable -> Expr*/ predMap = (Hashtable /*Variable -> Expr*/)block2Incarnation[pred];
+        Contract.Assert(block2Incarnation.ContainsKey(pred));  // otherwise, Passive Transformation found a block whose predecessors have not been processed yet
+        Dictionary<Variable, Expr> predMap = (Dictionary<Variable, Expr>)block2Incarnation[pred];
         Contract.Assert(predMap != null);
         if (incarnationMap == null) {
-          incarnationMap = (Hashtable /*Variable -> Expr*/)predMap.Clone();
+          incarnationMap = new Dictionary<Variable, Expr>(predMap);
           continue;
         }
 
         ArrayList /*Variable*/ conflicts = new ArrayList /*Variable*/ ();
         foreach (Variable v in incarnationMap.Keys) {
           Contract.Assert(v != null);
-          if (!predMap.Contains(v)) {
+          if (!predMap.ContainsKey(v)) {
             // conflict!!
             conflicts.Add(v);
             fixUps.Add(v);
@@ -1224,7 +1224,7 @@ namespace VC {
         }
         foreach (Variable v in predMap.Keys) {
           Contract.Assert(v != null);
-          if (!incarnationMap.Contains(v)) {
+          if (!incarnationMap.ContainsKey(v)) {
             // v was not in the domain of the predecessors seen so far, so it needs to be fixed up
             fixUps.Add(v);
           } else {
@@ -1251,7 +1251,7 @@ namespace VC {
           Contract.Assert(pred != null);
           #region Create an assume command equating v_prime with its last incarnation in pred
           #region Create an identifier expression for the last incarnation in pred
-          Hashtable /*Variable -> Expr*/ predMap = (Hashtable /*Variable -> Expr*/)cce.NonNull(block2Incarnation[pred]);
+          Dictionary<Variable, Expr> predMap = (Dictionary<Variable, Expr>)cce.NonNull(block2Incarnation[pred]);
 
           Expr pred_incarnation_exp;
           Expr o = (Expr)predMap[v];
@@ -1279,9 +1279,9 @@ namespace VC {
       return incarnationMap;
     }
 
-    Hashtable preHavocIncarnationMap = null;     // null = the previous command was not an HashCmd. Otherwise, a *copy* of the map before the havoc statement
+    Dictionary<Variable, Expr> preHavocIncarnationMap = null;     // null = the previous command was not an HashCmd. Otherwise, a *copy* of the map before the havoc statement
 
-    protected void TurnIntoPassiveBlock(Block b, Hashtable /*Variable -> Expr*/ incarnationMap, ModelViewInfo mvInfo, Substitution oldFrameSubst) {
+    protected void TurnIntoPassiveBlock(Block b, Dictionary<Variable, Expr> incarnationMap, ModelViewInfo mvInfo, Substitution oldFrameSubst) {
       Contract.Requires(b != null);
       Contract.Requires(incarnationMap != null);
       Contract.Requires(mvInfo != null);
@@ -1304,11 +1304,11 @@ namespace VC {
       #endregion
     }
 
-    protected Hashtable /*Variable -> Expr*/ Convert2PassiveCmd(Implementation impl, ModelViewInfo mvInfo) {
+    protected Dictionary<Variable, Expr> Convert2PassiveCmd(Implementation impl, ModelViewInfo mvInfo) {
       Contract.Requires(impl != null);
       Contract.Requires(mvInfo != null);
 
-      Hashtable r = ConvertBlocks2PassiveCmd(impl.Blocks, impl.Proc.Modifies, mvInfo);
+      Dictionary<Variable, Expr> r = ConvertBlocks2PassiveCmd(impl.Blocks, impl.Proc.Modifies, mvInfo);
 
       RestoreParamWhereClauses(impl);
 
@@ -1322,7 +1322,7 @@ namespace VC {
       return r;
     }
 
-    protected Hashtable /*Variable -> Expr*/ ConvertBlocks2PassiveCmd(List<Block> blocks, IdentifierExprSeq modifies, ModelViewInfo mvInfo) {
+    protected Dictionary<Variable, Expr> ConvertBlocks2PassiveCmd(List<Block> blocks, IdentifierExprSeq modifies, ModelViewInfo mvInfo) {
       Contract.Requires(blocks != null);
       Contract.Requires(modifies != null);
       Contract.Requires(mvInfo != null);
@@ -1349,13 +1349,13 @@ namespace VC {
 
       // Now we can process the nodes in an order so that we're guaranteed to have
       // processed all of a node's predecessors before we process the node.
-      Hashtable /*Block -> IncarnationMap*/ block2Incarnation = new Hashtable/*Block -> IncarnationMap*/();
+      Dictionary<Block, Dictionary<Variable, Expr>> block2Incarnation = new Dictionary<Block, Dictionary<Variable, Expr>>();
       Block exitBlock = null;
-      Hashtable exitIncarnationMap = null;
+      Dictionary<Variable, Expr> exitIncarnationMap = null;
       foreach (Block b in sortedNodes) {
         Contract.Assert(b != null);
-        Contract.Assert(!block2Incarnation.Contains(b));
-        Hashtable /*Variable -> Expr*/ incarnationMap = ComputeIncarnationMap(b, block2Incarnation);
+        Contract.Assert(!block2Incarnation.ContainsKey(b));
+        Dictionary<Variable, Expr> incarnationMap = ComputeIncarnationMap(b, block2Incarnation);
 
         // b.liveVarsBefore has served its purpose in the just-finished call to ComputeIncarnationMap; null it out.
         b.liveVarsBefore = null;
@@ -1398,11 +1398,11 @@ namespace VC {
     /// </summary>
     protected static Substitution ComputeOldExpressionSubstitution(IdentifierExprSeq modifies)
     {
-      Hashtable/*Variable!->Expr!*/ oldFrameMap = new Hashtable();
+      Dictionary<Variable, Expr> oldFrameMap = new Dictionary<Variable, Expr>();
       foreach (IdentifierExpr ie in modifies)
       {
         Contract.Assert(ie != null);
-        if (!oldFrameMap.Contains(cce.NonNull(ie.Decl)))
+        if (!oldFrameMap.ContainsKey(cce.NonNull(ie.Decl)))
           oldFrameMap.Add(ie.Decl, ie);
       }
       return Substituter.SubstitutionFromHashtable(oldFrameMap);
@@ -1412,7 +1412,7 @@ namespace VC {
     /// Turn a command into a passive command, and it remembers the previous step, to see if it is a havoc or not. In the case, it remembers the incarnation map BEFORE the havoc
     /// Meanwhile, record any information needed to later reconstruct a model view.
     /// </summary>
-    protected void TurnIntoPassiveCmd(Cmd c, Hashtable /*Variable -> Expr*/ incarnationMap, Substitution oldFrameSubst, CmdSeq passiveCmds, ModelViewInfo mvInfo) {
+    protected void TurnIntoPassiveCmd(Cmd c, Dictionary<Variable, Expr> incarnationMap, Substitution oldFrameSubst, CmdSeq passiveCmds, ModelViewInfo mvInfo) {
       Contract.Requires(c != null);
       Contract.Requires(incarnationMap != null);
       Contract.Requires(oldFrameSubst != null);
@@ -1432,14 +1432,14 @@ namespace VC {
           if (description != null) {
             Expr mv = new NAryExpr(pc.tok, new FunctionCall(ModelViewInfo.MVState_FunctionDef), new ExprSeq(Bpl.Expr.Ident(ModelViewInfo.MVState_ConstantDef), Bpl.Expr.Literal(mvInfo.CapturePoints.Count)));
             copy = Bpl.Expr.And(mv, copy);
-            mvInfo.CapturePoints.Add(new ModelViewInfo.Mapping(description, (Hashtable)incarnationMap.Clone()));
+            mvInfo.CapturePoints.Add(new ModelViewInfo.Mapping(description, new Dictionary<Variable, Expr>(incarnationMap)));
           }
         }
         Contract.Assert(copy != null);
         if (pc is AssertCmd) {
           ((AssertCmd)pc).OrigExpr = pc.Expr;
           Contract.Assert(((AssertCmd)pc).IncarnationMap == null);
-          ((AssertCmd)pc).IncarnationMap = (Hashtable /*Variable -> Expr*/)cce.NonNull(incarnationMap.Clone());
+          ((AssertCmd)pc).IncarnationMap = (Dictionary<Variable, Expr>)cce.NonNull(new Dictionary<Variable, Expr>(incarnationMap));
         }
         pc.Expr = copy;
         passiveCmds.Add(pc);
@@ -1518,7 +1518,7 @@ namespace VC {
       #region havoc w |--> assume whereClauses, out := in( w |-> w' )
  else if (c is HavocCmd) {
         if (this.preHavocIncarnationMap == null)      // Save a copy of the incarnation map (at the top of a sequence of havoc statements)
-          this.preHavocIncarnationMap = (Hashtable)incarnationMap.Clone();
+          this.preHavocIncarnationMap = new Dictionary<Variable, Expr>(incarnationMap);
 
         HavocCmd hc = (HavocCmd)c;
         Contract.Assert(c != null);
@@ -1748,8 +1748,8 @@ namespace VC {
     public class Mapping
     {
       public readonly string Description;
-      public readonly Hashtable /*Variable -> Expr*/ IncarnationMap;
-      public Mapping(string description, Hashtable /*Variable -> Expr*/ incarnationMap) {
+      public readonly Dictionary<Variable, Expr> IncarnationMap;
+      public Mapping(string description, Dictionary<Variable, Expr> incarnationMap) {
         Description = description;
         IncarnationMap = incarnationMap;
       }

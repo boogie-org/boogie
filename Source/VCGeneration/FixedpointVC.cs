@@ -1871,7 +1871,7 @@ namespace Microsoft.Boogie
                 Contract.Assume(0 <= capturePoint && capturePoint < info.CapturePoints.Count);
                 VC.ModelViewInfo.Mapping map = info.CapturePoints[capturePoint];
                 var prevInc = (lastCapturePoint != CALL && lastCapturePoint != RETURN && candidate == lastCandidate)
-                  ? info.CapturePoints[lastCapturePoint].IncarnationMap : new Hashtable();
+                  ? info.CapturePoints[lastCapturePoint].IncarnationMap : new Dictionary<Variable, Expr>();
                 var cs = m.MkState(map.Description);
 
                 foreach (Variable v in info.AllVariables)

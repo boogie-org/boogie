@@ -531,7 +531,7 @@ namespace VC {
       double total_cost;
       int assertion_count;
       double assertion_cost; // without multiplication by paths
-      Hashtable/*TransferCmd->ReturnCmd*//*!*/ gotoCmdOrigins;
+      Dictionary<TransferCmd, ReturnCmd>/*!*/ gotoCmdOrigins;
       readonly public VCGen/*!*/ parent;
       Implementation/*!*/ impl;
 
@@ -548,7 +548,7 @@ namespace VC {
       private int splitNo;
       internal ErrorReporter reporter;
 
-      public Split(List<Block/*!*/>/*!*/ blocks, Hashtable/*TransferCmd->ReturnCmd*//*!*/ gotoCmdOrigins, VCGen/*!*/ par, Implementation/*!*/ impl) {
+      public Split(List<Block/*!*/>/*!*/ blocks, Dictionary<TransferCmd, ReturnCmd>/*!*/ gotoCmdOrigins, VCGen/*!*/ par, Implementation/*!*/ impl) {
         Contract.Requires(cce.NonNullElements(blocks));
         Contract.Requires(gotoCmdOrigins != null);
         Contract.Requires(par != null);
@@ -974,13 +974,13 @@ namespace VC {
         copies.Clear();
         CloneBlock(blocks[0]);
         List<Block> newBlocks = new List<Block>();
-        Hashtable newGotoCmdOrigins = new Hashtable();
+        Dictionary<TransferCmd, ReturnCmd> newGotoCmdOrigins = new Dictionary<TransferCmd, ReturnCmd>();
         foreach (Block b in blocks) {
           Contract.Assert(b != null);
           Block tmp;
           if (copies.TryGetValue(b, out tmp)) {
             newBlocks.Add(cce.NonNull(tmp));
-            if (gotoCmdOrigins.ContainsKey(b)) {
+            if (gotoCmdOrigins.ContainsKey(b.TransferCmd)) {
               newGotoCmdOrigins[tmp.TransferCmd] = gotoCmdOrigins[b.TransferCmd];
             }
 
@@ -1235,7 +1235,7 @@ namespace VC {
 
             ResetPredecessors(codeExpr.Blocks);
             vcgen.AddBlocksBetween(codeExpr.Blocks);
-            Hashtable/*TransferCmd->ReturnCmd*/ gotoCmdOrigins = vcgen.ConvertBlocks2PassiveCmd(codeExpr.Blocks, new IdentifierExprSeq(), new ModelViewInfo(codeExpr));
+            Dictionary<Variable, Expr> gotoCmdOrigins = vcgen.ConvertBlocks2PassiveCmd(codeExpr.Blocks, new IdentifierExprSeq(), new ModelViewInfo(codeExpr));
             int ac;  // computed, but then ignored for this CodeExpr
             VCExpr startCorrect = VCGen.LetVC(codeExpr.Blocks[0], null, label2absy, blockVariables, bindings, ctx, out ac);
             VCExpr vce = ctx.ExprGen.Let(bindings, startCorrect);
@@ -1653,7 +1653,7 @@ namespace VC {
     }
 
     public class ErrorReporter : ProverInterface.ErrorHandler {
-      Hashtable/*TransferCmd->ReturnCmd*//*!*/ gotoCmdOrigins;
+      Dictionary<TransferCmd, ReturnCmd>/*!*/ gotoCmdOrigins;
       Dictionary<int, Absy>/*!*/ label2absy;
       List<Block/*!*/>/*!*/ blocks;
       protected Dictionary<Incarnation, Absy/*!*/>/*!*/ incarnationOriginMap;
@@ -1686,7 +1686,7 @@ namespace VC {
       protected ProverContext/*!*/ context;
       Program/*!*/ program;
 
-      public ErrorReporter(Hashtable/*TransferCmd->ReturnCmd*//*!*/ gotoCmdOrigins,
+      public ErrorReporter(Dictionary<TransferCmd, ReturnCmd>/*!*/ gotoCmdOrigins,
           Dictionary<int, Absy>/*!*/ label2absy,
           List<Block/*!*/>/*!*/ blocks,
           Dictionary<Incarnation, Absy/*!*/>/*!*/ incarnationOriginMap,
@@ -1782,7 +1782,7 @@ namespace VC {
     }
 
     public class ErrorReporterLocal : ErrorReporter {
-      public ErrorReporterLocal(Hashtable/*TransferCmd->ReturnCmd*//*!*/ gotoCmdOrigins,
+      public ErrorReporterLocal(Dictionary<TransferCmd, ReturnCmd>/*!*/ gotoCmdOrigins,
           Dictionary<int, Absy>/*!*/ label2absy,
           List<Block/*!*/>/*!*/ blocks,
           Dictionary<Incarnation, Absy/*!*/>/*!*/ incarnationOriginMap,
@@ -2097,13 +2097,13 @@ namespace VC {
       }
     }
 
-    public Hashtable/*TransferCmd->ReturnCmd*/ PassifyImpl(Implementation impl, out ModelViewInfo mvInfo)
+    public Dictionary<TransferCmd, ReturnCmd> PassifyImpl(Implementation impl, out ModelViewInfo mvInfo)
     {
       Contract.Requires(impl != null);
       Contract.Requires(program != null);
       Contract.Ensures(Contract.Result<Hashtable>() != null);
 
-      Hashtable/*TransferCmd->ReturnCmd*/ gotoCmdOrigins = new Hashtable/*TransferCmd->ReturnCmd*/();
+      Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins = new Dictionary<TransferCmd, ReturnCmd>();
       Block exitBlock = GenerateUnifiedExit(impl, gotoCmdOrigins);
       
       #region Debug Tracing
@@ -2216,7 +2216,7 @@ namespace VC {
           cmds.AddRange(entryBlock.Cmds);
           entryBlock.Cmds = cmds;
           // Make sure that all added commands are passive commands.
-          Hashtable incarnationMap = ComputeIncarnationMap(entryBlock, new Hashtable());
+          Dictionary<Variable, Expr> incarnationMap = ComputeIncarnationMap(entryBlock, new Dictionary<Block, Dictionary<Variable, Expr>>());
           TurnIntoPassiveBlock(entryBlock, incarnationMap, mvInfo,
                                ComputeOldExpressionSubstitution(impl.Proc.Modifies));
         }

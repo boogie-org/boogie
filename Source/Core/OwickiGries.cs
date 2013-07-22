@@ -281,7 +281,7 @@ namespace Microsoft.Boogie
             int count = 0;
             while (callCmd != null)
             {
-                Hashtable map = new Hashtable();
+                Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
                 foreach (Variable x in callCmd.Proc.InParams)
                 {
                     Variable y = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "og_" + count + x.Name, x.TypedIdent.Type), true);
@@ -317,7 +317,7 @@ namespace Microsoft.Boogie
             return proc;
         }
 
-        private void CreateYieldCheckerImpl(DeclWithFormals decl, List<CmdSeq> yields, Hashtable map)
+        private void CreateYieldCheckerImpl(DeclWithFormals decl, List<CmdSeq> yields, Dictionary<Variable, Expr> map)
         {
             if (yields.Count == 0) return;
 
@@ -354,8 +354,8 @@ namespace Microsoft.Boogie
                 locals.Add(copy);
                 map[decl.OutParams[i]] = new IdentifierExpr(Token.NoToken, copy);
             }
-            Hashtable ogOldLocalMap = new Hashtable();
-            Hashtable assumeMap = new Hashtable(map);
+            Dictionary<Variable, Expr> ogOldLocalMap = new Dictionary<Variable, Expr>();
+            Dictionary<Variable, Expr> assumeMap = new Dictionary<Variable, Expr>(map);
             foreach (IdentifierExpr ie in globalMods)
             {
                 Variable g = ie.Decl;
@@ -422,7 +422,7 @@ namespace Microsoft.Boogie
             Program program = linearTypechecker.program;
             ProcedureInfo info = procNameToInfo[impl.Name];
 
-            Hashtable map = new Hashtable();
+            Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
             foreach (Variable local in impl.LocVars)
             {
                 var copy = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, local.Name, local.TypedIdent.Type));
@@ -717,7 +717,7 @@ namespace Microsoft.Boogie
                 yields.Add(cmds);
                 cmds = new CmdSeq();
             }
-            CreateYieldCheckerImpl(proc, yields, new Hashtable());
+            CreateYieldCheckerImpl(proc, yields, new Dictionary<Variable, Expr>());
         }
 
         private void AddYieldProcAndImpl() 

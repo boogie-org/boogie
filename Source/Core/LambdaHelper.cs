@@ -95,7 +95,7 @@ namespace Microsoft.Boogie {
           Set freeVars = new Set();
           lambda.ComputeFreeVariables(freeVars);
           // this is ugly, the output will depend on hashing order
-          Hashtable subst = new Hashtable();
+          Dictionary<Variable, Expr> subst = new Dictionary<Variable, Expr>();
           VariableSeq formals = new VariableSeq();
           ExprSeq callArgs = new ExprSeq();
           ExprSeq axCallArgs = new ExprSeq();

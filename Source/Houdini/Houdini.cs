@@ -264,7 +264,7 @@ namespace Microsoft.Boogie.Houdini {
       return newCmdSeq;
     }
     private CmdSeq InlineRequiresForCallCmd(CallCmd node) {
-      Hashtable substMap = new Hashtable();
+      Dictionary<Variable, Expr> substMap = new Dictionary<Variable, Expr>();
       for (int i = 0; i < node.Proc.InParams.Length; i++) {
         substMap.Add(node.Proc.InParams[i], node.Ins[i]);
       }
@@ -1149,7 +1149,7 @@ namespace Microsoft.Boogie.Houdini {
           if (assertCmd != null && MatchCandidate(assertCmd.Expr, out c)) {
             var cVar = currentHoudiniState.Assignment.Keys.Where(item => item.Name.Equals(c)).ToList()[0];
             if (currentHoudiniState.Assignment[cVar]) {
-              Hashtable cToTrue = new Hashtable();
+              Dictionary<Variable, Expr> cToTrue = new Dictionary<Variable, Expr>();
               Variable cVarProg = prog.TopLevelDeclarations.OfType<Variable>().Where(item => item.Name.Equals(c)).ToList()[0];
               cToTrue[cVarProg] = Expr.True;
               newCmds.Add(new AssumeCmd(assertCmd.tok,
@@ -1172,7 +1172,7 @@ namespace Microsoft.Boogie.Houdini {
             var cVar = currentHoudiniState.Assignment.Keys.Where(item => item.Name.Equals(c)).ToList()[0];
             if (currentHoudiniState.Assignment[cVar]) {
               Variable cVarProg = prog.TopLevelDeclarations.OfType<Variable>().Where(item => item.Name.Equals(c)).ToList()[0];
-              Hashtable subst = new Hashtable();
+              Dictionary<Variable, Expr> subst = new Dictionary<Variable, Expr>();
               subst[cVarProg] = Expr.True;
               newRequires.Add(new Requires(Token.NoToken, true,
                 Substituter.Apply(Substituter.SubstitutionFromHashtable(subst), r.Condition),
@@ -1192,7 +1192,7 @@ namespace Microsoft.Boogie.Houdini {
             var cVar = currentHoudiniState.Assignment.Keys.Where(item => item.Name.Equals(c)).ToList()[0];
             if (currentHoudiniState.Assignment[cVar]) {
               Variable cVarProg = prog.TopLevelDeclarations.OfType<Variable>().Where(item => item.Name.Equals(c)).ToList()[0];
-              Hashtable subst = new Hashtable();
+              Dictionary<Variable, Expr> subst = new Dictionary<Variable, Expr>();
               subst[cVarProg] = Expr.True;
               newEnsures.Add(new Ensures(Token.NoToken, true,
                 Substituter.Apply(Substituter.SubstitutionFromHashtable(subst), e.Condition),

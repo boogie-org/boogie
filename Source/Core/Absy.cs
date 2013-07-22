@@ -385,7 +385,7 @@ namespace Microsoft.Boogie {
 
       Dictionary<Block/*!*/, VariableSeq/*!*/>/*!*/ loopHeaderToInputs = new Dictionary<Block/*!*/, VariableSeq/*!*/>();
       Dictionary<Block/*!*/, VariableSeq/*!*/>/*!*/ loopHeaderToOutputs = new Dictionary<Block/*!*/, VariableSeq/*!*/>();
-      Dictionary<Block/*!*/, Hashtable/*!*/>/*!*/ loopHeaderToSubstMap = new Dictionary<Block/*!*/, Hashtable/*!*/>();
+      Dictionary<Block/*!*/, Dictionary<Variable, Expr>/*!*/>/*!*/ loopHeaderToSubstMap = new Dictionary<Block/*!*/, Dictionary<Variable, Expr>/*!*/>();
       Dictionary<Block/*!*/, LoopProcedure/*!*/>/*!*/ loopHeaderToLoopProc = new Dictionary<Block/*!*/, LoopProcedure/*!*/>();
       Dictionary<Block/*!*/, CallCmd/*!*/>/*!*/ loopHeaderToCallCmd1 = new Dictionary<Block/*!*/, CallCmd/*!*/>();
       Dictionary<Block, CallCmd> loopHeaderToCallCmd2 = new Dictionary<Block, CallCmd>();
@@ -402,7 +402,7 @@ namespace Microsoft.Boogie {
         IdentifierExprSeq callOutputs2 = new IdentifierExprSeq();
         List<AssignLhs> lhss = new List<AssignLhs>();
         List<Expr> rhss = new List<Expr>();
-        Hashtable substMap = new Hashtable(); // Variable -> IdentifierExpr
+        Dictionary<Variable, Expr> substMap = new Dictionary<Variable, Expr>(); // Variable -> IdentifierExpr
 
         VariableSeq/*!*/ targets = new VariableSeq();
         HashSet<Variable> footprint = new HashSet<Variable>();
@@ -2914,17 +2914,17 @@ namespace Microsoft.Boogie {
       }
     }
 
-    private Hashtable/*Variable->Expr*//*?*/ formalMap = null;
+    private Dictionary<Variable, Expr>/*?*/ formalMap = null;
     public void ResetImplFormalMap() {
       this.formalMap = null;
     }
-    public Hashtable /*Variable->Expr*//*!*/ GetImplFormalMap() {
+    public Dictionary<Variable, Expr>/*!*/ GetImplFormalMap() {
       Contract.Ensures(Contract.Result<Hashtable>() != null);
 
       if (this.formalMap != null)
         return this.formalMap;
       else {
-        Hashtable /*Variable->Expr*//*!*/ map = new Hashtable /*Variable->Expr*/ (InParams.Length + OutParams.Length);
+        Dictionary<Variable, Expr>/*!*/ map = new Dictionary<Variable, Expr> (InParams.Length + OutParams.Length);
 
         Contract.Assume(this.Proc != null);
         Contract.Assume(InParams.Length == Proc.InParams.Length);
@@ -2948,7 +2948,7 @@ namespace Microsoft.Boogie {
         if (CommandLineOptions.Clo.PrintWithUniqueASTIds) {
           Console.WriteLine("Implementation.GetImplFormalMap on {0}:", this.Name);
           using (TokenTextWriter stream = new TokenTextWriter("<console>", Console.Out, false)) {
-            foreach (DictionaryEntry e in map) {
+            foreach (var e in map) {
               Console.Write("  ");
               cce.NonNull((Variable/*!*/)e.Key).Emit(stream, 0);
               Console.Write("  --> ");
