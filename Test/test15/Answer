@@ -120,12 +120,12 @@ Execution trace:
     CaptureState.bpl(16,5): anon4_Then
     CaptureState.bpl(24,5): anon3
 *** MODEL
+$mv_state_const -> 6
 %lbl%@293 -> false
 %lbl%+112 -> true
 %lbl%+114 -> true
 %lbl%+118 -> true
 %lbl%+148 -> true
-$mv_state_const -> 6
 boolType -> T@T!val!2
 F -> T@U!val!2
 FieldNameType -> T@T!val!4
@@ -142,6 +142,13 @@ RefType -> T@T!val!3
 this -> T@U!val!1
 x@@5 -> 0
 y@@1 -> **y@@1
+$mv_state -> {
+  6 0 -> true
+  6 1 -> true
+  6 2 -> true
+  6 5 -> true
+  else -> true
+}
 int_2_U -> {
   -451 -> -451
   else -> -451
@@ -152,13 +159,6 @@ type -> {
   T@U!val!2 -> T@T!val!4
   -451 -> T@T!val!0
   else -> T@T!val!5
-}
-$mv_state -> {
-  6 0 -> true
-  6 1 -> true
-  6 2 -> true
-  6 5 -> true
-  else -> true
 }
 Ctor -> {
   T@T!val!0 -> 0
