@@ -114,7 +114,7 @@ namespace VC
             {
                 Contract.Assert(v != null);
                 IdentifierExpr ie = new IdentifierExpr(Token.NoToken, v);
-                if (!havocExprs.Has(ie))
+                if (!havocExprs.Contains(ie))
                     havocExprs.Add(ie);
             }
             // pass the token of the enclosing loop header to the HavocCmd so we can reconstruct

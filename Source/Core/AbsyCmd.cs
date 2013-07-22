@@ -2176,7 +2176,7 @@ namespace Microsoft.Boogie {
         newBlockBody.Add(assign);
 
         // fra
-        if (!havocVarExprs.Has(f))
+        if (!havocVarExprs.Contains(f))
           havocVarExprs.Add(f);
       }
       #endregion
@@ -2200,7 +2200,7 @@ namespace Microsoft.Boogie {
         IdentifierExpr ie = new IdentifierExpr(cout.tok, cout);
         substMap.Add(param, ie);
 
-        if (!havocVarExprs.Has(ie))
+        if (!havocVarExprs.Contains(ie))
           havocVarExprs.Add(ie);
       }
       // add the where clauses, now that we have the entire substitution map

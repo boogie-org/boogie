@@ -355,7 +355,7 @@ namespace Microsoft.Boogie.TypeErasure
 
       foreach (TypeVariable/*!*/ var in allTypeParams) {
         Contract.Assert(var != null);
-        if (varsInInParamTypes.Has(var))
+        if (varsInInParamTypes.Contains(var))
           implicitParams.Add(var);
         else
           explicitParams.Add(var);

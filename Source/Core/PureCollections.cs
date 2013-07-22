@@ -794,7 +794,7 @@ namespace PureCollections {
 
     //pure---------------------------------------------------------------
     [Pure]
-    public bool Has(object x) {         // WS translate to tailrecursion 
+    public bool Contains(object x) {         // WS translate to tailrecursion 
       if (x == null)
         throw new MissingCase();
       Contract.Assert(this.elems != null);

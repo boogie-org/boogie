@@ -467,7 +467,7 @@ namespace Microsoft.Boogie {
         Type actual = cce.NonNull(cce.NonNull(actualArgs[i]).Type);
         // if the type variables to be matched occur in the actual
         // argument types, something has gone very wrong
-        Contract.Assert(Contract.ForAll(0, typeParams.Length, index => !actual.FreeVariables.Has(typeParams[index])));
+        Contract.Assert(Contract.ForAll(0, typeParams.Length, index => !actual.FreeVariables.Contains(typeParams[index])));
 
         if (!formal.Unify(actual)) {
           Contract.Assume(tc != null);  // caller expected no errors
@@ -484,7 +484,7 @@ namespace Microsoft.Boogie {
           Type actual = cce.NonNull(cce.NonNull(actualOuts)[i].Type);
           // if the type variables to be matched occur in the actual
           // argument types, something has gone very wrong
-          Contract.Assert(Contract.ForAll(0, typeParams.Length, var => !actual.FreeVariables.Has(typeParams[var])));
+          Contract.Assert(Contract.ForAll(0, typeParams.Length, var => !actual.FreeVariables.Contains(typeParams[var])));
 
           if (!formal.Unify(actual)) {
             Contract.Assume(tc != null);  // caller expected no errors
@@ -560,7 +560,7 @@ namespace Microsoft.Boogie {
         // in case we have been able to substitute all type parameters,
         // we can still return the result type and hope that the
         // type checking proceeds in a meaningful manner
-        if (Contract.ForAll(0, typeParams.Length, index => !resultFreeVars.Has(typeParams[index])))
+        if (Contract.ForAll(0, typeParams.Length, index => !resultFreeVars.Contains(typeParams[index])))
           return actualResults;
         else
           // otherwise there is no point in returning the result type,
@@ -568,7 +568,7 @@ namespace Microsoft.Boogie {
           return null;
       }
 
-      Contract.Assert(Contract.ForAll(0, typeParams.Length, index => !resultFreeVars.Has(typeParams[index])));
+      Contract.Assert(Contract.ForAll(0, typeParams.Length, index => !resultFreeVars.Contains(typeParams[index])));
       return actualResults;
     }
 
@@ -595,7 +595,7 @@ namespace Microsoft.Boogie {
       // all type parameters have to be substituted with concrete types
       TypeVariableSeq/*!*/ resFreeVars = res.FreeVariables;
       Contract.Assert(resFreeVars != null);
-      Contract.Assert(Contract.ForAll(0, typeParams.Length, var => !resFreeVars.Has(typeParams[var])));
+      Contract.Assert(Contract.ForAll(0, typeParams.Length, var => !resFreeVars.Contains(typeParams[var])));
       return res;
     }
 
@@ -656,7 +656,7 @@ namespace Microsoft.Boogie {
         Type actual = actualArgs[i];
         // if the type variables to be matched occur in the actual
         // argument types, something has gone very wrong
-        Contract.Assert(Contract.ForAll(0, typeParams.Length, index => !actual.FreeVariables.Has(typeParams[index])));
+        Contract.Assert(Contract.ForAll(0, typeParams.Length, index => !actual.FreeVariables.Contains(typeParams[index])));
 
         if (!formal.Unify(actual)) {
           Contract.Assume(false);  // caller expected no errors
@@ -699,7 +699,7 @@ namespace Microsoft.Boogie {
       TypeVariableSeq sortedTypeParams = new TypeVariableSeq();
       foreach (TypeVariable/*!*/ var in freeVarsInUse) {
         Contract.Assert(var != null);
-        if (typeParams.Has(var)) {
+        if (typeParams.Contains(var)) {
           sortedTypeParams.Add(var);
         }
       }
@@ -734,9 +734,9 @@ namespace Microsoft.Boogie {
         Contract.Assert(var != null);
         if (rc.LookUpTypeBinder(var.Name) == var)  // avoid to complain twice about variables that are bound multiple times
         {
-          if (freeVarsInArgs.Has(var)) {
+          if (freeVarsInArgs.Contains(var)) {
             // cool
-          } else if (moFreeVarsInArgs != null && moFreeVarsInArgs.Has(var)) {
+          } else if (moFreeVarsInArgs != null && moFreeVarsInArgs.Contains(var)) {
             someTypeParamsAppearOnlyAmongMo = true;
           } else {
             rc.Error(resolutionSubject,
@@ -802,7 +802,7 @@ namespace Microsoft.Boogie {
       Contract.Requires(that != null);
       Contract.Requires(unifiableVariables != null);
       Contract.Requires(cce.NonNullDictionaryAndValues(unifier));
-      Contract.Requires(Contract.ForAll(unifier.Keys, key => unifiableVariables.Has(key)));
+      Contract.Requires(Contract.ForAll(unifier.Keys, key => unifiableVariables.Contains(key)));
       Contract.Requires(IsIdempotent(unifier));
       throw new NotImplementedException();
     }
@@ -1484,7 +1484,7 @@ Contract.Requires(that != null);
       if (this.Equals(that))
         return true;
 
-      if (unifiableVariables.Has(this)) {
+      if (unifiableVariables.Contains(this)) {
         Type previousSubst;
         unifier.TryGetValue(this, out previousSubst);
         if (previousSubst == null) {
@@ -1501,7 +1501,7 @@ Contract.Requires(that != null);
       TypeVariable tv = that as TypeVariable;
 
       return tv != null &&
-             unifiableVariables.Has(tv) &&
+             unifiableVariables.Contains(tv) &&
              that.Unify(this, unifiableVariables, unifier);
     }
 
@@ -1520,7 +1520,7 @@ Contract.Requires(that != null);
       Type/*!*/ substSubst = newSubst.Substitute(oldSolution);
       Contract.Assert(substSubst != null);
       // occurs check
-      if (substSubst.FreeVariables.Has(this))
+      if (substSubst.FreeVariables.Contains(this))
         return false;
       newMapping.Add(this, substSubst);
 
@@ -2141,7 +2141,7 @@ Contract.Requires(that != null);
 
       TypeVariable tv = that as TypeVariable;
 
-      if (tv != null && unifiableVariables.Has(tv))
+      if (tv != null && unifiableVariables.Contains(tv))
         return that.Unify(this, unifiableVariables, result);
 
       if (object.ReferenceEquals(this, that)) {
@@ -2219,7 +2219,7 @@ Contract.Requires(that != null);
         // of the substituted variables (otherwise, we are in big trouble)
         Contract.Assert(Contract.ForAll(constraints, c =>
                Contract.ForAll(subst.Keys, var =>
-                      !c.T0.FreeVariables.Has(var) && !c.T1.FreeVariables.Has(var))));
+                      !c.T0.FreeVariables.Contains(var) && !c.T1.FreeVariables.Contains(var))));
       }
       return base.Substitute(subst);
     }
@@ -2455,7 +2455,7 @@ Contract.Requires(that != null);
 
       TypeVariable tv = that as TypeVariable;
 
-      if (tv != null && unifiableVariables.Has(tv))
+      if (tv != null && unifiableVariables.Contains(tv))
         return that.Unify(this, unifiableVariables, result);
 
       if (object.ReferenceEquals(this, that)) {
@@ -2500,8 +2500,8 @@ Contract.Requires(that != null);
         // of the substituted variables (otherwise, we are in big trouble)
         Contract.Assert(Contract.ForAll(constraints, c =>
                Contract.ForAll(subst.Keys, var =>
-               Contract.ForAll(0, c.Arguments.Count, t => !c.Arguments[t].FreeVariables.Has(var)) &&
-                     !c.Result.FreeVariables.Has(var))));
+               Contract.ForAll(0, c.Arguments.Count, t => !c.Arguments[t].FreeVariables.Contains(var)) &&
+                     !c.Result.FreeVariables.Contains(var))));
       }
       return base.Substitute(subst);
     }
@@ -3096,7 +3096,7 @@ Contract.Requires(that != null);
         new Dictionary<TypeVariable/*!*/, TypeVariable/*!*/>();
       foreach (KeyValuePair<TypeVariable/*!*/, TypeVariable/*!*/> p in varMap) {
         Contract.Assert(cce.NonNullElements(p));
-        if (!TypeParameters.Has(p.Key))
+        if (!TypeParameters.Contains(p.Key))
           newVarMap.Add(p);
       }
 
@@ -3231,12 +3231,12 @@ Contract.Requires(that != null);
         // non-substituted types ...
         TypeVariableSeq freeVars = this.FreeVariables;
         foreach (TypeVariable fr in freshies)
-          if (freeVars.Has(fr)) {
+          if (freeVars.Contains(fr)) {
             return false;
           }  // fresh variable escaped
         freeVars = thatMapType.FreeVariables;
         foreach (TypeVariable fr in freshies)
-          if (freeVars.Has(fr)) {
+          if (freeVars.Contains(fr)) {
             return false;
           }  // fresh variable escaped
 
@@ -3245,7 +3245,7 @@ Contract.Requires(that != null);
           Contract.Assert(cce.NonNullElements(pair));
           freeVars = pair.Value.FreeVariables;
           foreach (TypeVariable fr in freshies)
-            if (freeVars.Has(fr)) {
+            if (freeVars.Contains(fr)) {
               return false;
             }  // fresh variable escaped          
         }
@@ -3317,7 +3317,7 @@ Contract.Assert(var != null);
     private bool collisionsPossible(IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ subst) {
       Contract.Requires(cce.NonNullDictionaryAndValues(subst));
       // PR: could be written more efficiently
-      return Contract.Exists(0, TypeParameters.Length, i => subst.ContainsKey(TypeParameters[i]) || Contract.Exists(subst.Values, t => t.FreeVariables.Has(TypeParameters[i])));
+      return Contract.Exists(0, TypeParameters.Length, i => subst.ContainsKey(TypeParameters[i]) || Contract.Exists(subst.Values, t => t.FreeVariables.Contains(TypeParameters[i])));
     }
 
     public override Type Substitute(IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ subst) {

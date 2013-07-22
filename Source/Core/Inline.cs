@@ -376,7 +376,7 @@ namespace Microsoft.Boogie {
         substMapOld.Add(mVar, ie);
         // FIXME why are we doing this? the modifies list should already include them.
         // add the modified variable to the modifies list of the procedure
-        if (!newModifies.Has(mie)) {
+        if (!newModifies.Contains(mie)) {
           newModifies.Add(mie);
         }
       }

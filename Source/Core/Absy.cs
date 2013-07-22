@@ -3326,7 +3326,7 @@ namespace Microsoft.Boogie {
       for (int i = 0; i < s1.card; i++) {
         TypeVariable/*!*/ next = s1[i];
         Contract.Assert(next != null);
-        if (!this.Has(next))
+        if (!this.Contains(next))
           this.Add(next);
       }
     }

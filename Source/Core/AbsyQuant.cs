@@ -197,7 +197,7 @@ namespace Microsoft.Boogie {
       TypeVariableSeq/*!*/ unmentionedParameters = new TypeVariableSeq();
       foreach (TypeVariable/*!*/ var in TypeParameters) {
         Contract.Assert(var != null);
-        if (!dummyParameters.Has(var))
+        if (!dummyParameters.Contains(var))
           unmentionedParameters.Add(var);
       }
       return unmentionedParameters;

@@ -1830,7 +1830,7 @@ namespace VC {
         foreach (AssertCmd a in assertNodes) {
           // find the corresponding Block (assertNodes.Count is likely to be 1, or small in any case, so just do a linear search here)
           foreach (Block b in traceNodes) {
-            if (b.Cmds.Has(a)) {
+            if (b.Cmds.Contains(a)) {
               BlockSeq trace = new BlockSeq();
               trace.Add(b);
               Counterexample newCounterexample = AssertCmdToCounterexample(a, cce.NonNull(b.TransferCmd), trace, model, MvInfo, context);
@@ -2050,7 +2050,7 @@ namespace VC {
         {
           Contract.Assert(v != null);
           IdentifierExpr ie = new IdentifierExpr(Token.NoToken, v);
-          if(!havocExprs.Has(ie))
+          if(!havocExprs.Contains(ie))
             havocExprs.Add(ie);
         }
         // pass the token of the enclosing loop header to the HavocCmd so we can reconstruct

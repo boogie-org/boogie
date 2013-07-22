@@ -1000,12 +1000,12 @@ namespace Microsoft.Boogie.TypeErasure {
       if (CommandLineOptions.Clo.Monomorphize && AxBuilder.UnchangedType(rawType))
         return rawType;
 
-      if (Contract.ForAll(0, rawType.FreeVariables.Length, var => !boundTypeParams.Has(rawType.FreeVariables[var]))) {
+      if (Contract.ForAll(0, rawType.FreeVariables.Length, var => !boundTypeParams.Contains(rawType.FreeVariables[var]))) {
         // Bingo!
         // if the type does not contain any bound variables, we can simply
         // replace it with a type variable
         TypeVariable/*!*/ abstractionVar = AbstractionVariable(instantiations.Count);
-        Contract.Assume(!boundTypeParams.Has(abstractionVar));
+        Contract.Assume(!boundTypeParams.Contains(abstractionVar));
         instantiations.Add(rawType);
         return abstractionVar;
       }
@@ -1014,7 +1014,7 @@ namespace Microsoft.Boogie.TypeErasure {
         //
         // then the variable has to be bound, we cannot do anything
         TypeVariable/*!*/ rawVar = rawType.AsVariable;
-        Contract.Assume(boundTypeParams.Has(rawVar));
+        Contract.Assume(boundTypeParams.Contains(rawVar));
         return rawVar;
         //
       } else if (rawType.IsMap) {
