@@ -981,7 +981,7 @@ namespace VC {
           if (copies.TryGetValue(b, out tmp)) {
             newBlocks.Add(cce.NonNull(tmp));
             if (gotoCmdOrigins.ContainsKey(b)) {
-              newGotoCmdOrigins[tmp] = gotoCmdOrigins[b];
+              newGotoCmdOrigins[tmp.TransferCmd] = gotoCmdOrigins[b.TransferCmd];
             }
 
             foreach (Block p in b.Predecessors) {
