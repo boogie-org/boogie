@@ -565,7 +565,7 @@ namespace Microsoft.Boogie.Houdini {
         private void GenVC(Implementation impl)
         {
             ModelViewInfo mvInfo;
-            System.Collections.Hashtable label2absy;
+            Dictionary<int, Absy> label2absy;
             var collector = new AbsHoudiniCounterexampleCollector(this);
             collector.OnProgress("HdnVCGen", 0, 0, 0.0);
 
@@ -2792,7 +2792,7 @@ namespace Microsoft.Boogie.Houdini {
         private void GenVC(Implementation impl)
         {
             ModelViewInfo mvInfo;
-            System.Collections.Hashtable label2absy;
+            Dictionary<int, Absy> label2absy;
 
             if (CommandLineOptions.Clo.Trace)
             {

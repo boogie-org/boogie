@@ -290,7 +290,7 @@ namespace VC {
         parent.CurrentLocalVariables = impl.LocVars;
         ModelViewInfo mvInfo;
         parent.PassifyImpl(impl, out mvInfo);
-        Hashtable label2Absy;
+        Dictionary<int, Absy> label2Absy;
         Checker ch = parent.FindCheckerFor(CommandLineOptions.Clo.SmokeTimeout);
         Contract.Assert(ch != null);
 
@@ -441,7 +441,7 @@ namespace VC {
       }
 
       class ErrorHandler : ProverInterface.ErrorHandler {
-        Hashtable label2Absy;
+        Dictionary<int, Absy> label2Absy;
         VerifierCallback callback;
         [ContractInvariantMethod]
         void ObjectInvariant() {
@@ -450,7 +450,7 @@ namespace VC {
         }
 
 
-        public ErrorHandler(Hashtable label2Absy, VerifierCallback callback) {
+        public ErrorHandler(Dictionary<int, Absy> label2Absy, VerifierCallback callback) {
           Contract.Requires(label2Absy != null);
           Contract.Requires(callback != null);
           this.label2Absy = label2Absy;
@@ -1219,7 +1219,7 @@ namespace VC {
 
         this.checker = checker;
 
-        Hashtable/*<int, Absy!>*/ label2absy = new Hashtable/*<int, Absy!>*/();
+        Dictionary<int, Absy> label2absy = new Dictionary<int, Absy>();
 
         ProverContext ctx = checker.TheoremProver.Context;
         Boogie2VCExprTranslator bet = ctx.BoogieExprTranslator;
@@ -1350,18 +1350,18 @@ namespace VC {
     }
     #endregion
 
-    public VCExpr GenerateVC(Implementation/*!*/ impl, VCExpr controlFlowVariableExpr, out Hashtable/*<int, Absy!>*//*!*/ label2absy, ProverContext proverContext)
+    public VCExpr GenerateVC(Implementation/*!*/ impl, VCExpr controlFlowVariableExpr, out Dictionary<int, Absy>/*!*/ label2absy, ProverContext proverContext)
     {
       Contract.Requires(impl != null);
       Contract.Requires(proverContext != null);
       Contract.Ensures(Contract.ValueAtReturn(out label2absy) != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
 
-      label2absy = new Hashtable/*<int, Absy!>*/();
+      label2absy = new Dictionary<int, Absy>();
       return GenerateVCAux(impl, controlFlowVariableExpr, label2absy, proverContext);
     }
 
-    protected VCExpr GenerateVCAux(Implementation/*!*/ impl, VCExpr controlFlowVariableExpr, Hashtable/*<int, Absy!>*//*!*/ label2absy, ProverContext proverContext) {
+    protected VCExpr GenerateVCAux(Implementation/*!*/ impl, VCExpr controlFlowVariableExpr, Dictionary<int, Absy>/*!*/ label2absy, ProverContext proverContext) {
       Contract.Requires(impl != null);
       Contract.Requires(proverContext != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
@@ -1654,7 +1654,7 @@ namespace VC {
 
     public class ErrorReporter : ProverInterface.ErrorHandler {
       Hashtable/*TransferCmd->ReturnCmd*//*!*/ gotoCmdOrigins;
-      Hashtable/*<int, Absy!>*//*!*/ label2absy;
+      Dictionary<int, Absy>/*!*/ label2absy;
       List<Block/*!*/>/*!*/ blocks;
       protected Dictionary<Incarnation, Absy/*!*/>/*!*/ incarnationOriginMap;
       protected VerifierCallback/*!*/ callback;
@@ -1687,7 +1687,7 @@ namespace VC {
       Program/*!*/ program;
 
       public ErrorReporter(Hashtable/*TransferCmd->ReturnCmd*//*!*/ gotoCmdOrigins,
-          Hashtable/*<int, Absy!>*//*!*/ label2absy,
+          Dictionary<int, Absy>/*!*/ label2absy,
           List<Block/*!*/>/*!*/ blocks,
           Dictionary<Incarnation, Absy/*!*/>/*!*/ incarnationOriginMap,
           VerifierCallback/*!*/ callback,
@@ -1783,7 +1783,7 @@ namespace VC {
 
     public class ErrorReporterLocal : ErrorReporter {
       public ErrorReporterLocal(Hashtable/*TransferCmd->ReturnCmd*//*!*/ gotoCmdOrigins,
-          Hashtable/*<int, Absy!>*//*!*/ label2absy,
+          Dictionary<int, Absy>/*!*/ label2absy,
           List<Block/*!*/>/*!*/ blocks,
           Dictionary<Incarnation, Absy/*!*/>/*!*/ incarnationOriginMap,
           VerifierCallback/*!*/ callback,
@@ -2530,7 +2530,7 @@ namespace VC {
 
     static VCExpr LetVC(Block startBlock,
                         VCExpr controlFlowVariableExpr,
-                        Hashtable/*<int, Absy!>*/ label2absy,
+                        Dictionary<int, Absy> label2absy,
                         ProverContext proverCtxt,
                         out int assertionCount) {
       Contract.Requires(startBlock != null);
@@ -2546,7 +2546,7 @@ namespace VC {
 
     static VCExpr LetVCIterative(List<Block> blocks,
                                  VCExpr controlFlowVariableExpr,
-                                 Hashtable label2absy,
+                                 Dictionary<int, Absy> label2absy,
                                  ProverContext proverCtxt,
                                  out int assertionCount) {
       Contract.Requires(blocks != null);
@@ -2616,7 +2616,7 @@ namespace VC {
 
     static VCExpr LetVC(Block block,
                         VCExpr controlFlowVariableExpr,
-                        Hashtable/*<int, Absy!>*/ label2absy,
+                        Dictionary<int, Absy> label2absy,
                         Hashtable/*<Block, VCExprVar!>*/ blockVariables,
                         List<VCExprLetBinding/*!*/>/*!*/ bindings,
                         ProverContext proverCtxt,
@@ -2683,7 +2683,7 @@ namespace VC {
 
     static VCExpr DagVC(Block block,
                          VCExpr controlFlowVariableExpr,
-                         Hashtable/*<int, Absy!>*/ label2absy,
+                         Dictionary<int, Absy> label2absy,
                          Hashtable/*<Block, VCExpr!>*/ blockEquations,
                          ProverContext proverCtxt,
                          out int assertionCount)
@@ -2738,7 +2738,7 @@ namespace VC {
     }
 
     static VCExpr FlatBlockVC(Implementation impl,
-                              Hashtable/*<int, Absy!>*/ label2absy,
+                              Dictionary<int, Absy> label2absy,
                               bool local, bool reach, bool doomed,
                               ProverContext proverCtxt,
                               out int assertionCount)
@@ -2874,7 +2874,7 @@ namespace VC {
     }
 
     static VCExpr NestedBlockVC(Implementation impl,
-                                Hashtable/*<int, Absy!>*/ label2absy,
+                                Dictionary<int, Absy> label2absy,
                                 bool reach,
                                 ProverContext proverCtxt,
                                 out int assertionCount){
@@ -2997,7 +2997,7 @@ namespace VC {
     }
 
     static VCExpr VCViaStructuredProgram
-                  (Implementation impl, Hashtable/*<int, Absy!>*/ label2absy,
+                  (Implementation impl, Dictionary<int, Absy> label2absy,
                    ProverContext proverCtxt,
                    out int assertionCount)
     {

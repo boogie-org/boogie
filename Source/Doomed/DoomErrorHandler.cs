@@ -15,7 +15,7 @@ namespace VC
     internal class DoomErrorHandler : ProverInterface.ErrorHandler
     {
 
-        protected Hashtable label2Absy;
+        protected Dictionary<int, Absy> label2Absy;
         protected VerifierCallback callback;
         private List<Block> m_CurrentTrace = new List<Block>();
 
@@ -28,7 +28,7 @@ namespace VC
         }
 
 
-        public DoomErrorHandler(Hashtable label2Absy, VerifierCallback callback)
+        public DoomErrorHandler(Dictionary<int, Absy> label2Absy, VerifierCallback callback)
         {
             Contract.Requires(label2Absy != null);
             Contract.Requires(callback != null);
