@@ -412,7 +412,7 @@ namespace Microsoft.Boogie {
     public bool SimplifyLogFileAppend = false;
     public bool SoundnessSmokeTest = false;
     public string Z3ExecutablePath = null;
-	public string CVC4ExecutablePath = null;
+    public string CVC4ExecutablePath = null;
 
     public enum ProverWarnings {
       None,
