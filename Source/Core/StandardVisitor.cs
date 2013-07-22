@@ -549,7 +549,7 @@ namespace Microsoft.Boogie {
     public virtual VariableSeq VisitVariableSeq(VariableSeq variableSeq) {
       Contract.Requires(variableSeq != null);
       Contract.Ensures(Contract.Result<VariableSeq>() != null);
-      for (int i = 0, n = variableSeq.Length; i < n; i++)
+      for (int i = 0, n = variableSeq.Count; i < n; i++)
         variableSeq[i] = this.VisitVariable(cce.NonNull(variableSeq[i]));
       return variableSeq;
     }

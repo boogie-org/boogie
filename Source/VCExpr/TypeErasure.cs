@@ -65,7 +65,7 @@ namespace Microsoft.Boogie.TypeErasure {
       Contract.Requires(gen != null);
       Contract.Requires(fun != null);
       Contract.Ensures(cce.NonNullElements(Contract.Result<List<VCExprVar>>()));
-      List<VCExprVar/*!*/>/*!*/ arguments = new List<VCExprVar/*!*/>(fun.InParams.Length);
+      List<VCExprVar/*!*/>/*!*/ arguments = new List<VCExprVar/*!*/>(fun.InParams.Count);
       foreach (Formal/*!*/ f in fun.InParams) {
         Contract.Assert(f != null);
         VCExprVar/*!*/ var = gen.Variable(f.Name, f.TypedIdent.Type);
@@ -192,7 +192,7 @@ namespace Microsoft.Boogie.TypeErasure {
     public TypeCtorRepr(Function ctor, List<Function/*!*/>/*!*/ dtors) {
       Contract.Requires(ctor != null);
       Contract.Requires(cce.NonNullElements(dtors));
-      Contract.Requires(ctor.InParams.Length == dtors.Count);
+      Contract.Requires(ctor.InParams.Count == dtors.Count);
       this.Ctor = ctor;
       this.Dtors = dtors;
     }
@@ -283,7 +283,7 @@ namespace Microsoft.Boogie.TypeErasure {
         GenCtorAssignment(Gen.Function(typeRepr,
                                        HelperFuns.ToVCExprList(quantifiedVars)));
 
-      if (typeRepr.InParams.Length == 0)
+      if (typeRepr.InParams.Count == 0)
         return eq;
 
       return Gen.Forall(quantifiedVars, new List<VCTrigger/*!*/>(),
@@ -711,7 +711,7 @@ namespace Microsoft.Boogie.TypeErasure {
 
     public bool IsCast(Function fun) {
       Contract.Requires(fun != null);
-      if (fun.InParams.Length != 1)
+      if (fun.InParams.Count != 1)
         return false;
       Type/*!*/ inType = cce.NonNull(fun.InParams[0]).TypedIdent.Type;
       if (inType.Equals(U)) {

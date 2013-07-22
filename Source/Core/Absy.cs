@@ -11,6 +11,7 @@ namespace Microsoft.Boogie.AbstractInterpretation {
   using System.Diagnostics.Contracts;
   using System.Collections;
   using System.Collections.Generic;
+  using System.Linq;
 
   public class CallSite {
     public readonly Implementation/*!*/ Impl;
@@ -71,6 +72,7 @@ namespace Microsoft.Boogie.AbstractInterpretation {
 
 namespace Microsoft.Boogie {
   using System;
+  using System.Linq;
   using System.Collections;
   using System.Diagnostics;
   using System.Collections.Generic;
@@ -210,7 +212,7 @@ namespace Microsoft.Boogie {
       TopLevelDeclarations = prunedTopLevelDeclarations;
     
       foreach (DatatypeConstructor f in constructors.Values) {
-        for (int i = 0; i < f.InParams.Length; i++) {
+        for (int i = 0; i < f.InParams.Count; i++) {
           DatatypeSelector selector = new DatatypeSelector(f, i);
           f.selectors.Add(selector);
           TopLevelDeclarations.Add(selector);
@@ -1843,10 +1845,10 @@ namespace Microsoft.Boogie {
       stream.Write(")");
 
       if (shortRet) {
-        Contract.Assert(OutParams.Length == 1);
+        Contract.Assert(OutParams.Count == 1);
         stream.Write(" : ");
         cce.NonNull(OutParams[0]).TypedIdent.Type.Emit(stream);
-      } else if (OutParams.Length > 0) {
+      } else if (OutParams.Count > 0) {
         stream.Write(" returns (");
         OutParams.Emit(stream, true);
         stream.Write(")");
@@ -1863,9 +1865,9 @@ namespace Microsoft.Boogie {
     }
 
     protected void SortTypeParams() {
-      TypeSeq/*!*/ allTypes = InParams.ToTypeSeq;
+      TypeSeq/*!*/ allTypes = new TypeSeq(InParams.Select(Item => Item.TypedIdent.Type).ToArray());
       Contract.Assert(allTypes != null);
-      allTypes.AddRange(OutParams.ToTypeSeq);
+      allTypes.AddRange(new TypeSeq(OutParams.Select(Item => Item.TypedIdent.Type).ToArray()));
       TypeParameters = Type.SortTypeParams(TypeParameters, allTypes, null);
     }
 
@@ -2089,7 +2091,8 @@ namespace Microsoft.Boogie {
         }
         rc.PopVarContext();
         Type.CheckBoundVariableOccurrences(TypeParameters,
-                                           InParams.ToTypeSeq, OutParams.ToTypeSeq,
+                                           new TypeSeq(InParams.Select(Item => Item.TypedIdent.Type).ToArray()),
+                                           new TypeSeq(OutParams.Select(Item => Item.TypedIdent.Type).ToArray()),
                                            this.tok, "function arguments",
                                            rc);
       } finally {
@@ -2151,7 +2154,7 @@ namespace Microsoft.Boogie {
       // type parameters only occur in the output type
       call = Expr.CoerceType(tok, call, (Type)OutParams[0].TypedIdent.Type.Clone());
       Expr def = Expr.Eq(call, definition);
-      if (quantifiedTypeVars.Count != 0 || dummies.Length != 0) {
+      if (quantifiedTypeVars.Count != 0 || dummies.Count != 0) {
         def = new ForallExpr(tok, quantifiedTypeVars, dummies,
                              kv,
                              new Trigger(tok, true, new ExprSeq(call), null),
@@ -2481,7 +2484,8 @@ namespace Microsoft.Boogie {
         ResolveAttributes(rc);
 
         Type.CheckBoundVariableOccurrences(TypeParameters,
-                                           InParams.ToTypeSeq, OutParams.ToTypeSeq,
+                                           new TypeSeq(InParams.Select(Item => Item.TypedIdent.Type).ToArray()),
+                                           new TypeSeq(OutParams.Select(Item => Item.TypedIdent.Type).ToArray()),        
                                            this.tok, "procedure arguments",
                                            rc);
 
@@ -2750,7 +2754,7 @@ namespace Microsoft.Boogie {
       }
 
       if (this.StructuredStmts != null && !CommandLineOptions.Clo.PrintInstrumented && !CommandLineOptions.Clo.PrintInlined) {
-        if (this.LocVars.Length > 0) {
+        if (this.LocVars.Count > 0) {
           stream.WriteLine();
         }
         if (CommandLineOptions.Clo.PrintUnstructured < 2) {
@@ -2829,7 +2833,8 @@ namespace Microsoft.Boogie {
         rc.PopVarContext();
 
         Type.CheckBoundVariableOccurrences(TypeParameters,
-                                           InParams.ToTypeSeq, OutParams.ToTypeSeq,
+                                           new TypeSeq(InParams.Select(Item => Item.TypedIdent.Type).ToArray()),
+                                           new TypeSeq(OutParams.Select(Item => Item.TypedIdent.Type).ToArray()),
                                            this.tok, "implementation arguments",
                                            rc);
       } finally {
@@ -2870,7 +2875,7 @@ namespace Microsoft.Boogie {
       Contract.Requires(procFormals != null);
       Contract.Requires(inout != null);
       Contract.Requires(tc != null);
-      if (implFormals.Length != procFormals.Length) {
+      if (implFormals.Count != procFormals.Count) {
         tc.Error(this, "mismatched number of {0}-parameters in procedure implementation: {1}",
                  inout, this.Name);
       } else {
@@ -2891,7 +2896,7 @@ namespace Microsoft.Boogie {
           subst2.Add(this.TypeParameters[i], newVar);
         }
 
-        for (int i = 0; i < implFormals.Length; i++) {
+        for (int i = 0; i < implFormals.Count; i++) {
           // the names of the formals are allowed to change from the proc to the impl
 
           // but types must be identical
@@ -2924,11 +2929,11 @@ namespace Microsoft.Boogie {
       if (this.formalMap != null)
         return this.formalMap;
       else {
-        Dictionary<Variable, Expr>/*!*/ map = new Dictionary<Variable, Expr> (InParams.Length + OutParams.Length);
+        Dictionary<Variable, Expr>/*!*/ map = new Dictionary<Variable, Expr> (InParams.Count + OutParams.Count);
 
         Contract.Assume(this.Proc != null);
-        Contract.Assume(InParams.Length == Proc.InParams.Length);
-        for (int i = 0; i < InParams.Length; i++) {
+        Contract.Assume(InParams.Count == Proc.InParams.Count);
+        for (int i = 0; i < InParams.Count; i++) {
           Variable/*!*/ v = InParams[i];
           Contract.Assert(v != null);
           IdentifierExpr ie = new IdentifierExpr(v.tok, v);
@@ -2936,8 +2941,8 @@ namespace Microsoft.Boogie {
           Contract.Assert(pv != null);
           map.Add(pv, ie);
         }
-        System.Diagnostics.Debug.Assert(OutParams.Length == Proc.OutParams.Length);
-        for (int i = 0; i < OutParams.Length; i++) {
+        System.Diagnostics.Debug.Assert(OutParams.Count == Proc.OutParams.Count);
+        for (int i = 0; i < OutParams.Count; i++) {
           Variable/*!*/ v = cce.NonNull(OutParams[i]);
           IdentifierExpr ie = new IdentifierExpr(v.tok, v);
           Variable pv = cce.NonNull(Proc.OutParams[i]);
@@ -3209,12 +3214,6 @@ namespace Microsoft.Boogie {
   // Generic Sequences
   //---------------------------------------------------------------------
 
-  public static class ListFactory {
-    public static List<T> MakeList<T>(params T[]/*!*/ args) {
-      return new List<T>(args);
-    }
-  }
-
   public sealed class VariableSeq : List<Variable> {
     public VariableSeq(params Variable[]/*!*/ args)
       : base(args) {
@@ -3223,33 +3222,6 @@ namespace Microsoft.Boogie {
     public VariableSeq(VariableSeq/*!*/ varSeq)
       : base(varSeq) {
       Contract.Requires(varSeq != null);
-    }
-    public void Emit(TokenTextWriter stream, bool emitAttributes) {
-      Contract.Requires(stream != null);
-      string sep = "";
-      foreach (Variable/*!*/ v in this) {
-        Contract.Assert(v != null);
-        stream.Write(sep);
-        sep = ", ";
-        v.EmitVitals(stream, 0, emitAttributes);
-      }
-    }
-    public TypeSeq/*!*/ ToTypeSeq {
-      get {
-        Contract.Ensures(Contract.Result<TypeSeq>() != null);
-
-        TypeSeq/*!*/ res = new TypeSeq();
-        foreach (Variable/*!*/ v in this) {
-          Contract.Assert(v != null);
-          res.Add(v.TypedIdent.Type);
-        }
-        return res;
-      }
-    }
-    public int Length {
-      get {
-        return Count;
-      }
     }
   }
 
@@ -3261,17 +3233,6 @@ namespace Microsoft.Boogie {
     public TypeSeq(TypeSeq/*!*/ varSeq)
       : base(varSeq) {
       Contract.Requires(varSeq != null);
-    }
-    public void Emit(TokenTextWriter stream, string separator) {
-      Contract.Requires(separator != null);
-      Contract.Requires(stream != null);
-      string sep = "";
-      foreach (Type/*!*/ v in this) {
-        Contract.Assert(v != null);
-        stream.Write(sep);
-        sep = separator;
-        v.Emit(stream);
-      }
     }
   }
 
@@ -3296,17 +3257,6 @@ namespace Microsoft.Boogie {
           this.Add(next);
       }
     }
-    public void Emit(TokenTextWriter stream, string separator) {
-      Contract.Requires(separator != null);
-      Contract.Requires(stream != null);
-      string sep = "";
-      foreach (TypeVariable/*!*/ v in this) {
-        Contract.Assert(v != null);
-        stream.Write(sep);
-        sep = separator;
-        v.Emit(stream);
-      }
-    }
   }
 
   public sealed class IdentifierExprSeq : List<IdentifierExpr> {
@@ -3318,33 +3268,7 @@ namespace Microsoft.Boogie {
       : base(ideSeq) {
       Contract.Requires(ideSeq != null);
     }
-    public new IdentifierExpr/*!*/ this[int index] {
-      get {
-        Contract.Ensures(Contract.Result<IdentifierExpr>() != null);
 
-        return cce.NonNull((IdentifierExpr)base[index]);
-      }
-      set {
-        base[index] = value;
-      }
-    }
-
-    public void Emit(TokenTextWriter stream, bool printWhereComments) {
-      Contract.Requires(stream != null);
-      string sep = "";
-      foreach (IdentifierExpr/*!*/ e in this) {
-        Contract.Assert(e != null);
-        stream.Write(sep);
-        sep = ", ";
-        e.Emit(stream);
-
-        if (printWhereComments && e.Decl != null && e.Decl.TypedIdent.WhereExpr != null) {
-          stream.Write(" /* where ");
-          e.Decl.TypedIdent.WhereExpr.Emit(stream);
-          stream.Write(" */");
-        }
-      }
-    }
   }
 
 
@@ -3461,6 +3385,58 @@ namespace Microsoft.Boogie {
         stream.Write(sep);
         sep = ", ";
         e.Emit(stream);
+      }
+    }
+
+    public static void Emit(this IdentifierExprSeq ids, TokenTextWriter stream, bool printWhereComments) {
+      Contract.Requires(stream != null);
+      string sep = "";
+      foreach (IdentifierExpr/*!*/ e in ids) {
+        Contract.Assert(e != null);
+        stream.Write(sep);
+        sep = ", ";
+        e.Emit(stream);
+
+        if (printWhereComments && e.Decl != null && e.Decl.TypedIdent.WhereExpr != null) {
+          stream.Write(" /* where ");
+          e.Decl.TypedIdent.WhereExpr.Emit(stream);
+          stream.Write(" */");
+        }
+      }
+    }
+
+    public static void Emit(this VariableSeq vs, TokenTextWriter stream, bool emitAttributes) {
+      Contract.Requires(stream != null);
+      string sep = "";
+      foreach (Variable/*!*/ v in vs) {
+        Contract.Assert(v != null);
+        stream.Write(sep);
+        sep = ", ";
+        v.EmitVitals(stream, 0, emitAttributes);
+      }
+    }
+
+    public static void Emit(this TypeSeq tys, TokenTextWriter stream, string separator) {
+      Contract.Requires(separator != null);
+      Contract.Requires(stream != null);
+      string sep = "";
+      foreach (Type/*!*/ v in tys) {
+        Contract.Assert(v != null);
+        stream.Write(sep);
+        sep = separator;
+        v.Emit(stream);
+      }
+    }
+
+    public static void Emit(this TypeVariableSeq tvs, TokenTextWriter stream, string separator) {
+      Contract.Requires(separator != null);
+      Contract.Requires(stream != null);
+      string sep = "";
+      foreach (TypeVariable/*!*/ v in tvs) {
+        Contract.Assert(v != null);
+        stream.Write(sep);
+        sep = separator;
+        v.Emit(stream);
       }
     }
 

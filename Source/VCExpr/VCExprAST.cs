@@ -1785,7 +1785,7 @@ namespace Microsoft.Boogie.VCExprAST {
 
     public override int Arity {
       get {
-        return Func.InParams.Length;
+        return Func.InParams.Count;
       }
     }
     public override int TypeParamArity {

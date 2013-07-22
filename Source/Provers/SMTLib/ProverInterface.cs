@@ -273,7 +273,7 @@ namespace Microsoft.Boogie.SMTLib
               foreach (Function f in ctx.KnownDatatypeConstructors[datatype])
               {
                 string quotedConstructorName = Namer.GetQuotedName(f, f.Name);
-                if (f.InParams.Length == 0)
+                if (f.InParams.Count == 0)
                 {
                   datatypeString += quotedConstructorName + " ";
                 }

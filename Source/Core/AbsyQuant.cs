@@ -12,6 +12,7 @@ namespace Microsoft.Boogie {
   using System.Collections;
   using System.Diagnostics;
   using System.Collections.Generic;
+  using System.Linq;
   using Microsoft.Boogie.AbstractInterpretation;
   using System.Diagnostics.Contracts;
   using Microsoft.Basetypes;
@@ -65,7 +66,7 @@ namespace Microsoft.Boogie {
       Contract.Requires(typeParameters != null);
       Contract.Requires(dummies != null);
       Contract.Requires(body != null);
-      Contract.Requires(dummies.Length + typeParameters.Count > 0);
+      Contract.Requires(dummies.Count + typeParameters.Count > 0);
       TypeParameters = typeParameters;
       Dummies = dummies;
       Attributes = kv;
@@ -159,7 +160,7 @@ namespace Microsoft.Boogie {
         rc.PopVarContext();
 
         // establish a canonical order of the type parameters
-        this.TypeParameters = Type.SortTypeParams(TypeParameters, Dummies.ToTypeSeq, null);
+        this.TypeParameters = Type.SortTypeParams(TypeParameters, new TypeSeq(Dummies.Select(Item => Item.TypedIdent.Type).ToArray()), null);
 
       } finally {
         rc.TypeBinderState = previousTypeBinderState;
@@ -192,7 +193,7 @@ namespace Microsoft.Boogie {
 
     protected TypeVariableSeq GetUnmentionedTypeParameters() {
       Contract.Ensures(Contract.Result<TypeVariableSeq>() != null);
-      TypeVariableSeq/*!*/ dummyParameters = Type.FreeVariablesIn(Dummies.ToTypeSeq);
+      TypeVariableSeq/*!*/ dummyParameters = Type.FreeVariablesIn(new TypeSeq(Dummies.Select(Item => Item.TypedIdent.Type).ToArray()));
       Contract.Assert(dummyParameters != null);
       TypeVariableSeq/*!*/ unmentionedParameters = new TypeVariableSeq();
       foreach (TypeVariable/*!*/ var in TypeParameters) {
@@ -427,21 +428,21 @@ namespace Microsoft.Boogie {
       Contract.Requires(typeParams != null);
       Contract.Requires(dummies != null);
       Contract.Requires(body != null);
-      Contract.Requires(dummies.Length + typeParams.Count > 0);
+      Contract.Requires(dummies.Count + typeParams.Count > 0);
     }
     public ForallExpr(IToken tok, VariableSeq dummies, Trigger triggers, Expr body)
       : base(tok, new TypeVariableSeq(), dummies, null, triggers, body) {
       Contract.Requires(body != null);
       Contract.Requires(dummies != null);
       Contract.Requires(tok != null);
-      Contract.Requires(dummies.Length > 0);
+      Contract.Requires(dummies.Count > 0);
     }
     public ForallExpr(IToken tok, VariableSeq dummies, Expr body)
       : base(tok, new TypeVariableSeq(), dummies, null, null, body) {
       Contract.Requires(body != null);
       Contract.Requires(dummies != null);
       Contract.Requires(tok != null);
-      Contract.Requires(dummies.Length > 0);
+      Contract.Requires(dummies.Count > 0);
     }
     public ForallExpr(IToken tok, TypeVariableSeq typeParams, VariableSeq dummies, Expr body)
       : base(tok, typeParams, dummies, null, null, body) {
@@ -449,7 +450,7 @@ namespace Microsoft.Boogie {
       Contract.Requires(dummies != null);
       Contract.Requires(typeParams != null);
       Contract.Requires(tok != null);
-      Contract.Requires(dummies.Length + typeParams.Count > 0);
+      Contract.Requires(dummies.Count + typeParams.Count > 0);
     }
 
     public override Absy StdDispatch(StandardVisitor visitor) {
@@ -473,21 +474,21 @@ namespace Microsoft.Boogie {
       Contract.Requires(typeParams != null);
       Contract.Requires(dummies != null);
       Contract.Requires(body != null);
-      Contract.Requires(dummies.Length + typeParams.Count > 0);
+      Contract.Requires(dummies.Count + typeParams.Count > 0);
     }
     public ExistsExpr(IToken tok, VariableSeq dummies, Trigger triggers, Expr body)
       : base(tok, new TypeVariableSeq(), dummies, null, triggers, body) {
       Contract.Requires(body != null);
       Contract.Requires(dummies != null);
       Contract.Requires(tok != null);
-      Contract.Requires(dummies.Length > 0);
+      Contract.Requires(dummies.Count > 0);
     }
     public ExistsExpr(IToken tok, VariableSeq dummies, Expr body)
       : base(tok, new TypeVariableSeq(), dummies, null, null, body) {
       Contract.Requires(body != null);
       Contract.Requires(dummies != null);
       Contract.Requires(tok != null);
-      Contract.Requires(dummies.Length > 0);
+      Contract.Requires(dummies.Count > 0);
     }
 
     public override Absy StdDispatch(StandardVisitor visitor) {
@@ -521,7 +522,7 @@ namespace Microsoft.Boogie {
       Contract.Requires(typeParameters != null);
       Contract.Requires(dummies != null);
       Contract.Requires(body != null);
-      Contract.Requires(dummies.Length + typeParameters.Count > 0);
+      Contract.Requires(dummies.Count + typeParameters.Count > 0);
 
       Contract.Assert((this is ForallExpr) || (this is ExistsExpr));
 
@@ -702,7 +703,7 @@ namespace Microsoft.Boogie {
       Contract.Requires(typeParameters != null);
       Contract.Requires(dummies != null);
       Contract.Requires(body != null);
-      Contract.Requires(dummies.Length + typeParameters.Count > 0);
+      Contract.Requires(dummies.Count + typeParameters.Count > 0);
     }
 
     public override BinderKind Kind {

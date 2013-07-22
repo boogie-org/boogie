@@ -82,7 +82,7 @@ namespace Microsoft.Boogie.Houdini {
             // type check
             existentialFunctions.Values.Iter(func =>
                 {
-                    if (func.OutParams.Length != 1 || !func.OutParams[0].TypedIdent.Type.IsBool)
+                    if (func.OutParams.Count != 1 || !func.OutParams[0].TypedIdent.Type.IsBool)
                         throw new AbsHoudiniInternalError(string.Format("Existential function {0} must return bool", func.Name));
                     if(func.Body != null)
                         throw new AbsHoudiniInternalError(string.Format("Existential function {0} should not have a body", func.Name));

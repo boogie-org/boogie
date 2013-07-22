@@ -1240,7 +1240,7 @@ namespace VC {
             VCExpr startCorrect = VCGen.LetVC(codeExpr.Blocks[0], null, label2absy, blockVariables, bindings, ctx, out ac);
             VCExpr vce = ctx.ExprGen.Let(bindings, startCorrect);
 
-            if (vcgen.CurrentLocalVariables.Length != 0)
+            if (vcgen.CurrentLocalVariables.Count != 0)
             {
               Boogie2VCExprTranslator translator = checker.TheoremProver.Context.BoogieExprTranslator;
               List<VCExprVar> boundVars = new List<VCExprVar>();

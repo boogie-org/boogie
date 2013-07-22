@@ -338,7 +338,7 @@ namespace Microsoft.Boogie
                             SetNonUniform(callCmd.callee);
                         }
                     }
-                    for (int i = 0; i < Callee.InParams.Length; i++)
+                    for (int i = 0; i < Callee.InParams.Count; i++)
                     {
                         if (IsUniform(callCmd.callee, Callee.InParams[i].Name)
                             && !IsUniform(impl.Name, callCmd.Ins[i]))
@@ -347,7 +347,7 @@ namespace Microsoft.Boogie
                         }
                     }
 
-                    for (int i = 0; i < Callee.OutParams.Length; i++)
+                    for (int i = 0; i < Callee.OutParams.Count; i++)
                     {
                         if (IsUniform(impl.Name, callCmd.Outs[i].Name)
                         && !IsUniform(callCmd.callee, Callee.OutParams[i].Name))

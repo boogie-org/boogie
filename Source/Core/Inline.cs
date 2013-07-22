@@ -339,7 +339,7 @@ namespace Microsoft.Boogie {
         substMap.Add(locVar, ie);
       }
 
-      for (int i = 0; i < impl.InParams.Length; i++) {
+      for (int i = 0; i < impl.InParams.Count; i++) {
         Variable inVar = cce.NonNull(impl.InParams[i]);
         LocalVariable localVar = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, GetProcVarName(proc.Name, inVar.Name), inVar.TypedIdent.Type, inVar.TypedIdent.WhereExpr));
         newLocalVars.Add(localVar);
@@ -352,7 +352,7 @@ namespace Microsoft.Boogie {
         }
       }
 
-      for (int i = 0; i < impl.OutParams.Length; i++) {
+      for (int i = 0; i < impl.OutParams.Count; i++) {
         Variable outVar = cce.NonNull(impl.OutParams[i]);
         LocalVariable localVar = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, GetProcVarName(proc.Name, outVar.Name), outVar.TypedIdent.Type, outVar.TypedIdent.WhereExpr));
         newLocalVars.Add(localVar);
@@ -445,7 +445,7 @@ namespace Microsoft.Boogie {
       CmdSeq inCmds = new CmdSeq();
 
       // assign in parameters
-      for (int i = 0; i < impl.InParams.Length; ++i) {
+      for (int i = 0; i < impl.InParams.Count; ++i) {
         Cmd cmd = Cmd.SimpleAssign(impl.tok,
                                    (IdentifierExpr)cce.NonNull(codeCopier.Subst)(cce.NonNull(impl.InParams[i])),
                                    cce.NonNull(callCmd.Ins[i]));
@@ -476,7 +476,7 @@ namespace Microsoft.Boogie {
       }
 
       // add where clauses of local vars as assume
-      for (int i = 0; i < locVars.Length; ++i) {
+      for (int i = 0; i < locVars.Count; ++i) {
         Expr whereExpr = (cce.NonNull(locVars[i])).TypedIdent.WhereExpr;
         if (whereExpr != null) {
           whereExpr = Substituter.Apply(codeCopier.Subst, whereExpr);
@@ -489,7 +489,7 @@ namespace Microsoft.Boogie {
       }
 
       // add where clauses of output params as assume
-      for (int i = 0; i < impl.OutParams.Length; ++i) {
+      for (int i = 0; i < impl.OutParams.Count; ++i) {
         Expr whereExpr = (cce.NonNull(impl.OutParams[i])).TypedIdent.WhereExpr;
         if (whereExpr != null) {
           whereExpr = Substituter.Apply(codeCopier.Subst, whereExpr);
@@ -535,7 +535,7 @@ namespace Microsoft.Boogie {
       }
 
       // assign out params
-      for (int i = 0; i < impl.OutParams.Length; ++i) {
+      for (int i = 0; i < impl.OutParams.Count; ++i) {
         Expr/*!*/ cout_exp = (IdentifierExpr)cce.NonNull(codeCopier.Subst(cce.NonNull(impl.OutParams[i])));
         Cmd cmd = Cmd.SimpleAssign(impl.tok, cce.NonNull(callCmd.Outs[i]), cout_exp);
         outCmds.Add(cmd);

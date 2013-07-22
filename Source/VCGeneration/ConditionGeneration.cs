@@ -938,8 +938,8 @@ namespace VC {
       }
 
       // where clauses of out-parameters
-      Contract.Assert(impl.OutParams.Length == impl.Proc.OutParams.Length);
-      for (int i = 0; i < impl.OutParams.Length; i++) {
+      Contract.Assert(impl.OutParams.Count == impl.Proc.OutParams.Count);
+      for (int i = 0; i < impl.OutParams.Count; i++) {
         Variable f = cce.NonNull(impl.Proc.OutParams[i]);
         if (f.TypedIdent.WhereExpr != null) {
           Expr e = Substituter.Apply(formalProcImplSubst, f.TypedIdent.WhereExpr);

@@ -496,7 +496,7 @@ namespace Microsoft.Boogie.VCExprAST {
       Contract.Requires(vars != null);
       // Check for a 'qid, name' pair in keyvalues
       string qid = QKeyValue.FindStringAttribute(attributes, "qid");
-      if (qid == null && vars.Length != 0) {
+      if (qid == null && vars.Count != 0) {
         // generate default name (line:column position in .bpl file)
         Variable v = vars[0];
         Contract.Assert(v != null); // Rustan's claim!
@@ -1148,7 +1148,7 @@ namespace Microsoft.Boogie.VCExprAST {
           // first bind the formals to VCExpr variables, which are later
           // substituted with the actual parameters
           var inParams = app.Func.InParams;
-          for (int i = 0; i < inParams.Length; ++i)
+          for (int i = 0; i < inParams.Count; ++i)
             subst[BaseTranslator.BindVariable(inParams[i])] = args[i];
 
           // recursively translate the body of the expansion

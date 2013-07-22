@@ -14,6 +14,7 @@ namespace Microsoft.Boogie {
   using System.Collections.Generic;
   using Microsoft.Boogie.AbstractInterpretation;
   using System.Diagnostics.Contracts;
+  using System.Linq;
   using Microsoft.Basetypes;
 
   using Set = GSet<object>; // not that the set used is not a set of Variable only, as it also contains TypeVariables
@@ -1787,7 +1788,7 @@ namespace Microsoft.Boogie {
     public virtual int ArgumentCount {
       get {
         Contract.Assume(Func != null);  // ArgumentCount requires object to be properly resolved.
-        return Func.InParams.Length;
+        return Func.InParams.Count;
       }
     }
     public virtual Type Typecheck(ref ExprSeq actuals, out TypeParamInstantiation tpInstantiation, TypecheckingContext tc) {
@@ -1796,16 +1797,16 @@ namespace Microsoft.Boogie {
       Contract.Ensures(Contract.ValueAtReturn(out actuals) != null);
       Contract.Ensures(Contract.ValueAtReturn(out tpInstantiation) != null);
       Contract.Assume(this.Func != null);
-      Contract.Assume(actuals.Count == Func.InParams.Length);
-      Contract.Assume(Func.OutParams.Length == 1);
+      Contract.Assume(actuals.Count == Func.InParams.Count);
+      Contract.Assume(Func.OutParams.Count == 1);
 
       List<Type/*!*/>/*!*/ resultingTypeArgs;
       TypeSeq actualResultType =
         Type.CheckArgumentTypes(Func.TypeParameters,
                                 out resultingTypeArgs,
-                                Func.InParams.ToTypeSeq,
+                                new TypeSeq(Func.InParams.Select(Item => Item.TypedIdent.Type).ToArray()),
                                 actuals,
-                                Func.OutParams.ToTypeSeq,
+                                new TypeSeq(Func.OutParams.Select(Item => Item.TypedIdent.Type).ToArray()),
                                 null,
         // we need some token to report a possibly wrong number of
         // arguments
@@ -2581,7 +2582,7 @@ namespace Microsoft.Boogie {
       int level = 0;
       stream.WriteLine(level, "|{");
 
-      if (this.LocVars.Length > 0) {
+      if (this.LocVars.Count > 0) {
         stream.Write(level + 1, "var ");
         this.LocVars.Emit(stream, true);
         stream.WriteLine(";");

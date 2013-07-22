@@ -390,7 +390,7 @@ private class BvBounds : Expr {
 		}
 		if (!allUnnamed) {
 		 Bpl.Type prevType = null;
-		 for (int i = arguments.Length; 0 <= --i; ) {
+		 for (int i = arguments.Count; 0 <= --i; ) {
 		   TypedIdent/*!*/ curr = cce.NonNull(arguments[i]).TypedIdent;
 		   if (curr.HasName) {
 		     // the argument was given as both an identifier and a type
@@ -1775,13 +1775,13 @@ out VariableSeq/*!*/ ins, out VariableSeq/*!*/ outs, out QKeyValue kv) {
 				Forall();
 				x = t; 
 				QuantifierBody(x, out typeParams, out ds, out kv, out trig, out e);
-				if (typeParams.Count + ds.Length > 0)
+				if (typeParams.Count + ds.Count > 0)
 				 e = new ForallExpr(x, typeParams, ds, kv, trig, e); 
 			} else if (la.kind == 89 || la.kind == 90) {
 				Exists();
 				x = t; 
 				QuantifierBody(x, out typeParams, out ds, out kv, out trig, out e);
-				if (typeParams.Count + ds.Length > 0)
+				if (typeParams.Count + ds.Count > 0)
 				 e = new ExistsExpr(x, typeParams, ds, kv, trig, e); 
 			} else if (la.kind == 91 || la.kind == 92) {
 				Lambda();
@@ -1789,7 +1789,7 @@ out VariableSeq/*!*/ ins, out VariableSeq/*!*/ outs, out QKeyValue kv) {
 				QuantifierBody(x, out typeParams, out ds, out kv, out trig, out e);
 				if (trig != null)
 				 SemErr("triggers not allowed in lambda expressions");
-				if (typeParams.Count + ds.Length > 0)
+				if (typeParams.Count + ds.Count > 0)
 				 e = new LambdaExpr(x, typeParams, ds, kv, e); 
 			} else SynErr(123);
 			Expect(10);

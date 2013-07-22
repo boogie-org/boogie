@@ -329,7 +329,7 @@ namespace Microsoft.Boogie
             {
                 locals.Add(ie.Decl);
             }
-            for (int i = 0; i < decl.InParams.Length - linearTypechecker.linearDomains.Count; i++)
+            for (int i = 0; i < decl.InParams.Count - linearTypechecker.linearDomains.Count; i++)
             {
                 Variable inParam = decl.InParams[i];
                 Variable copy = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, inParam.Name, inParam.TypedIdent.Type));
@@ -337,7 +337,7 @@ namespace Microsoft.Boogie
                 map[decl.InParams[i]] = new IdentifierExpr(Token.NoToken, copy);
             }
             {
-                int i = decl.InParams.Length - linearTypechecker.linearDomains.Count;
+                int i = decl.InParams.Count - linearTypechecker.linearDomains.Count;
                 foreach (string domainName in linearTypechecker.linearDomains.Keys)
                 {
                     Variable inParam = decl.InParams[i];
@@ -347,7 +347,7 @@ namespace Microsoft.Boogie
                     i++;
                 }
             }
-            for (int i = 0; i < decl.OutParams.Length; i++)
+            for (int i = 0; i < decl.OutParams.Count; i++)
             {
                 Variable outParam = decl.OutParams[i];
                 var copy = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, outParam.Name, outParam.TypedIdent.Type));
@@ -439,7 +439,7 @@ namespace Microsoft.Boogie
             Dictionary<string, Variable> domainNameToInputVar = new Dictionary<string, Variable>();
             Dictionary<string, Variable> domainNameToLocalVar = new Dictionary<string, Variable>();
             {
-                int i = impl.InParams.Length - linearTypechecker.linearDomains.Count;
+                int i = impl.InParams.Count - linearTypechecker.linearDomains.Count;
                 foreach (string domainName in linearTypechecker.linearDomains.Keys)
                 {
                     Variable inParam = impl.InParams[i];
@@ -590,7 +590,7 @@ namespace Microsoft.Boogie
                 {
                     domainNameToExpr[domainName] = new IdentifierExpr(Token.NoToken, domainNameToInputVar[domainName]);
                 }
-                for (int i = 0; i < impl.InParams.Length - linearTypechecker.linearDomains.Count; i++)
+                for (int i = 0; i < impl.InParams.Count - linearTypechecker.linearDomains.Count; i++)
                 {
                     Variable v = impl.InParams[i];
                     var domainName = linearTypechecker.FindDomainName(v);
@@ -627,7 +627,7 @@ namespace Microsoft.Boogie
 
             Dictionary<string, Variable> domainNameToInputVar = new Dictionary<string, Variable>();
             {
-                int i = proc.InParams.Length - linearTypechecker.linearDomains.Count;
+                int i = proc.InParams.Count - linearTypechecker.linearDomains.Count;
                 foreach (string domainName in linearTypechecker.linearDomains.Keys)
                 {
                     Variable inParam = proc.InParams[i];
@@ -653,7 +653,7 @@ namespace Microsoft.Boogie
                     if (domainName == null) continue;
                     domainNameToScope[domainName].Add(v);
                 }
-                for (int i = 0; i < proc.InParams.Length - linearTypechecker.linearDomains.Count; i++)
+                for (int i = 0; i < proc.InParams.Count - linearTypechecker.linearDomains.Count; i++)
                 {
                     Variable v = proc.InParams[i];
                     var domainName = linearTypechecker.FindDomainName(v);
@@ -692,7 +692,7 @@ namespace Microsoft.Boogie
                     if (domainName == null) continue;
                     domainNameToScope[domainName].Add(v);
                 }
-                for (int i = 0; i < proc.OutParams.Length; i++)
+                for (int i = 0; i < proc.OutParams.Count; i++)
                 {
                     Variable v = proc.OutParams[i];
                     var domainName = linearTypechecker.FindDomainName(v);

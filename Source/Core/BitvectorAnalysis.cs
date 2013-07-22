@@ -190,12 +190,12 @@ namespace Microsoft.Boogie {
     }
 
     public override Implementation VisitImplementation(Implementation node) {
-      for (int i = 0; i < node.InParams.Length; i++) {
+      for (int i = 0; i < node.InParams.Count; i++) {
         DisjointSet a = MakeDisjointSet(node.InParams[i]);
         DisjointSet b = MakeDisjointSet(node.Proc.InParams[i]);
         a.Union(b);
       }
-      for (int i = 0; i < node.OutParams.Length; i++) {
+      for (int i = 0; i < node.OutParams.Count; i++) {
         DisjointSet a = MakeDisjointSet(node.OutParams[i]);
         DisjointSet b = MakeDisjointSet(node.Proc.OutParams[i]);
         a.Union(b);

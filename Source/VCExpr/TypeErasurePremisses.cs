@@ -370,11 +370,11 @@ namespace Microsoft.Boogie.TypeErasure
       Contract.Requires(fun != null);
       UntypedFunction res;
       if (!Typed2UntypedFunctions.TryGetValue(fun, out res)) {
-        Contract.Assert(fun.OutParams.Length == 1);
+        Contract.Assert(fun.OutParams.Count == 1);
 
         // if all of the parameters are int or bool, the function does
         // not have to be changed
-        if (Contract.ForAll(0, fun.InParams.Length, f => UnchangedType(cce.NonNull(fun.InParams[f]).TypedIdent.Type)) &&
+        if (Contract.ForAll(0, fun.InParams.Count, f => UnchangedType(cce.NonNull(fun.InParams[f]).TypedIdent.Type)) &&
             UnchangedType(cce.NonNull(fun.OutParams[0]).TypedIdent.Type) &&
             fun.TypeParameters.Count == 0) {
           res = new UntypedFunction(fun, new List<TypeVariable/*!*/>(), new List<TypeVariable/*!*/>());
@@ -388,13 +388,13 @@ namespace Microsoft.Boogie.TypeErasure
           List<TypeVariable/*!*/>/*!*/ implicitParams, explicitParams;
           SeparateTypeParams(argTypes, fun.TypeParameters, out implicitParams, out explicitParams);
 
-          Type[]/*!*/ types = new Type[explicitParams.Count + fun.InParams.Length + 1];
+          Type[]/*!*/ types = new Type[explicitParams.Count + fun.InParams.Count + 1];
           int i = 0;
           for (int j = 0; j < explicitParams.Count; ++j) {
             types[i] = T;
             i = i + 1;
           }
-          for (int j = 0; j < fun.InParams.Length; ++i, ++j)
+          for (int j = 0; j < fun.InParams.Count; ++i, ++j)
             types[i] = TypeAfterErasure(cce.NonNull(fun.InParams[j]).TypedIdent.Type);
           types[types.Length - 1] = TypeAfterErasure(cce.NonNull(fun.OutParams[0]).TypedIdent.Type);
 
@@ -414,7 +414,7 @@ namespace Microsoft.Boogie.TypeErasure
     private VCExpr GenFunctionAxiom(UntypedFunction fun, Function originalFun) {
       Contract.Requires(originalFun != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
-      List<Type/*!*/>/*!*/ originalInTypes = new List<Type/*!*/>(originalFun.InParams.Length);
+      List<Type/*!*/>/*!*/ originalInTypes = new List<Type/*!*/>(originalFun.InParams.Count);
       foreach (Formal/*!*/ f in originalFun.InParams)
         originalInTypes.Add(f.TypedIdent.Type);
 
@@ -433,7 +433,7 @@ namespace Microsoft.Boogie.TypeErasure
       Contract.Requires(cce.NonNullElements(explicitTypeParams));
       Contract.Requires(cce.NonNullElements(originalInTypes));
       Contract.Requires(originalResultType != null);
-      Contract.Requires(originalInTypes.Count + explicitTypeParams.Count == fun.InParams.Length);
+      Contract.Requires(originalInTypes.Count + explicitTypeParams.Count == fun.InParams.Count);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
 
       if (CommandLineOptions.Clo.TypeEncodingMethod == CommandLineOptions.TypeEncoding.None) {
@@ -764,9 +764,9 @@ namespace Microsoft.Boogie.TypeErasure
       Contract.Requires(cce.NonNullElements(originalInTypes));
       Contract.Requires(cce.NonNullElements(explicitTypeParamsSelect));
       Contract.Ensures(Contract.Result<VCExpr>() != null);
-      int arity = store.InParams.Length - 2;
+      int arity = store.InParams.Count - 2;
       List<VCExprVar/*!*/> inParams = new List<VCExprVar/*!*/>();
-      List<VCExprVar/*!*/> quantifiedVars = new List<VCExprVar/*!*/>(store.InParams.Length);
+      List<VCExprVar/*!*/> quantifiedVars = new List<VCExprVar/*!*/>(store.InParams.Count);
       VariableBindings bindings = new VariableBindings();
 
       // bound variable:  m
@@ -779,7 +779,7 @@ namespace Microsoft.Boogie.TypeErasure
       // bound variables:  indexes
       List<Type/*!*/> origIndexTypes = new List<Type/*!*/>(arity);
       List<Type/*!*/> indexTypes = new List<Type/*!*/>(arity);
-      for (int i = 1; i < store.InParams.Length - 1; i++) {
+      for (int i = 1; i < store.InParams.Count - 1; i++) {
         origIndexTypes.Add(originalInTypes[i]);
         indexTypes.Add(cce.NonNull(store.InParams[i]).TypedIdent.Type);
       }
@@ -856,10 +856,10 @@ namespace Microsoft.Boogie.TypeErasure
       Contract.Requires(select != null);
       Contract.Requires(cce.NonNullElements(explicitSelectParams));
       Contract.Ensures(Contract.Result<VCExpr>() != null);
-      int arity = store.InParams.Length - 2;
+      int arity = store.InParams.Count - 2;
 
       List<Type/*!*/> indexTypes = new List<Type/*!*/>();
-      for (int i = 1; i < store.InParams.Length - 1; i++) {
+      for (int i = 1; i < store.InParams.Count - 1; i++) {
         indexTypes.Add(cce.NonNull(store.InParams[i]).TypedIdent.Type);
       }
       Contract.Assert(indexTypes.Count == arity);
@@ -1279,7 +1279,7 @@ namespace Microsoft.Boogie.TypeErasure
       List<int>/*!*/ explicitTypeParams =
         AxBuilderPremisses.MapTypeAbstracterPremisses
                           .ExplicitSelectTypeParams(mapType);
-      Contract.Assert(select.InParams.Length == explicitTypeParams.Count + node.Arity);
+      Contract.Assert(select.InParams.Count == explicitTypeParams.Count + node.Arity);
 
       List<Type/*!*/>/*!*/ typeArgs = new List<Type/*!*/>(explicitTypeParams.Count);
       foreach (int i in explicitTypeParams)
@@ -1309,7 +1309,7 @@ namespace Microsoft.Boogie.TypeErasure
       Function/*!*/ oriFun = ((VCExprBoogieFunctionOp)node.Op).Func;
       Contract.Assert(oriFun != null);
       UntypedFunction untypedFun = AxBuilderPremisses.Typed2Untyped(oriFun);
-      Contract.Assert(untypedFun.Fun.InParams.Length ==
+      Contract.Assert(untypedFun.Fun.InParams.Count ==
              untypedFun.ExplicitTypeParams.Count + node.Arity);
 
       List<Type/*!*/>/*!*/ typeArgs =

@@ -643,7 +643,7 @@ namespace Microsoft.Boogie
                 var proc = decl as Procedure;
                 if (proc == null) continue;
                 if (!proc.Name.StartsWith(recordProcName)) continue;
-                Contract.Assert(proc.InParams.Length == 1);
+                Contract.Assert(proc.InParams.Count == 1);
 
                 // Make a new function
                 TypedIdent ti = new TypedIdent(Token.NoToken, "", Microsoft.Boogie.Type.Bool);

@@ -104,15 +104,15 @@ namespace Microsoft.Boogie.TypeErasure {
       Contract.Ensures(Contract.Result<Function>() != null);
       Function res;
       if (!Typed2UntypedFunctions.TryGetValue(fun, out res)) {
-        Contract.Assert(fun.OutParams.Length == 1);
+        Contract.Assert(fun.OutParams.Count == 1);
 
         // if all of the parameters are int or bool, the function does
         // not have to be changed
-        if (Contract.ForAll(0, fun.InParams.Length, f => UnchangedType(cce.NonNull(fun.InParams[f]).TypedIdent.Type)) &&
+        if (Contract.ForAll(0, fun.InParams.Count, f => UnchangedType(cce.NonNull(fun.InParams[f]).TypedIdent.Type)) &&
             UnchangedType(cce.NonNull(fun.OutParams[0]).TypedIdent.Type)) {
           res = fun;
         } else {
-          Type[]/*!*/ types = new Type[fun.TypeParameters.Count + fun.InParams.Length + 1];
+          Type[]/*!*/ types = new Type[fun.TypeParameters.Count + fun.InParams.Count + 1];
 
           int i = 0;
           // the first arguments are the explicit type parameters
@@ -285,13 +285,13 @@ Contract.Ensures(Contract.ValueAtReturn(out store) != null);
       Contract.Requires(store != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
 
-      int arity = select.InParams.Length - 1 - mapTypeParamNum - mapAbstractionVarNum;
+      int arity = select.InParams.Count - 1 - mapTypeParamNum - mapAbstractionVarNum;
       List<VCExprVar/*!*/>/*!*/ types =
         HelperFuns.VarVector("t", mapTypeParamNum + mapAbstractionVarNum,
                              AxBuilder.T, Gen);
 
       List<Type/*!*/> indexTypes = new List<Type/*!*/>();
-      for (int i = mapTypeParamNum + mapAbstractionVarNum + 1; i < select.InParams.Length; i++) {
+      for (int i = mapTypeParamNum + mapAbstractionVarNum + 1; i < select.InParams.Count; i++) {
         indexTypes.Add(cce.NonNull(select.InParams[i]).TypedIdent.Type);
       }
       Contract.Assert(arity == indexTypes.Count);
@@ -330,7 +330,7 @@ Contract.Ensures(Contract.ValueAtReturn(out store) != null);
       Contract.Requires(store != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
 
-      int arity = select.InParams.Length - 1 - mapTypeParamNum - mapAbstractionVarNum;
+      int arity = select.InParams.Count - 1 - mapTypeParamNum - mapAbstractionVarNum;
 
       List<VCExprVar/*!*/>/*!*/ freeTypeVars =
         HelperFuns.VarVector("u", mapAbstractionVarNum, AxBuilder.T, Gen);
@@ -346,7 +346,7 @@ Contract.Ensures(Contract.ValueAtReturn(out store) != null);
       types1.AddRange(freeTypeVars);
 
       List<Type/*!*/> indexTypes = new List<Type/*!*/>();
-      for (int i = mapTypeParamNum + mapAbstractionVarNum + 1; i < select.InParams.Length; i++) {
+      for (int i = mapTypeParamNum + mapAbstractionVarNum + 1; i < select.InParams.Count; i++) {
         indexTypes.Add(cce.NonNull(select.InParams[i]).TypedIdent.Type);
       }
       Contract.Assert(arity == indexTypes.Count);
@@ -673,7 +673,7 @@ Contract.Ensures(Contract.Result<VCExpr>() != null);
         Contract.Assert(t != null);
         inferredTypeArgs.Add(t);}
 
-      Contract.Assert(untypedOp.InParams.Length == inferredTypeArgs.Count + node.Arity);
+      Contract.Assert(untypedOp.InParams.Count == inferredTypeArgs.Count + node.Arity);
       return new OpTypesPair (Gen.BoogieFunctionOp(untypedOp), inferredTypeArgs);
     }
 

@@ -265,7 +265,7 @@ namespace Microsoft.Boogie.Houdini {
     }
     private CmdSeq InlineRequiresForCallCmd(CallCmd node) {
       Dictionary<Variable, Expr> substMap = new Dictionary<Variable, Expr>();
-      for (int i = 0; i < node.Proc.InParams.Length; i++) {
+      for (int i = 0; i < node.Proc.InParams.Count; i++) {
         substMap.Add(node.Proc.InParams[i], node.Ins[i]);
       }
       Substitution substitution = Substituter.SubstitutionFromHashtable(substMap);

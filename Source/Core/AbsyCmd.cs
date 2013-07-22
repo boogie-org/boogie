@@ -1902,20 +1902,20 @@ namespace Microsoft.Boogie {
       // (a similar check is in CheckArgumentTypes, but we are not
       // able to call this method because it cannot cope with Ins/Outs
       // that are null)
-      if (Ins.Count != Proc.InParams.Length) {
+      if (Ins.Count != Proc.InParams.Count) {
         rc.Error(this.tok,
                  "wrong number of arguments in call to {0}: {1}",
                  callee, Ins.Count);
         return;
       }
-      if (Outs.Count != Proc.OutParams.Length) {
+      if (Outs.Count != Proc.OutParams.Count) {
         rc.Error(this.tok,
                  "wrong number of result variables in call to {0}: {1}",
                  callee, Outs.Count);
         return;
       }
       if (IsAsync) {
-        if (Proc.OutParams.Length > 0) {
+        if (Proc.OutParams.Count > 0) {
           rc.Error(this.tok, "a procedure called asynchronously can have no output parameters");
           return;
         }
@@ -2060,7 +2060,7 @@ namespace Microsoft.Boogie {
       VariableSeq/*!*/ cins = new VariableSeq();
       VariableSeq wildcardVars = new VariableSeq();
       Contract.Assume(this.Proc != null);
-      for (int i = 0; i < this.Proc.InParams.Length; ++i) {
+      for (int i = 0; i < this.Proc.InParams.Count; ++i) {
         Variable/*!*/ param = cce.NonNull(this.Proc.InParams[i]);
         bool isWildcard = this.Ins[i] == null;
 
@@ -2105,7 +2105,7 @@ namespace Microsoft.Boogie {
 
       #region assert (exists wildcardVars :: Pre[ins := cins])
       Substitution s = Substituter.SubstitutionFromHashtable(substMapBound);
-      bool hasWildcard = (wildcardVars.Length != 0);
+      bool hasWildcard = (wildcardVars.Count != 0);
       Expr preConjunction = null;
       for (int i = 0; i < this.Proc.Requires.Count; i++) {
         Requires/*!*/ req = cce.NonNull(this.Proc.Requires[i]);
@@ -2176,7 +2176,7 @@ namespace Microsoft.Boogie {
       #endregion
       #region Create couts
       VariableSeq/*!*/ couts = new VariableSeq();
-      for (int i = 0; i < this.Proc.OutParams.Length; ++i) {
+      for (int i = 0; i < this.Proc.OutParams.Count; ++i) {
         Variable/*!*/ param = cce.NonNull(this.Proc.OutParams[i]);
         bool isWildcard = this.Outs[i] == null;
 

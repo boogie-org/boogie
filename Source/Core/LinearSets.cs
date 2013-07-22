@@ -62,7 +62,7 @@ namespace Microsoft.Boogie
         public override Implementation VisitImplementation(Implementation node)
         {
             HashSet<Variable> start = new HashSet<Variable>();
-            for (int i = 0; i < node.InParams.Length; i++)
+            for (int i = 0; i < node.InParams.Count; i++)
             {
                 string domainName = FindDomainName(node.Proc.InParams[i]);
                 if (domainName != null)
@@ -71,7 +71,7 @@ namespace Microsoft.Boogie
                     start.Add(node.InParams[i]);
                 }
             }
-            for (int i = 0; i < node.OutParams.Length; i++)
+            for (int i = 0; i < node.OutParams.Count; i++)
             {
                 string domainName = FindDomainName(node.Proc.OutParams[i]);
                 if (domainName != null)
@@ -296,7 +296,7 @@ namespace Microsoft.Boogie
         public override Cmd VisitCallCmd(CallCmd node)
         {
             HashSet<Variable> inVars = new HashSet<Variable>();
-            for (int i = 0; i < node.Proc.InParams.Length; i++)
+            for (int i = 0; i < node.Proc.InParams.Count; i++)
             {
                 Variable formal = node.Proc.InParams[i];
                 string domainName = FindDomainName(formal);
@@ -331,7 +331,7 @@ namespace Microsoft.Boogie
                 inVars.Add(actual.Decl);
                 parallelCallInvars.Add(actual.Decl);
             }
-            for (int i = 0; i < node.Proc.OutParams.Length; i++)
+            for (int i = 0; i < node.Proc.OutParams.Count; i++)
             {
                 IdentifierExpr actual = node.Outs[i];
                 string actualDomainName = FindDomainName(actual.Decl);

@@ -209,7 +209,7 @@ void ObjectInvariant()
             string printedName = Namer.GetQuotedName(f, f.Name);
             Contract.Assert(printedName != null);
 
-            Contract.Assert(f.OutParams.Length == 1);
+            Contract.Assert(f.OutParams.Count == 1);
             var argTypes = f.InParams.Cast<Variable>().MapConcat(p => TypeToStringReg(p.TypedIdent.Type), " ");
             string decl;
             if(RegisteredRelations.Contains(op.Func))
