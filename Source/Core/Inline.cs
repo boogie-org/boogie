@@ -220,8 +220,8 @@ namespace Microsoft.Boogie {
       
       foreach (Block block in blocks) {
         TransferCmd/*!*/ transferCmd = cce.NonNull(block.TransferCmd);
-        CmdSeq cmds = block.Cmds;
-        CmdSeq newCmds = new CmdSeq();
+        List<Cmd> cmds = block.Cmds;
+        List<Cmd> newCmds = new List<Cmd>();
         Block newBlock;
         string label = block.Label;
         int lblCount = 0;
@@ -296,7 +296,7 @@ namespace Microsoft.Boogie {
               newBlocks.AddRange(inlinedBlocks);
 
               lblCount = nextlblCount;
-              newCmds = new CmdSeq();
+              newCmds = new List<Cmd>();
             } else if (inline == 0) {
               inlinedSomething = true;
               if (CommandLineOptions.Clo.ProcedureInlining == CommandLineOptions.Inlining.Assert) {
@@ -413,8 +413,8 @@ namespace Microsoft.Boogie {
       }
     }
 
-    private CmdSeq RemoveAsserts(CmdSeq cmds) {
-      CmdSeq newCmdSeq = new CmdSeq();
+    private List<Cmd> RemoveAsserts(List<Cmd> cmds) {
+      List<Cmd> newCmdSeq = new List<Cmd>();
       for (int i = 0; i < cmds.Count; i++) {
         Cmd cmd = cmds[i];
         if (cmd is AssertCmd) continue;
@@ -442,7 +442,7 @@ namespace Microsoft.Boogie {
       List<Block/*!*/>/*!*/ inlinedBlocks = new List<Block/*!*/>();
 
       // create in block
-      CmdSeq inCmds = new CmdSeq();
+      List<Cmd> inCmds = new List<Cmd>();
 
       // assign in parameters
       for (int i = 0; i < impl.InParams.Count; ++i) {
@@ -516,7 +516,7 @@ namespace Microsoft.Boogie {
       // inject the blocks of the implementation
       Block intBlock;
       foreach (Block block in implBlocks) {
-        CmdSeq copyCmds = codeCopier.CopyCmdSeq(block.Cmds);
+        List<Cmd> copyCmds = codeCopier.CopyCmdSeq(block.Cmds);
         if (0 <= inlineDepth) {
           copyCmds = RemoveAsserts(copyCmds);
         }
@@ -526,7 +526,7 @@ namespace Microsoft.Boogie {
       }
 
       // create out block
-      CmdSeq outCmds = new CmdSeq();
+      List<Cmd> outCmds = new List<Cmd>();
 
       // inject ensures
       for (int i = 0; i < proc.Ensures.Count; i++) {
@@ -603,10 +603,10 @@ namespace Microsoft.Boogie {
     public CodeCopier() {
     }
 
-    public CmdSeq CopyCmdSeq(CmdSeq cmds) {
+    public List<Cmd> CopyCmdSeq(List<Cmd> cmds) {
       Contract.Requires(cmds != null);
-      Contract.Ensures(Contract.Result<CmdSeq>() != null);
-      CmdSeq newCmds = new CmdSeq();
+      Contract.Ensures(Contract.Result<List<Cmd>>() != null);
+      List<Cmd> newCmds = new List<Cmd>();
       foreach (Cmd/*!*/ cmd in cmds) {
         Contract.Assert(cmd != null);
         newCmds.Add(CopyCmd(cmd));

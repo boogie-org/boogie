@@ -411,7 +411,7 @@ namespace Microsoft.Boogie.Houdini {
         #region Adapt candidate assertions to take account of stages
         foreach (var b in prog.TopLevelDeclarations.OfType<Implementation>().Select(Item => Item.Blocks).SelectMany(Item => Item))
         {
-            CmdSeq newCmds = new CmdSeq();
+            List<Cmd> newCmds = new List<Cmd>();
             foreach (var cmd in b.Cmds)
             {
                 var a = cmd as AssertCmd;

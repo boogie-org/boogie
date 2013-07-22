@@ -34,13 +34,13 @@ namespace Microsoft.Boogie {
     public readonly bool Anonymous;
 
     [Rep]
-    public CmdSeq/*!*/ simpleCmds;
+    public List<Cmd>/*!*/ simpleCmds;
     public StructuredCmd ec;
     public TransferCmd tc;
 
     public BigBlock successorBigBlock;  // null if successor is end of procedure body (or if field has not yet been initialized)
 
-    public BigBlock(IToken tok, string labelName, [Captured] CmdSeq simpleCmds, StructuredCmd ec, TransferCmd tc) {
+    public BigBlock(IToken tok, string labelName, [Captured] List<Cmd> simpleCmds, StructuredCmd ec, TransferCmd tc) {
       Contract.Requires(simpleCmds != null);
       Contract.Requires(tok != null);
       Contract.Requires(ec == null || tc == null);
@@ -75,7 +75,7 @@ namespace Microsoft.Boogie {
   public class StmtList {
     [Rep]
     public readonly List<BigBlock/*!*/>/*!*/ BigBlocks;
-    public CmdSeq PrefixCommands;
+    public List<Cmd> PrefixCommands;
     public readonly IToken/*!*/ EndCurly;
     public StmtList ParentContext;
     public BigBlock ParentBigBlock;
@@ -122,7 +122,7 @@ namespace Microsoft.Boogie {
     /// Note, to be conservative (that is, ignoring the possible optimization that this
     /// method enables), this method can do nothing and return false.
     /// </summary>
-    public bool PrefixFirstBlock([Captured] CmdSeq prefixCmds, ref string suggestedLabel) {
+    public bool PrefixFirstBlock([Captured] List<Cmd> prefixCmds, ref string suggestedLabel) {
       Contract.Requires(suggestedLabel != null);
       Contract.Requires(prefixCmds != null);
       Contract.Ensures(Contract.Result<bool>() || cce.Owner.None(prefixCmds));  // "prefixCmds" is captured only on success
@@ -162,7 +162,7 @@ namespace Microsoft.Boogie {
   public class StmtListBuilder {
     List<BigBlock/*!*/>/*!*/ bigBlocks = new List<BigBlock/*!*/>();
     string label;
-    CmdSeq simpleCmds;
+    List<Cmd> simpleCmds;
     [ContractInvariantMethod]
     void ObjectInvariant() {
       Contract.Invariant(cce.NonNullElements(bigBlocks));
@@ -175,7 +175,7 @@ namespace Microsoft.Boogie {
         // nothing to do
       } else {
         if (simpleCmds == null) {
-          simpleCmds = new CmdSeq();
+          simpleCmds = new List<Cmd>();
         }
         bigBlocks.Add(new BigBlock(Token.NoToken, label, simpleCmds, scmd, tcmd));
         label = null;
@@ -192,7 +192,7 @@ namespace Microsoft.Boogie {
       Contract.Ensures(Contract.Result<StmtList>() != null);
       Dump(null, null);
       if (bigBlocks.Count == 0) {
-        simpleCmds = new CmdSeq();  // the StmtList constructor doesn't like an empty list of BigBlock's
+        simpleCmds = new List<Cmd>();  // the StmtList constructor doesn't like an empty list of BigBlock's
         Dump(null, null);
       }
       return new StmtList(bigBlocks, endCurlyBrace);
@@ -201,7 +201,7 @@ namespace Microsoft.Boogie {
     public void Add(Cmd cmd) {
       Contract.Requires(cmd != null);
       if (simpleCmds == null) {
-        simpleCmds = new CmdSeq();
+        simpleCmds = new List<Cmd>();
       }
       simpleCmds.Add(cmd);
     }
@@ -453,17 +453,17 @@ namespace Microsoft.Boogie {
     void CreateBlocks(StmtList stmtList, string runOffTheEndLabel) {
       Contract.Requires(stmtList != null);
       Contract.Requires(blocks != null);
-      CmdSeq cmdPrefixToApply = stmtList.PrefixCommands;
+      List<Cmd> cmdPrefixToApply = stmtList.PrefixCommands;
 
       int n = stmtList.BigBlocks.Count;
       foreach (BigBlock b in stmtList.BigBlocks) {
         n--;
         Contract.Assert(b.LabelName != null);
-        CmdSeq theSimpleCmds;
+        List<Cmd> theSimpleCmds;
         if (cmdPrefixToApply == null) {
           theSimpleCmds = b.simpleCmds;
         } else {
-          theSimpleCmds = new CmdSeq();
+          theSimpleCmds = new List<Cmd>();
           theSimpleCmds.AddRange(cmdPrefixToApply);
           theSimpleCmds.AddRange(b.simpleCmds);
           cmdPrefixToApply = null;  // now, we've used 'em up
@@ -499,8 +499,8 @@ namespace Microsoft.Boogie {
           string loopDoneLabel = prefix + anon + "_LoopDone";
           anon++;
 
-          CmdSeq ssBody = new CmdSeq();
-          CmdSeq ssDone = new CmdSeq();
+          List<Cmd> ssBody = new List<Cmd>();
+          List<Cmd> ssDone = new List<Cmd>();
           if (wcmd.Guard != null) {
             var ac = new AssumeCmd(wcmd.tok, wcmd.Guard);
             ac.Attributes = new QKeyValue(wcmd.tok, "partition", new List<object>(), null);
@@ -519,7 +519,7 @@ namespace Microsoft.Boogie {
           blocks.Add(block);
 
           // LoopHead: assert/assume loop_invariant; goto LoopDone, LoopBody;
-          CmdSeq ssHead = new CmdSeq();
+          List<Cmd> ssHead = new List<Cmd>();
           foreach (PredicateCmd inv in wcmd.Invariants) {
             ssHead.Add(inv);
           }
@@ -549,7 +549,7 @@ namespace Microsoft.Boogie {
         } else {
           IfCmd ifcmd = (IfCmd)b.ec;
           string predLabel = b.LabelName;
-          CmdSeq predCmds = theSimpleCmds;
+          List<Cmd> predCmds = theSimpleCmds;
 
           for (; ifcmd != null; ifcmd = ifcmd.elseIf) {
             string thenLabel = prefix + anon + "_Then";
@@ -558,8 +558,8 @@ namespace Microsoft.Boogie {
             Contract.Assert(elseLabel != null);
             anon++;
 
-            CmdSeq ssThen = new CmdSeq();
-            CmdSeq ssElse = new CmdSeq();
+            List<Cmd> ssThen = new List<Cmd>();
+            List<Cmd> ssElse = new List<Cmd>();
             if (ifcmd.Guard != null) {
               var ac = new AssumeCmd(ifcmd.tok, ifcmd.Guard);
               ac.Attributes = new QKeyValue(ifcmd.tok, "partition", new List<object>(), null);
@@ -605,7 +605,7 @@ namespace Microsoft.Boogie {
             } else if (ifcmd.elseIf != null) {
               // this is an "else if"
               predLabel = elseLabel;
-              predCmds = new CmdSeq();
+              predCmds = new List<Cmd>();
               if (ifcmd.Guard != null) {
                 var ac = new AssumeCmd(ifcmd.tok, Expr.Not(ifcmd.Guard));
                 ac.Attributes = new QKeyValue(ifcmd.tok, "partition", new List<object>(), null);
@@ -796,7 +796,7 @@ namespace Microsoft.Boogie {
     public string/*!*/ Label;  // Note, Label is mostly readonly, but it can change to the name of a nearby block during block coalescing and empty-block removal
     [Rep]
     [ElementsPeer]
-    public CmdSeq/*!*/ Cmds;
+    public List<Cmd>/*!*/ Cmds;
     [Rep]  //PM: needed to verify Traverse.Visit
     public TransferCmd TransferCmd; // maybe null only because we allow deferred initialization (necessary for cyclic structures)
 
@@ -837,11 +837,11 @@ namespace Microsoft.Boogie {
     }
 
     public Block()
-      : this(Token.NoToken, "", new CmdSeq(), new ReturnCmd(Token.NoToken)) {
+      : this(Token.NoToken, "", new List<Cmd>(), new ReturnCmd(Token.NoToken)) {
 
     }
 
-    public Block(IToken tok, string/*!*/ label, CmdSeq/*!*/ cmds, TransferCmd transferCmd)
+    public Block(IToken tok, string/*!*/ label, List<Cmd>/*!*/ cmds, TransferCmd transferCmd)
       : base(tok) {
       Contract.Requires(label != null);
       Contract.Requires(cmds != null);
@@ -1536,9 +1536,9 @@ namespace Microsoft.Boogie {
     }
 
     public /*readonly, except for the StandardVisitor*/ List<Variable>/*!*/ Locals;
-    public /*readonly, except for the StandardVisitor*/ CmdSeq/*!*/ Cmds;
+    public /*readonly, except for the StandardVisitor*/ List<Cmd>/*!*/ Cmds;
 
-    public StateCmd(IToken tok, List<Variable>/*!*/ locals, CmdSeq/*!*/ cmds)
+    public StateCmd(IToken tok, List<Variable>/*!*/ locals, List<Cmd>/*!*/ cmds)
       : base(tok) {
       Contract.Requires(locals != null);
       Contract.Requires(cmds != null);
@@ -2033,7 +2033,7 @@ namespace Microsoft.Boogie {
 
     protected override Cmd ComputeDesugaring() {
       Contract.Ensures(Contract.Result<Cmd>() != null);
-      CmdSeq newBlockBody = new CmdSeq();
+      List<Cmd> newBlockBody = new List<Cmd>();
       Dictionary<Variable, Expr> substMap = new Dictionary<Variable, Expr>();
       Dictionary<Variable, Expr> substMapOld = new Dictionary<Variable, Expr>();
       Dictionary<Variable, Expr> substMapBound = new Dictionary<Variable, Expr>();

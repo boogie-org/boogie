@@ -365,7 +365,7 @@ namespace Microsoft.Boogie
             return base.VisitCallCmd(node);
         }
 
-        private void AddDisjointnessExpr(CmdSeq newCmds, Absy absy, Dictionary<string, Variable> domainNameToInputVar)
+        private void AddDisjointnessExpr(List<Cmd> newCmds, Absy absy, Dictionary<string, Variable> domainNameToInputVar)
         {
             Dictionary<string, HashSet<Variable>> domainNameToScope = new Dictionary<string, HashSet<Variable>>();
             foreach (var domainName in linearDomains.Keys)
@@ -412,7 +412,7 @@ namespace Microsoft.Boogie
 
                 foreach (Block b in impl.Blocks)
                 {
-                    CmdSeq newCmds = new CmdSeq();
+                    List<Cmd> newCmds = new List<Cmd>();
                     for (int i = 0; i < b.Cmds.Count; i++)
                     {
                         Cmd cmd = b.Cmds[i];
@@ -478,7 +478,7 @@ namespace Microsoft.Boogie
                     {
                         foreach (Block header in g.Headers)
                         {
-                            CmdSeq newCmds = new CmdSeq();
+                            List<Cmd> newCmds = new List<Cmd>();
                             AddDisjointnessExpr(newCmds, header, domainNameToInputVar);
                             newCmds.AddRange(header.Cmds);
                             header.Cmds = newCmds;

@@ -72,7 +72,7 @@ public class SmartBlockPredicator {
     }
   }
 
-  void PredicateCmd(Expr p, CmdSeq cmdSeq, Cmd cmd) {
+  void PredicateCmd(Expr p, List<Cmd> cmdSeq, Cmd cmd) {
     if (cmd is CallCmd) {
       var cCmd = (CallCmd)cmd;
       Debug.Assert(useProcedurePredicates(cCmd.Proc));
@@ -125,7 +125,7 @@ public class SmartBlockPredicator {
       // skip
     } else if (cmd is StateCmd) {
       var sCmd = (StateCmd)cmd;
-      var newCmdSeq = new CmdSeq();
+      var newCmdSeq = new List<Cmd>();
       foreach (Cmd c in sCmd.Cmds)
         PredicateCmd(p, newCmdSeq, c);
       sCmd.Cmds = newCmdSeq;
@@ -137,7 +137,7 @@ public class SmartBlockPredicator {
 
   // hasPredicatedRegion is true iff the block or its targets are predicated
   // (i.e. we enter, stay within or exit a predicated region).
-  void PredicateTransferCmd(Expr p, Block src, CmdSeq cmdSeq, TransferCmd cmd, out bool hasPredicatedRegion) {
+  void PredicateTransferCmd(Expr p, Block src, List<Cmd> cmdSeq, TransferCmd cmd, out bool hasPredicatedRegion) {
     hasPredicatedRegion = predMap.ContainsKey(src);
 
     if (cmd is GotoCmd) {
@@ -347,7 +347,7 @@ public class SmartBlockPredicator {
       if (parts.Count() > 0) {
         pred = parts.Select(a => ((AssumeCmd)a).Expr).Aggregate(Expr.And);
         block.Cmds =
-          new CmdSeq(block.Cmds.Cast<Cmd>().Skip(parts.Count()).ToArray());
+          new List<Cmd>(block.Cmds.Cast<Cmd>().Skip(parts.Count()).ToArray());
       } else {
         continue;
       }
@@ -386,8 +386,8 @@ public class SmartBlockPredicator {
           newBlocks.Add(backedgeBlock);
 
           backedgeBlock.Label = n.Item1.Label + ".backedge";
-          backedgeBlock.Cmds = new CmdSeq(new AssumeCmd(Token.NoToken, pExpr,
-            new QKeyValue(Token.NoToken, "backedge", new List<object>(), null)));
+          backedgeBlock.Cmds = new List<Cmd> { new AssumeCmd(Token.NoToken, pExpr,
+            new QKeyValue(Token.NoToken, "backedge", new List<object>(), null)) };
           backedgeBlock.TransferCmd = new GotoCmd(Token.NoToken,
                                                   new BlockSeq(n.Item1));
 
@@ -395,8 +395,8 @@ public class SmartBlockPredicator {
           newBlocks.Add(tailBlock);
 
           tailBlock.Label = n.Item1.Label + ".tail";
-          tailBlock.Cmds = new CmdSeq(new AssumeCmd(Token.NoToken,
-                                               Expr.Not(pExpr)));
+          tailBlock.Cmds = new List<Cmd> { new AssumeCmd(Token.NoToken,
+                                               Expr.Not(pExpr)) };
 
           if (uni != null && !uni.IsUniform(impl.Name, n.Item1)) {
             uni.AddNonUniform(impl.Name, backedgeBlock);
@@ -427,7 +427,7 @@ public class SmartBlockPredicator {
     var firstBlock = block;
 
     var oldCmdSeq = block.Cmds;
-    block.Cmds = new CmdSeq();
+    block.Cmds = new List<Cmd>();
     newBlocks.Add(block);
     if (prevBlock != null) {
       prevBlock.TransferCmd = new GotoCmd(Token.NoToken, new BlockSeq(block));

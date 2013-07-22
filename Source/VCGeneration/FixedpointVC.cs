@@ -242,7 +242,7 @@ namespace Microsoft.Boogie
 
             Expr invarExpr = new NAryExpr(Token.NoToken, new FunctionCall(function), exprs);
             var invarAssertion = new AssertCmd(Token.NoToken, invarExpr);
-            CmdSeq newCmds = new CmdSeq();
+            List<Cmd> newCmds = new List<Cmd>();
             newCmds.Add(invarAssertion);
 
             // make a record in annotationInfo;
@@ -1176,7 +1176,7 @@ namespace Microsoft.Boogie
                             }
                         }
 
-                        CmdSeq cmds = block.Cmds;
+                        List<Cmd> cmds = block.Cmds;
                         int len = cmds.Count;
                         for (int i = len - 1; i >= 0; i--)
                         {
@@ -1655,7 +1655,7 @@ namespace Microsoft.Boogie
             {
 
 
-                CmdSeq cmds = b.Cmds;
+                List<Cmd> cmds = b.Cmds;
                 TransferCmd transferCmd = cce.NonNull(b.TransferCmd);
                 for (int i = 0; i < cmds.Count; i++)
                 {

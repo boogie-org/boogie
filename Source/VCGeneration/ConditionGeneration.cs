@@ -690,10 +690,10 @@ namespace VC {
       return;
     }
 
-    private static void AddAsPrefix(Block b, CmdSeq cs) {
+    private static void AddAsPrefix(Block b, List<Cmd> cs) {
       Contract.Requires(b != null);
       Contract.Requires(cs != null);
-      CmdSeq newCommands = new CmdSeq();
+      List<Cmd> newCommands = new List<Cmd>();
       newCommands.AddRange(cs);
       newCommands.AddRange(b.Cmds);
       b.Cmds = newCommands;
@@ -707,7 +707,7 @@ namespace VC {
     /// </summary>
     /// <param name="impl"></param>
     /// <param name="startCmds"></param>
-    protected static void InjectPreconditions(Implementation impl, [Captured] CmdSeq startCmds) {
+    protected static void InjectPreconditions(Implementation impl, [Captured] List<Cmd> startCmds) {
       Contract.Requires(impl != null);
       Contract.Requires(startCmds != null);
       Contract.Requires(impl.Proc != null);
@@ -802,7 +802,7 @@ namespace VC {
             // Here goes:  First, create the new block, which will become the new insertion
             // point and which will serve as a target for the CodeExpr.  Steal the TransferCmd
             // from insertionPoint, since insertionPoint's TransferCmd will soon be replaced anyhow.
-            Block nextIP = new Block(new Token(-17, -4), LabelPrefix + k, new CmdSeq(), insertionPoint.TransferCmd);
+            Block nextIP = new Block(new Token(-17, -4), LabelPrefix + k, new List<Cmd>(), insertionPoint.TransferCmd);
             k++;
             // Second, append the CodeExpr blocks to the implementation's blocks
             ThreadInCodeExpr(impl, nextIP, be, true, debugWriter);
@@ -827,10 +827,10 @@ namespace VC {
     /// Get the pre-condition of an implementation, including the where clauses from the in-parameters.
     /// </summary>
     /// <param name="impl"></param>
-    protected static CmdSeq GetPre(Implementation impl) {
+    protected static List<Cmd> GetPre(Implementation impl) {
       Contract.Requires(impl != null);
       Contract.Requires(impl.Proc != null);
-      Contract.Ensures(Contract.Result<CmdSeq>() != null);
+      Contract.Ensures(Contract.Result<List<Cmd>>() != null);
 
 
       TokenTextWriter debugWriter = null;
@@ -840,7 +840,7 @@ namespace VC {
       }
 
       Substitution formalProcImplSubst = Substituter.SubstitutionFromHashtable(impl.GetImplFormalMap());
-      CmdSeq pre = new CmdSeq();
+      List<Cmd> pre = new List<Cmd>();
 
       // (free and checked) requires clauses
       foreach (Requires req in impl.Proc.Requires) {
@@ -867,19 +867,19 @@ namespace VC {
     /// Get the post-condition of an implementation.
     /// </summary>
     /// <param name="impl"></param>
-    protected static CmdSeq GetPost(Implementation impl) {
+    protected static List<Cmd> GetPost(Implementation impl) {
 
 
       Contract.Requires(impl != null);
       Contract.Requires(impl.Proc != null);
-      Contract.Ensures(Contract.Result<CmdSeq>() != null);
+      Contract.Ensures(Contract.Result<List<Cmd>>() != null);
       if (CommandLineOptions.Clo.PrintWithUniqueASTIds) {
         Console.WriteLine("Effective postcondition:");
       }
 
       // Construct an Expr for the post-condition
       Substitution formalProcImplSubst = Substituter.SubstitutionFromHashtable(impl.GetImplFormalMap());
-      CmdSeq post = new CmdSeq();
+      List<Cmd> post = new List<Cmd>();
       foreach (Ensures ens in impl.Proc.Ensures) {
         Contract.Assert(ens != null);
         if (!ens.Free) {
@@ -910,10 +910,10 @@ namespace VC {
     /// As a side effect, this method adds these where clauses to the out parameters.
     /// </summary>
     /// <param name="impl"></param>
-    protected static CmdSeq GetParamWhereClauses(Implementation impl) {
+    protected static List<Cmd> GetParamWhereClauses(Implementation impl) {
       Contract.Requires(impl != null);
       Contract.Requires(impl.Proc != null);
-      Contract.Ensures(Contract.Result<CmdSeq>() != null);
+      Contract.Ensures(Contract.Result<List<Cmd>>() != null);
       TokenTextWriter debugWriter = null;
       if (CommandLineOptions.Clo.PrintWithUniqueASTIds) {
         debugWriter = new TokenTextWriter("<console>", Console.Out, false);
@@ -921,7 +921,7 @@ namespace VC {
       }
 
       Substitution formalProcImplSubst = Substituter.SubstitutionFromHashtable(impl.GetImplFormalMap());
-      CmdSeq whereClauses = new CmdSeq();
+      List<Cmd> whereClauses = new List<Cmd>();
 
       // where clauses of in-parameters
       foreach (Formal f in impl.Proc.InParams) {
@@ -1104,7 +1104,7 @@ namespace VC {
         }
         if (returnBlocks > 1) {
           string unifiedExitLabel = "GeneratedUnifiedExit";
-          Block unifiedExit = new Block(new Token(-17, -4), unifiedExitLabel, new CmdSeq(), new ReturnCmd(Token.NoToken));
+          Block unifiedExit = new Block(new Token(-17, -4), unifiedExitLabel, new List<Cmd>(), new ReturnCmd(Token.NoToken));
           Contract.Assert(unifiedExit != null);
           foreach (Block b in impl.Blocks) {
             if (b.TransferCmd is ReturnCmd) {
@@ -1289,7 +1289,7 @@ namespace VC {
       Contract.Requires(oldFrameSubst != null);
       #region Walk forward over the commands in this block and convert them to passive commands
 
-      CmdSeq passiveCmds = new CmdSeq();
+      List<Cmd> passiveCmds = new List<Cmd>();
       foreach (Cmd c in b.Cmds) {
         Contract.Assert(c != null); // walk forward over the commands because the map gets modified in a forward direction
         TurnIntoPassiveCmd(c, incarnationMap, oldFrameSubst, passiveCmds, mvInfo);
@@ -1413,7 +1413,7 @@ namespace VC {
     /// Turn a command into a passive command, and it remembers the previous step, to see if it is a havoc or not. In the case, it remembers the incarnation map BEFORE the havoc
     /// Meanwhile, record any information needed to later reconstruct a model view.
     /// </summary>
-    protected void TurnIntoPassiveCmd(Cmd c, Dictionary<Variable, Expr> incarnationMap, Substitution oldFrameSubst, CmdSeq passiveCmds, ModelViewInfo mvInfo) {
+    protected void TurnIntoPassiveCmd(Cmd c, Dictionary<Variable, Expr> incarnationMap, Substitution oldFrameSubst, List<Cmd> passiveCmds, ModelViewInfo mvInfo) {
       Contract.Requires(c != null);
       Contract.Requires(incarnationMap != null);
       Contract.Requires(oldFrameSubst != null);
@@ -1627,7 +1627,7 @@ namespace VC {
       Block newBlock = new Block(
           new Token(-17, -4),
           newBlockLabel,
-          new CmdSeq(),
+          new List<Cmd>(),
           new GotoCmd(Token.NoToken, ls, bs)
           );
 

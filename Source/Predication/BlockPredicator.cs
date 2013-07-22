@@ -61,7 +61,7 @@ public class BlockPredicator {
     }
   }
 
-  void PredicateCmd(CmdSeq cmdSeq, Cmd cmd) {
+  void PredicateCmd(List<Cmd> cmdSeq, Cmd cmd) {
     if (cmd is AssignCmd) {
       var aCmd = (AssignCmd)cmd;
       cmdSeq.Add(new AssignCmd(Token.NoToken, aCmd.Lhss,
@@ -125,7 +125,7 @@ public class BlockPredicator {
     }
     else if (cmd is StateCmd) {
       var sCmd = (StateCmd)cmd;
-      var newCmdSeq = new CmdSeq();
+      var newCmdSeq = new List<Cmd>();
       foreach (Cmd c in sCmd.Cmds)
         PredicateCmd(newCmdSeq, c);
       sCmd.Cmds = newCmdSeq;
@@ -136,7 +136,7 @@ public class BlockPredicator {
     }
   }
 
-  void PredicateTransferCmd(CmdSeq cmdSeq, TransferCmd cmd) {
+  void PredicateTransferCmd(List<Cmd> cmdSeq, TransferCmd cmd) {
     if (cmd is GotoCmd) {
       var gCmd = (GotoCmd)cmd;
       var targets = new List<Expr>(
@@ -161,7 +161,7 @@ public class BlockPredicator {
                                          aCmd.Expr)));
               }
               b.Cmds =
-                new CmdSeq(b.Cmds.Cast<Cmd>().Skip(assumes.Count()).ToArray());
+                new List<Cmd>(b.Cmds.Cast<Cmd>().Skip(assumes.Count()).ToArray());
             }
           }
         }
@@ -201,9 +201,9 @@ public class BlockPredicator {
 
     Block entryBlock = new Block();
     entryBlock.Label = "entry";
-    entryBlock.Cmds = new CmdSeq(Cmd.SimpleAssign(Token.NoToken, cur,
+    entryBlock.Cmds = new List<Cmd> { Cmd.SimpleAssign(Token.NoToken, cur,
                         CreateIfFPThenElse(blockIds[sortedBlocks[0].Item1],
-                                           returnBlockId)));
+                                           returnBlockId)) };
     newBlocks.Add(entryBlock);
 
     var prevBlock = entryBlock;
@@ -213,9 +213,9 @@ public class BlockPredicator {
         newBlocks.Add(backedgeBlock);
 
         backedgeBlock.Label = n.Item1.Label + ".backedge";
-        backedgeBlock.Cmds = new CmdSeq(new AssumeCmd(Token.NoToken,
+        backedgeBlock.Cmds = new List<Cmd> { new AssumeCmd(Token.NoToken,
           Expr.Eq(cur, blockIds[n.Item1]),
-          new QKeyValue(Token.NoToken, "backedge", new List<object>(), null)));
+          new QKeyValue(Token.NoToken, "backedge", new List<object>(), null)) };
         backedgeBlock.TransferCmd = new GotoCmd(Token.NoToken,
                                                 new BlockSeq(n.Item1));
 
@@ -223,8 +223,8 @@ public class BlockPredicator {
         newBlocks.Add(tailBlock);
 
         tailBlock.Label = n.Item1.Label + ".tail";
-        tailBlock.Cmds = new CmdSeq(new AssumeCmd(Token.NoToken,
-                                             Expr.Neq(cur, blockIds[n.Item1])));
+        tailBlock.Cmds = new List<Cmd> { new AssumeCmd(Token.NoToken,
+                                             Expr.Neq(cur, blockIds[n.Item1])) };
 
         prevBlock.TransferCmd = new GotoCmd(Token.NoToken,
                                         new BlockSeq(backedgeBlock, tailBlock));
@@ -232,7 +232,7 @@ public class BlockPredicator {
       } else {
         var runBlock = n.Item1;
         var oldCmdSeq = runBlock.Cmds;
-        runBlock.Cmds = new CmdSeq();
+        runBlock.Cmds = new List<Cmd>();
         newBlocks.Add(runBlock);
         prevBlock.TransferCmd = new GotoCmd(Token.NoToken,
                                             new BlockSeq(runBlock));
@@ -267,13 +267,13 @@ public class BlockPredicator {
     }
   }
 
-  private void AddUniformCandidateInvariant(CmdSeq cs, Block header) {
+  private void AddUniformCandidateInvariant(List<Cmd> cs, Block header) {
     cs.Add(prog.CreateCandidateInvariant(Expr.Eq(cur,
                CreateIfFPThenElse(blockIds[header], returnBlockId)),
              "uniform loop"));
   }
 
-  private void AddNonUniformCandidateInvariant(CmdSeq cs, Block header) {
+  private void AddNonUniformCandidateInvariant(List<Cmd> cs, Block header) {
     var loopNodes = new HashSet<Block>();
     foreach (var b in blockGraph.BackEdgeNodes(header))
       loopNodes.UnionWith(blockGraph.NaturalLoops(header, b));

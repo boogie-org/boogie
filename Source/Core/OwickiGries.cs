@@ -180,7 +180,7 @@ namespace Microsoft.Boogie
             yieldProc.AddAttribute("inline", new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1)));
         }
 
-        private void AddCallToYieldProc(CmdSeq newCmds, Dictionary<Variable, Variable> ogOldGlobalMap, Dictionary<string, Variable> domainNameToLocalVar)
+        private void AddCallToYieldProc(List<Cmd> newCmds, Dictionary<Variable, Variable> ogOldGlobalMap, Dictionary<string, Variable> domainNameToLocalVar)
         {
             ExprSeq exprSeq = new ExprSeq();
             foreach (string domainName in linearTypechecker.linearDomains.Keys)
@@ -213,7 +213,7 @@ namespace Microsoft.Boogie
             return domainNameToExpr;
         }
 
-        private void AddUpdatesToOldGlobalVars(CmdSeq newCmds, Dictionary<Variable, Variable> ogOldGlobalMap, Dictionary<string, Variable> domainNameToLocalVar, Dictionary<string, Expr> domainNameToExpr)
+        private void AddUpdatesToOldGlobalVars(List<Cmd> newCmds, Dictionary<Variable, Variable> ogOldGlobalMap, Dictionary<string, Variable> domainNameToLocalVar, Dictionary<string, Expr> domainNameToExpr)
         {
             List<AssignLhs> lhss = new List<AssignLhs>();
             List<Expr> rhss = new List<Expr>();
@@ -233,7 +233,7 @@ namespace Microsoft.Boogie
             }
         }
 
-        private void DesugarYield(YieldCmd yieldCmd, CmdSeq cmds, CmdSeq newCmds, Dictionary<Variable, Variable> ogOldGlobalMap, Dictionary<string, Variable> domainNameToInputVar, Dictionary<string, Variable> domainNameToLocalVar)
+        private void DesugarYield(YieldCmd yieldCmd, List<Cmd> cmds, List<Cmd> newCmds, Dictionary<Variable, Variable> ogOldGlobalMap, Dictionary<string, Variable> domainNameToInputVar, Dictionary<string, Variable> domainNameToLocalVar)
         {
             AddCallToYieldProc(newCmds, ogOldGlobalMap, domainNameToLocalVar);
 
@@ -317,7 +317,7 @@ namespace Microsoft.Boogie
             return proc;
         }
 
-        private void CreateYieldCheckerImpl(DeclWithFormals decl, List<CmdSeq> yields, Dictionary<Variable, Expr> map)
+        private void CreateYieldCheckerImpl(DeclWithFormals decl, List<List<Cmd>> yields, Dictionary<Variable, Expr> map)
         {
             if (yields.Count == 0) return;
 
@@ -373,15 +373,15 @@ namespace Microsoft.Boogie
             List<Block> yieldCheckerBlocks = new List<Block>();
             StringSeq labels = new StringSeq();
             BlockSeq labelTargets = new BlockSeq();
-            Block yieldCheckerBlock = new Block(Token.NoToken, "exit", new CmdSeq(), new ReturnCmd(Token.NoToken));
+            Block yieldCheckerBlock = new Block(Token.NoToken, "exit", new List<Cmd>(), new ReturnCmd(Token.NoToken));
             labels.Add(yieldCheckerBlock.Label);
             labelTargets.Add(yieldCheckerBlock);
             yieldCheckerBlocks.Add(yieldCheckerBlock);
             int yieldCount = 0;
-            foreach (CmdSeq cs in yields)
+            foreach (List<Cmd> cs in yields)
             {
                 var linearDomains = linearTypechecker.linearDomains;
-                CmdSeq newCmds = new CmdSeq();
+                List<Cmd> newCmds = new List<Cmd>();
                 foreach (Cmd cmd in cs)
                 {
                     PredicateCmd predCmd = (PredicateCmd)cmd;
@@ -402,7 +402,7 @@ namespace Microsoft.Boogie
                 labelTargets.Add(yieldCheckerBlock);
                 yieldCheckerBlocks.Add(yieldCheckerBlock);
             }
-            yieldCheckerBlocks.Insert(0, new Block(Token.NoToken, "enter", new CmdSeq(), new GotoCmd(Token.NoToken, labels, labelTargets)));
+            yieldCheckerBlocks.Insert(0, new Block(Token.NoToken, "enter", new List<Cmd>(), new GotoCmd(Token.NoToken, labels, labelTargets)));
 
             // Create the yield checker procedure
             var yieldCheckerName = string.Format("{0}_YieldChecker_{1}", decl is Procedure ? "Proc" : "Impl", decl.Name);
@@ -452,12 +452,12 @@ namespace Microsoft.Boogie
             }
 
             // Collect the yield predicates and desugar yields
-            List<CmdSeq> yields = new List<CmdSeq>();
-            CmdSeq cmds = new CmdSeq();
+            List<List<Cmd>> yields = new List<List<Cmd>>();
+            List<Cmd> cmds = new List<Cmd>();
             foreach (Block b in impl.Blocks)
             {
                 YieldCmd yieldCmd = null;
-                CmdSeq newCmds = new CmdSeq();
+                List<Cmd> newCmds = new List<Cmd>();
                 for (int i = 0; i < b.Cmds.Count; i++)
                 {
                     Cmd cmd = b.Cmds[i];
@@ -475,7 +475,7 @@ namespace Microsoft.Boogie
                             if (cmds.Count > 0)
                             {
                                 yields.Add(cmds);
-                                cmds = new CmdSeq();
+                                cmds = new List<Cmd>();
                             }
                             yieldCmd = null;
                         }
@@ -538,7 +538,7 @@ namespace Microsoft.Boogie
                     if (cmds.Count > 0)
                     {
                         yields.Add(cmds);
-                        cmds = new CmdSeq();
+                        cmds = new List<Cmd>();
                     }
                 }
                 if (b.TransferCmd is ReturnCmd && (!info.isAtomic || info.isEntrypoint || info.isThreadStart))
@@ -565,7 +565,7 @@ namespace Microsoft.Boogie
                             AddCallToYieldProc(pred.Cmds, ogOldGlobalMap, domainNameToLocalVar);
                             AddUpdatesToOldGlobalVars(pred.Cmds, ogOldGlobalMap, domainNameToLocalVar, domainNameToExpr);
                         }
-                        CmdSeq newCmds = new CmdSeq();
+                        List<Cmd> newCmds = new List<Cmd>();
                         foreach (string domainName in linearTypechecker.linearDomains.Keys)
                         {
                             newCmds.Add(new AssumeCmd(Token.NoToken, Expr.Binary(BinaryOperator.Opcode.Eq, Expr.Ident(domainNameToLocalVar[domainName]), domainNameToExpr[domainName])));
@@ -611,7 +611,7 @@ namespace Microsoft.Boogie
                 } 
                 if (lhss.Count > 0)
                 {
-                    Block initBlock = new Block(Token.NoToken, "og_init", new CmdSeq(new AssignCmd(Token.NoToken, lhss, rhss)), new GotoCmd(Token.NoToken, new StringSeq(impl.Blocks[0].Label), new BlockSeq(impl.Blocks[0])));
+                    Block initBlock = new Block(Token.NoToken, "og_init", new List<Cmd> { new AssignCmd(Token.NoToken, lhss, rhss) }, new GotoCmd(Token.NoToken, new StringSeq(impl.Blocks[0].Label), new BlockSeq(impl.Blocks[0])));
                     impl.Blocks.Insert(0, initBlock);
                 }
             }
@@ -637,8 +637,8 @@ namespace Microsoft.Boogie
             }
 
             // Collect the yield predicates and desugar yields
-            List<CmdSeq> yields = new List<CmdSeq>();
-            CmdSeq cmds = new CmdSeq();
+            List<List<Cmd>> yields = new List<List<Cmd>>();
+            List<Cmd> cmds = new List<Cmd>();
             if (proc.Requires.Count > 0)
             {
                 Dictionary<string, HashSet<Variable>> domainNameToScope = new Dictionary<string, HashSet<Variable>>();
@@ -676,7 +676,7 @@ namespace Microsoft.Boogie
                     }
                 }
                 yields.Add(cmds);
-                cmds = new CmdSeq();
+                cmds = new List<Cmd>();
             }
             if (info.inParallelCall && proc.Ensures.Count > 0)
             {
@@ -715,7 +715,7 @@ namespace Microsoft.Boogie
                     }
                 }
                 yields.Add(cmds);
-                cmds = new CmdSeq();
+                cmds = new List<Cmd>();
             }
             CreateYieldCheckerImpl(proc, yields, new Dictionary<Variable, Expr>());
         }
@@ -752,14 +752,14 @@ namespace Microsoft.Boogie
                     CallCmd callCmd = new CallCmd(Token.NoToken, proc.Name, exprSeq, new List<IdentifierExpr>());
                     callCmd.Proc = proc;
                     string label = string.Format("L_{0}", labelCount++);
-                    Block block = new Block(Token.NoToken, label, new CmdSeq(callCmd), new ReturnCmd(Token.NoToken));
+                    Block block = new Block(Token.NoToken, label, new List<Cmd> { callCmd }, new ReturnCmd(Token.NoToken));
                     labelTargets.Add(label);
                     blockTargets.Add(block);
                     blocks.Add(block);
                 }
                 transferCmd = new GotoCmd(Token.NoToken, labelTargets, blockTargets);
             }
-            blocks.Insert(0, new Block(Token.NoToken, "enter", new CmdSeq(), transferCmd));
+            blocks.Insert(0, new Block(Token.NoToken, "enter", new List<Cmd>(), transferCmd));
             
             var yieldImpl = new Implementation(Token.NoToken, yieldProc.Name, new TypeVariableSeq(), inputs, new List<Variable>(), new List<Variable>(), blocks);
             yieldImpl.Proc = yieldProc;

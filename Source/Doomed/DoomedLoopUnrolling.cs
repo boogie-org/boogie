@@ -88,7 +88,7 @@ namespace VC
 
         private void m_AddHavocCmdToFront(Block b, HavocCmd hcmd)
         {
-            CmdSeq cs = new CmdSeq();
+            List<Cmd> cs = new List<Cmd>();
             cs.Add(hcmd); cs.AddRange(b.Cmds);
             b.Cmds = cs;
         }
@@ -357,7 +357,7 @@ namespace VC
 
         public GraphNode CloneGraphNode(GraphNode gn, string prefix)
         {
-            CmdSeq cmds = new CmdSeq(gn.Label.Cmds);
+            List<Cmd> cmds = new List<Cmd>(gn.Label.Cmds);
 
             Block b = new Block(gn.Label.tok, prefix+gn.Label.Label, cmds, gn.Label.TransferCmd);
             GraphNode clone = new GraphNode(b);

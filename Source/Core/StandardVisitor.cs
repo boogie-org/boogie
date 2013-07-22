@@ -168,9 +168,9 @@ namespace Microsoft.Boogie {
           node.Outs[i] = (IdentifierExpr)this.VisitIdentifierExpr(cce.NonNull(node.Outs[i]));
       return node;
     }
-    public virtual CmdSeq VisitCmdSeq(CmdSeq cmdSeq) {
+    public virtual List<Cmd> VisitCmdSeq(List<Cmd> cmdSeq) {
       Contract.Requires(cmdSeq != null);
-      Contract.Ensures(Contract.Result<CmdSeq>() != null);
+      Contract.Ensures(Contract.Result<List<Cmd>>() != null);
       for (int i = 0, n = cmdSeq.Count; i < n; i++)
         cmdSeq[i] = (Cmd)this.Visit(cce.NonNull(cmdSeq[i])); // call general Visit so subtypes of Cmd get visited by their particular visitor
       return cmdSeq;

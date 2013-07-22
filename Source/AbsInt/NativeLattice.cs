@@ -242,7 +242,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
       foreach (var b in impl.Blocks) {
         var element = pre[b.aiId];
         if (element != null && (b.widenBlock || CommandLineOptions.Clo.InstrumentInfer == CommandLineOptions.InstrumentationPlaces.Everywhere)) {
-          CmdSeq newCommands = new CmdSeq();
+          List<Cmd> newCommands = new List<Cmd>();
           Expr inv = element.ToExpr();
           PredicateCmd cmd;
           var kv = new QKeyValue(Token.NoToken, "inferred", new List<object>(), null);

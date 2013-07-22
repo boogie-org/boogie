@@ -247,10 +247,10 @@ namespace Microsoft.Boogie.Houdini {
   }
 
   public class InlineRequiresVisitor : StandardVisitor {
-    public override CmdSeq VisitCmdSeq(CmdSeq cmdSeq) {
+    public override List<Cmd> VisitCmdSeq(List<Cmd> cmdSeq) {
       Contract.Requires(cmdSeq != null);
-      Contract.Ensures(Contract.Result<CmdSeq>() != null);
-      CmdSeq newCmdSeq = new CmdSeq();
+      Contract.Ensures(Contract.Result<List<Cmd>>() != null);
+      List<Cmd> newCmdSeq = new List<Cmd>();
       for (int i = 0, n = cmdSeq.Count; i < n; i++) {
         Cmd cmd = cmdSeq[i];
         CallCmd callCmd = cmd as CallCmd;
@@ -263,13 +263,13 @@ namespace Microsoft.Boogie.Houdini {
       }
       return newCmdSeq;
     }
-    private CmdSeq InlineRequiresForCallCmd(CallCmd node) {
+    private List<Cmd> InlineRequiresForCallCmd(CallCmd node) {
       Dictionary<Variable, Expr> substMap = new Dictionary<Variable, Expr>();
       for (int i = 0; i < node.Proc.InParams.Count; i++) {
         substMap.Add(node.Proc.InParams[i], node.Ins[i]);
       }
       Substitution substitution = Substituter.SubstitutionFromHashtable(substMap);
-      CmdSeq cmds = new CmdSeq();
+      List<Cmd> cmds = new List<Cmd>();
       foreach (Requires requires in node.Proc.Requires) {
         if (requires.Free) continue;
         Requires requiresCopy = new Requires(false, Substituter.Apply(substitution, requires.Condition));
@@ -1142,7 +1142,7 @@ namespace Microsoft.Boogie.Houdini {
       // Treat all assertions
       // TODO: do we need to also consider assumptions?
       foreach (Block block in prog.TopLevelDeclarations.OfType<Implementation>().Select(item => item.Blocks).SelectMany(item => item)) {
-        CmdSeq newCmds = new CmdSeq();
+        List<Cmd> newCmds = new List<Cmd>();
         foreach (Cmd cmd in block.Cmds) {
           string c;
           AssertCmd assertCmd = cmd as AssertCmd;

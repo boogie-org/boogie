@@ -359,7 +359,7 @@ namespace VC {
     public void InstrumentCallSites(Implementation implementation) {
       var callSiteId = 0;
       foreach (Block block in implementation.Blocks) {
-        CmdSeq newCmds = new CmdSeq();
+        List<Cmd> newCmds = new List<Cmd>();
         for (int i = 0; i < block.Cmds.Count; i++) {
           Cmd cmd = block.Cmds[i];
           newCmds.Add(cmd);
@@ -2582,7 +2582,7 @@ namespace VC {
         Contract.Requires(cce.NonNullDictionaryAndValues(calleeCounterexamples));
         // After translation, all potential errors come from asserts.
         while (true) {
-          CmdSeq cmds = b.Cmds;
+          List<Cmd> cmds = b.Cmds;
           TransferCmd transferCmd = cce.NonNull(b.TransferCmd);
           for (int i = 0; i < cmds.Count; i++) {
             Cmd cmd = cce.NonNull(cmds[i]);

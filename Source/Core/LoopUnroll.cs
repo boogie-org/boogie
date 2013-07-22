@@ -70,7 +70,7 @@ namespace Microsoft.Boogie {
 
     class GraphNode {
       public readonly Block/*!*/ Block;
-      public readonly CmdSeq/*!*/ Body;
+      public readonly List<Cmd>/*!*/ Body;
       [ContractInvariantMethod]
       void ObjectInvariant() {
         Contract.Invariant(Block != null);
@@ -94,16 +94,16 @@ namespace Microsoft.Boogie {
       [Rep]
       public readonly List<GraphNode/*!*/>/*!*/ Predecessors = new List<GraphNode/*!*/>();
 
-      GraphNode(Block b, CmdSeq body) {
+      GraphNode(Block b, List<Cmd> body) {
         Contract.Requires(body != null);
         Contract.Requires(b != null);
         this.Block = b;
         this.Body = body;
       }
 
-      static CmdSeq GetOptimizedBody(CmdSeq cmds) {
+      static List<Cmd> GetOptimizedBody(List<Cmd> cmds) {
         Contract.Requires(cmds != null);
-        Contract.Ensures(Contract.Result<CmdSeq>() != null);
+        Contract.Ensures(Contract.Result<List<Cmd>>() != null);
         int n = 0;
         foreach (Cmd c in cmds) {
           n++;
@@ -114,7 +114,7 @@ namespace Microsoft.Boogie {
             for (int i = 0; i < n; i++) {
               s[i] = cmds[i];
             }
-            return new CmdSeq(s);
+            return new List<Cmd>(s);
           }
         }
         return cmds;
@@ -140,7 +140,7 @@ namespace Microsoft.Boogie {
           }
 
         } else {
-          CmdSeq body = GetOptimizedBody(b.Cmds);
+          List<Cmd> body = GetOptimizedBody(b.Cmds);
           g = new GraphNode(b, body);
           gd.Add(b, g);
           if (from != null) {
@@ -224,13 +224,13 @@ namespace Microsoft.Boogie {
         Contract.Assert(nw != null);
 
       } else {
-        CmdSeq body;
+        List<Cmd> body;
         TransferCmd tcmd;
         Contract.Assert(orig.TransferCmd != null);
 
         if (next == null && node.IsCutPoint) {
           // as the body, use the assert/assume commands that make up the loop invariant
-          body = new CmdSeq();
+          body = new List<Cmd>();
           foreach (Cmd/*!*/ c in node.Body) {
             Contract.Assert(c != null);
             if (c is PredicateCmd || c is CommentCmd) {

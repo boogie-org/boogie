@@ -134,7 +134,7 @@ namespace VC {
         if (copies.TryGetValue(b, out fake_res)) {
           return cce.NonNull(fake_res);
         }
-        Block res = new Block(b.tok, b.Label, new CmdSeq(b.Cmds), null);
+        Block res = new Block(b.tok, b.Label, new List<Cmd>(b.Cmds), null);
         copies[b] = res;
         if (b.TransferCmd is GotoCmd) {
           foreach (Block ch in cce.NonNull((GotoCmd)b.TransferCmd).labelTargets) {
@@ -160,7 +160,7 @@ namespace VC {
           return cce.NonNull(fake_res);
         }
         Block res;
-        CmdSeq seq = new CmdSeq();
+        List<Cmd> seq = new List<Cmd>();
         foreach (Cmd c in b.Cmds) {
           Contract.Assert(c != null);
           AssertCmd turn = c as AssertCmd;
@@ -252,7 +252,7 @@ namespace VC {
         return BooleanEval(e, ref val) && !val;
       }
 
-      bool CheckUnreachable(Block cur, CmdSeq seq)
+      bool CheckUnreachable(Block cur, List<Cmd> seq)
       {
         Contract.Requires(cur != null);
         Contract.Requires(seq != null);
@@ -369,7 +369,7 @@ namespace VC {
           return;
         visited.Add(cur);
 
-        CmdSeq seq = new CmdSeq();
+        List<Cmd> seq = new List<Cmd>();
         foreach (Cmd cmd_ in cur.Cmds) {
           Cmd cmd = cmd_;
           Contract.Assert(cmd != null);
@@ -902,15 +902,15 @@ namespace VC {
         return cost;
       }
 
-      CmdSeq SliceCmds(Block b) {
+      List<Cmd> SliceCmds(Block b) {
         Contract.Requires(b != null);
-        Contract.Ensures(Contract.Result<CmdSeq>() != null);
+        Contract.Ensures(Contract.Result<List<Cmd>>() != null);
 
-        CmdSeq seq = b.Cmds;
+        List<Cmd> seq = b.Cmds;
         Contract.Assert(seq != null);
         if (!doing_slice && !ShouldAssumize(b))
           return seq;
-        CmdSeq res = new CmdSeq();
+        List<Cmd> res = new List<Cmd>();
         foreach (Cmd c in seq) {
           Contract.Assert(c != null);
           AssertCmd a = c as AssertCmd;
@@ -1882,7 +1882,7 @@ namespace VC {
 
       // Recompute the predecessors, but first insert a dummy start node that is sure not to be the target of any goto (because the cutting of back edges
       // below assumes that the start node has no predecessor)
-      impl.Blocks.Insert(0, new Block(new Token(-17, -4), "0", new CmdSeq(), new GotoCmd(Token.NoToken, new StringSeq(impl.Blocks[0].Label), new BlockSeq(impl.Blocks[0]))));
+      impl.Blocks.Insert(0, new Block(new Token(-17, -4), "0", new List<Cmd>(), new GotoCmd(Token.NoToken, new StringSeq(impl.Blocks[0].Label), new BlockSeq(impl.Blocks[0]))));
       ResetPredecessors(impl.Blocks);
       
       #region Convert program CFG into a DAG
@@ -1911,8 +1911,8 @@ namespace VC {
         foreach (Block b in cce.NonNull( g.BackEdgeNodes(header))) {Contract.Assert(b != null); backEdgeNodes.Add(b, null); }
       
         #region Find the (possibly empty) prefix of assert commands in the header, replace each assert with an assume of the same condition
-        CmdSeq prefixOfPredicateCmdsInit = new CmdSeq();
-        CmdSeq prefixOfPredicateCmdsMaintained = new CmdSeq();
+        List<Cmd> prefixOfPredicateCmdsInit = new List<Cmd>();
+        List<Cmd> prefixOfPredicateCmdsMaintained = new List<Cmd>();
         for (int i = 0, n = header.Cmds.Count; i < n; i++)
         {
           PredicateCmd a = header.Cmds[i] as PredicateCmd;
@@ -2056,7 +2056,7 @@ namespace VC {
         // pass the token of the enclosing loop header to the HavocCmd so we can reconstruct
         // the source location for this later on
         HavocCmd hc = new HavocCmd(header.tok,havocExprs);
-        CmdSeq newCmds = new CmdSeq();
+        List<Cmd> newCmds = new List<Cmd>();
         newCmds.Add(hc);
         foreach ( Cmd c in header.Cmds )
         {
@@ -2079,7 +2079,7 @@ namespace VC {
 
     public void DesugarCalls(Implementation impl) {
       foreach (Block block in impl.Blocks) {
-        CmdSeq newCmds = new CmdSeq();
+        List<Cmd> newCmds = new List<Cmd>();
         foreach (Cmd cmd in block.Cmds) {
           SugaredCmd sugaredCmd = cmd as SugaredCmd;
           if (sugaredCmd != null) {
@@ -2116,7 +2116,7 @@ namespace VC {
 
       #region Insert pre- and post-conditions and where clauses as assume and assert statements
       {
-        CmdSeq cc = new CmdSeq();
+        List<Cmd> cc = new List<Cmd>();
         // where clauses of global variables
         lock (program.TopLevelDeclarations)
         {
@@ -2207,7 +2207,7 @@ namespace VC {
         }
 
         if (axioms.Count > 0) {
-          CmdSeq cmds = new CmdSeq();
+          List<Cmd> cmds = new List<Cmd>();
           foreach (Expr ax in axioms) {
             Contract.Assert(ax != null);
             cmds.Add(new AssumeCmd(ax.tok, ax));
@@ -2273,7 +2273,7 @@ namespace VC {
 
         foreach (var b in impl.Blocks) {
           if (blocksToCheck.Contains(b)) continue;
-          var newCmds = new CmdSeq();
+          var newCmds = new List<Cmd>();
           var copyMode = false;
           foreach (Cmd c in b.Cmds) {
             var p = c as PredicateCmd;
@@ -2460,7 +2460,7 @@ namespace VC {
       Contract.Requires(context != null);
       Contract.Requires(cce.NonNullDictionaryAndValues(calleeCounterexamples));
       // After translation, all potential errors come from asserts.
-      CmdSeq cmds = b.Cmds;
+      List<Cmd> cmds = b.Cmds;
       Contract.Assert(cmds != null);
       TransferCmd transferCmd = cce.NonNull(b.TransferCmd);
       for (int i = 0; i < cmds.Count; i++)

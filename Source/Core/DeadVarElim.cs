@@ -388,7 +388,7 @@ namespace Microsoft.Boogie {
           }
         }
 
-        CmdSeq cmds = block.Cmds;
+        List<Cmd> cmds = block.Cmds;
         int len = cmds.Count;
         for (int i = len - 1; i >= 0; i--) {
           if (cmds[i] is CallCmd) {
@@ -469,7 +469,7 @@ namespace Microsoft.Boogie {
         Propagate(sugCmd.Desugaring, liveSet);
       } else if (cmd is StateCmd) {
         StateCmd/*!*/ stCmd = (StateCmd)cce.NonNull(cmd);
-        CmdSeq/*!*/ cmds = cce.NonNull(stCmd.Cmds);
+        List<Cmd>/*!*/ cmds = cce.NonNull(stCmd.Cmds);
         int len = cmds.Count;
         for (int i = len - 1; i >= 0; i--) {
           Propagate(cmds[i], liveSet);
@@ -1461,7 +1461,7 @@ b.liveVarsBefore = procICFG[mainImpl.Name].liveVarsAfter[b];
       } else if (cmd is StateCmd) {
         StateCmd/*!*/ stCmd = (StateCmd)cmd;
         Contract.Assert(stCmd != null);
-        CmdSeq/*!*/ cmds = stCmd.Cmds;
+        List<Cmd>/*!*/ cmds = stCmd.Cmds;
         Contract.Assert(cmds != null);
         int len = cmds.Count;
         ret = GenKillWeight.one();

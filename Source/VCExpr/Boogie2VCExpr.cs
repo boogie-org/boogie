@@ -650,9 +650,9 @@ namespace Microsoft.Boogie.VCExprAST {
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }
-    public override CmdSeq VisitCmdSeq(CmdSeq cmdSeq) {
+    public override List<Cmd> VisitCmdSeq(List<Cmd> cmdSeq) {
       //Contract.Requires(cmdSeq != null);
-      Contract.Ensures(Contract.Result<CmdSeq>() != null);
+      Contract.Ensures(Contract.Result<List<Cmd>>() != null);
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }

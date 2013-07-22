@@ -604,19 +604,19 @@ namespace Microsoft.Boogie {
             }
           }
 
-          CmdSeq cmdSeq;
+          List<Cmd> cmdSeq;
           if (headRecursion)
-              cmdSeq = new CmdSeq();
+              cmdSeq = new List<Cmd>();
           else
           {
               CallCmd callCmd = (CallCmd)(loopHeaderToCallCmd2[header]).Clone();
               addUniqueCallAttr(si_unique_loc, callCmd);
               si_unique_loc++;
-              cmdSeq = new CmdSeq(callCmd);
+              cmdSeq = new List<Cmd> { callCmd };
           }
 
           Block/*!*/ block1 = new Block(Token.NoToken, source.Label + "_dummy",
-                              new CmdSeq(new AssumeCmd(Token.NoToken, Expr.False)), new ReturnCmd(Token.NoToken));
+                              new List<Cmd>{ new AssumeCmd(Token.NoToken, Expr.False) }, new ReturnCmd(Token.NoToken));
           Block/*!*/ block2 = new Block(Token.NoToken, block1.Label,
                               cmdSeq, new ReturnCmd(Token.NoToken));
           impl.Blocks.Add(block1);
@@ -639,7 +639,7 @@ namespace Microsoft.Boogie {
           blockMap[block1] = block2;
         }
         List<Block/*!*/>/*!*/ blocks = new List<Block/*!*/>();
-        Block exit = new Block(Token.NoToken, "exit", new CmdSeq(), new ReturnCmd(Token.NoToken));
+        Block exit = new Block(Token.NoToken, "exit", new List<Cmd>(), new ReturnCmd(Token.NoToken));
         GotoCmd cmd = new GotoCmd(Token.NoToken,
                                     new StringSeq(cce.NonNull(blockMap[header]).Label, exit.Label),
                                     new BlockSeq(blockMap[header], exit));
@@ -650,7 +650,7 @@ namespace Microsoft.Boogie {
                                     new BlockSeq(blockMap[header]));
 
         Block entry;
-        CmdSeq initCmds = new CmdSeq();
+        List<Cmd> initCmds = new List<Cmd>();
         if (loopHeaderToAssignCmd.ContainsKey(header)) {
             AssignCmd assignCmd = loopHeaderToAssignCmd[header];
             initCmds.Add(assignCmd);
@@ -700,7 +700,7 @@ namespace Microsoft.Boogie {
         string lastIterBlockName = header.Label + "_last";
         Block lastIterBlock = new Block(Token.NoToken, lastIterBlockName, header.Cmds, header.TransferCmd);
         newBlocksCreated[header] = lastIterBlock;
-        header.Cmds = new CmdSeq(loopHeaderToCallCmd1[header]);
+        header.Cmds = new List<Cmd> { loopHeaderToCallCmd1[header] };
         header.TransferCmd = new GotoCmd(Token.NoToken, new StringSeq(lastIterBlockName), new BlockSeq(lastIterBlock));
         impl.Blocks.Add(lastIterBlock);
         blockMap[origHeader] = blockMap[header];
@@ -821,7 +821,7 @@ namespace Microsoft.Boogie {
           gotoCmd.labelTargets.Remove(splitCandidate);
 
           CodeCopier codeCopier = new CodeCopier(new Hashtable(), new Hashtable());
-          CmdSeq newCmdSeq = codeCopier.CopyCmdSeq(splitCandidate.Cmds);
+          List<Cmd> newCmdSeq = codeCopier.CopyCmdSeq(splitCandidate.Cmds);
           TransferCmd newTransferCmd;
           GotoCmd splitGotoCmd = splitCandidate.TransferCmd as GotoCmd;
           if (splitGotoCmd == null) {
@@ -3231,17 +3231,6 @@ namespace Microsoft.Boogie {
         if (!this.Contains(next))
           this.Add(next);
       }
-    }
-  }
-
-  public sealed class CmdSeq : List<Cmd> {
-    public CmdSeq(params Cmd[]/*!*/ args)
-      : base(args) {
-      Contract.Requires(args != null);
-    }
-    public CmdSeq(CmdSeq/*!*/ cmdSeq)
-      : base(cmdSeq) {
-      Contract.Requires(cmdSeq != null);
     }
   }
 

@@ -244,7 +244,7 @@ namespace VC {
       //}
       m_doomedCmds.Clear();
 
-      Dictionary<Block, CmdSeq> cmdbackup = new Dictionary<Block, CmdSeq>();
+      Dictionary<Block, List<Cmd>> cmdbackup = new Dictionary<Block, List<Cmd>>();
 
       BruteForceCESearch(errh.m_Reachvar, impl, callback, cmdbackup, 0, impl.Blocks.Count / 2 - 1);
       BruteForceCESearch(errh.m_Reachvar, impl, callback, cmdbackup, impl.Blocks.Count / 2, impl.Blocks.Count - 1);
@@ -256,7 +256,7 @@ namespace VC {
       }
 
       #region Undo all modifications
-      foreach (KeyValuePair<Block, CmdSeq> kvp in cmdbackup) {
+      foreach (KeyValuePair<Block, List<Cmd>> kvp in cmdbackup) {
         Contract.Assert(kvp.Key != null);
         Contract.Assert(kvp.Value != null);
         kvp.Key.Cmds = kvp.Value;
@@ -389,7 +389,7 @@ namespace VC {
     #endregion
 
     bool BruteForceCESearch(Variable reachvar, Implementation impl, VerifierCallback callback,
-                        Dictionary<Block, CmdSeq> cmdbackup, int startidx, int endidx) {
+                        Dictionary<Block, List<Cmd>> cmdbackup, int startidx, int endidx) {
       Contract.Requires(reachvar != null);
       Contract.Requires(impl != null);
       Contract.Requires(callback != null);
@@ -398,7 +398,7 @@ namespace VC {
       for (int i = startidx; i <= endidx; i++) {
         if (_copiedBlock.Contains(impl.Blocks[i]))
           continue;
-        CmdSeq cs = new CmdSeq();
+        List<Cmd> cs = new List<Cmd>();
         cmdbackup.Add(impl.Blocks[i], impl.Blocks[i].Cmds);
         foreach (Cmd c in impl.Blocks[i].Cmds) {
           Contract.Assert(c != null);
@@ -455,9 +455,9 @@ namespace VC {
       Contract.Requires(impl != null);
       Contract.Requires(callback != null);
       #region Modify Cmds
-      CmdSeq backup = b.Cmds;
+      List<Cmd> backup = b.Cmds;
       Contract.Assert(backup != null);
-      CmdSeq cs = new CmdSeq();
+      List<Cmd> cs = new List<Cmd>();
       for (int i = 0; i < startidx; i++) {
         cs.Add(b.Cmds[i]);
       }
@@ -518,12 +518,12 @@ namespace VC {
       }
     }
 
-    void UndoBlockModifications(Implementation impl, Dictionary<Block/*!*/, CmdSeq/*!*/>/*!*/ cmdbackup,
+    void UndoBlockModifications(Implementation impl, Dictionary<Block/*!*/, List<Cmd>/*!*/>/*!*/ cmdbackup,
                                 int startidx, int endidx) {
       Contract.Requires(cce.NonNullElements(cmdbackup));
       Contract.Requires(impl != null);
       for (int i = startidx; i <= endidx; i++) {
-        CmdSeq cs = null;
+        List<Cmd> cs = null;
         if (cmdbackup.TryGetValue(impl.Blocks[i], out cs)) {
           Contract.Assert(cs != null);
           impl.Blocks[i].Cmds = cs;
@@ -592,7 +592,7 @@ namespace VC {
 
       #region Insert pre- and post-conditions and where clauses as assume and assert statements
       {
-        CmdSeq cc = new CmdSeq();
+        List<Cmd> cc = new List<Cmd>();
         // where clauses of global variables
         foreach (Declaration d in program.TopLevelDeclarations) {
           GlobalVariable gvar = d as GlobalVariable;
@@ -637,7 +637,7 @@ namespace VC {
     /// Add additional variable to allow checking as described in the paper
     /// "It's doomed; we can prove it"
     /// </summary>
-    private CmdSeq GenerateReachabilityPredicates(Implementation impl)
+    private List<Cmd> GenerateReachabilityPredicates(Implementation impl)
     {
         Contract.Requires(impl != null);        
         
@@ -665,14 +665,14 @@ namespace VC {
             rhsl.Add(Expr.Literal(1) );
             
 
-            CmdSeq cs = new CmdSeq(new AssignCmd(Token.NoToken, lhsl, rhsl));
+            List<Cmd> cs = new List<Cmd> { new AssignCmd(Token.NoToken, lhsl, rhsl) };
             cs.AddRange(b.Cmds);
             b.Cmds = cs;
 
             //checkBlocks.Add(new CheckableBlock(v_,b));
         }
 
-        CmdSeq incReachVars = new CmdSeq();
+        List<Cmd> incReachVars = new List<Cmd>();
         foreach (KeyValuePair<Block, Variable> kvp in m_BlockReachabilityMap)
         {
             IdentifierExpr lhs = new IdentifierExpr(Token.NoToken, kvp.Value);
@@ -734,7 +734,7 @@ namespace VC {
         impl.Blocks = DeepCopyBlocks(impl.Blocks, m_UncheckableBlocks);
 
         m_BlockReachabilityMap = new Dictionary<Block, Variable>();       
-        CmdSeq cs = GenerateReachabilityPredicates(impl);
+        List<Cmd> cs = GenerateReachabilityPredicates(impl);
         
         //foreach (Block test in getTheFFinalBlock(impl.Blocks[0]))
         //{

@@ -104,7 +104,7 @@ public Parser(Scanner/*!*/ scanner, Errors/*!*/ errors, bool disambiguation)
   Pgm = new Program();
   dummyExpr = new LiteralExpr(Token.NoToken, false);
   dummyCmd = new AssumeCmd(Token.NoToken, dummyExpr);
-  dummyBlock = new Block(Token.NoToken, "dummyBlock", new CmdSeq(), new ReturnCmd(Token.NoToken));
+  dummyBlock = new Block(Token.NoToken, "dummyBlock", new List<Cmd>(), new ReturnCmd(Token.NoToken));
   dummyType = new BasicType(Token.NoToken, SimpleType.Bool);
   dummyExprSeq = new ExprSeq ();
   dummyTransferCmd = new ReturnCmd(Token.NoToken);
@@ -924,7 +924,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		Contract.Ensures(Contract.ValueAtReturn(out stmtList) != null); List<BigBlock/*!*/> bigblocks = new List<BigBlock/*!*/>();
 		/* built-up state for the current BigBlock: */
 		IToken startToken = null;  string currentLabel = null;
-		CmdSeq cs = null;  /* invariant: startToken != null ==> cs != null */
+		List<Cmd> cs = null;  /* invariant: startToken != null ==> cs != null */
 		/* temporary variables: */
 		IToken label;  Cmd c;  BigBlock b;
 		StructuredCmd ec = null;  StructuredCmd/*!*/ ecn;
@@ -936,7 +936,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 				if (c != null) {
 				 // LabelOrCmd read a Cmd
 				 Contract.Assert(label == null);
-				 if (startToken == null) { startToken = c.tok;  cs = new CmdSeq(); }
+				 if (startToken == null) { startToken = c.tok;  cs = new List<Cmd>(); }
 				 Contract.Assert(cs != null);
 				 cs.Add(c);
 				} else {
@@ -951,13 +951,13 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 				 }
 				 startToken = label;
 				 currentLabel = label.val;
-				 cs = new CmdSeq();
+				 cs = new List<Cmd>();
 				}
 				
 			} else if (la.kind == 40 || la.kind == 42 || la.kind == 45) {
 				StructuredCmd(out ecn);
 				ec = ecn;
-				if (startToken == null) { startToken = ec.tok;  cs = new CmdSeq(); }
+				if (startToken == null) { startToken = ec.tok;  cs = new List<Cmd>(); }
 				Contract.Assert(cs != null);
 				b = new BigBlock(startToken, currentLabel, cs, ec, null);
 				bigblocks.Add(b);
@@ -966,7 +966,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 			} else {
 				TransferCmd(out tcn);
 				tc = tcn;
-				if (startToken == null) { startToken = tc.tok;  cs = new CmdSeq(); }
+				if (startToken == null) { startToken = tc.tok;  cs = new List<Cmd>(); }
 				Contract.Assert(cs != null);
 				b = new BigBlock(startToken, currentLabel, cs, null, tc);
 				bigblocks.Add(b);
@@ -977,7 +977,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		Expect(28);
 		IToken/*!*/ endCurly = t;
 		if (startToken == null && bigblocks.Count == 0) {
-		 startToken = t;  cs = new CmdSeq();
+		 startToken = t;  cs = new List<Cmd>();
 		}
 		if (startToken != null) {
 		 Contract.Assert(cs != null);
@@ -1924,7 +1924,7 @@ out QKeyValue kv, out Trigger trig, out Expr/*!*/ body) {
 	void SpecBlock(out Block/*!*/ b) {
 		Contract.Ensures(Contract.ValueAtReturn(out b) != null); IToken/*!*/ x; IToken/*!*/ y;
 		Cmd c;  IToken label;
-		CmdSeq cs = new CmdSeq();
+		List<Cmd> cs = new List<Cmd>();
 		List<IToken>/*!*/ xs;
 		StringSeq ss = new StringSeq();
 		b = dummyBlock;

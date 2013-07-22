@@ -118,9 +118,9 @@ namespace Microsoft.Boogie {
       Contract.Ensures(Contract.Result<Choice>() != null);
       return base.VisitChoice((Choice)node.Clone());
     }
-    public override CmdSeq VisitCmdSeq(CmdSeq cmdSeq) {
+    public override List<Cmd> VisitCmdSeq(List<Cmd> cmdSeq) {
       //Contract.Requires(cmdSeq != null);
-      Contract.Ensures(Contract.Result<CmdSeq>() != null);
+      Contract.Ensures(Contract.Result<List<Cmd>>() != null);
       return base.VisitCmdSeq(cmdSeq);
     }
     public override Constant VisitConstant(Constant node) {

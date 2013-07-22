@@ -292,7 +292,7 @@ namespace Microsoft.Boogie
             return null;
         }
 
-        private bool Analyse(Implementation impl, CmdSeq cmdSeq, bool ControlFlowIsUniform)
+        private bool Analyse(Implementation impl, List<Cmd> cmdSeq, bool ControlFlowIsUniform)
         {
             foreach (Cmd c in cmdSeq)
             {

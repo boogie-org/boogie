@@ -122,7 +122,7 @@ namespace Microsoft.Boogie
       {
         if (!newProcedureEntryNodes.ContainsKey(proc.Name))
         {
-          Block newBlock = new Block(Token.NoToken, proc + "__dummy_node", new CmdSeq(), new GotoCmd(Token.NoToken, new BlockSeq()));
+          Block newBlock = new Block(Token.NoToken, proc + "__dummy_node", new List<Cmd>(), new GotoCmd(Token.NoToken, new BlockSeq()));
           nodes.Add(newBlock);
           newProcedureEntryNodes[proc.Name] = newBlock;
           newProcedureExitNodes[proc.Name] = newBlock;
@@ -137,7 +137,7 @@ namespace Microsoft.Boogie
       foreach (var impl in prog.TopLevelDeclarations.OfType<Implementation>())
       {
         string exitLabel = "__" + impl.Name + "_newExit";
-        Block newExit = new Block(Token.NoToken, exitLabel, new CmdSeq(), new GotoCmd(Token.NoToken, new BlockSeq()));
+        Block newExit = new Block(Token.NoToken, exitLabel, new List<Cmd>(), new GotoCmd(Token.NoToken, new BlockSeq()));
         nodes.Add(newExit);
         newProcedureExitNodes[impl.Name] = newExit;
         foreach (Block b in impl.Blocks)
@@ -150,7 +150,7 @@ namespace Microsoft.Boogie
             Block newBlock;
             if (prev == null)
             {
-              newBlock = new Block(b.tok, "__" + impl.Name + "_" + b.Label, new CmdSeq(cmds.ToArray()), null);
+              newBlock = new Block(b.tok, "__" + impl.Name + "_" + b.Label, new List<Cmd>(cmds.ToArray()), null);
               nodes.Add(newBlock);
               originalToNew[b] = newBlock;
               if (impl.Blocks[0] == b)
@@ -161,7 +161,7 @@ namespace Microsoft.Boogie
             else
             {
               string label = "__" + impl.Name + "_" + b.Label + "_call_" + i;
-              newBlock = new Block(b.tok, label, new CmdSeq(cmds.ToArray()), null);
+              newBlock = new Block(b.tok, label, new List<Cmd>(cmds.ToArray()), null);
               nodes.Add(newBlock);
               originalToNew[newBlock] = newBlock;
               prev.TransferCmd = new GotoCmd(Token.NoToken, new StringSeq { label }, new BlockSeq { newBlock });
@@ -190,7 +190,7 @@ namespace Microsoft.Boogie
       #endregion
     }
 
-    private List<List<Cmd>> PartitionCmds(CmdSeq cmds) {
+    private List<List<Cmd>> PartitionCmds(List<Cmd> cmds) {
       List<List<Cmd>> result = new List<List<Cmd>>();
       List<Cmd> current = new List<Cmd>();
       result.Add(current);
