@@ -194,7 +194,7 @@ namespace Microsoft.Boogie {
     public virtual CtorType VisitCtorType(CtorType node) {
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<CtorType>() != null);
-      for (int i = 0; i < node.Arguments.Length; ++i)
+      for (int i = 0; i < node.Arguments.Count; ++i)
         node.Arguments[i] = cce.NonNull((Type/*!*/)this.Visit(node.Arguments[i]));
       return node;
     }
@@ -248,10 +248,10 @@ namespace Microsoft.Boogie {
       @requires.Condition = this.VisitExpr(@requires.Condition);
       return @requires;
     }
-    public virtual RequiresSeq VisitRequiresSeq(RequiresSeq requiresSeq) {
+    public virtual List<Requires> VisitRequiresSeq(List<Requires> requiresSeq) {
       Contract.Requires(requiresSeq != null);
-      Contract.Ensures(Contract.Result<RequiresSeq>() != null);
-      for (int i = 0, n = requiresSeq.Length; i < n; i++)
+      Contract.Ensures(Contract.Result<List<Requires>>() != null);
+      for (int i = 0, n = requiresSeq.Count; i < n; i++)
         requiresSeq[i] = this.VisitRequires(requiresSeq[i]);
       return requiresSeq;
     }
@@ -261,10 +261,10 @@ namespace Microsoft.Boogie {
       @ensures.Condition = this.VisitExpr(@ensures.Condition);
       return @ensures;
     }
-    public virtual EnsuresSeq VisitEnsuresSeq(EnsuresSeq ensuresSeq) {
+    public virtual List<Ensures> VisitEnsuresSeq(List<Ensures> ensuresSeq) {
       Contract.Requires(ensuresSeq != null);
-      Contract.Ensures(Contract.Result<EnsuresSeq>() != null);
-      for (int i = 0, n = ensuresSeq.Length; i < n; i++)
+      Contract.Ensures(Contract.Result<List<Ensures>>() != null);
+      for (int i = 0, n = ensuresSeq.Count; i < n; i++)
         ensuresSeq[i] = this.VisitEnsures(ensuresSeq[i]);
       return ensuresSeq;
     }
@@ -362,7 +362,7 @@ namespace Microsoft.Boogie {
       //
       // NOTE: when overriding this method, you have to make sure that
       // the bound variables of the map type are updated correctly
-      for (int i = 0; i < node.Arguments.Length; ++i)
+      for (int i = 0; i < node.Arguments.Count; ++i)
         node.Arguments[i] = cce.NonNull((Type/*!*/)this.Visit(node.Arguments[i]));
       node.Result = cce.NonNull((Type/*!*/)this.Visit(node.Result));
       return node;
@@ -512,7 +512,7 @@ namespace Microsoft.Boogie {
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Type>() != null);
       node.ExpandedType = cce.NonNull((Type/*!*/)this.Visit(node.ExpandedType));
-      for (int i = 0; i < node.Arguments.Length; ++i)
+      for (int i = 0; i < node.Arguments.Count; ++i)
         node.Arguments[i] = cce.NonNull((Type/*!*/)this.Visit(node.Arguments[i]));
       return node;
     }

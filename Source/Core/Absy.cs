@@ -385,7 +385,7 @@ namespace Microsoft.Boogie {
 
       Dictionary<Block/*!*/, VariableSeq/*!*/>/*!*/ loopHeaderToInputs = new Dictionary<Block/*!*/, VariableSeq/*!*/>();
       Dictionary<Block/*!*/, VariableSeq/*!*/>/*!*/ loopHeaderToOutputs = new Dictionary<Block/*!*/, VariableSeq/*!*/>();
-      Dictionary<Block/*!*/, Hashtable/*!*/>/*!*/ loopHeaderToSubstMap = new Dictionary<Block/*!*/, Hashtable/*!*/>();
+      Dictionary<Block/*!*/, Dictionary<Variable, Expr>/*!*/>/*!*/ loopHeaderToSubstMap = new Dictionary<Block/*!*/, Dictionary<Variable, Expr>/*!*/>();
       Dictionary<Block/*!*/, LoopProcedure/*!*/>/*!*/ loopHeaderToLoopProc = new Dictionary<Block/*!*/, LoopProcedure/*!*/>();
       Dictionary<Block/*!*/, CallCmd/*!*/>/*!*/ loopHeaderToCallCmd1 = new Dictionary<Block/*!*/, CallCmd/*!*/>();
       Dictionary<Block, CallCmd> loopHeaderToCallCmd2 = new Dictionary<Block, CallCmd>();
@@ -402,7 +402,7 @@ namespace Microsoft.Boogie {
         IdentifierExprSeq callOutputs2 = new IdentifierExprSeq();
         List<AssignLhs> lhss = new List<AssignLhs>();
         List<Expr> rhss = new List<Expr>();
-        Hashtable substMap = new Hashtable(); // Variable -> IdentifierExpr
+        Dictionary<Variable, Expr> substMap = new Dictionary<Variable, Expr>(); // Variable -> IdentifierExpr
 
         VariableSeq/*!*/ targets = new VariableSeq();
         HashSet<Variable> footprint = new HashSet<Variable>();
@@ -2359,9 +2359,9 @@ namespace Microsoft.Boogie {
   }
 
   public class Procedure : DeclWithFormals {
-    public RequiresSeq/*!*/ Requires;
+    public List<Requires>/*!*/ Requires;
     public IdentifierExprSeq/*!*/ Modifies;
-    public EnsuresSeq/*!*/ Ensures;
+    public List<Ensures>/*!*/ Ensures;
     [ContractInvariantMethod]
     void ObjectInvariant() {
       Contract.Invariant(Requires != null);
@@ -2376,7 +2376,7 @@ namespace Microsoft.Boogie {
     public readonly ProcedureSummary/*!*/ Summary;
 
     public Procedure(IToken/*!*/ tok, string/*!*/ name, TypeVariableSeq/*!*/ typeParams, VariableSeq/*!*/ inParams, VariableSeq/*!*/ outParams,
-      RequiresSeq/*!*/ requires, IdentifierExprSeq/*!*/ modifies, EnsuresSeq/*!*/ ensures)
+      List<Requires>/*!*/ requires, IdentifierExprSeq/*!*/ modifies, List<Ensures>/*!*/ ensures)
       : this(tok, name, typeParams, inParams, outParams, requires, modifies, ensures, null) {
       Contract.Requires(tok != null);
       Contract.Requires(name != null);
@@ -2390,7 +2390,7 @@ namespace Microsoft.Boogie {
     }
 
     public Procedure(IToken/*!*/ tok, string/*!*/ name, TypeVariableSeq/*!*/ typeParams, VariableSeq/*!*/ inParams, VariableSeq/*!*/ outParams,
-      RequiresSeq/*!*/ @requires, IdentifierExprSeq/*!*/ @modifies, EnsuresSeq/*!*/ @ensures, QKeyValue kv
+      List<Requires>/*!*/ @requires, IdentifierExprSeq/*!*/ @modifies, List<Ensures>/*!*/ @ensures, QKeyValue kv
       )
       : base(tok, name, typeParams, inParams, outParams) {
       Contract.Requires(tok != null);
@@ -2531,7 +2531,7 @@ namespace Microsoft.Boogie {
                            VariableSeq inputs, VariableSeq outputs, IdentifierExprSeq globalMods)
           : base(Token.NoToken, impl.Name + "_loop_" + header.ToString(),
                new TypeVariableSeq(), inputs, outputs,
-               new RequiresSeq(), globalMods, new EnsuresSeq())
+               new List<Requires>(), globalMods, new List<Ensures>())
       {
           enclosingImpl = impl;
       }
@@ -2914,17 +2914,17 @@ namespace Microsoft.Boogie {
       }
     }
 
-    private Hashtable/*Variable->Expr*//*?*/ formalMap = null;
+    private Dictionary<Variable, Expr>/*?*/ formalMap = null;
     public void ResetImplFormalMap() {
       this.formalMap = null;
     }
-    public Hashtable /*Variable->Expr*//*!*/ GetImplFormalMap() {
+    public Dictionary<Variable, Expr>/*!*/ GetImplFormalMap() {
       Contract.Ensures(Contract.Result<Hashtable>() != null);
 
       if (this.formalMap != null)
         return this.formalMap;
       else {
-        Hashtable /*Variable->Expr*//*!*/ map = new Hashtable /*Variable->Expr*/ (InParams.Length + OutParams.Length);
+        Dictionary<Variable, Expr>/*!*/ map = new Dictionary<Variable, Expr> (InParams.Length + OutParams.Length);
 
         Contract.Assume(this.Proc != null);
         Contract.Assume(InParams.Length == Proc.InParams.Length);
@@ -2948,7 +2948,7 @@ namespace Microsoft.Boogie {
         if (CommandLineOptions.Clo.PrintWithUniqueASTIds) {
           Console.WriteLine("Implementation.GetImplFormalMap on {0}:", this.Name);
           using (TokenTextWriter stream = new TokenTextWriter("<console>", Console.Out, false)) {
-            foreach (DictionaryEntry e in map) {
+            foreach (var e in map) {
               Console.Write("  ");
               cce.NonNull((Variable/*!*/)e.Key).Emit(stream, 0);
               Console.Write("  --> ");
@@ -3224,39 +3224,6 @@ namespace Microsoft.Boogie {
     }
   }
 
-  public sealed class RequiresSeq : PureCollections.Sequence {
-    public RequiresSeq(params Requires[]/*!*/ args)
-      : base(args) {
-      Contract.Requires(args != null);
-    }
-    public new Requires/*!*/ this[int index] {
-      get {
-        Contract.Ensures(Contract.Result<Requires>() != null);
-
-        return cce.NonNull((Requires/*!*/)base[index]);
-      }
-      set {
-        base[index] = value;
-      }
-    }
-  }
-
-  public sealed class EnsuresSeq : PureCollections.Sequence {
-    public EnsuresSeq(params Ensures[]/*!*/ args)
-      : base(args) {
-      Contract.Requires(args != null);
-    }
-    public new Ensures/*!*/ this[int index] {
-      get {
-        Contract.Ensures(Contract.Result<Ensures>() != null);
-        return cce.NonNull((Ensures/*!*/)base[index]);
-      }
-      set {
-        base[index] = value;
-      }
-    }
-  }
-
   public sealed class VariableSeq : List<Variable> {
     public VariableSeq(params Variable[]/*!*/ args)
       : base(args) {
@@ -3265,14 +3232,6 @@ namespace Microsoft.Boogie {
     public VariableSeq(VariableSeq/*!*/ varSeq)
       : base(varSeq) {
       Contract.Requires(varSeq != null);
-    }
-    public new Variable this[int index] {
-      get {
-        return (Variable)base[index];
-      }
-      set {
-        base[index] = value;
-      }
     }
     public void Emit(TokenTextWriter stream, bool emitAttributes) {
       Contract.Requires(stream != null);
@@ -3303,7 +3262,7 @@ namespace Microsoft.Boogie {
     }
   }
 
-  public sealed class TypeSeq : PureCollections.Sequence {
+  public sealed class TypeSeq : List<Type> {
     public TypeSeq(params Type[]/*!*/ args)
       : base(args) {
       Contract.Requires(args != null);
@@ -3312,19 +3271,9 @@ namespace Microsoft.Boogie {
       : base(varSeq) {
       Contract.Requires(varSeq != null);
     }
-    public new Type/*!*/ this[int index] {
-      get {
-        Contract.Ensures(Contract.Result<Type>() != null);
-
-        return cce.NonNull((Type/*!*/)base[index]);
-      }
-      set {
-        base[index] = value;
-      }
-    }
     public List<Type/*!*/>/*!*/ ToList() {
       Contract.Ensures(cce.NonNullElements(Contract.Result<List<Type>>()));
-      List<Type/*!*/>/*!*/ res = new List<Type/*!*/>(Length);
+      List<Type/*!*/>/*!*/ res = new List<Type/*!*/>(Count);
       foreach (Type/*!*/ t in this) {
         Contract.Assert(t != null);
         res.Add(t);

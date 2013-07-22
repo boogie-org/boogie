@@ -20,19 +20,19 @@ namespace VC {
       Contract.Invariant(Ctxt != null);
     }
 
-    [Rep] public readonly Hashtable/*<int, Absy!>*/ Label2absy;
+    [Rep] public readonly Dictionary<int, Absy> Label2absy;
     [Rep] public readonly ProverContext Ctxt;
     public readonly VCExpr ControlFlowVariableExpr;
     public int AssertionCount;  // counts the number of assertions for which Wlp has been computed
     
-    public VCContext(Hashtable/*<int, Absy!>*/ label2absy, ProverContext ctxt)
+    public VCContext(Dictionary<int, Absy> label2absy, ProverContext ctxt)
     {
       Contract.Requires(ctxt != null);
       this.Label2absy = label2absy;
       this.Ctxt = ctxt;
     }
     
-    public VCContext(Hashtable/*<int, Absy!>*/ label2absy, ProverContext ctxt, VCExpr controlFlowVariableExpr)
+    public VCContext(Dictionary<int, Absy> label2absy, ProverContext ctxt, VCExpr controlFlowVariableExpr)
     {
       Contract.Requires(ctxt != null);
       this.Label2absy = label2absy;

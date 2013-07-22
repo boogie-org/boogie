@@ -290,7 +290,7 @@ namespace VC {
         parent.CurrentLocalVariables = impl.LocVars;
         ModelViewInfo mvInfo;
         parent.PassifyImpl(impl, out mvInfo);
-        Hashtable label2Absy;
+        Dictionary<int, Absy> label2Absy;
         Checker ch = parent.FindCheckerFor(CommandLineOptions.Clo.SmokeTimeout);
         Contract.Assert(ch != null);
 
@@ -441,7 +441,7 @@ namespace VC {
       }
 
       class ErrorHandler : ProverInterface.ErrorHandler {
-        Hashtable label2Absy;
+        Dictionary<int, Absy> label2Absy;
         VerifierCallback callback;
         [ContractInvariantMethod]
         void ObjectInvariant() {
@@ -450,7 +450,7 @@ namespace VC {
         }
 
 
-        public ErrorHandler(Hashtable label2Absy, VerifierCallback callback) {
+        public ErrorHandler(Dictionary<int, Absy> label2Absy, VerifierCallback callback) {
           Contract.Requires(label2Absy != null);
           Contract.Requires(callback != null);
           this.label2Absy = label2Absy;
@@ -531,7 +531,7 @@ namespace VC {
       double total_cost;
       int assertion_count;
       double assertion_cost; // without multiplication by paths
-      Hashtable/*TransferCmd->ReturnCmd*//*!*/ gotoCmdOrigins;
+      Dictionary<TransferCmd, ReturnCmd>/*!*/ gotoCmdOrigins;
       readonly public VCGen/*!*/ parent;
       Implementation/*!*/ impl;
 
@@ -548,7 +548,7 @@ namespace VC {
       private int splitNo;
       internal ErrorReporter reporter;
 
-      public Split(List<Block/*!*/>/*!*/ blocks, Hashtable/*TransferCmd->ReturnCmd*//*!*/ gotoCmdOrigins, VCGen/*!*/ par, Implementation/*!*/ impl) {
+      public Split(List<Block/*!*/>/*!*/ blocks, Dictionary<TransferCmd, ReturnCmd>/*!*/ gotoCmdOrigins, VCGen/*!*/ par, Implementation/*!*/ impl) {
         Contract.Requires(cce.NonNullElements(blocks));
         Contract.Requires(gotoCmdOrigins != null);
         Contract.Requires(par != null);
@@ -974,14 +974,14 @@ namespace VC {
         copies.Clear();
         CloneBlock(blocks[0]);
         List<Block> newBlocks = new List<Block>();
-        Hashtable newGotoCmdOrigins = new Hashtable();
+        Dictionary<TransferCmd, ReturnCmd> newGotoCmdOrigins = new Dictionary<TransferCmd, ReturnCmd>();
         foreach (Block b in blocks) {
           Contract.Assert(b != null);
           Block tmp;
           if (copies.TryGetValue(b, out tmp)) {
             newBlocks.Add(cce.NonNull(tmp));
-            if (gotoCmdOrigins.ContainsKey(b)) {
-              newGotoCmdOrigins[tmp] = gotoCmdOrigins[b];
+            if (gotoCmdOrigins.ContainsKey(b.TransferCmd)) {
+              newGotoCmdOrigins[tmp.TransferCmd] = gotoCmdOrigins[b.TransferCmd];
             }
 
             foreach (Block p in b.Predecessors) {
@@ -1219,7 +1219,7 @@ namespace VC {
 
         this.checker = checker;
 
-        Hashtable/*<int, Absy!>*/ label2absy = new Hashtable/*<int, Absy!>*/();
+        Dictionary<int, Absy> label2absy = new Dictionary<int, Absy>();
 
         ProverContext ctx = checker.TheoremProver.Context;
         Boogie2VCExprTranslator bet = ctx.BoogieExprTranslator;
@@ -1228,14 +1228,14 @@ namespace VC {
           delegate(CodeExpr codeExpr, Hashtable/*<Block, VCExprVar!>*/ blockVariables, List<VCExprLetBinding/*!*/> bindings)
           {
             VCGen vcgen = new VCGen(new Program(), null, false, parent.checkers);
-            vcgen.variable2SequenceNumber = new Hashtable/*Variable -> int*/();
+            vcgen.variable2SequenceNumber = new Dictionary<Variable, int>();
             vcgen.incarnationOriginMap = new Dictionary<Incarnation, Absy>();
             vcgen.CurrentLocalVariables = codeExpr.LocVars;
             // codeExpr.Blocks.PruneUnreachableBlocks();  // This is needed for VCVariety.BlockNested, and is otherwise just an optimization
 
             ResetPredecessors(codeExpr.Blocks);
             vcgen.AddBlocksBetween(codeExpr.Blocks);
-            Hashtable/*TransferCmd->ReturnCmd*/ gotoCmdOrigins = vcgen.ConvertBlocks2PassiveCmd(codeExpr.Blocks, new IdentifierExprSeq(), new ModelViewInfo(codeExpr));
+            Dictionary<Variable, Expr> gotoCmdOrigins = vcgen.ConvertBlocks2PassiveCmd(codeExpr.Blocks, new IdentifierExprSeq(), new ModelViewInfo(codeExpr));
             int ac;  // computed, but then ignored for this CodeExpr
             VCExpr startCorrect = VCGen.LetVC(codeExpr.Blocks[0], null, label2absy, blockVariables, bindings, ctx, out ac);
             VCExpr vce = ctx.ExprGen.Let(bindings, startCorrect);
@@ -1350,18 +1350,18 @@ namespace VC {
     }
     #endregion
 
-    public VCExpr GenerateVC(Implementation/*!*/ impl, VCExpr controlFlowVariableExpr, out Hashtable/*<int, Absy!>*//*!*/ label2absy, ProverContext proverContext)
+    public VCExpr GenerateVC(Implementation/*!*/ impl, VCExpr controlFlowVariableExpr, out Dictionary<int, Absy>/*!*/ label2absy, ProverContext proverContext)
     {
       Contract.Requires(impl != null);
       Contract.Requires(proverContext != null);
       Contract.Ensures(Contract.ValueAtReturn(out label2absy) != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
 
-      label2absy = new Hashtable/*<int, Absy!>*/();
+      label2absy = new Dictionary<int, Absy>();
       return GenerateVCAux(impl, controlFlowVariableExpr, label2absy, proverContext);
     }
 
-    protected VCExpr GenerateVCAux(Implementation/*!*/ impl, VCExpr controlFlowVariableExpr, Hashtable/*<int, Absy!>*//*!*/ label2absy, ProverContext proverContext) {
+    protected VCExpr GenerateVCAux(Implementation/*!*/ impl, VCExpr controlFlowVariableExpr, Dictionary<int, Absy>/*!*/ label2absy, ProverContext proverContext) {
       Contract.Requires(impl != null);
       Contract.Requires(proverContext != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
@@ -1653,8 +1653,8 @@ namespace VC {
     }
 
     public class ErrorReporter : ProverInterface.ErrorHandler {
-      Hashtable/*TransferCmd->ReturnCmd*//*!*/ gotoCmdOrigins;
-      Hashtable/*<int, Absy!>*//*!*/ label2absy;
+      Dictionary<TransferCmd, ReturnCmd>/*!*/ gotoCmdOrigins;
+      Dictionary<int, Absy>/*!*/ label2absy;
       List<Block/*!*/>/*!*/ blocks;
       protected Dictionary<Incarnation, Absy/*!*/>/*!*/ incarnationOriginMap;
       protected VerifierCallback/*!*/ callback;
@@ -1686,8 +1686,8 @@ namespace VC {
       protected ProverContext/*!*/ context;
       Program/*!*/ program;
 
-      public ErrorReporter(Hashtable/*TransferCmd->ReturnCmd*//*!*/ gotoCmdOrigins,
-          Hashtable/*<int, Absy!>*//*!*/ label2absy,
+      public ErrorReporter(Dictionary<TransferCmd, ReturnCmd>/*!*/ gotoCmdOrigins,
+          Dictionary<int, Absy>/*!*/ label2absy,
           List<Block/*!*/>/*!*/ blocks,
           Dictionary<Incarnation, Absy/*!*/>/*!*/ incarnationOriginMap,
           VerifierCallback/*!*/ callback,
@@ -1751,7 +1751,7 @@ namespace VC {
           foreach (Block b in returnExample.Trace) {
             Contract.Assert(b != null);
             Contract.Assume(b.TransferCmd != null);
-            ReturnCmd cmd = (ReturnCmd)gotoCmdOrigins[b.TransferCmd];
+            ReturnCmd cmd = gotoCmdOrigins.ContainsKey(b.TransferCmd) ? gotoCmdOrigins[b.TransferCmd] : null;
             if (cmd != null) {
               returnExample.FailingReturn = cmd;
               break;
@@ -1782,8 +1782,8 @@ namespace VC {
     }
 
     public class ErrorReporterLocal : ErrorReporter {
-      public ErrorReporterLocal(Hashtable/*TransferCmd->ReturnCmd*//*!*/ gotoCmdOrigins,
-          Hashtable/*<int, Absy!>*//*!*/ label2absy,
+      public ErrorReporterLocal(Dictionary<TransferCmd, ReturnCmd>/*!*/ gotoCmdOrigins,
+          Dictionary<int, Absy>/*!*/ label2absy,
           List<Block/*!*/>/*!*/ blocks,
           Dictionary<Incarnation, Absy/*!*/>/*!*/ incarnationOriginMap,
           VerifierCallback/*!*/ callback,
@@ -1861,7 +1861,7 @@ namespace VC {
       impl.PruneUnreachableBlocks();  // This is needed for VCVariety.BlockNested, and is otherwise just an optimization
 
       CurrentLocalVariables = impl.LocVars;
-      variable2SequenceNumber = new Hashtable/*Variable -> int*/();
+      variable2SequenceNumber = new Dictionary<Variable, int>();
       incarnationOriginMap = new Dictionary<Incarnation, Absy>();
 
       #region Debug Tracing
@@ -2097,13 +2097,13 @@ namespace VC {
       }
     }
 
-    public Hashtable/*TransferCmd->ReturnCmd*/ PassifyImpl(Implementation impl, out ModelViewInfo mvInfo)
+    public Dictionary<TransferCmd, ReturnCmd> PassifyImpl(Implementation impl, out ModelViewInfo mvInfo)
     {
       Contract.Requires(impl != null);
       Contract.Requires(program != null);
       Contract.Ensures(Contract.Result<Hashtable>() != null);
 
-      Hashtable/*TransferCmd->ReturnCmd*/ gotoCmdOrigins = new Hashtable/*TransferCmd->ReturnCmd*/();
+      Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins = new Dictionary<TransferCmd, ReturnCmd>();
       Block exitBlock = GenerateUnifiedExit(impl, gotoCmdOrigins);
       
       #region Debug Tracing
@@ -2216,7 +2216,7 @@ namespace VC {
           cmds.AddRange(entryBlock.Cmds);
           entryBlock.Cmds = cmds;
           // Make sure that all added commands are passive commands.
-          Hashtable incarnationMap = ComputeIncarnationMap(entryBlock, new Hashtable());
+          Dictionary<Variable, Expr> incarnationMap = ComputeIncarnationMap(entryBlock, new Dictionary<Block, Dictionary<Variable, Expr>>());
           TurnIntoPassiveBlock(entryBlock, incarnationMap, mvInfo,
                                ComputeOldExpressionSubstitution(impl.Proc.Modifies));
         }
@@ -2530,7 +2530,7 @@ namespace VC {
 
     static VCExpr LetVC(Block startBlock,
                         VCExpr controlFlowVariableExpr,
-                        Hashtable/*<int, Absy!>*/ label2absy,
+                        Dictionary<int, Absy> label2absy,
                         ProverContext proverCtxt,
                         out int assertionCount) {
       Contract.Requires(startBlock != null);
@@ -2546,7 +2546,7 @@ namespace VC {
 
     static VCExpr LetVCIterative(List<Block> blocks,
                                  VCExpr controlFlowVariableExpr,
-                                 Hashtable label2absy,
+                                 Dictionary<int, Absy> label2absy,
                                  ProverContext proverCtxt,
                                  out int assertionCount) {
       Contract.Requires(blocks != null);
@@ -2616,7 +2616,7 @@ namespace VC {
 
     static VCExpr LetVC(Block block,
                         VCExpr controlFlowVariableExpr,
-                        Hashtable/*<int, Absy!>*/ label2absy,
+                        Dictionary<int, Absy> label2absy,
                         Hashtable/*<Block, VCExprVar!>*/ blockVariables,
                         List<VCExprLetBinding/*!*/>/*!*/ bindings,
                         ProverContext proverCtxt,
@@ -2683,7 +2683,7 @@ namespace VC {
 
     static VCExpr DagVC(Block block,
                          VCExpr controlFlowVariableExpr,
-                         Hashtable/*<int, Absy!>*/ label2absy,
+                         Dictionary<int, Absy> label2absy,
                          Hashtable/*<Block, VCExpr!>*/ blockEquations,
                          ProverContext proverCtxt,
                          out int assertionCount)
@@ -2738,7 +2738,7 @@ namespace VC {
     }
 
     static VCExpr FlatBlockVC(Implementation impl,
-                              Hashtable/*<int, Absy!>*/ label2absy,
+                              Dictionary<int, Absy> label2absy,
                               bool local, bool reach, bool doomed,
                               ProverContext proverCtxt,
                               out int assertionCount)
@@ -2874,7 +2874,7 @@ namespace VC {
     }
 
     static VCExpr NestedBlockVC(Implementation impl,
-                                Hashtable/*<int, Absy!>*/ label2absy,
+                                Dictionary<int, Absy> label2absy,
                                 bool reach,
                                 ProverContext proverCtxt,
                                 out int assertionCount){
@@ -2997,7 +2997,7 @@ namespace VC {
     }
 
     static VCExpr VCViaStructuredProgram
-                  (Implementation impl, Hashtable/*<int, Absy!>*/ label2absy,
+                  (Implementation impl, Dictionary<int, Absy> label2absy,
                    ProverContext proverCtxt,
                    out int assertionCount)
     {

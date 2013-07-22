@@ -176,7 +176,7 @@ namespace Microsoft.Boogie
                 Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_global_old_{0}", ie.Decl.Name), ie.Decl.TypedIdent.Type), true);
                 inputs.Add(f);
             }
-            yieldProc = new Procedure(Token.NoToken, "og_yield", new TypeVariableSeq(), inputs, new VariableSeq(), new RequiresSeq(), new IdentifierExprSeq(), new EnsuresSeq());
+            yieldProc = new Procedure(Token.NoToken, "og_yield", new TypeVariableSeq(), inputs, new VariableSeq(), new List<Requires>(), new IdentifierExprSeq(), new List<Ensures>());
             yieldProc.AddAttribute("inline", new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1)));
         }
 
@@ -275,13 +275,13 @@ namespace Microsoft.Boogie
 
             VariableSeq inParams = new VariableSeq();
             VariableSeq outParams = new VariableSeq();
-            RequiresSeq requiresSeq = new RequiresSeq();
-            EnsuresSeq ensuresSeq = new EnsuresSeq();
+            List<Requires> requiresSeq = new List<Requires>();
+            List<Ensures> ensuresSeq = new List<Ensures>();
             IdentifierExprSeq ieSeq = new IdentifierExprSeq();
             int count = 0;
             while (callCmd != null)
             {
-                Hashtable map = new Hashtable();
+                Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
                 foreach (Variable x in callCmd.Proc.InParams)
                 {
                     Variable y = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "og_" + count + x.Name, x.TypedIdent.Type), true);
@@ -317,7 +317,7 @@ namespace Microsoft.Boogie
             return proc;
         }
 
-        private void CreateYieldCheckerImpl(DeclWithFormals decl, List<CmdSeq> yields, Hashtable map)
+        private void CreateYieldCheckerImpl(DeclWithFormals decl, List<CmdSeq> yields, Dictionary<Variable, Expr> map)
         {
             if (yields.Count == 0) return;
 
@@ -354,8 +354,8 @@ namespace Microsoft.Boogie
                 locals.Add(copy);
                 map[decl.OutParams[i]] = new IdentifierExpr(Token.NoToken, copy);
             }
-            Hashtable ogOldLocalMap = new Hashtable();
-            Hashtable assumeMap = new Hashtable(map);
+            Dictionary<Variable, Expr> ogOldLocalMap = new Dictionary<Variable, Expr>();
+            Dictionary<Variable, Expr> assumeMap = new Dictionary<Variable, Expr>(map);
             foreach (IdentifierExpr ie in globalMods)
             {
                 Variable g = ie.Decl;
@@ -406,7 +406,7 @@ namespace Microsoft.Boogie
 
             // Create the yield checker procedure
             var yieldCheckerName = string.Format("{0}_YieldChecker_{1}", decl is Procedure ? "Proc" : "Impl", decl.Name);
-            var yieldCheckerProc = new Procedure(Token.NoToken, yieldCheckerName, decl.TypeParameters, inputs, new VariableSeq(), new RequiresSeq(), new IdentifierExprSeq(), new EnsuresSeq());
+            var yieldCheckerProc = new Procedure(Token.NoToken, yieldCheckerName, decl.TypeParameters, inputs, new VariableSeq(), new List<Requires>(), new IdentifierExprSeq(), new List<Ensures>());
             yieldCheckerProc.AddAttribute("inline", new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1)));
             yieldCheckerProcs.Add(yieldCheckerProc);
 
@@ -422,7 +422,7 @@ namespace Microsoft.Boogie
             Program program = linearTypechecker.program;
             ProcedureInfo info = procNameToInfo[impl.Name];
 
-            Hashtable map = new Hashtable();
+            Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
             foreach (Variable local in impl.LocVars)
             {
                 var copy = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, local.Name, local.TypedIdent.Type));
@@ -504,7 +504,7 @@ namespace Microsoft.Boogie
                         {
                             if (!asyncAndParallelCallDesugarings.ContainsKey(callCmd.Proc.Name))
                             {
-                                asyncAndParallelCallDesugarings[callCmd.Proc.Name] = new Procedure(Token.NoToken, string.Format("DummyAsyncTarget_{0}", callCmd.Proc.Name), callCmd.Proc.TypeParameters, callCmd.Proc.InParams, callCmd.Proc.OutParams, callCmd.Proc.Requires, new IdentifierExprSeq(), new EnsuresSeq());
+                                asyncAndParallelCallDesugarings[callCmd.Proc.Name] = new Procedure(Token.NoToken, string.Format("DummyAsyncTarget_{0}", callCmd.Proc.Name), callCmd.Proc.TypeParameters, callCmd.Proc.InParams, callCmd.Proc.OutParams, callCmd.Proc.Requires, new IdentifierExprSeq(), new List<Ensures>());
                             }
                             var dummyAsyncTargetProc = asyncAndParallelCallDesugarings[callCmd.Proc.Name];
                             CallCmd dummyCallCmd = new CallCmd(Token.NoToken, dummyAsyncTargetProc.Name, callCmd.Ins, callCmd.Outs);
@@ -639,7 +639,7 @@ namespace Microsoft.Boogie
             // Collect the yield predicates and desugar yields
             List<CmdSeq> yields = new List<CmdSeq>();
             CmdSeq cmds = new CmdSeq();
-            if (proc.Requires.Length > 0)
+            if (proc.Requires.Count > 0)
             {
                 Dictionary<string, HashSet<Variable>> domainNameToScope = new Dictionary<string, HashSet<Variable>>();
                 foreach (var domainName in linearTypechecker.linearDomains.Keys)
@@ -678,7 +678,7 @@ namespace Microsoft.Boogie
                 yields.Add(cmds);
                 cmds = new CmdSeq();
             }
-            if (info.inParallelCall && proc.Ensures.Length > 0)
+            if (info.inParallelCall && proc.Ensures.Count > 0)
             {
                 Dictionary<string, HashSet<Variable>> domainNameToScope = new Dictionary<string, HashSet<Variable>>();
                 foreach (var domainName in linearTypechecker.linearDomains.Keys)
@@ -717,7 +717,7 @@ namespace Microsoft.Boogie
                 yields.Add(cmds);
                 cmds = new CmdSeq();
             }
-            CreateYieldCheckerImpl(proc, yields, new Hashtable());
+            CreateYieldCheckerImpl(proc, yields, new Dictionary<Variable, Expr>());
         }
 
         private void AddYieldProcAndImpl() 

@@ -155,7 +155,7 @@ namespace Microsoft.Boogie.Houdini {
       var exprGen = proverInterface.Context.ExprGen;
       VCExpr controlFlowVariableExpr = CommandLineOptions.Clo.UseLabels ? null : exprGen.Integer(BigNum.ZERO);
 
-      Hashtable/*<int, Absy!>*/ label2absy;
+      Dictionary<int, Absy> label2absy;
       conjecture = vcgen.GenerateVC(impl, controlFlowVariableExpr, out label2absy, proverInterface.Context);
       if (!CommandLineOptions.Clo.UseLabels) {
         VCExpr controlFlowFunctionAppl = exprGen.ControlFlowFunctionApplication(exprGen.Integer(BigNum.ZERO), exprGen.Integer(BigNum.ZERO));

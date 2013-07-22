@@ -185,7 +185,7 @@ namespace VC {
     public VCExpr vcexpr;
     public List<VCExprVar> interfaceExprVars;
     public List<VCExprVar> privateExprVars;
-    public Hashtable/*<int, Absy!>*/ label2absy;
+    public Dictionary<int, Absy> label2absy;
     public ModelViewInfo mvInfo;
     public Dictionary<Block, List<CallSite>> callSites;
     public Dictionary<Block, List<CallSite>> recordProcCallSites;
@@ -1151,7 +1151,7 @@ namespace VC {
 
       // Get the VC of the current procedure
       VCExpr vcMain = implName2StratifiedInliningInfo[impl.Name].vcexpr;
-      Hashtable/*<int, Absy!>*/ mainLabel2absy = implName2StratifiedInliningInfo[impl.Name].label2absy;
+      Dictionary<int, Absy> mainLabel2absy = implName2StratifiedInliningInfo[impl.Name].label2absy;
 
       // Find all procedure calls in vc and put labels on them      
       FCallHandler calls = new FCallHandler(prover.VCExprGen, implName2StratifiedInliningInfo, impl.Name, mainLabel2absy);
@@ -1349,7 +1349,7 @@ namespace VC {
       StratifiedInliningInfo info = implName2StratifiedInliningInfo[impl.Name];
       info.GenerateVC();
       VCExpr vc = info.vcexpr;
-      Hashtable mainLabel2absy = info.label2absy;
+      Dictionary<int, Absy> mainLabel2absy = info.label2absy;
       var reporter = new StratifiedInliningErrorReporter(implName2StratifiedInliningInfo, prover, callback, info);
 
       // Find all procedure calls in vc and put labels on them      
@@ -1851,7 +1851,7 @@ namespace VC {
     //    VCs with different labels each time)
     public class FCallHandler : MutatingVCExprVisitor<bool> {
       Dictionary<string/*!*/, StratifiedInliningInfo/*!*/>/*!*/ implName2StratifiedInliningInfo;
-      public readonly Hashtable/*<int, Absy!>*//*!*/ mainLabel2absy;
+      public readonly Dictionary<int, Absy>/*!*/ mainLabel2absy;
       public Dictionary<BoogieCallExpr/*!*/, int>/*!*/ boogieExpr2Id;
       public Dictionary<BoogieCallExpr/*!*/, VCExpr>/*!*/ recordExpr2Var;
       public Dictionary<int, VCExprNAry/*!*/>/*!*/ id2Candidate;
@@ -1910,7 +1910,7 @@ namespace VC {
 
       public FCallHandler(VCExpressionGenerator/*!*/ gen,
                             Dictionary<string/*!*/, StratifiedInliningInfo/*!*/>/*!*/ implName2StratifiedInliningInfo,
-                            string mainProcName, Hashtable/*<int, Absy!>*//*!*/ mainLabel2absy)
+                            string mainProcName, Dictionary<int, Absy>/*!*/ mainLabel2absy)
         : base(gen) {
         Contract.Requires(gen != null);
         Contract.Requires(cce.NonNullDictionaryAndValues(implName2StratifiedInliningInfo));
@@ -2116,7 +2116,7 @@ namespace VC {
         return Gen.Eq(VCExpressionGenerator.True, id2ControlVar[candidateId]);
       }
 
-      public Hashtable/*<int,absy>*/ getLabel2absy() {
+      public Dictionary<int, Absy> getLabel2absy() {
         Contract.Ensures(Contract.Result<Hashtable>() != null);
 
         Contract.Assert(currProc != null);
@@ -2158,7 +2158,7 @@ namespace VC {
         string prefix = "si_fcall_"; // from Wlp.ssc::Cmd(...)
         if (lop.label.Substring(1).StartsWith(prefix)) {
           int id = Int32.Parse(lop.label.Substring(prefix.Length + 1));
-          Hashtable label2absy = getLabel2absy();
+          Dictionary<int, Absy> label2absy = getLabel2absy();
           Absy cmd = label2absy[id] as Absy;
           //label2absy.Remove(id);
 
@@ -2472,7 +2472,7 @@ namespace VC {
           Contract.Assume(0 <= capturePoint && capturePoint < info.CapturePoints.Count);
           VC.ModelViewInfo.Mapping map = info.CapturePoints[capturePoint];
           var prevInc = (lastCapturePoint != CALL && lastCapturePoint != RETURN && candidate == lastCandidate)
-            ? info.CapturePoints[lastCapturePoint].IncarnationMap : new Hashtable();
+            ? info.CapturePoints[lastCapturePoint].IncarnationMap : new Dictionary<Variable, Expr>();
           var cs = m.MkState(map.Description);
 
           foreach (Variable v in info.AllVariables) {
@@ -2718,7 +2718,7 @@ namespace VC {
         Contract.Ensures(Contract.Result<Absy>() != null);
 
         int id = int.Parse(label);
-        Hashtable l2a = cce.NonNull(implName2StratifiedInliningInfo[procName]).label2absy;
+        Dictionary<int, Absy> l2a = cce.NonNull(implName2StratifiedInliningInfo[procName]).label2absy;
         return cce.NonNull((Absy)l2a[id]);
       }
 

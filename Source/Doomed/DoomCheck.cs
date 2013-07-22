@@ -151,7 +151,7 @@ void ObjectInvariant()
         }
 
         #region Attributes
-        public Hashtable Label2Absy;
+        public Dictionary<int, Absy> Label2Absy;
         public DoomErrorHandler ErrorHandler {
             set {
                 m_ErrHandler = value;
@@ -219,9 +219,9 @@ void ObjectInvariant()
                     
             }
 
-            Label2Absy = new Hashtable(); // This is only a dummy
+            Label2Absy = new Dictionary<int, Absy>(); // This is only a dummy
             m_Evc = new Evc(check);
-            Hashtable l2a = null;
+            Dictionary<int, Absy> l2a = null;
             VCExpr vce = this.GenerateEVC(passive_impl, out l2a, check, out assertionCount);
             Contract.Assert(vce != null);
             Contract.Assert( l2a!=null);
@@ -235,9 +235,9 @@ void ObjectInvariant()
         {
             Contract.Requires(check != null);
             m_Check = check;
-            Label2Absy = new Hashtable(); // This is only a dummy
+            Label2Absy = new Dictionary<int, Absy>(); // This is only a dummy
             m_Evc = new Evc(check);
-            Hashtable l2a = null;
+            Dictionary<int, Absy> l2a = null;
             int assertionCount;  // compute and then ignore
             VCExpr vce = this.GenerateEVC(passive_impl, out l2a, check, out assertionCount);
             Contract.Assert(vce != null);
@@ -301,14 +301,14 @@ void ObjectInvariant()
 
        */
 
-        VCExpr GenerateEVC(Implementation impl, out Hashtable label2absy, Checker ch, out int assertionCount) {
+        VCExpr GenerateEVC(Implementation impl, out Dictionary<int, Absy> label2absy, Checker ch, out int assertionCount) {
           Contract.Requires(impl != null);
           Contract.Requires(ch != null);
           Contract.Ensures(Contract.Result<VCExpr>() != null);
 
           TypecheckingContext tc = new TypecheckingContext(null);
           impl.Typecheck(tc);
-          label2absy = new Hashtable/*<int, Absy!>*/();
+          label2absy = new Dictionary<int, Absy>();
           VCExpr vc;
           switch (CommandLineOptions.Clo.vcVariety) {
             case CommandLineOptions.VCVariety.Doomed:
@@ -322,7 +322,7 @@ void ObjectInvariant()
         }
 
         public VCExpr LetVC(Block startBlock,
-                            Hashtable/*<int, Absy!>*/ label2absy,
+                            Dictionary<int, Absy> label2absy,
                             ProverContext proverCtxt,
                             out int assertionCount)
         {
@@ -342,7 +342,7 @@ void ObjectInvariant()
         }
 
         VCExpr LetVC(Block block,
-                     Hashtable/*<int, Absy!>*/ label2absy,
+                     Dictionary<int, Absy> label2absy,
                      Hashtable/*<Block, VCExprVar!>*/ blockVariables,
                      List<VCExprLetBinding> bindings,
                      ProverContext proverCtxt,

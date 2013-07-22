@@ -128,7 +128,7 @@ namespace Microsoft.Boogie {
         TypeSeq newArguments = new TypeSeq();
         Type result = NewType(mapType.Result, mapDisjointSet.Result);
         bool newTypeNeeded = (result != mapType.Result);
-        for (int i = 0; i < mapType.Arguments.Length; i++) {
+        for (int i = 0; i < mapType.Arguments.Count; i++) {
           if (mapDisjointSet.Args(i).Find() == uniqueBv32Set.Find()) {
             newArguments.Add(new BvType(32));
             newTypeNeeded = true;
@@ -151,7 +151,7 @@ namespace Microsoft.Boogie {
       if (mapType == null) {
         return new DisjointSet();
       }
-      DisjointSet[] args = new DisjointSet[mapType.Arguments.Length];
+      DisjointSet[] args = new DisjointSet[mapType.Arguments.Count];
       for (int i = 0; i < args.Length; i++) {
         args[i] = MakeDisjointSet(mapType.Arguments[i]);
       }

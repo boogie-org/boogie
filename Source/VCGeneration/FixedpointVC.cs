@@ -126,7 +126,7 @@ namespace Microsoft.Boogie
             Contract.Requires(impl != null);
 
             CurrentLocalVariables = impl.LocVars;
-            variable2SequenceNumber = new Hashtable/*Variable -> int*/();
+            variable2SequenceNumber = new Dictionary<Variable, int>();
             incarnationOriginMap = new Dictionary<Incarnation, Absy>();
 
             ResetPredecessors(impl.Blocks);
@@ -395,7 +395,7 @@ namespace Microsoft.Boogie
             public Dictionary<Incarnation, Absy> incarnationOriginMap;
             public Hashtable /*Variable->Expr*/ exitIncarnationMap;
             public Hashtable /*GotoCmd->returnCmd*/ gotoCmdOrigins;
-            public Hashtable/*<int, Absy!>*/ label2absy;
+            public Dictionary<int, Absy> label2absy;
             public VC.ModelViewInfo mvInfo;
 
             public Dictionary<Block, VCExprVar> reachVars;
@@ -514,7 +514,7 @@ namespace Microsoft.Boogie
             //public VCExpr vcexpr;
             //public List<VCExprVar> interfaceExprVars;
             //public List<VCExprVar> privateExprVars;
-            //public Hashtable/*<int, Absy!>*/ label2absy;
+            //public Dictionary<int, Absy> label2absy;
             //public VC.ModelViewInfo mvInfo;
             //public Dictionary<Block, List<CallSite>> callSites;
             //public Dictionary<Block, List<CallSite>> recordProcCallSites;
@@ -1007,7 +1007,7 @@ namespace Microsoft.Boogie
             ConvertCFG2DAG(impl,edgesCut);
             VC.ModelViewInfo mvInfo;
             PassifyImpl(impl, out mvInfo);
-            Hashtable/*<int, Absy!>*/ label2absy = null;
+            Dictionary<int, Absy> label2absy = null;
             VCExpressionGenerator gen = checker.VCExprGen;
             Contract.Assert(gen != null);
             VCExpr vcexpr;
@@ -1871,7 +1871,7 @@ namespace Microsoft.Boogie
                 Contract.Assume(0 <= capturePoint && capturePoint < info.CapturePoints.Count);
                 VC.ModelViewInfo.Mapping map = info.CapturePoints[capturePoint];
                 var prevInc = (lastCapturePoint != CALL && lastCapturePoint != RETURN && candidate == lastCandidate)
-                  ? info.CapturePoints[lastCapturePoint].IncarnationMap : new Hashtable();
+                  ? info.CapturePoints[lastCapturePoint].IncarnationMap : new Dictionary<Variable, Expr>();
                 var cs = m.MkState(map.Description);
 
                 foreach (Variable v in info.AllVariables)

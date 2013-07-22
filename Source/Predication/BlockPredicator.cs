@@ -312,13 +312,13 @@ public class BlockPredicator {
         if (dwf is Procedure)
         {
             var proc = (Procedure)dwf;
-            var newRequires = new RequiresSeq();
+            var newRequires = new List<Requires>();
             foreach (Requires r in proc.Requires)
             {
                 newRequires.Add(new Requires(r.Free,
                     new EnabledReplacementVisitor(new IdentifierExpr(Token.NoToken, fpVar)).VisitExpr(r.Condition)));
             }
-            var newEnsures = new EnsuresSeq();
+            var newEnsures = new List<Ensures>();
             foreach (Ensures e in proc.Ensures)
             {
                 newEnsures.Add(new Ensures(e.Free,

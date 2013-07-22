@@ -588,9 +588,9 @@ Procedure<out Procedure/*!*/ proc, out /*maybe null*/ Implementation impl>
 = (. Contract.Ensures(Contract.ValueAtReturn(out proc) != null); IToken/*!*/ x;
      TypeVariableSeq/*!*/ typeParams;
      VariableSeq/*!*/ ins, outs;
-     RequiresSeq/*!*/ pre = new RequiresSeq();
+     List<Requires>/*!*/ pre = new List<Requires>();
      IdentifierExprSeq/*!*/ mods = new IdentifierExprSeq();
-     EnsuresSeq/*!*/ post = new EnsuresSeq();
+     List<Ensures>/*!*/ post = new List<Ensures>();
 
      VariableSeq/*!*/ locals = new VariableSeq();
      StmtList/*!*/ stmtList;
@@ -642,7 +642,7 @@ ProcSignature<bool allowWhereClausesOnFormals, out IToken/*!*/ name, out TypeVar
   .
 
 
-Spec<RequiresSeq/*!*/ pre, IdentifierExprSeq/*!*/ mods, EnsuresSeq/*!*/ post>
+Spec<List<Requires>/*!*/ pre, IdentifierExprSeq/*!*/ mods, List<Ensures>/*!*/ post>
 = (.Contract.Requires(pre != null); Contract.Requires(mods != null); Contract.Requires(post != null); TokenSeq/*!*/ ms; .)
   ( "modifies"
     [ Idents<out ms>        (. foreach(IToken/*!*/ m in ms){
@@ -656,7 +656,7 @@ Spec<RequiresSeq/*!*/ pre, IdentifierExprSeq/*!*/ mods, EnsuresSeq/*!*/ post>
   )
   .
 
-SpecPrePost<bool free, RequiresSeq/*!*/ pre, EnsuresSeq/*!*/ post>
+SpecPrePost<bool free, List<Requires>/*!*/ pre, List<Ensures>/*!*/ post>
 = (. Contract.Requires(pre != null); Contract.Requires(post != null); Expr/*!*/ e; Token tok = null; QKeyValue kv = null; .)
   ( "requires"              (. tok = t; .)
     { Attribute<ref kv> }

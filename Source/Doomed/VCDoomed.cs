@@ -584,7 +584,7 @@ namespace VC {
     #region Program Passification
     private void GenerateHelperBlocks(Implementation impl) {
       Contract.Requires(impl != null);
-      Hashtable gotoCmdOrigins = new Hashtable();
+      Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins = new Dictionary<TransferCmd, ReturnCmd>();
       exitBlock = GenerateUnifiedExit(impl, gotoCmdOrigins);
       Contract.Assert(exitBlock != null);
 
@@ -622,7 +622,7 @@ namespace VC {
     }
 
 
-    private Hashtable/*TransferCmd->ReturnCmd*/ PassifyProgram(Implementation impl, ModelViewInfo mvInfo) {
+    private Dictionary<Variable, Expr> PassifyProgram(Implementation impl, ModelViewInfo mvInfo) {
       Contract.Requires(impl != null);
       Contract.Requires(mvInfo != null);
       Contract.Requires(this.exitBlock != null);
@@ -692,7 +692,7 @@ namespace VC {
 
     private void Transform4DoomedCheck(Implementation impl)
     {
-        variable2SequenceNumber = new Hashtable/*Variable -> int*/();
+        variable2SequenceNumber = new Dictionary<Variable, int>();
         incarnationOriginMap = new Dictionary<Incarnation, Absy>();
         if (impl.Blocks.Count < 1) return;
 
@@ -744,14 +744,14 @@ namespace VC {
         ResetPredecessors(impl.Blocks);
         //EmitImpl(impl,false);
 
-        Hashtable/*Variable->Expr*/ htbl = PassifyProgram(impl, new ModelViewInfo(program, impl));
+        Dictionary<Variable, Expr> var2Expr = PassifyProgram(impl, new ModelViewInfo(program, impl));
 
         // Collect the last incarnation of each reachability variable in the passive program
         foreach (KeyValuePair<Block, Variable> kvp in m_BlockReachabilityMap)
         {
-            if (htbl.ContainsKey(kvp.Value))
+            if (var2Expr.ContainsKey(kvp.Value))
             {
-                m_LastReachVarIncarnation[kvp.Value] = (Expr)htbl[kvp.Value];
+                m_LastReachVarIncarnation[kvp.Value] = (Expr)var2Expr[kvp.Value];
             }
         }
     }

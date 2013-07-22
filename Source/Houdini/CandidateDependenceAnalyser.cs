@@ -437,7 +437,7 @@ namespace Microsoft.Boogie.Houdini {
         {
 
           #region Handle the preconditions
-          RequiresSeq newRequires = new RequiresSeq();
+          List<Requires> newRequires = new List<Requires>();
           foreach(Requires r in p.Requires) {
             string c;
             if (Houdini.MatchCandidate(r.Condition, candidates, out c)) {
@@ -457,7 +457,7 @@ namespace Microsoft.Boogie.Houdini {
           #endregion
 
           #region Handle the postconditions
-          EnsuresSeq newEnsures = new EnsuresSeq();
+          List<Ensures> newEnsures = new List<Ensures>();
           foreach(Ensures e in p.Ensures) {
             string c;
             if (Houdini.MatchCandidate(e.Condition, candidates, out c)) {

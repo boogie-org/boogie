@@ -565,7 +565,7 @@ namespace Microsoft.Boogie.Houdini {
         private void GenVC(Implementation impl)
         {
             ModelViewInfo mvInfo;
-            System.Collections.Hashtable label2absy;
+            Dictionary<int, Absy> label2absy;
             var collector = new AbsHoudiniCounterexampleCollector(this);
             collector.OnProgress("HdnVCGen", 0, 0, 0.0);
 
@@ -2238,7 +2238,7 @@ namespace Microsoft.Boogie.Houdini {
 
             foreach (var proc in program.TopLevelDeclarations.OfType<Procedure>())
             {
-                var nensures = new EnsuresSeq();
+                var nensures = new List<Ensures>();
                 proc.Ensures.OfType<Ensures>()
                 .Where(ens => !QKeyValue.FindBoolAttribute(ens.Attributes, "ah") &&
                     !QKeyValue.FindBoolAttribute(ens.Attributes, "pre") &&
@@ -2792,7 +2792,7 @@ namespace Microsoft.Boogie.Houdini {
         private void GenVC(Implementation impl)
         {
             ModelViewInfo mvInfo;
-            System.Collections.Hashtable label2absy;
+            Dictionary<int, Absy> label2absy;
 
             if (CommandLineOptions.Clo.Trace)
             {
@@ -3147,7 +3147,7 @@ namespace Microsoft.Boogie.Houdini {
                 PosPrePreds[impl.Name].UnionWith(posPreT);
 
                 // Pick up per-procedure pre-post
-                var nens = new EnsuresSeq();
+                var nens = new List<Ensures>();
                 foreach (var ens in impl.Proc.Ensures.OfType<Ensures>())
                 {
                     string s = null;

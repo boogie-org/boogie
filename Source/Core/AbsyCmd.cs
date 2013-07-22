@@ -2040,9 +2040,9 @@ namespace Microsoft.Boogie {
     protected override Cmd ComputeDesugaring() {
       Contract.Ensures(Contract.Result<Cmd>() != null);
       CmdSeq newBlockBody = new CmdSeq();
-      Hashtable /*Variable -> Expr*/ substMap = new Hashtable/*Variable -> Expr*/();
-      Hashtable /*Variable -> Expr*/ substMapOld = new Hashtable/*Variable -> Expr*/();
-      Hashtable /*Variable -> Expr*/ substMapBound = new Hashtable/*Variable -> Expr*/();
+      Dictionary<Variable, Expr> substMap = new Dictionary<Variable, Expr>();
+      Dictionary<Variable, Expr> substMapOld = new Dictionary<Variable, Expr>();
+      Dictionary<Variable, Expr> substMapBound = new Dictionary<Variable, Expr>();
       VariableSeq/*!*/ tempVars = new VariableSeq();
 
       // proc P(ins) returns (outs)
@@ -2113,7 +2113,7 @@ namespace Microsoft.Boogie {
       Substitution s = Substituter.SubstitutionFromHashtable(substMapBound);
       bool hasWildcard = (wildcardVars.Length != 0);
       Expr preConjunction = null;
-      for (int i = 0; i < this.Proc.Requires.Length; i++) {
+      for (int i = 0; i < this.Proc.Requires.Count; i++) {
         Requires/*!*/ req = cce.NonNull(this.Proc.Requires[i]);
         if (!req.Free && !IsFree) {
           if (hasWildcard) {
@@ -2149,7 +2149,7 @@ namespace Microsoft.Boogie {
       #region assume Pre[ins := cins] with formal paramters
       if (hasWildcard) {
         s = Substituter.SubstitutionFromHashtable(substMap);
-        for (int i = 0; i < this.Proc.Requires.Length; i++) {
+        for (int i = 0; i < this.Proc.Requires.Count; i++) {
           Requires/*!*/ req = cce.NonNull(this.Proc.Requires[i]);
           if (!req.Free) {
             Requires/*!*/ reqCopy = (Requires/*!*/)cce.NonNull(req.Clone());
@@ -2335,7 +2335,7 @@ namespace Microsoft.Boogie {
 
   public class AssertCmd : PredicateCmd, IPotentialErrorNode {
     public Expr OrigExpr;
-    public Hashtable /*Variable -> Expr*/ IncarnationMap;
+    public Dictionary<Variable, Expr> IncarnationMap;
 
     // TODO: convert to use generics
     private object errorData;
