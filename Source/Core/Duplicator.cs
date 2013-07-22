@@ -262,10 +262,10 @@ namespace Microsoft.Boogie {
       Contract.Ensures(Contract.Result<Cmd>() != null);
       return base.VisitRE((RE)node.Clone());
     }
-    public override RESeq VisitRESeq(RESeq reSeq) {
+    public override List<RE> VisitRESeq(List<RE> reSeq) {
       //Contract.Requires(reSeq != null);
-      Contract.Ensures(Contract.Result<RESeq>() != null);
-      return base.VisitRESeq(new RESeq(reSeq));
+      Contract.Ensures(Contract.Result<List<RE>>() != null);
+      return base.VisitRESeq(new List<RE>(reSeq));
     }
     public override ReturnCmd VisitReturnCmd(ReturnCmd node) {
       //Contract.Requires(node != null);

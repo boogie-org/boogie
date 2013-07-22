@@ -3361,16 +3361,6 @@ namespace Microsoft.Boogie {
 
   #region Regular Expressions
   // a data structure to recover the "program structure" from the flow graph
-  public sealed class RESeq : List<RE> {
-    public RESeq(params RE[] args)
-      : base(args) {
-      Contract.Requires(args != null);
-    }
-    public RESeq(RESeq reSeq)
-      : base(reSeq) {
-      Contract.Requires(reSeq != null);
-    }
-  }
   public abstract class RE : Cmd {
     public RE()
       : base(Token.NoToken) {
@@ -3455,8 +3445,8 @@ namespace Microsoft.Boogie {
       Contract.Invariant(rs != null);
     }
 
-    public RESeq/*!*/ rs;
-    public Choice(RESeq operands) {
+    public List<RE>/*!*/ rs;
+    public Choice(List<RE> operands) {
       Contract.Requires(operands != null);
       rs = operands;
     }
@@ -3490,7 +3480,7 @@ namespace Microsoft.Boogie {
         if (g.labelTargets.Count == 1) {
           return new Sequential(new AtomicRE(b), Transform(cce.NonNull(g.labelTargets[0])));
         } else {
-          RESeq rs = new RESeq();
+          List<RE> rs = new List<RE>();
           foreach (Block/*!*/ target in g.labelTargets) {
             Contract.Assert(target != null);
             RE r = Transform(target);

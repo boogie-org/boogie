@@ -427,9 +427,9 @@ namespace Microsoft.Boogie {
       Contract.Ensures(Contract.Result<Cmd>() != null);
       return (Cmd)this.Visit(node); // Call general visit so subtypes get visited by their particular visitor
     }
-    public virtual RESeq VisitRESeq(RESeq reSeq) {
+    public virtual List<RE> VisitRESeq(List<RE> reSeq) {
       Contract.Requires(reSeq != null);
-      Contract.Ensures(Contract.Result<RESeq>() != null);
+      Contract.Ensures(Contract.Result<List<RE>>() != null);
       for (int i = 0, n = reSeq.Count; i < n; i++)
         reSeq[i] = (RE)this.VisitRE(cce.NonNull(reSeq[i]));
       return reSeq;

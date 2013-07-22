@@ -794,9 +794,9 @@ namespace Microsoft.Boogie.VCExprAST {
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }
-    public override RESeq VisitRESeq(RESeq reSeq) {
+    public override List<RE> VisitRESeq(List<RE> reSeq) {
       //Contract.Requires(reSeq != null);
-      Contract.Ensures(Contract.Result<RESeq>() != null);
+      Contract.Ensures(Contract.Result<List<RE>>() != null);
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }
