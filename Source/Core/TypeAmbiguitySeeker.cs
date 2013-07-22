@@ -92,7 +92,7 @@ namespace Microsoft.Boogie {
       if (node.ProxyFor != null)
         return base.VisitMapTypeProxy(node);
 
-      TypeVariableSeq/*!*/ typeParams = new TypeVariableSeq();
+      List<TypeVariable>/*!*/ typeParams = new List<TypeVariable>();
       List<Type>/*!*/ arguments = new List<Type>();
       for (int i = 0; i < node.Arity; ++i) {
         TypeVariable/*!*/ param = new TypeVariable(Token.NoToken, "arg" + i);

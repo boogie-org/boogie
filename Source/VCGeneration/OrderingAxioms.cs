@@ -95,7 +95,7 @@ namespace Microsoft.Boogie {
         args.Add(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "arg0", t), true));
         args.Add(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "arg1", t), true));
         Formal result = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "res", t), false);
-        res = new Function(Token.NoToken, "oneStep", new TypeVariableSeq(), args, result);
+        res = new Function(Token.NoToken, "oneStep", new List<TypeVariable>(), args, result);
         OneStepFuns.Add(t, res);
       }
       return cce.NonNull(res);

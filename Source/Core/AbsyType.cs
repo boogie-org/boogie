@@ -74,14 +74,14 @@ namespace Microsoft.Boogie {
         return true;
       Type thatType = that as Type;
       return thatType != null && this.Equals(thatType,
-                                             new TypeVariableSeq(),
-                                             new TypeVariableSeq());
+                                             new List<TypeVariable>(),
+                                             new List<TypeVariable>());
     }
 
     [Pure]
     public abstract bool Equals(Type/*!*/ that,
-                                TypeVariableSeq/*!*/ thisBoundVariables,
-                                TypeVariableSeq/*!*/ thatBoundVariables);
+                                List<TypeVariable>/*!*/ thisBoundVariables,
+                                List<TypeVariable>/*!*/ thatBoundVariables);
 
     // used to skip leading type annotations (subexpressions of the
     // resulting type might still contain annotations)
@@ -102,11 +102,11 @@ namespace Microsoft.Boogie {
     /// </summary>
     public bool Unify(Type that) {
       Contract.Requires(that != null);
-      return Unify(that, new TypeVariableSeq(), new Dictionary<TypeVariable/*!*/, Type/*!*/>());
+      return Unify(that, new List<TypeVariable>(), new Dictionary<TypeVariable/*!*/, Type/*!*/>());
     }
 
     public abstract bool Unify(Type/*!*/ that,
-                               TypeVariableSeq/*!*/ unifiableVariables,
+                               List<TypeVariable>/*!*/ unifiableVariables,
       // an idempotent substitution that describes the
       // unification result up to a certain point
                                IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ unifier);
@@ -125,11 +125,11 @@ namespace Microsoft.Boogie {
     // no such unifier exists. The unifier is not allowed to subtitute any
     // type variables other than the ones in "unifiableVariables"
     public IDictionary<TypeVariable!, Type!> Unify(Type! that,
-                                                   TypeVariableSeq! unifiableVariables) {
+                                                   List<TypeVariable>! unifiableVariables) {
       Dictionary<TypeVariable!, Type!>! result = new Dictionary<TypeVariable!, Type!> ();
       try {
         this.Unify(that, unifiableVariables,
-                   new TypeVariableSeq (), new TypeVariableSeq (), result);
+                   new List<TypeVariable> (), new List<TypeVariable> (), result);
       } catch (UnificationFailedException) {
         return null;
       }
@@ -139,7 +139,7 @@ namespace Microsoft.Boogie {
     // Compute an idempotent most general unifier and add the result to the argument
     // unifier. The result is true iff the unification succeeded
     public bool Unify(Type! that,
-                      TypeVariableSeq! unifiableVariables,
+                      List<TypeVariable>! unifiableVariables,
                       // given mappings that need to be taken into account
                       // the old unifier has to be idempotent as well
                       IDictionary<TypeVariable!, Type!>! unifier)
@@ -148,7 +148,7 @@ namespace Microsoft.Boogie {
  Contract.Requires(IsIdempotent(unifier));
       try {
         this.Unify(that, unifiableVariables,
-                   new TypeVariableSeq (), new TypeVariableSeq (), unifier);
+                   new List<TypeVariable> (), new List<TypeVariable> (), unifier);
       } catch (UnificationFailedException) {
         return false;
       }
@@ -156,9 +156,9 @@ namespace Microsoft.Boogie {
     }
 
     public abstract void Unify(Type! that,
-                               TypeVariableSeq! unifiableVariables,
-                               TypeVariableSeq! thisBoundVariables,
-                               TypeVariableSeq! thatBoundVariables,
+                               List<TypeVariable>! unifiableVariables,
+                               List<TypeVariable>! thisBoundVariables,
+                               List<TypeVariable>! thatBoundVariables,
                                // an idempotent substitution that describes the
                                // unification result up to a certain point
                                IDictionary<TypeVariable!, Type!>! result);
@@ -179,11 +179,11 @@ namespace Microsoft.Boogie {
 
     [Pure]
     public override int GetHashCode() {
-      return this.GetHashCode(new TypeVariableSeq());
+      return this.GetHashCode(new List<TypeVariable>());
     }
 
     [Pure]
-    public abstract int GetHashCode(TypeVariableSeq/*!*/ boundVariables);
+    public abstract int GetHashCode(List<TypeVariable>/*!*/ boundVariables);
 
     //-----------  Resolution  ----------------------------------
 
@@ -201,7 +201,7 @@ namespace Microsoft.Boogie {
     }
 
     // determine the free variables in a type, in the order in which the variables occur
-    public abstract TypeVariableSeq/*!*/ FreeVariables {
+    public abstract List<TypeVariable>/*!*/ FreeVariables {
       get;
     }
 
@@ -364,7 +364,7 @@ namespace Microsoft.Boogie {
 
 #if OLD_UNIFICATION
     public static IDictionary<TypeVariable!, Type!>!
-                  MatchArgumentTypes(TypeVariableSeq! typeParams,
+                  MatchArgumentTypes(List<TypeVariable>! typeParams,
                                      List<Type>! formalArgs,
                                      List<Expr>! actualArgs,
                                      List<Type> formalOuts,
@@ -375,8 +375,8 @@ namespace Microsoft.Boogie {
  Contract.Requires(formalArgs.Length == actualArgs.Length);
  Contract.Requires(formalOuts == null <==> actualOuts == null);
  Contract.Requires(formalOuts != null ==> formalOuts.Length == actualOuts.Length);
-      TypeVariableSeq! boundVarSeq0 = new TypeVariableSeq ();
-      TypeVariableSeq! boundVarSeq1 = new TypeVariableSeq ();
+      List<TypeVariable>! boundVarSeq0 = new List<TypeVariable> ();
+      List<TypeVariable>! boundVarSeq1 = new List<TypeVariable> ();
       Dictionary<TypeVariable!, Type!>! subst = new Dictionary<TypeVariable!, Type!>();
 
       for (int i = 0; i < formalArgs.Length; ++i) {
@@ -436,7 +436,7 @@ namespace Microsoft.Boogie {
     }
 #else
     public static IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/
-                  MatchArgumentTypes(TypeVariableSeq/*!*/ typeParams,
+                  MatchArgumentTypes(List<TypeVariable>/*!*/ typeParams,
                                      List<Type>/*!*/ formalArgs,
                                      List<Expr>/*!*/ actualArgs,
                                      List<Type> formalOuts,
@@ -505,7 +505,7 @@ namespace Microsoft.Boogie {
     //------------  on concrete types, substitute the result into the
     //------------  result type. Null is returned for type errors
 
-    public static List<Type> CheckArgumentTypes(TypeVariableSeq/*!*/ typeParams,
+    public static List<Type> CheckArgumentTypes(List<TypeVariable>/*!*/ typeParams,
                                              out List<Type/*!*/>/*!*/ actualTypeParams,
                                              List<Type>/*!*/ formalIns,
                                              List<Expr>/*!*/ actualIns,
@@ -555,7 +555,7 @@ namespace Microsoft.Boogie {
         Contract.Assert(t != null);
         actualResults.Add(t.Substitute(subst));
       }
-      TypeVariableSeq resultFreeVars = FreeVariablesIn(actualResults);
+      List<TypeVariable> resultFreeVars = FreeVariablesIn(actualResults);
       if (previousErrorCount != tc.ErrorCount) {
         // errors occured when matching the formal arguments
         // in case we have been able to substitute all type parameters,
@@ -577,7 +577,7 @@ namespace Microsoft.Boogie {
 
     // about the same as Type.CheckArgumentTypes, but without
     // detailed error reports
-    public static Type/*!*/ InferValueType(TypeVariableSeq/*!*/ typeParams,
+    public static Type/*!*/ InferValueType(List<TypeVariable>/*!*/ typeParams,
                                        List<Type>/*!*/ formalArgs,
                                        Type/*!*/ formalResult,
                                        List<Type>/*!*/ actualArgs) {
@@ -594,7 +594,7 @@ namespace Microsoft.Boogie {
       Type/*!*/ res = formalResult.Substitute(subst);
       Contract.Assert(res != null);
       // all type parameters have to be substituted with concrete types
-      TypeVariableSeq/*!*/ resFreeVars = res.FreeVariables;
+      List<TypeVariable>/*!*/ resFreeVars = res.FreeVariables;
       Contract.Assert(resFreeVars != null);
       Contract.Assert(Contract.ForAll(0, typeParams.Count, var => !resFreeVars.Contains(typeParams[var])));
       return res;
@@ -602,14 +602,14 @@ namespace Microsoft.Boogie {
 
 #if OLD_UNIFICATION
     public static IDictionary<TypeVariable!, Type!>!
-                  InferTypeParameters(TypeVariableSeq! typeParams,
+                  InferTypeParameters(List<TypeVariable>! typeParams,
                                       List<Type>! formalArgs,
                                       List<Type>! actualArgs)
       {
  Contract.Requires(formalArgs.Length == actualArgs.Length);
       
-      TypeVariableSeq! boundVarSeq0 = new TypeVariableSeq ();
-      TypeVariableSeq! boundVarSeq1 = new TypeVariableSeq ();
+      List<TypeVariable>! boundVarSeq0 = new List<TypeVariable> ();
+      List<TypeVariable>! boundVarSeq1 = new List<TypeVariable> ();
       Dictionary<TypeVariable!, Type!>! subst = new Dictionary<TypeVariable!, Type!>();
 
       for (int i = 0; i < formalArgs.Length; ++i) {
@@ -634,7 +634,7 @@ namespace Microsoft.Boogie {
     /// (and only does arguments, not results; and takes actuals as List<Type>, not List<Expr>)
     /// </summary>
     public static IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/
-                  InferTypeParameters(TypeVariableSeq/*!*/ typeParams,
+                  InferTypeParameters(List<TypeVariable>/*!*/ typeParams,
                                       List<Type>/*!*/ formalArgs,
                                       List<Type>/*!*/ actualArgs) {
       Contract.Requires(typeParams != null);
@@ -670,7 +670,7 @@ namespace Microsoft.Boogie {
 
     //-----------  Helper methods to deal with bound type variables  ---------------
 
-    public static void EmitOptionalTypeParams(TokenTextWriter stream, TypeVariableSeq typeParams) {
+    public static void EmitOptionalTypeParams(TokenTextWriter stream, List<TypeVariable> typeParams) {
       Contract.Requires(typeParams != null);
       Contract.Requires(stream != null);
       if (typeParams.Count > 0) {
@@ -681,23 +681,23 @@ namespace Microsoft.Boogie {
     }
 
     // Sort the type parameters according to the order of occurrence in the argument types
-    public static TypeVariableSeq/*!*/ SortTypeParams(TypeVariableSeq/*!*/ typeParams, List<Type>/*!*/ argumentTypes, Type resultType) {
+    public static List<TypeVariable>/*!*/ SortTypeParams(List<TypeVariable>/*!*/ typeParams, List<Type>/*!*/ argumentTypes, Type resultType) {
       Contract.Requires(typeParams != null);
       Contract.Requires(argumentTypes != null);
-      Contract.Ensures(Contract.Result<TypeVariableSeq>() != null);
+      Contract.Ensures(Contract.Result<List<TypeVariable>>() != null);
 
-      Contract.Ensures(Contract.Result<TypeVariableSeq>().Count == typeParams.Count);
+      Contract.Ensures(Contract.Result<List<TypeVariable>>().Count == typeParams.Count);
       if (typeParams.Count == 0) {
         return typeParams;
       }
 
-      TypeVariableSeq freeVarsInUse = FreeVariablesIn(argumentTypes);
+      List<TypeVariable> freeVarsInUse = FreeVariablesIn(argumentTypes);
       if (resultType != null) {
         freeVarsInUse.AppendWithoutDups(resultType.FreeVariables);
       }
       // "freeVarsInUse" is already sorted, but it may contain type variables not in "typeParams".
       // So, project "freeVarsInUse" onto "typeParams":
-      TypeVariableSeq sortedTypeParams = new TypeVariableSeq();
+      List<TypeVariable> sortedTypeParams = new List<TypeVariable>();
       foreach (TypeVariable/*!*/ var in freeVarsInUse) {
         Contract.Assert(var != null);
         if (typeParams.Contains(var)) {
@@ -717,7 +717,7 @@ namespace Microsoft.Boogie {
     // Return true if some type parameters appear only among "moreArgumentTypes" and
     // not in "argumentTypes".
     [Pure]
-    public static bool CheckBoundVariableOccurrences(TypeVariableSeq/*!*/ typeParams,
+    public static bool CheckBoundVariableOccurrences(List<TypeVariable>/*!*/ typeParams,
                                                      List<Type>/*!*/ argumentTypes,
                                                      List<Type> moreArgumentTypes,
                                                      IToken/*!*/ resolutionSubject,
@@ -728,8 +728,8 @@ namespace Microsoft.Boogie {
       Contract.Requires(resolutionSubject != null);
       Contract.Requires(subjectName != null);
       Contract.Requires(rc != null);
-      TypeVariableSeq freeVarsInArgs = FreeVariablesIn(argumentTypes);
-      TypeVariableSeq moFreeVarsInArgs = moreArgumentTypes == null ? null : FreeVariablesIn(moreArgumentTypes);
+      List<TypeVariable> freeVarsInArgs = FreeVariablesIn(argumentTypes);
+      List<TypeVariable> moFreeVarsInArgs = moreArgumentTypes == null ? null : FreeVariablesIn(moreArgumentTypes);
       bool someTypeParamsAppearOnlyAmongMo = false;
       foreach (TypeVariable/*!*/ var in typeParams) {
         Contract.Assert(var != null);
@@ -750,10 +750,10 @@ namespace Microsoft.Boogie {
     }
 
     [Pure]
-    public static TypeVariableSeq FreeVariablesIn(List<Type> arguments) {
+    public static List<TypeVariable> FreeVariablesIn(List<Type> arguments) {
       Contract.Requires(arguments != null);
-      Contract.Ensures(Contract.Result<TypeVariableSeq>() != null);
-      TypeVariableSeq/*!*/ res = new TypeVariableSeq();
+      Contract.Ensures(Contract.Result<List<TypeVariable>>() != null);
+      List<TypeVariable>/*!*/ res = new List<TypeVariable>();
       foreach (Type/*!*/ t in arguments) {
         Contract.Assert(t != null);
         res.AppendWithoutDups(t.FreeVariables);
@@ -772,9 +772,9 @@ namespace Microsoft.Boogie {
         throw new NotImplementedException();
       }
     }
-    public override TypeVariableSeq FreeVariables {
+    public override List<TypeVariable> FreeVariables {
       get {
-        Contract.Ensures(Contract.Result<TypeVariableSeq>() != null);
+        Contract.Ensures(Contract.Result<List<TypeVariable>>() != null);
         throw new NotImplementedException();
       }
     }
@@ -793,13 +793,13 @@ namespace Microsoft.Boogie {
       Contract.Requires(stream != null);
       throw new NotImplementedException();
     }
-    public override bool Equals(Type that, TypeVariableSeq thisBoundVariables, TypeVariableSeq thatBoundVariables) {
+    public override bool Equals(Type that, List<TypeVariable> thisBoundVariables, List<TypeVariable> thatBoundVariables) {
       Contract.Requires(that != null);
       Contract.Requires(thisBoundVariables != null);
       Contract.Requires(thatBoundVariables != null);
       throw new NotImplementedException();
     }
-    public override bool Unify(Type that, TypeVariableSeq unifiableVariables, IDictionary<TypeVariable, Type> unifier) {
+    public override bool Unify(Type that, List<TypeVariable> unifiableVariables, IDictionary<TypeVariable, Type> unifier) {
       Contract.Requires(that != null);
       Contract.Requires(unifiableVariables != null);
       Contract.Requires(cce.NonNullDictionaryAndValues(unifier));
@@ -819,7 +819,7 @@ namespace Microsoft.Boogie {
 
       throw new NotImplementedException();
     }
-    public override int GetHashCode(TypeVariableSeq boundVariables) {
+    public override int GetHashCode(List<TypeVariable> boundVariables) {
       Contract.Requires(boundVariables != null);
       throw new NotImplementedException();
     }
@@ -896,7 +896,7 @@ namespace Microsoft.Boogie {
     }
 
     [Pure]
-    public override bool Equals(Type that, TypeVariableSeq thisBoundVariables, TypeVariableSeq thatBoundVariables) {
+    public override bool Equals(Type that, List<TypeVariable> thisBoundVariables, List<TypeVariable> thatBoundVariables) {
       //Contract.Requires(thatBoundVariables != null);
       //Contract.Requires(thisBoundVariables != null);
       //Contract.Requires(that != null);
@@ -905,7 +905,7 @@ namespace Microsoft.Boogie {
 
     //-----------  Unification of types  -----------
 
-    public override bool Unify(Type that, TypeVariableSeq unifiableVariables, IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ unifier) {
+    public override bool Unify(Type that, List<TypeVariable> unifiableVariables, IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ unifier) {
       //Contract.Requires(unifiableVariables != null);
       //Contract.Requires(that != null);
       //Contract.Requires(cce.NonNullElements(unifier));
@@ -922,9 +922,9 @@ namespace Microsoft.Boogie {
 
 #if OLD_UNIFICATION
     public override void Unify(Type! that,
-                               TypeVariableSeq! unifiableVariables,
-                               TypeVariableSeq! thisBoundVariables,
-                               TypeVariableSeq! thatBoundVariables,
+                               List<TypeVariable>! unifiableVariables,
+                               List<TypeVariable>! thisBoundVariables,
+                               List<TypeVariable>! thatBoundVariables,
                                IDictionary<TypeVariable!, Type!>! result) {
       that = that.Expanded;
       if (that is TypeVariable) {
@@ -947,7 +947,7 @@ namespace Microsoft.Boogie {
     //-----------  Hashcodes  ----------------------------------
 
     [Pure]
-    public override int GetHashCode(TypeVariableSeq boundVariables) {
+    public override int GetHashCode(List<TypeVariable> boundVariables) {
       //Contract.Requires(boundVariables != null);
       return this.T.GetHashCode();
     }
@@ -962,11 +962,11 @@ namespace Microsoft.Boogie {
     }
 
     // determine the free variables in a type, in the order in which the variables occur
-    public override TypeVariableSeq/*!*/ FreeVariables {
+    public override List<TypeVariable>/*!*/ FreeVariables {
       get {
-        Contract.Ensures(Contract.Result<TypeVariableSeq>() != null);
+        Contract.Ensures(Contract.Result<List<TypeVariable>>() != null);
 
-        return new TypeVariableSeq();  // basic type are closed
+        return new List<TypeVariable>();  // basic type are closed
       }
     }
 
@@ -1059,8 +1059,8 @@ namespace Microsoft.Boogie {
 
     [Pure]
     public override bool Equals(Type/*!*/ that,
-                                TypeVariableSeq/*!*/ thisBoundVariables,
-                                TypeVariableSeq/*!*/ thatBoundVariables) {
+                                List<TypeVariable>/*!*/ thisBoundVariables,
+                                List<TypeVariable>/*!*/ thatBoundVariables) {
       //Contract.Requires(thisBoundVariables != null);
       //Contract.Requires(thatBoundVariables != null);
       //Contract.Requires(that != null);
@@ -1071,7 +1071,7 @@ namespace Microsoft.Boogie {
     //-----------  Unification of types  -----------
 
     public override bool Unify(Type/*!*/ that,
-                               TypeVariableSeq/*!*/ unifiableVariables,
+                               List<TypeVariable>/*!*/ unifiableVariables,
       // an idempotent substitution that describes the
       // unification result up to a certain point
                                IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ unifier) {
@@ -1088,9 +1088,9 @@ namespace Microsoft.Boogie {
 
 #if OLD_UNIFICATION
     public override void Unify(Type that,
-                               TypeVariableSeq! unifiableVariables,
-                               TypeVariableSeq! thisBoundVariables,
-                               TypeVariableSeq! thatBoundVariables,
+                               List<TypeVariable>! unifiableVariables,
+                               List<TypeVariable>! thisBoundVariables,
+                               List<TypeVariable>! thatBoundVariables,
                                IDictionary<TypeVariable!, Type!> result){
 Contract.Requires(result != null);
 Contract.Requires(that != null);
@@ -1115,7 +1115,7 @@ Contract.Requires(that != null);
     //-----------  Hashcodes  ----------------------------------
 
     [Pure]
-    public override int GetHashCode(TypeVariableSeq boundVariables) {
+    public override int GetHashCode(List<TypeVariable> boundVariables) {
       //Contract.Requires(boundVariables != null);
       return this.Bits.GetHashCode();
     }
@@ -1130,11 +1130,11 @@ Contract.Requires(that != null);
     }
 
     // determine the free variables in a type, in the order in which the variables occur
-    public override TypeVariableSeq/*!*/ FreeVariables {
+    public override List<TypeVariable>/*!*/ FreeVariables {
       get {
-        Contract.Ensures(Contract.Result<TypeVariableSeq>() != null);
+        Contract.Ensures(Contract.Result<List<TypeVariable>>() != null);
 
-        return new TypeVariableSeq();  // bitvector-type are closed
+        return new List<TypeVariable>();  // bitvector-type are closed
       }
     }
 
@@ -1225,8 +1225,8 @@ Contract.Requires(that != null);
 
     [Pure]
     public override bool Equals(Type that,
-                                TypeVariableSeq/*!*/ thisBoundVariables,
-                                TypeVariableSeq/*!*/ thatBoundVariables) {
+                                List<TypeVariable>/*!*/ thisBoundVariables,
+                                List<TypeVariable>/*!*/ thatBoundVariables) {
       //Contract.Requires(thisBoundVariables != null);
       //Contract.Requires(thatBoundVariables != null);
       //Contract.Requires(that != null);
@@ -1237,7 +1237,7 @@ Contract.Requires(that != null);
     //-----------  Unification of types  -----------
 
     public override bool Unify(Type that,
-                               TypeVariableSeq/*!*/ unifiableVariables,
+                               List<TypeVariable>/*!*/ unifiableVariables,
                                IDictionary<TypeVariable/*!*/, Type/*!*/> result) {
       //Contract.Requires(unifiableVariables != null);
       //Contract.Requires(cce.NonNullElements(result));
@@ -1250,9 +1250,9 @@ Contract.Requires(that != null);
 
 #if OLD_UNIFICATION
     public override void Unify(Type that,
-                               TypeVariableSeq! unifiableVariables,
-                               TypeVariableSeq! thisBoundVariables,
-                               TypeVariableSeq! thatBoundVariables,
+                               List<TypeVariable>! unifiableVariables,
+                               List<TypeVariable>! thisBoundVariables,
+                               List<TypeVariable>! thatBoundVariables,
                                IDictionary<TypeVariable!, Type!> result){
 Contract.Requires(result != null);
 Contract.Requires(that != null);
@@ -1274,7 +1274,7 @@ Contract.Requires(that != null);
     //-----------  Hashcodes  ----------------------------------
 
     [Pure]
-    public override int GetHashCode(TypeVariableSeq boundVariables) {
+    public override int GetHashCode(List<TypeVariable> boundVariables) {
       //Contract.Requires(boundVariables != null);
       {
         Contract.Assert(false);
@@ -1362,11 +1362,11 @@ Contract.Requires(that != null);
       return resolvedArgs;
     }
 
-    public override TypeVariableSeq/*!*/ FreeVariables {
+    public override List<TypeVariable>/*!*/ FreeVariables {
       get {
-        Contract.Ensures(Contract.Result<TypeVariableSeq>() != null);
+        Contract.Ensures(Contract.Result<List<TypeVariable>>() != null);
 
-        return new TypeVariableSeq();
+        return new List<TypeVariable>();
       }
     }
 
@@ -1451,8 +1451,8 @@ Contract.Requires(that != null);
 
     [Pure]
     public override bool Equals(Type that,
-                                TypeVariableSeq/*!*/ thisBoundVariables,
-                                TypeVariableSeq/*!*/ thatBoundVariables) {
+                                List<TypeVariable>/*!*/ thisBoundVariables,
+                                List<TypeVariable>/*!*/ thatBoundVariables) {
       //Contract.Requires(thisBoundVariables != null);
       //Contract.Requires(thatBoundVariables != null);
       //Contract.Requires(that != null);
@@ -1471,7 +1471,7 @@ Contract.Requires(that != null);
     //-----------  Unification of types  -----------
 
     public override bool Unify(Type/*!*/ that,
-                               TypeVariableSeq/*!*/ unifiableVariables,
+                               List<TypeVariable>/*!*/ unifiableVariables,
       // an idempotent substitution that describes the
       // unification result up to a certain point
                                IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ unifier) {
@@ -1540,9 +1540,9 @@ Contract.Requires(that != null);
 
 #if OLD_UNIFICATION
     public override void Unify(Type that,
-                               TypeVariableSeq! unifiableVariables,
-                               TypeVariableSeq! thisBoundVariables,
-                               TypeVariableSeq! thatBoundVariables,
+                               List<TypeVariable>! unifiableVariables,
+                               List<TypeVariable>! thisBoundVariables,
+                               List<TypeVariable>! thatBoundVariables,
                                IDictionary<TypeVariable!, Type!> result){
 Contract.Requires(result != null);
 Contract.Requires(that != null);
@@ -1551,7 +1551,7 @@ Contract.Requires(that != null);
       if (thisIndex == -1) {
         // this is not a bound variable and can possibly be matched on that
         // that must not contain any bound variables
-        TypeVariableSeq! thatFreeVars = that.FreeVariables;
+        List<TypeVariable>! thatFreeVars = that.FreeVariables;
         if (Contract.Exists(thatBoundVariables, var=> thatFreeVars.Has(var)))
           throw UNIFICATION_FAILED;
 
@@ -1607,7 +1607,7 @@ Contract.Requires(that != null);
     //-----------  Hashcodes  ----------------------------------
 
     [Pure]
-    public override int GetHashCode(TypeVariableSeq boundVariables) {
+    public override int GetHashCode(List<TypeVariable> boundVariables) {
       //Contract.Requires(boundVariables != null);
       int thisIndex = boundVariables.LastIndexOf(this);
       if (thisIndex == -1)
@@ -1633,10 +1633,10 @@ Contract.Requires(that != null);
       return this;
     }
 
-    public override TypeVariableSeq/*!*/ FreeVariables {
+    public override List<TypeVariable>/*!*/ FreeVariables {
       get {
-        Contract.Ensures(Contract.Result<TypeVariableSeq>() != null);
-        return new TypeVariableSeq(this);
+        Contract.Ensures(Contract.Result<List<TypeVariable>>() != null);
+        return new List<TypeVariable> { this };
       }
     }
 
@@ -1755,8 +1755,8 @@ Contract.Requires(that != null);
 
     [Pure]
     public override bool Equals(Type that,
-                                TypeVariableSeq/*!*/ thisBoundVariables,
-                                TypeVariableSeq/*!*/ thatBoundVariables) {
+                                List<TypeVariable>/*!*/ thisBoundVariables,
+                                List<TypeVariable>/*!*/ thatBoundVariables) {
       //Contract.Requires(thisBoundVariables != null);
       //Contract.Requires(thatBoundVariables != null);
       //Contract.Requires(that != null);
@@ -1783,7 +1783,7 @@ Contract.Requires(that != null);
     }
 
     public override bool Unify(Type that,
-                               TypeVariableSeq/*!*/ unifiableVariables,
+                               List<TypeVariable>/*!*/ unifiableVariables,
                                IDictionary<TypeVariable/*!*/, Type/*!*/> result) {
       //Contract.Requires(cce.NonNullElements(result));
       //Contract.Requires(unifiableVariables != null);
@@ -1816,7 +1816,7 @@ Contract.Requires(that != null);
     //-----------  Hashcodes  ----------------------------------
 
     [Pure]
-    public override int GetHashCode(TypeVariableSeq boundVariables) {
+    public override int GetHashCode(List<TypeVariable> boundVariables) {
       //Contract.Requires(boundVariables != null);
       Type p = ProxyFor;
       if (p != null) {
@@ -1853,15 +1853,15 @@ Contract.Requires(that != null);
       }
     }
 
-    public override TypeVariableSeq/*!*/ FreeVariables {
+    public override List<TypeVariable>/*!*/ FreeVariables {
       get {
-        Contract.Ensures(Contract.Result<TypeVariableSeq>() != null);
+        Contract.Ensures(Contract.Result<List<TypeVariable>>() != null);
 
         Type p = ProxyFor;
         if (p != null) {
           return p.FreeVariables;
         } else {
-          return new TypeVariableSeq();
+          return new List<TypeVariable>();
         }
       }
     }
@@ -2123,7 +2123,7 @@ Contract.Requires(that != null);
     //-----------  Unification of types  -----------
 
     public override bool Unify(Type that,
-                               TypeVariableSeq unifiableVariables,
+                               List<TypeVariable> unifiableVariables,
                                IDictionary<TypeVariable, Type> result) {
       //Contract.Requires(cce.NonNullElements(result));
       //Contract.Requires(unifiableVariables != null);
@@ -2300,7 +2300,7 @@ Contract.Requires(that != null);
       }
 
       public bool Unify(MapType that,
-                        TypeVariableSeq/*!*/ unifiableVariables,
+                        List<TypeVariable>/*!*/ unifiableVariables,
                         IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ result) {
         Contract.Requires(unifiableVariables != null);
         Contract.Requires(cce.NonNullDictionaryAndValues(result));
@@ -2338,7 +2338,7 @@ Contract.Requires(that != null);
       Type f = ProxyFor;
       MapType mf = f as MapType;
       if (mf != null) {
-        bool success = c.Unify(mf, new TypeVariableSeq(), new Dictionary<TypeVariable/*!*/, Type/*!*/>());
+        bool success = c.Unify(mf, new List<TypeVariable>(), new Dictionary<TypeVariable/*!*/, Type/*!*/>());
         Contract.Assert(success);
         return;
       }
@@ -2437,7 +2437,7 @@ Contract.Requires(that != null);
     //-----------  Unification of types  -----------
 
     public override bool Unify(Type/*!*/ that,
-                               TypeVariableSeq/*!*/ unifiableVariables,
+                               List<TypeVariable>/*!*/ unifiableVariables,
                                IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ result) {
       //Contract.Requires(that != null);
       //Contract.Requires(unifiableVariables != null);
@@ -2626,8 +2626,8 @@ Contract.Requires(that != null);
 
     [Pure]
     public override bool Equals(Type/*!*/ that,
-                                TypeVariableSeq/*!*/ thisBoundVariables,
-                                TypeVariableSeq/*!*/ thatBoundVariables) {
+                                List<TypeVariable>/*!*/ thisBoundVariables,
+                                List<TypeVariable>/*!*/ thatBoundVariables) {
       //Contract.Requires(that != null);
       //Contract.Requires(thisBoundVariables != null);
       //Contract.Requires(thatBoundVariables != null);
@@ -2646,7 +2646,7 @@ Contract.Requires(that != null);
     //-----------  Unification of types  -----------
 
     public override bool Unify(Type/*!*/ that,
-                               TypeVariableSeq/*!*/ unifiableVariables,
+                               List<TypeVariable>/*!*/ unifiableVariables,
                                IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ result) {
       //Contract.Requires(that != null);
       //Contract.Requires(unifiableVariables != null);
@@ -2656,9 +2656,9 @@ Contract.Requires(that != null);
 
 #if OLD_UNIFICATION
     public override void Unify(Type! that,
-                               TypeVariableSeq! unifiableVariables,
-                               TypeVariableSeq! thisBoundVariables,
-                               TypeVariableSeq! thatBoundVariables,
+                               List<TypeVariable>! unifiableVariables,
+                               List<TypeVariable>! thisBoundVariables,
+                               List<TypeVariable>! thatBoundVariables,
                                IDictionary<TypeVariable!, Type!>! result) {
       ExpandedType.Unify(that, unifiableVariables,
                          thisBoundVariables, thatBoundVariables, result);
@@ -2685,7 +2685,7 @@ Contract.Requires(that != null);
     //-----------  Hashcodes  ----------------------------------
 
     [Pure]
-    public override int GetHashCode(TypeVariableSeq boundVariables) {
+    public override int GetHashCode(List<TypeVariable> boundVariables) {
       //Contract.Requires(boundVariables != null);
       return ExpandedType.GetHashCode(boundVariables);
     }
@@ -2711,9 +2711,9 @@ Contract.Requires(that != null);
       return new TypeSynonymAnnotation(tok, Decl, resolvedArgs);
     }
 
-    public override TypeVariableSeq/*!*/ FreeVariables {
+    public override List<TypeVariable>/*!*/ FreeVariables {
       get {
-        Contract.Ensures(Contract.Result<TypeVariableSeq>() != null);
+        Contract.Ensures(Contract.Result<List<TypeVariable>>() != null);
 
         return ExpandedType.FreeVariables;
       }
@@ -2886,8 +2886,8 @@ Contract.Requires(that != null);
 
     [Pure]
     public override bool Equals(Type/*!*/ that,
-                                TypeVariableSeq/*!*/ thisBoundVariables,
-                                TypeVariableSeq/*!*/ thatBoundVariables) {
+                                List<TypeVariable>/*!*/ thisBoundVariables,
+                                List<TypeVariable>/*!*/ thatBoundVariables) {
       that = TypeProxy.FollowProxy(that.Expanded);
       CtorType thatCtorType = that as CtorType;
       if (thatCtorType == null || !this.Decl.Equals(thatCtorType.Decl))
@@ -2903,7 +2903,7 @@ Contract.Requires(that != null);
     //-----------  Unification of types  -----------
 
     public override bool Unify(Type/*!*/ that,
-                               TypeVariableSeq/*!*/ unifiableVariables,
+                               List<TypeVariable>/*!*/ unifiableVariables,
                                IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ result) {
       that = that.Expanded;
       if (that is TypeProxy || that is TypeVariable)
@@ -2922,9 +2922,9 @@ Contract.Requires(that != null);
 
 #if OLD_UNIFICATION
     public override void Unify(Type! that,
-                               TypeVariableSeq! unifiableVariables,
-                               TypeVariableSeq! thisBoundVariables,
-                               TypeVariableSeq! thatBoundVariables,
+                               List<TypeVariable>! unifiableVariables,
+                               List<TypeVariable>! thisBoundVariables,
+                               List<TypeVariable>! thatBoundVariables,
                                IDictionary<TypeVariable!, Type!>! result) {
       that = that.Expanded;
       if (that is TypeVariable) {
@@ -2961,7 +2961,7 @@ Contract.Requires(that != null);
     //-----------  Hashcodes  ----------------------------------
 
     [Pure]
-    public override int GetHashCode(TypeVariableSeq boundVariables) {
+    public override int GetHashCode(List<TypeVariable> boundVariables) {
       //Contract.Requires(boundVariables != null);
       int res = 1637643879 * Decl.GetHashCode();
       foreach (Type/*!*/ t in Arguments) {
@@ -3015,9 +3015,9 @@ Contract.Requires(that != null);
       return new CtorType(tok, Decl, resolvedArgs);
     }
 
-    public override TypeVariableSeq/*!*/ FreeVariables {
+    public override List<TypeVariable>/*!*/ FreeVariables {
       get {
-        TypeVariableSeq/*!*/ res = new TypeVariableSeq();
+        List<TypeVariable>/*!*/ res = new List<TypeVariable>();
         foreach (Type/*!*/ t in Arguments) {
           Contract.Assert(t != null);
           res.AppendWithoutDups(t.FreeVariables);
@@ -3062,7 +3062,7 @@ Contract.Requires(that != null);
   public class MapType : Type {
     // an invariant is that each of the type parameters has to occur as
     // free variable in at least one of the arguments
-    public readonly TypeVariableSeq/*!*/ TypeParameters;
+    public readonly List<TypeVariable>/*!*/ TypeParameters;
     public readonly List<Type>/*!*/ Arguments;
     public Type/*!*/ Result;
     [ContractInvariantMethod]
@@ -3073,7 +3073,7 @@ Contract.Requires(that != null);
     }
 
 
-    public MapType(IToken/*!*/ token, TypeVariableSeq/*!*/ typeParameters, List<Type>/*!*/ arguments, Type/*!*/ result)
+    public MapType(IToken/*!*/ token, List<TypeVariable>/*!*/ typeParameters, List<Type>/*!*/ arguments, Type/*!*/ result)
       : base(token) {
       Contract.Requires(token != null);
       Contract.Requires(typeParameters != null);
@@ -3101,7 +3101,7 @@ Contract.Requires(that != null);
           newVarMap.Add(p);
       }
 
-      TypeVariableSeq/*!*/ newTypeParams = new TypeVariableSeq();
+      List<TypeVariable>/*!*/ newTypeParams = new List<TypeVariable>();
       foreach (TypeVariable/*!*/ var in TypeParameters) {
         Contract.Assert(var != null);
         TypeVariable/*!*/ newVar = new TypeVariable(var.tok, var.Name);
@@ -3123,7 +3123,7 @@ Contract.Requires(that != null);
 
     public override Type CloneUnresolved() {
       Contract.Ensures(Contract.Result<Type>() != null);
-      TypeVariableSeq/*!*/ newTypeParams = new TypeVariableSeq();
+      List<TypeVariable>/*!*/ newTypeParams = new List<TypeVariable>();
       foreach (TypeVariable/*!*/ var in TypeParameters) {
         Contract.Assert(var != null);
         TypeVariable/*!*/ newVar = new TypeVariable(var.tok, var.Name);
@@ -3146,8 +3146,8 @@ Contract.Requires(that != null);
 
     [Pure]
     public override bool Equals(Type/*!*/ that,
-                                TypeVariableSeq/*!*/ thisBoundVariables,
-                                TypeVariableSeq/*!*/ thatBoundVariables) {
+                                List<TypeVariable>/*!*/ thisBoundVariables,
+                                List<TypeVariable>/*!*/ thatBoundVariables) {
       that = TypeProxy.FollowProxy(that.Expanded);
       MapType thatMapType = that as MapType;
       if (thatMapType == null ||
@@ -3189,7 +3189,7 @@ Contract.Requires(that != null);
     //-----------  Unification of types  -----------
 
     public override bool Unify(Type/*!*/ that,
-                               TypeVariableSeq/*!*/ unifiableVariables,
+                               List<TypeVariable>/*!*/ unifiableVariables,
                                IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ result) {
       that = that.Expanded;
       if (that is TypeProxy || that is TypeVariable)
@@ -3206,7 +3206,7 @@ Contract.Requires(that != null);
         new Dictionary<TypeVariable/*!*/, Type/*!*/>();
       Dictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ subst1 =
         new Dictionary<TypeVariable/*!*/, Type/*!*/>();
-      TypeVariableSeq freshies = new TypeVariableSeq();
+      List<TypeVariable> freshies = new List<TypeVariable>();
       for (int i = 0; i < this.TypeParameters.Count; i++) {
         TypeVariable tp0 = this.TypeParameters[i];
         TypeVariable tp1 = thatMapType.TypeParameters[i];
@@ -3230,7 +3230,7 @@ Contract.Requires(that != null);
       if (good && freshies.Count != 0) {
         // This is done by looking for occurrences of the fresh variables in the
         // non-substituted types ...
-        TypeVariableSeq freeVars = this.FreeVariables;
+        List<TypeVariable> freeVars = this.FreeVariables;
         foreach (TypeVariable fr in freshies)
           if (freeVars.Contains(fr)) {
             return false;
@@ -3257,9 +3257,9 @@ Contract.Requires(that != null);
 
 #if OLD_UNIFICATION
     public override void Unify(Type! that,
-                               TypeVariableSeq! unifiableVariables,
-                               TypeVariableSeq! thisBoundVariables,
-                               TypeVariableSeq! thatBoundVariables,
+                               List<TypeVariable>! unifiableVariables,
+                               List<TypeVariable>! thisBoundVariables,
+                               List<TypeVariable>! thatBoundVariables,
                                IDictionary<TypeVariable!, Type!>! result) {
       that = that.Expanded;
       if (that is TypeVariable) {
@@ -3356,7 +3356,7 @@ Contract.Assert(var != null);
     //-----------  Hashcodes  ----------------------------------
 
     [Pure]
-    public override int GetHashCode(TypeVariableSeq boundVariables) {
+    public override int GetHashCode(List<TypeVariable> boundVariables) {
       //Contract.Requires(boundVariables != null);
       int res = 7643761 * TypeParameters.Count + 65121 * Arguments.Count;
 
@@ -3424,7 +3424,7 @@ Contract.Assert(var != null);
                                       rc);
 
         // sort the type parameters so that they are bound in the order of occurrence
-        TypeVariableSeq/*!*/ sortedTypeParams = SortTypeParams(TypeParameters, resolvedArgs, resolvedResult);
+        List<TypeVariable>/*!*/ sortedTypeParams = SortTypeParams(TypeParameters, resolvedArgs, resolvedResult);
         Contract.Assert(sortedTypeParams != null);
         return new MapType(tok, sortedTypeParams, resolvedArgs, resolvedResult);
       } finally {
@@ -3432,9 +3432,9 @@ Contract.Assert(var != null);
       }
     }
 
-    public override TypeVariableSeq/*!*/ FreeVariables {
+    public override List<TypeVariable>/*!*/ FreeVariables {
       get {
-        TypeVariableSeq/*!*/ res = FreeVariablesIn(Arguments);
+        List<TypeVariable>/*!*/ res = FreeVariablesIn(Arguments);
         Contract.Assert(res != null);
         res.AppendWithoutDups(Result.FreeVariables);
         foreach (TypeVariable/*!*/ v in TypeParameters) {
@@ -3584,7 +3584,7 @@ Contract.Ensures(Contract.ValueAtReturn(out tpInstantiation) != null);
       this.Instantiations = instantiations;
     }
 
-    public static TypeParamInstantiation/*!*/ From(TypeVariableSeq typeParams, List<Type/*!*/>/*!*/ actualTypeParams) {
+    public static TypeParamInstantiation/*!*/ From(List<TypeVariable> typeParams, List<Type/*!*/>/*!*/ actualTypeParams) {
       Contract.Requires(cce.NonNullElements(actualTypeParams));
       Contract.Requires(typeParams != null);
       Contract.Requires(typeParams.Count == actualTypeParams.Count);

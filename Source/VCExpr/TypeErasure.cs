@@ -40,7 +40,7 @@ namespace Microsoft.Boogie.TypeErasure {
                                    new TypedIdent(Token.NoToken, "res",
                                                    cce.NonNull(types)[types.Length - 1]),
                                    false);
-      return new Function(Token.NoToken, name, ToSeq(typeParams), args, result);
+      return new Function(Token.NoToken, name, new List<TypeVariable>(typeParams), args, result);
     }
 
     public static Function BoogieFunction(string name, params Type[] types) {
@@ -80,22 +80,11 @@ namespace Microsoft.Boogie.TypeErasure {
       return new List<T>(args);
     }
 
-    public static List<TypeVariable/*!*/>/*!*/ ToList(TypeVariableSeq seq) {
+    public static List<TypeVariable/*!*/>/*!*/ ToList(List<TypeVariable> seq) {
       Contract.Requires(seq != null);
       Contract.Ensures(cce.NonNullElements(Contract.Result<List<TypeVariable>>()));
       List<TypeVariable/*!*/>/*!*/ res = new List<TypeVariable/*!*/>(seq.Count);
       foreach (TypeVariable/*!*/ var in seq) {
-        Contract.Assert(var != null);
-        res.Add(var);
-      }
-      return res;
-    }
-
-    public static TypeVariableSeq ToSeq(List<TypeVariable/*!*/>/*!*/ list) {
-      Contract.Requires(cce.NonNullElements(list));
-      Contract.Ensures(Contract.Result<TypeVariableSeq>() != null);
-      TypeVariableSeq/*!*/ res = new TypeVariableSeq();
-      foreach (TypeVariable/*!*/ var in list) {
         Contract.Assert(var != null);
         res.Add(var);
       }
@@ -991,7 +980,7 @@ namespace Microsoft.Boogie.TypeErasure {
     }
 
     // the instantiations of inserted type variables, the order corresponds to the order in which "AbstractionVariable(int)" delivers variables
-    private Type/*!*/ ThinOutType(Type rawType, TypeVariableSeq boundTypeParams, List<Type> instantiations) {
+    private Type/*!*/ ThinOutType(Type rawType, List<TypeVariable> boundTypeParams, List<Type> instantiations) {
       Contract.Requires(instantiations != null);
       Contract.Requires(boundTypeParams != null);
       Contract.Requires(rawType != null);

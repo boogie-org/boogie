@@ -404,7 +404,7 @@ namespace Microsoft.Boogie
                       Token.NoToken,
                       new TypedIdent(Token.NoToken, 
                         domainName + "_in",
-                        new MapType(Token.NoToken, new TypeVariableSeq(), 
+                        new MapType(Token.NoToken, new List<TypeVariable>(), 
                           new List<Type> { domain.elementType }, Type.Bool)), true);
                     impl.InParams.Add(f);
                     domainNameToInputVar[domainName] = f;
@@ -523,7 +523,7 @@ namespace Microsoft.Boogie
                 {
                     proc.Requires.Add(new Requires(true, DisjointnessExpr(domainName, domainNameToInputScope[domainName])));
                     var domain = linearDomains[domainName];
-                    Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, domainName + "_in", new MapType(Token.NoToken, new TypeVariableSeq(), new List<Type> { domain.elementType }, Type.Bool)), true);
+                    Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, domainName + "_in", new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> { domain.elementType }, Type.Bool)), true);
                     proc.InParams.Add(f);
                     domainNameToOutputScope[domainName].Add(f);
                     proc.Ensures.Add(new Ensures(true, DisjointnessExpr(domainName, domainNameToOutputScope[domainName])));
@@ -573,7 +573,7 @@ namespace Microsoft.Boogie
         public Expr DisjointnessExpr(string domainName, HashSet<Variable> scope)
         {
             LinearDomain domain = linearDomains[domainName];
-            BoundVariable partition = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("partition_{0}", domainName), new MapType(Token.NoToken, new TypeVariableSeq(), new List<Type> { domain.elementType }, Microsoft.Boogie.Type.Int)));
+            BoundVariable partition = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("partition_{0}", domainName), new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> { domain.elementType }, Microsoft.Boogie.Type.Int)));
             Expr disjointExpr = Expr.True;
             int count = 0;
             foreach (Variable v in scope)
@@ -604,8 +604,8 @@ namespace Microsoft.Boogie
             this.elementType = elementType;
             this.axioms = new List<Axiom>();
 
-            MapType mapTypeBool = new MapType(Token.NoToken, new TypeVariableSeq(), new List<Type> { this.elementType }, Type.Bool);
-            MapType mapTypeInt = new MapType(Token.NoToken, new TypeVariableSeq(), new List<Type> { this.elementType }, Type.Int);
+            MapType mapTypeBool = new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> { this.elementType }, Type.Bool);
+            MapType mapTypeInt = new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> { this.elementType }, Type.Int);
             this.mapOrBool = new Function(Token.NoToken, domainName + "_linear_MapOr",
                                           new List<Variable> { new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "a", mapTypeBool), true),
                                                           new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "b", mapTypeBool), true) },
@@ -627,7 +627,7 @@ namespace Microsoft.Boogie
                 var rhsTerm = Expr.Binary(BinaryOperator.Opcode.Or,
                                           new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1), new List<Expr> { aie, xie } ),
                                           new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1), new List<Expr> { bie, xie} ));
-                var axiomExpr = new ForallExpr(Token.NoToken, new TypeVariableSeq(), new List<Variable> { a, b }, null, 
+                var axiomExpr = new ForallExpr(Token.NoToken, new List<TypeVariable>(), new List<Variable> { a, b }, null, 
                                                new Trigger(Token.NoToken, true, new List<Expr> { mapApplTerm }), 
                                                new ForallExpr(Token.NoToken, new List<Variable> { x }, Expr.Binary(BinaryOperator.Opcode.Eq, lhsTerm, rhsTerm)));
                 axiomExpr.Typecheck(new TypecheckingContext(null));
@@ -655,7 +655,7 @@ namespace Microsoft.Boogie
                 var rhsTerm = Expr.Binary(BinaryOperator.Opcode.Imp,
                                           new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1), new List<Expr> { aie, xie }),
                                           new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1), new List<Expr> { bie, xie }));
-                var axiomExpr = new ForallExpr(Token.NoToken, new TypeVariableSeq(), new List<Variable> { a, b }, null,
+                var axiomExpr = new ForallExpr(Token.NoToken, new List<TypeVariable>(), new List<Variable> { a, b }, null,
                                                new Trigger(Token.NoToken, true, new List<Expr> { mapApplTerm }), 
                                                new ForallExpr(Token.NoToken, new List<Variable> { x }, Expr.Binary(BinaryOperator.Opcode.Eq, lhsTerm, rhsTerm)));
                 axiomExpr.Typecheck(new TypecheckingContext(null));
@@ -706,7 +706,7 @@ namespace Microsoft.Boogie
                 var rhsTerm = Expr.Binary(BinaryOperator.Opcode.Eq,
                                           new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1), new List<Expr> { aie, xie }),
                                           new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1), new List<Expr> { bie, xie }));
-                var axiomExpr = new ForallExpr(Token.NoToken, new TypeVariableSeq(), new List<Variable> { a, b }, null, 
+                var axiomExpr = new ForallExpr(Token.NoToken, new List<TypeVariable>(), new List<Variable> { a, b }, null, 
                                                new Trigger(Token.NoToken, true, new List<Expr> { mapApplTerm }), 
                                                new ForallExpr(Token.NoToken, new List<Variable> { x }, Expr.Binary(BinaryOperator.Opcode.Eq, lhsTerm, rhsTerm)));
                 axiomExpr.Typecheck(new TypecheckingContext(null));

@@ -338,14 +338,14 @@ namespace Microsoft.Boogie.TypeErasure
 
     // distinguish between implicit and explicit type parameters
     internal static void SeparateTypeParams(List<Type/*!*/>/*!*/ valueArgumentTypes,
-                                            TypeVariableSeq/*!*/ allTypeParams,
+                                            List<TypeVariable>/*!*/ allTypeParams,
                                             out List<TypeVariable/*!*/>/*!*/ implicitParams,
                                             out List<TypeVariable/*!*/>/*!*/ explicitParams) {
       Contract.Requires(cce.NonNullElements(valueArgumentTypes));
       Contract.Requires(allTypeParams != null);
       Contract.Ensures(cce.NonNullElements(Contract.ValueAtReturn(out implicitParams)));
       Contract.Ensures(cce.NonNullElements(Contract.ValueAtReturn(out explicitParams)));
-      TypeVariableSeq/*!*/ varsInInParamTypes = new TypeVariableSeq();
+      List<TypeVariable>/*!*/ varsInInParamTypes = new List<TypeVariable>();
       foreach (Type/*!*/ t in valueArgumentTypes) {
         Contract.Assert(t != null);
         varsInInParamTypes.AppendWithoutDups(t.FreeVariables);
@@ -679,7 +679,7 @@ namespace Microsoft.Boogie.TypeErasure
       // parameters are split into the implicit parameters, and into the parameters
       // that have to be given explicitly
       TypeAxiomBuilderPremisses.SeparateTypeParams(originalInTypes,
-                                                   HelperFuns.ToSeq(originalTypeParams),
+                                                   new List<TypeVariable>(originalTypeParams),
                                                    out implicitTypeParams,
                                                    out explicitTypeParams);
 
@@ -1318,7 +1318,7 @@ namespace Microsoft.Boogie.TypeErasure
       return HandleFunctionOp(untypedFun.Fun, typeArgs, node, bindings);
     }
 
-    private List<Type/*!*/>/*!*/ ExtractTypeArgs(VCExprNAry node, TypeVariableSeq allTypeParams, List<TypeVariable/*!*/>/*!*/ explicitTypeParams) {
+    private List<Type/*!*/>/*!*/ ExtractTypeArgs(VCExprNAry node, List<TypeVariable> allTypeParams, List<TypeVariable/*!*/>/*!*/ explicitTypeParams) {
       Contract.Requires(allTypeParams != null);
       Contract.Requires(node != null);
       Contract.Requires(cce.NonNullElements(explicitTypeParams));

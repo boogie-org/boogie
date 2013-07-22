@@ -100,9 +100,9 @@ namespace Microsoft.Boogie {
           List<Expr> callArgs = new List<Expr>();
           List<Expr> axCallArgs = new List<Expr>();
           List<Variable> dummies = new List<Variable>(lambda.Dummies);
-          TypeVariableSeq freeTypeVars = new TypeVariableSeq();
+          List<TypeVariable> freeTypeVars = new List<TypeVariable>();
           List<Type/*!*/> fnTypeVarActuals = new List<Type/*!*/>();
-          TypeVariableSeq freshTypeVars = new TypeVariableSeq();  // these are only used in the lambda@n function's definition
+          List<TypeVariable> freshTypeVars = new List<TypeVariable>();  // these are only used in the lambda@n function's definition
           foreach (object o in freeVars) {
             // 'o' is either a Variable or a TypeVariable.  Since the lambda desugaring happens only
             // at the outermost level of a program (where there are no mutable variables) and, for
@@ -147,7 +147,7 @@ namespace Microsoft.Boogie {
           NAryExpr select = Expr.Select(axcall, selectArgs);
           select.Type = lambda.Body.Type;
           List<Type/*!*/> selectTypeParamActuals = new List<Type/*!*/>();
-          TypeVariableSeq forallTypeVariables = new TypeVariableSeq();
+          List<TypeVariable> forallTypeVariables = new List<TypeVariable>();
           foreach (TypeVariable/*!*/ tp in lambda.TypeParameters) {
             Contract.Assert(tp != null);
             selectTypeParamActuals.Add(tp);

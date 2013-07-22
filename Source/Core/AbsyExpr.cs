@@ -1494,7 +1494,7 @@ namespace Microsoft.Boogie {
             // quick path
             return Type.Bool;
           }
-          TypeVariableSeq/*!*/ unifiable = new TypeVariableSeq();
+          List<TypeVariable>/*!*/ unifiable = new List<TypeVariable>();
           unifiable.AddRange(arg0type.FreeVariables);
           unifiable.AddRange(arg1type.FreeVariables);
 

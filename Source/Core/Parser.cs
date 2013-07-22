@@ -324,7 +324,7 @@ private class BvBounds : Expr {
 		Contract.Ensures(Contract.ValueAtReturn(out ds) != null);
 		ds = new List<Declaration>(); IToken/*!*/ z;
 		IToken/*!*/ typeParamTok;
-		var typeParams = new TypeVariableSeq();
+		var typeParams = new List<TypeVariable>();
 		var arguments = new List<Variable>();
 		TypedIdent/*!*/ tyd;
 		TypedIdent retTyd = null;
@@ -468,7 +468,7 @@ private class BvBounds : Expr {
 
 	void Procedure(out Procedure/*!*/ proc, out /*maybe null*/ Implementation impl) {
 		Contract.Ensures(Contract.ValueAtReturn(out proc) != null); IToken/*!*/ x;
-		TypeVariableSeq/*!*/ typeParams;
+		List<TypeVariable>/*!*/ typeParams;
 		List<Variable>/*!*/ ins, outs;
 		List<Requires>/*!*/ pre = new List<Requires>();
 		List<IdentifierExpr>/*!*/ mods = new List<IdentifierExpr>();
@@ -500,7 +500,7 @@ private class BvBounds : Expr {
 
 	void Implementation(out Implementation/*!*/ impl) {
 		Contract.Ensures(Contract.ValueAtReturn(out impl) != null); IToken/*!*/ x;
-		TypeVariableSeq/*!*/ typeParams;
+		List<TypeVariable>/*!*/ typeParams;
 		List<Variable>/*!*/ ins, outs;
 		List<Variable>/*!*/ locals;
 		StmtList/*!*/ stmtList;
@@ -708,7 +708,7 @@ private class BvBounds : Expr {
 		IToken/*!*/ nnTok;
 		List<Type>/*!*/ arguments = new List<Type>();
 		Bpl.Type/*!*/ result;
-		TypeVariableSeq/*!*/ typeParameters = new TypeVariableSeq();
+		List<TypeVariable>/*!*/ typeParameters = new List<TypeVariable>();
 		
 		if (la.kind == 19) {
 			TypeParams(out nnTok, out typeParameters);
@@ -725,13 +725,13 @@ private class BvBounds : Expr {
 		
 	}
 
-	void TypeParams(out IToken/*!*/ tok, out Bpl.TypeVariableSeq/*!*/ typeParams) {
+	void TypeParams(out IToken/*!*/ tok, out List<TypeVariable>/*!*/ typeParams) {
 		Contract.Ensures(Contract.ValueAtReturn(out tok) != null); Contract.Ensures(Contract.ValueAtReturn(out typeParams) != null); List<IToken>/*!*/ typeParamToks; 
 		Expect(19);
 		tok = t;  
 		Idents(out typeParamToks);
 		Expect(20);
-		typeParams = new TypeVariableSeq ();
+		typeParams = new List<TypeVariable> ();
 		foreach(Token/*!*/ id in typeParamToks){
 		 Contract.Assert(id != null);
 		 typeParams.Add(new TypeVariable(id, id.val));}
@@ -827,7 +827,7 @@ private class BvBounds : Expr {
 			synonym = true; 
 		}
 		if (synonym) {
-		 TypeVariableSeq/*!*/ typeParams = new TypeVariableSeq();
+		 List<TypeVariable>/*!*/ typeParams = new List<TypeVariable>();
 		 foreach(Token/*!*/ t in paramTokens){
 		   Contract.Assert(t != null);
 		   typeParams.Add(new TypeVariable(t, t.val));}
@@ -848,10 +848,10 @@ private class BvBounds : Expr {
 		}
 	}
 
-	void ProcSignature(bool allowWhereClausesOnFormals, out IToken/*!*/ name, out TypeVariableSeq/*!*/ typeParams,
+	void ProcSignature(bool allowWhereClausesOnFormals, out IToken/*!*/ name, out List<TypeVariable>/*!*/ typeParams,
 out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		Contract.Ensures(Contract.ValueAtReturn(out name) != null); Contract.Ensures(Contract.ValueAtReturn(out typeParams) != null); Contract.Ensures(Contract.ValueAtReturn(out ins) != null); Contract.Ensures(Contract.ValueAtReturn(out outs) != null);
-		IToken/*!*/ typeParamTok; typeParams = new TypeVariableSeq();
+		IToken/*!*/ typeParamTok; typeParams = new List<TypeVariable>();
 		outs = new List<Variable>(); kv = null; 
 		while (la.kind == 27) {
 			Attribute(ref kv);
@@ -1689,7 +1689,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 	void AtomExpression(out Expr/*!*/ e) {
 		Contract.Ensures(Contract.ValueAtReturn(out e) != null); IToken/*!*/ x; int n; BigNum bn; BigDec bd;
 		List<Expr>/*!*/ es;  List<Variable>/*!*/ ds;  Trigger trig;
-		TypeVariableSeq/*!*/ typeParams;
+		List<TypeVariable>/*!*/ typeParams;
 		IdentifierExpr/*!*/ id;
 		QKeyValue kv;
 		e = dummyExpr;
@@ -1850,10 +1850,10 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		} else SynErr(126);
 	}
 
-	void QuantifierBody(IToken/*!*/ q, out TypeVariableSeq/*!*/ typeParams, out List<Variable>/*!*/ ds,
+	void QuantifierBody(IToken/*!*/ q, out List<TypeVariable>/*!*/ typeParams, out List<Variable>/*!*/ ds,
 out QKeyValue kv, out Trigger trig, out Expr/*!*/ body) {
 		Contract.Requires(q != null); Contract.Ensures(Contract.ValueAtReturn(out typeParams) != null); Contract.Ensures(Contract.ValueAtReturn(out ds) != null); Contract.Ensures(Contract.ValueAtReturn(out body) != null);
-		trig = null; typeParams = new TypeVariableSeq ();
+		trig = null; typeParams = new List<TypeVariable> ();
 		IToken/*!*/ tok;
 		kv = null;
 		ds = new List<Variable> ();

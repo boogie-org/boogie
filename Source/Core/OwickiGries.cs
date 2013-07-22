@@ -168,7 +168,7 @@ namespace Microsoft.Boogie
             foreach (string domainName in linearTypechecker.linearDomains.Keys)
             {
                 var domain = linearTypechecker.linearDomains[domainName];
-                Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, domainName + "_in", new MapType(Token.NoToken, new TypeVariableSeq(), new List<Type> { domain.elementType }, Type.Bool)), true);
+                Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, domainName + "_in", new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> { domain.elementType }, Type.Bool)), true);
                 inputs.Add(f);
             }
             foreach (IdentifierExpr ie in globalMods)
@@ -176,7 +176,7 @@ namespace Microsoft.Boogie
                 Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_global_old_{0}", ie.Decl.Name), ie.Decl.TypedIdent.Type), true);
                 inputs.Add(f);
             }
-            yieldProc = new Procedure(Token.NoToken, "og_yield", new TypeVariableSeq(), inputs, new List<Variable>(), new List<Requires>(), new List<IdentifierExpr>(), new List<Ensures>());
+            yieldProc = new Procedure(Token.NoToken, "og_yield", new List<TypeVariable>(), inputs, new List<Variable>(), new List<Requires>(), new List<IdentifierExpr>(), new List<Ensures>());
             yieldProc.AddAttribute("inline", new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1)));
         }
 
@@ -312,7 +312,7 @@ namespace Microsoft.Boogie
                 callCmd = callCmd.InParallelWith;
             }
 
-            Procedure proc = new Procedure(Token.NoToken, procName, new TypeVariableSeq(), inParams, outParams, requiresSeq, ieSeq, ensuresSeq);
+            Procedure proc = new Procedure(Token.NoToken, procName, new List<TypeVariable>(), inParams, outParams, requiresSeq, ieSeq, ensuresSeq);
             asyncAndParallelCallDesugarings[procName] = proc;
             return proc;
         }
@@ -727,7 +727,7 @@ namespace Microsoft.Boogie
             foreach (string domainName in linearTypechecker.linearDomains.Keys)
             {
                 var domain = linearTypechecker.linearDomains[domainName];
-                Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, domainName + "_in", new MapType(Token.NoToken, new TypeVariableSeq(), new List<Type> { domain.elementType }, Type.Bool)), true);
+                Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, domainName + "_in", new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> { domain.elementType }, Type.Bool)), true);
                 inputs.Add(f);
             }
             foreach (IdentifierExpr ie in globalMods)
@@ -761,7 +761,7 @@ namespace Microsoft.Boogie
             }
             blocks.Insert(0, new Block(Token.NoToken, "enter", new List<Cmd>(), transferCmd));
             
-            var yieldImpl = new Implementation(Token.NoToken, yieldProc.Name, new TypeVariableSeq(), inputs, new List<Variable>(), new List<Variable>(), blocks);
+            var yieldImpl = new Implementation(Token.NoToken, yieldProc.Name, new List<TypeVariable>(), inputs, new List<Variable>(), new List<Variable>(), blocks);
             yieldImpl.Proc = yieldProc;
             yieldImpl.AddAttribute("inline", new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1)));
             program.TopLevelDeclarations.Add(yieldProc);

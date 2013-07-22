@@ -46,7 +46,7 @@ namespace Microsoft.Boogie {
   }
   [ContractClass(typeof(BinderExprContracts))]
   public abstract class BinderExpr : Expr {
-    public TypeVariableSeq/*!*/ TypeParameters;
+    public List<TypeVariable>/*!*/ TypeParameters;
     public List<Variable>/*!*/ Dummies;
     public QKeyValue Attributes;
     public Expr/*!*/ Body;
@@ -58,7 +58,7 @@ namespace Microsoft.Boogie {
     }
 
 
-    public BinderExpr(IToken/*!*/ tok, TypeVariableSeq/*!*/ typeParameters,
+    public BinderExpr(IToken/*!*/ tok, List<TypeVariable>/*!*/ typeParameters,
                       List<Variable>/*!*/ dummies, QKeyValue kv, Expr/*!*/ body)
       : base(tok)
       {
@@ -191,11 +191,11 @@ namespace Microsoft.Boogie {
       }
     }
 
-    protected TypeVariableSeq GetUnmentionedTypeParameters() {
-      Contract.Ensures(Contract.Result<TypeVariableSeq>() != null);
-      TypeVariableSeq/*!*/ dummyParameters = Type.FreeVariablesIn(new List<Type>(Dummies.Select(Item => Item.TypedIdent.Type).ToArray()));
+    protected List<TypeVariable> GetUnmentionedTypeParameters() {
+      Contract.Ensures(Contract.Result<List<TypeVariable>>() != null);
+      List<TypeVariable>/*!*/ dummyParameters = Type.FreeVariablesIn(new List<Type>(Dummies.Select(Item => Item.TypedIdent.Type).ToArray()));
       Contract.Assert(dummyParameters != null);
-      TypeVariableSeq/*!*/ unmentionedParameters = new TypeVariableSeq();
+      List<TypeVariable>/*!*/ unmentionedParameters = new List<TypeVariable>();
       foreach (TypeVariable/*!*/ var in TypeParameters) {
         Contract.Assert(var != null);
         if (!dummyParameters.Contains(var))
@@ -421,7 +421,7 @@ namespace Microsoft.Boogie {
   }
 
   public class ForallExpr : QuantifierExpr {
-    public ForallExpr(IToken/*!*/ tok, TypeVariableSeq/*!*/ typeParams,
+    public ForallExpr(IToken/*!*/ tok, List<TypeVariable>/*!*/ typeParams,
                       List<Variable>/*!*/ dummies, QKeyValue kv, Trigger triggers, Expr/*!*/ body)
       : base(tok, typeParams, dummies, kv, triggers, body) {
       Contract.Requires(tok != null);
@@ -431,20 +431,20 @@ namespace Microsoft.Boogie {
       Contract.Requires(dummies.Count + typeParams.Count > 0);
     }
     public ForallExpr(IToken tok, List<Variable> dummies, Trigger triggers, Expr body)
-      : base(tok, new TypeVariableSeq(), dummies, null, triggers, body) {
+      : base(tok, new List<TypeVariable>(), dummies, null, triggers, body) {
       Contract.Requires(body != null);
       Contract.Requires(dummies != null);
       Contract.Requires(tok != null);
       Contract.Requires(dummies.Count > 0);
     }
     public ForallExpr(IToken tok, List<Variable> dummies, Expr body)
-      : base(tok, new TypeVariableSeq(), dummies, null, null, body) {
+      : base(tok, new List<TypeVariable>(), dummies, null, null, body) {
       Contract.Requires(body != null);
       Contract.Requires(dummies != null);
       Contract.Requires(tok != null);
       Contract.Requires(dummies.Count > 0);
     }
-    public ForallExpr(IToken tok, TypeVariableSeq typeParams, List<Variable> dummies, Expr body)
+    public ForallExpr(IToken tok, List<TypeVariable> typeParams, List<Variable> dummies, Expr body)
       : base(tok, typeParams, dummies, null, null, body) {
       Contract.Requires(body != null);
       Contract.Requires(dummies != null);
@@ -467,7 +467,7 @@ namespace Microsoft.Boogie {
   }
 
   public class ExistsExpr : QuantifierExpr {
-    public ExistsExpr(IToken/*!*/ tok, TypeVariableSeq/*!*/ typeParams, List<Variable>/*!*/ dummies,
+    public ExistsExpr(IToken/*!*/ tok, List<TypeVariable>/*!*/ typeParams, List<Variable>/*!*/ dummies,
                       QKeyValue kv, Trigger triggers, Expr/*!*/ body)
       : base(tok, typeParams, dummies, kv, triggers, body) {
       Contract.Requires(tok != null);
@@ -477,14 +477,14 @@ namespace Microsoft.Boogie {
       Contract.Requires(dummies.Count + typeParams.Count > 0);
     }
     public ExistsExpr(IToken tok, List<Variable> dummies, Trigger triggers, Expr body)
-      : base(tok, new TypeVariableSeq(), dummies, null, triggers, body) {
+      : base(tok, new List<TypeVariable>(), dummies, null, triggers, body) {
       Contract.Requires(body != null);
       Contract.Requires(dummies != null);
       Contract.Requires(tok != null);
       Contract.Requires(dummies.Count > 0);
     }
     public ExistsExpr(IToken tok, List<Variable> dummies, Expr body)
-      : base(tok, new TypeVariableSeq(), dummies, null, null, body) {
+      : base(tok, new List<TypeVariable>(), dummies, null, null, body) {
       Contract.Requires(body != null);
       Contract.Requires(dummies != null);
       Contract.Requires(tok != null);
@@ -515,7 +515,7 @@ namespace Microsoft.Boogie {
 
     public readonly int SkolemId;
 
-    public QuantifierExpr(IToken/*!*/ tok, TypeVariableSeq/*!*/ typeParameters,
+    public QuantifierExpr(IToken/*!*/ tok, List<TypeVariable>/*!*/ typeParameters,
                           List<Variable>/*!*/ dummies, QKeyValue kv, Trigger triggers, Expr/*!*/ body)
       : base(tok, typeParameters, dummies, kv, body) {
       Contract.Requires(tok != null);
@@ -661,7 +661,7 @@ namespace Microsoft.Boogie {
       // Check that type parameters occur in the types of the
       // dummies, or otherwise in the triggers. This can only be
       // done after typechecking
-      TypeVariableSeq/*!*/ unmentionedParameters = GetUnmentionedTypeParameters();
+      List<TypeVariable>/*!*/ unmentionedParameters = GetUnmentionedTypeParameters();
       Contract.Assert(unmentionedParameters != null);
 
       if (unmentionedParameters.Count > 0) {
@@ -696,7 +696,7 @@ namespace Microsoft.Boogie {
 
 
   public class LambdaExpr : BinderExpr {
-    public LambdaExpr(IToken/*!*/ tok, TypeVariableSeq/*!*/ typeParameters,
+    public LambdaExpr(IToken/*!*/ tok, List<TypeVariable>/*!*/ typeParameters,
                       List<Variable>/*!*/ dummies, QKeyValue kv, Expr/*!*/ body)
       : base(tok, typeParameters, dummies, kv, body) {
       Contract.Requires(tok != null);
@@ -735,7 +735,7 @@ namespace Microsoft.Boogie {
       // Check that type parameters occur in the types of the
       // dummies, or otherwise in the triggers. This can only be
       // done after typechecking
-      TypeVariableSeq/*!*/ unmentionedParameters = GetUnmentionedTypeParameters();
+      List<TypeVariable>/*!*/ unmentionedParameters = GetUnmentionedTypeParameters();
       Contract.Assert(unmentionedParameters != null);
 
       if (unmentionedParameters.Count > 0) {
