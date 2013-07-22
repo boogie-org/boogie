@@ -8,7 +8,6 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Threading;
 using System.IO;
-
 //using ExternalProver;
 using System.Linq;
 using System.Diagnostics;
@@ -19,6 +18,7 @@ using Microsoft.Boogie.VCExprAST;
 using Microsoft.Boogie.Clustering;
 using Microsoft.Boogie.TypeErasure;
 using System.Text;
+
 using RPFP = Microsoft.Boogie.RPFP;
 
 namespace Microsoft.Boogie.SMTLib

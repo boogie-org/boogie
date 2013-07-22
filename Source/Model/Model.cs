@@ -697,22 +697,22 @@ namespace Microsoft.Boogie
 
 	public static List<Model> ParseModels(System.IO.TextReader rd, string prover)
 	{
-		ModelParser p;
-		
-		switch (prover)
-		{
-			case "SMTLIB2":
-				p = new ParserSMT();
-			break;
-			default:
-				p = new ParserZ3();
-			break;
-		}
-
-		p.rd = rd;
-		p.Run();
-
-		return p.resModels;
+	  ModelParser p;
+	
+	  switch (prover)
+	  {
+	    case "SMTLIB2":
+		  p = new ParserSMT();
+		  break;
+		default:
+		  p = new ParserZ3();
+		  break;
+	  }
+	
+	  p.rd = rd;
+	  p.Run();
+	
+	  return p.resModels;
 	}
   }
 }
