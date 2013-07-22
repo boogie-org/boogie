@@ -3209,6 +3209,12 @@ namespace Microsoft.Boogie {
   // Generic Sequences
   //---------------------------------------------------------------------
 
+  public static class ListFactory {
+    public static List<T> MakeList<T>(params T[]/*!*/ args) {
+      return new List<T>(args);
+    }
+  }
+
   public sealed class VariableSeq : List<Variable> {
     public VariableSeq(params Variable[]/*!*/ args)
       : base(args) {
@@ -3256,15 +3262,6 @@ namespace Microsoft.Boogie {
       : base(varSeq) {
       Contract.Requires(varSeq != null);
     }
-    public List<Type/*!*/>/*!*/ ToList() {
-      Contract.Ensures(cce.NonNullElements(Contract.Result<List<Type>>()));
-      List<Type/*!*/>/*!*/ res = new List<Type/*!*/>(Count);
-      foreach (Type/*!*/ t in this) {
-        Contract.Assert(t != null);
-        res.Add(t);
-      }
-      return res;
-    }
     public void Emit(TokenTextWriter stream, string separator) {
       Contract.Requires(separator != null);
       Contract.Requires(stream != null);
@@ -3309,15 +3306,6 @@ namespace Microsoft.Boogie {
         sep = separator;
         v.Emit(stream);
       }
-    }
-    public List<TypeVariable/*!*/>/*!*/ ToList() {
-      Contract.Ensures(cce.NonNullElements(Contract.Result<List<TypeVariable>>()));
-      List<TypeVariable/*!*/>/*!*/ res = new List<TypeVariable/*!*/>(Count);
-      foreach (TypeVariable/*!*/ var in this) {
-        Contract.Assert(var != null);
-        res.Add(var);
-      }
-      return res;
     }
   }
 
@@ -3417,42 +3405,12 @@ namespace Microsoft.Boogie {
         n[s.Count + i] = t[i];
       return new ExprSeq(n);
     }
-    public void Emit(TokenTextWriter stream) {
-      Contract.Requires(stream != null);
-      string sep = "";
-      foreach (Expr/*!*/ e in this) {
-        Contract.Assert(e != null);
-        stream.Write(sep);
-        sep = ", ";
-        e.Emit(stream);
-      }
-    }
-    public TypeSeq/*!*/ ToTypeSeq {
-      get {
-        Contract.Ensures(Contract.Result<TypeSeq>() != null);
-
-        TypeSeq res = new TypeSeq();
-        foreach (Expr e in this)
-          res.Add(cce.NonNull(e).Type);
-        return res;
-      }
-    }
   }
 
   public sealed class StringSeq : List<String> {
     public StringSeq(params string[]/*!*/ args)
       : base(args) {
       Contract.Requires(args != null);
-    }
-    public void Emit(TokenTextWriter stream) {
-      Contract.Requires(stream != null);
-      string sep = "";
-      foreach (string/*!*/ s in this) {
-        Contract.Assert(s != null);
-        stream.Write(sep);
-        sep = ", ";
-        stream.Write(s);
-      }
     }
   }
 
@@ -3483,22 +3441,29 @@ namespace Microsoft.Boogie {
         d.Emit(stream, 0);
       }
     }
-  }
-  public sealed class DeclarationSeq : List<Declaration> {
-    public void Emit(TokenTextWriter stream) {
+
+    public static void Emit(this StringSeq ss, TokenTextWriter stream) {
       Contract.Requires(stream != null);
-      bool first = true;
-      foreach (Declaration d in this) {
-        if (d == null)
-          continue;
-        if (first) {
-          first = false;
-        } else {
-          stream.WriteLine();
-        }
-        d.Emit(stream, 0);
+      string sep = "";
+      foreach (string/*!*/ s in ss) {
+        Contract.Assert(s != null);
+        stream.Write(sep);
+        sep = ", ";
+        stream.Write(s);
       }
     }
+
+    public static void Emit(this ExprSeq ts, TokenTextWriter stream) {
+      Contract.Requires(stream != null);
+      string sep = "";
+      foreach (Expr/*!*/ e in ts) {
+        Contract.Assert(e != null);
+        stream.Write(sep);
+        sep = ", ";
+        e.Emit(stream);
+      }
+    }
+
   }
   #endregion
 

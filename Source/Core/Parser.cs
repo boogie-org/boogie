@@ -208,7 +208,7 @@ private class BvBounds : Expr {
 
 	void BoogiePL() {
 		VariableSeq/*!*/ vs;
-		DeclarationSeq/*!*/ ds;
+		List<Declaration>/*!*/ ds;
 		Axiom/*!*/ ax;
 		List<Declaration/*!*/>/*!*/ ts;
 		Procedure/*!*/ pr;
@@ -320,9 +320,9 @@ private class BvBounds : Expr {
 		Expect(8);
 	}
 
-	void Function(out DeclarationSeq/*!*/ ds) {
+	void Function(out List<Declaration>/*!*/ ds) {
 		Contract.Ensures(Contract.ValueAtReturn(out ds) != null);
-		ds = new DeclarationSeq(); IToken/*!*/ z;
+		ds = new List<Declaration>(); IToken/*!*/ z;
 		IToken/*!*/ typeParamTok;
 		var typeParams = new TypeVariableSeq();
 		var arguments = new VariableSeq();

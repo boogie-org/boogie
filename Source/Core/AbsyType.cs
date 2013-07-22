@@ -11,6 +11,7 @@ namespace Microsoft.Boogie {
   using System;
   using System.Collections;
   using System.Diagnostics;
+  using System.Linq;
   using System.Collections.Generic;
   using Microsoft.Boogie.AbstractInterpretation;
   using System.Diagnostics.Contracts;
