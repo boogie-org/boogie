@@ -578,7 +578,7 @@ namespace VC {
     protected VariableSeq CurrentLocalVariables = null;
 
     // shared across each implementation; created anew for each implementation
-    protected Hashtable /*Variable -> int*/ variable2SequenceNumber;
+    protected Dictionary<Variable, int> variable2SequenceNumber;
     public Dictionary<Incarnation, Absy>/*!>!*/ incarnationOriginMap = new Dictionary<Incarnation, Absy>();
 
     public Program program;
@@ -1162,7 +1162,7 @@ namespace VC {
       int currentIncarnationNumber =
         variable2SequenceNumber.ContainsKey(x)
         ?
-        (int)cce.NonNull(variable2SequenceNumber[x])
+        variable2SequenceNumber[x]
         :
         -1;
       Variable v = new Incarnation(x, currentIncarnationNumber + 1);

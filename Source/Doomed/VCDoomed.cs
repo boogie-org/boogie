@@ -692,7 +692,7 @@ namespace VC {
 
     private void Transform4DoomedCheck(Implementation impl)
     {
-        variable2SequenceNumber = new Hashtable/*Variable -> int*/();
+        variable2SequenceNumber = new Dictionary<Variable, int>();
         incarnationOriginMap = new Dictionary<Incarnation, Absy>();
         if (impl.Blocks.Count < 1) return;
 

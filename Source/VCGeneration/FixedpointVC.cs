@@ -126,7 +126,7 @@ namespace Microsoft.Boogie
             Contract.Requires(impl != null);
 
             CurrentLocalVariables = impl.LocVars;
-            variable2SequenceNumber = new Hashtable/*Variable -> int*/();
+            variable2SequenceNumber = new Dictionary<Variable, int>();
             incarnationOriginMap = new Dictionary<Incarnation, Absy>();
 
             ResetPredecessors(impl.Blocks);

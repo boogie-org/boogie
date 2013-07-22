@@ -1228,7 +1228,7 @@ namespace VC {
           delegate(CodeExpr codeExpr, Hashtable/*<Block, VCExprVar!>*/ blockVariables, List<VCExprLetBinding/*!*/> bindings)
           {
             VCGen vcgen = new VCGen(new Program(), null, false, parent.checkers);
-            vcgen.variable2SequenceNumber = new Hashtable/*Variable -> int*/();
+            vcgen.variable2SequenceNumber = new Dictionary<Variable, int>();
             vcgen.incarnationOriginMap = new Dictionary<Incarnation, Absy>();
             vcgen.CurrentLocalVariables = codeExpr.LocVars;
             // codeExpr.Blocks.PruneUnreachableBlocks();  // This is needed for VCVariety.BlockNested, and is otherwise just an optimization
@@ -1861,7 +1861,7 @@ namespace VC {
       impl.PruneUnreachableBlocks();  // This is needed for VCVariety.BlockNested, and is otherwise just an optimization
 
       CurrentLocalVariables = impl.LocVars;
-      variable2SequenceNumber = new Hashtable/*Variable -> int*/();
+      variable2SequenceNumber = new Dictionary<Variable, int>();
       incarnationOriginMap = new Dictionary<Incarnation, Absy>();
 
       #region Debug Tracing
