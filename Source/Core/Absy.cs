@@ -3321,7 +3321,7 @@ namespace Microsoft.Boogie {
     }
   }
 
-  public sealed class IdentifierExprSeq : PureCollections.Sequence {
+  public sealed class IdentifierExprSeq : List<IdentifierExpr> {
     public IdentifierExprSeq(params IdentifierExpr[]/*!*/ args)
       : base(args) {
       Contract.Requires(args != null);
@@ -3381,7 +3381,7 @@ namespace Microsoft.Boogie {
     }
   }
 
-  public sealed class ExprSeq : PureCollections.Sequence {
+  public sealed class ExprSeq : List<Expr> {
     public ExprSeq(params Expr[]/*!*/ args)
       : base(args) {
       Contract.Requires(args != null);
@@ -3399,10 +3399,6 @@ namespace Microsoft.Boogie {
       }
     }
 
-    public new Expr Last() {
-      return (Expr)base.Last();
-    }
-
     public static ExprSeq operator +(ExprSeq a, ExprSeq b) {
       if (a == null)
         throw new ArgumentNullException("a");
@@ -3414,11 +3410,11 @@ namespace Microsoft.Boogie {
     public static ExprSeq Append(ExprSeq s, ExprSeq t) {
       Contract.Requires(t != null);
       Contract.Requires(s != null);
-      Expr[] n = new Expr[s.card + t.card];
-      for (int i = 0; i < s.card; i++)
+      Expr[] n = new Expr[s.Count + t.Count];
+      for (int i = 0; i < s.Count; i++)
         n[i] = s[i];
-      for (int i = 0; i < t.card; i++)
-        n[s.card + i] = t[i];
+      for (int i = 0; i < t.Count; i++)
+        n[s.Count + i] = t[i];
       return new ExprSeq(n);
     }
     public void Emit(TokenTextWriter stream) {
@@ -3443,33 +3439,10 @@ namespace Microsoft.Boogie {
     }
   }
 
-  public sealed class TokenSeq : PureCollections.Sequence {
-    public TokenSeq(params Token[]/*!*/ args)
-      : base(args) {
-      Contract.Requires(args != null);
-    }
-    public new Token this[int index] {
-      get {
-        return (Token)base[index];
-      }
-      set {
-        base[index] = value;
-      }
-    }
-  }
-
-  public sealed class StringSeq : PureCollections.Sequence {
+  public sealed class StringSeq : List<String> {
     public StringSeq(params string[]/*!*/ args)
       : base(args) {
       Contract.Requires(args != null);
-    }
-    public new String this[int index] {
-      get {
-        return (String)base[index];
-      }
-      set {
-        base[index] = value;
-      }
     }
     public void Emit(TokenTextWriter stream) {
       Contract.Requires(stream != null);
@@ -3483,7 +3456,7 @@ namespace Microsoft.Boogie {
     }
   }
 
-  public sealed class BlockSeq : PureCollections.Sequence {
+  public sealed class BlockSeq : List<Block> {
     public BlockSeq(params Block[]/*!*/ args)
       : base(args) {
       Contract.Requires(args != null);
@@ -3491,15 +3464,6 @@ namespace Microsoft.Boogie {
     public BlockSeq(BlockSeq blockSeq)
       : base(blockSeq) {
       Contract.Requires(blockSeq != null);
-    }
-
-    public new Block this[int index] {
-      get {
-        return (Block)base[index];
-      }
-      set {
-        base[index] = value;
-      }
     }
   }
 
@@ -3520,19 +3484,7 @@ namespace Microsoft.Boogie {
       }
     }
   }
-  public sealed class DeclarationSeq : PureCollections.Sequence {
-    public DeclarationSeq(params string[] args)
-      : base(args) {
-      Contract.Requires(args != null);
-    }
-    public new Declaration this[int index] {
-      get {
-        return (Declaration)base[index];
-      }
-      set {
-        base[index] = value;
-      }
-    }
+  public sealed class DeclarationSeq : List<Declaration> {
     public void Emit(TokenTextWriter stream) {
       Contract.Requires(stream != null);
       bool first = true;
@@ -3553,7 +3505,7 @@ namespace Microsoft.Boogie {
 
   #region Regular Expressions
   // a data structure to recover the "program structure" from the flow graph
-  public sealed class RESeq : PureCollections.Sequence {
+  public sealed class RESeq : List<RE> {
     public RESeq(params RE[] args)
       : base(args) {
       Contract.Requires(args != null);
@@ -3562,24 +3514,6 @@ namespace Microsoft.Boogie {
       : base(reSeq) {
       Contract.Requires(reSeq != null);
     }
-    public new RE this[int index] {
-      get {
-        return (RE)base[index];
-      }
-      set {
-        base[index] = value;
-      }
-    }
-    //        public void Emit(TokenTextWriter stream)
-    //        {
-    //            string sep = "";
-    //            foreach (RE e in this)
-    //            {
-    //                stream.Write(sep);
-    //                sep = ", ";
-    //                e.Emit(stream);
-    //            }
-    //        }
   }
   public abstract class RE : Cmd {
     public RE()

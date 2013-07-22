@@ -464,11 +464,11 @@ namespace Microsoft.Boogie {
       IdentifierExprSeq havocVars = new IdentifierExprSeq();
       foreach (Variable v in locVars)
       {
-          havocVars.Add(codeCopier.Subst(v));
+          havocVars.Add((IdentifierExpr)codeCopier.Subst(v));
       }
       foreach (Variable v in impl.OutParams)
       {
-          havocVars.Add(codeCopier.Subst(v));
+          havocVars.Add((IdentifierExpr)codeCopier.Subst(v));
       }
       if (havocVars.Count > 0)
       {

@@ -124,21 +124,6 @@ public static class cce {
     public UnreachableException() {
     }
   }
-  //[Pure]
-  //public static bool IsValid(Microsoft.Dafny.Expression expression) {
-  //  return true;
-  //}
-  //public static List<T> toList<T>(PureCollections.Sequence s) {
-  //  List<T> toRet = new List<T>();
-  //  foreach (T t in s.elems)
-  //    if(t!=null)
-  //    toRet.Add(t);
-  //  return toRet;
-  //}
-
-  //internal static bool NonNullElements(Set set) {
-  //  return set != null && Contract.ForAll(0,set.Count, i => set[i] != null);
-  //}
 
 }
 

@@ -12,6 +12,7 @@ namespace Microsoft.Boogie {
   using System.Collections;
   using System.Diagnostics;
   using System.Collections.Generic;
+  using System.Linq;
   using Microsoft.Boogie.AbstractInterpretation;
   using System.Diagnostics.Contracts;
   using Set = GSet<object>;
@@ -1755,15 +1756,8 @@ namespace Microsoft.Boogie {
         errorData = value;
       }
     }
-    public static List<T> toList<T>(PureCollections.Sequence seq) {
-      List<T> toRet = new List<T>();
-      foreach (T t in seq)
-        if (t != null)
-          toRet.Add(t);
-      return toRet;
-    }
     public CallCmd(IToken tok, string callee, ExprSeq ins, IdentifierExprSeq outs)
-      : this(tok, callee, toList<Expr>(ins), toList<IdentifierExpr>(outs)) {
+      : this(tok, callee, ins.ToList(), outs.ToList()) {
       Contract.Requires(outs != null);
       Contract.Requires(ins != null);
       Contract.Requires(callee != null);

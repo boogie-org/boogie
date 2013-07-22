@@ -247,7 +247,7 @@ BoundVars<IToken/*!*/ x, out VariableSeq/*!*/ ds>
 /*------------------------------------------------------------------------*/
 /* IdsType is used with const declarations */
 IdsType<out List<TypedIdent>/*!*/ tyds>
-= (. Contract.Ensures(Contract.ValueAtReturn(out tyds) != null); TokenSeq/*!*/ ids;  Bpl.Type/*!*/ ty; .)
+= (. Contract.Ensures(Contract.ValueAtReturn(out tyds) != null); List<IToken>/*!*/ ids;  Bpl.Type/*!*/ ty; .)
   Idents<out ids> ":" Type<out ty>
   (. tyds = new List<TypedIdent>();
      foreach(Token/*!*/ id in ids){
@@ -283,7 +283,7 @@ AttributesIdsTypeWhere<. bool allowAttributes, bool allowWhereClauses, string co
 
 /* context is allowed to be null if allowWhereClauses is true */
 IdsTypeWhere<. bool allowWhereClauses, string context, System.Action<TypedIdent> action .>
-= (. TokenSeq/*!*/ ids;  Bpl.Type/*!*/ ty;  Expr wh = null;  Expr/*!*/ nne; .)
+= (. List<IToken>/*!*/ ids;  Bpl.Type/*!*/ ty;  Expr wh = null;  Expr/*!*/ nne; .)
   Idents<out ids> ":" Type<out ty>
   [ "where" Expression<out nne>  (. if (!allowWhereClauses) {
                                       this.SemErr("where clause not allowed on " + context);
@@ -357,7 +357,7 @@ MapType<out Bpl.Type/*!*/ ty>
   .
 
 TypeParams<out IToken/*!*/ tok, out Bpl.TypeVariableSeq/*!*/ typeParams>
-= (.Contract.Ensures(Contract.ValueAtReturn(out tok) != null); Contract.Ensures(Contract.ValueAtReturn(out typeParams) != null); TokenSeq/*!*/ typeParamToks; .)
+= (.Contract.Ensures(Contract.ValueAtReturn(out tok) != null); Contract.Ensures(Contract.ValueAtReturn(out typeParams) != null); List<IToken>/*!*/ typeParamToks; .)
   "<"    (.  tok = t;  .)
     Idents<out typeParamToks>
   ">"
@@ -561,7 +561,7 @@ UserDefinedTypes<.out List<Declaration/*!*/>/*!*/ ts.>
   .
 
 UserDefinedType<out Declaration/*!*/ decl, QKeyValue kv>
-= (. Contract.Ensures(Contract.ValueAtReturn(out decl) != null); IToken/*!*/ id; TokenSeq/*!*/ paramTokens = new TokenSeq ();
+= (. Contract.Ensures(Contract.ValueAtReturn(out decl) != null); IToken/*!*/ id; List<IToken>/*!*/ paramTokens = new List<IToken> ();
      Bpl.Type/*!*/ body = dummyType; bool synonym = false; .)
   Ident<out id>
   [ WhiteSpaceIdents<out paramTokens> ]
@@ -643,7 +643,7 @@ ProcSignature<bool allowWhereClausesOnFormals, out IToken/*!*/ name, out TypeVar
 
 
 Spec<List<Requires>/*!*/ pre, IdentifierExprSeq/*!*/ mods, List<Ensures>/*!*/ post>
-= (.Contract.Requires(pre != null); Contract.Requires(mods != null); Contract.Requires(post != null); TokenSeq/*!*/ ms; .)
+= (.Contract.Requires(pre != null); Contract.Requires(mods != null); Contract.Requires(post != null); List<IToken>/*!*/ ms; .)
   ( "modifies"
     [ Idents<out ms>        (. foreach(IToken/*!*/ m in ms){
                                  Contract.Assert(m != null);
@@ -749,7 +749,7 @@ StmtList<out StmtList/*!*/ stmtList>
 
 TransferCmd<out TransferCmd/*!*/ tc>
 = (. Contract.Ensures(Contract.ValueAtReturn(out tc) != null); tc = dummyTransferCmd;
-     Token y;  TokenSeq/*!*/ xs;
+     Token y;  List<IToken>/*!*/ xs;
      StringSeq ss = new StringSeq();
   .)
   ( "goto"             (. y = t; .)
@@ -840,7 +840,7 @@ BreakCmd<out BreakCmd/*!*/ bcmd>
 LabelOrCmd<out Cmd c, out IToken label>
 /* ensures (c == null) != (label != null) */
 = (. IToken/*!*/ x; Expr/*!*/ e;
-     TokenSeq/*!*/ xs;
+     List<IToken>/*!*/ xs;
      IdentifierExprSeq ids;
      c = dummyCmd;  label = null;
      Cmd/*!*/ cn;
@@ -977,16 +977,16 @@ Proposition<out Expr/*!*/ e>
   .
 
 /*------------------------------------------------------------------------*/
-Idents<out TokenSeq/*!*/ xs>
-= (.Contract.Ensures(Contract.ValueAtReturn(out xs) != null); IToken/*!*/ id; xs = new TokenSeq(); .)
+Idents<out List<IToken>/*!*/ xs>
+= (.Contract.Ensures(Contract.ValueAtReturn(out xs) != null); IToken/*!*/ id; xs = new List<IToken>(); .)
   Ident<out id>                 (. xs.Add(id); .)
   { "," Ident<out id>           (. xs.Add(id); .)
   }
   .
 
 /*------------------------------------------------------------------------*/
-WhiteSpaceIdents<out TokenSeq/*!*/ xs>
-= (. Contract.Ensures(Contract.ValueAtReturn(out xs) != null); IToken/*!*/ id; xs = new TokenSeq(); .)
+WhiteSpaceIdents<out List<IToken>/*!*/ xs>
+= (. Contract.Ensures(Contract.ValueAtReturn(out xs) != null); IToken/*!*/ id; xs = new List<IToken>(); .)
   Ident<out id>                 (. xs.Add(id); .)
   { Ident<out id>               (. xs.Add(id); .)
   }
@@ -1315,7 +1315,7 @@ SpecBlock<out Block/*!*/ b>
 = (. Contract.Ensures(Contract.ValueAtReturn(out b) != null); IToken/*!*/ x; IToken/*!*/ y;
      Cmd c;  IToken label;
      CmdSeq cs = new CmdSeq();
-     TokenSeq/*!*/ xs;
+     List<IToken>/*!*/ xs;
      StringSeq ss = new StringSeq();
      b = dummyBlock;
      Expr/*!*/ e;

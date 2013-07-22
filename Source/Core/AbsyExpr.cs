@@ -2220,7 +2220,7 @@ namespace Microsoft.Boogie {
 
       if (withRhs) {
         stream.Write(" := ");
-        cce.NonNull(args.Last()).Emit(stream);
+        cce.NonNull(args.FindLast(Item => true)).Emit(stream);
       }
 
       stream.Write("]");
@@ -2412,9 +2412,9 @@ namespace Microsoft.Boogie {
         // error messages have already been created by MapSelect.Typecheck
         return null;
       }
-      Type rhsType = cce.NonNull(cce.NonNull(args.Last()).Type);
+      Type rhsType = cce.NonNull(cce.NonNull(args.FindLast(Item => true)).Type);
       if (!resultType.Unify(rhsType)) {
-        tc.Error(cce.NonNull(args.Last()).tok,
+        tc.Error(cce.NonNull(args.FindLast(Item => true)).tok,
                  "right-hand side in {0} with wrong type: {1} (expected: {2})",
                  opName, rhsType, resultType);
         return null;

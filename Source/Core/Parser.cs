@@ -570,7 +570,7 @@ private class BvBounds : Expr {
 	}
 
 	void IdsType(out List<TypedIdent>/*!*/ tyds) {
-		Contract.Ensures(Contract.ValueAtReturn(out tyds) != null); TokenSeq/*!*/ ids;  Bpl.Type/*!*/ ty; 
+		Contract.Ensures(Contract.ValueAtReturn(out tyds) != null); List<IToken>/*!*/ ids;  Bpl.Type/*!*/ ty; 
 		Idents(out ids);
 		Expect(11);
 		Type(out ty);
@@ -582,8 +582,8 @@ private class BvBounds : Expr {
 		
 	}
 
-	void Idents(out TokenSeq/*!*/ xs) {
-		Contract.Ensures(Contract.ValueAtReturn(out xs) != null); IToken/*!*/ id; xs = new TokenSeq(); 
+	void Idents(out List<IToken>/*!*/ xs) {
+		Contract.Ensures(Contract.ValueAtReturn(out xs) != null); IToken/*!*/ id; xs = new List<IToken>(); 
 		Ident(out id);
 		xs.Add(id); 
 		while (la.kind == 12) {
@@ -623,7 +623,7 @@ private class BvBounds : Expr {
 	}
 
 	void IdsTypeWhere(bool allowWhereClauses, string context, System.Action<TypedIdent> action ) {
-		TokenSeq/*!*/ ids;  Bpl.Type/*!*/ ty;  Expr wh = null;  Expr/*!*/ nne; 
+		List<IToken>/*!*/ ids;  Bpl.Type/*!*/ ty;  Expr wh = null;  Expr/*!*/ nne; 
 		Idents(out ids);
 		Expect(11);
 		Type(out ty);
@@ -726,7 +726,7 @@ private class BvBounds : Expr {
 	}
 
 	void TypeParams(out IToken/*!*/ tok, out Bpl.TypeVariableSeq/*!*/ typeParams) {
-		Contract.Ensures(Contract.ValueAtReturn(out tok) != null); Contract.Ensures(Contract.ValueAtReturn(out typeParams) != null); TokenSeq/*!*/ typeParamToks; 
+		Contract.Ensures(Contract.ValueAtReturn(out tok) != null); Contract.Ensures(Contract.ValueAtReturn(out typeParams) != null); List<IToken>/*!*/ typeParamToks; 
 		Expect(19);
 		tok = t;  
 		Idents(out typeParamToks);
@@ -815,7 +815,7 @@ private class BvBounds : Expr {
 	}
 
 	void UserDefinedType(out Declaration/*!*/ decl, QKeyValue kv) {
-		Contract.Ensures(Contract.ValueAtReturn(out decl) != null); IToken/*!*/ id; TokenSeq/*!*/ paramTokens = new TokenSeq ();
+		Contract.Ensures(Contract.ValueAtReturn(out decl) != null); IToken/*!*/ id; List<IToken>/*!*/ paramTokens = new List<IToken> ();
 		Bpl.Type/*!*/ body = dummyType; bool synonym = false; 
 		Ident(out id);
 		if (la.kind == 1) {
@@ -838,8 +838,8 @@ private class BvBounds : Expr {
 		
 	}
 
-	void WhiteSpaceIdents(out TokenSeq/*!*/ xs) {
-		Contract.Ensures(Contract.ValueAtReturn(out xs) != null); IToken/*!*/ id; xs = new TokenSeq(); 
+	void WhiteSpaceIdents(out List<IToken>/*!*/ xs) {
+		Contract.Ensures(Contract.ValueAtReturn(out xs) != null); IToken/*!*/ id; xs = new List<IToken>(); 
 		Ident(out id);
 		xs.Add(id); 
 		while (la.kind == 1) {
@@ -868,7 +868,7 @@ out VariableSeq/*!*/ ins, out VariableSeq/*!*/ outs, out QKeyValue kv) {
 	}
 
 	void Spec(List<Requires>/*!*/ pre, IdentifierExprSeq/*!*/ mods, List<Ensures>/*!*/ post) {
-		Contract.Requires(pre != null); Contract.Requires(mods != null); Contract.Requires(post != null); TokenSeq/*!*/ ms; 
+		Contract.Requires(pre != null); Contract.Requires(mods != null); Contract.Requires(post != null); List<IToken>/*!*/ ms; 
 		if (la.kind == 34) {
 			Get();
 			if (la.kind == 1) {
@@ -991,7 +991,7 @@ out VariableSeq/*!*/ ins, out VariableSeq/*!*/ outs, out QKeyValue kv) {
 
 	void LabelOrCmd(out Cmd c, out IToken label) {
 		IToken/*!*/ x; Expr/*!*/ e;
-		TokenSeq/*!*/ xs;
+		List<IToken>/*!*/ xs;
 		IdentifierExprSeq ids;
 		c = dummyCmd;  label = null;
 		Cmd/*!*/ cn;
@@ -1073,7 +1073,7 @@ out VariableSeq/*!*/ ins, out VariableSeq/*!*/ outs, out QKeyValue kv) {
 
 	void TransferCmd(out TransferCmd/*!*/ tc) {
 		Contract.Ensures(Contract.ValueAtReturn(out tc) != null); tc = dummyTransferCmd;
-		Token y;  TokenSeq/*!*/ xs;
+		Token y;  List<IToken>/*!*/ xs;
 		StringSeq ss = new StringSeq();
 		
 		if (la.kind == 38) {
@@ -1925,7 +1925,7 @@ out QKeyValue kv, out Trigger trig, out Expr/*!*/ body) {
 		Contract.Ensures(Contract.ValueAtReturn(out b) != null); IToken/*!*/ x; IToken/*!*/ y;
 		Cmd c;  IToken label;
 		CmdSeq cs = new CmdSeq();
-		TokenSeq/*!*/ xs;
+		List<IToken>/*!*/ xs;
 		StringSeq ss = new StringSeq();
 		b = dummyBlock;
 		Expr/*!*/ e;
