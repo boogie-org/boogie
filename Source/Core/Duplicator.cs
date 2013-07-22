@@ -373,7 +373,10 @@ namespace Microsoft.Boogie {
       }
       public Expr/*?*/ Method(Variable v) {
         Contract.Requires(v != null);
-        return (Expr)map[v];
+        if(map.ContainsKey(v)) {
+          return map[v];
+        }
+        return null;
       }
     }
 

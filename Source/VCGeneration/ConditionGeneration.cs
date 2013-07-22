@@ -261,10 +261,11 @@ namespace Microsoft.Boogie {
           var cs = m.MkState(map.Description);
 
           foreach (Variable v in MvInfo.AllVariables) {
-            var e = (Expr)map.IncarnationMap[v];
+            Expr e = map.IncarnationMap.ContainsKey(v) ? map.IncarnationMap[v] : null;
             if (e == null) continue;
 
-            if (prevInc[v] == e) continue; // skip unchanged variables
+            Expr prevIncV = prevInc.ContainsKey(v) ? prevInc[v] : null;
+            if (prevIncV == e) continue; // skip unchanged variables
 
             Model.Element elt;
 
@@ -1254,7 +1255,7 @@ namespace VC {
           Dictionary<Variable, Expr> predMap = (Dictionary<Variable, Expr>)cce.NonNull(block2Incarnation[pred]);
 
           Expr pred_incarnation_exp;
-          Expr o = (Expr)predMap[v];
+          Expr o = predMap.ContainsKey(v) ? predMap[v] : null;
           if (o == null) {
             Variable predIncarnation = v;
             IdentifierExpr ie2 = new IdentifierExpr(predIncarnation.tok, predIncarnation);

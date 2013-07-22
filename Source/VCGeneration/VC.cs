@@ -1751,7 +1751,7 @@ namespace VC {
           foreach (Block b in returnExample.Trace) {
             Contract.Assert(b != null);
             Contract.Assume(b.TransferCmd != null);
-            ReturnCmd cmd = (ReturnCmd)gotoCmdOrigins[b.TransferCmd];
+            ReturnCmd cmd = gotoCmdOrigins.ContainsKey(b.TransferCmd) ? gotoCmdOrigins[b.TransferCmd] : null;
             if (cmd != null) {
               returnExample.FailingReturn = cmd;
               break;
