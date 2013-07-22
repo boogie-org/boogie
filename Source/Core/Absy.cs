@@ -3224,36 +3224,15 @@ namespace Microsoft.Boogie {
     }
   }
 
-  public sealed class RequiresSeq : PureCollections.Sequence {
-    public RequiresSeq(params Requires[]/*!*/ args)
-      : base(args) {
-      Contract.Requires(args != null);
-    }
-    public new Requires/*!*/ this[int index] {
-      get {
-        Contract.Ensures(Contract.Result<Requires>() != null);
-
-        return cce.NonNull((Requires/*!*/)base[index]);
-      }
-      set {
-        base[index] = value;
-      }
+  public sealed class RequiresSeq : List<Requires> {
+    public int Length {
+      get { return Count; }
     }
   }
 
-  public sealed class EnsuresSeq : PureCollections.Sequence {
-    public EnsuresSeq(params Ensures[]/*!*/ args)
-      : base(args) {
-      Contract.Requires(args != null);
-    }
-    public new Ensures/*!*/ this[int index] {
-      get {
-        Contract.Ensures(Contract.Result<Ensures>() != null);
-        return cce.NonNull((Ensures/*!*/)base[index]);
-      }
-      set {
-        base[index] = value;
-      }
+  public sealed class EnsuresSeq : List<Ensures> {
+    public int Length {
+      get { return Count; }
     }
   }
 
