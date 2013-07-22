@@ -3178,8 +3178,8 @@ Contract.Requires(that != null);
       } finally {
         // make sure that the bound variables are removed again
         for (int i = 0; i < this.TypeParameters.Count; ++i) {
-          thisBoundVariables.Remove();
-          thatBoundVariables.Remove();
+          thisBoundVariables.RemoveAt(thisBoundVariables.Count - 1);
+          thatBoundVariables.RemoveAt(thatBoundVariables.Count - 1);
         }
       }
 
@@ -3372,7 +3372,7 @@ Contract.Assert(var != null);
       res = res * 7 + Result.GetHashCode(boundVariables);
 
       for (int i = 0; i < this.TypeParameters.Count; ++i)
-        boundVariables.Remove();
+        boundVariables.RemoveAt(boundVariables.Count - 1);
 
       return res;
     }

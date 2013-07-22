@@ -3245,9 +3245,6 @@ namespace Microsoft.Boogie {
       : base(varSeq) {
       Contract.Requires(varSeq != null);
     }
-    public void Remove() {
-      RemoveAt(Count - 1);
-    }
     public void AppendWithoutDups(TypeVariableSeq s1) {
       Contract.Requires(s1 != null);
       for (int i = 0; i < s1.Count; i++) {
