@@ -97,8 +97,8 @@ namespace Microsoft.Boogie {
           // this is ugly, the output will depend on hashing order
           Dictionary<Variable, Expr> subst = new Dictionary<Variable, Expr>();
           List<Variable> formals = new List<Variable>();
-          ExprSeq callArgs = new ExprSeq();
-          ExprSeq axCallArgs = new ExprSeq();
+          List<Expr> callArgs = new List<Expr>();
+          List<Expr> axCallArgs = new List<Expr>();
           List<Variable> dummies = new List<Variable>(lambda.Dummies);
           TypeVariableSeq freeTypeVars = new TypeVariableSeq();
           List<Type/*!*/> fnTypeVarActuals = new List<Type/*!*/>();
@@ -160,7 +160,7 @@ namespace Microsoft.Boogie {
           NAryExpr body = Expr.Eq(select, bb);
           body.Type = Type.Bool;
           body.TypeParameters = SimpleTypeParamInstantiation.EMPTY;
-          Trigger trig = new Trigger(select.tok, true, new ExprSeq(select));
+          Trigger trig = new Trigger(select.tok, true, new List<Expr> { select });
           lambdaAxioms.Add(new ForallExpr(tok, forallTypeVariables, dummies, lambda.Attributes, trig, body));
 
           NAryExpr call = new NAryExpr(tok, fcall, callArgs);

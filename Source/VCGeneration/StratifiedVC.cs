@@ -213,7 +213,7 @@ namespace VC {
       function = new Function(Token.NoToken, impl.Name, functionInterfaceVars, returnVar);
       vcgen.prover.Context.DeclareFunction(function, "");
 
-      ExprSeq exprs = new ExprSeq();
+      List<Expr> exprs = new List<Expr>();
       foreach (Variable v in vcgen.program.GlobalVariables()) {
         Contract.Assert(v != null);
         exprs.Add(new OldExpr(Token.NoToken, new IdentifierExpr(Token.NoToken, v)));
@@ -343,7 +343,7 @@ namespace VC {
         var recordFunc = new Function(Token.NoToken, proc.Name, ins, returnVar);
         prover.Context.DeclareFunction(recordFunc, "");
 
-        var exprs = new ExprSeq();
+        var exprs = new List<Expr>();
         exprs.Add(new IdentifierExpr(Token.NoToken, proc.InParams[0]));
 
         Expr freePostExpr = new NAryExpr(Token.NoToken, new FunctionCall(recordFunc), exprs);

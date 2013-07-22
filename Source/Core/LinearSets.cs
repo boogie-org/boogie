@@ -425,7 +425,7 @@ namespace Microsoft.Boogie
                                 foreach (var domainName in linearDomains.Keys)
                                 {
                                     var domain = linearDomains[domainName];
-                                    callCmd.Ins.Add(new NAryExpr(Token.NoToken, new FunctionCall(domain.mapConstBool), new ExprSeq(Expr.False)));
+                                    callCmd.Ins.Add(new NAryExpr(Token.NoToken, new FunctionCall(domain.mapConstBool), new List<Expr> { Expr.False }));
                                 }
                             }
                             else if (callCmd.InParallelWith != null)
@@ -435,7 +435,7 @@ namespace Microsoft.Boogie
                                     foreach (var domainName in linearDomains.Keys)
                                     {
                                         var domain = linearDomains[domainName];
-                                        callCmd.Ins.Add(new NAryExpr(Token.NoToken, new FunctionCall(domain.mapConstBool), new ExprSeq(Expr.False)));
+                                        callCmd.Ins.Add(new NAryExpr(Token.NoToken, new FunctionCall(domain.mapConstBool), new List<Expr> { Expr.False }));
                                     }
                                     callCmd = callCmd.InParallelWith;
                                 }
@@ -452,7 +452,7 @@ namespace Microsoft.Boogie
                                     var domainName = FindDomainName(v);
                                     var domain = linearDomains[domainName];
                                     IdentifierExpr ie = new IdentifierExpr(Token.NoToken, v);
-                                    domainNameToExpr[domainName] = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapOrBool), new ExprSeq(v.TypedIdent.Type is MapType ? ie : Singleton(ie, domainName), domainNameToExpr[domainName]));
+                                    domainNameToExpr[domainName] = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapOrBool), new List<Expr> { v.TypedIdent.Type is MapType ? ie : Singleton(ie, domainName), domainNameToExpr[domainName] });
                                 }
                                 foreach (var domainName in linearDomains.Keys)
                                 {
@@ -552,7 +552,7 @@ namespace Microsoft.Boogie
         public Expr Singleton(Expr e, string domainName)
         {
             var domain = linearDomains[domainName];
-            return Expr.Store(new NAryExpr(Token.NoToken, new FunctionCall(domain.mapConstBool), new ExprSeq(Expr.False)), e, Expr.True);
+            return Expr.Store(new NAryExpr(Token.NoToken, new FunctionCall(domain.mapConstBool), new List<Expr> { Expr.False }), e, Expr.True);
         }
 
         List<AssignLhs> MkAssignLhss(params Variable[] args)
@@ -579,10 +579,10 @@ namespace Microsoft.Boogie
             foreach (Variable v in scope)
             {
                 IdentifierExpr ie = new IdentifierExpr(Token.NoToken, v);
-                Expr e = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapConstInt), new ExprSeq(new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(count++))));
-                e = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapEqInt), new ExprSeq(new IdentifierExpr(Token.NoToken, partition), e));
-                e = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapImpBool), new ExprSeq(v.TypedIdent.Type is MapType ? ie : Singleton(ie, domainName), e));
-                e = Expr.Binary(BinaryOperator.Opcode.Eq, e, new NAryExpr(Token.NoToken, new FunctionCall(domain.mapConstBool), new ExprSeq(Expr.True)));
+                Expr e = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapConstInt), new List<Expr>{ new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(count++)) } );
+                e = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapEqInt), new List<Expr> { new IdentifierExpr(Token.NoToken, partition), e } );
+                e = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapImpBool), new List<Expr> { v.TypedIdent.Type is MapType ? ie : Singleton(ie, domainName), e } );
+                e = Expr.Binary(BinaryOperator.Opcode.Eq, e, new NAryExpr(Token.NoToken, new FunctionCall(domain.mapConstBool), new List<Expr> { Expr.True }));
                 disjointExpr = Expr.Binary(BinaryOperator.Opcode.And, e, disjointExpr);
             }
             return new ExistsExpr(Token.NoToken, new List<Variable> { partition }, disjointExpr);
@@ -622,13 +622,13 @@ namespace Microsoft.Boogie
                 IdentifierExpr bie = new IdentifierExpr(Token.NoToken, b);
                 BoundVariable x = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, "x", elementType));
                 IdentifierExpr xie = new IdentifierExpr(Token.NoToken, x);
-                var mapApplTerm = new NAryExpr(Token.NoToken, new FunctionCall(mapOrBool), new ExprSeq(aie, bie));
-                var lhsTerm = new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1), new ExprSeq(mapApplTerm, xie));
+                var mapApplTerm = new NAryExpr(Token.NoToken, new FunctionCall(mapOrBool), new List<Expr> { aie, bie } );
+                var lhsTerm = new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1), new List<Expr> { mapApplTerm, xie } );
                 var rhsTerm = Expr.Binary(BinaryOperator.Opcode.Or,
-                                          new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1), new ExprSeq(aie, xie)),
-                                          new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1), new ExprSeq(bie, xie)));
+                                          new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1), new List<Expr> { aie, xie } ),
+                                          new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1), new List<Expr> { bie, xie} ));
                 var axiomExpr = new ForallExpr(Token.NoToken, new TypeVariableSeq(), new List<Variable> { a, b }, null, 
-                                               new Trigger(Token.NoToken, true, new ExprSeq(mapApplTerm)), 
+                                               new Trigger(Token.NoToken, true, new List<Expr> { mapApplTerm }), 
                                                new ForallExpr(Token.NoToken, new List<Variable> { x }, Expr.Binary(BinaryOperator.Opcode.Eq, lhsTerm, rhsTerm)));
                 axiomExpr.Typecheck(new TypecheckingContext(null));
                 axioms.Add(new Axiom(Token.NoToken, axiomExpr));
@@ -650,13 +650,13 @@ namespace Microsoft.Boogie
                 IdentifierExpr bie = new IdentifierExpr(Token.NoToken, b);
                 BoundVariable x = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, "x", elementType));
                 IdentifierExpr xie = new IdentifierExpr(Token.NoToken, x);
-                var mapApplTerm = new NAryExpr(Token.NoToken, new FunctionCall(mapImpBool), new ExprSeq(aie, bie));
-                var lhsTerm = new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1), new ExprSeq(mapApplTerm, xie));
+                var mapApplTerm = new NAryExpr(Token.NoToken, new FunctionCall(mapImpBool), new List<Expr> { aie, bie });
+                var lhsTerm = new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1), new List<Expr> { mapApplTerm, xie });
                 var rhsTerm = Expr.Binary(BinaryOperator.Opcode.Imp,
-                                          new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1), new ExprSeq(aie, xie)),
-                                          new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1), new ExprSeq(bie, xie)));
+                                          new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1), new List<Expr> { aie, xie }),
+                                          new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1), new List<Expr> { bie, xie }));
                 var axiomExpr = new ForallExpr(Token.NoToken, new TypeVariableSeq(), new List<Variable> { a, b }, null,
-                                               new Trigger(Token.NoToken, true, new ExprSeq(mapApplTerm)), 
+                                               new Trigger(Token.NoToken, true, new List<Expr> { mapApplTerm }), 
                                                new ForallExpr(Token.NoToken, new List<Variable> { x }, Expr.Binary(BinaryOperator.Opcode.Eq, lhsTerm, rhsTerm)));
                 axiomExpr.Typecheck(new TypecheckingContext(null));
                 axioms.Add(new Axiom(Token.NoToken, axiomExpr));
@@ -674,12 +674,12 @@ namespace Microsoft.Boogie
                 BoundVariable x = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, "x", elementType));
                 IdentifierExpr xie = new IdentifierExpr(Token.NoToken, x);
                 var trueTerm = new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1), 
-                                           new ExprSeq(new NAryExpr(Token.NoToken, new FunctionCall(mapConstBool), new ExprSeq(Expr.True)), xie));
+                                           new List<Expr> { new NAryExpr(Token.NoToken, new FunctionCall(mapConstBool), new List<Expr> { Expr.True }), xie });
                 var trueAxiomExpr = new ForallExpr(Token.NoToken, new List<Variable> { x }, trueTerm);
                 trueAxiomExpr.Typecheck(new TypecheckingContext(null));
                 axioms.Add(new Axiom(Token.NoToken, trueAxiomExpr));
                 var falseTerm = new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1),
-                                           new ExprSeq(new NAryExpr(Token.NoToken, new FunctionCall(mapConstBool), new ExprSeq(Expr.False)), xie)); 
+                                           new List<Expr> { new NAryExpr(Token.NoToken, new FunctionCall(mapConstBool), new List<Expr> { Expr.False }), xie }); 
                 var falseAxiomExpr = new ForallExpr(Token.NoToken, new List<Variable> { x }, Expr.Unary(Token.NoToken, UnaryOperator.Opcode.Not, falseTerm));
                 falseAxiomExpr.Typecheck(new TypecheckingContext(null));
                 axioms.Add(new Axiom(Token.NoToken, falseAxiomExpr));
@@ -701,13 +701,13 @@ namespace Microsoft.Boogie
                 IdentifierExpr bie = new IdentifierExpr(Token.NoToken, b);
                 BoundVariable x = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, "x", elementType));
                 IdentifierExpr xie = new IdentifierExpr(Token.NoToken, x);
-                var mapApplTerm = new NAryExpr(Token.NoToken, new FunctionCall(mapEqInt), new ExprSeq(aie, bie));
-                var lhsTerm = new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1), new ExprSeq(mapApplTerm, xie));
+                var mapApplTerm = new NAryExpr(Token.NoToken, new FunctionCall(mapEqInt), new List<Expr> { aie, bie });
+                var lhsTerm = new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1), new List<Expr> { mapApplTerm, xie });
                 var rhsTerm = Expr.Binary(BinaryOperator.Opcode.Eq,
-                                          new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1), new ExprSeq(aie, xie)),
-                                          new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1), new ExprSeq(bie, xie)));
+                                          new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1), new List<Expr> { aie, xie }),
+                                          new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1), new List<Expr> { bie, xie }));
                 var axiomExpr = new ForallExpr(Token.NoToken, new TypeVariableSeq(), new List<Variable> { a, b }, null, 
-                                               new Trigger(Token.NoToken, true, new ExprSeq(mapApplTerm)), 
+                                               new Trigger(Token.NoToken, true, new List<Expr> { mapApplTerm }), 
                                                new ForallExpr(Token.NoToken, new List<Variable> { x }, Expr.Binary(BinaryOperator.Opcode.Eq, lhsTerm, rhsTerm)));
                 axiomExpr.Typecheck(new TypecheckingContext(null));
                 axioms.Add(new Axiom(Token.NoToken, axiomExpr));
@@ -726,7 +726,7 @@ namespace Microsoft.Boogie
                 IdentifierExpr aie = new IdentifierExpr(Token.NoToken, a);
                 BoundVariable x = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, "x", elementType));
                 IdentifierExpr xie = new IdentifierExpr(Token.NoToken, x);
-                var lhsTerm = new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1), new ExprSeq(new NAryExpr(Token.NoToken, new FunctionCall(mapConstInt), new ExprSeq(aie)), xie));
+                var lhsTerm = new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1), new List<Expr> { new NAryExpr(Token.NoToken, new FunctionCall(mapConstInt), new List<Expr> { aie }), xie });
                 var axiomExpr = new ForallExpr(Token.NoToken, new List<Variable> { a, x }, Expr.Binary(BinaryOperator.Opcode.Eq, lhsTerm, aie));
                 axiomExpr.Typecheck(new TypecheckingContext(null));
                 axioms.Add(new Axiom(Token.NoToken, axiomExpr));

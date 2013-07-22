@@ -159,10 +159,10 @@ namespace Microsoft.Boogie {
       Contract.Ensures(Contract.Result<Expr>() != null);
       return base.VisitExpr((Expr)node.Clone());
     }
-    public override ExprSeq VisitExprSeq(ExprSeq list) {
+    public override List<Expr> VisitExprSeq(List<Expr> list) {
       //Contract.Requires(list != null);
-      Contract.Ensures(Contract.Result<ExprSeq>() != null);
-      return base.VisitExprSeq(new ExprSeq(list));
+      Contract.Ensures(Contract.Result<List<Expr>>() != null);
+      return base.VisitExprSeq(new List<Expr>(list));
     }
     public override ForallExpr VisitForallExpr(ForallExpr node) {
       //Contract.Requires(node != null);

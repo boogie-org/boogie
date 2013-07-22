@@ -86,7 +86,7 @@ public class SmartBlockPredicator {
                    new List<Expr>(aCmd.Lhss.Zip(aCmd.Rhss, (lhs, rhs) =>
                      new NAryExpr(Token.NoToken,
                        new IfThenElse(Token.NoToken),
-                       new ExprSeq(p, rhs, lhs.AsExpr))))));
+                       new List<Expr> { p, rhs, lhs.AsExpr })))));
     } else if (cmd is AssertCmd) {
       var aCmd = (AssertCmd)cmd;
       Expr newExpr = new EnabledReplacementVisitor(p).VisitExpr(aCmd.Expr);
@@ -119,7 +119,7 @@ public class SmartBlockPredicator {
         cmdSeq.Add(Cmd.SimpleAssign(Token.NoToken, v,
                                     new NAryExpr(Token.NoToken,
                                       new IfThenElse(Token.NoToken),
-                                      new ExprSeq(p, havocTempExpr, v))));
+                                      new List<Expr> { p, havocTempExpr, v })));
       }
     } else if (cmd is CommentCmd) {
       // skip
@@ -470,7 +470,7 @@ public class SmartBlockPredicator {
     if (myUseProcedurePredicates) {
       return new NAryExpr(Token.NoToken,
                  new IfThenElse(Token.NoToken),
-                 new ExprSeq(fp, then, eElse));
+                 new List<Expr> { fp, then, eElse });
     } else {
       return then;
     }

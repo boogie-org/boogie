@@ -90,7 +90,7 @@ namespace Microsoft.Boogie {
       Contract.Requires(e1 != null);
       Contract.Requires(x != null);
       Contract.Ensures(Contract.Result<NAryExpr>() != null);
-      return new NAryExpr(x, new UnaryOperator(x, op), new ExprSeq(e1));
+      return new NAryExpr(x, new UnaryOperator(x, op), new List<Expr> { e1 });
     }
 
     public static NAryExpr Binary(IToken x, BinaryOperator.Opcode op, Expr e0, Expr e1) {
@@ -98,7 +98,7 @@ namespace Microsoft.Boogie {
       Contract.Requires(e0 != null);
       Contract.Requires(x != null);
       Contract.Ensures(Contract.Result<NAryExpr>() != null);
-      return new NAryExpr(x, new BinaryOperator(x, op), new ExprSeq(e0, e1));
+      return new NAryExpr(x, new BinaryOperator(x, op), new List<Expr> { e0, e1 });
     }
 
     public static NAryExpr Binary(BinaryOperator.Opcode op, Expr e0, Expr e1) {
@@ -339,7 +339,7 @@ namespace Microsoft.Boogie {
       Contract.Requires(map != null);
       Contract.Requires(x != null);
       Contract.Ensures(Contract.Result<NAryExpr>() != null);
-      ExprSeq/*!*/ allArgs = new ExprSeq();
+      List<Expr>/*!*/ allArgs = new List<Expr>();
       allArgs.Add(map);
       foreach (Expr/*!*/ a in args) {
         Contract.Assert(a != null);
@@ -376,7 +376,7 @@ namespace Microsoft.Boogie {
       Contract.Requires(args.Length > 0);    // zero or more indices, plus the value
       Contract.Ensures(Contract.Result<NAryExpr>() != null);
 
-      ExprSeq/*!*/ allArgs = new ExprSeq();
+      List<Expr>/*!*/ allArgs = new List<Expr>();
       allArgs.Add(map);
       foreach (Expr/*!*/ a in args) {
         Contract.Assert(a != null);
@@ -390,7 +390,7 @@ namespace Microsoft.Boogie {
       Contract.Requires(subexpr != null);
       Contract.Requires(x != null);
       Contract.Ensures(Contract.Result<NAryExpr>() != null);
-      ExprSeq/*!*/ args = new ExprSeq();
+      List<Expr>/*!*/ args = new List<Expr>();
       args.Add(subexpr);
       return new NAryExpr(x, new TypeCoercion(x, type), args);
     }
@@ -945,7 +945,7 @@ namespace Microsoft.Boogie {
     /// <param name="stream"></param>
     /// <param name="contextBindingStrength"></param>
     /// <param name="fragileContext"></param>
-    void Emit(ExprSeq/*!*/ args, TokenTextWriter/*!*/ stream, int contextBindingStrength, bool fragileContext);
+    void Emit(List<Expr>/*!*/ args, TokenTextWriter/*!*/ stream, int contextBindingStrength, bool fragileContext);
 
     void Resolve(ResolutionContext/*!*/ rc, Expr/*!*/ subjectForErrorReporting);
 
@@ -968,14 +968,14 @@ namespace Microsoft.Boogie {
     /// </summary>
     /// <param name="args"></param>
     /// <param name="tc"></param>
-    Type Typecheck(ref ExprSeq/*!*/ args, out TypeParamInstantiation/*!*/ tpInstantiation, TypecheckingContext/*!*/ tc);
+    Type Typecheck(ref List<Expr>/*!*/ args, out TypeParamInstantiation/*!*/ tpInstantiation, TypecheckingContext/*!*/ tc);
 
     // Contract.Requires( Microsoft.SpecSharp.Collections.Reductions.Forall{Expr! arg in args; arg.Type != null});
 
     /// <summary>
     /// Returns the result type of the IAppliable, supposing the argument are of the correct types.
     /// </summary>
-    Type/*!*/ ShallowType(ExprSeq/*!*/ args);
+    Type/*!*/ ShallowType(List<Expr>/*!*/ args);
 
     T Dispatch<T>(IAppliableVisitor<T>/*!*/ visitor);
   }
@@ -991,7 +991,7 @@ namespace Microsoft.Boogie {
       }
     }
 
-    public void Emit(ExprSeq args, TokenTextWriter stream, int contextBindingStrength, bool fragileContext) {
+    public void Emit(List<Expr> args, TokenTextWriter stream, int contextBindingStrength, bool fragileContext) {
       Contract.Requires(args != null);
       Contract.Requires(stream != null);
       throw new NotImplementedException();
@@ -1009,7 +1009,7 @@ namespace Microsoft.Boogie {
       }
     }
 
-    public Type Typecheck(ref ExprSeq args, out TypeParamInstantiation tpInstantiation, TypecheckingContext tc) {
+    public Type Typecheck(ref List<Expr> args, out TypeParamInstantiation tpInstantiation, TypecheckingContext tc) {
       Contract.Requires(args != null);
       Contract.Requires(tc != null);
       Contract.Ensures(Contract.ValueAtReturn(out args) != null);
@@ -1018,7 +1018,7 @@ namespace Microsoft.Boogie {
       throw new NotImplementedException();
     }
 
-    public Type ShallowType(ExprSeq args) {
+    public Type ShallowType(List<Expr> args) {
       Contract.Requires(args != null);
       Contract.Ensures(Contract.Result<Type>() != null);
 
@@ -1105,7 +1105,7 @@ namespace Microsoft.Boogie {
       }
     }
 
-    public void Emit(ExprSeq args, TokenTextWriter stream, int contextBindingStrength, bool fragileContext) {
+    public void Emit(List<Expr> args, TokenTextWriter stream, int contextBindingStrength, bool fragileContext) {
       //Contract.Requires(stream != null);
       //Contract.Requires(args != null);
       stream.SetToken(ref this.tok);
@@ -1139,7 +1139,7 @@ namespace Microsoft.Boogie {
       }
     }
 
-    public Type Typecheck(ref ExprSeq args, out TypeParamInstantiation tpInstantiation, TypecheckingContext tc) {
+    public Type Typecheck(ref List<Expr> args, out TypeParamInstantiation tpInstantiation, TypecheckingContext tc) {
       //Contract.Requires(tc != null);
       //Contract.Requires(args != null);
       Contract.Ensures(Contract.ValueAtReturn(out tpInstantiation) != null);
@@ -1173,7 +1173,7 @@ namespace Microsoft.Boogie {
         this.FunctionName, arg0type);
       return null;
     }
-    public Type ShallowType(ExprSeq args) {
+    public Type ShallowType(List<Expr> args) {
       //Contract.Requires(args != null);
       Contract.Ensures(Contract.Result<Type>() != null);
       switch (this.op) {
@@ -1319,7 +1319,7 @@ namespace Microsoft.Boogie {
       }
     }
 
-    public void Emit(ExprSeq args, TokenTextWriter stream, int contextBindingStrength, bool fragileContext) {
+    public void Emit(List<Expr> args, TokenTextWriter stream, int contextBindingStrength, bool fragileContext) {
       //Contract.Requires(stream != null);
       //Contract.Requires(args != null);
       stream.SetToken(ref this.tok);
@@ -1444,7 +1444,7 @@ namespace Microsoft.Boogie {
         return 2;
       }
     }
-    public Type Typecheck(ref ExprSeq args, out TypeParamInstantiation tpInstantiation, TypecheckingContext tc) {
+    public Type Typecheck(ref List<Expr> args, out TypeParamInstantiation tpInstantiation, TypecheckingContext tc) {
       //Contract.Requires(tc != null);
       //Contract.Requires(args != null);
       Contract.Ensures(Contract.ValueAtReturn(out tpInstantiation) != null);
@@ -1538,7 +1538,7 @@ namespace Microsoft.Boogie {
       return null;
     }
 
-    public Type ShallowType(ExprSeq args) {
+    public Type ShallowType(List<Expr> args) {
       //Contract.Requires(args != null);
       Contract.Ensures(Contract.Result<Type>() != null);
       switch (this.op) {
@@ -1588,7 +1588,7 @@ namespace Microsoft.Boogie {
         case Opcode.Neq:
           if (arg0.Type != null && arg0.Type.IsBool && arg1.Type != null && arg1.Type.IsBool) {
             expr.Fun = new BinaryOperator(tok, Opcode.Iff);
-            arg1 = new NAryExpr(expr.tok, new UnaryOperator(tok, UnaryOperator.Opcode.Not), new ExprSeq(arg1));
+            arg1 = new NAryExpr(expr.tok, new UnaryOperator(tok, UnaryOperator.Opcode.Not), new List<Expr> { arg1 });
 
             // ugly ... there should be some more general approach,
             // e.g., to typecheck the whole expression again
@@ -1765,7 +1765,7 @@ namespace Microsoft.Boogie {
       return Func.GetHashCode();
     }
 
-    virtual public void Emit(ExprSeq args, TokenTextWriter stream, int contextBindingStrength, bool fragileContext) {
+    virtual public void Emit(List<Expr> args, TokenTextWriter stream, int contextBindingStrength, bool fragileContext) {
       //Contract.Requires(stream != null);
       //Contract.Requires(args != null);
       this.name.Emit(stream, 0xF0, false);
@@ -1791,7 +1791,7 @@ namespace Microsoft.Boogie {
         return Func.InParams.Count;
       }
     }
-    public virtual Type Typecheck(ref ExprSeq actuals, out TypeParamInstantiation tpInstantiation, TypecheckingContext tc) {
+    public virtual Type Typecheck(ref List<Expr> actuals, out TypeParamInstantiation tpInstantiation, TypecheckingContext tc) {
       //Contract.Requires(tc != null);
       //Contract.Requires(actuals != null);
       Contract.Ensures(Contract.ValueAtReturn(out actuals) != null);
@@ -1824,7 +1824,7 @@ namespace Microsoft.Boogie {
         return actualResultType[0];
       }
     }
-    public Type ShallowType(ExprSeq args) {
+    public Type ShallowType(List<Expr> args) {
       //Contract.Requires(args != null);
       Contract.Ensures(Contract.Result<Type>() != null);
       Contract.Assume(name.Type != null);
@@ -1860,7 +1860,7 @@ namespace Microsoft.Boogie {
       }
     }
 
-    public void Emit(ExprSeq/*!*/ args, TokenTextWriter/*!*/ stream,
+    public void Emit(List<Expr>/*!*/ args, TokenTextWriter/*!*/ stream,
                      int contextBindingStrength, bool fragileContext) {
       //Contract.Requires(args != null);
       //Contract.Requires(stream != null);
@@ -1894,7 +1894,7 @@ namespace Microsoft.Boogie {
       }
     }
 
-    public Type Typecheck(ref ExprSeq/*!*/ args,
+    public Type Typecheck(ref List<Expr>/*!*/ args,
                           out TypeParamInstantiation/*!*/ tpInstantiation,
                           TypecheckingContext/*!*/ tc) {
       //Contract.Requires(args != null);
@@ -1912,7 +1912,7 @@ namespace Microsoft.Boogie {
       return this.Type;
     }
 
-    public Type ShallowType(ExprSeq args) {
+    public Type ShallowType(List<Expr> args) {
       //Contract.Requires(args != null);
       Contract.Ensures(Contract.Result<Type>() != null);
       return this.Type;
@@ -1991,7 +1991,7 @@ namespace Microsoft.Boogie {
       }
     }
 
-    virtual public void Emit(ExprSeq args, TokenTextWriter stream, int contextBindingStrength, bool fragileContext) {
+    virtual public void Emit(List<Expr> args, TokenTextWriter stream, int contextBindingStrength, bool fragileContext) {
       //Contract.Requires(stream != null);
       //Contract.Requires(args != null);
       stream.Write(this.name);
@@ -2005,7 +2005,7 @@ namespace Microsoft.Boogie {
       //Contract.Requires(rc != null);
     }
 
-    public virtual Type Typecheck(ref ExprSeq args, out TypeParamInstantiation tpInstantiation, TypecheckingContext tc) {
+    public virtual Type Typecheck(ref List<Expr> args, out TypeParamInstantiation tpInstantiation, TypecheckingContext tc) {
       //Contract.Requires(tc != null);
       //Contract.Requires(args != null);
       Contract.Ensures(args != null);
@@ -2022,7 +2022,7 @@ namespace Microsoft.Boogie {
       return this.type;
     }
 
-    public Type ShallowType(ExprSeq args) {
+    public Type ShallowType(List<Expr> args) {
       //Contract.Requires(args != null);
       Contract.Ensures(Contract.Result<Type>() != null);
       return this.type;
@@ -2038,7 +2038,7 @@ namespace Microsoft.Boogie {
     [Additive]
     [Peer]
     public IAppliable/*!*/ Fun;
-    public ExprSeq/*!*/ Args;
+    public List<Expr>/*!*/ Args;
     [ContractInvariantMethod]
     void ObjectInvariant() {
       Contract.Invariant(Fun != null);
@@ -2051,7 +2051,7 @@ namespace Microsoft.Boogie {
     public TypeParamInstantiation TypeParameters = null;
 
     [Captured]
-    public NAryExpr(IToken/*!*/ tok, IAppliable/*!*/ fun, ExprSeq/*!*/ args)
+    public NAryExpr(IToken/*!*/ tok, IAppliable/*!*/ fun, List<Expr>/*!*/ args)
       : base(tok) {
       Contract.Requires(tok != null);
       Contract.Requires(fun != null);
@@ -2188,7 +2188,7 @@ namespace Microsoft.Boogie {
       return Arity.GetHashCode() * 2823;
     }
 
-    public void Emit(ExprSeq/*!*/ args, TokenTextWriter/*!*/ stream,
+    public void Emit(List<Expr>/*!*/ args, TokenTextWriter/*!*/ stream,
                      int contextBindingStrength, bool fragileContext) {
       //Contract.Requires(args != null);
       //Contract.Requires(stream != null);
@@ -2196,7 +2196,7 @@ namespace Microsoft.Boogie {
       Emit(args, stream, contextBindingStrength, fragileContext, false);
     }
 
-    public static void Emit(ExprSeq/*!*/ args, TokenTextWriter/*!*/ stream,
+    public static void Emit(List<Expr>/*!*/ args, TokenTextWriter/*!*/ stream,
                             int contextBindingStrength, bool fragileContext,
                             bool withRhs) {
       Contract.Requires(args != null);
@@ -2248,7 +2248,7 @@ namespace Microsoft.Boogie {
       // the AssignCmd maps can also be
       // represented by non-expressions
                                  Absy/*!*/ map,
-                                 ExprSeq/*!*/ indexes,
+                                 List<Expr>/*!*/ indexes,
       // the type parameters, in this context, are the parameters of the
       // potentially polymorphic map type. Because it might happen that
       // the whole map type is unknown and represented using a MapTypeProxy,
@@ -2290,13 +2290,13 @@ namespace Microsoft.Boogie {
       }
     }
 
-    public Type Typecheck(ref ExprSeq args, out TypeParamInstantiation tpInstantiation, TypecheckingContext tc) {
+    public Type Typecheck(ref List<Expr> args, out TypeParamInstantiation tpInstantiation, TypecheckingContext tc) {
       //Contract.Requires(tc != null);
       //Contract.Requires(args != null);
       Contract.Ensures(Contract.ValueAtReturn(out tpInstantiation) != null);
       Contract.Assume(args.Count == Arity + 1);
 
-      ExprSeq actualArgs = new ExprSeq();
+      List<Expr> actualArgs = new List<Expr>();
       for (int i = 1; i < args.Count; ++i)
         actualArgs.Add(args[i]);
 
@@ -2307,7 +2307,7 @@ namespace Microsoft.Boogie {
     /// <summary>
     /// Returns the result type of the IAppliable, supposing the argument are of the correct types.
     /// </summary>
-    public Type ShallowType(ExprSeq args) {
+    public Type ShallowType(List<Expr> args) {
       //Contract.Requires(args != null);
       Contract.Ensures(Contract.Result<Type>() != null);
       Expr a0 = cce.NonNull(args[0]);
@@ -2369,7 +2369,7 @@ namespace Microsoft.Boogie {
       return Arity.GetHashCode() * 28231;
     }
 
-    public void Emit(ExprSeq/*!*/ args, TokenTextWriter/*!*/ stream,
+    public void Emit(List<Expr>/*!*/ args, TokenTextWriter/*!*/ stream,
                      int contextBindingStrength, bool fragileContext) {
       //Contract.Requires(args != null);
       //Contract.Requires(stream != null);
@@ -2390,7 +2390,7 @@ namespace Microsoft.Boogie {
     }
 
     // it is assumed that each of the arguments has already been typechecked
-    public static Type Typecheck(ExprSeq/*!*/ args, out TypeParamInstantiation/*!*/ tpInstantiation,
+    public static Type Typecheck(List<Expr>/*!*/ args, out TypeParamInstantiation/*!*/ tpInstantiation,
                                  TypecheckingContext/*!*/ tc,
                                  IToken/*!*/ typeCheckingSubject,
                                  string/*!*/ opName) {
@@ -2401,7 +2401,7 @@ namespace Microsoft.Boogie {
       Contract.Ensures(Contract.ValueAtReturn(out tpInstantiation) != null);
 
       // part of the type checking works exactly as for MapSelect
-      ExprSeq selectArgs = new ExprSeq();
+      List<Expr> selectArgs = new List<Expr>();
       for (int i = 1; i < args.Count - 1; ++i)
         selectArgs.Add(args[i]);
       Type resultType =
@@ -2424,7 +2424,7 @@ namespace Microsoft.Boogie {
       return cce.NonNull(args[0]).Type;
     }
 
-    public Type Typecheck(ref ExprSeq/*!*/ args,
+    public Type Typecheck(ref List<Expr>/*!*/ args,
                           out TypeParamInstantiation/*!*/ tpInstantiation,
                           TypecheckingContext/*!*/ tc) {
       //Contract.Requires(args != null);
@@ -2438,7 +2438,7 @@ namespace Microsoft.Boogie {
     /// <summary>
     /// Returns the result type of the IAppliable, supposing the argument are of the correct types.
     /// </summary>
-    public Type ShallowType(ExprSeq args) {
+    public Type ShallowType(List<Expr> args) {
       //Contract.Requires(args != null);
       Contract.Ensures(Contract.Result<Type>() != null);
       return cce.NonNull(args[0]).ShallowType;
@@ -2486,7 +2486,7 @@ namespace Microsoft.Boogie {
       return 1;
     }
 
-    public void Emit(ExprSeq args, TokenTextWriter stream, int contextBindingStrength, bool fragileContext) {
+    public void Emit(List<Expr> args, TokenTextWriter stream, int contextBindingStrength, bool fragileContext) {
       //Contract.Requires(stream != null);
       //Contract.Requires(args != null);
       stream.SetToken(ref this.tok);
@@ -2512,7 +2512,7 @@ namespace Microsoft.Boogie {
       }
     }
 
-    public Type Typecheck(ref ExprSeq args, out TypeParamInstantiation tpInstantiation, TypecheckingContext tc) {
+    public Type Typecheck(ref List<Expr> args, out TypeParamInstantiation tpInstantiation, TypecheckingContext tc) {
       //Contract.Requires(tc != null);
       //Contract.Requires(args != null);
       Contract.Ensures(args != null);
@@ -2539,7 +2539,7 @@ namespace Microsoft.Boogie {
     /// <summary>
     /// Returns the result type of the IAppliable, supposing the argument are of the correct types.
     /// </summary>
-    public Type ShallowType(ExprSeq args) {
+    public Type ShallowType(List<Expr> args) {
       //Contract.Requires(args != null);
       Contract.Ensures(Contract.Result<Type>() != null);
       return cce.NonNull(args[1]).ShallowType;

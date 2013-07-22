@@ -24,7 +24,7 @@ readonly Expr/*!*/ dummyExpr;
 readonly Cmd/*!*/ dummyCmd;
 readonly Block/*!*/ dummyBlock;
 readonly Bpl.Type/*!*/ dummyType;
-readonly Bpl.ExprSeq/*!*/ dummyExprSeq;
+readonly Bpl.List<Expr>/*!*/ dummyExprSeq;
 readonly TransferCmd/*!*/ dummyTransferCmd;
 readonly StructuredCmd/*!*/ dummyStructuredCmd;
 
@@ -86,7 +86,7 @@ public Parser(Scanner/*!*/ scanner, Errors/*!*/ errors, bool disambiguation)
   dummyCmd = new AssumeCmd(Token.NoToken, dummyExpr);
   dummyBlock = new Block(Token.NoToken, "dummyBlock", new List<Cmd>(), new ReturnCmd(Token.NoToken));
   dummyType = new BasicType(Token.NoToken, SimpleType.Bool);
-  dummyExprSeq = new ExprSeq ();
+  dummyExprSeq = new List<Expr> ();
   dummyTransferCmd = new ReturnCmd(Token.NoToken);
   dummyStructuredCmd = new BreakCmd(Token.NoToken, null);
 }
@@ -993,8 +993,8 @@ WhiteSpaceIdents<out List<IToken>/*!*/ xs>
   .
 
 /*------------------------------------------------------------------------*/
-Expressions<out ExprSeq/*!*/ es>
-= (. Contract.Ensures(Contract.ValueAtReturn(out es) != null); Expr/*!*/ e; es = new ExprSeq(); .)
+Expressions<out List<Expr>/*!*/ es>
+= (. Contract.Ensures(Contract.ValueAtReturn(out es) != null); Expr/*!*/ e; es = new List<Expr>(); .)
   Expression<out e>             (. es.Add(e); .)
   { "," Expression<out e>       (. es.Add(e); .)
   }
@@ -1194,10 +1194,10 @@ ArrayExpression<out Expr/*!*/ e>
 = (. Contract.Ensures(Contract.ValueAtReturn(out e) != null); IToken/*!*/ x;
      Expr/*!*/ index0 = dummyExpr; Expr/*!*/ e1;
      bool store; bool bvExtract;
-     ExprSeq/*!*/ allArgs = dummyExprSeq;
+     List<Expr>/*!*/ allArgs = dummyExprSeq;
   .)
   AtomExpression<out e>
-  { "["        (. x = t; allArgs = new ExprSeq ();
+  { "["        (. x = t; allArgs = new List<Expr> ();
                   allArgs.Add(e);
                   store = false; bvExtract = false; .)
       [
@@ -1238,7 +1238,7 @@ ArrayExpression<out Expr/*!*/ e>
 /*------------------------------------------------------------------------*/
 AtomExpression<out Expr/*!*/ e>
 = (. Contract.Ensures(Contract.ValueAtReturn(out e) != null); IToken/*!*/ x; int n; BigNum bn; BigDec bd;
-     ExprSeq/*!*/ es;  List<Variable>/*!*/ ds;  Trigger trig;
+     List<Expr>/*!*/ es;  List<Variable>/*!*/ ds;  Trigger trig;
      TypeVariableSeq/*!*/ typeParams;
      IdentifierExpr/*!*/ id;
      QKeyValue kv;
@@ -1255,7 +1255,7 @@ AtomExpression<out Expr/*!*/ e>
   | Ident<out x>            (. id = new IdentifierExpr(x, x.val);  e = id; .)
     [ "("
       ( Expressions<out es> (. e = new NAryExpr(x, new FunctionCall(id), es); .)
-      | /* empty */         (. e = new NAryExpr(x, new FunctionCall(id), new ExprSeq()); .)
+      | /* empty */         (. e = new NAryExpr(x, new FunctionCall(id), new List<Expr>()); .)
       )
       ")"
     ]
@@ -1268,12 +1268,12 @@ AtomExpression<out Expr/*!*/ e>
   | "int"                   (. x = t; .)
     "("
     Expression<out e>
-    ")"                     (. e = new NAryExpr(x, new ArithmeticCoercion(x, ArithmeticCoercion.CoercionType.ToInt), new ExprSeq(e)); .)
+    ")"                     (. e = new NAryExpr(x, new ArithmeticCoercion(x, ArithmeticCoercion.CoercionType.ToInt), new List<Expr>(e)); .)
 
   | "real"                  (. x = t; .)
     "("
     Expression<out e>
-    ")"                     (. e = new NAryExpr(x, new ArithmeticCoercion(x, ArithmeticCoercion.CoercionType.ToReal), new ExprSeq(e)); .)
+    ")"                     (. e = new NAryExpr(x, new ArithmeticCoercion(x, ArithmeticCoercion.CoercionType.ToReal), new List<Expr>(e)); .)
 
   | "(" ( Expression<out e>                 (. if (e is BvBounds)
                                                  this.SemErr("parentheses around bitvector bounds " +
@@ -1349,7 +1349,7 @@ Attribute<ref QKeyValue kv>
 .
 
 AttributeOrTrigger<ref QKeyValue kv, ref Trigger trig>
-= (. IToken/*!*/ tok;  Expr/*!*/ e;  ExprSeq/*!*/ es;
+= (. IToken/*!*/ tok;  Expr/*!*/ e;  List<Expr>/*!*/ es;
      string key;
      List<object/*!*/> parameters;  object/*!*/ param;
   .)
@@ -1364,9 +1364,9 @@ AttributeOrTrigger<ref QKeyValue kv, ref Trigger trig>
             if (parameters.Count == 1 && parameters[0] is Expr) {
               e = (Expr)parameters[0];
               if(trig==null){
-                trig = new Trigger(tok, false, new ExprSeq(e), null);
+                trig = new Trigger(tok, false, new List<Expr>(e), null);
               } else {
-                trig.AddLast(new Trigger(tok, false, new ExprSeq(e), null));
+                trig.AddLast(new Trigger(tok, false, new List<Expr>(e), null));
               }
             } else {
               this.SemErr("the 'nopats' quantifier attribute expects a string-literal parameter");
@@ -1380,7 +1380,7 @@ AttributeOrTrigger<ref QKeyValue kv, ref Trigger trig>
           }
        .)
      |
-       Expression<out e>       (. es = new ExprSeq(e); .)
+       Expression<out e>       (. es = new List<Expr>(e); .)
        { "," Expression<out e> (. es.Add(e); .)
        }                       (. if (trig==null) {
                                     trig = new Trigger(tok, true, es, null);
@@ -1408,7 +1408,7 @@ IfThenElseExpression<out Expr/*!*/ e>
      Expr/*!*/ e0, e1, e2;
      e = dummyExpr; .)
   "if" (. tok = t; .) Expression<out e0> "then" Expression<out e1> "else" Expression<out e2>
-  (. e = new NAryExpr(tok, new IfThenElse(tok), new ExprSeq(e0, e1, e2)); .)
+  (. e = new NAryExpr(tok, new IfThenElse(tok), new List<Expr>(e0, e1, e2)); .)
   .
 
 

@@ -398,9 +398,9 @@ namespace Microsoft.Boogie {
         Contract.Assert(header != null);
         List<Variable> inputs = new List<Variable>();
         List<Variable> outputs = new List<Variable>();
-        ExprSeq callInputs1 = new ExprSeq();
+        List<Expr> callInputs1 = new List<Expr>();
         List<IdentifierExpr> callOutputs1 = new List<IdentifierExpr>();
-        ExprSeq callInputs2 = new ExprSeq();
+        List<Expr> callInputs2 = new List<Expr>();
         List<IdentifierExpr> callOutputs2 = new List<IdentifierExpr>();
         List<AssignLhs> lhss = new List<AssignLhs>();
         List<Expr> rhss = new List<Expr>();
@@ -2134,7 +2134,7 @@ namespace Microsoft.Boogie {
       Contract.Requires(definition != null);
 
       List<Variable> dummies = new List<Variable>();
-      ExprSeq callArgs = new ExprSeq();
+      List<Expr> callArgs = new List<Expr>();
       int i = 0;
       foreach (Formal/*!*/ f in InParams) {
         Contract.Assert(f != null);
@@ -2157,7 +2157,7 @@ namespace Microsoft.Boogie {
       if (quantifiedTypeVars.Count != 0 || dummies.Count != 0) {
         def = new ForallExpr(tok, quantifiedTypeVars, dummies,
                              kv,
-                             new Trigger(tok, true, new ExprSeq(call), null),
+                             new Trigger(tok, true, new List<Expr> { call }, null),
                              def);
       }
       DefinitionAxiom = new Axiom(tok, def);
@@ -3234,36 +3234,6 @@ namespace Microsoft.Boogie {
     }
   }
 
-  public sealed class ExprSeq : List<Expr> {
-    public ExprSeq(params Expr[]/*!*/ args)
-      : base(args) {
-      Contract.Requires(args != null);
-    }
-    public ExprSeq(ExprSeq/*!*/ exprSeq)
-      : base(exprSeq) {
-      Contract.Requires(exprSeq != null);
-    }
-
-    public static ExprSeq operator +(ExprSeq a, ExprSeq b) {
-      if (a == null)
-        throw new ArgumentNullException("a");
-      if (b == null)
-        throw new ArgumentNullException("b");
-      return Append(a, b);
-    }
-
-    public static ExprSeq Append(ExprSeq s, ExprSeq t) {
-      Contract.Requires(t != null);
-      Contract.Requires(s != null);
-      Expr[] n = new Expr[s.Count + t.Count];
-      for (int i = 0; i < s.Count; i++)
-        n[i] = s[i];
-      for (int i = 0; i < t.Count; i++)
-        n[s.Count + i] = t[i];
-      return new ExprSeq(n);
-    }
-  }
-
   public static class Emitter {
     public static void Declarations(List<Declaration/*!*/>/*!*/ decls, TokenTextWriter stream) {
       Contract.Requires(stream != null);
@@ -3292,7 +3262,7 @@ namespace Microsoft.Boogie {
       }
     }
 
-    public static void Emit(this ExprSeq ts, TokenTextWriter stream) {
+    public static void Emit(this List<Expr> ts, TokenTextWriter stream) {
       Contract.Requires(stream != null);
       string sep = "";
       foreach (Expr/*!*/ e in ts) {

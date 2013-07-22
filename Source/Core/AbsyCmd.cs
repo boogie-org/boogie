@@ -981,7 +981,7 @@ namespace Microsoft.Boogie {
 
     public static AssignCmd/*!*/ MapAssign(IToken tok,
                                        IdentifierExpr/*!*/ map,
-                                       ExprSeq/*!*/ indexes, Expr/*!*/ rhs) {
+                                       List<Expr>/*!*/ indexes, Expr/*!*/ rhs) {
 
       Contract.Requires(tok != null);
       Contract.Requires(map != null);
@@ -1468,7 +1468,7 @@ namespace Microsoft.Boogie {
       }
 
       // we use the same typechecking code as in MapSelect
-      ExprSeq/*!*/ selectArgs = new ExprSeq();
+      List<Expr>/*!*/ selectArgs = new List<Expr>();
       foreach (Expr/*!*/ e in Indexes) {
         Contract.Assert(e != null);
         selectArgs.Add(e);
@@ -1756,21 +1756,6 @@ namespace Microsoft.Boogie {
         errorData = value;
       }
     }
-    public CallCmd(IToken tok, string callee, ExprSeq ins, List<IdentifierExpr> outs)
-      : this(tok, callee, ins.ToList(), outs.ToList()) {
-      Contract.Requires(outs != null);
-      Contract.Requires(ins != null);
-      Contract.Requires(callee != null);
-      Contract.Requires(tok != null);
-      //List<Expr>/*!*/ insList = new List<Expr>();
-      //List<IdentifierExpr>/*!*/ outsList = new List<IdentifierExpr>();
-      //foreach (Expr e in ins)
-      //  if(e!=null)
-      //  insList.Add(e);
-      //foreach (IdentifierExpr e in outs)
-      //  if(e!=null)
-      //  outsList.Add(e);
-    }
     public CallCmd(IToken tok, string callee, List<Expr> ins, List<IdentifierExpr> outs)
       : base(tok, null) {
       Contract.Requires(outs != null);
@@ -1987,7 +1972,7 @@ namespace Microsoft.Boogie {
 
       List<Type>/*!*/ formalInTypes = new List<Type>();
       List<Type>/*!*/ formalOutTypes = new List<Type>();
-      ExprSeq/*!*/ actualIns = new ExprSeq();
+      List<Expr>/*!*/ actualIns = new List<Expr>();
       List<IdentifierExpr>/*!*/ actualOuts = new List<IdentifierExpr>();
       for (int i = 0; i < Ins.Count; ++i) {
         if (Ins[i] != null) {

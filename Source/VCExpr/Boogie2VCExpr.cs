@@ -75,7 +75,7 @@ namespace Microsoft.Boogie.VCExprAST {
       return Pop();
     }
 
-    public List<VCExpr/*!*/>/*!*/ Translate(ExprSeq exprs) {
+    public List<VCExpr/*!*/>/*!*/ Translate(List<Expr> exprs) {
       Contract.Requires(exprs != null);
       Contract.Ensures(cce.NonNullElements(Contract.Result<List<VCExpr>>()));
       List<VCExpr/*!*/>/*!*/ res = new List<VCExpr/*!*/>();

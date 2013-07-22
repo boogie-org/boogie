@@ -326,7 +326,7 @@ namespace Microsoft.Boogie {
   public class Trigger : Absy {
     public readonly bool Pos;
     [Rep]
-    public ExprSeq/*!*/ Tr;
+    public List<Expr>/*!*/ Tr;
     [ContractInvariantMethod]
     void ObjectInvariant() {
       Contract.Invariant(Tr != null);
@@ -336,7 +336,7 @@ namespace Microsoft.Boogie {
 
     public Trigger Next;
 
-    public Trigger(IToken tok, bool pos, ExprSeq tr)
+    public Trigger(IToken tok, bool pos, List<Expr> tr)
       : this(tok, pos, tr, null) {
       Contract.Requires(tr != null);
       Contract.Requires(tok != null);
@@ -344,7 +344,7 @@ namespace Microsoft.Boogie {
       Contract.Requires(pos || tr.Count == 1);
     }
 
-    public Trigger(IToken/*!*/ tok, bool pos, ExprSeq/*!*/ tr, Trigger next)
+    public Trigger(IToken/*!*/ tok, bool pos, List<Expr>/*!*/ tr, Trigger next)
       : base(tok) {
       Contract.Requires(tok != null);
       Contract.Requires(tr != null);
@@ -584,7 +584,7 @@ namespace Microsoft.Boogie {
         Contract.Ensures(Contract.Result<Expr>() != null);
         FunctionCall fn = node.Fun as FunctionCall;
         if (fn != null && cce.NonNull(fn.Func).NeverTrigger) {
-          parent.Triggers = new Trigger(fn.Func.tok, false, new ExprSeq(node), parent.Triggers);
+          parent.Triggers = new Trigger(fn.Func.tok, false, new List<Expr> { node} , parent.Triggers);
         }
         return base.VisitNAryExpr(node);
       }

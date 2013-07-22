@@ -369,7 +369,7 @@ namespace Microsoft.Boogie {
       } else if (e is NAryExpr) {
         NAryExpr ne = (NAryExpr)e;
         IAppliable fun = ne.Fun;
-        ExprSeq eSeq = ne.Args;
+        List<Expr> eSeq = ne.Args;
         if (fun != null) {
           if ((fun.FunctionName == "$Length" || fun.FunctionName == "$StringLength") && eSeq.Count == 1) {
             Expr e0 = eSeq[0];

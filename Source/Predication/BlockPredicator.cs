@@ -68,7 +68,7 @@ public class BlockPredicator {
                    new List<Expr>(aCmd.Lhss.Zip(aCmd.Rhss, (lhs, rhs) =>
                      new NAryExpr(Token.NoToken,
                        new IfThenElse(Token.NoToken),
-                       new ExprSeq(p, rhs, lhs.AsExpr))))));
+                       new List<Expr> { p, rhs, lhs.AsExpr })))));
     } else if (cmd is AssertCmd) {
       var aCmd = (AssertCmd)cmd;
       if (cmdSeq.Last() is AssignCmd &&
@@ -112,7 +112,7 @@ public class BlockPredicator {
         cmdSeq.Add(Cmd.SimpleAssign(Token.NoToken, v,
                                     new NAryExpr(Token.NoToken,
                                       new IfThenElse(Token.NoToken),
-                                      new ExprSeq(p, havocTempExpr, v))));
+                                      new List<Expr> { p, havocTempExpr, v })));
       }
     } else if (cmd is CallCmd) {
       Debug.Assert(useProcedurePredicates);
@@ -261,7 +261,7 @@ public class BlockPredicator {
     if (useProcedurePredicates) {
       return new NAryExpr(Token.NoToken,
                  new IfThenElse(Token.NoToken),
-                 new ExprSeq(fp, then, eElse));
+                 new List<Expr>{ fp, then, eElse });
     } else {
       return then;
     }

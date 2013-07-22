@@ -167,7 +167,7 @@ namespace Microsoft.Boogie.Houdini {
                     var varList = new List<Expr>();
                     exprVars.Args.OfType<Expr>().Iter(v => varList.Add(v));
                     
-                    var args = new ExprSeq();
+                    var args = new List<Expr>();
                     controlVar.InParams.Iter(v => args.Add(Expr.Ident(v)));
                     Expr term = Expr.Eq(new NAryExpr(Token.NoToken, new FunctionCall(controlVar), args),
                                  function2Value[tup.Item1].Gamma(varList));
@@ -175,7 +175,7 @@ namespace Microsoft.Boogie.Houdini {
                     if (controlVar.InParams.Count != 0)
                     {
                         term = new ForallExpr(Token.NoToken, new List<Variable>(controlVar.InParams.ToArray()),
-                            new Trigger(Token.NoToken, true, new ExprSeq(new NAryExpr(Token.NoToken, new FunctionCall(controlVar), args))),
+                            new Trigger(Token.NoToken, true, new List<Expr> { new NAryExpr(Token.NoToken, new FunctionCall(controlVar), args) }),
                             term);
                     }
 
@@ -883,7 +883,7 @@ namespace Microsoft.Boogie.Houdini {
                 functionsUsed.Add(Tuple.Create((node.Fun as FunctionCall).FunctionName, constant, node));
                 boolConstants.Add(constant);
 
-                var args = new ExprSeq();
+                var args = new List<Expr>();
                 bound.OfType<Variable>().Select(v => Expr.Ident(v)).Iter(v => args.Add(v));
                 return new NAryExpr(Token.NoToken, new FunctionCall(constant), args);
             }
@@ -1515,8 +1515,8 @@ namespace Microsoft.Boogie.Houdini {
                 if (!AbstractDomainFactory.bvslt.ContainsKey(bits))
                     throw new AbsHoudiniInternalError("No builtin function found for bv" + bits.ToString());
                 var bvslt = AbstractDomainFactory.bvslt[bits];
-                return new NAryExpr(Token.NoToken, new FunctionCall(bvslt), new ExprSeq(v,
-                    new LiteralExpr(Token.NoToken, Basetypes.BigNum.FromInt(1 << (upper+1)), 32)));
+                return new NAryExpr(Token.NoToken, new FunctionCall(bvslt), new List<Expr> { v,
+                    new LiteralExpr(Token.NoToken, Basetypes.BigNum.FromInt(1 << (upper+1)), 32) });
             }
             else
             {
@@ -2760,7 +2760,7 @@ namespace Microsoft.Boogie.Houdini {
             var function = new Function(Token.NoToken, impl.Name + summaryPredSuffix, functionInterfaceVars, returnVar);
             prover.Context.DeclareFunction(function, "");
 
-            ExprSeq exprs = new ExprSeq();
+            List<Expr> exprs = new List<Expr>();
             foreach (Variable v in vcgen.program.GlobalVariables())
             {
                 Contract.Assert(v != null);

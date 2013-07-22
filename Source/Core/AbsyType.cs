@@ -366,7 +366,7 @@ namespace Microsoft.Boogie {
     public static IDictionary<TypeVariable!, Type!>!
                   MatchArgumentTypes(TypeVariableSeq! typeParams,
                                      List<Type>! formalArgs,
-                                     ExprSeq! actualArgs,
+                                     List<Expr>! actualArgs,
                                      List<Type> formalOuts,
                                      List<IdentifierExpr> actualOuts,
                                      string! opName,
@@ -438,7 +438,7 @@ namespace Microsoft.Boogie {
     public static IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/
                   MatchArgumentTypes(TypeVariableSeq/*!*/ typeParams,
                                      List<Type>/*!*/ formalArgs,
-                                     ExprSeq/*!*/ actualArgs,
+                                     List<Expr>/*!*/ actualArgs,
                                      List<Type> formalOuts,
                                      List<IdentifierExpr> actualOuts,
                                      string/*!*/ opName,
@@ -508,7 +508,7 @@ namespace Microsoft.Boogie {
     public static List<Type> CheckArgumentTypes(TypeVariableSeq/*!*/ typeParams,
                                              out List<Type/*!*/>/*!*/ actualTypeParams,
                                              List<Type>/*!*/ formalIns,
-                                             ExprSeq/*!*/ actualIns,
+                                             List<Expr>/*!*/ actualIns,
                                              List<Type>/*!*/ formalOuts,
                                              List<IdentifierExpr> actualOuts,
                                              IToken/*!*/ typeCheckingSubject,
@@ -631,7 +631,7 @@ namespace Microsoft.Boogie {
 #else
     /// <summary>
     /// like Type.CheckArgumentTypes, but assumes no errors
-    /// (and only does arguments, not results; and takes actuals as List<Type>, not ExprSeq)
+    /// (and only does arguments, not results; and takes actuals as List<Type>, not List<Expr>)
     /// </summary>
     public static IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/
                   InferTypeParameters(TypeVariableSeq/*!*/ typeParams,
@@ -2354,7 +2354,7 @@ Contract.Requires(that != null);
       constraints.Add(c);
     }
 
-    public Type CheckArgumentTypes(ExprSeq/*!*/ actualArgs,
+    public Type CheckArgumentTypes(List<Expr>/*!*/ actualArgs,
                                    out TypeParamInstantiation/*!*/ tpInstantiation,
                                    IToken/*!*/ typeCheckingSubject,
                                    string/*!*/ opName,
@@ -3480,7 +3480,7 @@ Contract.Assert(var != null);
     //------------  result type. Null is returned if so many type checking
     //------------  errors occur that the situation is hopeless
 
-    public Type CheckArgumentTypes(ExprSeq/*!*/ actualArgs,
+    public Type CheckArgumentTypes(List<Expr>/*!*/ actualArgs,
                                    out TypeParamInstantiation/*!*/ tpInstantiation,
                                    IToken/*!*/ typeCheckingSubject,
                                    string/*!*/ opName,

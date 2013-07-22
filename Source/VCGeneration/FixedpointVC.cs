@@ -177,7 +177,7 @@ namespace Microsoft.Boogie
                 return;
 
             // collect the variables needed in the invariant
-            ExprSeq exprs = new ExprSeq();
+            List<Expr> exprs = new List<Expr>();
             List<Variable> vars = new List<Variable>();
             List<string> names = new List<string>();
 
@@ -283,7 +283,7 @@ namespace Microsoft.Boogie
             CurrentLocalVariables = impl.LocVars;
 
             // collect the variables needed in the invariant
-            ExprSeq exprs = new ExprSeq();
+            List<Expr> exprs = new List<Expr>();
             List<Variable> vars = new List<Variable>();
             List<string> names = new List<string>();
 
@@ -590,7 +590,7 @@ namespace Microsoft.Boogie
                     implName2StratifiedInliningInfo[impl.Name] = info;
                     // We don't need controlFlowVariable for stratified Inlining
                     //impl.LocVars.Add(info.controlFlowVariable);
-                    ExprSeq exprs = new ExprSeq();
+                    List<Expr> exprs = new List<Expr>();
 
                     if (mode != Mode.Boogie && QKeyValue.FindBoolAttribute(impl.Attributes, "entrypoint"))
                     {
@@ -660,7 +660,7 @@ namespace Microsoft.Boogie
                 var recordFunc = new Function(Token.NoToken, proc.Name, ins, returnVar);
                 boogieContext.DeclareFunction(recordFunc, "");
 
-                var exprs = new ExprSeq();
+                var exprs = new List<Expr>();
                 exprs.Add(new IdentifierExpr(Token.NoToken, proc.InParams[0]));
 
                 Expr freePostExpr = new NAryExpr(Token.NoToken, new FunctionCall(recordFunc), exprs);
