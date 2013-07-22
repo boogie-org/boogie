@@ -163,7 +163,7 @@ namespace Microsoft.Boogie.Houdini {
         conjecture = exprGen.Implies(eqExpr, conjecture);
       }
 
-      Macro macro = new Macro(Token.NoToken, descriptiveName, new VariableSeq(), new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "", Type.Bool), false));
+      Macro macro = new Macro(Token.NoToken, descriptiveName, new List<Variable>(), new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "", Type.Bool), false));
       proverInterface.DefineMacro(macro, conjecture);
       conjecture = exprGen.Function(macro);
 

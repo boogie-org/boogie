@@ -25,7 +25,7 @@ namespace Microsoft.Boogie {
       Implementation/*!*/ impl = base.VisitImplementation(node);
       Contract.Assert(impl != null);
       //Console.WriteLine("Old number of local variables = {0}", impl.LocVars.Length);
-      Microsoft.Boogie.VariableSeq/*!*/ vars = new Microsoft.Boogie.VariableSeq();
+      List<Variable>/*!*/ vars = new List<Variable>();
       foreach (Variable/*!*/ var in impl.LocVars) {
         Contract.Assert(var != null);
         if (usedVars.Contains(var))
@@ -108,7 +108,7 @@ namespace Microsoft.Boogie {
 
       foreach (Procedure x in modSets.Keys)
       {
-          x.Modifies = new IdentifierExprSeq();
+          x.Modifies = new List<IdentifierExpr>();
           foreach (Variable v in modSets[x])
           {
               x.Modifies.Add(new IdentifierExpr(v.tok, v));

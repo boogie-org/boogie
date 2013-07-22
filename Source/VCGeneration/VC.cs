@@ -1235,7 +1235,7 @@ namespace VC {
 
             ResetPredecessors(codeExpr.Blocks);
             vcgen.AddBlocksBetween(codeExpr.Blocks);
-            Dictionary<Variable, Expr> gotoCmdOrigins = vcgen.ConvertBlocks2PassiveCmd(codeExpr.Blocks, new IdentifierExprSeq(), new ModelViewInfo(codeExpr));
+            Dictionary<Variable, Expr> gotoCmdOrigins = vcgen.ConvertBlocks2PassiveCmd(codeExpr.Blocks, new List<IdentifierExpr>(), new ModelViewInfo(codeExpr));
             int ac;  // computed, but then ignored for this CodeExpr
             VCExpr startCorrect = VCGen.LetVC(codeExpr.Blocks[0], null, label2absy, blockVariables, bindings, ctx, out ac);
             VCExpr vce = ctx.ExprGen.Let(bindings, startCorrect);
@@ -2031,7 +2031,7 @@ namespace VC {
         #endregion
 
         #region Collect all variables that are assigned to in all of the natural loops for which this is the header
-        VariableSeq varsToHavoc = new VariableSeq();
+        List<Variable> varsToHavoc = new List<Variable>();
         foreach (Block backEdgeNode in cce.NonNull( g.BackEdgeNodes(header)))
         {
           Contract.Assert(backEdgeNode != null);
@@ -2045,7 +2045,7 @@ namespace VC {
             }
           }
         }
-        IdentifierExprSeq havocExprs = new IdentifierExprSeq();
+        List<IdentifierExpr> havocExprs = new List<IdentifierExpr>();
         foreach ( Variable v in varsToHavoc )
         {
           Contract.Assert(v != null);

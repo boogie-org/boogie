@@ -108,7 +108,7 @@ public class BlockPredicator {
             new IdentifierExpr(Token.NoToken, havocVar);
         }
         cmdSeq.Add(new HavocCmd(Token.NoToken,
-                                new IdentifierExprSeq(havocTempExpr)));
+                                new List<IdentifierExpr> { havocTempExpr }));
         cmdSeq.Add(Cmd.SimpleAssign(Token.NoToken, v,
                                     new NAryExpr(Token.NoToken,
                                       new IfThenElse(Token.NoToken),
@@ -145,7 +145,7 @@ public class BlockPredicator {
         PredicateCmd(cmdSeq, Cmd.SimpleAssign(Token.NoToken, cur, targets[0]));
       } else {
         PredicateCmd(cmdSeq, new HavocCmd(Token.NoToken,
-                                          new IdentifierExprSeq(cur)));
+                                          new List<IdentifierExpr> { cur }));
         PredicateCmd(cmdSeq, new AssumeCmd(Token.NoToken,
                targets.Select(t => (Expr)Expr.Eq(cur, t)).Aggregate(Expr.Or)));
       }
@@ -305,7 +305,7 @@ public class BlockPredicator {
                                new TypedIdent(Token.NoToken, "_P",
                                               Microsoft.Boogie.Type.Bool),
                                /*incoming=*/true);
-        dwf.InParams = new VariableSeq(
+        dwf.InParams = new List<Variable>(
           (new Variable[] {fpVar}.Concat(dwf.InParams.Cast<Variable>()))
             .ToArray());
 

@@ -492,7 +492,7 @@ namespace Microsoft.Boogie.VCExprAST {
       return new VCQuantifierInfos(qid, node.SkolemId, false, node.Attributes);
     }
 
-    private string getQidNameFromQKeyValue(VariableSeq vars, QKeyValue attributes) {
+    private string getQidNameFromQKeyValue(List<Variable> vars, QKeyValue attributes) {
       Contract.Requires(vars != null);
       // Check for a 'qid, name' pair in keyvalues
       string qid = QKeyValue.FindStringAttribute(attributes, "qid");
@@ -872,9 +872,9 @@ namespace Microsoft.Boogie.VCExprAST {
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }
-    public override VariableSeq VisitVariableSeq(VariableSeq variableSeq) {
+    public override List<Variable> VisitVariableSeq(List<Variable> variableSeq) {
       //Contract.Requires(variableSeq != null);
-      Contract.Ensures(Contract.Result<VariableSeq>() != null);
+      Contract.Ensures(Contract.Result<List<Variable>>() != null);
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }

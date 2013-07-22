@@ -1801,12 +1801,12 @@ namespace Microsoft.Boogie {
       Contract.Assume(Func.OutParams.Count == 1);
 
       List<Type/*!*/>/*!*/ resultingTypeArgs;
-      TypeSeq actualResultType =
+      List<Type> actualResultType =
         Type.CheckArgumentTypes(Func.TypeParameters,
                                 out resultingTypeArgs,
-                                new TypeSeq(Func.InParams.Select(Item => Item.TypedIdent.Type).ToArray()),
+                                new List<Type>(Func.InParams.Select(Item => Item.TypedIdent.Type).ToArray()),
                                 actuals,
-                                new TypeSeq(Func.OutParams.Select(Item => Item.TypedIdent.Type).ToArray()),
+                                new List<Type>(Func.OutParams.Select(Item => Item.TypedIdent.Type).ToArray()),
                                 null,
         // we need some token to report a possibly wrong number of
         // arguments
@@ -2317,7 +2317,7 @@ namespace Microsoft.Boogie {
         return Type.Int;
       }
       MapType mapType = a0Type.AsMap;
-      TypeSeq actualArgTypes = new TypeSeq();
+      List<Type> actualArgTypes = new List<Type>();
       for (int i = 1; i < args.Count; ++i) {
         actualArgTypes.Add(cce.NonNull(args[i]).ShallowType);
       }
@@ -2554,7 +2554,7 @@ namespace Microsoft.Boogie {
 
 
   public class CodeExpr : Expr {
-    public VariableSeq/*!*/ LocVars;
+    public List<Variable>/*!*/ LocVars;
     [Rep]
     public List<Block/*!*/>/*!*/ Blocks;
     [ContractInvariantMethod]
@@ -2563,7 +2563,7 @@ namespace Microsoft.Boogie {
       Contract.Invariant(cce.NonNullElements(Blocks));
     }
 
-    public CodeExpr(VariableSeq/*!*/ localVariables, List<Block/*!*/>/*!*/ blocks)
+    public CodeExpr(List<Variable>/*!*/ localVariables, List<Block/*!*/>/*!*/ blocks)
       : base(Token.NoToken) {
       Contract.Requires(localVariables != null);
       Contract.Requires(cce.NonNullElements(blocks));

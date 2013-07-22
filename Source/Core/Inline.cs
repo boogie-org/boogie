@@ -79,13 +79,13 @@ namespace Microsoft.Boogie {
       Contract.Requires(program != null);
       Contract.Requires(impl.Proc != null);
 
-      VariableSeq/*!*/ newInParams = new VariableSeq(impl.InParams);
+      List<Variable>/*!*/ newInParams = new List<Variable>(impl.InParams);
       Contract.Assert(newInParams != null);
-      VariableSeq/*!*/ newOutParams = new VariableSeq(impl.OutParams);
+      List<Variable>/*!*/ newOutParams = new List<Variable>(impl.OutParams);
       Contract.Assert(newOutParams != null);
-      VariableSeq/*!*/ newLocalVars = new VariableSeq(impl.LocVars);
+      List<Variable>/*!*/ newLocalVars = new List<Variable>(impl.LocVars);
       Contract.Assert(newLocalVars != null);
-      IdentifierExprSeq/*!*/ newModifies = new IdentifierExprSeq(impl.Proc.Modifies);
+      List<IdentifierExpr>/*!*/ newModifies = new List<IdentifierExpr>(impl.Proc.Modifies);
       Contract.Assert(newModifies != null);
 
       bool inlined = false;
@@ -209,7 +209,7 @@ namespace Microsoft.Boogie {
     }
 
     protected virtual List<Block/*!*/>/*!*/ DoInlineBlocks(List<Block/*!*/>/*!*/ blocks, Program/*!*/ program,
-                                                 VariableSeq/*!*/ newLocalVars, IdentifierExprSeq/*!*/ newModifies, 
+                                                 List<Variable>/*!*/ newLocalVars, List<IdentifierExpr>/*!*/ newModifies, 
                                                  ref bool inlinedSomething) {
       Contract.Requires(cce.NonNullElements(blocks));
       Contract.Requires(program != null);
@@ -322,7 +322,7 @@ namespace Microsoft.Boogie {
       return newBlocks;
     }
 
-    protected void BeginInline(VariableSeq newLocalVars, IdentifierExprSeq newModifies, Implementation impl) {
+    protected void BeginInline(List<Variable> newLocalVars, List<IdentifierExpr> newModifies, Implementation impl) {
       Contract.Requires(impl != null);
       Contract.Requires(impl.Proc != null);
       Contract.Requires(newModifies != null);
@@ -458,10 +458,10 @@ namespace Microsoft.Boogie {
         inCmds.Add(InlinedRequires(callCmd, req));
       }
 
-      VariableSeq locVars = cce.NonNull(impl.OriginalLocVars);
+      List<Variable> locVars = cce.NonNull(impl.OriginalLocVars);
 
       // havoc locals and out parameters in case procedure is invoked in a loop
-      IdentifierExprSeq havocVars = new IdentifierExprSeq();
+      List<IdentifierExpr> havocVars = new List<IdentifierExpr>();
       foreach (Variable v in locVars)
       {
           havocVars.Add((IdentifierExpr)codeCopier.Subst(v));

@@ -556,7 +556,7 @@ namespace Microsoft.Boogie {
   }
 
   public class TypecheckingContext : CheckingContext {
-    public IdentifierExprSeq Frame;  // used in checking the assignment targets of implementation bodies
+    public List<IdentifierExpr> Frame;  // used in checking the assignment targets of implementation bodies
 
     public TypecheckingContext(IErrorSink errorSink)
       : base(errorSink) {

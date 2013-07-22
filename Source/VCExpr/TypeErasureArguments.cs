@@ -627,7 +627,7 @@ Contract.Ensures(Contract.Result<VCExpr>() != null);
       if (!NewOpCache.TryGetValue(originalOpTypes, out newOpTypes)) {
         MapType/*!*/ rawType = node[0].Type.AsMap;
         Contract.Assert(rawType != null);
-        TypeSeq/*!*/ abstractionInstantiation;
+        List<Type>/*!*/ abstractionInstantiation;
         Function/*!*/ select =
           AxBuilder.MapTypeAbstracter.Select(rawType, out abstractionInstantiation);
         Contract.Assert(abstractionInstantiation != null);
@@ -647,7 +647,7 @@ Contract.Ensures(Contract.Result<VCExpr>() != null);
 
       if (!NewOpCache.TryGetValue(originalOpTypes, out newOpTypes)) {
         MapType/*!*/ rawType = node[0].Type.AsMap;
-        TypeSeq/*!*/ abstractionInstantiation;
+        List<Type>/*!*/ abstractionInstantiation;
         Function/*!*/ store =
           AxBuilder.MapTypeAbstracter.Store(rawType, out abstractionInstantiation);
 
@@ -660,7 +660,7 @@ Contract.Ensures(Contract.Result<VCExpr>() != null);
 
     private OpTypesPair TypesPairForSelectStore(VCExprNAry/*!*/ node, Function/*!*/ untypedOp,
       // instantiation of the abstract map type parameters
-                                                TypeSeq/*!*/ abstractionInstantiation) {
+                                                List<Type>/*!*/ abstractionInstantiation) {
       Contract.Requires(node != null);
       Contract.Requires(untypedOp != null);
       Contract.Requires(abstractionInstantiation != null);

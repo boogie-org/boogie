@@ -31,7 +31,7 @@ namespace Microsoft.Boogie.TypeErasure {
       Contract.Requires(Contract.ForAll(0, types.Length, i => types[i] != null));
       Contract.Ensures(Contract.Result<Function>() != null);
 
-      VariableSeq args = new VariableSeq();
+      List<Variable> args = new List<Variable>();
       for (int i = 0; i < types.Length - 1; ++i)
         args.Add(new Formal(Token.NoToken,
                              new TypedIdent(Token.NoToken, "arg" + i, cce.NonNull(types[i])),
@@ -511,12 +511,12 @@ namespace Microsoft.Boogie.TypeErasure {
 
       TypeCtorDecl/*!*/ uDecl = new TypeCtorDecl(Token.NoToken, "U", 0);
       UDecl = uDecl;
-      Type/*!*/ u = new CtorType(Token.NoToken, uDecl, new TypeSeq());
+      Type/*!*/ u = new CtorType(Token.NoToken, uDecl, new List<Type>());
       U = u;
 
       TypeCtorDecl/*!*/ tDecl = new TypeCtorDecl(Token.NoToken, "T", 0);
       TDecl = tDecl;
-      Type/*!*/ t = new CtorType(Token.NoToken, tDecl, new TypeSeq());
+      Type/*!*/ t = new CtorType(Token.NoToken, tDecl, new List<Type>());
       T = t;
 
       Ctor = HelperFuns.BoogieFunction("Ctor", t, Type.Int);
@@ -940,14 +940,14 @@ namespace Microsoft.Boogie.TypeErasure {
 
     ///////////////////////////////////////////////////////////////////////////
 
-    public Function Select(MapType rawType, out TypeSeq instantiations) {
+    public Function Select(MapType rawType, out List<Type> instantiations) {
       Contract.Requires((rawType != null));
       Contract.Ensures(Contract.ValueAtReturn(out instantiations) != null);
       Contract.Ensures(Contract.Result<Function>() != null);
       return AbstractAndGetRepresentation(rawType, out instantiations).Select;
     }
 
-    public Function Store(MapType rawType, out TypeSeq instantiations) {
+    public Function Store(MapType rawType, out List<Type> instantiations) {
       Contract.Requires((rawType != null));
       Contract.Ensures(Contract.ValueAtReturn(out instantiations) != null);
       Contract.Ensures(Contract.Result<Function>() != null);
@@ -955,10 +955,10 @@ namespace Microsoft.Boogie.TypeErasure {
     }
 
     private MapTypeClassRepresentation
-            AbstractAndGetRepresentation(MapType rawType, out TypeSeq instantiations) {
+            AbstractAndGetRepresentation(MapType rawType, out List<Type> instantiations) {
       Contract.Requires((rawType != null));
       Contract.Ensures(Contract.ValueAtReturn(out instantiations) != null);
-      instantiations = new TypeSeq();
+      instantiations = new List<Type>();
       MapType/*!*/ abstraction = ThinOutMapType(rawType, instantiations);
       return GetClassRepresentation(abstraction);
     }
@@ -966,7 +966,7 @@ namespace Microsoft.Boogie.TypeErasure {
     public CtorType AbstractMapType(MapType rawType) {
       Contract.Requires(rawType != null);
       Contract.Ensures(Contract.Result<CtorType>() != null);
-      TypeSeq/*!*/ instantiations = new TypeSeq();
+      List<Type>/*!*/ instantiations = new List<Type>();
       MapType/*!*/ abstraction = ThinOutMapType(rawType, instantiations);
 
       MapTypeClassRepresentation repr = GetClassRepresentation(abstraction);
@@ -975,11 +975,11 @@ namespace Microsoft.Boogie.TypeErasure {
     }
 
     // TODO: cache the result of this operation
-    protected MapType ThinOutMapType(MapType rawType, TypeSeq instantiations) {
+    protected MapType ThinOutMapType(MapType rawType, List<Type> instantiations) {
       Contract.Requires(instantiations != null);
       Contract.Requires(rawType != null);
       Contract.Ensures(Contract.Result<MapType>() != null);
-      TypeSeq/*!*/ newArguments = new TypeSeq();
+      List<Type>/*!*/ newArguments = new List<Type>();
       foreach (Type/*!*/ subtype in rawType.Arguments) {
         Contract.Assert(subtype != null);
         newArguments.Add(ThinOutType(subtype, rawType.TypeParameters,
@@ -991,7 +991,7 @@ namespace Microsoft.Boogie.TypeErasure {
     }
 
     // the instantiations of inserted type variables, the order corresponds to the order in which "AbstractionVariable(int)" delivers variables
-    private Type/*!*/ ThinOutType(Type rawType, TypeVariableSeq boundTypeParams, TypeSeq instantiations) {
+    private Type/*!*/ ThinOutType(Type rawType, TypeVariableSeq boundTypeParams, List<Type> instantiations) {
       Contract.Requires(instantiations != null);
       Contract.Requires(boundTypeParams != null);
       Contract.Requires(rawType != null);
@@ -1027,7 +1027,7 @@ namespace Microsoft.Boogie.TypeErasure {
         //
         // traverse the subtypes
         CtorType/*!*/ rawCtorType = rawType.AsCtor;
-        TypeSeq/*!*/ newArguments = new TypeSeq();
+        List<Type>/*!*/ newArguments = new List<Type>();
         foreach (Type/*!*/ subtype in rawCtorType.Arguments) {
           Contract.Assert(subtype != null);
           newArguments.Add(ThinOutType(subtype, boundTypeParams,

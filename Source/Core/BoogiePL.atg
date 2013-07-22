@@ -159,7 +159,7 @@ PRODUCTIONS
 
 /*------------------------------------------------------------------------*/
 BoogiePL
-= (. VariableSeq/*!*/ vs;
+= (. List<Variable>/*!*/ vs;
      List<Declaration>/*!*/ ds;
      Axiom/*!*/ ax;
      List<Declaration/*!*/>/*!*/ ts;
@@ -199,11 +199,11 @@ BoogiePL
   .
 
 /*------------------------------------------------------------------------*/
-GlobalVars<out VariableSeq/*!*/ ds>
+GlobalVars<out List<Variable>/*!*/ ds>
 = (.
     Contract.Ensures(Contract.ValueAtReturn(out ds) != null);
     QKeyValue kv = null;
-    ds = new VariableSeq();
+    ds = new List<Variable>();
     var dsx = ds;
   .)
   "var"
@@ -211,7 +211,7 @@ GlobalVars<out VariableSeq/*!*/ ds>
   IdsTypeWheres<true, "global variables", delegate(TypedIdent tyd) { dsx.Add(new GlobalVariable(tyd.tok, tyd, kv)); } > ";"
   .
 
-LocalVars<VariableSeq/*!*/ ds>
+LocalVars<List<Variable>/*!*/ ds>
 = (.
     Contract.Ensures(Contract.ValueAtReturn(out ds) != null);
     QKeyValue kv = null;
@@ -221,9 +221,9 @@ LocalVars<VariableSeq/*!*/ ds>
   IdsTypeWheres<true, "local variables", delegate(TypedIdent tyd) { ds.Add(new LocalVariable(tyd.tok, tyd, kv)); } > ";"
   .
 
-ProcFormals<bool incoming, bool allowWhereClauses, out VariableSeq/*!*/ ds>
+ProcFormals<bool incoming, bool allowWhereClauses, out List<Variable>/*!*/ ds>
 = (. Contract.Ensures(Contract.ValueAtReturn(out ds) != null);
-     ds = new VariableSeq();
+     ds = new List<Variable>();
      var dsx = ds;
      var context = allowWhereClauses ? "procedure formals" : "the 'implementation' copies of formals";
   .)
@@ -233,12 +233,12 @@ ProcFormals<bool incoming, bool allowWhereClauses, out VariableSeq/*!*/ ds>
   ")"
   .
 
-BoundVars<IToken/*!*/ x, out VariableSeq/*!*/ ds>
+BoundVars<IToken/*!*/ x, out List<Variable>/*!*/ ds>
 = (.
     Contract.Requires(x != null);
     Contract.Ensures(Contract.ValueAtReturn(out ds) != null);
     List<TypedIdent>/*!*/ tyds = new List<TypedIdent>();
-    ds = new VariableSeq();
+    ds = new List<Variable>();
     var dsx = ds;
   .)
   AttrsIdsTypeWheres<true, false, "bound variables", delegate(TypedIdent tyd, QKeyValue kv) { dsx.Add(new BoundVariable(tyd.tok, tyd, kv)); } >
@@ -305,20 +305,20 @@ Type<out Bpl.Type/*!*/ ty>
   (
     TypeAtom<out ty>
   |
-    Ident<out tok>       (. TypeSeq/*!*/ args = new TypeSeq (); .)
+    Ident<out tok>       (. List<Type>/*!*/ args = new List<Type> (); .)
     [ TypeArgs<args> ]   (. ty = new UnresolvedTypeIdentifier (tok, tok.val, args); .)
   |
     MapType<out ty>
   )
   .
 
-TypeArgs<TypeSeq/*!*/ ts>
+TypeArgs<List<Type>/*!*/ ts>
 = (.Contract.Requires(ts != null); IToken/*!*/ tok; Bpl.Type/*!*/ ty; .)
   (
     TypeAtom<out ty>     (. ts.Add(ty); .)
     [ TypeArgs<ts> ]
   |
-    Ident<out tok>       (. TypeSeq/*!*/ args = new TypeSeq ();
+    Ident<out tok>       (. List<Type>/*!*/ args = new List<Type> ();
                             ts.Add(new UnresolvedTypeIdentifier (tok, tok.val, args)); .)
     [ TypeArgs<ts> ]
   |
@@ -342,7 +342,7 @@ TypeAtom<out Bpl.Type/*!*/ ty>
 MapType<out Bpl.Type/*!*/ ty>
 = (.Contract.Ensures(Contract.ValueAtReturn(out ty) != null); IToken tok = null;
      IToken/*!*/ nnTok;
-     TypeSeq/*!*/ arguments = new TypeSeq();
+     List<Type>/*!*/ arguments = new List<Type>();
      Bpl.Type/*!*/ result;
      TypeVariableSeq/*!*/ typeParameters = new TypeVariableSeq();
    .)
@@ -369,7 +369,7 @@ TypeParams<out IToken/*!*/ tok, out Bpl.TypeVariableSeq/*!*/ typeParams>
    .)
   .
 
-Types<TypeSeq/*!*/ ts>
+Types<List<Type>/*!*/ ts>
 = (. Contract.Requires(ts != null); Bpl.Type/*!*/ ty; .)
   Type<out ty>                 (. ts.Add(ty); .)
   { "," Type<out ty>           (. ts.Add(ty); .)
@@ -378,9 +378,9 @@ Types<TypeSeq/*!*/ ts>
 
 
 /*------------------------------------------------------------------------*/
-Consts<out VariableSeq/*!*/ ds>
+Consts<out List<Variable>/*!*/ ds>
 = (. Contract.Ensures(Contract.ValueAtReturn(out ds) != null); IToken/*!*/ y; List<TypedIdent>/*!*/ xs;
-     ds = new VariableSeq();
+     ds = new List<Variable>();
      bool u = false; QKeyValue kv = null;
      bool ChildrenComplete = false;
      List<ConstantParent/*!*/> Parents = null; .)
@@ -444,7 +444,7 @@ Function<out List<Declaration>/*!*/ ds>
      ds = new List<Declaration>(); IToken/*!*/ z;
      IToken/*!*/ typeParamTok;
      var typeParams = new TypeVariableSeq();
-     var arguments = new VariableSeq();
+     var arguments = new List<Variable>();
      TypedIdent/*!*/ tyd;
      TypedIdent retTyd = null;
      Bpl.Type/*!*/ retTy;
@@ -587,12 +587,12 @@ UserDefinedType<out Declaration/*!*/ decl, QKeyValue kv>
 Procedure<out Procedure/*!*/ proc, out /*maybe null*/ Implementation impl>
 = (. Contract.Ensures(Contract.ValueAtReturn(out proc) != null); IToken/*!*/ x;
      TypeVariableSeq/*!*/ typeParams;
-     VariableSeq/*!*/ ins, outs;
+     List<Variable>/*!*/ ins, outs;
      List<Requires>/*!*/ pre = new List<Requires>();
-     IdentifierExprSeq/*!*/ mods = new IdentifierExprSeq();
+     List<IdentifierExpr>/*!*/ mods = new List<IdentifierExpr>();
      List<Ensures>/*!*/ post = new List<Ensures>();
 
-     VariableSeq/*!*/ locals = new VariableSeq();
+     List<Variable>/*!*/ locals = new List<Variable>();
      StmtList/*!*/ stmtList;
      QKeyValue kv = null;
      impl = null;
@@ -616,8 +616,8 @@ Procedure<out Procedure/*!*/ proc, out /*maybe null*/ Implementation impl>
 Implementation<out Implementation/*!*/ impl>
 = (. Contract.Ensures(Contract.ValueAtReturn(out impl) != null); IToken/*!*/ x;
      TypeVariableSeq/*!*/ typeParams;
-     VariableSeq/*!*/ ins, outs;
-     VariableSeq/*!*/ locals;
+     List<Variable>/*!*/ ins, outs;
+     List<Variable>/*!*/ locals;
      StmtList/*!*/ stmtList;
      QKeyValue kv;
   .)
@@ -630,10 +630,10 @@ Implementation<out Implementation/*!*/ impl>
 
 
 ProcSignature<bool allowWhereClausesOnFormals, out IToken/*!*/ name, out TypeVariableSeq/*!*/ typeParams,
-              out VariableSeq/*!*/ ins, out VariableSeq/*!*/ outs, out QKeyValue kv>
+              out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv>
 = (. Contract.Ensures(Contract.ValueAtReturn(out name) != null); Contract.Ensures(Contract.ValueAtReturn(out typeParams) != null); Contract.Ensures(Contract.ValueAtReturn(out ins) != null); Contract.Ensures(Contract.ValueAtReturn(out outs) != null);
      IToken/*!*/ typeParamTok; typeParams = new TypeVariableSeq();
-     outs = new VariableSeq(); kv = null; .)
+     outs = new List<Variable>(); kv = null; .)
   { Attribute<ref kv> }
   Ident<out name>
   [ TypeParams<out typeParamTok, out typeParams> ]
@@ -642,7 +642,7 @@ ProcSignature<bool allowWhereClausesOnFormals, out IToken/*!*/ name, out TypeVar
   .
 
 
-Spec<List<Requires>/*!*/ pre, IdentifierExprSeq/*!*/ mods, List<Ensures>/*!*/ post>
+Spec<List<Requires>/*!*/ pre, List<IdentifierExpr>/*!*/ mods, List<Ensures>/*!*/ post>
 = (.Contract.Requires(pre != null); Contract.Requires(mods != null); Contract.Requires(post != null); List<IToken>/*!*/ ms; .)
   ( "modifies"
     [ Idents<out ms>        (. foreach(IToken/*!*/ m in ms){
@@ -669,8 +669,8 @@ SpecPrePost<bool free, List<Requires>/*!*/ pre, List<Ensures>/*!*/ post>
 
 /*------------------------------------------------------------------------*/
 
-ImplBody<out VariableSeq/*!*/ locals, out StmtList/*!*/ stmtList>
-= (. Contract.Ensures(Contract.ValueAtReturn(out locals) != null); Contract.Ensures(Contract.ValueAtReturn(out stmtList) != null); locals = new VariableSeq(); .)
+ImplBody<out List<Variable>/*!*/ locals, out StmtList/*!*/ stmtList>
+= (. Contract.Ensures(Contract.ValueAtReturn(out locals) != null); Contract.Ensures(Contract.ValueAtReturn(out stmtList) != null); locals = new List<Variable>(); .)
   "{"
   { LocalVars<locals> }
   StmtList<out stmtList>
@@ -841,7 +841,7 @@ LabelOrCmd<out Cmd c, out IToken label>
 /* ensures (c == null) != (label != null) */
 = (. IToken/*!*/ x; Expr/*!*/ e;
      List<IToken>/*!*/ xs;
-     IdentifierExprSeq ids;
+     List<IdentifierExpr> ids;
      c = dummyCmd;  label = null;
      Cmd/*!*/ cn;
      QKeyValue kv = null;
@@ -856,7 +856,7 @@ LabelOrCmd<out Cmd c, out IToken label>
     Proposition<out e>    (. c = new AssumeCmd(x, e, kv); .)
     ";"
   | "havoc"               (. x = t; .)
-    Idents<out xs> ";"    (. ids = new IdentifierExprSeq();
+    Idents<out xs> ";"    (. ids = new List<IdentifierExpr>();
                              foreach(IToken/*!*/ y in xs){
                                Contract.Assert(y != null);
                                ids.Add(new IdentifierExpr(y, y.val));
@@ -1238,12 +1238,12 @@ ArrayExpression<out Expr/*!*/ e>
 /*------------------------------------------------------------------------*/
 AtomExpression<out Expr/*!*/ e>
 = (. Contract.Ensures(Contract.ValueAtReturn(out e) != null); IToken/*!*/ x; int n; BigNum bn; BigDec bd;
-     ExprSeq/*!*/ es;  VariableSeq/*!*/ ds;  Trigger trig;
+     ExprSeq/*!*/ es;  List<Variable>/*!*/ ds;  Trigger trig;
      TypeVariableSeq/*!*/ typeParams;
      IdentifierExpr/*!*/ id;
      QKeyValue kv;
      e = dummyExpr;
-     VariableSeq/*!*/ locals;
+     List<Variable>/*!*/ locals;
      List<Block/*!*/>/*!*/ blocks;
   .)
   ( "false"           (. e = new LiteralExpr(t, false); .)
@@ -1299,8 +1299,8 @@ AtomExpression<out Expr/*!*/ e>
   )
   .
 
-CodeExpression<.out VariableSeq/*!*/ locals, out List<Block/*!*/>/*!*/ blocks.>
-= (. Contract.Ensures(Contract.ValueAtReturn(out locals) != null); Contract.Ensures(cce.NonNullElements(Contract.ValueAtReturn(out blocks))); locals = new VariableSeq(); Block/*!*/ b;
+CodeExpression<.out List<Variable>/*!*/ locals, out List<Block/*!*/>/*!*/ blocks.>
+= (. Contract.Ensures(Contract.ValueAtReturn(out locals) != null); Contract.Ensures(cce.NonNullElements(Contract.ValueAtReturn(out blocks))); locals = new List<Variable>(); Block/*!*/ b;
      blocks = new List<Block/*!*/>();
   .)
   "|{"
@@ -1412,13 +1412,13 @@ IfThenElseExpression<out Expr/*!*/ e>
   .
 
 
-QuantifierBody<IToken/*!*/ q, out TypeVariableSeq/*!*/ typeParams, out VariableSeq/*!*/ ds,
+QuantifierBody<IToken/*!*/ q, out TypeVariableSeq/*!*/ typeParams, out List<Variable>/*!*/ ds,
                out QKeyValue kv, out Trigger trig, out Expr/*!*/ body>
 = (. Contract.Requires(q != null); Contract.Ensures(Contract.ValueAtReturn(out typeParams) != null); Contract.Ensures(Contract.ValueAtReturn(out ds) != null); Contract.Ensures(Contract.ValueAtReturn(out body) != null);
      trig = null; typeParams = new TypeVariableSeq ();
      IToken/*!*/ tok;
      kv = null;
-     ds = new VariableSeq ();
+     ds = new List<Variable> ();
   .)
   (
      TypeParams<out tok, out typeParams>

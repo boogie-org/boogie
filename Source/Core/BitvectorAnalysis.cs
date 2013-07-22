@@ -125,7 +125,7 @@ namespace Microsoft.Boogie {
       else {
         MapDisjointSet mapDisjointSet = disjointSet as MapDisjointSet;
         Debug.Assert(mapDisjointSet != null);
-        TypeSeq newArguments = new TypeSeq();
+        List<Type> newArguments = new List<Type>();
         Type result = NewType(mapType.Result, mapDisjointSet.Result);
         bool newTypeNeeded = (result != mapType.Result);
         for (int i = 0; i < mapType.Arguments.Count; i++) {
@@ -528,7 +528,7 @@ namespace Microsoft.Boogie {
       DiscoverIntAndBv32Functions(program);
 
       BvType bv32Type = new BvType(32);
-      VariableSeq bv32In = new VariableSeq(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "in", bv32Type), true));
+      List<Variable> bv32In = new List<Variable>(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "in", bv32Type), true));
       Formal bv32Out = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "out", bv32Type), false);
       bv32Id = new Function(Token.NoToken, "bv32Id", bv32In, bv32Out);
       bv32Id.Body = new IdentifierExpr(Token.NoToken, bv32In[0]);

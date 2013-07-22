@@ -91,7 +91,7 @@ namespace Microsoft.Boogie {
 
       Function res;
       if (!OneStepFuns.TryGetValue(t, out res)) {
-        VariableSeq args = new VariableSeq();
+        List<Variable> args = new List<Variable>();
         args.Add(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "arg0", t), true));
         args.Add(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "arg1", t), true));
         Formal result = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "res", t), false);

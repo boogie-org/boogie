@@ -576,7 +576,7 @@ namespace VC {
 
     private bool _disposed;
 
-    protected VariableSeq CurrentLocalVariables = null;
+    protected List<Variable> CurrentLocalVariables = null;
 
     // shared across each implementation; created anew for each implementation
     protected Dictionary<Variable, int> variable2SequenceNumber;
@@ -1323,7 +1323,7 @@ namespace VC {
       return r;
     }
 
-    protected Dictionary<Variable, Expr> ConvertBlocks2PassiveCmd(List<Block> blocks, IdentifierExprSeq modifies, ModelViewInfo mvInfo) {
+    protected Dictionary<Variable, Expr> ConvertBlocks2PassiveCmd(List<Block> blocks, List<IdentifierExpr> modifies, ModelViewInfo mvInfo) {
       Contract.Requires(blocks != null);
       Contract.Requires(modifies != null);
       Contract.Requires(mvInfo != null);
@@ -1397,7 +1397,7 @@ namespace VC {
     /// <summary>
     /// Compute the substitution for old expressions.
     /// </summary>
-    protected static Substitution ComputeOldExpressionSubstitution(IdentifierExprSeq modifies)
+    protected static Substitution ComputeOldExpressionSubstitution(List<IdentifierExpr> modifies)
     {
       Dictionary<Variable, Expr> oldFrameMap = new Dictionary<Variable, Expr>();
       foreach (IdentifierExpr ie in modifies)
@@ -1523,7 +1523,7 @@ namespace VC {
 
         HavocCmd hc = (HavocCmd)c;
         Contract.Assert(c != null);
-        IdentifierExprSeq havocVars = hc.Vars;
+        List<IdentifierExpr> havocVars = hc.Vars;
         // First, compute the new incarnations
         foreach (IdentifierExpr ie in havocVars) {
           Contract.Assert(ie != null);
@@ -1703,8 +1703,8 @@ namespace VC {
     public readonly List<Variable> AllVariables = new List<Variable>();
     public readonly List<Mapping> CapturePoints = new List<Mapping>();
     public static readonly Function MVState_FunctionDef = new Function(Token.NoToken, "$mv_state",
-      new VariableSeq(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, TypedIdent.NoName, Bpl.Type.Int), true),
-                      new Formal(Token.NoToken, new TypedIdent(Token.NoToken, TypedIdent.NoName, Bpl.Type.Int), true)),
+      new List<Variable> { new Formal(Token.NoToken, new TypedIdent(Token.NoToken, TypedIdent.NoName, Bpl.Type.Int), true),
+                           new Formal(Token.NoToken, new TypedIdent(Token.NoToken, TypedIdent.NoName, Bpl.Type.Int), true) },
       new Formal(Token.NoToken, new TypedIdent(Token.NoToken, TypedIdent.NoName, Bpl.Type.Bool), false));
     public static readonly Constant MVState_ConstantDef = new Constant(Token.NoToken, new TypedIdent(Token.NoToken, "$mv_state_const", Bpl.Type.Int));
 

@@ -115,7 +115,7 @@ public class SmartBlockPredicator {
             new IdentifierExpr(Token.NoToken, havocVar);
         }
         cmdSeq.Add(new HavocCmd(Token.NoToken,
-                                new IdentifierExprSeq(havocTempExpr)));
+                                new List<IdentifierExpr>(havocTempExpr)));
         cmdSeq.Add(Cmd.SimpleAssign(Token.NoToken, v,
                                     new NAryExpr(Token.NoToken,
                                       new IfThenElse(Token.NoToken),
@@ -501,7 +501,7 @@ public class SmartBlockPredicator {
                                  new TypedIdent(Token.NoToken, "_P",
                                                 Microsoft.Boogie.Type.Bool),
                                  /*incoming=*/true);
-          dwf.InParams = new VariableSeq(
+          dwf.InParams = new List<Variable>(
             (new Variable[] {fpVar}.Concat(dwf.InParams.Cast<Variable>()))
               .ToArray());
 

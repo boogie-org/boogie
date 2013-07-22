@@ -143,7 +143,7 @@ namespace Microsoft.Boogie
     public class OwickiGriesTransform
     {
         Dictionary<string, ProcedureInfo> procNameToInfo;
-        IdentifierExprSeq globalMods;
+        List<IdentifierExpr> globalMods;
         LinearTypechecker linearTypechecker;
         Dictionary<string, Procedure> asyncAndParallelCallDesugarings;
         List<Procedure> yieldCheckerProcs;
@@ -156,7 +156,7 @@ namespace Microsoft.Boogie
             Program program = linearTypechecker.program;
             procNameToInfo = AsyncAndYieldTraverser.Traverse(program);
             AtomicTraverser.Traverse(program, procNameToInfo);
-            globalMods = new IdentifierExprSeq();
+            globalMods = new List<IdentifierExpr>();
             foreach (Variable g in program.GlobalVariables())
             {
                 globalMods.Add(new IdentifierExpr(Token.NoToken, g));
@@ -164,11 +164,11 @@ namespace Microsoft.Boogie
             asyncAndParallelCallDesugarings = new Dictionary<string, Procedure>();
             yieldCheckerProcs = new List<Procedure>();
             yieldCheckerImpls = new List<Implementation>();
-            VariableSeq inputs = new VariableSeq();
+            List<Variable> inputs = new List<Variable>();
             foreach (string domainName in linearTypechecker.linearDomains.Keys)
             {
                 var domain = linearTypechecker.linearDomains[domainName];
-                Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, domainName + "_in", new MapType(Token.NoToken, new TypeVariableSeq(), new TypeSeq(domain.elementType), Type.Bool)), true);
+                Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, domainName + "_in", new MapType(Token.NoToken, new TypeVariableSeq(), new List<Type>(domain.elementType), Type.Bool)), true);
                 inputs.Add(f);
             }
             foreach (IdentifierExpr ie in globalMods)
@@ -176,7 +176,7 @@ namespace Microsoft.Boogie
                 Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_global_old_{0}", ie.Decl.Name), ie.Decl.TypedIdent.Type), true);
                 inputs.Add(f);
             }
-            yieldProc = new Procedure(Token.NoToken, "og_yield", new TypeVariableSeq(), inputs, new VariableSeq(), new List<Requires>(), new IdentifierExprSeq(), new List<Ensures>());
+            yieldProc = new Procedure(Token.NoToken, "og_yield", new TypeVariableSeq(), inputs, new List<Variable>(), new List<Requires>(), new List<IdentifierExpr>(), new List<Ensures>());
             yieldProc.AddAttribute("inline", new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1)));
         }
 
@@ -191,7 +191,7 @@ namespace Microsoft.Boogie
             {
                 exprSeq.Add(Expr.Ident(ogOldGlobalMap[ie.Decl]));
             } 
-            CallCmd yieldCallCmd = new CallCmd(Token.NoToken, yieldProc.Name, exprSeq, new IdentifierExprSeq());
+            CallCmd yieldCallCmd = new CallCmd(Token.NoToken, yieldProc.Name, exprSeq, new List<IdentifierExpr>());
             yieldCallCmd.Proc = yieldProc;
             newCmds.Add(yieldCallCmd);
         }
@@ -273,11 +273,11 @@ namespace Microsoft.Boogie
             if (asyncAndParallelCallDesugarings.ContainsKey(procName))
                 return asyncAndParallelCallDesugarings[procName];
 
-            VariableSeq inParams = new VariableSeq();
-            VariableSeq outParams = new VariableSeq();
+            List<Variable> inParams = new List<Variable>();
+            List<Variable> outParams = new List<Variable>();
             List<Requires> requiresSeq = new List<Requires>();
             List<Ensures> ensuresSeq = new List<Ensures>();
-            IdentifierExprSeq ieSeq = new IdentifierExprSeq();
+            List<IdentifierExpr> ieSeq = new List<IdentifierExpr>();
             int count = 0;
             while (callCmd != null)
             {
@@ -323,8 +323,8 @@ namespace Microsoft.Boogie
 
             Program program = linearTypechecker.program;
             ProcedureInfo info = procNameToInfo[decl.Name];
-            VariableSeq locals = new VariableSeq();
-            VariableSeq inputs = new VariableSeq();
+            List<Variable> locals = new List<Variable>();
+            List<Variable> inputs = new List<Variable>();
             foreach (IdentifierExpr ie in map.Values)
             {
                 locals.Add(ie.Decl);
@@ -406,12 +406,12 @@ namespace Microsoft.Boogie
 
             // Create the yield checker procedure
             var yieldCheckerName = string.Format("{0}_YieldChecker_{1}", decl is Procedure ? "Proc" : "Impl", decl.Name);
-            var yieldCheckerProc = new Procedure(Token.NoToken, yieldCheckerName, decl.TypeParameters, inputs, new VariableSeq(), new List<Requires>(), new IdentifierExprSeq(), new List<Ensures>());
+            var yieldCheckerProc = new Procedure(Token.NoToken, yieldCheckerName, decl.TypeParameters, inputs, new List<Variable>(), new List<Requires>(), new List<IdentifierExpr>(), new List<Ensures>());
             yieldCheckerProc.AddAttribute("inline", new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1)));
             yieldCheckerProcs.Add(yieldCheckerProc);
 
             // Create the yield checker implementation
-            var yieldCheckerImpl = new Implementation(Token.NoToken, yieldCheckerName, decl.TypeParameters, inputs, new VariableSeq(), locals, yieldCheckerBlocks);
+            var yieldCheckerImpl = new Implementation(Token.NoToken, yieldCheckerName, decl.TypeParameters, inputs, new List<Variable>(), locals, yieldCheckerBlocks);
             yieldCheckerImpl.Proc = yieldCheckerProc;
             yieldCheckerImpl.AddAttribute("inline", new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1)));
             yieldCheckerImpls.Add(yieldCheckerImpl);
@@ -504,7 +504,7 @@ namespace Microsoft.Boogie
                         {
                             if (!asyncAndParallelCallDesugarings.ContainsKey(callCmd.Proc.Name))
                             {
-                                asyncAndParallelCallDesugarings[callCmd.Proc.Name] = new Procedure(Token.NoToken, string.Format("DummyAsyncTarget_{0}", callCmd.Proc.Name), callCmd.Proc.TypeParameters, callCmd.Proc.InParams, callCmd.Proc.OutParams, callCmd.Proc.Requires, new IdentifierExprSeq(), new List<Ensures>());
+                                asyncAndParallelCallDesugarings[callCmd.Proc.Name] = new Procedure(Token.NoToken, string.Format("DummyAsyncTarget_{0}", callCmd.Proc.Name), callCmd.Proc.TypeParameters, callCmd.Proc.InParams, callCmd.Proc.OutParams, callCmd.Proc.Requires, new List<IdentifierExpr>(), new List<Ensures>());
                             }
                             var dummyAsyncTargetProc = asyncAndParallelCallDesugarings[callCmd.Proc.Name];
                             CallCmd dummyCallCmd = new CallCmd(Token.NoToken, dummyAsyncTargetProc.Name, callCmd.Ins, callCmd.Outs);
@@ -723,11 +723,11 @@ namespace Microsoft.Boogie
         private void AddYieldProcAndImpl() 
         {
             Program program = linearTypechecker.program;
-            VariableSeq inputs = new VariableSeq();
+            List<Variable> inputs = new List<Variable>();
             foreach (string domainName in linearTypechecker.linearDomains.Keys)
             {
                 var domain = linearTypechecker.linearDomains[domainName];
-                Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, domainName + "_in", new MapType(Token.NoToken, new TypeVariableSeq(), new TypeSeq(domain.elementType), Type.Bool)), true);
+                Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, domainName + "_in", new MapType(Token.NoToken, new TypeVariableSeq(), new List<Type>(domain.elementType), Type.Bool)), true);
                 inputs.Add(f);
             }
             foreach (IdentifierExpr ie in globalMods)
@@ -749,7 +749,7 @@ namespace Microsoft.Boogie
                     {
                         exprSeq.Add(new IdentifierExpr(Token.NoToken, v));
                     }
-                    CallCmd callCmd = new CallCmd(Token.NoToken, proc.Name, exprSeq, new IdentifierExprSeq());
+                    CallCmd callCmd = new CallCmd(Token.NoToken, proc.Name, exprSeq, new List<IdentifierExpr>());
                     callCmd.Proc = proc;
                     string label = string.Format("L_{0}", labelCount++);
                     Block block = new Block(Token.NoToken, label, new CmdSeq(callCmd), new ReturnCmd(Token.NoToken));
@@ -761,7 +761,7 @@ namespace Microsoft.Boogie
             }
             blocks.Insert(0, new Block(Token.NoToken, "enter", new CmdSeq(), transferCmd));
             
-            var yieldImpl = new Implementation(Token.NoToken, yieldProc.Name, new TypeVariableSeq(), inputs, new VariableSeq(), new VariableSeq(), blocks);
+            var yieldImpl = new Implementation(Token.NoToken, yieldProc.Name, new TypeVariableSeq(), inputs, new List<Variable>(), new List<Variable>(), blocks);
             yieldImpl.Proc = yieldProc;
             yieldImpl.AddAttribute("inline", new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1)));
             program.TopLevelDeclarations.Add(yieldProc);

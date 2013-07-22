@@ -646,7 +646,7 @@ namespace Microsoft.Boogie.TypeErasure
       typeParams.AddRange(abstractedType.FreeVariables.ToList());
 
       originalIndexTypes = new List<Type/*!*/>(abstractedType.Arguments.Count + 1);
-      TypeSeq/*!*/ mapTypeParams = new TypeSeq();
+      List<Type>/*!*/ mapTypeParams = new List<Type>();
       foreach (TypeVariable/*!*/ var in abstractedType.FreeVariables) {
         Contract.Assert(var != null);
         mapTypeParams.Add(var);
@@ -1271,7 +1271,7 @@ namespace Microsoft.Boogie.TypeErasure
 
       MapType/*!*/ mapType = node[0].Type.AsMap;
       Contract.Assert(mapType != null);
-      TypeSeq/*!*/ instantiations; // not used
+      List<Type>/*!*/ instantiations; // not used
       Function/*!*/ select =
         AxBuilder.MapTypeAbstracter.Select(mapType, out instantiations);
       Contract.Assert(select != null);
@@ -1291,7 +1291,7 @@ namespace Microsoft.Boogie.TypeErasure
       Contract.Requires(bindings != null);
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
-      TypeSeq/*!*/ instantiations; // not used
+      List<Type>/*!*/ instantiations; // not used
       Function/*!*/ store =
         AxBuilder.MapTypeAbstracter.Store(node[0].Type.AsMap, out instantiations);
       Contract.Assert(store != null);

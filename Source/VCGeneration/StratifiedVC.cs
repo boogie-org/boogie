@@ -195,7 +195,7 @@ namespace VC {
       vcgen = stratifiedVcGen;
       impl = implementation;
 
-      VariableSeq functionInterfaceVars = new VariableSeq();
+      List<Variable> functionInterfaceVars = new List<Variable>();
       foreach (Variable v in vcgen.program.GlobalVariables()) {
         functionInterfaceVars.Add(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "", v.TypedIdent.Type), true));
       }
@@ -337,7 +337,7 @@ namespace VC {
         // Get record type
         var argtype = proc.InParams[0].TypedIdent.Type;
 
-        var ins = new VariableSeq();
+        var ins = new List<Variable>();
         ins.Add(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "x", argtype), true));
 
         var recordFunc = new Function(Token.NoToken, proc.Name, ins, returnVar);
@@ -430,7 +430,7 @@ namespace VC {
     public Macro CreateNewMacro() {
       string newName = "StratifiedInliningMacro@" + macroCountForStratifiedInlining.ToString();
       macroCountForStratifiedInlining++;
-      return new Macro(Token.NoToken, newName, new VariableSeq(), new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "", Microsoft.Boogie.Type.Bool), false));
+      return new Macro(Token.NoToken, newName, new List<Variable>(), new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "", Microsoft.Boogie.Type.Bool), false));
     }
     private int varCountForStratifiedInlining = 0;
     public VCExprVar CreateNewVar(Microsoft.Boogie.Type type) {

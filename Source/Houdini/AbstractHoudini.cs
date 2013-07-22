@@ -174,7 +174,7 @@ namespace Microsoft.Boogie.Houdini {
 
                     if (controlVar.InParams.Count != 0)
                     {
-                        term = new ForallExpr(Token.NoToken, new VariableSeq(controlVar.InParams.ToArray()),
+                        term = new ForallExpr(Token.NoToken, new List<Variable>(controlVar.InParams.ToArray()),
                             new Trigger(Token.NoToken, true, new ExprSeq(new NAryExpr(Token.NoToken, new FunctionCall(controlVar), args))),
                             term);
                     }
@@ -621,7 +621,7 @@ namespace Microsoft.Boogie.Houdini {
             //Console.WriteLine("VC of {0}: {1}", impl.Name, vcexpr);
 
             // Create a macro so that the VC can sit with the theorem prover
-            Macro macro = new Macro(Token.NoToken, impl.Name + "Macro", new VariableSeq(), new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "", Bpl.Type.Bool), false));
+            Macro macro = new Macro(Token.NoToken, impl.Name + "Macro", new List<Variable>(), new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "", Bpl.Type.Bool), false));
             prover.DefineMacro(macro, vcexpr);
 
             // Store VC
@@ -871,7 +871,7 @@ namespace Microsoft.Boogie.Houdini {
                 collector.VisitExpr(node);
 
                 // Find the outermost bound variables
-                var bound = new VariableSeq();
+                var bound = new List<Variable>();
                 if(boundVars.Count > 0) 
                     bound.AddRange(collector.usedVars.Intersect(boundVars[0].Values));
 
@@ -2126,7 +2126,7 @@ namespace Microsoft.Boogie.Houdini {
                 foreach (var impl in program.TopLevelDeclarations.OfType<Implementation>())
                 {
                     var nimpl = new Implementation(Token.NoToken, impl.Name, impl.TypeParameters,
-                        impl.InParams, impl.OutParams, new VariableSeq(impl.LocVars), new List<Block>());
+                        impl.InParams, impl.OutParams, new List<Variable>(impl.LocVars), new List<Block>());
                     foreach (var blk in impl.Blocks)
                     {
                         var cd = new CodeCopier();
@@ -2738,7 +2738,7 @@ namespace Microsoft.Boogie.Houdini {
 
         private void attachEnsures(Implementation impl)
         {
-            VariableSeq functionInterfaceVars = new VariableSeq();
+            List<Variable> functionInterfaceVars = new List<Variable>();
             foreach (Variable v in vcgen.program.GlobalVariables())
             {
                 functionInterfaceVars.Add(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "", v.TypedIdent.Type), true));
@@ -2839,7 +2839,7 @@ namespace Microsoft.Boogie.Houdini {
             vcexpr = visitor.Mutate(vcexpr, true);
 
             // Create a macro so that the VC can sit with the theorem prover
-            Macro macro = new Macro(Token.NoToken, impl.Name + "Macro", new VariableSeq(), new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "", Bpl.Type.Bool), false));
+            Macro macro = new Macro(Token.NoToken, impl.Name + "Macro", new List<Variable>(), new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "", Bpl.Type.Bool), false));
             prover.DefineMacro(macro, vcexpr);
 
             // Store VC

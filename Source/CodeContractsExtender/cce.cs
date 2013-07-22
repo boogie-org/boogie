@@ -29,7 +29,7 @@ public static class cce {
     return collection != null && cce.NonNullElements(collection.Values);
   }
   //[Pure]
-  //public static bool NonNullElements(VariableSeq collection) {
+  //public static bool NonNullElements(List<Variable> collection) {
   //  return collection != null && Contract.ForAll(0, collection.Length, i => collection[i] != null);
   //}
   /// <summary>

@@ -159,7 +159,7 @@ namespace Microsoft.Boogie.ExprExtensions
 
         public FuncDecl MkFuncDecl(string name, Sort rng)
         {
-            Function g = new Function(Token.NoToken, name, new VariableSeq(), new Constant(Token.NoToken, new TypedIdent(Token.NoToken, "dummy",rng)));
+            Function g = new Function(Token.NoToken, name, new List<Variable>(), new Constant(Token.NoToken, new TypedIdent(Token.NoToken, "dummy",rng)));
             return BoogieFunctionOp(g);
         }
 

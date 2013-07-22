@@ -199,10 +199,10 @@ namespace Microsoft.Boogie {
       Contract.Ensures(Contract.Result<Expr>() != null);
       return base.VisitIdentifierExpr((IdentifierExpr)node.Clone());
     }
-    public override IdentifierExprSeq VisitIdentifierExprSeq(IdentifierExprSeq identifierExprSeq) {
+    public override List<IdentifierExpr> VisitIdentifierExprSeq(List<IdentifierExpr> identifierExprSeq) {
       //Contract.Requires(identifierExprSeq != null);
-      Contract.Ensures(Contract.Result<IdentifierExprSeq>() != null);
-      return base.VisitIdentifierExprSeq(new IdentifierExprSeq(identifierExprSeq));
+      Contract.Ensures(Contract.Result<List<IdentifierExpr>>() != null);
+      return base.VisitIdentifierExprSeq(new List<IdentifierExpr>(identifierExprSeq));
     }
     public override Implementation VisitImplementation(Implementation node) {
       //Contract.Requires(node != null);
@@ -318,10 +318,10 @@ namespace Microsoft.Boogie {
       Contract.Ensures(Contract.Result<Variable>() != null);
       return node;
     }
-    public override VariableSeq VisitVariableSeq(VariableSeq variableSeq) {
+    public override List<Variable> VisitVariableSeq(List<Variable> variableSeq) {
       //Contract.Requires(variableSeq != null);
-      Contract.Ensures(Contract.Result<VariableSeq>() != null);
-      return base.VisitVariableSeq(new VariableSeq(variableSeq));
+      Contract.Ensures(Contract.Result<List<Variable>>() != null);
+      return base.VisitVariableSeq(new List<Variable>(variableSeq));
     }
     public override Cmd VisitAssertRequiresCmd(AssertRequiresCmd node) {
       //Contract.Requires(node != null);

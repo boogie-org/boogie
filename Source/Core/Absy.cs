@@ -385,8 +385,8 @@ namespace Microsoft.Boogie {
 
       bool detLoopExtract = CommandLineOptions.Clo.DeterministicExtractLoops;
 
-      Dictionary<Block/*!*/, VariableSeq/*!*/>/*!*/ loopHeaderToInputs = new Dictionary<Block/*!*/, VariableSeq/*!*/>();
-      Dictionary<Block/*!*/, VariableSeq/*!*/>/*!*/ loopHeaderToOutputs = new Dictionary<Block/*!*/, VariableSeq/*!*/>();
+      Dictionary<Block/*!*/, List<Variable>/*!*/>/*!*/ loopHeaderToInputs = new Dictionary<Block/*!*/, List<Variable>/*!*/>();
+      Dictionary<Block/*!*/, List<Variable>/*!*/>/*!*/ loopHeaderToOutputs = new Dictionary<Block/*!*/, List<Variable>/*!*/>();
       Dictionary<Block/*!*/, Dictionary<Variable, Expr>/*!*/>/*!*/ loopHeaderToSubstMap = new Dictionary<Block/*!*/, Dictionary<Variable, Expr>/*!*/>();
       Dictionary<Block/*!*/, LoopProcedure/*!*/>/*!*/ loopHeaderToLoopProc = new Dictionary<Block/*!*/, LoopProcedure/*!*/>();
       Dictionary<Block/*!*/, CallCmd/*!*/>/*!*/ loopHeaderToCallCmd1 = new Dictionary<Block/*!*/, CallCmd/*!*/>();
@@ -396,17 +396,17 @@ namespace Microsoft.Boogie {
       foreach (Block/*!*/ header in g.Headers) {
         Contract.Assert(header != null);
         Contract.Assert(header != null);
-        VariableSeq inputs = new VariableSeq();
-        VariableSeq outputs = new VariableSeq();
+        List<Variable> inputs = new List<Variable>();
+        List<Variable> outputs = new List<Variable>();
         ExprSeq callInputs1 = new ExprSeq();
-        IdentifierExprSeq callOutputs1 = new IdentifierExprSeq();
+        List<IdentifierExpr> callOutputs1 = new List<IdentifierExpr>();
         ExprSeq callInputs2 = new ExprSeq();
-        IdentifierExprSeq callOutputs2 = new IdentifierExprSeq();
+        List<IdentifierExpr> callOutputs2 = new List<IdentifierExpr>();
         List<AssignLhs> lhss = new List<AssignLhs>();
         List<Expr> rhss = new List<Expr>();
         Dictionary<Variable, Expr> substMap = new Dictionary<Variable, Expr>(); // Variable -> IdentifierExpr
 
-        VariableSeq/*!*/ targets = new VariableSeq();
+        List<Variable>/*!*/ targets = new List<Variable>();
         HashSet<Variable> footprint = new HashSet<Variable>();
 
         foreach (Block/*!*/ b in g.BackEdgeNodes(header))
@@ -427,7 +427,7 @@ namespace Microsoft.Boogie {
             }
         }
 
-        IdentifierExprSeq/*!*/ globalMods = new IdentifierExprSeq();
+        List<IdentifierExpr>/*!*/ globalMods = new List<IdentifierExpr>();
         Set targetSet = new Set();
         foreach (Variable/*!*/ v in targets)
         {
@@ -532,8 +532,8 @@ namespace Microsoft.Boogie {
         HashSet<string> dummyBlocks = new HashSet<string>();
 
         CodeCopier codeCopier = new CodeCopier(loopHeaderToSubstMap[header]);  // fix me
-        VariableSeq inputs = loopHeaderToInputs[header];
-        VariableSeq outputs = loopHeaderToOutputs[header];
+        List<Variable> inputs = loopHeaderToInputs[header];
+        List<Variable> outputs = loopHeaderToOutputs[header];
         int si_unique_loc = 1; // Added by AL: to distinguish the back edges
         foreach (Block/*!*/ source in g.BackEdgeNodes(header)) {
           Contract.Assert(source != null);
@@ -586,7 +586,7 @@ namespace Microsoft.Boogie {
                             auxNewBlock.Cmds.Add(assignCmd);
                         }
                         List<AssignLhs> lhsg = new List<AssignLhs>();
-                        IdentifierExprSeq/*!*/ globalsMods = loopHeaderToLoopProc[header].Modifies;
+                        List<IdentifierExpr>/*!*/ globalsMods = loopHeaderToLoopProc[header].Modifies;
                         foreach (IdentifierExpr gl in globalsMods)
                             lhsg.Add(new SimpleAssignLhs(Token.NoToken, gl));
                         List<Expr> rhsg = new List<Expr>();
@@ -689,7 +689,7 @@ namespace Microsoft.Boogie {
         blocks.Add(exit);
         Implementation loopImpl =
             new Implementation(Token.NoToken, loopProc.Name,
-                                new TypeVariableSeq(), inputs, outputs, new VariableSeq(), blocks);
+                                new TypeVariableSeq(), inputs, outputs, new List<Variable>(), blocks);
         loopImpl.Proc = loopProc;
         loopImpls.Add(loopImpl);
 
@@ -1707,10 +1707,10 @@ namespace Microsoft.Boogie {
     /// and without any attributes.
     /// The Type of each Formal is cloned.
     /// </summary>
-    public static VariableSeq StripWhereClauses(VariableSeq w) {
+    public static List<Variable> StripWhereClauses(List<Variable> w) {
       Contract.Requires(w != null);
-      Contract.Ensures(Contract.Result<VariableSeq>() != null);
-      VariableSeq s = new VariableSeq();
+      Contract.Ensures(Contract.Result<List<Variable>>() != null);
+      List<Variable> s = new List<Variable>();
       foreach (Variable/*!*/ v in w) {
         Contract.Assert(v != null);
         Formal f = (Formal)v;
@@ -1797,7 +1797,7 @@ namespace Microsoft.Boogie {
 
   public abstract class DeclWithFormals : NamedDeclaration {
     public TypeVariableSeq/*!*/ TypeParameters;
-    public /*readonly--except in StandardVisitor*/ VariableSeq/*!*/ InParams, OutParams;
+    public /*readonly--except in StandardVisitor*/ List<Variable>/*!*/ InParams, OutParams;
 
     [ContractInvariantMethod]
     void ObjectInvariant() {
@@ -1807,7 +1807,7 @@ namespace Microsoft.Boogie {
     }
 
     public DeclWithFormals(IToken tok, string name, TypeVariableSeq typeParams,
-                            VariableSeq inParams, VariableSeq outParams)
+                            List<Variable> inParams, List<Variable> outParams)
       : base(tok, name) {
       Contract.Requires(inParams != null);
       Contract.Requires(outParams != null);
@@ -1865,9 +1865,9 @@ namespace Microsoft.Boogie {
     }
 
     protected void SortTypeParams() {
-      TypeSeq/*!*/ allTypes = new TypeSeq(InParams.Select(Item => Item.TypedIdent.Type).ToArray());
+      List<Type>/*!*/ allTypes = new List<Type>(InParams.Select(Item => Item.TypedIdent.Type).ToArray());
       Contract.Assert(allTypes != null);
-      allTypes.AddRange(new TypeSeq(OutParams.Select(Item => Item.TypedIdent.Type).ToArray()));
+      allTypes.AddRange(new List<Type>(OutParams.Select(Item => Item.TypedIdent.Type).ToArray()));
       TypeParameters = Type.SortTypeParams(TypeParameters, allTypes, null);
     }
 
@@ -1879,7 +1879,7 @@ namespace Microsoft.Boogie {
     /// context.
     /// </summary>
     /// <param name="rc"></param>
-    protected void RegisterFormals(VariableSeq formals, ResolutionContext rc) {
+    protected void RegisterFormals(List<Variable> formals, ResolutionContext rc) {
       Contract.Requires(rc != null);
       Contract.Requires(formals != null);
       foreach (Formal/*!*/ f in formals) {
@@ -1895,7 +1895,7 @@ namespace Microsoft.Boogie {
     /// Resolves the where clauses (and attributes) of the formals.
     /// </summary>
     /// <param name="rc"></param>
-    protected void ResolveFormals(VariableSeq formals, ResolutionContext rc) {
+    protected void ResolveFormals(List<Variable> formals, ResolutionContext rc) {
       Contract.Requires(rc != null);
       Contract.Requires(formals != null);
       foreach (Formal/*!*/ f in formals) {
@@ -1959,7 +1959,7 @@ namespace Microsoft.Boogie {
     public DatatypeSelector(Function constructor, int index)
       : base(constructor.InParams[index].tok, 
              constructor.InParams[index].Name + "#" + constructor.Name,
-             new VariableSeq(new Formal(constructor.tok, new TypedIdent(constructor.tok, "", constructor.OutParams[0].TypedIdent.Type), true)),
+             new List<Variable> { new Formal(constructor.tok, new TypedIdent(constructor.tok, "", constructor.OutParams[0].TypedIdent.Type), true) },
              new Formal(constructor.tok, new TypedIdent(constructor.tok, "", constructor.InParams[index].TypedIdent.Type), false)) 
     {
       this.constructor = constructor;
@@ -1974,7 +1974,7 @@ namespace Microsoft.Boogie {
     public DatatypeMembership(Function constructor)
       : base(constructor.tok, 
              "is#" + constructor.Name,
-             new VariableSeq(new Formal(constructor.tok, new TypedIdent(constructor.tok, "", constructor.OutParams[0].TypedIdent.Type), true)),
+             new List<Variable> { new Formal(constructor.tok, new TypedIdent(constructor.tok, "", constructor.OutParams[0].TypedIdent.Type), true) },
              new Formal(constructor.tok, new TypedIdent(constructor.tok, "", Type.Bool), false)) 
     {
       this.constructor = constructor;
@@ -1994,7 +1994,7 @@ namespace Microsoft.Boogie {
     private bool neverTrigger;
     private bool neverTriggerComputed;
 
-    public Function(IToken tok, string name, VariableSeq args, Variable result)
+    public Function(IToken tok, string name, List<Variable> args, Variable result)
       : this(tok, name, new TypeVariableSeq(), args, result, null) {
       Contract.Requires(result != null);
       Contract.Requires(args != null);
@@ -2002,7 +2002,7 @@ namespace Microsoft.Boogie {
       Contract.Requires(tok != null);
       //:this(tok, name, new TypeVariableSeq(), args, result, null);
     }
-    public Function(IToken tok, string name, TypeVariableSeq typeParams, VariableSeq args, Variable result)
+    public Function(IToken tok, string name, TypeVariableSeq typeParams, List<Variable> args, Variable result)
       : this(tok, name, typeParams, args, result, null) {
       Contract.Requires(result != null);
       Contract.Requires(args != null);
@@ -2011,7 +2011,7 @@ namespace Microsoft.Boogie {
       Contract.Requires(tok != null);
       //:this(tok, name, typeParams, args, result, null);
     }
-    public Function(IToken tok, string name, VariableSeq args, Variable result, string comment)
+    public Function(IToken tok, string name, List<Variable> args, Variable result, string comment)
       : this(tok, name, new TypeVariableSeq(), args, result, comment) {
       Contract.Requires(result != null);
       Contract.Requires(args != null);
@@ -2019,8 +2019,8 @@ namespace Microsoft.Boogie {
       Contract.Requires(tok != null);
       //:this(tok, name, new TypeVariableSeq(), args, result, comment);
     }
-    public Function(IToken tok, string name, TypeVariableSeq typeParams, VariableSeq args, Variable/*!*/ result, string comment)
-      : base(tok, name, typeParams, args, new VariableSeq(result)) {
+    public Function(IToken tok, string name, TypeVariableSeq typeParams, List<Variable> args, Variable/*!*/ result, string comment)
+      : base(tok, name, typeParams, args, new List<Variable> { result }) {
       Contract.Requires(result != null);
       Contract.Requires(args != null);
       Contract.Requires(typeParams != null);
@@ -2028,7 +2028,7 @@ namespace Microsoft.Boogie {
       Contract.Requires(tok != null);
       Comment = comment;
     }
-    public Function(IToken tok, string name, TypeVariableSeq typeParams, VariableSeq args, Variable result,
+    public Function(IToken tok, string name, TypeVariableSeq typeParams, List<Variable> args, Variable result,
                     string comment, QKeyValue kv)
       : this(tok, name, typeParams, args, result, comment) {
       Contract.Requires(args != null);
@@ -2091,8 +2091,8 @@ namespace Microsoft.Boogie {
         }
         rc.PopVarContext();
         Type.CheckBoundVariableOccurrences(TypeParameters,
-                                           new TypeSeq(InParams.Select(Item => Item.TypedIdent.Type).ToArray()),
-                                           new TypeSeq(OutParams.Select(Item => Item.TypedIdent.Type).ToArray()),
+                                           new List<Type>(InParams.Select(Item => Item.TypedIdent.Type).ToArray()),
+                                           new List<Type>(OutParams.Select(Item => Item.TypedIdent.Type).ToArray()),
                                            this.tok, "function arguments",
                                            rc);
       } finally {
@@ -2133,7 +2133,7 @@ namespace Microsoft.Boogie {
     public Axiom CreateDefinitionAxiom(Expr definition, QKeyValue kv = null) {
       Contract.Requires(definition != null);
 
-      VariableSeq dummies = new VariableSeq();
+      List<Variable> dummies = new List<Variable>();
       ExprSeq callArgs = new ExprSeq();
       int i = 0;
       foreach (Formal/*!*/ f in InParams) {
@@ -2166,7 +2166,7 @@ namespace Microsoft.Boogie {
   }
 
   public class Macro : Function {
-    public Macro(IToken tok, string name, VariableSeq args, Variable result)
+    public Macro(IToken tok, string name, List<Variable> args, Variable result)
       : base(tok, name, args, result) { }
   }
 
@@ -2363,7 +2363,7 @@ namespace Microsoft.Boogie {
 
   public class Procedure : DeclWithFormals {
     public List<Requires>/*!*/ Requires;
-    public IdentifierExprSeq/*!*/ Modifies;
+    public List<IdentifierExpr>/*!*/ Modifies;
     public List<Ensures>/*!*/ Ensures;
     [ContractInvariantMethod]
     void ObjectInvariant() {
@@ -2378,8 +2378,8 @@ namespace Microsoft.Boogie {
     [Rep]
     public readonly ProcedureSummary/*!*/ Summary;
 
-    public Procedure(IToken/*!*/ tok, string/*!*/ name, TypeVariableSeq/*!*/ typeParams, VariableSeq/*!*/ inParams, VariableSeq/*!*/ outParams,
-      List<Requires>/*!*/ requires, IdentifierExprSeq/*!*/ modifies, List<Ensures>/*!*/ ensures)
+    public Procedure(IToken/*!*/ tok, string/*!*/ name, TypeVariableSeq/*!*/ typeParams, List<Variable>/*!*/ inParams, List<Variable>/*!*/ outParams,
+      List<Requires>/*!*/ requires, List<IdentifierExpr>/*!*/ modifies, List<Ensures>/*!*/ ensures)
       : this(tok, name, typeParams, inParams, outParams, requires, modifies, ensures, null) {
       Contract.Requires(tok != null);
       Contract.Requires(name != null);
@@ -2392,8 +2392,8 @@ namespace Microsoft.Boogie {
       //:this(tok, name, typeParams, inParams, outParams, requires, modifies, ensures, null);
     }
 
-    public Procedure(IToken/*!*/ tok, string/*!*/ name, TypeVariableSeq/*!*/ typeParams, VariableSeq/*!*/ inParams, VariableSeq/*!*/ outParams,
-      List<Requires>/*!*/ @requires, IdentifierExprSeq/*!*/ @modifies, List<Ensures>/*!*/ @ensures, QKeyValue kv
+    public Procedure(IToken/*!*/ tok, string/*!*/ name, TypeVariableSeq/*!*/ typeParams, List<Variable>/*!*/ inParams, List<Variable>/*!*/ outParams,
+      List<Requires>/*!*/ @requires, List<IdentifierExpr>/*!*/ @modifies, List<Ensures>/*!*/ @ensures, QKeyValue kv
       )
       : base(tok, name, typeParams, inParams, outParams) {
       Contract.Requires(tok != null);
@@ -2484,8 +2484,8 @@ namespace Microsoft.Boogie {
         ResolveAttributes(rc);
 
         Type.CheckBoundVariableOccurrences(TypeParameters,
-                                           new TypeSeq(InParams.Select(Item => Item.TypedIdent.Type).ToArray()),
-                                           new TypeSeq(OutParams.Select(Item => Item.TypedIdent.Type).ToArray()),        
+                                           new List<Type>(InParams.Select(Item => Item.TypedIdent.Type).ToArray()),
+                                           new List<Type>(OutParams.Select(Item => Item.TypedIdent.Type).ToArray()),        
                                            this.tok, "procedure arguments",
                                            rc);
 
@@ -2532,7 +2532,7 @@ namespace Microsoft.Boogie {
       private Dictionary<string, Block> blockLabelMap;
 
       public LoopProcedure(Implementation impl, Block header,
-                           VariableSeq inputs, VariableSeq outputs, IdentifierExprSeq globalMods)
+                           List<Variable> inputs, List<Variable> outputs, List<IdentifierExpr> globalMods)
           : base(Token.NoToken, impl.Name + "_loop_" + header.ToString(),
                new TypeVariableSeq(), inputs, outputs,
                new List<Requires>(), globalMods, new List<Ensures>())
@@ -2558,7 +2558,7 @@ namespace Microsoft.Boogie {
   }
 
   public class Implementation : DeclWithFormals {
-    public VariableSeq/*!*/ LocVars;
+    public List<Variable>/*!*/ LocVars;
     [Rep]
     public StmtList StructuredStmts;
     [Rep]
@@ -2568,7 +2568,7 @@ namespace Microsoft.Boogie {
     // Blocks before applying passification etc.
     // Both are used only when /inline is set.
     public List<Block/*!*/> OriginalBlocks;
-    public VariableSeq OriginalLocVars;
+    public List<Variable> OriginalLocVars;
 
     // Strongly connected components
     private StronglyConnectedComponents<Block/*!*/> scc;
@@ -2641,7 +2641,7 @@ namespace Microsoft.Boogie {
       }
     }
 
-    public Implementation(IToken tok, string name, TypeVariableSeq typeParams, VariableSeq inParams, VariableSeq outParams, VariableSeq localVariables, [Captured] StmtList structuredStmts, QKeyValue kv)
+    public Implementation(IToken tok, string name, TypeVariableSeq typeParams, List<Variable> inParams, List<Variable> outParams, List<Variable> localVariables, [Captured] StmtList structuredStmts, QKeyValue kv)
       : this(tok, name, typeParams, inParams, outParams, localVariables, structuredStmts, kv, new Errors()) {
       Contract.Requires(structuredStmts != null);
       Contract.Requires(localVariables != null);
@@ -2653,7 +2653,7 @@ namespace Microsoft.Boogie {
       //:this(tok, name, typeParams, inParams, outParams, localVariables, structuredStmts, null, new Errors());
     }
 
-    public Implementation(IToken tok, string name, TypeVariableSeq typeParams, VariableSeq inParams, VariableSeq outParams, VariableSeq localVariables, [Captured] StmtList structuredStmts)
+    public Implementation(IToken tok, string name, TypeVariableSeq typeParams, List<Variable> inParams, List<Variable> outParams, List<Variable> localVariables, [Captured] StmtList structuredStmts)
       : this(tok, name, typeParams, inParams, outParams, localVariables, structuredStmts, null, new Errors()) {
       Contract.Requires(structuredStmts != null);
       Contract.Requires(localVariables != null);
@@ -2665,7 +2665,7 @@ namespace Microsoft.Boogie {
       //:this(tok, name, typeParams, inParams, outParams, localVariables, structuredStmts, null, new Errors());
     }
 
-    public Implementation(IToken tok, string name, TypeVariableSeq typeParams, VariableSeq inParams, VariableSeq outParams, VariableSeq localVariables, [Captured] StmtList structuredStmts, Errors errorHandler)
+    public Implementation(IToken tok, string name, TypeVariableSeq typeParams, List<Variable> inParams, List<Variable> outParams, List<Variable> localVariables, [Captured] StmtList structuredStmts, Errors errorHandler)
       : this(tok, name, typeParams, inParams, outParams, localVariables, structuredStmts, null, errorHandler) {
       Contract.Requires(errorHandler != null);
       Contract.Requires(structuredStmts != null);
@@ -2681,9 +2681,9 @@ namespace Microsoft.Boogie {
     public Implementation(IToken/*!*/ tok,
       string/*!*/ name,
       TypeVariableSeq/*!*/ typeParams,
-      VariableSeq/*!*/ inParams,
-      VariableSeq/*!*/ outParams,
-      VariableSeq/*!*/ localVariables,
+      List<Variable>/*!*/ inParams,
+      List<Variable>/*!*/ outParams,
+      List<Variable>/*!*/ localVariables,
       [Captured] StmtList/*!*/ structuredStmts,
       QKeyValue kv,
       Errors/*!*/ errorHandler)
@@ -2705,7 +2705,7 @@ namespace Microsoft.Boogie {
       Attributes = kv;
     }
 
-    public Implementation(IToken tok, string name, TypeVariableSeq typeParams, VariableSeq inParams, VariableSeq outParams, VariableSeq localVariables, [Captured] List<Block/*!*/> block)
+    public Implementation(IToken tok, string name, TypeVariableSeq typeParams, List<Variable> inParams, List<Variable> outParams, List<Variable> localVariables, [Captured] List<Block/*!*/> block)
       : this(tok, name, typeParams, inParams, outParams, localVariables, block, null) {
       Contract.Requires(cce.NonNullElements(block));
       Contract.Requires(localVariables != null);
@@ -2720,9 +2720,9 @@ namespace Microsoft.Boogie {
     public Implementation(IToken/*!*/ tok,
       string/*!*/ name,
       TypeVariableSeq/*!*/ typeParams,
-      VariableSeq/*!*/ inParams,
-      VariableSeq/*!*/ outParams,
-      VariableSeq/*!*/ localVariables,
+      List<Variable>/*!*/ inParams,
+      List<Variable>/*!*/ outParams,
+      List<Variable>/*!*/ localVariables,
       [Captured] List<Block/*!*/>/*!*/ blocks,
       QKeyValue kv)
       : base(tok, name, typeParams, inParams, outParams) {
@@ -2833,8 +2833,8 @@ namespace Microsoft.Boogie {
         rc.PopVarContext();
 
         Type.CheckBoundVariableOccurrences(TypeParameters,
-                                           new TypeSeq(InParams.Select(Item => Item.TypedIdent.Type).ToArray()),
-                                           new TypeSeq(OutParams.Select(Item => Item.TypedIdent.Type).ToArray()),
+                                           new List<Type>(InParams.Select(Item => Item.TypedIdent.Type).ToArray()),
+                                           new List<Type>(OutParams.Select(Item => Item.TypedIdent.Type).ToArray()),
                                            this.tok, "implementation arguments",
                                            rc);
       } finally {
@@ -2862,7 +2862,7 @@ namespace Microsoft.Boogie {
         Contract.Assert(v != null);
         v.Typecheck(tc);
       }
-      IdentifierExprSeq oldFrame = tc.Frame;
+      List<IdentifierExpr> oldFrame = tc.Frame;
       tc.Frame = Proc.Modifies;
       foreach (Block b in Blocks) {
         b.Typecheck(tc);
@@ -2870,7 +2870,7 @@ namespace Microsoft.Boogie {
       Contract.Assert(tc.Frame == Proc.Modifies);
       tc.Frame = oldFrame;
     }
-    void MatchFormals(VariableSeq/*!*/ implFormals, VariableSeq/*!*/ procFormals, string/*!*/ inout, TypecheckingContext/*!*/ tc) {
+    void MatchFormals(List<Variable>/*!*/ implFormals, List<Variable>/*!*/ procFormals, string/*!*/ inout, TypecheckingContext/*!*/ tc) {
       Contract.Requires(implFormals != null);
       Contract.Requires(procFormals != null);
       Contract.Requires(inout != null);
@@ -3214,28 +3214,6 @@ namespace Microsoft.Boogie {
   // Generic Sequences
   //---------------------------------------------------------------------
 
-  public sealed class VariableSeq : List<Variable> {
-    public VariableSeq(params Variable[]/*!*/ args)
-      : base(args) {
-      Contract.Requires(args != null);
-    }
-    public VariableSeq(VariableSeq/*!*/ varSeq)
-      : base(varSeq) {
-      Contract.Requires(varSeq != null);
-    }
-  }
-
-  public sealed class TypeSeq : List<Type> {
-    public TypeSeq(params Type[]/*!*/ args)
-      : base(args) {
-      Contract.Requires(args != null);
-    }
-    public TypeSeq(TypeSeq/*!*/ varSeq)
-      : base(varSeq) {
-      Contract.Requires(varSeq != null);
-    }
-  }
-
   public sealed class TypeVariableSeq : List<TypeVariable> {
     public TypeVariableSeq(params TypeVariable[]/*!*/ args)
       : base(args) {
@@ -3255,19 +3233,6 @@ namespace Microsoft.Boogie {
       }
     }
   }
-
-  public sealed class IdentifierExprSeq : List<IdentifierExpr> {
-    public IdentifierExprSeq(params IdentifierExpr[]/*!*/ args)
-      : base(args) {
-      Contract.Requires(args != null);
-    }
-    public IdentifierExprSeq(IdentifierExprSeq/*!*/ ideSeq)
-      : base(ideSeq) {
-      Contract.Requires(ideSeq != null);
-    }
-
-  }
-
 
   public sealed class CmdSeq : List<Cmd> {
     public CmdSeq(params Cmd[]/*!*/ args)
@@ -3367,7 +3332,7 @@ namespace Microsoft.Boogie {
       }
     }
 
-    public static void Emit(this IdentifierExprSeq ids, TokenTextWriter stream, bool printWhereComments) {
+    public static void Emit(this List<IdentifierExpr> ids, TokenTextWriter stream, bool printWhereComments) {
       Contract.Requires(stream != null);
       string sep = "";
       foreach (IdentifierExpr/*!*/ e in ids) {
@@ -3384,7 +3349,7 @@ namespace Microsoft.Boogie {
       }
     }
 
-    public static void Emit(this VariableSeq vs, TokenTextWriter stream, bool emitAttributes) {
+    public static void Emit(this List<Variable> vs, TokenTextWriter stream, bool emitAttributes) {
       Contract.Requires(stream != null);
       string sep = "";
       foreach (Variable/*!*/ v in vs) {
@@ -3395,7 +3360,7 @@ namespace Microsoft.Boogie {
       }
     }
 
-    public static void Emit(this TypeSeq tys, TokenTextWriter stream, string separator) {
+    public static void Emit(this List<Type> tys, TokenTextWriter stream, string separator) {
       Contract.Requires(separator != null);
       Contract.Requires(stream != null);
       string sep = "";
@@ -3439,7 +3404,7 @@ namespace Microsoft.Boogie {
     public RE()
       : base(Token.NoToken) {
     }
-    public override void AddAssignedVariables(VariableSeq vars) {
+    public override void AddAssignedVariables(List<Variable> vars) {
       //Contract.Requires(vars != null);
       throw new NotImplementedException();
     }

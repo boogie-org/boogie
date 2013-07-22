@@ -318,9 +318,9 @@ namespace Microsoft.Boogie {
         node.Decl = this.VisitVariable(node.Decl);
       return node;
     }
-    public virtual IdentifierExprSeq VisitIdentifierExprSeq(IdentifierExprSeq identifierExprSeq) {
+    public virtual List<IdentifierExpr> VisitIdentifierExprSeq(List<IdentifierExpr> identifierExprSeq) {
       Contract.Requires(identifierExprSeq != null);
-      Contract.Ensures(Contract.Result<IdentifierExprSeq>() != null);
+      Contract.Ensures(Contract.Result<List<IdentifierExpr>>() != null);
       for (int i = 0, n = identifierExprSeq.Count; i < n; i++)
         identifierExprSeq[i] = (IdentifierExpr)this.VisitIdentifierExpr(cce.NonNull(identifierExprSeq[i]));
       return identifierExprSeq;
@@ -546,9 +546,9 @@ namespace Microsoft.Boogie {
       node.TypedIdent = this.VisitTypedIdent(node.TypedIdent);
       return node;
     }
-    public virtual VariableSeq VisitVariableSeq(VariableSeq variableSeq) {
+    public virtual List<Variable> VisitVariableSeq(List<Variable> variableSeq) {
       Contract.Requires(variableSeq != null);
-      Contract.Ensures(Contract.Result<VariableSeq>() != null);
+      Contract.Ensures(Contract.Result<List<Variable>>() != null);
       for (int i = 0, n = variableSeq.Count; i < n; i++)
         variableSeq[i] = this.VisitVariable(cce.NonNull(variableSeq[i]));
       return variableSeq;

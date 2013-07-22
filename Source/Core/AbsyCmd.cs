@@ -932,7 +932,7 @@ namespace Microsoft.Boogie {
       Contract.Requires(stream != null);
       throw new NotImplementedException();
     }
-    public override void AddAssignedVariables(VariableSeq vars) {
+    public override void AddAssignedVariables(List<Variable> vars) {
       Contract.Requires(vars != null);
       throw new NotImplementedException();
     }
@@ -944,11 +944,11 @@ namespace Microsoft.Boogie {
       Contract.Assert(tok != null);
     }
     public abstract void Emit(TokenTextWriter/*!*/ stream, int level);
-    public abstract void AddAssignedVariables(VariableSeq/*!*/ vars);
+    public abstract void AddAssignedVariables(List<Variable>/*!*/ vars);
     public void CheckAssignments(TypecheckingContext tc)
     {
         Contract.Requires(tc != null);
-        VariableSeq/*!*/ vars = new VariableSeq();
+        List<Variable>/*!*/ vars = new List<Variable>();
         this.AddAssignedVariables(vars);
         foreach (Variable/*!*/ v in vars)
         {
@@ -1086,7 +1086,7 @@ namespace Microsoft.Boogie {
       {
           // nothing to typecheck
       }
-      public override void AddAssignedVariables(VariableSeq vars)
+      public override void AddAssignedVariables(List<Variable> vars)
       {
           // nothing to add
       }
@@ -1121,7 +1121,7 @@ namespace Microsoft.Boogie {
     public override void Resolve(ResolutionContext rc) {
       
     }
-    public override void AddAssignedVariables(VariableSeq vars) {
+    public override void AddAssignedVariables(List<Variable> vars) {
       
     }
     public override void Typecheck(TypecheckingContext tc) {
@@ -1236,7 +1236,7 @@ namespace Microsoft.Boogie {
       }
     }
 
-    public override void AddAssignedVariables(VariableSeq vars) {
+    public override void AddAssignedVariables(List<Variable> vars) {
       
       foreach (AssignLhs/*!*/ l in Lhss) {
         Contract.Assert(l != null);
@@ -1535,10 +1535,10 @@ namespace Microsoft.Boogie {
       Contract.Invariant(Cmds != null);
     }
 
-    public /*readonly, except for the StandardVisitor*/ VariableSeq/*!*/ Locals;
+    public /*readonly, except for the StandardVisitor*/ List<Variable>/*!*/ Locals;
     public /*readonly, except for the StandardVisitor*/ CmdSeq/*!*/ Cmds;
 
-    public StateCmd(IToken tok, VariableSeq/*!*/ locals, CmdSeq/*!*/ cmds)
+    public StateCmd(IToken tok, List<Variable>/*!*/ locals, CmdSeq/*!*/ cmds)
       : base(tok) {
       Contract.Requires(locals != null);
       Contract.Requires(cmds != null);
@@ -1561,9 +1561,9 @@ namespace Microsoft.Boogie {
       rc.PopVarContext();
     }
 
-    public override void AddAssignedVariables(VariableSeq vars) {
+    public override void AddAssignedVariables(List<Variable> vars) {
       //Contract.Requires(vars != null);
-      VariableSeq/*!*/ vs = new VariableSeq();
+      List<Variable>/*!*/ vs = new List<Variable>();
       foreach (Cmd/*!*/ cmd in this.Cmds) {
         Contract.Assert(cmd != null);
         cmd.AddAssignedVariables(vs);
@@ -1690,7 +1690,7 @@ namespace Microsoft.Boogie {
     }
 
     // We have to give the type explicitly, because the type of the formal "likeThisOne" can contain type variables
-    protected Variable CreateTemporaryVariable(VariableSeq tempVars, Variable likeThisOne, Type ty, TempVarKind kind) {
+    protected Variable CreateTemporaryVariable(List<Variable> tempVars, Variable likeThisOne, Type ty, TempVarKind kind) {
       Contract.Requires(ty != null);
       Contract.Requires(likeThisOne != null);
       Contract.Requires(tempVars != null);
@@ -1756,7 +1756,7 @@ namespace Microsoft.Boogie {
         errorData = value;
       }
     }
-    public CallCmd(IToken tok, string callee, ExprSeq ins, IdentifierExprSeq outs)
+    public CallCmd(IToken tok, string callee, ExprSeq ins, List<IdentifierExpr> outs)
       : this(tok, callee, ins.ToList(), outs.ToList()) {
       Contract.Requires(outs != null);
       Contract.Requires(ins != null);
@@ -1930,8 +1930,8 @@ namespace Microsoft.Boogie {
       // actual i/o arguments. This is done already during resolution
       // because CheckBoundVariableOccurrences needs a resolution
       // context
-      TypeSeq/*!*/ formalInTypes = new TypeSeq();
-      TypeSeq/*!*/ formalOutTypes = new TypeSeq();
+      List<Type>/*!*/ formalInTypes = new List<Type>();
+      List<Type>/*!*/ formalOutTypes = new List<Type>();
       for (int i = 0; i < Ins.Count; ++i)
         if (Ins[i] != null)
           formalInTypes.Add(cce.NonNull(Proc.InParams[i]).TypedIdent.Type);
@@ -1956,7 +1956,7 @@ namespace Microsoft.Boogie {
       }
     }
 
-    public override void AddAssignedVariables(VariableSeq vars) {
+    public override void AddAssignedVariables(List<Variable> vars) {
       //Contract.Requires(vars != null);
       foreach (IdentifierExpr e in Outs) {
         if (e != null) {
@@ -1985,10 +1985,10 @@ namespace Microsoft.Boogie {
           e.Typecheck(tc);
       this.CheckAssignments(tc);
 
-      TypeSeq/*!*/ formalInTypes = new TypeSeq();
-      TypeSeq/*!*/ formalOutTypes = new TypeSeq();
+      List<Type>/*!*/ formalInTypes = new List<Type>();
+      List<Type>/*!*/ formalOutTypes = new List<Type>();
       ExprSeq/*!*/ actualIns = new ExprSeq();
-      IdentifierExprSeq/*!*/ actualOuts = new IdentifierExprSeq();
+      List<IdentifierExpr>/*!*/ actualOuts = new List<IdentifierExpr>();
       for (int i = 0; i < Ins.Count; ++i) {
         if (Ins[i] != null) {
           formalInTypes.Add(cce.NonNull(Proc.InParams[i]).TypedIdent.Type);
@@ -2037,7 +2037,7 @@ namespace Microsoft.Boogie {
       Dictionary<Variable, Expr> substMap = new Dictionary<Variable, Expr>();
       Dictionary<Variable, Expr> substMapOld = new Dictionary<Variable, Expr>();
       Dictionary<Variable, Expr> substMapBound = new Dictionary<Variable, Expr>();
-      VariableSeq/*!*/ tempVars = new VariableSeq();
+      List<Variable>/*!*/ tempVars = new List<Variable>();
 
       // proc P(ins) returns (outs)
       //   requires Pre
@@ -2057,8 +2057,8 @@ namespace Microsoft.Boogie {
       // WildcardVars : new variables created just for this call, one per null in ains
 
       #region Create cins; each one is an incarnation of the corresponding in parameter
-      VariableSeq/*!*/ cins = new VariableSeq();
-      VariableSeq wildcardVars = new VariableSeq();
+      List<Variable>/*!*/ cins = new List<Variable>();
+      List<Variable> wildcardVars = new List<Variable>();
       Contract.Assume(this.Proc != null);
       for (int i = 0; i < this.Proc.InParams.Count; ++i) {
         Variable/*!*/ param = cce.NonNull(this.Proc.InParams[i]);
@@ -2095,7 +2095,7 @@ namespace Microsoft.Boogie {
           AssignCmd assign = Cmd.SimpleAssign(Token.NoToken, cin_exp, cce.NonNull(this.Ins[i]));
           newBlockBody.Add(assign);
         } else {
-          IdentifierExprSeq/*!*/ ies = new IdentifierExprSeq();
+          List<IdentifierExpr>/*!*/ ies = new List<IdentifierExpr>();
           ies.Add(cin_exp);
           HavocCmd havoc = new HavocCmd(Token.NoToken, ies);
           newBlockBody.Add(havoc);
@@ -2157,7 +2157,7 @@ namespace Microsoft.Boogie {
       #endregion
 
       #region cframe := frame (to hold onto frame values in case they are referred to in the postcondition)
-      IdentifierExprSeq havocVarExprs = new IdentifierExprSeq();
+      List<IdentifierExpr> havocVarExprs = new List<IdentifierExpr>();
 
       foreach (IdentifierExpr/*!*/ f in this.Proc.Modifies) {
         Contract.Assert(f != null);
@@ -2175,7 +2175,7 @@ namespace Microsoft.Boogie {
       }
       #endregion
       #region Create couts
-      VariableSeq/*!*/ couts = new VariableSeq();
+      List<Variable>/*!*/ couts = new List<Variable>();
       for (int i = 0; i < this.Proc.OutParams.Count; ++i) {
         Variable/*!*/ param = cce.NonNull(this.Proc.OutParams[i]);
         bool isWildcard = this.Outs[i] == null;
@@ -2285,7 +2285,7 @@ namespace Microsoft.Boogie {
       //Contract.Requires(rc != null);
       Expr.Resolve(rc);
     }
-    public override void AddAssignedVariables(VariableSeq vars) {
+    public override void AddAssignedVariables(List<Variable> vars) {
       //Contract.Requires(vars != null);
     }
   }
@@ -2423,7 +2423,7 @@ namespace Microsoft.Boogie {
         l = GenerateBoundVarListForMining(e.Expr, l);
       } else if (expr is QuantifierExpr) {
         QuantifierExpr qe = (QuantifierExpr)expr;
-        VariableSeq vs = qe.Dummies;
+        List<Variable> vs = qe.Dummies;
         foreach (Variable/*!*/ x in vs) {
           Contract.Assert(x != null);
           string name = x.Name;
@@ -2592,13 +2592,13 @@ namespace Microsoft.Boogie {
   }
 
   public class HavocCmd : Cmd {
-    public IdentifierExprSeq/*!*/ Vars;
+    public List<IdentifierExpr>/*!*/ Vars;
     [ContractInvariantMethod]
     void ObjectInvariant() {
       Contract.Invariant(Vars != null);
     }
 
-    public HavocCmd(IToken/*!*/ tok, IdentifierExprSeq/*!*/ vars)
+    public HavocCmd(IToken/*!*/ tok, List<IdentifierExpr>/*!*/ vars)
       : base(tok) {
       Contract.Requires(tok != null);
       Contract.Requires(vars != null);
@@ -2617,7 +2617,7 @@ namespace Microsoft.Boogie {
         ide.Resolve(rc);
       }
     }
-    public override void AddAssignedVariables(VariableSeq vars) {
+    public override void AddAssignedVariables(List<Variable> vars) {
       //Contract.Requires(vars != null);
       foreach (IdentifierExpr/*!*/ e in this.Vars) {
         Contract.Assert(e != null);

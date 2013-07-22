@@ -96,10 +96,10 @@ namespace Microsoft.Boogie {
           lambda.ComputeFreeVariables(freeVars);
           // this is ugly, the output will depend on hashing order
           Dictionary<Variable, Expr> subst = new Dictionary<Variable, Expr>();
-          VariableSeq formals = new VariableSeq();
+          List<Variable> formals = new List<Variable>();
           ExprSeq callArgs = new ExprSeq();
           ExprSeq axCallArgs = new ExprSeq();
-          VariableSeq dummies = new VariableSeq(lambda.Dummies);
+          List<Variable> dummies = new List<Variable>(lambda.Dummies);
           TypeVariableSeq freeTypeVars = new TypeVariableSeq();
           List<Type/*!*/> fnTypeVarActuals = new List<Type/*!*/>();
           TypeVariableSeq freshTypeVars = new TypeVariableSeq();  // these are only used in the lambda@n function's definition

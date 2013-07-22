@@ -31,7 +31,7 @@ namespace Microsoft.Boogie {
       if (ControlFlowFunction == null) {
         Formal/*!*/ first = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "", Microsoft.Boogie.Type.Int), true);
         Formal/*!*/ second = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "", Microsoft.Boogie.Type.Int), true);
-        VariableSeq inputs = new VariableSeq();
+        List<Variable> inputs = new List<Variable>();
         inputs.Add(first);
         inputs.Add(second);
         Formal/*!*/ returnVar = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "", Microsoft.Boogie.Type.Int), false);
@@ -728,11 +728,11 @@ namespace Microsoft.Boogie.VCExprAST {
       return res;
     }
 
-    public static TypeSeq ToTypeSeq(VCExpr[] exprs, int startIndex) {
+    public static List<Type> ToTypeSeq(VCExpr[] exprs, int startIndex) {
       Contract.Requires(exprs != null);
       Contract.Requires((Contract.ForAll(0, exprs.Length, i => exprs[i] != null)));
-      Contract.Ensures(Contract.Result<TypeSeq>() != null);
-      TypeSeq/*!*/ res = new TypeSeq();
+      Contract.Ensures(Contract.Result<List<Type>>() != null);
+      List<Type>/*!*/ res = new List<Type>();
       for (int i = startIndex; i < exprs.Length; ++i)
         res.Add(cce.NonNull(exprs[i]).Type);
       return res;

@@ -365,10 +365,10 @@ namespace Microsoft.Boogie {
 #if OLD_UNIFICATION
     public static IDictionary<TypeVariable!, Type!>!
                   MatchArgumentTypes(TypeVariableSeq! typeParams,
-                                     TypeSeq! formalArgs,
+                                     List<Type>! formalArgs,
                                      ExprSeq! actualArgs,
-                                     TypeSeq formalOuts,
-                                     IdentifierExprSeq actualOuts,
+                                     List<Type> formalOuts,
+                                     List<IdentifierExpr> actualOuts,
                                      string! opName,
                                      TypecheckingContext! tc)
       {
@@ -437,10 +437,10 @@ namespace Microsoft.Boogie {
 #else
     public static IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/
                   MatchArgumentTypes(TypeVariableSeq/*!*/ typeParams,
-                                     TypeSeq/*!*/ formalArgs,
+                                     List<Type>/*!*/ formalArgs,
                                      ExprSeq/*!*/ actualArgs,
-                                     TypeSeq formalOuts,
-                                     IdentifierExprSeq actualOuts,
+                                     List<Type> formalOuts,
+                                     List<IdentifierExpr> actualOuts,
                                      string/*!*/ opName,
                                      TypecheckingContext/*!*/ tc) {
       Contract.Requires(typeParams != null);
@@ -505,12 +505,12 @@ namespace Microsoft.Boogie {
     //------------  on concrete types, substitute the result into the
     //------------  result type. Null is returned for type errors
 
-    public static TypeSeq CheckArgumentTypes(TypeVariableSeq/*!*/ typeParams,
+    public static List<Type> CheckArgumentTypes(TypeVariableSeq/*!*/ typeParams,
                                              out List<Type/*!*/>/*!*/ actualTypeParams,
-                                             TypeSeq/*!*/ formalIns,
+                                             List<Type>/*!*/ formalIns,
                                              ExprSeq/*!*/ actualIns,
-                                             TypeSeq/*!*/ formalOuts,
-                                             IdentifierExprSeq actualOuts,
+                                             List<Type>/*!*/ formalOuts,
+                                             List<IdentifierExpr> actualOuts,
                                              IToken/*!*/ typeCheckingSubject,
                                              string/*!*/ opName,
                                              TypecheckingContext/*!*/ tc)
@@ -550,7 +550,7 @@ namespace Microsoft.Boogie {
         actualTypeParams.Add(subst[var]);
       }
 
-      TypeSeq/*!*/ actualResults = new TypeSeq();
+      List<Type>/*!*/ actualResults = new List<Type>();
       foreach (Type/*!*/ t in formalOuts) {
         Contract.Assert(t != null);
         actualResults.Add(t.Substitute(subst));
@@ -578,9 +578,9 @@ namespace Microsoft.Boogie {
     // about the same as Type.CheckArgumentTypes, but without
     // detailed error reports
     public static Type/*!*/ InferValueType(TypeVariableSeq/*!*/ typeParams,
-                                       TypeSeq/*!*/ formalArgs,
+                                       List<Type>/*!*/ formalArgs,
                                        Type/*!*/ formalResult,
-                                       TypeSeq/*!*/ actualArgs) {
+                                       List<Type>/*!*/ actualArgs) {
       Contract.Requires(typeParams != null);
       Contract.Requires(formalArgs != null);
       Contract.Requires(formalResult != null);
@@ -603,8 +603,8 @@ namespace Microsoft.Boogie {
 #if OLD_UNIFICATION
     public static IDictionary<TypeVariable!, Type!>!
                   InferTypeParameters(TypeVariableSeq! typeParams,
-                                      TypeSeq! formalArgs,
-                                      TypeSeq! actualArgs)
+                                      List<Type>! formalArgs,
+                                      List<Type>! actualArgs)
       {
  Contract.Requires(formalArgs.Length == actualArgs.Length);
       
@@ -631,19 +631,19 @@ namespace Microsoft.Boogie {
 #else
     /// <summary>
     /// like Type.CheckArgumentTypes, but assumes no errors
-    /// (and only does arguments, not results; and takes actuals as TypeSeq, not ExprSeq)
+    /// (and only does arguments, not results; and takes actuals as List<Type>, not ExprSeq)
     /// </summary>
     public static IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/
                   InferTypeParameters(TypeVariableSeq/*!*/ typeParams,
-                                      TypeSeq/*!*/ formalArgs,
-                                      TypeSeq/*!*/ actualArgs) {
+                                      List<Type>/*!*/ formalArgs,
+                                      List<Type>/*!*/ actualArgs) {
       Contract.Requires(typeParams != null);
       Contract.Requires(formalArgs != null);
       Contract.Requires(actualArgs != null);Contract.Requires(formalArgs.Count == actualArgs.Count);
       Contract.Ensures(cce.NonNullDictionaryAndValues(Contract.Result<IDictionary<TypeVariable, Type>>()));
 
       
-      TypeSeq proxies = new TypeSeq();
+      List<Type> proxies = new List<Type>();
       Dictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ subst = new Dictionary<TypeVariable/*!*/, Type/*!*/>();
       foreach (TypeVariable/*!*/ tv in typeParams) {
         Contract.Assert(tv != null);
@@ -681,7 +681,7 @@ namespace Microsoft.Boogie {
     }
 
     // Sort the type parameters according to the order of occurrence in the argument types
-    public static TypeVariableSeq/*!*/ SortTypeParams(TypeVariableSeq/*!*/ typeParams, TypeSeq/*!*/ argumentTypes, Type resultType) {
+    public static TypeVariableSeq/*!*/ SortTypeParams(TypeVariableSeq/*!*/ typeParams, List<Type>/*!*/ argumentTypes, Type resultType) {
       Contract.Requires(typeParams != null);
       Contract.Requires(argumentTypes != null);
       Contract.Ensures(Contract.Result<TypeVariableSeq>() != null);
@@ -718,8 +718,8 @@ namespace Microsoft.Boogie {
     // not in "argumentTypes".
     [Pure]
     public static bool CheckBoundVariableOccurrences(TypeVariableSeq/*!*/ typeParams,
-                                                     TypeSeq/*!*/ argumentTypes,
-                                                     TypeSeq moreArgumentTypes,
+                                                     List<Type>/*!*/ argumentTypes,
+                                                     List<Type> moreArgumentTypes,
                                                      IToken/*!*/ resolutionSubject,
                                                      string/*!*/ subjectName,
                                                      ResolutionContext/*!*/ rc) {
@@ -750,7 +750,7 @@ namespace Microsoft.Boogie {
     }
 
     [Pure]
-    public static TypeVariableSeq FreeVariablesIn(TypeSeq arguments) {
+    public static TypeVariableSeq FreeVariablesIn(List<Type> arguments) {
       Contract.Requires(arguments != null);
       Contract.Ensures(Contract.Result<TypeVariableSeq>() != null);
       TypeVariableSeq/*!*/ res = new TypeVariableSeq();
@@ -1172,7 +1172,7 @@ Contract.Requires(that != null);
   // during the resolution phase
   public class UnresolvedTypeIdentifier : Type {
     public readonly string/*!*/ Name;
-    public readonly TypeSeq/*!*/ Arguments;
+    public readonly List<Type>/*!*/ Arguments;
     [ContractInvariantMethod]
     void ObjectInvariant() {
       Contract.Invariant(Name != null);
@@ -1181,12 +1181,12 @@ Contract.Requires(that != null);
 
 
     public UnresolvedTypeIdentifier(IToken token, string name)
-      : this(token, name, new TypeSeq()) {
+      : this(token, name, new List<Type>()) {
       Contract.Requires(name != null);
       Contract.Requires(token != null);
     }
 
-    public UnresolvedTypeIdentifier(IToken token, string name, TypeSeq arguments)
+    public UnresolvedTypeIdentifier(IToken token, string name, List<Type> arguments)
       : base(token) {
       Contract.Requires(arguments != null);
       Contract.Requires(name != null);
@@ -1203,7 +1203,7 @@ Contract.Requires(that != null);
     public override Type Clone(IDictionary<TypeVariable/*!*/, TypeVariable/*!*/>/*!*/ varMap) {
       //Contract.Requires(cce.NonNullElements(varMap));
       Contract.Ensures(Contract.Result<Type>() != null);
-      TypeSeq/*!*/ newArgs = new TypeSeq();
+      List<Type>/*!*/ newArgs = new List<Type>();
       foreach (Type/*!*/ t in Arguments) {
         Contract.Assert(t != null);
         newArgs.Add(t.Clone(varMap));
@@ -1213,7 +1213,7 @@ Contract.Requires(that != null);
 
     public override Type CloneUnresolved() {
       Contract.Ensures(Contract.Result<Type>() != null);
-      TypeSeq/*!*/ newArgs = new TypeSeq();
+      List<Type>/*!*/ newArgs = new List<Type>();
       foreach (Type/*!*/ t in Arguments) {
         Contract.Assert(t != null);
         newArgs.Add(t.CloneUnresolved());
@@ -1339,7 +1339,7 @@ Contract.Requires(that != null);
                    synDecl);
           return this;
         }
-        TypeSeq/*!*/ resolvedArgs = ResolveArguments(rc);
+        List<Type>/*!*/ resolvedArgs = ResolveArguments(rc);
         Contract.Assert(resolvedArgs != null);
 
         return new TypeSynonymAnnotation(this.tok, synDecl, resolvedArgs);
@@ -1351,10 +1351,10 @@ Contract.Requires(that != null);
       return this;
     }
 
-    private TypeSeq ResolveArguments(ResolutionContext rc) {
+    private List<Type> ResolveArguments(ResolutionContext rc) {
       Contract.Requires(rc != null);
-      Contract.Ensures(Contract.Result<TypeSeq>() != null);
-      TypeSeq/*!*/ resolvedArgs = new TypeSeq();
+      Contract.Ensures(Contract.Result<List<Type>>() != null);
+      List<Type>/*!*/ resolvedArgs = new List<Type>();
       foreach (Type/*!*/ t in Arguments) {
         Contract.Assert(t != null);
         resolvedArgs.Add(t.ResolveType(rc));
@@ -2271,7 +2271,7 @@ Contract.Requires(that != null);
     // each constraint specifies that the given combination of argument/result
     // types must be a possible instance of the formal map argument/result types
     private struct Constraint {
-      public readonly TypeSeq/*!*/ Arguments;
+      public readonly List<Type>/*!*/ Arguments;
       public readonly Type/*!*/ Result;
       [ContractInvariantMethod]
       void ObjectInvariant() {
@@ -2280,7 +2280,7 @@ Contract.Requires(that != null);
       }
 
 
-      public Constraint(TypeSeq arguments, Type result) {
+      public Constraint(List<Type> arguments, Type result) {
         Contract.Requires(result != null);
         Contract.Requires(arguments != null);
         Arguments = arguments;
@@ -2289,7 +2289,7 @@ Contract.Requires(that != null);
 
       public Constraint Clone(IDictionary<TypeVariable/*!*/, TypeVariable/*!*/>/*!*/ varMap) {
         Contract.Requires(cce.NonNullDictionaryAndValues(varMap));
-        TypeSeq/*!*/ args = new TypeSeq();
+        List<Type>/*!*/ args = new List<Type>();
         foreach (Type/*!*/ t in Arguments) {
           Contract.Assert(t != null);
           args.Add(t.Clone(varMap));
@@ -2379,7 +2379,7 @@ Contract.Requires(that != null);
       Contract.Assert(f == null);  // no other types should occur as specialisations of this proxy
 
       // otherwise, we just record the constraints given by this usage of the map type
-      TypeSeq/*!*/ arguments = new TypeSeq();
+      List<Type>/*!*/ arguments = new List<Type>();
       foreach (Expr/*!*/ e in actualArgs) {
         Contract.Assert(e != null);
         arguments.Add(e.Type);
@@ -2388,7 +2388,7 @@ Contract.Requires(that != null);
       Contract.Assert(result != null);
       AddConstraint(new Constraint(arguments, result));
 
-      TypeSeq/*!*/ argumentsResult = new TypeSeq();
+      List<Type>/*!*/ argumentsResult = new List<Type>();
       foreach (Expr/*!*/ e in actualArgs) {
         Contract.Assert(e != null);
         argumentsResult.Add(e.Type);
@@ -2551,7 +2551,7 @@ Contract.Requires(that != null);
   public class TypeSynonymAnnotation : Type {
     public Type/*!*/ ExpandedType;
 
-    public readonly TypeSeq/*!*/ Arguments;
+    public readonly List<Type>/*!*/ Arguments;
     // is set during resolution and determines whether the right number of arguments is given
     public readonly TypeSynonymDecl/*!*/ Decl;
     [ContractInvariantMethod]
@@ -2562,7 +2562,7 @@ Contract.Requires(that != null);
     }
 
 
-    public TypeSynonymAnnotation(IToken/*!*/ token, TypeSynonymDecl/*!*/ decl, TypeSeq/*!*/ arguments)
+    public TypeSynonymAnnotation(IToken/*!*/ token, TypeSynonymDecl/*!*/ decl, List<Type>/*!*/ arguments)
       : base(token) {
       Contract.Requires(token != null);
       Contract.Requires(decl != null);
@@ -2581,7 +2581,7 @@ Contract.Requires(that != null);
       ExpandedType = decl.Body.Substitute(subst);
     }
 
-    private TypeSynonymAnnotation(IToken/*!*/ token, TypeSynonymDecl/*!*/ decl, TypeSeq/*!*/ arguments,
+    private TypeSynonymAnnotation(IToken/*!*/ token, TypeSynonymDecl/*!*/ decl, List<Type>/*!*/ arguments,
                                   Type/*!*/ expandedType)
       : base(token) {
       Contract.Requires(token != null);
@@ -2602,7 +2602,7 @@ Contract.Requires(that != null);
     public override Type Clone(IDictionary<TypeVariable/*!*/, TypeVariable/*!*/>/*!*/ varMap) {
       //Contract.Requires(cce.NonNullElements(varMap));
       Contract.Ensures(Contract.Result<Type>() != null);
-      TypeSeq/*!*/ newArgs = new TypeSeq();
+      List<Type>/*!*/ newArgs = new List<Type>();
       foreach (Type/*!*/ t in Arguments) {
         Contract.Assert(t != null);
         newArgs.Add(t.Clone(varMap));
@@ -2614,7 +2614,7 @@ Contract.Requires(that != null);
 
     public override Type CloneUnresolved() {
       Contract.Ensures(Contract.Result<Type>() != null);
-      TypeSeq/*!*/ newArgs = new TypeSeq();
+      List<Type>/*!*/ newArgs = new List<Type>();
       foreach (Type/*!*/ t in Arguments) {
         Contract.Assert(t != null);
         newArgs.Add(t.CloneUnresolved());
@@ -2672,7 +2672,7 @@ Contract.Requires(that != null);
       Contract.Ensures(Contract.Result<Type>() != null);
       if (subst.Count == 0)
         return this;
-      TypeSeq newArgs = new TypeSeq();
+      List<Type> newArgs = new List<Type>();
       foreach (Type/*!*/ t in Arguments) {
         Contract.Assert(t != null);
         newArgs.Add(t.Substitute(subst));
@@ -2703,7 +2703,7 @@ Contract.Requires(that != null);
     public override Type ResolveType(ResolutionContext rc) {
       //Contract.Requires(rc != null);
       Contract.Ensures(Contract.Result<Type>() != null);
-      TypeSeq resolvedArgs = new TypeSeq();
+      List<Type> resolvedArgs = new List<Type>();
       foreach (Type/*!*/ t in Arguments) {
         Contract.Assert(t != null);
         resolvedArgs.Add(t.ResolveType(rc));
@@ -2816,7 +2816,7 @@ Contract.Requires(that != null);
   //=====================================================================
 
   public class CtorType : Type {
-    public readonly TypeSeq/*!*/ Arguments;
+    public readonly List<Type>/*!*/ Arguments;
     // is set during resolution and determines whether the right number of arguments is given
     public readonly TypeCtorDecl/*!*/ Decl;
     [ContractInvariantMethod]
@@ -2826,7 +2826,7 @@ Contract.Requires(that != null);
     }
 
 
-    public CtorType(IToken/*!*/ token, TypeCtorDecl/*!*/ decl, TypeSeq/*!*/ arguments)
+    public CtorType(IToken/*!*/ token, TypeCtorDecl/*!*/ decl, List<Type>/*!*/ arguments)
       : base(token) {
       Contract.Requires(token != null);
       Contract.Requires(decl != null);
@@ -2848,7 +2848,7 @@ Contract.Requires(that != null);
     public override Type Clone(IDictionary<TypeVariable/*!*/, TypeVariable/*!*/>/*!*/ varMap) {
       //Contract.Requires(cce.NonNullElements(varMap));
       Contract.Ensures(Contract.Result<Type>() != null);
-      TypeSeq/*!*/ newArgs = new TypeSeq();
+      List<Type>/*!*/ newArgs = new List<Type>();
       foreach (Type/*!*/ t in Arguments) {
         Contract.Assert(t != null);
         newArgs.Add(t.Clone(varMap));
@@ -2858,7 +2858,7 @@ Contract.Requires(that != null);
 
     public override Type CloneUnresolved() {
       Contract.Ensures(Contract.Result<Type>() != null);
-      TypeSeq/*!*/ newArgs = new TypeSeq();
+      List<Type>/*!*/ newArgs = new List<Type>();
       foreach (Type/*!*/ t in Arguments) {
         Contract.Assert(t != null);
         newArgs.Add(t.CloneUnresolved());
@@ -2950,7 +2950,7 @@ Contract.Requires(that != null);
       Contract.Ensures(Contract.Result<Type>() != null);
       if (subst.Count == 0)
         return this;
-      TypeSeq newArgs = new TypeSeq();
+      List<Type> newArgs = new List<Type>();
       foreach (Type/*!*/ t in Arguments) {
         Contract.Assert(t != null);
         newArgs.Add(t.Substitute(subst));
@@ -2979,7 +2979,7 @@ Contract.Requires(that != null);
       EmitCtorType(this.Decl.Name, Arguments, stream, contextBindingStrength);
     }
 
-    internal static void EmitCtorType(string name, TypeSeq args, TokenTextWriter stream, int contextBindingStrength) {
+    internal static void EmitCtorType(string name, List<Type> args, TokenTextWriter stream, int contextBindingStrength) {
       Contract.Requires(stream != null);
       Contract.Requires(args != null);
       Contract.Requires(name != null);
@@ -3007,7 +3007,7 @@ Contract.Requires(that != null);
     public override Type ResolveType(ResolutionContext rc) {
       //Contract.Requires(rc != null);
       Contract.Ensures(Contract.Result<Type>() != null);
-      TypeSeq resolvedArgs = new TypeSeq();
+      List<Type> resolvedArgs = new List<Type>();
       foreach (Type/*!*/ t in Arguments) {
         Contract.Assert(t != null);
         resolvedArgs.Add(t.ResolveType(rc));
@@ -3063,7 +3063,7 @@ Contract.Requires(that != null);
     // an invariant is that each of the type parameters has to occur as
     // free variable in at least one of the arguments
     public readonly TypeVariableSeq/*!*/ TypeParameters;
-    public readonly TypeSeq/*!*/ Arguments;
+    public readonly List<Type>/*!*/ Arguments;
     public Type/*!*/ Result;
     [ContractInvariantMethod]
     void ObjectInvariant() {
@@ -3073,7 +3073,7 @@ Contract.Requires(that != null);
     }
 
 
-    public MapType(IToken/*!*/ token, TypeVariableSeq/*!*/ typeParameters, TypeSeq/*!*/ arguments, Type/*!*/ result)
+    public MapType(IToken/*!*/ token, TypeVariableSeq/*!*/ typeParameters, List<Type>/*!*/ arguments, Type/*!*/ result)
       : base(token) {
       Contract.Requires(token != null);
       Contract.Requires(typeParameters != null);
@@ -3110,7 +3110,7 @@ Contract.Requires(that != null);
         newTypeParams.Add(newVar);
       }
 
-      TypeSeq/*!*/ newArgs = new TypeSeq();
+      List<Type>/*!*/ newArgs = new List<Type>();
       foreach (Type/*!*/ t in Arguments) {
         Contract.Assert(t != null);
         newArgs.Add(t.Clone(newVarMap));
@@ -3131,7 +3131,7 @@ Contract.Requires(that != null);
         newTypeParams.Add(newVar);
       }
 
-      TypeSeq/*!*/ newArgs = new TypeSeq();
+      List<Type>/*!*/ newArgs = new List<Type>();
       foreach (Type/*!*/ t in Arguments) {
         Contract.Assert(t != null);
         newArgs.Add(t.CloneUnresolved());
@@ -3342,7 +3342,7 @@ Contract.Assert(var != null);
         return newType.Substitute(subst);
       }
 
-      TypeSeq newArgs = new TypeSeq();
+      List<Type> newArgs = new List<Type>();
       foreach (Type/*!*/ t in Arguments) {
         Contract.Assert(t != null);
         newArgs.Add(t.Substitute(subst));
@@ -3410,7 +3410,7 @@ Contract.Assert(var != null);
           rc.AddTypeBinder(v);
         }
 
-        TypeSeq resolvedArgs = new TypeSeq();
+        List<Type> resolvedArgs = new List<Type>();
         foreach (Type/*!*/ ty in Arguments) {
           Contract.Assert(ty != null);
           resolvedArgs.Add(ty.ResolveType(rc));
@@ -3419,7 +3419,7 @@ Contract.Assert(var != null);
         Type resolvedResult = Result.ResolveType(rc);
 
         CheckBoundVariableOccurrences(TypeParameters,
-                                      resolvedArgs, new TypeSeq(resolvedResult),
+                                      resolvedArgs, new List<Type> { resolvedResult },
                                       this.tok, "map arguments",
                                       rc);
 
@@ -3492,9 +3492,9 @@ Contract.Assert(var != null);
       Contract.Requires(tc != null);
 Contract.Ensures(Contract.ValueAtReturn(out tpInstantiation) != null);
       List<Type/*!*/>/*!*/ actualTypeParams;
-      TypeSeq actualResult =
+      List<Type> actualResult =
         Type.CheckArgumentTypes(TypeParameters, out actualTypeParams, Arguments, actualArgs,
-                                new TypeSeq(Result), null, typeCheckingSubject, opName, tc);
+                                new List<Type> { Result }, null, typeCheckingSubject, opName, tc);
       if (actualResult == null) {
         tpInstantiation = SimpleTypeParamInstantiation.EMPTY;
         return null;
@@ -3630,7 +3630,7 @@ Contract.Ensures(Contract.ValueAtReturn(out tpInstantiation) != null);
 
     // the argument and result type of this particular usage of the map
     // type. these are necessary to derive the values of the type parameters
-    private readonly TypeSeq/*!*/ ArgumentsResult;
+    private readonly List<Type>/*!*/ ArgumentsResult;
 
     // field that is initialised once all necessary information is available
     // (the MapTypeProxy is instantiated to an actual type) and the instantiation
@@ -3645,7 +3645,7 @@ Contract.Ensures(Contract.ValueAtReturn(out tpInstantiation) != null);
 
 
     public MapTypeProxyParamInstantiation(MapTypeProxy/*!*/ proxy,
-                                          TypeSeq/*!*/ argumentsResult) {
+                                          List<Type>/*!*/ argumentsResult) {
       Contract.Requires(proxy != null);
       Contract.Requires(argumentsResult != null);
       this.Proxy = proxy;
@@ -3672,7 +3672,7 @@ Contract.Ensures(Contract.ValueAtReturn(out tpInstantiation) != null);
         if (Instantiations == null) {
           MapType realType = Proxy.ProxyFor as MapType;
           Contract.Assert(realType != null);
-          TypeSeq/*!*/ formalArgs = new TypeSeq();
+          List<Type>/*!*/ formalArgs = new List<Type>();
           foreach (Type/*!*/ t in realType.Arguments) {
             Contract.Assert(t != null);
             formalArgs.Add(t);

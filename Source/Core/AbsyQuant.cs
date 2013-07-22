@@ -47,7 +47,7 @@ namespace Microsoft.Boogie {
   [ContractClass(typeof(BinderExprContracts))]
   public abstract class BinderExpr : Expr {
     public TypeVariableSeq/*!*/ TypeParameters;
-    public VariableSeq/*!*/ Dummies;
+    public List<Variable>/*!*/ Dummies;
     public QKeyValue Attributes;
     public Expr/*!*/ Body;
     [ContractInvariantMethod]
@@ -59,7 +59,7 @@ namespace Microsoft.Boogie {
 
 
     public BinderExpr(IToken/*!*/ tok, TypeVariableSeq/*!*/ typeParameters,
-                      VariableSeq/*!*/ dummies, QKeyValue kv, Expr/*!*/ body)
+                      List<Variable>/*!*/ dummies, QKeyValue kv, Expr/*!*/ body)
       : base(tok)
       {
       Contract.Requires(tok != null);
@@ -160,7 +160,7 @@ namespace Microsoft.Boogie {
         rc.PopVarContext();
 
         // establish a canonical order of the type parameters
-        this.TypeParameters = Type.SortTypeParams(TypeParameters, new TypeSeq(Dummies.Select(Item => Item.TypedIdent.Type).ToArray()), null);
+        this.TypeParameters = Type.SortTypeParams(TypeParameters, new List<Type>(Dummies.Select(Item => Item.TypedIdent.Type).ToArray()), null);
 
       } finally {
         rc.TypeBinderState = previousTypeBinderState;
@@ -193,7 +193,7 @@ namespace Microsoft.Boogie {
 
     protected TypeVariableSeq GetUnmentionedTypeParameters() {
       Contract.Ensures(Contract.Result<TypeVariableSeq>() != null);
-      TypeVariableSeq/*!*/ dummyParameters = Type.FreeVariablesIn(new TypeSeq(Dummies.Select(Item => Item.TypedIdent.Type).ToArray()));
+      TypeVariableSeq/*!*/ dummyParameters = Type.FreeVariablesIn(new List<Type>(Dummies.Select(Item => Item.TypedIdent.Type).ToArray()));
       Contract.Assert(dummyParameters != null);
       TypeVariableSeq/*!*/ unmentionedParameters = new TypeVariableSeq();
       foreach (TypeVariable/*!*/ var in TypeParameters) {
@@ -422,7 +422,7 @@ namespace Microsoft.Boogie {
 
   public class ForallExpr : QuantifierExpr {
     public ForallExpr(IToken/*!*/ tok, TypeVariableSeq/*!*/ typeParams,
-                      VariableSeq/*!*/ dummies, QKeyValue kv, Trigger triggers, Expr/*!*/ body)
+                      List<Variable>/*!*/ dummies, QKeyValue kv, Trigger triggers, Expr/*!*/ body)
       : base(tok, typeParams, dummies, kv, triggers, body) {
       Contract.Requires(tok != null);
       Contract.Requires(typeParams != null);
@@ -430,21 +430,21 @@ namespace Microsoft.Boogie {
       Contract.Requires(body != null);
       Contract.Requires(dummies.Count + typeParams.Count > 0);
     }
-    public ForallExpr(IToken tok, VariableSeq dummies, Trigger triggers, Expr body)
+    public ForallExpr(IToken tok, List<Variable> dummies, Trigger triggers, Expr body)
       : base(tok, new TypeVariableSeq(), dummies, null, triggers, body) {
       Contract.Requires(body != null);
       Contract.Requires(dummies != null);
       Contract.Requires(tok != null);
       Contract.Requires(dummies.Count > 0);
     }
-    public ForallExpr(IToken tok, VariableSeq dummies, Expr body)
+    public ForallExpr(IToken tok, List<Variable> dummies, Expr body)
       : base(tok, new TypeVariableSeq(), dummies, null, null, body) {
       Contract.Requires(body != null);
       Contract.Requires(dummies != null);
       Contract.Requires(tok != null);
       Contract.Requires(dummies.Count > 0);
     }
-    public ForallExpr(IToken tok, TypeVariableSeq typeParams, VariableSeq dummies, Expr body)
+    public ForallExpr(IToken tok, TypeVariableSeq typeParams, List<Variable> dummies, Expr body)
       : base(tok, typeParams, dummies, null, null, body) {
       Contract.Requires(body != null);
       Contract.Requires(dummies != null);
@@ -467,7 +467,7 @@ namespace Microsoft.Boogie {
   }
 
   public class ExistsExpr : QuantifierExpr {
-    public ExistsExpr(IToken/*!*/ tok, TypeVariableSeq/*!*/ typeParams, VariableSeq/*!*/ dummies,
+    public ExistsExpr(IToken/*!*/ tok, TypeVariableSeq/*!*/ typeParams, List<Variable>/*!*/ dummies,
                       QKeyValue kv, Trigger triggers, Expr/*!*/ body)
       : base(tok, typeParams, dummies, kv, triggers, body) {
       Contract.Requires(tok != null);
@@ -476,14 +476,14 @@ namespace Microsoft.Boogie {
       Contract.Requires(body != null);
       Contract.Requires(dummies.Count + typeParams.Count > 0);
     }
-    public ExistsExpr(IToken tok, VariableSeq dummies, Trigger triggers, Expr body)
+    public ExistsExpr(IToken tok, List<Variable> dummies, Trigger triggers, Expr body)
       : base(tok, new TypeVariableSeq(), dummies, null, triggers, body) {
       Contract.Requires(body != null);
       Contract.Requires(dummies != null);
       Contract.Requires(tok != null);
       Contract.Requires(dummies.Count > 0);
     }
-    public ExistsExpr(IToken tok, VariableSeq dummies, Expr body)
+    public ExistsExpr(IToken tok, List<Variable> dummies, Expr body)
       : base(tok, new TypeVariableSeq(), dummies, null, null, body) {
       Contract.Requires(body != null);
       Contract.Requires(dummies != null);
@@ -516,7 +516,7 @@ namespace Microsoft.Boogie {
     public readonly int SkolemId;
 
     public QuantifierExpr(IToken/*!*/ tok, TypeVariableSeq/*!*/ typeParameters,
-                          VariableSeq/*!*/ dummies, QKeyValue kv, Trigger triggers, Expr/*!*/ body)
+                          List<Variable>/*!*/ dummies, QKeyValue kv, Trigger triggers, Expr/*!*/ body)
       : base(tok, typeParameters, dummies, kv, body) {
       Contract.Requires(tok != null);
       Contract.Requires(typeParameters != null);
@@ -697,7 +697,7 @@ namespace Microsoft.Boogie {
 
   public class LambdaExpr : BinderExpr {
     public LambdaExpr(IToken/*!*/ tok, TypeVariableSeq/*!*/ typeParameters,
-                      VariableSeq/*!*/ dummies, QKeyValue kv, Expr/*!*/ body)
+                      List<Variable>/*!*/ dummies, QKeyValue kv, Expr/*!*/ body)
       : base(tok, typeParameters, dummies, kv, body) {
       Contract.Requires(tok != null);
       Contract.Requires(typeParameters != null);
@@ -725,7 +725,7 @@ namespace Microsoft.Boogie {
       Body.Typecheck(tc);
       Contract.Assert(Body.Type != null);  // follows from postcondition of Expr.Typecheck
 
-      TypeSeq/*!*/ argTypes = new TypeSeq();
+      List<Type>/*!*/ argTypes = new List<Type>();
       foreach (Variable/*!*/ v in Dummies) {
         Contract.Assert(v != null);
         argTypes.Add(v.TypedIdent.Type);
@@ -749,7 +749,7 @@ namespace Microsoft.Boogie {
         Contract.Ensures(Contract.Result<Type>() != null);
 
         if (mapType == null) {
-          TypeSeq/*!*/ argTypes = new TypeSeq();
+          List<Type>/*!*/ argTypes = new List<Type>();
           foreach (Variable/*!*/ v in Dummies) {
             Contract.Assert(v != null);
             argTypes.Add(v.TypedIdent.Type);

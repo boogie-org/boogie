@@ -178,7 +178,7 @@ namespace Microsoft.Boogie
 
             // collect the variables needed in the invariant
             ExprSeq exprs = new ExprSeq();
-            VariableSeq vars = new VariableSeq();
+            List<Variable> vars = new List<Variable>();
             List<string> names = new List<string>();
 
             if (style == AnnotationStyle.Flat)
@@ -284,7 +284,7 @@ namespace Microsoft.Boogie
 
             // collect the variables needed in the invariant
             ExprSeq exprs = new ExprSeq();
-            VariableSeq vars = new VariableSeq();
+            List<Variable> vars = new List<Variable>();
             List<string> names = new List<string>();
 
                 foreach (Variable v in program.GlobalVariables())
@@ -465,7 +465,7 @@ namespace Microsoft.Boogie
 
                 this.interfaceVars = interfaceVars;
                 this.assertExpr = Expr.Not(assertExpr);
-                VariableSeq functionInterfaceVars = new VariableSeq();
+                List<Variable> functionInterfaceVars = new List<Variable>();
                 foreach (Variable v in interfaceVars)
                 {
                     Contract.Assert(v != null);
@@ -654,7 +654,7 @@ namespace Microsoft.Boogie
                 // Get record type
                 var argtype = proc.InParams[0].TypedIdent.Type;
 
-                var ins = new VariableSeq();
+                var ins = new List<Variable>();
                 ins.Add(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "x", argtype), true));
 
                 var recordFunc = new Function(Token.NoToken, proc.Name, ins, returnVar);

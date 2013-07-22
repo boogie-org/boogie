@@ -99,7 +99,7 @@ namespace VC
             Contract.Requires(tok != null);
             Contract.Ensures(Contract.Result<HavocCmd>() != null);
 
-            VariableSeq varsToHavoc = new VariableSeq();
+            List<Variable> varsToHavoc = new List<Variable>();
             foreach (Block b in bl)
             {
                 Contract.Assert(b != null);
@@ -109,7 +109,7 @@ namespace VC
                     c.AddAssignedVariables(varsToHavoc);
                 }
             }
-            IdentifierExprSeq havocExprs = new IdentifierExprSeq();
+            List<IdentifierExpr> havocExprs = new List<IdentifierExpr>();
             foreach (Variable v in varsToHavoc)
             {
                 Contract.Assert(v != null);
