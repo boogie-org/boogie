@@ -125,7 +125,7 @@ Execution trace:
 %lbl%+114 -> true
 %lbl%+118 -> true
 %lbl%+148 -> true
-@MV_state_const -> 6
+$mv_state_const -> 6
 boolType -> T@T!val!2
 F -> T@U!val!2
 FieldNameType -> T@T!val!4
@@ -153,7 +153,7 @@ type -> {
   -451 -> T@T!val!0
   else -> T@T!val!5
 }
-@MV_state -> {
+$mv_state -> {
   6 0 -> true
   6 1 -> true
   6 2 -> true
