@@ -329,8 +329,8 @@ namespace Microsoft.Boogie {
     [ContractInvariantMethod]
     void ObjectInvariant() {
       Contract.Invariant(Tr != null);
-      Contract.Invariant(1 <= Tr.Length);
-      Contract.Invariant(Pos || Tr.Length == 1);
+      Contract.Invariant(1 <= Tr.Count);
+      Contract.Invariant(Pos || Tr.Count == 1);
     }
 
     public Trigger Next;
@@ -339,16 +339,16 @@ namespace Microsoft.Boogie {
       : this(tok, pos, tr, null) {
       Contract.Requires(tr != null);
       Contract.Requires(tok != null);
-      Contract.Requires(1 <= tr.Length);
-      Contract.Requires(pos || tr.Length == 1);
+      Contract.Requires(1 <= tr.Count);
+      Contract.Requires(pos || tr.Count == 1);
     }
 
     public Trigger(IToken/*!*/ tok, bool pos, ExprSeq/*!*/ tr, Trigger next)
       : base(tok) {
       Contract.Requires(tok != null);
       Contract.Requires(tr != null);
-      Contract.Requires(1 <= tr.Length);
-      Contract.Requires(pos || tr.Length == 1);
+      Contract.Requires(1 <= tr.Count);
+      Contract.Requires(pos || tr.Count == 1);
       this.Pos = pos;
       this.Tr = tr;
       this.Next = next;
@@ -357,7 +357,7 @@ namespace Microsoft.Boogie {
     public void Emit(TokenTextWriter stream) {
       Contract.Requires(stream != null);
       stream.SetToken(this);
-      Contract.Assert(this.Tr.Length >= 1);
+      Contract.Assert(this.Tr.Count >= 1);
       string/*!*/ sep = Pos ? "{ " : "{:nopats ";
       foreach (Expr/*!*/ e in this.Tr) {
         Contract.Assert(e != null);

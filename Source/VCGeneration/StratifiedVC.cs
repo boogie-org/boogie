@@ -360,7 +360,7 @@ namespace VC {
       var callSiteId = 0;
       foreach (Block block in implementation.Blocks) {
         CmdSeq newCmds = new CmdSeq();
-        for (int i = 0; i < block.Cmds.Length; i++) {
+        for (int i = 0; i < block.Cmds.Count; i++) {
           Cmd cmd = block.Cmds[i];
           newCmds.Add(cmd);
           AssumeCmd assumeCmd = cmd as AssumeCmd;
@@ -380,7 +380,7 @@ namespace VC {
     public Dictionary<Block, List<CallSite>> CollectCallSites(Implementation implementation) {
       var callSites = new Dictionary<Block, List<CallSite>>();
       foreach (Block block in implementation.Blocks) {
-        for (int i = 0; i < block.Cmds.Length; i++) {
+        for (int i = 0; i < block.Cmds.Count; i++) {
           Cmd cmd = block.Cmds[i];
           AssumeCmd assumeCmd = cmd as AssumeCmd;
           if (assumeCmd == null) continue;
@@ -407,7 +407,7 @@ namespace VC {
     public Dictionary<Block, List<CallSite>> CollectRecordProcedureCallSites(Implementation implementation) {
       var callSites = new Dictionary<Block, List<CallSite>>();
       foreach (Block block in implementation.Blocks) {
-        for (int i = 0; i < block.Cmds.Length; i++) {
+        for (int i = 0; i < block.Cmds.Count; i++) {
           AssumeCmd assumeCmd = block.Cmds[i] as AssumeCmd;
           if (assumeCmd == null) continue;
           NAryExpr naryExpr = assumeCmd.Expr as NAryExpr;
@@ -2584,7 +2584,7 @@ namespace VC {
         while (true) {
           CmdSeq cmds = b.Cmds;
           TransferCmd transferCmd = cce.NonNull(b.TransferCmd);
-          for (int i = 0; i < cmds.Length; i++) {
+          for (int i = 0; i < cmds.Count; i++) {
             Cmd cmd = cce.NonNull(cmds[i]);
 
             // Skip if 'cmd' not contained in the trace or not an assert
@@ -2662,7 +2662,7 @@ namespace VC {
                       Contract.Assert(false);
                   }
               }
-              calleeCounterexamples[new TraceLocation(trace.Length - 1, i)] =
+              calleeCounterexamples[new TraceLocation(trace.Count - 1, i)] =
                    new CalleeCounterexampleInfo(null, args);
               continue;
             }
@@ -2680,7 +2680,7 @@ namespace VC {
             else {
               orderedStateIds.Add(new Tuple<int, int>(calleeId, StratifiedInliningErrorReporter.CALL));
               var calleeInfo = implName2StratifiedInliningInfo[calleeName];
-              calleeCounterexamples[new TraceLocation(trace.Length - 1, i)] =
+              calleeCounterexamples[new TraceLocation(trace.Count - 1, i)] =
                   new CalleeCounterexampleInfo(GenerateTrace(labels, errModel, calleeId, calleeInfo.impl, calleeInfo.mvInfo), new List<object>());
               orderedStateIds.Add(new Tuple<int, int>(candidateId, StratifiedInliningErrorReporter.RETURN));
             }

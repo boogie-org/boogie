@@ -278,7 +278,7 @@ private class BvBounds : Expr {
 	}
 
 	void Consts(out VariableSeq/*!*/ ds) {
-		Contract.Ensures(Contract.ValueAtReturn(out ds) != null); IToken/*!*/ y; TypedIdentSeq/*!*/ xs;
+		Contract.Ensures(Contract.ValueAtReturn(out ds) != null); IToken/*!*/ y; List<TypedIdent>/*!*/ xs;
 		ds = new VariableSeq();
 		bool u = false; QKeyValue kv = null;
 		bool ChildrenComplete = false;
@@ -562,19 +562,19 @@ private class BvBounds : Expr {
 	void BoundVars(IToken/*!*/ x, out VariableSeq/*!*/ ds) {
 		Contract.Requires(x != null);
 		Contract.Ensures(Contract.ValueAtReturn(out ds) != null);
-		TypedIdentSeq/*!*/ tyds = new TypedIdentSeq();
+		List<TypedIdent>/*!*/ tyds = new List<TypedIdent>();
 		ds = new VariableSeq();
 		var dsx = ds;
 		
 		AttrsIdsTypeWheres(true, false, "bound variables", delegate(TypedIdent tyd, QKeyValue kv) { dsx.Add(new BoundVariable(tyd.tok, tyd, kv)); } );
 	}
 
-	void IdsType(out TypedIdentSeq/*!*/ tyds) {
+	void IdsType(out List<TypedIdent>/*!*/ tyds) {
 		Contract.Ensures(Contract.ValueAtReturn(out tyds) != null); TokenSeq/*!*/ ids;  Bpl.Type/*!*/ ty; 
 		Idents(out ids);
 		Expect(11);
 		Type(out ty);
-		tyds = new TypedIdentSeq();
+		tyds = new List<TypedIdent>();
 		foreach(Token/*!*/ id in ids){
 		 Contract.Assert(id != null);
 		 tyds.Add(new TypedIdent(id, id.val, ty, null));
@@ -833,7 +833,7 @@ private class BvBounds : Expr {
 		   typeParams.Add(new TypeVariable(t, t.val));}
 		 decl = new TypeSynonymDecl(id, id.val, typeParams, body, kv);
 		} else {
-		 decl = new TypeCtorDecl(id, id.val, paramTokens.Length, kv);
+		 decl = new TypeCtorDecl(id, id.val, paramTokens.Count, kv);
 		}
 		
 	}
@@ -1664,13 +1664,13 @@ out VariableSeq/*!*/ ins, out VariableSeq/*!*/ outs, out QKeyValue kv) {
 			}
 			Expect(18);
 			if (store)
-			 e = new NAryExpr(x, new MapStore(x, allArgs.Length - 2), allArgs);
+			 e = new NAryExpr(x, new MapStore(x, allArgs.Count - 2), allArgs);
 			else if (bvExtract)
 			 e = new BvExtractExpr(x, e,
 			                       ((BvBounds)index0).Upper.ToIntSafe,
 			                       ((BvBounds)index0).Lower.ToIntSafe);
 			else
-			 e = new NAryExpr(x, new MapSelect(x, allArgs.Length - 1), allArgs);
+			 e = new NAryExpr(x, new MapSelect(x, allArgs.Count - 1), allArgs);
 			
 		}
 	}

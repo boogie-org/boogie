@@ -1013,7 +1013,7 @@ namespace Microsoft.Boogie {
       Contract.Requires(tc != null);
       Contract.Ensures(Contract.ValueAtReturn(out args) != null);
       Contract.Ensures(Contract.ValueAtReturn(out tpInstantiation) != null);
-      Contract.Ensures(args.Length == Contract.OldValue(args.Length));
+      Contract.Ensures(args.Count == Contract.OldValue(args.Count));
       throw new NotImplementedException();
     }
 
@@ -1108,7 +1108,7 @@ namespace Microsoft.Boogie {
       //Contract.Requires(stream != null);
       //Contract.Requires(args != null);
       stream.SetToken(ref this.tok);
-      Contract.Assert(args.Length == 1);
+      Contract.Assert(args.Count == 1);
       // determine if parens are needed
       int opBindingStrength = 0x70;
       bool parensNeeded = opBindingStrength < contextBindingStrength ||
@@ -1144,7 +1144,7 @@ namespace Microsoft.Boogie {
       Contract.Ensures(Contract.ValueAtReturn(out tpInstantiation) != null);
       Contract.Ensures(Contract.ValueAtReturn(out args) != null);
 
-      Contract.Assume(args.Length == 1);
+      Contract.Assume(args.Count == 1);
       tpInstantiation = SimpleTypeParamInstantiation.EMPTY;
       Type arg0type = cce.NonNull(cce.NonNull(args[0]).Type);
       switch (this.op) {
@@ -1322,7 +1322,7 @@ namespace Microsoft.Boogie {
       //Contract.Requires(stream != null);
       //Contract.Requires(args != null);
       stream.SetToken(ref this.tok);
-      Contract.Assert(args.Length == 2);
+      Contract.Assert(args.Count == 2);
       // determine if parens are needed
       int opBindingStrength;
       bool fragileLeftContext = false;  // false means "allow same binding power on left without parens"
@@ -1448,7 +1448,7 @@ namespace Microsoft.Boogie {
       //Contract.Requires(args != null);
       Contract.Ensures(Contract.ValueAtReturn(out tpInstantiation) != null);
       Contract.Ensures(args != null);
-      Contract.Assert(args.Length == 2);
+      Contract.Assert(args.Count == 2);
       // the default; the only binary operator with a type parameter is equality, but right
       // we don't store this parameter because it does not appear necessary
       tpInstantiation = SimpleTypeParamInstantiation.EMPTY;
@@ -1796,7 +1796,7 @@ namespace Microsoft.Boogie {
       Contract.Ensures(Contract.ValueAtReturn(out actuals) != null);
       Contract.Ensures(Contract.ValueAtReturn(out tpInstantiation) != null);
       Contract.Assume(this.Func != null);
-      Contract.Assume(actuals.Length == Func.InParams.Length);
+      Contract.Assume(actuals.Count == Func.InParams.Length);
       Contract.Assume(Func.OutParams.Length == 1);
 
       List<Type/*!*/>/*!*/ resultingTypeArgs;
@@ -1809,7 +1809,7 @@ namespace Microsoft.Boogie {
                                 null,
         // we need some token to report a possibly wrong number of
         // arguments
-                                actuals.Length > 0 ? cce.NonNull(actuals[0]).tok : Token.NoToken,
+                                actuals.Count > 0 ? cce.NonNull(actuals[0]).tok : Token.NoToken,
                                 "application of " + name.Name,
                                 tc);
 
@@ -1864,7 +1864,7 @@ namespace Microsoft.Boogie {
       //Contract.Requires(args != null);
       //Contract.Requires(stream != null);
       stream.SetToken(ref this.tok);
-      Contract.Assert(args.Length == 1);
+      Contract.Assert(args.Count == 1);
       // determine if parens are needed
       int opBindingStrength = 0x80;
       bool parensNeeded = opBindingStrength < contextBindingStrength ||
@@ -1902,7 +1902,7 @@ namespace Microsoft.Boogie {
 
       Contract.Ensures(Contract.ValueAtReturn(out tpInstantiation) != null);
 
-      Contract.Assume(args.Length == 1);
+      Contract.Assume(args.Count == 1);
       tpInstantiation = SimpleTypeParamInstantiation.EMPTY;
 
       if (!this.Type.Unify(cce.NonNull(cce.NonNull(args[0]).Type)))
@@ -2010,7 +2010,7 @@ namespace Microsoft.Boogie {
       Contract.Ensures(args != null);
       Contract.Ensures(Contract.ValueAtReturn(out tpInstantiation) != null);
 
-      Contract.Assert(args.Length == 1);
+      Contract.Assert(args.Count == 1);
 
       tpInstantiation = SimpleTypeParamInstantiation.EMPTY;
 
@@ -2057,7 +2057,7 @@ namespace Microsoft.Boogie {
       Contract.Requires(args != null);
       Fun = fun;
       Args = args;
-      Contract.Assert(Contract.ForAll(0, args.Length, index => args[index] != null));
+      Contract.Assert(Contract.ForAll(0, args.Count, index => args[index] != null));
     }
     [Pure]
     [Reads(ReadsAttribute.Reads.Nothing)]
@@ -2113,9 +2113,9 @@ namespace Microsoft.Boogie {
         Contract.Assert(e != null);
         e.Typecheck(tc);
       }
-      if (Fun.ArgumentCount != Args.Length) {
+      if (Fun.ArgumentCount != Args.Count) {
         tc.Error(this, "wrong number of arguments to function: {0} ({1} instead of {2})",
-                 Fun.FunctionName, Args.Length, Fun.ArgumentCount);
+                 Fun.FunctionName, Args.Count, Fun.ArgumentCount);
       } else if (tc.ErrorCount == prevErrorCount &&
         // if the type parameters are set, this node has already been
         // typechecked and does not need to be checked again
@@ -2191,7 +2191,7 @@ namespace Microsoft.Boogie {
                      int contextBindingStrength, bool fragileContext) {
       //Contract.Requires(args != null);
       //Contract.Requires(stream != null);
-      Contract.Assume(args.Length == Arity + 1);
+      Contract.Assume(args.Count == Arity + 1);
       Emit(args, stream, contextBindingStrength, fragileContext, false);
     }
 
@@ -2211,7 +2211,7 @@ namespace Microsoft.Boogie {
       stream.Write("[");
 
       string sep = "";
-      int lastIndex = withRhs ? args.Length - 1 : args.Length;
+      int lastIndex = withRhs ? args.Count - 1 : args.Count;
       for (int i = 1; i < lastIndex; ++i) {
         stream.Write(sep);
         sep = ", ";
@@ -2266,12 +2266,12 @@ namespace Microsoft.Boogie {
       Contract.Ensures(Contract.ValueAtReturn(out tpInstantiation) != null);
       
       mapType = mapType.Expanded;
-      if (mapType.IsMap && mapType.MapArity != indexes.Length) {
+      if (mapType.IsMap && mapType.MapArity != indexes.Count) {
         tc.Error(typeCheckingSubject, "wrong number of arguments in {0}: {1} instead of {2}",
-                 opName, indexes.Length, mapType.MapArity);
+                 opName, indexes.Count, mapType.MapArity);
         tpInstantiation = SimpleTypeParamInstantiation.EMPTY;
         return null;
-      } else if (!mapType.Unify(new MapTypeProxy(map.tok, "select", indexes.Length))) {
+      } else if (!mapType.Unify(new MapTypeProxy(map.tok, "select", indexes.Count))) {
         tc.Error(map.tok, "{0} applied to a non-map: {1}", opName, map);
         tpInstantiation = SimpleTypeParamInstantiation.EMPTY;
         return null;
@@ -2293,10 +2293,10 @@ namespace Microsoft.Boogie {
       //Contract.Requires(tc != null);
       //Contract.Requires(args != null);
       Contract.Ensures(Contract.ValueAtReturn(out tpInstantiation) != null);
-      Contract.Assume(args.Length == Arity + 1);
+      Contract.Assume(args.Count == Arity + 1);
 
       ExprSeq actualArgs = new ExprSeq();
-      for (int i = 1; i < args.Length; ++i)
+      for (int i = 1; i < args.Count; ++i)
         actualArgs.Add(args[i]);
 
       return Typecheck(cce.NonNull(cce.NonNull(args[0]).Type), cce.NonNull(args[0]),
@@ -2317,7 +2317,7 @@ namespace Microsoft.Boogie {
       }
       MapType mapType = a0Type.AsMap;
       TypeSeq actualArgTypes = new TypeSeq();
-      for (int i = 1; i < args.Length; ++i) {
+      for (int i = 1; i < args.Count; ++i) {
         actualArgTypes.Add(cce.NonNull(args[i]).ShallowType);
       }
       return Type.InferValueType(mapType.TypeParameters, mapType.Arguments, mapType.Result, actualArgTypes);
@@ -2372,7 +2372,7 @@ namespace Microsoft.Boogie {
                      int contextBindingStrength, bool fragileContext) {
       //Contract.Requires(args != null);
       //Contract.Requires(stream != null);
-      Contract.Assert(args.Length == Arity + 2);
+      Contract.Assert(args.Count == Arity + 2);
       MapSelect.Emit(args, stream, contextBindingStrength, fragileContext, true);
     }
 
@@ -2401,7 +2401,7 @@ namespace Microsoft.Boogie {
 
       // part of the type checking works exactly as for MapSelect
       ExprSeq selectArgs = new ExprSeq();
-      for (int i = 1; i < args.Length - 1; ++i)
+      for (int i = 1; i < args.Count - 1; ++i)
         selectArgs.Add(args[i]);
       Type resultType =
         MapSelect.Typecheck(cce.NonNull(cce.NonNull(args[0]).Type), cce.NonNull(args[0]),
@@ -2430,7 +2430,7 @@ namespace Microsoft.Boogie {
       //Contract.Requires(tc != null);
       Contract.Ensures(Contract.ValueAtReturn(out tpInstantiation) != null);
       Contract.Ensures(Contract.ValueAtReturn(out args) != null);
-      Contract.Assert(args.Length == Arity + 2);
+      Contract.Assert(args.Count == Arity + 2);
       return Typecheck(args, out tpInstantiation, tc, this.tok, "map store");
     }
 
@@ -2489,7 +2489,7 @@ namespace Microsoft.Boogie {
       //Contract.Requires(stream != null);
       //Contract.Requires(args != null);
       stream.SetToken(ref this.tok);
-      Contract.Assert(args.Length == 3);
+      Contract.Assert(args.Count == 3);
       stream.Write("(if ");
       cce.NonNull(args[0]).Emit(stream, 0x00, false);
       stream.Write(" then ");
@@ -2516,7 +2516,7 @@ namespace Microsoft.Boogie {
       //Contract.Requires(args != null);
       Contract.Ensures(args != null);
       Contract.Ensures(Contract.ValueAtReturn(out tpInstantiation) != null);
-      Contract.Assert(args.Length == 3);
+      Contract.Assert(args.Count == 3);
       // the default; the only binary operator with a type parameter is equality, but right
       // we don't store this parameter because it does not appear necessary
       tpInstantiation = SimpleTypeParamInstantiation.EMPTY;

@@ -520,7 +520,7 @@ namespace PureCollections {
     public bool MoveNext() {
       index++;
       //while (index < seq.elems.Length); // Sequences allow nils ... && seq.elems[index] == null);
-      return index < seq.Length;
+      return index < seq.Count;
     }
     public object Current {
       get {
@@ -594,7 +594,7 @@ namespace PureCollections {
     }
 
     //In place Update (and Remove) and Length - - - - - - - - - - - - - - - 
-    public int Length {
+    public int Count {
       get {
         return this.card;
       }
@@ -632,40 +632,6 @@ namespace PureCollections {
       foreach (object o in seq) {
         Add(o);
       }
-    }
-
-    public void Remove() {
-      if (card == 0)
-        return;
-      card--;
-    }
-
-    // remove the first occurrence of o from this sequence
-    public void Remove(Object x) {
-      if (x == null)
-        throw new MissingCase();
-      Contract.Assert(this.elems != null);
-      for (int i = 0; i < card; i++) {
-        if (x.Equals(elems[i])) {
-          ++i;
-          while (i < card) {
-            elems[i - 1] = elems[i];
-            ++i;
-          }
-          card--;
-          elems[card] = null;
-          return;
-        }
-      }
-    }
-
-    public void Truncate(int newLen) {
-      Contract.Requires(0 <= newLen && newLen <= Length);
-      Contract.Assert(elems != null);
-      for (int i = newLen; i < card; i++) {
-        elems[i] = null;
-      }
-      card = newLen;
     }
 
     //ToString - - - - - - - - - - - - - - - - - - - - - - - - - - - -

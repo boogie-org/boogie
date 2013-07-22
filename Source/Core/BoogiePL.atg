@@ -237,7 +237,7 @@ BoundVars<IToken/*!*/ x, out VariableSeq/*!*/ ds>
 = (.
     Contract.Requires(x != null);
     Contract.Ensures(Contract.ValueAtReturn(out ds) != null);
-    TypedIdentSeq/*!*/ tyds = new TypedIdentSeq();
+    List<TypedIdent>/*!*/ tyds = new List<TypedIdent>();
     ds = new VariableSeq();
     var dsx = ds;
   .)
@@ -246,10 +246,10 @@ BoundVars<IToken/*!*/ x, out VariableSeq/*!*/ ds>
 
 /*------------------------------------------------------------------------*/
 /* IdsType is used with const declarations */
-IdsType<out TypedIdentSeq/*!*/ tyds>
+IdsType<out List<TypedIdent>/*!*/ tyds>
 = (. Contract.Ensures(Contract.ValueAtReturn(out tyds) != null); TokenSeq/*!*/ ids;  Bpl.Type/*!*/ ty; .)
   Idents<out ids> ":" Type<out ty>
-  (. tyds = new TypedIdentSeq();
+  (. tyds = new List<TypedIdent>();
      foreach(Token/*!*/ id in ids){
        Contract.Assert(id != null);
        tyds.Add(new TypedIdent(id, id.val, ty, null));
@@ -379,7 +379,7 @@ Types<TypeSeq/*!*/ ts>
 
 /*------------------------------------------------------------------------*/
 Consts<out VariableSeq/*!*/ ds>
-= (. Contract.Ensures(Contract.ValueAtReturn(out ds) != null); IToken/*!*/ y; TypedIdentSeq/*!*/ xs;
+= (. Contract.Ensures(Contract.ValueAtReturn(out ds) != null); IToken/*!*/ y; List<TypedIdent>/*!*/ xs;
      ds = new VariableSeq();
      bool u = false; QKeyValue kv = null;
      bool ChildrenComplete = false;

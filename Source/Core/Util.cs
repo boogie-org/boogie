@@ -371,21 +371,21 @@ namespace Microsoft.Boogie {
         IAppliable fun = ne.Fun;
         ExprSeq eSeq = ne.Args;
         if (fun != null) {
-          if ((fun.FunctionName == "$Length" || fun.FunctionName == "$StringLength") && eSeq.Length == 1) {
+          if ((fun.FunctionName == "$Length" || fun.FunctionName == "$StringLength") && eSeq.Count == 1) {
             Expr e0 = eSeq[0];
             if (e0 != null) {
               string s0 = PrettyPrintBplExpr(e0);
               return s0 + ".Length";
             }
             //unexpected, just fall outside to the default
-          } else if (fun.FunctionName == "$typeof" && eSeq.Length == 1) {
+          } else if (fun.FunctionName == "$typeof" && eSeq.Count == 1) {
             Expr e0 = eSeq[0];
             if (e0 != null) {
               string s0 = PrettyPrintBplExpr(e0);
               return "(the dynamic type of: " + s0 + ")";
             }
             //unexpected, just fall outside to the default
-          } else if (fun.FunctionName == "IntArrayGet" && eSeq.Length == 2) {
+          } else if (fun.FunctionName == "IntArrayGet" && eSeq.Count == 2) {
             Expr e0 = eSeq[0];
             Expr e1 = eSeq[1];
             if (e0 != null && e1 != null) {
@@ -394,7 +394,7 @@ namespace Microsoft.Boogie {
               return s0 + "[" + s1 + "]";
             }
             //unexpected, just fall outside to the default
-          } else if (fun.FunctionName == "$Is" && eSeq.Length == 2) {
+          } else if (fun.FunctionName == "$Is" && eSeq.Count == 2) {
             Expr e0 = eSeq[0];
             Expr e1 = eSeq[1];
             if (e0 != null && e1 != null) {
@@ -403,7 +403,7 @@ namespace Microsoft.Boogie {
               return "(" + s0 + " == null || (" + s0 + " is " + s1 + "))";
             }
             //unexpected, just fall outside to the default
-          } else if (fun.FunctionName == "$IsNotNull" && eSeq.Length == 2) {
+          } else if (fun.FunctionName == "$IsNotNull" && eSeq.Count == 2) {
             Expr e0 = eSeq[0];
             Expr e1 = eSeq[1];
             if (e0 != null && e1 != null) {
@@ -412,12 +412,12 @@ namespace Microsoft.Boogie {
               return "(" + s0 + " is " + s1 + ")";
             }
             //unexpected, just fall outside to the default
-          } else if (fun is MapSelect && eSeq.Length <= 3) {
+          } else if (fun is MapSelect && eSeq.Count <= 3) {
             // only maps with up to two arguments are supported right now (here)
             if (cce.NonNull(eSeq[0]).ToString() == "$Heap") {
               //print Index0.Index1, unless Index1 is "$elements", then just print Index0
               string s0 = PrettyPrintBplExpr(cce.NonNull(eSeq[1]));
-              if (eSeq.Length > 2) {
+              if (eSeq.Count > 2) {
                 string s1 = PrettyPrintBplExpr(cce.NonNull(eSeq[2]));
                 if (s1 == "$elements") {
                   return s0;
@@ -431,7 +431,7 @@ namespace Microsoft.Boogie {
               }
             }
             //unexpected, just fall outside to the default
-          } else if (fun is Microsoft.Boogie.BinaryOperator && eSeq.Length == 2) {
+          } else if (fun is Microsoft.Boogie.BinaryOperator && eSeq.Count == 2) {
             Microsoft.Boogie.BinaryOperator f = (Microsoft.Boogie.BinaryOperator)fun;
             Expr e0 = eSeq[0];
             Expr e1 = eSeq[1];
@@ -503,7 +503,7 @@ namespace Microsoft.Boogie {
             //unexpected, just fall outside to the default
           } else {
             string s = fun.FunctionName + "(";
-            for (int i = 0; i < eSeq.Length; i++) {
+            for (int i = 0; i < eSeq.Count; i++) {
               Expr ex = eSeq[i];
               Contract.Assume(ex != null);
               if (i > 0) {

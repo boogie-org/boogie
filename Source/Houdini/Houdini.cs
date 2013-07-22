@@ -251,7 +251,7 @@ namespace Microsoft.Boogie.Houdini {
       Contract.Requires(cmdSeq != null);
       Contract.Ensures(Contract.Result<CmdSeq>() != null);
       CmdSeq newCmdSeq = new CmdSeq();
-      for (int i = 0, n = cmdSeq.Length; i < n; i++) {
+      for (int i = 0, n = cmdSeq.Count; i < n; i++) {
         Cmd cmd = cmdSeq[i];
         CallCmd callCmd = cmd as CallCmd;
         if (callCmd != null) {

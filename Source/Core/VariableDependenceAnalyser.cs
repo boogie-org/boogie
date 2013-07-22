@@ -360,7 +360,7 @@ namespace Microsoft.Boogie {
 
       HashSet<VariableDescriptor> result = new HashSet<VariableDescriptor>();
       var gotoCmd = b.TransferCmd as GotoCmd;
-      if (gotoCmd != null && gotoCmd.labelTargets.Length >= 2) {
+      if (gotoCmd != null && gotoCmd.labelTargets.Count >= 2) {
         foreach (Block succ in gotoCmd.labelTargets) {
           foreach (Cmd c in succ.Cmds) {
             AssumeCmd a = c as AssumeCmd;

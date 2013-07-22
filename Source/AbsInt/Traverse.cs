@@ -88,7 +88,7 @@ namespace Microsoft.Boogie {
 
         //PM: The folowing assumption is needed because we cannot prove that a simple field update
         //PM: leaves the value of a property unchanged.
-        Contract.Assume(g.labelNames == null || g.labelNames.Length == g.labelTargets.Length);
+        Contract.Assume(g.labelNames == null || g.labelNames.Count == g.labelTargets.Count);
         cce.EndExpose();
       } else {
         Contract.Assert(b.TransferCmd == null || b.TransferCmd is ReturnCmd);        // It must be a returnCmd;

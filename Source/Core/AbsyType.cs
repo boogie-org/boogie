@@ -447,9 +447,9 @@ namespace Microsoft.Boogie {
       Contract.Requires(actualArgs != null);
       Contract.Requires(opName != null);
       Contract.Requires(tc != null);
-      Contract.Requires(formalArgs.Count == actualArgs.Length);
+      Contract.Requires(formalArgs.Count == actualArgs.Count);
       Contract.Requires((formalOuts == null) == (actualOuts == null));
-      Contract.Requires(formalOuts == null || formalOuts.Count == cce.NonNull(actualOuts).Length);
+      Contract.Requires(formalOuts == null || formalOuts.Count == cce.NonNull(actualOuts).Count);
       Contract.Requires(tc == null || opName != null);//Redundant
       Contract.Ensures(cce.NonNullDictionaryAndValues(Contract.Result<IDictionary<TypeVariable, Type>>()));
 
@@ -524,15 +524,15 @@ namespace Microsoft.Boogie {
       Contract.Requires(opName != null);Contract.Ensures(cce.NonNullElements(Contract.ValueAtReturn(out actualTypeParams)));
       actualTypeParams = new List<Type/*!*/>();
 
-      if (formalIns.Count != actualIns.Length) {
+      if (formalIns.Count != actualIns.Count) {
         tc.Error(typeCheckingSubject, "wrong number of arguments in {0}: {1}",
-                 opName, actualIns.Length);
+                 opName, actualIns.Count);
         // if there are no type parameters, we can still return the result
         // type and hope that the type checking proceeds
         return typeParams.Count == 0 ? formalOuts : null;
-      } else if (actualOuts != null && formalOuts.Count != actualOuts.Length) {
+      } else if (actualOuts != null && formalOuts.Count != actualOuts.Count) {
         tc.Error(typeCheckingSubject, "wrong number of result variables in {0}: {1}",
-                 opName, actualOuts.Length);
+                 opName, actualOuts.Count);
         // if there are no type parameters, we can still return the result
         // type and hope that the type checking proceeds
         actualTypeParams = new List<Type>();

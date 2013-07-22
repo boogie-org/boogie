@@ -268,7 +268,7 @@ namespace Microsoft.Boogie {
             newSuccs.Add(s);
           }
 
-          if (newSuccs.Length == 0) {
+          if (newSuccs.Count == 0) {
             tcmd = new ReturnCmd(orig.TransferCmd.tok);
           } else {
             tcmd = new GotoCmd(orig.TransferCmd.tok, newSuccs);

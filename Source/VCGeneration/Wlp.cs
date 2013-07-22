@@ -59,7 +59,7 @@ namespace VC {
       
       VCExpr res = N;
 
-      for (int i = b.Cmds.Length; --i >= 0; )
+      for (int i = b.Cmds.Count; --i >= 0; )
       {
         res = Cmd(b, cce.NonNull( b.Cmds[i]), res, ctxt);
       }
@@ -200,14 +200,14 @@ namespace VC {
       {
         Choice ch = (Choice) r;
         VCExpr res;
-        if (ch.rs == null || ch.rs.Length==0) 
+        if (ch.rs == null || ch.rs.Count==0) 
         {
           res = N;
         } 
         else 
         {
           VCExpr currentWLP = RegExpr(cce.NonNull(ch.rs[0]), N, ctxt);
-          for (int i = 1, n = ch.rs.Length; i < n; i++)
+          for (int i = 1, n = ch.rs.Count; i < n; i++)
           {
             currentWLP = ctxt.Ctxt.ExprGen.And(currentWLP, RegExpr(cce.NonNull(ch.rs[i]), N, ctxt));
           }

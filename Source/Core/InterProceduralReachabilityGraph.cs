@@ -71,13 +71,13 @@ namespace Microsoft.Boogie
       #region Add call and return edges
       foreach (var n in nodes)
       {
-        if (n.Cmds.Length == 1 && n.Cmds[0] is CallCmd)
+        if (n.Cmds.Count == 1 && n.Cmds[0] is CallCmd)
         {
           string proc = ((CallCmd)n.Cmds[0]).callee;
           GotoCmd gotoCmd = n.TransferCmd as GotoCmd;
           Debug.Assert(gotoCmd != null);
 
-          for (int i = 0; i < gotoCmd.labelTargets.Length; i++)
+          for (int i = 0; i < gotoCmd.labelTargets.Count; i++)
           {
             (newProcedureExitNodes[proc].TransferCmd as GotoCmd).labelTargets.Add(gotoCmd.labelTargets[i]);
             (newProcedureExitNodes[proc].TransferCmd as GotoCmd).labelNames.Add(gotoCmd.labelNames[i]);
@@ -171,7 +171,7 @@ namespace Microsoft.Boogie
           }
           Debug.Assert(prev != null);
           if (b.TransferCmd is ReturnCmd || (b.TransferCmd is GotoCmd &&
-              ((GotoCmd)b.TransferCmd).labelTargets.Length == 0))
+              ((GotoCmd)b.TransferCmd).labelTargets.Count == 0))
           {
             prev.TransferCmd = new GotoCmd(Token.NoToken, new StringSeq { exitLabel }, new BlockSeq { newExit });
           }

@@ -415,9 +415,9 @@ namespace VC {
         GotoCmd go = cur.TransferCmd as GotoCmd;
         ReturnCmd ret = cur.TransferCmd as ReturnCmd;
 
-        Contract.Assume(!(go != null && go.labelTargets == null && go.labelNames != null && go.labelNames.Length > 0));
+        Contract.Assume(!(go != null && go.labelTargets == null && go.labelNames != null && go.labelNames.Count > 0));
 
-        if (ret != null || (go != null && cce.NonNull(go.labelTargets).Length == 0)) {
+        if (ret != null || (go != null && cce.NonNull(go.labelTargets).Count == 0)) {
           // we end in return, so there will be no more places to check
           CheckUnreachable(cur, seq);
         } else if (go != null) {
@@ -426,7 +426,7 @@ namespace VC {
           // we're in the right place to check
           foreach (Block target in cce.NonNull(go.labelTargets)) {
             Contract.Assert(target != null);
-            if (target.Predecessors.Length == 1) {
+            if (target.Predecessors.Count == 1) {
               needToCheck = false;
             }
           }
@@ -668,7 +668,7 @@ namespace VC {
           Block next = s.virtual_successors[0];
           BlockStats se = GetBlockStats(next);
           CountAssertions(next);
-          if (next.Predecessors.Length > 1 || se.virtual_successors.Count != 1)
+          if (next.Predecessors.Count > 1 || se.virtual_successors.Count != 1)
             return;
           s.virtual_successors[0] = se.virtual_successors[0];
           s.assertion_cost += se.assertion_cost;
@@ -745,7 +745,7 @@ namespace VC {
           if (gt == null)
             continue;
           BlockSeq targ = cce.NonNull(gt.labelTargets);
-          if (targ.Length < 2)
+          if (targ.Count < 2)
             continue;
           // caution, we only consider two first exits
 
@@ -758,7 +758,7 @@ namespace VC {
           right0 = DoComputeScore(false);
 
           assumized_branches.Clear();
-          for (int idx = 1; idx < targ.Length; idx++) {
+          for (int idx = 1; idx < targ.Count; idx++) {
             assumized_branches.Add(cce.NonNull(targ[idx]));
           }
           left1 = DoComputeScore(true);
@@ -1314,7 +1314,7 @@ namespace VC {
           cache.Add(t);
         }
 
-        for (int i = 0; i < orig.Cmds.Length; ++i) {
+        for (int i = 0; i < orig.Cmds.Count; ++i) {
           Cmd cmd = orig.Cmds[i];
           if (cmd is AssertCmd) {
             int found = 0;
@@ -1913,7 +1913,7 @@ namespace VC {
         #region Find the (possibly empty) prefix of assert commands in the header, replace each assert with an assume of the same condition
         CmdSeq prefixOfPredicateCmdsInit = new CmdSeq();
         CmdSeq prefixOfPredicateCmdsMaintained = new CmdSeq();
-        for (int i = 0, n = header.Cmds.Length; i < n; i++)
+        for (int i = 0, n = header.Cmds.Count; i < n; i++)
         {
           PredicateCmd a = header.Cmds[i] as PredicateCmd;
           if (a != null)
@@ -1952,14 +1952,14 @@ namespace VC {
         #endregion
 
         #region Copy the prefix of predicate commands into each predecessor. Do this *before* cutting the backedge!!
-        for ( int predIndex = 0, n = header.Predecessors.Length; predIndex < n; predIndex++ )
+        for ( int predIndex = 0, n = header.Predecessors.Count; predIndex < n; predIndex++ )
         {
           Block pred = cce.NonNull(header.Predecessors[predIndex]);
           
           // Create a block between header and pred for the predicate commands if pred has more than one successor 
           GotoCmd gotocmd = cce.NonNull((GotoCmd)pred.TransferCmd);
           Contract.Assert( gotocmd.labelNames != null);  // if "pred" is really a predecessor, it may be a GotoCmd with at least one label
-          if (gotocmd.labelNames.Length > 1)
+          if (gotocmd.labelNames.Count > 1)
           {
             Block newBlock = CreateBlockBetween(predIndex, header);
             impl.Blocks.Add(newBlock);
@@ -1988,13 +1988,13 @@ namespace VC {
         {Contract.Assert(backEdgeNode != null);
           Debug.Assert(backEdgeNode.TransferCmd is GotoCmd,"An node was identified as the source for a backedge, but it does not have a goto command.");
           GotoCmd gtc = backEdgeNode.TransferCmd as GotoCmd;
-          if (gtc != null && gtc.labelTargets != null && gtc.labelTargets.Length > 1 )
+          if (gtc != null && gtc.labelTargets != null && gtc.labelTargets.Count > 1 )
           {
             // then remove the backedge by removing the target block from the list of gotos
             BlockSeq remainingTargets = new BlockSeq();
             StringSeq remainingLabels = new StringSeq();
             Contract.Assume( gtc.labelNames != null);
-            for (int i = 0, n = gtc.labelTargets.Length; i < n; i++)
+            for (int i = 0, n = gtc.labelTargets.Count; i < n; i++)
             {
                 if (gtc.labelTargets[i] != header)
                 {
@@ -2015,7 +2015,7 @@ namespace VC {
             AssumeCmd ac = new AssumeCmd(Token.NoToken,Expr.False);
             backEdgeNode.Cmds.Add(ac);
             backEdgeNode.TransferCmd = new ReturnCmd(Token.NoToken);
-            if (gtc != null && gtc.labelTargets != null && gtc.labelTargets.Length == 1)
+            if (gtc != null && gtc.labelTargets != null && gtc.labelTargets.Count == 1)
                 RecordCutEdge(edgesCut, backEdgeNode, gtc.labelTargets[0]);
           }
           #region Remove the backedge node from the list of predecessor nodes in the header
@@ -2331,13 +2331,13 @@ namespace VC {
         ret.Trace = new BlockSeq();
         ret.calleeCounterexamples = new Dictionary<TraceLocation, CalleeCounterexampleInfo>();
 
-        for (int numBlock = 0; numBlock < cex.Trace.Length; numBlock ++ )
+        for (int numBlock = 0; numBlock < cex.Trace.Count; numBlock ++ )
         {
             Block block = cex.Trace[numBlock];
             var origBlock = elGetBlock(currProc, block, extractLoopMappingInfo);
             if (origBlock != null) ret.Trace.Add(origBlock);
             var callCnt = 1;
-            for (int numInstr = 0; numInstr < block.Cmds.Length; numInstr ++) {
+            for (int numInstr = 0; numInstr < block.Cmds.Count; numInstr ++) {
                 Cmd cmd = block.Cmds[numInstr];
                 var loc = new TraceLocation(numBlock, numInstr);
                 if (!cex.calleeCounterexamples.ContainsKey(loc))
@@ -2356,7 +2356,7 @@ namespace VC {
                 {
                     // Absorb the trace into the current trace
 
-                    int currLen = ret.Trace.Length;
+                    int currLen = ret.Trace.Count;
                     ret.Trace.AddRange(origTrace.counterexample.Trace);
 
                     foreach (var kvp in origTrace.counterexample.calleeCounterexamples)
@@ -2368,7 +2368,7 @@ namespace VC {
                 }
                 else
                 {
-                    var origLoc = new TraceLocation(ret.Trace.Length - 1, getCallCmdPosition(origBlock, callCnt, inlinedProcs, callee));
+                    var origLoc = new TraceLocation(ret.Trace.Count - 1, getCallCmdPosition(origBlock, callCnt, inlinedProcs, callee));
                     ret.calleeCounterexamples.Add(origLoc, origTrace);
                     callCnt++;
                 }
@@ -2383,7 +2383,7 @@ namespace VC {
     private int getCallCmdPosition(Block block, int i, HashSet<string> inlinedProcs, string callee)
     {
         Debug.Assert(i >= 1);
-        for (int pos = 0; pos < block.Cmds.Length; pos++)
+        for (int pos = 0; pos < block.Cmds.Count; pos++)
         {
             Cmd cmd = block.Cmds[pos];
             string procCalled = getCallee(cmd, inlinedProcs);
@@ -2463,7 +2463,7 @@ namespace VC {
       CmdSeq cmds = b.Cmds;
       Contract.Assert(cmds != null);
       TransferCmd transferCmd = cce.NonNull(b.TransferCmd);
-      for (int i = 0; i < cmds.Length; i++)
+      for (int i = 0; i < cmds.Count; i++)
       {
         Cmd cmd = cce.NonNull( cmds[i]);
             
@@ -2588,7 +2588,7 @@ namespace VC {
         }
         else {
           Contract.Assert(gotocmd.labelTargets != null);
-          List<VCExpr> SuccCorrectVars = new List<VCExpr>(gotocmd.labelTargets.Length);
+          List<VCExpr> SuccCorrectVars = new List<VCExpr>(gotocmd.labelTargets.Count);
           foreach (Block successor in gotocmd.labelTargets) {
             Contract.Assert(successor != null);
             VCExpr s = blockVariables[successor];
@@ -2652,7 +2652,7 @@ namespace VC {
           }
         } else {
           Contract.Assert( gotocmd.labelTargets != null);
-          List<VCExpr> SuccCorrectVars = new List<VCExpr>(gotocmd.labelTargets.Length);
+          List<VCExpr> SuccCorrectVars = new List<VCExpr>(gotocmd.labelTargets.Count);
           foreach (Block successor in gotocmd.labelTargets) {
             Contract.Assert(successor != null);
             int ac;
@@ -3065,9 +3065,9 @@ namespace VC {
       GotoCmd gtc = b.TransferCmd as GotoCmd;
 
       // b has no successors
-      if (gtc == null || gtc.labelTargets == null || gtc.labelTargets.Length == 0) 
+      if (gtc == null || gtc.labelTargets == null || gtc.labelTargets.Count == 0) 
       {
-        if (b.Cmds.Length != 0){ // only empty blocks are removed...
+        if (b.Cmds.Count != 0){ // only empty blocks are removed...
           bs.Add(b);
         } else if (b.tok.IsValid) {
           renameInfoForStartBlock = b;
@@ -3086,11 +3086,11 @@ namespace VC {
         // by pushing the location onto b's successor.  This can be done if (0) b has
         // exactly one successor, (1) that successor has no location of its own, and
         // (2) that successor has no other predecessors.
-        if (b.Cmds.Length == 0 && !startNode) {
+        if (b.Cmds.Count == 0 && !startNode) {
           // b is about to become extinct; try to save its name and location, if possible
-          if (b.tok.IsValid && gtc.labelTargets.Length == 1) {
+          if (b.tok.IsValid && gtc.labelTargets.Count == 1) {
             Block succ = cce.NonNull(gtc.labelTargets[0]);
-            if (!succ.tok.IsValid && succ.Predecessors.Length == 1) {
+            if (!succ.tok.IsValid && succ.Predecessors.Count == 1) {
               succ.tok = b.tok;
               succ.Label = b.Label;
             }
@@ -3121,7 +3121,7 @@ namespace VC {
         BlockSeq setOfSuccessors = new BlockSeq();
         foreach (Block d in mergedSuccessors)
           setOfSuccessors.Add(d);
-        if (b.Cmds.Length == 0 && !startNode) {
+        if (b.Cmds.Count == 0 && !startNode) {
           // b is about to become extinct
           if (b.tok.IsValid) {
             renameInfoForStartBlock = b;

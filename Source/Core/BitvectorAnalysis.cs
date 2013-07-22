@@ -351,7 +351,7 @@ namespace Microsoft.Boogie {
     public override Expr VisitNAryExpr(NAryExpr node) {
       BinaryOperator op = node.Fun as BinaryOperator;
       if (op != null) {
-        Debug.Assert(node.Args.Length == 2);
+        Debug.Assert(node.Args.Count == 2);
         MakeDisjointSet(node.Args[0]).Union(MakeDisjointSet(node.Args[1]));
       }
 
@@ -365,7 +365,7 @@ namespace Microsoft.Boogie {
             x = MakeDisjointSet(node.Args[0]);
           else
             x = MakeDisjointSet(node);
-          for (int i = 0; i < node.Args.Length; i++) {
+          for (int i = 0; i < node.Args.Count; i++) {
             DisjointSet actual = MakeDisjointSet(node.Args[i]);
             actual.Union(x);
           }
@@ -392,8 +392,8 @@ namespace Microsoft.Boogie {
         int i = 0;
         MapDisjointSet mapDisjointSet = (MapDisjointSet)MakeDisjointSet(node.Args[i]);
         i++;
-        DisjointSet[] args = new DisjointSet[node.Args.Length - 1];
-        for (; i < node.Args.Length; i++) {
+        DisjointSet[] args = new DisjointSet[node.Args.Count - 1];
+        for (; i < node.Args.Count; i++) {
           args[i - 1] = MakeDisjointSet(node.Args[i]);
         }
         mapDisjointSet.Union(new MapDisjointSet(args, MakeDisjointSet(node)));
@@ -404,8 +404,8 @@ namespace Microsoft.Boogie {
         int i = 0;
         MapDisjointSet mapDisjointSet = (MapDisjointSet)MakeDisjointSet(node.Args[i]);
         i++;
-        DisjointSet[] args = new DisjointSet[node.Args.Length - 2];
-        for (; i < node.Args.Length - 1; i++) {
+        DisjointSet[] args = new DisjointSet[node.Args.Count - 2];
+        for (; i < node.Args.Count - 1; i++) {
           args[i - 1] = MakeDisjointSet(node.Args[i]);
         }
         mapDisjointSet.Union(new MapDisjointSet(args, MakeDisjointSet(node.Args[i])));

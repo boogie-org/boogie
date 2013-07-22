@@ -3237,7 +3237,7 @@ namespace Microsoft.Boogie.Houdini {
             var nexpr = expr as NAryExpr;
             if (nexpr != null && (nexpr.Fun is BinaryOperator)
                 && (nexpr.Fun as BinaryOperator).Op == BinaryOperator.Opcode.Imp
-                && (nexpr.Args.Length == 2))
+                && (nexpr.Args.Count == 2))
             {
                 postExpr = nexpr.Args[1];
                 preExpr = nexpr.Args[0];
@@ -3335,7 +3335,7 @@ namespace Microsoft.Boogie.Houdini {
                 {
                     return ToElem((nary.Fun as BinaryOperator).Evaluate(ToValue(Eval(nary.Args[0], state)), ToValue(Eval(nary.Args[1], state))));
                 }
-                if (nary.Fun is MapSelect && nary.Args.Length == 2)
+                if (nary.Fun is MapSelect && nary.Args.Count == 2)
                 {
                     var index = Eval(nary.Args[1], state);
                     var map = Eval(nary.Args[0], state) as Model.Array;
@@ -3649,7 +3649,7 @@ namespace Microsoft.Boogie.Houdini {
                 {
                     return gen.Function(Translate(nary.Fun as BinaryOperator), ToVcExpr(nary.Args[0], incarnations, gen), ToVcExpr(nary.Args[1], incarnations, gen));
                 }
-                if (nary.Fun is MapSelect && nary.Args.Length == 2)
+                if (nary.Fun is MapSelect && nary.Args.Count == 2)
                 {
                     return gen.Select(ToVcExpr(nary.Args[0], incarnations, gen), ToVcExpr(nary.Args[1], incarnations, gen));
                 }

@@ -253,7 +253,7 @@ namespace Microsoft.Boogie
             info.type = AnnotationInfo.AnnotationType.LoopInvariant;
             annotationInfo.Add(name, info);
             // get file and line info from havoc, if there is...
-            if (header.Cmds.Length > 0)
+            if (header.Cmds.Count > 0)
             {
                 PredicateCmd bif = header.Cmds[0] as PredicateCmd;
                 if (bif != null)
@@ -1177,7 +1177,7 @@ namespace Microsoft.Boogie
                         }
 
                         CmdSeq cmds = block.Cmds;
-                        int len = cmds.Length;
+                        int len = cmds.Count;
                         for (int i = len - 1; i >= 0; i--)
                         {
                             if (cmds[i] is CallCmd)
@@ -1657,7 +1657,7 @@ namespace Microsoft.Boogie
 
                 CmdSeq cmds = b.Cmds;
                 TransferCmd transferCmd = cce.NonNull(b.TransferCmd);
-                for (int i = 0; i < cmds.Length; i++)
+                for (int i = 0; i < cmds.Count; i++)
                 {
                     Cmd cmd = cce.NonNull(cmds[i]);
 
@@ -1723,7 +1723,7 @@ namespace Microsoft.Boogie
                         {
                             RPFP.Node callee = root.Outgoing.Children[pos];
                             orderedStateIds.Add(new StateId(callee.Outgoing, CALL,info));
-                            calleeCounterexamples[new TraceLocation(trace.Length - 1, i)] =
+                            calleeCounterexamples[new TraceLocation(trace.Count - 1, i)] =
                                 new CalleeCounterexampleInfo(
                                     cce.NonNull(GenerateTrace(rpfp, callee, orderedStateIds,
                                                 implName2StratifiedInliningInfo[calleeName].impl, false)),

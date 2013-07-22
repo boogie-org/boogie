@@ -408,7 +408,7 @@ namespace Microsoft.Boogie
                 foreach (Block b in impl.Blocks)
                 {
                     CmdSeq newCmds = new CmdSeq();
-                    for (int i = 0; i < b.Cmds.Length; i++)
+                    for (int i = 0; i < b.Cmds.Count; i++)
                     {
                         Cmd cmd = b.Cmds[i];
                         newCmds.Add(cmd);

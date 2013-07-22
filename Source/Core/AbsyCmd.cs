@@ -128,7 +128,7 @@ namespace Microsoft.Boogie {
       Contract.Assume(PrefixCommands == null);  // prefix has not been used
 
       BigBlock bb0 = BigBlocks[0];
-      if (prefixCmds.Length == 0) {
+      if (prefixCmds.Count == 0) {
         // This is always a success, since there is nothing to insert.  Now, decide
         // which name to use for the first block.
         if (bb0.Anonymous) {
@@ -369,7 +369,7 @@ namespace Microsoft.Boogie {
               }
             } else if (bcmd.Label == bb.LabelName) {
               // a break statement with a label can break out of both if statements and while statements
-              if (bb.simpleCmds.Length == 0) {
+              if (bb.simpleCmds.Count == 0) {
                 // this is a good target:  the label refers to the if/while statement
                 bcmd.BreakEnclosure = bb;
               } else {
@@ -2700,7 +2700,7 @@ namespace Microsoft.Boogie {
 
     [ContractInvariantMethod]
     void ObjectInvariant() {
-      Contract.Invariant(labelNames == null || labelTargets == null || labelNames.Length == labelTargets.Length);
+      Contract.Invariant(labelNames == null || labelTargets == null || labelNames.Count == labelTargets.Count);
     }
 
     [NotDelayed]
@@ -2715,8 +2715,8 @@ namespace Microsoft.Boogie {
       Contract.Requires(tok != null);
       Contract.Requires(labelSeq != null);
       Contract.Requires(blockSeq != null);
-      Debug.Assert(labelSeq.Length == blockSeq.Length);
-      for (int i = 0; i < labelSeq.Length; i++) {
+      Debug.Assert(labelSeq.Count == blockSeq.Count);
+      for (int i = 0; i < labelSeq.Count; i++) {
         Debug.Assert(Equals(labelSeq[i], cce.NonNull(blockSeq[i]).Label));
       }
 
@@ -2728,7 +2728,7 @@ namespace Microsoft.Boogie {
       Contract.Requires(tok != null);
       Contract.Requires(blockSeq != null);
       StringSeq labelSeq = new StringSeq();
-      for (int i = 0; i < blockSeq.Length; i++)
+      for (int i = 0; i < blockSeq.Count; i++)
         labelSeq.Add(cce.NonNull(blockSeq[i]).Label);
       this.labelNames = labelSeq;
       this.labelTargets = blockSeq;
@@ -2783,7 +2783,7 @@ namespace Microsoft.Boogie {
           labelTargets.Add(b);
         }
       }
-      Debug.Assert(rc.ErrorCount > 0 || labelTargets.Length == labelNames.Length);
+      Debug.Assert(rc.ErrorCount > 0 || labelTargets.Count == labelNames.Count);
     }
 
     public override Absy StdDispatch(StandardVisitor visitor) {

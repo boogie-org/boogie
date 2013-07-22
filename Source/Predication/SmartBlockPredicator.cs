@@ -146,13 +146,13 @@ public class SmartBlockPredicator {
       hasPredicatedRegion = hasPredicatedRegion ||
         gCmd.labelTargets.Cast<Block>().Any(b => predMap.ContainsKey(b));
 
-      if (gCmd.labelTargets.Length == 1) {
+      if (gCmd.labelTargets.Count == 1) {
         if (defMap.ContainsKey(gCmd.labelTargets[0]))
           PredicateCmd(p, cmdSeq,
                        Cmd.SimpleAssign(Token.NoToken,
                                         Expr.Ident(predMap[gCmd.labelTargets[0]]), Expr.True));
       } else {
-        Debug.Assert(gCmd.labelTargets.Length > 1);
+        Debug.Assert(gCmd.labelTargets.Count > 1);
         Debug.Assert(gCmd.labelTargets.Cast<Block>().All(t => uni.IsUniform(impl.Name, t) ||
                                                               partInfo.ContainsKey(t)));
         foreach (Block target in gCmd.labelTargets) {
@@ -353,9 +353,9 @@ public class SmartBlockPredicator {
       }
 
       Block realDest = block;
-      if (block.Cmds.Length == 0) {
+      if (block.Cmds.Count == 0) {
         var gc = block.TransferCmd as GotoCmd;
-        if (gc != null && gc.labelTargets.Length == 1)
+        if (gc != null && gc.labelTargets.Count == 1)
           realDest = gc.labelTargets[0];
       }
       partInfo[block] = new PartInfo(pred, realDest);

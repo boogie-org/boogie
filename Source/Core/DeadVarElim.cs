@@ -310,7 +310,7 @@ namespace Microsoft.Boogie {
         GotoCmd gotoCmd = (GotoCmd)b.TransferCmd;
         if (gotoCmd.labelTargets == null)
           continue;
-        if (gotoCmd.labelTargets.Length == 1) {
+        if (gotoCmd.labelTargets.Count == 1) {
           Block/*!*/ succ = cce.NonNull(gotoCmd.labelTargets[0]);
           if (!multiPredBlocks.Contains(succ)) {
             foreach (Cmd/*!*/ cmd in succ.Cmds) {
@@ -389,7 +389,7 @@ namespace Microsoft.Boogie {
         }
 
         CmdSeq cmds = block.Cmds;
-        int len = cmds.Length;
+        int len = cmds.Count;
         for (int i = len - 1; i >= 0; i--) {
           if (cmds[i] is CallCmd) {
             Procedure/*!*/ proc = cce.NonNull(cce.NonNull((CallCmd/*!*/)cmds[i]).Proc);
@@ -470,7 +470,7 @@ namespace Microsoft.Boogie {
       } else if (cmd is StateCmd) {
         StateCmd/*!*/ stCmd = (StateCmd)cce.NonNull(cmd);
         CmdSeq/*!*/ cmds = cce.NonNull(stCmd.Cmds);
-        int len = cmds.Length;
+        int len = cmds.Count;
         for (int i = len - 1; i >= 0; i--) {
           Propagate(cmds[i], liveSet);
         }
@@ -1242,7 +1242,7 @@ b.liveVarsBefore = procICFG[mainImpl.Name].liveVarsAfter[b];
       // Propagate backwards in the block
       HashSet<Variable/*!*/>/*!*/ prop = new HashSet<Variable/*!*/>();
       prop.UnionWith(lv);
-      for (int i = block.Cmds.Length - 1; i >= 0; i--) {
+      for (int i = block.Cmds.Count - 1; i >= 0; i--) {
         Cmd/*!*/ cmd = block.Cmds[i];
         Contract.Assert(cmd != null);
         if (cmd is CallCmd) {
@@ -1303,7 +1303,7 @@ b.liveVarsBefore = procICFG[mainImpl.Name].liveVarsAfter[b];
       GenKillWeight/*!*/ w = wi.getWeightAfter();
       Contract.Assert(w != null);
 
-      for (int i = wi.block.Cmds.Length - 1; i >= 0; i--) {
+      for (int i = wi.block.Cmds.Count - 1; i >= 0; i--) {
         Cmd/*!*/ c = wi.block.Cmds[i];
         Contract.Assert(c != null);
         if (c is CallCmd && procICFG.ContainsKey(cce.NonNull(cce.NonNull((CallCmd)c).Proc).Name)) {
@@ -1463,7 +1463,7 @@ b.liveVarsBefore = procICFG[mainImpl.Name].liveVarsAfter[b];
         Contract.Assert(stCmd != null);
         CmdSeq/*!*/ cmds = stCmd.Cmds;
         Contract.Assert(cmds != null);
-        int len = cmds.Length;
+        int len = cmds.Count;
         ret = GenKillWeight.one();
         for (int i = len - 1; i >= 0; i--) {
           GenKillWeight/*!*/ w = getWeight(cmds[i], impl, prog);

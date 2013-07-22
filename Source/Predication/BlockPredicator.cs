@@ -76,7 +76,7 @@ public class BlockPredicator {
         // This may be a loop invariant.  Make sure it continues to appear as
         // the first statement in the block.
         var assign = cmdSeq.Last();
-        cmdSeq.Truncate(cmdSeq.Length-1);
+        cmdSeq.RemoveAt(cmdSeq.Count-1);
         Expr newExpr = new EnabledReplacementVisitor(pExpr).VisitExpr(aCmd.Expr);
         aCmd.Expr = QKeyValue.FindBoolAttribute(aCmd.Attributes, "do_not_predicate") ? newExpr : Expr.Imp(pExpr, newExpr);
         cmdSeq.Add(aCmd);

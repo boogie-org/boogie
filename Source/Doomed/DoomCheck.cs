@@ -375,7 +375,7 @@ void ObjectInvariant()
                 }
             } else {
               Contract.Assert( gotocmd.labelTargets != null);
-              List<VCExpr> SuccCorrectVars = new List<VCExpr>(gotocmd.labelTargets.Length);
+              List<VCExpr> SuccCorrectVars = new List<VCExpr>(gotocmd.labelTargets.Count);
               foreach (Block successor in gotocmd.labelTargets) {
                 Contract.Assert(successor != null);
                 int ac;

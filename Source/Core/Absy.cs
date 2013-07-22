@@ -564,7 +564,7 @@ namespace Microsoft.Boogie {
             if (detLoopExtract) {
                 GotoCmd auxGotoCmd = block.TransferCmd as GotoCmd;
                 Contract.Assert(auxGotoCmd != null && auxGotoCmd.labelNames != null && 
-                    auxGotoCmd.labelTargets != null && auxGotoCmd.labelTargets.Length >= 1);
+                    auxGotoCmd.labelTargets != null && auxGotoCmd.labelTargets.Count >= 1);
                 foreach(var bl in auxGotoCmd.labelTargets) {
                     bool found = false;
                     foreach(var n in g.NaturalLoops(header, source)) { //very expensive, can we do a contains?
@@ -621,10 +621,10 @@ namespace Microsoft.Boogie {
           dummyBlocks.Add(block1.Label);
 
           GotoCmd gotoCmd = source.TransferCmd as GotoCmd;
-          Contract.Assert(gotoCmd != null && gotoCmd.labelNames != null && gotoCmd.labelTargets != null && gotoCmd.labelTargets.Length >= 1);
+          Contract.Assert(gotoCmd != null && gotoCmd.labelNames != null && gotoCmd.labelTargets != null && gotoCmd.labelTargets.Count >= 1);
           StringSeq/*!*/ newLabels = new StringSeq();
           BlockSeq/*!*/ newTargets = new BlockSeq();
-          for (int i = 0; i < gotoCmd.labelTargets.Length; i++) {
+          for (int i = 0; i < gotoCmd.labelTargets.Count; i++) {
             if (gotoCmd.labelTargets[i] == header)
               continue;
             newTargets.Add(gotoCmd.labelTargets[i]);
@@ -667,14 +667,14 @@ namespace Microsoft.Boogie {
             Contract.Assume(gotoCmd.labelNames != null && gotoCmd.labelTargets != null);
             StringSeq newLabels = new StringSeq();
             BlockSeq newTargets = new BlockSeq();
-            for (int i = 0; i < gotoCmd.labelTargets.Length; i++) {
+            for (int i = 0; i < gotoCmd.labelTargets.Count; i++) {
               Block target = gotoCmd.labelTargets[i];
               if (blockMap.ContainsKey(target)) {
                 newLabels.Add(gotoCmd.labelNames[i]);
                 newTargets.Add(blockMap[target]);
               }  
             }
-            if (newTargets.Length == 0) {
+            if (newTargets.Count == 0) {
                 if (!detLoopExtract)
                     newBlock.Cmds.Add(new AssumeCmd(Token.NoToken, Expr.False));
                 newBlock.TransferCmd = new ReturnCmd(Token.NoToken);
@@ -2423,7 +2423,7 @@ namespace Microsoft.Boogie {
         e.Emit(stream, level);
       }
 
-      if (this.Modifies.Length > 0) {
+      if (this.Modifies.Count > 0) {
         stream.Write(level, "modifies ");
         this.Modifies.Emit(stream, false);
         stream.WriteLine(";");
@@ -3209,21 +3209,6 @@ namespace Microsoft.Boogie {
   // Generic Sequences
   //---------------------------------------------------------------------
 
-  public sealed class TypedIdentSeq : PureCollections.Sequence {
-    public TypedIdentSeq(params Type[]/*!*/ args)
-      : base(args) {
-      Contract.Requires(args != null);
-    }
-    public new TypedIdent this[int index] {
-      get {
-        return (TypedIdent)base[index];
-      }
-      set {
-        base[index] = value;
-      }
-    }
-  }
-
   public sealed class VariableSeq : List<Variable> {
     public VariableSeq(params Variable[]/*!*/ args)
       : base(args) {
@@ -3375,7 +3360,7 @@ namespace Microsoft.Boogie {
   }
 
 
-  public sealed class CmdSeq : PureCollections.Sequence {
+  public sealed class CmdSeq : List<Cmd> {
     public CmdSeq(params Cmd[]/*!*/ args)
       : base(args) {
       Contract.Requires(args != null);
@@ -3712,7 +3697,7 @@ namespace Microsoft.Boogie {
         GotoCmd/*!*/ g = (GotoCmd)tc;
         Contract.Assert(g != null);
         Contract.Assume(g.labelTargets != null);
-        if (g.labelTargets.Length == 1) {
+        if (g.labelTargets.Count == 1) {
           return new Sequential(new AtomicRE(b), Transform(cce.NonNull(g.labelTargets[0])));
         } else {
           RESeq rs = new RESeq();

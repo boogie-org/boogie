@@ -226,7 +226,7 @@ namespace Microsoft.Boogie {
         string label = block.Label;
         int lblCount = 0;
 
-        for (int i = 0; i < cmds.Length; ++i) {
+        for (int i = 0; i < cmds.Count; ++i) {
           Cmd cmd = cmds[i];
           CallCmd callCmd = cmd as CallCmd;
 
@@ -415,7 +415,7 @@ namespace Microsoft.Boogie {
 
     private CmdSeq RemoveAsserts(CmdSeq cmds) {
       CmdSeq newCmdSeq = new CmdSeq();
-      for (int i = 0; i < cmds.Length; i++) {
+      for (int i = 0; i < cmds.Count; i++) {
         Cmd cmd = cmds[i];
         if (cmd is AssertCmd) continue;
         newCmdSeq.Add(cmd);
@@ -470,7 +470,7 @@ namespace Microsoft.Boogie {
       {
           havocVars.Add(codeCopier.Subst(v));
       }
-      if (havocVars.Length > 0)
+      if (havocVars.Count > 0)
       {
           inCmds.Add(new HavocCmd(Token.NoToken, havocVars));
       }

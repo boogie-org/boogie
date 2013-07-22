@@ -32,7 +32,7 @@ namespace Microsoft.Boogie {
     public virtual ExprSeq VisitExprSeq(ExprSeq list) {
       Contract.Requires(list != null);
       Contract.Ensures(Contract.Result<ExprSeq>() != null);
-      for (int i = 0, n = list.Length; i < n; i++)
+      for (int i = 0, n = list.Count; i < n; i++)
         list[i] = (Expr)this.Visit(cce.NonNull(list[i]));
       return list;
     }
@@ -139,7 +139,7 @@ namespace Microsoft.Boogie {
     public virtual BlockSeq VisitBlockSeq(BlockSeq blockSeq) {
       Contract.Requires(blockSeq != null);
       Contract.Ensures(Contract.Result<BlockSeq>() != null);
-      for (int i = 0, n = blockSeq.Length; i < n; i++)
+      for (int i = 0, n = blockSeq.Count; i < n; i++)
         blockSeq[i] = this.VisitBlock(cce.NonNull(blockSeq[i]));
       return blockSeq;
     }
@@ -171,7 +171,7 @@ namespace Microsoft.Boogie {
     public virtual CmdSeq VisitCmdSeq(CmdSeq cmdSeq) {
       Contract.Requires(cmdSeq != null);
       Contract.Ensures(Contract.Result<CmdSeq>() != null);
-      for (int i = 0, n = cmdSeq.Length; i < n; i++)
+      for (int i = 0, n = cmdSeq.Count; i < n; i++)
         cmdSeq[i] = (Cmd)this.Visit(cce.NonNull(cmdSeq[i])); // call general Visit so subtypes of Cmd get visited by their particular visitor
       return cmdSeq;
     }
@@ -238,7 +238,7 @@ namespace Microsoft.Boogie {
     public override ExprSeq VisitExprSeq(ExprSeq exprSeq) {
       //Contract.Requires(exprSeq != null);
       Contract.Ensures(Contract.Result<ExprSeq>() != null);
-      for (int i = 0, n = exprSeq.Length; i < n; i++)
+      for (int i = 0, n = exprSeq.Count; i < n; i++)
         exprSeq[i] = this.VisitExpr(cce.NonNull(exprSeq[i]));
       return exprSeq;
     }
@@ -321,7 +321,7 @@ namespace Microsoft.Boogie {
     public virtual IdentifierExprSeq VisitIdentifierExprSeq(IdentifierExprSeq identifierExprSeq) {
       Contract.Requires(identifierExprSeq != null);
       Contract.Ensures(Contract.Result<IdentifierExprSeq>() != null);
-      for (int i = 0, n = identifierExprSeq.Length; i < n; i++)
+      for (int i = 0, n = identifierExprSeq.Count; i < n; i++)
         identifierExprSeq[i] = (IdentifierExpr)this.VisitIdentifierExpr(cce.NonNull(identifierExprSeq[i]));
       return identifierExprSeq;
     }
@@ -430,7 +430,7 @@ namespace Microsoft.Boogie {
     public virtual RESeq VisitRESeq(RESeq reSeq) {
       Contract.Requires(reSeq != null);
       Contract.Ensures(Contract.Result<RESeq>() != null);
-      for (int i = 0, n = reSeq.Length; i < n; i++)
+      for (int i = 0, n = reSeq.Count; i < n; i++)
         reSeq[i] = (RE)this.VisitRE(cce.NonNull(reSeq[i]));
       return reSeq;
     }

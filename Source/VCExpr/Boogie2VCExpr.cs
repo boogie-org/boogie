@@ -377,7 +377,7 @@ namespace Microsoft.Boogie.VCExprAST {
     private VCExpr TranslateNAryExpr(NAryExpr node) {
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
-      int n = node.Args.Length;
+      int n = node.Args.Count;
       List<VCExpr/*!*/>/*!*/ vcs = new List<VCExpr/*!*/>(n);
       for (int i = 0; i < n; i++) {
         vcs.Add(Translate(cce.NonNull(node.Args)[i]));

@@ -123,9 +123,9 @@ namespace Microsoft.Boogie {
     // Looks up the Cmd at a given index into the trace
     public Cmd getTraceCmd(TraceLocation loc)
     {
-        Debug.Assert(loc.numBlock < Trace.Length);
+        Debug.Assert(loc.numBlock < Trace.Count);
         Block b = Trace[loc.numBlock];
-        Debug.Assert(loc.numInstr < b.Cmds.Length);
+        Debug.Assert(loc.numInstr < b.Cmds.Count);
         return b.Cmds[loc.numInstr];
     }
 
@@ -168,7 +168,7 @@ namespace Microsoft.Boogie {
 
             tw.WriteLine("{4}{0}({1},{2}): {3}", b.tok.filename, b.tok.line, b.tok.col, b.Label, ind);
 
-            for (int numInstr = 0; numInstr < b.Cmds.Length; numInstr++)
+            for (int numInstr = 0; numInstr < b.Cmds.Count; numInstr++)
             {
                 var loc = new TraceLocation(numBlock, numInstr);
                 if (calleeCounterexamples.ContainsKey(loc))
@@ -314,16 +314,16 @@ namespace Microsoft.Boogie {
 
     private int Compare(BlockSeq bs1, BlockSeq bs2)
     {
-      if (bs1.Length < bs2.Length)
+      if (bs1.Count < bs2.Count)
       {
         return -1;
       }
-      else if (bs2.Length < bs1.Length)
+      else if (bs2.Count < bs1.Count)
       {
         return 1;
       }
 
-      for (int i = 0; i < bs1.Length; i++)
+      for (int i = 0; i < bs1.Count; i++)
       {
         var b1 = bs1[i];
         var b2 = bs2[i];
@@ -1193,7 +1193,7 @@ namespace VC {
       Contract.Requires(block2Incarnation != null);
       Contract.Ensures(Contract.Result<Hashtable>() != null);
 
-      if (b.Predecessors.Length == 0) {
+      if (b.Predecessors.Count == 0) {
         return new Dictionary<Variable, Expr>();
       }
 
@@ -1376,7 +1376,7 @@ namespace VC {
         }
         else {
           // incarnationMap needs to be added only if there is some successor of b
-          b.succCount = gotoCmd.labelNames.Length;
+          b.succCount = gotoCmd.labelNames.Count;
           block2Incarnation.Add(b, incarnationMap);
         }
         #endregion Each block's map needs to be available to successor blocks
@@ -1608,7 +1608,7 @@ namespace VC {
     /// succ.  Caller must do the add to impl.Blocks.
     /// </summary>
     protected Block CreateBlockBetween(int predIndex, Block succ) {
-      Contract.Requires(0 <= predIndex && predIndex < succ.Predecessors.Length);
+      Contract.Requires(0 <= predIndex && predIndex < succ.Predecessors.Count);
 
 
       Contract.Requires(succ != null);
@@ -1641,7 +1641,7 @@ namespace VC {
       GotoCmd gtc = (GotoCmd)cce.NonNull(pred.TransferCmd);
       Contract.Assume(gtc.labelTargets != null);
       Contract.Assume(gtc.labelNames != null);
-      for (int i = 0, n = gtc.labelTargets.Length; i < n; i++) {
+      for (int i = 0, n = gtc.labelTargets.Count; i < n; i++) {
         if (gtc.labelTargets[i] == succ) {
           gtc.labelTargets[i] = newBlock;
           gtc.labelNames[i] = newBlockLabel;
@@ -1661,12 +1661,12 @@ namespace VC {
       #region Introduce empty blocks between join points and their multi-successor predecessors
       List<Block> tweens = new List<Block>();
       foreach (Block b in blocks) {
-        int nPreds = b.Predecessors.Length;
+        int nPreds = b.Predecessors.Count;
         if (nPreds > 1) {
           // b is a join point (i.e., it has more than one predecessor)
           for (int i = 0; i < nPreds; i++) {
             GotoCmd gotocmd = (GotoCmd)(cce.NonNull(b.Predecessors[i]).TransferCmd);
-            if (gotocmd.labelNames != null && gotocmd.labelNames.Length > 1) {
+            if (gotocmd.labelNames != null && gotocmd.labelNames.Count > 1) {
               tweens.Add(CreateBlockBetween(i, b));
             }
           }

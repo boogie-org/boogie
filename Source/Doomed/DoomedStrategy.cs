@@ -111,14 +111,14 @@ namespace VC
         private List<int> __leavespp = new List<int>();
         protected void m_GatherInfo(Block b, int branchingdepth, int leavespp, int plen)
         {
-            if (b.Predecessors.Length > 1) branchingdepth--;
+            if (b.Predecessors.Count > 1) branchingdepth--;
 
             GotoCmd gc = b.TransferCmd as GotoCmd;
             if (__DEBUG_minelements.Contains(b)) leavespp++;
             plen++;
-            if (gc != null && gc.labelTargets.Length>0)
+            if (gc != null && gc.labelTargets.Count>0)
             {
-                if (gc.labelTargets.Length > 1) branchingdepth++;
+                if (gc.labelTargets.Count > 1) branchingdepth++;
                 m_MaxBranchingDepth = (branchingdepth > m_MaxBranchingDepth) ? branchingdepth : m_MaxBranchingDepth;
                 foreach (Block s in gc.labelTargets)
                 {

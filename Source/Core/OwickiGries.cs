@@ -237,14 +237,14 @@ namespace Microsoft.Boogie
         {
             AddCallToYieldProc(newCmds, ogOldGlobalMap, domainNameToLocalVar);
 
-            if (globalMods.Length > 0)
+            if (globalMods.Count > 0)
             {
                 newCmds.Add(new HavocCmd(Token.NoToken, globalMods));
             }
             Dictionary<string, Expr> domainNameToExpr = ComputeAvailableExprs(linearTypechecker.availableLocalLinearVars[yieldCmd], domainNameToInputVar);
             AddUpdatesToOldGlobalVars(newCmds, ogOldGlobalMap, domainNameToLocalVar, domainNameToExpr);
 
-            for (int j = 0; j < cmds.Length; j++)
+            for (int j = 0; j < cmds.Count; j++)
             {
                 PredicateCmd predCmd = (PredicateCmd)cmds[j];
                 newCmds.Add(new AssumeCmd(Token.NoToken, predCmd.Expr));
@@ -458,7 +458,7 @@ namespace Microsoft.Boogie
             {
                 YieldCmd yieldCmd = null;
                 CmdSeq newCmds = new CmdSeq();
-                for (int i = 0; i < b.Cmds.Length; i++)
+                for (int i = 0; i < b.Cmds.Count; i++)
                 {
                     Cmd cmd = b.Cmds[i];
                     if (cmd is YieldCmd)
@@ -472,7 +472,7 @@ namespace Microsoft.Boogie
                         if (pcmd == null)
                         {
                             DesugarYield(yieldCmd, cmds, newCmds, ogOldGlobalMap, domainNameToInputVar, domainNameToLocalVar);
-                            if (cmds.Length > 0)
+                            if (cmds.Count > 0)
                             {
                                 yields.Add(cmds);
                                 cmds = new CmdSeq();
@@ -535,7 +535,7 @@ namespace Microsoft.Boogie
                 if (yieldCmd != null)
                 {
                     DesugarYield(yieldCmd, cmds, newCmds, ogOldGlobalMap, domainNameToInputVar, domainNameToLocalVar);
-                    if (cmds.Length > 0)
+                    if (cmds.Count > 0)
                     {
                         yields.Add(cmds);
                         cmds = new CmdSeq();

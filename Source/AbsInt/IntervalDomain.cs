@@ -658,7 +658,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
       public override Expr VisitNAryExpr(NAryExpr node) {
         if (node.Fun is UnaryOperator) {
           var op = (UnaryOperator)node.Fun;
-          Contract.Assert(node.Args.Length == 1);
+          Contract.Assert(node.Args.Count == 1);
           if (op.Op == UnaryOperator.Opcode.Neg) {
             BigInteger? lo, hi;
             VisitExpr(node.Args[0]);
@@ -681,7 +681,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
           }
         } else if (node.Fun is BinaryOperator) {
           var op = (BinaryOperator)node.Fun;
-          Contract.Assert(node.Args.Length == 2);
+          Contract.Assert(node.Args.Count == 2);
           BigInteger? lo0, hi0, lo1, hi1;
           VisitExpr(node.Args[0]);
           lo0 = Lo; hi0 = Hi;
@@ -837,7 +837,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
           }
         } else if (node.Fun is IfThenElse) {
           var op = (IfThenElse)node.Fun;
-          Contract.Assert(node.Args.Length == 3);
+          Contract.Assert(node.Args.Count == 3);
           BigInteger? guardLo, guardHi, lo0, hi0, lo1, hi1;
           VisitExpr(node.Args[0]);
           guardLo = Lo; guardHi = Hi;
@@ -1037,7 +1037,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
     public override Expr VisitNAryExpr(NAryExpr node) {
       if (node.Fun is BinaryOperator) {
         var op = (BinaryOperator)node.Fun;
-        Contract.Assert(node.Args.Length == 2);
+        Contract.Assert(node.Args.Count == 2);
         var arg0 = node.Args[0];
         var arg1 = node.Args[1];
         BigInteger? k;
