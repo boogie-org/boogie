@@ -3281,16 +3281,6 @@ namespace Microsoft.Boogie {
       : base(cmdSeq) {
       Contract.Requires(cmdSeq != null);
     }
-    public new Cmd/*!*/ this[int index] {
-      get {
-        Contract.Ensures(Contract.Result<Cmd>() != null);
-
-        return cce.NonNull((Cmd)base[index]);
-      }
-      set {
-        base[index] = value;
-      }
-    }
   }
 
   public sealed class ExprSeq : List<Expr> {
@@ -3301,14 +3291,6 @@ namespace Microsoft.Boogie {
     public ExprSeq(ExprSeq/*!*/ exprSeq)
       : base(exprSeq) {
       Contract.Requires(exprSeq != null);
-    }
-    public new Expr this[int index] {
-      get {
-        return (Expr)base[index];
-      }
-      set {
-        base[index] = value;
-      }
     }
 
     public static ExprSeq operator +(ExprSeq a, ExprSeq b) {
