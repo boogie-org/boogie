@@ -231,8 +231,13 @@ namespace Microsoft.Boogie.ModelViewer
       stateList.Columns[1].Width = stateList.Width - stateList.Columns[0].Width - stateList.Columns[2].Width - 25;
     }
 
-    void SetState(int id)
+    public void SetState(int id, bool updateView = false)
     {
+      if (updateView)
+      {
+        stateList.SelectedIndices.Clear();
+        stateList.SelectedIndices.Add(id);
+      }
       if (currentState != id) {
         previousState = currentState;
         currentState = id;
