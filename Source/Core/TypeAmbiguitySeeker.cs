@@ -5,6 +5,7 @@
 //-----------------------------------------------------------------------------
 using System;
 using System.Diagnostics.Contracts;
+using System.Collections.Generic;
 
 // Visitor to search for types proxies that could not completely be
 // determined by type inference. If this happens, a warning is

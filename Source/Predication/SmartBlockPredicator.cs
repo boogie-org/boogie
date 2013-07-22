@@ -115,7 +115,7 @@ public class SmartBlockPredicator {
             new IdentifierExpr(Token.NoToken, havocVar);
         }
         cmdSeq.Add(new HavocCmd(Token.NoToken,
-                                new List<IdentifierExpr>(havocTempExpr)));
+                                new List<IdentifierExpr> { havocTempExpr }));
         cmdSeq.Add(Cmd.SimpleAssign(Token.NoToken, v,
                                     new NAryExpr(Token.NoToken,
                                       new IfThenElse(Token.NoToken),

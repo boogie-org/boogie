@@ -528,7 +528,7 @@ namespace Microsoft.Boogie {
       DiscoverIntAndBv32Functions(program);
 
       BvType bv32Type = new BvType(32);
-      List<Variable> bv32In = new List<Variable>(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "in", bv32Type), true));
+      List<Variable> bv32In = new List<Variable> { new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "in", bv32Type), true) };
       Formal bv32Out = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "out", bv32Type), false);
       bv32Id = new Function(Token.NoToken, "bv32Id", bv32In, bv32Out);
       bv32Id.Body = new IdentifierExpr(Token.NoToken, bv32In[0]);

@@ -168,7 +168,7 @@ namespace Microsoft.Boogie
             foreach (string domainName in linearTypechecker.linearDomains.Keys)
             {
                 var domain = linearTypechecker.linearDomains[domainName];
-                Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, domainName + "_in", new MapType(Token.NoToken, new TypeVariableSeq(), new List<Type>(domain.elementType), Type.Bool)), true);
+                Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, domainName + "_in", new MapType(Token.NoToken, new TypeVariableSeq(), new List<Type> { domain.elementType }, Type.Bool)), true);
                 inputs.Add(f);
             }
             foreach (IdentifierExpr ie in globalMods)
@@ -727,7 +727,7 @@ namespace Microsoft.Boogie
             foreach (string domainName in linearTypechecker.linearDomains.Keys)
             {
                 var domain = linearTypechecker.linearDomains[domainName];
-                Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, domainName + "_in", new MapType(Token.NoToken, new TypeVariableSeq(), new List<Type>(domain.elementType), Type.Bool)), true);
+                Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, domainName + "_in", new MapType(Token.NoToken, new TypeVariableSeq(), new List<Type> { domain.elementType }, Type.Bool)), true);
                 inputs.Add(f);
             }
             foreach (IdentifierExpr ie in globalMods)
