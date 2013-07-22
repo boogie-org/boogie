@@ -1163,7 +1163,7 @@ namespace Microsoft.Boogie.VCExprAST {
 
         // substitute the formals with the actual parameters in the body
         var tparms = app.Func.TypeParameters;
-        Contract.Assert(typeArgs.Count == tparms.Length);
+        Contract.Assert(typeArgs.Count == tparms.Count);
         for (int i = 0; i < typeArgs.Count; ++i)
           subst[tparms[i]] = typeArgs[i];
         SubstitutingVCExprVisitor/*!*/ substituter = new SubstitutingVCExprVisitor(Gen);

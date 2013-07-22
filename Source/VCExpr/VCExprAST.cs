@@ -1436,7 +1436,7 @@ namespace Microsoft.Boogie.VCExprAST {
       //Contract.Requires(cce.NonNullElements(args));
       Contract.Ensures(Contract.Result<Type>() != null);
       MapType/*!*/ mapType = args[0].Type.AsMap;
-      Contract.Assert(TypeParamArity == mapType.TypeParameters.Length);
+      Contract.Assert(TypeParamArity == mapType.TypeParameters.Count);
       IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ subst = new Dictionary<TypeVariable/*!*/, Type/*!*/>();
       for (int i = 0; i < TypeParamArity; ++i)
         subst.Add(mapType.TypeParameters[i], typeArgs[i]);
@@ -1790,14 +1790,14 @@ namespace Microsoft.Boogie.VCExprAST {
     }
     public override int TypeParamArity {
       get {
-        return Func.TypeParameters.Length;
+        return Func.TypeParameters.Count;
       }
     }
     public override Type InferType(List<VCExpr> args, List<Type/*!*/>/*!*/ typeArgs) {
       //Contract.Requires(cce.NonNullElements(typeArgs));
       //Contract.Requires(cce.NonNullElements(args));
       Contract.Ensures(Contract.Result<Type>() != null);
-      Contract.Assert(TypeParamArity == Func.TypeParameters.Length);
+      Contract.Assert(TypeParamArity == Func.TypeParameters.Count);
       if (TypeParamArity == 0)
         return cce.NonNull(Func.OutParams[0]).TypedIdent.Type;
       IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ subst = new Dictionary<TypeVariable/*!*/, Type/*!*/>(TypeParamArity);

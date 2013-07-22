@@ -294,7 +294,7 @@ namespace Microsoft.Boogie
                     outParams.Add(y);
                     map[x] = new IdentifierExpr(Token.NoToken, y);
                 }
-                Contract.Assume(callCmd.Proc.TypeParameters.Length == 0);
+                Contract.Assume(callCmd.Proc.TypeParameters.Count == 0);
                 Substitution subst = Substituter.SubstitutionFromHashtable(map);
                 foreach (Requires req in callCmd.Proc.Requires)
                 {

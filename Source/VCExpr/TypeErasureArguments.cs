@@ -112,11 +112,11 @@ namespace Microsoft.Boogie.TypeErasure {
             UnchangedType(cce.NonNull(fun.OutParams[0]).TypedIdent.Type)) {
           res = fun;
         } else {
-          Type[]/*!*/ types = new Type[fun.TypeParameters.Length + fun.InParams.Length + 1];
+          Type[]/*!*/ types = new Type[fun.TypeParameters.Count + fun.InParams.Length + 1];
 
           int i = 0;
           // the first arguments are the explicit type parameters
-          for (int j = 0; j < fun.TypeParameters.Length; ++j) {
+          for (int j = 0; j < fun.TypeParameters.Count; ++j) {
             types[i] = T;
             i = i + 1;
           }
@@ -177,8 +177,8 @@ Contract.Ensures(Contract.ValueAtReturn(out select) != null);
 Contract.Ensures(Contract.ValueAtReturn(out store) != null);
       Contract.Assert(synonym.Name != null);
       string/*!*/ baseName = synonym.Name;
-      int typeParamNum = abstractedType.FreeVariables.Length +
-                         abstractedType.TypeParameters.Length;
+      int typeParamNum = abstractedType.FreeVariables.Count +
+                         abstractedType.TypeParameters.Count;
 
       int arity = typeParamNum + abstractedType.Arguments.Count;
 
@@ -238,9 +238,9 @@ Contract.Ensures(Contract.ValueAtReturn(out store) != null);
         store.AddAttribute("builtin", "store");
       } else {
         AxBuilder.AddTypeAxiom(GenMapAxiom0(select, store,
-                 abstractedType.TypeParameters.Length, abstractedType.FreeVariables.Length));
+                 abstractedType.TypeParameters.Count, abstractedType.FreeVariables.Count));
         AxBuilder.AddTypeAxiom(GenMapAxiom1(select, store,
-                 abstractedType.TypeParameters.Length, abstractedType.FreeVariables.Length));
+                 abstractedType.TypeParameters.Count, abstractedType.FreeVariables.Count));
       }
     }
 

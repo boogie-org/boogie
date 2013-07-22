@@ -83,7 +83,7 @@ namespace Microsoft.Boogie.TypeErasure {
     public static List<TypeVariable/*!*/>/*!*/ ToList(TypeVariableSeq seq) {
       Contract.Requires(seq != null);
       Contract.Ensures(cce.NonNullElements(Contract.Result<List<TypeVariable>>()));
-      List<TypeVariable/*!*/>/*!*/ res = new List<TypeVariable/*!*/>(seq.Length);
+      List<TypeVariable/*!*/>/*!*/ res = new List<TypeVariable/*!*/>(seq.Count);
       foreach (TypeVariable/*!*/ var in seq) {
         Contract.Assert(var != null);
         res.Add(var);
@@ -923,7 +923,7 @@ namespace Microsoft.Boogie.TypeErasure {
       if (!ClassRepresentations.TryGetValue(abstractedType, out res)) {
         int num = ClassRepresentations.Count;
         TypeCtorDecl/*!*/ synonym =
-          new TypeCtorDecl(Token.NoToken, "MapType" + num, abstractedType.FreeVariables.Length);
+          new TypeCtorDecl(Token.NoToken, "MapType" + num, abstractedType.FreeVariables.Count);
 
         Function/*!*/ select, store;
         GenSelectStoreFunctions(abstractedType, synonym, out select, out store);
@@ -1000,7 +1000,7 @@ namespace Microsoft.Boogie.TypeErasure {
       if (CommandLineOptions.Clo.Monomorphize && AxBuilder.UnchangedType(rawType))
         return rawType;
 
-      if (Contract.ForAll(0, rawType.FreeVariables.Length, var => !boundTypeParams.Contains(rawType.FreeVariables[var]))) {
+      if (Contract.ForAll(0, rawType.FreeVariables.Count, var => !boundTypeParams.Contains(rawType.FreeVariables[var]))) {
         // Bingo!
         // if the type does not contain any bound variables, we can simply
         // replace it with a type variable

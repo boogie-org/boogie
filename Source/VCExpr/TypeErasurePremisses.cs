@@ -350,8 +350,8 @@ namespace Microsoft.Boogie.TypeErasure
         varsInInParamTypes.AppendWithoutDups(t.FreeVariables);
       }
 
-      implicitParams = new List<TypeVariable/*!*/>(allTypeParams.Length);
-      explicitParams = new List<TypeVariable/*!*/>(allTypeParams.Length);
+      implicitParams = new List<TypeVariable/*!*/>(allTypeParams.Count);
+      explicitParams = new List<TypeVariable/*!*/>(allTypeParams.Count);
 
       foreach (TypeVariable/*!*/ var in allTypeParams) {
         Contract.Assert(var != null);
@@ -375,7 +375,7 @@ namespace Microsoft.Boogie.TypeErasure
         // not have to be changed
         if (Contract.ForAll(0, fun.InParams.Length, f => UnchangedType(cce.NonNull(fun.InParams[f]).TypedIdent.Type)) &&
             UnchangedType(cce.NonNull(fun.OutParams[0]).TypedIdent.Type) &&
-            fun.TypeParameters.Length == 0) {
+            fun.TypeParameters.Count == 0) {
           res = new UntypedFunction(fun, new List<TypeVariable/*!*/>(), new List<TypeVariable/*!*/>());
         } else {
           List<Type/*!*/>/*!*/ argTypes = new List<Type/*!*/>();
@@ -640,7 +640,7 @@ namespace Microsoft.Boogie.TypeErasure
       Contract.Ensures(Contract.ValueAtReturn(out mapTypeSynonym) != null);
       Contract.Ensures(cce.NonNullElements(Contract.ValueAtReturn(out typeParams)));
       Contract.Ensures(cce.NonNullElements(Contract.ValueAtReturn(out originalIndexTypes)));
-      typeParams = new List<TypeVariable/*!*/>(abstractedType.TypeParameters.Length + abstractedType.FreeVariables.Length);
+      typeParams = new List<TypeVariable/*!*/>(abstractedType.TypeParameters.Count + abstractedType.FreeVariables.Count);
       typeParams.AddRange(abstractedType.TypeParameters.ToList());
       typeParams.AddRange(abstractedType.FreeVariables.ToList());
 

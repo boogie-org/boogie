@@ -1290,7 +1290,7 @@ namespace Microsoft.Boogie {
       stream.Write(this, level, "type ");
       EmitAttributes(stream);
       stream.Write("{0}", TokenTextWriter.SanitizeIdentifier(Name));
-      if (TypeParameters.Length > 0)
+      if (TypeParameters.Count > 0)
         stream.Write(" ");
       TypeParameters.Emit(stream, " ");
       stream.Write(" = ");
@@ -2151,7 +2151,7 @@ namespace Microsoft.Boogie {
       // type parameters only occur in the output type
       call = Expr.CoerceType(tok, call, (Type)OutParams[0].TypedIdent.Type.Clone());
       Expr def = Expr.Eq(call, definition);
-      if (quantifiedTypeVars.Length != 0 || dummies.Length != 0) {
+      if (quantifiedTypeVars.Count != 0 || dummies.Length != 0) {
         def = new ForallExpr(tok, quantifiedTypeVars, dummies,
                              kv,
                              new Trigger(tok, true, new ExprSeq(call), null),
@@ -2843,7 +2843,7 @@ namespace Microsoft.Boogie {
 
       Contract.Assume(this.Proc != null);
 
-      if (this.TypeParameters.Length != Proc.TypeParameters.Length) {
+      if (this.TypeParameters.Count != Proc.TypeParameters.Count) {
         tc.Error(this, "mismatched number of type parameters in procedure implementation: {0}",
                  this.Name);
       } else {
@@ -2876,14 +2876,14 @@ namespace Microsoft.Boogie {
       } else {
         // unify the type parameters so that types can be compared
         Contract.Assert(Proc != null);
-        Contract.Assert(this.TypeParameters.Length == Proc.TypeParameters.Length);
+        Contract.Assert(this.TypeParameters.Count == Proc.TypeParameters.Count);
 
         IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ subst1 =
           new Dictionary<TypeVariable/*!*/, Type/*!*/>();
         IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ subst2 =
           new Dictionary<TypeVariable/*!*/, Type/*!*/>();
 
-        for (int i = 0; i < this.TypeParameters.Length; ++i) {
+        for (int i = 0; i < this.TypeParameters.Count; ++i) {
           TypeVariable/*!*/ newVar =
             new TypeVariable(Token.NoToken, Proc.TypeParameters[i].Name);
           Contract.Assert(newVar != null);
@@ -3293,7 +3293,7 @@ namespace Microsoft.Boogie {
     }
   }
 
-  public sealed class TypeVariableSeq : PureCollections.Sequence {
+  public sealed class TypeVariableSeq : List<TypeVariable> {
     public TypeVariableSeq(params TypeVariable[]/*!*/ args)
       : base(args) {
       Contract.Requires(args != null);
@@ -3302,28 +3302,12 @@ namespace Microsoft.Boogie {
       : base(varSeq) {
       Contract.Requires(varSeq != null);
     }
-    /*  PR: the following two constructors cause Spec# crashes
-        public TypeVariableSeq(TypeVariable! var)
-          : base(new TypeVariable! [] { var })
-        {
-        }
-        public TypeVariableSeq()
-          : base(new TypeVariable![0])
-        {
-        } */
-    public new TypeVariable/*!*/ this[int index] {
-      get {
-        Contract.Ensures(Contract.Result<TypeVariable>() != null);
-
-        return cce.NonNull((TypeVariable)base[index]);
-      }
-      set {
-        base[index] = value;
-      }
+    public void Remove() {
+      RemoveAt(Count - 1);
     }
     public void AppendWithoutDups(TypeVariableSeq s1) {
       Contract.Requires(s1 != null);
-      for (int i = 0; i < s1.card; i++) {
+      for (int i = 0; i < s1.Count; i++) {
         TypeVariable/*!*/ next = s1[i];
         Contract.Assert(next != null);
         if (!this.Contains(next))
@@ -3341,19 +3325,9 @@ namespace Microsoft.Boogie {
         v.Emit(stream);
       }
     }
-    public new TypeVariable[] ToArray() {
-      Contract.Ensures(Contract.Result<TypeVariable[]>() != null);
-      TypeVariable[]/*!*/ n = new TypeVariable[Length];
-      int ct = 0;
-      foreach (TypeVariable/*!*/ var in this) {
-        Contract.Assert(var != null);
-        n[ct++] = var;
-      }
-      return n;
-    }
     public List<TypeVariable/*!*/>/*!*/ ToList() {
       Contract.Ensures(cce.NonNullElements(Contract.Result<List<TypeVariable>>()));
-      List<TypeVariable/*!*/>/*!*/ res = new List<TypeVariable/*!*/>(Length);
+      List<TypeVariable/*!*/>/*!*/ res = new List<TypeVariable/*!*/>(Count);
       foreach (TypeVariable/*!*/ var in this) {
         Contract.Assert(var != null);
         res.Add(var);
