@@ -2199,10 +2199,10 @@ namespace VC {
       if (CommandLineOptions.Clo.ExpandLambdas)
       {
         List<Expr> axioms;
-        List<Function> functions;
-        LambdaHelper.Desugar(impl, out axioms, out functions);
+        List<Function> functions;        
         lock (program.TopLevelDeclarations)
         {
+          LambdaHelper.Desugar(impl, out axioms, out functions);
           program.TopLevelDeclarations.AddRange(functions);
         }
 
