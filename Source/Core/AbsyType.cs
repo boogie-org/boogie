@@ -3146,7 +3146,8 @@ Contract.Requires(that != null);
     [Pure]
     public override bool Equals(Type/*!*/ that,
                                 List<TypeVariable>/*!*/ thisBoundVariables,
-                                List<TypeVariable>/*!*/ thatBoundVariables) {
+                                List<TypeVariable>/*!*/ thatBoundVariables)
+    {
       that = TypeProxy.FollowProxy(that.Expanded);
       MapType thatMapType = that as MapType;
       if (thatMapType == null ||
@@ -3154,35 +3155,28 @@ Contract.Requires(that != null);
           this.Arguments.Count != thatMapType.Arguments.Count)
         return false;
 
-      foreach (TypeVariable/*!*/ var in this.TypeParameters) {
+      thisBoundVariables = thisBoundVariables.ToList();
+      foreach (TypeVariable/*!*/ var in this.TypeParameters)
+      {
         Contract.Assert(var != null);
         thisBoundVariables.Add(var);
       }
-      foreach (TypeVariable/*!*/ var in thatMapType.TypeParameters) {
+      thatBoundVariables = thatBoundVariables.ToList();
+      foreach (TypeVariable/*!*/ var in thatMapType.TypeParameters)
+      {
         Contract.Assert(var != null);
         thatBoundVariables.Add(var);
       }
 
-      try {
-
-        for (int i = 0; i < Arguments.Count; ++i) {
-          if (!Arguments[i].Equals(thatMapType.Arguments[i],
-                                   thisBoundVariables, thatBoundVariables))
-            return false;
-        }
-        if (!this.Result.Equals(thatMapType.Result,
-                                thisBoundVariables, thatBoundVariables))
+      for (int i = 0; i < Arguments.Count; ++i)
+      {
+        if (!Arguments[i].Equals(thatMapType.Arguments[i],
+                                 thisBoundVariables, thatBoundVariables))
           return false;
-
-      } finally {
-        // make sure that the bound variables are removed again
-        for (int i = 0; i < this.TypeParameters.Count; ++i) {
-          thisBoundVariables.RemoveAt(thisBoundVariables.Count - 1);
-          thatBoundVariables.RemoveAt(thatBoundVariables.Count - 1);
-        }
       }
 
-      return true;
+      return this.Result.Equals(thatMapType.Result,
+                                thisBoundVariables, thatBoundVariables);
     }
 
     //-----------  Unification of types  -----------
@@ -3359,6 +3353,7 @@ Contract.Assert(var != null);
       //Contract.Requires(boundVariables != null);
       int res = 7643761 * TypeParameters.Count + 65121 * Arguments.Count;
 
+      boundVariables = boundVariables.ToList();
       foreach (TypeVariable/*!*/ var in this.TypeParameters) {
         Contract.Assert(var != null);
         boundVariables.Add(var);
@@ -3369,10 +3364,7 @@ Contract.Assert(var != null);
         res = res * 5 + t.GetHashCode(boundVariables);
       }
       res = res * 7 + Result.GetHashCode(boundVariables);
-
-      for (int i = 0; i < this.TypeParameters.Count; ++i)
-        boundVariables.RemoveAt(boundVariables.Count - 1);
-
+      
       return res;
     }
 
