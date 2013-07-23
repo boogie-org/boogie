@@ -1072,13 +1072,13 @@ namespace Microsoft.Boogie.VCExprAST {
 
     public bool TermSubstIsEmpty {
       get {
-        return TermSubsts.All(dict => dict.Count == 0);
+        return TermSubsts.All(dict => !dict.Any());
       }
     }
 
     public bool TypeSubstIsEmpty {
       get {
-        return TypeSubsts.All(dict => dict.Count == 0); ;
+        return TypeSubsts.All(dict => !dict.Any());
       }
     }
 
