@@ -81,64 +81,10 @@ namespace Microsoft.Boogie.TypeErasure {
       return new List<T>(args);
     }
 
-    public static List<TypeVariable/*!*/>/*!*/ ToList(List<TypeVariable> seq) {
-      Contract.Requires(seq != null);
-      Contract.Ensures(cce.NonNullElements(Contract.Result<List<TypeVariable>>()));
-      List<TypeVariable/*!*/>/*!*/ res = new List<TypeVariable/*!*/>(seq.Count);
-      foreach (TypeVariable/*!*/ var in seq) {
-        Contract.Assert(var != null);
-        res.Add(var);
-      }
-      return res;
-    }
-
-    public static List<T>/*!*/ Intersect<T>(List<T> a, List<T> b) {
-      Contract.Requires(b != null);
-      Contract.Requires(a != null);
-      Contract.Ensures(Contract.Result<List<T>>() != null);
-
-      List<T>/*!*/ res = new List<T>(Math.Min(a.Count, b.Count));
-      foreach (T x in a)
-        if (b.Contains(x))
-          res.Add(x);
-      res.TrimExcess();
-      return res;
-    }
-
-    public static List<KeyValuePair<T1, T2>>/*!*/ ToPairList<T1, T2>(IDictionary<T1, T2> dict) {
-      Contract.Requires((dict != null));
-      Contract.Ensures(Contract.Result<List<KeyValuePair<T1, T2>>>() != null);
-      List<KeyValuePair<T1, T2>>/*!*/ res = new List<KeyValuePair<T1, T2>>(dict);
-      return res;
-    }
-
-    public static void AddRangeWithoutDups<T>(IEnumerable<T> fromList, List<T> toList) {
-      Contract.Requires(toList != null);
-      Contract.Requires(fromList != null);
-      foreach (T t in fromList)
-        if (!toList.Contains(t))
-          toList.Add(t);
-    }
-
-    public static void AddFreeVariablesWithoutDups(Type type, List<TypeVariable/*!*/>/*!*/ toList) {
-      Contract.Requires(type != null);
-      Contract.Requires(cce.NonNullElements(toList));
-      foreach (TypeVariable var in type.FreeVariables) {
-        Contract.Assert(var != null);
-        if (!toList.Contains(var))
-          toList.Add(var);
-      }
-    }
-
     public static List<VCExpr/*!*/>/*!*/ ToVCExprList(List<VCExprVar/*!*/>/*!*/ list) {
       Contract.Requires(cce.NonNullElements(list));
       Contract.Ensures(cce.NonNullElements(Contract.Result<List<VCExpr>>()));
-      List<VCExpr/*!*/>/*!*/ res = new List<VCExpr/*!*/>(list.Count);
-      foreach (VCExprVar/*!*/ var in list) {
-        Contract.Assert(var != null);
-        res.Add(var);
-      }
-      return res;
+      return new List<VCExpr>(list);
     }
 
     public static List<VCExprVar/*!*/>/*!*/ VarVector(string baseName, int num, Type type, VCExpressionGenerator gen) {
