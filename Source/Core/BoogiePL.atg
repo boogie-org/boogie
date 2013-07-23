@@ -24,7 +24,7 @@ readonly Expr/*!*/ dummyExpr;
 readonly Cmd/*!*/ dummyCmd;
 readonly Block/*!*/ dummyBlock;
 readonly Bpl.Type/*!*/ dummyType;
-readonly Bpl.List<Expr>/*!*/ dummyExprSeq;
+readonly List<Expr>/*!*/ dummyExprSeq;
 readonly TransferCmd/*!*/ dummyTransferCmd;
 readonly StructuredCmd/*!*/ dummyStructuredCmd;
 
@@ -199,7 +199,7 @@ BoogiePL
   .
 
 /*------------------------------------------------------------------------*/
-GlobalVars<out List<Variable>/*!*/ ds>
+GlobalVars<.out List<Variable>/*!*/ ds.>
 = (.
     Contract.Ensures(Contract.ValueAtReturn(out ds) != null);
     QKeyValue kv = null;
@@ -211,7 +211,7 @@ GlobalVars<out List<Variable>/*!*/ ds>
   IdsTypeWheres<true, "global variables", delegate(TypedIdent tyd) { dsx.Add(new GlobalVariable(tyd.tok, tyd, kv)); } > ";"
   .
 
-LocalVars<List<Variable>/*!*/ ds>
+LocalVars<.List<Variable>/*!*/ ds.>
 = (.
     Contract.Ensures(Contract.ValueAtReturn(out ds) != null);
     QKeyValue kv = null;
@@ -221,7 +221,7 @@ LocalVars<List<Variable>/*!*/ ds>
   IdsTypeWheres<true, "local variables", delegate(TypedIdent tyd) { ds.Add(new LocalVariable(tyd.tok, tyd, kv)); } > ";"
   .
 
-ProcFormals<bool incoming, bool allowWhereClauses, out List<Variable>/*!*/ ds>
+ProcFormals<.bool incoming, bool allowWhereClauses, out List<Variable>/*!*/ ds.>
 = (. Contract.Ensures(Contract.ValueAtReturn(out ds) != null);
      ds = new List<Variable>();
      var dsx = ds;
@@ -233,7 +233,7 @@ ProcFormals<bool incoming, bool allowWhereClauses, out List<Variable>/*!*/ ds>
   ")"
   .
 
-BoundVars<IToken/*!*/ x, out List<Variable>/*!*/ ds>
+BoundVars<.IToken/*!*/ x, out List<Variable>/*!*/ ds.>
 = (.
     Contract.Requires(x != null);
     Contract.Ensures(Contract.ValueAtReturn(out ds) != null);
@@ -246,7 +246,7 @@ BoundVars<IToken/*!*/ x, out List<Variable>/*!*/ ds>
 
 /*------------------------------------------------------------------------*/
 /* IdsType is used with const declarations */
-IdsType<out List<TypedIdent>/*!*/ tyds>
+IdsType<.out List<TypedIdent>/*!*/ tyds.>
 = (. Contract.Ensures(Contract.ValueAtReturn(out tyds) != null); List<IToken>/*!*/ ids;  Bpl.Type/*!*/ ty; .)
   Idents<out ids> ":" Type<out ty>
   (. tyds = new List<TypedIdent>();
@@ -312,7 +312,7 @@ Type<out Bpl.Type/*!*/ ty>
   )
   .
 
-TypeArgs<List<Type>/*!*/ ts>
+TypeArgs<.List<Type>/*!*/ ts.>
 = (.Contract.Requires(ts != null); IToken/*!*/ tok; Bpl.Type/*!*/ ty; .)
   (
     TypeAtom<out ty>     (. ts.Add(ty); .)
@@ -356,7 +356,7 @@ MapType<out Bpl.Type/*!*/ ty>
   .)
   .
 
-TypeParams<out IToken/*!*/ tok, out Bpl.List<TypeVariable>/*!*/ typeParams>
+TypeParams<.out IToken/*!*/ tok, out List<TypeVariable>/*!*/ typeParams.>
 = (.Contract.Ensures(Contract.ValueAtReturn(out tok) != null); Contract.Ensures(Contract.ValueAtReturn(out typeParams) != null); List<IToken>/*!*/ typeParamToks; .)
   "<"    (.  tok = t;  .)
     Idents<out typeParamToks>
@@ -369,7 +369,7 @@ TypeParams<out IToken/*!*/ tok, out Bpl.List<TypeVariable>/*!*/ typeParams>
    .)
   .
 
-Types<List<Type>/*!*/ ts>
+Types<.List<Type>/*!*/ ts.>
 = (. Contract.Requires(ts != null); Bpl.Type/*!*/ ty; .)
   Type<out ty>                 (. ts.Add(ty); .)
   { "," Type<out ty>           (. ts.Add(ty); .)
@@ -378,7 +378,7 @@ Types<List<Type>/*!*/ ts>
 
 
 /*------------------------------------------------------------------------*/
-Consts<out List<Variable>/*!*/ ds>
+Consts<.out List<Variable>/*!*/ ds.>
 = (. Contract.Ensures(Contract.ValueAtReturn(out ds) != null); IToken/*!*/ y; List<TypedIdent>/*!*/ xs;
      ds = new List<Variable>();
      bool u = false; QKeyValue kv = null;
@@ -439,7 +439,7 @@ OrderSpec<.out bool ChildrenComplete, out List<ConstantParent/*!*/> Parents.>
   .
 
 /*------------------------------------------------------------------------*/
-Function<out List<Declaration>/*!*/ ds>
+Function<.out List<Declaration>/*!*/ ds.>
 = (. Contract.Ensures(Contract.ValueAtReturn(out ds) != null);
      ds = new List<Declaration>(); IToken/*!*/ z;
      IToken/*!*/ typeParamTok;
@@ -485,7 +485,7 @@ Function<out List<Declaration>/*!*/ ds>
     }
     if (!allUnnamed) {
       Bpl.Type prevType = null;
-      for (int i = arguments.Length; 0 <= --i; ) {
+      for (int i = arguments.Count; 0 <= --i; ) {
         TypedIdent/*!*/ curr = cce.NonNull(arguments[i]).TypedIdent;
         if (curr.HasName) {
           // the argument was given as both an identifier and a type
@@ -498,7 +498,7 @@ Function<out List<Declaration>/*!*/ ds>
           }
           Bpl.Type ty = curr.Type;
           var uti = ty as UnresolvedTypeIdentifier;
-          if (uti != null && uti.Arguments.Length == 0) {
+          if (uti != null && uti.Arguments.Count == 0) {
             // the given "thing" was just an identifier, so let's use it as the name of the parameter
             curr.Name = uti.Name;
             curr.Type = prevType;
@@ -530,7 +530,7 @@ VarOrType<out TypedIdent/*!*/ tyd, out QKeyValue kv>
   { Attribute<ref kv> }
   Type<out ty>    (. tok = ty.tok; .)
   [ ":"           (. var uti = ty as UnresolvedTypeIdentifier;
-                     if (uti != null && uti.Arguments.Length == 0) {
+                     if (uti != null && uti.Arguments.Count == 0) {
                        varName = uti.Name;
                      } else {
                        this.SemErr("expected identifier before ':'");
@@ -577,7 +577,7 @@ UserDefinedType<out Declaration/*!*/ decl, QKeyValue kv>
          typeParams.Add(new TypeVariable(t, t.val));}
        decl = new TypeSynonymDecl(id, id.val, typeParams, body, kv);
      } else {
-       decl = new TypeCtorDecl(id, id.val, paramTokens.Length, kv);
+       decl = new TypeCtorDecl(id, id.val, paramTokens.Count, kv);
      }
    .)
   .
@@ -629,8 +629,8 @@ Implementation<out Implementation/*!*/ impl>
   .
 
 
-ProcSignature<bool allowWhereClausesOnFormals, out IToken/*!*/ name, out List<TypeVariable>/*!*/ typeParams,
-              out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv>
+ProcSignature<.bool allowWhereClausesOnFormals, out IToken/*!*/ name, out List<TypeVariable>/*!*/ typeParams,
+              out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv.>
 = (. Contract.Ensures(Contract.ValueAtReturn(out name) != null); Contract.Ensures(Contract.ValueAtReturn(out typeParams) != null); Contract.Ensures(Contract.ValueAtReturn(out ins) != null); Contract.Ensures(Contract.ValueAtReturn(out outs) != null);
      IToken/*!*/ typeParamTok; typeParams = new List<TypeVariable>();
      outs = new List<Variable>(); kv = null; .)
@@ -642,7 +642,7 @@ ProcSignature<bool allowWhereClausesOnFormals, out IToken/*!*/ name, out List<Ty
   .
 
 
-Spec<List<Requires>/*!*/ pre, List<IdentifierExpr>/*!*/ mods, List<Ensures>/*!*/ post>
+Spec<.List<Requires>/*!*/ pre, List<IdentifierExpr>/*!*/ mods, List<Ensures>/*!*/ post.>
 = (.Contract.Requires(pre != null); Contract.Requires(mods != null); Contract.Requires(post != null); List<IToken>/*!*/ ms; .)
   ( "modifies"
     [ Idents<out ms>        (. foreach(IToken/*!*/ m in ms){
@@ -656,7 +656,7 @@ Spec<List<Requires>/*!*/ pre, List<IdentifierExpr>/*!*/ mods, List<Ensures>/*!*/
   )
   .
 
-SpecPrePost<bool free, List<Requires>/*!*/ pre, List<Ensures>/*!*/ post>
+SpecPrePost<.bool free, List<Requires>/*!*/ pre, List<Ensures>/*!*/ post.>
 = (. Contract.Requires(pre != null); Contract.Requires(post != null); Expr/*!*/ e; Token tok = null; QKeyValue kv = null; .)
   ( "requires"              (. tok = t; .)
     { Attribute<ref kv> }
@@ -669,7 +669,7 @@ SpecPrePost<bool free, List<Requires>/*!*/ pre, List<Ensures>/*!*/ post>
 
 /*------------------------------------------------------------------------*/
 
-ImplBody<out List<Variable>/*!*/ locals, out StmtList/*!*/ stmtList>
+ImplBody<.out List<Variable>/*!*/ locals, out StmtList/*!*/ stmtList.>
 = (. Contract.Ensures(Contract.ValueAtReturn(out locals) != null); Contract.Ensures(Contract.ValueAtReturn(out stmtList) != null); locals = new List<Variable>(); .)
   "{"
   { LocalVars<locals> }
@@ -977,7 +977,7 @@ Proposition<out Expr/*!*/ e>
   .
 
 /*------------------------------------------------------------------------*/
-Idents<out List<IToken>/*!*/ xs>
+Idents<.out List<IToken>/*!*/ xs.>
 = (.Contract.Ensures(Contract.ValueAtReturn(out xs) != null); IToken/*!*/ id; xs = new List<IToken>(); .)
   Ident<out id>                 (. xs.Add(id); .)
   { "," Ident<out id>           (. xs.Add(id); .)
@@ -985,7 +985,7 @@ Idents<out List<IToken>/*!*/ xs>
   .
 
 /*------------------------------------------------------------------------*/
-WhiteSpaceIdents<out List<IToken>/*!*/ xs>
+WhiteSpaceIdents<.out List<IToken>/*!*/ xs.>
 = (. Contract.Ensures(Contract.ValueAtReturn(out xs) != null); IToken/*!*/ id; xs = new List<IToken>(); .)
   Ident<out id>                 (. xs.Add(id); .)
   { Ident<out id>               (. xs.Add(id); .)
@@ -993,7 +993,7 @@ WhiteSpaceIdents<out List<IToken>/*!*/ xs>
   .
 
 /*------------------------------------------------------------------------*/
-Expressions<out List<Expr>/*!*/ es>
+Expressions<.out List<Expr>/*!*/ es.>
 = (. Contract.Ensures(Contract.ValueAtReturn(out es) != null); Expr/*!*/ e; es = new List<Expr>(); .)
   Expression<out e>             (. es.Add(e); .)
   { "," Expression<out e>       (. es.Add(e); .)
@@ -1001,7 +1001,7 @@ Expressions<out List<Expr>/*!*/ es>
   .
 
 /*------------------------------------------------------------------------*/
-Expression<out Expr/*!*/ e0>
+Expression<.out Expr/*!*/ e0.>
 = (. Contract.Ensures(Contract.ValueAtReturn(out e0) != null); IToken/*!*/ x; Expr/*!*/ e1; .)
   ImpliesExpression<false, out e0>
   { EquivOp        (. x = t; .)
@@ -1223,13 +1223,13 @@ ArrayExpression<out Expr/*!*/ e>
       ]
     "]"
     (. if (store)
-         e = new NAryExpr(x, new MapStore(x, allArgs.Length - 2), allArgs);
+         e = new NAryExpr(x, new MapStore(x, allArgs.Count - 2), allArgs);
        else if (bvExtract)
          e = new BvExtractExpr(x, e,
                                ((BvBounds)index0).Upper.ToIntSafe,
                                ((BvBounds)index0).Lower.ToIntSafe);
        else
-         e = new NAryExpr(x, new MapSelect(x, allArgs.Length - 1), allArgs);
+         e = new NAryExpr(x, new MapSelect(x, allArgs.Count - 1), allArgs);
     .)
   }
   .
@@ -1268,29 +1268,29 @@ AtomExpression<out Expr/*!*/ e>
   | "int"                   (. x = t; .)
     "("
     Expression<out e>
-    ")"                     (. e = new NAryExpr(x, new ArithmeticCoercion(x, ArithmeticCoercion.CoercionType.ToInt), new List<Expr>(e)); .)
+    ")"                     (. e = new NAryExpr(x, new ArithmeticCoercion(x, ArithmeticCoercion.CoercionType.ToInt), new List<Expr>{ e }); .)
 
   | "real"                  (. x = t; .)
     "("
     Expression<out e>
-    ")"                     (. e = new NAryExpr(x, new ArithmeticCoercion(x, ArithmeticCoercion.CoercionType.ToReal), new List<Expr>(e)); .)
+    ")"                     (. e = new NAryExpr(x, new ArithmeticCoercion(x, ArithmeticCoercion.CoercionType.ToReal), new List<Expr>{ e }); .)
 
   | "(" ( Expression<out e>                 (. if (e is BvBounds)
                                                  this.SemErr("parentheses around bitvector bounds " +
                                                         "are not allowed"); .)
         | Forall                            (. x = t; .)
           QuantifierBody<x, out typeParams, out ds, out kv, out trig, out e>
-                                            (. if (typeParams.Length + ds.Length > 0)
+                                            (. if (typeParams.Count + ds.Count > 0)
                                                  e = new ForallExpr(x, typeParams, ds, kv, trig, e); .)
         | Exists                            (. x = t; .)
           QuantifierBody<x, out typeParams, out ds, out kv, out trig, out e>
-                                            (. if (typeParams.Length + ds.Length > 0)
+                                            (. if (typeParams.Count + ds.Count > 0)
                                                  e = new ExistsExpr(x, typeParams, ds, kv, trig, e); .)
         | Lambda                            (. x = t; .)
           QuantifierBody<x, out typeParams, out ds, out kv, out trig, out e>
                                             (. if (trig != null)
                                                  SemErr("triggers not allowed in lambda expressions");
-                                               if (typeParams.Length + ds.Length > 0)
+                                               if (typeParams.Count + ds.Count > 0)
                                                  e = new LambdaExpr(x, typeParams, ds, kv, e); .)
         )
     ")"
@@ -1364,9 +1364,9 @@ AttributeOrTrigger<ref QKeyValue kv, ref Trigger trig>
             if (parameters.Count == 1 && parameters[0] is Expr) {
               e = (Expr)parameters[0];
               if(trig==null){
-                trig = new Trigger(tok, false, new List<Expr>(e), null);
+                trig = new Trigger(tok, false, new List<Expr> { e }, null);
               } else {
-                trig.AddLast(new Trigger(tok, false, new List<Expr>(e), null));
+                trig.AddLast(new Trigger(tok, false, new List<Expr> { e }, null));
               }
             } else {
               this.SemErr("the 'nopats' quantifier attribute expects a string-literal parameter");
@@ -1380,7 +1380,7 @@ AttributeOrTrigger<ref QKeyValue kv, ref Trigger trig>
           }
        .)
      |
-       Expression<out e>       (. es = new List<Expr>(e); .)
+       Expression<out e>       (. es = new List<Expr> { e }; .)
        { "," Expression<out e> (. es.Add(e); .)
        }                       (. if (trig==null) {
                                     trig = new Trigger(tok, true, es, null);
@@ -1408,12 +1408,12 @@ IfThenElseExpression<out Expr/*!*/ e>
      Expr/*!*/ e0, e1, e2;
      e = dummyExpr; .)
   "if" (. tok = t; .) Expression<out e0> "then" Expression<out e1> "else" Expression<out e2>
-  (. e = new NAryExpr(tok, new IfThenElse(tok), new List<Expr>(e0, e1, e2)); .)
+  (. e = new NAryExpr(tok, new IfThenElse(tok), new List<Expr>{ e0, e1, e2 }); .)
   .
 
 
-QuantifierBody<IToken/*!*/ q, out List<TypeVariable>/*!*/ typeParams, out List<Variable>/*!*/ ds,
-               out QKeyValue kv, out Trigger trig, out Expr/*!*/ body>
+QuantifierBody<.IToken/*!*/ q, out List<TypeVariable>/*!*/ typeParams, out List<Variable>/*!*/ ds,
+               out QKeyValue kv, out Trigger trig, out Expr/*!*/ body.>
 = (. Contract.Requires(q != null); Contract.Ensures(Contract.ValueAtReturn(out typeParams) != null); Contract.Ensures(Contract.ValueAtReturn(out ds) != null); Contract.Ensures(Contract.ValueAtReturn(out body) != null);
      trig = null; typeParams = new List<TypeVariable> ();
      IToken/*!*/ tok;

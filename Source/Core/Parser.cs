@@ -1752,7 +1752,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 			Expect(9);
 			Expression(out e);
 			Expect(10);
-			e = new NAryExpr(x, new ArithmeticCoercion(x, ArithmeticCoercion.CoercionType.ToInt), new List<Expr> { e }); 
+			e = new NAryExpr(x, new ArithmeticCoercion(x, ArithmeticCoercion.CoercionType.ToInt), new List<Expr>{ e }); 
 			break;
 		}
 		case 15: {
@@ -1761,7 +1761,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 			Expect(9);
 			Expression(out e);
 			Expect(10);
-			e = new NAryExpr(x, new ArithmeticCoercion(x, ArithmeticCoercion.CoercionType.ToReal), new List<Expr> { e }); 
+			e = new NAryExpr(x, new ArithmeticCoercion(x, ArithmeticCoercion.CoercionType.ToReal), new List<Expr>{ e }); 
 			break;
 		}
 		case 9: {
@@ -1901,7 +1901,7 @@ out QKeyValue kv, out Trigger trig, out Expr/*!*/ body) {
 		Expression(out e1);
 		Expect(41);
 		Expression(out e2);
-		e = new NAryExpr(tok, new IfThenElse(tok), new List<Expr> { e0, e1, e2 }); 
+		e = new NAryExpr(tok, new IfThenElse(tok), new List<Expr>{ e0, e1, e2 }); 
 	}
 
 	void CodeExpression(out List<Variable>/*!*/ locals, out List<Block/*!*/>/*!*/ blocks) {
@@ -2243,6 +2243,12 @@ public class Errors {
 		Contract.Requires(msg != null);
 		errorStream.WriteLine(errMsgFormat, filename, line, col, msg);
 		count++;
+	}
+
+	public void Warning(IToken/*!*/ tok, string/*!*/ msg) {  // warnings
+		Contract.Requires(tok != null);
+		Contract.Requires(msg != null);
+		Warning(tok.filename, tok.line, tok.col, msg);
 	}
 
 	public virtual void Warning(string filename, int line, int col, string msg) {
