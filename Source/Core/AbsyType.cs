@@ -3317,7 +3317,6 @@ Contract.Assert(var != null);
     private bool collisionsPossible(IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ subst) {
       Contract.Requires(cce.NonNullDictionaryAndValues(subst));
       // PR: could be written more efficiently
-      // return Contract.Exists(0, TypeParameters.Count, i => subst.ContainsKey(TypeParameters[i]) || Contract.Exists(subst.Values, t => t.FreeVariables.Contains(TypeParameters[i])));
       return TypeParameters.Any(param => subst.ContainsKey(param) || subst.Values.Any(val => val.FreeVariables.Contains(param)));
     }
 

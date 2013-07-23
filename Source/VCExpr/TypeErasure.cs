@@ -1362,7 +1362,7 @@ namespace Microsoft.Boogie.TypeErasure {
       List<VCExpr/*!*/>/*!*/ newArgs = MutateSeq(node, bindings, newPolarity);
       Type/*!*/ oldType = node[0].Type;
       if (AxBuilder.UnchangedType(oldType) &&
-          node.All(e => e.Type.Equals(oldType)))
+          node.Skip(1).All(e => e.Type.Equals(oldType)))
         return Gen.Function(node.Op, AxBuilder.CastSeq(newArgs, oldType));
       else
         return Gen.Function(node.Op, AxBuilder.CastSeq(newArgs, AxBuilder.U));
