@@ -8,6 +8,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.IO;
+using System.Linq;
 using System.Diagnostics;
 using System.Diagnostics.Contracts;
 
@@ -1425,7 +1426,7 @@ namespace Microsoft.Boogie {
         // no preference
         return true;
       }
-      return Contract.Exists(ProcsToCheck, s => 0 <= methodFullname.IndexOf(s));
+      return ProcsToCheck.Any(s => 0 <= methodFullname.IndexOf(s));
     }
 
     public virtual StringCollection ParseNamedArgumentList(string argList) {

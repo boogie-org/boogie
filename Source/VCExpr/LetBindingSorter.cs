@@ -6,6 +6,7 @@
 using System;
 using System.Text;
 using System.IO;
+using System.Linq;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
@@ -87,7 +88,7 @@ Contract.Ensures(Contract.Result<VCExpr>() != null);
         }
       }
 
-      if (Contract.Exists(boundVars, pair=> pair.Value.InvOccurrencesNum > 0))
+      if (boundVars.Any(pair=> pair.Value.InvOccurrencesNum > 0))
         System.Diagnostics.Debug.Fail("Cyclic let-bindings");
 
       Contract.Assert(node.Length == sortedBindings.Count);

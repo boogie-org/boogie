@@ -7,6 +7,7 @@ namespace Microsoft.Boogie {
   using System.Collections;
   using System.Collections.Generic;
   using System;
+  using System.Linq;
   using System.Diagnostics.Contracts;
 
   [ContractClass(typeof(IErrorSinkContracts))]
@@ -565,7 +566,7 @@ namespace Microsoft.Boogie {
     public bool InFrame(Variable v) {
       Contract.Requires(v != null);
       Contract.Requires(Frame != null);
-      return Contract.Exists(0, Frame.Count, ie => Frame[ie].Decl == v);
+      return Frame.Any(f => f.Decl == v);
     }
   }
 }

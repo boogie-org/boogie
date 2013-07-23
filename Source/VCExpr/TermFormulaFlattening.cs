@@ -6,6 +6,7 @@
 using System;
 using System.Text;
 using System.IO;
+using System.Linq;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
@@ -99,8 +100,8 @@ Contract.Ensures(cce.NonNullElements(Contract.Result<List<VCExprLetBinding>>()))
       foreach (KeyValuePair<VCExpr, VCExprVar> pair in Bindings) {
         Contract.Assert(cce.NonNullElements(pair));
         coll.Collect(pair.Key);
-        if (Contract.Exists(boundVars, var => coll.FreeTermVars.ContainsKey(var)) ||
-            Contract.Exists(boundTypeVars, var => coll.FreeTypeVars.Contains(var)))
+        if (boundVars.Any(var => coll.FreeTermVars.ContainsKey(var)) ||
+            boundTypeVars.Any(var => coll.FreeTypeVars.Contains(var)))
           res.Add(Gen.LetBinding(pair.Value, pair.Key));
         coll.Reset();
       }

@@ -6,6 +6,7 @@
 using System;
 using System.Text;
 using System.IO;
+using System.Linq;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
@@ -398,12 +399,12 @@ namespace Microsoft.Boogie.Clustering {
 
     public bool RepresentationIsRenaming(IDictionary<VCExprVar/*!*/, VCExprVar/*!*/>/*!*/ globalVars) {
       Contract.Requires(cce.NonNullDictionaryAndValues(globalVars));
-      if (!Contract.ForAll(Representation, pair => pair.Key.Expr0 is VCExprVar && pair.Key.Expr1 is VCExprVar && !globalVars.ContainsKey(cce.NonNull((VCExprVar)pair.Key.Expr0)) && !globalVars.ContainsKey(cce.NonNull((VCExprVar/*!*/)pair.Key.Expr1))))
+      if (!Representation.Any(pair => pair.Key.Expr0 is VCExprVar && pair.Key.Expr1 is VCExprVar && !globalVars.ContainsKey(cce.NonNull((VCExprVar)pair.Key.Expr0)) && !globalVars.ContainsKey(cce.NonNull((VCExprVar/*!*/)pair.Key.Expr1))))
         return false;
       // check that all substituted variables are distinct
       // TODO: optimise
       return
-        Contract.ForAll(Representation, pair1 => Contract.ForAll(Representation, pair2 => pair1.Value.Equals(pair2.Value) || !pair1.Key.Expr0.Equals(pair2.Key.Expr0) && !pair1.Key.Expr1.Equals(pair2.Key.Expr1)));
+        Representation.All(pair1 => Representation.All(pair2 => pair1.Value.Equals(pair2.Value) || !pair1.Key.Expr0.Equals(pair2.Key.Expr0) && !pair1.Key.Expr1.Equals(pair2.Key.Expr1)));
     }
 
     public void RepresentationSize(IDictionary<VCExprVar/*!*/, VCExprVar/*!*/>/*!*/ globalVars, out int expr0Size, out int expr1Size) {

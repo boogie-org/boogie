@@ -6,6 +6,7 @@
 using System;
 using System.Text;
 using System.IO;
+using System.Linq;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
@@ -989,7 +990,7 @@ namespace Microsoft.Boogie.TypeErasure {
       if (CommandLineOptions.Clo.Monomorphize && AxBuilder.UnchangedType(rawType))
         return rawType;
 
-      if (Contract.ForAll(0, rawType.FreeVariables.Count, var => !boundTypeParams.Contains(rawType.FreeVariables[var]))) {
+      if (rawType.FreeVariables.All(var => !boundTypeParams.Contains(var))) {
         // Bingo!
         // if the type does not contain any bound variables, we can simply
         // replace it with a type variable
@@ -1361,7 +1362,7 @@ namespace Microsoft.Boogie.TypeErasure {
       List<VCExpr/*!*/>/*!*/ newArgs = MutateSeq(node, bindings, newPolarity);
       Type/*!*/ oldType = node[0].Type;
       if (AxBuilder.UnchangedType(oldType) &&
-          Contract.ForAll(1, node.Arity, i => node[i].Type.Equals(oldType)))
+          node.All(e => e.Type.Equals(oldType)))
         return Gen.Function(node.Op, AxBuilder.CastSeq(newArgs, oldType));
       else
         return Gen.Function(node.Op, AxBuilder.CastSeq(newArgs, AxBuilder.U));
@@ -1568,7 +1569,7 @@ namespace Microsoft.Boogie.TypeErasure {
       Contract.Ensures(cce.NonNullElements(Contract.Result<List<VCExprVar>>()));
       VariableCastCollector/*!*/ collector = new VariableCastCollector(axBuilder);
       Contract.Assert(collector != null);
-      if (Contract.Exists(newNode.Triggers, trigger => trigger.Pos)) {
+      if (newNode.Triggers.Any(trigger => trigger.Pos)) {
         // look in the given triggers
         foreach (VCTrigger/*!*/ trigger in newNode.Triggers) {
           Contract.Assert(trigger != null);

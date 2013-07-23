@@ -374,7 +374,7 @@ namespace Microsoft.Boogie.TypeErasure
 
         // if all of the parameters are int or bool, the function does
         // not have to be changed
-        if (Contract.ForAll(0, fun.InParams.Count, f => UnchangedType(cce.NonNull(fun.InParams[f]).TypedIdent.Type)) &&
+        if (fun.InParams.All(param => UnchangedType(cce.NonNull(param).TypedIdent.Type)) &&
             UnchangedType(cce.NonNull(fun.OutParams[0]).TypedIdent.Type) &&
             fun.TypeParameters.Count == 0) {
           res = new UntypedFunction(fun, new List<TypeVariable/*!*/>(), new List<TypeVariable/*!*/>());
@@ -641,9 +641,9 @@ namespace Microsoft.Boogie.TypeErasure
       Contract.Ensures(Contract.ValueAtReturn(out mapTypeSynonym) != null);
       Contract.Ensures(cce.NonNullElements(Contract.ValueAtReturn(out typeParams)));
       Contract.Ensures(cce.NonNullElements(Contract.ValueAtReturn(out originalIndexTypes)));
-      typeParams = new List<TypeVariable/*!*/>(abstractedType.TypeParameters.Count + abstractedType.FreeVariables.Count);
-      typeParams.AddRange(abstractedType.TypeParameters.ToList());
-      typeParams.AddRange(abstractedType.FreeVariables.ToList());
+      typeParams = new List<TypeVariable/*!*/>();
+      typeParams.AddRange(abstractedType.TypeParameters);
+      typeParams.AddRange(abstractedType.FreeVariables);
 
       originalIndexTypes = new List<Type/*!*/>(abstractedType.Arguments.Count + 1);
       List<Type>/*!*/ mapTypeParams = new List<Type>();
@@ -1115,7 +1115,7 @@ namespace Microsoft.Boogie.TypeErasure
       if (typeVarBindings.Count < node.TypeParameters.Count) {
         foreach (TypeVariable/*!*/ var in node.TypeParameters) {
           Contract.Assert(var != null);
-          if (!Contract.Exists(typeVarBindings, b => b.V.Equals(var)))
+          if (typeVarBindings.All(b => b.V.Equals(var)))
             newBoundVars.Add((VCExprVar)bindings.TypeVariableBindings[var]);
         }
       }
@@ -1196,7 +1196,7 @@ namespace Microsoft.Boogie.TypeErasure
           Dictionary<VCExprVar/*!*/, object>/*!*/ freeVars =
                       FreeVariableCollector.FreeTermVariables(e);
           Contract.Assert(freeVars != null && cce.NonNullElements(freeVars.Keys));
-          if (Contract.Exists(typeVarBindings, b => freeVars.ContainsKey(b.V))) {
+          if (typeVarBindings.Any(b => freeVars.ContainsKey(b.V))) {
             exprsWithLets.Add(Gen.Let(typeVarBindings, e));
             changed = true;
           } else {

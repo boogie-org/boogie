@@ -6,6 +6,7 @@
 using System;
 using System.Text;
 using System.IO;
+using System.Linq;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
@@ -108,7 +109,7 @@ namespace Microsoft.Boogie.TypeErasure {
 
         // if all of the parameters are int or bool, the function does
         // not have to be changed
-        if (Contract.ForAll(0, fun.InParams.Count, f => UnchangedType(cce.NonNull(fun.InParams[f]).TypedIdent.Type)) &&
+        if (fun.InParams.All(param => UnchangedType(cce.NonNull(param).TypedIdent.Type)) &&
             UnchangedType(cce.NonNull(fun.OutParams[0]).TypedIdent.Type)) {
           res = fun;
         } else {

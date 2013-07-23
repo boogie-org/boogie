@@ -115,8 +115,7 @@ namespace Microsoft.Boogie {
     [Pure]
     public static bool IsIdempotent(IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ unifier) {
       Contract.Requires(cce.NonNullDictionaryAndValues(unifier));
-      return Contract.ForAll(unifier.Values, t => Contract.ForAll(0, t.FreeVariables.Count, var =>
-                                   !unifier.ContainsKey(t.FreeVariables[var])));
+      return unifier.Values.All(val => val.FreeVariables.All(var => !unifier.ContainsKey(var)));
     }
 
 
@@ -561,7 +560,7 @@ namespace Microsoft.Boogie {
         // in case we have been able to substitute all type parameters,
         // we can still return the result type and hope that the
         // type checking proceeds in a meaningful manner
-        if (Contract.ForAll(0, typeParams.Count, index => !resultFreeVars.Contains(typeParams[index])))
+        if (typeParams.All(param => !resultFreeVars.Contains(param)))
           return actualResults;
         else
           // otherwise there is no point in returning the result type,
@@ -1552,7 +1551,7 @@ Contract.Requires(that != null);
         // this is not a bound variable and can possibly be matched on that
         // that must not contain any bound variables
         List<TypeVariable>! thatFreeVars = that.FreeVariables;
-        if (Contract.Exists(thatBoundVariables, var=> thatFreeVars.Has(var)))
+        if (thatBoundVariables.Any(var=> thatFreeVars.Has(var)))
           throw UNIFICATION_FAILED;
 
         // otherwise, in case that is a typevariable it cannot be bound and
@@ -3318,7 +3317,8 @@ Contract.Assert(var != null);
     private bool collisionsPossible(IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ subst) {
       Contract.Requires(cce.NonNullDictionaryAndValues(subst));
       // PR: could be written more efficiently
-      return Contract.Exists(0, TypeParameters.Count, i => subst.ContainsKey(TypeParameters[i]) || Contract.Exists(subst.Values, t => t.FreeVariables.Contains(TypeParameters[i])));
+      // return Contract.Exists(0, TypeParameters.Count, i => subst.ContainsKey(TypeParameters[i]) || Contract.Exists(subst.Values, t => t.FreeVariables.Contains(TypeParameters[i])));
+      return TypeParameters.Any(param => subst.ContainsKey(param) || subst.Values.Any(val => val.FreeVariables.Contains(param)));
     }
 
     public override Type Substitute(IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ subst) {

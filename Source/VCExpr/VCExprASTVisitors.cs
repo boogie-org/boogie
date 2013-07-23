@@ -1072,13 +1072,13 @@ namespace Microsoft.Boogie.VCExprAST {
 
     public bool TermSubstIsEmpty {
       get {
-        return Contract.ForAll(TermSubsts, dict => dict.Count == 0);
+        return TermSubsts.All(dict => dict.Count == 0);
       }
     }
 
     public bool TypeSubstIsEmpty {
       get {
-        return Contract.ForAll(TypeSubsts, dict => dict.Count == 0);
+        return TypeSubsts.All(dict => dict.Count == 0); ;
       }
     }
 
@@ -1173,15 +1173,15 @@ namespace Microsoft.Boogie.VCExprAST {
       Contract.Requires(cce.NonNullElements(boundVars));
       Contract.Requires(substitution != null);
       // variables can be shadowed by a binder
-      if (Contract.Exists(typeParams, var => substitution.ContainsKey(var)) ||
-          Contract.Exists(boundVars, var => substitution.ContainsKey(var)))
+      if (typeParams.Any(var => substitution.ContainsKey(var)) ||
+          boundVars.Any(var => substitution.ContainsKey(var)))
         return true;
       // compute the codomain of the substitution
       FreeVariableCollector coll = substitution.Codomains;
       Contract.Assert(coll != null);
       // variables could be captured when applying the substitution
-      return Contract.Exists(typeParams, var => coll.FreeTypeVars.Contains(var)) ||
-             Contract.Exists(boundVars, var => coll.FreeTermVars.ContainsKey(var));
+      return typeParams.Any(var => coll.FreeTypeVars.Contains(var)) ||
+             boundVars.Any(var => coll.FreeTermVars.ContainsKey(var));
     }
 
     // can be overwritten if names of bound variables are to be changed

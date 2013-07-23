@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using System.Linq;
 using System.Diagnostics.Contracts;
 using Microsoft.Boogie.VCExprAST;
 
@@ -286,7 +287,7 @@ namespace Microsoft.Boogie {
       VCExpr maxDescendants = Gen.Eq(cAsVar, w);
       foreach (Constant d in Constants) {
         Contract.Assert(d != null);
-        if (d.Parents != null && Contract.Exists(d.Parents, p => c.Equals(p.Parent.Decl)))
+        if (d.Parents != null && d.Parents.Any(p => c.Equals(p.Parent.Decl)))
           maxDescendants = Gen.Or(maxDescendants,
                                   Gen.AtMost(w, Translator.LookupVariable(d)));
       }

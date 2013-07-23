@@ -6,6 +6,7 @@
 using System;
 using System.Text;
 using System.IO;
+using System.Linq;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
@@ -36,7 +37,7 @@ namespace Microsoft.Boogie.VCExprAST {
       if (kinds.IndexOf(',') < 0) {
         return IsProverCommandSupported(kinds);
       } else {
-        return Contract.Exists(kinds.Split(',', ' '), k => IsProverCommandSupported(k));
+        return kinds.Split(',', ' ').Any(k => IsProverCommandSupported(k));
       }
     }
 

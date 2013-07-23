@@ -1343,7 +1343,7 @@ namespace Microsoft.Boogie {
         foreach (TypeSynonymDecl/*!*/ decl in synonymDecls) {
           Contract.Assert(decl != null);
           if (!resolved.Contains(decl) &&
-              Contract.ForAll(deps[decl], d => resolved.Contains(d))) {
+              deps[decl].All(d => resolved.Contains(d))) {
             decl.Resolve(rc);
             resolved.Add(decl);
           }
