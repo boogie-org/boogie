@@ -916,7 +916,7 @@ namespace Microsoft.Boogie.TypeErasure {
       Contract.Requires(rawType != null);
       Contract.Ensures(Contract.Result<MapType>() != null);
       List<Type>/*!*/ newArguments = new List<Type>();
-      foreach (Type/*!*/ subtype in rawType.Arguments) {
+      foreach (Type/*!*/ subtype in rawType.Arguments.ToList()) {
         Contract.Assert(subtype != null);
         newArguments.Add(ThinOutType(subtype, rawType.TypeParameters,
                                      instantiations));
@@ -964,7 +964,7 @@ namespace Microsoft.Boogie.TypeErasure {
         // traverse the subtypes
         CtorType/*!*/ rawCtorType = rawType.AsCtor;
         List<Type>/*!*/ newArguments = new List<Type>();
-        foreach (Type/*!*/ subtype in rawCtorType.Arguments) {
+        foreach (Type/*!*/ subtype in rawCtorType.Arguments.ToList()) {
           Contract.Assert(subtype != null);
           newArguments.Add(ThinOutType(subtype, boundTypeParams,
                                        instantiations));

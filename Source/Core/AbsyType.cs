@@ -2963,7 +2963,7 @@ Contract.Requires(that != null);
     public override int GetHashCode(List<TypeVariable> boundVariables) {
       //Contract.Requires(boundVariables != null);
       int res = 1637643879 * Decl.GetHashCode();
-      foreach (Type/*!*/ t in Arguments) {
+      foreach (Type/*!*/ t in Arguments.ToArray()) {
         Contract.Assert(t != null);
         res = res * 3 + t.GetHashCode(boundVariables);
       }
@@ -3017,7 +3017,7 @@ Contract.Requires(that != null);
     public override List<TypeVariable>/*!*/ FreeVariables {
       get {
         List<TypeVariable>/*!*/ res = new List<TypeVariable>();
-        foreach (Type/*!*/ t in Arguments) {
+        foreach (Type/*!*/ t in Arguments.ToArray()) {
           Contract.Assert(t != null);
           res.AppendWithoutDups(t.FreeVariables);
         }
@@ -3028,7 +3028,7 @@ Contract.Requires(that != null);
     public override List<TypeProxy/*!*/>/*!*/ FreeProxies {
       get {
         List<TypeProxy/*!*/>/*!*/ res = new List<TypeProxy/*!*/>();
-        foreach (Type/*!*/ t in Arguments) {
+        foreach (Type/*!*/ t in Arguments.ToArray()) {
           Contract.Assert(t != null);
           AppendWithoutDups(res, t.FreeProxies);
         }
@@ -3359,7 +3359,7 @@ Contract.Assert(var != null);
         boundVariables.Add(var);
       }
 
-      foreach (Type/*!*/ t in Arguments) {
+      foreach (Type/*!*/ t in Arguments.ToArray()) {
         Contract.Assert(t != null);
         res = res * 5 + t.GetHashCode(boundVariables);
       }
@@ -3425,10 +3425,10 @@ Contract.Assert(var != null);
 
     public override List<TypeVariable>/*!*/ FreeVariables {
       get {
-        List<TypeVariable>/*!*/ res = FreeVariablesIn(Arguments);
+        List<TypeVariable>/*!*/ res = FreeVariablesIn(Arguments.ToList());
         Contract.Assert(res != null);
         res.AppendWithoutDups(Result.FreeVariables);
-        foreach (TypeVariable/*!*/ v in TypeParameters) {
+        foreach (TypeVariable/*!*/ v in TypeParameters.ToArray()) {
           Contract.Assert(v != null);
           res.Remove(v);
         }
@@ -3439,7 +3439,7 @@ Contract.Assert(var != null);
     public override List<TypeProxy/*!*/>/*!*/ FreeProxies {
       get {
         List<TypeProxy/*!*/>/*!*/ res = new List<TypeProxy/*!*//*!*/>();
-        foreach (Type/*!*/ t in Arguments) {
+        foreach (Type/*!*/ t in Arguments.ToArray()) {
           Contract.Assert(t != null);
           AppendWithoutDups(res, t.FreeProxies);
         }

@@ -1588,14 +1588,14 @@ namespace Microsoft.Boogie {
         case Opcode.Neq:
           if (arg0.Type != null && arg0.Type.IsBool && arg1.Type != null && arg1.Type.IsBool) {
             expr.Fun = new BinaryOperator(tok, Opcode.Iff);
-            arg1 = new NAryExpr(expr.tok, new UnaryOperator(tok, UnaryOperator.Opcode.Not), new List<Expr> { arg1 });
+            var arg1New = new NAryExpr(expr.tok, new UnaryOperator(tok, UnaryOperator.Opcode.Not), new List<Expr> { arg1 });
 
             // ugly ... there should be some more general approach,
             // e.g., to typecheck the whole expression again
-            arg1.Type = Type.Bool;
-            ((NAryExpr)arg1).TypeParameters = SimpleTypeParamInstantiation.EMPTY;
+            arg1New.Type = Type.Bool;
+            arg1New.TypeParameters = SimpleTypeParamInstantiation.EMPTY;
 
-            expr.Args[1] = arg1;
+            expr.Args[1] = arg1New;
           }
           break;
       }

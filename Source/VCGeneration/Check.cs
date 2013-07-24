@@ -184,7 +184,7 @@ namespace Microsoft.Boogie {
         outcome = default(ProverInterface.Outcome);
         outputExn = default(UnexpectedProverOutputException);
         handler = default(ProverInterface.ErrorHandler);
-        TheoremProver.FullReset();
+        TheoremProver.FullReset(gen);
         ctx.Reset();
         Setup(prog, ctx);
         this.timeout = timeout;
@@ -341,7 +341,7 @@ namespace Microsoft.Boogie {
       outputExn = null;
       this.handler = handler;
 
-      thmProver.Reset();
+      thmProver.Reset(gen);
       SetTimeout();
       proverStart = DateTime.UtcNow;
       thmProver.BeginCheck(descriptiveName, vc, handler);
@@ -494,9 +494,9 @@ namespace Microsoft.Boogie {
     public virtual void Close() {
     }
 
-    public abstract void Reset();
+    public abstract void Reset(VCExpressionGenerator gen);
 
-    public abstract void FullReset();
+    public abstract void FullReset(VCExpressionGenerator gen);
 
     /// <summary>
     /// MSchaef: Allows to Push a VCExpression as Axiom on the prover stack (beta)
@@ -617,12 +617,12 @@ namespace Microsoft.Boogie {
       throw new NotImplementedException();
     }
 
-    public override void Reset()
+    public override void Reset(VCExpressionGenerator gen)
     {
       throw new NotImplementedException();
     }
 
-    public override void FullReset()
+    public override void FullReset(VCExpressionGenerator gen)
     {
       throw new NotImplementedException();
     }

@@ -26,7 +26,7 @@ namespace Microsoft.Boogie.SMTLib
   public class SMTLibProcessTheoremProver : ProverInterface
   {
     private readonly SMTLibProverContext ctx;
-    private readonly VCExpressionGenerator gen;
+    private VCExpressionGenerator gen;
     private readonly SMTLibProverOptions options;
     private bool usingUnsatCore;
     private RPFP rpfp = null;
@@ -396,37 +396,41 @@ namespace Microsoft.Boogie.SMTLib
       FlushLogFile();
     }
 
-    public override void Reset ()
+    public override void Reset(VCExpressionGenerator gen)
     {
-      if (options.Solver == SolverKind.Z3) {
-        SendThisVC ("(reset)");
-		
-	    if (0 < common.Length)
-		{
-          var c = common.ToString ();
-          Process.Send (c);
+      if (options.Solver == SolverKind.Z3)
+      {
+        this.gen = gen;
+        SendThisVC("(reset)");
+
+        if (0 < common.Length)
+        {
+          var c = common.ToString();
+          Process.Send(c);
           if (currentLogFile != null)
-		  {
-            currentLogFile.WriteLine (c);
+          {
+            currentLogFile.WriteLine(c);
           }
         }
       }
     }
-	
-    public override void FullReset ()
+
+    public override void FullReset(VCExpressionGenerator gen)
     {
-      if (options.Solver == SolverKind.Z3) {
-        Namer.Reset ();
-        common.Clear ();
-        SetupAxiomBuilder (gen);
-        Axioms.Clear ();
-        TypeDecls.Clear ();
+      if (options.Solver == SolverKind.Z3)
+      {
+        this.gen = gen;
+        Namer.Reset();
+        common.Clear();
+        SetupAxiomBuilder(gen);
+        Axioms.Clear();
+        TypeDecls.Clear();
         AxiomsAreSetup = false;
-        ctx.Reset ();
-        ctx.KnownDatatypeConstructors.Clear ();
+        ctx.Reset();
+        ctx.KnownDatatypeConstructors.Clear();
         ctx.parent = this;
-        DeclCollector.Reset ();
-        SendThisVC ("; doing a full reset...");
+        DeclCollector.Reset();
+        SendThisVC("; doing a full reset...");
       }
     }
 
@@ -1061,50 +1065,55 @@ namespace Microsoft.Boogie.SMTLib
       Contract.Requires(expr != null);
       Contract.Ensures(Contract.Result<string>() != null);
 
-      DateTime start = DateTime.UtcNow;
-      //if (CommandLineOptions.Clo.Trace)
-      //  Console.Write("Linearising ... ");
+      lock (gen)
+      {
+        DateTime start = DateTime.UtcNow;
+        //if (CommandLineOptions.Clo.Trace)
+        //  Console.Write("Linearising ... ");
 
-      // handle the types in the VCExpr
-      TypeEraser eraser;
-      switch (CommandLineOptions.Clo.TypeEncodingMethod) {
-        case CommandLineOptions.TypeEncoding.Arguments:
-          eraser = new TypeEraserArguments((TypeAxiomBuilderArguments)AxBuilder, gen);
-          break;
-        case CommandLineOptions.TypeEncoding.Monomorphic:
-          eraser = null;
-          break;
-        default:
-          eraser = new TypeEraserPremisses((TypeAxiomBuilderPremisses)AxBuilder, gen);
-          break;
+        // handle the types in the VCExpr
+        TypeEraser eraser;
+        switch (CommandLineOptions.Clo.TypeEncodingMethod)
+        {
+          case CommandLineOptions.TypeEncoding.Arguments:
+            eraser = new TypeEraserArguments((TypeAxiomBuilderArguments)AxBuilder, gen);
+            break;
+          case CommandLineOptions.TypeEncoding.Monomorphic:
+            eraser = null;
+            break;
+          default:
+            eraser = new TypeEraserPremisses((TypeAxiomBuilderPremisses)AxBuilder, gen);
+            break;
+        }
+        VCExpr exprWithoutTypes = eraser == null ? expr : eraser.Erase(expr, polarity);
+        Contract.Assert(exprWithoutTypes != null);
+
+        LetBindingSorter letSorter = new LetBindingSorter(gen);
+        Contract.Assert(letSorter != null);
+        VCExpr sortedExpr = letSorter.Mutate(exprWithoutTypes, true);
+        Contract.Assert(sortedExpr != null);
+        VCExpr sortedAxioms = letSorter.Mutate(AxBuilder.GetNewAxioms(), true);
+        Contract.Assert(sortedAxioms != null);
+
+        DeclCollector.Collect(sortedAxioms);
+        DeclCollector.Collect(sortedExpr);
+        FeedTypeDeclsToProver();
+
+
+
+        AddAxiom(SMTLibExprLineariser.ToString(sortedAxioms, Namer, options));
+        string res = SMTLibExprLineariser.ToString(sortedExpr, Namer, options);
+        Contract.Assert(res != null);
+
+        if (CommandLineOptions.Clo.Trace)
+        {
+          DateTime end = DateTime.UtcNow;
+          TimeSpan elapsed = end - start;
+          if (elapsed.TotalSeconds > 0.5)
+            Console.WriteLine("Linearising   [{0} s]", elapsed.TotalSeconds);
+        }
+        return res;
       }
-      VCExpr exprWithoutTypes = eraser == null ? expr : eraser.Erase(expr, polarity);
-      Contract.Assert(exprWithoutTypes != null);
-
-      LetBindingSorter letSorter = new LetBindingSorter(gen);
-      Contract.Assert(letSorter != null);
-      VCExpr sortedExpr = letSorter.Mutate(exprWithoutTypes, true);
-      Contract.Assert(sortedExpr != null);
-      VCExpr sortedAxioms = letSorter.Mutate(AxBuilder.GetNewAxioms(), true);
-      Contract.Assert(sortedAxioms != null);
-
-      DeclCollector.Collect(sortedAxioms);
-      DeclCollector.Collect(sortedExpr);
-      FeedTypeDeclsToProver();
-
-      
-
-      AddAxiom(SMTLibExprLineariser.ToString(sortedAxioms, Namer, options));
-      string res = SMTLibExprLineariser.ToString(sortedExpr, Namer, options);
-      Contract.Assert(res != null);
-
-      if (CommandLineOptions.Clo.Trace) {
-        DateTime end = DateTime.UtcNow;
-        TimeSpan elapsed = end - start;
-        if (elapsed.TotalSeconds > 0.5)
-          Console.WriteLine("Linearising   [{0} s]", elapsed.TotalSeconds);
-      }
-      return res;
     }
 
     // the list of all known axioms, where have to be included in each
