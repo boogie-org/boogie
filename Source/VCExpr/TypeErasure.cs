@@ -406,7 +406,7 @@ namespace Microsoft.Boogie.TypeErasure {
         CtorType ctype = type.AsCtor;
         Function/*!*/ repr = GetTypeCtorRepr(ctype.Decl);
         List<VCExpr/*!*/>/*!*/ args = new List<VCExpr/*!*/>(ctype.Arguments.Count);
-        foreach (Type/*!*/ t in ctype.Arguments) {
+        foreach (Type/*!*/ t in ctype.Arguments.ToArray()) {
           Contract.Assert(t != null);
           args.Add(Type2Term(t, varMapping));
         }
