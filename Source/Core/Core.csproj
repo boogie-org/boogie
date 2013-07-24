@@ -167,7 +167,6 @@
     <Compile Include="OOLongUtil.cs" />
     <Compile Include="OwickiGries.cs" />
     <Compile Include="Parser.cs" />
-    <Compile Include="PureCollections.cs" />
     <Compile Include="ResolutionContext.cs" />
     <Compile Include="Scanner.cs" />
     <Compile Include="StandardVisitor.cs" />

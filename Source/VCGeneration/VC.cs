@@ -1120,7 +1120,7 @@ namespace VC {
             ss.Add(s0.blocks[0]);
             ss.Add(s1.blocks[0]);
             try {
-              best.SoundnessCheck(new HashSet<PureCollections.Tuple>(), best.blocks[0], ss);
+              best.SoundnessCheck(new HashSet<List<Block>>(new BlockListComparer()), best.blocks[0], ss);
             } catch (System.Exception e) {
               Console.WriteLine(e);
               best.DumpDot(-1);
@@ -1147,6 +1147,28 @@ namespace VC {
         }
 
         return res;
+      }
+
+      class BlockListComparer : IEqualityComparer<List<Block>>
+      {
+        public bool Equals(List<Block> x, List<Block> y)
+        {
+          return x == y || x.SequenceEqual(y);
+        }
+
+        public int GetHashCode(List<Block> obj)
+        {
+          int h = 0;
+          Contract.Assume(obj != null);
+          foreach (var b in obj)
+          {
+            if (b != null)
+            {
+              h += b.GetHashCode();
+            }
+          }
+          return h;
+        }
       }
 
       public Checker Checker {
@@ -1296,17 +1318,15 @@ namespace VC {
         checker.BeginCheck(desc, vc, reporter);
       }
 
-      private void SoundnessCheck(HashSet<PureCollections.Tuple/*!*/>/*!*/ cache, Block/*!*/ orig, List<Block/*!*/>/*!*/ copies) {
+      private void SoundnessCheck(HashSet<List<Block>/*!*/>/*!*/ cache, Block/*!*/ orig, List<Block/*!*/>/*!*/ copies) {
         Contract.Requires(cce.NonNull(cache));
         Contract.Requires(orig != null);
         Contract.Requires(copies != null);
         {
-          PureCollections.Tuple t = new PureCollections.Tuple(new PureCollections.Capacity(1 + copies.Count));
-          int i = 0;
-          t[i++] = orig;
+          var t = new List<Block> { orig };
           foreach (Block b in copies) {
             Contract.Assert(b != null);
-            t[i++] = b;
+            t.Add(b);
           }
           if (cache.Contains(t)) {
             return;
