@@ -698,6 +698,121 @@ namespace Microsoft.Boogie.Houdini {
       this.NotifyFlushFinish();
     }
 
+    private List<RefutedAnnotation> ExchangeRefutedAnnotations(List<RefutedAnnotation> newlyRefuted)
+    {
+      List<RefutedAnnotation> result = newlyRefuted;
+//      List<string> knownRefutedInformation = new List<string>();
+      string refutedInformation;
+
+      if (CommandLineOptions.Clo.DebugParallelHoudini)
+        Console.WriteLine("# refuted annotations before exchange: " + result.Count);
+
+      using (var fileStream = new FileStream(@"houdini.txt", FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.ReadWrite))
+        using (var input = new StreamReader(fileStream))
+          using (var output = new StreamWriter(fileStream)) {
+        while ((refutedInformation = input.ReadLine()) != null) {
+//          knownRefutedInformation.Add(refutedInformation);
+          var ri = refutedInformation.Split(',');
+
+          KeyValuePair<Variable, bool> kv = currentHoudiniState.Assignment.FirstOrDefault(entry => entry.Key.Name.Equals(ri[0]) && entry.Value);
+
+          if (kv.Key != null) {
+            RefutedAnnotation ra = null;
+            Implementation refutationSite = null;
+
+            foreach (var r in program.TopLevelDeclarations.OfType<Implementation>()) {
+              if (r.Name.Equals(ri[3])) {
+                refutationSite = r;
+                break;
+              }
+            }
+            Debug.Assert(refutationSite != null);
+
+            if (ri[1].Equals("REQUIRES")) {
+              Procedure proc = null;
+              foreach (var p in program.TopLevelDeclarations.OfType<Procedure>()) {
+                if (p.Name.Equals(ri[2])) {
+                  proc = p;
+                  break;
+                }
+              }
+              Debug.Assert(proc != null);
+              ra = RefutedAnnotation.BuildRefutedRequires(kv.Key, proc, refutationSite);
+            } else if (ri[1].Equals("ENSURES"))
+              ra = RefutedAnnotation.BuildRefutedEnsures(kv.Key, refutationSite);
+            else if (ri[1].Equals("ASSERT"))
+              ra = RefutedAnnotation.BuildRefutedAssert(kv.Key, refutationSite);
+            Debug.Assert(ra != null);
+
+            result.Add(ra);
+            if (CommandLineOptions.Clo.DebugParallelHoudini)
+              Console.WriteLine("(+) " + refutedInformation);
+          }
+
+//          foreach (KeyValuePair<Variable, bool> entry in currentHoudiniState.Assignment) {
+//            if (entry.Key.Name.Equals(ri[0]) && entry.Value) {
+//              RefutedAnnotation ra = null;
+//              Implementation refutationSite = null;
+//
+//              foreach (var r in program.TopLevelDeclarations.OfType<Implementation>()) {
+//                if (r.Name.Equals(ri[3])) {
+//                  refutationSite = r;
+//                  break;
+//                }
+//              }
+//              Debug.Assert(refutationSite != null);
+//
+//              if (ri[1].Equals("REQUIRES")) {
+//                Procedure proc = null;
+//                foreach (var p in program.TopLevelDeclarations.OfType<Procedure>()) {
+//                  if (p.Name.Equals(ri[2])) {
+//                    proc = p;
+//                    break;
+//                  }
+//                }
+//                Debug.Assert(proc != null);
+//                ra = RefutedAnnotation.BuildRefutedRequires(entry.Key, proc, refutationSite);
+//              } else if (ri[1].Equals("ENSURES"))
+//                ra = RefutedAnnotation.BuildRefutedEnsures(entry.Key, refutationSite);
+//              else if (ri[1].Equals("ASSERT"))
+//                ra = RefutedAnnotation.BuildRefutedAssert(entry.Key, refutationSite);
+//              Debug.Assert(ra != null);
+//
+//              //if (!result.Contains(ra)) {
+//                result.Add(ra);
+//                if (CommandLineOptions.Clo.DebugStagedHoudini)
+//                Console.WriteLine("(+) " + refutedInformation);
+//              //}
+//
+//              break;
+//            }
+//          }
+
+//          foreach (RefutedAnnotation refAnnot in newlyRefuted) {
+//            if (refAnnot.Constant != ra.Constant || refAnnot.Kind != ra.Kind ||
+//                refAnnot.CalleeProc != ra.CalleeProc || refAnnot.RefutationSite != ra.RefutationSite) {
+//              result.Add(ra);
+//              if (CommandLineOptions.Clo.DebugStagedHoudini)
+//                Console.WriteLine("(+) " + knownRefutedInformation.LastOrDefault());
+//            }
+//          }
+        }
+
+        if (CommandLineOptions.Clo.DebugParallelHoudini)
+          Console.WriteLine("# refuted annotations after exchange: " + result.Count);
+
+        foreach (RefutedAnnotation refAnnot in result) {
+//          string ri = refAnnot.Constant + "," + refAnnot.Kind + "," +
+//            refAnnot.CalleeProc + "," + currentHoudiniState.Implementation;
+//          if (!knownRefutedInformation.Contains(ri))
+          output.WriteLine(refAnnot.Constant + "," + refAnnot.Kind + "," +
+                           refAnnot.CalleeProc + "," + currentHoudiniState.Implementation);
+        }
+      }
+
+      return result;
+    }
+
     private void UpdateAssignment(RefutedAnnotation refAnnot) {
       if (CommandLineOptions.Clo.Trace) {
         Console.WriteLine("Removing " + refAnnot.Constant);
@@ -711,7 +826,7 @@ namespace Microsoft.Boogie.Houdini {
 
     private void AddRelatedToWorkList(RefutedAnnotation refutedAnnotation) {
       Contract.Assume(currentHoudiniState.Implementation != null);
-      foreach (Implementation implementation in FindImplementationsToEnqueue(refutedAnnotation, currentHoudiniState.Implementation)) {
+      foreach (Implementation implementation in FindImplementationsToEnqueue(refutedAnnotation, refutedAnnotation.RefutationSite)) {
         if (!currentHoudiniState.isBlackListed(implementation.Name)) {
           currentHoudiniState.WorkQueue.Enqueue(implementation);
           this.NotifyEnqueue(implementation);
@@ -731,32 +846,67 @@ namespace Microsoft.Boogie.Houdini {
           case ProverInterface.Outcome.Valid:
               //yeah, dequeue
               break;
+
           case ProverInterface.Outcome.Invalid:
               Contract.Assume(errors != null);
-              foreach (Counterexample error in errors)
-              {
-                  RefutedAnnotation refutedAnnotation = ExtractRefutedAnnotation(error);
-                  if (refutedAnnotation != null)
-                  { // some candidate annotation removed
-                      AddRelatedToWorkList(refutedAnnotation);
-                      UpdateAssignment(refutedAnnotation);
-                      dequeue = false;
-                      #region Extra debugging output
-                      if (CommandLineOptions.Clo.Trace)
-                      {
-                          using (var cexWriter = new System.IO.StreamWriter(cexTraceFile, true))
-                          {
-                              cexWriter.WriteLine("Counter example for " + refutedAnnotation.Constant);
-                              cexWriter.Write(error.ToString());
-                              cexWriter.WriteLine();
-                              using (var writer = new Microsoft.Boogie.TokenTextWriter(cexWriter))
-                                  foreach (Microsoft.Boogie.Block blk in error.Trace)
-                                      blk.Emit(writer, 15);
-                              //cexWriter.WriteLine(); 
-                          }
-                      }
-                      #endregion
 
+              if (CommandLineOptions.Clo.HoudiniOutputRefutedCandidates) {
+                  List<RefutedAnnotation> refutedAnnotations = new List<RefutedAnnotation>();
+                
+                  foreach (Counterexample error in errors) {
+                      RefutedAnnotation refutedAnnotation = ExtractRefutedAnnotation(error);
+                      if (refutedAnnotation != null) { // some candidate annotation removed
+                          refutedAnnotations.Add(refutedAnnotation);
+                          
+                          #region Extra debugging output
+                          if (CommandLineOptions.Clo.Trace)
+                          {
+                              using (var cexWriter = new System.IO.StreamWriter(cexTraceFile, true))
+                              {
+                                  cexWriter.WriteLine("Counter example for " + refutedAnnotation.Constant);
+                                  cexWriter.Write(error.ToString());
+                                  cexWriter.WriteLine();
+                                  using (var writer = new Microsoft.Boogie.TokenTextWriter(cexWriter))
+                                      foreach (Microsoft.Boogie.Block blk in error.Trace)
+                                          blk.Emit(writer, 15);
+                              }
+                          }
+                          #endregion
+                      }
+                  }
+                
+                  refutedAnnotations = ExchangeRefutedAnnotations(refutedAnnotations);
+                
+                  foreach (RefutedAnnotation refAnnot in refutedAnnotations) {
+                      AddRelatedToWorkList(refAnnot);
+                      UpdateAssignment(refAnnot);
+                      dequeue = false;
+                  }
+              } else {
+                  foreach (Counterexample error in errors)
+                  {
+                      RefutedAnnotation refutedAnnotation = ExtractRefutedAnnotation(error);
+                      if (refutedAnnotation != null)
+                      { // some candidate annotation removed
+                          AddRelatedToWorkList(refutedAnnotation);
+                          UpdateAssignment(refutedAnnotation);
+                          dequeue = false;
+                          #region Extra debugging output
+                          if (CommandLineOptions.Clo.Trace)
+                          {
+                              using (var cexWriter = new System.IO.StreamWriter(cexTraceFile, true))
+                              {
+                                  cexWriter.WriteLine("Counter example for " + refutedAnnotation.Constant);
+                                  cexWriter.Write(error.ToString());
+                                  cexWriter.WriteLine();
+                                  using (var writer = new Microsoft.Boogie.TokenTextWriter(cexWriter))
+                                      foreach (Microsoft.Boogie.Block blk in error.Trace)
+                                          blk.Emit(writer, 15);
+                                  //cexWriter.WriteLine(); 
+                              }
+                          }
+                          #endregion
+                      }
                   }
               }
               break;
@@ -946,11 +1096,13 @@ namespace Microsoft.Boogie.Houdini {
       private Variable _constant;
       private RefutedAnnotationKind _kind;
       private Procedure _callee;
+      private Implementation _refutationSite;
 
-      private RefutedAnnotation(Variable constant, RefutedAnnotationKind kind, Procedure callee) {
+      private RefutedAnnotation(Variable constant, RefutedAnnotationKind kind, Procedure callee, Implementation refutationSite) {
         this._constant = constant;
         this._kind = kind;
         this._callee = callee;
+        this._refutationSite = refutationSite;
       }
       public RefutedAnnotationKind Kind {
         get { return this._kind; }
@@ -961,14 +1113,17 @@ namespace Microsoft.Boogie.Houdini {
       public Procedure CalleeProc {
         get { return this._callee; }
       }
-      public static RefutedAnnotation BuildRefutedRequires(Variable constant, Procedure callee) {
-        return new RefutedAnnotation(constant, RefutedAnnotationKind.REQUIRES, callee);
+      public Implementation RefutationSite {
+        get { return this._refutationSite; }
       }
-      public static RefutedAnnotation BuildRefutedEnsures(Variable constant) {
-        return new RefutedAnnotation(constant, RefutedAnnotationKind.ENSURES, null);
+      public static RefutedAnnotation BuildRefutedRequires(Variable constant, Procedure callee, Implementation refutationSite) {
+        return new RefutedAnnotation(constant, RefutedAnnotationKind.REQUIRES, callee, refutationSite);
       }
-      public static RefutedAnnotation BuildRefutedAssert(Variable constant) {
-        return new RefutedAnnotation(constant, RefutedAnnotationKind.ASSERT, null);
+      public static RefutedAnnotation BuildRefutedEnsures(Variable constant, Implementation refutationSite) {
+        return new RefutedAnnotation(constant, RefutedAnnotationKind.ENSURES, null, refutationSite);
+      }
+      public static RefutedAnnotation BuildRefutedAssert(Variable constant, Implementation refutationSite) {
+        return new RefutedAnnotation(constant, RefutedAnnotationKind.ASSERT, null, refutationSite);
       }
     }
 
@@ -1024,7 +1179,7 @@ namespace Microsoft.Boogie.Houdini {
         Requires failingRequires = callCounterexample.FailingRequires;
         if (MatchCandidate(failingRequires.Condition, out houdiniConstant)) {
           Contract.Assert(houdiniConstant != null);
-          return RefutedAnnotation.BuildRefutedRequires(houdiniConstant, failingProcedure);
+          return RefutedAnnotation.BuildRefutedRequires(houdiniConstant, failingProcedure, currentHoudiniState.Implementation);
         }
       }
       ReturnCounterexample returnCounterexample = error as ReturnCounterexample;
@@ -1032,7 +1187,7 @@ namespace Microsoft.Boogie.Houdini {
         Ensures failingEnsures = returnCounterexample.FailingEnsures;
         if (MatchCandidate(failingEnsures.Condition, out houdiniConstant)) {
           Contract.Assert(houdiniConstant != null);
-          return RefutedAnnotation.BuildRefutedEnsures(houdiniConstant);
+          return RefutedAnnotation.BuildRefutedEnsures(houdiniConstant, currentHoudiniState.Implementation);
         }
       }
       AssertCounterexample assertCounterexample = error as AssertCounterexample;
@@ -1040,7 +1195,7 @@ namespace Microsoft.Boogie.Houdini {
         AssertCmd failingAssert = assertCounterexample.FailingAssert;
         if (MatchCandidate(failingAssert.OrigExpr, out houdiniConstant)) {
           Contract.Assert(houdiniConstant != null);
-          return RefutedAnnotation.BuildRefutedAssert(houdiniConstant);
+          return RefutedAnnotation.BuildRefutedAssert(houdiniConstant, currentHoudiniState.Implementation);
         }
       }
 

@@ -397,6 +397,8 @@ namespace Microsoft.Boogie {
     public bool IntraproceduralInfer = true;
     public bool ContractInfer = false;
     public bool ExplainHoudini = false;
+    public bool HoudiniOutputRefutedCandidates = false;
+    public bool DebugParallelHoudini = false;
     public bool HoudiniUseCrossDependencies = false;
     public string StagedHoudini = null;
     public bool DebugStagedHoudini = false;
@@ -1165,6 +1167,18 @@ namespace Microsoft.Boogie {
           }
           return true;
 
+        case "outputRefuted":
+          if (ps.ConfirmArgumentCount(0)) {
+            HoudiniOutputRefutedCandidates = true;
+          }
+          return true;
+
+        case "debugParallelHoudini":
+          if (ps.ConfirmArgumentCount(0)) {
+            DebugParallelHoudini = true;
+          }
+          return true;
+
         case "vcBrackets":
           ps.GetNumericArgument(ref BracketIdsInVC, 2);
           return true;
@@ -1652,6 +1666,8 @@ namespace Microsoft.Boogie {
   /printInstrumented
                 print Boogie program after it has been instrumented with
                 invariants
+  /outputRefuted
+                Outputs the refuted candidates
 
   ---- Debugging and general tracing options ---------------------------------
 
