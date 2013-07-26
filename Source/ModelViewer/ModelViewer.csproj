@@ -123,8 +123,6 @@
     <Compile Include="Main.Designer.cs">
       <DependentUpon>Main.cs</DependentUpon>
     </Compile>
-    <Compile Include="..\Model\Model.cs" />
-    <Compile Include="..\Model\ModelParser.cs" />
     <Compile Include="Namer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SourceView.cs">
@@ -186,6 +184,12 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="bvdicon.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Model\Model.csproj">
+      <Project>{acef88d5-dadd-46da-bae1-2144d63f4c83}</Project>
+      <Name>Model</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
