@@ -245,6 +245,19 @@ namespace Microsoft.Boogie.ModelViewer
       UpdateMatches(true);
     }
 
+    public void HideStateList()
+    {
+      stateList.Hide();
+      splitContainer1.Panel2.Hide();
+      splitContainer1.Panel2Collapsed = true;
+      splitContainer1.SplitterDistance = splitContainer1.Width;
+    }
+
+    public void HideMenuStrip()
+    {
+      menuStrip1.Hide();
+    }
+
     internal void Activate(TreeNode treeNode)
     {
       throw new NotImplementedException();
