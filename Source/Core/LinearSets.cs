@@ -445,14 +445,18 @@ namespace Microsoft.Boogie
                                 Dictionary<string, Expr> domainNameToExpr = new Dictionary<string, Expr>();
                                 foreach (var domainName in linearDomains.Keys)
                                 {
-                                    domainNameToExpr[domainName] = new IdentifierExpr(Token.NoToken, domainNameToInputVar[domainName]);
+                                    var expr = new IdentifierExpr(Token.NoToken, domainNameToInputVar[domainName]);
+                                    expr.Type = new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> { linearDomains[domainName].elementType }, Type.Bool);
+                                    domainNameToExpr[domainName] = expr;
                                 }
                                 foreach (Variable v in availableLocalLinearVars[callCmd])
                                 {
                                     var domainName = FindDomainName(v);
                                     var domain = linearDomains[domainName];
                                     IdentifierExpr ie = new IdentifierExpr(Token.NoToken, v);
-                                    domainNameToExpr[domainName] = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapOrBool), new List<Expr> { v.TypedIdent.Type is MapType ? ie : Singleton(ie, domainName), domainNameToExpr[domainName] });
+                                    var expr = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapOrBool), new List<Expr> { v.TypedIdent.Type is MapType ? ie : Singleton(ie, domainName), domainNameToExpr[domainName] });
+                                    expr.Type = new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> { linearDomains[domainName].elementType }, Type.Bool);
+                                    domainNameToExpr[domainName] = expr;
                                 }
                                 foreach (var domainName in linearDomains.Keys)
                                 {
