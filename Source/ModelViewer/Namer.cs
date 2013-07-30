@@ -485,8 +485,6 @@ namespace Microsoft.Boogie.ModelViewer
 
   public class EdgeName
   {
-    static readonly Model.Element[] emptyArgs = new Model.Element[0];
-
     ILanguageSpecificModel langModel;
     string format;
     string cachedName;
@@ -496,10 +494,10 @@ namespace Microsoft.Boogie.ModelViewer
     {
       this.langModel = n;
       this.format = format;
-      this.args = args;
+      this.args = args.ToArray();
     }
 
-    public EdgeName(string name) : this(null, name, emptyArgs) 
+    public EdgeName(string name) : this(null, name) 
     {
       Util.Assert(name != null);
     }
