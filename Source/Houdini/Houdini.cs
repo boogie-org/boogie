@@ -708,10 +708,9 @@ namespace Microsoft.Boogie.Houdini {
         Console.WriteLine("# refuted annotations before exchange: " + result.Count);
 
       using (var fileStream = new FileStream(@"houdini.txt", FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.ReadWrite))
-        using (var input = new StreamReader(fileStream))
-          using (var output = new StreamWriter(fileStream)) {
+      using (var input = new StreamReader(fileStream))
+      using (var output = new StreamWriter(fileStream)) {
         while ((refutedInformation = input.ReadLine()) != null) {
-//          knownRefutedInformation.Add(refutedInformation);
           var ri = refutedInformation.Split(',');
 
           KeyValuePair<Variable, bool> kv = currentHoudiniState.Assignment.FirstOrDefault(entry => entry.Key.Name.Equals(ri[0]) && entry.Value);
@@ -748,54 +747,6 @@ namespace Microsoft.Boogie.Houdini {
             if (CommandLineOptions.Clo.DebugParallelHoudini)
               Console.WriteLine("(+) " + refutedInformation);
           }
-
-//          foreach (KeyValuePair<Variable, bool> entry in currentHoudiniState.Assignment) {
-//            if (entry.Key.Name.Equals(ri[0]) && entry.Value) {
-//              RefutedAnnotation ra = null;
-//              Implementation refutationSite = null;
-//
-//              foreach (var r in program.TopLevelDeclarations.OfType<Implementation>()) {
-//                if (r.Name.Equals(ri[3])) {
-//                  refutationSite = r;
-//                  break;
-//                }
-//              }
-//              Debug.Assert(refutationSite != null);
-//
-//              if (ri[1].Equals("REQUIRES")) {
-//                Procedure proc = null;
-//                foreach (var p in program.TopLevelDeclarations.OfType<Procedure>()) {
-//                  if (p.Name.Equals(ri[2])) {
-//                    proc = p;
-//                    break;
-//                  }
-//                }
-//                Debug.Assert(proc != null);
-//                ra = RefutedAnnotation.BuildRefutedRequires(entry.Key, proc, refutationSite);
-//              } else if (ri[1].Equals("ENSURES"))
-//                ra = RefutedAnnotation.BuildRefutedEnsures(entry.Key, refutationSite);
-//              else if (ri[1].Equals("ASSERT"))
-//                ra = RefutedAnnotation.BuildRefutedAssert(entry.Key, refutationSite);
-//              Debug.Assert(ra != null);
-//
-//              //if (!result.Contains(ra)) {
-//                result.Add(ra);
-//                if (CommandLineOptions.Clo.DebugStagedHoudini)
-//                Console.WriteLine("(+) " + refutedInformation);
-//              //}
-//
-//              break;
-//            }
-//          }
-
-//          foreach (RefutedAnnotation refAnnot in newlyRefuted) {
-//            if (refAnnot.Constant != ra.Constant || refAnnot.Kind != ra.Kind ||
-//                refAnnot.CalleeProc != ra.CalleeProc || refAnnot.RefutationSite != ra.RefutationSite) {
-//              result.Add(ra);
-//              if (CommandLineOptions.Clo.DebugStagedHoudini)
-//                Console.WriteLine("(+) " + knownRefutedInformation.LastOrDefault());
-//            }
-//          }
         }
 
         if (CommandLineOptions.Clo.DebugParallelHoudini)
