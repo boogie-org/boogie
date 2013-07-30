@@ -218,6 +218,7 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
 
       public FieldName(Model.Element elt, DafnyModel dm) {
         Field = elt;
+        NameArgs = new Model.Element[Dims];
         var tpl = dm.f_dim.AppWithArg(0, elt);
         if (tpl != null) {
           Dims = tpl.Result.AsInt();
