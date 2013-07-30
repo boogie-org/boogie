@@ -425,7 +425,10 @@ namespace Microsoft.Boogie
                                 foreach (var domainName in linearDomains.Keys)
                                 {
                                     var domain = linearDomains[domainName];
-                                    callCmd.Ins.Add(new NAryExpr(Token.NoToken, new FunctionCall(domain.mapConstBool), new List<Expr> { Expr.False }));
+                                    var expr = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapConstBool), new List<Expr> { Expr.False });
+                                    expr.Resolve(new ResolutionContext(null));
+                                    expr.Typecheck(new TypecheckingContext(null));
+                                    callCmd.Ins.Add(expr);
                                 }
                             }
                             else if (callCmd.InParallelWith != null)
@@ -435,7 +438,10 @@ namespace Microsoft.Boogie
                                     foreach (var domainName in linearDomains.Keys)
                                     {
                                         var domain = linearDomains[domainName];
-                                        callCmd.Ins.Add(new NAryExpr(Token.NoToken, new FunctionCall(domain.mapConstBool), new List<Expr> { Expr.False }));
+                                        var expr = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapConstBool), new List<Expr> { Expr.False });
+                                        expr.Resolve(new ResolutionContext(null));
+                                        expr.Typecheck(new TypecheckingContext(null));
+                                        callCmd.Ins.Add(expr);
                                     }
                                     callCmd = callCmd.InParallelWith;
                                 }
@@ -445,17 +451,17 @@ namespace Microsoft.Boogie
                                 Dictionary<string, Expr> domainNameToExpr = new Dictionary<string, Expr>();
                                 foreach (var domainName in linearDomains.Keys)
                                 {
-                                    var expr = new IdentifierExpr(Token.NoToken, domainNameToInputVar[domainName]);
-                                    expr.Type = new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> { linearDomains[domainName].elementType }, Type.Bool);
-                                    domainNameToExpr[domainName] = expr;
+                                    domainNameToExpr[domainName] = new IdentifierExpr(Token.NoToken, domainNameToInputVar[domainName]);
                                 }
                                 foreach (Variable v in availableLocalLinearVars[callCmd])
                                 {
                                     var domainName = FindDomainName(v);
                                     var domain = linearDomains[domainName];
                                     IdentifierExpr ie = new IdentifierExpr(Token.NoToken, v);
-                                    var expr = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapOrBool), new List<Expr> { v.TypedIdent.Type is MapType ? ie : Singleton(ie, domainName), domainNameToExpr[domainName] });
-                                    expr.Type = new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> { linearDomains[domainName].elementType }, Type.Bool);
+                                    var expr = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapOrBool), 
+                                                            new List<Expr> { v.TypedIdent.Type is MapType ? ie : Singleton(ie, domainName), domainNameToExpr[domainName] });
+                                    expr.Resolve(new ResolutionContext(null));
+                                    expr.Typecheck(new TypecheckingContext(null));
                                     domainNameToExpr[domainName] = expr;
                                 }
                                 foreach (var domainName in linearDomains.Keys)
@@ -559,16 +565,6 @@ namespace Microsoft.Boogie
             return Expr.Store(new NAryExpr(Token.NoToken, new FunctionCall(domain.mapConstBool), new List<Expr> { Expr.False }), e, Expr.True);
         }
 
-        List<AssignLhs> MkAssignLhss(params Variable[] args)
-        {
-            List<AssignLhs> lhss = new List<AssignLhs>();
-            foreach (Variable arg in args)
-            {
-                lhss.Add(new SimpleAssignLhs(Token.NoToken, new IdentifierExpr(Token.NoToken, arg)));
-            }
-            return lhss;
-        }
-
         List<Expr> MkExprs(params Expr[] args)
         {
             return new List<Expr>(args);
@@ -589,7 +585,10 @@ namespace Microsoft.Boogie
                 e = Expr.Binary(BinaryOperator.Opcode.Eq, e, new NAryExpr(Token.NoToken, new FunctionCall(domain.mapConstBool), new List<Expr> { Expr.True }));
                 disjointExpr = Expr.Binary(BinaryOperator.Opcode.And, e, disjointExpr);
             }
-            return new ExistsExpr(Token.NoToken, new List<Variable> { partition }, disjointExpr);
+            var expr = new ExistsExpr(Token.NoToken, new List<Variable> { partition }, disjointExpr);
+            expr.Resolve(new ResolutionContext(null));
+            expr.Typecheck(new TypecheckingContext(null));
+            return expr;
         }
     }
 
@@ -734,6 +733,12 @@ namespace Microsoft.Boogie
                 var axiomExpr = new ForallExpr(Token.NoToken, new List<Variable> { a, x }, Expr.Binary(BinaryOperator.Opcode.Eq, lhsTerm, aie));
                 axiomExpr.Typecheck(new TypecheckingContext(null));
                 axioms.Add(new Axiom(Token.NoToken, axiomExpr));
+            }
+
+            foreach (var axiom in axioms)
+            {
+                axiom.Expr.Resolve(new ResolutionContext(null));
+                axiom.Expr.Typecheck(new TypecheckingContext(null));
             }
         }
     }
