@@ -36,18 +36,16 @@ exitHook.hook()
 class CommandLineOptions(object):
   sourceFiles = []
   boogieOptions = [ "/nologo",
+                    "/noinfer", 
                     "/typeEncoding:m", 
+                    "/vc:i",
                     "/useArrayTheory", 
                     "/doNotUseLabels", 
-                    "/noinfer", 
-                    "/contractInfer",
-                    "/outputRefuted",
-                    "/proverOpt:OPTIMIZE_FOR_BV=true"
+                    "/contractInfer"
                   ]
   workers = 1
-  inference = True
-  debugging = False
   verbose = False
+  keepTemps = False
   noSourceLocInfer = False
   time = False
   timeCSVLabel = None
@@ -62,23 +60,28 @@ class VerificationTask(multiprocessing.Process):
     """ This class is used to create a new thread and run a
     verification task on it.
     """
-    def __init__(self, taskID, queue, solver, errorLimit, timeout=0, timeoutErrorCode=None):
+    def __init__(self, taskID, queue, solver, trustFlag, errorLimit, loopUnwind, inlineDepth, timeout=0, timeoutErrorCode=None):
         super(VerificationTask, self).__init__()
         self.taskID = taskID
         self.queue = queue
         self.solver = solver
+        self.trust = trustFlag
         self.timeout = timeout
         self.timeoutErrorCode = timeoutErrorCode
-        self.options = [ "/outputRefuted",
-                         "/errorLimit:" + str(errorLimit)
-                       ]
-        
+        self.options = [ "/errorLimit:" + str(errorLimit) ]
         if (solver == "cvc4"):
           self.options += [ "/proverOpt:SOLVER=cvc4" ]
           self.options += [ "/cvc4exe:" + os.path.dirname(__file__) + os.sep + "../Binaries/cvc4.exe" ]
         elif (solver == "Z3"):
+          self.options += [ "/z3opt:SOLVER=true" ]
           self.options += [ "/z3exe:" + os.path.dirname(__file__) + os.sep + "../Binaries/z3.exe" ]
-          self.options += ["/z3opt:RELEVANCY=0", "/z3opt:SOLVER=true" ]
+          # self.options += [ "/z3opt:RELEVANCY=0" ]
+          self.options += [ "/z3opt:ARRAY_WEAK=true" ]
+          self.options += [ "/z3opt:ARRAY_EXTENSIONAL=false" ]
+        if (loopUnwind > 0):
+          self.options += ["/loopUnroll:" + str(loopUnwind) ]
+        if (inlineDepth > 0):
+          self.options += ["/inlineDepth:" + str(inlineDepth) ]
     
     def run(self):
         print "INFO:[Task-" + str(self.taskID) + "] running Boogie using the " + self.solver + " solver."
@@ -89,7 +92,7 @@ class VerificationTask(multiprocessing.Process):
             ErrorCodes.BOOGIE_ERROR,
             self.timeout,
             self.timeoutErrorCode)
-        self.queue.put(self.taskID)
+        if (self.trust): self.queue.put(self.taskID)
     
 class Timeout(Exception):
     pass
@@ -197,14 +200,15 @@ def showHelpAndExit():
   print "USAGE: PortfolioSolver.py [options] <inputs>"
   print ""
   print "GENERAL OPTIONS:"
-  print "  -h, --help              Display this message"
-  print "  -p, --processes=        Number of solvers to run in parallel"
+  print "  -h, --help              Display this message."
+  print "  -p, --processes=        Number of solvers to run in parallel."
   print "  --memout=X              Give Boogie a hard memory limit of X megabytes."
   print "                          A memout of 0 disables the memout. The default is " + str(CommandLineOptions.boogieMemout) + " megabytes."
-  print "  --time                  Show timing information"
+  print "  --time                  Show timing information."
   print "  --timeout=X             Allow Boogie to run for X seconds before giving up."
   print "                          A timeout of 0 disables the timeout. The default is " + str(CommandLineOptions.boogieTimeout) + " seconds."
-  print "  --verbose               Show commands to run and use verbose output"
+  print "  --verbose               Show commands to run and use verbose output."
+  print "  --keep-temps            Keep intermediate houdini output file."
   sys.exit(0)
 
 def PortfolioSolverError(msg, code):
@@ -263,6 +267,8 @@ def processOptions(opts, args):
           PortfolioSolverError("Invalid memout \"" + a + "\"", ErrorCodes.COMMAND_LINE_ERROR)
     if o == "--verbose":
       CommandLineOptions.verbose = True
+    if o == "--keep-temps":
+      CommandLineOptions.keepTemps = True
 
 def main(argv=None):
   if argv is None:
@@ -272,7 +278,7 @@ def main(argv=None):
   try:
     opts, args = getopt.gnu_getopt(argv[1:],'p:h', 
              ['help', 'processors=',
-              'verbose',
+              'verbose', 'keep-temps',
               'memout=',
               'no-source-loc-infer',
               'boogie-opt=',
@@ -290,7 +296,9 @@ def main(argv=None):
     CommandLineOptions.boogieOptions += [ "/noSourceLocInfer" ]
   if CommandLineOptions.boogieMemout > 0:
     CommandLineOptions.boogieOptions.append("/z3opt:-memory:" + str(CommandLineOptions.boogieMemout))
-
+  if CommandLineOptions.workers > 1:
+    CommandLineOptions.boogieOptions += [ "/outputRefuted" ]
+  
   timeoutArguments={}
   if CommandLineOptions.boogieTimeout > 0:
     timeoutArguments['timeout']= CommandLineOptions.boogieTimeout
@@ -304,9 +312,13 @@ def main(argv=None):
   
   for taskID in range(CommandLineOptions.workers):
     if (taskID == 0):
-      task = VerificationTask(taskID + 1, taskQueue, "Z3", 8, **timeoutArguments)
+      task = VerificationTask(taskID + 1, taskQueue, "Z3", True, 20, 0, 2, **timeoutArguments)
     elif (taskID == 1):
-      task = VerificationTask(taskID + 1, taskQueue, "Z3", 4, **timeoutArguments)
+      task = VerificationTask(taskID + 1, taskQueue, "Z3", False, 20, 0, 0, **timeoutArguments)
+    elif (taskID == 2):
+      task = VerificationTask(taskID + 1, taskQueue, "Z3", False, 4, 2, 0, **timeoutArguments)
+    elif (taskID == 3):
+      task = VerificationTask(taskID + 1, taskQueue, "Z3", False, 4, 0, 1, **timeoutArguments)
     task.start()
     toolTasks.append(task)
   
@@ -319,7 +331,8 @@ def main(argv=None):
     print "INFO:[Task-" + str(taskResult) + "] finished (%.2f secs)." % timing
   else:
     print "INFO:[Task-" + str(taskResult) + "] finished."
-  os.remove("houdini.txt")
+  if (CommandLineOptions.workers > 1) and (not CommandLineOptions.keepTemps):
+    os.remove("houdini.csv")
 
   return 0
 

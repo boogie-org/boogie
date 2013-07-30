@@ -698,16 +698,15 @@ namespace Microsoft.Boogie.Houdini {
       this.NotifyFlushFinish();
     }
 
-    private List<RefutedAnnotation> ExchangeRefutedAnnotations(List<RefutedAnnotation> newlyRefuted)
+    private HashSet<RefutedAnnotation> ExchangeRefutedAnnotations(HashSet<RefutedAnnotation> newlyRefuted)
     {
-      List<RefutedAnnotation> result = newlyRefuted;
-//      List<string> knownRefutedInformation = new List<string>();
+      HashSet<RefutedAnnotation> result = newlyRefuted;
       string refutedInformation;
 
       if (CommandLineOptions.Clo.DebugParallelHoudini)
         Console.WriteLine("# refuted annotations before exchange: " + result.Count);
 
-      using (var fileStream = new FileStream(@"houdini.txt", FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.ReadWrite))
+      using (var fileStream = new FileStream(@"houdini.csv", FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.ReadWrite))
       using (var input = new StreamReader(fileStream))
       using (var output = new StreamWriter(fileStream)) {
         while ((refutedInformation = input.ReadLine()) != null) {
@@ -753,11 +752,8 @@ namespace Microsoft.Boogie.Houdini {
           Console.WriteLine("# refuted annotations after exchange: " + result.Count);
 
         foreach (RefutedAnnotation refAnnot in result) {
-//          string ri = refAnnot.Constant + "," + refAnnot.Kind + "," +
-//            refAnnot.CalleeProc + "," + currentHoudiniState.Implementation;
-//          if (!knownRefutedInformation.Contains(ri))
           output.WriteLine(refAnnot.Constant + "," + refAnnot.Kind + "," +
-                           refAnnot.CalleeProc + "," + currentHoudiniState.Implementation);
+                           refAnnot.CalleeProc + "," + refAnnot.RefutationSite);
         }
       }
 
@@ -802,7 +798,7 @@ namespace Microsoft.Boogie.Houdini {
               Contract.Assume(errors != null);
 
               if (CommandLineOptions.Clo.HoudiniOutputRefutedCandidates) {
-                  List<RefutedAnnotation> refutedAnnotations = new List<RefutedAnnotation>();
+                  HashSet<RefutedAnnotation> refutedAnnotations = new HashSet<RefutedAnnotation>();
                 
                   foreach (Counterexample error in errors) {
                       RefutedAnnotation refutedAnnotation = ExtractRefutedAnnotation(error);
@@ -1075,6 +1071,36 @@ namespace Microsoft.Boogie.Houdini {
       }
       public static RefutedAnnotation BuildRefutedAssert(Variable constant, Implementation refutationSite) {
         return new RefutedAnnotation(constant, RefutedAnnotationKind.ASSERT, null, refutationSite);
+      }
+
+      public override int GetHashCode()
+      {
+        unchecked {
+          int hash = 17;
+          hash = hash * 23 + this.Constant.GetHashCode();
+          hash = hash * 23 + this.Kind.GetHashCode();
+          if (this.CalleeProc != null)
+            hash = hash * 23 + this.CalleeProc.GetHashCode();
+          hash = hash * 23 + this.RefutationSite.GetHashCode();
+          return hash;
+        }
+      }
+
+      public override bool Equals(object obj) {
+        bool result = true;
+        var other = obj as RefutedAnnotation;
+
+        if (other == null) {
+          result = false;
+        } else {
+          result = result && String.Equals(other.Constant, this.Constant);
+          result = result && String.Equals(other.Kind, this.Kind);
+          if (other.CalleeProc != null && this.CalleeProc != null)
+            result = result && String.Equals(other.CalleeProc, this.CalleeProc);
+          result = result && String.Equals(other.RefutationSite, this.RefutationSite);
+        }
+
+        return result;
       }
     }
 
