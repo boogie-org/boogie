@@ -149,7 +149,7 @@ namespace Microsoft.Boogie.ModelViewer
         }
       }
 
-      foreach (var name in main.langModel.SortFields(names)) {
+      foreach (var name in main.LangModel.SortFields(names)) {
         children.Add(created[name]);
       }
     }
@@ -186,7 +186,7 @@ namespace Microsoft.Boogie.ModelViewer
           parents.Add(curr.displayNodes[stateId]);
       }
       parents.Reverse();
-      return main.langModel.PathName(parents);
+      return main.LangModel.PathName(parents);
     }
 
     public void SyncWith(Dictionary<SkeletonItem, SkeletonItem> mapping, SkeletonItem old)

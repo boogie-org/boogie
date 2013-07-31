@@ -29,7 +29,7 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
     }
   }
 
-  class DafnyModel : LanguageModel
+  public class DafnyModel : LanguageModel
   {
     public readonly Model.Func f_heap_select, f_set_select, f_seq_length, f_seq_index, f_box, f_dim, f_index_field, f_multi_index_field, f_dtype, f_null;
     public readonly Dictionary<Model.Element, Model.Element[]> ArrayLengths = new Dictionary<Model.Element, Model.Element[]>();
@@ -265,10 +265,10 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
     }
   }
 
-  class StateNode : NamedState
+  public class StateNode : NamedState
   {
     internal readonly DafnyModel dm;
-    internal readonly List<VariableNode> vars = new List<VariableNode>();
+    public readonly List<VariableNode> Vars = new List<VariableNode>();
     internal readonly List<VariableNode> skolems;
     internal readonly int index;
     
@@ -289,7 +289,7 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
 
       if (dm.states.Count > 0) {
         var prev = dm.states.Last();
-        names = prev.vars.Map(v => v.realName);
+        names = prev.Vars.Map(v => v.realName);
       }
 
       names = names.Concat(state.Variables).Distinct();
@@ -302,7 +302,7 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
           vn.updatedHere = dm.states.Count > 0 && curVars.ContainsKey(v);
           if (curVars.ContainsKey(v))
             dm.RegisterLocalValue(vn.Name, val);
-          vars.Add(vn);
+          Vars.Add(vn);
         }
       }
 
@@ -323,12 +323,12 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
     public override IEnumerable<IDisplayNode> Nodes
     {
       get {
-        return vars.Concat(skolems);
+        return Vars.Concat(skolems);
       }
     }
   }
 
-  class ElementNode : DisplayNode
+  public class ElementNode : DisplayNode
   {
     protected StateNode stateNode;
     protected Model.Element elt;
@@ -371,7 +371,7 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
     }
   }
 
-  class VariableNode : ElementNode
+  public class VariableNode : ElementNode
   {
     public bool updatedHere;
     public string realName;
