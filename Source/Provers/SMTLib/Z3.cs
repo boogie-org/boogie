@@ -352,7 +352,6 @@ namespace Microsoft.Boogie.SMTLib
           }
 
           options.AddWeakSmtOption("MODEL_ON_TIMEOUT", "true");
-          options.AddWeakSmtOption("MODEL_ON_FINAL_CHECK", "true");
 
           // legacy option handling
           if (!CommandLineOptions.Clo.z3AtFlag)
