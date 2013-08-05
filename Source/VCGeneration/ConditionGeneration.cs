@@ -1191,7 +1191,7 @@ namespace VC {
     protected Dictionary<Variable, Expr> ComputeIncarnationMap(Block b, Dictionary<Block, Dictionary<Variable, Expr>> block2Incarnation) {
       Contract.Requires(b != null);
       Contract.Requires(block2Incarnation != null);
-      Contract.Ensures(Contract.Result<Hashtable>() != null);
+      Contract.Ensures(Contract.Result<Dictionary<Variable, Expr>>() != null);
 
       if (b.Predecessors.Count == 0) {
         return new Dictionary<Variable, Expr>();

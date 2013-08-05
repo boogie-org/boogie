@@ -2924,7 +2924,7 @@ namespace Microsoft.Boogie {
       this.formalMap = null;
     }
     public Dictionary<Variable, Expr>/*!*/ GetImplFormalMap() {
-      Contract.Ensures(Contract.Result<Hashtable>() != null);
+      Contract.Ensures(Contract.Result<Dictionary<Variable, Expr>>() != null);
 
       if (this.formalMap != null)
         return this.formalMap;

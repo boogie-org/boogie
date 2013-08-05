@@ -2117,7 +2117,7 @@ namespace VC {
       }
 
       public Dictionary<int, Absy> getLabel2absy() {
-        Contract.Ensures(Contract.Result<Hashtable>() != null);
+        Contract.Ensures(Contract.Result<Dictionary<int, Absy>>() != null);
 
         Contract.Assert(currProc != null);
         if (currProc == "") {
