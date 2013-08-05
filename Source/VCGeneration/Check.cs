@@ -57,7 +57,7 @@ namespace Microsoft.Boogie {
 
     public void GetReady()
     {
-      Contract.Requires(status == CheckerStatus.Idle);
+      Contract.Requires(IsIdle);
 
       status = CheckerStatus.Ready;
     }
@@ -268,6 +268,14 @@ namespace Microsoft.Boogie {
       }
     }
 
+    public bool IsReady
+    {
+      get
+      {
+        return status == CheckerStatus.Ready;
+      }
+    }
+
     public bool IsClosed {
       get {
         return status == CheckerStatus.Closed;
@@ -334,7 +342,7 @@ namespace Microsoft.Boogie {
       Contract.Requires(descriptiveName != null);
       Contract.Requires(vc != null);
       Contract.Requires(handler != null);
-      Contract.Requires(status == CheckerStatus.Ready);
+      Contract.Requires(IsReady);
 
       status = CheckerStatus.Busy;
       hasOutput = false;

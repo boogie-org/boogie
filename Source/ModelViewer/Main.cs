@@ -725,13 +725,17 @@ namespace Microsoft.Boogie.ModelViewer
         largeFont = new Font(smallFont.FontFamily, smallFont.Size * 2, smallFont.Unit);
       }
 
-      var font = largeFontToolStripMenuItem.Checked ? largeFont : smallFont;
-      stateList.Font = font;
-      currentStateView.Font = font;
-      matchesList.Font = font;
+      SetFont(largeFontToolStripMenuItem.Checked ? largeFont : smallFont);
       //textBox1.Font = font;
       //linkLabel1.Font = font;
       //label1.Font = font;
+    }
+
+    public void SetFont(System.Drawing.Font font)
+    {
+      stateList.Font = font;
+      currentStateView.Font = font;
+      matchesList.Font = font;
     }
 
     private void Main_Load(object sender, EventArgs e)

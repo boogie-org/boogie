@@ -2121,7 +2121,7 @@ namespace VC {
     {
       Contract.Requires(impl != null);
       Contract.Requires(program != null);
-      Contract.Ensures(Contract.Result<Hashtable>() != null);
+      Contract.Ensures(Contract.Result<Dictionary<TransferCmd, ReturnCmd>>() != null);
 
       Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins = new Dictionary<TransferCmd, ReturnCmd>();
       Block exitBlock = GenerateUnifiedExit(impl, gotoCmdOrigins);
