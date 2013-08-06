@@ -298,7 +298,8 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
       foreach (var v in names) {
         if (dm.GetUserVariableName(v) != null) {
           var val = state.TryGet(v);
-          var vn = new VariableNode(this, v, val);
+          var shortName = Regex.Replace(v, @"#\d+$", "");
+          var vn = new VariableNode(this, v, val, names.Any(n => n != v && Regex.Replace(n, @"#\d+$", "") == shortName) ? v : shortName);
           vn.updatedHere = dm.states.Count > 0 && curVars.ContainsKey(v);
           if (curVars.ContainsKey(v))
             dm.RegisterLocalValue(vn.Name, val);
@@ -316,7 +317,7 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
         if (n == -1) continue;
         string name = f.Name.Substring(0, n);
         if (!name.Contains('#')) continue;
-        yield return new VariableNode(this, name, f.GetConstant());
+        yield return new VariableNode(this, name, f.GetConstant(), name);
       }
     }
 
@@ -376,11 +377,12 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
     public bool updatedHere;
     public string realName;
 
-    public VariableNode(StateNode par, string realName, Model.Element elt)
+    public VariableNode(StateNode par, string realName, Model.Element elt, string shortName)
       : base(par, realName, elt)
     {
       this.realName = realName;
       name = new EdgeName(vm.GetUserVariableName(realName));
+      ShortName = shortName;
     }
   }
 }

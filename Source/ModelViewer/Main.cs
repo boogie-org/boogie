@@ -821,6 +821,10 @@ namespace Microsoft.Boogie.ModelViewer
       }
 
       var name = dispNode.Name;
+      if (name != dispNode.ShortName)
+      {
+        name = dispNode.ShortName;
+      }
 
       if (IsMatchListItem) {
         Util.Assert(active);
