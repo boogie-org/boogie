@@ -959,7 +959,7 @@ namespace Microsoft.Boogie {
             }
             else if (!CommandLineOptions.Clo.DoModSetAnalysis && v is GlobalVariable && !tc.InFrame(v))
             {
-                tc.Error(this, "command assigns to a global variable that is not in the enclosing method's modifies clause: {0}", v.Name);
+                tc.Error(this, "command assigns to a global variable that is not in the enclosing procedure's modifies clause: {0}", v.Name);
             }
         }
     }
@@ -1084,7 +1084,10 @@ namespace Microsoft.Boogie {
       }
       public override void Typecheck(TypecheckingContext tc)
       {
-          // nothing to typecheck
+          if (!CommandLineOptions.Clo.DoModSetAnalysis && !tc.Yields)
+          {
+              tc.Error(this, "enclosing procedure of a yield command must yield");
+          }
       }
       public override void AddAssignedVariables(List<Variable> vars)
       {
@@ -1942,7 +1945,8 @@ namespace Microsoft.Boogie {
     }
 
     public override void AddAssignedVariables(List<Variable> vars) {
-      //Contract.Requires(vars != null);
+      if (this.IsAsync)
+          return;
       foreach (IdentifierExpr e in Outs) {
         if (e != null) {
           vars.Add(e.Decl);
@@ -1955,54 +1959,81 @@ namespace Microsoft.Boogie {
       }
     }
 
-    public override void Typecheck(TypecheckingContext tc) {
-      //Contract.Requires(tc != null);
-      Contract.Assume(this.Proc != null);  // we assume the CallCmd has been successfully resolved before calling this Typecheck method
+    public override void Typecheck(TypecheckingContext tc)
+    {
+        //Contract.Requires(tc != null);
+        Contract.Assume(this.Proc != null);  // we assume the CallCmd has been successfully resolved before calling this Typecheck method
 
-      TypecheckAttributes(Attributes, tc);
+        TypecheckAttributes(Attributes, tc);
 
-      // typecheck in-parameters
-      foreach (Expr e in Ins)
-        if (e != null)
-          e.Typecheck(tc);
-      foreach (Expr e in Outs)
-        if (e != null)
-          e.Typecheck(tc);
-      this.CheckAssignments(tc);
+        // typecheck in-parameters
+        foreach (Expr e in Ins)
+            if (e != null)
+                e.Typecheck(tc);
+        foreach (Expr e in Outs)
+            if (e != null)
+                e.Typecheck(tc);
+        this.CheckAssignments(tc);
 
-      List<Type>/*!*/ formalInTypes = new List<Type>();
-      List<Type>/*!*/ formalOutTypes = new List<Type>();
-      List<Expr>/*!*/ actualIns = new List<Expr>();
-      List<IdentifierExpr>/*!*/ actualOuts = new List<IdentifierExpr>();
-      for (int i = 0; i < Ins.Count; ++i) {
-        if (Ins[i] != null) {
-          formalInTypes.Add(cce.NonNull(Proc.InParams[i]).TypedIdent.Type);
-          actualIns.Add(Ins[i]);
+        List<Type>/*!*/ formalInTypes = new List<Type>();
+        List<Type>/*!*/ formalOutTypes = new List<Type>();
+        List<Expr>/*!*/ actualIns = new List<Expr>();
+        List<IdentifierExpr>/*!*/ actualOuts = new List<IdentifierExpr>();
+        for (int i = 0; i < Ins.Count; ++i)
+        {
+            if (Ins[i] != null)
+            {
+                formalInTypes.Add(cce.NonNull(Proc.InParams[i]).TypedIdent.Type);
+                actualIns.Add(Ins[i]);
+            }
         }
-      }
-      for (int i = 0; i < Outs.Count; ++i) {
-        if (Outs[i] != null) {
-          formalOutTypes.Add(cce.NonNull(Proc.OutParams[i]).TypedIdent.Type);
-          actualOuts.Add(Outs[i]);
+        for (int i = 0; i < Outs.Count; ++i)
+        {
+            if (Outs[i] != null)
+            {
+                formalOutTypes.Add(cce.NonNull(Proc.OutParams[i]).TypedIdent.Type);
+                actualOuts.Add(Outs[i]);
+            }
         }
-      }
 
-      // match actuals with formals
-      List<Type/*!*/>/*!*/ actualTypeParams;
-      Type.CheckArgumentTypes(Proc.TypeParameters,
-                              out actualTypeParams,
-                              formalInTypes, actualIns,
-                              formalOutTypes, actualOuts,
-                              this.tok,
-                              "call to " + callee,
-                              tc);
-      Contract.Assert(cce.NonNullElements(actualTypeParams));
-      TypeParameters = SimpleTypeParamInstantiation.From(Proc.TypeParameters,
-                                                         actualTypeParams);
-      if (InParallelWith != null)
-      {
-          InParallelWith.Typecheck(tc);
-      }
+        // match actuals with formals
+        List<Type/*!*/>/*!*/ actualTypeParams;
+        Type.CheckArgumentTypes(Proc.TypeParameters,
+                                out actualTypeParams,
+                                formalInTypes, actualIns,
+                                formalOutTypes, actualOuts,
+                                this.tok,
+                                "call to " + callee,
+                                tc);
+        Contract.Assert(cce.NonNullElements(actualTypeParams));
+        TypeParameters = SimpleTypeParamInstantiation.From(Proc.TypeParameters,
+                                                           actualTypeParams);
+
+        if (!CommandLineOptions.Clo.DoModSetAnalysis && (IsAsync || InParallelWith != null))
+        {
+            if (!tc.Yields)
+            {
+                tc.Error(this, "enclosing procedure of a parallel or async call must yield");
+            }
+            var curr = this;
+            while (curr != null)
+            {
+                if (!QKeyValue.FindBoolAttribute(curr.Proc.Attributes, "yields"))
+                {
+                    tc.Error(curr, "target procedure of a parallel or async call must yield");
+                }
+                if (!QKeyValue.FindBoolAttribute(curr.Proc.Attributes, "stable"))
+                {
+                    tc.Error(curr, "target procedure of a parallel or async call must be stable");
+                }
+                curr = curr.InParallelWith;
+            }
+        }
+
+        if (InParallelWith != null)
+        {
+            InParallelWith.Typecheck(tc);
+        }
     }
 
     private IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ TypeParamSubstitution() {

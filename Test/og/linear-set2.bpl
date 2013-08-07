@@ -23,7 +23,7 @@ ensures xls == MapOr(xls1, xls2) && xls1 != None() && xls2 != None();
 procedure Allocate() returns ({:linear "tid"} xls: X);
 ensures xls != nil;
 
-procedure {:entrypoint} main({:linear "tid"} tidls': X, {:linear "x"} xls': [X]bool) 
+procedure {:entrypoint}  {:yields} main({:linear "tid"} tidls': X, {:linear "x"} xls': [X]bool) 
 requires tidls' != nil && xls' == All();
 {
     var {:linear "tid"} tidls: X;
@@ -46,7 +46,7 @@ requires tidls' != nil && xls' == All();
     async call thread(lsChild, xls2);
 }
 
-procedure thread({:linear "tid"} tidls': X, {:linear "x"} xls': [X]bool)
+procedure {:yields} {:stable} thread({:linear "tid"} tidls': X, {:linear "x"} xls': [X]bool)
 requires tidls' != nil && xls' != None();
 {
     var {:linear "x"} xls: [X]bool;

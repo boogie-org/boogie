@@ -2,7 +2,7 @@ var a:[int]int;
 
 procedure Allocate() returns ({:linear "tid"} xls: int);
 
-procedure {:entrypoint} main() 
+procedure {:entrypoint} {:yields} main() 
 {
     var {:linear "tid"} i: int;
     var {:linear "tid"} j: int;
@@ -12,7 +12,7 @@ procedure {:entrypoint} main()
     call i := u(i) | j := u(j);
 }
 
-procedure t({:linear "tid"} i': int) returns ({:linear "tid"} i: int)
+procedure {:yields} {:stable} t({:linear "tid"} i': int) returns ({:linear "tid"} i: int)
 {
     i := i';
 
@@ -21,7 +21,7 @@ procedure t({:linear "tid"} i': int) returns ({:linear "tid"} i: int)
     assert a[i] == 42;
 }
 
-procedure u({:linear "tid"} i': int) returns ({:linear "tid"} i: int) 
+procedure {:yields} {:stable} u({:linear "tid"} i': int) returns ({:linear "tid"} i: int) 
 {
     i := i';
 
@@ -30,7 +30,7 @@ procedure u({:linear "tid"} i': int) returns ({:linear "tid"} i: int)
     assert a[i] == 42;
 }
 
-procedure Yield({:linear "tid"} i': int) returns ({:linear "tid"} i: int)
+procedure {:yields} {:stable} Yield({:linear "tid"} i': int) returns ({:linear "tid"} i: int)
 ensures i == i';
 ensures old(a)[i] == a[i];
 {

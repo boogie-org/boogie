@@ -2863,12 +2863,15 @@ namespace Microsoft.Boogie {
         v.Typecheck(tc);
       }
       List<IdentifierExpr> oldFrame = tc.Frame;
+      bool oldYields = tc.Yields;
       tc.Frame = Proc.Modifies;
+      tc.Yields = QKeyValue.FindBoolAttribute(Proc.Attributes, "yields");
       foreach (Block b in Blocks) {
         b.Typecheck(tc);
       }
       Contract.Assert(tc.Frame == Proc.Modifies);
       tc.Frame = oldFrame;
+      tc.Yields = oldYields;
     }
     void MatchFormals(List<Variable>/*!*/ implFormals, List<Variable>/*!*/ procFormals, string/*!*/ inout, TypecheckingContext/*!*/ tc) {
       Contract.Requires(implFormals != null);

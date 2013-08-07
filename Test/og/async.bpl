@@ -1,7 +1,8 @@
 var x: int;
 var y: int;
 
-procedure {:entrypoint} foo() 
+procedure {:entrypoint} {:yields} foo()
+modifies x, y; 
 {
   assume x == y;
   x := x + 1;
@@ -9,7 +10,7 @@ procedure {:entrypoint} foo()
   y := y + 1;
 }
 
-procedure P()
+procedure {:yields} {:stable} P()
 requires x != y;
 {
   assert x != y;

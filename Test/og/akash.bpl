@@ -12,7 +12,7 @@ ensures xls == mapconstbool(true);
 var g: int;
 var h: int;
 
-procedure A({:linear "tid"} tid_in: int) returns ({:linear "tid"} tid_out: int) 
+procedure {:yields} A({:linear "tid"} tid_in: int) returns ({:linear "tid"} tid_out: int) 
 {
     var {:linear "1"} x: [int]bool;
     var {:linear "2"} y: [int]bool;
@@ -40,7 +40,7 @@ procedure A({:linear "tid"} tid_in: int) returns ({:linear "tid"} tid_out: int)
     async call C(tid_child, y);
 }
 
-procedure B({:linear "tid"} tid_in: int, {:linear "1"} x_in: [int]bool) 
+procedure {:yields} {:stable} B({:linear "tid"} tid_in: int, {:linear "1"} x_in: [int]bool) 
 requires x_in != mapconstbool(false);
 {
     var {:linear "tid"} tid_out: int;
@@ -55,7 +55,7 @@ requires x_in != mapconstbool(false);
     g := 2;
 }
 
-procedure C({:linear "tid"} tid_in: int, {:linear "2"} y_in: [int]bool) 
+procedure {:yields} {:stable} C({:linear "tid"} tid_in: int, {:linear "2"} y_in: [int]bool) 
 requires y_in != mapconstbool(false);
 {
     var {:linear "tid"} tid_out: int;

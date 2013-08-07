@@ -9,7 +9,7 @@ modifies Permissions;
 requires Permissions == mapconstbool(true);
 ensures xls == mapconstbool(true) && Permissions == mapconstbool(false);
 
-procedure PB({:linear "Perm"} permVar_in:[int]bool)
+procedure {:yields} {:stable} PB({:linear "Perm"} permVar_in:[int]bool)
 requires permVar_in[0] && g == 0;
 {
   var {:linear "Perm"} permVar_out: [int]bool;
@@ -26,7 +26,8 @@ requires permVar_in[0] && g == 0;
   assert g == 1;
 }
 
-procedure{:entrypoint} Main()
+procedure{:entrypoint} {:yields} Main()
+modifies g, Permissions;
 requires Permissions == mapconstbool(true);
 {
   var {:linear "Perm"} permVar_out: [int]bool;

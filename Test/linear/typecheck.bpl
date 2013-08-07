@@ -20,7 +20,7 @@ procedure C()
 
 function f(X): X;
 
-procedure D()
+procedure {:yields} D()
 {
     var {:linear "D"} a: X;
     var {:linear "D"} x: X;
@@ -66,7 +66,7 @@ procedure E({:linear "D"} a: X, {:linear "D"} b: X) returns ({:linear "D"} c: X,
     c := a;
 }
 
-procedure F({:linear "D"} a: X) returns ({:linear "D"} c: X);
+procedure {:yields} {:stable} F({:linear "D"} a: X) returns ({:linear "D"} c: X);
 
 var{:linear "x"} g:int;
 
@@ -81,22 +81,22 @@ modifies g;
   g := r;
 }
 
-procedure I({:linear ""} x:int) returns({:linear ""} x':int)
+procedure {:yields} {:stable} I({:linear ""} x:int) returns({:linear ""} x':int)
 {
   x' := x;
 }
 
-procedure J()
+procedure {:yields} {:stable} J()
 {
 }
 
-procedure P1({:linear ""} x:int) returns({:linear ""} x':int)
+procedure {:yields} P1({:linear ""} x:int) returns({:linear ""} x':int)
 {
   call x' := I(x) | J();
   call x' := I(x');
 }
 
-procedure P2({:linear ""} x:int) returns({:linear ""} x':int)
+procedure {:yields} P2({:linear ""} x:int) returns({:linear ""} x':int)
 {
   call x' := I(x);
   call x' := I(x') | J();

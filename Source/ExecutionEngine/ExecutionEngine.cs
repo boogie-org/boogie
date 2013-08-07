@@ -443,16 +443,18 @@ namespace Microsoft.Boogie
           }
         }
 
-        if (CommandLineOptions.Clo.OwickiGriesDesugaredOutputFile != null)
         {
           OwickiGriesTransform ogTransform = new OwickiGriesTransform(linearTypechecker);
           ogTransform.Transform();
           var eraser = new LinearEraser();
           eraser.VisitProgram(program);
-          int oldPrintUnstructured = CommandLineOptions.Clo.PrintUnstructured;
-          CommandLineOptions.Clo.PrintUnstructured = 1;
-          PrintBplFile(CommandLineOptions.Clo.OwickiGriesDesugaredOutputFile, program, false, false);
-          CommandLineOptions.Clo.PrintUnstructured = oldPrintUnstructured;
+          if (CommandLineOptions.Clo.OwickiGriesDesugaredOutputFile != null)
+          {
+              int oldPrintUnstructured = CommandLineOptions.Clo.PrintUnstructured;
+              CommandLineOptions.Clo.PrintUnstructured = 1;
+              PrintBplFile(CommandLineOptions.Clo.OwickiGriesDesugaredOutputFile, program, false, false);
+              CommandLineOptions.Clo.PrintUnstructured = oldPrintUnstructured;
+          }
         }
 
         EliminateDeadVariablesAndInline(program);

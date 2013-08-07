@@ -177,7 +177,7 @@ ProcParamReordering.bpl(15,15): Error: mismatched number of type parameters in p
 2 type checking errors detected in ProcParamReordering.bpl
 ParallelAssignment.bpl(17,2): Error: mismatched types in assignment command (cannot assign bool to int)
 ParallelAssignment.bpl(18,4): Error: invalid type for argument 0 in map assignment: bool (expected: int)
-ParallelAssignment.bpl(20,4): Error: command assigns to a global variable that is not in the enclosing method's modifies clause: z
+ParallelAssignment.bpl(20,4): Error: command assigns to a global variable that is not in the enclosing procedure's modifies clause: z
 3 type checking errors detected in ParallelAssignment.bpl
 ParallelAssignment2.bpl(9,7): Error: number of left-hand sides does not match number of right-hand sides
 ParallelAssignment2.bpl(10,9): Error: variable a is assigned more than once in parallel assignment

@@ -1,36 +1,36 @@
 
 -------------------- foo.bpl --------------------
-foo.bpl(13,3): Error BP5001: This assertion might not hold.
+foo.bpl(14,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    foo.bpl(5,5): anon0
+    foo.bpl(6,5): anon0
     (0,0): inline$Impl_YieldChecker_PC$0$L0
 
-Boogie program verifier finished with 3 verified, 1 error
+Boogie program verifier finished with 4 verified, 1 error
 
 -------------------- bar.bpl --------------------
-bar.bpl(12,3): Error BP5001: This assertion might not hold.
+bar.bpl(13,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    bar.bpl(5,5): anon0
+    bar.bpl(6,5): anon0
     (0,0): inline$Impl_YieldChecker_PC$0$L0
-bar.bpl(12,3): Error BP5001: This assertion might not hold.
+bar.bpl(13,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    bar.bpl(17,5): anon0
+    bar.bpl(23,5): anon0
     (0,0): inline$Impl_YieldChecker_PC$0$L0
 
-Boogie program verifier finished with 2 verified, 2 errors
+Boogie program verifier finished with 3 verified, 2 errors
 
 -------------------- one.bpl --------------------
 
 Boogie program verifier finished with 2 verified, 0 errors
 
 -------------------- parallel1.bpl --------------------
-parallel1.bpl(9,3): Error BP5001: This assertion might not hold.
+parallel1.bpl(10,1): Error BP5001: This assertion might not hold.
 Execution trace:
-    parallel1.bpl(5,5): anon0
+    parallel1.bpl(6,5): anon0
     (0,0): inline$Proc_YieldChecker_PC$0$L0
-parallel1.bpl(13,3): Error BP5001: This assertion might not hold.
+parallel1.bpl(14,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    parallel1.bpl(5,5): anon0
+    parallel1.bpl(6,5): anon0
     (0,0): inline$Impl_YieldChecker_PC$0$L0
 
 Boogie program verifier finished with 3 verified, 2 errors
@@ -100,10 +100,10 @@ Boogie program verifier finished with 2 verified, 0 errors
 Boogie program verifier finished with 2 verified, 0 errors
 
 -------------------- async.bpl --------------------
-async.bpl(13,1): Error BP5001: This assertion might not hold.
+async.bpl(14,1): Error BP5001: This assertion might not hold.
 Execution trace:
-    async.bpl(6,3): anon0
-    async.bpl(6,3): anon0$1
+    async.bpl(7,3): anon0
+    async.bpl(7,3): anon0$1
     (0,0): inline$Proc_YieldChecker_P$1$L0
 
 Boogie program verifier finished with 1 verified, 1 error

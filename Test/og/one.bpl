@@ -1,11 +1,12 @@
 var x:int;
 
 procedure A()
+modifies x;
 {
   x := x;
 }
 
-procedure B()
+procedure {:yields} B()
 {
   x := 5;
   yield;

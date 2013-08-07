@@ -1,7 +1,7 @@
-procedure {:entrypoint} main() 
+procedure {:entrypoint} {:yields} main() 
 {
     call A() | B();
 }
 
-procedure A() {}
-procedure B() {}
+procedure {:yields} {:stable} A() {}
+procedure {:yields} {:stable} B() {}

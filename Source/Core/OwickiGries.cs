@@ -10,139 +10,8 @@ using System.Diagnostics.Contracts;
 
 namespace Microsoft.Boogie
 {
-    class ProcedureInfo
-    {
-        // containsYield is true iff there is an implementation that contains a yield statement
-        public bool containsYield;
-        // isThreadStart is true iff there is an async call to the procedure
-        public bool isThreadStart;
-        // isEntrypoint is true iff the procedure is an entrypoint
-        public bool isEntrypoint;
-        // isAtomic is true if there are no yields transitively in any implementation
-        public bool isAtomic;
-        // inParallelCall is true iff this procedure is involved in some parallel call
-        public bool inParallelCall;
-        public ProcedureInfo()
-        {
-            containsYield = false;
-            isThreadStart = false;
-            isAtomic = true;
-            inParallelCall = false;
-        }
-    }
-    
-    class AsyncAndYieldTraverser : StandardVisitor
-    {
-        Dictionary<string, ProcedureInfo> procNameToInfo = new Dictionary<string, ProcedureInfo>();
-        Implementation currentImpl = null;
-        public static Dictionary<string, ProcedureInfo> Traverse(Program program)
-        {
-            AsyncAndYieldTraverser traverser = new AsyncAndYieldTraverser();
-            traverser.VisitProgram(program);
-            return traverser.procNameToInfo;
-        }
-        public override Procedure VisitProcedure(Procedure node)
-        {
-            if (!procNameToInfo.ContainsKey(node.Name))
-            {
-                procNameToInfo[node.Name] = new ProcedureInfo();
-            }
-            if (QKeyValue.FindBoolAttribute(node.Attributes, "entrypoint"))
-            {
-                procNameToInfo[node.Name].isEntrypoint = true;
-            }
-            if (QKeyValue.FindBoolAttribute(node.Attributes, "yields"))
-            {
-                procNameToInfo[node.Name].isAtomic = false;
-            }
-            return base.VisitProcedure(node);
-        }
-        public override Implementation VisitImplementation(Implementation node)
-        {
-            currentImpl = node;
-            if (!procNameToInfo.ContainsKey(node.Name))
-            {
-                procNameToInfo[node.Name] = new ProcedureInfo();
-            }
-            if (QKeyValue.FindBoolAttribute(node.Attributes, "entrypoint"))
-            {
-                procNameToInfo[node.Name].isEntrypoint = true;
-            }
-            return base.VisitImplementation(node);
-        }
-        public override YieldCmd VisitYieldCmd(YieldCmd node)
-        {
-            procNameToInfo[currentImpl.Name].containsYield = true;
-            procNameToInfo[currentImpl.Name].isAtomic = false;
-            return base.VisitYieldCmd(node);
-        }
-        public override Cmd VisitCallCmd(CallCmd node)
-        {
-            if (!procNameToInfo.ContainsKey(node.Proc.Name))
-            {
-                procNameToInfo[node.Proc.Name] = new ProcedureInfo();
-            }
-            if (node.IsAsync)
-            {
-                procNameToInfo[node.Proc.Name].isThreadStart = true;
-            }
-            if (node.InParallelWith != null)
-            {
-                CallCmd iter = node;
-                while (iter != null)
-                {
-                    if (!procNameToInfo.ContainsKey(iter.Proc.Name))
-                    {
-                        procNameToInfo[iter.Proc.Name] = new ProcedureInfo();
-                    }
-                    procNameToInfo[iter.Proc.Name].isThreadStart = true;
-                    procNameToInfo[iter.Proc.Name].inParallelCall = true;
-                    iter = iter.InParallelWith;
-                }
-            }
-            return base.VisitCallCmd(node);
-        }
-    }
-
-    class AtomicTraverser : StandardVisitor
-    {
-        Implementation currentImpl;
-        static Dictionary<string, ProcedureInfo> procNameToInfo;
-        static bool moreProcessingRequired;
-        public static void Traverse(Program program, Dictionary<string, ProcedureInfo> procNameToInfo)
-        {
-            AtomicTraverser.procNameToInfo = procNameToInfo;
-            do
-            {
-                moreProcessingRequired = false;
-                AtomicTraverser traverser = new AtomicTraverser();
-                traverser.VisitProgram(program);
-            } while (moreProcessingRequired);
-        }
-
-        public override Implementation VisitImplementation(Implementation node)
-        {
-            if (!procNameToInfo[node.Name].isAtomic)
-                return node;
-            currentImpl = node;
-            return base.VisitImplementation(node);
-        }
-
-        public override Cmd VisitCallCmd(CallCmd node)
-        {
-            ProcedureInfo info = procNameToInfo[node.callee];
-            if (node.InParallelWith != null || node.IsAsync || !info.isAtomic)
-            {
-                procNameToInfo[currentImpl.Name].isAtomic = false;
-                moreProcessingRequired = true;
-            }
-            return base.VisitCallCmd(node);
-        }
-    }
-
     public class OwickiGriesTransform
     {
-        Dictionary<string, ProcedureInfo> procNameToInfo;
         List<IdentifierExpr> globalMods;
         LinearTypechecker linearTypechecker;
         Dictionary<string, Procedure> asyncAndParallelCallDesugarings;
@@ -154,8 +23,6 @@ namespace Microsoft.Boogie
         {
             this.linearTypechecker = linearTypechecker;
             Program program = linearTypechecker.program;
-            procNameToInfo = AsyncAndYieldTraverser.Traverse(program);
-            AtomicTraverser.Traverse(program, procNameToInfo);
             globalMods = new List<IdentifierExpr>();
             foreach (Variable g in program.GlobalVariables())
             {
@@ -164,20 +31,7 @@ namespace Microsoft.Boogie
             asyncAndParallelCallDesugarings = new Dictionary<string, Procedure>();
             yieldCheckerProcs = new List<Procedure>();
             yieldCheckerImpls = new List<Implementation>();
-            List<Variable> inputs = new List<Variable>();
-            foreach (string domainName in linearTypechecker.linearDomains.Keys)
-            {
-                var domain = linearTypechecker.linearDomains[domainName];
-                Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, domainName + "_in", new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> { domain.elementType }, Type.Bool)), true);
-                inputs.Add(f);
-            }
-            foreach (IdentifierExpr ie in globalMods)
-            {
-                Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_global_old_{0}", ie.Decl.Name), ie.Decl.TypedIdent.Type), true);
-                inputs.Add(f);
-            }
-            yieldProc = new Procedure(Token.NoToken, "og_yield", new List<TypeVariable>(), inputs, new List<Variable>(), new List<Requires>(), new List<IdentifierExpr>(), new List<Ensures>());
-            yieldProc.AddAttribute("inline", new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1)));
+            yieldProc = null;
         }
 
         private void AddCallToYieldProc(List<Cmd> newCmds, Dictionary<Variable, Variable> ogOldGlobalMap, Dictionary<string, Variable> domainNameToLocalVar)
@@ -190,7 +44,24 @@ namespace Microsoft.Boogie
             foreach (IdentifierExpr ie in globalMods)
             {
                 exprSeq.Add(Expr.Ident(ogOldGlobalMap[ie.Decl]));
-            } 
+            }
+            if (yieldProc == null)
+            {
+                List<Variable> inputs = new List<Variable>();
+                foreach (string domainName in linearTypechecker.linearDomains.Keys)
+                {
+                    var domain = linearTypechecker.linearDomains[domainName];
+                    Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, domainName + "_in", new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> { domain.elementType }, Type.Bool)), true);
+                    inputs.Add(f);
+                }
+                foreach (IdentifierExpr ie in globalMods)
+                {
+                    Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_global_old_{0}", ie.Decl.Name), ie.Decl.TypedIdent.Type), true);
+                    inputs.Add(f);
+                }
+                yieldProc = new Procedure(Token.NoToken, "og_yield", new List<TypeVariable>(), inputs, new List<Variable>(), new List<Requires>(), new List<IdentifierExpr>(), new List<Ensures>());
+                yieldProc.AddAttribute("inline", new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1)));
+            }
             CallCmd yieldCallCmd = new CallCmd(Token.NoToken, yieldProc.Name, exprSeq, new List<IdentifierExpr>());
             yieldCallCmd.Proc = yieldProc;
             newCmds.Add(yieldCallCmd);
@@ -283,7 +154,6 @@ namespace Microsoft.Boogie
             List<Variable> outParams = new List<Variable>();
             List<Requires> requiresSeq = new List<Requires>();
             List<Ensures> ensuresSeq = new List<Ensures>();
-            List<IdentifierExpr> ieSeq = new List<IdentifierExpr>();
             int count = 0;
             while (callCmd != null)
             {
@@ -306,10 +176,6 @@ namespace Microsoft.Boogie
                 {
                     requiresSeq.Add(new Requires(req.Free, Substituter.Apply(subst, req.Condition)));
                 }
-                foreach (IdentifierExpr ie in callCmd.Proc.Modifies)
-                {
-                    ieSeq.Add(ie);
-                }
                 foreach (Ensures ens in callCmd.Proc.Ensures)
                 {
                     ensuresSeq.Add(new Ensures(ens.Free, Substituter.Apply(subst, ens.Condition)));
@@ -318,7 +184,8 @@ namespace Microsoft.Boogie
                 callCmd = callCmd.InParallelWith;
             }
 
-            Procedure proc = new Procedure(Token.NoToken, procName, new List<TypeVariable>(), inParams, outParams, requiresSeq, ieSeq, ensuresSeq);
+            Procedure proc = new Procedure(Token.NoToken, procName, new List<TypeVariable>(), inParams, outParams, requiresSeq, new List<IdentifierExpr>(), ensuresSeq);
+            proc.AddAttribute("yields");
             asyncAndParallelCallDesugarings[procName] = proc;
             return proc;
         }
@@ -328,7 +195,6 @@ namespace Microsoft.Boogie
             if (yields.Count == 0) return;
 
             Program program = linearTypechecker.program;
-            ProcedureInfo info = procNameToInfo[decl.Name];
             List<Variable> locals = new List<Variable>();
             List<Variable> inputs = new List<Variable>();
             foreach (IdentifierExpr ie in map.Values)
@@ -423,11 +289,58 @@ namespace Microsoft.Boogie
             yieldCheckerImpls.Add(yieldCheckerImpl);
         }
 
+        private bool IsYieldingHeader(GraphUtil.Graph<Block> graph, Block header)
+        {
+            foreach (Block backEdgeNode in graph.BackEdgeNodes(header))
+            {
+                foreach (Block x in graph.NaturalLoops(header, backEdgeNode))
+                {
+                    foreach (Cmd cmd in x.Cmds)
+                    {
+                        if (cmd is YieldCmd)
+                            return true;
+                        CallCmd callCmd = cmd as CallCmd;
+                        if (callCmd == null) continue;
+                        if (callCmd.IsAsync || callCmd.InParallelWith != null || QKeyValue.FindBoolAttribute(callCmd.Proc.Attributes, "yields"))
+                            return true;
+                    }
+                }
+            }
+            return false;
+        }
+
         private void TransformImpl(Implementation impl)
         {
-            Program program = linearTypechecker.program;
-            ProcedureInfo info = procNameToInfo[impl.Name];
+            if (!QKeyValue.FindBoolAttribute(impl.Proc.Attributes, "yields")) return;
 
+            // Find the yielding loop headers
+            impl.PruneUnreachableBlocks();
+            impl.ComputePredecessorsForBlocks();
+            GraphUtil.Graph<Block> graph = Program.GraphFromImpl(impl);
+            graph.ComputeLoops();
+            if (!graph.Reducible)
+            {
+                throw new Exception("Irreducible flow graphs are unsupported.");
+            }
+            HashSet<Block> yieldingHeaders = new HashSet<Block>();
+            IEnumerable<Block> sortedHeaders = graph.SortHeadersByDominance();
+            foreach (Block header in sortedHeaders)
+            {
+                if (yieldingHeaders.Any(x => graph.DominatorMap.DominatedBy(x, header)))
+                {
+                    yieldingHeaders.Add(header);
+                }
+                else if (IsYieldingHeader(graph, header))
+                {
+                    yieldingHeaders.Add(header);
+                }
+                else
+                {
+                    continue;
+                }
+            }
+
+            Program program = linearTypechecker.program;
             Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
             foreach (Variable local in impl.LocVars)
             {
@@ -493,7 +406,8 @@ namespace Microsoft.Boogie
                     CallCmd callCmd = cmd as CallCmd;
                     if (callCmd != null)
                     {
-                        if (callCmd.InParallelWith != null || callCmd.IsAsync || !procNameToInfo[callCmd.callee].isAtomic)
+                        if (callCmd.InParallelWith != null || callCmd.IsAsync ||
+                            QKeyValue.FindBoolAttribute(callCmd.Proc.Attributes, "yields"))
                         {
                             AddCallToYieldProc(newCmds, ogOldGlobalMap, domainNameToLocalVar);
                         }
@@ -521,7 +435,8 @@ namespace Microsoft.Boogie
                         {
                             newCmds.Add(callCmd);
                         }
-                        if (callCmd.InParallelWith != null || callCmd.IsAsync || !procNameToInfo[callCmd.callee].isAtomic)
+                        if (callCmd.InParallelWith != null || callCmd.IsAsync ||
+                            QKeyValue.FindBoolAttribute(callCmd.Proc.Attributes, "yields"))
                         {
                             HashSet<Variable> availableLocalLinearVars = new HashSet<Variable>(linearTypechecker.availableLocalLinearVars[callCmd]);
                             foreach (IdentifierExpr ie in callCmd.Outs)
@@ -547,46 +462,34 @@ namespace Microsoft.Boogie
                         cmds = new List<Cmd>();
                     }
                 }
-                if (b.TransferCmd is ReturnCmd && (!info.isAtomic || info.isEntrypoint || info.isThreadStart))
+                if (b.TransferCmd is ReturnCmd && QKeyValue.FindBoolAttribute(impl.Proc.Attributes, "yields"))
                 {
                     AddCallToYieldProc(newCmds, ogOldGlobalMap, domainNameToLocalVar);
                 }
                 b.Cmds = newCmds;
             }
 
-            if (!info.isAtomic)
+            foreach (Block header in yieldingHeaders)
             {
-                // Loops
-                impl.PruneUnreachableBlocks();
-                impl.ComputePredecessorsForBlocks();
-                GraphUtil.Graph<Block> g = Program.GraphFromImpl(impl);
-                g.ComputeLoops();
-                if (g.Reducible)
+                Dictionary<string, Expr> domainNameToExpr = ComputeAvailableExprs(linearTypechecker.availableLocalLinearVars[header], domainNameToInputVar);
+                foreach (Block pred in header.Predecessors)
                 {
-                    foreach (Block header in g.Headers)
-                    {
-                        Dictionary<string, Expr> domainNameToExpr = ComputeAvailableExprs(linearTypechecker.availableLocalLinearVars[header], domainNameToInputVar);
-                        foreach (Block pred in header.Predecessors)
-                        {
-                            AddCallToYieldProc(pred.Cmds, ogOldGlobalMap, domainNameToLocalVar);
-                            AddUpdatesToOldGlobalVars(pred.Cmds, ogOldGlobalMap, domainNameToLocalVar, domainNameToExpr);
-                        }
-                        List<Cmd> newCmds = new List<Cmd>();
-                        foreach (string domainName in linearTypechecker.linearDomains.Keys)
-                        {
-                            newCmds.Add(new AssumeCmd(Token.NoToken, Expr.Binary(BinaryOperator.Opcode.Eq, Expr.Ident(domainNameToLocalVar[domainName]), domainNameToExpr[domainName])));
-                        }
-                        foreach (Variable v in ogOldGlobalMap.Keys)
-                        {
-                            newCmds.Add(new AssumeCmd(Token.NoToken, Expr.Binary(BinaryOperator.Opcode.Eq, new IdentifierExpr(Token.NoToken, v), Expr.Ident(ogOldGlobalMap[v]))));
-                        } 
-                        newCmds.AddRange(header.Cmds);
-                        header.Cmds = newCmds;
-                    }
+                    AddCallToYieldProc(pred.Cmds, ogOldGlobalMap, domainNameToLocalVar);
+                    AddUpdatesToOldGlobalVars(pred.Cmds, ogOldGlobalMap, domainNameToLocalVar, domainNameToExpr);
                 }
+                List<Cmd> newCmds = new List<Cmd>();
+                foreach (string domainName in linearTypechecker.linearDomains.Keys)
+                {
+                    newCmds.Add(new AssumeCmd(Token.NoToken, Expr.Binary(BinaryOperator.Opcode.Eq, Expr.Ident(domainNameToLocalVar[domainName]), domainNameToExpr[domainName])));
+                }
+                foreach (Variable v in ogOldGlobalMap.Keys)
+                {
+                    newCmds.Add(new AssumeCmd(Token.NoToken, Expr.Binary(BinaryOperator.Opcode.Eq, new IdentifierExpr(Token.NoToken, v), Expr.Ident(ogOldGlobalMap[v]))));
+                }
+                newCmds.AddRange(header.Cmds);
+                header.Cmds = newCmds;
             }
 
-            if (!info.isAtomic || info.isEntrypoint || info.isThreadStart)
             {
                 // Add initial block
                 List<AssignLhs> lhss = new List<AssignLhs>();
@@ -614,7 +517,7 @@ namespace Microsoft.Boogie
                 {
                     lhss.Add(new SimpleAssignLhs(Token.NoToken, Expr.Ident(ogOldGlobalMap[g])));
                     rhss.Add(Expr.Ident(g));
-                } 
+                }
                 if (lhss.Count > 0)
                 {
                     Block initBlock = new Block(Token.NoToken, "og_init", new List<Cmd> { new AssignCmd(Token.NoToken, lhss, rhss) }, new GotoCmd(Token.NoToken, new List<String> { impl.Blocks[0].Label }, new List<Block> { impl.Blocks[0] }));
@@ -627,10 +530,9 @@ namespace Microsoft.Boogie
 
         public void TransformProc(Procedure proc)
         {
-            Program program = linearTypechecker.program;
-            ProcedureInfo info = procNameToInfo[proc.Name];
-            if (!info.isThreadStart) return;
+            if (!QKeyValue.FindBoolAttribute(proc.Attributes, "stable")) return;
 
+            Program program = linearTypechecker.program;
             Dictionary<string, Variable> domainNameToInputVar = new Dictionary<string, Variable>();
             {
                 int i = proc.InParams.Count - linearTypechecker.linearDomains.Count;
@@ -684,7 +586,7 @@ namespace Microsoft.Boogie
                 yields.Add(cmds);
                 cmds = new List<Cmd>();
             }
-            if (info.inParallelCall && proc.Ensures.Count > 0)
+            if (proc.Ensures.Count > 0)
             {
                 Dictionary<string, HashSet<Variable>> domainNameToScope = new Dictionary<string, HashSet<Variable>>();
                 foreach (var domainName in linearTypechecker.linearDomains.Keys)
@@ -728,6 +630,8 @@ namespace Microsoft.Boogie
 
         private void AddYieldProcAndImpl() 
         {
+            if (yieldProc == null) return;
+
             Program program = linearTypechecker.program;
             List<Variable> inputs = new List<Variable>();
             foreach (string domainName in linearTypechecker.linearDomains.Keys)
@@ -804,7 +708,18 @@ namespace Microsoft.Boogie
                 program.TopLevelDeclarations.Add(proc);
             }
             AddYieldProcAndImpl();
-            Microsoft.Boogie.ModSetCollector.DoModSetAnalysis(program);
+            foreach (var decl in program.TopLevelDeclarations)
+            {
+                Procedure proc = decl as Procedure;
+                if (proc == null) continue;
+                if (QKeyValue.FindBoolAttribute(proc.Attributes, "yields"))
+                {
+                    foreach (GlobalVariable g in program.GlobalVariables())
+                    {
+                        proc.Modifies.Add(new IdentifierExpr(Token.NoToken, g));
+                    }
+                }
+            }
         }
     }
 }
