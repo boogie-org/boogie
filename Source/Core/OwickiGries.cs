@@ -313,6 +313,8 @@ namespace Microsoft.Boogie
         {
             if (!QKeyValue.FindBoolAttribute(impl.Proc.Attributes, "yields")) return;
 
+            TransformProc(impl.Proc);
+
             // Find the yielding loop headers
             impl.PruneUnreachableBlocks();
             impl.ComputePredecessorsForBlocks();
@@ -683,18 +685,10 @@ namespace Microsoft.Boogie
             Program program = linearTypechecker.program;
             foreach (var decl in program.TopLevelDeclarations)
             {
-                Procedure proc = decl as Procedure;
-                if (proc == null) continue;
-                TransformProc(proc);
-            }
-
-            foreach (var decl in program.TopLevelDeclarations)
-            {
                 Implementation impl = decl as Implementation;
                 if (impl == null) continue;
                 TransformImpl(impl);
             }
-
             foreach (Procedure proc in yieldCheckerProcs)
             {
                 program.TopLevelDeclarations.Add(proc);
