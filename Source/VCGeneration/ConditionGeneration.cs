@@ -976,7 +976,7 @@ namespace VC {
 
     protected Checker FindCheckerFor(int timeout, bool isBlocking = true)
     {
-      Contract.Ensures(Contract.Result<Checker>() != null);
+      Contract.Ensures(!isBlocking || Contract.Result<Checker>() != null);
 
       var maxRetries = 3;
       lock (checkers)
