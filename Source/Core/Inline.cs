@@ -353,6 +353,27 @@ namespace Microsoft.Boogie {
                     newCmds.Add(codeCopier.CopyCmd(predCmd));
                 }
             }
+            else if (cmd is AssignCmd)
+            {
+                AssignCmd assignCmd = (AssignCmd)cmd;
+                this.inlinedSomething = false;
+                List<Expr> newRhss = new List<Expr>();
+                foreach (Expr rhsExpr in assignCmd.Rhss)
+                {
+                    newRhss.Add(this.VisitExpr(rhsExpr));
+                }
+                if (this.inlinedSomething)
+                {
+                    inlinedSomething = true;
+                    AssignCmd newAssignCmd = (AssignCmd)codeCopier.CopyCmd(assignCmd);
+                    newAssignCmd.Rhss = newRhss;
+                    newCmds.Add(newAssignCmd);
+                }
+                else
+                {
+                    newCmds.Add(codeCopier.CopyCmd(assignCmd));
+                }
+            }
             else
             {
                 newCmds.Add(codeCopier.CopyCmd(cmd));

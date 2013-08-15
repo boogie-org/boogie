@@ -6,11 +6,11 @@ Execution trace:
 
 Boogie program verifier finished with 1 verified, 1 error
 -------------------- codeexpr.bpl --------------------
-codeexpr.bpl(35,5): Error BP5001: This assertion might not hold.
+codeexpr.bpl(40,5): Error BP5001: This assertion might not hold.
 Execution trace:
-    codeexpr.bpl(34,7): anon0
+    codeexpr.bpl(39,7): anon0
 
-Boogie program verifier finished with 3 verified, 1 error
+Boogie program verifier finished with 5 verified, 1 error
 -------------------- test1.bpl --------------------
 
 procedure Main();
