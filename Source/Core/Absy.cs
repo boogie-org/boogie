@@ -2353,7 +2353,14 @@ namespace Microsoft.Boogie {
 
     public override void Typecheck(TypecheckingContext tc) {
       //Contract.Requires(tc != null);
+        bool isAtomicSpecification =
+            QKeyValue.FindIntAttribute(this.Attributes, "atomic", -1) != -1 ||
+            QKeyValue.FindIntAttribute(this.Attributes, "rightmover", -1) != -1 ||
+            QKeyValue.FindIntAttribute(this.Attributes, "leftmover", -1) != -1;
+      bool oldYields = tc.Yields;
+      tc.Yields = isAtomicSpecification;
       this.Condition.Typecheck(tc);
+      tc.Yields = oldYields;
       Contract.Assert(this.Condition.Type != null);  // follows from postcondition of Expr.Typecheck
       if (!this.Condition.Type.Unify(Type.Bool)) {
         tc.Error(this, "postconditions must be of type bool");
