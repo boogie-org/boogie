@@ -3,7 +3,7 @@ setlocal
 
 set BGEXE=..\..\Binaries\Boogie.exe
 
-for %%f in (test0.bpl) do (
+for %%f in (test0.bpl codeexpr.bpl) do (
   echo -------------------- %%f --------------------
   %BGEXE% %* %%f
 )

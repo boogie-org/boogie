@@ -16,8 +16,10 @@ namespace Microsoft.Boogie {
 
   public delegate void InlineCallback(Implementation/*!*/ impl);
 
-  public class Inliner {
-    private Program program; 
+  public class Inliner : Duplicator {
+    protected bool inlinedSomething;
+
+    protected Program program; 
 
     private InlineCallback inlineCallback;
 
@@ -41,6 +43,15 @@ namespace Microsoft.Boogie {
       Contract.Invariant(codeCopier != null);
       Contract.Invariant(recursiveProcUnrollMap != null);
       Contract.Invariant(inlinedProcLblMap != null);
+    }
+
+    public override Expr VisitCodeExpr(CodeExpr node)
+    {
+        Inliner codeExprInliner = new Inliner(program, inlineCallback, CommandLineOptions.Clo.InlineDepth);
+        codeExprInliner.newLocalVars = new List<Variable>(node.LocVars);
+        codeExprInliner.newModifies = new List<IdentifierExpr>();
+        List<Block> newCodeExprBlocks = codeExprInliner.DoInlineBlocks(node.Blocks, ref inlinedSomething);
+        return new CodeExpr(codeExprInliner.newLocalVars, newCodeExprBlocks);
     }
 
     protected void NextInlinedProcLabel(string procName) {
@@ -73,7 +84,7 @@ namespace Microsoft.Boogie {
       return prefix + "$" + formalName;
     }
 
-    protected Inliner(Program program, InlineCallback cb, int inlineDepth) {
+    public Inliner(Program program, InlineCallback cb, int inlineDepth) {
       this.program = program;
       this.inlinedProcLblMap = new Dictionary<string/*!*/, int>();
       this.recursiveProcUnrollMap = new Dictionary<string/*!*/, int>();
@@ -267,7 +278,7 @@ namespace Microsoft.Boogie {
         return nextlblCount;
     }
 
-    protected virtual List<Block/*!*/>/*!*/ DoInlineBlocks(List<Block/*!*/>/*!*/ blocks, ref bool inlinedSomething) {
+    public virtual List<Block/*!*/>/*!*/ DoInlineBlocks(List<Block/*!*/>/*!*/ blocks, ref bool inlinedSomething) {
       Contract.Requires(cce.NonNullElements(blocks));
       Contract.Requires(program != null);
       Contract.Requires(newLocalVars != null);
@@ -328,15 +339,13 @@ namespace Microsoft.Boogie {
             else if (cmd is PredicateCmd)
             {
                 PredicateCmd predCmd = (PredicateCmd)cmd;
-                if (predCmd.Expr is CodeExpr)
+                this.inlinedSomething = false;
+                Expr newExpr = this.VisitExpr(predCmd.Expr);
+                if (this.inlinedSomething)
                 {
-                    CodeExpr codeExpr = (CodeExpr) predCmd.Expr;
-                    Inliner codeExprInliner = new Inliner(program, null, CommandLineOptions.Clo.InlineDepth);
-                    codeExprInliner.newLocalVars = new List<Variable>(codeExpr.LocVars);
-                    codeExprInliner.newModifies = new List<IdentifierExpr>();
-                    List<Block> newCodeExprBlocks = codeExprInliner.DoInlineBlocks(codeExpr.Blocks, ref inlinedSomething);
-                    PredicateCmd newPredCmd = (PredicateCmd) codeCopier.CopyCmd(predCmd);
-                    newPredCmd.Expr = new CodeExpr(codeExprInliner.newLocalVars, newCodeExprBlocks);
+                    inlinedSomething = true;
+                    PredicateCmd newPredCmd = (PredicateCmd)codeCopier.CopyCmd(predCmd);
+                    newPredCmd.Expr = newExpr;
                     newCmds.Add(newPredCmd);
                 }
                 else
@@ -344,7 +353,7 @@ namespace Microsoft.Boogie {
                     newCmds.Add(codeCopier.CopyCmd(predCmd));
                 }
             }
-            else 
+            else
             {
                 newCmds.Add(codeCopier.CopyCmd(cmd));
             }
