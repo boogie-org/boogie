@@ -44,13 +44,14 @@ class CommandLineOptions(object):
                     "/contractInfer"
                   ]
   workers = 1
+  inlineDepth = 2
   verbose = False
   keepTemps = False
   noSourceLocInfer = False
   time = False
   timeCSVLabel = None
   boogieMemout=0
-  boogieTimeout=300
+  boogieTimeout=0
 
 def SplitFilenameExt(f):
   filename, ext = os.path.splitext(f)
@@ -60,12 +61,14 @@ class VerificationTask(multiprocessing.Process):
     """ This class is used to create a new thread and run a
     verification task on it.
     """
-    def __init__(self, taskID, queue, solver, trustFlag, errorLimit, loopUnwind, inlineDepth, timeout=0, timeoutErrorCode=None):
+    
+    isTrusted = True
+    
+    def __init__(self, taskID, queue, solver, errorLimit, checkForLMI, loopUnwind, timeout=0, timeoutErrorCode=None):
         super(VerificationTask, self).__init__()
         self.taskID = taskID
         self.queue = queue
         self.solver = solver
-        self.trust = trustFlag
         self.timeout = timeout
         self.timeoutErrorCode = timeoutErrorCode
         self.options = [ "/errorLimit:" + str(errorLimit) ]
@@ -73,16 +76,17 @@ class VerificationTask(multiprocessing.Process):
           self.options += [ "/proverOpt:SOLVER=cvc4" ]
           self.options += [ "/cvc4exe:" + os.path.dirname(__file__) + os.sep + "../Binaries/cvc4.exe" ]
         elif (solver == "Z3"):
-          self.options += [ "/z3opt:SOLVER=true" ]
           self.options += [ "/z3exe:" + os.path.dirname(__file__) + os.sep + "../Binaries/z3.exe" ]
+          self.options += [ "/z3opt:SOLVER=true" ]
           # self.options += [ "/z3opt:RELEVANCY=0" ]
           self.options += [ "/z3opt:ARRAY_WEAK=true" ]
           self.options += [ "/z3opt:ARRAY_EXTENSIONAL=false" ]
+        if not checkForLMI:
+          self.options += [ "/disableLoopInvMaintainedAssert" ]
+          self.isTrusted = False
         if (loopUnwind > 0):
           self.options += ["/loopUnroll:" + str(loopUnwind) ]
-        if (inlineDepth > 0):
-          self.options += ["/inlineDepth:" + str(inlineDepth) ]
-    
+        
     def run(self):
         print "INFO:[Task-" + str(self.taskID) + "] running Boogie using the " + self.solver + " solver."
         RunTool("boogie",
@@ -92,7 +96,7 @@ class VerificationTask(multiprocessing.Process):
             ErrorCodes.BOOGIE_ERROR,
             self.timeout,
             self.timeoutErrorCode)
-        if (self.trust): self.queue.put(self.taskID)
+        if (self.isTrusted): self.queue.put(self.taskID)
     
 class Timeout(Exception):
     pass
@@ -202,6 +206,7 @@ def showHelpAndExit():
   print "GENERAL OPTIONS:"
   print "  -h, --help              Display this message."
   print "  -p, --processes=        Number of solvers to run in parallel."
+  print "  --inline-depth=X        Depth of inlining procedure calls."
   print "  --memout=X              Give Boogie a hard memory limit of X megabytes."
   print "                          A memout of 0 disables the memout. The default is " + str(CommandLineOptions.boogieMemout) + " megabytes."
   print "  --time                  Show timing information."
@@ -242,8 +247,11 @@ def processOptions(opts, args):
         CommandLineOptions.workers = int(a)
       except ValueError:
         PortfolioSolverError("non integer value '" + a + "' provided as argument to --processes", ErrorCodes.COMMAND_LINE_ERROR)
-    if o == "--boogie-opt":
-      CommandLineOptions.boogieOptions += str(a).split(" ")
+    if o == "--inline-depth":
+      try:
+        CommandLineOptions.inlineDepth = int(a)
+      except ValueError:
+        PortfolioSolverError("non integer value '" + a + "' provided as argument to --inline-depth", ErrorCodes.COMMAND_LINE_ERROR)
     if o == "--no-source-loc-infer":
       CommandLineOptions.noSourceLocInfer = True
     if o == "--time":
@@ -269,6 +277,8 @@ def processOptions(opts, args):
       CommandLineOptions.verbose = True
     if o == "--keep-temps":
       CommandLineOptions.keepTemps = True
+    if o == "--boogie-opt":
+      CommandLineOptions.boogieOptions += str(a).split(" ")
 
 def main(argv=None):
   if argv is None:
@@ -278,12 +288,12 @@ def main(argv=None):
   try:
     opts, args = getopt.gnu_getopt(argv[1:],'p:h', 
              ['help', 'processors=',
-              'verbose', 'keep-temps',
-              'memout=',
+              'inline-depth=',
               'no-source-loc-infer',
-              'boogie-opt=',
               'time', 'time-as-csv=',
-              'timeout='
+              'memout=', 'timeout=',
+              'verbose', 'keep-temps',
+              'boogie-opt='
              ])
   except getopt.GetoptError as getoptError:
     PortfolioSolverError(getoptError.msg + ".  Try --help for list of options", ErrorCodes.COMMAND_LINE_ERROR)
@@ -303,7 +313,8 @@ def main(argv=None):
   if CommandLineOptions.boogieTimeout > 0:
     timeoutArguments['timeout']= CommandLineOptions.boogieTimeout
     timeoutArguments['timeoutErrorCode']=ErrorCodes.BOOGIE_TIMEOUT
-    
+  
+  CommandLineOptions.boogieOptions += [ "/inlineDepth:" + str(CommandLineOptions.inlineDepth) ]
   CommandLineOptions.boogieOptions += [ CommandLineOptions.sourceFiles[0] ]
   
   toolTasks = []
@@ -312,13 +323,13 @@ def main(argv=None):
   
   for taskID in range(CommandLineOptions.workers):
     if (taskID == 0):
-      task = VerificationTask(taskID + 1, taskQueue, "Z3", True, 20, 0, 2, **timeoutArguments)
+      task = VerificationTask(taskID + 1, taskQueue, "Z3", 1, True, 0, **timeoutArguments)
     elif (taskID == 1):
-      task = VerificationTask(taskID + 1, taskQueue, "Z3", False, 20, 0, 0, **timeoutArguments)
+      task = VerificationTask(taskID + 1, taskQueue, "Z3", 2, True, 0, **timeoutArguments)
     elif (taskID == 2):
-      task = VerificationTask(taskID + 1, taskQueue, "Z3", False, 4, 2, 0, **timeoutArguments)
+      task = VerificationTask(taskID + 1, taskQueue, "Z3", 3, True, 0, **timeoutArguments)
     elif (taskID == 3):
-      task = VerificationTask(taskID + 1, taskQueue, "Z3", False, 4, 0, 1, **timeoutArguments)
+      task = VerificationTask(taskID + 1, taskQueue, "Z3", 4, True, 0, **timeoutArguments)
     task.start()
     toolTasks.append(task)
   

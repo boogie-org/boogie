@@ -398,6 +398,7 @@ namespace Microsoft.Boogie {
     public bool ContractInfer = false;
     public bool ExplainHoudini = false;
     public bool HoudiniOutputRefutedCandidates = false;
+    public bool DisableLoopInvMaintainedAssert = false;
     public bool DebugParallelHoudini = false;
     public bool HoudiniUseCrossDependencies = false;
     public string StagedHoudini = null;
@@ -1173,6 +1174,12 @@ namespace Microsoft.Boogie {
           }
           return true;
 
+        case "disableLoopInvMaintainedAssert":
+          if (ps.ConfirmArgumentCount(0)) {
+            DisableLoopInvMaintainedAssert = true;
+          }
+          return true;
+
         case "debugParallelHoudini":
           if (ps.ConfirmArgumentCount(0)) {
             DebugParallelHoudini = true;
@@ -1668,6 +1675,9 @@ namespace Microsoft.Boogie {
                 invariants
   /outputRefuted
                 Outputs the refuted candidates
+  /disableLoopInvMaintainedAssert
+                Disables the loop invariant check to maintain the invariant after iteration.
+                This is an under-approximation feature.
 
   ---- Debugging and general tracing options ---------------------------------
 

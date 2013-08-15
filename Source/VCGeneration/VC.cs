@@ -1944,7 +1944,12 @@ namespace VC {
               b.Attributes = c.Attributes;
               b.ErrorData = c.ErrorData;
               prefixOfPredicateCmdsInit.Add(b);
-              b = new Bpl.LoopInvMaintainedAssertCmd(c.tok, c.Expr);
+
+              if (CommandLineOptions.Clo.DisableLoopInvMaintainedAssert)
+                b = new Bpl.LoopInvMaintainedAssertCmd(c.tok, Expr.True);
+              else
+                b = new Bpl.LoopInvMaintainedAssertCmd(c.tok, c.Expr);
+
               b.Attributes = c.Attributes; 
               b.ErrorData = c.ErrorData;
               prefixOfPredicateCmdsMaintained.Add(b);
