@@ -399,6 +399,7 @@ namespace Microsoft.Boogie {
     public bool ExplainHoudini = false;
     public bool HoudiniOutputRefutedCandidates = false;
     public bool DisableLoopInvMaintainedAssert = false;
+    public bool ReverseTopologicalSorting = false;
     public bool DebugParallelHoudini = false;
     public bool HoudiniUseCrossDependencies = false;
     public string StagedHoudini = null;
@@ -1180,6 +1181,12 @@ namespace Microsoft.Boogie {
           }
           return true;
 
+        case "reverseTopologicalSorting":
+          if (ps.ConfirmArgumentCount(0)) {
+            ReverseTopologicalSorting = true;
+          }
+          return true;
+
         case "debugParallelHoudini":
           if (ps.ConfirmArgumentCount(0)) {
             DebugParallelHoudini = true;
@@ -1677,7 +1684,10 @@ namespace Microsoft.Boogie {
                 Outputs the refuted candidates
   /disableLoopInvMaintainedAssert
                 Disables the loop invariant check to maintain the invariant after iteration.
-                This is an under-approximation feature.
+                This is an under-approximation feature
+  /reverseTopologicalSorting
+                Reverses the order that roots are found in the Topological Sorting algorithm.
+                Can be used to potentially change the order that Houdini refutes candidates
 
   ---- Debugging and general tracing options ---------------------------------
 

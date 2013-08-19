@@ -64,7 +64,7 @@ class VerificationTask(multiprocessing.Process):
     
     isTrusted = True
     
-    def __init__(self, taskID, queue, solver, errorLimit, checkForLMI, loopUnwind, timeout=0, timeoutErrorCode=None):
+    def __init__(self, taskID, queue, solver, errorLimit, checkForLMI, reverseTopSort, loopUnwind, timeout=0, timeoutErrorCode=None):
         super(VerificationTask, self).__init__()
         self.taskID = taskID
         self.queue = queue
@@ -84,6 +84,8 @@ class VerificationTask(multiprocessing.Process):
         if not checkForLMI:
           self.options += [ "/disableLoopInvMaintainedAssert" ]
           self.isTrusted = False
+        if reverseTopSort:
+          self.options += [ "/reverseTopologicalSorting" ]
         if (loopUnwind > 0):
           self.options += ["/loopUnroll:" + str(loopUnwind) ]
         
@@ -323,13 +325,13 @@ def main(argv=None):
   
   for taskID in range(CommandLineOptions.workers):
     if (taskID == 0):
-      task = VerificationTask(taskID + 1, taskQueue, "Z3", 1, True, 0, **timeoutArguments)
+      task = VerificationTask(taskID + 1, taskQueue, "Z3", 4, True, False, 0, **timeoutArguments)
     elif (taskID == 1):
-      task = VerificationTask(taskID + 1, taskQueue, "Z3", 2, True, 0, **timeoutArguments)
+      task = VerificationTask(taskID + 1, taskQueue, "Z3", 4, False, False, 0, **timeoutArguments)
     elif (taskID == 2):
-      task = VerificationTask(taskID + 1, taskQueue, "Z3", 3, True, 0, **timeoutArguments)
+      task = VerificationTask(taskID + 1, taskQueue, "Z3", 3, True, False, 0, **timeoutArguments)
     elif (taskID == 3):
-      task = VerificationTask(taskID + 1, taskQueue, "Z3", 4, True, 0, **timeoutArguments)
+      task = VerificationTask(taskID + 1, taskQueue, "Z3", 4, True, False, 0, **timeoutArguments)
     task.start()
     toolTasks.append(task)
   

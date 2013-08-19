@@ -822,7 +822,11 @@ namespace Microsoft.Boogie.Houdini {
                       }
                   }
                 
+                  int start = Environment.TickCount;
                   refutedAnnotations = ExchangeRefutedAnnotations(refutedAnnotations);
+                  int duration = Environment.TickCount - start;
+                  if (CommandLineOptions.Clo.DebugParallelHoudini)
+                      Console.WriteLine("*** Exchange of Refuted Candidates: " + duration + " ms ***");
                 
                   foreach (RefutedAnnotation refAnnot in refutedAnnotations) {
                       AddRelatedToWorkList(refAnnot);
