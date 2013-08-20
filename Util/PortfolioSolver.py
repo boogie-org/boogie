@@ -327,7 +327,7 @@ def main(argv=None):
     if (taskID == 0):
       task = VerificationTask(taskID + 1, taskQueue, "Z3", 4, True, False, 0, **timeoutArguments)
     elif (taskID == 1):
-      task = VerificationTask(taskID + 1, taskQueue, "Z3", 4, False, False, 0, **timeoutArguments)
+      task = VerificationTask(taskID + 1, taskQueue, "Z3", 4, True, True, 0, **timeoutArguments)
     elif (taskID == 2):
       task = VerificationTask(taskID + 1, taskQueue, "Z3", 3, True, False, 0, **timeoutArguments)
     elif (taskID == 3):

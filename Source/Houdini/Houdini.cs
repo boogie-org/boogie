@@ -698,13 +698,11 @@ namespace Microsoft.Boogie.Houdini {
       this.NotifyFlushFinish();
     }
 
-    private HashSet<RefutedAnnotation> ExchangeRefutedAnnotations(HashSet<RefutedAnnotation> newlyRefuted)
+    private bool ExchangeRefutedAnnotations(HashSet<RefutedAnnotation> locallyRefuted = null)
     {
-      HashSet<RefutedAnnotation> result = newlyRefuted;
+      //HashSet<RefutedAnnotation> sharedRefuted = locallyRefuted;
       string refutedInformation;
-
-      if (CommandLineOptions.Clo.DebugParallelHoudini)
-        Console.WriteLine("# refuted annotations before exchange: " + result.Count);
+      int count = 0;
 
       using (var fileStream = new FileStream(@"houdini.csv", FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.ReadWrite))
       using (var input = new StreamReader(fileStream))
@@ -742,22 +740,32 @@ namespace Microsoft.Boogie.Houdini {
               ra = RefutedAnnotation.BuildRefutedAssert(kv.Key, refutationSite);
             Debug.Assert(ra != null);
 
-            result.Add(ra);
             if (CommandLineOptions.Clo.DebugParallelHoudini)
               Console.WriteLine("(+) " + refutedInformation);
+
+            //sharedRefuted.Add(ra);
+            AddRelatedToWorkList(ra);
+            UpdateAssignment(ra);
+            count++;
           }
         }
 
         if (CommandLineOptions.Clo.DebugParallelHoudini)
-          Console.WriteLine("# refuted annotations after exchange: " + result.Count);
+          Console.WriteLine("# refuted annotations received from the exchange set: " + count);
 
-        foreach (RefutedAnnotation refAnnot in result) {
-          output.WriteLine(refAnnot.Constant + "," + refAnnot.Kind + "," +
-                           refAnnot.CalleeProc + "," + refAnnot.RefutationSite);
+        if (locallyRefuted != null) {
+          foreach (RefutedAnnotation refAnnot in locallyRefuted) {
+            output.WriteLine(refAnnot.Constant + "," + refAnnot.Kind + "," +
+                             refAnnot.CalleeProc + "," + refAnnot.RefutationSite);
+          }
+
+          if (CommandLineOptions.Clo.DebugParallelHoudini)
+            Console.WriteLine("# refuted annotations added to the exchange set: " + locallyRefuted.Count);
         }
       }
 
-      return result;
+      return count > 0 ? true : false;
+      //return result;
     }
 
     private void UpdateAssignment(RefutedAnnotation refAnnot) {
@@ -804,35 +812,24 @@ namespace Microsoft.Boogie.Houdini {
                       RefutedAnnotation refutedAnnotation = ExtractRefutedAnnotation(error);
                       if (refutedAnnotation != null) { // some candidate annotation removed
                           refutedAnnotations.Add(refutedAnnotation);
-                          
-                          #region Extra debugging output
-                          if (CommandLineOptions.Clo.Trace)
-                          {
-                              using (var cexWriter = new System.IO.StreamWriter(cexTraceFile, true))
-                              {
-                                  cexWriter.WriteLine("Counter example for " + refutedAnnotation.Constant);
-                                  cexWriter.Write(error.ToString());
-                                  cexWriter.WriteLine();
-                                  using (var writer = new Microsoft.Boogie.TokenTextWriter(cexWriter))
-                                      foreach (Microsoft.Boogie.Block blk in error.Trace)
-                                          blk.Emit(writer, 15);
-                              }
-                          }
-                          #endregion
+                          AddRelatedToWorkList(refutedAnnotation);
+                          UpdateAssignment(refutedAnnotation);
+                          dequeue = false;
                       }
                   }
                 
                   int start = Environment.TickCount;
-                  refutedAnnotations = ExchangeRefutedAnnotations(refutedAnnotations);
+                  //refutedAnnotations = ExchangeRefutedAnnotations(refutedAnnotations);
+                  if (ExchangeRefutedAnnotations(refutedAnnotations)) dequeue = false;        
                   int duration = Environment.TickCount - start;
                   if (CommandLineOptions.Clo.DebugParallelHoudini)
-                      Console.WriteLine("*** Exchange of Refuted Candidates: " + duration + " ms ***");
-                
-                  foreach (RefutedAnnotation refAnnot in refutedAnnotations) {
-                      AddRelatedToWorkList(refAnnot);
-                      UpdateAssignment(refAnnot);
-                      dequeue = false;
-                  }
+                      Console.WriteLine("*** exchange of refuted annotations: " + duration + " ms ***");
+                  
+//                  foreach (RefutedAnnotation refAnnot in refutedAnnotations) {
+//                      AddRelatedToWorkList(refAnnot);
+//                      UpdateAssignment(refAnnot);
+//                      dequeue = false;
+//                  }
               } else {
                   foreach (Counterexample error in errors)
                   {
@@ -970,6 +967,7 @@ namespace Microsoft.Boogie.Houdini {
       while (currentHoudiniState.WorkQueue.Count > 0) {
         this.NotifyIteration();
 
+        ExchangeRefutedAnnotations();
         currentHoudiniState.Implementation = currentHoudiniState.WorkQueue.Peek();
         this.NotifyImplementation(currentHoudiniState.Implementation);
 
