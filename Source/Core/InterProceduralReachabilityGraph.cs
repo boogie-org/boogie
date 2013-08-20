@@ -142,7 +142,7 @@ namespace Microsoft.Boogie
         newProcedureExitNodes[impl.Name] = newExit;
         foreach (Block b in impl.Blocks)
         {
-          List<List<Cmd>> partition = PartitionCmds(b.Cmds);
+          List<List<Cmd>> partition = PartitionCmdsAccordingToPredicate(b.Cmds, Item => Item is CallCmd);
           Block prev = null;
           int i = 0;
           foreach (List<Cmd> cmds in partition)
@@ -190,12 +190,12 @@ namespace Microsoft.Boogie
       #endregion
     }
 
-    private List<List<Cmd>> PartitionCmds(List<Cmd> cmds) {
+    public static List<List<Cmd>> PartitionCmdsAccordingToPredicate(List<Cmd> Cmds, Func<Cmd, bool> Predicate) {
       List<List<Cmd>> result = new List<List<Cmd>>();
       List<Cmd> current = new List<Cmd>();
       result.Add(current);
-      foreach(Cmd cmd in cmds) {
-        if(cmd is CallCmd && current.Count > 0) {
+      foreach(Cmd cmd in Cmds) {
+        if(Predicate(cmd) && current.Count > 0) {
            current = new List<Cmd>();
            result.Add(current);
         }

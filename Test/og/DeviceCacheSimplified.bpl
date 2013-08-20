@@ -5,7 +5,7 @@ function {:inline} Inv(ghostLock: X, currsize: int, newsize: int) : (bool)
     currsize <= newsize && (ghostLock == nil <==> currsize == newsize)
 }
 
-procedure YieldToReadCache({:linear "tid"} tid': X) returns ({:linear "tid"} tid: X)
+procedure {:yields} YieldToReadCache({:linear "tid"} tid': X) returns ({:linear "tid"} tid: X)
 requires tid' != nil;
 requires Inv(ghostLock, currsize, newsize);
 ensures Inv(ghostLock, currsize, newsize);
@@ -19,7 +19,7 @@ ensures tid == tid';
     assert tid != nil;
 }
 
-procedure YieldToUpdateCache({:linear "tid"} tid': X, i: int) returns ({:linear "tid"} tid: X)
+procedure {:yields} YieldToUpdateCache({:linear "tid"} tid': X, i: int) returns ({:linear "tid"} tid: X)
 requires tid' != nil;
 requires Inv(ghostLock, currsize, newsize);
 requires ghostLock == tid';
@@ -56,7 +56,7 @@ modifies lock;
 requires lock == tid;
 ensures lock == nil;
 
-procedure Read ({:linear "tid"} tid': X, start : int, size : int) returns (bytesread : int)
+procedure {:yields} Read ({:linear "tid"} tid': X, start : int, size : int) returns (bytesread : int)
 requires tid' != nil;
 requires 0 <= start && 0 <= size;
 requires Inv(ghostLock, currsize, newsize);
@@ -120,7 +120,7 @@ COPY_TO_BUFFER:
     }
 }
 
-procedure thread({:linear "tid"} tid': X)
+procedure {:yields} {:stable} thread({:linear "tid"} tid': X)
 requires tid' != nil;
 requires Inv(ghostLock, currsize, newsize);
 {
@@ -133,7 +133,7 @@ requires Inv(ghostLock, currsize, newsize);
     call bytesread := Read(tid, start, size);
 }
 
-procedure {:entrypoint} main()
+procedure {:entrypoint} {:yields} main()
 requires currsize == 0 && newsize == 0 && ghostLock == nil && lock == nil;
 {
     var {:linear "tid"} tid: X;

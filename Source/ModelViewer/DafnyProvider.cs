@@ -29,7 +29,7 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
     }
   }
 
-  class DafnyModel : LanguageModel
+  public class DafnyModel : LanguageModel
   {
     public readonly Model.Func f_heap_select, f_set_select, f_seq_length, f_seq_index, f_box, f_dim, f_index_field, f_multi_index_field, f_dtype, f_null;
     public readonly Dictionary<Model.Element, Model.Element[]> ArrayLengths = new Dictionary<Model.Element, Model.Element[]>();
@@ -218,6 +218,7 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
 
       public FieldName(Model.Element elt, DafnyModel dm) {
         Field = elt;
+        NameArgs = new Model.Element[Dims];
         var tpl = dm.f_dim.AppWithArg(0, elt);
         if (tpl != null) {
           Dims = tpl.Result.AsInt();
@@ -264,10 +265,10 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
     }
   }
 
-  class StateNode : NamedState
+  public class StateNode : NamedState
   {
     internal readonly DafnyModel dm;
-    internal readonly List<VariableNode> vars = new List<VariableNode>();
+    public readonly List<VariableNode> Vars = new List<VariableNode>();
     internal readonly List<VariableNode> skolems;
     internal readonly int index;
     
@@ -288,7 +289,7 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
 
       if (dm.states.Count > 0) {
         var prev = dm.states.Last();
-        names = prev.vars.Map(v => v.realName);
+        names = prev.Vars.Map(v => v.realName);
       }
 
       names = names.Concat(state.Variables).Distinct();
@@ -297,11 +298,12 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
       foreach (var v in names) {
         if (dm.GetUserVariableName(v) != null) {
           var val = state.TryGet(v);
-          var vn = new VariableNode(this, v, val);
+          var shortName = Regex.Replace(v, @"#\d+$", "");
+          var vn = new VariableNode(this, v, val, names.Any(n => n != v && Regex.Replace(n, @"#\d+$", "") == shortName) ? v : shortName);
           vn.updatedHere = dm.states.Count > 0 && curVars.ContainsKey(v);
           if (curVars.ContainsKey(v))
             dm.RegisterLocalValue(vn.Name, val);
-          vars.Add(vn);
+          Vars.Add(vn);
         }
       }
 
@@ -315,19 +317,19 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
         if (n == -1) continue;
         string name = f.Name.Substring(0, n);
         if (!name.Contains('#')) continue;
-        yield return new VariableNode(this, name, f.GetConstant());
+        yield return new VariableNode(this, name, f.GetConstant(), name);
       }
     }
 
     public override IEnumerable<IDisplayNode> Nodes
     {
       get {
-        return vars.Concat(skolems);
+        return Vars.Concat(skolems);
       }
     }
   }
 
-  class ElementNode : DisplayNode
+  public class ElementNode : DisplayNode
   {
     protected StateNode stateNode;
     protected Model.Element elt;
@@ -370,16 +372,17 @@ namespace Microsoft.Boogie.ModelViewer.Dafny
     }
   }
 
-  class VariableNode : ElementNode
+  public class VariableNode : ElementNode
   {
     public bool updatedHere;
     public string realName;
 
-    public VariableNode(StateNode par, string realName, Model.Element elt)
+    public VariableNode(StateNode par, string realName, Model.Element elt, string shortName)
       : base(par, realName, elt)
     {
       this.realName = realName;
       name = new EdgeName(vm.GetUserVariableName(realName));
+      ShortName = shortName;
     }
   }
 }

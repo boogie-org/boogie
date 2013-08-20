@@ -1,26 +1,27 @@
 var g:int;
 
-procedure PB()
+procedure {:yields} {:stable} PB()
+modifies g;
 {
   g := g + 1;
 }
 
-procedure PC()
-  ensures g == 3;
+procedure {:yields} {:stable} PC()
+ensures g == 3;
 {
   g := 3;
   yield;
   assert g == 3;
 }
 
-procedure PD()
+procedure {:yields} {:stable} PD()
 {
   call PC();
   assert g == 3;
   yield;
 }
 
-procedure{:entrypoint} Main()
+procedure {:entrypoint} {:yields} Main()
 {
   while (true)
   {

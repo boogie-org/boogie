@@ -37,7 +37,7 @@ namespace Microsoft.Boogie
         /// Simplifies the CFG of the given implementation impl by merging each
         /// basic block with a single predecessor into that predecessor if the
         /// predecessor has a single successor.  If a uniformity analyser is
-        /// being used then block will only be merged if they are both uniform
+        /// being used then blocks will only be merged if they are both uniform
         /// or both non-uniform
         /// </summary>
         public static void MergeBlocksIntoPredecessors(Program prog, Implementation impl, UniformityAnalyser uni)

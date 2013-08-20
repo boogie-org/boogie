@@ -14,10 +14,13 @@ namespace Microsoft.Boogie {
   using System.Diagnostics;
   using System.Text.RegularExpressions; // for procedure inlining
 
-  // this callback is called before inlining a procedure
   public delegate void InlineCallback(Implementation/*!*/ impl);
 
-  public class Inliner {
+  public class Inliner : Duplicator {
+    protected bool inlinedSomething;
+
+    protected Program program; 
+
     private InlineCallback inlineCallback;
 
     protected CodeCopier/*!*/ codeCopier;
@@ -28,13 +31,28 @@ namespace Microsoft.Boogie {
 
     protected int inlineDepth;
 
+    protected List<Variable>/*!*/ newLocalVars;
+
+    protected List<IdentifierExpr>/*!*/ newModifies;
+
     [ContractInvariantMethod]
     void ObjectInvariant() {
+      Contract.Invariant(program != null);
+      Contract.Invariant(newLocalVars != null);
+      Contract.Invariant(newModifies != null);
       Contract.Invariant(codeCopier != null);
       Contract.Invariant(recursiveProcUnrollMap != null);
       Contract.Invariant(inlinedProcLblMap != null);
     }
 
+    public override Expr VisitCodeExpr(CodeExpr node)
+    {
+        Inliner codeExprInliner = new Inliner(program, inlineCallback, CommandLineOptions.Clo.InlineDepth);
+        codeExprInliner.newLocalVars = new List<Variable>(node.LocVars);
+        codeExprInliner.newModifies = new List<IdentifierExpr>();
+        List<Block> newCodeExprBlocks = codeExprInliner.DoInlineBlocks(node.Blocks, ref inlinedSomething);
+        return new CodeExpr(codeExprInliner.newLocalVars, newCodeExprBlocks);
+    }
 
     protected void NextInlinedProcLabel(string procName) {
       Contract.Requires(procName != null);
@@ -66,7 +84,8 @@ namespace Microsoft.Boogie {
       return prefix + "$" + formalName;
     }
 
-    protected Inliner(InlineCallback cb, int inlineDepth) {
+    public Inliner(Program program, InlineCallback cb, int inlineDepth) {
+      this.program = program;
       this.inlinedProcLblMap = new Dictionary<string/*!*/, int>();
       this.recursiveProcUnrollMap = new Dictionary<string/*!*/, int>();
       this.inlineDepth = inlineDepth;
@@ -74,37 +93,30 @@ namespace Microsoft.Boogie {
       this.inlineCallback = cb;
     }
 
-    protected static void ProcessImplementation(Program program, Implementation impl, Inliner inliner) {
+    protected static void ProcessImplementation(Implementation impl, Inliner inliner) {
       Contract.Requires(impl != null);
-      Contract.Requires(program != null);
       Contract.Requires(impl.Proc != null);
 
-      List<Variable>/*!*/ newInParams = new List<Variable>(impl.InParams);
-      Contract.Assert(newInParams != null);
-      List<Variable>/*!*/ newOutParams = new List<Variable>(impl.OutParams);
-      Contract.Assert(newOutParams != null);
-      List<Variable>/*!*/ newLocalVars = new List<Variable>(impl.LocVars);
-      Contract.Assert(newLocalVars != null);
-      List<IdentifierExpr>/*!*/ newModifies = new List<IdentifierExpr>(impl.Proc.Modifies);
-      Contract.Assert(newModifies != null);
+      inliner.newLocalVars = new List<Variable>(impl.LocVars);
+      inliner.newModifies = new List<IdentifierExpr>(impl.Proc.Modifies);
 
       bool inlined = false;
-      List<Block> newBlocks = inliner.DoInlineBlocks(impl.Blocks, program, newLocalVars, newModifies, ref inlined);
+      List<Block> newBlocks = inliner.DoInlineBlocks(impl.Blocks, ref inlined);
       Contract.Assert(cce.NonNullElements(newBlocks));
 
       if (!inlined)
         return;
 
-      impl.InParams = newInParams;
-      impl.OutParams = newOutParams;
-      impl.LocVars = newLocalVars;
+      impl.InParams = new List<Variable>(impl.InParams);
+      impl.OutParams = new List<Variable>(impl.OutParams);
+      impl.LocVars = inliner.newLocalVars;
+      impl.Proc.Modifies = inliner.newModifies;
       impl.Blocks = newBlocks;
-      impl.Proc.Modifies = newModifies;
 
       impl.ResetImplFormalMap();
 
       // we need to resolve the new code
-      inliner.ResolveImpl(program, impl);
+      inliner.ResolveImpl(impl);
 
       if (CommandLineOptions.Clo.PrintInlined) {
         inliner.EmitImpl(impl);
@@ -115,14 +127,14 @@ namespace Microsoft.Boogie {
       Contract.Requires(impl != null);
       Contract.Requires(program != null);
       Contract.Requires(impl.Proc != null);
-      ProcessImplementation(program, impl, new Inliner(null, CommandLineOptions.Clo.InlineDepth));
+      ProcessImplementation(impl, new Inliner(program, null, CommandLineOptions.Clo.InlineDepth));
     }
 
     public static void ProcessImplementation(Program program, Implementation impl) {
       Contract.Requires(impl != null);
       Contract.Requires(program != null);
       Contract.Requires(impl.Proc != null);
-      ProcessImplementation(program, impl, new Inliner(null, -1));
+      ProcessImplementation(impl, new Inliner(program, null, -1));
     }
 
     protected void EmitImpl(Implementation impl) {
@@ -144,9 +156,8 @@ namespace Microsoft.Boogie {
       }
     }
 
-    protected void ResolveImpl(Program program, Implementation impl) {
+    protected void ResolveImpl(Implementation impl) {
       Contract.Requires(impl != null);
-      Contract.Requires(program != null);
       Contract.Ensures(impl.Proc != null);
       ResolutionContext rc = new ResolutionContext(new DummyErrorSink());
 
@@ -208,9 +219,66 @@ namespace Microsoft.Boogie {
       }
     }
 
-    protected virtual List<Block/*!*/>/*!*/ DoInlineBlocks(List<Block/*!*/>/*!*/ blocks, Program/*!*/ program,
-                                                 List<Variable>/*!*/ newLocalVars, List<IdentifierExpr>/*!*/ newModifies, 
-                                                 ref bool inlinedSomething) {
+    private int InlineCallCmd(Block block, CallCmd callCmd, Implementation impl, List<Cmd> newCmds, List<Block> newBlocks, int lblCount)
+    {
+        Contract.Assume(impl != null);
+        Contract.Assert(cce.NonNull(impl.OriginalBlocks).Count > 0);
+
+        // do inline now
+        int nextlblCount = lblCount + 1;
+        string nextBlockLabel = block.Label + "$" + nextlblCount;
+
+        // run the callback before each inline
+        if (inlineCallback != null)
+        {
+            inlineCallback(impl);
+        }
+
+        // increment the counter for the procedure to be used in constructing the locals and formals
+        NextInlinedProcLabel(impl.Proc.Name);
+
+        BeginInline(newLocalVars, newModifies, impl);
+
+        List<Block/*!*/>/*!*/ inlinedBlocks = CreateInlinedBlocks(callCmd, impl, nextBlockLabel);
+        Contract.Assert(cce.NonNullElements(inlinedBlocks));
+
+        EndInline();
+
+        if (inlineDepth >= 0)
+        {
+            Debug.Assert(inlineDepth > 0);
+            inlineDepth = inlineDepth - 1;
+        }
+        else
+        {
+            recursiveProcUnrollMap[impl.Name] = recursiveProcUnrollMap[impl.Name] - 1;
+        }
+
+        bool inlinedSomething = true;
+        inlinedBlocks = DoInlineBlocks(inlinedBlocks, ref inlinedSomething);
+
+        if (inlineDepth >= 0)
+        {
+            inlineDepth = inlineDepth + 1;
+        }
+        else
+        {
+            recursiveProcUnrollMap[impl.Name] = recursiveProcUnrollMap[impl.Name] + 1;
+        }
+
+        Block/*!*/ startBlock = inlinedBlocks[0];
+        Contract.Assert(startBlock != null);
+
+        GotoCmd gotoCmd = new GotoCmd(Token.NoToken, new List<String> { startBlock.Label });
+        Block newBlock = new Block(block.tok, ((lblCount == 0) ? (block.Label) : (block.Label + "$" + lblCount)), newCmds, gotoCmd);
+
+        newBlocks.Add(newBlock);
+        newBlocks.AddRange(inlinedBlocks);
+
+        return nextlblCount;
+    }
+
+    public virtual List<Block/*!*/>/*!*/ DoInlineBlocks(List<Block/*!*/>/*!*/ blocks, ref bool inlinedSomething) {
       Contract.Requires(cce.NonNullElements(blocks));
       Contract.Requires(program != null);
       Contract.Requires(newLocalVars != null);
@@ -222,100 +290,97 @@ namespace Microsoft.Boogie {
         TransferCmd/*!*/ transferCmd = cce.NonNull(block.TransferCmd);
         List<Cmd> cmds = block.Cmds;
         List<Cmd> newCmds = new List<Cmd>();
-        Block newBlock;
-        string label = block.Label;
         int lblCount = 0;
 
-        for (int i = 0; i < cmds.Count; ++i) {
-          Cmd cmd = cmds[i];
-          CallCmd callCmd = cmd as CallCmd;
+        for (int i = 0; i < cmds.Count; ++i)
+        {
+            Cmd cmd = cmds[i];
 
-          if (callCmd == null) {
-            // if not call command, leave it as is
-            newCmds.Add(codeCopier.CopyCmd(cmd));
-          } else {
-            Contract.Assert(callCmd.Proc != null);
-            Procedure proc = callCmd.Proc;
-
-            Implementation impl = FindProcImpl(program, proc);
-            if (impl == null) {
-              newCmds.Add(codeCopier.CopyCmd(cmd));
-              continue;
+            if (cmd is CallCmd)
+            {
+                CallCmd callCmd = (CallCmd)cmd;
+                Implementation impl = FindProcImpl(program, callCmd.Proc);
+                if (impl == null)
+                {
+                    newCmds.Add(codeCopier.CopyCmd(callCmd));
+                    continue;
+                }
+                int inline = inlineDepth >= 0 ? inlineDepth : GetInlineCount(callCmd, impl);
+                if (inline > 0)
+                {
+                    inlinedSomething = true;
+                    lblCount = InlineCallCmd(block, callCmd, impl, newCmds, newBlocks, lblCount);
+                    newCmds = new List<Cmd>();
+                }
+                else if (inline == 0)
+                {
+                    inlinedSomething = true;
+                    if (CommandLineOptions.Clo.ProcedureInlining == CommandLineOptions.Inlining.Assert)
+                    {
+                        // add assert
+                        newCmds.Add(new AssertCmd(callCmd.tok, Expr.False));
+                    }
+                    else if (CommandLineOptions.Clo.ProcedureInlining == CommandLineOptions.Inlining.Assume)
+                    {
+                        // add assume
+                        newCmds.Add(new AssumeCmd(callCmd.tok, Expr.False));
+                    }
+                    else
+                    {
+                        // add call
+                        newCmds.Add(codeCopier.CopyCmd(callCmd));
+                    }
+                }
+                else
+                {
+                    newCmds.Add(codeCopier.CopyCmd(callCmd));
+                }
             }
-
-            int inline = inlineDepth >= 0 ? inlineDepth : GetInlineCount(callCmd, impl);
-
-            if (inline > 0) { // at least one block should exist
-              Contract.Assume(impl != null);
-              Contract.Assert(cce.NonNull(impl.OriginalBlocks).Count > 0);
-              inlinedSomething = true;
-
-              // do inline now
-              int nextlblCount = lblCount + 1;
-              string nextBlockLabel = label + "$" + nextlblCount;
-
-              // run the callback before each inline
-              if (inlineCallback != null) {
-                inlineCallback(impl);
-              }
-
-              // increment the counter for the procedure to be used in constructing the locals and formals
-              NextInlinedProcLabel(proc.Name);
-
-              BeginInline(newLocalVars, newModifies, impl);
-
-              List<Block/*!*/>/*!*/ inlinedBlocks = CreateInlinedBlocks(callCmd, impl, nextBlockLabel);
-              Contract.Assert(cce.NonNullElements(inlinedBlocks));
-
-              EndInline();
-
-              if (inlineDepth >= 0) {
-                Debug.Assert(inlineDepth > 0);
-                inlineDepth = inlineDepth - 1;
-              }
-              else {
-                recursiveProcUnrollMap[impl.Name] = recursiveProcUnrollMap[impl.Name] - 1;
-              }
-
-              inlinedBlocks = DoInlineBlocks(inlinedBlocks, program, newLocalVars, newModifies, ref inlinedSomething);
-
-              if (inlineDepth >= 0) {
-                inlineDepth = inlineDepth + 1;
-              }
-              else {
-                recursiveProcUnrollMap[impl.Name] = recursiveProcUnrollMap[impl.Name] + 1;
-              }
-
-              Block/*!*/ startBlock = inlinedBlocks[0];
-              Contract.Assert(startBlock != null);
-
-              GotoCmd gotoCmd = new GotoCmd(Token.NoToken, new List<String> { startBlock.Label });
-              newBlock = new Block(block.tok, ((lblCount == 0) ? (label) : (label + "$" + lblCount)), newCmds, gotoCmd);
-
-              newBlocks.Add(newBlock);
-              newBlocks.AddRange(inlinedBlocks);
-
-              lblCount = nextlblCount;
-              newCmds = new List<Cmd>();
-            } else if (inline == 0) {
-              inlinedSomething = true;
-              if (CommandLineOptions.Clo.ProcedureInlining == CommandLineOptions.Inlining.Assert) {
-                // add assert
-                newCmds.Add(new AssertCmd(callCmd.tok, Expr.False));
-              } else if (CommandLineOptions.Clo.ProcedureInlining == CommandLineOptions.Inlining.Assume) {
-                // add assume
-                newCmds.Add(new AssumeCmd(callCmd.tok, Expr.False));
-              } else {
-                // add call
-                newCmds.Add(codeCopier.CopyCmd(callCmd));
-              }
-            } else {
-              newCmds.Add(codeCopier.CopyCmd(callCmd));
+            else if (cmd is PredicateCmd)
+            {
+                PredicateCmd predCmd = (PredicateCmd)cmd;
+                this.inlinedSomething = false;
+                Expr newExpr = this.VisitExpr(predCmd.Expr);
+                if (this.inlinedSomething)
+                {
+                    inlinedSomething = true;
+                    PredicateCmd newPredCmd = (PredicateCmd)codeCopier.CopyCmd(predCmd);
+                    newPredCmd.Expr = newExpr;
+                    newCmds.Add(newPredCmd);
+                }
+                else
+                {
+                    newCmds.Add(codeCopier.CopyCmd(predCmd));
+                }
             }
-          }
+            else if (cmd is AssignCmd)
+            {
+                AssignCmd assignCmd = (AssignCmd)cmd;
+                this.inlinedSomething = false;
+                List<Expr> newRhss = new List<Expr>();
+                foreach (Expr rhsExpr in assignCmd.Rhss)
+                {
+                    newRhss.Add(this.VisitExpr(rhsExpr));
+                }
+                if (this.inlinedSomething)
+                {
+                    inlinedSomething = true;
+                    AssignCmd newAssignCmd = (AssignCmd)codeCopier.CopyCmd(assignCmd);
+                    newAssignCmd.Rhss = newRhss;
+                    newCmds.Add(newAssignCmd);
+                }
+                else
+                {
+                    newCmds.Add(codeCopier.CopyCmd(assignCmd));
+                }
+            }
+            else
+            {
+                newCmds.Add(codeCopier.CopyCmd(cmd));
+            }
         }
 
-        newBlock = new Block(block.tok, ((lblCount == 0) ? (label) : (label + "$" + lblCount)), newCmds, codeCopier.CopyTransferCmd(transferCmd));
+        Block newBlock = new Block(block.tok, ((lblCount == 0) ? (block.Label) : (block.Label + "$" + lblCount)), newCmds, codeCopier.CopyTransferCmd(transferCmd));
         newBlocks.Add(newBlock);
       }
 
@@ -625,7 +690,15 @@ namespace Microsoft.Boogie {
         labels.AddRange(gotocmd.labelNames);
         transferCmd = new GotoCmd(cmd.tok, labels);
       } else {
-        transferCmd = new ReturnCmd(cmd.tok);
+          ReturnExprCmd returnExprCmd = cmd as ReturnExprCmd;
+          if (returnExprCmd != null)
+          {
+              transferCmd = new ReturnExprCmd(cmd.tok, CopyExpr(returnExprCmd.Expr));
+          }
+          else
+          {
+              transferCmd = new ReturnCmd(cmd.tok);
+          }
       }
       return transferCmd;
     }

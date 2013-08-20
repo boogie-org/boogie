@@ -1,3 +1,3 @@
-procedure A();
-procedure B();
-procedure C() { call A() | B(); }
+procedure {:yields} {:stable} A();
+procedure {:yields} {:stable} B();
+procedure {:yields} C() { call A() | B(); }

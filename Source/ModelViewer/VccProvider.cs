@@ -1517,7 +1517,7 @@ namespace Microsoft.Boogie.ModelViewer.Vcc
       this.realName = realName;
     }
 
-    public string ShortName
+    public override string ShortName
     {
       set { this.name = new EdgeName(value); }
       get { return this.name.ToString(); }

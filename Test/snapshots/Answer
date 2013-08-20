@@ -61,3 +61,21 @@ Execution trace:
     Snapshots3.v1.bpl(6,1): anon0
 
 Boogie program verifier finished with 0 verified, 1 error
+
+Boogie program verifier finished with 3 verified, 0 errors
+Snapshots4.v1.bpl(23,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    Snapshots4.v1.bpl(23,5): anon0
+Snapshots4.v1.bpl(33,1): Error BP5003: A postcondition might not hold on this return path.
+Snapshots4.v1.bpl(28,3): Related location: This is the postcondition that might not hold.
+Execution trace:
+    Snapshots4.v1.bpl(33,1): anon0
+
+Boogie program verifier finished with 2 verified, 2 errors
+
+Boogie program verifier finished with 1 verified, 0 errors
+Snapshots5.v1.bpl(5,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    Snapshots5.v1.bpl(5,5): anon0
+
+Boogie program verifier finished with 0 verified, 1 error

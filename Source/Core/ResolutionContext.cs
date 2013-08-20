@@ -558,6 +558,7 @@ namespace Microsoft.Boogie {
 
   public class TypecheckingContext : CheckingContext {
     public List<IdentifierExpr> Frame;  // used in checking the assignment targets of implementation bodies
+    public bool Yields;
 
     public TypecheckingContext(IErrorSink errorSink)
       : base(errorSink) {
@@ -566,7 +567,7 @@ namespace Microsoft.Boogie {
     public bool InFrame(Variable v) {
       Contract.Requires(v != null);
       Contract.Requires(Frame != null);
-      return Frame.Any(f => f.Decl == v);
+      return Yields || Frame.Any(f => f.Decl == v);
     }
   }
 }

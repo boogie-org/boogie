@@ -2,7 +2,7 @@ var a:int;
 
 procedure Allocate() returns ({:linear "tid"} xls: int);
 
-procedure {:entrypoint} main() 
+procedure {:entrypoint} {:yields} main() 
 {
   var {:linear "tid"} i: int;
   var {:linear "tid"} j: int;
@@ -11,7 +11,7 @@ procedure {:entrypoint} main()
   call i := t(i) | j := t(j);
 }
 
-procedure t({:linear "tid"} i': int) returns ({:linear "tid"} i: int)
+procedure {:yields} {:stable} t({:linear "tid"} i': int) returns ({:linear "tid"} i: int)
 {
   i := i';
   call Yield();
@@ -19,7 +19,7 @@ procedure t({:linear "tid"} i': int) returns ({:linear "tid"} i: int)
   a := a + 1;
 }
 
-procedure Yield()
+procedure {:yields} Yield()
 {
   yield;
 }

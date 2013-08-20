@@ -1,30 +1,36 @@
 var g:int;
 
-procedure PB()
+procedure {:yields} {:stable} PB()
+modifies g;
 {
   g := g + 1;
 }
 
-procedure PC()
-  ensures g == old(g);
+procedure {:yields} PC()
+ensures g == old(g);
 {
   yield;
   assert g == old(g);
 }
 
-procedure PD()
+procedure {:yields} {:stable} PE()
+{
+  call PC();
+}
+
+procedure {:yields} {:stable} PD()
 {
   g := 3;
   call PC();
   assert g == 3;
 }
 
-procedure{:entrypoint} Main2()
+procedure{:entrypoint} {:yields} Main2()
 {
-  while (true)
+  while (*)
   {
     async call PB();
-    async call PC();
+    async call PE();
     async call PD();
   }
 }

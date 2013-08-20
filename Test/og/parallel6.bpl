@@ -1,2 +1,2 @@
-procedure A();
-procedure C() { async call A(); }
+procedure {:yields} {:stable} A();
+procedure {:yields} C() { async call A(); }

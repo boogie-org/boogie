@@ -7,7 +7,7 @@ procedure Split({:linear "Perm"} xls: [int]bool) returns ({:linear "Perm"} xls1:
   ensures xls == ch_mapunion(xls1, xls2) && xls1 != ch_mapconstbool(false) && xls2 != ch_mapconstbool(false);
 
 
-procedure {:entrypoint} mainE({:linear "Perm"} permVar_in: [int]bool)
+procedure {:entrypoint} {:yields} mainE({:linear "Perm"} permVar_in: [int]bool)
    free requires permVar_in == ch_mapconstbool(true);
    free requires permVar_in[0];
   modifies x;
@@ -28,7 +28,7 @@ procedure {:entrypoint} mainE({:linear "Perm"} permVar_in: [int]bool)
     async call foo(permVarOut2);
 }
 
-procedure foo({:linear "Perm"} permVar_in: [int]bool) 
+procedure {:yields} {:stable} foo({:linear "Perm"} permVar_in: [int]bool) 
   free requires permVar_in != ch_mapconstbool(false);
   free requires permVar_in[1];
   requires x == 0;

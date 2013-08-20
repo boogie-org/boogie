@@ -45,6 +45,14 @@ namespace Microsoft.Boogie
     {
       dependencies.Add(node);
 
+      foreach (var param in node.InParams)
+      {
+        if (param.TypedIdent != null && param.TypedIdent.WhereExpr != null)
+        {
+          param.TypedIdent.WhereExpr = VisitExpr(param.TypedIdent.WhereExpr);
+        }
+      }
+
       return base.VisitProcedure(node);
     }
 
@@ -52,41 +60,38 @@ namespace Microsoft.Boogie
     {
       dependencies.Add(node);
 
+      if (node.DefinitionAxiom != null)
+      {
+        node.DefinitionAxiom = VisitAxiom(node.DefinitionAxiom);
+      }
+
       return base.VisitFunction(node);
     }
 
     public override Cmd VisitCallCmd(CallCmd node)
     {
-      var result = base.VisitCallCmd(node);
-
       var visited = dependencies.Contains(node.Proc);
       if (!visited)
       {
-        VisitProcedure(node.Proc);
+        node.Proc = VisitProcedure(node.Proc);
       }
 
-      return result;
+      return base.VisitCallCmd(node);
     }
 
     public override Expr VisitNAryExpr(NAryExpr node)
     {
-      var result = base.VisitNAryExpr(node);
-
       var funCall = node.Fun as FunctionCall;
       if (funCall != null)
       {
         var visited = dependencies.Contains(funCall.Func);
         if (!visited)
         {
-          VisitFunction(funCall.Func);
-          if (funCall.Func.DefinitionAxiom != null)
-          {
-            VisitAxiom(funCall.Func.DefinitionAxiom);
-          }
+          funCall.Func = VisitFunction(funCall.Func);
         }
       }
 
-      return result;
+      return base.VisitNAryExpr(node);
     }
   }
 

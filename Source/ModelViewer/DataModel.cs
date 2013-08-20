@@ -67,6 +67,8 @@ namespace Microsoft.Boogie.ModelViewer
     /// </summary>
     string Name { get; }
 
+    string ShortName { get; }
+
     NodeCategory Category { get; }
     string Value { get; }
     string ToolTip { get; }
@@ -161,6 +163,27 @@ namespace Microsoft.Boogie.ModelViewer
     public virtual string Name
     {
       get { return name.ToString(); }
+    }
+
+    private string shortName;
+
+    public virtual string ShortName
+    {
+      get
+      {
+        if (shortName != null)
+        {
+          return shortName;
+        }
+        else
+        {
+          return name.ToString();
+        }
+      }
+      set
+      {
+        shortName = value;
+      }
     }
 
     public virtual Model.Element Element

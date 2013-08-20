@@ -18,10 +18,10 @@ namespace Microsoft.Boogie.ModelViewer
   {
     SkeletonItem unfoldingRoot;
     SkeletonItem[] allItems;
-    int currentState, previousState = -1;
+    public int CurrentState, PreviousState = -1;
     IState[] states;
     internal ILanguageProvider langProvider;
-    internal ILanguageSpecificModel langModel;
+    public ILanguageSpecificModel LangModel;
     ToolStripMenuItem[] viewItems;
     Model currentModel;
     Model[] allModels;
@@ -183,8 +183,8 @@ namespace Microsoft.Boogie.ModelViewer
       stateList.Items.Clear();
 
       var items = new List<ListViewItem>();
-      langModel = langProvider.GetLanguageSpecificModel(currentModel, viewOpts);
-      states = langModel.States.ToArray();
+      LangModel = langProvider.GetLanguageSpecificModel(currentModel, viewOpts);
+      states = LangModel.States.ToArray();
       var oldRoot = unfoldingRoot;
       SkeletonItem selectedSkel = null;
       if (oldRoot != null && SelectedNode() != null) {
@@ -215,10 +215,10 @@ namespace Microsoft.Boogie.ModelViewer
           if (mapping.TryGetValue(selectedSkel, out newIt)) break;
           selectedSkel = selectedSkel.parent;
         }
-        if (currentState >= stateList.Items.Count)
-          currentState = 0;
-        if (previousState >= stateList.Items.Count)
-          previousState = -1;
+        if (CurrentState >= stateList.Items.Count)
+          CurrentState = 0;
+        if (PreviousState >= stateList.Items.Count)
+          PreviousState = -1;
         if (newIt != null) GotoNode(newIt);
         SyncStateListValues();
         UpdateMatches(true);
@@ -238,11 +238,24 @@ namespace Microsoft.Boogie.ModelViewer
         stateList.SelectedIndices.Clear();
         stateList.SelectedIndices.Add(id);
       }
-      if (currentState != id) {
-        previousState = currentState;
-        currentState = id;
+      if (CurrentState != id) {
+        PreviousState = CurrentState;
+        CurrentState = id;
       }
       UpdateMatches(true);
+    }
+
+    public void HideStateList()
+    {
+      stateList.Hide();
+      splitContainer1.Panel2.Hide();
+      splitContainer1.Panel2Collapsed = true;
+      splitContainer1.SplitterDistance = splitContainer1.Width;
+    }
+
+    public void HideMenuStrip()
+    {
+      menuStrip1.Hide();
     }
 
     internal void Activate(TreeNode treeNode)
@@ -295,7 +308,7 @@ namespace Microsoft.Boogie.ModelViewer
         textBrush = Brushes.White;
       } else {
         var bg = Brushes.White;
-        if (item.active && !skel.isPrimary[currentState])
+        if (item.active && !skel.isPrimary[CurrentState])
           bg = nonPrimary;
         if (item.skel.isMatch)
           bg = matchBg;
@@ -413,7 +426,7 @@ namespace Microsoft.Boogie.ModelViewer
       for (int i = 0; i < ch.Length; ++i) {
         var di = (DisplayItem)listView.Items[i];
         cb(di, ch[i]);
-        di.Set(ch[i], currentState, previousState);
+        di.Set(ch[i], CurrentState, PreviousState);
       }
       listView.EndUpdate();
       listView.Invalidate();
@@ -435,8 +448,8 @@ namespace Microsoft.Boogie.ModelViewer
       if (stateList.SelectedItems.Count == 0) return;
       var sel = stateList.SelectedItems[0].Index;
 
-      if (previousState >= 0)
-        stateList.Items[previousState].ForeColor = regularStateBrush.Color;
+      if (PreviousState >= 0)
+        stateList.Items[PreviousState].ForeColor = regularStateBrush.Color;
 
       SetState(sel);
     }
@@ -491,11 +504,11 @@ namespace Microsoft.Boogie.ModelViewer
         if (w.StartsWith("eq:")) {
           if (eltEq != null) bad = true;
           else {
-            eltEq = langModel.FindElement(w.Substring(3));
+            eltEq = LangModel.FindElement(w.Substring(3));
             if (eltEq == null) bad = true;
           }
         } else if (w.StartsWith("use:")) {
-          var e = langModel.FindElement(w.Substring(4));
+          var e = LangModel.FindElement(w.Substring(4));
           if (e == null) bad = true;
           else eltRef.Add(e);
         } else {
@@ -516,8 +529,8 @@ namespace Microsoft.Boogie.ModelViewer
 
       foreach (var s in allItems) {
         var newMatch = false;
-        if (s.isPrimary[currentState] && !bad) {
-          newMatch = s.MatchesWords(wordsA, refsA, eltEq, currentState);
+        if (s.isPrimary[CurrentState] && !bad) {
+          newMatch = s.MatchesWords(wordsA, refsA, eltEq, CurrentState);
         }
         if (newMatch)
           matches.Add(s);
@@ -527,9 +540,9 @@ namespace Microsoft.Boogie.ModelViewer
         }
       }
 
-      if (previousState >= 0)
-        stateList.Items[previousState].ForeColor = previousStateBrush.Color;
-      stateList.Items[currentState].ForeColor = currentStateBrush.Color;
+      if (PreviousState >= 0)
+        stateList.Items[PreviousState].ForeColor = previousStateBrush.Color;
+      stateList.Items[CurrentState].ForeColor = currentStateBrush.Color;
 
       if (changed) {
         SyncListView(matches, matchesList, (di, _) => { di.IsMatchListItem = true; });
@@ -581,7 +594,7 @@ namespace Microsoft.Boogie.ModelViewer
       var elts = new Model.Element[0];
 
       foreach (var s in allItems) {
-        if (s.isPrimary[currentState] && s.MatchesWords(words, elts, elt, currentState)) {
+        if (s.isPrimary[CurrentState] && s.MatchesWords(words, elts, elt, CurrentState)) {
           yield return s;
         }
       }
@@ -593,7 +606,7 @@ namespace Microsoft.Boogie.ModelViewer
 
       foreach (var s in skelsM) {
         var tmp = s;
-        items.Add(pref + s.LongName(currentState), null, (x, _) => GotoNode(tmp));
+        items.Add(pref + s.LongName(CurrentState), null, (x, _) => GotoNode(tmp));
       }
 
       if (skelsM.Length == max)
@@ -618,13 +631,13 @@ namespace Microsoft.Boogie.ModelViewer
       }
 
       foreach (var x in sel.References.Where(q => q != sel.Element)) {
-        var t = new ToolStripMenuItem(langModel.CanonicalName(x));
+        var t = new ToolStripMenuItem(LangModel.CanonicalName(x));
         items.Add(t);
         AddMenuItems(NamesFor(x), t.DropDownItems, "= ", 20);
       }
 
       if (sel.Element != null) {
-        var selName = langModel.CanonicalName(sel.Element);
+        var selName = LangModel.CanonicalName(sel.Element);
         items.Add("Find uses...", null, (s, _) => SetSearch("use:" + selName));
 
         var aliases = NamesFor(sel.Element).Where(s => s != skel).ToArray();
@@ -712,13 +725,17 @@ namespace Microsoft.Boogie.ModelViewer
         largeFont = new Font(smallFont.FontFamily, smallFont.Size * 2, smallFont.Unit);
       }
 
-      var font = largeFontToolStripMenuItem.Checked ? largeFont : smallFont;
-      stateList.Font = font;
-      currentStateView.Font = font;
-      matchesList.Font = font;
+      SetFont(largeFontToolStripMenuItem.Checked ? largeFont : smallFont);
       //textBox1.Font = font;
       //linkLabel1.Font = font;
       //label1.Font = font;
+    }
+
+    public void SetFont(System.Drawing.Font font)
+    {
+      stateList.Font = font;
+      currentStateView.Font = font;
+      matchesList.Font = font;
     }
 
     private void Main_Load(object sender, EventArgs e)
@@ -804,6 +821,10 @@ namespace Microsoft.Boogie.ModelViewer
       }
 
       var name = dispNode.Name;
+      if (name != dispNode.ShortName)
+      {
+        name = dispNode.ShortName;
+      }
 
       if (IsMatchListItem) {
         Util.Assert(active);

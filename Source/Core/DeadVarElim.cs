@@ -39,8 +39,9 @@ namespace Microsoft.Boogie {
   }
 
   public class ModSetCollector : StandardVisitor {
-    static Procedure proc;
+    static Procedure enclosingProc;
     static Dictionary<Procedure/*!*/, HashSet<Variable/*!*/>/*!*/>/*!*/ modSets;
+    static HashSet<Procedure> yieldingProcs;
     [ContractInvariantMethod]
     void ObjectInvariant() {
       Contract.Invariant(cce.NonNullDictionaryAndValues(modSets));
@@ -67,6 +68,7 @@ namespace Microsoft.Boogie {
       }
 
       modSets = new Dictionary<Procedure/*!*/, HashSet<Variable/*!*/>/*!*/>();
+      yieldingProcs = new HashSet<Procedure>();
 
       HashSet<Procedure/*!*/> implementedProcs = new HashSet<Procedure/*!*/>();
       foreach (Declaration/*!*/ decl in program.TopLevelDeclarations) {
@@ -83,13 +85,13 @@ namespace Microsoft.Boogie {
         {
             if (!implementedProcs.Contains(cce.NonNull((Procedure)decl)))
             {
-                proc = (Procedure)decl;
-                foreach (IdentifierExpr/*!*/ expr in proc.Modifies)
+                enclosingProc = (Procedure)decl;
+                foreach (IdentifierExpr/*!*/ expr in enclosingProc.Modifies)
                 {
                     Contract.Assert(expr != null);
                     ProcessVariable(expr.Decl);
                 }
-                proc = null;
+                enclosingProc = null;
             }
             else
             {
@@ -111,6 +113,10 @@ namespace Microsoft.Boogie {
           foreach (Variable v in modSets[x])
           {
               x.Modifies.Add(new IdentifierExpr(v.tok, v));
+          }
+          if (yieldingProcs.Contains(x) && !QKeyValue.FindBoolAttribute(x.Attributes, "yields"))
+          {
+              x.AddAttribute("yields");
           }
       }
 
@@ -139,12 +145,21 @@ namespace Microsoft.Boogie {
     public override Implementation VisitImplementation(Implementation node) {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Implementation>() != null);
-      proc = node.Proc;
+      enclosingProc = node.Proc;
       Implementation/*!*/ ret = base.VisitImplementation(node);
       Contract.Assert(ret != null);
-      proc = null;
+      enclosingProc = null;
 
       return ret;
+    }
+    public override YieldCmd VisitYieldCmd(YieldCmd node)
+    {
+        if (!yieldingProcs.Contains(enclosingProc))
+        {
+            yieldingProcs.Add(enclosingProc);
+            moreProcessingRequired = true;
+        }
+        return base.VisitYieldCmd(node);
     }
     public override Cmd VisitAssignCmd(AssignCmd assignCmd) {
       //Contract.Requires(assignCmd != null);
@@ -183,10 +198,29 @@ namespace Microsoft.Boogie {
           ProcessVariable(var);
         }
       }
+      if (!yieldingProcs.Contains(enclosingProc) && 
+          (yieldingProcs.Contains(callCmd.Proc) || callCmd.IsAsync || callCmd.InParallelWith != null))
+      {
+          yieldingProcs.Add(enclosingProc);
+          moreProcessingRequired = true;
+      }
+      if (callCmd.IsAsync || callCmd.InParallelWith != null)
+      {
+          var curr = callCmd;
+          while (curr != null)
+          {
+              if (!yieldingProcs.Contains(curr.Proc)) 
+              {
+                  yieldingProcs.Add(curr.Proc);
+                  moreProcessingRequired = true;
+              }
+              curr = curr.InParallelWith;
+          }
+      }
       return ret;
     }
     private static void ProcessVariable(Variable var) {
-      Procedure/*!*/ localProc = cce.NonNull(proc);
+      Procedure/*!*/ localProc = cce.NonNull(enclosingProc);
       if (var == null)
         return;
       if (!(var is GlobalVariable))

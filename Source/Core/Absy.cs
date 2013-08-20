@@ -2353,7 +2353,14 @@ namespace Microsoft.Boogie {
 
     public override void Typecheck(TypecheckingContext tc) {
       //Contract.Requires(tc != null);
+        bool isAtomicSpecification =
+            QKeyValue.FindIntAttribute(this.Attributes, "atomic", -1) != -1 ||
+            QKeyValue.FindIntAttribute(this.Attributes, "rightmover", -1) != -1 ||
+            QKeyValue.FindIntAttribute(this.Attributes, "leftmover", -1) != -1;
+      bool oldYields = tc.Yields;
+      tc.Yields = isAtomicSpecification;
       this.Condition.Typecheck(tc);
+      tc.Yields = oldYields;
       Contract.Assert(this.Condition.Type != null);  // follows from postcondition of Expr.Typecheck
       if (!this.Condition.Type.Unify(Type.Bool)) {
         tc.Error(this, "postconditions must be of type bool");
@@ -2863,12 +2870,15 @@ namespace Microsoft.Boogie {
         v.Typecheck(tc);
       }
       List<IdentifierExpr> oldFrame = tc.Frame;
+      bool oldYields = tc.Yields;
       tc.Frame = Proc.Modifies;
+      tc.Yields = QKeyValue.FindBoolAttribute(Proc.Attributes, "yields");
       foreach (Block b in Blocks) {
         b.Typecheck(tc);
       }
       Contract.Assert(tc.Frame == Proc.Modifies);
       tc.Frame = oldFrame;
+      tc.Yields = oldYields;
     }
     void MatchFormals(List<Variable>/*!*/ implFormals, List<Variable>/*!*/ procFormals, string/*!*/ inout, TypecheckingContext/*!*/ tc) {
       Contract.Requires(implFormals != null);
@@ -2924,7 +2934,7 @@ namespace Microsoft.Boogie {
       this.formalMap = null;
     }
     public Dictionary<Variable, Expr>/*!*/ GetImplFormalMap() {
-      Contract.Ensures(Contract.Result<Hashtable>() != null);
+      Contract.Ensures(Contract.Result<Dictionary<Variable, Expr>>() != null);
 
       if (this.formalMap != null)
         return this.formalMap;

@@ -7,7 +7,7 @@ var x: int;
 procedure Allocate() returns ({:linear "tid"} xls: X);
 ensures xls != nil;
 
-procedure {:entrypoint} main()
+procedure {:entrypoint} {:yields} main()
 {
     var {:linear "tid"} tid: X;
     var val: int;
@@ -20,7 +20,7 @@ procedure {:entrypoint} main()
     }
 }
 
-procedure foo({:linear "tid"} tid': X, val: int)
+procedure {:yields} {:stable} foo({:linear "tid"} tid': X, val: int)
 requires tid' != nil;
 {
     var {:linear "tid"} tid: X;
@@ -36,7 +36,7 @@ requires tid' != nil;
     l := nil;
 }
 
-procedure Yield({:linear "tid"} tid': X) returns ({:linear "tid"} tid: X)
+procedure {:yields} Yield({:linear "tid"} tid': X) returns ({:linear "tid"} tid: X)
 requires tid' != nil;
 ensures tid == tid';
 ensures old(l) == tid ==> old(l) == l && old(x) == x;
