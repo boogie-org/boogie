@@ -708,8 +708,11 @@ namespace Microsoft.Boogie
                 if (proc == null) continue;
                 if (QKeyValue.FindBoolAttribute(proc.Attributes, "yields"))
                 {
+                    HashSet<Variable> modifiedVars = new HashSet<Variable>();
+                    proc.Modifies.Iter(x => modifiedVars.Add(x.Decl));
                     foreach (GlobalVariable g in program.GlobalVariables())
                     {
+                        if (modifiedVars.Contains(g)) continue;
                         proc.Modifies.Add(new IdentifierExpr(Token.NoToken, g));
                     }
                 }
