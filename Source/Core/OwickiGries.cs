@@ -264,7 +264,7 @@ namespace Microsoft.Boogie
                     PredicateCmd predCmd = (PredicateCmd)cmd;
                     var newExpr = Substituter.ApplyReplacingOldExprs(subst, oldSubst, predCmd.Expr);
                     if (predCmd is AssertCmd)
-                        newCmds.Add(new AssertCmd(predCmd.tok, newExpr));
+                        newCmds.Add(new AssertCmd(predCmd.tok, newExpr, predCmd.Attributes));
                     else
                         newCmds.Add(new AssumeCmd(Token.NoToken, newExpr));
                 }
@@ -582,7 +582,7 @@ namespace Microsoft.Boogie
                     }
                     else
                     {
-                        cmds.Add(new AssertCmd(r.tok, r.Condition));
+                        cmds.Add(new AssertCmd(r.tok, r.Condition, r.Attributes));
                     }
                 }
                 yields.Add(cmds);
@@ -621,7 +621,7 @@ namespace Microsoft.Boogie
                     }
                     else
                     {
-                        cmds.Add(new AssertCmd(e.tok, e.Condition));
+                        cmds.Add(new AssertCmd(e.tok, e.Condition, e.Attributes));
                     }
                 }
                 yields.Add(cmds);
@@ -680,6 +680,13 @@ namespace Microsoft.Boogie
             program.TopLevelDeclarations.Add(yieldImpl);
         }
 
+        private QKeyValue RemoveYieldsAttribute(QKeyValue iter)
+        {
+            if (iter == null) return null;
+            iter.Next = RemoveYieldsAttribute(iter.Next);
+            return (QKeyValue.FindBoolAttribute(iter, "yields")) ? iter.Next : iter;
+        }
+
         public void Transform()
         {
             Program program = linearTypechecker.program;
@@ -715,7 +722,14 @@ namespace Microsoft.Boogie
                         if (modifiedVars.Contains(g)) continue;
                         proc.Modifies.Add(new IdentifierExpr(Token.NoToken, g));
                     }
+                    proc.Attributes = RemoveYieldsAttribute(proc.Attributes);
                 }
+            }
+            foreach (var decl in program.TopLevelDeclarations)
+            {
+                Implementation impl = decl as Implementation;
+                if (impl == null) continue;
+                impl.Attributes = RemoveYieldsAttribute(impl.Attributes);
             }
         }
     }

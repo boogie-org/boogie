@@ -9,16 +9,16 @@ namespace Microsoft.Boogie
 {
     public class LinearEraser : StandardVisitor
     {
-        private QKeyValue Remove(QKeyValue iter)
+        private QKeyValue RemoveLinearAttribute(QKeyValue iter)
         {
             if (iter == null) return null;
-            iter.Next = Remove(iter.Next);
+            iter.Next = RemoveLinearAttribute(iter.Next);
             return (QKeyValue.FindStringAttribute(iter, "linear") == null) ? iter : iter.Next;
         }
 
         public override Variable VisitVariable(Variable node)
         {
-            node.Attributes = Remove(node.Attributes);
+            node.Attributes = RemoveLinearAttribute(node.Attributes);
             return base.VisitVariable(node);
         }
     }
