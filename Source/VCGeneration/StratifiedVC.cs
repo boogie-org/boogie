@@ -266,6 +266,9 @@ namespace VC {
       VCExpressionGenerator gen = proverInterface.VCExprGen;
       var exprGen = proverInterface.Context.ExprGen;
       var translator = proverInterface.Context.BoogieExprTranslator;
+      VCGen.CodeExprConversionClosure cc = new VCGen.CodeExprConversionClosure(label2absy, proverInterface.Context);
+      translator.SetCodeExprConverter(cc.CodeExprToVerificationCondition);
+
       VCExpr controlFlowVariableExpr = null;
       if (!CommandLineOptions.Clo.UseLabels) {
         controlFlowVariable = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "@cfc", Microsoft.Boogie.Type.Int));

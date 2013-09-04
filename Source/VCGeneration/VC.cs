@@ -1245,44 +1245,8 @@ namespace VC {
 
         ProverContext ctx = checker.TheoremProver.Context;
         Boogie2VCExprTranslator bet = ctx.BoogieExprTranslator;
-        bet.SetCodeExprConverter(
-          new CodeExprConverter(
-          delegate(CodeExpr codeExpr, Hashtable/*<Block, VCExprVar!>*/ blockVariables, List<VCExprLetBinding/*!*/> bindings)
-          {
-            VCGen vcgen = new VCGen(new Program(), null, false, parent.checkers);
-            vcgen.variable2SequenceNumber = new Dictionary<Variable, int>();
-            vcgen.incarnationOriginMap = new Dictionary<Incarnation, Absy>();
-            vcgen.CurrentLocalVariables = codeExpr.LocVars;
-            // codeExpr.Blocks.PruneUnreachableBlocks();  // This is needed for VCVariety.BlockNested, and is otherwise just an optimization
-
-            ResetPredecessors(codeExpr.Blocks);
-            vcgen.AddBlocksBetween(codeExpr.Blocks);
-            Dictionary<Variable, Expr> gotoCmdOrigins = vcgen.ConvertBlocks2PassiveCmd(codeExpr.Blocks, new List<IdentifierExpr>(), new ModelViewInfo(codeExpr));
-            int ac;  // computed, but then ignored for this CodeExpr
-            VCExpr startCorrect = VCGen.LetVC(codeExpr.Blocks[0], null, label2absy, blockVariables, bindings, ctx, out ac);
-            VCExpr vce = ctx.ExprGen.Let(bindings, startCorrect);
-
-            if (vcgen.CurrentLocalVariables.Count != 0)
-            {
-              Boogie2VCExprTranslator translator = checker.TheoremProver.Context.BoogieExprTranslator;
-              List<VCExprVar> boundVars = new List<VCExprVar>();
-              foreach (Variable v in vcgen.CurrentLocalVariables)
-              {
-                Contract.Assert(v != null);
-                VCExprVar ev = translator.LookupVariable(v);
-                Contract.Assert(ev != null);
-                boundVars.Add(ev);
-                if (v.TypedIdent.Type.Equals(Bpl.Type.Bool))
-                {
-                  // add an antecedent (tickleBool ev) to help the prover find a possible trigger
-                  vce = checker.VCExprGen.Implies(checker.VCExprGen.Function(VCExpressionGenerator.TickleBoolOp, ev), vce);
-                }
-              }
-              vce = checker.VCExprGen.Forall(boundVars, new List<VCTrigger>(), vce);
-            }
-            return vce;
-          }
-        ));
+        CodeExprConversionClosure cc = new CodeExprConversionClosure(label2absy, ctx);
+        bet.SetCodeExprConverter(cc.CodeExprToVerificationCondition);
 
         var exprGen = ctx.ExprGen;
         VCExpr controlFlowVariableExpr = CommandLineOptions.Clo.UseLabels ? null : exprGen.Integer(BigNum.ZERO);
@@ -1369,6 +1333,53 @@ namespace VC {
       }
     }
     #endregion
+
+
+    public class CodeExprConversionClosure
+    {
+        Dictionary<int, Absy> label2absy;
+        ProverContext ctx;
+        public CodeExprConversionClosure(Dictionary<int, Absy> label2absy, ProverContext ctx)
+        {
+            this.label2absy = label2absy;
+            this.ctx = ctx;
+        }
+
+        public VCExpr CodeExprToVerificationCondition(CodeExpr codeExpr, Hashtable blockVariables, List<VCExprLetBinding> bindings)
+        {
+            VCGen vcgen = new VCGen(new Program(), null, false, new List<Checker>());
+            vcgen.variable2SequenceNumber = new Dictionary<Variable, int>();
+            vcgen.incarnationOriginMap = new Dictionary<Incarnation, Absy>();
+            vcgen.CurrentLocalVariables = codeExpr.LocVars;
+
+            ResetPredecessors(codeExpr.Blocks);
+            vcgen.AddBlocksBetween(codeExpr.Blocks);
+            Dictionary<Variable, Expr> gotoCmdOrigins = vcgen.ConvertBlocks2PassiveCmd(codeExpr.Blocks, new List<IdentifierExpr>(), new ModelViewInfo(codeExpr));
+            int ac;  // computed, but then ignored for this CodeExpr
+            VCExpr startCorrect = VCGen.LetVC(codeExpr.Blocks[0], null, label2absy, blockVariables, bindings, ctx, out ac);
+            VCExpr vce = ctx.ExprGen.Let(bindings, startCorrect);
+
+            if (vcgen.CurrentLocalVariables.Count != 0)
+            {
+                Boogie2VCExprTranslator translator = ctx.BoogieExprTranslator;
+                List<VCExprVar> boundVars = new List<VCExprVar>();
+                foreach (Variable v in vcgen.CurrentLocalVariables)
+                {
+                    Contract.Assert(v != null);
+                    VCExprVar ev = translator.LookupVariable(v);
+                    Contract.Assert(ev != null);
+                    boundVars.Add(ev);
+                    if (v.TypedIdent.Type.Equals(Bpl.Type.Bool))
+                    {
+                        // add an antecedent (tickleBool ev) to help the prover find a possible trigger
+                        vce = ctx.ExprGen.Implies(ctx.ExprGen.Function(VCExpressionGenerator.TickleBoolOp, ev), vce);
+                    }
+                }
+                vce = ctx.ExprGen.Forall(boundVars, new List<VCTrigger>(), vce);
+            }
+            return vce;
+        }
+    }
 
     public VCExpr GenerateVC(Implementation/*!*/ impl, VCExpr controlFlowVariableExpr, out Dictionary<int, Absy>/*!*/ label2absy, ProverContext proverContext)
     {
