@@ -29,9 +29,10 @@ namespace Microsoft.Boogie
         public int errorCount;
         public CheckingContext checkingContext;
         public Dictionary<string, Type> domainNameToType;
-        public Dictionary<Absy, HashSet<Variable>> availableLocalLinearVars;
+        public Dictionary<Absy, HashSet<Variable>> availableLinearVars;
         public Dictionary<Variable, string> inoutParamToDomainName;
         public Dictionary<Variable, string> varToDomainName;
+        public Dictionary<Variable, string> globalVarToDomainName;
         public Dictionary<string, LinearDomain> linearDomains;
 
         public LinearTypechecker(Program program)
@@ -41,7 +42,7 @@ namespace Microsoft.Boogie
             this.checkingContext = new CheckingContext(null);
             this.domainNameToType = new Dictionary<string, Type>();
             this.parallelCallInvars = new HashSet<Variable>();
-            this.availableLocalLinearVars = new Dictionary<Absy, HashSet<Variable>>();
+            this.availableLinearVars = new Dictionary<Absy, HashSet<Variable>>();
             this.inoutParamToDomainName = new Dictionary<Variable, string>();
             this.varToDomainName = new Dictionary<Variable, string>();
             this.linearDomains = new Dictionary<string, LinearDomain>();
@@ -59,9 +60,22 @@ namespace Microsoft.Boogie
             checkingContext.Error(node, message);
             errorCount++;
         }
+        public override Program VisitProgram(Program node)
+        {
+            globalVarToDomainName = new Dictionary<Variable, string>();
+            foreach (GlobalVariable g in program.GlobalVariables())
+            {
+                string domainName = FindDomainName(g);
+                if (domainName != null)
+                {
+                    globalVarToDomainName[g] = domainName;
+                }
+            }
+            return base.VisitProgram(node);
+        }
         public override Implementation VisitImplementation(Implementation node)
         {
-            HashSet<Variable> start = new HashSet<Variable>();
+            HashSet<Variable> start = new HashSet<Variable>(globalVarToDomainName.Keys);
             for (int i = 0; i < node.InParams.Count; i++)
             {
                 string domainName = FindDomainName(node.Proc.InParams[i]);
@@ -87,7 +101,7 @@ namespace Microsoft.Boogie
 
             Stack<Block> dfsStack = new Stack<Block>();
             HashSet<Block> dfsStackAsSet = new HashSet<Block>();
-            availableLocalLinearVars[node.Blocks[0]] = start;
+            availableLinearVars[node.Blocks[0]] = start;
             dfsStack.Push(node.Blocks[0]);
             dfsStackAsSet.Add(node.Blocks[0]);
             while (dfsStack.Count > 0)
@@ -97,27 +111,31 @@ namespace Microsoft.Boogie
                 HashSet<Variable> end = PropagateAvailableLinearVarsAcrossBlock(b);
                 if (b.TransferCmd is ReturnCmd)
                 {
+                    foreach (GlobalVariable g in globalVarToDomainName.Keys.Except(end))
+                    {
+                        Error(b, string.Format("Global variable {0} must be available at a return", g.Name));
+                    } 
                     foreach (Variable v in node.OutParams)
                     {
                         if (FindDomainName(v) == null || end.Contains(v)) continue;
-                        Error(b, "output variable must be available at a return");
+                        Error(b, string.Format("Output variable {0} must be available at a return", v.Name));
                     }
+                    continue;
                 }
-                if (b.TransferCmd is ReturnCmd) continue;
                 GotoCmd gotoCmd = b.TransferCmd as GotoCmd;
                 foreach (Block target in gotoCmd.labelTargets)
                 {
-                    if (!availableLocalLinearVars.ContainsKey(target))
+                    if (!availableLinearVars.ContainsKey(target))
                     {
-                        availableLocalLinearVars[target] = new HashSet<Variable>(end);
+                        availableLinearVars[target] = new HashSet<Variable>(end);
                         dfsStack.Push(target);
                         dfsStackAsSet.Add(target);
                     }
                     else
                     {
-                        var savedAvailableVars = new HashSet<Variable>(availableLocalLinearVars[target]);
-                        availableLocalLinearVars[target].IntersectWith(end);
-                        if (savedAvailableVars.IsProperSupersetOf(availableLocalLinearVars[target]) && !dfsStackAsSet.Contains(target))
+                        var savedAvailableVars = new HashSet<Variable>(availableLinearVars[target]);
+                        availableLinearVars[target].IntersectWith(end);
+                        if (savedAvailableVars.IsProperSupersetOf(availableLinearVars[target]) && !dfsStackAsSet.Contains(target))
                         {
                             dfsStack.Push(target);
                             dfsStackAsSet.Add(target);
@@ -128,7 +146,7 @@ namespace Microsoft.Boogie
             return impl;
         }
         private HashSet<Variable> PropagateAvailableLinearVarsAcrossBlock(Block b) {
-            HashSet<Variable> start = new HashSet<Variable>(availableLocalLinearVars[b]);
+            HashSet<Variable> start = new HashSet<Variable>(availableLinearVars[b]);
             foreach (Cmd cmd in b.Cmds)
             {
                 if (cmd is AssignCmd)
@@ -155,6 +173,10 @@ namespace Microsoft.Boogie
                 }
                 else if (cmd is CallCmd)
                 {
+                    foreach (GlobalVariable g in globalVarToDomainName.Keys.Except(start))
+                    {
+                        Error(b, string.Format("Global variable {0} must be available at a call", g.Name));
+                    } 
                     CallCmd callCmd = (CallCmd)cmd;
                     while (callCmd != null)
                     {
@@ -174,7 +196,7 @@ namespace Microsoft.Boogie
                         callCmd = callCmd.InParallelWith;
                     }
                     callCmd = (CallCmd)cmd;
-                    availableLocalLinearVars[callCmd] = new HashSet<Variable>(start);
+                    availableLinearVars[callCmd] = new HashSet<Variable>(start);
                     while (callCmd != null)
                     {
                         foreach (IdentifierExpr ie in callCmd.Outs)
@@ -196,13 +218,19 @@ namespace Microsoft.Boogie
                 }
                 else if (cmd is YieldCmd)
                 {
-                    availableLocalLinearVars[cmd] = new HashSet<Variable>(start);
+                    foreach (GlobalVariable g in globalVarToDomainName.Keys.Except(start))
+                    {
+                        Error(b, string.Format("Global variable {0} must be available at a yield", g.Name));
+                    }
+                    availableLinearVars[cmd] = new HashSet<Variable>(start);
                 }
             }
             return start;
         }
         public string FindDomainName(Variable v)
         {
+            if (globalVarToDomainName.ContainsKey(v))
+                return globalVarToDomainName[v];
             if (inoutParamToDomainName.ContainsKey(v))
                 return inoutParamToDomainName[v];
             return QKeyValue.FindStringAttribute(v.Attributes, "linear");
@@ -233,7 +261,7 @@ namespace Microsoft.Boogie
                 }
                 if (domainNameToType.ContainsKey(domainName) && !domainNameToType[domainName].Equals(type))
                 {
-                    Error(node, "a linear domain must be consistently attached to variables of a particular type");
+                    Error(node, string.Format("Linear domain {0} must be consistently attached to variables of one type", domainName));
                 }
                 else
                 {
@@ -248,44 +276,35 @@ namespace Microsoft.Boogie
             for (int i = 0; i < node.Lhss.Count; i++)
             {
                 AssignLhs lhs = node.Lhss[i];
-                string domainName = FindDomainName(lhs.DeepAssignedVariable);
+                Variable lhsVar = lhs.DeepAssignedVariable;
+                string domainName = FindDomainName(lhsVar);
                 if (domainName == null) continue;
                 SimpleAssignLhs salhs = lhs as SimpleAssignLhs;
                 if (salhs == null)
                 {
-                    Error(node, "Only simple assignment allowed on linear sets");
-                    continue;
-                }
-                if (salhs.DeepAssignedVariable is GlobalVariable)
-                {
-                    Error(node, "Linear global variable cannot be written to");
+                    Error(node, string.Format("Only simple assignment allowed on linear variable {0}", lhsVar.Name));
                     continue;
                 }
                 IdentifierExpr rhs = node.Rhss[i] as IdentifierExpr;
                 if (rhs == null)
                 {
-                    Error(node, "Only variable can be assigned to a linear variable");
+                    Error(node, string.Format("Only variable can be assigned to linear variable {0}", lhsVar.Name));
                     continue; 
                 }
                 string rhsDomainName = FindDomainName(rhs.Decl);
                 if (rhsDomainName == null)
                 {
-                    Error(node, "Only linear variable can be assigned to another linear variable");
+                    Error(node, string.Format("Only linear variable can be assigned to linear variable {0}", lhsVar.Name));
                     continue;
                 }
                 if (domainName != rhsDomainName)
                 {
-                    Error(node, "Variable of one domain being assigned to a variable of another domain");
+                    Error(node, string.Format("Linear variable of domain {0} cannot be assigned to linear variable of domain {1}", rhsDomainName, domainName));
                     continue;
                 }
                 if (rhsVars.Contains(rhs.Decl))
                 {
-                    Error(node, "A linear variable can occur only once in the rhs");
-                    continue;
-                }
-                if (rhs.Decl is GlobalVariable)
-                {
-                    Error(node, "Linear global variable cannot be read from");
+                    Error(node, string.Format("Linear variable {0} can occur only once in the right-hand-side of an assignment", rhs.Decl.Name));
                     continue;
                 }
                 rhsVars.Add(rhs.Decl);
@@ -304,13 +323,13 @@ namespace Microsoft.Boogie
                 IdentifierExpr actual = node.Ins[i] as IdentifierExpr;
                 if (actual == null)
                 {
-                    Error(node, "Only variable can be assigned to a linear variable");
+                    Error(node, string.Format("Only variable can be passed to linear parameter {0}", formal.Name));
                     continue;
                 }
                 string actualDomainName = FindDomainName(actual.Decl);
                 if (actualDomainName == null)
                 {
-                    Error(node, "Only a linear argument can be passed to a linear parameter");
+                    Error(node, string.Format("Only a linear argument can be passed to linear parameter {0}", formal.Name));
                     continue;
                 }
                 if (domainName != actualDomainName)
@@ -320,7 +339,7 @@ namespace Microsoft.Boogie
                 }
                 if (parallelCallInvars.Contains(actual.Decl))
                 {
-                    Error(node, "A linear set can occur only once as an in parameter");
+                    Error(node, string.Format("Linear variable {0} can occur only once as an input parameter", actual.Decl.Name));
                     continue;
                 }
                 if (actual.Decl is GlobalVariable)
@@ -373,13 +392,7 @@ namespace Microsoft.Boogie
                 domainNameToScope[domainName] = new HashSet<Variable>();
                 domainNameToScope[domainName].Add(domainNameToInputVar[domainName]);
             }
-            foreach (Variable v in program.GlobalVariables())
-            {
-                var domainName = FindDomainName(v);
-                if (domainName == null) continue;
-                domainNameToScope[domainName].Add(v);
-            }
-            foreach (Variable v in availableLocalLinearVars[absy])
+            foreach (Variable v in availableLinearVars[absy])
             {
                 var domainName = FindDomainName(v);
                 domainNameToScope[domainName].Add(v);
@@ -453,7 +466,7 @@ namespace Microsoft.Boogie
                                 {
                                     domainNameToExpr[domainName] = new IdentifierExpr(Token.NoToken, domainNameToInputVar[domainName]);
                                 }
-                                foreach (Variable v in availableLocalLinearVars[callCmd])
+                                foreach (Variable v in availableLinearVars[callCmd])
                                 {
                                     var domainName = FindDomainName(v);
                                     var domain = linearDomains[domainName];
@@ -510,10 +523,9 @@ namespace Microsoft.Boogie
                     domainNameToOutputScope[domainName] = new HashSet<Variable>();
                     
                 }
-                foreach (Variable v in program.GlobalVariables())
+                foreach (Variable v in globalVarToDomainName.Keys)
                 {
-                    var domainName = FindDomainName(v);
-                    if (domainName == null) continue;
+                    var domainName = globalVarToDomainName[v];
                     domainNameToInputScope[domainName].Add(v);
                     domainNameToOutputScope[domainName].Add(v);
                 }
