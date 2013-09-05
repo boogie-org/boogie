@@ -47,7 +47,7 @@ namespace Microsoft.Boogie.VCExprAST {
     }
   }
 
-  public delegate VCExpr/*!*/ CodeExprConverter(CodeExpr/*!*/ codeExpr, Hashtable/*<Block, VCExprVar!>*//*!*/ blockVariables, List<VCExprLetBinding> bindings);
+  public delegate VCExpr/*!*/ CodeExprConverter(CodeExpr/*!*/ codeExpr, Hashtable/*<Block, VCExprVar!>*//*!*/ blockVariables, List<VCExprLetBinding> bindings, bool isAssumeContext);
 
   public class Boogie2VCExprTranslator : StandardVisitor, ICloneable {
     // Stack on which the various Visit-methods put the result of the translation
@@ -611,7 +611,7 @@ namespace Microsoft.Boogie.VCExprAST {
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }
-    CodeExprConverter codeExprConverter = null;
+    public CodeExprConverter codeExprConverter = null;
     public void SetCodeExprConverter(CodeExprConverter f) {
       this.codeExprConverter = f;
     }
@@ -623,7 +623,7 @@ namespace Microsoft.Boogie.VCExprAST {
 
       Hashtable/*<Block, LetVariable!>*/ blockVariables = new Hashtable/*<Block, LetVariable!!>*/();
       List<VCExprLetBinding/*!*/> bindings = new List<VCExprLetBinding/*!*/>();
-      VCExpr e = codeExprConverter(codeExpr, blockVariables, bindings);
+      VCExpr e = codeExprConverter(codeExpr, blockVariables, bindings, false);
       Push(e);
       return codeExpr;
     }

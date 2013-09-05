@@ -160,8 +160,17 @@ namespace VC {
           }
         }
 
-        return gen.ImpliesSimp(ctxt.Ctxt.BoogieExprTranslator.Translate(ac.Expr), N);
-
+        CodeExpr codeExpr = ac.Expr as CodeExpr;
+        if (codeExpr != null)
+        {
+            Hashtable blockVariables = new Hashtable();
+            List<VCExprLetBinding> bindings = new List<VCExprLetBinding>();
+            return gen.ImpliesSimp(ctxt.Ctxt.BoogieExprTranslator.codeExprConverter(codeExpr, blockVariables, bindings, true), N);
+        }
+        else
+        {
+            return gen.ImpliesSimp(ctxt.Ctxt.BoogieExprTranslator.Translate(ac.Expr), N);
+        }
       } else {
         Console.WriteLine(cmd.ToString());
         Contract.Assert(false); throw new cce.UnreachableException();  // unexpected command

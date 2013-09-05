@@ -1345,7 +1345,7 @@ namespace VC {
             this.ctx = ctx;
         }
 
-        public VCExpr CodeExprToVerificationCondition(CodeExpr codeExpr, Hashtable blockVariables, List<VCExprLetBinding> bindings)
+        public VCExpr CodeExprToVerificationCondition(CodeExpr codeExpr, Hashtable blockVariables, List<VCExprLetBinding> bindings, bool isAssumeContext)
         {
             VCGen vcgen = new VCGen(new Program(), null, false, new List<Checker>());
             vcgen.variable2SequenceNumber = new Dictionary<Variable, int>();
@@ -1356,9 +1356,12 @@ namespace VC {
             vcgen.AddBlocksBetween(codeExpr.Blocks);
             Dictionary<Variable, Expr> gotoCmdOrigins = vcgen.ConvertBlocks2PassiveCmd(codeExpr.Blocks, new List<IdentifierExpr>(), new ModelViewInfo(codeExpr));
             int ac;  // computed, but then ignored for this CodeExpr
-            VCExpr startCorrect = VCGen.LetVC(codeExpr.Blocks[0], null, label2absy, blockVariables, bindings, ctx, out ac);
+            VCExpr startCorrect = VCGen.LetVCIterative(codeExpr.Blocks, null, label2absy, ctx, out ac, isAssumeContext);
             VCExpr vce = ctx.ExprGen.Let(bindings, startCorrect);
-
+            if (isAssumeContext)
+            {
+                vce = ctx.ExprGen.Not(vce);
+            }
             if (vcgen.CurrentLocalVariables.Count != 0)
             {
                 Boogie2VCExprTranslator translator = ctx.BoogieExprTranslator;
@@ -1375,7 +1378,14 @@ namespace VC {
                         vce = ctx.ExprGen.Implies(ctx.ExprGen.Function(VCExpressionGenerator.TickleBoolOp, ev), vce);
                     }
                 }
-                vce = ctx.ExprGen.Forall(boundVars, new List<VCTrigger>(), vce);
+                if (isAssumeContext)
+                {
+                    vce = ctx.ExprGen.Exists(boundVars, new List<VCTrigger>(), vce);
+                }
+                else
+                {
+                    vce = ctx.ExprGen.Forall(boundVars, new List<VCTrigger>(), vce);
+                }
             }
             return vce;
         }
@@ -2706,7 +2716,9 @@ namespace VC {
                                  VCExpr controlFlowVariableExpr,
                                  Dictionary<int, Absy> label2absy,
                                  ProverContext proverCtxt,
-                                 out int assertionCount) {
+                                 out int assertionCount,
+                                 bool isAssumeContext = false)
+    {
       Contract.Requires(blocks != null);
       Contract.Requires(proverCtxt != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
@@ -2742,6 +2754,10 @@ namespace VC {
           }
           else {
             SuccCorrect = proverCtxt.BoogieExprTranslator.Translate(re.Expr);
+          }
+          if (isAssumeContext)
+          {
+              SuccCorrect = gen.Not(SuccCorrect);
           }
         }
         else {
