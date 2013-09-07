@@ -1345,7 +1345,7 @@ namespace VC {
             this.ctx = ctx;
         }
 
-        public VCExpr CodeExprToVerificationCondition(CodeExpr codeExpr, Hashtable blockVariables, List<VCExprLetBinding> bindings, bool isAssumeContext)
+        public VCExpr CodeExprToVerificationCondition(CodeExpr codeExpr, Hashtable blockVariables, List<VCExprLetBinding> bindings, bool isPositiveContext)
         {
             VCGen vcgen = new VCGen(new Program(), null, false, new List<Checker>());
             vcgen.variable2SequenceNumber = new Dictionary<Variable, int>();
@@ -1356,12 +1356,8 @@ namespace VC {
             vcgen.AddBlocksBetween(codeExpr.Blocks);
             Dictionary<Variable, Expr> gotoCmdOrigins = vcgen.ConvertBlocks2PassiveCmd(codeExpr.Blocks, new List<IdentifierExpr>(), new ModelViewInfo(codeExpr));
             int ac;  // computed, but then ignored for this CodeExpr
-            VCExpr startCorrect = VCGen.LetVCIterative(codeExpr.Blocks, null, label2absy, ctx, out ac, isAssumeContext);
+            VCExpr startCorrect = VCGen.LetVCIterative(codeExpr.Blocks, null, label2absy, ctx, out ac, isPositiveContext);
             VCExpr vce = ctx.ExprGen.Let(bindings, startCorrect);
-            if (isAssumeContext)
-            {
-                vce = ctx.ExprGen.Not(vce);
-            }
             if (vcgen.CurrentLocalVariables.Count != 0)
             {
                 Boogie2VCExprTranslator translator = ctx.BoogieExprTranslator;
@@ -1378,15 +1374,12 @@ namespace VC {
                         vce = ctx.ExprGen.Implies(ctx.ExprGen.Function(VCExpressionGenerator.TickleBoolOp, ev), vce);
                     }
                 }
-                if (isAssumeContext)
-                {
-                    vce = ctx.ExprGen.Exists(boundVars, new List<VCTrigger>(), vce);
-                }
-                else
-                {
-                    vce = ctx.ExprGen.Forall(boundVars, new List<VCTrigger>(), vce);
-                }
+                vce = ctx.ExprGen.Forall(boundVars, new List<VCTrigger>(), vce);
             }
+            if (isPositiveContext)
+            {
+                vce = ctx.ExprGen.Not(vce);
+            } 
             return vce;
         }
     }
@@ -2717,7 +2710,7 @@ namespace VC {
                                  Dictionary<int, Absy> label2absy,
                                  ProverContext proverCtxt,
                                  out int assertionCount,
-                                 bool isAssumeContext = false)
+                                 bool isPositiveContext = true)
     {
       Contract.Requires(blocks != null);
       Contract.Requires(proverCtxt != null);
@@ -2755,7 +2748,7 @@ namespace VC {
           else {
             SuccCorrect = proverCtxt.BoogieExprTranslator.Translate(re.Expr);
           }
-          if (isAssumeContext)
+          if (isPositiveContext)
           {
               SuccCorrect = gen.Not(SuccCorrect);
           }
@@ -2776,7 +2769,7 @@ namespace VC {
           SuccCorrect = gen.NAry(VCExpressionGenerator.AndOp, SuccCorrectVars);
         }
 
-        VCContext context = new VCContext(label2absy, proverCtxt, controlFlowVariableExpr);
+        VCContext context = new VCContext(label2absy, proverCtxt, controlFlowVariableExpr, isPositiveContext);
         VCExpr vc = Wlp.Block(block, SuccCorrect, context);
         assertionCount += context.AssertionCount;
 

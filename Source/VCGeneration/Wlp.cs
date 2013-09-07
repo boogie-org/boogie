@@ -24,22 +24,24 @@ namespace VC {
     [Rep] public readonly ProverContext Ctxt;
     public readonly VCExpr ControlFlowVariableExpr;
     public int AssertionCount;  // counts the number of assertions for which Wlp has been computed
-    
-    public VCContext(Dictionary<int, Absy> label2absy, ProverContext ctxt)
+    public bool isPositiveContext;
+
+    public VCContext(Dictionary<int, Absy> label2absy, ProverContext ctxt, bool isPositiveContext = true)
     {
       Contract.Requires(ctxt != null);
       this.Label2absy = label2absy;
       this.Ctxt = ctxt;
+      this.isPositiveContext = isPositiveContext;
     }
-    
-    public VCContext(Dictionary<int, Absy> label2absy, ProverContext ctxt, VCExpr controlFlowVariableExpr)
+
+    public VCContext(Dictionary<int, Absy> label2absy, ProverContext ctxt, VCExpr controlFlowVariableExpr, bool isPositiveContext = true)
     {
       Contract.Requires(ctxt != null);
       this.Label2absy = label2absy;
       this.Ctxt = ctxt;
       this.ControlFlowVariableExpr = controlFlowVariableExpr;
+      this.isPositiveContext = isPositiveContext;
     }
-    
   }
 
   #region A class to compute wlp of a passive command program
@@ -95,7 +97,9 @@ namespace VC {
       Contract.Assert(gen != null);
       if (cmd is AssertCmd) {
         AssertCmd ac = (AssertCmd)cmd;
+        ctxt.Ctxt.BoogieExprTranslator.isPositiveContext = !ctxt.Ctxt.BoogieExprTranslator.isPositiveContext;
         VCExpr C = ctxt.Ctxt.BoogieExprTranslator.Translate(ac.Expr);
+        ctxt.Ctxt.BoogieExprTranslator.isPositiveContext = !ctxt.Ctxt.BoogieExprTranslator.isPositiveContext; 
         if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Doomed) {
           return gen.Implies(C, N);
         } else {
@@ -159,18 +163,7 @@ namespace VC {
             }
           }
         }
-
-        CodeExpr codeExpr = ac.Expr as CodeExpr;
-        if (codeExpr != null)
-        {
-            Hashtable blockVariables = new Hashtable();
-            List<VCExprLetBinding> bindings = new List<VCExprLetBinding>();
-            return gen.ImpliesSimp(ctxt.Ctxt.BoogieExprTranslator.codeExprConverter(codeExpr, blockVariables, bindings, true), N);
-        }
-        else
-        {
-            return gen.ImpliesSimp(ctxt.Ctxt.BoogieExprTranslator.Translate(ac.Expr), N);
-        }
+        return gen.ImpliesSimp(ctxt.Ctxt.BoogieExprTranslator.Translate(ac.Expr), N);
       } else {
         Console.WriteLine(cmd.ToString());
         Contract.Assert(false); throw new cce.UnreachableException();  // unexpected command
