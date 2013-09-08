@@ -2747,10 +2747,10 @@ namespace VC {
           }
           else {
             SuccCorrect = proverCtxt.BoogieExprTranslator.Translate(re.Expr);
-          }
-          if (isPositiveContext)
-          {
-              SuccCorrect = gen.Not(SuccCorrect);
+            if (isPositiveContext)
+            {
+                SuccCorrect = gen.Not(SuccCorrect);
+            }
           }
         }
         else {
