@@ -384,7 +384,7 @@ namespace Microsoft.Boogie.VCExprAST {
       if (node.Fun is UnaryOperator)
       {
           UnaryOperator oper = (UnaryOperator)node.Fun;
-          if (oper.Op == UnaryOperator.Opcode.Neg)
+          if (oper.Op == UnaryOperator.Opcode.Not)
               flipContextForArg0 = true;
       }
       else if (node.Fun is BinaryOperator)
