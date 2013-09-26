@@ -6,6 +6,7 @@
 using System;
 using System.Diagnostics.Contracts;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using Microsoft.Boogie;
 using Microsoft.Boogie.VCExprAST;
 using VC;
@@ -315,6 +316,8 @@ namespace Microsoft.Boogie.Houdini {
     private HoudiniState currentHoudiniState;
     private CrossDependencies crossDependencies;
 
+    private static ConcurrentDictionary<RefutedAnnotation, int> refutedSharedAnnotations;
+
     private string cexTraceFile;
 
     public HoudiniState CurrentHoudiniState { get { return currentHoudiniState; } }    
@@ -375,6 +378,10 @@ namespace Microsoft.Boogie.Houdini {
               explainHoudiniDottyFile.WriteLine("{0} [ label = \"{0}\" color=black ];", constant.Name);
           explainHoudiniDottyFile.WriteLine("TimeOut [label = \"TimeOut\" color=red ];");
       }
+    }
+
+    static Houdini() {
+      refutedSharedAnnotations = new ConcurrentDictionary<RefutedAnnotation, int>();
     }
 
     private void Inline() {
@@ -698,74 +705,27 @@ namespace Microsoft.Boogie.Houdini {
       this.NotifyFlushFinish();
     }
 
-    private bool ExchangeRefutedAnnotations(HashSet<RefutedAnnotation> locallyRefuted = null)
+    private bool ExchangeRefutedAnnotations()
     {
-      //HashSet<RefutedAnnotation> sharedRefuted = locallyRefuted;
-      string refutedInformation;
       int count = 0;
 
-      using (var fileStream = new FileStream(@"houdini.csv", FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.ReadWrite))
-      using (var input = new StreamReader(fileStream))
-      using (var output = new StreamWriter(fileStream)) {
-        while ((refutedInformation = input.ReadLine()) != null) {
-          var ri = refutedInformation.Split(',');
+      foreach (RefutedAnnotation key in refutedSharedAnnotations.Keys) {
+        KeyValuePair<Variable, bool> kv = currentHoudiniState.Assignment.FirstOrDefault(entry => entry.Key.Name.Equals(key.Constant.Name) && entry.Value);
 
-          KeyValuePair<Variable, bool> kv = currentHoudiniState.Assignment.FirstOrDefault(entry => entry.Key.Name.Equals(ri[0]) && entry.Value);
-
-          if (kv.Key != null) {
-            RefutedAnnotation ra = null;
-            Implementation refutationSite = null;
-
-            foreach (var r in program.TopLevelDeclarations.OfType<Implementation>()) {
-              if (r.Name.Equals(ri[3])) {
-                refutationSite = r;
-                break;
-              }
-            }
-            Debug.Assert(refutationSite != null);
-
-            if (ri[1].Equals("REQUIRES")) {
-              Procedure proc = null;
-              foreach (var p in program.TopLevelDeclarations.OfType<Procedure>()) {
-                if (p.Name.Equals(ri[2])) {
-                  proc = p;
-                  break;
-                }
-              }
-              Debug.Assert(proc != null);
-              ra = RefutedAnnotation.BuildRefutedRequires(kv.Key, proc, refutationSite);
-            } else if (ri[1].Equals("ENSURES"))
-              ra = RefutedAnnotation.BuildRefutedEnsures(kv.Key, refutationSite);
-            else if (ri[1].Equals("ASSERT"))
-              ra = RefutedAnnotation.BuildRefutedAssert(kv.Key, refutationSite);
-            Debug.Assert(ra != null);
-
-            if (CommandLineOptions.Clo.DebugParallelHoudini)
-              Console.WriteLine("(+) " + refutedInformation);
-
-            //sharedRefuted.Add(ra);
-            AddRelatedToWorkList(ra);
-            UpdateAssignment(ra);
-            count++;
-          }
-        }
-
-        if (CommandLineOptions.Clo.DebugParallelHoudini)
-          Console.WriteLine("# refuted annotations received from the exchange set: " + count);
-
-        if (locallyRefuted != null) {
-          foreach (RefutedAnnotation refAnnot in locallyRefuted) {
-            output.WriteLine(refAnnot.Constant + "," + refAnnot.Kind + "," +
-                             refAnnot.CalleeProc + "," + refAnnot.RefutationSite);
-          }
-
+        if (kv.Key != null) {
           if (CommandLineOptions.Clo.DebugParallelHoudini)
-            Console.WriteLine("# refuted annotations added to the exchange set: " + locallyRefuted.Count);
+            Console.WriteLine("(+) " + key.Constant + "," + key.Kind + "," + key.CalleeProc + "," + key.RefutationSite);
+
+          AddRelatedToWorkList(key);
+          UpdateAssignment(key);
+          count++;
         }
       }
 
+      if (CommandLineOptions.Clo.DebugParallelHoudini)
+        Console.WriteLine("# refuted annotations received from the shared exchanging set: " + count);
+
       return count > 0 ? true : false;
-      //return result;
     }
 
     private void UpdateAssignment(RefutedAnnotation refAnnot) {
@@ -805,58 +765,40 @@ namespace Microsoft.Boogie.Houdini {
           case ProverInterface.Outcome.Invalid:
               Contract.Assume(errors != null);
 
-              if (CommandLineOptions.Clo.HoudiniOutputRefutedCandidates) {
-                  HashSet<RefutedAnnotation> refutedAnnotations = new HashSet<RefutedAnnotation>();
-                
-                  foreach (Counterexample error in errors) {
-                      RefutedAnnotation refutedAnnotation = ExtractRefutedAnnotation(error);
-                      if (refutedAnnotation != null) { // some candidate annotation removed
-                          refutedAnnotations.Add(refutedAnnotation);
-                          AddRelatedToWorkList(refutedAnnotation);
-                          UpdateAssignment(refutedAnnotation);
-                          dequeue = false;
-                      }
-                  }
-                
-                  int start = Environment.TickCount;
-                  //refutedAnnotations = ExchangeRefutedAnnotations(refutedAnnotations);
-                  if (ExchangeRefutedAnnotations(refutedAnnotations)) dequeue = false;        
-                  int duration = Environment.TickCount - start;
-                  if (CommandLineOptions.Clo.DebugParallelHoudini)
-                      Console.WriteLine("*** exchange of refuted annotations: " + duration + " ms ***");
-                  
-//                  foreach (RefutedAnnotation refAnnot in refutedAnnotations) {
-//                      AddRelatedToWorkList(refAnnot);
-//                      UpdateAssignment(refAnnot);
-//                      dequeue = false;
-//                  }
-              } else {
-                  foreach (Counterexample error in errors)
+              foreach (Counterexample error in errors)
+              {
+                RefutedAnnotation refutedAnnotation = ExtractRefutedAnnotation(error);
+                if (refutedAnnotation != null)
+                { // some candidate annotation removed
+                  if (CommandLineOptions.Clo.HoudiniShareRefutedCandidates)
+                    refutedSharedAnnotations.TryAdd (refutedAnnotation, 0);
+                  AddRelatedToWorkList(refutedAnnotation);
+                  UpdateAssignment(refutedAnnotation);
+                  dequeue = false;
+                  #region Extra debugging output
+                  if (CommandLineOptions.Clo.Trace)
                   {
-                      RefutedAnnotation refutedAnnotation = ExtractRefutedAnnotation(error);
-                      if (refutedAnnotation != null)
-                      { // some candidate annotation removed
-                          AddRelatedToWorkList(refutedAnnotation);
-                          UpdateAssignment(refutedAnnotation);
-                          dequeue = false;
-                          #region Extra debugging output
-                          if (CommandLineOptions.Clo.Trace)
-                          {
-                              using (var cexWriter = new System.IO.StreamWriter(cexTraceFile, true))
-                              {
-                                  cexWriter.WriteLine("Counter example for " + refutedAnnotation.Constant);
-                                  cexWriter.Write(error.ToString());
-                                  cexWriter.WriteLine();
-                                  using (var writer = new Microsoft.Boogie.TokenTextWriter(cexWriter))
-                                      foreach (Microsoft.Boogie.Block blk in error.Trace)
-                                          blk.Emit(writer, 15);
-                                  //cexWriter.WriteLine(); 
-                              }
-                          }
-                          #endregion
-                      }
+                    using (var cexWriter = new System.IO.StreamWriter(cexTraceFile, true))
+                    {
+                      cexWriter.WriteLine("Counter example for " + refutedAnnotation.Constant);
+                      cexWriter.Write(error.ToString());
+                      cexWriter.WriteLine();
+                      using (var writer = new Microsoft.Boogie.TokenTextWriter(cexWriter))
+                        foreach (Microsoft.Boogie.Block blk in error.Trace)
+                          blk.Emit(writer, 15);
+                      //cexWriter.WriteLine(); 
+                    }
                   }
+                  #endregion
+                }
               }
+
+              if (CommandLineOptions.Clo.DebugParallelHoudini)
+                Console.WriteLine("# exchange set size: " + refutedSharedAnnotations.Count);
+
+              if (CommandLineOptions.Clo.HoudiniShareRefutedCandidates)
+                if (ExchangeRefutedAnnotations()) dequeue = false;
+              
               break;
           default:
               if (CommandLineOptions.Clo.Trace)
@@ -967,7 +909,9 @@ namespace Microsoft.Boogie.Houdini {
       while (currentHoudiniState.WorkQueue.Count > 0) {
         this.NotifyIteration();
 
-        ExchangeRefutedAnnotations();
+        if (CommandLineOptions.Clo.HoudiniShareRefutedCandidates)
+          ExchangeRefutedAnnotations();
+
         currentHoudiniState.Implementation = currentHoudiniState.WorkQueue.Peek();
         this.NotifyImplementation(currentHoudiniState.Implementation);
 

@@ -397,7 +397,7 @@ namespace Microsoft.Boogie {
     public bool IntraproceduralInfer = true;
     public bool ContractInfer = false;
     public bool ExplainHoudini = false;
-    public bool HoudiniOutputRefutedCandidates = false;
+    public bool HoudiniShareRefutedCandidates = false;
     public bool DisableLoopInvMaintainedAssert = false;
     public bool ReverseTopologicalSorting = false;
     public bool DebugParallelHoudini = false;
@@ -1169,9 +1169,9 @@ namespace Microsoft.Boogie {
           }
           return true;
 
-        case "outputRefuted":
+        case "sharedRefutation":
           if (ps.ConfirmArgumentCount(0)) {
-            HoudiniOutputRefutedCandidates = true;
+            HoudiniShareRefutedCandidates = true;
           }
           return true;
 
@@ -1680,8 +1680,8 @@ namespace Microsoft.Boogie {
   /printInstrumented
                 print Boogie program after it has been instrumented with
                 invariants
-  /outputRefuted
-                Outputs the refuted candidates
+  /sharedRefutation
+                Enables sharing of refuted candidate invariants between multiple threads.
   /disableLoopInvMaintainedAssert
                 Disables the loop invariant check to maintain the invariant after iteration.
                 This is an under-approximation feature
