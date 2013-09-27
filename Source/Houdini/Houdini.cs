@@ -6,7 +6,6 @@
 using System;
 using System.Diagnostics.Contracts;
 using System.Collections.Generic;
-using System.Collections.Concurrent;
 using Microsoft.Boogie;
 using Microsoft.Boogie.VCExprAST;
 using VC;
@@ -18,7 +17,7 @@ using System.Diagnostics;
 
 namespace Microsoft.Boogie.Houdini {
 
-  class ReadOnlyDictionary<K, V> {
+  internal class ReadOnlyDictionary<K, V> {
     private Dictionary<K, V> dictionary;
     public ReadOnlyDictionary(Dictionary<K, V> dictionary) {
       this.dictionary = dictionary;
@@ -306,19 +305,17 @@ namespace Microsoft.Boogie.Houdini {
   }
 
   public class Houdini : ObservableHoudini {
-    private Program program;
-    private HashSet<Variable> houdiniConstants;
-    private ReadOnlyDictionary<Implementation, HoudiniSession> houdiniSessions;
-    private VCGen vcgen;
-    private ProverInterface proverInterface;
-    private Graph<Implementation> callGraph;
-    private HashSet<Implementation> vcgenFailures;
-    private HoudiniState currentHoudiniState;
-    private CrossDependencies crossDependencies;
+    protected Program program;
+    protected HashSet<Variable> houdiniConstants;
+    protected VCGen vcgen;
+    protected ProverInterface proverInterface;
+    protected Graph<Implementation> callGraph;
+    protected HashSet<Implementation> vcgenFailures;
+    protected HoudiniState currentHoudiniState;
+    protected CrossDependencies crossDependencies;
+    internal ReadOnlyDictionary<Implementation, HoudiniSession> houdiniSessions;
 
-    private static ConcurrentDictionary<RefutedAnnotation, int> refutedSharedAnnotations;
-
-    private string cexTraceFile;
+    protected string cexTraceFile;
 
     public HoudiniState CurrentHoudiniState { get { return currentHoudiniState; } }    
 
@@ -378,10 +375,6 @@ namespace Microsoft.Boogie.Houdini {
               explainHoudiniDottyFile.WriteLine("{0} [ label = \"{0}\" color=black ];", constant.Name);
           explainHoudiniDottyFile.WriteLine("TimeOut [label = \"TimeOut\" color=red ];");
       }
-    }
-
-    static Houdini() {
-      refutedSharedAnnotations = new ConcurrentDictionary<RefutedAnnotation, int>();
     }
 
     private void Inline() {
@@ -503,7 +496,7 @@ namespace Microsoft.Boogie.Houdini {
         public Dictionary<string, HashSet<Implementation>> assumedInImpl { get; private set; }
     }
     
-    private WorkQueue BuildWorkList(Program program) {
+    protected WorkQueue BuildWorkList(Program program) {
       // adding implementations to the workqueue from the bottom of the call graph upwards
       WorkQueue queue = new WorkQueue();
       StronglyConnectedComponents<Implementation> sccs =
@@ -641,7 +634,7 @@ namespace Microsoft.Boogie.Houdini {
         return null;
     }
 
-    private Dictionary<Variable, bool> BuildAssignment(HashSet<Variable> constants) {
+    protected Dictionary<Variable, bool> BuildAssignment(HashSet<Variable> constants) {
       Dictionary<Variable, bool> initial = new Dictionary<Variable, bool>();
       foreach (var constant in constants)
         initial.Add(constant, true);
@@ -666,7 +659,7 @@ namespace Microsoft.Boogie.Houdini {
 
     // Record most current non-candidate errors found
     // Return true if there was at least one non-candidate error
-    private bool UpdateHoudiniOutcome(HoudiniOutcome houdiniOutcome,
+    protected bool UpdateHoudiniOutcome(HoudiniOutcome houdiniOutcome,
                                       Implementation implementation,
                                       ProverInterface.Outcome outcome,
                                       List<Counterexample> errors) {
@@ -684,7 +677,7 @@ namespace Microsoft.Boogie.Houdini {
       return nonCandidateErrors.Count > 0;
     }
 
-    private void FlushWorkList(int stage, IEnumerable<int> completedStages) {
+    protected void FlushWorkList(int stage, IEnumerable<int> completedStages) {
       this.NotifyFlushStart();
       while (currentHoudiniState.WorkQueue.Count > 0) {
         this.NotifyIteration();
@@ -705,30 +698,7 @@ namespace Microsoft.Boogie.Houdini {
       this.NotifyFlushFinish();
     }
 
-    private bool ExchangeRefutedAnnotations()
-    {
-      int count = 0;
-
-      foreach (RefutedAnnotation key in refutedSharedAnnotations.Keys) {
-        KeyValuePair<Variable, bool> kv = currentHoudiniState.Assignment.FirstOrDefault(entry => entry.Key.Name.Equals(key.Constant.Name) && entry.Value);
-
-        if (kv.Key != null) {
-          if (CommandLineOptions.Clo.DebugParallelHoudini)
-            Console.WriteLine("(+) " + key.Constant + "," + key.Kind + "," + key.CalleeProc + "," + key.RefutationSite);
-
-          AddRelatedToWorkList(key);
-          UpdateAssignment(key);
-          count++;
-        }
-      }
-
-      if (CommandLineOptions.Clo.DebugParallelHoudini)
-        Console.WriteLine("# refuted annotations received from the shared exchanging set: " + count);
-
-      return count > 0 ? true : false;
-    }
-
-    private void UpdateAssignment(RefutedAnnotation refAnnot) {
+    protected void UpdateAssignment(RefutedAnnotation refAnnot) {
       if (CommandLineOptions.Clo.Trace) {
         Console.WriteLine("Removing " + refAnnot.Constant);
         using (var cexWriter = new System.IO.StreamWriter(cexTraceFile, true))
@@ -739,7 +709,7 @@ namespace Microsoft.Boogie.Houdini {
       this.NotifyConstant(refAnnot.Constant.Name);
     }
 
-    private void AddRelatedToWorkList(RefutedAnnotation refutedAnnotation) {
+    protected void AddRelatedToWorkList(RefutedAnnotation refutedAnnotation) {
       Contract.Assume(currentHoudiniState.Implementation != null);
       foreach (Implementation implementation in FindImplementationsToEnqueue(refutedAnnotation, refutedAnnotation.RefutationSite)) {
         if (!currentHoudiniState.isBlackListed(implementation.Name)) {
@@ -751,7 +721,7 @@ namespace Microsoft.Boogie.Houdini {
 
     // Updates the worklist and current assignment
     // @return true if the current function is dequeued
-    private bool UpdateAssignmentWorkList(ProverInterface.Outcome outcome,
+    protected virtual bool UpdateAssignmentWorkList(ProverInterface.Outcome outcome,
                                           List<Counterexample> errors) {
       Contract.Assume(currentHoudiniState.Implementation != null);
       bool dequeue = true;
@@ -770,8 +740,6 @@ namespace Microsoft.Boogie.Houdini {
                 RefutedAnnotation refutedAnnotation = ExtractRefutedAnnotation(error);
                 if (refutedAnnotation != null)
                 { // some candidate annotation removed
-                  if (CommandLineOptions.Clo.HoudiniShareRefutedCandidates)
-                    refutedSharedAnnotations.TryAdd (refutedAnnotation, 0);
                   AddRelatedToWorkList(refutedAnnotation);
                   UpdateAssignment(refutedAnnotation);
                   dequeue = false;
@@ -792,12 +760,6 @@ namespace Microsoft.Boogie.Houdini {
                   #endregion
                 }
               }
-
-              if (CommandLineOptions.Clo.DebugParallelHoudini)
-                Console.WriteLine("# exchange set size: " + refutedSharedAnnotations.Count);
-
-              if (CommandLineOptions.Clo.HoudiniShareRefutedCandidates)
-                if (ExchangeRefutedAnnotations()) dequeue = false;
               
               break;
           default:
@@ -889,7 +851,7 @@ namespace Microsoft.Boogie.Houdini {
       }
     }
 
-    public HoudiniOutcome PerformHoudiniInference(int stage = 0, 
+    public virtual HoudiniOutcome PerformHoudiniInference(int stage = 0, 
                                                   IEnumerable<int> completedStages = null,
                                                   Dictionary<string, bool> initialAssignment = null) {
       this.NotifyStart(program, houdiniConstants.Count);
@@ -908,9 +870,6 @@ namespace Microsoft.Boogie.Houdini {
 
       while (currentHoudiniState.WorkQueue.Count > 0) {
         this.NotifyIteration();
-
-        if (CommandLineOptions.Clo.HoudiniShareRefutedCandidates)
-          ExchangeRefutedAnnotations();
 
         currentHoudiniState.Implementation = currentHoudiniState.WorkQueue.Peek();
         this.NotifyImplementation(currentHoudiniState.Implementation);
@@ -983,9 +942,9 @@ namespace Microsoft.Boogie.Houdini {
       return implementations;
     }
 
-    private enum RefutedAnnotationKind { REQUIRES, ENSURES, ASSERT };
+    public enum RefutedAnnotationKind { REQUIRES, ENSURES, ASSERT };
 
-    private class RefutedAnnotation {
+    public class RefutedAnnotation {
       private Variable _constant;
       private RefutedAnnotationKind _kind;
       private Procedure _callee;
@@ -1074,7 +1033,7 @@ namespace Microsoft.Boogie.Houdini {
       }
     }
 
-    private void DebugRefutedCandidates(Implementation curFunc, List<Counterexample> errors) {
+    protected void DebugRefutedCandidates(Implementation curFunc, List<Counterexample> errors) {
       XmlSink xmlRefuted = CommandLineOptions.Clo.XmlRefuted;
       if (xmlRefuted != null && errors != null) {
         DateTime start = DateTime.UtcNow;
@@ -1094,7 +1053,7 @@ namespace Microsoft.Boogie.Houdini {
       }
     }
 
-    private RefutedAnnotation ExtractRefutedAnnotation(Counterexample error) {
+    protected RefutedAnnotation ExtractRefutedAnnotation(Counterexample error) {
       Variable houdiniConstant;
       CallCounterexample callCounterexample = error as CallCounterexample;
       if (callCounterexample != null) {
@@ -1125,7 +1084,7 @@ namespace Microsoft.Boogie.Houdini {
       return null;
     }
 
-    private ProverInterface.Outcome TryCatchVerify(HoudiniSession session, int stage, IEnumerable<int> completedStages, out List<Counterexample> errors) {
+    protected ProverInterface.Outcome TryCatchVerify(HoudiniSession session, int stage, IEnumerable<int> completedStages, out List<Counterexample> errors) {
       ProverInterface.Outcome outcome;
       try {
         outcome = session.Verify(proverInterface, GetAssignmentWithStages(stage, completedStages), out errors);
@@ -1157,7 +1116,7 @@ namespace Microsoft.Boogie.Houdini {
       return result;
     }
 
-    private void HoudiniVerifyCurrent(HoudiniSession session, int stage, IEnumerable<int> completedStages) {
+    protected virtual void HoudiniVerifyCurrent(HoudiniSession session, int stage, IEnumerable<int> completedStages) {
       while (true) {
         this.NotifyAssignment(currentHoudiniState.Assignment);
 
