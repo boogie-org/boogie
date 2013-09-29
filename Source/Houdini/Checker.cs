@@ -130,13 +130,13 @@ namespace Microsoft.Boogie.Houdini {
       return false;
     }
 
-    public HoudiniSession(Houdini houdini, VCGen vcgen, ProverInterface proverInterface, Program program, Implementation impl, HoudiniStatistics stats) {
+    public HoudiniSession(Houdini houdini, VCGen vcgen, ProverInterface proverInterface, Program program, Implementation impl, HoudiniStatistics stats, int houdiniID = -1) {
       this.descriptiveName = impl.Name;
       this.stats = stats;
       collector = new ConditionGeneration.CounterexampleCollector();
       collector.OnProgress("HdnVCGen", 0, 0, 0.0);
 
-      vcgen.ConvertCFG2DAG(impl);
+      vcgen.ConvertCFG2DAG(impl, threadID: houdiniID);
       ModelViewInfo mvInfo;
       var gotoCmdOrigins = vcgen.PassifyImpl(impl, out mvInfo);
 

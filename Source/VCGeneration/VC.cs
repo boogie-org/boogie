@@ -1875,7 +1875,7 @@ namespace VC {
           }
       }
 
-    public void ConvertCFG2DAG(Implementation impl, Dictionary<Block,List<Block>> edgesCut = null)
+    public void ConvertCFG2DAG(Implementation impl, Dictionary<Block,List<Block>> edgesCut = null, int threadID = -1)
     {
     Contract.Requires(impl != null);
       impl.PruneUnreachableBlocks();  // This is needed for VCVariety.BlockNested, and is otherwise just an optimization
@@ -1944,6 +1944,17 @@ namespace VC {
               b.Attributes = c.Attributes;
               b.ErrorData = c.ErrorData;
               prefixOfPredicateCmdsInit.Add(b);
+
+              if (CommandLineOptions.Clo.ConcurrentHoudini) {
+                if (CommandLineOptions.Clo.Cho[threadID].DisableLoopInvMaintainedAssert)
+                  b = new Bpl.LoopInvMaintainedAssertCmd(c.tok, Expr.True);
+                else
+                  b = new Bpl.LoopInvMaintainedAssertCmd(c.tok, c.Expr);
+              } else {
+                b = new Bpl.LoopInvMaintainedAssertCmd(c.tok, c.Expr);
+              }
+
+              if (threadID >= 0 && CommandLineOptions.Clo.DisableLoopInvMaintainedAssert)
 
               if (CommandLineOptions.Clo.DisableLoopInvMaintainedAssert)
                 b = new Bpl.LoopInvMaintainedAssertCmd(c.tok, Expr.True);

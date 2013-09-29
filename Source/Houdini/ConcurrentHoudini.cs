@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.Diagnostics.Contracts;
 using System.Text.RegularExpressions;
 using System.Linq;
+using VC;
 
 namespace Microsoft.Boogie.Houdini
 {
@@ -13,13 +14,65 @@ namespace Microsoft.Boogie.Houdini
   {
     int id;
 
-//    private static ConcurrentDictionary<RefutedAnnotation, int> refutedSharedAnnotations;
     private static ConcurrentDictionary<string, RefutedAnnotation> refutedSharedAnnotations;
 
-    public ConcurrentHoudini(int id, Program program, HoudiniSession.HoudiniStatistics stats, string cexTraceFile = "houdiniCexTrace.bpl")
-      : base(program, stats, cexTraceFile)
-    {
+    public ConcurrentHoudini(int id, Program program, HoudiniSession.HoudiniStatistics stats, string cexTraceFile = "houdiniCexTrace.bpl") {
+      Contract.Assert(id >= 0);
+
       this.id = id;
+      this.program = program;
+      this.cexTraceFile = cexTraceFile;
+
+      if (CommandLineOptions.Clo.Trace)
+        Console.WriteLine("Collecting existential constants...");
+      this.houdiniConstants = CollectExistentialConstants();
+
+      if (CommandLineOptions.Clo.Trace)
+        Console.WriteLine("Building call graph...");
+      this.callGraph = Program.BuildCallGraph(program);
+      if (CommandLineOptions.Clo.Trace)
+        Console.WriteLine("Number of implementations = {0}", callGraph.Nodes.Count);
+
+      if (CommandLineOptions.Clo.HoudiniUseCrossDependencies)
+      {
+        if (CommandLineOptions.Clo.Trace) Console.WriteLine("Computing procedure cross dependencies ...");
+        this.crossDependencies = new CrossDependencies(this.houdiniConstants);
+        this.crossDependencies.Visit(program);
+      }
+
+      Inline();
+
+      this.vcgen = new VCGen(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend, new List<Checker>());
+      this.proverInterface = ProverInterface.CreateProver(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend, CommandLineOptions.Clo.ProverKillTime);
+
+      vcgenFailures = new HashSet<Implementation>();
+      Dictionary<Implementation, HoudiniSession> houdiniSessions = new Dictionary<Implementation, HoudiniSession>();
+      if (CommandLineOptions.Clo.Trace)
+        Console.WriteLine("Beginning VC generation for Houdini...");
+      foreach (Implementation impl in callGraph.Nodes) {
+        try {
+          if (CommandLineOptions.Clo.Trace)
+            Console.WriteLine("Generating VC for {0}", impl.Name);
+          HoudiniSession session = new HoudiniSession(this, vcgen, proverInterface, program, impl, stats, id);
+          houdiniSessions.Add(impl, session);
+        }
+        catch (VCGenException) {
+          if (CommandLineOptions.Clo.Trace)
+            Console.WriteLine("VC generation failed");
+          vcgenFailures.Add(impl);
+        }
+      }
+      this.houdiniSessions = new ReadOnlyDictionary<Implementation, HoudiniSession>(houdiniSessions);
+
+      if (CommandLineOptions.Clo.ExplainHoudini)
+      {
+        // Print results of ExplainHoudini to a dotty file
+        explainHoudiniDottyFile = new StreamWriter("explainHoudini.dot");
+        explainHoudiniDottyFile.WriteLine("digraph explainHoudini {");
+        foreach (var constant in houdiniConstants)
+          explainHoudiniDottyFile.WriteLine("{0} [ label = \"{0}\" color=black ];", constant.Name);
+        explainHoudiniDottyFile.WriteLine("TimeOut [label = \"TimeOut\" color=red ];");
+      }
     }
 
     static ConcurrentHoudini()
@@ -71,8 +124,7 @@ namespace Microsoft.Boogie.Houdini
           RefutedAnnotation refutedAnnotation = ExtractRefutedAnnotation(error);
           // some candidate annotation removed
           if (refutedAnnotation != null) {
-            if (CommandLineOptions.Clo.HoudiniShareRefutedCandidates)
-              refutedSharedAnnotations.TryAdd (refutedAnnotation.Constant.Name, refutedAnnotation);
+            refutedSharedAnnotations.TryAdd (refutedAnnotation.Constant.Name, refutedAnnotation);
             AddRelatedToWorkList(refutedAnnotation);
             UpdateAssignment(refutedAnnotation);
             dequeue = false;
@@ -96,8 +148,7 @@ namespace Microsoft.Boogie.Houdini
         if (CommandLineOptions.Clo.DebugParallelHoudini)
           Console.WriteLine("# exchange set size: " + refutedSharedAnnotations.Count);
 
-        if (CommandLineOptions.Clo.HoudiniShareRefutedCandidates)
-          if (ExchangeRefutedAnnotations()) dequeue = false;
+        if (ExchangeRefutedAnnotations()) dequeue = false;
 
         break;
         default:
@@ -145,9 +196,7 @@ namespace Microsoft.Boogie.Houdini
       while (currentHoudiniState.WorkQueue.Count > 0) {
         this.NotifyIteration();
 
-        if (CommandLineOptions.Clo.HoudiniShareRefutedCandidates)
-          ExchangeRefutedAnnotations();
-
+        ExchangeRefutedAnnotations();
         currentHoudiniState.Implementation = currentHoudiniState.WorkQueue.Peek();
         this.NotifyImplementation(currentHoudiniState.Implementation);
 

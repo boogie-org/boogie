@@ -397,9 +397,9 @@ namespace Microsoft.Boogie {
     public bool IntraproceduralInfer = true;
     public bool ContractInfer = false;
     public bool ExplainHoudini = false;
-    public bool HoudiniShareRefutedCandidates = false;
+    public bool ConcurrentHoudini = false;
     public bool DisableLoopInvMaintainedAssert = false;
-    public bool ReverseTopologicalSorting = false;
+    public bool ModifyTopologicalSorting = false;
     public bool DebugParallelHoudini = false;
     public bool HoudiniUseCrossDependencies = false;
     public string StagedHoudini = null;
@@ -646,6 +646,15 @@ namespace Microsoft.Boogie {
       public bool DebugStatistics = false;
     }
     public AiFlags/*!*/ Ai = new AiFlags();
+
+    public class ConcurrentHoudiniOptions
+    {
+      public int ProverCCLimit = 5;
+      public bool DisableLoopInvMaintainedAssert = false;
+      public bool ModifyTopologicalSorting = false;
+      public int LoopUnrollCount = -1;
+    }
+    public List<ConcurrentHoudiniOptions> Cho = new List<ConcurrentHoudiniOptions>();
 
     protected override bool ParseOption(string name, CommandLineOptionEngine.CommandLineParseState ps) {
       var args = ps.args;  // convenient synonym
@@ -1169,21 +1178,15 @@ namespace Microsoft.Boogie {
           }
           return true;
 
-        case "sharedRefutation":
+        case "concurrentHoudini":
           if (ps.ConfirmArgumentCount(0)) {
-            HoudiniShareRefutedCandidates = true;
+            ConcurrentHoudini = true;
           }
           return true;
 
-        case "disableLoopInvMaintainedAssert":
+        case "modifyTopologicalSorting":
           if (ps.ConfirmArgumentCount(0)) {
-            DisableLoopInvMaintainedAssert = true;
-          }
-          return true;
-
-        case "reverseTopologicalSorting":
-          if (ps.ConfirmArgumentCount(0)) {
-            ReverseTopologicalSorting = true;
+            ModifyTopologicalSorting = true;
           }
           return true;
 
@@ -1680,14 +1683,6 @@ namespace Microsoft.Boogie {
   /printInstrumented
                 print Boogie program after it has been instrumented with
                 invariants
-  /sharedRefutation
-                Enables sharing of refuted candidate invariants between multiple threads.
-  /disableLoopInvMaintainedAssert
-                Disables the loop invariant check to maintain the invariant after iteration.
-                This is an under-approximation feature
-  /reverseTopologicalSorting
-                Reverses the order that roots are found in the Topological Sorting algorithm.
-                Can be used to potentially change the order that Houdini refutes candidates
 
   ---- Debugging and general tracing options ---------------------------------
 

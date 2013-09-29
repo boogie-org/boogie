@@ -1344,7 +1344,7 @@ namespace VC {
       }
 
       IEnumerable sortedNodes;
-      if (CommandLineOptions.Clo.ReverseTopologicalSorting) {
+      if (CommandLineOptions.Clo.ModifyTopologicalSorting) {
         sortedNodes = dag.TopologicalSort(true);
       } else {
         sortedNodes = dag.TopologicalSort();

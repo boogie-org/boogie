@@ -321,6 +321,8 @@ namespace Microsoft.Boogie.Houdini {
 
     public static TextWriter explainHoudiniDottyFile;
 
+    protected Houdini() { }
+
     public Houdini(Program program, HoudiniSession.HoudiniStatistics stats, string cexTraceFile = "houdiniCexTrace.bpl") {
       this.program = program;
       this.cexTraceFile = cexTraceFile;
@@ -377,7 +379,7 @@ namespace Microsoft.Boogie.Houdini {
       }
     }
 
-    private void Inline() {
+    protected void Inline() {
       if (CommandLineOptions.Clo.InlineDepth < 0)
         return;
 
@@ -434,7 +436,7 @@ namespace Microsoft.Boogie.Houdini {
       }
     }
 
-    private HashSet<Variable> CollectExistentialConstants() {
+    protected HashSet<Variable> CollectExistentialConstants() {
       HashSet<Variable> existentialConstants = new HashSet<Variable>();
       foreach (Declaration decl in program.TopLevelDeclarations) {
         Constant constant = decl as Constant;
