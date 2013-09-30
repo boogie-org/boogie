@@ -1073,6 +1073,7 @@ namespace VC {
       private Outcome CheckVC() {
         prover.Check();
         ProverInterface.Outcome outcome = prover.CheckOutcomeCore(reporter);
+
         return ConditionGeneration.ProverInterfaceOutcomeToConditionGenerationOutcome(outcome);
       }
 

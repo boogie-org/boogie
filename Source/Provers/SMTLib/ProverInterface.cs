@@ -793,11 +793,11 @@ namespace Microsoft.Boogie.SMTLib
     }
 
     [NoDefaultContract]
-    public override Outcome CheckOutcome(ErrorHandler handler)
+    public override Outcome CheckOutcome(ErrorHandler handler, int taskID = -1)
     {
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
 
-      var result = CheckOutcomeCore(handler);
+      var result = CheckOutcomeCore(handler, taskID: taskID);
       SendThisVC("(pop 1)");
       FlushLogFile();
 
@@ -805,7 +805,7 @@ namespace Microsoft.Boogie.SMTLib
     }
 
     [NoDefaultContract]
-    public override Outcome CheckOutcomeCore(ErrorHandler handler)
+    public override Outcome CheckOutcomeCore(ErrorHandler handler, int taskID = -1)
     {  
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
       
@@ -819,6 +819,10 @@ namespace Microsoft.Boogie.SMTLib
         FlushProverWarnings();
 
         var errorsLeft = CommandLineOptions.Clo.ProverCCLimit;
+        if (taskID >= 0) {
+          errorsLeft = CommandLineOptions.Clo.Cho[taskID].ProverCCLimit;
+        }
+
         if (errorsLeft < 1)
           errorsLeft = 1;
 
@@ -1314,7 +1318,7 @@ namespace Microsoft.Boogie.SMTLib
             i++;
         }
         Check();
-
+        
         var outcome = CheckOutcomeCore(handler);
 
         if (outcome != Outcome.Valid) {

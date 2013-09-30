@@ -43,7 +43,7 @@ namespace Microsoft.Boogie.Houdini
       Inline();
 
       this.vcgen = new VCGen(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend, new List<Checker>());
-      this.proverInterface = ProverInterface.CreateProver(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend, CommandLineOptions.Clo.ProverKillTime);
+      this.proverInterface = ProverInterface.CreateProver(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend, CommandLineOptions.Clo.ProverKillTime, id);
 
       vcgenFailures = new HashSet<Implementation>();
       Dictionary<Implementation, HoudiniSession> houdiniSessions = new Dictionary<Implementation, HoudiniSession>();
@@ -53,7 +53,7 @@ namespace Microsoft.Boogie.Houdini
         try {
           if (CommandLineOptions.Clo.Trace)
             Console.WriteLine("Generating VC for {0}", impl.Name);
-          HoudiniSession session = new HoudiniSession(this, vcgen, proverInterface, program, impl, stats, id);
+          HoudiniSession session = new HoudiniSession(this, vcgen, proverInterface, program, impl, stats, taskID: id);
           houdiniSessions.Add(impl, session);
         }
         catch (VCGenException) {
@@ -259,6 +259,19 @@ namespace Microsoft.Boogie.Houdini
           return;
         }
       } 
+    }
+
+    protected override ProverInterface.Outcome TryCatchVerify(HoudiniSession session, int stage, IEnumerable<int> completedStages, out List<Counterexample> errors) {
+      ProverInterface.Outcome outcome;
+      try {
+        outcome = session.Verify(proverInterface, GetAssignmentWithStages(stage, completedStages), out errors, taskID: id);
+      }
+      catch (UnexpectedProverOutputException upo) {
+        Contract.Assume(upo != null);
+        errors = null;
+        outcome = ProverInterface.Outcome.Undetermined;
+      }
+      return outcome;
     }
   }
 }

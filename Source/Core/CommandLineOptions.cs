@@ -398,7 +398,6 @@ namespace Microsoft.Boogie {
     public bool ContractInfer = false;
     public bool ExplainHoudini = false;
     public bool ConcurrentHoudini = false;
-    public bool DisableLoopInvMaintainedAssert = false;
     public bool ModifyTopologicalSorting = false;
     public bool DebugParallelHoudini = false;
     public bool HoudiniUseCrossDependencies = false;
@@ -649,10 +648,10 @@ namespace Microsoft.Boogie {
 
     public class ConcurrentHoudiniOptions
     {
+      public List<string> ProverOptions = new List<string>();
       public int ProverCCLimit = 5;
       public bool DisableLoopInvMaintainedAssert = false;
       public bool ModifyTopologicalSorting = false;
-      public int LoopUnrollCount = -1;
     }
     public List<ConcurrentHoudiniOptions> Cho = new List<ConcurrentHoudiniOptions>();
 

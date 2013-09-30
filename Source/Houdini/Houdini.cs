@@ -1086,7 +1086,7 @@ namespace Microsoft.Boogie.Houdini {
       return null;
     }
 
-    protected ProverInterface.Outcome TryCatchVerify(HoudiniSession session, int stage, IEnumerable<int> completedStages, out List<Counterexample> errors) {
+    protected virtual ProverInterface.Outcome TryCatchVerify(HoudiniSession session, int stage, IEnumerable<int> completedStages, out List<Counterexample> errors) {
       ProverInterface.Outcome outcome;
       try {
         outcome = session.Verify(proverInterface, GetAssignmentWithStages(stage, completedStages), out errors);
@@ -1099,7 +1099,7 @@ namespace Microsoft.Boogie.Houdini {
       return outcome;
     }
 
-    private Dictionary<Variable, bool> GetAssignmentWithStages(int currentStage, IEnumerable<int> completedStages)
+    protected Dictionary<Variable, bool> GetAssignmentWithStages(int currentStage, IEnumerable<int> completedStages)
     {
       Dictionary<Variable, bool> result = new Dictionary<Variable, bool>(currentHoudiniState.Assignment);
       foreach (var c in program.TopLevelDeclarations.OfType<Constant>())
