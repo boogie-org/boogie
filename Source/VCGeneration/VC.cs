@@ -1940,7 +1940,17 @@ namespace VC {
           {
             if (a is AssertCmd) {
               Bpl.AssertCmd c = (AssertCmd) a;
-              Bpl.AssertCmd b = new Bpl.LoopInitAssertCmd(c.tok, c.Expr);
+              Bpl.AssertCmd b = null;
+
+              if (CommandLineOptions.Clo.ConcurrentHoudini) {
+                if (CommandLineOptions.Clo.Cho[taskID].DisableLoopInvEntryAssert)
+                  b = new Bpl.LoopInitAssertCmd(c.tok, Expr.True);
+                else
+                  b = new Bpl.LoopInitAssertCmd(c.tok, c.Expr);
+              } else {
+                b = new Bpl.LoopInitAssertCmd(c.tok, c.Expr);
+              }
+
               b.Attributes = c.Attributes;
               b.ErrorData = c.ErrorData;
               prefixOfPredicateCmdsInit.Add(b);
