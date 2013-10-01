@@ -16,6 +16,8 @@ namespace Microsoft.Boogie.Houdini
 
     private static ConcurrentDictionary<string, RefutedAnnotation> refutedSharedAnnotations;
 
+    public static ConcurrentDictionary<string, RefutedAnnotation> RefutedSharedAnnotations { get { return refutedSharedAnnotations; } }
+
     public ConcurrentHoudini(int id, Program program, HoudiniSession.HoudiniStatistics stats, string cexTraceFile = "houdiniCexTrace.bpl") {
       Contract.Assert(id >= 0);
 
@@ -79,8 +81,6 @@ namespace Microsoft.Boogie.Houdini
     {
       refutedSharedAnnotations = new ConcurrentDictionary<string, RefutedAnnotation>();
     }
-
-    public ConcurrentDictionary<string, RefutedAnnotation> RefutedSharedAnnotations { get { return refutedSharedAnnotations; } }   
 
     private bool ExchangeRefutedAnnotations()
     {
