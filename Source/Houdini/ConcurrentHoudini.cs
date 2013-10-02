@@ -222,7 +222,7 @@ namespace Microsoft.Boogie.Houdini
         List<Counterexample> errors;
         ProverInterface.Outcome outcome = TryCatchVerify(session, stage, completedStages, out errors);
         this.NotifyOutcome(outcome);
-        Console.WriteLine("***ERROR with id {0} --- {1}***", id, errors.Count);
+
         DebugRefutedCandidates(currentHoudiniState.Implementation, errors);
 
         #region Explain Houdini
