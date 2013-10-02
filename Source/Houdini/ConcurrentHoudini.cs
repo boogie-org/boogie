@@ -91,7 +91,7 @@ namespace Microsoft.Boogie.Houdini
         RefutedAnnotation ra = refutedSharedAnnotations[key];
 
         if (kv.Key != null) {
-          if (CommandLineOptions.Clo.DebugParallelHoudini)
+          if (CommandLineOptions.Clo.DebugConcurrentHoudini)
             Console.WriteLine("(+) " + ra.Constant + "," + ra.Kind + "," + ra.CalleeProc + "," + ra.RefutationSite);
 
           AddRelatedToWorkList(ra);
@@ -99,9 +99,6 @@ namespace Microsoft.Boogie.Houdini
           count++;
         }
       }
-
-      if (CommandLineOptions.Clo.DebugParallelHoudini)
-        Console.WriteLine("# refuted annotations received from the shared exchanging set: " + count);
 
       return count > 0 ? true : false;
     }
@@ -145,8 +142,8 @@ namespace Microsoft.Boogie.Houdini
           }
         }
 
-        if (CommandLineOptions.Clo.DebugParallelHoudini)
-          Console.WriteLine("# exchange set size: " + refutedSharedAnnotations.Count);
+        if (CommandLineOptions.Clo.DebugConcurrentHoudini)
+          Console.WriteLine("# number of shared refuted annotations: " + refutedSharedAnnotations.Count);
 
         if (ExchangeRefutedAnnotations()) dequeue = false;
 

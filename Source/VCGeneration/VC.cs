@@ -1943,6 +1943,7 @@ namespace VC {
               Bpl.AssertCmd b = null;
 
               if (CommandLineOptions.Clo.ConcurrentHoudini) {
+                Contract.Assert(taskID >= 0);
                 if (CommandLineOptions.Clo.Cho[taskID].DisableLoopInvEntryAssert)
                   b = new Bpl.LoopInitAssertCmd(c.tok, Expr.True);
                 else
@@ -1956,6 +1957,7 @@ namespace VC {
               prefixOfPredicateCmdsInit.Add(b);
 
               if (CommandLineOptions.Clo.ConcurrentHoudini) {
+                Contract.Assert(taskID >= 0);
                 if (CommandLineOptions.Clo.Cho[taskID].DisableLoopInvMaintainedAssert)
                   b = new Bpl.LoopInvMaintainedAssertCmd(c.tok, Expr.True);
                 else

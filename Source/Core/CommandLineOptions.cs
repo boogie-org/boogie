@@ -399,7 +399,7 @@ namespace Microsoft.Boogie {
     public bool ExplainHoudini = false;
     public bool ConcurrentHoudini = false;
     public bool ModifyTopologicalSorting = false;
-    public bool DebugParallelHoudini = false;
+    public bool DebugConcurrentHoudini = false;
     public bool HoudiniUseCrossDependencies = false;
     public string StagedHoudini = null;
     public bool DebugStagedHoudini = false;
@@ -1190,9 +1190,9 @@ namespace Microsoft.Boogie {
           }
           return true;
 
-        case "debugParallelHoudini":
+        case "debugConcurrentHoudini":
           if (ps.ConfirmArgumentCount(0)) {
-            DebugParallelHoudini = true;
+            DebugConcurrentHoudini = true;
           }
           return true;
 
