@@ -86,11 +86,40 @@ namespace Microsoft.Boogie.Houdini
     {
       int count = 0;
 
+      if (CommandLineOptions.Clo.DebugConcurrentHoudini)
+        Console.WriteLine("# number of shared refuted annotations: " + refutedSharedAnnotations.Count);
+
       foreach (string key in refutedSharedAnnotations.Keys) {
         KeyValuePair<Variable, bool> kv = currentHoudiniState.Assignment.FirstOrDefault(entry => entry.Key.Name.Equals(key) && entry.Value);
-        RefutedAnnotation ra = refutedSharedAnnotations[key];
 
         if (kv.Key != null) {
+          RefutedAnnotation ra = null;
+          Implementation refutationSite = null;
+
+          foreach (var r in program.TopLevelDeclarations.OfType<Implementation>()) {
+            if (r.Name.Equals(refutedSharedAnnotations[key].RefutationSite.Name)) {
+              refutationSite = r;
+              break;
+            }
+          }
+          Debug.Assert(refutationSite != null);
+
+          if (refutedSharedAnnotations[key].Kind == RefutedAnnotationKind.REQUIRES) {
+            Procedure proc = null;
+            foreach (var p in program.TopLevelDeclarations.OfType<Procedure>()) {
+              if (p.Name.Equals(refutedSharedAnnotations[key].CalleeProc.Name)) {
+                proc = p;
+                break;
+              }
+            }
+            Debug.Assert(proc != null);
+            ra = RefutedAnnotation.BuildRefutedRequires(kv.Key, proc, refutationSite);
+          } else if (refutedSharedAnnotations[key].Kind == RefutedAnnotationKind.ENSURES)
+            ra = RefutedAnnotation.BuildRefutedEnsures(kv.Key, refutationSite);
+          else if (refutedSharedAnnotations[key].Kind == RefutedAnnotationKind.ASSERT)
+            ra = RefutedAnnotation.BuildRefutedAssert(kv.Key, refutationSite);
+          Debug.Assert(ra != null);
+
           if (CommandLineOptions.Clo.DebugConcurrentHoudini)
             Console.WriteLine("(+) " + ra.Constant + "," + ra.Kind + "," + ra.CalleeProc + "," + ra.RefutationSite);
 
@@ -121,7 +150,7 @@ namespace Microsoft.Boogie.Houdini
           RefutedAnnotation refutedAnnotation = ExtractRefutedAnnotation(error);
           // some candidate annotation removed
           if (refutedAnnotation != null) {
-            refutedSharedAnnotations.TryAdd (refutedAnnotation.Constant.Name, refutedAnnotation);
+            refutedSharedAnnotations.TryAdd(refutedAnnotation.Constant.Name, refutedAnnotation);
             AddRelatedToWorkList(refutedAnnotation);
             UpdateAssignment(refutedAnnotation);
             dequeue = false;
@@ -141,9 +170,6 @@ namespace Microsoft.Boogie.Houdini
             #endregion
           }
         }
-
-        if (CommandLineOptions.Clo.DebugConcurrentHoudini)
-          Console.WriteLine("# number of shared refuted annotations: " + refutedSharedAnnotations.Count);
 
         if (ExchangeRefutedAnnotations()) dequeue = false;
 

@@ -712,6 +712,8 @@ namespace Microsoft.Boogie.Houdini {
     }
 
     protected void AddRelatedToWorkList(RefutedAnnotation refutedAnnotation) {
+      if (refutedAnnotation == null) Console.WriteLine("TEEEEEST!!!");
+
       Contract.Assume(currentHoudiniState.Implementation != null);
       foreach (Implementation implementation in FindImplementationsToEnqueue(refutedAnnotation, refutedAnnotation.RefutationSite)) {
         if (!currentHoudiniState.isBlackListed(implementation.Name)) {
