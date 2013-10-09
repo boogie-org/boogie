@@ -50,6 +50,7 @@ namespace Microsoft.Boogie {
         Inliner codeExprInliner = new Inliner(program, inlineCallback, CommandLineOptions.Clo.InlineDepth);
         codeExprInliner.newLocalVars = new List<Variable>(node.LocVars);
         codeExprInliner.newModifies = new List<IdentifierExpr>();
+        codeExprInliner.inlinedProcLblMap = this.inlinedProcLblMap;
         List<Block> newCodeExprBlocks = codeExprInliner.DoInlineBlocks(node.Blocks, ref inlinedSomething);
         return new CodeExpr(codeExprInliner.newLocalVars, newCodeExprBlocks);
     }

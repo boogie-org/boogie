@@ -443,6 +443,7 @@ namespace Microsoft.Boogie
           }
         }
 
+        if(CommandLineOptions.Clo.StratifiedInlining == 0)
         {
           OwickiGriesTransform ogTransform = new OwickiGriesTransform(linearTypechecker);
           ogTransform.Transform();

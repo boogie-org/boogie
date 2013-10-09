@@ -1245,44 +1245,8 @@ namespace VC {
 
         ProverContext ctx = checker.TheoremProver.Context;
         Boogie2VCExprTranslator bet = ctx.BoogieExprTranslator;
-        bet.SetCodeExprConverter(
-          new CodeExprConverter(
-          delegate(CodeExpr codeExpr, Hashtable/*<Block, VCExprVar!>*/ blockVariables, List<VCExprLetBinding/*!*/> bindings)
-          {
-            VCGen vcgen = new VCGen(new Program(), null, false, parent.checkers);
-            vcgen.variable2SequenceNumber = new Dictionary<Variable, int>();
-            vcgen.incarnationOriginMap = new Dictionary<Incarnation, Absy>();
-            vcgen.CurrentLocalVariables = codeExpr.LocVars;
-            // codeExpr.Blocks.PruneUnreachableBlocks();  // This is needed for VCVariety.BlockNested, and is otherwise just an optimization
-
-            ResetPredecessors(codeExpr.Blocks);
-            vcgen.AddBlocksBetween(codeExpr.Blocks);
-            Dictionary<Variable, Expr> gotoCmdOrigins = vcgen.ConvertBlocks2PassiveCmd(codeExpr.Blocks, new List<IdentifierExpr>(), new ModelViewInfo(codeExpr));
-            int ac;  // computed, but then ignored for this CodeExpr
-            VCExpr startCorrect = VCGen.LetVC(codeExpr.Blocks[0], null, label2absy, blockVariables, bindings, ctx, out ac);
-            VCExpr vce = ctx.ExprGen.Let(bindings, startCorrect);
-
-            if (vcgen.CurrentLocalVariables.Count != 0)
-            {
-              Boogie2VCExprTranslator translator = checker.TheoremProver.Context.BoogieExprTranslator;
-              List<VCExprVar> boundVars = new List<VCExprVar>();
-              foreach (Variable v in vcgen.CurrentLocalVariables)
-              {
-                Contract.Assert(v != null);
-                VCExprVar ev = translator.LookupVariable(v);
-                Contract.Assert(ev != null);
-                boundVars.Add(ev);
-                if (v.TypedIdent.Type.Equals(Bpl.Type.Bool))
-                {
-                  // add an antecedent (tickleBool ev) to help the prover find a possible trigger
-                  vce = checker.VCExprGen.Implies(checker.VCExprGen.Function(VCExpressionGenerator.TickleBoolOp, ev), vce);
-                }
-              }
-              vce = checker.VCExprGen.Forall(boundVars, new List<VCTrigger>(), vce);
-            }
-            return vce;
-          }
-        ));
+        CodeExprConversionClosure cc = new CodeExprConversionClosure(label2absy, ctx);
+        bet.SetCodeExprConverter(cc.CodeExprToVerificationCondition);
 
         var exprGen = ctx.ExprGen;
         VCExpr controlFlowVariableExpr = CommandLineOptions.Clo.UseLabels ? null : exprGen.Integer(BigNum.ZERO);
@@ -1370,6 +1334,56 @@ namespace VC {
     }
     #endregion
 
+
+    public class CodeExprConversionClosure
+    {
+        Dictionary<int, Absy> label2absy;
+        ProverContext ctx;
+        public CodeExprConversionClosure(Dictionary<int, Absy> label2absy, ProverContext ctx)
+        {
+            this.label2absy = label2absy;
+            this.ctx = ctx;
+        }
+
+        public VCExpr CodeExprToVerificationCondition(CodeExpr codeExpr, Hashtable blockVariables, List<VCExprLetBinding> bindings, bool isPositiveContext)
+        {
+            VCGen vcgen = new VCGen(new Program(), null, false, new List<Checker>());
+            vcgen.variable2SequenceNumber = new Dictionary<Variable, int>();
+            vcgen.incarnationOriginMap = new Dictionary<Incarnation, Absy>();
+            vcgen.CurrentLocalVariables = codeExpr.LocVars;
+
+            ResetPredecessors(codeExpr.Blocks);
+            vcgen.AddBlocksBetween(codeExpr.Blocks);
+            Dictionary<Variable, Expr> gotoCmdOrigins = vcgen.ConvertBlocks2PassiveCmd(codeExpr.Blocks, new List<IdentifierExpr>(), new ModelViewInfo(codeExpr));
+            int ac;  // computed, but then ignored for this CodeExpr
+            VCExpr startCorrect = VCGen.LetVCIterative(codeExpr.Blocks, null, label2absy, ctx, out ac, isPositiveContext);
+            VCExpr vce = ctx.ExprGen.Let(bindings, startCorrect);
+            if (vcgen.CurrentLocalVariables.Count != 0)
+            {
+                Boogie2VCExprTranslator translator = ctx.BoogieExprTranslator;
+                List<VCExprVar> boundVars = new List<VCExprVar>();
+                foreach (Variable v in vcgen.CurrentLocalVariables)
+                {
+                    Contract.Assert(v != null);
+                    VCExprVar ev = translator.LookupVariable(v);
+                    Contract.Assert(ev != null);
+                    boundVars.Add(ev);
+                    if (v.TypedIdent.Type.Equals(Bpl.Type.Bool))
+                    {
+                        // add an antecedent (tickleBool ev) to help the prover find a possible trigger
+                        vce = ctx.ExprGen.Implies(ctx.ExprGen.Function(VCExpressionGenerator.TickleBoolOp, ev), vce);
+                    }
+                }
+                vce = ctx.ExprGen.Forall(boundVars, new List<VCTrigger>(), vce);
+            }
+            if (isPositiveContext)
+            {
+                vce = ctx.ExprGen.Not(vce);
+            } 
+            return vce;
+        }
+    }
+
     public VCExpr GenerateVC(Implementation/*!*/ impl, VCExpr controlFlowVariableExpr, out Dictionary<int, Absy>/*!*/ label2absy, ProverContext proverContext)
     {
       Contract.Requires(impl != null);
@@ -1381,7 +1395,7 @@ namespace VC {
       return GenerateVCAux(impl, controlFlowVariableExpr, label2absy, proverContext);
     }
 
-    protected VCExpr GenerateVCAux(Implementation/*!*/ impl, VCExpr controlFlowVariableExpr, Dictionary<int, Absy>/*!*/ label2absy, ProverContext proverContext) {
+    public VCExpr GenerateVCAux(Implementation/*!*/ impl, VCExpr controlFlowVariableExpr, Dictionary<int, Absy>/*!*/ label2absy, ProverContext proverContext) {
       Contract.Requires(impl != null);
       Contract.Requires(proverContext != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
@@ -1466,6 +1480,133 @@ namespace VC {
 
       ModelViewInfo mvInfo;
       var gotoCmdOrigins = PassifyImpl(impl, out mvInfo);
+
+      // If "expand" attribute is supplied, expand any assertion of conjunctions into multiple assertions, one per conjunct
+      foreach (var b in impl.Blocks)
+      {
+        List<Cmd> newCmds = new List<Cmd>();
+        bool changed = false;
+        foreach (var c in b.Cmds)
+        {
+          var a = c as AssertCmd;
+          var ar = c as AssertRequiresCmd;
+          var ae = c as AssertEnsuresCmd;
+          var ai = c as LoopInitAssertCmd;
+          var am = c as LoopInvMaintainedAssertCmd;
+          // TODO:
+          //use Duplicator and Substituter rather than new
+          //nested IToken?
+          //document expand attribute (search for {:ignore}, for example)
+          //fix up new CallCmd, new Requires, new Ensures in OwickiGries.cs
+          Func<Expr,Expr,Expr> withType = (Expr from, Expr to) =>
+          {
+            NAryExpr nFrom = from as NAryExpr;
+            NAryExpr nTo = to as NAryExpr;
+            to.Type = from.Type;
+            if (nFrom != null && nTo != null) nTo.TypeParameters = nFrom.TypeParameters;
+            return to;
+          };
+
+          Action<int,Expr,Action<Expr>> traverse = null;
+          traverse = (depth, e, act) =>
+          {
+            ForallExpr forall = e as ForallExpr;
+            NAryExpr nary = e as NAryExpr;
+            if (forall != null)
+            {
+              traverse(depth, forall.Body, e1 => act(withType(forall,
+                new ForallExpr(e1.tok, forall.TypeParameters, forall.Dummies, forall.Attributes, forall.Triggers, e1))));
+              return;
+            }
+            if (nary != null)
+            {
+              var args = nary.Args;
+              IAppliable fun = nary.Fun;
+              BinaryOperator bop = fun as BinaryOperator;
+              FunctionCall call = fun as FunctionCall;
+              if (bop != null)
+              {
+                switch (bop.Op)
+                {
+                  case BinaryOperator.Opcode.And:
+                    traverse(depth, args[0], act);
+                    traverse(depth, args[1], act);
+                    return;
+                  case BinaryOperator.Opcode.Imp:
+                    traverse(depth, args[1], e1 => act(withType(nary,
+                      new NAryExpr(e1.tok, fun, new List<Expr>() { args[0], e1 }))));
+                    return;
+                }
+              }
+              if (depth > 0 && call != null && call.Func != null)
+              {
+                Function cf = call.Func;
+                Expr body = cf.Body;
+                List<Variable> ins = cf.InParams;
+                if (body == null && cf.DefinitionAxiom != null)
+                {
+                  ForallExpr all = cf.DefinitionAxiom.Expr as ForallExpr;
+                  if (all != null)
+                  {
+                    NAryExpr def = all.Body as NAryExpr;
+                    if (def != null && def.Fun is BinaryOperator && ((BinaryOperator) (def.Fun)).Op == BinaryOperator.Opcode.Iff)
+                    {
+                      body = def.Args[1];
+                      ins = all.Dummies;
+                    }
+                  }
+                }
+                if (body != null)
+                {
+                  Func<Expr,Expr> new_f = e1 =>
+                  {
+                    Function f = new Function(cf.tok, "expand<" + cf.Name + ">", cf.TypeParameters, ins, cf.OutParams[0], cf.Comment);
+                    f.Body = e1;
+                    Token tok = new Token(e1.tok.line, e1.tok.col);
+                    tok.filename = e.tok.filename + "(" + e.tok.line + "," + e.tok.col + ") --> " + e1.tok.filename;
+                    return withType(nary, new NAryExpr(tok, new FunctionCall(f), args));
+                  };
+                  traverse(depth - 1, body, e1 => act(new_f(e1)));
+                  return;
+                }
+              }
+            }
+            act(e);
+          };
+
+          if (a != null)
+          {
+            var attr = a.Attributes;
+            if (ar != null && ar.Requires.Attributes != null) attr = ar.Requires.Attributes;
+            if (ar != null && ar.Call.Attributes != null) attr = ar.Call.Attributes;
+            if (ae != null && ae.Ensures.Attributes != null) attr = ae.Ensures.Attributes;
+            if (QKeyValue.FindExprAttribute(attr, "expand") != null || QKeyValue.FindBoolAttribute(attr, "expand"))
+            {
+              int depth = QKeyValue.FindIntAttribute(attr, "expand", 100);
+              Func<Expr,Expr> fe = e => Expr.Or(a.Expr, e);
+              //traverse(depth, a.Expr, e => System.Console.WriteLine(e.GetType() + " :: " + e + " @ " + e.tok.line + ", " + e.tok.col));
+              traverse(depth, a.Expr, e =>
+                {
+                  AssertCmd new_c = 
+                    (ar != null) ? new AssertRequiresCmd(ar.Call, new Requires(e.tok, ar.Requires.Free, fe(e), ar.Requires.Comment)) :
+                    (ae != null) ? new AssertEnsuresCmd(new Ensures(e.tok, ae.Ensures.Free, fe(e), ae.Ensures.Comment)) :
+                    (ai != null) ? new LoopInitAssertCmd(e.tok, fe(e)) :
+                    (am != null) ? new LoopInvMaintainedAssertCmd(e.tok, fe(e)) :
+                    new AssertCmd(e.tok, fe(e));
+                  new_c.Attributes = new QKeyValue(e.tok, "subsumption", new List<object>() { new LiteralExpr(e.tok, BigNum.FromInt(0)) }, a.Attributes);
+                  newCmds.Add(new_c);
+                });
+            }
+            newCmds.Add(c);
+            changed = true;
+          }
+          else
+          {
+            newCmds.Add(c);
+          }
+        }
+        if (changed) b.Cmds = newCmds;
+      }
 
       double max_vc_cost = CommandLineOptions.Clo.VcsMaxCost;
       int tmp_max_vc_cost = -1, max_splits = CommandLineOptions.Clo.VcsMaxSplits, 
@@ -2589,7 +2730,9 @@ namespace VC {
                                  VCExpr controlFlowVariableExpr,
                                  Dictionary<int, Absy> label2absy,
                                  ProverContext proverCtxt,
-                                 out int assertionCount) {
+                                 out int assertionCount,
+                                 bool isPositiveContext = true)
+    {
       Contract.Requires(blocks != null);
       Contract.Requires(proverCtxt != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
@@ -2625,6 +2768,10 @@ namespace VC {
           }
           else {
             SuccCorrect = proverCtxt.BoogieExprTranslator.Translate(re.Expr);
+            if (isPositiveContext)
+            {
+                SuccCorrect = gen.Not(SuccCorrect);
+            }
           }
         }
         else {
@@ -2643,7 +2790,7 @@ namespace VC {
           SuccCorrect = gen.NAry(VCExpressionGenerator.AndOp, SuccCorrectVars);
         }
 
-        VCContext context = new VCContext(label2absy, proverCtxt, controlFlowVariableExpr);
+        VCContext context = new VCContext(label2absy, proverCtxt, controlFlowVariableExpr, isPositiveContext);
         VCExpr vc = Wlp.Block(block, SuccCorrect, context);
         assertionCount += context.AssertionCount;
 

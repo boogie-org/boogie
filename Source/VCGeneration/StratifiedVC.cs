@@ -266,13 +266,19 @@ namespace VC {
       VCExpressionGenerator gen = proverInterface.VCExprGen;
       var exprGen = proverInterface.Context.ExprGen;
       var translator = proverInterface.Context.BoogieExprTranslator;
+      
       VCExpr controlFlowVariableExpr = null;
       if (!CommandLineOptions.Clo.UseLabels) {
         controlFlowVariable = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "@cfc", Microsoft.Boogie.Type.Int));
         controlFlowVariableExpr = translator.LookupVariable(controlFlowVariable);
         vcgen.InstrumentCallSites(impl);
       }
-      vcexpr = gen.Not(vcgen.GenerateVC(impl, controlFlowVariableExpr, out label2absy, proverInterface.Context));
+      
+      label2absy = new Dictionary<int, Absy>();
+      VCGen.CodeExprConversionClosure cc = new VCGen.CodeExprConversionClosure(label2absy, proverInterface.Context);
+      translator.SetCodeExprConverter(cc.CodeExprToVerificationCondition); 
+      vcexpr = gen.Not(vcgen.GenerateVCAux(impl, controlFlowVariableExpr, label2absy, proverInterface.Context));
+      
       if (controlFlowVariableExpr != null) {
         VCExpr controlFlowFunctionAppl = exprGen.ControlFlowFunctionApplication(controlFlowVariableExpr, exprGen.Integer(BigNum.ZERO));
         VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl, exprGen.Integer(BigNum.FromInt(impl.Blocks[0].UniqueId)));
