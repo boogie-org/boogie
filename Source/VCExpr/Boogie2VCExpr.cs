@@ -47,7 +47,7 @@ namespace Microsoft.Boogie.VCExprAST {
     }
   }
 
-  public delegate VCExpr/*!*/ CodeExprConverter(CodeExpr/*!*/ codeExpr, Hashtable/*<Block, VCExprVar!>*//*!*/ blockVariables, List<VCExprLetBinding> bindings);
+  public delegate VCExpr/*!*/ CodeExprConverter(CodeExpr/*!*/ codeExpr, Hashtable/*<Block, VCExprVar!>*//*!*/ blockVariables, List<VCExprLetBinding> bindings, bool isPositiveContext);
 
   public class Boogie2VCExprTranslator : StandardVisitor, ICloneable {
     // Stack on which the various Visit-methods put the result of the translation
@@ -375,13 +375,42 @@ namespace Microsoft.Boogie.VCExprAST {
       return node;
     }
 
+    public bool isPositiveContext = true;
     private VCExpr TranslateNAryExpr(NAryExpr node) {
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
+     
+      bool flipContextForArg0 = false;
+      if (node.Fun is UnaryOperator)
+      {
+          UnaryOperator oper = (UnaryOperator)node.Fun;
+          if (oper.Op == UnaryOperator.Opcode.Not)
+              flipContextForArg0 = true;
+      }
+      else if (node.Fun is BinaryOperator)
+      {
+          BinaryOperator oper = (BinaryOperator)node.Fun;
+          if (oper.Op == BinaryOperator.Opcode.Imp)
+              flipContextForArg0 = true;
+          else if (oper.Op == BinaryOperator.Opcode.Iff) {
+              Expr one = new NAryExpr(node.tok, new BinaryOperator(node.tok, BinaryOperator.Opcode.Imp), new List<Expr> { node.Args[0], node.Args[1] });
+              Expr two = new NAryExpr(node.tok, new BinaryOperator(node.tok, BinaryOperator.Opcode.Imp), new List<Expr> { node.Args[1], node.Args[0] });
+              NAryExpr cmpd = new NAryExpr(node.tok, new BinaryOperator(node.tok, BinaryOperator.Opcode.And), new List<Expr> { one, two });
+              TypecheckingContext tc = new TypecheckingContext(null);
+              cmpd.Typecheck(tc);
+              return TranslateNAryExpr(cmpd);
+          }
+      }
+
       int n = node.Args.Count;
       List<VCExpr/*!*/>/*!*/ vcs = new List<VCExpr/*!*/>(n);
+        
       for (int i = 0; i < n; i++) {
+        if (i == 0 && flipContextForArg0)
+            isPositiveContext = !isPositiveContext;
         vcs.Add(Translate(cce.NonNull(node.Args)[i]));
+        if (i == 0 && flipContextForArg0)
+            isPositiveContext = !isPositiveContext;
       }
 
       if (node.Type == null) {
@@ -611,19 +640,18 @@ namespace Microsoft.Boogie.VCExprAST {
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }
-    CodeExprConverter codeExprConverter = null;
+    public CodeExprConverter codeExprConverter = null;
     public void SetCodeExprConverter(CodeExprConverter f) {
       this.codeExprConverter = f;
     }
     public override Expr/*!*/ VisitCodeExpr(CodeExpr/*!*/ codeExpr) {
       //Contract.Requires(codeExpr != null);
       Contract.Ensures(Contract.Result<Expr>() != null);
-
       Contract.Assume(codeExprConverter != null);
 
       Hashtable/*<Block, LetVariable!>*/ blockVariables = new Hashtable/*<Block, LetVariable!!>*/();
       List<VCExprLetBinding/*!*/> bindings = new List<VCExprLetBinding/*!*/>();
-      VCExpr e = codeExprConverter(codeExpr, blockVariables, bindings);
+      VCExpr e = codeExprConverter(codeExpr, blockVariables, bindings, isPositiveContext);
       Push(e);
       return codeExpr;
     }

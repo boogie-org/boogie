@@ -67,7 +67,7 @@ namespace Microsoft.Boogie
             newCmds.Add(yieldCallCmd);
         }
 
-        private Dictionary<string, Expr> ComputeAvailableExprs(HashSet<Variable> availableLocalLinearVars, Dictionary<string, Variable> domainNameToInputVar)
+        private Dictionary<string, Expr> ComputeAvailableExprs(HashSet<Variable> availableLinearVars, Dictionary<string, Variable> domainNameToInputVar)
         {
             Dictionary<string, Expr> domainNameToExpr = new Dictionary<string, Expr>();
             foreach (var domainName in linearTypechecker.linearDomains.Keys)
@@ -77,7 +77,7 @@ namespace Microsoft.Boogie
                 expr.Typecheck(new TypecheckingContext(null));
                 domainNameToExpr[domainName] = expr;
             }
-            foreach (Variable v in availableLocalLinearVars)
+            foreach (Variable v in availableLinearVars)
             {
                 var domainName = linearTypechecker.FindDomainName(v);
                 var domain = linearTypechecker.linearDomains[domainName];
@@ -118,7 +118,7 @@ namespace Microsoft.Boogie
             {
                 newCmds.Add(new HavocCmd(Token.NoToken, globalMods));
             }
-            Dictionary<string, Expr> domainNameToExpr = ComputeAvailableExprs(linearTypechecker.availableLocalLinearVars[yieldCmd], domainNameToInputVar);
+            Dictionary<string, Expr> domainNameToExpr = ComputeAvailableExprs(linearTypechecker.availableLinearVars[yieldCmd], domainNameToInputVar);
             AddUpdatesToOldGlobalVars(newCmds, ogOldGlobalMap, domainNameToLocalVar, domainNameToExpr);
 
             for (int j = 0; j < cmds.Count; j++)
@@ -264,7 +264,7 @@ namespace Microsoft.Boogie
                     PredicateCmd predCmd = (PredicateCmd)cmd;
                     var newExpr = Substituter.ApplyReplacingOldExprs(subst, oldSubst, predCmd.Expr);
                     if (predCmd is AssertCmd)
-                        newCmds.Add(new AssertCmd(predCmd.tok, newExpr));
+                        newCmds.Add(new AssertCmd(predCmd.tok, newExpr, predCmd.Attributes));
                     else
                         newCmds.Add(new AssumeCmd(Token.NoToken, newExpr));
                 }
@@ -440,13 +440,13 @@ namespace Microsoft.Boogie
                         if (callCmd.InParallelWith != null || callCmd.IsAsync ||
                             QKeyValue.FindBoolAttribute(callCmd.Proc.Attributes, "yields"))
                         {
-                            HashSet<Variable> availableLocalLinearVars = new HashSet<Variable>(linearTypechecker.availableLocalLinearVars[callCmd]);
+                            HashSet<Variable> availableLinearVars = new HashSet<Variable>(linearTypechecker.availableLinearVars[callCmd]);
                             foreach (IdentifierExpr ie in callCmd.Outs)
                             {
                                 if (linearTypechecker.FindDomainName(ie.Decl) == null) continue;
-                                availableLocalLinearVars.Add(ie.Decl);
+                                availableLinearVars.Add(ie.Decl);
                             }
-                            Dictionary<string, Expr> domainNameToExpr = ComputeAvailableExprs(availableLocalLinearVars, domainNameToInputVar);
+                            Dictionary<string, Expr> domainNameToExpr = ComputeAvailableExprs(availableLinearVars, domainNameToInputVar);
                             AddUpdatesToOldGlobalVars(newCmds, ogOldGlobalMap, domainNameToLocalVar, domainNameToExpr);
                         }
                     }
@@ -473,7 +473,7 @@ namespace Microsoft.Boogie
 
             foreach (Block header in yieldingHeaders)
             {
-                Dictionary<string, Expr> domainNameToExpr = ComputeAvailableExprs(linearTypechecker.availableLocalLinearVars[header], domainNameToInputVar);
+                Dictionary<string, Expr> domainNameToExpr = ComputeAvailableExprs(linearTypechecker.availableLinearVars[header], domainNameToInputVar);
                 foreach (Block pred in header.Predecessors)
                 {
                     AddCallToYieldProc(pred.Cmds, ogOldGlobalMap, domainNameToLocalVar);
@@ -582,7 +582,7 @@ namespace Microsoft.Boogie
                     }
                     else
                     {
-                        cmds.Add(new AssertCmd(r.tok, r.Condition));
+                        cmds.Add(new AssertCmd(r.tok, r.Condition, r.Attributes));
                     }
                 }
                 yields.Add(cmds);
@@ -621,7 +621,7 @@ namespace Microsoft.Boogie
                     }
                     else
                     {
-                        cmds.Add(new AssertCmd(e.tok, e.Condition));
+                        cmds.Add(new AssertCmd(e.tok, e.Condition, e.Attributes));
                     }
                 }
                 yields.Add(cmds);
@@ -680,6 +680,13 @@ namespace Microsoft.Boogie
             program.TopLevelDeclarations.Add(yieldImpl);
         }
 
+        private QKeyValue RemoveYieldsAttribute(QKeyValue iter)
+        {
+            if (iter == null) return null;
+            iter.Next = RemoveYieldsAttribute(iter.Next);
+            return (QKeyValue.FindBoolAttribute(iter, "yields")) ? iter.Next : iter;
+        }
+
         public void Transform()
         {
             Program program = linearTypechecker.program;
@@ -708,11 +715,21 @@ namespace Microsoft.Boogie
                 if (proc == null) continue;
                 if (QKeyValue.FindBoolAttribute(proc.Attributes, "yields"))
                 {
+                    HashSet<Variable> modifiedVars = new HashSet<Variable>();
+                    proc.Modifies.Iter(x => modifiedVars.Add(x.Decl));
                     foreach (GlobalVariable g in program.GlobalVariables())
                     {
+                        if (modifiedVars.Contains(g)) continue;
                         proc.Modifies.Add(new IdentifierExpr(Token.NoToken, g));
                     }
+                    proc.Attributes = RemoveYieldsAttribute(proc.Attributes);
                 }
+            }
+            foreach (var decl in program.TopLevelDeclarations)
+            {
+                Implementation impl = decl as Implementation;
+                if (impl == null) continue;
+                impl.Attributes = RemoveYieldsAttribute(impl.Attributes);
             }
         }
     }
