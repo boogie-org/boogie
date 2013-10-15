@@ -116,11 +116,17 @@ namespace Microsoft.Boogie {
           {
               x.Modifies.Add(new IdentifierExpr(v.tok, v));
           }
-          if (yieldingProcs.Contains(x) && !QKeyValue.FindBoolAttribute(x.Attributes, "yields"))
+      }
+      foreach (Procedure x in yieldingProcs)
+      {
+          if (!QKeyValue.FindBoolAttribute(x.Attributes, "yields"))
           {
               x.AddAttribute("yields");
           }
-          if (asyncAndParallelCallTargetProcs.Contains(x) && !QKeyValue.FindBoolAttribute(x.Attributes, "stable"))
+      }
+      foreach (Procedure x in asyncAndParallelCallTargetProcs)
+      {
+          if (!QKeyValue.FindBoolAttribute(x.Attributes, "stable"))
           {
               x.AddAttribute("stable");
           }

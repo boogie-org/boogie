@@ -443,7 +443,9 @@ namespace Microsoft.Boogie
           }
         }
 
-        if(CommandLineOptions.Clo.StratifiedInlining == 0)
+        EliminateDeadVariablesAndInline(program);
+
+        if (CommandLineOptions.Clo.StratifiedInlining == 0)
         {
           OwickiGriesTransform ogTransform = new OwickiGriesTransform(linearTypechecker);
           ogTransform.Transform();
@@ -457,8 +459,6 @@ namespace Microsoft.Boogie
               CommandLineOptions.Clo.PrintUnstructured = oldPrintUnstructured;
           }
         }
-
-        EliminateDeadVariablesAndInline(program);
 
         var stats = new PipelineStatistics();
         oc = InferAndVerify(program, stats);
