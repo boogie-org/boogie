@@ -397,6 +397,9 @@ namespace Microsoft.Boogie {
     public bool IntraproceduralInfer = true;
     public bool ContractInfer = false;
     public bool ExplainHoudini = false;
+    public bool ConcurrentHoudini = false;
+    public bool ModifyTopologicalSorting = false;
+    public bool DebugConcurrentHoudini = false;
     public bool HoudiniUseCrossDependencies = false;
     public string StagedHoudini = null;
     public bool DebugStagedHoudini = false;
@@ -642,6 +645,16 @@ namespace Microsoft.Boogie {
       public bool DebugStatistics = false;
     }
     public AiFlags/*!*/ Ai = new AiFlags();
+
+    public class ConcurrentHoudiniOptions
+    {
+      public List<string> ProverOptions = new List<string>();
+      public int ProverCCLimit = 5;
+      public bool DisableLoopInvEntryAssert = false;
+      public bool DisableLoopInvMaintainedAssert = false;
+      public bool ModifyTopologicalSorting = false;
+    }
+    public List<ConcurrentHoudiniOptions> Cho = new List<ConcurrentHoudiniOptions>();
 
     protected override bool ParseOption(string name, CommandLineOptionEngine.CommandLineParseState ps) {
       var args = ps.args;  // convenient synonym
@@ -1162,6 +1175,24 @@ namespace Microsoft.Boogie {
                 ps.Error("Invalid argument \"{0}\" to option {1}", args[ps.i], ps.s);
                 break;
             }
+          }
+          return true;
+
+        case "concurrentHoudini":
+          if (ps.ConfirmArgumentCount(0)) {
+            ConcurrentHoudini = true;
+          }
+          return true;
+
+        case "modifyTopologicalSorting":
+          if (ps.ConfirmArgumentCount(0)) {
+            ModifyTopologicalSorting = true;
+          }
+          return true;
+
+        case "debugConcurrentHoudini":
+          if (ps.ConfirmArgumentCount(0)) {
+            DebugConcurrentHoudini = true;
           }
           return true;
 

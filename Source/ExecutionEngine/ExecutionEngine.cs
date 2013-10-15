@@ -689,7 +689,6 @@ namespace Microsoft.Boogie
       }
     }
 
-
     /// <summary>
     /// Given a resolved and type checked Boogie program, infers invariants for the program
     /// and then attempts to verify it.  Returns:

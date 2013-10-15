@@ -234,14 +234,7 @@ namespace Microsoft.Boogie
                 }
 
                 foreach (Block b in Impl.Blocks) {
-                  foreach (Cmd c in b.Cmds) {
-                    CallCmd callCmd = c as CallCmd;
-                    if (callCmd != null) {
-                      if (IsUniform(callCmd.callee)) {
-                        SetNonUniform(callCmd.callee);
-                      }
-                    }
-                  }
+                  Analyse(Impl, b.Cmds, false);
                 }
                         
                 return;
@@ -254,12 +247,6 @@ namespace Microsoft.Boogie
             ctrlDep.TransitiveClosure();
 
             var nonUniformBlockSet = new HashSet<Block>();
-            /*// If procedure is non-uniform, so are all of its blocks
-            if (!uniformityInfo[Impl.Name].Key) {
-              foreach (var block in Impl.Blocks) {
-                nonUniformBlockSet.Add(block);
-              }
-            }*/
             nonUniformBlocks[Impl.Name] = nonUniformBlockSet;
 
             bool changed;

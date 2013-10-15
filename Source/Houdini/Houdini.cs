@@ -17,7 +17,7 @@ using System.Diagnostics;
 
 namespace Microsoft.Boogie.Houdini {
 
-  class ReadOnlyDictionary<K, V> {
+  internal class ReadOnlyDictionary<K, V> {
     private Dictionary<K, V> dictionary;
     public ReadOnlyDictionary(Dictionary<K, V> dictionary) {
       this.dictionary = dictionary;
@@ -305,21 +305,23 @@ namespace Microsoft.Boogie.Houdini {
   }
 
   public class Houdini : ObservableHoudini {
-    private Program program;
-    private HashSet<Variable> houdiniConstants;
-    private ReadOnlyDictionary<Implementation, HoudiniSession> houdiniSessions;
-    private VCGen vcgen;
-    private ProverInterface proverInterface;
-    private Graph<Implementation> callGraph;
-    private HashSet<Implementation> vcgenFailures;
-    private HoudiniState currentHoudiniState;
-    private CrossDependencies crossDependencies;
+    protected Program program;
+    protected HashSet<Variable> houdiniConstants;
+    protected VCGen vcgen;
+    protected ProverInterface proverInterface;
+    protected Graph<Implementation> callGraph;
+    protected HashSet<Implementation> vcgenFailures;
+    protected HoudiniState currentHoudiniState;
+    protected CrossDependencies crossDependencies;
+    internal ReadOnlyDictionary<Implementation, HoudiniSession> houdiniSessions;
 
-    private string cexTraceFile;
+    protected string cexTraceFile;
 
     public HoudiniState CurrentHoudiniState { get { return currentHoudiniState; } }    
 
     public static TextWriter explainHoudiniDottyFile;
+
+    protected Houdini() { }
 
     public Houdini(Program program, HoudiniSession.HoudiniStatistics stats, string cexTraceFile = "houdiniCexTrace.bpl") {
       this.program = program;
@@ -377,7 +379,7 @@ namespace Microsoft.Boogie.Houdini {
       }
     }
 
-    private void Inline() {
+    protected void Inline() {
       if (CommandLineOptions.Clo.InlineDepth < 0)
         return;
 
@@ -434,7 +436,7 @@ namespace Microsoft.Boogie.Houdini {
       }
     }
 
-    private HashSet<Variable> CollectExistentialConstants() {
+    protected HashSet<Variable> CollectExistentialConstants() {
       HashSet<Variable> existentialConstants = new HashSet<Variable>();
       foreach (Declaration decl in program.TopLevelDeclarations) {
         Constant constant = decl as Constant;
@@ -496,7 +498,7 @@ namespace Microsoft.Boogie.Houdini {
         public Dictionary<string, HashSet<Implementation>> assumedInImpl { get; private set; }
     }
     
-    private WorkQueue BuildWorkList(Program program) {
+    protected WorkQueue BuildWorkList(Program program) {
       // adding implementations to the workqueue from the bottom of the call graph upwards
       WorkQueue queue = new WorkQueue();
       StronglyConnectedComponents<Implementation> sccs =
@@ -634,7 +636,7 @@ namespace Microsoft.Boogie.Houdini {
         return null;
     }
 
-    private Dictionary<Variable, bool> BuildAssignment(HashSet<Variable> constants) {
+    protected Dictionary<Variable, bool> BuildAssignment(HashSet<Variable> constants) {
       Dictionary<Variable, bool> initial = new Dictionary<Variable, bool>();
       foreach (var constant in constants)
         initial.Add(constant, true);
@@ -659,7 +661,7 @@ namespace Microsoft.Boogie.Houdini {
 
     // Record most current non-candidate errors found
     // Return true if there was at least one non-candidate error
-    private bool UpdateHoudiniOutcome(HoudiniOutcome houdiniOutcome,
+    protected bool UpdateHoudiniOutcome(HoudiniOutcome houdiniOutcome,
                                       Implementation implementation,
                                       ProverInterface.Outcome outcome,
                                       List<Counterexample> errors) {
@@ -677,7 +679,7 @@ namespace Microsoft.Boogie.Houdini {
       return nonCandidateErrors.Count > 0;
     }
 
-    private void FlushWorkList(int stage, IEnumerable<int> completedStages) {
+    protected void FlushWorkList(int stage, IEnumerable<int> completedStages) {
       this.NotifyFlushStart();
       while (currentHoudiniState.WorkQueue.Count > 0) {
         this.NotifyIteration();
@@ -698,7 +700,7 @@ namespace Microsoft.Boogie.Houdini {
       this.NotifyFlushFinish();
     }
 
-    private void UpdateAssignment(RefutedAnnotation refAnnot) {
+    protected void UpdateAssignment(RefutedAnnotation refAnnot) {
       if (CommandLineOptions.Clo.Trace) {
         Console.WriteLine("Removing " + refAnnot.Constant);
         using (var cexWriter = new System.IO.StreamWriter(cexTraceFile, true))
@@ -709,9 +711,9 @@ namespace Microsoft.Boogie.Houdini {
       this.NotifyConstant(refAnnot.Constant.Name);
     }
 
-    private void AddRelatedToWorkList(RefutedAnnotation refutedAnnotation) {
+    protected void AddRelatedToWorkList(RefutedAnnotation refutedAnnotation) {
       Contract.Assume(currentHoudiniState.Implementation != null);
-      foreach (Implementation implementation in FindImplementationsToEnqueue(refutedAnnotation, currentHoudiniState.Implementation)) {
+      foreach (Implementation implementation in FindImplementationsToEnqueue(refutedAnnotation, refutedAnnotation.RefutationSite)) {
         if (!currentHoudiniState.isBlackListed(implementation.Name)) {
           currentHoudiniState.WorkQueue.Enqueue(implementation);
           this.NotifyEnqueue(implementation);
@@ -721,7 +723,7 @@ namespace Microsoft.Boogie.Houdini {
 
     // Updates the worklist and current assignment
     // @return true if the current function is dequeued
-    private bool UpdateAssignmentWorkList(ProverInterface.Outcome outcome,
+    protected virtual bool UpdateAssignmentWorkList(ProverInterface.Outcome outcome,
                                           List<Counterexample> errors) {
       Contract.Assume(currentHoudiniState.Implementation != null);
       bool dequeue = true;
@@ -731,34 +733,36 @@ namespace Microsoft.Boogie.Houdini {
           case ProverInterface.Outcome.Valid:
               //yeah, dequeue
               break;
+
           case ProverInterface.Outcome.Invalid:
               Contract.Assume(errors != null);
+
               foreach (Counterexample error in errors)
               {
-                  RefutedAnnotation refutedAnnotation = ExtractRefutedAnnotation(error);
-                  if (refutedAnnotation != null)
-                  { // some candidate annotation removed
-                      AddRelatedToWorkList(refutedAnnotation);
-                      UpdateAssignment(refutedAnnotation);
-                      dequeue = false;
-                      #region Extra debugging output
-                      if (CommandLineOptions.Clo.Trace)
-                      {
-                          using (var cexWriter = new System.IO.StreamWriter(cexTraceFile, true))
-                          {
-                              cexWriter.WriteLine("Counter example for " + refutedAnnotation.Constant);
-                              cexWriter.Write(error.ToString());
-                              cexWriter.WriteLine();
-                              using (var writer = new Microsoft.Boogie.TokenTextWriter(cexWriter))
-                                  foreach (Microsoft.Boogie.Block blk in error.Trace)
-                                      blk.Emit(writer, 15);
-                              //cexWriter.WriteLine(); 
-                          }
-                      }
-                      #endregion
-
+                RefutedAnnotation refutedAnnotation = ExtractRefutedAnnotation(error);
+                if (refutedAnnotation != null)
+                { // some candidate annotation removed
+                  AddRelatedToWorkList(refutedAnnotation);
+                  UpdateAssignment(refutedAnnotation);
+                  dequeue = false;
+                  #region Extra debugging output
+                  if (CommandLineOptions.Clo.Trace)
+                  {
+                    using (var cexWriter = new System.IO.StreamWriter(cexTraceFile, true))
+                    {
+                      cexWriter.WriteLine("Counter example for " + refutedAnnotation.Constant);
+                      cexWriter.Write(error.ToString());
+                      cexWriter.WriteLine();
+                      using (var writer = new Microsoft.Boogie.TokenTextWriter(cexWriter))
+                        foreach (Microsoft.Boogie.Block blk in error.Trace)
+                          blk.Emit(writer, 15);
+                      //cexWriter.WriteLine(); 
+                    }
                   }
+                  #endregion
+                }
               }
+              
               break;
           default:
               if (CommandLineOptions.Clo.Trace)
@@ -849,7 +853,7 @@ namespace Microsoft.Boogie.Houdini {
       }
     }
 
-    public HoudiniOutcome PerformHoudiniInference(int stage = 0, 
+    public virtual HoudiniOutcome PerformHoudiniInference(int stage = 0, 
                                                   IEnumerable<int> completedStages = null,
                                                   Dictionary<string, bool> initialAssignment = null) {
       this.NotifyStart(program, houdiniConstants.Count);
@@ -940,17 +944,19 @@ namespace Microsoft.Boogie.Houdini {
       return implementations;
     }
 
-    private enum RefutedAnnotationKind { REQUIRES, ENSURES, ASSERT };
+    public enum RefutedAnnotationKind { REQUIRES, ENSURES, ASSERT };
 
-    private class RefutedAnnotation {
+    public class RefutedAnnotation {
       private Variable _constant;
       private RefutedAnnotationKind _kind;
       private Procedure _callee;
+      private Implementation _refutationSite;
 
-      private RefutedAnnotation(Variable constant, RefutedAnnotationKind kind, Procedure callee) {
+      private RefutedAnnotation(Variable constant, RefutedAnnotationKind kind, Procedure callee, Implementation refutationSite) {
         this._constant = constant;
         this._kind = kind;
         this._callee = callee;
+        this._refutationSite = refutationSite;
       }
       public RefutedAnnotationKind Kind {
         get { return this._kind; }
@@ -961,14 +967,47 @@ namespace Microsoft.Boogie.Houdini {
       public Procedure CalleeProc {
         get { return this._callee; }
       }
-      public static RefutedAnnotation BuildRefutedRequires(Variable constant, Procedure callee) {
-        return new RefutedAnnotation(constant, RefutedAnnotationKind.REQUIRES, callee);
+      public Implementation RefutationSite {
+        get { return this._refutationSite; }
       }
-      public static RefutedAnnotation BuildRefutedEnsures(Variable constant) {
-        return new RefutedAnnotation(constant, RefutedAnnotationKind.ENSURES, null);
+      public static RefutedAnnotation BuildRefutedRequires(Variable constant, Procedure callee, Implementation refutationSite) {
+        return new RefutedAnnotation(constant, RefutedAnnotationKind.REQUIRES, callee, refutationSite);
       }
-      public static RefutedAnnotation BuildRefutedAssert(Variable constant) {
-        return new RefutedAnnotation(constant, RefutedAnnotationKind.ASSERT, null);
+      public static RefutedAnnotation BuildRefutedEnsures(Variable constant, Implementation refutationSite) {
+        return new RefutedAnnotation(constant, RefutedAnnotationKind.ENSURES, null, refutationSite);
+      }
+      public static RefutedAnnotation BuildRefutedAssert(Variable constant, Implementation refutationSite) {
+        return new RefutedAnnotation(constant, RefutedAnnotationKind.ASSERT, null, refutationSite);
+      }
+
+      public override int GetHashCode()
+      {
+        unchecked {
+          int hash = 17;
+          hash = hash * 23 + this.Constant.GetHashCode();
+          hash = hash * 23 + this.Kind.GetHashCode();
+          if (this.CalleeProc != null)
+            hash = hash * 23 + this.CalleeProc.GetHashCode();
+          hash = hash * 23 + this.RefutationSite.GetHashCode();
+          return hash;
+        }
+      }
+
+      public override bool Equals(object obj) {
+        bool result = true;
+        var other = obj as RefutedAnnotation;
+
+        if (other == null) {
+          result = false;
+        } else {
+          result = result && String.Equals(other.Constant, this.Constant);
+          result = result && String.Equals(other.Kind, this.Kind);
+          if (other.CalleeProc != null && this.CalleeProc != null)
+            result = result && String.Equals(other.CalleeProc, this.CalleeProc);
+          result = result && String.Equals(other.RefutationSite, this.RefutationSite);
+        }
+
+        return result;
       }
     }
 
@@ -996,7 +1035,7 @@ namespace Microsoft.Boogie.Houdini {
       }
     }
 
-    private void DebugRefutedCandidates(Implementation curFunc, List<Counterexample> errors) {
+    protected void DebugRefutedCandidates(Implementation curFunc, List<Counterexample> errors) {
       XmlSink xmlRefuted = CommandLineOptions.Clo.XmlRefuted;
       if (xmlRefuted != null && errors != null) {
         DateTime start = DateTime.UtcNow;
@@ -1016,7 +1055,7 @@ namespace Microsoft.Boogie.Houdini {
       }
     }
 
-    private RefutedAnnotation ExtractRefutedAnnotation(Counterexample error) {
+    protected RefutedAnnotation ExtractRefutedAnnotation(Counterexample error) {
       Variable houdiniConstant;
       CallCounterexample callCounterexample = error as CallCounterexample;
       if (callCounterexample != null) {
@@ -1024,7 +1063,7 @@ namespace Microsoft.Boogie.Houdini {
         Requires failingRequires = callCounterexample.FailingRequires;
         if (MatchCandidate(failingRequires.Condition, out houdiniConstant)) {
           Contract.Assert(houdiniConstant != null);
-          return RefutedAnnotation.BuildRefutedRequires(houdiniConstant, failingProcedure);
+          return RefutedAnnotation.BuildRefutedRequires(houdiniConstant, failingProcedure, currentHoudiniState.Implementation);
         }
       }
       ReturnCounterexample returnCounterexample = error as ReturnCounterexample;
@@ -1032,7 +1071,7 @@ namespace Microsoft.Boogie.Houdini {
         Ensures failingEnsures = returnCounterexample.FailingEnsures;
         if (MatchCandidate(failingEnsures.Condition, out houdiniConstant)) {
           Contract.Assert(houdiniConstant != null);
-          return RefutedAnnotation.BuildRefutedEnsures(houdiniConstant);
+          return RefutedAnnotation.BuildRefutedEnsures(houdiniConstant, currentHoudiniState.Implementation);
         }
       }
       AssertCounterexample assertCounterexample = error as AssertCounterexample;
@@ -1040,14 +1079,14 @@ namespace Microsoft.Boogie.Houdini {
         AssertCmd failingAssert = assertCounterexample.FailingAssert;
         if (MatchCandidate(failingAssert.OrigExpr, out houdiniConstant)) {
           Contract.Assert(houdiniConstant != null);
-          return RefutedAnnotation.BuildRefutedAssert(houdiniConstant);
+          return RefutedAnnotation.BuildRefutedAssert(houdiniConstant, currentHoudiniState.Implementation);
         }
       }
 
       return null;
     }
 
-    private ProverInterface.Outcome TryCatchVerify(HoudiniSession session, int stage, IEnumerable<int> completedStages, out List<Counterexample> errors) {
+    protected virtual ProverInterface.Outcome TryCatchVerify(HoudiniSession session, int stage, IEnumerable<int> completedStages, out List<Counterexample> errors) {
       ProverInterface.Outcome outcome;
       try {
         outcome = session.Verify(proverInterface, GetAssignmentWithStages(stage, completedStages), out errors);
@@ -1060,7 +1099,7 @@ namespace Microsoft.Boogie.Houdini {
       return outcome;
     }
 
-    private Dictionary<Variable, bool> GetAssignmentWithStages(int currentStage, IEnumerable<int> completedStages)
+    protected Dictionary<Variable, bool> GetAssignmentWithStages(int currentStage, IEnumerable<int> completedStages)
     {
       Dictionary<Variable, bool> result = new Dictionary<Variable, bool>(currentHoudiniState.Assignment);
       foreach (var c in program.TopLevelDeclarations.OfType<Constant>())
@@ -1079,7 +1118,7 @@ namespace Microsoft.Boogie.Houdini {
       return result;
     }
 
-    private void HoudiniVerifyCurrent(HoudiniSession session, int stage, IEnumerable<int> completedStages) {
+    protected virtual void HoudiniVerifyCurrent(HoudiniSession session, int stage, IEnumerable<int> completedStages) {
       while (true) {
         this.NotifyAssignment(currentHoudiniState.Assignment);
 

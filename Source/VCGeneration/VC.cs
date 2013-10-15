@@ -2016,7 +2016,7 @@ namespace VC {
           }
       }
 
-    public void ConvertCFG2DAG(Implementation impl, Dictionary<Block,List<Block>> edgesCut = null)
+    public void ConvertCFG2DAG(Implementation impl, Dictionary<Block,List<Block>> edgesCut = null, int taskID = -1)
     {
     Contract.Requires(impl != null);
       impl.PruneUnreachableBlocks();  // This is needed for VCVariety.BlockNested, and is otherwise just an optimization
@@ -2081,11 +2081,32 @@ namespace VC {
           {
             if (a is AssertCmd) {
               Bpl.AssertCmd c = (AssertCmd) a;
-              Bpl.AssertCmd b = new Bpl.LoopInitAssertCmd(c.tok, c.Expr);
+              Bpl.AssertCmd b = null;
+
+              if (CommandLineOptions.Clo.ConcurrentHoudini) {
+                Contract.Assert(taskID >= 0);
+                if (CommandLineOptions.Clo.Cho[taskID].DisableLoopInvEntryAssert)
+                  b = new Bpl.LoopInitAssertCmd(c.tok, Expr.True);
+                else
+                  b = new Bpl.LoopInitAssertCmd(c.tok, c.Expr);
+              } else {
+                b = new Bpl.LoopInitAssertCmd(c.tok, c.Expr);
+              }
+
               b.Attributes = c.Attributes;
               b.ErrorData = c.ErrorData;
               prefixOfPredicateCmdsInit.Add(b);
-              b = new Bpl.LoopInvMaintainedAssertCmd(c.tok, c.Expr);
+
+              if (CommandLineOptions.Clo.ConcurrentHoudini) {
+                Contract.Assert(taskID >= 0);
+                if (CommandLineOptions.Clo.Cho[taskID].DisableLoopInvMaintainedAssert)
+                  b = new Bpl.LoopInvMaintainedAssertCmd(c.tok, Expr.True);
+                else
+                  b = new Bpl.LoopInvMaintainedAssertCmd(c.tok, c.Expr);
+              } else {
+                b = new Bpl.LoopInvMaintainedAssertCmd(c.tok, c.Expr);
+              }
+
               b.Attributes = c.Attributes; 
               b.ErrorData = c.ErrorData;
               prefixOfPredicateCmdsMaintained.Add(b);

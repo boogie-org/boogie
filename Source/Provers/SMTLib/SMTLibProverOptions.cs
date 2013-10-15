@@ -87,15 +87,17 @@ namespace Microsoft.Boogie.SMTLib
       string SolverStr = null;
       if (ParseString(opt, "SOLVER", ref SolverStr)) {
         switch (SolverStr) {
+          case "Z3":
           case "z3":
             Solver = SolverKind.Z3;
             break;
+          case "CVC4":
           case "cvc4":
             Solver = SolverKind.CVC4;
-			if (Logic.Equals("")) Logic = "ALL_SUPPORTED";
+			      if (Logic.Equals("")) Logic = "ALL_SUPPORTED";
             break;
           default:
-            ReportError("Invalid SOLVER value; must be 'z3' or 'cvc4'");
+            ReportError("Invalid SOLVER value; must be 'Z3' or 'CVC4'");
             return false;
         }
         return true;

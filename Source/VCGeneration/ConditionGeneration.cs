@@ -1342,7 +1342,14 @@ namespace VC {
           }
         }
       }
-      IEnumerable sortedNodes = dag.TopologicalSort();
+
+      IEnumerable sortedNodes;
+      if (CommandLineOptions.Clo.ModifyTopologicalSorting) {
+        sortedNodes = dag.TopologicalSort(true);
+      } else {
+        sortedNodes = dag.TopologicalSort();
+      }
+
       Contract.Assert(sortedNodes != null);
       #endregion
 

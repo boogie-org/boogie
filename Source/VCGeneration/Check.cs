@@ -378,7 +378,7 @@ namespace Microsoft.Boogie {
   // -----------------------------------------------------------------------------------------------
 
   public abstract class ProverInterface {
-    public static ProverInterface CreateProver(Program prog, string/*?*/ logFilePath, bool appendLogFile, int timeout) {
+    public static ProverInterface CreateProver(Program prog, string/*?*/ logFilePath, bool appendLogFile, int timeout, int taskID = -1) {
       Contract.Requires(prog != null);
 
       ProverOptions options = cce.NonNull(CommandLineOptions.Clo.TheProverFactory).BlankProverOptions();
@@ -393,7 +393,11 @@ namespace Microsoft.Boogie {
         options.TimeLimit = timeout * 1000;
       }
 
-      options.Parse(CommandLineOptions.Clo.ProverOptions);
+      if (taskID >= 0) {
+        options.Parse(CommandLineOptions.Clo.Cho[taskID].ProverOptions);
+      } else {
+        options.Parse(CommandLineOptions.Clo.ProverOptions);
+      }
 
       ProverContext ctx = (ProverContext)CommandLineOptions.Clo.TheProverFactory.NewProverContext(options);
 
@@ -492,7 +496,7 @@ namespace Microsoft.Boogie {
         throw new System.NotImplementedException();
     }
     [NoDefaultContract]
-    public abstract Outcome CheckOutcome(ErrorHandler handler);
+    public abstract Outcome CheckOutcome(ErrorHandler handler, int taskID = -1);
     public virtual string[] CalculatePath(int controlFlowConstant) {
       throw new System.NotImplementedException();
     }
@@ -560,7 +564,7 @@ namespace Microsoft.Boogie {
       throw new NotImplementedException();
     }
 
-    public virtual Outcome CheckOutcomeCore(ErrorHandler handler)
+    public virtual Outcome CheckOutcomeCore(ErrorHandler handler, int taskID = -1)
     {
         throw new NotImplementedException();
     }
@@ -619,7 +623,7 @@ namespace Microsoft.Boogie {
       throw new NotImplementedException();
     }
     [NoDefaultContract]
-    public override Outcome CheckOutcome(ErrorHandler handler) {
+    public override Outcome CheckOutcome(ErrorHandler handler, int taskID = -1) {
       //Contract.Requires(handler != null);
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
       throw new NotImplementedException();

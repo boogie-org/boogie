@@ -522,14 +522,14 @@ namespace Microsoft.Boogie.GraphUtil {
       return dominees == null ? new List<Node>() : dominees;
     }
 
-    public IEnumerable<Node/*?*/> TopologicalSort() {
+    public IEnumerable<Node/*?*/> TopologicalSort(bool reversed = false) {
       bool acyclic;
       List<Node> sortedList;
-      this.TarjanTopSort(out acyclic, out sortedList);
+      this.TarjanTopSort(out acyclic, out sortedList, reversed);
       return acyclic ? sortedList : new List<Node>();
     }
     // From Tarjan 1972
-    public void TarjanTopSort(out bool acyclic, out List<Node> sortedNodes) {
+    public void TarjanTopSort(out bool acyclic, out List<Node> sortedNodes, bool reversed = false) {
       int n = this.Nodes.Count;
       if (n == 0) {
         acyclic = true;
@@ -558,10 +558,19 @@ namespace Microsoft.Boogie.GraphUtil {
       while (sortedIndex < n) {
         // find a root (i.e., its index)
         int rootIndex = -1;
-        for (int i = 0; i < n; i++) {
-          if (incomingEdges[i] == 0) {
-            rootIndex = i;
-            break;
+        if (reversed) {
+          for (int i = n-1; i >= 0; i--) {
+            if (incomingEdges[i] == 0) {
+              rootIndex = i;
+              break;
+            }
+          }
+        } else {
+          for (int i = 0; i < n; i++) {
+            if (incomingEdges[i] == 0) {
+              rootIndex = i;
+              break;
+            }
           }
         }
         if (rootIndex == -1) {

@@ -419,7 +419,12 @@ namespace Microsoft.Boogie {
         }
       }
 
-      IEnumerable<Block> sortedNodes = dag.TopologicalSort();
+      IEnumerable<Block> sortedNodes;
+      if (CommandLineOptions.Clo.ModifyTopologicalSorting) {
+        sortedNodes = dag.TopologicalSort(true);
+      } else {
+        sortedNodes = dag.TopologicalSort();
+      }
       foreach (Block/*!*/ block in sortedNodes) {
         Contract.Assert(block != null);
         HashSet<Variable/*!*/>/*!*/ liveVarsAfter = new HashSet<Variable/*!*/>();

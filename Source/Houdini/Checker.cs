@@ -130,13 +130,13 @@ namespace Microsoft.Boogie.Houdini {
       return false;
     }
 
-    public HoudiniSession(Houdini houdini, VCGen vcgen, ProverInterface proverInterface, Program program, Implementation impl, HoudiniStatistics stats) {
+    public HoudiniSession(Houdini houdini, VCGen vcgen, ProverInterface proverInterface, Program program, Implementation impl, HoudiniStatistics stats, int taskID = -1) {
       this.descriptiveName = impl.Name;
       this.stats = stats;
       collector = new ConditionGeneration.CounterexampleCollector();
       collector.OnProgress("HdnVCGen", 0, 0, 0.0);
 
-      vcgen.ConvertCFG2DAG(impl);
+      vcgen.ConvertCFG2DAG(impl, taskID: taskID);
       ModelViewInfo mvInfo;
       var gotoCmdOrigins = vcgen.PassifyImpl(impl, out mvInfo);
 
@@ -222,7 +222,7 @@ namespace Microsoft.Boogie.Houdini {
       return expr;
     }
 
-    public ProverInterface.Outcome Verify(ProverInterface proverInterface, Dictionary<Variable, bool> assignment, out List<Counterexample> errors) {
+    public ProverInterface.Outcome Verify(ProverInterface proverInterface, Dictionary<Variable, bool> assignment, out List<Counterexample> errors, int taskID = -1) {
       collector.examples.Clear();
 
       if (CommandLineOptions.Clo.Trace) {
@@ -232,7 +232,7 @@ namespace Microsoft.Boogie.Houdini {
 
       VCExpr vc = proverInterface.VCExprGen.Implies(BuildAxiom(proverInterface, assignment), conjecture);
       proverInterface.BeginCheck(descriptiveName, vc, handler);
-      ProverInterface.Outcome proverOutcome = proverInterface.CheckOutcome(handler);
+      ProverInterface.Outcome proverOutcome = proverInterface.CheckOutcome(handler, taskID: taskID);
 
       double queryTime = (DateTime.UtcNow - now).TotalSeconds;
       stats.proverTime += queryTime;
