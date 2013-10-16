@@ -206,9 +206,17 @@ namespace Microsoft.Boogie.Houdini
 
       currentHoudiniState = new HoudiniState(BuildWorkList(program), BuildAssignment(houdiniConstants));
 
-      if(initialAssignment != null) {
-        foreach(var v in currentHoudiniState.Assignment.Keys.ToList()) {
+      if (initialAssignment != null) {
+        foreach (var v in currentHoudiniState.Assignment.Keys.ToList()) {
           currentHoudiniState.Assignment[v] = initialAssignment[v.Name];
+        }
+      }
+
+      if (refutedSharedAnnotations.Count > 0) {
+        foreach (var v in currentHoudiniState.Assignment.Keys.ToList()) {
+          if (refutedSharedAnnotations.ContainsKey(v.Name)) {
+            currentHoudiniState.Assignment[v] = false;
+          }
         }
       }
 
@@ -219,7 +227,6 @@ namespace Microsoft.Boogie.Houdini
       while (currentHoudiniState.WorkQueue.Count > 0) {
         this.NotifyIteration();
 
-        ExchangeRefutedAnnotations();
         currentHoudiniState.Implementation = currentHoudiniState.WorkQueue.Peek();
         this.NotifyImplementation(currentHoudiniState.Implementation);
 
