@@ -121,7 +121,7 @@ namespace Microsoft.Boogie {
     public override List<Cmd> VisitCmdSeq(List<Cmd> cmdSeq) {
       //Contract.Requires(cmdSeq != null);
       Contract.Ensures(Contract.Result<List<Cmd>>() != null);
-      return base.VisitCmdSeq(cmdSeq);
+      return base.VisitCmdSeq(new List<Cmd>(cmdSeq));
     }
     public override Constant VisitConstant(Constant node) {
       //Contract.Requires(node != null);
