@@ -2178,7 +2178,6 @@ namespace VC {
           string calleeName = naryExpr.Fun.FunctionName;
 
           VCExprNAry callExpr = retnary[0] as VCExprNAry;
-          
 
           if (implName2StratifiedInliningInfo.ContainsKey(calleeName)) {
             Contract.Assert(callExpr != null);

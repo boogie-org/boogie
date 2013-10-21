@@ -502,3 +502,10 @@ Execution trace:
 
 Boogie program verifier finished with 0 verified, 1 error
 -----
+----- Running regression test bar12.bpl
+(0,0): Error BP5001: This assertion might not hold.
+Execution trace:
+    bar12.bpl(6,4): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+-----
