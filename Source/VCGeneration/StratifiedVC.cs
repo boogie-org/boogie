@@ -2178,9 +2178,10 @@ namespace VC {
           string calleeName = naryExpr.Fun.FunctionName;
 
           VCExprNAry callExpr = retnary[0] as VCExprNAry;
-          Contract.Assert(callExpr != null);
+          
 
           if (implName2StratifiedInliningInfo.ContainsKey(calleeName)) {
+            Contract.Assert(callExpr != null);
             int candidateId = GetNewId(callExpr);
             boogieExpr2Id[new BoogieCallExpr(naryExpr, currInlineCount)] = candidateId;
             candidateParent[candidateId] = currInlineCount;
@@ -2193,13 +2194,16 @@ namespace VC {
             return Gen.LabelPos(label, id2ControlVar[candidateId]);
           }
           else if (calleeName.StartsWith(recordProcName)) {
+            Contract.Assert(callExpr != null);
             Debug.Assert(callExpr.Length == 1);
             Debug.Assert(callExpr[0] != null);
             recordExpr2Var[new BoogieCallExpr(naryExpr, currInlineCount)] = callExpr[0];
             return callExpr;
           }
           else {
-            return callExpr;
+              // callExpr can be null; this happens when the FunctionCall was on a
+              // pure function (not procedure) and the function got inlined
+              return retnary[0];
           }
         }
 
