@@ -509,3 +509,7 @@ Execution trace:
 
 Boogie program verifier finished with 0 verified, 1 error
 -----
+----- Running regression test bar13.bpl
+
+Boogie program verifier finished with 1 verified, 0 errors
+-----

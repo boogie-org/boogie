@@ -37,4 +37,7 @@ echo -----
 echo ----- Running regression test bar12.bpl
 %BGEXE% %* /stratifiedInline:1 /vc:i bar12.bpl
 echo -----
+echo ----- Running regression test bar13.bpl
+%BGEXE% %* /stratifiedInline:1 /vc:i bar13.bpl
+echo -----
 
