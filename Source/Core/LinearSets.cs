@@ -416,7 +416,7 @@ namespace Microsoft.Boogie
                     Formal f = new Formal(
                       Token.NoToken,
                       new TypedIdent(Token.NoToken, 
-                        domainName + "_in",
+                        "linear_" + domainName + "_in",
                         new MapType(Token.NoToken, new List<TypeVariable>(), 
                           new List<Type> { domain.elementType }, Type.Bool)), true);
                     impl.InParams.Add(f);
@@ -545,7 +545,7 @@ namespace Microsoft.Boogie
                 {
                     proc.Requires.Add(new Requires(true, DisjointnessExpr(domainName, domainNameToInputScope[domainName])));
                     var domain = linearDomains[domainName];
-                    Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, domainName + "_in", new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> { domain.elementType }, Type.Bool)), true);
+                    Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "linear_" + domainName + "_in", new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> { domain.elementType }, Type.Bool)), true);
                     proc.InParams.Add(f);
                     domainNameToOutputScope[domainName].Add(f);
                     proc.Ensures.Add(new Ensures(true, DisjointnessExpr(domainName, domainNameToOutputScope[domainName])));
@@ -621,7 +621,7 @@ namespace Microsoft.Boogie
 
             MapType mapTypeBool = new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> { this.elementType }, Type.Bool);
             MapType mapTypeInt = new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> { this.elementType }, Type.Int);
-            this.mapOrBool = new Function(Token.NoToken, domainName + "_linear_MapOr",
+            this.mapOrBool = new Function(Token.NoToken, "linear_" + domainName + "_MapOr",
                                           new List<Variable> { new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "a", mapTypeBool), true),
                                                           new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "b", mapTypeBool), true) },
                                           new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "c", mapTypeBool), false));
@@ -649,7 +649,7 @@ namespace Microsoft.Boogie
                 axioms.Add(new Axiom(Token.NoToken, axiomExpr));
             }
 
-            this.mapImpBool = new Function(Token.NoToken, domainName + "_linear_MapImp",
+            this.mapImpBool = new Function(Token.NoToken, "linear_" + domainName + "_MapImp",
                                               new List<Variable> { new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "a", mapTypeBool), true),
                                                               new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "b", mapTypeBool), true) },
                                               new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "c", mapTypeBool), false));
@@ -677,7 +677,7 @@ namespace Microsoft.Boogie
                 axioms.Add(new Axiom(Token.NoToken, axiomExpr));
             }
 
-            this.mapConstBool = new Function(Token.NoToken, domainName + "_linear_MapConstBool",
+            this.mapConstBool = new Function(Token.NoToken, "linear_" + domainName + "_MapConstBool",
                                               new List<Variable> { new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "b", Type.Bool), true) },
                                               new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "c", mapTypeBool), false));
             if (CommandLineOptions.Clo.UseArrayTheory)
@@ -700,7 +700,7 @@ namespace Microsoft.Boogie
                 axioms.Add(new Axiom(Token.NoToken, falseAxiomExpr));
             }
 
-            this.mapEqInt = new Function(Token.NoToken, domainName + "_linear_MapEq",
+            this.mapEqInt = new Function(Token.NoToken, "linear_" + domainName + "_MapEq",
                                               new List<Variable> { new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "a", mapTypeInt), true),
                                                               new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "b", mapTypeInt), true) },
                                               new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "c", mapTypeBool), false));
@@ -728,7 +728,7 @@ namespace Microsoft.Boogie
                 axioms.Add(new Axiom(Token.NoToken, axiomExpr));
             }
 
-            this.mapConstInt = new Function(Token.NoToken, domainName + "_linear_MapConstInt",
+            this.mapConstInt = new Function(Token.NoToken, "linear_" + domainName + "_MapConstInt",
                                           new List<Variable> { new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "b", Type.Int), true) },
                                           new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "c", mapTypeInt), false));
             if (CommandLineOptions.Clo.UseArrayTheory)
