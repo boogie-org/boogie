@@ -419,7 +419,7 @@ namespace Microsoft.Boogie
           PrintBplFile(CommandLineOptions.Clo.PrintFile, program, false);
         }
 
-        LinearTypechecker linearTypechecker;
+        LinearTypeChecker linearTypechecker;
         PipelineOutcome oc = ResolveAndTypecheck(program, fileNames[fileNames.Count - 1], out linearTypechecker);
         if (oc != PipelineOutcome.ResolvedAndTypeChecked)
           return;
@@ -576,7 +576,7 @@ namespace Microsoft.Boogie
     ///  - TypeCheckingError if a type checking error occurred
     ///  - ResolvedAndTypeChecked if both resolution and type checking succeeded
     /// </summary>
-    public static PipelineOutcome ResolveAndTypecheck(Program program, string bplFileName, out LinearTypechecker linearTypechecker)
+    public static PipelineOutcome ResolveAndTypecheck(Program program, string bplFileName, out LinearTypeChecker linearTypechecker)
     {
       Contract.Requires(program != null);
       Contract.Requires(bplFileName != null);
@@ -611,7 +611,7 @@ namespace Microsoft.Boogie
         return PipelineOutcome.TypeCheckingError;
       }
 
-      linearTypechecker = new LinearTypechecker(program);
+      linearTypechecker = new LinearTypeChecker(program);
       linearTypechecker.Typecheck();
       if (linearTypechecker.errorCount == 0)
       {
@@ -1142,7 +1142,7 @@ namespace Microsoft.Boogie
     private static Program ProgramFromFile(string filename) {
       Program p = ParseBoogieProgram(new List<string> { filename }, false);
       System.Diagnostics.Debug.Assert(p != null);
-      LinearTypechecker linearTypechecker;
+      LinearTypeChecker linearTypechecker;
       PipelineOutcome oc = ExecutionEngine.ResolveAndTypecheck(p, filename, out linearTypechecker);
       System.Diagnostics.Debug.Assert(oc == PipelineOutcome.ResolvedAndTypeChecked);
       return p;

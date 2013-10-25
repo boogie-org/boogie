@@ -23,7 +23,7 @@ namespace Microsoft.Boogie
         }
     }
 
-    public class LinearTypechecker : StandardVisitor
+    public class LinearTypeChecker : StandardVisitor
     {
         public Program program;
         public int errorCount;
@@ -35,7 +35,7 @@ namespace Microsoft.Boogie
         public Dictionary<Variable, string> globalVarToDomainName;
         public Dictionary<string, LinearDomain> linearDomains;
 
-        public LinearTypechecker(Program program)
+        public LinearTypeChecker(Program program)
         {
             this.program = program;
             this.errorCount = 0;

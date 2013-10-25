@@ -13,13 +13,13 @@ namespace Microsoft.Boogie
     public class OwickiGriesTransform
     {
         List<IdentifierExpr> globalMods;
-        LinearTypechecker linearTypechecker;
+        LinearTypeChecker linearTypechecker;
         Dictionary<string, Procedure> asyncAndParallelCallDesugarings;
         List<Procedure> yieldCheckerProcs;
         List<Implementation> yieldCheckerImpls;
         Procedure yieldProc;
 
-        public OwickiGriesTransform(LinearTypechecker linearTypechecker)
+        public OwickiGriesTransform(LinearTypeChecker linearTypechecker)
         {
             this.linearTypechecker = linearTypechecker;
             Program program = linearTypechecker.program;
@@ -689,6 +689,8 @@ namespace Microsoft.Boogie
 
         public void Transform()
         {
+            MoverChecking.AddCheckers(linearTypechecker);
+
             Program program = linearTypechecker.program;
             foreach (var decl in program.TopLevelDeclarations)
             {
