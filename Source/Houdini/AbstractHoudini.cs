@@ -99,7 +99,7 @@ namespace Microsoft.Boogie.Houdini {
             Inline();
 
             this.vcgen = new VCGen(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend, new List<Checker>());
-            this.prover = ProverInterface.CreateProver(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend, -1);
+            this.prover = ProverInterface.CreateProver(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend, CommandLineOptions.Clo.ProverKillTime);
 
             this.proverTime = TimeSpan.Zero;
             this.numProverQueries = 0;
@@ -219,7 +219,17 @@ namespace Microsoft.Boogie.Houdini {
                     Console.WriteLine("Time taken = " + inc.TotalSeconds.ToString());
 
                 if (proverOutcome == ProverInterface.Outcome.TimeOut || proverOutcome == ProverInterface.Outcome.OutOfMemory)
-                    return new VCGenOutcome(proverOutcome, new List<Counterexample>());
+                {
+                    // pick some function; make it true and keep going
+                    bool changed = false;
+                    foreach (var f in impl2functionsAsserted[impl])
+                    {
+                        function2Value[f] = function2Value[f].MakeTop(out changed);
+                        if (changed) break;
+                    }
+                    if(!changed)
+                        return new VCGenOutcome(proverOutcome, new List<Counterexample>());
+                }
 
                 if (CommandLineOptions.Clo.Trace)
                     Console.WriteLine(collector.numErrors > 0 ? "SAT" : "UNSAT");
@@ -577,6 +587,9 @@ namespace Microsoft.Boogie.Houdini {
             vcgen.ConvertCFG2DAG(impl);
             var gotoCmdOrigins = vcgen.PassifyImpl(impl, out mvInfo);
 
+            // Inline functions
+            (new InlineFunctionCalls()).VisitBlockList(impl.Blocks);
+
             ExtractQuantifiedExprs(impl);
             StripOutermostForall(impl);
 
@@ -785,6 +798,48 @@ namespace Microsoft.Boogie.Houdini {
             return callGraph;
         }
 
+    }
+
+    class InlineFunctionCalls : StandardVisitor
+    {
+        public Stack<string> inlinedFunctionsStack;
+
+        public InlineFunctionCalls()
+        {
+            inlinedFunctionsStack = new Stack<string>();
+        }
+
+        public override Expr VisitNAryExpr(NAryExpr node)
+        {
+            var fc = node.Fun as FunctionCall;
+            if (fc != null && fc.Func.Body != null && QKeyValue.FindBoolAttribute(fc.Func.Attributes, "inline"))
+            {
+                if (inlinedFunctionsStack.Contains(fc.Func.Name))
+                {
+                    // recursion detected
+                    throw new AbsHoudiniInternalError("Recursion detected in function declarations");
+                }
+
+                // create a substitution
+                var subst = new Dictionary<Variable, Expr>();
+                for (int i = 0; i < node.Args.Count; i++)
+                {
+                    subst.Add(fc.Func.InParams[i], node.Args[i]);
+                }
+
+                var e =
+                    Substituter.Apply(new Substitution(v => subst.ContainsKey(v) ? subst[v] : Expr.Ident(v)), fc.Func.Body);
+
+                inlinedFunctionsStack.Push(fc.Func.Name);
+
+                e = base.VisitExpr(e);
+
+                inlinedFunctionsStack.Pop();
+
+                return e;
+            }
+            return base.VisitNAryExpr(node);
+        }
     }
 
     class ReplaceFunctionCalls : StandardVisitor
@@ -1150,6 +1205,17 @@ namespace Microsoft.Boogie.Houdini {
             return new Intervals();
         }
 
+        public IAbstractDomain MakeTop(out bool changed)
+        {
+            if (lower == Int32.MinValue && upper == Int32.MaxValue)
+            {
+                changed = false;
+                return this;
+            }
+            changed = true;
+            return new Intervals(Int32.MinValue, Int32.MaxValue, 0);
+        }
+
         public IAbstractDomain Join(List<Model.Element> states)
         {
             Debug.Assert(states.Count == 1);
@@ -1315,6 +1381,19 @@ namespace Microsoft.Boogie.Houdini {
             return new PredicateAbsElem();
         }
 
+        public IAbstractDomain MakeTop(out bool changed)
+        {
+            if (conjuncts.Count == 0)
+            {
+                changed = false;
+                return this;
+            }
+            changed = true;
+            var ret = new PredicateAbsElem();
+            ret.isFalse = false;
+            return ret;
+        }
+
         public IAbstractDomain Join(List<Model.Element> state)
         {
             if (state.Any(me => !(me is Model.Boolean)))
@@ -1413,6 +1492,14 @@ namespace Microsoft.Boogie.Houdini {
             return GetBottom();
         }
 
+        public IAbstractDomain MakeTop(out bool changed)
+        {
+            changed = false;
+            if (isTop) return this;
+            changed = true;
+            return GetTop();
+        }
+
         public IAbstractDomain Join(List<Model.Element> states)
         {
             Debug.Assert(states.Count == 1);
@@ -1479,6 +1566,17 @@ namespace Microsoft.Boogie.Houdini {
         public static IAbstractDomain GetBottom()
         {
             return new PowDomain(Val.FALSE) as IAbstractDomain;
+        }
+
+        public IAbstractDomain MakeTop(out bool changed)
+        {
+            if (isTop)
+            {
+                changed = false;
+                return this;
+            }
+            changed = true;
+            return new PowDomain(Val.TRUE);
         }
 
         IAbstractDomain IAbstractDomain.Bottom()
@@ -1561,6 +1659,17 @@ namespace Microsoft.Boogie.Houdini {
         IAbstractDomain IAbstractDomain.Bottom()
         {
             return GetBottom();
+        }
+
+        public IAbstractDomain MakeTop(out bool changed)
+        {
+            if (equalities.Count == 0)
+            {
+                changed = false;
+                return this;
+            }
+            changed = true;
+            return new EqualitiesDomain(false, new List<HashSet<int>>());
         }
 
         IAbstractDomain IAbstractDomain.Join(List<Model.Element> state)
@@ -1676,6 +1785,16 @@ namespace Microsoft.Boogie.Houdini {
             return GetBottom();
         }
 
+        public IAbstractDomain MakeTop(out bool changed)
+        {
+            if(val == Val.TRUE) {
+                changed = false;
+                return this;
+            }
+            changed = true;
+            return new ImplicationDomain(Val.TRUE);
+        }
+
         public IAbstractDomain Join(List<Model.Element> states)
         {
             Debug.Assert(states.Count == 2);
@@ -1758,6 +1877,16 @@ namespace Microsoft.Boogie.Houdini {
         public static ConstantProp GetBottom()
         {
             return new ConstantProp(null, false, true);
+        }
+
+        public IAbstractDomain MakeTop(out bool changed) {
+            if (isTop)
+            {
+                changed = false;
+                return this;
+            }
+            changed = true;
+            return GetTop();
         }
 
         private ConstantProp Join(ConstantProp that)
@@ -1871,6 +2000,41 @@ namespace Microsoft.Boogie.Houdini {
             return new IndependentAttribute<T>();
         }
 
+        public IAbstractDomain MakeTop(out bool changed)
+        {
+            var mt = new Func<IAbstractDomain>(() =>
+                {
+                    var ret = new IndependentAttribute<T>();
+                    ret.isBottom = true;
+                    ret.numVars = numVars;
+                    ret.underlyingInstance = underlyingInstance;
+                    ret.varVal = new List<T>();
+                    bool tmp;
+                    for (int i = 0; i < varVal.Count; i++)
+                        ret.varVal.Add(varVal[i].MakeTop(out tmp) as T);
+                    return ret;
+                });
+
+            if (!isBottom)
+            {
+                foreach (var t in varVal)
+                {
+                    var top = t.MakeTop(out changed);
+                    if (changed)
+                    {
+                        return mt();
+                    }
+                }
+            }
+            else
+            {
+                changed = true;
+                return mt();
+            }
+
+            changed = false;
+            return this;
+        }
         public IAbstractDomain Join(List<Model.Element> state)
         {
             SetUnderlyingInstance();
@@ -2002,6 +2166,7 @@ namespace Microsoft.Boogie.Houdini {
     public interface IAbstractDomain
     {
         IAbstractDomain Bottom();
+        IAbstractDomain MakeTop(out bool changed);
         IAbstractDomain Join(List<Model.Element> state);
         Expr Gamma(List<Expr> vars);
         bool TypeCheck(List<Type> argTypes, out string msg);
