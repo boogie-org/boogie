@@ -429,7 +429,7 @@ public class SmartBlockPredicator {
     var oldCmdSeq = block.Cmds;
     block.Cmds = new List<Cmd>();
     newBlocks.Add(block);
-    if (prevBlock != null) {
+    if (prevBlock != null && !((prevBlock.TransferCmd is ReturnCmd) && uni != null && uni.IsUniform(impl.Name, block))) {
       prevBlock.TransferCmd = new GotoCmd(Token.NoToken, new List<Block> { block });
     }
 

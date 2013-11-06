@@ -956,7 +956,11 @@ namespace Microsoft.Boogie.GraphUtil {
           }
 
           var successors = new List<int>[n];
+          var predecessors = new List<int>[n];
           int[] incomingEdges = new int[n];
+
+          for (int i = 0; i < n; i++)
+              predecessors[i] = new List<int>();
 
           foreach (var e in g.Edges)
           {
@@ -970,33 +974,47 @@ namespace Microsoft.Boogie.GraphUtil {
                   successors[source].Add(target);
                   incomingEdges[target]++;
               }
+              predecessors[target].Add(source);
           }
 
           var sortedNodes = new List<Tuple<Node, bool>>();
+          var sortedNodesInternal = new List<int>();
 
           var regionStack = new Stack<Tuple<Node, List<int>>>();
           regionStack.Push(new Tuple<Node, List<int>>(default(Node), allNodes));
 
           while (regionStack.Count != 0)
           {
-              int rootIndex = -1;
+              var rootIndexes = new List<int>();
               foreach (var i in regionStack.Peek().Item2)
               {
                   if (incomingEdges[i] == 0)
-                  {
-                      rootIndex = i;
-                      break;
-                  }
+                      rootIndexes.Add(i);
               }
-              if (rootIndex == -1)
+              if (rootIndexes.Count() == 0)
               {
                   var region = regionStack.Pop();
-                  if (regionStack.Count != 0)
+                  if (regionStack.Count != 0) {
                       sortedNodes.Add(new Tuple<Node, bool>(region.Item1, true));
+                      sortedNodesInternal.Add(nodeToNumber[region.Item1]);
+                  }
                   continue;
+              }
+              int rootIndex = rootIndexes[0];
+              int maxPredIndex = -1;
+              foreach (var i in rootIndexes) {
+                  foreach (var p in predecessors[i]) {
+                      int predIndex =
+                              sortedNodesInternal.FindLastIndex(x => x == p);
+                      if (predIndex > maxPredIndex) {
+                          rootIndex = i;
+                          maxPredIndex = predIndex;
+                      }
+                  }
               }
               incomingEdges[rootIndex] = -1;
               sortedNodes.Add(new Tuple<Node, bool>(numberToNode[rootIndex], false));
+              sortedNodesInternal.Add(rootIndex);
               if (successors[rootIndex] != null)
                   foreach (int s in successors[rootIndex])
                       incomingEdges[s]--;
