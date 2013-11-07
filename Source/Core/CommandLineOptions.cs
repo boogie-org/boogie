@@ -595,8 +595,6 @@ namespace Microsoft.Boogie {
     public int RecursionBound = 500;
     public bool NonUniformUnfolding = false;
     public string inferLeastForUnsat = null;
-    public string CoverageReporterPath = null;
-    public Process coverageReporter = null; // used internally for debugging
 
     // Inference mode for fixed point engine
     public enum FixedPointInferenceMode {
@@ -1115,12 +1113,6 @@ namespace Microsoft.Boogie {
         case "recursionBound":
           if (ps.ConfirmArgumentCount(1)) {
             RecursionBound = Int32.Parse(cce.NonNull(args[ps.i]));
-          }
-          return true;
-
-        case "coverageReporter":
-          if (ps.ConfirmArgumentCount(1)) {
-            CoverageReporterPath = args[ps.i];
           }
           return true;
 

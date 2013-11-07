@@ -407,9 +407,9 @@ namespace Microsoft.Boogie {
     /// <summary>
     /// Apply a substitution to an expression replacing "old" expressions.
     /// Outside "old" expressions, the substitution "always" is applied; any variable not in
-    /// domain(always) is not changed.  Inside "old" expressions, apply map "oldExpr" to
-    /// variables in domain(oldExpr), apply map "always" to variables in
-    /// domain(always)-domain(oldExpr), and leave variable unchanged otherwise.
+    /// domain(always) is not changed.  Inside "old" expressions, apply map "forOld" to
+    /// variables in domain(forOld), apply map "always" to variables in
+    /// domain(always)-domain(forOld), and leave variable unchanged otherwise.
     /// </summary>    
     public static Expr ApplyReplacingOldExprs(Substitution always, Substitution forold, Expr expr) {
       Contract.Requires(expr != null);

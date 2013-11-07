@@ -13,16 +13,16 @@ namespace Microsoft.Boogie
     public class OwickiGriesTransform
     {
         List<IdentifierExpr> globalMods;
-        LinearTypechecker linearTypechecker;
+        LinearTypeChecker linearTypeChecker;
         Dictionary<string, Procedure> asyncAndParallelCallDesugarings;
         List<Procedure> yieldCheckerProcs;
         List<Implementation> yieldCheckerImpls;
         Procedure yieldProc;
 
-        public OwickiGriesTransform(LinearTypechecker linearTypechecker)
+        public OwickiGriesTransform(LinearTypeChecker linearTypeChecker)
         {
-            this.linearTypechecker = linearTypechecker;
-            Program program = linearTypechecker.program;
+            this.linearTypeChecker = linearTypeChecker;
+            Program program = linearTypeChecker.program;
             globalMods = new List<IdentifierExpr>();
             foreach (Variable g in program.GlobalVariables())
             {
@@ -37,7 +37,7 @@ namespace Microsoft.Boogie
         private void AddCallToYieldProc(List<Cmd> newCmds, Dictionary<Variable, Variable> ogOldGlobalMap, Dictionary<string, Variable> domainNameToLocalVar)
         {
             List<Expr> exprSeq = new List<Expr>();
-            foreach (string domainName in linearTypechecker.linearDomains.Keys)
+            foreach (string domainName in linearTypeChecker.linearDomains.Keys)
             {
                 exprSeq.Add(Expr.Ident(domainNameToLocalVar[domainName]));
             }
@@ -48,10 +48,10 @@ namespace Microsoft.Boogie
             if (yieldProc == null)
             {
                 List<Variable> inputs = new List<Variable>();
-                foreach (string domainName in linearTypechecker.linearDomains.Keys)
+                foreach (string domainName in linearTypeChecker.linearDomains.Keys)
                 {
-                    var domain = linearTypechecker.linearDomains[domainName];
-                    Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, domainName + "_in", new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> { domain.elementType }, Type.Bool)), true);
+                    var domain = linearTypeChecker.linearDomains[domainName];
+                    Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "linear_" + domainName + "_in", new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> { domain.elementType }, Type.Bool)), true);
                     inputs.Add(f);
                 }
                 foreach (IdentifierExpr ie in globalMods)
@@ -70,7 +70,7 @@ namespace Microsoft.Boogie
         private Dictionary<string, Expr> ComputeAvailableExprs(HashSet<Variable> availableLinearVars, Dictionary<string, Variable> domainNameToInputVar)
         {
             Dictionary<string, Expr> domainNameToExpr = new Dictionary<string, Expr>();
-            foreach (var domainName in linearTypechecker.linearDomains.Keys)
+            foreach (var domainName in linearTypeChecker.linearDomains.Keys)
             {
                 var expr = new IdentifierExpr(Token.NoToken, domainNameToInputVar[domainName]);
                 expr.Resolve(new ResolutionContext(null));
@@ -79,10 +79,10 @@ namespace Microsoft.Boogie
             }
             foreach (Variable v in availableLinearVars)
             {
-                var domainName = linearTypechecker.FindDomainName(v);
-                var domain = linearTypechecker.linearDomains[domainName];
+                var domainName = linearTypeChecker.FindDomainName(v);
+                var domain = linearTypeChecker.linearDomains[domainName];
                 IdentifierExpr ie = new IdentifierExpr(Token.NoToken, v);
-                var expr = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapOrBool), new List<Expr> { v.TypedIdent.Type is MapType ? ie : linearTypechecker.Singleton(ie, domainName), domainNameToExpr[domainName] });
+                var expr = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapOrBool), new List<Expr> { v.TypedIdent.Type is MapType ? ie : linearTypeChecker.Singleton(ie, domainName), domainNameToExpr[domainName] });
                 expr.Resolve(new ResolutionContext(null));
                 expr.Typecheck(new TypecheckingContext(null));
                 domainNameToExpr[domainName] = expr;
@@ -94,7 +94,7 @@ namespace Microsoft.Boogie
         {
             List<AssignLhs> lhss = new List<AssignLhs>();
             List<Expr> rhss = new List<Expr>();
-            foreach (var domainName in linearTypechecker.linearDomains.Keys)
+            foreach (var domainName in linearTypeChecker.linearDomains.Keys)
             {
                 lhss.Add(new SimpleAssignLhs(Token.NoToken, new IdentifierExpr(Token.NoToken, domainNameToLocalVar[domainName])));
                 rhss.Add(domainNameToExpr[domainName]);
@@ -118,7 +118,7 @@ namespace Microsoft.Boogie
             {
                 newCmds.Add(new HavocCmd(Token.NoToken, globalMods));
             }
-            Dictionary<string, Expr> domainNameToExpr = ComputeAvailableExprs(linearTypechecker.availableLinearVars[yieldCmd], domainNameToInputVar);
+            Dictionary<string, Expr> domainNameToExpr = ComputeAvailableExprs(linearTypeChecker.availableLinearVars[yieldCmd], domainNameToInputVar);
             AddUpdatesToOldGlobalVars(newCmds, ogOldGlobalMap, domainNameToLocalVar, domainNameToExpr);
 
             for (int j = 0; j < cmds.Count; j++)
@@ -194,14 +194,14 @@ namespace Microsoft.Boogie
         {
             if (yields.Count == 0) return;
 
-            Program program = linearTypechecker.program;
+            Program program = linearTypeChecker.program;
             List<Variable> locals = new List<Variable>();
             List<Variable> inputs = new List<Variable>();
             foreach (IdentifierExpr ie in map.Values)
             {
                 locals.Add(ie.Decl);
             }
-            for (int i = 0; i < decl.InParams.Count - linearTypechecker.linearDomains.Count; i++)
+            for (int i = 0; i < decl.InParams.Count - linearTypeChecker.linearDomains.Count; i++)
             {
                 Variable inParam = decl.InParams[i];
                 Variable copy = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, inParam.Name, inParam.TypedIdent.Type));
@@ -209,8 +209,8 @@ namespace Microsoft.Boogie
                 map[decl.InParams[i]] = new IdentifierExpr(Token.NoToken, copy);
             }
             {
-                int i = decl.InParams.Count - linearTypechecker.linearDomains.Count;
-                foreach (string domainName in linearTypechecker.linearDomains.Keys)
+                int i = decl.InParams.Count - linearTypeChecker.linearDomains.Count;
+                foreach (string domainName in linearTypeChecker.linearDomains.Keys)
                 {
                     Variable inParam = decl.InParams[i];
                     Variable copy = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, inParam.Name, inParam.TypedIdent.Type), true);
@@ -252,7 +252,7 @@ namespace Microsoft.Boogie
             int yieldCount = 0;
             foreach (List<Cmd> cs in yields)
             {
-                var linearDomains = linearTypechecker.linearDomains;
+                var linearDomains = linearTypeChecker.linearDomains;
                 List<Cmd> newCmds = new List<Cmd>();
                 foreach (Cmd cmd in cs)
                 {
@@ -342,7 +342,7 @@ namespace Microsoft.Boogie
                 }
             }
 
-            Program program = linearTypechecker.program;
+            Program program = linearTypeChecker.program;
             Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
             foreach (Variable local in impl.LocVars)
             {
@@ -360,8 +360,8 @@ namespace Microsoft.Boogie
             Dictionary<string, Variable> domainNameToInputVar = new Dictionary<string, Variable>();
             Dictionary<string, Variable> domainNameToLocalVar = new Dictionary<string, Variable>();
             {
-                int i = impl.InParams.Count - linearTypechecker.linearDomains.Count;
-                foreach (string domainName in linearTypechecker.linearDomains.Keys)
+                int i = impl.InParams.Count - linearTypeChecker.linearDomains.Count;
+                foreach (string domainName in linearTypeChecker.linearDomains.Keys)
                 {
                     Variable inParam = impl.InParams[i];
                     domainNameToInputVar[domainName] = inParam;
@@ -440,10 +440,10 @@ namespace Microsoft.Boogie
                         if (callCmd.InParallelWith != null || callCmd.IsAsync ||
                             QKeyValue.FindBoolAttribute(callCmd.Proc.Attributes, "yields"))
                         {
-                            HashSet<Variable> availableLinearVars = new HashSet<Variable>(linearTypechecker.availableLinearVars[callCmd]);
+                            HashSet<Variable> availableLinearVars = new HashSet<Variable>(linearTypeChecker.availableLinearVars[callCmd]);
                             foreach (IdentifierExpr ie in callCmd.Outs)
                             {
-                                if (linearTypechecker.FindDomainName(ie.Decl) == null) continue;
+                                if (linearTypeChecker.FindDomainName(ie.Decl) == null) continue;
                                 availableLinearVars.Add(ie.Decl);
                             }
                             Dictionary<string, Expr> domainNameToExpr = ComputeAvailableExprs(availableLinearVars, domainNameToInputVar);
@@ -473,14 +473,14 @@ namespace Microsoft.Boogie
 
             foreach (Block header in yieldingHeaders)
             {
-                Dictionary<string, Expr> domainNameToExpr = ComputeAvailableExprs(linearTypechecker.availableLinearVars[header], domainNameToInputVar);
+                Dictionary<string, Expr> domainNameToExpr = ComputeAvailableExprs(linearTypeChecker.availableLinearVars[header], domainNameToInputVar);
                 foreach (Block pred in header.Predecessors)
                 {
                     AddCallToYieldProc(pred.Cmds, ogOldGlobalMap, domainNameToLocalVar);
                     AddUpdatesToOldGlobalVars(pred.Cmds, ogOldGlobalMap, domainNameToLocalVar, domainNameToExpr);
                 }
                 List<Cmd> newCmds = new List<Cmd>();
-                foreach (string domainName in linearTypechecker.linearDomains.Keys)
+                foreach (string domainName in linearTypeChecker.linearDomains.Keys)
                 {
                     newCmds.Add(new AssumeCmd(Token.NoToken, Expr.Binary(BinaryOperator.Opcode.Eq, Expr.Ident(domainNameToLocalVar[domainName]), domainNameToExpr[domainName])));
                 }
@@ -497,20 +497,20 @@ namespace Microsoft.Boogie
                 List<AssignLhs> lhss = new List<AssignLhs>();
                 List<Expr> rhss = new List<Expr>();
                 Dictionary<string, Expr> domainNameToExpr = new Dictionary<string, Expr>();
-                foreach (var domainName in linearTypechecker.linearDomains.Keys)
+                foreach (var domainName in linearTypeChecker.linearDomains.Keys)
                 {
                     domainNameToExpr[domainName] = new IdentifierExpr(Token.NoToken, domainNameToInputVar[domainName]);
                 }
-                for (int i = 0; i < impl.InParams.Count - linearTypechecker.linearDomains.Count; i++)
+                for (int i = 0; i < impl.InParams.Count - linearTypeChecker.linearDomains.Count; i++)
                 {
                     Variable v = impl.InParams[i];
-                    var domainName = linearTypechecker.FindDomainName(v);
+                    var domainName = linearTypeChecker.FindDomainName(v);
                     if (domainName == null) continue;
-                    var domain = linearTypechecker.linearDomains[domainName];
+                    var domain = linearTypeChecker.linearDomains[domainName];
                     IdentifierExpr ie = new IdentifierExpr(Token.NoToken, v);
-                    domainNameToExpr[domainName] = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapOrBool), new List<Expr> { v.TypedIdent.Type is MapType ? ie : linearTypechecker.Singleton(ie, domainName), domainNameToExpr[domainName] });
+                    domainNameToExpr[domainName] = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapOrBool), new List<Expr> { v.TypedIdent.Type is MapType ? ie : linearTypeChecker.Singleton(ie, domainName), domainNameToExpr[domainName] });
                 }
-                foreach (string domainName in linearTypechecker.linearDomains.Keys)
+                foreach (string domainName in linearTypeChecker.linearDomains.Keys)
                 {
                     lhss.Add(new SimpleAssignLhs(Token.NoToken, new IdentifierExpr(Token.NoToken, domainNameToLocalVar[domainName])));
                     rhss.Add(domainNameToExpr[domainName]);
@@ -534,11 +534,11 @@ namespace Microsoft.Boogie
         {
             if (!QKeyValue.FindBoolAttribute(proc.Attributes, "stable")) return;
 
-            Program program = linearTypechecker.program;
+            Program program = linearTypeChecker.program;
             Dictionary<string, Variable> domainNameToInputVar = new Dictionary<string, Variable>();
             {
-                int i = proc.InParams.Count - linearTypechecker.linearDomains.Count;
-                foreach (string domainName in linearTypechecker.linearDomains.Keys)
+                int i = proc.InParams.Count - linearTypeChecker.linearDomains.Count;
+                foreach (string domainName in linearTypeChecker.linearDomains.Keys)
                 {
                     Variable inParam = proc.InParams[i];
                     domainNameToInputVar[domainName] = inParam;
@@ -552,27 +552,27 @@ namespace Microsoft.Boogie
             if (proc.Requires.Count > 0)
             {
                 Dictionary<string, HashSet<Variable>> domainNameToScope = new Dictionary<string, HashSet<Variable>>();
-                foreach (var domainName in linearTypechecker.linearDomains.Keys)
+                foreach (var domainName in linearTypeChecker.linearDomains.Keys)
                 {
                     domainNameToScope[domainName] = new HashSet<Variable>();
                     domainNameToScope[domainName].Add(domainNameToInputVar[domainName]);
                 }
                 foreach (Variable v in program.GlobalVariables())
                 {
-                    var domainName = linearTypechecker.FindDomainName(v);
+                    var domainName = linearTypeChecker.FindDomainName(v);
                     if (domainName == null) continue;
                     domainNameToScope[domainName].Add(v);
                 }
-                for (int i = 0; i < proc.InParams.Count - linearTypechecker.linearDomains.Count; i++)
+                for (int i = 0; i < proc.InParams.Count - linearTypeChecker.linearDomains.Count; i++)
                 {
                     Variable v = proc.InParams[i];
-                    var domainName = linearTypechecker.FindDomainName(v);
+                    var domainName = linearTypeChecker.FindDomainName(v);
                     if (domainName == null) continue;
                     domainNameToScope[domainName].Add(v);
                 }
-                foreach (string domainName in linearTypechecker.linearDomains.Keys)
+                foreach (string domainName in linearTypeChecker.linearDomains.Keys)
                 {
-                    cmds.Add(new AssumeCmd(Token.NoToken, linearTypechecker.DisjointnessExpr(domainName, domainNameToScope[domainName])));
+                    cmds.Add(new AssumeCmd(Token.NoToken, linearTypeChecker.DisjointnessExpr(domainName, domainNameToScope[domainName])));
                 }
                 foreach (Requires r in proc.Requires)
                 {
@@ -591,27 +591,27 @@ namespace Microsoft.Boogie
             if (proc.Ensures.Count > 0)
             {
                 Dictionary<string, HashSet<Variable>> domainNameToScope = new Dictionary<string, HashSet<Variable>>();
-                foreach (var domainName in linearTypechecker.linearDomains.Keys)
+                foreach (var domainName in linearTypeChecker.linearDomains.Keys)
                 {
                     domainNameToScope[domainName] = new HashSet<Variable>();
                     domainNameToScope[domainName].Add(domainNameToInputVar[domainName]);
                 }
                 foreach (Variable v in program.GlobalVariables())
                 {
-                    var domainName = linearTypechecker.FindDomainName(v);
+                    var domainName = linearTypeChecker.FindDomainName(v);
                     if (domainName == null) continue;
                     domainNameToScope[domainName].Add(v);
                 }
                 for (int i = 0; i < proc.OutParams.Count; i++)
                 {
                     Variable v = proc.OutParams[i];
-                    var domainName = linearTypechecker.FindDomainName(v);
+                    var domainName = linearTypeChecker.FindDomainName(v);
                     if (domainName == null) continue;
                     domainNameToScope[domainName].Add(v);
                 }
-                foreach (string domainName in linearTypechecker.linearDomains.Keys)
+                foreach (string domainName in linearTypeChecker.linearDomains.Keys)
                 {
-                    cmds.Add(new AssumeCmd(Token.NoToken, linearTypechecker.DisjointnessExpr(domainName, domainNameToScope[domainName])));
+                    cmds.Add(new AssumeCmd(Token.NoToken, linearTypeChecker.DisjointnessExpr(domainName, domainNameToScope[domainName])));
                 }
                 foreach (Ensures e in proc.Ensures)
                 {
@@ -634,12 +634,12 @@ namespace Microsoft.Boogie
         {
             if (yieldProc == null) return;
 
-            Program program = linearTypechecker.program;
+            Program program = linearTypeChecker.program;
             List<Variable> inputs = new List<Variable>();
-            foreach (string domainName in linearTypechecker.linearDomains.Keys)
+            foreach (string domainName in linearTypeChecker.linearDomains.Keys)
             {
-                var domain = linearTypechecker.linearDomains[domainName];
-                Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, domainName + "_in", new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> { domain.elementType }, Type.Bool)), true);
+                var domain = linearTypeChecker.linearDomains[domainName];
+                Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "linear_" + domainName + "_in", new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> { domain.elementType }, Type.Bool)), true);
                 inputs.Add(f);
             }
             foreach (IdentifierExpr ie in globalMods)
@@ -689,7 +689,9 @@ namespace Microsoft.Boogie
 
         public void Transform()
         {
-            Program program = linearTypechecker.program;
+            MoverChecking.AddCheckers(linearTypeChecker);
+
+            Program program = linearTypeChecker.program;
             foreach (var decl in program.TopLevelDeclarations)
             {
                 Implementation impl = decl as Implementation;

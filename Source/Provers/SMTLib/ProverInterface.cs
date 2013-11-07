@@ -855,7 +855,8 @@ namespace Microsoft.Boogie.SMTLib
               labels = CalculatePath(handler.StartingProcId());
               xlabels = labels;
             }
-            Model model = GetErrorModel();
+              Model model = (result == Outcome.TimeOut || result == Outcome.OutOfMemory) ? null :
+                  GetErrorModel();
             handler.OnModel(xlabels, model);
           }
 

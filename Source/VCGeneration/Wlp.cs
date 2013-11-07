@@ -152,7 +152,7 @@ namespace VC {
           if (pname != null) {
             return gen.ImpliesSimp(gen.LabelPos("candidate_" + pname.ToString(), ctxt.Ctxt.BoogieExprTranslator.Translate(ac.Expr)), N);
           }
-
+            
           // Label the assume if it is a procedure call
           NAryExpr naryExpr = ac.Expr as NAryExpr;
           if (naryExpr != null) {

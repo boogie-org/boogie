@@ -770,303 +770,6 @@ namespace VC {
       }
     }
 
-    public class CoverageGraphManager {
-      public static int timeStamp = 0;
-
-      public class Task {
-        public enum TaskType { NONE, STEP, INLINE, BLOCK, REACHABLE };
-
-        public TaskType type;
-        private string query_string;
-        public List<int> nodes;
-        public int queryNode {
-          get {
-            Debug.Assert(nodes.Count == 1);
-            return nodes[0];
-          }
-        }
-
-        public Task(string q, FCallHandler calls) {
-          query_string = q;
-          nodes = new List<int>();
-          if (q.StartsWith("step")) {
-            type = TaskType.STEP;
-            return;
-          }
-          var split = q.Split(' ');
-          switch (split[0].ToLower()) {
-            case "inline":
-              type = TaskType.INLINE;
-              break;
-            case "block":
-              type = TaskType.BLOCK;
-              break;
-            case "reachable":
-              type = TaskType.REACHABLE;
-              break;
-            default:
-              Debug.Assert(false);
-              break;
-          }
-          for (int i = 1; i < split.Length; i++) {
-            var node = calls.getCandidateFromGraphNode(split[i]);
-            if (node != -1) {
-              nodes.Add(node);
-            }
-
-          }
-          // Prune nodes according to which are current candidates
-          var pruned = new List<int>();
-          foreach (var n in nodes) {
-            if (calls.currCandidates.Contains(n)) {
-              if (type == TaskType.INLINE || type == TaskType.BLOCK) {
-                pruned.Add(n);
-              }
-            }
-            else {
-              if (type == TaskType.REACHABLE) {
-                pruned.Add(n);
-              }
-            }
-          }
-
-          nodes = pruned;
-          if (type == TaskType.REACHABLE && nodes.Count != 1) {
-            type = TaskType.NONE;
-          }
-          else if (nodes.Count == 0) {
-            type = TaskType.NONE;
-          }
-        }
-
-        public bool isStep() {
-          return (type == TaskType.STEP);
-        }
-
-        public override string ToString() {
-          return query_string;
-        }
-      }
-
-      public string getQuery(int ts) {
-        var ret = "";
-        while (true) {
-          string str = coverageProcess.StandardOutput.ReadLine();
-          if (str.StartsWith("query ")) {
-            var split = str.Split(' ');
-            if (split.Length < 1) continue;
-            if (ts.ToString() == split[1]) {
-              for (int i = 2; i < split.Length; i++) ret = ret + split[i] + " ";
-              break;
-            }
-          }
-        }
-        return ret;
-      }
-
-      public static Process coverageProcess;
-      public bool stopCoverageProcess;
-      //private System.Threading.Thread readerThread;
-      private FCallHandler calls;
-      // Set of edges to send off to the coverageProcess
-      private List<KeyValuePair<int, int>> edges;
-      // Set of nodes to send off to the coverageProcess
-      private HashSet<int> newNodes;
-      // Set of nodes already declared
-      private HashSet<int> declaredNodes;
-
-      public CoverageGraphManager(FCallHandler calls) {
-        stopCoverageProcess = true;
-        coverageProcess = null;
-        this.calls = calls;
-        this.edges = new List<KeyValuePair<int, int>>();
-        declaredNodes = new HashSet<int>();
-        newNodes = new HashSet<int>();
-
-        coverageProcess = CommandLineOptions.Clo.coverageReporter;
-        if (coverageProcess != null) {
-          stopCoverageProcess = false;
-          if (!coverageProcess.StartInfo.RedirectStandardInput) {
-            coverageProcess = null;
-          }
-        }
-        else {
-          if (CommandLineOptions.Clo.CoverageReporterPath != null) {
-            coverageProcess = new Process();
-            var coverageProcessInfo = new ProcessStartInfo();
-            coverageProcessInfo.CreateNoWindow = true;
-            coverageProcessInfo.FileName = CommandLineOptions.Clo.CoverageReporterPath + @"\CoverageGraph.exe";
-            coverageProcessInfo.RedirectStandardInput = true;
-            coverageProcessInfo.RedirectStandardOutput = true;
-            coverageProcessInfo.RedirectStandardError = false;
-            coverageProcessInfo.UseShellExecute = false;
-            coverageProcessInfo.Arguments = "interactive";
-
-            coverageProcess.StartInfo = coverageProcessInfo;
-            try {
-              coverageProcess.Start();
-            }
-            catch (System.ComponentModel.Win32Exception) {
-              coverageProcess.Dispose();
-              coverageProcess = null;
-            }
-            //readerThread = new System.Threading.Thread(new System.Threading.ThreadStart(CoverageGraphInterface));
-            //readerThread.Start();
-          }
-        }
-
-        if (coverageProcess != null) {
-          coverageProcess.StandardInput.WriteLine("clear-all");
-        }
-      }
-
-      public void addMain() {
-        newNodes.Add(0);
-        foreach (var n in calls.currCandidates) {
-          addEdge(0, n);
-        }
-        calls.recentlyAddedCandidates = new HashSet<int>();
-      }
-
-      public void addNode(int src) {
-        newNodes.Add(src);
-      }
-
-      public void addEdge(int src_id, int tgt_id) {
-        newNodes.Add(src_id);
-        newNodes.Add(tgt_id);
-        edges.Add(new KeyValuePair<int, int>(src_id, tgt_id));
-      }
-
-      public void addRecentEdges(int src_id) {
-        newNodes.Add(src_id);
-        foreach (var tgt in calls.recentlyAddedCandidates) {
-          addEdge(src_id, tgt);
-        }
-        calls.recentlyAddedCandidates = new HashSet<int>();
-      }
-
-      private void declareNodes() {
-        var send = false;
-        var declarenode = "declare-node";
-        foreach (var n in newNodes) {
-          if (declaredNodes.Contains(n)) continue;
-          declaredNodes.Add(n);
-          send = true;
-          declarenode += string.Format(" {0} {1}", calls.getPersistentId(n), calls.getProc(n));
-        }
-        if (send)
-          coverageProcess.StandardInput.WriteLine(declarenode);
-      }
-
-      private void declareEdges() {
-        if (edges.Count == 0) return;
-
-        var declareedge = "declare-edge";
-        foreach (var e in edges) {
-          declareedge += string.Format(" {0} {1}", calls.getPersistentId(e.Key), calls.getPersistentId(e.Value));
-        }
-        coverageProcess.StandardInput.WriteLine(declareedge);
-      }
-
-      public void syncGraph() {
-        if (coverageProcess == null || newNodes.Count == 0) {
-          edges.Clear();
-          return;
-        }
-
-        coverageProcess.StandardInput.WriteLine("batch-graph-command-begin");
-        coverageProcess.StandardInput.WriteLine("reset-color");
-
-        // Go through the edges
-        var greenNodes = new HashSet<int>();
-        var redNodes = new HashSet<int>();
-        foreach (var node in calls.currCandidates) {
-          if (calls.getRecursionBound(node) > CommandLineOptions.Clo.RecursionBound) {
-            redNodes.Add(node);
-          }
-          else {
-            greenNodes.Add(node);
-          }
-
-        }
-        // Send data across
-        declareNodes();
-        declareEdges();
-
-        if (greenNodes.Count != 0) {
-          var color = "color green";
-          foreach (var n in greenNodes) {
-            color += string.Format(" {0}", calls.getPersistentId(n));
-          }
-          coverageProcess.StandardInput.WriteLine(color);
-        }
-
-        if (redNodes.Count != 0) {
-          var color = "color red";
-          foreach (var n in redNodes) {
-            color += string.Format(" {0}", calls.getPersistentId(n));
-          }
-          coverageProcess.StandardInput.WriteLine(color);
-        }
-
-        coverageProcess.StandardInput.WriteLine("batch-graph-command-end");
-
-        edges.Clear();
-        newNodes = new HashSet<int>();
-      }
-
-      public void reportBug() {
-        if (coverageProcess == null) return;
-        coverageProcess.StandardInput.WriteLine("set-status bug");
-      }
-
-      public void reportCorrect() {
-        if (coverageProcess == null) return;
-        coverageProcess.StandardInput.WriteLine("set-status correct");
-      }
-
-      public void reportCorrect(int bound) {
-        if (coverageProcess == null) return;
-        coverageProcess.StandardInput.WriteLine("set-status bound {0}", bound);
-      }
-
-      public void reportError() {
-        if (coverageProcess == null) return;
-        coverageProcess.StandardInput.WriteLine("set-status error");
-      }
-
-      public Task getNextTask() {
-        if (coverageProcess == null) return new Task("step", calls);
-        if (coverageProcess.HasExited) {
-          coverageProcess = null;
-          return new Task("step", calls);
-        }
-
-        var ts = getNextTimeStamp();
-        coverageProcess.StandardInput.WriteLine("get-input " + ts.ToString());
-        string q = getQuery(ts);
-        return new Task(q, calls);
-      }
-
-      public void stop() {
-        if (coverageProcess != null) {
-          if (stopCoverageProcess) {
-            coverageProcess.StandardInput.WriteLine("done");
-            do {
-              coverageProcess.WaitForExit(100);
-              coverageProcess.StandardInput.WriteLine();
-            } while (!coverageProcess.HasExited);
-          }
-        }
-      }
-
-      public int getNextTimeStamp() {
-        timeStamp++;
-        return timeStamp - 1;
-      }
-    }
-
     public class ApiChecker {
       public ProverInterface prover;
       public ProverInterface.ErrorHandler reporter;
@@ -1114,8 +817,6 @@ namespace VC {
       // The call tree
       public FCallHandler calls;
       public ApiChecker checker;
-      // The coverage graph reporter
-      public CoverageGraphManager coverageManager;
       // For statistics
       public int vcSize;
       public int expansionCount;
@@ -1167,7 +868,6 @@ namespace VC {
 
       // Put all of the necessary state into one object
       var vState = new VerificationState(vcMain, calls, prover, new EmptyErrorHandler());
-      vState.coverageManager = null;
 
       // We'll restore the original state of the theorem prover at the end
       // of this procedure
@@ -1370,11 +1070,6 @@ namespace VC {
       // Identify summary candidates: Match ensure clauses with the appropriate call site
       if (useSummary) calls.matchSummaries();
 
-      // create a process for displaying coverage information
-      var coverageManager = new CoverageGraphManager(calls);
-      coverageManager.addMain();
-
-
       // We'll restore the original state of the theorem prover at the end
       // of this procedure
       prover.Push();
@@ -1382,7 +1077,6 @@ namespace VC {
       // Put all of the necessary state into one object
       var vState = new VerificationState(vc, calls, prover, reporter, prover2, new EmptyErrorHandler());
       vState.vcSize += SizeComputingVisitor.ComputeSize(vc);
-      vState.coverageManager = coverageManager;
 
       if (useSummary) summaryComputation = new SummaryComputation(vState, computeUnderBound);
 
@@ -1420,11 +1114,9 @@ namespace VC {
       }
       #endregion
 
-      #region Coverage reporter
       if (CommandLineOptions.Clo.StratifiedInliningVerbose > 0) {
         Console.WriteLine(">> SI: Size of VC after eager inlining: {0}", vState.vcSize);
       }
-      #endregion
 
       // Under-approx query is only needed if something was inlined since
       // the last time an under-approx query was made
@@ -1446,157 +1138,137 @@ namespace VC {
       //                     or we reached the recursion bound) and the task is "step"
       //   case 2: (bug)     We find a bug
       //   case 3: (internal error)   The theorem prover TimesOut of runs OutOfMemory
-      while (true) {
-        // Check timeout
-        if (CommandLineOptions.Clo.ProverKillTime != -1) {
-          if ((DateTime.UtcNow - startTime).TotalSeconds > CommandLineOptions.Clo.ProverKillTime) {
-            ret = Outcome.TimedOut;
-            break;
+      while (true)
+      {
+          // Check timeout
+          if (CommandLineOptions.Clo.ProverKillTime != -1)
+          {
+              if ((DateTime.UtcNow - startTime).TotalSeconds > CommandLineOptions.Clo.ProverKillTime)
+              {
+                  ret = Outcome.TimedOut;
+                  break;
+              }
           }
-        }
 
-        // Note: in the absence of a coverage graph process, the task is always "step"
-        coverageManager.syncGraph();
-        var task = coverageManager.getNextTask();
-        if (task.type == CoverageGraphManager.Task.TaskType.INLINE) {
-          if (done == 2) continue;
-          foreach (var id in task.nodes) {
-            calls.setRecursionIncrement(id, 0);
-            coverageManager.addNode(id);
-          }
-          DoExpansion(task.nodes, vState);
-        }
-        else if (task.type == CoverageGraphManager.Task.TaskType.BLOCK) {
-          if (done == 2) continue;
-          foreach (var id in task.nodes) {
-            calls.setRecursionIncrement(id, CommandLineOptions.Clo.RecursionBound + 1);
-            coverageManager.addNode(id);
-          }
-        }
-        else if (task.type == CoverageGraphManager.Task.TaskType.STEP) {
-          if (done > 0) {
-            break;
+          if (done > 0)
+          {
+              break;
           }
 
           VCExpr summary = null;
           if (useSummary) summary = summaryComputation.getSummary();
 
-          if (useSummary && summary != null) {
-            vState.checker.prover.Push();
-            vState.checker.prover.Assert(summary, true);
+          if (useSummary && summary != null)
+          {
+              vState.checker.prover.Push();
+              vState.checker.prover.Assert(summary, true);
           }
 
           // Stratified Step
           ret = stratifiedStep(bound, vState, block);
           iters++;
 
-          if (useSummary && summary != null) {
-            vState.checker.prover.Pop();
+          if (useSummary && summary != null)
+          {
+              vState.checker.prover.Pop();
           }
 
           // Sorry, out of luck (time/memory)
-          if (ret == Outcome.Inconclusive || ret == Outcome.OutOfMemory || ret == Outcome.TimedOut) {
-            done = 3;
-            coverageManager.reportError();
-            continue;
+          if (ret == Outcome.Inconclusive || ret == Outcome.OutOfMemory || ret == Outcome.TimedOut)
+          {
+              done = 3;
+              continue;
           }
 
-          if (ret == Outcome.Errors && reporter.underapproximationMode) {
-            // Found a bug
-            done = 2;
-            coverageManager.reportBug();
+          if (ret == Outcome.Errors && reporter.underapproximationMode)
+          {
+              // Found a bug
+              done = 2;
           }
-          else if (ret == Outcome.Correct) {
-            if (block.Count == 0) {
-              // Correct
-              done = 1;
-              coverageManager.reportCorrect();
-            }
-            else {
-              Contract.Assert(useSummary);
-              // reset blocked and continue loop
-              block.Clear();
-            }
-          }
-          else if (ret == Outcome.ReachedBound) {
-            if (block.Count == 0) {
-              // Increment bound
-              bound++;
-              if (useSummary) summaryComputation.boundChanged();
-
-              if (bound > CommandLineOptions.Clo.RecursionBound) {
-                // Correct under bound
-                done = 1;
-                coverageManager.reportCorrect(bound);
+          else if (ret == Outcome.Correct)
+          {
+              if (block.Count == 0)
+              {
+                  // Correct
+                  done = 1;
               }
-            }
-            else {
-              Contract.Assert(useSummary);
-              // reset blocked and continue loop
-              block.Clear();
-            }
+              else
+              {
+                  Contract.Assert(useSummary);
+                  // reset blocked and continue loop
+                  block.Clear();
+              }
           }
-          else {
-            // Do inlining
-            Debug.Assert(ret == Outcome.Errors && !reporter.underapproximationMode);
-            Contract.Assert(reporter.candidatesToExpand.Count != 0);
-            if (useSummary) {
-              // compute candidates to block  
-              block = new HashSet<int>(calls.currCandidates);
-              block.ExceptWith(reporter.candidatesToExpand);
-            }
+          else if (ret == Outcome.ReachedBound)
+          {
+              if (block.Count == 0)
+              {
+                  // Increment bound
+                  bound++;
+                  if (useSummary) summaryComputation.boundChanged();
 
-            #region expand call tree
-            if (CommandLineOptions.Clo.StratifiedInliningVerbose > 0) {
-              Console.Write(">> SI Inlining: ");
-              reporter.candidatesToExpand
-                  .Select(c => calls.getProc(c))
-                  .Iter(c => { if (!isSkipped(c)) Console.Write("{0} ", c); });
-
-              Console.WriteLine();
-              Console.Write(">> SI Skipping: ");
-              reporter.candidatesToExpand
-                  .Select(c => calls.getProc(c))
-                  .Iter(c => { if (isSkipped(c)) Console.Write("{0} ", c); });
-
-              Console.WriteLine();
-
-            }
-
-            // Expand and try again
-            vState.checker.prover.LogComment(";;;;;;;;;;;; Expansion begin ;;;;;;;;;;");
-            DoExpansion(reporter.candidatesToExpand, vState);
-            vState.checker.prover.LogComment(";;;;;;;;;;;; Expansion end ;;;;;;;;;;");
-
-            #endregion
+                  if (bound > CommandLineOptions.Clo.RecursionBound)
+                  {
+                      // Correct under bound
+                      done = 1;
+                  }
+              }
+              else
+              {
+                  Contract.Assert(useSummary);
+                  // reset blocked and continue loop
+                  block.Clear();
+              }
           }
-        }
-        else if (task.type == CoverageGraphManager.Task.TaskType.REACHABLE) {
-          if (done == 2) continue;
-          var node = task.queryNode;
-          // assert that any path must pass through this node
-          var expr = calls.getTrueExpr(node);
-          vState.checker.prover.Assert(expr, true);
-        }
-        else {
-          Console.WriteLine("Ignoring task: " + task.ToString());
-        }
+          else
+          {
+              // Do inlining
+              Debug.Assert(ret == Outcome.Errors && !reporter.underapproximationMode);
+              Contract.Assert(reporter.candidatesToExpand.Count != 0);
+              if (useSummary)
+              {
+                  // compute candidates to block  
+                  block = new HashSet<int>(calls.currCandidates);
+                  block.ExceptWith(reporter.candidatesToExpand);
+              }
 
+              #region expand call tree
+              if (CommandLineOptions.Clo.StratifiedInliningVerbose > 0)
+              {
+                  Console.Write(">> SI Inlining: ");
+                  reporter.candidatesToExpand
+                      .Select(c => calls.getProc(c))
+                      .Iter(c => { if (!isSkipped(c)) Console.Write("{0} ", c); });
+
+                  Console.WriteLine();
+                  Console.Write(">> SI Skipping: ");
+                  reporter.candidatesToExpand
+                      .Select(c => calls.getProc(c))
+                      .Iter(c => { if (isSkipped(c)) Console.Write("{0} ", c); });
+
+                  Console.WriteLine();
+
+              }
+
+              // Expand and try again
+              vState.checker.prover.LogComment(";;;;;;;;;;;; Expansion begin ;;;;;;;;;;");
+              DoExpansion(reporter.candidatesToExpand, vState);
+              vState.checker.prover.LogComment(";;;;;;;;;;;; Expansion end ;;;;;;;;;;");
+
+              #endregion
+          }
       }
 
       // Pop off everything that we pushed so that there are no side effects from
       // this call to VerifyImplementation
       vState.checker.prover.Pop();
 
-      #region Coverage reporter
       if (CommandLineOptions.Clo.StratifiedInliningVerbose > 0) {
         Console.WriteLine(">> SI: Expansions performed: {0}", vState.expansionCount);
         Console.WriteLine(">> SI: Candidates left: {0}", calls.currCandidates.Count);
         Console.WriteLine(">> SI: Candidates skipped: {0}", calls.currCandidates.Where(i => isSkipped(i, calls)).Count());
         Console.WriteLine(">> SI: VC Size: {0}", vState.vcSize);
       }
-      #endregion
-      coverageManager.stop();
 
       numInlined = (calls.candidateParent.Keys.Count + 1) - (calls.currCandidates.Count);
 
@@ -1801,7 +1473,6 @@ namespace VC {
         calls.setCurrProc(procName);
         expansion = calls.Mutate(expansion, true);
         if (useSummary) calls.matchSummaries();
-        if (vState.coverageManager != null) vState.coverageManager.addRecentEdges(id);
 
         //expansion = checker.VCExprGen.Eq(calls.id2ControlVar[id], expansion);
         expansion = prover.VCExprGen.Implies(calls.id2ControlVar[id], expansion);
@@ -2178,9 +1849,9 @@ namespace VC {
           string calleeName = naryExpr.Fun.FunctionName;
 
           VCExprNAry callExpr = retnary[0] as VCExprNAry;
-          Contract.Assert(callExpr != null);
 
           if (implName2StratifiedInliningInfo.ContainsKey(calleeName)) {
+            Contract.Assert(callExpr != null);
             int candidateId = GetNewId(callExpr);
             boogieExpr2Id[new BoogieCallExpr(naryExpr, currInlineCount)] = candidateId;
             candidateParent[candidateId] = currInlineCount;
@@ -2193,13 +1864,16 @@ namespace VC {
             return Gen.LabelPos(label, id2ControlVar[candidateId]);
           }
           else if (calleeName.StartsWith(recordProcName)) {
+            Contract.Assert(callExpr != null);
             Debug.Assert(callExpr.Length == 1);
             Debug.Assert(callExpr[0] != null);
             recordExpr2Var[new BoogieCallExpr(naryExpr, currInlineCount)] = callExpr[0];
             return callExpr;
           }
           else {
-            return callExpr;
+              // callExpr can be null; this happens when the FunctionCall was on a
+              // pure function (not procedure) and the function got inlined
+              return retnary[0];
           }
         }
 
