@@ -109,7 +109,7 @@ namespace Microsoft.Boogie
             program = _program;
             gen = ctx;
             if(old_checker == null)
-              checker = new Checker(this, program, logFilePath, appendLogFile, 0, null);
+                checker = new Checker(this, program, logFilePath, appendLogFile, CommandLineOptions.Clo.ProverKillTime, null);
             else {
                 checker = old_checker;
                 checker.Retarget(program,checker.TheoremProver.Context);

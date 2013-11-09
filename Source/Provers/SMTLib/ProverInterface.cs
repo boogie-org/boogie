@@ -634,8 +634,21 @@ namespace Microsoft.Boogie.SMTLib
         {
             
             var resp = Process.GetProverResponse();
-            
-            switch (resp.Name)
+
+            if (proverErrors.Count > 0)
+            {
+                result = Outcome.Undetermined;
+                foreach (var err in proverErrors)
+                {
+                    if (err.Contains("canceled"))
+                    {
+                        result = Outcome.TimeOut;
+                    }
+                }
+            }
+            else if(resp == null)
+                HandleProverError("Prover did not respond");
+            else switch (resp.Name)
             {
                 case "unsat":
                     result = Outcome.Valid;
@@ -645,6 +658,17 @@ namespace Microsoft.Boogie.SMTLib
                     break;
                 case "unknown":
                     result = Outcome.Invalid;
+                    break;
+                case "error":
+                    if (resp.ArgCount > 0 && resp.Arguments[0].Name.Contains("canceled"))
+                    {
+                        result = Outcome.TimeOut;
+                    }
+                    else
+                    {
+                        HandleProverError("Prover error: " + resp.Arguments[0]);
+                        result = Outcome.Undetermined;
+                    }
                     break;
                 default:
                     HandleProverError("Unexpected prover response: " + resp.ToString());
