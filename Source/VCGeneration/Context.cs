@@ -35,6 +35,7 @@ namespace Microsoft.Boogie
     public abstract VCGenerationOptions VCGenOptions { get; }
     public abstract object Clone();
     public abstract void Reset();
+    public abstract void Clear();
   }
   
 [ContractClassFor(typeof(ProverContext))]
@@ -126,6 +127,12 @@ public abstract class ProverContextContracts:ProverContext{
       SetupOrderingAxiomBuilder(gen, translator);
       distincts = new List<Variable>();
       axiomConjuncts = new List<VCExpr>();
+    }
+
+    public override void Clear()
+    {
+        distincts = new List<Variable>();
+        axiomConjuncts = new List<VCExpr>();
     }
 
     protected DeclFreeProverContext(DeclFreeProverContext ctxt) {

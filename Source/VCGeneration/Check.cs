@@ -192,6 +192,13 @@ namespace Microsoft.Boogie {
       }
     }
 
+    public void RetargetWithoutReset(Program prog, ProverContext ctx)
+    {
+        ctx.Clear();
+        Setup(prog, ctx);
+    }
+
+
     public void SetTimeout()
     {
       if (0 < timeout)

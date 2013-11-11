@@ -350,9 +350,13 @@ namespace Microsoft.Boogie.SMTLib
               options.AddWeakSmtOption("ARRAY_WEAK", "true");
               options.AddWeakSmtOption("ARRAY_EXTENSIONAL", "false");
             }
+
+            options.AddWeakSmtOption("MODEL_ON_TIMEOUT", "true");
+
           }
 
-          options.AddWeakSmtOption("MODEL_ON_TIMEOUT", "true");
+	  // KLM: don't add Z3 options here. The options are different in different Z3 versions.
+	  // Add options in the above condition for the appropriate version.
 
           // legacy option handling
           if (!CommandLineOptions.Clo.z3AtFlag)

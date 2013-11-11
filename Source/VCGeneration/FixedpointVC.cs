@@ -112,7 +112,7 @@ namespace Microsoft.Boogie
                 checker = new Checker(this, program, logFilePath, appendLogFile, CommandLineOptions.Clo.ProverKillTime, null);
             else {
                 checker = old_checker;
-                checker.Retarget(program,checker.TheoremProver.Context);
+                checker.RetargetWithoutReset(program,checker.TheoremProver.Context);
             }
             old_checker = checker;
             boogieContext = checker.TheoremProver.Context;
