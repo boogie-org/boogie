@@ -156,17 +156,14 @@
     <Compile Include="AbsyQuant.cs" />
     <Compile Include="AbsyType.cs" />
     <Compile Include="BitvectorAnalysis.cs" />
-    <Compile Include="MoverChecking.cs" />
     <Compile Include="InterProceduralReachabilityGraph.cs" />
     <Compile Include="CommandLineOptions.cs" />
     <Compile Include="DeadVarElim.cs" />
     <Compile Include="Duplicator.cs" />
     <Compile Include="Inline.cs" />
     <Compile Include="LambdaHelper.cs" />
-    <Compile Include="LinearSets.cs" />
     <Compile Include="LoopUnroll.cs" />
     <Compile Include="OOLongUtil.cs" />
-    <Compile Include="OwickiGries.cs" />
     <Compile Include="Parser.cs" />
     <Compile Include="ResolutionContext.cs" />
     <Compile Include="Scanner.cs" />
