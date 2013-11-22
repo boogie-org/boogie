@@ -52,8 +52,9 @@ namespace Microsoft.Boogie.SMTLib
       Contract.Requires(options != null);
       Contract.Requires(gen != null);
       Contract.Requires(ctx != null);
+      
       InitializeGlobalInformation("UnivBackPred2.smt2");
-
+      
       this.options = (SMTLibProverOptions)options;
       this.ctx = ctx;
       this.gen = gen;
@@ -1188,13 +1189,18 @@ namespace Microsoft.Boogie.SMTLib
       Contract.Ensures(_backgroundPredicates != null);
       //throws ProverException, System.IO.FileNotFoundException;
       if (_backgroundPredicates == null) {
-        string codebaseString =
-          cce.NonNull(Path.GetDirectoryName(cce.NonNull(System.Reflection.Assembly.GetExecutingAssembly().Location)));
-
-        // Initialize '_backgroundPredicates'
-        string univBackPredPath = Path.Combine(codebaseString, backgroundPred);
-        using (StreamReader reader = new System.IO.StreamReader(univBackPredPath)) {
-          _backgroundPredicates = reader.ReadToEnd();
+        if (CommandLineOptions.Clo.TypeEncodingMethod == CommandLineOptions.TypeEncoding.Monomorphic)
+        {
+            _backgroundPredicates = "";
+        }
+        else
+        {
+            string codebaseString = cce.NonNull(Path.GetDirectoryName(cce.NonNull(System.Reflection.Assembly.GetExecutingAssembly().Location)));
+            string univBackPredPath = Path.Combine(codebaseString, backgroundPred);
+            using (StreamReader reader = new System.IO.StreamReader(univBackPredPath))
+            {
+                _backgroundPredicates = reader.ReadToEnd();
+            }
         }
       }
     }

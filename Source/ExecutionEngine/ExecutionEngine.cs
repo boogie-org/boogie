@@ -350,6 +350,47 @@ namespace Microsoft.Boogie
   }
 
 
+  public class PolymorphismChecker : StandardVisitor
+  {
+      bool isMonomorphic = true;
+
+      public override DeclWithFormals VisitDeclWithFormals(DeclWithFormals node)
+      {
+          if (node.TypeParameters.Count > 0)
+              isMonomorphic = false;
+          return base.VisitDeclWithFormals(node);
+      }
+      
+      public override BinderExpr VisitBinderExpr(BinderExpr node)
+      {
+          if (node.TypeParameters.Count > 0)
+              isMonomorphic = false;
+          return base.VisitBinderExpr(node);
+      }
+
+      public override MapType VisitMapType(MapType node)
+      {
+          if (node.TypeParameters.Count > 0)
+              isMonomorphic = false;
+          return base.VisitMapType(node);
+      }
+
+      public override Expr VisitNAryExpr(NAryExpr node)
+      {
+          BinaryOperator op = node.Fun as BinaryOperator;
+          if (op != null && op.Op == BinaryOperator.Opcode.Subtype)
+              isMonomorphic = false;
+          return base.VisitNAryExpr(node);
+      }
+
+      public static bool IsMonomorphic(Program program)
+      {
+          var checker = new PolymorphismChecker();
+          checker.VisitProgram(program);
+          return checker.isMonomorphic;
+      }
+  }
+
   public class ExecutionEngine
   {
     public static OutputPrinter printer;
@@ -609,6 +650,11 @@ namespace Microsoft.Boogie
       {
         Console.WriteLine("{0} type checking errors detected in {1}", errorCount, bplFileName);
         return PipelineOutcome.TypeCheckingError;
+      }
+
+      if (PolymorphismChecker.IsMonomorphic(program))
+      {
+          CommandLineOptions.Clo.TypeEncodingMethod = CommandLineOptions.TypeEncoding.Monomorphic;
       }
 
       linearTypeChecker = new LinearTypeChecker(program);

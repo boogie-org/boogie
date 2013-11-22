@@ -400,8 +400,11 @@ Boogie program verifier finished with 1 verified, 0 errors
 Colors.bpl(13,3): Error BP5001: This assertion might not hold.
 Execution trace:
     Colors.bpl(12,3): anon0
+Colors.bpl(20,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Colors.bpl(19,3): anon0
 
-Boogie program verifier finished with 1 verified, 1 error
+Boogie program verifier finished with 0 verified, 2 errors
 --------------------- File HeapAbstraction.bpl ----------------------------
 HeapAbstraction.bpl(15,3): Error BP5001: This assertion might not hold.
 Execution trace:

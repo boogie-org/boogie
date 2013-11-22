@@ -4,23 +4,8 @@
 %lbl%@47 -> false
 %lbl%+24 -> true
 %lbl%+37 -> true
-boolType -> T@T!val!2
-intType -> T@T!val!0
-null -> T@U!val!0
-realType -> T@T!val!1
-refType -> T@T!val!3
-s -> T@U!val!0
-type -> {
-  T@U!val!0 -> T@T!val!3
-  else -> T@T!val!3
-}
-Ctor -> {
-  T@T!val!0 -> 0
-  T@T!val!1 -> 1
-  T@T!val!2 -> 2
-  T@T!val!3 -> 3
-  else -> 0
-}
+null -> T@ref!val!0
+s -> T@ref!val!0
 tickleBool -> {
   true -> true
   false -> true
@@ -38,16 +23,7 @@ Boogie program verifier finished with 0 verified, 1 error
 %lbl%@39 -> false
 %lbl%+23 -> true
 %lbl%+29 -> true
-boolType -> T@T!val!2
 i -> 0
-intType -> T@T!val!0
-realType -> T@T!val!1
-Ctor -> {
-  T@T!val!0 -> 0
-  T@T!val!1 -> 1
-  T@T!val!2 -> 2
-  else -> 0
-}
 tickleBool -> {
   true -> true
   false -> true
@@ -65,28 +41,10 @@ Boogie program verifier finished with 0 verified, 1 error
 %lbl%@147 -> false
 %lbl%+64 -> true
 %lbl%+84 -> true
-boolType -> T@T!val!2
 i@0 -> 1
-intType -> T@T!val!0
 j@0 -> 2
 j@1 -> 3
 j@2 -> 4
-r -> T@U!val!1
-realType -> T@T!val!1
-refType -> T@T!val!3
-s -> T@U!val!0
-type -> {
-  T@U!val!0 -> T@T!val!3
-  T@U!val!1 -> T@T!val!3
-  else -> T@T!val!3
-}
-Ctor -> {
-  T@T!val!0 -> 0
-  T@T!val!1 -> 1
-  T@T!val!2 -> 2
-  T@T!val!3 -> 3
-  else -> 0
-}
 tickleBool -> {
   true -> true
   false -> true
@@ -120,102 +78,57 @@ Execution trace:
     CaptureState.bpl(16,5): anon4_Then
     CaptureState.bpl(24,5): anon3
 *** MODEL
-$mv_state_const -> 6
+$mv_state_const -> 3
 %lbl%@294 -> false
 %lbl%+112 -> true
 %lbl%+114 -> true
 %lbl%+118 -> true
 %lbl%+149 -> true
-boolType -> T@T!val!2
-F -> T@U!val!2
-FieldNameType -> T@T!val!4
-Heap -> T@U!val!0
-intType -> T@T!val!0
+F -> T@FieldName!val!0
+Heap -> T@[Ref,FieldName]Int!val!0
 m -> **m
-m@0 -> -451
-m@1 -> -450
-m@3 -> -450
+m@0 -> -276
+m@1 -> -275
+m@3 -> -275
 r -> **r
-r@0 -> -900
-realType -> T@T!val!1
-RefType -> T@T!val!3
-this -> T@U!val!1
-x@@5 -> 0
-y@@1 -> **y@@1
-$mv_state -> {
-  6 0 -> true
-  6 1 -> true
-  6 2 -> true
-  6 5 -> true
-  else -> true
-}
-int_2_U -> {
-  -451 -> -451
-  else -> -451
-}
-type -> {
-  T@U!val!0 -> T@T!val!5
-  T@U!val!1 -> T@T!val!3
-  T@U!val!2 -> T@T!val!4
-  -451 -> T@T!val!0
-  else -> T@T!val!5
-}
-Ctor -> {
-  T@T!val!0 -> 0
-  T@T!val!1 -> 1
-  T@T!val!2 -> 2
-  T@T!val!3 -> 4
-  T@T!val!4 -> 5
-  T@T!val!5 -> 3
-  else -> 0
-}
-[3] -> {
-  T@U!val!0 T@U!val!1 T@U!val!2 -> -451
-  else -> -451
-}
-U_2_int -> {
-  -451 -> -451
-  else -> -451
-}
-MapType0TypeInv1 -> {
-  T@T!val!5 -> T@T!val!4
-  else -> T@T!val!4
-}
-MapType0TypeInv0 -> {
-  T@T!val!5 -> T@T!val!3
-  else -> T@T!val!3
+r@0 -> -550
+this -> T@Ref!val!0
+x -> 719
+y -> **y
+Select_[Ref,FieldName]$int -> {
+  T@[Ref,FieldName]Int!val!0 T@Ref!val!0 T@FieldName!val!0 -> -276
+  else -> -276
 }
 tickleBool -> {
   true -> true
   false -> true
   else -> true
 }
-MapType0Type -> {
-  T@T!val!3 T@T!val!4 T@T!val!0 -> T@T!val!5
-  else -> T@T!val!5
-}
-MapType0TypeInv2 -> {
-  T@T!val!5 -> T@T!val!0
-  else -> T@T!val!0
+$mv_state -> {
+  3 0 -> true
+  3 1 -> true
+  3 2 -> true
+  3 5 -> true
+  else -> true
 }
 *** STATE <initial>
-  Heap -> T@U!val!0
-  this -> T@U!val!1
-  x -> 0
-  y -> **y@@1
+  Heap -> T@[Ref,FieldName]Int!val!0
+  this -> T@Ref!val!0
+  x -> 719
+  y -> **y
   r -> **r
   m -> **m
 *** END_STATE
 *** STATE top
 *** END_STATE
 *** STATE then
-  m -> -451
+  m -> -276
 *** END_STATE
 *** STATE postUpdate0
-  m -> -450
+  m -> -275
 *** END_STATE
 *** STATE end
-  r -> -900
+  r -> -550
   m -> 7
 *** END_STATE
 *** END_MODEL
