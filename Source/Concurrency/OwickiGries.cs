@@ -689,7 +689,9 @@ namespace Microsoft.Boogie
 
         public void Transform()
         {
-            MoverChecking.AddCheckers(linearTypeChecker);
+            MoverCheck.AddCheckers(linearTypeChecker);
+
+            RefinementCheck.AddCheckers(linearTypeChecker);
 
             Program program = linearTypeChecker.program;
             foreach (var decl in program.TopLevelDeclarations)

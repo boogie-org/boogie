@@ -12,14 +12,14 @@ namespace Microsoft.Boogie
      * At most one atomic specification per procedure
      * The gate of an atomic specification refers only to global and input variables       
      */
-    public class MoverChecking
+    public class MoverCheck
     {
         HashSet<Tuple<ActionInfo, ActionInfo>> commutativityCheckerCache;
         HashSet<Tuple<ActionInfo, ActionInfo>> gatePreservationCheckerCache;
         HashSet<Tuple<ActionInfo, ActionInfo>> failurePreservationCheckerCache;
         LinearTypeChecker linearTypeChecker;
         Program moverCheckerProgram;
-        private MoverChecking(LinearTypeChecker linearTypeChecker)
+        private MoverCheck(LinearTypeChecker linearTypeChecker)
         {
             this.commutativityCheckerCache = new HashSet<Tuple<ActionInfo, ActionInfo>>();
             this.gatePreservationCheckerCache = new HashSet<Tuple<ActionInfo, ActionInfo>>();
@@ -234,7 +234,7 @@ namespace Microsoft.Boogie
             }
             if (gatedActions.Count == 0)
                 return;
-            MoverChecking moverChecking = new MoverChecking(linearTypeChecker);
+            MoverCheck moverChecking = new MoverCheck(linearTypeChecker);
             foreach (ActionInfo first in gatedActions)
             {
                 Debug.Assert(first.moverType != MoverType.Top);
