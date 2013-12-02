@@ -225,7 +225,6 @@ Execution trace:
     Structured.bpl(246,5): anon6_LoopBody
     Structured.bpl(247,7): anon7_LoopBody
     Structured.bpl(248,11): anon8_Then
-    Structured.bpl(252,5): anon4
     Structured.bpl(252,14): anon9_Then
 Structured.bpl(303,3): Error BP5001: This assertion might not hold.
 Execution trace:

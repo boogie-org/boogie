@@ -2362,8 +2362,7 @@ namespace VC {
       if (CommandLineOptions.Clo.RemoveEmptyBlocks){
         #region Get rid of empty blocks
         {
-          Block entryBlock = cce.NonNull( impl.Blocks[0]);
-          RemoveEmptyBlocks(entryBlock);
+          RemoveEmptyBlocksIterative(impl.Blocks);
           impl.PruneUnreachableBlocks();
         }
         #endregion Get rid of empty blocks
@@ -3206,6 +3205,129 @@ namespace VC {
       assertionCount = ctxt.AssertionCount;
       return vcexp;
       #endregion
+    }
+
+    /// <summary> 
+    /// Remove empty blocks reachable from the startBlock of the CFG
+    /// </summary>
+    static void RemoveEmptyBlocksIterative(List<Block> blocks) {
+      // postorder traversal of cfg
+      //   noting loop heads in [keep] and
+      //   generating token information in [renameInfo]
+      Block startBlock = blocks[0];
+      var postorder = new List<Block>();
+      var keep = new HashSet<Block>();
+      var visited = new HashSet<Block>();
+      var grey = new HashSet<Block>();
+      var stack = new Stack<Block>();
+      Dictionary<Block, Block> renameInfo = new Dictionary<Block, Block>();
+
+      stack.Push(startBlock);
+      visited.Add(startBlock);
+      while (stack.Count != 0) {
+        var curr = stack.Pop();
+        if (grey.Contains(curr)) {
+          postorder.Add(curr);
+
+          // generate renameInfoForStartBlock
+          GotoCmd gtc = curr.TransferCmd as GotoCmd;
+          renameInfo[curr] = null;
+          if (gtc == null || gtc.labelTargets == null || gtc.labelTargets.Count == 0) {
+            if (curr.Cmds.Count == 0 && curr.tok.IsValid) {
+              renameInfo[curr] = curr;
+            }
+          } else {
+            if (curr.Cmds.Count == 0 || curr == startBlock) {
+              if (curr.tok.IsValid) {
+                renameInfo[curr] = curr;
+              } else {
+                HashSet<Block> successorRenameInfo = new HashSet<Block>();
+                foreach (Block s in gtc.labelTargets) {
+                  if (keep.Contains(s)) {
+                    successorRenameInfo.Add(null);
+                  } else {
+                    successorRenameInfo.Add(renameInfo[s]);
+                  }
+                }
+                if (successorRenameInfo.Count == 1) {
+                  renameInfo[curr] = successorRenameInfo.Single();
+                }
+              }
+            }
+          }
+          // end generate renameInfoForStartBlock
+
+        } else {
+          grey.Add(curr);
+          stack.Push(curr);
+          GotoCmd gtc = curr.TransferCmd as GotoCmd;
+          if (gtc == null || gtc.labelTargets == null || gtc.labelTargets.Count == 0) continue;
+          foreach (Block s in gtc.labelTargets) {
+            if (!visited.Contains(s)) {
+              visited.Add(s);
+              stack.Push(s);
+            } else if (grey.Contains(s) && !postorder.Contains(s)) { // s is a loop head
+              keep.Add(s);
+            }
+          }
+        }
+      }
+      keep.Add(startBlock);
+
+      foreach (Block b in postorder) {
+        if (!keep.Contains(b) && b.Cmds.Count == 0) {
+          GotoCmd bGtc = b.TransferCmd as GotoCmd;
+          foreach (Block p in b.Predecessors) {
+            GotoCmd pGtc = p.TransferCmd as GotoCmd;
+            Contract.Assert(pGtc != null);
+            pGtc.labelTargets.Remove(b);
+            pGtc.labelNames.Remove(b.Label);
+          }
+          if (bGtc == null || bGtc.labelTargets == null || bGtc.labelTargets.Count == 0) {
+            continue;
+          }
+
+          List<Block> successors = bGtc.labelTargets;
+
+          // Try to push token information if possible
+          if (b.tok.IsValid && successors.Count == 1 && b != renameInfo[startBlock]) {
+            var s = successors.Single();
+            if (!s.tok.IsValid) {
+              foreach (Block p in s.Predecessors) {
+                if (p != b) {
+                  GotoCmd pGtc = p.TransferCmd as GotoCmd;
+                  Contract.Assert(pGtc != null);
+                  pGtc.labelTargets.Remove(s);
+                  pGtc.labelNames.Remove(s.Label);
+                  pGtc.labelTargets.Add(s);
+                  pGtc.labelNames.Add(b.Label);
+                }
+              }
+              s.tok = b.tok;
+              s.Label = b.Label;
+            }
+          }
+
+          foreach (Block p in b.Predecessors) {
+            GotoCmd pGtc = p.TransferCmd as GotoCmd;
+            Contract.Assert(pGtc != null);
+            foreach (Block s in successors) {
+              if (!pGtc.labelTargets.Contains(s)) {
+                pGtc.labelTargets.Add(s);
+                pGtc.labelNames.Add(s.Label);
+              }
+            }
+          }
+        }
+      }
+
+      if (!startBlock.tok.IsValid && startBlock.Cmds.All(c => c is AssumeCmd)) {
+        if (renameInfo[startBlock] != null) {
+          startBlock.tok = renameInfo[startBlock].tok;
+          startBlock.Label = renameInfo[startBlock].Label;
+        }
+      }
+
     }
 
     /// <summary> 

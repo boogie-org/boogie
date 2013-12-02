@@ -197,7 +197,7 @@ The generic options may or may not be used by the prover plugin.
     public virtual CommandLineOptions.VCVariety DefaultVCVariety {
       get {
         Contract.Ensures(Contract.Result<CommandLineOptions.VCVariety>() != CommandLineOptions.VCVariety.Unspecified);
-        return CommandLineOptions.VCVariety.Dag;
+        return CommandLineOptions.VCVariety.DagIterative;
       }
     }
 
