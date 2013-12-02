@@ -847,7 +847,6 @@ Execution trace:
     <console>(39,0): inline$find$0$anon4_LoopBody
     <console>(43,0): inline$check$0$Entry
     <console>(54,0): inline$check$0$anon4_Else
-    <console>(59,0): inline$check$0$anon3
     <console>(67,0): inline$check$0$Return
 <console>(109,4): Error BP5001: This assertion might not hold.
 Execution trace:
@@ -858,9 +857,6 @@ Execution trace:
     <console>(62,0): inline$check$0$anon4_Then
     <console>(67,0): inline$check$0$Return
     <console>(79,0): inline$find$0$anon5_Then
-    <console>(85,0): inline$find$0$anon3
-    <console>(92,0): inline$find$0$Return
-    <console>(97,0): anon0$1
     <console>(107,0): anon3_Then
 <console>(51,4): Error BP5003: A postcondition might not hold on this return path.
 <console>(78,2): Related location: This is the postcondition that might not hold.
@@ -869,7 +865,6 @@ Execution trace:
     <console>(20,0): anon4_LoopBody
     <console>(24,0): inline$check$0$Entry
     <console>(35,0): inline$check$0$anon4_Else
-    <console>(40,0): inline$check$0$anon3
     <console>(48,0): inline$check$0$Return
 <console>(99,0): Error BP5003: A postcondition might not hold on this return path.
 <console>(78,2): Related location: This is the postcondition that might not hold.
