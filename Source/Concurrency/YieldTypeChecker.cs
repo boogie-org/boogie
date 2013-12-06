@@ -1,5 +1,6 @@
 ﻿#if QED
 
+
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -7,7 +8,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Microsoft.Boogie;
-//using Microsoft.Automata;
+//! using Microsoft.Automata;
 
 using System.Diagnostics.Contracts;
 using Microsoft.Boogie.AbstractInterpretation;
@@ -19,8 +20,8 @@ namespace Microsoft.Boogie
      * 
      */
     class YieldTypeChecker
-    {
-        /*  CharSetSolver yieldTypeCheckerAutomatonSolver;
+    {/*
+          CharSetSolver yieldTypeCheckerAutomatonSolver;
           string yieldTypeCheckerRegex = @"^((1|2)+(3|4))*((D)+(((5|6))+((7|8))+((1|2))+((3|4)))*[A]((9)+(7)+(3))*)*$";
           Char[][] yieldTypeCheckerVocabulary;
           BvSet yielTypeCheckerBvSet;
@@ -55,15 +56,15 @@ namespace Microsoft.Boogie
                 Implementation impl = decl as Implementation;
                 if (impl != null)
                 {
-
-                    // Create YieldTypeChecker
-                    // Compute Utility Maps for an Implementation
                     if (impl.Blocks.Count > 0)
                     {
-                        int phaseNumSpecImpl = QKeyValue.FindIntAttribute(impl.Proc.Attributes, "phase", 0);
+                        int phaseNumSpecImpl = 0;
+                        foreach (Ensures e in impl.Proc.Ensures)
+                        {
+                            phaseNumSpecImpl = QKeyValue.FindIntAttribute(e.Attributes, "phase", int.MaxValue);
 
-                        // 
-                        YieldTypeCheckerCore.TypeCheck(impl, phaseNumSpecImpl);
+                        }
+                        YieldTypeCheckerCore.TypeCheck(impl, phaseNumSpecImpl, 5);
 
 
                     }
@@ -83,9 +84,10 @@ namespace Microsoft.Boogie
         Implementation ytypeChecked;
         // int numCallInEncImpl; // number of callcmds in impl
         int specPhaseNumImpl; // impl.proc's spec num
-        //!    int yTypeCheckCurrentPhaseNum;// current phase of yield type checking
+        int yTypeCheckCurrentPhaseNum;// current phase of yield type checking
         int programCounter; // initial state of the impl
 
+        //! Take of that : Dictionary<Tuple<int, int>, HashSet<int>> backwardEdgesPerYield; //backward edges per yield 
 
         HashSet<CallCmd> callCmdsInImpl; //  callCmdsInImpl[Implementation] ==> Set = { call1, call2, call3 ... }
         int numCallCmdInEnclosingProc; // Number of CallCmds in       
@@ -97,15 +99,15 @@ namespace Microsoft.Boogie
         List<Tuple<int, int>> phaseIntervals; // (-inf ph0 ] (ph0 ph1] (ph1 ph2] ..... (phk phk+1] intervals
 
 
-        private YieldTypeCheckerCore(Implementation toTypeCheck, int specPhaseNum)
+        private YieldTypeCheckerCore(Implementation toTypeCheck, int specPhaseNum, int currentPhsCheckNum)
         {
             ytypeChecked = toTypeCheck;
             this.errorCount = 0;
             this.checkingContext = new CheckingContext(null);
             // numCallInEncImpl = 0;
             specPhaseNumImpl = specPhaseNum;
-            //!   yTypeCheckCurrentPhaseNum = 0;
-            programCounter = Guid.NewGuid().GetHashCode();
+            yTypeCheckCurrentPhaseNum = currentPhsCheckNum;
+            programCounter = Math.Abs(Guid.NewGuid().GetHashCode());
 
 
             /*Utility Maps*/
@@ -117,6 +119,10 @@ namespace Microsoft.Boogie
             yieldTypeCheckGraph = new HashSet<Tuple<int, int>>();
             // yieldTypeCheckAutomaton = new Dictionary<Implementation, Automaton<YieldTypeSet>>();
             verticesToEdges = new Dictionary<Tuple<int, int>, string>();
+            /*Console.Write("\n Proc being checked is " + ytypeChecked.Proc.Name+ "\n"); 
+            Console.Write("\n Specnum is " + specPhaseNumImpl.ToString() + "\n");
+            Console.Write("\n PhaseCheckNum is " + yTypeCheckCurrentPhaseNum.ToString() + "\n");
+            */
         }
 
 
@@ -180,14 +186,15 @@ namespace Microsoft.Boogie
 
         }
 
-        public static bool TypeCheck(Implementation impl, int checkPhsNum)
+        public static bool TypeCheck(Implementation impl, int specPhsNum, int checkPhsNum)
         {
 
-            YieldTypeCheckerCore yieldTypeCheckerPerImpl = new YieldTypeCheckerCore(impl, checkPhsNum);
+
+            YieldTypeCheckerCore yieldTypeCheckerPerImpl = new YieldTypeCheckerCore(impl, specPhsNum, checkPhsNum);
             yieldTypeCheckerPerImpl.CalculateCallCmds(impl);
             yieldTypeCheckerPerImpl.BuildAutomatonGraph();
-            yieldTypeCheckerPerImpl.GetTuplesForGraph();
-
+            Console.Write(yieldTypeCheckerPerImpl.PrintGraph(yieldTypeCheckerPerImpl.GetTuplesForGraph()));
+            //  yieldTypeCheckerPerImpl.BackwardEdgesOfYields(yieldTypeCheckerPerImpl.GetTuplesForGraph());
             return true;
         }
 
@@ -200,7 +207,6 @@ namespace Microsoft.Boogie
                 for (int i = 0; i < block.Cmds.Count; i++)
                 {
                     AddNodeToGraph(block.Cmds[i]);
-
                 }
 
                 if (block.TransferCmd is GotoCmd)
@@ -221,8 +227,6 @@ namespace Microsoft.Boogie
         public Graph<int> GetTuplesForGraph()
         {
             Graph<int> graphFromTuples = new Graph<int>(yieldTypeCheckGraph);
-            // Just for debugging purposes
-            Console.Write("ToDot version is being printed " + graphFromTuples.ToDot());
             return graphFromTuples;
 
         }
@@ -259,17 +263,21 @@ namespace Microsoft.Boogie
             {
 
                 CallCmd callCmd = cmd as CallCmd;
-                AddNodeToGraphForCallCmd(callCmd, 5/*yTypeCheckCurrentPhaseNum*/);
+                //  Console.Write(" Impelemtation is " + ytypeChecked.Proc.Name+ "\n");
+                // Console.Write("CallCmd PhaseCheck Num " + yTypeCheckCurrentPhaseNum.ToString() + "\n");
+                //Console.Write("CallCmd PhaseCheck Num "+specPhaseNumImpl.ToString() + "\n");
+                AddNodeToGraphForCallCmd(callCmd, yTypeCheckCurrentPhaseNum);
 
             }
         }
 
         public void AddNodeToGraphForGotoCmd(GotoCmd cmd)
         {
-            if (ytypeChecked == null) { Console.WriteLine("Fuck Yeah !"); }
-
             int source = programCounter;
-            int dest = Guid.NewGuid().GetHashCode();
+            int dest = programCounter;//Math.Abs(Guid.NewGuid().GetHashCode());
+            //Console.Write("\n Program counter before goto " + source.ToString() +" \n");
+            programCounter = dest;
+
             // Create a Epsilon transition between them
             Tuple<int, int> srcdst = new Tuple<int, int>(source, dest);
             yieldTypeCheckGraph.Add(srcdst);
@@ -287,7 +295,9 @@ namespace Microsoft.Boogie
         {
 
             int source = programCounter;
-            int dest = Guid.NewGuid().GetHashCode();
+            int dest = Math.Abs(Guid.NewGuid().GetHashCode());
+            programCounter = dest;
+
             Tuple<int, int> srcdst = new Tuple<int, int>(source, dest);
             yieldTypeCheckGraph.Add(srcdst);
             verticesToEdges[srcdst] = "Y";
@@ -298,7 +308,9 @@ namespace Microsoft.Boogie
         {
 
             int source = programCounter;
-            int dest = Guid.NewGuid().GetHashCode();
+            int dest = Math.Abs(Guid.NewGuid().GetHashCode());
+            programCounter = dest;
+
             Tuple<int, int> srcdst = new Tuple<int, int>(source, dest);
             yieldTypeCheckGraph.Add(srcdst);
             verticesToEdges[srcdst] = "Q";
@@ -308,7 +320,9 @@ namespace Microsoft.Boogie
         {
 
             int source = programCounter;
-            int dest = Guid.NewGuid().GetHashCode();
+            int dest = Math.Abs(Guid.NewGuid().GetHashCode());
+            programCounter = dest;
+
             Tuple<int, int> srcdst = new Tuple<int, int>(source, dest);
             yieldTypeCheckGraph.Add(srcdst);
             verticesToEdges[srcdst] = "Q";
@@ -318,8 +332,10 @@ namespace Microsoft.Boogie
         public void AddNodeToGraphForAssumeCmd(AssumeCmd cmd)
         {
 
-            int source = Guid.NewGuid().GetHashCode();
-            int dest = Guid.NewGuid().GetHashCode();
+            int source = programCounter;
+            int dest = Math.Abs(Guid.NewGuid().GetHashCode());
+            programCounter = dest;
+
             Tuple<int, int> srcdst = new Tuple<int, int>(source, dest);
             yieldTypeCheckGraph.Add(srcdst);
             verticesToEdges[srcdst] = "P";
@@ -329,8 +345,10 @@ namespace Microsoft.Boogie
         public void AddNodeToGraphForAssertCmd(AssertCmd cmd)
         {
             int source = programCounter;
-            int dest = Guid.NewGuid().GetHashCode();
+            int dest = Math.Abs(Guid.NewGuid().GetHashCode());
             // Create a Epsilon transition between them
+            programCounter = dest;
+
             Tuple<int, int> srcdst = new Tuple<int, int>(source, dest);
             yieldTypeCheckGraph.Add(srcdst);
             verticesToEdges[srcdst] = "N";
@@ -340,23 +358,35 @@ namespace Microsoft.Boogie
 
         public void AddNodeToGraphForCallCmd(CallCmd cmd, int currentCheckPhsNum)
         {
+            int callePhaseNum = 0;
+            //Console.Write("\n Add CallCmd for " + cmd.Proc.Name +" is encountered ");
 
-            int callePhaseNum = QKeyValue.FindIntAttribute(cmd.Proc.Attributes, "phase", 0);
+            foreach (Ensures e in cmd.Proc.Ensures)
+            {
+                callePhaseNum = QKeyValue.FindIntAttribute(e.Attributes, "phase", int.MaxValue);
+            }
 
             if (callePhaseNum > currentCheckPhsNum)
             {
-                int source = Guid.NewGuid().GetHashCode();
+                int source = Math.Abs(Guid.NewGuid().GetHashCode());
                 programCounter = source;
-
+                //  Console.Write(" New component with source state " + programCounter.ToString() + " generated");
             }
             else
             {
+                /*
+                Console.Write("\n Callee " + cmd.Proc.Name + " phase num is " + callePhaseNum.ToString());
+                Console.Write("\n Current phase check num is " + currentCheckPhsNum.ToString());
+                Console.Write("\n Program Counter is " + programCounter.ToString());
+            */
+
                 foreach (Ensures e in cmd.Proc.Ensures)
                 {
                     if (QKeyValue.FindBoolAttribute(e.Attributes, "atomic"))
                     {
                         int source = programCounter;
-                        int dest = Guid.NewGuid().GetHashCode();
+                        int dest = Math.Abs(Guid.NewGuid().GetHashCode());
+                        programCounter = dest;
                         Tuple<int, int> srcdst = new Tuple<int, int>(source, dest);
                         yieldTypeCheckGraph.Add(srcdst);
                         verticesToEdges[srcdst] = "A";
@@ -365,7 +395,8 @@ namespace Microsoft.Boogie
                     else if (QKeyValue.FindBoolAttribute(e.Attributes, "right"))
                     {
                         int source = programCounter;
-                        int dest = Guid.NewGuid().GetHashCode();
+                        int dest = Math.Abs(Guid.NewGuid().GetHashCode());
+                        programCounter = dest;
                         Tuple<int, int> srcdst = new Tuple<int, int>(source, dest);
                         yieldTypeCheckGraph.Add(srcdst);
                         verticesToEdges[srcdst] = "R";
@@ -373,7 +404,8 @@ namespace Microsoft.Boogie
                     else if (QKeyValue.FindBoolAttribute(e.Attributes, "left"))
                     {
                         int source = programCounter;
-                        int dest = Guid.NewGuid().GetHashCode();
+                        int dest = Math.Abs(Guid.NewGuid().GetHashCode());
+                        programCounter = dest;
                         Tuple<int, int> srcdst = new Tuple<int, int>(source, dest);
                         yieldTypeCheckGraph.Add(srcdst);
                         verticesToEdges[srcdst] = "L";
@@ -382,7 +414,8 @@ namespace Microsoft.Boogie
                     {
 
                         int source = programCounter;
-                        int dest = Guid.NewGuid().GetHashCode();
+                        int dest = Math.Abs(Guid.NewGuid().GetHashCode());
+                        programCounter = dest;
                         Tuple<int, int> srcdst = new Tuple<int, int>(source, dest);
                         yieldTypeCheckGraph.Add(srcdst);
                         verticesToEdges[srcdst] = "B";
@@ -405,12 +438,33 @@ namespace Microsoft.Boogie
             return graphForAutomaton;
 
         }
-        public void PrintGraph(Graph<int> graph)
+        public string PrintGraph(Graph<int> graph)
         {
+            var s = new StringBuilder();
+            s.AppendLine("\nImplementation " + ytypeChecked.Proc.Name + " digraph G {");
+            foreach (var e in graph.Edges)
+                s.AppendLine("  \"" + e.Item1.ToString() + "\" -- " + verticesToEdges[e] + " --> " + "  \"" + e.Item2.ToString() + "\";");
+            s.AppendLine("}");
 
-            graph.ToDot();
+            return s.ToString();
 
         }
+        /*
+        public void BackwardEdgesOfYields(Graph<int> graph)
+        {            
+            foreach (var e in graph.Edges)
+            {
+                var s = new StringBuilder();
+
+                if (verticesToEdges[e] == "Y")
+                {
+                    graph.Successors(e.Item1);
+                }
+            }
+        }*/
+
+
+
 
         private void Error(Absy node, string message)
         {
@@ -419,8 +473,8 @@ namespace Microsoft.Boogie
         }
 
 
-        /*
 
+        /*
         internal class YieldTypeSet
         {
             uint elems;
@@ -545,5 +599,6 @@ namespace Microsoft.Boogie
 
     }
 }
+
 
 #endif
