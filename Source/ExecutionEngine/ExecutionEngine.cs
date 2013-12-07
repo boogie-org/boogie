@@ -484,6 +484,23 @@ namespace Microsoft.Boogie
           }
         }
 
+        // Eliminate dead variables
+        Microsoft.Boogie.UnusedVarEliminator.Eliminate(program);
+
+        // Collect mod sets
+        if (CommandLineOptions.Clo.DoModSetAnalysis)
+        {
+            Microsoft.Boogie.ModSetCollector.DoModSetAnalysis(program);
+        }
+
+        // Coalesce blocks
+        if (CommandLineOptions.Clo.CoalesceBlocks)
+        {
+            if (CommandLineOptions.Clo.Trace)
+                Console.WriteLine("Coalescing blocks...");
+            Microsoft.Boogie.BlockCoalescer.CoalesceBlocks(program);
+        }
+
         if (CommandLineOptions.Clo.StratifiedInlining == 0)
         {
           OwickiGriesTransform ogTransform = new OwickiGriesTransform(linearTypeChecker);
@@ -499,7 +516,7 @@ namespace Microsoft.Boogie
           }
         }
 
-        EliminateDeadVariablesAndInline(program);
+        Inline(program);
 
         var stats = new PipelineStatistics();
         oc = InferAndVerify(program, stats);
@@ -678,27 +695,9 @@ namespace Microsoft.Boogie
       return PipelineOutcome.ResolvedAndTypeChecked;
     }
 
-
-    public static void EliminateDeadVariablesAndInline(Program program)
+    public static void Inline(Program program)
     {
       Contract.Requires(program != null);
-      // Eliminate dead variables
-      Microsoft.Boogie.UnusedVarEliminator.Eliminate(program);
-
-      // Collect mod sets
-      if (CommandLineOptions.Clo.DoModSetAnalysis)
-      {
-        Microsoft.Boogie.ModSetCollector.DoModSetAnalysis(program);
-      }
-
-      // Coalesce blocks
-      if (CommandLineOptions.Clo.CoalesceBlocks)
-      {
-        if (CommandLineOptions.Clo.Trace)
-          Console.WriteLine("Coalescing blocks...");
-        Microsoft.Boogie.BlockCoalescer.CoalesceBlocks(program);
-      }
-
       // Inline
       var TopLevelDeclarations = cce.NonNull(program.TopLevelDeclarations);
 
