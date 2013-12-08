@@ -22,11 +22,11 @@ namespace Microsoft.Boogie
     class YieldTypeChecker
     {
         
-          CharSetSolver yieldTypeCheckerAutomatonSolver;
-          string yieldTypeCheckerRegex = @"^((1|2)+(3|4))*((D)+(((5|6))+((7|8))+((1|2))+((3|4)))*[A]((9)+(7)+(3))*)*$";
-          Char[][] yieldTypeCheckerVocabulary;
-          BvSet yielTypeCheckerBvSet;
-          Automaton<BvSet> yieldTypeCheckerAutomaton;
+          static CharSetSolver yieldTypeCheckerAutomatonSolver;
+          static string yieldTypeCheckerRegex = @"^((1|2)+(3|4))*((D)+(((5|6))+((7|8))+((1|2))+((3|4)))*[A]((9)+(7)+(3))*)*$";
+          static Char[][] yieldTypeCheckerVocabulary;
+          static BvSet yielTypeCheckerBvSet;
+          static Automaton<BvSet> yieldTypeCheckerAutomaton;
           
 
         private YieldTypeChecker()
@@ -44,13 +44,28 @@ namespace Microsoft.Boogie
             };
             yielTypeCheckerBvSet = yieldTypeCheckerAutomatonSolver.MkRangesConstraint(false, yieldTypeCheckerVocabulary);
             yieldTypeCheckerAutomaton = yieldTypeCheckerAutomatonSolver.Convert(yieldTypeCheckerRegex); //accepts strings that match the regex r
-
+            
             
         }
-        public bool IsYieldTypeSafe(Automaton<BvSet> implTypeCheckAutomaton){
-
-            Automaton<BvSet> complYieldTypeSafeProp = this.yieldTypeCheckerAutomaton.Complement(this.yieldTypeCheckerAutomatonSolver);
+        public static bool IsYieldTypeSafe(Automaton<BvSet> implTypeCheckAutomaton){
             
+            List<BvSet> witnessSet;
+             var isNonEmpty = Automaton<BvSet>.CheckDifference(
+                                                            implTypeCheckAutomaton,
+                                                            yieldTypeCheckerAutomaton,
+                                                            0,
+                                                            yieldTypeCheckerAutomatonSolver,            
+                                                            out witnessSet);
+
+            if (isNonEmpty)
+            {
+               // var witness = new String(Array.ConvertAll(witnessSet.ToArray(), bvset => (char)yieldTypeCheckerAutomatonSolver.Choose(bvset)));
+                //Console.Write("\n Program is not Yield Type Safe \n");
+                //Console.Write("Debugging ... \n Difference of impl and yiled type check automaton  : \n" + witness);
+                return false;
+            }
+
+            //Console.Write("\n Program is Yield Type Safe \n");
             return true;
         }
 
@@ -71,8 +86,12 @@ namespace Microsoft.Boogie
                             phaseNumSpecImpl = QKeyValue.FindIntAttribute(e.Attributes, "phase", int.MaxValue);
 
                         }
-                        YieldTypeCheckerCore.TypeCheck(impl, phaseNumSpecImpl);
-
+                        Automaton<BvSet> yieldTypeCheckImpl = YieldTypeCheckerCore.TypeCheck(impl, phaseNumSpecImpl);
+                        if (!IsYieldTypeSafe(yieldTypeCheckImpl)) {
+                            Console.Write("\n Body of " + impl.Proc.Name + " is not yield type safe " + "\n");
+                            return;
+                        
+                        }
 
                     }
                 }
@@ -81,7 +100,7 @@ namespace Microsoft.Boogie
     }
 
 
-    class YieldTypeCheckerCore : StandardVisitor
+    class YieldTypeCheckerCore
     {
 
         CheckingContext checkingContext;
@@ -185,7 +204,7 @@ namespace Microsoft.Boogie
             
         }
 
-        public Automaton<YieldTypeSet> YieldTypeCheckAutomata(YieldTypeCheckerCore yieldTypeCheckerPerImpl)
+        public Automaton<BvSet> YieldTypeCheckAutomata(YieldTypeCheckerCore yieldTypeCheckerPerImpl)
         {              
             
             for (int i = 0; i<this.phaseIntervals.Count ; i++) {
@@ -199,7 +218,7 @@ namespace Microsoft.Boogie
             
         }
 
-        public static Automaton<YieldTypeSet> TypeCheck(Implementation impl, int specPhsNum)
+        public static Automaton<BvSet> TypeCheck(Implementation impl, int specPhsNum)
         {
             YieldTypeCheckerCore yieldTypeCheckerPerImpl = new YieldTypeCheckerCore(impl, specPhsNum);
             return yieldTypeCheckerPerImpl.YieldTypeCheckAutomata(yieldTypeCheckerPerImpl);
@@ -356,7 +375,7 @@ namespace Microsoft.Boogie
 
             Tuple<int, int> srcdst = new Tuple<int, int>(source, dest);
             yieldTypeCheckGraph.Add(srcdst);
-            verticesToEdges[srcdst] = "N";
+            verticesToEdges[srcdst] = "E";
 
         }
 
@@ -603,7 +622,7 @@ namespace Microsoft.Boogie
         }
 
         private List<int> ComputeInitalStates(Graph<int> graph) {
-
+            
             List<int> initialStates = new List<int>();
             foreach (int fe in graph.Nodes)
             {
@@ -619,75 +638,255 @@ namespace Microsoft.Boogie
 
         }
         
-        private Automaton<YieldTypeSet> BuildAutomaton(Graph<int> graph) {
+        private Automaton<BvSet> BuildAutomaton(Graph<int> graph) {
             
-            List<Move<YieldTypeSet>> transitions = new List<Move<YieldTypeSet>>();
-         //   var solver = new YieldTypeSetSolver();
-
+            //List<Move<YieldTypeSet>> transitions = new List<Move<YieldTypeSet>>();
+            List<int[]> transitions = new List<int[]>();
             
             foreach (Tuple<int, int> e in graph.Edges) {
-                
                 if (verticesToEdges[e] == "3")
                 {
-                    transitions.Add(Move<YieldTypeSet>.M(e.Item1, e.Item2, new YieldTypeSet(Transitions.Q)));
+                    
+                    int[] transition = new int[4];
+                    transition[0] = e.Item1;
+                    transition[1] = 51; // ASCII 3
+                    transition[2]=51;
+                    transition[3] = e.Item2;                    
+                     transitions.Add(transition);
+
+                    /*
+                     List<int> transition = new List<int>();
+                    transition.Add(e.Item1);
+                    transition.Add(51);
+                    transition.Add(e.Item2);
+                    transitions.Add(transition);*/
+                    //transitions.Add(Move<YieldTypeSet>.M(e.Item1, e.Item2, new YieldTypeSet(Transitions.Q)));
+                    
                 }
                 else if (verticesToEdges[e] == "1")
                 {
-                    transitions.Add(Move<YieldTypeSet>.M(e.Item1, e.Item2, new YieldTypeSet(Transitions.P)));
+                    int[] transition = new int[4];
+                    transition[0] = e.Item1;
+                    transition[1] = 49; // ASCII 1
+                    transition[2]=49;
+                    transition[3] = e.Item2;
+                    transitions.Add(transition);
+                    /*
+                    List<int> transition = new List<int>();
+                    transition.Add(e.Item1);
+                    transition.Add(49);
+                    transition.Add(e.Item2);
+                    transitions.Add(transition);
+                    */
+                    //transitions.Add(Move<YieldTypeSet>.M(e.Item1, e.Item2, new YieldTypeSet(Transitions.P)));
                     
                 }
                 else if (verticesToEdges[e] == "7")
                 {
-                    transitions.Add(Move<YieldTypeSet>.M(e.Item1, e.Item2, new YieldTypeSet(Transitions.B)));
+                    int[] transition = new int[4];
+                    transition[0] = e.Item1;
+                    transition[1] = 55; // ASCII 7
+                    transition[2]=55;
+                    transition[3] = e.Item2;
+                    transitions.Add(transition);
+                    /*
+                    List<int> transition = new List<int>();
+                    transition.Add(e.Item1);
+                    transition.Add(55);
+                    transition.Add(e.Item2);
+                    transitions.Add(transition);*/
+                    //transitions.Add(Move<YieldTypeSet>.M(e.Item1, e.Item2, new YieldTypeSet(Transitions.B)));
                 }
                 else if (verticesToEdges[e] == "5")
                 {
-                    transitions.Add(Move<YieldTypeSet>.M(e.Item1, e.Item2, new YieldTypeSet(Transitions.R)));
+                    int[] transition = new int[4];
+                    transition[0] = e.Item1;
+                    transition[1] = 53; // ASCII 5
+                    transition[2]=53;
+                    transition[3] = e.Item2;
+                    transitions.Add(transition);
+                   
+                    /*
+                    List<int> transition = new List<int>();
+                    transition.Add(e.Item1);
+                    transition.Add(53);
+                    transition.Add(e.Item2);
+                    transitions.Add(transition);*/
+                    //transitions.Add(Move<YieldTypeSet>.M(e.Item1, e.Item2, new YieldTypeSet(Transitions.R)));
                 }
                 else if (verticesToEdges[e] == "9")
                 {
-                    transitions.Add(Move<YieldTypeSet>.M(e.Item1, e.Item2, new YieldTypeSet(Transitions.L)));   
+                    int[] transition = new int[4];
+                    transition[0] = e.Item1;
+                    transition[1] = 57; // ASCII 9
+                    transition[2]=57;
+                    transition[3] = e.Item2;
+                    transitions.Add(transition);
+                   
+                    /*
+                    List<int> transition = new List<int>();
+                    transition.Add(e.Item1);
+                    transition.Add(57);
+                    transition.Add(e.Item2);
+                    transitions.Add(transition);*/
+                    //transitions.Add(Move<YieldTypeSet>.M(e.Item1, e.Item2, new YieldTypeSet(Transitions.L)));   
                 }
                 else if (verticesToEdges[e] == "A")
                 {
-                    transitions.Add(Move<YieldTypeSet>.M(e.Item1, e.Item2, new YieldTypeSet(Transitions.A)));
+                    int[] transition = new int[4];
+                    transition[0] = e.Item1;
+                    transition[1] = 65; // ASCII A
+                    transition[2]=65;
+                    transition[3] = e.Item2;
+                    transitions.Add(transition);
+                    /*
+                    List<int> transition = new List<int>();
+                    transition.Add(e.Item1);
+                    transition.Add(65);
+                    transition.Add(e.Item2);
+                    transitions.Add(transition);*/
+                    //transitions.Add(Move<YieldTypeSet>.M(e.Item1, e.Item2, new YieldTypeSet(Transitions.A)));
                 }
                 else if (verticesToEdges[e] == "D")
                 {
-                    transitions.Add(Move<YieldTypeSet>.M(e.Item1, e.Item2, new YieldTypeSet(Transitions.Y)));
+                    int[] transition = new int[4];
+                    transition[0] = e.Item1;
+                    transition[1] = 68; // ASCII D
+                    transition[2]=68;
+                    transition[3] = e.Item2;
+                    transitions.Add(transition);
+                   
+                    /*
+                    List<int> transition = new List<int>();
+                    transition.Add(e.Item1);
+                    transition.Add(68);
+                    transition.Add(e.Item2);
+                    transitions.Add(transition);*/
+                    //transitions.Add(Move<YieldTypeSet>.M(e.Item1, e.Item2, new YieldTypeSet(Transitions.Y)));
                 }
                 else if (verticesToEdges[e] == "4")
                 {
-                    transitions.Add(Move<YieldTypeSet>.M(e.Item1, e.Item2, new YieldTypeSet(Transitions.QF)));
+                    int[] transition = new int[4];
+                    transition[0] = e.Item1;
+                    transition[1] = 52; // ASCII 4
+                    transition[2]=52;
+                    transition[3] = e.Item2;
+                    transitions.Add(transition);
+                    /*
+                    List<int> transition = new List<int>();
+                    transition.Add(e.Item1);
+                    transition.Add(52);
+                    transition.Add(e.Item2);
+                    transitions.Add(transition);*/
+
+                    //transitions.Add(Move<YieldTypeSet>.M(e.Item1, e.Item2, new YieldTypeSet(Transitions.QF)));
                 }
                 else if (verticesToEdges[e] == "2")
                 {
-                    transitions.Add(Move<YieldTypeSet>.M(e.Item1, e.Item2, new YieldTypeSet(Transitions.PF)));
+                    int[] transition = new int[4];
+                    transition[0] = e.Item1;
+                    transition[1] = 50; // ASCII 2
+                    transition[2]=50;
+                    transition[3] = e.Item2;
+                    transitions.Add(transition);
+                    /*
+                    List<int> transition = new List<int>();
+                    transition.Add(e.Item1);
+                    transition.Add(50);
+                    transition.Add(e.Item2);
+                    transitions.Add(transition);*/
+                    //transitions.Add(Move<YieldTypeSet>.M(e.Item1, e.Item2, new YieldTypeSet(Transitions.PF)));
                 }
                 else if (verticesToEdges[e] == "8")
                 {
-                    transitions.Add(Move<YieldTypeSet>.M(e.Item1, e.Item2, new YieldTypeSet(Transitions.BF)));
+                    int[] transition = new int[4];
+                    transition[0] = e.Item1;
+                    transition[1] = 56; // ASCII 8
+                    transition[2]=56;
+                    transition[3] = e.Item2;
+                    transitions.Add(transition);
+                    /*
+                    List<int> transition = new List<int>();
+                    transition.Add(e.Item1);
+                    transition.Add(56);
+                    transition.Add(e.Item2);
+                    transitions.Add(transition);*/
+                    //transitions.Add(Move<YieldTypeSet>.M(e.Item1, e.Item2, new YieldTypeSet(Transitions.BF)));
                 }
                 else if (verticesToEdges[e] == "6")
                 {
-                    transitions.Add(Move<YieldTypeSet>.M(e.Item1, e.Item2, new YieldTypeSet(Transitions.RF)));
+                    int[] transition = new int[4];
+                    transition[0] = e.Item1;
+                    transition[1] = 54; // ASCII 6
+                    transition[2] = 54;
+                    transition[3] = e.Item2;
+                    transitions.Add(transition);
+
+                    /*List<int> transition = new List<int>();
+                    transition.Add(e.Item1);
+                    transition.Add(54);
+                    transition.Add(e.Item2);
+                    transitions.Add(transition);*/
+                    //transitions.Add(Move<YieldTypeSet>.M(e.Item1, e.Item2, new YieldTypeSet(Transitions.RF)));
                 }
                 else if (verticesToEdges[e] == "C")
                 {
-                    transitions.Add(Move<YieldTypeSet>.M(e.Item1, e.Item2, new YieldTypeSet(Transitions.LF)));
+                    int[] transition = new int[4];
+                    transition[0] = e.Item1;
+                    transition[1] = 67; // ASCII C
+                    transition[2] = 67;
+                    transition[3] = e.Item2;
+                    
+                    transitions.Add(transition);
+                    /*
+                    List<int> transition = new List<int>();
+                    transition.Add(e.Item1);
+                    transition.Add(67);
+                    transition.Add(e.Item2);
+                    transitions.Add(transition);
+                    */
+                    //transitions.Add(Move<YieldTypeSet>.M(e.Item1, e.Item2, new YieldTypeSet(Transitions.LF)));
                 }
                 else if (verticesToEdges[e] == "B")
                 {
-                    transitions.Add(Move<YieldTypeSet>.M(e.Item1, e.Item2, new YieldTypeSet(Transitions.AF)));    
+                    int[] transition = new int[4];
+                    transition[0] = e.Item1;
+                    transition[1] = 66; // ASCII B
+                    transition[2] = 66;
+                    transition[3] = e.Item2;
+                    transitions.Add(transition);
+                    /*List<int> transition = new List<int>();
+                    transition.Add(e.Item1);
+                    transition.Add(66);
+                    transition.Add(e.Item2);
+                    transitions.Add(transition);
+                    *///transitions.Add(Move<YieldTypeSet>.M(e.Item1, e.Item2, new YieldTypeSet(Transitions.AF)));    
                
                 }
-                else if (verticesToEdges[e] == "N") { 
-                      transitions.Add(Move<YieldTypeSet>.Epsilon(e.Item1,e.Item2));  
+                else if (verticesToEdges[e] == "E") {
+                    
+                    int[] transition = new int[4];
+                    transition[0] = e.Item1;
+                    transition[1] = 69; // ASCII E
+                    transition[2] = 69;
+                    transition[3] =e.Item2;
+                    transitions.Add(transition);
+                    
+                    /*List<int> transition = new List<int>();
+                    transition.Add(e.Item1);
+                    transition.Add(69);
+                    transition.Add(e.Item2);
+                    transitions.Add(transition);
+                     */
+                    //transitions.Add(Move<YieldTypeSet>.Epsilon(e.Item1,e.Item2));  
                 
                 }
             
             }
 
+
+            var solver = new CharSetSolver();
+            
             // get initial states 
             List<int> initialStates = ComputeInitalStates(graph);
             // get final states
@@ -697,14 +896,40 @@ namespace Microsoft.Boogie
             foreach (int s in initialStates) {
                 // Put every one epsilon to itself no problem
                 /*if (!s.Equals(concreteInitialState)) { }*/
-                transitions.Add(Move<YieldTypeSet>.Epsilon(concreteInitialState,s));
+                
+                if (!s.Equals(concreteInitialState))
+                {
+                    int[] transition = new int[4];
+                    transition[0] = concreteInitialState;
+                    transition[1] = 69;
+                    transition[2] = 69;
+                    transition[3] = s;                  
+                    
+                    /*                 
+                    List<int> transition = new List<int>();
+                    transition.Add(concreteInitialState);
+                    transition.Add(69);
+                    transition.Add(69);
+
+                    transition.Add(s);
+                    transitions.Add(transition);
+                    */                  
+                }
+                //transitions.Add(Move<YieldTypeSet>.Epsilon(concreteInitialState,s));
             }
 
+            
+                      
+            
+            
+         //   int[][] transitionArray = new int[5][];
+            // create Automaton
+            Automaton<BvSet> yieldTypeCheckAutomaton = solver.ReadFromRanges(concreteInitialState,finalStates,transitions);
 
             //create Automaton
-            Automaton<YieldTypeSet> yieldTypeCheckAutomaton = Automaton<YieldTypeSet>.Create(concreteInitialState, finalStates, transitions); ;
+            //Automaton<YieldTypeSet> yieldTypeCheckAutomaton = Automaton<YieldTypeSet>.Create(concreteInitialState, finalStates, transitions); ;
             
-            return yieldTypeCheckAutomaton;
+           return yieldTypeCheckAutomaton;
 
         }
 
@@ -722,7 +947,7 @@ namespace Microsoft.Boogie
 
     static class Transitions
     {
-
+                
         public static uint P = 0x1;
         public static uint Q = 0x4;
         public static uint Y = 0x1000;
@@ -740,7 +965,34 @@ namespace Microsoft.Boogie
 
     }
 
-    public class YieldTypeSet
+    // Ask Margus :
+    // 1. We dont have BvSet constructor to pass uint as parameter
+             // 1.1 Assume that I want to add a transition to my list of moves List<Move<BvSet>> transitions ;
+            //      transitions.Add( Move<BvSet>.M( source, final, !! Here I can not pass an uint as condition and there is no casting possible to BvSet))
+            //      but I would like to pass a specific bit set in an uint. How can I provide this?
+    // 2. Assme that I have a regex like 
+          //string yieldTypeCheckerRegex = @"^((1|2)+(3|4))*((D)+(((5|6))+((7|8))+((1|2))+((3|4)))*[A]((9)+(7)+(3))*)*$";
+          //2.1 I would like to create an automaton from this regex. 
+        //    Do I need to perform range constraint in BitWidth.BV7 to have only the strings that can be generated by those letters ? Like the following :
+        
+        //     yieldTypeCheckerAutomatonSolver = new CharSetSolver(BitWidth.BV7);
+        //     yieldTypeCheckerVocabulary = new char[][] {
+        //        new char[]{'1','2'},
+        //        new char[]{'3','4'},
+        //        new char[]{'5','6'},
+        //        new char[]{'7','8'},
+        //        new char[]{'9','A'},
+        //        new char[]{'B','C'},
+        //        new char[]{'D','E'}
+        //      };
+        //      yielTypeCheckerBvSet = yieldTypeCheckerAutomatonSolver.MkRangesConstraint(false, yieldTypeCheckerVocabulary);
+        //      yieldTypeCheckerAutomaton = yieldTypeCheckerAutomatonSolver.Convert(yieldTypeCheckerRegex); //accepts strings that match the regex r
+         
+        //2.2 If we have such automaton created in 2.1 and we would like to check whether another automaton is subset of this. The automaton that we do check for is built as the following
+        //  state1 -- transitionCond --> state2 : In order to proper subset type checking what transitionCond should be ? BvSet, uint, int, ASCII[CHAR]-> int ? ex : a -> 65
+
+
+    public class YieldTypeSet 
     {
         uint elems;
 
