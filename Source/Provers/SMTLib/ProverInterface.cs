@@ -53,7 +53,7 @@ namespace Microsoft.Boogie.SMTLib
       Contract.Requires(gen != null);
       Contract.Requires(ctx != null);
       
-      InitializeGlobalInformation("UnivBackPred2.smt2");
+      InitializeGlobalInformation();
       
       this.options = (SMTLibProverOptions)options;
       this.ctx = ctx;
@@ -1183,9 +1183,8 @@ namespace Microsoft.Boogie.SMTLib
 
     private static string _backgroundPredicates;
 
-    static void InitializeGlobalInformation(string backgroundPred)
+    static void InitializeGlobalInformation()
     {
-      Contract.Requires(backgroundPred != null);
       Contract.Ensures(_backgroundPredicates != null);
       //throws ProverException, System.IO.FileNotFoundException;
       if (_backgroundPredicates == null) {
@@ -1195,12 +1194,13 @@ namespace Microsoft.Boogie.SMTLib
         }
         else
         {
-            string codebaseString = cce.NonNull(Path.GetDirectoryName(cce.NonNull(System.Reflection.Assembly.GetExecutingAssembly().Location)));
-            string univBackPredPath = Path.Combine(codebaseString, backgroundPred);
-            using (StreamReader reader = new System.IO.StreamReader(univBackPredPath))
-            {
-                _backgroundPredicates = reader.ReadToEnd();
-            }
+            _backgroundPredicates = @"
+(set-info :category ""industrial"")
+(declare-sort |T@U| 0)
+(declare-sort |T@T| 0)
+(declare-fun real_pow (Real Real) Real)
+(declare-fun UOrdering2 (|T@U| |T@U|) Bool)
+(declare-fun UOrdering3 (|T@T| |T@U| |T@U|) Bool)";
         }
       }
     }
