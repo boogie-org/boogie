@@ -476,22 +476,11 @@ namespace Microsoft.Boogie
           }
         }
 
-        // Eliminate dead variables
-        Microsoft.Boogie.UnusedVarEliminator.Eliminate(program);
+        EliminateDeadVariables(program);
 
-        // Collect mod sets
-        if (CommandLineOptions.Clo.DoModSetAnalysis)
-        {
-            Microsoft.Boogie.ModSetCollector.DoModSetAnalysis(program);
-        }
+        CollectModSets(program);
 
-        // Coalesce blocks
-        if (CommandLineOptions.Clo.CoalesceBlocks)
-        {
-            if (CommandLineOptions.Clo.Trace)
-                Console.WriteLine("Coalescing blocks...");
-            Microsoft.Boogie.BlockCoalescer.CoalesceBlocks(program);
-        }
+        CoalesceBlocks(program);
 
         if (CommandLineOptions.Clo.StratifiedInlining == 0)
         {
@@ -522,6 +511,32 @@ namespace Microsoft.Boogie
             break;
         }
       }
+    }
+
+
+    public static void CoalesceBlocks(Program program)
+    {
+      if (CommandLineOptions.Clo.CoalesceBlocks)
+      {
+        if (CommandLineOptions.Clo.Trace)
+          Console.WriteLine("Coalescing blocks...");
+        Microsoft.Boogie.BlockCoalescer.CoalesceBlocks(program);
+      }
+    }
+
+
+    public static void CollectModSets(Program program)
+    {
+      if (CommandLineOptions.Clo.DoModSetAnalysis)
+      {
+        Microsoft.Boogie.ModSetCollector.DoModSetAnalysis(program);
+      }
+    }
+
+
+    public static void EliminateDeadVariables(Program program)
+    {
+      Microsoft.Boogie.UnusedVarEliminator.Eliminate(program);
     }
 
 
@@ -687,6 +702,7 @@ namespace Microsoft.Boogie
       return PipelineOutcome.ResolvedAndTypeChecked;
     }
 
+
     public static void Inline(Program program)
     {
       Contract.Requires(program != null);
@@ -725,6 +741,7 @@ namespace Microsoft.Boogie
         }
       }
     }
+
 
     /// <summary>
     /// Given a resolved and type checked Boogie program, infers invariants for the program
