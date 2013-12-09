@@ -465,14 +465,6 @@ namespace Microsoft.Boogie
         if (oc != PipelineOutcome.ResolvedAndTypeChecked)
           return;
 
-        // Do bitvector analysis
-        if (CommandLineOptions.Clo.DoBitVectorAnalysis)
-        {
-          Microsoft.Boogie.BitVectorAnalysis.DoBitVectorAnalysis(program);
-          PrintBplFile(CommandLineOptions.Clo.BitVectorAnalysisOutputBplFile, program, false);
-          return;
-        }
-
         if (CommandLineOptions.Clo.PrintCFGPrefix != null)
         {
           foreach (var impl in program.TopLevelDeclarations.OfType<Implementation>())
