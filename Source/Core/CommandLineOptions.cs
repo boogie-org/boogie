@@ -482,8 +482,6 @@ namespace Microsoft.Boogie {
     }
     public bool ExpandLambdas = true; // not useful from command line, only to be set to false programatically
     public bool DoModSetAnalysis = false;
-    public bool DoBitVectorAnalysis = false;
-    public string BitVectorAnalysisOutputBplFile = null;
     public bool UseAbstractInterpretation = true;          // true iff the user want to use abstract interpretation
     public int  /*0..9*/StepsBeforeWidening = 0;           // The number of steps that must be done before applying a widen operator
 
@@ -1317,13 +1315,6 @@ namespace Microsoft.Boogie {
 				CVC4ExecutablePath = args[ps.i];
 			}
 			return true;
-
-        case "doBitVectorAnalysis":
-          DoBitVectorAnalysis = true;
-          if (ps.ConfirmArgumentCount(1)) {
-            BitVectorAnalysisOutputBplFile = args[ps.i];
-          }
-          return true;
 
         default:
           bool optionValue = false;
