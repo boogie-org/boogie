@@ -690,9 +690,10 @@ namespace Microsoft.Boogie
         public void Transform()
         {
             MoverCheck.AddCheckers(linearTypeChecker);
-
+#if QED
+            YieldTypeChecker.PerformYieldTypeChecking(linearTypeChecker);
             RefinementCheck.AddCheckers(linearTypeChecker);
-
+#endif
             Program program = linearTypeChecker.program;
             foreach (var decl in program.TopLevelDeclarations)
             {

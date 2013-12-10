@@ -25,27 +25,25 @@ namespace Microsoft.Boogie
         /*static subfields of yieldtypesafe(YTS) property language*/
         static CharSetSolver yieldTypeCheckerAutomatonSolver;
         static string yieldTypeCheckerRegex = @"^((1|2)+(3|4))*((D)+(((5|6))+((7|8))+((1|2))+((3|4)))*[A]((9)+(7)+(3))*)*$";// regex of property to build automaton of YTS language
-        static Char[][] yieldTypeCheckerVocabulary;
-        static BvSet yielTypeCheckerBvSet;
         static Automaton<BvSet> yieldTypeCheckerAutomaton;
-        
-        private YieldTypeChecker()
+        static int errorCount;
+        static CheckingContext checkingContext;
+        static Automaton<BvSet> foo;
+        static YieldTypeChecker()
         {
-
             yieldTypeCheckerAutomatonSolver = new CharSetSolver(BitWidth.BV7);
-            yieldTypeCheckerVocabulary = new char[][] {
-                new char[]{'1','2'},
-                new char[]{'3','4'},
-                new char[]{'5','6'},
-                new char[]{'7','8'},
-                new char[]{'9','A'},
-                new char[]{'B','C'},
-                new char[]{'D','E'}
-            };
-            yielTypeCheckerBvSet = yieldTypeCheckerAutomatonSolver.MkRangesConstraint(false, yieldTypeCheckerVocabulary);
+            foo = yieldTypeCheckerAutomatonSolver.Convert(@"^[1-9A-D]*$");
             yieldTypeCheckerAutomaton = yieldTypeCheckerAutomatonSolver.Convert(yieldTypeCheckerRegex); // YTS property , L(YTSP)
+            yieldTypeCheckerAutomaton = Automaton<BvSet>.MkProduct(yieldTypeCheckerAutomaton, foo, yieldTypeCheckerAutomatonSolver);
 
+            errorCount = 0;
+            checkingContext = new CheckingContext(null);
+        }
 
+        private static void Error(Absy node, string message)
+        {
+            checkingContext.Error(node, message);
+            errorCount++;
         }
 
         /*
@@ -75,32 +73,20 @@ namespace Microsoft.Boogie
         /*
          Parameter : LinearTypeChecker linearTypeChecker : YTS Checker is a component of linearTypeChecker.Adds instance of YTS checker into linearType checker
          */
-        public static void AddChecker(LinearTypeChecker linearTypeChecker)
+        public static void PerformYieldTypeChecking(LinearTypeChecker linearTypeChecker)
         {
-            Program yielTypeCheckedProgram = linearTypeChecker.program;
+            Program yieldTypeCheckedProgram = linearTypeChecker.program;
             YieldTypeChecker regExprToAuto = new YieldTypeChecker();
-            foreach (var decl in yielTypeCheckedProgram.TopLevelDeclarations)
+            foreach (var decl in yieldTypeCheckedProgram.TopLevelDeclarations)
             {
-                Implementation impl = decl as Implementation; 
-                if (impl != null)
+                Implementation impl = decl as Implementation;
+                if (impl == null) continue;
+                int phaseNumSpecImpl = TypeCheck.FindPhaseNumber(impl.Proc);
+                YieldTypeCheckerCore yieldTypeCheckerPerImpl = new YieldTypeCheckerCore(impl, phaseNumSpecImpl);
+                Automaton<BvSet> yieldTypeCheckImpl = yieldTypeCheckerPerImpl.YieldTypeCheckAutomata();
+                if (!IsYieldTypeSafe(yieldTypeCheckImpl))
                 {
-                    if (impl.Blocks.Count > 0)// Do yield type checking for every implementation who has body.
-                    {
-                        int phaseNumSpecImpl = 0;
-                        foreach (Ensures e in impl.Proc.Ensures)
-                        {
-                            phaseNumSpecImpl = QKeyValue.FindIntAttribute(e.Attributes, "phase", 0); // Get phase number of implementation's procedure
-
-                        }
-                        Automaton<BvSet> yieldTypeCheckImpl = YieldTypeCheckerCore.TypeCheck(impl, phaseNumSpecImpl);
-                        if (!IsYieldTypeSafe(yieldTypeCheckImpl))
-                        {
-                            Console.Write("\n Body of " + impl.Proc.Name + " is not yield type safe " + "\n");
-                            return;
-
-                        }
-
-                    }
+                    Error(impl, "\n Body of " + impl.Proc.Name + " is not yield type safe " + "\n");
                 }
             }
         }
@@ -111,27 +97,22 @@ namespace Microsoft.Boogie
      */
     class YieldTypeCheckerCore
     {
-        CheckingContext checkingContext;
-        int errorCount;
         Implementation ytypeChecked; // Implementation whose body is being YTS checked
         int specPhaseNumImpl; // impl.proc's spec num
         int yTypeCheckCurrentPhaseNum;// current phase of yield type checking
         int programCounter; // initial state of the impl
         int concreteInitialState; // First seen initial state in an implementation
         HashSet<CallCmd> callCmdsInImpl; //  callCmdsInImpl[Implementation] ==> Set = { call1, call2, call3 ... }
-        int numCallCmdInEnclosingProc; // Number of CallCmds in       
         Dictionary<Tuple<int, int>, string> verticesToEdges; // Tuple<int,int> --> "Y" : State(k) --Y--> State(k+1)
         HashSet<Tuple<int, int>> yieldTypeCheckGraph; // (-inf ph0 ] (ph0 ph1] (ph1 ph2] ..... (phk phk+1] where phk+1 == atcSpecPhsNumTypeCheckedProc
-        List<Tuple<int, int>> phaseIntervals; // (-inf ph0 ] (ph0 ph1] (ph1 ph2] ..... (phk phk+1] intervals
+        List<Tuple<int, int>> phaseIntervals; // [MinValue ph0 ] [ph0 ph1] [ph1 ph2] ..... [phk phk+1] intervals
         List<int> finalStates; //final
         List<int> initialStates; // initial states collection. There are epsilon transitions (ASCII 'E') from concreteInitial state to these initial states
 
-        private YieldTypeCheckerCore(Implementation toTypeCheck, int specPhaseNum)
+        public YieldTypeCheckerCore(Implementation toTypeCheck, int specPhaseNum)
         {
             ytypeChecked = toTypeCheck;
-            this.errorCount = 0;
-            this.checkingContext = new CheckingContext(null);
-            // numCallInEncImpl = 0;
+            
             specPhaseNumImpl = specPhaseNum;
             yTypeCheckCurrentPhaseNum = 0;
             programCounter = Math.Abs(Guid.NewGuid().GetHashCode());
@@ -144,7 +125,6 @@ namespace Microsoft.Boogie
             /*Utility Maps*/
             phaseIntervals = new List<Tuple<int, int>>();
             callCmdsInImpl = new HashSet<CallCmd>();
-            numCallCmdInEnclosingProc = 0;
 
             // Graph and Automaton
             yieldTypeCheckGraph = new HashSet<Tuple<int, int>>();
@@ -155,58 +135,28 @@ namespace Microsoft.Boogie
         */
         private void ComputePhaseIntervals(Implementation impl)
         {
-            List<CallCmd> callCmdInBodyEncImplList = new List<CallCmd>();
-
             // Compute CallCmds inside impl
             foreach (Block b in impl.Blocks)
             {
-                List<Cmd> cmds = new List<Cmd>();
                 for (int i = 0; i < b.Cmds.Count; i++)
                 {
-                    Cmd cmd = b.Cmds[i];
-                    if (cmd is CallCmd)
-                    {
-                        CallCmd callCmd = b.Cmds[i] as CallCmd;
-                        numCallCmdInEnclosingProc = numCallCmdInEnclosingProc + 1;
-                        
-                        if (!(callCmdsInImpl.Contains(callCmd)))
-                        {
-                            callCmdsInImpl.Add(callCmd);
-                            callCmdInBodyEncImplList.Add(callCmd);// 
-
-                        }
-                    }
+                    CallCmd callCmd = b.Cmds[i] as CallCmd;
+                    if (callCmd == null) continue;
+                    callCmdsInImpl.Add(callCmd);
                 }
             }
 
-
-#if (DEBUG && !DEBUG_DETAIL)
-            Console.Write("\n CallCmds inside program \n");
-            for (int i = 0; i < callCmdInBodyEncImplList.Count; i++) {
-                Console.Write("\nCallCmd " + callCmdInBodyEncImplList[i].Proc.Name+" ");            
-             
-            }
-#endif
             //Collect phase numbers of CallCmds inside impl
-            List<int> callCmdPhaseNumIndexList = new List<int>();
-            for (int i = 0; i < callCmdInBodyEncImplList.Count; i++)
+            HashSet<int> callCmdPhaseNumSet = new HashSet<int>();
+            foreach (CallCmd callCmd in callCmdsInImpl)
             {
-                foreach (Ensures e in callCmdInBodyEncImplList[i].Proc.Ensures)
-                {
-                    //callePhaseNum = QKeyValue.FindIntAttribute(e.Attributes, "phase", int.MaxValue);
-                    int tmpPhaseNum = QKeyValue.FindIntAttribute(e.Attributes, "phase", 0);
-                    callCmdPhaseNumIndexList.Add(tmpPhaseNum);                
-                }                
+                int tmpPhaseNum = TypeCheck.FindPhaseNumber(callCmd.Proc);
+                callCmdPhaseNumSet.Add(tmpPhaseNum);       
             }
-            // Get phase number of procedure of implementation : No Need !
-          //  foreach (Ensures e in ytypeChecked.Proc.Ensures)
-           // {
-             // int tmpPhaseNum = QKeyValue.FindIntAttribute(e.Attributes, "phase", 0);
-                callCmdPhaseNumIndexList.Add(specPhaseNumImpl);
-            //}
+            callCmdPhaseNumSet.Add(specPhaseNumImpl);
 
-            //Sort all PhaseNum of callCmds inside Implementation 
-            callCmdPhaseNumIndexList.Sort();
+            List<int> callCmdPhaseNumList = callCmdPhaseNumSet.ToList();
+            callCmdPhaseNumList.Sort();
 #if (DEBUG && !DEBUG_DETAIL)
             Console.Write("\n CallCmds's phase numbers \n");
             for (int i = 0; i < callCmdInBodyEncImplList.Count; i++)
@@ -215,17 +165,17 @@ namespace Microsoft.Boogie
             }
 #endif
             //Create Phase Intervals
-            for (int i = 0; i < callCmdPhaseNumIndexList.Count; i++)
+            for (int i = 0; i < callCmdPhaseNumList.Count; i++)
             {
                 //create the initial phase (-inf leastPhaseNum]
                 if (i == 0)
                 {
-                    Tuple<int, int> initTuple = new Tuple<int, int>(int.MinValue, callCmdPhaseNumIndexList[i]);
+                    Tuple<int, int> initTuple = new Tuple<int, int>(int.MinValue, callCmdPhaseNumList[i]);
                     phaseIntervals.Add(initTuple);
                 }
                 else // create other phase intervals 
                 {
-                    Tuple<int, int> intervalToInsert = new Tuple<int, int>(callCmdPhaseNumIndexList[i - 1] + 1, callCmdPhaseNumIndexList[i]);
+                    Tuple<int, int> intervalToInsert = new Tuple<int, int>(callCmdPhaseNumList[i - 1] + 1, callCmdPhaseNumList[i]);
                     phaseIntervals.Add(intervalToInsert);
                 }
             }
@@ -236,18 +186,19 @@ namespace Microsoft.Boogie
             }
 #endif
         }
+
         /*Parameter:YieldTypeCheckerCore yieldTypeCheckerPerImpl: takes an executor object to do all computation to build L(YTSI)
          */
-        public Automaton<BvSet> YieldTypeCheckAutomata(YieldTypeCheckerCore yieldTypeCheckerPerImpl)
+        public Automaton<BvSet> YieldTypeCheckAutomata()
         {
-            ComputePhaseIntervals(yieldTypeCheckerPerImpl.ytypeChecked); // Compute intervals
+            ComputePhaseIntervals(ytypeChecked); // Compute intervals
             for (int i = 0; i < this.phaseIntervals.Count; i++) // take current phase check num from each interval
             {
-                yTypeCheckCurrentPhaseNum = this.phaseIntervals[i].Item2 - 1; // set current phase num
+                yTypeCheckCurrentPhaseNum = this.phaseIntervals[i].Item2; // set current phase num
 #if (DEBUG && !DEBUG_DETAIL)
                 Console.Write(" \n TypeChecking for phase " + yTypeCheckCurrentPhaseNum.ToString() + "\n");
 #endif            
-                yieldTypeCheckerPerImpl.BuildAutomatonGraph(); // build component of graph for a phase interval
+                BuildAutomatonGraph(); // build component of graph for a phase interval
 #if (DEBUG && !DEBUG_DETAIL)
             Console.Write("\n Raw Graph is : \n");
             Console.Write(yieldTypeCheckerPerImpl.PrintGraph(yieldTypeCheckerPerImpl.GetTuplesForGraph()));
@@ -257,21 +208,16 @@ namespace Microsoft.Boogie
             }
 
             // Update edges w.r.t yield reaching. VocabX{True,False} 
-            yieldTypeCheckerPerImpl.PostProcessGraph(yieldTypeCheckerPerImpl.GetTuplesForGraph());
+            PostProcessGraph(GetTuplesForGraph());
 #if (DEBUG && !DEBUG_DETAIL)
             Console.Write("\n Refined Graph is : \n");
             Console.Write(yieldTypeCheckerPerImpl.PrintGraph(yieldTypeCheckerPerImpl.GetTuplesForGraph()));
 #endif
             //Build Automaton from graph created
-            return yieldTypeCheckerPerImpl.BuildAutomaton(yieldTypeCheckerPerImpl.GetTuplesForGraph());
+            return BuildAutomaton(GetTuplesForGraph());
 
         }
 
-        public static Automaton<BvSet> TypeCheck(Implementation impl, int specPhsNum)
-        {
-            YieldTypeCheckerCore yieldTypeCheckerPerImpl = new YieldTypeCheckerCore(impl, specPhsNum);
-            return yieldTypeCheckerPerImpl.YieldTypeCheckAutomata(yieldTypeCheckerPerImpl);
-        }
         /*
          * Implementation visitor call this main-visit-entrance function  
          */
@@ -906,8 +852,8 @@ namespace Microsoft.Boogie
 
                     int[] transition = new int[4];
                     transition[0] = e.Item1;
-                    transition[1] = 69; // ASCII E
-                    transition[2] = 69;
+                    transition[1] = -1;
+                    transition[2] = -1;
                     transition[3] = e.Item2;
                     transitions.Add(transition);
 
@@ -979,7 +925,7 @@ namespace Microsoft.Boogie
             // create Automaton
             Automaton<BvSet> yieldTypeCheckAutomaton = solver.ReadFromRanges(concreteInitialState, finalStates, transitions);
 
-#if (DEBUG && !DEBUG_DETAIL)
+#if (DEBUG && DEBUG_DETAIL)
             Console.Write("\n" + ytypeChecked.Proc.Name + " Automaton \n");
             Console.Write("\n" + "Number of moves " + yieldTypeCheckAutomaton.MoveCount.ToString() + "\n");
             Console.Write("\n" + "Number of states " + yieldTypeCheckAutomaton.StateCount.ToString() + "\n");
@@ -994,17 +940,7 @@ namespace Microsoft.Boogie
             //create Automaton
             //Automaton<YieldTypeSet> yieldTypeCheckAutomaton = Automaton<YieldTypeSet>.Create(concreteInitialState, finalStates, transitions); ;
             return yieldTypeCheckAutomaton;
-
         }
-
-
-
-        private void Error(Absy node, string message)
-        {
-            checkingContext.Error(node, message);
-            errorCount++;
-        }
-
     }
 
     static class Transitions

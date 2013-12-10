@@ -4,10 +4,19 @@ using System.Linq;
 using System.Text;
 using Microsoft.Boogie;
 
-namespace Concurrency
+namespace Microsoft.Boogie
 {
     class TypeCheck : StandardVisitor
     {
+        public static int FindPhaseNumber(Procedure proc)
+        {
+            foreach (Ensures ensures in proc.Ensures)
+            {
+
+            }
+            return int.MaxValue;
+        }
+
         CheckingContext checkingContext;
         int errorCount;
         HashSet<Variable> globalVariables;
@@ -37,12 +46,12 @@ namespace Concurrency
         }
         public override Implementation VisitImplementation(Implementation node)
         {
-            phaseNumEnclosingProc = QKeyValue.FindIntAttribute(node.Proc.Attributes, "phase", int.MaxValue);
+            phaseNumEnclosingProc = FindPhaseNumber(node.Proc);
             return base.VisitImplementation(node);
         }
         public override Procedure VisitProcedure(Procedure node)
         {
-            phaseNumEnclosingProc = QKeyValue.FindIntAttribute(node.Attributes, "phase", int.MaxValue);
+            phaseNumEnclosingProc = FindPhaseNumber(node);
             return base.VisitProcedure(node);
         } 
         public override Cmd VisitCallCmd(CallCmd node)
@@ -50,7 +59,7 @@ namespace Concurrency
             insideYield = false;
             if (!node.IsAsync && node.InParallelWith == null) {
 
-                int calleePhaseNum = QKeyValue.FindIntAttribute(node.Proc.Attributes, "phase", int.MaxValue);
+                int calleePhaseNum = FindPhaseNumber(node.Proc);
                 if (!(calleePhaseNum == int.MaxValue || phaseNumEnclosingProc > calleePhaseNum))
                 {
                     Error(node, "The phase of the caller procedure must be greater than the phase of the callee");    
