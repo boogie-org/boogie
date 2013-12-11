@@ -281,9 +281,6 @@ namespace Microsoft.Boogie {
 
     public virtual List<Block/*!*/>/*!*/ DoInlineBlocks(List<Block/*!*/>/*!*/ blocks, ref bool inlinedSomething) {
       Contract.Requires(cce.NonNullElements(blocks));
-      Contract.Requires(program != null);
-      Contract.Requires(newLocalVars != null);
-      Contract.Requires(newModifies != null);
       Contract.Ensures(cce.NonNullElements(Contract.Result<List<Block>>()));
       List<Block/*!*/>/*!*/ newBlocks = new List<Block/*!*/>();
       
