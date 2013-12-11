@@ -105,7 +105,7 @@ COPY_TO_BUFFER:
 }
 
 procedure {:yields} WriteCache({:linear "tid"} tid': X, index: int) returns ({:linear "tid"} tid: X)
-ensures {:right} {:phase 0} |{ A: assert ghostLock == tid' && tid' != nil; tid := tid'; cache := (lambda i: int :: if (currsize <= i && i < index) then device[i] else cache[i]); return true; }|;
+ensures {:right 0} |{ A: assert ghostLock == tid' && tid' != nil; tid := tid'; cache := (lambda i: int :: if (currsize <= i && i < index) then device[i] else cache[i]); return true; }|;
 {
     var j: int;
     tid := tid';
@@ -142,28 +142,28 @@ ensures (forall i: int :: 0 <= i && i < bytesRead ==> buffer[i] == device[start+
 }
 
 procedure {:yields} ReadCurrsize({:linear "tid"} tid': X) returns ({:linear "tid"} tid: X, val: int);
-ensures {:right} |{A: assert tid' != nil; assert lock == tid' || ghostLock == tid'; tid := tid'; val := currsize; return true; }|;
+ensures {:right -1} |{A: assert tid' != nil; assert lock == tid' || ghostLock == tid'; tid := tid'; val := currsize; return true; }|;
 
 procedure {:yields} ReadNewsize({:linear "tid"} tid': X) returns ({:linear "tid"} tid: X, val: int);
-ensures {:right} |{A: assert tid' != nil; assert lock == tid' || ghostLock == tid'; tid := tid'; val := newsize; return true; }|;
+ensures {:right -1} |{A: assert tid' != nil; assert lock == tid' || ghostLock == tid'; tid := tid'; val := newsize; return true; }|;
 
 procedure {:yields} WriteNewsize({:linear "tid"} tid': X, val: int) returns ({:linear "tid"} tid: X);
-ensures {:atomic} |{A: assert tid' != nil; assert lock == tid' && ghostLock == nil; tid := tid'; newsize := val; ghostLock := tid; return true; }|;
+ensures {:atomic -1} |{A: assert tid' != nil; assert lock == tid' && ghostLock == nil; tid := tid'; newsize := val; ghostLock := tid; return true; }|;
 
 procedure {:yields} WriteCurrsize({:linear "tid"} tid': X, val: int) returns ({:linear "tid"} tid: X);
-ensures {:atomic} |{A: assert tid' != nil; assert lock == tid' && ghostLock == tid'; tid := tid'; currsize := val; ghostLock := nil; return true; }|;
+ensures {:atomic -1} |{A: assert tid' != nil; assert lock == tid' && ghostLock == tid'; tid := tid'; currsize := val; ghostLock := nil; return true; }|;
 
 procedure {:yields} ReadCacheEntry(index: int) returns (val: int);
-ensures {:atomic} |{ A: assert 0 <= index && index < currsize; val := cache[index]; return true; }|;
+ensures {:atomic -1} |{ A: assert 0 <= index && index < currsize; val := cache[index]; return true; }|;
 
 procedure {:yields} WriteCacheEntry({:linear "tid"} tid': X, index: int) returns ({:linear "tid"} tid: X);
-ensures {:right} |{ A: assert tid' != nil; assert currsize <= index && ghostLock == tid'; tid := tid'; cache[index] := device[index]; return true; }|;
+ensures {:right -1} |{ A: assert tid' != nil; assert currsize <= index && ghostLock == tid'; tid := tid'; cache[index] := device[index]; return true; }|;
 
 procedure {:yields} acquire({:linear "tid"} tid': X) returns ({:linear "tid"} tid: X);
-ensures {:right} |{ A: assert tid' != nil; tid := tid'; assume lock == nil; lock := tid; return true; }|;
+ensures {:right -1} |{ A: assert tid' != nil; tid := tid'; assume lock == nil; lock := tid; return true; }|;
 
 procedure {:yields} release({:linear "tid"} tid': X) returns ({:linear "tid"} tid: X);
-ensures {:left} |{ A: assert tid' != nil; assert lock == tid'; tid := tid'; lock := nil; return true; }|;
+ensures {:left -1} |{ A: assert tid' != nil; assert lock == tid'; tid := tid'; lock := nil; return true; }|;
 
 procedure {:yields} Skip();
-ensures {:both} |{ A: return true; }|;
+ensures {:both -1} |{ A: return true; }|;

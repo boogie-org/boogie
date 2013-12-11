@@ -47,7 +47,7 @@ namespace Microsoft.Boogie
             this.varToDomainName = new Dictionary<Variable, string>();
             this.linearDomains = new Dictionary<string, LinearDomain>();
         }
-        public void Typecheck()
+        public void TypeCheck()
         {
             this.VisitProgram(program);
             foreach (string domainName in domainNameToType.Keys)

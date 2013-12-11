@@ -2350,14 +2350,14 @@ namespace Microsoft.Boogie {
       //Contract.Requires(rc != null);
       this.Condition.Resolve(rc);
     }
-
+    
     public override void Typecheck(TypecheckingContext tc) {
       //Contract.Requires(tc != null);
         bool isAtomicSpecification =
-            QKeyValue.FindBoolAttribute(this.Attributes, "atomic") ||
-            QKeyValue.FindBoolAttribute(this.Attributes, "right") ||
-            QKeyValue.FindBoolAttribute(this.Attributes, "left") ||
-            QKeyValue.FindBoolAttribute(this.Attributes, "both");
+            QKeyValue.FindIntAttribute(this.Attributes, "atomic", int.MaxValue) != int.MaxValue ||
+            QKeyValue.FindIntAttribute(this.Attributes, "right", int.MaxValue) != int.MaxValue ||
+            QKeyValue.FindIntAttribute(this.Attributes, "left", int.MaxValue) != int.MaxValue ||
+            QKeyValue.FindIntAttribute(this.Attributes, "both", int.MaxValue) != int.MaxValue;
       bool oldYields = tc.Yields;
       tc.Yields = isAtomicSpecification;
       this.Condition.Typecheck(tc);

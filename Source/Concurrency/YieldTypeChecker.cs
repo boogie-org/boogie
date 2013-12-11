@@ -26,26 +26,15 @@ namespace Microsoft.Boogie
         static CharSetSolver yieldTypeCheckerAutomatonSolver;
         static string yieldTypeCheckerRegex = @"^((1|2)+(3|4))*((D)+(((5|6))+((7|8))+((1|2))+((3|4)))*[A]((9)+(7)+(3))*)*$";// regex of property to build automaton of YTS language
         static Automaton<BvSet> yieldTypeCheckerAutomaton;
-        static int errorCount;
-        static CheckingContext checkingContext;
-        static Automaton<BvSet> foo;
         static YieldTypeChecker()
         {
             yieldTypeCheckerAutomatonSolver = new CharSetSolver(BitWidth.BV7);
-            foo = yieldTypeCheckerAutomatonSolver.Convert(@"^[1-9A-D]*$");
-            yieldTypeCheckerAutomaton = yieldTypeCheckerAutomatonSolver.Convert(yieldTypeCheckerRegex); // YTS property , L(YTSP)
-            yieldTypeCheckerAutomaton = Automaton<BvSet>.MkProduct(yieldTypeCheckerAutomaton, foo, yieldTypeCheckerAutomatonSolver);
-
-            errorCount = 0;
-            checkingContext = new CheckingContext(null);
+            yieldTypeCheckerAutomaton = 
+                Automaton<BvSet>.MkProduct(yieldTypeCheckerAutomatonSolver.Convert(yieldTypeCheckerRegex), 
+                                           yieldTypeCheckerAutomatonSolver.Convert(@"^[1-9A-D]*$"), 
+                                           yieldTypeCheckerAutomatonSolver);
         }
-
-        private static void Error(Absy node, string message)
-        {
-            checkingContext.Error(node, message);
-            errorCount++;
-        }
-
+        
         /*
          Parameter: Automaton<BvSet> implTypeCheckAutomaton :  Automaton of implementation body build with respect to YTSI.
          Return : if L(YTSI) is subset of L(YTSP) {TRUE} else {FALSE}  
@@ -73,20 +62,20 @@ namespace Microsoft.Boogie
         /*
          Parameter : LinearTypeChecker linearTypeChecker : YTS Checker is a component of linearTypeChecker.Adds instance of YTS checker into linearType checker
          */
-        public static void PerformYieldTypeChecking(LinearTypeChecker linearTypeChecker)
+        public static void PerformYieldTypeChecking(MoverTypeChecker moverTypeChecker)
         {
-            Program yieldTypeCheckedProgram = linearTypeChecker.program;
+            Program yieldTypeCheckedProgram = moverTypeChecker.program;
             YieldTypeChecker regExprToAuto = new YieldTypeChecker();
             foreach (var decl in yieldTypeCheckedProgram.TopLevelDeclarations)
             {
                 Implementation impl = decl as Implementation;
                 if (impl == null) continue;
-                int phaseNumSpecImpl = TypeCheck.FindPhaseNumber(impl.Proc);
-                YieldTypeCheckerCore yieldTypeCheckerPerImpl = new YieldTypeCheckerCore(impl, phaseNumSpecImpl);
+                int phaseNumSpecImpl = moverTypeChecker.FindPhaseNumber(impl.Proc);
+                YieldTypeCheckerCore yieldTypeCheckerPerImpl = new YieldTypeCheckerCore(moverTypeChecker, impl, phaseNumSpecImpl);
                 Automaton<BvSet> yieldTypeCheckImpl = yieldTypeCheckerPerImpl.YieldTypeCheckAutomata();
                 if (!IsYieldTypeSafe(yieldTypeCheckImpl))
                 {
-                    Error(impl, "\n Body of " + impl.Proc.Name + " is not yield type safe " + "\n");
+                    moverTypeChecker.Error(impl, "\n Body of " + impl.Proc.Name + " is not yield type safe " + "\n");
                 }
             }
         }
@@ -108,9 +97,11 @@ namespace Microsoft.Boogie
         List<Tuple<int, int>> phaseIntervals; // [MinValue ph0 ] [ph0 ph1] [ph1 ph2] ..... [phk phk+1] intervals
         List<int> finalStates; //final
         List<int> initialStates; // initial states collection. There are epsilon transitions (ASCII 'E') from concreteInitial state to these initial states
+        MoverTypeChecker moverTypeChecker;
 
-        public YieldTypeCheckerCore(Implementation toTypeCheck, int specPhaseNum)
+        public YieldTypeCheckerCore(MoverTypeChecker moverTypeChecker, Implementation toTypeCheck, int specPhaseNum)
         {
+            this.moverTypeChecker = moverTypeChecker;
             ytypeChecked = toTypeCheck;
             
             specPhaseNumImpl = specPhaseNum;
@@ -150,7 +141,7 @@ namespace Microsoft.Boogie
             HashSet<int> callCmdPhaseNumSet = new HashSet<int>();
             foreach (CallCmd callCmd in callCmdsInImpl)
             {
-                int tmpPhaseNum = TypeCheck.FindPhaseNumber(callCmd.Proc);
+                int tmpPhaseNum = moverTypeChecker.FindPhaseNumber(callCmd.Proc);
                 callCmdPhaseNumSet.Add(tmpPhaseNum);       
             }
             callCmdPhaseNumSet.Add(specPhaseNumImpl);

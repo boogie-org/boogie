@@ -461,7 +461,8 @@ namespace Microsoft.Boogie
         }
 
         LinearTypeChecker linearTypeChecker;
-        PipelineOutcome oc = ResolveAndTypecheck(program, fileNames[fileNames.Count - 1], out linearTypeChecker);
+        MoverTypeChecker moverTypeChecker;
+        PipelineOutcome oc = ResolveAndTypecheck(program, fileNames[fileNames.Count - 1], out linearTypeChecker, out moverTypeChecker);
         if (oc != PipelineOutcome.ResolvedAndTypeChecked)
           return;
 
@@ -484,7 +485,7 @@ namespace Microsoft.Boogie
 
         if (CommandLineOptions.Clo.StratifiedInlining == 0)
         {
-          OwickiGriesTransform ogTransform = new OwickiGriesTransform(linearTypeChecker);
+          OwickiGriesTransform ogTransform = new OwickiGriesTransform(linearTypeChecker, moverTypeChecker);
           ogTransform.Transform();
           var eraser = new LinearEraser();
           eraser.VisitProgram(program);
@@ -641,12 +642,13 @@ namespace Microsoft.Boogie
     ///  - TypeCheckingError if a type checking error occurred
     ///  - ResolvedAndTypeChecked if both resolution and type checking succeeded
     /// </summary>
-    public static PipelineOutcome ResolveAndTypecheck(Program program, string bplFileName, out LinearTypeChecker linearTypeChecker)
+    public static PipelineOutcome ResolveAndTypecheck(Program program, string bplFileName, out LinearTypeChecker linearTypeChecker, out MoverTypeChecker moverTypeChecker)
     {
       Contract.Requires(program != null);
       Contract.Requires(bplFileName != null);
 
       linearTypeChecker = null;
+      moverTypeChecker = null;
 
       // ---------- Resolve ------------------------------------------------------------
 
@@ -682,7 +684,7 @@ namespace Microsoft.Boogie
       }
 
       linearTypeChecker = new LinearTypeChecker(program);
-      linearTypeChecker.Typecheck();
+      linearTypeChecker.TypeCheck();
       if (linearTypeChecker.errorCount == 0)
       {
         linearTypeChecker.Transform();
@@ -692,6 +694,16 @@ namespace Microsoft.Boogie
         Console.WriteLine("{0} type checking errors detected in {1}", linearTypeChecker.errorCount, bplFileName);
         return PipelineOutcome.TypeCheckingError;
       }
+
+#if QED
+      moverTypeChecker = new MoverTypeChecker(program);
+      moverTypeChecker.TypeCheck();
+      if (moverTypeChecker.errorCount != 0)
+      {
+        Console.WriteLine("{0} type checking errors detected in {1}", moverTypeChecker.errorCount, bplFileName);
+        return PipelineOutcome.TypeCheckingError;
+      }
+#endif
 
       if (CommandLineOptions.Clo.PrintFile != null && CommandLineOptions.Clo.PrintDesugarings)
       {
@@ -1197,7 +1209,8 @@ namespace Microsoft.Boogie
       Program p = ParseBoogieProgram(new List<string> { filename }, false);
       System.Diagnostics.Debug.Assert(p != null);
       LinearTypeChecker linearTypeChecker;
-      PipelineOutcome oc = ExecutionEngine.ResolveAndTypecheck(p, filename, out linearTypeChecker);
+      MoverTypeChecker moverTypeChecker;
+      PipelineOutcome oc = ExecutionEngine.ResolveAndTypecheck(p, filename, out linearTypeChecker, out moverTypeChecker);
       System.Diagnostics.Debug.Assert(oc == PipelineOutcome.ResolvedAndTypeChecked);
       return p;
     }

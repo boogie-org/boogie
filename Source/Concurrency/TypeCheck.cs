@@ -6,28 +6,62 @@ using Microsoft.Boogie;
 
 namespace Microsoft.Boogie
 {
-    class TypeCheck : StandardVisitor
+    public class MoverTypeChecker : StandardVisitor
     {
-        public static int FindPhaseNumber(Procedure proc)
+        public int FindPhaseNumber(Procedure proc)
         {
-            foreach (Ensures ensures in proc.Ensures)
-            {
-
-            }
-            return int.MaxValue;
+            if (procToActionInfo.ContainsKey(proc))
+                return procToActionInfo[proc].phaseNum;
+            else
+                return int.MaxValue;
         }
 
         CheckingContext checkingContext;
-        int errorCount;
+        public int errorCount;
         HashSet<Variable> globalVariables;
         bool insideYield;
         int phaseNumEnclosingProc;
-                
-        public TypeCheck(Program program)
+        public Dictionary<Procedure, ActionInfo> procToActionInfo;
+        public Program program;
+
+        public void TypeCheck()
+        {
+            foreach (Declaration decl in program.TopLevelDeclarations)
+            {
+                Procedure proc = decl as Procedure;
+                if (proc == null) continue;
+                foreach (Ensures e in proc.Ensures)
+                {
+                    int phaseNum;
+                    MoverType moverType = MoverCheck.GetMoverType(e, out phaseNum);
+                    if (moverType == MoverType.Top) continue;
+                    CodeExpr codeExpr = e.Condition as CodeExpr;
+                    if (codeExpr == null)
+                    {
+                        Error(e, "An atomic action must be a CodeExpr");
+                        continue;
+                    }
+                    if (procToActionInfo.ContainsKey(proc))
+                    {
+                        Error(proc, "A procedure can have at most one atomic action");
+                        continue;
+                    }
+                    procToActionInfo[proc] = new ActionInfo(proc, codeExpr, moverType, phaseNum);
+                }
+            }
+            this.VisitProgram(program);
+#if QED
+            YieldTypeChecker.PerformYieldTypeChecking(this);
+#endif
+        }
+
+        public MoverTypeChecker(Program program)
         {
             globalVariables = new HashSet<Variable>(program.GlobalVariables());
+            procToActionInfo = new Dictionary<Procedure, ActionInfo>();
             this.errorCount = 0;
             this.checkingContext = new CheckingContext(null);
+            this.program = program;
         }
         public override Block VisitBlock(Block node)
         {
@@ -118,14 +152,10 @@ namespace Microsoft.Boogie
             return base.VisitAssumeCmd(node);
         }
 
-        //
-
-        private void Error(Absy node, string message)
+        public void Error(Absy node, string message)
         {
             checkingContext.Error(node, message);
             errorCount++;
         }
-
-       
     }
 }

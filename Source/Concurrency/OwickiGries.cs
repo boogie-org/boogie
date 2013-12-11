@@ -14,14 +14,16 @@ namespace Microsoft.Boogie
     {
         List<IdentifierExpr> globalMods;
         LinearTypeChecker linearTypeChecker;
+        MoverTypeChecker moverTypeChecker;
         Dictionary<string, Procedure> asyncAndParallelCallDesugarings;
         List<Procedure> yieldCheckerProcs;
         List<Implementation> yieldCheckerImpls;
         Procedure yieldProc;
 
-        public OwickiGriesTransform(LinearTypeChecker linearTypeChecker)
+        public OwickiGriesTransform(LinearTypeChecker linearTypeChecker, MoverTypeChecker moverTypeChecker)
         {
             this.linearTypeChecker = linearTypeChecker;
+            this.moverTypeChecker = moverTypeChecker;
             Program program = linearTypeChecker.program;
             globalMods = new List<IdentifierExpr>();
             foreach (Variable g in program.GlobalVariables())
@@ -689,11 +691,6 @@ namespace Microsoft.Boogie
 
         public void Transform()
         {
-            MoverCheck.AddCheckers(linearTypeChecker);
-#if QED
-            YieldTypeChecker.PerformYieldTypeChecking(linearTypeChecker);
-            RefinementCheck.AddCheckers(linearTypeChecker);
-#endif
             Program program = linearTypeChecker.program;
             foreach (var decl in program.TopLevelDeclarations)
             {

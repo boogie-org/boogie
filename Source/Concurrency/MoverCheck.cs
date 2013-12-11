@@ -7,31 +7,173 @@ using System.Diagnostics;
 
 namespace Microsoft.Boogie
 {
-    /*
-     * Typechecking rules:
-     * At most one atomic specification per procedure
-     * The gate of an atomic specification refers only to global and input variables       
-     */
+    public enum MoverType
+    {
+        Top,
+        Atomic,
+        Right,
+        Left,
+        Both
+    }
+
+    public class ActionInfo
+    {
+        public Procedure proc;
+        public MoverType moverType;
+        public int phaseNum;
+        public List<AssertCmd> thisGate;
+        public CodeExpr thisAction;
+        public List<Variable> thisInParams;
+        public List<Variable> thisOutParams;
+        public List<AssertCmd> thatGate;
+        public CodeExpr thatAction;
+        public List<Variable> thatInParams;
+        public List<Variable> thatOutParams;
+
+        public bool IsRightMover
+        {
+            get { return moverType == MoverType.Right || moverType == MoverType.Both; }
+        }
+
+        public bool IsLeftMover
+        {
+            get { return moverType == MoverType.Left || moverType == MoverType.Both; }
+        }
+
+        public ActionInfo(Procedure proc, CodeExpr codeExpr, MoverType moverType, int phaseNum)
+        {
+            this.proc = proc;
+            this.moverType = moverType;
+            this.phaseNum = phaseNum;
+            this.thisGate = new List<AssertCmd>();
+            this.thisAction = codeExpr;
+            this.thisInParams = new List<Variable>();
+            this.thisOutParams = new List<Variable>();
+            this.thatGate = new List<AssertCmd>();
+            this.thatInParams = new List<Variable>();
+            this.thatOutParams = new List<Variable>();
+
+            var cmds = thisAction.Blocks[0].Cmds;
+            for (int i = 0; i < cmds.Count; i++)
+            {
+                AssertCmd assertCmd = cmds[i] as AssertCmd;
+                if (assertCmd == null) break;
+                thisGate.Add(assertCmd);
+                cmds[i] = new AssumeCmd(assertCmd.tok, assertCmd.Expr);
+            }
+
+            Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
+            foreach (Variable x in proc.InParams)
+            {
+                this.thisInParams.Add(x);
+                Variable y = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "that_" + x.Name, x.TypedIdent.Type), true);
+                this.thatInParams.Add(y);
+                map[x] = new IdentifierExpr(Token.NoToken, y);
+            }
+            foreach (Variable x in proc.OutParams)
+            {
+                this.thisOutParams.Add(x);
+                Variable y = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "that_" + x.Name, x.TypedIdent.Type), false);
+                this.thatOutParams.Add(y);
+                map[x] = new IdentifierExpr(Token.NoToken, y);
+            }
+            List<Variable> otherLocVars = new List<Variable>();
+            foreach (Variable x in thisAction.LocVars)
+            {
+                Variable y = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "that_" + x.Name, x.TypedIdent.Type), false);
+                map[x] = new IdentifierExpr(Token.NoToken, y);
+                otherLocVars.Add(y);
+            }
+            Contract.Assume(proc.TypeParameters.Count == 0);
+            Substitution subst = Substituter.SubstitutionFromHashtable(map);
+            foreach (AssertCmd assertCmd in thisGate)
+            {
+                thatGate.Add((AssertCmd)Substituter.Apply(subst, assertCmd));
+            }
+            Dictionary<Block, Block> blockMap = new Dictionary<Block, Block>();
+            List<Block> otherBlocks = new List<Block>();
+            foreach (Block block in thisAction.Blocks)
+            {
+                List<Cmd> otherCmds = new List<Cmd>();
+                foreach (Cmd cmd in block.Cmds)
+                {
+                    otherCmds.Add(Substituter.Apply(subst, cmd));
+                }
+                Block otherBlock = new Block();
+                otherBlock.Cmds = otherCmds;
+                otherBlock.Label = "that_" + block.Label;
+                block.Label = "this_" + block.Label;
+                otherBlocks.Add(otherBlock);
+                blockMap[block] = otherBlock;
+                if (block.TransferCmd is GotoCmd)
+                {
+                    GotoCmd gotoCmd = block.TransferCmd as GotoCmd;
+                    for (int i = 0; i < gotoCmd.labelNames.Count; i++)
+                    {
+                        gotoCmd.labelNames[i] = "this_" + gotoCmd.labelNames[i];
+                    }
+                }
+            }
+            foreach (Block block in thisAction.Blocks)
+            {
+                if (block.TransferCmd is ReturnExprCmd)
+                {
+                    blockMap[block].TransferCmd = new ReturnExprCmd(block.TransferCmd.tok, Expr.True);
+                    continue;
+                }
+                List<Block> otherGotoCmdLabelTargets = new List<Block>();
+                List<string> otherGotoCmdLabelNames = new List<string>();
+                GotoCmd gotoCmd = block.TransferCmd as GotoCmd;
+                foreach (Block target in gotoCmd.labelTargets)
+                {
+                    otherGotoCmdLabelTargets.Add(blockMap[target]);
+                    otherGotoCmdLabelNames.Add(blockMap[target].Label);
+                }
+                blockMap[block].TransferCmd = new GotoCmd(block.TransferCmd.tok, otherGotoCmdLabelNames, otherGotoCmdLabelTargets);
+            }
+            this.thatAction = new CodeExpr(otherLocVars, otherBlocks);
+        }
+    }
+
     public class MoverCheck
     {
+        public static MoverType GetMoverType(Ensures e, out int phaseNum)
+        {
+            phaseNum = QKeyValue.FindIntAttribute(e.Attributes, "atomic", int.MaxValue);
+            if (phaseNum != int.MaxValue)
+                return MoverType.Atomic;
+            phaseNum = QKeyValue.FindIntAttribute(e.Attributes, "right", int.MaxValue);
+            if (phaseNum != int.MaxValue)
+                return MoverType.Right;
+            phaseNum = QKeyValue.FindIntAttribute(e.Attributes, "left", int.MaxValue);
+            if (phaseNum != int.MaxValue)
+                return MoverType.Left;
+            phaseNum = QKeyValue.FindIntAttribute(e.Attributes, "both", int.MaxValue);
+            if (phaseNum != int.MaxValue)
+                return MoverType.Both;
+            return MoverType.Top;
+        }
+
         HashSet<Tuple<ActionInfo, ActionInfo>> commutativityCheckerCache;
         HashSet<Tuple<ActionInfo, ActionInfo>> gatePreservationCheckerCache;
         HashSet<Tuple<ActionInfo, ActionInfo>> failurePreservationCheckerCache;
         LinearTypeChecker linearTypeChecker;
+        MoverTypeChecker moverTypeChecker;
         Program moverCheckerProgram;
-        private MoverCheck(LinearTypeChecker linearTypeChecker)
+        private MoverCheck(LinearTypeChecker linearTypeChecker, MoverTypeChecker moverTypeChecker)
         {
             this.commutativityCheckerCache = new HashSet<Tuple<ActionInfo, ActionInfo>>();
             this.gatePreservationCheckerCache = new HashSet<Tuple<ActionInfo, ActionInfo>>();
             this.failurePreservationCheckerCache = new HashSet<Tuple<ActionInfo, ActionInfo>>();
             this.linearTypeChecker = linearTypeChecker;
+            this.moverTypeChecker = moverTypeChecker;
             this.moverCheckerProgram = new Program();
-            foreach (Declaration decl in linearTypeChecker.program.TopLevelDeclarations)
+            foreach (Declaration decl in moverTypeChecker.program.TopLevelDeclarations)
             {
                 if (decl is TypeCtorDecl || decl is TypeSynonymDecl || decl is Constant || decl is Function || decl is Axiom)
                     this.moverCheckerProgram.TopLevelDeclarations.Add(decl);
             }
-            foreach (Variable v in linearTypeChecker.program.GlobalVariables())
+            foreach (Variable v in moverTypeChecker.program.GlobalVariables())
             {
                 this.moverCheckerProgram.TopLevelDeclarations.Add(v);
             }
@@ -84,163 +226,18 @@ namespace Microsoft.Boogie
             }
         }
 
-        enum MoverType
+        public static void AddCheckers(LinearTypeChecker linearTypeChecker, MoverTypeChecker moverTypeChecker)
         {
-            Top,
-            Atomic,
-            Right,
-            Left,
-            Both
-        }
-
-        class ActionInfo
-        {
-            public Procedure proc;
-            public MoverType moverType;
-            public List<AssertCmd> thisGate;
-            public CodeExpr thisAction;
-            public List<Variable> thisInParams;
-            public List<Variable> thisOutParams;
-            public List<AssertCmd> thatGate;
-            public CodeExpr thatAction;
-            public List<Variable> thatInParams;
-            public List<Variable> thatOutParams;
-
-            public bool IsRightMover
-            {
-                get { return moverType == MoverType.Right || moverType == MoverType.Both; }
-            }
-            
-            public bool IsLeftMover
-            {
-                get { return moverType == MoverType.Left || moverType == MoverType.Both; }
-            }
-
-            public ActionInfo(Procedure proc, CodeExpr codeExpr, MoverType moverType)
-            {
-                this.proc = proc;
-                this.moverType = moverType;
-                this.thisGate = new List<AssertCmd>();
-                this.thisAction = codeExpr;
-                this.thisInParams = new List<Variable>();
-                this.thisOutParams = new List<Variable>();
-                this.thatGate = new List<AssertCmd>();
-                this.thatInParams = new List<Variable>();
-                this.thatOutParams = new List<Variable>();
-
-                var cmds = thisAction.Blocks[0].Cmds;
-                for (int i = 0; i < cmds.Count; i++)
-                {
-                    AssertCmd assertCmd = cmds[i] as AssertCmd;
-                    if (assertCmd == null) break;
-                    thisGate.Add(assertCmd);
-                    cmds[i] = new AssumeCmd(assertCmd.tok, assertCmd.Expr);
-                }
-
-                Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
-                foreach (Variable x in proc.InParams)
-                {
-                    this.thisInParams.Add(x);
-                    Variable y = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "that_" + x.Name, x.TypedIdent.Type), true);
-                    this.thatInParams.Add(y);
-                    map[x] = new IdentifierExpr(Token.NoToken, y);
-                }
-                foreach (Variable x in proc.OutParams)
-                {
-                    this.thisOutParams.Add(x);
-                    Variable y = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "that_" + x.Name, x.TypedIdent.Type), false);
-                    this.thatOutParams.Add(y);
-                    map[x] = new IdentifierExpr(Token.NoToken, y);
-                }
-                List<Variable> otherLocVars = new List<Variable>();
-                foreach (Variable x in thisAction.LocVars)
-                {
-                    Variable y = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "that_" + x.Name, x.TypedIdent.Type), false);
-                    map[x] = new IdentifierExpr(Token.NoToken, y);
-                    otherLocVars.Add(y);
-                }
-                Contract.Assume(proc.TypeParameters.Count == 0);
-                Substitution subst = Substituter.SubstitutionFromHashtable(map);
-                foreach (AssertCmd assertCmd in thisGate)
-                {
-                    thatGate.Add((AssertCmd)Substituter.Apply(subst, assertCmd));
-                }
-                Dictionary<Block, Block> blockMap = new Dictionary<Block, Block>();
-                List<Block> otherBlocks = new List<Block>();
-                foreach (Block block in thisAction.Blocks)
-                {
-                    List<Cmd> otherCmds = new List<Cmd>();
-                    foreach (Cmd cmd in block.Cmds)
-                    {
-                        otherCmds.Add(Substituter.Apply(subst, cmd));
-                    }
-                    Block otherBlock = new Block();
-                    otherBlock.Cmds = otherCmds;
-                    otherBlock.Label = "that_" + block.Label;
-                    block.Label = "this_" + block.Label;
-                    otherBlocks.Add(otherBlock);
-                    blockMap[block] = otherBlock;
-                    if (block.TransferCmd is GotoCmd)
-                    {
-                        GotoCmd gotoCmd = block.TransferCmd as GotoCmd;
-                        for (int i = 0; i < gotoCmd.labelNames.Count; i++)
-                        {
-                            gotoCmd.labelNames[i] = "this_" + gotoCmd.labelNames[i];
-                        }
-                    }
-                }
-                foreach (Block block in thisAction.Blocks)
-                {
-                    if (block.TransferCmd is ReturnExprCmd)
-                    {
-                        blockMap[block].TransferCmd = new ReturnExprCmd(block.TransferCmd.tok, Expr.True);
-                        continue;
-                    }
-                    List<Block> otherGotoCmdLabelTargets = new List<Block>();
-                    List<string> otherGotoCmdLabelNames = new List<string>();
-                    GotoCmd gotoCmd = block.TransferCmd as GotoCmd;
-                    foreach (Block target in gotoCmd.labelTargets)
-                    {
-                        otherGotoCmdLabelTargets.Add(blockMap[target]);
-                        otherGotoCmdLabelNames.Add(blockMap[target].Label);
-                    }
-                    blockMap[block].TransferCmd = new GotoCmd(block.TransferCmd.tok, otherGotoCmdLabelNames, otherGotoCmdLabelTargets);
-                }
-                this.thatAction = new CodeExpr(otherLocVars, otherBlocks);
-            }
-        }
-
-        public static void AddCheckers(LinearTypeChecker linearTypeChecker)
-        {
-            Program program = linearTypeChecker.program;
-            List<ActionInfo> gatedActions = new List<ActionInfo>();
-            foreach (Declaration decl in program.TopLevelDeclarations)
-            {
-                Procedure proc = decl as Procedure;
-                if (proc == null) continue;
-                foreach (Ensures e in proc.Ensures)
-                {
-                    MoverType moverType = GetMoverType(e);
-                    if (moverType == MoverType.Top) continue;
-                    CodeExpr codeExpr = e.Condition as CodeExpr;
-                    if (codeExpr == null)
-                    {
-                        Console.WriteLine("Warning: an atomic action must be a CodeExpr");
-                        continue;
-                    }
-                    ActionInfo info = new ActionInfo(proc, codeExpr, moverType);
-                    gatedActions.Add(info);
-                }
-            }
-            if (gatedActions.Count == 0)
+            if (moverTypeChecker.procToActionInfo.Count == 0)
                 return;
-            MoverCheck moverChecking = new MoverCheck(linearTypeChecker);
-            foreach (ActionInfo first in gatedActions)
+            Program program = moverTypeChecker.program;
+            MoverCheck moverChecking = new MoverCheck(linearTypeChecker, moverTypeChecker);
+            foreach (ActionInfo first in moverTypeChecker.procToActionInfo.Values)
             {
                 Debug.Assert(first.moverType != MoverType.Top);
                 if (first.moverType == MoverType.Atomic)
                     continue;
-                foreach (ActionInfo second in gatedActions)
+                foreach (ActionInfo second in moverTypeChecker.procToActionInfo.Values)
                 {
                     if (first.IsRightMover)
                     {
@@ -272,20 +269,6 @@ namespace Microsoft.Boogie
                 }
                 CommandLineOptions.Clo.PrintUnstructured = oldPrintUnstructured;
             }
-        }
-
-        private static MoverType GetMoverType(Ensures e)
-        {
-            if (QKeyValue.FindBoolAttribute(e.Attributes, "atomic"))
-                return MoverType.Atomic;
-            else if (QKeyValue.FindBoolAttribute(e.Attributes, "right"))
-                return MoverType.Right;
-            else if (QKeyValue.FindBoolAttribute(e.Attributes, "left"))
-                return MoverType.Left;
-            else if (QKeyValue.FindBoolAttribute(e.Attributes, "both"))
-                return MoverType.Both;
-            else
-                return MoverType.Top;
         }
 
         class TransitionRelationComputation

@@ -23,7 +23,7 @@ procedure {:yields} {:stable} Customer()
 }
 
 procedure {:yields} Enter() 
-ensures {:atomic} {:phase 0} |{ A: assume !b; b := true; return true; }|;
+ensures {:atomic 0} |{ A: assume !b; b := true; return true; }|;
 {
     var status: bool;
     L: 
@@ -42,11 +42,11 @@ ensures {:atomic} {:phase 0} |{ A: assume !b; b := true; return true; }|;
 }
 
 procedure CAS(prev: bool, next: bool) returns (status: bool);
-ensures {:atomic} |{ 
+ensures {:atomic -1} |{ 
 A: goto B, C; 
 B: assume b == prev; b := next; status := true; return true; 
 C: status := false; return true; 
 }|;
 
 procedure {:yields} Leave();
-ensures {:atomic} |{ A: b := false; return true; }|;
+ensures {:atomic -1} |{ A: b := false; return true; }|;
