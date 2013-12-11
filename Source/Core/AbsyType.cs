@@ -2950,9 +2950,13 @@ Contract.Requires(that != null);
       if (subst.Count == 0)
         return this;
       List<Type> newArgs = new List<Type>();
-      foreach (Type/*!*/ t in Arguments) {
-        Contract.Assert(t != null);
-        newArgs.Add(t.Substitute(subst));
+      lock (Arguments)
+      {
+        foreach (Type/*!*/ t in Arguments)
+        {
+          Contract.Assert(t != null);
+          newArgs.Add(t.Substitute(subst));
+        }
       }
       return new CtorType(tok, Decl, newArgs);
     }
@@ -3336,9 +3340,13 @@ Contract.Assert(var != null);
       }
 
       List<Type> newArgs = new List<Type>();
-      foreach (Type/*!*/ t in Arguments) {
-        Contract.Assert(t != null);
-        newArgs.Add(t.Substitute(subst));
+      lock (Arguments)
+      {
+        foreach (Type/*!*/ t in Arguments)
+        {
+          Contract.Assert(t != null);
+          newArgs.Add(t.Substitute(subst));
+        }
       }
       Type/*!*/ newResult = Result.Substitute(subst);
       Contract.Assert(newResult != null);

@@ -1658,33 +1658,41 @@ namespace VC {
                   keep_going ? CommandLineOptions.Clo.VcsKeepGoingTimeout :
                   impl.TimeLimit;
 
-            var checker = s.parent.FindCheckerFor(timeout, false);
-            if (checker == null)
+            var checker = s.parent.FindCheckerFor(timeout, false);            
+            try
             {
-              isWaiting = true;
-              goto waiting;
+              if (checker == null)
+              {
+                isWaiting = true;
+                goto waiting;
+              }
+              else
+              {
+                s = work.Pop();
+              }
+              
+              if (CommandLineOptions.Clo.Trace && no >= 0)
+              {
+                System.Console.WriteLine("    checking split {1}/{2}, {3:0.00}%, {0} ...",
+                                     s.Stats, no + 1, total, 100 * proven_cost / (proven_cost + remaining_cost));
+              }
+              callback.OnProgress("VCprove", no < 0 ? 0 : no, total, proven_cost / (remaining_cost + proven_cost));
+              
+              Contract.Assert(s.parent == this);
+              lock (checker)
+              {
+                s.BeginCheck(checker, callback, mvInfo, no, timeout);
+              }
+              
+              no++;
+              
+              currently_running.Add(s);
             }
-            else
+            catch (Exception)
             {
-              s = work.Pop();
+              checker.GoBackToIdle();
+              throw;
             }
-
-            if (CommandLineOptions.Clo.Trace && no >= 0)
-            {
-              System.Console.WriteLine("    checking split {1}/{2}, {3:0.00}%, {0} ...",
-                                   s.Stats, no + 1, total, 100 * proven_cost / (proven_cost + remaining_cost));
-            }
-            callback.OnProgress("VCprove", no < 0 ? 0 : no, total, proven_cost / (remaining_cost + proven_cost));
-
-            Contract.Assert(s.parent == this);
-            lock (checker)
-            {
-              s.BeginCheck(checker, callback, mvInfo, no, timeout);
-            }
-
-            no++;
-
-            currently_running.Add(s);
           }
         }
 
