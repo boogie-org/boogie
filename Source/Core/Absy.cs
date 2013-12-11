@@ -2358,6 +2358,11 @@ namespace Microsoft.Boogie {
             QKeyValue.FindIntAttribute(this.Attributes, "right", int.MaxValue) != int.MaxValue ||
             QKeyValue.FindIntAttribute(this.Attributes, "left", int.MaxValue) != int.MaxValue ||
             QKeyValue.FindIntAttribute(this.Attributes, "both", int.MaxValue) != int.MaxValue;
+      if (isAtomicSpecification && !tc.Yields)
+      {
+          tc.Error(this, "atomic specification allowed only in a yielding procedure");
+          return;
+      }
       bool oldYields = tc.Yields;
       tc.Yields = isAtomicSpecification;
       this.Condition.Typecheck(tc);
@@ -2520,10 +2525,13 @@ namespace Microsoft.Boogie {
         Contract.Assert(e != null);
         e.Typecheck(tc);
       }
+      bool oldYields = tc.Yields;
+      tc.Yields = QKeyValue.FindBoolAttribute(Attributes, "yields");
       foreach (Ensures/*!*/ e in Ensures) {
         Contract.Assert(e != null);
         e.Typecheck(tc);
       }
+      tc.Yields = oldYields;
     }
 
     public override Absy StdDispatch(StandardVisitor visitor) {

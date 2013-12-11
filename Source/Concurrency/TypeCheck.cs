@@ -19,7 +19,8 @@ namespace Microsoft.Boogie
         CheckingContext checkingContext;
         public int errorCount;
         HashSet<Variable> globalVariables;
-        bool insideYield;
+        bool globalVarAccessAllowed;
+        bool visitingProcedure;
         int phaseNumEnclosingProc;
         public Dictionary<Procedure, ActionInfo> procToActionInfo;
         public Program program;
@@ -57,25 +58,27 @@ namespace Microsoft.Boogie
 
         public MoverTypeChecker(Program program)
         {
-            globalVariables = new HashSet<Variable>(program.GlobalVariables());
-            procToActionInfo = new Dictionary<Procedure, ActionInfo>();
+            this.globalVariables = new HashSet<Variable>(program.GlobalVariables());
+            this.procToActionInfo = new Dictionary<Procedure, ActionInfo>();
             this.errorCount = 0;
             this.checkingContext = new CheckingContext(null);
             this.program = program;
+            this.visitingProcedure = false;
+            this.phaseNumEnclosingProc = int.MaxValue;
         }
         public override Block VisitBlock(Block node)
         {
-            insideYield = false;
+            globalVarAccessAllowed = false;
             return base.VisitBlock(node);
         }
         public override Cmd VisitHavocCmd(HavocCmd node)
         {
-            insideYield = false;
+            globalVarAccessAllowed = false;
             return base.VisitHavocCmd(node);
         }
         public override Cmd VisitAssignCmd(AssignCmd node)
         {
-            insideYield = false;
+            globalVarAccessAllowed = false;
             return base.VisitAssignCmd(node);
         }
         public override Implementation VisitImplementation(Implementation node)
@@ -85,12 +88,15 @@ namespace Microsoft.Boogie
         }
         public override Procedure VisitProcedure(Procedure node)
         {
+            visitingProcedure = true;
             phaseNumEnclosingProc = FindPhaseNumber(node);
-            return base.VisitProcedure(node);
+            Procedure ret = base.VisitProcedure(node);
+            visitingProcedure = false;
+            return ret;
         } 
         public override Cmd VisitCallCmd(CallCmd node)
         {
-            insideYield = false;
+            globalVarAccessAllowed = false;
             if (!node.IsAsync && node.InParallelWith == null) {
 
                 int calleePhaseNum = FindPhaseNumber(node.Proc);
@@ -103,16 +109,16 @@ namespace Microsoft.Boogie
         }
         public override YieldCmd VisitYieldCmd(YieldCmd node)
         {
-            insideYield = true;
+            globalVarAccessAllowed = true;
             return base.VisitYieldCmd(node);
         }
-        public override Variable VisitVariable(Variable node)
+        public override Expr VisitIdentifierExpr(IdentifierExpr node)
         {
-            if (!insideYield && globalVariables.Contains(node))
+            if (!visitingProcedure && !globalVarAccessAllowed && globalVariables.Contains(node.Decl))
             {
                 Error(node, "Cannot access global variable");
             }
-            return base.VisitVariable(node);
+            return base.VisitIdentifierExpr(node);
         }
         public override Ensures VisitEnsures(Ensures ensures)
         {
