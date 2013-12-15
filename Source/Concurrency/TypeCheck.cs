@@ -20,7 +20,7 @@ namespace Microsoft.Boogie
         public int errorCount;
         HashSet<Variable> globalVariables;
         bool globalVarAccessAllowed;
-        bool visitingProcedure;
+        bool visitingAssertion;
         int phaseNumEnclosingProc;
         public Dictionary<Procedure, ActionInfo> procToActionInfo;
         public Program program;
@@ -63,7 +63,7 @@ namespace Microsoft.Boogie
             this.errorCount = 0;
             this.checkingContext = new CheckingContext(null);
             this.program = program;
-            this.visitingProcedure = false;
+            this.visitingAssertion = false;
             this.phaseNumEnclosingProc = int.MaxValue;
         }
         public override Block VisitBlock(Block node)
@@ -88,11 +88,8 @@ namespace Microsoft.Boogie
         }
         public override Procedure VisitProcedure(Procedure node)
         {
-            visitingProcedure = true;
             phaseNumEnclosingProc = FindPhaseNumber(node);
-            Procedure ret = base.VisitProcedure(node);
-            visitingProcedure = false;
-            return ret;
+            return base.VisitProcedure(node);
         } 
         public override Cmd VisitCallCmd(CallCmd node)
         {
@@ -114,7 +111,7 @@ namespace Microsoft.Boogie
         }
         public override Expr VisitIdentifierExpr(IdentifierExpr node)
         {
-            if (!visitingProcedure && !globalVarAccessAllowed && globalVariables.Contains(node.Decl))
+            if (!visitingAssertion && !globalVarAccessAllowed && globalVariables.Contains(node.Decl))
             {
                 Error(node, "Cannot access global variable");
             }
@@ -127,7 +124,10 @@ namespace Microsoft.Boogie
             {
                 Error(ensures, "The phase of ensures clause cannot be greater than the phase of enclosing procedure");
             }
-            return base.VisitEnsures(ensures);
+            this.visitingAssertion = true;
+            Ensures ret = base.VisitEnsures(ensures);
+            this.visitingAssertion = false;
+            return ret;
         }
         public override Requires VisitRequires(Requires requires)
         {
@@ -136,7 +136,10 @@ namespace Microsoft.Boogie
             {
                 Error(requires, "The phase of requires clause cannot be greater than the phase of enclosing procedure");
             }
-            return base.VisitRequires(requires);
+            this.visitingAssertion = true;
+            Requires ret = base.VisitRequires(requires);
+            this.visitingAssertion = false;
+            return ret;
         }
         public override Cmd VisitAssertCmd(AssertCmd node)
         {
@@ -145,8 +148,10 @@ namespace Microsoft.Boogie
             {
                 Error(node, "The phase of assert cannot be greater than the phase of enclosing procedure");
             }
-
-            return base.VisitAssertCmd(node);
+            this.visitingAssertion = true;
+            Cmd ret = base.VisitAssertCmd(node);
+            this.visitingAssertion = false;
+            return ret;
         }
         public override Cmd VisitAssumeCmd(AssumeCmd node)
         {
