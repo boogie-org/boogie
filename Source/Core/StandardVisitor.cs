@@ -174,6 +174,17 @@ namespace Microsoft.Boogie {
           node.Outs[i] = (IdentifierExpr)this.VisitIdentifierExpr(cce.NonNull(node.Outs[i]));
       return node;
     }
+    public virtual Cmd VisitParCallCmd(ParCallCmd node)
+    {
+        Contract.Requires(node != null);
+        Contract.Ensures(Contract.Result<Cmd>() != null);
+        for (int i = 0; i < node.CallCmds.Count; i++)
+        {
+            if (node.CallCmds[i] != null)
+                node.CallCmds[i] = (CallCmd)this.VisitCallCmd(node.CallCmds[i]);
+        }
+        return node;
+    }
     public virtual List<Cmd> VisitCmdSeq(List<Cmd> cmdSeq) {
       Contract.Requires(cmdSeq != null);
       Contract.Ensures(Contract.Result<List<Cmd>>() != null);

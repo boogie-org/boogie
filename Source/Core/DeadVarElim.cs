@@ -199,9 +199,8 @@ namespace Microsoft.Boogie {
       Cmd ret = base.VisitCallCmd(callCmd);
       foreach (IdentifierExpr ie in callCmd.Outs)
       {
-          if(ie != null) ProcessVariable(ie.Decl);
+          if (ie != null) ProcessVariable(ie.Decl);
       }
-
       Procedure callee = callCmd.Proc;
       if (callee == null)
           return ret;
@@ -210,27 +209,42 @@ namespace Microsoft.Boogie {
           ProcessVariable(var);
         }
       }
-      if (!yieldingProcs.Contains(enclosingProc) && 
-          (yieldingProcs.Contains(callCmd.Proc) || callCmd.IsAsync || callCmd.InParallelWith != null))
+      if (!yieldingProcs.Contains(enclosingProc) && (yieldingProcs.Contains(callCmd.Proc) || callCmd.IsAsync))
       {
           yieldingProcs.Add(enclosingProc);
           moreProcessingRequired = true;
       }
-      if (callCmd.IsAsync || callCmd.InParallelWith != null)
+      if (callCmd.IsAsync)
       {
-          var curr = callCmd;
-          while (curr != null)
+          asyncAndParallelCallTargetProcs.Add(callCmd.Proc);
+          if (!yieldingProcs.Contains(callCmd.Proc))
           {
-              asyncAndParallelCallTargetProcs.Add(curr.Proc);
-              if (!yieldingProcs.Contains(curr.Proc)) 
-              {
-                  yieldingProcs.Add(curr.Proc);
-                  moreProcessingRequired = true;
-              }
-              curr = curr.InParallelWith;
+              yieldingProcs.Add(callCmd.Proc);
+              moreProcessingRequired = true;
           }
       }
       return ret;
+    }
+    public override Cmd VisitParCallCmd(ParCallCmd node)
+    {
+        //Contract.Requires(callCmd != null);
+        Contract.Ensures(Contract.Result<Cmd>() != null);
+        Cmd ret = base.VisitParCallCmd(node);
+        if (!yieldingProcs.Contains(enclosingProc))
+        {
+            yieldingProcs.Add(enclosingProc);
+            moreProcessingRequired = true;
+        }
+        foreach (CallCmd callCmd in node.CallCmds)
+        {
+            asyncAndParallelCallTargetProcs.Add(callCmd.Proc);
+            if (!yieldingProcs.Contains(callCmd.Proc))
+            {
+                yieldingProcs.Add(callCmd.Proc);
+                moreProcessingRequired = true;
+            }
+        }
+        return ret;
     }
     private static void ProcessVariable(Variable var) {
       Procedure/*!*/ localProc = cce.NonNull(enclosingProc);

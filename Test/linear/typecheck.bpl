@@ -58,7 +58,7 @@ procedure {:yields} D()
 
     call c, x := E(a, x);
 
-    call a := F(a) | x := F(a);
+    par a := F(a) | x := F(a);
 }
 
 procedure E({:linear "D"} a: X, {:linear "D"} b: X) returns ({:linear "D"} c: X, {:linear "D"} d: X)
@@ -92,12 +92,12 @@ procedure {:yields} {:stable} J()
 
 procedure {:yields} P1({:linear ""} x:int) returns({:linear ""} x':int)
 {
-  call x' := I(x) | J();
+  par x' := I(x) | J();
   call x' := I(x');
 }
 
 procedure {:yields} P2({:linear ""} x:int) returns({:linear ""} x':int)
 {
   call x' := I(x);
-  call x' := I(x') | J();
+  par x' := I(x') | J();
 }

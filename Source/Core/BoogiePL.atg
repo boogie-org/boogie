@@ -4,7 +4,6 @@
 //--------------------------------------------------------------------------*/
 
 /*using System;*/
-using PureCollections;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
@@ -305,20 +304,20 @@ Type<out Bpl.Type/*!*/ ty>
   (
     TypeAtom<out ty>
   |
-    Ident<out tok>       (. List<Type>/*!*/ args = new List<Type> (); .)
+    Ident<out tok>       (. List<Bpl.Type>/*!*/ args = new List<Bpl.Type> (); .)
     [ TypeArgs<args> ]   (. ty = new UnresolvedTypeIdentifier (tok, tok.val, args); .)
   |
     MapType<out ty>
   )
   .
 
-TypeArgs<.List<Type>/*!*/ ts.>
+TypeArgs<.List<Bpl.Type>/*!*/ ts.>
 = (.Contract.Requires(ts != null); IToken/*!*/ tok; Bpl.Type/*!*/ ty; .)
   (
     TypeAtom<out ty>     (. ts.Add(ty); .)
     [ TypeArgs<ts> ]
   |
-    Ident<out tok>       (. List<Type>/*!*/ args = new List<Type> ();
+    Ident<out tok>       (. List<Bpl.Type>/*!*/ args = new List<Bpl.Type> ();
                             ts.Add(new UnresolvedTypeIdentifier (tok, tok.val, args)); .)
     [ TypeArgs<ts> ]
   |
@@ -342,7 +341,7 @@ TypeAtom<out Bpl.Type/*!*/ ty>
 MapType<out Bpl.Type/*!*/ ty>
 = (.Contract.Ensures(Contract.ValueAtReturn(out ty) != null); IToken tok = null;
      IToken/*!*/ nnTok;
-     List<Type>/*!*/ arguments = new List<Type>();
+     List<Bpl.Type>/*!*/ arguments = new List<Bpl.Type>();
      Bpl.Type/*!*/ result;
      List<TypeVariable>/*!*/ typeParameters = new List<TypeVariable>();
    .)
@@ -369,7 +368,7 @@ TypeParams<.out IToken/*!*/ tok, out List<TypeVariable>/*!*/ typeParams.>
    .)
   .
 
-Types<.List<Type>/*!*/ ts.>
+Types<.List<Bpl.Type>/*!*/ ts.>
 = (. Contract.Requires(ts != null); Bpl.Type/*!*/ ty; .)
   Type<out ty>                 (. ts.Add(ty); .)
   { "," Type<out ty>           (. ts.Add(ty); .)
@@ -864,6 +863,7 @@ LabelOrCmd<out Cmd c, out IToken label>
                              c = new HavocCmd(x,ids);
                           .)
   | CallCmd<out cn> ";"   (. c = cn; .)
+  | ParCallCmd<out cn>    (. c = cn; .)
   | "yield"               (. x = t; .)
     ";"                   (. c = new YieldCmd(x); .)
   )
@@ -935,18 +935,32 @@ CallCmd<out Cmd c>
   ]
   "call"                          (. x = t; .)
   { Attribute<ref kv> }
-  CallParams<isAsync, isFree, kv, x, ref c> (. .) 
-  { "|" CallParams<isAsync, isFree, kv, x, ref c> (. .) 
-  }
+  CallParams<isAsync, isFree, kv, x, out c> (. .)
   .
 
-CallParams<bool isAsync, bool isFree, QKeyValue kv, IToken x, ref Cmd c>
+ParCallCmd<out Cmd d>
+= (. Contract.Ensures(Contract.ValueAtReturn(out d) != null); 
+     IToken x; 
+     QKeyValue kv = null;
+	 Cmd c = null;
+     List<CallCmd> callCmds = new List<CallCmd>();
+  .)
+  "par"                          (. x = t; .)
+  { Attribute<ref kv> }
+  CallParams<false, false, kv, x, out c> (. callCmds.Add((CallCmd)c); .) 
+  { "|" CallParams<false, false, kv, x, out c> (. callCmds.Add((CallCmd)c); .) 
+  }
+  ";" (. d = new ParCallCmd(x, callCmds, kv); .)
+  .
+
+CallParams<bool isAsync, bool isFree, QKeyValue kv, IToken x, out Cmd c>
 = (. 
     List<IdentifierExpr> ids = new List<IdentifierExpr>();
     List<Expr> es = new List<Expr>();
     Expr en;
     IToken first; 
     IToken p;
+	c = null;
   .)
   Ident<out first>
     ( "("
@@ -954,7 +968,7 @@ CallParams<bool isAsync, bool isFree, QKeyValue kv, IToken x, ref Cmd c>
         { "," Expression<out en> (. es.Add(en); .)
         }
       ]
-      ")"                         (. c = new CallCmd(x, first.val, es, ids, kv, (CallCmd) c); ((CallCmd) c).IsFree = isFree; ((CallCmd) c).IsAsync = isAsync; .)
+      ")"                         (. c = new CallCmd(x, first.val, es, ids, kv); ((CallCmd) c).IsFree = isFree; ((CallCmd) c).IsAsync = isAsync; .)
     |
                                   (. ids.Add(new IdentifierExpr(first, first.val)); .)
       [ "," Ident<out p>  (. ids.Add(new IdentifierExpr(p, p.val)); .)
@@ -966,7 +980,7 @@ CallParams<bool isAsync, bool isFree, QKeyValue kv, IToken x, ref Cmd c>
         { "," Expression<out en> (. es.Add(en); .)
         }
       ]
-      ")"                         (. c = new CallCmd(x, first.val, es, ids, kv, (CallCmd) c); ((CallCmd) c).IsFree = isFree; ((CallCmd) c).IsAsync = isAsync; .)
+      ")"                         (. c = new CallCmd(x, first.val, es, ids, kv); ((CallCmd) c).IsFree = isFree; ((CallCmd) c).IsAsync = isAsync; .)
     )
   .
 

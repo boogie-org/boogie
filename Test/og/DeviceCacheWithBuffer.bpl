@@ -93,7 +93,7 @@ ensures (forall i: int :: 0 <= i && i < bytesRead ==> buffer[i] == device[start+
     }
 
 READ_DEVICE:
-    call Skip() | tid := YieldToWriteCache(tid);
+    par Skip() | tid := YieldToWriteCache(tid);
     call tid := WriteCache(tid, start + size);
     call tid := acquire(tid);
     call tid, tmp := ReadNewsize(tid);
@@ -101,7 +101,7 @@ READ_DEVICE:
     call tid := release(tid);
 
 COPY_TO_BUFFER:
-    call Skip() | YieldToReadCache();
+    par Skip() | YieldToReadCache();
     call buffer := ReadCache(start, bytesRead);
 }
 

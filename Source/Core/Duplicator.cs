@@ -107,11 +107,20 @@ namespace Microsoft.Boogie {
     public override Cmd VisitCallCmd(CallCmd node) {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Cmd>() != null);
-      CallCmd/*!*/ clone = (CallCmd)node.Clone();
+      CallCmd clone = (CallCmd)node.Clone();
       Contract.Assert(clone != null);
       clone.Ins = new List<Expr>(clone.Ins);
       clone.Outs = new List<IdentifierExpr>(clone.Outs);
       return base.VisitCallCmd(clone);
+    }
+    public override Cmd VisitParCallCmd(ParCallCmd node)
+    {
+        //Contract.Requires(node != null);
+        Contract.Ensures(Contract.Result<Cmd>() != null);
+        ParCallCmd clone = (ParCallCmd)node.Clone();
+        Contract.Assert(clone != null);
+        clone.CallCmds = new List<CallCmd>(node.CallCmds);
+        return base.VisitParCallCmd(clone);
     }
     public override Choice VisitChoice(Choice node) {
       //Contract.Requires(node != null);

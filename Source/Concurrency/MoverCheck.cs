@@ -21,6 +21,7 @@ namespace Microsoft.Boogie
         public Procedure proc;
         public MoverType moverType;
         public int phaseNum;
+        public HashSet<int> callerPhaseNums;
         public List<AssertCmd> thisGate;
         public CodeExpr thisAction;
         public List<Variable> thisInParams;
@@ -45,6 +46,7 @@ namespace Microsoft.Boogie
             this.proc = proc;
             this.moverType = moverType;
             this.phaseNum = phaseNum;
+            this.callerPhaseNums = new HashSet<int>();
             this.thisGate = new List<AssertCmd>();
             this.thisAction = codeExpr;
             this.thisInParams = new List<Variable>();
