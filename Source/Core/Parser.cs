@@ -2267,6 +2267,12 @@ public class Errors {
 		count++;
 	}
 
+	public void Warning(IToken/*!*/ tok, string/*!*/ msg) {  // warnings
+		Contract.Requires(tok != null);
+		Contract.Requires(msg != null);
+		Warning(tok.filename, tok.line, tok.col, msg);
+	}
+
 	public virtual void Warning(string filename, int line, int col, string msg) {
 		Contract.Requires(msg != null);
 		errorStream.WriteLine(warningMsgFormat, filename, line, col, msg);
