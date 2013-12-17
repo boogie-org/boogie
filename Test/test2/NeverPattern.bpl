@@ -30,13 +30,13 @@ procedure bar2()
 
 // ----- nested binders -----
 
-function {:never_pattern true} P(int): bool;
+function {:never_pattern} P(int): bool;
 function F(int, int): int;
 function G(int): bool;
 
 procedure NestedBinders()
 {
-  goto A, B, C;
+  goto A, B, C, D;
   A:
     assume (forall s: int ::
       // the occurrence of P in the next line had once caused a crash
@@ -54,6 +54,14 @@ procedure NestedBinders()
     assume (forall s: int, m: [int]bool ::
       // the occurrence of P in the next line had once caused a crash
       (lambda x: int :: P(F(s, x))) == m);
+    goto End;
+
+  D:
+    assume (forall x0: int ::
+             // The following quantifier will get a {:nopats P(x1,s)}, which is good.
+             // But that added trigger expression had once caused the outer quantifier
+             // to crash.
+             (forall x1: int :: P(x1)));
     goto End;
 
   End:
