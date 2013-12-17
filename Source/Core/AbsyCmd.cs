@@ -1727,8 +1727,100 @@ namespace Microsoft.Boogie {
     }
   }
 
+  public class ParCallCmd : CallCommonality, IPotentialErrorNode
+  {
+      public List<CallCmd> CallCmds;
+      public ParCallCmd(IToken tok, List<CallCmd> callCmds)
+          : base(tok, null)
+      {
+          this.CallCmds = callCmds;
+      }
+      public ParCallCmd(IToken tok, List<CallCmd> callCmds, QKeyValue kv)
+          : base(tok, kv)
+      {
+          this.CallCmds = callCmds;
+      }
+      protected override Cmd ComputeDesugaring()
+      {
+          throw new NotImplementedException();
+      }
+      private object errorData;
+      public object ErrorData
+      {
+          get
+          {
+              return errorData;
+          }
+          set
+          {
+              errorData = value;
+          }
+      }
+      public override void Resolve(ResolutionContext rc)
+      {
+          ResolveAttributes(Attributes, rc);
+          foreach (CallCmd callCmd in CallCmds)
+          {
+              callCmd.Resolve(rc);
+          }
+          HashSet<Variable> parallelCallLhss = new HashSet<Variable>();
+          foreach (CallCmd callCmd in CallCmds)
+          {
+              foreach (IdentifierExpr ie in callCmd.Outs)
+              {
+                  if (parallelCallLhss.Contains(ie.Decl))
+                  {
+                      rc.Error(this, "left-hand side of parallel call command contains variable twice: {0}", ie.Name);
+                  }
+                  else
+                  {
+                      parallelCallLhss.Add(ie.Decl);
+                  }
+              }
+          }
+      }
+      public override void Typecheck(TypecheckingContext tc)
+      {
+          TypecheckAttributes(Attributes, tc);
+          if (!CommandLineOptions.Clo.DoModSetAnalysis)
+          {
+              if (!tc.Yields)
+              {
+                  tc.Error(this, "enclosing procedure of a parallel call must yield");
+              }
+              foreach (CallCmd callCmd in CallCmds)
+              {
+                  if (!QKeyValue.FindBoolAttribute(callCmd.Proc.Attributes, "yields"))
+                  {
+                      tc.Error(callCmd, "target procedure of a parallel call must yield");
+                  }
+                  if (!QKeyValue.FindBoolAttribute(callCmd.Proc.Attributes, "stable"))
+                  {
+                      tc.Error(callCmd, "target procedure of a parallel call must be stable");
+                  }
+              }
+          }
+          foreach (CallCmd callCmd in CallCmds)
+          {
+              callCmd.Typecheck(tc);
+          }
+      }
+      public override void AddAssignedVariables(List<Variable> vars)
+      {
+          foreach (CallCmd callCmd in CallCmds)
+          {
+              callCmd.AddAssignedVariables(vars);
+          }
+      }
+      public override Absy StdDispatch(StandardVisitor visitor)
+      {
+          //Contract.Requires(visitor != null);
+          Contract.Ensures(Contract.Result<Absy>() != null);
+          return visitor.VisitParCallCmd(this);
+      }
+  }
+
   public class CallCmd : CallCommonality, IPotentialErrorNode {
-    public CallCmd InParallelWith { get; private set; }
     public string/*!*/ callee { get; private set; }
     public Procedure Proc;
 
@@ -1793,18 +1885,6 @@ namespace Microsoft.Boogie {
         this.IsAsync = IsAsync;
     }
 
-    public CallCmd(IToken tok, string callee, List<Expr> ins, List<IdentifierExpr> outs, QKeyValue kv, CallCmd inParallelWith)
-        : base(tok, kv)
-    {
-        Contract.Requires(outs != null);
-        Contract.Requires(ins != null);
-        Contract.Requires(callee != null);
-        Contract.Requires(tok != null);
-        this.callee = callee;
-        this.Ins = ins;
-        this.Outs = outs;
-        this.InParallelWith = inParallelWith;
-    }
     public override void Emit(TokenTextWriter stream, int level) {
       //Contract.Requires(stream != null);
       stream.Write(this, level, "");
@@ -1860,27 +1940,18 @@ namespace Microsoft.Boogie {
           e.Resolve(rc);
         }
       }
-      Set/*<Variable>*/ actualOuts = new Set/*<Variable>*/ (Outs.Count);
+      HashSet<Variable> actualOuts = new HashSet<Variable>();
       foreach (IdentifierExpr ide in Outs) {
         if (ide != null) {
           ide.Resolve(rc);
           if (ide.Decl != null) {
-            if (/* actualOuts[ide.Decl] */ rc.parallelCallLhss.Contains(ide.Decl)) {
+            if (actualOuts.Contains(ide.Decl)) {
               rc.Error(this, "left-hand side of call command contains variable twice: {0}", ide.Name);
             } else {
               actualOuts.Add(ide.Decl);
-              rc.parallelCallLhss.Add(ide.Decl);
             }
           }
         }
-      }
-      if (InParallelWith != null)
-      {
-          InParallelWith.Resolve(rc);
-      }
-      foreach (Variable v in actualOuts)
-      {
-          rc.parallelCallLhss.Remove(v);
       }
 
       if (Proc == null)
@@ -1906,11 +1977,6 @@ namespace Microsoft.Boogie {
         if (Proc.OutParams.Count > 0) {
           rc.Error(this.tok, "a procedure called asynchronously can have no output parameters");
           return;
-        }
-        if (InParallelWith != null)
-        {
-            rc.Error(this.tok, "an asynchronous procedure call cannot be parallel");
-            return;
         }
       }
 
@@ -2009,30 +2075,20 @@ namespace Microsoft.Boogie {
         TypeParameters = SimpleTypeParamInstantiation.From(Proc.TypeParameters,
                                                            actualTypeParams);
 
-        if (!CommandLineOptions.Clo.DoModSetAnalysis && (IsAsync || InParallelWith != null))
+        if (!CommandLineOptions.Clo.DoModSetAnalysis && IsAsync)
         {
             if (!tc.Yields)
             {
-                tc.Error(this, "enclosing procedure of a parallel or async call must yield");
+                tc.Error(this, "enclosing procedure of an async call must yield");
             }
-            var curr = this;
-            while (curr != null)
+            if (!QKeyValue.FindBoolAttribute(Proc.Attributes, "yields"))
             {
-                if (!QKeyValue.FindBoolAttribute(curr.Proc.Attributes, "yields"))
-                {
-                    tc.Error(curr, "target procedure of a parallel or async call must yield");
-                }
-                if (!QKeyValue.FindBoolAttribute(curr.Proc.Attributes, "stable"))
-                {
-                    tc.Error(curr, "target procedure of a parallel or async call must be stable");
-                }
-                curr = curr.InParallelWith;
+                tc.Error(this, "target procedure of an async call must yield");
             }
-        }
-
-        if (InParallelWith != null)
-        {
-            InParallelWith.Typecheck(tc);
+            if (!QKeyValue.FindBoolAttribute(Proc.Attributes, "stable"))
+            {
+                tc.Error(this, "target procedure of an async call must be stable");
+            }
         }
     }
 

@@ -596,7 +596,7 @@ namespace Microsoft.Boogie
         try
         {
           var defines = new List<string>() { "FILE_" + fileId };
-          errorCount = BoogiePL.Parser.Parse(bplFileName, defines, out programSnippet);
+          errorCount = Parser.Parse(bplFileName, defines, out programSnippet);
           if (programSnippet == null || errorCount != 0)
           {
             Console.WriteLine("{0} parse errors detected in {1}", errorCount, bplFileName);

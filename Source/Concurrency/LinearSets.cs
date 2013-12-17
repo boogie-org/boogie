@@ -41,7 +41,6 @@ namespace Microsoft.Boogie
             this.errorCount = 0;
             this.checkingContext = new CheckingContext(null);
             this.domainNameToType = new Dictionary<string, Type>();
-            this.parallelCallInvars = new HashSet<Variable>();
             this.availableLinearVars = new Dictionary<Absy, HashSet<Variable>>();
             this.inoutParamToDomainName = new Dictionary<Variable, string>();
             this.varToDomainName = new Dictionary<Variable, string>();
@@ -113,12 +112,12 @@ namespace Microsoft.Boogie
                 {
                     foreach (GlobalVariable g in globalVarToDomainName.Keys.Except(end))
                     {
-                        Error(b, string.Format("Global variable {0} must be available at a return", g.Name));
+                        Error(b.TransferCmd, string.Format("Global variable {0} must be available at a return", g.Name));
                     } 
                     foreach (Variable v in node.OutParams)
                     {
                         if (FindDomainName(v) == null || end.Contains(v)) continue;
-                        Error(b, string.Format("Output variable {0} must be available at a return", v.Name));
+                        Error(b.TransferCmd, string.Format("Output variable {0} must be available at a return", v.Name));
                     }
                     continue;
                 }
@@ -175,10 +174,37 @@ namespace Microsoft.Boogie
                 {
                     foreach (GlobalVariable g in globalVarToDomainName.Keys.Except(start))
                     {
-                        Error(b, string.Format("Global variable {0} must be available at a call", g.Name));
-                    } 
+                        Error(cmd, string.Format("Global variable {0} must be available at a call", g.Name));
+                    }
                     CallCmd callCmd = (CallCmd)cmd;
-                    while (callCmd != null)
+                    for (int i = 0; i < callCmd.Proc.InParams.Count; i++)
+                    {
+                        if (FindDomainName(callCmd.Proc.InParams[i]) == null) continue;
+                        IdentifierExpr ie = callCmd.Ins[i] as IdentifierExpr;
+                        if (start.Contains(ie.Decl))
+                        {
+                            start.Remove(ie.Decl);
+                        }
+                        else
+                        {
+                            Error(ie, "unavailable source for a linear read");
+                        }
+                    }
+                    availableLinearVars[callCmd] = new HashSet<Variable>(start);
+                    foreach (IdentifierExpr ie in callCmd.Outs)
+                    {
+                        if (FindDomainName(ie.Decl) == null) continue;
+                        start.Add(ie.Decl);
+                    }
+                }
+                else if (cmd is ParCallCmd)
+                {
+                    foreach (GlobalVariable g in globalVarToDomainName.Keys.Except(start))
+                    {
+                        Error(cmd, string.Format("Global variable {0} must be available at a call", g.Name));
+                    }
+                    ParCallCmd parCallCmd = (ParCallCmd)cmd;
+                    foreach (CallCmd callCmd in parCallCmd.CallCmds)
                     {
                         for (int i = 0; i < callCmd.Proc.InParams.Count; i++)
                         {
@@ -193,23 +219,20 @@ namespace Microsoft.Boogie
                                 Error(ie, "unavailable source for a linear read");
                             }
                         }
-                        callCmd = callCmd.InParallelWith;
                     }
-                    callCmd = (CallCmd)cmd;
-                    availableLinearVars[callCmd] = new HashSet<Variable>(start);
-                    while (callCmd != null)
+                    availableLinearVars[parCallCmd] = new HashSet<Variable>(start);
+                    foreach (CallCmd callCmd in parCallCmd.CallCmds)
                     {
                         foreach (IdentifierExpr ie in callCmd.Outs)
                         {
                             if (FindDomainName(ie.Decl) == null) continue;
                             start.Add(ie.Decl);
                         }
-                        callCmd = callCmd.InParallelWith;
                     }
                 }
                 else if (cmd is HavocCmd)
                 {
-                    HavocCmd havocCmd = (HavocCmd) cmd;
+                    HavocCmd havocCmd = (HavocCmd)cmd;
                     foreach (IdentifierExpr ie in havocCmd.Vars)
                     {
                         if (FindDomainName(ie.Decl) == null) continue;
@@ -220,7 +243,7 @@ namespace Microsoft.Boogie
                 {
                     foreach (GlobalVariable g in globalVarToDomainName.Keys.Except(start))
                     {
-                        Error(b, string.Format("Global variable {0} must be available at a yield", g.Name));
+                        Error(cmd, string.Format("Global variable {0} must be available at a yield", g.Name));
                     }
                     availableLinearVars[cmd] = new HashSet<Variable>(start);
                 }
@@ -311,7 +334,6 @@ namespace Microsoft.Boogie
             }
             return base.VisitAssignCmd(node);
         }
-        HashSet<Variable> parallelCallInvars;
         public override Cmd VisitCallCmd(CallCmd node)
         {
             HashSet<Variable> inVars = new HashSet<Variable>();
@@ -337,18 +359,17 @@ namespace Microsoft.Boogie
                     Error(node, "The domains of formal and actual parameters must be the same");
                     continue;
                 }
-                if (parallelCallInvars.Contains(actual.Decl))
-                {
-                    Error(node, string.Format("Linear variable {0} can occur only once as an input parameter", actual.Decl.Name));
-                    continue;
-                }
                 if (actual.Decl is GlobalVariable)
                 {
                     Error(node, "Only local linear variable can be an actual input parameter of a procedure call");
                     continue;
                 }
+                if (inVars.Contains(actual.Decl))
+                {
+                    Error(node, string.Format("Linear variable {0} can occur only once as an input parameter", actual.Decl.Name));
+                    continue;
+                }
                 inVars.Add(actual.Decl);
-                parallelCallInvars.Add(actual.Decl);
             }
             for (int i = 0; i < node.Proc.OutParams.Count; i++)
             {
@@ -373,17 +394,31 @@ namespace Microsoft.Boogie
                     continue;
                 }
             }
-            if (node.InParallelWith != null)
-            {
-                VisitCallCmd(node.InParallelWith);
-            }
-            foreach (Variable v in inVars)
-            {
-                parallelCallInvars.Remove(v);
-            }
             return base.VisitCallCmd(node);
         }
-
+        public override Cmd VisitParCallCmd(ParCallCmd node)
+        {
+            HashSet<Variable> parallelCallInvars = new HashSet<Variable>();
+            foreach (CallCmd callCmd in node.CallCmds)
+            {
+                for (int i = 0; i < callCmd.Proc.InParams.Count; i++)
+                {
+                    Variable formal = callCmd.Proc.InParams[i];
+                    string domainName = FindDomainName(formal);
+                    if (domainName == null) continue;
+                    IdentifierExpr actual = callCmd.Ins[i] as IdentifierExpr;
+                    if (parallelCallInvars.Contains(actual.Decl))
+                    {
+                        Error(node, string.Format("Linear variable {0} can occur only once as an input parameter of a parallel call", actual.Decl.Name));
+                    }
+                    else
+                    {
+                        parallelCallInvars.Add(actual.Decl);
+                    }
+                }
+            }
+            return base.VisitParCallCmd(node);
+        }
         private void AddDisjointnessExpr(List<Cmd> newCmds, Absy absy, Dictionary<string, Variable> domainNameToInputVar)
         {
             Dictionary<string, HashSet<Variable>> domainNameToScope = new Dictionary<string, HashSet<Variable>>();
@@ -444,21 +479,6 @@ namespace Microsoft.Boogie
                                     callCmd.Ins.Add(expr);
                                 }
                             }
-                            else if (callCmd.InParallelWith != null)
-                            {
-                                while (callCmd != null)
-                                {
-                                    foreach (var domainName in linearDomains.Keys)
-                                    {
-                                        var domain = linearDomains[domainName];
-                                        var expr = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapConstBool), new List<Expr> { Expr.False });
-                                        expr.Resolve(new ResolutionContext(null));
-                                        expr.Typecheck(new TypecheckingContext(null));
-                                        callCmd.Ins.Add(expr);
-                                    }
-                                    callCmd = callCmd.InParallelWith;
-                                }
-                            }
                             else
                             {
                                 Dictionary<string, Expr> domainNameToExpr = new Dictionary<string, Expr>();
@@ -480,6 +500,21 @@ namespace Microsoft.Boogie
                                 foreach (var domainName in linearDomains.Keys)
                                 {
                                     callCmd.Ins.Add(domainNameToExpr[domainName]);
+                                }
+                            }
+                        }
+                        else if (cmd is ParCallCmd)
+                        {
+                            ParCallCmd parCallCmd = (ParCallCmd)cmd;
+                            foreach (CallCmd callCmd in parCallCmd.CallCmds)
+                            {
+                                foreach (var domainName in linearDomains.Keys)
+                                {
+                                    var domain = linearDomains[domainName];
+                                    var expr = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapConstBool), new List<Expr> { Expr.False });
+                                    expr.Resolve(new ResolutionContext(null));
+                                    expr.Typecheck(new TypecheckingContext(null));
+                                    callCmd.Ins.Add(expr);
                                 }
                             }
                         }

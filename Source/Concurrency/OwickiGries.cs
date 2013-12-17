@@ -130,18 +130,16 @@ namespace Microsoft.Boogie
             }
         }
 
-        public Procedure DesugarParallelCallCmd(CallCmd callCmd, out List<Expr> ins, out List<IdentifierExpr> outs)
+        public void DesugarParallelCallCmd(List<Cmd> newCmds, ParCallCmd parCallCmd)
         {
             List<string> parallelCalleeNames = new List<string>();
-            CallCmd iter = callCmd;
-            ins = new List<Expr>();
-            outs = new List<IdentifierExpr>();
-            while (iter != null)
+            List<Expr> ins = new List<Expr>();
+            List<IdentifierExpr> outs = new List<IdentifierExpr>();
+            foreach (CallCmd callCmd in parCallCmd.CallCmds)
             {
-                parallelCalleeNames.Add(iter.Proc.Name);
-                ins.AddRange(iter.Ins);
-                outs.AddRange(iter.Outs);
-                iter = iter.InParallelWith;
+                parallelCalleeNames.Add(callCmd.Proc.Name);
+                ins.AddRange(callCmd.Ins);
+                outs.AddRange(callCmd.Outs);
             }
             parallelCalleeNames.Sort();
             string procName = "og";
@@ -149,47 +147,52 @@ namespace Microsoft.Boogie
             {
                 procName = procName + "_" + calleeName;
             }
+            Procedure proc;
             if (asyncAndParallelCallDesugarings.ContainsKey(procName))
-                return asyncAndParallelCallDesugarings[procName];
-
-            List<Variable> inParams = new List<Variable>();
-            List<Variable> outParams = new List<Variable>();
-            List<Requires> requiresSeq = new List<Requires>();
-            List<Ensures> ensuresSeq = new List<Ensures>();
-            int count = 0;
-            while (callCmd != null)
             {
-                Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
-                foreach (Variable x in callCmd.Proc.InParams)
-                {
-                    Variable y = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "og_" + count + x.Name, x.TypedIdent.Type), true);
-                    inParams.Add(y);
-                    map[x] = new IdentifierExpr(Token.NoToken, y);
-                }
-                foreach (Variable x in callCmd.Proc.OutParams)
-                {
-                    Variable y = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "og_" + count + x.Name, x.TypedIdent.Type), false);
-                    outParams.Add(y);
-                    map[x] = new IdentifierExpr(Token.NoToken, y);
-                }
-                Contract.Assume(callCmd.Proc.TypeParameters.Count == 0);
-                Substitution subst = Substituter.SubstitutionFromHashtable(map);
-                foreach (Requires req in callCmd.Proc.Requires)
-                {
-                    requiresSeq.Add(new Requires(req.Free, Substituter.Apply(subst, req.Condition)));
-                }
-                foreach (Ensures ens in callCmd.Proc.Ensures)
-                {
-                    ensuresSeq.Add(new Ensures(ens.Free, Substituter.Apply(subst, ens.Condition)));
-                } 
-                count++;
-                callCmd = callCmd.InParallelWith;
+                proc = asyncAndParallelCallDesugarings[procName];
             }
-
-            Procedure proc = new Procedure(Token.NoToken, procName, new List<TypeVariable>(), inParams, outParams, requiresSeq, new List<IdentifierExpr>(), ensuresSeq);
-            proc.AddAttribute("yields");
-            asyncAndParallelCallDesugarings[procName] = proc;
-            return proc;
+            else
+            {
+                List<Variable> inParams = new List<Variable>();
+                List<Variable> outParams = new List<Variable>();
+                List<Requires> requiresSeq = new List<Requires>();
+                List<Ensures> ensuresSeq = new List<Ensures>();
+                int count = 0;
+                foreach (CallCmd callCmd in parCallCmd.CallCmds)
+                {
+                    Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
+                    foreach (Variable x in callCmd.Proc.InParams)
+                    {
+                        Variable y = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "og_" + count + x.Name, x.TypedIdent.Type), true);
+                        inParams.Add(y);
+                        map[x] = new IdentifierExpr(Token.NoToken, y);
+                    }
+                    foreach (Variable x in callCmd.Proc.OutParams)
+                    {
+                        Variable y = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "og_" + count + x.Name, x.TypedIdent.Type), false);
+                        outParams.Add(y);
+                        map[x] = new IdentifierExpr(Token.NoToken, y);
+                    }
+                    Contract.Assume(callCmd.Proc.TypeParameters.Count == 0);
+                    Substitution subst = Substituter.SubstitutionFromHashtable(map);
+                    foreach (Requires req in callCmd.Proc.Requires)
+                    {
+                        requiresSeq.Add(new Requires(req.Free, Substituter.Apply(subst, req.Condition)));
+                    }
+                    foreach (Ensures ens in callCmd.Proc.Ensures)
+                    {
+                        ensuresSeq.Add(new Ensures(ens.Free, Substituter.Apply(subst, ens.Condition)));
+                    }
+                    count++;
+                }
+                proc = new Procedure(Token.NoToken, procName, new List<TypeVariable>(), inParams, outParams, requiresSeq, new List<IdentifierExpr>(), ensuresSeq);
+                proc.AddAttribute("yields");
+                asyncAndParallelCallDesugarings[procName] = proc;
+            }
+            CallCmd dummyCallCmd = new CallCmd(Token.NoToken, proc.Name, ins, outs);
+            dummyCallCmd.Proc = proc;
+            newCmds.Add(dummyCallCmd);
         }
 
         private void CreateYieldCheckerImpl(DeclWithFormals decl, List<List<Cmd>> yields, Dictionary<Variable, Expr> map)
@@ -301,9 +304,11 @@ namespace Microsoft.Boogie
                     {
                         if (cmd is YieldCmd)
                             return true;
+                        if (cmd is ParCallCmd)
+                            return true;
                         CallCmd callCmd = cmd as CallCmd;
                         if (callCmd == null) continue;
-                        if (callCmd.IsAsync || callCmd.InParallelWith != null || QKeyValue.FindBoolAttribute(callCmd.Proc.Attributes, "yields"))
+                        if (callCmd.IsAsync || QKeyValue.FindBoolAttribute(callCmd.Proc.Attributes, "yields"))
                             return true;
                     }
                 }
@@ -407,24 +412,15 @@ namespace Microsoft.Boogie
                             cmds.Add(pcmd);
                         }
                     }
-                    CallCmd callCmd = cmd as CallCmd;
-                    if (callCmd != null)
+                    
+                    if (cmd is CallCmd)
                     {
-                        if (callCmd.InParallelWith != null || callCmd.IsAsync ||
-                            QKeyValue.FindBoolAttribute(callCmd.Proc.Attributes, "yields"))
+                        CallCmd callCmd = cmd as CallCmd; 
+                        if (callCmd.IsAsync || QKeyValue.FindBoolAttribute(callCmd.Proc.Attributes, "yields"))
                         {
                             AddCallToYieldProc(newCmds, ogOldGlobalMap, domainNameToLocalVar);
                         }
-                        if (callCmd.InParallelWith != null)
-                        {
-                            List<Expr> ins;
-                            List<IdentifierExpr> outs;
-                            Procedure dummyParallelCallDesugaring = DesugarParallelCallCmd(callCmd, out ins, out outs);
-                            CallCmd dummyCallCmd = new CallCmd(Token.NoToken, dummyParallelCallDesugaring.Name, ins, outs);
-                            dummyCallCmd.Proc = dummyParallelCallDesugaring;
-                            newCmds.Add(dummyCallCmd);
-                        }
-                        else if (callCmd.IsAsync)
+                        if (callCmd.IsAsync)
                         {
                             if (!asyncAndParallelCallDesugarings.ContainsKey(callCmd.Proc.Name))
                             {
@@ -439,8 +435,7 @@ namespace Microsoft.Boogie
                         {
                             newCmds.Add(callCmd);
                         }
-                        if (callCmd.InParallelWith != null || callCmd.IsAsync ||
-                            QKeyValue.FindBoolAttribute(callCmd.Proc.Attributes, "yields"))
+                        if (callCmd.IsAsync || QKeyValue.FindBoolAttribute(callCmd.Proc.Attributes, "yields"))
                         {
                             HashSet<Variable> availableLinearVars = new HashSet<Variable>(linearTypeChecker.availableLinearVars[callCmd]);
                             foreach (IdentifierExpr ie in callCmd.Outs)
@@ -451,6 +446,23 @@ namespace Microsoft.Boogie
                             Dictionary<string, Expr> domainNameToExpr = ComputeAvailableExprs(availableLinearVars, domainNameToInputVar);
                             AddUpdatesToOldGlobalVars(newCmds, ogOldGlobalMap, domainNameToLocalVar, domainNameToExpr);
                         }
+                    }
+                    else if (cmd is ParCallCmd)
+                    {
+                        ParCallCmd parCallCmd = cmd as ParCallCmd;
+                        AddCallToYieldProc(newCmds, ogOldGlobalMap, domainNameToLocalVar);
+                        DesugarParallelCallCmd(newCmds, parCallCmd);
+                        HashSet<Variable> availableLinearVars = new HashSet<Variable>(linearTypeChecker.availableLinearVars[parCallCmd]);
+                        foreach (CallCmd callCmd in parCallCmd.CallCmds)
+                        {
+                            foreach (IdentifierExpr ie in callCmd.Outs)
+                            {
+                                if (linearTypeChecker.FindDomainName(ie.Decl) == null) continue;
+                                availableLinearVars.Add(ie.Decl);
+                            }
+                        }
+                        Dictionary<string, Expr> domainNameToExpr = ComputeAvailableExprs(availableLinearVars, domainNameToInputVar);
+                        AddUpdatesToOldGlobalVars(newCmds, ogOldGlobalMap, domainNameToLocalVar, domainNameToExpr);
                     }
                     else
                     {

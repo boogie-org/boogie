@@ -2363,10 +2363,7 @@ namespace Microsoft.Boogie {
           tc.Error(this, "atomic specification allowed only in a yielding procedure");
           return;
       }
-      bool oldYields = tc.Yields;
-      tc.Yields = isAtomicSpecification;
       this.Condition.Typecheck(tc);
-      tc.Yields = oldYields;
       Contract.Assert(this.Condition.Type != null);  // follows from postcondition of Expr.Typecheck
       if (!this.Condition.Type.Unify(Type.Bool)) {
         tc.Error(this, "postconditions must be of type bool");

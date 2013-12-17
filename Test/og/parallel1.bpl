@@ -25,6 +25,6 @@ procedure {:entrypoint} {:yields} Main()
 {
   while (true)
   {
-    call PB() | PC() | PD();
+    par PB() | PC() | PD();
   }
 }

@@ -1,6 +1,6 @@
 procedure {:entrypoint} {:yields} main() 
 {
-    call A() | B();
+    par A() | B();
 }
 
 procedure {:yields} {:stable} A() {}

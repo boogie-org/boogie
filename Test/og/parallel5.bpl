@@ -8,8 +8,8 @@ procedure {:entrypoint} {:yields} main()
     var {:linear "tid"} j: int;
     call i := Allocate();
     call j := Allocate();
-    call i := t(i) | j := Yield(j);
-    call i := u(i) | j := u(j);
+    par i := t(i) | j := Yield(j);
+    par i := u(i) | j := u(j);
 }
 
 procedure {:yields} {:stable} t({:linear "tid"} i': int) returns ({:linear "tid"} i: int)

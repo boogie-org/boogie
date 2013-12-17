@@ -20,8 +20,8 @@ namespace Microsoft.Boogie
         public int errorCount;
         HashSet<Variable> globalVariables;
         bool globalVarAccessAllowed;
-        bool visitingProcedure;
-        int phaseNumEnclosingProc;
+        bool visitingAssertion;
+        int enclosingProcPhaseNum;
         public Dictionary<Procedure, ActionInfo> procToActionInfo;
         public Program program;
 
@@ -63,8 +63,8 @@ namespace Microsoft.Boogie
             this.errorCount = 0;
             this.checkingContext = new CheckingContext(null);
             this.program = program;
-            this.visitingProcedure = false;
-            this.phaseNumEnclosingProc = int.MaxValue;
+            this.visitingAssertion = false;
+            this.enclosingProcPhaseNum = int.MaxValue;
         }
         public override Block VisitBlock(Block node)
         {
@@ -83,29 +83,70 @@ namespace Microsoft.Boogie
         }
         public override Implementation VisitImplementation(Implementation node)
         {
-            phaseNumEnclosingProc = FindPhaseNumber(node.Proc);
+            enclosingProcPhaseNum = FindPhaseNumber(node.Proc);
             return base.VisitImplementation(node);
         }
         public override Procedure VisitProcedure(Procedure node)
         {
-            visitingProcedure = true;
-            phaseNumEnclosingProc = FindPhaseNumber(node);
-            Procedure ret = base.VisitProcedure(node);
-            visitingProcedure = false;
-            return ret;
+            enclosingProcPhaseNum = FindPhaseNumber(node);
+            return base.VisitProcedure(node);
         } 
         public override Cmd VisitCallCmd(CallCmd node)
         {
             globalVarAccessAllowed = false;
-            if (!node.IsAsync && node.InParallelWith == null) {
+            if (enclosingProcPhaseNum == int.MaxValue)
+                return base.VisitCallCmd(node);
 
+            if (!node.IsAsync)
+            {
                 int calleePhaseNum = FindPhaseNumber(node.Proc);
-                if (!(calleePhaseNum == int.MaxValue || phaseNumEnclosingProc > calleePhaseNum))
+                if (enclosingProcPhaseNum > calleePhaseNum)
                 {
-                    Error(node, "The phase of the caller procedure must be greater than the phase of the callee");    
+                    procToActionInfo[node.Proc].callerPhaseNums.Add(enclosingProcPhaseNum);
+                }
+                else
+                {
+                    Error(node, "The phase of the caller procedure must be greater than the phase of the callee");
                 }
             }
             return base.VisitCallCmd(node);
+        }
+        public override Cmd VisitParCallCmd(ParCallCmd node)
+        {
+            globalVarAccessAllowed = false;
+            foreach (CallCmd callCmd in node.CallCmds)
+            {
+                base.VisitCallCmd(callCmd);
+            }
+
+            if (enclosingProcPhaseNum == int.MaxValue)
+                return node;
+
+            int maxCalleePhaseNum = 0;
+            foreach (CallCmd iter in node.CallCmds)
+            {
+                int calleePhaseNum = FindPhaseNumber(iter.Proc);
+                if (calleePhaseNum < maxCalleePhaseNum)
+                    maxCalleePhaseNum = calleePhaseNum;
+            }
+
+            if (enclosingProcPhaseNum > maxCalleePhaseNum)
+            {
+                bool isLeftMover = true;
+                bool isRightMover = true;
+                foreach (CallCmd iter in node.CallCmds)
+                {
+                    ActionInfo actionInfo = procToActionInfo[iter.Proc];
+                    isLeftMover = isLeftMover && actionInfo.IsLeftMover;
+                    isRightMover = isRightMover && actionInfo.IsRightMover;
+                    actionInfo.callerPhaseNums.Add(enclosingProcPhaseNum);
+                }
+                if (!isLeftMover && !isRightMover)
+                {
+                    Error(node, "The procedures in the parallel call must be all right mover or all left mover");
+                }
+            }
+            return node;
         }
         public override YieldCmd VisitYieldCmd(YieldCmd node)
         {
@@ -114,7 +155,7 @@ namespace Microsoft.Boogie
         }
         public override Expr VisitIdentifierExpr(IdentifierExpr node)
         {
-            if (!visitingProcedure && !globalVarAccessAllowed && globalVariables.Contains(node.Decl))
+            if (!visitingAssertion && !globalVarAccessAllowed && globalVariables.Contains(node.Decl))
             {
                 Error(node, "Cannot access global variable");
             }
@@ -123,35 +164,43 @@ namespace Microsoft.Boogie
         public override Ensures VisitEnsures(Ensures ensures)
         {
             int phaseNum = QKeyValue.FindIntAttribute(ensures.Attributes, "phase", 0);
-            if (phaseNum > phaseNumEnclosingProc)
+            if (phaseNum > enclosingProcPhaseNum)
             {
                 Error(ensures, "The phase of ensures clause cannot be greater than the phase of enclosing procedure");
             }
-            return base.VisitEnsures(ensures);
+            this.visitingAssertion = true;
+            Ensures ret = base.VisitEnsures(ensures);
+            this.visitingAssertion = false;
+            return ret;
         }
         public override Requires VisitRequires(Requires requires)
         {
             int phaseNum = QKeyValue.FindIntAttribute(requires.Attributes, "phase", 0);
-            if (phaseNum > phaseNumEnclosingProc)
+            if (phaseNum > enclosingProcPhaseNum)
             {
                 Error(requires, "The phase of requires clause cannot be greater than the phase of enclosing procedure");
             }
-            return base.VisitRequires(requires);
+            this.visitingAssertion = true;
+            Requires ret = base.VisitRequires(requires);
+            this.visitingAssertion = false;
+            return ret;
         }
         public override Cmd VisitAssertCmd(AssertCmd node)
         {
             int phaseNum = QKeyValue.FindIntAttribute(node.Attributes, "phase", 0);
-            if (phaseNum > phaseNumEnclosingProc)
+            if (phaseNum > enclosingProcPhaseNum)
             {
                 Error(node, "The phase of assert cannot be greater than the phase of enclosing procedure");
             }
-
-            return base.VisitAssertCmd(node);
+            this.visitingAssertion = true;
+            Cmd ret = base.VisitAssertCmd(node);
+            this.visitingAssertion = false;
+            return ret;
         }
         public override Cmd VisitAssumeCmd(AssumeCmd node)
         {
             int phaseNum = QKeyValue.FindIntAttribute(node.Attributes, "phase", 0);
-            if (phaseNum > phaseNumEnclosingProc)
+            if (phaseNum > enclosingProcPhaseNum)
             {
                 Error(node, "The phase of assume cannot be greater than the phase of enclosing procedure");
             }
