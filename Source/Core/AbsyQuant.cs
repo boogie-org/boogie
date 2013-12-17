@@ -588,6 +588,10 @@ namespace Microsoft.Boogie {
         }
         return base.VisitNAryExpr(node);
       }
+      public override BinderExpr VisitBinderExpr(BinderExpr node) {
+        // don't go into binder expression, since the terms in there may have more bound variables
+        return node;
+      }
     }
 
     private bool neverTriggerApplied;
