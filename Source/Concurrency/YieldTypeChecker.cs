@@ -872,7 +872,7 @@ We use bool IsCallCmdExitPoint(Cmd cmd, int yTypeCheckCurrentPhaseNum)  returns 
              //   Console.WriteLine(move.SourceState.ToString() + " " +  solver.PrettyPrint(move.Condition)+ " " + move.TargetState.ToString());               
             }
 #endif
-
+            yieldTypeCheckAutomaton.RemoveEpsilons(solver.MkOr);
             return yieldTypeCheckAutomaton;
         }
     }
