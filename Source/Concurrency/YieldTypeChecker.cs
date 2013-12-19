@@ -33,8 +33,22 @@ namespace Microsoft.Boogie
                 Automaton<BvSet>.MkProduct(yieldTypeCheckerAutomatonSolver.Convert(yieldTypeCheckerRegex),
                                            yieldTypeCheckerAutomatonSolver.Convert(@"^[1-9A-D]*$"),
                                            yieldTypeCheckerAutomatonSolver);
+
+
         }
-        /*Parameter : Implementation impl : Implementation whose phase intervals, statistical data(number of call stmts) are computed*/
+        /*
+         ComputePhaseIntervals :
+         1.1 Input parameters : 
+           1.1.1 Implementation impl : Implementation whose body is being YTS checked.
+           1.1.2 int specPhaseNumImpl : Phase number in which procedure of implementation, impl, reaches its specification,{A,R,L,B}
+           1.1.3 MoverTypeChecker moverTypeChecker : moverTypeChecker is the integration point of YieldTypeChecker to OG class. moverTypeChecker has functions enables YieldTypeChecker to find phaseNum and spec of procedures.
+
+         1.2 Return value : is a list of tuples(phase interval start,phase interval end). Every tuple in this list is representing an interval formed by callCmds' phase numbers inside impl.			   
+         1.3 Action : This function first traverses the blocks inside impl, collects all CallCmds inside it into a HashSet ,callCmdsInImpl. 
+                *      Then it puts all these callCmds' phase numbers into a HashSet,callCmdPhaseNumSet. 
+                *     After adding all callCmds' phase numbers' it adds phase number of procedure of impl into the set. 
+                *     It sorts all numbers in this set and creates [-inf...n-1] [n...k-1] [k  PhaseNumProcOfImpl] disjoint intervals.
+          */
         private static List<Tuple<int, int>> ComputePhaseIntervals(Implementation impl, int specPhaseNumImpl, MoverTypeChecker moverTypeChecker)
         {
             HashSet<CallCmd> callCmdsInImpl = new HashSet<CallCmd>(); //  callCmdsInImpl[Implementation] ==> Set = { call1, call2, call3 ... }
@@ -62,13 +76,7 @@ namespace Microsoft.Boogie
 
             List<int> callCmdPhaseNumList = callCmdPhaseNumSet.ToList();
             callCmdPhaseNumList.Sort();
-#if (DEBUG && !DEBUG_DETAIL)
-            Console.Write("\n CallCmds's phase numbers \n");
-            for (int i = 0; i < callCmdInBodyEncImplList.Count; i++)
-            {
-                Console.Write("\nCallCmd Phase Num " + callCmdPhaseNumIndexList[i].ToString() + " ");
-            }
-#endif
+
             //Create Phase Intervals
             for (int i = 0; i < callCmdPhaseNumList.Count; i++)
             {
@@ -94,33 +102,44 @@ namespace Microsoft.Boogie
         }
 
 
+
         /*
-         Parameter: Automaton<BvSet> implTypeCheckAutomaton :  Automaton of implementation body build with respect to YTSI.
-         Return : if L(YTSI) is subset of L(YTSP) {TRUE} else {FALSE}  
-         */
+  IsYieldTypeSafe :
+    2.1 Input parameters :
+      2.1.1 Automaton<BvSet> implTypeCheckAutomaton : This input Automaton is generated for a phase of YTS checking of an impl.
+    2.2 Return value : returns true if input automaton is subset of YTS property autoamaton.
+    2.3 Action : Subset checking for a phase of an implementation. f L(YTSI) is subset of L(YTSP) {TRUE} else {FALSE}  
+  */
         public static bool IsYieldTypeSafe(Automaton<BvSet> implTypeCheckAutomaton)
         {
 
             List<BvSet> witnessSet;
+
             var isNonEmpty = Automaton<BvSet>.CheckDifference(
                                                            implTypeCheckAutomaton,
                                                            yieldTypeCheckerAutomaton,
                                                            0,
                                                            yieldTypeCheckerAutomatonSolver,
                                                            out witnessSet);
-            // Ask Margus, Shaz to be sure !
             if (isNonEmpty)
             {
                 // var witness = new String(Array.ConvertAll(witnessSet.ToArray(), bvset => (char)yieldTypeCheckerAutomatonSolver.Choose(bvset)));
                 //Console.Write("\n Program is not Yield Type Safe \n");
-                //Console.Write("Debugging ... \n Difference of impl and yiled type check automaton  : \n" + witness);
+                //  Console.Write("Debugging ... \n Difference of impl and yiled type check automaton  : \n" + witness);
+
                 return false;
             }
+
             return true;
         }
+
+
         /*
-         Parameter : LinearTypeChecker linearTypeChecker : YTS Checker is a component of linearTypeChecker.Adds instance of YTS checker into linearType checker
-         */
+PerformYieldTypeChecking : 
+ 3.1 Input parameters :
+   3.1.1 MoverTypeChecker moverTypeChecker : 
+ 3.2 Action : This function is called in TypeCheck.cs. This is the only function that is externalized. This function traverses the program declarations and performs
+        */
         public static void PerformYieldTypeChecking(MoverTypeChecker moverTypeChecker)
         {
             Program yieldTypeCheckedProgram = moverTypeChecker.program;
@@ -137,7 +156,7 @@ namespace Microsoft.Boogie
                 for (int i = 0; i < phaseIntervals.Count; i++) // take current phase check num from each interval
                 {
                     int yTypeCheckCurrentPhaseNum = phaseIntervals[i].Item2;
-                    Automaton<BvSet> yieldTypeCheckAutoPerPhase = yieldTypeCheckerPerImpl.YieldTypeCheckAutomata(impl, phaseNumSpecImpl, yTypeCheckCurrentPhaseNum);
+                    Automaton<BvSet> yieldTypeCheckAutoPerPhase = yieldTypeCheckerPerImpl.YieldTypeCheckAutomaton(impl, phaseNumSpecImpl, yTypeCheckCurrentPhaseNum);
                     if (!IsYieldTypeSafe(yieldTypeCheckAutoPerPhase))
                     {
                         moverTypeChecker.Error(impl, "\n Body of " + impl.Proc.Name + " is not yield type safe " + "\n");
@@ -148,8 +167,10 @@ namespace Microsoft.Boogie
     }
 
     /*
-     * Executor class for creating L(YTSI).
-     */
+    * Functionality : This class performs building an automaton for a particular phase on an implementation. 
+    * Please don't get confused when you see that its constructor is not called for every phase. 
+    * We call YieldTypeCheckAutomata function of this class for every phase, real constructor for us just to have its name more intuitive.
+    */
     class YieldTypeCheckerCore
     {
 
@@ -160,9 +181,33 @@ namespace Microsoft.Boogie
             this.moverTypeChecker = moverTypeChecker;
         }
 
-        /*Parameter:YieldTypeCheckerCore yieldTypeCheckerPerImpl: takes an executor object to do all computation to build L(YTSI)
-         */
-        public Automaton<BvSet> YieldTypeCheckAutomata(Implementation ytypeChecked, int specPhaseNumImpl, int yTypeCheckCurrentPhaseNum)
+        /*
+ YieldTypeCheckAutomata
+   1.1 Input parameters
+     1.1.1 Implementation ytypeChecked : impl being YTS checked.
+     1.1.2 int specPhaseNumImpl: Phase num that procedure of impl has its specification{A,L,B,R}, last intervals end point.
+     1.1.3 int yTypeCheckCurrentPhaseNum : current phase checking number that taken from every phase intervals end point.
+     foreach phase [s...e] in PhaseIntervals
+     yTypeCheckCurrentPhaseNum = e;
+                                                     Please note that we have disjoint intervals. Note : I have to check the comparison. 
+   1.2 Return value : Automaton<BvSet>  : returns Automaton for a particular phase.
+   1.3 Action : This function is summary of whole YieldTypeCheckerCore class. This function is called for every phase from YieldTypeCheck.PerformYieldTypeCheck function. It has the following flow : It has following local data structure which will be passed into other functions of execution flow to create Automaton of a phase.
+         a. Dictionary<Tuple<int, int>, string> edgeLabels : // Tuple<int,int> --> "Y" :  //State(k) --Y--> State(k+1)
+         b. Dictionary<Absy, int> abysToNode = CreateStateNumbers(ytypeChecked, yTypeCheckCurrentPhaseNum);
+        
+         Enumerates states in the body of impl using stateCounter.				
+         c. List<int> finalStates 
+         d. List<int> initialStates
+         e. stateCounter = 0 // Whenever this function is called it to create AutoPerPhase it starts with stateCounter 0.
+         Execution flow :
+         f. Graph<int> bodyGraphForImplPhaseJ = BuildAutomatonGraph(ytypeChecked, yTypeCheckCurrentPhaseNum,abysToNode,edgeLabels,initialStates, finalStates)
+         h. PostProcessGraph(bodyGraphForImplPhaseJ, edgeLabels) : Takes bodyGraphForImplPhaseJ graph and process Yield Reaching Edge (YRE) on this graph and updates Y non-reaching edges' labels and Y reaching edges' labels in edgesLabels dictionary , <Key: Edge, value : EdgeLableString>
+
+        Note : Change name of this function !
+								
+         g. BuildAutomaton(bodyGraphForImplPhaseJ, edgeLabels, initialStates, finalStates) :Builds Automaton after YRE process.
+          */
+        public Automaton<BvSet> YieldTypeCheckAutomaton(Implementation ytypeChecked, int specPhaseNumImpl, int yTypeCheckCurrentPhaseNum)
         {
             Dictionary<Tuple<int, int>, string> edgeLabels = new Dictionary<Tuple<int, int>, string>(); // Tuple<int,int> --> "Y" : State(k) --Y--> State(k+1)
             Dictionary<Absy, int> abysToNode = CreateStateNumbers(ytypeChecked, yTypeCheckCurrentPhaseNum);
@@ -172,23 +217,41 @@ namespace Microsoft.Boogie
 
             Graph<int> bodyGraphForImplPhaseJ = BuildAutomatonGraph(ytypeChecked, yTypeCheckCurrentPhaseNum, abysToNode, edgeLabels, initialStates, finalStates); // build component of graph for a phase interval            
 #if (DEBUG && !DEBUG_DETAIL)
-            Console.Write("\n Raw Graph is : \n");
-            Console.Write(yieldTypeCheckerPerImpl.PrintGraph(yieldTypeCheckerPerImpl.GetTuplesForGraph()));
+            Console.Write("\n Raw Graph is created for phase: \n" + yTypeCheckCurrentPhaseNum.ToString());
+            Console.Write(PrintGraph(bodyGraphForImplPhaseJ, ytypeChecked, edgeLabels));
 #endif
             // Update edges w.r.t yield reaching. VocabX{True,False} 
             PostProcessGraph(bodyGraphForImplPhaseJ, edgeLabels);
-#if (DEBUG && !DEBUG_DETAIL)
+#if (DEBUG && DEBUG_DETAIL)
             Console.Write("\n Refined Graph is : \n");
-            Console.Write(yieldTypeCheckerPerImpl.PrintGraph(yieldTypeCheckerPerImpl.GetTuplesForGraph()));
+            Console.Write(PrintGraph(bodyGraphForImplPhaseJ, ytypeChecked, edgeLabels));
 #endif
             //Build Automaton from graph created
             return BuildAutomaton(bodyGraphForImplPhaseJ, edgeLabels, initialStates, finalStates);
 
         }
 
+        /*
+        CreateStateNumbers
+        2.1 Input parameters : 
+        2.1.1 Implementation ytypeChecked
+        2.1.2 int yTypeCheckCurrentPhaseNum
+        2.2 Return value :Dictionary<Absy, int> : returns KeyValuePair as <Key:Command ::= TransferCmd | SimpleCmd , Value: state as int>
+        2.3 Action :This function creates state numbers of a given body of an impl using incrementing stateCounter. It keeps KeyValuePair as <Key:Command ::= TransferCmd | SimpleCmd , Value: state as int, absy2NodeNo.
+        */
         public Dictionary<Absy, int> CreateStateNumbers(Implementation ytypeChecked, int yTypeCheckCurrentPhaseNum)
         {
             Dictionary<Absy, int> abysToNodeNo = new Dictionary<Absy, int>();
+            /*
+            * Lets call this impl body traversing framework : ITF
+               foreach block in Impl.Blocks 
+                   foreach cmd in block.Cmds
+                       absy2NodeNo[cmd] = stateCounter
+                       stateCouner++
+                   absy2NodeNo[block.TransferCmd] = stateCounter
+                   stateCounter++
+
+            */
             foreach (Block block in ytypeChecked.Blocks)
             {
                 foreach (Cmd cmd in block.Cmds)
@@ -205,8 +268,22 @@ namespace Microsoft.Boogie
         }
 
         /*
-         * Implementation visitor call this main-visit-entrance function  
-         */
+BuildAutomatonGraph: 
+3.1 Input parameters : Parameters are mentioned above.
+3.1.1 Implementation ytypeChecked : 
+3.1.2 int yTypeCheckCurrentPhaseNum
+3.1.3 Dictionary<Absy, int> bodyGraphForImplPhaseJ
+3.1.4 Dictionary<Tuple<int, int>, string> edgeLabels
+3.1.5 List<int> initialStates
+3.1.6 List<int> finalStates
+3.2 Return value: Graph<int> : This function keeps internal data structure ,HashSet<Tuple<int,int>>edges, to store edges that are formed using 
+      an edge =Tuple< bodyGraphForImplPhaseJ[  Command ::= TransferCmdS | SimpleCmdS ] -> stateS,bodyGraphForImplPhaseJ[  Command ::= TransferCmdD | SimpleCmdD ] -> stateD>
+      returns Grap<int> grph = new Graph<int>(HashSet<edge>).
+
+3.3 Action: In this function we use ITF framework to traverse body of implementation. get states as mentioned 3.2, form edges, put them into set edges and form graph from this set of edges. So many complexities can arise while forming edges if CallCmds are encountered during traversing with ITF.
+We use bool IsCallCmdExitPoint(Cmd cmd, int yTypeCheckCurrentPhaseNum)  returns true if cmd is CallCmd and its phase specification num is greater than the current type check phase num passed as second argument.This means that this call cmd forms an exit point for this YTS check.
+
+ */
         private Graph<int> BuildAutomatonGraph(Implementation ytypeChecked, int yTypeCheckCurrentPhaseNum, Dictionary<Absy, int> bodyGraphForImplPhaseJ,
                                                Dictionary<Tuple<int, int>, string> edgeLabels, List<int> initialStates, List<int> finalStates)
         {
@@ -218,7 +295,7 @@ namespace Microsoft.Boogie
                 {
                     for (int i = 0; i < block.Cmds.Count - 1; i++)
                     {
-                        if (!IsCallCmdExitPoint(block.Cmds[i], yTypeCheckCurrentPhaseNum) && !IsCallCmdExitPoint(block.Cmds[i + 1], yTypeCheckCurrentPhaseNum))// I think this is handled in else
+                        if (!IsCallCmdExitPoint(block.Cmds[i], yTypeCheckCurrentPhaseNum) && !IsCallCmdExitPoint(block.Cmds[i + 1], yTypeCheckCurrentPhaseNum))// this is handled in else but keep this branch now
                         { // proper state transition
 
                             int source = bodyGraphForImplPhaseJ[block.Cmds[i]];
@@ -229,10 +306,10 @@ namespace Microsoft.Boogie
 
                         }
                         else if (!IsCallCmdExitPoint(block.Cmds[i], yTypeCheckCurrentPhaseNum) && IsCallCmdExitPoint(block.Cmds[i + 1], yTypeCheckCurrentPhaseNum))
-                        { // create artificial final state 
-
+                        {
                             int source = bodyGraphForImplPhaseJ[block.Cmds[i]];
-                            int dest = Math.Abs(Guid.NewGuid().GetHashCode());
+                            // create artificial final state
+                            int dest = Math.Abs(Guid.NewGuid().GetHashCode()); // Generate unique dummy node ref: http://www.codinghorror.com/blog/2007/03/primary-keys-ids-versus-guids.html
                             finalStates.Add(dest);
                             Tuple<int, int> edge = new Tuple<int, int>(source, dest);
                             edges.Add(edge);
@@ -250,7 +327,6 @@ namespace Microsoft.Boogie
                         }
                         else
                         {// Do proper transition 
-
                             int source = bodyGraphForImplPhaseJ[block.Cmds[i]];
                             int dest = bodyGraphForImplPhaseJ[block.Cmds[i + 1]];
                             Tuple<int, int> edge = new Tuple<int, int>(source, dest);
@@ -267,7 +343,6 @@ namespace Microsoft.Boogie
                     }
                     else
                     { // proper transition to state before transfer command
-
                         int source = bodyGraphForImplPhaseJ[block.Cmds[block.Cmds.Count - 1]];
                         int dest = bodyGraphForImplPhaseJ[block.TransferCmd];
                         Tuple<int, int> edge = new Tuple<int, int>(source, dest);
@@ -294,6 +369,7 @@ namespace Microsoft.Boogie
                 }
                 else if (block.Cmds.Count == 0)
                 {
+                    // Target block Entry state will be fetched 
 
                 }
                 // Handle
@@ -308,6 +384,7 @@ namespace Microsoft.Boogie
             }
 
             Graph<int> automatonGraphOfImplPerPhase = new Graph<int>(edges);
+
             return automatonGraphOfImplPerPhase;
         }
 
@@ -325,12 +402,13 @@ namespace Microsoft.Boogie
                 {
                     if (block.Cmds.Count == 0)
                     {
-                        targetBlockEntryStates.Add(bodyGraphForImplPhaseJ[block.TransferCmd]);
+                        targetBlockEntryStates.Add(bodyGraphForImplPhaseJ[block.TransferCmd]); //Target block is empty. Add state of target block's transfer command (Goto or Return) 
                     }
                     else if (block.Cmds.Count >= 1)
                     {
                         if (IsCallCmdExitPoint(block.Cmds[0], yTypeCheckCurrentPhaseNum))
-                        {// Create artificial final state and put this into final states
+                        {
+                            // Create artificial final state and put this into final states
                             int targetState = Math.Abs(Guid.NewGuid().GetHashCode());
                             finalStates.Add(targetState);
                             targetBlockEntryStates.Add(targetState);
@@ -352,8 +430,11 @@ namespace Microsoft.Boogie
             {
                 CallCmd callCmd = cmd as CallCmd;
                 int phaseSpecCallCmd = moverTypeChecker.FindPhaseNumber(callCmd.Proc);
-                if (phaseSpecCallCmd > yTypeCheckCurrentPhaseNum)
+                if (phaseSpecCallCmd >= yTypeCheckCurrentPhaseNum)
                 {
+#if DEBUG && !DEBUG_DETAIL
+                    Console.Write("\nCall Cmd Check is " + callCmd.Proc.Name + "\n");
+#endif
                     return true;
 
                 }
@@ -425,64 +506,63 @@ namespace Microsoft.Boogie
             return s.ToString();
         }
 
-        // Dragon Book Pagepg 662
-        /*
-         * Parameter : backEdge : is an Yield transition in the graph. Compute all backward edges based on predecessors of this node.  
-         *                        This is called for every edge X, CollectBackEdges(graph,X) that has cond "Y".
-         * Return: HashSet<Tuple<int, int>> yieldingEdges : set of edges that can be reached by backEdge which has Y(yield) condition
-         */
-        private HashSet<Tuple<int, int>> CollectBackEdges(Graph<int> g, Tuple<int, int> backEdge)
-        {
-            int n = backEdge.Item1;
-            int d = backEdge.Item2;
 
-            HashSet<int> loop = new HashSet<int>();
-            Stack<int> stack = new Stack<int>();
-            HashSet<Tuple<int, int>> yieldReachingEdges = new HashSet<Tuple<int, int>>();
-            loop.Add(d);
-            if (!n.Equals(d)) // then n is not in loop
+        private HashSet<Tuple<int, int>> CollectBackwardEdgesOfYieldEdge(Graph<int> g, int source)
+        {
+            HashSet<Tuple<int, int>> yieldReachingEdges = new HashSet<Tuple<int, int>>(); // Collect edges that are backward reachable from source vertex of yield a edge,source ---Y---> sink, in backward direction
+            HashSet<int> gray = new HashSet<int>();
+            HashSet<int> black = new HashSet<int>();
+            HashSet<int> white = new HashSet<int>();
+            // Add all vertices except s into 
+            foreach (int v in g.Nodes)
             {
-                loop.Add(n);
-                stack.Push(n); // push n onto stack
-#if (DEBUG && !DEBUG_DETAIL)
-                Console.Write("\n First pushed item on stack is " + n.ToString());
-#endif
+                if (!v.Equals(source))
+                    white.Add(v);
             }
-            while (stack.Count > 0) // not empty
+
+            Queue<int> frontier = new Queue<int>(); //
+            // n is given as start vertex 
+            gray.Add(source);
+            frontier.Enqueue(source);
+
+            while (frontier.Count > 0)
             {
-                int m = stack.Peek();
-#if (DEBUG && !DEBUG_DETAIL)
-                Console.Write("\n Back is : " + m.ToString() + "\n");
-#endif
-                stack.Pop(); // pop stack
-                foreach (int p in g.Predecessors(m))
+                int u = frontier.Dequeue();
+                foreach (int v in g.Predecessors(u))
                 {
-                    // Contract.Assert(p!= null);
-                    if (!(loop.Contains(p)))
-                    {
-                        Tuple<int, int> yieldReaching = new Tuple<int, int>(p, m);
-                        yieldReachingEdges.Add(yieldReaching);
-#if (DEBUG && !DEBUG_DETAIL)
-                        Console.Write("\n " + p.ToString() + " --> " + m.ToString() + "\n");
+#if DEBUG && !DEBUG_DETAIL
+                    Console.Write("\nVertex " + u.ToString() + " is currently being explored for " + v.ToString() + "\n");
 #endif
-                        loop.Add(p);
-                        stack.Push(p); // push p onto stack
+                    if (white.Contains(v) && !gray.Contains(v) && !black.Contains(v))
+                    {
+#if DEBUG && !DEBUG_DETAIL
+                        Console.Write(v.ToString() + " is not explored beforehand \n");
+#endif
+                        gray.Add(v);
+                        frontier.Enqueue(v);
+                        // Add to yielding edges
+                        yieldReachingEdges.Add(new Tuple<int, int>(v, u));
                     }
+#if DEBUG && !DEBUG_DETAIL
+                    Console.Write(v.ToString() + " is already being explored");
+#endif
                 }
+                black.Add(u);
             }
+
             return yieldReachingEdges;
         }
         /*
          * Calls CollectBackEdges for each Y edge existing in graph
          */
-        private HashSet<Tuple<int, int>> BackwardEdgesOfYields(Graph<int> graph, Dictionary<Tuple<int, int>, string> edgeLabels)
+        private HashSet<Tuple<int, int>> CollectYieldReachingEdgesOfGraph(Graph<int> graph, Dictionary<Tuple<int, int>, string> edgeLabels)
         {
-            HashSet<Tuple<int, int>> yieldTrueEdges = new HashSet<Tuple<int, int>>();
-            foreach (var e in graph.Edges)
+            HashSet<Tuple<int, int>> yieldTrueEdges = new HashSet<Tuple<int, int>>(); // Set {forall edges e : e is reaching a Y labeled edge}
+            foreach (var e in graph.Edges) // Visits all edges to and do backward yield reachability analysis starting from source vertex of an "Y" labeled edge
             {
                 if (edgeLabels[e] == "Y")
                 {
-                    HashSet<Tuple<int, int>> yieldReachingEdges = CollectBackEdges(graph, e);
+                    HashSet<Tuple<int, int>> yieldReachingEdges = CollectBackwardEdgesOfYieldEdge(graph, e.Item1);
                     foreach (Tuple<int, int> yldrch in yieldReachingEdges)
                     {
 #if (DEBUG && !DEBUG_DETAIL)
@@ -500,12 +580,10 @@ namespace Microsoft.Boogie
          */
         private void PostProcessGraph(Graph<int> graph, Dictionary<Tuple<int, int>, string> edgeLabels)
         {
-            HashSet<Tuple<int, int>> yieldTrueEdges = BackwardEdgesOfYields(graph, edgeLabels);
-
+            HashSet<Tuple<int, int>> yieldTrueEdges = CollectYieldReachingEdgesOfGraph(graph, edgeLabels);
 
             foreach (Tuple<int, int> yldrch in yieldTrueEdges)
             {
-
                 if (edgeLabels[yldrch] == "Q")
                 {
                     edgeLabels[yldrch] = "3";
@@ -588,6 +666,7 @@ namespace Microsoft.Boogie
             return finalS;
         }
 
+
         private List<int> ComputeInitalStates(List<int> initialStates)
         {
 
@@ -603,7 +682,6 @@ namespace Microsoft.Boogie
 
         private Automaton<BvSet> BuildAutomaton(Graph<int> graph, Dictionary<Tuple<int, int>, string> edgeLabels, List<int> initialStates, List<int> finalStates)
         {
-            //List<Move<YieldTypeSet>> transitions = new List<Move<YieldTypeSet>>();
             List<int[]> transitions = new List<int[]>();
             foreach (Tuple<int, int> e in graph.Edges)
             {
@@ -750,28 +828,27 @@ namespace Microsoft.Boogie
                 Console.Write("\n From : " + trans[0].ToString() + "--- " + trans[1] + " --- " + " to : " + trans[3].ToString());
             }
 #endif
-            var solver = new CharSetSolver();
 
-            // get initial states 
-            List<int> initialSts = ComputeInitalStates(initialStates);
 
             // get final states
             int[] finalSts = ComputeFinalStates(finalStates);
 
-            // Take one initial state from initial states
-            int source = initialStates[0];
-            foreach (int s in initialStates)
-            {
-                if (!s.Equals(source))
+            // Dont need, just ask to clarify. I do not need to put epsilon transitions from a chosen initial state to other initial states. Am i right ? We decided to get reduced with them
+            // Take one initial state from initial states , 
+            //  int source = initialStates[0];
+            //  //Ask again
+            /*    foreach (int s in initialStates)
                 {
-                    int[] transition = new int[4];
-                    transition[0] = source;
-                    transition[1] = -1;
-                    transition[2] = -1;
-                    transition[3] = s;
-                    transitions.Add(transition);
-                }
-            }
+                    if (!s.Equals(0))
+                    {
+                        int[] transition = new int[4];
+                        transition[0] = 0;
+                        transition[1] = -1;
+                        transition[2] = -1;
+                        transition[3] = s;
+                        transitions.Add(transition);
+                    }
+                }*/
 
 #if (DEBUG && !DEBUG_DETAIL)
             Console.Write(" \n Transitions are\n ");
@@ -782,23 +859,20 @@ namespace Microsoft.Boogie
             }
 #endif
 
+            var solver = new CharSetSolver(BitWidth.BV7);
             // create Automaton
-            Automaton<BvSet> yieldTypeCheckAutomaton = solver.ReadFromRanges(source, finalSts, transitions);
+            Automaton<BvSet> yieldTypeCheckAutomaton = solver.ReadFromRanges(0, finalSts, transitions);
 
-#if (DEBUG && DEBUG_DETAIL)
-            //   Console.Write("\n" + ytypeChecked.Proc.Name + " Automaton \n");
+#if (DEBUG && !DEBUG_DETAIL)
             Console.Write("\n" + "Number of moves " + yieldTypeCheckAutomaton.MoveCount.ToString() + "\n");
             Console.Write("\n" + "Number of states " + yieldTypeCheckAutomaton.StateCount.ToString() + "\n");
             foreach (var move in yieldTypeCheckAutomaton.GetMoves())
             {
-                // Ask Margus,Shaz : BvSet concerns !
-                Console.WriteLine(move.SourceState.ToString() + " " + move.Condition.ToString() + " " + move.TargetState.ToString());
-                //solver.ShowDAG(yieldTypeCheckAutomaton,ytypeChecked.Proc.Name+" Automaton");
-                // solver.ShowGraph(yieldTypeCheckAutomaton,ytypeChecked.Proc.Name+" Automaton");
+             // solver.PrettyPrint(BvSet) gives an error : Ask Margus !!!
+             //   Console.WriteLine(move.SourceState.ToString() + " " +  solver.PrettyPrint(move.Condition)+ " " + move.TargetState.ToString());               
             }
 #endif
-            //create Automaton
-            //Automaton<YieldTypeSet> yieldTypeCheckAutomaton = Automaton<YieldTypeSet>.Create(concreteInitialState, finalStates, transitions); ;
+            yieldTypeCheckAutomaton.RemoveEpsilons(solver.MkOr);
             return yieldTypeCheckAutomaton;
         }
     }
