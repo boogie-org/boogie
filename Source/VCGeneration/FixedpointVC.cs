@@ -337,6 +337,27 @@ namespace Microsoft.Boogie
         }
 #endif
 
+        void MarkAllFunctionImplementationsInline()
+        {
+            foreach (var d in program.TopLevelDeclarations)
+            {
+                var impl = d as Function;
+                if (impl != null)
+                {
+                    if (impl.Body == null && impl.DefinitionAxiom != null)
+                    {
+                        var def = impl.DefinitionAxiom.Expr as QuantifierExpr;
+                        var bod = def.Body as NAryExpr;
+                        impl.Body = bod.Args[1];
+                        impl.DefinitionAxiom = null;
+                    }
+                    if (impl.Body != null)
+                        if (impl.FindExprAttribute("inline") == null)
+                            impl.AddAttribute("inline", Expr.Literal(100));
+                }
+            }
+        }
+
         void InlineAll()
         {
             foreach (var d in program.TopLevelDeclarations)
@@ -351,7 +372,8 @@ namespace Microsoft.Boogie
                         impl.AddAttribute("inline", Expr.Literal(100));
                 }
             }
-            foreach (var d in program.TopLevelDeclarations)
+            var decls = program.TopLevelDeclarations;
+            foreach (var d in decls)
             {
                 var impl = d as Implementation;
                 if (impl != null && !impl.SkipVerification)
@@ -840,9 +862,9 @@ namespace Microsoft.Boogie
                 else if (f.GetKind() == DeclKind.Label)
                 {
                     var arg = t.GetAppArgs()[0];
-                    var r = arg.GetAppDecl();
-                    if (r.GetKind() == DeclKind.Uninterpreted)
+                    if (arg.GetKind() == TermKind.App && arg.GetAppDecl().GetKind() == DeclKind.Uninterpreted)
                     {
+                        var r = arg.GetAppDecl();
                         if (memo.TryGetValue(arg, out res))
                             goto done;
                         if (!annotationInfo.ContainsKey(r.GetDeclName()) && !arg.GetAppDecl().GetDeclName().StartsWith("_solve_"))
@@ -924,9 +946,9 @@ namespace Microsoft.Boogie
                 else if (f.GetKind() == DeclKind.Label)
                 {
                     var arg = t.GetAppArgs()[0];
-                    var r = arg.GetAppDecl();
-                    if (r.GetKind() == DeclKind.Uninterpreted)
+                    if (arg.GetKind() == TermKind.App && arg.GetAppDecl().GetKind() == DeclKind.Uninterpreted)
                     {
+                        var r = arg.GetAppDecl();
                         if (memo.TryGetValue(arg, out res))
                         {
                             if(res != ctx.MkTrue())
@@ -1211,6 +1233,8 @@ namespace Microsoft.Boogie
             var oldDagOption = CommandLineOptions.Clo.vcVariety;
             CommandLineOptions.Clo.vcVariety = CommandLineOptions.VCVariety.Dag;
 
+            // MarkAllFunctionImplementationsInline(); // This is for SMACK, which goes crazy with functions
+
             // Run live variable analysis (TODO: should this be here?)
 #if false
             if (CommandLineOptions.Clo.LiveVariableAnalysis == 2)
@@ -1409,20 +1433,12 @@ namespace Microsoft.Boogie
 
         public override VC.VCGen.Outcome VerifyImplementation(Implementation impl, VerifierCallback collector)
         {
-            var start = DateTime.Now; 
-            
-            if (!generated)
-            {
-                Generate();
-                Console.WriteLine("generate: {0}s", (DateTime.Now - start).TotalSeconds);
-                generated = true;
-            }
-            
+
             Procedure proc = impl.Proc;
-            
+
             // we verify all the impls at once, so we need to execute only once
             // TODO: make sure needToCheck is true only once
-            bool needToCheck = false; 
+            bool needToCheck = false;
             if (mode == Mode.OldCorral)
                 needToCheck = proc.FindExprAttribute("inline") == null && !(proc is LoopProcedure);
             else if (mode == Mode.Corral)
@@ -1432,6 +1448,17 @@ namespace Microsoft.Boogie
 
             if (needToCheck)
             {
+
+                var start = DateTime.Now;
+
+                if (!generated)
+                {
+                    Generate();
+                    Console.WriteLine("generate: {0}s", (DateTime.Now - start).TotalSeconds);
+                    generated = true;
+                }
+
+
                 Console.WriteLine("Verifying {0}...", impl.Name);
 
                 RPFP.Node cexroot = null;
@@ -1457,7 +1484,7 @@ namespace Microsoft.Boogie
                         return Outcome.ReachedBound;
                 }
             }
-            
+
             return Outcome.Inconclusive;
         }
 
