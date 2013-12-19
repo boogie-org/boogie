@@ -10,20 +10,168 @@ using System.Diagnostics.Contracts;
 
 namespace Microsoft.Boogie
 {
+    public class MyDuplicator : Duplicator
+    {
+        MoverTypeChecker moverTypeChecker;
+        int phaseNum;
+        public Dictionary<Procedure, Procedure> procMap; /* Original -> Duplicate */
+        public Dictionary<Absy, Absy> absyMap; /* Original -> Duplicate */
+        public MyDuplicator(MoverTypeChecker moverTypeChecker, int phaseNum)
+        {
+            this.moverTypeChecker = moverTypeChecker;
+            this.phaseNum = phaseNum;
+            this.procMap = new Dictionary<Procedure, Procedure>();
+            this.absyMap = new Dictionary<Absy, Absy>();
+        }
+
+        public override List<Cmd> VisitCmdSeq(List<Cmd> cmdSeq)
+        {
+            List<Cmd> cmds = base.VisitCmdSeq(cmdSeq);
+            List<Cmd> newCmds = new List<Cmd>();
+            foreach (Cmd cmd in cmds)
+            {
+                ParCallCmd parCallCmd = cmd as ParCallCmd;
+                if (parCallCmd == null)
+                {
+                    newCmds.Add(cmd);
+                    continue;
+                }
+                int maxCalleePhaseNum = 0;
+                foreach (CallCmd iter in parCallCmd.CallCmds)
+                {
+                    int calleePhaseNum = moverTypeChecker.FindPhaseNumber(iter.Proc);
+                    if (calleePhaseNum > maxCalleePhaseNum)
+                        maxCalleePhaseNum = calleePhaseNum;
+                }
+                if (phaseNum > maxCalleePhaseNum)
+                {
+                    foreach (CallCmd callCmd in parCallCmd.CallCmds)
+                    {
+                        newCmds.Add(callCmd);
+                    }
+                }
+                else
+                {
+                    newCmds.Add(parCallCmd);
+                }
+            }
+            return newCmds;
+        }
+
+        public override YieldCmd VisitYieldCmd(YieldCmd node)
+        {
+            YieldCmd yieldCmd = base.VisitYieldCmd(node);
+            absyMap[node] = yieldCmd;
+            return yieldCmd;
+        }
+        
+        public override Block VisitBlock(Block node)
+        {
+            Block block = base.VisitBlock(node);
+            absyMap[node] = block;
+            return block;
+        }
+        
+        public override Cmd VisitCallCmd(CallCmd node)
+        {
+            CallCmd callCmd = (CallCmd) base.VisitCallCmd(node);
+            callCmd.Proc = VisitProcedure(callCmd.Proc);
+            absyMap[node] = callCmd;
+            return callCmd;
+        }
+
+        public override Cmd VisitParCallCmd(ParCallCmd node)
+        {
+            ParCallCmd parCallCmd = (ParCallCmd) base.VisitParCallCmd(node);
+            foreach (CallCmd callCmd in parCallCmd.CallCmds)
+            {
+                callCmd.Proc = VisitProcedure(callCmd.Proc);
+            }
+            absyMap[node] = parCallCmd;
+            return parCallCmd;
+        }
+
+        public override Procedure VisitProcedure(Procedure node)
+        {
+            if (!QKeyValue.FindBoolAttribute(node.Attributes, "yields"))
+                return node;
+            if (!procMap.ContainsKey(node))
+                procMap[node] = base.VisitProcedure(node);
+            return procMap[node];
+        }
+
+        public override Implementation VisitImplementation(Implementation node)
+        {
+            if (moverTypeChecker.procToActionInfo.ContainsKey(node.Proc) && moverTypeChecker.procToActionInfo[node.Proc].phaseNum < phaseNum)
+            {
+                CodeExpr action = (CodeExpr) VisitCodeExpr(moverTypeChecker.procToActionInfo[node.Proc].thisAction);
+                Implementation impl = new Implementation(Token.NoToken, node.Name, node.Proc.TypeParameters, node.Proc.InParams, node.Proc.OutParams, new List<Variable>(), action.Blocks);
+                impl.Proc = VisitProcedure(node.Proc);
+                impl.Proc.AddAttribute("inline", 1);
+                impl.AddAttribute("inline", 1);
+                return impl;
+            }
+            else
+            {
+                Implementation impl = base.VisitImplementation(node);
+                foreach (Block block in impl.Blocks)
+                {
+                    GotoCmd gotoCmd = block.TransferCmd as GotoCmd;
+                    if (gotoCmd == null) continue;
+                    List<Block> labelTargets = new List<Block>();
+                    List<string> labelNames = new List<string>();
+                    foreach (Block x in gotoCmd.labelTargets)
+                    {
+                        Block y = (Block)absyMap[x];
+                        labelTargets.Add(y);
+                        labelNames.Add(y.Label);
+                    }
+                    gotoCmd.labelTargets = labelTargets;
+                    gotoCmd.labelNames = labelNames;
+                }
+                return impl;
+            }
+        }
+
+        public override Requires VisitRequires(Requires node)
+        {
+            Requires requires = base.VisitRequires(node);
+            if (QKeyValue.FindIntAttribute(requires.Attributes, "phase", int.MaxValue) != phaseNum)
+                requires.Condition = Expr.True;
+            return requires;
+        }
+
+        public override Ensures VisitEnsures(Ensures node)
+        {
+            Ensures ensures = base.VisitEnsures(node);
+            if (ensures.IsAtomicSpecification || QKeyValue.FindIntAttribute(ensures.Attributes, "phase", int.MaxValue) != phaseNum)
+                ensures.Condition = Expr.True;
+            return ensures;
+        }
+
+        public override Cmd VisitAssertCmd(AssertCmd node)
+        {
+            AssertCmd assertCmd = (AssertCmd) base.VisitAssertCmd(node);
+            if (QKeyValue.FindIntAttribute(assertCmd.Attributes, "phase", int.MaxValue) != phaseNum)
+                assertCmd.Expr = Expr.True;
+            return assertCmd;
+        }
+    }
+
     public class OwickiGriesTransform
     {
         List<IdentifierExpr> globalMods;
         LinearTypeChecker linearTypeChecker;
-        MoverTypeChecker moverTypeChecker;
+        Dictionary<Absy, Absy> absyMap;
         Dictionary<string, Procedure> asyncAndParallelCallDesugarings;
         List<Procedure> yieldCheckerProcs;
         List<Implementation> yieldCheckerImpls;
         Procedure yieldProc;
 
-        public OwickiGriesTransform(LinearTypeChecker linearTypeChecker, MoverTypeChecker moverTypeChecker)
+        public OwickiGriesTransform(LinearTypeChecker linearTypeChecker, Dictionary<Absy, Absy> absyMap)
         {
             this.linearTypeChecker = linearTypeChecker;
-            this.moverTypeChecker = moverTypeChecker;
+            this.absyMap = absyMap;
             Program program = linearTypeChecker.program;
             globalMods = new List<IdentifierExpr>();
             foreach (Variable g in program.GlobalVariables())
@@ -34,6 +182,11 @@ namespace Microsoft.Boogie
             yieldCheckerProcs = new List<Procedure>();
             yieldCheckerImpls = new List<Implementation>();
             yieldProc = null;
+        }
+
+        private HashSet<Variable> AvailableLinearVars(Absy absy)
+        {
+            return linearTypeChecker.availableLinearVars[absyMap[absy]];
         }
 
         private void AddCallToYieldProc(List<Cmd> newCmds, Dictionary<Variable, Variable> ogOldGlobalMap, Dictionary<string, Variable> domainNameToLocalVar)
@@ -120,7 +273,7 @@ namespace Microsoft.Boogie
             {
                 newCmds.Add(new HavocCmd(Token.NoToken, globalMods));
             }
-            Dictionary<string, Expr> domainNameToExpr = ComputeAvailableExprs(linearTypeChecker.availableLinearVars[yieldCmd], domainNameToInputVar);
+            Dictionary<string, Expr> domainNameToExpr = ComputeAvailableExprs(AvailableLinearVars(yieldCmd), domainNameToInputVar);
             AddUpdatesToOldGlobalVars(newCmds, ogOldGlobalMap, domainNameToLocalVar, domainNameToExpr);
 
             for (int j = 0; j < cmds.Count; j++)
@@ -320,8 +473,6 @@ namespace Microsoft.Boogie
         {
             if (!QKeyValue.FindBoolAttribute(impl.Proc.Attributes, "yields")) return;
 
-            TransformProc(impl.Proc);
-
             // Find the yielding loop headers
             impl.PruneUnreachableBlocks();
             impl.ComputePredecessorsForBlocks();
@@ -437,7 +588,7 @@ namespace Microsoft.Boogie
                         }
                         if (callCmd.IsAsync || QKeyValue.FindBoolAttribute(callCmd.Proc.Attributes, "yields"))
                         {
-                            HashSet<Variable> availableLinearVars = new HashSet<Variable>(linearTypeChecker.availableLinearVars[callCmd]);
+                            HashSet<Variable> availableLinearVars = new HashSet<Variable>(AvailableLinearVars(callCmd));
                             foreach (IdentifierExpr ie in callCmd.Outs)
                             {
                                 if (linearTypeChecker.FindDomainName(ie.Decl) == null) continue;
@@ -452,7 +603,7 @@ namespace Microsoft.Boogie
                         ParCallCmd parCallCmd = cmd as ParCallCmd;
                         AddCallToYieldProc(newCmds, ogOldGlobalMap, domainNameToLocalVar);
                         DesugarParallelCallCmd(newCmds, parCallCmd);
-                        HashSet<Variable> availableLinearVars = new HashSet<Variable>(linearTypeChecker.availableLinearVars[parCallCmd]);
+                        HashSet<Variable> availableLinearVars = new HashSet<Variable>(AvailableLinearVars(parCallCmd));
                         foreach (CallCmd callCmd in parCallCmd.CallCmds)
                         {
                             foreach (IdentifierExpr ie in callCmd.Outs)
@@ -487,7 +638,7 @@ namespace Microsoft.Boogie
 
             foreach (Block header in yieldingHeaders)
             {
-                Dictionary<string, Expr> domainNameToExpr = ComputeAvailableExprs(linearTypeChecker.availableLinearVars[header], domainNameToInputVar);
+                Dictionary<string, Expr> domainNameToExpr = ComputeAvailableExprs(AvailableLinearVars(header), domainNameToInputVar);
                 foreach (Block pred in header.Predecessors)
                 {
                     AddCallToYieldProc(pred.Cmds, ogOldGlobalMap, domainNameToLocalVar);
@@ -644,7 +795,7 @@ namespace Microsoft.Boogie
             CreateYieldCheckerImpl(proc, yields, new Dictionary<Variable, Expr>());
         }
 
-        private void AddYieldProcAndImpl() 
+        private void AddYieldProcAndImpl(List<Declaration> decls) 
         {
             if (yieldProc == null) return;
 
@@ -690,8 +841,8 @@ namespace Microsoft.Boogie
             var yieldImpl = new Implementation(Token.NoToken, yieldProc.Name, new List<TypeVariable>(), inputs, new List<Variable>(), new List<Variable>(), blocks);
             yieldImpl.Proc = yieldProc;
             yieldImpl.AddAttribute("inline", new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1)));
-            program.TopLevelDeclarations.Add(yieldProc);
-            program.TopLevelDeclarations.Add(yieldImpl);
+            decls.Add(yieldProc);
+            decls.Add(yieldImpl);
         }
 
         private QKeyValue RemoveYieldsAttribute(QKeyValue iter)
@@ -701,50 +852,98 @@ namespace Microsoft.Boogie
             return (QKeyValue.FindBoolAttribute(iter, "yields")) ? iter.Next : iter;
         }
 
-        public void Transform()
+        public void Transform(List<Implementation> impls, List<Procedure> procs, List<Declaration> decls)
         {
-            Program program = linearTypeChecker.program;
-            foreach (var decl in program.TopLevelDeclarations)
+            foreach (var impl in impls)
             {
-                Implementation impl = decl as Implementation;
-                if (impl == null) continue;
                 TransformImpl(impl);
+            }
+            foreach (var proc in procs)
+            {
+                TransformProc(proc);
             }
             foreach (Procedure proc in yieldCheckerProcs)
             {
-                program.TopLevelDeclarations.Add(proc);
+                decls.Add(proc);
             }
             foreach (Implementation impl in yieldCheckerImpls)
             {
-                program.TopLevelDeclarations.Add(impl);
+                decls.Add(impl);
             }
             foreach (Procedure proc in asyncAndParallelCallDesugarings.Values)
             {
-                program.TopLevelDeclarations.Add(proc);
+                decls.Add(proc);
             }
-            AddYieldProcAndImpl();
-            foreach (var decl in program.TopLevelDeclarations)
+            AddYieldProcAndImpl(decls);
+            foreach (var proc in procs)
             {
-                Procedure proc = decl as Procedure;
-                if (proc == null) continue;
                 if (QKeyValue.FindBoolAttribute(proc.Attributes, "yields"))
                 {
                     HashSet<Variable> modifiedVars = new HashSet<Variable>();
                     proc.Modifies.Iter(x => modifiedVars.Add(x.Decl));
-                    foreach (GlobalVariable g in program.GlobalVariables())
+                    foreach (GlobalVariable g in linearTypeChecker.program.GlobalVariables())
                     {
                         if (modifiedVars.Contains(g)) continue;
                         proc.Modifies.Add(new IdentifierExpr(Token.NoToken, g));
                     }
                     proc.Attributes = RemoveYieldsAttribute(proc.Attributes);
                 }
+                decls.Add(proc);
             }
+            foreach (var impl in impls)
+            {
+                impl.Attributes = RemoveYieldsAttribute(impl.Attributes);
+                decls.Add(impl);
+            }
+        }
+
+        public static void Transform(LinearTypeChecker linearTypeChecker, MoverTypeChecker moverTypeChecker)
+        {
+            Program program = linearTypeChecker.program;
+            List<Procedure> originalProcs = new List<Procedure>();
+            List<Implementation> originalImpls = new List<Implementation>();
             foreach (var decl in program.TopLevelDeclarations)
             {
+                Procedure proc = decl as Procedure;
+                if (proc != null && QKeyValue.FindBoolAttribute(proc.Attributes, "yields"))
+                {
+                    originalProcs.Add(proc);
+                    continue;
+                }
                 Implementation impl = decl as Implementation;
-                if (impl == null) continue;
-                impl.Attributes = RemoveYieldsAttribute(impl.Attributes);
+                if (impl != null && QKeyValue.FindBoolAttribute(impl.Proc.Attributes, "yields"))
+                {
+                    originalImpls.Add(impl);
+                }
             }
+            List<Declaration> decls = new List<Declaration>();
+            foreach (int phaseNum in moverTypeChecker.assertionPhaseNums)
+            {
+                MyDuplicator duplicator = new MyDuplicator(moverTypeChecker, int.MaxValue);
+                List<Implementation> impls = new List<Implementation>();
+                List<Procedure> procs = new List<Procedure>();
+                foreach (Implementation impl in originalImpls)
+                {
+                    Implementation duplicateImpl = duplicator.VisitImplementation(impl);
+                    impls.Add(duplicateImpl);
+                    procs.Add(duplicateImpl.Proc);
+                }
+                foreach (Procedure proc in originalProcs)
+                {
+                    if (duplicator.procMap.ContainsKey(proc)) continue;
+                    procs.Add(duplicator.VisitProcedure(proc));
+                }
+                Dictionary<Absy, Absy> reverseAbsyMap = new Dictionary<Absy, Absy>();
+                foreach (Absy key in duplicator.absyMap.Keys)
+                {
+                    reverseAbsyMap[duplicator.absyMap[key]] = key;
+                }
+                OwickiGriesTransform ogTransform = new OwickiGriesTransform(linearTypeChecker, reverseAbsyMap);
+                ogTransform.Transform(impls, procs, decls);
+            }
+            program.TopLevelDeclarations.RemoveAll(x => originalImpls.Contains(x));
+            program.TopLevelDeclarations.RemoveAll(x => originalProcs.Contains(x));
+            program.TopLevelDeclarations.AddRange(decls);
         }
     }
 }

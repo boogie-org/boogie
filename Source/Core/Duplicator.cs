@@ -113,15 +113,6 @@ namespace Microsoft.Boogie {
       clone.Outs = new List<IdentifierExpr>(clone.Outs);
       return base.VisitCallCmd(clone);
     }
-    public override Cmd VisitParCallCmd(ParCallCmd node)
-    {
-        //Contract.Requires(node != null);
-        Contract.Ensures(Contract.Result<Cmd>() != null);
-        ParCallCmd clone = (ParCallCmd)node.Clone();
-        Contract.Assert(clone != null);
-        clone.CallCmds = new List<CallCmd>(node.CallCmds);
-        return base.VisitParCallCmd(clone);
-    }
     public override Choice VisitChoice(Choice node) {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Choice>() != null);
@@ -251,6 +242,15 @@ namespace Microsoft.Boogie {
       Contract.Ensures(Contract.Result<Expr>() != null);
       return base.VisitOldExpr((OldExpr)node.Clone());
     }
+    public override Cmd VisitParCallCmd(ParCallCmd node)
+    {
+        //Contract.Requires(node != null);
+        Contract.Ensures(Contract.Result<Cmd>() != null);
+        ParCallCmd clone = (ParCallCmd)node.Clone();
+        Contract.Assert(clone != null);
+        clone.CallCmds = new List<CallCmd>(node.CallCmds);
+        return base.VisitParCallCmd(clone);
+    }
     public override Procedure VisitProcedure(Procedure node) {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Procedure>() != null);
@@ -351,6 +351,12 @@ namespace Microsoft.Boogie {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Requires>() != null);
       return base.VisitRequires((Requires)node.Clone());
+    }
+    public override YieldCmd VisitYieldCmd(YieldCmd node)
+    {
+        //Contract.Requires(node != null);
+        Contract.Ensures(Contract.Result<Requires>() != null);
+        return base.VisitYieldCmd((YieldCmd)node.Clone());
     }
   }
 

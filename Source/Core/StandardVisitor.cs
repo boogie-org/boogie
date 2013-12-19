@@ -468,12 +468,6 @@ namespace Microsoft.Boogie {
       Contract.Ensures(Contract.Result<ReturnCmd>() != null);
       return (ReturnCmd)this.VisitTransferCmd(node);
     }
-    public virtual YieldCmd VisitYieldCmd(YieldCmd node)
-    {
-        Contract.Requires(node != null);
-        Contract.Ensures(Contract.Result<YieldCmd>() != null);
-        return node;
-    }
     public virtual ReturnExprCmd VisitReturnExprCmd(ReturnExprCmd node) {
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<ReturnExprCmd>() != null);
@@ -587,6 +581,12 @@ namespace Microsoft.Boogie {
           variableSeq[i] = this.VisitVariable(cce.NonNull(variableSeq[i]));
       }
       return variableSeq;
+    }
+    public virtual YieldCmd VisitYieldCmd(YieldCmd node)
+    {
+        Contract.Requires(node != null);
+        Contract.Ensures(Contract.Result<YieldCmd>() != null);
+        return node;
     }
     public virtual Cmd VisitAssertEnsuresCmd(AssertEnsuresCmd node) {
       Contract.Requires(node != null);

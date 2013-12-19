@@ -3,9 +3,141 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Microsoft.Boogie;
+using System.Diagnostics.Contracts;
+using System.Diagnostics;
 
 namespace Microsoft.Boogie
 {
+    public enum MoverType
+    {
+        Top,
+        Atomic,
+        Right,
+        Left,
+        Both
+    }
+
+    public class ActionInfo
+    {
+        public Procedure proc;
+        public MoverType moverType;
+        public int phaseNum;
+        public HashSet<int> callerPhaseNums;
+        public List<AssertCmd> thisGate;
+        public CodeExpr thisAction;
+        public List<Variable> thisInParams;
+        public List<Variable> thisOutParams;
+        public List<AssertCmd> thatGate;
+        public CodeExpr thatAction;
+        public List<Variable> thatInParams;
+        public List<Variable> thatOutParams;
+
+        public bool IsRightMover
+        {
+            get { return moverType == MoverType.Right || moverType == MoverType.Both; }
+        }
+
+        public bool IsLeftMover
+        {
+            get { return moverType == MoverType.Left || moverType == MoverType.Both; }
+        }
+
+        public ActionInfo(Procedure proc, CodeExpr codeExpr, MoverType moverType, int phaseNum)
+        {
+            this.proc = proc;
+            this.moverType = moverType;
+            this.phaseNum = phaseNum;
+            this.callerPhaseNums = new HashSet<int>();
+            this.thisGate = new List<AssertCmd>();
+            this.thisAction = codeExpr;
+            this.thisInParams = new List<Variable>();
+            this.thisOutParams = new List<Variable>();
+            this.thatGate = new List<AssertCmd>();
+            this.thatInParams = new List<Variable>();
+            this.thatOutParams = new List<Variable>();
+
+            var cmds = thisAction.Blocks[0].Cmds;
+            for (int i = 0; i < cmds.Count; i++)
+            {
+                AssertCmd assertCmd = cmds[i] as AssertCmd;
+                if (assertCmd == null) break;
+                thisGate.Add(assertCmd);
+                cmds[i] = new AssumeCmd(assertCmd.tok, assertCmd.Expr);
+            }
+
+            Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
+            foreach (Variable x in proc.InParams)
+            {
+                this.thisInParams.Add(x);
+                Variable y = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "that_" + x.Name, x.TypedIdent.Type), true);
+                this.thatInParams.Add(y);
+                map[x] = new IdentifierExpr(Token.NoToken, y);
+            }
+            foreach (Variable x in proc.OutParams)
+            {
+                this.thisOutParams.Add(x);
+                Variable y = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "that_" + x.Name, x.TypedIdent.Type), false);
+                this.thatOutParams.Add(y);
+                map[x] = new IdentifierExpr(Token.NoToken, y);
+            }
+            List<Variable> otherLocVars = new List<Variable>();
+            foreach (Variable x in thisAction.LocVars)
+            {
+                Variable y = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "that_" + x.Name, x.TypedIdent.Type), false);
+                map[x] = new IdentifierExpr(Token.NoToken, y);
+                otherLocVars.Add(y);
+            }
+            Contract.Assume(proc.TypeParameters.Count == 0);
+            Substitution subst = Substituter.SubstitutionFromHashtable(map);
+            foreach (AssertCmd assertCmd in thisGate)
+            {
+                thatGate.Add((AssertCmd)Substituter.Apply(subst, assertCmd));
+            }
+            Dictionary<Block, Block> blockMap = new Dictionary<Block, Block>();
+            List<Block> otherBlocks = new List<Block>();
+            foreach (Block block in thisAction.Blocks)
+            {
+                List<Cmd> otherCmds = new List<Cmd>();
+                foreach (Cmd cmd in block.Cmds)
+                {
+                    otherCmds.Add(Substituter.Apply(subst, cmd));
+                }
+                Block otherBlock = new Block();
+                otherBlock.Cmds = otherCmds;
+                otherBlock.Label = "that_" + block.Label;
+                block.Label = "this_" + block.Label;
+                otherBlocks.Add(otherBlock);
+                blockMap[block] = otherBlock;
+                if (block.TransferCmd is GotoCmd)
+                {
+                    GotoCmd gotoCmd = block.TransferCmd as GotoCmd;
+                    for (int i = 0; i < gotoCmd.labelNames.Count; i++)
+                    {
+                        gotoCmd.labelNames[i] = "this_" + gotoCmd.labelNames[i];
+                    }
+                }
+            }
+            foreach (Block block in thisAction.Blocks)
+            {
+                if (block.TransferCmd is ReturnExprCmd)
+                {
+                    blockMap[block].TransferCmd = new ReturnCmd(block.TransferCmd.tok);
+                    continue;
+                }
+                List<Block> otherGotoCmdLabelTargets = new List<Block>();
+                List<string> otherGotoCmdLabelNames = new List<string>();
+                GotoCmd gotoCmd = block.TransferCmd as GotoCmd;
+                foreach (Block target in gotoCmd.labelTargets)
+                {
+                    otherGotoCmdLabelTargets.Add(blockMap[target]);
+                    otherGotoCmdLabelNames.Add(blockMap[target].Label);
+                }
+                blockMap[block].TransferCmd = new GotoCmd(block.TransferCmd.tok, otherGotoCmdLabelNames, otherGotoCmdLabelTargets);
+            }
+            this.thatAction = new CodeExpr(otherLocVars, otherBlocks);
+        }
+    }
+
     public class MoverTypeChecker : StandardVisitor
     {
         public int FindPhaseNumber(Procedure proc)
@@ -19,11 +151,10 @@ namespace Microsoft.Boogie
         CheckingContext checkingContext;
         public int errorCount;
         HashSet<Variable> globalVariables;
-        bool globalVarAccessAllowed;
-        bool visitingAssertion;
         int enclosingProcPhaseNum;
         public Dictionary<Procedure, ActionInfo> procToActionInfo;
         public Program program;
+        public HashSet<int> assertionPhaseNums;
 
         public void TypeCheck()
         {
@@ -58,28 +189,18 @@ namespace Microsoft.Boogie
 
         public MoverTypeChecker(Program program)
         {
-            this.globalVariables = new HashSet<Variable>(program.GlobalVariables());
+            this.globalVariables = new HashSet<Variable>();
+            foreach (var g in program.GlobalVariables())
+            {
+                if (QKeyValue.FindBoolAttribute(g.Attributes, "qed"))
+                    this.globalVariables.Add(g);
+            }
             this.procToActionInfo = new Dictionary<Procedure, ActionInfo>();
+            this.assertionPhaseNums = new HashSet<int>();
             this.errorCount = 0;
             this.checkingContext = new CheckingContext(null);
             this.program = program;
-            this.visitingAssertion = false;
             this.enclosingProcPhaseNum = int.MaxValue;
-        }
-        public override Block VisitBlock(Block node)
-        {
-            globalVarAccessAllowed = false;
-            return base.VisitBlock(node);
-        }
-        public override Cmd VisitHavocCmd(HavocCmd node)
-        {
-            globalVarAccessAllowed = false;
-            return base.VisitHavocCmd(node);
-        }
-        public override Cmd VisitAssignCmd(AssignCmd node)
-        {
-            globalVarAccessAllowed = false;
-            return base.VisitAssignCmd(node);
         }
         public override Implementation VisitImplementation(Implementation node)
         {
@@ -93,10 +214,6 @@ namespace Microsoft.Boogie
         } 
         public override Cmd VisitCallCmd(CallCmd node)
         {
-            globalVarAccessAllowed = false;
-            if (enclosingProcPhaseNum == int.MaxValue)
-                return base.VisitCallCmd(node);
-
             if (!node.IsAsync)
             {
                 int calleePhaseNum = FindPhaseNumber(node.Proc);
@@ -104,7 +221,7 @@ namespace Microsoft.Boogie
                 {
                     procToActionInfo[node.Proc].callerPhaseNums.Add(enclosingProcPhaseNum);
                 }
-                else
+                else if (enclosingProcPhaseNum < calleePhaseNum || enclosingProcPhaseNum != int.MaxValue)
                 {
                     Error(node, "The phase of the caller procedure must be greater than the phase of the callee");
                 }
@@ -113,20 +230,11 @@ namespace Microsoft.Boogie
         }
         public override Cmd VisitParCallCmd(ParCallCmd node)
         {
-            globalVarAccessAllowed = false;
-            foreach (CallCmd callCmd in node.CallCmds)
-            {
-                base.VisitCallCmd(callCmd);
-            }
-
-            if (enclosingProcPhaseNum == int.MaxValue)
-                return node;
-
             int maxCalleePhaseNum = 0;
             foreach (CallCmd iter in node.CallCmds)
             {
                 int calleePhaseNum = FindPhaseNumber(iter.Proc);
-                if (calleePhaseNum < maxCalleePhaseNum)
+                if (calleePhaseNum > maxCalleePhaseNum)
                     maxCalleePhaseNum = calleePhaseNum;
             }
 
@@ -141,21 +249,16 @@ namespace Microsoft.Boogie
                     isRightMover = isRightMover && actionInfo.IsRightMover;
                     actionInfo.callerPhaseNums.Add(enclosingProcPhaseNum);
                 }
-                if (!isLeftMover && !isRightMover)
+                if (!isLeftMover && !isRightMover && node.CallCmds.Count > 1)
                 {
                     Error(node, "The procedures in the parallel call must be all right mover or all left mover");
                 }
             }
             return node;
         }
-        public override YieldCmd VisitYieldCmd(YieldCmd node)
-        {
-            globalVarAccessAllowed = true;
-            return base.VisitYieldCmd(node);
-        }
         public override Expr VisitIdentifierExpr(IdentifierExpr node)
         {
-            if (!visitingAssertion && !globalVarAccessAllowed && globalVariables.Contains(node.Decl))
+            if (globalVariables.Contains(node.Decl))
             {
                 Error(node, "Cannot access global variable");
             }
@@ -163,50 +266,36 @@ namespace Microsoft.Boogie
         }
         public override Ensures VisitEnsures(Ensures ensures)
         {
-            int phaseNum = QKeyValue.FindIntAttribute(ensures.Attributes, "phase", 0);
+            if (ensures.IsAtomicSpecification)
+                return ensures;
+            int phaseNum = QKeyValue.FindIntAttribute(ensures.Attributes, "phase", int.MaxValue);
+            assertionPhaseNums.Add(phaseNum);
             if (phaseNum > enclosingProcPhaseNum)
             {
                 Error(ensures, "The phase of ensures clause cannot be greater than the phase of enclosing procedure");
             }
-            this.visitingAssertion = true;
-            Ensures ret = base.VisitEnsures(ensures);
-            this.visitingAssertion = false;
-            return ret;
+            return ensures;
         }
         public override Requires VisitRequires(Requires requires)
         {
-            int phaseNum = QKeyValue.FindIntAttribute(requires.Attributes, "phase", 0);
+            int phaseNum = QKeyValue.FindIntAttribute(requires.Attributes, "phase", int.MaxValue);
+            assertionPhaseNums.Add(phaseNum); 
             if (phaseNum > enclosingProcPhaseNum)
             {
                 Error(requires, "The phase of requires clause cannot be greater than the phase of enclosing procedure");
             }
-            this.visitingAssertion = true;
-            Requires ret = base.VisitRequires(requires);
-            this.visitingAssertion = false;
-            return ret;
+            return requires;
         }
         public override Cmd VisitAssertCmd(AssertCmd node)
         {
-            int phaseNum = QKeyValue.FindIntAttribute(node.Attributes, "phase", 0);
+            int phaseNum = QKeyValue.FindIntAttribute(node.Attributes, "phase", int.MaxValue);
+            assertionPhaseNums.Add(phaseNum); 
             if (phaseNum > enclosingProcPhaseNum)
             {
                 Error(node, "The phase of assert cannot be greater than the phase of enclosing procedure");
             }
-            this.visitingAssertion = true;
-            Cmd ret = base.VisitAssertCmd(node);
-            this.visitingAssertion = false;
-            return ret;
+            return node;
         }
-        public override Cmd VisitAssumeCmd(AssumeCmd node)
-        {
-            int phaseNum = QKeyValue.FindIntAttribute(node.Attributes, "phase", 0);
-            if (phaseNum > enclosingProcPhaseNum)
-            {
-                Error(node, "The phase of assume cannot be greater than the phase of enclosing procedure");
-            }
-            return base.VisitAssumeCmd(node);
-        }
-
         public void Error(Absy node, string message)
         {
             checkingContext.Error(node, message);

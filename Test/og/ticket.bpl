@@ -4,10 +4,10 @@ function RightClosed(n: int) : [int]bool;
 type X;
 function {:builtin "MapConst"} mapconstbool(bool): [X]bool;
 const nil: X;
-var t: int;
-var s: int;
-var cs: X;
-var T: [int]bool;
+var {:qed} t: int;
+var {:qed} s: int;
+var {:qed} cs: X;
+var {:qed} T: [int]bool;
 
 procedure Allocate({:linear "tid"} xls':[X]bool) returns ({:linear "tid"} xls: [X]bool, {:linear "tid"} xl: X);
 ensures xl != nil;
@@ -50,11 +50,11 @@ requires {:phase 2} tid' != nil && Inv2(T, s, cs);
     invariant {:phase 1} Inv1(T, t);
     invariant {:phase 2} tid != nil && Inv2(T, s, cs);
     {
-        par Skip() | Yield0() | Yield1() | Yield2();
+        par Yield1() | Yield2() | Yield();
         call tid := Enter(tid);
-        par Skip() | Yield0() | Yield1();
+        par Yield1() | Yield2();
     	call tid := Leave(tid);
-        par Skip() | Yield0() | Yield1() | Yield2();
+        par Yield1() | Yield2() | Yield();
     }
 }
 
@@ -68,11 +68,11 @@ ensures {:right 2} |{ A: tid := tid'; havoc t, T; assume tid != nil && cs == nil
     var m: int;
     tid := tid';
 
-    par Skip() | Yield0() | Yield1();
+    par Yield1() | Yield2();
     call tid, m := GetTicketAbstract(tid);
-    par Skip() | Yield0();
+    par Yield1();
     call tid := WaitAndEnter(tid, m);
-    par Skip() | Yield0() | Yield1();
+    par Yield1() | Yield2();
 }
 
 procedure {:yields} GetTicketAbstract({:linear "tid"} tid': X) returns ({:linear "tid"} tid: X, m: int)
@@ -82,31 +82,26 @@ ensures {:right 1} |{ A: tid := tid'; havoc m, t; assume !T[m]; T[m] := true; re
 {
     tid := tid';
 
-    par Skip() | Yield0();
+    par Yield1();
     call tid, m := GetTicket(tid);
-    par Skip() | Yield0();
+    par Yield1();
 }
 
-procedure {:yields} {:stable} Yield2()
+procedure {:yields} {:stable} Yield()
 {
 }
 
-procedure {:yields} {:stable} Yield1()
+procedure {:yields} {:stable} Yield2()
 requires {:phase 2} Inv2(T, s, cs);
 ensures {:phase 2} Inv2(T, s, cs);
 ensures {:both 2} |{ A: return true; }|;
 {
 }
 
-procedure {:yields} {:stable} Yield0()
+procedure {:yields} {:stable} Yield1()
 requires {:phase 1} Inv1(T, t);
 ensures {:phase 1} Inv1(T,t);
 ensures {:both 1} |{ A: return true; }|;
-{
-}
-
-procedure {:yields} {:stable} Skip()
-ensures {:both 0} |{ A: return true; }|;
 {
 }
 

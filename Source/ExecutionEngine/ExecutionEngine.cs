@@ -485,8 +485,7 @@ namespace Microsoft.Boogie
 
         if (CommandLineOptions.Clo.StratifiedInlining == 0)
         {
-          OwickiGriesTransform ogTransform = new OwickiGriesTransform(linearTypeChecker, moverTypeChecker);
-          ogTransform.Transform();
+          OwickiGriesTransform.Transform(linearTypeChecker, moverTypeChecker);
           var eraser = new LinearEraser();
           eraser.VisitProgram(program);
           if (CommandLineOptions.Clo.OwickiGriesDesugaredOutputFile != null)
@@ -683,6 +682,14 @@ namespace Microsoft.Boogie
           CommandLineOptions.Clo.TypeEncodingMethod = CommandLineOptions.TypeEncoding.Monomorphic;
       }
 
+      moverTypeChecker = new MoverTypeChecker(program);
+      moverTypeChecker.TypeCheck();
+      if (moverTypeChecker.errorCount != 0)
+      {
+          Console.WriteLine("{0} type checking errors detected in {1}", moverTypeChecker.errorCount, bplFileName);
+          return PipelineOutcome.TypeCheckingError;
+      }
+
       linearTypeChecker = new LinearTypeChecker(program);
       linearTypeChecker.TypeCheck();
       if (linearTypeChecker.errorCount == 0)
@@ -694,16 +701,6 @@ namespace Microsoft.Boogie
         Console.WriteLine("{0} type checking errors detected in {1}", linearTypeChecker.errorCount, bplFileName);
         return PipelineOutcome.TypeCheckingError;
       }
-
-#if QED
-      moverTypeChecker = new MoverTypeChecker(program);
-      moverTypeChecker.TypeCheck();
-      if (moverTypeChecker.errorCount != 0)
-      {
-        Console.WriteLine("{0} type checking errors detected in {1}", moverTypeChecker.errorCount, bplFileName);
-        return PipelineOutcome.TypeCheckingError;
-      }
-#endif
 
       if (CommandLineOptions.Clo.PrintFile != null && CommandLineOptions.Clo.PrintDesugarings)
       {

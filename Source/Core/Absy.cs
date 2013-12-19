@@ -2351,14 +2351,22 @@ namespace Microsoft.Boogie {
       this.Condition.Resolve(rc);
     }
     
+    public bool IsAtomicSpecification
+    {
+        get
+        {
+            return
+                QKeyValue.FindIntAttribute(this.Attributes, "atomic", int.MaxValue) != int.MaxValue ||
+                QKeyValue.FindIntAttribute(this.Attributes, "right", int.MaxValue) != int.MaxValue ||
+                QKeyValue.FindIntAttribute(this.Attributes, "left", int.MaxValue) != int.MaxValue ||
+                QKeyValue.FindIntAttribute(this.Attributes, "both", int.MaxValue) != int.MaxValue;
+        }
+    }
+
     public override void Typecheck(TypecheckingContext tc) {
       //Contract.Requires(tc != null);
-        bool isAtomicSpecification =
-            QKeyValue.FindIntAttribute(this.Attributes, "atomic", int.MaxValue) != int.MaxValue ||
-            QKeyValue.FindIntAttribute(this.Attributes, "right", int.MaxValue) != int.MaxValue ||
-            QKeyValue.FindIntAttribute(this.Attributes, "left", int.MaxValue) != int.MaxValue ||
-            QKeyValue.FindIntAttribute(this.Attributes, "both", int.MaxValue) != int.MaxValue;
-      if (isAtomicSpecification && !tc.Yields)
+        
+      if (IsAtomicSpecification && !tc.Yields)
       {
           tc.Error(this, "atomic specification allowed only in a yielding procedure");
           return;

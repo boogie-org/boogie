@@ -35,10 +35,6 @@ Execution trace:
 
 Boogie program verifier finished with 3 verified, 2 errors
 
--------------------- parallel3.bpl --------------------
-
-Boogie program verifier finished with 3 verified, 0 errors
-
 -------------------- linear-set.bpl --------------------
 
 Boogie program verifier finished with 2 verified, 0 errors
@@ -70,14 +66,6 @@ Boogie program verifier finished with 2 verified, 1 error
 -------------------- parallel5.bpl --------------------
 
 Boogie program verifier finished with 4 verified, 0 errors
-
--------------------- parallel6.bpl --------------------
-
-Boogie program verifier finished with 1 verified, 0 errors
-
--------------------- parallel7.bpl --------------------
-
-Boogie program verifier finished with 1 verified, 0 errors
 
 -------------------- akash.bpl --------------------
 

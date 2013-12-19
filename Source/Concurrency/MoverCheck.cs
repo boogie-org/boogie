@@ -7,136 +7,6 @@ using System.Diagnostics;
 
 namespace Microsoft.Boogie
 {
-    public enum MoverType
-    {
-        Top,
-        Atomic,
-        Right,
-        Left,
-        Both
-    }
-
-    public class ActionInfo
-    {
-        public Procedure proc;
-        public MoverType moverType;
-        public int phaseNum;
-        public HashSet<int> callerPhaseNums;
-        public List<AssertCmd> thisGate;
-        public CodeExpr thisAction;
-        public List<Variable> thisInParams;
-        public List<Variable> thisOutParams;
-        public List<AssertCmd> thatGate;
-        public CodeExpr thatAction;
-        public List<Variable> thatInParams;
-        public List<Variable> thatOutParams;
-
-        public bool IsRightMover
-        {
-            get { return moverType == MoverType.Right || moverType == MoverType.Both; }
-        }
-
-        public bool IsLeftMover
-        {
-            get { return moverType == MoverType.Left || moverType == MoverType.Both; }
-        }
-
-        public ActionInfo(Procedure proc, CodeExpr codeExpr, MoverType moverType, int phaseNum)
-        {
-            this.proc = proc;
-            this.moverType = moverType;
-            this.phaseNum = phaseNum;
-            this.callerPhaseNums = new HashSet<int>();
-            this.thisGate = new List<AssertCmd>();
-            this.thisAction = codeExpr;
-            this.thisInParams = new List<Variable>();
-            this.thisOutParams = new List<Variable>();
-            this.thatGate = new List<AssertCmd>();
-            this.thatInParams = new List<Variable>();
-            this.thatOutParams = new List<Variable>();
-
-            var cmds = thisAction.Blocks[0].Cmds;
-            for (int i = 0; i < cmds.Count; i++)
-            {
-                AssertCmd assertCmd = cmds[i] as AssertCmd;
-                if (assertCmd == null) break;
-                thisGate.Add(assertCmd);
-                cmds[i] = new AssumeCmd(assertCmd.tok, assertCmd.Expr);
-            }
-
-            Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
-            foreach (Variable x in proc.InParams)
-            {
-                this.thisInParams.Add(x);
-                Variable y = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "that_" + x.Name, x.TypedIdent.Type), true);
-                this.thatInParams.Add(y);
-                map[x] = new IdentifierExpr(Token.NoToken, y);
-            }
-            foreach (Variable x in proc.OutParams)
-            {
-                this.thisOutParams.Add(x);
-                Variable y = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "that_" + x.Name, x.TypedIdent.Type), false);
-                this.thatOutParams.Add(y);
-                map[x] = new IdentifierExpr(Token.NoToken, y);
-            }
-            List<Variable> otherLocVars = new List<Variable>();
-            foreach (Variable x in thisAction.LocVars)
-            {
-                Variable y = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "that_" + x.Name, x.TypedIdent.Type), false);
-                map[x] = new IdentifierExpr(Token.NoToken, y);
-                otherLocVars.Add(y);
-            }
-            Contract.Assume(proc.TypeParameters.Count == 0);
-            Substitution subst = Substituter.SubstitutionFromHashtable(map);
-            foreach (AssertCmd assertCmd in thisGate)
-            {
-                thatGate.Add((AssertCmd)Substituter.Apply(subst, assertCmd));
-            }
-            Dictionary<Block, Block> blockMap = new Dictionary<Block, Block>();
-            List<Block> otherBlocks = new List<Block>();
-            foreach (Block block in thisAction.Blocks)
-            {
-                List<Cmd> otherCmds = new List<Cmd>();
-                foreach (Cmd cmd in block.Cmds)
-                {
-                    otherCmds.Add(Substituter.Apply(subst, cmd));
-                }
-                Block otherBlock = new Block();
-                otherBlock.Cmds = otherCmds;
-                otherBlock.Label = "that_" + block.Label;
-                block.Label = "this_" + block.Label;
-                otherBlocks.Add(otherBlock);
-                blockMap[block] = otherBlock;
-                if (block.TransferCmd is GotoCmd)
-                {
-                    GotoCmd gotoCmd = block.TransferCmd as GotoCmd;
-                    for (int i = 0; i < gotoCmd.labelNames.Count; i++)
-                    {
-                        gotoCmd.labelNames[i] = "this_" + gotoCmd.labelNames[i];
-                    }
-                }
-            }
-            foreach (Block block in thisAction.Blocks)
-            {
-                if (block.TransferCmd is ReturnExprCmd)
-                {
-                    blockMap[block].TransferCmd = new ReturnExprCmd(block.TransferCmd.tok, Expr.True);
-                    continue;
-                }
-                List<Block> otherGotoCmdLabelTargets = new List<Block>();
-                List<string> otherGotoCmdLabelNames = new List<string>();
-                GotoCmd gotoCmd = block.TransferCmd as GotoCmd;
-                foreach (Block target in gotoCmd.labelTargets)
-                {
-                    otherGotoCmdLabelTargets.Add(blockMap[target]);
-                    otherGotoCmdLabelNames.Add(blockMap[target].Label);
-                }
-                blockMap[block].TransferCmd = new GotoCmd(block.TransferCmd.tok, otherGotoCmdLabelNames, otherGotoCmdLabelTargets);
-            }
-            this.thatAction = new CodeExpr(otherLocVars, otherBlocks);
-        }
-    }
-
     public class MoverCheck
     {
         public static MoverType GetMoverType(Ensures e, out int phaseNum)
@@ -232,25 +102,42 @@ namespace Microsoft.Boogie
         {
             if (moverTypeChecker.procToActionInfo.Count == 0)
                 return;
+
+            Dictionary<int, HashSet<ActionInfo>> pools = new Dictionary<int, HashSet<ActionInfo>>();
+            foreach (ActionInfo action in moverTypeChecker.procToActionInfo.Values)
+            {
+                foreach (int phaseNum in action.callerPhaseNums)
+                {
+                    if (!pools.ContainsKey(phaseNum))
+                    {
+                        pools[phaseNum] = new HashSet<ActionInfo>();
+                    }
+                    pools[phaseNum].Add(action);
+                }
+            }
+
             Program program = moverTypeChecker.program;
             MoverCheck moverChecking = new MoverCheck(linearTypeChecker, moverTypeChecker);
-            foreach (ActionInfo first in moverTypeChecker.procToActionInfo.Values)
+            foreach (int phaseNum in pools.Keys)
             {
-                Debug.Assert(first.moverType != MoverType.Top);
-                if (first.moverType == MoverType.Atomic)
-                    continue;
-                foreach (ActionInfo second in moverTypeChecker.procToActionInfo.Values)
+                foreach (ActionInfo first in pools[phaseNum])
                 {
-                    if (first.IsRightMover)
+                    Debug.Assert(first.moverType != MoverType.Top);
+                    if (first.moverType == MoverType.Atomic)
+                        continue;
+                    foreach (ActionInfo second in pools[phaseNum])
                     {
-                        moverChecking.CreateCommutativityChecker(program, first, second);
-                        moverChecking.CreateGatePreservationChecker(program, second, first);
-                    }
-                    if (first.IsLeftMover)
-                    {
-                        moverChecking.CreateCommutativityChecker(program, second, first);
-                        moverChecking.CreateGatePreservationChecker(program, first, second);
-                        moverChecking.CreateFailurePreservationChecker(program, second, first);
+                        if (first.IsRightMover)
+                        {
+                            moverChecking.CreateCommutativityChecker(program, first, second);
+                            moverChecking.CreateGatePreservationChecker(program, second, first);
+                        }
+                        if (first.IsLeftMover)
+                        {
+                            moverChecking.CreateCommutativityChecker(program, second, first);
+                            moverChecking.CreateGatePreservationChecker(program, first, second);
+                            moverChecking.CreateFailurePreservationChecker(program, second, first);
+                        }
                     }
                 }
             }
@@ -383,7 +270,7 @@ namespace Microsoft.Boogie
             private void Search(Block b, bool inFirst)
             {
                 dfsStack.Push(b);
-                if (b.TransferCmd is ReturnExprCmd)
+                if (b.TransferCmd is ReturnCmd)
                 {
                     if (first == null || inFirst)
                     {
@@ -425,11 +312,7 @@ namespace Microsoft.Boogie
             }
             foreach (Block block in blocks)
             {
-                if (block.TransferCmd is ReturnExprCmd)
-                {
-                    blockMap[block].TransferCmd = new ReturnCmd(block.TransferCmd.tok);
-                    continue;
-                }
+                if (block.TransferCmd is ReturnCmd) continue;
                 List<Block> otherGotoCmdLabelTargets = new List<Block>();
                 List<string> otherGotoCmdLabelNames = new List<string>();
                 GotoCmd gotoCmd = block.TransferCmd as GotoCmd;

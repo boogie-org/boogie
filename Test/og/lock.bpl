@@ -1,4 +1,4 @@
-var b: bool;
+var {:qed} b: bool;
 
 procedure {:yields} {:entrypoint} main()
 {

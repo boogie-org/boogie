@@ -1,10 +1,10 @@
 type X;
 function {:builtin "MapConst"} mapconstbool(bool): [X]bool;
 const nil: X;
-var ghostLock: X;
-var lock: X;
-var currsize: int;
-var newsize: int;
+var {:qed} ghostLock: X;
+var {:qed} lock: X;
+var {:qed} currsize: int;
+var {:qed} newsize: int;
 
 function {:inline} Inv(ghostLock: X, currsize: int, newsize: int) : (bool)
 {
@@ -87,7 +87,7 @@ ensures 0 <= bytesRead && bytesRead <= size;
     }
 
 READ_DEVICE:
-    par Skip() | tid := YieldToWriteCache(tid);
+    par  tid := YieldToWriteCache(tid);
     call tid := WriteCache(tid, start + size);
     call tid := acquire(tid);
     call tid, tmp := ReadNewsize(tid);
@@ -95,7 +95,7 @@ READ_DEVICE:
     call tid := release(tid);
 
 COPY_TO_BUFFER:
-    par Skip() | YieldToReadCache();
+    par YieldToReadCache();
     call ReadCache(start, bytesRead);
 }
 
@@ -107,7 +107,7 @@ ensures {:right 1} |{ A: assert ghostLock == tid' && tid' != nil; tid := tid'; r
 
     call tid, j := ReadCurrsize(tid);
     while (j < index)
-    invariant ghostLock == tid && currsize <= j && tid == tid';
+    invariant {:phase 1} ghostLock == tid && currsize <= j && tid == tid';
     {
         call tid := WriteCacheEntry(tid, j);
 	j := j + 1;
@@ -155,8 +155,3 @@ ensures {:right 0} |{ A: assert tid' != nil; tid := tid'; assume lock == nil; lo
 
 procedure {:yields} release({:linear "tid"} tid': X) returns ({:linear "tid"} tid: X);
 ensures {:left 0} |{ A: assert tid' != nil; assert lock == tid'; tid := tid'; lock := nil; return true; }|;
-
-procedure {:yields} {:stable} Skip()
-ensures {:both 0} |{ A: return true; }|;
-{
-}
