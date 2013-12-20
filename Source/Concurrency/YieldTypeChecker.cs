@@ -431,7 +431,7 @@ We use bool IsCallCmdExitPoint(Cmd cmd, int yTypeCheckCurrentPhaseNum)  returns 
             {
                 CallCmd callCmd = cmd as CallCmd;
                 int phaseSpecCallCmd = moverTypeChecker.FindPhaseNumber(callCmd.Proc);
-                if (phaseSpecCallCmd >= yTypeCheckCurrentPhaseNum)
+                if (phaseSpecCallCmd > yTypeCheckCurrentPhaseNum)
                 {
 #if DEBUG && !DEBUG_DETAIL
                     Console.Write("\nCall Cmd Check is " + callCmd.Proc.Name + "\n");
