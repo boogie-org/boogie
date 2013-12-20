@@ -31,7 +31,8 @@ namespace Microsoft.Boogie
             yieldTypeCheckerAutomatonSolver = new CharSetSolver(BitWidth.BV7);
             yieldTypeCheckerAutomaton =
                 Automaton<BvSet>.MkProduct(yieldTypeCheckerAutomatonSolver.Convert(yieldTypeCheckerRegex),
-                                           yieldTypeCheckerAutomatonSolver.Convert(@"^[1-9A-D]*$"),
+                                           yieldTypeCheckerAutomatonSolver.Convert(@"^[1-9A-D]*$"), // result of product with this Automaton provides us 
+                                                                                                    //an automaton that has (*) existence alphanum chars in our property automaton 
                                            yieldTypeCheckerAutomatonSolver);
 
 
@@ -828,11 +829,7 @@ We use bool IsCallCmdExitPoint(Cmd cmd, int yTypeCheckCurrentPhaseNum)  returns 
                 Console.Write("\n From : " + trans[0].ToString() + "--- " + trans[1] + " --- " + " to : " + trans[3].ToString());
             }
 #endif
-
-
-            // get final states
-            int[] finalSts = ComputeFinalStates(finalStates);
-
+                        
             // Dont need, just ask to clarify. I do not need to put epsilon transitions from a chosen initial state to other initial states. Am i right ? We decided to get reduced with them
             // Take one initial state from initial states , 
             //  int source = initialStates[0];
@@ -858,7 +855,8 @@ We use bool IsCallCmdExitPoint(Cmd cmd, int yTypeCheckCurrentPhaseNum)  returns 
                 Console.Write("\n From : " + trans[0].ToString() + "--- " + trans[1] + " --- " + " to : " + trans[3].ToString());
             }
 #endif
-
+            // get final states
+            int[] finalSts = ComputeFinalStates(finalStates);
             var solver = new CharSetSolver(BitWidth.BV7);
             // create Automaton
             Automaton<BvSet> yieldTypeCheckAutomaton = solver.ReadFromRanges(0, finalSts, transitions);
@@ -872,8 +870,8 @@ We use bool IsCallCmdExitPoint(Cmd cmd, int yTypeCheckCurrentPhaseNum)  returns 
              //   Console.WriteLine(move.SourceState.ToString() + " " +  solver.PrettyPrint(move.Condition)+ " " + move.TargetState.ToString());               
             }
 #endif
-            yieldTypeCheckAutomaton.RemoveEpsilons(solver.MkOr);
-            return yieldTypeCheckAutomaton;
+           Automaton<BvSet> epsilonReducesAtutomaton = yieldTypeCheckAutomaton.RemoveEpsilons(solver.MkOr);
+           return epsilonReducesAtutomaton;
         }
     }
 
