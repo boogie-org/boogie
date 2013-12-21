@@ -150,11 +150,12 @@ namespace Microsoft.Boogie
 
         CheckingContext checkingContext;
         public int errorCount;
-        HashSet<Variable> globalVariables;
+        HashSet<Variable> qedGlobalVariables;
         int enclosingProcPhaseNum;
         public Dictionary<Procedure, ActionInfo> procToActionInfo;
         public Program program;
         public HashSet<int> assertionPhaseNums;
+        bool inAtomicSpecification;
 
         public void TypeCheck()
         {
@@ -189,11 +190,11 @@ namespace Microsoft.Boogie
 
         public MoverTypeChecker(Program program)
         {
-            this.globalVariables = new HashSet<Variable>();
+            this.qedGlobalVariables = new HashSet<Variable>();
             foreach (var g in program.GlobalVariables())
             {
                 if (QKeyValue.FindBoolAttribute(g.Attributes, "qed"))
-                    this.globalVariables.Add(g);
+                    this.qedGlobalVariables.Add(g);
             }
             this.procToActionInfo = new Dictionary<Procedure, ActionInfo>();
             this.assertionPhaseNums = new HashSet<int>();
@@ -201,6 +202,7 @@ namespace Microsoft.Boogie
             this.checkingContext = new CheckingContext(null);
             this.program = program;
             this.enclosingProcPhaseNum = int.MaxValue;
+            this.inAtomicSpecification = false;
         }
         public override Implementation VisitImplementation(Implementation node)
         {
@@ -258,16 +260,28 @@ namespace Microsoft.Boogie
         }
         public override Expr VisitIdentifierExpr(IdentifierExpr node)
         {
-            if (globalVariables.Contains(node.Decl))
+            if (node.Decl is GlobalVariable)
             {
-                Error(node, "Cannot access global variable");
+                if (inAtomicSpecification && !qedGlobalVariables.Contains(node.Decl))
+                {
+                    Error(node, "Cannot access non-qed global variable in atomic action");
+                }
+                else if (!inAtomicSpecification && qedGlobalVariables.Contains(node.Decl))
+                {
+                    Error(node, "Cannot access qed global variable in ordinary code");
+                }
             }
             return base.VisitIdentifierExpr(node);
         }
         public override Ensures VisitEnsures(Ensures ensures)
         {
             if (ensures.IsAtomicSpecification)
-                return ensures;
+            {
+                inAtomicSpecification = true;
+                Ensures ret = base.VisitEnsures(ensures);
+                inAtomicSpecification = false;
+                return ret;
+            }
             int phaseNum = QKeyValue.FindIntAttribute(ensures.Attributes, "phase", int.MaxValue);
             assertionPhaseNums.Add(phaseNum);
             if (phaseNum > enclosingProcPhaseNum)
