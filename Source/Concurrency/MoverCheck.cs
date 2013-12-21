@@ -26,29 +26,20 @@ namespace Microsoft.Boogie
             return MoverType.Top;
         }
 
+        LinearTypeChecker linearTypeChecker;
+        MoverTypeChecker moverTypeChecker;
+        List<Declaration> decls;
         HashSet<Tuple<ActionInfo, ActionInfo>> commutativityCheckerCache;
         HashSet<Tuple<ActionInfo, ActionInfo>> gatePreservationCheckerCache;
         HashSet<Tuple<ActionInfo, ActionInfo>> failurePreservationCheckerCache;
-        LinearTypeChecker linearTypeChecker;
-        MoverTypeChecker moverTypeChecker;
-        Program moverCheckerProgram;
-        private MoverCheck(LinearTypeChecker linearTypeChecker, MoverTypeChecker moverTypeChecker)
+        private MoverCheck(LinearTypeChecker linearTypeChecker, MoverTypeChecker moverTypeChecker, List<Declaration> decls)
         {
+            this.linearTypeChecker = linearTypeChecker;
+            this.moverTypeChecker = moverTypeChecker;
+            this.decls = decls;
             this.commutativityCheckerCache = new HashSet<Tuple<ActionInfo, ActionInfo>>();
             this.gatePreservationCheckerCache = new HashSet<Tuple<ActionInfo, ActionInfo>>();
             this.failurePreservationCheckerCache = new HashSet<Tuple<ActionInfo, ActionInfo>>();
-            this.linearTypeChecker = linearTypeChecker;
-            this.moverTypeChecker = moverTypeChecker;
-            this.moverCheckerProgram = new Program();
-            foreach (Declaration decl in moverTypeChecker.program.TopLevelDeclarations)
-            {
-                if (decl is TypeCtorDecl || decl is TypeSynonymDecl || decl is Constant || decl is Function || decl is Axiom)
-                    this.moverCheckerProgram.TopLevelDeclarations.Add(decl);
-            }
-            foreach (Variable v in moverTypeChecker.program.GlobalVariables())
-            {
-                this.moverCheckerProgram.TopLevelDeclarations.Add(v);
-            }
         }
         private sealed class MySubstituter : Duplicator
         {
@@ -98,7 +89,7 @@ namespace Microsoft.Boogie
             }
         }
 
-        public static void AddCheckers(LinearTypeChecker linearTypeChecker, MoverTypeChecker moverTypeChecker)
+        public static void AddCheckers(LinearTypeChecker linearTypeChecker, MoverTypeChecker moverTypeChecker, List<Declaration> decls)
         {
             if (moverTypeChecker.procToActionInfo.Count == 0)
                 return;
@@ -117,7 +108,7 @@ namespace Microsoft.Boogie
             }
 
             Program program = moverTypeChecker.program;
-            MoverCheck moverChecking = new MoverCheck(linearTypeChecker, moverTypeChecker);
+            MoverCheck moverChecking = new MoverCheck(linearTypeChecker, moverTypeChecker, decls);
             foreach (int phaseNum in pools.Keys)
             {
                 foreach (ActionInfo first in pools[phaseNum])
@@ -141,23 +132,6 @@ namespace Microsoft.Boogie
                     }
                 }
             }
-            var eraser = new LinearEraser();
-            eraser.VisitProgram(moverChecking.moverCheckerProgram);
-            {
-                int oldPrintUnstructured = CommandLineOptions.Clo.PrintUnstructured;
-                CommandLineOptions.Clo.PrintUnstructured = 1;
-                using (TokenTextWriter writer = new TokenTextWriter("MoverChecker.bpl", false))
-                {
-                    if (CommandLineOptions.Clo.ShowEnv != CommandLineOptions.ShowEnvironment.Never)
-                    {
-                        writer.WriteLine("// " + CommandLineOptions.Clo.Version);
-                        writer.WriteLine("// " + CommandLineOptions.Clo.Environment);
-                    }
-                    writer.WriteLine();
-                    moverChecking.moverCheckerProgram.Emit(writer);
-                }
-                CommandLineOptions.Clo.PrintUnstructured = oldPrintUnstructured;
-            }
         }
 
         class TransitionRelationComputation
@@ -167,6 +141,7 @@ namespace Microsoft.Boogie
             private ActionInfo second;
             private Stack<Block> dfsStack;
             private Expr transitionRelation;
+            private int boundVariableCount;
 
             public TransitionRelationComputation(Program program, ActionInfo second)
             {
@@ -175,6 +150,7 @@ namespace Microsoft.Boogie
                 this.second = second;
                 this.dfsStack = new Stack<Block>();
                 this.transitionRelation = Expr.False;
+                this.boundVariableCount = 0;
             }
 
             public TransitionRelationComputation(Program program, ActionInfo first, ActionInfo second)
@@ -184,6 +160,12 @@ namespace Microsoft.Boogie
                 this.second = second;
                 this.dfsStack = new Stack<Block>();
                 this.transitionRelation = Expr.False;
+                this.boundVariableCount = 0;
+            }
+
+            private BoundVariable GetBoundVariable(Type type)
+            {
+                return new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, "#tmp_" + boundVariableCount++, type));
             }
 
             public Expr Compute()
@@ -257,6 +239,21 @@ namespace Microsoft.Boogie
                             Substitution subst = Substituter.SubstitutionFromHashtable(new Dictionary<Variable, Expr>());
                             Substitution oldSubst = Substituter.SubstitutionFromHashtable(map);
                             returnExpr = (Expr) new MySubstituter(subst, oldSubst).Visit(returnExpr);
+                        }
+                        else if (cmd is HavocCmd)
+                        {
+                            HavocCmd havocCmd = cmd as HavocCmd;
+                            List<Variable> existVars = new List<Variable>();
+                            Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
+                            foreach (IdentifierExpr ie in havocCmd.Vars)
+                            {
+                                BoundVariable bv = GetBoundVariable(ie.Decl.TypedIdent.Type);
+                                map[ie.Decl] = new IdentifierExpr(Token.NoToken, bv);
+                                existVars.Add(bv);
+                            }
+                            Substitution subst = Substituter.SubstitutionFromHashtable(new Dictionary<Variable, Expr>());
+                            Substitution oldSubst = Substituter.SubstitutionFromHashtable(map);
+                            returnExpr = new ExistsExpr(Token.NoToken, existVars, (Expr) new MySubstituter(subst, oldSubst).Visit(returnExpr));
                         }
                         else
                         {
@@ -399,8 +396,8 @@ namespace Microsoft.Boogie
             Procedure proc = new Procedure(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, outputs, requires, new List<IdentifierExpr>(), ensures);
             Implementation impl = new Implementation(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, outputs, locals, blocks);
             impl.Proc = proc;
-            this.moverCheckerProgram.TopLevelDeclarations.Add(impl);
-            this.moverCheckerProgram.TopLevelDeclarations.Add(proc);
+            this.decls.Add(impl);
+            this.decls.Add(proc);
         }
 
         private void CreateGatePreservationChecker(Program program, ActionInfo first, ActionInfo second)
@@ -430,8 +427,8 @@ namespace Microsoft.Boogie
             Procedure proc = new Procedure(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, outputs, requires, new List<IdentifierExpr>(), ensures);
             Implementation impl = new Implementation(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, outputs, locals, secondBlocks);
             impl.Proc = proc;
-            this.moverCheckerProgram.TopLevelDeclarations.Add(impl);
-            this.moverCheckerProgram.TopLevelDeclarations.Add(proc);
+            this.decls.Add(impl);
+            this.decls.Add(proc);
         }
 
         private void CreateFailurePreservationChecker(Program program, ActionInfo first, ActionInfo second)
@@ -502,8 +499,8 @@ namespace Microsoft.Boogie
             Procedure proc = new Procedure(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, new List<Variable>(), requires, new List<IdentifierExpr>(), ensures);
             Implementation impl = new Implementation(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, new List<Variable>(), new List<Variable>(), blocks);
             impl.Proc = proc;
-            this.moverCheckerProgram.TopLevelDeclarations.Add(impl);
-            this.moverCheckerProgram.TopLevelDeclarations.Add(proc);
+            this.decls.Add(impl);
+            this.decls.Add(proc);
         }
     }
 }

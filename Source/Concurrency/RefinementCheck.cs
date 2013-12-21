@@ -8,7 +8,7 @@ namespace Microsoft.Boogie
 {
     class RefinementCheck
     {
-        public static void AddCheckers(LinearTypeChecker linearTypeChecker)
+        public static void AddCheckers(LinearTypeChecker linearTypeChecker, MoverTypeChecker moverTypeChecker, List<Declaration> decls)
         {
         }
     }

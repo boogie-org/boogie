@@ -485,7 +485,7 @@ namespace Microsoft.Boogie
 
         if (CommandLineOptions.Clo.StratifiedInlining == 0)
         {
-          OwickiGriesTransform.Transform(linearTypeChecker, moverTypeChecker);
+          Concurrency.Transform(linearTypeChecker, moverTypeChecker);
           var eraser = new LinearEraser();
           eraser.VisitProgram(program);
           if (CommandLineOptions.Clo.OwickiGriesDesugaredOutputFile != null)

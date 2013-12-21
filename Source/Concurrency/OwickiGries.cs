@@ -158,20 +158,22 @@ namespace Microsoft.Boogie
         }
     }
 
-    public class OwickiGriesTransform
+    public class OwickiGries
     {
-        List<IdentifierExpr> globalMods;
         LinearTypeChecker linearTypeChecker;
         Dictionary<Absy, Absy> absyMap;
+        List<Declaration> decls;
+        List<IdentifierExpr> globalMods;
         Dictionary<string, Procedure> asyncAndParallelCallDesugarings;
         List<Procedure> yieldCheckerProcs;
         List<Implementation> yieldCheckerImpls;
         Procedure yieldProc;
 
-        public OwickiGriesTransform(LinearTypeChecker linearTypeChecker, Dictionary<Absy, Absy> absyMap)
+        public OwickiGries(LinearTypeChecker linearTypeChecker, Dictionary<Absy, Absy> absyMap, List<Declaration> decls)
         {
             this.linearTypeChecker = linearTypeChecker;
             this.absyMap = absyMap;
+            this.decls = decls;
             Program program = linearTypeChecker.program;
             globalMods = new List<IdentifierExpr>();
             foreach (Variable g in program.GlobalVariables())
@@ -795,7 +797,7 @@ namespace Microsoft.Boogie
             CreateYieldCheckerImpl(proc, yields, new Dictionary<Variable, Expr>());
         }
 
-        private void AddYieldProcAndImpl(List<Declaration> decls) 
+        private void AddYieldProcAndImpl() 
         {
             if (yieldProc == null) return;
 
@@ -852,7 +854,7 @@ namespace Microsoft.Boogie
             return (QKeyValue.FindBoolAttribute(iter, "yields")) ? iter.Next : iter;
         }
 
-        public void Transform(List<Implementation> impls, List<Procedure> procs, List<Declaration> decls)
+        public void Transform(List<Implementation> impls, List<Procedure> procs)
         {
             foreach (var impl in impls)
             {
@@ -874,7 +876,7 @@ namespace Microsoft.Boogie
             {
                 decls.Add(proc);
             }
-            AddYieldProcAndImpl(decls);
+            AddYieldProcAndImpl();
             foreach (var proc in procs)
             {
                 if (QKeyValue.FindBoolAttribute(proc.Attributes, "yields"))
@@ -897,40 +899,26 @@ namespace Microsoft.Boogie
             }
         }
 
-        public static void Transform(LinearTypeChecker linearTypeChecker, MoverTypeChecker moverTypeChecker)
+        public static void AddCheckers(LinearTypeChecker linearTypeChecker, MoverTypeChecker moverTypeChecker, List<Declaration> decls)
         {
             Program program = linearTypeChecker.program;
-            List<Procedure> originalProcs = new List<Procedure>();
-            List<Implementation> originalImpls = new List<Implementation>();
-            foreach (var decl in program.TopLevelDeclarations)
-            {
-                Procedure proc = decl as Procedure;
-                if (proc != null && QKeyValue.FindBoolAttribute(proc.Attributes, "yields"))
-                {
-                    originalProcs.Add(proc);
-                    continue;
-                }
-                Implementation impl = decl as Implementation;
-                if (impl != null && QKeyValue.FindBoolAttribute(impl.Proc.Attributes, "yields"))
-                {
-                    originalImpls.Add(impl);
-                }
-            }
-            List<Declaration> decls = new List<Declaration>();
             foreach (int phaseNum in moverTypeChecker.assertionPhaseNums)
             {
                 MyDuplicator duplicator = new MyDuplicator(moverTypeChecker, int.MaxValue);
                 List<Implementation> impls = new List<Implementation>();
                 List<Procedure> procs = new List<Procedure>();
-                foreach (Implementation impl in originalImpls)
+                foreach (var decl in program.TopLevelDeclarations)
                 {
+                    Implementation impl = decl as Implementation;
+                    if (impl == null || !QKeyValue.FindBoolAttribute(impl.Proc.Attributes, "yields")) continue;
                     Implementation duplicateImpl = duplicator.VisitImplementation(impl);
                     impls.Add(duplicateImpl);
                     procs.Add(duplicateImpl.Proc);
                 }
-                foreach (Procedure proc in originalProcs)
+                foreach (var decl in program.TopLevelDeclarations)
                 {
-                    if (duplicator.procMap.ContainsKey(proc)) continue;
+                    Procedure proc = decl as Procedure;
+                    if (proc == null || !QKeyValue.FindBoolAttribute(proc.Attributes, "yields") || duplicator.procMap.ContainsKey(proc)) continue;
                     procs.Add(duplicator.VisitProcedure(proc));
                 }
                 Dictionary<Absy, Absy> reverseAbsyMap = new Dictionary<Absy, Absy>();
@@ -938,12 +926,9 @@ namespace Microsoft.Boogie
                 {
                     reverseAbsyMap[duplicator.absyMap[key]] = key;
                 }
-                OwickiGriesTransform ogTransform = new OwickiGriesTransform(linearTypeChecker, reverseAbsyMap);
-                ogTransform.Transform(impls, procs, decls);
+                OwickiGries ogTransform = new OwickiGries(linearTypeChecker, reverseAbsyMap, decls);
+                ogTransform.Transform(impls, procs);
             }
-            program.TopLevelDeclarations.RemoveAll(x => originalImpls.Contains(x));
-            program.TopLevelDeclarations.RemoveAll(x => originalProcs.Contains(x));
-            program.TopLevelDeclarations.AddRange(decls);
         }
     }
 }
