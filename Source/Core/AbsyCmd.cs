@@ -1821,7 +1821,7 @@ namespace Microsoft.Boogie {
   }
 
   public class CallCmd : CallCommonality, IPotentialErrorNode {
-    public string/*!*/ callee { get; private set; }
+    public string/*!*/ callee { get; set; }
     public Procedure Proc;
 
     // Element of the following lists can be null, which means that

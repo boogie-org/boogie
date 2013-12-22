@@ -25,6 +25,18 @@ namespace Microsoft.Boogie {
       Contract.Ensures(Contract.Result<Cmd>() != null);
       return base.VisitAssertCmd((AssertCmd)node.Clone());
     }
+    public override Cmd VisitAssertEnsuresCmd(AssertEnsuresCmd node)
+    {
+        //Contract.Requires(node != null);
+        Contract.Ensures(Contract.Result<Cmd>() != null);
+        return base.VisitAssertEnsuresCmd((AssertEnsuresCmd)node.Clone());
+    }
+    public override Cmd VisitAssertRequiresCmd(AssertRequiresCmd node)
+    {
+        //Contract.Requires(node != null);
+        Contract.Ensures(Contract.Result<Cmd>() != null);
+        return base.VisitAssertRequiresCmd((AssertRequiresCmd)node.Clone());
+    }
     public override Cmd VisitAssignCmd(AssignCmd node) {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Cmd>() != null);
@@ -149,6 +161,18 @@ namespace Microsoft.Boogie {
       Contract.Ensures(Contract.Result<DeclWithFormals>() != null);
       return base.VisitDeclWithFormals((DeclWithFormals)node.Clone());
     }
+    public override Ensures VisitEnsures(Ensures node)
+    {
+        //Contract.Requires(node != null);
+        Contract.Ensures(Contract.Result<Ensures>() != null);
+        return base.VisitEnsures((Ensures)node.Clone());
+    }
+    public override List<Ensures> VisitEnsuresSeq(List<Ensures> ensuresSeq)
+    {
+        //Contract.Requires(ensuresSeq != null);
+        Contract.Ensures(Contract.Result<List<Ensures>>() != null);
+        return base.VisitEnsuresSeq(new List<Ensures>(ensuresSeq));
+    }
     public override ExistsExpr VisitExistsExpr(ExistsExpr node) {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<ExistsExpr>() != null);
@@ -266,6 +290,18 @@ namespace Microsoft.Boogie {
       Contract.Ensures(Contract.Result<BinderExpr>() != null);
       return base.VisitBinderExpr((BinderExpr)node.Clone());
     }
+    public override Requires VisitRequires(Requires node)
+    {
+        //Contract.Requires(node != null);
+        Contract.Ensures(Contract.Result<Requires>() != null);
+        return base.VisitRequires((Requires)node.Clone());
+    }
+    public override List<Requires> VisitRequiresSeq(List<Requires> requiresSeq)
+    {
+        //Contract.Requires(requiresSeq != null);
+        Contract.Ensures(Contract.Result<List<Requires>>() != null);
+        return base.VisitRequiresSeq(new List<Requires>(requiresSeq));
+    }
     public override Cmd VisitRE(RE node) {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Cmd>() != null);
@@ -331,26 +367,6 @@ namespace Microsoft.Boogie {
       //Contract.Requires(variableSeq != null);
       Contract.Ensures(Contract.Result<List<Variable>>() != null);
       return base.VisitVariableSeq(new List<Variable>(variableSeq));
-    }
-    public override Cmd VisitAssertRequiresCmd(AssertRequiresCmd node) {
-      //Contract.Requires(node != null);
-      Contract.Ensures(Contract.Result<Cmd>() != null);
-      return base.VisitAssertRequiresCmd((AssertRequiresCmd)node.Clone());
-    }
-    public override Cmd VisitAssertEnsuresCmd(AssertEnsuresCmd node) {
-      //Contract.Requires(node != null);
-      Contract.Ensures(Contract.Result<Cmd>() != null);
-      return base.VisitAssertEnsuresCmd((AssertEnsuresCmd)node.Clone());
-    }
-    public override Ensures VisitEnsures(Ensures node) {
-      //Contract.Requires(node != null);
-      Contract.Ensures(Contract.Result<Ensures>() != null);
-      return base.VisitEnsures((Ensures)node.Clone());
-    }
-    public override Requires VisitRequires(Requires node) {
-      //Contract.Requires(node != null);
-      Contract.Ensures(Contract.Result<Requires>() != null);
-      return base.VisitRequires((Requires)node.Clone());
     }
     public override YieldCmd VisitYieldCmd(YieldCmd node)
     {

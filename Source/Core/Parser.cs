@@ -1147,6 +1147,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 			} else {
 			 invariants.Add(new AssertCmd(z, e, kv));
 			}
+			kv = null;
 			
 			Expect(8);
 		}

@@ -1,5 +1,7 @@
 function RightOpen(n: int) : [int]bool;
 function RightClosed(n: int) : [int]bool;
+axiom (forall x: int, y: int :: RightOpen(x)[y] <==> y < x);
+axiom (forall x: int, y: int :: RightClosed(x)[y] <==> y <= x);
 
 type X;
 function {:builtin "MapConst"} mapconstbool(bool): [X]bool;

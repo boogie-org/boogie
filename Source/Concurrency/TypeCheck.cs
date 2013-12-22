@@ -121,6 +121,7 @@ namespace Microsoft.Boogie
             {
                 if (block.TransferCmd is ReturnExprCmd)
                 {
+                    block.TransferCmd = new ReturnCmd(block.TransferCmd.tok);
                     blockMap[block].TransferCmd = new ReturnCmd(block.TransferCmd.tok);
                     continue;
                 }
@@ -194,7 +195,10 @@ namespace Microsoft.Boogie
             foreach (var g in program.GlobalVariables())
             {
                 if (QKeyValue.FindBoolAttribute(g.Attributes, "qed"))
+                {
                     this.qedGlobalVariables.Add(g);
+                    g.Attributes = OwickiGries.RemoveQedAttribute(g.Attributes);
+                }
             }
             this.procToActionInfo = new Dictionary<Procedure, ActionInfo>();
             this.assertionPhaseNums = new HashSet<int>();

@@ -76,6 +76,7 @@ namespace Microsoft.Boogie
         {
             CallCmd callCmd = (CallCmd) base.VisitCallCmd(node);
             callCmd.Proc = VisitProcedure(callCmd.Proc);
+            callCmd.callee = callCmd.Proc.Name;
             absyMap[node] = callCmd;
             return callCmd;
         }
@@ -86,6 +87,7 @@ namespace Microsoft.Boogie
             foreach (CallCmd callCmd in parCallCmd.CallCmds)
             {
                 callCmd.Proc = VisitProcedure(callCmd.Proc);
+                callCmd.callee = callCmd.Proc.Name;
             }
             absyMap[node] = parCallCmd;
             return parCallCmd;
@@ -96,46 +98,54 @@ namespace Microsoft.Boogie
             if (!QKeyValue.FindBoolAttribute(node.Attributes, "yields"))
                 return node;
             if (!procMap.ContainsKey(node))
-                procMap[node] = base.VisitProcedure(node);
+            {
+                Procedure proc = (Procedure)node.Clone();
+                proc.Name = string.Format("{0}_{1}", node.Name, phaseNum);
+                proc.InParams = this.VisitVariableSeq(node.InParams);
+                proc.Modifies = this.VisitIdentifierExprSeq(node.Modifies);
+                proc.OutParams = this.VisitVariableSeq(node.OutParams);
+                if (moverTypeChecker.procToActionInfo.ContainsKey(node) && moverTypeChecker.procToActionInfo[node].phaseNum < phaseNum)
+                {
+                    proc.Requires = new List<Requires>();
+                    proc.Ensures = new List<Ensures>();
+                }
+                else
+                {
+                    proc.Requires = this.VisitRequiresSeq(node.Requires);
+                    proc.Ensures = this.VisitEnsuresSeq(node.Ensures);
+                }
+                procMap[node] = proc;
+            }
             return procMap[node];
         }
 
         public override Implementation VisitImplementation(Implementation node)
         {
-            if (moverTypeChecker.procToActionInfo.ContainsKey(node.Proc) && moverTypeChecker.procToActionInfo[node.Proc].phaseNum < phaseNum)
+            Implementation impl = base.VisitImplementation(node);
+            impl.Name = impl.Proc.Name;
+            foreach (Block block in impl.Blocks)
             {
-                CodeExpr action = (CodeExpr) VisitCodeExpr(moverTypeChecker.procToActionInfo[node.Proc].thisAction);
-                Implementation impl = new Implementation(Token.NoToken, node.Name, node.Proc.TypeParameters, node.Proc.InParams, node.Proc.OutParams, new List<Variable>(), action.Blocks);
-                impl.Proc = VisitProcedure(node.Proc);
-                impl.Proc.AddAttribute("inline", 1);
-                impl.AddAttribute("inline", 1);
-                return impl;
-            }
-            else
-            {
-                Implementation impl = base.VisitImplementation(node);
-                foreach (Block block in impl.Blocks)
+                GotoCmd gotoCmd = block.TransferCmd as GotoCmd;
+                if (gotoCmd == null) continue;
+                List<Block> labelTargets = new List<Block>();
+                List<string> labelNames = new List<string>();
+                foreach (Block x in gotoCmd.labelTargets)
                 {
-                    GotoCmd gotoCmd = block.TransferCmd as GotoCmd;
-                    if (gotoCmd == null) continue;
-                    List<Block> labelTargets = new List<Block>();
-                    List<string> labelNames = new List<string>();
-                    foreach (Block x in gotoCmd.labelTargets)
-                    {
-                        Block y = (Block)absyMap[x];
-                        labelTargets.Add(y);
-                        labelNames.Add(y.Label);
-                    }
-                    gotoCmd.labelTargets = labelTargets;
-                    gotoCmd.labelNames = labelNames;
+                    Block y = (Block)absyMap[x];
+                    labelTargets.Add(y);
+                    labelNames.Add(y.Label);
                 }
-                return impl;
+                gotoCmd.labelTargets = labelTargets;
+                gotoCmd.labelNames = labelNames;
             }
+            return impl;
         }
 
         public override Requires VisitRequires(Requires node)
         {
             Requires requires = base.VisitRequires(node);
+            if (node.Free)
+                return requires;
             if (QKeyValue.FindIntAttribute(requires.Attributes, "phase", int.MaxValue) != phaseNum)
                 requires.Condition = Expr.True;
             return requires;
@@ -144,8 +154,13 @@ namespace Microsoft.Boogie
         public override Ensures VisitEnsures(Ensures node)
         {
             Ensures ensures = base.VisitEnsures(node);
+            if (node.Free)
+                return ensures;
             if (ensures.IsAtomicSpecification || QKeyValue.FindIntAttribute(ensures.Attributes, "phase", int.MaxValue) != phaseNum)
+            {
                 ensures.Condition = Expr.True;
+                ensures.Attributes = OwickiGries.RemoveMoverAttribute(ensures.Attributes);
+            }
             return ensures;
         }
 
@@ -162,6 +177,7 @@ namespace Microsoft.Boogie
     {
         LinearTypeChecker linearTypeChecker;
         Dictionary<Absy, Absy> absyMap;
+        int phaseNum;
         List<Declaration> decls;
         List<IdentifierExpr> globalMods;
         Dictionary<string, Procedure> asyncAndParallelCallDesugarings;
@@ -169,10 +185,11 @@ namespace Microsoft.Boogie
         List<Implementation> yieldCheckerImpls;
         Procedure yieldProc;
 
-        public OwickiGries(LinearTypeChecker linearTypeChecker, Dictionary<Absy, Absy> absyMap, List<Declaration> decls)
+        public OwickiGries(LinearTypeChecker linearTypeChecker, Dictionary<Absy, Absy> absyMap, int phaseNum, List<Declaration> decls)
         {
             this.linearTypeChecker = linearTypeChecker;
             this.absyMap = absyMap;
+            this.phaseNum = phaseNum;
             this.decls = decls;
             Program program = linearTypeChecker.program;
             globalMods = new List<IdentifierExpr>();
@@ -216,7 +233,7 @@ namespace Microsoft.Boogie
                     Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_global_old_{0}", ie.Decl.Name), ie.Decl.TypedIdent.Type), true);
                     inputs.Add(f);
                 }
-                yieldProc = new Procedure(Token.NoToken, "og_yield", new List<TypeVariable>(), inputs, new List<Variable>(), new List<Requires>(), new List<IdentifierExpr>(), new List<Ensures>());
+                yieldProc = new Procedure(Token.NoToken, string.Format("og_yield_{0}", phaseNum), new List<TypeVariable>(), inputs, new List<Variable>(), new List<Requires>(), new List<IdentifierExpr>(), new List<Ensures>());
                 yieldProc.AddAttribute("inline", new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1)));
             }
             CallCmd yieldCallCmd = new CallCmd(Token.NoToken, yieldProc.Name, exprSeq, new List<IdentifierExpr>());
@@ -341,8 +358,7 @@ namespace Microsoft.Boogie
                     }
                     count++;
                 }
-                proc = new Procedure(Token.NoToken, procName, new List<TypeVariable>(), inParams, outParams, requiresSeq, new List<IdentifierExpr>(), ensuresSeq);
-                proc.AddAttribute("yields");
+                proc = new Procedure(Token.NoToken, string.Format("{0}_{1}", procName, phaseNum), new List<TypeVariable>(), inParams, outParams, requiresSeq, new List<IdentifierExpr>(), ensuresSeq);
                 asyncAndParallelCallDesugarings[procName] = proc;
             }
             CallCmd dummyCallCmd = new CallCmd(Token.NoToken, proc.Name, ins, outs);
@@ -437,7 +453,7 @@ namespace Microsoft.Boogie
             yieldCheckerBlocks.Insert(0, new Block(Token.NoToken, "enter", new List<Cmd>(), new GotoCmd(Token.NoToken, labels, labelTargets)));
 
             // Create the yield checker procedure
-            var yieldCheckerName = string.Format("{0}_YieldChecker_{1}", decl is Procedure ? "Proc" : "Impl", decl.Name);
+            var yieldCheckerName = string.Format("{0}_YieldChecker_{1}_{2}", decl is Procedure ? "Proc" : "Impl", decl.Name, phaseNum);
             var yieldCheckerProc = new Procedure(Token.NoToken, yieldCheckerName, decl.TypeParameters, inputs, new List<Variable>(), new List<Requires>(), new List<IdentifierExpr>(), new List<Ensures>());
             yieldCheckerProc.AddAttribute("inline", new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1)));
             yieldCheckerProcs.Add(yieldCheckerProc);
@@ -577,7 +593,7 @@ namespace Microsoft.Boogie
                         {
                             if (!asyncAndParallelCallDesugarings.ContainsKey(callCmd.Proc.Name))
                             {
-                                asyncAndParallelCallDesugarings[callCmd.Proc.Name] = new Procedure(Token.NoToken, string.Format("DummyAsyncTarget_{0}", callCmd.Proc.Name), callCmd.Proc.TypeParameters, callCmd.Proc.InParams, callCmd.Proc.OutParams, callCmd.Proc.Requires, new List<IdentifierExpr>(), new List<Ensures>());
+                                asyncAndParallelCallDesugarings[callCmd.Proc.Name] = new Procedure(Token.NoToken, string.Format("DummyAsyncTarget_{0}_{1}", callCmd.Proc.Name, phaseNum), callCmd.Proc.TypeParameters, callCmd.Proc.InParams, callCmd.Proc.OutParams, callCmd.Proc.Requires, new List<IdentifierExpr>(), new List<Ensures>());
                             }
                             var dummyAsyncTargetProc = asyncAndParallelCallDesugarings[callCmd.Proc.Name];
                             CallCmd dummyCallCmd = new CallCmd(Token.NoToken, dummyAsyncTargetProc.Name, callCmd.Ins, callCmd.Outs);
@@ -847,11 +863,45 @@ namespace Microsoft.Boogie
             decls.Add(yieldImpl);
         }
 
-        private QKeyValue RemoveYieldsAttribute(QKeyValue iter)
+        private static QKeyValue RemoveYieldsAttribute(QKeyValue iter)
         {
             if (iter == null) return null;
             iter.Next = RemoveYieldsAttribute(iter.Next);
             return (QKeyValue.FindBoolAttribute(iter, "yields")) ? iter.Next : iter;
+        }
+
+        public static QKeyValue RemoveStableAttribute(QKeyValue iter)
+        {
+            if (iter == null) return null;
+            iter.Next = RemoveStableAttribute(iter.Next);
+            return (QKeyValue.FindBoolAttribute(iter, "stable")) ? iter.Next : iter;
+        }
+
+        public static QKeyValue RemovePhaseAttribute(QKeyValue iter)
+        {
+            if (iter == null) return null;
+            iter.Next = RemovePhaseAttribute(iter.Next);
+            return (QKeyValue.FindIntAttribute(iter, "phase", int.MaxValue) != int.MaxValue) ? iter.Next : iter;
+        }
+
+        public static QKeyValue RemoveQedAttribute(QKeyValue iter)
+        {
+            if (iter == null) return null;
+            iter.Next = RemoveQedAttribute(iter.Next);
+            return QKeyValue.FindBoolAttribute(iter, "qed") ? iter.Next : iter;
+        }
+
+        public static QKeyValue RemoveMoverAttribute(QKeyValue iter)
+        {
+            if (iter == null) return null;
+            iter.Next = RemoveMoverAttribute(iter.Next);
+            if (QKeyValue.FindIntAttribute(iter, "atomic", int.MaxValue) != int.MaxValue ||
+                QKeyValue.FindIntAttribute(iter, "right", int.MaxValue) != int.MaxValue ||
+                QKeyValue.FindIntAttribute(iter, "left", int.MaxValue) != int.MaxValue ||
+                QKeyValue.FindIntAttribute(iter, "both", int.MaxValue) != int.MaxValue) 
+                return iter.Next;
+            else 
+                return iter;
         }
 
         public void Transform(List<Implementation> impls, List<Procedure> procs)
@@ -889,12 +939,14 @@ namespace Microsoft.Boogie
                         proc.Modifies.Add(new IdentifierExpr(Token.NoToken, g));
                     }
                     proc.Attributes = RemoveYieldsAttribute(proc.Attributes);
+                    proc.Attributes = RemoveStableAttribute(proc.Attributes);
                 }
                 decls.Add(proc);
             }
             foreach (var impl in impls)
             {
                 impl.Attributes = RemoveYieldsAttribute(impl.Attributes);
+                impl.Attributes = RemoveStableAttribute(impl.Attributes);
                 decls.Add(impl);
             }
         }
@@ -904,29 +956,41 @@ namespace Microsoft.Boogie
             Program program = linearTypeChecker.program;
             foreach (int phaseNum in moverTypeChecker.assertionPhaseNums)
             {
-                MyDuplicator duplicator = new MyDuplicator(moverTypeChecker, int.MaxValue);
+                MyDuplicator duplicator = new MyDuplicator(moverTypeChecker, phaseNum);
                 List<Implementation> impls = new List<Implementation>();
                 List<Procedure> procs = new List<Procedure>();
                 foreach (var decl in program.TopLevelDeclarations)
                 {
-                    Implementation impl = decl as Implementation;
-                    if (impl == null || !QKeyValue.FindBoolAttribute(impl.Proc.Attributes, "yields")) continue;
-                    Implementation duplicateImpl = duplicator.VisitImplementation(impl);
-                    impls.Add(duplicateImpl);
-                    procs.Add(duplicateImpl.Proc);
+                    Procedure proc = decl as Procedure;
+                    if (proc == null || !QKeyValue.FindBoolAttribute(proc.Attributes, "yields")) continue;
+                    Procedure duplicateProc = duplicator.VisitProcedure(proc);
+                    procs.Add(duplicateProc);
+                    if (moverTypeChecker.procToActionInfo.ContainsKey(proc) && moverTypeChecker.procToActionInfo[proc].phaseNum < phaseNum)
+                    {
+                        CodeExpr action = (CodeExpr)duplicator.VisitCodeExpr(moverTypeChecker.procToActionInfo[proc].thisAction);
+                        Implementation impl = new Implementation(Token.NoToken, duplicateProc.Name, proc.TypeParameters, proc.InParams, proc.OutParams, new List<Variable>(), action.Blocks);
+                        impl.Proc = duplicateProc;
+                        impl.Proc.AddAttribute("inline", new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1)));
+                        impl.AddAttribute("inline", new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1)));
+                        impls.Add(impl);
+                    }
                 }
                 foreach (var decl in program.TopLevelDeclarations)
                 {
-                    Procedure proc = decl as Procedure;
-                    if (proc == null || !QKeyValue.FindBoolAttribute(proc.Attributes, "yields") || duplicator.procMap.ContainsKey(proc)) continue;
-                    procs.Add(duplicator.VisitProcedure(proc));
+                    Implementation impl = decl as Implementation;
+                    if (impl == null || 
+                        !QKeyValue.FindBoolAttribute(impl.Proc.Attributes, "yields") ||
+                        (moverTypeChecker.procToActionInfo.ContainsKey(impl.Proc) && moverTypeChecker.procToActionInfo[impl.Proc].phaseNum < phaseNum)) 
+                        continue;
+                    Implementation duplicateImpl = duplicator.VisitImplementation(impl);
+                    impls.Add(duplicateImpl);
                 }
                 Dictionary<Absy, Absy> reverseAbsyMap = new Dictionary<Absy, Absy>();
                 foreach (Absy key in duplicator.absyMap.Keys)
                 {
                     reverseAbsyMap[duplicator.absyMap[key]] = key;
                 }
-                OwickiGries ogTransform = new OwickiGries(linearTypeChecker, reverseAbsyMap, decls);
+                OwickiGries ogTransform = new OwickiGries(linearTypeChecker, reverseAbsyMap, phaseNum, decls);
                 ogTransform.Transform(impls, procs);
             }
         }

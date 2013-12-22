@@ -809,6 +809,7 @@ WhileCmd<out WhileCmd/*!*/ wcmd>
                          } else {
                            invariants.Add(new AssertCmd(z, e, kv));
                          }
+						 kv = null;
                       .)
     ";"
   }
