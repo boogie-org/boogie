@@ -28,16 +28,19 @@ namespace Microsoft.Boogie
         {
             List<Cmd> cmds = base.VisitCmdSeq(cmdSeq);
             List<Cmd> newCmds = new List<Cmd>();
-            foreach (Cmd cmd in cmds)
+            for (int i = 0; i < cmds.Count; i++) 
             {
+                Cmd cmd = cmds[i];
                 ParCallCmd parCallCmd = cmd as ParCallCmd;
-                if (parCallCmd == null)
+                Cmd originalCmd = cmdSeq[i];
+                ParCallCmd originalParCallCmd = originalCmd as ParCallCmd;
+                if (originalParCallCmd == null)
                 {
                     newCmds.Add(cmd);
                     continue;
                 }
                 int maxCalleePhaseNum = 0;
-                foreach (CallCmd iter in parCallCmd.CallCmds)
+                foreach (CallCmd iter in originalParCallCmd.CallCmds)
                 {
                     int calleePhaseNum = moverTypeChecker.FindPhaseNumber(iter.Proc);
                     if (calleePhaseNum > maxCalleePhaseNum)
@@ -84,11 +87,6 @@ namespace Microsoft.Boogie
         public override Cmd VisitParCallCmd(ParCallCmd node)
         {
             ParCallCmd parCallCmd = (ParCallCmd) base.VisitParCallCmd(node);
-            foreach (CallCmd callCmd in parCallCmd.CallCmds)
-            {
-                callCmd.Proc = VisitProcedure(callCmd.Proc);
-                callCmd.callee = callCmd.Proc.Name;
-            }
             absyMap[node] = parCallCmd;
             return parCallCmd;
         }
@@ -358,7 +356,7 @@ namespace Microsoft.Boogie
                     }
                     count++;
                 }
-                proc = new Procedure(Token.NoToken, string.Format("{0}_{1}", procName, phaseNum), new List<TypeVariable>(), inParams, outParams, requiresSeq, new List<IdentifierExpr>(), ensuresSeq);
+                proc = new Procedure(Token.NoToken, procName, new List<TypeVariable>(), inParams, outParams, requiresSeq, new List<IdentifierExpr>(), ensuresSeq);
                 asyncAndParallelCallDesugarings[procName] = proc;
             }
             CallCmd dummyCallCmd = new CallCmd(Token.NoToken, proc.Name, ins, outs);
@@ -453,7 +451,7 @@ namespace Microsoft.Boogie
             yieldCheckerBlocks.Insert(0, new Block(Token.NoToken, "enter", new List<Cmd>(), new GotoCmd(Token.NoToken, labels, labelTargets)));
 
             // Create the yield checker procedure
-            var yieldCheckerName = string.Format("{0}_YieldChecker_{1}_{2}", decl is Procedure ? "Proc" : "Impl", decl.Name, phaseNum);
+            var yieldCheckerName = string.Format("{0}_YieldChecker_{1}", decl is Procedure ? "Proc" : "Impl", decl.Name);
             var yieldCheckerProc = new Procedure(Token.NoToken, yieldCheckerName, decl.TypeParameters, inputs, new List<Variable>(), new List<Requires>(), new List<IdentifierExpr>(), new List<Ensures>());
             yieldCheckerProc.AddAttribute("inline", new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1)));
             yieldCheckerProcs.Add(yieldCheckerProc);
@@ -593,7 +591,7 @@ namespace Microsoft.Boogie
                         {
                             if (!asyncAndParallelCallDesugarings.ContainsKey(callCmd.Proc.Name))
                             {
-                                asyncAndParallelCallDesugarings[callCmd.Proc.Name] = new Procedure(Token.NoToken, string.Format("DummyAsyncTarget_{0}_{1}", callCmd.Proc.Name, phaseNum), callCmd.Proc.TypeParameters, callCmd.Proc.InParams, callCmd.Proc.OutParams, callCmd.Proc.Requires, new List<IdentifierExpr>(), new List<Ensures>());
+                                asyncAndParallelCallDesugarings[callCmd.Proc.Name] = new Procedure(Token.NoToken, string.Format("DummyAsyncTarget_{0}", callCmd.Proc.Name), callCmd.Proc.TypeParameters, callCmd.Proc.InParams, callCmd.Proc.OutParams, callCmd.Proc.Requires, new List<IdentifierExpr>(), new List<Ensures>());
                             }
                             var dummyAsyncTargetProc = asyncAndParallelCallDesugarings[callCmd.Proc.Name];
                             CallCmd dummyCallCmd = new CallCmd(Token.NoToken, dummyAsyncTargetProc.Name, callCmd.Ins, callCmd.Outs);
@@ -967,6 +965,8 @@ namespace Microsoft.Boogie
                     procs.Add(duplicateProc);
                     if (moverTypeChecker.procToActionInfo.ContainsKey(proc) && moverTypeChecker.procToActionInfo[proc].phaseNum < phaseNum)
                     {
+                        duplicateProc.Attributes = OwickiGries.RemoveYieldsAttribute(duplicateProc.Attributes);
+                        program.GlobalVariables().Iter(x => duplicateProc.Modifies.Add(new IdentifierExpr(Token.NoToken, x)));
                         CodeExpr action = (CodeExpr)duplicator.VisitCodeExpr(moverTypeChecker.procToActionInfo[proc].thisAction);
                         Implementation impl = new Implementation(Token.NoToken, duplicateProc.Name, proc.TypeParameters, proc.InParams, proc.OutParams, new List<Variable>(), action.Blocks);
                         impl.Proc = duplicateProc;
