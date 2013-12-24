@@ -24,18 +24,23 @@ namespace Microsoft.Boogie
     {
         /*static subfields of yieldtypesafe(YTS) property language*/
         static CharSetSolver yieldTypeCheckerAutomatonSolver;
-        static string yieldTypeCheckerRegex = @"^((1|2)+(3|4))*((D)+(((5|6))+((7|8))+((1|2))+((3|4)))*[A]((9)+(7)+(3))*)*$";// regex of property to build automaton of YTS language
+        static string yieldTypeCheckerRegex = @"^([12]+[34])*(D+([56]+[78]+[12]+[34]+)*A*(9+7+3)*)*$";// regex of property to build automaton of YTS language
+        //(([12][34])*(D+([56][78][12][34])*(9+7+3)*))*
         static Automaton<BvSet> yieldTypeCheckerAutomaton;
+        static Automaton<BvSet> minimizedTypeCheckerAutomaton;
         static YieldTypeChecker()
         {
             yieldTypeCheckerAutomatonSolver = new CharSetSolver(BitWidth.BV7);
             yieldTypeCheckerAutomaton =
                 Automaton<BvSet>.MkProduct(yieldTypeCheckerAutomatonSolver.Convert(yieldTypeCheckerRegex),
                                            yieldTypeCheckerAutomatonSolver.Convert(@"^[1-9A-D]*$"), // result of product with this Automaton provides us 
-                                                                                                    //an automaton that has (*) existence alphanum chars in our property automaton 
+                //an automaton that has (*) existence alphanum chars in our property automaton 
                                            yieldTypeCheckerAutomatonSolver);
 
-
+            minimizedTypeCheckerAutomaton = yieldTypeCheckerAutomaton.Determinize(yieldTypeCheckerAutomatonSolver).Minimize(yieldTypeCheckerAutomatonSolver);
+#if DEBUG && !DEBUG_DETAIL
+            yieldTypeCheckerAutomatonSolver.ShowGraph(minimizedTypeCheckerAutomaton, "minimizedPropertyAutomaton.dgml");
+#endif
         }
         /*
          ComputePhaseIntervals :
@@ -111,7 +116,7 @@ namespace Microsoft.Boogie
     2.2 Return value : returns true if input automaton is subset of YTS property autoamaton.
     2.3 Action : Subset checking for a phase of an implementation. f L(YTSI) is subset of L(YTSP) {TRUE} else {FALSE}  
   */
-        public static bool IsYieldTypeSafe(Automaton<BvSet> implTypeCheckAutomaton)
+        public static bool IsYieldTypeSafe(Automaton<BvSet> implTypeCheckAutomaton, Implementation impl, MoverTypeChecker moverTypeChecker, int phaseNum)
         {
 
             List<BvSet> witnessSet;
@@ -122,12 +127,27 @@ namespace Microsoft.Boogie
                                                            0,
                                                            yieldTypeCheckerAutomatonSolver,
                                                            out witnessSet);
+
+#if DEBUG && !DEBUG_DETAIL
+            
+            var diffAutomaton = implTypeCheckAutomaton.Minus(yieldTypeCheckerAutomaton, yieldTypeCheckerAutomatonSolver);
+            string diffAutomatonGraphName = "diffAutomaton" + impl.Proc.Name + phaseNum.ToString();
+            yieldTypeCheckerAutomatonSolver.ShowGraph(diffAutomaton, diffAutomatonGraphName+".dgml");
+#endif
+
+#if DEBUG && !DEBUG_DETAIL
+            string s = yieldTypeCheckerAutomatonSolver.GenerateMember(implTypeCheckAutomaton);
+            Console.WriteLine("\n member " + s+ " \n");
+            if(!yieldTypeCheckerAutomatonSolver.Accepts(yieldTypeCheckerAutomaton,s)){
+                Console.WriteLine("Property Automaton accepts a random member of impl_automaton " + s);
+            }else{
+                Console.WriteLine("Property Automaton does not accept a random member of impl_automaton " + s);
+            }
+#endif
             if (isNonEmpty)
             {
-                // var witness = new String(Array.ConvertAll(witnessSet.ToArray(), bvset => (char)yieldTypeCheckerAutomatonSolver.Choose(bvset)));
-                //Console.Write("\n Program is not Yield Type Safe \n");
-                //  Console.Write("Debugging ... \n Difference of impl and yiled type check automaton  : \n" + witness);
-
+                var witness = new String(Array.ConvertAll(witnessSet.ToArray(), bvset => (char)yieldTypeCheckerAutomatonSolver.Choose(bvset)));
+                moverTypeChecker.Error(impl, "\n Body of " + impl.Proc.Name + " has invalid trace of actions " + witness + "\n");
                 return false;
             }
 
@@ -156,9 +176,9 @@ PerformYieldTypeChecking :
 
                 for (int i = 0; i < phaseIntervals.Count; i++) // take current phase check num from each interval
                 {
-                    int yTypeCheckCurrentPhaseNum = phaseIntervals[i].Item2;
+                    int yTypeCheckCurrentPhaseNum = phaseIntervals[i].Item1;
                     Automaton<BvSet> yieldTypeCheckAutoPerPhase = yieldTypeCheckerPerImpl.YieldTypeCheckAutomaton(impl, phaseNumSpecImpl, yTypeCheckCurrentPhaseNum);
-                    if (!IsYieldTypeSafe(yieldTypeCheckAutoPerPhase))
+                    if (!IsYieldTypeSafe(yieldTypeCheckAutoPerPhase, impl, moverTypeChecker, i))
                     {
                         moverTypeChecker.Error(impl, "\n Body of " + impl.Proc.Name + " is not yield type safe " + "\n");
                     }
@@ -177,8 +197,10 @@ PerformYieldTypeChecking :
 
         int stateCounter;
         MoverTypeChecker moverTypeChecker;
+
         public YieldTypeCheckerCore(MoverTypeChecker moverTypeChecker)
         {
+
             this.moverTypeChecker = moverTypeChecker;
         }
 
@@ -215,7 +237,7 @@ PerformYieldTypeChecking :
             List<int> finalStates = new List<int>();
             List<int> initialStates = new List<int>();
             stateCounter = 0;
-
+            initialStates.Add(stateCounter); // First state is added to initial states
             Graph<int> bodyGraphForImplPhaseJ = BuildAutomatonGraph(ytypeChecked, yTypeCheckCurrentPhaseNum, abysToNode, edgeLabels, initialStates, finalStates); // build component of graph for a phase interval            
 #if (DEBUG && !DEBUG_DETAIL)
             Console.Write("\n Raw Graph is created for phase: \n" + yTypeCheckCurrentPhaseNum.ToString());
@@ -223,12 +245,14 @@ PerformYieldTypeChecking :
 #endif
             // Update edges w.r.t yield reaching. VocabX{True,False} 
             PostProcessGraph(bodyGraphForImplPhaseJ, edgeLabels);
-#if (DEBUG && DEBUG_DETAIL)
-            Console.Write("\n Refined Graph is : \n");
+#if (DEBUG && !DEBUG_DETAIL)
+            //Console.Write("\n Procedure's phase num is " + specPhaseNumImpl.ToString() +" \n");
+            //Console.Write("\n Interval's phase num is " + yTypeCheckCurrentPhaseNum.ToString() + " \n");
+            //Console.Write("\n Refined Graph is : \n");
             Console.Write(PrintGraph(bodyGraphForImplPhaseJ, ytypeChecked, edgeLabels));
 #endif
             //Build Automaton from graph created
-            return BuildAutomaton(bodyGraphForImplPhaseJ, edgeLabels, initialStates, finalStates);
+            return BuildAutomaton(bodyGraphForImplPhaseJ, edgeLabels, initialStates, finalStates, ytypeChecked, yTypeCheckCurrentPhaseNum); // Last to arguments are just only for showGraph of automaton lib
 
         }
 
@@ -259,10 +283,12 @@ PerformYieldTypeChecking :
                 {
 
                     abysToNodeNo[cmd] = stateCounter;
+                    //  Console.WriteLine("Cmd" + cmd.ToString() + " state " + stateCounter.ToString());
                     stateCounter++;
 
                 }
                 abysToNodeNo[block.TransferCmd] = stateCounter;
+                //Console.WriteLine("Cmd" + block.TransferCmd.ToString() + " state " + stateCounter.ToString());
                 stateCounter++;
             }
             return abysToNodeNo;
@@ -301,6 +327,7 @@ We use bool IsCallCmdExitPoint(Cmd cmd, int yTypeCheckCurrentPhaseNum)  returns 
 
                             int source = bodyGraphForImplPhaseJ[block.Cmds[i]];
                             int dest = bodyGraphForImplPhaseJ[block.Cmds[i + 1]];
+                            //Console.Write("\n >=2 Adding proper transition " + source.ToString() + " --> " + dest.ToString());
                             Tuple<int, int> edge = new Tuple<int, int>(source, dest);
                             edges.Add(edge);
                             edgeLabels.Add(edge, GetEdgeType(block.Cmds[i]));
@@ -311,6 +338,8 @@ We use bool IsCallCmdExitPoint(Cmd cmd, int yTypeCheckCurrentPhaseNum)  returns 
                             int source = bodyGraphForImplPhaseJ[block.Cmds[i]];
                             // create artificial final state
                             int dest = Math.Abs(Guid.NewGuid().GetHashCode()); // Generate unique dummy node ref: http://www.codinghorror.com/blog/2007/03/primary-keys-ids-versus-guids.html
+                            //Console.Write("\n >=2 Adding next is EXT transition " + source.ToString() + " --> " + dest.ToString());
+
                             finalStates.Add(dest);
                             Tuple<int, int> edge = new Tuple<int, int>(source, dest);
                             edges.Add(edge);
@@ -319,6 +348,7 @@ We use bool IsCallCmdExitPoint(Cmd cmd, int yTypeCheckCurrentPhaseNum)  returns 
                         }
                         else if (IsCallCmdExitPoint(block.Cmds[i], yTypeCheckCurrentPhaseNum) && !IsCallCmdExitPoint(block.Cmds[i + 1], yTypeCheckCurrentPhaseNum))
                         { // current cmd exit , next cmd will be put as initial state
+                            //Console.Write("\n >=2 Adding current cmd is EXT next initial" + bodyGraphForImplPhaseJ[block.Cmds[i + 1]].ToString());
                             initialStates.Add(bodyGraphForImplPhaseJ[block.Cmds[i + 1]]);
 
                         }
@@ -330,6 +360,8 @@ We use bool IsCallCmdExitPoint(Cmd cmd, int yTypeCheckCurrentPhaseNum)  returns 
                         {// Do proper transition 
                             int source = bodyGraphForImplPhaseJ[block.Cmds[i]];
                             int dest = bodyGraphForImplPhaseJ[block.Cmds[i + 1]];
+                            //  Console.Write("\n >=2 Adding proper transitionels " + source.ToString() + " --> " + dest.ToString());
+
                             Tuple<int, int> edge = new Tuple<int, int>(source, dest);
                             edges.Add(edge);
                             edgeLabels.Add(edge, GetEdgeType(block.Cmds[i]));
@@ -340,12 +372,15 @@ We use bool IsCallCmdExitPoint(Cmd cmd, int yTypeCheckCurrentPhaseNum)  returns 
 
                     if (IsCallCmdExitPoint(block.Cmds[block.Cmds.Count - 1], yTypeCheckCurrentPhaseNum))
                     { // put b.TransferCmd into initial states
+                        //Console.Write("\n >=2 Last cmd is EXT put current as initial " + bodyGraphForImplPhaseJ[block.TransferCmd].ToString());
+
                         initialStates.Add(bodyGraphForImplPhaseJ[block.TransferCmd]);
                     }
                     else
                     { // proper transition to state before transfer command
                         int source = bodyGraphForImplPhaseJ[block.Cmds[block.Cmds.Count - 1]];
                         int dest = bodyGraphForImplPhaseJ[block.TransferCmd];
+                        //Console.Write("\n >=2 Adding proper transitionels " + source.ToString() + " --> " + dest.ToString());                            
                         Tuple<int, int> edge = new Tuple<int, int>(source, dest);
                         edges.Add(edge);
                         edgeLabels.Add(edge, GetEdgeType(block.Cmds[block.Cmds.Count - 1]));
@@ -357,12 +392,16 @@ We use bool IsCallCmdExitPoint(Cmd cmd, int yTypeCheckCurrentPhaseNum)  returns 
                 {
                     if (IsCallCmdExitPoint(block.Cmds[0], yTypeCheckCurrentPhaseNum))
                     { // put b.TransferCmd into initial states
+                        //  Console.Write("\n == 1 current cmd is EXT "+block.Cmds[0].ToString()+" put it as initial " );
+
                         initialStates.Add(bodyGraphForImplPhaseJ[block.Cmds[0]]);
                     }
                     else
                     { // proper transition to state before transfer command
                         int source = bodyGraphForImplPhaseJ[block.Cmds[0]];
                         int dest = bodyGraphForImplPhaseJ[block.TransferCmd];
+                        //    Console.Write("\n ==1 Adding proper transition " + source.ToString() + " --> " + dest.ToString());
+
                         Tuple<int, int> edge = new Tuple<int, int>(source, dest);
                         edges.Add(edge);
                         edgeLabels.Add(edge, GetEdgeType(block.Cmds[0]));
@@ -371,6 +410,7 @@ We use bool IsCallCmdExitPoint(Cmd cmd, int yTypeCheckCurrentPhaseNum)  returns 
                 else if (block.Cmds.Count == 0)
                 {
                     // Target block Entry state will be fetched 
+                    //Console.Write("\n == 0 \n" );
 
                 }
                 // Handle
@@ -379,13 +419,14 @@ We use bool IsCallCmdExitPoint(Cmd cmd, int yTypeCheckCurrentPhaseNum)  returns 
                 {
                     int source = bodyGraphForImplPhaseJ[block.TransferCmd];
                     Tuple<int, int> transferEdge = new Tuple<int, int>(source, entryState);
+                    //Console.Write("\n Doing TC " + source.ToString() + " --> " + entryState.ToString());
+
                     edges.Add(transferEdge);
                     edgeLabels.Add(transferEdge, "E");
                 }
             }
 
             Graph<int> automatonGraphOfImplPerPhase = new Graph<int>(edges);
-
             return automatonGraphOfImplPerPhase;
         }
 
@@ -394,6 +435,10 @@ We use bool IsCallCmdExitPoint(Cmd cmd, int yTypeCheckCurrentPhaseNum)  returns 
             HashSet<int> targetBlockEntryStates = new HashSet<int>();
             if (tc is ReturnCmd)
             {
+                ReturnCmd returnCmd = tc as ReturnCmd;
+                int source = bodyGraphForImplPhaseJ[tc];
+                finalStates.Add(source);
+                //Console.WriteLine(" There is a return baby ! " + source.ToString());                
                 // Do Nothing
             }
             else if (tc is GotoCmd)
@@ -429,9 +474,9 @@ We use bool IsCallCmdExitPoint(Cmd cmd, int yTypeCheckCurrentPhaseNum)  returns 
 
             if (cmd is CallCmd)
             {
-                CallCmd callCmd = cmd as CallCmd;
-                int phaseSpecCallCmd = moverTypeChecker.FindPhaseNumber(callCmd.Proc);
-                if (phaseSpecCallCmd > yTypeCheckCurrentPhaseNum)
+                CallCmd callee = cmd as CallCmd;
+                int phaseSpecCallee = moverTypeChecker.FindPhaseNumber(callee.Proc);
+                if (phaseSpecCallee >= yTypeCheckCurrentPhaseNum)
                 {
 #if DEBUG && !DEBUG_DETAIL
                     Console.Write("\nCall Cmd Check is " + callCmd.Proc.Name + "\n");
@@ -681,7 +726,7 @@ We use bool IsCallCmdExitPoint(Cmd cmd, int yTypeCheckCurrentPhaseNum)  returns 
             return initialStates;
         }
 
-        private Automaton<BvSet> BuildAutomaton(Graph<int> graph, Dictionary<Tuple<int, int>, string> edgeLabels, List<int> initialStates, List<int> finalStates)
+        private Automaton<BvSet> BuildAutomaton(Graph<int> graph, Dictionary<Tuple<int, int>, string> edgeLabels, List<int> initialStates, List<int> finalStates, Implementation ytypeChecked, int yTypeCheckCurrentPhaseNum)
         {
             List<int[]> transitions = new List<int[]>();
             foreach (Tuple<int, int> e in graph.Edges)
@@ -829,23 +874,34 @@ We use bool IsCallCmdExitPoint(Cmd cmd, int yTypeCheckCurrentPhaseNum)  returns 
                 Console.Write("\n From : " + trans[0].ToString() + "--- " + trans[1] + " --- " + " to : " + trans[3].ToString());
             }
 #endif
-                        
-            // Dont need, just ask to clarify. I do not need to put epsilon transitions from a chosen initial state to other initial states. Am i right ? We decided to get reduced with them
-            // Take one initial state from initial states , 
-            //  int source = initialStates[0];
-            //  //Ask again
-            /*    foreach (int s in initialStates)
-                {
-                    if (!s.Equals(0))
-                    {
-                        int[] transition = new int[4];
-                        transition[0] = 0;
-                        transition[1] = -1;
-                        transition[2] = -1;
-                        transition[3] = s;
-                        transitions.Add(transition);
-                    }
-                }*/
+
+
+#if DEBUG && !DEBUG_DETAIL
+            Console.WriteLine(" ******* Printing initial states\n");
+            foreach (int inits in initialStates) {
+
+                Console.WriteLine("initial state is " + inits.ToString());
+            }
+#endif
+            // get final states
+            int[] finalSts = ComputeFinalStates(finalStates);
+#if DEBUG && !DEBUG_DETAIL
+            Console.WriteLine("\n*****Printing Finals states\n");
+            foreach (int finals in finalSts)
+            {
+                Console.WriteLine(" final state " + finals.ToString());
+            }
+#endif
+            int dummyInitial = Math.Abs(Guid.NewGuid().GetHashCode());
+            foreach (int s in initialStates)
+            {
+                int[] transition = new int[4];
+                transition[0] = dummyInitial;
+                transition[1] = -1;
+                transition[2] = -1;
+                transition[3] = s;
+                transitions.Add(transition);
+            }
 
 #if (DEBUG && !DEBUG_DETAIL)
             Console.Write(" \n Transitions are\n ");
@@ -855,27 +911,45 @@ We use bool IsCallCmdExitPoint(Cmd cmd, int yTypeCheckCurrentPhaseNum)  returns 
                 Console.Write("\n From : " + trans[0].ToString() + "--- " + trans[1] + " --- " + " to : " + trans[3].ToString());
             }
 #endif
-            // get final states
-            int[] finalSts = ComputeFinalStates(finalStates);
+
             var solver = new CharSetSolver(BitWidth.BV7);
             // create Automaton
-            Automaton<BvSet> yieldTypeCheckAutomaton = solver.ReadFromRanges(0, finalSts, transitions);
-
-#if (DEBUG && !DEBUG_DETAIL)
-            Console.Write("\n" + "Number of moves " + yieldTypeCheckAutomaton.MoveCount.ToString() + "\n");
-            Console.Write("\n" + "Number of states " + yieldTypeCheckAutomaton.StateCount.ToString() + "\n");
-            foreach (var move in yieldTypeCheckAutomaton.GetMoves())
-            {
-             // solver.PrettyPrint(BvSet) gives an error : Ask Margus !!!
-             //   Console.WriteLine(move.SourceState.ToString() + " " +  solver.PrettyPrint(move.Condition)+ " " + move.TargetState.ToString());               
-            }
+            Automaton<BvSet> yieldTypeCheckAutomaton = solver.ReadFromRanges(dummyInitial, finalSts, transitions);
+#if DEBUG && !DEBUG_DETAIL
+           Console.WriteLine("\n--Implementation Automaton--");
+           foreach (var move in yieldTypeCheckAutomaton.GetMoves()) {
+                 Console.WriteLine("\n "+ move.SourceState.ToString() + " -- " +  this.PrintEpsilon(move.Condition,solver)+ " --> " + move.TargetState.ToString() +" \n");
+           }
+           string implAutomatonGraphName = ytypeChecked.Proc.Name + "phaseNum__" + yTypeCheckCurrentPhaseNum.ToString();
+           solver.ShowGraph(yieldTypeCheckAutomaton, implAutomatonGraphName+".dmgl");
 #endif
-           Automaton<BvSet> epsilonReducesAtutomaton = yieldTypeCheckAutomaton.RemoveEpsilons(solver.MkOr);
-           return epsilonReducesAtutomaton;
+
+
+#if DEBUG && !DEBUG_DETAIL
+           Console.WriteLine("\n--Epsilons Reduced Automaton--");
+           foreach (var move in epsilonReducedAtutomaton.GetMoves()) {
+                 Console.WriteLine("\n "+ move.SourceState.ToString() + " -- " +  solver.PrettyPrint(move.Condition)+ " --> " + move.TargetState.ToString() +" \n");
+           }
+#endif
+            return yieldTypeCheckAutomaton;
+
+        }
+        private string PrintEpsilon(BvSet cond, CharSetSolver slvr)
+        {
+            if (cond == null)
+            {
+                return "E";
+            }
+            else return slvr.PrettyPrint(cond);
+
         }
     }
 
+
 }
+
+
+
 
 
 #endif
