@@ -24,7 +24,7 @@ namespace Microsoft.Boogie
     {
         /*static subfields of yieldtypesafe(YTS) property language*/
         static CharSetSolver yieldTypeCheckerAutomatonSolver;
-        static string yieldTypeCheckerRegex = @"^([12]+[34])*(D+([56]+[78]+[12]+[34]+)*A*(9+7+3)*)*$";// regex of property to build automaton of YTS language
+        static string yieldTypeCheckerRegex = @"^([1234])*([D]+([56781234])*A*([973])*)*$";// regex of property to build automaton of YTS language
         //(([12][34])*(D+([56][78][12][34])*(9+7+3)*))*
         static Automaton<BvSet> yieldTypeCheckerAutomaton;
         static Automaton<BvSet> minimizedTypeCheckerAutomaton;
