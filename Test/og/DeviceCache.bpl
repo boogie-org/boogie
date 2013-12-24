@@ -13,23 +13,25 @@ function {:inline} Inv(ghostLock: X, currsize: int, newsize: int) : (bool)
 }
 
 procedure {:stable} {:yields} YieldToReadCache()
-requires Inv(ghostLock, currsize, newsize);
-ensures Inv(ghostLock, currsize, newsize) && old(currsize) <= currsize;
+requires {:phase 1} Inv(ghostLock, currsize, newsize);
+ensures {:phase 1} Inv(ghostLock, currsize, newsize) && old(currsize) <= currsize;
+ensures {:both 2} |{ A: return true; }|;
 {
 }
 
 procedure {:stable} {:yields} YieldToWriteCache({:linear "tid"} tid': X) returns ({:linear "tid"} tid: X)
-requires Inv(ghostLock, currsize, newsize) && ghostLock == tid' && tid' != nil;
-ensures Inv(ghostLock, currsize, newsize) && ghostLock == tid && tid != nil && tid == tid' && old(currsize) == currsize && old(newsize) == newsize;
+requires {:phase 1} Inv(ghostLock, currsize, newsize) && ghostLock == tid' && tid' != nil;
+ensures {:phase 1} Inv(ghostLock, currsize, newsize) && ghostLock == tid && tid != nil && tid == tid' && old(currsize) == currsize && old(newsize) == newsize;
+ensures {:both 2} |{ A: return true; }|;
 {
     tid := tid';
 }
 
 procedure Allocate({:linear "tid"} xls': [X]bool) returns ({:linear "tid"} xls: [X]bool, {:linear "tid"} xl: X);
-ensures xl != nil;
+ensures {:phase 1} xl != nil;
 
 procedure {:entrypoint} {:yields} main({:linear "tid"} xls':[X]bool)
-requires xls' == mapconstbool(true);
+requires {:phase 1} xls' == mapconstbool(true);
 {
     var {:linear "tid"} tid: X;
     var {:linear "tid"} xls: [X]bool;
@@ -37,7 +39,7 @@ requires xls' == mapconstbool(true);
     call xls := Init(xls');
 
     while (*)
-    invariant Inv(ghostLock, currsize, newsize);
+    invariant {:phase 1} Inv(ghostLock, currsize, newsize);
     {
         call xls, tid := Allocate(xls);
         async call Thread(tid);
@@ -45,8 +47,8 @@ requires xls' == mapconstbool(true);
 }
 
 procedure {:yields} {:stable} Thread({:linear "tid"} tid': X)
-requires tid' != nil;
-requires Inv(ghostLock, currsize, newsize);
+requires {:phase 1} tid' != nil;
+requires {:phase 1} Inv(ghostLock, currsize, newsize);
 {
     var start, size, bytesRead: int;
     var {:linear "tid"} tid: X;
@@ -58,17 +60,17 @@ requires Inv(ghostLock, currsize, newsize);
 }
 
 procedure {:yields} Read({:linear "tid"} tid': X, start : int, size : int) returns (bytesRead : int)
-requires tid' != nil;
-requires 0 <= start && 0 <= size;
-requires Inv(ghostLock, currsize, newsize);
-ensures 0 <= bytesRead && bytesRead <= size;
+requires {:phase 1} tid' != nil;
+requires {:phase 1} 0 <= start && 0 <= size;
+requires {:phase 1} Inv(ghostLock, currsize, newsize);
+ensures {:phase 1} 0 <= bytesRead && bytesRead <= size;
 {
     var i, tmp: int;
     var {:linear "tid"} tid: X;
     tid := tid';
 
     yield;
-    assert Inv(ghostLock, currsize, newsize);
+    assert {:phase 1} Inv(ghostLock, currsize, newsize);
     bytesRead := size;
     call tid := acquire(tid);
     call tid, i := ReadCurrsize(tid);
@@ -95,12 +97,16 @@ READ_DEVICE:
     call tid := release(tid);
 
 COPY_TO_BUFFER:
+    assert {:phase 1} (bytesRead == 0 || start + bytesRead <= currsize); assume false;
     par YieldToReadCache();
     call ReadCache(start, bytesRead);
 }
 
 procedure {:yields} WriteCache({:linear "tid"} tid': X, index: int) returns ({:linear "tid"} tid: X)
-ensures {:right 1} |{ A: assert ghostLock == tid' && tid' != nil; tid := tid'; return true; }|;
+requires {:phase 1} Inv(ghostLock, currsize, newsize);
+requires {:phase 1} ghostLock == tid' && tid' != nil;
+ensures {:phase 1} tid == tid';
+ensures {:phase 1} Inv(ghostLock, currsize, newsize);
 {
     var j: int;
     tid := tid';
@@ -108,22 +114,29 @@ ensures {:right 1} |{ A: assert ghostLock == tid' && tid' != nil; tid := tid'; r
     call tid, j := ReadCurrsize(tid);
     while (j < index)
     invariant {:phase 1} ghostLock == tid && currsize <= j && tid == tid';
+    invariant {:phase 1} Inv(ghostLock, currsize, newsize);
     {
+        par tid := YieldToWriteCache(tid);
         call tid := WriteCacheEntry(tid, j);
 	j := j + 1;
     }
 }
 
 procedure {:yields} ReadCache(start: int, bytesRead: int)
-requires 0 <= start && 0 <= bytesRead && (bytesRead == 0 || start + bytesRead <= currsize);
+requires {:phase 1} Inv(ghostLock, currsize, newsize);
+requires {:phase 1} 0 <= start && 0 <= bytesRead;
+requires {:phase 1} (bytesRead == 0 || start + bytesRead <= currsize);
+ensures {:phase 1} Inv(ghostLock, currsize, newsize);
 {
     var j: int;
     j := 0;
     while(j < bytesRead)
-    invariant bytesRead == 0 || start + j <= currsize; 
+    invariant {:phase 1} 0 <= j;
+    invariant {:phase 1} bytesRead == 0 || start + j <= currsize; 
+    invariant {:phase 1} Inv(ghostLock, currsize, newsize);
     {
-	yield;
-	assert start + j < currsize;
+	par YieldToReadCache();
+	assert {:phase 1} start + j < currsize;
         call ReadCacheEntry(start + j);
         j := j + 1;
     }
