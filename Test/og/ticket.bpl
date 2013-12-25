@@ -108,7 +108,7 @@ ensures {:both 1} |{ A: return true; }|;
 }
 
 procedure {:yields} Init({:linear "tid"} xls':[X]bool) returns ({:linear "tid"} xls:[X]bool);
-ensures {:both 0} |{ A: assert xls' == mapconstbool(true); xls := xls'; cs := nil; t := 0; s := 0; T := RightOpen(0); return true; }|;
+ensures {:atomic 0} |{ A: assert xls' == mapconstbool(true); xls := xls'; cs := nil; t := 0; s := 0; T := RightOpen(0); return true; }|;
 
 procedure {:yields} GetTicket({:linear "tid"} tid': X) returns ({:linear "tid"} tid: X, m: int);
 ensures {:atomic 0} |{ A: tid := tid'; m := t; t := t + 1; T[m] := true; return true; }|;

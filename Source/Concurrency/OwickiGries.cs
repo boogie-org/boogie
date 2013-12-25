@@ -14,49 +14,85 @@ namespace Microsoft.Boogie
     {
         MoverTypeChecker moverTypeChecker;
         int phaseNum;
+        int enclosingProcPhaseNum;
         public Dictionary<Procedure, Procedure> procMap; /* Original -> Duplicate */
         public Dictionary<Absy, Absy> absyMap; /* Original -> Duplicate */
         public MyDuplicator(MoverTypeChecker moverTypeChecker, int phaseNum)
         {
             this.moverTypeChecker = moverTypeChecker;
             this.phaseNum = phaseNum;
+            this.enclosingProcPhaseNum = int.MaxValue;
             this.procMap = new Dictionary<Procedure, Procedure>();
             this.absyMap = new Dictionary<Absy, Absy>();
+        }
+
+        private void ProcessCallCmd(CallCmd originalCallCmd, CallCmd callCmd, List<Cmd> newCmds)
+        {
+            Procedure originalProc = originalCallCmd.Proc;
+            if (phaseNum == enclosingProcPhaseNum && moverTypeChecker.procToActionInfo.ContainsKey(originalProc) && moverTypeChecker.procToActionInfo[originalProc].phaseNum < phaseNum)
+            {
+                List<AssertCmd> gate = moverTypeChecker.procToActionInfo[originalProc].thisGate;
+                Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
+                for (int i = 0; i < originalProc.InParams.Count; i++)
+                {
+                    map[originalProc.InParams[i]] = callCmd.Ins[i];
+                }
+
+                Substitution subst = Substituter.SubstitutionFromHashtable(map);
+                foreach (AssertCmd assertCmd in gate)
+                {
+                    newCmds.Add(Substituter.Apply(subst, assertCmd));
+                }
+            }
+            newCmds.Add(callCmd);
+        }
+
+        private void ProcessParCallCmd(ParCallCmd originalParCallCmd, ParCallCmd parCallCmd, List<Cmd> newCmds)
+        {
+            int maxCalleePhaseNum = 0;
+            foreach (CallCmd iter in originalParCallCmd.CallCmds)
+            {
+                int calleePhaseNum = moverTypeChecker.FindPhaseNumber(iter.Proc);
+                if (calleePhaseNum > maxCalleePhaseNum)
+                    maxCalleePhaseNum = calleePhaseNum;
+            }
+            if (phaseNum > maxCalleePhaseNum)
+            {
+                for (int i = 0; i < parCallCmd.CallCmds.Count; i++) 
+                {
+                    ProcessCallCmd(originalParCallCmd.CallCmds[i], parCallCmd.CallCmds[i], newCmds);
+                }
+            }
+            else
+            {
+                newCmds.Add(parCallCmd);
+            }
         }
 
         public override List<Cmd> VisitCmdSeq(List<Cmd> cmdSeq)
         {
             List<Cmd> cmds = base.VisitCmdSeq(cmdSeq);
             List<Cmd> newCmds = new List<Cmd>();
-            for (int i = 0; i < cmds.Count; i++) 
+            for (int i = 0; i < cmds.Count; i++)
             {
-                Cmd cmd = cmds[i];
-                ParCallCmd parCallCmd = cmd as ParCallCmd;
                 Cmd originalCmd = cmdSeq[i];
-                ParCallCmd originalParCallCmd = originalCmd as ParCallCmd;
-                if (originalParCallCmd == null)
+                Cmd cmd = cmds[i];
+
+                CallCmd originalCallCmd = originalCmd as CallCmd;
+                if (originalCallCmd != null)
                 {
-                    newCmds.Add(cmd);
+                    ProcessCallCmd(originalCallCmd, cmd as CallCmd, newCmds);
                     continue;
                 }
-                int maxCalleePhaseNum = 0;
-                foreach (CallCmd iter in originalParCallCmd.CallCmds)
+
+                ParCallCmd originalParCallCmd = originalCmd as ParCallCmd;
+                if (originalParCallCmd != null)
                 {
-                    int calleePhaseNum = moverTypeChecker.FindPhaseNumber(iter.Proc);
-                    if (calleePhaseNum > maxCalleePhaseNum)
-                        maxCalleePhaseNum = calleePhaseNum;
+                    ProcessParCallCmd(originalParCallCmd, cmd as ParCallCmd, newCmds);
+                    continue;
                 }
-                if (phaseNum > maxCalleePhaseNum)
-                {
-                    foreach (CallCmd callCmd in parCallCmd.CallCmds)
-                    {
-                        newCmds.Add(callCmd);
-                    }
-                }
-                else
-                {
-                    newCmds.Add(parCallCmd);
-                }
+             
+                newCmds.Add(cmd);
             }
             return newCmds;
         }
@@ -116,9 +152,9 @@ namespace Microsoft.Boogie
             }
             return procMap[node];
         }
-
         public override Implementation VisitImplementation(Implementation node)
         {
+            enclosingProcPhaseNum = moverTypeChecker.FindPhaseNumber(node.Proc);
             Implementation impl = base.VisitImplementation(node);
             impl.Name = impl.Proc.Name;
             foreach (Block block in impl.Blocks)
@@ -144,7 +180,7 @@ namespace Microsoft.Boogie
             Requires requires = base.VisitRequires(node);
             if (node.Free)
                 return requires;
-            if (QKeyValue.FindIntAttribute(requires.Attributes, "phase", int.MaxValue) != phaseNum)
+            if (!OwickiGries.FindPhaseNums(requires.Attributes).Contains(phaseNum))
                 requires.Condition = Expr.True;
             return requires;
         }
@@ -154,7 +190,7 @@ namespace Microsoft.Boogie
             Ensures ensures = base.VisitEnsures(node);
             if (node.Free)
                 return ensures;
-            if (ensures.IsAtomicSpecification || QKeyValue.FindIntAttribute(ensures.Attributes, "phase", int.MaxValue) != phaseNum)
+            if (ensures.IsAtomicSpecification || !OwickiGries.FindPhaseNums(ensures.Attributes).Contains(phaseNum))
             {
                 ensures.Condition = Expr.True;
                 ensures.Attributes = OwickiGries.RemoveMoverAttribute(ensures.Attributes);
@@ -165,7 +201,7 @@ namespace Microsoft.Boogie
         public override Cmd VisitAssertCmd(AssertCmd node)
         {
             AssertCmd assertCmd = (AssertCmd) base.VisitAssertCmd(node);
-            if (QKeyValue.FindIntAttribute(assertCmd.Attributes, "phase", int.MaxValue) != phaseNum)
+            if (!OwickiGries.FindPhaseNums(assertCmd.Attributes).Contains(phaseNum))
                 assertCmd.Expr = Expr.True;
             return assertCmd;
         }
@@ -861,7 +897,17 @@ namespace Microsoft.Boogie
             decls.Add(yieldImpl);
         }
 
-        private static QKeyValue RemoveYieldsAttribute(QKeyValue iter)
+        public static HashSet<int> FindPhaseNums(QKeyValue kv)
+        {
+            HashSet<int> attrs = QKeyValue.FindIntAttributes(kv, "phase");
+            if (attrs.Count == 0)
+            {
+                attrs.Add(int.MaxValue);
+            }
+            return attrs;
+        }
+
+        public static QKeyValue RemoveYieldsAttribute(QKeyValue iter)
         {
             if (iter == null) return null;
             iter.Next = RemoveYieldsAttribute(iter.Next);
