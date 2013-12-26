@@ -109,25 +109,32 @@ namespace Microsoft.Boogie
 
             Program program = moverTypeChecker.program;
             MoverCheck moverChecking = new MoverCheck(linearTypeChecker, moverTypeChecker, decls);
-            foreach (int phaseNum in pools.Keys)
+            foreach (int phaseNum1 in pools.Keys)
             {
-                foreach (ActionInfo first in pools[phaseNum])
+                foreach (ActionInfo first in pools[phaseNum1])
                 {
                     Debug.Assert(first.moverType != MoverType.Top);
                     if (first.moverType == MoverType.Atomic)
                         continue;
-                    foreach (ActionInfo second in pools[phaseNum])
+                    foreach (int phaseNum2 in pools.Keys)
                     {
-                        if (first.IsRightMover)
+                        if (phaseNum2 < phaseNum1) continue;
+                        foreach (ActionInfo second in pools[phaseNum2])
                         {
-                            moverChecking.CreateCommutativityChecker(program, first, second);
-                            moverChecking.CreateGatePreservationChecker(program, second, first);
-                        }
-                        if (first.IsLeftMover)
-                        {
-                            moverChecking.CreateCommutativityChecker(program, second, first);
-                            moverChecking.CreateGatePreservationChecker(program, first, second);
-                            moverChecking.CreateFailurePreservationChecker(program, second, first);
+                            if (second.phaseNum < phaseNum1)
+                            {
+                                if (first.IsRightMover)
+                                {
+                                    moverChecking.CreateCommutativityChecker(program, first, second);
+                                    moverChecking.CreateGatePreservationChecker(program, second, first);
+                                }
+                                if (first.IsLeftMover)
+                                {
+                                    moverChecking.CreateCommutativityChecker(program, second, first);
+                                    moverChecking.CreateGatePreservationChecker(program, first, second);
+                                    moverChecking.CreateFailurePreservationChecker(program, second, first);
+                                }
+                            }
                         }
                     }
                 }
