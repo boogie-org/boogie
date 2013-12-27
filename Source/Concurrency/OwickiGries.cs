@@ -400,6 +400,103 @@ namespace Microsoft.Boogie
             newCmds.Add(dummyCallCmd);
         }
 
+        private void CreateYieldCheckerImplForOldStableEnsures(Procedure proc)
+        {
+            Program program = linearTypeChecker.program;
+            Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
+            Dictionary<Variable, Expr> oldGlobalMap = new Dictionary<Variable, Expr>();
+            Dictionary<Variable, Expr> identityGlobalMap = new Dictionary<Variable, Expr>();
+            List<Variable> locals = new List<Variable>();
+            List<Variable> inputs = new List<Variable>();
+            for (int i = 0; i < proc.InParams.Count - linearTypeChecker.linearDomains.Count; i++)
+            {
+                Variable inParam = proc.InParams[i];
+                Variable copy = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, inParam.Name, inParam.TypedIdent.Type));
+                locals.Add(copy);
+                map[proc.InParams[i]] = new IdentifierExpr(Token.NoToken, copy);
+            }
+            {
+                int i = proc.InParams.Count - linearTypeChecker.linearDomains.Count;
+                foreach (string domainName in linearTypeChecker.linearDomains.Keys)
+                {
+                    Variable inParam = proc.InParams[i];
+                    Variable copy = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, inParam.Name, inParam.TypedIdent.Type), true);
+                    inputs.Add(copy);
+                    map[proc.InParams[i]] = new IdentifierExpr(Token.NoToken, copy);
+                    i++;
+                }
+            }
+            Dictionary<Variable, Expr> requiresMap = new Dictionary<Variable, Expr>(map);
+            for (int i = 0; i < proc.OutParams.Count; i++)
+            {
+                Variable outParam = proc.OutParams[i];
+                var copy = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, outParam.Name, outParam.TypedIdent.Type));
+                locals.Add(copy);
+                map[proc.OutParams[i]] = new IdentifierExpr(Token.NoToken, copy);
+            }
+            foreach (IdentifierExpr ie in globalMods)
+            {
+                Variable g = ie.Decl;
+                identityGlobalMap[g] = Expr.Ident(g);
+                var copy = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_local_post_{0}", g.Name), g.TypedIdent.Type));
+                locals.Add(copy);
+                map[g] = Expr.Ident(copy);
+                Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_global_old_{0}", g.Name), g.TypedIdent.Type), true);
+                inputs.Add(f);
+                oldGlobalMap[g] = Expr.Ident(f);
+                requiresMap[g] = Expr.Ident(f);
+            }
+            
+            Substitution requiresSubst = Substituter.SubstitutionFromHashtable(requiresMap);
+            Substitution subst = Substituter.SubstitutionFromHashtable(map);
+            Substitution identityGlobalSubst = Substituter.SubstitutionFromHashtable(identityGlobalMap);
+            Substitution oldGlobalSubst = Substituter.SubstitutionFromHashtable(oldGlobalMap);
+            List<Block> yieldCheckerBlocks = new List<Block>();
+            List<String> labels = new List<String>();
+            List<Block> labelTargets = new List<Block>();
+            Block yieldCheckerBlock = new Block(Token.NoToken, "exit", new List<Cmd>(), new ReturnCmd(Token.NoToken));
+            labels.Add(yieldCheckerBlock.Label);
+            labelTargets.Add(yieldCheckerBlock);
+            yieldCheckerBlocks.Add(yieldCheckerBlock);
+            List<Cmd> newCmds = new List<Cmd>();
+            foreach (Requires requires in proc.Requires)
+            {
+                AssumeCmd assumeCmd = new AssumeCmd(Token.NoToken, Substituter.Apply(requiresSubst, requires.Condition));
+                newCmds.Add(assumeCmd);
+            }
+            foreach (Ensures ensures in proc.Ensures)
+            {
+                AssumeCmd assumeCmd = new AssumeCmd(Token.NoToken, Substituter.ApplyReplacingOldExprs(subst, identityGlobalSubst, ensures.Condition)); ;
+                newCmds.Add(assumeCmd);
+            }
+            foreach (Ensures ensures in proc.Ensures)
+            {
+                var newExpr = Substituter.ApplyReplacingOldExprs(subst, oldGlobalSubst, ensures.Condition);
+                if (ensures.Free)
+                    newCmds.Add(new AssumeCmd(Token.NoToken, newExpr));
+                else
+                    newCmds.Add(new AssertCmd(Token.NoToken, newExpr));
+            }
+            newCmds.Add(new AssumeCmd(Token.NoToken, Expr.False));
+            yieldCheckerBlock = new Block(Token.NoToken, "L", newCmds, new ReturnCmd(Token.NoToken));
+            labels.Add(yieldCheckerBlock.Label);
+            labelTargets.Add(yieldCheckerBlock);
+            yieldCheckerBlocks.Add(yieldCheckerBlock);
+            yieldCheckerBlocks.Insert(0, new Block(Token.NoToken, "enter", new List<Cmd>(), new GotoCmd(Token.NoToken, labels, labelTargets)));
+
+            // Create the yield checker procedure
+            var yieldCheckerName = string.Format("Proc_OldStableEnsuresChecker_{0}", proc.Name);
+            var yieldCheckerProc = new Procedure(Token.NoToken, yieldCheckerName, proc.TypeParameters, inputs, new List<Variable>(), new List<Requires>(), new List<IdentifierExpr>(), new List<Ensures>());
+            yieldCheckerProc.AddAttribute("inline", new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1)));
+            yieldCheckerProcs.Add(yieldCheckerProc);
+
+            // Create the yield checker implementation
+            var yieldCheckerImpl = new Implementation(Token.NoToken, yieldCheckerName, proc.TypeParameters, inputs, new List<Variable>(), locals, yieldCheckerBlocks);
+            yieldCheckerImpl.Proc = yieldCheckerProc;
+            yieldCheckerImpl.AddAttribute("inline", new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1)));
+            yieldCheckerImpls.Add(yieldCheckerImpl);
+        }
+
         private void CreateYieldCheckerImpl(DeclWithFormals decl, List<List<Cmd>> yields, Dictionary<Variable, Expr> map)
         {
             if (yields.Count == 0) return;
@@ -462,7 +559,6 @@ namespace Microsoft.Boogie
             int yieldCount = 0;
             foreach (List<Cmd> cs in yields)
             {
-                var linearDomains = linearTypeChecker.linearDomains;
                 List<Cmd> newCmds = new List<Cmd>();
                 foreach (Cmd cmd in cs)
                 {
@@ -845,6 +941,7 @@ namespace Microsoft.Boogie
                 cmds = new List<Cmd>();
             }
             CreateYieldCheckerImpl(proc, yields, new Dictionary<Variable, Expr>());
+            CreateYieldCheckerImplForOldStableEnsures(proc);
         }
 
         private void AddYieldProcAndImpl() 
