@@ -166,6 +166,12 @@ namespace Microsoft.Boogie.SMTLib
       if (retVal == null) {
         retVal = f.FindStringAttribute("builtin");
       }
+
+      if (retVal != null && !CommandLineOptions.Clo.UseArrayTheory && SMTLibOpLineariser.ArrayOps.Contains(retVal))
+      {
+          retVal = null;
+      }
+
       return retVal;
     }
 
@@ -742,6 +748,9 @@ namespace Microsoft.Boogie.SMTLib
           return type;
         }
       }
+
+      public static HashSet<string> ArrayOps = new HashSet<string>(new string[] { 
+          "MapConst", "MapAdd", "MapSub", "MapMul", "MapDiv", "MapMod", "MapEq", "MapIff", "MapGt", "MapGe", "MapLt", "MapLe", "MapOr", "MapAnd", "MapNot", "MapImp", "MapIte" });
 
       private static string CheckMapApply(string name, VCExprNAry node) {
         if (name == "MapConst") {
