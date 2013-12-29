@@ -185,7 +185,7 @@ namespace Microsoft.Boogie
             }
             this.VisitProgram(program);
 #if QED
-            YieldTypeChecker.PerformYieldTypeChecking(this);
+            YieldTypeChecker.PerformYieldSafeCheck(this);
 #endif
         }
 
