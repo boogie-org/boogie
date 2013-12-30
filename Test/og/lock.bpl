@@ -20,20 +20,22 @@ procedure {:yields} {:stable} Customer()
 
     	call Leave();
     }
+
+    yield;
 }
 
 procedure {:yields} Enter() 
 ensures {:atomic 1} |{ A: assume !b; b := true; return true; }|;
 {
     var status: bool;
+    yield;
     L: 
-        yield;
         call status := CAS(false, true);
+	yield;
         goto A, B;
 
     A: 
         assume status;
-	yield;
 	return;
 
     B:
