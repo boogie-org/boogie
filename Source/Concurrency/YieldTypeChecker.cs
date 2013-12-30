@@ -24,7 +24,7 @@ namespace Microsoft.Boogie
     class YieldTypeChecker
     {
         /*static subfields of yieldtypesafe(YTS) property language*/
-        static CharSetSolver yieldTypeCheckerAutomatonSolver;
+        static CharSetSolver yieldCheckerAutomatonSolver;
         static string yieldReachabilityCheckerRegex = @"^([1234])*([D]+([56781234])*A*([973])*)*$";// regex of property to build automaton of YTS language      
         static Automaton<BvSet> yieldReachabilityCheckerAutomaton;
         static Automaton<BvSet> minimizedReachabilityCheckerAutomaton;
@@ -33,18 +33,14 @@ namespace Microsoft.Boogie
 
         static YieldTypeChecker()
         {
-            yieldTypeCheckerAutomatonSolver = new CharSetSolver(BitWidth.BV7);
+            yieldCheckerAutomatonSolver = new CharSetSolver(BitWidth.BV7);
             yieldReachabilityCheckerAutomaton =
-                Automaton<BvSet>.MkProduct(yieldTypeCheckerAutomatonSolver.Convert(yieldReachabilityCheckerRegex),
-                                           yieldTypeCheckerAutomatonSolver.Convert(@"^[1-9A-D]*$"), // result of product with this Automaton provides us an automaton that has (*) existence alphanum chars in our property automaton 
-                                           yieldTypeCheckerAutomatonSolver);
-            //Shaz point on incomplete regex : intervening Y
-            //Automaton<BvSet> yieldGuardAutomaton = yieldTypeCheckerAutomatonSolver.Convert(yieldGuardRegex);
-            //string completeYieldTypeCheckerRegex=yieldTypeCheckerAutomatonSolver.ConvertToRegex(yieldTypeCheckerAutomaton.Intersect(yieldGuardAutomaton,yieldTypeCheckerAutomatonSolver));
-            //yieldTypeCheckerCompleteAutomaton = yieldTypeCheckerAutomatonSolver.Convert(completeYieldTypeCheckerRegex);
-            minimizedReachabilityCheckerAutomaton = yieldReachabilityCheckerAutomaton.Determinize(yieldTypeCheckerAutomatonSolver).Minimize(yieldTypeCheckerAutomatonSolver);
-            // Shaz's point ends
-            yieldTypeSafeCheckerAutomaton = yieldTypeCheckerAutomatonSolver.ReadFromRanges(
+                Automaton<BvSet>.MkProduct(yieldCheckerAutomatonSolver.Convert(yieldReachabilityCheckerRegex),
+                                           yieldCheckerAutomatonSolver.Convert(@"^[1-9A-D]*$"), // result of product with this Automaton provides us an automaton that has (*) existence alphanum chars in our property automaton 
+                                           yieldCheckerAutomatonSolver);
+            minimizedReachabilityCheckerAutomaton = yieldReachabilityCheckerAutomaton.Determinize(yieldCheckerAutomatonSolver).Minimize(yieldCheckerAutomatonSolver);
+
+            yieldTypeSafeCheckerAutomaton = yieldCheckerAutomatonSolver.ReadFromRanges(
                                             0,
                                            new int[] { 0, 2 },
                                            new int[][] { 
@@ -74,11 +70,11 @@ namespace Microsoft.Boogie
                                                 new int[] {2,68,68,2},//Y 
                                                 new int[] {2,51,51,2},//Q
                                            });
-            minimizedYieldTypeSafeCheckerAutomaton = yieldTypeSafeCheckerAutomaton.Determinize(yieldTypeCheckerAutomatonSolver).Minimize(yieldTypeCheckerAutomatonSolver);
+            minimizedYieldTypeSafeCheckerAutomaton = yieldTypeSafeCheckerAutomaton.Determinize(yieldCheckerAutomatonSolver).Minimize(yieldCheckerAutomatonSolver);
 
 #if DEBUG && DEBUG_DETAIL
-            yieldTypeCheckerAutomatonSolver.ShowGraph(minimizedReachabilityCheckerAutomaton, "minimizedReachabilityPropertyAutomaton.dgml");
-            yieldTypeCheckerAutomatonSolver.ShowGraph(minimizedYieldTypeSafeCheckerAutomaton, "minimizedTypeSafePropertyAutomaton.dgml");
+            yieldCheckerAutomatonSolver.ShowGraph(minimizedReachabilityCheckerAutomaton, "minimizedReachabilityPropertyAutomaton.dgml");
+            yieldCheckerAutomatonSolver.ShowGraph(minimizedYieldTypeSafeCheckerAutomaton, "minimizedTypeSafePropertyAutomaton.dgml");
 #endif
         }
         /*
@@ -188,14 +184,14 @@ namespace Microsoft.Boogie
                                                            implReachabilityCheckAutomaton,
                                                            yieldReachabilityCheckerAutomaton,
                                                            0,
-                                                           yieldTypeCheckerAutomatonSolver,
+                                                           yieldCheckerAutomatonSolver,
                                                            out witnessSet);
 
 #if DEBUG && !DEBUG_DETAIL
             
-            var diffAutomaton = implReachabilityCheckAutomaton.Minus(yieldReachabilityCheckerAutomaton, yieldTypeCheckerAutomatonSolver);
+            var diffAutomaton = implReachabilityCheckAutomaton.Minus(yieldReachabilityCheckerAutomaton, yieldCheckerAutomatonSolver);
             string diffAutomatonGraphName = "diffAutomatonReachabilitySafe" + impl.Proc.Name + phaseNum.ToString();
-            yieldTypeCheckerAutomatonSolver.ShowGraph(diffAutomaton, diffAutomatonGraphName+".dgml");
+            yieldCheckerAutomatonSolver.ShowGraph(diffAutomaton, diffAutomatonGraphName+".dgml");
 #endif
 
 #if !DEBUG && !DEBUG_DETAIL
@@ -209,7 +205,7 @@ namespace Microsoft.Boogie
 #endif
             if (isNonEmpty)
             {
-                var witness = new String(Array.ConvertAll(witnessSet.ToArray(), bvset => (char)yieldTypeCheckerAutomatonSolver.Choose(bvset)));
+                var witness = new String(Array.ConvertAll(witnessSet.ToArray(), bvset => (char)yieldCheckerAutomatonSolver.Choose(bvset)));
                 moverTypeChecker.Error(impl, "\n Body of " + impl.Proc.Name + " has invalid trace of actions w.r.t yield reachability :  " + witness + "\n");
                 return false;
             }
@@ -226,14 +222,14 @@ namespace Microsoft.Boogie
                                                            implTypeSafeCheckAutomaton,
                                                            yieldTypeSafeCheckerAutomaton,
                                                            0,
-                                                           yieldTypeCheckerAutomatonSolver,
+                                                           yieldCheckerAutomatonSolver,
                                                            out witnessSet);
 
-#if DEBUG && DEBUG_DETAIL
+#if DEBUG && !DEBUG_DETAIL
 
-            var diffAutomaton = implTypeSafeCheckAutomaton.Minus(yieldTypeSafeCheckerAutomaton, yieldTypeCheckerAutomatonSolver);
+            var diffAutomaton = implTypeSafeCheckAutomaton.Minus(yieldTypeSafeCheckerAutomaton, yieldCheckerAutomatonSolver);
             string diffAutomatonGraphName = "diffAutomatonTypeSafety" + impl.Proc.Name + phaseNum.ToString();
-            yieldTypeCheckerAutomatonSolver.ShowGraph(diffAutomaton, diffAutomatonGraphName + ".dgml");
+            yieldCheckerAutomatonSolver.ShowGraph(diffAutomaton, diffAutomatonGraphName + ".dgml");
 #endif
 
 #if !DEBUG && !DEBUG_DETAIL
@@ -247,7 +243,7 @@ namespace Microsoft.Boogie
 #endif
             if (isNonEmpty)
             {
-                var witness = new String(Array.ConvertAll(witnessSet.ToArray(), bvset => (char)yieldTypeCheckerAutomatonSolver.Choose(bvset)));
+                var witness = new String(Array.ConvertAll(witnessSet.ToArray(), bvset => (char)yieldCheckerAutomatonSolver.Choose(bvset)));
                 moverTypeChecker.Error(impl, "\n Body of " + impl.Proc.Name + " has invalid trace of actions w.r.t yield type safety :  " + witness + "\n");
                 return false;
             }
@@ -277,22 +273,22 @@ PerformYieldSafeCheck :
                 for (int i = 0; i < phaseIntervals.Count; i++) // take current phase check num from each interval
                 {
                     int yTypeCheckCurrentPhaseNum = phaseIntervals[i].Item1;
-                    Automaton<BvSet> yieldReachabilityCheckAutoPerPhase = yieldTypeCheckerPerImpl.YieldTypeCheckAutomaton(impl, phaseNumSpecImpl, yTypeCheckCurrentPhaseNum).Item2;
-                    Automaton<BvSet> yieldTypeSafeCheckAutoPerPhase = yieldTypeCheckerPerImpl.YieldTypeCheckAutomaton(impl, phaseNumSpecImpl, yTypeCheckCurrentPhaseNum).Item1;
-                    if (!IsYieldReachabilitySafe(yieldReachabilityCheckAutoPerPhase, impl, moverTypeChecker, i) &&
-                        !IsYieldTypeSafe(yieldTypeSafeCheckAutoPerPhase, impl, moverTypeChecker, yTypeCheckCurrentPhaseNum))
+                    Tuple<Automaton<BvSet>,Automaton<BvSet>> yieldCheckAutomatons=yieldTypeCheckerPerImpl.YieldTypeCheckAutomaton(impl, phaseNumSpecImpl, yTypeCheckCurrentPhaseNum);
+                  //  Automaton<BvSet> yieldTypeSafeCheckAutoPerPhase = yieldTypeCheckerPerImpl.YieldTypeCheckAutomaton(impl, phaseNumSpecImpl, yTypeCheckCurrentPhaseNum).Item1;
+                    if (!IsYieldReachabilitySafe(yieldCheckAutomatons.Item2, impl, moverTypeChecker, yTypeCheckCurrentPhaseNum) &&
+                        !IsYieldTypeSafe(yieldCheckAutomatons.Item1, impl, moverTypeChecker, yTypeCheckCurrentPhaseNum))
                     {
                         moverTypeChecker.Error(impl, "\n Body of " + impl.Proc.Name + " is not yield_type safe " + "\n");
                         moverTypeChecker.Error(impl, "\n Body of " + impl.Proc.Name + " is not yield_reachable safe " + "\n");
 
                     }
-                    else if (!IsYieldReachabilitySafe(yieldReachabilityCheckAutoPerPhase, impl, moverTypeChecker, i) &&
-                            IsYieldTypeSafe(yieldTypeSafeCheckAutoPerPhase, impl, moverTypeChecker, yTypeCheckCurrentPhaseNum))
+                    else if (IsYieldReachabilitySafe(yieldCheckAutomatons.Item2, impl, moverTypeChecker, yTypeCheckCurrentPhaseNum) &&
+                            !IsYieldTypeSafe(yieldCheckAutomatons.Item1, impl, moverTypeChecker, yTypeCheckCurrentPhaseNum))
                     {
                         moverTypeChecker.Error(impl, "\n Body of " + impl.Proc.Name + " is not yield_type safe " + "\n");
                     }
-                    else if (!IsYieldReachabilitySafe(yieldReachabilityCheckAutoPerPhase, impl, moverTypeChecker, i) &&
-                           IsYieldTypeSafe(yieldTypeSafeCheckAutoPerPhase, impl, moverTypeChecker, yTypeCheckCurrentPhaseNum))
+                    else if (!IsYieldReachabilitySafe(yieldCheckAutomatons.Item2, impl, moverTypeChecker, yTypeCheckCurrentPhaseNum) &&
+                           IsYieldTypeSafe(yieldCheckAutomatons.Item1, impl, moverTypeChecker, yTypeCheckCurrentPhaseNum))
                     {
                         moverTypeChecker.Error(impl, "\n Body of " + impl.Proc.Name + " is not yield_reachable safe " + "\n");
                     }
@@ -355,18 +351,20 @@ PerformYieldSafeCheck :
             stateCounter = 0;
             initialStates.Add(stateCounter); // First state is added to initial states
             Graph<int> bodyGraphForImplPhaseJ = BuildAutomatonGraph(ytypeChecked, yTypeCheckCurrentPhaseNum, abysToNode, edgeLabels, initialStates, finalStates); // build component of graph for a phase interval            
-            Automaton<BvSet> implYieldTypeSafeCheckAutomaton = BuildAutomatonYieldTypeSafe(bodyGraphForImplPhaseJ, edgeLabels, initialStates, finalStates, ytypeChecked, yTypeCheckCurrentPhaseNum);
 
 #if (DEBUG && !DEBUG_DETAIL)
-            Console.Write("\n Raw Graph is created for phase: \n" + yTypeCheckCurrentPhaseNum.ToString());
+            Console.Write("\n Procedure's phase num is " + specPhaseNumImpl.ToString() + " \n");
+            Console.Write("\n YieldTypeSafe Graph is created for phase: \n" + yTypeCheckCurrentPhaseNum.ToString());
             Console.Write(PrintGraph(bodyGraphForImplPhaseJ, ytypeChecked, edgeLabels));
 #endif
+            Automaton<BvSet> implYieldTypeSafeCheckAutomaton = BuildAutomatonYieldTypeSafe(bodyGraphForImplPhaseJ, edgeLabels, initialStates, finalStates, ytypeChecked, yTypeCheckCurrentPhaseNum);
+
+
             // Update edges w.r.t yield reaching. VocabX{True,False} 
             PostProcessGraph(bodyGraphForImplPhaseJ, edgeLabels);
 #if (DEBUG && !DEBUG_DETAIL)
-            //Console.Write("\n Procedure's phase num is " + specPhaseNumImpl.ToString() +" \n");
-            //Console.Write("\n Interval's phase num is " + yTypeCheckCurrentPhaseNum.ToString() + " \n");
-            //Console.Write("\n Refined Graph is : \n");
+            Console.Write("\n Procedure's phase num is " + specPhaseNumImpl.ToString() +" \n");
+            Console.Write("\n YieldReachabilityCheck Graph is created for phase : \n" + yTypeCheckCurrentPhaseNum.ToString());
             Console.Write(PrintGraph(bodyGraphForImplPhaseJ, ytypeChecked, edgeLabels));
 #endif
             //Build Automaton from graph created
@@ -458,7 +456,6 @@ We use bool IsCallCmdExitPoint(Cmd cmd, int yTypeCheckCurrentPhaseNum)  returns 
                                                Dictionary<Tuple<int, int>, string> edgeLabels, List<int> initialStates, List<int> finalStates)
         {
             HashSet<Tuple<int, int>> edges = new HashSet<Tuple<int, int>>();
-
             foreach (Block block in ytypeChecked.Blocks)
             {
                 if (block.Cmds.Count >= 2)
@@ -520,13 +517,13 @@ We use bool IsCallCmdExitPoint(Cmd cmd, int yTypeCheckCurrentPhaseNum)  returns 
                         else if (IsCallCmdExitPoint(block.Cmds[i], yTypeCheckCurrentPhaseNum) && IsParallelCallCmdYield(block.Cmds[i + 1], yTypeCheckCurrentPhaseNum))
                         {
                             // Add state number CallCmd of ParallelCmd
-                            ParCallCmd nextCmd = block.Cmds[i] as ParCallCmd;
+                            ParCallCmd nextCmd = block.Cmds[i+1] as ParCallCmd;
                             initialStates.Add(bodyGraphForImplPhaseJ[nextCmd.CallCmds[0]]);
                         }
                         else if (IsCallCmdExitPoint(block.Cmds[i], yTypeCheckCurrentPhaseNum) && IsSeqComposableParCallCmd(block.Cmds[i + 1], yTypeCheckCurrentPhaseNum))
                         {
                             // Add state number CallCmd of ParallelCmd
-                            ParCallCmd nextCmd = block.Cmds[i] as ParCallCmd;
+                            ParCallCmd nextCmd = block.Cmds[i+1] as ParCallCmd;
                             initialStates.Add(bodyGraphForImplPhaseJ[nextCmd.CallCmds[0]]);
 
                         }
@@ -558,7 +555,6 @@ We use bool IsCallCmdExitPoint(Cmd cmd, int yTypeCheckCurrentPhaseNum)  returns 
                         else if (IsParallelCallCmdYield(block.Cmds[i], yTypeCheckCurrentPhaseNum) && IsCallCmdExitPoint(block.Cmds[i + 1], yTypeCheckCurrentPhaseNum))
                         {
                             //create dummy state as next state
-
                             ParCallCmd currentCmd = block.Cmds[i] as ParCallCmd;
                             int source = bodyGraphForImplPhaseJ[currentCmd.CallCmds[0]];
                             int dest = Math.Abs(Guid.NewGuid().GetHashCode()); // Generate unique dummy node 
@@ -571,7 +567,6 @@ We use bool IsCallCmdExitPoint(Cmd cmd, int yTypeCheckCurrentPhaseNum)  returns 
                         }
                         else if (IsParallelCallCmdYield(block.Cmds[i], yTypeCheckCurrentPhaseNum) && IsProperActionCmd(block.Cmds[i + 1], yTypeCheckCurrentPhaseNum))
                         {
-
                             ParCallCmd currentCmd = block.Cmds[i] as ParCallCmd;
                             int source = bodyGraphForImplPhaseJ[currentCmd.CallCmds[0]];
                             int dest = bodyGraphForImplPhaseJ[block.Cmds[i + 1]];
@@ -917,24 +912,22 @@ We use bool IsCallCmdExitPoint(Cmd cmd, int yTypeCheckCurrentPhaseNum)  returns 
 
         private bool IsCallCmdExitPoint(Cmd cmd, int yTypeCheckCurrentPhaseNum)
         {
-            if (cmd is CallCmd && IsParallelCallCmdYield(cmd, yTypeCheckCurrentPhaseNum) &&
-                IsSeqComposableParCallCmd(cmd, yTypeCheckCurrentPhaseNum) &&
-                IsAsyncCallCmd(cmd))
+            if (cmd is CallCmd /*&& IsParallelCallCmdYield(cmd, yTypeCheckCurrentPhaseNum) &&
+                IsSeqComposableParCallCmd(cmd, yTypeCheckCurrentPhaseNum) */&&
+                !IsAsyncCallCmd(cmd))
             {
                 CallCmd callee = cmd as CallCmd;
                 int phaseSpecCallee = moverTypeChecker.FindPhaseNumber(callee.Proc);
                 if (phaseSpecCallee >= yTypeCheckCurrentPhaseNum)
                 {
 #if DEBUG && !DEBUG_DETAIL
-                    Console.Write("\nCall Cmd Check is " + callCmd.Proc.Name + "\n");
+                    Console.Write("\nCall Cmd Check is " + callee.Proc.Name + "\n");
 #endif
                     return true;
 
                 }
-
             }
             return false;
-
         }
 
         private bool IsParallelCallCmdYield(Cmd cmd, int yTypeCheckCurrentPhaseNum)
@@ -1218,7 +1211,7 @@ We use bool IsCallCmdExitPoint(Cmd cmd, int yTypeCheckCurrentPhaseNum)  returns 
             List<int[]> transitions = new List<int[]>();
             foreach (Tuple<int, int> e in graph.Edges)
             {
-                if (edgeLabels[e] == "3")
+                if (edgeLabels[e] == "Q")
                 {
                     int[] transition = new int[4];
                     transition[0] = e.Item1;
@@ -1226,10 +1219,8 @@ We use bool IsCallCmdExitPoint(Cmd cmd, int yTypeCheckCurrentPhaseNum)  returns 
                     transition[2] = 51;
                     transition[3] = e.Item2;
                     transitions.Add(transition);
-
-
                 }
-                else if (edgeLabels[e] == "1")
+                else if (edgeLabels[e] == "P")
                 {
                     int[] transition = new int[4];
                     transition[0] = e.Item1;
@@ -1237,9 +1228,8 @@ We use bool IsCallCmdExitPoint(Cmd cmd, int yTypeCheckCurrentPhaseNum)  returns 
                     transition[2] = 49;
                     transition[3] = e.Item2;
                     transitions.Add(transition);
-
                 }
-                else if (edgeLabels[e] == "7")
+                else if (edgeLabels[e] == "B")
                 {
                     int[] transition = new int[4];
                     transition[0] = e.Item1;
@@ -1247,9 +1237,8 @@ We use bool IsCallCmdExitPoint(Cmd cmd, int yTypeCheckCurrentPhaseNum)  returns 
                     transition[2] = 55;
                     transition[3] = e.Item2;
                     transitions.Add(transition);
-
                 }
-                else if (edgeLabels[e] == "5")
+                else if (edgeLabels[e] == "R")
                 {
                     int[] transition = new int[4];
                     transition[0] = e.Item1;
@@ -1257,9 +1246,8 @@ We use bool IsCallCmdExitPoint(Cmd cmd, int yTypeCheckCurrentPhaseNum)  returns 
                     transition[2] = 53;
                     transition[3] = e.Item2;
                     transitions.Add(transition);
-
                 }
-                else if (edgeLabels[e] == "9")
+                else if (edgeLabels[e] == "L")
                 {
                     int[] transition = new int[4];
                     transition[0] = e.Item1;
@@ -1267,7 +1255,6 @@ We use bool IsCallCmdExitPoint(Cmd cmd, int yTypeCheckCurrentPhaseNum)  returns 
                     transition[2] = 57;
                     transition[3] = e.Item2;
                     transitions.Add(transition);
-
                 }
                 else if (edgeLabels[e] == "A")
                 {
@@ -1278,7 +1265,7 @@ We use bool IsCallCmdExitPoint(Cmd cmd, int yTypeCheckCurrentPhaseNum)  returns 
                     transition[3] = e.Item2;
                     transitions.Add(transition);
                 }
-                else if (edgeLabels[e] == "D")
+                else if (edgeLabels[e] == "Y")
                 {
                     int[] transition = new int[4];
                     transition[0] = e.Item1;
