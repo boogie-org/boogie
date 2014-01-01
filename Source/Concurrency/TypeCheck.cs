@@ -141,14 +141,6 @@ namespace Microsoft.Boogie
 
     public class MoverTypeChecker : StandardVisitor
     {
-        public int FindPhaseNumber(Procedure proc)
-        {
-            if (procToActionInfo.ContainsKey(proc))
-                return procToActionInfo[proc].phaseNum;
-            else
-                return int.MaxValue;
-        }
-
         CheckingContext checkingContext;
         public int errorCount;
         HashSet<Variable> qedGlobalVariables;
@@ -157,6 +149,36 @@ namespace Microsoft.Boogie
         public Program program;
         public HashSet<int> assertionPhaseNums;
         bool inAtomicSpecification;
+        CallCmd callCmd;
+
+        public MoverTypeChecker(Program program)
+        {
+            this.qedGlobalVariables = new HashSet<Variable>();
+            foreach (var g in program.GlobalVariables())
+            {
+                if (QKeyValue.FindBoolAttribute(g.Attributes, "qed"))
+                {
+                    this.qedGlobalVariables.Add(g);
+                    g.Attributes = OwickiGries.RemoveQedAttribute(g.Attributes);
+                }
+            }
+            this.procToActionInfo = new Dictionary<Procedure, ActionInfo>();
+            this.assertionPhaseNums = new HashSet<int>();
+            this.errorCount = 0;
+            this.checkingContext = new CheckingContext(null);
+            this.program = program;
+            this.enclosingProcPhaseNum = int.MaxValue;
+            this.inAtomicSpecification = false;
+            this.callCmd = null;
+        }
+
+        public int FindPhaseNumber(Procedure proc)
+        {
+            if (procToActionInfo.ContainsKey(proc))
+                return procToActionInfo[proc].phaseNum;
+            else
+                return int.MaxValue;
+        }
 
         public void TypeCheck()
         {
@@ -189,25 +211,6 @@ namespace Microsoft.Boogie
 #endif
         }
 
-        public MoverTypeChecker(Program program)
-        {
-            this.qedGlobalVariables = new HashSet<Variable>();
-            foreach (var g in program.GlobalVariables())
-            {
-                if (QKeyValue.FindBoolAttribute(g.Attributes, "qed"))
-                {
-                    this.qedGlobalVariables.Add(g);
-                    g.Attributes = OwickiGries.RemoveQedAttribute(g.Attributes);
-                }
-            }
-            this.procToActionInfo = new Dictionary<Procedure, ActionInfo>();
-            this.assertionPhaseNums = new HashSet<int>();
-            this.errorCount = 0;
-            this.checkingContext = new CheckingContext(null);
-            this.program = program;
-            this.enclosingProcPhaseNum = int.MaxValue;
-            this.inAtomicSpecification = false;
-        }
         public override Implementation VisitImplementation(Implementation node)
         {
             enclosingProcPhaseNum = FindPhaseNumber(node.Proc);
@@ -232,7 +235,10 @@ namespace Microsoft.Boogie
                     Error(node, "The phase of the caller procedure must be greater than the phase of the callee");
                 }
             }
-            return base.VisitCallCmd(node);
+            callCmd = node;
+            Cmd ret = base.VisitCallCmd(node);
+            callCmd = null;
+            return ret;
         }
         public override Cmd VisitParCallCmd(ParCallCmd node)
         {
@@ -242,6 +248,9 @@ namespace Microsoft.Boogie
                 int calleePhaseNum = FindPhaseNumber(iter.Proc);
                 if (calleePhaseNum > maxCalleePhaseNum)
                     maxCalleePhaseNum = calleePhaseNum;
+                callCmd = iter;
+                base.VisitCallCmd(iter);
+                callCmd = null;
             }
 
             if (enclosingProcPhaseNum > maxCalleePhaseNum)
@@ -266,13 +275,20 @@ namespace Microsoft.Boogie
         {
             if (node.Decl is GlobalVariable)
             {
-                if (inAtomicSpecification && !qedGlobalVariables.Contains(node.Decl))
+                if (callCmd != null && procToActionInfo.ContainsKey(callCmd.Proc))
                 {
-                    Error(node, "Cannot access non-qed global variable in atomic action");
+                    Error(node, "Cannot access global variable in call to atomic action");
                 }
-                else if (!inAtomicSpecification && qedGlobalVariables.Contains(node.Decl))
+                else
                 {
-                    Error(node, "Cannot access qed global variable in ordinary code");
+                    if (inAtomicSpecification && !qedGlobalVariables.Contains(node.Decl))
+                    {
+                        Error(node, "Cannot access non-qed global variable in atomic action");
+                    }
+                    else if (!inAtomicSpecification && qedGlobalVariables.Contains(node.Decl))
+                    {
+                        Error(node, "Cannot access qed global variable in ordinary code");
+                    }
                 }
             }
             return base.VisitIdentifierExpr(node);
