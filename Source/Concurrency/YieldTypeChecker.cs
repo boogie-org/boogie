@@ -3,7 +3,6 @@
 #define DEBUG
 #define DEBUG_DETAIL
 
-
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -17,6 +16,8 @@ using Microsoft.Boogie.GraphUtil;
 
 namespace Microsoft.Boogie
 {
+    using Set = GSet<object>;
+
     /*
      Summary:
      * 
@@ -35,7 +36,7 @@ namespace Microsoft.Boogie
         {
             yieldCheckerAutomatonSolver = new CharSetSolver(BitWidth.BV7);
             yieldReachabilityCheckerAutomaton =
-                Automaton<BvSet>.MkProduct(yieldCheckerAutomatonSolver.Convert(yieldReachabilityCheckerRegex),
+            Automaton<BvSet>.MkProduct(yieldCheckerAutomatonSolver.Convert(yieldReachabilityCheckerRegex),
                                            yieldCheckerAutomatonSolver.Convert(@"^[1-9A-D]*$"), // result of product with this Automaton provides us an automaton that has (*) existence alphanum chars in our property automaton 
                                            yieldCheckerAutomatonSolver);
             minimizedReachabilityCheckerAutomaton = yieldReachabilityCheckerAutomaton.Determinize(yieldCheckerAutomatonSolver).Minimize(yieldCheckerAutomatonSolver);
@@ -45,10 +46,11 @@ namespace Microsoft.Boogie
                                            new int[] { 0, 2 },
                                            new int[][] { 
                                                // self loop on state 0 transitions
-                                                new int[] { 0,51,51,0 }, // Q
+                                                new int[] {0,51,51,0}, // Q
                                                 new int[] {0,68,68,0},// Y
+                                                new int[] {0,49,49,0},
                                                //0 to 1 transitions
-                                                new int[] { 0,65,65,1 },//A
+                                                new int[] {0,65,65,1},//A
                                                 new int[] {0,55,55,1}, //B
                                                 new int[] {0,57,57,1},//L
                                                 new int[] {0,53,53,1}, //R
@@ -72,24 +74,12 @@ namespace Microsoft.Boogie
                                            });
             minimizedYieldTypeSafeCheckerAutomaton = yieldTypeSafeCheckerAutomaton.Determinize(yieldCheckerAutomatonSolver).Minimize(yieldCheckerAutomatonSolver);
 
-#if DEBUG && DEBUG_DETAIL
+#if DEBUG && !DEBUG_DETAIL
             yieldCheckerAutomatonSolver.ShowGraph(minimizedReachabilityCheckerAutomaton, "minimizedReachabilityPropertyAutomaton.dgml");
             yieldCheckerAutomatonSolver.ShowGraph(minimizedYieldTypeSafeCheckerAutomaton, "minimizedTypeSafePropertyAutomaton.dgml");
 #endif
         }
-        /*
-         ComputePhaseIntervals :
-         1.1 Input parameters : 
-           1.1.1 Implementation impl : Implementation whose body is being YTS checked.
-           1.1.2 int specPhaseNumImpl : Phase number in which procedure of implementation, impl, reaches its specification,{A,R,L,B}
-           1.1.3 MoverTypeChecker moverTypeChecker : moverTypeChecker is the integration point of YieldTypeChecker to OG class. moverTypeChecker has functions enables YieldTypeChecker to find phaseNum and spec of procedures.
-
-         1.2 Return value : is a list of tuples(phase interval start,phase interval end). Every tuple in this list is representing an interval formed by callCmds' phase numbers inside impl.			   
-         1.3 Action : This function first traverses the blocks inside impl, collects all CallCmds inside it into a HashSet ,callCmdsInImpl. 
-                *      Then it puts all these callCmds' phase numbers into a HashSet,callCmdPhaseNumSet. 
-                *     After adding all callCmds' phase numbers' it adds phase number of procedure of impl into the set. 
-                *     It sorts all numbers in this set and creates [-inf...n-1] [n...k-1] [k  PhaseNumProcOfImpl] disjoint intervals.
-          */
+ 
         private static List<Tuple<int, int>> ComputePhaseIntervals(Implementation impl, int specPhaseNumImpl, MoverTypeChecker moverTypeChecker)
         {
             HashSet<CallCmd> callCmdsInImpl = new HashSet<CallCmd>(); //  callCmdsInImpl[Implementation] ==> Set = { call1, call2, call3 ... }
@@ -167,19 +157,9 @@ namespace Microsoft.Boogie
         }
 
 
-
-        /*
-  IsYieldReachabilitySafe :
-    2.1 Input parameters :
-      2.1.1 Automaton<BvSet> implTypeCheckAutomaton : This input Automaton is generated for a phase of YTS checking of an impl.
-    2.2 Return value : returns true if input automaton is subset of YTS property autoamaton.
-    2.3 Action : Subset checking for a phase of an implementation. f L(YTSI) is subset of L(YTSP) {TRUE} else {FALSE}  
-  */
-        public static bool IsYieldReachabilitySafe(Automaton<BvSet> implReachabilityCheckAutomaton, Implementation impl, MoverTypeChecker moverTypeChecker, int phaseNum)
+        private static bool IsYieldReachabilitySafe(Automaton<BvSet> implReachabilityCheckAutomaton, Implementation impl, MoverTypeChecker moverTypeChecker, int phaseNum)
         {
-
             List<BvSet> witnessSet;
-
             var isNonEmpty = Automaton<BvSet>.CheckDifference(
                                                            implReachabilityCheckAutomaton,
                                                            yieldReachabilityCheckerAutomaton,
@@ -213,11 +193,9 @@ namespace Microsoft.Boogie
             return true;
         }
 
-        public static bool IsYieldTypeSafe(Automaton<BvSet> implTypeSafeCheckAutomaton, Implementation impl, MoverTypeChecker moverTypeChecker, int phaseNum)
+        private static bool IsYieldTypeSafe(Automaton<BvSet> implTypeSafeCheckAutomaton, Implementation impl, MoverTypeChecker moverTypeChecker, int phaseNum)
         {
-
             List<BvSet> witnessSet;
-
             var isNonEmpty = Automaton<BvSet>.CheckDifference(
                                                            implTypeSafeCheckAutomaton,
                                                            yieldTypeSafeCheckerAutomaton,
@@ -251,12 +229,6 @@ namespace Microsoft.Boogie
             return true;
         }
 
-        /*
-PerformYieldSafeCheck : 
- 3.1 Input parameters :
-   3.1.1 MoverTypeChecker moverTypeChecker : 
- 3.2 Action : This function is called in TypeCheck.cs. This is the only function that is externalized. This function traverses the program declarations and performs
-        */
         public static void PerformYieldSafeCheck(MoverTypeChecker moverTypeChecker)
         {
             Program yieldTypeCheckedProgram = moverTypeChecker.program;
@@ -274,7 +246,7 @@ PerformYieldSafeCheck :
                 {
                     int yTypeCheckCurrentPhaseNum = phaseIntervals[i].Item1;
                     Tuple<Automaton<BvSet>,Automaton<BvSet>> yieldCheckAutomatons=yieldTypeCheckerPerImpl.YieldTypeCheckAutomaton(impl, phaseNumSpecImpl, yTypeCheckCurrentPhaseNum);
-                  //  Automaton<BvSet> yieldTypeSafeCheckAutoPerPhase = yieldTypeCheckerPerImpl.YieldTypeCheckAutomaton(impl, phaseNumSpecImpl, yTypeCheckCurrentPhaseNum).Item1;
+
                     if (!IsYieldReachabilitySafe(yieldCheckAutomatons.Item2, impl, moverTypeChecker, yTypeCheckCurrentPhaseNum) &&
                         !IsYieldTypeSafe(yieldCheckAutomatons.Item1, impl, moverTypeChecker, yTypeCheckCurrentPhaseNum))
                     {
@@ -292,16 +264,17 @@ PerformYieldSafeCheck :
                     {
                         moverTypeChecker.Error(impl, "\n Body of " + impl.Proc.Name + " is not yield_reachable safe " + "\n");
                     }
+                    else if (IsYieldReachabilitySafe(yieldCheckAutomatons.Item2, impl, moverTypeChecker, yTypeCheckCurrentPhaseNum) &&
+                       IsYieldTypeSafe(yieldCheckAutomatons.Item1, impl, moverTypeChecker, yTypeCheckCurrentPhaseNum)) {
+#if DEBUG && !DEBUG_DETAIL
+                           Console.WriteLine("Implementation " + impl.Proc.Name + " is yield safe at phase " + yTypeCheckCurrentPhaseNum.ToString());
+#endif
+                    }
                 }
             }
         }
     }
 
-    /*
-    * Functionality : This class performs building an automaton for a particular phase on an implementation. 
-    * Please don't get confused when you see that its constructor is not called for every phase. 
-    * We call YieldTypeCheckAutomata function of this class for every phase, real constructor for us just to have its name more intuitive.
-    */
     class YieldTypeCheckerCore
     {
 
@@ -314,37 +287,11 @@ PerformYieldSafeCheck :
             this.moverTypeChecker = moverTypeChecker;
         }
 
-        /*
- YieldTypeCheckAutomata
-   1.1 Input parameters
-     1.1.1 Implementation ytypeChecked : impl being YTS checked.
-     1.1.2 int specPhaseNumImpl: Phase num that procedure of impl has its specification{A,L,B,R}, last intervals end point.
-     1.1.3 int yTypeCheckCurrentPhaseNum : current phase checking number that taken from every phase intervals end point.
-     foreach phase [s...e] in PhaseIntervals
-     yTypeCheckCurrentPhaseNum = e;
-     Please note that we have disjoint intervals. Note : I have to check the comparison. 
-   1.2 Return value : Automaton<BvSet>  : returns Automaton for a particular phase.
-   1.3 Action : This function is summary of whole YieldTypeCheckerCore class. This function is called for every phase from YieldTypeCheck.PerformYieldTypeCheck function. It has the following flow : It has following local data structure which will be passed into other functions of execution flow to create Automaton of a phase.
-         a. Dictionary<Tuple<int, int>, string> edgeLabels : // Tuple<int,int> --> "Y" :  //State(k) --Y--> State(k+1)
-         b. Dictionary<Absy, int> abysToNode = CreateStateNumbers(ytypeChecked, yTypeCheckCurrentPhaseNum);
-        
-         Enumerates states in the body of impl using stateCounter.				
-         c. List<int> finalStates 
-         d. List<int> initialStates
-         e. stateCounter = 0 // Whenever this function is called it to create AutoPerPhase it starts with stateCounter 0.
-         Execution flow :
-         f. Graph<int> bodyGraphForImplPhaseJ = BuildAutomatonGraph(ytypeChecked, yTypeCheckCurrentPhaseNum,abysToNode,edgeLabels,initialStates, finalStates)
-         h. PostProcessGraph(bodyGraphForImplPhaseJ, edgeLabels) : Takes bodyGraphForImplPhaseJ graph and process Yield Reaching Edge (YRE) on this graph and updates Y non-reaching edges' labels and Y reaching edges' labels in edgesLabels dictionary , <Key: Edge, value : EdgeLableString>
-
-        Note : Change name of this function !
-								
-         g. BuildAutomaton(bodyGraphForImplPhaseJ, edgeLabels, initialStates, finalStates) :Builds Automaton after YRE process.
-          */
+ 
         public Tuple<Automaton<BvSet>, Automaton<BvSet>> YieldTypeCheckAutomaton(Implementation ytypeChecked, int specPhaseNumImpl, int yTypeCheckCurrentPhaseNum)
         {
 
             Dictionary<Tuple<int, int>, string> edgeLabels = new Dictionary<Tuple<int, int>, string>(); // Tuple<int,int> --> "Y" : State(k) --Y--> State(k+1)
-
             Dictionary<Absy, int> abysToNode = CreateStateNumbers(ytypeChecked, yTypeCheckCurrentPhaseNum);
             List<int> finalStates = new List<int>();
             List<int> initialStates = new List<int>();
@@ -403,7 +350,7 @@ PerformYieldSafeCheck :
                     if (IsAsyncCallCmd(cmd)) continue;
 #if DEBUG && !DEBUG_DETAIL 
                     if (IsProperActionCmd(cmd, yTypeCheckCurrentPhaseNum)) {  Console.WriteLine( cmd.ToString() + " proper action"); }
-                    if (IsCallCmdExitPoint(cmd,yTypeCheckCurrentPhaseNum)) { Console.WriteLine(cmd.ToString() + " call exit action"); }
+                    if (IsExitStatement(cmd,yTypeCheckCurrentPhaseNum)) { Console.WriteLine(cmd.ToString() + " call exit action"); }
                     if (IsParallelCallCmdYield(cmd, yTypeCheckCurrentPhaseNum)) { Console.WriteLine( cmd.ToString() + " call parallel action"); }
                     if (IsSeqComposableParCallCmd(cmd, yTypeCheckCurrentPhaseNum)) { Console.WriteLine( cmd.ToString() + " call composable parallel action"); }
 #endif
@@ -418,7 +365,6 @@ PerformYieldSafeCheck :
 #endif
                             stateCounter++;
                         }
-
                     }
                     else
                     {
@@ -435,23 +381,6 @@ PerformYieldSafeCheck :
             return abysToNodeNo;
         }
 
-        /*
-BuildAutomatonGraph: 
-3.1 Input parameters : Parameters are mentioned above.
-3.1.1 Implementation ytypeChecked : 
-3.1.2 int yTypeCheckCurrentPhaseNum
-3.1.3 Dictionary<Absy, int> bodyGraphForImplPhaseJ
-3.1.4 Dictionary<Tuple<int, int>, string> edgeLabels
-3.1.5 List<int> initialStates
-3.1.6 List<int> finalStates
-3.2 Return value: Graph<int> : This function keeps internal data structure ,HashSet<Tuple<int,int>>edges, to store edges that are formed using 
-      an edge =Tuple< bodyGraphForImplPhaseJ[  Command ::= TransferCmdS | SimpleCmdS ] -> stateS,bodyGraphForImplPhaseJ[  Command ::= TransferCmdD | SimpleCmdD ] -> stateD>
-      returns Grap<int> grph = new Graph<int>(HashSet<edge>).
-
-3.3 Action: In this function we use ITF framework to traverse body of implementation. get states as mentioned 3.2, form edges, put them into set edges and form graph from this set of edges. So many complexities can arise while forming edges if CallCmds are encountered during traversing with ITF.
-We use bool IsCallCmdExitPoint(Cmd cmd, int yTypeCheckCurrentPhaseNum)  returns true if cmd is CallCmd and its phase specification num is greater than the current type check phase num passed as second argument.This means that this call cmd forms an exit point for this YTS check.
-
- */
         private Graph<int> BuildAutomatonGraph(Implementation ytypeChecked, int yTypeCheckCurrentPhaseNum, Dictionary<Absy, int> bodyGraphForImplPhaseJ,
                                                Dictionary<Tuple<int, int>, string> edgeLabels, List<int> initialStates, List<int> finalStates)
         {
@@ -473,7 +402,7 @@ We use bool IsCallCmdExitPoint(Cmd cmd, int yTypeCheckCurrentPhaseNum)  returns 
                             edgeLabels.Add(edge, GetEdgeType(block.Cmds[i]));
 
                         }
-                        else if (IsProperActionCmd(block.Cmds[i], yTypeCheckCurrentPhaseNum) && IsCallCmdExitPoint(block.Cmds[i + 1], yTypeCheckCurrentPhaseNum))
+                        else if (IsProperActionCmd(block.Cmds[i], yTypeCheckCurrentPhaseNum) && IsExitStatement(block.Cmds[i + 1], yTypeCheckCurrentPhaseNum))
                         {
                             int source = bodyGraphForImplPhaseJ[block.Cmds[i]];
                             // create artificial final state
@@ -504,23 +433,23 @@ We use bool IsCallCmdExitPoint(Cmd cmd, int yTypeCheckCurrentPhaseNum)  returns 
                             edgeLabels.Add(edge, GetEdgeType(block.Cmds[i]));
                         }
                         // IsCallCmdsExit
-                        else if (IsCallCmdExitPoint(block.Cmds[i], yTypeCheckCurrentPhaseNum) && IsProperActionCmd(block.Cmds[i + 1], yTypeCheckCurrentPhaseNum))
+                        else if (IsExitStatement(block.Cmds[i], yTypeCheckCurrentPhaseNum) && IsProperActionCmd(block.Cmds[i + 1], yTypeCheckCurrentPhaseNum))
                         { // current cmd exit , next cmd will be put as initial state
                             //Console.Write("\n >=2 Adding current cmd is EXT next initial" + bodyGraphForImplPhaseJ[block.Cmds[i + 1]].ToString());
                             initialStates.Add(bodyGraphForImplPhaseJ[block.Cmds[i + 1]]);
 
                         }
-                        else if (IsCallCmdExitPoint(block.Cmds[i], yTypeCheckCurrentPhaseNum) && IsCallCmdExitPoint(block.Cmds[i + 1], yTypeCheckCurrentPhaseNum))
+                        else if (IsExitStatement(block.Cmds[i], yTypeCheckCurrentPhaseNum) && IsExitStatement(block.Cmds[i + 1], yTypeCheckCurrentPhaseNum))
                         {
                             continue;
                         }
-                        else if (IsCallCmdExitPoint(block.Cmds[i], yTypeCheckCurrentPhaseNum) && IsParallelCallCmdYield(block.Cmds[i + 1], yTypeCheckCurrentPhaseNum))
+                        else if (IsExitStatement(block.Cmds[i], yTypeCheckCurrentPhaseNum) && IsParallelCallCmdYield(block.Cmds[i + 1], yTypeCheckCurrentPhaseNum))
                         {
                             // Add state number CallCmd of ParallelCmd
                             ParCallCmd nextCmd = block.Cmds[i+1] as ParCallCmd;
                             initialStates.Add(bodyGraphForImplPhaseJ[nextCmd.CallCmds[0]]);
                         }
-                        else if (IsCallCmdExitPoint(block.Cmds[i], yTypeCheckCurrentPhaseNum) && IsSeqComposableParCallCmd(block.Cmds[i + 1], yTypeCheckCurrentPhaseNum))
+                        else if (IsExitStatement(block.Cmds[i], yTypeCheckCurrentPhaseNum) && IsSeqComposableParCallCmd(block.Cmds[i + 1], yTypeCheckCurrentPhaseNum))
                         {
                             // Add state number CallCmd of ParallelCmd
                             ParCallCmd nextCmd = block.Cmds[i+1] as ParCallCmd;
@@ -552,7 +481,7 @@ We use bool IsCallCmdExitPoint(Cmd cmd, int yTypeCheckCurrentPhaseNum)  returns 
                             edgeLabels.Add(edge, GetEdgeType(block.Cmds[i]));
 
                         }
-                        else if (IsParallelCallCmdYield(block.Cmds[i], yTypeCheckCurrentPhaseNum) && IsCallCmdExitPoint(block.Cmds[i + 1], yTypeCheckCurrentPhaseNum))
+                        else if (IsParallelCallCmdYield(block.Cmds[i], yTypeCheckCurrentPhaseNum) && IsExitStatement(block.Cmds[i + 1], yTypeCheckCurrentPhaseNum))
                         {
                             //create dummy state as next state
                             ParCallCmd currentCmd = block.Cmds[i] as ParCallCmd;
@@ -588,7 +517,6 @@ We use bool IsCallCmdExitPoint(Cmd cmd, int yTypeCheckCurrentPhaseNum)  returns 
                                 edges.Add(edge);
                                 edgeLabels.Add(edge, GetEdgeType(block.Cmds[j]));
                             }
-
                             // Peelout last iteration
                             int sourceBtwCalls = bodyGraphForImplPhaseJ[currentCmd.CallCmds[currentCmd.CallCmds.Count - 1]];
                             int destBtwCalls = bodyGraphForImplPhaseJ[nextCmd.CallCmds[0]];
@@ -616,7 +544,7 @@ We use bool IsCallCmdExitPoint(Cmd cmd, int yTypeCheckCurrentPhaseNum)  returns 
                             edges.Add(edgeBtw);
                             edgeLabels.Add(edgeBtw, GetEdgeType(currentCmd.CallCmds[currentCmd.CallCmds.Count - 1]));
                         }
-                        else if (IsSeqComposableParCallCmd(block.Cmds[i], yTypeCheckCurrentPhaseNum) && IsCallCmdExitPoint(block.Cmds[i + 1], yTypeCheckCurrentPhaseNum))
+                        else if (IsSeqComposableParCallCmd(block.Cmds[i], yTypeCheckCurrentPhaseNum) && IsExitStatement(block.Cmds[i + 1], yTypeCheckCurrentPhaseNum))
                         {
                             ParCallCmd currentCmd = block.Cmds[i] as ParCallCmd;
                             for (int j = 0; j < currentCmd.CallCmds.Count - 1; j++)
@@ -669,7 +597,7 @@ We use bool IsCallCmdExitPoint(Cmd cmd, int yTypeCheckCurrentPhaseNum)  returns 
                     }
 
 
-                    if (IsCallCmdExitPoint(block.Cmds[block.Cmds.Count - 1], yTypeCheckCurrentPhaseNum))
+                    if (IsExitStatement(block.Cmds[block.Cmds.Count - 1], yTypeCheckCurrentPhaseNum))
                     { // put b.TransferCmd into initial states
                         //Console.Write("\n >=2 Last cmd is EXT put current as initial " + bodyGraphForImplPhaseJ[block.TransferCmd].ToString());
 
@@ -722,7 +650,7 @@ We use bool IsCallCmdExitPoint(Cmd cmd, int yTypeCheckCurrentPhaseNum)  returns 
                 }
                 else if (block.Cmds.Count == 1)
                 {
-                    if (IsCallCmdExitPoint(block.Cmds[0], yTypeCheckCurrentPhaseNum))
+                    if (IsExitStatement(block.Cmds[0], yTypeCheckCurrentPhaseNum))
                     { // put b.TransferCmd into initial states
                         //  Console.Write("\n == 1 current cmd is EXT "+block.Cmds[0].ToString()+" put it as initial " );
                         initialStates.Add(bodyGraphForImplPhaseJ[block.TransferCmd]);
@@ -746,14 +674,10 @@ We use bool IsCallCmdExitPoint(Cmd cmd, int yTypeCheckCurrentPhaseNum)  returns 
                         Tuple<int, int> edge = new Tuple<int, int>(source, dest);
                         edges.Add(edge);
                         edgeLabels.Add(edge, GetEdgeType(block.Cmds[0]));
-
-
-
                     }
                     else if (IsSeqComposableParCallCmd(block.Cmds[0], yTypeCheckCurrentPhaseNum))
                     {
                         ParCallCmd currentCmd = block.Cmds[0] as ParCallCmd;
-
                         for (int j = 0; j < currentCmd.CallCmds.Count - 1; j++)
                         {
                             int source = bodyGraphForImplPhaseJ[currentCmd.CallCmds[j]];
@@ -816,7 +740,7 @@ We use bool IsCallCmdExitPoint(Cmd cmd, int yTypeCheckCurrentPhaseNum)  returns 
                     }
                     else if (block.Cmds.Count >= 1)
                     {
-                        if (IsCallCmdExitPoint(block.Cmds[0], yTypeCheckCurrentPhaseNum))
+                        if (IsExitStatement(block.Cmds[0], yTypeCheckCurrentPhaseNum))
                         {
                             // Create artificial final state and put this into final states
                             int targetState = Math.Abs(Guid.NewGuid().GetHashCode());
@@ -829,7 +753,6 @@ We use bool IsCallCmdExitPoint(Cmd cmd, int yTypeCheckCurrentPhaseNum)  returns 
                         }
                         else if (IsParallelCallCmdYield(block.Cmds[0], yTypeCheckCurrentPhaseNum))
                         {
-
                             ParCallCmd targetCmd = block.Cmds[0] as ParCallCmd;
                             targetBlockEntryStates.Add(bodyGraphForImplPhaseJ[targetCmd.CallCmds[0]]);
                         }
@@ -840,7 +763,6 @@ We use bool IsCallCmdExitPoint(Cmd cmd, int yTypeCheckCurrentPhaseNum)  returns 
                         }
                         else if (IsAsyncCallCmd(block.Cmds[0]))
                         {
-
                             if (block.Cmds.Count == 1)
                             {
                                 targetBlockEntryStates.Add(bodyGraphForImplPhaseJ[block.TransferCmd]);
@@ -850,9 +772,7 @@ We use bool IsCallCmdExitPoint(Cmd cmd, int yTypeCheckCurrentPhaseNum)  returns 
                                 int existsNonAsync;
                                 for (existsNonAsync = 0; existsNonAsync < block.Cmds.Count; existsNonAsync++)
                                 {
-
                                     if (IsAsyncCallCmd(block.Cmds[existsNonAsync])) continue;
-
                                     else if (IsParallelCallCmdYield(block.Cmds[existsNonAsync], yTypeCheckCurrentPhaseNum))
                                     {
                                         ParCallCmd targetCmd = block.Cmds[existsNonAsync] as ParCallCmd;
@@ -866,22 +786,19 @@ We use bool IsCallCmdExitPoint(Cmd cmd, int yTypeCheckCurrentPhaseNum)  returns 
                                         break;
 
                                     }
-                                    else if (IsCallCmdExitPoint(block.Cmds[existsNonAsync], yTypeCheckCurrentPhaseNum))
+                                    else if (IsExitStatement(block.Cmds[existsNonAsync], yTypeCheckCurrentPhaseNum))
                                     {
                                         int targetState = Math.Abs(Guid.NewGuid().GetHashCode());
                                         finalStates.Add(targetState);
                                         targetBlockEntryStates.Add(targetState);
                                         break;
-
                                     }
-                                    else if (IsProperActionCmd(block.Cmds[existsNonAsync], yTypeCheckCurrentPhaseNum))
+                                    else if (IsExitStatement(block.Cmds[existsNonAsync], yTypeCheckCurrentPhaseNum))
                                     {
                                         targetBlockEntryStates.Add(bodyGraphForImplPhaseJ[block.Cmds[existsNonAsync]]);
                                         break;
                                     }
-
                                 }
-
                                 if (existsNonAsync == block.Cmds.Count)
                                 {
                                     // put target 
@@ -894,12 +811,170 @@ We use bool IsCallCmdExitPoint(Cmd cmd, int yTypeCheckCurrentPhaseNum)  returns 
             }
             return targetBlockEntryStates;
         }
+        
+        private bool IsAccessToNonQedVar(Cmd cmd) {
+            HashSet<Variable> qedGlobalVariables = moverTypeChecker.QedGlobalVariables();
+            Set globalAccesOfCmd = ComputeGlobalAccesses(cmd);
+           
+            HashSet<Variable> glbAccessOfCmd = new HashSet<Variable>();
+            foreach (object var in globalAccesOfCmd){
+                Variable v = (Variable)var;
+                glbAccessOfCmd.Add(v);
+            }
+            if (glbAccessOfCmd.IsSubsetOf(qedGlobalVariables)) {
+               return false;            
+            }
+            return true;
+        }
 
+        //        
+        private Set FilterGlobalVariables(Set vars)
+        {
+            Set globals = new Set();
+            foreach (object var in vars)
+            {
+                if (var is GlobalVariable)
+                {
+                    globals.Add((GlobalVariable)var);
+                }
+            }
+            return globals;
+        }
 
+        private Set ComputeGlobalAccesses(Cmd cmd)
+        {
+            Set s = ComputeGlobalReads(cmd);
+            s.AddRange(ComputeGlobalWrites(cmd));
 
+            return s;
+        }
+
+        private Set ComputeGlobalReads(Cmd cmd)
+        {
+            return FilterGlobalVariables(ComputeReads(cmd));
+        }
+
+        private Set ComputeGlobalWrites(Cmd cmd)
+        {            
+            return FilterGlobalVariables(ComputeWrites(cmd));
+        }
+
+        private Set ComputeReads(Cmd cmd)
+        {
+            Set vars = new Set();
+
+            if (cmd is AssertCmd)
+            {
+               // AssertCmd assertCmd = cmd as AssertCmd;
+                //assertCmd.Expr.ComputeFreeVariables(vars);  // We can ignore assert cmds
+            }
+            else if (cmd is AssumeCmd)
+            {
+                AssumeCmd assumeCmd = cmd as AssumeCmd;                
+                assumeCmd.Expr.ComputeFreeVariables(vars);               
+            }
+                // Being checked at Shaz's type checeker
+            /*else if (cmd is AssignCmd)
+            {
+                AssignCmd assignCmd = cmd as AssignCmd;
+                foreach (AssignLhs assignLhs in assignCmd.Lhss)
+                {
+                    if (assignLhs is MapAssignLhs)
+                    {
+                        MapAssignLhs mapLhs = assignLhs as MapAssignLhs;
+                        foreach (Expr index in mapLhs.Indexes)
+                        {
+                            index.ComputeFreeVariables(vars);
+                        }
+                    }
+                }
+                foreach (Expr rhs in assignCmd.Rhss)
+                { 
+                    rhs.ComputeFreeVariables(vars);
+                }                
+            }*/
+
+            else if (cmd is HavocCmd)
+            {
+                // noop
+            }
+             // Delegated to Shaz's type checker
+            /*else if (cmd is CallCmd)
+            {
+                CallCmd callCmd = cmd as CallCmd;
+                foreach (Expr var in callCmd.Ins) {var.ComputeFreeVariables(vars); }      
+                
+            }
+            else if(cmd is ParCallCmd){
+                ParCallCmd parCallCmd = cmd as ParCallCmd;
+              
+                foreach (CallCmd parCalle in parCallCmd.CallCmds) {
+                    foreach (Expr var in parCalle.Ins) {
+        //                Console.WriteLine("ParCall rd var " + var.ToString());
+                        var.ComputeFreeVariables(vars);
+                    }
+
+                }            
+            }*/             
+         return vars;
+        }
+        // Discuss and remove
+        private Set ComputeWrites(Cmd cmd)
+        {
+            Set vars = new Set();
+            /*
+            List<Variable> varseq = new List<Variable>();
+            cmd.AddAssignedVariables(varseq);
+            foreach (Variable var in varseq)
+            {
+                vars.Add(var);
+            }           
+            return vars;
+            */
+            if (cmd is AssertCmd)
+            {
+                // noop
+            }
+            else if (cmd is AssumeCmd)
+            {
+                // noop
+            }
+            /*else if (cmd is AssignCmd) // No need being checked in Shaz's typechecker
+            { // Actually no need
+               AssignCmd assignCmd = cmd as AssignCmd;
+               foreach (AssignLhs assignLhs in assignCmd.Lhss)
+                {
+                   vars.Add(assignLhs.DeepAssignedVariable);
+                }
+            } */          
+            else if (cmd is HavocCmd)
+            {
+              //  Console.WriteLine(" Hovoc wrt");
+                HavocCmd havocCmd = cmd as HavocCmd;
+                foreach (Expr var in havocCmd.Vars) {  var.ComputeFreeVariables(vars); }
+            }
+            // Delegated to Shaz's type checker
+              /*
+            else if (cmd is CallCmd)
+            {
+                CallCmd callCmd = cmd as CallCmd;
+                foreach (Expr var in callCmd.Proc.Modifies) { var.ComputeFreeVariables(vars); }
+                foreach (Expr var in callCmd.Outs) {  var.ComputeFreeVariables(vars); }
+            }
+            else if (cmd is ParCallCmd) {             
+                ParCallCmd parCallCmd = cmd as ParCallCmd;
+                foreach (CallCmd parCalle in parCallCmd.CallCmds) {
+                    foreach (Expr var in parCalle.Proc.Modifies) { var.ComputeFreeVariables(vars); }
+                    foreach (Expr var in parCalle.Outs) { var.ComputeFreeVariables(vars); }
+                }            
+            }*/
+            return vars;
+        }
+        
+        //
         private bool IsProperActionCmd(Cmd cmd, int yTypeCheckCurrentPhaseNum)
         {
-            if (!IsCallCmdExitPoint(cmd, yTypeCheckCurrentPhaseNum) &&
+            if (!IsExitStatement(cmd, yTypeCheckCurrentPhaseNum) &&
                 !IsParallelCallCmdYield(cmd, yTypeCheckCurrentPhaseNum) &&
                 !IsSeqComposableParCallCmd(cmd, yTypeCheckCurrentPhaseNum) &&
                 !IsAsyncCallCmd(cmd))
@@ -909,16 +984,18 @@ We use bool IsCallCmdExitPoint(Cmd cmd, int yTypeCheckCurrentPhaseNum)  returns 
             return false;
 
         }
+        private bool IsExitStatement(Cmd cmd, int yTypeCheckCurrentPhaseNum) {
+            if (IsCallCmdExitPoint(cmd, yTypeCheckCurrentPhaseNum) || IsAccessToNonQedVar(cmd)) { return true; }
+            return false;
+        }
 
         private bool IsCallCmdExitPoint(Cmd cmd, int yTypeCheckCurrentPhaseNum)
         {
-            if (cmd is CallCmd /*&& IsParallelCallCmdYield(cmd, yTypeCheckCurrentPhaseNum) &&
-                IsSeqComposableParCallCmd(cmd, yTypeCheckCurrentPhaseNum) */&&
-                !IsAsyncCallCmd(cmd))
+            if (cmd is CallCmd && !IsAsyncCallCmd(cmd))
             {
                 CallCmd callee = cmd as CallCmd;
                 int phaseSpecCallee = moverTypeChecker.FindPhaseNumber(callee.Proc);
-                if (phaseSpecCallee >= yTypeCheckCurrentPhaseNum)
+                if (phaseSpecCallee >= yTypeCheckCurrentPhaseNum )
                 {
 #if DEBUG && !DEBUG_DETAIL
                     Console.Write("\nCall Cmd Check is " + callee.Proc.Name + "\n");
@@ -926,6 +1003,7 @@ We use bool IsCallCmdExitPoint(Cmd cmd, int yTypeCheckCurrentPhaseNum)  returns 
                     return true;
 
                 }
+                
             }
             return false;
         }
@@ -937,6 +1015,7 @@ We use bool IsCallCmdExitPoint(Cmd cmd, int yTypeCheckCurrentPhaseNum)  returns 
                 ParCallCmd callee = cmd as ParCallCmd;
                 foreach (CallCmd parCallee in callee.CallCmds)
                 {
+                   
                     int phaseSpecCallee = moverTypeChecker.FindPhaseNumber(parCallee.Proc);
                     if (phaseSpecCallee >= yTypeCheckCurrentPhaseNum)
                     {
@@ -949,7 +1028,9 @@ We use bool IsCallCmdExitPoint(Cmd cmd, int yTypeCheckCurrentPhaseNum)  returns 
         private bool IsSeqComposableParCallCmd(Cmd cmd, int yTypeCheckCurrentPhaseNum)
         {
             if (cmd is ParCallCmd && !IsParallelCallCmdYield(cmd, yTypeCheckCurrentPhaseNum))
+            {
                 return true;
+            }
             return false;
         }
 
@@ -966,9 +1047,7 @@ We use bool IsCallCmdExitPoint(Cmd cmd, int yTypeCheckCurrentPhaseNum)  returns 
             return false;
         }
 
-        /*
-         * Visitor functions of basic commands
-         */
+        
         private string GetEdgeType(Cmd cmd)
         {
             if (cmd is YieldCmd)
@@ -989,41 +1068,31 @@ We use bool IsCallCmdExitPoint(Cmd cmd, int yTypeCheckCurrentPhaseNum)  returns 
             }
 
             else if (cmd is CallCmd)
-            {
+            {   
                 CallCmd callCmd = cmd as CallCmd;
-
-                foreach (Ensures e in callCmd.Proc.Ensures)
-                {
-                    if (QKeyValue.FindBoolAttribute(e.Attributes, "atomic"))
-                    {
-                        return "A";
-                    }
-                    else if (QKeyValue.FindBoolAttribute(e.Attributes, "right"))
-                    {
-                        return "R";
-                    }
-                    else if (QKeyValue.FindBoolAttribute(e.Attributes, "left"))
-                    {
-                        return "L";
-                    }
-                    else if (QKeyValue.FindBoolAttribute(e.Attributes, "both"))
-                    {
-                        return "B";
-                    }
+                foreach( Ensures e in callCmd.Proc.Ensures){
+                    int pnum;
+                    MoverType actionType = MoverCheck.GetMoverType(e, out pnum);
+                    if (actionType == MoverType.Atomic) return "A";
+                    else if (actionType == MoverType.Both) return "B";
+                    else if (actionType == MoverType.Left) return "L";
+                    else if (actionType == MoverType.Right) return "R";
+                    else if (actionType == MoverType.Top) continue;                
                 }
             }
             else if (cmd is ParCallCmd) // A small trick here : While getting type of SeqCompositional_parCall_commands we pass CallCmd typed parameter
             {
                 return "Y";
             }
-            //rest can only be assigncmd
-            AssignCmd assgnCmd = cmd as AssignCmd;
-            return "Q";
+            //else if (cmd is AssignCmd)
+            //{  //rest can only be assigncmd                
+                return "Q";
+            //}
 
         }
 
 
-        public string PrintGraph(Graph<int> graph, Implementation yTypeChecked, Dictionary<Tuple<int, int>, string> edgeLabels)
+        private string PrintGraph(Graph<int> graph, Implementation yTypeChecked, Dictionary<Tuple<int, int>, string> edgeLabels)
         {
             var s = new StringBuilder();
             s.AppendLine("\nImplementation " + yTypeChecked.Proc.Name + " digraph G {");
@@ -1340,7 +1409,7 @@ We use bool IsCallCmdExitPoint(Cmd cmd, int yTypeCheckCurrentPhaseNum)  returns 
             {
                 Console.WriteLine("\n " + move.SourceState.ToString() + " -- " + this.PrintEpsilon(move.Condition, solver) + " --> " + move.TargetState.ToString() + " \n");
             }
-            string implAutomatonGraphName = ytypeChecked.Proc.Name + "phaseNum__" + yTypeCheckCurrentPhaseNum.ToString();
+            string implAutomatonGraphName = ytypeChecked.Proc.Name + "YieldTypeSafephaseNum__" + yTypeCheckCurrentPhaseNum.ToString();
             solver.ShowGraph(yieldTypeCheckAutomaton, implAutomatonGraphName + ".dmgl");
 #endif
 
@@ -1548,7 +1617,7 @@ We use bool IsCallCmdExitPoint(Cmd cmd, int yTypeCheckCurrentPhaseNum)  returns 
            foreach (var move in yieldTypeCheckAutomaton.GetMoves()) {
                  Console.WriteLine("\n "+ move.SourceState.ToString() + " -- " +  this.PrintEpsilon(move.Condition,solver)+ " --> " + move.TargetState.ToString() +" \n");
            }
-           string implAutomatonGraphName = ytypeChecked.Proc.Name + "phaseNum__" + yTypeCheckCurrentPhaseNum.ToString();
+           string implAutomatonGraphName = ytypeChecked.Proc.Name + "ReachabilityphaseNum__" + yTypeCheckCurrentPhaseNum.ToString();
            solver.ShowGraph(yieldTypeCheckAutomaton, implAutomatonGraphName+".dmgl");
 #endif
 
