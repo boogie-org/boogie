@@ -157,7 +157,7 @@ namespace Microsoft.Boogie
         }
 
 
-        private static Tuple<string,bool> IsYieldReachabilitySafe(Automaton<BvSet> implReachabilityCheckAutomaton, Implementation impl, MoverTypeChecker moverTypeChecker, int phaseNum)
+        private static Tuple<Automaton<BvSet>, bool> IsYieldReachabilitySafe(Automaton<BvSet> implReachabilityCheckAutomaton, Implementation impl, MoverTypeChecker moverTypeChecker, int phaseNum)
         {
             
             List<BvSet> witnessSet;
@@ -168,9 +168,10 @@ namespace Microsoft.Boogie
                                                            yieldCheckerAutomatonSolver,
                                                            out witnessSet);
 
-#if DEBUG && !DEBUG_DETAIL
+
             
             var diffAutomaton = implReachabilityCheckAutomaton.Minus(yieldReachabilityCheckerAutomaton, yieldCheckerAutomatonSolver);
+#if DEBUG && !DEBUG_DETAIL
             string diffAutomatonGraphName = "diffAutomatonReachabilitySafe" + impl.Proc.Name + phaseNum.ToString();
             yieldCheckerAutomatonSolver.ShowGraph(diffAutomaton, diffAutomatonGraphName+".dgml");
 #endif
@@ -187,15 +188,15 @@ namespace Microsoft.Boogie
             if (isNonEmpty)
             {
                 var witness = new String(Array.ConvertAll(witnessSet.ToArray(), bvset => (char)yieldCheckerAutomatonSolver.Choose(bvset)));
-                Tuple<string, bool> errTraceExists = new Tuple<string, bool>(PrettyPrintTrace(witness), false);
+                Tuple<Automaton<BvSet>, bool> errTraceExists = new Tuple<Automaton<BvSet>, bool>(diffAutomaton, false);
 
                 return errTraceExists;
             }
-            Tuple<string, bool> errTraceNotExist = new Tuple<string, bool>("", true);
+            Tuple<Automaton<BvSet>, bool> errTraceNotExist = new Tuple<Automaton<BvSet>, bool>(diffAutomaton, true);
             return errTraceNotExist;
         }
 
-        private static Tuple<string,bool> IsYieldTypeSafe(Automaton<BvSet> implTypeSafeCheckAutomaton, Implementation impl, MoverTypeChecker moverTypeChecker, int phaseNum)
+        private static Tuple<Automaton<BvSet>, bool> IsYieldTypeSafe(Automaton<BvSet> implTypeSafeCheckAutomaton, Implementation impl, MoverTypeChecker moverTypeChecker, int phaseNum)
         {
             List<BvSet> witnessSet;
             var isNonEmpty = Automaton<BvSet>.CheckDifference(
@@ -205,9 +206,10 @@ namespace Microsoft.Boogie
                                                            yieldCheckerAutomatonSolver,
                                                            out witnessSet);
 
-#if DEBUG && !DEBUG_DETAIL
+
 
             var diffAutomaton = implTypeSafeCheckAutomaton.Minus(yieldTypeSafeCheckerAutomaton, yieldCheckerAutomatonSolver);
+#if DEBUG && !DEBUG_DETAIL
             string diffAutomatonGraphName = "diffAutomatonTypeSafety" + impl.Proc.Name + phaseNum.ToString();
             yieldCheckerAutomatonSolver.ShowGraph(diffAutomaton, diffAutomatonGraphName + ".dgml");
 #endif
@@ -224,40 +226,29 @@ namespace Microsoft.Boogie
             if (isNonEmpty)
             {
                 var witness = new String(Array.ConvertAll(witnessSet.ToArray(), bvset => (char)yieldCheckerAutomatonSolver.Choose(bvset)));
-                Tuple<string, bool> errTraceExists = new Tuple<string, bool>(PrettyPrintTrace(witness), false);
+                Tuple<Automaton<BvSet>, bool> errTraceExists = new Tuple<Automaton<BvSet>, bool>(diffAutomaton, false);
                 return errTraceExists;
             }
 
-            Tuple<string, bool> errTraceNotExist = new Tuple<string, bool>("", true);
+            Tuple<Automaton<BvSet>, bool> errTraceNotExist = new Tuple<Automaton<BvSet>, bool>(diffAutomaton, true);
             return errTraceNotExist;
         }
-        private static string PrettyPrintTrace(String errorTrace) {
+      
+        private static void/*string*/ PrintErrorTrace(Dictionary<int, Absy> cmds, Automaton<BvSet> errorAutomaton, Implementation yTypeChecked)
+        {
+         //   var s = new StringBuilder();
+            String s = "";
+           
+            s += "\nError Trace " + yTypeChecked.Proc.Name + "{" + "\n";
+            foreach (var move in errorAutomaton.GetMoves())
+            {
+                s += " [Line :" + cmds[move.SourceState].Line.ToString() + "] , [Cmd :"+ cmds[move.SourceState].ToString() + " ]"  + " \n";
+            }           
+            s += "}";
 
-            List<string> formattedErrorTrace = new List<string>();
-            for (int i = 0; i < errorTrace.Length; i++) {
-                if (errorTrace[i] == 'A') { formattedErrorTrace.Add("[action : atomic]"); }
-                else if (errorTrace[i] == '1') { formattedErrorTrace.Add("[action : assume]"); }
-                else if (errorTrace[i] == '2') { formattedErrorTrace.Add("[action : assume false]"); }
-                else if (errorTrace[i] == '3') { formattedErrorTrace.Add("[action : local | havoc]"); }
-                else if (errorTrace[i] == '4') { formattedErrorTrace.Add("[action : local | havoc false]"); }
-                else if (errorTrace[i] == '5') { formattedErrorTrace.Add("[action: right mover]"); }
-                else if (errorTrace[i] == '6') { formattedErrorTrace.Add("[action : right mover false]"); }
-                else if (errorTrace[i] == '7') { formattedErrorTrace.Add("[action : both mover]"); }
-                else if (errorTrace[i] == '8') { formattedErrorTrace.Add("[action : both mover false]"); }
-                else if (errorTrace[i] == '9') { formattedErrorTrace.Add("[aciton : left mover]"); }
-                else if (errorTrace[i] == 'B') { formattedErrorTrace.Add("[action : atomic mover false]"); }
-                else if (errorTrace[i] == 'C') { formattedErrorTrace.Add("[action : left mover false]"); }
-                else if (errorTrace[i] == 'D') { formattedErrorTrace.Add("     [yield]"); }            
-            }
-            string errTrace = "\n";
-            for (int i = 0; i < formattedErrorTrace.Count - 1; i++) {
-
-               errTrace +=  formattedErrorTrace[i] + "\n" + "\t|" + "\n" + "\t|"+"\n" + "\tV" + "\n" ;  
-            }
-            errTrace += formattedErrorTrace[formattedErrorTrace.Count - 1] + "\n";
-            return errTrace;
+            Console.Write(s);
+           // return s;
         }
-
         public static void PerformYieldSafeCheck(MoverTypeChecker moverTypeChecker)
         {
             Program yieldTypeCheckedProgram = moverTypeChecker.program;
@@ -274,27 +265,42 @@ namespace Microsoft.Boogie
                 for (int i = 0; i < phaseIntervals.Count; i++) // take current phase check num from each interval
                 {
                     int yTypeCheckCurrentPhaseNum = phaseIntervals[i].Item1;
-                    Tuple<Automaton<BvSet>,Automaton<BvSet>> yieldCheckAutomatons=yieldTypeCheckerPerImpl.YieldTypeCheckAutomaton(impl, phaseNumSpecImpl, yTypeCheckCurrentPhaseNum);
-                    Tuple<string, bool> isYieldReachable = IsYieldReachabilitySafe(yieldCheckAutomatons.Item2, impl, moverTypeChecker, yTypeCheckCurrentPhaseNum);
-                    Tuple<string, bool> isYieldTypeSafe = IsYieldTypeSafe(yieldCheckAutomatons.Item1, impl, moverTypeChecker, yTypeCheckCurrentPhaseNum);
+                    Tuple<Tuple<Dictionary<int, Absy>, Automaton<BvSet>>, Tuple<Dictionary<int, Absy>, Automaton<BvSet>>> yieldCheckAutomatons = 
+                            yieldTypeCheckerPerImpl.YieldTypeCheckAutomaton(impl, phaseNumSpecImpl, yTypeCheckCurrentPhaseNum);
+
+                    Tuple<Automaton<BvSet>, bool> isYieldReachable = IsYieldReachabilitySafe(yieldCheckAutomatons.Item2.Item2, impl, moverTypeChecker, yTypeCheckCurrentPhaseNum);
+                    Tuple<Automaton<BvSet>, bool> isYieldTypeSafe = IsYieldTypeSafe(yieldCheckAutomatons.Item1.Item2, impl, moverTypeChecker, yTypeCheckCurrentPhaseNum);
+                    Automaton<BvSet> isYieldTypeSafeErrorAut = isYieldTypeSafe.Item1;
+                    Automaton<BvSet> isYieldReachableErrorAut = isYieldReachable.Item1;
+
+                    Dictionary<int, Absy> isYieldTypeSafeCmds = yieldCheckAutomatons.Item1.Item1;
+                    Dictionary<int, Absy> isYieldReachableSafeCmds = yieldCheckAutomatons.Item2.Item1;
 
                     if (!isYieldReachable.Item2 && !isYieldTypeSafe.Item2)
                     {
-                        moverTypeChecker.Error(impl, "\n Body of " + impl.Proc.Name + " is not yield_type_safe at phase " + "[ " + phaseIntervals[i].Item1.ToString()+ "  " +phaseIntervals[i].Item2.ToString()+" ]" + "\n" + isYieldTypeSafe.Item1);
-                        moverTypeChecker.Error(impl, "\n Body of " + impl.Proc.Name + " is not yield_reachable_safe at phase " + "[ " + phaseIntervals[i].Item1.ToString() + "  " + phaseIntervals[i].Item2.ToString() + " ]" + "\n" + isYieldReachable.Item1 );
+                        moverTypeChecker.Error(impl, "\n Body of " + impl.Proc.Name + " is not yield_type_safe at phase " + "[ " + phaseIntervals[i].Item1.ToString()+ "  " +phaseIntervals[i].Item2.ToString()+" ]" 
+                            + "\n");
+                        PrintErrorTrace(isYieldTypeSafeCmds, isYieldTypeSafeErrorAut, impl);
+                        moverTypeChecker.Error(impl, "\n Body of " + impl.Proc.Name + " is not yield_reachable_safe at phase " + "[ " + phaseIntervals[i].Item1.ToString() + "  " + phaseIntervals[i].Item2.ToString() + " ]" + "\n" 
+                            );                        
+                        PrintErrorTrace(isYieldReachableSafeCmds,isYieldReachableErrorAut,impl);
                     }
                     else if (isYieldReachable.Item2 && !isYieldTypeSafe.Item2)
                     {
-                        moverTypeChecker.Error(impl, "\n Body of " + impl.Proc.Name + " is not yield_type_safe at phase " + "[ " + phaseIntervals[i].Item1.ToString() + "  " + phaseIntervals[i].Item2.ToString() + " ]" + "\n" + isYieldTypeSafe.Item1 );
+                        moverTypeChecker.Error(impl, "\n Body of " + impl.Proc.Name + " is not yield_type_safe at phase " + "[ " + phaseIntervals[i].Item1.ToString() + "  " + phaseIntervals[i].Item2.ToString() + " ]" + "\n" 
+                            );
+                        PrintErrorTrace(isYieldTypeSafeCmds, isYieldTypeSafeErrorAut, impl);
                     }
                     else if (!isYieldReachable.Item2 && isYieldTypeSafe.Item2)
                     {
-                        moverTypeChecker.Error(impl, "\n Body of " + impl.Proc.Name + " is not yield_reachable_safe at phase " + "[ " + phaseIntervals[i].Item1.ToString() + "  " + phaseIntervals[i].Item2.ToString() + " ]" + "\n" + isYieldReachable.Item1 );
+                        moverTypeChecker.Error(impl, "\n Body of " + impl.Proc.Name + " is not yield_reachable_safe at phase " + "[ " + phaseIntervals[i].Item1.ToString() + "  " + phaseIntervals[i].Item2.ToString() + " ]" + "\n" 
+                            );
+                        PrintErrorTrace(isYieldReachableSafeCmds, isYieldReachableErrorAut, impl);
                     }
                     else if (isYieldReachable.Item2 && isYieldTypeSafe.Item2)
                     {
 #if DEBUG && !DEBUG_DETAIL
-                           Console.WriteLine("Implementation " + impl.Proc.Name + " is yield safe at phase " + "[ " + phaseIntervals[i].Item1.ToString()+ "  " +phaseIntervals[i].Item2.ToString()+" ]");
+                          // Console.WriteLine("Implementation " + impl.Proc.Name + " is yield safe at phase " + "[ " + phaseIntervals[i].Item1.ToString()+ "  " +phaseIntervals[i].Item2.ToString()+" ]");
 #endif
                     }
                 }
@@ -312,8 +318,8 @@ namespace Microsoft.Boogie
             solver = new CharSetSolver(BitWidth.BV7);
             this.moverTypeChecker = moverTypeChecker;
         }
- 
-        public Tuple<Automaton<BvSet>, Automaton<BvSet>> YieldTypeCheckAutomaton(Implementation ytypeChecked, int specPhaseNumImpl, int yTypeCheckCurrentPhaseNum)
+
+        public Tuple<Tuple<Dictionary<int, Absy>, Automaton<BvSet>>, Tuple<Dictionary<int, Absy>, Automaton<BvSet>>> YieldTypeCheckAutomaton(Implementation ytypeChecked, int specPhaseNumImpl, int yTypeCheckCurrentPhaseNum)
         {
 
             Dictionary<Tuple<int, int>, string> edgeLabels = new Dictionary<Tuple<int, int>, string>(); // Tuple<int,int> --> "Y" : State(k) --Y--> State(k+1)
@@ -329,8 +335,13 @@ namespace Microsoft.Boogie
             Console.Write("\n YieldTypeSafe Graph is created for phase: \n" + yTypeCheckCurrentPhaseNum.ToString());
             Console.Write(PrintGraph(bodyGraphForImplPhaseJ, ytypeChecked, edgeLabels));
 #endif
-            Automaton<BvSet> implYieldTypeSafeCheckAutomaton = BuildAutomatonYieldTypeSafe(bodyGraphForImplPhaseJ, edgeLabels, initialStates, finalStates, ytypeChecked, yTypeCheckCurrentPhaseNum);
-
+            Automaton<BvSet> implYieldTypeSafeCheckAut = BuildAutomatonYieldTypeSafe(bodyGraphForImplPhaseJ, edgeLabels, initialStates, finalStates, ytypeChecked, yTypeCheckCurrentPhaseNum);
+            Dictionary<int, Absy> nodeToAbysYieldTypeSafe = new Dictionary<int, Absy>();
+            foreach (KeyValuePair<Absy, int> state in abysToNode)
+            {
+                nodeToAbysYieldTypeSafe[state.Value] = state.Key;
+            }
+            Tuple<Dictionary<int, Absy>, Automaton<BvSet>> implYieldTypeSafeCheckAutomaton = new Tuple<Dictionary<int, Absy>, Automaton<BvSet>>(nodeToAbysYieldTypeSafe, implYieldTypeSafeCheckAut);
 
             // Update edges w.r.t yield reaching. VocabX{True,False} 
             PostProcessGraph(bodyGraphForImplPhaseJ, edgeLabels);
@@ -340,9 +351,18 @@ namespace Microsoft.Boogie
             Console.Write(PrintGraph(bodyGraphForImplPhaseJ, ytypeChecked, edgeLabels));
 #endif
             //Build Automaton from graph created
-            Automaton<BvSet> implYieldReachCheckAutomaton = BuildAutomatonYieldReachSafe(bodyGraphForImplPhaseJ, edgeLabels, initialStates, finalStates, ytypeChecked, yTypeCheckCurrentPhaseNum); // Last to arguments are just only for showGraph of automaton lib
+            Automaton<BvSet> implYieldReachCheckAut = BuildAutomatonYieldReachSafe(bodyGraphForImplPhaseJ, edgeLabels, initialStates, finalStates, ytypeChecked, yTypeCheckCurrentPhaseNum); // Last to arguments are just only for showGraph of automaton lib
+            Dictionary<int, Absy> nodeToAbysYieldReachSafe = new Dictionary< int,Absy>();
+            foreach (KeyValuePair<Absy, int> state in abysToNode) {
+                nodeToAbysYieldReachSafe[state.Value] = state.Key;
+            }
 
-            Tuple<Automaton<BvSet>, Automaton<BvSet>> yieldCheckImplAutomaton = new Tuple<Automaton<BvSet>, Automaton<BvSet>>(implYieldTypeSafeCheckAutomaton, implYieldReachCheckAutomaton);
+            Tuple<Dictionary<int, Absy>, Automaton<BvSet>> implYieldReachCheckAutomaton = new Tuple<Dictionary<int, Absy>, Automaton<BvSet>>(nodeToAbysYieldReachSafe, implYieldReachCheckAut);
+
+
+            Tuple<Tuple<Dictionary<int, Absy>, Automaton<BvSet>>, Tuple<Dictionary<int, Absy>, Automaton<BvSet>>> yieldCheckImplAutomaton =
+                new Tuple<Tuple<Dictionary<int, Absy>, Automaton<BvSet>>, Tuple<Dictionary<int, Absy>, Automaton<BvSet>>>(implYieldTypeSafeCheckAutomaton, implYieldReachCheckAutomaton);
+       //     Tuple<Automaton<BvSet>, Automaton<BvSet>> yieldCheckImplAutomaton = new Tuple<Automaton<BvSet>, Automaton<BvSet>>(implYieldTypeSafeCheckAutomaton, implYieldReachCheckAutomaton);
             return yieldCheckImplAutomaton;
         }
 
@@ -1445,6 +1465,7 @@ namespace Microsoft.Boogie
                  Console.WriteLine("\n "+ move.SourceState.ToString() + " -- " +  solver.PrettyPrint(move.Condition)+ " --> " + move.TargetState.ToString() +" \n");
            }
 #endif
+
             return yieldTypeCheckAutomaton;
 
         }
