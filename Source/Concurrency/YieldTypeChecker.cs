@@ -157,8 +157,9 @@ namespace Microsoft.Boogie
         }
 
 
-        private static bool IsYieldReachabilitySafe(Automaton<BvSet> implReachabilityCheckAutomaton, Implementation impl, MoverTypeChecker moverTypeChecker, int phaseNum)
+        private static Tuple<string,bool> IsYieldReachabilitySafe(Automaton<BvSet> implReachabilityCheckAutomaton, Implementation impl, MoverTypeChecker moverTypeChecker, int phaseNum)
         {
+            
             List<BvSet> witnessSet;
             var isNonEmpty = Automaton<BvSet>.CheckDifference(
                                                            implReachabilityCheckAutomaton,
@@ -186,14 +187,15 @@ namespace Microsoft.Boogie
             if (isNonEmpty)
             {
                 var witness = new String(Array.ConvertAll(witnessSet.ToArray(), bvset => (char)yieldCheckerAutomatonSolver.Choose(bvset)));
-                moverTypeChecker.Error(impl, "\n Body of " + impl.Proc.Name + " has invalid trace of actions w.r.t yield reachability :  " + witness + "\n");
-                return false;
-            }
+                Tuple<string, bool> errTraceExists = new Tuple<string, bool>(PrettyPrintTrace(witness), false);
 
-            return true;
+                return errTraceExists;
+            }
+            Tuple<string, bool> errTraceNotExist = new Tuple<string, bool>("", true);
+            return errTraceNotExist;
         }
 
-        private static bool IsYieldTypeSafe(Automaton<BvSet> implTypeSafeCheckAutomaton, Implementation impl, MoverTypeChecker moverTypeChecker, int phaseNum)
+        private static Tuple<string,bool> IsYieldTypeSafe(Automaton<BvSet> implTypeSafeCheckAutomaton, Implementation impl, MoverTypeChecker moverTypeChecker, int phaseNum)
         {
             List<BvSet> witnessSet;
             var isNonEmpty = Automaton<BvSet>.CheckDifference(
@@ -222,11 +224,38 @@ namespace Microsoft.Boogie
             if (isNonEmpty)
             {
                 var witness = new String(Array.ConvertAll(witnessSet.ToArray(), bvset => (char)yieldCheckerAutomatonSolver.Choose(bvset)));
-                moverTypeChecker.Error(impl, "\n Body of " + impl.Proc.Name + " has invalid trace of actions w.r.t yield type safety :  " + witness + "\n");
-                return false;
+                Tuple<string, bool> errTraceExists = new Tuple<string, bool>(PrettyPrintTrace(witness), false);
+                return errTraceExists;
             }
 
-            return true;
+            Tuple<string, bool> errTraceNotExist = new Tuple<string, bool>("", true);
+            return errTraceNotExist;
+        }
+        private static string PrettyPrintTrace(String errorTrace) {
+
+            List<string> formattedErrorTrace = new List<string>();
+            for (int i = 0; i < errorTrace.Length; i++) {
+                if (errorTrace[i] == 'A') { formattedErrorTrace.Add("[action : atomic]"); }
+                else if (errorTrace[i] == '1') { formattedErrorTrace.Add("[action : assume]"); }
+                else if (errorTrace[i] == '2') { formattedErrorTrace.Add("[action : assume false]"); }
+                else if (errorTrace[i] == '3') { formattedErrorTrace.Add("[action : local | havoc]"); }
+                else if (errorTrace[i] == '4') { formattedErrorTrace.Add("[action : local | havoc false]"); }
+                else if (errorTrace[i] == '5') { formattedErrorTrace.Add("[action: right mover]"); }
+                else if (errorTrace[i] == '6') { formattedErrorTrace.Add("[action : right mover false]"); }
+                else if (errorTrace[i] == '7') { formattedErrorTrace.Add("[action : both mover]"); }
+                else if (errorTrace[i] == '8') { formattedErrorTrace.Add("[action : both mover false]"); }
+                else if (errorTrace[i] == '9') { formattedErrorTrace.Add("[aciton : left mover]"); }
+                else if (errorTrace[i] == 'B') { formattedErrorTrace.Add("[action : atomic mover false]"); }
+                else if (errorTrace[i] == 'C') { formattedErrorTrace.Add("[action : left mover false]"); }
+                else if (errorTrace[i] == 'D') { formattedErrorTrace.Add("     [yield]"); }            
+            }
+            string errTrace = "\n";
+            for (int i = 0; i < formattedErrorTrace.Count - 1; i++) {
+
+               errTrace +=  formattedErrorTrace[i] + "\n" + "\t|" + "\n" + "\t|"+"\n" + "\tV" + "\n" ;  
+            }
+            errTrace += formattedErrorTrace[formattedErrorTrace.Count - 1] + "\n";
+            return errTrace;
         }
 
         public static void PerformYieldSafeCheck(MoverTypeChecker moverTypeChecker)
@@ -246,28 +275,26 @@ namespace Microsoft.Boogie
                 {
                     int yTypeCheckCurrentPhaseNum = phaseIntervals[i].Item1;
                     Tuple<Automaton<BvSet>,Automaton<BvSet>> yieldCheckAutomatons=yieldTypeCheckerPerImpl.YieldTypeCheckAutomaton(impl, phaseNumSpecImpl, yTypeCheckCurrentPhaseNum);
+                    Tuple<string, bool> isYieldReachable = IsYieldReachabilitySafe(yieldCheckAutomatons.Item2, impl, moverTypeChecker, yTypeCheckCurrentPhaseNum);
+                    Tuple<string, bool> isYieldTypeSafe = IsYieldTypeSafe(yieldCheckAutomatons.Item1, impl, moverTypeChecker, yTypeCheckCurrentPhaseNum);
 
-                    if (!IsYieldReachabilitySafe(yieldCheckAutomatons.Item2, impl, moverTypeChecker, yTypeCheckCurrentPhaseNum) &&
-                        !IsYieldTypeSafe(yieldCheckAutomatons.Item1, impl, moverTypeChecker, yTypeCheckCurrentPhaseNum))
+                    if (!isYieldReachable.Item2 && !isYieldTypeSafe.Item2)
                     {
-                        moverTypeChecker.Error(impl, "\n Body of " + impl.Proc.Name + " is not yield_type safe " + "\n");
-                        moverTypeChecker.Error(impl, "\n Body of " + impl.Proc.Name + " is not yield_reachable safe " + "\n");
-
+                        moverTypeChecker.Error(impl, "\n Body of " + impl.Proc.Name + " is not yield_type_safe at phase " + "[ " + phaseIntervals[i].Item1.ToString()+ "  " +phaseIntervals[i].Item2.ToString()+" ]" + "\n" + isYieldTypeSafe.Item1);
+                        moverTypeChecker.Error(impl, "\n Body of " + impl.Proc.Name + " is not yield_reachable_safe at phase " + "[ " + phaseIntervals[i].Item1.ToString() + "  " + phaseIntervals[i].Item2.ToString() + " ]" + "\n" + isYieldReachable.Item1 );
                     }
-                    else if (IsYieldReachabilitySafe(yieldCheckAutomatons.Item2, impl, moverTypeChecker, yTypeCheckCurrentPhaseNum) &&
-                            !IsYieldTypeSafe(yieldCheckAutomatons.Item1, impl, moverTypeChecker, yTypeCheckCurrentPhaseNum))
+                    else if (isYieldReachable.Item2 && !isYieldTypeSafe.Item2)
                     {
-                        moverTypeChecker.Error(impl, "\n Body of " + impl.Proc.Name + " is not yield_type safe " + "\n");
+                        moverTypeChecker.Error(impl, "\n Body of " + impl.Proc.Name + " is not yield_type_safe at phase " + "[ " + phaseIntervals[i].Item1.ToString() + "  " + phaseIntervals[i].Item2.ToString() + " ]" + "\n" + isYieldTypeSafe.Item1 );
                     }
-                    else if (!IsYieldReachabilitySafe(yieldCheckAutomatons.Item2, impl, moverTypeChecker, yTypeCheckCurrentPhaseNum) &&
-                           IsYieldTypeSafe(yieldCheckAutomatons.Item1, impl, moverTypeChecker, yTypeCheckCurrentPhaseNum))
+                    else if (!isYieldReachable.Item2 && isYieldTypeSafe.Item2)
                     {
-                        moverTypeChecker.Error(impl, "\n Body of " + impl.Proc.Name + " is not yield_reachable safe " + "\n");
+                        moverTypeChecker.Error(impl, "\n Body of " + impl.Proc.Name + " is not yield_reachable_safe at phase " + "[ " + phaseIntervals[i].Item1.ToString() + "  " + phaseIntervals[i].Item2.ToString() + " ]" + "\n" + isYieldReachable.Item1 );
                     }
-                    else if (IsYieldReachabilitySafe(yieldCheckAutomatons.Item2, impl, moverTypeChecker, yTypeCheckCurrentPhaseNum) &&
-                       IsYieldTypeSafe(yieldCheckAutomatons.Item1, impl, moverTypeChecker, yTypeCheckCurrentPhaseNum)) {
+                    else if (isYieldReachable.Item2 && isYieldTypeSafe.Item2)
+                    {
 #if DEBUG && !DEBUG_DETAIL
-                           Console.WriteLine("Implementation " + impl.Proc.Name + " is yield safe at phase " + yTypeCheckCurrentPhaseNum.ToString());
+                           Console.WriteLine("Implementation " + impl.Proc.Name + " is yield safe at phase " + "[ " + phaseIntervals[i].Item1.ToString()+ "  " +phaseIntervals[i].Item2.ToString()+" ]");
 #endif
                     }
                 }
@@ -277,7 +304,6 @@ namespace Microsoft.Boogie
 
     class YieldTypeCheckerCore
     {
-
         int stateCounter;
         MoverTypeChecker moverTypeChecker;
         CharSetSolver solver;
@@ -286,7 +312,6 @@ namespace Microsoft.Boogie
             solver = new CharSetSolver(BitWidth.BV7);
             this.moverTypeChecker = moverTypeChecker;
         }
-
  
         public Tuple<Automaton<BvSet>, Automaton<BvSet>> YieldTypeCheckAutomaton(Implementation ytypeChecked, int specPhaseNumImpl, int yTypeCheckCurrentPhaseNum)
         {
