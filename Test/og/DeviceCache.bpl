@@ -37,7 +37,12 @@ requires {:phase 1} xls' == mapconstbool(true);
     var {:linear "tid"} tid: X;
     var {:linear "tid"} xls: [X]bool;
 
+    yield;
+
     call xls := Init(xls');
+    
+    yield;
+    assert {:phase 1} Inv(ghostLock, currsize, newsize);
 
     while (*)
     invariant {:phase 1} Inv(ghostLock, currsize, newsize);
@@ -92,6 +97,7 @@ ensures {:phase 1} 0 <= bytesRead && bytesRead <= size;
 READ_DEVICE:
     par  tid := YieldToWriteCache(tid);
     call tid := WriteCache(tid, start + size);
+    par  tid := YieldToWriteCache(tid);
     call tid := acquire(tid);
     call tid, tmp := ReadNewsize(tid);
     call tid := WriteCurrsize(tid, tmp);
@@ -100,6 +106,7 @@ READ_DEVICE:
 COPY_TO_BUFFER:
     par tid := YieldToReadCache(tid);
     call tid := ReadCache(tid, start, bytesRead);
+    par tid := YieldToReadCache(tid);
 }
 
 procedure {:yields} WriteCache({:linear "tid"} tid': X, index: int) returns ({:linear "tid"} tid: X)
@@ -120,6 +127,7 @@ ensures {:phase 1} Inv(ghostLock, currsize, newsize) && old(currsize) == currsiz
         call tid := WriteCacheEntry(tid, j);
 	j := j + 1;
     }
+    par tid := YieldToWriteCache(tid);
 }
 
 procedure {:yields} ReadCache({:linear "tid"} tid': X, start: int, bytesRead: int) returns ({:linear "tid"} tid: X)
@@ -144,6 +152,7 @@ ensures {:phase 1} Inv(ghostLock, currsize, newsize);
         call tid := ReadCacheEntry(tid, start + j);
         j := j + 1;
     }
+    par tid := YieldToReadCache(tid);
 }
 
 procedure {:yields} Init({:linear "tid"} xls':[X]bool) returns ({:linear "tid"} xls:[X]bool);

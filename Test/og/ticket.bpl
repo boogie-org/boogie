@@ -30,7 +30,11 @@ requires xls' == mapconstbool(true);
     var {:linear "tid"} tid: X;
     var {:linear "tid"} xls: [X]bool;
 
+    yield;
+
     call xls := Init(xls');
+
+    par Yield1() | Yield2() | Yield();
 
     while (*)
     invariant {:phase 1} Inv1(T, t);
