@@ -12,7 +12,7 @@ var {:qed} cs: X;
 var {:qed} T: [int]bool;
 
 procedure Allocate({:linear "tid"} xls':[X]bool) returns ({:linear "tid"} xls: [X]bool, {:linear "tid"} xl: X);
-ensures xl != nil;
+ensures {:phase 1} {:phase 2} xl != nil;
 
 function Inv1(tickets: [int]bool, ticket: int): (bool)
 {
@@ -25,7 +25,7 @@ function Inv2(tickets: [int]bool, ticket: int, lock: X): (bool)
 }
 
 procedure {:yields} {:entrypoint} main({:linear "tid"} xls':[X]bool)
-requires xls' == mapconstbool(true);
+requires {:phase 1} {:phase 2} xls' == mapconstbool(true);
 {
     var {:linear "tid"} tid: X;
     var {:linear "tid"} xls: [X]bool;

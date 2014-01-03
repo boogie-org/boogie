@@ -155,7 +155,6 @@ ensures {:phase 1} Inv(ghostLock, currsize, newsize);
         j := j + 1;
 	par tid := YieldToReadCache(tid);
     }
-    par tid := YieldToReadCache(tid);
 }
 
 procedure {:yields} Init({:linear "tid"} xls':[X]bool) returns ({:linear "tid"} xls:[X]bool);
