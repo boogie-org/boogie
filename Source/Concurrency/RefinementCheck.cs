@@ -18,6 +18,7 @@ namespace Microsoft.Boogie
         LinearTypeChecker linearTypeChecker;
         MoverTypeChecker moverTypeChecker;
 
+
         public static void AddCheckers(LinearTypeChecker linearTypeChecker, MoverTypeChecker moverTypeChecker)
         {
             RefinementCheck refinementChecking = new RefinementCheck(linearTypeChecker,moverTypeChecker);
