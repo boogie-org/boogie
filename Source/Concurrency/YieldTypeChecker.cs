@@ -74,88 +74,30 @@ namespace Microsoft.Boogie
                                            });
             minimizedYieldTypeSafeCheckerAutomaton = yieldTypeSafeCheckerAutomaton.Determinize(yieldCheckerAutomatonSolver).Minimize(yieldCheckerAutomatonSolver);
 
-#if DEBUG && !DEBUG_DETAIL
+#if DEBUG && DEBUG_DETAIL
             yieldCheckerAutomatonSolver.ShowGraph(minimizedReachabilityCheckerAutomaton, "minimizedReachabilityPropertyAutomaton.dgml");
             yieldCheckerAutomatonSolver.ShowGraph(minimizedYieldTypeSafeCheckerAutomaton, "minimizedTypeSafePropertyAutomaton.dgml");
 #endif
         }
  
-        private static List<Tuple<int, int>> ComputePhaseIntervals(Implementation impl, int specPhaseNumImpl, MoverTypeChecker moverTypeChecker)
+        private static HashSet<int> ComputePhaseIntervals(  MoverTypeChecker moverTypeChecker)
         {
-            HashSet<CallCmd> callCmdsInImpl = new HashSet<CallCmd>(); //  callCmdsInImpl[Implementation] ==> Set = { call1, call2, call3 ... }
-            HashSet<ParCallCmd> parCallCmdsInImpl = new HashSet<ParCallCmd>();
-            List<Tuple<int, int>> phaseIntervals = new List<Tuple<int, int>>(); // [MinValue ph0 ] [ph0 ph1] [ph1 ph2] ..... [phk phk+1] intervals
+            HashSet<int> phases = new HashSet<int>();
 
-            //Get max of callcmds in 
-            foreach (Block b in impl.Blocks)
+            foreach (var decl in moverTypeChecker.program.TopLevelDeclarations)
             {
-                for (int i = 0; i < b.Cmds.Count; i++)
-                {
-                    ParCallCmd parCallCmd = b.Cmds[i] as ParCallCmd;
-                    if (parCallCmd == null) continue;
-                    parCallCmdsInImpl.Add(parCallCmd);
-                }
-            }
+                Procedure proc = decl as Procedure;
+                if (proc == null) continue;
+                int phaseNum = moverTypeChecker.FindPhaseNumber(proc);
+                if(phaseNum != int.MaxValue)phases.Add(moverTypeChecker.FindPhaseNumber(proc));
 
-            // Compute CallCmds inside impl
-            foreach (Block b in impl.Blocks)
-            {
-                for (int i = 0; i < b.Cmds.Count; i++)
-                {
-                    CallCmd callCmd = b.Cmds[i] as CallCmd;
-                    if (callCmd == null) continue;
-                    callCmdsInImpl.Add(callCmd);
-                }
             }
-
-            //Collect phase numbers of CallCmds inside impl
-            HashSet<int> callCmdPhaseNumSet = new HashSet<int>();
-
-            foreach (ParCallCmd parCallCmd in parCallCmdsInImpl)
-            {
-                List<int> phaseNumsInParCall = new List<int>();
-                foreach (CallCmd callInParCallCmd in parCallCmd.CallCmds)
-                {
-                    phaseNumsInParCall.Add(moverTypeChecker.FindPhaseNumber(callInParCallCmd.Proc));
-                }
-                callCmdPhaseNumSet.Add(phaseNumsInParCall.Max());
-            }
-
-            foreach (CallCmd callCmd in callCmdsInImpl)
-            {
-                int tmpPhaseNum = moverTypeChecker.FindPhaseNumber(callCmd.Proc);
-                callCmdPhaseNumSet.Add(tmpPhaseNum);
-            }
-            callCmdPhaseNumSet.Add(specPhaseNumImpl);
-
-            List<int> callCmdPhaseNumList = callCmdPhaseNumSet.ToList();
-            callCmdPhaseNumList.Sort();
-
-            //Create Phase Intervals
-            for (int i = 0; i < callCmdPhaseNumList.Count; i++)
-            {
-                //create the initial phase (-inf leastPhaseNum]
-                if (i == 0)
-                {
-                    Tuple<int, int> initTuple = new Tuple<int, int>(int.MinValue, callCmdPhaseNumList[i]);
-                    phaseIntervals.Add(initTuple);
-                }
-                else // create other phase intervals 
-                {
-                    Tuple<int, int> intervalToInsert = new Tuple<int, int>(callCmdPhaseNumList[i - 1] + 1, callCmdPhaseNumList[i]);
-                    phaseIntervals.Add(intervalToInsert);
-                }
-            }
-#if (DEBUG && !DEBUG_DETAIL)
-            Console.Write("\n Number of phases is " + phaseIntervals.Count.ToString());
-            for (int i = 0; i < phaseIntervals.Count; i++)
-            {
-                Console.Write("\n Phase " + i.ToString() + "[" + phaseIntervals[i].Item1.ToString() + "," + phaseIntervals[i].Item2.ToString() + "]" + "\n");
-            }
-#endif
-            return phaseIntervals;
+            foreach (int phs in moverTypeChecker.assertionPhaseNums) {
+                phases.Add(phs);
+            }         
+            return phases;
         }
-
+        
 
         private static Tuple<Automaton<BvSet>, bool> IsYieldReachabilitySafe(Automaton<BvSet> implReachabilityCheckAutomaton, Implementation impl, MoverTypeChecker moverTypeChecker, int phaseNum)
         {
@@ -188,6 +130,7 @@ namespace Microsoft.Boogie
             if (isNonEmpty)
             {
                 var witness = new String(Array.ConvertAll(witnessSet.ToArray(), bvset => (char)yieldCheckerAutomatonSolver.Choose(bvset)));
+                Console.WriteLine("error trace " + witness);
                 Tuple<Automaton<BvSet>, bool> errTraceExists = new Tuple<Automaton<BvSet>, bool>(diffAutomaton, false);
 
                 return errTraceExists;
@@ -226,6 +169,7 @@ namespace Microsoft.Boogie
             if (isNonEmpty)
             {
                 var witness = new String(Array.ConvertAll(witnessSet.ToArray(), bvset => (char)yieldCheckerAutomatonSolver.Choose(bvset)));
+                Console.WriteLine("error trace " + witness);
                 Tuple<Automaton<BvSet>, bool> errTraceExists = new Tuple<Automaton<BvSet>, bool>(diffAutomaton, false);
                 return errTraceExists;
             }
@@ -246,13 +190,19 @@ namespace Microsoft.Boogie
             }           
             s += "}";
 
-            Console.Write(s);
+            Console.WriteLine(s);
            // return s;
         }
         public static void PerformYieldSafeCheck(MoverTypeChecker moverTypeChecker)
         {
             Program yieldTypeCheckedProgram = moverTypeChecker.program;
             YieldTypeChecker regExprToAuto = new YieldTypeChecker();
+
+            HashSet<int> phases = ComputePhaseIntervals(moverTypeChecker);
+#if DEBUG && !DEBUG_DETAIL
+            Console.Write("Number of phases is " + phases.Count.ToString());
+            foreach (int i in phases) { Console.WriteLine(" phase is " + i.ToString()); }
+#endif
             foreach (var decl in yieldTypeCheckedProgram.TopLevelDeclarations)
             {
                 Implementation impl = decl as Implementation;
@@ -260,11 +210,10 @@ namespace Microsoft.Boogie
                 int phaseNumSpecImpl = moverTypeChecker.FindPhaseNumber(impl.Proc);
 
                 YieldTypeCheckerCore yieldTypeCheckerPerImpl = new YieldTypeCheckerCore(moverTypeChecker);
-                List<Tuple<int, int>> phaseIntervals = ComputePhaseIntervals(impl, phaseNumSpecImpl, moverTypeChecker); // Compute intervals
-
-                for (int i = 0; i < phaseIntervals.Count; i++) // take current phase check num from each interval
-                {
-                    int yTypeCheckCurrentPhaseNum = phaseIntervals[i].Item1;
+            
+                foreach (int phase in phases) // take current phase check num from each interval
+                {                    
+                    int yTypeCheckCurrentPhaseNum =phase ;
                     Tuple<Tuple<Dictionary<int, Absy>, Automaton<BvSet>>, Tuple<Dictionary<int, Absy>, Automaton<BvSet>>> yieldCheckAutomatons = 
                             yieldTypeCheckerPerImpl.YieldTypeCheckAutomaton(impl, phaseNumSpecImpl, yTypeCheckCurrentPhaseNum);
 
@@ -278,24 +227,20 @@ namespace Microsoft.Boogie
 
                     if (!isYieldReachable.Item2 && !isYieldTypeSafe.Item2)
                     {
-                        moverTypeChecker.Error(impl, "\n Body of " + impl.Proc.Name + " is not yield_type_safe at phase " + "[ " + phaseIntervals[i].Item1.ToString()+ "  " +phaseIntervals[i].Item2.ToString()+" ]" 
-                            + "\n");
-                        PrintErrorTrace(isYieldTypeSafeCmds, isYieldTypeSafeErrorAut, impl);
-                        moverTypeChecker.Error(impl, "\n Body of " + impl.Proc.Name + " is not yield_reachable_safe at phase " + "[ " + phaseIntervals[i].Item1.ToString() + "  " + phaseIntervals[i].Item2.ToString() + " ]" + "\n" 
-                            );                        
-                        PrintErrorTrace(isYieldReachableSafeCmds,isYieldReachableErrorAut,impl);
+                        moverTypeChecker.Error(impl, "\n Body of " + impl.Proc.Name + " is not yield_type_safe at phase " + phase.ToString()+ "\n");
+                       // PrintErrorTrace(isYieldTypeSafeCmds, isYieldTypeSafeErrorAut, impl);
+                        moverTypeChecker.Error(impl, "\n Body of " + impl.Proc.Name + " is not yield_reachable_safe at phase " + phase.ToString()+ "\n" );                        
+                      //  PrintErrorTrace(isYieldReachableSafeCmds,isYieldReachableErrorAut,impl);
                     }
                     else if (isYieldReachable.Item2 && !isYieldTypeSafe.Item2)
                     {
-                        moverTypeChecker.Error(impl, "\n Body of " + impl.Proc.Name + " is not yield_type_safe at phase " + "[ " + phaseIntervals[i].Item1.ToString() + "  " + phaseIntervals[i].Item2.ToString() + " ]" + "\n" 
-                            );
-                        PrintErrorTrace(isYieldTypeSafeCmds, isYieldTypeSafeErrorAut, impl);
+                        moverTypeChecker.Error(impl, "\n Body of " + impl.Proc.Name + " is not yield_type_safe at phase " + phase.ToString() + "\n" );
+                      //  PrintErrorTrace(isYieldTypeSafeCmds, isYieldTypeSafeErrorAut, impl);
                     }
                     else if (!isYieldReachable.Item2 && isYieldTypeSafe.Item2)
                     {
-                        moverTypeChecker.Error(impl, "\n Body of " + impl.Proc.Name + " is not yield_reachable_safe at phase " + "[ " + phaseIntervals[i].Item1.ToString() + "  " + phaseIntervals[i].Item2.ToString() + " ]" + "\n" 
-                            );
-                        PrintErrorTrace(isYieldReachableSafeCmds, isYieldReachableErrorAut, impl);
+                        moverTypeChecker.Error(impl, "\n Body of " + impl.Proc.Name + " is not yield_reachable_safe at phase " + phase.ToString() + "\n");
+                        //PrintErrorTrace(isYieldReachableSafeCmds, isYieldReachableErrorAut, impl);
                     }
                     else if (isYieldReachable.Item2 && isYieldTypeSafe.Item2)
                     {
@@ -356,10 +301,7 @@ namespace Microsoft.Boogie
             foreach (KeyValuePair<Absy, int> state in abysToNode) {
                 nodeToAbysYieldReachSafe[state.Value] = state.Key;
             }
-
             Tuple<Dictionary<int, Absy>, Automaton<BvSet>> implYieldReachCheckAutomaton = new Tuple<Dictionary<int, Absy>, Automaton<BvSet>>(nodeToAbysYieldReachSafe, implYieldReachCheckAut);
-
-
             Tuple<Tuple<Dictionary<int, Absy>, Automaton<BvSet>>, Tuple<Dictionary<int, Absy>, Automaton<BvSet>>> yieldCheckImplAutomaton =
                 new Tuple<Tuple<Dictionary<int, Absy>, Automaton<BvSet>>, Tuple<Dictionary<int, Absy>, Automaton<BvSet>>>(implYieldTypeSafeCheckAutomaton, implYieldReachCheckAutomaton);
        //     Tuple<Automaton<BvSet>, Automaton<BvSet>> yieldCheckImplAutomaton = new Tuple<Automaton<BvSet>, Automaton<BvSet>>(implYieldTypeSafeCheckAutomaton, implYieldReachCheckAutomaton);
