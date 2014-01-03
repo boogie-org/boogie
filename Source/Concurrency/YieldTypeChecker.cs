@@ -79,8 +79,8 @@ namespace Microsoft.Boogie
             yieldCheckerAutomatonSolver.ShowGraph(minimizedYieldTypeSafeCheckerAutomaton, "minimizedTypeSafePropertyAutomaton.dgml");
 #endif
         }
- 
-        private static HashSet<int> ComputePhaseIntervals(  MoverTypeChecker moverTypeChecker)
+
+        private static HashSet<int> ComputePhaseIntervals(MoverTypeChecker moverTypeChecker)
         {
             HashSet<int> phases = new HashSet<int>();
 
@@ -89,18 +89,19 @@ namespace Microsoft.Boogie
                 Procedure proc = decl as Procedure;
                 if (proc == null) continue;
                 int phaseNum = moverTypeChecker.FindPhaseNumber(proc);
-                if(phaseNum != int.MaxValue)phases.Add(moverTypeChecker.FindPhaseNumber(proc));
+                if (phaseNum != int.MaxValue) phases.Add(moverTypeChecker.FindPhaseNumber(proc));
 
             }
-            foreach (int phs in moverTypeChecker.assertionPhaseNums) {
+            foreach (int phs in moverTypeChecker.assertionPhaseNums)
+            {
                 phases.Add(phs);
-            }         
+            }
             return phases;
-        }        
+        }
 
         private static Tuple<Automaton<BvSet>, bool> IsYieldReachabilitySafe(Automaton<BvSet> implReachabilityCheckAutomaton, Implementation impl, MoverTypeChecker moverTypeChecker, int phaseNum)
         {
-            
+
             List<BvSet> witnessSet;
             var isNonEmpty = Automaton<BvSet>.CheckDifference(
                                                            implReachabilityCheckAutomaton,
@@ -110,7 +111,7 @@ namespace Microsoft.Boogie
                                                            out witnessSet);
 
 
-            
+
             var diffAutomaton = implReachabilityCheckAutomaton.Minus(yieldReachabilityCheckerAutomaton, yieldCheckerAutomatonSolver);
 #if DEBUG && !DEBUG_DETAIL
             string diffAutomatonGraphName = "diffAutomatonReachabilitySafe" + impl.Proc.Name + phaseNum.ToString();
@@ -176,21 +177,21 @@ namespace Microsoft.Boogie
             Tuple<Automaton<BvSet>, bool> errTraceNotExist = new Tuple<Automaton<BvSet>, bool>(diffAutomaton, true);
             return errTraceNotExist;
         }
-      
+
         private static void/*string*/ PrintErrorTrace(Dictionary<int, Absy> cmds, Automaton<BvSet> errorAutomaton, Implementation yTypeChecked)
         {
-         //   var s = new StringBuilder();
+            //   var s = new StringBuilder();
             String s = "";
-           
+
             s += "\nError Trace " + yTypeChecked.Proc.Name + "{" + "\n";
             foreach (var move in errorAutomaton.GetMoves())
             {
-                s += " [Line :" + cmds[move.SourceState].Line.ToString() + "] , [Cmd :"+ cmds[move.SourceState].ToString() + " ]"  + " \n";
-            }           
+                s += " [Line :" + cmds[move.SourceState].Line.ToString() + "] , [Cmd :" + cmds[move.SourceState].ToString() + " ]" + " \n";
+            }
             s += "}";
 
             Console.WriteLine(s);
-           // return s;
+            // return s;
         }
         public static void PerformYieldSafeCheck(MoverTypeChecker moverTypeChecker)
         {
@@ -202,22 +203,20 @@ namespace Microsoft.Boogie
             Console.Write("Number of phases is " + phases.Count.ToString());
             foreach (int i in phases) { Console.WriteLine(" phase is " + i.ToString()); }
 #endif
-            foreach (var decl in yieldTypeCheckedProgram.TopLevelDeclarations)
-            {
-                Implementation impl = decl as Implementation;
-                if (impl == null) continue;
-                int phaseNumSpecImpl = moverTypeChecker.FindPhaseNumber(impl.Proc);
-               // if(phaseNumSpecImpl == int.MaxValue) continue;
 
-                YieldTypeCheckerCore yieldTypeCheckerPerImpl = new YieldTypeCheckerCore(moverTypeChecker);
-            
-                foreach (int phase in phases) // take current phase check num from each interval
+            YieldTypeCheckerCore yieldTypeCheckerPerImpl = new YieldTypeCheckerCore(moverTypeChecker);
+
+            foreach (int yTypeCheckCurrentPhaseNum in phases) // take current phase check num from each interval
+            {                
+                foreach (var decl in yieldTypeCheckedProgram.TopLevelDeclarations)
                 {
-                    if (phase > phaseNumSpecImpl) continue;
-                    int yTypeCheckCurrentPhaseNum =phase ;
-                    Tuple<Tuple<Dictionary<int, Absy>, Automaton<BvSet>>, Tuple<Dictionary<int, Absy>, Automaton<BvSet>>> yieldCheckAutomatons = 
-                            yieldTypeCheckerPerImpl.YieldTypeCheckAutomaton(impl, phaseNumSpecImpl, yTypeCheckCurrentPhaseNum);
+                    Implementation impl = decl as Implementation;
+                    if (impl == null) continue;
+                    int phaseNumSpecImpl = moverTypeChecker.FindPhaseNumber(impl.Proc);
+                    if (yTypeCheckCurrentPhaseNum > phaseNumSpecImpl) continue;
 
+                    Tuple<Tuple<Dictionary<int, Absy>, Automaton<BvSet>>, Tuple<Dictionary<int, Absy>, Automaton<BvSet>>> yieldCheckAutomatons =
+                            yieldTypeCheckerPerImpl.YieldTypeCheckAutomaton(impl, phaseNumSpecImpl, yTypeCheckCurrentPhaseNum);
                     Tuple<Automaton<BvSet>, bool> isYieldReachable = IsYieldReachabilitySafe(yieldCheckAutomatons.Item2.Item2, impl, moverTypeChecker, yTypeCheckCurrentPhaseNum);
                     Tuple<Automaton<BvSet>, bool> isYieldTypeSafe = IsYieldTypeSafe(yieldCheckAutomatons.Item1.Item2, impl, moverTypeChecker, yTypeCheckCurrentPhaseNum);
                     Automaton<BvSet> isYieldTypeSafeErrorAut = isYieldTypeSafe.Item1;
@@ -228,19 +227,19 @@ namespace Microsoft.Boogie
 
                     if (!isYieldReachable.Item2 && !isYieldTypeSafe.Item2)
                     {
-                        moverTypeChecker.Error(impl, "\n Body of " + impl.Proc.Name + " is not yield_type_safe at phase " + phase.ToString()+ "\n");
+                        moverTypeChecker.Error(impl, "\n Body of " + impl.Proc.Name + " is not yield_type_safe at phase " + yTypeCheckCurrentPhaseNum.ToString() + "\n");
                         PrintErrorTrace(isYieldTypeSafeCmds, isYieldTypeSafeErrorAut, impl);
-                        moverTypeChecker.Error(impl, "\n Body of " + impl.Proc.Name + " is not yield_reachable_safe at phase " + phase.ToString()+ "\n" );                        
-                        PrintErrorTrace(isYieldReachableSafeCmds,isYieldReachableErrorAut,impl);
+                        moverTypeChecker.Error(impl, "\n Body of " + impl.Proc.Name + " is not yield_reachable_safe at phase " + yTypeCheckCurrentPhaseNum.ToString() + "\n");
+                        PrintErrorTrace(isYieldReachableSafeCmds, isYieldReachableErrorAut, impl);
                     }
                     else if (isYieldReachable.Item2 && !isYieldTypeSafe.Item2)
                     {
-                        moverTypeChecker.Error(impl, "\n Body of " + impl.Proc.Name + " is not yield_type_safe at phase " + phase.ToString() + "\n" );
+                        moverTypeChecker.Error(impl, "\n Body of " + impl.Proc.Name + " is not yield_type_safe at phase " + yTypeCheckCurrentPhaseNum.ToString() + "\n");
                         PrintErrorTrace(isYieldTypeSafeCmds, isYieldTypeSafeErrorAut, impl);
                     }
                     else if (!isYieldReachable.Item2 && isYieldTypeSafe.Item2)
                     {
-                        moverTypeChecker.Error(impl, "\n Body of " + impl.Proc.Name + " is not yield_reachable_safe at phase " + phase.ToString() + "\n");
+                        moverTypeChecker.Error(impl, "\n Body of " + impl.Proc.Name + " is not yield_reachable_safe at phase " + yTypeCheckCurrentPhaseNum.ToString() + "\n");
                         PrintErrorTrace(isYieldReachableSafeCmds, isYieldReachableErrorAut, impl);
                     }
                     else if (isYieldReachable.Item2 && isYieldTypeSafe.Item2)
@@ -298,14 +297,15 @@ namespace Microsoft.Boogie
 #endif
             //Build Automaton from graph created
             Automaton<BvSet> implYieldReachCheckAut = BuildAutomatonYieldReachSafe(bodyGraphForImplPhaseJ, edgeLabels, initialStates, finalStates, ytypeChecked, yTypeCheckCurrentPhaseNum); // Last to arguments are just only for showGraph of automaton lib
-            Dictionary<int, Absy> nodeToAbysYieldReachSafe = new Dictionary< int,Absy>();
-            foreach (KeyValuePair<Absy, int> state in abysToNode) {
+            Dictionary<int, Absy> nodeToAbysYieldReachSafe = new Dictionary<int, Absy>();
+            foreach (KeyValuePair<Absy, int> state in abysToNode)
+            {
                 nodeToAbysYieldReachSafe[state.Value] = state.Key;
             }
             Tuple<Dictionary<int, Absy>, Automaton<BvSet>> implYieldReachCheckAutomaton = new Tuple<Dictionary<int, Absy>, Automaton<BvSet>>(nodeToAbysYieldReachSafe, implYieldReachCheckAut);
             Tuple<Tuple<Dictionary<int, Absy>, Automaton<BvSet>>, Tuple<Dictionary<int, Absy>, Automaton<BvSet>>> yieldCheckImplAutomaton =
                 new Tuple<Tuple<Dictionary<int, Absy>, Automaton<BvSet>>, Tuple<Dictionary<int, Absy>, Automaton<BvSet>>>(implYieldTypeSafeCheckAutomaton, implYieldReachCheckAutomaton);
-       //     Tuple<Automaton<BvSet>, Automaton<BvSet>> yieldCheckImplAutomaton = new Tuple<Automaton<BvSet>, Automaton<BvSet>>(implYieldTypeSafeCheckAutomaton, implYieldReachCheckAutomaton);
+            //     Tuple<Automaton<BvSet>, Automaton<BvSet>> yieldCheckImplAutomaton = new Tuple<Automaton<BvSet>, Automaton<BvSet>>(implYieldTypeSafeCheckAutomaton, implYieldReachCheckAutomaton);
             return yieldCheckImplAutomaton;
         }
 
@@ -434,13 +434,13 @@ namespace Microsoft.Boogie
                         else if (IsExitStatement(block.Cmds[i], yTypeCheckCurrentPhaseNum) && IsParallelCallCmdYield(block.Cmds[i + 1], yTypeCheckCurrentPhaseNum))
                         {
                             // Add state number CallCmd of ParallelCmd
-                            ParCallCmd nextCmd = block.Cmds[i+1] as ParCallCmd;
+                            ParCallCmd nextCmd = block.Cmds[i + 1] as ParCallCmd;
                             initialStates.Add(bodyGraphForImplPhaseJ[nextCmd.CallCmds[0]]);
                         }
                         else if (IsExitStatement(block.Cmds[i], yTypeCheckCurrentPhaseNum) && IsSeqComposableParCallCmd(block.Cmds[i + 1], yTypeCheckCurrentPhaseNum))
                         {
                             // Add state number CallCmd of ParallelCmd
-                            ParCallCmd nextCmd = block.Cmds[i+1] as ParCallCmd;
+                            ParCallCmd nextCmd = block.Cmds[i + 1] as ParCallCmd;
                             initialStates.Add(bodyGraphForImplPhaseJ[nextCmd.CallCmds[0]]);
 
                         }
@@ -799,18 +799,21 @@ namespace Microsoft.Boogie
             }
             return targetBlockEntryStates;
         }
-        
-        private bool IsAccessToNonQedVar(Cmd cmd) {
+
+        private bool IsAccessToNonQedVar(Cmd cmd)
+        {
             HashSet<Variable> qedGlobalVariables = moverTypeChecker.QedGlobalVariables();
             Set globalAccesOfCmd = ComputeGlobalAccesses(cmd);
-           
+
             HashSet<Variable> glbAccessOfCmd = new HashSet<Variable>();
-            foreach (object var in globalAccesOfCmd){
+            foreach (object var in globalAccesOfCmd)
+            {
                 Variable v = (Variable)var;
                 glbAccessOfCmd.Add(v);
             }
-            if (glbAccessOfCmd.IsSubsetOf(qedGlobalVariables)) {
-               return false;            
+            if (glbAccessOfCmd.IsSubsetOf(qedGlobalVariables))
+            {
+                return false;
             }
             return true;
         }
@@ -843,7 +846,7 @@ namespace Microsoft.Boogie
         }
 
         private Set ComputeGlobalWrites(Cmd cmd)
-        {            
+        {
             return FilterGlobalVariables(ComputeWrites(cmd));
         }
 
@@ -853,15 +856,15 @@ namespace Microsoft.Boogie
 
             if (cmd is AssertCmd)
             {
-               // AssertCmd assertCmd = cmd as AssertCmd;
+                // AssertCmd assertCmd = cmd as AssertCmd;
                 //assertCmd.Expr.ComputeFreeVariables(vars);  // We can ignore assert cmds
             }
             else if (cmd is AssumeCmd)
             {
-                AssumeCmd assumeCmd = cmd as AssumeCmd;                
-                assumeCmd.Expr.ComputeFreeVariables(vars);               
+                AssumeCmd assumeCmd = cmd as AssumeCmd;
+                assumeCmd.Expr.ComputeFreeVariables(vars);
             }
-                // Being checked at Shaz's type checeker
+            // Being checked at Shaz's type checeker
             /*else if (cmd is AssignCmd)
             {
                 AssignCmd assignCmd = cmd as AssignCmd;
@@ -886,7 +889,7 @@ namespace Microsoft.Boogie
             {
                 // noop
             }
-             // Delegated to Shaz's type checker
+            // Delegated to Shaz's type checker
             /*else if (cmd is CallCmd)
             {
                 CallCmd callCmd = cmd as CallCmd;
@@ -903,8 +906,8 @@ namespace Microsoft.Boogie
                     }
 
                 }            
-            }*/             
-         return vars;
+            }*/
+            return vars;
         }
         // Discuss and remove
         private Set ComputeWrites(Cmd cmd)
@@ -934,31 +937,31 @@ namespace Microsoft.Boogie
                 {
                    vars.Add(assignLhs.DeepAssignedVariable);
                 }
-            } */          
+            } */
             else if (cmd is HavocCmd)
             {
-              //  Console.WriteLine(" Hovoc wrt");
+                //  Console.WriteLine(" Hovoc wrt");
                 HavocCmd havocCmd = cmd as HavocCmd;
-                foreach (Expr var in havocCmd.Vars) {  var.ComputeFreeVariables(vars); }
+                foreach (Expr var in havocCmd.Vars) { var.ComputeFreeVariables(vars); }
             }
             // Delegated to Shaz's type checker
-              /*
-            else if (cmd is CallCmd)
-            {
-                CallCmd callCmd = cmd as CallCmd;
-                foreach (Expr var in callCmd.Proc.Modifies) { var.ComputeFreeVariables(vars); }
-                foreach (Expr var in callCmd.Outs) {  var.ComputeFreeVariables(vars); }
-            }
-            else if (cmd is ParCallCmd) {             
-                ParCallCmd parCallCmd = cmd as ParCallCmd;
-                foreach (CallCmd parCalle in parCallCmd.CallCmds) {
-                    foreach (Expr var in parCalle.Proc.Modifies) { var.ComputeFreeVariables(vars); }
-                    foreach (Expr var in parCalle.Outs) { var.ComputeFreeVariables(vars); }
-                }            
-            }*/
+            /*
+          else if (cmd is CallCmd)
+          {
+              CallCmd callCmd = cmd as CallCmd;
+              foreach (Expr var in callCmd.Proc.Modifies) { var.ComputeFreeVariables(vars); }
+              foreach (Expr var in callCmd.Outs) {  var.ComputeFreeVariables(vars); }
+          }
+          else if (cmd is ParCallCmd) {             
+              ParCallCmd parCallCmd = cmd as ParCallCmd;
+              foreach (CallCmd parCalle in parCallCmd.CallCmds) {
+                  foreach (Expr var in parCalle.Proc.Modifies) { var.ComputeFreeVariables(vars); }
+                  foreach (Expr var in parCalle.Outs) { var.ComputeFreeVariables(vars); }
+              }            
+          }*/
             return vars;
         }
-        
+
         //
         private bool IsProperActionCmd(Cmd cmd, int yTypeCheckCurrentPhaseNum)
         {
@@ -972,7 +975,8 @@ namespace Microsoft.Boogie
             return false;
 
         }
-        private bool IsExitStatement(Cmd cmd, int yTypeCheckCurrentPhaseNum) {
+        private bool IsExitStatement(Cmd cmd, int yTypeCheckCurrentPhaseNum)
+        {
             if (IsCallCmdExitPoint(cmd, yTypeCheckCurrentPhaseNum) || IsAccessToNonQedVar(cmd)) { return true; }
             return false;
         }
@@ -983,7 +987,7 @@ namespace Microsoft.Boogie
             {
                 CallCmd callee = cmd as CallCmd;
                 int phaseSpecCallee = moverTypeChecker.FindPhaseNumber(callee.Proc);
-                if (phaseSpecCallee >= yTypeCheckCurrentPhaseNum )
+                if (phaseSpecCallee >= yTypeCheckCurrentPhaseNum)
                 {
 #if DEBUG && !DEBUG_DETAIL
                     Console.Write("\nCall Cmd Check is " + callee.Proc.Name + "\n");
@@ -991,7 +995,7 @@ namespace Microsoft.Boogie
                     return true;
 
                 }
-                
+
             }
             return false;
         }
@@ -1003,7 +1007,7 @@ namespace Microsoft.Boogie
                 ParCallCmd callee = cmd as ParCallCmd;
                 foreach (CallCmd parCallee in callee.CallCmds)
                 {
-                   
+
                     int phaseSpecCallee = moverTypeChecker.FindPhaseNumber(parCallee.Proc);
                     if (phaseSpecCallee >= yTypeCheckCurrentPhaseNum)
                     {
@@ -1035,7 +1039,7 @@ namespace Microsoft.Boogie
             return false;
         }
 
-        
+
         private string GetEdgeType(Cmd cmd)
         {
             if (cmd is YieldCmd)
@@ -1056,9 +1060,10 @@ namespace Microsoft.Boogie
             }
 
             else if (cmd is CallCmd)
-            {   
+            {
                 CallCmd callCmd = cmd as CallCmd;
-                foreach( Ensures e in callCmd.Proc.Ensures){
+                foreach (Ensures e in callCmd.Proc.Ensures)
+                {
                     int pnum;
                     MoverType actionType = MoverCheck.GetMoverType(e, out pnum);
                     if (actionType == MoverType.Atomic) return "A";
@@ -1074,7 +1079,7 @@ namespace Microsoft.Boogie
             }
             //else if (cmd is AssignCmd)
             //{  //rest can only be assigncmd                
-                return "Q";
+            return "Q";
             //}
 
         }
