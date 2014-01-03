@@ -18,7 +18,6 @@ namespace Microsoft.Boogie
         LinearTypeChecker linearTypeChecker;
         MoverTypeChecker moverTypeChecker;
 
-
         public static void AddCheckers(LinearTypeChecker linearTypeChecker, MoverTypeChecker moverTypeChecker)
         {
             RefinementCheck refinementChecking = new RefinementCheck(linearTypeChecker, moverTypeChecker);
@@ -373,182 +372,181 @@ namespace Microsoft.Boogie
                 b.Cmds = newCmdList;
             }
         }
-    }
-    
-    sealed class MySubstituter : Duplicator
-    {
-        private readonly Substitution outsideOld;
-        private readonly Substitution insideOld;
-        [ContractInvariantMethod]
-        void ObjectInvariant()
+
+        sealed class MySubstituter : Duplicator
         {
-            Contract.Invariant(insideOld != null);
-        }
-
-        public MySubstituter(Substitution outsideOld, Substitution insideOld)
-            : base()
-        {
-            Contract.Requires(outsideOld != null && insideOld != null);
-            this.outsideOld = outsideOld;
-            this.insideOld = insideOld;
-        }
-
-        private bool insideOldExpr = false;
-
-        public override Expr VisitIdentifierExpr(IdentifierExpr node)
-        {
-            Contract.Ensures(Contract.Result<Expr>() != null);
-            Expr e = null;
-
-            if (insideOldExpr)
+            private readonly Substitution outsideOld;
+            private readonly Substitution insideOld;
+            [ContractInvariantMethod]
+            void ObjectInvariant()
             {
-                e = insideOld(node.Decl);
+                Contract.Invariant(insideOld != null);
             }
-            else
+
+            public MySubstituter(Substitution outsideOld, Substitution insideOld)
+                : base()
             {
-                e = outsideOld(node.Decl);
+                Contract.Requires(outsideOld != null && insideOld != null);
+                this.outsideOld = outsideOld;
+                this.insideOld = insideOld;
             }
-            return e == null ? base.VisitIdentifierExpr(node) : e;
-        }
 
-        public override Expr VisitOldExpr(OldExpr node)
-        {
-            Contract.Ensures(Contract.Result<Expr>() != null);
-            bool previouslyInOld = insideOldExpr;
-            insideOldExpr = true;
-            Expr tmp = (Expr)this.Visit(node.Expr);
-            OldExpr e = new OldExpr(node.tok, tmp);
-            insideOldExpr = previouslyInOld;
-            return e;
-        }
-    }
+            private bool insideOldExpr = false;
 
-    class TransitionRelationComputation
-    {
-        private Program program;
-        private ActionInfo first;
-        private ActionInfo second;
-        private Stack<Block> dfsStack;
-        private Expr transitionRelation;
-        private Dictionary<Variable, Variable> regularToOldGVar;
-        private Dictionary<Variable, Variable> regularToOldOVar;
-
-        public TransitionRelationComputation(Program program, ActionInfo second, Dictionary<Variable, Variable> regularToOldGVar, Dictionary<Variable, Variable> regularToOldOVar)
-        {
-            this.program = program;
-            this.first = null;
-            this.second = second;
-            this.regularToOldGVar = regularToOldGVar;
-            this.regularToOldOVar = regularToOldOVar;
-            this.dfsStack = new Stack<Block>();
-            this.transitionRelation = Expr.False;
-        }
-
-        public Expr Compute()
-        {
-            Search(second.thatAction.Blocks[0], false);
-            Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
-            List<Variable> boundVars = new List<Variable>();
-            if (first != null)
+            public override Expr VisitIdentifierExpr(IdentifierExpr node)
             {
-                foreach (Variable v in first.thisAction.LocVars)
+                Contract.Ensures(Contract.Result<Expr>() != null);
+                Expr e = null;
+
+                if (insideOldExpr)
+                {
+                    e = insideOld(node.Decl);
+                }
+                else
+                {
+                    e = outsideOld(node.Decl);
+                }
+                return e == null ? base.VisitIdentifierExpr(node) : e;
+            }
+
+            public override Expr VisitOldExpr(OldExpr node)
+            {
+                Contract.Ensures(Contract.Result<Expr>() != null);
+                bool previouslyInOld = insideOldExpr;
+                insideOldExpr = true;
+                Expr tmp = (Expr)this.Visit(node.Expr);
+                OldExpr e = new OldExpr(node.tok, tmp);
+                insideOldExpr = previouslyInOld;
+                return e;
+            }
+        }
+
+        class TransitionRelationComputation
+        {
+            private Program program;
+            private ActionInfo first;
+            private ActionInfo second;
+            private Stack<Block> dfsStack;
+            private Expr transitionRelation;
+            private Dictionary<Variable, Variable> regularToOldGVar;
+            private Dictionary<Variable, Variable> regularToOldOVar;
+
+            public TransitionRelationComputation(Program program, ActionInfo second, Dictionary<Variable, Variable> regularToOldGVar, Dictionary<Variable, Variable> regularToOldOVar)
+            {
+                this.program = program;
+                this.first = null;
+                this.second = second;
+                this.regularToOldGVar = regularToOldGVar;
+                this.regularToOldOVar = regularToOldOVar;
+                this.dfsStack = new Stack<Block>();
+                this.transitionRelation = Expr.False;
+            }
+
+            public Expr Compute()
+            {
+                Search(second.thatAction.Blocks[0], false);
+                Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
+                List<Variable> boundVars = new List<Variable>();
+                if (first != null)
+                {
+                    foreach (Variable v in first.thisAction.LocVars)
+                    {
+                        BoundVariable bv = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, v.Name, v.TypedIdent.Type));
+                        map[v] = new IdentifierExpr(Token.NoToken, bv);
+                        boundVars.Add(bv);
+                    }
+                }
+                foreach (Variable v in second.thatAction.LocVars)
                 {
                     BoundVariable bv = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, v.Name, v.TypedIdent.Type));
                     map[v] = new IdentifierExpr(Token.NoToken, bv);
                     boundVars.Add(bv);
                 }
+                Substitution subst = Substituter.SubstitutionFromHashtable(map);
+                if (boundVars.Count > 0)
+                    return new ExistsExpr(Token.NoToken, boundVars, Substituter.Apply(subst, transitionRelation));
+                else
+                    return transitionRelation;
             }
-            foreach (Variable v in second.thatAction.LocVars)
-            {
-                BoundVariable bv = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, v.Name, v.TypedIdent.Type));
-                map[v] = new IdentifierExpr(Token.NoToken, bv);
-                boundVars.Add(bv);
-            }
-            Substitution subst = Substituter.SubstitutionFromHashtable(map);
-            if (boundVars.Count > 0)
-                return new ExistsExpr(Token.NoToken, boundVars, Substituter.Apply(subst, transitionRelation));
-            else
-                return transitionRelation;
-        }
 
-        private Expr CalculatePathCondition()
-        {
-            Expr returnExpr = Expr.True;
-            foreach (Variable v in program.GlobalVariables())
+            private Expr CalculatePathCondition()
             {
-                var eqExpr = Expr.Eq(new IdentifierExpr(Token.NoToken, v), new OldExpr(Token.NoToken, new IdentifierExpr(Token.NoToken, v)));
-                returnExpr = Expr.And(eqExpr, returnExpr);
-            }
-            if (first != null)
-            {
-                foreach (Variable v in first.thisOutParams)
+                Expr returnExpr = Expr.True;
+                foreach (Variable v in program.GlobalVariables())
                 {
                     var eqExpr = Expr.Eq(new IdentifierExpr(Token.NoToken, v), new OldExpr(Token.NoToken, new IdentifierExpr(Token.NoToken, v)));
                     returnExpr = Expr.And(eqExpr, returnExpr);
                 }
-            }
-            foreach (Variable v in second.thatOutParams)
-            {
-                var eqExpr = Expr.Eq(new IdentifierExpr(Token.NoToken, v), new OldExpr(Token.NoToken, new IdentifierExpr(Token.NoToken, v)));
-                returnExpr = Expr.And(eqExpr, returnExpr);
-            }
-            Block[] dfsStackAsArray = dfsStack.Reverse().ToArray();
-            for (int i = dfsStackAsArray.Length - 1; i >= 0; i--)
-            {
-                Block b = dfsStackAsArray[i];
-                for (int j = b.Cmds.Count - 1; j >= 0; j--)
+                if (first != null)
                 {
-                    Cmd cmd = b.Cmds[j];
-                    if (cmd is AssumeCmd)
+                    foreach (Variable v in first.thisOutParams)
                     {
-                        AssumeCmd assumeCmd = cmd as AssumeCmd;
-                        returnExpr = Expr.And(new OldExpr(Token.NoToken, assumeCmd.Expr), returnExpr);
+                        var eqExpr = Expr.Eq(new IdentifierExpr(Token.NoToken, v), new OldExpr(Token.NoToken, new IdentifierExpr(Token.NoToken, v)));
+                        returnExpr = Expr.And(eqExpr, returnExpr);
                     }
-                    else if (cmd is AssignCmd)
+                }
+                foreach (Variable v in second.thatOutParams)
+                {
+                    var eqExpr = Expr.Eq(new IdentifierExpr(Token.NoToken, v), new OldExpr(Token.NoToken, new IdentifierExpr(Token.NoToken, v)));
+                    returnExpr = Expr.And(eqExpr, returnExpr);
+                }
+                Block[] dfsStackAsArray = dfsStack.Reverse().ToArray();
+                for (int i = dfsStackAsArray.Length - 1; i >= 0; i--)
+                {
+                    Block b = dfsStackAsArray[i];
+                    for (int j = b.Cmds.Count - 1; j >= 0; j--)
                     {
-                        AssignCmd assignCmd = (cmd as AssignCmd).AsSimpleAssignCmd;
-                        Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
-                        for (int k = 0; k < assignCmd.Lhss.Count; k++)
+                        Cmd cmd = b.Cmds[j];
+                        if (cmd is AssumeCmd)
                         {
-                            map[assignCmd.Lhss[k].DeepAssignedVariable] = assignCmd.Rhss[k];
+                            AssumeCmd assumeCmd = cmd as AssumeCmd;
+                            returnExpr = Expr.And(new OldExpr(Token.NoToken, assumeCmd.Expr), returnExpr);
                         }
-                        Substitution subst = Substituter.SubstitutionFromHashtable(new Dictionary<Variable, Expr>());
-                        Substitution oldSubst = Substituter.SubstitutionFromHashtable(map);
-                        returnExpr = (Expr)new MySubstituter(subst, oldSubst).Visit(returnExpr);
+                        else if (cmd is AssignCmd)
+                        {
+                            AssignCmd assignCmd = (cmd as AssignCmd).AsSimpleAssignCmd;
+                            Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
+                            for (int k = 0; k < assignCmd.Lhss.Count; k++)
+                            {
+                                map[assignCmd.Lhss[k].DeepAssignedVariable] = assignCmd.Rhss[k];
+                            }
+                            Substitution subst = Substituter.SubstitutionFromHashtable(new Dictionary<Variable, Expr>());
+                            Substitution oldSubst = Substituter.SubstitutionFromHashtable(map);
+                            returnExpr = (Expr)new MySubstituter(subst, oldSubst).Visit(returnExpr);
+                        }
+                        else
+                        {
+                            Debug.Assert(false);
+                        }
+                    }
+                }
+                return returnExpr;
+            }
+
+            private void Search(Block b, bool inFirst)
+            {
+                dfsStack.Push(b);
+                if (b.TransferCmd is ReturnExprCmd)
+                {
+                    if (first == null || inFirst)
+                    {
+                        transitionRelation = Expr.Or(transitionRelation, CalculatePathCondition());
                     }
                     else
                     {
-                        Debug.Assert(false);
+                        Search(first.thisAction.Blocks[0], true);
                     }
-                }
-            }
-            return returnExpr;
-        }
-
-        private void Search(Block b, bool inFirst)
-        {
-            dfsStack.Push(b);
-            if (b.TransferCmd is ReturnExprCmd)
-            {
-                if (first == null || inFirst)
-                {
-                    transitionRelation = Expr.Or(transitionRelation, CalculatePathCondition());
                 }
                 else
                 {
-                    Search(first.thisAction.Blocks[0], true);
+                    GotoCmd gotoCmd = b.TransferCmd as GotoCmd;
+                    foreach (Block target in gotoCmd.labelTargets)
+                    {
+                        Search(target, inFirst);
+                    }
                 }
+                dfsStack.Pop();
             }
-            else
-            {
-                GotoCmd gotoCmd = b.TransferCmd as GotoCmd;
-                foreach (Block target in gotoCmd.labelTargets)
-                {
-                    Search(target, inFirst);
-                }
-            }
-            dfsStack.Pop();
         }
     }
-
 }
