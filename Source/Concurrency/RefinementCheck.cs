@@ -21,7 +21,7 @@ namespace Microsoft.Boogie
 
         public static void AddCheckers(LinearTypeChecker linearTypeChecker, MoverTypeChecker moverTypeChecker)
         {
-            RefinementCheck refinementChecking = new RefinementCheck(linearTypeChecker,moverTypeChecker);
+            RefinementCheck refinementChecking = new RefinementCheck(linearTypeChecker, moverTypeChecker);
             foreach (Declaration decl in linearTypeChecker.program.TopLevelDeclarations)
             {
                 if (decl is Implementation)
@@ -35,7 +35,7 @@ namespace Microsoft.Boogie
         private RefinementCheck(LinearTypeChecker linearTypeChecker, MoverTypeChecker moverTypeChecker)
         {
             this.linearTypeChecker = linearTypeChecker;
-            this.moverTypeChecker = moverTypeChecker;   
+            this.moverTypeChecker = moverTypeChecker;
             this.refinementCheckerProgram = new Program();
             foreach (Declaration decl in linearTypeChecker.program.TopLevelDeclarations)
             {
@@ -61,7 +61,7 @@ namespace Microsoft.Boogie
             result = Expr.True;
             foreach (AssertCmd aC in moverTypeChecker.procToActionInfo[impl.Proc].thisGate)
             {
-                Expr aCExprClone = (Expr) aC.OrigExpr.Clone();
+                Expr aCExprClone = (Expr)aC.OrigExpr.Clone();
                 result = Expr.Binary(BinaryOperator.Opcode.And, result, aCExprClone);
             }
             return result;
@@ -98,7 +98,7 @@ namespace Microsoft.Boogie
             return havocG;
         }
 
-        private AssignCmd createNewAssignGOldGetsG(List<Variable> originalGVars, Dictionary<Variable,Variable> regularToOldGVar)
+        private AssignCmd createNewAssignGOldGetsG(List<Variable> originalGVars, Dictionary<Variable, Variable> regularToOldGVar)
         {
             List<AssignLhs> lhss_g = new List<AssignLhs>();
             List<Expr> rhss_g = new List<Expr>();
@@ -112,7 +112,7 @@ namespace Microsoft.Boogie
             return gOldGetsG;
         }
 
-        private AssignCmd createNewAssignOOldGetsO(Implementation impl, Dictionary<Variable,Variable> regularToOldOVar)
+        private AssignCmd createNewAssignOOldGetsO(Implementation impl, Dictionary<Variable, Variable> regularToOldOVar)
         {
             List<AssignLhs> lhss = new List<AssignLhs>();
             List<Expr> rhss = new List<Expr>();
@@ -127,7 +127,7 @@ namespace Microsoft.Boogie
             return oOldGetsO;
         }
 
-        private AssertCmd createNewAssertGOldEqualsG(List<Variable> originalGVars, Dictionary<Variable,Variable> regularToOldGVar) 
+        private AssertCmd createNewAssertGOldEqualsG(List<Variable> originalGVars, Dictionary<Variable, Variable> regularToOldGVar)
         {
             Expr gOldEqualsG = Expr.True;
             foreach (Variable g in originalGVars)
@@ -190,12 +190,13 @@ namespace Microsoft.Boogie
             Dictionary<Variable, Variable> regularToOldGVar,
             Dictionary<Variable, Variable> regularToOldOVar)
         {
-            Expr betaOfOOldOGOldG = new TransitionRelationComputation(moverTypeChecker.program, 
+            Expr betaOfOOldOGOldG = new TransitionRelationComputation(moverTypeChecker.program,
                                                           moverTypeChecker.procToActionInfo[impl.Proc],
                                                           regularToOldGVar,
                                                           regularToOldOVar).Compute();
             Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
-            foreach(Variable v in originalGVars){
+            foreach (Variable v in originalGVars)
+            {
                 map[v] = Expr.Ident(regularToOldGVar[v]);
             }
             foreach (Variable o in impl.OutParams)
@@ -234,7 +235,7 @@ namespace Microsoft.Boogie
             impl.LocVars.Add(pc_old);
             LocalVariable ok = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "ok", Bpl.Type.Bool));
             impl.LocVars.Add(ok);
-            
+
 
             // Create variables for g_old, o_old
             Dictionary<Variable, Variable> regularToOldGVar = new Dictionary<Variable, Variable>();
@@ -251,7 +252,7 @@ namespace Microsoft.Boogie
             foreach (Variable v in refinementCheckerProgram.GlobalVariables()) //ST: Check that this is the right set of global vars
             {
                 GlobalVariable gv = v as GlobalVariable;
-                LocalVariable v_old = new LocalVariable(Token.NoToken, 
+                LocalVariable v_old = new LocalVariable(Token.NoToken,
                     new TypedIdent(Token.NoToken, gv.TypedIdent.Name + "_old", gv.TypedIdent.Type)); //gv.TypedIdent
                 impl.LocVars.Add(v_old); //ST: Ask Shaz whether to add v_old to proc, probably not.
                 _old_OriginalGVars.Add(v_old);
@@ -267,7 +268,7 @@ namespace Microsoft.Boogie
 
             foreach (Variable o in impl.OutParams) //ST: Check that this is the right set of global vars
             {
-                Variable o_old = new LocalVariable(Token.NoToken, 
+                Variable o_old = new LocalVariable(Token.NoToken,
                     new TypedIdent(Token.NoToken, o.TypedIdent.Name + "_old", o.TypedIdent.Type));
 
                 _old_OriginalOVars.Add(o_old);
@@ -301,7 +302,7 @@ namespace Microsoft.Boogie
                         // g_old := g;
 
                         // Implementing the following instead:
-                        
+
                         // assert !pc ==> \alpha(g_old);
                         // assert ok;
                         // bb := (o_old == o && g_old == g) 
@@ -322,13 +323,13 @@ namespace Microsoft.Boogie
                         newCmdList.Add(notPcImpliesAlphaOfGOldCmd);
                         AssertCmd assertOkCmd = new AssertCmd(Token.NoToken, new IdentifierExpr(Token.NoToken, ok));
                         newCmdList.Add(assertOkCmd);
-                        
+
                         Expr bb = Expr.Binary(BinaryOperator.Opcode.And,
-                                    createNewOOldEqualsO(impl,regularToOldOVar),
+                                    createNewOOldEqualsO(impl, regularToOldOVar),
                                     createNewGOldEqualsG(originalGVars, regularToOldGVar));
                         Expr notBB = Expr.Unary(Token.NoToken, UnaryOperator.Opcode.Not, bb);
                         Expr notPC = Expr.Unary(Token.NoToken, UnaryOperator.Opcode.Not, Expr.Ident(pc));
-                        AssertCmd assertNotBBImpliesNotPCCmd = new AssertCmd(Token.NoToken, Expr.Imp(notBB,notPC));
+                        AssertCmd assertNotBBImpliesNotPCCmd = new AssertCmd(Token.NoToken, Expr.Imp(notBB, notPC));
                         newCmdList.Add(assertNotBBImpliesNotPCCmd);
 
                         // pc := ite(!bb,true,pc);
@@ -338,7 +339,7 @@ namespace Microsoft.Boogie
                         iteArgs.Add(Expr.Ident(pc));
                         Expr pcNew = new NAryExpr(Token.NoToken, new IfThenElse(Token.NoToken), iteArgs);
                         List<AssignLhs> pcUpdateLHS = new List<AssignLhs>();
-                        pcUpdateLHS.Add(new SimpleAssignLhs(Token.NoToken, new IdentifierExpr(Token.NoToken, pc));
+                        pcUpdateLHS.Add(new SimpleAssignLhs(Token.NoToken, new IdentifierExpr(Token.NoToken, pc)));
                         List<Expr> pcUpdateRHS = new List<Expr>();
                         pcUpdateRHS.Add(pcNew);
                         AssignCmd pcGetsUpdated = new AssignCmd(Token.NoToken, pcUpdateLHS, pcUpdateRHS);
@@ -352,12 +353,14 @@ namespace Microsoft.Boogie
                         HavocCmd havocOnG = createNewHavocGnO(impl, originalGVars);
                         newCmdList.Add(havocOnG);
 
-                        if (originalGVars.Count > 0) {
-                          AssignCmd gOldGetsG = createNewAssignGOldGetsG(originalGVars, regularToOldGVar);
-                          newCmdList.Add(gOldGetsG);
+                        if (originalGVars.Count > 0)
+                        {
+                            AssignCmd gOldGetsG = createNewAssignGOldGetsG(originalGVars, regularToOldGVar);
+                            newCmdList.Add(gOldGetsG);
                         }
 
-                        if (impl.OutParams.Count > 0) {
+                        if (impl.OutParams.Count > 0)
+                        {
                             AssignCmd oOldGetsO = createNewAssignOOldGetsO(impl, regularToOldOVar);
                             newCmdList.Add(oOldGetsO);
                         }
@@ -370,10 +373,9 @@ namespace Microsoft.Boogie
                 b.Cmds = newCmdList;
             }
         }
-
-
     }
-    private sealed class MySubstituter : Duplicator
+    
+    sealed class MySubstituter : Duplicator
     {
         private readonly Substitution outsideOld;
         private readonly Substitution insideOld;

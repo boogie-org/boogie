@@ -33,7 +33,7 @@ namespace Microsoft.Boogie
             List<Declaration> decls = new List<Declaration>();
             OwickiGries.AddCheckers(linearTypeChecker, moverTypeChecker, decls);
             MoverCheck.AddCheckers(linearTypeChecker, moverTypeChecker, decls);
-            RefinementCheck.AddCheckers(linearTypeChecker, moverTypeChecker, decls);
+            //RefinementCheck.AddCheckers(linearTypeChecker, moverTypeChecker, decls);
 
             program.TopLevelDeclarations.RemoveAll(x => originalDecls.Contains(x));
             program.TopLevelDeclarations.AddRange(decls);
