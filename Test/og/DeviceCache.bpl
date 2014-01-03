@@ -118,6 +118,7 @@ ensures {:phase 1} Inv(ghostLock, currsize, newsize) && old(currsize) == currsiz
     var j: int;
     tid := tid';
 
+    par tid := YieldToWriteCache(tid);
     call tid, j := ReadCurrsize(tid);
     while (j < index)
     invariant {:phase 1} ghostLock == tid && currsize <= j && tid == tid';
@@ -141,6 +142,7 @@ ensures {:phase 1} Inv(ghostLock, currsize, newsize);
     var j: int;
     tid := tid';
 
+    par tid := YieldToReadCache(tid);
     j := 0;
     while(j < bytesRead)
     invariant {:phase 1} 0 <= j;
