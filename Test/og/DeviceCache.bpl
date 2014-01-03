@@ -75,8 +75,7 @@ ensures {:phase 1} 0 <= bytesRead && bytesRead <= size;
     var {:linear "tid"} tid: X;
     tid := tid';
 
-    yield;
-    assert {:phase 1} Inv(ghostLock, currsize, newsize);
+    par  tid := YieldToReadCache(tid);
     bytesRead := size;
     call tid := acquire(tid);
     call tid, i := ReadCurrsize(tid);
@@ -97,7 +96,7 @@ ensures {:phase 1} 0 <= bytesRead && bytesRead <= size;
 READ_DEVICE:
     par  tid := YieldToWriteCache(tid);
     call tid := WriteCache(tid, start + size);
-    par  tid := YieldToWriteCache(tid);
+    par  tid := YieldToReadCache(tid);
     call tid := acquire(tid);
     call tid, tmp := ReadNewsize(tid);
     call tid := WriteCurrsize(tid, tmp);
@@ -106,7 +105,6 @@ READ_DEVICE:
 COPY_TO_BUFFER:
     par tid := YieldToReadCache(tid);
     call tid := ReadCache(tid, start, bytesRead);
-    par tid := YieldToReadCache(tid);
 }
 
 procedure {:yields} WriteCache({:linear "tid"} tid': X, index: int) returns ({:linear "tid"} tid: X)
