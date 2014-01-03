@@ -96,8 +96,7 @@ namespace Microsoft.Boogie
                 phases.Add(phs);
             }         
             return phases;
-        }
-        
+        }        
 
         private static Tuple<Automaton<BvSet>, bool> IsYieldReachabilitySafe(Automaton<BvSet> implReachabilityCheckAutomaton, Implementation impl, MoverTypeChecker moverTypeChecker, int phaseNum)
         {
@@ -208,11 +207,13 @@ namespace Microsoft.Boogie
                 Implementation impl = decl as Implementation;
                 if (impl == null) continue;
                 int phaseNumSpecImpl = moverTypeChecker.FindPhaseNumber(impl.Proc);
+               // if(phaseNumSpecImpl == int.MaxValue) continue;
 
                 YieldTypeCheckerCore yieldTypeCheckerPerImpl = new YieldTypeCheckerCore(moverTypeChecker);
             
                 foreach (int phase in phases) // take current phase check num from each interval
-                {                    
+                {
+                    if (phase > phaseNumSpecImpl) continue;
                     int yTypeCheckCurrentPhaseNum =phase ;
                     Tuple<Tuple<Dictionary<int, Absy>, Automaton<BvSet>>, Tuple<Dictionary<int, Absy>, Automaton<BvSet>>> yieldCheckAutomatons = 
                             yieldTypeCheckerPerImpl.YieldTypeCheckAutomaton(impl, phaseNumSpecImpl, yTypeCheckCurrentPhaseNum);
@@ -228,19 +229,19 @@ namespace Microsoft.Boogie
                     if (!isYieldReachable.Item2 && !isYieldTypeSafe.Item2)
                     {
                         moverTypeChecker.Error(impl, "\n Body of " + impl.Proc.Name + " is not yield_type_safe at phase " + phase.ToString()+ "\n");
-                       // PrintErrorTrace(isYieldTypeSafeCmds, isYieldTypeSafeErrorAut, impl);
+                        PrintErrorTrace(isYieldTypeSafeCmds, isYieldTypeSafeErrorAut, impl);
                         moverTypeChecker.Error(impl, "\n Body of " + impl.Proc.Name + " is not yield_reachable_safe at phase " + phase.ToString()+ "\n" );                        
-                      //  PrintErrorTrace(isYieldReachableSafeCmds,isYieldReachableErrorAut,impl);
+                        PrintErrorTrace(isYieldReachableSafeCmds,isYieldReachableErrorAut,impl);
                     }
                     else if (isYieldReachable.Item2 && !isYieldTypeSafe.Item2)
                     {
                         moverTypeChecker.Error(impl, "\n Body of " + impl.Proc.Name + " is not yield_type_safe at phase " + phase.ToString() + "\n" );
-                      //  PrintErrorTrace(isYieldTypeSafeCmds, isYieldTypeSafeErrorAut, impl);
+                        PrintErrorTrace(isYieldTypeSafeCmds, isYieldTypeSafeErrorAut, impl);
                     }
                     else if (!isYieldReachable.Item2 && isYieldTypeSafe.Item2)
                     {
                         moverTypeChecker.Error(impl, "\n Body of " + impl.Proc.Name + " is not yield_reachable_safe at phase " + phase.ToString() + "\n");
-                        //PrintErrorTrace(isYieldReachableSafeCmds, isYieldReachableErrorAut, impl);
+                        PrintErrorTrace(isYieldReachableSafeCmds, isYieldReachableErrorAut, impl);
                     }
                     else if (isYieldReachable.Item2 && isYieldTypeSafe.Item2)
                     {
@@ -1064,7 +1065,7 @@ namespace Microsoft.Boogie
                     else if (actionType == MoverType.Both) return "B";
                     else if (actionType == MoverType.Left) return "L";
                     else if (actionType == MoverType.Right) return "R";
-                    else if (actionType == MoverType.Top) continue;                
+                    else if (actionType == MoverType.Top) continue; // Ask this to Shaz                
                 }
             }
             else if (cmd is ParCallCmd) // A small trick here : While getting type of SeqCompositional_parCall_commands we pass CallCmd typed parameter
