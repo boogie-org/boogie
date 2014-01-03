@@ -373,7 +373,7 @@ namespace Microsoft.Boogie
             }
         }
 
-        sealed class MySubstituter : Duplicator
+        private sealed class MySubstituter : Duplicator
         {
             private readonly Substitution outsideOld;
             private readonly Substitution insideOld;
