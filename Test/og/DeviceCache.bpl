@@ -143,16 +143,17 @@ ensures {:phase 1} Inv(ghostLock, currsize, newsize);
     tid := tid';
 
     par tid := YieldToReadCache(tid);
+
     j := 0;
     while(j < bytesRead)
     invariant {:phase 1} 0 <= j;
     invariant {:phase 1} bytesRead == 0 || start + j <= currsize; 
     invariant {:phase 1} Inv(ghostLock, currsize, newsize) && tid == tid';
     {
-	par tid := YieldToReadCache(tid);
 	assert {:phase 1} start + j < currsize;
         call tid := ReadCacheEntry(tid, start + j);
         j := j + 1;
+	par tid := YieldToReadCache(tid);
     }
     par tid := YieldToReadCache(tid);
 }
