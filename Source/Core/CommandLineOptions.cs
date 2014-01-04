@@ -46,7 +46,7 @@ namespace Microsoft.Boogie {
     public virtual string/*!*/ VersionSuffix {
       get {
         Contract.Ensures(Contract.Result<string>() != null);
-        return " version " + VersionNumber + ", Copyright (c) 2003-2013, Microsoft.";
+        return " version " + VersionNumber + ", Copyright (c) 2003-2014, Microsoft.";
       }
     }
     public virtual string/*!*/ Version {
