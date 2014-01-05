@@ -1,7 +1,8 @@
 ﻿#if QED
 
 #define DEBUG
-#define DEBUG_DETAIL
+#define OPTIMIZED
+#define NONOPTIMIZED
 
 using System;
 using System.Collections;
@@ -18,29 +19,42 @@ namespace Microsoft.Boogie
 {
     using Set = GSet<object>;
 
-    /*
-     Summary:
-     * 
-     */
     class YieldTypeChecker
     {
         /*static subfields of yieldtypesafe(YTS) property language*/
         static CharSetSolver yieldCheckerAutomatonSolver;
-        static string yieldReachabilityCheckerRegex = @"^([1234])*([D]+([56781234])*A*([973])*)*$";// regex of property to build automaton of YTS language      
+#if OPTIMIZED
+        static string yieldReachabilityOptCheckerRegex = @"^1*([D]+([571])*A?([97])*)*$";
+        static Automaton<BvSet> yieldReachabilityOptCheckerAutomaton;
+        static Automaton<BvSet> minimizedReachabilityOptCheckerAutomaton;
+#endif
+#if !NONOPTIMIZED
+        static string yieldReachabilityCheckerRegex = @"^([1234])*([D]+([56781234])*A?([973])*)*$";// regex of property to build automaton of YTS language   
         static Automaton<BvSet> yieldReachabilityCheckerAutomaton;
         static Automaton<BvSet> minimizedReachabilityCheckerAutomaton;
+#endif
         static Automaton<BvSet> yieldTypeSafeCheckerAutomaton;
         static Automaton<BvSet> minimizedYieldTypeSafeCheckerAutomaton;
 
         static YieldTypeChecker()
         {
             yieldCheckerAutomatonSolver = new CharSetSolver(BitWidth.BV7);
+#if !NONOPTIMIZED
             yieldReachabilityCheckerAutomaton =
             Automaton<BvSet>.MkProduct(yieldCheckerAutomatonSolver.Convert(yieldReachabilityCheckerRegex),
                                            yieldCheckerAutomatonSolver.Convert(@"^[1-9A-D]*$"), // result of product with this Automaton provides us an automaton that has (*) existence alphanum chars in our property automaton 
                                            yieldCheckerAutomatonSolver);
             minimizedReachabilityCheckerAutomaton = yieldReachabilityCheckerAutomaton.Determinize(yieldCheckerAutomatonSolver).Minimize(yieldCheckerAutomatonSolver);
+#endif
 
+#if OPTIMIZED
+            yieldReachabilityOptCheckerAutomaton =
+           Automaton<BvSet>.MkProduct(yieldCheckerAutomatonSolver.Convert(yieldReachabilityOptCheckerRegex),
+                                          yieldCheckerAutomatonSolver.Convert(@"^[1-9A-D]*$"), // result of product with this Automaton provides us an automaton that has (*) existence alphanum chars in our property automaton 
+                                          yieldCheckerAutomatonSolver);
+            minimizedReachabilityOptCheckerAutomaton = yieldReachabilityOptCheckerAutomaton.Determinize(yieldCheckerAutomatonSolver).Minimize(yieldCheckerAutomatonSolver);
+
+#endif
             yieldTypeSafeCheckerAutomaton = yieldCheckerAutomatonSolver.ReadFromRanges(
                                             0,
                                            new int[] { 0, 2 },
@@ -74,8 +88,8 @@ namespace Microsoft.Boogie
                                            });
             minimizedYieldTypeSafeCheckerAutomaton = yieldTypeSafeCheckerAutomaton.Determinize(yieldCheckerAutomatonSolver).Minimize(yieldCheckerAutomatonSolver);
 
-#if DEBUG && !DEBUG_DETAIL
-            yieldCheckerAutomatonSolver.ShowGraph(minimizedReachabilityCheckerAutomaton, "minimizedReachabilityPropertyAutomaton.dgml");
+#if !DEBUG
+            yieldCheckerAutomatonSolver.ShowGraph(minimizedReachabilityOptCheckerAutomaton, "minimizedReachabilityPropertyAutomaton.dgml");
             yieldCheckerAutomatonSolver.ShowGraph(minimizedYieldTypeSafeCheckerAutomaton, "minimizedTypeSafePropertyAutomaton.dgml");
 #endif
         }
@@ -83,7 +97,6 @@ namespace Microsoft.Boogie
         private static HashSet<int> ComputePhaseIntervals(MoverTypeChecker moverTypeChecker)
         {
             HashSet<int> phases = new HashSet<int>();
-
             foreach (var decl in moverTypeChecker.program.TopLevelDeclarations)
             {
                 Procedure proc = decl as Procedure;
@@ -101,38 +114,32 @@ namespace Microsoft.Boogie
 
         private static Tuple<Automaton<BvSet>, bool> IsYieldReachabilitySafe(Automaton<BvSet> implReachabilityCheckAutomaton, Implementation impl, MoverTypeChecker moverTypeChecker, int phaseNum)
         {
-
             List<BvSet> witnessSet;
+#if !NONOPTIMIZED
             var isNonEmpty = Automaton<BvSet>.CheckDifference(
                                                            implReachabilityCheckAutomaton,
                                                            yieldReachabilityCheckerAutomaton,
                                                            0,
                                                            yieldCheckerAutomatonSolver,
                                                            out witnessSet);
-
-
-
             var diffAutomaton = implReachabilityCheckAutomaton.Minus(yieldReachabilityCheckerAutomaton, yieldCheckerAutomatonSolver);
-#if DEBUG && !DEBUG_DETAIL
-            string diffAutomatonGraphName = "diffAutomatonReachabilitySafe" + impl.Proc.Name + phaseNum.ToString();
-            yieldCheckerAutomatonSolver.ShowGraph(diffAutomaton, diffAutomatonGraphName+".dgml");
 #endif
 
-#if !DEBUG && !DEBUG_DETAIL
-            string s = yieldTypeCheckerAutomatonSolver.GenerateMember(implTypeCheckAutomaton);
-            Console.WriteLine("\n member " + s+ " \n");
-            if(!yieldTypeCheckerAutomatonSolver.Accepts(yieldTypeCheckerAutomaton,s)){
-                Console.WriteLine("Property Automaton accepts a random member of impl_automaton " + s);
-            }else{
-                Console.WriteLine("Property Automaton does not accept a random member of impl_automaton " + s);
-            }
+#if OPTIMIZED
+            var isNonEmpty = Automaton<BvSet>.CheckDifference(
+                                                          implReachabilityCheckAutomaton,
+                                                          yieldReachabilityOptCheckerAutomaton,
+                                                          0,
+                                                          yieldCheckerAutomatonSolver,
+                                                          out witnessSet);
+
+            var diffAutomaton = implReachabilityCheckAutomaton.Minus(yieldReachabilityOptCheckerAutomaton, yieldCheckerAutomatonSolver);
 #endif
+
             if (isNonEmpty)
             {
                 var witness = new String(Array.ConvertAll(witnessSet.ToArray(), bvset => (char)yieldCheckerAutomatonSolver.Choose(bvset)));
-                Console.WriteLine("error trace " + witness);
                 Tuple<Automaton<BvSet>, bool> errTraceExists = new Tuple<Automaton<BvSet>, bool>(diffAutomaton, false);
-
                 return errTraceExists;
             }
             Tuple<Automaton<BvSet>, bool> errTraceNotExist = new Tuple<Automaton<BvSet>, bool>(diffAutomaton, true);
@@ -148,32 +155,14 @@ namespace Microsoft.Boogie
                                                            0,
                                                            yieldCheckerAutomatonSolver,
                                                            out witnessSet);
-
-
-
             var diffAutomaton = implTypeSafeCheckAutomaton.Minus(yieldTypeSafeCheckerAutomaton, yieldCheckerAutomatonSolver);
-#if DEBUG && !DEBUG_DETAIL
-            string diffAutomatonGraphName = "diffAutomatonTypeSafety" + impl.Proc.Name + phaseNum.ToString();
-            yieldCheckerAutomatonSolver.ShowGraph(diffAutomaton, diffAutomatonGraphName + ".dgml");
-#endif
 
-#if !DEBUG && !DEBUG_DETAIL
-            string s = yieldTypeCheckerAutomatonSolver.GenerateMember(implTypeCheckAutomaton);
-            Console.WriteLine("\n member " + s+ " \n");
-            if(!yieldTypeCheckerAutomatonSolver.Accepts(yieldTypeCheckerAutomaton,s)){
-                Console.WriteLine("Property Automaton accepts a random member of impl_automaton " + s);
-            }else{
-                Console.WriteLine("Property Automaton does not accept a random member of impl_automaton " + s);
-            }
-#endif
             if (isNonEmpty)
             {
                 var witness = new String(Array.ConvertAll(witnessSet.ToArray(), bvset => (char)yieldCheckerAutomatonSolver.Choose(bvset)));
-                Console.WriteLine("error trace " + witness);
                 Tuple<Automaton<BvSet>, bool> errTraceExists = new Tuple<Automaton<BvSet>, bool>(diffAutomaton, false);
                 return errTraceExists;
             }
-
             Tuple<Automaton<BvSet>, bool> errTraceNotExist = new Tuple<Automaton<BvSet>, bool>(diffAutomaton, true);
             return errTraceNotExist;
         }
@@ -199,15 +188,10 @@ namespace Microsoft.Boogie
             YieldTypeChecker regExprToAuto = new YieldTypeChecker();
 
             HashSet<int> phases = ComputePhaseIntervals(moverTypeChecker);
-#if DEBUG && !DEBUG_DETAIL
-            Console.Write("Number of phases is " + phases.Count.ToString());
-            foreach (int i in phases) { Console.WriteLine(" phase is " + i.ToString()); }
-#endif
-
             YieldTypeCheckerCore yieldTypeCheckerPerImpl = new YieldTypeCheckerCore(moverTypeChecker);
 
             foreach (int yTypeCheckCurrentPhaseNum in phases) // take current phase check num from each interval
-            {                
+            {
                 foreach (var decl in yieldTypeCheckedProgram.TopLevelDeclarations)
                 {
                     Implementation impl = decl as Implementation;
@@ -217,6 +201,7 @@ namespace Microsoft.Boogie
 
                     Tuple<Tuple<Dictionary<int, Absy>, Automaton<BvSet>>, Tuple<Dictionary<int, Absy>, Automaton<BvSet>>> yieldCheckAutomatons =
                             yieldTypeCheckerPerImpl.YieldTypeCheckAutomaton(impl, phaseNumSpecImpl, yTypeCheckCurrentPhaseNum);
+
                     Tuple<Automaton<BvSet>, bool> isYieldReachable = IsYieldReachabilitySafe(yieldCheckAutomatons.Item2.Item2, impl, moverTypeChecker, yTypeCheckCurrentPhaseNum);
                     Tuple<Automaton<BvSet>, bool> isYieldTypeSafe = IsYieldTypeSafe(yieldCheckAutomatons.Item1.Item2, impl, moverTypeChecker, yTypeCheckCurrentPhaseNum);
                     Automaton<BvSet> isYieldTypeSafeErrorAut = isYieldTypeSafe.Item1;
@@ -244,9 +229,7 @@ namespace Microsoft.Boogie
                     }
                     else if (isYieldReachable.Item2 && isYieldTypeSafe.Item2)
                     {
-#if DEBUG && !DEBUG_DETAIL
-                          // Console.WriteLine("Implementation " + impl.Proc.Name + " is yield safe at phase " + "[ " + phaseIntervals[i].Item1.ToString()+ "  " +phaseIntervals[i].Item2.ToString()+" ]");
-#endif
+
                     }
                 }
             }
@@ -258,45 +241,50 @@ namespace Microsoft.Boogie
         int stateCounter;
         MoverTypeChecker moverTypeChecker;
         CharSetSolver solver;
+        Dictionary<Tuple<int, int>, string> edgeLabels;
+        HashSet<int> finalStates;
+        HashSet<int> initialStates;
+        Dictionary<Absy, int> abysToNode;
+        Graph<int> graph;
+        int specPhaseNumImpl, yTypeCheckCurrentPhaseNum;
+        Implementation yTypeChecked;
+
         public YieldTypeCheckerCore(MoverTypeChecker moverTypeChecker)
         {
             solver = new CharSetSolver(BitWidth.BV7);
             this.moverTypeChecker = moverTypeChecker;
+
         }
 
-        public Tuple<Tuple<Dictionary<int, Absy>, Automaton<BvSet>>, Tuple<Dictionary<int, Absy>, Automaton<BvSet>>> YieldTypeCheckAutomaton(Implementation ytypeChecked, int specPhaseNumImpl, int yTypeCheckCurrentPhaseNum)
+        public Tuple<Tuple<Dictionary<int, Absy>, Automaton<BvSet>>, Tuple<Dictionary<int, Absy>, Automaton<BvSet>>> YieldTypeCheckAutomaton(Implementation ytypeChecked, int specPhsNumImpl, int yTypeCheckCurPhaseNum)
         {
+            edgeLabels = new Dictionary<Tuple<int, int>, string>(); // Tuple<int,int> --> "Y" : State(k) --Y--> State(k+1)
 
-            Dictionary<Tuple<int, int>, string> edgeLabels = new Dictionary<Tuple<int, int>, string>(); // Tuple<int,int> --> "Y" : State(k) --Y--> State(k+1)
-            Dictionary<Absy, int> abysToNode = CreateStateNumbers(ytypeChecked, yTypeCheckCurrentPhaseNum);
-            List<int> finalStates = new List<int>();
-            List<int> initialStates = new List<int>();
+            finalStates = new HashSet<int>();
+            initialStates = new HashSet<int>();
             stateCounter = 0;
+            yTypeChecked = ytypeChecked;
+            specPhaseNumImpl = specPhsNumImpl;
+            yTypeCheckCurrentPhaseNum = yTypeCheckCurPhaseNum;
             initialStates.Add(stateCounter); // First state is added to initial states
-            Graph<int> bodyGraphForImplPhaseJ = BuildAutomatonGraph(ytypeChecked, yTypeCheckCurrentPhaseNum, abysToNode, edgeLabels, initialStates, finalStates); // build component of graph for a phase interval            
+            abysToNode = CreateStateNumbers();
+            graph = BuildAutomatonGraph(); // build component of graph for a phase interval            
 
-#if (DEBUG && !DEBUG_DETAIL)
-            Console.Write("\n Procedure's phase num is " + specPhaseNumImpl.ToString() + " \n");
-            Console.Write("\n YieldTypeSafe Graph is created for phase: \n" + yTypeCheckCurrentPhaseNum.ToString());
-            Console.Write(PrintGraph(bodyGraphForImplPhaseJ, ytypeChecked, edgeLabels));
-#endif
-            Automaton<BvSet> implYieldTypeSafeCheckAut = BuildAutomatonYieldTypeSafe(bodyGraphForImplPhaseJ, edgeLabels, initialStates, finalStates, ytypeChecked, yTypeCheckCurrentPhaseNum);
+            Automaton<BvSet> implYieldTypeSafeCheckAut = BuildAutomatonYieldTypeSafe();
             Dictionary<int, Absy> nodeToAbysYieldTypeSafe = new Dictionary<int, Absy>();
             foreach (KeyValuePair<Absy, int> state in abysToNode)
             {
                 nodeToAbysYieldTypeSafe[state.Value] = state.Key;
             }
             Tuple<Dictionary<int, Absy>, Automaton<BvSet>> implYieldTypeSafeCheckAutomaton = new Tuple<Dictionary<int, Absy>, Automaton<BvSet>>(nodeToAbysYieldTypeSafe, implYieldTypeSafeCheckAut);
-
-            // Update edges w.r.t yield reaching. VocabX{True,False} 
+#if !NONOPTIMIZED
+             // Update edges w.r.t yield reaching. VocabX{True,False} 
             PostProcessGraph(bodyGraphForImplPhaseJ, edgeLabels);
-#if (DEBUG && !DEBUG_DETAIL)
-            Console.Write("\n Procedure's phase num is " + specPhaseNumImpl.ToString() +" \n");
-            Console.Write("\n YieldReachabilityCheck Graph is created for phase : \n" + yTypeCheckCurrentPhaseNum.ToString());
-            Console.Write(PrintGraph(bodyGraphForImplPhaseJ, ytypeChecked, edgeLabels));
-#endif
-            //Build Automaton from graph created
             Automaton<BvSet> implYieldReachCheckAut = BuildAutomatonYieldReachSafe(bodyGraphForImplPhaseJ, edgeLabels, initialStates, finalStates, ytypeChecked, yTypeCheckCurrentPhaseNum); // Last to arguments are just only for showGraph of automaton lib
+#endif
+#if OPTIMIZED
+            Automaton<BvSet> implYieldReachCheckAut = BuildOptAutomatonYieldReachSafe();
+#endif
             Dictionary<int, Absy> nodeToAbysYieldReachSafe = new Dictionary<int, Absy>();
             foreach (KeyValuePair<Absy, int> state in abysToNode)
             {
@@ -305,378 +293,314 @@ namespace Microsoft.Boogie
             Tuple<Dictionary<int, Absy>, Automaton<BvSet>> implYieldReachCheckAutomaton = new Tuple<Dictionary<int, Absy>, Automaton<BvSet>>(nodeToAbysYieldReachSafe, implYieldReachCheckAut);
             Tuple<Tuple<Dictionary<int, Absy>, Automaton<BvSet>>, Tuple<Dictionary<int, Absy>, Automaton<BvSet>>> yieldCheckImplAutomaton =
                 new Tuple<Tuple<Dictionary<int, Absy>, Automaton<BvSet>>, Tuple<Dictionary<int, Absy>, Automaton<BvSet>>>(implYieldTypeSafeCheckAutomaton, implYieldReachCheckAutomaton);
-            //     Tuple<Automaton<BvSet>, Automaton<BvSet>> yieldCheckImplAutomaton = new Tuple<Automaton<BvSet>, Automaton<BvSet>>(implYieldTypeSafeCheckAutomaton, implYieldReachCheckAutomaton);
             return yieldCheckImplAutomaton;
         }
 
-        /*
-        CreateStateNumbers
-        2.1 Input parameters : 
-        2.1.1 Implementation ytypeChecked
-        2.1.2 int yTypeCheckCurrentPhaseNum
-        2.2 Return value :Dictionary<Absy, int> : returns KeyValuePair as <Key:Command ::= TransferCmd | SimpleCmd | ParCallCmd , Value: state as int>
-        2.3 Action :This function creates state numbers of a given body of an impl using incrementing stateCounter. It keeps KeyValuePair as <Key:Command ::= TransferCmd | SimpleCmd , Value: state as int, absy2NodeNo.
-        */
-        public Dictionary<Absy, int> CreateStateNumbers(Implementation ytypeChecked, int yTypeCheckCurrentPhaseNum)
+        public Dictionary<Absy, int> CreateStateNumbers()
         {
             Dictionary<Absy, int> abysToNodeNo = new Dictionary<Absy, int>();
-            /*
-            * Lets call this impl body traversing framework : ITF
-               foreach block in Impl.Blocks 
-                   foreach cmd in block.Cmds
-                       absy2NodeNo[cmd] = stateCounter
-                       stateCouner++
-                   absy2NodeNo[block.TransferCmd] = stateCounter
-                   stateCounter++
-
-            */
-            foreach (Block block in ytypeChecked.Blocks)
+            foreach (Block block in yTypeChecked.Blocks)
             {
                 foreach (Cmd cmd in block.Cmds)
                 {
-
                     if (IsAsyncCallCmd(cmd)) continue;
-#if DEBUG && !DEBUG_DETAIL 
-                    if (IsProperActionCmd(cmd, yTypeCheckCurrentPhaseNum)) {  Console.WriteLine( cmd.ToString() + " proper action"); }
-                    if (IsExitStatement(cmd,yTypeCheckCurrentPhaseNum)) { Console.WriteLine(cmd.ToString() + " call exit action"); }
-                    if (IsParallelCallCmdYield(cmd, yTypeCheckCurrentPhaseNum)) { Console.WriteLine( cmd.ToString() + " call parallel action"); }
-                    if (IsSeqComposableParCallCmd(cmd, yTypeCheckCurrentPhaseNum)) { Console.WriteLine( cmd.ToString() + " call composable parallel action"); }
-#endif
                     if (cmd is ParCallCmd)
                     {
                         ParCallCmd calle = cmd as ParCallCmd;
                         for (int i = 0; i < calle.CallCmds.Count; i++)
                         {
                             abysToNodeNo[calle.CallCmds[i]] = stateCounter;
-#if DEBUG && !DEBUG_DETAIL
-                            Console.WriteLine("ParCmd " + calle.CallCmds[i].Proc.Name + " state " + stateCounter.ToString());
-#endif
                             stateCounter++;
                         }
                     }
                     else
                     {
                         abysToNodeNo[cmd] = stateCounter;
-                        // Console.WriteLine("Cmd " + cmd.ToString() + " state " + stateCounter.ToString());
                         stateCounter++;
                     }
-
                 }
                 abysToNodeNo[block.TransferCmd] = stateCounter;
-                // Console.WriteLine("Cmd " + block.TransferCmd.ToString() + " state " + stateCounter.ToString());
                 stateCounter++;
             }
             return abysToNodeNo;
         }
 
-        private Graph<int> BuildAutomatonGraph(Implementation ytypeChecked, int yTypeCheckCurrentPhaseNum, Dictionary<Absy, int> bodyGraphForImplPhaseJ,
-                                               Dictionary<Tuple<int, int>, string> edgeLabels, List<int> initialStates, List<int> finalStates)
+        private Graph<int> BuildAutomatonGraph()
         {
             HashSet<Tuple<int, int>> edges = new HashSet<Tuple<int, int>>();
-            foreach (Block block in ytypeChecked.Blocks)
+            foreach (Block block in yTypeChecked.Blocks)
             {
                 if (block.Cmds.Count >= 2)
                 {
                     for (int i = 0; i < block.Cmds.Count - 1; i++)
                     {
                         //IsProper
-                        if (IsProperActionCmd(block.Cmds[i], yTypeCheckCurrentPhaseNum) && IsProperActionCmd(block.Cmds[i + 1], yTypeCheckCurrentPhaseNum))// this is handled in else but keep this branch now
+                        if (IsProperActionCmd(block.Cmds[i]) && IsProperActionCmd(block.Cmds[i + 1]))// this is handled in else but keep this branch now
                         { // proper state transition
-                            int source = bodyGraphForImplPhaseJ[block.Cmds[i]];
-                            int dest = bodyGraphForImplPhaseJ[block.Cmds[i + 1]];
-                            //Console.Write("\n >=2 Adding proper transition " + source.ToString() + " --> " + dest.ToString());
+                            int source = abysToNode[block.Cmds[i]];
+                            int dest = abysToNode[block.Cmds[i + 1]];
                             Tuple<int, int> edge = new Tuple<int, int>(source, dest);
                             edges.Add(edge);
                             edgeLabels.Add(edge, GetEdgeType(block.Cmds[i]));
 
                         }
-                        else if (IsProperActionCmd(block.Cmds[i], yTypeCheckCurrentPhaseNum) && IsExitStatement(block.Cmds[i + 1], yTypeCheckCurrentPhaseNum))
+                        else if (IsProperActionCmd(block.Cmds[i]) && IsExitStatement(block.Cmds[i + 1]))
                         {
-                            int source = bodyGraphForImplPhaseJ[block.Cmds[i]];
+                            int source = abysToNode[block.Cmds[i]];
                             // create artificial final state
                             int dest = Math.Abs(Guid.NewGuid().GetHashCode()); // Generate unique dummy node ref: http://msdn.microsoft.com/en-us/library/system.guid(v=vs.110).aspx
-                            //Console.Write("\n >=2 Adding next is EXT transition " + source.ToString() + " --> " + dest.ToString());
                             finalStates.Add(dest);
                             Tuple<int, int> edge = new Tuple<int, int>(source, dest);
                             edges.Add(edge);
                             edgeLabels.Add(edge, GetEdgeType(block.Cmds[i]));
 
                         }
-                        else if (IsProperActionCmd(block.Cmds[i], yTypeCheckCurrentPhaseNum) && IsParallelCallCmdYield(block.Cmds[i + 1], yTypeCheckCurrentPhaseNum))
+                        else if (IsProperActionCmd(block.Cmds[i]) && IsParallelCallCmdYield(block.Cmds[i + 1]))
                         {
-                            int source = bodyGraphForImplPhaseJ[block.Cmds[i]];
+                            int source = abysToNode[block.Cmds[i]];
                             ParCallCmd nextCmd = block.Cmds[i + 1] as ParCallCmd;
-                            int dest = bodyGraphForImplPhaseJ[nextCmd.CallCmds[0]];
+                            int dest = abysToNode[nextCmd.CallCmds[0]];
                             Tuple<int, int> edge = new Tuple<int, int>(source, dest);
                             edges.Add(edge);
                             edgeLabels.Add(edge, GetEdgeType(block.Cmds[i]));
                         }
-                        else if (IsProperActionCmd(block.Cmds[i], yTypeCheckCurrentPhaseNum) && IsSeqComposableParCallCmd(block.Cmds[i + 1], yTypeCheckCurrentPhaseNum))
+                        else if (IsProperActionCmd(block.Cmds[i]) && IsSeqComposableParCallCmd(block.Cmds[i + 1]))
                         {
-                            int source = bodyGraphForImplPhaseJ[block.Cmds[i]];
+                            int source = abysToNode[block.Cmds[i]];
                             ParCallCmd nextCmd = block.Cmds[i + 1] as ParCallCmd;
-                            int dest = bodyGraphForImplPhaseJ[nextCmd.CallCmds[0]];
+                            int dest = abysToNode[nextCmd.CallCmds[0]];
                             Tuple<int, int> edge = new Tuple<int, int>(source, dest);
                             edges.Add(edge);
                             edgeLabels.Add(edge, GetEdgeType(block.Cmds[i]));
                         }
                         // IsCallCmdsExit
-                        else if (IsExitStatement(block.Cmds[i], yTypeCheckCurrentPhaseNum) && IsProperActionCmd(block.Cmds[i + 1], yTypeCheckCurrentPhaseNum))
+                        else if (IsExitStatement(block.Cmds[i]) && IsProperActionCmd(block.Cmds[i + 1]))
                         { // current cmd exit , next cmd will be put as initial state
-                            //Console.Write("\n >=2 Adding current cmd is EXT next initial" + bodyGraphForImplPhaseJ[block.Cmds[i + 1]].ToString());
-                            initialStates.Add(bodyGraphForImplPhaseJ[block.Cmds[i + 1]]);
-
+                            initialStates.Add(abysToNode[block.Cmds[i + 1]]);
                         }
-                        else if (IsExitStatement(block.Cmds[i], yTypeCheckCurrentPhaseNum) && IsExitStatement(block.Cmds[i + 1], yTypeCheckCurrentPhaseNum))
+                        else if (IsExitStatement(block.Cmds[i]) && IsExitStatement(block.Cmds[i + 1]))
                         {
                             continue;
                         }
-                        else if (IsExitStatement(block.Cmds[i], yTypeCheckCurrentPhaseNum) && IsParallelCallCmdYield(block.Cmds[i + 1], yTypeCheckCurrentPhaseNum))
+                        else if (IsExitStatement(block.Cmds[i]) && IsParallelCallCmdYield(block.Cmds[i + 1]))
                         {
                             // Add state number CallCmd of ParallelCmd
                             ParCallCmd nextCmd = block.Cmds[i + 1] as ParCallCmd;
-                            initialStates.Add(bodyGraphForImplPhaseJ[nextCmd.CallCmds[0]]);
+                            initialStates.Add(abysToNode[nextCmd.CallCmds[0]]);
                         }
-                        else if (IsExitStatement(block.Cmds[i], yTypeCheckCurrentPhaseNum) && IsSeqComposableParCallCmd(block.Cmds[i + 1], yTypeCheckCurrentPhaseNum))
+                        else if (IsExitStatement(block.Cmds[i]) && IsSeqComposableParCallCmd(block.Cmds[i + 1]))
                         {
                             // Add state number CallCmd of ParallelCmd
                             ParCallCmd nextCmd = block.Cmds[i + 1] as ParCallCmd;
-                            initialStates.Add(bodyGraphForImplPhaseJ[nextCmd.CallCmds[0]]);
+                            initialStates.Add(abysToNode[nextCmd.CallCmds[0]]);
 
                         }
                         // ParallelCallCmdYield
-                        else if (IsParallelCallCmdYield(block.Cmds[i], yTypeCheckCurrentPhaseNum) && IsParallelCallCmdYield(block.Cmds[i + 1], yTypeCheckCurrentPhaseNum))
+                        else if (IsParallelCallCmdYield(block.Cmds[i]) && IsParallelCallCmdYield(block.Cmds[i + 1]))
                         {
                             ParCallCmd currentCmd = block.Cmds[i] as ParCallCmd;
                             ParCallCmd nextCmd = block.Cmds[i + 1] as ParCallCmd;
 
-                            int source = bodyGraphForImplPhaseJ[currentCmd.CallCmds[0]];
-                            int dest = bodyGraphForImplPhaseJ[nextCmd.CallCmds[0]];
+                            int source = abysToNode[currentCmd.CallCmds[0]];
+                            int dest = abysToNode[nextCmd.CallCmds[0]];
                             Tuple<int, int> edge = new Tuple<int, int>(source, dest);
                             edges.Add(edge);
                             edgeLabels.Add(edge, GetEdgeType(block.Cmds[i]));
 
                         }
-                        else if (IsParallelCallCmdYield(block.Cmds[i], yTypeCheckCurrentPhaseNum) && IsSeqComposableParCallCmd(block.Cmds[i + 1], yTypeCheckCurrentPhaseNum))
+                        else if (IsParallelCallCmdYield(block.Cmds[i]) && IsSeqComposableParCallCmd(block.Cmds[i + 1]))
                         {
                             ParCallCmd currentCmd = block.Cmds[i] as ParCallCmd;
                             ParCallCmd nextCmd = block.Cmds[i + 1] as ParCallCmd;
 
-                            int source = bodyGraphForImplPhaseJ[currentCmd.CallCmds[0]];
-                            int dest = bodyGraphForImplPhaseJ[nextCmd.CallCmds[0]];
+                            int source = abysToNode[currentCmd.CallCmds[0]];
+                            int dest = abysToNode[nextCmd.CallCmds[0]];
                             Tuple<int, int> edge = new Tuple<int, int>(source, dest);
                             edges.Add(edge);
                             edgeLabels.Add(edge, GetEdgeType(block.Cmds[i]));
 
                         }
-                        else if (IsParallelCallCmdYield(block.Cmds[i], yTypeCheckCurrentPhaseNum) && IsExitStatement(block.Cmds[i + 1], yTypeCheckCurrentPhaseNum))
+                        else if (IsParallelCallCmdYield(block.Cmds[i]) && IsExitStatement(block.Cmds[i + 1]))
                         {
                             //create dummy state as next state
                             ParCallCmd currentCmd = block.Cmds[i] as ParCallCmd;
-                            int source = bodyGraphForImplPhaseJ[currentCmd.CallCmds[0]];
+                            int source = abysToNode[currentCmd.CallCmds[0]];
                             int dest = Math.Abs(Guid.NewGuid().GetHashCode()); // Generate unique dummy node 
-                            //Console.Write("\n >=2 Adding next is EXT transition " + source.ToString() + " --> " + dest.ToString());
                             finalStates.Add(dest);
                             Tuple<int, int> edge = new Tuple<int, int>(source, dest);
                             edges.Add(edge);
                             edgeLabels.Add(edge, GetEdgeType(block.Cmds[i]));
 
                         }
-                        else if (IsParallelCallCmdYield(block.Cmds[i], yTypeCheckCurrentPhaseNum) && IsProperActionCmd(block.Cmds[i + 1], yTypeCheckCurrentPhaseNum))
+                        else if (IsParallelCallCmdYield(block.Cmds[i]) && IsProperActionCmd(block.Cmds[i + 1]))
                         {
                             ParCallCmd currentCmd = block.Cmds[i] as ParCallCmd;
-                            int source = bodyGraphForImplPhaseJ[currentCmd.CallCmds[0]];
-                            int dest = bodyGraphForImplPhaseJ[block.Cmds[i + 1]];
+                            int source = abysToNode[currentCmd.CallCmds[0]];
+                            int dest = abysToNode[block.Cmds[i + 1]];
                             Tuple<int, int> edge = new Tuple<int, int>(source, dest);
                             edges.Add(edge);
                             edgeLabels.Add(edge, GetEdgeType(block.Cmds[i]));
                         }
                         //SeqComposable Parallel Cmd
-                        else if (IsSeqComposableParCallCmd(block.Cmds[i], yTypeCheckCurrentPhaseNum) && IsSeqComposableParCallCmd(block.Cmds[i + 1], yTypeCheckCurrentPhaseNum))
+                        else if (IsSeqComposableParCallCmd(block.Cmds[i]) && IsSeqComposableParCallCmd(block.Cmds[i + 1]))
                         {
                             ParCallCmd currentCmd = block.Cmds[i] as ParCallCmd;
                             ParCallCmd nextCmd = block.Cmds[i + 1] as ParCallCmd;
 
                             for (int j = 0; j < currentCmd.CallCmds.Count - 1; j++)
                             {
-                                int source = bodyGraphForImplPhaseJ[currentCmd.CallCmds[j]];
-                                int dest = bodyGraphForImplPhaseJ[currentCmd.CallCmds[j + 1]];
+                                int source = abysToNode[currentCmd.CallCmds[j]];
+                                int dest = abysToNode[currentCmd.CallCmds[j + 1]];
                                 Tuple<int, int> edge = new Tuple<int, int>(source, dest);
                                 edges.Add(edge);
                                 edgeLabels.Add(edge, GetEdgeType(block.Cmds[j]));
                             }
                             // Peelout last iteration
-                            int sourceBtwCalls = bodyGraphForImplPhaseJ[currentCmd.CallCmds[currentCmd.CallCmds.Count - 1]];
-                            int destBtwCalls = bodyGraphForImplPhaseJ[nextCmd.CallCmds[0]];
+                            int sourceBtwCalls = abysToNode[currentCmd.CallCmds[currentCmd.CallCmds.Count - 1]];
+                            int destBtwCalls = abysToNode[nextCmd.CallCmds[0]];
                             Tuple<int, int> edgeBtw = new Tuple<int, int>(sourceBtwCalls, destBtwCalls);
                             edges.Add(edgeBtw);
                             edgeLabels.Add(edgeBtw, GetEdgeType(currentCmd.CallCmds[currentCmd.CallCmds.Count - 1]));
                         }
-                        else if (IsSeqComposableParCallCmd(block.Cmds[i], yTypeCheckCurrentPhaseNum) && IsParallelCallCmdYield(block.Cmds[i + 1], yTypeCheckCurrentPhaseNum))
+                        else if (IsSeqComposableParCallCmd(block.Cmds[i]) && IsParallelCallCmdYield(block.Cmds[i + 1]))
                         {
                             ParCallCmd currentCmd = block.Cmds[i] as ParCallCmd;
                             ParCallCmd nextCmd = block.Cmds[i + 1] as ParCallCmd;
 
                             for (int j = 0; j < currentCmd.CallCmds.Count - 1; j++)
                             {
-                                int source = bodyGraphForImplPhaseJ[currentCmd.CallCmds[j]];
-                                int dest = bodyGraphForImplPhaseJ[currentCmd.CallCmds[j + 1]];
+                                int source = abysToNode[currentCmd.CallCmds[j]];
+                                int dest = abysToNode[currentCmd.CallCmds[j + 1]];
                                 Tuple<int, int> edge = new Tuple<int, int>(source, dest);
                                 edges.Add(edge);
                                 edgeLabels.Add(edge, GetEdgeType(currentCmd.CallCmds[j]));
                             }
                             // Peelout last iteration
-                            int sourceBtwCalls = bodyGraphForImplPhaseJ[currentCmd.CallCmds[currentCmd.CallCmds.Count - 1]];
-                            int destBtwCalls = bodyGraphForImplPhaseJ[nextCmd.CallCmds[0]];
+                            int sourceBtwCalls = abysToNode[currentCmd.CallCmds[currentCmd.CallCmds.Count - 1]];
+                            int destBtwCalls = abysToNode[nextCmd.CallCmds[0]];
                             Tuple<int, int> edgeBtw = new Tuple<int, int>(sourceBtwCalls, destBtwCalls);
                             edges.Add(edgeBtw);
                             edgeLabels.Add(edgeBtw, GetEdgeType(currentCmd.CallCmds[currentCmd.CallCmds.Count - 1]));
                         }
-                        else if (IsSeqComposableParCallCmd(block.Cmds[i], yTypeCheckCurrentPhaseNum) && IsExitStatement(block.Cmds[i + 1], yTypeCheckCurrentPhaseNum))
+                        else if (IsSeqComposableParCallCmd(block.Cmds[i]) && IsExitStatement(block.Cmds[i + 1]))
                         {
                             ParCallCmd currentCmd = block.Cmds[i] as ParCallCmd;
                             for (int j = 0; j < currentCmd.CallCmds.Count - 1; j++)
                             {
-                                int source = bodyGraphForImplPhaseJ[currentCmd.CallCmds[j]];
-                                int dest = bodyGraphForImplPhaseJ[currentCmd.CallCmds[j + 1]];
+                                int source = abysToNode[currentCmd.CallCmds[j]];
+                                int dest = abysToNode[currentCmd.CallCmds[j + 1]];
                                 Tuple<int, int> edge = new Tuple<int, int>(source, dest);
                                 edges.Add(edge);
                                 edgeLabels.Add(edge, GetEdgeType(currentCmd.CallCmds[j]));
                             }
                             // Peelout last iteration
-                            int sourceBtwCalls = bodyGraphForImplPhaseJ[currentCmd.CallCmds[currentCmd.CallCmds.Count - 1]];
+                            int sourceBtwCalls = abysToNode[currentCmd.CallCmds[currentCmd.CallCmds.Count - 1]];
                             int destBtwCalls = Math.Abs(Guid.NewGuid().GetHashCode()); // Generate unique dummy node 
-                            //Console.Write("\n >=2 Adding next is EXT transition " + source.ToString() + " --> " + dest.ToString());
                             finalStates.Add(destBtwCalls);
                             Tuple<int, int> edgeBtw = new Tuple<int, int>(sourceBtwCalls, destBtwCalls);
                             edges.Add(edgeBtw);
                             edgeLabels.Add(edgeBtw, GetEdgeType(currentCmd.CallCmds[currentCmd.CallCmds.Count - 1]));
 
                         }
-                        else if (IsSeqComposableParCallCmd(block.Cmds[i], yTypeCheckCurrentPhaseNum) && IsProperActionCmd(block.Cmds[i + 1], yTypeCheckCurrentPhaseNum))
+                        else if (IsSeqComposableParCallCmd(block.Cmds[i]) && IsProperActionCmd(block.Cmds[i + 1]))
                         {
                             ParCallCmd currentCmd = block.Cmds[i] as ParCallCmd;
 
                             for (int j = 0; j < currentCmd.CallCmds.Count - 1; j++)
                             {
-                                int source = bodyGraphForImplPhaseJ[currentCmd.CallCmds[j]];
-                                int dest = bodyGraphForImplPhaseJ[currentCmd.CallCmds[j + 1]];
+                                int source = abysToNode[currentCmd.CallCmds[j]];
+                                int dest = abysToNode[currentCmd.CallCmds[j + 1]];
                                 Tuple<int, int> edge = new Tuple<int, int>(source, dest);
                                 edges.Add(edge);
                                 edgeLabels.Add(edge, GetEdgeType(currentCmd.CallCmds[j]));
                             }
                             // Peelout last iteration
-                            int sourceBtwCalls = bodyGraphForImplPhaseJ[currentCmd.CallCmds[currentCmd.CallCmds.Count - 1]];
-                            int destBtwCalls = bodyGraphForImplPhaseJ[block.Cmds[i + 1]]; // Generate unique dummy node 
+                            int sourceBtwCalls = abysToNode[currentCmd.CallCmds[currentCmd.CallCmds.Count - 1]];
+                            int destBtwCalls = abysToNode[block.Cmds[i + 1]]; // Generate unique dummy node 
                             Tuple<int, int> edgeBtw = new Tuple<int, int>(sourceBtwCalls, destBtwCalls);
                             edges.Add(edgeBtw);
                             edgeLabels.Add(edgeBtw, GetEdgeType(currentCmd.CallCmds[currentCmd.CallCmds.Count - 1]));
-                        }/*
-                        else
-                        {// Do proper transition 
-                            int source = bodyGraphForImplPhaseJ[block.Cmds[i]];
-                            int dest = bodyGraphForImplPhaseJ[block.Cmds[i + 1]];
-                            //  Console.Write("\n >=2 Adding proper transitionels " + source.ToString() + " --> " + dest.ToString());
-                            Tuple<int, int> edge = new Tuple<int, int>(source, dest);
-                            edges.Add(edge);
-                            edgeLabels.Add(edge, GetEdgeType(block.Cmds[i]));
-
-                        }*/
+                        }
                     }
-
-
-                    if (IsExitStatement(block.Cmds[block.Cmds.Count - 1], yTypeCheckCurrentPhaseNum))
+                    if (IsExitStatement(block.Cmds[block.Cmds.Count - 1]))
                     { // put b.TransferCmd into initial states
-                        //Console.Write("\n >=2 Last cmd is EXT put current as initial " + bodyGraphForImplPhaseJ[block.TransferCmd].ToString());
-
-                        initialStates.Add(bodyGraphForImplPhaseJ[block.TransferCmd]);
+                        initialStates.Add(abysToNode[block.TransferCmd]);
                     }
-                    /* else if (IsAsyncCallCmd(block.Cmds[block.Cmds.Count - 1])) { }*/
-                    else if (IsParallelCallCmdYield(block.Cmds[block.Cmds.Count - 1], yTypeCheckCurrentPhaseNum))
+                    else if (IsParallelCallCmdYield(block.Cmds[block.Cmds.Count - 1]))
                     {
                         ParCallCmd currentCmd = block.Cmds[block.Cmds.Count - 1] as ParCallCmd;
-                        int source = bodyGraphForImplPhaseJ[currentCmd.CallCmds[0]];
-                        int dest = bodyGraphForImplPhaseJ[block.TransferCmd];
-                        //Console.Write("\n >=2 Adding proper transitionels " + source.ToString() + " --> " + dest.ToString());                            
+                        int source = abysToNode[currentCmd.CallCmds[0]];
+                        int dest = abysToNode[block.TransferCmd];
                         Tuple<int, int> edge = new Tuple<int, int>(source, dest);
                         edges.Add(edge);
                         edgeLabels.Add(edge, GetEdgeType(block.Cmds[block.Cmds.Count - 1]));
-
                     }
-                    else if (IsSeqComposableParCallCmd(block.Cmds[block.Cmds.Count - 1], yTypeCheckCurrentPhaseNum))
+                    else if (IsSeqComposableParCallCmd(block.Cmds[block.Cmds.Count - 1]))
                     {
                         ParCallCmd currentCmd = block.Cmds[block.Cmds.Count - 1] as ParCallCmd;
-
                         for (int j = 0; j < currentCmd.CallCmds.Count - 1; j++)
                         {
-                            int source = bodyGraphForImplPhaseJ[currentCmd.CallCmds[j]];
-                            int dest = bodyGraphForImplPhaseJ[currentCmd.CallCmds[j + 1]];
+                            int source = abysToNode[currentCmd.CallCmds[j]];
+                            int dest = abysToNode[currentCmd.CallCmds[j + 1]];
                             Tuple<int, int> edge = new Tuple<int, int>(source, dest);
                             edges.Add(edge);
                             edgeLabels.Add(edge, GetEdgeType(currentCmd.CallCmds[j]));
                         }
 
-                        int sourceBtwCalls = bodyGraphForImplPhaseJ[currentCmd.CallCmds[currentCmd.CallCmds.Count - 1]];
-                        int destBtwCalls = bodyGraphForImplPhaseJ[block.TransferCmd]; // Generate unique dummy node 
+                        int sourceBtwCalls = abysToNode[currentCmd.CallCmds[currentCmd.CallCmds.Count - 1]];
+                        int destBtwCalls = abysToNode[block.TransferCmd]; // Generate unique dummy node 
                         Tuple<int, int> edgeBtw = new Tuple<int, int>(sourceBtwCalls, destBtwCalls);
                         edges.Add(edgeBtw);
                         edgeLabels.Add(edgeBtw, GetEdgeType(currentCmd.CallCmds[currentCmd.CallCmds.Count - 1]));
 
                     }
-                    else if (IsProperActionCmd(block.Cmds[block.Cmds.Count - 1], yTypeCheckCurrentPhaseNum))
+                    else if (IsProperActionCmd(block.Cmds[block.Cmds.Count - 1]))
                     {
                         // proper transition to state before transfer command
-                        int source = bodyGraphForImplPhaseJ[block.Cmds[block.Cmds.Count - 1]];
-                        int dest = bodyGraphForImplPhaseJ[block.TransferCmd];
-                        //Console.Write("\n >=2 Adding proper transitionels " + source.ToString() + " --> " + dest.ToString());                            
+                        int source = abysToNode[block.Cmds[block.Cmds.Count - 1]];
+                        int dest = abysToNode[block.TransferCmd];
                         Tuple<int, int> edge = new Tuple<int, int>(source, dest);
                         edges.Add(edge);
                         edgeLabels.Add(edge, GetEdgeType(block.Cmds[block.Cmds.Count - 1]));
-
                     }
-
                 }
                 else if (block.Cmds.Count == 1)
                 {
-                    if (IsExitStatement(block.Cmds[0], yTypeCheckCurrentPhaseNum))
+                    if (IsExitStatement(block.Cmds[0]))
                     { // put b.TransferCmd into initial states
-                        //  Console.Write("\n == 1 current cmd is EXT "+block.Cmds[0].ToString()+" put it as initial " );
-                        initialStates.Add(bodyGraphForImplPhaseJ[block.TransferCmd]);
+                        initialStates.Add(abysToNode[block.TransferCmd]);
                     }
-                    else if (IsProperActionCmd(block.Cmds[0], yTypeCheckCurrentPhaseNum))
+                    else if (IsProperActionCmd(block.Cmds[0]))
                     { // proper transition to state before transfer command
-                        int source = bodyGraphForImplPhaseJ[block.Cmds[0]];
-                        int dest = bodyGraphForImplPhaseJ[block.TransferCmd];
-                        //    Console.Write("\n ==1 Adding proper transition " + source.ToString() + " --> " + dest.ToString());
-
+                        int source = abysToNode[block.Cmds[0]];
+                        int dest = abysToNode[block.TransferCmd];
                         Tuple<int, int> edge = new Tuple<int, int>(source, dest);
                         edges.Add(edge);
                         edgeLabels.Add(edge, GetEdgeType(block.Cmds[0]));
                     }
-                    else if (IsParallelCallCmdYield(block.Cmds[0], yTypeCheckCurrentPhaseNum))
+                    else if (IsParallelCallCmdYield(block.Cmds[0]))
                     {
                         ParCallCmd currentCmd = block.Cmds[0] as ParCallCmd;
-                        int source = bodyGraphForImplPhaseJ[currentCmd.CallCmds[0]];
-                        int dest = bodyGraphForImplPhaseJ[block.TransferCmd];
-                        //Console.Write("\n >=2 Adding proper transitionels " + source.ToString() + " --> " + dest.ToString());                            
+                        int source = abysToNode[currentCmd.CallCmds[0]];
+                        int dest = abysToNode[block.TransferCmd];
                         Tuple<int, int> edge = new Tuple<int, int>(source, dest);
                         edges.Add(edge);
                         edgeLabels.Add(edge, GetEdgeType(block.Cmds[0]));
                     }
-                    else if (IsSeqComposableParCallCmd(block.Cmds[0], yTypeCheckCurrentPhaseNum))
+                    else if (IsSeqComposableParCallCmd(block.Cmds[0]))
                     {
                         ParCallCmd currentCmd = block.Cmds[0] as ParCallCmd;
                         for (int j = 0; j < currentCmd.CallCmds.Count - 1; j++)
                         {
-                            int source = bodyGraphForImplPhaseJ[currentCmd.CallCmds[j]];
-                            int dest = bodyGraphForImplPhaseJ[currentCmd.CallCmds[j + 1]];
+                            int source = abysToNode[currentCmd.CallCmds[j]];
+                            int dest = abysToNode[currentCmd.CallCmds[j + 1]];
                             Tuple<int, int> edge = new Tuple<int, int>(source, dest);
                             edges.Add(edge);
                             edgeLabels.Add(edge, GetEdgeType(currentCmd.CallCmds[j]));
                         }
 
-                        int sourceBtwCalls = bodyGraphForImplPhaseJ[currentCmd.CallCmds[currentCmd.CallCmds.Count - 1]];
-                        int destBtwCalls = bodyGraphForImplPhaseJ[block.TransferCmd]; // Generate unique dummy node 
+                        int sourceBtwCalls = abysToNode[currentCmd.CallCmds[currentCmd.CallCmds.Count - 1]];
+                        int destBtwCalls = abysToNode[block.TransferCmd]; // Generate unique dummy node 
                         Tuple<int, int> edgeBtw = new Tuple<int, int>(sourceBtwCalls, destBtwCalls);
                         edges.Add(edgeBtw);
                         edgeLabels.Add(edgeBtw, GetEdgeType(currentCmd.CallCmds[currentCmd.CallCmds.Count - 1]));
@@ -684,38 +608,30 @@ namespace Microsoft.Boogie
                     }
                 }
                 else if (block.Cmds.Count == 0)
-                {
-                    // Target block Entry state will be fetched 
-                    //Console.Write("\n == 0 \n" );
-
+                {// Target block Entry state will be fetched
                 }
                 // Handle
-                HashSet<int> targetBlockEntryStates = GetStateOfTargetBlock(block.TransferCmd, bodyGraphForImplPhaseJ, yTypeCheckCurrentPhaseNum, initialStates, finalStates);
+                HashSet<int> targetBlockEntryStates = GetStateOfTargetBlock(block.TransferCmd);
                 foreach (int entryState in targetBlockEntryStates)
                 {
-                    int source = bodyGraphForImplPhaseJ[block.TransferCmd];
+                    int source = abysToNode[block.TransferCmd];
                     Tuple<int, int> transferEdge = new Tuple<int, int>(source, entryState);
-                    //Console.Write("\n Doing TC " + source.ToString() + " --> " + entryState.ToString());
-
                     edges.Add(transferEdge);
                     edgeLabels.Add(transferEdge, "E");
                 }
             }
-
             Graph<int> automatonGraphOfImplPerPhase = new Graph<int>(edges);
             return automatonGraphOfImplPerPhase;
         }
 
-        private HashSet<int> GetStateOfTargetBlock(TransferCmd tc, Dictionary<Absy, int> bodyGraphForImplPhaseJ, int yTypeCheckCurrentPhaseNum, List<int> initialStates, List<int> finalStates)
+        private HashSet<int> GetStateOfTargetBlock(TransferCmd tc)
         {
             HashSet<int> targetBlockEntryStates = new HashSet<int>();
             if (tc is ReturnCmd)
             {
                 ReturnCmd returnCmd = tc as ReturnCmd;
-                int source = bodyGraphForImplPhaseJ[tc];
+                int source = abysToNode[tc];
                 finalStates.Add(source);
-                //Console.WriteLine(" There is a return baby ! " + source.ToString());                
-                // Do Nothing
             }
             else if (tc is GotoCmd)
             {
@@ -724,36 +640,35 @@ namespace Microsoft.Boogie
                 {
                     if (block.Cmds.Count == 0)
                     {
-                        targetBlockEntryStates.Add(bodyGraphForImplPhaseJ[block.TransferCmd]); //Target block is empty. Add state of target block's transfer command (Goto or Return) 
+                        targetBlockEntryStates.Add(abysToNode[block.TransferCmd]); //Target block is empty. Add state of target block's transfer command (Goto or Return) 
                     }
                     else if (block.Cmds.Count >= 1)
                     {
-                        if (IsExitStatement(block.Cmds[0], yTypeCheckCurrentPhaseNum))
+                        if (IsExitStatement(block.Cmds[0]))
                         {
-                            // Create artificial final state and put this into final states
                             int targetState = Math.Abs(Guid.NewGuid().GetHashCode());
                             finalStates.Add(targetState);
                             targetBlockEntryStates.Add(targetState);
                         }
-                        else if (IsProperActionCmd(block.Cmds[0], yTypeCheckCurrentPhaseNum))
+                        else if (IsProperActionCmd(block.Cmds[0]))
                         {
-                            targetBlockEntryStates.Add(bodyGraphForImplPhaseJ[block.Cmds[0]]);
+                            targetBlockEntryStates.Add(abysToNode[block.Cmds[0]]);
                         }
-                        else if (IsParallelCallCmdYield(block.Cmds[0], yTypeCheckCurrentPhaseNum))
+                        else if (IsParallelCallCmdYield(block.Cmds[0]))
                         {
                             ParCallCmd targetCmd = block.Cmds[0] as ParCallCmd;
-                            targetBlockEntryStates.Add(bodyGraphForImplPhaseJ[targetCmd.CallCmds[0]]);
+                            targetBlockEntryStates.Add(abysToNode[targetCmd.CallCmds[0]]);
                         }
-                        else if (IsSeqComposableParCallCmd(block.Cmds[0], yTypeCheckCurrentPhaseNum))
+                        else if (IsSeqComposableParCallCmd(block.Cmds[0]))
                         {
                             ParCallCmd targetCmd = block.Cmds[0] as ParCallCmd;
-                            targetBlockEntryStates.Add(bodyGraphForImplPhaseJ[targetCmd.CallCmds[0]]);
+                            targetBlockEntryStates.Add(abysToNode[targetCmd.CallCmds[0]]);
                         }
                         else if (IsAsyncCallCmd(block.Cmds[0]))
                         {
                             if (block.Cmds.Count == 1)
                             {
-                                targetBlockEntryStates.Add(bodyGraphForImplPhaseJ[block.TransferCmd]);
+                                targetBlockEntryStates.Add(abysToNode[block.TransferCmd]);
                             }
                             else if (block.Cmds.Count > 1)
                             {
@@ -761,36 +676,36 @@ namespace Microsoft.Boogie
                                 for (existsNonAsync = 0; existsNonAsync < block.Cmds.Count; existsNonAsync++)
                                 {
                                     if (IsAsyncCallCmd(block.Cmds[existsNonAsync])) continue;
-                                    else if (IsParallelCallCmdYield(block.Cmds[existsNonAsync], yTypeCheckCurrentPhaseNum))
+                                    else if (IsParallelCallCmdYield(block.Cmds[existsNonAsync]))
                                     {
                                         ParCallCmd targetCmd = block.Cmds[existsNonAsync] as ParCallCmd;
-                                        targetBlockEntryStates.Add(bodyGraphForImplPhaseJ[targetCmd.CallCmds[0]]);
+                                        targetBlockEntryStates.Add(abysToNode[targetCmd.CallCmds[0]]);
                                         break;
                                     }
-                                    else if (IsSeqComposableParCallCmd(block.Cmds[existsNonAsync], yTypeCheckCurrentPhaseNum))
+                                    else if (IsSeqComposableParCallCmd(block.Cmds[existsNonAsync]))
                                     {
                                         ParCallCmd targetCmd = block.Cmds[existsNonAsync] as ParCallCmd;
-                                        targetBlockEntryStates.Add(bodyGraphForImplPhaseJ[targetCmd.CallCmds[0]]);
+                                        targetBlockEntryStates.Add(abysToNode[targetCmd.CallCmds[0]]);
                                         break;
 
                                     }
-                                    else if (IsExitStatement(block.Cmds[existsNonAsync], yTypeCheckCurrentPhaseNum))
+                                    else if (IsExitStatement(block.Cmds[existsNonAsync]))
                                     {
                                         int targetState = Math.Abs(Guid.NewGuid().GetHashCode());
                                         finalStates.Add(targetState);
                                         targetBlockEntryStates.Add(targetState);
                                         break;
                                     }
-                                    else if (IsExitStatement(block.Cmds[existsNonAsync], yTypeCheckCurrentPhaseNum))
+                                    else if (IsExitStatement(block.Cmds[existsNonAsync]))
                                     {
-                                        targetBlockEntryStates.Add(bodyGraphForImplPhaseJ[block.Cmds[existsNonAsync]]);
+                                        targetBlockEntryStates.Add(abysToNode[block.Cmds[existsNonAsync]]);
                                         break;
                                     }
                                 }
                                 if (existsNonAsync == block.Cmds.Count)
                                 {
                                     // put target 
-                                    targetBlockEntryStates.Add(bodyGraphForImplPhaseJ[block.TransferCmd]); //Target block is empty. Add state of target block's transfer command (Goto or Return)
+                                    targetBlockEntryStates.Add(abysToNode[block.TransferCmd]); //Target block is empty. Add state of target block's transfer command (Goto or Return)
                                 }
                             }
                         }
@@ -836,7 +751,6 @@ namespace Microsoft.Boogie
         {
             Set s = ComputeGlobalReads(cmd);
             s.AddRange(ComputeGlobalWrites(cmd));
-
             return s;
         }
 
@@ -855,7 +769,7 @@ namespace Microsoft.Boogie
             Set vars = new Set();
 
             if (cmd is AssertCmd)
-            {
+            { // noop
                 // AssertCmd assertCmd = cmd as AssertCmd;
                 //assertCmd.Expr.ComputeFreeVariables(vars);  // We can ignore assert cmds
             }
@@ -864,8 +778,7 @@ namespace Microsoft.Boogie
                 AssumeCmd assumeCmd = cmd as AssumeCmd;
                 assumeCmd.Expr.ComputeFreeVariables(vars);
             }
-            // Being checked at Shaz's type checeker
-            /*else if (cmd is AssignCmd)
+            else if (cmd is AssignCmd)
             {
                 AssignCmd assignCmd = cmd as AssignCmd;
                 foreach (AssignLhs assignLhs in assignCmd.Lhss)
@@ -880,10 +793,10 @@ namespace Microsoft.Boogie
                     }
                 }
                 foreach (Expr rhs in assignCmd.Rhss)
-                { 
+                {
                     rhs.ComputeFreeVariables(vars);
-                }                
-            }*/
+                }
+            }
 
             else if (cmd is HavocCmd)
             {
@@ -930,17 +843,16 @@ namespace Microsoft.Boogie
             {
                 // noop
             }
-            /*else if (cmd is AssignCmd) // No need being checked in Shaz's typechecker
-            { // Actually no need
-               AssignCmd assignCmd = cmd as AssignCmd;
-               foreach (AssignLhs assignLhs in assignCmd.Lhss)
+            else if (cmd is AssignCmd)
+            {
+                AssignCmd assignCmd = cmd as AssignCmd;
+                foreach (AssignLhs assignLhs in assignCmd.Lhss)
                 {
-                   vars.Add(assignLhs.DeepAssignedVariable);
+                    vars.Add(assignLhs.DeepAssignedVariable);
                 }
-            } */
+            }
             else if (cmd is HavocCmd)
             {
-                //  Console.WriteLine(" Hovoc wrt");
                 HavocCmd havocCmd = cmd as HavocCmd;
                 foreach (Expr var in havocCmd.Vars) { var.ComputeFreeVariables(vars); }
             }
@@ -963,11 +875,11 @@ namespace Microsoft.Boogie
         }
 
         //
-        private bool IsProperActionCmd(Cmd cmd, int yTypeCheckCurrentPhaseNum)
+        private bool IsProperActionCmd(Cmd cmd)
         {
-            if (!IsExitStatement(cmd, yTypeCheckCurrentPhaseNum) &&
-                !IsParallelCallCmdYield(cmd, yTypeCheckCurrentPhaseNum) &&
-                !IsSeqComposableParCallCmd(cmd, yTypeCheckCurrentPhaseNum) &&
+            if (!IsExitStatement(cmd) &&
+                !IsParallelCallCmdYield(cmd) &&
+                !IsSeqComposableParCallCmd(cmd) &&
                 !IsAsyncCallCmd(cmd))
             {
                 return true;
@@ -975,13 +887,13 @@ namespace Microsoft.Boogie
             return false;
 
         }
-        private bool IsExitStatement(Cmd cmd, int yTypeCheckCurrentPhaseNum)
+        private bool IsExitStatement(Cmd cmd)
         {
-            if (IsCallCmdExitPoint(cmd, yTypeCheckCurrentPhaseNum) || IsAccessToNonQedVar(cmd)) { return true; }
+            if (IsCallCmdExitPoint(cmd) || IsAccessToNonQedVar(cmd)) { return true; }
             return false;
         }
 
-        private bool IsCallCmdExitPoint(Cmd cmd, int yTypeCheckCurrentPhaseNum)
+        private bool IsCallCmdExitPoint(Cmd cmd)
         {
             if (cmd is CallCmd && !IsAsyncCallCmd(cmd))
             {
@@ -989,25 +901,19 @@ namespace Microsoft.Boogie
                 int phaseSpecCallee = moverTypeChecker.FindPhaseNumber(callee.Proc);
                 if (phaseSpecCallee >= yTypeCheckCurrentPhaseNum)
                 {
-#if DEBUG && !DEBUG_DETAIL
-                    Console.Write("\nCall Cmd Check is " + callee.Proc.Name + "\n");
-#endif
                     return true;
-
                 }
-
             }
             return false;
         }
 
-        private bool IsParallelCallCmdYield(Cmd cmd, int yTypeCheckCurrentPhaseNum)
+        private bool IsParallelCallCmdYield(Cmd cmd)
         {
             if (cmd is ParCallCmd)
             {
                 ParCallCmd callee = cmd as ParCallCmd;
                 foreach (CallCmd parCallee in callee.CallCmds)
                 {
-
                     int phaseSpecCallee = moverTypeChecker.FindPhaseNumber(parCallee.Proc);
                     if (phaseSpecCallee >= yTypeCheckCurrentPhaseNum)
                     {
@@ -1017,29 +923,21 @@ namespace Microsoft.Boogie
             }
             return false;
         }
-        private bool IsSeqComposableParCallCmd(Cmd cmd, int yTypeCheckCurrentPhaseNum)
+
+        private bool IsSeqComposableParCallCmd(Cmd cmd)
         {
-            if (cmd is ParCallCmd && !IsParallelCallCmdYield(cmd, yTypeCheckCurrentPhaseNum))
-            {
-                return true;
-            }
+            if (cmd is ParCallCmd && !IsParallelCallCmdYield(cmd)) { return true; }
             return false;
         }
-
         private bool IsAsyncCallCmd(Cmd cmd)
         {
             if (cmd is CallCmd)
             {
                 CallCmd calle = cmd as CallCmd;
-                if (calle.IsAsync)
-                {
-                    return true;
-                }
+                if (calle.IsAsync) { return true; }
             }
             return false;
         }
-
-
         private string GetEdgeType(Cmd cmd)
         {
             if (cmd is YieldCmd)
@@ -1083,9 +981,7 @@ namespace Microsoft.Boogie
             //}
 
         }
-
-
-        private string PrintGraph(Graph<int> graph, Implementation yTypeChecked, Dictionary<Tuple<int, int>, string> edgeLabels)
+        private string PrintGraph()
         {
             var s = new StringBuilder();
             s.AppendLine("\nImplementation " + yTypeChecked.Proc.Name + " digraph G {");
@@ -1094,16 +990,14 @@ namespace Microsoft.Boogie
             s.AppendLine("}");
             return s.ToString();
         }
-
-
-        private HashSet<Tuple<int, int>> CollectBackwardEdgesOfYieldEdge(Graph<int> g, int source)
+        private HashSet<Tuple<int, int>> CollectBackwardEdgesOfYieldEdge(int source)
         {
             HashSet<Tuple<int, int>> yieldReachingEdges = new HashSet<Tuple<int, int>>(); // Collect edges that are backward reachable from source vertex of yield a edge,source ---Y---> sink, in backward direction
             HashSet<int> gray = new HashSet<int>();
             HashSet<int> black = new HashSet<int>();
             HashSet<int> white = new HashSet<int>();
             // Add all vertices except s into 
-            foreach (int v in g.Nodes)
+            foreach (int v in graph.Nodes)
             {
                 if (!v.Equals(source))
                     white.Add(v);
@@ -1117,24 +1011,18 @@ namespace Microsoft.Boogie
             while (frontier.Count > 0)
             {
                 int u = frontier.Dequeue();
-                foreach (int v in g.Predecessors(u))
+                foreach (int v in graph.Predecessors(u))
                 {
-#if DEBUG && !DEBUG_DETAIL
-                    Console.Write("\nVertex " + u.ToString() + " is currently being explored for " + v.ToString() + "\n");
-#endif
+
                     if (white.Contains(v) && !gray.Contains(v) && !black.Contains(v))
                     {
-#if DEBUG && !DEBUG_DETAIL
-                        Console.Write(v.ToString() + " is not explored beforehand \n");
-#endif
+
                         gray.Add(v);
                         frontier.Enqueue(v);
                         // Add to yielding edges
                         yieldReachingEdges.Add(new Tuple<int, int>(v, u));
                     }
-#if DEBUG && !DEBUG_DETAIL
-                    Console.Write(v.ToString() + " is already being explored");
-#endif
+
                 }
                 black.Add(u);
             }
@@ -1144,19 +1032,17 @@ namespace Microsoft.Boogie
         /*
          * Calls CollectBackEdges for each Y edge existing in graph
          */
-        private HashSet<Tuple<int, int>> CollectYieldReachingEdgesOfGraph(Graph<int> graph, Dictionary<Tuple<int, int>, string> edgeLabels)
+        private HashSet<Tuple<int, int>> CollectYieldReachingEdgesOfGraph()
         {
             HashSet<Tuple<int, int>> yieldTrueEdges = new HashSet<Tuple<int, int>>(); // Set {forall edges e : e is reaching a Y labeled edge}
             foreach (var e in graph.Edges) // Visits all edges to and do backward yield reachability analysis starting from source vertex of an "Y" labeled edge
             {
                 if (edgeLabels[e] == "Y")
                 {
-                    HashSet<Tuple<int, int>> yieldReachingEdges = CollectBackwardEdgesOfYieldEdge(graph, e.Item1);
+                    HashSet<Tuple<int, int>> yieldReachingEdges = CollectBackwardEdgesOfYieldEdge(e.Item1);
                     foreach (Tuple<int, int> yldrch in yieldReachingEdges)
                     {
-#if (DEBUG && !DEBUG_DETAIL)
-                        Console.Write("\n" + " From :" + yldrch.Item1.ToString() + " To :" + yldrch.Item2.ToString() + "\n");
-#endif
+
                         yieldTrueEdges.Add(yldrch);
                     }
                 }
@@ -1164,12 +1050,128 @@ namespace Microsoft.Boogie
             return yieldTrueEdges;
         }
 
+        private HashSet<Tuple<int, int>> CollectEdgesReachableFromAction(int source)
+        {
+            HashSet<Tuple<int, int>> edgesReachable = new HashSet<Tuple<int, int>>(); // Collect edges that are backward reachable from source vertex of yield a edge,source ---Y---> sink, in backward direction
+            HashSet<int> gray = new HashSet<int>();
+            HashSet<int> black = new HashSet<int>();
+            HashSet<int> white = new HashSet<int>();
+            // Add all vertices except s into 
+            foreach (int v in graph.Nodes)
+            {
+                if (!v.Equals(source))
+                    white.Add(v);
+            }
+
+            Queue<int> frontier = new Queue<int>(); //
+            // n is given as start vertex 
+            gray.Add(source);
+            frontier.Enqueue(source);
+
+            while (frontier.Count > 0)
+            {
+                int u = frontier.Dequeue();
+                foreach (int v in graph.Successors(u))
+                {
+
+                    if (white.Contains(v) && !gray.Contains(v) && !black.Contains(v))
+                    {
+
+                        gray.Add(v);
+                        frontier.Enqueue(v);
+                        // Add to yielding edges
+                        edgesReachable.Add(new Tuple<int, int>(u, v));
+                    }
+
+                }
+                black.Add(u);
+            }
+
+            return edgesReachable;
+
+
+        }
+        private void IsExitOrRetReachableFromAtomicOrLeft()
+        {
+            foreach (var e in graph.Edges)
+            {
+                if (edgeLabels[e] == "A" || edgeLabels[e] == "L")
+                {
+                    HashSet<Tuple<int, int>> edgesReachable = CollectEdgesReachableFromAction(e.Item1);
+
+                    if (!ReachesFinalState(edgesReachable) || !ReachesYieldState(edgesReachable))
+                    {
+                        moverTypeChecker.Error(yTypeChecked, "Implementation Yield Reachable " + yTypeChecked.Proc.Name);
+                    }
+                }
+            }
+        }
+        private void IsExitOrReachableFromBoth()
+        {
+            foreach (var e in graph.Edges)
+            {
+                if (edgeLabels[e] == "B")
+                {
+                    HashSet<Tuple<int, int>> edgesReachable = CollectEdgesReachableFromAction(e.Item1);
+                    if (!ReachesFinalState(edgesReachable) || !ReachesYieldState(edgesReachable))
+                    {
+                        //   Console.WriteLine("Both is converted to R");
+                        edgeLabels[e] = "R";
+                    }
+                }
+            }
+
+        }
+        private void IsExitOrReachableFromLocal()
+        {
+            foreach (var e in graph.Edges)
+            {
+                if (edgeLabels[e] == "Q")
+                {
+                    HashSet<Tuple<int, int>> edgesReachable = CollectEdgesReachableFromAction(e.Item1);
+                    if (!ReachesFinalState(edgesReachable) || !ReachesYieldState(edgesReachable))
+                    {
+                        // Console.WriteLine("Q is being converted to P");
+                        edgeLabels[e] = "P";
+                    }
+                    edgeLabels[e] = "E";
+                }
+            }
+        }
+        private bool ReachesFinalState(HashSet<Tuple<int, int>> edges)
+        {
+
+            foreach (Tuple<int, int> e in edges)
+            {
+                if (finalStates.Contains(e.Item1) || finalStates.Contains(e.Item2)) return true;
+            }
+            return false;
+        }
+        private bool ReachesYieldState(HashSet<Tuple<int, int>> edges)
+        {
+            foreach (var e in edges)
+            {
+
+                if (edgeLabels[e] == "Y") return true;
+            }
+            return false;
+        }
+
+        private Automaton<BvSet> BuildOptAutomatonYieldReachSafe()
+        {
+
+            IsExitOrRetReachableFromAtomicOrLeft();
+            IsExitOrReachableFromBoth();
+            IsExitOrReachableFromLocal();
+            return BuildAutomatonYieldTypeSafe();
+        }
+
         /*
          * Updates vertices map according to according to yieldReaching edges. If an edge in graph is not yield reaching that its vertices map updated.
          */
-        private void PostProcessGraph(Graph<int> graph, Dictionary<Tuple<int, int>, string> edgeLabels)
+        private void PostProcessGraph()
         {
-            HashSet<Tuple<int, int>> yieldTrueEdges = CollectYieldReachingEdgesOfGraph(graph, edgeLabels);
+            HashSet<Tuple<int, int>> yieldTrueEdges = CollectYieldReachingEdgesOfGraph();
 
             foreach (Tuple<int, int> yldrch in yieldTrueEdges)
             {
@@ -1238,37 +1240,16 @@ namespace Microsoft.Boogie
             }
         }
 
-        private int[] ComputeFinalStates(List<int> finalStates)
+        private int[] ComputeFinalStates()
         {
-            int[] finalS = new int[finalStates.Count];
-            for (int i = 0; i < finalStates.Count; i++)
-            {
-                finalS[i] = finalStates[i];
-            }
-#if (DEBUG && !DEBUG_DETAIL)
-            for (int i = 0; i < finalStates.Count; i++)
-            {
-                Console.Write("\nAn final state : \n");
-                Console.Write(finalStates[i].ToString() + " ");
-            }
-#endif
-            return finalS;
+            return finalStates.ToArray();
         }
-
-
-        private List<int> ComputeInitalStates(List<int> initialStates)
+        private int[] ComputeInitialStates()
         {
+            return initialStates.ToArray();
+        }
 
-#if (DEBUG && !DEBUG_DETAIL)
-            for (int i = 0; i<initialStates.Count;i++ )
-            {
-                Console.Write("\nAn initial state : \n");
-                Console.Write(initialStates[i].ToString() + " ");
-        }
-#endif
-            return initialStates;
-        }
-        private Automaton<BvSet> BuildAutomatonYieldTypeSafe(Graph<int> graph, Dictionary<Tuple<int, int>, string> edgeLabels, List<int> initialStates, List<int> finalStates, Implementation ytypeChecked, int yTypeCheckCurrentPhaseNum)
+        private Automaton<BvSet> BuildAutomatonYieldTypeSafe()
         {
             List<int[]> transitions = new List<int[]>();
             foreach (Tuple<int, int> e in graph.Edges)
@@ -1348,32 +1329,8 @@ namespace Microsoft.Boogie
 
             }
 
-#if (DEBUG && !DEBUG_DETAIL)
-            Console.Write(" \n Transitions before EPSILONS are added\n ");
-            for (int i = 0; i < transitions.Count; i++)
-            {
-                int[] trans = transitions[i];
-                Console.Write("\n From : " + trans[0].ToString() + "--- " + trans[1] + " --- " + " to : " + trans[3].ToString());
-            }
-#endif
-
-
-#if DEBUG && !DEBUG_DETAIL
-            Console.WriteLine(" ******* Printing initial states\n");
-            foreach (int inits in initialStates) {
-
-                Console.WriteLine("initial state is " + inits.ToString());
-            }
-#endif
             // get final states
-            int[] finalSts = ComputeFinalStates(finalStates);
-#if DEBUG && !DEBUG_DETAIL
-            Console.WriteLine("\n*****Printing Finals states\n");
-            foreach (int finals in finalSts)
-            {
-                Console.WriteLine(" final state " + finals.ToString());
-            }
-#endif
+            int[] finalSts = ComputeFinalStates();
             int dummyInitial = Math.Abs(Guid.NewGuid().GetHashCode());
             foreach (int s in initialStates)
             {
@@ -1384,41 +1341,12 @@ namespace Microsoft.Boogie
                 transition[3] = s;
                 transitions.Add(transition);
             }
-
-#if (DEBUG && !DEBUG_DETAIL)
-            Console.Write(" \n Transitions are\n ");
-            for (int i = 0; i < transitions.Count; i++)
-            {
-                int[] trans = transitions[i];
-                Console.Write("\n From : " + trans[0].ToString() + "--- " + trans[1] + " --- " + " to : " + trans[3].ToString());
-            }
-#endif
-
             // create Automaton
             Automaton<BvSet> yieldTypeCheckAutomaton = solver.ReadFromRanges(dummyInitial, finalSts, transitions);
-#if DEBUG && !DEBUG_DETAIL
-            Console.WriteLine("\n--Implementation Automaton for type safe--");
-            foreach (var move in yieldTypeCheckAutomaton.GetMoves())
-            {
-                Console.WriteLine("\n " + move.SourceState.ToString() + " -- " + this.PrintEpsilon(move.Condition, solver) + " --> " + move.TargetState.ToString() + " \n");
-            }
-            string implAutomatonGraphName = ytypeChecked.Proc.Name + "YieldTypeSafephaseNum__" + yTypeCheckCurrentPhaseNum.ToString();
-            solver.ShowGraph(yieldTypeCheckAutomaton, implAutomatonGraphName + ".dmgl");
-#endif
-
-
-#if DEBUG && !DEBUG_DETAIL
-           Console.WriteLine("\n--Epsilons Reduced Automaton--");
-           foreach (var move in epsilonReducedAtutomaton.GetMoves()) {
-                 Console.WriteLine("\n "+ move.SourceState.ToString() + " -- " +  solver.PrettyPrint(move.Condition)+ " --> " + move.TargetState.ToString() +" \n");
-           }
-#endif
-
             return yieldTypeCheckAutomaton;
-
         }
 
-        private Automaton<BvSet> BuildAutomatonYieldReachSafe(Graph<int> graph, Dictionary<Tuple<int, int>, string> edgeLabels, List<int> initialStates, List<int> finalStates, Implementation ytypeChecked, int yTypeCheckCurrentPhaseNum)
+        private Automaton<BvSet> BuildAutomatonYieldReachSafe()
         {
             List<int[]> transitions = new List<int[]>();
             foreach (Tuple<int, int> e in graph.Edges)
@@ -1431,8 +1359,6 @@ namespace Microsoft.Boogie
                     transition[2] = 51;
                     transition[3] = e.Item2;
                     transitions.Add(transition);
-
-
                 }
                 else if (edgeLabels[e] == "1")
                 {
@@ -1442,7 +1368,6 @@ namespace Microsoft.Boogie
                     transition[2] = 49;
                     transition[3] = e.Item2;
                     transitions.Add(transition);
-
                 }
                 else if (edgeLabels[e] == "7")
                 {
@@ -1452,7 +1377,6 @@ namespace Microsoft.Boogie
                     transition[2] = 55;
                     transition[3] = e.Item2;
                     transitions.Add(transition);
-
                 }
                 else if (edgeLabels[e] == "5")
                 {
@@ -1462,7 +1386,6 @@ namespace Microsoft.Boogie
                     transition[2] = 53;
                     transition[3] = e.Item2;
                     transitions.Add(transition);
-
                 }
                 else if (edgeLabels[e] == "9")
                 {
@@ -1472,7 +1395,6 @@ namespace Microsoft.Boogie
                     transition[2] = 57;
                     transition[3] = e.Item2;
                     transitions.Add(transition);
-
                 }
                 else if (edgeLabels[e] == "A")
                 {
@@ -1558,32 +1480,8 @@ namespace Microsoft.Boogie
 
             }
 
-#if (DEBUG && !DEBUG_DETAIL)
-            Console.Write(" \n Transitions before EPSILONS are added\n ");
-            for (int i = 0; i < transitions.Count; i++)
-            {
-                int[] trans = transitions[i];
-                Console.Write("\n From : " + trans[0].ToString() + "--- " + trans[1] + " --- " + " to : " + trans[3].ToString());
-            }
-#endif
-
-
-#if DEBUG && !DEBUG_DETAIL
-            Console.WriteLine(" ******* Printing initial states\n");
-            foreach (int inits in initialStates) {
-
-                Console.WriteLine("initial state is " + inits.ToString());
-            }
-#endif
             // get final states
-            int[] finalSts = ComputeFinalStates(finalStates);
-#if DEBUG && !DEBUG_DETAIL
-            Console.WriteLine("\n*****Printing Finals states\n");
-            foreach (int finals in finalSts)
-            {
-                Console.WriteLine(" final state " + finals.ToString());
-            }
-#endif
+            int[] finalSts = ComputeFinalStates();
             int dummyInitial = Math.Abs(Guid.NewGuid().GetHashCode());
             foreach (int s in initialStates)
             {
@@ -1595,33 +1493,8 @@ namespace Microsoft.Boogie
                 transitions.Add(transition);
             }
 
-#if (DEBUG && !DEBUG_DETAIL)
-            Console.Write(" \n Transitions are\n ");
-            for (int i = 0; i < transitions.Count; i++)
-            {
-                int[] trans = transitions[i];
-                Console.Write("\n From : " + trans[0].ToString() + "--- " + trans[1] + " --- " + " to : " + trans[3].ToString());
-            }
-#endif
-
             // create Automaton
             Automaton<BvSet> yieldTypeCheckAutomaton = solver.ReadFromRanges(dummyInitial, finalSts, transitions);
-#if DEBUG && !DEBUG_DETAIL
-           Console.WriteLine("\n--Implementation Automaton--");
-           foreach (var move in yieldTypeCheckAutomaton.GetMoves()) {
-                 Console.WriteLine("\n "+ move.SourceState.ToString() + " -- " +  this.PrintEpsilon(move.Condition,solver)+ " --> " + move.TargetState.ToString() +" \n");
-           }
-           string implAutomatonGraphName = ytypeChecked.Proc.Name + "ReachabilityphaseNum__" + yTypeCheckCurrentPhaseNum.ToString();
-           solver.ShowGraph(yieldTypeCheckAutomaton, implAutomatonGraphName+".dmgl");
-#endif
-
-
-#if DEBUG && !DEBUG_DETAIL
-           Console.WriteLine("\n--Epsilons Reduced Automaton--");
-           foreach (var move in epsilonReducedAtutomaton.GetMoves()) {
-                 Console.WriteLine("\n "+ move.SourceState.ToString() + " -- " +  solver.PrettyPrint(move.Condition)+ " --> " + move.TargetState.ToString() +" \n");
-           }
-#endif
             return yieldTypeCheckAutomaton;
 
         }
