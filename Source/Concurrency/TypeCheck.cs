@@ -69,23 +69,23 @@ namespace Microsoft.Boogie
             foreach (Variable x in proc.InParams)
             {
                 this.thisInParams.Add(x);
-                Variable y = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "that_" + x.Name, x.TypedIdent.Type), true);
+                Variable y = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "that_" + x.Name, x.TypedIdent.Type), true, x.Attributes);
                 this.thatInParams.Add(y);
                 map[x] = new IdentifierExpr(Token.NoToken, y);
             }
             foreach (Variable x in proc.OutParams)
             {
                 this.thisOutParams.Add(x);
-                Variable y = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "that_" + x.Name, x.TypedIdent.Type), false);
+                Variable y = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "that_" + x.Name, x.TypedIdent.Type), false, x.Attributes);
                 this.thatOutParams.Add(y);
                 map[x] = new IdentifierExpr(Token.NoToken, y);
             }
-            List<Variable> otherLocVars = new List<Variable>();
+            List<Variable> thatLocVars = new List<Variable>();
             foreach (Variable x in thisAction.LocVars)
             {
                 Variable y = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "that_" + x.Name, x.TypedIdent.Type), false);
                 map[x] = new IdentifierExpr(Token.NoToken, y);
-                otherLocVars.Add(y);
+                thatLocVars.Add(y);
             }
             Contract.Assume(proc.TypeParameters.Count == 0);
             Substitution subst = Substituter.SubstitutionFromHashtable(map);
@@ -94,7 +94,7 @@ namespace Microsoft.Boogie
                 thatGate.Add((AssertCmd)Substituter.Apply(subst, assertCmd));
             }
             Dictionary<Block, Block> blockMap = new Dictionary<Block, Block>();
-            List<Block> otherBlocks = new List<Block>();
+            List<Block> thatBlocks = new List<Block>();
             foreach (Block block in thisAction.Blocks)
             {
                 List<Cmd> otherCmds = new List<Cmd>();
@@ -102,12 +102,12 @@ namespace Microsoft.Boogie
                 {
                     otherCmds.Add(Substituter.Apply(subst, cmd));
                 }
-                Block otherBlock = new Block();
-                otherBlock.Cmds = otherCmds;
-                otherBlock.Label = "that_" + block.Label;
+                Block thatBlock = new Block();
+                thatBlock.Cmds = otherCmds;
+                thatBlock.Label = "that_" + block.Label;
                 block.Label = "this_" + block.Label;
-                otherBlocks.Add(otherBlock);
-                blockMap[block] = otherBlock;
+                thatBlocks.Add(thatBlock);
+                blockMap[block] = thatBlock;
                 if (block.TransferCmd is GotoCmd)
                 {
                     GotoCmd gotoCmd = block.TransferCmd as GotoCmd;
@@ -125,17 +125,17 @@ namespace Microsoft.Boogie
                     blockMap[block].TransferCmd = new ReturnCmd(block.TransferCmd.tok);
                     continue;
                 }
-                List<Block> otherGotoCmdLabelTargets = new List<Block>();
-                List<string> otherGotoCmdLabelNames = new List<string>();
+                List<Block> thatGotoCmdLabelTargets = new List<Block>();
+                List<string> thatGotoCmdLabelNames = new List<string>();
                 GotoCmd gotoCmd = block.TransferCmd as GotoCmd;
                 foreach (Block target in gotoCmd.labelTargets)
                 {
-                    otherGotoCmdLabelTargets.Add(blockMap[target]);
-                    otherGotoCmdLabelNames.Add(blockMap[target].Label);
+                    thatGotoCmdLabelTargets.Add(blockMap[target]);
+                    thatGotoCmdLabelNames.Add(blockMap[target].Label);
                 }
-                blockMap[block].TransferCmd = new GotoCmd(block.TransferCmd.tok, otherGotoCmdLabelNames, otherGotoCmdLabelTargets);
+                blockMap[block].TransferCmd = new GotoCmd(block.TransferCmd.tok, thatGotoCmdLabelNames, thatGotoCmdLabelTargets);
             }
-            this.thatAction = new CodeExpr(otherLocVars, otherBlocks);
+            this.thatAction = new CodeExpr(thatLocVars, thatBlocks);
         }
     }
 
@@ -220,6 +220,10 @@ namespace Microsoft.Boogie
         public override Procedure VisitProcedure(Procedure node)
         {
             enclosingProcPhaseNum = FindPhaseNumber(node);
+            if (enclosingProcPhaseNum != int.MaxValue)
+            {
+                assertionPhaseNums.Add(enclosingProcPhaseNum);
+            }
             return base.VisitProcedure(node);
         }
         public override Cmd VisitCallCmd(CallCmd node)

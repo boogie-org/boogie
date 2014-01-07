@@ -33,8 +33,21 @@ namespace Microsoft.Boogie
             List<Declaration> decls = new List<Declaration>();
             OwickiGries.AddCheckers(linearTypeChecker, moverTypeChecker, decls);
             MoverCheck.AddCheckers(linearTypeChecker, moverTypeChecker, decls);
-            //RefinementCheck.AddCheckers(linearTypeChecker, moverTypeChecker, decls);
 
+            foreach (Declaration decl in decls)
+            {
+                Procedure proc = decl as Procedure;
+                if (proc != null && QKeyValue.FindBoolAttribute(proc.Attributes, "yields"))
+                {
+                    proc.Modifies = new List<IdentifierExpr>();
+                    linearTypeChecker.program.GlobalVariables().Iter(x => proc.Modifies.Add(Expr.Ident(x)));
+                }
+            }
+            foreach (Declaration decl in decls)
+            {
+                decl.Attributes = OwickiGries.RemoveYieldsAttribute(decl.Attributes);
+                decl.Attributes = OwickiGries.RemoveStableAttribute(decl.Attributes);
+            }
             program.TopLevelDeclarations.RemoveAll(x => originalDecls.Contains(x));
             program.TopLevelDeclarations.AddRange(decls);
         }

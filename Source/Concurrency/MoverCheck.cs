@@ -141,12 +141,12 @@ namespace Microsoft.Boogie
             }
         }
 
-        class TransitionRelationComputation
+        public class TransitionRelationComputation
         {
             private Program program;
-            private ActionInfo first;
-            private ActionInfo second;
-            private Stack<Block> dfsStack;
+            private ActionInfo first;  // corresponds to that*
+            private ActionInfo second; // corresponds to this*
+            private Stack<Cmd> path;
             private Expr transitionRelation;
             private int boundVariableCount;
 
@@ -155,7 +155,7 @@ namespace Microsoft.Boogie
                 this.program = program;
                 this.first = null;
                 this.second = second;
-                this.dfsStack = new Stack<Block>();
+                this.path = new Stack<Cmd>();
                 this.transitionRelation = Expr.False;
                 this.boundVariableCount = 0;
             }
@@ -165,7 +165,7 @@ namespace Microsoft.Boogie
                 this.program = program;
                 this.first = first;
                 this.second = second;
-                this.dfsStack = new Stack<Block>();
+                this.path = new Stack<Cmd>();
                 this.transitionRelation = Expr.False;
                 this.boundVariableCount = 0;
             }
@@ -177,29 +177,16 @@ namespace Microsoft.Boogie
 
             public Expr Compute()
             {
-                Search(second.thatAction.Blocks[0], false);
-                Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
-                List<Variable> boundVars = new List<Variable>();
-                if (first != null)
+                List<IdentifierExpr> havocVars = new List<IdentifierExpr>();
+                second.thisOutParams.ForEach(v => havocVars.Add(Expr.Ident(v)));
+                second.thisAction.LocVars.ForEach(v => havocVars.Add(Expr.Ident(v)));
+                if (havocVars.Count > 0)
                 {
-                    foreach (Variable v in first.thisAction.LocVars)
-                    {
-                        BoundVariable bv = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, v.Name, v.TypedIdent.Type));
-                        map[v] = new IdentifierExpr(Token.NoToken, bv);
-                        boundVars.Add(bv);
-                    }
+                    HavocCmd havocCmd = new HavocCmd(Token.NoToken, havocVars);
+                    path.Push(havocCmd);
                 }
-                foreach (Variable v in second.thatAction.LocVars)
-                {
-                    BoundVariable bv = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, v.Name, v.TypedIdent.Type));
-                    map[v] = new IdentifierExpr(Token.NoToken, bv);
-                    boundVars.Add(bv);
-                }
-                Substitution subst = Substituter.SubstitutionFromHashtable(map);
-                if (boundVars.Count > 0)
-                    return new ExistsExpr(Token.NoToken, boundVars, Substituter.Apply(subst, transitionRelation));
-                else
-                    return transitionRelation;
+                Search(second.thisAction.Blocks[0], false);
+                return transitionRelation;
             }
 
             private Expr CalculatePathCondition()
@@ -212,60 +199,54 @@ namespace Microsoft.Boogie
                 }
                 if (first != null)
                 {
-                    foreach (Variable v in first.thisOutParams)
+                    foreach (Variable v in first.thatOutParams)
                     {
                         var eqExpr = Expr.Eq(new IdentifierExpr(Token.NoToken, v), new OldExpr(Token.NoToken, new IdentifierExpr(Token.NoToken, v)));
                         returnExpr = Expr.And(eqExpr, returnExpr);
                     }
                 }
-                foreach (Variable v in second.thatOutParams)
+                foreach (Variable v in second.thisOutParams)
                 {
                     var eqExpr = Expr.Eq(new IdentifierExpr(Token.NoToken, v), new OldExpr(Token.NoToken, new IdentifierExpr(Token.NoToken, v)));
                     returnExpr = Expr.And(eqExpr, returnExpr);
                 }
-                Block[] dfsStackAsArray = dfsStack.Reverse().ToArray();
-                for (int i = dfsStackAsArray.Length - 1; i >= 0; i--)
+                foreach (Cmd cmd in path)
                 {
-                    Block b = dfsStackAsArray[i];
-                    for (int j = b.Cmds.Count - 1; j >= 0; j--)
+                    if (cmd is AssumeCmd)
                     {
-                        Cmd cmd = b.Cmds[j];
-                        if (cmd is AssumeCmd)
+                        AssumeCmd assumeCmd = cmd as AssumeCmd;
+                        returnExpr = Expr.And(new OldExpr(Token.NoToken, assumeCmd.Expr), returnExpr);
+                    }
+                    else if (cmd is AssignCmd)
+                    {
+                        AssignCmd assignCmd = (cmd as AssignCmd).AsSimpleAssignCmd;
+                        Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
+                        for (int k = 0; k < assignCmd.Lhss.Count; k++)
                         {
-                            AssumeCmd assumeCmd = cmd as AssumeCmd;
-                            returnExpr = Expr.And(new OldExpr(Token.NoToken, assumeCmd.Expr), returnExpr);
+                            map[assignCmd.Lhss[k].DeepAssignedVariable] = assignCmd.Rhss[k];
                         }
-                        else if (cmd is AssignCmd)
+                        Substitution subst = Substituter.SubstitutionFromHashtable(new Dictionary<Variable, Expr>());
+                        Substitution oldSubst = Substituter.SubstitutionFromHashtable(map);
+                        returnExpr = (Expr)new MySubstituter(subst, oldSubst).Visit(returnExpr);
+                    }
+                    else if (cmd is HavocCmd)
+                    {
+                        HavocCmd havocCmd = cmd as HavocCmd;
+                        List<Variable> existVars = new List<Variable>();
+                        Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
+                        foreach (IdentifierExpr ie in havocCmd.Vars)
                         {
-                            AssignCmd assignCmd = (cmd as AssignCmd).AsSimpleAssignCmd;
-                            Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
-                            for (int k = 0; k < assignCmd.Lhss.Count; k++)
-                            {
-                                map[assignCmd.Lhss[k].DeepAssignedVariable] = assignCmd.Rhss[k];
-                            }
-                            Substitution subst = Substituter.SubstitutionFromHashtable(new Dictionary<Variable, Expr>());
-                            Substitution oldSubst = Substituter.SubstitutionFromHashtable(map);
-                            returnExpr = (Expr) new MySubstituter(subst, oldSubst).Visit(returnExpr);
+                            BoundVariable bv = GetBoundVariable(ie.Decl.TypedIdent.Type);
+                            map[ie.Decl] = new IdentifierExpr(Token.NoToken, bv);
+                            existVars.Add(bv);
                         }
-                        else if (cmd is HavocCmd)
-                        {
-                            HavocCmd havocCmd = cmd as HavocCmd;
-                            List<Variable> existVars = new List<Variable>();
-                            Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
-                            foreach (IdentifierExpr ie in havocCmd.Vars)
-                            {
-                                BoundVariable bv = GetBoundVariable(ie.Decl.TypedIdent.Type);
-                                map[ie.Decl] = new IdentifierExpr(Token.NoToken, bv);
-                                existVars.Add(bv);
-                            }
-                            Substitution subst = Substituter.SubstitutionFromHashtable(new Dictionary<Variable, Expr>());
-                            Substitution oldSubst = Substituter.SubstitutionFromHashtable(map);
-                            returnExpr = new ExistsExpr(Token.NoToken, existVars, (Expr) new MySubstituter(subst, oldSubst).Visit(returnExpr));
-                        }
-                        else
-                        {
-                            Debug.Assert(false);
-                        }
+                        Substitution subst = Substituter.SubstitutionFromHashtable(new Dictionary<Variable, Expr>());
+                        Substitution oldSubst = Substituter.SubstitutionFromHashtable(map);
+                        returnExpr = new ExistsExpr(Token.NoToken, existVars, (Expr)new MySubstituter(subst, oldSubst).Visit(returnExpr));
+                    }
+                    else
+                    {
+                        Debug.Assert(false);
                     }
                 }
                 return returnExpr;
@@ -273,7 +254,10 @@ namespace Microsoft.Boogie
 
             private void Search(Block b, bool inFirst)
             {
-                dfsStack.Push(b);
+                foreach (Cmd cmd in b.Cmds)
+                {
+                    path.Push(cmd);
+                }
                 if (b.TransferCmd is ReturnCmd)
                 {
                     if (first == null || inFirst)
@@ -282,7 +266,15 @@ namespace Microsoft.Boogie
                     }
                     else
                     {
-                        Search(first.thisAction.Blocks[0], true);
+                        List<IdentifierExpr> havocVars = new List<IdentifierExpr>();
+                        first.thatOutParams.ForEach(v => havocVars.Add(Expr.Ident(v)));
+                        first.thatAction.LocVars.ForEach(v => havocVars.Add(Expr.Ident(v)));
+                        if (havocVars.Count > 0)
+                        {
+                            HavocCmd havocCmd = new HavocCmd(Token.NoToken, havocVars);
+                            path.Push(havocCmd);
+                        }
+                        Search(first.thatAction.Blocks[0], true);
                     }
                 }
                 else
@@ -293,7 +285,10 @@ namespace Microsoft.Boogie
                         Search(target, inFirst);
                     }
                 }
-                dfsStack.Pop();
+                foreach (Cmd cmd in b.Cmds)
+                {
+                    path.Pop();
+                }
             }
         }
 
@@ -344,17 +339,17 @@ namespace Microsoft.Boogie
                 if (domainName == null) continue;
                 domainNameToScope[domainName].Add(v);
             }
-            foreach (Variable v in first.thisInParams)
+            foreach (Variable v in first.thatInParams)
             {
                 var domainName = linearTypeChecker.FindDomainName(v);
                 if (domainName == null) continue;
                 domainNameToScope[domainName].Add(v);
             }
-            for (int i = 0; i < second.thatInParams.Count; i++)
+            foreach (Variable v in second.thisInParams)
             {
-                var domainName = linearTypeChecker.FindDomainName(second.thisInParams[i]);
+                var domainName = linearTypeChecker.FindDomainName(v);
                 if (domainName == null) continue;
-                domainNameToScope[domainName].Add(second.thatInParams[i]);
+                domainNameToScope[domainName].Add(v);
             }
             foreach (string domainName in domainNameToScope.Keys)
             {
@@ -371,16 +366,16 @@ namespace Microsoft.Boogie
             commutativityCheckerCache.Add(actionPair);
 
             List<Variable> inputs = new List<Variable>();
-            inputs.AddRange(first.thisInParams);
-            inputs.AddRange(second.thatInParams);
+            inputs.AddRange(first.thatInParams);
+            inputs.AddRange(second.thisInParams);
             List<Variable> outputs = new List<Variable>();
-            outputs.AddRange(first.thisOutParams);
-            outputs.AddRange(second.thatOutParams);
+            outputs.AddRange(first.thatOutParams);
+            outputs.AddRange(second.thisOutParams);
             List<Variable> locals = new List<Variable>();
-            locals.AddRange(first.thisAction.LocVars);
-            locals.AddRange(second.thatAction.LocVars);
-            List<Block> firstBlocks = CloneBlocks(first.thisAction.Blocks);
-            List<Block> secondBlocks = CloneBlocks(second.thatAction.Blocks);
+            locals.AddRange(first.thatAction.LocVars);
+            locals.AddRange(second.thisAction.LocVars);
+            List<Block> firstBlocks = CloneBlocks(first.thatAction.Blocks);
+            List<Block> secondBlocks = CloneBlocks(second.thisAction.Blocks);
             foreach (Block b in firstBlocks)
             {
                 if (b.TransferCmd is ReturnCmd)
@@ -417,17 +412,17 @@ namespace Microsoft.Boogie
             gatePreservationCheckerCache.Add(actionPair);
 
             List<Variable> inputs = new List<Variable>();
-            inputs.AddRange(first.thisInParams);
-            inputs.AddRange(second.thatInParams);
+            inputs.AddRange(first.thatInParams);
+            inputs.AddRange(second.thisInParams);
             List<Variable> outputs = new List<Variable>();
-            outputs.AddRange(first.thisOutParams);
-            outputs.AddRange(second.thatOutParams);
+            outputs.AddRange(first.thatOutParams);
+            outputs.AddRange(second.thisOutParams);
             List<Variable> locals = new List<Variable>();
-            locals.AddRange(second.thatAction.LocVars);
-            List<Block> secondBlocks = CloneBlocks(second.thatAction.Blocks);
+            locals.AddRange(second.thisAction.LocVars);
+            List<Block> secondBlocks = CloneBlocks(second.thisAction.Blocks);
             List<Requires> requires = DisjointnessRequires(program, first, second);
             List<Ensures> ensures = new List<Ensures>();
-            foreach (AssertCmd assertCmd in first.thisGate)
+            foreach (AssertCmd assertCmd in first.thatGate)
             {
                 requires.Add(new Requires(false, assertCmd.Expr));
                 ensures.Add(new Ensures(false, assertCmd.Expr));
@@ -450,18 +445,18 @@ namespace Microsoft.Boogie
             failurePreservationCheckerCache.Add(actionPair);
 
             List<Variable> inputs = new List<Variable>();
-            inputs.AddRange(first.thisInParams);
-            inputs.AddRange(second.thatInParams);
+            inputs.AddRange(first.thatInParams);
+            inputs.AddRange(second.thisInParams);
 
             Expr transitionRelation = (new TransitionRelationComputation(program, second)).Compute();
             Expr expr = Expr.True;
-            foreach (AssertCmd assertCmd in first.thisGate)
+            foreach (AssertCmd assertCmd in first.thatGate)
             {
                 expr = Expr.And(assertCmd.Expr, expr);
             }
             List<Requires> requires = DisjointnessRequires(program, first, second);
             requires.Add(new Requires(false, Expr.Not(expr)));
-            foreach (AssertCmd assertCmd in second.thatGate)
+            foreach (AssertCmd assertCmd in second.thisGate)
             {
                 requires.Add(new Requires(false, assertCmd.Expr));
             }
@@ -475,7 +470,7 @@ namespace Microsoft.Boogie
                 boundVars.Add(bv);
                 map[v] = new IdentifierExpr(Token.NoToken, bv);
             }
-            foreach (Variable v in second.thatOutParams)
+            foreach (Variable v in second.thisOutParams)
             {
                 {
                     BoundVariable bv = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, "post_" + v.Name, v.TypedIdent.Type));
@@ -488,7 +483,7 @@ namespace Microsoft.Boogie
                     oldMap[v] = new IdentifierExpr(Token.NoToken, bv);
                 }
             }
-            foreach (Variable v in second.thatAction.LocVars)
+            foreach (Variable v in second.thisAction.LocVars)
             {
                 BoundVariable bv = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, "pre_" + v.Name, v.TypedIdent.Type));
                 boundVars.Add(bv);

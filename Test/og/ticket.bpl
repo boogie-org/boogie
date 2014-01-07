@@ -72,9 +72,9 @@ ensures {:phase 2} tid != nil && Inv2(T, s, cs);
 ensures {:right 2} |{ A: tid := tid'; havoc t, T; assume tid != nil && cs == nil; cs := tid; return true; }|;
 {
     var m: int;
-    tid := tid';
 
     par Yield1() | Yield2();
+    tid := tid';
     call tid, m := GetTicketAbstract(tid);
     par Yield1();
     call tid := WaitAndEnter(tid, m);
@@ -86,9 +86,8 @@ requires {:phase 1} Inv1(T, t);
 ensures {:phase 1} Inv1(T, t);
 ensures {:right 1} |{ A: tid := tid'; havoc m, t; assume !T[m]; T[m] := true; return true; }|;
 {
-    tid := tid';
-
     par Yield1();
+    tid := tid';
     call tid, m := GetTicket(tid);
     par Yield1();
 }

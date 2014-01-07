@@ -76,7 +76,6 @@
     <Compile Include="OwickiGries.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="RefinementCheck.cs" />
     <Compile Include="TypeCheck.cs" />
     <Compile Include="YieldTypeChecker.cs" />
   </ItemGroup>
