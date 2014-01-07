@@ -40,4 +40,7 @@ echo -----
 echo ----- Running regression test bar13.bpl
 %BGEXE% %* /stratifiedInline:1 /vc:i bar13.bpl
 echo -----
+echo ----- Running regression test large.bpl to test for StackOverflowException
+%BGEXE% %* /stratifiedInline:1 /vc:i large.bpl
+echo -----
 

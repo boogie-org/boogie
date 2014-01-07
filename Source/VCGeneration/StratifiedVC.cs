@@ -241,12 +241,12 @@ namespace VC {
     public void GenerateVC() {
       if (initialized) return;
       List<Variable> outputVariables = new List<Variable>();
-      Expr assertExpr = new LiteralExpr(Token.NoToken, true);
+      List<Expr> assertConjuncts = new List<Expr>();
       foreach (Variable v in impl.OutParams) {
         Constant c = new Constant(Token.NoToken, new TypedIdent(Token.NoToken, impl.Name + "_" + v.Name, v.TypedIdent.Type));
         outputVariables.Add(c);
         Expr eqExpr = Expr.Eq(new IdentifierExpr(Token.NoToken, c), new IdentifierExpr(Token.NoToken, v));
-        assertExpr = Expr.And(assertExpr, eqExpr);
+        assertConjuncts.Add(eqExpr);
       }
       foreach (IdentifierExpr e in impl.Proc.Modifies) {
         if (e.Decl == null) continue;
@@ -254,9 +254,9 @@ namespace VC {
         Constant c = new Constant(Token.NoToken, new TypedIdent(Token.NoToken, impl.Name + "_" + v.Name, v.TypedIdent.Type));
         outputVariables.Add(c);
         Expr eqExpr = Expr.Eq(new IdentifierExpr(Token.NoToken, c), new IdentifierExpr(Token.NoToken, v));
-        assertExpr = Expr.And(assertExpr, eqExpr);
+        assertConjuncts.Add(eqExpr);
       }
-      exitAssertCmd = new AssertCmd(Token.NoToken, Expr.Not(assertExpr));
+      exitAssertCmd = new AssertCmd(Token.NoToken, Expr.Not(Expr.BinaryTreeAnd(assertConjuncts)));
 
       Program program = vcgen.program;
       ProverInterface proverInterface = vcgen.prover;
