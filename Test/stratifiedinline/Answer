@@ -513,3 +513,7 @@ Boogie program verifier finished with 0 verified, 1 error
 
 Boogie program verifier finished with 1 verified, 0 errors
 -----
+----- Running regression test large.bpl to test for StackOverflowException
+
+Boogie program verifier finished with 1 verified, 0 errors
+-----

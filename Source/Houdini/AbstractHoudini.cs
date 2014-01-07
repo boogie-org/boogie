@@ -179,7 +179,7 @@ namespace Microsoft.Boogie.Houdini {
                     }
                     terms.Add(term);
                 }
-                var env = BinaryTreeAnd(terms, 0, terms.Count - 1);
+                var env = Expr.BinaryTreeAnd(terms);
 
                 env.Typecheck(new TypecheckingContext((IErrorSink)null));
                 var envVC = prover.Context.BoogieExprTranslator.Translate(env);
@@ -268,17 +268,6 @@ namespace Microsoft.Boogie.Houdini {
             return overallOutcome;
         }
 
-        private static Expr BinaryTreeAnd(List<Expr> terms, int start, int end)
-        {
-            if (start > end)
-                return Expr.True;
-            if (start == end)
-                return terms[start];
-            if (start + 1 == end)
-                return Expr.And(terms[start], terms[start + 1]);
-            var mid = (start + end) / 2;
-            return Expr.And(BinaryTreeAnd(terms, start, mid), BinaryTreeAnd(terms, mid + 1, end));
-        }
 
         public IEnumerable<Function> GetAssignment()
         {

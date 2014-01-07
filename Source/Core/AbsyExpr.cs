@@ -394,6 +394,23 @@ namespace Microsoft.Boogie {
       args.Add(subexpr);
       return new NAryExpr(x, new TypeCoercion(x, type), args);
     }
+
+    public static Expr BinaryTreeAnd(List<Expr> terms)
+    {
+        return BinaryTreeAnd(terms, 0, terms.Count - 1);
+    }
+
+    private static Expr BinaryTreeAnd(List<Expr> terms, int start, int end)
+    {
+        if (start > end)
+            return Expr.True;
+        if (start == end)
+            return terms[start];
+        if (start + 1 == end)
+            return Expr.And(terms[start], terms[start + 1]);
+        var mid = (start + end) / 2;
+        return Expr.And(BinaryTreeAnd(terms, start, mid), BinaryTreeAnd(terms, mid + 1, end));
+    }
   }
   [ContractClassFor(typeof(Expr))]
   public abstract class ExprContracts : Expr {
