@@ -360,6 +360,11 @@ namespace Microsoft.Boogie
 
         private void CreateCommutativityChecker(Program program, ActionInfo first, ActionInfo second)
         {
+            if (first == second)
+                return;
+            if (first.CommutesWith(second))
+                return;
+
             Tuple<ActionInfo, ActionInfo> actionPair = new Tuple<ActionInfo, ActionInfo>(first, second);
             if (commutativityCheckerCache.Contains(actionPair))
                 return;
@@ -406,6 +411,9 @@ namespace Microsoft.Boogie
 
         private void CreateGatePreservationChecker(Program program, ActionInfo first, ActionInfo second)
         {
+            if (first.gateUsedGlobalVars.Intersect(second.modifiedGlobalVars).Count() == 0)
+                return;
+
             Tuple<ActionInfo, ActionInfo> actionPair = new Tuple<ActionInfo, ActionInfo>(first, second);
             if (gatePreservationCheckerCache.Contains(actionPair))
                 return;
@@ -439,6 +447,9 @@ namespace Microsoft.Boogie
 
         private void CreateFailurePreservationChecker(Program program, ActionInfo first, ActionInfo second)
         {
+            if (first.gateUsedGlobalVars.Intersect(second.modifiedGlobalVars).Count() == 0 && second.isNonBlocking)
+                return;
+
             Tuple<ActionInfo, ActionInfo> actionPair = new Tuple<ActionInfo, ActionInfo>(first, second); 
             if (failurePreservationCheckerCache.Contains(actionPair))
                 return;

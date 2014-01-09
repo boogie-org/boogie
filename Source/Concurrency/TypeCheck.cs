@@ -31,6 +31,19 @@ namespace Microsoft.Boogie
         public CodeExpr thatAction;
         public List<Variable> thatInParams;
         public List<Variable> thatOutParams;
+        public HashSet<Variable> usedGlobalVars;
+        public HashSet<Variable> modifiedGlobalVars;
+        public HashSet<Variable> gateUsedGlobalVars;
+        public bool isNonBlocking;
+
+        public bool CommutesWith(ActionInfo actionInfo)
+        {
+            if (this.modifiedGlobalVars.Intersect(actionInfo.usedGlobalVars).Count() > 0)
+                return false;
+            if (this.usedGlobalVars.Intersect(actionInfo.modifiedGlobalVars).Count() > 0)
+                return false;
+            return true;
+        }
 
         public bool IsRightMover
         {
@@ -55,6 +68,12 @@ namespace Microsoft.Boogie
             this.thatGate = new List<AssertCmd>();
             this.thatInParams = new List<Variable>();
             this.thatOutParams = new List<Variable>();
+            this.isNonBlocking = true;
+            
+            foreach (Block block in codeExpr.Blocks)
+            {
+                block.Cmds.ForEach(x => this.isNonBlocking = this.isNonBlocking && !(x is AssumeCmd));
+            }
 
             var cmds = thisAction.Blocks[0].Cmds;
             for (int i = 0; i < cmds.Count; i++)
@@ -136,6 +155,25 @@ namespace Microsoft.Boogie
                 blockMap[block].TransferCmd = new GotoCmd(block.TransferCmd.tok, thatGotoCmdLabelNames, thatGotoCmdLabelTargets);
             }
             this.thatAction = new CodeExpr(thatLocVars, thatBlocks);
+
+            {
+                VariableCollector collector = new VariableCollector();
+                collector.Visit(codeExpr);
+                this.usedGlobalVars = new HashSet<Variable>(collector.usedVars.Where(x => x is GlobalVariable));
+            }
+
+            List<Variable> modifiedVars = new List<Variable>();
+            foreach (Block block in codeExpr.Blocks)
+            {
+                block.Cmds.ForEach(cmd => cmd.AddAssignedVariables(modifiedVars));
+            }
+            this.modifiedGlobalVars = new HashSet<Variable>(modifiedVars.Where(x => x is GlobalVariable));
+
+            {
+                VariableCollector collector = new VariableCollector();
+                this.thisGate.ForEach (assertCmd => collector.Visit(assertCmd));
+                this.gateUsedGlobalVars = new HashSet<Variable>(collector.usedVars.Where(x => x is GlobalVariable));
+            }
         }
     }
 
