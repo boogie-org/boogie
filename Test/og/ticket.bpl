@@ -11,12 +11,12 @@ var {:qed} s: int;
 var {:qed} cs: X;
 var {:qed} T: [int]bool;
 
-function Inv1(tickets: [int]bool, ticket: int): (bool)
+function {:inline} Inv1(tickets: [int]bool, ticket: int): (bool)
 {
     tickets == RightOpen(ticket)
 }
 
-function Inv2(tickets: [int]bool, ticket: int, lock: X): (bool)
+function {:inline} Inv2(tickets: [int]bool, ticket: int, lock: X): (bool)
 {
     if (lock == nil) then tickets == RightOpen(ticket) else tickets == RightClosed(ticket)
 }
