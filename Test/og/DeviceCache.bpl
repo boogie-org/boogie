@@ -15,7 +15,6 @@ function {:inline} Inv(ghostLock: X, currsize: int, newsize: int) : (bool)
 procedure {:stable} {:yields} YieldToReadCache({:linear "tid"} tid': X) returns ({:linear "tid"} tid: X)
 requires {:phase 1} Inv(ghostLock, currsize, newsize) && tid' != nil;
 ensures {:phase 1} Inv(ghostLock, currsize, newsize) && tid != nil && tid == tid' && old(currsize) <= currsize;
-ensures {:both 2} |{ A: return true; }|;
 {
    tid := tid';
 }
@@ -23,7 +22,6 @@ ensures {:both 2} |{ A: return true; }|;
 procedure {:stable} {:yields} YieldToWriteCache({:linear "tid"} tid': X) returns ({:linear "tid"} tid: X)
 requires {:phase 1} Inv(ghostLock, currsize, newsize) && ghostLock == tid' && tid' != nil;
 ensures {:phase 1} Inv(ghostLock, currsize, newsize) && ghostLock == tid && tid != nil && tid == tid' && old(currsize) == currsize && old(newsize) == newsize;
-ensures {:both 2} |{ A: return true; }|;
 {
     tid := tid';
 }
@@ -110,7 +108,7 @@ COPY_TO_BUFFER:
 procedure {:yields} WriteCache({:linear "tid"} tid': X, index: int) returns ({:linear "tid"} tid: X)
 requires {:phase 1} Inv(ghostLock, currsize, newsize);
 requires {:phase 1} ghostLock == tid' && tid' != nil;
-ensures {:phase 1} tid == tid';
+ensures {:phase 1} tid == tid' && ghostLock == tid;
 ensures {:phase 1} Inv(ghostLock, currsize, newsize) && old(currsize) == currsize && old(newsize) == newsize;
 {
     var j: int;

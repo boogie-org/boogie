@@ -159,7 +159,7 @@ namespace Microsoft.Boogie
         int enclosingProcPhaseNum;
         public Dictionary<Procedure, ActionInfo> procToActionInfo;
         public Program program;
-        public HashSet<int> assertionPhaseNums;
+        public HashSet<int> allPhaseNums;
         bool inAtomicSpecification;
 
         public void TypeCheck()
@@ -205,7 +205,7 @@ namespace Microsoft.Boogie
                 }
             }
             this.procToActionInfo = new Dictionary<Procedure, ActionInfo>();
-            this.assertionPhaseNums = new HashSet<int>();
+            this.allPhaseNums = new HashSet<int>();
             this.errorCount = 0;
             this.checkingContext = new CheckingContext(null);
             this.program = program;
@@ -222,7 +222,7 @@ namespace Microsoft.Boogie
             enclosingProcPhaseNum = FindPhaseNumber(node);
             if (enclosingProcPhaseNum != int.MaxValue)
             {
-                assertionPhaseNums.Add(enclosingProcPhaseNum);
+                allPhaseNums.Add(enclosingProcPhaseNum);
             }
             return base.VisitProcedure(node);
         }
@@ -296,7 +296,7 @@ namespace Microsoft.Boogie
             }
             foreach (int phaseNum in OwickiGries.FindPhaseNums(ensures.Attributes))
             {
-                assertionPhaseNums.Add(phaseNum);
+                allPhaseNums.Add(phaseNum);
                 if (phaseNum > enclosingProcPhaseNum)
                 {
                     Error(ensures, "The phase of ensures clause cannot be greater than the phase of enclosing procedure");
@@ -308,7 +308,7 @@ namespace Microsoft.Boogie
         {
             foreach (int phaseNum in OwickiGries.FindPhaseNums(requires.Attributes))
             {
-                assertionPhaseNums.Add(phaseNum);
+                allPhaseNums.Add(phaseNum);
                 if (phaseNum > enclosingProcPhaseNum)
                 {
                     Error(requires, "The phase of requires clause cannot be greater than the phase of enclosing procedure");
@@ -320,7 +320,7 @@ namespace Microsoft.Boogie
         {
             foreach (int phaseNum in OwickiGries.FindPhaseNums(node.Attributes))
             {
-                assertionPhaseNums.Add(phaseNum);
+                allPhaseNums.Add(phaseNum);
                 if (phaseNum > enclosingProcPhaseNum)
                 {
                     Error(node, "The phase of assert cannot be greater than the phase of enclosing procedure");

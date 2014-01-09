@@ -159,6 +159,10 @@ namespace Microsoft.Boogie
         public override Implementation VisitImplementation(Implementation node)
         {
             enclosingProcPhaseNum = moverTypeChecker.FindPhaseNumber(node.Proc);
+            if (enclosingProcPhaseNum == int.MaxValue)
+            {
+                enclosingProcPhaseNum = moverTypeChecker.allPhaseNums.Max();
+            }
             Implementation impl = base.VisitImplementation(node);
             impl.Name = impl.Proc.Name;
             foreach (Block block in impl.Blocks)
@@ -917,8 +921,8 @@ namespace Microsoft.Boogie
                 List<Cmd> newCmds = new List<Cmd>();
                 if (pc != null)
                 {
-                    newCmds.Add(new AssertCmd(Token.NoToken, Expr.Eq(Expr.Ident(pc), Expr.Ident(oldPc))));
-                    newCmds.Add(new AssertCmd(Token.NoToken, Expr.Eq(Expr.Ident(ok), Expr.Ident(oldOk))));
+                    newCmds.Add(new AssertCmd(Token.NoToken, Expr.Eq(Expr.Ident(oldPc), Expr.Ident(pc))));
+                    newCmds.Add(new AssertCmd(Token.NoToken, Expr.Imp(Expr.Ident(oldOk), Expr.Ident(ok))));
                 } 
                 foreach (string domainName in linearTypeChecker.linearDomains.Keys)
                 {
@@ -1203,7 +1207,7 @@ namespace Microsoft.Boogie
         public static void AddCheckers(LinearTypeChecker linearTypeChecker, MoverTypeChecker moverTypeChecker, List<Declaration> decls)
         {
             Program program = linearTypeChecker.program;
-            foreach (int phaseNum in moverTypeChecker.assertionPhaseNums)
+            foreach (int phaseNum in moverTypeChecker.allPhaseNums)
             {
                 MyDuplicator duplicator = new MyDuplicator(moverTypeChecker, phaseNum);
                 List<Implementation> impls = new List<Implementation>();

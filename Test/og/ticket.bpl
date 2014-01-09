@@ -11,9 +11,6 @@ var {:qed} s: int;
 var {:qed} cs: X;
 var {:qed} T: [int]bool;
 
-procedure Allocate({:linear "tid"} xls':[X]bool) returns ({:linear "tid"} xls: [X]bool, {:linear "tid"} xl: X);
-ensures {:phase 1} {:phase 2} xl != nil;
-
 function Inv1(tickets: [int]bool, ticket: int): (bool)
 {
     tickets == RightOpen(ticket)
@@ -24,8 +21,11 @@ function Inv2(tickets: [int]bool, ticket: int, lock: X): (bool)
     if (lock == nil) then tickets == RightOpen(ticket) else tickets == RightClosed(ticket)
 }
 
+procedure Allocate({:linear "tid"} xls':[X]bool) returns ({:linear "tid"} xls: [X]bool, {:linear "tid"} xl: X);
+ensures {:phase 1} {:phase 2} xl != nil;
+
 procedure {:yields} {:entrypoint} main({:linear "tid"} xls':[X]bool)
-requires {:phase 1} {:phase 2} xls' == mapconstbool(true);
+requires {:phase 3} xls' == mapconstbool(true);
 {
     var {:linear "tid"} tid: X;
     var {:linear "tid"} xls: [X]bool;
@@ -48,6 +48,7 @@ requires {:phase 1} {:phase 2} xls' == mapconstbool(true);
 procedure {:yields} {:stable} Customer({:linear "tid"} tid': X)
 requires {:phase 1} Inv1(T, t);
 requires {:phase 2} tid' != nil && Inv2(T, s, cs);
+requires {:phase 3} true;
 {
     var {:linear "tid"} tid: X;
     tid := tid';
