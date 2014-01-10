@@ -222,7 +222,13 @@ namespace Microsoft.Boogie
                         Error(proc, "A procedure can have at most one atomic action");
                         continue;
                     }
-                    procToActionInfo[proc] = new ActionInfo(proc, codeExpr, moverType, phaseNum);
+                    ActionInfo actionInfo = new ActionInfo(proc, codeExpr, moverType, phaseNum);
+                    if (actionInfo.IsLeftMover && !actionInfo.isNonBlocking)
+                    {
+                        Error(e, "A left mover must be non blocking");
+                        continue;
+                    }
+                    procToActionInfo[proc] = actionInfo;
                 }
             }
             this.VisitProgram(program);
