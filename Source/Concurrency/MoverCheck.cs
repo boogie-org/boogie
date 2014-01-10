@@ -462,7 +462,7 @@ namespace Microsoft.Boogie
             this.decls.Add(proc);
         }
 
-        private void CreateFailurePreservationChecker(Program program, ActionInfo first, ActionInfo second)
+        private void CreateFailurePreservationCheckerForall(Program program, ActionInfo first, ActionInfo second)
         {
             Debug.Assert(second.isNonBlocking);
             if (first.gateUsedGlobalVars.Intersect(second.modifiedGlobalVars).Count() == 0)
@@ -505,7 +505,7 @@ namespace Microsoft.Boogie
             this.decls.Add(proc);
         }
 
-        private void CreateFailurePreservationCheckerOld(Program program, ActionInfo first, ActionInfo second)
+        private void CreateFailurePreservationChecker(Program program, ActionInfo first, ActionInfo second)
         {
             if (first.gateUsedGlobalVars.Intersect(second.modifiedGlobalVars).Count() == 0 && second.isNonBlocking)
                 return;
@@ -519,54 +519,50 @@ namespace Microsoft.Boogie
             inputs.AddRange(first.thatInParams);
             inputs.AddRange(second.thisInParams);
 
-            Expr transitionRelation = (new TransitionRelationComputation(program, second)).Compute();
-            Expr expr = Expr.True;
+            Expr requiresExpr = Expr.True;
             foreach (AssertCmd assertCmd in first.thatGate)
             {
-                expr = Expr.And(assertCmd.Expr, expr);
+                requiresExpr = Expr.And(assertCmd.Expr, requiresExpr);
             }
+            requiresExpr = Expr.Not(requiresExpr);
             List<Requires> requires = DisjointnessRequires(program, first, second);
-            requires.Add(new Requires(false, Expr.Not(expr)));
+            requires.Add(new Requires(false, requiresExpr));
             foreach (AssertCmd assertCmd in second.thisGate)
             {
                 requires.Add(new Requires(false, assertCmd.Expr));
             }
-            
+
             Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
             Dictionary<Variable, Expr> oldMap = new Dictionary<Variable, Expr>();
             List<Variable> boundVars = new List<Variable>();
             foreach (Variable v in program.GlobalVariables())
             {
-                BoundVariable bv = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, "post_" + v.Name, v.TypedIdent.Type));
-                boundVars.Add(bv);
-                map[v] = new IdentifierExpr(Token.NoToken, bv);
-            }
-            foreach (Variable v in second.thisOutParams)
-            {
+                if (second.modifiedGlobalVars.Contains(v))
                 {
                     BoundVariable bv = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, "post_" + v.Name, v.TypedIdent.Type));
                     boundVars.Add(bv);
                     map[v] = new IdentifierExpr(Token.NoToken, bv);
                 }
+                else
                 {
-                    BoundVariable bv = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, "pre_" + v.Name, v.TypedIdent.Type));
-                    boundVars.Add(bv);
-                    oldMap[v] = new IdentifierExpr(Token.NoToken, bv);
+                    map[v] = new OldExpr(Token.NoToken, Expr.Ident(v));
                 }
+                oldMap[v] = Expr.Ident(v);
             }
-            foreach (Variable v in second.thisAction.LocVars)
+            foreach (Variable v in second.thisOutParams)
             {
-                BoundVariable bv = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, "pre_" + v.Name, v.TypedIdent.Type));
+                BoundVariable bv = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, "post_" + v.Name, v.TypedIdent.Type));
                 boundVars.Add(bv);
-                oldMap[v] = new IdentifierExpr(Token.NoToken, bv);
+                map[v] = new IdentifierExpr(Token.NoToken, bv);
             }
 
-            Expr ensuresExpr = Expr.And(transitionRelation, Expr.Not(expr));
+            Expr ensuresExpr = Expr.And((new TransitionRelationComputation(program, second)).Compute(), requiresExpr);
+            Substitution subst = Substituter.SubstitutionFromHashtable(map);
+            Substitution oldSubst = Substituter.SubstitutionFromHashtable(oldMap);
+            ensuresExpr = Substituter.Apply(subst, oldSubst, ensuresExpr);
             if (boundVars.Count > 0)
             {
-                Substitution subst = Substituter.SubstitutionFromHashtable(map);
-                Substitution oldSubst = Substituter.SubstitutionFromHashtable(oldMap);
-                ensuresExpr = new ExistsExpr(Token.NoToken, boundVars, (Expr)new MySubstituter(subst, oldSubst).Visit(ensuresExpr));
+                ensuresExpr = new ExistsExpr(Token.NoToken, boundVars, ensuresExpr);
             }
             List<Ensures> ensures = new List<Ensures>();
             ensures.Add(new Ensures(false, ensuresExpr));

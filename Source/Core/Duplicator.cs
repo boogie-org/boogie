@@ -424,6 +424,22 @@ namespace Microsoft.Boogie {
     }
 
     /// <summary>
+    /// Apply a substitution to an expression. 
+    /// Outside "old" expressions, the substitution "always" is applied; any variable not in
+    /// domain(always) is not changed.  Inside "old" expressions, apply map "forOld" to
+    /// variables in domain(forOld), apply map "always" to variables in
+    /// domain(always)-domain(forOld), and leave variable unchanged otherwise.
+    /// </summary>
+    public static Expr Apply(Substitution always, Substitution forold, Expr expr)
+    {
+        Contract.Requires(expr != null);
+        Contract.Requires(always != null);
+        Contract.Requires(forold != null);
+        Contract.Ensures(Contract.Result<Expr>() != null);
+        return (Expr)new NormalSubstituter(always, forold).Visit(expr);
+    }
+
+    /// <summary>
     /// Apply a substitution to a command.  Any variables not in domain(subst)
     /// is not changed.  The substitutions applies within the "old", but the "old"
     /// expression remains.
@@ -433,6 +449,22 @@ namespace Microsoft.Boogie {
       Contract.Requires(subst != null);
       Contract.Ensures(Contract.Result<Cmd>() != null);
       return (Cmd)new NormalSubstituter(subst).Visit(cmd);
+    }
+
+    /// <summary>
+    /// Apply a substitution to a command.  
+    /// Outside "old" expressions, the substitution "always" is applied; any variable not in
+    /// domain(always) is not changed.  Inside "old" expressions, apply map "forOld" to
+    /// variables in domain(forOld), apply map "always" to variables in
+    /// domain(always)-domain(forOld), and leave variable unchanged otherwise.
+    /// </summary>
+    public static Cmd Apply(Substitution always, Substitution forold, Cmd cmd)
+    {
+        Contract.Requires(cmd != null);
+        Contract.Requires(always != null);
+        Contract.Requires(forold != null);
+        Contract.Ensures(Contract.Result<Cmd>() != null);
+        return (Cmd)new NormalSubstituter(always, forold).Visit(cmd);
     }
 
     /// <summary>
@@ -466,23 +498,59 @@ namespace Microsoft.Boogie {
     }
 
     private sealed class NormalSubstituter : Duplicator {
-      private readonly Substitution/*!*/ subst;
+      private readonly Substitution/*!*/ always;
+      private readonly Substitution/*!*/ forold;
       [ContractInvariantMethod]
       void ObjectInvariant() {
-        Contract.Invariant(subst != null);
+        Contract.Invariant(always != null);
+        Contract.Invariant(forold != null);
       }
 
       public NormalSubstituter(Substitution subst)
         : base() {
         Contract.Requires(subst != null);
-        this.subst = subst;
+        this.always = subst;
+        this.forold = Substituter.SubstitutionFromHashtable(new Dictionary<Variable, Expr>());
       }
 
-      public override Expr VisitIdentifierExpr(IdentifierExpr node) {
-        //Contract.Requires(node != null);
-        Contract.Ensures(Contract.Result<Expr>() != null);
-        Expr/*?*/ e = subst(cce.NonNull(node.Decl));
-        return e == null ? base.VisitIdentifierExpr(node) : e;
+      public NormalSubstituter(Substitution subst, Substitution forold)
+          : base()
+      {
+          Contract.Requires(subst != null);
+          this.always = subst;
+          this.forold = forold;
+      }
+
+      private bool insideOldExpr = false;
+
+      public override Expr VisitIdentifierExpr(IdentifierExpr node)
+      {
+          //Contract.Requires(node != null);
+          Contract.Ensures(Contract.Result<Expr>() != null);
+          Expr/*?*/ e = null;
+
+          if (insideOldExpr)
+          {
+              e = forold(cce.NonNull(node.Decl));
+          }
+
+          if (e == null)
+          {
+              e = always(cce.NonNull(node.Decl));
+          }
+
+          return e == null ? base.VisitIdentifierExpr(node) : e;
+      }
+
+      public override Expr VisitOldExpr(OldExpr node)
+      {
+          //Contract.Requires(node != null);
+          Contract.Ensures(Contract.Result<Expr>() != null);
+          bool previouslyInOld = insideOldExpr;
+          insideOldExpr = true;
+          Expr/*!*/ e = (Expr/*!*/)cce.NonNull(this.Visit(node.Expr));
+          insideOldExpr = previouslyInOld;
+          return new OldExpr(node.tok, e);
       }
     }
 
