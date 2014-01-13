@@ -31,18 +31,23 @@ namespace Microsoft.Boogie
         private void ProcessCallCmd(CallCmd originalCallCmd, CallCmd callCmd, List<Cmd> newCmds)
         {
             Procedure originalProc = originalCallCmd.Proc;
-            if (phaseNum == enclosingProcPhaseNum && moverTypeChecker.procToActionInfo.ContainsKey(originalProc) && moverTypeChecker.procToActionInfo[originalProc].phaseNum < phaseNum)
+            if (phaseNum == enclosingProcPhaseNum && moverTypeChecker.procToActionInfo.ContainsKey(originalProc))
             {
-                List<AssertCmd> gate = moverTypeChecker.procToActionInfo[originalProc].thisGate;
-                Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
-                for (int i = 0; i < originalProc.InParams.Count; i++)
+                ActionInfo actionInfo = moverTypeChecker.procToActionInfo[originalProc];
+                List<AssertCmd> gate = actionInfo.thisGate;
+                if (actionInfo.phaseNum < phaseNum && gate.Count > 0)
                 {
-                    map[originalProc.InParams[i]] = callCmd.Ins[i];
-                }
-                Substitution subst = Substituter.SubstitutionFromHashtable(map);
-                foreach (AssertCmd assertCmd in gate)
-                {
-                    newCmds.Add(Substituter.Apply(subst, assertCmd));
+                    newCmds.Add(new HavocCmd(Token.NoToken, new List<IdentifierExpr>(new IdentifierExpr[] { Expr.Ident(dummyLocalVar) } )));
+                    Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
+                    for (int i = 0; i < originalProc.InParams.Count; i++)
+                    {
+                        map[originalProc.InParams[i]] = callCmd.Ins[i];
+                    }
+                    Substitution subst = Substituter.SubstitutionFromHashtable(map);
+                    foreach (AssertCmd assertCmd in gate)
+                    {
+                        newCmds.Add(Substituter.Apply(subst, assertCmd));
+                    }
                 }
             }
             newCmds.Add(callCmd);
@@ -156,6 +161,7 @@ namespace Microsoft.Boogie
             return procMap[node];
         }
 
+        private Variable dummyLocalVar;
         public override Implementation VisitImplementation(Implementation node)
         {
             enclosingProcPhaseNum = moverTypeChecker.FindPhaseNumber(node.Proc);
@@ -163,7 +169,9 @@ namespace Microsoft.Boogie
             {
                 enclosingProcPhaseNum = moverTypeChecker.allPhaseNums.Max();
             }
+            dummyLocalVar = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "og_dummy", Type.Bool));
             Implementation impl = base.VisitImplementation(node);
+            impl.LocVars.Add(dummyLocalVar);
             impl.Name = impl.Proc.Name;
             foreach (Block block in impl.Blocks)
             {
