@@ -94,24 +94,6 @@ namespace Microsoft.Boogie
 #endif
         }
 
-        private static HashSet<int> ComputePhaseIntervals(MoverTypeChecker moverTypeChecker)
-        {
-            HashSet<int> phases = new HashSet<int>();
-            foreach (var decl in moverTypeChecker.program.TopLevelDeclarations)
-            {
-                Procedure proc = decl as Procedure;
-                if (proc == null) continue;
-                int phaseNum = moverTypeChecker.FindPhaseNumber(proc);
-                if (phaseNum != int.MaxValue) phases.Add(moverTypeChecker.FindPhaseNumber(proc));
-
-            }
-            foreach (int phs in moverTypeChecker.assertionPhaseNums)
-            {
-                phases.Add(phs);
-            }
-            return phases;
-        }
-
         private static Tuple<Automaton<BvSet>, bool> IsYieldReachabilitySafe(Automaton<BvSet> implReachabilityCheckAutomaton, Implementation impl, MoverTypeChecker moverTypeChecker, int phaseNum)
         {
             List<BvSet> witnessSet;
@@ -187,7 +169,7 @@ namespace Microsoft.Boogie
             Program yieldTypeCheckedProgram = moverTypeChecker.program;
             YieldTypeChecker regExprToAuto = new YieldTypeChecker();
 
-            HashSet<int> phases = ComputePhaseIntervals(moverTypeChecker);
+            HashSet<int> phases = moverTypeChecker.allPhaseNums;
             foreach (int yTypeCheckCurrentPhaseNum in phases) // take current phase check num from each interval
             {
                 foreach (var decl in yieldTypeCheckedProgram.TopLevelDeclarations)
