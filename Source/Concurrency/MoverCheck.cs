@@ -379,7 +379,7 @@ namespace Microsoft.Boogie
 
         private void CreateCommutativityChecker(Program program, ActionInfo first, ActionInfo second)
         {
-            if (first == second)
+            if (first == second && first.thatInParams.Count == 0 && first.thatOutParams.Count == 0)
                 return;
             if (first.CommutesWith(second))
                 return;
