@@ -462,7 +462,7 @@ namespace Microsoft.Boogie
             this.decls.Add(proc);
         }
 
-        private void CreateFailurePreservationCheckerForall(Program program, ActionInfo first, ActionInfo second)
+        private void CreateFailurePreservationChecker(Program program, ActionInfo first, ActionInfo second)
         {
             Debug.Assert(second.isNonBlocking);
             if (first.gateUsedGlobalVars.Intersect(second.modifiedGlobalVars).Count() == 0)
@@ -505,7 +505,7 @@ namespace Microsoft.Boogie
             this.decls.Add(proc);
         }
 
-        private void CreateFailurePreservationChecker(Program program, ActionInfo first, ActionInfo second)
+        private void CreateFailurePreservationCheckerExists(Program program, ActionInfo first, ActionInfo second)
         {
             if (first.gateUsedGlobalVars.Intersect(second.modifiedGlobalVars).Count() == 0 && second.isNonBlocking)
                 return;
