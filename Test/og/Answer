@@ -1,6 +1,6 @@
 
 -------------------- foo.bpl --------------------
-foo.bpl(14,3): Error BP5001: This assertion might not hold.
+foo.bpl(14,3): Error: Non-interference check failed
 Execution trace:
     foo.bpl(6,5): anon0
     (0,0): inline$Impl_YieldChecker_PC_2147483647$0$L0
@@ -8,11 +8,11 @@ Execution trace:
 Boogie program verifier finished with 4 verified, 1 error
 
 -------------------- bar.bpl --------------------
-bar.bpl(13,3): Error BP5001: This assertion might not hold.
+bar.bpl(13,3): Error: Non-interference check failed
 Execution trace:
     bar.bpl(6,5): anon0
     (0,0): inline$Impl_YieldChecker_PC_2147483647$0$L0
-bar.bpl(13,3): Error BP5001: This assertion might not hold.
+bar.bpl(13,3): Error: Non-interference check failed
 Execution trace:
     bar.bpl(23,5): anon0
     (0,0): inline$Impl_YieldChecker_PC_2147483647$0$L0
@@ -24,11 +24,11 @@ Boogie program verifier finished with 3 verified, 2 errors
 Boogie program verifier finished with 2 verified, 0 errors
 
 -------------------- parallel1.bpl --------------------
-parallel1.bpl(10,1): Error BP5001: This assertion might not hold.
+parallel1.bpl(10,1): Error: Non-interference check failed
 Execution trace:
     parallel1.bpl(6,5): anon0
     (0,0): inline$Proc_YieldChecker_PC_2147483647$0$L0
-parallel1.bpl(14,3): Error BP5001: This assertion might not hold.
+parallel1.bpl(14,3): Error: Non-interference check failed
 Execution trace:
     parallel1.bpl(6,5): anon0
     (0,0): inline$Impl_YieldChecker_PC_2147483647$0$L0
@@ -72,7 +72,7 @@ Boogie program verifier finished with 4 verified, 0 errors
 Boogie program verifier finished with 3 verified, 0 errors
 
 -------------------- t1.bpl --------------------
-t1.bpl(35,5): Error BP5001: This assertion might not hold.
+t1.bpl(35,5): Error: Non-interference check failed
 Execution trace:
     (0,0): og_init
     (0,0): inline$Impl_YieldChecker_A_2147483647$0$L1
@@ -88,7 +88,7 @@ Boogie program verifier finished with 2 verified, 0 errors
 Boogie program verifier finished with 2 verified, 0 errors
 
 -------------------- async.bpl --------------------
-async.bpl(14,1): Error BP5001: This assertion might not hold.
+async.bpl(14,1): Error: Non-interference check failed
 Execution trace:
     async.bpl(7,3): anon0
     async.bpl(7,3): anon0$1

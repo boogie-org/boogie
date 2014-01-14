@@ -416,7 +416,9 @@ namespace Microsoft.Boogie
             List<Requires> requires = DisjointnessRequires(program, first, second);
             List<Ensures> ensures = new List<Ensures>();
             Expr transitionRelation = (new TransitionRelationComputation(program, first, second)).Compute();
-            ensures.Add(new Ensures(false, transitionRelation));
+            Ensures ensureCheck = new Ensures(false, transitionRelation);
+            ensureCheck.ErrorData = string.Format("Commutativity check between {0} and {1} failed", first.proc.Name, second.proc.Name);
+            ensures.Add(ensureCheck);
             string checkerName = string.Format("CommutativityChecker_{0}_{1}", first.proc.Name, second.proc.Name);
             List<IdentifierExpr> globalVars = new List<IdentifierExpr>();
             program.GlobalVariables().Iter(x => globalVars.Add(new IdentifierExpr(Token.NoToken, x)));
@@ -450,7 +452,9 @@ namespace Microsoft.Boogie
             foreach (AssertCmd assertCmd in first.thatGate)
             {
                 requires.Add(new Requires(false, assertCmd.Expr));
-                ensures.Add(new Ensures(false, assertCmd.Expr));
+                Ensures ensureCheck = new Ensures(assertCmd.tok, false, assertCmd.Expr, null);
+                ensureCheck.ErrorData = string.Format("Gate not preserved by {0}", second.proc.Name);
+                ensures.Add(ensureCheck);
             }
             string checkerName = string.Format("GatePreservationChecker_{0}_{1}", first.proc.Name, second.proc.Name);
             List<IdentifierExpr> globalVars = new List<IdentifierExpr>();
@@ -487,7 +491,9 @@ namespace Microsoft.Boogie
             requires.Add(new Requires(false, failureExpr));
 
             List<Ensures> ensures = new List<Ensures>();
-            ensures.Add(new Ensures(false, failureExpr));
+            Ensures ensureCheck = new Ensures(false, failureExpr);
+            ensureCheck.ErrorData = string.Format("Gate failure of {0} not preserved by {1}", first.proc.Name, second.proc.Name);
+            ensures.Add(ensureCheck);
 
             List<Variable> outputs = new List<Variable>();
             outputs.AddRange(first.thatOutParams);
@@ -565,7 +571,10 @@ namespace Microsoft.Boogie
                 ensuresExpr = new ExistsExpr(Token.NoToken, boundVars, ensuresExpr);
             }
             List<Ensures> ensures = new List<Ensures>();
-            ensures.Add(new Ensures(false, ensuresExpr));
+            Ensures ensureCheck = new Ensures(false, ensuresExpr);
+            ensureCheck.ErrorData = string.Format("Gate failure of {0} not preserved by {1}", first.proc.Name, second.proc.Name);
+            ensures.Add(ensureCheck);
+
             List<Block> blocks = new List<Block>();
             blocks.Add(new Block(Token.NoToken, "L", new List<Cmd>(), new ReturnCmd(Token.NoToken)));
             string checkerName = string.Format("FailurePreservationChecker_{0}_{1}", first.proc.Name, second.proc.Name);
