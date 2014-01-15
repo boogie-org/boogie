@@ -1,8 +1,6 @@
 ﻿#if QED
 
 #define DEBUG
-#define OPTIMIZED
-#define NONOPTIMIZED
 
 using System;
 using System.Collections;
@@ -21,40 +19,21 @@ namespace Microsoft.Boogie
 
     class YieldTypeChecker
     {
-        /*static subfields of yieldtypesafe(YTS) property language*/
         static CharSetSolver yieldCheckerAutomatonSolver;
-#if OPTIMIZED
         static string yieldReachabilityOptCheckerRegex = @"^1*([D]+([571])*A?([97])*)*$";
         static Automaton<BvSet> yieldReachabilityOptCheckerAutomaton;
         static Automaton<BvSet> minimizedReachabilityOptCheckerAutomaton;
-#endif
-#if !NONOPTIMIZED
-        static string yieldReachabilityCheckerRegex = @"^([1234])*([D]+([56781234])*A?([973])*)*$";// regex of property to build automaton of YTS language   
-        static Automaton<BvSet> yieldReachabilityCheckerAutomaton;
-        static Automaton<BvSet> minimizedReachabilityCheckerAutomaton;
-#endif
         static Automaton<BvSet> yieldTypeSafeCheckerAutomaton;
         static Automaton<BvSet> minimizedYieldTypeSafeCheckerAutomaton;
 
         static YieldTypeChecker()
         {
             yieldCheckerAutomatonSolver = new CharSetSolver(BitWidth.BV7);
-#if !NONOPTIMIZED
-            yieldReachabilityCheckerAutomaton =
-            Automaton<BvSet>.MkProduct(yieldCheckerAutomatonSolver.Convert(yieldReachabilityCheckerRegex),
-                                           yieldCheckerAutomatonSolver.Convert(@"^[1-9A-D]*$"), // result of product with this Automaton provides us an automaton that has (*) existence alphanum chars in our property automaton 
-                                           yieldCheckerAutomatonSolver);
-            minimizedReachabilityCheckerAutomaton = yieldReachabilityCheckerAutomaton.Determinize(yieldCheckerAutomatonSolver).Minimize(yieldCheckerAutomatonSolver);
-#endif
-
-#if OPTIMIZED
             yieldReachabilityOptCheckerAutomaton =
            Automaton<BvSet>.MkProduct(yieldCheckerAutomatonSolver.Convert(yieldReachabilityOptCheckerRegex),
                                           yieldCheckerAutomatonSolver.Convert(@"^[1-9A-D]*$"), // result of product with this Automaton provides us an automaton that has (*) existence alphanum chars in our property automaton 
                                           yieldCheckerAutomatonSolver);
             minimizedReachabilityOptCheckerAutomaton = yieldReachabilityOptCheckerAutomaton.Determinize(yieldCheckerAutomatonSolver).Minimize(yieldCheckerAutomatonSolver);
-
-#endif
             yieldTypeSafeCheckerAutomaton = yieldCheckerAutomatonSolver.ReadFromRanges(
                                             0,
                                            new int[] { 0, 2 },
@@ -86,6 +65,8 @@ namespace Microsoft.Boogie
                                                 new int[] {2,68,68,2},//Y 
                                                 new int[] {2,51,51,2},//Q
                                            });
+
+
             minimizedYieldTypeSafeCheckerAutomaton = yieldTypeSafeCheckerAutomaton.Determinize(yieldCheckerAutomatonSolver).Minimize(yieldCheckerAutomatonSolver);
 
 #if !DEBUG
@@ -94,20 +75,9 @@ namespace Microsoft.Boogie
 #endif
         }
 
-        private static Tuple<Automaton<BvSet>, bool> IsYieldReachabilitySafe(Automaton<BvSet> implReachabilityCheckAutomaton, Implementation impl, MoverTypeChecker moverTypeChecker, int phaseNum)
+        private static Tuple<Automaton<BvSet>, bool> IsYieldReachabilitySafe(Automaton<BvSet> implReachabilityCheckAutomaton)
         {
             List<BvSet> witnessSet;
-#if !NONOPTIMIZED
-            var isNonEmpty = Automaton<BvSet>.CheckDifference(
-                                                           implReachabilityCheckAutomaton,
-                                                           yieldReachabilityCheckerAutomaton,
-                                                           0,
-                                                           yieldCheckerAutomatonSolver,
-                                                           out witnessSet);
-            var diffAutomaton = implReachabilityCheckAutomaton.Minus(yieldReachabilityCheckerAutomaton, yieldCheckerAutomatonSolver);
-#endif
-
-#if OPTIMIZED
             var isNonEmpty = Automaton<BvSet>.CheckDifference(
                                                           implReachabilityCheckAutomaton,
                                                           yieldReachabilityOptCheckerAutomaton,
@@ -116,19 +86,10 @@ namespace Microsoft.Boogie
                                                           out witnessSet);
 
             var diffAutomaton = implReachabilityCheckAutomaton.Minus(yieldReachabilityOptCheckerAutomaton, yieldCheckerAutomatonSolver);
-#endif
-
-            if (isNonEmpty)
-            {
-                var witness = new String(Array.ConvertAll(witnessSet.ToArray(), bvset => (char)yieldCheckerAutomatonSolver.Choose(bvset)));
-                Tuple<Automaton<BvSet>, bool> errTraceExists = new Tuple<Automaton<BvSet>, bool>(diffAutomaton, false);
-                return errTraceExists;
-            }
-            Tuple<Automaton<BvSet>, bool> errTraceNotExist = new Tuple<Automaton<BvSet>, bool>(diffAutomaton, true);
-            return errTraceNotExist;
+            return new Tuple<Automaton<BvSet>, bool>(diffAutomaton, !isNonEmpty);
         }
 
-        private static Tuple<Automaton<BvSet>, bool> IsYieldTypeSafe(Automaton<BvSet> implTypeSafeCheckAutomaton, Implementation impl, MoverTypeChecker moverTypeChecker, int phaseNum)
+        private static Tuple<Automaton<BvSet>, bool> IsYieldTypeSafe(Automaton<BvSet> implTypeSafeCheckAutomaton)
         {
             List<BvSet> witnessSet;
             var isNonEmpty = Automaton<BvSet>.CheckDifference(
@@ -138,15 +99,7 @@ namespace Microsoft.Boogie
                                                            yieldCheckerAutomatonSolver,
                                                            out witnessSet);
             var diffAutomaton = implTypeSafeCheckAutomaton.Minus(yieldTypeSafeCheckerAutomaton, yieldCheckerAutomatonSolver);
-
-            if (isNonEmpty)
-            {
-                var witness = new String(Array.ConvertAll(witnessSet.ToArray(), bvset => (char)yieldCheckerAutomatonSolver.Choose(bvset)));
-                Tuple<Automaton<BvSet>, bool> errTraceExists = new Tuple<Automaton<BvSet>, bool>(diffAutomaton, false);
-                return errTraceExists;
-            }
-            Tuple<Automaton<BvSet>, bool> errTraceNotExist = new Tuple<Automaton<BvSet>, bool>(diffAutomaton, true);
-            return errTraceNotExist;
+            return new Tuple<Automaton<BvSet>, bool>(diffAutomaton, !isNonEmpty);
         }
 
         private static void/*string*/ PrintErrorTrace(Dictionary<int, Absy> cmds, Automaton<BvSet> errorAutomaton, Implementation yTypeChecked)
@@ -164,15 +117,12 @@ namespace Microsoft.Boogie
             Console.WriteLine(s);
             // return s;
         }
+
         public static void PerformYieldSafeCheck(MoverTypeChecker moverTypeChecker)
         {
-            Program yieldTypeCheckedProgram = moverTypeChecker.program;
-            YieldTypeChecker regExprToAuto = new YieldTypeChecker();
-
-            HashSet<int> phases = moverTypeChecker.allPhaseNums;
-            foreach (int yTypeCheckCurrentPhaseNum in phases) // take current phase check num from each interval
+            foreach (int yTypeCheckCurrentPhaseNum in moverTypeChecker.allPhaseNums)
             {
-                foreach (var decl in yieldTypeCheckedProgram.TopLevelDeclarations)
+                foreach (var decl in moverTypeChecker.program.TopLevelDeclarations)
                 {
                     Implementation impl = decl as Implementation;
                     if (impl == null) continue;
@@ -182,83 +132,52 @@ namespace Microsoft.Boogie
                     Tuple<Tuple<Dictionary<int, Absy>, Automaton<BvSet>>, Tuple<Dictionary<int, Absy>, Automaton<BvSet>>> yieldCheckAutomatons =
                              YieldTypeCheckExecutor.YieldTypeCheckAutomaton(impl, phaseNumSpecImpl, yTypeCheckCurrentPhaseNum, moverTypeChecker);
 
-                    Tuple<Automaton<BvSet>, bool> isYieldReachable = IsYieldReachabilitySafe(yieldCheckAutomatons.Item2.Item2, impl, moverTypeChecker, yTypeCheckCurrentPhaseNum);
-                    Tuple<Automaton<BvSet>, bool> isYieldTypeSafe = IsYieldTypeSafe(yieldCheckAutomatons.Item1.Item2, impl, moverTypeChecker, yTypeCheckCurrentPhaseNum);
-                    Automaton<BvSet> isYieldTypeSafeErrorAut = isYieldTypeSafe.Item1;
-                    Automaton<BvSet> isYieldReachableErrorAut = isYieldReachable.Item1;
+                    Tuple<Automaton<BvSet>, bool> isYieldReachable = IsYieldReachabilitySafe(yieldCheckAutomatons.Item2.Item2);
+                    Tuple<Automaton<BvSet>, bool> isYieldTypeSafe = IsYieldTypeSafe(yieldCheckAutomatons.Item1.Item2);
 
                     Dictionary<int, Absy> isYieldTypeSafeCmds = yieldCheckAutomatons.Item1.Item1;
                     Dictionary<int, Absy> isYieldReachableSafeCmds = yieldCheckAutomatons.Item2.Item1;
 
-                    if (!isYieldReachable.Item2 && !isYieldTypeSafe.Item2)
+                    if (!isYieldTypeSafe.Item2)
                     {
                         moverTypeChecker.Error(impl, "\n Body of " + impl.Proc.Name + " is not yield_type_safe at phase " + yTypeCheckCurrentPhaseNum.ToString() + "\n");
-                        PrintErrorTrace(isYieldTypeSafeCmds, isYieldTypeSafeErrorAut, impl);
-                        moverTypeChecker.Error(impl, "\n Body of " + impl.Proc.Name + " is not yield_reachable_safe at phase " + yTypeCheckCurrentPhaseNum.ToString() + "\n");
-                        PrintErrorTrace(isYieldReachableSafeCmds, isYieldReachableErrorAut, impl);
+                        PrintErrorTrace(isYieldTypeSafeCmds, isYieldTypeSafe.Item1, impl);
                     }
-                    else if (isYieldReachable.Item2 && !isYieldTypeSafe.Item2)
-                    {
-                        moverTypeChecker.Error(impl, "\n Body of " + impl.Proc.Name + " is not yield_type_safe at phase " + yTypeCheckCurrentPhaseNum.ToString() + "\n");
-                        PrintErrorTrace(isYieldTypeSafeCmds, isYieldTypeSafeErrorAut, impl);
-                    }
-                    else if (!isYieldReachable.Item2 && isYieldTypeSafe.Item2)
+                    if (!isYieldReachable.Item2)
                     {
                         moverTypeChecker.Error(impl, "\n Body of " + impl.Proc.Name + " is not yield_reachable_safe at phase " + yTypeCheckCurrentPhaseNum.ToString() + "\n");
-                        PrintErrorTrace(isYieldReachableSafeCmds, isYieldReachableErrorAut, impl);
-                    }
-                    else if (isYieldReachable.Item2 && isYieldTypeSafe.Item2)
-                    {
-
+                        PrintErrorTrace(isYieldReachableSafeCmds, isYieldReachable.Item1, impl);
                     }
                 }
             }
         }
     }
 
-    class YieldTypeCheckExecutor
+    static class YieldTypeCheckExecutor
     {
-        private static YieldTypeCheckExecutor yieldTypeCheckExecutorInstance;
         static int stateCounter;
-
-        protected YieldTypeCheckExecutor()
-        {
-        }
 
         public static Tuple<Tuple<Dictionary<int, Absy>, Automaton<BvSet>>, Tuple<Dictionary<int, Absy>, Automaton<BvSet>>>
             YieldTypeCheckAutomaton(Implementation yTypeChecked, int specPhaseNumImpl, int yTypeCheckCurrentPhaseNum, MoverTypeChecker moverTypeChecker)
         {
-
-            if (yieldTypeCheckExecutorInstance == null)
-            {
-                yieldTypeCheckExecutorInstance = new YieldTypeCheckExecutor();
-            }
-
             CharSetSolver solver = new CharSetSolver(BitWidth.BV7);
             Dictionary<Tuple<int, int>, string> edgeLabels = new Dictionary<Tuple<int, int>, string>(); // Tuple<int,int> --> "Y" : State(k) --Y--> State(k+1)
             HashSet<int> finalStates = new HashSet<int>();
             HashSet<int> initialStates = new HashSet<int>();
             stateCounter = 0;
             initialStates.Add(stateCounter); // First state is added to initial states
-            Dictionary<Absy, int> abysToNode = yieldTypeCheckExecutorInstance.CreateStateNumbers(yTypeChecked);
-            Graph<int> graph = yieldTypeCheckExecutorInstance.BuildAutomatonGraph(yTypeChecked, yTypeCheckCurrentPhaseNum, abysToNode, edgeLabels, finalStates, initialStates, moverTypeChecker); // build component of graph for a phase interval            
+            Dictionary<Absy, int> abysToNode = CreateStateNumbers(yTypeChecked);
+            Graph<int> graph = BuildAutomatonGraph(yTypeChecked, yTypeCheckCurrentPhaseNum, abysToNode, edgeLabels, finalStates, initialStates, moverTypeChecker); // build component of graph for a phase interval            
 
             //Buradayim
-            Automaton<BvSet> implYieldTypeSafeCheckAut = yieldTypeCheckExecutorInstance.BuildAutomatonYieldSafe(graph, initialStates, finalStates, edgeLabels, solver);
+            Automaton<BvSet> implYieldTypeSafeCheckAut = BuildAutomatonYieldSafe(graph, initialStates, finalStates, edgeLabels, solver);
             Dictionary<int, Absy> nodeToAbysYieldTypeSafe = new Dictionary<int, Absy>();
             foreach (KeyValuePair<Absy, int> state in abysToNode)
             {
                 nodeToAbysYieldTypeSafe[state.Value] = state.Key;
             }
             Tuple<Dictionary<int, Absy>, Automaton<BvSet>> implYieldTypeSafeCheckAutomaton = new Tuple<Dictionary<int, Absy>, Automaton<BvSet>>(nodeToAbysYieldTypeSafe, implYieldTypeSafeCheckAut);
-#if !NONOPTIMIZED
-             // Update edges w.r.t yield reaching. VocabX{True,False} 
-            PostProcessGraph(bodyGraphForImplPhaseJ, edgeLabels);
-            Automaton<BvSet> implYieldReachCheckAut = BuildAutomatonYieldReachSafe(bodyGraphForImplPhaseJ, edgeLabels, initialStates, finalStates, ytypeChecked, yTypeCheckCurrentPhaseNum); // Last to arguments are just only for showGraph of automaton lib
-#endif
-#if OPTIMIZED
-            Automaton<BvSet> implYieldReachCheckAut = yieldTypeCheckExecutorInstance.BuildOptAutomatonYieldReachSafe(yTypeChecked, graph, edgeLabels, initialStates, finalStates, moverTypeChecker, solver);
-#endif
+            Automaton<BvSet> implYieldReachCheckAut = BuildOptAutomatonYieldReachSafe(yTypeChecked, graph, edgeLabels, initialStates, finalStates, moverTypeChecker, solver);
             Dictionary<int, Absy> nodeToAbysYieldReachSafe = new Dictionary<int, Absy>();
             foreach (KeyValuePair<Absy, int> state in abysToNode)
             {
@@ -270,7 +189,7 @@ namespace Microsoft.Boogie
             return yieldCheckImplAutomaton;
         }
 
-        public Dictionary<Absy, int> CreateStateNumbers(Implementation yTypeChecked)
+        public static Dictionary<Absy, int> CreateStateNumbers(Implementation yTypeChecked)
         {
             Dictionary<Absy, int> abysToNodeNo = new Dictionary<Absy, int>();
             foreach (Block block in yTypeChecked.Blocks)
@@ -299,7 +218,7 @@ namespace Microsoft.Boogie
             return abysToNodeNo;
         }
 
-        private Graph<int> BuildAutomatonGraph(Implementation yTypeChecked, int yTypeCheckCurrentPhaseNum, Dictionary<Absy, int> abysToNode, Dictionary<Tuple<int, int>, string> edgeLabels, HashSet<int> finalStates, HashSet<int> initialStates, MoverTypeChecker moverTypeChecker)
+        private static Graph<int> BuildAutomatonGraph(Implementation yTypeChecked, int yTypeCheckCurrentPhaseNum, Dictionary<Absy, int> abysToNode, Dictionary<Tuple<int, int>, string> edgeLabels, HashSet<int> finalStates, HashSet<int> initialStates, MoverTypeChecker moverTypeChecker)
         {
             HashSet<Tuple<int, int>> edges = new HashSet<Tuple<int, int>>();
             foreach (Block block in yTypeChecked.Blocks)
@@ -598,7 +517,7 @@ namespace Microsoft.Boogie
             return automatonGraphOfImplPerPhase;
         }
 
-        private HashSet<int> GetStateOfTargetBlock(TransferCmd tc, int yTypeCheckCurrentPhaseNum, Dictionary<Absy, int> abysToNode, HashSet<int> finalStates, MoverTypeChecker moverTypeChecker)
+        private static HashSet<int> GetStateOfTargetBlock(TransferCmd tc, int yTypeCheckCurrentPhaseNum, Dictionary<Absy, int> abysToNode, HashSet<int> finalStates, MoverTypeChecker moverTypeChecker)
         {
             HashSet<int> targetBlockEntryStates = new HashSet<int>();
             if (tc is ReturnCmd)
@@ -689,7 +608,7 @@ namespace Microsoft.Boogie
             return targetBlockEntryStates;
         }
 
-        private bool IsAccessToNonQedVar(Cmd cmd, MoverTypeChecker moverTypeChecker)
+        private static bool IsAccessToNonQedVar(Cmd cmd, MoverTypeChecker moverTypeChecker)
         {
             HashSet<Variable> qedGlobalVariables = moverTypeChecker.QedGlobalVariables();
             Set globalAccesOfCmd = ComputeGlobalAccesses(cmd);
@@ -708,7 +627,7 @@ namespace Microsoft.Boogie
         }
 
         //        
-        private Set FilterGlobalVariables(Set vars)
+        private static Set FilterGlobalVariables(Set vars)
         {
             Set globals = new Set();
             foreach (object var in vars)
@@ -721,24 +640,24 @@ namespace Microsoft.Boogie
             return globals;
         }
 
-        private Set ComputeGlobalAccesses(Cmd cmd)
+        private static Set ComputeGlobalAccesses(Cmd cmd)
         {
             Set s = ComputeGlobalReads(cmd);
             s.AddRange(ComputeGlobalWrites(cmd));
             return s;
         }
 
-        private Set ComputeGlobalReads(Cmd cmd)
+        private static Set ComputeGlobalReads(Cmd cmd)
         {
             return FilterGlobalVariables(ComputeReads(cmd));
         }
 
-        private Set ComputeGlobalWrites(Cmd cmd)
+        private static Set ComputeGlobalWrites(Cmd cmd)
         {
             return FilterGlobalVariables(ComputeWrites(cmd));
         }
 
-        private Set ComputeReads(Cmd cmd)
+        private static Set ComputeReads(Cmd cmd)
         {
             Set vars = new Set();
 
@@ -776,39 +695,12 @@ namespace Microsoft.Boogie
             {
                 // noop
             }
-            // Delegated to Shaz's type checker
-            /*else if (cmd is CallCmd)
-            {
-                CallCmd callCmd = cmd as CallCmd;
-                foreach (Expr var in callCmd.Ins) {var.ComputeFreeVariables(vars); }      
-                
-            }
-            else if(cmd is ParCallCmd){
-                ParCallCmd parCallCmd = cmd as ParCallCmd;
-              
-                foreach (CallCmd parCalle in parCallCmd.CallCmds) {
-                    foreach (Expr var in parCalle.Ins) {
-        //                Console.WriteLine("ParCall rd var " + var.ToString());
-                        var.ComputeFreeVariables(vars);
-                    }
-
-                }            
-            }*/
             return vars;
         }
         // Discuss and remove
-        private Set ComputeWrites(Cmd cmd)
+        private static Set ComputeWrites(Cmd cmd)
         {
             Set vars = new Set();
-            /*
-            List<Variable> varseq = new List<Variable>();
-            cmd.AddAssignedVariables(varseq);
-            foreach (Variable var in varseq)
-            {
-                vars.Add(var);
-            }           
-            return vars;
-            */
             if (cmd is AssertCmd)
             {
                 // noop
@@ -830,26 +722,11 @@ namespace Microsoft.Boogie
                 HavocCmd havocCmd = cmd as HavocCmd;
                 foreach (Expr var in havocCmd.Vars) { var.ComputeFreeVariables(vars); }
             }
-            // Delegated to Shaz's type checker
-            /*
-          else if (cmd is CallCmd)
-          {
-              CallCmd callCmd = cmd as CallCmd;
-              foreach (Expr var in callCmd.Proc.Modifies) { var.ComputeFreeVariables(vars); }
-              foreach (Expr var in callCmd.Outs) {  var.ComputeFreeVariables(vars); }
-          }
-          else if (cmd is ParCallCmd) {             
-              ParCallCmd parCallCmd = cmd as ParCallCmd;
-              foreach (CallCmd parCalle in parCallCmd.CallCmds) {
-                  foreach (Expr var in parCalle.Proc.Modifies) { var.ComputeFreeVariables(vars); }
-                  foreach (Expr var in parCalle.Outs) { var.ComputeFreeVariables(vars); }
-              }            
-          }*/
             return vars;
         }
 
         //
-        private bool IsProperActionCmd(Cmd cmd, int yTypeCheckCurrentPhaseNum, MoverTypeChecker moverTypeChecker)
+        private static bool IsProperActionCmd(Cmd cmd, int yTypeCheckCurrentPhaseNum, MoverTypeChecker moverTypeChecker)
         {
             if (!IsExitStatement(cmd, yTypeCheckCurrentPhaseNum, moverTypeChecker) &&
                 !IsParallelCallCmdYield(cmd, yTypeCheckCurrentPhaseNum, moverTypeChecker) &&
@@ -861,13 +738,13 @@ namespace Microsoft.Boogie
             return false;
 
         }
-        private bool IsExitStatement(Cmd cmd, int yTypeCheckCurrentPhaseNum, MoverTypeChecker moverTypeChecker)
+        private static bool IsExitStatement(Cmd cmd, int yTypeCheckCurrentPhaseNum, MoverTypeChecker moverTypeChecker)
         {
             if (IsCallCmdExitPoint(cmd, yTypeCheckCurrentPhaseNum, moverTypeChecker) || IsAccessToNonQedVar(cmd, moverTypeChecker)) { return true; }
             return false;
         }
 
-        private bool IsCallCmdExitPoint(Cmd cmd, int yTypeCheckCurrentPhaseNum, MoverTypeChecker moverTypeChecker)
+        private static bool IsCallCmdExitPoint(Cmd cmd, int yTypeCheckCurrentPhaseNum, MoverTypeChecker moverTypeChecker)
         {
             if (cmd is CallCmd && !IsAsyncCallCmd(cmd))
             {
@@ -881,7 +758,7 @@ namespace Microsoft.Boogie
             return false;
         }
 
-        private bool IsParallelCallCmdYield(Cmd cmd, int yTypeCheckCurrentPhaseNum, MoverTypeChecker moverTypeChecker)
+        private static bool IsParallelCallCmdYield(Cmd cmd, int yTypeCheckCurrentPhaseNum, MoverTypeChecker moverTypeChecker)
         {
             if (cmd is ParCallCmd)
             {
@@ -898,12 +775,12 @@ namespace Microsoft.Boogie
             return false;
         }
 
-        private bool IsSeqComposableParCallCmd(Cmd cmd, int yTypeCheckCurrentPhaseNum, MoverTypeChecker moverTypeChecker)
+        private static bool IsSeqComposableParCallCmd(Cmd cmd, int yTypeCheckCurrentPhaseNum, MoverTypeChecker moverTypeChecker)
         {
             if (cmd is ParCallCmd && !IsParallelCallCmdYield(cmd, yTypeCheckCurrentPhaseNum, moverTypeChecker)) { return true; }
             return false;
         }
-        private bool IsAsyncCallCmd(Cmd cmd)
+        private static bool IsAsyncCallCmd(Cmd cmd)
         {
             if (cmd is CallCmd)
             {
@@ -912,7 +789,7 @@ namespace Microsoft.Boogie
             }
             return false;
         }
-        private string GetEdgeType(Cmd cmd)
+        private static string GetEdgeType(Cmd cmd)
         {
             if (cmd is YieldCmd)
             {
@@ -949,12 +826,9 @@ namespace Microsoft.Boogie
             {
                 return "Y";
             }
-            //else if (cmd is AssignCmd)
-            //{  //rest can only be assigncmd                
             return "Q";
-            //}
         }
-        private string PrintGraph(Implementation yTypeChecked, Graph<int> graph, Dictionary<Tuple<int, int>, string> edgeLabels)
+        private static string PrintGraph(Implementation yTypeChecked, Graph<int> graph, Dictionary<Tuple<int, int>, string> edgeLabels)
         {
             var s = new StringBuilder();
             s.AppendLine("\nImplementation " + yTypeChecked.Proc.Name + " digraph G {");
@@ -964,70 +838,7 @@ namespace Microsoft.Boogie
             return s.ToString();
         }
 
-#if !NONOPTIMIZED
-        private HashSet<Tuple<int, int>> CollectBackwardEdgesOfYieldEdge(int source)
-        {
-            HashSet<Tuple<int, int>> yieldReachingEdges = new HashSet<Tuple<int, int>>(); // Collect edges that are backward reachable from source vertex of yield a edge,source ---Y---> sink, in backward direction
-            HashSet<int> gray = new HashSet<int>();
-            HashSet<int> black = new HashSet<int>();
-            HashSet<int> white = new HashSet<int>();
-            // Add all vertices except s into 
-            foreach (int v in graph.Nodes)
-            {
-                if (!v.Equals(source))
-                    white.Add(v);
-            }
-
-            Queue<int> frontier = new Queue<int>(); //
-            // n is given as start vertex 
-            gray.Add(source);
-            frontier.Enqueue(source);
-
-            while (frontier.Count > 0)
-            {
-                int u = frontier.Dequeue();
-                foreach (int v in graph.Predecessors(u))
-                {
-
-                    if (white.Contains(v) && !gray.Contains(v) && !black.Contains(v))
-                    {
-
-                        gray.Add(v);
-                        frontier.Enqueue(v);
-                        // Add to yielding edges
-                        yieldReachingEdges.Add(new Tuple<int, int>(v, u));
-                    }
-
-                }
-                black.Add(u);
-            }
-
-            return yieldReachingEdges;
-        }
-
-
-        /*
-         * Calls CollectBackEdges for each Y edge existing in graph
-         */
-        private HashSet<Tuple<int, int>> CollectYieldReachingEdgesOfGraph()
-        {
-            HashSet<Tuple<int, int>> yieldTrueEdges = new HashSet<Tuple<int, int>>(); // Set {forall edges e : e is reaching a Y labeled edge}
-            foreach (var e in graph.Edges) // Visits all edges to and do backward yield reachability analysis starting from source vertex of an "Y" labeled edge
-            {
-                if (edgeLabels[e] == "Y")
-                {
-                    HashSet<Tuple<int, int>> yieldReachingEdges = CollectBackwardEdgesOfYieldEdge(e.Item1);
-                    foreach (Tuple<int, int> yldrch in yieldReachingEdges)
-                    {
-
-                        yieldTrueEdges.Add(yldrch);
-                    }
-                }
-            }
-            return yieldTrueEdges;
-        }
-#endif
-        private HashSet<Tuple<int, int>> CollectEdgesReachableFromAction(Graph<int> graph, int source)
+        private static HashSet<Tuple<int, int>> CollectEdgesReachableFromAction(Graph<int> graph, int source)
         {
             HashSet<Tuple<int, int>> edgesReachable = new HashSet<Tuple<int, int>>(); // Collect edges that are backward reachable from source vertex of yield a edge,source ---Y---> sink, in backward direction
             HashSet<int> gray = new HashSet<int>();
@@ -1062,7 +873,7 @@ namespace Microsoft.Boogie
             return edgesReachable;
         }
 
-        private void IsExitOrRetReachableFromAtomicOrLeft(Implementation yTypeChecked, Graph<int> graph, Dictionary<Tuple<int, int>, string> edgeLabels, HashSet<int> finalStates, MoverTypeChecker moverTypeChecker)
+        private static void IsExitOrRetReachableFromAtomicOrLeft(Implementation yTypeChecked, Graph<int> graph, Dictionary<Tuple<int, int>, string> edgeLabels, HashSet<int> finalStates, MoverTypeChecker moverTypeChecker)
         {
             foreach (var e in graph.Edges)
             {
@@ -1077,7 +888,7 @@ namespace Microsoft.Boogie
                 }
             }
         }
-        private void IsExitOrReachableFromBoth(Graph<int> graph, Dictionary<Tuple<int, int>, string> edgeLabels, HashSet<int> finalStates)
+        private static void IsExitOrReachableFromBoth(Graph<int> graph, Dictionary<Tuple<int, int>, string> edgeLabels, HashSet<int> finalStates)
         {
             foreach (var e in graph.Edges)
             {
@@ -1092,7 +903,7 @@ namespace Microsoft.Boogie
             }
 
         }
-        private void IsExitOrReachableFromLocal(Graph<int> graph, Dictionary<Tuple<int, int>, string> edgeLabels, HashSet<int> finalStates)
+        private static void IsExitOrReachableFromLocal(Graph<int> graph, Dictionary<Tuple<int, int>, string> edgeLabels, HashSet<int> finalStates)
         {
             foreach (var e in graph.Edges)
             {
@@ -1107,7 +918,7 @@ namespace Microsoft.Boogie
                 }
             }
         }
-        private bool ReachesFinalState(HashSet<int> finalStates, HashSet<Tuple<int, int>> edges)
+        private static bool ReachesFinalState(HashSet<int> finalStates, HashSet<Tuple<int, int>> edges)
         {
 
             foreach (Tuple<int, int> e in edges)
@@ -1116,7 +927,7 @@ namespace Microsoft.Boogie
             }
             return false;
         }
-        private bool ReachesYieldState(Dictionary<Tuple<int, int>, string> edgeLabels, HashSet<Tuple<int, int>> edges)
+        private static bool ReachesYieldState(Dictionary<Tuple<int, int>, string> edgeLabels, HashSet<Tuple<int, int>> edges)
         {
             foreach (var e in edges)
             {
@@ -1126,98 +937,24 @@ namespace Microsoft.Boogie
             return false;
         }
 
-        private Automaton<BvSet> BuildOptAutomatonYieldReachSafe(Implementation yTypeChecked, Graph<int> graph, Dictionary<Tuple<int, int>, string> edgeLabels, HashSet<int> initialStates, HashSet<int> finalStates, MoverTypeChecker moverTypeChecker, CharSetSolver solver)
+        private static Automaton<BvSet> BuildOptAutomatonYieldReachSafe(Implementation yTypeChecked, Graph<int> graph, Dictionary<Tuple<int, int>, string> edgeLabels, HashSet<int> initialStates, HashSet<int> finalStates, MoverTypeChecker moverTypeChecker, CharSetSolver solver)
         {
             IsExitOrRetReachableFromAtomicOrLeft(yTypeChecked, graph, edgeLabels, finalStates, moverTypeChecker); ;
             IsExitOrReachableFromBoth(graph, edgeLabels, finalStates);
             IsExitOrReachableFromLocal(graph, edgeLabels, finalStates);
             return BuildAutomatonYieldSafe(graph, initialStates, finalStates, edgeLabels, solver);
         }
-#if !NONOPTIMIZED
-        /*
-         * Updates vertices map according to according to yieldReaching edges. If an edge in graph is not yield reaching that its vertices map updated.
-         */
-        private void PostProcessGraph()
-        {
-            HashSet<Tuple<int, int>> yieldTrueEdges = CollectYieldReachingEdgesOfGraph();
 
-            foreach (Tuple<int, int> yldrch in yieldTrueEdges)
-            {
-                if (edgeLabels[yldrch] == "Q")
-                {
-                    edgeLabels[yldrch] = "3";
-                }
-                else if (edgeLabels[yldrch] == "P")
-                {
-                    edgeLabels[yldrch] = "1";
-                }
-                else if (edgeLabels[yldrch] == "B")
-                {
-                    edgeLabels[yldrch] = "7";
-                }
-                else if (edgeLabels[yldrch] == "R")
-                {
-                    edgeLabels[yldrch] = "5";
-                }
-                else if (edgeLabels[yldrch] == "L")
-                {
-                    edgeLabels[yldrch] = "9";
-                }
-                else if (edgeLabels[yldrch] == "A")
-                {
-                    edgeLabels[yldrch] = "A";
-                }
-                else if (edgeLabels[yldrch] == "Y")
-                {
-                    edgeLabels[yldrch] = "D";
-                }
-            }
-            foreach (Tuple<int, int> nyldrch in graph.Edges)
-            {
-                if (!yieldTrueEdges.Contains(nyldrch))
-                {
-                    if (edgeLabels[nyldrch] == "Q")
-                    {
-                        edgeLabels[nyldrch] = "4";
-                    }
-                    else if (edgeLabels[nyldrch] == "P")
-                    {
-                        edgeLabels[nyldrch] = "2";
-                    }
-                    else if (edgeLabels[nyldrch] == "B")
-                    {
-                        edgeLabels[nyldrch] = "8";
-                    }
-                    else if (edgeLabels[nyldrch] == "R")
-                    {
-                        edgeLabels[nyldrch] = "6";
-                    }
-                    else if (edgeLabels[nyldrch] == "L")
-                    {
-                        edgeLabels[nyldrch] = "C";
-                    }
-                    else if (edgeLabels[nyldrch] == "A")
-                    {
-                        edgeLabels[nyldrch] = "B";
-                    }
-                    else if (edgeLabels[nyldrch] == "Y")
-                    {
-                        edgeLabels[nyldrch] = "D";
-                    }
-                }
-            }
-        }
-#endif
-        private int[] ComputeFinalStates(HashSet<int> finalStates)
+        private static int[] ComputeFinalStates(HashSet<int> finalStates)
         {
             return finalStates.ToArray();
         }
-        private int[] ComputeInitialStates(HashSet<int> initialStates)
+        private static int[] ComputeInitialStates(HashSet<int> initialStates)
         {
             return initialStates.ToArray();
         }
 
-        private Automaton<BvSet> BuildAutomatonYieldSafe(Graph<int> graph, HashSet<int> initialStates, HashSet<int> finalStates, Dictionary<Tuple<int, int>, string> edgeLabels, CharSetSolver solver)
+        private static Automaton<BvSet> BuildAutomatonYieldSafe(Graph<int> graph, HashSet<int> initialStates, HashSet<int> finalStates, Dictionary<Tuple<int, int>, string> edgeLabels, CharSetSolver solver)
         {
             List<int[]> transitions = new List<int[]>();
             foreach (Tuple<int, int> e in graph.Edges)
@@ -1313,162 +1050,8 @@ namespace Microsoft.Boogie
             Automaton<BvSet> yieldTypeCheckAutomaton = solver.ReadFromRanges(dummyInitial, finalSts, transitions);
             return yieldTypeCheckAutomaton;
         }
-#if !NONOPTIMIZED
 
-        private Automaton<BvSet> BuildAutomatonYieldReachSafe()
-        {
-            List<int[]> transitions = new List<int[]>();
-            foreach (Tuple<int, int> e in graph.Edges)
-            {
-                if (edgeLabels[e] == "3")
-                {
-                    int[] transition = new int[4];
-                    transition[0] = e.Item1;
-                    transition[1] = 51; // ASCII 3
-                    transition[2] = 51;
-                    transition[3] = e.Item2;
-                    transitions.Add(transition);
-                }
-                else if (edgeLabels[e] == "1")
-                {
-                    int[] transition = new int[4];
-                    transition[0] = e.Item1;
-                    transition[1] = 49; // ASCII 1
-                    transition[2] = 49;
-                    transition[3] = e.Item2;
-                    transitions.Add(transition);
-                }
-                else if (edgeLabels[e] == "7")
-                {
-                    int[] transition = new int[4];
-                    transition[0] = e.Item1;
-                    transition[1] = 55; // ASCII 7
-                    transition[2] = 55;
-                    transition[3] = e.Item2;
-                    transitions.Add(transition);
-                }
-                else if (edgeLabels[e] == "5")
-                {
-                    int[] transition = new int[4];
-                    transition[0] = e.Item1;
-                    transition[1] = 53; // ASCII 5
-                    transition[2] = 53;
-                    transition[3] = e.Item2;
-                    transitions.Add(transition);
-                }
-                else if (edgeLabels[e] == "9")
-                {
-                    int[] transition = new int[4];
-                    transition[0] = e.Item1;
-                    transition[1] = 57; // ASCII 9
-                    transition[2] = 57;
-                    transition[3] = e.Item2;
-                    transitions.Add(transition);
-                }
-                else if (edgeLabels[e] == "A")
-                {
-                    int[] transition = new int[4];
-                    transition[0] = e.Item1;
-                    transition[1] = 65; // ASCII A
-                    transition[2] = 65;
-                    transition[3] = e.Item2;
-                    transitions.Add(transition);
-                }
-                else if (edgeLabels[e] == "D")
-                {
-                    int[] transition = new int[4];
-                    transition[0] = e.Item1;
-                    transition[1] = 68; // ASCII D
-                    transition[2] = 68;
-                    transition[3] = e.Item2;
-                    transitions.Add(transition);
-                }
-                else if (edgeLabels[e] == "4")
-                {
-                    int[] transition = new int[4];
-                    transition[0] = e.Item1;
-                    transition[1] = 52; // ASCII 4
-                    transition[2] = 52;
-                    transition[3] = e.Item2;
-                    transitions.Add(transition);
-                }
-                else if (edgeLabels[e] == "2")
-                {
-                    int[] transition = new int[4];
-                    transition[0] = e.Item1;
-                    transition[1] = 50; // ASCII 2
-                    transition[2] = 50;
-                    transition[3] = e.Item2;
-                    transitions.Add(transition);
-                }
-                else if (edgeLabels[e] == "8")
-                {
-                    int[] transition = new int[4];
-                    transition[0] = e.Item1;
-                    transition[1] = 56; // ASCII 8
-                    transition[2] = 56;
-                    transition[3] = e.Item2;
-                    transitions.Add(transition);
-                }
-                else if (edgeLabels[e] == "6")
-                {
-                    int[] transition = new int[4];
-                    transition[0] = e.Item1;
-                    transition[1] = 54; // ASCII 6
-                    transition[2] = 54;
-                    transition[3] = e.Item2;
-                    transitions.Add(transition);
-                }
-                else if (edgeLabels[e] == "C")
-                {
-                    int[] transition = new int[4];
-                    transition[0] = e.Item1;
-                    transition[1] = 67; // ASCII C
-                    transition[2] = 67;
-                    transition[3] = e.Item2;
-                    transitions.Add(transition);
-                }
-                else if (edgeLabels[e] == "B")
-                {
-                    int[] transition = new int[4];
-                    transition[0] = e.Item1;
-                    transition[1] = 66; // ASCII B
-                    transition[2] = 66;
-                    transition[3] = e.Item2;
-                    transitions.Add(transition);
-                }
-                else if (edgeLabels[e] == "E")
-                {
-                    int[] transition = new int[4];
-                    transition[0] = e.Item1;
-                    transition[1] = -1;
-                    transition[2] = -1;
-                    transition[3] = e.Item2;
-                    transitions.Add(transition);
-                }
-
-            }
-
-            // get final states
-            int[] finalSts = ComputeFinalStates();
-            int dummyInitial = Math.Abs(Guid.NewGuid().GetHashCode());
-            foreach (int s in initialStates)
-            {
-                int[] transition = new int[4];
-                transition[0] = dummyInitial;
-                transition[1] = -1;
-                transition[2] = -1;
-                transition[3] = s;
-                transitions.Add(transition);
-            }
-
-            // create Automaton
-            Automaton<BvSet> yieldTypeCheckAutomaton = solver.ReadFromRanges(dummyInitial, finalSts, transitions);
-            return yieldTypeCheckAutomaton;
-
-        }
-#endif
-        private string PrintEpsilon(BvSet cond, CharSetSolver slvr)
+        private static string PrintEpsilon(BvSet cond, CharSetSolver slvr)
         {
             if (cond == null)
             {
