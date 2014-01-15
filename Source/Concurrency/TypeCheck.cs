@@ -223,11 +223,14 @@ namespace Microsoft.Boogie
                         continue;
                     }
                     ActionInfo actionInfo = new ActionInfo(proc, codeExpr, moverType, phaseNum);
+                    /*
+                     * Removing this restriction based on the new failure preservation check
                     if (actionInfo.IsLeftMover && !actionInfo.isNonBlocking)
                     {
                         Error(e, "A left mover must be non blocking");
                         continue;
                     }
+                     */ 
                     procToActionInfo[proc] = actionInfo;
                 }
             }

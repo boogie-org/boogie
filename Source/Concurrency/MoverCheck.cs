@@ -41,53 +41,6 @@ namespace Microsoft.Boogie
             this.gatePreservationCheckerCache = new HashSet<Tuple<ActionInfo, ActionInfo>>();
             this.failurePreservationCheckerCache = new HashSet<Tuple<ActionInfo, ActionInfo>>();
         }
-        private sealed class MySubstituter : Duplicator
-        {
-            private readonly Substitution outsideOld;
-            private readonly Substitution insideOld;
-            [ContractInvariantMethod]
-            void ObjectInvariant()
-            {
-                Contract.Invariant(insideOld != null);
-            }
-
-            public MySubstituter(Substitution outsideOld, Substitution insideOld)
-                : base()
-            {
-                Contract.Requires(outsideOld != null && insideOld != null);
-                this.outsideOld = outsideOld;
-                this.insideOld = insideOld;
-            }
-
-            private bool insideOldExpr = false;
-
-            public override Expr VisitIdentifierExpr(IdentifierExpr node)
-            {
-                Contract.Ensures(Contract.Result<Expr>() != null);
-                Expr e = null;
-
-                if (insideOldExpr)
-                {
-                    e = insideOld(node.Decl);
-                }
-                else
-                {
-                    e = outsideOld(node.Decl);
-                }
-                return e == null ? base.VisitIdentifierExpr(node) : e;
-            }
-
-            public override Expr VisitOldExpr(OldExpr node)
-            {
-                Contract.Ensures(Contract.Result<Expr>() != null);
-                bool previouslyInOld = insideOldExpr;
-                insideOldExpr = true;
-                Expr tmp = (Expr)this.Visit(node.Expr);
-                OldExpr e = new OldExpr(node.tok, tmp);
-                insideOldExpr = previouslyInOld;
-                return e;
-            }
-        }
 
         public static void AddCheckers(LinearTypeChecker linearTypeChecker, MoverTypeChecker moverTypeChecker, List<Declaration> decls)
         {
@@ -138,6 +91,20 @@ namespace Microsoft.Boogie
                         }
                     }
                 }
+            }
+        }
+
+        public sealed class MyDuplicator : Duplicator
+        {
+            public override Expr VisitIdentifierExpr(IdentifierExpr node)
+            {
+                IdentifierExpr ret = (IdentifierExpr) base.VisitIdentifierExpr(node);
+                if (ret.Decl is GlobalVariable)
+                {
+                    return new OldExpr(Token.NoToken, ret);
+                }
+                else
+                    return ret;
             }
         }
 
@@ -193,6 +160,21 @@ namespace Microsoft.Boogie
                 }
             }
 
+            struct PathInfo
+            {
+                public HashSet<Variable> existsVars;
+                public Dictionary<Variable, Expr> varToExpr;
+                public Expr pathExpr;
+
+                public PathInfo(HashSet<Variable> existsVars, Dictionary<Variable, Expr> varToExpr, Expr pathExpr)
+                {
+                    this.existsVars = existsVars;
+                    this.varToExpr = varToExpr;
+                    this.pathExpr = pathExpr;
+                }
+            }
+
+            private List<PathInfo> paths = new List<PathInfo>();
             private Expr CalculatePathCondition()
             {
                 HashSet<Variable> existsVars = new HashSet<Variable>();
@@ -212,14 +194,14 @@ namespace Microsoft.Boogie
                 {
                     varToExpr[v] = Expr.Ident(v);
                 }
-                Expr returnExpr = Expr.True;
+                Expr pathExpr = Expr.True;
                 int boundVariableCount = 0;
                 foreach (Cmd cmd in path)
                 {
                     if (cmd is AssumeCmd)
                     {
                         AssumeCmd assumeCmd = cmd as AssumeCmd;
-                        returnExpr = Expr.And(new OldExpr(Token.NoToken, assumeCmd.Expr), returnExpr);
+                        pathExpr = Expr.And(assumeCmd.Expr, pathExpr);
                     }
                     else if (cmd is AssignCmd)
                     {
@@ -229,7 +211,7 @@ namespace Microsoft.Boogie
                         {
                             map[assignCmd.Lhss[k].DeepAssignedVariable] = assignCmd.Rhss[k];
                         }
-                        Substitute(map, ref returnExpr, ref varToExpr);
+                        Substitute(map, ref pathExpr, ref varToExpr);
                     }
                     else if (cmd is HavocCmd)
                     {
@@ -241,13 +223,15 @@ namespace Microsoft.Boogie
                             map[ie.Decl] = new IdentifierExpr(Token.NoToken, bv);
                             existsVars.Add(bv);
                         }
-                        Substitute(map, ref returnExpr, ref varToExpr);
+                        Substitute(map, ref pathExpr, ref varToExpr);
                     }
                     else
                     {
                         Debug.Assert(false);
                     }
                 }
+                paths.Add(new PathInfo(existsVars, varToExpr, pathExpr));
+
                 Dictionary<Variable, Expr> existsMap = new Dictionary<Variable, Expr>();
                 foreach (Variable v in varToExpr.Keys)
                 {
@@ -258,21 +242,39 @@ namespace Microsoft.Boogie
                         existsVars.Remove(ie.Decl);
                     }
                 }
-                Substitute(existsMap, ref returnExpr, ref varToExpr);
-                returnExpr = new OldExpr(Token.NoToken, returnExpr);
+                pathExpr = (new MyDuplicator()).VisitExpr(pathExpr);
                 foreach (Variable v in varToExpr.Keys)
                 {
-                    returnExpr = Expr.And(returnExpr, Expr.Eq(Expr.Ident(v), varToExpr[v]));
+                    pathExpr = Expr.And(pathExpr, Expr.Eq(Expr.Ident(v), (new MyDuplicator()).VisitExpr(varToExpr[v])));
                 }
+                pathExpr = Substituter.Apply(Substituter.SubstitutionFromHashtable(existsMap), pathExpr);
                 if (existsVars.Count > 0)
                 {
-                    returnExpr = new ExistsExpr(Token.NoToken, new List<Variable>(existsVars), returnExpr);
+                    pathExpr = new ExistsExpr(Token.NoToken, new List<Variable>(existsVars), pathExpr);
+                }
+                return pathExpr;
+            }
+
+            public Expr LeftMoverCompute(Expr failureExpr)
+            {
+                Expr returnExpr = Expr.False;
+                foreach (PathInfo path in paths)
+                {
+                    Expr expr = Substituter.Apply(Substituter.SubstitutionFromHashtable(path.varToExpr), failureExpr);
+                    expr = Expr.And(path.pathExpr, expr);
+                    expr = new OldExpr(Token.NoToken, expr);
+                    if (path.existsVars.Count > 0)
+                    {
+                        expr = new ExistsExpr(Token.NoToken, new List<Variable>(path.existsVars), expr);
+                    }
+                    returnExpr = Expr.Or(returnExpr, expr);
                 }
                 return returnExpr;
             }
 
             private void Search(Block b, bool inFirst)
             {
+                int pathSizeAtEntry = path.Count;
                 foreach (Cmd cmd in b.Cmds)
                 {
                     path.Push(cmd);
@@ -304,7 +306,8 @@ namespace Microsoft.Boogie
                         Search(target, inFirst);
                     }
                 }
-                foreach (Cmd cmd in b.Cmds)
+                Debug.Assert(path.Count >= pathSizeAtEntry);
+                while (path.Count > pathSizeAtEntry)
                 {
                     path.Pop();
                 }
@@ -468,51 +471,6 @@ namespace Microsoft.Boogie
 
         private void CreateFailurePreservationChecker(Program program, ActionInfo first, ActionInfo second)
         {
-            Debug.Assert(second.isNonBlocking);
-            if (first.gateUsedGlobalVars.Intersect(second.modifiedGlobalVars).Count() == 0)
-                return;
-            Tuple<ActionInfo, ActionInfo> actionPair = new Tuple<ActionInfo, ActionInfo>(first, second);
-            if (failurePreservationCheckerCache.Contains(actionPair))
-                return;
-            failurePreservationCheckerCache.Add(actionPair);
-
-            List<Variable> inputs = new List<Variable>();
-            inputs.AddRange(first.thatInParams);
-            inputs.AddRange(second.thisInParams);
-
-            Expr failureExpr = Expr.True;
-            foreach (AssertCmd assertCmd in first.thatGate)
-            {
-                failureExpr = Expr.And(assertCmd.Expr, failureExpr);
-            }
-            failureExpr = Expr.Not(failureExpr);
-
-            List<Requires> requires = DisjointnessRequires(program, first, second);
-            requires.Add(new Requires(false, failureExpr));
-
-            List<Ensures> ensures = new List<Ensures>();
-            Ensures ensureCheck = new Ensures(false, failureExpr);
-            ensureCheck.ErrorData = string.Format("Gate failure of {0} not preserved by {1}", first.proc.Name, second.proc.Name);
-            ensures.Add(ensureCheck);
-
-            List<Variable> outputs = new List<Variable>();
-            outputs.AddRange(first.thatOutParams);
-            outputs.AddRange(second.thisOutParams);
-            List<Variable> locals = new List<Variable>();
-            locals.AddRange(second.thisAction.LocVars);
-            List<Block> secondBlocks = CloneBlocks(second.thisAction.Blocks);
-            string checkerName = string.Format("FailurePreservationChecker_{0}_{1}", first.proc.Name, second.proc.Name);
-            List<IdentifierExpr> globalVars = new List<IdentifierExpr>();
-            program.GlobalVariables().Iter(x => globalVars.Add(new IdentifierExpr(Token.NoToken, x)));
-            Procedure proc = new Procedure(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, outputs, requires, globalVars, ensures);
-            Implementation impl = new Implementation(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, outputs, locals, secondBlocks);
-            impl.Proc = proc;
-            this.decls.Add(impl);
-            this.decls.Add(proc);
-        }
-
-        private void CreateFailurePreservationCheckerExists(Program program, ActionInfo first, ActionInfo second)
-        {
             if (first.gateUsedGlobalVars.Intersect(second.modifiedGlobalVars).Count() == 0 && second.isNonBlocking)
                 return;
 
@@ -530,46 +488,17 @@ namespace Microsoft.Boogie
             {
                 requiresExpr = Expr.And(assertCmd.Expr, requiresExpr);
             }
-            requiresExpr = Expr.Not(requiresExpr);
+            Expr failureExpr = Expr.Not(requiresExpr);
             List<Requires> requires = DisjointnessRequires(program, first, second);
-            requires.Add(new Requires(false, requiresExpr));
+            requires.Add(new Requires(false, failureExpr));
             foreach (AssertCmd assertCmd in second.thisGate)
             {
                 requires.Add(new Requires(false, assertCmd.Expr));
             }
 
-            Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
-            Dictionary<Variable, Expr> oldMap = new Dictionary<Variable, Expr>();
-            List<Variable> boundVars = new List<Variable>();
-            foreach (Variable v in program.GlobalVariables())
-            {
-                if (second.modifiedGlobalVars.Contains(v))
-                {
-                    BoundVariable bv = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, "post_" + v.Name, v.TypedIdent.Type));
-                    boundVars.Add(bv);
-                    map[v] = new IdentifierExpr(Token.NoToken, bv);
-                }
-                else
-                {
-                    map[v] = new OldExpr(Token.NoToken, Expr.Ident(v));
-                }
-                oldMap[v] = Expr.Ident(v);
-            }
-            foreach (Variable v in second.thisOutParams)
-            {
-                BoundVariable bv = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, "post_" + v.Name, v.TypedIdent.Type));
-                boundVars.Add(bv);
-                map[v] = new IdentifierExpr(Token.NoToken, bv);
-            }
-
-            Expr ensuresExpr = Expr.And((new TransitionRelationComputation(program, second)).Compute(), requiresExpr);
-            Substitution subst = Substituter.SubstitutionFromHashtable(map);
-            Substitution oldSubst = Substituter.SubstitutionFromHashtable(oldMap);
-            ensuresExpr = Substituter.Apply(subst, oldSubst, ensuresExpr);
-            if (boundVars.Count > 0)
-            {
-                ensuresExpr = new ExistsExpr(Token.NoToken, boundVars, ensuresExpr);
-            }
+            TransitionRelationComputation transitionRelationComputation = new TransitionRelationComputation(program, second);
+            transitionRelationComputation.Compute();
+            Expr ensuresExpr = transitionRelationComputation.LeftMoverCompute(failureExpr);
             List<Ensures> ensures = new List<Ensures>();
             Ensures ensureCheck = new Ensures(false, ensuresExpr);
             ensureCheck.ErrorData = string.Format("Gate failure of {0} not preserved by {1}", first.proc.Name, second.proc.Name);
