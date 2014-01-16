@@ -120,8 +120,8 @@ ensures {:right 1}  |{ A: assert tidIn != nil && tidIn != done;
 	var elt_j : int;
         var {:linear "tid"} tidTmp: X;
         
-        yield;
-        assert {:phase 1} Inv(valid, elt, owner);
+        par Yield1();
+
 	j := 0;
         tidTmp := tidIn;
 
@@ -131,8 +131,7 @@ ensures {:right 1}  |{ A: assert tidIn != nil && tidIn != done;
         invariant {:phase 1} tidTmp == tidIn;
         invariant {:phase 1} Inv(valid, elt, owner);
 	{
-                yield;
-                assert {:phase 1} Inv(valid, elt, owner);
+                par Yield1();
 
                 call tidTmp := acquire(j, tidTmp);
                 call tidTmp, elt_j := getElt(j, tidTmp);
@@ -142,13 +141,15 @@ ensures {:right 1}  |{ A: assert tidIn != nil && tidIn != done;
 			call tidTmp := release(j, tidTmp);
 			r := j;
                         tidOut := tidTmp;
-                        yield;
-                        assert {:phase 1} Inv(valid, elt, owner);
+
+                        par Yield1();
+
 			return;		
 		}
 		call tidTmp := release(j,tidTmp);
-                yield;
-                assert {:phase 1} Inv(valid, elt, owner);
+
+                par Yield1();
+
 		j := j + 1;	
 	}
 	r := -1;

@@ -1,86 +1,86 @@
+type Node;
 type lmap;
-function dom(lmap) : [int]bool;
-function map(lmap): [int]int;
+function dom(lmap): [Node]bool;
+function map(lmap): [Node]Node;
 
-procedure Load({:linear "Node"} l:lmap, i:int) returns({:linear "Node"} l':lmap, v:int);
-  requires dom(l)[i];
-  ensures  l' == l;
-  ensures  v == map(l)[i];
+function {:builtin "MapConst"} MapConst(bool) : [Node]bool;
+function {:builtin "MapOr"} MapOr([Node]bool, [Node]bool) : [Node]bool;
 
-procedure Store({:linear "Node"} l:lmap, i:int, v:int) returns({:linear "Node"} l':lmap);
-  requires dom(l)[i];
-  ensures  dom(l') == dom(l);
-  ensures  map(l') == map(l)[i := v];
+procedure Load(i:Node) returns(v:Node);
+  requires dom(stack)[i];
+  ensures  v == map(stack)[i];
 
-procedure Transfer({:linear "Node"} l1:lmap, {:linear "Node"} l2:lmap, d:int) returns({:linear "Node} l1':lmap, {:linear "Node"} l2':lmap);
-  requires dom(l1)[i];
-  ensures  dom(l1') == intersect(dom(l1), complement(d));
-  ensures  dom(l2') == union(dom(l2), d);
-  ensures  map(l1') == map(l1);
-  ensures  map(l2') == map(l2);
+procedure Store({:linear "Node"} l_in:lmap, i:Node, v:Node) returns({:linear "Node"} l_out:lmap);
+  requires dom(l_in)[i];
+  ensures  dom(l_out) == dom(l_in);
+  ensures  map(l_out) == map(l_in)[i := v];
 
+procedure TransferIn({:linear "Node"} l1_in:lmap, d:Node);
+  requires dom(l1_in)[d];
+  modifies stack;
+  ensures  dom(stack) == dom(old(stack))[d := true];
+  ensures  map(stack) == map(old(stack))[d := map(l1_in)[d]];
 
-record Node
-{
-  data: int;
-  next: Node;
-}
+procedure TransferOut(d:Node);
+  requires dom(stack)[d];
+  modifies stack;
+  ensures  dom(stack) == dom(old(stack))[d := false];
+  ensures  map(stack) == map(old(stack));
+
+procedure New() returns ({:linear "Node"} l: lmap, d: Node);
+ensures dom(l)[d];
 
 const unique null: Node;
-invariant IsNull(null.alloc);
-//invariant null.next == null;
 
 var TOP: Node;
+var {:linear "Node"} stack: lmap;
 
-const unique EMPTY: int;
-
-procedure {:isatomic} CAS(oldVal: Node, newVal: Node)
+procedure {:yields} CAS(oldVal: Node, newVal: Node)
 returns (r: bool)
 {
   r := (TOP == oldVal);
-  if(r)
-  {
+  if (r) {
     TOP := newVal;
   }
 }
 
-// invariant ReachBetween(Node_next, TOP, null, null) && (forall n: Node :: Connected(Node_next, TOP, n) && n != null ==> IsAlloc(n.alloc)) && (forall n1,n2: Node :: IsDealloc(n1.alloc) ==> n2.next != n1) && (forall n: Node :: !IsAlloc(n.alloc) ==> n.next == null)
-
-procedure push(v: int)
+procedure {:yields} push()
 {
   var t, x: Node;
   var g: bool;
-  
-  x := New Node;
-  x.data := v;
+  var {:linear "Node"} x_lmap: lmap;
+
+  call x_lmap, x := New();
 
   while(true)
   {
-    t := TOP;		// Connected(t, TOP)
-    x.next := t;	// !Connected(x, TOP)
-    call g := CAS(t, x); // x.next == t, !Connected(x, TOP)
-    if(g) { break; }
+    t := TOP;		
+    call x_lmap := Store(x_lmap, x, t);
+    call g := CAS(t, x); 
+    if (g) { 
+      call TransferIn(x_lmap, x);
+      break; 
+    }
   }
 }
 
-procedure pop()
-returns (v: int)
+procedure {:yields} pop()
 {
   var t, x: Node;
   var g: bool;
-  
+
   while(true)
   {
-    t := TOP;		// Connected(t, TOP)
-    if(t == null)
+    t := TOP;		
+    if (t == null)
     {
-      v := EMPTY;
       return;
     }
-    x := t.next;	// Connected(t, TOP)
-    call g := CAS(t, x); // Connected(t, TOP), x == t.next
-    if(g) { break; }
+    call x := Load(t);
+    call g := CAS(t, x); 
+    if (g) { 
+      call TransferOut(t);
+      break; 
+    }
   }
-
-  v := t.data;
 }
