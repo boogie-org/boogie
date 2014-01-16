@@ -881,6 +881,11 @@ namespace Microsoft.Boogie
                         ParCallCmd parCallCmd = cmd as ParCallCmd;
                         AddCallToYieldProc(parCallCmd.tok, newCmds, ogOldGlobalMap, domainNameToLocalVar);
                         DesugarParallelCallCmd(newCmds, parCallCmd);
+                        if (globalMods.Count > 0 && pc != null)
+                        {
+                            // assume pc || alpha(i, g);
+                            newCmds.Add(new AssumeCmd(Token.NoToken, Expr.Or(Expr.Ident(pc), alpha)));
+                        }
                         HashSet<Variable> availableLinearVars = new HashSet<Variable>(AvailableLinearVars(parCallCmd));
                         foreach (CallCmd callCmd in parCallCmd.CallCmds)
                         {
