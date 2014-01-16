@@ -176,10 +176,7 @@ ensures {:atomic 2}  |{ var r:int;
  {
 
         var {:linear "tid"} tidTmp: X;
-        yield;
-        assert {:phase 1} Inv(valid, elt, owner);
-        assert {:phase 2} Inv(valid, elt, owner);
-        // par YieldInv();
+        par Yield12();
         tidTmp := tidIn;
         call i, tidTmp := FindSlot(x, tidTmp);
         
@@ -200,8 +197,6 @@ ensures {:atomic 2}  |{ var r:int;
 	call tidTmp := release(i, tidTmp);
 	result := true; 
         tidOut := tidTmp;
-        // yield;
-        // assert {:phase 2} Inv(valid, elt, owner);
         par YieldInv();
 	return;
 }
@@ -244,9 +239,7 @@ ensures {:atomic 2}  |{ var rx:int;
  {
 
         var {:linear "tid"} tidTmp: X;
-        yield;
-        assert {:phase 1} Inv(valid, elt, owner);
-        assert {:phase 2} Inv(valid, elt, owner);
+        par Yield12();
 
         tidTmp := tidIn;
 
@@ -256,9 +249,7 @@ ensures {:atomic 2}  |{ var rx:int;
 	{
 	 	result := false;
                 tidOut := tidTmp;
-                yield;
-                assert {:phase 1} Inv(valid, elt, owner);
-                assert {:phase 2} Inv(valid, elt, owner);
+                par Yield12();
 		return;
 	}
 
@@ -273,9 +264,7 @@ ensures {:atomic 2}  |{ var rx:int;
                 call tidTmp := release(i,tidTmp);  
 		result := false;
                 tidOut := tidTmp;
-                yield;
-                assert {:phase 1} Inv(valid, elt, owner);
-                assert {:phase 2} Inv(valid, elt, owner);
+                par Yield12();
 		return;
 	}
 
@@ -293,9 +282,7 @@ ensures {:atomic 2}  |{ var rx:int;
 	call tidTmp := release(i, tidTmp);
 	result := true; 
         tidOut := tidTmp;
-        yield;
-        assert {:phase 1} Inv(valid, elt, owner);
-        assert {:phase 2} Inv(valid, elt, owner);
+        par Yield12();
 	return;
 }
 
@@ -312,6 +299,14 @@ ensures {:phase 2} Inv(valid, elt, owner);
 {
         yield;
         assert {:phase 2} Inv(valid, elt, owner);
+}
+
+procedure {:yields} {:stable} Yield12()
+requires {:phase 1} {:phase 2} Inv(valid, elt, owner);
+ensures {:phase 1} {:phase 2} Inv(valid, elt, owner);
+{
+        yield;
+        assert {:phase 1}  {:phase 2} Inv(valid, elt, owner);
 }
 
 
