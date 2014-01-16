@@ -171,7 +171,7 @@ namespace Microsoft.Boogie
 
             {
                 VariableCollector collector = new VariableCollector();
-                this.thisGate.ForEach (assertCmd => collector.Visit(assertCmd));
+                this.thisGate.ForEach(assertCmd => collector.Visit(assertCmd));
                 this.gateUsedGlobalVars = new HashSet<Variable>(collector.usedVars.Where(x => x is GlobalVariable));
             }
         }
