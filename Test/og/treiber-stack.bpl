@@ -1,3 +1,24 @@
+type lmap;
+function dom(lmap) : [int]bool;
+function map(lmap): [int]int;
+
+procedure Load({:linear "Node"} l:lmap, i:int) returns({:linear "Node"} l':lmap, v:int);
+  requires dom(l)[i];
+  ensures  l' == l;
+  ensures  v == map(l)[i];
+
+procedure Store({:linear "Node"} l:lmap, i:int, v:int) returns({:linear "Node"} l':lmap);
+  requires dom(l)[i];
+  ensures  dom(l') == dom(l);
+  ensures  map(l') == map(l)[i := v];
+
+procedure Transfer({:linear "Node"} l1:lmap, {:linear "Node"} l2:lmap, d:int) returns({:linear "Node} l1':lmap, {:linear "Node"} l2':lmap);
+  requires dom(l1)[i];
+  ensures  dom(l1') == intersect(dom(l1), complement(d));
+  ensures  dom(l2') == union(dom(l2), d);
+  ensures  map(l1') == map(l1);
+  ensures  map(l2') == map(l2);
+
 
 record Node
 {
