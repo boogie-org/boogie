@@ -417,6 +417,7 @@ namespace Microsoft.Boogie {
     public bool SoundnessSmokeTest = false;
     public string Z3ExecutablePath = null;
     public string CVC4ExecutablePath = null;
+    public int KInductionDepth = -1;
 
     public enum ProverWarnings {
       None,
@@ -1315,6 +1316,10 @@ namespace Microsoft.Boogie {
 				CVC4ExecutablePath = args[ps.i];
 			}
 			return true;
+
+        case "kInductionDepth":
+          ps.GetNumericArgument(ref KInductionDepth);
+          return true;
 
         default:
           bool optionValue = false;

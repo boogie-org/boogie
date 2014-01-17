@@ -2026,7 +2026,7 @@ namespace VC {
 
     public void ConvertCFG2DAG(Implementation impl, Dictionary<Block,List<Block>> edgesCut = null, int taskID = -1)
     {
-    Contract.Requires(impl != null);
+      Contract.Requires(impl != null);
       impl.PruneUnreachableBlocks();  // This is needed for VCVariety.BlockNested, and is otherwise just an optimization
 
       CurrentLocalVariables = impl.LocVars;
@@ -2053,7 +2053,24 @@ namespace VC {
       // below assumes that the start node has no predecessor)
       impl.Blocks.Insert(0, new Block(new Token(-17, -4), "0", new List<Cmd>(), new GotoCmd(Token.NoToken, new List<String> { impl.Blocks[0].Label }, new List<Block> { impl.Blocks[0] })));
       ResetPredecessors(impl.Blocks);
+
+      if(CommandLineOptions.Clo.KInductionDepth < 0) {
+        ConvertCFG2DAGStandard(impl, edgesCut, taskID);
+      } else {
+        ConvertCFG2DAGKInduction(impl, edgesCut, taskID);
+      }
       
+      #region Debug Tracing
+      if (CommandLineOptions.Clo.TraceVerify) 
+      {
+        Console.WriteLine("after conversion into a DAG");
+        EmitImpl(impl, true);
+      }
+      #endregion
+    }
+
+    private void ConvertCFG2DAGStandard(Implementation impl, Dictionary<Block, List<Block>> edgesCut, int taskID)
+    {
       #region Convert program CFG into a DAG
 
       #region Use the graph library to figure out where the (natural) loops are
@@ -2061,24 +2078,28 @@ namespace VC {
       #region Create the graph by adding the source node and each edge
       Graph<Block> g = Program.GraphFromImpl(impl);
       #endregion
-      
+
       //Graph<Block> g = program.ProcessLoops(impl);
-      
+
       g.ComputeLoops(); // this is the call that does all of the processing
       if (!g.Reducible)
       {
         throw new VCGenException("Irreducible flow graphs are unsupported.");
       }
-      
+
       #endregion
 
       #region Cut the backedges, push assert/assume statements from loop header into predecessors, change them all into assume statements at top of loop, introduce havoc statements
-      foreach (Block header in cce.NonNull( g.Headers))
+      foreach (Block header in cce.NonNull(g.Headers))
       {
         Contract.Assert(header != null);
-        IDictionary<Block,object> backEdgeNodes = new Dictionary<Block,object>();
-        foreach (Block b in cce.NonNull( g.BackEdgeNodes(header))) {Contract.Assert(b != null); backEdgeNodes.Add(b, null); }
-      
+        IDictionary<Block, object> backEdgeNodes = new Dictionary<Block, object>();
+        foreach (Block b in cce.NonNull(g.BackEdgeNodes(header)))
+        {
+          Contract.Assert(b != null);
+          backEdgeNodes.Add(b, null);
+        }
+
         #region Find the (possibly empty) prefix of assert commands in the header, replace each assert with an assume of the same condition
         List<Cmd> prefixOfPredicateCmdsInit = new List<Cmd>();
         List<Cmd> prefixOfPredicateCmdsMaintained = new List<Cmd>();
@@ -2087,41 +2108,51 @@ namespace VC {
           PredicateCmd a = header.Cmds[i] as PredicateCmd;
           if (a != null)
           {
-            if (a is AssertCmd) {
-              Bpl.AssertCmd c = (AssertCmd) a;
-              Bpl.AssertCmd b = null;
+            if (a is AssertCmd)
+            {
+              AssertCmd c = (AssertCmd)a;
+              AssertCmd b = null;
 
-              if (CommandLineOptions.Clo.ConcurrentHoudini) {
+              if (CommandLineOptions.Clo.ConcurrentHoudini)
+              {
                 Contract.Assert(taskID >= 0);
                 if (CommandLineOptions.Clo.Cho[taskID].DisableLoopInvEntryAssert)
-                  b = new Bpl.LoopInitAssertCmd(c.tok, Expr.True);
+                  b = new LoopInitAssertCmd(c.tok, Expr.True);
                 else
-                  b = new Bpl.LoopInitAssertCmd(c.tok, c.Expr);
-              } else {
-                b = new Bpl.LoopInitAssertCmd(c.tok, c.Expr);
+                  b = new LoopInitAssertCmd(c.tok, c.Expr);
+              }
+              else
+              {
+                b = new LoopInitAssertCmd(c.tok, c.Expr);
               }
 
               b.Attributes = c.Attributes;
               b.ErrorData = c.ErrorData;
               prefixOfPredicateCmdsInit.Add(b);
 
-              if (CommandLineOptions.Clo.ConcurrentHoudini) {
+              if (CommandLineOptions.Clo.ConcurrentHoudini)
+              {
                 Contract.Assert(taskID >= 0);
                 if (CommandLineOptions.Clo.Cho[taskID].DisableLoopInvMaintainedAssert)
                   b = new Bpl.LoopInvMaintainedAssertCmd(c.tok, Expr.True);
                 else
                   b = new Bpl.LoopInvMaintainedAssertCmd(c.tok, c.Expr);
-              } else {
+              }
+              else
+              {
                 b = new Bpl.LoopInvMaintainedAssertCmd(c.tok, c.Expr);
               }
 
-              b.Attributes = c.Attributes; 
+              b.Attributes = c.Attributes;
               b.ErrorData = c.ErrorData;
               prefixOfPredicateCmdsMaintained.Add(b);
-              header.Cmds[i] = new AssumeCmd(c.tok,c.Expr);
-            } else {
-              Contract.Assert( a is AssumeCmd);
-              if (Bpl.CommandLineOptions.Clo.AlwaysAssumeFreeLoopInvariants) {
+              header.Cmds[i] = new AssumeCmd(c.tok, c.Expr);
+            }
+            else
+            {
+              Contract.Assert(a is AssumeCmd);
+              if (Bpl.CommandLineOptions.Clo.AlwaysAssumeFreeLoopInvariants)
+              {
                 // Usually, "free" stuff, like free loop invariants (and the assume statements
                 // that stand for such loop invariants) are ignored on the checking side.  This
                 // command-line option changes that behavior to always assume the conditions.
@@ -2130,7 +2161,7 @@ namespace VC {
               }
             }
           }
-          else if ( header.Cmds[i] is CommentCmd )
+          else if (header.Cmds[i] is CommentCmd)
           {
             // ignore
           }
@@ -2142,32 +2173,34 @@ namespace VC {
         #endregion
 
         #region Copy the prefix of predicate commands into each predecessor. Do this *before* cutting the backedge!!
-        for ( int predIndex = 0, n = header.Predecessors.Count; predIndex < n; predIndex++ )
+        for (int predIndex = 0, n = header.Predecessors.Count; predIndex < n; predIndex++)
         {
           Block pred = cce.NonNull(header.Predecessors[predIndex]);
-          
+
           // Create a block between header and pred for the predicate commands if pred has more than one successor 
           GotoCmd gotocmd = cce.NonNull((GotoCmd)pred.TransferCmd);
-          Contract.Assert( gotocmd.labelNames != null);  // if "pred" is really a predecessor, it may be a GotoCmd with at least one label
+          Contract.Assert(gotocmd.labelNames != null);  // if "pred" is really a predecessor, it may be a GotoCmd with at least one label
           if (gotocmd.labelNames.Count > 1)
           {
             Block newBlock = CreateBlockBetween(predIndex, header);
             impl.Blocks.Add(newBlock);
-            
+
             // if pred is a back edge node, then now newBlock is the back edge node
             if (backEdgeNodes.ContainsKey(pred))
             {
               backEdgeNodes.Remove(pred);
-              backEdgeNodes.Add(newBlock,null);
+              backEdgeNodes.Add(newBlock, null);
             }
-            
+
             pred = newBlock;
-          } 
+          }
           // Add the predicate commands
-          if (backEdgeNodes.ContainsKey(pred)){
+          if (backEdgeNodes.ContainsKey(pred))
+          {
             pred.Cmds.AddRange(prefixOfPredicateCmdsMaintained);
           }
-          else {
+          else
+          {
             pred.Cmds.AddRange(prefixOfPredicateCmdsInit);
           }
         }
@@ -2175,24 +2208,25 @@ namespace VC {
 
         #region Cut the back edge
         foreach (Block backEdgeNode in cce.NonNull(backEdgeNodes.Keys))
-        {Contract.Assert(backEdgeNode != null);
-          Debug.Assert(backEdgeNode.TransferCmd is GotoCmd,"An node was identified as the source for a backedge, but it does not have a goto command.");
+        {
+          Contract.Assert(backEdgeNode != null);
+          Debug.Assert(backEdgeNode.TransferCmd is GotoCmd, "An node was identified as the source for a backedge, but it does not have a goto command.");
           GotoCmd gtc = backEdgeNode.TransferCmd as GotoCmd;
-          if (gtc != null && gtc.labelTargets != null && gtc.labelTargets.Count > 1 )
+          if (gtc != null && gtc.labelTargets != null && gtc.labelTargets.Count > 1)
           {
             // then remove the backedge by removing the target block from the list of gotos
             List<Block> remainingTargets = new List<Block>();
             List<String> remainingLabels = new List<String>();
-            Contract.Assume( gtc.labelNames != null);
+            Contract.Assume(gtc.labelNames != null);
             for (int i = 0, n = gtc.labelTargets.Count; i < n; i++)
             {
-                if (gtc.labelTargets[i] != header)
-                {
-                    remainingTargets.Add(gtc.labelTargets[i]);
-                    remainingLabels.Add(gtc.labelNames[i]);
-                }
-                else
-                    RecordCutEdge(edgesCut,backEdgeNode, header);
+              if (gtc.labelTargets[i] != header)
+              {
+                remainingTargets.Add(gtc.labelTargets[i]);
+                remainingLabels.Add(gtc.labelNames[i]);
+              }
+              else
+                RecordCutEdge(edgesCut, backEdgeNode, header);
             }
             gtc.labelTargets = remainingTargets;
             gtc.labelNames = remainingLabels;
@@ -2202,17 +2236,17 @@ namespace VC {
             // This backedge is the only out-going edge from this node.
             // Add an "assume false" statement to the end of the statements
             // inside of the block and change the goto command to a return command.
-            AssumeCmd ac = new AssumeCmd(Token.NoToken,Expr.False);
+            AssumeCmd ac = new AssumeCmd(Token.NoToken, Expr.False);
             backEdgeNode.Cmds.Add(ac);
             backEdgeNode.TransferCmd = new ReturnCmd(Token.NoToken);
             if (gtc != null && gtc.labelTargets != null && gtc.labelTargets.Count == 1)
-                RecordCutEdge(edgesCut, backEdgeNode, gtc.labelTargets[0]);
+              RecordCutEdge(edgesCut, backEdgeNode, gtc.labelTargets[0]);
           }
           #region Remove the backedge node from the list of predecessor nodes in the header
           List<Block> newPreds = new List<Block>();
-          foreach ( Block p in header.Predecessors )
+          foreach (Block p in header.Predecessors)
           {
-            if ( p != backEdgeNode )
+            if (p != backEdgeNode)
               newPreds.Add(p);
           }
           header.Predecessors = newPreds;
@@ -2221,34 +2255,21 @@ namespace VC {
         #endregion
 
         #region Collect all variables that are assigned to in all of the natural loops for which this is the header
-        List<Variable> varsToHavoc = new List<Variable>();
-        foreach (Block backEdgeNode in cce.NonNull( g.BackEdgeNodes(header)))
-        {
-          Contract.Assert(backEdgeNode != null);
-          foreach ( Block b in g.NaturalLoops(header,backEdgeNode) )
-          {
-            Contract.Assert(b != null);
-            foreach ( Cmd c in b.Cmds )
-            {
-              Contract.Assert(c != null);
-              c.AddAssignedVariables(varsToHavoc);
-            }
-          }
-        }
+        List<Variable> varsToHavoc = VarsAssignedInLoop(g, header);
         List<IdentifierExpr> havocExprs = new List<IdentifierExpr>();
-        foreach ( Variable v in varsToHavoc )
+        foreach (Variable v in varsToHavoc)
         {
           Contract.Assert(v != null);
           IdentifierExpr ie = new IdentifierExpr(Token.NoToken, v);
-          if(!havocExprs.Contains(ie))
+          if (!havocExprs.Contains(ie))
             havocExprs.Add(ie);
         }
         // pass the token of the enclosing loop header to the HavocCmd so we can reconstruct
         // the source location for this later on
-        HavocCmd hc = new HavocCmd(header.tok,havocExprs);
+        HavocCmd hc = new HavocCmd(header.tok, havocExprs);
         List<Cmd> newCmds = new List<Cmd>();
         newCmds.Add(hc);
-        foreach ( Cmd c in header.Cmds )
+        foreach (Cmd c in header.Cmds)
         {
           newCmds.Add(c);
         }
@@ -2257,14 +2278,245 @@ namespace VC {
       }
       #endregion
       #endregion Convert program CFG into a DAG
-      
-      #region Debug Tracing
-      if (CommandLineOptions.Clo.TraceVerify) 
+    }
+
+    private static List<Variable> VarsAssignedInLoop(Graph<Block> g, Block header)
+    {
+      List<Variable> varsToHavoc = new List<Variable>();
+      foreach (Block backEdgeNode in cce.NonNull(g.BackEdgeNodes(header)))
       {
-        Console.WriteLine("after conversion into a DAG");
-        EmitImpl(impl, true);
+        Contract.Assert(backEdgeNode != null);
+        foreach (Block b in g.NaturalLoops(header, backEdgeNode))
+        {
+          Contract.Assert(b != null);
+          foreach (Cmd c in b.Cmds)
+          {
+            Contract.Assert(c != null);
+            c.AddAssignedVariables(varsToHavoc);
+          }
+        }
       }
-      #endregion
+      return varsToHavoc;
+    }
+
+    private void ConvertCFG2DAGKInduction(Implementation impl, Dictionary<Block, List<Block>> edgesCut, int taskID) {
+
+      // K-induction has not been adapted to be aware of these parameters which standard CFG to DAG transformation uses
+      Contract.Requires(edgesCut == null);
+      Contract.Requires(taskID == -1);
+
+      int inductionK = CommandLineOptions.Clo.KInductionDepth;
+      Contract.Requires(inductionK >= 0);
+
+      bool contRuleApplication = true;
+      while (contRuleApplication) {
+        contRuleApplication = false;
+
+        #region Use the graph library to figure out where the (natural) loops are
+
+        #region Create the graph by adding the source node and each edge
+        Graph<Block> g = Program.GraphFromImpl(impl);
+        #endregion
+
+        g.ComputeLoops(); // this is the call that does all of the processing
+        if (!g.Reducible) {
+          throw new VCGenException("Irreducible flow graphs are unsupported.");
+        }
+
+        #endregion
+
+        foreach (Block header in cce.NonNull(g.Headers)) {
+          Contract.Assert(header != null);
+
+          #region Debug Tracing
+          if (CommandLineOptions.Clo.TraceVerify)
+          {
+            Console.WriteLine("Applying k-induction rule with k=" + inductionK);
+          }
+          #endregion
+
+          #region generate the step case
+          Block newHeader = DuplicateLoop(impl, g, header, null,
+                                          false, false, "_step_assertion");
+          for (int i = 0; i < inductionK; ++i)
+          {
+              newHeader = DuplicateLoop(impl, g, header, newHeader,
+                                        true, true,
+                                        "_step_" + (inductionK - i));
+          }
+          #endregion
+
+          #region havoc variables that can be assigned in the loop
+
+          List<Variable> varsToHavoc = VarsAssignedInLoop(g, header);
+          List<IdentifierExpr> havocExprs = new List<IdentifierExpr>();
+          foreach (Variable v in varsToHavoc)
+          {
+            Contract.Assert(v != null);
+            IdentifierExpr ie = new IdentifierExpr(Token.NoToken, v);
+            if (!havocExprs.Contains(ie))
+                havocExprs.Add(ie);
+          }
+          // pass the token of the enclosing loop header to the HavocCmd so we can reconstruct
+          // the source location for this later on
+          HavocCmd hc = new HavocCmd(newHeader.tok, havocExprs);
+          List<Cmd> havocCmds = new List<Cmd>();
+          havocCmds.Add(hc);
+
+          Block havocBlock = new Block(newHeader.tok, newHeader.Label + "_havoc", havocCmds,
+                                        new GotoCmd (newHeader.tok, new List<Block> { newHeader }));
+
+          impl.Blocks.Add(havocBlock);
+          newHeader.Predecessors.Add(havocBlock);
+          newHeader = havocBlock;
+
+          #endregion
+
+                #region generate the base case loop copies
+                for (int i = 0; i < inductionK; ++i)
+                {
+                    newHeader = DuplicateLoop(impl, g, header, newHeader,
+                                              false, false,
+                                              "_base_" + (inductionK - i));
+                }
+                #endregion
+
+                #region redirect into the new loop copies and remove the original loop (but don't redirect back-edges)
+
+                IDictionary<Block, object> backEdgeNodes = new Dictionary<Block, object>();
+                foreach (Block b in cce.NonNull(g.BackEdgeNodes(header))) { Contract.Assert(b != null); backEdgeNodes.Add(b, null); }
+
+                for (int predIndex = 0, n = header.Predecessors.Count(); predIndex < n; predIndex++)
+                {
+                    Block pred = cce.NonNull(header.Predecessors[predIndex]);
+                    if (!backEdgeNodes.ContainsKey(pred))
+                    {
+                        GotoCmd gc = pred.TransferCmd as GotoCmd;
+                        Contract.Assert(gc != null);
+                        for (int i = 0; i < gc.labelTargets.Count(); ++i)
+                        {
+                            if (gc.labelTargets[i] == header)
+                            {
+                                gc.labelTargets[i] = newHeader;
+                                gc.labelNames[i] = newHeader.Label;
+                                newHeader.Predecessors.Add(pred);
+                            }
+                        }
+                    }
+                }
+                impl.PruneUnreachableBlocks();
+
+                #endregion
+
+                contRuleApplication = true;
+                break;
+            }
+
+        }
+
+        ResetPredecessors(impl.Blocks);
+
+    }
+
+    private Block DuplicateLoop(Implementation impl, Graph<Block> g,
+                                Block header, Block nextHeader, bool cutExits,
+                                bool toAssumptions, string suffix)
+    {
+        IDictionary<Block, Block> ori2CopiedBlocks = new Dictionary<Block, Block>();
+        Duplicator duplicator = new Duplicator();
+
+        #region create copies of all blocks in the loop
+        foreach (Block backEdgeNode in cce.NonNull(g.BackEdgeNodes(header)))
+        {
+            Contract.Assert(backEdgeNode != null);
+            foreach (Block b in g.NaturalLoops(header, backEdgeNode))
+            {
+                Contract.Assert(b != null);
+                if (!ori2CopiedBlocks.ContainsKey(b))
+                {
+                    Block copy = (Block)duplicator.Visit(b);
+                    copy.Cmds = new List<Cmd>(copy.Cmds); // Philipp Ruemmer commented that this was necessary due to a bug in the Duplicator.  That was a long time; worth checking whether this has been fixed
+                    copy.Predecessors = new List<Block>();
+                    copy.Label = copy.Label + suffix;
+
+                    #region turn asserts into assumptions
+                    if (toAssumptions)
+                    {
+                        for (int i = 0; i < copy.Cmds.Count(); ++i)
+                        {
+                            AssertCmd ac = copy.Cmds[i] as AssertCmd;
+                            if (ac != null)
+                            {
+                                copy.Cmds[i] = new AssumeCmd(ac.tok, ac.Expr);
+                            }
+                        }
+                    }
+                    #endregion
+
+                    impl.Blocks.Add(copy);
+                    ori2CopiedBlocks.Add(b, copy);
+                }
+            }
+        }
+        #endregion
+
+        #region adjust the transfer commands of the newly created blocks
+        foreach (KeyValuePair<Block, Block> pair in ori2CopiedBlocks)
+        {
+            Block copy = pair.Value;
+            GotoCmd gc = copy.TransferCmd as GotoCmd;
+            if (gc != null)
+            {
+                List<Block> newTargets = new List<Block>();
+                List<string> newLabels = new List<string>();
+
+                for (int i = 0; i < gc.labelTargets.Count(); ++i)
+                {
+                    Block newTarget;
+                    if (gc.labelTargets[i] == header)
+                    {
+                        if (nextHeader != null)
+                        {
+                            newTargets.Add(nextHeader);
+                            newLabels.Add(nextHeader.Label);
+                            nextHeader.Predecessors.Add(copy);
+                        }
+                    }
+                    else if (ori2CopiedBlocks.TryGetValue(gc.labelTargets[i], out newTarget))
+                    {
+                        newTargets.Add(newTarget);
+                        newLabels.Add(newTarget.Label);
+                        newTarget.Predecessors.Add(copy);
+                    }
+                    else if (!cutExits)
+                    {
+                        newTargets.Add(gc.labelTargets[i]);
+                        newLabels.Add(gc.labelNames[i]);
+                        gc.labelTargets[i].Predecessors.Add(copy);
+                    }
+                }
+
+                if (newTargets.Count() == 0)
+                {
+                    // if no targets are left, we assume false and return
+                    copy.Cmds.Add(new AssumeCmd(Token.NoToken, Expr.False));
+                    copy.TransferCmd = new ReturnCmd(Token.NoToken);
+                }
+                else
+                {
+                    copy.TransferCmd = new GotoCmd(gc.tok, newLabels, newTargets);
+                }
+            }
+            else if (cutExits && (copy.TransferCmd is ReturnCmd))
+            {
+                // because return is a kind of exit from the loop, we
+                // assume false to cut this path
+                copy.Cmds.Add(new AssumeCmd(Token.NoToken, Expr.False));
+            }
+        }
+        #endregion
+
+        return ori2CopiedBlocks[header];
     }
 
     public void DesugarCalls(Implementation impl) {
