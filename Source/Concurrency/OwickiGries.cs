@@ -266,7 +266,7 @@ namespace Microsoft.Boogie
             return linearTypeChecker.availableLinearVars[absyMap[absy]];
         }
 
-        private void AddCallToYieldProc(List<Cmd> newCmds, Dictionary<Variable, Variable> ogOldGlobalMap, Dictionary<string, Variable> domainNameToLocalVar)
+        private void AddCallToYieldProc(IToken tok, List<Cmd> newCmds, Dictionary<Variable, Variable> ogOldGlobalMap, Dictionary<string, Variable> domainNameToLocalVar)
         {
             List<Expr> exprSeq = new List<Expr>();
             foreach (string domainName in linearTypeChecker.linearDomains.Keys)
@@ -302,12 +302,15 @@ namespace Microsoft.Boogie
             {
                 Expr bb = OldEqualityExpr(ogOldGlobalMap);
 
-                // assert pc ==> o_old == o && g_old == g;
-                newCmds.Add(new AssertCmd(Token.NoToken, Expr.Imp(Expr.Ident(pc), bb)));
-
                 // assert (o_old == o && g_old == g) || beta(i, g_old, o, g);
-                AssertCmd betaAssertCmd = new AssertCmd(Token.NoToken, Expr.Or(bb, beta));
-                newCmds.Add(betaAssertCmd);
+                AssertCmd skipOrBetaAssertCmd = new AssertCmd(tok, Expr.Or(bb, beta));
+                skipOrBetaAssertCmd.ErrorData = "Transition invariant in initial state violated";
+                newCmds.Add(skipOrBetaAssertCmd);
+
+                // assert pc ==> o_old == o && g_old == g;
+                AssertCmd skipAssertCmd = new AssertCmd(tok, Expr.Imp(Expr.Ident(pc), bb));
+                skipAssertCmd.ErrorData = "Transition invariant in final state violated"; ;
+                newCmds.Add(skipAssertCmd);
 
                 // pc, ok := ite(o_old == o && g_old == g, pc, true), ok || beta(i, g_old, o, g);
                 List<Expr> iteArgs = new List<Expr>(new Expr[] { bb, Expr.Ident(pc), Expr.True });
@@ -385,7 +388,7 @@ namespace Microsoft.Boogie
 
         private void DesugarYield(YieldCmd yieldCmd, List<Cmd> cmds, List<Cmd> newCmds, Dictionary<Variable, Variable> ogOldGlobalMap, Dictionary<string, Variable> domainNameToInputVar, Dictionary<string, Variable> domainNameToLocalVar)
         {
-            AddCallToYieldProc(newCmds, ogOldGlobalMap, domainNameToLocalVar);
+            AddCallToYieldProc(yieldCmd.tok, newCmds, ogOldGlobalMap, domainNameToLocalVar);
 
             if (globalMods.Count > 0)
             {
@@ -544,9 +547,15 @@ namespace Microsoft.Boogie
             {
                 var newExpr = Substituter.ApplyReplacingOldExprs(subst, oldGlobalSubst, ensures.Condition);
                 if (ensures.Free)
+                {
                     newCmds.Add(new AssumeCmd(Token.NoToken, newExpr));
+                }
                 else
-                    newCmds.Add(new AssertCmd(Token.NoToken, newExpr));
+                {
+                    AssertCmd assertCmd = new AssertCmd(ensures.tok, newExpr);
+                    assertCmd.ErrorData = "Backwards non-interference check failed";
+                    newCmds.Add(assertCmd);
+                }
             }
             newCmds.Add(new AssumeCmd(Token.NoToken, Expr.False));
             yieldCheckerBlock = new Block(Token.NoToken, "L", newCmds, new ReturnCmd(Token.NoToken));
@@ -641,9 +650,15 @@ namespace Microsoft.Boogie
                     PredicateCmd predCmd = (PredicateCmd)cmd;
                     var newExpr = Substituter.ApplyReplacingOldExprs(subst, oldSubst, predCmd.Expr);
                     if (predCmd is AssertCmd)
-                        newCmds.Add(new AssertCmd(predCmd.tok, newExpr, predCmd.Attributes));
+                    {
+                        AssertCmd assertCmd = new AssertCmd(predCmd.tok, newExpr, predCmd.Attributes);
+                        assertCmd.ErrorData = "Non-interference check failed";
+                        newCmds.Add(assertCmd);
+                    }
                     else
+                    {
                         newCmds.Add(new AssumeCmd(Token.NoToken, newExpr));
+                    }
                 }
                 newCmds.Add(new AssumeCmd(Token.NoToken, Expr.False));
                 yieldCheckerBlock = new Block(Token.NoToken, "L" + yieldCount++, newCmds, new ReturnCmd(Token.NoToken));
@@ -832,7 +847,7 @@ namespace Microsoft.Boogie
                         CallCmd callCmd = cmd as CallCmd; 
                         if (callCmd.IsAsync || QKeyValue.FindBoolAttribute(callCmd.Proc.Attributes, "yields"))
                         {
-                            AddCallToYieldProc(newCmds, ogOldGlobalMap, domainNameToLocalVar);
+                            AddCallToYieldProc(callCmd.tok, newCmds, ogOldGlobalMap, domainNameToLocalVar);
                         }
                         if (callCmd.IsAsync)
                         {
@@ -864,8 +879,13 @@ namespace Microsoft.Boogie
                     else if (cmd is ParCallCmd)
                     {
                         ParCallCmd parCallCmd = cmd as ParCallCmd;
-                        AddCallToYieldProc(newCmds, ogOldGlobalMap, domainNameToLocalVar);
+                        AddCallToYieldProc(parCallCmd.tok, newCmds, ogOldGlobalMap, domainNameToLocalVar);
                         DesugarParallelCallCmd(newCmds, parCallCmd);
+                        if (globalMods.Count > 0 && pc != null)
+                        {
+                            // assume pc || alpha(i, g);
+                            newCmds.Add(new AssumeCmd(Token.NoToken, Expr.Or(Expr.Ident(pc), alpha)));
+                        }
                         HashSet<Variable> availableLinearVars = new HashSet<Variable>(AvailableLinearVars(parCallCmd));
                         foreach (CallCmd callCmd in parCallCmd.CallCmds)
                         {
@@ -894,10 +914,12 @@ namespace Microsoft.Boogie
                 }
                 if (b.TransferCmd is ReturnCmd && QKeyValue.FindBoolAttribute(impl.Proc.Attributes, "yields"))
                 {
-                    AddCallToYieldProc(newCmds, ogOldGlobalMap, domainNameToLocalVar);
+                    AddCallToYieldProc(b.TransferCmd.tok, newCmds, ogOldGlobalMap, domainNameToLocalVar);
                     if (pc != null)
                     {
-                        newCmds.Add(new AssertCmd(Token.NoToken, Expr.Ident(ok)));
+                        AssertCmd assertCmd = new AssertCmd(b.TransferCmd.tok, Expr.Ident(ok));
+                        assertCmd.ErrorData = "Failed to execute atomic action before procedure return";
+                        newCmds.Add(assertCmd);
                     }
                 }
                 b.Cmds = newCmds;
@@ -917,7 +939,7 @@ namespace Microsoft.Boogie
                 Dictionary<string, Expr> domainNameToExpr = ComputeAvailableExprs(AvailableLinearVars(header), domainNameToInputVar);
                 foreach (Block pred in header.Predecessors)
                 {
-                    AddCallToYieldProc(pred.Cmds, ogOldGlobalMap, domainNameToLocalVar);
+                    AddCallToYieldProc(header.tok, pred.Cmds, ogOldGlobalMap, domainNameToLocalVar);
                     if (pc != null && !graph.BackEdgeNodes(header).Contains(pred))
                     {
                         pred.Cmds.Add(new AssignCmd(Token.NoToken, new List<AssignLhs>(
@@ -929,8 +951,13 @@ namespace Microsoft.Boogie
                 List<Cmd> newCmds = new List<Cmd>();
                 if (pc != null)
                 {
-                    newCmds.Add(new AssertCmd(Token.NoToken, Expr.Eq(Expr.Ident(oldPc), Expr.Ident(pc))));
-                    newCmds.Add(new AssertCmd(Token.NoToken, Expr.Imp(Expr.Ident(oldOk), Expr.Ident(ok))));
+                    AssertCmd assertCmd;
+                    assertCmd = new AssertCmd(header.tok, Expr.Eq(Expr.Ident(oldPc), Expr.Ident(pc)));
+                    assertCmd.ErrorData = "Specification state must not change for transitions ending in loop headers";
+                    newCmds.Add(assertCmd);
+                    assertCmd = new AssertCmd(header.tok, Expr.Imp(Expr.Ident(oldOk), Expr.Ident(ok)));
+                    assertCmd.ErrorData = "Specification state must not change for transitions ending in loop headers";
+                    newCmds.Add(assertCmd);
                 } 
                 foreach (string domainName in linearTypeChecker.linearDomains.Keys)
                 {
@@ -1041,7 +1068,9 @@ namespace Microsoft.Boogie
                     }
                     else
                     {
-                        cmds.Add(new AssertCmd(r.tok, r.Condition, r.Attributes));
+                        AssertCmd assertCmd = new AssertCmd(r.tok, r.Condition, r.Attributes);
+                        assertCmd.ErrorData = "Non-interference check failed";
+                        cmds.Add(assertCmd);
                     }
                 }
                 yields.Add(cmds);
@@ -1080,7 +1109,9 @@ namespace Microsoft.Boogie
                     }
                     else
                     {
-                        cmds.Add(new AssertCmd(e.tok, e.Condition, e.Attributes));
+                        AssertCmd assertCmd = new AssertCmd(e.tok, e.Condition, e.Attributes);
+                        assertCmd.ErrorData = "Non-interference check failed";
+                        cmds.Add(assertCmd);
                     }
                 }
                 yields.Add(cmds);
