@@ -325,6 +325,16 @@ namespace Microsoft.Boogie {
       }
     }
 
+    public IEnumerable<Implementation> Implementations()
+    {
+      return TopLevelDeclarations.OfType<Implementation>();
+    }
+
+    public IEnumerable<Block> Blocks()
+    {
+      return Implementations().Select(Item => Item.Blocks).SelectMany(Item => Item);
+    }
+
     public void ComputeStronglyConnectedComponents() {
       foreach (Declaration d in this.TopLevelDeclarations) {
         d.ComputeStronglyConnectedComponents();
@@ -342,15 +352,15 @@ namespace Microsoft.Boogie {
 
     public void UnrollLoops(int n, bool uc) {
       Contract.Requires(0 <= n);
-      foreach (Declaration d in this.TopLevelDeclarations) {
-        Implementation impl = d as Implementation;
-        if (impl != null && impl.Blocks != null && impl.Blocks.Count > 0) {
+      foreach (var impl in Implementations()) {
+        if (impl.Blocks != null && impl.Blocks.Count > 0) {
           cce.BeginExpose(impl);
           {
             Block start = impl.Blocks[0];
             Contract.Assume(start != null);
             Contract.Assume(cce.IsConsistent(start));
             impl.Blocks = LoopUnroll.UnrollLoops(start, n, uc);
+            impl.FreshenCaptureStates();
           }
           cce.EndExpose();
         }
@@ -3155,6 +3165,54 @@ namespace Microsoft.Boogie {
       Contract.Ensures(Contract.Result<Absy>() != null);
       return visitor.VisitImplementation(this);
     }
+
+    public void FreshenCaptureStates() {
+
+      // Assume commands with the "captureState" attribute allow model states to be
+      // captured for error reporting.
+      // Some program transformations, such as loop unrolling, duplicate parts of the
+      // program, leading to "capture-state-assumes" being duplicated.  This leads
+      // to ambiguity when getting a state from the model.
+      // This method replaces the key of every "captureState" attribute with something
+      // unique
+
+      int FreshCounter = 0;
+      foreach(var b in Blocks) {
+        List<Cmd> newCmds = new List<Cmd>();
+        for (int i = 0; i < b.Cmds.Count(); i++) {
+          var a = b.Cmds[i] as AssumeCmd;
+          if (a != null && (QKeyValue.FindStringAttribute(a.Attributes, "captureState") != null)) {
+            string StateName = QKeyValue.FindStringAttribute(a.Attributes, "captureState");
+            newCmds.Add(new AssumeCmd(Token.NoToken, a.Expr, FreshenCaptureState(a.Attributes, FreshCounter)));
+            FreshCounter++;
+          }
+          else {
+            newCmds.Add(b.Cmds[i]);
+          }
+        }
+        b.Cmds = newCmds;
+      }
+    }
+
+    private QKeyValue FreshenCaptureState(QKeyValue Attributes, int FreshCounter) {
+      // Returns attributes identical to Attributes, but:
+      // - reversed (for ease of implementation; should not matter)
+      // - with the value for "captureState" replaced by a fresh value
+      Contract.Requires(QKeyValue.FindStringAttribute(Attributes, "captureState") != null);
+      string FreshValue = QKeyValue.FindStringAttribute(Attributes, "captureState") + "$renamed$" + Name + "$" + FreshCounter;
+
+      QKeyValue result = null;
+      while (Attributes != null) {
+        if (Attributes.Key.Equals("captureState")) {
+          result = new QKeyValue(Token.NoToken, Attributes.Key, new List<object>() { FreshValue }, result);
+        } else {
+          result = new QKeyValue(Token.NoToken, Attributes.Key, Attributes.Params, result);
+        }
+        Attributes = Attributes.Next;
+      }
+      return result;
+    }
+
   }
 
 

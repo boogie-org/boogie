@@ -2415,6 +2415,7 @@ namespace VC {
         }
 
         ResetPredecessors(impl.Blocks);
+        impl.FreshenCaptureStates();
 
     }
 
