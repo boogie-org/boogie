@@ -60,12 +60,12 @@ namespace Microsoft.Boogie
 
         public string PrintErrorTrace(Automaton<BvSet> errorAutomaton)
         {
-            String s = "\n Body of " + impl.Proc.Name + " is not yield_type_safe at phase " + currPhaseNum.ToString() + "\nError Trace {" + "\n";
+            String s = "\nBody of " + impl.Proc.Name + " is not yield_type_safe at phase " + currPhaseNum.ToString() + "\n";
             foreach (var move in errorAutomaton.GetMoves())
             {
-                s += " [Line :" + nodeToAbsy[move.SourceState].Line.ToString() + "] , [Cmd :" + nodeToAbsy[move.SourceState].ToString() + " ]" + " \n";
+                IToken tok = nodeToAbsy[move.SourceState].tok;
+                s += string.Format("{0}({1}, {2})\n", tok.filename, tok.line, tok.col);
             }
-            s += "}";
             return s;
         }
 
