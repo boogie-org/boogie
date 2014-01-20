@@ -94,7 +94,7 @@ ensures {:phase 1} 0 <= bytesRead && bytesRead <= size;
 READ_DEVICE:
     par  tid := YieldToWriteCache(tid);
     call tid := WriteCache(tid, start + size);
-    par  tid := YieldToReadCache(tid);
+    par  tid := YieldToWriteCache(tid);
     call tid := acquire(tid);
     call tid, tmp := ReadNewsize(tid);
     call tid := WriteCurrsize(tid, tmp);
@@ -143,7 +143,7 @@ ensures {:phase 1} Inv(ghostLock, currsize, newsize);
     j := 0;
     while(j < bytesRead)
     invariant {:phase 1} 0 <= j;
-    invariant {:phase 1} bytesRead == 0 || start + j <= currsize; 
+    invariant {:phase 1} bytesRead == 0 || start + bytesRead <= currsize; 
     invariant {:phase 1} Inv(ghostLock, currsize, newsize) && tid == tid';
     {
 	assert {:phase 1} start + j < currsize;
