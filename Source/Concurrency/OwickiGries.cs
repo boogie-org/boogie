@@ -467,6 +467,7 @@ namespace Microsoft.Boogie
                     count++;
                 }
                 proc = new Procedure(Token.NoToken, procName, new List<TypeVariable>(), inParams, outParams, requiresSeq, new List<IdentifierExpr>(), ensuresSeq);
+                proc.AddAttribute("yields");
                 asyncAndParallelCallDesugarings[procName] = proc;
             }
             CallCmd dummyCallCmd = new CallCmd(Token.NoToken, proc.Name, ins, outs);
