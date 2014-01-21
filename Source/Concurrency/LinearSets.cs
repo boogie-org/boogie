@@ -419,6 +419,15 @@ namespace Microsoft.Boogie
             }
             return base.VisitParCallCmd(node);
         }
+
+        private IEnumerable<Variable> AvailableLinearVars(Absy absy)
+        {
+            if (availableLinearVars.ContainsKey(absy))
+                return availableLinearVars[absy];
+            else
+                return new HashSet<Variable>();
+        }
+
         private void AddDisjointnessExpr(List<Cmd> newCmds, Absy absy, Dictionary<string, Variable> domainNameToInputVar)
         {
             Dictionary<string, HashSet<Variable>> domainNameToScope = new Dictionary<string, HashSet<Variable>>();
@@ -427,7 +436,7 @@ namespace Microsoft.Boogie
                 domainNameToScope[domainName] = new HashSet<Variable>();
                 domainNameToScope[domainName].Add(domainNameToInputVar[domainName]);
             }
-            foreach (Variable v in availableLinearVars[absy])
+            foreach (Variable v in AvailableLinearVars(absy))
             {
                 var domainName = FindDomainName(v);
                 domainNameToScope[domainName].Add(v);
@@ -486,7 +495,7 @@ namespace Microsoft.Boogie
                                 {
                                     domainNameToExpr[domainName] = new IdentifierExpr(Token.NoToken, domainNameToInputVar[domainName]);
                                 }
-                                foreach (Variable v in availableLinearVars[callCmd])
+                                foreach (Variable v in AvailableLinearVars(callCmd))
                                 {
                                     var domainName = FindDomainName(v);
                                     var domain = linearDomains[domainName];
