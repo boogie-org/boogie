@@ -90,20 +90,20 @@ namespace Microsoft.Boogie
                 this.thisInParams.Add(x);
                 Variable y = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "that_" + x.Name, x.TypedIdent.Type), true, x.Attributes);
                 this.thatInParams.Add(y);
-                map[x] = new IdentifierExpr(Token.NoToken, y);
+                map[x] = Expr.Ident(y);
             }
             foreach (Variable x in proc.OutParams)
             {
                 this.thisOutParams.Add(x);
                 Variable y = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "that_" + x.Name, x.TypedIdent.Type), false, x.Attributes);
                 this.thatOutParams.Add(y);
-                map[x] = new IdentifierExpr(Token.NoToken, y);
+                map[x] = Expr.Ident(y);
             }
             List<Variable> thatLocVars = new List<Variable>();
             foreach (Variable x in thisAction.LocVars)
             {
                 Variable y = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "that_" + x.Name, x.TypedIdent.Type), false);
-                map[x] = new IdentifierExpr(Token.NoToken, y);
+                map[x] = Expr.Ident(y);
                 thatLocVars.Add(y);
             }
             Contract.Assume(proc.TypeParameters.Count == 0);

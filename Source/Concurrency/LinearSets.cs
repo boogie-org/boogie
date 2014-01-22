@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Boogie;
+using System.Diagnostics;
 
 namespace Microsoft.Boogie
 {
@@ -13,7 +14,9 @@ namespace Microsoft.Boogie
         {
             if (iter == null) return null;
             iter.Next = RemoveLinearAttribute(iter.Next);
-            return (QKeyValue.FindStringAttribute(iter, "linear") == null) ? iter : iter.Next;
+            bool iterIsNonLinear = QKeyValue.FindStringAttribute(iter, "linear") == null && 
+                                   QKeyValue.FindStringAttribute(iter, "cnst") == null;
+            return iterIsNonLinear ? iter : iter.Next;
         }
 
         public override Variable VisitVariable(Variable node)
@@ -23,14 +26,20 @@ namespace Microsoft.Boogie
         }
     }
 
+    public enum LinearKind {
+        LINEAR,
+        CONST
+    }
+
     public class LinearTypeChecker : StandardVisitor
     {
         public Program program;
         public int errorCount;
         public CheckingContext checkingContext;
         public Dictionary<string, Type> domainNameToType;
-        public Dictionary<Absy, HashSet<Variable>> availableLinearVars;
-        public Dictionary<Variable, string> inoutParamToDomainName;
+        private Dictionary<Absy, HashSet<Variable>> availableLinearVars;
+        public Dictionary<Variable, LinearQualifier> inParamToLinearQualifier;
+        public Dictionary<Variable, string> outParamToDomainName;
         public Dictionary<Variable, string> varToDomainName;
         public Dictionary<Variable, string> globalVarToDomainName;
         public Dictionary<string, LinearDomain> linearDomains;
@@ -42,7 +51,8 @@ namespace Microsoft.Boogie
             this.checkingContext = new CheckingContext(null);
             this.domainNameToType = new Dictionary<string, Type>();
             this.availableLinearVars = new Dictionary<Absy, HashSet<Variable>>();
-            this.inoutParamToDomainName = new Dictionary<Variable, string>();
+            this.inParamToLinearQualifier = new Dictionary<Variable, LinearQualifier>();
+            this.outParamToDomainName = new Dictionary<Variable, string>();
             this.varToDomainName = new Dictionary<Variable, string>();
             this.linearDomains = new Dictionary<string, LinearDomain>();
         }
@@ -77,10 +87,11 @@ namespace Microsoft.Boogie
             HashSet<Variable> start = new HashSet<Variable>(globalVarToDomainName.Keys);
             for (int i = 0; i < node.InParams.Count; i++)
             {
-                string domainName = FindDomainName(node.Proc.InParams[i]);
+                Variable v = node.Proc.InParams[i];
+                string domainName = FindDomainName(v);
                 if (domainName != null)
                 {
-                    inoutParamToDomainName[node.InParams[i]] = domainName;
+                    inParamToLinearQualifier[node.InParams[i]] = new LinearQualifier(domainName, FindLinearKind(v));
                     start.Add(node.InParams[i]);
                 }
             }
@@ -89,7 +100,7 @@ namespace Microsoft.Boogie
                 string domainName = FindDomainName(node.Proc.OutParams[i]);
                 if (domainName != null)
                 {
-                    inoutParamToDomainName[node.OutParams[i]] = domainName;
+                    outParamToDomainName[node.OutParams[i]] = domainName;
                 }
             }
             
@@ -144,6 +155,29 @@ namespace Microsoft.Boogie
             }
             return impl;
         }
+        public void AddAvailableVars(CallCmd callCmd, HashSet<Variable> start)
+        {
+            foreach (IdentifierExpr ie in callCmd.Outs)
+            {
+                if (FindDomainName(ie.Decl) == null) continue;
+                start.Add(ie.Decl);
+            }
+            for (int i = 0; i < callCmd.Proc.InParams.Count; i++)
+            {
+                IdentifierExpr ie = callCmd.Ins[i] as IdentifierExpr;
+                if (ie == null) continue;
+                Variable v = callCmd.Proc.InParams[i];
+                if (FindDomainName(v) == null || FindLinearKind(v) == LinearKind.LINEAR) continue;
+                start.Add(ie.Decl);
+            }
+        }
+        public void AddAvailableVars(ParCallCmd parCallCmd, HashSet<Variable> start)
+        {
+            foreach (CallCmd callCmd in parCallCmd.CallCmds)
+            {
+                AddAvailableVars(callCmd, start);
+            }
+        }
         private HashSet<Variable> PropagateAvailableLinearVarsAcrossBlock(Block b) {
             HashSet<Variable> start = new HashSet<Variable>(availableLinearVars[b]);
             foreach (Cmd cmd in b.Cmds)
@@ -155,13 +189,17 @@ namespace Microsoft.Boogie
                     {
                         if (FindDomainName(assignCmd.Lhss[i].DeepAssignedVariable) == null) continue;
                         IdentifierExpr ie = assignCmd.Rhss[i] as IdentifierExpr;
-                        if (start.Contains(ie.Decl))
+                        if (!start.Contains(ie.Decl))
+                        {
+                            Error(ie, "unavailable source for a linear read"); 
+                        }
+                        else if (FindLinearKind(ie.Decl) == LinearKind.CONST)
+                        {
+                            Error(ie, "const linear vars cannot occur on the right side of a linear assignment");
+                        }
+                        else 
                         {
                             start.Remove(ie.Decl);
-                        }
-                        else
-                        {
-                            Error(ie, "unavailable source for a linear read");
                         }
                     }
                     foreach (AssignLhs assignLhs in assignCmd.Lhss)
@@ -183,19 +221,15 @@ namespace Microsoft.Boogie
                         IdentifierExpr ie = callCmd.Ins[i] as IdentifierExpr;
                         if (start.Contains(ie.Decl))
                         {
-                            start.Remove(ie.Decl);
+                            start.Remove(ie.Decl); 
                         }
                         else
                         {
-                            Error(ie, "unavailable source for a linear read");
+                            Error(ie, "unavailable source for a linear read"); 
                         }
                     }
                     availableLinearVars[callCmd] = new HashSet<Variable>(start);
-                    foreach (IdentifierExpr ie in callCmd.Outs)
-                    {
-                        if (FindDomainName(ie.Decl) == null) continue;
-                        start.Add(ie.Decl);
-                    }
+                    AddAvailableVars(callCmd, start);
                 }
                 else if (cmd is ParCallCmd)
                 {
@@ -221,14 +255,7 @@ namespace Microsoft.Boogie
                         }
                     }
                     availableLinearVars[parCallCmd] = new HashSet<Variable>(start);
-                    foreach (CallCmd callCmd in parCallCmd.CallCmds)
-                    {
-                        foreach (IdentifierExpr ie in callCmd.Outs)
-                        {
-                            if (FindDomainName(ie.Decl) == null) continue;
-                            start.Add(ie.Decl);
-                        }
-                    }
+                    AddAvailableVars(parCallCmd, start);
                 }
                 else if (cmd is HavocCmd)
                 {
@@ -254,9 +281,37 @@ namespace Microsoft.Boogie
         {
             if (globalVarToDomainName.ContainsKey(v))
                 return globalVarToDomainName[v];
-            if (inoutParamToDomainName.ContainsKey(v))
-                return inoutParamToDomainName[v];
-            return QKeyValue.FindStringAttribute(v.Attributes, "linear");
+            if (inParamToLinearQualifier.ContainsKey(v))
+                return inParamToLinearQualifier[v].domainName;
+            if (outParamToDomainName.ContainsKey(v))
+                return outParamToDomainName[v];
+            string domainName = QKeyValue.FindStringAttribute(v.Attributes, "linear");
+            if (domainName != null)
+                return domainName;
+            return QKeyValue.FindStringAttribute(v.Attributes, "cnst");
+        }
+        public LinearKind FindLinearKind(Variable v)
+        {
+            if (globalVarToDomainName.ContainsKey(v))
+                return LinearKind.LINEAR;
+            if (inParamToLinearQualifier.ContainsKey(v))
+                return inParamToLinearQualifier[v].kind;
+            if (outParamToDomainName.ContainsKey(v))
+                return LinearKind.LINEAR;
+
+            if (QKeyValue.FindStringAttribute(v.Attributes, "cnst") != null)
+            {
+                return LinearKind.CONST;
+            }
+            else if (QKeyValue.FindStringAttribute(v.Attributes, "linear") != null)
+            { 
+                return LinearKind.LINEAR; 
+            }
+            else
+            {
+                Debug.Assert(false);
+                return LinearKind.CONST;
+            }
         }
         public override Variable VisitVariable(Variable node)
         {
@@ -364,6 +419,11 @@ namespace Microsoft.Boogie
                     Error(node, "Only local linear variable can be an actual input parameter of a procedure call");
                     continue;
                 }
+                if (FindLinearKind(formal) == LinearKind.LINEAR && FindLinearKind(actual.Decl) == LinearKind.CONST)
+                {
+                    Error(node, "Only non-const linear variable can be an actual parameter to a non-const input parameter of a procedure call");
+                    continue;
+                }
                 if (inVars.Contains(actual.Decl))
                 {
                     Error(node, string.Format("Linear variable {0} can occur only once as an input parameter", actual.Decl.Name));
@@ -420,7 +480,7 @@ namespace Microsoft.Boogie
             return base.VisitParCallCmd(node);
         }
 
-        private IEnumerable<Variable> AvailableLinearVars(Absy absy)
+        public IEnumerable<Variable> AvailableLinearVars(Absy absy)
         {
             if (availableLinearVars.ContainsKey(absy))
                 return availableLinearVars[absy];
@@ -493,13 +553,13 @@ namespace Microsoft.Boogie
                                 Dictionary<string, Expr> domainNameToExpr = new Dictionary<string, Expr>();
                                 foreach (var domainName in linearDomains.Keys)
                                 {
-                                    domainNameToExpr[domainName] = new IdentifierExpr(Token.NoToken, domainNameToInputVar[domainName]);
+                                    domainNameToExpr[domainName] = Expr.Ident(domainNameToInputVar[domainName]);
                                 }
                                 foreach (Variable v in AvailableLinearVars(callCmd))
                                 {
                                     var domainName = FindDomainName(v);
                                     var domain = linearDomains[domainName];
-                                    IdentifierExpr ie = new IdentifierExpr(Token.NoToken, v);
+                                    IdentifierExpr ie = Expr.Ident(v);
                                     var expr = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapOrBool), 
                                                             new List<Expr> { v.TypedIdent.Type is MapType ? ie : Singleton(ie, domainName), domainNameToExpr[domainName] });
                                     expr.Resolve(new ResolutionContext(null));
@@ -634,9 +694,9 @@ namespace Microsoft.Boogie
             int count = 0;
             foreach (Variable v in scope)
             {
-                IdentifierExpr ie = new IdentifierExpr(Token.NoToken, v);
+                IdentifierExpr ie = Expr.Ident(v);
                 Expr e = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapConstInt), new List<Expr>{ new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(count++)) } );
-                e = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapEqInt), new List<Expr> { new IdentifierExpr(Token.NoToken, partition), e } );
+                e = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapEqInt), new List<Expr> { Expr.Ident(partition), e } );
                 e = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapImpBool), new List<Expr> { v.TypedIdent.Type is MapType ? ie : Singleton(ie, domainName), e } );
                 e = Expr.Binary(BinaryOperator.Opcode.Eq, e, new NAryExpr(Token.NoToken, new FunctionCall(domain.mapConstBool), new List<Expr> { Expr.True }));
                 disjointExpr = Expr.Binary(BinaryOperator.Opcode.And, e, disjointExpr);
@@ -645,6 +705,17 @@ namespace Microsoft.Boogie
             expr.Resolve(new ResolutionContext(null));
             expr.Typecheck(new TypecheckingContext(null));
             return expr;
+        }
+    }
+
+    public class LinearQualifier
+    {
+        public string domainName;
+        public LinearKind kind;
+        public LinearQualifier(string domainName, LinearKind kind)
+        {
+            this.domainName = domainName;
+            this.kind = kind;
         }
     }
 
@@ -676,11 +747,11 @@ namespace Microsoft.Boogie
             else
             {
                 BoundVariable a = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, "a", mapTypeBool));
-                IdentifierExpr aie = new IdentifierExpr(Token.NoToken, a);
+                IdentifierExpr aie = Expr.Ident(a);
                 BoundVariable b = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, "b", mapTypeBool));
-                IdentifierExpr bie = new IdentifierExpr(Token.NoToken, b);
+                IdentifierExpr bie = Expr.Ident(b);
                 BoundVariable x = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, "x", elementType));
-                IdentifierExpr xie = new IdentifierExpr(Token.NoToken, x);
+                IdentifierExpr xie = Expr.Ident(x);
                 var mapApplTerm = new NAryExpr(Token.NoToken, new FunctionCall(mapOrBool), new List<Expr> { aie, bie } );
                 var lhsTerm = new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1), new List<Expr> { mapApplTerm, xie } );
                 var rhsTerm = Expr.Binary(BinaryOperator.Opcode.Or,
@@ -704,11 +775,11 @@ namespace Microsoft.Boogie
             else
             {
                 BoundVariable a = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, "a", mapTypeBool));
-                IdentifierExpr aie = new IdentifierExpr(Token.NoToken, a);
+                IdentifierExpr aie = Expr.Ident(a);
                 BoundVariable b = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, "b", mapTypeBool));
-                IdentifierExpr bie = new IdentifierExpr(Token.NoToken, b);
+                IdentifierExpr bie = Expr.Ident(b);
                 BoundVariable x = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, "x", elementType));
-                IdentifierExpr xie = new IdentifierExpr(Token.NoToken, x);
+                IdentifierExpr xie = Expr.Ident(x);
                 var mapApplTerm = new NAryExpr(Token.NoToken, new FunctionCall(mapImpBool), new List<Expr> { aie, bie });
                 var lhsTerm = new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1), new List<Expr> { mapApplTerm, xie });
                 var rhsTerm = Expr.Binary(BinaryOperator.Opcode.Imp,
@@ -731,7 +802,7 @@ namespace Microsoft.Boogie
             else
             {
                 BoundVariable x = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, "x", elementType));
-                IdentifierExpr xie = new IdentifierExpr(Token.NoToken, x);
+                IdentifierExpr xie = Expr.Ident(x);
                 var trueTerm = new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1), 
                                            new List<Expr> { new NAryExpr(Token.NoToken, new FunctionCall(mapConstBool), new List<Expr> { Expr.True }), xie });
                 var trueAxiomExpr = new ForallExpr(Token.NoToken, new List<Variable> { x }, trueTerm);
@@ -755,11 +826,11 @@ namespace Microsoft.Boogie
             else
             {
                 BoundVariable a = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, "a", mapTypeInt));
-                IdentifierExpr aie = new IdentifierExpr(Token.NoToken, a);
+                IdentifierExpr aie = Expr.Ident(a);
                 BoundVariable b = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, "b", mapTypeInt));
-                IdentifierExpr bie = new IdentifierExpr(Token.NoToken, b);
+                IdentifierExpr bie = Expr.Ident(b);
                 BoundVariable x = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, "x", elementType));
-                IdentifierExpr xie = new IdentifierExpr(Token.NoToken, x);
+                IdentifierExpr xie = Expr.Ident(x);
                 var mapApplTerm = new NAryExpr(Token.NoToken, new FunctionCall(mapEqInt), new List<Expr> { aie, bie });
                 var lhsTerm = new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1), new List<Expr> { mapApplTerm, xie });
                 var rhsTerm = Expr.Binary(BinaryOperator.Opcode.Eq,
@@ -782,9 +853,9 @@ namespace Microsoft.Boogie
             else
             {
                 BoundVariable a = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, "a", Type.Int));
-                IdentifierExpr aie = new IdentifierExpr(Token.NoToken, a);
+                IdentifierExpr aie = Expr.Ident(a);
                 BoundVariable x = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, "x", elementType));
-                IdentifierExpr xie = new IdentifierExpr(Token.NoToken, x);
+                IdentifierExpr xie = Expr.Ident(x);
                 var lhsTerm = new NAryExpr(Token.NoToken, new MapSelect(Token.NoToken, 1), new List<Expr> { new NAryExpr(Token.NoToken, new FunctionCall(mapConstInt), new List<Expr> { aie }), xie });
                 var axiomExpr = new ForallExpr(Token.NoToken, new List<Variable> { a, x }, Expr.Binary(BinaryOperator.Opcode.Eq, lhsTerm, aie));
                 axiomExpr.Typecheck(new TypecheckingContext(null));

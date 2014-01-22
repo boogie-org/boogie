@@ -185,7 +185,7 @@ ensures {:atomic 2}  |{ var r:int;
 	{
 		result := false;
                 tidOut := tidTmp;
-                par YieldInv();
+                par Yield12();
 		return;
 	}
         par Yield1();
@@ -198,7 +198,7 @@ ensures {:atomic 2}  |{ var r:int;
 	call tidTmp := release(i, tidTmp);
 	result := true; 
         tidOut := tidTmp;
-        par YieldInv();
+        par Yield12();
 	return;
 }
 
