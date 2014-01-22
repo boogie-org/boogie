@@ -98,17 +98,26 @@ ensures {:both 0} |{ A:
                      return true;
                     }|;
 
+procedure {:yields} isEltThereAndValid(j : int, x : int, {:linear "tid"} tidIn: X) returns ({:linear "tid"} tidOut: X, fnd:bool);
+ensures {:both 0} |{ A: 
+                       assert 0 <= j && j < max;
+                       assert lock[j] == tidIn;
+                       assert tidIn != nil && tidIn != done;
+                       tidOut := tidIn;
+                       fnd := (elt[j] == x) && valid[j];
+                       return true;
+                    }|;
 
 procedure {:yields} FindSlot(x : int, {:linear "tid"} tidIn: X) returns (r : int, {:linear "tid"} tidOut: X)
 requires {:phase 1} Inv(valid, elt, owner);
 ensures {:phase 1} Inv(valid, elt, owner);
 ensures {:right 1}  |{ A: assert tidIn != nil && tidIn != done; 
                           assert x != null; 
-                          // assert (forall ii:int :: 0 <= ii && ii<max ==> lock[ii] != tidIn);
                           havoc r; assume (-1 <= r && r < max); goto B, C;
                        B: assume (r != -1); 
                                             assume elt[r] == null; 
                                             assume owner[r] == nil;
+					    assume !valid[r];
                                             elt[r] := x; 
                                             owner[r] := tidIn;
                                             tidOut := tidIn; 
@@ -287,6 +296,56 @@ ensures {:atomic 2}  |{ var rx:int;
 	return;
 }
 
+procedure {:yields} LookUp(x : int, {:linear "tid"} tidIn: X, old_valid:[int]bool, old_elt:[int]int) returns (found : bool, {:linear "tid"} tidOut: X)
+requires {:phase 1} {:phase 2} old_valid == valid && old_elt == elt;
+requires {:phase 1} {:phase 2} Inv(valid, elt, owner);
+requires {:phase 1} {:phase 2} (tidIn != nil && tidIn != done);
+ensures {:phase 1} {:phase 2} Inv(valid, elt, owner);
+ensures {:atomic 2}  |{ A: assert tidIn != nil && tidIn != done; 
+                          assert x != null;
+			  havoc found; 
+                          assume found ==> (exists ii:int :: 0 <= ii && ii < max && valid[ii] && elt[ii] == x);
+                          return true;
+                    }|;
+ensures {:phase 2} !found ==> (forall ii:int :: 0 <= ii && ii < max ==> !(old_valid[ii] && old_elt[ii] == x));
+{
+	var j : int;
+	var isThere : bool;
+        var {:linear "tid"} tidTmp: X;
+        
+        par Yield12() | YieldLookUp(old_valid, old_elt);
+
+	j := 0;
+        tidTmp := tidIn;
+
+	while(j < max)
+        invariant {:phase 1} {:phase 2} tidTmp != nil && tidTmp != done;
+        invariant {:phase 1} {:phase 2} tidTmp == tidIn;
+        invariant {:phase 1} {:phase 2} Inv(valid, elt, owner);
+        invariant {:phase 1} {:phase 2} (forall ii:int :: 0 <= ii && ii < j ==> !(old_valid[ii] && old_elt[ii] == x));
+	invariant {:phase 1} {:phase 2} (forall ii:int :: 0 <= ii && ii < max && old_valid[ii] ==> valid[ii] && old_elt[ii] == elt[ii]);
+	{
+                par Yield12() | YieldLookUp(old_valid, old_elt);
+
+                call tidTmp := acquire(j, tidTmp);
+                call tidTmp, isThere := isEltThereAndValid(j, x, tidTmp);
+		if(isThere)
+		{
+			 call tidTmp := release(j, tidTmp);
+                         found := true; 
+                         tidOut := tidTmp;
+                         par Yield12() | YieldLookUp(old_valid, old_elt);
+		 	 return;		
+		}
+		call tidTmp := release(j,tidTmp);
+                par Yield12() | YieldLookUp(old_valid, old_elt);
+		j := j + 1;	
+	}
+	found := false;
+        tidOut := tidTmp;
+	return;
+}
+
 procedure {:yields} {:stable} Yield1()
 requires {:phase 1} Inv(valid, elt, owner);
 ensures {:phase 1} Inv(valid, elt, owner);
@@ -294,29 +353,23 @@ ensures {:both 1} |{ A: return true; }|;
 {
 }
 
-procedure {:yields} {:stable} YieldInv()
-requires {:phase 2} Inv(valid, elt, owner);
-ensures {:phase 2} Inv(valid, elt, owner);
-{
-        yield;
-        assert {:phase 2} Inv(valid, elt, owner);
-}
-
 procedure {:yields} {:stable} Yield12()
 requires {:phase 1} {:phase 2} Inv(valid, elt, owner);
 ensures {:phase 1} {:phase 2} Inv(valid, elt, owner);
 {
         yield;
-        assert {:phase 1}  {:phase 2} Inv(valid, elt, owner);
+        assert {:phase 1} {:phase 2} Inv(valid, elt, owner);
 }
-
-
 
 function {:inline} Inv(valid: [int]bool, elt: [int]int, owner: [int]X): (bool)
 {
-   ( forall i:int :: 0 <= i && i < max ==> 
-                          ( elt[i] == null <==> 
-                            !valid[i] && (owner[i] == nil)
-                          ) 
-   )
+   (forall i:int :: 0 <= i && i < max ==> (elt[i] == null <==> (!valid[i] && owner[i] == nil)))
+}
+
+procedure {:yields} {:stable} YieldLookUp(old_valid: [int]bool, old_elt: [int]int)
+requires {:phase 1} {:phase 2} (forall ii:int :: 0 <= ii && ii < max && old_valid[ii] ==> valid[ii] && old_elt[ii] == elt[ii]);
+ensures {:phase 1} {:phase 2} (forall ii:int :: 0 <= ii && ii < max && old_valid[ii] ==> valid[ii] && old_elt[ii] == elt[ii]);
+{
+    yield;
+    assert {:phase 1} {:phase 2} (forall ii:int :: 0 <= ii && ii < max && old_valid[ii] ==> valid[ii] && old_elt[ii] == elt[ii]);
 }

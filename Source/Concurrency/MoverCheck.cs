@@ -113,7 +113,7 @@ namespace Microsoft.Boogie
             private Program program;
             private ActionInfo first;  // corresponds to that*
             private ActionInfo second; // corresponds to this*
-            private Stack<Cmd> path;
+            private Stack<Cmd> cmdStack;
             private List<PathInfo> paths;
 
             public TransitionRelationComputation(Program program, ActionInfo second) : this(program, null, second)
@@ -125,7 +125,7 @@ namespace Microsoft.Boogie
                 this.program = program;
                 this.first = first;
                 this.second = second;
-                this.path = new Stack<Cmd>();
+                this.cmdStack = new Stack<Cmd>();
                 this.paths = new List<PathInfo>();
                 List<IdentifierExpr> havocVars = new List<IdentifierExpr>();
                 this.second.thisOutParams.ForEach(v => havocVars.Add(Expr.Ident(v)));
@@ -133,7 +133,7 @@ namespace Microsoft.Boogie
                 if (havocVars.Count > 0)
                 {
                     HavocCmd havocCmd = new HavocCmd(Token.NoToken, havocVars);
-                    path.Push(havocCmd);
+                    cmdStack.Push(havocCmd);
                 }
                 Search(this.second.thisAction.Blocks[0], false);
             }
@@ -168,6 +168,20 @@ namespace Microsoft.Boogie
                     this.pathExprs = pathExprs;
                 }
             }
+            
+            private void FlattenAnd(Expr x, List<Expr> xs)
+            {
+                NAryExpr naryExpr = x as NAryExpr;
+                if (naryExpr != null && naryExpr.Fun.FunctionName == "&&")
+                {
+                    FlattenAnd(naryExpr.Args[0], xs);
+                    FlattenAnd(naryExpr.Args[1], xs);
+                }
+                else
+                {
+                    xs.Add(x);
+                }
+            }
 
             private void AddPath()
             {
@@ -190,12 +204,12 @@ namespace Microsoft.Boogie
                 }
                 List<Expr> pathExprs = new List<Expr>();
                 int boundVariableCount = 0;
-                foreach (Cmd cmd in path)
+                foreach (Cmd cmd in cmdStack)
                 {
                     if (cmd is AssumeCmd)
                     {
                         AssumeCmd assumeCmd = cmd as AssumeCmd;
-                        pathExprs.Add(assumeCmd.Expr);
+                        FlattenAnd(assumeCmd.Expr, pathExprs);
                     }
                     else if (cmd is AssignCmd)
                     {
@@ -224,11 +238,13 @@ namespace Microsoft.Boogie
                         Debug.Assert(false);
                     }
                 }
-                paths.Add(new PathInfo(new HashSet<Variable>(existsVars), varToExpr, pathExprs));
+                paths.Add(new PathInfo(existsVars, varToExpr, pathExprs));
             }
 
             private Expr CalculatePathCondition(PathInfo path)
             {
+                Expr returnExpr = Expr.True;
+
                 HashSet<Variable> existsVars = path.existsVars;
                 Dictionary<Variable, Expr> existsMap = new Dictionary<Variable, Expr>();
 
@@ -240,6 +256,10 @@ namespace Microsoft.Boogie
                     {
                         existsMap[ie.Decl] = Expr.Ident(v);
                         existsVars.Remove(ie.Decl);
+                    }
+                    else
+                    {
+                        returnExpr = Expr.And(returnExpr, Expr.Eq(Expr.Ident(v), (new MyDuplicator()).VisitExpr(varToExpr[v])));
                     }
                 }
 
@@ -254,14 +274,12 @@ namespace Microsoft.Boogie
                         existsMap[boundVar] = boundVarExpr;
                         existsVars.Remove(boundVar);
                     }
+                    else
+                    {
+                        returnExpr = Expr.And(returnExpr, x);
+                    }
                 }
-
-                Expr returnExpr = Expr.True;
-                pathExprs.ForEach(x => Expr.And(returnExpr, x)); 
-                foreach (Variable v in varToExpr.Keys)
-                {
-                    returnExpr = Expr.And(returnExpr, Expr.Eq(Expr.Ident(v), (new MyDuplicator()).VisitExpr(varToExpr[v])));
-                }
+                
                 returnExpr = Substituter.Apply(Substituter.SubstitutionFromHashtable(existsMap), returnExpr);
                 if (existsVars.Count > 0)
                 {
@@ -340,10 +358,10 @@ namespace Microsoft.Boogie
 
             private void Search(Block b, bool inFirst)
             {
-                int pathSizeAtEntry = path.Count;
+                int pathSizeAtEntry = cmdStack.Count;
                 foreach (Cmd cmd in b.Cmds)
                 {
-                    path.Push(cmd);
+                    cmdStack.Push(cmd);
                 }
                 if (b.TransferCmd is ReturnCmd)
                 {
@@ -359,7 +377,7 @@ namespace Microsoft.Boogie
                         if (havocVars.Count > 0)
                         {
                             HavocCmd havocCmd = new HavocCmd(Token.NoToken, havocVars);
-                            path.Push(havocCmd);
+                            cmdStack.Push(havocCmd);
                         }
                         Search(first.thatAction.Blocks[0], true);
                     }
@@ -372,10 +390,10 @@ namespace Microsoft.Boogie
                         Search(target, inFirst);
                     }
                 }
-                Debug.Assert(path.Count >= pathSizeAtEntry);
-                while (path.Count > pathSizeAtEntry)
+                Debug.Assert(cmdStack.Count >= pathSizeAtEntry);
+                while (cmdStack.Count > pathSizeAtEntry)
                 {
-                    path.Pop();
+                    cmdStack.Pop();
                 }
             }
         }
