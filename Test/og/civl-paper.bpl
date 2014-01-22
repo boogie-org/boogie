@@ -13,24 +13,34 @@ const p: int;
 
 procedure {:yields} TransferToGlobal({:cnst "tid"} tid: X, {:linear "mem"} l: lmap);
 ensures {:both 1} |{ A: assert tid != nil && lock == tid; g := l; return true; }|;
+requires {:phase 1} InvLock(lock, b);
+ensures {:phase 1} InvLock(lock, b);
 
 procedure {:yields} TransferFromGlobal({:cnst "tid"} tid: X) returns ({:linear "mem"} l: lmap);
 ensures {:both 1} |{ A: assert tid != nil && lock == tid; l := g; return true; }|;
+requires {:phase 1} InvLock(lock, b);
+ensures {:phase 1} InvLock(lock, b);
 
 procedure {:yields} Load({:cnst "tid"} tid: X, {:cnst "mem"} l: lmap, a: int) returns (v: int);
 ensures {:both 1} |{ A: assert tid != nil && lock == tid; v := map(l)[a]; return true; }|;
+requires {:phase 1} InvLock(lock, b);
+ensures {:phase 1} InvLock(lock, b);
 
 procedure {:yields} Store({:cnst "tid"} tid: X, {:linear "mem"} l_in: lmap, a: int, v: int) returns ({:linear "mem"} l_out: lmap);
 ensures {:both 1} |{ A: assert tid != nil && lock == tid; assume l_out == cons(dom(l_in), map(l_in)[a := v]); return true; }|;
+requires {:phase 1} InvLock(lock, b);
+ensures {:phase 1} InvLock(lock, b);
 
 procedure {:yields} P({:cnst "tid"} tid: X)
+requires {:phase 1} InvLock(lock, b);
+ensures {:phase 1} InvLock(lock, b);
 requires {:phase 2} tid != nil && Inv(g);
 ensures {:phase 2} Inv(g);
 {
     var t: int;
     var {:linear "mem"} l: lmap;
 
-    par Yield();
+    par Yield() | YieldLock();
     call Acquire(tid);
     call l := TransferFromGlobal(tid);
     call t := Load(tid, l, p);
@@ -39,7 +49,7 @@ ensures {:phase 2} Inv(g);
     call l := Store(tid, l, p+4, t+1);
     call TransferToGlobal(tid, l);
     call Release(tid);
-    par Yield();
+    par Yield() | YieldLock();
 }
 
 procedure {:yields} {:stable} Yield()
@@ -60,7 +70,8 @@ var {:qed} b: bool;
 var {:qed} lock: X;
 
 procedure {:yields} Acquire({:cnst "tid"} tid: X)
-free requires {:phase 1} InvLock(lock, b);
+requires {:phase 1} InvLock(lock, b);
+ensures {:phase 1} InvLock(lock, b);
 ensures {:right 1} |{ A: assert tid != nil; assume lock == nil; b := true; lock := tid; return true; }|;
 {
     var status: bool;
@@ -91,6 +102,8 @@ C: status := false; return true;
 
 procedure {:yields} Release({:cnst "tid"} tid: X);
 ensures {:left 1} |{ A: assert lock == tid && tid != nil; b := false; lock := nil; return true; }|;
+requires {:phase 1} InvLock(lock, b);
+ensures {:phase 1} InvLock(lock, b);
 
 procedure {:yields} {:stable} YieldLock()
 requires {:phase 1} InvLock(lock, b);
