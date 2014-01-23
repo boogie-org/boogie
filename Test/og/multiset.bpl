@@ -139,6 +139,7 @@ ensures {:right 1}  |{ A: assert tidIn != nil && tidIn != done;
         invariant {:phase 1} tidTmp != nil && tidTmp != done;
         invariant {:phase 1} tidTmp == tidIn;
         invariant {:phase 1} Inv(valid, elt, owner);
+	invariant {:phase 1} 0 <= j;
 	{
                 par Yield1();
 
@@ -319,6 +320,7 @@ ensures {:atomic 2}  |{ A: assert tidIn != nil && tidIn != done;
         invariant {:phase 1} {:phase 2} Inv(valid, elt, owner);
         invariant {:phase 1} {:phase 2} (forall ii:int :: 0 <= ii && ii < j ==> !(old_valid[ii] && old_elt[ii] == x));
 	invariant {:phase 1} {:phase 2} (forall ii:int :: 0 <= ii && ii < max && old_valid[ii] ==> valid[ii] && old_elt[ii] == elt[ii]);
+	invariant {:phase 1} {:phase 2} 0 <= j;
 	{
                 par Yield12() | YieldLookUp(old_valid, old_elt);
 
