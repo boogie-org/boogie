@@ -113,8 +113,8 @@ requires {:phase 1} Inv(valid, elt, owner);
 ensures {:phase 1} Inv(valid, elt, owner);
 ensures {:right 1}  |{ A: assert tidIn != nil && tidIn != done; 
                           assert x != null; 
-                          havoc r; assume (-1 <= r && r < max); goto B, C;
-                       B: assume (r != -1); 
+			  goto B, C;
+                       B: assume (0 <= r && r < max); 
                                             assume elt[r] == null; 
                                             assume owner[r] == nil;
 					    assume !valid[r];
@@ -166,7 +166,7 @@ ensures {:right 1}  |{ A: assert tidIn != nil && tidIn != done;
 	return;
 }
 
-procedure {:yields} Insert(x : int, {:linear "tid"} tidIn: X) returns (result : bool, i : int, {:linear "tid"} tidOut: X) 
+procedure {:yields} Insert(x : int, {:linear "tid"} tidIn: X) returns (result : bool, {:linear "tid"} tidOut: X) 
 requires {:phase 1} Inv(valid, elt, owner);
 requires {:phase 2} Inv(valid, elt, owner);
 ensures {:phase 1} Inv(valid, elt, owner);
@@ -174,8 +174,8 @@ requires {:phase 2} Inv(valid, elt, owner);
 ensures {:atomic 2}  |{ var r:int;
                         A: assert tidIn != nil && tidIn != done; 
                            assert x != null;
-                           havoc r; assume (-1 <= r && r < max); goto B, C;
-                        B: assume (r != -1); 
+                           goto B, C;
+                        B: assume (0 <= r && r < max); 
                            assume valid[r] == false; 
                            assume elt[r] == null; 
                            assume owner[r] == nil; 
@@ -184,7 +184,7 @@ ensures {:atomic 2}  |{ var r:int;
                         C: tidOut := tidIn; result := false; return true; 
                       }|;
  {
-
+        var i: int;
         var {:linear "tid"} tidTmp: X;
         par Yield12();
         tidTmp := tidIn;
@@ -215,8 +215,6 @@ procedure {:yields} InsertPair(x : int,
                                y : int, 
                                {:linear "tid"} tidIn: X) 
                                returns (result : bool, 
-                                        i : int, 
-                                        j : int,
                                         {:linear "tid"} tidOut: X) 
 requires {:phase 1} Inv(valid, elt, owner);
 ensures {:phase 1} Inv(valid, elt, owner);
@@ -226,11 +224,8 @@ ensures {:atomic 2}  |{ var rx:int;
                         var ry:int;
                         A: assert tidIn != nil && tidIn != done; 
                            assert x != null && y != null;
-                           havoc rx; assume (-1 <= rx && rx < max); 
-                           havoc ry; assume (-1 <= ry && ry < max);
-                           assume (rx == ry ==> rx == -1);
                            goto B, C;
-                        B: assume (rx != -1 && ry != -1); 
+                        B: assume (0 <= rx && rx < max && 0 <= ry && ry < max && rx != ry); 
                            assume valid[rx] == false; 
                            assume valid[ry] == false; 
                            assume elt[rx] == null; 
@@ -247,7 +242,8 @@ ensures {:atomic 2}  |{ var rx:int;
                            result := false; return true; 
                       }|;
  {
-
+        var i : int; 
+        var j : int;
         var {:linear "tid"} tidTmp: X;
         par Yield12();
 
@@ -303,11 +299,10 @@ requires {:phase 1} {:phase 2} (tidIn != nil && tidIn != done);
 ensures {:phase 1} {:phase 2} Inv(valid, elt, owner);
 ensures {:atomic 2}  |{ A: assert tidIn != nil && tidIn != done; 
                           assert x != null;
-			  havoc found; 
                           assume found ==> (exists ii:int :: 0 <= ii && ii < max && valid[ii] && elt[ii] == x);
+			  assume !found ==> (forall ii:int :: 0 <= ii && ii < max ==> !(old_valid[ii] && old_elt[ii] == x));
                           return true;
                     }|;
-ensures {:phase 2} !found ==> (forall ii:int :: 0 <= ii && ii < max ==> !(old_valid[ii] && old_elt[ii] == x));
 {
 	var j : int;
 	var isThere : bool;

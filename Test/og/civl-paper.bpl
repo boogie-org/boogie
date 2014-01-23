@@ -21,13 +21,13 @@ ensures {:both 1} |{ A: assert tid != nil && lock == tid; l := g; return true; }
 requires {:phase 1} InvLock(lock, b);
 ensures {:phase 1} InvLock(lock, b);
 
-procedure {:yields} Load({:cnst "tid"} tid: X, {:cnst "mem"} l: lmap, a: int) returns (v: int);
-ensures {:both 1} |{ A: assert tid != nil && lock == tid; v := map(l)[a]; return true; }|;
+procedure {:yields} Load({:cnst "mem"} l: lmap, a: int) returns (v: int);
+ensures {:both 1} |{ A: v := map(l)[a]; return true; }|;
 requires {:phase 1} InvLock(lock, b);
 ensures {:phase 1} InvLock(lock, b);
 
-procedure {:yields} Store({:cnst "tid"} tid: X, {:linear "mem"} l_in: lmap, a: int, v: int) returns ({:linear "mem"} l_out: lmap);
-ensures {:both 1} |{ A: assert tid != nil && lock == tid; assume l_out == cons(dom(l_in), map(l_in)[a := v]); return true; }|;
+procedure {:yields} Store({:linear "mem"} l_in: lmap, a: int, v: int) returns ({:linear "mem"} l_out: lmap);
+ensures {:both 1} |{ A: assume l_out == cons(dom(l_in), map(l_in)[a := v]); return true; }|;
 requires {:phase 1} InvLock(lock, b);
 ensures {:phase 1} InvLock(lock, b);
 
@@ -43,10 +43,10 @@ ensures {:phase 2} Inv(g);
     par Yield() | YieldLock();
     call Acquire(tid);
     call l := TransferFromGlobal(tid);
-    call t := Load(tid, l, p);
-    call l := Store(tid, l, p, t+1);
-    call t := Load(tid, l, p+4);
-    call l := Store(tid, l, p+4, t+1);
+    call t := Load(l, p);
+    call l := Store(l, p, t+1);
+    call t := Load(l, p+4);
+    call l := Store(l, p+4, t+1);
     call TransferToGlobal(tid, l);
     call Release(tid);
     par Yield() | YieldLock();
