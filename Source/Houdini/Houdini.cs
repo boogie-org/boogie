@@ -512,8 +512,9 @@ namespace Microsoft.Boogie.Houdini {
           queue.Enqueue(impl);
         }
       }
-      return queue;
-      
+      if (CommandLineOptions.Clo.ReverseHoudiniWorklist)
+          queue = queue.Reverse();
+      return queue;      
       /*
       Queue<Implementation> queue = new Queue<Implementation>();
       foreach (Declaration decl in program.TopLevelDeclarations) {
@@ -814,6 +815,13 @@ namespace Microsoft.Boogie.Houdini {
       }
       public bool Contains(Implementation impl) {
         return set.Contains(impl);
+      }
+      public WorkQueue Reverse()
+      {
+          var ret = new WorkQueue();
+          foreach (var impl in queue.Reverse())
+              ret.Enqueue(impl);
+          return ret;
       }
     }
 
