@@ -1644,4 +1644,81 @@ b.liveVarsBefore = procICFG[mainImpl.Name].liveVarsAfter[b];
       return ret;
     }
   }
+
+  public class TokenEliminator : StandardVisitor
+  {
+      public int TokenCount = 0;
+      public override Expr VisitExpr(Expr node)
+      {
+          node.tok = Token.NoToken;
+          TokenCount++;
+          return base.VisitExpr(node);
+      }
+      public override Variable VisitVariable(Variable node)
+      {
+          node.tok = Token.NoToken;
+          TokenCount++; 
+          return base.VisitVariable(node);
+      }
+      public override Function VisitFunction(Function node)
+      {
+          node.tok = Token.NoToken;
+          TokenCount++; 
+          return base.VisitFunction(node);
+      }
+      public override Implementation VisitImplementation(Implementation node)
+      {
+          node.tok = Token.NoToken;
+          TokenCount++; 
+          return base.VisitImplementation(node);
+      }
+      public override Procedure VisitProcedure(Procedure node)
+      {
+          node.tok = Token.NoToken;
+          TokenCount++; 
+          return base.VisitProcedure(node);
+      }
+      public override Axiom VisitAxiom(Axiom node)
+      {
+          node.tok = Token.NoToken;
+          TokenCount++; 
+          return base.VisitAxiom(node);
+      }
+      public override Cmd VisitAssignCmd(AssignCmd node)
+      {
+          node.tok = Token.NoToken;
+          TokenCount++; 
+          return base.VisitAssignCmd(node);
+      }
+      public override Cmd VisitAssumeCmd(AssumeCmd node)
+      {
+          node.tok = Token.NoToken;
+          TokenCount++; 
+          return base.VisitAssumeCmd(node);
+      }
+      public override Cmd VisitHavocCmd(HavocCmd node)
+      {
+          node.tok = Token.NoToken;
+          TokenCount++; 
+          return base.VisitHavocCmd(node);
+      }
+      public override Constant VisitConstant(Constant node)
+      {
+          node.tok = Token.NoToken;
+          TokenCount++; 
+          return base.VisitConstant(node);
+      }
+      public override TransferCmd VisitTransferCmd(TransferCmd node)
+      {
+          node.tok = Token.NoToken;
+          TokenCount++; 
+          return base.VisitTransferCmd(node);
+      }
+      public override Block VisitBlock(Block node)
+      {
+          node.tok = Token.NoToken;
+          TokenCount++; 
+          return base.VisitBlock(node);
+      }
+  }
 }

@@ -63,8 +63,11 @@ namespace Microsoft.Boogie
             String s = "\nBody of " + impl.Proc.Name + " is not yield_type_safe at phase " + currPhaseNum.ToString() + "\n";
             foreach (var move in errorAutomaton.GetMoves())
             {
-                IToken tok = nodeToAbsy[move.SourceState].tok;
-                s += string.Format("{0}({1}, {2})\n", tok.filename, tok.line, tok.col);
+                if (nodeToAbsy.ContainsKey(move.SourceState))
+                {
+                    IToken tok = nodeToAbsy[move.SourceState].tok;
+                    s += string.Format("{0}({1}, {2})\n", tok.filename, tok.line, tok.col);
+                }
             }
             return s;
         }
