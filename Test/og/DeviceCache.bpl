@@ -6,6 +6,16 @@ var {:qed} lock: X;
 var {:qed} currsize: int;
 var {:qed} newsize: int;
 
+function {:builtin "MapConst"} MapConstBool(bool) : [X]bool;
+function {:inline} {:linear "tid"} TidCollector(x: X) : [X]bool
+{
+  MapConstBool(false)[x := true]
+}
+function {:inline} {:linear "tid"} TidSetCollector(x: [X]bool) : [X]bool
+{
+  x
+}
+
 function {:inline} Inv(ghostLock: X, currsize: int, newsize: int) : (bool)
 {
     0 <= currsize && currsize <= newsize && 

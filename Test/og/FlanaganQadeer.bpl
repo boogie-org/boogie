@@ -1,8 +1,13 @@
 type X;
-
 const nil: X;
 var l: X;
 var x: int;
+
+function {:builtin "MapConst"} MapConstBool(bool) : [X]bool;
+function {:inline} {:linear "tid"} TidCollector(x: X) : [X]bool
+{
+  MapConstBool(false)[x := true]
+}
 
 procedure Allocate() returns ({:linear "tid"} xls: X);
 ensures xls != nil;

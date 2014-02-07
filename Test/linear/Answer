@@ -1,7 +1,5 @@
 
 -------------------- typecheck.bpl --------------------
-typecheck.bpl(6,22): Error: Linear domain A must be consistently attached to variables of one type
-typecheck.bpl(18,22): Error: a linear domain can be attached to either a set or a scalar type
 typecheck.bpl(31,9): Error: Only simple assignment allowed on linear variable b
 typecheck.bpl(33,6): Error: Only variable can be assigned to linear variable a
 typecheck.bpl(35,6): Error: Only linear variable can be assigned to linear variable a
@@ -17,7 +15,7 @@ typecheck.bpl(67,0): Error: Output variable d must be available at a return
 typecheck.bpl(76,0): Error: Global variable g must be available at a return
 typecheck.bpl(81,7): Error: unavailable source for a linear read
 typecheck.bpl(82,0): Error: Output variable r must be available at a return
-17 type checking errors detected in typecheck.bpl
+15 type checking errors detected in typecheck.bpl
 
 -------------------- list.bpl --------------------
 

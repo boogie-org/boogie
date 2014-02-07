@@ -443,18 +443,21 @@ namespace Microsoft.Boogie
             {
                 var domainName = linearTypeChecker.FindDomainName(v);
                 if (domainName == null) continue;
+                if (!linearTypeChecker.linearDomains.ContainsKey(domainName)) continue;
                 domainNameToScope[domainName].Add(v);
             }
             foreach (Variable v in first.thatInParams)
             {
                 var domainName = linearTypeChecker.FindDomainName(v);
                 if (domainName == null) continue;
+                if (!linearTypeChecker.linearDomains.ContainsKey(domainName)) continue;
                 domainNameToScope[domainName].Add(v);
             }
             foreach (Variable v in second.thisInParams)
             {
                 var domainName = linearTypeChecker.FindDomainName(v);
                 if (domainName == null) continue;
+                if (!linearTypeChecker.linearDomains.ContainsKey(domainName)) continue;
                 domainNameToScope[domainName].Add(v);
             }
             foreach (string domainName in domainNameToScope.Keys)

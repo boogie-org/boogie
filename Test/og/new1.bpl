@@ -2,6 +2,12 @@ function {:builtin "MapConst"} mapconstbool(x:bool): [int]bool;
 
 var g:int;
 
+function {:inline} {:linear "Perm"} SetCollectorPerm(x: [int]bool) : [int]bool
+{
+  x
+}
+
+
 var {:linear "Perm"} Permissions: [int]bool;
 
 procedure Allocate_Perm() returns ({:linear "Perm"} xls: [int]bool);

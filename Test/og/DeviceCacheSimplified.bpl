@@ -1,5 +1,11 @@
 type X;
 
+function {:builtin "MapConst"} MapConstBool(bool) : [X]bool;
+function {:inline} {:linear "tid"} TidCollector(x: X) : [X]bool
+{
+  MapConstBool(false)[x := true]
+}
+
 function {:inline} Inv(ghostLock: X, currsize: int, newsize: int) : (bool)
 {
     currsize <= newsize && (ghostLock == nil <==> currsize == newsize)

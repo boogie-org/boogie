@@ -36,7 +36,7 @@ namespace Microsoft.Boogie
         public Program program;
         public int errorCount;
         public CheckingContext checkingContext;
-        public Dictionary<string, Type> domainNameToType;
+        public Dictionary<string, Dictionary<Type, Function>> domainNameToCollectors;
         private Dictionary<Absy, HashSet<Variable>> availableLinearVars;
         public Dictionary<Variable, LinearQualifier> inParamToLinearQualifier;
         public Dictionary<Variable, string> outParamToDomainName;
@@ -49,20 +49,59 @@ namespace Microsoft.Boogie
             this.program = program;
             this.errorCount = 0;
             this.checkingContext = new CheckingContext(null);
-            this.domainNameToType = new Dictionary<string, Type>();
+            this.domainNameToCollectors = new Dictionary<string, Dictionary<Type, Function>>();
             this.availableLinearVars = new Dictionary<Absy, HashSet<Variable>>();
             this.inParamToLinearQualifier = new Dictionary<Variable, LinearQualifier>();
             this.outParamToDomainName = new Dictionary<Variable, string>();
             this.varToDomainName = new Dictionary<Variable, string>();
+            this.globalVarToDomainName = new Dictionary<Variable, string>();
             this.linearDomains = new Dictionary<string, LinearDomain>();
         }
         public void TypeCheck()
         {
             this.VisitProgram(program);
-            foreach (string domainName in domainNameToType.Keys)
+            foreach (string domainName in domainNameToCollectors.Keys)
             {
-                this.linearDomains[domainName] = new LinearDomain(program, domainName, domainNameToType[domainName]);
+                var collectors = domainNameToCollectors[domainName];
+                if (collectors.Count == 0) continue;
+                this.linearDomains[domainName] = new LinearDomain(program, domainName, collectors);
             }
+            Dictionary<Absy, HashSet<Variable>> newAvailableLinearVars = new Dictionary<Absy, HashSet<Variable>>();
+            foreach (Absy absy in this.availableLinearVars.Keys)
+            {
+                HashSet<Variable> vars = new HashSet<Variable>();
+                foreach (Variable var in this.availableLinearVars[absy])
+                {
+                    string domainName = FindDomainName(var);
+                    if (this.linearDomains.ContainsKey(domainName))
+                    {
+                        vars.Add(var);
+                    }
+                }
+                newAvailableLinearVars[absy] = vars;
+            }
+            this.availableLinearVars = newAvailableLinearVars;
+            var temp = new Dictionary<Variable, string>();
+            foreach (Variable v in outParamToDomainName.Keys)
+            {
+                if (linearDomains.ContainsKey(outParamToDomainName[v]))
+                    temp[v] = outParamToDomainName[v];
+            }
+            this.outParamToDomainName = temp;
+            temp = new Dictionary<Variable, string>();
+            foreach (Variable v in varToDomainName.Keys)
+            {
+                if (linearDomains.ContainsKey(varToDomainName[v]))
+                    temp[v] = varToDomainName[v];
+            }
+            this.varToDomainName = temp;
+            temp = new Dictionary<Variable, string>();
+            foreach (Variable v in globalVarToDomainName.Keys)
+            {
+                if (linearDomains.ContainsKey(globalVarToDomainName[v]))
+                    temp[v] = globalVarToDomainName[v];
+            }
+            this.globalVarToDomainName = temp;
         }
         private void Error(Absy node, string message)
         {
@@ -71,7 +110,6 @@ namespace Microsoft.Boogie
         }
         public override Program VisitProgram(Program node)
         {
-            globalVarToDomainName = new Dictionary<Variable, string>();
             foreach (GlobalVariable g in program.GlobalVariables())
             {
                 string domainName = FindDomainName(g);
@@ -81,6 +119,39 @@ namespace Microsoft.Boogie
                 }
             }
             return base.VisitProgram(node);
+        }
+        public override Function VisitFunction(Function node)
+        {
+            string domainName = QKeyValue.FindStringAttribute(node.Attributes, "linear");
+            if (domainName != null)
+            {
+                if (!domainNameToCollectors.ContainsKey(domainName)) 
+                {
+                    domainNameToCollectors[domainName] = new Dictionary<Type, Function>();
+                }
+                if (node.InParams.Count == 1 && node.OutParams.Count == 1)
+                {
+                    Type inType = node.InParams[0].TypedIdent.Type;
+                    MapType outType = node.OutParams[0].TypedIdent.Type as MapType;
+                    if (domainNameToCollectors[domainName].ContainsKey(inType))
+                    {
+                        Error(node, string.Format("A collector for domain for input type has already been defined"));
+                    }
+                    else if (outType == null || outType.Arguments.Count != 1 || !outType.Result.Equals(Type.Bool))
+                    {
+                        Error(node, "Output of a linear domain collector should be of set type");
+                    }
+                    else 
+                    {
+                        domainNameToCollectors[domainName][inType] = node;
+                    }
+                }
+                else
+                {
+                    Error(node, "Linear domain collector should have one input and one output parameter");
+                }
+            }
+            return base.VisitFunction(node);
         }
         public override Implementation VisitImplementation(Implementation node)
         {
@@ -318,32 +389,9 @@ namespace Microsoft.Boogie
             string domainName = FindDomainName(node);
             if (domainName != null)
             {
-                Type type = node.TypedIdent.Type;
-                MapType mapType = type as MapType;
-                if (mapType != null)
+                if (!domainNameToCollectors.ContainsKey(domainName))
                 {
-                    if (mapType.Arguments.Count == 1 && mapType.Result.Equals(Type.Bool))
-                    {
-                        type = mapType.Arguments[0];
-                        if (type is MapType)
-                        {
-                            Error(node, "the domain of a linear set must be a scalar type");
-                            return base.VisitVariable(node);
-                        }
-                    }
-                    else
-                    {
-                        Error(node, "a linear domain can be attached to either a set or a scalar type");
-                        return base.VisitVariable(node);
-                    }
-                }
-                if (domainNameToType.ContainsKey(domainName) && !domainNameToType[domainName].Equals(type))
-                {
-                    Error(node, string.Format("Linear domain {0} must be consistently attached to variables of one type", domainName));
-                }
-                else
-                {
-                    domainNameToType[domainName] = type;
+                    domainNameToCollectors[domainName] = new Dictionary<Type,Function>();
                 }
             }
             return base.VisitVariable(node);
@@ -483,9 +531,13 @@ namespace Microsoft.Boogie
         public IEnumerable<Variable> AvailableLinearVars(Absy absy)
         {
             if (availableLinearVars.ContainsKey(absy))
+            {
                 return availableLinearVars[absy];
+            }
             else
+            {
                 return new HashSet<Variable>();
+            }
         }
 
         private void AddDisjointnessExpr(List<Cmd> newCmds, Absy absy, Dictionary<string, Variable> domainNameToInputVar)
@@ -494,7 +546,6 @@ namespace Microsoft.Boogie
             foreach (var domainName in linearDomains.Keys)
             {
                 domainNameToScope[domainName] = new HashSet<Variable>();
-                domainNameToScope[domainName].Add(domainNameToInputVar[domainName]);
             }
             foreach (Variable v in AvailableLinearVars(absy))
             {
@@ -503,7 +554,7 @@ namespace Microsoft.Boogie
             }
             foreach (string domainName in linearDomains.Keys)
             {
-                newCmds.Add(new AssumeCmd(Token.NoToken, DisjointnessExpr(domainName, domainNameToScope[domainName])));
+                newCmds.Add(new AssumeCmd(Token.NoToken, DisjointnessExpr(domainName, domainNameToInputVar[domainName], domainNameToScope[domainName])));
             }
         }
 
@@ -559,9 +610,9 @@ namespace Microsoft.Boogie
                                 {
                                     var domainName = FindDomainName(v);
                                     var domain = linearDomains[domainName];
-                                    IdentifierExpr ie = Expr.Ident(v);
-                                    var expr = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapOrBool), 
-                                                            new List<Expr> { v.TypedIdent.Type is MapType ? ie : Singleton(ie, domainName), domainNameToExpr[domainName] });
+                                    if (!domain.collectors.ContainsKey(v.TypedIdent.Type)) continue;
+                                    Expr ie = new NAryExpr(Token.NoToken, new FunctionCall(domain.collectors[v.TypedIdent.Type]), new List<Expr> { Expr.Ident(v) });
+                                    var expr = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapOrBool), new List<Expr> { ie, domainNameToExpr[domainName] });
                                     expr.Resolve(new ResolutionContext(null));
                                     expr.Typecheck(new TypecheckingContext(null));
                                     domainNameToExpr[domainName] = expr;
@@ -637,12 +688,14 @@ namespace Microsoft.Boogie
                 {
                     var domainName = FindDomainName(v);
                     if (domainName == null) continue;
+                    if (!this.linearDomains.ContainsKey(domainName)) continue;
                     domainNameToInputScope[domainName].Add(v);
                 }
                 foreach (Variable v in proc.OutParams)
                 {
                     var domainName = FindDomainName(v);
                     if (domainName == null) continue;
+                    if (!this.linearDomains.ContainsKey(domainName)) continue;
                     domainNameToOutputScope[domainName].Add(v);
                 }
                 foreach (var domainName in linearDomains.Keys)
@@ -651,8 +704,7 @@ namespace Microsoft.Boogie
                     var domain = linearDomains[domainName];
                     Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "linear_" + domainName + "_in", new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> { domain.elementType }, Type.Bool)), true);
                     proc.InParams.Add(f);
-                    domainNameToOutputScope[domainName].Add(f);
-                    proc.Ensures.Add(new Ensures(true, DisjointnessExpr(domainName, domainNameToOutputScope[domainName])));
+                    proc.Ensures.Add(new Ensures(true, DisjointnessExpr(domainName, f, domainNameToOutputScope[domainName])));
                 }
             }
             
@@ -675,36 +727,42 @@ namespace Microsoft.Boogie
             //CommandLineOptions.Clo.PrintUnstructured = oldPrintUnstructured;
         }
 
-        public Expr Singleton(Expr e, string domainName)
+        private Expr SubsetExpr(LinearDomain domain, Expr ie, Variable partition, int partitionCount)
         {
-            var domain = linearDomains[domainName];
-            return Expr.Store(new NAryExpr(Token.NoToken, new FunctionCall(domain.mapConstBool), new List<Expr> { Expr.False }), e, Expr.True);
+            Expr e = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapConstInt), new List<Expr> { new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(partitionCount)) });
+            e = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapEqInt), new List<Expr> { Expr.Ident(partition), e });
+            e = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapImpBool), new List<Expr> { ie, e });
+            e = Expr.Binary(BinaryOperator.Opcode.Eq, e, new NAryExpr(Token.NoToken, new FunctionCall(domain.mapConstBool), new List<Expr> { Expr.True }));
+            return e;
         }
 
-        List<Expr> MkExprs(params Expr[] args)
+        private Expr SubsetExprs(LinearDomain domain, HashSet<Variable> scope, Variable partition, int count, Expr expr)
         {
-            return new List<Expr>(args);
+            foreach (Variable v in scope)
+            {
+                if (!domain.collectors.ContainsKey(v.TypedIdent.Type)) continue;
+                Expr ie = new NAryExpr(Token.NoToken, new FunctionCall(domain.collectors[v.TypedIdent.Type]), new List<Expr> { Expr.Ident(v) });
+                expr = Expr.Binary(BinaryOperator.Opcode.And, SubsetExpr(domain, ie, partition, count), expr);
+                count++;
+            }
+            expr = new ExistsExpr(Token.NoToken, new List<Variable> { partition }, expr);
+            expr.Resolve(new ResolutionContext(null));
+            expr.Typecheck(new TypecheckingContext(null));
+            return expr;
+        }
+
+        public Expr DisjointnessExpr(string domainName, Variable inputVar, HashSet<Variable> scope)
+        {
+            LinearDomain domain = linearDomains[domainName];
+            BoundVariable partition = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("partition_{0}", domainName), new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> { domain.elementType }, Microsoft.Boogie.Type.Int)));
+            return SubsetExprs(domain, scope, partition, 1, SubsetExpr(domain, Expr.Ident(inputVar), partition, 0));
         }
 
         public Expr DisjointnessExpr(string domainName, HashSet<Variable> scope)
         {
             LinearDomain domain = linearDomains[domainName];
             BoundVariable partition = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("partition_{0}", domainName), new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> { domain.elementType }, Microsoft.Boogie.Type.Int)));
-            Expr disjointExpr = Expr.True;
-            int count = 0;
-            foreach (Variable v in scope)
-            {
-                IdentifierExpr ie = Expr.Ident(v);
-                Expr e = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapConstInt), new List<Expr>{ new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(count++)) } );
-                e = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapEqInt), new List<Expr> { Expr.Ident(partition), e } );
-                e = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapImpBool), new List<Expr> { v.TypedIdent.Type is MapType ? ie : Singleton(ie, domainName), e } );
-                e = Expr.Binary(BinaryOperator.Opcode.Eq, e, new NAryExpr(Token.NoToken, new FunctionCall(domain.mapConstBool), new List<Expr> { Expr.True }));
-                disjointExpr = Expr.Binary(BinaryOperator.Opcode.And, e, disjointExpr);
-            }
-            var expr = new ExistsExpr(Token.NoToken, new List<Variable> { partition }, disjointExpr);
-            expr.Resolve(new ResolutionContext(null));
-            expr.Typecheck(new TypecheckingContext(null));
-            return expr;
+            return SubsetExprs(domain, scope, partition, 0, Expr.True);
         }
     }
 
@@ -721,19 +779,21 @@ namespace Microsoft.Boogie
 
     public class LinearDomain
     {
-        public Microsoft.Boogie.Type elementType;
         public Function mapEqInt;
         public Function mapConstInt;
         public Function mapOrBool;
         public Function mapImpBool;
         public Function mapConstBool;
         public List<Axiom> axioms;
+        public Type elementType;
+        public Dictionary<Type, Function> collectors;
 
-        public LinearDomain(Program program, string domainName, Type elementType)
+        public LinearDomain(Program program, string domainName, Dictionary<Type, Function> collectors)
         {
-            this.elementType = elementType;
             this.axioms = new List<Axiom>();
-
+            this.collectors = collectors;
+            MapType setType = (MapType)collectors.First().Value.OutParams[0].TypedIdent.Type;
+            this.elementType = setType.Arguments[0];
             MapType mapTypeBool = new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> { this.elementType }, Type.Bool);
             MapType mapTypeInt = new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> { this.elementType }, Type.Int);
             this.mapOrBool = new Function(Token.NoToken, "linear_" + domainName + "_MapOr",

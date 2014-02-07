@@ -13,6 +13,11 @@ function {:inline} All() : [X]bool
     MapConstBool(true)
 }
 
+function {:inline} {:linear "x"} XCollector(xs: [X]bool) : [X]bool
+{
+  xs
+}
+
 var x: int;
 var l: X;
 const nil: X;
