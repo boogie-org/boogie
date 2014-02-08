@@ -917,6 +917,8 @@ namespace Microsoft.Boogie
                 b.Cmds = newCmds;
             }
 
+            List<Variable> oldPcs = new List<Variable>();
+            List<Variable> oldOks = new List<Variable>();
             foreach (Block header in yieldingHeaders)
             {
                 LocalVariable oldPc = null;
@@ -924,8 +926,10 @@ namespace Microsoft.Boogie
                 if (pc != null)
                 {
                     oldPc = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("{0}_{1}", pc.Name, header.Label), Type.Bool));
+                    oldPcs.Add(oldPc);
                     impl.LocVars.Add(oldPc);
                     oldOk = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("{0}_{1}", ok.Name, header.Label), Type.Bool));
+                    oldOks.Add(oldOk);
                     impl.LocVars.Add(oldOk);
                 }
                 Dictionary<string, Expr> domainNameToExpr = ComputeAvailableExprs(AvailableLinearVars(header), domainNameToInputVar);
@@ -971,8 +975,18 @@ namespace Microsoft.Boogie
                 {
                     lhss.Add(new SimpleAssignLhs(Token.NoToken, Expr.Ident(pc)));
                     rhss.Add(Expr.False);
+                    foreach (Variable oldPc in oldPcs)
+                    {
+                        lhss.Add(new SimpleAssignLhs(Token.NoToken, Expr.Ident(oldPc)));
+                        rhss.Add(Expr.False);
+                    }
                     lhss.Add(new SimpleAssignLhs(Token.NoToken, Expr.Ident(ok)));
                     rhss.Add(Expr.False);
+                    foreach (Variable oldOk in oldOks)
+                    {
+                        lhss.Add(new SimpleAssignLhs(Token.NoToken, Expr.Ident(oldOk)));
+                        rhss.Add(Expr.False);
+                    }
                 }
                 Dictionary<string, Expr> domainNameToExpr = new Dictionary<string, Expr>();
                 foreach (var domainName in linearTypeChecker.linearDomains.Keys)

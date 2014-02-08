@@ -108,6 +108,10 @@ Boogie program verifier finished with 28 verified, 0 errors
 
 Boogie program verifier finished with 6 verified, 0 errors
 
+-------------------- lock2.bpl --------------------
+
+Boogie program verifier finished with 6 verified, 0 errors
+
 -------------------- multiset.bpl --------------------
 
 Boogie program verifier finished with 102 verified, 0 errors
