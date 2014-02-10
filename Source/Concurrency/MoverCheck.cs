@@ -86,11 +86,17 @@ namespace Microsoft.Boogie
                                     moverChecking.CreateCommutativityChecker(program, second, first);
                                     moverChecking.CreateGatePreservationChecker(program, first, second);
                                     moverChecking.CreateFailurePreservationChecker(program, second, first);
-                                    moverChecking.CreateNonBlockingChecker(program, first);
                                 }
                             }
                         }
                     }
+                }
+            }
+            foreach (ActionInfo action in moverTypeChecker.procToActionInfo.Values)
+            {
+                if (action.IsLeftMover && action.hasAssumeCmd)
+                {
+                    moverChecking.CreateNonBlockingChecker(program, action);
                 }
             }
         }
@@ -562,7 +568,7 @@ namespace Microsoft.Boogie
 
         private void CreateFailurePreservationChecker(Program program, ActionInfo first, ActionInfo second)
         {
-            if (first.gateUsedGlobalVars.Intersect(second.modifiedGlobalVars).Count() == 0 && second.isNonBlocking)
+            if (first.gateUsedGlobalVars.Intersect(second.modifiedGlobalVars).Count() == 0)
                 return;
 
             Tuple<ActionInfo, ActionInfo> actionPair = new Tuple<ActionInfo, ActionInfo>(first, second); 
@@ -607,9 +613,6 @@ namespace Microsoft.Boogie
 
         private void CreateNonBlockingChecker(Program program, ActionInfo second)
         {
-            if (second.isNonBlocking)
-                return;
-
             List<Variable> inputs = new List<Variable>();
             inputs.AddRange(second.thisInParams);
 
