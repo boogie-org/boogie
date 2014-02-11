@@ -34,7 +34,7 @@ namespace Microsoft.Boogie
         public HashSet<Variable> usedGlobalVars;
         public HashSet<Variable> modifiedGlobalVars;
         public HashSet<Variable> gateUsedGlobalVars;
-        public bool isNonBlocking;
+        public bool hasAssumeCmd;
 
         public bool CommutesWith(ActionInfo actionInfo)
         {
@@ -68,11 +68,11 @@ namespace Microsoft.Boogie
             this.thatGate = new List<AssertCmd>();
             this.thatInParams = new List<Variable>();
             this.thatOutParams = new List<Variable>();
-            this.isNonBlocking = true;
+            this.hasAssumeCmd = false;
             
             foreach (Block block in codeExpr.Blocks)
             {
-                block.Cmds.ForEach(x => this.isNonBlocking = this.isNonBlocking && !(x is AssumeCmd));
+                block.Cmds.ForEach(x => this.hasAssumeCmd = this.hasAssumeCmd || x is AssumeCmd);
             }
 
             var cmds = thisAction.Blocks[0].Cmds;

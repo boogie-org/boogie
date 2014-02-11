@@ -11,6 +11,16 @@ var {:qed} s: int;
 var {:qed} cs: X;
 var {:qed} T: [int]bool;
 
+function {:builtin "MapConst"} MapConstBool(bool) : [X]bool;
+function {:inline} {:linear "tid"} TidCollector(x: X) : [X]bool
+{
+  MapConstBool(false)[x := true]
+}
+function {:inline} {:linear "tid"} TidSetCollector(x: [X]bool) : [X]bool
+{
+  x
+}
+
 function {:inline} Inv1(tickets: [int]bool, ticket: int): (bool)
 {
     tickets == RightOpen(ticket)

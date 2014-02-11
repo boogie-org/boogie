@@ -56,10 +56,10 @@ Boogie program verifier finished with 5 verified, 0 errors
 Boogie program verifier finished with 4 verified, 0 errors
 
 -------------------- parallel4.bpl --------------------
-parallel4.bpl(18,3): Error BP5001: This assertion might not hold.
+parallel4.bpl(24,3): Error BP5001: This assertion might not hold.
 Execution trace:
     (0,0): og_init
-    parallel4.bpl(16,5): anon0$1
+    parallel4.bpl(22,5): anon0$1
 
 Boogie program verifier finished with 2 verified, 1 error
 
@@ -72,7 +72,7 @@ Boogie program verifier finished with 4 verified, 0 errors
 Boogie program verifier finished with 3 verified, 0 errors
 
 -------------------- t1.bpl --------------------
-t1.bpl(35,5): Error: Non-interference check failed
+t1.bpl(51,5): Error: Non-interference check failed
 Execution trace:
     (0,0): og_init
     (0,0): inline$Impl_YieldChecker_A_2147483647$0$L1
@@ -95,3 +95,23 @@ Execution trace:
     (0,0): inline$Proc_YieldChecker_P_2147483647$1$L0
 
 Boogie program verifier finished with 1 verified, 1 error
+
+-------------------- DeviceCache.bpl --------------------
+
+Boogie program verifier finished with 50 verified, 0 errors
+
+-------------------- ticket.bpl --------------------
+
+Boogie program verifier finished with 28 verified, 0 errors
+
+-------------------- lock.bpl --------------------
+
+Boogie program verifier finished with 6 verified, 0 errors
+
+-------------------- lock2.bpl --------------------
+
+Boogie program verifier finished with 6 verified, 0 errors
+
+-------------------- multiset.bpl --------------------
+
+Boogie program verifier finished with 102 verified, 0 errors

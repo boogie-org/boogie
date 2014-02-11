@@ -10,6 +10,12 @@ var {:qed} lock : [int]X;
 var {:qed} owner : [int]X;
 const max : int;
 
+function {:builtin "MapConst"} MapConstBool(bool) : [X]bool;
+function {:inline} {:linear "tid"} TidCollector(x: X) : [X]bool
+{
+  MapConstBool(false)[x := true]
+}
+
 axiom (max > 0);
 
 procedure {:yields} acquire(i : int, {:linear "tid"} tidIn: X) returns ({:linear "tid"} tidOut: X);

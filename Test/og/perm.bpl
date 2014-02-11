@@ -3,6 +3,11 @@ function {:builtin "MapConst"} ch_mapconstbool(x: bool) : [int]bool;
 
 function {:builtin "MapOr"} ch_mapunion(x: [int]bool, y: [int]bool) : [int]bool;
 
+function {:inline} {:linear "Perm"} SetCollectorPerm(x: [int]bool) : [int]bool
+{
+  x
+}
+
 procedure Split({:linear "Perm"} xls: [int]bool) returns ({:linear "Perm"} xls1: [int]bool, {:linear "Perm"} xls2: [int]bool);
   ensures xls == ch_mapunion(xls1, xls2) && xls1 != ch_mapconstbool(false) && xls2 != ch_mapconstbool(false);
 

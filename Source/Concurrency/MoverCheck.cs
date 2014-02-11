@@ -92,6 +92,13 @@ namespace Microsoft.Boogie
                     }
                 }
             }
+            foreach (ActionInfo action in moverTypeChecker.procToActionInfo.Values)
+            {
+                if (action.IsLeftMover && action.hasAssumeCmd)
+                {
+                    moverChecking.CreateNonBlockingChecker(program, action);
+                }
+            }
         }
 
         public sealed class MyDuplicator : Duplicator
@@ -443,18 +450,24 @@ namespace Microsoft.Boogie
             {
                 var domainName = linearTypeChecker.FindDomainName(v);
                 if (domainName == null) continue;
+                if (!linearTypeChecker.linearDomains.ContainsKey(domainName)) continue;
                 domainNameToScope[domainName].Add(v);
             }
-            foreach (Variable v in first.thatInParams)
+            if (first != null)
             {
-                var domainName = linearTypeChecker.FindDomainName(v);
-                if (domainName == null) continue;
-                domainNameToScope[domainName].Add(v);
+                foreach (Variable v in first.thatInParams)
+                {
+                    var domainName = linearTypeChecker.FindDomainName(v);
+                    if (domainName == null) continue;
+                    if (!linearTypeChecker.linearDomains.ContainsKey(domainName)) continue;
+                    domainNameToScope[domainName].Add(v);
+                }
             }
             foreach (Variable v in second.thisInParams)
             {
                 var domainName = linearTypeChecker.FindDomainName(v);
                 if (domainName == null) continue;
+                if (!linearTypeChecker.linearDomains.ContainsKey(domainName)) continue;
                 domainNameToScope[domainName].Add(v);
             }
             foreach (string domainName in domainNameToScope.Keys)
@@ -555,7 +568,7 @@ namespace Microsoft.Boogie
 
         private void CreateFailurePreservationChecker(Program program, ActionInfo first, ActionInfo second)
         {
-            if (first.gateUsedGlobalVars.Intersect(second.modifiedGlobalVars).Count() == 0 && second.isNonBlocking)
+            if (first.gateUsedGlobalVars.Intersect(second.modifiedGlobalVars).Count() == 0)
                 return;
 
             Tuple<ActionInfo, ActionInfo> actionPair = new Tuple<ActionInfo, ActionInfo>(first, second); 
@@ -589,6 +602,37 @@ namespace Microsoft.Boogie
             List<Block> blocks = new List<Block>();
             blocks.Add(new Block(Token.NoToken, "L", new List<Cmd>(), new ReturnCmd(Token.NoToken)));
             string checkerName = string.Format("FailurePreservationChecker_{0}_{1}", first.proc.Name, second.proc.Name);
+            List<IdentifierExpr> globalVars = new List<IdentifierExpr>();
+            program.GlobalVariables().Iter(x => globalVars.Add(Expr.Ident(x)));
+            Procedure proc = new Procedure(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, new List<Variable>(), requires, globalVars, ensures);
+            Implementation impl = new Implementation(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, new List<Variable>(), new List<Variable>(), blocks);
+            impl.Proc = proc;
+            this.decls.Add(impl);
+            this.decls.Add(proc);
+        }
+
+        private void CreateNonBlockingChecker(Program program, ActionInfo second)
+        {
+            List<Variable> inputs = new List<Variable>();
+            inputs.AddRange(second.thisInParams);
+
+            Expr failureExpr = Expr.True;
+            List<Requires> requires = DisjointnessRequires(program, null, second);
+            requires.Add(new Requires(false, failureExpr));
+            foreach (AssertCmd assertCmd in second.thisGate)
+            {
+                requires.Add(new Requires(false, assertCmd.Expr));
+            }
+
+            Expr ensuresExpr = (new TransitionRelationComputation(program, second)).LeftMoverCompute(failureExpr);
+            List<Ensures> ensures = new List<Ensures>();
+            Ensures ensureCheck = new Ensures(false, ensuresExpr);
+            ensureCheck.ErrorData = string.Format("{0} is blocking", second.proc.Name);
+            ensures.Add(ensureCheck);
+
+            List<Block> blocks = new List<Block>();
+            blocks.Add(new Block(Token.NoToken, "L", new List<Cmd>(), new ReturnCmd(Token.NoToken)));
+            string checkerName = string.Format("NonBlockingChecker_{0}", second.proc.Name);
             List<IdentifierExpr> globalVars = new List<IdentifierExpr>();
             program.GlobalVariables().Iter(x => globalVars.Add(Expr.Ident(x)));
             Procedure proc = new Procedure(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, new List<Variable>(), requires, globalVars, ensures);

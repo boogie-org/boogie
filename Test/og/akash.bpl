@@ -1,5 +1,21 @@
 function {:builtin "MapConst"} mapconstbool(bool) : [int]bool;
 
+function {:builtin "MapConst"} MapConstBool(bool) : [int]bool;
+function {:inline} {:linear "tid"} TidCollector(x: int) : [int]bool
+{
+  MapConstBool(false)[x := true]
+}
+
+function {:inline} {:linear "1"} SetCollector1(x: [int]bool) : [int]bool
+{
+  x
+}
+
+function {:inline} {:linear "2"} SetCollector2(x: [int]bool) : [int]bool
+{
+  x
+}
+
 procedure Allocate() returns ({:linear "tid"} xls: int);
 ensures xls != 0;
 

@@ -2,6 +2,12 @@ var a:[int]int;
 
 procedure Allocate() returns ({:linear "tid"} xls: int);
 
+function {:builtin "MapConst"} MapConstBool(bool) : [int]bool;
+function {:inline} {:linear "tid"} TidCollector(x: int) : [int]bool
+{
+  MapConstBool(false)[x := true]
+}
+
 procedure {:entrypoint} {:yields} main() 
 {
     var {:linear "tid"} i: int;
