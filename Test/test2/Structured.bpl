@@ -325,3 +325,20 @@ procedure Q2() returns (x: int)
     }
   }
 }
+
+// There was once a bug in Boogie's handling of the following break statement.
+procedure BreakIssue(x: int) returns (curr: int)
+  ensures x == 18 || curr == 100;  // holds, because the procedure doesn't
+                                   // actually ever terminate if x != 18
+{
+  while (x != 18) { 
+    while (x != 19) {
+      call curr := Read();
+      if (curr == 0) {
+        break;
+      }
+    }
+  }
+}
+
+procedure Read() returns (val: int);

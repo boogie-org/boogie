@@ -38,7 +38,7 @@ namespace Microsoft.Boogie {
     public StructuredCmd ec;
     public TransferCmd tc;
 
-    public BigBlock successorBigBlock;  // null if successor is end of procedure body (or if field has not yet been initialized)
+    public BigBlock successorBigBlock;  // semantic successor (may be a back-edge, pointing back to enclosing while statement); null if successor is end of procedure body (or if field has not yet been initialized)
 
     public BigBlock(IToken tok, string labelName, [Captured] List<Cmd> simpleCmds, StructuredCmd ec, TransferCmd tc) {
       Contract.Requires(simpleCmds != null);
@@ -434,7 +434,7 @@ namespace Microsoft.Boogie {
 
         if (big.ec is WhileCmd) {
           WhileCmd wcmd = (WhileCmd)big.ec;
-          RecordSuccessors(wcmd.Body, successor);
+          RecordSuccessors(wcmd.Body, big);
         } else {
           for (IfCmd ifcmd = big.ec as IfCmd; ifcmd != null; ifcmd = ifcmd.elseIf) {
             RecordSuccessors(ifcmd.thn, successor);
