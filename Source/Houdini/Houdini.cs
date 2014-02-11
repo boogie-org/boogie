@@ -248,8 +248,6 @@ namespace Microsoft.Boogie.Houdini {
 
   public class InlineRequiresVisitor : StandardVisitor {
     public override List<Cmd> VisitCmdSeq(List<Cmd> cmdSeq) {
-      Contract.Requires(cmdSeq != null);
-      Contract.Ensures(Contract.Result<List<Cmd>>() != null);
       List<Cmd> newCmdSeq = new List<Cmd>();
       for (int i = 0, n = cmdSeq.Count; i < n; i++) {
         Cmd cmd = cmdSeq[i];
@@ -289,8 +287,6 @@ namespace Microsoft.Boogie.Houdini {
     }
 
     public override Cmd VisitAssertRequiresCmd(AssertRequiresCmd node) {
-      Contract.Requires(node != null);
-      Contract.Ensures(Contract.Result<Cmd>() != null);
       node.Requires = base.VisitRequires(node.Requires);
       node.Expr = this.VisitExpr(node.Expr);
       return node;

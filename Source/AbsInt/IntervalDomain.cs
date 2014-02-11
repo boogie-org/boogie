@@ -39,6 +39,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
       public readonly BigInteger? Lo;
       public readonly BigInteger? Hi;
       public Node Next;  // always sorted according to StrictlyBefore; readonly after full initialization
+      [Pure]
       public static bool StrictlyBefore(Variable a, Variable b) {
         Contract.Assert(a.UniqueId != b.UniqueId || a == b);
         return a.UniqueId < b.UniqueId;

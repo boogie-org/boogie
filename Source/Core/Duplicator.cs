@@ -370,9 +370,9 @@ namespace Microsoft.Boogie {
     }
     public override YieldCmd VisitYieldCmd(YieldCmd node)
     {
-        //Contract.Requires(node != null);
-        Contract.Ensures(Contract.Result<Requires>() != null);
-        return base.VisitYieldCmd((YieldCmd)node.Clone());
+      //Contract.Requires(node != null);
+      Contract.Ensures(Contract.Result<YieldCmd>() != null);
+      return base.VisitYieldCmd((YieldCmd)node.Clone());
     }
   }
 

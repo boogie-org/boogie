@@ -2306,7 +2306,7 @@ namespace VC {
       Contract.Requires(taskID == -1);
 
       int inductionK = CommandLineOptions.Clo.KInductionDepth;
-      Contract.Requires(inductionK >= 0);
+      Contract.Assume(inductionK >= 0);
 
       bool contRuleApplication = true;
       while (contRuleApplication) {

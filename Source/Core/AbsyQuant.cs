@@ -271,6 +271,7 @@ namespace Microsoft.Boogie {
       current.Next = other;
     }
     // Look for {:name string} in list of attributes.
+    [Pure]
     public static string FindStringAttribute(QKeyValue kv, string name) {
       Contract.Requires(name != null);
       for (; kv != null; kv = kv.Next) {

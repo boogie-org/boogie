@@ -132,26 +132,23 @@ namespace Microsoft.Boogie {
           }
       }
 
-      if (false /*CommandLineOptions.Clo.Trace*/)      {
-
-          Console.WriteLine("Number of procedures with nonempty modsets = {0}", modSets.Keys.Count);
-          foreach (Procedure/*!*/ x in modSets.Keys)
-          {
-              Contract.Assert(x != null);
-              Console.Write("{0} : ", x.Name);
-              bool first = true;
-              foreach (Variable/*!*/ y in modSets[x])
-              {
-                  Contract.Assert(y != null);
-                  if (first)
-                      first = false;
-                  else
-                      Console.Write(", ");
-                  Console.Write("{0}", y.Name);
-              }
-              Console.WriteLine("");
-          }
+#if DEBUG_PRINT
+      Console.WriteLine("Number of procedures with nonempty modsets = {0}", modSets.Keys.Count);
+      foreach (Procedure/*!*/ x in modSets.Keys) {
+        Contract.Assert(x != null);
+        Console.Write("{0} : ", x.Name);
+        bool first = true;
+        foreach (Variable/*!*/ y in modSets[x]) {
+          Contract.Assert(y != null);
+          if (first)
+            first = false;
+          else
+            Console.Write(", ");
+          Console.Write("{0}", y.Name);
+        }
+        Console.WriteLine("");
       }
+#endif
     }
 
     public override Implementation VisitImplementation(Implementation node) {
@@ -722,7 +719,7 @@ namespace Microsoft.Boogie {
     public Implementation/*!*/ impl;
     [ContractInvariantMethod]
     void ObjectInvariant() {
-      Contract.Invariant(cce.NonNullElements(graph.TopologicalSort()));
+      Contract.Invariant(cce.NonNullElements(graph.Nodes));
       Contract.Invariant(cce.NonNullDictionaryAndValues(procsCalled));
       Contract.Invariant(cce.NonNullElements(nodes));
       Contract.Invariant(cce.NonNullDictionaryAndValues(succEdges));
@@ -892,7 +889,7 @@ namespace Microsoft.Boogie {
       Contract.Invariant(cce.NonNullDictionaryAndValues(name2Proc));
       Contract.Invariant(cce.NonNullDictionaryAndValues(callers) &&
         Contract.ForAll(callers.Values, v => cce.NonNullElements(v)));
-      Contract.Invariant(cce.NonNullElements(callGraph.TopologicalSort()));
+      Contract.Invariant(cce.NonNullElements(callGraph.Nodes));
       Contract.Invariant(procPriority != null);
       Contract.Invariant(cce.NonNullDictionaryAndValues(varsLiveAtEntry));
       Contract.Invariant(cce.NonNullDictionaryAndValues(varsLiveAtExit) &&

@@ -783,7 +783,7 @@ namespace Microsoft.Boogie {
 
     public static Graph<Block/*!*/>/*!*/ GraphFromImpl(Implementation impl) {
       Contract.Requires(impl != null);
-      Contract.Ensures(cce.NonNullElements(Contract.Result<Graph<Block>>().TopologicalSort()));
+      Contract.Ensures(cce.NonNullElements(Contract.Result<Graph<Block>>().Nodes));
       Contract.Ensures(Contract.Result<Graph<Block>>() != null);
 
       Graph<Block/*!*/> g = new Graph<Block/*!*/>();
