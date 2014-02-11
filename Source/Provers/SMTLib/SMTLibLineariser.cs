@@ -195,9 +195,9 @@ namespace Microsoft.Boogie.SMTLib
         BigDec lit = ((VCExprRealLit)node).Val;
         if (lit.IsNegative)
           // In SMT2 "-42" is an identifier (SMT2, Sect. 3.2 "Symbols")
-          wr.Write("(- 0.0 {0})", lit.Abs.ToDecimalString(20));
+          wr.Write("(- 0.0 {0})", lit.Abs.ToDecimalString());
         else
-          wr.Write(lit.ToDecimalString(20));
+          wr.Write(lit.ToDecimalString());
       }
       else {
         Contract.Assert(false);

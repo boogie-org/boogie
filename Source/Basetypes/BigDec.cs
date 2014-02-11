@@ -193,6 +193,54 @@ namespace Microsoft.Basetypes {
       }
     }
 
+    [Pure]
+    public string ToDecimalString() {
+      string m = this.mantissa.ToString();
+      var e = this.exponent;
+      if (0 <= this.exponent) {
+        return m + Zeros(e) + ".0";
+      } else {
+        e = -e;
+        // compute k to be the longest suffix of m consisting of all zeros (but no longer than e, and not the entire string)
+        var maxK = e < m.Length ? e : m.Length - 1;
+        var last = m.Length - 1;
+        var k = 0;
+        while (k < maxK && m[last - k] == '0') {
+          k++;
+        }
+        if (0 < k) {
+          // chop off the suffix of k zeros from m and adjust e accordingly
+          m = m.Substring(0, m.Length - k);
+          e -= k;
+        }
+        if (e == 0) {
+          return m;
+        } else if (e < m.Length) {
+          var n = m.Length - e;
+          return m.Substring(0, n) + "." + m.Substring(n);
+        } else {
+          return "0." + Zeros(e - m.Length) + m;
+        }
+      }
+    }
+
+    [Pure]
+    public static string Zeros(int n) {
+      Contract.Requires(0 <= n);
+      if (n <= 10) {
+        var tenZeros = "0000000000";
+        return tenZeros.Substring(0, n);
+      } else {
+        var d = n / 2;
+        var s = Zeros(d);
+        if (n % 2 == 0) {
+          return s + s;
+        } else {
+          return s + s + "0";
+        }
+      }
+    }
+
 
     ////////////////////////////////////////////////////////////////////////////
     // Basic arithmetic operations

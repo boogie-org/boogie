@@ -279,8 +279,16 @@ Execution trace:
 
 Boogie program verifier finished with 0 verified, 1 error
 --------------------- File Real.bpl ----------------------------
+Real.bpl(26,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    Real.bpl(23,5): anon0
+    Real.bpl(26,5): anon3_Then
+Real.bpl(41,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    Real.bpl(34,3): anon0
+    Real.bpl(41,5): anon3_Else
 
-Boogie program verifier finished with 1 verified, 0 errors
+Boogie program verifier finished with 2 verified, 2 errors
 --------------------- File NameClash.bpl ----------------------------
 
 Boogie program verifier finished with 1 verified, 0 errors
@@ -556,8 +564,16 @@ Execution trace:
 
 Boogie program verifier finished with 0 verified, 1 error
 --------------------- File Real.bpl ----------------------------
+Real.bpl(26,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    Real.bpl(23,5): anon0
+    Real.bpl(26,5): anon3_Then
+Real.bpl(41,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    Real.bpl(34,3): anon0
+    Real.bpl(41,5): anon3_Else
 
-Boogie program verifier finished with 1 verified, 0 errors
+Boogie program verifier finished with 2 verified, 2 errors
 --------------------- File NameClash.bpl ----------------------------
 
 Boogie program verifier finished with 1 verified, 0 errors
@@ -836,8 +852,16 @@ Execution trace:
 
 Boogie program verifier finished with 0 verified, 1 error
 --------------------- File Real.bpl ----------------------------
+Real.bpl(26,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    Real.bpl(23,5): anon0
+    Real.bpl(26,5): anon3_Then
+Real.bpl(41,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    Real.bpl(34,3): anon0
+    Real.bpl(41,5): anon3_Else
 
-Boogie program verifier finished with 1 verified, 0 errors
+Boogie program verifier finished with 2 verified, 2 errors
 --------------------- File NameClash.bpl ----------------------------
 
 Boogie program verifier finished with 1 verified, 0 errors
