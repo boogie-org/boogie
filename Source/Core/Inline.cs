@@ -48,8 +48,7 @@ namespace Microsoft.Boogie {
     public override Expr VisitCodeExpr(CodeExpr node)
     {
         Inliner codeExprInliner = new Inliner(program, inlineCallback, CommandLineOptions.Clo.InlineDepth);
-        codeExprInliner.newLocalVars = new List<Variable>(node.LocVars);
-        codeExprInliner.newModifies = new List<IdentifierExpr>();
+        codeExprInliner.newLocalVars.AddRange(node.LocVars);
         codeExprInliner.inlinedProcLblMap = this.inlinedProcLblMap;
         List<Block> newCodeExprBlocks = codeExprInliner.DoInlineBlocks(node.Blocks, ref inlinedSomething);
         return new CodeExpr(codeExprInliner.newLocalVars, newCodeExprBlocks);
@@ -92,14 +91,16 @@ namespace Microsoft.Boogie {
       this.inlineDepth = inlineDepth;
       this.codeCopier = new CodeCopier();
       this.inlineCallback = cb;
+      this.newLocalVars = new List<Variable>();
+      this.newModifies = new List<IdentifierExpr>();
     }
 
     protected static void ProcessImplementation(Implementation impl, Inliner inliner) {
       Contract.Requires(impl != null);
       Contract.Requires(impl.Proc != null);
 
-      inliner.newLocalVars = new List<Variable>(impl.LocVars);
-      inliner.newModifies = new List<IdentifierExpr>(impl.Proc.Modifies);
+      inliner.newLocalVars.AddRange(impl.LocVars);
+      inliner.newModifies.AddRange(impl.Proc.Modifies);
 
       bool inlined = false;
       List<Block> newBlocks = inliner.DoInlineBlocks(impl.Blocks, ref inlined);
