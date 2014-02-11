@@ -28,7 +28,7 @@ procedure {:yields} Enter()
 ensures {:atomic 1} |{ A: assume b == 0; b := 1; return true; }|;
 {
     var _old, curr: int;
-    L: 
+    while (true) { 
     	yield;
         call _old := CAS(0, 1);
 	yield;
@@ -40,9 +40,10 @@ ensures {:atomic 1} |{ A: assume b == 0; b := 1; return true; }|;
 	    call curr := Read();
 	    yield;
 	    if (curr == 0) {
-	        goto L;
+	        break;
 	    }
 	}
+    }
 }
 
 procedure {:yields} Read() returns (val: int);
