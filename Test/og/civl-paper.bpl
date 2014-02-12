@@ -1,6 +1,12 @@
 type X;
 const nil: X;
 
+function {:builtin "MapConst"} MapConstBool(bool) : [X]bool;
+function {:inline} {:linear "tid"} TidCollector(x: X) : [X]bool
+{
+  MapConstBool(false)[x := true]
+}
+
 type lmap;
 function {:linear "mem"} dom(lmap): [int]bool;
 function map(lmap): [int]int;
