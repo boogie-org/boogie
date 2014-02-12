@@ -115,3 +115,7 @@ Boogie program verifier finished with 6 verified, 0 errors
 -------------------- multiset.bpl --------------------
 
 Boogie program verifier finished with 102 verified, 0 errors
+
+-------------------- civl-paper.bpl --------------------
+
+Boogie program verifier finished with 35 verified, 0 errors
