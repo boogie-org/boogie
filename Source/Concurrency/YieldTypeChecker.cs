@@ -277,7 +277,8 @@ namespace Microsoft.Boogie
                             }
                             else
                             {
-                                Debug.Assert(false);
+                                Debug.Assert(parCallCmd.CallCmds.Count == 1);
+                                edgeLabels[edge] = 'A';
                             }
                         }
                     }
