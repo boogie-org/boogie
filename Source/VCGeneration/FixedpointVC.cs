@@ -1431,61 +1431,66 @@ namespace Microsoft.Boogie
 
         private bool generated = false;
 
+        static private Object thisLock = new Object();
+
         public override VC.VCGen.Outcome VerifyImplementation(Implementation impl, VerifierCallback collector)
         {
 
-            Procedure proc = impl.Proc;
-
-            // we verify all the impls at once, so we need to execute only once
-            // TODO: make sure needToCheck is true only once
-            bool needToCheck = false;
-            if (mode == Mode.OldCorral)
-                needToCheck = proc.FindExprAttribute("inline") == null && !(proc is LoopProcedure);
-            else if (mode == Mode.Corral)
-                needToCheck = QKeyValue.FindBoolAttribute(impl.Attributes, "entrypoint") && !(proc is LoopProcedure);
-            else
-                needToCheck = impl.Name == main_proc_name;
-
-            if (needToCheck)
+            lock (thisLock)
             {
+                Procedure proc = impl.Proc;
 
-                var start = DateTime.Now;
+                // we verify all the impls at once, so we need to execute only once
+                // TODO: make sure needToCheck is true only once
+                bool needToCheck = false;
+                if (mode == Mode.OldCorral)
+                    needToCheck = proc.FindExprAttribute("inline") == null && !(proc is LoopProcedure);
+                else if (mode == Mode.Corral || mode == Mode.Boogie)
+                    needToCheck = QKeyValue.FindBoolAttribute(impl.Attributes, "entrypoint") && !(proc is LoopProcedure);
+                else
+                    needToCheck = impl.Name == main_proc_name;
 
-                if (!generated)
+                if (needToCheck)
                 {
-                    Generate();
-                    Console.WriteLine("generate: {0}s", (DateTime.Now - start).TotalSeconds);
-                    generated = true;
+
+                    var start = DateTime.Now;
+
+                    if (!generated)
+                    {
+                        Generate();
+                        Console.WriteLine("generate: {0}s", (DateTime.Now - start).TotalSeconds);
+                        generated = true;
+                    }
+
+
+                    Console.WriteLine("Verifying {0}...", impl.Name);
+
+                    RPFP.Node cexroot = null;
+                    // start = DateTime.Now;
+                    var checkres = Check(ref cexroot);
+                    Console.WriteLine("check: {0}s", (DateTime.Now - start).TotalSeconds);
+                    switch (checkres)
+                    {
+                        case RPFP.LBool.True:
+                            Console.WriteLine("Counterexample found.\n");
+                            // start = DateTime.Now;
+                            Counterexample cex = CreateBoogieCounterExample(cexroot.owner, cexroot, impl);
+                            // cexroot.owner.DisposeDualModel();
+                            // cex.Print(0);  // just for testing
+                            collector.OnCounterexample(cex, "assertion failure");
+                            Console.WriteLine("cex: {0}s", (DateTime.Now - start).TotalSeconds);
+                            return VC.ConditionGeneration.Outcome.Errors;
+                        case RPFP.LBool.False:
+                            Console.WriteLine("Procedure is correct.");
+                            return Outcome.Correct;
+                        case RPFP.LBool.Undef:
+                            Console.WriteLine("Inconclusive result.");
+                            return Outcome.ReachedBound;
+                    }
                 }
 
-
-                Console.WriteLine("Verifying {0}...", impl.Name);
-
-                RPFP.Node cexroot = null;
-                // start = DateTime.Now;
-                var checkres = Check(ref cexroot);
-                Console.WriteLine("check: {0}s", (DateTime.Now - start).TotalSeconds);
-                switch (checkres)
-                {
-                    case RPFP.LBool.True:
-                        Console.WriteLine("Counterexample found.\n");
-                        // start = DateTime.Now;
-                        Counterexample cex = CreateBoogieCounterExample(cexroot.owner, cexroot, impl);
-                        // cexroot.owner.DisposeDualModel();
-                        // cex.Print(0);  // just for testing
-                        collector.OnCounterexample(cex, "assertion failure");
-                        Console.WriteLine("cex: {0}s", (DateTime.Now - start).TotalSeconds);
-                        return VC.ConditionGeneration.Outcome.Errors;
-                    case RPFP.LBool.False:
-                        Console.WriteLine("Procedure is correct.");
-                        return Outcome.Correct;
-                    case RPFP.LBool.Undef:
-                        Console.WriteLine("Inconclusive result.");
-                        return Outcome.ReachedBound;
-                }
+                return Outcome.Inconclusive;
             }
-
-            return Outcome.Inconclusive;
         }
 
         public void FindLabelsRec(HashSet<Term> memo, Term t, Dictionary<string, Term> res)
