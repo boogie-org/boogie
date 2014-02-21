@@ -66,6 +66,8 @@ namespace Microsoft.Boogie
 			if (s != null)
 				return GetElt (s);
 			List<object> os = (List<object>)o;
+            if (!(os[0] is string))
+                os.Insert(0, "_");  // KLM: fix crash on ((as const (Array Int Int)) 0)
 			List<Model.Element> args = new List<Model.Element> ();
 			for (int i = 1; i < os.Count; i++) {
 				args.Add (GetElt (os [i]));
