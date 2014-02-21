@@ -7,13 +7,9 @@ function {:inline} {:linear "Perm"} SetCollectorPerm(x: [int]bool) : [int]bool
   x
 }
 
-
-var {:linear "Perm"} Permissions: [int]bool;
-
-procedure Allocate_Perm() returns ({:linear "Perm"} xls: [int]bool);
-modifies Permissions;
+procedure Allocate_Perm({:linear "Perm"} Permissions: [int]bool) returns ({:linear "Perm"} xls: [int]bool);
 requires Permissions == mapconstbool(true);
-ensures xls == mapconstbool(true) && Permissions == mapconstbool(false);
+ensures xls == mapconstbool(true);
 
 procedure {:yields} {:stable} PB({:linear "Perm"} permVar_in:[int]bool)
 requires permVar_in[0] && g == 0;
@@ -32,13 +28,12 @@ requires permVar_in[0] && g == 0;
   assert g == 1;
 }
 
-procedure{:entrypoint} {:yields} Main()
-modifies g, Permissions;
+procedure{:entrypoint} {:yields} Main({:linear "Perm"} Permissions: [int]bool)
 requires Permissions == mapconstbool(true);
 {
   var {:linear "Perm"} permVar_out: [int]bool;
 
-  call permVar_out := Allocate_Perm();
+  call permVar_out := Allocate_Perm(Permissions);
 
   g := 0;
   async call PB(permVar_out);

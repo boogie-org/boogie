@@ -72,6 +72,7 @@ namespace Microsoft.Boogie
                 HashSet<Variable> vars = new HashSet<Variable>();
                 foreach (Variable var in this.availableLinearVars[absy])
                 {
+                    if (var is GlobalVariable) continue;
                     string domainName = FindDomainName(var);
                     if (this.linearDomains.ContainsKey(domainName))
                     {
