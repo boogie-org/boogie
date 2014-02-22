@@ -488,6 +488,7 @@ namespace Microsoft.Boogie {
     public int  /*0..9*/StepsBeforeWidening = 0;           // The number of steps that must be done before applying a widen operator
 
     public string OwickiGriesDesugaredOutputFile = null;
+    public bool TrustAtomicityTypes = false;
 
     public enum VCVariety {
       Structured,
@@ -1371,7 +1372,8 @@ namespace Microsoft.Boogie {
               ps.CheckBooleanFlag("nonUniformUnfolding", ref NonUniformUnfolding) ||
               ps.CheckBooleanFlag("deterministicExtractLoops", ref DeterministicExtractLoops) ||
               ps.CheckBooleanFlag("verifySnapshots", ref VerifySnapshots) ||
-              ps.CheckBooleanFlag("verifySeparately", ref VerifySeparately)
+              ps.CheckBooleanFlag("verifySeparately", ref VerifySeparately) ||
+              ps.CheckBooleanFlag("trustAtomicityTypes", ref TrustAtomicityTypes)
               ) {
             // one of the boolean flags matched
             return true;
