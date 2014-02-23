@@ -489,6 +489,7 @@ namespace Microsoft.Boogie {
 
     public string OwickiGriesDesugaredOutputFile = null;
     public bool TrustAtomicityTypes = false;
+    public int TrustPhasesUpto = -1;
 
     public enum VCVariety {
       Structured,
@@ -731,6 +732,13 @@ namespace Microsoft.Boogie {
         case "OwickiGries":
           if (ps.ConfirmArgumentCount(1)) {
               OwickiGriesDesugaredOutputFile = args[ps.i];
+          }
+          return true;
+
+        case "trustPhasesUpto":
+          if (ps.ConfirmArgumentCount(1))
+          {
+              ps.GetNumericArgument(ref TrustPhasesUpto);
           }
           return true;
 
