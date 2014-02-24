@@ -1258,7 +1258,7 @@ namespace Microsoft.Boogie
             Program program = linearTypeChecker.program;
             foreach (int phaseNum in moverTypeChecker.allPhaseNums)
             {
-                if (phaseNum <= CommandLineOptions.Clo.TrustPhasesUpto) continue;
+                if (CommandLineOptions.Clo.TrustPhasesDownto <= phaseNum || phaseNum <= CommandLineOptions.Clo.TrustPhasesUpto) continue;
 
                 MyDuplicator duplicator = new MyDuplicator(moverTypeChecker, phaseNum);
                 List<Implementation> impls = new List<Implementation>();
