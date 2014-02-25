@@ -51,7 +51,7 @@ namespace Microsoft.Boogie {
   }
 
   /// <summary>
-  /// Walks an IR, mutating it into a new form
+  /// Walks an IR, mutating it into a new form. (For a subclass that does not mutate the IR, see ReadOnlyVisitor.)
   /// </summary>   
   public abstract class StandardVisitor : Visitor {
     public Visitor callingVisitor;
@@ -62,8 +62,6 @@ namespace Microsoft.Boogie {
       this.callingVisitor = callingVisitor;
     }
     public override Absy Visit(Absy node) {
-      //Contract.Requires(node != null);
-      Contract.Ensures(Contract.Result<Absy>() != null);
       return node.StdDispatch(this);
     }
     public virtual Cmd VisitAssertCmd(AssertCmd node) {
@@ -150,8 +148,8 @@ namespace Microsoft.Boogie {
       return blockSeq;
     }
     public virtual List<Block/*!*/>/*!*/ VisitBlockList(List<Block/*!*/>/*!*/ blocks) {
-      Contract.Requires(cce.NonNullElements(blocks));
-      Contract.Ensures(cce.NonNullElements(Contract.Result<List<Block>>()));
+      Contract.Requires(blocks != null);
+      Contract.Ensures(Contract.Result<List<Block>>() != null);
       for (int i = 0, n = blocks.Count; i < n; i++) {
         blocks[i] = this.VisitBlock(blocks[i]);
       }
@@ -227,8 +225,8 @@ namespace Microsoft.Boogie {
       return node;
     }
     public virtual List<Declaration/*!*/>/*!*/ VisitDeclarationList(List<Declaration/*!*/>/*!*/ declarationList) {
-      Contract.Requires(cce.NonNullElements(declarationList));
-      Contract.Ensures(cce.NonNullElements(Contract.Result<List<Declaration>>()));
+      Contract.Requires(declarationList != null);
+      Contract.Ensures(Contract.Result<List<Declaration>>() != null);
       for (int i = 0, n = declarationList.Count; i < n; i++)
         declarationList[i] = cce.NonNull((Declaration/*!*/)this.Visit(declarationList[i]));
       return declarationList;
@@ -604,6 +602,12 @@ namespace Microsoft.Boogie {
     }
   }
 
+  /// <summary>
+  /// A ReadOnlyVisitor visits all the nodes of a given Absy.  The visitor may collect information from
+  /// the nodes, may change fields contained in the data structure, but may not replace any nodes in the
+  /// data structure.  To enforce this, all Visit...(node) methods have a postcondition that says that
+  /// the return value is equal to the given "node".
+  /// </summary>
   public abstract class ReadOnlyVisitor : StandardVisitor
   {
       public ReadOnlyVisitor()
@@ -615,21 +619,18 @@ namespace Microsoft.Boogie {
       }
       public override Absy Visit(Absy node)
       {
-          //Contract.Requires(node != null);
-          Contract.Ensures(Contract.Result<Absy>() != null);
+          Contract.Ensures(Contract.Result<Absy>() == node);
           return node.StdDispatch(this);
       }
       public override Cmd VisitAssertCmd(AssertCmd node)
       {
-          Contract.Requires(node != null);
-          Contract.Ensures(Contract.Result<Cmd>() != null);
+          Contract.Ensures(Contract.Result<Cmd>() == node);
           this.VisitExpr(node.Expr);
           return node;
       }
       public override Cmd VisitAssignCmd(AssignCmd node)
       {
-          Contract.Requires(node != null);
-          Contract.Ensures(Contract.Result<Cmd>() != null);
+          Contract.Ensures(Contract.Result<Cmd>() == node);
           for (int i = 0; i < node.Lhss.Count; ++i)
           {
               this.Visit(node.Lhss[i]);
@@ -639,83 +640,72 @@ namespace Microsoft.Boogie {
       }
       public override Cmd VisitAssumeCmd(AssumeCmd node)
       {
-          Contract.Requires(node != null);
-          Contract.Ensures(Contract.Result<Cmd>() != null);
+          Contract.Ensures(Contract.Result<Cmd>() == node);
           this.VisitExpr(node.Expr);
           return node;
       }
       public override AtomicRE VisitAtomicRE(AtomicRE node)
       {
-          Contract.Requires(node != null);
-          Contract.Ensures(Contract.Result<AtomicRE>() != null);
+          Contract.Ensures(Contract.Result<AtomicRE>() == node);
           this.VisitBlock(node.b);
           return node;
       }
       public override Axiom VisitAxiom(Axiom node)
       {
-          Contract.Requires(node != null);
-          Contract.Ensures(Contract.Result<Axiom>() != null);
+          Contract.Ensures(Contract.Result<Axiom>() == node);
           this.VisitExpr(node.Expr);
           return node;
       }
       public override Type VisitBasicType(BasicType node)
       {
-          Contract.Requires(node != null);
-          Contract.Ensures(Contract.Result<Type>() != null);
+          Contract.Ensures(Contract.Result<Type>() == node);
           return this.VisitType(node);
       }
       public override BvConcatExpr VisitBvConcatExpr(BvConcatExpr node)
       {
-          Contract.Requires(node != null);
-          Contract.Ensures(Contract.Result<BvConcatExpr>() != null);
+          Contract.Ensures(Contract.Result<BvConcatExpr>() == node);
           this.VisitExpr(node.E0);
           this.VisitExpr(node.E1);
           return node;
       }
       public override Type VisitBvType(BvType node)
       {
-          Contract.Requires(node != null);
-          Contract.Ensures(Contract.Result<Type>() != null);
+          Contract.Ensures(Contract.Result<Type>() == node);
           return this.VisitType(node);
       }
       public override Type VisitBvTypeProxy(BvTypeProxy node)
       {
-          Contract.Requires(node != null);
-          Contract.Ensures(Contract.Result<Type>() != null);
+          Contract.Ensures(Contract.Result<Type>() == node);
           // if the type proxy is instantiated with some more
           // specific type, we visit the instantiation
           if (node.ProxyFor != null)
-              return (Type)this.Visit(node.ProxyFor);
+              this.Visit(node.ProxyFor);
           return this.VisitType(node);
       }
       public override Block VisitBlock(Block node)
       {
-          Contract.Requires(node != null);
-          Contract.Ensures(Contract.Result<Block>() != null);
+          Contract.Ensures(Contract.Result<Block>() == node);
           this.VisitCmdSeq(node.Cmds);
           this.Visit(cce.NonNull(node.TransferCmd));
           return node;
       }
       public override Expr VisitCodeExpr(CodeExpr node)
       {
-          Contract.Requires(node != null);
-          Contract.Ensures(Contract.Result<Expr>() != null);
+          Contract.Ensures(Contract.Result<Expr>() == node);
           this.VisitVariableSeq(node.LocVars);
           this.VisitBlockList(node.Blocks);
           return node;
       }
       public override List<Block> VisitBlockSeq(List<Block> blockSeq)
       {
-          Contract.Requires(blockSeq != null);
-          Contract.Ensures(Contract.Result<List<Block>>() != null);
+          Contract.Ensures(Contract.Result<List<Block>>() == blockSeq);
           for (int i = 0, n = blockSeq.Count; i < n; i++)
               this.VisitBlock(cce.NonNull(blockSeq[i]));
           return blockSeq;
       }
       public override List<Block/*!*/>/*!*/ VisitBlockList(List<Block/*!*/>/*!*/ blocks)
       {
-          Contract.Requires(cce.NonNullElements(blocks));
-          Contract.Ensures(cce.NonNullElements(Contract.Result<List<Block>>()));
+          Contract.Ensures(Contract.Result<List<Block>>() == blocks);
           for (int i = 0, n = blocks.Count; i < n; i++)
           {
               this.VisitBlock(blocks[i]);
@@ -724,14 +714,12 @@ namespace Microsoft.Boogie {
       }
       public override BoundVariable VisitBoundVariable(BoundVariable node)
       {
-          Contract.Requires(node != null);
-          Contract.Ensures(Contract.Result<BoundVariable>() != null);
+          Contract.Ensures(Contract.Result<BoundVariable>() == node);
           return (BoundVariable)this.VisitVariable(node);
       }
       public override Cmd VisitCallCmd(CallCmd node)
       {
-          Contract.Requires(node != null);
-          Contract.Ensures(Contract.Result<Cmd>() != null);
+          Contract.Ensures(Contract.Result<Cmd>() == node);
           for (int i = 0; i < node.Ins.Count; ++i)
               if (node.Ins[i] != null)
                   this.VisitExpr(node.Ins[i]);
@@ -742,8 +730,7 @@ namespace Microsoft.Boogie {
       }
       public override Cmd VisitParCallCmd(ParCallCmd node)
       {
-          Contract.Requires(node != null);
-          Contract.Ensures(Contract.Result<Cmd>() != null);
+          Contract.Ensures(Contract.Result<Cmd>() == node);
           for (int i = 0; i < node.CallCmds.Count; i++)
           {
               if (node.CallCmds[i] != null)
@@ -753,140 +740,120 @@ namespace Microsoft.Boogie {
       }
       public override List<Cmd> VisitCmdSeq(List<Cmd> cmdSeq)
       {
-          Contract.Requires(cmdSeq != null);
-          Contract.Ensures(Contract.Result<List<Cmd>>() != null);
+          Contract.Ensures(Contract.Result<List<Cmd>>() == cmdSeq);
           for (int i = 0, n = cmdSeq.Count; i < n; i++)
               this.Visit(cce.NonNull(cmdSeq[i])); // call general Visit so subtypes of Cmd get visited by their particular visitor
           return cmdSeq;
       }
       public override Choice VisitChoice(Choice node)
       {
-          Contract.Requires(node != null);
-          Contract.Ensures(Contract.Result<Choice>() != null);
+          Contract.Ensures(Contract.Result<Choice>() == node);
           this.VisitRESeq(node.rs);
           return node;
       }
       public override Cmd VisitCommentCmd(CommentCmd node)
       {
-          Contract.Requires(node != null);
-          Contract.Ensures(Contract.Result<Cmd>() != null);
+          Contract.Ensures(Contract.Result<Cmd>() == node);
           return node;
       }
       public override Constant VisitConstant(Constant node)
       {
-          Contract.Requires(node != null);
-          Contract.Ensures(Contract.Result<Constant>() != null);
+          Contract.Ensures(Contract.Result<Constant>() == node);
           return node;
       }
       public override CtorType VisitCtorType(CtorType node)
       {
-          Contract.Requires(node != null);
-          Contract.Ensures(Contract.Result<CtorType>() != null);
+          Contract.Ensures(Contract.Result<CtorType>() == node);
           for (int i = 0; i < node.Arguments.Count; ++i)
               this.Visit(node.Arguments[i]);
           return node;
       }
       public override Declaration VisitDeclaration(Declaration node)
       {
-          Contract.Requires(node != null);
-          Contract.Ensures(Contract.Result<Declaration>() != null);
+          Contract.Ensures(Contract.Result<Declaration>() == node);
           return node;
       }
       public override List<Declaration/*!*/>/*!*/ VisitDeclarationList(List<Declaration/*!*/>/*!*/ declarationList)
       {
-          Contract.Requires(cce.NonNullElements(declarationList));
-          Contract.Ensures(cce.NonNullElements(Contract.Result<List<Declaration>>()));
+          Contract.Ensures(Contract.Result<List<Declaration>>() == declarationList);
           for (int i = 0, n = declarationList.Count; i < n; i++)
               this.Visit(declarationList[i]);
           return declarationList;
       }
       public override DeclWithFormals VisitDeclWithFormals(DeclWithFormals node)
       {
-          Contract.Requires(node != null);
-          Contract.Ensures(Contract.Result<DeclWithFormals>() != null);
+          Contract.Ensures(Contract.Result<DeclWithFormals>() == node);
           this.VisitVariableSeq(node.InParams);
           this.VisitVariableSeq(node.OutParams);
           return node;
       }
       public override ExistsExpr VisitExistsExpr(ExistsExpr node)
       {
-          Contract.Requires(node != null);
-          Contract.Ensures(Contract.Result<ExistsExpr>() != null);
+          Contract.Ensures(Contract.Result<ExistsExpr>() == node);
           return (ExistsExpr)this.VisitQuantifierExpr(node);
       }
       public override BvExtractExpr VisitBvExtractExpr(BvExtractExpr node)
       {
-          Contract.Requires(node != null);
-          Contract.Ensures(Contract.Result<BvExtractExpr>() != null);
+          Contract.Ensures(Contract.Result<BvExtractExpr>() == node);
           this.VisitExpr(node.Bitvector);
           return node;
       }
       public override Expr VisitExpr(Expr node)
       {
-          Contract.Requires(node != null);
-          Contract.Ensures(Contract.Result<Expr>() != null);
+          Contract.Ensures(Contract.Result<Expr>() == node);
           return (Expr)this.Visit(node);
       }
       public override List<Expr> VisitExprSeq(List<Expr> exprSeq)
       {
-          //Contract.Requires(exprSeq != null);
-          Contract.Ensures(Contract.Result<List<Expr>>() != null);
+          Contract.Ensures(Contract.Result<List<Expr>>() == exprSeq);
           for (int i = 0, n = exprSeq.Count; i < n; i++)
               this.VisitExpr(cce.NonNull(exprSeq[i]));
           return exprSeq;
       }
-      public override Requires VisitRequires(Requires @requires)
+      public override Requires VisitRequires(Requires requires)
       {
-          Contract.Requires(@requires != null);
-          Contract.Ensures(Contract.Result<Requires>() != null);
-          this.VisitExpr(@requires.Condition);
-          return @requires;
+          Contract.Ensures(Contract.Result<Requires>() == requires);
+          this.VisitExpr(requires.Condition);
+          return requires;
       }
       public override List<Requires> VisitRequiresSeq(List<Requires> requiresSeq)
       {
-          Contract.Requires(requiresSeq != null);
-          Contract.Ensures(Contract.Result<List<Requires>>() != null);
+          Contract.Ensures(Contract.Result<List<Requires>>() == requiresSeq);
           for (int i = 0, n = requiresSeq.Count; i < n; i++)
               this.VisitRequires(requiresSeq[i]);
           return requiresSeq;
       }
-      public override Ensures VisitEnsures(Ensures @ensures)
+      public override Ensures VisitEnsures(Ensures ensures)
       {
-          Contract.Requires(@ensures != null);
-          Contract.Ensures(Contract.Result<Ensures>() != null);
-          this.VisitExpr(@ensures.Condition);
-          return @ensures;
+          Contract.Ensures(Contract.Result<Ensures>() == ensures);
+          this.VisitExpr(ensures.Condition);
+          return ensures;
       }
       public override List<Ensures> VisitEnsuresSeq(List<Ensures> ensuresSeq)
       {
-          Contract.Requires(ensuresSeq != null);
-          Contract.Ensures(Contract.Result<List<Ensures>>() != null);
+          Contract.Ensures(Contract.Result<List<Ensures>>() == ensuresSeq);
           for (int i = 0, n = ensuresSeq.Count; i < n; i++)
               this.VisitEnsures(ensuresSeq[i]);
           return ensuresSeq;
       }
       public override ForallExpr VisitForallExpr(ForallExpr node)
       {
-          Contract.Requires(node != null);
-          Contract.Ensures(Contract.Result<ForallExpr>() != null);
+          Contract.Ensures(Contract.Result<ForallExpr>() == node);
           return (ForallExpr)this.VisitQuantifierExpr(node);
       }
       public override LambdaExpr VisitLambdaExpr(LambdaExpr node)
       {
-          Contract.Requires(node != null);
-          Contract.Ensures(Contract.Result<LambdaExpr>() != null);
+          Contract.Ensures(Contract.Result<LambdaExpr>() == node);
           return (LambdaExpr)this.VisitBinderExpr(node);
       }
       public override Formal VisitFormal(Formal node)
       {
-          Contract.Requires(node != null);
-          Contract.Ensures(Contract.Result<Formal>() != null);
+          Contract.Ensures(Contract.Result<Formal>() == node);
           return node;
       }
       public override Function VisitFunction(Function node)
       {
-          Contract.Requires(node != null);
-          Contract.Ensures(Contract.Result<Function>() != null);
+          Contract.Ensures(Contract.Result<Function>() == node);
           node = (Function)this.VisitDeclWithFormals(node);
           if (node.Body != null)
               this.VisitExpr(node.Body);
@@ -894,44 +861,38 @@ namespace Microsoft.Boogie {
       }
       public override GlobalVariable VisitGlobalVariable(GlobalVariable node)
       {
-          Contract.Requires(node != null);
-          Contract.Ensures(Contract.Result<GlobalVariable>() != null);
+          Contract.Ensures(Contract.Result<GlobalVariable>() == node);
           return (GlobalVariable)this.VisitVariable(node);
       }
       public override GotoCmd VisitGotoCmd(GotoCmd node)
       {
-          Contract.Requires(node != null);
-          Contract.Ensures(Contract.Result<GotoCmd>() != null);
+          Contract.Ensures(Contract.Result<GotoCmd>() == node);
           // do not visit the labelTargets, or control-flow loops will lead to a looping visitor
           return node;
       }
       public override Cmd VisitHavocCmd(HavocCmd node)
       {
-          Contract.Requires(node != null);
-          Contract.Ensures(Contract.Result<Cmd>() != null);
+          Contract.Ensures(Contract.Result<Cmd>() == node);
           this.VisitIdentifierExprSeq(node.Vars);
           return node;
       }
       public override Expr VisitIdentifierExpr(IdentifierExpr node)
       {
-          Contract.Requires(node != null);
-          Contract.Ensures(Contract.Result<Expr>() != null);
+          Contract.Ensures(Contract.Result<Expr>() == node);
           if (node.Decl != null)
               this.VisitVariable(node.Decl);
           return node;
       }
       public override List<IdentifierExpr> VisitIdentifierExprSeq(List<IdentifierExpr> identifierExprSeq)
       {
-          Contract.Requires(identifierExprSeq != null);
-          Contract.Ensures(Contract.Result<List<IdentifierExpr>>() != null);
+          Contract.Ensures(Contract.Result<List<IdentifierExpr>>() == identifierExprSeq);
           for (int i = 0, n = identifierExprSeq.Count; i < n; i++)
               this.VisitIdentifierExpr(cce.NonNull(identifierExprSeq[i]));
           return identifierExprSeq;
       }
       public override Implementation VisitImplementation(Implementation node)
       {
-          Contract.Requires(node != null);
-          Contract.Ensures(Contract.Result<Implementation>() != null);
+          Contract.Ensures(Contract.Result<Implementation>() == node);
           this.VisitVariableSeq(node.LocVars);
           this.VisitBlockList(node.Blocks);
           this.VisitProcedure(cce.NonNull(node.Proc));
@@ -939,22 +900,19 @@ namespace Microsoft.Boogie {
       }
       public override LiteralExpr VisitLiteralExpr(LiteralExpr node)
       {
-          Contract.Requires(node != null);
-          Contract.Ensures(Contract.Result<LiteralExpr>() != null);
+          Contract.Ensures(Contract.Result<LiteralExpr>() == node);
           return node;
       }
 
       public override LocalVariable VisitLocalVariable(LocalVariable node)
       {
-          Contract.Requires(node != null);
-          Contract.Ensures(Contract.Result<LocalVariable>() != null);
+          Contract.Ensures(Contract.Result<LocalVariable>() == node);
           return node;
       }
 
       public override AssignLhs VisitMapAssignLhs(MapAssignLhs node)
       {
-          Contract.Requires(node != null);
-          Contract.Ensures(Contract.Result<AssignLhs>() != null);
+          Contract.Ensures(Contract.Result<AssignLhs>() == node);
           this.Visit(node.Map);
           for (int i = 0; i < node.Indexes.Count; ++i)
               this.Visit(node.Indexes[i]);
@@ -962,8 +920,7 @@ namespace Microsoft.Boogie {
       }
       public override MapType VisitMapType(MapType node)
       {
-          Contract.Requires(node != null);
-          Contract.Ensures(Contract.Result<MapType>() != null);
+          Contract.Ensures(Contract.Result<MapType>() == node);
           // not doing anything about the bound variables ... maybe
           // these should be visited as well ...
           //
@@ -976,33 +933,29 @@ namespace Microsoft.Boogie {
       }
       public override Type VisitMapTypeProxy(MapTypeProxy node)
       {
-          Contract.Requires(node != null);
-          Contract.Ensures(Contract.Result<Type>() != null);
+          Contract.Ensures(Contract.Result<Type>() == node);
           // if the type proxy is instantiated with some more
           // specific type, we visit the instantiation
           if (node.ProxyFor != null)
-              return (Type)this.Visit(node.ProxyFor);
+              this.Visit(node.ProxyFor);
           return this.VisitType(node);
       }
 
       public override Expr VisitNAryExpr(NAryExpr node)
       {
-          Contract.Requires(node != null);
-          Contract.Ensures(Contract.Result<Expr>() != null);
+          Contract.Ensures(Contract.Result<Expr>() == node);
           this.VisitExprSeq(node.Args);
           return node;
       }
       public override Expr VisitOldExpr(OldExpr node)
       {
-          Contract.Requires(node != null);
-          Contract.Ensures(Contract.Result<Expr>() != null);
+          Contract.Ensures(Contract.Result<Expr>() == node);
           this.VisitExpr(node.Expr);
           return node;
       }
       public override Procedure VisitProcedure(Procedure node)
       {
-          Contract.Requires(node != null);
-          Contract.Ensures(Contract.Result<Procedure>() != null);
+          Contract.Ensures(Contract.Result<Procedure>() == node);
           this.VisitEnsuresSeq(node.Ensures);
           this.VisitVariableSeq(node.InParams);
           this.VisitIdentifierExprSeq(node.Modifies);
@@ -1012,15 +965,13 @@ namespace Microsoft.Boogie {
       }
       public override Program VisitProgram(Program node)
       {
-          Contract.Requires(node != null);
-          Contract.Ensures(Contract.Result<Program>() != null);
+          Contract.Ensures(Contract.Result<Program>() == node);
           this.VisitDeclarationList(node.TopLevelDeclarations);
           return node;
       }
       public override BinderExpr VisitBinderExpr(BinderExpr node)
       {
-          Contract.Requires(node != null);
-          Contract.Ensures(Contract.Result<BinderExpr>() != null);
+          Contract.Ensures(Contract.Result<BinderExpr>() == node);
           this.VisitExpr(node.Body);
           this.VisitVariableSeq(node.Dummies);
           // this.VisitType(node.Type);
@@ -1028,8 +979,7 @@ namespace Microsoft.Boogie {
       }
       public override QuantifierExpr VisitQuantifierExpr(QuantifierExpr node)
       {
-          Contract.Requires(node != null);
-          Contract.Ensures(Contract.Result<QuantifierExpr>() != null);
+          Contract.Ensures(Contract.Result<QuantifierExpr>() == node);
           this.VisitBinderExpr(node);
           if (node.Triggers != null)
           {
@@ -1039,64 +989,55 @@ namespace Microsoft.Boogie {
       }
       public override Cmd VisitRE(RE node)
       {
-          Contract.Requires(node != null);
-          Contract.Ensures(Contract.Result<Cmd>() != null);
+          Contract.Ensures(Contract.Result<Cmd>() == node);
           return (Cmd)this.Visit(node); // Call general visit so subtypes get visited by their particular visitor
       }
       public override List<RE> VisitRESeq(List<RE> reSeq)
       {
-          Contract.Requires(reSeq != null);
-          Contract.Ensures(Contract.Result<List<RE>>() != null);
+          Contract.Ensures(Contract.Result<List<RE>>() == reSeq);
           for (int i = 0, n = reSeq.Count; i < n; i++)
               this.VisitRE(cce.NonNull(reSeq[i]));
           return reSeq;
       }
       public override ReturnCmd VisitReturnCmd(ReturnCmd node)
       {
-          Contract.Requires(node != null);
-          Contract.Ensures(Contract.Result<ReturnCmd>() != null);
+          Contract.Ensures(Contract.Result<ReturnCmd>() == node);
           return (ReturnCmd)this.VisitTransferCmd(node);
       }
       public override ReturnExprCmd VisitReturnExprCmd(ReturnExprCmd node)
       {
-          Contract.Requires(node != null);
-          Contract.Ensures(Contract.Result<ReturnExprCmd>() != null);
+          Contract.Ensures(Contract.Result<ReturnExprCmd>() == node);
           this.VisitExpr(node.Expr);
           return node;
       }
       public override Sequential VisitSequential(Sequential node)
       {
-          Contract.Requires(node != null);
-          Contract.Ensures(Contract.Result<Sequential>() != null);
+          Contract.Ensures(Contract.Result<Sequential>() == node);
           this.VisitRE(node.first);
           this.VisitRE(node.second);
           return node;
       }
       public override AssignLhs VisitSimpleAssignLhs(SimpleAssignLhs node)
       {
-          Contract.Requires(node != null);
-          Contract.Ensures(Contract.Result<AssignLhs>() != null);
+          Contract.Ensures(Contract.Result<AssignLhs>() == node);
           this.VisitIdentifierExpr(node.AssignedVariable);
           return node;
       }
       public override Cmd VisitStateCmd(StateCmd node)
       {
-          Contract.Requires(node != null);
-          Contract.Ensures(Contract.Result<Cmd>() != null);
+          Contract.Ensures(Contract.Result<Cmd>() == node);
           this.VisitVariableSeq(node.Locals);
           this.VisitCmdSeq(node.Cmds);
           return node;
       }
       public override TransferCmd VisitTransferCmd(TransferCmd node)
       {
-          Contract.Requires(node != null);
-          Contract.Ensures(Contract.Result<TransferCmd>() != null);
+          Contract.Ensures(Contract.Result<TransferCmd>() == node);
           return node;
       }
       public override Trigger VisitTrigger(Trigger node)
       {
-          Contract.Requires(node != null);
-          Contract.Ensures(Contract.Result<Trigger>() != null);
+          Contract.Ensures(Contract.Result<Trigger>() == node);
           Trigger origNext = node.Next;
           if (origNext != null)
           {
@@ -1108,27 +1049,23 @@ namespace Microsoft.Boogie {
       // called by default for all nullary type constructors and type variables
       public override Type VisitType(Type node)
       {
-          Contract.Requires(node != null);
-          Contract.Ensures(Contract.Result<Type>() != null);
+          Contract.Ensures(Contract.Result<Type>() == node);
           return node;
       }
       public override TypedIdent VisitTypedIdent(TypedIdent node)
       {
-          Contract.Requires(node != null);
-          Contract.Ensures(Contract.Result<TypedIdent>() != null);
+          Contract.Ensures(Contract.Result<TypedIdent>() == node);
           this.Visit(node.Type);
           return node;
       }
       public override Declaration VisitTypeCtorDecl(TypeCtorDecl node)
       {
-          Contract.Requires(node != null);
-          Contract.Ensures(Contract.Result<Declaration>() != null);
+          Contract.Ensures(Contract.Result<Declaration>() == node);
           return this.VisitDeclaration(node);
       }
       public override Type VisitTypeSynonymAnnotation(TypeSynonymAnnotation node)
       {
-          Contract.Requires(node != null);
-          Contract.Ensures(Contract.Result<Type>() != null);
+          Contract.Ensures(Contract.Result<Type>() == node);
           node.ExpandedType = cce.NonNull((Type/*!*/)this.Visit(node.ExpandedType));
           for (int i = 0; i < node.Arguments.Count; ++i)
               this.Visit(node.Arguments[i]);
@@ -1136,65 +1073,56 @@ namespace Microsoft.Boogie {
       }
       public override Declaration VisitTypeSynonymDecl(TypeSynonymDecl node)
       {
-          Contract.Requires(node != null);
-          Contract.Ensures(Contract.Result<Declaration>() != null);
+          Contract.Ensures(Contract.Result<Declaration>() == node);
           return this.VisitDeclaration(node);
       }
       public override Type VisitTypeVariable(TypeVariable node)
       {
-          Contract.Requires(node != null);
-          Contract.Ensures(Contract.Result<Type>() != null);
+          Contract.Ensures(Contract.Result<Type>() == node);
           return this.VisitType(node);
       }
       public override Type VisitTypeProxy(TypeProxy node)
       {
-          Contract.Requires(node != null);
-          Contract.Ensures(Contract.Result<Type>() != null);
+          Contract.Ensures(Contract.Result<Type>() == node);
           // if the type proxy is instantiated with some more
           // specific type, we visit the instantiation
           if (node.ProxyFor != null)
-              return cce.NonNull((Type/*!*/)this.Visit(node.ProxyFor));
+              this.Visit(node.ProxyFor);
           return this.VisitType(node);
       }
       public override Type VisitUnresolvedTypeIdentifier(UnresolvedTypeIdentifier node)
       {
-          Contract.Requires(node != null);
-          Contract.Ensures(Contract.Result<Type>() != null);
+          Contract.Ensures(Contract.Result<Type>() == node);
           return this.VisitType(node);
       }
       public override Variable VisitVariable(Variable node)
       {
-          Contract.Requires(node != null);
-          Contract.Ensures(Contract.Result<Variable>() != null);
+          Contract.Ensures(Contract.Result<Variable>() == node);
           this.VisitTypedIdent(node.TypedIdent);
           return node;
       }
       public override List<Variable> VisitVariableSeq(List<Variable> variableSeq)
       {
-          Contract.Requires(variableSeq != null);
-          Contract.Ensures(Contract.Result<List<Variable>>() != null);
+          Contract.Ensures(Contract.Result<List<Variable>>() == variableSeq);
           for (int i = 0, n = variableSeq.Count; i < n; i++)
               this.VisitVariable(cce.NonNull(variableSeq[i]));
           return variableSeq;
       }
       public override YieldCmd VisitYieldCmd(YieldCmd node)
       {
-          Contract.Requires(node != null);
-          Contract.Ensures(Contract.Result<YieldCmd>() != null);
+          Contract.Ensures(Contract.Result<YieldCmd>() == node);
           return node;
       }
       public override Cmd VisitAssertEnsuresCmd(AssertEnsuresCmd node)
       {
-          Contract.Requires(node != null);
-          Contract.Ensures(Contract.Result<Cmd>() != null);
+          Contract.Ensures(Contract.Result<Cmd>() == node);
           this.VisitEnsures(node.Ensures);
           this.VisitExpr(node.Expr);
           return node;
       }
       public override Cmd VisitAssertRequiresCmd(AssertRequiresCmd node)
       {
-          Contract.Requires(node != null);
-          Contract.Ensures(Contract.Result<Cmd>() != null);
+          Contract.Ensures(Contract.Result<Cmd>() == node);
           this.VisitRequires(node.Requires);
           this.VisitExpr(node.Expr);
           return node;

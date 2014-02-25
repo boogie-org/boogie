@@ -293,7 +293,7 @@ namespace Microsoft.Boogie.Houdini {
     }
   }
 
-  public class InlineEnsuresVisitor : StandardVisitor {
+  public class InlineEnsuresVisitor : ReadOnlyVisitor {
     public override Ensures VisitEnsures(Ensures ensures) {
       ensures.Attributes = new QKeyValue(Token.NoToken, "assume", new List<object>(), ensures.Attributes);
       return base.VisitEnsures(ensures);
@@ -448,7 +448,7 @@ namespace Microsoft.Boogie.Houdini {
     }
 
       // Compute dependencies between candidates
-    public class CrossDependencies : StandardVisitor
+    public class CrossDependencies : ReadOnlyVisitor
     {
         public CrossDependencies(HashSet<Variable> constants)
         {

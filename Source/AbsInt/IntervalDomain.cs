@@ -610,7 +610,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
       return lo != null || hi != null;
     }
 
-    class PEVisitor : StandardVisitor
+    class PEVisitor : ReadOnlyVisitor
     {
       public BigInteger? Lo;
       public BigInteger? Hi;
@@ -990,7 +990,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
     }
   }
 
-  public class ThresholdFinder : StandardVisitor
+  public class ThresholdFinder : ReadOnlyVisitor
   {
     readonly Implementation Impl;
     public ThresholdFinder(Implementation impl) {

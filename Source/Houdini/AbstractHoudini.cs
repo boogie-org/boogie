@@ -463,7 +463,7 @@ namespace Microsoft.Boogie.Houdini {
         }
 
         // Remove functions AbsHoudiniConstant from the expressions and substitute them with "true"
-        class ExistentialExprModelMassage : StandardVisitor
+        class ExistentialExprModelMassage : ReadOnlyVisitor
         {
             List<Function> ahFuncs;
 
@@ -491,7 +491,7 @@ namespace Microsoft.Boogie.Houdini {
             }
         }
 
-        class FunctionCollector : StandardVisitor
+        class FunctionCollector : ReadOnlyVisitor
         {
             public List<Tuple<Function, ExistsExpr>> functionsUsed;
             ExistsExpr existentialExpr;
@@ -3683,7 +3683,7 @@ namespace Microsoft.Boogie.Houdini {
         }
 
 
-        class GatherLiterals : StandardVisitor
+        class GatherLiterals : ReadOnlyVisitor
         {
             public List<Tuple<Variable, Expr>> literals;
             bool inOld;

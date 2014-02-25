@@ -38,7 +38,7 @@ namespace Microsoft.Boogie {
     }
   }
 
-  public class ModSetCollector : StandardVisitor {
+  public class ModSetCollector : ReadOnlyVisitor {
     static Procedure enclosingProc;
     static Dictionary<Procedure/*!*/, HashSet<Variable/*!*/>/*!*/>/*!*/ modSets;
     static HashSet<Procedure> yieldingProcs;
@@ -264,7 +264,7 @@ namespace Microsoft.Boogie {
     }
   }
 
-  public class VariableCollector : StandardVisitor {
+  public class VariableCollector : ReadOnlyVisitor {
     public HashSet<Variable/*!*/>/*!*/ usedVars;
     public HashSet<Variable/*!*/>/*!*/ oldVarsUsed;
     [ContractInvariantMethod]
@@ -303,7 +303,7 @@ namespace Microsoft.Boogie {
     }
   }
 
-  public class BlockCoalescer : StandardVisitor {
+  public class BlockCoalescer : ReadOnlyVisitor {
     public static void CoalesceBlocks(Program program) {
       Contract.Requires(program != null);
       BlockCoalescer blockCoalescer = new BlockCoalescer();
@@ -1642,7 +1642,7 @@ b.liveVarsBefore = procICFG[mainImpl.Name].liveVarsAfter[b];
     }
   }
 
-  public class TokenEliminator : StandardVisitor
+  public class TokenEliminator : ReadOnlyVisitor
   {
       public int TokenCount = 0;
       public override Expr VisitExpr(Expr node)

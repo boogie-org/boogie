@@ -49,7 +49,7 @@ namespace Microsoft.Boogie.VCExprAST {
 
   public delegate VCExpr/*!*/ CodeExprConverter(CodeExpr/*!*/ codeExpr, Hashtable/*<Block, VCExprVar!>*//*!*/ blockVariables, List<VCExprLetBinding> bindings, bool isPositiveContext);
 
-  public class Boogie2VCExprTranslator : StandardVisitor, ICloneable {
+  public class Boogie2VCExprTranslator : ReadOnlyVisitor, ICloneable {
     // Stack on which the various Visit-methods put the result of the translation
     private readonly Stack<VCExpr/*!*/>/*!*/ SubExpressions = new Stack<VCExpr>();
     [ContractInvariantMethod]

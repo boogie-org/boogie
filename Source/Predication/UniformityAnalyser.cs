@@ -396,7 +396,7 @@ namespace Microsoft.Boogie
             return !nonUniformBlocks[procedureName].Contains(b);
         }
 
-        class UniformExpressionAnalysisVisitor : StandardVisitor {
+        class UniformExpressionAnalysisVisitor : ReadOnlyVisitor {
 
           private bool isUniform = true;
           private Dictionary<string, bool> uniformityInfo;

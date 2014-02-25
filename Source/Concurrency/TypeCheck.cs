@@ -177,7 +177,7 @@ namespace Microsoft.Boogie
         }
     }
 
-    public class MoverTypeChecker : StandardVisitor
+    public class MoverTypeChecker : ReadOnlyVisitor
     {
         public int FindPhaseNumber(Procedure proc)
         {

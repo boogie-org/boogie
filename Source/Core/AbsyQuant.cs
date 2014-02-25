@@ -599,7 +599,7 @@ namespace Microsoft.Boogie {
     }
 
     #region never triggers
-    private class NeverTriggerCollector : StandardVisitor {
+    private class NeverTriggerCollector : ReadOnlyVisitor {
       QuantifierExpr/*!*/ parent;
       [ContractInvariantMethod]
       void ObjectInvariant() {

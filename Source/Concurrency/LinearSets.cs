@@ -8,7 +8,7 @@ using System.Diagnostics;
 
 namespace Microsoft.Boogie
 {
-    public class LinearEraser : StandardVisitor
+    public class LinearEraser : ReadOnlyVisitor
     {
         private QKeyValue RemoveLinearAttribute(QKeyValue iter)
         {
@@ -31,7 +31,7 @@ namespace Microsoft.Boogie
         CONST
     }
 
-    public class LinearTypeChecker : StandardVisitor
+    public class LinearTypeChecker : ReadOnlyVisitor
     {
         public Program program;
         public int errorCount;

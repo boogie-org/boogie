@@ -16,7 +16,7 @@ using VC;
 using System.Linq;
 
 namespace Microsoft.Boogie.Houdini {
-  public class ExistentialConstantCollector : StandardVisitor {
+  public class ExistentialConstantCollector : ReadOnlyVisitor {
       public static void CollectHoudiniConstants(Houdini houdini, Implementation impl, out ExistentialConstantCollector collector)
       {
           collector = new ExistentialConstantCollector(houdini);
