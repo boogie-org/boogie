@@ -10,7 +10,7 @@ using VC;
 namespace Microsoft.Boogie
 {
 
-  class DependencyCollector : StandardVisitor
+  class DependencyCollector : ReadOnlyVisitor
   {
     private HashSet<DeclWithFormals> dependencies;
 
@@ -49,7 +49,7 @@ namespace Microsoft.Boogie
       {
         if (param.TypedIdent != null && param.TypedIdent.WhereExpr != null)
         {
-          param.TypedIdent.WhereExpr = VisitExpr(param.TypedIdent.WhereExpr);
+          VisitExpr(param.TypedIdent.WhereExpr);
         }
       }
 
@@ -62,7 +62,7 @@ namespace Microsoft.Boogie
 
       if (node.DefinitionAxiom != null)
       {
-        node.DefinitionAxiom = VisitAxiom(node.DefinitionAxiom);
+        VisitAxiom(node.DefinitionAxiom);
       }
 
       return base.VisitFunction(node);
@@ -73,7 +73,7 @@ namespace Microsoft.Boogie
       var visited = dependencies.Contains(node.Proc);
       if (!visited)
       {
-        node.Proc = VisitProcedure(node.Proc);
+        VisitProcedure(node.Proc);
       }
 
       return base.VisitCallCmd(node);
@@ -87,7 +87,7 @@ namespace Microsoft.Boogie
         var visited = dependencies.Contains(funCall.Func);
         if (!visited)
         {
-          funCall.Func = VisitFunction(funCall.Func);
+          VisitFunction(funCall.Func);
         }
       }
 

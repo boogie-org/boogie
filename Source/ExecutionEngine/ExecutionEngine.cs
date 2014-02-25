@@ -350,7 +350,7 @@ namespace Microsoft.Boogie
   }
 
 
-  public class PolymorphismChecker : StandardVisitor
+  public class PolymorphismChecker : ReadOnlyVisitor
   {
       bool isMonomorphic = true;
 

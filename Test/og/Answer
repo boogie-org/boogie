@@ -3,7 +3,7 @@
 foo.bpl(14,3): Error: Non-interference check failed
 Execution trace:
     foo.bpl(6,5): anon0
-    (0,0): inline$Impl_YieldChecker_PC_2147483647$0$L0
+    (0,0): inline$Impl_YieldChecker_PC_0$0$L0
 
 Boogie program verifier finished with 4 verified, 1 error
 
@@ -11,11 +11,11 @@ Boogie program verifier finished with 4 verified, 1 error
 bar.bpl(13,3): Error: Non-interference check failed
 Execution trace:
     bar.bpl(6,5): anon0
-    (0,0): inline$Impl_YieldChecker_PC_2147483647$0$L0
+    (0,0): inline$Impl_YieldChecker_PC_0$0$L0
 bar.bpl(13,3): Error: Non-interference check failed
 Execution trace:
     bar.bpl(23,5): anon0
-    (0,0): inline$Impl_YieldChecker_PC_2147483647$0$L0
+    (0,0): inline$Impl_YieldChecker_PC_0$0$L0
 
 Boogie program verifier finished with 3 verified, 2 errors
 
@@ -27,11 +27,11 @@ Boogie program verifier finished with 2 verified, 0 errors
 parallel1.bpl(10,1): Error: Non-interference check failed
 Execution trace:
     parallel1.bpl(6,5): anon0
-    (0,0): inline$Proc_YieldChecker_PC_2147483647$0$L0
+    (0,0): inline$Proc_YieldChecker_PC_0$0$L0
 parallel1.bpl(14,3): Error: Non-interference check failed
 Execution trace:
     parallel1.bpl(6,5): anon0
-    (0,0): inline$Impl_YieldChecker_PC_2147483647$0$L0
+    (0,0): inline$Impl_YieldChecker_PC_0$0$L0
 
 Boogie program verifier finished with 3 verified, 2 errors
 
@@ -75,7 +75,7 @@ Boogie program verifier finished with 3 verified, 0 errors
 t1.bpl(51,5): Error: Non-interference check failed
 Execution trace:
     (0,0): og_init
-    (0,0): inline$Impl_YieldChecker_A_2147483647$0$L1
+    (0,0): inline$Impl_YieldChecker_A_0$0$L1
 
 Boogie program verifier finished with 2 verified, 1 error
 
@@ -92,7 +92,7 @@ async.bpl(14,1): Error: Non-interference check failed
 Execution trace:
     async.bpl(7,3): anon0
     async.bpl(7,3): anon0$1
-    (0,0): inline$Proc_YieldChecker_P_2147483647$1$L0
+    (0,0): inline$Proc_YieldChecker_P_0$1$L0
 
 Boogie program verifier finished with 1 verified, 1 error
 

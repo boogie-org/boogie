@@ -1186,7 +1186,7 @@ namespace Microsoft.Boogie
             HashSet<int> attrs = QKeyValue.FindIntAttributes(kv, "phase");
             if (attrs.Count == 0)
             {
-                attrs.Add(int.MaxValue);
+                attrs.Add(0); // default phase of requires, ensures and assertions is 0
             }
             return attrs;
         }
