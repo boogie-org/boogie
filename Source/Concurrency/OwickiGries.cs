@@ -455,11 +455,11 @@ namespace Microsoft.Boogie
                     Substitution subst = Substituter.SubstitutionFromHashtable(map);
                     foreach (Requires req in callCmd.Proc.Requires)
                     {
-                        requiresSeq.Add(new Requires(req.Free, Substituter.Apply(subst, req.Condition)));
+                        requiresSeq.Add(new Requires(req.tok, req.Free, Substituter.Apply(subst, req.Condition), null));
                     }
                     foreach (Ensures ens in callCmd.Proc.Ensures)
                     {
-                        ensuresSeq.Add(new Ensures(ens.Free, Substituter.Apply(subst, ens.Condition)));
+                        ensuresSeq.Add(new Ensures(ens.tok, ens.Free, Substituter.Apply(subst, ens.Condition), null));
                     }
                     count++;
                 }
@@ -467,7 +467,7 @@ namespace Microsoft.Boogie
                 proc.AddAttribute("yields");
                 asyncAndParallelCallDesugarings[procName] = proc;
             }
-            CallCmd dummyCallCmd = new CallCmd(Token.NoToken, proc.Name, ins, outs);
+            CallCmd dummyCallCmd = new CallCmd(parCallCmd.tok, proc.Name, ins, outs);
             dummyCallCmd.Proc = proc;
             newCmds.Add(dummyCallCmd);
         }
@@ -854,7 +854,7 @@ namespace Microsoft.Boogie
                                 asyncAndParallelCallDesugarings[callCmd.Proc.Name] = new Procedure(Token.NoToken, string.Format("DummyAsyncTarget_{0}", callCmd.Proc.Name), callCmd.Proc.TypeParameters, callCmd.Proc.InParams, callCmd.Proc.OutParams, callCmd.Proc.Requires, new List<IdentifierExpr>(), new List<Ensures>());
                             }
                             var dummyAsyncTargetProc = asyncAndParallelCallDesugarings[callCmd.Proc.Name];
-                            CallCmd dummyCallCmd = new CallCmd(Token.NoToken, dummyAsyncTargetProc.Name, callCmd.Ins, callCmd.Outs);
+                            CallCmd dummyCallCmd = new CallCmd(callCmd.tok, dummyAsyncTargetProc.Name, callCmd.Ins, callCmd.Outs);
                             dummyCallCmd.Proc = dummyAsyncTargetProc;
                             newCmds.Add(dummyCallCmd);
                         }
