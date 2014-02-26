@@ -417,17 +417,12 @@ namespace Microsoft.Boogie
             List<string> parallelCalleeNames = new List<string>();
             List<Expr> ins = new List<Expr>();
             List<IdentifierExpr> outs = new List<IdentifierExpr>();
+            string procName = "og";
             foreach (CallCmd callCmd in parCallCmd.CallCmds)
             {
-                parallelCalleeNames.Add(callCmd.Proc.Name);
+                procName = procName + "_" + callCmd.Proc.Name;
                 ins.AddRange(callCmd.Ins);
                 outs.AddRange(callCmd.Outs);
-            }
-            parallelCalleeNames.Sort();
-            string procName = "og";
-            foreach (string calleeName in parallelCalleeNames)
-            {
-                procName = procName + "_" + calleeName;
             }
             Procedure proc;
             if (asyncAndParallelCallDesugarings.ContainsKey(procName))
@@ -1275,7 +1270,7 @@ namespace Microsoft.Boogie
                         duplicateProc.Modifies = new List<IdentifierExpr>();
                         program.GlobalVariables().Iter(x => duplicateProc.Modifies.Add(Expr.Ident(x)));
                         CodeExpr action = (CodeExpr)duplicator.VisitCodeExpr(moverTypeChecker.procToActionInfo[proc].thisAction);
-                        Implementation impl = new Implementation(Token.NoToken, duplicateProc.Name, proc.TypeParameters, proc.InParams, proc.OutParams, new List<Variable>(), action.Blocks);
+                        Implementation impl = new Implementation(Token.NoToken, duplicateProc.Name, proc.TypeParameters, proc.InParams, proc.OutParams, action.LocVars, action.Blocks);
                         impl.Proc = duplicateProc;
                         impl.Proc.AddAttribute("inline", new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1)));
                         impl.AddAttribute("inline", new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1)));
