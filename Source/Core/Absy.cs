@@ -2156,14 +2156,14 @@ namespace Microsoft.Boogie {
       List<TypeVariable>/*!*/ quantifiedTypeVars = new List<TypeVariable>();
       foreach (TypeVariable/*!*/ t in TypeParameters) {
         Contract.Assert(t != null);
-        quantifiedTypeVars.Add(new TypeVariable(Token.NoToken, t.Name));
+        quantifiedTypeVars.Add(new TypeVariable(tok, t.Name));
       }
 
       Expr call = new NAryExpr(tok, new FunctionCall(new IdentifierExpr(tok, Name)), callArgs);
       // specify the type of the function, because it might be that
       // type parameters only occur in the output type
       call = Expr.CoerceType(tok, call, (Type)OutParams[0].TypedIdent.Type.Clone());
-      Expr def = Expr.Eq(call, definition);
+      Expr def = Expr.Binary(tok, BinaryOperator.Opcode.Eq, call, definition);
       if (quantifiedTypeVars.Count != 0 || dummies.Count != 0) {
         def = new ForallExpr(tok, quantifiedTypeVars, dummies,
                              kv,
