@@ -851,48 +851,63 @@ namespace Microsoft.Boogie
 
       var outputCollector = new OutputCollector(stablePrioritizedImpls);
       var outcome = PipelineOutcome.VerificationCompleted;
-      var tasks = new Task[stablePrioritizedImpls.Length];
-      for (int i = 0; i < stablePrioritizedImpls.Length && outcome != PipelineOutcome.FatalError; i++)
-      {
-        var taskIndex = i;
-        var id = stablePrioritizedImpls[i].Id;
-        CancellationTokenSource src;
-        if (ImplIdToCancellationTokenSource.TryGetValue(id, out src))
-        {
-          src.Cancel();
-        }
-        src = new CancellationTokenSource();
-        RequestIdToCancellationTokenSources[requestId].Add(src);
-        ImplIdToCancellationTokenSource[id] = src;
-        var t = Task.Factory.StartNew((dummy) =>
-        {
-          VerifyImplementation(program, stats, er, requestId, extractLoopMappingInfo, stablePrioritizedImpls, taskIndex, outputCollector, Checkers, src.Token);
-          ImplIdToCancellationTokenSource.Remove(id);
-        }, src.Token, TaskCreationOptions.LongRunning);
-        tasks[taskIndex] = t;
-      }
+
       try
       {
-        Task.WaitAll(tasks);
+          if (CommandLineOptions.Clo.UseParallelism)
+          {
+              var tasks = new Task[stablePrioritizedImpls.Length];
+              for (int i = 0; i < stablePrioritizedImpls.Length && outcome != PipelineOutcome.FatalError; i++)
+              {
+                  var taskIndex = i;
+                  var id = stablePrioritizedImpls[i].Id;
+                  CancellationTokenSource src;
+                  if (ImplIdToCancellationTokenSource.TryGetValue(id, out src))
+                  {
+                      src.Cancel();
+                  }
+                  src = new CancellationTokenSource();
+                  RequestIdToCancellationTokenSources[requestId].Add(src);
+                  ImplIdToCancellationTokenSource[id] = src;
+                  var t = Task.Factory.StartNew((dummy) =>
+                  {
+                      if (src.Token.IsCancellationRequested)
+                      {
+                          src.Token.ThrowIfCancellationRequested();
+                      }
+                      VerifyImplementation(program, stats, er, requestId, extractLoopMappingInfo, stablePrioritizedImpls, taskIndex, outputCollector, Checkers);
+                      ImplIdToCancellationTokenSource.Remove(id);
+                  }, src.Token, TaskCreationOptions.LongRunning);
+                  tasks[taskIndex] = t;
+              }
+              Task.WaitAll(tasks);
+          }
+          else
+          {
+              for (int i = 0; i < stablePrioritizedImpls.Length && outcome != PipelineOutcome.FatalError; i++)
+              {
+                  VerifyImplementation(program, stats, er, requestId, extractLoopMappingInfo, stablePrioritizedImpls, i, outputCollector, Checkers);
+              }
+          }
       }
       catch (AggregateException ae)
       {
-        ae.Handle(e =>
-        {
-          var pe = e as ProverException;
-          if (pe != null)
+          ae.Handle(e =>
           {
-            printer.ErrorWriteLine(Console.Out, "Fatal Error: ProverException: {0}", e);
-            outcome = PipelineOutcome.FatalError;
-            return true;
-          }
-          var oce = e as OperationCanceledException;
-          if (oce != null)
-          {
-            return true;
-          }
-          return false;
-        });
+              var pe = e as ProverException;
+              if (pe != null)
+              {
+                  printer.ErrorWriteLine(Console.Out, "Fatal Error: ProverException: {0}", e);
+                  outcome = PipelineOutcome.FatalError;
+                  return true;
+              }
+              var oce = e as OperationCanceledException;
+              if (oce != null)
+              {
+                  return true;
+              }
+              return false;
+          });
       }
       finally
       {
@@ -946,13 +961,8 @@ namespace Microsoft.Boogie
     }
 
 
-    private static void VerifyImplementation(Program program, PipelineStatistics stats, ErrorReporterDelegate er, string requestId, Dictionary<string, Dictionary<string, Block>> extractLoopMappingInfo, Implementation[] stablePrioritizedImpls, int index, OutputCollector outputCollector, List<Checker> checkers, CancellationToken ct)
+    private static void VerifyImplementation(Program program, PipelineStatistics stats, ErrorReporterDelegate er, string requestId, Dictionary<string, Dictionary<string, Block>> extractLoopMappingInfo, Implementation[] stablePrioritizedImpls, int index, OutputCollector outputCollector, List<Checker> checkers)
     {
-      if (ct.IsCancellationRequested)
-      {
-        ct.ThrowIfCancellationRequested();
-      }
-
       Implementation impl = stablePrioritizedImpls[index];
       VerificationResult verificationResult = null;
       var output = new StringWriter();
