@@ -737,7 +737,7 @@ namespace Microsoft.Boogie
           }
           foreach (var impl in TopLevelDeclarations.OfType<Implementation>())
           {
-            if (!impl.SkipVerification)
+            if (CommandLineOptions.Clo.UserWantsToCheckRoutine(impl.Name) && !impl.SkipVerification)
             {
               Inliner.ProcessImplementation(program, impl);
             }
