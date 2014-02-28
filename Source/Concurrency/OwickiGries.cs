@@ -268,35 +268,38 @@ namespace Microsoft.Boogie
 
         private void AddCallToYieldProc(IToken tok, List<Cmd> newCmds, Dictionary<Variable, Variable> ogOldGlobalMap, Dictionary<string, Variable> domainNameToLocalVar)
         {
-            List<Expr> exprSeq = new List<Expr>();
-            foreach (string domainName in linearTypeChecker.linearDomains.Keys)
+            if (!CommandLineOptions.Clo.TrustNonInterference)
             {
-                exprSeq.Add(Expr.Ident(domainNameToLocalVar[domainName]));
-            }
-            foreach (IdentifierExpr ie in globalMods)
-            {
-                exprSeq.Add(Expr.Ident(ogOldGlobalMap[ie.Decl]));
-            }
-            if (yieldProc == null)
-            {
-                List<Variable> inputs = new List<Variable>();
+                List<Expr> exprSeq = new List<Expr>();
                 foreach (string domainName in linearTypeChecker.linearDomains.Keys)
                 {
-                    var domain = linearTypeChecker.linearDomains[domainName];
-                    Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "linear_" + domainName + "_in", new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> { domain.elementType }, Type.Bool)), true);
-                    inputs.Add(f);
+                    exprSeq.Add(Expr.Ident(domainNameToLocalVar[domainName]));
                 }
                 foreach (IdentifierExpr ie in globalMods)
                 {
-                    Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_global_old_{0}", ie.Decl.Name), ie.Decl.TypedIdent.Type), true);
-                    inputs.Add(f);
+                    exprSeq.Add(Expr.Ident(ogOldGlobalMap[ie.Decl]));
                 }
-                yieldProc = new Procedure(Token.NoToken, string.Format("og_yield_{0}", phaseNum), new List<TypeVariable>(), inputs, new List<Variable>(), new List<Requires>(), new List<IdentifierExpr>(), new List<Ensures>());
-                yieldProc.AddAttribute("inline", new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1)));
+                if (yieldProc == null)
+                {
+                    List<Variable> inputs = new List<Variable>();
+                    foreach (string domainName in linearTypeChecker.linearDomains.Keys)
+                    {
+                        var domain = linearTypeChecker.linearDomains[domainName];
+                        Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "linear_" + domainName + "_in", new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> { domain.elementType }, Type.Bool)), true);
+                        inputs.Add(f);
+                    }
+                    foreach (IdentifierExpr ie in globalMods)
+                    {
+                        Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_global_old_{0}", ie.Decl.Name), ie.Decl.TypedIdent.Type), true);
+                        inputs.Add(f);
+                    }
+                    yieldProc = new Procedure(Token.NoToken, string.Format("og_yield_{0}", phaseNum), new List<TypeVariable>(), inputs, new List<Variable>(), new List<Requires>(), new List<IdentifierExpr>(), new List<Ensures>());
+                    yieldProc.AddAttribute("inline", new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1)));
+                }
+                CallCmd yieldCallCmd = new CallCmd(Token.NoToken, yieldProc.Name, exprSeq, new List<IdentifierExpr>());
+                yieldCallCmd.Proc = yieldProc;
+                newCmds.Add(yieldCallCmd);
             }
-            CallCmd yieldCallCmd = new CallCmd(Token.NoToken, yieldProc.Name, exprSeq, new List<IdentifierExpr>());
-            yieldCallCmd.Proc = yieldProc;
-            newCmds.Add(yieldCallCmd);
 
             if (pc != null)
             {
