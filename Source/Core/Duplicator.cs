@@ -266,14 +266,13 @@ namespace Microsoft.Boogie {
       Contract.Ensures(Contract.Result<Expr>() != null);
       return base.VisitOldExpr((OldExpr)node.Clone());
     }
-    public override Cmd VisitParCallCmd(ParCallCmd node)
-    {
-        //Contract.Requires(node != null);
-        Contract.Ensures(Contract.Result<Cmd>() != null);
-        ParCallCmd clone = (ParCallCmd)node.Clone();
-        Contract.Assert(clone != null);
-        clone.CallCmds = new List<CallCmd>(node.CallCmds);
-        return base.VisitParCallCmd(clone);
+    public override Cmd VisitParCallCmd(ParCallCmd node) {
+      //Contract.Requires(node != null);
+      Contract.Ensures(Contract.Result<Cmd>() != null);
+      ParCallCmd clone = (ParCallCmd)node.Clone();
+      Contract.Assert(clone != null);
+      clone.CallCmds = new List<CallCmd>(node.CallCmds);
+      return base.VisitParCallCmd(clone);
     }
     public override Procedure VisitProcedure(Procedure node) {
       //Contract.Requires(node != null);
@@ -284,6 +283,20 @@ namespace Microsoft.Boogie {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Program>() != null);
       return base.VisitProgram((Program)node.Clone());
+    }
+    public override QKeyValue VisitQKeyValue(QKeyValue node) {
+      //Contract.Requires(node != null);
+      var newParams = new List<object>();
+      foreach (var o in node.Params) {
+        var e = o as Expr;
+        if (e == null) {
+          newParams.Add(o);
+        } else {
+          newParams.Add((Expr)this.Visit(e));
+        }
+      }
+      QKeyValue next = node.Next == null ? null : (QKeyValue)this.Visit(node.Next);
+      return new QKeyValue(node.tok, node.Key, newParams, next);
     }
     public override BinderExpr VisitBinderExpr(BinderExpr node) {
       //Contract.Requires(node != null);
@@ -411,14 +424,16 @@ namespace Microsoft.Boogie {
       }
     }
 
+    // ----------------------------- Substitutions for Expr -------------------------------
+
     /// <summary>
     /// Apply a substitution to an expression.  Any variables not in domain(subst)
-    /// is not changed.  The substitutions applies within the "old", but the "old"
+    /// is not changed.  The substitutions apply within the "old", but the "old"
     /// expression remains.
     /// </summary>
     public static Expr Apply(Substitution subst, Expr expr) {
-      Contract.Requires(expr != null);
       Contract.Requires(subst != null);
+      Contract.Requires(expr != null);
       Contract.Ensures(Contract.Result<Expr>() != null);
       return (Expr)new NormalSubstituter(subst).Visit(expr);
     }
@@ -430,23 +445,39 @@ namespace Microsoft.Boogie {
     /// variables in domain(forOld), apply map "always" to variables in
     /// domain(always)-domain(forOld), and leave variable unchanged otherwise.
     /// </summary>
-    public static Expr Apply(Substitution always, Substitution forold, Expr expr)
-    {
-        Contract.Requires(expr != null);
-        Contract.Requires(always != null);
-        Contract.Requires(forold != null);
-        Contract.Ensures(Contract.Result<Expr>() != null);
-        return (Expr)new NormalSubstituter(always, forold).Visit(expr);
+    public static Expr Apply(Substitution always, Substitution forold, Expr expr) {
+      Contract.Requires(always != null);
+      Contract.Requires(forold != null);
+      Contract.Requires(expr != null);
+      Contract.Ensures(Contract.Result<Expr>() != null);
+      return (Expr)new NormalSubstituter(always, forold).Visit(expr);
     }
 
     /// <summary>
+    /// Apply a substitution to an expression replacing "old" expressions.
+    /// Outside "old" expressions, the substitution "always" is applied; any variable not in
+    /// domain(always) is not changed.  Inside "old" expressions, apply map "forOld" to
+    /// variables in domain(forOld), apply map "always" to variables in
+    /// domain(always)-domain(forOld), and leave variable unchanged otherwise.
+    /// </summary>    
+    public static Expr ApplyReplacingOldExprs(Substitution always, Substitution forOld, Expr expr) {
+      Contract.Requires(always != null);
+      Contract.Requires(forOld != null);
+      Contract.Requires(expr != null);
+      Contract.Ensures(Contract.Result<Expr>() != null);
+      return (Expr)new ReplacingOldSubstituter(always, forOld).Visit(expr);
+    }
+
+    // ----------------------------- Substitutions for Cmd -------------------------------
+
+    /// <summary>
     /// Apply a substitution to a command.  Any variables not in domain(subst)
-    /// is not changed.  The substitutions applies within the "old", but the "old"
+    /// is not changed.  The substitutions apply within the "old", but the "old"
     /// expression remains.
     /// </summary>
     public static Cmd Apply(Substitution subst, Cmd cmd) {
-      Contract.Requires(cmd != null);
       Contract.Requires(subst != null);
+      Contract.Requires(cmd != null);
       Contract.Ensures(Contract.Result<Cmd>() != null);
       return (Cmd)new NormalSubstituter(subst).Visit(cmd);
     }
@@ -458,46 +489,64 @@ namespace Microsoft.Boogie {
     /// variables in domain(forOld), apply map "always" to variables in
     /// domain(always)-domain(forOld), and leave variable unchanged otherwise.
     /// </summary>
-    public static Cmd Apply(Substitution always, Substitution forold, Cmd cmd)
+    public static Cmd Apply(Substitution always, Substitution forOld, Cmd cmd)
     {
-        Contract.Requires(cmd != null);
         Contract.Requires(always != null);
-        Contract.Requires(forold != null);
+        Contract.Requires(forOld != null);
+        Contract.Requires(cmd != null);
         Contract.Ensures(Contract.Result<Cmd>() != null);
-        return (Cmd)new NormalSubstituter(always, forold).Visit(cmd);
-    }
-
-    /// <summary>
-    /// Apply a substitution to an expression replacing "old" expressions.
-    /// Outside "old" expressions, the substitution "always" is applied; any variable not in
-    /// domain(always) is not changed.  Inside "old" expressions, apply map "forOld" to
-    /// variables in domain(forOld), apply map "always" to variables in
-    /// domain(always)-domain(forOld), and leave variable unchanged otherwise.
-    /// </summary>    
-    public static Expr ApplyReplacingOldExprs(Substitution always, Substitution forold, Expr expr) {
-      Contract.Requires(expr != null);
-      Contract.Requires(forold != null);
-      Contract.Requires(always != null);
-      Contract.Ensures(Contract.Result<Expr>() != null);
-      return (Expr)new ReplacingOldSubstituter(always, forold).Visit(expr);
+        return (Cmd)new NormalSubstituter(always, forOld).Visit(cmd);
     }
 
     /// <summary>
     /// Apply a substitution to a command replacing "old" expressions.
     /// Outside "old" expressions, the substitution "always" is applied; any variable not in
-    /// domain(always) is not changed.  Inside "old" expressions, apply map "oldExpr" to
-    /// variables in domain(oldExpr), apply map "always" to variables in
-    /// domain(always)-domain(oldExpr), and leave variable unchanged otherwise.
+    /// domain(always) is not changed.  Inside "old" expressions, apply map "forOld" to
+    /// variables in domain(forOld), apply map "always" to variables in
+    /// domain(always)-domain(forOld), and leave variable unchanged otherwise.
     /// </summary>    
-    public static Cmd ApplyReplacingOldExprs(Substitution always, Substitution forold, Cmd cmd) {
-      Contract.Requires(cmd != null);
-      Contract.Requires(forold != null);
+    public static Cmd ApplyReplacingOldExprs(Substitution always, Substitution forOld, Cmd cmd) {
       Contract.Requires(always != null);
+      Contract.Requires(forOld != null);
+      Contract.Requires(cmd != null);
       Contract.Ensures(Contract.Result<Cmd>() != null);
-      return (Cmd)new ReplacingOldSubstituter(always, forold).Visit(cmd);
+      return (Cmd)new ReplacingOldSubstituter(always, forOld).Visit(cmd);
     }
 
-    private sealed class NormalSubstituter : Duplicator {
+    // ----------------------------- Substitutions for QKeyValue -------------------------------
+
+    /// <summary>
+    /// Apply a substitution to a list of attributes.  Any variables not in domain(subst)
+    /// is not changed.  The substitutions apply within the "old", but the "old"
+    /// expression remains.
+    /// </summary>
+    public static QKeyValue Apply(Substitution subst, QKeyValue kv) {
+      Contract.Requires(subst != null);
+      if (kv == null) {
+        return null;
+      } else {
+        return (QKeyValue)new NormalSubstituter(subst).Visit(kv);
+      }
+    }
+
+    /// <summary>
+    /// Apply a substitution to a list of attributes replacing "old" expressions.
+    /// For a further description, see "ApplyReplacingOldExprs" above for Expr.
+    /// </summary>    
+    public static QKeyValue ApplyReplacingOldExprs(Substitution always, Substitution forOld, QKeyValue kv) {
+      Contract.Requires(always != null);
+      Contract.Requires(forOld != null);
+      if (kv == null) {
+        return null;
+      } else {
+        return (QKeyValue)new ReplacingOldSubstituter(always, forOld).Visit(kv);
+      }
+    }
+
+    // ------------------------------------------------------------
+
+    private sealed class NormalSubstituter : Duplicator
+    {
       private readonly Substitution/*!*/ always;
       private readonly Substitution/*!*/ forold;
       [ContractInvariantMethod]

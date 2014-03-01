@@ -369,7 +369,7 @@ Lambda.bpl(38,3): Error BP5001: This assertion might not hold.
 Execution trace:
     Lambda.bpl(36,5): anon0
 
-Boogie program verifier finished with 5 verified, 2 errors
+Boogie program verifier finished with 6 verified, 2 errors
 
 -------------------- LambdaPoly.bpl --------------------
 LambdaPoly.bpl(28,5): Error BP5001: This assertion might not hold.
@@ -393,7 +393,7 @@ LambdaOldExpressions.bpl(21,3): Related location: This is the postcondition that
 Execution trace:
     LambdaOldExpressions.bpl(25,7): anon0
 
-Boogie program verifier finished with 2 verified, 1 error
+Boogie program verifier finished with 4 verified, 1 error
 
 -------------------- SelectiveChecking.bpl --------------------
 SelectiveChecking.bpl(17,3): Error BP5001: This assertion might not hold.
@@ -453,7 +453,7 @@ Lambda.bpl(38,3): Error BP5001: This assertion might not hold.
 Execution trace:
     Lambda.bpl(36,5): anon0
 
-Boogie program verifier finished with 5 verified, 2 errors
+Boogie program verifier finished with 6 verified, 2 errors
 
 -------------------- TypeEncodingM.bpl /typeEncoding:m --------------------
 TypeEncodingM.bpl(24,3): Error BP5001: This assertion might not hold.

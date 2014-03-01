@@ -297,7 +297,7 @@ namespace Microsoft.Boogie {
     }
     public virtual Expr VisitLambdaExpr(LambdaExpr node) {
       Contract.Requires(node != null);
-      Contract.Ensures(Contract.Result<LambdaExpr>() != null);
+      Contract.Ensures(Contract.Result<Expr>() != null);
       node = (LambdaExpr)this.VisitBinderExpr(node);
       return node;
     }
@@ -430,6 +430,20 @@ namespace Microsoft.Boogie {
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Program>() != null);
       node.TopLevelDeclarations = this.VisitDeclarationList(node.TopLevelDeclarations);
+      return node;
+    }
+    public virtual QKeyValue VisitQKeyValue(QKeyValue node) {
+      Contract.Requires(node != null);
+      Contract.Ensures(Contract.Result<QKeyValue>() != null);
+      for (int i = 0, n = node.Params.Count; i < n; i++) {
+        var e = node.Params[i] as Expr;
+        if (e != null) {
+          node.Params[i] = (Expr)this.Visit(e);
+        }
+      }
+      if (node.Next != null) {
+        node.Next = (QKeyValue)this.Visit(node.Next);
+      }
       return node;
     }
     public virtual BinderExpr VisitBinderExpr(BinderExpr node) {
@@ -841,10 +855,9 @@ namespace Microsoft.Boogie {
           Contract.Ensures(Contract.Result<ForallExpr>() == node);
           return (ForallExpr)this.VisitQuantifierExpr(node);
       }
-      public override Expr VisitLambdaExpr(LambdaExpr node)
-      {
-          Contract.Ensures(Contract.Result<LambdaExpr>() == node);
-          return this.VisitBinderExpr(node);
+      public override Expr VisitLambdaExpr(LambdaExpr node) {
+        Contract.Ensures(Contract.Result<Expr>() == node);
+        return this.VisitBinderExpr(node);
       }
       public override Formal VisitFormal(Formal node)
       {
@@ -968,6 +981,19 @@ namespace Microsoft.Boogie {
           Contract.Ensures(Contract.Result<Program>() == node);
           this.VisitDeclarationList(node.TopLevelDeclarations);
           return node;
+      }
+      public override QKeyValue VisitQKeyValue(QKeyValue node) {
+        Contract.Ensures(Contract.Result<QKeyValue>() == node);
+        for (int i = 0, n = node.Params.Count; i < n; i++) {
+          var e = node.Params[i] as Expr;
+          if (e != null) {
+            this.Visit(e);
+          }
+        }
+        if (node.Next != null) {
+          this.Visit(node.Next);
+        }
+        return node;
       }
       public override BinderExpr VisitBinderExpr(BinderExpr node)
       {

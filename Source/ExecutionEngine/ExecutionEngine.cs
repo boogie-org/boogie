@@ -774,6 +774,16 @@ namespace Microsoft.Boogie
       }
       RequestIdToCancellationTokenSources[requestId] = new List<CancellationTokenSource>();
 
+      #region Do some pre-abstract-interpretation preprocessing on the program
+      // Doing lambda expansion before abstract interpretation means that the abstract interpreter
+      // never needs to see any lambda expressions.  (On the other hand, if it were useful for it
+      // to see lambdas, then it would be better to more lambda expansion until after infererence.)
+      if (CommandLineOptions.Clo.ExpandLambdas) {
+        LambdaHelper.ExpandLambdas(program);
+        //PrintBplFile ("-", program, true);
+      }
+      #endregion
+
       #region Infer invariants using Abstract Interpretation
 
       // Always use (at least) intervals, if not specified otherwise (e.g. with the "/noinfer" switch)
@@ -789,7 +799,7 @@ namespace Microsoft.Boogie
 
       #endregion
 
-      #region Do some preprocessing on the program (e.g., loop unrolling, lambda expansion)
+      #region Do some post-abstract-interpretation preprocessing on the program (e.g., loop unrolling)
 
       if (CommandLineOptions.Clo.LoopUnrollCount != -1)
       {
@@ -806,13 +816,6 @@ namespace Microsoft.Boogie
       {
         program.Emit(new TokenTextWriter(Console.Out));
       }
-
-      if (CommandLineOptions.Clo.ExpandLambdas)
-      {
-        LambdaHelper.ExpandLambdas(program);
-        //PrintBplFile ("-", program, true);
-      }
-
       #endregion
 
       if (!CommandLineOptions.Clo.Verify)

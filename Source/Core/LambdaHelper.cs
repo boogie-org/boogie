@@ -62,75 +62,82 @@ namespace Microsoft.Boogie {
 
       static int lambdaid = 0;
 
-      public override Program VisitProgram(Program prog) {
-        //Contract.Requires(prog != null);
-        Contract.Ensures(Contract.Result<Program>() != null);
-        foreach (Declaration/*!*/ decl in prog.TopLevelDeclarations) {
-          Contract.Assert(decl != null);
-          if (decl is Axiom || decl is Function) {
-            this.Visit(decl);
-          }
-        }
-
-        return prog;
-      }
-
-      public override Procedure VisitProcedure(Procedure node) {
-        //Contract.Requires(node != null);
-        Contract.Ensures(Contract.Result<Procedure>() != null);
-        // do not visit requires/ensures when calling this on Implementation
-        return node;
-      }
-
       public override Expr VisitLambdaExpr(LambdaExpr lambda) {
         var baseResult = base.VisitLambdaExpr(lambda);
         lambda = baseResult as LambdaExpr;
         if (lambda == null) {
-          return baseResult;
+          return baseResult;  // apparently, the base visitor already turned the lambda into something else
         }
 
-        IToken/*!*/ tok = lambda.tok;
-        Contract.Assert(tok != null);
+        // We start by getting rid of any use of "old" inside the lambda.  This is done as follows.
+        // For each variable "g" occurring inside lambda as "old(... g ...)", create a new name "og".
+        // Replace each old occurrence of "g" with "og", removing the enclosing "old" wrappers.
+        var oldFinder = new OldFinder();
+        oldFinder.Visit(lambda);
+        var oldSubst = new Dictionary<Variable, Expr>();  // g -> g0
+        var callOldMapping = new Dictionary<Variable, Expr>();  // g0 -> old(g)
+        foreach (var v in oldFinder.FreeOldVars) {
+          var g = v as GlobalVariable;
+          if (g != null) {
+            var g0 = new GlobalVariable(g.tok, new TypedIdent(g.tok, g.TypedIdent.Name + "@old", g.TypedIdent.Type));
+            oldSubst.Add(g, new IdentifierExpr(g0.tok, g0));
+            callOldMapping.Add(g0, new OldExpr(g0.tok, new IdentifierExpr(g.tok, g)));
+          }
+        }
+        var lambdaBody = Substituter.ApplyReplacingOldExprs(
+          Substituter.SubstitutionFromHashtable(new Dictionary<Variable,Expr>()),
+          Substituter.SubstitutionFromHashtable(oldSubst),
+          lambda.Body);
+        var lambdaAttrs = Substituter.ApplyReplacingOldExprs(
+          Substituter.SubstitutionFromHashtable(new Dictionary<Variable, Expr>()),
+          Substituter.SubstitutionFromHashtable(oldSubst),
+          lambda.Attributes);
 
-        Set freeVars = new Set();
-        lambda.ComputeFreeVariables(freeVars);
         // this is ugly, the output will depend on hashing order
-        Dictionary<Variable, Expr> subst = new Dictionary<Variable, Expr>();
-        List<Variable> formals = new List<Variable>();
-        List<Expr> callArgs = new List<Expr>();
-        List<Expr> axCallArgs = new List<Expr>();
-        List<Variable> dummies = new List<Variable>(lambda.Dummies);
-        List<TypeVariable> freeTypeVars = new List<TypeVariable>();
-        List<Type/*!*/> fnTypeVarActuals = new List<Type/*!*/>();
-        List<TypeVariable> freshTypeVars = new List<TypeVariable>();  // these are only used in the lambda@n function's definition
+        var subst = new Dictionary<Variable, Expr>();
+        var substFnAttrs = new Dictionary<Variable, Expr>();
+        var formals = new List<Variable>();
+        var callArgs = new List<Expr>();
+        var axCallArgs = new List<Expr>();
+        var dummies = new List<Variable>(lambda.Dummies);
+        var freeTypeVars = new List<TypeVariable>();
+        var fnTypeVarActuals = new List<Type/*!*/>();
+        var freshTypeVars = new List<TypeVariable>();  // these are only used in the lambda@n function's definition
+
+        // compute the free variables of the lambda expression, but with lambdaBody instead of lambda.Body
+        Set freeVars = new Set();
+        BinderExpr.ComputeBinderFreeVariables(lambda.TypeParameters, lambda.Dummies, lambdaBody, lambdaAttrs, freeVars);
+
         foreach (object o in freeVars) {
-          // 'o' is either a Variable or a TypeVariable.  Since the lambda desugaring happens only
-          // at the outermost level of a program (where there are no mutable variables) and, for
-          // procedure bodies, after the statements have been passified (when mutable variables have
-          // been replaced by immutable incarnations), we are interested only in BoundVar's and
-          // TypeVariable's.
-          BoundVariable v = o as BoundVariable;
-          if (v != null) {
-            TypedIdent ti = new TypedIdent(v.TypedIdent.tok, v.TypedIdent.Name, v.TypedIdent.Type);
-            Formal f = new Formal(v.tok, ti, true);
+          // 'o' is either a Variable or a TypeVariable.
+          if (o is Variable) {
+            var v = o as Variable;
+            var ti = new TypedIdent(v.TypedIdent.tok, v.TypedIdent.Name, v.TypedIdent.Type);
+            var f = new Formal(v.tok, ti, true);
             formals.Add(f);
-            BoundVariable b = new BoundVariable(v.tok, ti);
+            substFnAttrs.Add(v, new IdentifierExpr(f.tok, f));
+            var b = new BoundVariable(v.tok, ti);
             dummies.Add(b);
-            callArgs.Add(new IdentifierExpr(v.tok, v));
-            Expr/*!*/ id = new IdentifierExpr(f.tok, b);
-            Contract.Assert(id != null);
+            if (callOldMapping.ContainsKey(v)) {
+              callArgs.Add(callOldMapping[v]);
+            } else {
+              callArgs.Add(new IdentifierExpr(v.tok, v));
+            }
+            Expr id = new IdentifierExpr(b.tok, b);
             subst.Add(v, id);
             axCallArgs.Add(id);
-          } else if (o is TypeVariable) {
-            TypeVariable tv = (TypeVariable)o;
+          } else {
+            var tv = (TypeVariable)o;
             freeTypeVars.Add(tv);
             fnTypeVarActuals.Add(tv);
             freshTypeVars.Add(new TypeVariable(tv.tok, tv.Name));
           }
         }
 
+        IToken tok = lambda.tok;
         Formal res = new Formal(tok, new TypedIdent(tok, TypedIdent.NoName, cce.NonNull(lambda.Type)), false);
-        Function fn = new Function(tok, "lambda@" + lambdaid++, freshTypeVars, formals, res, "auto-generated lambda function", lambda.Attributes);
+        Function fn = new Function(tok, "lambda@" + lambdaid++, freshTypeVars, formals, res, "auto-generated lambda function",
+          Substituter.Apply(Substituter.SubstitutionFromHashtable(substFnAttrs), lambdaAttrs));
         lambdaFunctions.Add(fn);
 
         FunctionCall fcall = new FunctionCall(new IdentifierExpr(tok, fn.Name));
@@ -145,7 +152,7 @@ namespace Microsoft.Boogie {
         axcall.Type = res.TypedIdent.Type;
         axcall.TypeParameters = SimpleTypeParamInstantiation.From(freeTypeVars, fnTypeVarActuals);
         NAryExpr select = Expr.Select(axcall, selectArgs);
-        select.Type = lambda.Body.Type;
+        select.Type = lambdaBody.Type;
         List<Type/*!*/> selectTypeParamActuals = new List<Type/*!*/>();
         List<TypeVariable> forallTypeVariables = new List<TypeVariable>();
         foreach (TypeVariable/*!*/ tp in lambda.TypeParameters) {
@@ -156,12 +163,14 @@ namespace Microsoft.Boogie {
         forallTypeVariables.AddRange(freeTypeVars);
         select.TypeParameters = SimpleTypeParamInstantiation.From(lambda.TypeParameters, selectTypeParamActuals);
 
-        Expr bb = Substituter.Apply(Substituter.SubstitutionFromHashtable(subst), lambda.Body);
+        Expr bb = Substituter.Apply(Substituter.SubstitutionFromHashtable(subst), lambdaBody);
         NAryExpr body = Expr.Eq(select, bb);
         body.Type = Type.Bool;
         body.TypeParameters = SimpleTypeParamInstantiation.EMPTY;
         Trigger trig = new Trigger(select.tok, true, new List<Expr> { select });
-        lambdaAxioms.Add(new ForallExpr(tok, forallTypeVariables, dummies, lambda.Attributes, trig, body));
+        lambdaAxioms.Add(new ForallExpr(tok, forallTypeVariables, dummies,
+          Substituter.Apply(Substituter.SubstitutionFromHashtable(subst), lambdaAttrs),
+          trig, body));
 
         NAryExpr call = new NAryExpr(tok, fcall, callArgs);
         call.Type = res.TypedIdent.Type;
@@ -169,6 +178,40 @@ namespace Microsoft.Boogie {
 
         return call;
       }
+      public override Cmd VisitCallCmd(CallCmd node) {
+        var baseResult = base.VisitCallCmd(node);
+        node = baseResult as CallCmd;
+        if (node == null) {
+          return baseResult;  // apparently, the base visitor already turned the lambda into something else
+        }
+        // also visit the desugaring (which the StandardVisitor does not do)
+        node.VisitDesugaring(this);
+        return node;
+      }
+    }
+  }
+
+  class OldFinder : ReadOnlyVisitor
+  {
+    public readonly GSet<Variable> FreeOldVars = new GSet<Variable>();
+    public override Expr VisitOldExpr(OldExpr node) {
+      Set freeVars = new Set();
+      node.Expr.ComputeFreeVariables(freeVars);
+      foreach (var v in freeVars) {
+        // Note, "v" is either a Variable or a TypeVariable
+        if (v is Variable) {
+          FreeOldVars.Add((Variable)v);
+        }
+      }
+      return node;  // don't visit subexpressions, since ComputeFreeVariables has already gone through those
+    }
+    public override BinderExpr VisitBinderExpr(BinderExpr node) {
+      base.VisitBinderExpr(node);
+      // visit attributes, even though StandardVisitor does not do that (but maybe it should?)
+      if (node.Attributes != null) {
+        this.Visit(node.Attributes);
+      }
+      return node;
     }
   }
 

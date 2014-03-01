@@ -2638,32 +2638,6 @@ namespace VC {
       }
       #endregion Peep-hole optimizations
 
-      if (CommandLineOptions.Clo.ExpandLambdas)
-      {
-        List<Expr> axioms;
-        List<Function> functions;        
-        lock (program.TopLevelDeclarations)
-        {
-          LambdaHelper.Desugar(impl, out axioms, out functions);
-          program.TopLevelDeclarations.AddRange(functions);
-        }
-
-        if (axioms.Count > 0) {
-          List<Cmd> cmds = new List<Cmd>();
-          foreach (Expr ax in axioms) {
-            Contract.Assert(ax != null);
-            cmds.Add(new AssumeCmd(ax.tok, ax));
-          }
-          Block entryBlock = cce.NonNull( impl.Blocks[0]);
-          cmds.AddRange(entryBlock.Cmds);
-          entryBlock.Cmds = cmds;
-          // Make sure that all added commands are passive commands.
-          Dictionary<Variable, Expr> incarnationMap = ComputeIncarnationMap(entryBlock, new Dictionary<Block, Dictionary<Variable, Expr>>());
-          TurnIntoPassiveBlock(entryBlock, incarnationMap, mvInfo,
-                               ComputeOldExpressionSubstitution(impl.Proc.Modifies));
-        }
-      }
-
       HandleSelectiveChecking(impl);
 
 

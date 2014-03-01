@@ -63,3 +63,11 @@ procedure nestedLambda()
   a := (lambda x: int :: (lambda y: int :: x+y));
 }
 
+// The following tests that the lambda in the desugaring of the
+// call command gets replaced.
+procedure P();
+  ensures (lambda y: int :: y == y)[15];
+procedure Q()
+{
+  call P();
+}

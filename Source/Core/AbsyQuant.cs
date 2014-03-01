@@ -167,28 +167,33 @@ namespace Microsoft.Boogie {
       }
     }
 
-    public override void ComputeFreeVariables(Set /*Variable*/ freeVars) {
+    public override void ComputeFreeVariables(Set freeVars) {
       //Contract.Requires(freeVars != null);
-      foreach (Variable/*!*/ v in Dummies) {
+      ComputeBinderFreeVariables(TypeParameters, Dummies, Body, Attributes, freeVars);
+    }
+
+    public static void ComputeBinderFreeVariables(List<TypeVariable> typeParameters, List<Variable> dummies, Expr body, QKeyValue attributes, Set freeVars) {
+      Contract.Requires(dummies != null);
+      Contract.Requires(body != null);
+
+      foreach (var v in dummies) {
         Contract.Assert(v != null);
         Contract.Assert(!freeVars[v]);
       }
-      Body.ComputeFreeVariables(freeVars);
-      foreach (Variable/*!*/ v in Dummies) {
-        Contract.Assert(v != null);
-        foreach (TypeVariable/*!*/ w in v.TypedIdent.Type.FreeVariables) {
-          Contract.Assert(w != null);
-          freeVars.Add(w);
+      body.ComputeFreeVariables(freeVars);
+      for (var a = attributes; a != null; a = a.Next) {
+        foreach (var o in a.Params) {
+          var e = o as Expr;
+          if (e != null) {
+            e.ComputeFreeVariables(freeVars);
+          }
         }
       }
-      foreach (Variable/*!*/ v in Dummies) {
-        Contract.Assert(v != null);
-        freeVars.Remove(v);
+      foreach (var v in dummies) {
+        freeVars.AddRange(v.TypedIdent.Type.FreeVariables);
       }
-      foreach (TypeVariable/*!*/ v in TypeParameters) {
-        Contract.Assert(v != null);
-        freeVars.Remove(v);
-      }
+      freeVars.RemoveRange(dummies);
+      freeVars.RemoveRange(typeParameters);
     }
 
     protected List<TypeVariable> GetUnmentionedTypeParameters() {
@@ -352,6 +357,10 @@ namespace Microsoft.Boogie {
       foreach (object o in Params)
         newParams.Add(o);
       return new QKeyValue(tok, Key, newParams, (Next == null) ? null : (QKeyValue)Next.Clone());
+    }
+
+    public override Absy StdDispatch(StandardVisitor visitor) {
+      return visitor.VisitQKeyValue(this);
     }
   }
 

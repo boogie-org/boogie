@@ -1631,6 +1631,20 @@ namespace Microsoft.Boogie {
         return desugaring;
       }
     }
+    /// <summary>
+    /// This method invokes "visitor.Visit" on the desugaring, and then updates the
+    /// desugaring to the result thereof.  The method's intended use is for subclasses
+    /// of StandardVisitor that need to also visit the desugaring.  Note, since the
+    /// "desugaring" field is updated, this is not an appropriate method to be called
+    /// be a ReadOnlyVisitor; such visitors should instead just call
+    /// visitor.Visit(sugaredCmd.Desugaring).
+    /// </summary>
+    public void VisitDesugaring(StandardVisitor visitor) {
+      Contract.Requires(visitor != null && !(visitor is ReadOnlyVisitor));
+      if (desugaring != null) {
+        desugaring = (Cmd)visitor.Visit(desugaring);
+      }
+    }
     protected abstract Cmd/*!*/ ComputeDesugaring();
 
     public override void Emit(TokenTextWriter stream, int level) {
