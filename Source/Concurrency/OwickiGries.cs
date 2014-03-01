@@ -268,35 +268,38 @@ namespace Microsoft.Boogie
 
         private void AddCallToYieldProc(IToken tok, List<Cmd> newCmds, Dictionary<Variable, Variable> ogOldGlobalMap, Dictionary<string, Variable> domainNameToLocalVar)
         {
-            List<Expr> exprSeq = new List<Expr>();
-            foreach (string domainName in linearTypeChecker.linearDomains.Keys)
+            if (!CommandLineOptions.Clo.TrustNonInterference)
             {
-                exprSeq.Add(Expr.Ident(domainNameToLocalVar[domainName]));
-            }
-            foreach (IdentifierExpr ie in globalMods)
-            {
-                exprSeq.Add(Expr.Ident(ogOldGlobalMap[ie.Decl]));
-            }
-            if (yieldProc == null)
-            {
-                List<Variable> inputs = new List<Variable>();
+                List<Expr> exprSeq = new List<Expr>();
                 foreach (string domainName in linearTypeChecker.linearDomains.Keys)
                 {
-                    var domain = linearTypeChecker.linearDomains[domainName];
-                    Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "linear_" + domainName + "_in", new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> { domain.elementType }, Type.Bool)), true);
-                    inputs.Add(f);
+                    exprSeq.Add(Expr.Ident(domainNameToLocalVar[domainName]));
                 }
                 foreach (IdentifierExpr ie in globalMods)
                 {
-                    Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_global_old_{0}", ie.Decl.Name), ie.Decl.TypedIdent.Type), true);
-                    inputs.Add(f);
+                    exprSeq.Add(Expr.Ident(ogOldGlobalMap[ie.Decl]));
                 }
-                yieldProc = new Procedure(Token.NoToken, string.Format("og_yield_{0}", phaseNum), new List<TypeVariable>(), inputs, new List<Variable>(), new List<Requires>(), new List<IdentifierExpr>(), new List<Ensures>());
-                yieldProc.AddAttribute("inline", new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1)));
+                if (yieldProc == null)
+                {
+                    List<Variable> inputs = new List<Variable>();
+                    foreach (string domainName in linearTypeChecker.linearDomains.Keys)
+                    {
+                        var domain = linearTypeChecker.linearDomains[domainName];
+                        Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "linear_" + domainName + "_in", new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> { domain.elementType }, Type.Bool)), true);
+                        inputs.Add(f);
+                    }
+                    foreach (IdentifierExpr ie in globalMods)
+                    {
+                        Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_global_old_{0}", ie.Decl.Name), ie.Decl.TypedIdent.Type), true);
+                        inputs.Add(f);
+                    }
+                    yieldProc = new Procedure(Token.NoToken, string.Format("og_yield_{0}", phaseNum), new List<TypeVariable>(), inputs, new List<Variable>(), new List<Requires>(), new List<IdentifierExpr>(), new List<Ensures>());
+                    yieldProc.AddAttribute("inline", new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1)));
+                }
+                CallCmd yieldCallCmd = new CallCmd(Token.NoToken, yieldProc.Name, exprSeq, new List<IdentifierExpr>());
+                yieldCallCmd.Proc = yieldProc;
+                newCmds.Add(yieldCallCmd);
             }
-            CallCmd yieldCallCmd = new CallCmd(Token.NoToken, yieldProc.Name, exprSeq, new List<IdentifierExpr>());
-            yieldCallCmd.Proc = yieldProc;
-            newCmds.Add(yieldCallCmd);
 
             if (pc != null)
             {
@@ -455,11 +458,11 @@ namespace Microsoft.Boogie
                     Substitution subst = Substituter.SubstitutionFromHashtable(map);
                     foreach (Requires req in callCmd.Proc.Requires)
                     {
-                        requiresSeq.Add(new Requires(req.tok, req.Free, Substituter.Apply(subst, req.Condition), null));
+                        requiresSeq.Add(new Requires(req.tok, req.Free, Substituter.Apply(subst, req.Condition), null, req.Attributes));
                     }
                     foreach (Ensures ens in callCmd.Proc.Ensures)
                     {
-                        ensuresSeq.Add(new Ensures(ens.tok, ens.Free, Substituter.Apply(subst, ens.Condition), null));
+                        ensuresSeq.Add(new Ensures(ens.tok, ens.Free, Substituter.Apply(subst, ens.Condition), null, ens.Attributes));
                     }
                     count++;
                 }
@@ -467,7 +470,7 @@ namespace Microsoft.Boogie
                 proc.AddAttribute("yields");
                 asyncAndParallelCallDesugarings[procName] = proc;
             }
-            CallCmd dummyCallCmd = new CallCmd(parCallCmd.tok, proc.Name, ins, outs);
+            CallCmd dummyCallCmd = new CallCmd(parCallCmd.tok, proc.Name, ins, outs, parCallCmd.Attributes);
             dummyCallCmd.Proc = proc;
             newCmds.Add(dummyCallCmd);
         }
@@ -550,7 +553,7 @@ namespace Microsoft.Boogie
                 }
                 else
                 {
-                    AssertCmd assertCmd = new AssertCmd(ensures.tok, newExpr);
+                    AssertCmd assertCmd = new AssertCmd(ensures.tok, newExpr, ensures.Attributes);
                     assertCmd.ErrorData = "Backwards non-interference check failed";
                     newCmds.Add(assertCmd);
                 }
@@ -854,7 +857,7 @@ namespace Microsoft.Boogie
                                 asyncAndParallelCallDesugarings[callCmd.Proc.Name] = new Procedure(Token.NoToken, string.Format("DummyAsyncTarget_{0}", callCmd.Proc.Name), callCmd.Proc.TypeParameters, callCmd.Proc.InParams, callCmd.Proc.OutParams, callCmd.Proc.Requires, new List<IdentifierExpr>(), new List<Ensures>());
                             }
                             var dummyAsyncTargetProc = asyncAndParallelCallDesugarings[callCmd.Proc.Name];
-                            CallCmd dummyCallCmd = new CallCmd(callCmd.tok, dummyAsyncTargetProc.Name, callCmd.Ins, callCmd.Outs);
+                            CallCmd dummyCallCmd = new CallCmd(callCmd.tok, dummyAsyncTargetProc.Name, callCmd.Ins, callCmd.Outs, callCmd.Attributes);
                             dummyCallCmd.Proc = dummyAsyncTargetProc;
                             newCmds.Add(dummyCallCmd);
                         }

@@ -489,8 +489,11 @@ namespace Microsoft.Boogie {
 
     public string OwickiGriesDesugaredOutputFile = null;
     public bool TrustAtomicityTypes = false;
+    public bool TrustNonInterference = false;
     public int TrustPhasesUpto = -1;
     public int TrustPhasesDownto = int.MaxValue;
+
+    public bool UseParallelism = true;
 
     public enum VCVariety {
       Structured,
@@ -1389,7 +1392,9 @@ namespace Microsoft.Boogie {
               ps.CheckBooleanFlag("deterministicExtractLoops", ref DeterministicExtractLoops) ||
               ps.CheckBooleanFlag("verifySnapshots", ref VerifySnapshots) ||
               ps.CheckBooleanFlag("verifySeparately", ref VerifySeparately) ||
-              ps.CheckBooleanFlag("trustAtomicityTypes", ref TrustAtomicityTypes)
+              ps.CheckBooleanFlag("trustAtomicityTypes", ref TrustAtomicityTypes) ||
+              ps.CheckBooleanFlag("trustNonInterference", ref TrustNonInterference) ||
+              ps.CheckBooleanFlag("doNotUseParallelism", ref UseParallelism, false)
               ) {
             // one of the boolean flags matched
             return true;
