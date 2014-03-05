@@ -79,6 +79,7 @@ public class SmartBlockPredicator {
       cCmd.Ins.Insert(0, p != null ? p : Expr.True);
       cmdSeq.Add(cCmd);
     } else if (p == null) {
+      new EnabledReplacementVisitor(Expr.True).Visit(cmd);
       cmdSeq.Add(cmd);
     } else if (cmd is AssignCmd) {
       var aCmd = (AssignCmd)cmd;
@@ -224,7 +225,7 @@ public class SmartBlockPredicator {
           return;
         }
       }
-     
+
       if (uni != null && uni.IsUniform(impl.Name, block.Item1)) {
         if (blockGraph.Headers.Contains(block.Item1)) {
           parentMap[block.Item1] = header;
@@ -518,6 +519,15 @@ public class SmartBlockPredicator {
               if (!QKeyValue.FindBoolAttribute(e.Attributes, "do_not_predicate")) {
                 e.Condition = Expr.Imp(fpIdentifierExpr, e.Condition);
               }
+            }
+          }
+        } else {
+          if (impl == null) {
+            foreach (Requires r in proc.Requires) {
+              new EnabledReplacementVisitor(Expr.True).VisitExpr(r.Condition);
+            }
+            foreach (Ensures e in proc.Ensures) {
+              new EnabledReplacementVisitor(Expr.True).VisitExpr(e.Condition);
             }
           }
         }
