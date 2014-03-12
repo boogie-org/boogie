@@ -71,6 +71,14 @@ namespace Microsoft.Boogie {
       Contract.Ensures(Contract.Result<Block>() != null);
       return base.VisitBlock((Block)node.Clone());
     }
+    public override BvConcatExpr VisitBvConcatExpr (BvConcatExpr node) {
+      Contract.Ensures(Contract.Result<BvConcatExpr>() != null);
+      return base.VisitBvConcatExpr((BvConcatExpr) node.Clone());
+    }
+    public override BvExtractExpr VisitBvExtractExpr(BvExtractExpr node) {
+      Contract.Ensures(Contract.Result<BvExtractExpr>() != null);
+      return base.VisitBvExtractExpr((BvExtractExpr) node.Clone());
+    }
     public override Expr VisitCodeExpr(CodeExpr node) {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Expr>() != null);
