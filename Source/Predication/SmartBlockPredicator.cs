@@ -434,16 +434,22 @@ public class SmartBlockPredicator {
       prevBlock.TransferCmd = new GotoCmd(Token.NoToken, new List<Block> { block });
     }
 
-    if (parentMap.ContainsKey(block)) {
-      var parent = parentMap[block];
+    Block currentBlock = block;
+    Expr pCurrentExpr = pExpr;
+    while (parentMap.ContainsKey(currentBlock)) {
+      Block parent = parentMap[currentBlock];
+      Expr pParentExpr = null;
       if (predMap.ContainsKey(parent)) {
         var parentPred = predMap[parent];
         if (parentPred != null) {
+          pParentExpr = Expr.Ident(parentPred);
           block.Cmds.Add(new AssertCmd(Token.NoToken,
-                                          pExpr != null ? (Expr)Expr.Imp(pExpr, Expr.Ident(parentPred))
-                                                        : Expr.Ident(parentPred)));
+                                          pCurrentExpr != null ? (Expr)Expr.Imp(pCurrentExpr, pParentExpr)
+                                                               : pParentExpr));
         }
       }
+      currentBlock = parent;
+      pCurrentExpr = pParentExpr;
     }
 
     var transferCmd = block.TransferCmd;
