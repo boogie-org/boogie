@@ -93,6 +93,20 @@ namespace Microsoft.Boogie {
           Substituter.SubstitutionFromHashtable(oldSubst),
           lambda.Attributes);
 
+        if (CommandLineOptions.Clo.VerifySnapshots && QKeyValue.FindStringAttribute(lambdaAttrs, "checksum") == null)
+        {
+          // Attach a dummy checksum to avoid issues in the dependency analysis.
+          var checksumAttr = new QKeyValue(lambda.tok, "checksum", new List<object> { "dummy" }, null);
+          if (lambdaAttrs == null)
+          {
+            lambdaAttrs = checksumAttr;
+          }
+          else
+          {
+            lambdaAttrs.AddLast(checksumAttr);
+          }
+        }
+
         // this is ugly, the output will depend on hashing order
         var subst = new Dictionary<Variable, Expr>();
         var substFnAttrs = new Dictionary<Variable, Expr>();
