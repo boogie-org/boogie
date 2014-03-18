@@ -24,7 +24,6 @@ public class SmartBlockPredicator {
   IdentifierExpr fp;
   Dictionary<Microsoft.Boogie.Type, IdentifierExpr> havocVars =
     new Dictionary<Microsoft.Boogie.Type, IdentifierExpr>();
-  Dictionary<Block, Expr> blockIds = new Dictionary<Block, Expr>();
   HashSet<Block> doneBlocks = new HashSet<Block>();
   bool myUseProcedurePredicates;
   UniformityAnalyser uni;
@@ -148,10 +147,11 @@ public class SmartBlockPredicator {
         gCmd.labelTargets.Cast<Block>().Any(b => predMap.ContainsKey(b));
 
       if (gCmd.labelTargets.Count == 1) {
-        if (defMap.ContainsKey(gCmd.labelTargets[0]))
+        if (defMap.ContainsKey(gCmd.labelTargets[0])) {
           PredicateCmd(p, cmdSeq,
                        Cmd.SimpleAssign(Token.NoToken,
                                         Expr.Ident(predMap[gCmd.labelTargets[0]]), Expr.True));
+        }
       } else {
         Debug.Assert(gCmd.labelTargets.Count > 1);
         Debug.Assert(gCmd.labelTargets.Cast<Block>().All(t => uni.IsUniform(impl.Name, t) ||
@@ -160,11 +160,15 @@ public class SmartBlockPredicator {
           if (!partInfo.ContainsKey(target))
             continue;
 
+          // In this case we not only predicate with the current predicate p,
+          // but also with the "part predicate"; this ensures that we do not
+          // update a predicate twice when it occurs in both parts.
           var part = partInfo[target];
-          if (defMap.ContainsKey(part.realDest))
-            PredicateCmd(p, cmdSeq,
+          if (defMap.ContainsKey(part.realDest)) {
+            PredicateCmd(p == null ? part.pred : Expr.And(p, part.pred), cmdSeq,
                          Cmd.SimpleAssign(Token.NoToken,
                                           Expr.Ident(predMap[part.realDest]), part.pred));
+          }
           var predsExitingLoop = new Dictionary<Block, List<Expr>>();
           foreach (Block exit in LoopsExited(src, target)) {
             List<Expr> predList;
@@ -175,7 +179,7 @@ public class SmartBlockPredicator {
             predList.Add(part.pred);
           }
           foreach (var pred in predsExitingLoop) {
-            PredicateCmd(p, cmdSeq,
+            PredicateCmd(p == null ? part.pred : Expr.And(p, part.pred), cmdSeq,
                          Cmd.SimpleAssign(Token.NoToken,
                                           Expr.Ident(predMap[pred.Key]),
                                           Expr.Not(pred.Value.Aggregate(Expr.Or))));
@@ -203,6 +207,7 @@ public class SmartBlockPredicator {
   void AssignPredicates(Graph<Block> blockGraph,
                         DomRelation<Block> dom,
                         DomRelation<Block> pdom,
+                        IEnumerable<Block> headerDominance,
                         IEnumerator<Tuple<Block, bool>> i,
                         Variable headPredicate,
                         ref int predCount) {
@@ -229,7 +234,7 @@ public class SmartBlockPredicator {
       if (uni != null && uni.IsUniform(impl.Name, block.Item1)) {
         if (blockGraph.Headers.Contains(block.Item1)) {
           parentMap[block.Item1] = header;
-          AssignPredicates(blockGraph, dom, pdom, i, headPredicate, ref predCount);
+          AssignPredicates(blockGraph, dom, pdom, headerDominance, i, headPredicate, ref predCount);
         }
         continue;
       }
@@ -239,7 +244,7 @@ public class SmartBlockPredicator {
           parentMap[block.Item1] = header;
           var loopPred = FreshPredicate(ref predCount);
           ownedPreds.Add(loopPred);
-          AssignPredicates(blockGraph, dom, pdom, i, loopPred, ref predCount);
+          AssignPredicates(blockGraph, dom, pdom, headerDominance, i, loopPred, ref predCount);
         } else {
           bool foundExisting = false;
           foreach (var regionPred in regionPreds) {
@@ -254,7 +259,26 @@ public class SmartBlockPredicator {
             var condPred = FreshPredicate(ref predCount);
             predMap[block.Item1] = condPred;
             defMap[block.Item1] = condPred;
-            ownedPreds.Add(condPred);
+            var headerIterator = headerDominance.GetEnumerator();
+            // Add the predicate to the loop header H that dominates the node (if one
+            // exists) such that H does not dominate another header which also dominates
+            // the node. Since predicates are owned by loop headers (or the program entry
+            // node), this is the block 'closest' to block to which we are assigning a
+            // that can be made to own the predicate.
+            Block node = null;
+            while (headerIterator.MoveNext()) {
+              var current = headerIterator.Current;
+              if (dom.DominatedBy(block.Item1, current)) {
+                node = current;
+                break;
+              }
+            }
+            if (node != null) {
+              ownedMap[node].Add(condPred);
+            } else {
+               // In this case the header is the program entry node.
+              ownedPreds.Add(condPred);
+            }
             regionPreds.Add(new Tuple<Block, Variable>(block.Item1, condPred));
           }
         }
@@ -267,6 +291,7 @@ public class SmartBlockPredicator {
 
     Graph<Block> dualGraph = blockGraph.Dual(new Block());
     DomRelation<Block> pdom = dualGraph.DominatorMap;
+    IEnumerable<Block> headerDominance = blockGraph.SortHeadersByDominance();
 
     var iter = sortedBlocks.GetEnumerator();
     if (!iter.MoveNext()) {
@@ -280,7 +305,7 @@ public class SmartBlockPredicator {
     defMap = new Dictionary<Block, Variable>();
     ownedMap = new Dictionary<Block, HashSet<Variable>>();
     parentMap = new Dictionary<Block, Block>();
-    AssignPredicates(blockGraph, dom, pdom, iter,
+    AssignPredicates(blockGraph, dom, pdom, headerDominance, iter,
                      myUseProcedurePredicates ? impl.InParams[0] : null,
                      ref predCount);
   }
