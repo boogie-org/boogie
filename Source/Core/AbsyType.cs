@@ -2093,6 +2093,11 @@ Contract.Requires(that != null);
     private static int MinBitsFor(Type t) {
       Contract.Requires(t != null);
       Contract.Requires(t.IsBv);
+
+      if (t is TypeSynonymAnnotation) {
+        return MinBitsFor(((TypeSynonymAnnotation)t).ExpandedType);
+      }
+
       Contract.Ensures(0 <= Contract.Result<int>());
       if (t is BvType) {
         return t.BvBits;
@@ -2195,6 +2200,11 @@ Contract.Requires(that != null);
       Contract.Requires(t != null);
       Contract.Requires(t.IsBv && 0 <= to && MinBitsFor(t) <= to);
       Contract.Ensures(0 <= Contract.Result<int>() && Contract.Result<int>() <= to);
+
+      if(t is TypeSynonymAnnotation) {
+        return IncreaseBits(((TypeSynonymAnnotation)t).ExpandedType, to);
+      }
+
       t = FollowProxy(t);
       if (t is BvType) {
         return to - t.BvBits;
