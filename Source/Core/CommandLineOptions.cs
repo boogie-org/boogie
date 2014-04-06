@@ -368,6 +368,7 @@ namespace Microsoft.Boogie {
     public bool VerifySeparately;
     public string PrintFile = null;
     public int PrintUnstructured = 0;
+    public bool UseBaseNameForFileName = false;
     public int DoomStrategy = -1;
     public bool DoomRestartTP = false;
     public bool PrintDesugarings = false;
@@ -1404,7 +1405,8 @@ namespace Microsoft.Boogie {
               ps.CheckBooleanFlag("verifySeparately", ref VerifySeparately) ||
               ps.CheckBooleanFlag("trustAtomicityTypes", ref TrustAtomicityTypes) ||
               ps.CheckBooleanFlag("trustNonInterference", ref TrustNonInterference) ||
-              ps.CheckBooleanFlag("doNotUseParallelism", ref UseParallelism, false)
+              ps.CheckBooleanFlag("doNotUseParallelism", ref UseParallelism, false) ||
+              ps.CheckBooleanFlag("useBaseNameForFileName", ref UseBaseNameForFileName)
               ) {
             // one of the boolean flags matched
             return true;
@@ -1665,6 +1667,9 @@ namespace Microsoft.Boogie {
   /printCFG:<prefix> : print control flow graph of each implementation in
                        Graphviz format to files named:
                          <prefix>.<procedure name>.dot
+
+  /useBaseNameForFileName : When parsing use basename of file for tokens instead
+                            of the path supplied on the command line
 
   ---- Inference options -----------------------------------------------------
 

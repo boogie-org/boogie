@@ -49,7 +49,7 @@ readonly StructuredCmd/*!*/ dummyStructuredCmd;
 ///Returns the number of parsing errors encountered.  If 0, "program" returns as
 ///the parsed program.
 ///</summary>
-public static int Parse (string/*!*/ filename, /*maybe null*/ List<string/*!*/> defines, out /*maybe null*/ Program program) /* throws System.IO.IOException */ {
+public static int Parse (string/*!*/ filename, /*maybe null*/ List<string/*!*/> defines, out /*maybe null*/ Program program, bool useBaseName=false) /* throws System.IO.IOException */ {
   Contract.Requires(filename != null);
   Contract.Requires(cce.NonNullElements(defines,true));
 
@@ -59,25 +59,25 @@ public static int Parse (string/*!*/ filename, /*maybe null*/ List<string/*!*/> 
 
   if (filename == "stdin.bpl") {
     var s = ParserHelper.Fill(Console.In, defines);
-    return Parse(s, filename, out program);
+    return Parse(s, filename, out program, useBaseName);
   } else {
     FileStream stream = new FileStream(filename, FileMode.Open, FileAccess.Read, FileShare.Read);
     var s = ParserHelper.Fill(stream, defines);
-    var ret = Parse(s, filename, out program);
+    var ret = Parse(s, filename, out program, useBaseName);
     stream.Close();
     return ret;
   }
 }
 
 
-public static int Parse (string s, string/*!*/ filename, out /*maybe null*/ Program program) /* throws System.IO.IOException */ {
+public static int Parse (string s, string/*!*/ filename, out /*maybe null*/ Program program, bool useBaseName=false) /* throws System.IO.IOException */ {
   Contract.Requires(s != null);
   Contract.Requires(filename != null);
 
   byte[]/*!*/ buffer = cce.NonNull(UTF8Encoding.Default.GetBytes(s));
   MemoryStream ms = new MemoryStream(buffer,false);
   Errors errors = new Errors();
-  Scanner scanner = new Scanner(ms, errors, filename);
+  Scanner scanner = new Scanner(ms, errors, filename, useBaseName);
 
   Parser parser = new Parser(scanner, errors, false);
   parser.Parse();
