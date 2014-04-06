@@ -880,30 +880,33 @@ namespace Microsoft.Boogie {
                     fullMap[impl.Name] = null;
                     procsWithIrreducibleLoops.Add(impl.Name);
 
-                    // statically unroll loops in this procedure
-
-                    // First, build a map of the current blocks
-                    var origBlocks = new Dictionary<string, Block>();
-                    foreach (var blk in impl.Blocks) origBlocks.Add(blk.Label, blk);
-
-                    // unroll
-                    Block start = impl.Blocks[0];
-                    impl.Blocks = LoopUnroll.UnrollLoops(start, CommandLineOptions.Clo.RecursionBound, false);
-
-                    // Now construct the "map back" information
-                    // Resulting block label -> original block
-                    var blockMap = new Dictionary<string, Block>();
-                    foreach (var blk in impl.Blocks)
+                    if (CommandLineOptions.Clo.ExtractLoopsUnrollIrreducible)
                     {
-                        var sl = LoopUnroll.sanitizeLabel(blk.Label);
-                        if (sl == blk.Label) blockMap.Add(blk.Label, blk);
-                        else
+                        // statically unroll loops in this procedure
+
+                        // First, build a map of the current blocks
+                        var origBlocks = new Dictionary<string, Block>();
+                        foreach (var blk in impl.Blocks) origBlocks.Add(blk.Label, blk);
+
+                        // unroll
+                        Block start = impl.Blocks[0];
+                        impl.Blocks = LoopUnroll.UnrollLoops(start, CommandLineOptions.Clo.RecursionBound, false);
+
+                        // Now construct the "map back" information
+                        // Resulting block label -> original block
+                        var blockMap = new Dictionary<string, Block>();
+                        foreach (var blk in impl.Blocks)
                         {
-                            Contract.Assert(origBlocks.ContainsKey(sl));
-                            blockMap.Add(blk.Label, origBlocks[sl]);
+                            var sl = LoopUnroll.sanitizeLabel(blk.Label);
+                            if (sl == blk.Label) blockMap.Add(blk.Label, blk);
+                            else
+                            {
+                                Contract.Assert(origBlocks.ContainsKey(sl));
+                                blockMap.Add(blk.Label, origBlocks[sl]);
+                            }
                         }
+                        fullMap[impl.Name] = blockMap;
                     }
-                    fullMap[impl.Name] = blockMap;
                 }
             }
         }

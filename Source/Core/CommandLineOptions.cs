@@ -593,6 +593,7 @@ namespace Microsoft.Boogie {
     public bool PrintInlined = false;
     public bool ExtractLoops = false;
     public bool DeterministicExtractLoops = false;
+    public bool ExtractLoopsUnrollIrreducible = true; // unroll irreducible loops? (set programmatically)
     public int StratifiedInlining = 0;
     public string FixedPointEngine = null;
     public int StratifiedInliningOption = 0;
