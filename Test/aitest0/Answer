@@ -165,4 +165,4 @@ Execution trace:
     Intervals.bpl(301,3): anon3_LoopHead
     Intervals.bpl(301,3): anon3_LoopDone
 
-Boogie program verifier finished with 15 verified, 11 errors
+Boogie program verifier finished with 16 verified, 11 errors

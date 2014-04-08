@@ -48,6 +48,11 @@ namespace Microsoft.Basetypes {
     }
 
     [Pure]
+    public static BigDec FromBigInt(BIM v) {
+      return new BigDec(v, 0);
+    }
+
+    [Pure]
     public static BigDec FromString(string v) {
       if (v == null) throw new FormatException();
 

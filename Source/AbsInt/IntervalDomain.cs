@@ -166,20 +166,31 @@ namespace Microsoft.Boogie.AbstractInterpretation
           if (Lo != null && Hi != null && Lo + 1 == Hi) {
             // produce an equality
             var ide = new IdentifierExpr(Token.NoToken, V);
-            e = Expr.And(e, BplEq(ide, Expr.Literal(Basetypes.BigNum.FromBigInt((BigInteger)Lo))));
+            e = Expr.And(e, BplEq(ide, NumberToExpr((BigInteger)Lo, V.TypedIdent.Type)));
           } else {
             // produce a (possibly empty) conjunction of inequalities
             if (Lo != null) {
               var ide = new IdentifierExpr(Token.NoToken, V);
-              e = Expr.And(e, BplLe(Expr.Literal(Basetypes.BigNum.FromBigInt((BigInteger)Lo)), ide));
+              e = Expr.And(e, BplLe(NumberToExpr((BigInteger)Lo, V.TypedIdent.Type), ide));
             }
             if (Hi != null) {
               var ide = new IdentifierExpr(Token.NoToken, V);
-              e = Expr.And(e, BplLt(ide, Expr.Literal(Basetypes.BigNum.FromBigInt((BigInteger)Hi))));
+              e = Expr.And(e, BplLt(ide, NumberToExpr((BigInteger)Hi, V.TypedIdent.Type)));
             }
           }
           return e;
         }
+      }
+    }
+
+    static Expr NumberToExpr(BigInteger n, Type ty) {
+      if (n == null) {
+        return null;
+      } else if (ty.IsReal) {
+        return Expr.Literal(Basetypes.BigDec.FromBigInt(n));
+      } else {
+        Contract.Assume(ty.IsInt);
+        return Expr.Literal(Basetypes.BigNum.FromBigInt(n));
       }
     }
 

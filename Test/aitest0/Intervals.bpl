@@ -316,3 +316,17 @@ procedure Id17(n: int)
   assert 0 <= i;  // fine: SometimesId2 claims to be an identity and the use of it is int->int
 }
 
+// real numbers
+
+procedure W0(N: real)
+{
+  var i, bf0: real;
+  i := 0.0;
+  while (i < N) {
+    bf0 := N - i;
+    i := i + 1.0;
+    // check termination:
+    assert 0.0 <= bf0;
+    assert N - i <= bf0 - 1.0;
+  }
+}
