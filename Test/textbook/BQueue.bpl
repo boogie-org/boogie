@@ -1,3 +1,5 @@
+// RUN: %boogie %s > %t
+// RUN: %diff %s.expect %t
 // BQueue.bpl
 // A queue program specified in the style of dynamic frames.
 // Rustan Leino, Michal Moskal, and Wolfram Schulte, 2007.

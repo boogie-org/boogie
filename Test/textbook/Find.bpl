@@ -1,3 +1,5 @@
+// RUN: %boogie %s > %t
+// RUN: %diff %s.expect %t
 // Declare a constant 'K' and a function 'f' and postulate that 'K' is
 // in the image of 'f'
 const K: int;

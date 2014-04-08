@@ -1,3 +1,5 @@
+// RUN: %boogie %s > %t
+// RUN: %diff %s.expect %t
 // This file contains two definitions of integer div/mod (truncated division, as is
 // used in C, C#, Java, and several other languages, and Euclidean division, which
 // has mathematical appeal and is used by SMT Lib) and proves the correct
