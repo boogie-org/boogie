@@ -136,31 +136,25 @@ namespace Microsoft.Basetypes {
     ////////////////////////////////////////////////////////////////////////////
     // Conversion operations
 
-    [Pure]
-    public BIM Floor(BIM? minimum, BIM? maximum) {
+    public void FloorCeiling(out BIM floor, out BIM ceiling) {
       BIM n = this.mantissa;
-      
-      if (this.exponent >= 0) {
-        int e = this.exponent;
-        while (e > 0 && (minimum == null || minimum <= n) && (maximum == null || n <= maximum)) {
+      int e = this.exponent;
+      if (n.IsZero) {
+        floor = ceiling = n;
+      } else if (0 <= e) {
+        // it's an integer
+        for (; 0 < e; e--) {
           n = n * ten;
-          e = e - 1;
         }
-      }
-      else {
-        int e = -this.exponent;
-        while (e > 0 && !n.IsZero) {
-          n = n / ten;
-          e = e - 1;
+        floor = ceiling = n;
+      } else {
+        // it's a non-zero integer, so the ceiling is one more than the fllor
+        for (; e < 0 && !n.IsZero; e++) {
+          n = n / ten;  // since we're dividing by a positive number, this will round down
         }
+        floor = n;
+        ceiling = n + 1;
       }
-
-      if (minimum != null && n < minimum)
-        return (BIM)minimum;
-      else if (maximum != null && maximum < n)
-        return (BIM)maximum;
-      else
-        return n;
     }
 
     [Pure]

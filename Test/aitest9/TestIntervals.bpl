@@ -38,3 +38,33 @@ procedure Q(myField: Field [ref][teflon]bool, r: ref, t: teflon)
 {
   Heap[myField][r][t] := true;
 }
+
+// -----
+
+procedure Neq()
+{
+  var n: int;
+  assume 2 <= n && n <= 10;
+  assume 2 != n;
+  assume n != 10;
+  while (*) {
+    n := n;
+  }
+  assert 3 <= n;
+  assert n < 10;
+}
+
+procedure NeqX()
+{
+  var n: real;
+  assume 2.0 <= n && n <= 10.0;
+  assume 2.0 != n;
+  assume n != 10.0;
+  // The following statement will cause Boogie to know about n only
+  // what the abstract interpreter has inferred so far.
+  while (*) { n := n; }
+
+  assert 2.0 <= n && n <= 10.0;  // yes
+  assert 2.0 < n;  // error, the abstract domain is not precise enough to figure this out
+  assert n < 10.0;  // error, ditto
+}

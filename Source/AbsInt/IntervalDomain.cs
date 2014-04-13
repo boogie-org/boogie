@@ -34,7 +34,8 @@ namespace Microsoft.Boogie.AbstractInterpretation
     public class Node
     {
       public readonly Variable V;  // variable has type bool or int
-      // For an integer variable (Lo,Hi) indicates Lo <= V < Hi, where Lo==null means no lower bound and Hi==null means no upper bound
+      // For an integer variable (Lo,Hi) indicates Lo <= V < Hi, where Lo==null means no lower bound and Hi==null means no upper bound.
+      // For a real variable (Lo,Hi) indicates Lo <= V <= Hi, where Lo==null means no lower bound and Hi==null means no upper bound.
       // For a boolean variable, (Lo,Hi) is one of: (null,null) for {false,true}, (null,1) for {false}, and (1,null) for {true}.
       public readonly BigInteger? Lo;
       public readonly BigInteger? Hi;
@@ -153,7 +154,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
         if (!V.IsMutable && CommandLineOptions.Clo.InstrumentInfer != CommandLineOptions.InstrumentationPlaces.Everywhere) {
           // omit invariants about readonly variables
           return Expr.True;
-        } else  if (V.TypedIdent.Type.IsBool) {
+        } else if (V.TypedIdent.Type.IsBool) {
           if (Lo == null && Hi == null) {
             return Expr.True;
           } else {
@@ -161,7 +162,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
             var ide = new IdentifierExpr(Token.NoToken, V);
             return Hi == null ? ide : Expr.Not(ide);
           }
-        } else {
+        } else if (V.TypedIdent.Type.IsInt) {
           Expr e = Expr.True;
           if (Lo != null && Hi != null && Lo + 1 == Hi) {
             // produce an equality
@@ -176,6 +177,25 @@ namespace Microsoft.Boogie.AbstractInterpretation
             if (Hi != null) {
               var ide = new IdentifierExpr(Token.NoToken, V);
               e = Expr.And(e, BplLt(ide, NumberToExpr((BigInteger)Hi, V.TypedIdent.Type)));
+            }
+          }
+          return e;
+        } else {
+          Contract.Assert(V.TypedIdent.Type.IsReal);
+          Expr e = Expr.True;
+          if (Lo != null && Hi != null && Lo == Hi) {
+            // produce an equality
+            var ide = new IdentifierExpr(Token.NoToken, V);
+            e = Expr.And(e, BplEq(ide, NumberToExpr((BigInteger)Lo, V.TypedIdent.Type)));
+          } else {
+            // produce a (possibly empty) conjunction of inequalities
+            if (Lo != null) {
+              var ide = new IdentifierExpr(Token.NoToken, V);
+              e = Expr.And(e, BplLe(NumberToExpr((BigInteger)Lo, V.TypedIdent.Type), ide));
+            }
+            if (Hi != null) {
+              var ide = new IdentifierExpr(Token.NoToken, V);
+              e = Expr.And(e, BplLe(ide, NumberToExpr((BigInteger)Hi, V.TypedIdent.Type)));
             }
           }
           return e;
@@ -292,8 +312,8 @@ namespace Microsoft.Boogie.AbstractInterpretation
           } else {
             var lo = Node.Max(x.Lo, y.Lo, true);
             var hi = Node.Min(x.Hi, y.Hi, true);
-            // if hi<=lo, then we're overconstrained
-            if (lo != null && hi != null && hi <= lo) {
+            // if hi<=lo (or hi<lo for reals), then we're overconstrained
+            if (lo != null && hi != null && (x.V.TypedIdent.Type.IsReal ? hi < lo : hi <= lo)) {
               return bottom;
             }
             n = new Node(x.V, lo, hi);
@@ -457,7 +477,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
     E_Common Constraint(Expr expr, Node state) {
       Variable v;
       if (IsVariable(expr, out v)) {
-        var n = new Node(v, new BigInteger(1), null);
+        var n = new Node(v, BigInteger.One, null);
         return new E(n);
       } else if (expr is LiteralExpr) {
         var e = (LiteralExpr)expr;
@@ -467,7 +487,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
         if (e.Fun is UnaryOperator) {
           if (((UnaryOperator)e.Fun).Op == UnaryOperator.Opcode.Not) {
             if (IsVariable(e.Args[0], out v)) {
-              var n = new Node(v, null, new BigInteger(1));
+              var n = new Node(v, null, BigInteger.One);
               return new E(n);
             }
           }
@@ -534,7 +554,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
                   BigInteger? lo, hi;
                   PartiallyEvaluate(arg0, state, out lo, out hi);
                   if (lo != null) {
-                    var n = new Node(v, lo + 1, null);
+                    var n = new Node(v, v.TypedIdent.Type.IsReal ? lo : lo + 1, null);
                     c = new E(n);
                   }
                 }
@@ -542,7 +562,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
                   BigInteger? lo, hi;
                   PartiallyEvaluate(arg1, state, out lo, out hi);
                   if (hi != null) {
-                    var n = new Node(v, null, hi - 1);
+                    var n = new Node(v, null, v.TypedIdent.Type.IsReal ? hi : hi - 1);
                     c = c == null ? new E(n) : (E_Common)Meet(c, new E(n));
                   }
                 }
@@ -567,7 +587,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
     private E ConstrainNeq(Node state, Variable v, Expr arg) {
       BigInteger? lo, hi;
       if (PartiallyEvaluate(arg, state, out lo, out hi)) {
-        if (lo != null && hi != null && lo + 1 == hi) {
+        if (!v.TypedIdent.Type.IsReal && lo != null && hi != null && lo + 1 == hi) {
           var exclude = lo;
           // If the partially evaluated arg (whose value is "exclude") is an end-point of
           // the interval known for "v", then produce a constraint that excludes that bound.
@@ -626,14 +646,14 @@ namespace Microsoft.Boogie.AbstractInterpretation
       public BigInteger? Lo;
       public BigInteger? Hi;
 
-      readonly BigInteger one = new BigInteger(1);
+      readonly BigInteger one = BigInteger.One;
 
       Node N;
       public PEVisitor(Node n) {
         N = n;
       }
 
-      // Override visitors for all expressions that can return a boolean or integer result
+      // Override visitors for all expressions that can return a boolean, integer, or real result
 
       public override Expr VisitExpr(Expr node) {
         Lo = Hi = null;
@@ -645,9 +665,10 @@ namespace Microsoft.Boogie.AbstractInterpretation
           Lo = n;
           Hi = n + 1;
         } else if (node.Val is BigDec) {
-          var n = ((BigDec)node.Val).Floor(-BigInteger.Pow(10, 12), BigInteger.Pow(10, 12));
-          Lo = n;
-          Hi = n + 1;
+          BigInteger floor, ceiling;
+          ((BigDec)node.Val).FloorCeiling(out floor, out ceiling);
+          Lo = floor;
+          Hi = ceiling;
         } else if (node.Val is bool) {
           if ((bool)node.Val) {
             // true
@@ -676,10 +697,10 @@ namespace Microsoft.Boogie.AbstractInterpretation
             VisitExpr(node.Args[0]);
             lo = Lo; hi = Hi;
             if (hi != null) {
-              Lo = 1 - hi;
+              Lo = node.Type.IsReal ? -hi : 1 - hi;
             }
             if (lo != null) {
-              Hi = 1 - lo;
+              Hi = node.Type.IsReal ? -lo : 1 - lo;
             }
           }
           else if (op.Op == UnaryOperator.Opcode.Not) {
@@ -700,6 +721,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
           VisitExpr(node.Args[1]);
           lo1 = Lo; hi1 = Hi;
           Lo = Hi = null;
+          var isReal = node.Args[0].Type.IsReal;
           switch (op.Op) {
             case BinaryOperator.Opcode.And:
               if (hi0 != null || hi1 != null) {
@@ -750,12 +772,16 @@ namespace Microsoft.Boogie.AbstractInterpretation
               // For Eq:
               // If the (lo0,hi0) and (lo1,hi1) ranges do not overlap, the answer is false.
               // If both ranges are the same unit range, then the answer is true.
-              if (hi0 != null && lo1 != null && hi0 <= lo1) {
+              if (hi0 != null && lo1 != null && (isReal ? hi0 < lo1 : hi0 <= lo1)) {
+                // no overlap
                 Lo = null; Hi = one;
-              } else if (lo0 != null && hi1 != null && hi1 <= lo0) {
+              } else if (lo0 != null && hi1 != null && (isReal ? hi1 < lo0 : hi1 <= lo0)) {
                 Lo = null; Hi = one;
+                // no overlaop
               } else if (lo0 != null && hi0 != null && lo1 != null && hi1 != null &&
-                lo0 + 1 == hi0 && lo0 == lo1 && lo1 + 1 == hi1) {
+                lo0 == lo1 && hi0 == hi1 &&  // ranges are the same
+                (isReal ? lo0 == hi0 : lo0 + 1 == hi0)) {  // unit range
+                // both ranges are the same unit range
                 Lo = one; Hi = null;
               }
               if (op.Op == BinaryOperator.Opcode.Neq) {
@@ -763,42 +789,68 @@ namespace Microsoft.Boogie.AbstractInterpretation
               }
               break;
             case BinaryOperator.Opcode.Le:
-            case BinaryOperator.Opcode.Gt:
-              // If hi0 - 1 <= lo1, then the answer is true.
-              // If hi1 <= lo0, then the answer is false.
-              if (hi0 != null && lo1 != null && hi0 - 1 <= lo1) {
-                Lo = one; Hi = null;
-              } else if (lo0 != null && hi1 != null && hi1 <= lo0) {
-                Lo = null; Hi = one;
-              }
-              if (op.Op == BinaryOperator.Opcode.Gt) {
-                var tmp = Lo; Lo = Hi; Hi = tmp;
+              if (isReal) {
+                // If hi0 <= lo1, then the answer is true.
+                // If hi1 < lo0, then the answer is false.
+                if (hi0 != null && lo1 != null && hi0 <= lo1) {
+                  Lo = one; Hi = null;
+                } else if (hi1 != null && lo0 != null && hi1 < lo0) {
+                  Lo = null; Hi = one;
+                }
+              } else {
+                // If hi0 - 1 <= lo1, then the answer is true.
+                // If hi1 <= lo0, then the answer is false.
+                if (hi0 != null && lo1 != null && hi0 - 1 <= lo1) {
+                  Lo = one; Hi = null;
+                } else if (lo0 != null && hi1 != null && hi1 <= lo0) {
+                  Lo = null; Hi = one;
+                }
               }
               break;
             case BinaryOperator.Opcode.Lt:
-            case BinaryOperator.Opcode.Ge:
-              // If hi0 <= lo1, then the answer is true.
-              // If hi1 - 1 <= lo0, then the answer is false.
-              if (hi0 != null && lo1 != null && hi0 <= lo1) {
-                Lo = one; Hi = null;
-              } else if (lo0 != null && hi1 != null && hi1 - 1 <= lo0) {
-                Lo = null; Hi = one;
-              }
-              if (op.Op == BinaryOperator.Opcode.Ge) {
-                var tmp = Lo; Lo = Hi; Hi = tmp;
+              if (isReal) {
+                // If hi0 < lo1, then the answer is true.
+                // If hi1 <= lo0, then the answer is false.
+                if (hi0 != null && lo1 != null && hi0 < lo1) {
+                  Lo = one; Hi = null;
+                } else if (hi1 != null && lo0 != null && hi1 <= lo0) {
+                  Lo = null; Hi = one;
+                }
+              } else {
+                // If hi0 <= lo1, then the answer is true.
+                // If hi1 - 1 <= lo0, then the answer is false.
+                if (hi0 != null && lo1 != null && hi0 <= lo1) {
+                  Lo = one; Hi = null;
+                } else if (lo0 != null && hi1 != null && hi1 - 1 <= lo0) {
+                  Lo = null; Hi = one;
+                }
               }
               break;
+            case BinaryOperator.Opcode.Gt:
+              // swap the operands and then continue as Lt
+              {
+                var tmp = lo0; lo0 = lo1; lo1 = tmp;
+                tmp = hi0; hi0 = hi1; hi1 = tmp;
+              }
+              goto case BinaryOperator.Opcode.Lt;
+            case BinaryOperator.Opcode.Ge:
+              // swap the operands and then continue as Le
+              {
+                var tmp = lo0; lo0 = lo1; lo1 = tmp;
+                tmp = hi0; hi0 = hi1; hi1 = tmp;
+              }
+              goto case BinaryOperator.Opcode.Le;
             case BinaryOperator.Opcode.Add:
               if (lo0 != null && lo1 != null) {
                 Lo = lo0 + lo1;
               }
               if (hi0 != null && hi1 != null) {
-                Hi = hi0 + hi1 - 1;
+                Hi = isReal ? hi0 + hi1 : hi0 + hi1 - 1;
               }
               break;
             case BinaryOperator.Opcode.Sub:
               if (lo0 != null && hi1 != null) {
-                Lo = lo0 - hi1 + 1;
+                Lo = isReal ? lo0 - hi1 : lo0 - hi1 + 1;
               }
               if (hi0 != null && lo1 != null) {
                 Hi = hi0 - lo1;
@@ -809,38 +861,38 @@ namespace Microsoft.Boogie.AbstractInterpretation
               if (lo0 != null && lo1 != null) {
                 if (0 <= (BigInteger)lo0 && 0 <= (BigInteger)lo1) {
                   Lo = lo0 * lo1;
-                  Hi = hi0 == null || hi1 == null ? null : (hi0 - 1) * (hi1 - 1) + 1;
+                  Hi = hi0 == null || hi1 == null ? null : isReal ? hi0 * hi1 : (hi0 - 1) * (hi1 - 1) + 1;
                 } else if ((BigInteger)lo0 < 0 && (BigInteger)lo1 < 0) {
                   Lo = null;  // approximation
-                  Hi = lo0 * lo1 + 1;
+                  Hi = isReal ? lo0 * lo1 : lo0 * lo1 + 1;
                 }
               }
               break;
             case BinaryOperator.Opcode.Div:
               // this uses an incomplete approximation that could be tightened up
               if (lo0 != null && lo1 != null && 0 <= (BigInteger)lo0 && 0 <= (BigInteger)lo1) {
-                Lo = new BigInteger(0);
+                Lo = BigInteger.Zero;
                 Hi = hi0;
               }
               break;
             case BinaryOperator.Opcode.Mod:
               // this uses an incomplete approximation that could be tightened up
               if (lo0 != null && lo1 != null && 0 <= (BigInteger)lo0 && 0 <= (BigInteger)lo1) {
-                Lo = new BigInteger(0);
+                Lo = BigInteger.Zero;
                 Hi = hi1;
               }
               break;
             case BinaryOperator.Opcode.RealDiv:
               // this uses an incomplete approximation that could be tightened up
               if (lo0 != null && lo1 != null && 0 <= (BigInteger)lo0 && 0 <= (BigInteger)lo1) {
-                Lo = new BigInteger(0);
-                Hi = hi1;
+                Lo = BigInteger.Zero;
+                Hi = 1 <= (BigInteger)lo1 ? hi0 : null;
               }
               break;
             case BinaryOperator.Opcode.Pow:
               // this uses an incomplete approximation that could be tightened up
               if (lo0 != null && lo1 != null && 0 <= (BigInteger)lo0 && 0 <= (BigInteger)lo1) {
-                Lo = new BigInteger(0);
+                Lo = 1 <= (BigInteger)lo1 ? BigInteger.One : BigInteger.Zero;
                 Hi = hi1;
               }
               break;
@@ -1052,6 +1104,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
         Contract.Assert(node.Args.Count == 2);
         var arg0 = node.Args[0];
         var arg1 = node.Args[1];
+        var offset = arg0.Type.IsReal ? 0 : 1;
         BigInteger? k;
         switch (op.Op) {
           case BinaryOperator.Opcode.Eq:
@@ -1083,22 +1136,22 @@ namespace Microsoft.Boogie.AbstractInterpretation
             k = AsIntLiteral(arg1);
             if (k != null) {
               var i = (BigInteger)k;
-              ups.Add(i + 1);
-              ups.Add(i + 2);
+              ups.Add(i + offset);
+              ups.Add(i + 1 + offset);
             }
             break;
           case BinaryOperator.Opcode.Lt:
             k = AsIntLiteral(arg0);
             if (k != null) {
               var i = (BigInteger)k;
-              downs.Add(i);
+              downs.Add(i );
               downs.Add(i + 1);
             }
             k = AsIntLiteral(arg1);
             if (k != null) {
               var i = (BigInteger)k;
-              ups.Add(i);
-              ups.Add(i + 1);
+              ups.Add(i - 1 + offset);
+              ups.Add(i + offset);
             }
             break;
           case BinaryOperator.Opcode.Ge:

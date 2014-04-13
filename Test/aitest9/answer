@@ -17,5 +17,15 @@ Execution trace:
     TestIntervals.bpl(13,14): anon11_Then
     TestIntervals.bpl(14,14): anon12_Then
     TestIntervals.bpl(17,5): anon8
+TestIntervals.bpl(68,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    TestIntervals.bpl(60,3): anon0
+    TestIntervals.bpl(65,3): anon3_LoopHead
+    TestIntervals.bpl(65,3): anon3_LoopDone
+TestIntervals.bpl(69,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    TestIntervals.bpl(60,3): anon0
+    TestIntervals.bpl(65,3): anon3_LoopHead
+    TestIntervals.bpl(65,3): anon3_LoopDone
 
-Boogie program verifier finished with 1 verified, 1 error
+Boogie program verifier finished with 2 verified, 3 errors
