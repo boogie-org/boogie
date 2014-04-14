@@ -90,7 +90,19 @@ void ObjectInvariant()
     private readonly Stack<HashSet<string/*!*/>/*!*/> _KnownStoreFunctions = new Stack<HashSet<string>>();
     private readonly Stack<HashSet<string/*!*/>/*!*/> _KnownSelectFunctions = new Stack<HashSet<string>>();
     private readonly Stack<HashSet<string>> _KnownLBL = new Stack<HashSet<string>>();
+		
+	// lets RPFP checker capture decls	
+	public abstract class DeclHandler {
+		public abstract void VarDecl(VCExprVar v);
+		public abstract void FuncDecl(Function f);
+	}
+		
+	private DeclHandler declHandler = null;
 
+	public void SetDeclHandler(DeclHandler _d){
+		declHandler = _d;
+	}
+		
     private void InitializeKnownDecls()
     {
         _KnownFunctions.Push(new HashSet<Function>());
@@ -182,6 +194,8 @@ void ObjectInvariant()
       if (KnownFunctions.Contains(func))
         return;
       KnownFunctions.Add(func);
+	  if(declHandler != null)
+		declHandler.FuncDecl(func);
     }
 
     public void RegisterRelation(Function func)
@@ -242,6 +256,8 @@ void ObjectInvariant()
           "(declare-fun " + printedName + " () " + TypeToString(node.Type) + ")";
         AddDeclaration(decl);
         KnownVariables.Add(node);
+		if(declHandler != null)
+			declHandler.VarDecl(node);
       }
 
       return base.Visit(node, arg);
