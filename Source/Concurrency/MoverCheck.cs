@@ -350,6 +350,10 @@ namespace Microsoft.Boogie
                     }
                     returnExpr = Expr.Or(returnExpr, expr);
                 }
+                ResolutionContext rc = new ResolutionContext(null);
+                rc.StateMode = ResolutionContext.State.Two;
+                returnExpr.Resolve(rc);
+                returnExpr.Typecheck(new TypecheckingContext(null));
                 return returnExpr;
             }
 
@@ -360,6 +364,10 @@ namespace Microsoft.Boogie
                 {
                     transitionRelation = Expr.Or(transitionRelation, CalculatePathCondition(path));
                 }
+                ResolutionContext rc = new ResolutionContext(null);
+                rc.StateMode = ResolutionContext.State.Two;
+                transitionRelation.Resolve(rc);
+                transitionRelation.Typecheck(new TypecheckingContext(null));
                 return transitionRelation;
             }
 
@@ -584,8 +592,10 @@ namespace Microsoft.Boogie
             foreach (AssertCmd assertCmd in first.thatGate)
             {
                 requiresExpr = Expr.And(assertCmd.Expr, requiresExpr);
+                requiresExpr.Type = Type.Bool;
             }
             Expr failureExpr = Expr.Not(requiresExpr);
+            failureExpr.Type = Type.Bool;
             List<Requires> requires = DisjointnessRequires(program, first, second);
             requires.Add(new Requires(false, failureExpr));
             foreach (AssertCmd assertCmd in second.thisGate)
@@ -616,15 +626,13 @@ namespace Microsoft.Boogie
             List<Variable> inputs = new List<Variable>();
             inputs.AddRange(second.thisInParams);
 
-            Expr failureExpr = Expr.True;
             List<Requires> requires = DisjointnessRequires(program, null, second);
-            requires.Add(new Requires(false, failureExpr));
             foreach (AssertCmd assertCmd in second.thisGate)
             {
                 requires.Add(new Requires(false, assertCmd.Expr));
             }
 
-            Expr ensuresExpr = (new TransitionRelationComputation(program, second)).LeftMoverCompute(failureExpr);
+            Expr ensuresExpr = (new TransitionRelationComputation(program, second)).LeftMoverCompute(Expr.True);
             List<Ensures> ensures = new List<Ensures>();
             Ensures ensureCheck = new Ensures(false, ensuresExpr);
             ensureCheck.ErrorData = string.Format("{0} is blocking", second.proc.Name);
