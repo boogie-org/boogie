@@ -689,6 +689,67 @@ namespace Microsoft.Boogie
                 proc.Ensures.Add(new Ensures(true, freePostExpr));
             }
         }
+		
+		private void FixedPointToSpecs(){
+			
+			if(mode != Mode.Corral || CommandLineOptions.Clo.PrintFixedPoint == null)
+				return; // not implemented for other annotation modes yet
+			
+			var twr = new TokenTextWriter(CommandLineOptions.Clo.PrintFixedPoint);
+			Dictionary<string, RPFP.Node> pmap = new Dictionary<string,RPFP.Node> ();
+
+			foreach (var node in rpfp.nodes)
+				pmap.Add ((node.Name as VCExprBoogieFunctionOp).Func.Name, node);
+			
+			foreach (Declaration decl in program.TopLevelDeclarations)
+            {
+                Contract.Assert(decl != null);
+                Implementation impl = decl as Implementation;
+                if (impl == null)
+                    continue;
+                Contract.Assert(!impl.Name.StartsWith(recordProcName), "Not allowed to have an implementation for this guy");
+
+                Procedure proc = cce.NonNull(impl.Proc);
+
+                {
+                    StratifiedInliningInfo info = new StratifiedInliningInfo(impl, program, boogieContext, QuantifierExpr.GetNextSkolemId());
+                    implName2StratifiedInliningInfo[impl.Name] = info;
+                    // We don't need controlFlowVariable for stratified Inlining
+                    //impl.LocVars.Add(info.controlFlowVariable);
+                    List<Expr> exprs = new List<Expr>();
+
+                    {
+						// last ensures clause will be the symbolic one
+						if(info.isMain)
+							continue;
+						var ens = proc.Ensures[proc.Ensures.Count - 1];
+						if(ens.Condition == Expr.False) // this is main
+							continue;
+                        var postExpr = ens.Condition as NAryExpr;
+						var args = postExpr.Args;
+						if(pmap.ContainsKey (impl.Name)){
+							RPFP.Node node = pmap[impl.Name];
+							var ind = node.Annotation.IndParams;
+							var bound = new Dictionary<VCExpr,Expr>(); 
+							for(int i = 0; i < args.Count; i++){
+								bound[ind[i]] = args[i];
+							}
+							var new_ens_cond = VCExprToExpr(node.Annotation.Formula,bound);
+                            if (new_ens_cond != Expr.True)
+                            {
+                                var new_ens = new Ensures(false, new_ens_cond);
+                                var enslist = new List<Ensures>();
+                                enslist.Add(new_ens);
+                                var new_proc = new Procedure(proc.tok, proc.Name, proc.TypeParameters, proc.InParams,
+                                                             proc.OutParams, new List<Requires>(), new List<IdentifierExpr>(), enslist);
+                                new_proc.Emit(twr, 0);
+                            }
+						}
+                    }
+                }
+            }
+			twr.Close ();
+		}
 
         private Term ExtractSmallerVCsRec(TermDict< Term> memo, Term t, List<Term> small, Term lbl = null)
         {
@@ -1482,6 +1543,7 @@ namespace Microsoft.Boogie
                             return VC.ConditionGeneration.Outcome.Errors;
                         case RPFP.LBool.False:
                             Console.WriteLine("Procedure is correct.");
+							FixedPointToSpecs();
                             return Outcome.Correct;
                         case RPFP.LBool.Undef:
                             Console.WriteLine("Inconclusive result.");
@@ -1964,7 +2026,132 @@ namespace Microsoft.Boogie
                 return m.MkElement(subst[uniqueName]);
             return m.MkFunc("@undefined", 0).GetConstant();
         }
+		
+		class InternalError : Exception {
+		}
+		
+		
+		private BinaryOperator.Opcode VCOpToOp (VCExprOp op)
+		{
+			if (op == VCExpressionGenerator.AddIOp)
+				return BinaryOperator.Opcode.Add;
+			if (op == VCExpressionGenerator.SubIOp)
+				return BinaryOperator.Opcode.Sub;
+			if (op == VCExpressionGenerator.MulIOp)
+				return BinaryOperator.Opcode.Mul;
+			if (op == VCExpressionGenerator.DivIOp)
+				return BinaryOperator.Opcode.Div;
+			if (op == VCExpressionGenerator.EqOp)
+				return BinaryOperator.Opcode.Eq;
+			if (op == VCExpressionGenerator.LeOp)
+				return BinaryOperator.Opcode.Le;
+			if (op == VCExpressionGenerator.LtOp)
+				return BinaryOperator.Opcode.Lt;
+			if (op == VCExpressionGenerator.GeOp)
+				return BinaryOperator.Opcode.Ge;
+			if (op == VCExpressionGenerator.GtOp)
+				return BinaryOperator.Opcode.Gt;
+			if (op == VCExpressionGenerator.AndOp)
+				return BinaryOperator.Opcode.And;
+			if (op == VCExpressionGenerator.OrOp)
+				return BinaryOperator.Opcode.Or;
+			throw new InternalError();
+		}
+		
+		private Expr MakeBinary (BinaryOperator.Opcode op, List<Expr> args)
+		{
+			if(args.Count == 0){
+				// with zero args we need the identity of the op
+				switch(op){
+					case BinaryOperator.Opcode.And:
+					    return Expr.True;
+					case BinaryOperator.Opcode.Or:
+					    return Expr.False;
+				    case BinaryOperator.Opcode.Add:
+						return new LiteralExpr(Token.NoToken,Microsoft.Basetypes.BigNum.ZERO);
+				default:
+					throw new InternalError();
+				}
+			}
+			var temp = args[0];
+			for(int i = 1; i < args.Count; i++)
+				temp = Expr.Binary(Token.NoToken,op,temp,args[i]);
+			return temp;		
+		}
+		
+		private Variable MakeVar(VCExprVar v){
+			var foo = new TypedIdent(Token.NoToken,v.Name.ToString(),v.Type);
+			return new BoundVariable(Token.NoToken,foo);
+		}
+		
+		private Expr VCExprToExpr (VCExpr e, Dictionary<VCExpr,Expr> bound)
+		{
+			if (e is VCExprVar) {
+				if(bound.ContainsKey(e))
+					return bound[e];
+                return Expr.Ident(MakeVar(e as VCExprVar)); // TODO: this isn't right
+			}
+			if (e is VCExprIntLit) {
+				var n = e as VCExprIntLit;
+				return new LiteralExpr(Token.NoToken,n.Val);
+			}
+			if (e is VCExprNAry) {
+				var f = e as VCExprNAry;
+				var args = new List<Expr>();
+				for(int i = 0; i < f.Arity; i++){
+					args.Add (VCExprToExpr (f[i],bound));
+				}
+				
+				if(f.Op == VCExpressionGenerator.NotOp)
+					return Expr.Unary(Token.NoToken, UnaryOperator.Opcode.Not, args[0]);
 
+				if(f.Op == VCExpressionGenerator.IfThenElseOp)
+					return new NAryExpr(Token.NoToken,new IfThenElse(Token.NoToken),args);
+					
+				if(f.Op is VCExprSelectOp){
+					var idx = new List<Expr>();
+					idx.Add(args[1]);
+				    return Expr.Select(args[0],idx);
+				}
+				
+				if(f.Op is VCExprStoreOp){
+					var idx = new List<Expr>();
+					idx.Add(args[1]);
+					return Expr.Store(args[0],idx,args[2]);
+				}
+				
+				var op = VCOpToOp (f.Op);
+				return MakeBinary(op,args);
+			}
+			
+			if(e is VCExprQuantifier) {
+				var f = e as VCExprQuantifier;
+				var vs = new List<Variable>();
+				var new_bound = new Dictionary<VCExpr,Expr>(bound);
+				foreach(var v in f.BoundVars){
+					var ve = MakeVar(v);
+					vs.Add(ve);
+					new_bound.Add (v,Expr.Ident (ve));
+				}
+				var bd = VCExprToExpr(f.Body,new_bound);
+				if(f.Quan == Quantifier.EX)
+					return new ExistsExpr(Token.NoToken,vs,bd);
+				else
+					return new ForallExpr(Token.NoToken,vs,bd);	
+			}
+			if (e == VCExpressionGenerator.True) {
+				return Expr.True;
+			}
+			if (e == VCExpressionGenerator.False) {
+				return Expr.False;
+			}
+			if (e is VCExprLet) {
+				
+			}
+			
+			throw new InternalError();
+		}
+		
 
     }
 
