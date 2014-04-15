@@ -593,7 +593,6 @@ namespace Microsoft.Boogie {
     public bool PrintInlined = false;
     public bool ExtractLoops = false;
     public bool DeterministicExtractLoops = false;
-    public bool ExtractLoopsUnrollIrreducible = true; // unroll irreducible loops? (set programmatically)
     public int StratifiedInlining = 0;
     public string FixedPointEngine = null;
     public int StratifiedInliningOption = 0;
@@ -612,6 +611,10 @@ namespace Microsoft.Boogie {
        Call
     };
     public FixedPointInferenceMode FixedPointMode = FixedPointInferenceMode.Procedure;
+		
+    public string PrintFixedPoint = null;
+		
+    public bool ExtractLoopsUnrollIrreducible = true; // unroll irreducible loops? (set programmatically)
 
     public enum TypeEncoding {
       None,
@@ -1124,6 +1127,12 @@ namespace Microsoft.Boogie {
                       ps.Error("Invalid argument \"{0}\" to option {1}", args[ps.i], ps.s);
                       break;
               }
+          }
+          return true;
+        case "printFixedPoint":
+          if (ps.ConfirmArgumentCount(1))
+          {
+              PrintFixedPoint = args[ps.i];
           }
           return true;
         case "siVerbose":

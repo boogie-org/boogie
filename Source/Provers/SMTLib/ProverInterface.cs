@@ -434,7 +434,283 @@ namespace Microsoft.Boogie.SMTLib
         SendThisVC("; doing a full reset...");
       }
     }
+	
 
+		
+		private string StripCruft(string name){
+			if(name.Contains("@@"))
+			  return name.Remove(name.LastIndexOf ("@@"));
+			return name;
+		}
+		
+		private class BadExprFromProver : Exception
+		{
+		};
+		
+		private delegate VCExpr ArgGetter (int pos);
+		
+		private delegate VCExpr[] ArgsGetter ();
+		
+		private delegate VCExprVar[] VarsGetter ();
+		
+		private VCExprOp VCStringToVCOp (string op)
+		{
+			switch (op) {
+			case "+" :
+				return VCExpressionGenerator.AddIOp;
+			case "-" :
+				return VCExpressionGenerator.SubIOp;
+			case "*" :
+				return VCExpressionGenerator.MulIOp;
+			case "div" :
+				return VCExpressionGenerator.DivIOp;
+			case "=" :
+				return VCExpressionGenerator.EqOp;
+			case "<=" :
+				return VCExpressionGenerator.LeOp;
+			case "<" :
+				return VCExpressionGenerator.LtOp;
+			case ">=" :
+				return VCExpressionGenerator.GeOp;
+			case ">" :
+				return VCExpressionGenerator.GtOp;
+			case "and" :
+				return VCExpressionGenerator.AndOp;
+			case "or" :
+				return VCExpressionGenerator.OrOp;
+			case "not" :
+				return VCExpressionGenerator.NotOp;
+			case "ite" :
+				return VCExpressionGenerator.IfThenElseOp;
+			default:
+				return null;
+			}
+		}
+		
+		private class MyDeclHandler : TypeDeclCollector.DeclHandler {
+			public Dictionary<string,VCExprVar> var_map = new Dictionary<string, VCExprVar>();
+			public Dictionary<string,Function> func_map = new Dictionary<string, Function>();
+			public override void VarDecl(VCExprVar v){
+				var_map[v.Name] = v;
+			}
+			public override void FuncDecl(Function f){
+				func_map[f.Name] = f;
+			}
+			public MyDeclHandler() {
+			}
+		}
+		
+		private MyDeclHandler declHandler = null;
+
+		private VCExprVar SExprToVar (SExpr e)
+		{
+			if(e.Arguments.Count() != 1){
+				HandleProverError ("Prover error: bad quantifier syntax");
+				throw new BadExprFromProver ();
+			}
+			string vname = StripCruft(e.Name);
+			SExpr vtype = e[0];
+			switch(vtype.Name){
+			case "Int":
+				return gen.Variable(vname,Type.Int);
+			case "Bool":
+				return gen.Variable (vname,Type.Bool);
+			case "Array":{
+                // TODO: handle more general array types
+                var idxType = Type.Int; // well, could be something else
+                var valueType = 
+                    (vtype.Arguments[1].Name == "Int") ? Type.Int : Type.Bool;
+                var types = new List<Type>();
+                types.Add(idxType);
+				return gen.Variable (vname, new MapType(Token.NoToken,new List<TypeVariable>(),types,valueType));
+            }
+			default: {
+				HandleProverError ("Prover error: bad type: " + vtype.Name);
+				throw new BadExprFromProver ();
+				}
+			}
+		}
+
+        private VCExpr MakeBinary(VCExprOp op, VCExpr [] args)
+        {
+            if (args.Count() == 0)
+            {
+                // with zero args we need the identity of the op
+                if (op == VCExpressionGenerator.AndOp)
+                    return VCExpressionGenerator.True;
+                if (op == VCExpressionGenerator.OrOp)
+                    return VCExpressionGenerator.False;
+                if (op == VCExpressionGenerator.AddIOp)
+                {
+                    Microsoft.Basetypes.BigNum x = Microsoft.Basetypes.BigNum.ZERO;
+                    return gen.Integer(x);
+                }
+                HandleProverError("Prover error: bad expression ");
+                throw new BadExprFromProver();
+            }
+            var temp = args[0];
+            for (int i = 1; i < args.Count(); i++)
+                temp = gen.Function(op, temp, args[i]);
+            return temp;
+        }
+		
+		private VCExpr SExprToVCExpr (SExpr e, Dictionary<string,VCExpr> bound)
+		{
+			if (e.Arguments.Count() == 0) {
+				var name = StripCruft(e.Name);
+				if (name [0] >= '0' && name [0] <= '9') {
+					Microsoft.Basetypes.BigNum x = Microsoft.Basetypes.BigNum.FromString(name);
+					return gen.Integer (x);
+				}
+				if (bound.ContainsKey (name)) {
+					return bound [name];
+				}
+				if(name == "true")
+					return VCExpressionGenerator.True;
+				if(name == "false")
+					return VCExpressionGenerator.False;
+				if(declHandler.var_map.ContainsKey(name))
+					return declHandler.var_map[name];
+				HandleProverError ("Prover error: unknown symbol:" + name);
+				throw new BadExprFromProver ();
+			}
+			ArgGetter g = i => SExprToVCExpr (e [i], bound);
+			ArgsGetter ga = () => e.Arguments.Select (x => SExprToVCExpr (x, bound)).ToArray ();
+			VarsGetter gb = () => e [0].Arguments.Select (x => SExprToVar (x)).ToArray ();
+			switch (e.Name) {
+			case "select" :
+				return gen.Select (ga ());
+			case "store" :
+				return gen.Store (ga ());
+            case "forall":
+            case "exists":
+                {
+                    var binds = e.Arguments[0];
+                    var vcbinds = new List<VCExprVar>();
+                    for (int i = 0; i < binds.Arguments.Count(); i++)
+                    {
+                        var bind = binds.Arguments[i];
+                        var symb = bind.Name;
+                        var vcv = SExprToVar(bind);
+                        vcbinds.Add(vcv);
+                        bound[symb] = vcv;
+                    }
+                    var body = g(1);
+                    if (e.Name == "forall")
+                        body = gen.Forall(vcbinds, new List<VCTrigger>(), body);
+                    else
+                        body = gen.Exists(vcbinds, new List<VCTrigger>(), body);
+                    for (int i = 0; i < binds.Arguments.Count(); i++)
+                    {
+                        var bind = binds.Arguments[i];
+                        var symb = bind.Name;
+                        bound.Remove(symb);
+                    }
+                    return body;
+                }
+			case "-" : // have to deal with unary case
+			{
+				if(e.ArgCount == 1){
+					var args = new VCExpr[2];
+					args[0] = gen.Integer (Microsoft.Basetypes.BigNum.ZERO);
+					args[1] = g(0);
+					return gen.Function(VCStringToVCOp("-"),args);
+				}
+				return gen.Function(VCStringToVCOp("-"),ga());
+			}
+            case "!" : // this is commentary
+                return g(0);
+            case "let" : {
+				// we expand lets exponentially since there is no let binding in Boogie surface syntax
+				bool expand_lets = true;
+				var binds = e.Arguments[0];
+				var vcbinds = new List<VCExprLetBinding>();
+				for(int i = 0; i < binds.Arguments.Count(); i++){
+					var bind = binds.Arguments[i];
+					var symb = bind.Name;
+					var def = bind.Arguments[0];
+                    var vce = SExprToVCExpr(def, bound);
+					var vcv = gen.Variable(symb,vce.Type);
+					var vcb = gen.LetBinding(vcv,vce);
+					vcbinds.Add (vcb);
+					bound[symb] = expand_lets ? vce : vcv;
+				}
+				var body = g(1); 
+				if(!expand_lets)
+					body = gen.Let(vcbinds,body);
+				for(int i = 0; i < binds.Arguments.Count(); i++){
+					var bind = binds.Arguments[i];
+					var symb = bind.Name;
+					bound.Remove (symb);
+				}
+                return body;
+			}
+				
+			default: {
+					var op = VCStringToVCOp (e.Name);
+					if (op == null) {
+						var name = StripCruft(e.Name);
+					    if(declHandler.func_map.ContainsKey(name)){
+							Function f = declHandler.func_map[name];	
+							return gen.Function (f, ga());
+					    }
+						HandleProverError ("Prover error: unknown operator:" + e.Name);
+						throw new BadExprFromProver ();
+					}
+                    if(op.Arity == 2)
+					    return MakeBinary (op, ga ());
+                    return gen.Function(op, ga());
+				}
+			}
+		}
+		
+		private void SExprToSoln (SExpr resp,
+                             Dictionary<int,Dictionary<string,string>> varSubst)
+		{
+			Dictionary<string, RPFP.Node> pmap = new Dictionary<string,RPFP.Node> ();
+
+			foreach (var node in rpfp.nodes)
+				pmap.Add ((node.Name as VCExprBoogieFunctionOp).Func.Name, node);
+			
+			var lines = resp.Arguments;
+
+			// get all the predicate definitions
+			for (int i = 0; i < lines.Length; i++) {
+				var line = lines [i];
+				if(line.Name != "define-fun"){
+					HandleProverError ("Prover error: expected define-fun but got:" + line.Name);
+					throw new BadExprFromProver ();
+				}
+				if(line.ArgCount != 4){
+					HandleProverError ("Prover error: define-fun has wrong number of arguments");
+					throw new BadExprFromProver ();
+				}
+				var pname = StripCruft(line.Arguments[0].Name);
+				var pvars = line.Arguments[1];
+				var pbody = line.Arguments[3]; // range has to be Bool
+				var binding = new Dictionary<string,VCExpr>();
+				var pvs = new List<VCExpr>();
+				foreach(var b in pvars.Arguments){
+					var e = SExprToVar (b);
+					pvs.Add (e);
+					binding.Add (b.Name,e);
+				}
+				VCExpr bexpr = SExprToVCExpr(pbody,binding);
+				
+				var annot = rpfp.CreateRelation(pvs.ToArray(),bexpr);
+				
+				if(pmap.ContainsKey(pname)){
+					var node = pmap[pname];
+					node.Annotation = annot;
+				}
+				else if(pname[0] != '@'){ // if not an internal symbol
+					HandleProverError ("Prover error: got unknown predicate:" + pname);
+					throw new BadExprFromProver ();
+				}
+			}
+			
+		}
+		
     private RPFP.Node SExprToCex(SExpr resp, ErrorHandler handler, 
                                  Dictionary<int,Dictionary<string,string>> varSubst)
     {
@@ -600,7 +876,7 @@ namespace Microsoft.Boogie.SMTLib
         return res;
 #endif
     }
-
+		
     public override Outcome CheckRPFP(string descriptiveName, RPFP _rpfp, ErrorHandler handler, 
                                       out RPFP.Node cex,
                                       Dictionary<int,Dictionary<string,string>> varSubst)
@@ -610,7 +886,12 @@ namespace Microsoft.Boogie.SMTLib
         //Contract.Requires(handler != null);
         rpfp = _rpfp;
         cex = null;
-
+			
+		if(CommandLineOptions.Clo.PrintFixedPoint != null){
+			declHandler = new MyDeclHandler();
+		    DeclCollector.SetDeclHandler(declHandler);
+		}
+			
         if (options.SeparateLogFiles) CloseLogFile(); // shouldn't really happen
 
         if (options.LogFilename != null && currentLogFile == null)
@@ -736,6 +1017,19 @@ namespace Microsoft.Boogie.SMTLib
                             HandleProverError("Unexpected prover response: " + resp.ToString());
                         break;
                     }
+				case Outcome.Valid:
+				    {
+						resp = Process.GetProverResponse();
+                        if (resp.Name == "fixedpoint")
+                        {
+                            // only get the response if we need it
+                            if(CommandLineOptions.Clo.PrintFixedPoint != null)
+                               SExprToSoln(resp, varSubst);
+                        }
+						else
+							HandleProverError("Unexpected prover response: " + resp.ToString());
+					    break;
+				    }
                 default:
                     break;
             }
@@ -753,6 +1047,8 @@ namespace Microsoft.Boogie.SMTLib
         SendThisVC("(fixedpoint-pop)");
         Pop();
         AxiomsAreSetup = false;
+		DeclCollector.SetDeclHandler(null);
+		declHandler = null; // just so we can GC it
         return result;
     }
 
