@@ -386,7 +386,8 @@ namespace Microsoft.Boogie
             Expr bb = Expr.True;
             foreach (Variable o in ogOldGlobalMap.Keys)
             {
-                bb = Expr.Binary(BinaryOperator.Opcode.And, bb, Expr.Eq(Expr.Ident(o), Expr.Ident(ogOldGlobalMap[o])));
+                bb = Expr.And(bb, Expr.Eq(Expr.Ident(o), Expr.Ident(ogOldGlobalMap[o])));
+                bb.Type = Type.Bool;
             }
             return bb;
         }
@@ -783,6 +784,7 @@ namespace Microsoft.Boogie
                     foreach (AssertCmd assertCmd in actionInfo.thisGate)
                     {
                         alphaExpr = Expr.And(alphaExpr, assertCmd.Expr);
+                        alphaExpr.Type = Type.Bool;
                     }
                     alpha = Substituter.Apply(always, alphaExpr);
                     foreach (Variable f in impl.OutParams)
@@ -955,11 +957,11 @@ namespace Microsoft.Boogie
                 } 
                 foreach (string domainName in linearTypeChecker.linearDomains.Keys)
                 {
-                    newCmds.Add(new AssumeCmd(Token.NoToken, Expr.Binary(BinaryOperator.Opcode.Eq, Expr.Ident(domainNameToLocalVar[domainName]), domainNameToExpr[domainName])));
+                    newCmds.Add(new AssumeCmd(Token.NoToken, Expr.Eq(Expr.Ident(domainNameToLocalVar[domainName]), domainNameToExpr[domainName])));
                 }
                 foreach (Variable v in ogOldGlobalMap.Keys)
                 {
-                    newCmds.Add(new AssumeCmd(Token.NoToken, Expr.Binary(BinaryOperator.Opcode.Eq, Expr.Ident(v), Expr.Ident(ogOldGlobalMap[v]))));
+                    newCmds.Add(new AssumeCmd(Token.NoToken, Expr.Eq(Expr.Ident(v), Expr.Ident(ogOldGlobalMap[v]))));
                 }
                 newCmds.AddRange(header.Cmds);
                 header.Cmds = newCmds;

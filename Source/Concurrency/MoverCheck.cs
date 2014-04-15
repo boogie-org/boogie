@@ -267,6 +267,7 @@ namespace Microsoft.Boogie
                     else
                     {
                         returnExpr = Expr.And(returnExpr, Expr.Eq(Expr.Ident(v), (new MyDuplicator()).VisitExpr(varToExpr[v])));
+                        returnExpr.Type = Type.Bool;
                     }
                 }
 
@@ -284,6 +285,7 @@ namespace Microsoft.Boogie
                     else
                     {
                         returnExpr = Expr.And(returnExpr, x);
+                        returnExpr.Type = Type.Bool;
                     }
                 }
                 
@@ -340,6 +342,7 @@ namespace Microsoft.Boogie
                         else
                         {
                             expr = Expr.And(expr, x);
+                            expr.Type = Type.Bool;
                         }
                     }
                     expr = Substituter.Apply(Substituter.SubstitutionFromHashtable(subst), expr);
