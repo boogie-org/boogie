@@ -3724,6 +3724,13 @@ namespace Microsoft.Boogie.Houdini {
             {
                 return (elem as Model.Boolean).Value;
             }
+            if (elem is Model.DatatypeValue && (elem as Model.DatatypeValue).Arguments.Length == 1 &&
+                (elem as Model.DatatypeValue).ConstructorName == "-" &&
+                (elem as Model.DatatypeValue).Arguments[0] is Model.Integer)
+            {
+                // negative number as "-" @ int
+                return Microsoft.Basetypes.BigNum.FromInt(-1 * ((elem as Model.DatatypeValue).Arguments[0] as Model.Integer).AsInt());
+            }
             throw new NotImplementedException("Cannot yet handle this Model.Element type");
         }
 
