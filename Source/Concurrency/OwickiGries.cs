@@ -14,7 +14,7 @@ namespace Microsoft.Boogie
     {
         MoverTypeChecker moverTypeChecker;
         public int phaseNum;
-        int enclosingProcPhaseNum;
+        Procedure enclosingProc;
         public Dictionary<Procedure, Procedure> procMap; /* Original -> Duplicate */
         public Dictionary<Absy, Absy> absyMap; /* Duplicate -> Original */
         public Dictionary<Block, Block> blockMap; /* Original -> Duplicate */
@@ -22,7 +22,7 @@ namespace Microsoft.Boogie
         {
             this.moverTypeChecker = moverTypeChecker;
             this.phaseNum = phaseNum;
-            this.enclosingProcPhaseNum = int.MaxValue;
+            this.enclosingProc = null;
             this.procMap = new Dictionary<Procedure, Procedure>();
             this.absyMap = new Dictionary<Absy, Absy>();
             this.blockMap = new Dictionary<Block, Block>();
@@ -30,6 +30,11 @@ namespace Microsoft.Boogie
 
         private void ProcessCallCmd(CallCmd originalCallCmd, CallCmd callCmd, List<Cmd> newCmds)
         {
+            int enclosingProcPhaseNum = moverTypeChecker.FindPhaseNumber(enclosingProc);
+            if (enclosingProcPhaseNum == int.MaxValue)
+            {
+                enclosingProcPhaseNum = moverTypeChecker.allPhaseNums.Max();
+            }
             Procedure originalProc = originalCallCmd.Proc;
             if (phaseNum == enclosingProcPhaseNum && moverTypeChecker.procToActionInfo.ContainsKey(originalProc))
             {
@@ -137,6 +142,7 @@ namespace Microsoft.Boogie
 
         public override Procedure VisitProcedure(Procedure node)
         {
+            enclosingProc = node;
             if (!QKeyValue.FindBoolAttribute(node.Attributes, "yields"))
                 return node;
             if (!procMap.ContainsKey(node))
@@ -164,11 +170,7 @@ namespace Microsoft.Boogie
         private Variable dummyLocalVar;
         public override Implementation VisitImplementation(Implementation node)
         {
-            enclosingProcPhaseNum = moverTypeChecker.FindPhaseNumber(node.Proc);
-            if (enclosingProcPhaseNum == int.MaxValue)
-            {
-                enclosingProcPhaseNum = moverTypeChecker.allPhaseNums.Max();
-            }
+            enclosingProc = node.Proc;
             dummyLocalVar = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "og_dummy", Type.Bool));
             Implementation impl = base.VisitImplementation(node);
             impl.LocVars.Add(dummyLocalVar);
@@ -206,7 +208,8 @@ namespace Microsoft.Boogie
             Ensures ensures = base.VisitEnsures(node);
             if (node.Free)
                 return ensures;
-            if (ensures.IsAtomicSpecification || !OwickiGries.FindPhaseNums(ensures.Attributes).Contains(phaseNum))
+            bool isAtomicSpecification = moverTypeChecker.procToActionInfo.ContainsKey(enclosingProc) && moverTypeChecker.procToActionInfo[enclosingProc].ensures == ensures;
+            if (isAtomicSpecification || !OwickiGries.FindPhaseNums(ensures.Attributes).Contains(phaseNum))
             {
                 ensures.Condition = Expr.True;
                 ensures.Attributes = OwickiGries.RemoveMoverAttribute(ensures.Attributes);

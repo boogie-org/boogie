@@ -9,21 +9,37 @@ namespace Microsoft.Boogie
 {
     public class MoverCheck
     {
-        public static MoverType GetMoverType(Ensures e, out int phaseNum)
+        public static MoverType GetMoverType(Ensures e, out int phaseNum, out int availableUptoPhaseNum)
         {
-            phaseNum = QKeyValue.FindIntAttribute(e.Attributes, "atomic", int.MaxValue);
-            if (phaseNum != int.MaxValue)
+            if (FindAtomicAction(e.Attributes, "atomic", out phaseNum, out availableUptoPhaseNum))
                 return MoverType.Atomic;
-            phaseNum = QKeyValue.FindIntAttribute(e.Attributes, "right", int.MaxValue);
-            if (phaseNum != int.MaxValue)
+            if (FindAtomicAction(e.Attributes, "right", out phaseNum, out availableUptoPhaseNum))
                 return MoverType.Right;
-            phaseNum = QKeyValue.FindIntAttribute(e.Attributes, "left", int.MaxValue);
-            if (phaseNum != int.MaxValue)
+            if (FindAtomicAction(e.Attributes, "left", out phaseNum, out availableUptoPhaseNum))
                 return MoverType.Left;
-            phaseNum = QKeyValue.FindIntAttribute(e.Attributes, "both", int.MaxValue);
-            if (phaseNum != int.MaxValue)
+            if (FindAtomicAction(e.Attributes, "both", out phaseNum, out availableUptoPhaseNum))
                 return MoverType.Both;
             return MoverType.Top;
+        }
+
+        private static bool FindAtomicAction(QKeyValue kv, string name, out int phaseNum, out int availableUptoPhaseNum)
+        {
+            phaseNum = int.MaxValue;
+            availableUptoPhaseNum = int.MaxValue;
+            for (; kv != null; kv = kv.Next)
+            {
+                if (kv.Key != name) continue;
+                if (!(kv.Params.Count == 1 || kv.Params.Count == 2)) continue;
+                LiteralExpr l0 = kv.Params[0] as LiteralExpr;
+                if (l0 == null || !l0.isBigNum) continue;
+                phaseNum = l0.asBigNum.ToIntSafe;
+                if (kv.Params.Count == 1) return true;
+                LiteralExpr l1 = kv.Params[1] as LiteralExpr;
+                if (l1 == null || !l1.isBigNum) continue;
+                availableUptoPhaseNum = l1.asBigNum.ToIntSafe;
+                return true;
+            }
+            return false;
         }
 
         LinearTypeChecker linearTypeChecker;
@@ -50,13 +66,16 @@ namespace Microsoft.Boogie
             Dictionary<int, HashSet<ActionInfo>> pools = new Dictionary<int, HashSet<ActionInfo>>();
             foreach (ActionInfo action in moverTypeChecker.procToActionInfo.Values)
             {
-                foreach (int phaseNum in action.callerPhaseNums)
+                foreach (int phaseNum in moverTypeChecker.allPhaseNums)
                 {
-                    if (!pools.ContainsKey(phaseNum))
+                    if (action.phaseNum < phaseNum && phaseNum <= action.availableUptoPhaseNum)
                     {
-                        pools[phaseNum] = new HashSet<ActionInfo>();
+                        if (!pools.ContainsKey(phaseNum))
+                        {
+                            pools[phaseNum] = new HashSet<ActionInfo>();
+                        }
+                        pools[phaseNum].Add(action);
                     }
-                    pools[phaseNum].Add(action);
                 }
             }
 
@@ -457,6 +476,8 @@ namespace Microsoft.Boogie
             {
                 domainNameToScope[domainName] = new HashSet<Variable>();
             }
+            /*
+            // Commenting this out to avoid the danger of making an assumption about a hidden variable
             foreach (Variable v in program.GlobalVariables())
             {
                 var domainName = linearTypeChecker.FindDomainName(v);
@@ -464,6 +485,7 @@ namespace Microsoft.Boogie
                 if (!linearTypeChecker.linearDomains.ContainsKey(domainName)) continue;
                 domainNameToScope[domainName].Add(v);
             }
+             */ 
             if (first != null)
             {
                 foreach (Variable v in first.thatInParams)

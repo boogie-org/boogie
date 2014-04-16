@@ -100,7 +100,7 @@ ensures {:right 1} |{ A: assert tid != nil; assume lock == nil; b := true; lock 
 }
 
 procedure {:yields} CAS(tid: X, prev: bool, next: bool) returns (status: bool);
-ensures {:atomic 0} |{ 
+ensures {:atomic 0,1} |{ 
 A: goto B, C; 
 B: assume b == prev; b := next; status := true; lock := tid; return true; 
 C: status := false; return true; 

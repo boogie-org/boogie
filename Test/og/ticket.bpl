@@ -95,7 +95,7 @@ ensures {:right 2} |{ A: tid := tid'; havoc t, T; assume tid != nil && cs == nil
 procedure {:yields} GetTicketAbstract({:linear "tid"} tid': X) returns ({:linear "tid"} tid: X, m: int)
 requires {:phase 1} Inv1(T, t);
 ensures {:phase 1} Inv1(T, t);
-ensures {:right 1} |{ A: tid := tid'; havoc m, t; assume !T[m]; T[m] := true; return true; }|;
+ensures {:right 1,2} |{ A: tid := tid'; havoc m, t; assume !T[m]; T[m] := true; return true; }|;
 {
     par Yield1();
     tid := tid';
@@ -125,10 +125,10 @@ procedure {:yields} Init({:linear "tid"} xls':[X]bool) returns ({:linear "tid"} 
 ensures {:atomic 0} |{ A: assert xls' == mapconstbool(true); xls := xls'; cs := nil; t := 0; s := 0; T := RightOpen(0); return true; }|;
 
 procedure {:yields} GetTicket({:linear "tid"} tid': X) returns ({:linear "tid"} tid: X, m: int);
-ensures {:atomic 0} |{ A: tid := tid'; m := t; t := t + 1; T[m] := true; return true; }|;
+ensures {:atomic 0,1} |{ A: tid := tid'; m := t; t := t + 1; T[m] := true; return true; }|;
 
 procedure {:yields} WaitAndEnter({:linear "tid"} tid': X, m:int) returns ({:linear "tid"} tid: X);
-ensures {:atomic 0} |{ A: tid := tid'; assume m <= s; cs := tid; return true; }|;
+ensures {:atomic 0,2} |{ A: tid := tid'; assume m <= s; cs := tid; return true; }|;
 
 procedure {:yields} Leave({:linear "tid"} tid': X) returns ({:linear "tid"} tid: X);
 ensures {:atomic 0} |{ A: assert cs == tid'; assert tid' != nil; tid := tid'; s := s + 1; cs := nil; return true; }|;

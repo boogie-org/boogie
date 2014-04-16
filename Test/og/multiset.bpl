@@ -41,7 +41,7 @@ ensures {:left 0} |{ A:
 
 
 procedure {:yields} getElt(j : int, {:linear "tid"} tidIn: X) returns ({:linear "tid"} tidOut: X, elt_j:int);
-ensures {:both 0} |{ A: 
+ensures {:both 0,1} |{ A: 
                      assert 0 <= j && j < max;
                      assert lock[j] == tidIn;
                      assert tidIn != nil && tidIn != done;
@@ -52,7 +52,7 @@ ensures {:both 0} |{ A:
 
 
 procedure {:yields} setElt(j : int, x : int, {:linear "tid"} tidIn: X) returns ({:linear "tid"} tidOut: X);
-ensures {:both 0} |{ A: 
+ensures {:both 0,1} |{ A: 
                      assert x != null;
                      assert owner[j] == nil;
                      assert 0 <= j && j < max;
@@ -77,20 +77,6 @@ ensures {:left 0} |{ A:
                      owner[j] := nil;
                      return true;
                     }|;
-
-
-
-
-procedure {:yields} getValid(j : int, {:linear "tid"} tidIn: X) returns ({:linear "tid"} tidOut: X, valid_j:bool);
-ensures {:both 0} |{ A: 
-                     assert 0 <= j && j < max;
-                     assert lock[j] == tidIn;
-                     assert tidIn != nil  && tidIn != done;
-                     tidOut := tidIn;
-	             valid_j := valid[j];
-                     return true;
-                    }|;
-
 
 procedure {:yields} setValid(j : int, {:linear "tid"} tidIn: X) returns ({:linear "tid"} tidOut: X);
 ensures {:both 0} |{ A: 
