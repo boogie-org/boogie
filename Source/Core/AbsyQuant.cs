@@ -579,15 +579,17 @@ namespace Microsoft.Boogie {
       }
     }
 
-    // if the user says ( forall x :: forall y :: { f(x,y) } ... ) we transform it to
-    // (forall x, y :: { f(x,y) } ... ) otherwise the prover ignores the trigger
+    // if the user says ( forall x :: forall y ::  ... ) and specifies *no* triggers, we transform it to
+    // (forall x, y ::  ... ) which may help the prover to pick trigger terms
+    //
+    // (Note: there used to be a different criterion here, which allowed merging when triggers were specified, which could cause prover errors due to resulting unbound variables in the triggers)
     private void MergeAdjecentQuantifier() {
       QuantifierExpr qbody = Body as QuantifierExpr;
       if (!(qbody != null && (qbody is ForallExpr) == (this is ForallExpr) && Triggers == null)) {
         return;
       }
       qbody.MergeAdjecentQuantifier();
-      if (qbody.Triggers == null) {
+      if (this.Triggers != null || qbody.Triggers != null) {
         return;
       }
       Body = qbody.Body;

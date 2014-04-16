@@ -99,17 +99,17 @@ axiom (forall x: int, y: int ::
        {:nopats f(g,g) }              // but it is okay not to mention the bound variables (in a pattern exclusion)
        x < y);
 
-// --- merging of nested quantifiers
+// --- merging of nested quantifiers (disabled unless both have no triggers)
 
-axiom (forall x:int :: (forall y:int :: { f(x,y) } f(x,y) > 0)); // OK
+axiom (forall x:int :: (forall y:int :: { f(x,y) } f(x,y) > 0)); // OK, but no merging - outer quantifier has no trigger
 axiom (forall x:int :: (forall y:int :: { f(x,x) } f(x,x) > 0)); // error
-axiom (forall x:int :: (forall y:int :: { f(y,y) } f(y,y) > 0)); // error
+axiom (forall x:int :: (forall y:int :: { f(y,y) } f(y,y) > 0)); // OK - no merging
 
 // three levels
-axiom (forall x:int :: (forall y:int :: (forall z:int :: { f(x,y) } f(y,y) > 0))); // error
-axiom (forall x:int :: (forall y:int :: (forall z:int :: { f(x,z) } f(y,y) > 0))); // error
-axiom (forall x:int :: (forall y:int :: (forall z:int :: { f(y,z) } f(y,y) > 0))); // error
-axiom (forall x:int :: (forall y:int :: (forall z:int :: { f(x,y), f(y,z) } f(y,y) > 0))); // OK
+axiom (forall x:int :: (forall y:int :: (forall z:int :: { f(x,y) } f(y,y) > 0))); // error - z not mentioned
+axiom (forall x:int :: (forall y:int :: (forall z:int :: { f(x,z) } f(y,y) > 0))); // OK - only outer two quantifiers are merged
+//axiom (forall x:int :: (forall y:int :: (forall z:int :: f(y,y) > 0))); // OK - all three are merged
+axiom (forall x:int :: (forall y:int :: (forall z:int :: { f(x,y), f(y,z) } f(y,y) > 0))); // OK - but not a trigger for outer x,y (which get merged)
 
 // --- no free variables
 
