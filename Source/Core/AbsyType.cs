@@ -2093,12 +2093,12 @@ Contract.Requires(that != null);
     private static int MinBitsFor(Type t) {
       Contract.Requires(t != null);
       Contract.Requires(t.IsBv);
+      Contract.Ensures(0 <= Contract.Result<int>());
 
       if (t is TypeSynonymAnnotation) {
         return MinBitsFor(((TypeSynonymAnnotation)t).ExpandedType);
       }
 
-      Contract.Ensures(0 <= Contract.Result<int>());
       if (t is BvType) {
         return t.BvBits;
       } else {
