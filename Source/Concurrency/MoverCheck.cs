@@ -141,12 +141,27 @@ namespace Microsoft.Boogie
             private ActionInfo second; // corresponds to this*
             private Stack<Cmd> cmdStack;
             private List<PathInfo> paths;
+            private HashSet<Variable> frame;
 
-            public TransitionRelationComputation(Program program, ActionInfo second) : this(program, null, second)
+            public TransitionRelationComputation(Program program, ActionInfo second, HashSet<Variable> frame)
             {
+                this.frame = frame;
+                TransitionRelationComputationHelper(program, null, second);
+            }
+
+            public TransitionRelationComputation(Program program, ActionInfo second)
+            {
+                this.frame = new HashSet<Variable>(program.GlobalVariables());
+                TransitionRelationComputationHelper(program, null, second);
             }
 
             public TransitionRelationComputation(Program program, ActionInfo first, ActionInfo second)
+            {
+                this.frame = new HashSet<Variable>(program.GlobalVariables());
+                TransitionRelationComputationHelper(program, first, second);
+            }
+
+            private void TransitionRelationComputationHelper(Program program, ActionInfo first, ActionInfo second)
             {
                 this.program = program;
                 this.first = first;
@@ -213,7 +228,7 @@ namespace Microsoft.Boogie
             {
                 HashSet<Variable> existsVars = new HashSet<Variable>();
                 Dictionary<Variable, Expr> varToExpr = new Dictionary<Variable, Expr>();
-                foreach (Variable v in program.GlobalVariables())
+                foreach (Variable v in frame)
                 {
                     varToExpr[v] = Expr.Ident(v);
                 }

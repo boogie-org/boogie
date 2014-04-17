@@ -781,7 +781,15 @@ namespace Microsoft.Boogie
                         foroldMap[ie.Decl] = Expr.Ident(ogOldGlobalMap[ie.Decl]);
                     }
                     Substitution forold = Substituter.SubstitutionFromHashtable(foroldMap);
-                    Expr betaExpr = (new MoverCheck.TransitionRelationComputation(moverTypeChecker.program, actionInfo)).TransitionRelationCompute();
+                    HashSet<Variable> frame = new HashSet<Variable>(program.GlobalVariables());
+                    foreach (Variable v in moverTypeChecker.qedGlobalVariables.Keys)
+                    {
+                        if (moverTypeChecker.qedGlobalVariables[v] <= actionInfo.phaseNum)
+                        {
+                            frame.Remove(v);
+                        }
+                    }
+                    Expr betaExpr = (new MoverCheck.TransitionRelationComputation(moverTypeChecker.program, actionInfo, frame)).TransitionRelationCompute();
                     beta = Substituter.ApplyReplacingOldExprs(always, forold, betaExpr);
                     Expr alphaExpr = Expr.True;
                     foreach (AssertCmd assertCmd in actionInfo.thisGate)

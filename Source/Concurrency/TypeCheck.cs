@@ -192,7 +192,7 @@ namespace Microsoft.Boogie
 
         CheckingContext checkingContext;
         public int errorCount;
-        Dictionary<Variable, int> qedGlobalVariables;
+        public Dictionary<Variable, int> qedGlobalVariables;
         Procedure enclosingProc;
         public Dictionary<Procedure, ActionInfo> procToActionInfo;
         public Program program;

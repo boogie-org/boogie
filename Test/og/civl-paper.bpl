@@ -72,13 +72,13 @@ function {:inline} Inv(g: lmap) : bool
 }
 
 
-var {:qed} b: bool;
+var {:qed 1} b: bool;
 var {:qed} lock: X;
 
 procedure {:yields} Acquire({:cnst "tid"} tid: X)
 requires {:phase 1} InvLock(lock, b);
 ensures {:phase 1} InvLock(lock, b);
-ensures {:right 1} |{ A: assert tid != nil; assume lock == nil; b := true; lock := tid; return true; }|;
+ensures {:right 1} |{ A: assert tid != nil; assume lock == nil; lock := tid; return true; }|;
 {
     var status: bool;
     var tmp: X;
@@ -99,6 +99,16 @@ ensures {:right 1} |{ A: assert tid != nil; assume lock == nil; b := true; lock 
 	goto L;
 }
 
+procedure {:yields} Release({:cnst "tid"} tid: X)
+ensures {:left 1} |{ A: assert lock == tid && tid != nil; lock := nil; return true; }|;
+requires {:phase 1} InvLock(lock, b);
+ensures {:phase 1} InvLock(lock, b);
+{
+    par YieldLock();
+    call CLEAR(tid, false);
+    par YieldLock();
+}
+
 procedure {:yields} CAS(tid: X, prev: bool, next: bool) returns (status: bool);
 ensures {:atomic 0,1} |{ 
 A: goto B, C; 
@@ -106,10 +116,10 @@ B: assume b == prev; b := next; status := true; lock := tid; return true;
 C: status := false; return true; 
 }|;
 
-procedure {:yields} Release({:cnst "tid"} tid: X);
-ensures {:left 1} |{ A: assert lock == tid && tid != nil; b := false; lock := nil; return true; }|;
-requires {:phase 1} InvLock(lock, b);
-ensures {:phase 1} InvLock(lock, b);
+procedure {:yields} CLEAR(tid: X, next: bool);
+ensures {:atomic 0,1} |{ 
+A: b := next; lock := nil; return true; 
+}|;
 
 procedure {:yields} {:stable} YieldLock()
 requires {:phase 1} InvLock(lock, b);
