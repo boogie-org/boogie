@@ -14,9 +14,7 @@ namespace Microsoft.Boogie
         {
             if (iter == null) return null;
             iter.Next = RemoveLinearAttribute(iter.Next);
-            bool iterIsNonLinear = QKeyValue.FindStringAttribute(iter, "linear") == null && 
-                                   QKeyValue.FindStringAttribute(iter, "cnst") == null;
-            return iterIsNonLinear ? iter : iter.Next;
+            return (iter.Key == "linear" || iter.Key == "cnst") ? iter.Next : iter;
         }
 
         public override Variable VisitVariable(Variable node)

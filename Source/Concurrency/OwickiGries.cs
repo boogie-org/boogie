@@ -208,7 +208,7 @@ namespace Microsoft.Boogie
             Ensures ensures = base.VisitEnsures(node);
             if (node.Free)
                 return ensures;
-            bool isAtomicSpecification = moverTypeChecker.procToActionInfo.ContainsKey(enclosingProc) && moverTypeChecker.procToActionInfo[enclosingProc].ensures == ensures;
+            bool isAtomicSpecification = moverTypeChecker.procToActionInfo.ContainsKey(enclosingProc) && moverTypeChecker.procToActionInfo[enclosingProc].ensures == node;
             if (isAtomicSpecification || !OwickiGries.FindPhaseNums(ensures.Attributes).Contains(phaseNum))
             {
                 ensures.Condition = Expr.True;
@@ -1206,31 +1206,28 @@ namespace Microsoft.Boogie
         {
             if (iter == null) return null;
             iter.Next = RemoveYieldsAttribute(iter.Next);
-            return (QKeyValue.FindBoolAttribute(iter, "yields")) ? iter.Next : iter;
+            return (iter.Key == "yields") ? iter.Next : iter;
         }
 
         public static QKeyValue RemoveStableAttribute(QKeyValue iter)
         {
             if (iter == null) return null;
             iter.Next = RemoveStableAttribute(iter.Next);
-            return (QKeyValue.FindBoolAttribute(iter, "stable")) ? iter.Next : iter;
+            return (iter.Key == "stable") ? iter.Next : iter;
         }
 
         public static QKeyValue RemoveQedAttribute(QKeyValue iter)
         {
             if (iter == null) return null;
             iter.Next = RemoveQedAttribute(iter.Next);
-            return QKeyValue.FindBoolAttribute(iter, "qed") ? iter.Next : iter;
+            return (iter.Key == "qed") ? iter.Next : iter;
         }
 
         public static QKeyValue RemoveMoverAttribute(QKeyValue iter)
         {
             if (iter == null) return null;
             iter.Next = RemoveMoverAttribute(iter.Next);
-            if (QKeyValue.FindIntAttribute(iter, "atomic", int.MaxValue) != int.MaxValue ||
-                QKeyValue.FindIntAttribute(iter, "right", int.MaxValue) != int.MaxValue ||
-                QKeyValue.FindIntAttribute(iter, "left", int.MaxValue) != int.MaxValue ||
-                QKeyValue.FindIntAttribute(iter, "both", int.MaxValue) != int.MaxValue) 
+            if (iter.Key == "atomic" || iter.Key == "right" || iter.Key == "left" || iter.Key == "both") 
                 return iter.Next;
             else 
                 return iter;
