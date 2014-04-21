@@ -12,7 +12,7 @@ for %%f in (FormulaTerm.bpl FormulaTerm2.bpl Passification.bpl B.bpl
             Structured.bpl Where.bpl UpdateExpr.bpl
             NeverPattern.bpl NullaryMaps.bpl Implies.bpl
             IfThenElse1.bpl Lambda.bpl LambdaPoly.bpl LambdaOldExpressions.bpl
-            SelectiveChecking.bpl FreeCall.bpl) do (
+            SelectiveChecking.bpl FreeCall.bpl AssumptionVariables0.bpl) do (
   echo.
   echo -------------------- %%f --------------------
   %BGEXE% %* /noinfer %%f

@@ -19,3 +19,4 @@ rem set BGEXE=mono ..\..\Binaries\Boogie.exe
 %BGEXE% %* /noVerify IfThenElse0.bpl
 %BGEXE% %* /noVerify Lambda.bpl
 %BGEXE% %* /noVerify IntReal.bpl
+%BGEXE% %* /noVerify AssumptionVariables0.bpl

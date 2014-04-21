@@ -1483,6 +1483,10 @@ namespace Microsoft.Boogie {
     }
     public void ResolveWhere(ResolutionContext rc) {
       Contract.Requires(rc != null);
+      if (QKeyValue.FindBoolAttribute(Attributes, "assumption") && this.TypedIdent.WhereExpr != null)
+      {
+        rc.Error(tok, "assumption variable may not be declared with a where clause");
+      }
       if (this.TypedIdent.WhereExpr != null) {
         this.TypedIdent.WhereExpr.Resolve(rc);
       }
@@ -2805,6 +2809,7 @@ namespace Microsoft.Boogie {
         // already resolved
         return;
       }
+
       DeclWithFormals dwf = rc.LookUpProcedure(cce.NonNull(this.Name));
       Proc = dwf as Procedure;
       if (dwf == null) {

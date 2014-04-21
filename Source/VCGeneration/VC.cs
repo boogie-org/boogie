@@ -2579,6 +2579,8 @@ namespace VC {
           if (lvar.TypedIdent.WhereExpr != null) {
             Cmd c = new AssumeCmd(lvar.tok, lvar.TypedIdent.WhereExpr);
             cc.Add(c);
+          } else if (QKeyValue.FindBoolAttribute(lvar.Attributes, "assumption")) {
+            cc.Add(new AssumeCmd(lvar.tok, new IdentifierExpr(lvar.tok, lvar), new QKeyValue(lvar.tok, "assumption_variable_initialization", new List<object>(), null)));
           }
         }
         // add cc and the preconditions to new blocks preceding impl.Blocks[0]

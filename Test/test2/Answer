@@ -433,6 +433,19 @@ Execution trace:
 
 Boogie program verifier finished with 7 verified, 4 errors
 
+-------------------- AssumptionVariables0.bpl --------------------
+AssumptionVariables0.bpl(15,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    AssumptionVariables0.bpl(13,8): anon0
+AssumptionVariables0.bpl(25,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    AssumptionVariables0.bpl(23,5): anon0
+AssumptionVariables0.bpl(37,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    AssumptionVariables0.bpl(35,8): anon0
+
+Boogie program verifier finished with 1 verified, 3 errors
+
 -------------------- Arrays.bpl /typeEncoding:m --------------------
 Arrays.bpl(46,5): Error BP5003: A postcondition might not hold on this return path.
 Arrays.bpl(38,3): Related location: This is the postcondition that might not hold.

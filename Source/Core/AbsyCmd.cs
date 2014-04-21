@@ -1210,6 +1210,31 @@ namespace Microsoft.Boogie {
                      Lhss[j].DeepAssignedVariable);
         }
       }
+
+      for (int i = 0; i < Lhss.Count; i++)
+      {
+        var lhs = Lhss[i].AsExpr as IdentifierExpr;
+        if (lhs != null && QKeyValue.FindBoolAttribute(lhs.Decl.Attributes, "assumption"))
+        {
+          var rhs = Rhss[i] as NAryExpr;
+          if (rhs == null
+              || !(rhs.Fun is BinaryOperator)
+              || ((BinaryOperator)(rhs.Fun)).Op != BinaryOperator.Opcode.And
+              || !(rhs.Args[0] is IdentifierExpr)
+              || ((IdentifierExpr)(rhs.Args[0])).Name != lhs.Name)
+          {
+            rc.Error(tok, string.Format("RHS of assignment to assumption variable {0} must match expression \"{0} && <boolean expression>\"", lhs.Name));
+          }
+          else if (rc.HasVariableBeenAssigned(lhs.Decl.Name))
+          {
+            rc.Error(tok, "assumption variable may not be assigned to more than once");
+          }
+          else
+          {
+            rc.MarkVariableAsAssigned(lhs.Decl.Name);
+          }
+        }
+      }
     }
 
     public override void Typecheck(TypecheckingContext tc) {

@@ -160,3 +160,9 @@ IntReal.bpl(33,6): Error: argument type real does not match expected type int
 IntReal.bpl(45,8): Error: invalid argument types (real and int) to binary operator div
 IntReal.bpl(46,8): Error: invalid argument types (real and int) to binary operator mod
 18 type checking errors detected in IntReal.bpl
+AssumptionVariables0.bpl(3,22): Error: assumption variable may not be declared with a where clause
+AssumptionVariables0.bpl(19,7): Error: RHS of assignment to assumption variable a0 must match expression "a0 && <boolean expression>"
+AssumptionVariables0.bpl(28,7): Error: RHS of assignment to assumption variable a0 must match expression "a0 && <boolean expression>"
+AssumptionVariables0.bpl(37,7): Error: assumption variable may not be assigned to more than once
+AssumptionVariables0.bpl(54,7): Error: assumption variable may not be assigned to more than once
+5 name resolution errors detected in AssumptionVariables0.bpl
