@@ -67,7 +67,7 @@ namespace Microsoft.Boogie
         Dictionary<string, bool> summaries = new Dictionary<string, bool>();
         Dictionary<Block, List<Block>> edgesCut = new Dictionary<Block, List<Block>>();
         string main_proc_name = "main";
-        
+        Dictionary<string, int> extraRecBound = null;
         
 
         public enum Mode { Corral, OldCorral, Boogie};
@@ -78,7 +78,7 @@ namespace Microsoft.Boogie
 
         private static Checker old_checker = null;
 
-        public FixedpointVC( Program _program, string/*?*/ logFilePath, bool appendLogFile, List<Checker> checkers)
+        public FixedpointVC( Program _program, string/*?*/ logFilePath, bool appendLogFile, List<Checker> checkers, Dictionary<string,int> _extraRecBound = null)
             : base(_program, logFilePath, appendLogFile, checkers) 
         {
             switch (CommandLineOptions.Clo.FixedPointMode)
@@ -117,6 +117,7 @@ namespace Microsoft.Boogie
             old_checker = checker;
             boogieContext = checker.TheoremProver.Context;
             linOptions = null; //  new Microsoft.Boogie.Z3.Z3LineariserOptions(false, options, new List<VCExprVar>());
+            extraRecBound = _extraRecBound;
         }
 
         Dictionary<string, AnnotationInfo> annotationInfo = new Dictionary<string, AnnotationInfo>();
@@ -275,6 +276,49 @@ namespace Microsoft.Boogie
         }
 
 #if true
+        public void AnnotateProcRequires(Procedure proc, Implementation impl, ProverContext ctxt)
+        {
+            Contract.Requires(impl != null);
+
+            CurrentLocalVariables = impl.LocVars;
+
+            // collect the variables needed in the invariant
+            List<Expr> exprs = new List<Expr>();
+            List<Variable> vars = new List<Variable>();
+            List<string> names = new List<string>();
+
+            foreach (Variable v in program.GlobalVariables())
+            {
+                vars.Add(v);
+                exprs.Add(new IdentifierExpr(Token.NoToken, v));
+                names.Add(v.Name);
+            }
+            foreach (Variable v in proc.InParams)
+            {
+                Contract.Assert(v != null);
+                vars.Add(v);
+                exprs.Add(new IdentifierExpr(Token.NoToken, v));
+                names.Add(v.Name);
+            }
+            string name = impl.Name + "_precond";
+            TypedIdent ti = new TypedIdent(Token.NoToken, "", Microsoft.Boogie.Type.Bool);
+            Contract.Assert(ti != null);
+            Formal returnVar = new Formal(Token.NoToken, ti, false);
+            Contract.Assert(returnVar != null);
+            var function = new Function(Token.NoToken, name, vars, returnVar);
+            ctxt.DeclareFunction(function, "");
+
+            Expr invarExpr = new NAryExpr(Token.NoToken, new FunctionCall(function), exprs);
+
+            proc.Requires.Add(new Requires(Token.NoToken, false, invarExpr, "", null));
+            
+            var info = new AnnotationInfo();
+            info.filename = proc.tok.filename;
+            info.lineno = proc.Line;
+            info.argnames = names.ToArray();
+            info.type = AnnotationInfo.AnnotationType.LoopInvariant;
+            annotationInfo.Add(name, info);
+        }
 
         public void AnnotateProcEnsures(Procedure proc, Implementation impl, ProverContext ctxt)
         {
@@ -293,6 +337,13 @@ namespace Microsoft.Boogie
                     exprs.Add(new OldExpr(Token.NoToken,new IdentifierExpr(Token.NoToken, v)));
                     names.Add(v.Name);
                 }
+                foreach (Variable v in proc.InParams)
+                {
+                    Contract.Assert(v != null);
+                    vars.Add(v);
+                    exprs.Add(new OldExpr(Token.NoToken, new IdentifierExpr(Token.NoToken, v)));
+                    names.Add(v.Name);
+                }
                 foreach (IdentifierExpr ie in proc.Modifies)
                         {
                             if (ie.Decl == null)
@@ -301,13 +352,6 @@ namespace Microsoft.Boogie
                             exprs.Add(ie);
                             names.Add(ie.Decl.Name + "_out");
                         }
-                foreach (Variable v in proc.InParams)
-                {
-                            Contract.Assert(v != null);
-                            vars.Add(v);
-                            exprs.Add(new OldExpr(Token.NoToken, new IdentifierExpr(Token.NoToken, v)));
-                            names.Add(v.Name);
-                }
                 foreach (Variable v in proc.OutParams)
                 {
                             Contract.Assert(v != null);
@@ -1358,7 +1402,11 @@ namespace Microsoft.Boogie
                         {
                             var impl = proc as Implementation;
                             if (impl != null)
+                            {
+                                if (!QKeyValue.FindBoolAttribute(impl.Attributes, "entrypoint"))
+                                    AnnotateProcRequires(impl.Proc, impl, boogieContext);
                                 AnnotateProcEnsures(impl.Proc, impl, boogieContext);
+                            }
                         }
                         if (style == AnnotationStyle.Call)
                         {
@@ -1473,9 +1521,24 @@ namespace Microsoft.Boogie
             ErrorHandler handler = new ErrorHandler();
             RPFP.Node cex;
             varSubst = new Dictionary<int,Dictionary<string,string>>();
+
+            int origRecursionBound = CommandLineOptions.Clo.RecursionBound;
+            if (CommandLineOptions.Clo.RecursionBound > 0 && extraRecBound != null)
+            {
+                int maxExtra = 0;
+                foreach (string s in extraRecBound.Keys)
+                {
+                    int extra = extraRecBound[s];
+                    if (extra > maxExtra) maxExtra = extra;
+                }
+                CommandLineOptions.Clo.RecursionBound += maxExtra;
+            }
+            
             ProverInterface.Outcome outcome =
                  checker.TheoremProver.CheckRPFP("name", rpfp, handler, out cex, varSubst);
             cexroot = cex;
+
+            CommandLineOptions.Clo.RecursionBound = origRecursionBound;
           
             Console.WriteLine("solve: {0}s", (DateTime.Now - start).TotalSeconds);
             
