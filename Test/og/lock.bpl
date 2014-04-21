@@ -36,6 +36,7 @@ ensures {:atomic 1} |{ A: assume !b; b := true; return true; }|;
 
     A: 
         assume status;
+	yield;
 	return;
 
     B:

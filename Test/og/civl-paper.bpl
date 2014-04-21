@@ -92,6 +92,7 @@ ensures {:right 1} |{ A: assert tid != nil; assume lock == nil; lock := tid; ret
 
     A: 
         assume status;
+	par YieldLock();	
 	return;
 
     B:
