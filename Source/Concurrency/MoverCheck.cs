@@ -562,6 +562,10 @@ namespace Microsoft.Boogie
             blocks.AddRange(firstBlocks);
             blocks.AddRange(secondBlocks);
             List<Requires> requires = DisjointnessRequires(program, first, second);
+            foreach (AssertCmd assertCmd in first.thatGate)
+                requires.Add(new Requires(false, assertCmd.Expr));
+            foreach (AssertCmd assertCmd in second.thisGate)
+                requires.Add(new Requires(false, assertCmd.Expr));
             List<Ensures> ensures = new List<Ensures>();
             Expr transitionRelation = (new TransitionRelationComputation(program, first, second)).TransitionRelationCompute();
             Ensures ensureCheck = new Ensures(false, transitionRelation);
@@ -604,6 +608,8 @@ namespace Microsoft.Boogie
                 ensureCheck.ErrorData = string.Format("Gate not preserved by {0}", second.proc.Name);
                 ensures.Add(ensureCheck);
             }
+            foreach (AssertCmd assertCmd in second.thisGate)
+                requires.Add(new Requires(false, assertCmd.Expr));
             string checkerName = string.Format("GatePreservationChecker_{0}_{1}", first.proc.Name, second.proc.Name);
             List<IdentifierExpr> globalVars = new List<IdentifierExpr>();
             program.GlobalVariables().Iter(x => globalVars.Add(Expr.Ident(x)));
@@ -614,6 +620,48 @@ namespace Microsoft.Boogie
             this.decls.Add(proc);
         }
 
+        private void CreateFailurePreservationChecker(Program program, ActionInfo first, ActionInfo second)
+        {
+            if (first.gateUsedGlobalVars.Intersect(second.modifiedGlobalVars).Count() == 0)
+                return;
+            Tuple<ActionInfo, ActionInfo> actionPair = new Tuple<ActionInfo, ActionInfo>(first, second);
+            if (failurePreservationCheckerCache.Contains(actionPair))
+                return;
+            failurePreservationCheckerCache.Add(actionPair);
+
+            List<Variable> inputs = new List<Variable>();
+            inputs.AddRange(first.thatInParams);
+            inputs.AddRange(second.thisInParams);
+            List<Variable> outputs = new List<Variable>();
+            outputs.AddRange(first.thatOutParams);
+            outputs.AddRange(second.thisOutParams);
+            List<Variable> locals = new List<Variable>();
+            locals.AddRange(second.thisAction.LocVars);
+            List<Block> secondBlocks = CloneBlocks(second.thisAction.Blocks);
+            List<Requires> requires = DisjointnessRequires(program, first, second);
+            Expr gateExpr = Expr.True;
+            foreach (AssertCmd assertCmd in first.thatGate)
+            {
+                gateExpr = Expr.And(gateExpr, assertCmd.Expr);
+            }
+            requires.Add(new Requires(false, Expr.Not(gateExpr)));
+            List<Ensures> ensures = new List<Ensures>();
+            Ensures ensureCheck = new Ensures(false, Expr.Not(gateExpr));
+            ensureCheck.ErrorData = string.Format("Gate failure of {0} not preserved by {1}", first.proc.Name, second.proc.Name);
+            ensures.Add(ensureCheck);
+            foreach (AssertCmd assertCmd in second.thisGate)
+                requires.Add(new Requires(false, assertCmd.Expr));
+            string checkerName = string.Format("FailurePreservationChecker_{0}_{1}", first.proc.Name, second.proc.Name);
+            List<IdentifierExpr> globalVars = new List<IdentifierExpr>();
+            program.GlobalVariables().Iter(x => globalVars.Add(Expr.Ident(x)));
+            Procedure proc = new Procedure(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, outputs, requires, globalVars, ensures);
+            Implementation impl = new Implementation(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, outputs, locals, secondBlocks);
+            impl.Proc = proc;
+            this.decls.Add(impl);
+            this.decls.Add(proc);
+        }
+
+        /*
         private void CreateFailurePreservationChecker(Program program, ActionInfo first, ActionInfo second)
         {
             if (first.gateUsedGlobalVars.Intersect(second.modifiedGlobalVars).Count() == 0)
@@ -660,7 +708,8 @@ namespace Microsoft.Boogie
             this.decls.Add(impl);
             this.decls.Add(proc);
         }
-
+        */
+        
         private void CreateNonBlockingChecker(Program program, ActionInfo second)
         {
             List<Variable> inputs = new List<Variable>();

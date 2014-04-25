@@ -84,7 +84,7 @@ namespace Microsoft.Boogie
                 AssertCmd assertCmd = cmds[i] as AssertCmd;
                 if (assertCmd == null) break;
                 thisGate.Add(assertCmd);
-                cmds[i] = new AssumeCmd(assertCmd.tok, assertCmd.Expr);
+                cmds[i] = new AssumeCmd(assertCmd.tok, Expr.True);
             }
 
             Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();

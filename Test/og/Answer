@@ -98,7 +98,7 @@ Boogie program verifier finished with 1 verified, 1 error
 
 -------------------- DeviceCache.bpl --------------------
 
-Boogie program verifier finished with 50 verified, 0 errors
+Boogie program verifier finished with 35 verified, 0 errors
 
 -------------------- ticket.bpl --------------------
 
@@ -114,8 +114,8 @@ Boogie program verifier finished with 6 verified, 0 errors
 
 -------------------- multiset.bpl --------------------
 
-Boogie program verifier finished with 104 verified, 0 errors
+Boogie program verifier finished with 85 verified, 0 errors
 
 -------------------- civl-paper.bpl --------------------
 
-Boogie program verifier finished with 37 verified, 0 errors
+Boogie program verifier finished with 29 verified, 0 errors

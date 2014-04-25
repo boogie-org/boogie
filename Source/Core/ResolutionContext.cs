@@ -622,8 +622,8 @@ namespace Microsoft.Boogie {
 
     public bool InFrame(Variable v) {
       Contract.Requires(v != null);
-      Contract.Requires(Yields || Frame != null);
-      return Yields || Frame.Any(f => f.Decl == v);
+      Contract.Requires(Frame != null);
+      return Frame.Any(f => f.Decl == v);
     }
   }
 }

@@ -1283,7 +1283,19 @@ namespace Microsoft.Boogie
                         duplicateProc.Modifies = new List<IdentifierExpr>();
                         program.GlobalVariables().Iter(x => duplicateProc.Modifies.Add(Expr.Ident(x)));
                         CodeExpr action = (CodeExpr)duplicator.VisitCodeExpr(moverTypeChecker.procToActionInfo[proc].thisAction);
-                        Implementation impl = new Implementation(Token.NoToken, duplicateProc.Name, proc.TypeParameters, proc.InParams, proc.OutParams, action.LocVars, action.Blocks);
+
+                        List<Cmd> cmds = new List<Cmd>();
+                        foreach (AssertCmd assertCmd in moverTypeChecker.procToActionInfo[proc].thisGate)
+                        {
+                            cmds.Add(new AssumeCmd(Token.NoToken, (Expr)duplicator.Visit(assertCmd.Expr)));
+                        }
+                        Block newInitBlock = new Block(Token.NoToken, "_init", cmds, 
+                            new GotoCmd(Token.NoToken, new List<string>(new string[] { action.Blocks[0].Label }), 
+                                                       new List<Block>(new Block[] { action.Blocks[0] })));
+                        List<Block> newBlocks = new List<Block>();
+                        newBlocks.Add(newInitBlock);
+                        newBlocks.AddRange(action.Blocks);
+                        Implementation impl = new Implementation(Token.NoToken, duplicateProc.Name, proc.TypeParameters, proc.InParams, proc.OutParams, action.LocVars, newBlocks);
                         impl.Proc = duplicateProc;
                         impl.Proc.AddAttribute("inline", new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1)));
                         impl.AddAttribute("inline", new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1)));
