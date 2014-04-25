@@ -643,10 +643,13 @@ namespace Microsoft.Boogie
             foreach (AssertCmd assertCmd in first.thatGate)
             {
                 gateExpr = Expr.And(gateExpr, assertCmd.Expr);
+                gateExpr.Type = Type.Bool;
             }
-            requires.Add(new Requires(false, Expr.Not(gateExpr)));
+            gateExpr = Expr.Not(gateExpr);
+            gateExpr.Type = Type.Bool;
+            requires.Add(new Requires(false, gateExpr));
             List<Ensures> ensures = new List<Ensures>();
-            Ensures ensureCheck = new Ensures(false, Expr.Not(gateExpr));
+            Ensures ensureCheck = new Ensures(false, gateExpr);
             ensureCheck.ErrorData = string.Format("Gate failure of {0} not preserved by {1}", first.proc.Name, second.proc.Name);
             ensures.Add(ensureCheck);
             foreach (AssertCmd assertCmd in second.thisGate)
