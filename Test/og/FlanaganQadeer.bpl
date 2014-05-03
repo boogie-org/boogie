@@ -1,7 +1,7 @@
 type X;
 const nil: X;
-var l: X;
-var x: int;
+var {:phase 1} l: X;
+var {:phase 1} x: int;
 
 function {:builtin "MapConst"} MapConstBool(bool) : [X]bool;
 function {:inline} {:linear "tid"} TidCollector(x: X) : [X]bool
@@ -10,44 +10,55 @@ function {:inline} {:linear "tid"} TidCollector(x: X) : [X]bool
 }
 
 procedure Allocate() returns ({:linear "tid"} xls: X);
-ensures xls != nil;
+ensures {:phase 1} xls != nil;
 
-procedure {:entrypoint} {:yields} main()
+procedure {:yields} {:phase 1} main()
 {
     var {:linear "tid"} tid: X;
     var val: int;
 
     while (*) 
     {
+        yield;
         call tid := Allocate();
         havoc val;
         async call foo(tid, val);
+	yield;
     }
 }
+procedure {:yields} {:phase 0,1} Lock(tid: X);
+ensures {:atomic} |{A: assume l == nil; l := tid; return true; }|;
 
-procedure {:yields} {:stable} foo({:linear "tid"} tid': X, val: int)
-requires tid' != nil;
+procedure {:yields} {:phase 0,1} Unlock();
+ensures {:atomic} |{A: l := nil; return true; }|;
+
+procedure {:yields} {:phase 0,1} Set(val: int);
+ensures {:atomic} |{A: x := val; return true; }|;
+
+procedure {:yields} {:phase 1} foo({:linear "tid"} tid': X, val: int)
+requires {:phase 1} tid' != nil;
 {
     var {:linear "tid"} tid: X;
     tid := tid';
-    
-    assume l == nil;
-    l := tid;
+
+    yield;
+    call Lock(tid);    
     call tid := Yield(tid);
-    x := val;
+    call Set(val);
     call tid := Yield(tid);
-    assert x == val;
+    assert {:phase 1} x == val;
     call tid := Yield(tid);
-    l := nil;
+    call Unlock();
+    yield;
 }
 
-procedure {:yields} Yield({:linear "tid"} tid': X) returns ({:linear "tid"} tid: X)
-requires tid' != nil;
-ensures tid == tid';
-ensures old(l) == tid ==> old(l) == l && old(x) == x;
+procedure {:yields} {:phase 1} Yield({:linear "tid"} tid': X) returns ({:linear "tid"} tid: X)
+requires {:phase 1} tid' != nil;
+ensures {:phase 1} tid == tid';
+ensures {:phase 1} old(l) == tid ==> old(l) == l && old(x) == x;
 {
     tid := tid';
     yield;
-    assert tid != nil;
-    assert (old(l) == tid ==> old(l) == l && old(x) == x);
+    assert {:phase 1} tid != nil;
+    assert {:phase 1} (old(l) == tid ==> old(l) == l && old(x) == x);
 }

@@ -9,53 +9,20 @@ namespace Microsoft.Boogie
 {
     public class MoverCheck
     {
-        public static MoverType GetMoverType(Ensures e, out int phaseNum, out int availableUptoPhaseNum)
-        {
-            if (FindAtomicAction(e.Attributes, "atomic", out phaseNum, out availableUptoPhaseNum))
-                return MoverType.Atomic;
-            if (FindAtomicAction(e.Attributes, "right", out phaseNum, out availableUptoPhaseNum))
-                return MoverType.Right;
-            if (FindAtomicAction(e.Attributes, "left", out phaseNum, out availableUptoPhaseNum))
-                return MoverType.Left;
-            if (FindAtomicAction(e.Attributes, "both", out phaseNum, out availableUptoPhaseNum))
-                return MoverType.Both;
-            return MoverType.Top;
-        }
-
-        private static bool FindAtomicAction(QKeyValue kv, string name, out int phaseNum, out int availableUptoPhaseNum)
-        {
-            phaseNum = int.MaxValue;
-            availableUptoPhaseNum = int.MaxValue;
-            for (; kv != null; kv = kv.Next)
-            {
-                if (kv.Key != name) continue;
-                if (!(kv.Params.Count == 1 || kv.Params.Count == 2)) continue;
-                LiteralExpr l0 = kv.Params[0] as LiteralExpr;
-                if (l0 == null || !l0.isBigNum) continue;
-                phaseNum = l0.asBigNum.ToIntSafe;
-                if (kv.Params.Count == 1) return true;
-                LiteralExpr l1 = kv.Params[1] as LiteralExpr;
-                if (l1 == null || !l1.isBigNum) continue;
-                availableUptoPhaseNum = l1.asBigNum.ToIntSafe;
-                return true;
-            }
-            return false;
-        }
-
         LinearTypeChecker linearTypeChecker;
         MoverTypeChecker moverTypeChecker;
         List<Declaration> decls;
-        HashSet<Tuple<ActionInfo, ActionInfo>> commutativityCheckerCache;
-        HashSet<Tuple<ActionInfo, ActionInfo>> gatePreservationCheckerCache;
-        HashSet<Tuple<ActionInfo, ActionInfo>> failurePreservationCheckerCache;
+        HashSet<Tuple<AtomicActionInfo, AtomicActionInfo>> commutativityCheckerCache;
+        HashSet<Tuple<AtomicActionInfo, AtomicActionInfo>> gatePreservationCheckerCache;
+        HashSet<Tuple<AtomicActionInfo, AtomicActionInfo>> failurePreservationCheckerCache;
         private MoverCheck(LinearTypeChecker linearTypeChecker, MoverTypeChecker moverTypeChecker, List<Declaration> decls)
         {
             this.linearTypeChecker = linearTypeChecker;
             this.moverTypeChecker = moverTypeChecker;
             this.decls = decls;
-            this.commutativityCheckerCache = new HashSet<Tuple<ActionInfo, ActionInfo>>();
-            this.gatePreservationCheckerCache = new HashSet<Tuple<ActionInfo, ActionInfo>>();
-            this.failurePreservationCheckerCache = new HashSet<Tuple<ActionInfo, ActionInfo>>();
+            this.commutativityCheckerCache = new HashSet<Tuple<AtomicActionInfo, AtomicActionInfo>>();
+            this.gatePreservationCheckerCache = new HashSet<Tuple<AtomicActionInfo, AtomicActionInfo>>();
+            this.failurePreservationCheckerCache = new HashSet<Tuple<AtomicActionInfo, AtomicActionInfo>>();
         }
 
         public static void AddCheckers(LinearTypeChecker linearTypeChecker, MoverTypeChecker moverTypeChecker, List<Declaration> decls)
@@ -63,18 +30,20 @@ namespace Microsoft.Boogie
             if (moverTypeChecker.procToActionInfo.Count == 0)
                 return;
 
-            Dictionary<int, HashSet<ActionInfo>> pools = new Dictionary<int, HashSet<ActionInfo>>();
+            Dictionary<int, HashSet<AtomicActionInfo>> pools = new Dictionary<int, HashSet<AtomicActionInfo>>();
             foreach (ActionInfo action in moverTypeChecker.procToActionInfo.Values)
             {
-                foreach (int phaseNum in moverTypeChecker.allPhaseNums)
+                AtomicActionInfo atomicAction = action as AtomicActionInfo;
+                if (atomicAction == null) continue;
+                foreach (int phaseNum in moverTypeChecker.AllPhaseNums)
                 {
                     if (action.phaseNum < phaseNum && phaseNum <= action.availableUptoPhaseNum)
                     {
                         if (!pools.ContainsKey(phaseNum))
                         {
-                            pools[phaseNum] = new HashSet<ActionInfo>();
+                            pools[phaseNum] = new HashSet<AtomicActionInfo>();
                         }
-                        pools[phaseNum].Add(action);
+                        pools[phaseNum].Add(atomicAction);
                     }
                 }
             }
@@ -83,7 +52,7 @@ namespace Microsoft.Boogie
             MoverCheck moverChecking = new MoverCheck(linearTypeChecker, moverTypeChecker, decls);
             foreach (int phaseNum1 in pools.Keys)
             {
-                foreach (ActionInfo first in pools[phaseNum1])
+                foreach (AtomicActionInfo first in pools[phaseNum1])
                 {
                     Debug.Assert(first.moverType != MoverType.Top);
                     if (first.moverType == MoverType.Atomic)
@@ -91,7 +60,7 @@ namespace Microsoft.Boogie
                     foreach (int phaseNum2 in pools.Keys)
                     {
                         if (phaseNum2 < phaseNum1) continue;
-                        foreach (ActionInfo second in pools[phaseNum2])
+                        foreach (AtomicActionInfo second in pools[phaseNum2])
                         {
                             if (second.phaseNum < phaseNum1)
                             {
@@ -111,11 +80,12 @@ namespace Microsoft.Boogie
                     }
                 }
             }
-            foreach (ActionInfo action in moverTypeChecker.procToActionInfo.Values)
+            foreach (ActionInfo actionInfo in moverTypeChecker.procToActionInfo.Values)
             {
-                if (action.IsLeftMover && action.hasAssumeCmd)
+                AtomicActionInfo atomicActionInfo = actionInfo as AtomicActionInfo;
+                if (atomicActionInfo != null && atomicActionInfo.IsLeftMover && atomicActionInfo.hasAssumeCmd)
                 {
-                    moverChecking.CreateNonBlockingChecker(program, action);
+                    moverChecking.CreateNonBlockingChecker(program, atomicActionInfo);
                 }
             }
         }
@@ -130,38 +100,37 @@ namespace Microsoft.Boogie
                     return new OldExpr(Token.NoToken, ret);
                 }
                 else
+                {
                     return ret;
+                }
             }
         }
 
         public class TransitionRelationComputation
         {
             private Program program;
-            private ActionInfo first;  // corresponds to that*
-            private ActionInfo second; // corresponds to this*
+            private AtomicActionInfo first;  // corresponds to that*
+            private AtomicActionInfo second; // corresponds to this*
             private Stack<Cmd> cmdStack;
             private List<PathInfo> paths;
             private HashSet<Variable> frame;
+            private HashSet<Variable> postExistVars;
 
-            public TransitionRelationComputation(Program program, ActionInfo second, HashSet<Variable> frame)
+            public TransitionRelationComputation(Program program, AtomicActionInfo second, HashSet<Variable> frame, HashSet<Variable> postExistVars)
             {
+                this.postExistVars = postExistVars;
                 this.frame = frame;
                 TransitionRelationComputationHelper(program, null, second);
             }
 
-            public TransitionRelationComputation(Program program, ActionInfo second)
+            public TransitionRelationComputation(Program program, AtomicActionInfo first, AtomicActionInfo second, HashSet<Variable> frame, HashSet<Variable> postExistVars)
             {
-                this.frame = new HashSet<Variable>(program.GlobalVariables());
-                TransitionRelationComputationHelper(program, null, second);
-            }
-
-            public TransitionRelationComputation(Program program, ActionInfo first, ActionInfo second)
-            {
-                this.frame = new HashSet<Variable>(program.GlobalVariables());
+                this.postExistVars = postExistVars;
+                this.frame = frame;
                 TransitionRelationComputationHelper(program, first, second);
             }
 
-            private void TransitionRelationComputationHelper(Program program, ActionInfo first, ActionInfo second)
+            private void TransitionRelationComputationHelper(Program program, AtomicActionInfo first, AtomicActionInfo second)
             {
                 this.program = program;
                 this.first = first;
@@ -292,6 +261,7 @@ namespace Microsoft.Boogie
                 Dictionary<Variable, Expr> varToExpr = path.varToExpr;
                 foreach (Variable v in varToExpr.Keys)
                 {
+                    if (postExistVars.Contains(v)) continue;
                     IdentifierExpr ie = varToExpr[v] as IdentifierExpr;
                     if (ie != null && !existsMap.ContainsKey(ie.Decl) && existsVars.Contains(ie.Decl))
                     {
@@ -355,43 +325,6 @@ namespace Microsoft.Boogie
                     return true;
                 }
                 return false;
-            }
-
-            public Expr LeftMoverCompute(Expr failureExpr)
-            {
-                Expr returnExpr = Expr.False;
-                foreach (PathInfo path in paths)
-                {
-                    Expr expr = Substituter.Apply(Substituter.SubstitutionFromHashtable(path.varToExpr), failureExpr);
-                    Dictionary<Variable, Expr> subst = new Dictionary<Variable, Expr>();
-                    foreach (Expr x in path.pathExprs)
-                    {
-                        Variable boundVar;
-                        Expr boundVarExpr;
-                        if (InferSubstitution(x, out boundVar, out boundVarExpr) && path.existsVars.Contains(boundVar))
-                        {
-                            subst[boundVar] = boundVarExpr;
-                            path.existsVars.Remove(boundVar);
-                        }
-                        else
-                        {
-                            expr = Expr.And(expr, x);
-                            expr.Type = Type.Bool;
-                        }
-                    }
-                    expr = Substituter.Apply(Substituter.SubstitutionFromHashtable(subst), expr);
-                    expr = new OldExpr(Token.NoToken, expr);
-                    if (path.existsVars.Count > 0)
-                    {
-                        expr = new ExistsExpr(Token.NoToken, new List<Variable>(path.existsVars), expr);
-                    }
-                    returnExpr = Expr.Or(returnExpr, expr);
-                }
-                ResolutionContext rc = new ResolutionContext(null);
-                rc.StateMode = ResolutionContext.State.Two;
-                returnExpr.Resolve(rc);
-                returnExpr.Typecheck(new TypecheckingContext(null));
-                return returnExpr;
             }
 
             public Expr TransitionRelationCompute()
@@ -483,7 +416,7 @@ namespace Microsoft.Boogie
             return otherBlocks;
         }
 
-        private List<Requires> DisjointnessRequires(Program program, ActionInfo first, ActionInfo second)
+        private List<Requires> DisjointnessRequires(Program program, AtomicActionInfo first, AtomicActionInfo second, HashSet<Variable> frame)
         {
             List<Requires> requires = new List<Requires>();
             Dictionary<string, HashSet<Variable>> domainNameToScope = new Dictionary<string, HashSet<Variable>>();
@@ -491,16 +424,13 @@ namespace Microsoft.Boogie
             {
                 domainNameToScope[domainName] = new HashSet<Variable>();
             }
-            /*
-            // Commenting this out to avoid the danger of making an assumption about a hidden variable
-            foreach (Variable v in program.GlobalVariables())
+            foreach (Variable v in frame)
             {
                 var domainName = linearTypeChecker.FindDomainName(v);
                 if (domainName == null) continue;
                 if (!linearTypeChecker.linearDomains.ContainsKey(domainName)) continue;
                 domainNameToScope[domainName].Add(v);
             }
-             */ 
             if (first != null)
             {
                 foreach (Variable v in first.thatInParams)
@@ -525,13 +455,13 @@ namespace Microsoft.Boogie
             return requires;
         }
 
-        private void CreateCommutativityChecker(Program program, ActionInfo first, ActionInfo second)
+        private void CreateCommutativityChecker(Program program, AtomicActionInfo first, AtomicActionInfo second)
         {
             if (first == second && first.thatInParams.Count == 0 && first.thatOutParams.Count == 0)
                 return;
             if (first.CommutesWith(second))
                 return;
-            Tuple<ActionInfo, ActionInfo> actionPair = new Tuple<ActionInfo, ActionInfo>(first, second);
+            Tuple<AtomicActionInfo, AtomicActionInfo> actionPair = new Tuple<AtomicActionInfo, AtomicActionInfo>(first, second);
             if (commutativityCheckerCache.Contains(actionPair))
                 return;
             commutativityCheckerCache.Add(actionPair);
@@ -561,13 +491,18 @@ namespace Microsoft.Boogie
             List<Block> blocks = new List<Block>();
             blocks.AddRange(firstBlocks);
             blocks.AddRange(secondBlocks);
-            List<Requires> requires = DisjointnessRequires(program, first, second);
+            HashSet<Variable> frame = new HashSet<Variable>();
+            frame.UnionWith(first.gateUsedGlobalVars);
+            frame.UnionWith(first.actionUsedGlobalVars);
+            frame.UnionWith(second.gateUsedGlobalVars);
+            frame.UnionWith(second.actionUsedGlobalVars);
+            List<Requires> requires = DisjointnessRequires(program, first, second, frame);
             foreach (AssertCmd assertCmd in first.thatGate)
                 requires.Add(new Requires(false, assertCmd.Expr));
             foreach (AssertCmd assertCmd in second.thisGate)
                 requires.Add(new Requires(false, assertCmd.Expr));
             List<Ensures> ensures = new List<Ensures>();
-            Expr transitionRelation = (new TransitionRelationComputation(program, first, second)).TransitionRelationCompute();
+            Expr transitionRelation = (new TransitionRelationComputation(program, first, second, frame, new HashSet<Variable>())).TransitionRelationCompute();
             Ensures ensureCheck = new Ensures(false, transitionRelation);
             ensureCheck.ErrorData = string.Format("Commutativity check between {0} and {1} failed", first.proc.Name, second.proc.Name);
             ensures.Add(ensureCheck);
@@ -581,11 +516,11 @@ namespace Microsoft.Boogie
             this.decls.Add(proc);
         }
 
-        private void CreateGatePreservationChecker(Program program, ActionInfo first, ActionInfo second)
+        private void CreateGatePreservationChecker(Program program, AtomicActionInfo first, AtomicActionInfo second)
         {
             if (first.gateUsedGlobalVars.Intersect(second.modifiedGlobalVars).Count() == 0)
                 return;
-            Tuple<ActionInfo, ActionInfo> actionPair = new Tuple<ActionInfo, ActionInfo>(first, second);
+            Tuple<AtomicActionInfo, AtomicActionInfo> actionPair = new Tuple<AtomicActionInfo, AtomicActionInfo>(first, second);
             if (gatePreservationCheckerCache.Contains(actionPair))
                 return;
             gatePreservationCheckerCache.Add(actionPair);
@@ -599,7 +534,11 @@ namespace Microsoft.Boogie
             List<Variable> locals = new List<Variable>();
             locals.AddRange(second.thisAction.LocVars);
             List<Block> secondBlocks = CloneBlocks(second.thisAction.Blocks);
-            List<Requires> requires = DisjointnessRequires(program, first, second);
+            HashSet<Variable> frame = new HashSet<Variable>();
+            frame.UnionWith(first.gateUsedGlobalVars);
+            frame.UnionWith(second.gateUsedGlobalVars);
+            frame.UnionWith(second.actionUsedGlobalVars);
+            List<Requires> requires = DisjointnessRequires(program, first, second, frame);
             List<Ensures> ensures = new List<Ensures>();
             foreach (AssertCmd assertCmd in first.thatGate)
             {
@@ -620,11 +559,11 @@ namespace Microsoft.Boogie
             this.decls.Add(proc);
         }
 
-        private void CreateFailurePreservationChecker(Program program, ActionInfo first, ActionInfo second)
+        private void CreateFailurePreservationChecker(Program program, AtomicActionInfo first, AtomicActionInfo second)
         {
             if (first.gateUsedGlobalVars.Intersect(second.modifiedGlobalVars).Count() == 0)
                 return;
-            Tuple<ActionInfo, ActionInfo> actionPair = new Tuple<ActionInfo, ActionInfo>(first, second);
+            Tuple<AtomicActionInfo, AtomicActionInfo> actionPair = new Tuple<AtomicActionInfo, AtomicActionInfo>(first, second);
             if (failurePreservationCheckerCache.Contains(actionPair))
                 return;
             failurePreservationCheckerCache.Add(actionPair);
@@ -638,7 +577,11 @@ namespace Microsoft.Boogie
             List<Variable> locals = new List<Variable>();
             locals.AddRange(second.thisAction.LocVars);
             List<Block> secondBlocks = CloneBlocks(second.thisAction.Blocks);
-            List<Requires> requires = DisjointnessRequires(program, first, second);
+            HashSet<Variable> frame = new HashSet<Variable>();
+            frame.UnionWith(first.gateUsedGlobalVars);
+            frame.UnionWith(second.gateUsedGlobalVars);
+            frame.UnionWith(second.actionUsedGlobalVars);
+            List<Requires> requires = DisjointnessRequires(program, first, second, frame);
             Expr gateExpr = Expr.True;
             foreach (AssertCmd assertCmd in first.thatGate)
             {
@@ -664,67 +607,23 @@ namespace Microsoft.Boogie
             this.decls.Add(proc);
         }
 
-        /*
-        private void CreateFailurePreservationChecker(Program program, ActionInfo first, ActionInfo second)
-        {
-            if (first.gateUsedGlobalVars.Intersect(second.modifiedGlobalVars).Count() == 0)
-                return;
-
-            Tuple<ActionInfo, ActionInfo> actionPair = new Tuple<ActionInfo, ActionInfo>(first, second); 
-            if (failurePreservationCheckerCache.Contains(actionPair))
-                return;
-            failurePreservationCheckerCache.Add(actionPair);
-
-            List<Variable> inputs = new List<Variable>();
-            inputs.AddRange(first.thatInParams);
-            inputs.AddRange(second.thisInParams);
-
-            Expr requiresExpr = Expr.True;
-            foreach (AssertCmd assertCmd in first.thatGate)
-            {
-                requiresExpr = Expr.And(assertCmd.Expr, requiresExpr);
-                requiresExpr.Type = Type.Bool;
-            }
-            Expr failureExpr = Expr.Not(requiresExpr);
-            failureExpr.Type = Type.Bool;
-            List<Requires> requires = DisjointnessRequires(program, first, second);
-            requires.Add(new Requires(false, failureExpr));
-            foreach (AssertCmd assertCmd in second.thisGate)
-            {
-                requires.Add(new Requires(false, assertCmd.Expr));
-            }
-
-            Expr ensuresExpr = (new TransitionRelationComputation(program, second)).LeftMoverCompute(failureExpr);
-            List<Ensures> ensures = new List<Ensures>();
-            Ensures ensureCheck = new Ensures(false, ensuresExpr);
-            ensureCheck.ErrorData = string.Format("Gate failure of {0} not preserved by {1}", first.proc.Name, second.proc.Name);
-            ensures.Add(ensureCheck);
-
-            List<Block> blocks = new List<Block>();
-            blocks.Add(new Block(Token.NoToken, "L", new List<Cmd>(), new ReturnCmd(Token.NoToken)));
-            string checkerName = string.Format("FailurePreservationChecker_{0}_{1}", first.proc.Name, second.proc.Name);
-            List<IdentifierExpr> globalVars = new List<IdentifierExpr>();
-            program.GlobalVariables().Iter(x => globalVars.Add(Expr.Ident(x)));
-            Procedure proc = new Procedure(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, new List<Variable>(), requires, globalVars, ensures);
-            Implementation impl = new Implementation(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, new List<Variable>(), new List<Variable>(), blocks);
-            impl.Proc = proc;
-            this.decls.Add(impl);
-            this.decls.Add(proc);
-        }
-        */
-        
-        private void CreateNonBlockingChecker(Program program, ActionInfo second)
+        private void CreateNonBlockingChecker(Program program, AtomicActionInfo second)
         {
             List<Variable> inputs = new List<Variable>();
             inputs.AddRange(second.thisInParams);
 
-            List<Requires> requires = DisjointnessRequires(program, null, second);
+            HashSet<Variable> frame = new HashSet<Variable>();
+            frame.UnionWith(second.gateUsedGlobalVars);
+            frame.UnionWith(second.actionUsedGlobalVars);
+            List<Requires> requires = DisjointnessRequires(program, null, second, frame);
             foreach (AssertCmd assertCmd in second.thisGate)
             {
                 requires.Add(new Requires(false, assertCmd.Expr));
             }
-
-            Expr ensuresExpr = (new TransitionRelationComputation(program, second)).LeftMoverCompute(Expr.True);
+            HashSet<Variable> postExistVars = new HashSet<Variable>();
+            postExistVars.UnionWith(frame);
+            postExistVars.UnionWith(second.thisOutParams);
+            Expr ensuresExpr = (new TransitionRelationComputation(program, second, frame, postExistVars)).TransitionRelationCompute();
             List<Ensures> ensures = new List<Ensures>();
             Ensures ensureCheck = new Ensures(false, ensuresExpr);
             ensureCheck.ErrorData = string.Format("{0} is blocking", second.proc.Name);

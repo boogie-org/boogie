@@ -13,31 +13,31 @@ function map(lmap): [int]int;
 function cons([int]bool, [int]int) : lmap;
 axiom (forall x: [int]bool, y: [int]int :: {cons(x,y)} dom(cons(x, y)) == x && map(cons(x,y)) == y);
 
-var {:qed} {:linear "mem"} g: lmap;
+var {:phase 2} {:linear "mem"} g: lmap;
 
 const p: int;
 
-procedure {:yields} TransferToGlobal({:cnst "tid"} tid: X, {:linear "mem"} l: lmap);
-ensures {:both 1} |{ A: assert tid != nil && lock == tid; g := l; return true; }|;
+procedure {:yields} {:phase 1,2} TransferToGlobal({:cnst "tid"} tid: X, {:linear "mem"} l: lmap);
+ensures {:both} |{ A: assert tid != nil && lock == tid; g := l; return true; }|;
 requires {:phase 1} InvLock(lock, b);
 ensures {:phase 1} InvLock(lock, b);
 
-procedure {:yields} TransferFromGlobal({:cnst "tid"} tid: X) returns ({:linear "mem"} l: lmap);
-ensures {:both 1} |{ A: assert tid != nil && lock == tid; l := g; return true; }|;
+procedure {:yields} {:phase 1,2} TransferFromGlobal({:cnst "tid"} tid: X) returns ({:linear "mem"} l: lmap);
+ensures {:both} |{ A: assert tid != nil && lock == tid; l := g; return true; }|;
 requires {:phase 1} InvLock(lock, b);
 ensures {:phase 1} InvLock(lock, b);
 
-procedure {:yields} Load({:cnst "mem"} l: lmap, a: int) returns (v: int);
-ensures {:both 1} |{ A: v := map(l)[a]; return true; }|;
+procedure {:yields} {:phase 1} Load({:cnst "mem"} l: lmap, a: int) returns (v: int);
+ensures {:both} |{ A: v := map(l)[a]; return true; }|;
 requires {:phase 1} InvLock(lock, b);
 ensures {:phase 1} InvLock(lock, b);
 
-procedure {:yields} Store({:linear "mem"} l_in: lmap, a: int, v: int) returns ({:linear "mem"} l_out: lmap);
-ensures {:both 1} |{ A: assume l_out == cons(dom(l_in), map(l_in)[a := v]); return true; }|;
+procedure {:yields} {:phase 1} Store({:linear "mem"} l_in: lmap, a: int, v: int) returns ({:linear "mem"} l_out: lmap);
+ensures {:both} |{ A: assume l_out == cons(dom(l_in), map(l_in)[a := v]); return true; }|;
 requires {:phase 1} InvLock(lock, b);
 ensures {:phase 1} InvLock(lock, b);
 
-procedure {:yields} P({:cnst "tid"} tid: X)
+procedure {:yields} {:phase 2} P({:cnst "tid"} tid: X)
 requires {:phase 1} InvLock(lock, b);
 ensures {:phase 1} InvLock(lock, b);
 requires {:phase 2} tid != nil && Inv(g);
@@ -58,7 +58,7 @@ ensures {:phase 2} Inv(g);
     par Yield() | YieldLock();
 }
 
-procedure {:yields} {:stable} Yield()
+procedure {:yields} {:phase 2} Yield()
 requires {:phase 2} Inv(g);
 ensures {:phase 2} Inv(g);
 {
@@ -72,13 +72,13 @@ function {:inline} Inv(g: lmap) : bool
 }
 
 
-var {:qed 1} b: bool;
-var {:qed} lock: X;
+var {:phase 1} b: bool;
+var {:phase 2} lock: X;
 
-procedure {:yields} Acquire({:cnst "tid"} tid: X)
+procedure {:yields} {:phase 1,2} Acquire({:cnst "tid"} tid: X)
 requires {:phase 1} InvLock(lock, b);
 ensures {:phase 1} InvLock(lock, b);
-ensures {:right 1} |{ A: assert tid != nil; assume lock == nil; lock := tid; return true; }|;
+ensures {:right} |{ A: assert tid != nil; assume lock == nil; lock := tid; return true; }|;
 {
     var status: bool;
     var tmp: X;
@@ -100,8 +100,8 @@ ensures {:right 1} |{ A: assert tid != nil; assume lock == nil; lock := tid; ret
 	goto L;
 }
 
-procedure {:yields} Release({:cnst "tid"} tid: X)
-ensures {:left 1} |{ A: assert lock == tid && tid != nil; lock := nil; return true; }|;
+procedure {:yields} {:phase 1,2} Release({:cnst "tid"} tid: X)
+ensures {:left} |{ A: assert lock == tid && tid != nil; lock := nil; return true; }|;
 requires {:phase 1} InvLock(lock, b);
 ensures {:phase 1} InvLock(lock, b);
 {
@@ -110,19 +110,19 @@ ensures {:phase 1} InvLock(lock, b);
     par YieldLock();
 }
 
-procedure {:yields} CAS(tid: X, prev: bool, next: bool) returns (status: bool);
-ensures {:atomic 0,1} |{ 
+procedure {:yields} {:phase 0,1} CAS(tid: X, prev: bool, next: bool) returns (status: bool);
+ensures {:atomic} |{ 
 A: goto B, C; 
 B: assume b == prev; b := next; status := true; lock := tid; return true; 
 C: status := false; return true; 
 }|;
 
-procedure {:yields} CLEAR(tid: X, next: bool);
-ensures {:atomic 0,1} |{ 
+procedure {:yields} {:phase 0,1} CLEAR(tid: X, next: bool);
+ensures {:atomic} |{ 
 A: b := next; lock := nil; return true; 
 }|;
 
-procedure {:yields} {:stable} YieldLock()
+procedure {:yields} {:phase 1} YieldLock()
 requires {:phase 1} InvLock(lock, b);
 ensures {:phase 1} InvLock(lock, b);
 {

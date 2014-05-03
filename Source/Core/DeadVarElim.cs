@@ -42,7 +42,6 @@ namespace Microsoft.Boogie {
     static Procedure enclosingProc;
     static Dictionary<Procedure/*!*/, HashSet<Variable/*!*/>/*!*/>/*!*/ modSets;
     static HashSet<Procedure> yieldingProcs;
-    static HashSet<Procedure> asyncAndParallelCallTargetProcs;
     [ContractInvariantMethod]
     void ObjectInvariant() {
       Contract.Invariant(cce.NonNullDictionaryAndValues(modSets));
@@ -70,7 +69,6 @@ namespace Microsoft.Boogie {
 
       modSets = new Dictionary<Procedure/*!*/, HashSet<Variable/*!*/>/*!*/>();
       yieldingProcs = new HashSet<Procedure>();
-      asyncAndParallelCallTargetProcs = new HashSet<Procedure>();
 
       HashSet<Procedure/*!*/> implementedProcs = new HashSet<Procedure/*!*/>();
       foreach (Declaration/*!*/ decl in program.TopLevelDeclarations) {
@@ -122,13 +120,6 @@ namespace Microsoft.Boogie {
           if (!QKeyValue.FindBoolAttribute(x.Attributes, "yields"))
           {
               x.AddAttribute("yields");
-          }
-      }
-      foreach (Procedure x in asyncAndParallelCallTargetProcs)
-      {
-          if (!QKeyValue.FindBoolAttribute(x.Attributes, "stable"))
-          {
-              x.AddAttribute("stable");
           }
       }
 
@@ -213,7 +204,6 @@ namespace Microsoft.Boogie {
       }
       if (callCmd.IsAsync)
       {
-          asyncAndParallelCallTargetProcs.Add(callCmd.Proc);
           if (!yieldingProcs.Contains(callCmd.Proc))
           {
               yieldingProcs.Add(callCmd.Proc);
@@ -234,7 +224,6 @@ namespace Microsoft.Boogie {
         }
         foreach (CallCmd callCmd in node.CallCmds)
         {
-            asyncAndParallelCallTargetProcs.Add(callCmd.Proc);
             if (!yieldingProcs.Contains(callCmd.Proc))
             {
                 yieldingProcs.Add(callCmd.Proc);

@@ -1,8 +1,7 @@
-var x: int;
-var y: int;
+var {:phase 1} x: int;
+var {:phase 1} y: int;
 
-procedure {:entrypoint} {:yields} foo()
-modifies x, y; 
+procedure {:yields} {:phase 1} foo()
 {
   assume x == y;
   x := x + 1;
@@ -10,8 +9,8 @@ modifies x, y;
   y := y + 1;
 }
 
-procedure {:yields} {:stable} P()
+procedure {:yields} {:phase 1} P()
 requires x != y;
 {
-  assert x != y;
+  assert {:phase 1} x != y;
 }

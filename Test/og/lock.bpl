@@ -1,14 +1,18 @@
-var {:qed} b: bool;
+var {:phase 2} b: bool;
 
-procedure {:yields} {:entrypoint} main()
+procedure {:yields} {:phase 2} main()
 {
     while (*)
     {
+        yield;
+
         async call Customer();
+
+        yield;
     }
 }
 
-procedure {:yields} {:stable} Customer()
+procedure {:yields} {:phase 2} Customer()
 {
     while (*) 
     {
@@ -19,13 +23,15 @@ procedure {:yields} {:stable} Customer()
     	yield;
 
     	call Leave();
+
+        yield;
     }
 
     yield;
 }
 
-procedure {:yields} Enter() 
-ensures {:atomic 1} |{ A: assume !b; b := true; return true; }|;
+procedure {:yields} {:phase 1,2} Enter() 
+ensures {:atomic} |{ A: assume !b; b := true; return true; }|;
 {
     var status: bool;
     yield;
@@ -44,12 +50,12 @@ ensures {:atomic 1} |{ A: assume !b; b := true; return true; }|;
 	goto L;
 }
 
-procedure {:yields} CAS(prev: bool, next: bool) returns (status: bool);
-ensures {:atomic 0} |{ 
+procedure {:yields} {:phase 0,2} CAS(prev: bool, next: bool) returns (status: bool);
+ensures {:atomic} |{ 
 A: goto B, C; 
 B: assume b == prev; b := next; status := true; return true; 
 C: status := false; return true; 
 }|;
 
-procedure {:yields} Leave();
-ensures {:atomic 0} |{ A: b := false; return true; }|;
+procedure {:yields} {:phase 0,2} Leave();
+ensures {:atomic} |{ A: b := false; return true; }|;

@@ -1,4 +1,4 @@
-var a:[int]int;
+var {:phase 1} a:[int]int;
 
 procedure Allocate() returns ({:linear "tid"} xls: int);
 
@@ -8,7 +8,10 @@ function {:inline} {:linear "tid"} TidCollector(x: int) : [int]bool
   MapConstBool(false)[x := true]
 }
 
-procedure {:entrypoint} {:yields} main() 
+procedure {:yields} {:phase 0,1} Write(idx: int, val: int);
+ensures {:atomic} |{A: a[idx] := val; return true; }|;
+
+procedure {:yields} {:phase 1} main() 
 {
     var {:linear "tid"} i: int;
     var {:linear "tid"} j: int;
@@ -18,29 +21,31 @@ procedure {:entrypoint} {:yields} main()
     par i := u(i) | j := u(j);
 }
 
-procedure {:yields} {:stable} t({:linear "tid"} i': int) returns ({:linear "tid"} i: int)
+procedure {:yields} {:phase 1} t({:linear "tid"} i': int) returns ({:linear "tid"} i: int)
 {
     i := i';
 
-    a[i] := 42;
+    yield;
+    call Write(i, 42);
     call i := Yield(i);
-    assert a[i] == 42;
+    assert {:phase 1} a[i] == 42;
 }
 
-procedure {:yields} {:stable} u({:linear "tid"} i': int) returns ({:linear "tid"} i: int) 
+procedure {:yields} {:phase 1} u({:linear "tid"} i': int) returns ({:linear "tid"} i: int) 
 {
     i := i';
 
-    a[i] := 42;
     yield;
-    assert a[i] == 42;
+    call Write(i, 42);
+    yield;
+    assert {:phase 1} a[i] == 42;
 }
 
-procedure {:yields} {:stable} Yield({:linear "tid"} i': int) returns ({:linear "tid"} i: int)
-ensures i == i';
-ensures old(a)[i] == a[i];
+procedure {:yields} {:phase 1} Yield({:linear "tid"} i': int) returns ({:linear "tid"} i: int)
+ensures {:phase 1} i == i';
+ensures {:phase 1} old(a)[i] == a[i];
 {
     i := i';
     yield;
-    assert old(a)[i] == a[i];
+    assert {:phase 1} old(a)[i] == a[i];
 }

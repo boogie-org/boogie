@@ -20,10 +20,31 @@ namespace Microsoft.Boogie
     public class ActionInfo
     {
         public Procedure proc;
-        public Ensures ensures;
-        public MoverType moverType;
         public int phaseNum;
         public int availableUptoPhaseNum;
+
+        public ActionInfo(Procedure proc, int phaseNum, int availableUptoPhaseNum)
+        {
+            this.proc = proc;
+            this.phaseNum = phaseNum;
+            this.availableUptoPhaseNum = availableUptoPhaseNum;
+        }
+
+        public virtual bool IsRightMover
+        {
+            get { return true; }
+        }
+
+        public virtual bool IsLeftMover
+        {
+            get { return true; }
+        }
+    }
+
+    public class AtomicActionInfo : ActionInfo
+    {
+        public Ensures ensures;
+        public MoverType moverType;
         public List<AssertCmd> thisGate;
         public CodeExpr thisAction;
         public List<Variable> thisInParams;
@@ -32,38 +53,36 @@ namespace Microsoft.Boogie
         public CodeExpr thatAction;
         public List<Variable> thatInParams;
         public List<Variable> thatOutParams;
-        public HashSet<Variable> usedGlobalVars;
+        public HashSet<Variable> actionUsedGlobalVars;
         public HashSet<Variable> modifiedGlobalVars;
         public HashSet<Variable> gateUsedGlobalVars;
         public bool hasAssumeCmd;
 
-        public bool CommutesWith(ActionInfo actionInfo)
+        public bool CommutesWith(AtomicActionInfo actionInfo)
         {
-            if (this.modifiedGlobalVars.Intersect(actionInfo.usedGlobalVars).Count() > 0)
+            if (this.modifiedGlobalVars.Intersect(actionInfo.actionUsedGlobalVars).Count() > 0)
                 return false;
-            if (this.usedGlobalVars.Intersect(actionInfo.modifiedGlobalVars).Count() > 0)
+            if (this.actionUsedGlobalVars.Intersect(actionInfo.modifiedGlobalVars).Count() > 0)
                 return false;
             return true;
         }
 
-        public bool IsRightMover
+        public override bool IsRightMover
         {
             get { return moverType == MoverType.Right || moverType == MoverType.Both; }
         }
 
-        public bool IsLeftMover
+        public override bool IsLeftMover
         {
             get { return moverType == MoverType.Left || moverType == MoverType.Both; }
         }
 
-        public ActionInfo(Procedure proc, Ensures ensures, MoverType moverType, int phaseNum, int availableUptoPhaseNum)
+        public AtomicActionInfo(Procedure proc, Ensures ensures, MoverType moverType, int phaseNum, int availableUptoPhaseNum)
+            : base(proc, phaseNum, availableUptoPhaseNum)
         {
             CodeExpr codeExpr = ensures.Condition as CodeExpr;
-            this.proc = proc;
             this.ensures = ensures;
             this.moverType = moverType;
-            this.phaseNum = phaseNum;
-            this.availableUptoPhaseNum = availableUptoPhaseNum;
             this.thisGate = new List<AssertCmd>();
             this.thisAction = codeExpr;
             this.thisInParams = new List<Variable>();
@@ -162,7 +181,7 @@ namespace Microsoft.Boogie
             {
                 VariableCollector collector = new VariableCollector();
                 collector.Visit(codeExpr);
-                this.usedGlobalVars = new HashSet<Variable>(collector.usedVars.Where(x => x is GlobalVariable));
+                this.actionUsedGlobalVars = new HashSet<Variable>(collector.usedVars.Where(x => x is GlobalVariable));
             }
 
             List<Variable> modifiedVars = new List<Variable>();
@@ -182,35 +201,96 @@ namespace Microsoft.Boogie
 
     public class MoverTypeChecker : ReadOnlyVisitor
     {
-        public int FindPhaseNumber(Procedure proc)
-        {
-            if (procToActionInfo.ContainsKey(proc))
-                return procToActionInfo[proc].phaseNum;
-            else
-                return int.MaxValue;
-        }
-
         CheckingContext checkingContext;
         public int errorCount;
-        public Dictionary<Variable, int> qedGlobalVariables;
+        public Dictionary<Variable, int> introducePhaseNums;
+        public Dictionary<Variable, int> hidePhaseNums;
         Procedure enclosingProc;
         public Dictionary<Procedure, ActionInfo> procToActionInfo;
         public Program program;
-        public HashSet<int> allPhaseNums;
-        bool inAtomicSpecification;
         bool inSpecification;
         int minPhaseNum;
+        int maxPhaseNum;
+        public Dictionary<Absy, HashSet<int>> absyToPhaseNums;
+
+        private static List<int> FindIntAttributes(QKeyValue kv, string name)
+        {
+            Contract.Requires(name != null);
+            HashSet<int> attrs = new HashSet<int>();
+            for (; kv != null; kv = kv.Next)
+            {
+                if (kv.Key != name) continue;
+                foreach (var o in kv.Params)
+                {
+                    Expr e = o as Expr;
+                    if (e == null) continue;
+                    LiteralExpr l = e as LiteralExpr;
+                    if (l != null && l.isBigNum)
+                        attrs.Add(l.asBigNum.ToIntSafe);
+                }
+            }
+            List<int> phases = attrs.ToList();
+            phases.Sort();
+            return phases;
+        }
+
+        private static MoverType GetMoverType(Ensures e)
+        {
+            if (QKeyValue.FindBoolAttribute(e.Attributes, "atomic"))
+                return MoverType.Atomic;
+            if (QKeyValue.FindBoolAttribute(e.Attributes, "right"))
+                return MoverType.Right;
+            if (QKeyValue.FindBoolAttribute(e.Attributes, "left"))
+                return MoverType.Left;
+            if (QKeyValue.FindBoolAttribute(e.Attributes, "both"))
+                return MoverType.Both;
+            return MoverType.Top;
+        }
+
+        private HashSet<int> allPhaseNums;
+        public IEnumerable<int> AllPhaseNums
+        {
+            get
+            {
+                if (allPhaseNums == null)
+                {
+                    allPhaseNums = new HashSet<int>();
+                    foreach (ActionInfo actionInfo in procToActionInfo.Values)
+                    {
+                        allPhaseNums.Add(actionInfo.phaseNum);
+                    }
+                }
+                return allPhaseNums;
+            }
+        }
 
         public void TypeCheck()
         {
             foreach (Declaration decl in program.TopLevelDeclarations)
             {
                 Procedure proc = decl as Procedure;
-                if (proc == null) continue;
+                if (proc == null || !QKeyValue.FindBoolAttribute(proc.Attributes, "yields")) continue;
+
+                int phaseNum = int.MaxValue;
+                int availableUptoPhaseNum = int.MaxValue;
+                List<int> attrs = FindIntAttributes(proc.Attributes, "phase");
+                if (attrs.Count == 1)
+                {
+                    phaseNum = attrs[0];
+                }
+                else if (attrs.Count == 2)
+                {
+                    phaseNum = attrs[0];
+                    availableUptoPhaseNum = attrs[1];
+                }
+                else
+                {
+                    Error(proc, "Incorrect number of phases");
+                    continue;
+                }
                 foreach (Ensures e in proc.Ensures)
                 {
-                    int phaseNum, availableUptoPhaseNum;
-                    MoverType moverType = MoverCheck.GetMoverType(e, out phaseNum, out availableUptoPhaseNum);
+                    MoverType moverType = GetMoverType(e);
                     if (moverType == MoverType.Top) continue;
                     CodeExpr codeExpr = e.Condition as CodeExpr;
                     if (codeExpr == null)
@@ -223,19 +303,16 @@ namespace Microsoft.Boogie
                         Error(proc, "A procedure can have at most one atomic action");
                         continue;
                     }
-                    if (phaseNum >= availableUptoPhaseNum)
-                    {
-                        Error(proc, "Available at phase number should be less than available up to phase number");
-                        continue;
-                    }
-                    if (phaseNum != int.MaxValue)
-                    {
-                        allPhaseNums.Add(phaseNum);
-                    }
-                    procToActionInfo[proc] = new ActionInfo(proc, e, moverType, phaseNum, availableUptoPhaseNum);
+                    procToActionInfo[proc] = new AtomicActionInfo(proc, e, moverType, phaseNum, availableUptoPhaseNum);
+                }
+                if (!procToActionInfo.ContainsKey(proc))
+                {
+                    procToActionInfo[proc] = new ActionInfo(proc, phaseNum, availableUptoPhaseNum);
                 }
             }
+            if (errorCount > 0) return;
             this.VisitProgram(program);
+            if (errorCount > 0) return;
 #if QED
             YieldTypeChecker.PerformYieldSafeCheck(this);
 #endif
@@ -243,132 +320,159 @@ namespace Microsoft.Boogie
 
         public MoverTypeChecker(Program program)
         {
-            this.qedGlobalVariables = new Dictionary<Variable, int>();
-            foreach (var g in program.GlobalVariables())
-            {
-                if (QKeyValue.FindBoolAttribute(g.Attributes, "qed"))
-                {
-                    this.qedGlobalVariables.Add(g, int.MaxValue);
-                    g.Attributes = OwickiGries.RemoveQedAttribute(g.Attributes);
-                }
-                else
-                {
-                    int phaseNum = QKeyValue.FindIntAttribute(g.Attributes, "qed", int.MaxValue);
-                    if (phaseNum == int.MaxValue) continue;
-                    this.qedGlobalVariables.Add(g, phaseNum);
-                    g.Attributes = OwickiGries.RemoveQedAttribute(g.Attributes);
-                }
-            }
+            this.absyToPhaseNums = new Dictionary<Absy, HashSet<int>>();
+            this.introducePhaseNums = new Dictionary<Variable, int>();
+            this.hidePhaseNums = new Dictionary<Variable, int>();
             this.procToActionInfo = new Dictionary<Procedure, ActionInfo>();
-            this.allPhaseNums = new HashSet<int>();
             this.errorCount = 0;
             this.checkingContext = new CheckingContext(null);
             this.program = program;
             this.enclosingProc = null;
-            this.inAtomicSpecification = false;
             this.inSpecification = false;
             this.minPhaseNum = int.MaxValue;
+            this.maxPhaseNum = -1;
+            foreach (var g in program.GlobalVariables())
+            {
+                List<int> phaseNums = FindIntAttributes(g.Attributes, "phase");
+                this.introducePhaseNums[g] = 0;
+                this.hidePhaseNums[g] = int.MaxValue;
+                if (phaseNums.Count == 0)
+                {
+                    // ok
+                }
+                else if (phaseNums.Count == 1)
+                {
+                    this.hidePhaseNums[g] = phaseNums[0];
+                }
+                else if (phaseNums.Count == 2)
+                {
+                    this.introducePhaseNums[g] = phaseNums[0];
+                    this.hidePhaseNums[g] = phaseNums[1];
+                }
+                else
+                {
+                    Error(g, "Too many phase numbers");
+                }
+            }
         }
+        
         public override Implementation VisitImplementation(Implementation node)
         {
+            if (!procToActionInfo.ContainsKey(node.Proc))
+            {
+                return node;
+            }
             this.enclosingProc = node.Proc;
             return base.VisitImplementation(node);
         }
+        
         public override Procedure VisitProcedure(Procedure node)
         {
+            if (!procToActionInfo.ContainsKey(node))
+            {
+                return node;
+            }
             this.enclosingProc = node;
             return base.VisitProcedure(node);
         }
+
         public override Cmd VisitCallCmd(CallCmd node)
         {
-            if (!node.IsAsync)
+            int enclosingProcPhaseNum = procToActionInfo[enclosingProc].phaseNum;
+            if (procToActionInfo.ContainsKey(node.Proc))
             {
-                int enclosingProcPhaseNum = FindPhaseNumber(enclosingProc);
-                int calleePhaseNum = FindPhaseNumber(node.Proc);
-                if (enclosingProcPhaseNum == int.MaxValue)
+                ActionInfo actionInfo = procToActionInfo[node.Proc];
+                if (node.IsAsync && actionInfo is AtomicActionInfo)
                 {
-
+                    Error(node, "Target of async call cannot be an atomic action");
                 }
-                else if (calleePhaseNum == int.MaxValue)
-                {
-                    Error(node, "An atomic procedure cannot call a non-atomic procedure");
-                }
-                else if (enclosingProcPhaseNum <= calleePhaseNum)
+                int calleePhaseNum = procToActionInfo[node.Proc].phaseNum;
+                if (enclosingProcPhaseNum < calleePhaseNum ||
+                    (enclosingProcPhaseNum == calleePhaseNum && actionInfo is AtomicActionInfo))
                 {
                     Error(node, "The phase of the caller procedure must be greater than the phase of the callee");
                 }
-                else if (procToActionInfo[node.Proc].availableUptoPhaseNum < enclosingProcPhaseNum)
+                if (actionInfo.availableUptoPhaseNum < enclosingProcPhaseNum)
                 {
                     Error(node, "The callee is not available in the phase of the caller procedure");
                 }
             }
             return base.VisitCallCmd(node);
         }
+
         public override Cmd VisitParCallCmd(ParCallCmd node)
         {
+            int enclosingProcPhaseNum = procToActionInfo[enclosingProc].phaseNum;
+            bool isLeftMover = true;
+            bool isRightMover = true;
             int maxCalleePhaseNum = 0;
+            int numAtomicActions = 0;
             foreach (CallCmd iter in node.CallCmds)
             {
-                int calleePhaseNum = FindPhaseNumber(iter.Proc);
-                if (calleePhaseNum > maxCalleePhaseNum)
-                    maxCalleePhaseNum = calleePhaseNum;
-            }
-            int enclosingProcPhaseNum = FindPhaseNumber(enclosingProc);
-            if (enclosingProcPhaseNum > maxCalleePhaseNum)
-            {
-                bool isLeftMover = true;
-                bool isRightMover = true;
-                foreach (CallCmd iter in node.CallCmds)
-                {
-                    ActionInfo actionInfo = procToActionInfo[iter.Proc];
-                    isLeftMover = isLeftMover && actionInfo.IsLeftMover;
-                    isRightMover = isRightMover && actionInfo.IsRightMover;
+                ActionInfo actionInfo = procToActionInfo[iter.Proc];
+                isLeftMover = isLeftMover && actionInfo.IsLeftMover;
+                isRightMover = isRightMover && actionInfo.IsRightMover;
+                if (actionInfo.phaseNum > maxCalleePhaseNum)
+                { 
+                    maxCalleePhaseNum = actionInfo.phaseNum; 
                 }
-                if (!isLeftMover && !isRightMover && node.CallCmds.Count > 1)
+                if (actionInfo is AtomicActionInfo)
                 {
-                    Error(node, "The procedures in the parallel call must be all right mover or all left mover");
+                    numAtomicActions++;
                 }
-                return base.VisitParCallCmd(node);
             }
-            else
+            if (!isLeftMover && !isRightMover && node.CallCmds.Count > 1)
             {
-                return node;
+                Error(node, "The procedures in the parallel call must be all right mover or all left mover");
             }
+            if (maxCalleePhaseNum == enclosingProcPhaseNum && numAtomicActions > 0)
+            {
+                Error(node, "At phase {0}, either no callee is an atomic action or no callee phase equals the phase of the enclosing procedure");
+            }
+            return base.VisitParCallCmd(node);
         }
+        
         public override Expr VisitIdentifierExpr(IdentifierExpr node)
         {
             if (node.Decl is GlobalVariable)
             {
-                if (qedGlobalVariables.ContainsKey(node.Decl) && qedGlobalVariables[node.Decl] < minPhaseNum)
+                if (!inSpecification)
                 {
-                    minPhaseNum = qedGlobalVariables[node.Decl];
+                    Error(node, "Global variable can be accessed only in atomic actions or specifications");
                 }
-
-                if (inAtomicSpecification && !qedGlobalVariables.ContainsKey(node.Decl))
+                else
                 {
-                    Error(node, "Cannot access non-qed global variable in atomic action");
-                }
-                else if (!inSpecification && qedGlobalVariables.ContainsKey(node.Decl))
-                {
-                    Error(node, "Cannot access qed global variable in ordinary code");
+                    if (hidePhaseNums[node.Decl] < minPhaseNum)
+                    {
+                        minPhaseNum = hidePhaseNums[node.Decl];
+                    }
+                    if (introducePhaseNums[node.Decl] > maxPhaseNum)
+                    {
+                        maxPhaseNum = introducePhaseNums[node.Decl];
+                    }
                 }
             }
             return base.VisitIdentifierExpr(node);
         }
+        
         public override Ensures VisitEnsures(Ensures ensures)
         {
             minPhaseNum = int.MaxValue;
-            inAtomicSpecification = procToActionInfo.ContainsKey(enclosingProc) && procToActionInfo[enclosingProc].ensures == ensures;
+            maxPhaseNum = -1;
             inSpecification = true;
             Ensures ret = base.VisitEnsures(ensures);
             inSpecification = false;
-            if (inAtomicSpecification)
+            AtomicActionInfo atomicActionInfo = procToActionInfo[enclosingProc] as AtomicActionInfo;
+            if (atomicActionInfo != null && atomicActionInfo.ensures == ensures)
             {
-                if (procToActionInfo[enclosingProc].availableUptoPhaseNum > minPhaseNum)
+                if (maxPhaseNum <= atomicActionInfo.phaseNum && atomicActionInfo.availableUptoPhaseNum <= minPhaseNum)
+                {
+                    // ok
+                }
+                else 
                 {
                     Error(ensures, "A variable being accessed is hidden before this action becomes unavailable");
                 }
-                inAtomicSpecification = false;
             }
             else
             {
@@ -376,18 +480,22 @@ namespace Microsoft.Boogie
             }
             return ret;
         }
+        
         public override Requires VisitRequires(Requires requires)
         {
             minPhaseNum = int.MaxValue;
+            maxPhaseNum = -1;
             inSpecification = true;
             Requires ret = base.VisitRequires(requires);
             inSpecification = false;
             CheckAndAddPhases(requires, requires.Attributes);
             return ret;
         }
+        
         public override Cmd VisitAssertCmd(AssertCmd node)
         {
             minPhaseNum = int.MaxValue;
+            maxPhaseNum = -1;
             inSpecification = true;
             Cmd ret = base.VisitAssertCmd(node);
             inSpecification = false;
@@ -397,19 +505,26 @@ namespace Microsoft.Boogie
 
         private void CheckAndAddPhases(Absy node, QKeyValue attributes)
         {
-            foreach (int phaseNum in OwickiGries.FindPhaseNums(attributes))
+            List<int> attrs = FindIntAttributes(attributes, "phase");
+            if (attrs.Count == 0)
             {
-                if (phaseNum > FindPhaseNumber(enclosingProc))
+                Error(node, "phase not present");
+                return;
+            }
+            absyToPhaseNums[node] = new HashSet<int>();
+            foreach (int phaseNum in attrs)
+            {
+                if (phaseNum > procToActionInfo[enclosingProc].phaseNum)
                 {
                     Error(node, "The phase cannot be greater than the phase of enclosing procedure");
                 }
-                else if (phaseNum > minPhaseNum)
+                else if (maxPhaseNum < phaseNum && phaseNum <= minPhaseNum)
                 {
-                    Error(node, "A variable being accessed is hidden before this specification becomes unavailable");
+                    absyToPhaseNums[node].Add(phaseNum);
                 }
                 else
                 {
-                    allPhaseNums.Add(phaseNum);
+                    Error(node, string.Format("A variable being accessed in this specification is unavailable at phase {0}", phaseNum));
                 }
             }
         }

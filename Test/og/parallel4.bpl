@@ -1,4 +1,4 @@
-var a:int;
+var {:phase 1} a:int;
 
 procedure Allocate() returns ({:linear "tid"} xls: int);
 
@@ -8,7 +8,7 @@ function {:inline} {:linear "tid"} TidCollector(x: int) : [int]bool
   MapConstBool(false)[x := true]
 }
 
-procedure {:entrypoint} {:yields} main() 
+procedure {:yields} {:phase 1} main() 
 {
   var {:linear "tid"} i: int;
   var {:linear "tid"} j: int;
@@ -17,15 +17,19 @@ procedure {:entrypoint} {:yields} main()
   par i := t(i) | j := t(j);
 }
 
-procedure {:yields} {:stable} t({:linear "tid"} i': int) returns ({:linear "tid"} i: int)
+procedure {:yields} {:phase 1} t({:linear "tid"} i': int) returns ({:linear "tid"} i: int)
 {
   i := i';
   call Yield();
-  assert a == old(a);
-  a := a + 1;
+  assert {:phase 1} a == old(a);
+  call Incr();
+  yield;
 }
 
-procedure {:yields} Yield()
+procedure {:yields} {:phase 0,1} Incr();
+ensures {:atomic} |{A: a := a + 1; return true; }|;
+
+procedure {:yields} {:phase 1} Yield()
 {
   yield;
 }

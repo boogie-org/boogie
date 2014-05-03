@@ -20,7 +20,7 @@ procedure C()
 
 function f(X): X;
 
-procedure {:yields} D()
+procedure {:yields} {:phase 1} D()
 {
     var {:linear "D"} a: X;
     var {:linear "D"} x: X;
@@ -58,7 +58,9 @@ procedure {:yields} D()
 
     call c, x := E(a, x);
 
+    yield;
     par a := F(a) | x := F(a);
+    yield;
 }
 
 procedure E({:linear "D"} a: X, {:linear "D"} b: X) returns ({:linear "D"} c: X, {:linear "D"} d: X)
@@ -66,9 +68,9 @@ procedure E({:linear "D"} a: X, {:linear "D"} b: X) returns ({:linear "D"} c: X,
     c := a;
 }
 
-procedure {:yields} {:stable} F({:linear "D"} a: X) returns ({:linear "D"} c: X);
+procedure {:yields} {:phase 0} F({:linear "D"} a: X) returns ({:linear "D"} c: X);
 
-var{:linear "x"} g:int;
+var {:linear "x"} g:int;
 
 procedure G(i:int) returns({:linear "x"} r:int)
 {
@@ -81,23 +83,29 @@ modifies g;
   g := r;
 }
 
-procedure {:yields} {:stable} I({:linear ""} x:int) returns({:linear ""} x':int)
+procedure {:yields} {:phase 0} I({:linear ""} x:int) returns({:linear ""} x':int)
 {
   x' := x;
 }
 
-procedure {:yields} {:stable} J()
+procedure {:yields} {:phase 0} J()
 {
 }
 
-procedure {:yields} P1({:linear ""} x:int) returns({:linear ""} x':int)
+procedure {:yields} {:phase 1} P1({:linear ""} x:int) returns({:linear ""} x':int)
 {
+  yield;
   par x' := I(x) | J();
+  yield;
   call x' := I(x');
+  yield;
 }
 
-procedure {:yields} P2({:linear ""} x:int) returns({:linear ""} x':int)
+procedure {:yields} {:phase 1} P2({:linear ""} x:int) returns({:linear ""} x':int)
 {
+  yield;
   call x' := I(x);
+  yield;
   par x' := I(x') | J();
+  yield;
 }

@@ -321,37 +321,6 @@ namespace Microsoft.Boogie {
       return defl;
     }
 
-    public static HashSet<Expr> FindExprAttributes(QKeyValue kv, string name)
-    {
-        Contract.Requires(name != null);
-        HashSet<Expr> attrs = new HashSet<Expr>();
-        for (; kv != null; kv = kv.Next)
-        {
-            if (kv.Key == name)
-            {
-                if (kv.Params.Count == 1 && kv.Params[0] is Expr)
-                {
-                    attrs.Add((Expr)kv.Params[0]);
-                }
-            }
-        }
-        return attrs;
-    }
-
-    public static HashSet<int> FindIntAttributes(QKeyValue kv, string name)
-    {
-        Contract.Requires(name != null);
-        HashSet<int> attrs = new HashSet<int>();
-        HashSet<Expr> es = FindExprAttributes(kv, name);
-        foreach (Expr e in es)
-        {
-            LiteralExpr l = e as LiteralExpr;
-            if (l != null && l.isBigNum)
-                attrs.Add(l.asBigNum.ToIntSafe);
-        }
-        return attrs;
-    }
-
     public override Absy Clone() {
       List<object> newParams = new List<object>();
       foreach (object o in Params)

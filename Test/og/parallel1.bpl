@@ -1,27 +1,41 @@
-var g:int;
+var {:phase 1} g:int;
 
-procedure {:yields} {:stable} PB()
-modifies g;
+procedure {:yields} {:phase 1} PB()
 {
-  g := g + 1;
-}
-
-procedure {:yields} {:stable} PC()
-ensures g == 3;
-{
-  g := 3;
   yield;
-  assert g == 3;
+  call Incr();
+  yield;
 }
 
-procedure {:yields} {:stable} PD()
+procedure {:yields} {:phase 0,1} Incr();
+ensures {:atomic}
+|{A:
+  g := g + 1; return true;
+}|;
+
+procedure {:yields} {:phase 0,1} Set(v: int);
+ensures {:atomic}
+|{A:
+  g := v; return true;
+}|;
+
+procedure {:yields} {:phase 1} PC()
+ensures {:phase 1} g == 3;
+{
+  yield;
+  call Set(3);
+  yield;
+  assert {:phase 1} g == 3;
+}
+
+procedure {:yields} {:phase 1} PD()
 {
   call PC();
-  assert g == 3;
+  assert {:phase 1} g == 3;
   yield;
 }
 
-procedure {:entrypoint} {:yields} Main()
+procedure {:yields} {:phase 1} Main()
 {
   while (true)
   {

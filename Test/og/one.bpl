@@ -1,4 +1,10 @@
-var x:int;
+var {:phase 1} x:int;
+
+procedure {:yields} {:phase 0,1} Set(v: int);
+ensures {:atomic}
+|{A:
+  x := v; return true;
+}|;
 
 procedure A()
 modifies x;
@@ -6,10 +12,11 @@ modifies x;
   x := x;
 }
 
-procedure {:yields} B()
+procedure {:yields} {:phase 1} B()
 {
-  x := 5;
   yield;
-  assert x == 5;
+  call Set(5);
+  yield;
+  assert {:phase 1} x == 5;
 }
 

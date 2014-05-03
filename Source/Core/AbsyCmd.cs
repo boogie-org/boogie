@@ -1843,10 +1843,6 @@ namespace Microsoft.Boogie {
                   {
                       tc.Error(callCmd, "target procedure of a parallel call must yield");
                   }
-                  if (!QKeyValue.FindBoolAttribute(callCmd.Proc.Attributes, "stable"))
-                  {
-                      tc.Error(callCmd, "target procedure of a parallel call must be stable");
-                  }
               }
           }
           foreach (CallCmd callCmd in CallCmds)
@@ -2133,10 +2129,6 @@ namespace Microsoft.Boogie {
             if (!QKeyValue.FindBoolAttribute(Proc.Attributes, "yields"))
             {
                 tc.Error(this, "target procedure of an async call must yield");
-            }
-            if (!QKeyValue.FindBoolAttribute(Proc.Attributes, "stable"))
-            {
-                tc.Error(this, "target procedure of an async call must be stable");
             }
         }
     }

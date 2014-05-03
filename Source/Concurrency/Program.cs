@@ -9,22 +9,18 @@ namespace Microsoft.Boogie
     {
         public static void Transform(LinearTypeChecker linearTypeChecker, MoverTypeChecker moverTypeChecker)
         {
-            // The order in which originalDecls are computed and then *.AddCheckers are called is 
-            // apparently important.  The MyDuplicator code currently does not duplicate Attributes.
-            // Consequently, all the yield attributes are eliminated by the AddCheckers code.
-
             List<Declaration> originalDecls = new List<Declaration>();
             Program program = linearTypeChecker.program;
             foreach (var decl in program.TopLevelDeclarations)
             {
                 Procedure proc = decl as Procedure;
-                if (proc != null && QKeyValue.FindBoolAttribute(proc.Attributes, "yields"))
+                if (proc != null && moverTypeChecker.procToActionInfo.ContainsKey(proc))
                 {
                     originalDecls.Add(proc);
                     continue;
                 }
                 Implementation impl = decl as Implementation;
-                if (impl != null && QKeyValue.FindBoolAttribute(impl.Proc.Attributes, "yields"))
+                if (impl != null && moverTypeChecker.procToActionInfo.ContainsKey(impl.Proc))
                 {
                     originalDecls.Add(impl);
                 }
@@ -38,17 +34,7 @@ namespace Microsoft.Boogie
             }
             foreach (Declaration decl in decls)
             {
-                Procedure proc = decl as Procedure;
-                if (proc != null && QKeyValue.FindBoolAttribute(proc.Attributes, "yields"))
-                {
-                    proc.Modifies = new List<IdentifierExpr>();
-                    linearTypeChecker.program.GlobalVariables().Iter(x => proc.Modifies.Add(Expr.Ident(x)));
-                }
-            }
-            foreach (Declaration decl in decls)
-            {
                 decl.Attributes = OwickiGries.RemoveYieldsAttribute(decl.Attributes);
-                decl.Attributes = OwickiGries.RemoveStableAttribute(decl.Attributes);
             }
             program.TopLevelDeclarations.RemoveAll(x => originalDecls.Contains(x));
             program.TopLevelDeclarations.AddRange(decls);

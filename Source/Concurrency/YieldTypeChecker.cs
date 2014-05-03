@@ -75,7 +75,7 @@ namespace Microsoft.Boogie
             yieldTypeCheckerAutomatonEdges.Add(new Tuple<int, int, int>(source, label, dest));
         }
 
-        public void IsYieldTypeSafe()
+        private void IsYieldTypeSafe()
         {
             List<int[]> transitions = new List<int[]>();
             foreach (Tuple<int, int> e in edgeLabels.Keys)
@@ -150,7 +150,7 @@ namespace Microsoft.Boogie
             }
         }
 
-        static bool IsTerminatingLoopHeader(Block block)
+        private static bool IsTerminatingLoopHeader(Block block)
         {
             foreach (Cmd cmd in block.Cmds)
             {
@@ -163,7 +163,7 @@ namespace Microsoft.Boogie
             return false;
         }
         
-        public string PrintErrorTrace(Automaton<BvSet> errorAutomaton)
+        private string PrintErrorTrace(Automaton<BvSet> errorAutomaton)
         {
             String s = "\nBody of " + impl.Proc.Name + " is not yield_type_safe at phase " + currPhaseNum.ToString() + "\n";
             foreach (var move in errorAutomaton.GetMoves())
@@ -182,27 +182,17 @@ namespace Microsoft.Boogie
             foreach (var decl in moverTypeChecker.program.TopLevelDeclarations)
             {
                 Implementation impl = decl as Implementation;
-                if (impl == null) continue;
+                if (impl == null || !moverTypeChecker.procToActionInfo.ContainsKey(impl.Proc) || moverTypeChecker.procToActionInfo[impl.Proc].phaseNum == 0) continue;
                 impl.PruneUnreachableBlocks();
                 Graph<Block> implGraph = Program.GraphFromImpl(impl);
                 implGraph.ComputeLoops();
-                int phaseNumSpecImpl = moverTypeChecker.FindPhaseNumber(impl.Proc);
-                foreach (int phaseNum in moverTypeChecker.allPhaseNums)
+                int specPhaseNum = moverTypeChecker.procToActionInfo[impl.Proc].phaseNum;
+                foreach (int phaseNum in moverTypeChecker.AllPhaseNums)
                 {
-                    if (phaseNum > phaseNumSpecImpl) continue;
+                    if (phaseNum > specPhaseNum) continue;
                     YieldTypeChecker executor = new YieldTypeChecker(moverTypeChecker, impl, phaseNum, implGraph.Headers);
                 }
             }
-        }
-
-        public MoverType FindMoverType(Procedure proc)
-        {
-            if (!moverTypeChecker.procToActionInfo.ContainsKey(proc))
-                return MoverType.Top;
-            ActionInfo actionInfo = moverTypeChecker.procToActionInfo[proc];
-            if (actionInfo.phaseNum >= currPhaseNum)
-                return MoverType.Top;
-            return actionInfo.moverType;
         }
 
         int stateCounter;
@@ -216,7 +206,7 @@ namespace Microsoft.Boogie
         Dictionary<Tuple<int, int>, int> edgeLabels;
         IEnumerable<Block> loopHeaders;
 
-        public YieldTypeChecker(MoverTypeChecker moverTypeChecker, Implementation impl, int currPhaseNum, IEnumerable<Block> loopHeaders)
+        private YieldTypeChecker(MoverTypeChecker moverTypeChecker, Implementation impl, int currPhaseNum, IEnumerable<Block> loopHeaders)
         {
             this.moverTypeChecker = moverTypeChecker;
             this.impl = impl;
@@ -283,11 +273,33 @@ namespace Microsoft.Boogie
                         CallCmd callCmd = cmd as CallCmd;
                         if (callCmd.IsAsync)
                         {
+                            ActionInfo actionInfo = moverTypeChecker.procToActionInfo[callCmd.Proc];
+                            if (currPhaseNum <= actionInfo.phaseNum)
+                                edgeLabels[edge] = 'L';
+                            else
+                                edgeLabels[edge] = 'B';
+                        }
+                        else if (!moverTypeChecker.procToActionInfo.ContainsKey(callCmd.Proc))
+                        {
                             edgeLabels[edge] = 'P';
                         }
                         else
                         {
-                            switch (FindMoverType(callCmd.Proc))
+                            MoverType moverType;
+                            ActionInfo actionInfo = moverTypeChecker.procToActionInfo[callCmd.Proc];
+                            if (actionInfo.phaseNum >= currPhaseNum)
+                            {
+                                moverType = MoverType.Top;
+                            }
+                            else
+                            {
+                                AtomicActionInfo atomicActionInfo = actionInfo as AtomicActionInfo;
+                                if (atomicActionInfo == null)
+                                    moverType = MoverType.Both;
+                                else
+                                    moverType = atomicActionInfo.moverType;
+                            }
+                            switch (moverType)
                             {
                                 case MoverType.Atomic:
                                     edgeLabels[edge] = 'A';
@@ -302,8 +314,7 @@ namespace Microsoft.Boogie
                                     edgeLabels[edge] = 'R';
                                     break;
                                 case MoverType.Top:
-                                    finalStates.Add(curr);
-                                    initialStates.Add(next);
+                                    edgeLabels[edge] = 'Y';
                                     break;
                             }
                         }
@@ -316,8 +327,7 @@ namespace Microsoft.Boogie
                         bool isLeftMover = true;
                         foreach (CallCmd callCmd in parCallCmd.CallCmds)
                         {
-                            int phaseSpecCallee = moverTypeChecker.FindPhaseNumber(callCmd.Proc);
-                            if (phaseSpecCallee >= currPhaseNum)
+                            if (moverTypeChecker.procToActionInfo[callCmd.Proc].phaseNum >= currPhaseNum)
                             {
                                 isYield = true;
                             }
