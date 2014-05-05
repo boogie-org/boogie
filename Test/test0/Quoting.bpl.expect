@@ -1,0 +1,35 @@
+
+function \true() : bool;
+
+type \procedure;
+
+procedure \old(any: \procedure) returns (\var: \procedure);
+
+
+
+implementation \old(any: \procedure) returns (\var: \procedure)
+{
+  var \modifies: \procedure;
+
+    \modifies := any;
+    \var := \modifies;
+}
+
+
+
+procedure qux(a: \procedure);
+
+
+
+implementation qux(a: \procedure)
+{
+  var \var: \procedure;
+  var x: bool;
+
+    call \var := \old(a);
+    x := \true();
+}
+
+
+
+Boogie program verifier finished with 0 verified, 0 errors

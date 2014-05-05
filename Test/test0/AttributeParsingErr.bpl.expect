@@ -1,0 +1,10 @@
+AttributeParsingErr.bpl(3,33): error: only attributes, not triggers, allowed here
+AttributeParsingErr.bpl(5,33): error: only attributes, not triggers, allowed here
+AttributeParsingErr.bpl(7,52): error: only attributes, not triggers, allowed here
+AttributeParsingErr.bpl(9,37): error: only attributes, not triggers, allowed here
+AttributeParsingErr.bpl(11,31): error: only attributes, not triggers, allowed here
+AttributeParsingErr.bpl(13,29): error: only attributes, not triggers, allowed here
+AttributeParsingErr.bpl(15,13): error: only attributes, not triggers, allowed here
+AttributeParsingErr.bpl(17,18): error: only attributes, not triggers, allowed here
+AttributeParsingErr.bpl(22,26): error: only attributes, not triggers, allowed here
+9 parse errors detected in AttributeParsingErr.bpl

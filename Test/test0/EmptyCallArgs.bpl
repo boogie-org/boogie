@@ -1,3 +1,5 @@
+// RUN: %boogie -noVerify %s > %t
+// RUN: %diff NoErrors.expect %t
 type C;
 
 procedure P(x:int, y:bool) returns (z:C);

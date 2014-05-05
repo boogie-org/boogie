@@ -1,3 +1,5 @@
+// RUN: %boogie -noVerify -printInstrumented %s > %t
+// RUN: %diff %s.expect %t
 const x: int;
 const y: int;
 const z: int;

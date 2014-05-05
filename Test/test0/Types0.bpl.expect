@@ -1,0 +1,3 @@
+Types0.bpl(8,18): error: expected identifier before ':'
+Types0.bpl(8,12): error: expecting an identifier as parameter name
+2 parse errors detected in Types0.bpl

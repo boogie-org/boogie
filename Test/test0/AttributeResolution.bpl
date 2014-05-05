@@ -1,3 +1,5 @@
+// RUN: %boogie -noVerify %s > %t
+// RUN: %diff %s.expect %t
 type {:sourcefile foo} T; 
 
 function {:source bar} f(int) returns (int);

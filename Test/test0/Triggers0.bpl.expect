@@ -1,0 +1,2 @@
+Triggers0.bpl(16,31): error: the 'nopats' quantifier attribute expects a string-literal parameter
+1 parse errors detected in Triggers0.bpl

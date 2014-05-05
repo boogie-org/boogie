@@ -1,0 +1,6 @@
+LineParse.bpl(3,0): error: Malformed (#line num [filename]) pragma: #line
+LineParse.bpl(4,0): error: Malformed (#line num [filename]) pragma: #line
+LineParse.bpl(1,0): error: Unrecognized pragma: #dontknow what this is    No, I don't    well, it's an error is what it is
+LineParse.bpl(3,0): error: Unrecognized pragma: #define ASSERT(x) {if (!(x)) { crash(); }}  // error: A B C . txt(12,0)
+LineParse.bpl(6,2): error: EOF expected
+5 parse errors detected in LineParse.bpl

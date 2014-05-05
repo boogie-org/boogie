@@ -1,0 +1,4 @@
+Types1.bpl(8,11): Error: undeclared type: x
+Types1.bpl(9,11): Error: undeclared type: x
+Types1.bpl(9,14): Error: undeclared type: x
+3 name resolution errors detected in Types1.bpl

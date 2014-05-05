@@ -1,0 +1,10 @@
+AttributeResolution.bpl(3,18): Error: undeclared identifier: foo
+AttributeResolution.bpl(5,18): Error: undeclared identifier: bar
+AttributeResolution.bpl(9,15): Error: undeclared identifier: qux
+AttributeResolution.bpl(9,41): Error: undeclared identifier: ij
+AttributeResolution.bpl(15,21): Error: undeclared identifier: bzzt
+AttributeResolution.bpl(17,20): Error: undeclared identifier: blt
+AttributeResolution.bpl(7,20): Error: undeclared identifier: baz
+AttributeResolution.bpl(11,18): Error: undeclared identifier: mux
+AttributeResolution.bpl(13,29): Error: undeclared identifier: fux
+9 name resolution errors detected in AttributeResolution.bpl

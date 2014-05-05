@@ -1,0 +1,3 @@
+WhereParsing0.bpl(19,38): error: where clause not allowed on bound variables
+WhereParsing0.bpl(20,38): error: where clause not allowed on bound variables
+2 parse errors detected in WhereParsing0.bpl

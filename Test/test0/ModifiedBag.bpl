@@ -1,3 +1,5 @@
+// RUN: %boogie -noVerify %s > %t
+// RUN: %diff NoErrors.expect %t
 // ----------- BEGIN PRELUDE
 
 

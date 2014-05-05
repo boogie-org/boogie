@@ -1,3 +1,5 @@
+// RUN: %boogie -noVerify %s SeparateVerification0.bpl > %t
+// RUN: %diff %s.expect %t
 // to be used with SeparateVerification0.bpl
 
 // x and y are declared in SeparateVerification0.bpl

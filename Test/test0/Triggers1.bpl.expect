@@ -1,0 +1,21 @@
+Triggers1.bpl(9,17): Error: boolean operators are not allowed in triggers
+Triggers1.bpl(13,21): Error: boolean operators are not allowed in triggers
+Triggers1.bpl(17,9): Error: boolean operators are not allowed in triggers
+Triggers1.bpl(21,10): Error: boolean operators are not allowed in triggers
+Triggers1.bpl(25,17): Error: boolean operators are not allowed in triggers
+Triggers1.bpl(29,17): Error: boolean operators are not allowed in triggers
+Triggers1.bpl(34,17): Error: equality is not allowed in triggers
+Triggers1.bpl(38,17): Error: arithmetic comparisons are not allowed in triggers
+Triggers1.bpl(47,10): Error: quantifiers are not allowed in triggers
+Triggers1.bpl(55,7): Error: trigger must mention all quantified variables, but does not mention: x
+Triggers1.bpl(63,7): Error: trigger must mention all quantified variables, but does not mention: y
+Triggers1.bpl(64,7): Error: trigger must mention all quantified variables, but does not mention: x
+Triggers1.bpl(72,9): Error: a matching pattern must be more than just a variable by itself: x
+Triggers1.bpl(84,7): Error: trigger must mention all quantified variables, but does not mention: z
+Triggers1.bpl(96,16): Error: a matching pattern must be more than just a variable by itself: x
+Triggers1.bpl(97,16): Error: a matching pattern must be more than just a variable by itself: g
+Triggers1.bpl(107,40): Error: trigger must mention all quantified variables, but does not mention: y
+Triggers1.bpl(111,57): Error: trigger must mention all quantified variables, but does not mention: z
+Triggers1.bpl(121,33): Error: cannot refer to a global variable in this context: h1
+Triggers1.bpl(122,33): Error: cannot refer to a global variable in this context: h0
+20 name resolution errors detected in Triggers1.bpl

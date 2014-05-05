@@ -1,0 +1,4 @@
+WhereParsing.bpl(16,37): error: where clause not allowed on the 'implementation' copies of formals
+WhereParsing.bpl(17,33): error: where clause not allowed on the 'implementation' copies of formals
+WhereParsing.bpl(34,38): error: attributes are not allowed on the 'implementation' copies of formals
+3 parse errors detected in WhereParsing.bpl

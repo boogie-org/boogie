@@ -1,0 +1,3 @@
+BadLabels0.bpl(6,2): Error: more than one declaration of block name: X
+BadLabels0.bpl(13,4): Error: more than one declaration of block name: Y
+2 name resolution errors detected in BadLabels0.bpl

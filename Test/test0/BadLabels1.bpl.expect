@@ -1,0 +1,9 @@
+BadLabels1.bpl(6,3): error: Error: goto label 'X' is undefined
+BadLabels1.bpl(7,3): error: Error: goto label 'Y' is undefined
+BadLabels1.bpl(49,3): error: Error: break statement is not inside a loop
+BadLabels1.bpl(51,5): error: Error: break statement is not inside a loop
+BadLabels1.bpl(62,5): error: Error: break label 'B' must designate an enclosing statement
+BadLabels1.bpl(65,5): error: Error: break label 'A' must designate an enclosing statement
+BadLabels1.bpl(66,5): error: Error: break label 'C' must designate an enclosing statement
+BadLabels1.bpl(67,8): error: Error: break label 'F' must designate an enclosing statement
+8 parse errors detected in BadLabels1.bpl

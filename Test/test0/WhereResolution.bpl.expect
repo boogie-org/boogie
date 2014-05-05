@@ -1,0 +1,3 @@
+WhereResolution.bpl(30,38): Error: undeclared identifier: alpha
+WhereResolution.bpl(34,30): Error: old expressions allowed only in two-state contexts
+2 name resolution errors detected in WhereResolution.bpl

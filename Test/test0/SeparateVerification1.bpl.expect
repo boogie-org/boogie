@@ -1,0 +1,3 @@
+SeparateVerification1.bpl(6,6): Error: undeclared identifier: x
+SeparateVerification0.bpl(16,6): Error: undeclared identifier: x
+2 name resolution errors detected in SeparateVerification0.bpl

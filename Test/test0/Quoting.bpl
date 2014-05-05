@@ -1,3 +1,5 @@
+// RUN: %boogie -noVerify -print:- -env:0 %s > %t
+// RUN: %diff %s.expect %t
 function \true() returns(bool);
 
 type \procedure;

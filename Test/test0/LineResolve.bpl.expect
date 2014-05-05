@@ -1,0 +1,13 @@
+LineResolve.bpl(7,1): Error: undeclared identifier: a
+LineResolve.bpl(9,2): Error: undeclared identifier: b
+LineResolve.bpl(12,0): Error: undeclared identifier: c
+LineResolve.bpl(13,10): Error: undeclared identifier: d
+LineResolve.bpl(12,0): Error: undeclared identifier: e
+LineResolve.bpl(2,0): Error: undeclared identifier: f
+LineResolve.bpl(900,0): Error: undeclared identifier: g
+Abc.txt(11,3): Error: undeclared identifier: h
+Abc.txt(13,0): Error: undeclared identifier: i
+Abc.txt(99,0): Error: undeclared identifier: j
+c:\Users\leino\Documents\Programs\MyClass.ssc(104,0): Error: undeclared identifier: k
+A B C . txt(12,0): Error: undeclared identifier: l
+12 name resolution errors detected in LineResolve.bpl
