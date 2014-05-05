@@ -1,0 +1,19 @@
+Assignment computed by Houdini:
+b1 = False
+b2 = False
+b3 = False
+b4 = True
+b5 = False
+b6 = True
+b7 = False
+b8 = False
+b9 = False
+b10 = True
+b11 = False
+b12 = True
+b13 = False
+b14 = False
+b15 = False
+b16 = False
+
+Boogie program verifier finished with 5 verified, 0 errors

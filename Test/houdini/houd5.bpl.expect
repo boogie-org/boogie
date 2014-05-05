@@ -1,0 +1,8 @@
+Assignment computed by Houdini:
+b1 = False
+b2 = True
+b3 = False
+b4 = True
+b5 = True
+
+Boogie program verifier finished with 2 verified, 0 errors

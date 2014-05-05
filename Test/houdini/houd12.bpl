@@ -1,3 +1,5 @@
+// RUN: %boogie -noinfer -contractInfer -printAssignment %s > %t
+// RUN: %diff %s.expect %t
 // Example to test candidate annotations on loops
 
 const {:existential true} b1:bool;

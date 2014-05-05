@@ -1,3 +1,5 @@
+// RUN: %boogie -noinfer -contractInfer -printAssignment %s > %t
+// RUN: %diff %s.expect %t
 const {:existential true} b1:bool;
 const {:existential true} b2:bool;
 const {:existential true} b3:bool;

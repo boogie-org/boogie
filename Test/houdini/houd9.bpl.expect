@@ -1,0 +1,9 @@
+Assignment computed by Houdini:
+b1 = True
+b2 = True
+b3 = True
+houd9.bpl(21,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    houd9.bpl(20,9): anon0
+
+Boogie program verifier finished with 0 verified, 1 error

@@ -1,0 +1,9 @@
+Assignment computed by Houdini:
+b1 = False
+b2 = True
+houd2.bpl(14,1): Error BP5003: A postcondition might not hold on this return path.
+houd2.bpl(11,1): Related location: This is the postcondition that might not hold.
+Execution trace:
+    houd2.bpl(13,3): anon0
+
+Boogie program verifier finished with 1 verified, 1 error
