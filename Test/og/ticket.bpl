@@ -65,7 +65,8 @@ requires {:phase 3} true;
 {
     var {:linear "tid"} tid: X;
     tid := tid';
-
+    
+    par Yield1() | Yield2() | Yield();    
     while (*) 
     invariant {:phase 1} Inv1(T, t);
     invariant {:phase 2} tid != nil && Inv2(T, s, cs);
@@ -108,18 +109,23 @@ ensures {:right} |{ A: tid := tid'; havoc m, t; assume !T[m]; T[m] := true; retu
 
 procedure {:yields} {:phase 3} Yield()
 {
+    yield;
 }
 
 procedure {:yields} {:phase 2} Yield2()
 requires {:phase 2} Inv2(T, s, cs);
 ensures {:phase 2} Inv2(T, s, cs);
 {
+    yield;
+    assert {:phase 2} Inv2(T, s, cs);
 }
 
 procedure {:yields} {:phase 1} Yield1()
 requires {:phase 1} Inv1(T, t);
 ensures {:phase 1} Inv1(T,t);
 {
+    yield;
+    assert {:phase 1} Inv1(T,t);
 }
 
 procedure {:yields} {:phase 0,3} Init({:linear "tid"} xls':[X]bool) returns ({:linear "tid"} xls:[X]bool);

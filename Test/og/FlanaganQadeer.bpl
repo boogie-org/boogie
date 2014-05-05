@@ -17,6 +17,7 @@ procedure {:yields} {:phase 1} main()
     var {:linear "tid"} tid: X;
     var val: int;
 
+    yield;
     while (*) 
     {
         yield;

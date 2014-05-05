@@ -22,8 +22,12 @@ namespace Microsoft.Boogie
         static YieldTypeChecker()
         {
             yieldTypeCheckerAutomatonSolver = new CharSetSolver(BitWidth.BV7);
-            yieldTypeCheckerAutomaton = yieldTypeCheckerAutomatonSolver.ReadFromRanges(0, new int[] { 0 },
+            yieldTypeCheckerAutomaton = yieldTypeCheckerAutomatonSolver.ReadFromRanges(3, new int[] { 0 },
                 new int[][] {
+                    new int[] {3, 'P', 'P', 3 },
+                    new int[] {3, 'Y', 'Y', 0 },
+                    new int[] {3, 'Y', 'Y', 1 },
+                    new int[] {3, 'Y', 'Y', 2 },
                     new int[] {0, 'P', 'P', 0 },
                     new int[] {0, 'Y', 'Y', 0 },
                     new int[] {0, 'Y', 'Y', 1 },

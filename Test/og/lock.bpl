@@ -2,6 +2,7 @@ var {:phase 2} b: bool;
 
 procedure {:yields} {:phase 2} main()
 {
+    yield;
     while (*)
     {
         yield;
@@ -14,6 +15,7 @@ procedure {:yields} {:phase 2} main()
 
 procedure {:yields} {:phase 2} Customer()
 {
+    yield;
     while (*) 
     {
     	yield;
@@ -26,8 +28,6 @@ procedure {:yields} {:phase 2} Customer()
 
         yield;
     }
-
-    yield;
 }
 
 procedure {:yields} {:phase 1,2} Enter() 

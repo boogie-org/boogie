@@ -37,7 +37,8 @@ procedure {:yields} {:phase 1} PD()
 
 procedure {:yields} {:phase 1} Main()
 {
-  while (true)
+  yield;
+  while (*)
   {
     par PB() | PC() | PD();
   }

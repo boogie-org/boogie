@@ -17,7 +17,7 @@ procedure {:yields} {:phase 1} main()
     var {:linear "tid"} j: int;
     call i := Allocate();
     call j := Allocate();
-    par i := t(i) | j := Yield(j);
+    par i := t(i) | Yield(j);
     par i := u(i) | j := u(j);
 }
 
@@ -27,7 +27,7 @@ procedure {:yields} {:phase 1} t({:linear "tid"} i': int) returns ({:linear "tid
 
     yield;
     call Write(i, 42);
-    call i := Yield(i);
+    call Yield(i);
     assert {:phase 1} a[i] == 42;
 }
 
@@ -41,11 +41,9 @@ procedure {:yields} {:phase 1} u({:linear "tid"} i': int) returns ({:linear "tid
     assert {:phase 1} a[i] == 42;
 }
 
-procedure {:yields} {:phase 1} Yield({:linear "tid"} i': int) returns ({:linear "tid"} i: int)
-ensures {:phase 1} i == i';
+procedure {:yields} {:phase 1} Yield({:cnst "tid"} i: int)
 ensures {:phase 1} old(a)[i] == a[i];
 {
-    i := i';
     yield;
     assert {:phase 1} old(a)[i] == a[i];
 }

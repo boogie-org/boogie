@@ -206,6 +206,7 @@ namespace Microsoft.Boogie
         public Dictionary<Variable, int> introducePhaseNums;
         public Dictionary<Variable, int> hidePhaseNums;
         Procedure enclosingProc;
+        Implementation enclosingImpl;
         public Dictionary<Procedure, ActionInfo> procToActionInfo;
         public Program program;
         bool inSpecification;
@@ -328,6 +329,7 @@ namespace Microsoft.Boogie
             this.checkingContext = new CheckingContext(null);
             this.program = program;
             this.enclosingProc = null;
+            this.enclosingImpl = null;
             this.inSpecification = false;
             this.minPhaseNum = int.MaxValue;
             this.maxPhaseNum = -1;
@@ -362,7 +364,7 @@ namespace Microsoft.Boogie
             {
                 return node;
             }
-            this.enclosingProc = node.Proc;
+            this.enclosingImpl = node;
             return base.VisitImplementation(node);
         }
         
@@ -378,7 +380,7 @@ namespace Microsoft.Boogie
 
         public override Cmd VisitCallCmd(CallCmd node)
         {
-            int enclosingProcPhaseNum = procToActionInfo[enclosingProc].phaseNum;
+            int enclosingProcPhaseNum = procToActionInfo[enclosingImpl.Proc].phaseNum;
             if (procToActionInfo.ContainsKey(node.Proc))
             {
                 ActionInfo actionInfo = procToActionInfo[node.Proc];
@@ -392,6 +394,21 @@ namespace Microsoft.Boogie
                 {
                     Error(node, "The phase of the caller procedure must be greater than the phase of the callee");
                 }
+                else if (enclosingProcPhaseNum == calleePhaseNum && enclosingImpl.OutParams.Count > 0)
+                {
+                    HashSet<Variable> outParams = new HashSet<Variable>(enclosingImpl.OutParams);
+                    foreach (var x in node.Outs)
+                    {
+                        if (x.Decl is GlobalVariable)
+                        {
+                            Error(node, "Aglobal variable cannot be used as output argument for this call");
+                        }
+                        else if (outParams.Contains(x.Decl))
+                        {
+                            Error(node, "An output variable of the enclosing implementation cannot be used as output argument for this call");
+                        }
+                    }
+                }
                 if (actionInfo.availableUptoPhaseNum < enclosingProcPhaseNum)
                 {
                     Error(node, "The callee is not available in the phase of the caller procedure");
@@ -402,7 +419,7 @@ namespace Microsoft.Boogie
 
         public override Cmd VisitParCallCmd(ParCallCmd node)
         {
-            int enclosingProcPhaseNum = procToActionInfo[enclosingProc].phaseNum;
+            int enclosingProcPhaseNum = procToActionInfo[enclosingImpl.Proc].phaseNum;
             bool isLeftMover = true;
             bool isRightMover = true;
             int maxCalleePhaseNum = 0;
@@ -462,10 +479,11 @@ namespace Microsoft.Boogie
             inSpecification = true;
             Ensures ret = base.VisitEnsures(ensures);
             inSpecification = false;
-            AtomicActionInfo atomicActionInfo = procToActionInfo[enclosingProc] as AtomicActionInfo;
+            ActionInfo actionInfo = procToActionInfo[enclosingProc];
+            AtomicActionInfo atomicActionInfo = actionInfo as AtomicActionInfo;
             if (atomicActionInfo != null && atomicActionInfo.ensures == ensures)
             {
-                if (maxPhaseNum <= atomicActionInfo.phaseNum && atomicActionInfo.availableUptoPhaseNum <= minPhaseNum)
+                if (maxPhaseNum <= actionInfo.phaseNum && actionInfo.availableUptoPhaseNum <= minPhaseNum)
                 {
                     // ok
                 }
@@ -476,7 +494,7 @@ namespace Microsoft.Boogie
             }
             else
             {
-                CheckAndAddPhases(ensures, ensures.Attributes);
+                CheckAndAddPhases(ensures, ensures.Attributes, actionInfo.phaseNum);
             }
             return ret;
         }
@@ -488,7 +506,7 @@ namespace Microsoft.Boogie
             inSpecification = true;
             Requires ret = base.VisitRequires(requires);
             inSpecification = false;
-            CheckAndAddPhases(requires, requires.Attributes);
+            CheckAndAddPhases(requires, requires.Attributes, procToActionInfo[enclosingProc].phaseNum);
             return ret;
         }
         
@@ -499,11 +517,11 @@ namespace Microsoft.Boogie
             inSpecification = true;
             Cmd ret = base.VisitAssertCmd(node);
             inSpecification = false;
-            CheckAndAddPhases(node, node.Attributes);
+            CheckAndAddPhases(node, node.Attributes, procToActionInfo[enclosingImpl.Proc].phaseNum);
             return ret;
         }
 
-        private void CheckAndAddPhases(Absy node, QKeyValue attributes)
+        private void CheckAndAddPhases(Absy node, QKeyValue attributes, int enclosingProcPhaseNum)
         {
             List<int> attrs = FindIntAttributes(attributes, "phase");
             if (attrs.Count == 0)
@@ -514,7 +532,7 @@ namespace Microsoft.Boogie
             absyToPhaseNums[node] = new HashSet<int>();
             foreach (int phaseNum in attrs)
             {
-                if (phaseNum > procToActionInfo[enclosingProc].phaseNum)
+                if (phaseNum > enclosingProcPhaseNum)
                 {
                     Error(node, "The phase cannot be greater than the phase of enclosing procedure");
                 }

@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Microsoft.Boogie;
 using System.Diagnostics;
 using System.Diagnostics.Contracts;
+using Microsoft.Boogie.GraphUtil;
 
 namespace Microsoft.Boogie
 {
@@ -15,26 +16,31 @@ namespace Microsoft.Boogie
         MoverTypeChecker moverTypeChecker;
         public int phaseNum;
         Procedure enclosingProc;
+        Implementation enclosingImpl;
         public Dictionary<Procedure, Procedure> procMap; /* Original -> Duplicate */
         public Dictionary<Absy, Absy> absyMap; /* Duplicate -> Original */
         public Dictionary<Block, Block> blockMap; /* Original -> Duplicate */
         public Dictionary<Implementation, Implementation> implMap; /* Duplicate -> Original */
         public HashSet<Procedure> yieldingProcs;
+        public List<Implementation> impls;
+
         public MyDuplicator(MoverTypeChecker moverTypeChecker, int phaseNum)
         {
             this.moverTypeChecker = moverTypeChecker;
             this.phaseNum = phaseNum;
             this.enclosingProc = null;
+            this.enclosingImpl = null;
             this.procMap = new Dictionary<Procedure, Procedure>();
             this.absyMap = new Dictionary<Absy, Absy>();
             this.blockMap = new Dictionary<Block, Block>();
             this.implMap = new Dictionary<Implementation, Implementation>();
             this.yieldingProcs = new HashSet<Procedure>();
+            this.impls = new List<Implementation>();
         }
 
         private void ProcessCallCmd(CallCmd originalCallCmd, CallCmd callCmd, List<Cmd> newCmds)
         {
-            int enclosingProcPhaseNum = moverTypeChecker.procToActionInfo[enclosingProc].phaseNum;
+            int enclosingProcPhaseNum = moverTypeChecker.procToActionInfo[enclosingImpl.Proc].phaseNum;
             Procedure originalProc = originalCallCmd.Proc;
             if (moverTypeChecker.procToActionInfo.ContainsKey(originalProc))
             {
@@ -145,17 +151,47 @@ namespace Microsoft.Boogie
                 return node;
             if (!procMap.ContainsKey(node))
             {
-                Procedure savedEnclosingProc = enclosingProc;
                 enclosingProc = node;
                 Procedure proc = (Procedure)node.Clone();
                 proc.Name = string.Format("{0}_{1}", node.Name, phaseNum);
                 proc.InParams = this.VisitVariableSeq(node.InParams);
                 proc.Modifies = this.VisitIdentifierExprSeq(node.Modifies);
                 proc.OutParams = this.VisitVariableSeq(node.OutParams);
-                if (moverTypeChecker.procToActionInfo[node].phaseNum < phaseNum)
+
+                ActionInfo actionInfo = moverTypeChecker.procToActionInfo[node];
+                if (actionInfo.phaseNum < phaseNum)
                 {
                     proc.Requires = new List<Requires>();
                     proc.Ensures = new List<Ensures>();
+                    Implementation impl;
+                    AtomicActionInfo atomicActionInfo = actionInfo as AtomicActionInfo;
+                    if (atomicActionInfo != null)
+                    {
+                        CodeExpr action = (CodeExpr)VisitCodeExpr(atomicActionInfo.thisAction);
+                        List<Cmd> cmds = new List<Cmd>();
+                        foreach (AssertCmd assertCmd in atomicActionInfo.thisGate)
+                        {
+                            cmds.Add(new AssumeCmd(Token.NoToken, (Expr)Visit(assertCmd.Expr)));
+                        }
+                        Block newInitBlock = new Block(Token.NoToken, "_init", cmds,
+                            new GotoCmd(Token.NoToken, new List<string>(new string[] { action.Blocks[0].Label }),
+                                                       new List<Block>(new Block[] { action.Blocks[0] })));
+                        List<Block> newBlocks = new List<Block>();
+                        newBlocks.Add(newInitBlock);
+                        newBlocks.AddRange(action.Blocks);
+                        impl = new Implementation(Token.NoToken, proc.Name, node.TypeParameters, node.InParams, node.OutParams, action.LocVars, newBlocks);
+                    }
+                    else
+                    {
+                        Block newInitBlock = new Block(Token.NoToken, "_init", new List<Cmd>(), new ReturnCmd(Token.NoToken));
+                        List<Block> newBlocks = new List<Block>();
+                        newBlocks.Add(newInitBlock);
+                        impl = new Implementation(Token.NoToken, proc.Name, node.TypeParameters, node.InParams, node.OutParams, new List<Variable>(), newBlocks);
+                    }
+                    impl.Proc = proc;
+                    impl.Proc.AddAttribute("inline", new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1)));
+                    impl.AddAttribute("inline", new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1)));
+                    impls.Add(impl);
                 }
                 else
                 {
@@ -164,7 +200,6 @@ namespace Microsoft.Boogie
                     proc.Ensures = this.VisitEnsuresSeq(node.Ensures);
                 }
                 procMap[node] = proc;
-                enclosingProc = savedEnclosingProc;
                 proc.Modifies = new List<IdentifierExpr>();
                 moverTypeChecker.program.GlobalVariables().Iter(x => proc.Modifies.Add(Expr.Ident(x)));
             }
@@ -174,7 +209,7 @@ namespace Microsoft.Boogie
         private Variable dummyLocalVar;
         public override Implementation VisitImplementation(Implementation node)
         {
-            enclosingProc = node.Proc;
+            enclosingImpl = node;
             dummyLocalVar = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "og_dummy", Type.Bool));
             Implementation impl = base.VisitImplementation(node);
             implMap[impl] = node;
@@ -245,6 +280,12 @@ namespace Microsoft.Boogie
         List<Procedure> yieldCheckerProcs;
         List<Implementation> yieldCheckerImpls;
         Procedure yieldProc;
+
+        Variable pc;
+        Variable ok;
+        Expr alpha;
+        Expr beta;
+        HashSet<Variable> frame;
 
         public OwickiGries(LinearTypeChecker linearTypeChecker, MoverTypeChecker moverTypeChecker, MyDuplicator duplicator)
         {
@@ -380,12 +421,6 @@ namespace Microsoft.Boogie
                 newCmds.Add(new AssignCmd(Token.NoToken, lhss, rhss));
             }
         }
-
-        Variable pc;
-        Variable ok;
-        Expr alpha;
-        Expr beta;
-        HashSet<Variable> frame;
 
         private Expr OldEqualityExpr(Dictionary<Variable, Variable> ogOldGlobalMap)
         {
@@ -600,7 +635,7 @@ namespace Microsoft.Boogie
             yieldCheckerImpls.Add(yieldCheckerImpl);
         }
 
-        private bool IsYieldingHeader(GraphUtil.Graph<Block> graph, Block header)
+        private bool IsYieldingHeader(Graph<Block> graph, Block header)
         {
             foreach (Block backEdgeNode in graph.BackEdgeNodes(header))
             {
@@ -622,28 +657,18 @@ namespace Microsoft.Boogie
             return false;
         }
 
-        private bool IsYieldingCallCmd(CallCmd callCmd)
+        private Graph<Block> ComputeYieldingLoopHeaders(Implementation impl, out HashSet<Block> yieldingHeaders)
         {
-            return true;
-        }
-
-        private void TransformImpl(Implementation impl)
-        {
-            pc = null;
-            alpha = null;
-            beta = null;
-            frame = null;
-
-            // Find the yielding loop headers
+            Graph<Block> graph; 
             impl.PruneUnreachableBlocks();
             impl.ComputePredecessorsForBlocks();
-            GraphUtil.Graph<Block> graph = Program.GraphFromImpl(impl);
+            graph = Program.GraphFromImpl(impl);
             graph.ComputeLoops();
             if (!graph.Reducible)
             {
                 throw new Exception("Irreducible flow graphs are unsupported.");
             }
-            HashSet<Block> yieldingHeaders = new HashSet<Block>();
+            yieldingHeaders = new HashSet<Block>();
             IEnumerable<Block> sortedHeaders = graph.SortHeadersByDominance();
             foreach (Block header in sortedHeaders)
             {
@@ -660,15 +685,27 @@ namespace Microsoft.Boogie
                     continue;
                 }
             }
+            return graph;
+        }
+
+        private void SetupRefinementCheck(Implementation impl, 
+            out Dictionary<Variable, Expr> map,
+            out Dictionary<string, Variable> domainNameToInputVar, out Dictionary<string, Variable> domainNameToLocalVar, out Dictionary<Variable, Variable> ogOldGlobalMap)
+        {
+            pc = null;
+            ok = null;
+            alpha = null;
+            beta = null;
+            frame = null;
 
             Program program = linearTypeChecker.program;
-            Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
+            map = new Dictionary<Variable, Expr>();
             foreach (Variable local in impl.LocVars)
             {
                 var copy = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, local.Name, local.TypedIdent.Type));
                 map[local] = Expr.Ident(copy);
             }
-            Dictionary<Variable, Variable> ogOldGlobalMap = new Dictionary<Variable, Variable>();
+            ogOldGlobalMap = new Dictionary<Variable, Variable>();
             foreach (IdentifierExpr ie in globalMods)
             {
                 Variable g = ie.Decl;
@@ -744,8 +781,8 @@ namespace Microsoft.Boogie
                 }
             }
 
-            Dictionary<string, Variable> domainNameToInputVar = new Dictionary<string, Variable>();
-            Dictionary<string, Variable> domainNameToLocalVar = new Dictionary<string, Variable>();
+            domainNameToInputVar = new Dictionary<string, Variable>();
+            domainNameToLocalVar = new Dictionary<string, Variable>();
             {
                 int i = impl.InParams.Count - linearTypeChecker.linearDomains.Count;
                 foreach (string domainName in linearTypeChecker.linearDomains.Keys)
@@ -758,7 +795,31 @@ namespace Microsoft.Boogie
                     i++;
                 }
             }
+        }
 
+        private void TransformImpl(Implementation impl)
+        {
+            HashSet<Block> yieldingHeaders;
+            Graph<Block> graph = ComputeYieldingLoopHeaders(impl, out yieldingHeaders);
+
+            Dictionary<Variable, Expr> map;
+            Dictionary<string, Variable> domainNameToInputVar, domainNameToLocalVar;
+            Dictionary<Variable, Variable> ogOldGlobalMap;
+            SetupRefinementCheck(impl, out map, out domainNameToInputVar, out domainNameToLocalVar, out ogOldGlobalMap);
+
+            List<List<Cmd>> yields = CollectAndDesugarYields(impl, domainNameToInputVar, domainNameToLocalVar, ogOldGlobalMap);
+
+            List<Variable> oldPcs, oldOks;
+            ProcessLoopHeaders(impl, graph, yieldingHeaders, domainNameToInputVar, domainNameToLocalVar, ogOldGlobalMap, out oldPcs, out oldOks);
+
+            AddInitialBlock(impl, oldPcs, oldOks, domainNameToInputVar, domainNameToLocalVar, ogOldGlobalMap);
+
+            CreateYieldCheckerImpl(impl, yields, map);
+        }
+
+        private List<List<Cmd>> CollectAndDesugarYields(Implementation impl,
+            Dictionary<string, Variable> domainNameToInputVar, Dictionary<string, Variable> domainNameToLocalVar, Dictionary<Variable, Variable> ogOldGlobalMap)
+        {
             // Collect the yield predicates and desugar yields
             List<List<Cmd>> yields = new List<List<Cmd>>();
             List<Cmd> cmds = new List<Cmd>();
@@ -792,7 +853,7 @@ namespace Microsoft.Boogie
                             cmds.Add(pcmd);
                         }
                     }
-                    
+
                     if (cmd is CallCmd)
                     {
                         CallCmd callCmd = cmd as CallCmd;
@@ -864,9 +925,15 @@ namespace Microsoft.Boogie
                 }
                 b.Cmds = newCmds;
             }
+            return yields;
+        }
 
-            List<Variable> oldPcs = new List<Variable>();
-            List<Variable> oldOks = new List<Variable>();
+        private void ProcessLoopHeaders(Implementation impl, Graph<Block> graph, HashSet<Block> yieldingHeaders, 
+            Dictionary<string, Variable> domainNameToInputVar, Dictionary<string, Variable> domainNameToLocalVar, Dictionary<Variable, Variable> ogOldGlobalMap,
+            out List<Variable> oldPcs, out List<Variable> oldOks)
+        {
+            oldPcs = new List<Variable>();
+            oldOks = new List<Variable>();
             foreach (Block header in yieldingHeaders)
             {
                 LocalVariable oldPc = null;
@@ -914,62 +981,62 @@ namespace Microsoft.Boogie
                 newCmds.AddRange(header.Cmds);
                 header.Cmds = newCmds;
             }
+        }
 
+        private void AddInitialBlock(Implementation impl, List<Variable> oldPcs, List<Variable> oldOks,
+            Dictionary<string, Variable> domainNameToInputVar, Dictionary<string, Variable> domainNameToLocalVar, Dictionary<Variable, Variable> ogOldGlobalMap)
+        {
+            // Add initial block
+            List<AssignLhs> lhss = new List<AssignLhs>();
+            List<Expr> rhss = new List<Expr>();
+            if (pc != null)
             {
-                // Add initial block
-                List<AssignLhs> lhss = new List<AssignLhs>();
-                List<Expr> rhss = new List<Expr>();
-                if (pc != null)
+                lhss.Add(new SimpleAssignLhs(Token.NoToken, Expr.Ident(pc)));
+                rhss.Add(Expr.False);
+                foreach (Variable oldPc in oldPcs)
                 {
-                    lhss.Add(new SimpleAssignLhs(Token.NoToken, Expr.Ident(pc)));
+                    lhss.Add(new SimpleAssignLhs(Token.NoToken, Expr.Ident(oldPc)));
                     rhss.Add(Expr.False);
-                    foreach (Variable oldPc in oldPcs)
-                    {
-                        lhss.Add(new SimpleAssignLhs(Token.NoToken, Expr.Ident(oldPc)));
-                        rhss.Add(Expr.False);
-                    }
-                    lhss.Add(new SimpleAssignLhs(Token.NoToken, Expr.Ident(ok)));
+                }
+                lhss.Add(new SimpleAssignLhs(Token.NoToken, Expr.Ident(ok)));
+                rhss.Add(Expr.False);
+                foreach (Variable oldOk in oldOks)
+                {
+                    lhss.Add(new SimpleAssignLhs(Token.NoToken, Expr.Ident(oldOk)));
                     rhss.Add(Expr.False);
-                    foreach (Variable oldOk in oldOks)
-                    {
-                        lhss.Add(new SimpleAssignLhs(Token.NoToken, Expr.Ident(oldOk)));
-                        rhss.Add(Expr.False);
-                    }
-                }
-                Dictionary<string, Expr> domainNameToExpr = new Dictionary<string, Expr>();
-                foreach (var domainName in linearTypeChecker.linearDomains.Keys)
-                {
-                    domainNameToExpr[domainName] = Expr.Ident(domainNameToInputVar[domainName]);
-                }
-                for (int i = 0; i < impl.InParams.Count - linearTypeChecker.linearDomains.Count; i++)
-                {
-                    Variable v = impl.InParams[i];
-                    var domainName = linearTypeChecker.FindDomainName(v);
-                    if (domainName == null) continue;
-                    if (!linearTypeChecker.linearDomains.ContainsKey(domainName)) continue;
-                    var domain = linearTypeChecker.linearDomains[domainName];
-                    if (!domain.collectors.ContainsKey(v.TypedIdent.Type)) continue;
-                    Expr ie = new NAryExpr(Token.NoToken, new FunctionCall(domain.collectors[v.TypedIdent.Type]), new List<Expr> { Expr.Ident(v) });
-                    domainNameToExpr[domainName] = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapOrBool), new List<Expr> { ie, domainNameToExpr[domainName] });
-                }
-                foreach (string domainName in linearTypeChecker.linearDomains.Keys)
-                {
-                    lhss.Add(new SimpleAssignLhs(Token.NoToken, Expr.Ident(domainNameToLocalVar[domainName])));
-                    rhss.Add(domainNameToExpr[domainName]);
-                }
-                foreach (Variable g in ogOldGlobalMap.Keys)
-                {
-                    lhss.Add(new SimpleAssignLhs(Token.NoToken, Expr.Ident(ogOldGlobalMap[g])));
-                    rhss.Add(Expr.Ident(g));
-                }
-                if (lhss.Count > 0)
-                {
-                    Block initBlock = new Block(Token.NoToken, "og_init", new List<Cmd> { new AssignCmd(Token.NoToken, lhss, rhss) }, new GotoCmd(Token.NoToken, new List<String> { impl.Blocks[0].Label }, new List<Block> { impl.Blocks[0] }));
-                    impl.Blocks.Insert(0, initBlock);
                 }
             }
-
-            CreateYieldCheckerImpl(impl, yields, map);
+            Dictionary<string, Expr> domainNameToExpr = new Dictionary<string, Expr>();
+            foreach (var domainName in linearTypeChecker.linearDomains.Keys)
+            {
+                domainNameToExpr[domainName] = Expr.Ident(domainNameToInputVar[domainName]);
+            }
+            for (int i = 0; i < impl.InParams.Count - linearTypeChecker.linearDomains.Count; i++)
+            {
+                Variable v = impl.InParams[i];
+                var domainName = linearTypeChecker.FindDomainName(v);
+                if (domainName == null) continue;
+                if (!linearTypeChecker.linearDomains.ContainsKey(domainName)) continue;
+                var domain = linearTypeChecker.linearDomains[domainName];
+                if (!domain.collectors.ContainsKey(v.TypedIdent.Type)) continue;
+                Expr ie = new NAryExpr(Token.NoToken, new FunctionCall(domain.collectors[v.TypedIdent.Type]), new List<Expr> { Expr.Ident(v) });
+                domainNameToExpr[domainName] = new NAryExpr(Token.NoToken, new FunctionCall(domain.mapOrBool), new List<Expr> { ie, domainNameToExpr[domainName] });
+            }
+            foreach (string domainName in linearTypeChecker.linearDomains.Keys)
+            {
+                lhss.Add(new SimpleAssignLhs(Token.NoToken, Expr.Ident(domainNameToLocalVar[domainName])));
+                rhss.Add(domainNameToExpr[domainName]);
+            }
+            foreach (Variable g in ogOldGlobalMap.Keys)
+            {
+                lhss.Add(new SimpleAssignLhs(Token.NoToken, Expr.Ident(ogOldGlobalMap[g])));
+                rhss.Add(Expr.Ident(g));
+            }
+            if (lhss.Count > 0)
+            {
+                Block initBlock = new Block(Token.NoToken, "og_init", new List<Cmd> { new AssignCmd(Token.NoToken, lhss, rhss) }, new GotoCmd(Token.NoToken, new List<String> { impl.Blocks[0].Label }, new List<Block> { impl.Blocks[0] }));
+                impl.Blocks.Insert(0, initBlock);
+            }
         }
 
         private void AddYieldProcAndImpl(List<Declaration> decls) 
@@ -1039,8 +1106,9 @@ namespace Microsoft.Boogie
                 return iter;
         }
 
-        private void Collect(List<Declaration> decls)
+        private List<Declaration> Collect()
         {
+            List<Declaration> decls = new List<Declaration>();
             foreach (Procedure proc in yieldCheckerProcs)
             {
                 decls.Add(proc);
@@ -1054,6 +1122,7 @@ namespace Microsoft.Boogie
                 decls.Add(proc);
             }
             AddYieldProcAndImpl(decls);
+            return decls;
         }
 
         public static void AddCheckers(LinearTypeChecker linearTypeChecker, MoverTypeChecker moverTypeChecker, List<Declaration> decls)
@@ -1070,41 +1139,8 @@ namespace Microsoft.Boogie
                     if (proc == null || !moverTypeChecker.procToActionInfo.ContainsKey(proc)) continue;
                     Procedure duplicateProc = duplicator.VisitProcedure(proc);
                     decls.Add(duplicateProc);
-                    ActionInfo actionInfo = moverTypeChecker.procToActionInfo[proc];
-                    if (actionInfo.phaseNum < phaseNum)
-                    {
-                        Implementation impl;
-                        AtomicActionInfo atomicActionInfo = actionInfo as AtomicActionInfo;
-                        if (atomicActionInfo != null)
-                        {
-                            CodeExpr action = (CodeExpr)duplicator.VisitCodeExpr(atomicActionInfo.thisAction);
-
-                            List<Cmd> cmds = new List<Cmd>();
-                            foreach (AssertCmd assertCmd in atomicActionInfo.thisGate)
-                            {
-                                cmds.Add(new AssumeCmd(Token.NoToken, (Expr)duplicator.Visit(assertCmd.Expr)));
-                            }
-                            Block newInitBlock = new Block(Token.NoToken, "_init", cmds,
-                                new GotoCmd(Token.NoToken, new List<string>(new string[] { action.Blocks[0].Label }),
-                                                           new List<Block>(new Block[] { action.Blocks[0] })));
-                            List<Block> newBlocks = new List<Block>();
-                            newBlocks.Add(newInitBlock);
-                            newBlocks.AddRange(action.Blocks);
-                            impl = new Implementation(Token.NoToken, duplicateProc.Name, proc.TypeParameters, proc.InParams, proc.OutParams, action.LocVars, newBlocks);
-                        }
-                        else
-                        {
-                            Block newInitBlock = new Block(Token.NoToken, "_init", new List<Cmd>(), new ReturnCmd(Token.NoToken));
-                            List<Block> newBlocks = new List<Block>();
-                            newBlocks.Add(newInitBlock);
-                            impl = new Implementation(Token.NoToken, duplicateProc.Name, proc.TypeParameters, proc.InParams, proc.OutParams, new List<Variable>(), newBlocks);
-                        }
-                        impl.Proc = duplicateProc;
-                        impl.Proc.AddAttribute("inline", new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1)));
-                        impl.AddAttribute("inline", new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1)));
-                        decls.Add(impl);
-                    }
                 }
+                decls.AddRange(duplicator.impls);
                 OwickiGries ogTransform = new OwickiGries(linearTypeChecker, moverTypeChecker, duplicator);
                 foreach (var decl in program.TopLevelDeclarations)
                 {
@@ -1115,7 +1151,7 @@ namespace Microsoft.Boogie
                     ogTransform.TransformImpl(duplicateImpl);
                     decls.Add(duplicateImpl);
                 }
-                ogTransform.Collect(decls);
+                decls.AddRange(ogTransform.Collect());
             }
         }
     }

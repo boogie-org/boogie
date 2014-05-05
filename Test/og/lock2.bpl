@@ -2,6 +2,7 @@ var {:phase 2} b: int;
 
 procedure {:yields} {:phase 2} main()
 {
+    yield;
     while (*)
     {
         yield;
@@ -14,6 +15,7 @@ procedure {:yields} {:phase 2} main()
 
 procedure {:yields} {:phase 2} Customer()
 {
+    yield;
     while (*) 
     {
     	yield;
@@ -26,14 +28,13 @@ procedure {:yields} {:phase 2} Customer()
 
         yield;
     }
-
-    yield;
 }
 
 procedure {:yields} {:phase 1,2} Enter() 
 ensures {:atomic} |{ A: assume b == 0; b := 1; return true; }|;
 {
     var _old, curr: int;
+    yield;
     while (true) { 
     	yield;
         call _old := CAS(0, 1);

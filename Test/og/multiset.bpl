@@ -339,6 +339,8 @@ procedure {:yields} {:phase 1} Yield1()
 requires {:phase 1} Inv(valid, elt, owner);
 ensures {:phase 1} Inv(valid, elt, owner);
 {
+	yield;
+	assert {:phase 1} Inv(valid, elt, owner);
 }
 
 procedure {:yields} {:phase 2} Yield12()
