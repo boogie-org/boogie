@@ -1,0 +1,13 @@
+UpdateExprTyping.bpl(5,11): Error: invalid argument types ([int]bool and [int]ref) to binary operator ==
+UpdateExprTyping.bpl(6,11): Error: invalid argument types ([int]bool and [bool]bool) to binary operator ==
+UpdateExprTyping.bpl(9,16): Error: invalid type for argument 0 in map store: bool (expected: int)
+UpdateExprTyping.bpl(10,21): Error: right-hand side in map store with wrong type: int (expected: bool)
+UpdateExprTyping.bpl(11,11): Error: invalid argument types ([int]bool and [int]ref) to binary operator ==
+UpdateExprTyping.bpl(17,18): Error: invalid type for argument 0 in map store: ref (expected: int)
+UpdateExprTyping.bpl(18,20): Error: invalid type for argument 1 in map store: bool (expected: ref)
+UpdateExprTyping.bpl(19,28): Error: right-hand side in map store with wrong type: ref (expected: bool)
+UpdateExprTyping.bpl(34,2): Error: mismatched types in assignment command (cannot assign int to any)
+UpdateExprTyping.bpl(38,28): Error: right-hand side in map store with wrong type: ref (expected: any)
+UpdateExprTyping.bpl(40,27): Error: right-hand side in map store with wrong type: ref (expected: int)
+UpdateExprTyping.bpl(41,27): Error: right-hand side in map store with wrong type: int (expected: ref)
+12 type checking errors detected in UpdateExprTyping.bpl

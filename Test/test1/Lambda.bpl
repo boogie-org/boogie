@@ -1,3 +1,5 @@
+// RUN: %boogie -noVerify %s > %t
+// RUN: %diff %s.expect %t
 procedure foo()
 {
   var a: [int,int]int;

@@ -1,3 +1,5 @@
+// RUN: %boogie -noVerify %s > %t
+// RUN: %diff %s.expect %t
 
 function g0<beta>(x:beta) returns (beta);
 function g1<beta>() returns (beta);

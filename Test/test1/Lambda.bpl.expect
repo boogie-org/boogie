@@ -1,0 +1,6 @@
+Lambda.bpl(7,2): Error: mismatched types in assignment command (cannot assign [int]int to [int,int]int)
+Lambda.bpl(8,2): Error: mismatched types in assignment command (cannot assign [int]int to [int]bool)
+Lambda.bpl(14,8): Error: the type variable T does not occur in types of the lambda parameters
+Lambda.bpl(14,2): Error: mismatched types in assignment command (cannot assign <T>[int]int to [int]int)
+Lambda.bpl(20,27): Error: invalid argument types (bool and int) to binary operator +
+5 type checking errors detected in Lambda.bpl

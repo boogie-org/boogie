@@ -1,0 +1,7 @@
+AttributeTyping.bpl(5,23): Error: ++ operands need to be bitvectors (got int, int)
+AttributeTyping.bpl(7,29): Error: invalid type for argument 0 in application of F0: bool (expected: int)
+AttributeTyping.bpl(9,26): Error: invalid type for argument 0 in application of F0: bool (expected: int)
+AttributeTyping.bpl(11,21): Error: invalid argument types (int and int) to binary operator &&
+AttributeTyping.bpl(13,22): Error: invalid argument type (int) to unary operator !
+AttributeTyping.bpl(15,32): Error: invalid argument types (int and int) to binary operator ==>
+6 type checking errors detected in AttributeTyping.bpl

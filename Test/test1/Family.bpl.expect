@@ -1,0 +1,9 @@
+Family.bpl(32,4): Error: mismatched types in assignment command (cannot assign int to bool)
+Family.bpl(33,8): Error: mismatched types in assignment command (cannot assign bool to int)
+Family.bpl(35,8): Error: mismatched types in assignment command (cannot assign int to y)
+Family.bpl(36,15): Error: invalid type for argument 1 in map assignment: any (expected: Field x)
+Family.bpl(37,15): Error: invalid type for argument 1 in map assignment: any (expected: Field x)
+Family.bpl(39,8): Error: mismatched types in assignment command (cannot assign bool to any)
+Family.bpl(40,8): Error: mismatched types in assignment command (cannot assign Field any to any)
+Family.bpl(41,8): Error: mismatched types in assignment command (cannot assign Field y to any)
+8 type checking errors detected in Family.bpl

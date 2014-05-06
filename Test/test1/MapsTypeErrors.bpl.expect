@@ -1,0 +1,16 @@
+MapsTypeErrors.bpl(28,6): Error: command assigns to a global variable that is not in the enclosing procedure's modifies clause: m
+MapsTypeErrors.bpl(34,2): Error: mismatched types in assignment command (cannot assign int to []int)
+MapsTypeErrors.bpl(35,3): Error: mismatched types in assignment command (cannot assign []int to int)
+MapsTypeErrors.bpl(41,3): Error: mismatched types in assignment command (cannot assign bool to int)
+MapsTypeErrors.bpl(69,14): Error: invalid argument types (Field int and Field bool) to binary operator ==
+MapsTypeErrors.bpl(72,27): Error: invalid type for argument 1 in application of StrictEqual: Field bool (expected: a)
+MapsTypeErrors.bpl(77,33): Error: invalid type for argument 1 in application of StrictEqual: Field int (expected: a)
+MapsTypeErrors.bpl(79,31): Error: invalid type for argument 1 in application of IntEqual: Field alpha (expected: Field int)
+MapsTypeErrors.bpl(92,8): Error: extract operand must be a bitvector of at least 32 bits (got bv31)
+MapsTypeErrors.bpl(93,8): Error: extract operand must be a bitvector of at least 32 bits (got int)
+MapsTypeErrors.bpl(97,2): Error: mismatched types in assignment command (cannot assign bv33 to bv32)
+MapsTypeErrors.bpl(106,2): Error: mismatched types in assignment command (cannot assign bv20 to bv32)
+MapsTypeErrors.bpl(112,56): Error: invalid type for argument 1 in application of Same: bv18 (expected: T)
+MapsTypeErrors.bpl(122,4): Error: mismatched types in assignment command (cannot assign [?, ?]? to [int,int]bool)
+MapsTypeErrors.bpl(124,4): Error: mismatched types in assignment command (cannot assign [?, ?]? to HeapType)
+15 type checking errors detected in MapsTypeErrors.bpl

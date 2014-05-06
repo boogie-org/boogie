@@ -1,0 +1,6 @@
+AssumptionVariables0.bpl(5,22): Error: assumption variable may not be declared with a where clause
+AssumptionVariables0.bpl(21,7): Error: RHS of assignment to assumption variable a0 must match expression "a0 && <boolean expression>"
+AssumptionVariables0.bpl(30,7): Error: RHS of assignment to assumption variable a0 must match expression "a0 && <boolean expression>"
+AssumptionVariables0.bpl(39,7): Error: assumption variable may not be assigned to more than once
+AssumptionVariables0.bpl(56,7): Error: assumption variable may not be assigned to more than once
+5 name resolution errors detected in AssumptionVariables0.bpl

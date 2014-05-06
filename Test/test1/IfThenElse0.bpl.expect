@@ -1,0 +1,4 @@
+IfThenElse0.bpl(7,7): Error: the first argument to if-then-else should be bool, not int
+IfThenElse0.bpl(8,7): Error: branches of if-then-else have incompatible types bool and int
+IfThenElse0.bpl(9,2): Error: mismatched types in assignment command (cannot assign int to bool)
+3 type checking errors detected in IfThenElse0.bpl

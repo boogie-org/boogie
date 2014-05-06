@@ -1,0 +1,4 @@
+FunBody.bpl(8,45): Error: function body with invalid type: bool (expected: int)
+FunBody.bpl(10,61): Error: function body with invalid type: int (expected: alpha)
+FunBody.bpl(12,58): Error: function body with invalid type: int (expected: alpha)
+3 type checking errors detected in FunBody.bpl

@@ -1,0 +1,53 @@
+Arrays.bpl(17,14): Error: wrong number of arguments in map select: 2 instead of 1
+Arrays.bpl(18,14): Error: wrong number of arguments in map select: 1 instead of 2
+Arrays.bpl(22,7): Error: wrong number of arguments in map assignment: 2 instead of 1
+Arrays.bpl(23,7): Error: wrong number of arguments in map assignment: 1 instead of 2
+Arrays.bpl(43,13): Error: invalid type for argument 0 in map select: bool (expected: int)
+Arrays.bpl(44,16): Error: invalid argument types (bool and int) to binary operator ==
+Arrays.bpl(45,13): Error: invalid type for argument 0 in map select: int (expected: bool)
+Arrays.bpl(45,15): Error: invalid type for argument 1 in map select: int (expected: ref)
+Arrays.bpl(46,15): Error: invalid type for argument 1 in map select: bool (expected: ref)
+Arrays.bpl(46,23): Error: invalid type for argument 0 in map select: ref (expected: bool)
+Arrays.bpl(47,13): Error: invalid type for argument 0 in map select: ref (expected: bool)
+Arrays.bpl(47,18): Error: invalid type for argument 1 in map select: int (expected: ref)
+Arrays.bpl(47,2): Error: preconditions must be of type bool
+Arrays.bpl(48,13): Error: invalid type for argument 0 in map select: int (expected: bool)
+Arrays.bpl(48,15): Error: invalid type for argument 1 in map select: int (expected: ref)
+Arrays.bpl(52,6): Error: invalid type for argument 0 in map assignment: bool (expected: int)
+Arrays.bpl(53,6): Error: invalid type for argument 0 in map assignment: int (expected: bool)
+Arrays.bpl(53,8): Error: invalid type for argument 1 in map assignment: int (expected: ref)
+Arrays.bpl(53,5): Error: mismatched types in assignment command (cannot assign ref to int)
+Arrays.bpl(54,7): Error: invalid type for argument 0 in map assignment: bool (expected: int)
+Arrays.bpl(54,5): Error: mismatched types in assignment command (cannot assign int to bool)
+Arrays.bpl(55,12): Error: invalid type for argument 1 in map assignment: bool (expected: ref)
+Arrays.bpl(115,11): Error: invalid type for argument 0 in map select: name (expected: [int,int]bool)
+Arrays.bpl(116,4): Error: mismatched types in assignment command (cannot assign [int,int]bool to [[int,int]bool,[name]name]int)
+Arrays.bpl(117,4): Error: mismatched types in assignment command (cannot assign name to [int,int]bool)
+Arrays.bpl(118,5): Error: mismatched types in assignment command (cannot assign name to bool)
+Arrays.bpl(119,8): Error: invalid type for argument 1 in map assignment: name (expected: [name]name)
+Arrays.bpl(120,4): Error: mismatched types in assignment command (cannot assign [int,int][int]int to [[int,int]bool,[name]name]int)
+Arrays.bpl(125,10): Error: wrong number of arguments in map select: 1 instead of 2
+Arrays.bpl(126,14): Error: wrong number of arguments in map select: 1 instead of 2
+Arrays.bpl(127,6): Error: invalid type for argument 0 in map assignment: bool (expected: int)
+Arrays.bpl(128,4): Error: mismatched types in assignment command (cannot assign [int,int][int]int to [int,int][name]int)
+Arrays.bpl(129,4): Error: mismatched types in assignment command (cannot assign [int,int][name]int to [int,int][int]int)
+Arrays.bpl(132,21): Error: wrong number of arguments in map select: 2 instead of 1
+Arrays.bpl(133,5): Error: wrong number of arguments in map assignment: 2 instead of 1
+Arrays.bpl(134,13): Error: wrong number of arguments in map select: 2 instead of 1
+Arrays.bpl(135,17): Error: wrong number of arguments in map select: 1 instead of 2
+Arrays.bpl(136,14): Error: wrong number of arguments in map select: 2 instead of 1
+Arrays.bpl(168,12): Error: invalid type for argument 0 in application of Sf: [int,int]bool (expected: any)
+Arrays.bpl(178,4): Error: mismatched types in assignment command (cannot assign [int,int]bool to <a>[int,a]bool)
+Arrays.bpl(179,4): Error: mismatched types in assignment command (cannot assign <a>[int,a]bool to [int,int]bool)
+Arrays.bpl(180,4): Error: mismatched types in assignment command (cannot assign [any,any]bool to <a>[int,a]bool)
+Arrays.bpl(181,4): Error: mismatched types in assignment command (cannot assign <a>[int,a]bool to [any,any]bool)
+Arrays.bpl(182,4): Error: mismatched types in assignment command (cannot assign [ref]bool to [any]bool)
+Arrays.bpl(193,18): Error: invalid type for argument 0 in map select: any (expected: int)
+Arrays.bpl(200,11): Error: invalid type for argument 0 in map assignment: any (expected: int)
+Arrays.bpl(216,24): Error: invalid type for argument 0 in call to IntMethod: int (expected: any)
+Arrays.bpl(216,9): Error: invalid type for out-parameter 0 in call to IntMethod: any (expected: int)
+Arrays.bpl(217,4): Error: mismatched types in assignment command (cannot assign int to any)
+Arrays.bpl(218,4): Error: mismatched types in assignment command (cannot assign any to int)
+Arrays.bpl(220,24): Error: invalid type for argument 0 in call to AnyMethod: any (expected: int)
+Arrays.bpl(220,9): Error: invalid type for out-parameter 0 in call to AnyMethod: int (expected: any)
+52 type checking errors detected in Arrays.bpl

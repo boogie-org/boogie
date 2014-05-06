@@ -1,0 +1,2 @@
+EmptyCallArgs.bpl(21,7): Error: invalid type for out-parameter 0 in call to Q: int (expected: bool)
+1 type checking errors detected in EmptyCallArgs.bpl

@@ -1,0 +1,5 @@
+WhereTyping.bpl(27,34): Error: invalid argument types (double and int) to binary operator +
+WhereTyping.bpl(28,12): Error: where clauses must be of type bool
+WhereTyping.bpl(38,22): Error: invalid argument types (name and int) to binary operator !=
+WhereTyping.bpl(43,30): Error: invalid argument types (name and int) to binary operator ==
+4 type checking errors detected in WhereTyping.bpl

@@ -1,0 +1,17 @@
+Frame1.bpl(18,7): Error: command assigns to a global variable that is not in the enclosing procedure's modifies clause: g1
+Frame1.bpl(19,6): Error: command assigns to an immutable variable: a
+Frame1.bpl(24,4): Error: command assigns to a global variable that is not in the enclosing procedure's modifies clause: g1
+Frame1.bpl(25,4): Error: command assigns to an immutable variable: a
+Frame1.bpl(29,12): Error: command assigns to an immutable variable: hh
+Frame1.bpl(30,12): Error: command assigns to a global variable that is not in the enclosing procedure's modifies clause: h0
+Frame1.bpl(32,7): Error: command assigns to an immutable variable: hh
+Frame1.bpl(33,7): Error: command assigns to a global variable that is not in the enclosing procedure's modifies clause: h0
+Frame1.bpl(35,4): Error: command assigns to an immutable variable: hh
+Frame1.bpl(36,4): Error: command assigns to a global variable that is not in the enclosing procedure's modifies clause: h0
+Frame1.bpl(57,4): Error: command assigns to a global variable that is not in the enclosing procedure's modifies clause: g0
+Frame1.bpl(70,4): Error: command assigns to a global variable that is not in the enclosing procedure's modifies clause: g0
+Frame1.bpl(70,4): Error: command assigns to a global variable that is not in the enclosing procedure's modifies clause: g1
+Frame1.bpl(70,4): Error: command assigns to a global variable that is not in the enclosing procedure's modifies clause: h0
+Frame1.bpl(86,15): Error: mismatched type of in-parameter in implementation MismatchedTypes: x
+Frame1.bpl(91,15): Error: mismatched type of in-parameter in implementation MismatchedTypes: x (named y in implementation)
+16 type checking errors detected in Frame1.bpl

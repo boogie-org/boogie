@@ -1,0 +1,19 @@
+IntReal.bpl(7,8): Error: invalid argument types (int and real) to binary operator >=
+IntReal.bpl(8,8): Error: invalid argument types (int and real) to binary operator <=
+IntReal.bpl(9,8): Error: invalid argument types (int and real) to binary operator <
+IntReal.bpl(10,8): Error: invalid argument types (int and real) to binary operator >
+IntReal.bpl(12,9): Error: invalid argument types (int and real) to binary operator ==
+IntReal.bpl(13,8): Error: invalid argument types (int and real) to binary operator +
+IntReal.bpl(14,8): Error: invalid argument types (int and real) to binary operator -
+IntReal.bpl(15,8): Error: invalid argument types (int and real) to binary operator *
+IntReal.bpl(16,8): Error: invalid argument types (int and real) to binary operator div
+IntReal.bpl(17,8): Error: invalid argument types (int and real) to binary operator mod
+IntReal.bpl(19,12): Error: invalid argument types (real and int) to binary operator ==
+IntReal.bpl(25,8): Error: invalid argument types (int and real) to binary operator **
+IntReal.bpl(29,14): Error: invalid argument types (real and int) to binary operator ==
+IntReal.bpl(31,13): Error: invalid argument types (int and real) to binary operator ==
+IntReal.bpl(34,6): Error: argument type int does not match expected type real
+IntReal.bpl(35,6): Error: argument type real does not match expected type int
+IntReal.bpl(47,8): Error: invalid argument types (real and int) to binary operator div
+IntReal.bpl(48,8): Error: invalid argument types (real and int) to binary operator mod
+18 type checking errors detected in IntReal.bpl

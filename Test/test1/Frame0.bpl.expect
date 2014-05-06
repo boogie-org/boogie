@@ -1,0 +1,3 @@
+Frame0.bpl(12,11): Error: undeclared identifier: a
+Frame0.bpl(14,11): Error: undeclared identifier: b
+2 name resolution errors detected in Frame0.bpl
