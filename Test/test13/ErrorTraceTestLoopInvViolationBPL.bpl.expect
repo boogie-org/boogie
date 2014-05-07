@@ -1,0 +1,13 @@
+ErrorTraceTestLoopInvViolationBPL.bpl(9,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    ErrorTraceTestLoopInvViolationBPL.bpl(7,5): anon0
+ErrorTraceTestLoopInvViolationBPL.bpl(18,16): Error BP5004: This loop invariant might not hold on entry.
+Execution trace:
+    ErrorTraceTestLoopInvViolationBPL.bpl(16,5): anon0
+ErrorTraceTestLoopInvViolationBPL.bpl(29,17): Error BP5005: This loop invariant might not be maintained by the loop.
+Execution trace:
+    ErrorTraceTestLoopInvViolationBPL.bpl(27,5): anon0
+    ErrorTraceTestLoopInvViolationBPL.bpl(29,3): anon2_LoopHead
+    ErrorTraceTestLoopInvViolationBPL.bpl(30,7): anon2_LoopBody
+
+Boogie program verifier finished with 0 verified, 3 errors
