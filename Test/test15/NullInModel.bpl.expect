@@ -1,0 +1,17 @@
+*** MODEL
+%lbl%@47 -> false
+%lbl%+24 -> true
+%lbl%+37 -> true
+null -> T@ref!val!0
+s -> T@ref!val!0
+tickleBool -> {
+  true -> true
+  false -> true
+  else -> true
+}
+*** END_MODEL
+NullInModel.bpl(4,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    NullInModel.bpl(4,3): anon0
+
+Boogie program verifier finished with 0 verified, 1 error

@@ -1,0 +1,63 @@
+CaptureState.bpl(29,1): Error BP5003: A postcondition might not hold on this return path.
+CaptureState.bpl(10,3): Related location: This is the postcondition that might not hold.
+Execution trace:
+    CaptureState.bpl(14,3): anon0
+    CaptureState.bpl(18,5): anon4_Then
+    CaptureState.bpl(26,5): anon3
+*** MODEL
+$mv_state_const -> 3
+%lbl%@293 -> false
+%lbl%+112 -> true
+%lbl%+114 -> true
+%lbl%+118 -> true
+%lbl%+148 -> true
+F -> T@FieldName!val!0
+Heap -> T@[Ref,FieldName]Int!val!0
+m -> **m
+m@0 -> -276
+m@1 -> -275
+m@3 -> -275
+r -> **r
+r@0 -> -550
+this -> T@Ref!val!0
+x -> 719
+y -> **y
+Select_[Ref,FieldName]$int -> {
+  T@[Ref,FieldName]Int!val!0 T@Ref!val!0 T@FieldName!val!0 -> -276
+  else -> -276
+}
+tickleBool -> {
+  true -> true
+  false -> true
+  else -> true
+}
+$mv_state -> {
+  3 0 -> true
+  3 1 -> true
+  3 2 -> true
+  3 5 -> true
+  else -> true
+}
+*** STATE <initial>
+  Heap -> T@[Ref,FieldName]Int!val!0
+  this -> T@Ref!val!0
+  x -> 719
+  y -> **y
+  r -> **r
+  m -> **m
+*** END_STATE
+*** STATE top
+*** END_STATE
+*** STATE then
+  m -> -276
+*** END_STATE
+*** STATE postUpdate0
+  m -> -275
+*** END_STATE
+*** STATE end
+  r -> -550
+  m -> 7
+*** END_STATE
+*** END_MODEL
+
+Boogie program verifier finished with 0 verified, 1 error
