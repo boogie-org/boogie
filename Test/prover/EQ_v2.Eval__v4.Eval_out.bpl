@@ -1,3 +1,5 @@
+// RUN: %boogie -typeEncoding:m -z3multipleErrors %s > %t
+// RUN: %diff %s.expect %t
 var v4.Mem: [name][int]int;
 
 var v4.alloc: int;
