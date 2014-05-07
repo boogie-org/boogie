@@ -371,18 +371,6 @@ namespace Microsoft.Boogie
                     {
                         edgeLabels[edge] = 'Y';
                     }
-                    else if (cmd is AssumeCmd || cmd is AssignCmd || cmd is HavocCmd)
-                    {
-                        if (AccessesGlobals(cmd))
-                        {
-                            finalStates.Add(curr);
-                            initialStates.Add(next);
-                        }
-                        else
-                        {
-                            edgeLabels[edge] = 'P';
-                        }
-                    }
                     else
                     {
                         edgeLabels[edge] = 'P';
@@ -391,13 +379,6 @@ namespace Microsoft.Boogie
             }
         }
 
-        private static bool AccessesGlobals(Cmd cmd)
-        {
-            VariableCollector collector = new VariableCollector();
-            collector.Visit(cmd);
-            return collector.usedVars.Any(x => x is GlobalVariable);
-        }
-        
         private static string PrintGraph(Implementation yTypeChecked, Graph<int> graph, Dictionary<Tuple<int, int>, string> edgeLabels)
         {
             var s = new StringBuilder();

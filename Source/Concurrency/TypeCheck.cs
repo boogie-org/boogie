@@ -209,10 +209,12 @@ namespace Microsoft.Boogie
         Implementation enclosingImpl;
         public Dictionary<Procedure, ActionInfo> procToActionInfo;
         public Program program;
-        bool inSpecification;
+        bool canAccessSharedVars;
+        bool canAccessAuxVars;
         int minPhaseNum;
         int maxPhaseNum;
         public Dictionary<Absy, HashSet<int>> absyToPhaseNums;
+        HashSet<Variable> auxVars;
 
         private static List<int> FindIntAttributes(QKeyValue kv, string name)
         {
@@ -321,6 +323,7 @@ namespace Microsoft.Boogie
 
         public MoverTypeChecker(Program program)
         {
+            this.auxVars = new HashSet<Variable>();
             this.absyToPhaseNums = new Dictionary<Absy, HashSet<int>>();
             this.introducePhaseNums = new Dictionary<Variable, int>();
             this.hidePhaseNums = new Dictionary<Variable, int>();
@@ -330,7 +333,8 @@ namespace Microsoft.Boogie
             this.program = program;
             this.enclosingProc = null;
             this.enclosingImpl = null;
-            this.inSpecification = false;
+            this.canAccessSharedVars = false;
+            this.canAccessAuxVars = false;
             this.minPhaseNum = int.MaxValue;
             this.maxPhaseNum = -1;
             foreach (var g in program.GlobalVariables())
@@ -365,6 +369,14 @@ namespace Microsoft.Boogie
                 return node;
             }
             this.enclosingImpl = node;
+            auxVars = new HashSet<Variable>();
+            foreach (Variable v in node.LocVars)
+            {
+                if (QKeyValue.FindBoolAttribute(v.Attributes, "aux"))
+                {
+                    auxVars.Add(v);
+                }
+            }
             return base.VisitImplementation(node);
         }
         
@@ -448,14 +460,35 @@ namespace Microsoft.Boogie
             }
             return base.VisitParCallCmd(node);
         }
-        
+
+        public override Cmd VisitAssignCmd(AssignCmd node)
+        {
+            Contract.Ensures(Contract.Result<Cmd>() == node);
+            for (int i = 0; i < node.Lhss.Count; ++i)
+            {
+                bool savedCanAccessSharedVars = canAccessSharedVars;
+                bool savedCanAccessAuxVars = canAccessAuxVars;
+                Variable v = node.Lhss[i].DeepAssignedVariable;
+                if (v is LocalVariable && auxVars.Contains(v))
+                {
+                    canAccessSharedVars = true;
+                    canAccessAuxVars = true;
+                }
+                this.Visit(node.Lhss[i]);
+                this.Visit(node.Rhss[i]);
+                canAccessSharedVars = savedCanAccessSharedVars;
+                canAccessAuxVars = savedCanAccessAuxVars;
+            }
+            return node;
+        }
+
         public override Expr VisitIdentifierExpr(IdentifierExpr node)
         {
             if (node.Decl is GlobalVariable)
             {
-                if (!inSpecification)
+                if (!canAccessSharedVars)
                 {
-                    Error(node, "Global variable can be accessed only in atomic actions or specifications");
+                    Error(node, "Shared variable can be accessed only in atomic actions or specifications");
                 }
                 else
                 {
@@ -469,6 +502,11 @@ namespace Microsoft.Boogie
                     }
                 }
             }
+            else if (node.Decl is LocalVariable && auxVars.Contains(node.Decl) && !canAccessAuxVars)
+            {
+                Error(node, "Auxiliary variable can be accessed only in assertions");
+            }
+
             return base.VisitIdentifierExpr(node);
         }
         
@@ -476,9 +514,9 @@ namespace Microsoft.Boogie
         {
             minPhaseNum = int.MaxValue;
             maxPhaseNum = -1;
-            inSpecification = true;
+            canAccessSharedVars = true;
             Ensures ret = base.VisitEnsures(ensures);
-            inSpecification = false;
+            canAccessSharedVars = false;
             ActionInfo actionInfo = procToActionInfo[enclosingProc];
             AtomicActionInfo atomicActionInfo = actionInfo as AtomicActionInfo;
             if (atomicActionInfo != null && atomicActionInfo.ensures == ensures)
@@ -503,20 +541,22 @@ namespace Microsoft.Boogie
         {
             minPhaseNum = int.MaxValue;
             maxPhaseNum = -1;
-            inSpecification = true;
+            canAccessSharedVars = true;
             Requires ret = base.VisitRequires(requires);
-            inSpecification = false;
+            canAccessSharedVars = false;
             CheckAndAddPhases(requires, requires.Attributes, procToActionInfo[enclosingProc].phaseNum);
             return ret;
         }
-        
+
         public override Cmd VisitAssertCmd(AssertCmd node)
         {
             minPhaseNum = int.MaxValue;
             maxPhaseNum = -1;
-            inSpecification = true;
+            canAccessSharedVars = true;
+            canAccessAuxVars = true;
             Cmd ret = base.VisitAssertCmd(node);
-            inSpecification = false;
+            canAccessAuxVars = false;
+            canAccessSharedVars = false;
             CheckAndAddPhases(node, node.Attributes, procToActionInfo[enclosingImpl.Proc].phaseNum);
             return ret;
         }
