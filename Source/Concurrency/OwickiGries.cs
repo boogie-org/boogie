@@ -353,12 +353,16 @@ namespace Microsoft.Boogie
                 Expr bb = OldEqualityExpr(ogOldGlobalMap);
 
                 // assert pc || g_old == g || beta(i, g_old, o, g);
-                AssertCmd skipOrBetaAssertCmd = new AssertCmd(tok, Expr.Or(Expr.Ident(pc), Expr.Or(aa, beta)));
+                Expr assertExpr = Expr.Or(Expr.Ident(pc), Expr.Or(aa, beta));
+                assertExpr.Typecheck(new TypecheckingContext(null));
+                AssertCmd skipOrBetaAssertCmd = new AssertCmd(tok, assertExpr);
                 skipOrBetaAssertCmd.ErrorData = "Transition invariant in initial state violated";
                 newCmds.Add(skipOrBetaAssertCmd);
 
                 // assert pc ==> o_old == o && g_old == g;
-                AssertCmd skipAssertCmd = new AssertCmd(tok, Expr.Imp(Expr.Ident(pc), bb));
+                assertExpr = Expr.Imp(Expr.Ident(pc), bb);
+                assertExpr.Typecheck(new TypecheckingContext(null));
+                AssertCmd skipAssertCmd = new AssertCmd(tok, assertExpr);
                 skipAssertCmd.ErrorData = "Transition invariant in final state violated"; ;
                 newCmds.Add(skipAssertCmd);
 
@@ -373,6 +377,10 @@ namespace Microsoft.Boogie
                         Expr.Imp(aa, Expr.Ident(pc)),
                         Expr.Or(Expr.Ident(ok), beta)
                     });
+                foreach (Expr e in pcUpdateRHS)
+                {
+                    e.Typecheck(new TypecheckingContext(null));
+                }
                 newCmds.Add(new AssignCmd(Token.NoToken, pcUpdateLHS, pcUpdateRHS));
             }
         }
@@ -458,7 +466,9 @@ namespace Microsoft.Boogie
                 if (pc != null)
                 {
                     // assume pc || alpha(i, g);
-                    newCmds.Add(new AssumeCmd(Token.NoToken, Expr.Or(Expr.Ident(pc), alpha)));
+                    Expr assumeExpr = Expr.Or(Expr.Ident(pc), alpha);
+                    assumeExpr.Type = Type.Bool;
+                    newCmds.Add(new AssumeCmd(Token.NoToken, assumeExpr));
                 }
             }
 
@@ -898,7 +908,9 @@ namespace Microsoft.Boogie
                         if (globalMods.Count > 0 && pc != null)
                         {
                             // assume pc || alpha(i, g);
-                            newCmds.Add(new AssumeCmd(Token.NoToken, Expr.Or(Expr.Ident(pc), alpha)));
+                            Expr assumeExpr = Expr.Or(Expr.Ident(pc), alpha);
+                            assumeExpr.Type = Type.Bool;
+                            newCmds.Add(new AssumeCmd(Token.NoToken, assumeExpr));
                         }
                         HashSet<Variable> availableLinearVars = new HashSet<Variable>(AvailableLinearVars(parCallCmd));
                         linearTypeChecker.AddAvailableVars(parCallCmd, availableLinearVars);
