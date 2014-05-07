@@ -1,3 +1,5 @@
+// RUN: %boogie -noinfer %s > %t
+// RUN: %diff %s.expect %t
 // VC generation tests: passification
 
 procedure good0(x: int) returns (y: int, z: int)

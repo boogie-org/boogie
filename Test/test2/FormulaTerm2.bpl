@@ -1,3 +1,5 @@
+// RUN: %boogie -noinfer %s > %t
+// RUN: %diff %s.expect %t
 // This file has been created to test some of the formula/term issues in Zap.
 // However, the test harness does not specify any particular prover to be used,
 // since these tests should pass regardless of which prover is used.

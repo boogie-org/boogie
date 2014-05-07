@@ -1,0 +1,3 @@
+OldIllegal.bpl(9,11): Error: old expressions allowed only in two-state contexts
+OldIllegal.bpl(16,23): Error: old expressions allowed only in two-state contexts
+2 name resolution errors detected in OldIllegal.bpl

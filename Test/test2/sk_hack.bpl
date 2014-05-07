@@ -1,3 +1,5 @@
+// RUN: %boogie -noinfer %s > %t
+// RUN: %diff %s.expect %t
 function in_set(int) returns(bool);
 function next(int) returns(int);
 function f(int) returns(bool);

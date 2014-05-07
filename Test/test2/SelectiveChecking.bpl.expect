@@ -1,0 +1,16 @@
+SelectiveChecking.bpl(19,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    SelectiveChecking.bpl(17,3): anon0
+SelectiveChecking.bpl(32,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    SelectiveChecking.bpl(26,3): anon0
+    SelectiveChecking.bpl(29,5): anon3_Then
+    SelectiveChecking.bpl(32,3): anon2
+SelectiveChecking.bpl(39,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    SelectiveChecking.bpl(39,3): anon0
+SelectiveChecking.bpl(41,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    SelectiveChecking.bpl(39,3): anon0
+
+Boogie program verifier finished with 1 verified, 4 errors

@@ -1,0 +1,17 @@
+UpdateExpr.bpl(16,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    UpdateExpr.bpl(16,3): anon0
+UpdateExpr.bpl(21,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    UpdateExpr.bpl(21,3): anon0
+UpdateExpr.bpl(34,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    UpdateExpr.bpl(34,3): anon0
+UpdateExpr.bpl(40,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    UpdateExpr.bpl(40,3): anon0
+UpdateExpr.bpl(54,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    UpdateExpr.bpl(53,5): anon0
+
+Boogie program verifier finished with 5 verified, 5 errors

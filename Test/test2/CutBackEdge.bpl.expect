@@ -1,0 +1,13 @@
+CutBackEdge.bpl(12,5): Error BP5005: This loop invariant might not be maintained by the loop.
+Execution trace:
+    CutBackEdge.bpl(7,3): entry
+    CutBackEdge.bpl(11,3): block850
+CutBackEdge.bpl(22,5): Error BP5004: This loop invariant might not hold on entry.
+Execution trace:
+CutBackEdge.bpl(28,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    CutBackEdge.bpl(27,3): L
+CutBackEdge.bpl(40,5): Error BP5004: This loop invariant might not hold on entry.
+Execution trace:
+
+Boogie program verifier finished with 1 verified, 4 errors

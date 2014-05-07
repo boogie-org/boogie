@@ -1,3 +1,5 @@
+// RUN: %boogie -noinfer %s > %t
+// RUN: %diff %s.expect %t
 // Test formula-term distinction in Simplify
 
 procedure plus(x: int, y: int) returns (z: int);

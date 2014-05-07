@@ -1,0 +1,6 @@
+LambdaOldExpressions.bpl(29,1): Error BP5003: A postcondition might not hold on this return path.
+LambdaOldExpressions.bpl(23,3): Related location: This is the postcondition that might not hold.
+Execution trace:
+    LambdaOldExpressions.bpl(27,7): anon0
+
+Boogie program verifier finished with 4 verified, 1 error

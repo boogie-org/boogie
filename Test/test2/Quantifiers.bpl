@@ -1,3 +1,5 @@
+// RUN: %boogie -noinfer %s > %t
+// RUN: %diff %s.expect %t
 // ----------------------------------------------------------------------- single trigger
 
 function f(int, int) returns (int);

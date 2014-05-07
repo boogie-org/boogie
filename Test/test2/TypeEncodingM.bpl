@@ -1,3 +1,5 @@
+// RUN: %boogie -noinfer -typeEncoding:m %s > %t
+// RUN: %diff %s.expect %t
 type TT;
 
 procedure A()

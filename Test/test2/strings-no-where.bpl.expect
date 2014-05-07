@@ -1,0 +1,19 @@
+strings-no-where.bpl(203,103): Error: invalid argument types (any and name) to binary operator ==
+strings-no-where.bpl(205,105): Error: invalid argument types (any and name) to binary operator ==
+strings-no-where.bpl(211,106): Error: invalid type for argument 1 in application of IsAllocated: struct (expected: any)
+strings-no-where.bpl(213,72): Error: invalid type for argument 1 in application of IsAllocated: ref (expected: any)
+strings-no-where.bpl(213,108): Error: invalid type for argument 1 in application of IsAllocated: elements (expected: any)
+strings-no-where.bpl(213,130): Error: invalid type for argument 1 in application of IsAllocated: ref (expected: any)
+strings-no-where.bpl(215,78): Error: invalid type for argument 1 in application of IsAllocated: ref (expected: any)
+strings-no-where.bpl(237,98): Error: invalid argument types (any and name) to binary operator ==
+strings-no-where.bpl(251,118): Error: invalid argument types (any and name) to binary operator ==
+strings-no-where.bpl(701,34): Error: invalid type for argument 1 in application of IsAllocated: int (expected: any)
+strings-no-where.bpl(730,9): Error: mismatched types in assignment command (cannot assign bool to any)
+strings-no-where.bpl(739,9): Error: mismatched types in assignment command (cannot assign bool to any)
+strings-no-where.bpl(753,9): Error: mismatched types in assignment command (cannot assign bool to any)
+strings-no-where.bpl(762,9): Error: mismatched types in assignment command (cannot assign bool to any)
+strings-no-where.bpl(928,36): Error: invalid argument types (any and name) to binary operator ==
+strings-no-where.bpl(951,36): Error: invalid argument types (any and name) to binary operator ==
+strings-no-where.bpl(977,9): Error: mismatched types in assignment command (cannot assign name to any)
+strings-no-where.bpl(992,36): Error: invalid argument types (any and name) to binary operator ==
+18 type checking errors detected in strings-no-where.bpl

@@ -1,0 +1,8 @@
+Lambda.bpl(41,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Lambda.bpl(40,5): anon0
+Lambda.bpl(42,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Lambda.bpl(40,5): anon0
+
+Boogie program verifier finished with 6 verified, 2 errors

@@ -1,0 +1,13 @@
+ContractEvaluationOrder.bpl(10,1): Error BP5003: A postcondition might not hold on this return path.
+ContractEvaluationOrder.bpl(5,3): Related location: This is the postcondition that might not hold.
+Execution trace:
+    ContractEvaluationOrder.bpl(9,5): anon0
+ContractEvaluationOrder.bpl(17,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    ContractEvaluationOrder.bpl(14,5): anon0
+ContractEvaluationOrder.bpl(26,3): Error BP5002: A precondition for this call might not hold.
+ContractEvaluationOrder.bpl(32,3): Related location: This is the precondition that might not hold.
+Execution trace:
+    ContractEvaluationOrder.bpl(25,5): anon0
+
+Boogie program verifier finished with 1 verified, 3 errors

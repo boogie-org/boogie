@@ -1,0 +1,47 @@
+Timeouts0.bpl(21,5): Error BP5003: A postcondition might not hold on this return path.
+Timeouts0.bpl(6,3): Related location: This is the postcondition that might not hold.
+Execution trace:
+    Timeouts0.bpl(10,7): anon0
+    Timeouts0.bpl(12,5): anon4_LoopHead
+    Timeouts0.bpl(12,5): anon4_LoopDone
+    Timeouts0.bpl(21,5): anon5_LoopHead
+    Timeouts0.bpl(21,5): anon5_LoopDone
+Timeouts0.bpl(23,7): Error BP5005: This loop invariant might not be maintained by the loop.
+Execution trace:
+    Timeouts0.bpl(10,7): anon0
+    Timeouts0.bpl(12,5): anon4_LoopHead
+    Timeouts0.bpl(12,5): anon4_LoopDone
+    Timeouts0.bpl(21,5): anon5_LoopHead
+    Timeouts0.bpl(25,11): anon5_LoopBody
+Timeouts0.bpl(50,5): Error BP5003: A postcondition might not hold on this return path.
+Timeouts0.bpl(33,3): Related location: This is the postcondition that might not hold.
+Execution trace:
+    Timeouts0.bpl(39,7): anon0
+    Timeouts0.bpl(41,5): anon4_LoopHead
+    Timeouts0.bpl(41,5): anon4_LoopDone
+    Timeouts0.bpl(50,5): anon5_LoopHead
+    Timeouts0.bpl(50,5): anon5_LoopDone
+Timeouts0.bpl(52,7): Error BP5005: This loop invariant might not be maintained by the loop.
+Execution trace:
+    Timeouts0.bpl(39,7): anon0
+    Timeouts0.bpl(41,5): anon4_LoopHead
+    Timeouts0.bpl(41,5): anon4_LoopDone
+    Timeouts0.bpl(50,5): anon5_LoopHead
+    Timeouts0.bpl(54,11): anon5_LoopBody
+Timeouts0.bpl(79,5): Error BP5003: A postcondition might not hold on this return path.
+Timeouts0.bpl(62,3): Related location: This is the postcondition that might not hold.
+Execution trace:
+    Timeouts0.bpl(68,7): anon0
+    Timeouts0.bpl(70,5): anon4_LoopHead
+    Timeouts0.bpl(70,5): anon4_LoopDone
+    Timeouts0.bpl(79,5): anon5_LoopHead
+    Timeouts0.bpl(79,5): anon5_LoopDone
+Timeouts0.bpl(81,7): Error BP5005: This loop invariant might not be maintained by the loop.
+Execution trace:
+    Timeouts0.bpl(68,7): anon0
+    Timeouts0.bpl(70,5): anon4_LoopHead
+    Timeouts0.bpl(70,5): anon4_LoopDone
+    Timeouts0.bpl(79,5): anon5_LoopHead
+    Timeouts0.bpl(83,11): anon5_LoopBody
+
+Boogie program verifier finished with 0 verified, 6 errors

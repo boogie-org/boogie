@@ -1,0 +1,6 @@
+LoopInvAssume.bpl(20,7): Error BP5001: This assertion might not hold.
+Execution trace:
+    LoopInvAssume.bpl(10,4): entry
+    LoopInvAssume.bpl(18,4): exit
+
+Boogie program verifier finished with 0 verified, 1 error

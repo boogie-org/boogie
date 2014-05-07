@@ -1,0 +1,8 @@
+IfThenElse1.bpl(28,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    IfThenElse1.bpl(28,3): anon0
+IfThenElse1.bpl(35,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    IfThenElse1.bpl(35,3): anon0
+
+Boogie program verifier finished with 2 verified, 2 errors

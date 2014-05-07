@@ -1,0 +1,14 @@
+LambdaPoly.bpl(30,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    LambdaPoly.bpl(26,5): anon0
+    LambdaPoly.bpl(29,5): anon4_Then
+LambdaPoly.bpl(33,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    LambdaPoly.bpl(26,5): anon0
+    LambdaPoly.bpl(32,5): anon5_Then
+LambdaPoly.bpl(38,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    LambdaPoly.bpl(26,5): anon0
+    LambdaPoly.bpl(36,5): anon5_Else
+
+Boogie program verifier finished with 1 verified, 3 errors

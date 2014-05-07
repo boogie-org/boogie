@@ -1,3 +1,5 @@
+// RUN: %boogie -noinfer %s > %t
+// RUN: %diff %s.expect %t
 procedure P0()
 {
   var x: int where 0 <= x;

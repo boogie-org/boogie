@@ -1,3 +1,5 @@
+// RUN: %boogie -noinfer %s > %t
+// RUN: %diff %s.expect %t
 procedure Test0()
 {
     var {:assumption} a0: bool;

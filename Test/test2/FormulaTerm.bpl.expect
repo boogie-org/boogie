@@ -1,0 +1,6 @@
+FormulaTerm.bpl(12,3): Error BP5003: A postcondition might not hold on this return path.
+FormulaTerm.bpl(6,3): Related location: This is the postcondition that might not hold.
+Execution trace:
+    FormulaTerm.bpl(10,1): start
+
+Boogie program verifier finished with 11 verified, 1 error

@@ -1,0 +1,12 @@
+Call.bpl(15,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    Call.bpl(11,3): entry
+Call.bpl(48,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    Call.bpl(47,3): start
+Call.bpl(57,5): Error BP5003: A postcondition might not hold on this return path.
+Call.bpl(22,3): Related location: This is the postcondition that might not hold.
+Execution trace:
+    Call.bpl(55,3): start
+
+Boogie program verifier finished with 2 verified, 3 errors

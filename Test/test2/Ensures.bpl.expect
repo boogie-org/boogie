@@ -1,0 +1,22 @@
+Ensures.bpl(32,5): Error BP5003: A postcondition might not hold on this return path.
+Ensures.bpl(21,3): Related location: This is the postcondition that might not hold.
+Execution trace:
+    Ensures.bpl(30,3): start
+Ensures.bpl(37,5): Error BP5003: A postcondition might not hold on this return path.
+Ensures.bpl(21,3): Related location: This is the postcondition that might not hold.
+Execution trace:
+    Ensures.bpl(36,3): start
+Ensures.bpl(43,5): Error BP5003: A postcondition might not hold on this return path.
+Ensures.bpl(21,3): Related location: This is the postcondition that might not hold.
+Execution trace:
+    Ensures.bpl(41,3): start
+Ensures.bpl(49,5): Error BP5003: A postcondition might not hold on this return path.
+Ensures.bpl(21,3): Related location: This is the postcondition that might not hold.
+Execution trace:
+    Ensures.bpl(47,3): start
+Ensures.bpl(74,5): Error BP5003: A postcondition might not hold on this return path.
+Ensures.bpl(21,3): Related location: This is the postcondition that might not hold.
+Execution trace:
+    Ensures.bpl(72,3): start
+
+Boogie program verifier finished with 5 verified, 5 errors

@@ -1,0 +1,20 @@
+Passification.bpl(46,3): Error BP5003: A postcondition might not hold on this return path.
+Passification.bpl(38,3): Related location: This is the postcondition that might not hold.
+Execution trace:
+    Passification.bpl(41,1): A
+Passification.bpl(118,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Passification.bpl(108,1): L0
+    Passification.bpl(113,1): L1
+    Passification.bpl(117,1): L2
+Passification.bpl(153,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Passification.bpl(146,1): L0
+    Passification.bpl(152,1): L2
+Passification.bpl(167,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Passification.bpl(160,1): L0
+    Passification.bpl(163,1): L1
+    Passification.bpl(166,1): L2
+
+Boogie program verifier finished with 7 verified, 4 errors

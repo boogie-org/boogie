@@ -1,0 +1,20 @@
+Quantifiers.bpl(22,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    Quantifiers.bpl(21,3): start
+Quantifiers.bpl(45,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    Quantifiers.bpl(44,3): start
+Quantifiers.bpl(67,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    Quantifiers.bpl(66,3): start
+Quantifiers.bpl(75,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    Quantifiers.bpl(73,3): start
+Quantifiers.bpl(127,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    Quantifiers.bpl(126,3): start
+Quantifiers.bpl(152,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    Quantifiers.bpl(151,3): start
+
+Boogie program verifier finished with 8 verified, 6 errors

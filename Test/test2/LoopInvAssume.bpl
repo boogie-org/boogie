@@ -1,3 +1,5 @@
+// RUN: %boogie -noinfer %s > %t
+// RUN: %diff %s.expect %t
 // Check that assumes in loop invariants are handled correctly
 
 var x : int;

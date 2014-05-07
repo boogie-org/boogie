@@ -1,41 +1,41 @@
 
 -------------------- FormulaTerm.bpl --------------------
-FormulaTerm.bpl(10,3): Error BP5003: A postcondition might not hold on this return path.
-FormulaTerm.bpl(4,3): Related location: This is the postcondition that might not hold.
+FormulaTerm.bpl(12,3): Error BP5003: A postcondition might not hold on this return path.
+FormulaTerm.bpl(6,3): Related location: This is the postcondition that might not hold.
 Execution trace:
-    FormulaTerm.bpl(8,1): start
+    FormulaTerm.bpl(10,1): start
 
 Boogie program verifier finished with 11 verified, 1 error
 
 -------------------- FormulaTerm2.bpl --------------------
-FormulaTerm2.bpl(39,5): Error BP5001: This assertion might not hold.
+FormulaTerm2.bpl(41,5): Error BP5001: This assertion might not hold.
 Execution trace:
-    FormulaTerm2.bpl(36,3): start
-FormulaTerm2.bpl(47,5): Error BP5001: This assertion might not hold.
+    FormulaTerm2.bpl(38,3): start
+FormulaTerm2.bpl(49,5): Error BP5001: This assertion might not hold.
 Execution trace:
-    FormulaTerm2.bpl(45,3): start
+    FormulaTerm2.bpl(47,3): start
 
 Boogie program verifier finished with 2 verified, 2 errors
 
 -------------------- Passification.bpl --------------------
-Passification.bpl(44,3): Error BP5003: A postcondition might not hold on this return path.
-Passification.bpl(36,3): Related location: This is the postcondition that might not hold.
+Passification.bpl(46,3): Error BP5003: A postcondition might not hold on this return path.
+Passification.bpl(38,3): Related location: This is the postcondition that might not hold.
 Execution trace:
-    Passification.bpl(39,1): A
-Passification.bpl(116,3): Error BP5001: This assertion might not hold.
+    Passification.bpl(41,1): A
+Passification.bpl(118,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    Passification.bpl(106,1): L0
-    Passification.bpl(111,1): L1
-    Passification.bpl(115,1): L2
-Passification.bpl(151,3): Error BP5001: This assertion might not hold.
+    Passification.bpl(108,1): L0
+    Passification.bpl(113,1): L1
+    Passification.bpl(117,1): L2
+Passification.bpl(153,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    Passification.bpl(144,1): L0
-    Passification.bpl(150,1): L2
-Passification.bpl(165,3): Error BP5001: This assertion might not hold.
+    Passification.bpl(146,1): L0
+    Passification.bpl(152,1): L2
+Passification.bpl(167,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    Passification.bpl(158,1): L0
-    Passification.bpl(161,1): L1
-    Passification.bpl(164,1): L2
+    Passification.bpl(160,1): L0
+    Passification.bpl(163,1): L1
+    Passification.bpl(166,1): L2
 
 Boogie program verifier finished with 7 verified, 4 errors
 
@@ -44,121 +44,121 @@ Boogie program verifier finished with 7 verified, 4 errors
 Boogie program verifier finished with 4 verified, 0 errors
 
 -------------------- Ensures.bpl --------------------
-Ensures.bpl(30,5): Error BP5003: A postcondition might not hold on this return path.
-Ensures.bpl(19,3): Related location: This is the postcondition that might not hold.
+Ensures.bpl(32,5): Error BP5003: A postcondition might not hold on this return path.
+Ensures.bpl(21,3): Related location: This is the postcondition that might not hold.
 Execution trace:
-    Ensures.bpl(28,3): start
-Ensures.bpl(35,5): Error BP5003: A postcondition might not hold on this return path.
-Ensures.bpl(19,3): Related location: This is the postcondition that might not hold.
+    Ensures.bpl(30,3): start
+Ensures.bpl(37,5): Error BP5003: A postcondition might not hold on this return path.
+Ensures.bpl(21,3): Related location: This is the postcondition that might not hold.
 Execution trace:
-    Ensures.bpl(34,3): start
-Ensures.bpl(41,5): Error BP5003: A postcondition might not hold on this return path.
-Ensures.bpl(19,3): Related location: This is the postcondition that might not hold.
+    Ensures.bpl(36,3): start
+Ensures.bpl(43,5): Error BP5003: A postcondition might not hold on this return path.
+Ensures.bpl(21,3): Related location: This is the postcondition that might not hold.
 Execution trace:
-    Ensures.bpl(39,3): start
-Ensures.bpl(47,5): Error BP5003: A postcondition might not hold on this return path.
-Ensures.bpl(19,3): Related location: This is the postcondition that might not hold.
+    Ensures.bpl(41,3): start
+Ensures.bpl(49,5): Error BP5003: A postcondition might not hold on this return path.
+Ensures.bpl(21,3): Related location: This is the postcondition that might not hold.
 Execution trace:
-    Ensures.bpl(45,3): start
-Ensures.bpl(72,5): Error BP5003: A postcondition might not hold on this return path.
-Ensures.bpl(19,3): Related location: This is the postcondition that might not hold.
+    Ensures.bpl(47,3): start
+Ensures.bpl(74,5): Error BP5003: A postcondition might not hold on this return path.
+Ensures.bpl(21,3): Related location: This is the postcondition that might not hold.
 Execution trace:
-    Ensures.bpl(70,3): start
+    Ensures.bpl(72,3): start
 
 Boogie program verifier finished with 5 verified, 5 errors
 
 -------------------- Old.bpl --------------------
-Old.bpl(29,5): Error BP5003: A postcondition might not hold on this return path.
-Old.bpl(26,3): Related location: This is the postcondition that might not hold.
+Old.bpl(31,5): Error BP5003: A postcondition might not hold on this return path.
+Old.bpl(28,3): Related location: This is the postcondition that might not hold.
 Execution trace:
-    Old.bpl(28,3): start
+    Old.bpl(30,3): start
 
 Boogie program verifier finished with 7 verified, 1 error
 
 -------------------- OldIllegal.bpl --------------------
-OldIllegal.bpl(7,11): Error: old expressions allowed only in two-state contexts
-OldIllegal.bpl(14,23): Error: old expressions allowed only in two-state contexts
+OldIllegal.bpl(9,11): Error: old expressions allowed only in two-state contexts
+OldIllegal.bpl(16,23): Error: old expressions allowed only in two-state contexts
 2 name resolution errors detected in OldIllegal.bpl
 
 -------------------- Arrays.bpl --------------------
-Arrays.bpl(46,5): Error BP5003: A postcondition might not hold on this return path.
-Arrays.bpl(38,3): Related location: This is the postcondition that might not hold.
+Arrays.bpl(48,5): Error BP5003: A postcondition might not hold on this return path.
+Arrays.bpl(40,3): Related location: This is the postcondition that might not hold.
 Execution trace:
-    Arrays.bpl(42,3): start
-Arrays.bpl(127,5): Error BP5003: A postcondition might not hold on this return path.
-Arrays.bpl(119,3): Related location: This is the postcondition that might not hold.
+    Arrays.bpl(44,3): start
+Arrays.bpl(129,5): Error BP5003: A postcondition might not hold on this return path.
+Arrays.bpl(121,3): Related location: This is the postcondition that might not hold.
 Execution trace:
-    Arrays.bpl(123,3): start
+    Arrays.bpl(125,3): start
 
 Boogie program verifier finished with 8 verified, 2 errors
 
 -------------------- Axioms.bpl --------------------
-Axioms.bpl(19,5): Error BP5001: This assertion might not hold.
+Axioms.bpl(21,5): Error BP5001: This assertion might not hold.
 Execution trace:
-    Axioms.bpl(18,3): start
+    Axioms.bpl(20,3): start
 
 Boogie program verifier finished with 2 verified, 1 error
 
 -------------------- Quantifiers.bpl --------------------
-Quantifiers.bpl(20,5): Error BP5001: This assertion might not hold.
+Quantifiers.bpl(22,5): Error BP5001: This assertion might not hold.
 Execution trace:
-    Quantifiers.bpl(19,3): start
-Quantifiers.bpl(43,5): Error BP5001: This assertion might not hold.
+    Quantifiers.bpl(21,3): start
+Quantifiers.bpl(45,5): Error BP5001: This assertion might not hold.
 Execution trace:
-    Quantifiers.bpl(42,3): start
-Quantifiers.bpl(65,5): Error BP5001: This assertion might not hold.
+    Quantifiers.bpl(44,3): start
+Quantifiers.bpl(67,5): Error BP5001: This assertion might not hold.
 Execution trace:
-    Quantifiers.bpl(64,3): start
-Quantifiers.bpl(73,5): Error BP5001: This assertion might not hold.
+    Quantifiers.bpl(66,3): start
+Quantifiers.bpl(75,5): Error BP5001: This assertion might not hold.
 Execution trace:
-    Quantifiers.bpl(71,3): start
-Quantifiers.bpl(125,5): Error BP5001: This assertion might not hold.
+    Quantifiers.bpl(73,3): start
+Quantifiers.bpl(127,5): Error BP5001: This assertion might not hold.
 Execution trace:
-    Quantifiers.bpl(124,3): start
-Quantifiers.bpl(150,5): Error BP5001: This assertion might not hold.
+    Quantifiers.bpl(126,3): start
+Quantifiers.bpl(152,5): Error BP5001: This assertion might not hold.
 Execution trace:
-    Quantifiers.bpl(149,3): start
+    Quantifiers.bpl(151,3): start
 
 Boogie program verifier finished with 8 verified, 6 errors
 
 -------------------- Call.bpl --------------------
-Call.bpl(13,5): Error BP5001: This assertion might not hold.
+Call.bpl(15,5): Error BP5001: This assertion might not hold.
 Execution trace:
-    Call.bpl(9,3): entry
-Call.bpl(46,5): Error BP5001: This assertion might not hold.
+    Call.bpl(11,3): entry
+Call.bpl(48,5): Error BP5001: This assertion might not hold.
 Execution trace:
-    Call.bpl(45,3): start
-Call.bpl(55,5): Error BP5003: A postcondition might not hold on this return path.
-Call.bpl(20,3): Related location: This is the postcondition that might not hold.
+    Call.bpl(47,3): start
+Call.bpl(57,5): Error BP5003: A postcondition might not hold on this return path.
+Call.bpl(22,3): Related location: This is the postcondition that might not hold.
 Execution trace:
-    Call.bpl(53,3): start
+    Call.bpl(55,3): start
 
 Boogie program verifier finished with 2 verified, 3 errors
 
 -------------------- AssumeEnsures.bpl --------------------
-AssumeEnsures.bpl(28,9): Error BP5001: This assertion might not hold.
+AssumeEnsures.bpl(30,9): Error BP5001: This assertion might not hold.
 Execution trace:
-    AssumeEnsures.bpl(26,5): entry
-AssumeEnsures.bpl(47,9): Error BP5001: This assertion might not hold.
+    AssumeEnsures.bpl(28,5): entry
+AssumeEnsures.bpl(49,9): Error BP5001: This assertion might not hold.
 Execution trace:
-    AssumeEnsures.bpl(46,5): entry
-AssumeEnsures.bpl(62,9): Error BP5001: This assertion might not hold.
+    AssumeEnsures.bpl(48,5): entry
+AssumeEnsures.bpl(64,9): Error BP5001: This assertion might not hold.
 Execution trace:
-    AssumeEnsures.bpl(60,5): entry
+    AssumeEnsures.bpl(62,5): entry
 
 Boogie program verifier finished with 4 verified, 3 errors
 
 -------------------- CutBackEdge.bpl --------------------
-CutBackEdge.bpl(10,5): Error BP5005: This loop invariant might not be maintained by the loop.
+CutBackEdge.bpl(12,5): Error BP5005: This loop invariant might not be maintained by the loop.
 Execution trace:
-    CutBackEdge.bpl(5,3): entry
-    CutBackEdge.bpl(9,3): block850
-CutBackEdge.bpl(20,5): Error BP5004: This loop invariant might not hold on entry.
+    CutBackEdge.bpl(7,3): entry
+    CutBackEdge.bpl(11,3): block850
+CutBackEdge.bpl(22,5): Error BP5004: This loop invariant might not hold on entry.
 Execution trace:
-CutBackEdge.bpl(26,5): Error BP5001: This assertion might not hold.
+CutBackEdge.bpl(28,5): Error BP5001: This assertion might not hold.
 Execution trace:
-    CutBackEdge.bpl(25,3): L
-CutBackEdge.bpl(38,5): Error BP5004: This loop invariant might not hold on entry.
+    CutBackEdge.bpl(27,3): L
+CutBackEdge.bpl(40,5): Error BP5004: This loop invariant might not hold on entry.
 Execution trace:
 
 Boogie program verifier finished with 1 verified, 4 errors
@@ -168,310 +168,310 @@ Boogie program verifier finished with 1 verified, 4 errors
 Boogie program verifier finished with 2 verified, 0 errors
 
 -------------------- LoopInvAssume.bpl --------------------
-LoopInvAssume.bpl(18,7): Error BP5001: This assertion might not hold.
+LoopInvAssume.bpl(20,7): Error BP5001: This assertion might not hold.
 Execution trace:
-    LoopInvAssume.bpl(8,4): entry
-    LoopInvAssume.bpl(16,4): exit
+    LoopInvAssume.bpl(10,4): entry
+    LoopInvAssume.bpl(18,4): exit
 
 Boogie program verifier finished with 0 verified, 1 error
 
 -------------------- strings-no-where.bpl --------------------
-strings-no-where.bpl(201,103): Error: invalid argument types (any and name) to binary operator ==
-strings-no-where.bpl(203,105): Error: invalid argument types (any and name) to binary operator ==
-strings-no-where.bpl(209,106): Error: invalid type for argument 1 in application of IsAllocated: struct (expected: any)
-strings-no-where.bpl(211,72): Error: invalid type for argument 1 in application of IsAllocated: ref (expected: any)
-strings-no-where.bpl(211,108): Error: invalid type for argument 1 in application of IsAllocated: elements (expected: any)
-strings-no-where.bpl(211,130): Error: invalid type for argument 1 in application of IsAllocated: ref (expected: any)
-strings-no-where.bpl(213,78): Error: invalid type for argument 1 in application of IsAllocated: ref (expected: any)
-strings-no-where.bpl(235,98): Error: invalid argument types (any and name) to binary operator ==
-strings-no-where.bpl(249,118): Error: invalid argument types (any and name) to binary operator ==
-strings-no-where.bpl(699,34): Error: invalid type for argument 1 in application of IsAllocated: int (expected: any)
-strings-no-where.bpl(728,9): Error: mismatched types in assignment command (cannot assign bool to any)
-strings-no-where.bpl(737,9): Error: mismatched types in assignment command (cannot assign bool to any)
-strings-no-where.bpl(751,9): Error: mismatched types in assignment command (cannot assign bool to any)
-strings-no-where.bpl(760,9): Error: mismatched types in assignment command (cannot assign bool to any)
-strings-no-where.bpl(926,36): Error: invalid argument types (any and name) to binary operator ==
-strings-no-where.bpl(949,36): Error: invalid argument types (any and name) to binary operator ==
-strings-no-where.bpl(975,9): Error: mismatched types in assignment command (cannot assign name to any)
-strings-no-where.bpl(990,36): Error: invalid argument types (any and name) to binary operator ==
+strings-no-where.bpl(203,103): Error: invalid argument types (any and name) to binary operator ==
+strings-no-where.bpl(205,105): Error: invalid argument types (any and name) to binary operator ==
+strings-no-where.bpl(211,106): Error: invalid type for argument 1 in application of IsAllocated: struct (expected: any)
+strings-no-where.bpl(213,72): Error: invalid type for argument 1 in application of IsAllocated: ref (expected: any)
+strings-no-where.bpl(213,108): Error: invalid type for argument 1 in application of IsAllocated: elements (expected: any)
+strings-no-where.bpl(213,130): Error: invalid type for argument 1 in application of IsAllocated: ref (expected: any)
+strings-no-where.bpl(215,78): Error: invalid type for argument 1 in application of IsAllocated: ref (expected: any)
+strings-no-where.bpl(237,98): Error: invalid argument types (any and name) to binary operator ==
+strings-no-where.bpl(251,118): Error: invalid argument types (any and name) to binary operator ==
+strings-no-where.bpl(701,34): Error: invalid type for argument 1 in application of IsAllocated: int (expected: any)
+strings-no-where.bpl(730,9): Error: mismatched types in assignment command (cannot assign bool to any)
+strings-no-where.bpl(739,9): Error: mismatched types in assignment command (cannot assign bool to any)
+strings-no-where.bpl(753,9): Error: mismatched types in assignment command (cannot assign bool to any)
+strings-no-where.bpl(762,9): Error: mismatched types in assignment command (cannot assign bool to any)
+strings-no-where.bpl(928,36): Error: invalid argument types (any and name) to binary operator ==
+strings-no-where.bpl(951,36): Error: invalid argument types (any and name) to binary operator ==
+strings-no-where.bpl(977,9): Error: mismatched types in assignment command (cannot assign name to any)
+strings-no-where.bpl(992,36): Error: invalid argument types (any and name) to binary operator ==
 18 type checking errors detected in strings-no-where.bpl
 
 -------------------- strings-where.bpl --------------------
-strings-where.bpl(201,103): Error: invalid argument types (any and name) to binary operator ==
-strings-where.bpl(203,105): Error: invalid argument types (any and name) to binary operator ==
-strings-where.bpl(209,106): Error: invalid type for argument 1 in application of IsAllocated: struct (expected: any)
-strings-where.bpl(211,72): Error: invalid type for argument 1 in application of IsAllocated: ref (expected: any)
-strings-where.bpl(211,108): Error: invalid type for argument 1 in application of IsAllocated: elements (expected: any)
-strings-where.bpl(211,130): Error: invalid type for argument 1 in application of IsAllocated: ref (expected: any)
-strings-where.bpl(213,78): Error: invalid type for argument 1 in application of IsAllocated: ref (expected: any)
-strings-where.bpl(235,98): Error: invalid argument types (any and name) to binary operator ==
-strings-where.bpl(249,118): Error: invalid argument types (any and name) to binary operator ==
-strings-where.bpl(699,34): Error: invalid type for argument 1 in application of IsAllocated: int (expected: any)
-strings-where.bpl(728,9): Error: mismatched types in assignment command (cannot assign bool to any)
-strings-where.bpl(737,9): Error: mismatched types in assignment command (cannot assign bool to any)
-strings-where.bpl(751,9): Error: mismatched types in assignment command (cannot assign bool to any)
-strings-where.bpl(760,9): Error: mismatched types in assignment command (cannot assign bool to any)
-strings-where.bpl(926,36): Error: invalid argument types (any and name) to binary operator ==
-strings-where.bpl(949,36): Error: invalid argument types (any and name) to binary operator ==
-strings-where.bpl(975,9): Error: mismatched types in assignment command (cannot assign name to any)
-strings-where.bpl(990,36): Error: invalid argument types (any and name) to binary operator ==
+strings-where.bpl(203,103): Error: invalid argument types (any and name) to binary operator ==
+strings-where.bpl(205,105): Error: invalid argument types (any and name) to binary operator ==
+strings-where.bpl(211,106): Error: invalid type for argument 1 in application of IsAllocated: struct (expected: any)
+strings-where.bpl(213,72): Error: invalid type for argument 1 in application of IsAllocated: ref (expected: any)
+strings-where.bpl(213,108): Error: invalid type for argument 1 in application of IsAllocated: elements (expected: any)
+strings-where.bpl(213,130): Error: invalid type for argument 1 in application of IsAllocated: ref (expected: any)
+strings-where.bpl(215,78): Error: invalid type for argument 1 in application of IsAllocated: ref (expected: any)
+strings-where.bpl(237,98): Error: invalid argument types (any and name) to binary operator ==
+strings-where.bpl(251,118): Error: invalid argument types (any and name) to binary operator ==
+strings-where.bpl(701,34): Error: invalid type for argument 1 in application of IsAllocated: int (expected: any)
+strings-where.bpl(730,9): Error: mismatched types in assignment command (cannot assign bool to any)
+strings-where.bpl(739,9): Error: mismatched types in assignment command (cannot assign bool to any)
+strings-where.bpl(753,9): Error: mismatched types in assignment command (cannot assign bool to any)
+strings-where.bpl(762,9): Error: mismatched types in assignment command (cannot assign bool to any)
+strings-where.bpl(928,36): Error: invalid argument types (any and name) to binary operator ==
+strings-where.bpl(951,36): Error: invalid argument types (any and name) to binary operator ==
+strings-where.bpl(977,9): Error: mismatched types in assignment command (cannot assign name to any)
+strings-where.bpl(992,36): Error: invalid argument types (any and name) to binary operator ==
 18 type checking errors detected in strings-where.bpl
 
 -------------------- Structured.bpl --------------------
-Structured.bpl(252,14): Error BP5003: A postcondition might not hold on this return path.
-Structured.bpl(243,3): Related location: This is the postcondition that might not hold.
+Structured.bpl(254,14): Error BP5003: A postcondition might not hold on this return path.
+Structured.bpl(245,3): Related location: This is the postcondition that might not hold.
 Execution trace:
-    Structured.bpl(244,5): anon0
-    Structured.bpl(246,5): anon6_LoopBody
-    Structured.bpl(247,7): anon7_LoopBody
-    Structured.bpl(248,11): anon8_Then
-    Structured.bpl(252,14): anon9_Then
-Structured.bpl(303,3): Error BP5001: This assertion might not hold.
+    Structured.bpl(246,5): anon0
+    Structured.bpl(248,5): anon6_LoopBody
+    Structured.bpl(249,7): anon7_LoopBody
+    Structured.bpl(250,11): anon8_Then
+    Structured.bpl(254,14): anon9_Then
+Structured.bpl(305,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    Structured.bpl(299,5): anon0
-    Structured.bpl(300,3): anon3_Else
-    Structured.bpl(303,3): anon2
-Structured.bpl(311,7): Error BP5001: This assertion might not hold.
+    Structured.bpl(301,5): anon0
+    Structured.bpl(302,3): anon3_Else
+    Structured.bpl(305,3): anon2
+Structured.bpl(313,7): Error BP5001: This assertion might not hold.
 Execution trace:
-    Structured.bpl(308,3): anon0
-    Structured.bpl(308,3): anon1_Then
-    Structured.bpl(309,5): A
+    Structured.bpl(310,3): anon0
+    Structured.bpl(310,3): anon1_Then
+    Structured.bpl(311,5): A
 
 Boogie program verifier finished with 16 verified, 3 errors
 
 -------------------- Where.bpl --------------------
-Where.bpl(8,3): Error BP5001: This assertion might not hold.
+Where.bpl(10,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    Where.bpl(6,3): anon0
-Where.bpl(22,3): Error BP5001: This assertion might not hold.
+    Where.bpl(8,3): anon0
+Where.bpl(24,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    Where.bpl(16,5): anon0
-Where.bpl(32,3): Error BP5001: This assertion might not hold.
+    Where.bpl(18,5): anon0
+Where.bpl(34,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    Where.bpl(30,3): anon0
-Where.bpl(44,3): Error BP5001: This assertion might not hold.
+    Where.bpl(32,3): anon0
+Where.bpl(46,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    Where.bpl(40,5): anon0
-Where.bpl(57,3): Error BP5001: This assertion might not hold.
+    Where.bpl(42,5): anon0
+Where.bpl(59,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    Where.bpl(52,3): anon0
-Where.bpl(111,3): Error BP5001: This assertion might not hold.
+    Where.bpl(54,3): anon0
+Where.bpl(113,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    Where.bpl(102,5): anon0
-    Where.bpl(104,3): anon3_LoopHead
-    Where.bpl(104,3): anon3_LoopDone
-Where.bpl(128,3): Error BP5001: This assertion might not hold.
+    Where.bpl(104,5): anon0
+    Where.bpl(106,3): anon3_LoopHead
+    Where.bpl(106,3): anon3_LoopDone
+Where.bpl(130,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    Where.bpl(121,5): anon0
-    Where.bpl(122,3): anon3_LoopHead
-    Where.bpl(122,3): anon3_LoopDone
-Where.bpl(145,3): Error BP5001: This assertion might not hold.
+    Where.bpl(123,5): anon0
+    Where.bpl(124,3): anon3_LoopHead
+    Where.bpl(124,3): anon3_LoopDone
+Where.bpl(147,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    Where.bpl(138,5): anon0
-    Where.bpl(139,3): anon3_LoopHead
-    Where.bpl(139,3): anon3_LoopDone
-Where.bpl(162,3): Error BP5001: This assertion might not hold.
+    Where.bpl(140,5): anon0
+    Where.bpl(141,3): anon3_LoopHead
+    Where.bpl(141,3): anon3_LoopDone
+Where.bpl(164,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    Where.bpl(155,5): anon0
-    Where.bpl(156,3): anon3_LoopHead
-    Where.bpl(156,3): anon3_LoopDone
+    Where.bpl(157,5): anon0
+    Where.bpl(158,3): anon3_LoopHead
+    Where.bpl(158,3): anon3_LoopDone
 
 Boogie program verifier finished with 2 verified, 9 errors
 
 -------------------- UpdateExpr.bpl --------------------
-UpdateExpr.bpl(14,3): Error BP5001: This assertion might not hold.
+UpdateExpr.bpl(16,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    UpdateExpr.bpl(14,3): anon0
-UpdateExpr.bpl(19,3): Error BP5001: This assertion might not hold.
+    UpdateExpr.bpl(16,3): anon0
+UpdateExpr.bpl(21,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    UpdateExpr.bpl(19,3): anon0
-UpdateExpr.bpl(32,3): Error BP5001: This assertion might not hold.
+    UpdateExpr.bpl(21,3): anon0
+UpdateExpr.bpl(34,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    UpdateExpr.bpl(32,3): anon0
-UpdateExpr.bpl(38,3): Error BP5001: This assertion might not hold.
+    UpdateExpr.bpl(34,3): anon0
+UpdateExpr.bpl(40,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    UpdateExpr.bpl(38,3): anon0
-UpdateExpr.bpl(52,3): Error BP5001: This assertion might not hold.
+    UpdateExpr.bpl(40,3): anon0
+UpdateExpr.bpl(54,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    UpdateExpr.bpl(51,5): anon0
+    UpdateExpr.bpl(53,5): anon0
 
 Boogie program verifier finished with 5 verified, 5 errors
 
 -------------------- NeverPattern.bpl --------------------
-NeverPattern.bpl(16,3): Error BP5001: This assertion might not hold.
+NeverPattern.bpl(18,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    NeverPattern.bpl(15,3): anon0
-NeverPattern.bpl(22,3): Error BP5001: This assertion might not hold.
+    NeverPattern.bpl(17,3): anon0
+NeverPattern.bpl(24,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    NeverPattern.bpl(21,3): anon0
-NeverPattern.bpl(28,3): Error BP5001: This assertion might not hold.
+    NeverPattern.bpl(23,3): anon0
+NeverPattern.bpl(30,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    NeverPattern.bpl(27,3): anon0
+    NeverPattern.bpl(29,3): anon0
 
 Boogie program verifier finished with 2 verified, 3 errors
 
 -------------------- NullaryMaps.bpl --------------------
-NullaryMaps.bpl(28,3): Error BP5001: This assertion might not hold.
-Execution trace:
-    NullaryMaps.bpl(28,3): anon0
 NullaryMaps.bpl(30,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    NullaryMaps.bpl(28,3): anon0
-NullaryMaps.bpl(36,3): Error BP5001: This assertion might not hold.
+    NullaryMaps.bpl(30,3): anon0
+NullaryMaps.bpl(32,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    NullaryMaps.bpl(36,3): anon0
+    NullaryMaps.bpl(30,3): anon0
+NullaryMaps.bpl(38,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    NullaryMaps.bpl(38,3): anon0
 
 Boogie program verifier finished with 2 verified, 3 errors
 
 -------------------- Implies.bpl --------------------
-Implies.bpl(12,3): Error BP5001: This assertion might not hold.
+Implies.bpl(14,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    Implies.bpl(11,3): anon0
-Implies.bpl(15,3): Error BP5001: This assertion might not hold.
+    Implies.bpl(13,3): anon0
+Implies.bpl(17,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    Implies.bpl(11,3): anon0
-Implies.bpl(19,3): Error BP5001: This assertion might not hold.
+    Implies.bpl(13,3): anon0
+Implies.bpl(21,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    Implies.bpl(19,3): anon0
-Implies.bpl(24,3): Error BP5001: This assertion might not hold.
+    Implies.bpl(21,3): anon0
+Implies.bpl(26,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    Implies.bpl(24,3): anon0
-Implies.bpl(25,3): Error BP5001: This assertion might not hold.
+    Implies.bpl(26,3): anon0
+Implies.bpl(27,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    Implies.bpl(24,3): anon0
-Implies.bpl(29,3): Error BP5001: This assertion might not hold.
+    Implies.bpl(26,3): anon0
+Implies.bpl(31,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    Implies.bpl(29,3): anon0
-Implies.bpl(34,3): Error BP5001: This assertion might not hold.
+    Implies.bpl(31,3): anon0
+Implies.bpl(36,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    Implies.bpl(34,3): anon0
-Implies.bpl(35,3): Error BP5001: This assertion might not hold.
+    Implies.bpl(36,3): anon0
+Implies.bpl(37,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    Implies.bpl(34,3): anon0
+    Implies.bpl(36,3): anon0
 
 Boogie program verifier finished with 0 verified, 8 errors
 
 -------------------- IfThenElse1.bpl --------------------
-IfThenElse1.bpl(26,3): Error BP5001: This assertion might not hold.
+IfThenElse1.bpl(28,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    IfThenElse1.bpl(26,3): anon0
-IfThenElse1.bpl(33,3): Error BP5001: This assertion might not hold.
+    IfThenElse1.bpl(28,3): anon0
+IfThenElse1.bpl(35,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    IfThenElse1.bpl(33,3): anon0
+    IfThenElse1.bpl(35,3): anon0
 
 Boogie program verifier finished with 2 verified, 2 errors
 
 -------------------- Lambda.bpl --------------------
-Lambda.bpl(37,3): Error BP5001: This assertion might not hold.
+Lambda.bpl(39,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    Lambda.bpl(36,5): anon0
-Lambda.bpl(38,3): Error BP5001: This assertion might not hold.
+    Lambda.bpl(38,5): anon0
+Lambda.bpl(40,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    Lambda.bpl(36,5): anon0
+    Lambda.bpl(38,5): anon0
 
 Boogie program verifier finished with 6 verified, 2 errors
 
 -------------------- LambdaPoly.bpl --------------------
-LambdaPoly.bpl(28,5): Error BP5001: This assertion might not hold.
+LambdaPoly.bpl(30,5): Error BP5001: This assertion might not hold.
 Execution trace:
-    LambdaPoly.bpl(24,5): anon0
-    LambdaPoly.bpl(27,5): anon4_Then
-LambdaPoly.bpl(31,5): Error BP5001: This assertion might not hold.
+    LambdaPoly.bpl(26,5): anon0
+    LambdaPoly.bpl(29,5): anon4_Then
+LambdaPoly.bpl(33,5): Error BP5001: This assertion might not hold.
 Execution trace:
-    LambdaPoly.bpl(24,5): anon0
-    LambdaPoly.bpl(30,5): anon5_Then
-LambdaPoly.bpl(36,5): Error BP5001: This assertion might not hold.
+    LambdaPoly.bpl(26,5): anon0
+    LambdaPoly.bpl(32,5): anon5_Then
+LambdaPoly.bpl(38,5): Error BP5001: This assertion might not hold.
 Execution trace:
-    LambdaPoly.bpl(24,5): anon0
-    LambdaPoly.bpl(34,5): anon5_Else
+    LambdaPoly.bpl(26,5): anon0
+    LambdaPoly.bpl(36,5): anon5_Else
 
 Boogie program verifier finished with 1 verified, 3 errors
 
 -------------------- LambdaOldExpressions.bpl --------------------
-LambdaOldExpressions.bpl(27,1): Error BP5003: A postcondition might not hold on this return path.
-LambdaOldExpressions.bpl(21,3): Related location: This is the postcondition that might not hold.
+LambdaOldExpressions.bpl(29,1): Error BP5003: A postcondition might not hold on this return path.
+LambdaOldExpressions.bpl(23,3): Related location: This is the postcondition that might not hold.
 Execution trace:
-    LambdaOldExpressions.bpl(25,7): anon0
+    LambdaOldExpressions.bpl(27,7): anon0
 
 Boogie program verifier finished with 4 verified, 1 error
 
 -------------------- SelectiveChecking.bpl --------------------
-SelectiveChecking.bpl(17,3): Error BP5001: This assertion might not hold.
+SelectiveChecking.bpl(19,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    SelectiveChecking.bpl(15,3): anon0
-SelectiveChecking.bpl(30,3): Error BP5001: This assertion might not hold.
+    SelectiveChecking.bpl(17,3): anon0
+SelectiveChecking.bpl(32,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    SelectiveChecking.bpl(24,3): anon0
-    SelectiveChecking.bpl(27,5): anon3_Then
-    SelectiveChecking.bpl(30,3): anon2
-SelectiveChecking.bpl(37,3): Error BP5001: This assertion might not hold.
-Execution trace:
-    SelectiveChecking.bpl(37,3): anon0
+    SelectiveChecking.bpl(26,3): anon0
+    SelectiveChecking.bpl(29,5): anon3_Then
+    SelectiveChecking.bpl(32,3): anon2
 SelectiveChecking.bpl(39,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    SelectiveChecking.bpl(37,3): anon0
+    SelectiveChecking.bpl(39,3): anon0
+SelectiveChecking.bpl(41,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    SelectiveChecking.bpl(39,3): anon0
 
 Boogie program verifier finished with 1 verified, 4 errors
 
 -------------------- FreeCall.bpl --------------------
-FreeCall.bpl(37,5): Error BP5002: A precondition for this call might not hold.
+FreeCall.bpl(39,5): Error BP5002: A precondition for this call might not hold.
+FreeCall.bpl(10,3): Related location: This is the precondition that might not hold.
+Execution trace:
+    FreeCall.bpl(39,5): anon0
+FreeCall.bpl(44,5): Error BP5002: A precondition for this call might not hold.
 FreeCall.bpl(8,3): Related location: This is the precondition that might not hold.
 Execution trace:
-    FreeCall.bpl(37,5): anon0
-FreeCall.bpl(42,5): Error BP5002: A precondition for this call might not hold.
-FreeCall.bpl(6,3): Related location: This is the precondition that might not hold.
+    FreeCall.bpl(44,5): anon0
+FreeCall.bpl(61,5): Error BP5002: A precondition for this call might not hold.
+FreeCall.bpl(18,3): Related location: This is the precondition that might not hold.
 Execution trace:
-    FreeCall.bpl(42,5): anon0
-FreeCall.bpl(59,5): Error BP5002: A precondition for this call might not hold.
+    FreeCall.bpl(61,5): anon0
+FreeCall.bpl(68,5): Error BP5002: A precondition for this call might not hold.
 FreeCall.bpl(16,3): Related location: This is the precondition that might not hold.
 Execution trace:
-    FreeCall.bpl(59,5): anon0
-FreeCall.bpl(66,5): Error BP5002: A precondition for this call might not hold.
-FreeCall.bpl(14,3): Related location: This is the precondition that might not hold.
-Execution trace:
-    FreeCall.bpl(66,5): anon0
+    FreeCall.bpl(68,5): anon0
 
 Boogie program verifier finished with 7 verified, 4 errors
 
 -------------------- AssumptionVariables0.bpl --------------------
-AssumptionVariables0.bpl(15,5): Error BP5001: This assertion might not hold.
+AssumptionVariables0.bpl(17,5): Error BP5001: This assertion might not hold.
 Execution trace:
-    AssumptionVariables0.bpl(13,8): anon0
-AssumptionVariables0.bpl(25,5): Error BP5001: This assertion might not hold.
+    AssumptionVariables0.bpl(15,8): anon0
+AssumptionVariables0.bpl(27,5): Error BP5001: This assertion might not hold.
 Execution trace:
-    AssumptionVariables0.bpl(23,5): anon0
-AssumptionVariables0.bpl(37,5): Error BP5001: This assertion might not hold.
+    AssumptionVariables0.bpl(25,5): anon0
+AssumptionVariables0.bpl(39,5): Error BP5001: This assertion might not hold.
 Execution trace:
-    AssumptionVariables0.bpl(35,8): anon0
+    AssumptionVariables0.bpl(37,8): anon0
 
 Boogie program verifier finished with 1 verified, 3 errors
 
 -------------------- Arrays.bpl /typeEncoding:m --------------------
-Arrays.bpl(46,5): Error BP5003: A postcondition might not hold on this return path.
-Arrays.bpl(38,3): Related location: This is the postcondition that might not hold.
+Arrays.bpl(48,5): Error BP5003: A postcondition might not hold on this return path.
+Arrays.bpl(40,3): Related location: This is the postcondition that might not hold.
 Execution trace:
-    Arrays.bpl(42,3): start
-Arrays.bpl(127,5): Error BP5003: A postcondition might not hold on this return path.
-Arrays.bpl(119,3): Related location: This is the postcondition that might not hold.
+    Arrays.bpl(44,3): start
+Arrays.bpl(129,5): Error BP5003: A postcondition might not hold on this return path.
+Arrays.bpl(121,3): Related location: This is the postcondition that might not hold.
 Execution trace:
-    Arrays.bpl(123,3): start
+    Arrays.bpl(125,3): start
 
 Boogie program verifier finished with 8 verified, 2 errors
 
 -------------------- Lambda.bpl /typeEncoding:m --------------------
-Lambda.bpl(37,3): Error BP5001: This assertion might not hold.
+Lambda.bpl(39,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    Lambda.bpl(36,5): anon0
-Lambda.bpl(38,3): Error BP5001: This assertion might not hold.
+    Lambda.bpl(38,5): anon0
+Lambda.bpl(40,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    Lambda.bpl(36,5): anon0
+    Lambda.bpl(38,5): anon0
 
 Boogie program verifier finished with 6 verified, 2 errors
 
 -------------------- TypeEncodingM.bpl /typeEncoding:m --------------------
-TypeEncodingM.bpl(24,3): Error BP5001: This assertion might not hold.
+TypeEncodingM.bpl(26,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    TypeEncodingM.bpl(11,9): anon0
+    TypeEncodingM.bpl(13,9): anon0
 
 Boogie program verifier finished with 0 verified, 1 error
 -------------------- sk_hack.bpl --------------------
@@ -479,65 +479,65 @@ Boogie program verifier finished with 0 verified, 1 error
 Boogie program verifier finished with 1 verified, 0 errors
 
 -------------------- ContractEvaluationOrder.bpl --------------------
-ContractEvaluationOrder.bpl(8,1): Error BP5003: A postcondition might not hold on this return path.
-ContractEvaluationOrder.bpl(3,3): Related location: This is the postcondition that might not hold.
+ContractEvaluationOrder.bpl(10,1): Error BP5003: A postcondition might not hold on this return path.
+ContractEvaluationOrder.bpl(5,3): Related location: This is the postcondition that might not hold.
 Execution trace:
-    ContractEvaluationOrder.bpl(7,5): anon0
-ContractEvaluationOrder.bpl(15,3): Error BP5001: This assertion might not hold.
+    ContractEvaluationOrder.bpl(9,5): anon0
+ContractEvaluationOrder.bpl(17,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    ContractEvaluationOrder.bpl(12,5): anon0
-ContractEvaluationOrder.bpl(24,3): Error BP5002: A precondition for this call might not hold.
-ContractEvaluationOrder.bpl(30,3): Related location: This is the precondition that might not hold.
+    ContractEvaluationOrder.bpl(14,5): anon0
+ContractEvaluationOrder.bpl(26,3): Error BP5002: A precondition for this call might not hold.
+ContractEvaluationOrder.bpl(32,3): Related location: This is the precondition that might not hold.
 Execution trace:
-    ContractEvaluationOrder.bpl(23,5): anon0
+    ContractEvaluationOrder.bpl(25,5): anon0
 
 Boogie program verifier finished with 1 verified, 3 errors
 
 -------------------- Timeouts0.bpl --------------------
-Timeouts0.bpl(19,5): Error BP5003: A postcondition might not hold on this return path.
-Timeouts0.bpl(4,3): Related location: This is the postcondition that might not hold.
+Timeouts0.bpl(21,5): Error BP5003: A postcondition might not hold on this return path.
+Timeouts0.bpl(6,3): Related location: This is the postcondition that might not hold.
 Execution trace:
-    Timeouts0.bpl(8,7): anon0
-    Timeouts0.bpl(10,5): anon4_LoopHead
-    Timeouts0.bpl(10,5): anon4_LoopDone
-    Timeouts0.bpl(19,5): anon5_LoopHead
-    Timeouts0.bpl(19,5): anon5_LoopDone
-Timeouts0.bpl(21,7): Error BP5005: This loop invariant might not be maintained by the loop.
+    Timeouts0.bpl(10,7): anon0
+    Timeouts0.bpl(12,5): anon4_LoopHead
+    Timeouts0.bpl(12,5): anon4_LoopDone
+    Timeouts0.bpl(21,5): anon5_LoopHead
+    Timeouts0.bpl(21,5): anon5_LoopDone
+Timeouts0.bpl(23,7): Error BP5005: This loop invariant might not be maintained by the loop.
 Execution trace:
-    Timeouts0.bpl(8,7): anon0
-    Timeouts0.bpl(10,5): anon4_LoopHead
-    Timeouts0.bpl(10,5): anon4_LoopDone
-    Timeouts0.bpl(19,5): anon5_LoopHead
-    Timeouts0.bpl(23,11): anon5_LoopBody
-Timeouts0.bpl(48,5): Error BP5003: A postcondition might not hold on this return path.
-Timeouts0.bpl(31,3): Related location: This is the postcondition that might not hold.
+    Timeouts0.bpl(10,7): anon0
+    Timeouts0.bpl(12,5): anon4_LoopHead
+    Timeouts0.bpl(12,5): anon4_LoopDone
+    Timeouts0.bpl(21,5): anon5_LoopHead
+    Timeouts0.bpl(25,11): anon5_LoopBody
+Timeouts0.bpl(50,5): Error BP5003: A postcondition might not hold on this return path.
+Timeouts0.bpl(33,3): Related location: This is the postcondition that might not hold.
 Execution trace:
-    Timeouts0.bpl(37,7): anon0
-    Timeouts0.bpl(39,5): anon4_LoopHead
-    Timeouts0.bpl(39,5): anon4_LoopDone
-    Timeouts0.bpl(48,5): anon5_LoopHead
-    Timeouts0.bpl(48,5): anon5_LoopDone
-Timeouts0.bpl(50,7): Error BP5005: This loop invariant might not be maintained by the loop.
+    Timeouts0.bpl(39,7): anon0
+    Timeouts0.bpl(41,5): anon4_LoopHead
+    Timeouts0.bpl(41,5): anon4_LoopDone
+    Timeouts0.bpl(50,5): anon5_LoopHead
+    Timeouts0.bpl(50,5): anon5_LoopDone
+Timeouts0.bpl(52,7): Error BP5005: This loop invariant might not be maintained by the loop.
 Execution trace:
-    Timeouts0.bpl(37,7): anon0
-    Timeouts0.bpl(39,5): anon4_LoopHead
-    Timeouts0.bpl(39,5): anon4_LoopDone
-    Timeouts0.bpl(48,5): anon5_LoopHead
-    Timeouts0.bpl(52,11): anon5_LoopBody
-Timeouts0.bpl(77,5): Error BP5003: A postcondition might not hold on this return path.
-Timeouts0.bpl(60,3): Related location: This is the postcondition that might not hold.
+    Timeouts0.bpl(39,7): anon0
+    Timeouts0.bpl(41,5): anon4_LoopHead
+    Timeouts0.bpl(41,5): anon4_LoopDone
+    Timeouts0.bpl(50,5): anon5_LoopHead
+    Timeouts0.bpl(54,11): anon5_LoopBody
+Timeouts0.bpl(79,5): Error BP5003: A postcondition might not hold on this return path.
+Timeouts0.bpl(62,3): Related location: This is the postcondition that might not hold.
 Execution trace:
-    Timeouts0.bpl(66,7): anon0
-    Timeouts0.bpl(68,5): anon4_LoopHead
-    Timeouts0.bpl(68,5): anon4_LoopDone
-    Timeouts0.bpl(77,5): anon5_LoopHead
-    Timeouts0.bpl(77,5): anon5_LoopDone
-Timeouts0.bpl(79,7): Error BP5005: This loop invariant might not be maintained by the loop.
+    Timeouts0.bpl(68,7): anon0
+    Timeouts0.bpl(70,5): anon4_LoopHead
+    Timeouts0.bpl(70,5): anon4_LoopDone
+    Timeouts0.bpl(79,5): anon5_LoopHead
+    Timeouts0.bpl(79,5): anon5_LoopDone
+Timeouts0.bpl(81,7): Error BP5005: This loop invariant might not be maintained by the loop.
 Execution trace:
-    Timeouts0.bpl(66,7): anon0
-    Timeouts0.bpl(68,5): anon4_LoopHead
-    Timeouts0.bpl(68,5): anon4_LoopDone
-    Timeouts0.bpl(77,5): anon5_LoopHead
-    Timeouts0.bpl(81,11): anon5_LoopBody
+    Timeouts0.bpl(68,7): anon0
+    Timeouts0.bpl(70,5): anon4_LoopHead
+    Timeouts0.bpl(70,5): anon4_LoopDone
+    Timeouts0.bpl(79,5): anon5_LoopHead
+    Timeouts0.bpl(83,11): anon5_LoopBody
 
 Boogie program verifier finished with 0 verified, 6 errors

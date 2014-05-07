@@ -1,3 +1,5 @@
+// RUN: %boogie -noinfer %s > %t
+// RUN: %diff %s.expect %t
 procedure {:selective_checking} foo()
 {
   var x, y, z : int;

@@ -1,0 +1,18 @@
+FreeCall.bpl(39,5): Error BP5002: A precondition for this call might not hold.
+FreeCall.bpl(10,3): Related location: This is the precondition that might not hold.
+Execution trace:
+    FreeCall.bpl(39,5): anon0
+FreeCall.bpl(44,5): Error BP5002: A precondition for this call might not hold.
+FreeCall.bpl(8,3): Related location: This is the precondition that might not hold.
+Execution trace:
+    FreeCall.bpl(44,5): anon0
+FreeCall.bpl(61,5): Error BP5002: A precondition for this call might not hold.
+FreeCall.bpl(18,3): Related location: This is the precondition that might not hold.
+Execution trace:
+    FreeCall.bpl(61,5): anon0
+FreeCall.bpl(68,5): Error BP5002: A precondition for this call might not hold.
+FreeCall.bpl(16,3): Related location: This is the precondition that might not hold.
+Execution trace:
+    FreeCall.bpl(68,5): anon0
+
+Boogie program verifier finished with 7 verified, 4 errors

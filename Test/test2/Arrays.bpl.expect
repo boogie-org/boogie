@@ -1,0 +1,10 @@
+Arrays.bpl(50,5): Error BP5003: A postcondition might not hold on this return path.
+Arrays.bpl(42,3): Related location: This is the postcondition that might not hold.
+Execution trace:
+    Arrays.bpl(46,3): start
+Arrays.bpl(131,5): Error BP5003: A postcondition might not hold on this return path.
+Arrays.bpl(123,3): Related location: This is the postcondition that might not hold.
+Execution trace:
+    Arrays.bpl(127,3): start
+
+Boogie program verifier finished with 8 verified, 2 errors
