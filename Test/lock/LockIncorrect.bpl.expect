@@ -1,0 +1,6 @@
+LockIncorrect.bpl(19,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    LockIncorrect.bpl(11,1): start
+    LockIncorrect.bpl(16,1): LoopHead
+
+Boogie program verifier finished with 0 verified, 1 error
