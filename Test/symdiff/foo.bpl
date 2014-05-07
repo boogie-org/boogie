@@ -1,3 +1,5 @@
+// RUN: %boogie -z3multipleErrors -errorTrace:0 %s > %t
+// RUN: %diff %s.expect %t
 procedure Foo(x:int) 
 {
   var ok:bool;

@@ -1,0 +1,5 @@
+foo.bpl(17,3): Error BP5001: This assertion might not hold.
+foo.bpl(17,3): Error BP5001: This assertion might not hold.
+foo.bpl(17,3): Error BP5001: This assertion might not hold.
+
+Boogie program verifier finished with 0 verified, 3 errors
