@@ -1,3 +1,5 @@
+// RUN: %boogie %s > %t
+// RUN: %diff %s.expect %t
 procedure P()
 {
   assert |{ A: return true; }|;
