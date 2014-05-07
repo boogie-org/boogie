@@ -1,0 +1,4 @@
+Prog1.bpl(20,11): Error: invalid type for argument 0 in map select: int (expected: ref)
+Prog1.bpl(21,14): Error: invalid type for argument 1 in map select: int (expected: Field a)
+Prog1.bpl(22,17): Error: invalid argument types (bool and int) to binary operator >=
+3 type checking errors detected in Prog1.bpl

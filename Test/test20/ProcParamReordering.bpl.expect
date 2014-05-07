@@ -1,0 +1,3 @@
+ProcParamReordering.bpl(15,15): Error: mismatched type of in-parameter in implementation P: y (named b in implementation)
+ProcParamReordering.bpl(17,15): Error: mismatched number of type parameters in procedure implementation: P
+2 type checking errors detected in ProcParamReordering.bpl

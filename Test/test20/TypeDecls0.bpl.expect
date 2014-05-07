@@ -1,0 +1,13 @@
+TypeDecls0.bpl(22,5): Error: more than one declaration of type name: C
+TypeDecls0.bpl(15,12): Error: more than one declaration of type variable: a
+TypeDecls0.bpl(16,18): Error: more than one declaration of type variable: a
+TypeDecls0.bpl(20,17): Error: type variable must occur in map arguments: b
+TypeDecls0.bpl(24,9): Error: type constructor received wrong number of arguments: C
+TypeDecls0.bpl(26,9): Error: undeclared type: A0
+TypeDecls0.bpl(27,9): Error: undeclared type: F
+TypeDecls0.bpl(30,9): Error: type constructor received wrong number of arguments: E
+TypeDecls0.bpl(32,9): Error: type constructor received wrong number of arguments: E
+TypeDecls0.bpl(34,9): Error: type constructor received wrong number of arguments: E
+TypeDecls0.bpl(40,11): Error: type constructor received wrong number of arguments: E
+TypeDecls0.bpl(40,13): Error: type constructor received wrong number of arguments: E
+12 name resolution errors detected in TypeDecls0.bpl

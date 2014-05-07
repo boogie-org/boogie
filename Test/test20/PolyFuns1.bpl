@@ -1,3 +1,5 @@
+// RUN: %boogie -noVerify %s > %t
+// RUN: %diff %s.expect %t
 
 function F<a>( <b>[b]a ) returns (bool);
 const M:  <a>[ <b>[b]a ] bool;

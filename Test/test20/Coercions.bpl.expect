@@ -1,0 +1,5 @@
+Coercions.bpl(13,8): Error: int cannot be coerced to E <a>[a]int
+Coercions.bpl(15,8): Error: C cannot be coerced to D
+Coercions.bpl(17,9): Error: int cannot be coerced to D
+Coercions.bpl(18,9): Error: int cannot be coerced to E int
+4 type checking errors detected in Coercions.bpl

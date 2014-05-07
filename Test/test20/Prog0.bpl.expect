@@ -1,0 +1,5 @@
+Prog0.bpl(19,10): Error: type variable must occur in map arguments: a
+Prog0.bpl(31,27): Error: more than one declaration of type variable: beta
+Prog0.bpl(34,22): Error: undeclared type: alpha
+Prog0.bpl(35,35): Error: undeclared type: alpha
+4 name resolution errors detected in Prog0.bpl

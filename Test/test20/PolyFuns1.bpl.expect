@@ -1,0 +1,17 @@
+PolyFuns1.bpl(12,9): Error: invalid type for argument 0 in application of F: <c>[c]c (expected: <b>[b]a)
+PolyFuns1.bpl(13,9): Error: invalid type for argument 0 in map select: <c>[c]c (expected: <b>[b]a)
+PolyFuns1.bpl(14,31): Error: invalid type for argument 0 in application of F: <c>[c]c (expected: <b>[b]a)
+PolyFuns1.bpl(15,31): Error: invalid type for argument 0 in map select: <c>[c]c (expected: <b>[b]a)
+PolyFuns1.bpl(19,55): Error: invalid argument types (<c>[Field c]a and <d>[Field d]d) to binary operator ==
+PolyFuns1.bpl(20,55): Error: invalid argument types (<c>[Field c]a and <d>[Field d]d) to binary operator ==
+PolyFuns1.bpl(30,11): Error: invalid type for argument 0 in call to Uhu: <dd>[Field dd]dd (expected: <c>[Field c]a)
+PolyFuns1.bpl(31,15): Error: invalid type for argument 1 in call to Uhu: <cc>[Field cc]T (expected: <d>[Field d]d)
+PolyFuns1.bpl(32,12): Error: invalid argument types (<cc>[Field cc]T and <dd>[Field dd]dd) to binary operator ==
+PolyFuns1.bpl(33,12): Error: invalid argument types (<dd>[Field dd]dd and <cc>[Field cc]T) to binary operator ==
+PolyFuns1.bpl(35,15): Error: invalid type for argument 1 in call to Uhu: <ee>[Field T]ee (expected: <d>[Field d]d)
+PolyFuns1.bpl(43,11): Error: invalid argument types (<a>[a,a]int and <b>[b,int]int) to binary operator ==
+PolyFuns1.bpl(44,11): Error: invalid argument types (<b>[b,int]int and <c>[int,c]int) to binary operator ==
+PolyFuns1.bpl(45,11): Error: invalid argument types (<a>[a,a]int and <c>[int,c]int) to binary operator ==
+PolyFuns1.bpl(52,11): Error: invalid argument types (<a,b>[a,a,b]int and <a,b>[a,b,b]int) to binary operator ==
+PolyFuns1.bpl(59,54): Error: invalid argument types (Field b and NagainCtor b) to binary operator ==
+16 type checking errors detected in PolyFuns1.bpl

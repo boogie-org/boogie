@@ -1,0 +1,3 @@
+ParallelAssignment2.bpl(11,7): Error: number of left-hand sides does not match number of right-hand sides
+ParallelAssignment2.bpl(12,9): Error: variable a is assigned more than once in parallel assignment
+2 name resolution errors detected in ParallelAssignment2.bpl

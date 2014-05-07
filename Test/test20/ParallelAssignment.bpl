@@ -1,3 +1,5 @@
+// RUN: %boogie -noVerify %s > %t
+// RUN: %diff %s.expect %t
 // Examples from the Boogie2 language report
 // (stuff where resolution succeeds, but typechecking might fail)
 

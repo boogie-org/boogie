@@ -1,0 +1,37 @@
+
+type Set a = [a]bool;
+
+type Field _;
+
+type Heap = <a>[ref,Field a]a;
+
+type notAllParams a b = Field b;
+
+type Cyclic0 = Cyclic1;
+
+type Cyclic1 = Cyclic0;
+
+type AlsoCyclic a = <b>[AlsoCyclic b]int;
+
+type C _ _;
+
+type C2 b a = C a b;
+
+function f(C int bool) : int;
+
+const x: C2 bool int;
+
+const y: Field int bool;
+
+const z: Set int bool;
+
+const d: <a,b>[notAllParams a b]int;
+
+type ref;
+<console>(10,-1): Error: type synonym could not be resolved because of cycles: Cyclic0 (replacing body with "bool" to continue resolving)
+<console>(12,-1): Error: type synonym could not be resolved because of cycles: Cyclic1 (replacing body with "bool" to continue resolving)
+<console>(14,-1): Error: type synonym could not be resolved because of cycles: AlsoCyclic (replacing body with "bool" to continue resolving)
+<console>(24,8): Error: type constructor received wrong number of arguments: Field
+<console>(26,8): Error: type synonym received wrong number of arguments: Set
+<console>(28,8): Error: type variable must occur in map arguments: a
+6 name resolution errors detected in TypeSynonyms0.bpl

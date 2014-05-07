@@ -1,0 +1,4 @@
+ParallelAssignment.bpl(19,2): Error: mismatched types in assignment command (cannot assign bool to int)
+ParallelAssignment.bpl(20,4): Error: invalid type for argument 0 in map assignment: bool (expected: int)
+ParallelAssignment.bpl(22,4): Error: command assigns to a global variable that is not in the enclosing procedure's modifies clause: z
+3 type checking errors detected in ParallelAssignment.bpl

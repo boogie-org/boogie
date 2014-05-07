@@ -1,0 +1,12 @@
+PolyPolyPoly2.bpl(7,8): Warning: type parameter a is ambiguous, instantiating to int
+PolyPolyPoly2.bpl(9,8): Warning: type parameter a is ambiguous, instantiating to <arg0,res>[arg0]res
+PolyPolyPoly2.bpl(13,8): Warning: type parameter a is ambiguous, instantiating to bv0
+PolyPolyPoly2.bpl(13,15): Warning: type parameter a is ambiguous, instantiating to bv0
+PolyPolyPoly2.bpl(13,27): Warning: type parameter a is ambiguous, instantiating to bv17
+PolyPolyPoly2.bpl(14,8): Warning: type parameter a is ambiguous, instantiating to bv17
+PolyPolyPoly2.bpl(14,15): Warning: type parameter a is ambiguous, instantiating to bv0
+PolyPolyPoly2.bpl(24,7): Warning: type parameter a is ambiguous, instantiating to int
+PolyPolyPoly2.bpl(33,3): Warning: type parameter a is ambiguous, instantiating to int
+PolyPolyPoly2.bpl(34,3): Warning: type parameter a is ambiguous, instantiating to int
+
+Boogie program verifier finished with 0 verified, 0 errors

@@ -1,3 +1,5 @@
+// RUN: %boogie -noVerify %s > %t
+// RUN: %diff %s.expect %t
 
 
 function size<alpha>(x : alpha) returns (int);

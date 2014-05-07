@@ -1,0 +1,7 @@
+PolyProcs0.bpl(13,16): Error: invalid type for argument 0 in map select: Field b (expected: ref)
+PolyProcs0.bpl(13,19): Error: invalid type for argument 1 in map select: ref (expected: Field a)
+PolyProcs0.bpl(23,30): Error: invalid type for argument 1 in call to FieldAccess: Field int (expected: ref)
+PolyProcs0.bpl(23,34): Error: invalid type for argument 2 in call to FieldAccess: ref (expected: Field b)
+PolyProcs0.bpl(27,7): Error: invalid type for out-parameter 0 in call to FieldAccess: bool (expected: int)
+PolyProcs0.bpl(28,35): Error: invalid type for argument 2 in call to FieldAccess: ref (expected: Field b)
+6 type checking errors detected in PolyProcs0.bpl

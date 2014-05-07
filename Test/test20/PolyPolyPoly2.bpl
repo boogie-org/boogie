@@ -1,3 +1,5 @@
+// RUN: %boogie -noVerify %s > %t
+// RUN: %diff %s.expect %t
 
 const p: <a>[]a;
 const q: <a,b>[a]b;

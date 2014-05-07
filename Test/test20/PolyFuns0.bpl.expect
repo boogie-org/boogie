@@ -1,0 +1,5 @@
+PolyFuns0.bpl(25,33): Error: invalid type for argument 1 in application of fieldValue: ref (expected: Field a)
+PolyFuns0.bpl(42,18): Error: invalid type for argument 1 in application of lessThan: bool (expected: a)
+PolyFuns0.bpl(43,43): Error: invalid type for argument 1 in application of lessThan: b (expected: a)
+PolyFuns0.bpl(55,55): Error: invalid argument types (<c>[Field c]a and <d>[Field d]d) to binary operator ==
+4 type checking errors detected in PolyFuns0.bpl

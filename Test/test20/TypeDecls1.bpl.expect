@@ -1,0 +1,5 @@
+TypeDecls1.bpl(9,13): Error: invalid type for argument 0 in map select: int (expected: <b>[b]a)
+TypeDecls1.bpl(15,25): Error: right-hand side in map store with wrong type: int (expected: bool)
+TypeDecls1.bpl(21,36): Error: invalid type for argument 0 in map select: <c>[c]c (expected: <b>[b]a)
+TypeDecls1.bpl(23,13): Error: invalid type for argument 0 in map select: <a>[<b>[b]a]bool (expected: <b>[b]a)
+4 type checking errors detected in TypeDecls1.bpl
