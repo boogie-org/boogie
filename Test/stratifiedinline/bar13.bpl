@@ -1,3 +1,5 @@
+// RUN: %boogie -stratifiedInline:1 -vc:i %s > %t
+// RUN: %diff %s.expect %t
 var alloc: int;
 var assertsPassed: bool;
 procedure boogie_si_record_li2bpl_int(x: int);

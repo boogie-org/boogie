@@ -1,3 +1,5 @@
+// RUN: %boogie -stratifiedInline:1 -vc:i %s > %t
+// RUN: %diff %s.expect %t
 var M: [int]int;
 
 procedure bar(y: int) returns (b: bool)
