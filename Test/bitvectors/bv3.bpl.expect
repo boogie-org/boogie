@@ -1,0 +1,2 @@
+bv3.bpl(4,5): Error: type name: bv16 is registered for bitvectors
+1 name resolution errors detected in bv3.bpl

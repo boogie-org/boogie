@@ -1,3 +1,5 @@
+// RUN: %boogie -proverWarnings:1 %s > %t
+// RUN: %diff %s.expect %t
 
 function a() returns(bv32);
 axiom a() == a();

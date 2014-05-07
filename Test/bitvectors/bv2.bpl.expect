@@ -1,0 +1,4 @@
+bv2.bpl(6,13): Error: bitvector bounds in illegal position
+bv2.bpl(8,13): Error: undeclared type: x
+bv2.bpl(9,14): Error: bitvector bounds in illegal position
+3 name resolution errors detected in bv2.bpl

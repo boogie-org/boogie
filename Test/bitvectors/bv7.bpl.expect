@@ -1,0 +1,3 @@
+bv7.bpl(6,14): error: arguments of extract need to be integer literals
+bv7.bpl(7,15): error: parentheses around bitvector bounds are not allowed
+2 parse errors detected in bv7.bpl

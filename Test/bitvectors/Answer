@@ -2,42 +2,42 @@
 
 Boogie program verifier finished with 2 verified, 0 errors
 -------------------- bv0.bpl --------------------
-bv0.bpl(4,3): Error: mismatched types in assignment command (cannot assign bv31 to bv32)
-bv0.bpl(5,3): Error: mismatched types in assignment command (cannot assign int to bv32)
-bv0.bpl(6,4): Error: mismatched types in assignment command (cannot assign bv1 to bv32)
-bv0.bpl(7,10): Error: start index in extract must be no bigger than the end index
+bv0.bpl(6,3): Error: mismatched types in assignment command (cannot assign bv31 to bv32)
+bv0.bpl(7,3): Error: mismatched types in assignment command (cannot assign int to bv32)
 bv0.bpl(8,4): Error: mismatched types in assignment command (cannot assign bv1 to bv32)
-bv0.bpl(9,4): Error: mismatched types in assignment command (cannot assign bv1 to bv32)
-bv0.bpl(10,4): Error: mismatched types in assignment command (cannot assign concat$bvproxy#10 to bv32)
+bv0.bpl(9,10): Error: start index in extract must be no bigger than the end index
+bv0.bpl(10,4): Error: mismatched types in assignment command (cannot assign bv1 to bv32)
+bv0.bpl(11,4): Error: mismatched types in assignment command (cannot assign bv1 to bv32)
+bv0.bpl(12,4): Error: mismatched types in assignment command (cannot assign concat$bvproxy#10 to bv32)
 7 type checking errors detected in bv0.bpl
 -------------------- bv1.bpl --------------------
 
 Boogie program verifier finished with 1 verified, 0 errors
 -------------------- bv2.bpl --------------------
-bv2.bpl(4,13): Error: bitvector bounds in illegal position
-bv2.bpl(6,13): Error: undeclared type: x
-bv2.bpl(7,14): Error: bitvector bounds in illegal position
+bv2.bpl(6,13): Error: bitvector bounds in illegal position
+bv2.bpl(8,13): Error: undeclared type: x
+bv2.bpl(9,14): Error: bitvector bounds in illegal position
 3 name resolution errors detected in bv2.bpl
 -------------------- bv3.bpl --------------------
-bv3.bpl(2,5): Error: type name: bv16 is registered for bitvectors
+bv3.bpl(4,5): Error: type name: bv16 is registered for bitvectors
 1 name resolution errors detected in bv3.bpl
 -------------------- bv4.bpl --------------------
 
 Boogie program verifier finished with 1 verified, 0 errors
 -------------------- bv7.bpl --------------------
-bv7.bpl(4,14): error: arguments of extract need to be integer literals
-bv7.bpl(5,15): error: parentheses around bitvector bounds are not allowed
+bv7.bpl(6,14): error: arguments of extract need to be integer literals
+bv7.bpl(7,15): error: parentheses around bitvector bounds are not allowed
 2 parse errors detected in bv7.bpl
 -------------------- bv5.bpl --------------------
-bv5.bpl(10,3): Error BP5001: This assertion might not hold.
+bv5.bpl(12,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    bv5.bpl(5,12): anon0
+    bv5.bpl(7,12): anon0
 
 Boogie program verifier finished with 0 verified, 1 error
 -------------------- bv6.bpl --------------------
-bv6.bpl(8,3): Error BP5001: This assertion might not hold.
+bv6.bpl(10,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    bv6.bpl(5,5): anon0
+    bv6.bpl(7,5): anon0
 
 Boogie program verifier finished with 0 verified, 1 error
 -------------------- bv8.bpl --------------------

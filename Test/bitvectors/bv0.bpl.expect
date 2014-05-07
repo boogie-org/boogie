@@ -1,0 +1,8 @@
+bv0.bpl(6,3): Error: mismatched types in assignment command (cannot assign bv31 to bv32)
+bv0.bpl(7,3): Error: mismatched types in assignment command (cannot assign int to bv32)
+bv0.bpl(8,4): Error: mismatched types in assignment command (cannot assign bv1 to bv32)
+bv0.bpl(9,10): Error: start index in extract must be no bigger than the end index
+bv0.bpl(10,4): Error: mismatched types in assignment command (cannot assign bv1 to bv32)
+bv0.bpl(11,4): Error: mismatched types in assignment command (cannot assign bv1 to bv32)
+bv0.bpl(12,4): Error: mismatched types in assignment command (cannot assign concat$bvproxy#10 to bv32)
+7 type checking errors detected in bv0.bpl
