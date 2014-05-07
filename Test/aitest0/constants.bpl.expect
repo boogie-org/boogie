@@ -1,0 +1,111 @@
+var GlobalFlag: bool;
+
+const A: int;
+
+const B: int;
+
+const C: int;
+
+procedure Join(b: bool);
+  modifies GlobalFlag;
+
+
+
+implementation Join(b: bool)
+{
+  var x: int;
+  var y: int;
+  var z: int;
+
+  start:
+    assume {:inferred} true;
+    GlobalFlag := true;
+    x := 3;
+    y := 4;
+    z := x + y;
+    assume {:inferred} GlobalFlag && x == 3 && y == 4 && z == 7;
+    goto Then, Else;
+
+  Else:
+    assume {:inferred} GlobalFlag && x == 3 && y == 4 && z == 7;
+    assume b <==> false;
+    y := 4;
+    assume {:inferred} GlobalFlag && x == 3 && y == 4 && z == 7 && !b;
+    goto join;
+
+  join:
+    assume {:inferred} GlobalFlag && 3 <= x && x < 5 && y == 4 && z == 7;
+    assert y == 4;
+    assert z == 7;
+    assert GlobalFlag <==> true;
+    assume {:inferred} GlobalFlag && 3 <= x && x < 5 && y == 4 && z == 7;
+    return;
+
+  Then:
+    assume {:inferred} GlobalFlag && x == 3 && y == 4 && z == 7;
+    assume b <==> true;
+    x := x + 1;
+    assume {:inferred} GlobalFlag && x == 4 && y == 4 && z == 7 && b;
+    goto join;
+}
+
+
+
+procedure Loop();
+
+
+
+implementation Loop()
+{
+  var c: int;
+  var i: int;
+
+  start:
+    assume {:inferred} true;
+    c := 0;
+    i := 0;
+    assume {:inferred} c == 0 && i == 0;
+    goto test;
+
+  test:  // cut point
+    assume {:inferred} c == 0 && 0 <= i && i < 11;
+    assume {:inferred} c == 0 && 0 <= i && i < 11;
+    goto Then, Else;
+
+  Else:
+    assume {:inferred} c == 0 && 0 <= i && i < 11;
+    assume {:inferred} c == 0 && 0 <= i && i < 11;
+    return;
+
+  Then:
+    assume {:inferred} c == 0 && 0 <= i && i < 11;
+    assume i < 10;
+    i := i + 1;
+    assume {:inferred} c == 0 && 1 <= i && i < 11;
+    goto test;
+}
+
+
+
+procedure Evaluate();
+
+
+
+implementation Evaluate()
+{
+  var i: int;
+
+  start:
+    assume {:inferred} true;
+    i := 5;
+    i := 3 * i + 1;
+    i := 3 * (i + 1);
+    i := 1 + 3 * i;
+    i := (i + 1) * 3;
+    assume {:inferred} i == 465;
+    return;
+}
+
+
+
+Boogie program verifier finished with 0 verified, 0 errors
