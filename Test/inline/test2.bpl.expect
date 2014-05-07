@@ -1,0 +1,81 @@
+
+var glb: int;
+
+procedure calculate();
+  modifies glb;
+
+
+
+implementation calculate()
+{
+  var x: int;
+  var y: int;
+
+  anon0:
+    y := 5;
+    call x := increase(y);
+    return;
+}
+
+
+
+procedure {:inline 1} increase(i: int) returns (k: int);
+  modifies glb;
+
+
+
+implementation {:inline 1} increase(i: int) returns (k: int)
+{
+  var j: int;
+
+  anon0:
+    j := i;
+    j := j + 1;
+    glb := glb + j;
+    k := j;
+    return;
+}
+
+
+after inlining procedure calls
+procedure calculate();
+  modifies glb;
+
+
+implementation calculate()
+{
+  var x: int;
+  var y: int;
+  var inline$increase$0$j: int;
+  var inline$increase$0$i: int;
+  var inline$increase$0$k: int;
+  var inline$increase$0$glb: int;
+
+  anon0:
+    y := 5;
+    goto inline$increase$0$Entry;
+
+  inline$increase$0$Entry:
+    inline$increase$0$i := y;
+    havoc inline$increase$0$j, inline$increase$0$k;
+    inline$increase$0$glb := glb;
+    goto inline$increase$0$anon0;
+
+  inline$increase$0$anon0:
+    inline$increase$0$j := inline$increase$0$i;
+    inline$increase$0$j := inline$increase$0$j + 1;
+    glb := glb + inline$increase$0$j;
+    inline$increase$0$k := inline$increase$0$j;
+    goto inline$increase$0$Return;
+
+  inline$increase$0$Return:
+    x := inline$increase$0$k;
+    goto anon0$1;
+
+  anon0$1:
+    return;
+}
+
+
+
+Boogie program verifier finished with 2 verified, 0 errors

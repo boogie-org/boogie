@@ -1,14 +1,14 @@
 -------------------- test0.bpl --------------------
-test0.bpl(30,5): Error BP5001: This assertion might not hold.
+test0.bpl(32,5): Error BP5001: This assertion might not hold.
 Execution trace:
-    test0.bpl(26,3): anon0
-    test0.bpl(30,5): anon3_Then
+    test0.bpl(28,3): anon0
+    test0.bpl(32,5): anon3_Then
 
 Boogie program verifier finished with 1 verified, 1 error
 -------------------- codeexpr.bpl --------------------
-codeexpr.bpl(40,5): Error BP5001: This assertion might not hold.
+codeexpr.bpl(42,5): Error BP5001: This assertion might not hold.
 Execution trace:
-    codeexpr.bpl(39,7): anon0
+    codeexpr.bpl(41,7): anon0
 
 Boogie program verifier finished with 5 verified, 1 error
 -------------------- test1.bpl --------------------
@@ -1455,12 +1455,12 @@ implementation bar()
 
 Boogie program verifier finished with 5 verified, 0 errors
 -------------------- test5.bpl --------------------
-test5.bpl(37,3): Error BP5001: This assertion might not hold.
+test5.bpl(39,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    test5.bpl(34,10): anon0
-    test5.bpl(28,10): inline$P$0$anon0
-    test5.bpl(28,10): inline$P$1$anon0
-    test5.bpl(34,10): anon0$2
+    test5.bpl(36,10): anon0
+    test5.bpl(30,10): inline$P$0$anon0
+    test5.bpl(30,10): inline$P$1$anon0
+    test5.bpl(36,10): anon0$2
 
 Boogie program verifier finished with 4 verified, 1 error
 -------------------- expansion3.bpl --------------------
@@ -1473,33 +1473,33 @@ Boogie program verifier finished with 1 verified, 0 errors
 
 Boogie program verifier finished with 1 verified, 0 errors
 -------------------- Elevator.bpl --------------------
-Elevator.bpl(17,5): Error BP5005: This loop invariant might not be maintained by the loop.
+Elevator.bpl(20,5): Error BP5005: This loop invariant might not be maintained by the loop.
 Execution trace:
-    Elevator.bpl(15,3): anon0
-    Elevator.bpl(15,3): anon0$1
-    Elevator.bpl(16,3): anon10_LoopHead
-    Elevator.bpl(19,5): anon10_LoopBody
-    Elevator.bpl(99,3): inline$MoveDown_Error$0$anon0
-    Elevator.bpl(24,7): anon13_Then$1
+    Elevator.bpl(18,3): anon0
+    Elevator.bpl(18,3): anon0$1
+    Elevator.bpl(19,3): anon10_LoopHead
+    Elevator.bpl(22,5): anon10_LoopBody
+    Elevator.bpl(102,3): inline$MoveDown_Error$0$anon0
+    Elevator.bpl(27,7): anon13_Then$1
 
 Boogie program verifier finished with 1 verified, 1 error
 -------------------- Elevator.bpl with empty blocks --------------------
-Elevator.bpl(17,5): Error BP5005: This loop invariant might not be maintained by the loop.
+Elevator.bpl(20,5): Error BP5005: This loop invariant might not be maintained by the loop.
 Execution trace:
-    Elevator.bpl(15,3): anon0
-    Elevator.bpl(68,23): inline$Initialize$0$Entry
-    Elevator.bpl(71,13): inline$Initialize$0$anon0
-    Elevator.bpl(68,23): inline$Initialize$0$Return
-    Elevator.bpl(15,3): anon0$1
-    Elevator.bpl(16,3): anon10_LoopHead
-    Elevator.bpl(19,5): anon10_LoopBody
-    Elevator.bpl(19,5): anon11_Else
-    Elevator.bpl(19,5): anon12_Else
-    Elevator.bpl(24,7): anon13_Then
-    Elevator.bpl(94,23): inline$MoveDown_Error$0$Entry
-    Elevator.bpl(99,3): inline$MoveDown_Error$0$anon0
-    Elevator.bpl(94,23): inline$MoveDown_Error$0$Return
-    Elevator.bpl(24,7): anon13_Then$1
+    Elevator.bpl(18,3): anon0
+    Elevator.bpl(71,23): inline$Initialize$0$Entry
+    Elevator.bpl(74,13): inline$Initialize$0$anon0
+    Elevator.bpl(71,23): inline$Initialize$0$Return
+    Elevator.bpl(18,3): anon0$1
+    Elevator.bpl(19,3): anon10_LoopHead
+    Elevator.bpl(22,5): anon10_LoopBody
+    Elevator.bpl(22,5): anon11_Else
+    Elevator.bpl(22,5): anon12_Else
+    Elevator.bpl(27,7): anon13_Then
+    Elevator.bpl(97,23): inline$MoveDown_Error$0$Entry
+    Elevator.bpl(102,3): inline$MoveDown_Error$0$anon0
+    Elevator.bpl(97,23): inline$MoveDown_Error$0$Return
+    Elevator.bpl(27,7): anon13_Then$1
 
 Boogie program verifier finished with 1 verified, 1 error
 -------------------- expansion2.bpl --------------------
@@ -1525,46 +1525,46 @@ function foo3(x: int) : bool;
 axiom (forall x: int :: { foo3(x): bool } foo3(x): bool == (x > 0));
 
 Boogie program verifier finished with 0 verified, 0 errors
-fundef2.bpl(6,3): Error BP5001: This assertion might not hold.
+fundef2.bpl(8,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    fundef2.bpl(5,3): anon0
+    fundef2.bpl(7,3): anon0
 
 Boogie program verifier finished with 0 verified, 1 error
 -------------------- polyInline.bpl --------------------
-polyInline.bpl(27,9): Warning: type parameter alpha is ambiguous, instantiating to int
-polyInline.bpl(31,9): Warning: type parameter alpha is ambiguous, instantiating to int
-polyInline.bpl(35,9): Warning: type parameter alpha is ambiguous, instantiating to int
-polyInline.bpl(23,3): Error BP5001: This assertion might not hold.
+polyInline.bpl(30,9): Warning: type parameter alpha is ambiguous, instantiating to int
+polyInline.bpl(34,9): Warning: type parameter alpha is ambiguous, instantiating to int
+polyInline.bpl(38,9): Warning: type parameter alpha is ambiguous, instantiating to int
+polyInline.bpl(26,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    polyInline.bpl(20,3): anon0
-polyInline.bpl(39,3): Error BP5001: This assertion might not hold.
+    polyInline.bpl(23,3): anon0
+polyInline.bpl(42,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    polyInline.bpl(27,3): anon0
+    polyInline.bpl(30,3): anon0
 
 Boogie program verifier finished with 0 verified, 2 errors
-polyInline.bpl(27,9): Warning: type parameter alpha is ambiguous, instantiating to int
-polyInline.bpl(31,9): Warning: type parameter alpha is ambiguous, instantiating to int
-polyInline.bpl(35,9): Warning: type parameter alpha is ambiguous, instantiating to int
-polyInline.bpl(23,3): Error BP5001: This assertion might not hold.
+polyInline.bpl(30,9): Warning: type parameter alpha is ambiguous, instantiating to int
+polyInline.bpl(34,9): Warning: type parameter alpha is ambiguous, instantiating to int
+polyInline.bpl(38,9): Warning: type parameter alpha is ambiguous, instantiating to int
+polyInline.bpl(26,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    polyInline.bpl(20,3): anon0
-polyInline.bpl(39,3): Error BP5001: This assertion might not hold.
+    polyInline.bpl(23,3): anon0
+polyInline.bpl(42,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    polyInline.bpl(27,3): anon0
+    polyInline.bpl(30,3): anon0
 
 Boogie program verifier finished with 0 verified, 2 errors
 -------------------- InliningAndLoops.bpl --------------------
-InliningAndLoops.bpl(12,5): Error BP5001: This assertion might not hold.
+InliningAndLoops.bpl(14,5): Error BP5001: This assertion might not hold.
 Execution trace:
-    InliningAndLoops.bpl(5,10): anon0#3
-    InliningAndLoops.bpl(6,3): anon4_LoopHead#3
-    InliningAndLoops.bpl(8,5): anon4_LoopBody#3
-    InliningAndLoops.bpl(8,5): anon4_LoopBody$1#3
-    InliningAndLoops.bpl(6,3): anon4_LoopHead#2
-    InliningAndLoops.bpl(8,5): anon4_LoopBody#2
-    InliningAndLoops.bpl(8,5): anon4_LoopBody$1#2
-    InliningAndLoops.bpl(6,3): anon4_LoopHead#1
-    InliningAndLoops.bpl(6,3): anon4_LoopDone#3
-    InliningAndLoops.bpl(12,5): anon5_Then#3
+    InliningAndLoops.bpl(7,10): anon0#3
+    InliningAndLoops.bpl(8,3): anon4_LoopHead#3
+    InliningAndLoops.bpl(10,5): anon4_LoopBody#3
+    InliningAndLoops.bpl(10,5): anon4_LoopBody$1#3
+    InliningAndLoops.bpl(8,3): anon4_LoopHead#2
+    InliningAndLoops.bpl(10,5): anon4_LoopBody#2
+    InliningAndLoops.bpl(10,5): anon4_LoopBody$1#2
+    InliningAndLoops.bpl(8,3): anon4_LoopHead#1
+    InliningAndLoops.bpl(8,3): anon4_LoopDone#3
+    InliningAndLoops.bpl(14,5): anon5_Then#3
 
 Boogie program verifier finished with 0 verified, 1 error

@@ -1,0 +1,332 @@
+
+procedure main(x: int);
+
+
+
+implementation main(x: int)
+{
+  var A: [int]int;
+  var i: int;
+  var b: bool;
+  var size: int;
+
+  anon0:
+    call i, b := find(A, size, x);
+    goto anon3_Then, anon3_Else;
+
+  anon3_Then:
+    assume {:partition} b;
+    assert i > 0 && A[i] == x;
+    goto anon2;
+
+  anon3_Else:
+    assume {:partition} !b;
+    goto anon2;
+
+  anon2:
+    return;
+}
+
+
+
+procedure {:inline 1} find(A: [int]int, size: int, x: int) returns (ret: int, found: bool);
+
+
+
+implementation {:inline 1} find(A: [int]int, size: int, x: int) returns (ret: int, found: bool)
+{
+  var i: int;
+  var b: bool;
+
+  anon0:
+    ret := -1;
+    b := false;
+    found := b;
+    i := 0;
+    goto anon4_LoopHead;
+
+  anon4_LoopHead:
+    goto anon4_LoopDone, anon4_LoopBody;
+
+  anon4_LoopBody:
+    assume {:partition} i < size;
+    call b := check(A, i, x);
+    goto anon5_Then, anon5_Else;
+
+  anon5_Then:
+    assume {:partition} b;
+    ret := i;
+    found := b;
+    goto anon3;
+
+  anon5_Else:
+    assume {:partition} !b;
+    goto anon4_LoopHead;
+
+  anon4_LoopDone:
+    assume {:partition} size <= i;
+    goto anon3;
+
+  anon3:
+    return;
+}
+
+
+
+procedure {:inline 3} check(A: [int]int, i: int, c: int) returns (ret: bool);
+  requires i >= 0;
+  ensures old(A[i]) > c ==> ret == true;
+
+
+
+implementation {:inline 3} check(A: [int]int, i: int, c: int) returns (ret: bool)
+{
+
+  anon0:
+    goto anon4_Then, anon4_Else;
+
+  anon4_Then:
+    assume {:partition} A[i] == c;
+    ret := true;
+    goto anon3;
+
+  anon4_Else:
+    assume {:partition} A[i] != c;
+    ret := false;
+    goto anon3;
+
+  anon3:
+    return;
+}
+
+
+after inlining procedure calls
+procedure main(x: int);
+
+
+implementation main(x: int)
+{
+  var A: [int]int;
+  var i: int;
+  var b: bool;
+  var size: int;
+  var inline$find$0$i: int;
+  var inline$find$0$b: bool;
+  var inline$find$0$A: [int]int;
+  var inline$find$0$size: int;
+  var inline$find$0$x: int;
+  var inline$find$0$ret: int;
+  var inline$find$0$found: bool;
+  var inline$check$0$A: [int]int;
+  var inline$check$0$i: int;
+  var inline$check$0$c: int;
+  var inline$check$0$ret: bool;
+
+  anon0:
+    goto inline$find$0$Entry;
+
+  inline$find$0$Entry:
+    inline$find$0$A := A;
+    inline$find$0$size := size;
+    inline$find$0$x := x;
+    havoc inline$find$0$i, inline$find$0$b, inline$find$0$ret, inline$find$0$found;
+    goto inline$find$0$anon0;
+
+  inline$find$0$anon0:
+    inline$find$0$ret := -1;
+    inline$find$0$b := false;
+    inline$find$0$found := inline$find$0$b;
+    inline$find$0$i := 0;
+    goto inline$find$0$anon4_LoopHead;
+
+  inline$find$0$anon4_LoopHead:
+    goto inline$find$0$anon4_LoopDone, inline$find$0$anon4_LoopBody;
+
+  inline$find$0$anon4_LoopBody:
+    assume {:partition} inline$find$0$i < inline$find$0$size;
+    goto inline$check$0$Entry;
+
+  inline$check$0$Entry:
+    inline$check$0$A := inline$find$0$A;
+    inline$check$0$i := inline$find$0$i;
+    inline$check$0$c := inline$find$0$x;
+    assert inline$check$0$i >= 0;
+    havoc inline$check$0$ret;
+    goto inline$check$0$anon0;
+
+  inline$check$0$anon0:
+    goto inline$check$0$anon4_Then, inline$check$0$anon4_Else;
+
+  inline$check$0$anon4_Else:
+    assume {:partition} inline$check$0$A[inline$check$0$i] != inline$check$0$c;
+    inline$check$0$ret := false;
+    goto inline$check$0$anon3;
+
+  inline$check$0$anon3:
+    goto inline$check$0$Return;
+
+  inline$check$0$anon4_Then:
+    assume {:partition} inline$check$0$A[inline$check$0$i] == inline$check$0$c;
+    inline$check$0$ret := true;
+    goto inline$check$0$anon3;
+
+  inline$check$0$Return:
+    assert inline$check$0$A[inline$check$0$i] > inline$check$0$c ==> (inline$check$0$ret <==> true);
+    inline$find$0$b := inline$check$0$ret;
+    goto inline$find$0$anon4_LoopBody$1;
+
+  inline$find$0$anon4_LoopBody$1:
+    goto inline$find$0$anon5_Then, inline$find$0$anon5_Else;
+
+  inline$find$0$anon5_Else:
+    assume {:partition} !inline$find$0$b;
+    goto inline$find$0$anon4_LoopHead;
+
+  inline$find$0$anon5_Then:
+    assume {:partition} inline$find$0$b;
+    inline$find$0$ret := inline$find$0$i;
+    inline$find$0$found := inline$find$0$b;
+    goto inline$find$0$anon3;
+
+  inline$find$0$anon3:
+    goto inline$find$0$Return;
+
+  inline$find$0$anon4_LoopDone:
+    assume {:partition} inline$find$0$size <= inline$find$0$i;
+    goto inline$find$0$anon3;
+
+  inline$find$0$Return:
+    i := inline$find$0$ret;
+    b := inline$find$0$found;
+    goto anon0$1;
+
+  anon0$1:
+    goto anon3_Then, anon3_Else;
+
+  anon3_Else:
+    assume {:partition} !b;
+    goto anon2;
+
+  anon2:
+    return;
+
+  anon3_Then:
+    assume {:partition} b;
+    assert i > 0 && A[i] == x;
+    goto anon2;
+}
+
+
+after inlining procedure calls
+procedure {:inline 1} find(A: [int]int, size: int, x: int) returns (ret: int, found: bool);
+
+
+implementation {:inline 1} find(A: [int]int, size: int, x: int) returns (ret: int, found: bool)
+{
+  var i: int;
+  var b: bool;
+  var inline$check$0$A: [int]int;
+  var inline$check$0$i: int;
+  var inline$check$0$c: int;
+  var inline$check$0$ret: bool;
+
+  anon0:
+    ret := -1;
+    b := false;
+    found := b;
+    i := 0;
+    goto anon4_LoopHead;
+
+  anon4_LoopHead:
+    goto anon4_LoopDone, anon4_LoopBody;
+
+  anon4_LoopBody:
+    assume {:partition} i < size;
+    goto inline$check$0$Entry;
+
+  inline$check$0$Entry:
+    inline$check$0$A := A;
+    inline$check$0$i := i;
+    inline$check$0$c := x;
+    assert inline$check$0$i >= 0;
+    havoc inline$check$0$ret;
+    goto inline$check$0$anon0;
+
+  inline$check$0$anon0:
+    goto inline$check$0$anon4_Then, inline$check$0$anon4_Else;
+
+  inline$check$0$anon4_Else:
+    assume {:partition} inline$check$0$A[inline$check$0$i] != inline$check$0$c;
+    inline$check$0$ret := false;
+    goto inline$check$0$anon3;
+
+  inline$check$0$anon3:
+    goto inline$check$0$Return;
+
+  inline$check$0$anon4_Then:
+    assume {:partition} inline$check$0$A[inline$check$0$i] == inline$check$0$c;
+    inline$check$0$ret := true;
+    goto inline$check$0$anon3;
+
+  inline$check$0$Return:
+    assert inline$check$0$A[inline$check$0$i] > inline$check$0$c ==> (inline$check$0$ret <==> true);
+    b := inline$check$0$ret;
+    goto anon4_LoopBody$1;
+
+  anon4_LoopBody$1:
+    goto anon5_Then, anon5_Else;
+
+  anon5_Else:
+    assume {:partition} !b;
+    goto anon4_LoopHead;
+
+  anon5_Then:
+    assume {:partition} b;
+    ret := i;
+    found := b;
+    goto anon3;
+
+  anon3:
+    return;
+
+  anon4_LoopDone:
+    assume {:partition} size <= i;
+    goto anon3;
+}
+
+
+<console>(70,4): Error BP5003: A postcondition might not hold on this return path.
+<console>(78,2): Related location: This is the postcondition that might not hold.
+Execution trace:
+    <console>(19,0): anon0
+    <console>(29,0): inline$find$0$anon0
+    <console>(39,0): inline$find$0$anon4_LoopBody
+    <console>(43,0): inline$check$0$Entry
+    <console>(54,0): inline$check$0$anon4_Else
+    <console>(67,0): inline$check$0$Return
+<console>(109,4): Error BP5001: This assertion might not hold.
+Execution trace:
+    <console>(19,0): anon0
+    <console>(29,0): inline$find$0$anon0
+    <console>(39,0): inline$find$0$anon4_LoopBody
+    <console>(43,0): inline$check$0$Entry
+    <console>(62,0): inline$check$0$anon4_Then
+    <console>(67,0): inline$check$0$Return
+    <console>(79,0): inline$find$0$anon5_Then
+    <console>(107,0): anon3_Then
+<console>(51,4): Error BP5003: A postcondition might not hold on this return path.
+<console>(78,2): Related location: This is the postcondition that might not hold.
+Execution trace:
+    <console>(10,0): anon0
+    <console>(20,0): anon4_LoopBody
+    <console>(24,0): inline$check$0$Entry
+    <console>(35,0): inline$check$0$anon4_Else
+    <console>(48,0): inline$check$0$Return
+<console>(99,0): Error BP5003: A postcondition might not hold on this return path.
+<console>(78,2): Related location: This is the postcondition that might not hold.
+Execution trace:
+    <console>(85,0): anon0
+    <console>(93,0): anon4_Else
+    <console>(98,0): anon3
+
+Boogie program verifier finished with 0 verified, 4 errors

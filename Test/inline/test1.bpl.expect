@@ -1,0 +1,191 @@
+
+procedure Main();
+
+
+
+implementation Main()
+{
+  var x: int;
+  var y: int;
+
+  anon0:
+    x := 1;
+    y := 0;
+    call x := inc(x, 5);
+    call y := incdec(x, 2);
+    assert x - 1 == y;
+    return;
+}
+
+
+
+procedure {:inline 1} incdec(x: int, y: int) returns (z: int);
+  ensures z == x + 1 - y;
+
+
+
+implementation {:inline 1} incdec(x: int, y: int) returns (z: int)
+{
+
+  anon0:
+    z := x;
+    z := x + 1;
+    call z := dec(z, y);
+    return;
+}
+
+
+
+procedure {:inline 1} inc(x: int, i: int) returns (y: int);
+  ensures y == x + i;
+
+
+
+implementation {:inline 1} inc(x: int, i: int) returns (y: int)
+{
+
+  anon0:
+    y := x;
+    y := x + i;
+    return;
+}
+
+
+
+procedure {:inline 1} dec(x: int, i: int) returns (y: int);
+  ensures y == x - i;
+
+
+
+implementation {:inline 1} dec(x: int, i: int) returns (y: int)
+{
+
+  anon0:
+    y := x;
+    y := x - i;
+    return;
+}
+
+
+after inlining procedure calls
+procedure Main();
+
+
+implementation Main()
+{
+  var x: int;
+  var y: int;
+  var inline$inc$0$x: int;
+  var inline$inc$0$i: int;
+  var inline$inc$0$y: int;
+  var inline$incdec$0$x: int;
+  var inline$incdec$0$y: int;
+  var inline$incdec$0$z: int;
+  var inline$dec$0$x: int;
+  var inline$dec$0$i: int;
+  var inline$dec$0$y: int;
+
+  anon0:
+    x := 1;
+    y := 0;
+    goto inline$inc$0$Entry;
+
+  inline$inc$0$Entry:
+    inline$inc$0$x := x;
+    inline$inc$0$i := 5;
+    havoc inline$inc$0$y;
+    goto inline$inc$0$anon0;
+
+  inline$inc$0$anon0:
+    inline$inc$0$y := inline$inc$0$x;
+    inline$inc$0$y := inline$inc$0$x + inline$inc$0$i;
+    goto inline$inc$0$Return;
+
+  inline$inc$0$Return:
+    assert inline$inc$0$y == inline$inc$0$x + inline$inc$0$i;
+    x := inline$inc$0$y;
+    goto anon0$1;
+
+  anon0$1:
+    goto inline$incdec$0$Entry;
+
+  inline$incdec$0$Entry:
+    inline$incdec$0$x := x;
+    inline$incdec$0$y := 2;
+    havoc inline$incdec$0$z;
+    goto inline$incdec$0$anon0;
+
+  inline$incdec$0$anon0:
+    inline$incdec$0$z := inline$incdec$0$x;
+    inline$incdec$0$z := inline$incdec$0$x + 1;
+    goto inline$dec$0$Entry;
+
+  inline$dec$0$Entry:
+    inline$dec$0$x := inline$incdec$0$z;
+    inline$dec$0$i := inline$incdec$0$y;
+    havoc inline$dec$0$y;
+    goto inline$dec$0$anon0;
+
+  inline$dec$0$anon0:
+    inline$dec$0$y := inline$dec$0$x;
+    inline$dec$0$y := inline$dec$0$x - inline$dec$0$i;
+    goto inline$dec$0$Return;
+
+  inline$dec$0$Return:
+    assert inline$dec$0$y == inline$dec$0$x - inline$dec$0$i;
+    inline$incdec$0$z := inline$dec$0$y;
+    goto inline$incdec$0$anon0$1;
+
+  inline$incdec$0$anon0$1:
+    goto inline$incdec$0$Return;
+
+  inline$incdec$0$Return:
+    assert inline$incdec$0$z == inline$incdec$0$x + 1 - inline$incdec$0$y;
+    y := inline$incdec$0$z;
+    goto anon0$2;
+
+  anon0$2:
+    assert x - 1 == y;
+    return;
+}
+
+
+after inlining procedure calls
+procedure {:inline 1} incdec(x: int, y: int) returns (z: int);
+  ensures z == x + 1 - y;
+
+
+implementation {:inline 1} incdec(x: int, y: int) returns (z: int)
+{
+  var inline$dec$0$x: int;
+  var inline$dec$0$i: int;
+  var inline$dec$0$y: int;
+
+  anon0:
+    z := x;
+    z := x + 1;
+    goto inline$dec$0$Entry;
+
+  inline$dec$0$Entry:
+    inline$dec$0$x := z;
+    inline$dec$0$i := y;
+    havoc inline$dec$0$y;
+    goto inline$dec$0$anon0;
+
+  inline$dec$0$anon0:
+    inline$dec$0$y := inline$dec$0$x;
+    inline$dec$0$y := inline$dec$0$x - inline$dec$0$i;
+    goto inline$dec$0$Return;
+
+  inline$dec$0$Return:
+    assert inline$dec$0$y == inline$dec$0$x - inline$dec$0$i;
+    z := inline$dec$0$y;
+    goto anon0$1;
+
+  anon0$1:
+    return;
+}
+
+
+
+Boogie program verifier finished with 4 verified, 0 errors

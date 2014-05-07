@@ -1,0 +1,579 @@
+
+procedure {:inline 2} foo();
+  modifies x;
+
+
+
+implementation {:inline 2} foo()
+{
+
+  anon0:
+    x := x + 1;
+    call foo();
+    return;
+}
+
+
+
+procedure {:inline 2} foo1();
+  modifies x;
+
+
+
+implementation {:inline 2} foo1()
+{
+
+  anon0:
+    x := x + 1;
+    call foo2();
+    return;
+}
+
+
+
+procedure {:inline 2} foo2();
+  modifies x;
+
+
+
+implementation {:inline 2} foo2()
+{
+
+  anon0:
+    x := x + 1;
+    call foo3();
+    return;
+}
+
+
+
+procedure {:inline 2} foo3();
+  modifies x;
+
+
+
+implementation {:inline 2} foo3()
+{
+
+  anon0:
+    x := x + 1;
+    call foo1();
+    return;
+}
+
+
+
+var x: int;
+
+procedure bar();
+  modifies x;
+
+
+
+implementation bar()
+{
+
+  anon0:
+    call foo();
+    call foo1();
+    return;
+}
+
+
+after inlining procedure calls
+procedure {:inline 2} foo();
+  modifies x;
+
+
+implementation {:inline 2} foo()
+{
+  var inline$foo$0$x: int;
+  var inline$foo$1$x: int;
+
+  anon0:
+    x := x + 1;
+    goto inline$foo$0$Entry;
+
+  inline$foo$0$Entry:
+    inline$foo$0$x := x;
+    goto inline$foo$0$anon0;
+
+  inline$foo$0$anon0:
+    x := x + 1;
+    goto inline$foo$1$Entry;
+
+  inline$foo$1$Entry:
+    inline$foo$1$x := x;
+    goto inline$foo$1$anon0;
+
+  inline$foo$1$anon0:
+    x := x + 1;
+    call foo();
+    goto inline$foo$1$Return;
+
+  inline$foo$1$Return:
+    goto inline$foo$0$anon0$1;
+
+  inline$foo$0$anon0$1:
+    goto inline$foo$0$Return;
+
+  inline$foo$0$Return:
+    goto anon0$1;
+
+  anon0$1:
+    return;
+}
+
+
+after inlining procedure calls
+procedure {:inline 2} foo1();
+  modifies x;
+
+
+implementation {:inline 2} foo1()
+{
+  var inline$foo2$0$x: int;
+  var inline$foo3$0$x: int;
+  var inline$foo1$0$x: int;
+  var inline$foo2$1$x: int;
+  var inline$foo3$1$x: int;
+  var inline$foo1$1$x: int;
+
+  anon0:
+    x := x + 1;
+    goto inline$foo2$0$Entry;
+
+  inline$foo2$0$Entry:
+    inline$foo2$0$x := x;
+    goto inline$foo2$0$anon0;
+
+  inline$foo2$0$anon0:
+    x := x + 1;
+    goto inline$foo3$0$Entry;
+
+  inline$foo3$0$Entry:
+    inline$foo3$0$x := x;
+    goto inline$foo3$0$anon0;
+
+  inline$foo3$0$anon0:
+    x := x + 1;
+    goto inline$foo1$0$Entry;
+
+  inline$foo1$0$Entry:
+    inline$foo1$0$x := x;
+    goto inline$foo1$0$anon0;
+
+  inline$foo1$0$anon0:
+    x := x + 1;
+    goto inline$foo2$1$Entry;
+
+  inline$foo2$1$Entry:
+    inline$foo2$1$x := x;
+    goto inline$foo2$1$anon0;
+
+  inline$foo2$1$anon0:
+    x := x + 1;
+    goto inline$foo3$1$Entry;
+
+  inline$foo3$1$Entry:
+    inline$foo3$1$x := x;
+    goto inline$foo3$1$anon0;
+
+  inline$foo3$1$anon0:
+    x := x + 1;
+    goto inline$foo1$1$Entry;
+
+  inline$foo1$1$Entry:
+    inline$foo1$1$x := x;
+    goto inline$foo1$1$anon0;
+
+  inline$foo1$1$anon0:
+    x := x + 1;
+    call foo2();
+    goto inline$foo1$1$Return;
+
+  inline$foo1$1$Return:
+    goto inline$foo3$1$anon0$1;
+
+  inline$foo3$1$anon0$1:
+    goto inline$foo3$1$Return;
+
+  inline$foo3$1$Return:
+    goto inline$foo2$1$anon0$1;
+
+  inline$foo2$1$anon0$1:
+    goto inline$foo2$1$Return;
+
+  inline$foo2$1$Return:
+    goto inline$foo1$0$anon0$1;
+
+  inline$foo1$0$anon0$1:
+    goto inline$foo1$0$Return;
+
+  inline$foo1$0$Return:
+    goto inline$foo3$0$anon0$1;
+
+  inline$foo3$0$anon0$1:
+    goto inline$foo3$0$Return;
+
+  inline$foo3$0$Return:
+    goto inline$foo2$0$anon0$1;
+
+  inline$foo2$0$anon0$1:
+    goto inline$foo2$0$Return;
+
+  inline$foo2$0$Return:
+    goto anon0$1;
+
+  anon0$1:
+    return;
+}
+
+
+after inlining procedure calls
+procedure {:inline 2} foo2();
+  modifies x;
+
+
+implementation {:inline 2} foo2()
+{
+  var inline$foo3$0$x: int;
+  var inline$foo1$0$x: int;
+  var inline$foo2$0$x: int;
+  var inline$foo3$1$x: int;
+  var inline$foo1$1$x: int;
+  var inline$foo2$1$x: int;
+
+  anon0:
+    x := x + 1;
+    goto inline$foo3$0$Entry;
+
+  inline$foo3$0$Entry:
+    inline$foo3$0$x := x;
+    goto inline$foo3$0$anon0;
+
+  inline$foo3$0$anon0:
+    x := x + 1;
+    goto inline$foo1$0$Entry;
+
+  inline$foo1$0$Entry:
+    inline$foo1$0$x := x;
+    goto inline$foo1$0$anon0;
+
+  inline$foo1$0$anon0:
+    x := x + 1;
+    goto inline$foo2$0$Entry;
+
+  inline$foo2$0$Entry:
+    inline$foo2$0$x := x;
+    goto inline$foo2$0$anon0;
+
+  inline$foo2$0$anon0:
+    x := x + 1;
+    goto inline$foo3$1$Entry;
+
+  inline$foo3$1$Entry:
+    inline$foo3$1$x := x;
+    goto inline$foo3$1$anon0;
+
+  inline$foo3$1$anon0:
+    x := x + 1;
+    goto inline$foo1$1$Entry;
+
+  inline$foo1$1$Entry:
+    inline$foo1$1$x := x;
+    goto inline$foo1$1$anon0;
+
+  inline$foo1$1$anon0:
+    x := x + 1;
+    goto inline$foo2$1$Entry;
+
+  inline$foo2$1$Entry:
+    inline$foo2$1$x := x;
+    goto inline$foo2$1$anon0;
+
+  inline$foo2$1$anon0:
+    x := x + 1;
+    call foo3();
+    goto inline$foo2$1$Return;
+
+  inline$foo2$1$Return:
+    goto inline$foo1$1$anon0$1;
+
+  inline$foo1$1$anon0$1:
+    goto inline$foo1$1$Return;
+
+  inline$foo1$1$Return:
+    goto inline$foo3$1$anon0$1;
+
+  inline$foo3$1$anon0$1:
+    goto inline$foo3$1$Return;
+
+  inline$foo3$1$Return:
+    goto inline$foo2$0$anon0$1;
+
+  inline$foo2$0$anon0$1:
+    goto inline$foo2$0$Return;
+
+  inline$foo2$0$Return:
+    goto inline$foo1$0$anon0$1;
+
+  inline$foo1$0$anon0$1:
+    goto inline$foo1$0$Return;
+
+  inline$foo1$0$Return:
+    goto inline$foo3$0$anon0$1;
+
+  inline$foo3$0$anon0$1:
+    goto inline$foo3$0$Return;
+
+  inline$foo3$0$Return:
+    goto anon0$1;
+
+  anon0$1:
+    return;
+}
+
+
+after inlining procedure calls
+procedure {:inline 2} foo3();
+  modifies x;
+
+
+implementation {:inline 2} foo3()
+{
+  var inline$foo1$0$x: int;
+  var inline$foo2$0$x: int;
+  var inline$foo3$0$x: int;
+  var inline$foo1$1$x: int;
+  var inline$foo2$1$x: int;
+  var inline$foo3$1$x: int;
+
+  anon0:
+    x := x + 1;
+    goto inline$foo1$0$Entry;
+
+  inline$foo1$0$Entry:
+    inline$foo1$0$x := x;
+    goto inline$foo1$0$anon0;
+
+  inline$foo1$0$anon0:
+    x := x + 1;
+    goto inline$foo2$0$Entry;
+
+  inline$foo2$0$Entry:
+    inline$foo2$0$x := x;
+    goto inline$foo2$0$anon0;
+
+  inline$foo2$0$anon0:
+    x := x + 1;
+    goto inline$foo3$0$Entry;
+
+  inline$foo3$0$Entry:
+    inline$foo3$0$x := x;
+    goto inline$foo3$0$anon0;
+
+  inline$foo3$0$anon0:
+    x := x + 1;
+    goto inline$foo1$1$Entry;
+
+  inline$foo1$1$Entry:
+    inline$foo1$1$x := x;
+    goto inline$foo1$1$anon0;
+
+  inline$foo1$1$anon0:
+    x := x + 1;
+    goto inline$foo2$1$Entry;
+
+  inline$foo2$1$Entry:
+    inline$foo2$1$x := x;
+    goto inline$foo2$1$anon0;
+
+  inline$foo2$1$anon0:
+    x := x + 1;
+    goto inline$foo3$1$Entry;
+
+  inline$foo3$1$Entry:
+    inline$foo3$1$x := x;
+    goto inline$foo3$1$anon0;
+
+  inline$foo3$1$anon0:
+    x := x + 1;
+    call foo1();
+    goto inline$foo3$1$Return;
+
+  inline$foo3$1$Return:
+    goto inline$foo2$1$anon0$1;
+
+  inline$foo2$1$anon0$1:
+    goto inline$foo2$1$Return;
+
+  inline$foo2$1$Return:
+    goto inline$foo1$1$anon0$1;
+
+  inline$foo1$1$anon0$1:
+    goto inline$foo1$1$Return;
+
+  inline$foo1$1$Return:
+    goto inline$foo3$0$anon0$1;
+
+  inline$foo3$0$anon0$1:
+    goto inline$foo3$0$Return;
+
+  inline$foo3$0$Return:
+    goto inline$foo2$0$anon0$1;
+
+  inline$foo2$0$anon0$1:
+    goto inline$foo2$0$Return;
+
+  inline$foo2$0$Return:
+    goto inline$foo1$0$anon0$1;
+
+  inline$foo1$0$anon0$1:
+    goto inline$foo1$0$Return;
+
+  inline$foo1$0$Return:
+    goto anon0$1;
+
+  anon0$1:
+    return;
+}
+
+
+after inlining procedure calls
+procedure bar();
+  modifies x;
+
+
+implementation bar()
+{
+  var inline$foo$0$x: int;
+  var inline$foo$1$x: int;
+  var inline$foo1$0$x: int;
+  var inline$foo2$0$x: int;
+  var inline$foo3$0$x: int;
+  var inline$foo1$1$x: int;
+  var inline$foo2$1$x: int;
+  var inline$foo3$1$x: int;
+
+  anon0:
+    goto inline$foo$0$Entry;
+
+  inline$foo$0$Entry:
+    inline$foo$0$x := x;
+    goto inline$foo$0$anon0;
+
+  inline$foo$0$anon0:
+    x := x + 1;
+    goto inline$foo$1$Entry;
+
+  inline$foo$1$Entry:
+    inline$foo$1$x := x;
+    goto inline$foo$1$anon0;
+
+  inline$foo$1$anon0:
+    x := x + 1;
+    call foo();
+    goto inline$foo$1$Return;
+
+  inline$foo$1$Return:
+    goto inline$foo$0$anon0$1;
+
+  inline$foo$0$anon0$1:
+    goto inline$foo$0$Return;
+
+  inline$foo$0$Return:
+    goto anon0$1;
+
+  anon0$1:
+    goto inline$foo1$0$Entry;
+
+  inline$foo1$0$Entry:
+    inline$foo1$0$x := x;
+    goto inline$foo1$0$anon0;
+
+  inline$foo1$0$anon0:
+    x := x + 1;
+    goto inline$foo2$0$Entry;
+
+  inline$foo2$0$Entry:
+    inline$foo2$0$x := x;
+    goto inline$foo2$0$anon0;
+
+  inline$foo2$0$anon0:
+    x := x + 1;
+    goto inline$foo3$0$Entry;
+
+  inline$foo3$0$Entry:
+    inline$foo3$0$x := x;
+    goto inline$foo3$0$anon0;
+
+  inline$foo3$0$anon0:
+    x := x + 1;
+    goto inline$foo1$1$Entry;
+
+  inline$foo1$1$Entry:
+    inline$foo1$1$x := x;
+    goto inline$foo1$1$anon0;
+
+  inline$foo1$1$anon0:
+    x := x + 1;
+    goto inline$foo2$1$Entry;
+
+  inline$foo2$1$Entry:
+    inline$foo2$1$x := x;
+    goto inline$foo2$1$anon0;
+
+  inline$foo2$1$anon0:
+    x := x + 1;
+    goto inline$foo3$1$Entry;
+
+  inline$foo3$1$Entry:
+    inline$foo3$1$x := x;
+    goto inline$foo3$1$anon0;
+
+  inline$foo3$1$anon0:
+    x := x + 1;
+    call foo1();
+    goto inline$foo3$1$Return;
+
+  inline$foo3$1$Return:
+    goto inline$foo2$1$anon0$1;
+
+  inline$foo2$1$anon0$1:
+    goto inline$foo2$1$Return;
+
+  inline$foo2$1$Return:
+    goto inline$foo1$1$anon0$1;
+
+  inline$foo1$1$anon0$1:
+    goto inline$foo1$1$Return;
+
+  inline$foo1$1$Return:
+    goto inline$foo3$0$anon0$1;
+
+  inline$foo3$0$anon0$1:
+    goto inline$foo3$0$Return;
+
+  inline$foo3$0$Return:
+    goto inline$foo2$0$anon0$1;
+
+  inline$foo2$0$anon0$1:
+    goto inline$foo2$0$Return;
+
+  inline$foo2$0$Return:
+    goto inline$foo1$0$anon0$1;
+
+  inline$foo1$0$anon0$1:
+    goto inline$foo1$0$Return;
+
+  inline$foo1$0$Return:
+    goto anon0$2;
+
+  anon0$2:
+    return;
+}
+
+
+
+Boogie program verifier finished with 5 verified, 0 errors

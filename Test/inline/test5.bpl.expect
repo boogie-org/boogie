@@ -1,0 +1,8 @@
+test5.bpl(39,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    test5.bpl(36,10): anon0
+    test5.bpl(30,10): inline$P$0$anon0
+    test5.bpl(30,10): inline$P$1$anon0
+    test5.bpl(36,10): anon0$2
+
+Boogie program verifier finished with 4 verified, 1 error

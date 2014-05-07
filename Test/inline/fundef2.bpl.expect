@@ -1,0 +1,5 @@
+fundef2.bpl(8,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    fundef2.bpl(7,3): anon0
+
+Boogie program verifier finished with 0 verified, 1 error

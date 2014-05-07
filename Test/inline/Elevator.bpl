@@ -1,3 +1,6 @@
+// RUN: %boogie %s > %t
+// RUN: %boogie -removeEmptyBlocks:0 %s >> %t
+// RUN: %diff %s.expect %t
 // A Boogie version of Elevator.asml (see Boogie/Test/inline/Elevator.asml)
 
 var floors: [int]bool;  // set of integer

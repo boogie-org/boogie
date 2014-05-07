@@ -1,0 +1,255 @@
+
+var glb: int;
+
+procedure recursivetest();
+  modifies glb;
+
+
+
+implementation recursivetest()
+{
+
+  anon0:
+    glb := 5;
+    call glb := recursive(glb);
+    return;
+}
+
+
+
+procedure {:inline 3} recursive(x: int) returns (y: int);
+
+
+
+implementation {:inline 3} recursive(x: int) returns (y: int)
+{
+  var k: int;
+
+  anon0:
+    goto anon3_Then, anon3_Else;
+
+  anon3_Then:
+    assume {:partition} x == 0;
+    y := 1;
+    return;
+
+  anon3_Else:
+    assume {:partition} x != 0;
+    goto anon2;
+
+  anon2:
+    call k := recursive(x - 1);
+    y := y + k;
+    return;
+}
+
+
+after inlining procedure calls
+procedure recursivetest();
+  modifies glb;
+
+
+implementation recursivetest()
+{
+  var inline$recursive$0$k: int;
+  var inline$recursive$0$x: int;
+  var inline$recursive$0$y: int;
+  var inline$recursive$1$k: int;
+  var inline$recursive$1$x: int;
+  var inline$recursive$1$y: int;
+  var inline$recursive$2$k: int;
+  var inline$recursive$2$x: int;
+  var inline$recursive$2$y: int;
+
+  anon0:
+    glb := 5;
+    goto inline$recursive$0$Entry;
+
+  inline$recursive$0$Entry:
+    inline$recursive$0$x := glb;
+    havoc inline$recursive$0$k, inline$recursive$0$y;
+    goto inline$recursive$0$anon0;
+
+  inline$recursive$0$anon0:
+    goto inline$recursive$0$anon3_Then, inline$recursive$0$anon3_Else;
+
+  inline$recursive$0$anon3_Else:
+    assume {:partition} inline$recursive$0$x != 0;
+    goto inline$recursive$1$Entry;
+
+  inline$recursive$1$Entry:
+    inline$recursive$1$x := inline$recursive$0$x - 1;
+    havoc inline$recursive$1$k, inline$recursive$1$y;
+    goto inline$recursive$1$anon0;
+
+  inline$recursive$1$anon0:
+    goto inline$recursive$1$anon3_Then, inline$recursive$1$anon3_Else;
+
+  inline$recursive$1$anon3_Else:
+    assume {:partition} inline$recursive$1$x != 0;
+    goto inline$recursive$2$Entry;
+
+  inline$recursive$2$Entry:
+    inline$recursive$2$x := inline$recursive$1$x - 1;
+    havoc inline$recursive$2$k, inline$recursive$2$y;
+    goto inline$recursive$2$anon0;
+
+  inline$recursive$2$anon0:
+    goto inline$recursive$2$anon3_Then, inline$recursive$2$anon3_Else;
+
+  inline$recursive$2$anon3_Else:
+    assume {:partition} inline$recursive$2$x != 0;
+    call inline$recursive$2$k := recursive(inline$recursive$2$x - 1);
+    inline$recursive$2$y := inline$recursive$2$y + inline$recursive$2$k;
+    goto inline$recursive$2$Return;
+
+  inline$recursive$2$anon3_Then:
+    assume {:partition} inline$recursive$2$x == 0;
+    inline$recursive$2$y := 1;
+    goto inline$recursive$2$Return;
+
+  inline$recursive$2$Return:
+    inline$recursive$1$k := inline$recursive$2$y;
+    goto inline$recursive$1$anon3_Else$1;
+
+  inline$recursive$1$anon3_Else$1:
+    inline$recursive$1$y := inline$recursive$1$y + inline$recursive$1$k;
+    goto inline$recursive$1$Return;
+
+  inline$recursive$1$anon3_Then:
+    assume {:partition} inline$recursive$1$x == 0;
+    inline$recursive$1$y := 1;
+    goto inline$recursive$1$Return;
+
+  inline$recursive$1$Return:
+    inline$recursive$0$k := inline$recursive$1$y;
+    goto inline$recursive$0$anon3_Else$1;
+
+  inline$recursive$0$anon3_Else$1:
+    inline$recursive$0$y := inline$recursive$0$y + inline$recursive$0$k;
+    goto inline$recursive$0$Return;
+
+  inline$recursive$0$anon3_Then:
+    assume {:partition} inline$recursive$0$x == 0;
+    inline$recursive$0$y := 1;
+    goto inline$recursive$0$Return;
+
+  inline$recursive$0$Return:
+    glb := inline$recursive$0$y;
+    goto anon0$1;
+
+  anon0$1:
+    return;
+}
+
+
+after inlining procedure calls
+procedure {:inline 3} recursive(x: int) returns (y: int);
+
+
+implementation {:inline 3} recursive(x: int) returns (y: int)
+{
+  var k: int;
+  var inline$recursive$0$k: int;
+  var inline$recursive$0$x: int;
+  var inline$recursive$0$y: int;
+  var inline$recursive$1$k: int;
+  var inline$recursive$1$x: int;
+  var inline$recursive$1$y: int;
+  var inline$recursive$2$k: int;
+  var inline$recursive$2$x: int;
+  var inline$recursive$2$y: int;
+
+  anon0:
+    goto anon3_Then, anon3_Else;
+
+  anon3_Else:
+    assume {:partition} x != 0;
+    goto inline$recursive$0$Entry;
+
+  inline$recursive$0$Entry:
+    inline$recursive$0$x := x - 1;
+    havoc inline$recursive$0$k, inline$recursive$0$y;
+    goto inline$recursive$0$anon0;
+
+  inline$recursive$0$anon0:
+    goto inline$recursive$0$anon3_Then, inline$recursive$0$anon3_Else;
+
+  inline$recursive$0$anon3_Else:
+    assume {:partition} inline$recursive$0$x != 0;
+    goto inline$recursive$1$Entry;
+
+  inline$recursive$1$Entry:
+    inline$recursive$1$x := inline$recursive$0$x - 1;
+    havoc inline$recursive$1$k, inline$recursive$1$y;
+    goto inline$recursive$1$anon0;
+
+  inline$recursive$1$anon0:
+    goto inline$recursive$1$anon3_Then, inline$recursive$1$anon3_Else;
+
+  inline$recursive$1$anon3_Else:
+    assume {:partition} inline$recursive$1$x != 0;
+    goto inline$recursive$2$Entry;
+
+  inline$recursive$2$Entry:
+    inline$recursive$2$x := inline$recursive$1$x - 1;
+    havoc inline$recursive$2$k, inline$recursive$2$y;
+    goto inline$recursive$2$anon0;
+
+  inline$recursive$2$anon0:
+    goto inline$recursive$2$anon3_Then, inline$recursive$2$anon3_Else;
+
+  inline$recursive$2$anon3_Else:
+    assume {:partition} inline$recursive$2$x != 0;
+    call inline$recursive$2$k := recursive(inline$recursive$2$x - 1);
+    inline$recursive$2$y := inline$recursive$2$y + inline$recursive$2$k;
+    goto inline$recursive$2$Return;
+
+  inline$recursive$2$anon3_Then:
+    assume {:partition} inline$recursive$2$x == 0;
+    inline$recursive$2$y := 1;
+    goto inline$recursive$2$Return;
+
+  inline$recursive$2$Return:
+    inline$recursive$1$k := inline$recursive$2$y;
+    goto inline$recursive$1$anon3_Else$1;
+
+  inline$recursive$1$anon3_Else$1:
+    inline$recursive$1$y := inline$recursive$1$y + inline$recursive$1$k;
+    goto inline$recursive$1$Return;
+
+  inline$recursive$1$anon3_Then:
+    assume {:partition} inline$recursive$1$x == 0;
+    inline$recursive$1$y := 1;
+    goto inline$recursive$1$Return;
+
+  inline$recursive$1$Return:
+    inline$recursive$0$k := inline$recursive$1$y;
+    goto inline$recursive$0$anon3_Else$1;
+
+  inline$recursive$0$anon3_Else$1:
+    inline$recursive$0$y := inline$recursive$0$y + inline$recursive$0$k;
+    goto inline$recursive$0$Return;
+
+  inline$recursive$0$anon3_Then:
+    assume {:partition} inline$recursive$0$x == 0;
+    inline$recursive$0$y := 1;
+    goto inline$recursive$0$Return;
+
+  inline$recursive$0$Return:
+    k := inline$recursive$0$y;
+    goto anon3_Else$1;
+
+  anon3_Else$1:
+    y := y + k;
+    return;
+
+  anon3_Then:
+    assume {:partition} x == 0;
+    y := 1;
+    return;
+}
+
+
+
+Boogie program verifier finished with 2 verified, 0 errors

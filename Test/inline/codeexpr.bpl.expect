@@ -1,0 +1,5 @@
+codeexpr.bpl(42,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    codeexpr.bpl(41,7): anon0
+
+Boogie program verifier finished with 5 verified, 1 error

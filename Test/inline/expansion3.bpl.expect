@@ -1,0 +1,5 @@
+*** detected expansion loop on foo3
+*** detected expansion loop on foo3
+*** detected expansion loop on foo3
+
+Boogie program verifier finished with 1 verified, 0 errors

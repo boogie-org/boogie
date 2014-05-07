@@ -1,0 +1,22 @@
+polyInline.bpl(30,9): Warning: type parameter alpha is ambiguous, instantiating to int
+polyInline.bpl(34,9): Warning: type parameter alpha is ambiguous, instantiating to int
+polyInline.bpl(38,9): Warning: type parameter alpha is ambiguous, instantiating to int
+polyInline.bpl(26,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    polyInline.bpl(23,3): anon0
+polyInline.bpl(42,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    polyInline.bpl(30,3): anon0
+
+Boogie program verifier finished with 0 verified, 2 errors
+polyInline.bpl(30,9): Warning: type parameter alpha is ambiguous, instantiating to int
+polyInline.bpl(34,9): Warning: type parameter alpha is ambiguous, instantiating to int
+polyInline.bpl(38,9): Warning: type parameter alpha is ambiguous, instantiating to int
+polyInline.bpl(26,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    polyInline.bpl(23,3): anon0
+polyInline.bpl(42,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    polyInline.bpl(30,3): anon0
+
+Boogie program verifier finished with 0 verified, 2 errors

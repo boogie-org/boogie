@@ -1,0 +1,14 @@
+InliningAndLoops.bpl(14,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    InliningAndLoops.bpl(7,10): anon0#3
+    InliningAndLoops.bpl(8,3): anon4_LoopHead#3
+    InliningAndLoops.bpl(10,5): anon4_LoopBody#3
+    InliningAndLoops.bpl(10,5): anon4_LoopBody$1#3
+    InliningAndLoops.bpl(8,3): anon4_LoopHead#2
+    InliningAndLoops.bpl(10,5): anon4_LoopBody#2
+    InliningAndLoops.bpl(10,5): anon4_LoopBody$1#2
+    InliningAndLoops.bpl(8,3): anon4_LoopHead#1
+    InliningAndLoops.bpl(8,3): anon4_LoopDone#3
+    InliningAndLoops.bpl(14,5): anon5_Then#3
+
+Boogie program verifier finished with 0 verified, 1 error
