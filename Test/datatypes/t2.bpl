@@ -1,3 +1,5 @@
+// RUN: %boogie -typeEncoding:m %s > %t
+// RUN: %diff %s.expect %t
 type TT;
 type {:datatype} Tree;
 function {:constructor} leaf`0() : Tree;
