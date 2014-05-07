@@ -1,0 +1,22 @@
+found unreachable code:
+implementation b(x: int)
+{
+  var y: int;
+
+
+  0:
+    goto anon0;
+
+  anon0:
+    goto anon3_Then;
+
+  anon3_Then:
+    assume {:partition} x < 0;
+    y := 1;
+    assert false;
+    return;
+}
+
+
+
+Boogie program verifier finished with 4 verified, 0 errors
