@@ -1,0 +1,35 @@
+procedure foo();
+
+
+
+implementation foo()
+{
+  var i: int;
+  var j: int;
+  var n: int;
+
+  entry:
+    assume {:inferred} true;
+    assume n >= 4;
+    i := 0;
+    j := i + 1;
+    assume {:inferred} i == 0 && j == 1 && 4 <= n;
+    goto exit, loop0;
+
+  loop0:  // cut point
+    assume {:inferred} 0 <= i && 1 <= j && 4 <= n;
+    assume j <= n;
+    i := i + 1;
+    j := j + 1;
+    assume {:inferred} 1 <= i && 2 <= j && 4 <= n;
+    goto loop0, exit;
+
+  exit:
+    assume {:inferred} 0 <= i && 1 <= j && 4 <= n;
+    assume {:inferred} 0 <= i && 1 <= j && 4 <= n;
+    return;
+}
+
+
+
+Boogie program verifier finished with 0 verified, 0 errors

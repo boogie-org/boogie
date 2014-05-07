@@ -1,0 +1,33 @@
+var x: int;
+
+var y: int;
+
+procedure p();
+  modifies x;
+
+
+
+implementation p()
+{
+
+  A:
+    assume {:inferred} true;
+    assume x < y;
+    assume {:inferred} true;
+    goto B, C;
+
+  C:
+    assume {:inferred} true;
+    assume {:inferred} true;
+    return;
+
+  B:
+    assume {:inferred} true;
+    x := x * x;
+    assume {:inferred} true;
+    return;
+}
+
+
+
+Boogie program verifier finished with 0 verified, 0 errors

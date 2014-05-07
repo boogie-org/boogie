@@ -1,0 +1,27 @@
+procedure foo();
+
+
+
+implementation foo()
+{
+  var i: int;
+  var j: int;
+  var n: int;
+
+  A:
+    assume {:inferred} true;
+    n := 0;
+    j := 0;
+    i := j + 1;
+    i := i + 1;
+    i := i + 1;
+    i := i + 1;
+    i := i + 1;
+    j := j + 1;
+    assume {:inferred} i == 5 && j == 1 && n == 0;
+    return;
+}
+
+
+
+Boogie program verifier finished with 0 verified, 0 errors

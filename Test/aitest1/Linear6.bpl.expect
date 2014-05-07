@@ -1,0 +1,41 @@
+var x: int;
+
+var y: int;
+
+var z: int;
+
+procedure p();
+  modifies x;
+
+
+
+implementation p()
+{
+
+  A:
+    assume {:inferred} true;
+    x := 8;
+    assume {:inferred} x == 8;
+    goto B, C;
+
+  C:
+    assume {:inferred} x == 8;
+    x := 10;
+    assume {:inferred} x == 10;
+    goto D;
+
+  D:
+    assume {:inferred} 9 <= x && x < 11;
+    assume {:inferred} 9 <= x && x < 11;
+    return;
+
+  B:
+    assume {:inferred} x == 8;
+    x := 9;
+    assume {:inferred} x == 9;
+    goto D;
+}
+
+
+
+Boogie program verifier finished with 0 verified, 0 errors
