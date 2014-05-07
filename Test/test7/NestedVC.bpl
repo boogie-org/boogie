@@ -1,3 +1,5 @@
+// RUN: %boogie -vc:nested %s > %t
+// RUN: %diff %s.expect %t
 procedure P()
 {
 A: goto B, C;

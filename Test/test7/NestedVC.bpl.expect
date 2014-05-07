@@ -1,0 +1,6 @@
+NestedVC.bpl(17,4): Error BP5001: This assertion might not hold.
+Execution trace:
+    NestedVC.bpl(16,1): A
+    NestedVC.bpl(17,1): B
+
+Boogie program verifier finished with 1 verified, 1 error
