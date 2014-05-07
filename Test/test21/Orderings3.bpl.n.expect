@@ -1,0 +1,11 @@
+Orderings3.bpl(35,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Orderings3.bpl(21,3): anon0
+Orderings3.bpl(40,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Orderings3.bpl(40,3): anon0
+Orderings3.bpl(42,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Orderings3.bpl(40,3): anon0
+
+Boogie program verifier finished with 0 verified, 3 errors

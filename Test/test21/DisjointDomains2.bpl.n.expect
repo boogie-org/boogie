@@ -1,0 +1,8 @@
+DisjointDomains2.bpl(17,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    DisjointDomains2.bpl(15,3): start
+DisjointDomains2.bpl(24,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    DisjointDomains2.bpl(22,3): start
+
+Boogie program verifier finished with 4 verified, 2 errors

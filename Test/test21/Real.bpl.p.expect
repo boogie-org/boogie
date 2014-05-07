@@ -1,0 +1,10 @@
+Real.bpl(32,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    Real.bpl(29,5): anon0
+    Real.bpl(32,5): anon3_Then
+Real.bpl(47,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    Real.bpl(40,3): anon0
+    Real.bpl(47,5): anon3_Else
+
+Boogie program verifier finished with 2 verified, 2 errors

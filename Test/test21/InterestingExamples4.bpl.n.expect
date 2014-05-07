@@ -1,0 +1,8 @@
+InterestingExamples4.bpl(42,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    InterestingExamples4.bpl(42,3): anon0
+InterestingExamples4.bpl(45,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    InterestingExamples4.bpl(42,3): anon0
+
+Boogie program verifier finished with 0 verified, 2 errors

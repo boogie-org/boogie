@@ -1,0 +1,8 @@
+BooleanQuantification.bpl(25,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    BooleanQuantification.bpl(24,3): anon0
+BooleanQuantification.bpl(37,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    BooleanQuantification.bpl(35,3): anon0
+
+Boogie program verifier finished with 2 verified, 2 errors

@@ -1,0 +1,5 @@
+MapAxiomsConsistency.bpl(100,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    MapAxiomsConsistency.bpl(85,13): anon0
+
+Boogie program verifier finished with 0 verified, 1 error

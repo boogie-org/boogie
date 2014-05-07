@@ -1,0 +1,5 @@
+Triggers1.bpl(22,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Triggers1.bpl(18,3): anon0
+
+Boogie program verifier finished with 0 verified, 1 error

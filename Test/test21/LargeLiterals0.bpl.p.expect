@@ -1,0 +1,5 @@
+LargeLiterals0.bpl(24,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    LargeLiterals0.bpl(13,5): anon0
+
+Boogie program verifier finished with 0 verified, 1 error

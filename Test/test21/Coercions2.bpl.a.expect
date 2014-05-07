@@ -1,0 +1,6 @@
+Coercions2.bpl(18,23): Warning: type parameter a is ambiguous, instantiating to int
+Coercions2.bpl(29,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    Coercions2.bpl(24,3): anon0
+
+Boogie program verifier finished with 0 verified, 1 error

@@ -1,0 +1,6 @@
+EmptyList.bpl(52,9): Warning: type parameter a is ambiguous, instantiating to List int
+EmptyList.bpl(48,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    EmptyList.bpl(32,5): anon0
+
+Boogie program verifier finished with 1 verified, 1 error

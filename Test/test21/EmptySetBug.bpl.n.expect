@@ -1,0 +1,8 @@
+EmptySetBug.bpl(33,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    EmptySetBug.bpl(31,5): anon0
+EmptySetBug.bpl(35,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    EmptySetBug.bpl(31,5): anon0
+
+Boogie program verifier finished with 0 verified, 2 errors
