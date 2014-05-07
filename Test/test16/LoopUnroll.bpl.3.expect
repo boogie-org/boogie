@@ -1,0 +1,11 @@
+LoopUnroll.bpl(80,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    LoopUnroll.bpl(74,5): anon0#3
+    LoopUnroll.bpl(75,3): anon2_LoopHead#3
+    LoopUnroll.bpl(77,5): anon2_LoopBody#3
+    LoopUnroll.bpl(75,3): anon2_LoopHead#2
+    LoopUnroll.bpl(77,5): anon2_LoopBody#2
+    LoopUnroll.bpl(75,3): anon2_LoopHead#1
+    LoopUnroll.bpl(77,5): anon2_LoopBody#1
+
+Boogie program verifier finished with 0 verified, 1 error
