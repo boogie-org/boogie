@@ -1,31 +1,31 @@
  
 -------------------- VarMapFixPoint.bpl -------------------- 
-VarMapFixPoint.bpl(11,5): Error BP5005: This loop invariant might not be maintained by the loop.
+VarMapFixPoint.bpl(13,5): Error BP5005: This loop invariant might not be maintained by the loop.
 Execution trace:
-    VarMapFixPoint.bpl(5,3): start
-    VarMapFixPoint.bpl(10,3): LoopHead
-    VarMapFixPoint.bpl(14,3): LoopBody
+    VarMapFixPoint.bpl(7,3): start
+    VarMapFixPoint.bpl(12,3): LoopHead
+    VarMapFixPoint.bpl(16,3): LoopBody
 
 Boogie program verifier finished with 1 verified, 1 error
  
 -------------------- TestIntervals.bpl -------------------- 
-TestIntervals.bpl(23,3): Error BP5001: This assertion might not hold.
+TestIntervals.bpl(25,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    TestIntervals.bpl(5,5): anon0
-    TestIntervals.bpl(6,3): anon9_LoopHead
-    TestIntervals.bpl(12,14): anon10_Then
-    TestIntervals.bpl(13,14): anon11_Then
-    TestIntervals.bpl(14,14): anon12_Then
-    TestIntervals.bpl(17,5): anon8
-TestIntervals.bpl(68,3): Error BP5001: This assertion might not hold.
+    TestIntervals.bpl(7,5): anon0
+    TestIntervals.bpl(8,3): anon9_LoopHead
+    TestIntervals.bpl(14,14): anon10_Then
+    TestIntervals.bpl(15,14): anon11_Then
+    TestIntervals.bpl(16,14): anon12_Then
+    TestIntervals.bpl(19,5): anon8
+TestIntervals.bpl(70,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    TestIntervals.bpl(60,3): anon0
-    TestIntervals.bpl(65,3): anon3_LoopHead
-    TestIntervals.bpl(65,3): anon3_LoopDone
-TestIntervals.bpl(69,3): Error BP5001: This assertion might not hold.
+    TestIntervals.bpl(62,3): anon0
+    TestIntervals.bpl(67,3): anon3_LoopHead
+    TestIntervals.bpl(67,3): anon3_LoopDone
+TestIntervals.bpl(71,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    TestIntervals.bpl(60,3): anon0
-    TestIntervals.bpl(65,3): anon3_LoopHead
-    TestIntervals.bpl(65,3): anon3_LoopDone
+    TestIntervals.bpl(62,3): anon0
+    TestIntervals.bpl(67,3): anon3_LoopHead
+    TestIntervals.bpl(67,3): anon3_LoopDone
 
 Boogie program verifier finished with 2 verified, 3 errors

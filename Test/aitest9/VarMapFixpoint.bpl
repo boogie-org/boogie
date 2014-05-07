@@ -1,3 +1,5 @@
+// RUN: %boogie %s -infer:j > %t
+// RUN: %diff %s.expect %t
 procedure main()
 {
   var x: int, y: int, z: int;
