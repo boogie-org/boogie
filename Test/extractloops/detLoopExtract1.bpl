@@ -1,3 +1,5 @@
+// RUN: %boogie -stratifiedInline:1 -extractLoops -removeEmptyBlocks:0 -coalesceBlocks:0 -deterministicExtractLoops -recursionBound:4 %s > %t
+// RUN: %diff %s.expect %t
 var g:int;
 
 procedure {:entrypoint} Foo(a:int)

@@ -1,0 +1,33 @@
+(0,0): Error BP5001: This assertion might not hold.
+Execution trace:
+    t2.bpl(18,3): anon0
+    t2.bpl(23,3): anon3_LoopHead
+    Inlined call to procedure foo begins
+        t2.bpl(9,5): anon0
+    Inlined call to procedure foo ends
+    t2.bpl(27,3): anon3_LoopBody
+    t2.bpl(34,3): lab1_LoopHead
+    t2.bpl(37,3): lab1_LoopBody
+    t2.bpl(34,3): lab1_LoopHead
+    t2.bpl(37,3): lab1_LoopBody
+    t2.bpl(34,3): lab1_LoopHead
+    t2.bpl(42,3): lab1_LoopDone
+    t2.bpl(23,3): anon3_LoopHead
+    Inlined call to procedure foo begins
+        t2.bpl(9,5): anon0
+    Inlined call to procedure foo ends
+    t2.bpl(27,3): anon3_LoopBody
+    t2.bpl(34,3): lab1_LoopHead
+    t2.bpl(37,3): lab1_LoopBody
+    t2.bpl(34,3): lab1_LoopHead
+    t2.bpl(37,3): lab1_LoopBody
+    t2.bpl(34,3): lab1_LoopHead
+    t2.bpl(42,3): lab1_LoopDone
+    t2.bpl(23,3): anon3_LoopHead
+    Inlined call to procedure foo begins
+        t2.bpl(9,5): anon0
+    Inlined call to procedure foo ends
+    t2.bpl(46,3): anon3_LoopDone
+    t2.bpl(50,3): anon2
+
+Boogie program verifier finished with 0 verified, 1 error

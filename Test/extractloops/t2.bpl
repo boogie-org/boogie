@@ -1,3 +1,5 @@
+// RUN: %boogie -stratifiedInline:1 -extractLoops -removeEmptyBlocks:0 -coalesceBlocks:0 %s > %t
+// RUN: %diff %s.expect %t
 var g: int;
 
 
