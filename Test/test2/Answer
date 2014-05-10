@@ -81,14 +81,14 @@ OldIllegal.bpl(16,23): Error: old expressions allowed only in two-state contexts
 2 name resolution errors detected in OldIllegal.bpl
 
 -------------------- Arrays.bpl --------------------
-Arrays.bpl(48,5): Error BP5003: A postcondition might not hold on this return path.
-Arrays.bpl(40,3): Related location: This is the postcondition that might not hold.
+Arrays.bpl(50,5): Error BP5003: A postcondition might not hold on this return path.
+Arrays.bpl(42,3): Related location: This is the postcondition that might not hold.
 Execution trace:
-    Arrays.bpl(44,3): start
-Arrays.bpl(129,5): Error BP5003: A postcondition might not hold on this return path.
-Arrays.bpl(121,3): Related location: This is the postcondition that might not hold.
+    Arrays.bpl(46,3): start
+Arrays.bpl(131,5): Error BP5003: A postcondition might not hold on this return path.
+Arrays.bpl(123,3): Related location: This is the postcondition that might not hold.
 Execution trace:
-    Arrays.bpl(125,3): start
+    Arrays.bpl(127,3): start
 
 Boogie program verifier finished with 8 verified, 2 errors
 
@@ -362,12 +362,12 @@ Execution trace:
 Boogie program verifier finished with 2 verified, 2 errors
 
 -------------------- Lambda.bpl --------------------
-Lambda.bpl(39,3): Error BP5001: This assertion might not hold.
+Lambda.bpl(41,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    Lambda.bpl(38,5): anon0
-Lambda.bpl(40,3): Error BP5001: This assertion might not hold.
+    Lambda.bpl(40,5): anon0
+Lambda.bpl(42,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    Lambda.bpl(38,5): anon0
+    Lambda.bpl(40,5): anon0
 
 Boogie program verifier finished with 6 verified, 2 errors
 
@@ -447,24 +447,24 @@ Execution trace:
 Boogie program verifier finished with 1 verified, 3 errors
 
 -------------------- Arrays.bpl /typeEncoding:m --------------------
-Arrays.bpl(48,5): Error BP5003: A postcondition might not hold on this return path.
-Arrays.bpl(40,3): Related location: This is the postcondition that might not hold.
+Arrays.bpl(50,5): Error BP5003: A postcondition might not hold on this return path.
+Arrays.bpl(42,3): Related location: This is the postcondition that might not hold.
 Execution trace:
-    Arrays.bpl(44,3): start
-Arrays.bpl(129,5): Error BP5003: A postcondition might not hold on this return path.
-Arrays.bpl(121,3): Related location: This is the postcondition that might not hold.
+    Arrays.bpl(46,3): start
+Arrays.bpl(131,5): Error BP5003: A postcondition might not hold on this return path.
+Arrays.bpl(123,3): Related location: This is the postcondition that might not hold.
 Execution trace:
-    Arrays.bpl(125,3): start
+    Arrays.bpl(127,3): start
 
 Boogie program verifier finished with 8 verified, 2 errors
 
 -------------------- Lambda.bpl /typeEncoding:m --------------------
-Lambda.bpl(39,3): Error BP5001: This assertion might not hold.
+Lambda.bpl(41,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    Lambda.bpl(38,5): anon0
-Lambda.bpl(40,3): Error BP5001: This assertion might not hold.
+    Lambda.bpl(40,5): anon0
+Lambda.bpl(42,3): Error BP5001: This assertion might not hold.
 Execution trace:
-    Lambda.bpl(38,5): anon0
+    Lambda.bpl(40,5): anon0
 
 Boogie program verifier finished with 6 verified, 2 errors
 
