@@ -601,6 +601,7 @@ namespace Microsoft.Boogie {
     public int StratifiedInliningVerbose = 0; // verbosity level
     public int RecursionBound = 500;
     public bool NonUniformUnfolding = false;
+    public int StackDepthBound = 0; 
     public string inferLeastForUnsat = null;
 
     // Inference mode for fixed point engine
@@ -1146,7 +1147,12 @@ namespace Microsoft.Boogie {
             RecursionBound = Int32.Parse(cce.NonNull(args[ps.i]));
           }
           return true;
-
+        case "stackDepthBound":
+          if (ps.ConfirmArgumentCount(1))
+          {
+              StackDepthBound = Int32.Parse(cce.NonNull(args[ps.i]));
+          }
+          return true;
         case "stratifiedInlineOption":
           if (ps.ConfirmArgumentCount(1)) {
             StratifiedInliningOption = Int32.Parse(cce.NonNull(args[ps.i]));

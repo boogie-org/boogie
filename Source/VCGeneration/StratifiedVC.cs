@@ -1275,6 +1275,7 @@ namespace VC {
       var rbound = "Procs that reached bound: ";
       foreach (var s in procsThatReachedRecBound) rbound += "  " + s;
       if (ret == Outcome.ReachedBound) Helpers.ExtraTraceInformation(rbound);
+      if (CommandLineOptions.Clo.StackDepthBound > 0 && ret == Outcome.Correct) ret = Outcome.ReachedBound;
 
       // Store current call tree
       if (PersistCallTree && (ret == Outcome.Correct || ret == Outcome.Errors || ret == Outcome.ReachedBound)) {
@@ -1341,7 +1342,8 @@ namespace VC {
         if (isSkipped(id, calls)) continue;
 
         int idBound = calls.getRecursionBound(id);
-        if (idBound <= bound) {
+        int sd = calls.getStackDepth(id);
+        if (idBound <= bound && (CommandLineOptions.Clo.StackDepthBound == 0 || sd <= CommandLineOptions.Clo.StackDepthBound)) {
           if (idBound > 1)
             softAssumptions.Add(calls.getFalseExpr(id));
 
@@ -1668,6 +1670,21 @@ namespace VC {
 
         // Special
         return ret - extraRecursion[str];
+      }
+
+      // This procedure returns the stack depth of the candidate
+      // (distance from main)
+      public int getStackDepth(int id)
+      {
+          int ret = 1;
+
+          while (candidateParent.ContainsKey(id))
+          {
+              ret++;
+              id = candidateParent[id];
+          }
+
+          return ret;
       }
 
       // Set user-define increment/decrement to recursionBound
