@@ -1,3 +1,5 @@
+// RUN: %boogie -noinfer -typeEncoding:m -useArrayTheory %s > %t
+// RUN: %diff %s.expect %t
 type Node;
 type lmap;
 function {:linear "Node"} dom(lmap): [Node]bool;

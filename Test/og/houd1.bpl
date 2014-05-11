@@ -1,3 +1,5 @@
+// RUN: %boogie -noinfer -typeEncoding:m -useArrayTheory %s > %t
+// RUN: %diff %s.expect %t
 const {:existential true} b0: bool;
 const {:existential true} b1: bool;
 const {:existential true} b2: bool;

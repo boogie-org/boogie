@@ -1,3 +1,5 @@
+// RUN: %boogie -noinfer -typeEncoding:m -useArrayTheory %s > %t
+// RUN: %diff %s.expect %t
 procedure {:yields} X();
 ensures {:atomic 0} |{ A: return true; }|;
 

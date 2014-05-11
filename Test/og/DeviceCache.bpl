@@ -1,3 +1,5 @@
+// RUN: %boogie -noinfer -typeEncoding:m -useArrayTheory %s > %t
+// RUN: %diff %s.expect %t
 type X;
 function {:builtin "MapConst"} mapconstbool(bool): [X]bool;
 const nil: X;
