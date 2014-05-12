@@ -120,8 +120,8 @@ axiom (forall x: int :: {:xname "hello"} {:weight 5} {:ValueFunc f(x + 1)} { f(x
 Boogie program verifier finished with 0 verified, 0 errors
 
 Boogie program verifier finished with 0 verified, 0 errors
-Arrays1.bpl(13,11): Error: command assigns to a global variable that is not in the enclosing procedure's modifies clause: Q
-Arrays1.bpl(16,15): Error: command assigns to a global variable that is not in the enclosing procedure's modifies clause: Q
+Arrays1.bpl(14,11): Error: command assigns to a global variable that is not in the enclosing procedure's modifies clause: Q
+Arrays1.bpl(18,15): Error: command assigns to a global variable that is not in the enclosing procedure's modifies clause: Q
 2 type checking errors detected in Arrays1.bpl
 Types0.bpl(8,18): error: expected identifier before ':'
 Types0.bpl(8,12): error: expecting an identifier as parameter name
