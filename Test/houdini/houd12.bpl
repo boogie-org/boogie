@@ -1,20 +1,27 @@
-// RUN: %boogie -noinfer -contractInfer -printAssignment %s > %t
-// RUN: %diff %s.expect %t
+// RUN: %boogie -noinfer -contractInfer -printAssignment %s | %OutputCheck -d %s
 // Example to test candidate annotations on loops
 
+// CHECK-L: Assignment computed by Houdini:
+// CHECK-NEXT-L: b1 = False
 const {:existential true} b1:bool;
+// CHECK-NEXT-L: b2 = True
 const {:existential true} b2:bool;
+// CHECK-NEXT-L: b3 = True
 const {:existential true} b3:bool;
+// CHECK-NEXT-L: b4 = True
 const {:existential true} b4:bool;
+// CHECK-NEXT-L: b5 = True
 const {:existential true} b5:bool;
+// CHECK-NEXT-L: b6 = False
 const {:existential true} b6:bool;
+// CHECK-NEXT-L: b7 = False
 const {:existential true} b7:bool;
 
 var x: int;
 var y: int;
 
 
-procedure foo() 
+procedure foo()
 modifies x;
 modifies y;
 ensures (b4 ==> x == 0);
@@ -28,7 +35,7 @@ ensures (b7 ==> y == 11);
 
   goto Head;
 
-Head: 
+Head:
 
   //loop invariants
  assert (b1 ==> x < 0);
@@ -49,12 +56,4 @@ Exit:
   return;
 }
 
-// expected outcome: Correct
-// expected assigment: b1->False,b2->True,b3->True,b4->True, b5->True, b6->False,b7->False
-
-
-
-
-
-
-
+// CHECK-L: Boogie program verifier finished with 1 verified, 0 errors
