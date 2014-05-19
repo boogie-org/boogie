@@ -24,7 +24,7 @@ namespace Microsoft.Boogie {
   public class OnlyBoogie
   {
 
-    public static void Main(string[] args)
+    public static int Main(string[] args)
     {
       Contract.Requires(cce.NonNullElements(args));
 
@@ -90,6 +90,7 @@ namespace Microsoft.Boogie {
         }
       }
       ExecutionEngine.ProcessFiles(fileList);
+      return 0;
 
     END:
       if (CommandLineOptions.Clo.XmlSink != null) {
@@ -99,6 +100,7 @@ namespace Microsoft.Boogie {
         Console.WriteLine("Press Enter to exit.");
         Console.ReadLine();
       }
+      return 1;
     }
   }
 }
