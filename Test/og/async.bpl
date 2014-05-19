@@ -1,5 +1,6 @@
 // RUN: %boogie -noinfer -typeEncoding:m -useArrayTheory %s > %t
 // RUN: %diff %s.expect %t
+// XFAIL: *
 var {:phase 1} x: int;
 var {:phase 1} y: int;
 

@@ -1,5 +1,6 @@
 // RUN: %boogie -noinfer -typeEncoding:m -useArrayTheory %s > %t
 // RUN: %diff %s.expect %t
+// XFAIL: *
 function {:builtin "MapConst"} MapConstBool(bool) : [X]bool;
 function {:inline} {:linear "tid"} TidCollector(x: X) : [X]bool
 {
