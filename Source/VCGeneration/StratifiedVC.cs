@@ -508,6 +508,7 @@ namespace VC {
     public bool PersistCallTree;
     public static Dictionary<string, int> callTree = null;
     public int numInlined = 0;
+    public int vcsize = 0;
     private bool useSummary;
     private SummaryComputation summaryComputation;
     private HashSet<string> procsThatReachedRecBound;
@@ -1270,6 +1271,7 @@ namespace VC {
         Console.WriteLine(">> SI: VC Size: {0}", vState.vcSize);
       }
 
+      vcsize = vState.vcSize;
       numInlined = (calls.candidateParent.Keys.Count + 1) - (calls.currCandidates.Count);
 
       var rbound = "Procs that reached bound: ";

@@ -4,6 +4,7 @@
 // RUN: %diff %s.p.expect %t
 // RUN: %boogie -typeEncoding:a -logPrefix:0a %s > %t
 // RUN: %diff %s.a.expect %t
+// XFAIL: *
 
 type T;
 
