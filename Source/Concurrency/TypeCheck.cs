@@ -413,7 +413,7 @@ namespace Microsoft.Boogie
                     {
                         if (x.Decl is GlobalVariable)
                         {
-                            Error(node, "Aglobal variable cannot be used as output argument for this call");
+                            Error(node, "A global variable cannot be used as output argument for this call");
                         }
                         else if (outParams.Contains(x.Decl))
                         {
