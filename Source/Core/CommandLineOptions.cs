@@ -615,6 +615,8 @@ namespace Microsoft.Boogie {
     public FixedPointInferenceMode FixedPointMode = FixedPointInferenceMode.Procedure;
 		
     public string PrintFixedPoint = null;
+
+    public string PrintConjectures = null;
 		
     public bool ExtractLoopsUnrollIrreducible = true; // unroll irreducible loops? (set programmatically)
 
@@ -1135,6 +1137,12 @@ namespace Microsoft.Boogie {
           if (ps.ConfirmArgumentCount(1))
           {
               PrintFixedPoint = args[ps.i];
+          }
+          return true;
+        case "printConjectures":
+          if (ps.ConfirmArgumentCount(1))
+          {
+              PrintConjectures = args[ps.i];
           }
           return true;
         case "siVerbose":
