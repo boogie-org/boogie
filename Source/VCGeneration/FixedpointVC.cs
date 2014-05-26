@@ -78,6 +78,15 @@ namespace Microsoft.Boogie
 
         private static Checker old_checker = null;
 
+        public static void CleanUp()
+        {
+            if (old_checker != null)
+            {
+                old_checker.Close();
+                old_checker = null;
+            }
+        }
+
         public FixedpointVC( Program _program, string/*?*/ logFilePath, bool appendLogFile, List<Checker> checkers, Dictionary<string,int> _extraRecBound = null)
             : base(_program, logFilePath, appendLogFile, checkers) 
         {
@@ -763,37 +772,74 @@ namespace Microsoft.Boogie
                     List<Expr> exprs = new List<Expr>();
 
                     {
-						// last ensures clause will be the symbolic one
-						if(info.isMain)
-							continue;
-						var ens = proc.Ensures[proc.Ensures.Count - 1];
-						if(ens.Condition == Expr.False) // this is main
-							continue;
-                        var postExpr = ens.Condition as NAryExpr;
-						var args = postExpr.Args;
-						if(pmap.ContainsKey (impl.Name)){
-							RPFP.Node node = pmap[impl.Name];
-							var ind = node.Annotation.IndParams;
-							var bound = new Dictionary<VCExpr,Expr>(); 
-							for(int i = 0; i < args.Count; i++){
-								bound[ind[i]] = args[i];
-							}
-							var new_ens_cond = VCExprToExpr(node.Annotation.Formula,bound);
-                            if (new_ens_cond != Expr.True)
-                            {
-                                var new_ens = new Ensures(false, new_ens_cond);
-                                var enslist = new List<Ensures>();
-                                enslist.Add(new_ens);
-                                var new_proc = new Procedure(proc.tok, proc.Name, proc.TypeParameters, proc.InParams,
-                                                             proc.OutParams, new List<Requires>(), new List<IdentifierExpr>(), enslist);
-                                new_proc.Emit(twr, 0);
-                            }
-						}
+                        if (pmap.ContainsKey(impl.Name))
+                        {
+                            RPFP.Node node = pmap[impl.Name];
+                            var annot = node.Annotation;
+                            EmitProcSpec(twr, proc, info, annot);
+                        }
                     }
                 }
             }
 			twr.Close ();
 		}
+
+        private void EmitProcSpec(TokenTextWriter twr, Procedure proc, StratifiedInliningInfo info, RPFP.Transformer annot)
+        {
+            // last ensures clause will be the symbolic one
+            if (!info.isMain)
+            {
+                var ens = proc.Ensures[proc.Ensures.Count - 1];
+                if (ens.Condition != Expr.False) // this is main
+                {
+                    var postExpr = ens.Condition as NAryExpr;
+                    var args = postExpr.Args;
+
+                    var ind = annot.IndParams;
+                    var bound = new Dictionary<VCExpr, Expr>();
+                    for (int i = 0; i < args.Count; i++)
+                    {
+                        bound[ind[i]] = args[i];
+                    }
+                    var new_ens_cond = VCExprToExpr(annot.Formula, bound);
+                    if (new_ens_cond != Expr.True)
+                    {
+                        var new_ens = new Ensures(false, new_ens_cond);
+                        var enslist = new List<Ensures>();
+                        enslist.Add(new_ens);
+                        var new_proc = new Procedure(proc.tok, proc.Name, proc.TypeParameters, proc.InParams,
+                                                     proc.OutParams, new List<Requires>(), new List<IdentifierExpr>(), enslist);
+                        new_proc.Emit(twr, 0);
+                    }
+                }
+            }
+        }
+
+        static int ConjectureFileCounter = 0;
+
+        private void ConjecturesToSpecs()
+        {
+
+            if (mode != Mode.Corral || CommandLineOptions.Clo.PrintConjectures == null)
+                return; // not implemented for other annotation modes yet
+
+            var twr = new TokenTextWriter(CommandLineOptions.Clo.PrintConjectures + "." + ConjectureFileCounter.ToString());
+            ConjectureFileCounter++;
+
+            foreach (var c in rpfp.conjectures)
+            {
+                var name = c.node.Name.GetDeclName();
+                if (implName2StratifiedInliningInfo.ContainsKey(name))
+                {
+                    StratifiedInliningInfo info = implName2StratifiedInliningInfo[c.node.Name.GetDeclName()];
+                    Implementation impl = info.impl;
+                    Procedure proc = impl.Proc;
+                    EmitProcSpec(twr, proc, info, c.bound);
+                }
+            }
+
+            twr.Close ();     
+        }
 
         private Term ExtractSmallerVCsRec(TermDict< Term> memo, Term t, List<Term> small, Term lbl = null)
         {
@@ -1603,15 +1649,19 @@ namespace Microsoft.Boogie
                             // cex.Print(0);  // just for testing
                             collector.OnCounterexample(cex, "assertion failure");
                             Console.WriteLine("cex: {0}s", (DateTime.Now - start).TotalSeconds);
+                            ConjecturesToSpecs();
                             return VC.ConditionGeneration.Outcome.Errors;
                         case RPFP.LBool.False:
                             Console.WriteLine("Procedure is correct.");
 							FixedPointToSpecs();
+                            ConjecturesToSpecs();
                             return Outcome.Correct;
                         case RPFP.LBool.Undef:
                             Console.WriteLine("Inconclusive result.");
+                            ConjecturesToSpecs();
                             return Outcome.ReachedBound;
                     }
+                    
                 }
 
                 return Outcome.Inconclusive;

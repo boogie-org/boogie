@@ -325,6 +325,17 @@ namespace Microsoft.Boogie
             return res;
         }
 
+        /** This represents a conjecture that a given node is upper-boudned
+            by bound. */
+        public class Conjecture
+        {
+            public Node node;
+            public Transformer bound;
+        }
+
+        /** This is a list of conjectures generated during solving. */
+
+        public List<Conjecture> conjectures = new List<Conjecture>();
 
         /** Construct an RPFP graph with a given interpolating prover context. It is allowed to
             have multiple RPFP's use the same context, but you should never have teo RPFP's
