@@ -110,8 +110,9 @@ The RUN lines may use several substitutions
 - ``%boogie`` expands to the absolute path to the Boogie executable with any set
   options and prefixed by ``mono`` on non Windows platforms
 
-- ``%diff`` expands to the diff tool being used. This is ``diff`` on non Windows
-  platforms and ``fc`` on Windows.
+- ``%diff`` expands to the diff tool being used. This is ``diff`` on non
+  Windows platforms and ``pydiff`` on Windows. Do not use the ``fc`` tool
+  because it is buggy when tests are run concurrently.
 
 - ``%OutputCheck`` expands to the absolute path to the OutputCheck tool
 

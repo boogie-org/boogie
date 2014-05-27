@@ -1,3 +1,5 @@
+// RUN: %boogie -noinfer -contractInfer -printAssignment -inlineDepth:1 -abstractHoudini:IA[ConstantProp] %s > %t
+// RUN: %diff %s.expect %t
 var g: int;
 var h: int;
 

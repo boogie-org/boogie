@@ -1,0 +1,14 @@
+function {:existential true} {:inline} b1() : bool
+{
+  false
+}
+function {:existential true} {:inline} b2() : bool
+{
+  true
+}
+function {:existential true} {:inline} b3() : bool
+{
+  true
+}
+
+Boogie program verifier finished with 1 verified, 0 errors
