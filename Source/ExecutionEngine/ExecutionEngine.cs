@@ -9,7 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using VC;
 using BoogiePL = Microsoft.Boogie;
-
+using System.Diagnostics;
 
 namespace Microsoft.Boogie
 {
@@ -930,7 +930,6 @@ namespace Microsoft.Boogie
 
       return outcome;
     }
-
 
     public static void CancelRequest(string requestId)
     {

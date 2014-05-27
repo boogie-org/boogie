@@ -422,6 +422,11 @@ namespace Microsoft.Boogie
 
         public bool IsUniform(string procedureName, Expr expr)
         {
+            if (!uniformityInfo.ContainsKey(procedureName))
+            {
+                return false;
+            }
+
             UniformExpressionAnalysisVisitor visitor = new UniformExpressionAnalysisVisitor(uniformityInfo[procedureName].Value);
             visitor.VisitExpr(expr);
             return visitor.IsUniform();
