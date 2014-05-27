@@ -1,5 +1,5 @@
-// RUN: %boogie %s > %t
-// RUN: %diff %s.expect %t
+// RUN: %boogie "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
 var g: bool;
 
 procedure {:inline 1} bar() returns (l: bool) 

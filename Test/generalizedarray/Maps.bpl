@@ -1,5 +1,5 @@
-// RUN: %boogie -typeEncoding:m -useArrayTheory %s > %t
-// RUN: %diff %s.expect %t
+// RUN: %boogie -typeEncoding:m -useArrayTheory "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
 type X;
 
 function {:builtin "MapAdd"} mapadd([X]int, [X]int) : [X]int;

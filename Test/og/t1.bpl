@@ -1,5 +1,5 @@
-// RUN: %boogie -noinfer -typeEncoding:m -useArrayTheory %s > %t
-// RUN: %diff %s.expect %t
+// RUN: %boogie -noinfer -typeEncoding:m -useArrayTheory "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
 function {:builtin "MapConst"} mapconstbool(bool) : [int]bool;
 
 function {:builtin "MapConst"} MapConstBool(bool) : [int]bool;

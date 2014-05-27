@@ -1,5 +1,5 @@
-// RUN: %boogie -inline:spec -print:- -env:0 -printInlined -noinfer %s > %t
-// RUN: %diff %s.expect %t
+// RUN: %boogie -inline:spec -print:- -env:0 -printInlined -noinfer "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
 
 procedure main(x:int)
 {

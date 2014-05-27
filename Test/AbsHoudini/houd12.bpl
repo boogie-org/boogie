@@ -1,5 +1,5 @@
-// RUN: %boogie -noinfer -contractInfer -printAssignment -abstractHoudini:IA[ConstantProp] %s > %t
-// RUN: %diff %s.expect %t
+// RUN: %boogie -noinfer -contractInfer -printAssignment -abstractHoudini:IA[ConstantProp] "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
 // Example to test candidate annotations on loops
 
 function {:existential true} Assert(): bool;

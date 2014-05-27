@@ -1,5 +1,5 @@
-// RUN: %boogie -infer:j %s > %t
-// RUN: %diff %s.expect %t
+// RUN: %boogie -infer:j "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
 const TEST: name;
 
 procedure P()

@@ -1,5 +1,5 @@
-// RUN: %boogie -noinfer -contractInfer -printAssignment -abstractHoudini:IA[ConstantProp] %s > %t
-// RUN: %diff %s.expect %t
+// RUN: %boogie -noinfer -contractInfer -printAssignment -abstractHoudini:IA[ConstantProp] "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
 function {:existential true} b1(x:bool):bool;
 function {:existential true} b2(x:bool):bool;
 function {:existential true} b3(x:bool):bool;

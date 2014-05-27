@@ -1,5 +1,5 @@
-// RUN: %boogie -noVerify -print:- -env:0 %s > %t
-// RUN: %diff %s.expect %t
+// RUN: %boogie -noVerify -print:- -env:0 "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
 type {:sourcefile "test.ssc"} T; 
 
 function {:source "test.scc"} f(int) returns (int);

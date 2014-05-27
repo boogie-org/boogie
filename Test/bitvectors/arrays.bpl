@@ -1,5 +1,5 @@
-// RUN: %boogie -proverWarnings:1 %s > %t
-// RUN: %diff %s.expect %t
+// RUN: %boogie -proverWarnings:1 "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
 const unique f1 : Field int;
 const unique f2 : Field bv32;
 const unique f3 : Field bool;

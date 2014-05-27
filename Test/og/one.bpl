@@ -1,5 +1,5 @@
-// RUN: %boogie -noinfer %s > %t
-// RUN: %diff %s.expect %t
+// RUN: %boogie -noinfer "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
 var {:phase 1} x:int;
 
 procedure {:yields} {:phase 0,1} Set(v: int);

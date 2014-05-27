@@ -1,5 +1,5 @@
-// RUN: %boogie -noVerify %s > %t
-// RUN: %diff %s.expect %t
+// RUN: %boogie -noVerify "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
 
 // set of maps from anything to a specific type a
 const mapSet : <a>[<b>[b]a]bool;

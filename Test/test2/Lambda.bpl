@@ -1,7 +1,7 @@
-// RUN: %boogie -noinfer %s > %t
-// RUN: %diff %s.expect %t
-// RUN: %boogie -noinfer -typeEncoding:m %s > %t
-// RUN: %diff %s.expect %t
+// RUN: %boogie -noinfer "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+// RUN: %boogie -noinfer -typeEncoding:m "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
 procedure foo()
 {
   var a: [int]int;

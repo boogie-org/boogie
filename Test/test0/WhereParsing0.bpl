@@ -1,5 +1,5 @@
-// RUN: %boogie -noVerify %s > %t
-// RUN: %diff %s.expect %t
+// RUN: %boogie -noVerify "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
 const x: int;
 
 function R(int) returns (bool);

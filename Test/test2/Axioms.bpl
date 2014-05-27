@@ -1,5 +1,5 @@
-// RUN: %boogie -noinfer %s > %t
-// RUN: %diff %s.expect %t
+// RUN: %boogie -noinfer "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
 const Seven: int;
 axiom Seven == 7;
 

@@ -1,5 +1,5 @@
-// RUN: %boogie -noinfer -contractInfer -printAssignment -inlineDepth:1 %s > %t
-// RUN: %diff %s.expect %t
+// RUN: %boogie -noinfer -contractInfer -printAssignment -inlineDepth:1 "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
 var v1: int;
 var v2: int;
 var v3: int;
