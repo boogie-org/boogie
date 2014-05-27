@@ -49,9 +49,9 @@ namespace Microsoft.Boogie.Houdini
       #region Prepare the tasks, but do not launch them
       foreach (var s in plan) {
         Debug.Assert(!plan.GetDependences(s).Contains(s));
-        tasks.Add(new StagedHoudiniTask(s, new Task(() => {
-          ExecuteStage(s);
-        }, TaskCreationOptions.LongRunning)));
+        tasks.Add(new StagedHoudiniTask(s, new Task(o => {
+          ExecuteStage((ScheduledStage)o);
+        }, s, TaskCreationOptions.LongRunning)));
       }
       #endregion
 
