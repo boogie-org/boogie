@@ -79,3 +79,14 @@ Execution trace:
     Snapshots5.v1.bpl(5,5): anon0
 
 Boogie program verifier finished with 0 verified, 1 error
+
+Boogie program verifier finished with 1 verified, 0 errors
+Snapshots6.v1.bpl(13,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    Snapshots6.v1.bpl(9,7): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+
+Boogie program verifier finished with 1 verified, 0 errors
+
+Boogie program verifier finished with 1 verified, 0 errors
