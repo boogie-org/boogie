@@ -9,7 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using VC;
 using BoogiePL = Microsoft.Boogie;
-
+using System.Diagnostics;
 
 namespace Microsoft.Boogie
 {
@@ -773,6 +773,9 @@ namespace Microsoft.Boogie
       Contract.Requires(stats != null);
       Contract.Ensures(0 <= Contract.ValueAtReturn(out stats.InconclusiveCount) && 0 <= Contract.ValueAtReturn(out stats.TimeoutCount));
 
+      KatyaDemo(program);
+
+
       if (requestId == null)
       {
         requestId = "unknown";
@@ -929,6 +932,66 @@ namespace Microsoft.Boogie
       #endregion
 
       return outcome;
+    }
+
+    private static void KatyaDemo(Program program) {
+      // Look for an implementation called "main"
+      // Add a new variable "our_counter"
+      // Initialise it to 0
+      // At every loop, add "our_counter := our_counter + 1" as first statement
+
+      foreach(Declaration d in program.TopLevelDeclarations) {
+        Implementation impl = d as Implementation;
+        if(impl != null && impl.Name == "main") {
+          // Add the new variable "our_counter"
+          LocalVariable our_counter = new LocalVariable(Token.NoToken,
+            new TypedIdent(Token.NoToken, "our_counter", Type.Int));
+          impl.LocVars.Add(our_counter);
+
+          // Initialise it to 0
+          impl.StructuredStmts.BigBlocks[0].simpleCmds.Insert(0, new AssignCmd(Token.NoToken,
+            new List<AssignLhs> { new SimpleAssignLhs(Token.NoToken, 
+              new IdentifierExpr(Token.NoToken, our_counter)) },
+            new List<Expr> { new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(0)) }));
+
+          AddIncrements(impl.StructuredStmts, our_counter);
+
+        }
+
+      }
+
+
+      using (TokenTextWriter writer = new TokenTextWriter("<console>", Console.Out))
+      {
+        program.Emit(writer);
+      }
+
+      Environment.Exit(0);
+    }
+
+    private static void AddIncrements(StmtList stmtList, LocalVariable our_counter) {
+      foreach(BigBlock bb in stmtList.BigBlocks) {
+        AddIncrements(bb, our_counter);
+      }
+    }
+
+    private static void AddIncrements(BigBlock bb, LocalVariable our_counter) {
+      if(bb.ec is IfCmd) {
+        Debug.Assert(false);
+      } else if(bb.ec is WhileCmd) {
+        WhileCmd wc = bb.ec as WhileCmd;
+
+        wc.Body.BigBlocks[0].simpleCmds.Insert(0,
+          new AssignCmd(Token.NoToken,
+            new List<AssignLhs> { new SimpleAssignLhs(Token.NoToken, new IdentifierExpr(Token.NoToken, our_counter)) },
+            new List<Expr> { 
+              new NAryExpr(Token.NoToken, new BinaryOperator(Token.NoToken, BinaryOperator.Opcode.Add),
+                new List<Expr> {
+                  new IdentifierExpr(Token.NoToken, our_counter), 
+                  new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1)) }) }));
+        AddIncrements(wc.Body, our_counter);
+      }
+
     }
 
 
