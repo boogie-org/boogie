@@ -1,0 +1,6 @@
+function {:existential true} {:inline} Assert() : bool
+{
+  false
+}
+
+Boogie program verifier finished with 1 verified, 0 errors

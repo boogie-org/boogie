@@ -1,3 +1,5 @@
+// RUN: %boogie -noinfer -contractInfer -printAssignment -abstractHoudini:IA[ConstantProp] %s > %t
+// RUN: %diff %s.expect %t
 function {:existential true} b1():bool;
 function {:existential true} b2():bool;
 function {:existential true} b3():bool;
