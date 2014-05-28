@@ -518,12 +518,9 @@ namespace Microsoft.Boogie.Houdini {
                 {
                   Stage.AddCandidate(c);
                 }
-                Console.Write(n.Count() + ", ");
                 AssignedToThisStage.Add(n);
               }
             }
-
-            Console.WriteLine("total: " + Stage.Count());
 
             foreach(var n in AssignedToThisStage) {
               done[n] = Stage;
