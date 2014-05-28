@@ -604,6 +604,19 @@ namespace Microsoft.Boogie {
       }
     }
 
+    public bool isBvConst {
+      get {
+        return Val is BvConst;
+      }
+    }
+
+    public BvConst asBvConst {
+      get {
+        Contract.Assert(isBvConst);
+        return (BvConst)cce.NonNull(Val);
+      }
+    }
+
     public override Absy StdDispatch(StandardVisitor visitor) {
       //Contract.Requires(visitor != null);
       Contract.Ensures(Contract.Result<Absy>() != null);
