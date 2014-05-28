@@ -76,7 +76,15 @@ $ cd Test
 $ lit test0/ livevars/bla1.bpl aitest0/constants.bpl
 ```
 
-Note replace ``/`` with ``\`` on Windows (tab completition is your friend)
+Note replace ``/`` with ``\`` on Windows (tab completition is your friend).
+
+If you would prefer to see less information when running tests you can use the
+``-s`` flag to show progress information and a summary when tests finish.
+
+```
+$ cd Test
+$ lit -s .
+```
 
 To pass additional flags to Boogie when running tests run the following command
 where ``-someParamter`` is a paramter Boogie supports.
@@ -84,6 +92,12 @@ where ``-someParamter`` is a paramter Boogie supports.
 ```
 $ cd Test
 $ lit --param boogie_params='-someParameter' .
+```
+
+For more ``lit`` options run
+
+```
+$ lit --help
 ```
 
 Debugging failing tests
