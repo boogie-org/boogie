@@ -123,9 +123,7 @@ namespace Microsoft.Boogie.Houdini
         outcomes.Where(Item => plan.Contains(Item.Key)).
           Select(Item => Item.Value).
             Select(Item => Item.assignment).ToList();
-        //outcomes.Values.Select(Item => Item.assignment).ToList();
         completedStages = plan.GetDependences(s).Select(Item => Item.GetId());
-        //completedStages = outcomes.Keys.Select(Item => Item.GetId());
       }
 
       if (relevantAssignments.Count() > 0)
@@ -158,23 +156,14 @@ namespace Microsoft.Boogie.Houdini
 
     private List<Houdini> AcquireHoudiniInstance()
     {
-      List<Houdini> h = null;
-      do
-      {
-        foreach (var houdini in houdiniInstances)
-        {
-          if (Monitor.TryEnter(houdini))
-          {
-            h = houdini;
-            break;
+      while(true) {
+        foreach (var houdini in houdiniInstances) {
+          if (Monitor.TryEnter(houdini)) {
+            return houdini;
           }
-          else
-          {
-            Thread.Sleep(20);
-          }
+          Thread.Sleep(20);
         }
-      } while (h == null);
-      return h;
+      }
     }
 
     private void EmitProgram(string filename)
