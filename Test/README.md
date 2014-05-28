@@ -111,6 +111,23 @@ $ cd Test
 $ lit -v livevars/bla1.bpl
 ```
 
+Removing output produced by tests
+---------------------------------
+
+lit will by default create a folder named ``Output`` in each directory that
+will contain temporary files created by tests.  You can run the following to
+remove all these folders/files.
+
+```
+$ cd Test
+$ ./clean.py
+```
+
+This script will also remove old files created by the legacy batch file based
+testing infrastructure (no longer in source tree). If temporary files are left
+behind from the old testing infrastructure it is necessary to run this script
+to remove those files before using ``lit``.
+
 Writing tests
 -------------
 
