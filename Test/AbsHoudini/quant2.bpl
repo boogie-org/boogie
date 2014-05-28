@@ -1,5 +1,5 @@
-// RUN: %boogie -noinfer -contractInfer -printAssignment -inlineDepth:1 -abstractHoudini:HoudiniConst -z3opt:MBQI=true %s > %t
-// RUN: %diff %s.expect %t
+// RUN: %boogie -noinfer -contractInfer -printAssignment -inlineDepth:1 -abstractHoudini:HoudiniConst -z3opt:MBQI=true "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
 function {:existential true} {:absdomain "Intervals"} b1(x: int) : bool;
 
 procedure main() 

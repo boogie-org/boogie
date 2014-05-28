@@ -1,5 +1,5 @@
-// RUN: %boogie -noinfer -typeEncoding:m -useArrayTheory -doModSetAnalysis %s > %t
-// RUN: %diff %s.expect %t
+// RUN: %boogie -noinfer -typeEncoding:m -useArrayTheory -doModSetAnalysis "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
 type X;
 function {:builtin "MapConst"} MapConstBool(bool) : [X]bool;
 function {:builtin "MapOr"} MapOr([X]bool, [X]bool) : [X]bool;

@@ -1,5 +1,5 @@
-// RUN: %boogie  %s > %t
-// RUN: %diff %s.expect %t
+// RUN: %boogie  "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
 
 procedure Q() returns () {
   var x : bv32, y : bv16;

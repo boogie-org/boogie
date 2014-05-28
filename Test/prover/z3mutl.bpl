@@ -1,5 +1,5 @@
-// RUN: %boogie -typeEncoding:m -z3multipleErrors %s > %t
-// RUN: %diff %s.expect %t
+// RUN: %boogie -typeEncoding:m -z3multipleErrors "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
 var x:int;
 
 procedure Foo(){

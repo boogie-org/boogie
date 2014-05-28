@@ -1,13 +1,13 @@
-// RUN: %boogie -vc:block -errorLimit:1 -errorTrace:1 -logPrefix:-1block %s > %t1
-// RUN: %diff %s.e1.block.expect %t1
-// RUN: %boogie -vc:local -errorLimit:1 -errorTrace:1 -logPrefix:-1local %s > %t2
-// RUN: %diff %s.e1.local.expect %t2
-// RUN: %boogie -vc:dag -errorLimit:1 -errorTrace:1 -logPrefix:-1dag %s > %t3
-// RUN: %diff %s.e1.dag.expect %t3
-// RUN: %boogie -vc:local -errorLimit:10 -errorTrace:1 -logPrefix:-10local %s > %t4
-// RUN: %diff %s.e10.local.expect %t4
-// RUN: %boogie -vc:dag -errorLimit:10 -errorTrace:1 -logPrefix:-10dag %s > %t5
-// RUN: %diff %s.e10.dag.expect %t5
+// RUN: %boogie -vc:block -errorLimit:1 -errorTrace:1 -logPrefix:-1block "%s" > "%t1"
+// RUN: %diff "%s.e1.block.expect" "%t1"
+// RUN: %boogie -vc:local -errorLimit:1 -errorTrace:1 -logPrefix:-1local "%s" > "%t2"
+// RUN: %diff "%s.e1.local.expect" "%t2"
+// RUN: %boogie -vc:dag -errorLimit:1 -errorTrace:1 -logPrefix:-1dag "%s" > "%t3"
+// RUN: %diff "%s.e1.dag.expect" "%t3"
+// RUN: %boogie -vc:local -errorLimit:10 -errorTrace:1 -logPrefix:-10local "%s" > "%t4"
+// RUN: %diff "%s.e10.local.expect" "%t4"
+// RUN: %boogie -vc:dag -errorLimit:10 -errorTrace:1 -logPrefix:-10dag "%s" > "%t5"
+// RUN: %diff "%s.e10.dag.expect" "%t5"
 
 // Author of this comment: mikebarnett ec02177eefb5
 // The following tests are rather fickle at the moment--different errors

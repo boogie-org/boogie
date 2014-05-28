@@ -1,5 +1,5 @@
-// RUN: %boogie -noVerify %s > %t
-// RUN: %diff %s.expect %t
+// RUN: %boogie -noVerify "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
 function union(<a> [a] bool, <a> [a] bool) returns (<a> [a] bool);
 
 axiom (forall<alpha>             // error: alpha has to occur in dummy types

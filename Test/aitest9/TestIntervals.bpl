@@ -1,5 +1,5 @@
-// RUN: %boogie %s -infer:j > %t
-// RUN: %diff %s.expect %t
+// RUN: %boogie "%s" -infer:j > "%t"
+// RUN: %diff "%s.expect" "%t"
 procedure P()
 {
   var a: int, b: int, c: int;

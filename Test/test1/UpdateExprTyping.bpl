@@ -1,5 +1,5 @@
-// RUN: %boogie -noVerify %s > %t
-// RUN: %diff %s.expect %t
+// RUN: %boogie -noVerify "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
 procedure P(a: [int]bool, b: [int]ref, c: [bool]bool)
 {
   assert a == b;  // type error

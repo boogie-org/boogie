@@ -1,5 +1,5 @@
-// RUN: %boogie %s > %t
-// RUN: %diff %s.expect %t
+// RUN: %boogie "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
 // The partition step of Quick Sort picks a 'pivot' element from a specified subsection
 // of a given integer array.  It then partially sorts the elements of the array so that
 // elements smaller than the pivot end up to the left of the pivot and elements larger

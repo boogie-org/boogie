@@ -1,5 +1,5 @@
-// RUN: %boogie -stratifiedInline:1 -vc:i -nonUniformUnfolding %s > %t
-// RUN: %diff %s.expect %t
+// RUN: %boogie -stratifiedInline:1 -vc:i -nonUniformUnfolding "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
 var i: int;
 var m: int;
 

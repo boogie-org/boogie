@@ -1,5 +1,5 @@
-// RUN: %boogie -noinfer -typeEncoding:m -useArrayTheory -doModSetAnalysis %s > %t
-// RUN: %diff %s.expect %t
+// RUN: %boogie -noinfer -typeEncoding:m -useArrayTheory -doModSetAnalysis "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
 procedure A({:linear "tid"} i': int) returns ({:linear "tid"} i: int);
   ensures i == i';
 

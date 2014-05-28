@@ -1,5 +1,5 @@
-// RUN: %boogie -smoke %s > %t
-// RUN: %diff %s.expect %t
+// RUN: %boogie -smoke "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
 procedure a(x:int)
 {
   var y : int;
