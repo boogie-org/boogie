@@ -75,7 +75,8 @@ def preProcess(openFile, stripTrailingCR=False, ignoreAllSpace=False):
     # newline characters because this will create a mess when outputting the
     # diff. Is this the right behaviour?
     deleteChars=' \t'
-    translationTable = str.maketrans('','', deleteChars)
+    if sys.version_info.major  >= 3:
+        translationTable = str.maketrans('','', deleteChars)
 
     copy = [ ]
     for line in original:
@@ -86,7 +87,10 @@ def preProcess(openFile, stripTrailingCR=False, ignoreAllSpace=False):
                 newLine = newLine[:-2] + '\n'
 
         if ignoreAllSpace:
-            newLine = newLine.translate(translationTable)
+            if sys.version_info.major >= 3:
+                newLine = newLine.translate(translationTable)
+            else:
+                newLine = newLine.translate(None, deleteChars)
 
         copy.append(newLine)
 
