@@ -5,7 +5,7 @@ var z: int;
 procedure {:checksum "0"} M();
   modifies x, y, z;
 
-implementation {:checksum "1"} M()
+implementation {:id "M"} {:checksum "1"} M()
 {
     z := 0;
 
@@ -15,5 +15,6 @@ implementation {:checksum "1"} M()
 }
 
 procedure {:checksum "3"} N();
+  // Change: fewer modified variables
   modifies x;
   ensures y < z;

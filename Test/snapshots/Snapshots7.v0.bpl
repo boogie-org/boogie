@@ -5,7 +5,7 @@ var z: int;
 procedure {:checksum "0"} M();
   modifies x, y, z;
 
-implementation {:checksum "1"} M()
+implementation {:id "M"} {:checksum "1"} M()
 {
     z := 0;
 
