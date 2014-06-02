@@ -154,12 +154,12 @@ namespace Microsoft.Boogie
             }
         }
 
-        private static bool IsTerminatingLoopHeader(Block block)
+        private bool IsTerminatingLoopHeader(Block block)
         {
             foreach (Cmd cmd in block.Cmds)
             {
                 AssertCmd assertCmd = cmd as AssertCmd;
-                if (assertCmd != null && QKeyValue.FindBoolAttribute(assertCmd.Attributes, "terminates"))
+                if (assertCmd != null && QKeyValue.FindBoolAttribute(assertCmd.Attributes, "terminates") && moverTypeChecker.absyToPhaseNums[assertCmd].Contains(currPhaseNum))
                 {
                     return true;
                 }

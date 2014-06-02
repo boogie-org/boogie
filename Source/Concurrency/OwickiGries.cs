@@ -1144,7 +1144,7 @@ namespace Microsoft.Boogie
         public static void AddCheckers(LinearTypeChecker linearTypeChecker, MoverTypeChecker moverTypeChecker, List<Declaration> decls)
         {
             Program program = linearTypeChecker.program;
-            foreach (int phaseNum in moverTypeChecker.AllPhaseNums)
+            foreach (int phaseNum in moverTypeChecker.AllPhaseNums.Except(new int[] { 0 }))
             {
                 if (CommandLineOptions.Clo.TrustPhasesDownto <= phaseNum || phaseNum <= CommandLineOptions.Clo.TrustPhasesUpto) continue;
 
