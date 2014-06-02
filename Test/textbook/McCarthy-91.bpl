@@ -1,5 +1,5 @@
-// RUN: %boogie %s > %t
-// RUN: %diff %s.expect %t
+// RUN: %boogie "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
 // McCarthy 91 function
 procedure F(n: int) returns (r: int)
   ensures 100 < n ==> r == n - 10;

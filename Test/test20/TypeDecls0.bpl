@@ -1,5 +1,5 @@
-// RUN: %boogie -noVerify %s > %t
-// RUN: %diff %s.expect %t
+// RUN: %boogie -noVerify "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
 type C a _ b;
 type D;
 type E _;

@@ -1,5 +1,5 @@
-// RUN: %boogie %s > %t
-// RUN: %diff %s.expect %t
+// RUN: %boogie "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
 // Bubble Sort, where the specification says the output is a permutation of
 // the input.
 

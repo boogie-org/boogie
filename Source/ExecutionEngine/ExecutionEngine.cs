@@ -9,7 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using VC;
 using BoogiePL = Microsoft.Boogie;
-
+using System.Diagnostics;
 
 namespace Microsoft.Boogie
 {
@@ -157,7 +157,7 @@ namespace Microsoft.Boogie
       string s;
       if (tok != null)
       {
-        s = string.Format("{0}({1},{2}): {3}", tok.filename, tok.line, tok.col, message);
+        s = string.Format("{0}({1},{2}): {3}", ExecutionEngine.GetFileNameForConsole(tok.filename), tok.line, tok.col, message);
       }
       else
       {
@@ -632,9 +632,9 @@ namespace Microsoft.Boogie
       }
     }
 
-    private static string GetFileNameForConsole(string filename)
+    internal static string GetFileNameForConsole(string filename)
     {
-      return (CommandLineOptions.Clo.UseBaseNameForFileName) ? System.IO.Path.GetFileName(filename) : filename;
+      return (CommandLineOptions.Clo.UseBaseNameForFileName && !string.IsNullOrEmpty(filename) && filename != "<console>") ? System.IO.Path.GetFileName(filename) : filename;
     }
 
 
@@ -930,7 +930,6 @@ namespace Microsoft.Boogie
 
       return outcome;
     }
-
 
     public static void CancelRequest(string requestId)
     {

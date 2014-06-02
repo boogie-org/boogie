@@ -1,6 +1,6 @@
-// RUN: %boogie /typeEncoding:predicates /logPrefix:p %s > %t
-// RUN: %boogie /typeEncoding:arguments /logPrefix:a %s >> %t
-// RUN: %diff %s.expect %t
+// RUN: %boogie /typeEncoding:predicates /logPrefix:p "%s" > "%t"
+// RUN: %boogie /typeEncoding:arguments /logPrefix:a "%s" >> "%t"
+// RUN: %diff "%s.expect" "%t"
 
 const C:int;
 const D:bool;

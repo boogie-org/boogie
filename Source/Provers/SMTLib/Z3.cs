@@ -4,6 +4,7 @@
 //
 //-----------------------------------------------------------------------------
 
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -187,6 +188,7 @@ namespace Microsoft.Boogie.SMTLib
         // options that work only on the command line
         static string[] commandLineOnly = { "TRACE", "PROOF_MODE" };
 
+
         public static void SetupOptions(SMTLibProverOptions options)
         {
           FindExecutable();
@@ -195,8 +197,10 @@ namespace Microsoft.Boogie.SMTLib
           if (major > 4 || major == 4 && minor >= 3)
           {
 
+              bool fp = false; // CommandLineOptions.Clo.FixedPointEngine != null;
+
             // don't bother with auto-config - it would disable explicit settings for eager threshold and so on
-            options.AddWeakSmtOption("AUTO_CONFIG", "false");
+            if(!fp) options.AddWeakSmtOption("AUTO_CONFIG", "false");
 
             //options.AddWeakSmtOption("MODEL_PARTIAL", "true");
             //options.WeakAddSmtOption("MODEL_VALUE_COMPLETION", "false");
@@ -219,7 +223,8 @@ namespace Microsoft.Boogie.SMTLib
 
               // The left-to-right structural case-splitting strategy.
               //options.AddWeakSmtOption("SORT_AND_OR", "false"); // always false now
-              options.AddWeakSmtOption("smt.CASE_SPLIT", "3");
+
+              if (!fp) options.AddWeakSmtOption("smt.CASE_SPLIT", "3");
 
               // In addition delay adding unit conflicts.
               options.AddWeakSmtOption("smt.DELAY_UNITS", "true");
@@ -238,7 +243,7 @@ namespace Microsoft.Boogie.SMTLib
             // Complex proof attempts in VCC (and likely elsewhere) require matching depth of 20 or more.
 
             // the following will make the :weight option more usable
-            options.AddWeakSmtOption("smt.QI.COST", "|\"(+ weight generation)\"|"); // TODO: this doesn't seem to work
+            if (!fp) options.AddWeakSmtOption("smt.QI.COST", "|\"(+ weight generation)\"|"); // TODO: this doesn't seem to work
 
             //if (options.Inspector != null)
             //  options.WeakAddSmtOption("PROGRESS_SAMPLING_FREQ", "100");
@@ -261,6 +266,11 @@ namespace Microsoft.Boogie.SMTLib
             {
               options.AddWeakSmtOption("smt.array.weak", "true");
               options.AddWeakSmtOption("smt.array.extensional", "false");
+            }
+
+            if (CommandLineOptions.Clo.PrintConjectures != null)
+            {
+                options.AddWeakSmtOption("fixedpoint.conjecture_file", CommandLineOptions.Clo.PrintConjectures + ".tmp");
             }
           }
           else

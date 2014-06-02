@@ -1,5 +1,5 @@
-// RUN: %boogie -noVerify %s > %t
-// RUN: %diff %s.expect %t
+// RUN: %boogie -noVerify "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
 var g: int where g == 12;
 
 procedure P(x: int where x > 0) returns (y: int where y < 0);

@@ -1,5 +1,5 @@
-// RUN: %boogie -proverWarnings:1 %s > %t
-// RUN: %diff %s.expect %t
+// RUN: %boogie -proverWarnings:1 "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
 procedure foo(x : bv32) returns(r : bv32)
 {
   var q : bv64;

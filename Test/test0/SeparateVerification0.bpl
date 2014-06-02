@@ -1,9 +1,9 @@
-// RUN: %boogie -noVerify %s > %t
-// RUN: %diff %s.expect %t
-// RUN: %boogie -noVerify %s %s > %t
-// RUN: %diff NoErrors.expect %t
-// RUN: %boogie -noVerify %s %s SeparateVerification1.bpl > %t
-// RUN: %diff NoErrors.expect %t
+// RUN: %boogie -noVerify "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+// RUN: %boogie -noVerify "%s" "%s" > "%t"
+// RUN: %diff NoErrors.expect "%t"
+// RUN: %boogie -noVerify "%s" "%s" SeparateVerification1.bpl > "%t"
+// RUN: %diff NoErrors.expect "%t"
 // need to include this file twice for it to include all necessary declarations
 
 #if FILE_0

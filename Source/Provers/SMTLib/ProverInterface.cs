@@ -66,6 +66,12 @@ namespace Microsoft.Boogie.SMTLib
       ctx.parent = this;
       this.DeclCollector = new TypeDeclCollector((SMTLibProverOptions)options, Namer);
 
+      if (CommandLineOptions.Clo.PrintFixedPoint != null || CommandLineOptions.Clo.PrintConjectures != null)
+      {
+          declHandler = new MyDeclHandler();
+          DeclCollector.SetDeclHandler(declHandler);
+      }
+
       SetupProcess();
 
       if (CommandLineOptions.Clo.StratifiedInlining > 0 || CommandLineOptions.Clo.ContractInfer)
@@ -82,6 +88,7 @@ namespace Microsoft.Boogie.SMTLib
           }
           PrepareCommon();
       }
+		
     }
 
     private void SetupAxiomBuilder(VCExpressionGenerator gen)
@@ -677,27 +684,9 @@ namespace Microsoft.Boogie.SMTLib
 			// get all the predicate definitions
 			for (int i = 0; i < lines.Length; i++) {
 				var line = lines [i];
-				if(line.Name != "define-fun"){
-					HandleProverError ("Prover error: expected define-fun but got:" + line.Name);
-					throw new BadExprFromProver ();
-				}
-				if(line.ArgCount != 4){
-					HandleProverError ("Prover error: define-fun has wrong number of arguments");
-					throw new BadExprFromProver ();
-				}
-				var pname = StripCruft(line.Arguments[0].Name);
-				var pvars = line.Arguments[1];
-				var pbody = line.Arguments[3]; // range has to be Bool
-				var binding = new Dictionary<string,VCExpr>();
-				var pvs = new List<VCExpr>();
-				foreach(var b in pvars.Arguments){
-					var e = SExprToVar (b);
-					pvs.Add (e);
-					binding.Add (b.Name,e);
-				}
-				VCExpr bexpr = SExprToVCExpr(pbody,binding);
-				
-				var annot = rpfp.CreateRelation(pvs.ToArray(),bexpr);
+                string pname;
+                RPFP.Transformer annot;
+                GetDefun(line, out pname, out annot);
 				
 				if(pmap.ContainsKey(pname)){
 					var node = pmap[pname];
@@ -710,6 +699,34 @@ namespace Microsoft.Boogie.SMTLib
 			}
 			
 		}
+
+        private void GetDefun(SExpr line, out string pname, out RPFP.Transformer annot)
+        {
+            if (line.Name != "define-fun")
+            {
+                HandleProverError("Prover error: expected define-fun but got:" + line.Name);
+                throw new BadExprFromProver();
+            }
+            if (line.ArgCount != 4)
+            {
+                HandleProverError("Prover error: define-fun has wrong number of arguments");
+                throw new BadExprFromProver();
+            }
+            pname = StripCruft(line.Arguments[0].Name);
+            var pvars = line.Arguments[1];
+            var pbody = line.Arguments[3]; // range has to be Bool
+            var binding = new Dictionary<string, VCExpr>();
+            var pvs = new List<VCExpr>();
+            foreach (var b in pvars.Arguments)
+            {
+                var e = SExprToVar(b);
+                pvs.Add(e);
+                binding.Add(StripCruft(b.Name), e);
+            }
+            VCExpr bexpr = SExprToVCExpr(pbody, binding);
+
+            annot = rpfp.CreateRelation(pvs.ToArray(), bexpr);
+        }
 		
     private RPFP.Node SExprToCex(SExpr resp, ErrorHandler handler, 
                                  Dictionary<int,Dictionary<string,string>> varSubst)
@@ -887,10 +904,6 @@ namespace Microsoft.Boogie.SMTLib
         rpfp = _rpfp;
         cex = null;
 			
-		if(CommandLineOptions.Clo.PrintFixedPoint != null){
-			declHandler = new MyDeclHandler();
-		    DeclCollector.SetDeclHandler(declHandler);
-		}
 			
         if (options.SeparateLogFiles) CloseLogFile(); // shouldn't really happen
 
@@ -900,14 +913,14 @@ namespace Microsoft.Boogie.SMTLib
             currentLogFile.Write(common.ToString());
         }
 
+        PrepareCommon(); 
+        
         Push();
         SendThisVC("(fixedpoint-push)");
         foreach (var node in rpfp.nodes)
         {
             DeclCollector.RegisterRelation((node.Name as VCExprBoogieFunctionOp).Func);
         }
-
-        PrepareCommon();
 
         LineariserOptions.Default.LabelsBelowQuantifiers = true;
         List<string> ruleStrings = new List<string>();
@@ -1047,9 +1060,72 @@ namespace Microsoft.Boogie.SMTLib
         SendThisVC("(fixedpoint-pop)");
         Pop();
         AxiomsAreSetup = false;
-		DeclCollector.SetDeclHandler(null);
-		declHandler = null; // just so we can GC it
+
+        if (CommandLineOptions.Clo.PrintConjectures != null)
+        {
+            ReadConjectures(CommandLineOptions.Clo.PrintConjectures);
+        }
+
         return result;
+    }
+
+    class MyFileParser : SExpr.Parser
+    {
+        SMTLibProcessTheoremProver parent;
+
+        public MyFileParser(System.IO.StreamReader _sr, SMTLibProcessTheoremProver _parent)
+            : base(_sr)
+        {
+            parent = _parent;
+        }
+        public override void ParseError(string msg)
+        {
+            parent.HandleProverError("Error in conjecture file from prover: " + msg);
+        }
+    }
+
+    void ReadConjectures(string filename)
+    {
+        try
+        {
+            System.IO.StreamReader sr = new StreamReader(filename + ".tmp");
+            SExpr.Parser p = new MyFileParser(sr, this);
+            var sexps = p.ParseSExprs(false);
+            Dictionary<string, RPFP.Node> pmap = GetNodeMap();
+            foreach (var e in sexps)
+            {
+                string pname;
+                RPFP.Transformer annot;
+                GetDefun(e, out pname, out annot);
+
+                if (pmap.ContainsKey(pname))
+                {
+                    var c = new RPFP.Conjecture();
+                    c.node = pmap[pname];
+                    c.bound = annot;
+                    rpfp.conjectures.Add(c);
+                }
+                else if (pname[0] != '@')
+                { // if not an internal symbol
+                    HandleProverError("Prover error: got unknown predicate:" + pname);
+                    throw new BadExprFromProver();
+                }
+            }
+            sr.Close();
+        }
+        catch (Exception)
+        {
+            HandleProverError("No conjecture file from prover");
+            throw new BadExprFromProver();
+        }
+    }
+
+    private Dictionary<string, RPFP.Node> GetNodeMap()
+    {
+        Dictionary<string, RPFP.Node> pmap = new Dictionary<string, RPFP.Node>();
+        foreach (var node in rpfp.nodes)
+            pmap.Add((node.Name as VCExprBoogieFunctionOp).Func.Name, node);
+        return pmap;
     }
 
     private static HashSet<string> usedLogNames = new HashSet<string>();

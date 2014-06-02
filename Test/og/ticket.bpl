@@ -1,5 +1,5 @@
-// RUN: %boogie -noinfer -typeEncoding:m -useArrayTheory %s > %t
-// RUN: %diff %s.expect %t
+// RUN: %boogie -noinfer -typeEncoding:m -useArrayTheory "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
 function RightOpen(n: int) : [int]bool;
 function RightClosed(n: int) : [int]bool;
 axiom (forall x: int, y: int :: RightOpen(x)[y] <==> y < x);

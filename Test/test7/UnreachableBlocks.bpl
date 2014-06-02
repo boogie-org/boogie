@@ -1,5 +1,5 @@
-// RUN: %boogie -vc:nested %s > %t
-// RUN: %diff %s.expect %t
+// RUN: %boogie -vc:nested "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
 // In the following program, block "A" has no dominator, which would cause Boogie
 // to crash if Boogie didn't first remove unreachable blocks.  That is essentially
 // what this test tests

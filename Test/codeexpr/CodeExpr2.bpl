@@ -1,5 +1,5 @@
-// RUN: %boogie %s > %t
-// RUN: %diff %s.expect %t
+// RUN: %boogie "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
 type T;
 const zero: T;
 

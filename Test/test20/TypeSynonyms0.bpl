@@ -1,7 +1,7 @@
-// RUN: %boogie -noVerify %s > %t
-// RUN: %diff %s.expect %t
-// RUN: %boogie -noVerify -print:- -env:0 %s > %t
-// RUN: %diff %s.print.expect %t
+// RUN: %boogie -noVerify "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+// RUN: %boogie -noVerify -print:- -env:0 "%s" > "%t"
+// RUN: %diff "%s.print.expect" "%t"
 
 
 type Set a = [a]bool;

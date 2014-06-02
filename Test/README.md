@@ -76,7 +76,15 @@ $ cd Test
 $ lit test0/ livevars/bla1.bpl aitest0/constants.bpl
 ```
 
-Note replace ``/`` with ``\`` on Windows (tab completition is your friend)
+Note replace ``/`` with ``\`` on Windows (tab completition is your friend).
+
+If you would prefer to see less information when running tests you can use the
+``-s`` flag to show progress information and a summary when tests finish.
+
+```
+$ cd Test
+$ lit -s .
+```
 
 To pass additional flags to Boogie when running tests run the following command
 where ``-someParamter`` is a paramter Boogie supports.
@@ -84,6 +92,12 @@ where ``-someParamter`` is a paramter Boogie supports.
 ```
 $ cd Test
 $ lit --param boogie_params='-someParameter' .
+```
+
+For more ``lit`` options run
+
+```
+$ lit --help
 ```
 
 Debugging failing tests
@@ -97,6 +111,23 @@ $ cd Test
 $ lit -v livevars/bla1.bpl
 ```
 
+Removing output produced by tests
+---------------------------------
+
+lit will by default create a folder named ``Output`` in each directory that
+will contain temporary files created by tests.  You can run the following to
+remove all these folders/files.
+
+```
+$ cd Test
+$ ./clean.py
+```
+
+This script will also remove old files created by the legacy batch file based
+testing infrastructure (no longer in source tree). If temporary files are left
+behind from the old testing infrastructure it is necessary to run this script
+to remove those files before using ``lit``.
+
 Writing tests
 -------------
 
@@ -108,21 +139,28 @@ considered to fail.
 The RUN lines may use several substitutions
 
 - ``%boogie`` expands to the absolute path to the Boogie executable with any set
-  options and prefixed by ``mono`` on non Windows platforms
+  options and prefixed by ``mono`` on non Windows platforms. This does not need
+  to be quoted.
 
-- ``%diff`` expands to the diff tool being used. This is ``diff`` on non Windows
-  platforms and ``fc`` on Windows.
+- ``%diff`` expands to the diff tool being used. This is ``diff`` on non
+  Windows platforms and ``pydiff`` on Windows. Do not use the ``fc`` tool
+  because it is buggy when tests are run concurrently. This does not need to be
+  quoted.
 
-- ``%OutputCheck`` expands to the absolute path to the OutputCheck tool
+- ``%OutputCheck`` expands to the absolute path to the OutputCheck tool. This
+  does not need to be quoted.
 
-- ``%s`` the absolute path to the current test file
+- ``%s`` the absolute path to the current test file. You should make sure this
+  is quoted so that tests work correctly for users who use spaces in their file
+  paths.
 
-- ``%T`` the path to the temporary directory for this test
+- ``%T`` the path to the temporary directory for this test. You should make sure
+  this is quoted.
 
 - ``%t`` expands to the absolute path of a filename that can be used as a
   temporary file. This always expands to the same value in a single test so if
   you need multiple different temporary files append a unique value (e.g.
-  ``%t1``, ``%t2``... etc).
+  ``%t1``, ``%t2``... etc). You should make sure this is quoted.
 
 Currently most tests simply execute boogie recording its output which then
 compared to a file containing the expected output (``.expect`` files) using

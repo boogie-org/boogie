@@ -1496,6 +1496,10 @@ namespace Microsoft.Boogie {
       //Contract.Requires(tc != null);
       TypecheckAttributes(tc);
       this.TypedIdent.Typecheck(tc);
+      if (QKeyValue.FindBoolAttribute(Attributes, "assumption") && !this.TypedIdent.Type.IsBool)
+      {
+        tc.Error(tok, "assumption variable must be of type 'bool'");
+      }
     }
   }
 

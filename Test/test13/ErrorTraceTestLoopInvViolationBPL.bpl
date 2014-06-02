@@ -1,5 +1,5 @@
-// RUN: %boogie %s > %t
-// RUN: %diff %s.expect %t
+// RUN: %boogie "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
 // simple assert
 procedure asserting() {
   var x: int;

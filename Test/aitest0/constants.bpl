@@ -1,5 +1,5 @@
-// RUN: %boogie -infer:j -instrumentInfer:e -printInstrumented -noVerify %s > %t
-// RUN: %diff %s.expect %t
+// RUN: %boogie -infer:j -instrumentInfer:e -printInstrumented -noVerify "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
 // Test the constant propagation AI
 
 var GlobalFlag : bool;
