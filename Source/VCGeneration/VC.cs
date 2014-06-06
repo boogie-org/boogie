@@ -2280,7 +2280,7 @@ namespace VC {
       #endregion Convert program CFG into a DAG
     }
 
-    private static List<Variable> VarsAssignedInLoop(Graph<Block> g, Block header)
+    public static List<Variable> VarsAssignedInLoop(Graph<Block> g, Block header)
     {
       List<Variable> varsToHavoc = new List<Variable>();
       foreach (Block backEdgeNode in cce.NonNull(g.BackEdgeNodes(header)))
