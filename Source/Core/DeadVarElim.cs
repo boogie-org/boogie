@@ -105,8 +105,7 @@ namespace Microsoft.Boogie {
       moreProcessingRequired = true;
       while (moreProcessingRequired) {
         moreProcessingRequired = false;
-        ModSetCollector modSetCollector = new ModSetCollector();
-        modSetCollector.Visit(program);
+        this.Visit(program);
       }
 
       foreach (Procedure x in modSets.Keys)
