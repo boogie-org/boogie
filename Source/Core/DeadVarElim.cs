@@ -39,18 +39,23 @@ namespace Microsoft.Boogie {
   }
 
   public class ModSetCollector : ReadOnlyVisitor {
-    static Procedure enclosingProc;
-    static Dictionary<Procedure/*!*/, HashSet<Variable/*!*/>/*!*/>/*!*/ modSets;
-    static HashSet<Procedure> yieldingProcs;
+    private Procedure enclosingProc;
+    private Dictionary<Procedure/*!*/, HashSet<Variable/*!*/>/*!*/>/*!*/ modSets;
+    private HashSet<Procedure> yieldingProcs;
     [ContractInvariantMethod]
     void ObjectInvariant() {
       Contract.Invariant(cce.NonNullDictionaryAndValues(modSets));
       Contract.Invariant(Contract.ForAll(modSets.Values, v => cce.NonNullElements(v)));
     }
 
-    static bool moreProcessingRequired;
+    public ModSetCollector() {
+      modSets = new Dictionary<Procedure/*!*/, HashSet<Variable/*!*/>/*!*/>();
+      yieldingProcs = new HashSet<Procedure>();
+    }
 
-    public static void DoModSetAnalysis(Program program) {
+    private bool moreProcessingRequired;
+
+    public void DoModSetAnalysis(Program program) {
       Contract.Requires(program != null);
 
       if (CommandLineOptions.Clo.Trace)
@@ -66,9 +71,6 @@ namespace Microsoft.Boogie {
 //          }
 //          Console.WriteLine("Number of procedures = {0}", procCount);*/
       }
-
-      modSets = new Dictionary<Procedure/*!*/, HashSet<Variable/*!*/>/*!*/>();
-      yieldingProcs = new HashSet<Procedure>();
 
       HashSet<Procedure/*!*/> implementedProcs = new HashSet<Procedure/*!*/>();
       foreach (Declaration/*!*/ decl in program.TopLevelDeclarations) {
@@ -232,7 +234,7 @@ namespace Microsoft.Boogie {
         }
         return ret;
     }
-    private static void ProcessVariable(Variable var) {
+    private void ProcessVariable(Variable var) {
       Procedure/*!*/ localProc = cce.NonNull(enclosingProc);
       if (var == null)
         return;

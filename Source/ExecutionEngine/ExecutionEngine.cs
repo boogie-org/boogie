@@ -529,7 +529,7 @@ namespace Microsoft.Boogie
     {
       if (CommandLineOptions.Clo.DoModSetAnalysis)
       {
-        Microsoft.Boogie.ModSetCollector.DoModSetAnalysis(program);
+        new ModSetCollector().DoModSetAnalysis(program);
       }
     }
 
