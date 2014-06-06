@@ -1215,11 +1215,12 @@ namespace Microsoft.Boogie.SMTLib
         currentErrorHandler = handler;
         FlushProverWarnings();
 
-        var errorsLeft = CommandLineOptions.Clo.ProverCCLimit;
-
+        int errorsLeft;
         if (CommandLineOptions.Clo.ConcurrentHoudini) {
           Contract.Assert(taskID >= 0);
           errorsLeft = CommandLineOptions.Clo.Cho[taskID].ProverCCLimit;
+        } else {
+          errorsLeft = CommandLineOptions.Clo.ProverCCLimit;
         }
 
         if (errorsLeft < 1)
