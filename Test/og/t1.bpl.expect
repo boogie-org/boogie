@@ -7,4 +7,4 @@ Execution trace:
     t1.bpl(80,13): anon0$2
     (0,0): inline$Impl_YieldChecker_A_1$1$L2
 
-Boogie program verifier finished with 5 verified, 1 error
+Boogie program verifier finished with 2 verified, 1 error

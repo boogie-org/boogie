@@ -527,6 +527,16 @@ namespace Microsoft.Boogie
             return base.VisitParCallCmd(node);
         }
 
+        public override Requires VisitRequires(Requires requires)
+        {
+            return requires;
+        }
+
+        public override Ensures VisitEnsures(Ensures ensures)
+        {
+            return ensures;
+        }
+
         public IEnumerable<Variable> AvailableLinearVars(Absy absy)
         {
             if (availableLinearVars.ContainsKey(absy))

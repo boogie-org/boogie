@@ -306,6 +306,23 @@ namespace Microsoft.Boogie
                         Error(proc, "A procedure can have at most one atomic action");
                         continue;
                     }
+
+                    minPhaseNum = int.MaxValue;
+                    maxPhaseNum = -1;
+                    canAccessSharedVars = true;
+                    enclosingProc = proc;
+                    enclosingImpl = null;
+                    base.VisitEnsures(e);
+                    canAccessSharedVars = false;
+                    if (maxPhaseNum <= phaseNum && availableUptoPhaseNum <= minPhaseNum)
+                    {
+                        // ok
+                    }
+                    else
+                    {
+                        Error(e, "A variable being accessed is hidden before this action becomes unavailable");
+                    }
+
                     procToActionInfo[proc] = new AtomicActionInfo(proc, e, moverType, phaseNum, availableUptoPhaseNum);
                 }
                 if (!procToActionInfo.ContainsKey(proc))
@@ -369,6 +386,7 @@ namespace Microsoft.Boogie
                 return node;
             }
             this.enclosingImpl = node;
+            this.enclosingProc = null;
             auxVars = new HashSet<Variable>();
             foreach (Variable v in node.LocVars)
             {
@@ -387,6 +405,7 @@ namespace Microsoft.Boogie
                 return node;
             }
             this.enclosingProc = node;
+            this.enclosingImpl = null;
             return base.VisitProcedure(node);
         }
 
@@ -413,7 +432,7 @@ namespace Microsoft.Boogie
                     {
                         if (x.Decl is GlobalVariable)
                         {
-                            Error(node, "Aglobal variable cannot be used as output argument for this call");
+                            Error(node, "A global variable cannot be used as output argument for this call");
                         }
                         else if (outParams.Contains(x.Decl))
                         {
@@ -521,14 +540,7 @@ namespace Microsoft.Boogie
             AtomicActionInfo atomicActionInfo = actionInfo as AtomicActionInfo;
             if (atomicActionInfo != null && atomicActionInfo.ensures == ensures)
             {
-                if (maxPhaseNum <= actionInfo.phaseNum && actionInfo.availableUptoPhaseNum <= minPhaseNum)
-                {
-                    // ok
-                }
-                else 
-                {
-                    Error(ensures, "A variable being accessed is hidden before this action becomes unavailable");
-                }
+                // This case has already been checked
             }
             else
             {
@@ -550,6 +562,8 @@ namespace Microsoft.Boogie
 
         public override Cmd VisitAssertCmd(AssertCmd node)
         {
+            if (enclosingImpl == null)
+                return base.VisitAssertCmd(node);
             minPhaseNum = int.MaxValue;
             maxPhaseNum = -1;
             canAccessSharedVars = true;

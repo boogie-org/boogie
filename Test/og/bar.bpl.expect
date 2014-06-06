@@ -10,4 +10,4 @@ Execution trace:
     bar.bpl(38,3): anon0$1
     (0,0): inline$Impl_YieldChecker_PC_1$1$L0
 
-Boogie program verifier finished with 8 verified, 2 errors
+Boogie program verifier finished with 3 verified, 2 errors
