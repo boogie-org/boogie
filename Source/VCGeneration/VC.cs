@@ -2299,6 +2299,29 @@ namespace VC {
       return varsToHavoc;
     }
 
+    public static IEnumerable<Variable> VarsReferencedInLoop(Graph<Block> g, Block header)
+    {
+      HashSet<Variable> referencedVars = new HashSet<Variable>();
+      foreach (Block backEdgeNode in cce.NonNull(g.BackEdgeNodes(header)))
+      {
+        Contract.Assert(backEdgeNode != null);
+        foreach (Block b in g.NaturalLoops(header, backEdgeNode))
+        {
+          Contract.Assert(b != null);
+          foreach (Cmd c in b.Cmds)
+          {
+            Contract.Assert(c != null);
+            var Collector = new VariableCollector();
+            Collector.Visit(c);
+            foreach(var v in Collector.usedVars) {
+              referencedVars.Add(v);
+            }
+          }
+        }
+      }
+      return referencedVars;
+    }
+
     private void ConvertCFG2DAGKInduction(Implementation impl, Dictionary<Block, List<Block>> edgesCut, int taskID) {
 
       // K-induction has not been adapted to be aware of these parameters which standard CFG to DAG transformation uses
