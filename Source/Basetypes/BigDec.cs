@@ -88,7 +88,12 @@ namespace Microsoft.Basetypes {
         }
       }
 
-      return new BigDec(integral + fraction, exponent);
+      if (integral.Sign == -1) {
+        return new BigDec(integral - fraction, exponent);
+      }
+      else {
+        return new BigDec(integral + fraction, exponent);
+      }
     }
 
     internal BigDec(BIM mantissa, int exponent) {
