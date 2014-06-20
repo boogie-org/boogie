@@ -10,4 +10,5 @@ Abc.txt(13,0): Error: undeclared identifier: i
 Abc.txt(99,0): Error: undeclared identifier: j
 c:\Users\leino\Documents\Programs\MyClass.ssc(104,0): Error: undeclared identifier: k
 A B C . txt(12,0): Error: undeclared identifier: l
-12 name resolution errors detected in LineResolve.bpl
+LineResolve.bpl(101,2): Error: undeclared identifier: x
+13 name resolution errors detected in LineResolve.bpl

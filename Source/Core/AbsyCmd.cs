@@ -1224,7 +1224,7 @@ namespace Microsoft.Boogie {
       for (int i = 0; i < Lhss.Count; i++)
       {
         var lhs = Lhss[i].AsExpr as IdentifierExpr;
-        if (lhs != null && QKeyValue.FindBoolAttribute(lhs.Decl.Attributes, "assumption"))
+        if (lhs != null && lhs.Decl != null && QKeyValue.FindBoolAttribute(lhs.Decl.Attributes, "assumption"))
         {
           var rhs = Rhss[i] as NAryExpr;
           if (rhs == null

@@ -38,3 +38,8 @@ l+  // error: A B C . txt(12,0)
 
 0;
 }
+
+#line 100 LineResolve.bpl
+procedure ResolutionTest() {
+  x := 0;  // error: undeclared identifier (once upon a time, this used to crash Boogie)
+}
