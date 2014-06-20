@@ -419,7 +419,7 @@ namespace Microsoft.Boogie
         return;
       }
 
-      if (CommandLineOptions.Clo.VerifySnapshots && lookForSnapshots)
+      if (0 < CommandLineOptions.Clo.VerifySnapshots && lookForSnapshots)
       {
         var snapshotsByVersion = new List<List<string>>();
         for (int version = 0; true; version++)
@@ -842,7 +842,7 @@ namespace Microsoft.Boogie
 
       // operate on a stable copy, in case it gets updated while we're running
       Implementation[] stablePrioritizedImpls = null;
-      if (CommandLineOptions.Clo.VerifySnapshots)
+      if (0 < CommandLineOptions.Clo.VerifySnapshots)
       {
         impls.Iter(impl => { impl.DependenciesChecksum = DependencyCollector.DependenciesChecksum(impl); });
         stablePrioritizedImpls = impls.OrderByDescending(
@@ -977,7 +977,7 @@ namespace Microsoft.Boogie
       printer.Inform("", output);  // newline
       printer.Inform(string.Format("Verifying {0} ...", impl.Name), output);
 
-      if (CommandLineOptions.Clo.VerifySnapshots)
+      if (0 < CommandLineOptions.Clo.VerifySnapshots)
       {
         verificationResult = Cache.Lookup(impl);
       }
@@ -1072,7 +1072,7 @@ namespace Microsoft.Boogie
 
         #region Cache the verification result
 
-        if (CommandLineOptions.Clo.VerifySnapshots && !string.IsNullOrEmpty(impl.Checksum))
+        if (0 < CommandLineOptions.Clo.VerifySnapshots && !string.IsNullOrEmpty(impl.Checksum))
         {
           Cache.Insert(impl.Id, verificationResult);
         }

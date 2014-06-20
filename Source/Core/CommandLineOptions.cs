@@ -364,7 +364,7 @@ namespace Microsoft.Boogie {
       Contract.Invariant(0 <= PrintUnstructured && PrintUnstructured < 3);  // 0 = print only structured,  1 = both structured and unstructured,  2 = only unstructured
     }
 
-    public bool VerifySnapshots;
+    public int VerifySnapshots;
     public bool VerifySeparately;
     public string PrintFile = null;
     public int PrintUnstructured = 0;
@@ -1312,6 +1312,10 @@ namespace Microsoft.Boogie {
         case "errorLimit":
           ps.GetNumericArgument(ref ProverCCLimit);
           return true;
+
+        case "verifySnapshots":
+          ps.GetNumericArgument(ref VerifySnapshots, 2);
+          return true;
 		
 		case "useSmtOutputFormat": {
 		  if (ps.ConfirmArgumentCount(0)) {
@@ -1415,7 +1419,6 @@ namespace Microsoft.Boogie {
               ps.CheckBooleanFlag("useProverEvaluate", ref UseProverEvaluate) ||
               ps.CheckBooleanFlag("nonUniformUnfolding", ref NonUniformUnfolding) ||
               ps.CheckBooleanFlag("deterministicExtractLoops", ref DeterministicExtractLoops) ||
-              ps.CheckBooleanFlag("verifySnapshots", ref VerifySnapshots) ||
               ps.CheckBooleanFlag("verifySeparately", ref VerifySeparately) ||
               ps.CheckBooleanFlag("trustAtomicityTypes", ref TrustAtomicityTypes) ||
               ps.CheckBooleanFlag("trustNonInterference", ref TrustNonInterference) ||
@@ -1743,9 +1746,11 @@ namespace Microsoft.Boogie {
                 1 = perform live variable analysis (default)
                 2 = perform interprocedural live variable analysis
   /noVerify     skip VC generation and invocation of the theorem prover
-  /verifySnapshots
+  /verifySnapshots:<n>
                 verify several program snapshots (named <filename>.v0.bpl
-                to <filename>.vN.bpl) using verification result caching
+                to <filename>.vN.bpl) using verification result caching:
+                0 - do not use any verification result caching (default)
+                1 - use verification result caching
   /verifySeparately
                 verify each input program separately
   /removeEmptyBlocks:<c>

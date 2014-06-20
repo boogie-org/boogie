@@ -93,7 +93,7 @@ namespace Microsoft.Boogie {
           Substituter.SubstitutionFromHashtable(oldSubst),
           lambda.Attributes);
 
-        if (CommandLineOptions.Clo.VerifySnapshots && QKeyValue.FindStringAttribute(lambdaAttrs, "checksum") == null)
+        if (0 < CommandLineOptions.Clo.VerifySnapshots && QKeyValue.FindStringAttribute(lambdaAttrs, "checksum") == null)
         {
           // Attach a dummy checksum to avoid issues in the dependency analysis.
           var checksumAttr = new QKeyValue(lambda.tok, "checksum", new List<object> { "dummy" }, null);
