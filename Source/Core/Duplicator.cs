@@ -10,6 +10,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
+using System.Linq;
 
 namespace Microsoft.Boogie {
   public class Duplicator : StandardVisitor {
@@ -476,6 +477,15 @@ namespace Microsoft.Boogie {
       return (Expr)new ReplacingOldSubstituter(always, forOld).Visit(expr);
     }
 
+    public static Expr FunctionCallReresolvingApplyReplacingOldExprs(Substitution always, Substitution forOld, Expr expr, Program program)
+    {
+      Contract.Requires(always != null);
+      Contract.Requires(forOld != null);
+      Contract.Requires(expr != null);
+      Contract.Ensures(Contract.Result<Expr>() != null);
+      return (Expr)new FunctionCallReresolvingReplacingOldSubstituter(program, always, forOld).Visit(expr);
+    }
+
     // ----------------------------- Substitutions for Cmd -------------------------------
 
     /// <summary>
@@ -611,7 +621,34 @@ namespace Microsoft.Boogie {
       }
     }
 
-    private sealed class ReplacingOldSubstituter : Duplicator {
+    private sealed class FunctionCallReresolvingReplacingOldSubstituter : ReplacingOldSubstituter
+    {
+      readonly Program Program;
+
+      public FunctionCallReresolvingReplacingOldSubstituter(Program program, Substitution always, Substitution forold)
+        : base(always, forold)
+      {
+        Program = program;
+      }
+
+      public override Expr VisitNAryExpr(NAryExpr node)
+      {
+        var result = base.VisitNAryExpr(node);
+        var nAryExpr = result as NAryExpr;
+        if (nAryExpr != null)
+        {
+          var funCall = nAryExpr.Fun as FunctionCall;
+          if (funCall != null)
+          {
+            // TODO(wuestholz): Maybe we should speed up this lookup.
+            funCall.Func = Program.TopLevelDeclarations.OfType<Function>().FirstOrDefault(f => f.Name == funCall.FunctionName);
+          }
+        }
+        return result;
+      }
+    }
+
+    private class ReplacingOldSubstituter : Duplicator {
       private readonly Substitution/*!*/ always;
       private readonly Substitution/*!*/ forold;
       [ContractInvariantMethod]

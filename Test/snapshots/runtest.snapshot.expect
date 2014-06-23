@@ -98,3 +98,40 @@ Boogie program verifier finished with 1 verified, 0 errors
 Boogie program verifier finished with 1 verified, 0 errors
 
 Boogie program verifier finished with 1 verified, 0 errors
+
+Boogie program verifier finished with 1 verified, 0 errors
+
+Boogie program verifier finished with 1 verified, 0 errors
+Snapshots11.v0.bpl(7,5): Error BP5002: A precondition for this call might not hold.
+Snapshots11.v0.bpl(13,3): Related location: This is the precondition that might not hold.
+Execution trace:
+    Snapshots11.v0.bpl(7,5): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+Snapshots11.v1.bpl(7,5): Error BP5002: A precondition for this call might not hold.
+Snapshots11.v1.bpl(13,3): Related location: This is the precondition that might not hold.
+Execution trace:
+    Snapshots11.v1.bpl(7,5): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+
+Boogie program verifier finished with 1 verified, 0 errors
+Snapshots12.v1.bpl(7,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    Snapshots12.v1.bpl(5,5): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+
+Boogie program verifier finished with 1 verified, 0 errors
+Snapshots13.v1.bpl(7,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    Snapshots13.v1.bpl(5,5): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
+
+Boogie program verifier finished with 1 verified, 0 errors
+Snapshots14.v1.bpl(7,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    Snapshots14.v1.bpl(5,5): anon0
+
+Boogie program verifier finished with 0 verified, 1 error

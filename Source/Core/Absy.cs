@@ -2664,6 +2664,51 @@ namespace Microsoft.Boogie {
       }
     }
 
+    // TODO(wuestholz): Make this a 'List<Counterexample>'.
+    public IList<object> ErrorsInCachedSnapshot { get; set; }
+
+    public bool NoErrorsInCachedSnapshot
+    {
+      get
+      {
+        return ErrorsInCachedSnapshot != null && !ErrorsInCachedSnapshot.Any();
+      }
+    }
+
+    public bool AnyErrorsInCachedSnapshot
+    {
+      get
+      {
+        return ErrorsInCachedSnapshot != null && ErrorsInCachedSnapshot.Any();
+      }
+    }
+
+    IList<LocalVariable> injectedAssumptionVariables;
+    public IList<LocalVariable> InjectedAssumptionVariables
+    {
+      get
+      {
+        return injectedAssumptionVariables;
+      }
+    }
+
+    public Expr ConjunctionOfInjectedAssumptionVariables()
+    {
+      Contract.Requires(InjectedAssumptionVariables != null && InjectedAssumptionVariables.Any());
+
+      return LiteralExpr.BinaryTreeAnd(injectedAssumptionVariables.Select(v => (Expr)(new IdentifierExpr(Token.NoToken, v))).ToList());
+    }
+
+    public void InjectAssumptionVariable(LocalVariable variable)
+    {
+      if (injectedAssumptionVariables == null)
+      {
+        injectedAssumptionVariables = new List<LocalVariable>();
+      }
+      injectedAssumptionVariables.Add(variable);
+      LocVars.Add(variable);
+    }
+
     public Implementation(IToken tok, string name, List<TypeVariable> typeParams, List<Variable> inParams, List<Variable> outParams, List<Variable> localVariables, [Captured] StmtList structuredStmts, QKeyValue kv)
       : this(tok, name, typeParams, inParams, outParams, localVariables, structuredStmts, kv, new Errors()) {
       Contract.Requires(structuredStmts != null);

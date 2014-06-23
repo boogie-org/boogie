@@ -1314,7 +1314,7 @@ namespace Microsoft.Boogie {
           return true;
 
         case "verifySnapshots":
-          ps.GetNumericArgument(ref VerifySnapshots, 2);
+          ps.GetNumericArgument(ref VerifySnapshots, 3);
           return true;
 		
 		case "useSmtOutputFormat": {
@@ -1750,7 +1750,8 @@ namespace Microsoft.Boogie {
                 verify several program snapshots (named <filename>.v0.bpl
                 to <filename>.vN.bpl) using verification result caching:
                 0 - do not use any verification result caching (default)
-                1 - use verification result caching
+                1 - use the basic verification result caching
+                2 - use the more advanced verification result caching
   /verifySeparately
                 verify each input program separately
   /removeEmptyBlocks:<c>

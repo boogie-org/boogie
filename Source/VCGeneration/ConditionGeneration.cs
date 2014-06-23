@@ -576,6 +576,8 @@ namespace VC {
 
     private bool _disposed;
 
+    protected Implementation currentImplementation;
+
     protected List<Variable> CurrentLocalVariables = null;
 
     // shared across each implementation; created anew for each implementation
@@ -1309,7 +1311,9 @@ namespace VC {
       Contract.Requires(impl != null);
       Contract.Requires(mvInfo != null);
 
+      currentImplementation = impl;
       Dictionary<Variable, Expr> r = ConvertBlocks2PassiveCmd(impl.Blocks, impl.Proc.Modifies, mvInfo);
+      currentImplementation = null;
 
       RestoreParamWhereClauses(impl);
 
@@ -1448,6 +1452,28 @@ namespace VC {
           ((AssertCmd)pc).OrigExpr = pc.Expr;
           Contract.Assert(((AssertCmd)pc).IncarnationMap == null);
           ((AssertCmd)pc).IncarnationMap = (Dictionary<Variable, Expr>)cce.NonNull(new Dictionary<Variable, Expr>(incarnationMap));
+
+          if (currentImplementation != null
+              && currentImplementation.NoErrorsInCachedSnapshot
+              && currentImplementation.InjectedAssumptionVariables != null
+              && 2 <= currentImplementation.InjectedAssumptionVariables.Count)
+          {
+            // TODO(wuestholz): Maybe store the assertion expression in a local variable.
+            var expr = LiteralExpr.Imp(currentImplementation.ConjunctionOfInjectedAssumptionVariables(), copy);
+            passiveCmds.Add(new AssumeCmd(Token.NoToken, expr));
+          }
+          else if (currentImplementation != null
+                   && currentImplementation.AnyErrorsInCachedSnapshot)
+          {
+            // TODO(wuestholz): Add an assume statement if the assertion was verified in the previous snapshot.
+          }
+        }
+        else if (pc is AssumeCmd
+                 && QKeyValue.FindStringAttribute(pc.Attributes, "precondition_previous_snapshot") != null
+                 && currentImplementation.InjectedAssumptionVariables != null
+                 && currentImplementation.InjectedAssumptionVariables.Any())
+        {
+          copy = LiteralExpr.Imp(currentImplementation.ConjunctionOfInjectedAssumptionVariables(), copy);
         }
         pc.Expr = copy;
         passiveCmds.Add(pc);
@@ -1520,6 +1546,19 @@ namespace VC {
             assumption = Expr.And(assumption, assumptions[i]);
           }
           passiveCmds.Add(new AssumeCmd(c.tok, assumption));
+        }
+
+        if (currentImplementation != null
+            && currentImplementation.NoErrorsInCachedSnapshot
+            && currentImplementation.InjectedAssumptionVariables != null
+            && currentImplementation.InjectedAssumptionVariables.Count == 1
+            && assign.Lhss.Count == 1)
+        {
+          var identExpr = assign.Lhss[0].AsExpr as IdentifierExpr;
+          if (identExpr != null && identExpr.Decl != null && QKeyValue.FindBoolAttribute(identExpr.Decl.Attributes, "assumption"))
+          {
+            passiveCmds.Add(new AssumeCmd(c.tok, new IdentifierExpr(Token.NoToken, currentImplementation.InjectedAssumptionVariables.First())));
+          }
         }
       }
       #endregion

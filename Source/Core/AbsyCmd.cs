@@ -1682,6 +1682,24 @@ namespace Microsoft.Boogie {
     }
     protected abstract Cmd/*!*/ ComputeDesugaring();
 
+    public void ExtendDesugaring(IEnumerable<Cmd> before, IEnumerable<Cmd> after)
+    {
+      var desug = Desugaring;
+      var stCmd = desug as StateCmd;
+      if (stCmd != null)
+      {
+        stCmd.Cmds.InsertRange(0, before);
+        stCmd.Cmds.AddRange(after);
+      }
+      else if (desug != null)
+      {
+        var cmds = new List<Cmd>(before);
+        cmds.Add(desug);
+        cmds.AddRange(after);
+        desugaring = new StateCmd(Token.NoToken, new List<Variable>(), cmds);
+      }
+    }
+
     public override void Emit(TokenTextWriter stream, int level) {
       //Contract.Requires(stream != null);
       if (CommandLineOptions.Clo.PrintDesugarings) {
@@ -2336,11 +2354,11 @@ namespace Microsoft.Boogie {
       #endregion
 
       #region assume Post[ins, outs, old(frame) := cins, couts, cframe]
-      Substitution s2 = Substituter.SubstitutionFromHashtable(substMap);
-      Substitution s2old = Substituter.SubstitutionFromHashtable(substMapOld);
+      calleeSubstitution = Substituter.SubstitutionFromHashtable(substMap);
+      calleeSubstitutionOld = Substituter.SubstitutionFromHashtable(substMapOld);
       foreach (Ensures/*!*/ e in this.Proc.Ensures) {
         Contract.Assert(e != null);
-        Expr copy = Substituter.ApplyReplacingOldExprs(s2, s2old, e.Condition);
+        Expr copy = Substituter.ApplyReplacingOldExprs(calleeSubstitution, calleeSubstitutionOld, e.Condition);
         AssumeCmd assume = new AssumeCmd(this.tok, copy);
         #region stratified inlining support
         if (QKeyValue.FindBoolAttribute(e.Attributes, "si_fcall"))
@@ -2371,6 +2389,69 @@ namespace Microsoft.Boogie {
       #endregion
 
       return new StateCmd(this.tok, tempVars, newBlockBody);
+    }
+
+    class NameEqualityComparer : EqualityComparer<IdentifierExpr>
+    {
+      public override bool Equals(IdentifierExpr x, IdentifierExpr y)
+      {
+        return x.Name.Equals(y.Name);
+      }
+
+      public override int GetHashCode(IdentifierExpr obj)
+      {
+        return obj.Name.GetHashCode();
+      }
+    }
+
+    NameEqualityComparer comparer = new NameEqualityComparer();
+
+    Substitution calleeSubstitution;
+    Substitution calleeSubstitutionOld;
+
+    public IEnumerable<IdentifierExpr> UnmodifiedBefore(Procedure oldProcedure)
+    {
+      Contract.Requires(oldProcedure != null);
+
+      return Proc.Modifies.Except(oldProcedure.Modifies, comparer).Select(e => new IdentifierExpr(Token.NoToken, e.Decl));
+    }
+
+    public Expr Postcondition(Procedure procedure, Program program)
+    {
+      Contract.Requires(calleeSubstitution != null && calleeSubstitutionOld != null && program != null);
+
+      var ensures = procedure.Ensures.Select(e => Substituter.FunctionCallReresolvingApplyReplacingOldExprs(calleeSubstitution, calleeSubstitutionOld, e.Condition, program));
+      return Conjunction(ensures);
+    }
+
+    public Expr Precondition(Procedure procedure, Program program)
+    {
+      Contract.Requires(calleeSubstitution != null && calleeSubstitutionOld != null && program != null);
+
+      var requires = procedure.Requires.Select(r => Substituter.FunctionCallReresolvingApplyReplacingOldExprs(calleeSubstitution, calleeSubstitutionOld, r.Condition, program));
+      return Conjunction(requires);
+    }
+
+    private static Expr Conjunction(IEnumerable<Expr> conjuncts)
+    {
+      // TODO(wuestholz): Should we use 'LiteralExpr.BinaryTreeAnd' instead?      
+      Expr result = null;
+      foreach (var c in conjuncts)
+      {
+        if (result != null)
+        {
+          result = LiteralExpr.And(result, c);
+        }
+        else
+        {
+          result = c;
+        }
+      }
+      if (result == null)
+      {
+        result = new LiteralExpr(Token.NoToken, true);
+      }
+      return result;
     }
 
     public override Absy StdDispatch(StandardVisitor visitor) {

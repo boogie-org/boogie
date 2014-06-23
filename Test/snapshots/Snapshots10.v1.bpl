@@ -7,11 +7,15 @@ implementation {:id "M"} {:checksum "1"} M(n: int)
 
     call x := N(n);
 
+    call O();
+
     assert 0 <= x;
 }
 
-procedure {:checksum "2"} N(n: int) returns (r: int);
+procedure {:checksum "4"} N(n: int) returns (r: int);
   requires 0 < n;
-  requires true;
-  ensures 0 < r;
+  // Change: stronger postcondition
+  ensures 42 < r;
+
+procedure {:checksum "3"} O();
   ensures true;

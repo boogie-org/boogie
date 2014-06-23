@@ -317,9 +317,32 @@ namespace Microsoft.Boogie
 
   public class VerificationResult
   {
+    public readonly string RequestId;
     public readonly string Checksum;
     public readonly string DependeciesChecksum;
-    public readonly string RequestId;
+    public readonly string ImplementationName;
+    public readonly IToken ImplementationToken;
+
+    private readonly WeakReference program;
+    public Program Program
+    {
+      get
+      {
+        if (program == null)
+        {
+          return null;
+        }
+        try
+        {
+          var p = program.Target as Program;
+          return p;
+        }
+        catch (InvalidOperationException)
+        {
+          return null;
+        }
+      }
+    }
 
     public DateTime Start { get; set; }
     public DateTime End { get; set; }
@@ -328,24 +351,20 @@ namespace Microsoft.Boogie
     public int ProofObligationCountBefore { get; set; }
     public int ProofObligationCountAfter { get; set; }
 
-    public ConditionGeneration.Outcome Outcome;
+    public ConditionGeneration.Outcome Outcome { get; set; }
     public List<Counterexample> Errors;
 
-    public string ImplementationName { get; set; }
-    public IToken ImplementationToken { get; set; }
-
-    public VerificationResult(string requestId, string checksum, string depsChecksum, ConditionGeneration.Outcome outcome, List<Counterexample> errors)
-      : this(requestId, checksum, depsChecksum)
-    {
-      Outcome = outcome;
-      Errors = errors;
-    }
-
-    public VerificationResult(string requestId, string checksum, string depsChecksum)
+    public VerificationResult(string requestId, string checksum, string depsChecksum, string implementationName, IToken implementationToken, Program program = null)
     {
       Checksum = checksum;
       DependeciesChecksum = depsChecksum;
       RequestId = requestId;
+      ImplementationName = implementationName;
+      ImplementationToken = implementationToken;
+      if (program != null)
+      {
+        this.program = new WeakReference(program);
+      }
     }
   }
 
@@ -844,7 +863,7 @@ namespace Microsoft.Boogie
       Implementation[] stablePrioritizedImpls = null;
       if (0 < CommandLineOptions.Clo.VerifySnapshots)
       {
-        impls.Iter(impl => { impl.DependenciesChecksum = DependencyCollector.DependenciesChecksum(impl); });
+        impls.Iter(impl => { DependencyCollector.DependenciesChecksum(impl); });
         stablePrioritizedImpls = impls.OrderByDescending(
           impl => impl.Priority != 1 ? impl.Priority : Cache.VerificationPriority(impl)).ToArray();
       }
@@ -854,6 +873,11 @@ namespace Microsoft.Boogie
       }
 
       #endregion
+
+      if (1 < CommandLineOptions.Clo.VerifySnapshots)
+      {
+        CachedVerificationResultInjector.Inject(program, stablePrioritizedImpls);
+      }
 
       #region Verify each implementation
 
@@ -995,9 +1019,7 @@ namespace Microsoft.Boogie
       {
         #region Verify the implementation
 
-        verificationResult = new VerificationResult(requestId, impl.Checksum, impl.DependenciesChecksum);
-        verificationResult.ImplementationName = impl.Name;
-        verificationResult.ImplementationToken = impl.tok;
+        verificationResult = new VerificationResult(requestId, impl.Checksum, impl.DependenciesChecksum, impl.Name, impl.tok, 1 < CommandLineOptions.Clo.VerifySnapshots ? program : null);
 
         using (var vcgen = CreateVCGen(program, checkers))
         {

@@ -1,5 +1,4 @@
 procedure {:checksum "0"} M(n: int);
-  requires 0 < n;
 
 implementation {:id "M"} {:checksum "1"} M(n: int)
 {
@@ -12,6 +11,4 @@ implementation {:id "M"} {:checksum "1"} M(n: int)
 
 procedure {:checksum "2"} N(n: int) returns (r: int);
   requires 0 < n;
-  requires true;
   ensures 0 < r;
-  ensures true;
