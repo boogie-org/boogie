@@ -421,6 +421,8 @@ namespace Microsoft.Boogie {
     public string CVC4ExecutablePath = null;
     public int KInductionDepth = -1;
 
+    public bool PrettyPrint = true;
+
     public enum ProverWarnings {
       None,
       Stdout,
@@ -739,6 +741,13 @@ namespace Microsoft.Boogie {
           if (ps.ConfirmArgumentCount(1)) {
             PrintFile = args[ps.i];
           }
+          return true;
+
+        case "pretty":
+          int val = 1;
+          if (ps.GetNumericArgument(ref val, 2)) {
+            PrettyPrint = val == 1;
+          } 
           return true;
 
         case "OwickiGries":
@@ -1657,6 +1666,9 @@ namespace Microsoft.Boogie {
 
   /print:<file>  : print Boogie program after parsing it
                    (use - as <file> to print to console)
+  /pretty:<n>
+                0 - print each Boogie statement on one line (faster).
+                1 (default) - pretty-print with some line breaks.
   /printWithUniqueIds : print augmented information that uniquely
                    identifies variables
   /printUnstructured : with /print option, desugars all structured statements

@@ -113,20 +113,24 @@ namespace Microsoft.Boogie {
 
     public override void Emit(TokenTextWriter stream, int contextBindingStrength, bool fragileContext) {
       //Contract.Requires(stream != null);
+      stream.push();
       stream.Write(this, "({0}", Kind.ToString().ToLower());
       this.EmitTypeHint(stream);
       Type.EmitOptionalTypeParams(stream, TypeParameters);
       stream.Write(this, " ");
       this.Dummies.Emit(stream, true);
       stream.Write(" :: ");
+      stream.sep();
       for (QKeyValue kv = this.Attributes; kv != null; kv = kv.Next) {
         kv.Emit(stream);
         stream.Write(" ");
       }
       this.EmitTriggers(stream);
+      stream.sep();
 
       this.Body.Emit(stream);
       stream.Write(")");
+      stream.pop();
     }
 
     protected virtual void ResolveTriggers(ResolutionContext rc) {
@@ -542,10 +546,13 @@ namespace Microsoft.Boogie {
 
     protected override void EmitTriggers(TokenTextWriter stream) {
       //Contract.Requires(stream != null);
+      stream.push();
       for (Trigger tr = this.Triggers; tr != null; tr = tr.Next) {
         tr.Emit(stream);
         stream.Write(" ");
+        stream.sep();
       }
+      stream.pop();
     }
 
     // if the user says ( forall x :: forall y ::  ... ) and specifies *no* triggers, we transform it to

@@ -1418,15 +1418,18 @@ namespace Microsoft.Boogie {
       bool parensNeeded = opBS < ctxtBS ||
         (opBS == ctxtBS && (opBindingStrength != contextBindingStrength || fragileContext));
 
+      var pop = stream.push(FunctionName);
       if (parensNeeded) {
         stream.Write("(");
       }
       cce.NonNull(args[0]).Emit(stream, opBindingStrength, fragileLeftContext);
+      stream.sep();
       stream.Write(" {0} ", FunctionName);
       cce.NonNull(args[1]).Emit(stream, opBindingStrength, fragileRightContext);
       if (parensNeeded) {
         stream.Write(")");
       }
+      stream.pop(pop);
     }
     public void Resolve(ResolutionContext rc, Expr subjectForErrorReporting) {
       //Contract.Requires(subjectForErrorReporting != null);
@@ -2521,13 +2524,17 @@ namespace Microsoft.Boogie {
       //Contract.Requires(args != null);
       stream.SetToken(ref this.tok);
       Contract.Assert(args.Count == 3);
-      stream.Write("(if ");
+      stream.push();
+      stream.Write("(if ");     
       cce.NonNull(args[0]).Emit(stream, 0x00, false);
+      stream.sep();
       stream.Write(" then ");
       cce.NonNull(args[1]).Emit(stream, 0x00, false);
+      stream.sep();
       stream.Write(" else ");
       cce.NonNull(args[2]).Emit(stream, 0x00, false);
       stream.Write(")");
+      stream.pop();
     }
 
     public void Resolve(ResolutionContext rc, Expr subjectForErrorReporting) {

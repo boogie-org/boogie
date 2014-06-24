@@ -1862,8 +1862,10 @@ namespace Microsoft.Boogie {
       Contract.Requires(stream != null);
       Type.EmitOptionalTypeParams(stream, TypeParameters);
       stream.Write("(");
+      stream.push();
       InParams.Emit(stream, true);
       stream.Write(")");
+      stream.sep();
 
       if (shortRet) {
         Contract.Assert(OutParams.Count == 1);
@@ -1874,6 +1876,7 @@ namespace Microsoft.Boogie {
         OutParams.Emit(stream, true);
         stream.Write(")");
       }
+      stream.pop();
     }
 
     // Register all type parameters at the resolution context
@@ -3293,14 +3296,17 @@ namespace Microsoft.Boogie {
     public void Emit(TokenTextWriter stream) {
       Contract.Requires(stream != null);
       stream.SetToken(this);
+      stream.push();
       if (this.Name != NoName) {
         stream.Write("{0}: ", TokenTextWriter.SanitizeIdentifier(this.Name));
       }
       this.Type.Emit(stream);
       if (this.WhereExpr != null) {
+        stream.sep();
         stream.Write(" where ");
         this.WhereExpr.Emit(stream);
       }
+      stream.pop();
     }
     public override void Resolve(ResolutionContext rc) {
       //Contract.Requires(rc != null);
@@ -3374,12 +3380,15 @@ namespace Microsoft.Boogie {
     public static void Emit(this List<Expr> ts, TokenTextWriter stream) {
       Contract.Requires(stream != null);
       string sep = "";
+      stream.push();
       foreach (Expr/*!*/ e in ts) {
         Contract.Assert(e != null);
         stream.Write(sep);
         sep = ", ";
+        stream.sep();
         e.Emit(stream);
       }
+      stream.pop();
     }
 
     public static void Emit(this List<IdentifierExpr> ids, TokenTextWriter stream, bool printWhereComments) {
@@ -3402,12 +3411,15 @@ namespace Microsoft.Boogie {
     public static void Emit(this List<Variable> vs, TokenTextWriter stream, bool emitAttributes) {
       Contract.Requires(stream != null);
       string sep = "";
+      stream.push();
       foreach (Variable/*!*/ v in vs) {
         Contract.Assert(v != null);
         stream.Write(sep);
         sep = ", ";
+        stream.sep();
         v.EmitVitals(stream, 0, emitAttributes);
       }
+      stream.pop();
     }
 
     public static void Emit(this List<Type> tys, TokenTextWriter stream, string separator) {

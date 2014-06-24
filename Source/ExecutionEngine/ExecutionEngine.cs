@@ -476,7 +476,7 @@ namespace Microsoft.Boogie
           return;
         if (CommandLineOptions.Clo.PrintFile != null)
         {
-          PrintBplFile(CommandLineOptions.Clo.PrintFile, program, false);
+          PrintBplFile(CommandLineOptions.Clo.PrintFile, program, false, true, CommandLineOptions.Clo.PrettyPrint);
         }
 
         LinearTypeChecker linearTypeChecker;
@@ -511,7 +511,7 @@ namespace Microsoft.Boogie
           {
               int oldPrintUnstructured = CommandLineOptions.Clo.PrintUnstructured;
               CommandLineOptions.Clo.PrintUnstructured = 1;
-              PrintBplFile(CommandLineOptions.Clo.OwickiGriesDesugaredOutputFile, program, false, false);
+              PrintBplFile(CommandLineOptions.Clo.OwickiGriesDesugaredOutputFile, program, false, false, CommandLineOptions.Clo.PrettyPrint);
               CommandLineOptions.Clo.PrintUnstructured = oldPrintUnstructured;
           }
         }
@@ -559,7 +559,7 @@ namespace Microsoft.Boogie
     }
 
 
-    public static void PrintBplFile(string filename, Program program, bool allowPrintDesugaring, bool setTokens = true)
+    public static void PrintBplFile(string filename, Program program, bool allowPrintDesugaring, bool setTokens = true, bool pretty = false)
     {
       Contract.Requires(program != null);
       Contract.Requires(filename != null);
@@ -569,8 +569,8 @@ namespace Microsoft.Boogie
         CommandLineOptions.Clo.PrintDesugarings = false;
       }
       using (TokenTextWriter writer = filename == "-" ?
-                                      new TokenTextWriter("<console>", Console.Out, setTokens) :
-                                      new TokenTextWriter(filename, setTokens))
+                                      new TokenTextWriter("<console>", Console.Out, setTokens, pretty) :
+                                      new TokenTextWriter(filename, setTokens, pretty))
       {
         if (CommandLineOptions.Clo.ShowEnv != CommandLineOptions.ShowEnvironment.Never)
         {
@@ -729,7 +729,7 @@ namespace Microsoft.Boogie
       if (CommandLineOptions.Clo.PrintFile != null && CommandLineOptions.Clo.PrintDesugarings)
       {
         // if PrintDesugaring option is engaged, print the file here, after resolution and type checking
-        PrintBplFile(CommandLineOptions.Clo.PrintFile, program, true);
+        PrintBplFile(CommandLineOptions.Clo.PrintFile, program, true, true, CommandLineOptions.Clo.PrettyPrint);
       }
 
       return PipelineOutcome.ResolvedAndTypeChecked;
@@ -838,7 +838,7 @@ namespace Microsoft.Boogie
 
       if (CommandLineOptions.Clo.PrintInstrumented)
       {
-        program.Emit(new TokenTextWriter(Console.Out));
+        program.Emit(new TokenTextWriter(Console.Out, CommandLineOptions.Clo.PrettyPrint));
       }
       #endregion
 
