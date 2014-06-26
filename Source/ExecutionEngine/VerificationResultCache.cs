@@ -194,12 +194,24 @@ namespace Microsoft.Boogie
         return null;
       }
 
-      var md5 = System.Security.Cryptography.MD5.Create();
-      var procChecksums = procDeps.MapConcat(dep => dep.Checksum, "");
-      var funcChecksums = funcDeps.MapConcat(dep => dep.Checksum, "");
-      var data = Encoding.UTF8.GetBytes(procChecksums + funcChecksums);
-      var hashedData = md5.ComputeHash(data);
-      var result = BitConverter.ToString(hashedData);
+      string result = null;
+      using (var ms = new System.IO.MemoryStream())
+      using (var wr = new System.IO.BinaryWriter(ms))
+      {
+        foreach (var dep in procDeps)
+        {
+          wr.Write(Encoding.UTF8.GetBytes(dep.Checksum));
+        }
+        foreach (var dep in funcDeps)
+        {
+          wr.Write(Encoding.UTF8.GetBytes(dep.Checksum));
+        }
+        wr.Flush();
+        wr.BaseStream.Position = 0;
+        var md5 = System.Security.Cryptography.MD5.Create();
+        var hashedData = md5.ComputeHash(wr.BaseStream);
+        result = BitConverter.ToString(hashedData);
+      }
       decl.DependenciesChecksum = result;
       return result;
     }
