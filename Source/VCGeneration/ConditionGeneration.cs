@@ -1459,7 +1459,7 @@ namespace VC {
               && 2 <= currentImplementation.InjectedAssumptionVariables.Count)
           {
             // TODO(wuestholz): Maybe store the assertion expression in a local variable.
-            var expr = LiteralExpr.Imp(currentImplementation.ConjunctionOfInjectedAssumptionVariables(), copy);
+            var expr = LiteralExpr.Imp(currentImplementation.ConjunctionOfInjectedAssumptionVariables(incarnationMap), copy);
             passiveCmds.Add(new AssumeCmd(Token.NoToken, expr));
           }
           else if (currentImplementation != null
@@ -1473,7 +1473,7 @@ namespace VC {
                  && currentImplementation.InjectedAssumptionVariables != null
                  && currentImplementation.InjectedAssumptionVariables.Any())
         {
-          copy = LiteralExpr.Imp(currentImplementation.ConjunctionOfInjectedAssumptionVariables(), copy);
+          copy = LiteralExpr.Imp(currentImplementation.ConjunctionOfInjectedAssumptionVariables(incarnationMap), copy);
         }
         pc.Expr = copy;
         passiveCmds.Add(pc);

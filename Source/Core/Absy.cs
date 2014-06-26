@@ -2695,11 +2695,11 @@ namespace Microsoft.Boogie {
       }
     }
 
-    public Expr ConjunctionOfInjectedAssumptionVariables()
+    public Expr ConjunctionOfInjectedAssumptionVariables(Dictionary<Variable, Expr> incarnationMap)
     {
-      Contract.Requires(InjectedAssumptionVariables != null && InjectedAssumptionVariables.Any());
+      Contract.Requires(InjectedAssumptionVariables != null && InjectedAssumptionVariables.Any() && incarnationMap != null);
 
-      return LiteralExpr.BinaryTreeAnd(injectedAssumptionVariables.Select(v => (Expr)(new IdentifierExpr(Token.NoToken, v))).ToList());
+      return LiteralExpr.BinaryTreeAnd(injectedAssumptionVariables.Where(v => incarnationMap.ContainsKey(v)).Select(v => incarnationMap[v]).ToList());
     }
 
     public void InjectAssumptionVariable(LocalVariable variable)
