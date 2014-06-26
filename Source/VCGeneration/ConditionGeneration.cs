@@ -578,6 +578,19 @@ namespace VC {
 
     protected Implementation currentImplementation;
 
+    private LocalVariable currentTemporaryVariableForAssertions;
+    protected LocalVariable CurrentTemporaryVariableForAssertions
+    {
+      get
+      {
+        if (currentTemporaryVariableForAssertions == null)
+        {
+          currentTemporaryVariableForAssertions = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "##assertion", Microsoft.Boogie.Type.Bool));
+        }
+        return currentTemporaryVariableForAssertions;
+      }
+    }
+
     protected List<Variable> CurrentLocalVariables = null;
 
     // shared across each implementation; created anew for each implementation
@@ -1312,7 +1325,9 @@ namespace VC {
       Contract.Requires(mvInfo != null);
 
       currentImplementation = impl;
+      currentTemporaryVariableForAssertions = null;
       Dictionary<Variable, Expr> r = ConvertBlocks2PassiveCmd(impl.Blocks, impl.Proc.Modifies, mvInfo);
+      currentTemporaryVariableForAssertions = null;
       currentImplementation = null;
 
       RestoreParamWhereClauses(impl);
@@ -1458,7 +1473,13 @@ namespace VC {
               && currentImplementation.InjectedAssumptionVariables != null
               && 2 <= currentImplementation.InjectedAssumptionVariables.Count)
           {
-            // TODO(wuestholz): Maybe store the assertion expression in a local variable.
+            // Bind the assertion expression to a local variable.
+            var incarnation = CreateIncarnation(CurrentTemporaryVariableForAssertions, new IdentifierExpr(Token.NoToken, CurrentTemporaryVariableForAssertions));
+            var identExpr = new IdentifierExpr(Token.NoToken, incarnation);
+            incarnationMap[incarnation] = identExpr;
+            ((AssertCmd)pc).IncarnationMap[incarnation] = identExpr;
+            passiveCmds.Add(new AssumeCmd(Token.NoToken, LiteralExpr.Eq(identExpr, copy)));
+            copy = identExpr;
             var expr = LiteralExpr.Imp(currentImplementation.ConjunctionOfInjectedAssumptionVariables(incarnationMap), copy);
             passiveCmds.Add(new AssumeCmd(Token.NoToken, expr));
           }
