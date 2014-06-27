@@ -1184,6 +1184,7 @@ namespace VC {
           if (ret == Outcome.Errors && reporter.underapproximationMode)
           {
               // Found a bug
+              reporter.ReportErrors();
               done = 2;
           }
           else if (ret == Outcome.Correct)
@@ -2040,6 +2041,7 @@ namespace VC {
       FCallHandler calls;
       StratifiedInliningInfo mainInfo;
       StratifiedVC mainVC;
+      Counterexample CexTrace;
 
       public bool underapproximationMode;
       public List<int> candidatesToExpand;
@@ -2069,6 +2071,7 @@ namespace VC {
         this.underapproximationMode = false;
         this.calls = null;
         this.candidatesToExpand = new List<int>();
+        this.CexTrace = null;
       }
 
       public StratifiedInliningErrorReporter(Dictionary<string, StratifiedInliningInfo> implName2StratifiedInliningInfo,
@@ -2084,6 +2087,7 @@ namespace VC {
         this.mainVC = mainVC;
         this.underapproximationMode = false;
         this.candidatesToExpand = new List<int>();
+        this.CexTrace = null;
       }
 
       public void SetCandidateHandler(FCallHandler calls) {
@@ -2211,8 +2215,6 @@ namespace VC {
       }
 
       public override void OnModel(IList<string/*!*/>/*!*/ labels, Model model) {
-        Contract.Assert(CommandLineOptions.Clo.StratifiedInliningWithoutModels || model != null);
-
         if (CommandLineOptions.Clo.PrintErrorModel >= 1 && model != null) {
           model.Write(ErrorReporter.ModelWriter);
           ErrorReporter.ModelWriter.Flush();
@@ -2225,9 +2227,15 @@ namespace VC {
         if (underapproximationMode && cex != null) {
           //Debug.Assert(candidatesToExpand.All(calls.isSkipped));
           GetModelWithStates(model);
-          callback.OnCounterexample(cex, null);
+          this.CexTrace = cex;
           this.PrintModel(model);
         }
+      }
+
+      public void ReportErrors()
+      {
+          if(this.CexTrace != null)
+              callback.OnCounterexample(this.CexTrace, null);
       }
 
       private Counterexample GenerateTrace(IList<string/*!*/>/*!*/ labels, Model/*!*/ errModel,
