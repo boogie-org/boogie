@@ -15,6 +15,8 @@ namespace Microsoft.Boogie
   {
     readonly IEnumerable<Implementation> Implementations;
     readonly Program Program;
+    // TODO(wuestholz): We should probably increase the threshold to something like 2 seconds.
+    static readonly double TimeThreshold = 0.0;
     Program programInCachedSnapshot;
     Implementation currentImplementation;
     int assumptionVariableCount;
@@ -66,8 +68,7 @@ namespace Microsoft.Boogie
         var vr = ExecutionEngine.Cache.Lookup(impl, out priority);
         if (vr != null && priority == Priority.LOW)
         {
-          // TODO(wuestholz): We should probably increase the threshold to something like 2 seconds.
-          if (0.0 < vr.End.Subtract(vr.Start).TotalMilliseconds)
+          if (TimeThreshold < vr.End.Subtract(vr.Start).TotalMilliseconds)
           {
             if (vr.Errors != null)
             {
@@ -77,10 +78,13 @@ namespace Microsoft.Boogie
             {
               impl.ErrorsInCachedSnapshot = new List<object>();
             }
-            var p = vr.Program;
-            if (p != null)
+            if (vr.ProgramId != null)
             {
-              eai.Inject(impl, p);
+              var p = ExecutionEngine.CachedProgram(vr.ProgramId);
+              if (p != null)
+              {
+                eai.Inject(impl, p);
+              }
             }
           }
         }
@@ -277,17 +281,17 @@ namespace Microsoft.Boogie
 
   static internal class Priority
   {
-    public static readonly int LOW = 1;
-    public static readonly int MEDIUM = 2;
-    public static readonly int HIGH = 3;
-    public static readonly int SKIP = int.MaxValue;
+    public static readonly int LOW = 1;             // the same snapshot has been verified before, but a callee has changed
+    public static readonly int MEDIUM = 2;          // old snapshot has been verified before
+    public static readonly int HIGH = 3;            // has been never verified before
+    public static readonly int SKIP = int.MaxValue; // highest priority to get them done as soon as possible
   }
 
 
   public class VerificationResultCache
   {
     private readonly MemoryCache Cache = new MemoryCache("VerificationResultCache");
-    private readonly CacheItemPolicy Policy = new CacheItemPolicy { SlidingExpiration = new TimeSpan(0, 5, 0) };
+    private readonly CacheItemPolicy Policy = new CacheItemPolicy { SlidingExpiration = new TimeSpan(0, 10, 0) };
 
 
     public void Insert(Implementation impl, VerificationResult result)
@@ -306,19 +310,19 @@ namespace Microsoft.Boogie
       var result = Cache.Get(impl.Id) as VerificationResult;
       if (result == null)
       {
-        priority = Priority.HIGH;  // high priority (has been never verified before)
+        priority = Priority.HIGH;
       }
       else if (result.Checksum != impl.Checksum)
       {
-        priority = Priority.MEDIUM;  // medium priority (old snapshot has been verified before)
+        priority = Priority.MEDIUM;
       }
       else if (impl.DependenciesChecksum == null || result.DependeciesChecksum != impl.DependenciesChecksum)
       {
-        priority = Priority.LOW;  // low priority (the same snapshot has been verified before, but a callee has changed)
+        priority = Priority.LOW;
       }
       else
       {
-        priority = Priority.SKIP;  // skip verification (highest priority to get them done as soon as possible)
+        priority = Priority.SKIP;
       }
       return result;
     }

@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using VC;
 using BoogiePL = Microsoft.Boogie;
 using System.Diagnostics;
+using System.Runtime.Caching;
 
 namespace Microsoft.Boogie
 {
@@ -322,27 +323,7 @@ namespace Microsoft.Boogie
     public readonly string DependeciesChecksum;
     public readonly string ImplementationName;
     public readonly IToken ImplementationToken;
-
-    private readonly WeakReference program;
-    public Program Program
-    {
-      get
-      {
-        if (program == null)
-        {
-          return null;
-        }
-        try
-        {
-          var p = program.Target as Program;
-          return p;
-        }
-        catch (InvalidOperationException)
-        {
-          return null;
-        }
-      }
-    }
+    public readonly string ProgramId;
 
     public DateTime Start { get; set; }
     public DateTime End { get; set; }
@@ -354,17 +335,14 @@ namespace Microsoft.Boogie
     public ConditionGeneration.Outcome Outcome { get; set; }
     public List<Counterexample> Errors;
 
-    public VerificationResult(string requestId, string checksum, string depsChecksum, string implementationName, IToken implementationToken, Program program = null)
+    public VerificationResult(string requestId, string checksum, string depsChecksum, string implementationName, IToken implementationToken, string programId = null)
     {
       Checksum = checksum;
       DependeciesChecksum = depsChecksum;
       RequestId = requestId;
       ImplementationName = implementationName;
       ImplementationToken = implementationToken;
-      if (program != null)
-      {
-        this.program = new WeakReference(program);
-      }
+      ProgramId = programId;
     }
   }
 
@@ -417,6 +395,15 @@ namespace Microsoft.Boogie
     public static ErrorInformationFactory errorInformationFactory = new ErrorInformationFactory();
 
     public readonly static VerificationResultCache Cache = new VerificationResultCache();
+
+    static readonly MemoryCache programCache = new MemoryCache("ProgramCache");
+    static readonly CacheItemPolicy policy = new CacheItemPolicy { SlidingExpiration = new TimeSpan(0, 10, 0) };
+
+    public static Program CachedProgram(string programId)
+    {
+      var result = programCache.Get(programId) as Program;
+      return result;
+    }
     
     static List<Checker> Checkers = new List<Checker>();
 
@@ -519,7 +506,7 @@ namespace Microsoft.Boogie
         Inline(program);
 
         var stats = new PipelineStatistics();
-        oc = InferAndVerify(program, stats);
+        oc = InferAndVerify(program, stats, 1 < CommandLineOptions.Clo.VerifySnapshots ? "main_program_id" : null);
         switch (oc)
         {
           case PipelineOutcome.Done:
@@ -786,16 +773,14 @@ namespace Microsoft.Boogie
     /// </summary>
     public static PipelineOutcome InferAndVerify(Program program,
                                                  PipelineStatistics stats,
+                                                 string programId = null,
                                                  ErrorReporterDelegate er = null, string requestId = "unknown")
     {
       Contract.Requires(program != null);
       Contract.Requires(stats != null);
+      Contract.Requires(requestId != null);
       Contract.Ensures(0 <= Contract.ValueAtReturn(out stats.InconclusiveCount) && 0 <= Contract.ValueAtReturn(out stats.TimeoutCount));
 
-      if (requestId == null)
-      {
-        requestId = "unknown";
-      }
       RequestIdToCancellationTokenSources[requestId] = new List<CancellationTokenSource>();
 
       #region Do some pre-abstract-interpretation preprocessing on the program
@@ -907,7 +892,7 @@ namespace Microsoft.Boogie
                       {
                           src.Token.ThrowIfCancellationRequested();
                       }
-                      VerifyImplementation(program, stats, er, requestId, extractLoopMappingInfo, stablePrioritizedImpls, taskIndex, outputCollector, Checkers);
+                      VerifyImplementation(program, stats, er, requestId, extractLoopMappingInfo, stablePrioritizedImpls, taskIndex, outputCollector, Checkers, programId);
                       ImplIdToCancellationTokenSource.Remove(id);
                   }, src.Token, TaskCreationOptions.LongRunning);
                   tasks[taskIndex] = t;
@@ -918,7 +903,7 @@ namespace Microsoft.Boogie
           {
               for (int i = 0; i < stablePrioritizedImpls.Length && outcome != PipelineOutcome.FatalError; i++)
               {
-                  VerifyImplementation(program, stats, er, requestId, extractLoopMappingInfo, stablePrioritizedImpls, i, outputCollector, Checkers);
+                  VerifyImplementation(program, stats, er, requestId, extractLoopMappingInfo, stablePrioritizedImpls, i, outputCollector, Checkers, programId);
               }
           }
       }
@@ -949,6 +934,11 @@ namespace Microsoft.Boogie
       cce.NonNull(CommandLineOptions.Clo.TheProverFactory).Close();
 
       outputCollector.WriteMoreOutput();
+
+      if (1 < CommandLineOptions.Clo.VerifySnapshots && programId != null)
+      {
+        programCache.Set(programId, program, policy);
+      }
 
       #endregion
 
@@ -992,7 +982,7 @@ namespace Microsoft.Boogie
     }
 
 
-    private static void VerifyImplementation(Program program, PipelineStatistics stats, ErrorReporterDelegate er, string requestId, Dictionary<string, Dictionary<string, Block>> extractLoopMappingInfo, Implementation[] stablePrioritizedImpls, int index, OutputCollector outputCollector, List<Checker> checkers)
+    private static void VerifyImplementation(Program program, PipelineStatistics stats, ErrorReporterDelegate er, string requestId, Dictionary<string, Dictionary<string, Block>> extractLoopMappingInfo, Implementation[] stablePrioritizedImpls, int index, OutputCollector outputCollector, List<Checker> checkers, string programId)
     {
       Implementation impl = stablePrioritizedImpls[index];
       VerificationResult verificationResult = null;
@@ -1020,7 +1010,7 @@ namespace Microsoft.Boogie
       {
         #region Verify the implementation
 
-        verificationResult = new VerificationResult(requestId, impl.Checksum, impl.DependenciesChecksum, impl.Name, impl.tok, 1 < CommandLineOptions.Clo.VerifySnapshots ? program : null);
+        verificationResult = new VerificationResult(requestId, impl.Checksum, impl.DependenciesChecksum, impl.Name, impl.tok, programId);
 
         using (var vcgen = CreateVCGen(program, checkers))
         {
