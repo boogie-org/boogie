@@ -4602,7 +4602,7 @@ namespace Microsoft.Boogie.Houdini {
             model = null;
         }
 
-        public override void OnModel(IList<string> labels, Model model)
+        public override void OnModel(IList<string> labels, Model model, ProverInterface.Outcome proverOutcome)
         {
             Debug.Assert(model != null);
             if(CommandLineOptions.Clo.PrintErrorModel >= 1) model.Write(Console.Out);

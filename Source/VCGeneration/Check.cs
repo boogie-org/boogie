@@ -461,7 +461,7 @@ namespace Microsoft.Boogie {
           return 0;
       }
 
-      public virtual void OnModel(IList<string> labels, Model model) {
+      public virtual void OnModel(IList<string> labels, Model model, Outcome proverOutcome) {
         Contract.Requires(cce.NonNullElements(labels));
       }
 

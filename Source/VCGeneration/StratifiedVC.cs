@@ -1184,7 +1184,6 @@ namespace VC {
           if (ret == Outcome.Errors && reporter.underapproximationMode)
           {
               // Found a bug
-              reporter.ReportErrors();
               done = 2;
           }
           else if (ret == Outcome.Correct)
@@ -2029,9 +2028,8 @@ namespace VC {
     } // end FCallInliner
 
     public class EmptyErrorHandler : ProverInterface.ErrorHandler {
-      public override void OnModel(IList<string> labels, Model model) {
-
-      }
+        public override void OnModel(IList<string> labels, Model model, ProverInterface.Outcome proverOutcome)
+        { }
     }
 
     public class StratifiedInliningErrorReporter : ProverInterface.ErrorHandler {
@@ -2214,11 +2212,20 @@ namespace VC {
         return;
       }
 
-      public override void OnModel(IList<string/*!*/>/*!*/ labels, Model model) {
+      public override void OnResourceExceeded(string message)
+      {
+          //Contract.Requires(message != null);
+      }
+
+      public override void OnModel(IList<string/*!*/>/*!*/ labels, Model model, ProverInterface.Outcome proverOutcome) {
         if (CommandLineOptions.Clo.PrintErrorModel >= 1 && model != null) {
           model.Write(ErrorReporter.ModelWriter);
           ErrorReporter.ModelWriter.Flush();
         }
+
+        // Timeout?
+        if (proverOutcome != ProverInterface.Outcome.Invalid)
+            return;
 
         candidatesToExpand = new List<int>();
         orderedStateIds = new List<Tuple<int, int>>();
@@ -2227,15 +2234,9 @@ namespace VC {
         if (underapproximationMode && cex != null) {
           //Debug.Assert(candidatesToExpand.All(calls.isSkipped));
           GetModelWithStates(model);
-          this.CexTrace = cex;
+          callback.OnCounterexample(cex, null);
           this.PrintModel(model);
         }
-      }
-
-      public void ReportErrors()
-      {
-          if(this.CexTrace != null)
-              callback.OnCounterexample(this.CexTrace, null);
       }
 
       private Counterexample GenerateTrace(IList<string/*!*/>/*!*/ labels, Model/*!*/ errModel,
@@ -2428,11 +2429,6 @@ namespace VC {
         int id = int.Parse(label);
         Dictionary<int, Absy> l2a = cce.NonNull(implName2StratifiedInliningInfo[procName]).label2absy;
         return cce.NonNull((Absy)l2a[id]);
-      }
-
-      public override void OnResourceExceeded(string msg) {
-        //Contract.Requires(msg != null);
-        //resourceExceededMessage = msg;
       }
 
       public override void OnProverWarning(string msg) {

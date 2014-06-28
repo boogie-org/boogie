@@ -1255,7 +1255,7 @@ namespace Microsoft.Boogie.SMTLib
             }
               Model model = (result == Outcome.TimeOut || result == Outcome.OutOfMemory) ? null :
                   GetErrorModel();
-            handler.OnModel(xlabels, model);
+            handler.OnModel(xlabels, model, result);
           }
 
           if (labels == null || !labels.Any() || errorsLeft == 0) break;
@@ -1431,14 +1431,14 @@ namespace Microsoft.Boogie.SMTLib
         }
       }
 
+      
       if (wasUnknown) {
         SendThisVC("(get-info :reason-unknown)");
         Process.Ping();
-
         while (true) {
           var resp = Process.GetProverResponse();
           if (resp == null || Process.IsPong(resp))
-            break;
+              break;
 
           if (resp.ArgCount == 1 && resp.Name == ":reason-unknown") {
             switch (resp[0].Name) {

@@ -62,7 +62,7 @@ namespace VC
             }
         }
 
-        public override void OnModel(IList<string>/*!>!*/ labels, Model model)
+        public override void OnModel(IList<string>/*!>!*/ labels, Model model, ProverInterface.Outcome proverOutcome)
         {
             // TODO: it would be better to check which reachability variables are actually set to one!
             List<Block> traceNodes = new List<Block>();

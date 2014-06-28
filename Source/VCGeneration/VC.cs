@@ -1881,7 +1881,7 @@ namespace VC {
         this.program = program;
       }
 
-      public override void OnModel(IList<string/*!*/>/*!*/ labels, Model model) {
+      public override void OnModel(IList<string/*!*/>/*!*/ labels, Model model, ProverInterface.Outcome proverOutcome) {
         //Contract.Requires(cce.NonNullElements(labels));
         if (CommandLineOptions.Clo.PrintErrorModel >= 1 && model != null) {
           if (VC.ConditionGeneration.errorModelList != null)
@@ -1970,7 +1970,7 @@ namespace VC {
         Contract.Requires(program != null);
       }
 
-      public override void OnModel(IList<string/*!*/>/*!*/ labels, Model model) {
+      public override void OnModel(IList<string/*!*/>/*!*/ labels, Model model, ProverInterface.Outcome proverOutcome) {
         //Contract.Requires(cce.NonNullElements(labels));
         // We ignore the error model here for enhanced error message purposes.
         // It is only printed to the command line.
