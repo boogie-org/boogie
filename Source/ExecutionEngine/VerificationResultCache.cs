@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Linq;
+using System.Runtime.Caching;
 using System.Text;
 using System.Text.RegularExpressions;
 using VC;
@@ -61,11 +62,12 @@ namespace Microsoft.Boogie
 
       foreach (var impl in implementations)
       {
-        if (ExecutionEngine.Cache.VerificationPriority(impl) == Priority.LOW)
+        int priority;
+        var vr = ExecutionEngine.Cache.Lookup(impl, out priority);
+        if (vr != null && priority == Priority.LOW)
         {
-          var vr = ExecutionEngine.Cache.Lookup(impl.Id);
           // TODO(wuestholz): We should probably increase the threshold to something like 2 seconds.
-          if (vr != null && 0.0 < vr.End.Subtract(vr.Start).TotalMilliseconds)
+          if (0.0 < vr.End.Subtract(vr.Start).TotalMilliseconds)
           {
             if (vr.Errors != null)
             {
@@ -275,91 +277,86 @@ namespace Microsoft.Boogie
 
   static internal class Priority
   {
-    public static int LOW = 1;
-    public static int MEDIUM = 2;
-    public static int HIGH = 3;
-    public static int SKIP = int.MaxValue;
+    public static readonly int LOW = 1;
+    public static readonly int MEDIUM = 2;
+    public static readonly int HIGH = 3;
+    public static readonly int SKIP = int.MaxValue;
   }
 
 
   public class VerificationResultCache
   {
-    private readonly ConcurrentDictionary<string, VerificationResult> Cache = new ConcurrentDictionary<string, VerificationResult>();
+    private readonly MemoryCache Cache = new MemoryCache("VerificationResultCache");
+    private readonly CacheItemPolicy Policy = new CacheItemPolicy();
 
 
-    public void Insert(string key, VerificationResult result)
+    public VerificationResultCache()
     {
-      Contract.Requires(key != null);
+      Policy.SlidingExpiration = new TimeSpan(0, 5, 0);
+    }
+
+
+    public void Insert(Implementation impl, VerificationResult result)
+    {
+      Contract.Requires(impl != null);
       Contract.Requires(result != null);
 
-      Cache[key] = result;
+      Cache.Set(impl.Id, result, Policy);
     }
 
 
-    public VerificationResult Lookup(string key)
+    public VerificationResult Lookup(Implementation impl, out int priority)
     {
-      VerificationResult result;
-      var success = Cache.TryGetValue(key, out result);
-      return success ? result : null;
-    }
+      Contract.Requires(impl != null);
 
-
-    public VerificationResult Lookup(Implementation impl)
-    {
-      if (!NeedsToBeVerified(impl))
+      var result = Cache.Get(impl.Id) as VerificationResult;
+      if (result == null)
       {
-        return Lookup(impl.Id);
+        priority = Priority.HIGH;  // high priority (has been never verified before)
+      }
+      else if (result.Checksum != impl.Checksum)
+      {
+        priority = Priority.MEDIUM;  // medium priority (old snapshot has been verified before)
+      }
+      else if (impl.DependenciesChecksum == null || result.DependeciesChecksum != impl.DependenciesChecksum)
+      {
+        priority = Priority.LOW;  // low priority (the same snapshot has been verified before, but a callee has changed)
       }
       else
       {
-        return null;
+        priority = Priority.SKIP;  // skip verification (highest priority to get them done as soon as possible)
       }
+      return result;
     }
 
 
     public void Clear()
     {
-      Cache.Clear();
+      Cache.Trim(100);
     }
 
 
     public void RemoveMatchingKeys(Regex keyRegexp)
     {
+      Contract.Requires(keyRegexp != null);
+
       foreach (var kv in Cache)
       {
         if (keyRegexp.IsMatch(kv.Key))
         {
-          VerificationResult res;
-          Cache.TryRemove(kv.Key, out res);
+          Cache.Remove(kv.Key);
         }
       }
     }
 
 
-    public bool NeedsToBeVerified(Implementation impl)
-    {
-      return VerificationPriority(impl) < Priority.SKIP;
-    }
-
-
     public int VerificationPriority(Implementation impl)
     {
-      if (!Cache.ContainsKey(impl.Id))
-      {
-        return Priority.HIGH;  // high priority (has been never verified before)
-      }
-      else if (Cache[impl.Id].Checksum != impl.Checksum)
-      {
-        return Priority.MEDIUM;  // medium priority (old snapshot has been verified before)
-      }
-      else if (impl.DependenciesChecksum == null || Cache[impl.Id].DependeciesChecksum != impl.DependenciesChecksum)
-      {
-        return Priority.LOW;  // low priority (the same snapshot has been verified before, but a callee has changed)
-      }
-      else
-      {
-        return Priority.SKIP;  // skip verification (highest priority to get them done as soon as possible)
-      }
+      Contract.Requires(impl != null);
+
+      int priority;
+      Lookup(impl, out priority);
+      return priority;
     }
   }
 

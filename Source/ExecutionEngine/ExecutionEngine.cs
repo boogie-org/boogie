@@ -1001,12 +1001,13 @@ namespace Microsoft.Boogie
       printer.Inform("", output);  // newline
       printer.Inform(string.Format("Verifying {0} ...", impl.Name), output);
 
+      int priority = 0;
       if (0 < CommandLineOptions.Clo.VerifySnapshots)
       {
-        verificationResult = Cache.Lookup(impl);
+        verificationResult = Cache.Lookup(impl, out priority);
       }
 
-      if (verificationResult != null)
+      if (verificationResult != null && priority == Priority.SKIP)
       {
         if (CommandLineOptions.Clo.XmlSink != null)
         {
@@ -1096,7 +1097,7 @@ namespace Microsoft.Boogie
 
         if (0 < CommandLineOptions.Clo.VerifySnapshots && !string.IsNullOrEmpty(impl.Checksum))
         {
-          Cache.Insert(impl.Id, verificationResult);
+          Cache.Insert(impl, verificationResult);
         }
 
         #endregion
