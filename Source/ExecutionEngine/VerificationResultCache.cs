@@ -287,13 +287,7 @@ namespace Microsoft.Boogie
   public class VerificationResultCache
   {
     private readonly MemoryCache Cache = new MemoryCache("VerificationResultCache");
-    private readonly CacheItemPolicy Policy = new CacheItemPolicy();
-
-
-    public VerificationResultCache()
-    {
-      Policy.SlidingExpiration = new TimeSpan(0, 5, 0);
-    }
+    private readonly CacheItemPolicy Policy = new CacheItemPolicy { SlidingExpiration = new TimeSpan(0, 5, 0) };
 
 
     public void Insert(Implementation impl, VerificationResult result)
