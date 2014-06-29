@@ -726,6 +726,10 @@ namespace Microsoft.Boogie
     public static void Inline(Program program)
     {
       Contract.Requires(program != null);
+      
+      if (CommandLineOptions.Clo.Trace)
+          Console.WriteLine("Inlining...");
+
       // Inline
       var TopLevelDeclarations = cce.NonNull(program.TopLevelDeclarations);
 
@@ -734,10 +738,10 @@ namespace Microsoft.Boogie
         bool inline = false;
         foreach (var d in TopLevelDeclarations)
         {
-          if (d.FindExprAttribute("inline") != null)
-          {
-            inline = true;
-          }
+            if ((d is Procedure || d is Implementation) && d.FindExprAttribute("inline") != null)
+            {
+                inline = true;
+            }
         }
         if (inline)
         {
