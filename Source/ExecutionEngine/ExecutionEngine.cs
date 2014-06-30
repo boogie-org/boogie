@@ -394,6 +394,14 @@ namespace Microsoft.Boogie
 
     public static ErrorInformationFactory errorInformationFactory = new ErrorInformationFactory();
 
+    static int autoRequestIdCount;
+
+    public static string FreshRequestId()
+    {
+      var id = Interlocked.Increment(ref autoRequestIdCount);
+      return string.Format("auto_request_id_{0}", id);
+    }
+
     public readonly static VerificationResultCache Cache = new VerificationResultCache();
 
     static readonly MemoryCache programCache = new MemoryCache("ProgramCache");
@@ -778,12 +786,16 @@ namespace Microsoft.Boogie
     public static PipelineOutcome InferAndVerify(Program program,
                                                  PipelineStatistics stats,
                                                  string programId = null,
-                                                 ErrorReporterDelegate er = null, string requestId = "unknown")
+                                                 ErrorReporterDelegate er = null, string requestId = null)
     {
       Contract.Requires(program != null);
       Contract.Requires(stats != null);
-      Contract.Requires(requestId != null);
       Contract.Ensures(0 <= Contract.ValueAtReturn(out stats.InconclusiveCount) && 0 <= Contract.ValueAtReturn(out stats.TimeoutCount));
+
+      if (requestId == null)
+      {
+        requestId = FreshRequestId();
+      }
 
       RequestIdToCancellationTokenSources[requestId] = new List<CancellationTokenSource>();
 
@@ -865,7 +877,7 @@ namespace Microsoft.Boogie
 
       if (1 < CommandLineOptions.Clo.VerifySnapshots)
       {
-        CachedVerificationResultInjector.Inject(program, stablePrioritizedImpls);
+        CachedVerificationResultInjector.Inject(program, stablePrioritizedImpls, requestId);
       }
 
       #region Verify each implementation
@@ -1342,6 +1354,11 @@ namespace Microsoft.Boogie
       UpdateStatistics(stats, outcome, errors);
 
       printer.Inform(timeIndication + OutcomeIndication(outcome, errors), tw);
+
+      if (1 < CommandLineOptions.Clo.VerifySnapshots && CommandLineOptions.Clo.Trace)
+      {
+        printer.Inform(CachedVerificationResultInjector.Statistics.Output(CommandLineOptions.Clo.TraceTimes), tw);
+      }
 
       ReportOutcome(outcome, er, implName, implTok, requestId, tw, timeLimit);
     }

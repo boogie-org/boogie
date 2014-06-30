@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
+using System.IO;
 using System.Linq;
 using System.Runtime.Caching;
 using System.Text;
@@ -10,6 +11,52 @@ using VC;
 
 namespace Microsoft.Boogie
 {
+
+  struct CachedVerificationResultInjectorRun
+  {
+    public DateTime Start { get; internal set; }
+    public DateTime End { get; internal set; }
+    public int ImplementationCount { get; internal set; }
+  }
+
+
+  class CachedVerificationResultInjectorStatistics
+  {
+    ConcurrentDictionary<string, CachedVerificationResultInjectorRun> runs = new ConcurrentDictionary<string, CachedVerificationResultInjectorRun>();
+
+    public bool AddRun(string requestId, CachedVerificationResultInjectorRun run)
+    {
+      return runs.TryAdd(requestId, run);
+    }
+
+    public string Output(bool printTime = false)
+    {
+      var wr = new StringWriter();
+      wr.WriteLine("");
+      wr.WriteLine("Cached verification result injector statistics:");
+      if (printTime)
+      {
+        wr.WriteLine("Request ID, Time, Implementations (ms)");
+      }
+      else
+      {
+        wr.WriteLine("Request ID, Implementations (ms)");
+      }
+      foreach (var kv in runs)
+      {
+        if (printTime)
+        {
+          wr.WriteLine("{0}, {1}, {2}", kv.Key, kv.Value.End.Subtract(kv.Value.Start).TotalMilliseconds, kv.Value.ImplementationCount);
+        }
+        else
+        {
+          wr.WriteLine("{0}, {1}", kv.Key, kv.Value.ImplementationCount);
+        }
+      }
+      return wr.ToString();
+    }
+  }
+
 
   class CachedVerificationResultInjector : StandardVisitor
   {
@@ -21,6 +68,8 @@ namespace Microsoft.Boogie
     Implementation currentImplementation;
     int assumptionVariableCount;
     int temporaryVariableCount;
+
+    public static readonly CachedVerificationResultInjectorStatistics Statistics = new CachedVerificationResultInjectorStatistics();
 
     int FreshAssumptionVariableName
     {
@@ -58,10 +107,11 @@ namespace Microsoft.Boogie
       return result;
     }
 
-    public static void Inject(Program program, IEnumerable<Implementation> implementations)
+    public static void Inject(Program program, IEnumerable<Implementation> implementations, string requestId)
     {
       var eai = new CachedVerificationResultInjector(program, implementations);
 
+      var run = new CachedVerificationResultInjectorRun { Start = DateTime.UtcNow };
       foreach (var impl in implementations)
       {
         int priority;
@@ -84,11 +134,14 @@ namespace Microsoft.Boogie
               if (p != null)
               {
                 eai.Inject(impl, p);
+                run.ImplementationCount++;
               }
             }
           }
         }
       }
+      run.End = DateTime.UtcNow;
+      Statistics.AddRun(requestId, run);
     }
 
     public override Cmd VisitCallCmd(CallCmd node)
