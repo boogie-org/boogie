@@ -435,28 +435,7 @@ namespace Microsoft.Boogie
 
       if (0 < CommandLineOptions.Clo.VerifySnapshots && lookForSnapshots)
       {
-        var snapshotsByVersion = new List<List<string>>();
-        for (int version = 0; true; version++)
-        {
-          var nextSnapshot = new List<string>();
-          foreach (var name in fileNames)
-          {
-            var versionedName = name.Replace(Path.GetExtension(name), ".v" + version + Path.GetExtension(name));
-            if (File.Exists(versionedName))
-            {
-              nextSnapshot.Add(versionedName);
-            }
-          }
-          if (nextSnapshot.Any())
-          {
-            snapshotsByVersion.Add(nextSnapshot);
-          }
-          else
-          {
-            break;
-          }
-        }
-
+        var snapshotsByVersion = LookForSnapshots(fileNames);
         foreach (var s in snapshotsByVersion)
         {
           ProcessFiles(new List<string>(s), false);
@@ -525,6 +504,34 @@ namespace Microsoft.Boogie
             break;
         }
       }
+    }
+
+    public static List<List<string>> LookForSnapshots(List<string> fileNames)
+    {
+      Contract.Requires(fileNames != null);
+
+      var result = new List<List<string>>();
+      for (int version = 0; true; version++)
+      {
+        var nextSnapshot = new List<string>();
+        foreach (var name in fileNames)
+        {
+          var versionedName = name.Replace(Path.GetExtension(name), ".v" + version + Path.GetExtension(name));
+          if (File.Exists(versionedName))
+          {
+            nextSnapshot.Add(versionedName);
+          }
+        }
+        if (nextSnapshot.Any())
+        {
+          result.Add(nextSnapshot);
+        }
+        else
+        {
+          break;
+        }
+      }
+      return result;
     }
 
 

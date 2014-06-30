@@ -16,6 +16,7 @@ namespace Microsoft.Boogie
   {
     public DateTime Start { get; internal set; }
     public DateTime End { get; internal set; }
+    public int RewrittenImplementationCount { get; internal set; }
     public int ImplementationCount { get; internal set; }
   }
 
@@ -33,24 +34,24 @@ namespace Microsoft.Boogie
     {
       var wr = new StringWriter();
       wr.WriteLine("");
-      wr.WriteLine("Cached verification result injector statistics:");
+      wr.WriteLine("Cached verification result injector statistics as CSV:");
       if (printTime)
       {
-        wr.WriteLine("Request ID, Time, Implementations (ms)");
+        wr.WriteLine("Request ID, Time (ms), Rewritten Implementations, Implementations");
       }
       else
       {
-        wr.WriteLine("Request ID, Implementations (ms)");
+        wr.WriteLine("Request ID, Rewritten Implementations, Implementations");
       }
       foreach (var kv in runs)
       {
         if (printTime)
         {
-          wr.WriteLine("{0}, {1}, {2}", kv.Key, kv.Value.End.Subtract(kv.Value.Start).TotalMilliseconds, kv.Value.ImplementationCount);
+          wr.WriteLine("{0}, {1}, {2}, {3}", kv.Key, kv.Value.End.Subtract(kv.Value.Start).TotalMilliseconds, kv.Value.RewrittenImplementationCount, kv.Value.ImplementationCount);
         }
         else
         {
-          wr.WriteLine("{0}, {1}", kv.Key, kv.Value.ImplementationCount);
+          wr.WriteLine("{0}, {1}, {2}", kv.Key, kv.Value.RewrittenImplementationCount, kv.Value.ImplementationCount);
         }
       }
       return wr.ToString();
@@ -111,7 +112,7 @@ namespace Microsoft.Boogie
     {
       var eai = new CachedVerificationResultInjector(program, implementations);
 
-      var run = new CachedVerificationResultInjectorRun { Start = DateTime.UtcNow };
+      var run = new CachedVerificationResultInjectorRun { Start = DateTime.UtcNow, ImplementationCount = implementations.Count() };
       foreach (var impl in implementations)
       {
         int priority;
@@ -134,7 +135,7 @@ namespace Microsoft.Boogie
               if (p != null)
               {
                 eai.Inject(impl, p);
-                run.ImplementationCount++;
+                run.RewrittenImplementationCount++;
               }
             }
           }
