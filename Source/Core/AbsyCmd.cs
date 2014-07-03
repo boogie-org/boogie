@@ -2428,7 +2428,7 @@ namespace Microsoft.Boogie {
     {
       Contract.Requires(calleeSubstitution != null && calleeSubstitutionOld != null && program != null);
 
-      var requires = procedure.Requires.Select(r => Substituter.FunctionCallReresolvingApplyReplacingOldExprs(calleeSubstitution, calleeSubstitutionOld, r.Condition, program));
+      var requires = procedure.Requires.Where(r => !r.Free).Select(r => Substituter.FunctionCallReresolvingApplyReplacingOldExprs(calleeSubstitution, calleeSubstitutionOld, r.Condition, program));
       return Conjunction(requires);
     }
 
