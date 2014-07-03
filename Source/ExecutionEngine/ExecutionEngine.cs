@@ -871,6 +871,8 @@ namespace Microsoft.Boogie
       Implementation[] stablePrioritizedImpls = null;
       if (0 < CommandLineOptions.Clo.VerifySnapshots)
       {
+        // TODO(wuestholz): Maybe we should speed up this lookup.
+        OtherDefinitionAxiomsCollector.Collect(program.TopLevelDeclarations.OfType<Axiom>());
         impls.Iter(impl => { DependencyCollector.DependenciesChecksum(impl); });
         stablePrioritizedImpls = impls.OrderByDescending(
           impl => impl.Priority != 1 ? impl.Priority : Cache.VerificationPriority(impl)).ToArray();

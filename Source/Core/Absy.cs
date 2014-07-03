@@ -2013,6 +2013,27 @@ namespace Microsoft.Boogie {
     // the body is only set if the function is declared with {:inline}
     public Expr Body;
     public Axiom DefinitionAxiom;
+
+    public IList<Axiom> otherDefinitionAxioms;
+    public IEnumerable<Axiom> OtherDefinitionAxioms
+    {
+      get
+      {
+        return otherDefinitionAxioms;
+      }
+    }
+
+    public void AddOtherDefinitionAxiom(Axiom axiom)
+    {
+      Contract.Requires(axiom != null);
+
+      if (otherDefinitionAxioms == null)
+      {
+        otherDefinitionAxioms = new List<Axiom>();
+      }
+      otherDefinitionAxioms.Add(axiom);
+    }
+
     public bool doingExpansion;
 
     private bool neverTrigger;

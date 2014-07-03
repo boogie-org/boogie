@@ -197,6 +197,52 @@ namespace Microsoft.Boogie
   }
 
 
+  public class OtherDefinitionAxiomsCollector : ReadOnlyVisitor
+  {
+    Axiom currentAxiom;
+    Trigger currentTrigger;
+
+    public static void Collect(IEnumerable<Axiom> axioms)
+    {
+      var v = new OtherDefinitionAxiomsCollector();
+      foreach (var a in axioms)
+      {
+        v.currentAxiom = a;
+        v.VisitExpr(a.Expr);
+        v.currentAxiom = null;
+      }
+    }
+
+    public override QuantifierExpr VisitQuantifierExpr(QuantifierExpr node)
+    {
+      currentTrigger = node.Triggers;
+      while (currentTrigger != null)
+      {
+        foreach (var e in currentTrigger.Tr)
+        {
+          VisitExpr(e);
+        }
+        currentTrigger = currentTrigger.Next;
+      }
+      return base.VisitQuantifierExpr(node);
+    }
+
+    public override Expr VisitNAryExpr(NAryExpr node)
+    {
+      if (currentTrigger != null)
+      {
+        // We found a function call within a trigger of a quantifier expression.
+        var funCall = node.Fun as FunctionCall;
+        if (funCall != null && funCall.Func != null && funCall.Func.Checksum != null && funCall.Func.Checksum != "stable")
+        {
+          funCall.Func.AddOtherDefinitionAxiom(currentAxiom);
+        }
+      }
+      return base.VisitNAryExpr(node);
+    }
+  }
+
+
   class DependencyCollector : ReadOnlyVisitor
   {
     private HashSet<Procedure> procedureDependencies;
@@ -300,6 +346,16 @@ namespace Microsoft.Boogie
       if (node.DefinitionAxiom != null)
       {
         VisitAxiom(node.DefinitionAxiom);
+      }
+      if (node.OtherDefinitionAxioms != null)
+      {
+        foreach (var a in node.OtherDefinitionAxioms)
+        {
+          if (a != node.DefinitionAxiom)
+          {
+            VisitAxiom(a);
+          }
+        }
       }
 
       return base.VisitFunction(node);
