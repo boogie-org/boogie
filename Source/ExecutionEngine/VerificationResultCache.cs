@@ -18,6 +18,10 @@ namespace Microsoft.Boogie
     public DateTime End { get; internal set; }
     public int RewrittenImplementationCount { get; internal set; }
     public int ImplementationCount { get; internal set; }
+    public int SkippedImplementationCount { get; set; }
+    public int LowPriorityImplementationCount { get; set; }
+    public int MediumPriorityImplementationCount { get; set; }
+    public int HighPriorityImplementationCount { get; set; }
   }
 
 
@@ -37,21 +41,21 @@ namespace Microsoft.Boogie
       wr.WriteLine("Cached verification result injector statistics as CSV:");
       if (printTime)
       {
-        wr.WriteLine("Request ID, Time (ms), Rewritten Implementations, Implementations");
+        wr.WriteLine("Request ID, Time (ms), Rewritten Implementations, Low Priority Implementations, Medium Priority Implementations, High Priority Implementations, Skipped Implementations, Implementations");
       }
       else
       {
-        wr.WriteLine("Request ID, Rewritten Implementations, Implementations");
+        wr.WriteLine("Request ID, Rewritten Implementations, Low Priority Implementations, Medium Priority Implementations, High Priority Implementations, Skipped Implementations, Implementations");
       }
       foreach (var kv in runs)
       {
         if (printTime)
         {
-          wr.WriteLine("{0}, {1}, {2}, {3}", kv.Key, kv.Value.End.Subtract(kv.Value.Start).TotalMilliseconds, kv.Value.RewrittenImplementationCount, kv.Value.ImplementationCount);
+          wr.WriteLine("{0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}", kv.Key, kv.Value.End.Subtract(kv.Value.Start).TotalMilliseconds, kv.Value.RewrittenImplementationCount, kv.Value.LowPriorityImplementationCount, kv.Value.MediumPriorityImplementationCount, kv.Value.HighPriorityImplementationCount, kv.Value.SkippedImplementationCount, kv.Value.ImplementationCount);
         }
         else
         {
-          wr.WriteLine("{0}, {1}, {2}", kv.Key, kv.Value.RewrittenImplementationCount, kv.Value.ImplementationCount);
+          wr.WriteLine("{0}, {1}, {2}, {3}, {4}, {5}, {6}", kv.Key, kv.Value.RewrittenImplementationCount, kv.Value.LowPriorityImplementationCount, kv.Value.MediumPriorityImplementationCount, kv.Value.HighPriorityImplementationCount, kv.Value.SkippedImplementationCount, kv.Value.ImplementationCount);
         }
       }
       return wr.ToString();
@@ -117,27 +121,43 @@ namespace Microsoft.Boogie
       {
         int priority;
         var vr = ExecutionEngine.Cache.Lookup(impl, out priority);
-        if (vr != null && priority == Priority.LOW)
+        if (vr != null)
         {
-          if (TimeThreshold < vr.End.Subtract(vr.Start).TotalMilliseconds)
+          if (priority == Priority.LOW)
           {
-            if (vr.Errors != null)
+            run.LowPriorityImplementationCount++;
+            if (TimeThreshold < vr.End.Subtract(vr.Start).TotalMilliseconds)
             {
-              impl.ErrorsInCachedSnapshot = vr.Errors.ToList<object>();
-            }
-            else if (vr.Outcome == ConditionGeneration.Outcome.Correct)
-            {
-              impl.ErrorsInCachedSnapshot = new List<object>();
-            }
-            if (vr.ProgramId != null)
-            {
-              var p = ExecutionEngine.CachedProgram(vr.ProgramId);
-              if (p != null)
+              if (vr.Errors != null)
               {
-                eai.Inject(impl, p);
-                run.RewrittenImplementationCount++;
+                impl.ErrorsInCachedSnapshot = vr.Errors.ToList<object>();
+              }
+              else if (vr.Outcome == ConditionGeneration.Outcome.Correct)
+              {
+                impl.ErrorsInCachedSnapshot = new List<object>();
+              }
+              if (vr.ProgramId != null)
+              {
+                var p = ExecutionEngine.CachedProgram(vr.ProgramId);
+                if (p != null)
+                {
+                  eai.Inject(impl, p);
+                  run.RewrittenImplementationCount++;
+                }
               }
             }
+          }
+          else if (priority == Priority.MEDIUM)
+          {
+            run.MediumPriorityImplementationCount++;
+          }
+          else if (priority == Priority.HIGH)
+          {
+            run.HighPriorityImplementationCount++;
+          }
+          else if (priority == Priority.SKIP)
+          {
+            run.SkippedImplementationCount++;
           }
         }
       }
@@ -403,7 +423,7 @@ namespace Microsoft.Boogie
   public class VerificationResultCache
   {
     private readonly MemoryCache Cache = new MemoryCache("VerificationResultCache");
-    private readonly CacheItemPolicy Policy = new CacheItemPolicy { SlidingExpiration = new TimeSpan(0, 10, 0) };
+    private readonly CacheItemPolicy Policy = new CacheItemPolicy { SlidingExpiration = new TimeSpan(0, 10, 0), Priority = CacheItemPriority.Default };
 
 
     public void Insert(Implementation impl, VerificationResult result)

@@ -405,7 +405,7 @@ namespace Microsoft.Boogie
     public readonly static VerificationResultCache Cache = new VerificationResultCache();
 
     static readonly MemoryCache programCache = new MemoryCache("ProgramCache");
-    static readonly CacheItemPolicy policy = new CacheItemPolicy { SlidingExpiration = new TimeSpan(0, 10, 0) };
+    static readonly CacheItemPolicy policy = new CacheItemPolicy { SlidingExpiration = new TimeSpan(0, 10, 0), Priority = CacheItemPriority.Default };
 
     public static Program CachedProgram(string programId)
     {
