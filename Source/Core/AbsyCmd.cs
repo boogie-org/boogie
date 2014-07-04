@@ -1886,6 +1886,7 @@ namespace Microsoft.Boogie {
   public class CallCmd : CallCommonality, IPotentialErrorNode {
     public string/*!*/ callee { get; set; }
     public Procedure Proc;
+    public LocalVariable AssignedAssumptionVariable;
 
     // Element of the following lists can be null, which means that
     // the call happens with * as these parameters
@@ -2085,6 +2086,10 @@ namespace Microsoft.Boogie {
       foreach (IdentifierExpr/*!*/ e in this.Proc.Modifies) {
         Contract.Assert(e != null);
         vars.Add(e.Decl);
+      }
+      if (AssignedAssumptionVariable != null)
+      {
+        vars.Add(AssignedAssumptionVariable);
       }
     }
 

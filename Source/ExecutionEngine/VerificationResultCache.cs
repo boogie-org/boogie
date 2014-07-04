@@ -153,11 +153,13 @@ namespace Microsoft.Boogie
       var oldProc = programInCachedSnapshot.TopLevelDeclarations.OfType<Procedure>().FirstOrDefault(p => p.Name == node.Proc.Name);
       if (oldProc != null
           && DependencyCollector.DependenciesChecksum(oldProc) != DependencyCollector.DependenciesChecksum(node.Proc)
-          && DependencyCollector.AllFunctionDependenciesAreDefinedAndUnchanged(oldProc, Program))
+          && DependencyCollector.AllFunctionDependenciesAreDefinedAndUnchanged(oldProc, Program)
+          && node.AssignedAssumptionVariable == null)
       {
         var lv = new LocalVariable(Token.NoToken,
           new TypedIdent(Token.NoToken, string.Format("a##post##{0}", FreshAssumptionVariableName), Type.Bool),
           new QKeyValue(Token.NoToken, "assumption", new List<object>(), null));
+        node.AssignedAssumptionVariable = lv;
         currentImplementation.InjectAssumptionVariable(lv);
 
         var before = new List<Cmd>();

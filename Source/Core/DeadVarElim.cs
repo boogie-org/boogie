@@ -429,6 +429,14 @@ namespace Microsoft.Boogie {
       foreach (Block/*!*/ block in sortedNodes) {
         Contract.Assert(block != null);
         HashSet<Variable/*!*/>/*!*/ liveVarsAfter = new HashSet<Variable/*!*/>();
+        if (impl.InjectedAssumptionVariables != null)
+        {
+          // The injected assumption variables should always be considered to be live.
+          foreach (var v in impl.InjectedAssumptionVariables)
+          {
+            liveVarsAfter.Add(v);
+          }
+        }
         if (block.TransferCmd is GotoCmd) {
           GotoCmd gotoCmd = (GotoCmd)block.TransferCmd;
           if (gotoCmd.labelTargets != null) {
@@ -497,7 +505,7 @@ namespace Microsoft.Boogie {
         HavocCmd/*!*/ havocCmd = (HavocCmd)cmd;
         foreach (IdentifierExpr/*!*/ expr in havocCmd.Vars) {
           Contract.Assert(expr != null);
-          if (expr.Decl != null) {
+          if (expr.Decl != null && !(QKeyValue.FindBoolAttribute(expr.Decl.Attributes, "assumption") && expr.Decl.Name.StartsWith("a##post##"))) {
             liveSet.Remove(expr.Decl);
           }
         }

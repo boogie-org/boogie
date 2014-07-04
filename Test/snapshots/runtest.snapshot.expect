@@ -149,3 +149,34 @@ Execution trace:
     Snapshots16.v1.bpl(14,5): anon0
 
 Boogie program verifier finished with 0 verified, 1 error
+
+Boogie program verifier finished with 1 verified, 0 errors
+Snapshots17.v1.bpl(20,13): Error BP5001: This assertion might not hold.
+Execution trace:
+    Snapshots17.v1.bpl(7,7): anon0
+    Snapshots17.v1.bpl(10,9): anon6_LoopHead
+    Snapshots17.v1.bpl(12,13): anon6_LoopBody
+Snapshots17.v1.bpl(25,9): Error BP5001: This assertion might not hold.
+Execution trace:
+    Snapshots17.v1.bpl(7,7): anon0
+    Snapshots17.v1.bpl(10,9): anon6_LoopHead
+    Snapshots17.v1.bpl(10,9): anon6_LoopDone
+
+Boogie program verifier finished with 0 verified, 2 errors
+
+Boogie program verifier finished with 1 verified, 0 errors
+Snapshots18.v1.bpl(17,9): Error BP5001: This assertion might not hold.
+Execution trace:
+    Snapshots18.v1.bpl(5,5): anon0
+    Snapshots18.v1.bpl(5,5): anon5_LoopHead
+    Snapshots18.v1.bpl(7,9): anon5_LoopBody
+    Snapshots18.v1.bpl(12,9): anon6_Else
+Snapshots18.v1.bpl(20,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    Snapshots18.v1.bpl(5,5): anon0
+    Snapshots18.v1.bpl(5,5): anon5_LoopHead
+    Snapshots18.v1.bpl(7,9): anon5_LoopBody
+    Snapshots18.v1.bpl(14,13): anon6_Then
+    Snapshots18.v1.bpl(20,5): anon4
+
+Boogie program verifier finished with 0 verified, 2 errors

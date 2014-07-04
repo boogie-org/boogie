@@ -1590,7 +1590,11 @@ namespace VC {
 
         HavocCmd hc = (HavocCmd)c;
         Contract.Assert(c != null);
-        List<IdentifierExpr> havocVars = hc.Vars;
+        // If an assumption variable for postconditions is included here, it must have been assigned within a loop.
+        // We do not need to havoc it if we have performed a modular proof of the loop (i.e., using only the loop
+        // invariant) in the previous snapshot and are therefore not going refer to the assumption variable after
+        // the loop. We can achieve this by simply not updating/adding it in the incarnation map.
+        List<IdentifierExpr> havocVars = hc.Vars.Where(v => !(QKeyValue.FindBoolAttribute(v.Decl.Attributes, "assumption") && v.Decl.Name.StartsWith("a##post##"))).ToList();
         // First, compute the new incarnations
         foreach (IdentifierExpr ie in havocVars) {
           Contract.Assert(ie != null);
