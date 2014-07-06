@@ -2617,6 +2617,71 @@ namespace Microsoft.Boogie {
     public List<Block/*!*/> OriginalBlocks;
     public List<Variable> OriginalLocVars;
 
+    ISet<byte[]> assertionChecksums;
+    public ISet<byte[]> AssertionChecksums
+    {
+      get
+      {
+        return assertionChecksums;
+      }
+    }
+
+    sealed class ChecksumComparer : IEqualityComparer<byte[]>
+    {
+      static IEqualityComparer<byte[]> defaultComparer;
+      public static IEqualityComparer<byte[]> Default
+      {
+        get
+        {
+          if (defaultComparer == null)
+          {
+            defaultComparer = new ChecksumComparer();
+          }
+          return defaultComparer;
+        }
+      }
+
+      public bool Equals(byte[] x, byte[] y)
+      {
+        if (x == null || y == null)
+        {
+          return x == y;
+        }
+        else
+        {
+          return x.SequenceEqual(y);
+        }
+      }
+
+      public int GetHashCode(byte[] checksum)
+      {
+        if (checksum == null)
+        {
+          throw new ArgumentNullException("checksum");
+        }
+        else
+        {
+          var result = 17;
+          for (int i = 0; i < checksum.Length; i++)
+          {
+            result = result * 23 + checksum[i];
+          }
+          return result;
+        }
+      }
+    }
+
+    public void AddAssertionChecksum(byte[] checksum)
+    {
+      if (assertionChecksums == null)
+      {
+        assertionChecksums = new HashSet<byte[]>(ChecksumComparer.Default);
+      }
+      assertionChecksums.Add(checksum);
+    }
+
+    public ISet<byte[]> AssertionChecksumsInPreviousSnapshot { get; set; }
+
     // Strongly connected components
     private StronglyConnectedComponents<Block/*!*/> scc;
     [ContractInvariantMethod]
@@ -2688,14 +2753,18 @@ namespace Microsoft.Boogie {
       }
     }
 
-    // TODO(wuestholz): Make this a 'List<Counterexample>'.
-    public IList<object> ErrorsInCachedSnapshot { get; set; }
+    public ISet<byte[]> ErrorChecksumsInCachedSnapshot { get; private set; }
+
+    public void SetErrorChecksumsInCachedSnapshot(IEnumerable<byte[]> errorChecksums)
+    {
+      ErrorChecksumsInCachedSnapshot = new HashSet<byte[]>(errorChecksums, ChecksumComparer.Default);
+    }
 
     public bool NoErrorsInCachedSnapshot
     {
       get
       {
-        return ErrorsInCachedSnapshot != null && !ErrorsInCachedSnapshot.Any();
+        return ErrorChecksumsInCachedSnapshot != null && !ErrorChecksumsInCachedSnapshot.Any();
       }
     }
 
@@ -2703,7 +2772,7 @@ namespace Microsoft.Boogie {
     {
       get
       {
-        return ErrorsInCachedSnapshot != null && ErrorsInCachedSnapshot.Any();
+        return ErrorChecksumsInCachedSnapshot != null && ErrorChecksumsInCachedSnapshot.Any();
       }
     }
 

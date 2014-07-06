@@ -1802,6 +1802,10 @@ namespace Microsoft.Boogie {
       //Contract.Requires(stream != null);
       //Contract.Requires(args != null);
       this.name.Emit(stream, 0xF0, false);
+      if (stream.UseForComputingChecksums && Func.DependenciesChecksum != null)
+      {
+        stream.Write(string.Format("[dependencies_checksum:{0}]", Func.DependenciesChecksum));
+      }
       stream.Write("(");
       args.Emit(stream);
       stream.Write(")");

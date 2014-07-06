@@ -2957,7 +2957,7 @@ namespace VC {
       {
         AssertEnsuresCmd assertCmd = (AssertEnsuresCmd)cmd;
         Contract.Assert(assertCmd != null);
-        ReturnCounterexample rc = new ReturnCounterexample(trace, transferCmd, assertCmd.Ensures, errModel, mvInfo, context);
+        ReturnCounterexample rc = new ReturnCounterexample(trace, transferCmd, assertCmd.Ensures, errModel, mvInfo, context, cmd.Checksum);
         rc.relatedInformation = relatedInformation;
         return rc;
       }

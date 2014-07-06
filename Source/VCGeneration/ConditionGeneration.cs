@@ -82,6 +82,7 @@ namespace Microsoft.Boogie {
     [Peer]
     public List<string>/*!>!*/ relatedInformation;
     public string RequestId;
+    public abstract byte[] Checksum { get; }
 
     public Dictionary<TraceLocation, CalleeCounterexampleInfo> calleeCounterexamples;
 
@@ -395,6 +396,11 @@ namespace Microsoft.Boogie {
       return FailingAssert.tok.line * 1000 + FailingAssert.tok.col;
     }
 
+    public override byte[] Checksum
+    {
+      get { return FailingAssert.Checksum; }
+    }
+
     public override Counterexample Clone()
     {
         var ret = new AssertCounterexample(Trace, FailingAssert, Model, MvInfo, Context);
@@ -428,6 +434,11 @@ namespace Microsoft.Boogie {
       return FailingCall.tok.line * 1000 + FailingCall.tok.col;
     }
 
+    public override byte[] Checksum
+    {
+      get { return FailingCall.Checksum; }
+    }
+
     public override Counterexample Clone()
     {
         var ret = new CallCounterexample(Trace, FailingCall, FailingRequires, Model, MvInfo, Context);
@@ -446,7 +457,7 @@ namespace Microsoft.Boogie {
     }
 
 
-    public ReturnCounterexample(List<Block> trace, TransferCmd failingReturn, Ensures failingEnsures, Model model, VC.ModelViewInfo mvInfo, ProverContext context)
+    public ReturnCounterexample(List<Block> trace, TransferCmd failingReturn, Ensures failingEnsures, Model model, VC.ModelViewInfo mvInfo, ProverContext context, byte[] checksum)
       : base(trace, model, mvInfo, context) {
       Contract.Requires(trace != null);
       Contract.Requires(context != null);
@@ -455,15 +466,29 @@ namespace Microsoft.Boogie {
       Contract.Requires(!failingEnsures.Free);
       this.FailingReturn = failingReturn;
       this.FailingEnsures = failingEnsures;
+      this.checksum = checksum;
     }
 
     public override int GetLocation() {
       return FailingReturn.tok.line * 1000 + FailingReturn.tok.col;
     }
 
+    byte[] checksum;
+
+    /// <summary>
+    /// Returns the checksum of the corresponding assertion.
+    /// </summary>
+    public override byte[] Checksum
+    {
+      get
+      {
+        return checksum;
+      }
+    }
+
     public override Counterexample Clone()
     {
-        var ret = new ReturnCounterexample(Trace, FailingReturn, FailingEnsures, Model, MvInfo, Context);
+        var ret = new ReturnCounterexample(Trace, FailingReturn, FailingEnsures, Model, MvInfo, Context, checksum);
         ret.calleeCounterexamples = calleeCounterexamples;
         return ret;
     }
@@ -1297,7 +1322,7 @@ namespace VC {
 
     Dictionary<Variable, Expr> preHavocIncarnationMap = null;     // null = the previous command was not an HashCmd. Otherwise, a *copy* of the map before the havoc statement
 
-    protected void TurnIntoPassiveBlock(Block b, Dictionary<Variable, Expr> incarnationMap, ModelViewInfo mvInfo, Substitution oldFrameSubst) {
+    protected void TurnIntoPassiveBlock(Block b, Dictionary<Variable, Expr> incarnationMap, ModelViewInfo mvInfo, Substitution oldFrameSubst, byte[] currentChecksum = null) {
       Contract.Requires(b != null);
       Contract.Requires(incarnationMap != null);
       Contract.Requires(mvInfo != null);
@@ -1307,8 +1332,11 @@ namespace VC {
       List<Cmd> passiveCmds = new List<Cmd>();
       foreach (Cmd c in b.Cmds) {
         Contract.Assert(c != null); // walk forward over the commands because the map gets modified in a forward direction
+        ChecksumHelper.ComputeChecksums(c, currentImplementation, currentChecksum);
+        currentChecksum = c.Checksum;
         TurnIntoPassiveCmd(c, incarnationMap, oldFrameSubst, passiveCmds, mvInfo);
       }
+      b.Checksum = currentChecksum;
       b.Cmds = passiveCmds;
 
       if (b.TransferCmd is ReturnExprCmd) {
@@ -1389,8 +1417,14 @@ namespace VC {
 
         // Decrement the succCount field in each predecessor. Once the field reaches zero in any block, 
         // all its successors have been passified.  Consequently, its entry in block2Incarnation can be removed.
+        byte[] currentChecksum = null;
         foreach (Block p in b.Predecessors) {
           p.succCount--;
+          if (b.Checksum != null)
+          {
+            // Compute the checksum based on the checksums of the predecessor. The order should not matter.
+            currentChecksum = ChecksumHelper.CombineChecksums(b.Checksum, currentChecksum, true);
+          }
           if (p.succCount == 0)
             block2Incarnation.Remove(p);
         }
@@ -1407,7 +1441,7 @@ namespace VC {
         }
         #endregion Each block's map needs to be available to successor blocks
 
-        TurnIntoPassiveBlock(b, incarnationMap, mvInfo, oldFrameSubst);
+        TurnIntoPassiveBlock(b, incarnationMap, mvInfo, oldFrameSubst, currentChecksum);
         exitBlock = b;
         exitIncarnationMap = incarnationMap;
       }
@@ -1463,15 +1497,22 @@ namespace VC {
           }
         }
         Contract.Assert(copy != null);
+        var isAssumePre = false;
         if (pc is AssertCmd) {
           ((AssertCmd)pc).OrigExpr = pc.Expr;
           Contract.Assert(((AssertCmd)pc).IncarnationMap == null);
           ((AssertCmd)pc).IncarnationMap = (Dictionary<Variable, Expr>)cce.NonNull(new Dictionary<Variable, Expr>(incarnationMap));
 
           if (currentImplementation != null
-              && currentImplementation.NoErrorsInCachedSnapshot
-              && currentImplementation.InjectedAssumptionVariables != null
-              && 2 <= currentImplementation.InjectedAssumptionVariables.Count)
+              && ((currentImplementation.NoErrorsInCachedSnapshot
+                   && currentImplementation.InjectedAssumptionVariables != null
+                   && 2 <= currentImplementation.InjectedAssumptionVariables.Count)
+                  || (currentImplementation.AnyErrorsInCachedSnapshot
+                      && currentImplementation.InjectedAssumptionVariables != null
+                      && currentImplementation.InjectedAssumptionVariables.Any()
+                      && pc.Checksum != null
+                      && (currentImplementation.AssertionChecksumsInPreviousSnapshot != null && currentImplementation.AssertionChecksumsInPreviousSnapshot.Contains(pc.Checksum))
+                      && !currentImplementation.ErrorChecksumsInCachedSnapshot.Contains(pc.Checksum))))
           {
             // Bind the assertion expression to a local variable.
             var incarnation = CreateIncarnation(CurrentTemporaryVariableForAssertions, new IdentifierExpr(Token.NoToken, CurrentTemporaryVariableForAssertions));
@@ -1483,21 +1524,25 @@ namespace VC {
             var expr = LiteralExpr.Imp(currentImplementation.ConjunctionOfInjectedAssumptionVariables(incarnationMap), copy);
             passiveCmds.Add(new AssumeCmd(Token.NoToken, expr));
           }
-          else if (currentImplementation != null
-                   && currentImplementation.AnyErrorsInCachedSnapshot)
-          {
-            // TODO(wuestholz): Add an assume statement if the assertion was verified in the previous snapshot.
-          }
         }
         else if (pc is AssumeCmd
-                 && QKeyValue.FindStringAttribute(pc.Attributes, "precondition_previous_snapshot") != null
+                 && QKeyValue.FindBoolAttribute(pc.Attributes, "precondition_previous_snapshot")
                  && currentImplementation.InjectedAssumptionVariables != null
                  && currentImplementation.InjectedAssumptionVariables.Any())
         {
           copy = LiteralExpr.Imp(currentImplementation.ConjunctionOfInjectedAssumptionVariables(incarnationMap), copy);
+          isAssumePre = true;
         }
         pc.Expr = copy;
-        passiveCmds.Add(pc);
+        if (!isAssumePre
+            || currentImplementation.NoErrorsInCachedSnapshot
+            || (currentImplementation.AnyErrorsInCachedSnapshot
+                && pc.Checksum != null
+                && (currentImplementation.AssertionChecksumsInPreviousSnapshot != null && currentImplementation.AssertionChecksumsInPreviousSnapshot.Contains(pc.Checksum))
+                && !currentImplementation.ErrorChecksumsInCachedSnapshot.Contains(pc.Checksum)))
+        {
+          passiveCmds.Add(pc);
+        }
       }
       #endregion
       #region x1 := E1, x2 := E2, ... |--> assume x1' = E1[in] & x2' = E2[in], out := in( x |-> x' ) [except as noted below]

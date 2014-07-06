@@ -25,7 +25,7 @@ namespace Microsoft.Boogie
   }
 
 
-  class CachedVerificationResultInjectorStatistics
+  sealed class CachedVerificationResultInjectorStatistics
   {
     ConcurrentDictionary<string, CachedVerificationResultInjectorRun> runs = new ConcurrentDictionary<string, CachedVerificationResultInjectorRun>();
 
@@ -63,7 +63,7 @@ namespace Microsoft.Boogie
   }
 
 
-  class CachedVerificationResultInjector : StandardVisitor
+  sealed class CachedVerificationResultInjector : StandardVisitor
   {
     readonly IEnumerable<Implementation> Implementations;
     readonly Program Program;
@@ -106,6 +106,12 @@ namespace Microsoft.Boogie
       assumptionVariableCount = 0;
       temporaryVariableCount = 0;
       currentImplementation = implementation;
+      // TODO(wuestholz): Maybe we should speed up this lookup.
+      var implPrevSnap = programInCachedSnapshot.Implementations().FirstOrDefault(i => i.Id == implementation.Id);
+      if (implPrevSnap != null)
+      {
+        currentImplementation.AssertionChecksumsInPreviousSnapshot = implPrevSnap.AssertionChecksums;
+      }
       var result = VisitImplementation(implementation);
       currentImplementation = null;
       this.programInCachedSnapshot = null;
@@ -128,13 +134,13 @@ namespace Microsoft.Boogie
             run.LowPriorityImplementationCount++;
             if (TimeThreshold < vr.End.Subtract(vr.Start).TotalMilliseconds)
             {
-              if (vr.Errors != null)
+              if (vr.Errors != null && vr.Errors.Count < CommandLineOptions.Clo.ProverCCLimit)
               {
-                impl.ErrorsInCachedSnapshot = vr.Errors.ToList<object>();
+                impl.SetErrorChecksumsInCachedSnapshot(vr.Errors.Select(cex => cex.Checksum));
               }
               else if (vr.Outcome == ConditionGeneration.Outcome.Correct)
               {
-                impl.ErrorsInCachedSnapshot = new List<object>();
+                impl.SetErrorChecksumsInCachedSnapshot(new List<byte[]>());
               }
               if (vr.ProgramId != null)
               {
@@ -183,16 +189,11 @@ namespace Microsoft.Boogie
         currentImplementation.InjectAssumptionVariable(lv);
 
         var before = new List<Cmd>();
-        if (currentImplementation.NoErrorsInCachedSnapshot
-            && oldProc.Requires.Any())
+        if (oldProc.Requires.Any())
         {
-          var pre = node.Precondition(oldProc, Program);
+          var pre = node.CheckedPrecondition(oldProc, Program);
           var assume = new AssumeCmd(Token.NoToken, pre, new QKeyValue(Token.NoToken, "precondition_previous_snapshot", new List<object>(), null));
           before.Add(assume);
-        }
-        else if (currentImplementation.AnyErrorsInCachedSnapshot)
-        {
-          // TODO(wuestholz): Add an assume statement if the precondition was verified in the previous snapshot.
         }
 
         var post = node.Postcondition(oldProc, Program);
@@ -219,7 +220,7 @@ namespace Microsoft.Boogie
   }
 
 
-  public class OtherDefinitionAxiomsCollector : ReadOnlyVisitor
+  sealed class OtherDefinitionAxiomsCollector : ReadOnlyVisitor
   {
     Axiom currentAxiom;
     Trigger currentTrigger;
@@ -265,7 +266,7 @@ namespace Microsoft.Boogie
   }
 
 
-  class DependencyCollector : ReadOnlyVisitor
+  sealed class DependencyCollector : ReadOnlyVisitor
   {
     private HashSet<Procedure> procedureDependencies;
     private HashSet<Function> functionDependencies;
@@ -420,7 +421,7 @@ namespace Microsoft.Boogie
   }
 
 
-  public class VerificationResultCache
+  public sealed class VerificationResultCache
   {
     private readonly MemoryCache Cache = new MemoryCache("VerificationResultCache");
     private readonly CacheItemPolicy Policy = new CacheItemPolicy { SlidingExpiration = new TimeSpan(0, 10, 0), Priority = CacheItemPriority.Default };

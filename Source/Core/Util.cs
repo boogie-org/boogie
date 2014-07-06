@@ -80,6 +80,7 @@ namespace Microsoft.Boogie {
     bool setTokens = true;
     int line = 1;
     int col;
+    public bool UseForComputingChecksums;
 
     private const int indent_size = 2;
     protected static string Indent(int level) {

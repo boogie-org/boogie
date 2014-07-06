@@ -316,7 +316,7 @@ namespace Microsoft.Boogie
   #endregion
 
 
-  public class VerificationResult
+  public sealed class VerificationResult
   {
     public readonly string RequestId;
     public readonly string Checksum;

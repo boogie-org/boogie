@@ -800,6 +800,8 @@ namespace Microsoft.Boogie {
     [Rep]  //PM: needed to verify Traverse.Visit
     public TransferCmd TransferCmd; // maybe null only because we allow deferred initialization (necessary for cyclic structures)
 
+    public byte[] Checksum;
+
     // Abstract interpretation
 
     // public bool currentlyTraversed;
@@ -937,8 +939,104 @@ namespace Microsoft.Boogie {
       throw new NotImplementedException();
     }
   }
+
+  public static class ChecksumHelper
+  {
+    public static void ComputeChecksums(Cmd cmd, Implementation impl, byte[] currentChecksum = null, bool unordered = false)
+    {
+      if (CommandLineOptions.Clo.VerifySnapshots < 2)
+      {
+        return;
+      }
+
+      var assumeCmd = cmd as AssumeCmd;
+      if (assumeCmd != null
+          && QKeyValue.FindBoolAttribute(assumeCmd.Attributes, "assumption_variable_initialization"))
+      {
+        // Ignore assumption variable initializations.
+        assumeCmd.Checksum = currentChecksum;
+        return;
+      }
+
+      using (var strWr = new System.IO.StringWriter())
+      using (var tokTxtWr = new TokenTextWriter("<no file>", strWr, false, false))
+      {
+        tokTxtWr.UseForComputingChecksums = true;
+        cmd.Emit(tokTxtWr, 0);
+        var md5 = System.Security.Cryptography.MD5.Create();
+        var str = strWr.ToString();
+        if (str.Any())
+        {
+          var data = System.Text.Encoding.UTF8.GetBytes(str);
+          var checksum = md5.ComputeHash(data);
+          currentChecksum = currentChecksum != null ? CombineChecksums(currentChecksum, checksum, unordered) : checksum;
+        }
+        cmd.Checksum = currentChecksum;
+      }
+
+      var assertCmd = cmd as AssertCmd;
+      if (assertCmd != null && assertCmd.Checksum != null)
+      {
+        var assertRequiresCmd = assertCmd as AssertRequiresCmd;
+        if (assertRequiresCmd != null)
+        {
+          // Add the checksum of the call instead of the assertion itself
+          // because a corresponding counterexample will also have the
+          // checksum of the failing call.
+          impl.AddAssertionChecksum(assertRequiresCmd.Call.Checksum);
+        }
+        else
+        {
+          impl.AddAssertionChecksum(assertCmd.Checksum);
+        }
+      }
+
+      var sugaredCmd = cmd as SugaredCmd;
+      if (sugaredCmd != null)
+      {
+        // The checksum of a sugared command should not depend on the desugaring itself.
+        var stateCmd = sugaredCmd.Desugaring as StateCmd;
+        if (stateCmd != null)
+        {
+          foreach (var c in stateCmd.Cmds)
+          {
+            ComputeChecksums(c, impl, currentChecksum, unordered);
+            currentChecksum = c.Checksum;
+          }
+          sugaredCmd.DesugaringChecksum = currentChecksum;
+        }
+        else
+        {
+          ComputeChecksums(sugaredCmd.Desugaring, impl, currentChecksum, unordered);
+          sugaredCmd.DesugaringChecksum = sugaredCmd.Desugaring.Checksum;
+        }
+      }
+    }
+
+    public static byte[] CombineChecksums(byte[] first, byte[] second, bool unordered = false)
+    {
+      Contract.Requires(first != null && (second == null || first.Length == second.Length));
+
+      var result = (byte[])(first.Clone());
+      for (int i = 0; second != null && i < second.Length; i++)
+      {
+        if (unordered)
+        {
+          result[i] += second[i];
+        }
+        else
+        {
+          result[i] = (byte)(result[i] * 31 ^ second[i]);
+        }
+      }
+      return result;
+    }
+  }
+
   [ContractClass(typeof(CmdContracts))]
   public abstract class Cmd : Absy {
+    public byte[] Checksum { get; internal set; }
+
     public Cmd(IToken/*!*/ tok)
       : base(tok) {
       Contract.Assert(tok != null);
@@ -1046,6 +1144,9 @@ namespace Microsoft.Boogie {
     /// </summary>
     public static void EmitAttributes(TokenTextWriter stream, QKeyValue attributes) {
       Contract.Requires(stream != null);
+
+      if (stream.UseForComputingChecksums) { return; }
+
       for (QKeyValue kv = attributes; kv != null; kv = kv.Next) {
         kv.Emit(stream);
         stream.Write(" ");
@@ -1170,6 +1271,14 @@ namespace Microsoft.Boogie {
     }
 
     public override void Emit(TokenTextWriter stream, int level) {
+      if (stream.UseForComputingChecksums)
+      {
+        var lhs = Lhss.FirstOrDefault() as SimpleAssignLhs;
+        if (lhs != null && lhs.AssignedVariable.Decl != null && QKeyValue.FindBoolAttribute(lhs.AssignedVariable.Decl.Attributes, "assumption"))
+        {
+          return;
+        }
+      }
       
       stream.Write(this, level, "");
 
@@ -1651,6 +1760,8 @@ namespace Microsoft.Boogie {
   abstract public class SugaredCmd : Cmd {
     private Cmd desugaring;  // null until desugared
 
+    public byte[] DesugaringChecksum { get; set; }
+
     public SugaredCmd(IToken/*!*/ tok)
       : base(tok) {
       Contract.Requires(tok != null);
@@ -1702,7 +1813,7 @@ namespace Microsoft.Boogie {
 
     public override void Emit(TokenTextWriter stream, int level) {
       //Contract.Requires(stream != null);
-      if (CommandLineOptions.Clo.PrintDesugarings) {
+      if (CommandLineOptions.Clo.PrintDesugarings && !stream.UseForComputingChecksums) {
         stream.WriteLine(this, level, "/*** desugaring:");
         Desugaring.Emit(stream, level);
         stream.WriteLine(level, "**** end desugaring */");
@@ -2429,7 +2540,7 @@ namespace Microsoft.Boogie {
       return Conjunction(ensures);
     }
 
-    public Expr Precondition(Procedure procedure, Program program)
+    public Expr CheckedPrecondition(Procedure procedure, Program program)
     {
       Contract.Requires(calleeSubstitution != null && calleeSubstitutionOld != null && program != null);
 
@@ -2583,6 +2694,11 @@ namespace Microsoft.Boogie {
       stream.Write(this, level, "assert ");
       EmitAttributes(stream, Attributes);
       this.Expr.Emit(stream);
+      if (1 < CommandLineOptions.Clo.VerifySnapshots && !stream.UseForComputingChecksums)
+      {
+        var cs = Checksum != null ? BitConverter.ToString(Checksum) : "<unknown>";
+        stream.Write(string.Format(" /* checksum: {0} */ ", cs));
+      }
       stream.WriteLine(";");
     }
     public override void Resolve(ResolutionContext rc) {
@@ -2737,6 +2853,9 @@ namespace Microsoft.Boogie {
     }
     public override void Emit(TokenTextWriter stream, int level) {
       //Contract.Requires(stream != null);
+
+      if (stream.UseForComputingChecksums && QKeyValue.FindBoolAttribute(Attributes, "precondition_previous_snapshot")) { return; }
+
       stream.Write(this, level, "assume ");
       EmitAttributes(stream, Attributes);
       this.Expr.Emit(stream);
