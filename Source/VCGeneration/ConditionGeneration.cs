@@ -1499,9 +1499,10 @@ namespace VC {
         Contract.Assert(copy != null);
         var isAssumePre = false;
         if (pc is AssertCmd) {
-          ((AssertCmd)pc).OrigExpr = pc.Expr;
-          Contract.Assert(((AssertCmd)pc).IncarnationMap == null);
-          ((AssertCmd)pc).IncarnationMap = (Dictionary<Variable, Expr>)cce.NonNull(new Dictionary<Variable, Expr>(incarnationMap));
+          var ac = (AssertCmd)pc;
+          ac.OrigExpr = ac.Expr;
+          Contract.Assert(ac.IncarnationMap == null);
+          ac.IncarnationMap = (Dictionary<Variable, Expr>)cce.NonNull(new Dictionary<Variable, Expr>(incarnationMap));
 
           if (currentImplementation != null
               && ((currentImplementation.NoErrorsInCachedSnapshot
@@ -1510,19 +1511,32 @@ namespace VC {
                   || (currentImplementation.AnyErrorsInCachedSnapshot
                       && currentImplementation.InjectedAssumptionVariables != null
                       && currentImplementation.InjectedAssumptionVariables.Any()
-                      && pc.Checksum != null
-                      && (currentImplementation.AssertionChecksumsInPreviousSnapshot != null && currentImplementation.AssertionChecksumsInPreviousSnapshot.Contains(pc.Checksum))
-                      && !currentImplementation.ErrorChecksumsInCachedSnapshot.Contains(pc.Checksum))))
+                      && ac.Checksum != null
+                      && (currentImplementation.AssertionChecksumsInPreviousSnapshot != null && currentImplementation.AssertionChecksumsInPreviousSnapshot.Contains(ac.Checksum))
+                      && !currentImplementation.ErrorChecksumsInCachedSnapshot.Contains(ac.Checksum))))
           {
             // Bind the assertion expression to a local variable.
             var incarnation = CreateIncarnation(CurrentTemporaryVariableForAssertions, new IdentifierExpr(Token.NoToken, CurrentTemporaryVariableForAssertions));
             var identExpr = new IdentifierExpr(Token.NoToken, incarnation);
             incarnationMap[incarnation] = identExpr;
-            ((AssertCmd)pc).IncarnationMap[incarnation] = identExpr;
+            ac.IncarnationMap[incarnation] = identExpr;
             passiveCmds.Add(new AssumeCmd(Token.NoToken, LiteralExpr.Eq(identExpr, copy)));
             copy = identExpr;
             var expr = LiteralExpr.Imp(currentImplementation.ConjunctionOfInjectedAssumptionVariables(incarnationMap), copy);
             passiveCmds.Add(new AssumeCmd(Token.NoToken, expr));
+          }
+          else if (currentImplementation != null
+                   && currentImplementation.AnyErrorsInCachedSnapshot
+                   && currentImplementation.InjectedAssumptionVariables != null
+                   && currentImplementation.InjectedAssumptionVariables.Any()
+                   && ac.Checksum != null
+                   && (currentImplementation.AssertionChecksumsInPreviousSnapshot != null && currentImplementation.AssertionChecksumsInPreviousSnapshot.Contains(ac.Checksum))
+                   && currentImplementation.ErrorChecksumsInCachedSnapshot.Contains(ac.Checksum)
+                   && !currentImplementation.InjectedAssumptionVariables.Any(v => incarnationMap.ContainsKey(v)))
+          {
+            ac.Attributes = new QKeyValue(Token.NoToken, "canned_failing_assertion", new List<object>(), ac.Attributes);
+            currentImplementation.AddCannedFailingAssertion(ac);
+            // TODO(wuestholz): Turn the 'assert' command into an 'assume' command.
           }
         }
         else if (pc is AssumeCmd

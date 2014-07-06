@@ -2682,6 +2682,17 @@ namespace Microsoft.Boogie {
 
     public ISet<byte[]> AssertionChecksumsInPreviousSnapshot { get; set; }
 
+    public IList<AssertCmd> CannedFailingAssertions { get; protected set; }
+
+    public void AddCannedFailingAssertion(AssertCmd assertion)
+    {
+      if (CannedFailingAssertions == null)
+      {
+        CannedFailingAssertions = new List<AssertCmd>();
+      }
+      CannedFailingAssertions.Add(assertion);
+    }
+
     // Strongly connected components
     private StronglyConnectedComponents<Block/*!*/> scc;
     [ContractInvariantMethod]

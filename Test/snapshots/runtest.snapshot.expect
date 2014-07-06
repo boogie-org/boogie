@@ -190,3 +190,19 @@ Execution trace:
     Snapshots19.v1.bpl(5,5): anon0
 
 Boogie program verifier finished with 0 verified, 1 error
+Snapshots20.v0.bpl(13,9): Error BP5001: This assertion might not hold.
+Execution trace:
+    Snapshots20.v0.bpl(5,5): anon0
+    Snapshots20.v0.bpl(13,9): anon4_Else
+
+Boogie program verifier finished with 0 verified, 1 error
+Snapshots20.v1.bpl(9,9): Error BP5001: This assertion might not hold.
+Execution trace:
+    Snapshots20.v1.bpl(5,5): anon0
+    Snapshots20.v1.bpl(7,9): anon4_Then
+Snapshots20.v1.bpl(13,9): Error BP5001: This assertion might not hold.
+Execution trace:
+    Snapshots20.v1.bpl(5,5): anon0
+    Snapshots20.v1.bpl(13,9): anon4_Else
+
+Boogie program verifier finished with 0 verified, 2 errors

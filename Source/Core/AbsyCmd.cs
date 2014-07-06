@@ -2550,7 +2550,7 @@ namespace Microsoft.Boogie {
 
     private static Expr Conjunction(IEnumerable<Expr> conjuncts)
     {
-      // TODO(wuestholz): Should we use 'LiteralExpr.BinaryTreeAnd' instead?      
+      // TODO(wuestholz): Maybe we should use 'LiteralExpr.BinaryTreeAnd' instead.
       Expr result = null;
       foreach (var c in conjuncts)
       {
