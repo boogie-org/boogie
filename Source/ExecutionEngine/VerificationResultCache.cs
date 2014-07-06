@@ -92,7 +92,7 @@ namespace Microsoft.Boogie
       }
     }
 
-    protected CachedVerificationResultInjector(Program program, IEnumerable<Implementation> implementations)
+    CachedVerificationResultInjector(Program program, IEnumerable<Implementation> implementations)
     {
       Implementations = implementations;
       Program = program;
@@ -106,12 +106,6 @@ namespace Microsoft.Boogie
       assumptionVariableCount = 0;
       temporaryVariableCount = 0;
       currentImplementation = implementation;
-      // TODO(wuestholz): Maybe we should speed up this lookup.
-      var implPrevSnap = programInCachedSnapshot.Implementations().FirstOrDefault(i => i.Id == implementation.Id);
-      if (implPrevSnap != null)
-      {
-        currentImplementation.AssertionChecksumsInPreviousSnapshot = implPrevSnap.AssertionChecksums;
-      }
       var result = VisitImplementation(implementation);
       currentImplementation = null;
       this.programInCachedSnapshot = null;
@@ -134,19 +128,13 @@ namespace Microsoft.Boogie
             run.LowPriorityImplementationCount++;
             if (TimeThreshold < vr.End.Subtract(vr.Start).TotalMilliseconds)
             {
-              if (vr.Errors != null && vr.Errors.Count < CommandLineOptions.Clo.ProverCCLimit)
-              {
-                impl.SetErrorChecksumsInCachedSnapshot(vr.Errors.Select(cex => cex.Checksum));
-              }
-              else if (vr.Outcome == ConditionGeneration.Outcome.Correct)
-              {
-                impl.SetErrorChecksumsInCachedSnapshot(new List<byte[]>());
-              }
+              SetErrorChecksumsInCachedSnapshot(impl, vr);
               if (vr.ProgramId != null)
               {
                 var p = ExecutionEngine.CachedProgram(vr.ProgramId);
                 if (p != null)
                 {
+                  SetAssertionChecksumsInPreviousSnapshot(impl, p);
                   eai.Inject(impl, p);
                   run.RewrittenImplementationCount++;
                 }
@@ -156,6 +144,15 @@ namespace Microsoft.Boogie
           else if (priority == Priority.MEDIUM)
           {
             run.MediumPriorityImplementationCount++;
+            if (TimeThreshold < vr.End.Subtract(vr.Start).TotalMilliseconds)
+            {
+              SetErrorChecksumsInCachedSnapshot(impl, vr);
+              var p = ExecutionEngine.CachedProgram(vr.ProgramId);
+              if (p != null)
+              {
+                SetAssertionChecksumsInPreviousSnapshot(impl, p);
+              }
+            }
           }
           else if (priority == Priority.HIGH)
           {
@@ -169,6 +166,28 @@ namespace Microsoft.Boogie
       }
       run.End = DateTime.UtcNow;
       Statistics.AddRun(requestId, run);
+    }
+
+    private static void SetErrorChecksumsInCachedSnapshot(Implementation implementation, VerificationResult result)
+    {
+      if (result.Errors != null && result.Errors.Count < CommandLineOptions.Clo.ProverCCLimit)
+      {
+        implementation.SetErrorChecksumsInCachedSnapshot(result.Errors.Select(cex => cex.Checksum));
+      }
+      else if (result.Outcome == ConditionGeneration.Outcome.Correct)
+      {
+        implementation.SetErrorChecksumsInCachedSnapshot(new List<byte[]>());
+      }
+    }
+
+    private static void SetAssertionChecksumsInPreviousSnapshot(Implementation implementation, Program program)
+    {
+      // TODO(wuestholz): Maybe we should speed up this lookup.
+      var implPrevSnap = program.Implementations().FirstOrDefault(i => i.Id == implementation.Id);
+      if (implPrevSnap != null)
+      {
+        implementation.AssertionChecksumsInPreviousSnapshot = implPrevSnap.AssertionChecksums;
+      }
     }
 
     public override Cmd VisitCallCmd(CallCmd node)

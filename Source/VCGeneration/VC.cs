@@ -1481,7 +1481,16 @@ namespace VC {
       ModelViewInfo mvInfo;
       var gotoCmdOrigins = PassifyImpl(impl, out mvInfo);
 
-      // TODO(wuestholz): Report all canned failing assertions for this implementation.
+      // Report all canned failing assertions for this implementation.
+      if (impl.CannedFailingAssertions != null)
+      {
+        foreach (var a in impl.CannedFailingAssertions)
+        {
+          // TODO(wuestholz): Implement this.
+          // var cex = AssertCmdToCounterexample(a, ...);
+          // callback.OnCounterexample(cex, ...);
+        }
+      }
 
       // If "expand" attribute is supplied, expand any assertion of conjunctions into multiple assertions, one per conjunct
       foreach (var b in impl.Blocks)

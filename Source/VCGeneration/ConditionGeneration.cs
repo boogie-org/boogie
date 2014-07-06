@@ -1527,16 +1527,15 @@ namespace VC {
           }
           else if (currentImplementation != null
                    && currentImplementation.AnyErrorsInCachedSnapshot
-                   && currentImplementation.InjectedAssumptionVariables != null
-                   && currentImplementation.InjectedAssumptionVariables.Any()
                    && ac.Checksum != null
                    && (currentImplementation.AssertionChecksumsInPreviousSnapshot != null && currentImplementation.AssertionChecksumsInPreviousSnapshot.Contains(ac.Checksum))
                    && currentImplementation.ErrorChecksumsInCachedSnapshot.Contains(ac.Checksum)
-                   && !currentImplementation.InjectedAssumptionVariables.Any(v => incarnationMap.ContainsKey(v)))
+                   && (currentImplementation.InjectedAssumptionVariables == null || !currentImplementation.InjectedAssumptionVariables.Any(v => incarnationMap.ContainsKey(v))))
           {
-            ac.Attributes = new QKeyValue(Token.NoToken, "canned_failing_assertion", new List<object>(), ac.Attributes);
+            // TODO(wuestholz): Uncomment this once the canned errors are reported.
+            // pc = new AssumeCmd(ac.tok, copy);
+            pc.Attributes = new QKeyValue(Token.NoToken, "canned_failing_assertion", new List<object>(), pc.Attributes);
             currentImplementation.AddCannedFailingAssertion(ac);
-            // TODO(wuestholz): Turn the 'assert' command into an 'assume' command.
           }
         }
         else if (pc is AssumeCmd
