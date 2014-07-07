@@ -112,7 +112,7 @@ namespace Microsoft.Boogie
       return result;
     }
 
-    public static void Inject(Program program, IEnumerable<Implementation> implementations, string requestId)
+    public static void Inject(Program program, IEnumerable<Implementation> implementations, string requestId, string programId)
     {
       var eai = new CachedVerificationResultInjector(program, implementations);
 
@@ -121,7 +121,7 @@ namespace Microsoft.Boogie
       {
         int priority;
         var vr = ExecutionEngine.Cache.Lookup(impl, out priority);
-        if (vr != null)
+        if (vr != null && vr.ProgramId == programId)
         {
           if (priority == Priority.LOW)
           {
@@ -172,11 +172,11 @@ namespace Microsoft.Boogie
     {
       if (result.Errors != null && result.Errors.Count < CommandLineOptions.Clo.ProverCCLimit)
       {
-        implementation.SetErrorChecksumsInCachedSnapshot(result.Errors.Select(cex => cex.Checksum));
+        implementation.SetErrorChecksumToCachedError(result.Errors.Select(cex => new Tuple<byte[], object>(cex.Checksum, cex)));
       }
       else if (result.Outcome == ConditionGeneration.Outcome.Correct)
       {
-        implementation.SetErrorChecksumsInCachedSnapshot(new List<byte[]>());
+        implementation.SetErrorChecksumToCachedError(new List<Tuple<byte[], object>>());
       }
     }
 

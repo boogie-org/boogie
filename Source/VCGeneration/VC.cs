@@ -1481,17 +1481,6 @@ namespace VC {
       ModelViewInfo mvInfo;
       var gotoCmdOrigins = PassifyImpl(impl, out mvInfo);
 
-      // Report all canned failing assertions for this implementation.
-      if (impl.CannedFailingAssertions != null)
-      {
-        foreach (var a in impl.CannedFailingAssertions)
-        {
-          // TODO(wuestholz): Implement this.
-          // var cex = AssertCmdToCounterexample(a, ...);
-          // callback.OnCounterexample(cex, ...);
-        }
-      }
-
       // If "expand" attribute is supplied, expand any assertion of conjunctions into multiple assertions, one per conjunct
       foreach (var b in impl.Blocks)
       {
@@ -1630,6 +1619,34 @@ namespace VC {
       }
 
       Outcome outcome = Outcome.Correct;
+
+      // Report all canned failing assertions for this implementation.
+      if (impl.CannedFailingAssertions != null && impl.CannedFailingAssertions.Any())
+      {
+        // TODO(wuestholz): Uncomment this.
+        // outcome = Outcome.Errors;
+        foreach (var a in impl.CannedFailingAssertions)
+        {
+          var oldCex = impl.ErrorChecksumToCachedError[a.Checksum] as Counterexample;
+          if (oldCex != null)
+          {
+            // TODO(wuestholz): Maybe we could create a "fresh" counterexample instead.
+            // TransferCmd trCmd = null;
+            // var oldRetCex = oldCex as ReturnCounterexample;
+            // if (oldRetCex != null)
+            // {
+            //   trCmd = oldRetCex.FailingReturn;
+            // }
+            // var cex = AssertCmdToCounterexample(a, trCmd, oldCex.Trace, oldCex.Model, oldCex.MvInfo, oldCex.Context);
+            // cex.RequestId = oldCex.RequestId;
+
+            // TODO(wuestholz): Uncomment this.
+            // var oldReqId = oldCex.RequestId;
+            // callback.OnCounterexample(oldCex, null);
+            // oldCex.RequestId = oldReqId;
+          }
+        }
+      }
 
       Cores = CommandLineOptions.Clo.VcsCores;
       Stack<Split> work = new Stack<Split>();
@@ -2660,6 +2677,7 @@ namespace VC {
         #region Get rid of empty blocks
         {
           RemoveEmptyBlocksIterative(impl.Blocks);
+          // TODO(wuestholz): Update impl.AssertionChecksums and maybe impl.CannedFailingAssertions.
           impl.PruneUnreachableBlocks();
         }
         #endregion Get rid of empty blocks

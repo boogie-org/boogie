@@ -2626,7 +2626,7 @@ namespace Microsoft.Boogie {
       }
     }
 
-    sealed class ChecksumComparer : IEqualityComparer<byte[]>
+    public sealed class ChecksumComparer : IEqualityComparer<byte[]>
     {
       static IEqualityComparer<byte[]> defaultComparer;
       public static IEqualityComparer<byte[]> Default
@@ -2764,18 +2764,24 @@ namespace Microsoft.Boogie {
       }
     }
 
-    public ISet<byte[]> ErrorChecksumsInCachedSnapshot { get; private set; }
+    public IDictionary<byte[], object> ErrorChecksumToCachedError { get; private set; }
 
-    public void SetErrorChecksumsInCachedSnapshot(IEnumerable<byte[]> errorChecksums)
+    public void SetErrorChecksumToCachedError(IEnumerable<Tuple<byte[], object>> errors)
     {
-      ErrorChecksumsInCachedSnapshot = new HashSet<byte[]>(errorChecksums, ChecksumComparer.Default);
+      Contract.Requires(errors != null);
+
+      ErrorChecksumToCachedError = new Dictionary<byte[], object>(ChecksumComparer.Default);
+      foreach (var kv in errors)
+      {
+        ErrorChecksumToCachedError[kv.Item1] = kv.Item2;
+      }
     }
 
     public bool NoErrorsInCachedSnapshot
     {
       get
       {
-        return ErrorChecksumsInCachedSnapshot != null && !ErrorChecksumsInCachedSnapshot.Any();
+        return ErrorChecksumToCachedError != null && !ErrorChecksumToCachedError.Any();
       }
     }
 
@@ -2783,7 +2789,7 @@ namespace Microsoft.Boogie {
     {
       get
       {
-        return ErrorChecksumsInCachedSnapshot != null && ErrorChecksumsInCachedSnapshot.Any();
+        return ErrorChecksumToCachedError != null && ErrorChecksumToCachedError.Any();
       }
     }
 

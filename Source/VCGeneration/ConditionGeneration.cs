@@ -1513,7 +1513,7 @@ namespace VC {
                       && currentImplementation.InjectedAssumptionVariables.Any()
                       && ac.Checksum != null
                       && (currentImplementation.AssertionChecksumsInPreviousSnapshot != null && currentImplementation.AssertionChecksumsInPreviousSnapshot.Contains(ac.Checksum))
-                      && !currentImplementation.ErrorChecksumsInCachedSnapshot.Contains(ac.Checksum))))
+                      && !currentImplementation.ErrorChecksumToCachedError.ContainsKey(ac.Checksum))))
           {
             // Bind the assertion expression to a local variable.
             var incarnation = CreateIncarnation(CurrentTemporaryVariableForAssertions, new IdentifierExpr(Token.NoToken, CurrentTemporaryVariableForAssertions));
@@ -1529,10 +1529,11 @@ namespace VC {
                    && currentImplementation.AnyErrorsInCachedSnapshot
                    && ac.Checksum != null
                    && (currentImplementation.AssertionChecksumsInPreviousSnapshot != null && currentImplementation.AssertionChecksumsInPreviousSnapshot.Contains(ac.Checksum))
-                   && currentImplementation.ErrorChecksumsInCachedSnapshot.Contains(ac.Checksum)
+                   && currentImplementation.ErrorChecksumToCachedError.ContainsKey(ac.Checksum)
                    && (currentImplementation.InjectedAssumptionVariables == null || !currentImplementation.InjectedAssumptionVariables.Any(v => incarnationMap.ContainsKey(v))))
           {
-            // TODO(wuestholz): Uncomment this once the canned errors are reported.
+            // Turn it into an assume statement.
+            // TODO(wuestholz): Uncomment this once the canned errors are reported.            
             // pc = new AssumeCmd(ac.tok, copy);
             pc.Attributes = new QKeyValue(Token.NoToken, "canned_failing_assertion", new List<object>(), pc.Attributes);
             currentImplementation.AddCannedFailingAssertion(ac);
@@ -1552,7 +1553,7 @@ namespace VC {
             || (currentImplementation.AnyErrorsInCachedSnapshot
                 && pc.Checksum != null
                 && (currentImplementation.AssertionChecksumsInPreviousSnapshot != null && currentImplementation.AssertionChecksumsInPreviousSnapshot.Contains(pc.Checksum))
-                && !currentImplementation.ErrorChecksumsInCachedSnapshot.Contains(pc.Checksum)))
+                && !currentImplementation.ErrorChecksumToCachedError.ContainsKey(pc.Checksum)))
         {
           passiveCmds.Add(pc);
         }

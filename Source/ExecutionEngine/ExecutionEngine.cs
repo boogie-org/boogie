@@ -420,15 +420,20 @@ namespace Microsoft.Boogie
     static IDictionary<string, IList<CancellationTokenSource>> RequestIdToCancellationTokenSources = new ConcurrentDictionary<string, IList<CancellationTokenSource>>();
 
 
-    public static void ProcessFiles(List<string> fileNames, bool lookForSnapshots = true)
+    public static void ProcessFiles(List<string> fileNames, bool lookForSnapshots = true, string programId = null)
     {
       Contract.Requires(cce.NonNullElements(fileNames));
+
+      if (programId == null)
+      {
+        programId = "main_program_id";
+      }
 
       if (CommandLineOptions.Clo.VerifySeparately && 1 < fileNames.Count)
       {
         foreach (var f in fileNames)
         {
-          ProcessFiles(new List<string> { f }, lookForSnapshots);
+          ProcessFiles(new List<string> { f }, lookForSnapshots, f);
         }
         return;
       }
@@ -438,7 +443,7 @@ namespace Microsoft.Boogie
         var snapshotsByVersion = LookForSnapshots(fileNames);
         foreach (var s in snapshotsByVersion)
         {
-          ProcessFiles(new List<string>(s), false);
+          ProcessFiles(new List<string>(s), false, programId);
         }
         return;
       }
@@ -493,7 +498,7 @@ namespace Microsoft.Boogie
         Inline(program);
 
         var stats = new PipelineStatistics();
-        oc = InferAndVerify(program, stats, 1 < CommandLineOptions.Clo.VerifySnapshots ? "main_program_id" : null);
+        oc = InferAndVerify(program, stats, 1 < CommandLineOptions.Clo.VerifySnapshots ? programId : null);
         switch (oc)
         {
           case PipelineOutcome.Done:
@@ -886,7 +891,7 @@ namespace Microsoft.Boogie
 
       if (1 < CommandLineOptions.Clo.VerifySnapshots)
       {
-        CachedVerificationResultInjector.Inject(program, stablePrioritizedImpls, requestId);
+        CachedVerificationResultInjector.Inject(program, stablePrioritizedImpls, requestId, programId);
       }
 
       #region Verify each implementation
