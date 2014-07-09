@@ -1620,30 +1620,18 @@ namespace VC {
 
       Outcome outcome = Outcome.Correct;
 
-      // Report all canned failing assertions for this implementation.
-      if (impl.CannedFailingAssertions != null && impl.CannedFailingAssertions.Any())
+      // Report all recycled failing assertions for this implementation.
+      if (impl.RecycledFailingAssertions != null && impl.RecycledFailingAssertions.Any())
       {
         // TODO(wuestholz): Uncomment this.
         // outcome = Outcome.Errors;
-        foreach (var a in impl.CannedFailingAssertions)
+        foreach (var a in impl.RecycledFailingAssertions)
         {
           var oldCex = impl.ErrorChecksumToCachedError[a.Checksum] as Counterexample;
           if (oldCex != null)
           {
-            // TODO(wuestholz): Maybe we could create a "fresh" counterexample instead.
-            // TransferCmd trCmd = null;
-            // var oldRetCex = oldCex as ReturnCounterexample;
-            // if (oldRetCex != null)
-            // {
-            //   trCmd = oldRetCex.FailingReturn;
-            // }
-            // var cex = AssertCmdToCounterexample(a, trCmd, oldCex.Trace, oldCex.Model, oldCex.MvInfo, oldCex.Context);
-            // cex.RequestId = oldCex.RequestId;
-
             // TODO(wuestholz): Uncomment this.
-            // var oldReqId = oldCex.RequestId;
             // callback.OnCounterexample(oldCex, null);
-            // oldCex.RequestId = oldReqId;
           }
         }
       }
@@ -2677,7 +2665,6 @@ namespace VC {
         #region Get rid of empty blocks
         {
           RemoveEmptyBlocksIterative(impl.Blocks);
-          // TODO(wuestholz): Update impl.AssertionChecksums and maybe impl.CannedFailingAssertions.
           impl.PruneUnreachableBlocks();
         }
         #endregion Get rid of empty blocks

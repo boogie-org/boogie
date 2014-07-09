@@ -2682,15 +2682,15 @@ namespace Microsoft.Boogie {
 
     public ISet<byte[]> AssertionChecksumsInPreviousSnapshot { get; set; }
 
-    public IList<AssertCmd> CannedFailingAssertions { get; protected set; }
+    public IList<AssertCmd> RecycledFailingAssertions { get; protected set; }
 
-    public void AddCannedFailingAssertion(AssertCmd assertion)
+    public void AddRecycledFailingAssertion(AssertCmd assertion)
     {
-      if (CannedFailingAssertions == null)
+      if (RecycledFailingAssertions == null)
       {
-        CannedFailingAssertions = new List<AssertCmd>();
+        RecycledFailingAssertions = new List<AssertCmd>();
       }
-      CannedFailingAssertions.Add(assertion);
+      RecycledFailingAssertions.Add(assertion);
     }
 
     // Strongly connected components

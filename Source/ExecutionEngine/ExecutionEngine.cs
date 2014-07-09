@@ -216,12 +216,12 @@ namespace Microsoft.Boogie
 
   public class ErrorInformationFactory
   {
-    public virtual ErrorInformation CreateErrorInformation(IToken tok, string msg, string requestId = null, string category = null)
+    public virtual ErrorInformation CreateErrorInformation(IToken tok, string msg, string requestId = null, string originalRequestId = null, string category = null)
     {
       Contract.Requires(1 <= tok.line && 1 <= tok.col);
       Contract.Requires(msg != null);
 
-      return ErrorInformation.CreateErrorInformation(tok, msg, requestId, category);
+      return ErrorInformation.CreateErrorInformation(tok, msg, requestId, originalRequestId, category);
     }
   }
 
@@ -233,6 +233,7 @@ namespace Microsoft.Boogie
     public string Category { get; set; }
     public string BoogieErrorCode { get; set; }
     public readonly List<AuxErrorInfo> Aux = new List<AuxErrorInfo>();
+    public string OriginalRequestId { get; set; }
     public string RequestId { get; set; }
     public ErrorKind Kind { get; set; }
     public string ImplementationName { get; set; }
@@ -284,10 +285,11 @@ namespace Microsoft.Boogie
       Msg = CleanUp(msg);
     }
 
-    internal static ErrorInformation CreateErrorInformation(IToken tok, string msg, string requestId = null, string category = null)
+    internal static ErrorInformation CreateErrorInformation(IToken tok, string msg, string requestId = null, string originalRequestId = null, string category = null)
     {
       var result = new ErrorInformation(tok, msg);
       result.RequestId = requestId;
+      result.OriginalRequestId = originalRequestId;
       result.Category = category;
       return result;
     }
@@ -1564,39 +1566,39 @@ namespace Microsoft.Boogie
       var assertError = error as AssertCounterexample;
       if (callError != null)
       {
-        errorInfo = errorInformationFactory.CreateErrorInformation(callError.FailingCall.tok, callError.FailingCall.ErrorData as string ?? "A precondition for this call might not hold.", callError.RequestId, cause);
+        errorInfo = errorInformationFactory.CreateErrorInformation(callError.FailingCall.tok, callError.FailingCall.ErrorData as string ?? "A precondition for this call might not hold.", callError.RequestId, callError.OriginalRequestId, cause);
         errorInfo.BoogieErrorCode = "BP5002";
         errorInfo.Kind = ErrorKind.Precondition;
         errorInfo.AddAuxInfo(callError.FailingRequires.tok, callError.FailingRequires.ErrorData as string ?? "This is the precondition that might not hold.", "Related location");
 
         if (!CommandLineOptions.Clo.ForceBplErrors && callError.FailingRequires.ErrorMessage != null)
         {
-          errorInfo = errorInformationFactory.CreateErrorInformation(null, callError.FailingRequires.ErrorMessage, callError.RequestId, cause);
+          errorInfo = errorInformationFactory.CreateErrorInformation(null, callError.FailingRequires.ErrorMessage, callError.RequestId, callError.OriginalRequestId, cause);
         }
       }
       else if (returnError != null)
       {
-        errorInfo = errorInformationFactory.CreateErrorInformation(returnError.FailingReturn.tok, "A postcondition might not hold on this return path.", returnError.RequestId, cause);
+        errorInfo = errorInformationFactory.CreateErrorInformation(returnError.FailingReturn.tok, "A postcondition might not hold on this return path.", returnError.RequestId, returnError.OriginalRequestId, cause);
         errorInfo.BoogieErrorCode = "BP5003";
         errorInfo.Kind = ErrorKind.Postcondition;
         errorInfo.AddAuxInfo(returnError.FailingEnsures.tok, returnError.FailingEnsures.ErrorData as string ?? "This is the postcondition that might not hold.", "Related location");
 
         if (!CommandLineOptions.Clo.ForceBplErrors && returnError.FailingEnsures.ErrorMessage != null)
         {
-          errorInfo = errorInformationFactory.CreateErrorInformation(null, returnError.FailingEnsures.ErrorMessage, returnError.RequestId, cause);
+          errorInfo = errorInformationFactory.CreateErrorInformation(null, returnError.FailingEnsures.ErrorMessage, returnError.RequestId, returnError.OriginalRequestId, cause);
         }
       }
       else // error is AssertCounterexample
       {
         if (assertError.FailingAssert is LoopInitAssertCmd)
         {
-          errorInfo = errorInformationFactory.CreateErrorInformation(assertError.FailingAssert.tok, "This loop invariant might not hold on entry.", assertError.RequestId, cause);
+          errorInfo = errorInformationFactory.CreateErrorInformation(assertError.FailingAssert.tok, "This loop invariant might not hold on entry.", assertError.RequestId, assertError.OriginalRequestId, cause);
           errorInfo.BoogieErrorCode = "BP5004";
           errorInfo.Kind = ErrorKind.InvariantEntry;
         }
         else if (assertError.FailingAssert is LoopInvMaintainedAssertCmd)
         {
-          errorInfo = errorInformationFactory.CreateErrorInformation(assertError.FailingAssert.tok, "This loop invariant might not be maintained by the loop.", assertError.RequestId, cause);
+          errorInfo = errorInformationFactory.CreateErrorInformation(assertError.FailingAssert.tok, "This loop invariant might not be maintained by the loop.", assertError.RequestId, assertError.OriginalRequestId, cause);
           errorInfo.BoogieErrorCode = "BP5005";
           errorInfo.Kind = ErrorKind.InvariantMaintainance;
         }
@@ -1620,7 +1622,7 @@ namespace Microsoft.Boogie
             bec = "BP5001";
           }
 
-          errorInfo = errorInformationFactory.CreateErrorInformation(tok, msg, assertError.RequestId, cause);
+          errorInfo = errorInformationFactory.CreateErrorInformation(tok, msg, assertError.RequestId, assertError.OriginalRequestId, cause);
           errorInfo.BoogieErrorCode = bec;
           errorInfo.Kind = ErrorKind.Assertion;
         }

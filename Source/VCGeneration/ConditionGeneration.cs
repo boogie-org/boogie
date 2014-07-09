@@ -81,6 +81,7 @@ namespace Microsoft.Boogie {
     public ProverContext Context;
     [Peer]
     public List<string>/*!>!*/ relatedInformation;
+    public string OriginalRequestId;
     public string RequestId;
     public abstract byte[] Checksum { get; }
 
@@ -1103,6 +1104,10 @@ namespace VC {
         {
           ce.RequestId = RequestId;
         }
+        if (ce.OriginalRequestId == null)
+        {
+          ce.OriginalRequestId = RequestId;
+        }
         examples.Add(ce);
       }
 
@@ -1420,10 +1425,10 @@ namespace VC {
         byte[] currentChecksum = null;
         foreach (Block p in b.Predecessors) {
           p.succCount--;
-          if (b.Checksum != null)
+          if (p.Checksum != null)
           {
             // Compute the checksum based on the checksums of the predecessor. The order should not matter.
-            currentChecksum = ChecksumHelper.CombineChecksums(b.Checksum, currentChecksum, true);
+            currentChecksum = ChecksumHelper.CombineChecksums(p.Checksum, currentChecksum, true);
           }
           if (p.succCount == 0)
             block2Incarnation.Remove(p);
@@ -1532,11 +1537,13 @@ namespace VC {
                    && currentImplementation.ErrorChecksumToCachedError.ContainsKey(ac.Checksum)
                    && (currentImplementation.InjectedAssumptionVariables == null || !currentImplementation.InjectedAssumptionVariables.Any(v => incarnationMap.ContainsKey(v))))
           {
+            // TODO(wuestholz): Do the same for assertions if they have been proved in the previous snapshot.
+
             // Turn it into an assume statement.
-            // TODO(wuestholz): Uncomment this once the canned errors are reported.            
+            // TODO(wuestholz): Uncomment this.
             // pc = new AssumeCmd(ac.tok, copy);
-            pc.Attributes = new QKeyValue(Token.NoToken, "canned_failing_assertion", new List<object>(), pc.Attributes);
-            currentImplementation.AddCannedFailingAssertion(ac);
+            pc.Attributes = new QKeyValue(Token.NoToken, "recycled_failing_assertion", new List<object>(), pc.Attributes);
+            currentImplementation.AddRecycledFailingAssertion(ac);
           }
         }
         else if (pc is AssumeCmd

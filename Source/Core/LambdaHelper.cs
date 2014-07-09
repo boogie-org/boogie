@@ -14,13 +14,13 @@ namespace Microsoft.Boogie {
   using Set = GSet<object>;  // for the purposes here, "object" really means "either Variable or TypeVariable"
 
   public static class LambdaHelper {
-    public static Absy Desugar(Absy node, out List<Expr/*!*/>/*!*/ axioms, out List<Function/*!*/>/*!*/ functions) {
-      Contract.Requires(node != null);
+    public static Program Desugar(Program program, out List<Expr/*!*/>/*!*/ axioms, out List<Function/*!*/>/*!*/ functions) {
+      Contract.Requires(program != null);
       Contract.Ensures(cce.NonNullElements(Contract.ValueAtReturn(out functions)));
       Contract.Ensures(cce.NonNullElements(Contract.ValueAtReturn(out axioms)));
-      Contract.Ensures(Contract.Result<Absy>() != null);
+      Contract.Ensures(Contract.Result<Program>() != null);
       LambdaVisitor v = new LambdaVisitor();
-      node = v.Visit(node);
+      program = v.VisitProgram(program);
       axioms = v.lambdaAxioms;
       functions = v.lambdaFunctions;
       if (CommandLineOptions.Clo.TraceVerify) {
@@ -34,7 +34,7 @@ namespace Microsoft.Boogie {
           Console.WriteLine();
         }
       }
-      return node;
+      return program;
     }
 
     public static void ExpandLambdas(Program prog) {
@@ -60,7 +60,7 @@ namespace Microsoft.Boogie {
         Contract.Invariant(cce.NonNullElements(lambdaFunctions));
       }
 
-      static int lambdaid = 0;
+      int lambdaid = 0;
 
       public override Expr VisitLambdaExpr(LambdaExpr lambda) {
         var baseResult = base.VisitLambdaExpr(lambda);

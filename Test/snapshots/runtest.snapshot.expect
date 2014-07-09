@@ -227,3 +227,11 @@ Execution trace:
     Snapshots21.v1.bpl(14,5): anon3
 
 Boogie program verifier finished with 0 verified, 2 errors
+Snapshots22.v0.bpl(7,9): Error BP5001: This assertion might not hold.
+Execution trace:
+    Snapshots22.v0.bpl(5,5): anon0
+    Snapshots22.v0.bpl(7,9): anon4_Then
+
+Boogie program verifier finished with 0 verified, 1 error
+
+Boogie program verifier finished with 1 verified, 0 errors
