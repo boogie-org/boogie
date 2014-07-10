@@ -1998,6 +1998,7 @@ namespace Microsoft.Boogie {
     public string/*!*/ callee { get; set; }
     public Procedure Proc;
     public LocalVariable AssignedAssumptionVariable;
+    public bool EmitDependenciesChecksum;
 
     // Element of the following lists can be null, which means that
     // the call happens with * as these parameters
@@ -2085,6 +2086,10 @@ namespace Microsoft.Boogie {
         stream.Write(" := ");
       }
       stream.Write(TokenTextWriter.SanitizeIdentifier(callee));
+      if (stream.UseForComputingChecksums && EmitDependenciesChecksum)
+      {
+        stream.Write(string.Format("[dependencies_checksum:{0}]", Proc.DependenciesChecksum));
+      }
       stream.Write("(");
       sep = "";
       foreach (Expr arg in Ins) {

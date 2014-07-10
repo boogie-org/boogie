@@ -880,6 +880,8 @@ namespace Microsoft.Boogie
       {
         // TODO(wuestholz): Maybe we should speed up this lookup.
         OtherDefinitionAxiomsCollector.Collect(program.TopLevelDeclarations.OfType<Axiom>());
+        // TODO(wuestholz): Maybe we should speed up this lookup.
+        program.TopLevelDeclarations.OfType<Function>().Iter(fun => { DependencyCollector.DependenciesChecksum(fun); });
         impls.Iter(impl => { DependencyCollector.DependenciesChecksum(impl); });
         stablePrioritizedImpls = impls.OrderByDescending(
           impl => impl.Priority != 1 ? impl.Priority : Cache.VerificationPriority(impl)).ToArray();

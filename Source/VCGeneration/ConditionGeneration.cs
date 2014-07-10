@@ -1531,14 +1531,24 @@ namespace VC {
             passiveCmds.Add(new AssumeCmd(Token.NoToken, expr));
           }
           else if (currentImplementation != null
+                   && ac.Checksum != null
+                   && (currentImplementation.AssertionChecksumsInPreviousSnapshot != null && currentImplementation.AssertionChecksumsInPreviousSnapshot.Contains(ac.Checksum))
+                   && currentImplementation.ErrorChecksumToCachedError != null
+                   && !currentImplementation.ErrorChecksumToCachedError.ContainsKey(ac.Checksum)
+                   && (currentImplementation.InjectedAssumptionVariables == null || !currentImplementation.InjectedAssumptionVariables.Any(v => incarnationMap.ContainsKey(v))))
+          {
+            // Turn it into an assume statement.
+            // TODO(wuestholz): Uncomment this.
+            // pc = new AssumeCmd(ac.tok, copy);
+            pc.Attributes = new QKeyValue(Token.NoToken, "verified_assertion", new List<object>(), pc.Attributes);
+          }
+          else if (currentImplementation != null
                    && currentImplementation.AnyErrorsInCachedSnapshot
                    && ac.Checksum != null
                    && (currentImplementation.AssertionChecksumsInPreviousSnapshot != null && currentImplementation.AssertionChecksumsInPreviousSnapshot.Contains(ac.Checksum))
                    && currentImplementation.ErrorChecksumToCachedError.ContainsKey(ac.Checksum)
                    && (currentImplementation.InjectedAssumptionVariables == null || !currentImplementation.InjectedAssumptionVariables.Any(v => incarnationMap.ContainsKey(v))))
           {
-            // TODO(wuestholz): Do the same for assertions if they have been proved in the previous snapshot.
-
             // Turn it into an assume statement.
             // TODO(wuestholz): Uncomment this.
             // pc = new AssumeCmd(ac.tok, copy);
