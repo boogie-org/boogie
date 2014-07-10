@@ -127,14 +127,14 @@ Snapshots20.v0.bpl(13,9): Error BP5001: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 1 error
 Snapshots20.v1.bpl(9,9): Error BP5001: This assertion might not hold.
-Snapshots20.v1.bpl(13,9): Error BP5001: This assertion might not hold.
+Snapshots20.v0.bpl(13,9): Error BP5001: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 2 errors
 Snapshots21.v0.bpl(7,9): Error BP5001: This assertion might not hold.
 Snapshots21.v0.bpl(11,9): Error BP5001: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 2 errors
-Snapshots21.v1.bpl(11,9): Error BP5001: This assertion might not hold.
+Snapshots21.v0.bpl(11,9): Error BP5001: This assertion might not hold.
 Snapshots21.v1.bpl(14,5): Error BP5001: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 2 errors

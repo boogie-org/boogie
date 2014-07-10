@@ -1538,8 +1538,7 @@ namespace VC {
                    && (currentImplementation.InjectedAssumptionVariables == null || !currentImplementation.InjectedAssumptionVariables.Any(v => incarnationMap.ContainsKey(v))))
           {
             // Turn it into an assume statement.
-            // TODO(wuestholz): Uncomment this.
-            // pc = new AssumeCmd(ac.tok, copy);
+            pc = new AssumeCmd(ac.tok, copy);
             pc.Attributes = new QKeyValue(Token.NoToken, "verified_assertion", new List<object>(), pc.Attributes);
           }
           else if (currentImplementation != null
@@ -1550,8 +1549,7 @@ namespace VC {
                    && (currentImplementation.InjectedAssumptionVariables == null || !currentImplementation.InjectedAssumptionVariables.Any(v => incarnationMap.ContainsKey(v))))
           {
             // Turn it into an assume statement.
-            // TODO(wuestholz): Uncomment this.
-            // pc = new AssumeCmd(ac.tok, copy);
+            pc = new AssumeCmd(ac.tok, copy);
             pc.Attributes = new QKeyValue(Token.NoToken, "recycled_failing_assertion", new List<object>(), pc.Attributes);
             currentImplementation.AddRecycledFailingAssertion(ac);
           }

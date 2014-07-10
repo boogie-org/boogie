@@ -1623,15 +1623,13 @@ namespace VC {
       // Report all recycled failing assertions for this implementation.
       if (impl.RecycledFailingAssertions != null && impl.RecycledFailingAssertions.Any())
       {
-        // TODO(wuestholz): Uncomment this.
-        // outcome = Outcome.Errors;
+        outcome = Outcome.Errors;
         foreach (var a in impl.RecycledFailingAssertions)
         {
           var oldCex = impl.ErrorChecksumToCachedError[a.Checksum] as Counterexample;
           if (oldCex != null)
           {
-            // TODO(wuestholz): Uncomment this.
-            // callback.OnCounterexample(oldCex, null);
+            callback.OnCounterexample(oldCex, null);
           }
         }
       }
