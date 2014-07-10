@@ -1225,7 +1225,8 @@ namespace Microsoft.Boogie {
       Comment = c;
     }
     public override void Emit(TokenTextWriter stream, int level) {
-      
+      if (stream.UseForComputingChecksums) { return; }
+
       if (this.Comment.Contains("\n")) {
         stream.WriteLine(this, level, "/* {0} */", this.Comment);
       } else {
