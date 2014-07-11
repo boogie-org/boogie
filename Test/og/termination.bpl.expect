@@ -1,0 +1,3 @@
+termination.bpl(9,31): Error: Loop at termination.bpl(12, 3) not simulated appropriately at phase 1
+
+1 type checking errors detected in termination.bpl

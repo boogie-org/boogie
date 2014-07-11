@@ -10,6 +10,7 @@ procedure {:yields} {:phase 1} main() {
   yield;
   call X();
   while (*)
+  invariant {:terminates} {:phase 1} true;
   {
     call Y();
   }

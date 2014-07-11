@@ -1,0 +1,3 @@
+async-bug.bpl(11,10): Error: Const linear variable cannot be an argument for a const parameter of an async procedure call
+async-bug.bpl(16,10): Error: Const linear variable cannot be an argument for a const parameter of an async procedure call
+2 type checking errors detected in async-bug.bpl

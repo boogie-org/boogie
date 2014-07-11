@@ -1,12 +1,9 @@
-﻿#if QED
-
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Microsoft.Boogie;
-using Microsoft.Automata;
 using System.Diagnostics.Contracts;
 using Microsoft.Boogie.AbstractInterpretation;
 using Microsoft.Boogie.GraphUtil;
@@ -16,42 +13,9 @@ namespace Microsoft.Boogie
 {
     class YieldTypeChecker
     {
-        static CharSetSolver yieldTypeCheckerAutomatonSolver;
-        static Automaton<BvSet> yieldTypeCheckerAutomaton;
         static List<Tuple<int, int, int>> yieldTypeCheckerAutomatonEdges;
         static YieldTypeChecker()
         {
-            yieldTypeCheckerAutomatonSolver = new CharSetSolver(BitWidth.BV7);
-            yieldTypeCheckerAutomaton = yieldTypeCheckerAutomatonSolver.ReadFromRanges(3, new int[] { 0 },
-                new int[][] {
-                    new int[] {3, 'P', 'P', 3 },
-                    new int[] {3, 'Y', 'Y', 0 },
-                    new int[] {3, 'Y', 'Y', 1 },
-                    new int[] {3, 'Y', 'Y', 2 },
-                    new int[] {0, 'P', 'P', 0 },
-                    new int[] {0, 'Y', 'Y', 0 },
-                    new int[] {0, 'Y', 'Y', 1 },
-                    new int[] {0, 'Y', 'Y', 2 },
-                    new int[] {1, 'P', 'P', 1 },
-                    new int[] {1, 'R', 'R', 1 },
-                    new int[] {1, 'B', 'B', 1 },
-                    new int[] {1, 'Y', 'Y', 1 },
-                    new int[] {1, 'Y', 'Y', 0 },
-                    new int[] {1, 'A', 'A', 2 },
-                    new int[] {1, 'P', 'P', 2 },
-                    new int[] {1, 'R', 'R', 2 },
-                    new int[] {1, 'B', 'B', 2 },
-                    new int[] {1, 'Y', 'Y', 2 },
-                    new int[] {2, 'L', 'L', 2 },
-                    new int[] {2, 'B', 'B', 2 },
-                    new int[] {2, 'P', 'P', 2 },
-                    new int[] {2, 'Y', 'Y', 2 },
-                    new int[] {2, 'Y', 'Y', 1 },
-                    new int[] {2, 'Y', 'Y', 0 },
-                });
-            // uncomment the following line to visualize the spec automaton
-            // yieldTypeCheckerAutomatonSolver.ShowGraph(yieldTypeCheckerAutomaton, "yieldTypeCheckerAutomaton.dgml");
-
             yieldTypeCheckerAutomatonEdges = new List<Tuple<int, int, int>>();
             AddEdge(0, 'P', 0);
             AddEdge(0, 'Y', 0);
@@ -125,22 +89,6 @@ namespace Microsoft.Boogie
                     initialConstraints[absyToNode[block]] = new HashSet<int>(new int[] { 0, 1 });
                 }
             }
-
-            Automaton<BvSet> implAutomaton = yieldTypeCheckerAutomatonSolver.ReadFromRanges(dummyInitial, finalStates.ToArray(), transitions);
-            // yieldTypeCheckerAutomatonSolver.SaveAsDgml(implAutomaton, string.Format("{0}.dgml", impl.Name));
-            List<BvSet> witnessSet;
-            var isNonEmpty = Automaton<BvSet>.CheckDifference(
-                                                           implAutomaton,
-                                                           yieldTypeCheckerAutomaton,
-                                                           0,
-                                                           yieldTypeCheckerAutomatonSolver,
-                                                           out witnessSet);
-            var diffAutomaton = implAutomaton.Minus(yieldTypeCheckerAutomaton, yieldTypeCheckerAutomatonSolver);
-            if (isNonEmpty)
-            {
-                moverTypeChecker.Error(impl, PrintErrorTrace(diffAutomaton));
-            }
-
             SimulationRelation<int, int, int> x = new SimulationRelation<int, int, int>(implEdges, yieldTypeCheckerAutomatonEdges, initialConstraints);
             Dictionary<int, HashSet<int>> simulationRelation = x.ComputeSimulationRelation();
             foreach (Block block in loopHeaders)
@@ -149,7 +97,6 @@ namespace Microsoft.Boogie
                 {
                     IToken tok = block.tok;
                     moverTypeChecker.Error(impl, string.Format("Loop at {0}({1}, {2}) not simulated appropriately at phase {3}\n", tok.filename, tok.line, tok.col, currPhaseNum));
-                    yieldTypeCheckerAutomatonSolver.SaveAsDgml(implAutomaton, string.Format("{0}_{1}.dgml", impl.Name, currPhaseNum));
                 }
             }
         }
@@ -167,20 +114,6 @@ namespace Microsoft.Boogie
             return false;
         }
         
-        private string PrintErrorTrace(Automaton<BvSet> errorAutomaton)
-        {
-            String s = "\nBody of " + impl.Proc.Name + " is not yield_type_safe at phase " + currPhaseNum.ToString() + "\n";
-            foreach (var move in errorAutomaton.GetMoves())
-            {
-                if (nodeToAbsy.ContainsKey(move.SourceState))
-                {
-                    IToken tok = nodeToAbsy[move.SourceState].tok;
-                    s += string.Format("{0}({1}, {2})\n", tok.filename, tok.line, tok.col);
-                }
-            }
-            return s;
-        }
-
         public static void PerformYieldSafeCheck(MoverTypeChecker moverTypeChecker)
         {
             foreach (var decl in moverTypeChecker.program.TopLevelDeclarations)
@@ -390,5 +323,3 @@ namespace Microsoft.Boogie
         }
     }
 }
-
-#endif

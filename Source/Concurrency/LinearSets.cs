@@ -466,9 +466,14 @@ namespace Microsoft.Boogie
                     Error(node, "Only local linear variable can be an actual input parameter of a procedure call");
                     continue;
                 }
-                if (FindLinearKind(formal) == LinearKind.LINEAR && FindLinearKind(actual.Decl) == LinearKind.CONST)
+                if (FindLinearKind(actual.Decl) == LinearKind.CONST && FindLinearKind(formal) == LinearKind.LINEAR)
                 {
-                    Error(node, "Only non-const linear variable can be an actual parameter to a non-const input parameter of a procedure call");
+                    Error(node, "Const linear variable cannot be an argument for a linear input parameter of a procedure call");
+                    continue;
+                }
+                if (FindLinearKind(actual.Decl) == LinearKind.CONST && FindLinearKind(formal) == LinearKind.CONST && node.IsAsync)
+                {
+                    Error(node, "Const linear variable cannot be an argument for a const parameter of an async procedure call");
                     continue;
                 }
                 if (inVars.Contains(actual.Decl))

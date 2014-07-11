@@ -333,9 +333,7 @@ namespace Microsoft.Boogie
             if (errorCount > 0) return;
             this.VisitProgram(program);
             if (errorCount > 0) return;
-#if QED
             YieldTypeChecker.PerformYieldSafeCheck(this);
-#endif
         }
 
         public MoverTypeChecker(Program program)
