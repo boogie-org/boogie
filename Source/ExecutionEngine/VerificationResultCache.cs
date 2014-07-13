@@ -197,7 +197,7 @@ namespace Microsoft.Boogie
       // TODO(wuestholz): Maybe we should speed up this lookup.
       var oldProc = programInCachedSnapshot.TopLevelDeclarations.OfType<Procedure>().FirstOrDefault(p => p.Name == node.Proc.Name);
       if (oldProc != null
-          && DependencyCollector.DependenciesChecksum(oldProc) != DependencyCollector.DependenciesChecksum(node.Proc)
+          && oldProc.DependenciesChecksum != node.Proc.DependenciesChecksum
           && node.AssignedAssumptionVariable == null)
       {
         if (DependencyCollector.AllFunctionDependenciesAreDefinedAndUnchanged(oldProc, Program))
@@ -293,87 +293,26 @@ namespace Microsoft.Boogie
 
   sealed class DependencyCollector : ReadOnlyVisitor
   {
-    private HashSet<Procedure> procedureDependencies;
-    private HashSet<Function> functionDependencies;
-    private bool allDependenciesHaveChecksum = true;
+    private DeclWithFormals currentDeclaration;
 
-    public DependencyCollector()
-    {
-      procedureDependencies = new HashSet<Procedure>();
-      functionDependencies = new HashSet<Function>();
-    }
-
-    static bool Collect(Absy node, out ISet<Procedure> procedureDependencies, out ISet<Function> functionDependencies)
+    public static void Collect(Program program)
     {
       var dc = new DependencyCollector();
-      dc.Visit(node);
-      procedureDependencies = dc.procedureDependencies;
-      functionDependencies = dc.functionDependencies;
-      return dc.allDependenciesHaveChecksum;
-    }
-
-    static bool Collect(Procedure proc, out ISet<Function> functionDependencies)
-    {
-      var dc = new DependencyCollector();
-      dc.Visit(proc);
-      functionDependencies = dc.functionDependencies;
-      return dc.allDependenciesHaveChecksum;
+      dc.VisitProgram(program);
     }
 
     public static bool AllFunctionDependenciesAreDefinedAndUnchanged(Procedure oldProc, Program newProg)
     {
       Contract.Requires(oldProc != null && newProg != null);
 
-      ISet<Function> oldDeps;
-      if (!Collect(oldProc, out oldDeps))
-      {
-        return false;
-      }
       // TODO(wuestholz): Maybe we should speed up this lookup.
       var funcs = newProg.TopLevelDeclarations.OfType<Function>();
-      return oldDeps.All(dep => funcs.Any(f => f.Name == dep.Name && f.Checksum == dep.Checksum));
-    }
-
-    public static string DependenciesChecksum(DeclWithFormals decl)
-    {
-      if (decl.DependenciesChecksum != null)
-      {
-        return decl.DependenciesChecksum;
-      }
-
-      ISet<Procedure> procDeps;
-      ISet<Function> funcDeps;
-      if (!DependencyCollector.Collect(decl, out procDeps, out funcDeps))
-      {
-        return null;
-      }
-
-      string result = null;
-      using (var ms = new System.IO.MemoryStream())
-      using (var wr = new System.IO.BinaryWriter(ms))
-      {
-        foreach (var dep in procDeps)
-        {
-          wr.Write(Encoding.UTF8.GetBytes(dep.Checksum));
-        }
-        foreach (var dep in funcDeps)
-        {
-          wr.Write(Encoding.UTF8.GetBytes(dep.Checksum));
-        }
-        wr.Flush();
-        wr.BaseStream.Position = 0;
-        var md5 = System.Security.Cryptography.MD5.Create();
-        var hashedData = md5.ComputeHash(wr.BaseStream);
-        result = BitConverter.ToString(hashedData);
-      }
-      decl.DependenciesChecksum = result;
-      return result;
+      return oldProc.FunctionDependencies != null && oldProc.FunctionDependencies.All(dep => funcs.Any(f => f.Name == dep.Name && f.DependenciesChecksum == dep.DependenciesChecksum));
     }
 
     public override Procedure VisitProcedure(Procedure node)
     {
-      procedureDependencies.Add(node);
-      allDependenciesHaveChecksum &= node.Checksum != null;
+      currentDeclaration = node;
 
       foreach (var param in node.InParams)
       {
@@ -383,13 +322,38 @@ namespace Microsoft.Boogie
         }
       }
 
-      return base.VisitProcedure(node);
+      var result = base.VisitProcedure(node);
+      node.DependenciesCollected = true;
+      currentDeclaration = null;
+      return result;
+    }
+
+    public override Implementation VisitImplementation(Implementation node)
+    {
+      currentDeclaration = node;
+
+      foreach (var param in node.InParams)
+      {
+        if (param.TypedIdent != null && param.TypedIdent.WhereExpr != null)
+        {
+          VisitExpr(param.TypedIdent.WhereExpr);
+        }
+      }
+
+      if (node.Proc != null)
+      {
+        node.AddProcedureDependency(node.Proc);
+      }
+
+      var result = base.VisitImplementation(node);
+      node.DependenciesCollected = true;
+      currentDeclaration = null;
+      return result;
     }
 
     public override Function VisitFunction(Function node)
     {
-      functionDependencies.Add(node);
-      allDependenciesHaveChecksum &= node.Checksum != null;
+      currentDeclaration = node;
 
       if (node.DefinitionAxiom != null)
       {
@@ -406,15 +370,17 @@ namespace Microsoft.Boogie
         }
       }
 
-      return base.VisitFunction(node);
+      var result = base.VisitFunction(node);
+      node.DependenciesCollected = true;
+      currentDeclaration = null;
+      return result;
     }
 
     public override Cmd VisitCallCmd(CallCmd node)
     {
-      var visited = procedureDependencies.Contains(node.Proc);
-      if (!visited)
+      if (currentDeclaration != null)
       {
-        VisitProcedure(node.Proc);
+        currentDeclaration.AddProcedureDependency(node.Proc);
       }
 
       return base.VisitCallCmd(node);
@@ -423,13 +389,9 @@ namespace Microsoft.Boogie
     public override Expr VisitNAryExpr(NAryExpr node)
     {
       var funCall = node.Fun as FunctionCall;
-      if (funCall != null)
+      if (funCall != null && currentDeclaration != null)
       {
-        var visited = functionDependencies.Contains(funCall.Func);
-        if (!visited)
-        {
-          VisitFunction(funCall.Func);
-        }
+        currentDeclaration.AddFunctionDependency(funCall.Func);
       }
 
       return base.VisitNAryExpr(node);

@@ -2089,7 +2089,11 @@ namespace Microsoft.Boogie {
       stream.Write(TokenTextWriter.SanitizeIdentifier(callee));
       if (stream.UseForComputingChecksums && EmitDependenciesChecksum)
       {
-        stream.Write(string.Format("[dependencies_checksum:{0}]", Proc.DependenciesChecksum));
+        var c = Proc.DependenciesChecksum;
+        if (c != null)
+        {
+          stream.Write(string.Format("[dependencies_checksum:{0}]", c));
+        }
       }
       stream.Write("(");
       sep = "";
