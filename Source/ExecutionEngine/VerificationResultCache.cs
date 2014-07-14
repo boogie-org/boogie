@@ -307,7 +307,8 @@ namespace Microsoft.Boogie
 
       // TODO(wuestholz): Maybe we should speed up this lookup.
       var funcs = newProg.TopLevelDeclarations.OfType<Function>();
-      return oldProc.FunctionDependencies != null && oldProc.FunctionDependencies.All(dep => funcs.Any(f => f.Name == dep.Name && f.DependenciesChecksum == dep.DependenciesChecksum));
+      return oldProc.DependenciesCollected
+             && (oldProc.FunctionDependencies == null || oldProc.FunctionDependencies.All(dep => funcs.Any(f => f.Name == dep.Name && f.DependenciesChecksum == dep.DependenciesChecksum)));
     }
 
     public override Procedure VisitProcedure(Procedure node)
