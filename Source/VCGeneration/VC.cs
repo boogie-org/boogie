@@ -618,7 +618,7 @@ namespace VC {
           List<Block> backup = impl.Blocks;
           Contract.Assert(backup != null);
           impl.Blocks = blocks;
-          impl.Emit(new TokenTextWriter(filename, sw, false), 0);
+          impl.Emit(new TokenTextWriter(filename, sw, /*setTokens=*/ false, /*pretty=*/ false), 0);
           impl.Blocks = backup;
           CommandLineOptions.Clo.PrintDesugarings = oldPrintDesugaringSetting;
           CommandLineOptions.Clo.PrintUnstructured = oldPrintUnstructured;
@@ -3737,9 +3737,9 @@ namespace VC {
         Expr e = (Expr)de.Value;
         Contract.Assert(e != null);
         Console.Write("  ");
-        v.Emit(new TokenTextWriter("<console>", Console.Out, false), 0);
+        v.Emit(new TokenTextWriter("<console>", Console.Out, /*setTokens=*/ false, /*pretty=*/ false), 0);
         Console.Write("  --> ");
-        e.Emit(new TokenTextWriter("<console>", Console.Out, false));
+        e.Emit(new TokenTextWriter("<console>", Console.Out, /*setTokens=*/ false, /*pretty=*/ false));
         Console.WriteLine();
       }
     }

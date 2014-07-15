@@ -25,7 +25,7 @@ namespace Microsoft.Boogie {
       functions = v.lambdaFunctions;
       if (CommandLineOptions.Clo.TraceVerify) {
         Console.WriteLine("Desugaring of lambda expressions produced {0} functions and {1} axioms:", functions.Count, axioms.Count);
-        TokenTextWriter wr = new TokenTextWriter("<console>", Console.Out);
+        TokenTextWriter wr = new TokenTextWriter("<console>", Console.Out, /*pretty=*/ false);
         foreach (Function f in functions) {
           f.Emit(wr, 0);
         }

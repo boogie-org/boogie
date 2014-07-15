@@ -755,7 +755,7 @@ namespace VC {
 
       TokenTextWriter debugWriter = null;
       if (CommandLineOptions.Clo.PrintWithUniqueASTIds) {
-        debugWriter = new TokenTextWriter("<console>", Console.Out, false);
+        debugWriter = new TokenTextWriter("<console>", Console.Out, /*setTokens=*/ false, /*pretty=*/ false);
         debugWriter.WriteLine("Effective precondition:");
       }
 
@@ -809,7 +809,7 @@ namespace VC {
 
       TokenTextWriter debugWriter = null;
       if (CommandLineOptions.Clo.PrintWithUniqueASTIds) {
-        debugWriter = new TokenTextWriter("<console>", Console.Out, false);
+        debugWriter = new TokenTextWriter("<console>", Console.Out, /*setTokens=*/ false, /*pretty=*/ false);
         debugWriter.WriteLine("Effective postcondition:");
       }
 
@@ -876,7 +876,7 @@ namespace VC {
 
       TokenTextWriter debugWriter = null;
       if (CommandLineOptions.Clo.PrintWithUniqueASTIds) {
-        debugWriter = new TokenTextWriter("<console>", Console.Out, false);
+        debugWriter = new TokenTextWriter("<console>", Console.Out, /*setTokens=*/ false, /*pretty=*/ false);
         debugWriter.WriteLine("Effective precondition:");
       }
 
@@ -933,7 +933,7 @@ namespace VC {
           post.Add(c);
 
           if (CommandLineOptions.Clo.PrintWithUniqueASTIds) {
-            c.Emit(new TokenTextWriter("<console>", Console.Out, false), 1);
+            c.Emit(new TokenTextWriter("<console>", Console.Out, /*setTokens=*/ false, /*pretty=*/ false), 1);
           }
         }
       }
@@ -957,7 +957,7 @@ namespace VC {
       Contract.Ensures(Contract.Result<List<Cmd>>() != null);
       TokenTextWriter debugWriter = null;
       if (CommandLineOptions.Clo.PrintWithUniqueASTIds) {
-        debugWriter = new TokenTextWriter("<console>", Console.Out, false);
+        debugWriter = new TokenTextWriter("<console>", Console.Out, /*setTokens=*/ false, /*pretty=*/ false);
         debugWriter.WriteLine("Effective precondition from where-clauses:");
       }
 
@@ -1125,7 +1125,7 @@ namespace VC {
       CommandLineOptions.Clo.PrintUnstructured = 2;  // print only the unstructured program
       bool oldPrintDesugaringSetting = CommandLineOptions.Clo.PrintDesugarings;
       CommandLineOptions.Clo.PrintDesugarings = printDesugarings;
-      impl.Emit(new TokenTextWriter("<console>", Console.Out, false), 0);
+      impl.Emit(new TokenTextWriter("<console>", Console.Out, /*setTokens=*/ false, /*pretty=*/ false), 0);
       CommandLineOptions.Clo.PrintDesugarings = oldPrintDesugaringSetting;
       CommandLineOptions.Clo.PrintUnstructured = oldPrintUnstructured;
     }

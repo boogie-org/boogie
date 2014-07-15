@@ -271,7 +271,7 @@ namespace Microsoft.Boogie.VCExprAST {
           sb.Append(TypeToString(t));
         } else {
           System.IO.StringWriter buffer = new System.IO.StringWriter();
-          using (TokenTextWriter stream = new TokenTextWriter("<buffer>", buffer, false)) {
+          using (TokenTextWriter stream = new TokenTextWriter("<buffer>", buffer, /*setTokens=*/ false, /*pretty=*/ false)) {
             t.Emit(stream);
           }
           sb.Append(buffer.ToString());

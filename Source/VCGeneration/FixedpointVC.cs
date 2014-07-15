@@ -748,7 +748,7 @@ namespace Microsoft.Boogie
 			if(mode != Mode.Corral || CommandLineOptions.Clo.PrintFixedPoint == null)
 				return; // not implemented for other annotation modes yet
 			
-			var twr = new TokenTextWriter(CommandLineOptions.Clo.PrintFixedPoint);
+            var twr = new TokenTextWriter(CommandLineOptions.Clo.PrintFixedPoint, /*pretty=*/ false);
 			Dictionary<string, RPFP.Node> pmap = new Dictionary<string,RPFP.Node> ();
 
 			foreach (var node in rpfp.nodes)
@@ -823,7 +823,7 @@ namespace Microsoft.Boogie
             if (mode != Mode.Corral || CommandLineOptions.Clo.PrintConjectures == null)
                 return; // not implemented for other annotation modes yet
 
-            var twr = new TokenTextWriter(CommandLineOptions.Clo.PrintConjectures + "." + ConjectureFileCounter.ToString());
+            var twr = new TokenTextWriter(CommandLineOptions.Clo.PrintConjectures + "." + ConjectureFileCounter.ToString(), /*pretty=*/ false);
             ConjectureFileCounter++;
 
             foreach (var c in rpfp.conjectures)
