@@ -158,11 +158,6 @@ namespace Microsoft.Boogie
             node.ComputePredecessorsForBlocks();
             GraphUtil.Graph<Block> graph = Program.GraphFromImpl(node);
             graph.ComputeLoops();
-            if (!graph.Reducible)
-            {
-                Error(node, "A loop in the implementation is not reducible");
-                return node;
-            }
 
             HashSet<Variable> start = new HashSet<Variable>(globalVarToDomainName.Keys);
             for (int i = 0; i < node.InParams.Count; i++)
@@ -234,14 +229,16 @@ namespace Microsoft.Boogie
                 }
             }
 
-            foreach (Block header in graph.Headers)
+            if (graph.Reducible)
             {
-                foreach (GlobalVariable g in globalVarToDomainName.Keys.Except(availableLinearVars[header]))
+                foreach (Block header in graph.Headers)
                 {
-                    Error(header, string.Format("Global variable {0} must be available at a loop head", g.Name));
+                    foreach (GlobalVariable g in globalVarToDomainName.Keys.Except(availableLinearVars[header]))
+                    {
+                        Error(header, string.Format("Global variable {0} must be available at a loop head", g.Name));
+                    }
                 }
             }
-
             return impl;
         }
         public void AddAvailableVars(CallCmd callCmd, HashSet<Variable> start)
