@@ -44,4 +44,5 @@ procedure {:yields} {:phase 1} Main()
   {
     par PB() | PC() | PD();
   }
+  yield;
 }

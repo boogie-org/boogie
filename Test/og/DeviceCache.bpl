@@ -67,6 +67,7 @@ requires {:phase 1} xls' == mapconstbool(true);
 	yield;
     	assert {:phase 1} Inv(ghostLock, currsize, newsize);
     }
+    yield;
 }
 
 procedure {:yields} {:phase 1} Thread({:cnst "tid"} tid: X)

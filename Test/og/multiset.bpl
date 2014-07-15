@@ -135,8 +135,6 @@ ensures {:right}  |{ A: assert tidIn != nil && tidIn != done;
         invariant {:phase 1} Inv(valid, elt, owner);
 	invariant {:phase 1} 0 <= j;
 	{
-                par Yield1();
-
                 call tidTmp := acquire(j, tidTmp);
                 call tidTmp, elt_j := getElt(j, tidTmp);
 		if(elt_j == null)
@@ -147,7 +145,6 @@ ensures {:right}  |{ A: assert tidIn != nil && tidIn != done;
                         tidOut := tidTmp;
 
                         par Yield1();
-
 			return;		
 		}
 		call tidTmp := release(j,tidTmp);
@@ -158,6 +155,8 @@ ensures {:right}  |{ A: assert tidIn != nil && tidIn != done;
 	}
 	r := -1;
         tidOut := tidTmp;
+
+        par Yield1();
 	return;
 }
 
@@ -316,8 +315,6 @@ ensures {:atomic}  |{ A: assert tidIn != nil && tidIn != done;
 	invariant {:phase 1} {:phase 2} (forall ii:int :: 0 <= ii && ii < max && old_valid[ii] ==> valid[ii] && old_elt[ii] == elt[ii]);
 	invariant {:phase 1} {:phase 2} 0 <= j;
 	{
-                par Yield12() | YieldLookUp(old_valid, old_elt);
-
                 call tidTmp := acquire(j, tidTmp);
                 call tidTmp, isThere := isEltThereAndValid(j, x, tidTmp);
 		if(isThere)
@@ -334,6 +331,8 @@ ensures {:atomic}  |{ A: assert tidIn != nil && tidIn != done;
 	}
 	found := false;
         tidOut := tidTmp;
+
+        par Yield12() | YieldLookUp(old_valid, old_elt);
 	return;
 }
 

@@ -46,7 +46,6 @@ procedure {:yields} {:phase 1} Main2()
   yield;
   while (*)
   {
-    yield;
     async call PB();
     yield;
     async call PE();
@@ -54,4 +53,5 @@ procedure {:yields} {:phase 1} Main2()
     async call PD();
     yield;
   }
+  yield;
 }

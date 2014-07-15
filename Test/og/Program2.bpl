@@ -12,11 +12,14 @@ ensures {:phase 1} x >= 8;
     call Incr(1); 
     call yield_x(7);
     call Incr(1); 
+    call yield_x(8);
 }
 
 procedure {:yields} {:phase 1} q() 
 { 
+    yield;
     call Incr(3); 
+    yield;
 }
 
 procedure {:yields} {:phase 0,1} Incr(val: int);

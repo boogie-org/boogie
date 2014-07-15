@@ -36,10 +36,14 @@ ensures {:phase 1} a[tid] == old(a)[tid] + 1;
 { 
     var t:int;
 
+    yield;
+    assert {:phase 1} a[tid] == old(a)[tid];
     call t := Read(tid); 
     yield;
-    assert {:phase 1} t == a[tid]; 
+    assert {:phase 1} a[tid] == t; 
     call Write(tid, t + 1); 
+    yield;
+    assert {:phase 1} a[tid] == t + 1; 
 }
 
 procedure {:yields} {:phase 0,1} Read({:cnst "tid"} tid: Tid) returns (val: int);

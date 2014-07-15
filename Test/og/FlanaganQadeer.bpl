@@ -22,12 +22,12 @@ procedure {:yields} {:phase 1} main()
     yield;
     while (*) 
     {
-        yield;
         call tid := Allocate();
         havoc val;
         async call foo(tid, val);
 	yield;
     }
+    yield;
 }
 procedure {:yields} {:phase 0,1} Lock(tid: X);
 ensures {:atomic} |{A: assume l == nil; l := tid; return true; }|;

@@ -640,7 +640,7 @@ namespace Microsoft.Boogie
             yieldCheckerBlocks.Insert(0, new Block(Token.NoToken, "enter", new List<Cmd>(), new GotoCmd(Token.NoToken, labels, labelTargets)));
 
             // Create the yield checker procedure
-            var yieldCheckerName = string.Format("{0}_YieldChecker_{1}", impl is Procedure ? "Proc" : "Impl", impl.Name);
+            var yieldCheckerName = string.Format("{0}_YieldChecker_{1}", "Impl", impl.Name);
             var yieldCheckerProc = new Procedure(Token.NoToken, yieldCheckerName, impl.TypeParameters, inputs, new List<Variable>(), new List<Requires>(), new List<IdentifierExpr>(), new List<Ensures>());
             yieldCheckerProc.AddAttribute("inline", new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1)));
             yieldCheckerProcs.Add(yieldCheckerProc);

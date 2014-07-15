@@ -7,12 +7,10 @@ procedure {:yields} {:phase 2} main()
     yield;
     while (*)
     {
-        yield;
-
         async call Customer();
-
         yield;
     }
+    yield;
 }
 
 procedure {:yields} {:phase 2} Customer()
@@ -20,16 +18,12 @@ procedure {:yields} {:phase 2} Customer()
     yield;
     while (*) 
     {
-    	yield;
-
         call Enter();
-
     	yield;
-
     	call Leave();
-
         yield;
     }
+    yield;
 }
 
 procedure {:yields} {:phase 1,2} Enter() 

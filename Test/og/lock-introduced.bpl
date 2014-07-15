@@ -21,16 +21,13 @@ ensures {:phase 2} InvLock(lock, b);
     while (*) 
     invariant {:phase 2} InvLock(lock, b);
     {
-    	yield;
-    	assert {:phase 2} InvLock(lock, b);
-
         call Enter(tid);
-
     	call Leave(tid);
-
         yield;
 	assert {:phase 2} InvLock(lock, b);
-    }
+    }    
+    yield;
+    assert {:phase 2} InvLock(lock, b);
 }
 
 function {:inline} InvLock(lock: X, b: bool) : bool

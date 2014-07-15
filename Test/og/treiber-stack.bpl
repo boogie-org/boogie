@@ -1,80 +1,221 @@
 // RUN: %boogie -noinfer -typeEncoding:m -useArrayTheory "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
-// XFAIL: *
-type Node;
+type Node = int;
+const unique null: Node;
 type lmap;
 function {:linear "Node"} dom(lmap): [Node]bool;
 function map(lmap): [Node]Node;
+function {:builtin "MapConst"} MapConstBool(bool) : [Node]bool;
 
-procedure {:yields} Load(i:Node) returns(v:Node);
-requires dom(stack)[i];
-ensures {:atomic 0} v == map(stack)[i];
+function EmptyLmap(): (lmap);
+axiom (dom(EmptyLmap()) == MapConstBool(false));
 
-procedure {:yields} Store({:linear "Node"} l_in:lmap, i:Node, v:Node) returns({:linear "Node"} l_out:lmap);
-requires dom(l_in)[i];
-ensures {:atomic 0} dom(l_out) == dom(l_in) && map(l_out) == map(l_in)[i := v];
+function Add(x: lmap, i: Node, v: Node): (lmap);
+axiom (forall x: lmap, i: Node, v: Node :: dom(Add(x, i, v)) == dom(x)[i:=true] && map(Add(x, i, v)) == map(x)[i := v]);
 
-procedure {:yields} TransferToStack(oldVal: Node, newVal: Node, {:linear "Node"} l_in:lmap) returns (r: bool, {:linear "Node"} l_out:lmap);
-requires dom(l_in)[newVal];
-modifies stack, TOP;
-ensures {:atomic 0} if oldVal == old(TOP)
-		    then newVal == TOP && dom(stack) == dom(old(stack))[newVal := true] && map(stack) == map(old(stack))[newVal := map(l_in)[newVal]]
-                    else TOP == old(TOP) && stack == old(stack) && l_out == l_in;
+function Remove(x: lmap, i: Node): (lmap);
+axiom (forall x: lmap, i: Node :: dom(Remove(x, i)) == dom(x)[i:=false] && map(Remove(x, i)) == map(x));
 
-procedure {:yields} TransferFromStack(oldVal: Node, newVal: Node) returns (r: bool, {:linear "Node"} l_out:lmap);
-requires dom(stack)[oldVal];
-modifies stack, TOP;
-ensures {:atomic 0} if oldVal == old(TOP)
-		    then dom(stack) == dom(old(stack))[oldVal := false] && map(stack) == map(old(stack)) && dom(l_out)[oldVal] && map(l_out)[oldVal] == map(old(stack))[oldVal]
-		    else TOP == old(TOP) && stack == old(stack);
+procedure {:yields} {:phase 0} ReadTopOfStack() returns (v:Node);
+ensures {:both} |{ A: /*v := TopOfStack;*/ return true; }|;
 
-procedure Alloc() returns (d: Node, {:linear "Node"} l: lmap);
-ensures dom(l)[d];
+procedure {:yields} {:phase 0} Load(i:Node) returns (v:Node);
+ensures {:right} |{ A: goto B,C;
+	           B: assume dom(Stack)[i]; v := map(Stack)[i]; return true; 
+		   C: assume !dom(Stack)[i]; return true; }|;
 
-procedure Free(d: Node, {:linear "Node"} l: lmap);
+procedure {:yields} {:phase 0} Store({:linear "Node"} l_in:lmap, i:Node, v:Node) returns ({:linear "Node"} l_out:lmap);
+ensures {:both} |{ A: assert dom(l_in)[i]; l_out := Add(l_in, i, v); return true; }|;
 
-const unique null: Node;
+procedure {:yields} {:phase 0} MakeEmpty() returns ({:linear "Node"} l_out:lmap);
+ensures {:both} |{ A: l_out := EmptyLmap(); return true; }|;
 
-var {:qed} TOP: Node;
-var {:qed} {:linear "Node"} stack: lmap;
+procedure {:yields} {:phase 0} TransferToStack(oldVal: Node, newVal: Node, {:linear "Node"} l_in:lmap) returns (r: bool, {:linear "Node"} l_out:lmap);
+ensures {:atomic} |{ A: assert dom(l_in)[newVal];
+		        goto B,C;
+                        B: assume oldVal == TopOfStack; TopOfStack := newVal; l_out := EmptyLmap(); Stack := Add(Stack, newVal, map(l_in)[newVal]); r := true; return true;
+			C: assume oldVal != TopOfStack; l_out := l_in; r := false; return true; }|;
 
-procedure {:yields} push()
+procedure {:yields} {:phase 0} TransferFromStack(oldVal: Node, newVal: Node) returns (r: bool, {:linear "Node"} l_out:lmap);
+ensures {:atomic} |{ A: goto B,C;
+                        B: assume oldVal == TopOfStack; TopOfStack := newVal; l_out := Add(EmptyLmap(), oldVal, map(Stack)[oldVal]); Stack := Remove(Stack, oldVal); r := true; return true;
+		        C: assume oldVal != TopOfStack; l_out := EmptyLmap(); r := false; return true; }|;
+
+var TopOfStack: Node;
+var {:linear "Node"} Stack: lmap;
+
+
+function {:inline} Inv(TopOfStack: Node, Stack: lmap) : (bool)
 {
-  var t, x: Node;
-  var g: bool;
-  var {:linear "Node"} x_lmap: lmap;
-
-  call x, x_lmap := Alloc();
-
-  while(true)
-  {
-    t := TOP;		
-    call x_lmap := Store(x_lmap, x, t);
-    call g, x_lmap := TransferToStack(t, x, x_lmap); 
-    if (g) { 
-      break; 
-    }
-  }
+  BetweenSet(map(Stack), TopOfStack, null)[TopOfStack] &&
+  Subset(Difference(BetweenSet(map(Stack), TopOfStack, null), Singleton(null)), dom(Stack))
 }
 
-procedure {:yields} pop()
+procedure {:yields} {:phase 1} push(x: Node, {:linear "Node"} x_lmap: lmap)
+requires {:phase 1} dom(x_lmap)[x];
+requires {:phase 1} Inv(TopOfStack, Stack);
+ensures {:phase 1} Inv(TopOfStack, Stack);
+ensures {:atomic} |{ A: Stack := Add(Stack, x, TopOfStack); TopOfStack := x; return true; }|;
 {
-  var t, x: Node;
+  var t: Node;
   var g: bool;
   var {:linear "Node"} t_lmap: lmap;
 
-  while(true)
+  yield;
+  assert {:phase 1} Inv(TopOfStack, Stack);
+  t_lmap := x_lmap;
+  while (true)
+  invariant {:phase 1} dom(t_lmap) == dom(x_lmap);
+  invariant {:phase 1} Inv(TopOfStack, Stack);
   {
-    t := TOP;		
-    if (t == null)
-    {
-      return;
+    call t := ReadTopOfStack();
+    call t_lmap := Store(t_lmap, x, t);
+    call g, t_lmap := TransferToStack(t, x, t_lmap); 
+    if (g) {
+      assert {:phase 1} map(Stack)[x] == t;
+      break;
+    }
+    yield; 
+    assert {:phase 1} dom(t_lmap) == dom(x_lmap);
+    assert {:phase 1} Inv(TopOfStack, Stack);
+  }
+  yield; 
+  assert {:expand} {:phase 1} Inv(TopOfStack, Stack);
+}
+
+procedure {:yields} {:phase 1} pop() returns (t: Node, {:linear "Node"} t_lmap: lmap)
+requires {:phase 1} Inv(TopOfStack, Stack);
+ensures {:phase 1} Inv(TopOfStack, Stack);
+ensures {:atomic} |{ A: goto B,C;
+                     B: t_lmap := EmptyLmap(); return true;
+                     C: assume TopOfStack != null; t := TopOfStack; t_lmap := Add(EmptyLmap(), t, map(Stack)[t]); TopOfStack := map(Stack)[t]; Stack := Remove(Stack, t); return true; }|;
+{
+  var g: bool;
+  var x: Node;
+
+  yield;
+  assert {:phase 1} Inv(TopOfStack, Stack);
+  call t_lmap := MakeEmpty();
+  while (true)
+  invariant {:phase 1} Inv(TopOfStack, Stack);
+  {
+    call t := ReadTopOfStack();
+    if (t == null) {
+      break;
     }
     call x := Load(t);
     call g, t_lmap := TransferFromStack(t, x); 
     if (g) { 
-      call Free(t, t_lmap);
-      break; 
+      break;
     }
+    yield;
+    assert {:phase 1} Inv(TopOfStack, Stack);
   }
+  yield;
+  assert {:phase 1} Inv(TopOfStack, Stack);
 }
+
+function Equal([int]bool, [int]bool) returns (bool);
+function Subset([int]bool, [int]bool) returns (bool);
+function Disjoint([int]bool, [int]bool) returns (bool);
+
+function Empty() returns ([int]bool);
+function SetTrue() returns ([int]bool);
+function Singleton(int) returns ([int]bool);
+function Reachable([int,int]bool, int) returns ([int]bool);
+function Union([int]bool, [int]bool) returns ([int]bool);
+function Intersection([int]bool, [int]bool) returns ([int]bool);
+function Difference([int]bool, [int]bool) returns ([int]bool);
+function Inverse(f:[int]int, x:int) returns ([int]bool);
+
+axiom(forall x:int :: !Empty()[x]);
+axiom(forall x:int :: SetTrue()[x]);
+
+axiom(forall x:int, y:int :: {Singleton(y)[x]} Singleton(y)[x] <==> x == y);
+axiom(forall y:int :: {Singleton(y)} Singleton(y)[y]);
+
+axiom(forall x:int, S:[int]bool, T:[int]bool :: {Union(S,T)[x]}{Union(S,T),S[x]}{Union(S,T),T[x]} Union(S,T)[x] <==> S[x] || T[x]);
+axiom(forall x:int, S:[int]bool, T:[int]bool :: {Intersection(S,T)[x]}{Intersection(S,T),S[x]}{Intersection(S,T),T[x]} Intersection(S,T)[x] <==>  S[x] && T[x]);
+axiom(forall x:int, S:[int]bool, T:[int]bool :: {Difference(S,T)[x]}{Difference(S,T),S[x]}{Difference(S,T),T[x]} Difference(S,T)[x] <==> S[x] && !T[x]);
+
+axiom(forall S:[int]bool, T:[int]bool :: {Equal(S,T)} Equal(S,T) <==> Subset(S,T) && Subset(T,S));
+axiom(forall x:int, S:[int]bool, T:[int]bool :: {S[x],Subset(S,T)}{T[x],Subset(S,T)} S[x] && Subset(S,T) ==> T[x]);
+axiom(forall S:[int]bool, T:[int]bool :: {Subset(S,T)} Subset(S,T) || (exists x:int :: S[x] && !T[x]));
+axiom(forall x:int, S:[int]bool, T:[int]bool :: {S[x],Disjoint(S,T)}{T[x],Disjoint(S,T)} !(S[x] && Disjoint(S,T) && T[x]));
+axiom(forall S:[int]bool, T:[int]bool :: {Disjoint(S,T)} Disjoint(S,T) || (exists x:int :: S[x] && T[x]));
+
+axiom(forall f:[int]int, x:int :: {Inverse(f,f[x])} Inverse(f,f[x])[x]);
+axiom(forall f:[int]int, x:int, y:int :: {Inverse(f,y), f[x]} Inverse(f,y)[x] ==> f[x] == y);
+axiom(forall f:[int]int, x:int, y:int :: {Inverse(f[x := y],y)} Equal(Inverse(f[x := y],y), Union(Inverse(f,y), Singleton(x))));
+axiom(forall f:[int]int, x:int, y:int, z:int :: {Inverse(f[x := y],z)} y == z || Equal(Inverse(f[x := y],z), Difference(Inverse(f,z), Singleton(x))));
+
+////////////////////
+// Between predicate
+//////////////////// 
+function Between(f: [int]int, x: int, y: int, z: int) returns (bool);
+function Avoiding(f: [int]int, x: int, y: int, z: int) returns (bool);
+
+
+//////////////////////////
+// Between set constructor
+//////////////////////////
+function BetweenSet(f: [int]int, x: int, z: int) returns ([int]bool);
+
+////////////////////////////////////////////////////
+// axioms relating Between and BetweenSet
+////////////////////////////////////////////////////
+axiom(forall f: [int]int, x: int, y: int, z: int :: {BetweenSet(f, x, z)[y]} BetweenSet(f, x, z)[y] <==> Between(f, x, y, z));
+axiom(forall f: [int]int, x: int, y: int, z: int :: {Between(f, x, y, z), BetweenSet(f, x, z)} Between(f, x, y, z) ==> BetweenSet(f, x, z)[y]);
+axiom(forall f: [int]int, x: int, z: int :: {BetweenSet(f, x, z)} Between(f, x, x, x));
+axiom(forall f: [int]int, x: int, z: int :: {BetweenSet(f, x, z)} Between(f, z, z, z));
+
+
+//////////////////////////
+// Axioms for Between
+//////////////////////////
+
+// reflexive
+axiom(forall f: [int]int, x: int :: Between(f, x, x, x));
+
+// step
+//axiom(forall f: [int]int, x: int :: {f[x]} Between(f, x, f[x], f[x])); 
+axiom(forall f: [int]int, x: int, y: int, z: int, w:int :: {Between(f, y, z, w), f[x]} Between(f, x, f[x], f[x])); 
+
+// reach
+axiom(forall f: [int]int, x: int, y: int :: {f[x], Between(f, x, y, y)} Between(f, x, y, y) ==> x == y || Between(f, x, f[x], y));
+
+// cycle
+axiom(forall f: [int]int, x: int, y:int :: {f[x], Between(f, x, y, y)} f[x] == x && Between(f, x, y, y) ==> x == y);
+
+// sandwich
+axiom(forall f: [int]int, x: int, y: int :: {Between(f, x, y, x)} Between(f, x, y, x) ==> x == y);
+
+// order1
+axiom(forall f: [int]int, x: int, y: int, z: int :: {Between(f, x, y, y), Between(f, x, z, z)} Between(f, x, y, y) && Between(f, x, z, z) ==> Between(f, x, y, z) || Between(f, x, z, y));
+
+// order2
+axiom(forall f: [int]int, x: int, y: int, z: int :: {Between(f, x, y, z)} Between(f, x, y, z) ==> Between(f, x, y, y) && Between(f, y, z, z));
+
+// transitive1
+axiom(forall f: [int]int, x: int, y: int, z: int :: {Between(f, x, y, y), Between(f, y, z, z)} Between(f, x, y, y) && Between(f, y, z, z) ==> Between(f, x, z, z));
+
+// transitive2
+axiom(forall f: [int]int, x: int, y: int, z: int, w: int :: {Between(f, x, y, z), Between(f, y, w, z)} Between(f, x, y, z) && Between(f, y, w, z) ==> Between(f, x, y, w) && Between(f, x, w, z));
+
+// transitive3
+axiom(forall f: [int]int, x: int, y: int, z: int, w: int :: {Between(f, x, y, z), Between(f, x, w, y)} Between(f, x, y, z) && Between(f, x, w, y) ==> Between(f, x, w, z) && Between(f, w, y, z));
+
+// This axiom is required to deal with the incompleteness of the trigger for the reflexive axiom.  
+// It cannot be proved using the rest of the axioms.
+axiom(forall f: [int]int, u:int, x: int :: {Between(f, u, x, x)} Between(f, u, x, x) ==> Between(f, u, u, x));
+
+// relation between Avoiding and Between
+axiom(forall f: [int]int, x: int, y: int, z: int :: {Avoiding(f, x, y, z)} Avoiding(f, x, y, z) <==> (Between(f, x, y, z) || (Between(f, x, y, y) && !Between(f, x, z, z))));
+axiom(forall f: [int]int, x: int, y: int, z: int :: {Between(f, x, y, z)} Between(f, x, y, z) <==> (Avoiding(f, x, y, z) && Avoiding(f, x, z, z)));
+
+// update
+axiom(forall f: [int]int, u: int, v: int, x: int, p: int, q: int :: {Avoiding(f[p := q], u, v, x)} Avoiding(f[p := q], u, v, x) <==> ((Avoiding(f, u, v, p) && Avoiding(f, u, v, x)) || (Avoiding(f, u, p, x) && p != x && Avoiding(f, q, v, p) && Avoiding(f, q, v, x))));
+
+axiom (forall f: [int]int, p: int, q: int, u: int, w: int :: {BetweenSet(f[p := q], u, w)} Avoiding(f, u, w, p) ==> Equal(BetweenSet(f[p := q], u, w), BetweenSet(f, u, w)));
+axiom (forall f: [int]int, p: int, q: int, u: int, w: int :: {BetweenSet(f[p := q], u, w)} p != w && Avoiding(f, u, p, w) && Avoiding(f, q, w, p) ==> Equal(BetweenSet(f[p := q], u, w), Union(BetweenSet(f, u, p), BetweenSet(f, q, w))));
+axiom (forall f: [int]int, p: int, q: int, u: int, w: int :: {BetweenSet(f[p := q], u, w)} Avoiding(f, u, w, p) || (p != w && Avoiding(f, u, p, w) && Avoiding(f, q, w, p)) || Equal(BetweenSet(f[p := q], u, w), Empty()));

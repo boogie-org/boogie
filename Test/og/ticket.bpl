@@ -52,12 +52,11 @@ requires {:phase 3} xls' == mapconstbool(true);
     invariant {:phase 1} Inv1(T, t);
     invariant {:phase 2} Inv2(T, s, cs);
     {
-	par Yield1() | Yield2() | Yield();
         call xls, tid := Allocate(xls);
         async call Customer(tid);
     	par Yield1() | Yield2() | Yield();
-
     }
+    par Yield1() | Yield2() | Yield();
 }
 
 procedure {:yields} {:phase 3} Customer({:linear "tid"} tid': X)
@@ -73,12 +72,12 @@ requires {:phase 3} true;
     invariant {:phase 1} Inv1(T, t);
     invariant {:phase 2} tid != nil && Inv2(T, s, cs);
     {
-        par Yield1() | Yield2() | Yield();
         call tid := Enter(tid);
         par Yield1() | Yield2();
     	call tid := Leave(tid);
         par Yield1() | Yield2() | Yield();
     }
+    par Yield1() | Yield2() | Yield();
 }
 
 procedure {:yields} {:phase 2,3} Enter({:linear "tid"} tid': X) returns ({:linear "tid"} tid: X)
