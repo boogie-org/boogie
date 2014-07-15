@@ -1848,6 +1848,82 @@ namespace Microsoft.Boogie {
       this.OutParams = that.OutParams;
     }
 
+    public byte[] MD5Checksum_;
+    public byte[] MD5Checksum
+    {
+      get
+      {
+        if (MD5Checksum_ == null)
+        {
+          var c = Checksum;
+          if (c != null)
+          {
+            MD5Checksum_ = System.Security.Cryptography.MD5.Create().ComputeHash(System.Text.Encoding.UTF8.GetBytes(c));
+          }
+        }
+        return MD5Checksum_;
+      }
+    }
+
+    public byte[] MD5DependenciesChecksum_;
+    public byte[] MD5DependenciesChecksum
+    {
+      get
+      {
+        Contract.Requires(DependenciesCollected);
+
+        if (MD5DependenciesChecksum_ == null && MD5Checksum != null)
+        {
+          var c = MD5Checksum;
+          var transFuncDeps = new HashSet<Function>();
+          if (procedureDependencies != null)
+          {
+            foreach (var p in procedureDependencies)
+            {
+              if (p.FunctionDependencies != null)
+              {
+                foreach (var f in p.FunctionDependencies)
+                {
+                  transFuncDeps.Add(f);
+                }
+              }
+              var pc = p.MD5Checksum;
+              if (pc == null) { return null; }
+              c = ChecksumHelper.CombineChecksums(c, pc, true);
+            }
+          }
+          if (FunctionDependencies != null)
+          {
+            foreach (var f in FunctionDependencies)
+            {
+              transFuncDeps.Add(f);
+            }
+          }
+          var q = new Queue<Function>(transFuncDeps);
+          while (q.Any())
+          {
+            var f = q.Dequeue();
+            var fc = f.MD5Checksum;
+            if (fc == null) { return null; }
+            c = ChecksumHelper.CombineChecksums(c, fc, true);
+            if (f.FunctionDependencies != null)
+            {
+              foreach (var d in f.FunctionDependencies)
+              {
+                if (!transFuncDeps.Contains(d))
+                {
+                  transFuncDeps.Add(d);
+                  q.Enqueue(d);
+                }
+              }
+            }
+          }
+          MD5DependenciesChecksum_ = c;
+        }
+        return MD5DependenciesChecksum_;
+      }
+    }
+
     public string Checksum
     {
       get
@@ -1856,7 +1932,56 @@ namespace Microsoft.Boogie {
       }
     }
 
-    public string DependenciesChecksum { get; set; }
+    string dependenciesChecksum;
+    public string DependenciesChecksum
+    {
+      get
+      {
+        if (dependenciesChecksum == null && MD5DependenciesChecksum != null)
+        {
+          dependenciesChecksum = BitConverter.ToString(MD5DependenciesChecksum);
+        }
+        return dependenciesChecksum;
+      }
+    }
+
+    public bool DependenciesCollected { get; set; }
+
+    ISet<Procedure> procedureDependencies;
+
+    public ISet<Procedure> ProcedureDependencies
+    {
+      get { return procedureDependencies; }
+    }
+
+    public void AddProcedureDependency(Procedure procedure)
+    {
+      Contract.Requires(procedure != null);
+
+      if (procedureDependencies == null)
+      {
+        procedureDependencies = new HashSet<Procedure>();
+      }
+      procedureDependencies.Add(procedure);
+    }
+
+    ISet<Function> functionDependencies;
+
+    public ISet<Function> FunctionDependencies
+    {
+      get { return functionDependencies; }
+    }
+
+    public void AddFunctionDependency(Function function)
+    {
+      Contract.Requires(function != null);
+
+      if (functionDependencies == null)
+      {
+        functionDependencies = new HashSet<Function>();
+      }
+      functionDependencies.Add(function);
+    }
 
     protected void EmitSignature(TokenTextWriter stream, bool shortRet) {
       Contract.Requires(stream != null);
