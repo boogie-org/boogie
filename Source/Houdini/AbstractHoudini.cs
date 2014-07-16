@@ -283,7 +283,7 @@ namespace Microsoft.Boogie.Houdini {
 
         private void PrintFunction(Function function)
         {
-            var tt = new TokenTextWriter(Console.Out);
+            var tt = new TokenTextWriter(Console.Out, /*pretty=*/ false);
             var invars = new List<Expr>(function.InParams.OfType<Variable>().Select(v => Expr.Ident(v)));
             function.Body = function2Value[function.Name].Gamma(invars);
             function.Emit(tt, 0);
@@ -2436,7 +2436,7 @@ namespace Microsoft.Boogie.Houdini {
                 }
             }
 
-            using (var wt = new TokenTextWriter(WitnessFile))
+            using (var wt = new TokenTextWriter(WitnessFile, /*pretty=*/ false))
             {
                 program.Emit(wt);
             }
@@ -2489,7 +2489,7 @@ namespace Microsoft.Boogie.Houdini {
                 }
             }
 
-            using (var wt = new TokenTextWriter(WitnessFile))
+            using (var wt = new TokenTextWriter(WitnessFile, /*pretty=*/ false))
             {
                 program.Emit(wt);
             }

@@ -747,7 +747,7 @@ namespace Microsoft.Boogie.Houdini {
                     cexWriter.WriteLine("Counter example for " + refutedAnnotation.Constant);
                     cexWriter.Write(error.ToString());
                     cexWriter.WriteLine();
-                    using (var writer = new Microsoft.Boogie.TokenTextWriter(cexWriter))
+                    using (var writer = new Microsoft.Boogie.TokenTextWriter(cexWriter, /*pretty=*/ false))
                       foreach (Microsoft.Boogie.Block blk in error.Trace)
                         blk.Emit(writer, 15);
                     //cexWriter.WriteLine(); 

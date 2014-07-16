@@ -81,13 +81,13 @@ namespace Microsoft.Boogie {
             fixedArgs[i] = cce.NonNull((NamedDeclaration)args[i]).Name;
           } else if (args[i] is Type) {
             System.IO.StringWriter buffer = new System.IO.StringWriter();
-            using (TokenTextWriter stream = new TokenTextWriter("<buffer>", buffer, false)) {
+            using (TokenTextWriter stream = new TokenTextWriter("<buffer>", buffer, /*setTokens=*/ false, /*pretty=*/ false)) {
               cce.NonNull((Type)args[i]).Emit(stream);
             }
             fixedArgs[i] = buffer.ToString();
           } else if (args[i] is Expr) {
             System.IO.StringWriter buffer = new System.IO.StringWriter();
-            using (TokenTextWriter stream = new TokenTextWriter("<buffer>", buffer, false)) {
+            using (TokenTextWriter stream = new TokenTextWriter("<buffer>", buffer, /*setTokens=*/ false, /*pretty=*/ false)) {
               cce.NonNull((Expr/*!*/)args[i]).Emit(stream, 0, false);
             }
             fixedArgs[i] = buffer.ToString();

@@ -252,7 +252,7 @@ namespace Microsoft.Boogie {
       }
     }
 
-    public TokenTextWriter(string filename, bool pretty = false)
+    public TokenTextWriter(string filename, bool pretty)
       : base() {
       Contract.Requires(filename != null);
       this.pretty = pretty;
@@ -260,7 +260,7 @@ namespace Microsoft.Boogie {
       this.writer = new StreamWriter(filename);
     }
 
-    public TokenTextWriter(string filename, bool setTokens, bool pretty = false)
+    public TokenTextWriter(string filename, bool setTokens, bool pretty)
       : base() {
       Contract.Requires(filename != null);
       this.pretty = pretty;
@@ -269,7 +269,7 @@ namespace Microsoft.Boogie {
       this.setTokens = setTokens;
     }
 
-    public TokenTextWriter(string filename, TextWriter writer, bool setTokens, bool pretty = false)
+    public TokenTextWriter(string filename, TextWriter writer, bool setTokens, bool pretty)
       : base() {
       Contract.Requires(writer != null);
       Contract.Requires(filename != null);
@@ -279,7 +279,7 @@ namespace Microsoft.Boogie {
       this.setTokens = setTokens;
     }
 
-    public TokenTextWriter(string filename, TextWriter writer, bool pretty = false)
+    public TokenTextWriter(string filename, TextWriter writer, bool pretty)
       : base() {
       Contract.Requires(writer != null);
       Contract.Requires(filename != null);
@@ -288,7 +288,7 @@ namespace Microsoft.Boogie {
       this.writer = writer;
     }
 
-    public TokenTextWriter(TextWriter writer, bool pretty = false)
+    public TokenTextWriter(TextWriter writer, bool pretty)
       : base() {
       Contract.Requires(writer != null);
       this.pretty = pretty;
