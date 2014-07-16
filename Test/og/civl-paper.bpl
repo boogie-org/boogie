@@ -19,27 +19,27 @@ var {:phase 2} {:linear "mem"} g: lmap;
 
 const p: int;
 
-procedure {:yields} {:phase 1,2} TransferToGlobal({:cnst "tid"} tid: X, {:linear "mem"} l: lmap);
+procedure {:yields} {:phase 1,2} TransferToGlobal({:linear "tid"} tid: X, {:linear_in "mem"} l: lmap);
 ensures {:both} |{ A: assert tid != nil && lock == tid; g := l; return true; }|;
 requires {:phase 1} InvLock(lock, b);
 ensures {:phase 1} InvLock(lock, b);
 
-procedure {:yields} {:phase 1,2} TransferFromGlobal({:cnst "tid"} tid: X) returns ({:linear "mem"} l: lmap);
+procedure {:yields} {:phase 1,2} TransferFromGlobal({:linear "tid"} tid: X) returns ({:linear "mem"} l: lmap);
 ensures {:both} |{ A: assert tid != nil && lock == tid; l := g; return true; }|;
 requires {:phase 1} InvLock(lock, b);
 ensures {:phase 1} InvLock(lock, b);
 
-procedure {:yields} {:phase 1} Load({:cnst "mem"} l: lmap, a: int) returns (v: int);
+procedure {:yields} {:phase 1} Load({:linear "mem"} l: lmap, a: int) returns (v: int);
 ensures {:both} |{ A: v := map(l)[a]; return true; }|;
 requires {:phase 1} InvLock(lock, b);
 ensures {:phase 1} InvLock(lock, b);
 
-procedure {:yields} {:phase 1} Store({:linear "mem"} l_in: lmap, a: int, v: int) returns ({:linear "mem"} l_out: lmap);
+procedure {:yields} {:phase 1} Store({:linear_in "mem"} l_in: lmap, a: int, v: int) returns ({:linear "mem"} l_out: lmap);
 ensures {:both} |{ A: assume l_out == cons(dom(l_in), map(l_in)[a := v]); return true; }|;
 requires {:phase 1} InvLock(lock, b);
 ensures {:phase 1} InvLock(lock, b);
 
-procedure {:yields} {:phase 2} P({:cnst "tid"} tid: X)
+procedure {:yields} {:phase 2} P({:linear "tid"} tid: X)
 requires {:phase 1} InvLock(lock, b);
 ensures {:phase 1} InvLock(lock, b);
 requires {:phase 2} tid != nil && Inv(g);
@@ -77,7 +77,7 @@ function {:inline} Inv(g: lmap) : bool
 var {:phase 1} b: bool;
 var {:phase 2} lock: X;
 
-procedure {:yields} {:phase 1,2} Acquire({:cnst "tid"} tid: X)
+procedure {:yields} {:phase 1,2} Acquire({:linear "tid"} tid: X)
 requires {:phase 1} InvLock(lock, b);
 ensures {:phase 1} InvLock(lock, b);
 ensures {:right} |{ A: assert tid != nil; assume lock == nil; lock := tid; return true; }|;
@@ -102,7 +102,7 @@ ensures {:right} |{ A: assert tid != nil; assume lock == nil; lock := tid; retur
 	goto L;
 }
 
-procedure {:yields} {:phase 1,2} Release({:cnst "tid"} tid: X)
+procedure {:yields} {:phase 1,2} Release({:linear "tid"} tid: X)
 ensures {:left} |{ A: assert lock == tid && tid != nil; lock := nil; return true; }|;
 requires {:phase 1} InvLock(lock, b);
 ensures {:phase 1} InvLock(lock, b);

@@ -65,12 +65,12 @@ procedure {:yields} {:phase 1} D()
     yield;
 }
 
-procedure E({:linear "D"} a: X, {:linear "D"} b: X) returns ({:linear "D"} c: X, {:linear "D"} d: X)
+procedure E({:linear_in "D"} a: X, {:linear_in "D"} b: X) returns ({:linear "D"} c: X, {:linear "D"} d: X)
 {
     c := a;
 }
 
-procedure {:yields} {:phase 0} F({:linear "D"} a: X) returns ({:linear "D"} c: X);
+procedure {:yields} {:phase 0} F({:linear_in "D"} a: X) returns ({:linear "D"} c: X);
 
 var {:linear "x"} g:int;
 
@@ -85,7 +85,7 @@ modifies g;
   g := r;
 }
 
-procedure {:yields} {:phase 0} I({:linear ""} x:int) returns({:linear ""} x':int)
+procedure {:yields} {:phase 0} I({:linear_in ""} x:int) returns({:linear ""} x':int)
 {
   x' := x;
 }
@@ -94,7 +94,7 @@ procedure {:yields} {:phase 0} J()
 {
 }
 
-procedure {:yields} {:phase 1} P1({:linear ""} x:int) returns({:linear ""} x':int)
+procedure {:yields} {:phase 1} P1({:linear_in ""} x:int) returns({:linear ""} x':int)
 {
   yield;
   par x' := I(x) | J();
@@ -103,7 +103,7 @@ procedure {:yields} {:phase 1} P1({:linear ""} x:int) returns({:linear ""} x':in
   yield;
 }
 
-procedure {:yields} {:phase 1} P2({:linear ""} x:int) returns({:linear ""} x':int)
+procedure {:yields} {:phase 1} P2({:linear_in ""} x:int) returns({:linear ""} x':int)
 {
   yield;
   call x' := I(x);

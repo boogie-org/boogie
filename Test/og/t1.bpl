@@ -36,7 +36,7 @@ ensures {:atomic} |{A: g := val; return true; }|;
 procedure {:yields} {:phase 0,1} SetH(val:int);
 ensures {:atomic} |{A: h := val; return true; }|;
 
-procedure {:yields} {:phase 1} A({:linear "tid"} tid_in: int) returns ({:linear "tid"} tid_out: int) 
+procedure {:yields} {:phase 1} A({:linear_in "tid"} tid_in: int) returns ({:linear "tid"} tid_out: int) 
 {
     var {:linear "1"} x: [int]bool;
     var {:linear "2"} y: [int]bool;
@@ -72,7 +72,7 @@ procedure {:yields} {:phase 1} A({:linear "tid"} tid_in: int) returns ({:linear 
     yield;
 }
 
-procedure {:yields} {:phase 1} B({:linear "tid"} tid_in: int, {:linear "1"} x_in: [int]bool) 
+procedure {:yields} {:phase 1} B({:linear_in "tid"} tid_in: int, {:linear_in "1"} x_in: [int]bool) 
 requires {:phase 1} x_in != mapconstbool(false);
 {
     var {:linear "tid"} tid_out: int;
@@ -85,7 +85,7 @@ requires {:phase 1} x_in != mapconstbool(false);
     yield;
 }
 
-procedure {:yields} {:phase 1} C({:linear "tid"} tid_in: int, {:linear "2"} y_in: [int]bool) 
+procedure {:yields} {:phase 1} C({:linear_in "tid"} tid_in: int, {:linear_in "2"} y_in: [int]bool) 
 requires {:phase 1} y_in != mapconstbool(false);
 {
     var {:linear "tid"} tid_out: int;

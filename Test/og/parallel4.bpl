@@ -19,7 +19,7 @@ procedure {:yields} {:phase 1} main()
   par i := t(i) | j := t(j);
 }
 
-procedure {:yields} {:phase 1} t({:linear "tid"} i': int) returns ({:linear "tid"} i: int)
+procedure {:yields} {:phase 1} t({:linear_in "tid"} i': int) returns ({:linear "tid"} i: int)
 {
   i := i';
   call Yield();

@@ -10,11 +10,11 @@ function {:inline} {:linear "Perm"} SetCollectorPerm(x: [int]bool) : [int]bool
   x
 }
 
-procedure Split({:linear "Perm"} xls: [int]bool) returns ({:linear "Perm"} xls1: [int]bool, {:linear "Perm"} xls2: [int]bool);
+procedure Split({:linear_in "Perm"} xls: [int]bool) returns ({:linear "Perm"} xls1: [int]bool, {:linear "Perm"} xls2: [int]bool);
   ensures xls == ch_mapunion(xls1, xls2) && xls1 != ch_mapconstbool(false) && xls2 != ch_mapconstbool(false);
 
 
-procedure {:yields} {:phase 1} mainE({:linear "Perm"} permVar_in: [int]bool)
+procedure {:yields} {:phase 1} mainE({:linear_in "Perm"} permVar_in: [int]bool)
    free requires {:phase 1} permVar_in == ch_mapconstbool(true);
    free requires {:phase 1} permVar_in[0];
    free requires {:phase 1} x == 0;
@@ -34,7 +34,7 @@ procedure {:yields} {:phase 1} mainE({:linear "Perm"} permVar_in: [int]bool)
     yield;
 }
 
-procedure {:yields} {:phase 1} foo({:linear "Perm"} permVar_in: [int]bool) 
+procedure {:yields} {:phase 1} foo({:linear_in "Perm"} permVar_in: [int]bool) 
   free requires {:phase 1} permVar_in != ch_mapconstbool(false);
   free requires {:phase 1} permVar_in[1];
   requires {:phase 1} x == 0;

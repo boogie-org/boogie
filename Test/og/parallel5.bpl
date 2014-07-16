@@ -23,7 +23,7 @@ procedure {:yields} {:phase 1} main()
     par i := u(i) | j := u(j);
 }
 
-procedure {:yields} {:phase 1} t({:linear "tid"} i': int) returns ({:linear "tid"} i: int)
+procedure {:yields} {:phase 1} t({:linear_in "tid"} i': int) returns ({:linear "tid"} i: int)
 {
     i := i';
 
@@ -33,7 +33,7 @@ procedure {:yields} {:phase 1} t({:linear "tid"} i': int) returns ({:linear "tid
     assert {:phase 1} a[i] == 42;
 }
 
-procedure {:yields} {:phase 1} u({:linear "tid"} i': int) returns ({:linear "tid"} i: int) 
+procedure {:yields} {:phase 1} u({:linear_in "tid"} i': int) returns ({:linear "tid"} i: int) 
 {
     i := i';
 
@@ -43,7 +43,7 @@ procedure {:yields} {:phase 1} u({:linear "tid"} i': int) returns ({:linear "tid
     assert {:phase 1} a[i] == 42;
 }
 
-procedure {:yields} {:phase 1} Yield({:cnst "tid"} i: int)
+procedure {:yields} {:phase 1} Yield({:linear "tid"} i: int)
 ensures {:phase 1} old(a)[i] == a[i];
 {
     yield;

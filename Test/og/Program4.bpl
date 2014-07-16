@@ -31,7 +31,7 @@ procedure {:yields} {:phase 1} main() {
     yield;
 }
 
-procedure {:yields} {:phase 1} P({:cnst "tid"} tid: Tid) 
+procedure {:yields} {:phase 1} P({:linear "tid"} tid: Tid) 
 ensures {:phase 1} a[tid] == old(a)[tid] + 1; 
 { 
     var t:int;
@@ -46,13 +46,13 @@ ensures {:phase 1} a[tid] == old(a)[tid] + 1;
     assert {:phase 1} a[tid] == t + 1; 
 }
 
-procedure {:yields} {:phase 0,1} Read({:cnst "tid"} tid: Tid) returns (val: int);
+procedure {:yields} {:phase 0,1} Read({:linear "tid"} tid: Tid) returns (val: int);
 ensures {:atomic}
 |{A:
   val := a[tid]; return true;
 }|;
 
-procedure {:yields} {:phase 0,1} Write({:cnst "tid"} tid: Tid, val: int);
+procedure {:yields} {:phase 0,1} Write({:linear "tid"} tid: Tid, val: int);
 ensures {:atomic}
 |{A:
   a[tid] := val; return true;

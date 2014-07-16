@@ -24,7 +24,7 @@ var {:phase 1} x: int;
 var {:phase 1} l: X;
 const nil: X;
 
-procedure Split({:linear "x"} xls: [X]bool) returns ({:linear "x"} xls1: [X]bool, {:linear "x"} xls2: [X]bool);
+procedure Split({:linear_in "x"} xls: [X]bool) returns ({:linear "x"} xls1: [X]bool, {:linear "x"} xls2: [X]bool);
 ensures xls == MapOr(xls1, xls2) && xls1 != None() && xls2 != None();
 
 procedure Allocate() returns ({:linear "tid"} xls: X);
@@ -39,7 +39,7 @@ ensures {:atomic} |{A: assume l == nil; l := tidls; return true; }|;
 procedure {:yields} {:phase 0,1} Unlock();
 ensures {:atomic} |{A: l := nil; return true; }|;
 
-procedure {:yields} {:phase 1} main({:linear "tid"} tidls': X, {:linear "x"} xls': [X]bool) 
+procedure {:yields} {:phase 1} main({:linear_in "tid"} tidls': X, {:linear_in "x"} xls': [X]bool) 
 requires {:phase 1} tidls' != nil && xls' == All();
 {
     var {:linear "tid"} tidls: X;
@@ -66,7 +66,7 @@ requires {:phase 1} tidls' != nil && xls' == All();
     yield;
 }
 
-procedure {:yields} {:phase 1} thread({:linear "tid"} tidls': X, {:linear "x"} xls': [X]bool)
+procedure {:yields} {:phase 1} thread({:linear_in "tid"} tidls': X, {:linear_in "x"} xls': [X]bool)
 requires {:phase 1} tidls' != nil && xls' != None();
 {
     var {:linear "x"} xls: [X]bool;

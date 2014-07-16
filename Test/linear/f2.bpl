@@ -3,12 +3,12 @@
 function {:builtin "MapConst"} mapconstbool(bool) : [int]bool;
 function {:builtin "MapOr"} mapunion([int]bool, [int]bool) : [int]bool;
 
-procedure Split({:linear "1"} xls: [int]bool) returns ({:linear "1"} xls1: [int]bool, {:linear "1"} xls2: [int]bool);
+procedure Split({:linear_in "1"} xls: [int]bool) returns ({:linear "1"} xls1: [int]bool, {:linear "1"} xls2: [int]bool);
 ensures xls == mapunion(xls1, xls2) && xls1 != mapconstbool(false) && xls2 != mapconstbool(false);
 
 procedure Allocate() returns ({:linear "1"} x: [int]bool);
 
-procedure {:entrypoint} main() 
+procedure main() 
 {
    var {:linear "1"} x: [int] bool;
    var {:linear "1"} x1: [int] bool;

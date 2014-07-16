@@ -24,13 +24,13 @@ ensures {:right} |{ A: goto B,C;
 	           B: assume dom(Stack)[i]; v := map(Stack)[i]; return true; 
 		   C: assume !dom(Stack)[i]; return true; }|;
 
-procedure {:yields} {:phase 0} Store({:linear "Node"} l_in:lmap, i:Node, v:Node) returns ({:linear "Node"} l_out:lmap);
+procedure {:yields} {:phase 0} Store({:linear_in "Node"} l_in:lmap, i:Node, v:Node) returns ({:linear "Node"} l_out:lmap);
 ensures {:both} |{ A: assert dom(l_in)[i]; l_out := Add(l_in, i, v); return true; }|;
 
 procedure {:yields} {:phase 0} MakeEmpty() returns ({:linear "Node"} l_out:lmap);
 ensures {:both} |{ A: l_out := EmptyLmap(); return true; }|;
 
-procedure {:yields} {:phase 0} TransferToStack(oldVal: Node, newVal: Node, {:linear "Node"} l_in:lmap) returns (r: bool, {:linear "Node"} l_out:lmap);
+procedure {:yields} {:phase 0} TransferToStack(oldVal: Node, newVal: Node, {:linear_in "Node"} l_in:lmap) returns (r: bool, {:linear "Node"} l_out:lmap);
 ensures {:atomic} |{ A: assert dom(l_in)[newVal];
 		        goto B,C;
                         B: assume oldVal == TopOfStack; TopOfStack := newVal; l_out := EmptyLmap(); Stack := Add(Stack, newVal, map(l_in)[newVal]); r := true; return true;
@@ -51,7 +51,7 @@ function {:inline} Inv(TopOfStack: Node, Stack: lmap) : (bool)
   Subset(Difference(BetweenSet(map(Stack), TopOfStack, null), Singleton(null)), dom(Stack))
 }
 
-procedure {:yields} {:phase 1} push(x: Node, {:linear "Node"} x_lmap: lmap)
+procedure {:yields} {:phase 1} push(x: Node, {:linear_in "Node"} x_lmap: lmap)
 requires {:phase 1} dom(x_lmap)[x];
 requires {:phase 1} Inv(TopOfStack, Stack);
 ensures {:phase 1} Inv(TopOfStack, Stack);

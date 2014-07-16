@@ -21,7 +21,7 @@ axiom(!b6);
 axiom(!b7);
 axiom(b8);
 
-procedure {:entrypoint} main({:linear "1"} x_in: [int]bool) 
+procedure main({:linear_in "1"} x_in: [int]bool) 
   requires b0 ==> x_in == mapconstbool(true);
   requires b1 ==> x_in != mapconstbool(false);
 {
@@ -35,7 +35,7 @@ procedure {:entrypoint} main({:linear "1"} x_in: [int]bool)
    assert b8 ==> x == mapconstbool(false);
 }
 
-procedure foo({:linear "1"} x_in: [int]bool)
+procedure foo({:linear_in "1"} x_in: [int]bool)
   requires b2 ==> x_in == mapconstbool(true);
   requires b3 ==> x_in != mapconstbool(false);
 {

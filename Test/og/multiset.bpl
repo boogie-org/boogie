@@ -20,7 +20,7 @@ function {:inline} {:linear "tid"} TidCollector(x: X) : [X]bool
 
 axiom (max > 0);
 
-procedure {:yields} {:phase 0} acquire(i : int, {:linear "tid"} tidIn: X) returns ({:linear "tid"} tidOut: X);
+procedure {:yields} {:phase 0} acquire(i : int, {:linear_in "tid"} tidIn: X) returns ({:linear "tid"} tidOut: X);
 ensures {:right} |{ A: 
                       assert 0 <= i && i < max;
                       assert tidIn != nil && tidIn != done;
@@ -31,7 +31,7 @@ ensures {:right} |{ A:
                     }|;
 
 
-procedure {:yields} {:phase 0} release(i : int, {:linear "tid"} tidIn: X) returns ({:linear "tid"} tidOut: X);
+procedure {:yields} {:phase 0} release(i : int, {:linear_in "tid"} tidIn: X) returns ({:linear "tid"} tidOut: X);
 ensures {:left} |{ A: 
                      assert 0 <= i && i < max;
                      assert lock[i] == tidIn;
@@ -42,7 +42,7 @@ ensures {:left} |{ A:
                     }|;
 
 
-procedure {:yields} {:phase 0,1} getElt(j : int, {:linear "tid"} tidIn: X) returns ({:linear "tid"} tidOut: X, elt_j:int);
+procedure {:yields} {:phase 0,1} getElt(j : int, {:linear_in "tid"} tidIn: X) returns ({:linear "tid"} tidOut: X, elt_j:int);
 ensures {:both} |{ A: 
                      assert 0 <= j && j < max;
                      assert lock[j] == tidIn;
@@ -53,7 +53,7 @@ ensures {:both} |{ A:
                     }|;
 
 
-procedure {:yields} {:phase 0,1} setElt(j : int, x : int, {:linear "tid"} tidIn: X) returns ({:linear "tid"} tidOut: X);
+procedure {:yields} {:phase 0,1} setElt(j : int, x : int, {:linear_in "tid"} tidIn: X) returns ({:linear "tid"} tidOut: X);
 ensures {:both} |{ A: 
                      assert x != null;
                      assert owner[j] == nil;
@@ -67,7 +67,7 @@ ensures {:both} |{ A:
                     }|;
 
 
-procedure {:yields} {:phase 0} setEltToNull(j : int, {:linear "tid"} tidIn: X) returns ({:linear "tid"} tidOut: X);
+procedure {:yields} {:phase 0} setEltToNull(j : int, {:linear_in "tid"} tidIn: X) returns ({:linear "tid"} tidOut: X);
 ensures {:left} |{ A: 
                      assert owner[j] == tidIn;
                      assert 0 <= j && j < max;
@@ -80,7 +80,7 @@ ensures {:left} |{ A:
                      return true;
                     }|;
 
-procedure {:yields} {:phase 0} setValid(j : int, {:linear "tid"} tidIn: X) returns ({:linear "tid"} tidOut: X);
+procedure {:yields} {:phase 0} setValid(j : int, {:linear_in "tid"} tidIn: X) returns ({:linear "tid"} tidOut: X);
 ensures {:both} |{ A: 
                      assert 0 <= j && j < max;
                      assert lock[j] == tidIn;
@@ -92,7 +92,7 @@ ensures {:both} |{ A:
                      return true;
                     }|;
 
-procedure {:yields} {:phase 0} isEltThereAndValid(j : int, x : int, {:linear "tid"} tidIn: X) returns ({:linear "tid"} tidOut: X, fnd:bool);
+procedure {:yields} {:phase 0} isEltThereAndValid(j : int, x : int, {:linear_in "tid"} tidIn: X) returns ({:linear "tid"} tidOut: X, fnd:bool);
 ensures {:both} |{ A: 
                        assert 0 <= j && j < max;
                        assert lock[j] == tidIn;
@@ -102,7 +102,7 @@ ensures {:both} |{ A:
                        return true;
                     }|;
 
-procedure {:yields} {:phase 1} FindSlot(x : int, {:linear "tid"} tidIn: X) returns (r : int, {:linear "tid"} tidOut: X)
+procedure {:yields} {:phase 1} FindSlot(x : int, {:linear_in "tid"} tidIn: X) returns (r : int, {:linear "tid"} tidOut: X)
 requires {:phase 1} Inv(valid, elt, owner);
 ensures {:phase 1} Inv(valid, elt, owner);
 ensures {:right}  |{ A: assert tidIn != nil && tidIn != done; 
@@ -160,7 +160,7 @@ ensures {:right}  |{ A: assert tidIn != nil && tidIn != done;
 	return;
 }
 
-procedure {:yields} {:phase 2} Insert(x : int, {:linear "tid"} tidIn: X) returns (result : bool, {:linear "tid"} tidOut: X) 
+procedure {:yields} {:phase 2} Insert(x : int, {:linear_in "tid"} tidIn: X) returns (result : bool, {:linear "tid"} tidOut: X) 
 requires {:phase 1} Inv(valid, elt, owner);
 requires {:phase 2} Inv(valid, elt, owner);
 ensures {:phase 1} Inv(valid, elt, owner);
@@ -207,7 +207,7 @@ ensures {:atomic}  |{ var r:int;
 
 procedure {:yields} {:phase 2} InsertPair(x : int, 
                                y : int, 
-                               {:linear "tid"} tidIn: X) 
+                               {:linear_in "tid"} tidIn: X) 
                                returns (result : bool, 
                                         {:linear "tid"} tidOut: X) 
 requires {:phase 1} Inv(valid, elt, owner);
@@ -286,7 +286,7 @@ ensures {:atomic}  |{ var rx:int;
 	return;
 }
 
-procedure {:yields} {:phase 2} LookUp(x : int, {:linear "tid"} tidIn: X, old_valid:[int]bool, old_elt:[int]int) returns (found : bool, {:linear "tid"} tidOut: X)
+procedure {:yields} {:phase 2} LookUp(x : int, {:linear_in "tid"} tidIn: X, old_valid:[int]bool, old_elt:[int]int) returns (found : bool, {:linear "tid"} tidOut: X)
 requires {:phase 1} {:phase 2} old_valid == valid && old_elt == elt;
 requires {:phase 1} {:phase 2} Inv(valid, elt, owner);
 requires {:phase 1} {:phase 2} (tidIn != nil && tidIn != done);

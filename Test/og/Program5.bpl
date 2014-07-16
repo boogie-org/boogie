@@ -26,22 +26,22 @@ function {:inline} White(i:int) returns(bool) { i == 1 }
 function {:inline} Gray(i:int) returns(bool) { i == 2 }
 function {:inline} Black(i:int) returns(bool) { i >= 3 }
 
-procedure {:yields} {:phase 0,1} AcquireLock({:cnst "tid"} tid: Tid);
+procedure {:yields} {:phase 0,1} AcquireLock({:linear "tid"} tid: Tid);
   ensures {:right} |{ A: assert tid != nil; 
                          assume lock == nil; 
                          lock := tid; 
                          return true; }|;
 
-procedure {:yields} {:phase 0,1} ReleaseLock({:cnst "tid"} tid: Tid);
+procedure {:yields} {:phase 0,1} ReleaseLock({:linear "tid"} tid: Tid);
   ensures {:left} |{ A: assert tid != nil;
                          assert lock == tid; 
                          lock := nil; 
                          return true; }|;
 
-procedure {:yields} {:phase 0,1} SetColorLocked({:cnst "tid"} tid:Tid, newCol:int); 
+procedure {:yields} {:phase 0,1} SetColorLocked({:linear "tid"} tid:Tid, newCol:int); 
   ensures {:atomic} |{A: assert tid != nil; assert lock == tid; Color := newCol; return true;}|;
 
-procedure {:yields} {:phase 0,1} GetColorLocked({:cnst "tid"} tid:Tid) returns (col:int);
+procedure {:yields} {:phase 0,1} GetColorLocked({:linear "tid"} tid:Tid) returns (col:int);
   ensures {:both} |{A: assert tid != nil; assert lock == tid; col := Color; return true;}|;
 
 procedure {:yields} {:phase 1,2} GetColorNoLock() returns (col:int);
@@ -55,7 +55,7 @@ ensures {:phase 2} Color >= old(Color);
 }
 
 
-procedure {:yields} {:phase 2,3} TopWriteBarrier({:cnst "tid"} tid:Tid)
+procedure {:yields} {:phase 2,3} TopWriteBarrier({:linear "tid"} tid:Tid)
 ensures {:atomic} |{ A: assert tid != nil;
                         goto B, C; 
                      B: assume White(Color);
@@ -76,7 +76,7 @@ ensures {:atomic} |{ A: assert tid != nil;
   yield;
 }
 
-procedure {:yields} {:phase 1,2} MidWriteBarrier({:cnst "tid"} tid:Tid)
+procedure {:yields} {:phase 1,2} MidWriteBarrier({:linear "tid"} tid:Tid)
 ensures {:atomic} |{ A: assert tid != nil;
                         goto B, C; 
                      B: assume White(Color);

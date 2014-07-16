@@ -11,7 +11,7 @@ const nil: X;
 var {:phase 0,2} b: bool;
 var {:phase 1,3} lock: X;
 
-procedure {:yields} {:phase 3} Customer({:cnst "tid"} tid: X)
+procedure {:yields} {:phase 3} Customer({:linear "tid"} tid: X)
 requires {:phase 2} tid != nil; 
 requires {:phase 2} InvLock(lock, b);
 ensures {:phase 2} InvLock(lock, b);
@@ -35,7 +35,7 @@ function {:inline} InvLock(lock: X, b: bool) : bool
     lock != nil <==> b
 }
 
-procedure {:yields} {:phase 2,3} Enter({:cnst "tid"} tid: X)
+procedure {:yields} {:phase 2,3} Enter({:linear "tid"} tid: X)
 requires {:phase 2} tid != nil; 
 requires {:phase 2} InvLock(lock, b);
 ensures {:phase 2} InvLock(lock, b);
@@ -48,7 +48,7 @@ ensures {:right} |{ A: assume lock == nil && tid != nil; lock := tid; return tru
     assert {:phase 2} InvLock(lock, b);
 }
 
-procedure {:yields} {:phase 2,3} Leave({:cnst "tid"} tid:X)
+procedure {:yields} {:phase 2,3} Leave({:linear "tid"} tid:X)
 requires {:phase 2} InvLock(lock, b);
 ensures {:phase 2} InvLock(lock, b);
 ensures {:atomic} |{ A: assert lock == tid && tid != nil; lock := nil; return true; }|;
@@ -60,7 +60,7 @@ ensures {:atomic} |{ A: assert lock == tid && tid != nil; lock := nil; return tr
     assert {:phase 2} InvLock(lock, b);
 }
 
-procedure {:yields} {:phase 1,2} LowerEnter({:cnst "tid"} tid: X) 
+procedure {:yields} {:phase 1,2} LowerEnter({:linear "tid"} tid: X) 
 ensures {:atomic} |{ A: assume !b; b := true; lock := tid; return true; }|;
 {
     var status: bool;

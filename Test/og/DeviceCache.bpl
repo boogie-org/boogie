@@ -24,7 +24,7 @@ function {:inline} Inv(ghostLock: X, currsize: int, newsize: int) : (bool)
     (ghostLock == nil <==> currsize == newsize)
 }
 
-procedure {:yields} {:phase 1} YieldToReadCache({:cnst "tid"} tid: X)
+procedure {:yields} {:phase 1} YieldToReadCache({:linear "tid"} tid: X)
 requires {:phase 1} Inv(ghostLock, currsize, newsize) && tid != nil;
 ensures {:phase 1} Inv(ghostLock, currsize, newsize) && old(currsize) <= currsize;
 {
@@ -32,7 +32,7 @@ ensures {:phase 1} Inv(ghostLock, currsize, newsize) && old(currsize) <= currsiz
    assert {:phase 1} Inv(ghostLock, currsize, newsize) && old(currsize) <= currsize;
 }
 
-procedure {:yields} {:phase 1} YieldToWriteCache({:cnst "tid"} tid: X)
+procedure {:yields} {:phase 1} YieldToWriteCache({:linear "tid"} tid: X)
 requires {:phase 1} Inv(ghostLock, currsize, newsize) && ghostLock == tid && tid != nil;
 ensures {:phase 1} Inv(ghostLock, currsize, newsize) && ghostLock == tid && old(currsize) == currsize && old(newsize) == newsize;
 {
@@ -40,10 +40,10 @@ ensures {:phase 1} Inv(ghostLock, currsize, newsize) && ghostLock == tid && old(
     assert {:phase 1} Inv(ghostLock, currsize, newsize) && tid != nil && ghostLock == tid && old(currsize) == currsize && old(newsize) == newsize;
 }
 
-procedure Allocate({:linear "tid"} xls': [X]bool) returns ({:linear "tid"} xls: [X]bool, {:linear "tid"} xl: X);
+procedure Allocate({:linear_in "tid"} xls': [X]bool) returns ({:linear "tid"} xls: [X]bool, {:linear "tid"} xl: X);
 ensures {:phase 1} xl != nil;
 
-procedure {:yields} {:phase 1} main({:linear "tid"} xls':[X]bool)
+procedure {:yields} {:phase 1} main({:linear_in "tid"} xls':[X]bool)
 requires {:phase 1} xls' == mapconstbool(true);
 {
     var {:linear "tid"} tid: X;
@@ -70,7 +70,7 @@ requires {:phase 1} xls' == mapconstbool(true);
     yield;
 }
 
-procedure {:yields} {:phase 1} Thread({:cnst "tid"} tid: X)
+procedure {:yields} {:phase 1} Thread({:linear "tid"} tid: X)
 requires {:phase 1} tid != nil;
 requires {:phase 1} Inv(ghostLock, currsize, newsize);
 {
@@ -81,7 +81,7 @@ requires {:phase 1} Inv(ghostLock, currsize, newsize);
     call bytesRead := Read(tid, start, size);
 }
 
-procedure {:yields} {:phase 1} Read({:cnst "tid"} tid: X, start : int, size : int) returns (bytesRead : int)
+procedure {:yields} {:phase 1} Read({:linear "tid"} tid: X, start : int, size : int) returns (bytesRead : int)
 requires {:phase 1} tid != nil;
 requires {:phase 1} 0 <= start && 0 <= size;
 requires {:phase 1} Inv(ghostLock, currsize, newsize);
@@ -121,7 +121,7 @@ COPY_TO_BUFFER:
     call ReadCache(tid, start, bytesRead);
 }
 
-procedure {:yields} {:phase 1} WriteCache({:cnst "tid"} tid: X, index: int)
+procedure {:yields} {:phase 1} WriteCache({:linear "tid"} tid: X, index: int)
 requires {:phase 1} Inv(ghostLock, currsize, newsize);
 requires {:phase 1} ghostLock == tid && tid != nil;
 ensures {:phase 1} ghostLock == tid;
@@ -142,7 +142,7 @@ ensures {:phase 1} Inv(ghostLock, currsize, newsize) && old(currsize) == currsiz
     par YieldToWriteCache(tid);
 }
 
-procedure {:yields} {:phase 1} ReadCache({:cnst "tid"} tid: X, start: int, bytesRead: int)
+procedure {:yields} {:phase 1} ReadCache({:linear "tid"} tid: X, start: int, bytesRead: int)
 requires {:phase 1} Inv(ghostLock, currsize, newsize);
 requires {:phase 1} tid != nil;
 requires {:phase 1} 0 <= start && 0 <= bytesRead;
@@ -168,29 +168,29 @@ ensures {:phase 1} Inv(ghostLock, currsize, newsize);
     par YieldToReadCache(tid);
 }
 
-procedure {:yields} {:phase 0,1} Init({:cnst "tid"} xls:[X]bool);
+procedure {:yields} {:phase 0,1} Init({:linear "tid"} xls:[X]bool);
 ensures {:atomic} |{ A: assert xls == mapconstbool(true); currsize := 0; newsize := 0; lock := nil; ghostLock := nil; return true; }|;
 
-procedure {:yields} {:phase 0,1} ReadCurrsize({:cnst "tid"} tid: X) returns (val: int);
+procedure {:yields} {:phase 0,1} ReadCurrsize({:linear "tid"} tid: X) returns (val: int);
 ensures {:right} |{A: assert tid != nil; assert lock == tid || ghostLock == tid; val := currsize; return true; }|;
 
-procedure {:yields} {:phase 0,1} ReadNewsize({:cnst "tid"} tid: X) returns (val: int);
+procedure {:yields} {:phase 0,1} ReadNewsize({:linear "tid"} tid: X) returns (val: int);
 ensures {:right} |{A: assert tid != nil; assert lock == tid || ghostLock == tid; val := newsize; return true; }|;
 
-procedure {:yields} {:phase 0,1} WriteNewsize({:cnst "tid"} tid: X, val: int);
+procedure {:yields} {:phase 0,1} WriteNewsize({:linear "tid"} tid: X, val: int);
 ensures {:atomic} |{A: assert tid != nil; assert lock == tid && ghostLock == nil; newsize := val; ghostLock := tid; return true; }|;
 
-procedure {:yields} {:phase 0,1} WriteCurrsize({:cnst "tid"} tid: X, val: int);
+procedure {:yields} {:phase 0,1} WriteCurrsize({:linear "tid"} tid: X, val: int);
 ensures {:atomic} |{A: assert tid != nil; assert lock == tid && ghostLock == tid; currsize := val; ghostLock := nil; return true; }|;
 
-procedure {:yields} {:phase 0,1} ReadCacheEntry({:cnst "tid"} tid: X, index: int);
+procedure {:yields} {:phase 0,1} ReadCacheEntry({:linear "tid"} tid: X, index: int);
 ensures {:atomic} |{ A: assert 0 <= index && index < currsize; return true; }|;
 
-procedure {:yields} {:phase 0,1} WriteCacheEntry({:cnst "tid"} tid: X, index: int);
+procedure {:yields} {:phase 0,1} WriteCacheEntry({:linear "tid"} tid: X, index: int);
 ensures {:right} |{ A: assert tid != nil; assert currsize <= index && ghostLock == tid; return true; }|;
 
-procedure {:yields} {:phase 0,1} acquire({:cnst "tid"} tid: X);
+procedure {:yields} {:phase 0,1} acquire({:linear "tid"} tid: X);
 ensures {:right} |{ A: assert tid != nil; assume lock == nil; lock := tid; return true; }|;
 
-procedure {:yields} {:phase 0,1} release({:cnst "tid"} tid: X);
+procedure {:yields} {:phase 0,1} release({:linear "tid"} tid: X);
 ensures {:left} |{ A: assert tid != nil; assert lock == tid; lock := nil; return true; }|;

@@ -33,10 +33,10 @@ function {:inline} Inv2(tickets: [int]bool, ticket: int, lock: X): (bool)
     if (lock == nil) then tickets == RightOpen(ticket) else tickets == RightClosed(ticket)
 }
 
-procedure Allocate({:linear "tid"} xls':[X]bool) returns ({:linear "tid"} xls: [X]bool, {:linear "tid"} xl: X);
+procedure Allocate({:linear_in "tid"} xls':[X]bool) returns ({:linear "tid"} xls: [X]bool, {:linear "tid"} xl: X);
 ensures {:phase 1} {:phase 2} xl != nil;
 
-procedure {:yields} {:phase 3} main({:linear "tid"} xls':[X]bool)
+procedure {:yields} {:phase 3} main({:linear_in "tid"} xls':[X]bool)
 requires {:phase 3} xls' == mapconstbool(true);
 {
     var {:linear "tid"} tid: X;
@@ -59,7 +59,7 @@ requires {:phase 3} xls' == mapconstbool(true);
     par Yield1() | Yield2() | Yield();
 }
 
-procedure {:yields} {:phase 3} Customer({:linear "tid"} tid': X)
+procedure {:yields} {:phase 3} Customer({:linear_in "tid"} tid': X)
 requires {:phase 1} Inv1(T, t);
 requires {:phase 2} tid' != nil && Inv2(T, s, cs);
 requires {:phase 3} true;
@@ -80,7 +80,7 @@ requires {:phase 3} true;
     par Yield1() | Yield2() | Yield();
 }
 
-procedure {:yields} {:phase 2,3} Enter({:linear "tid"} tid': X) returns ({:linear "tid"} tid: X)
+procedure {:yields} {:phase 2,3} Enter({:linear_in "tid"} tid': X) returns ({:linear "tid"} tid: X)
 requires {:phase 1} Inv1(T, t);
 ensures {:phase 1} Inv1(T,t);
 requires {:phase 2} tid' != nil && Inv2(T, s, cs);
@@ -97,7 +97,7 @@ ensures {:right} |{ A: tid := tid'; havoc t, T; assume tid != nil && cs == nil; 
     par Yield1() | Yield2();
 }
 
-procedure {:yields} {:phase 1,2} GetTicketAbstract({:linear "tid"} tid': X) returns ({:linear "tid"} tid: X, m: int)
+procedure {:yields} {:phase 1,2} GetTicketAbstract({:linear_in "tid"} tid': X) returns ({:linear "tid"} tid: X, m: int)
 requires {:phase 1} Inv1(T, t);
 ensures {:phase 1} Inv1(T, t);
 ensures {:right} |{ A: tid := tid'; havoc m, t; assume !T[m]; T[m] := true; return true; }|;
@@ -129,15 +129,15 @@ ensures {:phase 1} Inv1(T,t);
     assert {:phase 1} Inv1(T,t);
 }
 
-procedure {:yields} {:phase 0,3} Init({:linear "tid"} xls':[X]bool) returns ({:linear "tid"} xls:[X]bool);
+procedure {:yields} {:phase 0,3} Init({:linear_in "tid"} xls':[X]bool) returns ({:linear "tid"} xls:[X]bool);
 ensures {:atomic} |{ A: assert xls' == mapconstbool(true); xls := xls'; cs := nil; t := 0; s := 0; T := RightOpen(0); return true; }|;
 
-procedure {:yields} {:phase 0,1} GetTicket({:linear "tid"} tid': X) returns ({:linear "tid"} tid: X, m: int);
+procedure {:yields} {:phase 0,1} GetTicket({:linear_in "tid"} tid': X) returns ({:linear "tid"} tid: X, m: int);
 ensures {:atomic} |{ A: tid := tid'; m := t; t := t + 1; T[m] := true; return true; }|;
 
-procedure {:yields} {:phase 0,2} WaitAndEnter({:linear "tid"} tid': X, m:int) returns ({:linear "tid"} tid: X);
+procedure {:yields} {:phase 0,2} WaitAndEnter({:linear_in "tid"} tid': X, m:int) returns ({:linear "tid"} tid: X);
 ensures {:atomic} |{ A: tid := tid'; assume m <= s; cs := tid; return true; }|;
 
-procedure {:yields} {:phase 0,3} Leave({:linear "tid"} tid': X) returns ({:linear "tid"} tid: X);
+procedure {:yields} {:phase 0,3} Leave({:linear_in "tid"} tid': X) returns ({:linear "tid"} tid: X);
 ensures {:atomic} |{ A: assert cs == tid'; assert tid' != nil; tid := tid'; s := s + 1; cs := nil; return true; }|;
 

@@ -14,7 +14,7 @@ namespace Microsoft.Boogie
         {
             if (iter == null) return null;
             iter.Next = RemoveLinearAttribute(iter.Next);
-            return (iter.Key == "linear" || iter.Key == "cnst") ? iter.Next : iter;
+            return (iter.Key == "linear" || iter.Key == "linear_in" || iter.Key == "linear_out") ? iter.Next : iter;
         }
 
         public override Variable VisitVariable(Variable node)
@@ -26,7 +26,8 @@ namespace Microsoft.Boogie
 
     public enum LinearKind {
         LINEAR,
-        CONST
+        LINEAR_IN,
+        LINEAR_OUT
     }
 
     public class LinearTypeChecker : ReadOnlyVisitor
@@ -166,8 +167,12 @@ namespace Microsoft.Boogie
                 string domainName = FindDomainName(v);
                 if (domainName != null)
                 {
-                    inParamToLinearQualifier[node.InParams[i]] = new LinearQualifier(domainName, FindLinearKind(v));
-                    start.Add(node.InParams[i]);
+                    var kind = FindLinearKind(v);
+                    inParamToLinearQualifier[node.InParams[i]] = new LinearQualifier(domainName, kind);
+                    if (kind == LinearKind.LINEAR || kind == LinearKind.LINEAR_IN)
+                    {
+                        start.Add(node.InParams[i]);
+                    }
                 }
             }
             for (int i = 0; i < node.OutParams.Count; i++)
@@ -200,6 +205,11 @@ namespace Microsoft.Boogie
                     {
                         Error(b.TransferCmd, string.Format("Global variable {0} must be available at a return", g.Name));
                     } 
+                    foreach (Variable v in node.InParams)
+                    {
+                        if (FindDomainName(v) == null || FindLinearKind(v) == LinearKind.LINEAR_IN || end.Contains(v)) continue;
+                        Error(b.TransferCmd, string.Format("Input variable {0} must be available at a return", v.Name));
+                    }
                     foreach (Variable v in node.OutParams)
                     {
                         if (FindDomainName(v) == null || end.Contains(v)) continue;
@@ -253,8 +263,11 @@ namespace Microsoft.Boogie
                 IdentifierExpr ie = callCmd.Ins[i] as IdentifierExpr;
                 if (ie == null) continue;
                 Variable v = callCmd.Proc.InParams[i];
-                if (FindDomainName(v) == null || FindLinearKind(v) == LinearKind.LINEAR) continue;
-                start.Add(ie.Decl);
+                if (FindDomainName(v) == null) continue;
+                if (FindLinearKind(v) == LinearKind.LINEAR_OUT)
+                {
+                    start.Add(ie.Decl);
+                }
             }
         }
         public void AddAvailableVars(ParCallCmd parCallCmd, HashSet<Variable> start)
@@ -279,10 +292,6 @@ namespace Microsoft.Boogie
                         {
                             Error(ie, "unavailable source for a linear read"); 
                         }
-                        else if (FindLinearKind(ie.Decl) == LinearKind.CONST)
-                        {
-                            Error(ie, "const linear vars cannot occur on the right side of a linear assignment");
-                        }
                         else 
                         {
                             start.Remove(ie.Decl);
@@ -303,15 +312,27 @@ namespace Microsoft.Boogie
                     CallCmd callCmd = (CallCmd)cmd;
                     for (int i = 0; i < callCmd.Proc.InParams.Count; i++)
                     {
-                        if (FindDomainName(callCmd.Proc.InParams[i]) == null) continue;
+                        Variable param = callCmd.Proc.InParams[i];
+                        if (FindDomainName(param) == null) continue;
                         IdentifierExpr ie = callCmd.Ins[i] as IdentifierExpr;
+                        LinearKind paramKind = FindLinearKind(param);
                         if (start.Contains(ie.Decl))
                         {
-                            start.Remove(ie.Decl); 
+                            if (callCmd.IsAsync || paramKind == LinearKind.LINEAR_IN)
+                            {
+                                start.Remove(ie.Decl);
+                            }
                         }
                         else
                         {
-                            Error(ie, "unavailable source for a linear read"); 
+                            if (paramKind == LinearKind.LINEAR_OUT)
+                            {
+                                start.Add(ie.Decl);
+                            }
+                            else
+                            {
+                                Error(ie, "unavailable source for a linear read");
+                            }
                         }
                     }
                     availableLinearVars[callCmd] = new HashSet<Variable>(start);
@@ -328,15 +349,27 @@ namespace Microsoft.Boogie
                     {
                         for (int i = 0; i < callCmd.Proc.InParams.Count; i++)
                         {
-                            if (FindDomainName(callCmd.Proc.InParams[i]) == null) continue;
+                            Variable param = callCmd.Proc.InParams[i];
+                            if (FindDomainName(param) == null) continue;
                             IdentifierExpr ie = callCmd.Ins[i] as IdentifierExpr;
+                            LinearKind paramKind = FindLinearKind(param);
                             if (start.Contains(ie.Decl))
                             {
-                                start.Remove(ie.Decl);
+                                if (paramKind == LinearKind.LINEAR_IN)
+                                {
+                                    start.Remove(ie.Decl);
+                                }
                             }
                             else
                             {
-                                Error(ie, "unavailable source for a linear read");
+                                if (paramKind == LinearKind.LINEAR_OUT)
+                                {
+                                    start.Add(ie.Decl);
+                                }
+                                else
+                                {
+                                    Error(ie, "unavailable source for a linear read");
+                                }
                             }
                         }
                     }
@@ -374,7 +407,10 @@ namespace Microsoft.Boogie
             string domainName = QKeyValue.FindStringAttribute(v.Attributes, "linear");
             if (domainName != null)
                 return domainName;
-            return QKeyValue.FindStringAttribute(v.Attributes, "cnst");
+            domainName = QKeyValue.FindStringAttribute(v.Attributes, "linear_in");
+            if (domainName != null)
+                return domainName;
+            return QKeyValue.FindStringAttribute(v.Attributes, "linear_out");
         }
         public LinearKind FindLinearKind(Variable v)
         {
@@ -385,18 +421,22 @@ namespace Microsoft.Boogie
             if (outParamToDomainName.ContainsKey(v))
                 return LinearKind.LINEAR;
 
-            if (QKeyValue.FindStringAttribute(v.Attributes, "cnst") != null)
+            if (QKeyValue.FindStringAttribute(v.Attributes, "linear") != null)
             {
-                return LinearKind.CONST;
+                return LinearKind.LINEAR;
             }
-            else if (QKeyValue.FindStringAttribute(v.Attributes, "linear") != null)
+            else if (QKeyValue.FindStringAttribute(v.Attributes, "linear_in") != null)
             { 
-                return LinearKind.LINEAR; 
+                return LinearKind.LINEAR_IN; 
+            }
+            else if (QKeyValue.FindStringAttribute(v.Attributes, "linear_out") != null)
+            {
+                return LinearKind.LINEAR_OUT;
             }
             else
             {
                 Debug.Assert(false);
-                return LinearKind.CONST;
+                return LinearKind.LINEAR;
             }
         }
         public override Variable VisitVariable(Variable node)
@@ -407,6 +447,14 @@ namespace Microsoft.Boogie
                 if (!domainNameToCollectors.ContainsKey(domainName))
                 {
                     domainNameToCollectors[domainName] = new Dictionary<Type,Function>();
+                }
+                LinearKind kind = FindLinearKind(node);
+                if (kind != LinearKind.LINEAR)
+                {
+                    if (node is GlobalVariable || node is LocalVariable || (node is Formal && !(node as Formal).InComing))
+                    {
+                        Error(node, "Variable must be declared linear (as opposed to linear_in or linear_out)");
+                    }
                 }
             }
             return base.VisitVariable(node);
@@ -480,16 +528,6 @@ namespace Microsoft.Boogie
                 if (actual.Decl is GlobalVariable)
                 {
                     Error(node, "Only local linear variable can be an actual input parameter of a procedure call");
-                    continue;
-                }
-                if (FindLinearKind(actual.Decl) == LinearKind.CONST && FindLinearKind(formal) == LinearKind.LINEAR)
-                {
-                    Error(node, "Const linear variable cannot be an argument for a linear input parameter of a procedure call");
-                    continue;
-                }
-                if (FindLinearKind(actual.Decl) == LinearKind.CONST && FindLinearKind(formal) == LinearKind.CONST && node.IsAsync)
-                {
-                    Error(node, "Const linear variable cannot be an argument for a const parameter of an async procedure call");
                     continue;
                 }
                 if (inVars.Contains(actual.Decl))

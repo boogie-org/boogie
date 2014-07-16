@@ -38,7 +38,7 @@ ensures {:atomic} |{A: l := nil; return true; }|;
 procedure {:yields} {:phase 0,1} Set(val: int);
 ensures {:atomic} |{A: x := val; return true; }|;
 
-procedure {:yields} {:phase 1} foo({:linear "tid"} tid': X, val: int)
+procedure {:yields} {:phase 1} foo({:linear_in "tid"} tid': X, val: int)
 requires {:phase 1} tid' != nil;
 {
     var {:linear "tid"} tid: X;
@@ -55,7 +55,7 @@ requires {:phase 1} tid' != nil;
     yield;
 }
 
-procedure {:yields} {:phase 1} Yield({:linear "tid"} tid': X) returns ({:linear "tid"} tid: X)
+procedure {:yields} {:phase 1} Yield({:linear_in "tid"} tid': X) returns ({:linear "tid"} tid: X)
 requires {:phase 1} tid' != nil;
 ensures {:phase 1} tid == tid';
 ensures {:phase 1} old(l) == tid ==> old(l) == l && old(x) == x;

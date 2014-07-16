@@ -18,7 +18,7 @@ const nil: X;
 procedure malloc() returns (x: X, {:linear "Mem"} M: [X]bool);
 ensures M == MapConstBool(false)[x := true];
 
-procedure Join({:linear "Mem"} A: [X]bool);
+procedure Join({:linear_in "Mem"} A: [X]bool);
 modifies D;
 ensures MapOr(old(D), A) == D;
 
