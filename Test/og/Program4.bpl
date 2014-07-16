@@ -13,11 +13,9 @@ function {:inline} {:linear "tid"} TidSetCollector(x: [Tid]bool) : [Tid]bool
   x
 }
 
-var {:linear "tid"} {:phase 1} alloc:[Tid]bool; 
 var {:phase 1} a:[Tid]int;
 
 procedure Allocate() returns ({:linear "tid"} tid:Tid); 
-modifies alloc; 
 
 procedure {:yields} {:phase 1} main() { 
     var {:linear "tid"} tid:Tid;
