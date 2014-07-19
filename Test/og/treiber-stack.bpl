@@ -27,9 +27,6 @@ ensures {:right} |{ A: assert dom(Stack)[i] || dom(Used)[i]; goto B,C;
 procedure {:yields} {:phase 0} Store({:linear_in "Node"} l_in:lmap, i:Node, v:Node) returns ({:linear "Node"} l_out:lmap);
 ensures {:both} |{ A: assert dom(l_in)[i]; l_out := Add(l_in, i, v); return true; }|;
 
-procedure {:yields} {:phase 0} MakeEmpty() returns ({:linear "Node"} l_out:lmap);
-ensures {:both} |{ A: l_out := EmptyLmap(); return true; }|;
-
 procedure {:yields} {:phase 0} TransferToStack(oldVal: Node, newVal: Node, {:linear_in "Node"} l_in:lmap) returns (r: bool, {:linear "Node"} l_out:lmap);
 ensures {:atomic} |{ A: assert dom(l_in)[newVal];
 		        goto B,C;
