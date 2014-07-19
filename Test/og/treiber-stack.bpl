@@ -17,12 +17,12 @@ function Remove(x: lmap, i: Node): (lmap);
 axiom (forall x: lmap, i: Node :: dom(Remove(x, i)) == dom(x)[i:=false] && map(Remove(x, i)) == map(x));
 
 procedure {:yields} {:phase 0} ReadTopOfStack() returns (v:Node);
-ensures {:both} |{ A: /*v := TopOfStack;*/ return true; }|;
+ensures {:right} |{ A: assume dom(Stack)[v] || dom(Used)[v]; return true; }|;
 
 procedure {:yields} {:phase 0} Load(i:Node) returns (v:Node);
-ensures {:right} |{ A: goto B,C;
-	           B: assume dom(Stack)[i]; v := map(Stack)[i]; return true; 
-		   C: assume !dom(Stack)[i]; return true; }|;
+ensures {:right} |{ A: assert dom(Stack)[i] || dom(Used)[i]; goto B,C;
+	            B: assume dom(Stack)[i]; v := map(Stack)[i]; return true; 
+		    C: assume !dom(Stack)[i]; return true; }|;
 
 procedure {:yields} {:phase 0} Store({:linear_in "Node"} l_in:lmap, i:Node, v:Node) returns ({:linear "Node"} l_out:lmap);
 ensures {:both} |{ A: assert dom(l_in)[i]; l_out := Add(l_in, i, v); return true; }|;
@@ -36,10 +36,10 @@ ensures {:atomic} |{ A: assert dom(l_in)[newVal];
                         B: assume oldVal == TopOfStack; TopOfStack := newVal; l_out := EmptyLmap(); Stack := Add(Stack, newVal, map(l_in)[newVal]); r := true; return true;
 			C: assume oldVal != TopOfStack; l_out := l_in; r := false; return true; }|;
 
-procedure {:yields} {:phase 0} TransferFromStack(oldVal: Node, newVal: Node) returns (r: bool, {:linear "Node"} l_out:lmap);
+procedure {:yields} {:phase 0} TransferFromStack(oldVal: Node, newVal: Node) returns (r: bool);
 ensures {:atomic} |{ A: goto B,C;
-                        B: assume oldVal == TopOfStack; TopOfStack := newVal; l_out := Add(EmptyLmap(), oldVal, map(Stack)[oldVal]); Stack := Remove(Stack, oldVal); r := true; return true;
-		        C: assume oldVal != TopOfStack; l_out := EmptyLmap(); r := false; return true; }|;
+                        B: assume oldVal == TopOfStack; TopOfStack := newVal; Used := Add(Used, oldVal, map(Stack)[oldVal]); Stack := Remove(Stack, oldVal); r := true; return true;
+		        C: assume oldVal != TopOfStack; r := false; return true; }|;
 
 var TopOfStack: Node;
 var {:linear "Node"} Stack: lmap;
@@ -50,6 +50,8 @@ function {:inline} Inv(TopOfStack: Node, Stack: lmap) : (bool)
   BetweenSet(map(Stack), TopOfStack, null)[TopOfStack] &&
   Subset(Difference(BetweenSet(map(Stack), TopOfStack, null), Singleton(null)), dom(Stack))
 }
+
+var {:linear "Node"} Used: lmap;
 
 procedure {:yields} {:phase 1} push(x: Node, {:linear_in "Node"} x_lmap: lmap)
 requires {:phase 1} dom(x_lmap)[x];
@@ -83,30 +85,28 @@ ensures {:atomic} |{ A: Stack := Add(Stack, x, TopOfStack); TopOfStack := x; ret
   assert {:expand} {:phase 1} Inv(TopOfStack, Stack);
 }
 
-procedure {:yields} {:phase 1} pop() returns (t: Node, {:linear "Node"} t_lmap: lmap)
+procedure {:yields} {:phase 1} pop()
 requires {:phase 1} Inv(TopOfStack, Stack);
 ensures {:phase 1} Inv(TopOfStack, Stack);
-ensures {:atomic} |{ A: goto B,C;
-                     B: t_lmap := EmptyLmap(); return true;
-                     C: assume TopOfStack != null; t := TopOfStack; t_lmap := Add(EmptyLmap(), t, map(Stack)[t]); TopOfStack := map(Stack)[t]; Stack := Remove(Stack, t); return true; }|;
+ensures {:atomic} |{ var t: Node; 
+                     A: assume TopOfStack != null; t := TopOfStack; Used := Add(Used, t, map(Stack)[t]); TopOfStack := map(Stack)[t]; Stack := Remove(Stack, t); return true; }|;
 {
   var g: bool;
   var x: Node;
+  var t: Node;
 
   yield;
   assert {:phase 1} Inv(TopOfStack, Stack);
-  call t_lmap := MakeEmpty();
   while (true)
   invariant {:phase 1} Inv(TopOfStack, Stack);
   {
     call t := ReadTopOfStack();
-    if (t == null) {
-      break;
-    }
-    call x := Load(t);
-    call g, t_lmap := TransferFromStack(t, x); 
-    if (g) { 
-      break;
+    if (t != null) {
+      call x := Load(t);
+      call g := TransferFromStack(t, x); 
+      if (g) { 
+        break;
+      }
     }
     yield;
     assert {:phase 1} Inv(TopOfStack, Stack);
