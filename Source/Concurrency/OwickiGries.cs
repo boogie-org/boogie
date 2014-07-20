@@ -312,38 +312,44 @@ namespace Microsoft.Boogie
             return linearTypeChecker.AvailableLinearVars(absyMap[absy]);
         }
 
+        private CallCmd CallToYieldProc(IToken tok, Dictionary<Variable, Variable> ogOldGlobalMap, Dictionary<string, Variable> domainNameToLocalVar)
+        {
+            List<Expr> exprSeq = new List<Expr>();
+            foreach (string domainName in linearTypeChecker.linearDomains.Keys)
+            {
+                exprSeq.Add(Expr.Ident(domainNameToLocalVar[domainName]));
+            }
+            foreach (IdentifierExpr ie in globalMods)
+            {
+                exprSeq.Add(Expr.Ident(ogOldGlobalMap[ie.Decl]));
+            }
+            if (yieldProc == null)
+            {
+                List<Variable> inputs = new List<Variable>();
+                foreach (string domainName in linearTypeChecker.linearDomains.Keys)
+                {
+                    var domain = linearTypeChecker.linearDomains[domainName];
+                    Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "linear_" + domainName + "_in", new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> { domain.elementType }, Type.Bool)), true);
+                    inputs.Add(f);
+                }
+                foreach (IdentifierExpr ie in globalMods)
+                {
+                    Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_global_old_{0}", ie.Decl.Name), ie.Decl.TypedIdent.Type), true);
+                    inputs.Add(f);
+                }
+                yieldProc = new Procedure(Token.NoToken, string.Format("og_yield_{0}", phaseNum), new List<TypeVariable>(), inputs, new List<Variable>(), new List<Requires>(), new List<IdentifierExpr>(), new List<Ensures>());
+                yieldProc.AddAttribute("inline", new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1)));
+            }
+            CallCmd yieldCallCmd = new CallCmd(Token.NoToken, yieldProc.Name, exprSeq, new List<IdentifierExpr>());
+            yieldCallCmd.Proc = yieldProc;
+            return yieldCallCmd;
+        }
+
         private void AddCallToYieldProc(IToken tok, List<Cmd> newCmds, Dictionary<Variable, Variable> ogOldGlobalMap, Dictionary<string, Variable> domainNameToLocalVar)
         {
             if (!CommandLineOptions.Clo.TrustNonInterference)
             {
-                List<Expr> exprSeq = new List<Expr>();
-                foreach (string domainName in linearTypeChecker.linearDomains.Keys)
-                {
-                    exprSeq.Add(Expr.Ident(domainNameToLocalVar[domainName]));
-                }
-                foreach (IdentifierExpr ie in globalMods)
-                {
-                    exprSeq.Add(Expr.Ident(ogOldGlobalMap[ie.Decl]));
-                }
-                if (yieldProc == null)
-                {
-                    List<Variable> inputs = new List<Variable>();
-                    foreach (string domainName in linearTypeChecker.linearDomains.Keys)
-                    {
-                        var domain = linearTypeChecker.linearDomains[domainName];
-                        Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "linear_" + domainName + "_in", new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> { domain.elementType }, Type.Bool)), true);
-                        inputs.Add(f);
-                    }
-                    foreach (IdentifierExpr ie in globalMods)
-                    {
-                        Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_global_old_{0}", ie.Decl.Name), ie.Decl.TypedIdent.Type), true);
-                        inputs.Add(f);
-                    }
-                    yieldProc = new Procedure(Token.NoToken, string.Format("og_yield_{0}", phaseNum), new List<TypeVariable>(), inputs, new List<Variable>(), new List<Requires>(), new List<IdentifierExpr>(), new List<Ensures>());
-                    yieldProc.AddAttribute("inline", new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1)));
-                }
-                CallCmd yieldCallCmd = new CallCmd(Token.NoToken, yieldProc.Name, exprSeq, new List<IdentifierExpr>());
-                yieldCallCmd.Proc = yieldProc;
+                CallCmd yieldCallCmd = CallToYieldProc(tok, ogOldGlobalMap, domainNameToLocalVar);
                 newCmds.Add(yieldCallCmd);
             }
 
@@ -831,6 +837,40 @@ namespace Microsoft.Boogie
             impl.LocVars.AddRange(newLocalVars);
             impl.LocVars.AddRange(oldPcs);
             impl.LocVars.AddRange(oldOks);
+
+            //UnifyCallsToYieldProc(impl, ogOldGlobalMap, domainNameToLocalVar);
+        }
+
+        private void UnifyCallsToYieldProc(Implementation impl, Dictionary<Variable, Variable> ogOldGlobalMap, Dictionary<string, Variable> domainNameToLocalVar)
+        {
+            CallCmd yieldCallCmd = CallToYieldProc(Token.NoToken, ogOldGlobalMap, domainNameToLocalVar);
+            Block yieldCheckBlock = new Block(Token.NoToken, "CallToYieldProc", new List<Cmd>(new Cmd[] { yieldCallCmd, new AssumeCmd(Token.NoToken, Expr.False) }), new ReturnCmd(Token.NoToken));
+            List<Block> newBlocks = new List<Block>();
+            foreach (Block b in impl.Blocks)
+            {
+                TransferCmd transferCmd = b.TransferCmd;
+                List<Cmd> newCmds = new List<Cmd>();
+                for (int i = b.Cmds.Count-1; i >= 0; i--)
+                {
+                    CallCmd callCmd = b.Cmds[i] as CallCmd;
+                    if (callCmd == null || callCmd.Proc != yieldProc)
+                    {
+                        newCmds.Insert(0, b.Cmds[i]);
+                    }
+                    else
+                    {
+                        Block newBlock = new Block(Token.NoToken, b.Label + i, newCmds, transferCmd);
+                        newCmds = new List<Cmd>();
+                        transferCmd = new GotoCmd(Token.NoToken, new List<string>(new string[] { newBlock.Label, yieldCheckBlock.Label }), 
+                                                                 new List<Block>(new Block[] { newBlock, yieldCheckBlock }));
+                        newBlocks.Add(newBlock);
+                    }
+                }
+                b.Cmds = newCmds;
+                b.TransferCmd = transferCmd;
+            }
+            impl.Blocks.AddRange(newBlocks);
+            impl.Blocks.Add(yieldCheckBlock);
         }
 
         private List<List<Cmd>> CollectAndDesugarYields(Implementation impl,
