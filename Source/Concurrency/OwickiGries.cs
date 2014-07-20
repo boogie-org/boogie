@@ -838,7 +838,7 @@ namespace Microsoft.Boogie
             impl.LocVars.AddRange(oldPcs);
             impl.LocVars.AddRange(oldOks);
 
-            //UnifyCallsToYieldProc(impl, ogOldGlobalMap, domainNameToLocalVar);
+            UnifyCallsToYieldProc(impl, ogOldGlobalMap, domainNameToLocalVar);
         }
 
         private void UnifyCallsToYieldProc(Implementation impl, Dictionary<Variable, Variable> ogOldGlobalMap, Dictionary<string, Variable> domainNameToLocalVar)
