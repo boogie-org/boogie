@@ -2434,6 +2434,10 @@ namespace Microsoft.Boogie {
         tc.Error(this, "preconditions must be of type bool");
       }
     }
+
+    public override Absy StdDispatch(StandardVisitor visitor) {
+      return visitor.VisitRequires(this);
+    }
   }
 
   public class Ensures : Absy, IPotentialErrorNode {
@@ -2527,6 +2531,10 @@ namespace Microsoft.Boogie {
       if (!this.Condition.Type.Unify(Type.Bool)) {
         tc.Error(this, "postconditions must be of type bool");
       }
+    }
+
+    public override Absy StdDispatch(StandardVisitor visitor) {
+      return visitor.VisitEnsures(this);
     }
   }
 
