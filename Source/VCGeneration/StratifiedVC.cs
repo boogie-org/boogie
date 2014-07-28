@@ -120,12 +120,15 @@ namespace VC {
     public Block block;
     public int numInstr;  // for TraceLocation
     public VCExprVar callSiteVar;
-    public CallSite(string callee, List<VCExpr> interfaceExprs, VCExprVar callSiteVar, Block block, int numInstr) {
+    public QKeyValue Attributes; // attributes on the call cmd
+    public CallSite(string callee, List<VCExpr> interfaceExprs, VCExprVar callSiteVar, Block block, int numInstr, QKeyValue Attributes)
+    {
       this.calleeName = callee;
       this.interfaceExprs = interfaceExprs;
       this.callSiteVar = callSiteVar;
       this.block = block;
       this.numInstr = numInstr;
+      this.Attributes = Attributes;
     }
   }
 
@@ -401,7 +404,7 @@ namespace VC {
           i++;
           AssumeCmd callSiteAssumeCmd = (AssumeCmd)block.Cmds[i];
           IdentifierExpr iexpr = (IdentifierExpr) callSiteAssumeCmd.Expr;
-          CallSite cs = new CallSite(naryExpr.Fun.FunctionName, interfaceExprs, prover.Context.BoogieExprTranslator.LookupVariable(iexpr.Decl), block, instr);
+          CallSite cs = new CallSite(naryExpr.Fun.FunctionName, interfaceExprs, prover.Context.BoogieExprTranslator.LookupVariable(iexpr.Decl), block, instr, callSiteAssumeCmd.Attributes);
           if (!callSites.ContainsKey(block))
             callSites[block] = new List<CallSite>();
           callSites[block].Add(cs);
@@ -423,7 +426,7 @@ namespace VC {
           foreach (Expr e in naryExpr.Args) {
             interfaceExprs.Add(prover.Context.BoogieExprTranslator.Translate(e));
           }
-          CallSite cs = new CallSite(naryExpr.Fun.FunctionName, interfaceExprs, null, block, i);
+          CallSite cs = new CallSite(naryExpr.Fun.FunctionName, interfaceExprs, null, block, i, assumeCmd.Attributes);
           if (!callSites.ContainsKey(block))
             callSites[block] = new List<CallSite>();
           callSites[block].Add(cs);
@@ -506,7 +509,7 @@ namespace VC {
 
   public class StratifiedVCGen : StratifiedVCGenBase {
     public bool PersistCallTree;
-    public static Dictionary<string, int> callTree = null;
+    public static HashSet<string> callTree = null;
     public int numInlined = 0;
     public int vcsize = 0;
     private bool useSummary;
@@ -515,7 +518,7 @@ namespace VC {
     public HashSet<string> procsToSkip;
     public Dictionary<string, int> extraRecBound;
 
-    public StratifiedVCGen(bool usePrevCallTree, Dictionary<string, int> prevCallTree, 
+    public StratifiedVCGen(bool usePrevCallTree, HashSet<string> prevCallTree, 
                            HashSet<string> procsToSkip, Dictionary<string, int> extraRecBound,
                            Program program, string/*?*/ logFilePath, bool appendLogFile, List<Checker> checkers) 
     : this(program, logFilePath, appendLogFile, checkers)
@@ -1103,7 +1106,7 @@ namespace VC {
         while (expand) {
           List<int> toExpand = new List<int>();
           foreach (int id in calls.currCandidates) {
-            if (callTree.ContainsKey(calls.getPersistentId(id))) {
+            if (callTree.Contains(calls.getPersistentId(id))) {
               toExpand.Add(id);
             }
           }
@@ -1281,14 +1284,16 @@ namespace VC {
 
       // Store current call tree
       if (PersistCallTree && (ret == Outcome.Correct || ret == Outcome.Errors || ret == Outcome.ReachedBound)) {
-        callTree = new Dictionary<string, int>();
+        callTree = new HashSet<string>();
         //var persistentNodes = new HashSet<int>(calls.candidateParent.Values);
         var persistentNodes = new HashSet<int>(calls.candidateParent.Keys);
         persistentNodes.Add(0);
         persistentNodes.ExceptWith(calls.currCandidates);
 
         foreach (var id in persistentNodes) {
-          callTree.Add(calls.getPersistentId(id), 0);
+          var pid = calls.getPersistentId(id);
+          Debug.Assert(!callTree.Contains(pid));
+          callTree.Add(pid);
         }
       }
       if (prover2 != null) prover2.Close();
