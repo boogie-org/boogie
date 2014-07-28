@@ -88,8 +88,8 @@ namespace Microsoft.Boogie {
 
       BinderExpr other = (BinderExpr)obj;
       // Note, we consider quantifiers equal modulo the Triggers.
-      return object.Equals(this.TypeParameters, other.TypeParameters)
-             && object.Equals(this.Dummies, other.Dummies)
+      return this.TypeParameters.SequenceEqual(other.TypeParameters)
+             && this.Dummies.SequenceEqual(other.Dummies)
              && object.Equals(this.Body, other.Body);
     }
 
