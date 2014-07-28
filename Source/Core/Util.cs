@@ -252,6 +252,11 @@ namespace Microsoft.Boogie {
       }
     }
 
+    public TokenTextWriter(string filename)
+        : this(filename, false)
+    {
+    }
+
     public TokenTextWriter(string filename, bool pretty)
       : base() {
       Contract.Requires(filename != null);
@@ -286,6 +291,11 @@ namespace Microsoft.Boogie {
       this.pretty = pretty;
       this.filename = filename;
       this.writer = writer;
+    }
+
+    public TokenTextWriter(TextWriter writer)
+        : this(writer, false)
+    {
     }
 
     public TokenTextWriter(TextWriter writer, bool pretty)
