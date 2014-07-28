@@ -2110,7 +2110,7 @@ namespace Microsoft.Boogie {
         return false;
 
       NAryExpr other = (NAryExpr)obj;
-      return object.Equals(this.Fun, other.Fun) && object.Equals(this.Args, other.Args);
+      return object.Equals(this.Fun, other.Fun) && this.Args.SequenceEqual(other.Args);
     }
     [Pure]
     public override int GetHashCode() {
