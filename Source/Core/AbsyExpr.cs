@@ -2115,7 +2115,11 @@ namespace Microsoft.Boogie {
     [Pure]
     public override int GetHashCode() {
       int h = this.Fun.GetHashCode();
-      h ^= this.Args.GetHashCode();
+      // DO NOT USE Args.GetHashCode() because that uses Object.GetHashCode() which uses references
+      // We want structural equality
+      foreach (var arg in Args) {
+        h = (97*h) + arg.GetHashCode();
+      }
       return h;
     }
     public override void Emit(TokenTextWriter stream, int contextBindingStrength, bool fragileContext) {
