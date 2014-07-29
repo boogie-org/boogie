@@ -95,10 +95,26 @@ namespace Microsoft.Boogie {
 
     [Pure]
     public override int GetHashCode() {
-      int h = this.Dummies.GetHashCode();
+      // DO NOT USE Dummies.GetHashCode() because we want structurally
+      // identical Expr to have the same hash code **not** identical references
+      // to have the same hash code.
+      int h = 0;
+      foreach (var dummyVar in this.Dummies) {
+        h = ( 53 * h ) + dummyVar.GetHashCode();
+      }
+
       // Note, we consider quantifiers equal modulo the Triggers.
       h ^= this.Body.GetHashCode();
-      h = h * 5 + this.TypeParameters.GetHashCode();
+
+      // DO NOT USE TypeParameters.GetHashCode() because we want structural
+      // identical Expr to have the same hash code **not** identical references
+      // to have the same hash code.
+      int h2 = 0;
+      foreach (var typeParam in this.TypeParameters) {
+        h2 = ( 97 * h2 ) + typeParam.GetHashCode();
+      }
+
+      h = h * 5 + h2;
       h *= ((int)Kind + 1);
       return h;
     }
