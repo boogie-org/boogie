@@ -900,67 +900,57 @@ namespace Microsoft.Boogie
 
       try
       {
-          if (CommandLineOptions.Clo.UseParallelism)
-          {
-              var cts = new CancellationTokenSource();
-              RequestIdToCancellationTokenSource.AddOrUpdate(requestId, cts, (k, ov) => cts);
+          var cts = new CancellationTokenSource();
+          RequestIdToCancellationTokenSource.AddOrUpdate(requestId, cts, (k, ov) => cts);
 
-              var tasks = new Task[stablePrioritizedImpls.Length];
-              // We use this semaphore to limit the number of tasks that are currently executing.
-              var semaphore = new SemaphoreSlim(CommandLineOptions.Clo.VcsCores);
-              
-              // Create a task per implementation.
-              for (int i = 0; i < stablePrioritizedImpls.Length; i++)
+          var tasks = new Task[stablePrioritizedImpls.Length];
+          // We use this semaphore to limit the number of tasks that are currently executing.
+          var semaphore = new SemaphoreSlim(CommandLineOptions.Clo.VcsCores);
+
+          // Create a task per implementation.
+          for (int i = 0; i < stablePrioritizedImpls.Length; i++)
+          {
+              var taskIndex = i;
+              var id = stablePrioritizedImpls[taskIndex].Id;
+
+              CancellationTokenSource old;
+              if (ImplIdToCancellationTokenSource.TryGetValue(id, out old))
               {
-                  var taskIndex = i;
-                  var id = stablePrioritizedImpls[taskIndex].Id;
-                  
-                  CancellationTokenSource old;
-                  if (ImplIdToCancellationTokenSource.TryGetValue(id, out old))
+                  old.Cancel();
+              }
+              ImplIdToCancellationTokenSource.AddOrUpdate(id, cts, (k, ov) => cts);
+
+              var t = new Task((dummy) =>
                   {
-                      old.Cancel();
-                  }
-                  ImplIdToCancellationTokenSource.AddOrUpdate(id, cts, (k, ov) => cts);
-                  
-                  var t = new Task((dummy) =>
+                      try
                       {
-                          try
+                          if (outcome == PipelineOutcome.FatalError)
                           {
-                              if (outcome == PipelineOutcome.FatalError)
-                              {
-                                  return;
-                              }
-                              if (cts.Token.IsCancellationRequested)
-                              {
-                                  cts.Token.ThrowIfCancellationRequested();
-                              }
-                              VerifyImplementation(program, stats, er, requestId, extractLoopMappingInfo, stablePrioritizedImpls, taskIndex, outputCollector, Checkers, programId);
-                              ImplIdToCancellationTokenSource.TryRemove(id, out old);
+                              return;
                           }
-                          finally
+                          if (cts.Token.IsCancellationRequested)
                           {
-                              semaphore.Release();
+                              cts.Token.ThrowIfCancellationRequested();
                           }
-                      }, cts.Token, TaskCreationOptions.LongRunning);
-                  tasks[taskIndex] = t;
-              }
-
-              // Execute the tasks.
-              for (int i = 0; i < stablePrioritizedImpls.Length && outcome != PipelineOutcome.FatalError; i++)
-              {
-                  semaphore.Wait(cts.Token);
-                  tasks[i].Start(TaskScheduler.Default);
-              }
-
-              Task.WaitAll(tasks);
+                          VerifyImplementation(program, stats, er, requestId, extractLoopMappingInfo, stablePrioritizedImpls, taskIndex, outputCollector, Checkers, programId);
+                          ImplIdToCancellationTokenSource.TryRemove(id, out old);
+                      }
+                      finally
+                      {
+                          semaphore.Release();
+                      }
+                  }, cts.Token, TaskCreationOptions.LongRunning);
+              tasks[taskIndex] = t;
           }
-          else
+
+          // Execute the tasks.
+          for (int i = 0; i < stablePrioritizedImpls.Length && outcome != PipelineOutcome.FatalError; i++)
           {
-              for (int i = 0; i < stablePrioritizedImpls.Length && outcome != PipelineOutcome.FatalError; i++)
-              {
-                  VerifyImplementation(program, stats, er, requestId, extractLoopMappingInfo, stablePrioritizedImpls, i, outputCollector, Checkers, programId);
-              }
+              semaphore.Wait(cts.Token);
+              tasks[i].Start(TaskScheduler.Default);
           }
+
+          Task.WaitAll(tasks);
       }
       catch (AggregateException ae)
       {
