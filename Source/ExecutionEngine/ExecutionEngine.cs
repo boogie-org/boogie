@@ -944,12 +944,22 @@ namespace Microsoft.Boogie
           }
 
           // Execute the tasks.
-          for (int i = 0; i < stablePrioritizedImpls.Length && outcome != PipelineOutcome.FatalError; i++)
+          int j = 0;
+          for (; j < stablePrioritizedImpls.Length && outcome != PipelineOutcome.FatalError; j++)
           {
-              semaphore.Wait(cts.Token);
-              tasks[i].Start(TaskScheduler.Default);
+              try
+              {
+                  semaphore.Wait(cts.Token);
+              }
+              catch (OperationCanceledException)
+              {                  
+                  break;
+              }
+              tasks[j].Start(TaskScheduler.Default);
           }
 
+          // Don't wait for tasks that haven't been started yet.
+          tasks = tasks.Take(j).ToArray();
           Task.WaitAll(tasks);
       }
       catch (AggregateException ae)
@@ -970,9 +980,6 @@ namespace Microsoft.Boogie
               }
               return false;
           });
-      }
-      catch (OperationCanceledException)
-      {
       }
       finally
       {
