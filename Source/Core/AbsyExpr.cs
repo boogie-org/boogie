@@ -2122,12 +2122,16 @@ namespace Microsoft.Boogie {
         return false;
 
       NAryExpr other = (NAryExpr)obj;
-      return this.Args.ListEquals(other.Args) && object.Equals(this.Fun, other.Fun); 
+      return object.Equals(this.Fun, other.Fun) && this.Args.SequenceEqual(other.Args);
     }
     [Pure]
     public override int GetHashCode() {
       int h = this.Fun.GetHashCode();
-      h ^= this.Args.GetHashCode();
+      // DO NOT USE Args.GetHashCode() because that uses Object.GetHashCode() which uses references
+      // We want structural equality
+      foreach (var arg in Args) {
+        h = (97*h) + arg.GetHashCode();
+      }
       return h;
     }
     public override void Emit(TokenTextWriter stream, int contextBindingStrength, bool fragileContext) {

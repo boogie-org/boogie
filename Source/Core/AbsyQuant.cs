@@ -103,20 +103,35 @@ namespace Microsoft.Boogie {
 
       var other = (BinderExpr) obj;
 
-      var a = this.TypeParameters.ListEquals(other.TypeParameters);
-      var b = this.Dummies.ListEquals(other.Dummies);
-      var c = !CompareAttributesAndTriggers || object.Equals(this.Attributes, other.Attributes);
-      var d = object.Equals(this.Body, other.Body);
-
-      return a && b && c && d;
+      return this.TypeParameters.SequenceEqual(other.TypeParameters)
+             && this.Dummies.SequenceEqual(other.Dummies)
+             && (!CompareAttributesAndTriggers || object.Equals(this.Attributes, other.Attributes))
+             && object.Equals(this.Body, other.Body);
     }
 
     [Pure]
     public override int GetHashCode() {
-      int h = this.Dummies.GetHashCode();
       // Note, we don't hash triggers and attributes
+   
+      // DO NOT USE Dummies.GetHashCode() because we want structurally
+      // identical Expr to have the same hash code **not** identical references
+      // to have the same hash code.
+      int h = 0;
+      foreach (var dummyVar in this.Dummies) {
+        h = ( 53 * h ) + dummyVar.GetHashCode();
+      }
+
       h ^= this.Body.GetHashCode();
-      h = h * 5 + this.TypeParameters.GetHashCode();
+
+      // DO NOT USE TypeParameters.GetHashCode() because we want structural
+      // identical Expr to have the same hash code **not** identical references
+      // to have the same hash code.
+      int h2 = 0;
+      foreach (var typeParam in this.TypeParameters) {
+        h2 = ( 97 * h2 ) + typeParam.GetHashCode();
+      }
+
+      h = h * 5 + h2;
       h *= ((int)Kind + 1);
       return h;
     }
@@ -472,7 +487,7 @@ namespace Microsoft.Boogie {
       if (other == null) {
         return false;
       } else {
-        return this.Tr.ListEquals(other.Tr) && 
+        return this.Tr.SequenceEqual(other.Tr) && 
           (Next == null ? other.Next == null : object.Equals(Next, other.Next));
       }
     }

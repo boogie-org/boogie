@@ -945,13 +945,6 @@ namespace Microsoft.Boogie
                         ParCallCmd parCallCmd = cmd as ParCallCmd;
                         AddCallToYieldProc(parCallCmd.tok, newCmds, ogOldGlobalMap, domainNameToLocalVar);
                         DesugarParallelCallCmd(newCmds, parCallCmd);
-                        if (globalMods.Count > 0 && pc != null)
-                        {
-                            // assume pc || alpha(i, g);
-                            Expr assumeExpr = Expr.Or(Expr.Ident(pc), alpha);
-                            assumeExpr.Type = Type.Bool;
-                            newCmds.Add(new AssumeCmd(Token.NoToken, assumeExpr));
-                        }
                         HashSet<Variable> availableLinearVars = new HashSet<Variable>(AvailableLinearVars(parCallCmd));
                         linearTypeChecker.AddAvailableVars(parCallCmd, availableLinearVars);
                         Dictionary<string, Expr> domainNameToExpr = ComputeAvailableExprs(availableLinearVars, domainNameToInputVar);

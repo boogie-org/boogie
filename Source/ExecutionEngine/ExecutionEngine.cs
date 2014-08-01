@@ -417,10 +417,9 @@ namespace Microsoft.Boogie
     
     static List<Checker> Checkers = new List<Checker>();
 
-    static IDictionary<string, CancellationTokenSource> ImplIdToCancellationTokenSource = new ConcurrentDictionary<string, CancellationTokenSource>();
+    static readonly ConcurrentDictionary<string, CancellationTokenSource> ImplIdToCancellationTokenSource = new ConcurrentDictionary<string, CancellationTokenSource>();
 
-    static IDictionary<string, IList<CancellationTokenSource>> RequestIdToCancellationTokenSources = new ConcurrentDictionary<string, IList<CancellationTokenSource>>();
-
+    static readonly ConcurrentDictionary<string, CancellationTokenSource> RequestIdToCancellationTokenSource = new ConcurrentDictionary<string, CancellationTokenSource>();
 
     public static void ProcessFiles(List<string> fileNames, bool lookForSnapshots = true, string programId = null)
     {
@@ -811,8 +810,6 @@ namespace Microsoft.Boogie
         requestId = FreshRequestId();
       }
 
-      RequestIdToCancellationTokenSources[requestId] = new List<CancellationTokenSource>();
-
       #region Do some pre-abstract-interpretation preprocessing on the program
       // Doing lambda expansion before abstract interpretation means that the abstract interpreter
       // never needs to see any lambda expressions.  (On the other hand, if it were useful for it
@@ -903,41 +900,67 @@ namespace Microsoft.Boogie
 
       try
       {
-          if (CommandLineOptions.Clo.UseParallelism)
+          var cts = new CancellationTokenSource();
+          RequestIdToCancellationTokenSource.AddOrUpdate(requestId, cts, (k, ov) => cts);
+
+          var tasks = new Task[stablePrioritizedImpls.Length];
+          // We use this semaphore to limit the number of tasks that are currently executing.
+          var semaphore = new SemaphoreSlim(CommandLineOptions.Clo.VcsCores);
+
+          // Create a task per implementation.
+          for (int i = 0; i < stablePrioritizedImpls.Length; i++)
           {
-              var tasks = new Task[stablePrioritizedImpls.Length];
-              for (int i = 0; i < stablePrioritizedImpls.Length && outcome != PipelineOutcome.FatalError; i++)
+              var taskIndex = i;
+              var id = stablePrioritizedImpls[taskIndex].Id;
+
+              CancellationTokenSource old;
+              if (ImplIdToCancellationTokenSource.TryGetValue(id, out old))
               {
-                  var taskIndex = i;
-                  var id = stablePrioritizedImpls[i].Id;
-                  CancellationTokenSource src;
-                  if (ImplIdToCancellationTokenSource.TryGetValue(id, out src))
+                  old.Cancel();
+              }
+              ImplIdToCancellationTokenSource.AddOrUpdate(id, cts, (k, ov) => cts);
+
+              var t = new Task((dummy) =>
                   {
-                      src.Cancel();
-                  }
-                  src = new CancellationTokenSource();
-                  RequestIdToCancellationTokenSources[requestId].Add(src);
-                  ImplIdToCancellationTokenSource[id] = src;
-                  var t = Task.Factory.StartNew((dummy) =>
-                  {
-                      if (src.Token.IsCancellationRequested)
+                      try
                       {
-                          src.Token.ThrowIfCancellationRequested();
+                          if (outcome == PipelineOutcome.FatalError)
+                          {
+                              return;
+                          }
+                          if (cts.Token.IsCancellationRequested)
+                          {
+                              cts.Token.ThrowIfCancellationRequested();
+                          }
+                          VerifyImplementation(program, stats, er, requestId, extractLoopMappingInfo, stablePrioritizedImpls, taskIndex, outputCollector, Checkers, programId);
+                          ImplIdToCancellationTokenSource.TryRemove(id, out old);
                       }
-                      VerifyImplementation(program, stats, er, requestId, extractLoopMappingInfo, stablePrioritizedImpls, taskIndex, outputCollector, Checkers, programId);
-                      ImplIdToCancellationTokenSource.Remove(id);
-                  }, src.Token, TaskCreationOptions.LongRunning);
-                  tasks[taskIndex] = t;
-              }
-              Task.WaitAll(tasks);
+                      finally
+                      {
+                          semaphore.Release();
+                      }
+                  }, cts.Token, TaskCreationOptions.LongRunning);
+              tasks[taskIndex] = t;
           }
-          else
+
+          // Execute the tasks.
+          int j = 0;
+          for (; j < stablePrioritizedImpls.Length && outcome != PipelineOutcome.FatalError; j++)
           {
-              for (int i = 0; i < stablePrioritizedImpls.Length && outcome != PipelineOutcome.FatalError; i++)
+              try
               {
-                  VerifyImplementation(program, stats, er, requestId, extractLoopMappingInfo, stablePrioritizedImpls, i, outputCollector, Checkers, programId);
+                  semaphore.Wait(cts.Token);
               }
+              catch (OperationCanceledException)
+              {                  
+                  break;
+              }
+              tasks[j].Start(TaskScheduler.Default);
           }
+
+          // Don't wait for tasks that haven't been started yet.
+          tasks = tasks.Take(j).ToArray();
+          Task.WaitAll(tasks);
       }
       catch (AggregateException ae)
       {
@@ -981,10 +1004,10 @@ namespace Microsoft.Boogie
     {
       Contract.Requires(requestId != null);
 
-      IList<CancellationTokenSource> ctss;
-      if (RequestIdToCancellationTokenSources.TryGetValue(requestId, out ctss))
+      CancellationTokenSource cts;
+      if (RequestIdToCancellationTokenSource.TryGetValue(requestId, out cts))
       {
-        ctss.Iter(cts => cts.Cancel());
+        cts.Cancel();
 
         CleanupCheckers(requestId);
       }
@@ -993,9 +1016,14 @@ namespace Microsoft.Boogie
 
     private static void CleanupCheckers(string requestId)
     {
-      lock (RequestIdToCancellationTokenSources)
+      if (requestId != null)
       {
-        if (RequestIdToCancellationTokenSources.Count == 1)
+        CancellationTokenSource old;
+        RequestIdToCancellationTokenSource.TryRemove(requestId, out old);
+      }
+      lock (RequestIdToCancellationTokenSource)
+      {
+        if (RequestIdToCancellationTokenSource.IsEmpty)
         {
           lock (Checkers)
           {
@@ -1005,10 +1033,6 @@ namespace Microsoft.Boogie
               checker.Close();
             }
           }
-        }
-        if (requestId != null)
-        {
-          RequestIdToCancellationTokenSources.Remove(requestId);
         }
       }
     }

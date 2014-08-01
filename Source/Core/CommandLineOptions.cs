@@ -496,8 +496,6 @@ namespace Microsoft.Boogie {
     public int TrustPhasesUpto = -1;
     public int TrustPhasesDownto = int.MaxValue;
 
-    public bool UseParallelism = true;
-
     public enum VCVariety {
       Structured,
       Block,
@@ -1431,7 +1429,6 @@ namespace Microsoft.Boogie {
               ps.CheckBooleanFlag("verifySeparately", ref VerifySeparately) ||
               ps.CheckBooleanFlag("trustAtomicityTypes", ref TrustAtomicityTypes) ||
               ps.CheckBooleanFlag("trustNonInterference", ref TrustNonInterference) ||
-              ps.CheckBooleanFlag("doNotUseParallelism", ref UseParallelism, false) ||
               ps.CheckBooleanFlag("useBaseNameForFileName", ref UseBaseNameForFileName)
               ) {
             // one of the boolean flags matched

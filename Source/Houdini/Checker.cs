@@ -385,6 +385,9 @@ namespace Microsoft.Boogie.Houdini {
                 break;
 
             unsatisfiedSoftAssumptions2.Iter(i => reason.Remove(softAssumptions2[i].ToString()));
+            var reason1 = new HashSet<string>(); //these are the reasons for inconsistency
+            unsatisfiedSoftAssumptions2.Iter(i => reason1.Add(softAssumptions2[i].ToString()));
+
             if (CommandLineOptions.Clo.Trace)
             {
                 Console.Write("Revised reason for removal of {0}: ", refutedConstant.Name);
@@ -394,6 +397,11 @@ namespace Microsoft.Boogie.Houdini {
             foreach (var r in reason)
             {
                 Houdini.explainHoudiniDottyFile.WriteLine("{0} -> {1} [ label = \"{2}\" color=red ];", refutedConstant.Name, r, descriptiveName);
+            }
+            //also add the removed reasons using dotted edges (requires- x != 0, requires- x == 0 ==> assert x != 0)
+            foreach (var r in reason1)
+            {
+                Houdini.explainHoudiniDottyFile.WriteLine("{0} -> {1} [ label = \"{2}\" color=blue style=dotted ];", refutedConstant.Name, r, descriptiveName);
             }
         } while (false);
 
