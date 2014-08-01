@@ -66,6 +66,18 @@ namespace Microsoft.Boogie {
     {
       return source1.Zip(source2, (e1, e2) => new Tuple<TSource1, TSource2>(e1, e2));
     }
+
+    public static bool ListEquals<A>(this List<A> xs, List<A> ys) {
+      var equal = xs.Count == ys.Count;
+      for (int i = 0; equal && i < xs.Count; i++) {
+        equal = object.Equals(xs[i], ys[i]);
+      }
+      return equal;
+    }
+
+    public static int ListHash<A>(this List<A> xs) {
+      return xs.Aggregate(xs.Count, (current, x) => current ^ xs.GetHashCode());
+    }
   }
 
   public class TokenTextWriter : IDisposable {

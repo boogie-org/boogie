@@ -1893,7 +1893,19 @@ namespace Microsoft.Boogie {
       this.Type = type;
     }
 
-    public string/*!*/ FunctionName {
+    public override bool Equals(object obj) {
+      TypeCoercion other = obj as TypeCoercion;
+      if (other == null) {
+        return false;
+      } else {
+        return object.Equals(Type, other.Type);
+      }
+    }
+
+
+
+    public
+      string/*!*/ FunctionName {
       get {
         Contract.Ensures(Contract.Result<string>() != null);
 
@@ -2110,7 +2122,7 @@ namespace Microsoft.Boogie {
         return false;
 
       NAryExpr other = (NAryExpr)obj;
-      return object.Equals(this.Fun, other.Fun) && object.Equals(this.Args, other.Args);
+      return this.Args.ListEquals(other.Args) && object.Equals(this.Fun, other.Fun); 
     }
     [Pure]
     public override int GetHashCode() {

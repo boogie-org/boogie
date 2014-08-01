@@ -1,0 +1,56 @@
+LambdaExt.bpl(10,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    LambdaExt.bpl(6,7): anon0
+LambdaExt.bpl(26,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    LambdaExt.bpl(17,5): anon0
+LambdaExt.bpl(30,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    LambdaExt.bpl(17,5): anon0
+LambdaExt.bpl(34,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    LambdaExt.bpl(34,3): anon0
+LambdaExt.bpl(84,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    LambdaExt.bpl(79,5): anon0
+    LambdaExt.bpl(84,5): anon9_Else
+LambdaExt.bpl(92,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    LambdaExt.bpl(79,5): anon0
+    LambdaExt.bpl(84,5): anon9_Else
+    LambdaExt.bpl(87,5): anon3
+    LambdaExt.bpl(92,5): anon10_Else
+LambdaExt.bpl(98,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    LambdaExt.bpl(79,5): anon0
+    LambdaExt.bpl(82,5): anon9_Then
+    LambdaExt.bpl(87,5): anon3
+    LambdaExt.bpl(90,5): anon10_Then
+    LambdaExt.bpl(95,5): anon6
+    LambdaExt.bpl(98,5): anon11_Then
+LambdaExt.bpl(100,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    LambdaExt.bpl(79,5): anon0
+    LambdaExt.bpl(84,5): anon9_Else
+    LambdaExt.bpl(87,5): anon3
+    LambdaExt.bpl(92,5): anon10_Else
+    LambdaExt.bpl(95,5): anon6
+    LambdaExt.bpl(100,5): anon11_Else
+LambdaExt.bpl(112,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    LambdaExt.bpl(108,5): anon0
+LambdaExt.bpl(119,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    LambdaExt.bpl(117,5): anon0
+LambdaExt.bpl(121,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    LambdaExt.bpl(117,5): anon0
+LambdaExt.bpl(123,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    LambdaExt.bpl(117,5): anon0
+LambdaExt.bpl(134,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    LambdaExt.bpl(129,5): anon0
+    LambdaExt.bpl(134,5): anon3_Else
+
+Boogie program verifier finished with 4 verified, 13 errors

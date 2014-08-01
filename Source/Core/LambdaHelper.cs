@@ -52,6 +52,9 @@ namespace Microsoft.Boogie {
     }
 
     private class LambdaVisitor : StandardVisitor {
+      private readonly Dictionary<Expr, FunctionCall> liftedLambdas = 
+        new Dictionary<Expr, FunctionCall>(new AlphaEquality());
+
       internal List<Expr/*!*/>/*!*/ lambdaAxioms = new List<Expr/*!*/>();
       internal List<Function/*!*/>/*!*/ lambdaFunctions = new List<Function/*!*/>();
       [ContractInvariantMethod]
@@ -148,43 +151,61 @@ namespace Microsoft.Boogie {
           }
         }
 
+        var sw = new System.IO.StringWriter();
+        var wr = new TokenTextWriter(sw, true);
+        lambda.Emit(wr);
+        string lam_str = sw.ToString();
+
+        FunctionCall fcall;
         IToken tok = lambda.tok;
         Formal res = new Formal(tok, new TypedIdent(tok, TypedIdent.NoName, cce.NonNull(lambda.Type)), false);
-        Function fn = new Function(tok, "lambda@" + lambdaid++, freshTypeVars, formals, res, "auto-generated lambda function",
-          Substituter.Apply(Substituter.SubstitutionFromHashtable(substFnAttrs), lambdaAttrs));
-        lambdaFunctions.Add(fn);
 
-        FunctionCall fcall = new FunctionCall(new IdentifierExpr(tok, fn.Name));
-        fcall.Func = fn;  // resolve here
+        if (liftedLambdas.TryGetValue(lambda, out fcall)) {
+          if (CommandLineOptions.Clo.TraceVerify) {
+            Console.WriteLine("Old lambda: {0}", lam_str);
+          }
+        } else {
+          if (CommandLineOptions.Clo.TraceVerify) {
+            Console.WriteLine("New lambda: {0}", lam_str);
+          }
+          Function fn = new Function(tok, "lambda#" + lambdaid++, freshTypeVars, formals, res, "auto-generated lambda function",
+            Substituter.Apply(Substituter.SubstitutionFromHashtable(substFnAttrs), lambdaAttrs));
 
-        List<Expr/*!*/> selectArgs = new List<Expr/*!*/>();
-        foreach (Variable/*!*/ v in lambda.Dummies) {
-          Contract.Assert(v != null);
-          selectArgs.Add(new IdentifierExpr(v.tok, v));
+          fcall = new FunctionCall(new IdentifierExpr(tok, fn.Name));
+          fcall.Func = fn;  // resolve here
+          liftedLambdas[lambda] = fcall;
+
+          List<Expr/*!*/> selectArgs = new List<Expr/*!*/>();
+          foreach (Variable/*!*/ v in lambda.Dummies) {
+            Contract.Assert(v != null);
+            selectArgs.Add(new IdentifierExpr(v.tok, v));
+          }
+          NAryExpr axcall = new NAryExpr(tok, fcall, axCallArgs);
+          axcall.Type = res.TypedIdent.Type;
+          axcall.TypeParameters = SimpleTypeParamInstantiation.From(freeTypeVars, fnTypeVarActuals);
+          NAryExpr select = Expr.Select(axcall, selectArgs);
+          select.Type = lambdaBody.Type;
+          List<Type/*!*/> selectTypeParamActuals = new List<Type/*!*/>();
+          List<TypeVariable> forallTypeVariables = new List<TypeVariable>();
+          foreach (TypeVariable/*!*/ tp in lambda.TypeParameters) {
+            Contract.Assert(tp != null);
+            selectTypeParamActuals.Add(tp);
+            forallTypeVariables.Add(tp);
+          }
+          forallTypeVariables.AddRange(freeTypeVars);
+          select.TypeParameters = SimpleTypeParamInstantiation.From(lambda.TypeParameters, selectTypeParamActuals);
+
+          Expr bb = Substituter.Apply(Substituter.SubstitutionFromHashtable(subst), lambdaBody);
+          NAryExpr body = Expr.Eq(select, bb);
+          body.Type = Type.Bool;
+          body.TypeParameters = SimpleTypeParamInstantiation.EMPTY;
+          Trigger trig = new Trigger(select.tok, true, new List<Expr> { select });
+
+          lambdaFunctions.Add(fn);
+          lambdaAxioms.Add(new ForallExpr(tok, forallTypeVariables, dummies,
+            Substituter.Apply(Substituter.SubstitutionFromHashtable(subst), lambdaAttrs),
+            trig, body));
         }
-        NAryExpr axcall = new NAryExpr(tok, fcall, axCallArgs);
-        axcall.Type = res.TypedIdent.Type;
-        axcall.TypeParameters = SimpleTypeParamInstantiation.From(freeTypeVars, fnTypeVarActuals);
-        NAryExpr select = Expr.Select(axcall, selectArgs);
-        select.Type = lambdaBody.Type;
-        List<Type/*!*/> selectTypeParamActuals = new List<Type/*!*/>();
-        List<TypeVariable> forallTypeVariables = new List<TypeVariable>();
-        foreach (TypeVariable/*!*/ tp in lambda.TypeParameters) {
-          Contract.Assert(tp != null);
-          selectTypeParamActuals.Add(tp);
-          forallTypeVariables.Add(tp);
-        }
-        forallTypeVariables.AddRange(freeTypeVars);
-        select.TypeParameters = SimpleTypeParamInstantiation.From(lambda.TypeParameters, selectTypeParamActuals);
-
-        Expr bb = Substituter.Apply(Substituter.SubstitutionFromHashtable(subst), lambdaBody);
-        NAryExpr body = Expr.Eq(select, bb);
-        body.Type = Type.Bool;
-        body.TypeParameters = SimpleTypeParamInstantiation.EMPTY;
-        Trigger trig = new Trigger(select.tok, true, new List<Expr> { select });
-        lambdaAxioms.Add(new ForallExpr(tok, forallTypeVariables, dummies,
-          Substituter.Apply(Substituter.SubstitutionFromHashtable(subst), lambdaAttrs),
-          trig, body));
 
         NAryExpr call = new NAryExpr(tok, fcall, callArgs);
         call.Type = res.TypedIdent.Type;
