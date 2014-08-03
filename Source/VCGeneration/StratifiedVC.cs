@@ -112,6 +112,11 @@ namespace VC {
         return ret;
       }
     }
+
+    public override string ToString()
+    {
+        return info.impl.Name;
+    }
   }
 
   public class CallSite {
@@ -175,7 +180,13 @@ namespace VC {
         }
         scs.interfaceExprs = newInterfaceExprs;
       }
-      return gen.Implies(callSiteExpr, svc.vcexpr);
+      //return gen.Implies(callSiteExpr, svc.vcexpr);
+      return svc.vcexpr;
+    }
+
+    public override string ToString()
+    {
+        return callSite.calleeName;
     }
   }
 
@@ -404,7 +415,7 @@ namespace VC {
           i++;
           AssumeCmd callSiteAssumeCmd = (AssumeCmd)block.Cmds[i];
           IdentifierExpr iexpr = (IdentifierExpr) callSiteAssumeCmd.Expr;
-          CallSite cs = new CallSite(naryExpr.Fun.FunctionName, interfaceExprs, prover.Context.BoogieExprTranslator.LookupVariable(iexpr.Decl), block, instr, callSiteAssumeCmd.Attributes);
+          CallSite cs = new CallSite(naryExpr.Fun.FunctionName, interfaceExprs, prover.Context.BoogieExprTranslator.LookupVariable(iexpr.Decl), block, instr, assumeCmd.Attributes);
           if (!callSites.ContainsKey(block))
             callSites[block] = new List<CallSite>();
           callSites[block].Add(cs);
