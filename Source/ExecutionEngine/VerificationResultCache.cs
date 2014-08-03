@@ -197,7 +197,7 @@ namespace Microsoft.Boogie
       // TODO(wuestholz): Maybe we should speed up this lookup.
       var oldProc = programInCachedSnapshot.TopLevelDeclarations.OfType<Procedure>().FirstOrDefault(p => p.Name == node.Proc.Name);
       if (oldProc != null
-          && oldProc.DependenciesChecksum != node.Proc.DependenciesChecksum
+          && oldProc.DependencyChecksum != node.Proc.DependencyChecksum
           && node.AssignedAssumptionVariable == null)
       {
         if (DependencyCollector.AllFunctionDependenciesAreDefinedAndUnchanged(oldProc, Program))
@@ -236,7 +236,7 @@ namespace Microsoft.Boogie
         }
         else
         {
-          node.EmitDependenciesChecksum = true;
+          node.EmitDependencyChecksum = true;
         }
       }
 
@@ -308,7 +308,7 @@ namespace Microsoft.Boogie
       // TODO(wuestholz): Maybe we should speed up this lookup.
       var funcs = newProg.TopLevelDeclarations.OfType<Function>();
       return oldProc.DependenciesCollected
-             && (oldProc.FunctionDependencies == null || oldProc.FunctionDependencies.All(dep => funcs.Any(f => f.Name == dep.Name && f.DependenciesChecksum == dep.DependenciesChecksum)));
+             && (oldProc.FunctionDependencies == null || oldProc.FunctionDependencies.All(dep => funcs.Any(f => f.Name == dep.Name && f.DependencyChecksum == dep.DependencyChecksum)));
     }
 
     public override Procedure VisitProcedure(Procedure node)
@@ -437,7 +437,7 @@ namespace Microsoft.Boogie
       {
         priority = Priority.MEDIUM;
       }
-      else if (impl.DependenciesChecksum == null || result.DependeciesChecksum != impl.DependenciesChecksum)
+      else if (impl.DependencyChecksum == null || result.DependeciesChecksum != impl.DependencyChecksum)
       {
         priority = Priority.LOW;
       }

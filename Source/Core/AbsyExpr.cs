@@ -1804,10 +1804,10 @@ namespace Microsoft.Boogie {
       this.name.Emit(stream, 0xF0, false);
       if (stream.UseForComputingChecksums)
       {
-        var c = Func.DependenciesChecksum;
+        var c = Func.DependencyChecksum;
         if (c != null)
         {
-          stream.Write(string.Format("[dependencies_checksum:{0}]", c));
+          stream.Write(string.Format("[dependency_checksum:{0}]", c));
         }
       }
       stream.Write("(");
