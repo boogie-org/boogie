@@ -798,7 +798,7 @@ namespace VC {
     /// already been constructed for the implementation (and so
     /// is already an element of impl.Blocks)
     /// </param>
-    protected static Block InjectPostConditions(Implementation impl, Block unifiedExitBlock, Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins) {
+    protected static void InjectPostConditions(Implementation impl, Block unifiedExitBlock, Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins) {
       Contract.Requires(impl != null);
       Contract.Requires(unifiedExitBlock != null);
       Contract.Requires(gotoCmdOrigins != null);
@@ -814,53 +814,26 @@ namespace VC {
       }
 
       Substitution formalProcImplSubst = Substituter.SubstitutionFromHashtable(impl.GetImplFormalMap());
-      Block insertionPoint = unifiedExitBlock;
-      string LabelPrefix = "ReallyLastGeneratedExit";
-      int k = 0;
 
       // (free and checked) ensures clauses
       foreach (Ensures ens in impl.Proc.Ensures) {
-        cce.LoopInvariant(insertionPoint.TransferCmd is ReturnCmd);
-
         Contract.Assert(ens != null);
         if (!ens.Free) { // skip free ensures clauses
-          Expr e = Substituter.Apply(formalProcImplSubst, ens.Condition);
-          CodeExpr be = ens.Condition as CodeExpr;
-          if (be == null) {
-            // This is the normal case, where the postcondition is an ordinary expression
+            Expr e = Substituter.Apply(formalProcImplSubst, ens.Condition);
             Ensures ensCopy = (Ensures)cce.NonNull(ens.Clone());
             ensCopy.Condition = e;
             AssertEnsuresCmd c = new AssertEnsuresCmd(ensCopy);
             c.ErrorDataEnhanced = ensCopy.ErrorDataEnhanced;
-            insertionPoint.Cmds.Add(c);
+            unifiedExitBlock.Cmds.Add(c);
             if (debugWriter != null) {
               c.Emit(debugWriter, 1);
             }
-          } else {
-            // This is a CodeExpr, so append all of its blocks (changing return expressions
-            // to assert statements), insert a goto to its head block from the current insertion
-            // point, and create a new empty block as the current insertion point.
-            // Here goes:  First, create the new block, which will become the new insertion
-            // point and which will serve as a target for the CodeExpr.  Steal the TransferCmd
-            // from insertionPoint, since insertionPoint's TransferCmd will soon be replaced anyhow.
-            Block nextIP = new Block(new Token(-17, -4), LabelPrefix + k, new List<Cmd>(), insertionPoint.TransferCmd);
-            k++;
-            // Second, append the CodeExpr blocks to the implementation's blocks
-            ThreadInCodeExpr(impl, nextIP, be, true, debugWriter);
-            // Third, make the old insertion-point block goto the entry block of the CodeExpr
-            Block beEntry = cce.NonNull(be.Blocks[0]);
-            insertionPoint.TransferCmd = new GotoCmd(Token.NoToken, new List<String> { beEntry.Label }, new List<Block> { beEntry });
-            beEntry.Predecessors.Add(insertionPoint);
-            // Fourth, update the insertion point
-            insertionPoint = nextIP;
-          }
         }
       }
 
       if (debugWriter != null) {
         debugWriter.WriteLine();
       }
-      return insertionPoint;
     }
 
 

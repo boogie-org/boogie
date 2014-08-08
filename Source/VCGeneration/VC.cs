@@ -2624,7 +2624,7 @@ namespace VC {
         InjectPreconditions(impl, cc);
 
         // append postconditions, starting in exitBlock and continuing into other blocks, if needed
-        exitBlock = InjectPostConditions(impl, exitBlock, gotoCmdOrigins);
+        InjectPostConditions(impl, exitBlock, gotoCmdOrigins);
       }
       #endregion
       
