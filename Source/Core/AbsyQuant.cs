@@ -57,7 +57,6 @@ namespace Microsoft.Boogie {
       Contract.Invariant(Body != null);
     }
 
-
     public BinderExpr(IToken/*!*/ tok, List<TypeVariable>/*!*/ typeParameters,
                       List<Variable>/*!*/ dummies, QKeyValue kv, Expr/*!*/ body)
       : base(tok)
@@ -77,24 +76,43 @@ namespace Microsoft.Boogie {
       get;
     }
 
+    protected static bool CompareAttributesAndTriggers = false;
+
+    public static bool EqualWithAttributesAndTriggers(object a, object b) {
+      CompareAttributesAndTriggers = true;
+      var res = object.Equals(a, b);
+      Contract.Assert(CompareAttributesAndTriggers);
+      CompareAttributesAndTriggers = false;
+      return res;
+    }
+
     [Pure]
     [Reads(ReadsAttribute.Reads.Nothing)]
     public override bool Equals(object obj) {
-      if (obj == null)
-        return false;
-      if (!(obj is BinderExpr) ||
-          this.Kind != ((BinderExpr)obj).Kind)
-        return false;
+      return BinderEquals(obj);
+    }
 
-      BinderExpr other = (BinderExpr)obj;
-      // Note, we consider quantifiers equal modulo the Triggers.
+    public bool BinderEquals(object obj) {
+      if (obj == null) {
+        return false;
+      }
+      if (!(obj is BinderExpr) ||
+          this.Kind != ((BinderExpr) obj).Kind) {
+        return false;
+      }
+
+      var other = (BinderExpr) obj;
+
       return this.TypeParameters.SequenceEqual(other.TypeParameters)
              && this.Dummies.SequenceEqual(other.Dummies)
+             && (!CompareAttributesAndTriggers || object.Equals(this.Attributes, other.Attributes))
              && object.Equals(this.Body, other.Body);
     }
 
     [Pure]
     public override int GetHashCode() {
+      // Note, we don't hash triggers and attributes
+   
       // DO NOT USE Dummies.GetHashCode() because we want structurally
       // identical Expr to have the same hash code **not** identical references
       // to have the same hash code.
@@ -103,7 +121,6 @@ namespace Microsoft.Boogie {
         h = ( 53 * h ) + dummyVar.GetHashCode();
       }
 
-      // Note, we consider quantifiers equal modulo the Triggers.
       h ^= this.Body.GetHashCode();
 
       // DO NOT USE TypeParameters.GetHashCode() because we want structural
@@ -351,6 +368,22 @@ namespace Microsoft.Boogie {
     public override Absy StdDispatch(StandardVisitor visitor) {
       return visitor.VisitQKeyValue(this);
     }
+
+    public override bool Equals(object obj) {
+      var other = obj as QKeyValue;
+      if (other == null) {
+        return false;
+      } else {
+        return Key == other.Key && object.Equals(Params, other.Params) &&
+               (Next == null
+                 ? other.Next == null
+                 : object.Equals(Next, other.Next));
+      }
+    }
+
+    public override int GetHashCode() {
+      throw new NotImplementedException();
+    }
   }
 
   public class Trigger : Absy {
@@ -447,6 +480,20 @@ namespace Microsoft.Boogie {
       //Contract.Requires(visitor != null);
       Contract.Ensures(Contract.Result<Absy>() != null);
       return visitor.VisitTrigger(this);
+    }
+
+    public override bool Equals(object obj) {
+      var other = obj as Trigger;
+      if (other == null) {
+        return false;
+      } else {
+        return this.Tr.SequenceEqual(other.Tr) && 
+          (Next == null ? other.Next == null : object.Equals(Next, other.Next));
+      }
+    }
+
+    public override int GetHashCode() {
+      throw new NotImplementedException();
     }
   }
 
@@ -736,6 +783,15 @@ namespace Microsoft.Boogie {
       }
     }
 
+    public override bool Equals(object obj) {
+      var other = obj as QuantifierExpr;
+      if (other == null) {
+        return false;
+      } else {
+        return this.BinderEquals(obj) && 
+          (!CompareAttributesAndTriggers || object.Equals(Triggers, other.Triggers));
+      }
+    }
   }
 
 

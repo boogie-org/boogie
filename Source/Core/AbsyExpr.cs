@@ -1804,10 +1804,10 @@ namespace Microsoft.Boogie {
       this.name.Emit(stream, 0xF0, false);
       if (stream.UseForComputingChecksums)
       {
-        var c = Func.DependenciesChecksum;
+        var c = Func.DependencyChecksum;
         if (c != null)
         {
-          stream.Write(string.Format("[dependencies_checksum:{0}]", c));
+          stream.Write(string.Format("[dependency_checksum:{0}]", c));
         }
       }
       stream.Write("(");
@@ -1893,7 +1893,19 @@ namespace Microsoft.Boogie {
       this.Type = type;
     }
 
-    public string/*!*/ FunctionName {
+    public override bool Equals(object obj) {
+      TypeCoercion other = obj as TypeCoercion;
+      if (other == null) {
+        return false;
+      } else {
+        return object.Equals(Type, other.Type);
+      }
+    }
+
+
+
+    public
+      string/*!*/ FunctionName {
       get {
         Contract.Ensures(Contract.Result<string>() != null);
 

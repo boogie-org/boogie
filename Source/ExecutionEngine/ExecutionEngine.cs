@@ -1066,7 +1066,7 @@ namespace Microsoft.Boogie
       {
         #region Verify the implementation
 
-        verificationResult = new VerificationResult(requestId, impl.Checksum, impl.DependenciesChecksum, impl.Name, impl.tok, programId);
+        verificationResult = new VerificationResult(requestId, impl.Checksum, impl.DependencyChecksum, impl.Name, impl.tok, programId);
 
         using (var vcgen = CreateVCGen(program, checkers))
         {

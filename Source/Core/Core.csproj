@@ -164,6 +164,7 @@
     <Compile Include="AbsyExpr.cs" />
     <Compile Include="AbsyQuant.cs" />
     <Compile Include="AbsyType.cs" />
+    <Compile Include="AlphaEquality.cs" />
     <Compile Include="InterProceduralReachabilityGraph.cs" />
     <Compile Include="CommandLineOptions.cs" />
     <Compile Include="DeadVarElim.cs" />

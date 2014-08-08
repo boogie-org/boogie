@@ -1865,14 +1865,14 @@ namespace Microsoft.Boogie {
       }
     }
 
-    public byte[] MD5DependenciesChecksum_;
-    public byte[] MD5DependenciesChecksum
+    public byte[] MD5DependencyChecksum_;
+    public byte[] MD5DependencyChecksum
     {
       get
       {
         Contract.Requires(DependenciesCollected);
 
-        if (MD5DependenciesChecksum_ == null && MD5Checksum != null)
+        if (MD5DependencyChecksum_ == null && MD5Checksum != null)
         {
           var c = MD5Checksum;
           var transFuncDeps = new HashSet<Function>();
@@ -1918,9 +1918,9 @@ namespace Microsoft.Boogie {
               }
             }
           }
-          MD5DependenciesChecksum_ = c;
+          MD5DependencyChecksum_ = c;
         }
-        return MD5DependenciesChecksum_;
+        return MD5DependencyChecksum_;
       }
     }
 
@@ -1932,16 +1932,16 @@ namespace Microsoft.Boogie {
       }
     }
 
-    string dependenciesChecksum;
-    public string DependenciesChecksum
+    string dependencyChecksum;
+    public string DependencyChecksum
     {
       get
       {
-        if (dependenciesChecksum == null && MD5DependenciesChecksum != null)
+        if (dependencyChecksum == null && MD5DependencyChecksum != null)
         {
-          dependenciesChecksum = BitConverter.ToString(MD5DependenciesChecksum);
+          dependencyChecksum = BitConverter.ToString(MD5DependencyChecksum);
         }
-        return dependenciesChecksum;
+        return dependencyChecksum;
       }
     }
 
