@@ -209,6 +209,13 @@ namespace Microsoft.Boogie {
 
       return Unary(Token.NoToken, UnaryOperator.Opcode.Not, e1);
     }
+
+    public static Expr Neg(Expr e1) {
+      Contract.Requires(e1 != null);
+      Contract.Ensures(Contract.Result<NAryExpr>() != null);
+      return Unary(Token.NoToken, UnaryOperator.Opcode.Neg, e1);
+    }
+
     public static NAryExpr Imp(Expr e1, Expr e2) {
       Contract.Requires(e2 != null);
       Contract.Requires(e1 != null);
