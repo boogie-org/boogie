@@ -140,6 +140,12 @@ namespace Microsoft.Boogie {
       Contract.Ensures(Contract.Result<Absy>() != null);
       Absy/*!*/ result = cce.NonNull((Absy/*!*/)this.MemberwiseClone());
       result.uniqueId = AbsyNodeCount++; // BUGBUG??
+
+      if (InternalNumberedMetadata != null) {
+        // This should probably use the lock
+        result.InternalNumberedMetadata = new List<Object>(this.InternalNumberedMetadata);
+      }
+
       return result;
     }
 
@@ -149,6 +155,120 @@ namespace Microsoft.Boogie {
       System.Diagnostics.Debug.Fail("Unknown Absy node type: " + this.GetType());
       throw new System.NotImplementedException();
     }
+
+    #region numberedmetadata
+    // Implementation of Numbered Metadata
+    // This allows any number of arbitrary objects to be
+    // associated with an instance of an Absy at run time
+    // in a type safe manner using an integer as a key.
+
+    // We could use a dictionary but we use a List for look up speed
+    // For this to work well the user needs to use small integers as
+    // keys. The list is created lazily to minimise memory overhead.
+    private volatile List<Object> InternalNumberedMetadata = null;
+
+    // The lock exists to ensure that InternalNumberedMetadata is a singleton
+    // for every instance of this class.
+    // It is static to minimise the memory overhead (we don't want a lock per instance).
+    private static readonly Object NumberedMetadataLock = new object();
+
+    /// <summary>
+    /// Gets the number of meta data objects associated with this instance
+    /// </summary>
+    /// <value>The numbered meta data count.</value>
+    public int NumberedMetaDataCount
+    {
+      get { return InternalNumberedMetadata == null? 0: InternalNumberedMetadata.Count; }
+    }
+
+    /// <summary>
+    /// Gets an IEnumerable over the numbered metadata associated
+    /// with this instance.
+    /// </summary>
+    /// <value>
+    /// The numbered meta data enumerable that looks like the Enumerable
+    /// of a dictionary.
+    /// </value>
+    public IEnumerable<KeyValuePair<int, Object>> NumberedMetaData
+    {
+      get {
+        if (InternalNumberedMetadata == null)
+          return Enumerable.Empty<KeyValuePair<int,Object>>();
+        else
+          return InternalNumberedMetadata.Select((v, index) => new KeyValuePair<int, Object>(index, v));
+      }
+    }
+
+    /// <summary>
+    /// Gets the metatdata at specified index.
+    /// ArgumentOutOfRange exception is raised if it is not available.
+    /// InvalidCastExcpetion is raised if the metadata is available but the wrong type was requested.
+    /// </summary>
+    /// <returns>The stored metadata of type T</returns>
+    /// <param name="index">The index of the metadata</param>
+    /// <typeparam name="T">The type of the metadata object required</typeparam>
+    public T GetMetatdata<T>(int index) {
+      // We aren't using NumberedMetadataLock for speed. Perhaps we should be using it?
+      if (InternalNumberedMetadata == null)
+        throw new ArgumentOutOfRangeException();
+
+      if (InternalNumberedMetadata[index] is T)
+        return (T) InternalNumberedMetadata[index];
+      else if (InternalNumberedMetadata[index] == null) {
+        throw new InvalidCastException("Numbered metadata " + index +
+                                       " is null which cannot be casted to " + typeof(T));
+      }
+      else {
+        throw new InvalidCastException("Numbered metadata " + index +
+                                       " is of type " + InternalNumberedMetadata[index].GetType() +
+                                       " rather than requested type " + typeof(T));
+      }
+    }
+
+    private void InitialiseNumberedMetadata() {
+      // Ensure InternalNumberedMetadata is a singleton
+      if (InternalNumberedMetadata == null) {
+        lock (NumberedMetadataLock) {
+          if (InternalNumberedMetadata == null)
+            InternalNumberedMetadata = new List<Object>();
+        }
+      }
+    }
+
+    /// <summary>
+    /// Sets the metadata for this instace at a specified index.
+    /// </summary>
+    /// <param name="index">The index of the metadata</param>
+    /// <param name="value">The value to set</param>
+    /// <typeparam name="T">The type of value</typeparam>
+    public void SetMetadata<T>(int index, T value) {
+      InitialiseNumberedMetadata();
+
+      if (index < 0)
+        throw new IndexOutOfRangeException();
+
+      lock (NumberedMetadataLock) {
+        if (index < InternalNumberedMetadata.Count)
+          InternalNumberedMetadata[index] = value;
+        else {
+          // Make sure expansion only happens once whilst we pad
+          if (InternalNumberedMetadata.Capacity <= index) {
+            // Use the next available power of 2
+            InternalNumberedMetadata.Capacity = (int) Math.Pow(2, Math.Ceiling(Math.Log(index+1,2)));
+          }
+
+          // Pad with nulls
+          while (InternalNumberedMetadata.Count < index)
+            InternalNumberedMetadata.Add (null);
+
+          InternalNumberedMetadata.Add(value);
+          Debug.Assert(InternalNumberedMetadata.Count == (index + 1));
+        }
+      }
+    }
+
+    #endregion
+
   }
 
   [ContractClassFor(typeof(Absy))]
