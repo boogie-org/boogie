@@ -944,18 +944,22 @@ namespace Microsoft.Boogie.Houdini {
       List<Implementation> implementations = new List<Implementation>();
       switch (refutedAnnotation.Kind) {
         case RefutedAnnotationKind.REQUIRES:
-          foreach (Implementation callee in callGraph.Successors(currentImplementation)) {
-            houdiniSessions.TryGetValue(callee, out session);
-            Contract.Assume(callee.Proc != null);
-            if (callee.Proc.Equals(refutedAnnotation.CalleeProc) && session.InUnsatCore(refutedAnnotation.Constant)) 
-              implementations.Add(callee);
-          }
+              foreach (Implementation callee in callGraph.Successors(currentImplementation))
+              {
+                  if (vcgenFailures.Contains(callee)) continue;
+                  houdiniSessions.TryGetValue(callee, out session);
+                  Contract.Assume(callee.Proc != null);
+                  if (callee.Proc.Equals(refutedAnnotation.CalleeProc) && session.InUnsatCore(refutedAnnotation.Constant))
+                      implementations.Add(callee);
+              }
           break;
         case RefutedAnnotationKind.ENSURES:
-          foreach (Implementation caller in callGraph.Predecessors(currentImplementation)) {
-            houdiniSessions.TryGetValue(caller, out session);
-            if (session.InUnsatCore(refutedAnnotation.Constant))
-              implementations.Add(caller);
+          foreach (Implementation caller in callGraph.Predecessors(currentImplementation))
+          {
+              if (vcgenFailures.Contains(caller)) continue;
+              houdiniSessions.TryGetValue(caller, out session);
+              if (session.InUnsatCore(refutedAnnotation.Constant))
+                  implementations.Add(caller);
           }
           break;
         case RefutedAnnotationKind.ASSERT: //the implementation is already in queue
@@ -963,6 +967,7 @@ namespace Microsoft.Boogie.Houdini {
           {
               foreach (var impl in crossDependencies.assumedInImpl[refutedAnnotation.Constant.Name])
               {
+                  if (vcgenFailures.Contains(impl)) continue;
                   houdiniSessions.TryGetValue(impl, out session);
                   if (session.InUnsatCore(refutedAnnotation.Constant))
                       implementations.Add(impl);
