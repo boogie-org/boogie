@@ -1990,7 +1990,7 @@ namespace Microsoft.Boogie {
     {
       get
       {
-        Contract.Requires(DependenciesCollected);
+        Contract.Requires(CommandLineOptions.Clo.VerifySnapshots == 0 || DependenciesCollected);
 
         if (MD5DependencyChecksum_ == null && MD5Checksum != null)
         {

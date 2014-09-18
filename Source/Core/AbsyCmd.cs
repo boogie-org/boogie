@@ -2532,8 +2532,8 @@ namespace Microsoft.Boogie {
 
     NameEqualityComparer comparer = new NameEqualityComparer();
 
-    Substitution calleeSubstitution;
-    Substitution calleeSubstitutionOld;
+    public Substitution calleeSubstitution;
+    public Substitution calleeSubstitutionOld;
 
     public IEnumerable<IdentifierExpr> UnmodifiedBefore(Procedure oldProcedure)
     {

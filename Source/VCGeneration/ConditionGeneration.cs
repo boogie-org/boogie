@@ -804,8 +804,6 @@ namespace VC {
       Contract.Requires(gotoCmdOrigins != null);
       Contract.Requires(impl.Proc != null);
       Contract.Requires(unifiedExitBlock.TransferCmd is ReturnCmd);
-      Contract.Ensures(Contract.Result<Block>() != null);
-      Contract.Ensures(Contract.Result<Block>().TransferCmd is ReturnCmd);
 
       TokenTextWriter debugWriter = null;
       if (CommandLineOptions.Clo.PrintWithUniqueASTIds) {
