@@ -296,7 +296,10 @@ namespace Microsoft.Boogie.Houdini {
   public class InlineEnsuresVisitor : ReadOnlyVisitor {
       public override Ensures VisitEnsures(Ensures ensures)
       {
-          ensures.Attributes = new QKeyValue(Token.NoToken, "HoudiniAssume", new List<object>(), ensures.Attributes);
+          if (!ensures.Free)
+          {
+              ensures.Attributes = new QKeyValue(Token.NoToken, "InlineAssume", new List<object>(), ensures.Attributes);
+          }
           return base.VisitEnsures(ensures);
       }
   }
