@@ -2412,7 +2412,7 @@ namespace Microsoft.Boogie.Houdini {
                     QKeyValue.FindStringAttribute(ens.Attributes, "post") == null)
                 .Iter(ens => nensures.Add(ens));
                 foreach (Ensures en in nensures)
-                    en.Attributes = removeAttr("assume", en.Attributes);
+                    en.Attributes = removeAttr("HoudiniAssume", en.Attributes);
 
                 proc.Ensures = nensures;
             }

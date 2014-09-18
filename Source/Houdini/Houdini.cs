@@ -294,10 +294,11 @@ namespace Microsoft.Boogie.Houdini {
   }
 
   public class InlineEnsuresVisitor : ReadOnlyVisitor {
-    public override Ensures VisitEnsures(Ensures ensures) {
-      ensures.Attributes = new QKeyValue(Token.NoToken, "assume", new List<object>(), ensures.Attributes);
-      return base.VisitEnsures(ensures);
-    }
+      public override Ensures VisitEnsures(Ensures ensures)
+      {
+          ensures.Attributes = new QKeyValue(Token.NoToken, "HoudiniAssume", new List<object>(), ensures.Attributes);
+          return base.VisitEnsures(ensures);
+      }
   }
 
   public class Houdini : ObservableHoudini {
@@ -325,54 +326,72 @@ namespace Microsoft.Boogie.Houdini {
       Initialize(program, stats);
     }
 
-    protected void Initialize(Program program, HoudiniSession.HoudiniStatistics stats) {
-      if (CommandLineOptions.Clo.Trace)
-        Console.WriteLine("Collecting existential constants...");
-      this.houdiniConstants = CollectExistentialConstants();
+    protected void Initialize(Program program, HoudiniSession.HoudiniStatistics stats)
+    {
+        if (CommandLineOptions.Clo.Trace)
+            Console.WriteLine("Collecting existential constants...");
+        this.houdiniConstants = CollectExistentialConstants();
 
-      if (CommandLineOptions.Clo.Trace)
-        Console.WriteLine("Building call graph...");
-      this.callGraph = Program.BuildCallGraph(program);
-      if (CommandLineOptions.Clo.Trace)
-        Console.WriteLine("Number of implementations = {0}", callGraph.Nodes.Count);
+        if (CommandLineOptions.Clo.Trace)
+            Console.WriteLine("Building call graph...");
+        this.callGraph = Program.BuildCallGraph(program);
+        if (CommandLineOptions.Clo.Trace)
+            Console.WriteLine("Number of implementations = {0}", callGraph.Nodes.Count);
 
-      if (CommandLineOptions.Clo.HoudiniUseCrossDependencies) {
-        if (CommandLineOptions.Clo.Trace) Console.WriteLine("Computing procedure cross dependencies ...");
-        this.crossDependencies = new CrossDependencies(this.houdiniConstants);
-        this.crossDependencies.Visit(program);
-      }
-
-      Inline();
-
-      this.vcgen = new VCGen(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend, new List<Checker>());
-      this.proverInterface = ProverInterface.CreateProver(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend, CommandLineOptions.Clo.ProverKillTime, taskID: GetTaskID());
-
-      vcgenFailures = new HashSet<Implementation>();
-      Dictionary<Implementation, HoudiniSession> houdiniSessions = new Dictionary<Implementation, HoudiniSession>();
-      if (CommandLineOptions.Clo.Trace)
-        Console.WriteLine("Beginning VC generation for Houdini...");
-      foreach (Implementation impl in callGraph.Nodes) {
-        try {
-          if (CommandLineOptions.Clo.Trace)
-            Console.WriteLine("Generating VC for {0}", impl.Name);
-          HoudiniSession session = new HoudiniSession(this, vcgen, proverInterface, program, impl, stats, taskID: GetTaskID());
-          houdiniSessions.Add(impl, session);
-        } catch (VCGenException) {
-          if (CommandLineOptions.Clo.Trace)
-            Console.WriteLine("VC generation failed");
-          vcgenFailures.Add(impl);
+        if (CommandLineOptions.Clo.HoudiniUseCrossDependencies)
+        {
+            if (CommandLineOptions.Clo.Trace) Console.WriteLine("Computing procedure cross dependencies ...");
+            this.crossDependencies = new CrossDependencies(this.houdiniConstants);
+            this.crossDependencies.Visit(program);
         }
-      }
-      this.houdiniSessions = new ReadOnlyDictionary<Implementation, HoudiniSession>(houdiniSessions);
 
-      if (CommandLineOptions.Clo.ExplainHoudini) {
-        // Print results of ExplainHoudini to a dotty file
-        explainHoudiniDottyFile = new StreamWriter("explainHoudini.dot");
-        explainHoudiniDottyFile.WriteLine("digraph explainHoudini {");
-        foreach (var constant in houdiniConstants)
-          explainHoudiniDottyFile.WriteLine("{0} [ label = \"{0}\" color=black ];", constant.Name);
-        explainHoudiniDottyFile.WriteLine("TimeOut [label = \"TimeOut\" color=red ];");
-      }
+        Inline();
+        /*
+        {
+            int oldPrintUnstructured = CommandLineOptions.Clo.PrintUnstructured;
+            CommandLineOptions.Clo.PrintUnstructured = 1;
+            using (TokenTextWriter stream = new TokenTextWriter("houdini_inline.bpl"))
+            {
+                program.Emit(stream);
+            }
+            CommandLineOptions.Clo.PrintUnstructured = oldPrintUnstructured;
+        }
+        */
+
+        this.vcgen = new VCGen(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend, new List<Checker>());
+        this.proverInterface = ProverInterface.CreateProver(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend, CommandLineOptions.Clo.ProverKillTime, taskID: GetTaskID());
+
+        vcgenFailures = new HashSet<Implementation>();
+        Dictionary<Implementation, HoudiniSession> houdiniSessions = new Dictionary<Implementation, HoudiniSession>();
+        if (CommandLineOptions.Clo.Trace)
+            Console.WriteLine("Beginning VC generation for Houdini...");
+        foreach (Implementation impl in callGraph.Nodes)
+        {
+            try
+            {
+                if (CommandLineOptions.Clo.Trace)
+                    Console.WriteLine("Generating VC for {0}", impl.Name);
+                HoudiniSession session = new HoudiniSession(this, vcgen, proverInterface, program, impl, stats, taskID: GetTaskID());
+                houdiniSessions.Add(impl, session);
+            }
+            catch (VCGenException)
+            {
+                if (CommandLineOptions.Clo.Trace)
+                    Console.WriteLine("VC generation failed");
+                vcgenFailures.Add(impl);
+            }
+        }
+        this.houdiniSessions = new ReadOnlyDictionary<Implementation, HoudiniSession>(houdiniSessions);
+
+        if (CommandLineOptions.Clo.ExplainHoudini)
+        {
+            // Print results of ExplainHoudini to a dotty file
+            explainHoudiniDottyFile = new StreamWriter("explainHoudini.dot");
+            explainHoudiniDottyFile.WriteLine("digraph explainHoudini {");
+            foreach (var constant in houdiniConstants)
+                explainHoudiniDottyFile.WriteLine("{0} [ label = \"{0}\" color=black ];", constant.Name);
+            explainHoudiniDottyFile.WriteLine("TimeOut [label = \"TimeOut\" color=red ];");
+        }
     }
 
     protected void Inline() {

@@ -35,6 +35,8 @@ namespace Microsoft.Boogie {
 
     protected List<IdentifierExpr>/*!*/ newModifies;
 
+    protected string prefix;
+
     [ContractInvariantMethod]
     void ObjectInvariant() {
       Contract.Invariant(program != null);
@@ -72,7 +74,7 @@ namespace Microsoft.Boogie {
         currentId = 0;
         inlinedProcLblMap.Add(procName, currentId);
       }
-      return "inline$" + procName + "$" + currentId;
+      return prefix + procName + "$" + currentId;
     }
 
     protected string GetProcVarName(string procName, string formalName) {
@@ -93,11 +95,57 @@ namespace Microsoft.Boogie {
       this.inlineCallback = cb;
       this.newLocalVars = new List<Variable>();
       this.newModifies = new List<IdentifierExpr>();
+      this.prefix = "inline$";
+    }
+
+    protected static void ComputeInlinerPrefix(Implementation impl, Inliner inliner)
+    {
+        foreach (var v in impl.InParams)
+        {
+            if (!v.Name.StartsWith(inliner.prefix)) continue;
+            for (int i = inliner.prefix.Length; i < v.Name.Length; i++)
+            {
+                inliner.prefix = inliner.prefix + "$";
+                if (v.Name[i] != '$') break;
+            }
+            if (inliner.prefix == v.Name)
+            {
+                inliner.prefix = inliner.prefix + "$";
+            }
+        }
+        foreach (var v in impl.OutParams)
+        {
+            if (!v.Name.StartsWith(inliner.prefix)) continue;
+            for (int i = inliner.prefix.Length; i < v.Name.Length; i++)
+            {
+                inliner.prefix = inliner.prefix + "$";
+                if (v.Name[i] != '$') break;
+            }
+            if (inliner.prefix == v.Name)
+            {
+                inliner.prefix = inliner.prefix + "$";
+            }
+        }
+        foreach (var v in impl.LocVars)
+        {
+            if (!v.Name.StartsWith(inliner.prefix)) continue;
+            for (int i = inliner.prefix.Length; i < v.Name.Length; i++)
+            {
+                inliner.prefix = inliner.prefix + "$";
+                if (v.Name[i] != '$') break;
+            }
+            if (inliner.prefix == v.Name)
+            {
+                inliner.prefix = inliner.prefix + "$";
+            }
+        }
     }
 
     protected static void ProcessImplementation(Implementation impl, Inliner inliner) {
       Contract.Requires(impl != null);
       Contract.Requires(impl.Proc != null);
+
+      ComputeInlinerPrefix(impl, inliner);
 
       inliner.newLocalVars.AddRange(impl.LocVars);
       inliner.newModifies.AddRange(impl.Proc.Modifies);
@@ -466,7 +514,7 @@ namespace Microsoft.Boogie {
     }
 
     private Cmd InlinedEnsures(CallCmd callCmd, Ensures ens) {
-      if (QKeyValue.FindBoolAttribute(ens.Attributes, "assume")) {
+      if (QKeyValue.FindBoolAttribute(ens.Attributes, "HoudiniAssume")) {
         return new AssumeCmd(ens.tok, codeCopier.CopyExpr(ens.Condition));
       } else if (ens.Free) {
         return new AssumeCmd(ens.tok, Expr.True); 
