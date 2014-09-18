@@ -98,6 +98,8 @@ namespace Microsoft.Boogie {
       this.prefix = "inline$";
     }
 
+    // This method updates inliner.prefix so that prepending it to any string is guaranteed 
+    // not to create a conflict with any of the in/out/local variables of impl
     protected static void ComputeInlinerPrefix(Implementation impl, Inliner inliner)
     {
         foreach (var v in impl.InParams)
