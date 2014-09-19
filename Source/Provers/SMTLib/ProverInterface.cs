@@ -81,14 +81,13 @@ namespace Microsoft.Boogie.SMTLib
           {
               currentLogFile = OpenOutputFile("");
           }
-          if (CommandLineOptions.Clo.ContractInfer)
+          if (CommandLineOptions.Clo.ContractInfer && CommandLineOptions.Clo.ExplainHoudini)
           {
               SendThisVC("(set-option :produce-unsat-cores true)");
               this.usingUnsatCore = true;
           }
           PrepareCommon();
       }
-		
     }
 
     private void SetupAxiomBuilder(VCExpressionGenerator gen)
