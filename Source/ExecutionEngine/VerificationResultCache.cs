@@ -68,7 +68,7 @@ namespace Microsoft.Boogie
     readonly IEnumerable<Implementation> Implementations;
     readonly Program Program;
     // TODO(wuestholz): We should probably increase the threshold to something like 2 seconds.
-    static readonly double TimeThreshold = 0.0;
+    static readonly double TimeThreshold = -1.0d;
     Program programInCachedSnapshot;
     Implementation currentImplementation;
     int assumptionVariableCount;
