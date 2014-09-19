@@ -246,53 +246,6 @@ namespace Microsoft.Boogie.Houdini {
     }
   }
 
-  public class InlineRequiresVisitor : StandardVisitor {
-    public override List<Cmd> VisitCmdSeq(List<Cmd> cmdSeq) {
-      List<Cmd> newCmdSeq = new List<Cmd>();
-      for (int i = 0, n = cmdSeq.Count; i < n; i++) {
-        Cmd cmd = cmdSeq[i];
-        CallCmd callCmd = cmd as CallCmd;
-        if (callCmd != null) {
-          newCmdSeq.AddRange(InlineRequiresForCallCmd(callCmd));
-        }
-        else {
-          newCmdSeq.Add((Cmd)this.Visit(cmd));
-        }
-      }
-      return newCmdSeq;
-    }
-    private List<Cmd> InlineRequiresForCallCmd(CallCmd node) {
-      Dictionary<Variable, Expr> substMap = new Dictionary<Variable, Expr>();
-      for (int i = 0; i < node.Proc.InParams.Count; i++) {
-        substMap.Add(node.Proc.InParams[i], node.Ins[i]);
-      }
-      Substitution substitution = Substituter.SubstitutionFromHashtable(substMap);
-      List<Cmd> cmds = new List<Cmd>();
-      foreach (Requires requires in node.Proc.Requires) {
-        if (requires.Free) continue;
-        Requires requiresCopy = new Requires(false, Substituter.Apply(substitution, requires.Condition));
-        cmds.Add(new AssertRequiresCmd(node, requiresCopy));
-      }
-      cmds.Add(node);
-      return cmds;
-    }
-  }
-
-  public class FreeRequiresVisitor : StandardVisitor {
-    public override Requires VisitRequires(Requires requires) {
-      if (requires.Free)
-        return base.VisitRequires(requires);
-      else 
-        return new Requires(true, requires.Condition);
-    }
-
-    public override Cmd VisitAssertRequiresCmd(AssertRequiresCmd node) {
-      node.Requires = base.VisitRequires(node.Requires);
-      node.Expr = this.VisitExpr(node.Expr);
-      return node;
-    }
-  }
-
   public class InlineEnsuresVisitor : ReadOnlyVisitor {
       public override Ensures VisitEnsures(Ensures ensures)
       {
@@ -398,18 +351,8 @@ namespace Microsoft.Boogie.Houdini {
     }
 
     protected void Inline() {
-      if (CommandLineOptions.Clo.InlineDepth < 0)
+      if (CommandLineOptions.Clo.InlineDepth <= 0)
         return;
-
-      foreach (Implementation impl in callGraph.Nodes) {
-        InlineRequiresVisitor inlineRequiresVisitor = new InlineRequiresVisitor();
-        inlineRequiresVisitor.Visit(impl);
-      }
-
-      foreach (Implementation impl in callGraph.Nodes) {
-        FreeRequiresVisitor freeRequiresVisitor = new FreeRequiresVisitor();
-        freeRequiresVisitor.Visit(impl);
-      }
 
       foreach (Implementation impl in callGraph.Nodes) {
         InlineEnsuresVisitor inlineEnsuresVisitor = new InlineEnsuresVisitor();

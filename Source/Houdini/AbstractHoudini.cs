@@ -698,18 +698,6 @@ namespace Microsoft.Boogie.Houdini {
 
             foreach (Implementation impl in callGraph.Nodes)
             {
-                InlineRequiresVisitor inlineRequiresVisitor = new InlineRequiresVisitor();
-                inlineRequiresVisitor.Visit(impl);
-            }
-
-            foreach (Implementation impl in callGraph.Nodes)
-            {
-                FreeRequiresVisitor freeRequiresVisitor = new FreeRequiresVisitor();
-                freeRequiresVisitor.Visit(impl);
-            }
-
-            foreach (Implementation impl in callGraph.Nodes)
-            {
                 InlineEnsuresVisitor inlineEnsuresVisitor = new InlineEnsuresVisitor();
                 inlineEnsuresVisitor.Visit(impl);
             }
@@ -2510,18 +2498,6 @@ namespace Microsoft.Boogie.Houdini {
                 return;
 
             var callGraph = BuildCallGraph();
-
-            foreach (Implementation impl in callGraph.Nodes)
-            {
-                InlineRequiresVisitor inlineRequiresVisitor = new InlineRequiresVisitor();
-                inlineRequiresVisitor.Visit(impl);
-            }
-
-            foreach (Implementation impl in callGraph.Nodes)
-            {
-                FreeRequiresVisitor freeRequiresVisitor = new FreeRequiresVisitor();
-                freeRequiresVisitor.Visit(impl);
-            }
 
             foreach (Implementation impl in callGraph.Nodes)
             {

@@ -69,21 +69,14 @@ namespace Microsoft.Boogie {
     protected string GetInlinedProcLabel(string procName) {
       Contract.Requires(procName != null);
       Contract.Ensures(Contract.Result<string>() != null);
-      int currentId;
-      if (!inlinedProcLblMap.TryGetValue(procName, out currentId)) {
-        currentId = 0;
-        inlinedProcLblMap.Add(procName, currentId);
-      }
-      return prefix + procName + "$" + currentId;
+      return prefix + procName + "$" + inlinedProcLblMap[procName];
     }
 
     protected string GetProcVarName(string procName, string formalName) {
       Contract.Requires(formalName != null);
       Contract.Requires(procName != null);
       Contract.Ensures(Contract.Result<string>() != null);
-      string/*!*/ prefix = GetInlinedProcLabel(procName);
-      Contract.Assert(prefix != null);
-      return prefix + "$" + formalName;
+      return GetInlinedProcLabel(procName) + "$" + formalName;
     }
 
     public Inliner(Program program, InlineCallback cb, int inlineDepth) {
@@ -95,59 +88,51 @@ namespace Microsoft.Boogie {
       this.inlineCallback = cb;
       this.newLocalVars = new List<Variable>();
       this.newModifies = new List<IdentifierExpr>();
-      this.prefix = "inline$";
+      this.prefix = null;
     }
 
     // This method updates inliner.prefix so that prepending it to any string is guaranteed 
     // not to create a conflict with any of the in/out/local variables of impl
-    protected static void ComputeInlinerPrefix(Implementation impl, Inliner inliner)
+    protected void ComputePrefix(Program program, Implementation impl)
     {
+        this.prefix = "inline$";
         foreach (var v in impl.InParams)
         {
-            if (!v.Name.StartsWith(inliner.prefix)) continue;
-            for (int i = inliner.prefix.Length; i < v.Name.Length; i++)
-            {
-                inliner.prefix = inliner.prefix + "$";
-                if (v.Name[i] != '$') break;
-            }
-            if (inliner.prefix == v.Name)
-            {
-                inliner.prefix = inliner.prefix + "$";
-            }
+            DistinguishPrefix(v);
         }
         foreach (var v in impl.OutParams)
         {
-            if (!v.Name.StartsWith(inliner.prefix)) continue;
-            for (int i = inliner.prefix.Length; i < v.Name.Length; i++)
-            {
-                inliner.prefix = inliner.prefix + "$";
-                if (v.Name[i] != '$') break;
-            }
-            if (inliner.prefix == v.Name)
-            {
-                inliner.prefix = inliner.prefix + "$";
-            }
+            DistinguishPrefix(v);
         }
         foreach (var v in impl.LocVars)
         {
-            if (!v.Name.StartsWith(inliner.prefix)) continue;
-            for (int i = inliner.prefix.Length; i < v.Name.Length; i++)
-            {
-                inliner.prefix = inliner.prefix + "$";
-                if (v.Name[i] != '$') break;
-            }
-            if (inliner.prefix == v.Name)
-            {
-                inliner.prefix = inliner.prefix + "$";
-            }
+            DistinguishPrefix(v);
+        }
+        foreach (var v in program.GlobalVariables())
+        {
+            DistinguishPrefix(v);
         }
     }
 
-    protected static void ProcessImplementation(Implementation impl, Inliner inliner) {
+    private void DistinguishPrefix(Variable v)
+    {
+        if (!v.Name.StartsWith(prefix)) return;
+        for (int i = prefix.Length; i < v.Name.Length; i++)
+        {
+            prefix = prefix + "$";
+            if (v.Name[i] != '$') break;
+        }
+        if (prefix == v.Name)
+        {
+            prefix = prefix + "$";
+        }
+    }
+
+    protected static void ProcessImplementation(Program program, Implementation impl, Inliner inliner) {
       Contract.Requires(impl != null);
       Contract.Requires(impl.Proc != null);
 
-      ComputeInlinerPrefix(impl, inliner);
+      inliner.ComputePrefix(program, impl);
 
       inliner.newLocalVars.AddRange(impl.LocVars);
       inliner.newModifies.AddRange(impl.Proc.Modifies);
@@ -179,14 +164,14 @@ namespace Microsoft.Boogie {
       Contract.Requires(impl != null);
       Contract.Requires(program != null);
       Contract.Requires(impl.Proc != null);
-      ProcessImplementation(impl, new Inliner(program, null, CommandLineOptions.Clo.InlineDepth));
+      ProcessImplementation(program, impl, new Inliner(program, null, CommandLineOptions.Clo.InlineDepth));
     }
 
     public static void ProcessImplementation(Program program, Implementation impl) {
       Contract.Requires(impl != null);
       Contract.Requires(program != null);
       Contract.Requires(impl.Proc != null);
-      ProcessImplementation(impl, new Inliner(program, null, -1));
+      ProcessImplementation(program, impl, new Inliner(program, null, -1));
     }
 
     protected void EmitImpl(Implementation impl) {
