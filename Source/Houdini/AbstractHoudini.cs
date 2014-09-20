@@ -463,7 +463,7 @@ namespace Microsoft.Boogie.Houdini {
         }
 
         // Remove functions AbsHoudiniConstant from the expressions and substitute them with "true"
-        class ExistentialExprModelMassage : ReadOnlyVisitor
+        class ExistentialExprModelMassage : StandardVisitor
         {
             List<Function> ahFuncs;
 
