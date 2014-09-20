@@ -91,38 +91,42 @@ namespace Microsoft.Boogie {
       this.prefix = null;
     }
 
-    // This method updates inliner.prefix so that prepending it to any string is guaranteed 
-    // not to create a conflict with any of the in/out/local variables of impl
+    // This method calculates a prefix (storing it in the prefix field) so that prepending it to any string 
+    // is guaranteed not to create a conflict with the names of variables and blocks in scope inside impl.
     protected void ComputePrefix(Program program, Implementation impl)
     {
         this.prefix = "inline$";
         foreach (var v in impl.InParams)
         {
-            DistinguishPrefix(v);
+            DistinguishPrefix(v.Name);
         }
         foreach (var v in impl.OutParams)
         {
-            DistinguishPrefix(v);
+            DistinguishPrefix(v.Name);
         }
         foreach (var v in impl.LocVars)
         {
-            DistinguishPrefix(v);
+            DistinguishPrefix(v.Name);
         }
         foreach (var v in program.GlobalVariables())
         {
-            DistinguishPrefix(v);
+            DistinguishPrefix(v.Name);
+        }
+        foreach (Block b in impl.Blocks)
+        {
+            DistinguishPrefix(b.Label);
         }
     }
 
-    private void DistinguishPrefix(Variable v)
+    private void DistinguishPrefix(string s)
     {
-        if (!v.Name.StartsWith(prefix)) return;
-        for (int i = prefix.Length; i < v.Name.Length; i++)
+        if (!s.StartsWith(prefix)) return;
+        for (int i = prefix.Length; i < s.Length; i++)
         {
             prefix = prefix + "$";
-            if (v.Name[i] != '$') break;
+            if (s[i] != '$') break;
         }
-        if (prefix == v.Name)
+        if (prefix == s)
         {
             prefix = prefix + "$";
         }
@@ -274,7 +278,7 @@ namespace Microsoft.Boogie {
         // increment the counter for the procedure to be used in constructing the locals and formals
         NextInlinedProcLabel(impl.Proc.Name);
 
-        BeginInline(newLocalVars, newModifies, impl);
+        BeginInline(impl);
 
         List<Block/*!*/>/*!*/ inlinedBlocks = CreateInlinedBlocks(callCmd, impl, nextBlockLabel);
         Contract.Assert(cce.NonNullElements(inlinedBlocks));
@@ -421,7 +425,7 @@ namespace Microsoft.Boogie {
       return newBlocks;
     }
 
-    protected void BeginInline(List<Variable> newLocalVars, List<IdentifierExpr> newModifies, Implementation impl) {
+    protected void BeginInline(Implementation impl) {
       Contract.Requires(impl != null);
       Contract.Requires(impl.Proc != null);
       Contract.Requires(newModifies != null);
