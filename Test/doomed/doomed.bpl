@@ -1,4 +1,4 @@
-
+// RUN: %boogie -vc:doomed %s
 procedure evilrequires(x:int)
   requires x>0;
 {

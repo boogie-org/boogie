@@ -1,3 +1,4 @@
+// RUN: %boogie -vc:doomed %s
 procedure a(x:int)
 {
   var y : int;
