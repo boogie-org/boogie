@@ -2877,6 +2877,10 @@ namespace Microsoft.Boogie {
       {
         return assertionChecksums;
       }
+      set
+      {
+        assertionChecksums = value;
+      }
     }
 
     public sealed class ChecksumComparer : IEqualityComparer<byte[]>

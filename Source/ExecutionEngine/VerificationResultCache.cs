@@ -147,10 +147,13 @@ namespace Microsoft.Boogie
             if (TimeThreshold < vr.End.Subtract(vr.Start).TotalMilliseconds)
             {
               SetErrorChecksumsInCachedSnapshot(impl, vr);
-              var p = ExecutionEngine.CachedProgram(vr.ProgramId);
-              if (p != null)
+              if (vr.ProgramId != null)
               {
-                SetAssertionChecksumsInPreviousSnapshot(impl, p);
+                var p = ExecutionEngine.CachedProgram(vr.ProgramId);
+                if (p != null)
+                {
+                  SetAssertionChecksumsInPreviousSnapshot(impl, p);
+                }
               }
             }
           }
@@ -161,6 +164,14 @@ namespace Microsoft.Boogie
           else if (priority == Priority.SKIP)
           {
             run.SkippedImplementationCount++;
+            if (vr.ProgramId != null)
+            {
+              var p = ExecutionEngine.CachedProgram(vr.ProgramId);
+              if (p != null)
+              {
+                SetAssertionChecksums(impl, p);
+              }
+            }
           }
         }
       }
@@ -177,6 +188,16 @@ namespace Microsoft.Boogie
       else if (result.Outcome == ConditionGeneration.Outcome.Correct)
       {
         implementation.SetErrorChecksumToCachedError(new List<Tuple<byte[], object>>());
+      }
+    }
+
+    private static void SetAssertionChecksums(Implementation implementation, Program program)
+    {
+      // TODO(wuestholz): Maybe we should speed up this lookup.
+      var implPrevSnap = program.Implementations().FirstOrDefault(i => i.Id == implementation.Id);
+      if (implPrevSnap != null)
+      {
+        implementation.AssertionChecksums = implPrevSnap.AssertionChecksums;
       }
     }
 

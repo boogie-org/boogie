@@ -1075,7 +1075,7 @@ namespace VC {
         {
           ce.RequestId = RequestId;
         }
-        if (ce.OriginalRequestId == null)
+        if (ce.OriginalRequestId == null && 1 < CommandLineOptions.Clo.VerifySnapshots)
         {
           ce.OriginalRequestId = RequestId;
         }
