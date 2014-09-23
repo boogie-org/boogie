@@ -1244,7 +1244,7 @@ namespace Microsoft.Boogie.Houdini {
       }
 
       // Remove the existential constants
-      prog.TopLevelDeclarations.RemoveAll(item => (item is Variable) && 
+      prog.RemoveTopLevelDeclarations(item => (item is Variable) && 
            (houdiniConstants.Select(c => c.Name).Contains((item as Variable).Name)));
     }
 

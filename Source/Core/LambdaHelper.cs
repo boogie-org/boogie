@@ -44,10 +44,10 @@ namespace Microsoft.Boogie {
 
       Desugar(prog, out axioms, out functions);
       foreach (var f in functions) {
-        prog.TopLevelDeclarations.Add(f);
+        prog.AddTopLevelDeclaration(f);
       }
       foreach (var a in axioms) {
-        prog.TopLevelDeclarations.Add(new Axiom(a.tok, a));
+        prog.AddTopLevelDeclaration(new Axiom(a.tok, a));
       }
     }
 

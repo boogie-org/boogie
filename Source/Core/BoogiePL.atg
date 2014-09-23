@@ -31,7 +31,7 @@ readonly StructuredCmd/*!*/ dummyStructuredCmd;
 ///Returns the number of parsing errors encountered.  If 0, "program" returns as
 ///the parsed program.
 ///</summary>
-public static int Parse (string/*!*/ filename, /*maybe null*/ List<string/*!*/> defines, out /*maybe null*/ Program program) /* throws System.IO.IOException */ {
+public static int Parse (string/*!*/ filename, /*maybe null*/ List<string/*!*/> defines, out /*maybe null*/ Program program, bool useBaseName=false) /* throws System.IO.IOException */ {
   Contract.Requires(filename != null);
   Contract.Requires(cce.NonNullElements(defines,true));
 
@@ -41,25 +41,25 @@ public static int Parse (string/*!*/ filename, /*maybe null*/ List<string/*!*/> 
 
   if (filename == "stdin.bpl") {
     var s = ParserHelper.Fill(Console.In, defines);
-    return Parse(s, filename, out program);
+    return Parse(s, filename, out program, useBaseName);
   } else {
     FileStream stream = new FileStream(filename, FileMode.Open, FileAccess.Read, FileShare.Read);
     var s = ParserHelper.Fill(stream, defines);
-    var ret = Parse(s, filename, out program);
+    var ret = Parse(s, filename, out program, useBaseName);
     stream.Close();
     return ret;
   }
 }
 
 
-public static int Parse (string s, string/*!*/ filename, out /*maybe null*/ Program program) /* throws System.IO.IOException */ {
+public static int Parse (string s, string/*!*/ filename, out /*maybe null*/ Program program, bool useBaseName=false) /* throws System.IO.IOException */ {
   Contract.Requires(s != null);
   Contract.Requires(filename != null);
 
   byte[]/*!*/ buffer = cce.NonNull(UTF8Encoding.Default.GetBytes(s));
   MemoryStream ms = new MemoryStream(buffer,false);
   Errors errors = new Errors();
-  Scanner scanner = new Scanner(ms, errors, filename);
+  Scanner scanner = new Scanner(ms, errors, filename, useBaseName);
 
   Parser parser = new Parser(scanner, errors, false);
   parser.Parse();
@@ -168,31 +168,31 @@ BoogiePL
   .)
   { Consts<out vs>             (. foreach(Bpl.Variable/*!*/ v in vs){
                                     Contract.Assert(v != null);
-                                    Pgm.TopLevelDeclarations.Add(v);
+                                    Pgm.AddTopLevelDeclaration(v);
                                   }
                                .)
   | Function<out ds>           (. foreach(Bpl.Declaration/*!*/ d in ds){
                                     Contract.Assert(d != null);
-                                    Pgm.TopLevelDeclarations.Add(d);
+                                    Pgm.AddTopLevelDeclaration(d);
                                   }
                                .)
-  | Axiom<out ax>              (. Pgm.TopLevelDeclarations.Add(ax); .)
+  | Axiom<out ax>              (. Pgm.AddTopLevelDeclaration(ax); .)
   | UserDefinedTypes<out ts>   (. foreach(Declaration/*!*/ td in ts){
                                     Contract.Assert(td != null);
-                                    Pgm.TopLevelDeclarations.Add(td);
+                                    Pgm.AddTopLevelDeclaration(td);
                                   }
                                .)
   | GlobalVars<out vs>         (. foreach(Bpl.Variable/*!*/ v in vs){
                                     Contract.Assert(v != null);
-                                    Pgm.TopLevelDeclarations.Add(v);
+                                    Pgm.AddTopLevelDeclaration(v);
                                   }
                                .)
-  | Procedure<out pr, out im>  (. Pgm.TopLevelDeclarations.Add(pr);
+  | Procedure<out pr, out im>  (. Pgm.AddTopLevelDeclaration(pr);
                                    if (im != null) {
-                                     Pgm.TopLevelDeclarations.Add(im);
+                                     Pgm.AddTopLevelDeclaration(im);
                                    }
                                .)
-  | Implementation<out nnim>   (. Pgm.TopLevelDeclarations.Add(nnim); .)
+  | Implementation<out nnim>   (. Pgm.AddTopLevelDeclaration(nnim); .)
   }
   EOF
   .

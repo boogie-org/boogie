@@ -9,6 +9,7 @@
 
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
+using System.Linq;
 
 namespace Microsoft.Boogie {
   [ContractClass(typeof(VisitorContracts))]
@@ -429,7 +430,9 @@ namespace Microsoft.Boogie {
     public virtual Program VisitProgram(Program node) {
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Program>() != null);
-      node.TopLevelDeclarations = this.VisitDeclarationList(node.TopLevelDeclarations);
+      var decls = node.TopLevelDeclarations.ToList();
+      node.ClearTopLevelDeclarations();
+      node.AddTopLevelDeclarations(this.VisitDeclarationList(decls));
       return node;
     }
     public virtual QKeyValue VisitQKeyValue(QKeyValue node) {
@@ -979,7 +982,7 @@ namespace Microsoft.Boogie {
       public override Program VisitProgram(Program node)
       {
           Contract.Ensures(Contract.Result<Program>() == node);
-          this.VisitDeclarationList(node.TopLevelDeclarations);
+          this.VisitDeclarationList(node.TopLevelDeclarations.ToList());
           return node;
       }
       public override QKeyValue VisitQKeyValue(QKeyValue node) {

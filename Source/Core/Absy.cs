@@ -296,7 +296,36 @@ namespace Microsoft.Boogie {
 
   public class Program : Absy {
     [Rep]
-    public List<Declaration/*!*/>/*!*/ TopLevelDeclarations;
+    private List<Declaration/*!*/>/*!*/ topLevelDeclarations;
+
+    public IEnumerable<Declaration> TopLevelDeclarations
+    {
+      get
+      {
+        return topLevelDeclarations;
+      }
+    }
+
+    public void AddTopLevelDeclaration(Declaration decl)
+    {
+      topLevelDeclarations.Add(decl);
+    }
+
+    public void AddTopLevelDeclarations(IEnumerable<Declaration> decls)
+    {
+      topLevelDeclarations.AddRange(decls);
+    }
+
+    public void RemoveTopLevelDeclarations(Predicate<Declaration> match)
+    {
+      topLevelDeclarations.RemoveAll(match);
+    }
+
+    public void ClearTopLevelDeclarations()
+    {
+      topLevelDeclarations.Clear();
+    }
+
     [ContractInvariantMethod]
     void ObjectInvariant() {
       Contract.Invariant(cce.NonNullElements(TopLevelDeclarations));
@@ -306,13 +335,13 @@ namespace Microsoft.Boogie {
 
     public Program()
       : base(Token.NoToken) {
-      this.TopLevelDeclarations = new List<Declaration>();
+      this.topLevelDeclarations = new List<Declaration>();
     }
 
     public void Emit(TokenTextWriter stream) {
       Contract.Requires(stream != null);
       stream.SetToken(this);
-      this.TopLevelDeclarations.Emit(stream);
+      this.topLevelDeclarations.Emit(stream);
     }
 
     public void ProcessDatatypeConstructors() {
@@ -329,17 +358,18 @@ namespace Microsoft.Boogie {
         constructors.Add(func.Name, constructor);
         prunedTopLevelDeclarations.Add(constructor);
       }
-      TopLevelDeclarations = prunedTopLevelDeclarations;
+      ClearTopLevelDeclarations();
+      AddTopLevelDeclarations(prunedTopLevelDeclarations);
     
       foreach (DatatypeConstructor f in constructors.Values) {
         for (int i = 0; i < f.InParams.Count; i++) {
           DatatypeSelector selector = new DatatypeSelector(f, i);
           f.selectors.Add(selector);
-          TopLevelDeclarations.Add(selector);
+          AddTopLevelDeclaration(selector);
         }
         DatatypeMembership membership = new DatatypeMembership(f);
         f.membership = membership;
-        TopLevelDeclarations.Add(membership);
+        AddTopLevelDeclaration(membership);
       }
     }
 
@@ -385,7 +415,8 @@ namespace Microsoft.Boogie {
         }
         prunedTopLevelDecls.Add(d);
       }
-      TopLevelDeclarations = prunedTopLevelDecls;
+      ClearTopLevelDeclarations();
+      AddTopLevelDeclarations(prunedTopLevelDecls);
 
       foreach (var v in Variables) {
         v.ResolveWhere(rc);
@@ -1067,8 +1098,8 @@ namespace Microsoft.Boogie {
         foreach (Implementation/*!*/ loopImpl in loopImpls)
         {
             Contract.Assert(loopImpl != null);
-            TopLevelDeclarations.Add(loopImpl);
-            TopLevelDeclarations.Add(loopImpl.Proc);
+            AddTopLevelDeclaration(loopImpl);
+            AddTopLevelDeclaration(loopImpl.Proc);
         }
         return fullMap;
     }
@@ -1098,7 +1129,7 @@ namespace Microsoft.Boogie {
       invariantGenerationCounter++;
       ExistentialBooleanConstant.AddAttribute("existential", new object[] { Expr.True });
       ExistentialBooleanConstant.AddAttribute("stage_id", new object[] { new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(StageId)) });
-      TopLevelDeclarations.Add(ExistentialBooleanConstant);
+      AddTopLevelDeclaration(ExistentialBooleanConstant);
       return ExistentialBooleanConstant;
     }
 

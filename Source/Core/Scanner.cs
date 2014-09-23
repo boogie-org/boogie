@@ -8,7 +8,7 @@ using System.Diagnostics.Contracts;
 using Microsoft.Boogie;
 
 
-
+namespace Microsoft.Boogie {
 
 //-----------------------------------------------------------------------------------
 // Buffer
@@ -296,7 +296,7 @@ public class Scanner {
 	}
 
 //	[NotDelayed]
-	public Scanner (string/*!*/ fileName, Errors/*!*/ errorHandler, bool useBaseName) : base() {
+	public Scanner (string/*!*/ fileName, Errors/*!*/ errorHandler, bool useBaseName = false) : base() {
 	  Contract.Requires(fileName != null);
 	  Contract.Requires(errorHandler != null);
 		this.errorHandler = errorHandler;
@@ -313,7 +313,7 @@ public class Scanner {
 	}
 
 //	[NotDelayed]
-	public Scanner (Stream/*!*/ s, Errors/*!*/ errorHandler, string/*!*/ fileName, bool useBaseName) : base() {
+	public Scanner (Stream/*!*/ s, Errors/*!*/ errorHandler, string/*!*/ fileName, bool useBaseName = false) : base() {
 	  Contract.Requires(s != null);
 	  Contract.Requires(errorHandler != null);
 	  Contract.Requires(fileName != null);
@@ -325,7 +325,7 @@ public class Scanner {
 		Init();
 	}
 
-    private string GetBaseName(string fileName) {
+    string GetBaseName(string fileName) {
         return System.IO.Path.GetFileName(fileName); // Return basename
     }
 
@@ -807,3 +807,4 @@ public class Scanner {
 public delegate void ErrorProc(int n, string filename, int line, int col);
 
 
+}

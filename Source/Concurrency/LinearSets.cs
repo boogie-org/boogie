@@ -779,14 +779,14 @@ namespace Microsoft.Boogie
             
             foreach (LinearDomain domain in linearDomains.Values)
             {
-                program.TopLevelDeclarations.Add(domain.mapConstBool);
-                program.TopLevelDeclarations.Add(domain.mapConstInt);
-                program.TopLevelDeclarations.Add(domain.mapEqInt);
-                program.TopLevelDeclarations.Add(domain.mapImpBool);
-                program.TopLevelDeclarations.Add(domain.mapOrBool);
+                program.AddTopLevelDeclaration(domain.mapConstBool);
+                program.AddTopLevelDeclaration(domain.mapConstInt);
+                program.AddTopLevelDeclaration(domain.mapEqInt);
+                program.AddTopLevelDeclaration(domain.mapImpBool);
+                program.AddTopLevelDeclaration(domain.mapOrBool);
                 foreach (Axiom axiom in domain.axioms)
                 {
-                    program.TopLevelDeclarations.Add(axiom);
+                    program.AddTopLevelDeclaration(axiom);
                 }
             }
 

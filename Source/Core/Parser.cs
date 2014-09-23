@@ -12,6 +12,8 @@ using Bpl = Microsoft.Boogie;
 using System;
 using System.Diagnostics.Contracts;
 
+namespace Microsoft.Boogie {
+
 
 
 public class Parser {
@@ -218,7 +220,7 @@ private class BvBounds : Expr {
 				Consts(out vs);
 				foreach(Bpl.Variable/*!*/ v in vs){
 				 Contract.Assert(v != null);
-				 Pgm.TopLevelDeclarations.Add(v);
+				 Pgm.AddTopLevelDeclaration(v);
 				}
 				
 				break;
@@ -227,21 +229,21 @@ private class BvBounds : Expr {
 				Function(out ds);
 				foreach(Bpl.Declaration/*!*/ d in ds){
 				 Contract.Assert(d != null);
-				 Pgm.TopLevelDeclarations.Add(d);
+				 Pgm.AddTopLevelDeclaration(d);
 				}
 				
 				break;
 			}
 			case 29: {
 				Axiom(out ax);
-				Pgm.TopLevelDeclarations.Add(ax); 
+				Pgm.AddTopLevelDeclaration(ax); 
 				break;
 			}
 			case 30: {
 				UserDefinedTypes(out ts);
 				foreach(Declaration/*!*/ td in ts){
 				 Contract.Assert(td != null);
-				 Pgm.TopLevelDeclarations.Add(td);
+				 Pgm.AddTopLevelDeclaration(td);
 				}
 				
 				break;
@@ -250,23 +252,23 @@ private class BvBounds : Expr {
 				GlobalVars(out vs);
 				foreach(Bpl.Variable/*!*/ v in vs){
 				 Contract.Assert(v != null);
-				 Pgm.TopLevelDeclarations.Add(v);
+				 Pgm.AddTopLevelDeclaration(v);
 				}
 				
 				break;
 			}
 			case 32: {
 				Procedure(out pr, out im);
-				Pgm.TopLevelDeclarations.Add(pr);
+				Pgm.AddTopLevelDeclaration(pr);
 				if (im != null) {
-				  Pgm.TopLevelDeclarations.Add(im);
+				  Pgm.AddTopLevelDeclaration(im);
 				}
 				
 				break;
 			}
 			case 33: {
 				Implementation(out nnim);
-				Pgm.TopLevelDeclarations.Add(nnim); 
+				Pgm.AddTopLevelDeclaration(nnim); 
 				break;
 			}
 			}
@@ -2286,3 +2288,4 @@ public class FatalError: Exception {
 }
 
 
+}

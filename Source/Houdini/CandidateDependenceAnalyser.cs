@@ -396,14 +396,14 @@ namespace Microsoft.Boogie.Houdini {
                 new TypedIdent(Token.NoToken, "_stage_" + stage.GetId() + "_active", Type.Bool),
                 false);
             stageActive.AddAttribute("stage_active", new object[] { new LiteralExpr(Token.NoToken, BigNum.FromInt(stage.GetId())) });
-            prog.TopLevelDeclarations.Add(stageActive);
+            prog.AddTopLevelDeclaration(stageActive);
             stageToActiveBoolean[stage.GetId()] = stageActive;
 
             var stageComplete = new Constant(Token.NoToken, 
                 new TypedIdent(Token.NoToken, "_stage_" + stage.GetId() + "_complete", Type.Bool),
                 false);
             stageComplete.AddAttribute("stage_complete", new object[] { new LiteralExpr(Token.NoToken, BigNum.FromInt(stage.GetId())) });
-            prog.TopLevelDeclarations.Add(stageComplete);
+            prog.AddTopLevelDeclaration(stageComplete);
             stageToCompleteBoolean[stage.GetId()] = stageComplete;
         }
         #endregion

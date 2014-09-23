@@ -548,7 +548,7 @@ namespace Microsoft.Boogie
                     {
                         Constant constant = new Constant(Token.NoToken, new TypedIdent(Token.NoToken, v.Name + temp++, v.TypedIdent.Type));
                         interfaceVarCopies[i].Add(constant);
-                        //program.TopLevelDeclarations.Add(constant);
+                        //program.AddTopLevelDeclaration(constant);
                     }
                 }
             }

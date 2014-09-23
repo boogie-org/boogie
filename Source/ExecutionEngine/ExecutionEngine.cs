@@ -642,7 +642,7 @@ namespace Microsoft.Boogie
         }
         else if (programSnippet != null)
         {
-          program.TopLevelDeclarations.AddRange(programSnippet.TopLevelDeclarations);
+          program.AddTopLevelDeclarations(programSnippet.TopLevelDeclarations);
         }
       }
       if (!okay)

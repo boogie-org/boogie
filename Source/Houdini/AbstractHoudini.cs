@@ -2399,11 +2399,10 @@ namespace Microsoft.Boogie.Houdini {
                 proc.Ensures = nensures;
             }
 
-            var decls = new List<Declaration>();
-            copy.Values.Iter(impl => decls.Add(impl));
-            program.TopLevelDeclarations.Where(decl => !(decl is Implementation))
-                .Iter(decl => decls.Add(decl));
-            program.TopLevelDeclarations = decls;
+            var decls = new List<Declaration>(copy.Values);
+            decls.AddRange(program.TopLevelDeclarations.Where(decl => !(decl is Implementation)));
+            program.ClearTopLevelDeclarations();
+            program.AddTopLevelDeclarations(decls);
             var name2Proc = new Dictionary<string, Procedure>();
             foreach (var proc in program.Procedures)
             {
@@ -3261,7 +3260,7 @@ namespace Microsoft.Boogie.Houdini {
                 }
             }
 
-            program.TopLevelDeclarations.RemoveAll(decl => tempP.Contains(decl));
+            program.RemoveTopLevelDeclarations(decl => tempP.Contains(decl));
             var upperPreds = new Dictionary<string, List<Expr>>();
 
             foreach (var impl in program.Implementations)

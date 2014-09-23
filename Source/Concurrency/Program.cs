@@ -36,8 +36,8 @@ namespace Microsoft.Boogie
             {
                 decl.Attributes = OwickiGries.RemoveYieldsAttribute(decl.Attributes);
             }
-            program.TopLevelDeclarations.RemoveAll(x => originalDecls.Contains(x));
-            program.TopLevelDeclarations.AddRange(decls);
+            program.RemoveTopLevelDeclarations(x => originalDecls.Contains(x));
+            program.AddTopLevelDeclarations(decls);
         }
 
     }
