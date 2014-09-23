@@ -1831,7 +1831,7 @@ namespace VC {
       // global variables
       lock (program.TopLevelDeclarations)
       {
-        foreach (Variable v in program.TopLevelDeclarations.OfType<Variable>())
+        foreach (var v in program.Variables)
         {
           if (!(v is Constant))
           {

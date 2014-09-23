@@ -361,20 +361,19 @@ namespace Microsoft.Boogie {
       //Contract.Requires(rc != null);
       Helpers.ExtraTraceInformation("Starting resolution");
 
-      foreach (Declaration d in TopLevelDeclarations) {
+      foreach (var d in TopLevelDeclarations) {
         d.Register(rc);
       }
 
       ResolveTypes(rc);
 
       var prunedTopLevelDecls = new List<Declaration/*!*/>();
-      foreach (Declaration d in TopLevelDeclarations) {
+      foreach (var d in TopLevelDeclarations) {
         if (QKeyValue.FindBoolAttribute(d.Attributes, "ignore")) {
           continue;
         }
         // resolve all the non-type-declarations
-        if (d is TypeCtorDecl || d is TypeSynonymDecl) {
-        } else {
+        if (!(d is TypeCtorDecl || d is TypeSynonymDecl)) {
           int e = rc.ErrorCount;
           d.Resolve(rc);
           if (CommandLineOptions.Clo.OverlookBoogieTypeErrors && rc.ErrorCount != e && d is Implementation) {
@@ -388,27 +387,24 @@ namespace Microsoft.Boogie {
       }
       TopLevelDeclarations = prunedTopLevelDecls;
 
-      foreach (Declaration d in TopLevelDeclarations) {
-        Variable v = d as Variable;
-        if (v != null) {
-          v.ResolveWhere(rc);
-        }
+      foreach (var v in Variables) {
+        v.ResolveWhere(rc);
       }
     }
 
     private void ResolveTypes(ResolutionContext rc) {
       Contract.Requires(rc != null);
       // first resolve type constructors
-      foreach (Declaration d in TopLevelDeclarations) {
-        if (d is TypeCtorDecl && !QKeyValue.FindBoolAttribute(d.Attributes, "ignore"))
+      foreach (var d in TopLevelDeclarations.OfType<TypeCtorDecl>()) {
+        if (!QKeyValue.FindBoolAttribute(d.Attributes, "ignore"))
           d.Resolve(rc);
       }
 
       // collect type synonym declarations
       List<TypeSynonymDecl/*!*/>/*!*/ synonymDecls = new List<TypeSynonymDecl/*!*/>();
-      foreach (Declaration d in TopLevelDeclarations) {
+      foreach (var d in TopLevelDeclarations.OfType<TypeSynonymDecl>()) {
         Contract.Assert(d != null);
-        if (d is TypeSynonymDecl && !QKeyValue.FindBoolAttribute(d.Attributes, "ignore"))
+        if (!QKeyValue.FindBoolAttribute(d.Attributes, "ignore"))
           synonymDecls.Add((TypeSynonymDecl)d);
       }
 
@@ -432,31 +428,74 @@ namespace Microsoft.Boogie {
       Helpers.ExtraTraceInformation("Starting typechecking");
 
       int oldErrorCount = tc.ErrorCount;
-      foreach (Declaration d in TopLevelDeclarations) {
+      foreach (var d in TopLevelDeclarations) {
         d.Typecheck(tc);
       }
 
       if (oldErrorCount == tc.ErrorCount) {
         // check whether any type proxies have remained uninstantiated
         TypeAmbiguitySeeker/*!*/ seeker = new TypeAmbiguitySeeker(tc);
-        foreach (Declaration d in TopLevelDeclarations) {
+        foreach (var d in TopLevelDeclarations) {
           seeker.Visit(d);
         }
       }
     }
 
-    public IEnumerable<Implementation> Implementations()
+    public IEnumerable<Implementation> Implementations
     {
-      return TopLevelDeclarations.OfType<Implementation>();
+      get
+      {
+        return TopLevelDeclarations.OfType<Implementation>();
+      }
+    }
+
+    public IEnumerable<Axiom> Axioms
+    {
+      get
+      {
+        return TopLevelDeclarations.OfType<Axiom>();
+      }
+    }
+
+    public IEnumerable<Procedure> Procedures
+    {
+      get
+      {
+        return TopLevelDeclarations.OfType<Procedure>();
+      }
+    }
+
+    public IEnumerable<Function> Functions
+    {
+      get
+      {
+        return TopLevelDeclarations.OfType<Function>();
+      }
+    }
+    
+    public IEnumerable<Variable> Variables
+    {
+      get
+      {
+        return TopLevelDeclarations.OfType<Variable>();
+      }
+    }
+
+    public IEnumerable<Constant> Constants
+    {
+      get
+      {
+        return TopLevelDeclarations.OfType<Constant>();
+      }
     }
 
     public IEnumerable<Block> Blocks()
     {
-      return Implementations().Select(Item => Item.Blocks).SelectMany(Item => Item);
+      return Implementations.Select(Item => Item.Blocks).SelectMany(Item => Item);
     }
 
     public void ComputeStronglyConnectedComponents() {
-      foreach (Declaration d in this.TopLevelDeclarations) {
+      foreach (var d in this.TopLevelDeclarations) {
         d.ComputeStronglyConnectedComponents();
       }
     }
@@ -465,14 +504,14 @@ namespace Microsoft.Boogie {
     /// Reset the abstract stated computed before
     /// </summary>
     public void ResetAbstractInterpretationState() {
-      foreach (Declaration d in this.TopLevelDeclarations) {
+      foreach (var d in this.TopLevelDeclarations) {
         d.ResetAbstractInterpretationState();
       }
     }
 
     public void UnrollLoops(int n, bool uc) {
       Contract.Requires(0 <= n);
-      foreach (var impl in Implementations()) {
+      foreach (var impl in Implementations) {
         if (impl.Blocks != null && impl.Blocks.Count > 0) {
           cce.BeginExpose(impl);
           {
@@ -874,20 +913,16 @@ namespace Microsoft.Boogie {
     public static Graph<Implementation> BuildCallGraph(Program program) {
       Graph<Implementation> callGraph = new Graph<Implementation>();
       Dictionary<Procedure, HashSet<Implementation>> procToImpls = new Dictionary<Procedure, HashSet<Implementation>>();
-      foreach (Declaration decl in program.TopLevelDeclarations) {
-        Procedure proc = decl as Procedure;
-        if (proc == null) continue;
+      foreach (var proc in program.Procedures) {
         procToImpls[proc] = new HashSet<Implementation>();
       }
-      foreach (Declaration decl in program.TopLevelDeclarations) {
-        Implementation impl = decl as Implementation;
-        if (impl == null || impl.SkipVerification) continue;
+      foreach (var impl in program.Implementations) {
+        if (impl.SkipVerification) continue;
         callGraph.AddSource(impl);
         procToImpls[impl.Proc].Add(impl);
       }
-      foreach (Declaration decl in program.TopLevelDeclarations) {
-        Implementation impl = decl as Implementation;
-        if (impl == null || impl.SkipVerification) continue;
+      foreach (var impl in program.Implementations) {
+        if (impl.SkipVerification) continue;
         foreach (Block b in impl.Blocks) {
           foreach (Cmd c in b.Cmds) {
             CallCmd cc = c as CallCmd;
@@ -984,10 +1019,9 @@ namespace Microsoft.Boogie {
         procsWithIrreducibleLoops = new HashSet<string>();
         List<Implementation/*!*/>/*!*/ loopImpls = new List<Implementation/*!*/>();
         Dictionary<string, Dictionary<string, Block>> fullMap = new Dictionary<string, Dictionary<string, Block>>();
-        foreach (Declaration d in this.TopLevelDeclarations)
+        foreach (var impl in this.Implementations)
         {
-            Implementation impl = d as Implementation;
-            if (impl != null && impl.Blocks != null && impl.Blocks.Count > 0)
+            if (impl.Blocks != null && impl.Blocks.Count > 0)
             {
                 try
                 {
@@ -1046,15 +1080,13 @@ namespace Microsoft.Boogie {
     }
 
     private List<GlobalVariable/*!*/> globals = null;
-    public List<GlobalVariable/*!*/>/*!*/ GlobalVariables() {
+    public IEnumerable<GlobalVariable/*!*/>/*!*/ GlobalVariables() {
       Contract.Ensures(cce.NonNullElements(Contract.Result<List<GlobalVariable>>()));
       if (globals != null)
         return globals;
       globals = new List<GlobalVariable/*!*/>();
-      foreach (Declaration d in TopLevelDeclarations) {
-        GlobalVariable gvar = d as GlobalVariable;
-        if (gvar != null)
-          globals.Add(gvar);
+      foreach (var gvar in TopLevelDeclarations.OfType<GlobalVariable>()) {
+        globals.Add(gvar);
       }
       return globals;
     }

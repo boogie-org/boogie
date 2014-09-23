@@ -46,7 +46,7 @@ namespace Microsoft.Boogie.Houdini
           RefutedAnnotation ra = null;
           Implementation refutationSite = null;
 
-          foreach (var r in program.TopLevelDeclarations.OfType<Implementation>()) {
+          foreach (var r in program.Implementations) {
             if (r.Name.Equals(refutedSharedAnnotations[key].RefutationSite.Name)) {
               refutationSite = r;
               break;
@@ -56,7 +56,7 @@ namespace Microsoft.Boogie.Houdini
 
           if (refutedSharedAnnotations[key].Kind == RefutedAnnotationKind.REQUIRES) {
             Procedure proc = null;
-            foreach (var p in program.TopLevelDeclarations.OfType<Procedure>()) {
+            foreach (var p in program.Procedures) {
               if (p.Name.Equals(refutedSharedAnnotations[key].CalleeProc.Name)) {
                 proc = p;
                 break;

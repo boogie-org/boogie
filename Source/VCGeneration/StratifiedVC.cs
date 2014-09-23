@@ -333,18 +333,14 @@ namespace VC {
       : base(program, logFilePath, appendLogFile, checkers) {
       implName2StratifiedInliningInfo = new Dictionary<string, StratifiedInliningInfo>();
       prover = ProverInterface.CreateProver(program, logFilePath, appendLogFile, CommandLineOptions.Clo.ProverKillTime);
-      foreach (Declaration decl in program.TopLevelDeclarations) {
-        Implementation impl = decl as Implementation;
-        if (impl == null) continue;
+      foreach (var impl in program.Implementations) {
         implName2StratifiedInliningInfo[impl.Name] = new StratifiedInliningInfo(impl, this);
       }
       GenerateRecordFunctions();
     }
 
     private void GenerateRecordFunctions() {
-      foreach (var decl in program.TopLevelDeclarations) {
-        var proc = decl as Procedure;
-        if (proc == null) continue;
+      foreach (var proc in program.Procedures) {
         if (!proc.Name.StartsWith(recordProcName)) continue;
         Contract.Assert(proc.InParams.Count == 1);
 
@@ -901,9 +897,7 @@ namespace VC {
 
       // Find all the boolean constants
       var allConsts = new HashSet<VCExprVar>();
-      foreach (var decl in program.TopLevelDeclarations) {
-        var constant = decl as Constant;
-        if (constant == null) continue;
+      foreach (var constant in program.Constants) {
         if (!allBoolVars.Contains(constant.Name)) continue;
         var v = prover.Context.BoogieExprTranslator.LookupVariable(constant);
         allConsts.Add(v);

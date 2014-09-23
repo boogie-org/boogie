@@ -269,10 +269,9 @@ namespace Microsoft.Boogie
 
         public void TypeCheck()
         {
-            foreach (Declaration decl in program.TopLevelDeclarations)
+            foreach (var proc in program.Procedures)
             {
-                Procedure proc = decl as Procedure;
-                if (proc == null || !QKeyValue.FindBoolAttribute(proc.Attributes, "yields")) continue;
+                if (!QKeyValue.FindBoolAttribute(proc.Attributes, "yields")) continue;
 
                 int phaseNum = int.MaxValue;
                 int availableUptoPhaseNum = int.MaxValue;

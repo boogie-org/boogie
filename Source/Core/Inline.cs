@@ -202,7 +202,7 @@ namespace Microsoft.Boogie {
       Contract.Ensures(impl.Proc != null);
       ResolutionContext rc = new ResolutionContext(new DummyErrorSink());
 
-      foreach (Declaration decl in program.TopLevelDeclarations) {
+      foreach (var decl in program.TopLevelDeclarations) {
         decl.Register(rc);
       }
 
@@ -675,9 +675,8 @@ namespace Microsoft.Boogie {
 
     protected static Implementation FindProcImpl(Program program, Procedure proc) {
       Contract.Requires(program != null);
-      foreach (Declaration decl in program.TopLevelDeclarations) {
-        Implementation impl = decl as Implementation;
-        if (impl != null && impl.Proc == proc) {
+      foreach (var impl in program.Implementations) {
+        if (impl.Proc == proc) {
           return impl;
         }
       }

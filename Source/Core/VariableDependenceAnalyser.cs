@@ -135,7 +135,7 @@ namespace Microsoft.Boogie {
 
     private void Initialise() {
       foreach (var descriptor in
-        prog.TopLevelDeclarations.OfType<Variable>().Where(Item => VariableRelevantToAnalysis(Item, null)).
+        prog.Variables.Where(Item => VariableRelevantToAnalysis(Item, null)).
           Select(Variable => Variable.Name).
           Select(Name => new GlobalDescriptor(Name))) {
         dependsOnNonTransitive.AddEdge(descriptor, descriptor);
@@ -164,12 +164,12 @@ namespace Microsoft.Boogie {
     }
 
     private IEnumerable<Procedure> NonInlinedProcedures() {
-      return prog.TopLevelDeclarations.OfType<Procedure>().
+      return prog.Procedures.
         Where(Item => QKeyValue.FindIntAttribute(Item.Attributes, "inline", -1) == -1);
     }
 
     private IEnumerable<Implementation> NonInlinedImplementations() {
-      return prog.TopLevelDeclarations.OfType<Implementation>().
+      return prog.Implementations.
         Where(Item => QKeyValue.FindIntAttribute(Item.Proc.Attributes, "inline", -1) == -1);
     }
 
@@ -439,7 +439,7 @@ namespace Microsoft.Boogie {
       Dictionary<Implementation, Dictionary<Block, HashSet<Block>>> LocalCtrlDeps = new Dictionary<Implementation, Dictionary<Block, HashSet<Block>>>();
 
       // Work out and union together local control dependences
-      foreach (var Impl in prog.TopLevelDeclarations.OfType<Implementation>()) {
+      foreach (var Impl in prog.Implementations) {
         Graph<Block> blockGraph = prog.ProcessLoops(Impl);
         LocalCtrlDeps[Impl] = blockGraph.ControlDependence();
         foreach (var KeyValue in LocalCtrlDeps[Impl]) {
@@ -450,7 +450,7 @@ namespace Microsoft.Boogie {
       Graph<Implementation> callGraph = Program.BuildCallGraph(prog);
 
       // Add inter-procedural control dependence nodes based on calls
-      foreach (var Impl in prog.TopLevelDeclarations.OfType<Implementation>()) {
+      foreach (var Impl in prog.Implementations) {
         foreach (var b in Impl.Blocks) {
           foreach (var cmd in b.Cmds.OfType<CallCmd>()) {
             var DirectCallee = GetImplementation(cmd.callee);
@@ -513,7 +513,7 @@ namespace Microsoft.Boogie {
     }
 
     private Implementation GetImplementation(string proc) {
-      foreach (var Impl in prog.TopLevelDeclarations.OfType<Implementation>()) {
+      foreach (var Impl in prog.Implementations) {
         if (Impl.Name.Equals(proc)) {
           return Impl;
         }

@@ -641,7 +641,7 @@ namespace Microsoft.Boogie {
           if (funCall != null)
           {
             // TODO(wuestholz): Maybe we should speed up this lookup.
-            funCall.Func = Program.TopLevelDeclarations.OfType<Function>().FirstOrDefault(f => f.Name == funCall.FunctionName);
+            funCall.Func = Program.Functions.FirstOrDefault(f => f.Name == funCall.FunctionName);
           }
         }
         return result;

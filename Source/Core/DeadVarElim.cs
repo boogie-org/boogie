@@ -73,32 +73,24 @@ namespace Microsoft.Boogie {
       }
 
       HashSet<Procedure/*!*/> implementedProcs = new HashSet<Procedure/*!*/>();
-      foreach (Declaration/*!*/ decl in program.TopLevelDeclarations) {
-        Contract.Assert(decl != null);
-        if (decl is Implementation) {
-          Implementation impl = (Implementation)decl;
-          if (impl.Proc != null)
-            implementedProcs.Add(impl.Proc);
-        }
+      foreach (var impl in program.Implementations) {
+        if (impl.Proc != null)
+          implementedProcs.Add(impl.Proc);
       }
-      foreach (Declaration/*!*/ decl in program.TopLevelDeclarations) {
-        Contract.Assert(decl != null);
-        if (decl is Procedure)
+      foreach (var proc in program.Procedures) {
+        if (!implementedProcs.Contains(proc))
         {
-            if (!implementedProcs.Contains(cce.NonNull((Procedure)decl)))
+            enclosingProc = proc;
+            foreach (var expr in proc.Modifies)
             {
-                enclosingProc = (Procedure)decl;
-                foreach (IdentifierExpr/*!*/ expr in enclosingProc.Modifies)
-                {
-                    Contract.Assert(expr != null);
-                    ProcessVariable(expr.Decl);
-                }
-                enclosingProc = null;
+                Contract.Assert(expr != null);
+                ProcessVariable(expr.Decl);
             }
-            else
-            {
-                modSets.Add(decl as Procedure, new HashSet<Variable>());
-            }
+            enclosingProc = null;
+        }
+        else
+        {
+            modSets.Add(proc, new HashSet<Variable>());
         }
       }
 
@@ -917,7 +909,7 @@ namespace Microsoft.Boogie {
       varsLiveAtEntry.Clear();
       varsLiveSummary.Clear();
 
-      foreach (Declaration/*!*/ decl in program.TopLevelDeclarations) {
+      foreach (var decl in program.TopLevelDeclarations) {
         Contract.Assert(decl != null);
         if (decl is Implementation) {
           Implementation/*!*/ imp = (Implementation/*!*/)cce.NonNull(decl);
@@ -1490,7 +1482,7 @@ b.liveVarsBefore = procICFG[mainImpl.Name].liveVarsAfter[b];
         if (predicateCmd.Expr is LiteralExpr && prog != null && impl != null) {
           LiteralExpr le = (LiteralExpr)predicateCmd.Expr;
           if (le.IsFalse) {
-            List<GlobalVariable/*!*/>/*!*/ globals = prog.GlobalVariables();
+            var globals = prog.GlobalVariables();
             Contract.Assert(cce.NonNullElements(globals));
             foreach (Variable/*!*/ v in globals) {
               Contract.Assert(v != null);

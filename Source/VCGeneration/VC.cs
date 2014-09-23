@@ -2600,7 +2600,7 @@ namespace VC {
         // where clauses of global variables
         lock (program.TopLevelDeclarations)
         {
-          foreach (var gvar in program.TopLevelDeclarations.OfType<GlobalVariable>())
+          foreach (var gvar in program.GlobalVariables())
           {
             if (gvar != null && gvar.TypedIdent.WhereExpr != null)
             {
@@ -2755,15 +2755,11 @@ namespace VC {
     {
         // Construct the set of inlined procs in the original program
         var inlinedProcs = new HashSet<string>();
-        foreach (var decl in program.TopLevelDeclarations)
+        foreach (var proc in program.Procedures)
         {
-            if (decl is Procedure)
-            {  
-                if (!(decl is LoopProcedure))
-                {
-                    var p = decl as Procedure;
-                    inlinedProcs.Add(p.Name);
-                }
+            if (!(proc is LoopProcedure))
+            {
+                inlinedProcs.Add(proc.Name);
             }
         }
 

@@ -1182,19 +1182,17 @@ namespace Microsoft.Boogie
                 if (CommandLineOptions.Clo.TrustPhasesDownto <= phaseNum || phaseNum <= CommandLineOptions.Clo.TrustPhasesUpto) continue;
 
                 MyDuplicator duplicator = new MyDuplicator(moverTypeChecker, phaseNum);
-                foreach (var decl in program.TopLevelDeclarations)
+                foreach (var proc in program.Procedures)
                 {
-                    Procedure proc = decl as Procedure;
-                    if (proc == null || !moverTypeChecker.procToActionInfo.ContainsKey(proc)) continue;
+                    if (!moverTypeChecker.procToActionInfo.ContainsKey(proc)) continue;
                     Procedure duplicateProc = duplicator.VisitProcedure(proc);
                     decls.Add(duplicateProc);
                 }
                 decls.AddRange(duplicator.impls);
                 OwickiGries ogTransform = new OwickiGries(linearTypeChecker, moverTypeChecker, duplicator);
-                foreach (var decl in program.TopLevelDeclarations)
+                foreach (var impl in program.Implementations)
                 {
-                    Implementation impl = decl as Implementation;
-                    if (impl == null || !moverTypeChecker.procToActionInfo.ContainsKey(impl.Proc) || moverTypeChecker.procToActionInfo[impl.Proc].phaseNum < phaseNum)
+                    if (!moverTypeChecker.procToActionInfo.ContainsKey(impl.Proc) || moverTypeChecker.procToActionInfo[impl.Proc].phaseNum < phaseNum)
                         continue;
                     Implementation duplicateImpl = duplicator.VisitImplementation(impl);
                     ogTransform.TransformImpl(duplicateImpl);

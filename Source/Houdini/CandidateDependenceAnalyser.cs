@@ -185,7 +185,7 @@ namespace Microsoft.Boogie.Houdini {
 
     private IEnumerable<CandidateInstance> CandidateInstances()
     {
-      foreach (var impl in prog.TopLevelDeclarations.OfType<Implementation>())
+      foreach (var impl in prog.Implementations)
       {
         foreach (var b in impl.Blocks) {
           foreach (Cmd cmd in b.Cmds)
@@ -202,7 +202,7 @@ namespace Microsoft.Boogie.Houdini {
         }
       }
 
-      foreach (var proc in prog.TopLevelDeclarations.OfType<Procedure>())
+      foreach (var proc in prog.Procedures)
       {
         foreach (Requires r in proc.Requires)
         {
@@ -351,7 +351,7 @@ namespace Microsoft.Boogie.Houdini {
     }
 
     private IEnumerable<string> GetCandidates() {
-      return prog.TopLevelDeclarations.OfType<Variable>().Where(Item =>
+      return prog.Variables.Where(Item =>
         QKeyValue.FindBoolAttribute(Item.Attributes, "existential")).Select(Item => Item.Name);
     }
 
@@ -409,7 +409,7 @@ namespace Microsoft.Boogie.Houdini {
         #endregion
 
         #region Adapt candidate assertions to take account of stages
-        foreach (var b in prog.TopLevelDeclarations.OfType<Implementation>().Select(Item => Item.Blocks).SelectMany(Item => Item))
+        foreach (var b in prog.Implementations.Select(Item => Item.Blocks).SelectMany(Item => Item))
         {
             List<Cmd> newCmds = new List<Cmd>();
             foreach (var cmd in b.Cmds)
@@ -433,7 +433,7 @@ namespace Microsoft.Boogie.Houdini {
         #endregion
 
         #region Adapt candidate pre/postconditions to take account of stages
-        foreach (var p in prog.TopLevelDeclarations.OfType<Procedure>())
+        foreach (var p in prog.Procedures)
         {
 
           #region Handle the preconditions
@@ -633,7 +633,7 @@ namespace Microsoft.Boogie.Houdini {
       this.candidateToOccurences = new Dictionary<string,HashSet<object>>();
 
       // Add all candidate occurrences in blocks
-      foreach(Block b in prog.TopLevelDeclarations.OfType<Implementation>().Select(Item => Item.Blocks).SelectMany(Item => Item)) {
+      foreach(Block b in prog.Implementations.Select(Item => Item.Blocks).SelectMany(Item => Item)) {
         foreach(Cmd cmd in b.Cmds) {
           AssertCmd assertCmd = cmd as AssertCmd;
           if(assertCmd != null) {
@@ -646,7 +646,7 @@ namespace Microsoft.Boogie.Houdini {
       }
 
       // Add all candidate occurrences in preconditions
-      foreach(var proc in prog.TopLevelDeclarations.OfType<Procedure>()) {
+      foreach(var proc in prog.Procedures) {
         foreach(Requires r in proc.Requires) {
           string c;
           if(Houdini.MatchCandidate(r.Condition, candidates, out c)) {
@@ -656,7 +656,7 @@ namespace Microsoft.Boogie.Houdini {
       }
 
       // Add all candidate occurrences in preconditions
-      foreach(var proc in prog.TopLevelDeclarations.OfType<Procedure>()) {
+      foreach(var proc in prog.Procedures) {
         foreach(Ensures e in proc.Ensures) {
           string c;
           if(Houdini.MatchCandidate(e.Condition, candidates, out c)) {

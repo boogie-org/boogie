@@ -467,7 +467,7 @@ namespace Microsoft.Boogie
 
         if (CommandLineOptions.Clo.PrintCFGPrefix != null)
         {
-          foreach (var impl in program.TopLevelDeclarations.OfType<Implementation>())
+          foreach (var impl in program.Implementations)
           {
             using (StreamWriter sw = new StreamWriter(CommandLineOptions.Clo.PrintCFGPrefix + "." + impl.Name + ".dot"))
             {
@@ -868,7 +868,7 @@ namespace Microsoft.Boogie
 
       #region Select and prioritize implementations that should be verified
 
-      var impls = program.TopLevelDeclarations.OfType<Implementation>().Where(
+      var impls = program.Implementations.Where(
         impl => impl != null && CommandLineOptions.Clo.UserWantsToCheckRoutine(cce.NonNull(impl.Name)) && !impl.SkipVerification);
 
       // operate on a stable copy, in case it gets updated while we're running
@@ -876,7 +876,7 @@ namespace Microsoft.Boogie
       if (0 < CommandLineOptions.Clo.VerifySnapshots)
       {
         // TODO(wuestholz): Maybe we should speed up this lookup.
-        OtherDefinitionAxiomsCollector.Collect(program.TopLevelDeclarations.OfType<Axiom>());
+        OtherDefinitionAxiomsCollector.Collect(program.Axioms);
         DependencyCollector.Collect(program);
         stablePrioritizedImpls = impls.OrderByDescending(
           impl => impl.Priority != 1 ? impl.Priority : Cache.VerificationPriority(impl)).ToArray();
@@ -1084,10 +1084,9 @@ namespace Microsoft.Boogie
               var svcgen = vcgen as VC.StratifiedVCGen;
               Contract.Assert(svcgen != null);
               var ss = new HashSet<string>();
-              foreach (var tdecl in program.TopLevelDeclarations)
+              foreach (var c in program.Constants)
               {
-                var c = tdecl as Constant;
-                if (c == null || !c.Name.StartsWith(CommandLineOptions.Clo.inferLeastForUnsat)) continue;
+                if (!c.Name.StartsWith(CommandLineOptions.Clo.inferLeastForUnsat)) continue;
                 ss.Add(c.Name);
               }
               verificationResult.Outcome = svcgen.FindLeastToVerify(impl, ref ss);

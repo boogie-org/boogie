@@ -194,7 +194,7 @@ namespace Microsoft.Boogie
     private static void SetAssertionChecksums(Implementation implementation, Program program)
     {
       // TODO(wuestholz): Maybe we should speed up this lookup.
-      var implPrevSnap = program.Implementations().FirstOrDefault(i => i.Id == implementation.Id);
+      var implPrevSnap = program.Implementations.FirstOrDefault(i => i.Id == implementation.Id);
       if (implPrevSnap != null)
       {
         implementation.AssertionChecksums = implPrevSnap.AssertionChecksums;
@@ -204,7 +204,7 @@ namespace Microsoft.Boogie
     private static void SetAssertionChecksumsInPreviousSnapshot(Implementation implementation, Program program)
     {
       // TODO(wuestholz): Maybe we should speed up this lookup.
-      var implPrevSnap = program.Implementations().FirstOrDefault(i => i.Id == implementation.Id);
+      var implPrevSnap = program.Implementations.FirstOrDefault(i => i.Id == implementation.Id);
       if (implPrevSnap != null)
       {
         implementation.AssertionChecksumsInPreviousSnapshot = implPrevSnap.AssertionChecksums;
@@ -216,7 +216,7 @@ namespace Microsoft.Boogie
       var result = base.VisitCallCmd(node);
 
       // TODO(wuestholz): Maybe we should speed up this lookup.
-      var oldProc = programInCachedSnapshot.TopLevelDeclarations.OfType<Procedure>().FirstOrDefault(p => p.Name == node.Proc.Name);
+      var oldProc = programInCachedSnapshot.Procedures.FirstOrDefault(p => p.Name == node.Proc.Name);
       if (oldProc != null
           && oldProc.DependencyChecksum != node.Proc.DependencyChecksum
           && node.AssignedAssumptionVariable == null)
@@ -327,7 +327,7 @@ namespace Microsoft.Boogie
       Contract.Requires(oldProc != null && newProg != null);
 
       // TODO(wuestholz): Maybe we should speed up this lookup.
-      var funcs = newProg.TopLevelDeclarations.OfType<Function>();
+      var funcs = newProg.Functions;
       return oldProc.DependenciesCollected
              && (oldProc.FunctionDependencies == null || oldProc.FunctionDependencies.All(dep => funcs.Any(f => f.Name == dep.Name && f.DependencyChecksum == dep.DependencyChecksum)));
     }

@@ -134,10 +134,9 @@ namespace Microsoft.Boogie
         
         public static void PerformYieldSafeCheck(MoverTypeChecker moverTypeChecker)
         {
-            foreach (var decl in moverTypeChecker.program.TopLevelDeclarations)
+            foreach (var impl in moverTypeChecker.program.Implementations)
             {
-                Implementation impl = decl as Implementation;
-                if (impl == null || !moverTypeChecker.procToActionInfo.ContainsKey(impl.Proc) || moverTypeChecker.procToActionInfo[impl.Proc].phaseNum == 0) continue;
+                if (!moverTypeChecker.procToActionInfo.ContainsKey(impl.Proc) || moverTypeChecker.procToActionInfo[impl.Proc].phaseNum == 0) continue;
                 impl.PruneUnreachableBlocks();
                 Graph<Block> implGraph = Program.GraphFromImpl(impl);
                 implGraph.ComputeLoops();

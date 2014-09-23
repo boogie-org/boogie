@@ -58,7 +58,7 @@ namespace Microsoft.Boogie.Houdini {
             this.constant2FuncCall = new Dictionary<string, NAryExpr>();
 
             // Find the existential functions
-            foreach (var func in program.TopLevelDeclarations.OfType<Function>()
+            foreach (var func in program.Functions
                 .Where(f => QKeyValue.FindBoolAttribute(f.Attributes, "existential")))
                 existentialFunctions.Add(func.Name, func);
 
@@ -104,7 +104,7 @@ namespace Microsoft.Boogie.Houdini {
             this.proverTime = TimeSpan.Zero;
             this.numProverQueries = 0;
 
-            program.TopLevelDeclarations.OfType<Implementation>()
+            program.Implementations
                 .Where(impl => !impl.SkipVerification)
                 .Iter(impl => name2Impl.Add(impl.Name, impl));
 
@@ -753,23 +753,19 @@ namespace Microsoft.Boogie.Houdini {
         {
             Graph<Implementation> callGraph = new Graph<Implementation>();
             Dictionary<Procedure, HashSet<Implementation>> procToImpls = new Dictionary<Procedure, HashSet<Implementation>>();
-            foreach (Declaration decl in program.TopLevelDeclarations)
+            foreach (var proc in program.Procedures)
             {
-                Procedure proc = decl as Procedure;
-                if (proc == null) continue;
                 procToImpls[proc] = new HashSet<Implementation>();
             }
-            foreach (Declaration decl in program.TopLevelDeclarations)
+            foreach (var impl in program.Implementations)
             {
-                Implementation impl = decl as Implementation;
-                if (impl == null || impl.SkipVerification) continue;
+                if (impl.SkipVerification) continue;
                 callGraph.AddSource(impl);
                 procToImpls[impl.Proc].Add(impl);
             }
-            foreach (Declaration decl in program.TopLevelDeclarations)
+            foreach (var impl in program.Implementations)
             {
-                Implementation impl = decl as Implementation;
-                if (impl == null || impl.SkipVerification) continue;
+                if (impl.SkipVerification) continue;
                 foreach (Block b in impl.Blocks)
                 {
                     foreach (Cmd c in b.Cmds)
@@ -2139,8 +2135,7 @@ namespace Microsoft.Boogie.Houdini {
               });
 
             domains.Iter(tup => AbstractDomainFactory.Register(tup.Item1, tup.Item2));
-            program.TopLevelDeclarations.OfType<Function>()
-                .Iter(RegisterFunction);
+            program.Functions.Iter(RegisterFunction);
         }
 
         private static void RegisterFunction(Function func)
@@ -2227,8 +2222,7 @@ namespace Microsoft.Boogie.Houdini {
 
             name2Impl.Values.Iter(attachEnsures);
 
-            program.TopLevelDeclarations
-                .OfType<Implementation>()
+            program.Implementations
                 .Iter(impl => impl2Summary.Add(impl.Name, summaryClass.GetFlaseSummary(program, impl)));
 
             // Build call graph
@@ -2237,7 +2231,7 @@ namespace Microsoft.Boogie.Houdini {
             name2Impl.Values.Iter(impl => Succ.Add(impl, new HashSet<Implementation>()));
             name2Impl.Values.Iter(impl => Pred.Add(impl, new HashSet<Implementation>()));
 
-            foreach (var impl in program.TopLevelDeclarations.OfType<Implementation>())
+            foreach (var impl in program.Implementations)
             {
                 foreach (var blk in impl.Blocks)
                 {
@@ -2276,7 +2270,7 @@ namespace Microsoft.Boogie.Houdini {
             var copy = new Dictionary<string, Implementation>();
             if (WitnessFile != null)
             {
-                foreach (var impl in program.TopLevelDeclarations.OfType<Implementation>())
+                foreach (var impl in program.Implementations)
                 {
                     var nimpl = new Implementation(Token.NoToken, impl.Name, impl.TypeParameters,
                         impl.InParams, impl.OutParams, new List<Variable>(impl.LocVars), new List<Block>());
@@ -2365,7 +2359,7 @@ namespace Microsoft.Boogie.Houdini {
                 return Expr.True;
 
             var vars = new Dictionary<string, Expr>();
-            foreach (var g in program.TopLevelDeclarations.OfType<GlobalVariable>())
+            foreach (var g in program.GlobalVariables())
                 vars.Add(g.Name, Expr.Ident(g));
             foreach (var v in proc.InParams.OfType<Variable>())
                 vars.Add(v.Name, Expr.Ident(v));
@@ -2389,7 +2383,7 @@ namespace Microsoft.Boogie.Houdini {
             if (WitnessFile == null)
                 return;
 
-            foreach (var proc in program.TopLevelDeclarations.OfType<Procedure>())
+            foreach (var proc in program.Procedures)
             {
                 var nensures = new List<Ensures>();
                 proc.Ensures.OfType<Ensures>()
@@ -2411,7 +2405,7 @@ namespace Microsoft.Boogie.Houdini {
                 .Iter(decl => decls.Add(decl));
             program.TopLevelDeclarations = decls;
             var name2Proc = new Dictionary<string, Procedure>();
-            foreach (var proc in program.TopLevelDeclarations.OfType<Procedure>())
+            foreach (var proc in program.Procedures)
             {
                 name2Proc.Add(proc.Name, proc);
                 if (impl2Summary.ContainsKey(proc.Name))
@@ -2430,7 +2424,7 @@ namespace Microsoft.Boogie.Houdini {
             }
 
             // Replace SummaryPreds with their definition
-            foreach (var impl in program.TopLevelDeclarations.OfType<Implementation>())
+            foreach (var impl in program.Implementations)
             {
                 foreach (var blk in impl.Blocks)
                 {
@@ -2448,7 +2442,7 @@ namespace Microsoft.Boogie.Houdini {
                         var forold = new Dictionary<string, Expr>();
                         var always = new Dictionary<string, Expr>();
                         int i = 0;
-                        foreach (var g in program.TopLevelDeclarations.OfType<GlobalVariable>())
+                        foreach (var g in program.GlobalVariables())
                         {
                             forold.Add(g.Name, expr.Args[i]);
                             always.Add(g.Name, expr.Args[i]);
@@ -2556,23 +2550,19 @@ namespace Microsoft.Boogie.Houdini {
         {
             Graph<Implementation> callGraph = new Graph<Implementation>();
             Dictionary<Procedure, HashSet<Implementation>> procToImpls = new Dictionary<Procedure, HashSet<Implementation>>();
-            foreach (Declaration decl in program.TopLevelDeclarations)
+            foreach (var proc in program.Procedures)
             {
-                Procedure proc = decl as Procedure;
-                if (proc == null) continue;
                 procToImpls[proc] = new HashSet<Implementation>();
             }
-            foreach (Declaration decl in program.TopLevelDeclarations)
+            foreach (var impl in program.Implementations)
             {
-                Implementation impl = decl as Implementation;
-                if (impl == null || impl.SkipVerification) continue;
+                if (impl.SkipVerification) continue;
                 callGraph.AddSource(impl);
                 procToImpls[impl.Proc].Add(impl);
             }
-            foreach (Declaration decl in program.TopLevelDeclarations)
+            foreach (var impl in program.Implementations)
             {
-                Implementation impl = decl as Implementation;
-                if (impl == null || impl.SkipVerification) continue;
+                if (impl.SkipVerification) continue;
                 foreach (Block b in impl.Blocks)
                 {
                     foreach (Cmd c in b.Cmds)
@@ -2753,7 +2743,7 @@ namespace Microsoft.Boogie.Houdini {
             var ret = new Dictionary<string, VCExpr>();
 
             var cnt = 0;
-            foreach (var g in program.TopLevelDeclarations.OfType<GlobalVariable>())
+            foreach (var g in program.GlobalVariables())
             {
                 ret.Add(string.Format("old({0})", g.Name), summaryPred[cnt]);
                 cnt++;
@@ -2768,7 +2758,7 @@ namespace Microsoft.Boogie.Houdini {
 
             // Fill up values of globals that are not modified
             cnt = 0;
-            foreach (var g in program.TopLevelDeclarations.OfType<GlobalVariable>())
+            foreach (var g in program.GlobalVariables())
             {
                 if (ret.ContainsKey(g.Name)) { cnt++; continue; }
 
@@ -2777,7 +2767,7 @@ namespace Microsoft.Boogie.Houdini {
             }
 
             // Constants
-            foreach (var c in program.TopLevelDeclarations.OfType<Constant>())
+            foreach (var c in program.Constants)
             {
                 var value = prover.Context.BoogieExprTranslator.Translate(Expr.Ident(c));
                 ret.Add(string.Format("{0}", c.Name), value);
@@ -2795,7 +2785,7 @@ namespace Microsoft.Boogie.Houdini {
             var implVars = impl2EndStateVars[impl.Name];
 
             var cnt = 0;
-            foreach (var g in program.TopLevelDeclarations.OfType<GlobalVariable>())
+            foreach (var g in program.GlobalVariables())
             {
                 ret.Add(string.Format("old({0})", g.Name), getValue(implVars[cnt], model));
                 cnt++;
@@ -2810,7 +2800,7 @@ namespace Microsoft.Boogie.Houdini {
 
             // Fill up values of globals that are not modified
             cnt = 0;
-            foreach (var g in program.TopLevelDeclarations.OfType<GlobalVariable>())
+            foreach (var g in program.GlobalVariables())
             {
                 if (ret.ContainsKey(g.Name)) { cnt++; continue; }
 
@@ -2819,7 +2809,7 @@ namespace Microsoft.Boogie.Houdini {
             }
 
             // Constants
-            foreach (var c in program.TopLevelDeclarations.OfType<Constant>())
+            foreach (var c in program.Constants)
             {
                 try
                 {
@@ -3231,7 +3221,7 @@ namespace Microsoft.Boogie.Houdini {
             boolConstants = new HashSet<string>();
             UpperCandidates = new Dictionary<Tuple<string, int>, List<PredicateAbsDisjunct>>();
 
-            program.TopLevelDeclarations.OfType<Constant>()
+            program.Constants
                 .Where(c => c.TypedIdent.Type.IsBool)
                 .Iter(c => boolConstants.Add(c.Name));
 
@@ -3241,7 +3231,7 @@ namespace Microsoft.Boogie.Houdini {
             var posPreT = new HashSet<int>();
             var tempP = new HashSet<Procedure>();
             foreach (var proc in
-                program.TopLevelDeclarations.OfType<Procedure>()
+                program.Procedures
                 .Where(proc => QKeyValue.FindBoolAttribute(proc.Attributes, "template")))
             {
                 tempP.Add(proc);
@@ -3274,7 +3264,7 @@ namespace Microsoft.Boogie.Houdini {
             program.TopLevelDeclarations.RemoveAll(decl => tempP.Contains(decl));
             var upperPreds = new Dictionary<string, List<Expr>>();
 
-            foreach (var impl in program.TopLevelDeclarations.OfType<Implementation>())
+            foreach (var impl in program.Implementations)
             {
                 PrePreds.Add(impl.Name, new List<NamedExpr>());
                 PostPreds.Add(impl.Name, new List<NamedExpr>());
@@ -3876,7 +3866,7 @@ namespace Microsoft.Boogie.Houdini {
             Simplify();
 
             // Find the free expressions
-            var proc = program.TopLevelDeclarations.OfType<Procedure>().FirstOrDefault(p => p.Name == procName);
+            var proc = program.Procedures.FirstOrDefault(p => p.Name == procName);
             Contract.Assert(proc != null);
             Expr freeSummary = Expr.True;
             foreach (var req in proc.Requires.OfType<Requires>().Where(req => req.Free))
@@ -4598,13 +4588,9 @@ namespace Microsoft.Boogie.Houdini {
         public static Dictionary<string, Implementation> nameImplMapping(Program p)
         {
             var m = new Dictionary<string, Implementation>();
-            foreach (Declaration d in p.TopLevelDeclarations)
+            foreach (var impl in p.Implementations)
             {
-                if (d is Implementation)
-                {
-                    Implementation impl = d as Implementation;
-                    m.Add(impl.Name, impl);
-                }
+                m.Add(impl.Name, impl);
             }
 
             return m;

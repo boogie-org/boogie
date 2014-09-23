@@ -63,7 +63,7 @@ namespace Microsoft.Boogie
 
     private IEnumerable<Block> OriginalProgramBlocks()
     {
-      return prog.TopLevelDeclarations.OfType<Implementation>().Select(Item => Item.Blocks).SelectMany(Item => Item);
+      return prog.Implementations.Select(Item => Item.Blocks).SelectMany(Item => Item);
     }
 
     private void AddCallAndReturnEdges()
@@ -118,7 +118,7 @@ namespace Microsoft.Boogie
     private void ProcessBodilessProcedures()
     {
       #region Add single node CFG for procedures with no body
-      foreach (var proc in prog.TopLevelDeclarations.OfType<Procedure>())
+      foreach (var proc in prog.Procedures)
       {
         if (!newProcedureEntryNodes.ContainsKey(proc.Name))
         {
@@ -134,7 +134,7 @@ namespace Microsoft.Boogie
     private void ProcessImplementations()
     {
       #region Transform implementation CFGs so that every call is in its own basic block
-      foreach (var impl in prog.TopLevelDeclarations.OfType<Implementation>())
+      foreach (var impl in prog.Implementations)
       {
         string exitLabel = "__" + impl.Name + "_newExit";
         Block newExit = new Block(Token.NoToken, exitLabel, new List<Cmd>(), new GotoCmd(Token.NoToken, new List<Block>()));

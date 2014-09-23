@@ -84,7 +84,7 @@ namespace Microsoft.Boogie
 
         public void Analyse()
         {
-            var impls = prog.TopLevelDeclarations.OfType<Implementation>();
+            var impls = prog.Implementations;
 
             foreach (var Impl in impls)
             {
@@ -143,7 +143,7 @@ namespace Microsoft.Boogie
                 ProcedureChanged = true;
             }
 
-            var procs = prog.TopLevelDeclarations.OfType<Procedure>();
+            var procs = prog.Procedures;
 
             foreach (var Proc in procs) {
 
@@ -268,11 +268,11 @@ namespace Microsoft.Boogie
 
         private Procedure GetProcedure(string procedureName)
         {
-            foreach (Declaration D in prog.TopLevelDeclarations)
+            foreach (var p in prog.Procedures)
             {
-                if (D is Procedure && ((D as Procedure).Name == procedureName))
+                if (p.Name == procedureName)
                 {
-                    return D as Procedure;
+                    return p;
                 }
             }
             Debug.Assert(false);

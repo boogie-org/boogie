@@ -392,56 +392,42 @@ namespace Microsoft.Boogie
 
         void MarkAllFunctionImplementationsInline()
         {
-            foreach (var d in program.TopLevelDeclarations)
+            foreach (var func in program.Functions)
             {
-                var impl = d as Function;
-                if (impl != null)
+                if (func.Body == null && func.DefinitionAxiom != null)
                 {
-                    if (impl.Body == null && impl.DefinitionAxiom != null)
-                    {
-                        var def = impl.DefinitionAxiom.Expr as QuantifierExpr;
-                        var bod = def.Body as NAryExpr;
-                        impl.Body = bod.Args[1];
-                        impl.DefinitionAxiom = null;
-                    }
-                    if (impl.Body != null)
-                        if (impl.FindExprAttribute("inline") == null)
-                            impl.AddAttribute("inline", Expr.Literal(100));
+                    var def = func.DefinitionAxiom.Expr as QuantifierExpr;
+                    var bod = def.Body as NAryExpr;
+                    func.Body = bod.Args[1];
+                    func.DefinitionAxiom = null;
                 }
+                if (func.Body != null)
+                    if (func.FindExprAttribute("inline") == null)
+                        func.AddAttribute("inline", Expr.Literal(100));
             }
         }
 
         void InlineAll()
         {
-            foreach (var d in program.TopLevelDeclarations)
+            foreach (var impl in program.Implementations)
             {
-                var impl = d as Implementation;
-                if (impl != null)
-                {
-                    impl.OriginalBlocks = impl.Blocks;
-                    impl.OriginalLocVars = impl.LocVars;
-                    if(impl.Name != main_proc_name)
-                      if(impl.FindExprAttribute("inline") == null)
-                        impl.AddAttribute("inline", Expr.Literal(100));
-                }
+                impl.OriginalBlocks = impl.Blocks;
+                impl.OriginalLocVars = impl.LocVars;
+                if(impl.Name != main_proc_name)
+                  if(impl.FindExprAttribute("inline") == null)
+                    impl.AddAttribute("inline", Expr.Literal(100));
             }
-            var decls = program.TopLevelDeclarations;
-            foreach (var d in decls)
+            foreach (var impl in program.Implementations)
             {
-                var impl = d as Implementation;
-                if (impl != null && !impl.SkipVerification)
+                if (!impl.SkipVerification)
                 {
                     Inliner.ProcessImplementation(program, impl);
                 }
             }
-            foreach (var d in program.TopLevelDeclarations)
+            foreach (var impl in program.Implementations)
             {
-                var impl = d as Implementation;
-                if (impl != null)
-                {
-                    impl.OriginalBlocks = null;
-                    impl.OriginalLocVars = null;
-                }
+                impl.OriginalBlocks = null;
+                impl.OriginalLocVars = null;
             }
         }
 
@@ -650,12 +636,8 @@ namespace Microsoft.Boogie
         public void GenerateVCsForStratifiedInlining()
         {
             Contract.Requires(program != null);
-            foreach (Declaration decl in program.TopLevelDeclarations)
+            foreach (var impl in program.Implementations)
             {
-                Contract.Assert(decl != null);
-                Implementation impl = decl as Implementation;
-                if (impl == null)
-                    continue;
                 Contract.Assert(!impl.Name.StartsWith(recordProcName), "Not allowed to have an implementation for this guy");
 
                 Procedure proc = cce.NonNull(impl.Proc);
@@ -713,10 +695,8 @@ namespace Microsoft.Boogie
 
             if (mode == Mode.Boogie) return;
 
-            foreach (var decl in program.TopLevelDeclarations)
+            foreach (var proc in program.Procedures)
             {
-                var proc = decl as Procedure;
-                if (proc == null) continue;
                 if (!proc.Name.StartsWith(recordProcName)) continue;
                 Contract.Assert(proc.InParams.Count == 1);
 
@@ -754,12 +734,8 @@ namespace Microsoft.Boogie
 			foreach (var node in rpfp.nodes)
 				pmap.Add ((node.Name as VCExprBoogieFunctionOp).Func.Name, node);
 			
-			foreach (Declaration decl in program.TopLevelDeclarations)
+			foreach (var impl in program.Implementations)
             {
-                Contract.Assert(decl != null);
-                Implementation impl = decl as Implementation;
-                if (impl == null)
-                    continue;
                 Contract.Assert(!impl.Name.StartsWith(recordProcName), "Not allowed to have an implementation for this guy");
 
                 Procedure proc = cce.NonNull(impl.Proc);
@@ -1400,25 +1376,17 @@ namespace Microsoft.Boogie
 
                 // find the name of the main procedure
                 main_proc_name = null; // default in case no entry point defined
-                foreach (var d in program.TopLevelDeclarations)
+                foreach (var impl in program.Implementations)
                 {
-                    var impl = d as Implementation;
-                    if (impl != null)
-                    {
-                        if (QKeyValue.FindBoolAttribute(impl.Attributes, "entrypoint"))
-                            main_proc_name = impl.Proc.Name;
-                    }
+                    if (QKeyValue.FindBoolAttribute(impl.Attributes, "entrypoint"))
+                        main_proc_name = impl.Proc.Name;
                 }
                 if (main_proc_name == null)
                 {
-                    foreach (var d in program.TopLevelDeclarations)
+                    foreach (var impl in program.Implementations)
                     {
-                        var impl = d as Implementation;
-                        if (impl != null)
-                        {
-                            if (impl.Proc.Name == "main" || impl.Proc.Name.EndsWith(".main"))
-                                main_proc_name = impl.Proc.Name;
-                        }
+                        if (impl.Proc.Name == "main" || impl.Proc.Name.EndsWith(".main"))
+                            main_proc_name = impl.Proc.Name;
                     }
                 }
                 if (main_proc_name == null)
@@ -1428,10 +1396,9 @@ namespace Microsoft.Boogie
                 {
                     InlineAll();
                     Microsoft.Boogie.BlockCoalescer.CoalesceBlocks(program);
-                    foreach (var d in program.TopLevelDeclarations)
+                    foreach (var impl in program.Implementations)
                     {
-                        var impl = d as Implementation;
-                        if (impl != null && main_proc_name == impl.Proc.Name)
+                        if (main_proc_name == impl.Proc.Name)
                         {
                             Microsoft.Boogie.LiveVariableAnalysis.ClearLiveVariables(impl);
                             CyclicLiveVariableAnalysis.ComputeLiveVariables(impl);
@@ -1444,15 +1411,11 @@ namespace Microsoft.Boogie
 
                     if (style == AnnotationStyle.Procedure || style == AnnotationStyle.Call)
                     {
-                        foreach (var proc in program.TopLevelDeclarations)
+                        foreach (var impl in program.Implementations)
                         {
-                            var impl = proc as Implementation;
-                            if (impl != null)
-                            {
-                                if (!QKeyValue.FindBoolAttribute(impl.Attributes, "entrypoint"))
-                                    AnnotateProcRequires(impl.Proc, impl, boogieContext);
-                                AnnotateProcEnsures(impl.Proc, impl, boogieContext);
-                            }
+                            if (!QKeyValue.FindBoolAttribute(impl.Attributes, "entrypoint"))
+                                AnnotateProcRequires(impl.Proc, impl, boogieContext);
+                            AnnotateProcEnsures(impl.Proc, impl, boogieContext);
                         }
                         if (style == AnnotationStyle.Call)
                         {
@@ -1463,40 +1426,30 @@ namespace Microsoft.Boogie
                     // must do this after annotating procedures, else calls
                     // will be prematurely desugared
                     
-                    foreach (var d in program.TopLevelDeclarations)
+                    foreach (var impl in program.Implementations)
                     {
-                        var impl = d as Implementation;
-                        if (impl != null)
-                        {
-                            Microsoft.Boogie.LiveVariableAnalysis.ClearLiveVariables(impl);
-                            CyclicLiveVariableAnalysis.ComputeLiveVariables(impl);
-                        }
+                        Microsoft.Boogie.LiveVariableAnalysis.ClearLiveVariables(impl);
+                        CyclicLiveVariableAnalysis.ComputeLiveVariables(impl);
                     }
 
 
                     if (style == AnnotationStyle.Flat || style == AnnotationStyle.Call)
                     {
-                        foreach (var proc in program.TopLevelDeclarations)
+                        foreach (var impl in program.Implementations)
                         {
-                            var impl = proc as Implementation;
-                            if (impl != null)
-                                AnnotateLoops(impl, boogieContext);
+                            AnnotateLoops(impl, boogieContext);
                         }
                     }
                     if (style == AnnotationStyle.Call)
                     {
                         Dictionary<string, bool> impls = new Dictionary<string, bool>();
-                        foreach (var proc in program.TopLevelDeclarations)
+                        foreach (var impl in program.Implementations)
                         {
-                            var impl = proc as Implementation;
-                            if (impl != null)
-                                impls.Add(impl.Proc.Name, true);
+                            impls.Add(impl.Proc.Name, true);
                         }
-                        foreach (var proc in program.TopLevelDeclarations)
+                        foreach (var impl in program.Implementations)
                         {
-                            var impl = proc as Implementation;
-                            if (impl != null)
-                                AnnotateCallSites(impl, boogieContext, impls);
+                            AnnotateCallSites(impl, boogieContext, impls);
                         }
                     }
                     if (style == AnnotationStyle.Flat)

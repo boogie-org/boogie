@@ -24,25 +24,22 @@ namespace Microsoft.Boogie {
       Contract.Requires(program != null);
       cce.BeginExpose(program);
 
-      foreach (Declaration m in program.TopLevelDeclarations) {
-        Implementation impl = m as Implementation;
-        if (impl != null) {
-          if (impl.Blocks != null && impl.Blocks.Count > 0) {
-            Contract.Assume(cce.IsConsistent(impl));
-            cce.BeginExpose(impl);
-            Block start = impl.Blocks[0];
-            Contract.Assume(start != null);
-            Contract.Assume(cce.IsConsistent(start));
-            Visit(start);
+      foreach (var impl in program.Implementations) {
+        if (impl.Blocks != null && impl.Blocks.Count > 0) {
+          Contract.Assume(cce.IsConsistent(impl));
+          cce.BeginExpose(impl);
+          Block start = impl.Blocks[0];
+          Contract.Assume(start != null);
+          Contract.Assume(cce.IsConsistent(start));
+          Visit(start);
 
-            // We reset the state...
-            foreach (Block b in impl.Blocks) {
-              cce.BeginExpose(b);
-              b.TraversingStatus = Block.VisitState.ToVisit;
-              cce.EndExpose();
-            }
+          // We reset the state...
+          foreach (Block b in impl.Blocks) {
+            cce.BeginExpose(b);
+            b.TraversingStatus = Block.VisitState.ToVisit;
             cce.EndExpose();
           }
+          cce.EndExpose();
         }
       }
       cce.EndExpose();

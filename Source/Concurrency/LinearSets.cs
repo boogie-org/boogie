@@ -634,10 +634,8 @@ namespace Microsoft.Boogie
 
         public void Transform()
         {
-            foreach (var decl in program.TopLevelDeclarations)
+            foreach (var impl in program.Implementations)
             {
-                Implementation impl = decl as Implementation;
-                if (impl == null) continue;
                 Dictionary<string, Variable> domainNameToInputVar = new Dictionary<string, Variable>();
                 foreach (string domainName in linearDomains.Keys)
                 {
@@ -739,11 +737,8 @@ namespace Microsoft.Boogie
                 }
             }
 
-            foreach (var decl in program.TopLevelDeclarations)
+            foreach (var proc in program.Procedures)
             {
-                Procedure proc = decl as Procedure;
-                if (proc == null) continue;
-
                 Dictionary<string, HashSet<Variable>> domainNameToInputScope = new Dictionary<string, HashSet<Variable>>();
                 Dictionary<string, HashSet<Variable>> domainNameToOutputScope = new Dictionary<string, HashSet<Variable>>();
                 foreach (var domainName in linearDomains.Keys)

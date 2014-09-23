@@ -399,14 +399,11 @@ namespace Microsoft.Boogie.Houdini {
 
     protected HashSet<Variable> CollectExistentialConstants() {
       HashSet<Variable> existentialConstants = new HashSet<Variable>();
-      foreach (Declaration decl in program.TopLevelDeclarations) {
-        Constant constant = decl as Constant;
-        if (constant != null) {
-          bool result = false;
-          if (constant.CheckBooleanAttribute("existential", ref result)) {
-            if (result == true)
-              existentialConstants.Add(constant);
-          }
+      foreach (var constant in program.Constants) {
+        bool result = false;
+        if (constant.CheckBooleanAttribute("existential", ref result)) {
+          if (result == true)
+            existentialConstants.Add(constant);
         }
       }
       return existentialConstants;
@@ -898,7 +895,7 @@ namespace Microsoft.Boogie.Houdini {
     private int NumberOfStages()
     {
       int result = 1;
-      foreach(var c in program.TopLevelDeclarations.OfType<Constant>()) {
+      foreach(var c in program.Constants) {
         result = Math.Max(result, 1 + QKeyValue.FindIntAttribute(c.Attributes, "stage_active", -1));
       }
       return result;
@@ -1103,7 +1100,7 @@ namespace Microsoft.Boogie.Houdini {
     protected Dictionary<Variable, bool> GetAssignmentWithStages(int currentStage, IEnumerable<int> completedStages)
     {
       Dictionary<Variable, bool> result = new Dictionary<Variable, bool>(currentHoudiniState.Assignment);
-      foreach (var c in program.TopLevelDeclarations.OfType<Constant>())
+      foreach (var c in program.Constants)
       {
         int stageActive = QKeyValue.FindIntAttribute(c.Attributes, "stage_active", -1);
         if (stageActive != -1)
@@ -1181,7 +1178,7 @@ namespace Microsoft.Boogie.Houdini {
 
       // Treat all assertions
       // TODO: do we need to also consider assumptions?
-      foreach (Block block in prog.TopLevelDeclarations.OfType<Implementation>().Select(item => item.Blocks).SelectMany(item => item)) {
+      foreach (Block block in prog.Implementations.Select(item => item.Blocks).SelectMany(item => item)) {
         List<Cmd> newCmds = new List<Cmd>();
         foreach (Cmd cmd in block.Cmds) {
           string c;
@@ -1190,7 +1187,7 @@ namespace Microsoft.Boogie.Houdini {
             var cVar = currentHoudiniState.Assignment.Keys.Where(item => item.Name.Equals(c)).ToList()[0];
             if (currentHoudiniState.Assignment[cVar]) {
               Dictionary<Variable, Expr> cToTrue = new Dictionary<Variable, Expr>();
-              Variable cVarProg = prog.TopLevelDeclarations.OfType<Variable>().Where(item => item.Name.Equals(c)).ToList()[0];
+              Variable cVarProg = prog.Variables.Where(item => item.Name.Equals(c)).ToList()[0];
               cToTrue[cVarProg] = Expr.True;
               newCmds.Add(new AssumeCmd(assertCmd.tok,
                 Substituter.Apply(Substituter.SubstitutionFromHashtable(cToTrue), assertCmd.Expr),
@@ -1204,14 +1201,14 @@ namespace Microsoft.Boogie.Houdini {
         block.Cmds = newCmds;
       }
 
-      foreach (var proc in prog.TopLevelDeclarations.OfType<Procedure>()) {
+      foreach (var proc in prog.Procedures) {
         List<Requires> newRequires = new List<Requires>();
         foreach (Requires r in proc.Requires) {
           string c;
           if (MatchCandidate(r.Condition, out c)) {
             var cVar = currentHoudiniState.Assignment.Keys.Where(item => item.Name.Equals(c)).ToList()[0];
             if (currentHoudiniState.Assignment[cVar]) {
-              Variable cVarProg = prog.TopLevelDeclarations.OfType<Variable>().Where(item => item.Name.Equals(c)).ToList()[0];
+              Variable cVarProg = prog.Variables.Where(item => item.Name.Equals(c)).ToList()[0];
               Dictionary<Variable, Expr> subst = new Dictionary<Variable, Expr>();
               subst[cVarProg] = Expr.True;
               newRequires.Add(new Requires(Token.NoToken, true,
@@ -1231,7 +1228,7 @@ namespace Microsoft.Boogie.Houdini {
           if (MatchCandidate(e.Condition, out c)) {
             var cVar = currentHoudiniState.Assignment.Keys.Where(item => item.Name.Equals(c)).ToList()[0];
             if (currentHoudiniState.Assignment[cVar]) {
-              Variable cVarProg = prog.TopLevelDeclarations.OfType<Variable>().Where(item => item.Name.Equals(c)).ToList()[0];
+              Variable cVarProg = prog.Variables.Where(item => item.Name.Equals(c)).ToList()[0];
               Dictionary<Variable, Expr> subst = new Dictionary<Variable, Expr>();
               subst[cVarProg] = Expr.True;
               newEnsures.Add(new Ensures(Token.NoToken, true,

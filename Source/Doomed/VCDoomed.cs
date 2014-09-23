@@ -594,9 +594,8 @@ namespace VC {
       {
         List<Cmd> cc = new List<Cmd>();
         // where clauses of global variables
-        foreach (Declaration d in program.TopLevelDeclarations) {
-          GlobalVariable gvar = d as GlobalVariable;
-          if (gvar != null && gvar.TypedIdent.WhereExpr != null) {
+        foreach (var gvar in program.GlobalVariables()) {
+          if (gvar.TypedIdent.WhereExpr != null) {
             Cmd c = new AssumeCmd(gvar.tok, gvar.TypedIdent.WhereExpr);
             cc.Add(c);
           }
