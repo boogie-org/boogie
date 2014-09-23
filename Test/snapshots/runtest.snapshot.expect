@@ -143,3 +143,12 @@ Snapshots22.v0.bpl(7,9): Error BP5001: This assertion might not hold.
 Boogie program verifier finished with 0 verified, 1 error
 
 Boogie program verifier finished with 1 verified, 0 errors
+Snapshots23.v0.bpl(7,9): Error BP5001: This assertion might not hold.
+
+Boogie program verifier finished with 1 verified, 1 error
+Snapshots23.v0.bpl(7,9): Error BP5001: This assertion might not hold.
+
+Boogie program verifier finished with 1 verified, 1 error
+Snapshots23.v0.bpl(7,9): Error BP5001: This assertion might not hold.
+
+Boogie program verifier finished with 1 verified, 1 error
