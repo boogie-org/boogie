@@ -2600,7 +2600,7 @@ namespace VC {
         // where clauses of global variables
         lock (program.TopLevelDeclarations)
         {
-          foreach (var gvar in program.GlobalVariables())
+          foreach (var gvar in program.GlobalVariables)
           {
             if (gvar != null && gvar.TypedIdent.WhereExpr != null)
             {

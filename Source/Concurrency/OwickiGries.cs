@@ -201,7 +201,7 @@ namespace Microsoft.Boogie
                 }
                 procMap[node] = proc;
                 proc.Modifies = new List<IdentifierExpr>();
-                moverTypeChecker.program.GlobalVariables().Iter(x => proc.Modifies.Add(Expr.Ident(x)));
+                moverTypeChecker.program.GlobalVariables.Iter(x => proc.Modifies.Add(Expr.Ident(x)));
             }
             return procMap[node];
         }
@@ -297,7 +297,7 @@ namespace Microsoft.Boogie
             this.yieldingProcs = duplicator.yieldingProcs;
             Program program = linearTypeChecker.program;
             globalMods = new List<IdentifierExpr>();
-            foreach (Variable g in program.GlobalVariables())
+            foreach (Variable g in program.GlobalVariables)
             {
                 globalMods.Add(Expr.Ident(g));
             }
@@ -756,9 +756,9 @@ namespace Microsoft.Boogie
                     foroldMap[ie.Decl] = Expr.Ident(ogOldGlobalMap[ie.Decl]);
                 }
                 Substitution forold = Substituter.SubstitutionFromHashtable(foroldMap);
-                frame = new HashSet<Variable>(program.GlobalVariables());
+                frame = new HashSet<Variable>(program.GlobalVariables);
                 HashSet<Variable> introducedVars = new HashSet<Variable>();
-                foreach (Variable v in program.GlobalVariables())
+                foreach (Variable v in program.GlobalVariables)
                 {
                     if (moverTypeChecker.hidePhaseNums[v] <= actionInfo.phaseNum || moverTypeChecker.introducePhaseNums[v] > actionInfo.phaseNum)
                     {

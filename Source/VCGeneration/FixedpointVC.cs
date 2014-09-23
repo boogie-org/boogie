@@ -195,7 +195,7 @@ namespace Microsoft.Boogie
             {
                 // in flat mode, all live globals should be in live set
 #if false
-                foreach (Variable v in program.GlobalVariables())
+                foreach (Variable v in program.GlobalVariables)
                 {
                     vars.Add(v);
                     names.Add(v.ToString());
@@ -214,7 +214,7 @@ namespace Microsoft.Boogie
             }
             else
             {
-                foreach (Variable v in program.GlobalVariables())
+                foreach (Variable v in program.GlobalVariables)
                 {
                     vars.Add(v);
                     names.Add("@old_" + v.ToString());
@@ -296,7 +296,7 @@ namespace Microsoft.Boogie
             List<Variable> vars = new List<Variable>();
             List<string> names = new List<string>();
 
-            foreach (Variable v in program.GlobalVariables())
+            foreach (Variable v in program.GlobalVariables)
             {
                 vars.Add(v);
                 exprs.Add(new IdentifierExpr(Token.NoToken, v));
@@ -340,7 +340,7 @@ namespace Microsoft.Boogie
             List<Variable> vars = new List<Variable>();
             List<string> names = new List<string>();
 
-                foreach (Variable v in program.GlobalVariables())
+                foreach (Variable v in program.GlobalVariables)
                 {
                     vars.Add(v);
                     exprs.Add(new OldExpr(Token.NoToken,new IdentifierExpr(Token.NoToken, v)));
@@ -480,7 +480,7 @@ namespace Microsoft.Boogie
                 List<Variable> interfaceVars = new List<Variable>();
                 Expr assertExpr = new LiteralExpr(Token.NoToken, true);
                 Contract.Assert(assertExpr != null);
-                foreach (Variable v in program.GlobalVariables())
+                foreach (Variable v in program.GlobalVariables)
                 {
                     Contract.Assert(v != null);
                     interfaceVars.Add(v);
@@ -657,7 +657,7 @@ namespace Microsoft.Boogie
                     }
                     else if (mode == Mode.Corral || proc.FindExprAttribute("inline") != null || proc is LoopProcedure)
                     {
-                        foreach (Variable v in program.GlobalVariables())
+                        foreach (Variable v in program.GlobalVariables)
                         {
                             Contract.Assert(v != null);
                             exprs.Add(new OldExpr(Token.NoToken, new IdentifierExpr(Token.NoToken, v)));

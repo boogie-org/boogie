@@ -110,7 +110,7 @@ namespace Microsoft.Boogie
         }
         public override Program VisitProgram(Program node)
         {
-            foreach (GlobalVariable g in program.GlobalVariables())
+            foreach (GlobalVariable g in program.GlobalVariables)
             {
                 string domainName = FindDomainName(g);
                 if (domainName != null)
@@ -620,7 +620,7 @@ namespace Microsoft.Boogie
                 var domainName = FindDomainName(v);
                 domainNameToScope[domainName].Add(v);
             }
-            foreach (Variable v in program.GlobalVariables())
+            foreach (Variable v in program.GlobalVariables)
             {
                 var domainName = FindDomainName(v);
                 if (domainName == null) continue;

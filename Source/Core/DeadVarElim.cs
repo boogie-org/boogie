@@ -987,7 +987,7 @@ namespace Microsoft.Boogie {
       }
       // Return default: all globals and out params
       HashSet<Variable/*!*/>/*!*/ lv = new HashSet<Variable/*!*/>();
-      foreach (Variable/*!*/ v in prog.GlobalVariables()) {
+      foreach (Variable/*!*/ v in prog.GlobalVariables) {
         Contract.Assert(v != null);
         lv.Add(v);
       }
@@ -1007,7 +1007,7 @@ namespace Microsoft.Boogie {
       }
       // Return default: all globals and in params
       HashSet<Variable/*!*/>/*!*/ lv = new HashSet<Variable/*!*/>();
-      foreach (Variable/*!*/ v in prog.GlobalVariables()) {
+      foreach (Variable/*!*/ v in prog.GlobalVariables) {
         Contract.Assert(v != null);
         lv.Add(v);
       }
@@ -1275,7 +1275,7 @@ Contract.Assert(b != null);
 //Set<Variable!> lv = cfg.weightBefore[b].getLiveVars();
 b.liveVarsBefore = procICFG[mainImpl.Name].liveVarsAfter[b];
 //foreach(GlobalVariable/*!*/
-      /* v in program.GlobalVariables()){Contract.Assert(v != null);
+      /* v in program.GlobalVariables){Contract.Assert(v != null);
 //  b.liveVarsBefore.Add(v);
 //}
 }
@@ -1482,7 +1482,7 @@ b.liveVarsBefore = procICFG[mainImpl.Name].liveVarsAfter[b];
         if (predicateCmd.Expr is LiteralExpr && prog != null && impl != null) {
           LiteralExpr le = (LiteralExpr)predicateCmd.Expr;
           if (le.IsFalse) {
-            var globals = prog.GlobalVariables();
+            var globals = prog.GlobalVariables;
             Contract.Assert(cce.NonNullElements(globals));
             foreach (Variable/*!*/ v in globals) {
               Contract.Assert(v != null);

@@ -108,7 +108,7 @@ namespace Microsoft.Boogie {
         {
             DistinguishPrefix(v.Name);
         }
-        foreach (var v in program.GlobalVariables())
+        foreach (var v in program.GlobalVariables)
         {
             DistinguishPrefix(v.Name);
         }

@@ -351,7 +351,7 @@ namespace Microsoft.Boogie
             this.canAccessAuxVars = false;
             this.minPhaseNum = int.MaxValue;
             this.maxPhaseNum = -1;
-            foreach (var g in program.GlobalVariables())
+            foreach (var g in program.GlobalVariables)
             {
                 List<int> phaseNums = FindIntAttributes(g.Attributes, "phase");
                 this.introducePhaseNums[g] = 0;

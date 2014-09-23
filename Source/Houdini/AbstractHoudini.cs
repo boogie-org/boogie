@@ -2359,7 +2359,7 @@ namespace Microsoft.Boogie.Houdini {
                 return Expr.True;
 
             var vars = new Dictionary<string, Expr>();
-            foreach (var g in program.GlobalVariables())
+            foreach (var g in program.GlobalVariables)
                 vars.Add(g.Name, Expr.Ident(g));
             foreach (var v in proc.InParams.OfType<Variable>())
                 vars.Add(v.Name, Expr.Ident(v));
@@ -2441,7 +2441,7 @@ namespace Microsoft.Boogie.Houdini {
                         var forold = new Dictionary<string, Expr>();
                         var always = new Dictionary<string, Expr>();
                         int i = 0;
-                        foreach (var g in program.GlobalVariables())
+                        foreach (var g in program.GlobalVariables)
                         {
                             forold.Add(g.Name, expr.Args[i]);
                             always.Add(g.Name, expr.Args[i]);
@@ -2742,7 +2742,7 @@ namespace Microsoft.Boogie.Houdini {
             var ret = new Dictionary<string, VCExpr>();
 
             var cnt = 0;
-            foreach (var g in program.GlobalVariables())
+            foreach (var g in program.GlobalVariables)
             {
                 ret.Add(string.Format("old({0})", g.Name), summaryPred[cnt]);
                 cnt++;
@@ -2757,7 +2757,7 @@ namespace Microsoft.Boogie.Houdini {
 
             // Fill up values of globals that are not modified
             cnt = 0;
-            foreach (var g in program.GlobalVariables())
+            foreach (var g in program.GlobalVariables)
             {
                 if (ret.ContainsKey(g.Name)) { cnt++; continue; }
 
@@ -2784,7 +2784,7 @@ namespace Microsoft.Boogie.Houdini {
             var implVars = impl2EndStateVars[impl.Name];
 
             var cnt = 0;
-            foreach (var g in program.GlobalVariables())
+            foreach (var g in program.GlobalVariables)
             {
                 ret.Add(string.Format("old({0})", g.Name), getValue(implVars[cnt], model));
                 cnt++;
@@ -2799,7 +2799,7 @@ namespace Microsoft.Boogie.Houdini {
 
             // Fill up values of globals that are not modified
             cnt = 0;
-            foreach (var g in program.GlobalVariables())
+            foreach (var g in program.GlobalVariables)
             {
                 if (ret.ContainsKey(g.Name)) { cnt++; continue; }
 
@@ -2869,7 +2869,7 @@ namespace Microsoft.Boogie.Houdini {
         private void attachEnsures(Implementation impl)
         {
             List<Variable> functionInterfaceVars = new List<Variable>();
-            foreach (Variable v in vcgen.program.GlobalVariables())
+            foreach (Variable v in vcgen.program.GlobalVariables)
             {
                 functionInterfaceVars.Add(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "", v.TypedIdent.Type), true));
             }
@@ -2891,7 +2891,7 @@ namespace Microsoft.Boogie.Houdini {
             prover.Context.DeclareFunction(function, "");
 
             List<Expr> exprs = new List<Expr>();
-            foreach (Variable v in vcgen.program.GlobalVariables())
+            foreach (Variable v in vcgen.program.GlobalVariables)
             {
                 Contract.Assert(v != null);
                 exprs.Add(new OldExpr(Token.NoToken, new IdentifierExpr(Token.NoToken, v)));

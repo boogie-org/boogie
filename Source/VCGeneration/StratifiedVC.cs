@@ -210,7 +210,7 @@ namespace VC {
       impl = implementation;
 
       List<Variable> functionInterfaceVars = new List<Variable>();
-      foreach (Variable v in vcgen.program.GlobalVariables()) {
+      foreach (Variable v in vcgen.program.GlobalVariables) {
         functionInterfaceVars.Add(new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "", v.TypedIdent.Type), true));
       }
       foreach (Variable v in impl.InParams) {
@@ -228,7 +228,7 @@ namespace VC {
       vcgen.prover.Context.DeclareFunction(function, "");
 
       List<Expr> exprs = new List<Expr>();
-      foreach (Variable v in vcgen.program.GlobalVariables()) {
+      foreach (Variable v in vcgen.program.GlobalVariables) {
         Contract.Assert(v != null);
         exprs.Add(new OldExpr(Token.NoToken, new IdentifierExpr(Token.NoToken, v)));
       }
@@ -310,7 +310,7 @@ namespace VC {
       }
 
       interfaceExprVars = new List<VCExprVar>();
-      foreach (Variable v in program.GlobalVariables()) {
+      foreach (Variable v in program.GlobalVariables) {
         interfaceExprVars.Add(translator.LookupVariable(v));
       }
       foreach (Variable v in impl.InParams) {

@@ -508,7 +508,7 @@ namespace Microsoft.Boogie
             ensures.Add(ensureCheck);
             string checkerName = string.Format("CommutativityChecker_{0}_{1}", first.proc.Name, second.proc.Name);
             List<IdentifierExpr> globalVars = new List<IdentifierExpr>();
-            program.GlobalVariables().Iter(x => globalVars.Add(Expr.Ident(x)));
+            program.GlobalVariables.Iter(x => globalVars.Add(Expr.Ident(x)));
             Procedure proc = new Procedure(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, outputs, requires, globalVars, ensures);
             Implementation impl = new Implementation(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, outputs, locals, blocks);
             impl.Proc = proc;
@@ -551,7 +551,7 @@ namespace Microsoft.Boogie
                 requires.Add(new Requires(false, assertCmd.Expr));
             string checkerName = string.Format("GatePreservationChecker_{0}_{1}", first.proc.Name, second.proc.Name);
             List<IdentifierExpr> globalVars = new List<IdentifierExpr>();
-            program.GlobalVariables().Iter(x => globalVars.Add(Expr.Ident(x)));
+            program.GlobalVariables.Iter(x => globalVars.Add(Expr.Ident(x)));
             Procedure proc = new Procedure(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, outputs, requires, globalVars, ensures);
             Implementation impl = new Implementation(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, outputs, locals, secondBlocks);
             impl.Proc = proc;
@@ -599,7 +599,7 @@ namespace Microsoft.Boogie
                 requires.Add(new Requires(false, assertCmd.Expr));
             string checkerName = string.Format("FailurePreservationChecker_{0}_{1}", first.proc.Name, second.proc.Name);
             List<IdentifierExpr> globalVars = new List<IdentifierExpr>();
-            program.GlobalVariables().Iter(x => globalVars.Add(Expr.Ident(x)));
+            program.GlobalVariables.Iter(x => globalVars.Add(Expr.Ident(x)));
             Procedure proc = new Procedure(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, outputs, requires, globalVars, ensures);
             Implementation impl = new Implementation(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, outputs, locals, secondBlocks);
             impl.Proc = proc;
@@ -633,7 +633,7 @@ namespace Microsoft.Boogie
             blocks.Add(new Block(Token.NoToken, "L", new List<Cmd>(), new ReturnCmd(Token.NoToken)));
             string checkerName = string.Format("NonBlockingChecker_{0}", second.proc.Name);
             List<IdentifierExpr> globalVars = new List<IdentifierExpr>();
-            program.GlobalVariables().Iter(x => globalVars.Add(Expr.Ident(x)));
+            program.GlobalVariables.Iter(x => globalVars.Add(Expr.Ident(x)));
             Procedure proc = new Procedure(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, new List<Variable>(), requires, globalVars, ensures);
             Implementation impl = new Implementation(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, new List<Variable>(), new List<Variable>(), blocks);
             impl.Proc = proc;

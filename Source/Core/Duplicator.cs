@@ -640,8 +640,7 @@ namespace Microsoft.Boogie {
           var funCall = nAryExpr.Fun as FunctionCall;
           if (funCall != null)
           {
-            // TODO(wuestholz): Maybe we should speed up this lookup.
-            funCall.Func = Program.Functions.FirstOrDefault(f => f.Name == funCall.FunctionName);
+            funCall.Func = Program.FindFunction(funCall.FunctionName);
           }
         }
         return result;

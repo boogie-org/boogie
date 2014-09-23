@@ -875,7 +875,6 @@ namespace Microsoft.Boogie
       Implementation[] stablePrioritizedImpls = null;
       if (0 < CommandLineOptions.Clo.VerifySnapshots)
       {
-        // TODO(wuestholz): Maybe we should speed up this lookup.
         OtherDefinitionAxiomsCollector.Collect(program.Axioms);
         DependencyCollector.Collect(program);
         stablePrioritizedImpls = impls.OrderByDescending(
@@ -992,6 +991,7 @@ namespace Microsoft.Boogie
 
       if (1 < CommandLineOptions.Clo.VerifySnapshots && programId != null)
       {
+        program.FreezeTopLevelDeclarations();
         programCache.Set(programId, program, policy);
       }
 

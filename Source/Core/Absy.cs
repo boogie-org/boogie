@@ -295,44 +295,13 @@ namespace Microsoft.Boogie {
   }
 
   public class Program : Absy {
-    [Rep]
-    private List<Declaration/*!*/>/*!*/ topLevelDeclarations;
-
-    public IEnumerable<Declaration> TopLevelDeclarations
-    {
-      get
-      {
-        return topLevelDeclarations;
-      }
-    }
-
-    public void AddTopLevelDeclaration(Declaration decl)
-    {
-      topLevelDeclarations.Add(decl);
-    }
-
-    public void AddTopLevelDeclarations(IEnumerable<Declaration> decls)
-    {
-      topLevelDeclarations.AddRange(decls);
-    }
-
-    public void RemoveTopLevelDeclarations(Predicate<Declaration> match)
-    {
-      topLevelDeclarations.RemoveAll(match);
-    }
-
-    public void ClearTopLevelDeclarations()
-    {
-      topLevelDeclarations.Clear();
-    }
 
     [ContractInvariantMethod]
     void ObjectInvariant() {
       Contract.Invariant(cce.NonNullElements(TopLevelDeclarations));
-      Contract.Invariant(globals == null || cce.NonNullElements(globals));
+      Contract.Invariant(globalVariablesCache == null || cce.NonNullElements(globalVariablesCache));
     }
-
-
+    
     public Program()
       : base(Token.NoToken) {
       this.topLevelDeclarations = new List<Declaration>();
@@ -472,35 +441,164 @@ namespace Microsoft.Boogie {
       }
     }
 
+    [Rep]
+    private List<Declaration/*!*/>/*!*/ topLevelDeclarations;
+
+    public IEnumerable<Declaration> TopLevelDeclarations
+    {
+      get
+      {
+        return topLevelDeclarations;
+      }
+    }
+
+    public void AddTopLevelDeclaration(Declaration decl)
+    {
+      Contract.Requires(!TopLevelDeclarationsAreFrozen);
+
+      topLevelDeclarations.Add(decl);
+      this.globalVariablesCache = null;
+    }
+
+    public void AddTopLevelDeclarations(IEnumerable<Declaration> decls)
+    {
+      Contract.Requires(!TopLevelDeclarationsAreFrozen);
+
+      topLevelDeclarations.AddRange(decls);
+      this.globalVariablesCache = null;
+    }
+
+    public void RemoveTopLevelDeclarations(Predicate<Declaration> match)
+    {
+      Contract.Requires(!TopLevelDeclarationsAreFrozen);
+
+      topLevelDeclarations.RemoveAll(match);
+      this.globalVariablesCache = null;
+    }
+
+    public void ClearTopLevelDeclarations()
+    {
+      Contract.Requires(!TopLevelDeclarationsAreFrozen);
+
+      topLevelDeclarations.Clear();
+      this.globalVariablesCache = null;
+    }
+
+    bool topLevelDeclarationsAreFrozen;
+    public bool TopLevelDeclarationsAreFrozen { get { return topLevelDeclarationsAreFrozen; } }
+    public void FreezeTopLevelDeclarations()
+    {
+      topLevelDeclarationsAreFrozen = true;
+    }
+
+    Dictionary<string, Implementation> implementationsCache;
     public IEnumerable<Implementation> Implementations
     {
       get
       {
-        return TopLevelDeclarations.OfType<Implementation>();
+        if (implementationsCache != null)
+        {
+          return implementationsCache.Values;
+        }
+        var result = TopLevelDeclarations.OfType<Implementation>();
+        if (topLevelDeclarationsAreFrozen)
+        {
+          implementationsCache = result.ToDictionary(p => p.Id);
+        }
+        return result;
       }
     }
 
+    public Implementation FindImplementation(string id)
+    {
+      Implementation result = null;
+      if (implementationsCache != null && implementationsCache.TryGetValue(id, out result))
+      {
+        return result;
+      }
+      else
+      {
+        return Implementations.FirstOrDefault(i => i.Id == id);
+      }
+    }
+
+    IEnumerable<Axiom> axiomsCache;
     public IEnumerable<Axiom> Axioms
     {
       get
       {
-        return TopLevelDeclarations.OfType<Axiom>();
+        if (axiomsCache != null)
+        {
+          return axiomsCache;
+        }
+        var result = TopLevelDeclarations.OfType<Axiom>();
+        if (topLevelDeclarationsAreFrozen)
+        {
+          axiomsCache = result;
+        }
+        return result;
       }
     }
 
+    Dictionary<string, Procedure> proceduresCache;
     public IEnumerable<Procedure> Procedures
     {
       get
       {
-        return TopLevelDeclarations.OfType<Procedure>();
+        if (proceduresCache != null)
+        {
+          return proceduresCache.Values;
+        }
+        var result = TopLevelDeclarations.OfType<Procedure>();
+        if (topLevelDeclarationsAreFrozen)
+        {
+          proceduresCache = result.ToDictionary(p => p.Name);
+        }
+        return result;
       }
     }
 
+    public Procedure FindProcedure(string name)
+    {
+      Procedure result = null;
+      if (proceduresCache != null && proceduresCache.TryGetValue(name, out result))
+      {
+        return result;
+      }
+      else
+      {
+        return Procedures.FirstOrDefault(p => p.Name == name);
+      }
+    }
+
+    Dictionary<string, Function> functionsCache;
     public IEnumerable<Function> Functions
     {
       get
       {
-        return TopLevelDeclarations.OfType<Function>();
+        if (functionsCache != null)
+        {
+          return functionsCache.Values;
+        }
+        var result = TopLevelDeclarations.OfType<Function>();
+        if (topLevelDeclarationsAreFrozen)
+        {
+          functionsCache = result.ToDictionary(f => f.Name);
+        }
+        return result;
+      }
+    }
+
+    public Function FindFunction(string name)
+    {
+      Function result = null;
+      if (functionsCache != null && functionsCache.TryGetValue(name, out result))
+      {
+        return result;
+      }
+      else
+      {
+        return Functions.FirstOrDefault(f => f.Name == name);
       }
     }
     
@@ -517,6 +615,21 @@ namespace Microsoft.Boogie {
       get
       {
         return TopLevelDeclarations.OfType<Constant>();
+      }
+    }
+
+    private List<GlobalVariable/*!*/> globalVariablesCache = null;
+    public IEnumerable<GlobalVariable/*!*/>/*!*/ GlobalVariables
+    {
+      get
+      {
+        Contract.Ensures(cce.NonNullElements(Contract.Result<IEnumerable<GlobalVariable>>()));
+
+        if (globalVariablesCache == null)
+        {
+          globalVariablesCache = TopLevelDeclarations.OfType<GlobalVariable>().ToList();
+        }
+        return globalVariablesCache;
       }
     }
 
@@ -1108,18 +1221,6 @@ namespace Microsoft.Boogie {
       //Contract.Requires(visitor != null);
       Contract.Ensures(Contract.Result<Absy>() != null);
       return visitor.VisitProgram(this);
-    }
-
-    private List<GlobalVariable/*!*/> globals = null;
-    public IEnumerable<GlobalVariable/*!*/>/*!*/ GlobalVariables() {
-      Contract.Ensures(cce.NonNullElements(Contract.Result<List<GlobalVariable>>()));
-      if (globals != null)
-        return globals;
-      globals = new List<GlobalVariable/*!*/>();
-      foreach (var gvar in TopLevelDeclarations.OfType<GlobalVariable>()) {
-        globals.Add(gvar);
-      }
-      return globals;
     }
 
     private int invariantGenerationCounter = 0;
