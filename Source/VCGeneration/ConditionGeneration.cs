@@ -1310,7 +1310,7 @@ namespace VC {
         Contract.Assert(c != null); // walk forward over the commands because the map gets modified in a forward direction
         ChecksumHelper.ComputeChecksums(c, currentImplementation, currentChecksum);
         currentChecksum = c.Checksum;
-        TurnIntoPassiveCmd(c, incarnationMap, oldFrameSubst, passiveCmds, mvInfo);
+        TurnIntoPassiveCmd(c, incarnationMap, oldFrameSubst, passiveCmds, mvInfo, b);
       }
       b.Checksum = currentChecksum;
       b.Cmds = passiveCmds;
@@ -1449,12 +1449,14 @@ namespace VC {
     /// Turn a command into a passive command, and it remembers the previous step, to see if it is a havoc or not. In the case, it remembers the incarnation map BEFORE the havoc
     /// Meanwhile, record any information needed to later reconstruct a model view.
     /// </summary>
-    protected void TurnIntoPassiveCmd(Cmd c, Dictionary<Variable, Expr> incarnationMap, Substitution oldFrameSubst, List<Cmd> passiveCmds, ModelViewInfo mvInfo) {
+    protected void TurnIntoPassiveCmd(Cmd c, Dictionary<Variable, Expr> incarnationMap, Substitution oldFrameSubst, List<Cmd> passiveCmds, ModelViewInfo mvInfo, Block containingBlock) {
       Contract.Requires(c != null);
       Contract.Requires(incarnationMap != null);
       Contract.Requires(oldFrameSubst != null);
       Contract.Requires(passiveCmds != null);
       Contract.Requires(mvInfo != null);
+      Contract.Requires(containingBlock != null);
+
       Substitution incarnationSubst = Substituter.SubstitutionFromHashtable(incarnationMap);
       #region assert/assume P |--> assert/assume P[x := in(x)], out := in
       if (c is PredicateCmd) {
@@ -1492,7 +1494,7 @@ namespace VC {
                       && !currentImplementation.ErrorChecksumToCachedError.ContainsKey(ac.Checksum))))
           {
             // Bind the assertion expression to a local variable.
-            var incarnation = CreateIncarnation(CurrentTemporaryVariableForAssertions, new IdentifierExpr(Token.NoToken, CurrentTemporaryVariableForAssertions));
+            var incarnation = CreateIncarnation(CurrentTemporaryVariableForAssertions, containingBlock);
             var identExpr = new IdentifierExpr(Token.NoToken, incarnation);
             incarnationMap[incarnation] = identExpr;
             ac.IncarnationMap[incarnation] = identExpr;
@@ -1671,7 +1673,7 @@ namespace VC {
         Contract.Assert(sug != null);
         Cmd cmd = sug.Desugaring;
         Contract.Assert(cmd != null);
-        TurnIntoPassiveCmd(cmd, incarnationMap, oldFrameSubst, passiveCmds, mvInfo);
+        TurnIntoPassiveCmd(cmd, incarnationMap, oldFrameSubst, passiveCmds, mvInfo, containingBlock);
       } else if (c is StateCmd) {
         this.preHavocIncarnationMap = null;       // we do not need to remeber the previous incarnations
         StateCmd st = (StateCmd)c;
@@ -1687,7 +1689,7 @@ namespace VC {
         // do the sub-commands
         foreach (Cmd s in st.Cmds) {
           Contract.Assert(s != null);
-          TurnIntoPassiveCmd(s, incarnationMap, oldFrameSubst, passiveCmds, mvInfo);
+          TurnIntoPassiveCmd(s, incarnationMap, oldFrameSubst, passiveCmds, mvInfo, containingBlock);
         }
         // remove the local variables from the incarnation map
         foreach (Variable v in st.Locals) {
