@@ -1248,7 +1248,10 @@ namespace Microsoft.Boogie.SMTLib
                 xlabels = labels.Select(a => a.Replace("@", "").Replace("+", "")).ToList();
               }
             }
-            else {
+            else if(CommandLineOptions.Clo.SIBoolControlVC) {
+                labels = new string[0];
+                xlabels = labels;
+            } else {
               labels = CalculatePath(handler.StartingProcId());
               xlabels = labels;
             }
