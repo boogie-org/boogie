@@ -373,7 +373,7 @@ namespace VC {
         privateExprVars.AddRange(blockToControlVar.Values);
 
         interfaceExprVars = new List<VCExprVar>();
-        foreach (Variable v in program.GlobalVariables())
+        foreach (Variable v in program.GlobalVariables)
         {
             interfaceExprVars.Add(translator.LookupVariable(v));
         }
