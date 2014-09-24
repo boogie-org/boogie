@@ -159,12 +159,12 @@ namespace Microsoft.Boogie.SMTLib
     internal TypeAxiomBuilder AxBuilder { get; private set; }
     internal readonly UniqueNamer Namer;
     readonly TypeDeclCollector DeclCollector;
-    SMTLibProcess Process;
+    protected SMTLibProcess Process;
     readonly List<string> proverErrors = new List<string>();
     readonly List<string> proverWarnings = new List<string>();
     readonly StringBuilder common = new StringBuilder();
     TextWriter currentLogFile;
-    volatile ErrorHandler currentErrorHandler;
+    protected volatile ErrorHandler currentErrorHandler;
 
     private void FeedTypeDeclsToProver()
     {
@@ -187,7 +187,7 @@ namespace Microsoft.Boogie.SMTLib
       Send(s, true);
     }
 
-    private void SendThisVC(string s)
+    protected void SendThisVC(string s)
     {
       Send(s, false);
     }
@@ -560,7 +560,7 @@ namespace Microsoft.Boogie.SMTLib
             return temp;
         }
 		
-		private VCExpr SExprToVCExpr (SExpr e, Dictionary<string,VCExpr> bound)
+		protected VCExpr SExprToVCExpr (SExpr e, Dictionary<string,VCExpr> bound)
 		{
 			if (e.Arguments.Count() == 0) {
 				var name = StripCruft(e.Name);
@@ -1160,7 +1160,7 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
-    private void HandleProverError(string s)
+    protected void HandleProverError(string s)
     {
       s = s.Replace("\r", "");
       lock (proverWarnings) {
@@ -1824,6 +1824,236 @@ namespace Microsoft.Boogie.SMTLib
       Pop();
       return outcome;
     }
+  }
+
+  public class SMTLibInterpolatingProcessTheoremProver : SMTLibProcessTheoremProver
+  {
+      SMTLibInterpolatingProcessTheoremProver(ProverOptions options, VCExpressionGenerator gen,
+                                        SMTLibProverContext ctx)
+          : base(options, gen, ctx)
+      {
+          // anything else?
+      }
+
+      public override void AssertNamed(VCExpr vc, bool polarity, string name)
+      {
+          string vcString;
+          if (polarity)
+          {
+              vcString = VCExpr2String(vc, 1);
+          }
+          else
+          {
+              vcString = "(not " + VCExpr2String(vc, 1) + ")";
+          }
+          AssertAxioms();
+          SendThisVC(string.Format("(assert (! {0} :named {1}))", vcString, name));
+      }
+
+      public override VCExpr ComputeInterpolant(VCExpr A, VCExpr B)
+      {
+          string A_str = VCExpr2String(A, 1);
+          string B_str = VCExpr2String(B, 1);
+
+          AssertAxioms();
+          SendThisVC("(compute-interpolant " + A_str + " " + B_str + ")");
+
+          SExpr interpolant;
+          Outcome result = GetInterpolantResponse(out interpolant);
+
+          if (result != Outcome.Valid)
+              return null;
+
+          VCExpr interpolantVC = SExprToVCExpr(interpolant, new Dictionary<string, VCExpr>());
+          return interpolantVC;
+      }
+
+      private Outcome GetInterpolantResponse(out SExpr interpolant)
+      {
+          var result = Outcome.Undetermined;
+          var wasUnknown = false;
+          interpolant = null;
+
+          Process.Ping();
+          bool onlyOnce = false;
+
+          while (true)
+          {
+              var resp = Process.GetProverResponse();
+              if (resp == null || Process.IsPong(resp))
+                  break;
+
+              switch (resp.Name)
+              {
+                  case "unsat":
+                      result = Outcome.Valid;
+                      break;
+                  case "sat":
+                      result = Outcome.Invalid;
+                      break;
+                  case "unknown":
+                      result = Outcome.Invalid;
+                      wasUnknown = true;
+                      break;
+                  default:
+                      if (result == Outcome.Valid)
+                      {
+                          interpolant = resp as SExpr;
+
+                          Contract.Assert(onlyOnce == false);
+                          onlyOnce = true;
+                          continue;
+                      }
+                      HandleProverError("Unexpected prover response: " + resp.ToString());
+                      break;
+              }
+          }
+
+          if (wasUnknown)
+          {
+              SendThisVC("(get-info :reason-unknown)");
+              Process.Ping();
+
+              while (true)
+              {
+                  var resp = Process.GetProverResponse();
+                  if (resp == null || Process.IsPong(resp))
+                      break;
+
+                  if (resp.ArgCount == 1 && resp.Name == ":reason-unknown")
+                  {
+                      switch (resp[0].Name)
+                      {
+                          case "memout":
+                              currentErrorHandler.OnResourceExceeded("memory");
+                              result = Outcome.OutOfMemory;
+                              Process.NeedsRestart = true;
+                              break;
+                          case "timeout":
+                          case "canceled":
+                              currentErrorHandler.OnResourceExceeded("timeout");
+                              result = Outcome.TimeOut;
+                              break;
+                          default:
+                              break;
+                      }
+                  }
+                  else
+                  {
+                      HandleProverError("Unexpected prover response (getting info about 'unknown' response): " + resp.ToString());
+                  }
+              }
+          }
+
+          return result;
+      }
+
+      public override List<VCExpr> GetTreeInterpolant(List<string> root, List<string> leaves)
+      {
+          List<VCExpr> result = new List<VCExpr>();
+
+          string vcStr = "true";
+          foreach (string str in root)
+              vcStr = vcStr + " " + str;
+          foreach (string str in leaves)
+              vcStr = vcStr + "\r\n (interp " + str + ")";
+
+          vcStr = "(get-interpolant (and\r\n" + vcStr + "\r\n))";
+          SendThisVC(vcStr);
+
+          List<SExpr> interpolantList;
+          Outcome result2 = GetTreeInterpolantResponse(out interpolantList);
+
+          if (result2 != Outcome.Valid)
+              return null;
+
+          Dictionary<string, VCExpr> bound = new Dictionary<string, VCExpr>();
+          foreach (SExpr sexpr in interpolantList)
+          {
+              VCExpr interpolantVC = SExprToVCExpr(sexpr, bound);
+              result.Add(interpolantVC);
+          }
+
+          return result;
+      }
+
+      private Outcome GetTreeInterpolantResponse(out List<SExpr> interpolantList)
+      {
+          var result = Outcome.Undetermined;
+          var wasUnknown = false;
+          interpolantList = new List<SExpr>();
+
+          Process.Ping();
+
+          while (true)
+          {
+              var resp = Process.GetProverResponse();
+              if (resp == null || Process.IsPong(resp))
+                  break;
+
+              switch (resp.Name)
+              {
+                  case "unsat":
+                      result = Outcome.Valid;
+                      break;
+                  case "sat":
+                      result = Outcome.Invalid;
+                      break;
+                  case "unknown":
+                      result = Outcome.Invalid;
+                      wasUnknown = true;
+                      break;
+                  default:
+                      if (result == Outcome.Valid)
+                      {
+                          SExpr interpolant = resp as SExpr;
+                          interpolantList.Add(interpolant);
+                          continue;
+                          //return result;
+                      }
+                      HandleProverError("Unexpected prover response: " + resp.ToString());
+                      break;
+              }
+          }
+
+          if (wasUnknown)
+          {
+              SendThisVC("(get-info :reason-unknown)");
+              Process.Ping();
+
+              while (true)
+              {
+                  var resp = Process.GetProverResponse();
+                  if (resp == null || Process.IsPong(resp))
+                      break;
+
+                  if (resp.ArgCount == 1 && resp.Name == ":reason-unknown")
+                  {
+                      switch (resp[0].Name)
+                      {
+                          case "memout":
+                              currentErrorHandler.OnResourceExceeded("memory");
+                              result = Outcome.OutOfMemory;
+                              Process.NeedsRestart = true;
+                              break;
+                          case "timeout":
+                          case "canceled":
+                              currentErrorHandler.OnResourceExceeded("timeout");
+                              result = Outcome.TimeOut;
+                              break;
+                          default:
+                              break;
+                      }
+                  }
+                  else
+                  {
+                      HandleProverError("Unexpected prover response (getting info about 'unknown' response): " + resp.ToString());
+                  }
+              }
+          }
+
+          return result;
+      }
   }
 
   public class SMTLibProverContext : DeclFreeProverContext
