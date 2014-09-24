@@ -853,7 +853,7 @@ namespace Microsoft.Boogie.SMTLib
         // Concatenate all the arguments
         string modelString = resp[0].Name;
         // modelString = modelString.Substring(7, modelString.Length - 8); // remove "(model " and final ")"
-        var models = Model.ParseModels(new StringReader("Error model: \n" + modelString), "");
+        var models = Model.ParseModels(new StringReader("Error model: \n" + modelString));
         if (models == null || models.Count == 0)
         {
             HandleProverError("no model from prover: " + resp.ToString());
@@ -1629,14 +1629,8 @@ namespace Microsoft.Boogie.SMTLib
         try {
           switch (options.Solver) {
             case SolverKind.Z3:
-              if (CommandLineOptions.Clo.UseSmtOutputFormat) {
-                models = Model.ParseModels(new StringReader("Error model: \n" + modelStr), "");
-              } else {
-                models = Model.ParseModels(new StringReader("Error model: \n" + modelStr), "");
-              }
-              break;
             case SolverKind.CVC4:
-              models = Model.ParseModels(new StringReader("Error model: \n" + modelStr), "");
+              models = Model.ParseModels(new StringReader("Error model: \n" + modelStr));
               break;
             default:
               Debug.Assert(false);

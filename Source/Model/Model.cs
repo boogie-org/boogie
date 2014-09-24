@@ -695,7 +695,7 @@ namespace Microsoft.Boogie
       foreach (var f in functions) f.Substitute(mapping);
     }
 
-    public static List<Model> ParseModels(System.IO.TextReader rd, string prover)
+    public static List<Model> ParseModels(System.IO.TextReader rd)
     {
       ModelParser p = new ParserZ3();
       p.rd = rd;

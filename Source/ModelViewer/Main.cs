@@ -99,7 +99,7 @@ namespace Microsoft.Boogie.ModelViewer
 
       using (var rd = new StringReader(model))
       {
-        allModels = Model.ParseModels(rd, "").ToArray();
+        allModels = Model.ParseModels(rd).ToArray();
       }
 
       AddAndLoadModel(setModelIdTo);
@@ -112,7 +112,7 @@ namespace Microsoft.Boogie.ModelViewer
 
       if (!string.IsNullOrWhiteSpace(modelFileName) && File.Exists(modelFileName)) {
         using (var rd = File.OpenText(modelFileName)) {
-          allModels = Model.ParseModels(rd,"").ToArray();
+          allModels = Model.ParseModels(rd).ToArray();
         }
 
         AddAndLoadModel(setModelIdTo);
