@@ -1318,6 +1318,288 @@ namespace Microsoft.Boogie.SMTLib
       return path.ToArray();
     }
 
+
+    private class SMTErrorModelConverter {
+        private struct SMTDataType {
+            public string Constructor;
+            public List<SExpr> Types;
+        }
+
+        private List<SExpr> ErrorModelTodo;
+        private SMTLibProcessTheoremProver Parent;
+        private StringBuilder ErrorModel = new StringBuilder();
+        private HashSet<SExpr> TopLevelProcessed = new HashSet<SExpr>();
+        private int NumNewArrays = 0;
+        private Dictionary<string, int> SortSet = new Dictionary<string, int>();
+        private Dictionary<string, SMTDataType> DataTypes = new Dictionary<string, SMTDataType>();
+        private Dictionary<string, SExpr> Functions = new Dictionary<string, SExpr>();
+
+        public SMTErrorModelConverter(SExpr _ErrorModel, SMTLibProcessTheoremProver _Parent) {
+            ErrorModelTodo = _ErrorModel.Arguments.ToList();;
+            Parent = _Parent;
+        }
+
+        public string Convert() {
+            ConvertErrorModel(ErrorModel);
+            return ErrorModel.ToString();
+        }
+
+        void ConstructComplexValue(SExpr element, SExpr type, StringBuilder m) {
+            if (type.Name == "Array") {
+                if (element.Name == "store" || element.Name == "__array_store_all__") {
+                    NumNewArrays++;
+                    m.Append("as-array[k!" + NumNewArrays + ']');
+                    SExpr[] args = {new SExpr("k!" + NumNewArrays), new SExpr(""), type, element};
+                    var newElement = new SExpr("define-fun", args);
+                    TopLevelProcessed.Add(newElement);
+                    ErrorModelTodo.Add(newElement);
+                    return;
+                }
+            }
+
+            ConstructSimpleValue(element, type, m);
+        }
+
+        void ConstructSimpleValue(SExpr element, SExpr type, StringBuilder m) {
+            if (type.Name == "Bool" && element.ArgCount == 0) {
+                m.Append(element.ToString());
+                return;
+            }
+
+            if (type.Name == "Int") {
+                if (element.ArgCount == 0) {
+                    m.Append(element.ToString());
+                    return;
+                } else if (element.Name == "-" && element.ArgCount == 1) {
+                    m.Append(element.ToString());
+                    return;
+                }
+            }
+
+            if (type.Name == "_" && type.ArgCount == 2 && type[0].Name == "BitVec") {
+                if (element.Name == "_" && element.ArgCount == 2 &&
+                    element[0].Name.StartsWith("bv") && element[0].ArgCount == 0 &&
+                    element[1].Name == type.Arguments[1].Name && element[1].ArgCount == 0) {
+                    m.Append(element[0].Name + '[' + element[1].Name + ']');
+                    return;
+                }
+            }
+
+            if (type.Name == "Array") {
+                while (element.Name == "store") {
+                    ConstructComplexValue(element[1], type[0], m);
+                    m.Append(" -> ");
+                    ConstructComplexValue(element[2], type[1], m);
+                    m.Append("\n  ");
+                    if (element[0].Name != "store") {
+                        m.Append("else -> ");
+                    }
+                    element = element[0];
+                }
+
+                if (element.Name == "__array_store_all__") {
+                    ConstructComplexValue(element[1], type[1], m);
+                    return;
+                } else if (element.Name == "_" && element.ArgCount == 2 &&
+                           element[0].Name == "as-array") {
+                    m.Append("as-array[" + element[1].Name + ']');
+                    return;
+                }
+            }
+
+            if (SortSet.ContainsKey(type.Name) && SortSet[type.Name] == 0) {
+                var prefix = "@uc_T_" + type.Name.Substring(2) + "_";
+                if (element.Name.StartsWith(prefix)) {
+                    m.Append(type.Name + "!val!" + element.Name.Substring(prefix.Length));
+                    return;
+                }
+            }
+
+            if (Functions.ContainsKey(element.Name) &&
+                type.Name == Functions[element.Name].Name) {
+                m.Append(element.Name);
+                return;
+            }
+
+            if (DataTypes.ContainsKey(type.Name) &&
+                DataTypes[type.Name].Constructor == element.Name &&
+                element.ArgCount == DataTypes[type.Name].Types.Count) {
+                m.Append("(" + element.Name);
+                for (int i = 0; i < element.ArgCount; ++i) {
+                    m.Append(" ");
+                    ConstructComplexValue(element[i], DataTypes[type.Name].Types[i], m);
+                }
+                m.Append(")");
+                return;
+            }
+
+            Parent.HandleProverError("Unexpected value: " + element);
+            throw new BadExprFromProver ();
+        }
+
+        void ConstructFunctionArguments(SExpr arguments, List<SExpr> argTypes, StringBuilder[] argValues) {
+            if (arguments.Name == "and") {
+                ConstructFunctionArguments(arguments[0], argTypes, argValues);
+                ConstructFunctionArguments(arguments[1], argTypes, argValues);
+            } else if (arguments.Name == "=" &&
+                       (arguments[0].Name.StartsWith("_ufmt_") || arguments[0].Name.StartsWith("x!"))) {
+                int argNum;
+                if (arguments[0].Name.StartsWith("_ufmt_"))
+                    argNum = System.Convert.ToInt32(arguments[0].Name.Substring("_uftm_".Length)) - 1;
+                else /* if (arguments[0].Name.StartsWith("x!")) */
+                    argNum = System.Convert.ToInt32(arguments[0].Name.Substring("x!".Length)) - 1;
+                if (argNum < 0 || argNum >= argTypes.Count) {
+                    Parent.HandleProverError("Unexpected function argument: " + arguments[0]);
+                    throw new BadExprFromProver ();
+                }
+                if (argValues[argNum] != null) {
+                    Parent.HandleProverError("Function argument defined multiple times: " + arguments[0]);
+                    throw new BadExprFromProver ();
+                }
+                argValues[argNum] = new StringBuilder();
+                ConstructComplexValue(arguments[1], argTypes[argNum], argValues[argNum]);
+            } else {
+                Parent.HandleProverError("Unexpected function argument: " + arguments);
+                throw new BadExprFromProver ();
+            }
+        }
+
+        void ConstructFunctionElements(SExpr element, List<SExpr> argTypes, SExpr outType, StringBuilder m) {
+            while (element.Name == "ite") {
+                StringBuilder[] argValues = new StringBuilder[argTypes.Count];
+                ConstructFunctionArguments(element[0], argTypes, argValues);
+                foreach (var s in argValues)
+                    m.Append(s + " ");
+                m.Append("-> ");
+                ConstructComplexValue(element[1], outType, m);
+                m.Append("\n  ");
+                if (element[2].Name != "ite")
+                    m.Append("else -> ");
+                element = element[2];
+            }
+
+            ConstructComplexValue(element, outType, m);
+        }
+
+        void ConstructFunction(SExpr element, SExpr inType, SExpr outType, StringBuilder m) {
+            List<SExpr> argTypes = new List<SExpr>();
+
+            for (int i = 0; i < inType.ArgCount; ++i) {
+                if (inType[i].Name != "_ufmt_" + (i + 1) && inType[i].Name != "x!" + (i + 1) &&
+                    !inType[i].Name.StartsWith("BOUND_VARIABLE_")) {
+                    Parent.HandleProverError("Unexpected function argument: " + inType[i].Name);
+                    throw new BadExprFromProver ();
+                }
+                argTypes.Add(inType[i][0]);
+            }
+
+            ConstructFunctionElements(element, argTypes, outType, m);
+        }
+
+        void ConstructDefine(SExpr element, StringBuilder m) {
+            Debug.Assert(element.Name == "define-fun");
+
+            if (element[1].ArgCount != 0)
+                TopLevelProcessed.Add(element);
+
+            m.Append(element[0] + " -> ");
+            if (TopLevelProcessed.Contains(element))
+                m.Append("{\n  ");
+
+            if (element[1].ArgCount == 0 && element[2].Name == "Array" && !TopLevelProcessed.Contains(element)) {
+                ConstructComplexValue(element[3], element[2], m);
+            } else if (element[1].ArgCount == 0) {
+                ConstructSimpleValue(element[3], element[2], m);
+            } else {
+                ConstructFunction(element[3], element[1], element[2], m);
+            }
+
+            if (TopLevelProcessed.Contains(element))
+                m.Append("\n}");
+            m.Append("\n");
+        }
+
+        void ExtractDataType(SExpr datatypes) {
+            Debug.Assert(datatypes.Name == "declare-datatypes");
+
+            if (datatypes[0].Name != "" || datatypes[1].Name != "" || datatypes[1].ArgCount != 1) {
+                Parent.HandleProverError("Unexpected datatype: " + datatypes);
+                throw new BadExprFromProver ();
+            }
+
+            SMTDataType dt = new SMTDataType();
+            SExpr typeDef = datatypes[1][0];
+
+            if (typeDef.ArgCount != 1) {
+                Parent.HandleProverError("Unexpected datatype: " + datatypes);
+                throw new BadExprFromProver ();
+            }
+
+            dt.Constructor = typeDef[0].Name;
+            dt.Types = new List<SExpr>();
+
+            for (int i = 0; i < typeDef[0].ArgCount; ++i) {
+                if (typeDef[0][i].ArgCount != 1) {
+                    Parent.HandleProverError("Unexpected datatype constructor: " + typeDef[0]);
+                    throw new BadExprFromProver ();
+                }
+                dt.Types.Add(typeDef[0][i][0]);
+            }
+
+            DataTypes[typeDef.Name] = dt;
+        }
+
+        private void ConvertErrorModel(StringBuilder m) {
+            if (Parent.options.Solver == SolverKind.Z3) {
+                // Datatype declarations are not returned by Z3, so parse common
+                // instead. This is not very efficient, but currently not an issue,
+                // as this not the normal way of interfacing with Z3.
+                var ms = new MemoryStream(Encoding.ASCII.GetBytes(Parent.common.ToString()));
+                var sr = new StreamReader(ms);
+                SExpr.Parser p = new MyFileParser(sr, null);
+                var sexprs = p.ParseSExprs(false);
+                foreach (var e in sexprs) {
+                    switch (e.Name) {
+                    case "declare-datatypes":
+                        ExtractDataType(e);
+                        break;
+                    }
+                }
+            }
+
+            while (ErrorModelTodo.Count > 0) {
+                var e = ErrorModelTodo[0];
+                ErrorModelTodo.RemoveAt(0);
+
+                switch (e.Name) {
+                case "define-fun":
+                    ConstructDefine(e, m);
+                    break;
+                case "declare-sort":
+                    SortSet[e[0].Name] = System.Convert.ToInt32(e[1].Name);
+                    break;
+                case "declare-datatypes":
+                    ExtractDataType(e);
+                    break;
+                case "declare-fun":
+                    if (e[1].Name != "" || e[1].ArgCount > 0 || e[2].ArgCount > 0 ||
+                        e[2].Name == "Bool" || e[2].Name == "Int") {
+                        Parent.HandleProverError("Unexpected top level model element: " + e.Name);
+                        throw new BadExprFromProver ();
+                    }
+                    Functions[e[0].Name] = e[2];
+                    break;
+                case "forall":
+                    // ignore
+                    break;
+                default:
+                    Parent.HandleProverError("Unexpected top level model element: " + e.Name);
+                    throw new BadExprFromProver ();
+                }
+            }
+        }
+    }
+
     private Model GetErrorModel() {
       if (!options.ExpectingModel())
         return null;
@@ -1330,14 +1612,11 @@ namespace Microsoft.Boogie.SMTLib
           break;
         if (theModel != null)
           HandleProverError("Expecting only one model but got many");
-        
-		
+
         string modelStr = null;
         if (resp.Name == "model" && resp.ArgCount >= 1) {
-          modelStr = resp.Arguments[0] + "\n";
-          for (int i = 1; i < resp.ArgCount; i++) {
-            modelStr += resp.Arguments[i] + "\n";
-          }
+          var converter = new SMTErrorModelConverter(resp, this);
+          modelStr = converter.Convert();
         }
         else if (resp.ArgCount == 0 && resp.Name.Contains("->")) {
           modelStr = resp.Name;
@@ -1345,19 +1624,19 @@ namespace Microsoft.Boogie.SMTLib
         else {
           HandleProverError("Unexpected prover response getting model: " + resp.ToString());
         }
-        
+
         List<Model> models = null;
         try {
           switch (options.Solver) {
             case SolverKind.Z3:
               if (CommandLineOptions.Clo.UseSmtOutputFormat) {
-                models = Model.ParseModels(new StringReader("Error model: \n" + modelStr), "SMTLIB2");
+                models = Model.ParseModels(new StringReader("Error model: \n" + modelStr), "");
               } else {
                 models = Model.ParseModels(new StringReader("Error model: \n" + modelStr), "");
               }
               break;
             case SolverKind.CVC4:
-              models = Model.ParseModels(new StringReader("Error model: \n" + modelStr), "SMTLIB2");
+              models = Model.ParseModels(new StringReader("Error model: \n" + modelStr), "");
               break;
             default:
               Debug.Assert(false);
@@ -1430,7 +1709,6 @@ namespace Microsoft.Boogie.SMTLib
         }
       }
 
-      
       if (wasUnknown) {
         SendThisVC("(get-info :reason-unknown)");
         Process.Ping();

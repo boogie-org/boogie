@@ -89,6 +89,8 @@ namespace Microsoft.Boogie
       if (Arguments.Length > 0) sb.Append('(');
       if (Name.Any(Char.IsWhiteSpace))
         sb.Append("\"").Append(Name).Append("\"");
+      else if (Name.Length == 0)
+        sb.Append("()");
       else
         sb.Append(Name);
       foreach (var a in Arguments) {

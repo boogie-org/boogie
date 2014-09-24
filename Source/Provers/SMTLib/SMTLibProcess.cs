@@ -210,10 +210,11 @@ namespace Microsoft.Boogie.SMTLib
             return '\0';
         }
 
+
         while (linePos < currLine.Length && char.IsWhiteSpace(currLine[linePos]))
           linePos++;
 
-        if (linePos < currLine.Length)
+        if (linePos < currLine.Length && currLine[linePos] != ';')
           return currLine[linePos];
         else {
           currLine = null;
