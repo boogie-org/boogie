@@ -2144,7 +2144,7 @@ namespace VC {
 
       protected override HashSet<VCExprVar> CombineResults(List<HashSet<VCExprVar>> results, bool arg) {
         var ret = new HashSet<VCExprVar>();
-        results.ForEach(s => ret.UnionWith(s));
+        results.Iter(s => ret.UnionWith(s));
         return ret;
       }
     }

@@ -2401,8 +2401,7 @@ namespace Microsoft.Boogie.Houdini {
 
             var decls = new List<Declaration>(copy.Values);
             decls.AddRange(program.TopLevelDeclarations.Where(decl => !(decl is Implementation)));
-            program.ClearTopLevelDeclarations();
-            program.AddTopLevelDeclarations(decls);
+            program.TopLevelDeclarations = decls;
             var name2Proc = new Dictionary<string, Procedure>();
             foreach (var proc in program.Procedures)
             {

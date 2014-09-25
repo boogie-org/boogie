@@ -446,10 +446,16 @@ namespace Microsoft.Boogie {
 
     public IEnumerable<Declaration> TopLevelDeclarations
     {
-      get
-      {
-        return topLevelDeclarations;
-      }
+        get
+        {
+            return topLevelDeclarations;
+        }
+
+        set
+        {
+            ClearTopLevelDeclarations();
+            AddTopLevelDeclarations(value);
+        }
     }
 
     public void AddTopLevelDeclaration(Declaration decl)
@@ -466,6 +472,14 @@ namespace Microsoft.Boogie {
 
       topLevelDeclarations.AddRange(decls);
       this.globalVariablesCache = null;
+    }
+
+    public void RemoveTopLevelDeclaration(Declaration decl)
+    {
+        Contract.Requires(!TopLevelDeclarationsAreFrozen);
+
+        topLevelDeclarations.Remove(decl);
+        this.globalVariablesCache = null;
     }
 
     public void RemoveTopLevelDeclarations(Predicate<Declaration> match)
