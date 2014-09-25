@@ -453,8 +453,13 @@ namespace Microsoft.Boogie {
 
         set
         {
+            // materialize the decls, in case there is any dependency 
+            // back on topLevelDeclarations
+            var v = value.ToList();
+            // now clear the decls
             ClearTopLevelDeclarations();
-            AddTopLevelDeclarations(value);
+            // and add the value
+            AddTopLevelDeclarations(v);
         }
     }
 
