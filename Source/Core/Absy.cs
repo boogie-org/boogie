@@ -541,7 +541,7 @@ namespace Microsoft.Boogie {
       }
     }
 
-    IEnumerable<Axiom> axiomsCache;
+    List<Axiom> axiomsCache;
     public IEnumerable<Axiom> Axioms
     {
       get
@@ -553,7 +553,7 @@ namespace Microsoft.Boogie {
         var result = TopLevelDeclarations.OfType<Axiom>();
         if (topLevelDeclarationsAreFrozen)
         {
-          axiomsCache = result;
+          axiomsCache = result.ToList();
         }
         return result;
       }
