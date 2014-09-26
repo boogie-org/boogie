@@ -291,7 +291,9 @@ namespace Microsoft.Boogie {
     public override Program VisitProgram(Program node) {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Program>() != null);
-      return base.VisitProgram((Program)node.Clone());
+      var cloned = new Program();
+      cloned.AddTopLevelDeclarations(node.TopLevelDeclarations);
+      return base.VisitProgram(cloned);
     }
     public override QKeyValue VisitQKeyValue(QKeyValue node) {
       //Contract.Requires(node != null);
