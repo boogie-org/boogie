@@ -19,6 +19,7 @@ namespace VC {
     public StratifiedInliningInfo info;
     public int id;
     public List<VCExprVar> interfaceExprVars;
+    public Dictionary<Block, VCExpr> blockToControlVar;
     public Dictionary<Block, List<StratifiedCallSite>> callSites;
     public Dictionary<Block, List<StratifiedCallSite>> recordProcCallSites;
     public VCExpr vcexpr;
@@ -48,10 +49,18 @@ namespace VC {
       foreach (VCExprVar v in info.privateExprVars) {
         substDict.Add(v, vcgen.CreateNewVar(v.Type));
       }
-      substDict.Add(bet.LookupVariable(info.controlFlowVariable), gen.Integer(BigNum.FromInt(id)));
+      if(info.controlFlowVariable != null)
+          substDict.Add(bet.LookupVariable(info.controlFlowVariable), gen.Integer(BigNum.FromInt(id)));
       VCExprSubstitution subst = new VCExprSubstitution(substDict, new Dictionary<TypeVariable, Microsoft.Boogie.Type>());
       SubstitutingVCExprVisitor substVisitor = new SubstitutingVCExprVisitor(prover.VCExprGen);
       vcexpr = substVisitor.Mutate(vcexpr, subst);
+
+      if (info.blockToControlVar != null)
+      {
+          blockToControlVar = new Dictionary<Block, VCExpr>();
+          foreach (var tup in info.blockToControlVar)
+              blockToControlVar.Add(tup.Key, substDict[tup.Value]);
+      }
 
       var impl = info.impl;
       reachMacros = new Dictionary<Block, Macro>();
@@ -345,7 +354,7 @@ namespace VC {
                 VCExpr succ = VCExpressionGenerator.False;
                 foreach (var sb in gc.labelTargets)
                     succ = gen.OrSimp(succ, blockToControlVar[sb]);
-                vcexpr = gen.AndSimp(vcexpr, succ);
+                vcexpr = gen.AndSimp(vcexpr, gen.Implies(blockToControlVar[b], succ));
             }
             else
             {
