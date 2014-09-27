@@ -441,6 +441,14 @@ namespace Microsoft.Boogie {
       }
     }
 
+    public override Absy Clone()
+    {
+        var cloned = (Program)base.Clone();
+        cloned.topLevelDeclarations = new List<Declaration>();
+        cloned.AddTopLevelDeclarations(topLevelDeclarations);
+        return cloned;
+    }
+
     [Rep]
     private List<Declaration/*!*/>/*!*/ topLevelDeclarations;
 
