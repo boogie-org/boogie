@@ -343,8 +343,7 @@ namespace VC {
                 }
 
                 c = gen.AndSimp(c, expr);
-            }
-            vcexpr = gen.AndSimp(vcexpr, gen.Eq(blockToControlVar[b], c));
+            }          
 
             // block implies a disjunction of successors
             Debug.Assert(!(b.TransferCmd is ReturnExprCmd), "Not supported");
@@ -354,12 +353,13 @@ namespace VC {
                 VCExpr succ = VCExpressionGenerator.False;
                 foreach (var sb in gc.labelTargets)
                     succ = gen.OrSimp(succ, blockToControlVar[sb]);
-                vcexpr = gen.AndSimp(vcexpr, gen.Implies(blockToControlVar[b], succ));
+                c = gen.AndSimp(c, succ);
             }
             else
             {
                 // nothing to do
             }
+            vcexpr = gen.AndSimp(vcexpr, gen.Eq(blockToControlVar[b], c));
         }
         // assert start block
         vcexpr = gen.AndSimp(vcexpr, blockToControlVar[impl.Blocks[0]]);
