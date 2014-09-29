@@ -147,12 +147,7 @@ namespace VC {
       } else if (cmd is AssumeCmd) {
         AssumeCmd ac = (AssumeCmd)cmd;
 
-        if (CommandLineOptions.Clo.StratifiedInlining > 0) {
-          var pname = QKeyValue.FindStringAttribute(ac.Attributes, "candidate");
-          if (pname != null) {
-            return gen.ImpliesSimp(gen.LabelPos("candidate_" + pname.ToString(), ctxt.Ctxt.BoogieExprTranslator.Translate(ac.Expr)), N);
-          }
-            
+        if (CommandLineOptions.Clo.StratifiedInlining > 0) {            
           // Label the assume if it is a procedure call
           NAryExpr naryExpr = ac.Expr as NAryExpr;
           if (naryExpr != null) {
