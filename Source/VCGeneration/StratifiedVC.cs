@@ -19,7 +19,12 @@ namespace VC {
     public StratifiedInliningInfo info;
     public int id;
     public List<VCExprVar> interfaceExprVars;
+
+    // boolControlVC (block -> its bool variable)
     public Dictionary<Block, VCExpr> blockToControlVar;
+    // While using labels (block -> its label)
+    public Dictionary<Absy, string> block2label;
+
     public Dictionary<Block, List<StratifiedCallSite>> callSites;
     public Dictionary<Block, List<StratifiedCallSite>> recordProcCallSites;
     public VCExpr vcexpr;
@@ -55,11 +60,19 @@ namespace VC {
       SubstitutingVCExprVisitor substVisitor = new SubstitutingVCExprVisitor(prover.VCExprGen);
       vcexpr = substVisitor.Mutate(vcexpr, subst);
 
+      // For BoolControlVC generation
       if (info.blockToControlVar != null)
       {
           blockToControlVar = new Dictionary<Block, VCExpr>();
           foreach (var tup in info.blockToControlVar)
               blockToControlVar.Add(tup.Key, substDict[tup.Value]);
+      }
+
+      // labels
+      if (info.label2absy != null)
+      {
+          block2label = new Dictionary<Absy, string>();
+          vcexpr = RenameVCExprLabels.Apply(vcexpr, info.vcgen.prover.VCExprGen, info.label2absy, block2label);
       }
 
       var impl = info.impl;
@@ -126,6 +139,68 @@ namespace VC {
     {
         return info.impl.Name;
     }
+  }
+
+  class RenameVCExprLabels : MutatingVCExprVisitor<bool>
+  {
+      Dictionary<int, Absy> label2absy;
+      Dictionary<Absy, string> absy2newlabel;
+      static int counter = 11;
+
+      RenameVCExprLabels(VCExpressionGenerator gen, Dictionary<int, Absy> label2absy, Dictionary<Absy, string> absy2newlabel)
+          : base(gen)
+      {
+          this.label2absy = label2absy;
+          this.absy2newlabel = absy2newlabel;
+      }
+
+      public static VCExpr Apply(VCExpr expr, VCExpressionGenerator gen, Dictionary<int, Absy> label2absy, Dictionary<Absy, string> absy2newlabel)
+      {
+          return (new RenameVCExprLabels(gen, label2absy, absy2newlabel)).Mutate(expr, true);
+      }
+
+      // Finds labels and changes them to a globally unique label:
+      protected override VCExpr/*!*/ UpdateModifiedNode(VCExprNAry/*!*/ originalNode,
+                                                    List<VCExpr/*!*/>/*!*/ newSubExprs,
+                                                    bool changed,
+                                                    bool arg)
+      {
+          Contract.Ensures(Contract.Result<VCExpr>() != null);
+
+          VCExpr ret;
+          if (changed)
+              ret = Gen.Function(originalNode.Op,
+                                 newSubExprs, originalNode.TypeArguments);
+          else
+              ret = originalNode;
+
+          VCExprLabelOp lop = originalNode.Op as VCExprLabelOp;
+          if (lop == null) return ret;
+          if (!(ret is VCExprNAry)) return ret;
+          VCExprNAry retnary = (VCExprNAry)ret;
+
+          // remove the sign
+          var nosign = 0;
+          if (!Int32.TryParse(lop.label.Substring(1), out nosign))
+              return ret;
+
+          if (!label2absy.ContainsKey(nosign))
+              return ret;
+
+          string newLabel = "SI" + counter.ToString();
+          counter++;
+          absy2newlabel[label2absy[nosign]] = newLabel;
+          
+          if (lop.pos)
+          {
+              return Gen.LabelPos(newLabel, retnary[0]);
+          }
+          else
+          {
+              return Gen.LabelNeg(newLabel, retnary[0]);
+          }
+
+      }
   }
 
   public class CallSite {
@@ -204,7 +279,6 @@ namespace VC {
     public Implementation impl;
     public Function function;
     public Variable controlFlowVariable;
-    public Dictionary<Block, VCExprVar> blockToControlVar;
     public Cmd exitAssertCmd;
     public VCExpr vcexpr;
     public List<VCExprVar> interfaceExprVars;
@@ -214,6 +288,9 @@ namespace VC {
     public Dictionary<Block, List<CallSite>> callSites;
     public Dictionary<Block, List<CallSite>> recordProcCallSites;
     public bool initialized { get; private set; }
+
+    // boolControlVC (block -> its Bool variable)
+    public Dictionary<Block, VCExprVar> blockToControlVar; 
 
     public StratifiedInliningInfo(Implementation implementation, StratifiedVCGenBase stratifiedVcGen) {
       vcgen = stratifiedVcGen;
@@ -435,21 +512,24 @@ namespace VC {
       if (!CommandLineOptions.Clo.UseLabels) {
         controlFlowVariable = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "@cfc", Microsoft.Boogie.Type.Int));
         controlFlowVariableExpr = translator.LookupVariable(controlFlowVariable);
-        vcgen.InstrumentCallSites(impl);
       }
-      
+
+      vcgen.InstrumentCallSites(impl);
+
       label2absy = new Dictionary<int, Absy>();
       VCGen.CodeExprConversionClosure cc = new VCGen.CodeExprConversionClosure(label2absy, proverInterface.Context);
       translator.SetCodeExprConverter(cc.CodeExprToVerificationCondition); 
       vcexpr = gen.Not(vcgen.GenerateVCAux(impl, controlFlowVariableExpr, label2absy, proverInterface.Context));
-      
-      if (controlFlowVariableExpr != null) {
-        VCExpr controlFlowFunctionAppl = exprGen.ControlFlowFunctionApplication(controlFlowVariableExpr, exprGen.Integer(BigNum.ZERO));
-        VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl, exprGen.Integer(BigNum.FromInt(impl.Blocks[0].UniqueId)));
-        vcexpr = exprGen.And(eqExpr, vcexpr);
-        callSites = vcgen.CollectCallSites(impl);
-        recordProcCallSites = vcgen.CollectRecordProcedureCallSites(impl);
+
+      if (controlFlowVariableExpr != null)
+      {
+          VCExpr controlFlowFunctionAppl = exprGen.ControlFlowFunctionApplication(controlFlowVariableExpr, exprGen.Integer(BigNum.ZERO));
+          VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl, exprGen.Integer(BigNum.FromInt(impl.Blocks[0].UniqueId)));
+          vcexpr = exprGen.And(eqExpr, vcexpr);
       }
+
+      callSites = vcgen.CollectCallSites(impl);
+      recordProcCallSites = vcgen.CollectRecordProcedureCallSites(impl);
 
       privateExprVars = new List<VCExprVar>();
       foreach (Variable v in impl.LocVars) {
