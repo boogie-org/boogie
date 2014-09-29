@@ -2100,7 +2100,7 @@ namespace Microsoft.Boogie.SMTLib
 
   public class SMTLibInterpolatingProcessTheoremProver : SMTLibProcessTheoremProver
   {
-      SMTLibInterpolatingProcessTheoremProver(ProverOptions options, VCExpressionGenerator gen,
+      public SMTLibInterpolatingProcessTheoremProver(ProverOptions options, VCExpressionGenerator gen,
                                         SMTLibProverContext ctx)
           : base(options, gen, ctx)
       {
@@ -2372,6 +2372,9 @@ namespace Microsoft.Boogie.SMTLib
 
   public class Factory : ProverFactory
   {
+    // Set programmatically
+    public static bool UseInterpolation = false;
+
     public override object SpawnProver(ProverOptions options, object ctxt)
     {
       //Contract.Requires(ctxt != null);
@@ -2413,6 +2416,9 @@ namespace Microsoft.Boogie.SMTLib
       Contract.Requires(gen != null);
       Contract.Requires(ctx != null);
       Contract.Ensures(Contract.Result<SMTLibProcessTheoremProver>() != null);
+
+      if (UseInterpolation)
+          return new SMTLibInterpolatingProcessTheoremProver(options, gen, ctx);
 
       return new SMTLibProcessTheoremProver(options, gen, ctx);
     }
