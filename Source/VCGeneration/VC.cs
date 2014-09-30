@@ -2904,44 +2904,49 @@ namespace VC {
                           ProverContext/*!*/ context,
                           Dictionary<TraceLocation/*!*/, CalleeCounterexampleInfo/*!*/>/*!*/ calleeCounterexamples)
     {
-      Contract.Requires(b != null);
-      Contract.Requires(traceNodes != null);
-      Contract.Requires(trace != null);
-      Contract.Requires(cce.NonNullDictionaryAndValues(incarnationOriginMap));
-      Contract.Requires(context != null);
-      Contract.Requires(cce.NonNullDictionaryAndValues(calleeCounterexamples));
-      // After translation, all potential errors come from asserts.
-      List<Cmd> cmds = b.Cmds;
-      Contract.Assert(cmds != null);
-      TransferCmd transferCmd = cce.NonNull(b.TransferCmd);
-      for (int i = 0; i < cmds.Count; i++)
-      {
-        Cmd cmd = cce.NonNull( cmds[i]);
-            
-        // Skip if 'cmd' not contained in the trace or not an assert
-        if (cmd is AssertCmd && traceNodes.Contains(cmd))
-        {
-          Counterexample newCounterexample = AssertCmdToCounterexample((AssertCmd)cmd, transferCmd, trace, errModel, mvInfo, context);
-          Contract.Assert(newCounterexample != null);
-          newCounterexample.AddCalleeCounterexample(calleeCounterexamples);
-          return newCounterexample;
-        }
-      }
-      
-      GotoCmd gotoCmd = transferCmd as GotoCmd;
-      if (gotoCmd != null)
-      {
-        foreach (Block bb in cce.NonNull(gotoCmd.labelTargets))
-        {
-          Contract.Assert(bb != null);
-          if (traceNodes.Contains(bb)){
-            trace.Add(bb);
-            return TraceCounterexample(bb, traceNodes, trace, errModel, mvInfo, incarnationOriginMap, context, calleeCounterexamples);
-          }
-        }
-      }
+        Contract.Requires(b != null);
+        Contract.Requires(traceNodes != null);
+        Contract.Requires(trace != null);
+        Contract.Requires(cce.NonNullDictionaryAndValues(incarnationOriginMap));
+        Contract.Requires(context != null);
+        Contract.Requires(cce.NonNullDictionaryAndValues(calleeCounterexamples));
+        // After translation, all potential errors come from asserts.
 
-      return null;
+        while (true)
+        {
+            List<Cmd> cmds = b.Cmds;
+            Contract.Assert(cmds != null);
+            TransferCmd transferCmd = cce.NonNull(b.TransferCmd);
+            for (int i = 0; i < cmds.Count; i++)
+            {
+                Cmd cmd = cce.NonNull(cmds[i]);
+
+                // Skip if 'cmd' not contained in the trace or not an assert
+                if (cmd is AssertCmd && traceNodes.Contains(cmd))
+                {
+                    Counterexample newCounterexample = AssertCmdToCounterexample((AssertCmd)cmd, transferCmd, trace, errModel, mvInfo, context);
+                    Contract.Assert(newCounterexample != null);
+                    newCounterexample.AddCalleeCounterexample(calleeCounterexamples);
+                    return newCounterexample;
+                }
+            }
+
+            GotoCmd gotoCmd = transferCmd as GotoCmd;
+            if (gotoCmd == null) return null;
+            Block foundBlock = null;
+            foreach (Block bb in cce.NonNull(gotoCmd.labelTargets))
+            {
+                Contract.Assert(bb != null);
+                if (traceNodes.Contains(bb))
+                {
+                    foundBlock = bb;
+                    break;
+                }
+            }
+            if (foundBlock == null) return null;
+            trace.Add(foundBlock);
+            b = foundBlock;
+        }
     }
 
     public static Counterexample AssertCmdToCounterexample(AssertCmd cmd, TransferCmd transferCmd, List<Block> trace, Model errModel, ModelViewInfo mvInfo, ProverContext context) 
