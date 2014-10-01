@@ -34,7 +34,7 @@ namespace VC {
     public Dictionary<Block, Macro> reachMacros;
     public Dictionary<Block, VCExpr> reachMacroDefinitions;
 
-    public StratifiedVC(StratifiedInliningInfo siInfo) {
+    public StratifiedVC(StratifiedInliningInfo siInfo, HashSet<string> procCalls) {
       info = siInfo;
       info.GenerateVC();
       var vcgen = info.vcgen;
@@ -75,6 +75,10 @@ namespace VC {
           vcexpr = RenameVCExprLabels.Apply(vcexpr, info.vcgen.prover.VCExprGen, info.label2absy, block2label);
       }
 
+      if(procCalls != null)
+         vcexpr = RemoveProcedureCalls.Apply(vcexpr, info.vcgen.prover.VCExprGen, procCalls);
+
+      #if false
       var impl = info.impl;
       reachMacros = new Dictionary<Block, Macro>();
       reachMacroDefinitions = new Dictionary<Block, VCExpr>();
@@ -93,6 +97,7 @@ namespace VC {
           reachMacroDefinitions[successorBlock] = gen.Or(reachMacroDefinitions[successorBlock], gen.And(gen.Function(reachMacros[currBlock]), controlTransferExpr));
         }
       }
+      #endif
 
       callSites = new Dictionary<Block, List<StratifiedCallSite>>();
       foreach (Block b in info.callSites.Keys) {
@@ -141,6 +146,7 @@ namespace VC {
     }
   }
 
+  // Rename all labels in a VC to (globally) fresh labels
   class RenameVCExprLabels : MutatingVCExprVisitor<bool>
   {
       Dictionary<int, Absy> label2absy;
@@ -202,6 +208,50 @@ namespace VC {
 
       }
   }
+
+  // Remove the uninterpreted function calls that substitute procedure calls
+  class RemoveProcedureCalls : MutatingVCExprVisitor<bool>
+  {
+      HashSet<string> procNames;
+
+      RemoveProcedureCalls(VCExpressionGenerator gen, HashSet<string> procNames)
+          : base(gen)
+      {
+          this.procNames = procNames;
+      }
+
+      public static VCExpr Apply(VCExpr expr, VCExpressionGenerator gen, HashSet<string> procNames)
+      {
+          return (new RemoveProcedureCalls(gen, procNames)).Mutate(expr, true);
+      }
+
+      // Finds labels and changes them to a globally unique label:
+      protected override VCExpr/*!*/ UpdateModifiedNode(VCExprNAry/*!*/ originalNode,
+                                                    List<VCExpr/*!*/>/*!*/ newSubExprs,
+                                                    bool changed,
+                                                    bool arg)
+      {
+          //Contract.Ensures(Contract.Result<VCExpr>() != null);
+
+          VCExpr ret;
+          if (changed)
+              ret = Gen.Function(originalNode.Op,
+                                 newSubExprs, originalNode.TypeArguments);
+          else
+              ret = originalNode;
+
+          if (!(ret is VCExprNAry)) return ret;
+          VCExprNAry retnary = (VCExprNAry)ret;
+          if (!(retnary.Op is VCExprBoogieFunctionOp))
+              return ret;
+
+          var fcall = (retnary.Op as VCExprBoogieFunctionOp).Func.Name;
+          if (procNames.Contains(fcall))
+              return VCExpressionGenerator.True;
+          return ret;
+      }
+  }
+
 
   public class CallSite {
     public string calleeName;
@@ -614,7 +664,7 @@ namespace VC {
           NAryExpr naryExpr = assumeCmd.Expr as NAryExpr;
           if (naryExpr == null) continue;
           if (!implName2StratifiedInliningInfo.ContainsKey(naryExpr.Fun.FunctionName)) continue;
-          Variable callSiteVar = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "StratifiedInliningCallSite" + callSiteId, Microsoft.Boogie.Type.Bool));
+          Variable callSiteVar = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "SICS" + callSiteId, Microsoft.Boogie.Type.Bool));
           implementation.LocVars.Add(callSiteVar);
           newCmds.Add(new AssumeCmd(Token.NoToken, new IdentifierExpr(Token.NoToken, callSiteVar)));
           callSiteId++;
@@ -674,13 +724,13 @@ namespace VC {
 
     private int macroCountForStratifiedInlining = 0;
     public Macro CreateNewMacro() {
-      string newName = "StratifiedInliningMacro@" + macroCountForStratifiedInlining.ToString();
+      string newName = "SIMacro@" + macroCountForStratifiedInlining.ToString();
       macroCountForStratifiedInlining++;
       return new Macro(Token.NoToken, newName, new List<Variable>(), new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "", Microsoft.Boogie.Type.Bool), false));
     }
     private int varCountForStratifiedInlining = 0;
     public VCExprVar CreateNewVar(Microsoft.Boogie.Type type) {
-      string newName = "StratifiedInliningVar@" + varCountForStratifiedInlining.ToString();
+      string newName = "SIV@" + varCountForStratifiedInlining.ToString();
       varCountForStratifiedInlining++;
       Constant newVar = new Constant(Token.NoToken, new TypedIdent(Token.NoToken, newName, type));
       prover.Context.DeclareConstant(newVar, false, null);
