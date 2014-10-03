@@ -163,7 +163,7 @@ namespace Microsoft.Boogie.SMTLib
     readonly List<string> proverErrors = new List<string>();
     readonly List<string> proverWarnings = new List<string>();
     readonly StringBuilder common = new StringBuilder();
-    TextWriter currentLogFile;
+    protected TextWriter currentLogFile;
     protected volatile ErrorHandler currentErrorHandler;
 
     private void FeedTypeDeclsToProver()
@@ -2102,9 +2102,16 @@ namespace Microsoft.Boogie.SMTLib
   {
       public SMTLibInterpolatingProcessTheoremProver(ProverOptions options, VCExpressionGenerator gen,
                                         SMTLibProverContext ctx)
-          : base(options, gen, ctx)
+          : base(AddInterpOption(options), gen, ctx)
       {
-          // anything else?
+
+      }
+
+      private static ProverOptions AddInterpOption(ProverOptions options)
+      {
+          var opts = (SMTLibProverOptions)options;
+          opts.AddSmtOption("produce-interpolants", "true");
+          return opts;
       }
 
       public override void AssertNamed(VCExpr vc, bool polarity, string name)
@@ -2232,6 +2239,7 @@ namespace Microsoft.Boogie.SMTLib
 
           vcStr = "(get-interpolant (and\r\n" + vcStr + "\r\n))";
           SendThisVC(vcStr);
+          if(currentLogFile != null) currentLogFile.Flush();
 
           List<SExpr> interpolantList;
           Outcome result2 = GetTreeInterpolantResponse(out interpolantList);
