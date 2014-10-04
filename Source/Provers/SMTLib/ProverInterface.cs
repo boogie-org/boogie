@@ -2111,6 +2111,8 @@ namespace Microsoft.Boogie.SMTLib
       {
           var opts = (SMTLibProverOptions)options;
           opts.AddSmtOption("produce-interpolants", "true");
+          if (CommandLineOptions.Clo.PrintFixedPoint == null)
+              CommandLineOptions.Clo.PrintFixedPoint = "itp.fixedpoint.bpl";
           return opts;
       }
 
@@ -2242,10 +2244,7 @@ namespace Microsoft.Boogie.SMTLib
           if(currentLogFile != null) currentLogFile.Flush();
 
           List<SExpr> interpolantList;
-          Outcome result2 = GetTreeInterpolantResponse(out interpolantList);
-
-          if (result2 != Outcome.Valid)
-              return null;
+          GetTreeInterpolantResponse(out interpolantList);
 
           Dictionary<string, VCExpr> bound = new Dictionary<string, VCExpr>();
           foreach (SExpr sexpr in interpolantList)
@@ -2257,10 +2256,8 @@ namespace Microsoft.Boogie.SMTLib
           return result;
       }
 
-      private Outcome GetTreeInterpolantResponse(out List<SExpr> interpolantList)
+      private void GetTreeInterpolantResponse(out List<SExpr> interpolantList)
       {
-          var result = Outcome.Undetermined;
-          var wasUnknown = false;
           interpolantList = new List<SExpr>();
 
           Process.Ping();
@@ -2270,69 +2267,12 @@ namespace Microsoft.Boogie.SMTLib
               var resp = Process.GetProverResponse();
               if (resp == null || Process.IsPong(resp))
                   break;
-
-              switch (resp.Name)
-              {
-                  case "unsat":
-                      result = Outcome.Valid;
-                      break;
-                  case "sat":
-                      result = Outcome.Invalid;
-                      break;
-                  case "unknown":
-                      result = Outcome.Invalid;
-                      wasUnknown = true;
-                      break;
-                  default:
-                      if (result == Outcome.Valid)
-                      {
-                          SExpr interpolant = resp as SExpr;
-                          interpolantList.Add(interpolant);
-                          continue;
-                          //return result;
-                      }
-                      HandleProverError("Unexpected prover response: " + resp.ToString());
-                      break;
-              }
+              
+              SExpr interpolant = resp as SExpr;
+              if(interpolant == null)
+                  HandleProverError("Unexpected prover response: got null for interpolant!");
+              interpolantList.Add(interpolant);
           }
-
-          if (wasUnknown)
-          {
-              SendThisVC("(get-info :reason-unknown)");
-              Process.Ping();
-
-              while (true)
-              {
-                  var resp = Process.GetProverResponse();
-                  if (resp == null || Process.IsPong(resp))
-                      break;
-
-                  if (resp.ArgCount == 1 && resp.Name == ":reason-unknown")
-                  {
-                      switch (resp[0].Name)
-                      {
-                          case "memout":
-                              currentErrorHandler.OnResourceExceeded("memory");
-                              result = Outcome.OutOfMemory;
-                              Process.NeedsRestart = true;
-                              break;
-                          case "timeout":
-                          case "canceled":
-                              currentErrorHandler.OnResourceExceeded("timeout");
-                              result = Outcome.TimeOut;
-                              break;
-                          default:
-                              break;
-                      }
-                  }
-                  else
-                  {
-                      HandleProverError("Unexpected prover response (getting info about 'unknown' response): " + resp.ToString());
-                  }
-              }
-          }
-
-          return result;
       }
   }
 
