@@ -14,6 +14,9 @@ using System.Linq;
 
 namespace Microsoft.Boogie {
   public class Duplicator : StandardVisitor {
+    // Used to resolve GotoCmd labelTargets by VisitImplementation after duplication
+    private Dictionary<Block,Block> BlockDuplicationMapping = null;
+
     public override Absy Visit(Absy node) {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Absy>() != null);
@@ -70,7 +73,12 @@ namespace Microsoft.Boogie {
     public override Block VisitBlock(Block node) {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Block>() != null);
-      return base.VisitBlock((Block)node.Clone());
+      var newBlock = base.VisitBlock((Block) node.Clone());
+
+      if (BlockDuplicationMapping != null)
+        BlockDuplicationMapping[node] = newBlock;
+
+      return newBlock;
     }
     public override BvConcatExpr VisitBvConcatExpr (BvConcatExpr node) {
       Contract.Ensures(Contract.Result<BvConcatExpr>() != null);
@@ -220,7 +228,10 @@ namespace Microsoft.Boogie {
     public override GotoCmd VisitGotoCmd(GotoCmd node) {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<GotoCmd>() != null);
-      return base.VisitGotoCmd((GotoCmd)node.Clone());
+      // NOTE: This doesn't duplicate the labelTarget basic blocks
+      // or resolve them to the new blocks
+      // VisitImplementation() and VisitBlock() handle this
+      return base.VisitGotoCmd( (GotoCmd)node.Clone());
     }
     public override Cmd VisitHavocCmd(HavocCmd node) {
       //Contract.Requires(node != null);
@@ -240,7 +251,26 @@ namespace Microsoft.Boogie {
     public override Implementation VisitImplementation(Implementation node) {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Implementation>() != null);
-      return base.VisitImplementation((Implementation)node.Clone());
+      BlockDuplicationMapping = new Dictionary<Block, Block>();
+
+      var impl = base.VisitImplementation((Implementation)node.Clone());
+
+      // The GotoCmds and blocks have now been duplicated.
+      // Resolve GotoCmd targets to the duplicated blocks
+      foreach (GotoCmd gotoCmd in impl.Blocks.Select( bb => bb.TransferCmd).OfType<GotoCmd>()) {
+        var newLabelTargets = new List<Block>();
+        var newLabelNames = new List<string>();
+        for (int index = 0; index < gotoCmd.labelTargets.Count; ++index) {
+          var newBlock = BlockDuplicationMapping[gotoCmd.labelTargets[index]];
+          newLabelTargets.Add(newBlock);
+          newLabelNames.Add(newBlock.Label);
+        }
+        gotoCmd.labelTargets = newLabelTargets;
+        gotoCmd.labelNames = newLabelNames;
+      }
+      BlockDuplicationMapping.Clear();
+
+      return impl;
     }
     public override LiteralExpr VisitLiteralExpr(LiteralExpr node) {
       //Contract.Requires(node != null);

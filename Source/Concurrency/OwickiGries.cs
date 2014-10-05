@@ -19,7 +19,6 @@ namespace Microsoft.Boogie
         Implementation enclosingImpl;
         public Dictionary<Procedure, Procedure> procMap; /* Original -> Duplicate */
         public Dictionary<Absy, Absy> absyMap; /* Duplicate -> Original */
-        public Dictionary<Block, Block> blockMap; /* Original -> Duplicate */
         public Dictionary<Implementation, Implementation> implMap; /* Duplicate -> Original */
         public HashSet<Procedure> yieldingProcs;
         public List<Implementation> impls;
@@ -32,7 +31,6 @@ namespace Microsoft.Boogie
             this.enclosingImpl = null;
             this.procMap = new Dictionary<Procedure, Procedure>();
             this.absyMap = new Dictionary<Absy, Absy>();
-            this.blockMap = new Dictionary<Block, Block>();
             this.implMap = new Dictionary<Implementation, Implementation>();
             this.yieldingProcs = new HashSet<Procedure>();
             this.impls = new List<Implementation>();
@@ -124,7 +122,6 @@ namespace Microsoft.Boogie
         public override Block VisitBlock(Block node)
         {
             Block block = base.VisitBlock(node);
-            blockMap[node] = block;
             absyMap[block] = node;
             return block;
         }
@@ -215,21 +212,6 @@ namespace Microsoft.Boogie
             implMap[impl] = node;
             impl.LocVars.Add(dummyLocalVar);
             impl.Name = impl.Proc.Name;
-            foreach (Block block in impl.Blocks)
-            {
-                GotoCmd gotoCmd = block.TransferCmd as GotoCmd;
-                if (gotoCmd == null) continue;
-                List<Block> labelTargets = new List<Block>();
-                List<string> labelNames = new List<string>();
-                foreach (Block x in gotoCmd.labelTargets)
-                {
-                    Block y = (Block)blockMap[x];
-                    labelTargets.Add(y);
-                    labelNames.Add(y.Label);
-                }
-                gotoCmd.labelTargets = labelTargets;
-                gotoCmd.labelNames = labelNames;
-            }
             return impl;
         }
 
