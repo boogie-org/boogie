@@ -14,8 +14,6 @@ using System.Linq;
 
 namespace Microsoft.Boogie {
   public class Duplicator : StandardVisitor {
-    // Used to resolve GotoCmd labelTargets by VisitImplementation after duplication
-    private Dictionary<Block,Block> BlockDuplicationMapping = null;
 
     public override Absy Visit(Absy node) {
       //Contract.Requires(node != null);
@@ -73,12 +71,7 @@ namespace Microsoft.Boogie {
     public override Block VisitBlock(Block node) {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Block>() != null);
-      var newBlock = base.VisitBlock((Block) node.Clone());
-
-      if (BlockDuplicationMapping != null)
-        BlockDuplicationMapping[node] = newBlock;
-
-      return newBlock;
+      return base.VisitBlock((Block) node.Clone());
     }
     public override BvConcatExpr VisitBvConcatExpr (BvConcatExpr node) {
       Contract.Ensures(Contract.Result<BvConcatExpr>() != null);
@@ -251,9 +244,14 @@ namespace Microsoft.Boogie {
     public override Implementation VisitImplementation(Implementation node) {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Implementation>() != null);
-      BlockDuplicationMapping = new Dictionary<Block, Block>();
-
       var impl = base.VisitImplementation((Implementation)node.Clone());
+      var blockDuplicationMapping = new Dictionary<Block, Block>();
+
+      // Compute the mapping between the blocks of the old implementation (node)
+      // and the new implementation (impl).
+      foreach (var blockPair in node.Blocks.Zip(impl.Blocks)) {
+        blockDuplicationMapping.Add(blockPair.Item1, blockPair.Item2);
+      }
 
       // The GotoCmds and blocks have now been duplicated.
       // Resolve GotoCmd targets to the duplicated blocks
@@ -261,14 +259,13 @@ namespace Microsoft.Boogie {
         var newLabelTargets = new List<Block>();
         var newLabelNames = new List<string>();
         for (int index = 0; index < gotoCmd.labelTargets.Count; ++index) {
-          var newBlock = BlockDuplicationMapping[gotoCmd.labelTargets[index]];
+          var newBlock = blockDuplicationMapping[gotoCmd.labelTargets[index]];
           newLabelTargets.Add(newBlock);
           newLabelNames.Add(newBlock.Label);
         }
         gotoCmd.labelTargets = newLabelTargets;
         gotoCmd.labelNames = newLabelNames;
       }
-      BlockDuplicationMapping.Clear();
 
       return impl;
     }
