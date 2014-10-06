@@ -14,6 +14,10 @@ using System.Linq;
 
 namespace Microsoft.Boogie {
   public class Duplicator : StandardVisitor {
+    // This is used to ensure that Procedures get duplicated only once
+    // and that Implementation.Proc is resolved to the correct duplicated
+    // Procedure.
+    private Dictionary<Procedure,Procedure> OldToNewProcedureMap = null;
 
     public override Absy Visit(Absy node) {
       //Contract.Requires(node != null);
@@ -164,7 +168,24 @@ namespace Microsoft.Boogie {
     public override List<Declaration/*!*/>/*!*/ VisitDeclarationList(List<Declaration/*!*/>/*!*/ declarationList) {
       //Contract.Requires(cce.NonNullElements(declarationList));
       Contract.Ensures(cce.NonNullElements(Contract.Result<List<Declaration>>()));
-      return base.VisitDeclarationList(declarationList);
+
+      // For Implementation.Proc to resolve correctly to duplicated Procedures
+      // we need to visit the procedures first
+      for (int i = 0, n = declarationList.Count; i < n; i++) {
+        if (!( declarationList[i] is Procedure ))
+          continue;
+
+        declarationList[i] = cce.NonNull((Declaration) this.Visit(declarationList[i]));
+      }
+
+      // Now visit everything else
+      for (int i = 0, n = declarationList.Count; i < n; i++) {
+        if (declarationList[i] is Procedure)
+          continue;
+
+        declarationList[i] = cce.NonNull((Declaration) this.Visit(declarationList[i]));
+      }
+      return declarationList;
     }
     public override DeclWithFormals VisitDeclWithFormals(DeclWithFormals node) {
       //Contract.Requires(node != null);
@@ -313,12 +334,28 @@ namespace Microsoft.Boogie {
     public override Procedure VisitProcedure(Procedure node) {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Procedure>() != null);
-      return base.VisitProcedure((Procedure)node.Clone());
+      Procedure newProcedure = null;
+      if (OldToNewProcedureMap != null && OldToNewProcedureMap.ContainsKey(node)) {
+        newProcedure = OldToNewProcedureMap[node];
+      } else {
+        newProcedure = base.VisitProcedure((Procedure) node.Clone());
+        if (OldToNewProcedureMap != null)
+          OldToNewProcedureMap[node] = newProcedure;
+      }
+      return newProcedure;
     }
     public override Program VisitProgram(Program node) {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Program>() != null);
-      return base.VisitProgram((Program)node.Clone());
+
+      // If cloning an entire program we need to ensure that
+      // Implementation.Proc gets resolved to the right Procedure
+      // (i.e. we don't duplicate Procedure twice).
+      // The map below is used to achieve this.
+      OldToNewProcedureMap = new Dictionary<Procedure, Procedure>();
+      var program = base.VisitProgram((Program)node.Clone());
+      OldToNewProcedureMap = null; // This Visitor could be used for other things later so remove the map.
+      return program;
     }
     public override QKeyValue VisitQKeyValue(QKeyValue node) {
       //Contract.Requires(node != null);
