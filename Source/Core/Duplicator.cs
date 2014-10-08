@@ -350,12 +350,21 @@ namespace Microsoft.Boogie {
 
       // If cloning an entire program we need to ensure that
       // Implementation.Proc gets resolved to the right Procedure
-      // (i.e. we don't duplicate Procedure twice).
+      // (i.e. we don't duplicate Procedure twice) and CallCmds
+      // call the right Procedure.
       // The map below is used to achieve this.
       OldToNewProcedureMap = new Dictionary<Procedure, Procedure>();
-      var program = base.VisitProgram((Program)node.Clone());
+      var newProgram = base.VisitProgram((Program)node.Clone());
+
+      // We need to make sure that CallCmds get resolved to call Procedures we duplicated
+      // instead of pointing to procedures in the old program
+      var callCmds = newProgram.Blocks().SelectMany(b => b.Cmds).OfType<CallCmd>();
+      foreach (var callCmd in callCmds) {
+          callCmd.Proc = OldToNewProcedureMap[callCmd.Proc];
+      }
+
       OldToNewProcedureMap = null; // This Visitor could be used for other things later so remove the map.
-      return program;
+      return newProgram;
     }
     public override QKeyValue VisitQKeyValue(QKeyValue node) {
       //Contract.Requires(node != null);
