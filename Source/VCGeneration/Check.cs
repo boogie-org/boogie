@@ -498,7 +498,7 @@ namespace Microsoft.Boogie {
     
     public virtual Outcome CheckRPFP(string descriptiveName, RPFP vc, ErrorHandler handler,
                                      out RPFP.Node cex,
-                                     Dictionary<int, Dictionary<string, string>> varSubst)
+                                     Dictionary<int, Dictionary<string, string>> varSubst, Dictionary<string,int> extra_bound = null)
     {
         throw new System.NotImplementedException();
     }

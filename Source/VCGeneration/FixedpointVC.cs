@@ -1568,6 +1568,7 @@ namespace Microsoft.Boogie
             RPFP.Node cex;
             varSubst = new Dictionary<int,Dictionary<string,string>>();
 
+#if false
             int origRecursionBound = CommandLineOptions.Clo.RecursionBound;
             if (CommandLineOptions.Clo.RecursionBound > 0 && extraRecBound != null)
             {
@@ -1579,12 +1580,15 @@ namespace Microsoft.Boogie
                 }
                 CommandLineOptions.Clo.RecursionBound += maxExtra;
             }
+#endif
             
             ProverInterface.Outcome outcome =
-                 checker.TheoremProver.CheckRPFP("name", rpfp, handler, out cex, varSubst);
+                 checker.TheoremProver.CheckRPFP("name", rpfp, handler, out cex, varSubst, extraRecBound);
             cexroot = cex;
 
+#if false
             CommandLineOptions.Clo.RecursionBound = origRecursionBound;
+#endif
           
             Console.WriteLine("solve: {0}s", (DateTime.Now - start).TotalSeconds);
             
