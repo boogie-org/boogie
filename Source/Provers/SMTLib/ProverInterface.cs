@@ -895,7 +895,8 @@ namespace Microsoft.Boogie.SMTLib
 		
     public override Outcome CheckRPFP(string descriptiveName, RPFP _rpfp, ErrorHandler handler, 
                                       out RPFP.Node cex,
-                                      Dictionary<int,Dictionary<string,string>> varSubst)
+                                      Dictionary<int, Dictionary<string, string>> varSubst,
+                                      Dictionary<string, int> extra_bound)
     {
         //Contract.Requires(descriptiveName != null);
         //Contract.Requires(vc != null);
@@ -923,9 +924,15 @@ namespace Microsoft.Boogie.SMTLib
 
         LineariserOptions.Default.LabelsBelowQuantifiers = true;
         List<string> ruleStrings = new List<string>();
+        var recursion_bound = CommandLineOptions.Clo.RecursionBound;
         foreach (var edge in rpfp.edges)
         {
-            string ruleString = "(rule " + QuantifiedVCExpr2String(rpfp.GetRule(edge)) + "\n)";
+            string node_name = (edge.Parent.Name as VCExprBoogieFunctionOp).Func.Name;
+            string rule_name = "rule_" + edge.number.ToString();
+            string rec_bound = "";
+            if(extra_bound != null && extra_bound.ContainsKey(node_name))
+                    rec_bound = (recursion_bound + extra_bound[node_name]).ToString();
+            string ruleString = "(rule " + QuantifiedVCExpr2String(rpfp.GetRule(edge)) + " " + rule_name + " " + rec_bound + "\n)";
             ruleStrings.Add(ruleString);
         }
         string queryString = "(query " + QuantifiedVCExpr2String(rpfp.GetQuery()) + "\n   :engine duality\n  :print-certificate true\n";
