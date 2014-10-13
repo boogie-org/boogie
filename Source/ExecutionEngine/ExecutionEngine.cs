@@ -999,33 +999,33 @@ namespace Microsoft.Boogie
       {
         program.FreezeTopLevelDeclarations();
         programCache.Set(programId, program, policy);
+      }
 
-        if (CommandLineOptions.Clo.TraceCaching)
+      if (1 <= CommandLineOptions.Clo.VerifySnapshots && CommandLineOptions.Clo.TraceCaching)
+      {
+        Console.Out.WriteLine("");
+        Console.Out.WriteLine("<trace caching>");
+
+        var end = DateTime.UtcNow;
+        if (TimePerRequest.Count == 0)
         {
-          Console.Out.WriteLine("");
-          Console.Out.WriteLine("<trace caching>");
-
-          var end = DateTime.UtcNow;
-          if (TimePerRequest.Count == 0)
-          {
-            FirstRequestStart = start;
-          }
-          TimePerRequest[requestId] = end.Subtract(start);
-
-          Console.Out.WriteLine(CachedVerificationResultInjector.Statistics.Output(true));
-
-          Console.Out.WriteLine("Times per request as CSV:");
-          Console.Out.WriteLine("Request ID, Time (ms)");
-          foreach (var kv in TimePerRequest.OrderBy(kv => kv.Key))
-          {
-            Console.Out.WriteLine("{0}, {1:F0}", kv.Key, kv.Value.TotalMilliseconds);
-          }
-
-          Console.Out.WriteLine("");
-          Console.Out.WriteLine("Total time (ms) since first request: {0:F0}", end.Subtract(FirstRequestStart).TotalMilliseconds);
-
-          Console.Out.WriteLine("</trace caching>");
+          FirstRequestStart = start;
         }
+        TimePerRequest[requestId] = end.Subtract(start);
+
+        Console.Out.WriteLine(CachedVerificationResultInjector.Statistics.Output(true));
+
+        Console.Out.WriteLine("Times per request as CSV:");
+        Console.Out.WriteLine("Request ID, Time (ms)");
+        foreach (var kv in TimePerRequest.OrderBy(kv => kv.Key))
+        {
+          Console.Out.WriteLine("{0}, {1:F0}", kv.Key, kv.Value.TotalMilliseconds);
+        }
+
+        Console.Out.WriteLine("");
+        Console.Out.WriteLine("Total time (ms) since first request: {0:F0}", end.Subtract(FirstRequestStart).TotalMilliseconds);
+
+        Console.Out.WriteLine("</trace caching>");
       }
 
       #endregion
