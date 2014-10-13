@@ -1482,7 +1482,10 @@ namespace VC {
           Contract.Assert(ac.IncarnationMap == null);
           ac.IncarnationMap = (Dictionary<Variable, Expr>)cce.NonNull(new Dictionary<Variable, Expr>(incarnationMap));
 
-          if (currentImplementation != null
+          var subsumption = Wlp.Subsumption(ac);
+          var alwaysUseSubsumption = subsumption == CommandLineOptions.SubsumptionOption.Always;
+          if (alwaysUseSubsumption
+              && currentImplementation != null
               && ((currentImplementation.NoErrorsInCachedSnapshot
                    && currentImplementation.InjectedAssumptionVariables != null
                    && 2 <= currentImplementation.InjectedAssumptionVariables.Count)
@@ -1510,11 +1513,13 @@ namespace VC {
                    && !currentImplementation.ErrorChecksumToCachedError.ContainsKey(ac.Checksum)
                    && (currentImplementation.InjectedAssumptionVariables == null || !currentImplementation.InjectedAssumptionVariables.Any(v => incarnationMap.ContainsKey(v))))
           {
-            // Turn it into an assume statement.
-            pc = new AssumeCmd(ac.tok, copy);
-            pc.Attributes = new QKeyValue(Token.NoToken, "verified_assertion", new List<object>(), pc.Attributes);
-            // TODO(wuestholz): Should we uncomment this?
-            // dropCmd = QKeyValue.FindIntAttribute(ac.Attributes, "subsumption", -1) == 0;
+            if (alwaysUseSubsumption)
+            {
+              // Turn it into an assume statement.
+              pc = new AssumeCmd(ac.tok, copy);
+              pc.Attributes = new QKeyValue(Token.NoToken, "verified_assertion", new List<object>(), pc.Attributes);
+            }
+            dropCmd = subsumption == CommandLineOptions.SubsumptionOption.Never;
           }
           else if (currentImplementation != null
                    && currentImplementation.AnyErrorsInCachedSnapshot
@@ -1523,10 +1528,17 @@ namespace VC {
                    && currentImplementation.ErrorChecksumToCachedError.ContainsKey(ac.Checksum)
                    && (currentImplementation.InjectedAssumptionVariables == null || !currentImplementation.InjectedAssumptionVariables.Any(v => incarnationMap.ContainsKey(v))))
           {
-            // Turn it into an assume statement.
-            pc = new AssumeCmd(ac.tok, copy);
-            pc.Attributes = new QKeyValue(Token.NoToken, "recycled_failing_assertion", new List<object>(), pc.Attributes);
-            currentImplementation.AddRecycledFailingAssertion(ac);
+            if (alwaysUseSubsumption)
+            {
+              // Turn it into an assume statement.
+              pc = new AssumeCmd(ac.tok, copy);
+              pc.Attributes = new QKeyValue(Token.NoToken, "recycled_failing_assertion", new List<object>(), pc.Attributes);
+            }
+            dropCmd = subsumption == CommandLineOptions.SubsumptionOption.Never;
+            if (dropCmd || alwaysUseSubsumption)
+            {
+              currentImplementation.AddRecycledFailingAssertion(ac);
+            }
           }
         }
         else if (pc is AssumeCmd
