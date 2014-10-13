@@ -37,7 +37,6 @@ namespace Microsoft.Boogie
     public string Output(bool printTime = false)
     {
       var wr = new StringWriter();
-      wr.WriteLine("");
       wr.WriteLine("Cached verification result injector statistics as CSV:");
       if (printTime)
       {
@@ -47,11 +46,11 @@ namespace Microsoft.Boogie
       {
         wr.WriteLine("Request ID, Rewritten Implementations, Low Priority Implementations, Medium Priority Implementations, High Priority Implementations, Skipped Implementations, Implementations");
       }
-      foreach (var kv in runs)
+      foreach (var kv in runs.OrderBy(kv => kv.Key))
       {
         if (printTime)
         {
-          wr.WriteLine("{0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}", kv.Key, kv.Value.End.Subtract(kv.Value.Start).TotalMilliseconds, kv.Value.RewrittenImplementationCount, kv.Value.LowPriorityImplementationCount, kv.Value.MediumPriorityImplementationCount, kv.Value.HighPriorityImplementationCount, kv.Value.SkippedImplementationCount, kv.Value.ImplementationCount);
+          wr.WriteLine("{0}, {1:F0}, {2}, {3}, {4}, {5}, {6}, {7}", kv.Key, kv.Value.End.Subtract(kv.Value.Start).TotalMilliseconds, kv.Value.RewrittenImplementationCount, kv.Value.LowPriorityImplementationCount, kv.Value.MediumPriorityImplementationCount, kv.Value.HighPriorityImplementationCount, kv.Value.SkippedImplementationCount, kv.Value.ImplementationCount);
         }
         else
         {

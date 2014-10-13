@@ -417,6 +417,10 @@ namespace Microsoft.Boogie
     
     static List<Checker> Checkers = new List<Checker>();
 
+    static DateTime FirstRequestStart;
+
+    static readonly ConcurrentDictionary<string, TimeSpan> TimePerRequest = new ConcurrentDictionary<string, TimeSpan>();
+
     static readonly ConcurrentDictionary<string, CancellationTokenSource> ImplIdToCancellationTokenSource = new ConcurrentDictionary<string, CancellationTokenSource>();
 
     static readonly ConcurrentDictionary<string, CancellationTokenSource> RequestIdToCancellationTokenSource = new ConcurrentDictionary<string, CancellationTokenSource>();
@@ -810,6 +814,8 @@ namespace Microsoft.Boogie
         requestId = FreshRequestId();
       }
 
+      var start = DateTime.UtcNow;
+
       #region Do some pre-abstract-interpretation preprocessing on the program
       // Doing lambda expansion before abstract interpretation means that the abstract interpreter
       // never needs to see any lambda expressions.  (On the other hand, if it were useful for it
@@ -993,6 +999,33 @@ namespace Microsoft.Boogie
       {
         program.FreezeTopLevelDeclarations();
         programCache.Set(programId, program, policy);
+
+        if (CommandLineOptions.Clo.TraceCaching)
+        {
+          Console.Out.WriteLine("");
+          Console.Out.WriteLine("<trace caching>");
+
+          var end = DateTime.UtcNow;
+          if (TimePerRequest.Count == 0)
+          {
+            FirstRequestStart = start;
+          }
+          TimePerRequest[requestId] = end.Subtract(start);
+
+          Console.Out.WriteLine(CachedVerificationResultInjector.Statistics.Output(true));
+
+          Console.Out.WriteLine("Times per request as CSV:");
+          Console.Out.WriteLine("Request ID, Time (ms)");
+          foreach (var kv in TimePerRequest.OrderBy(kv => kv.Key))
+          {
+            Console.Out.WriteLine("{0}, {1:F0}", kv.Key, kv.Value.TotalMilliseconds);
+          }
+
+          Console.Out.WriteLine("");
+          Console.Out.WriteLine("Total time (ms) since first request: {0:F0}", end.Subtract(FirstRequestStart).TotalMilliseconds);
+
+          Console.Out.WriteLine("</trace caching>");
+        }
       }
 
       #endregion
@@ -1393,11 +1426,6 @@ namespace Microsoft.Boogie
       UpdateStatistics(stats, outcome, errors);
 
       printer.Inform(timeIndication + OutcomeIndication(outcome, errors), tw);
-
-      if (1 < CommandLineOptions.Clo.VerifySnapshots && CommandLineOptions.Clo.Trace)
-      {
-        printer.Inform(CachedVerificationResultInjector.Statistics.Output(CommandLineOptions.Clo.TraceTimes), tw);
-      }
 
       ReportOutcome(outcome, er, implName, implTok, requestId, tw, timeLimit);
     }
