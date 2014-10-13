@@ -1475,7 +1475,7 @@ namespace VC {
           }
         }
         Contract.Assert(copy != null);
-        var isAssumePre = false;
+        var dropCmd = false;
         if (pc is AssertCmd) {
           var ac = (AssertCmd)pc;
           ac.OrigExpr = ac.Expr;
@@ -1513,6 +1513,8 @@ namespace VC {
             // Turn it into an assume statement.
             pc = new AssumeCmd(ac.tok, copy);
             pc.Attributes = new QKeyValue(Token.NoToken, "verified_assertion", new List<object>(), pc.Attributes);
+            // TODO(wuestholz): Should we uncomment this?
+            // dropCmd = QKeyValue.FindIntAttribute(ac.Attributes, "subsumption", -1) == 0;
           }
           else if (currentImplementation != null
                    && currentImplementation.AnyErrorsInCachedSnapshot
@@ -1533,10 +1535,10 @@ namespace VC {
                  && currentImplementation.InjectedAssumptionVariables.Any())
         {
           copy = LiteralExpr.Imp(currentImplementation.ConjunctionOfInjectedAssumptionVariables(incarnationMap), copy);
-          isAssumePre = true;
+          dropCmd = true;
         }
         pc.Expr = copy;
-        if (!isAssumePre
+        if (!dropCmd
             || currentImplementation.NoErrorsInCachedSnapshot
             || (currentImplementation.AnyErrorsInCachedSnapshot
                 && pc.Checksum != null
