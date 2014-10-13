@@ -398,10 +398,25 @@ namespace Microsoft.Boogie
 
     static int autoRequestIdCount;
 
+    static readonly string AutoRequestIdPrefix = "auto_request_id_";
+
     public static string FreshRequestId()
     {
       var id = Interlocked.Increment(ref autoRequestIdCount);
-      return string.Format("auto_request_id_{0}", id);
+      return AutoRequestIdPrefix + id;
+    }
+
+    public static int AutoRequestId(string id)
+    {
+      if (id.StartsWith(AutoRequestIdPrefix))
+      {
+        int result;
+        if (int.TryParse(id.Substring(AutoRequestIdPrefix.Length), out result))
+        {
+          return result;
+        }
+      }
+      return -1;
     }
 
     public readonly static VerificationResultCache Cache = new VerificationResultCache();
@@ -420,6 +435,7 @@ namespace Microsoft.Boogie
     static DateTime FirstRequestStart;
 
     static readonly ConcurrentDictionary<string, TimeSpan> TimePerRequest = new ConcurrentDictionary<string, TimeSpan>();
+    static readonly ConcurrentDictionary<string, PipelineStatistics> StatisticsPerRequest = new ConcurrentDictionary<string, PipelineStatistics>();
 
     static readonly ConcurrentDictionary<string, CancellationTokenSource> ImplIdToCancellationTokenSource = new ConcurrentDictionary<string, CancellationTokenSource>();
 
@@ -1012,14 +1028,16 @@ namespace Microsoft.Boogie
           FirstRequestStart = start;
         }
         TimePerRequest[requestId] = end.Subtract(start);
+        StatisticsPerRequest[requestId] = stats;
 
         Console.Out.WriteLine(CachedVerificationResultInjector.Statistics.Output(true));
 
-        Console.Out.WriteLine("Times per request as CSV:");
-        Console.Out.WriteLine("Request ID, Time (ms)");
-        foreach (var kv in TimePerRequest.OrderBy(kv => kv.Key))
+        Console.Out.WriteLine("Statistics per request as CSV:");
+        Console.Out.WriteLine("Request ID, Time (ms), Error, Inconclusive, Out of Memory, Timeout, Verified");
+        foreach (var kv in TimePerRequest.OrderBy(kv => ExecutionEngine.AutoRequestId(kv.Key)))
         {
-          Console.Out.WriteLine("{0}, {1:F0}", kv.Key, kv.Value.TotalMilliseconds);
+          var s = StatisticsPerRequest[kv.Key];
+          Console.Out.WriteLine("{0}, {1:F0}, {2}, {3}, {4}, {5}, {6}", kv.Key, kv.Value.TotalMilliseconds, s.ErrorCount, s.InconclusiveCount, s.OutOfMemoryCount, s.TimeoutCount, s.VerifiedCount);
         }
 
         Console.Out.WriteLine("");
