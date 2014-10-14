@@ -364,7 +364,7 @@ namespace Microsoft.Boogie {
       Contract.Invariant(0 <= PrintUnstructured && PrintUnstructured < 3);  // 0 = print only structured,  1 = both structured and unstructured,  2 = only unstructured
     }
 
-    public int VerifySnapshots = 0;
+    public int VerifySnapshots = -1;
     public bool VerifySeparately = false;
     public string PrintFile = null;
     public int PrintUnstructured = 0;

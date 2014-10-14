@@ -459,7 +459,7 @@ namespace Microsoft.Boogie
         return;
       }
 
-      if (0 < CommandLineOptions.Clo.VerifySnapshots && lookForSnapshots)
+      if (0 <= CommandLineOptions.Clo.VerifySnapshots && lookForSnapshots)
       {
         var snapshotsByVersion = LookForSnapshots(fileNames);
         foreach (var s in snapshotsByVersion)
