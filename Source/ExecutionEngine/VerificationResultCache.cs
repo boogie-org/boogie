@@ -183,7 +183,7 @@ namespace Microsoft.Boogie
 
     private static void SetErrorChecksumsInCachedSnapshot(Implementation implementation, VerificationResult result)
     {
-      if (result.Errors != null && result.Errors.Count < CommandLineOptions.Clo.ProverCCLimit)
+      if (result.Outcome == ConditionGeneration.Outcome.Errors && result.Errors != null && result.Errors.Count < CommandLineOptions.Clo.ProverCCLimit)
       {
         implementation.SetErrorChecksumToCachedError(result.Errors.Select(cex => new Tuple<byte[], object>(cex.Checksum, cex)));
       }
