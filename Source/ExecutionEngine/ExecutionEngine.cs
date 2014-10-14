@@ -1017,7 +1017,7 @@ namespace Microsoft.Boogie
         programCache.Set(programId, program, policy);
       }
 
-      if (1 <= CommandLineOptions.Clo.VerifySnapshots && CommandLineOptions.Clo.TraceCaching)
+      if (0 <= CommandLineOptions.Clo.VerifySnapshots && CommandLineOptions.Clo.TraceCaching)
       {
         Console.Out.WriteLine("");
         Console.Out.WriteLine("<trace caching>");

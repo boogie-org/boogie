@@ -272,12 +272,23 @@ namespace Microsoft.Boogie
 
     public static void Collect(IEnumerable<Axiom> axioms)
     {
+      var start = DateTime.UtcNow;
+
       var v = new OtherDefinitionAxiomsCollector();
       foreach (var a in axioms)
       {
         v.currentAxiom = a;
         v.VisitExpr(a.Expr);
         v.currentAxiom = null;
+      }
+
+      var end = DateTime.UtcNow;
+      if (CommandLineOptions.Clo.TraceCaching)
+      {
+        Console.Out.WriteLine("");
+        Console.Out.WriteLine("<trace caching>");
+        Console.Out.WriteLine("Collected other definition axioms within {0:F0} ms.", end.Subtract(start).TotalMilliseconds);
+        Console.Out.WriteLine("</trace caching>");
       }
     }
 
@@ -317,8 +328,19 @@ namespace Microsoft.Boogie
 
     public static void Collect(Program program)
     {
+      var start = DateTime.UtcNow;
+
       var dc = new DependencyCollector();
       dc.VisitProgram(program);
+
+      var end = DateTime.UtcNow;
+      if (CommandLineOptions.Clo.TraceCaching)
+      {
+        Console.Out.WriteLine("");
+        Console.Out.WriteLine("<trace caching>");
+        Console.Out.WriteLine("Collected dependencies within {0:F0} ms.", end.Subtract(start).TotalMilliseconds);
+        Console.Out.WriteLine("</trace caching>");
+      }
     }
 
     public static bool AllFunctionDependenciesAreDefinedAndUnchanged(Procedure oldProc, Program newProg)
