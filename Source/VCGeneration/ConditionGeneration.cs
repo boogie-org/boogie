@@ -1330,7 +1330,20 @@ namespace VC {
 
       currentImplementation = impl;
       currentTemporaryVariableForAssertions = null;
+
+      var start = DateTime.UtcNow;
+
       Dictionary<Variable, Expr> r = ConvertBlocks2PassiveCmd(impl.Blocks, impl.Proc.Modifies, mvInfo);
+      
+      var end = DateTime.UtcNow;
+      if (CommandLineOptions.Clo.TraceCaching)
+      {
+        Console.Out.WriteLine("");
+        Console.Out.WriteLine("<trace caching>");
+        Console.Out.WriteLine("Turned implementation into passive commands within {0:F0} ms.", end.Subtract(start).TotalMilliseconds);
+        Console.Out.WriteLine("</trace caching>");
+      }
+
       currentTemporaryVariableForAssertions = null;
       currentImplementation = null;
 
