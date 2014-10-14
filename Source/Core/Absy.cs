@@ -4074,7 +4074,7 @@ namespace Microsoft.Boogie {
     public override void Emit(TokenTextWriter stream, int level) {
       //Contract.Requires(stream != null);
       stream.WriteLine();
-      stream.WriteLine("{0};", Indent(level));
+      stream.WriteLine("{0};", Indent(stream.UseForComputingChecksums ? 0 : level));
       first.Emit(stream, level + 1);
       second.Emit(stream, level + 1);
     }
@@ -4099,7 +4099,7 @@ namespace Microsoft.Boogie {
     public override void Emit(TokenTextWriter stream, int level) {
       //Contract.Requires(stream != null);
       stream.WriteLine();
-      stream.WriteLine("{0}[]", Indent(level));
+      stream.WriteLine("{0}[]", Indent(stream.UseForComputingChecksums ? 0 : level));
       foreach (RE/*!*/ r in rs) {
         Contract.Assert(r != null);
         r.Emit(stream, level + 1);
