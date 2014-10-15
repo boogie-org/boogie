@@ -253,10 +253,7 @@ namespace Microsoft.Boogie
           var assumed = new AssignCmd(Token.NoToken, new List<AssignLhs> { lhs }, new List<Expr> { rhs });
 
           node.ExtendDesugaring(before, new List<Cmd> { assumed });
-        }
-        else
-        {
-          node.EmitDependencyChecksum = true;
+          node.ProcDependencyChecksumInPreviousSnapshot = oldProc.DependencyChecksum;
         }
       }
 
