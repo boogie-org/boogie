@@ -1650,9 +1650,10 @@ namespace VC {
             && assign.Lhss.Count == 1)
         {
           var identExpr = assign.Lhss[0].AsExpr as IdentifierExpr;
-          if (identExpr != null && identExpr.Decl != null && QKeyValue.FindBoolAttribute(identExpr.Decl.Attributes, "assumption"))
+          Expr incarnation;
+          if (identExpr != null && identExpr.Decl != null && QKeyValue.FindBoolAttribute(identExpr.Decl.Attributes, "assumption") && incarnationMap.TryGetValue(identExpr.Decl, out incarnation))
           {
-            passiveCmds.Add(new AssumeCmd(c.tok, new IdentifierExpr(Token.NoToken, identExpr.Decl)));
+            passiveCmds.Add(new AssumeCmd(c.tok, Expr.Not(incarnation)));
           }
         }
       }
