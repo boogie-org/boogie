@@ -189,7 +189,7 @@ namespace Microsoft.Boogie {
     /// The numbered meta data enumerable that looks like the Enumerable
     /// of a dictionary.
     /// </value>
-    public IEnumerable<KeyValuePair<int, Object>> NumberedMetaData
+    public IEnumerable<KeyValuePair<int, Object>> NumberedMetadata
     {
       get {
         if (InternalNumberedMetadata == null)
@@ -207,7 +207,7 @@ namespace Microsoft.Boogie {
     /// <returns>The stored metadata of type T</returns>
     /// <param name="index">The index of the metadata</param>
     /// <typeparam name="T">The type of the metadata object required</typeparam>
-    public T GetMetatdata<T>(int index) {
+    public T GetMetadata<T>(int index) {
       // We aren't using NumberedMetadataLock for speed. Perhaps we should be using it?
       if (InternalNumberedMetadata == null)
         throw new ArgumentOutOfRangeException();
@@ -4074,7 +4074,7 @@ namespace Microsoft.Boogie {
     public override void Emit(TokenTextWriter stream, int level) {
       //Contract.Requires(stream != null);
       stream.WriteLine();
-      stream.WriteLine("{0};", Indent(level));
+      stream.WriteLine("{0};", Indent(stream.UseForComputingChecksums ? 0 : level));
       first.Emit(stream, level + 1);
       second.Emit(stream, level + 1);
     }
@@ -4099,7 +4099,7 @@ namespace Microsoft.Boogie {
     public override void Emit(TokenTextWriter stream, int level) {
       //Contract.Requires(stream != null);
       stream.WriteLine();
-      stream.WriteLine("{0}[]", Indent(level));
+      stream.WriteLine("{0}[]", Indent(stream.UseForComputingChecksums ? 0 : level));
       foreach (RE/*!*/ r in rs) {
         Contract.Assert(r != null);
         r.Emit(stream, level + 1);

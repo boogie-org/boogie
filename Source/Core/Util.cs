@@ -313,7 +313,10 @@ namespace Microsoft.Boogie {
     }
 
     public void WriteIndent(int level) {
-      this.Write(Indent(level));
+      if (!UseForComputingChecksums)
+      {
+        this.Write(Indent(level));
+      }
     }
 
     public void Write(string text, params object[] args) {

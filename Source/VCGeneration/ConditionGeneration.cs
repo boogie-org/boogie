@@ -1330,7 +1330,20 @@ namespace VC {
 
       currentImplementation = impl;
       currentTemporaryVariableForAssertions = null;
+
+      var start = DateTime.UtcNow;
+
       Dictionary<Variable, Expr> r = ConvertBlocks2PassiveCmd(impl.Blocks, impl.Proc.Modifies, mvInfo);
+      
+      var end = DateTime.UtcNow;
+      if (CommandLineOptions.Clo.TraceCaching)
+      {
+        Console.Out.WriteLine("");
+        Console.Out.WriteLine("<trace caching>");
+        Console.Out.WriteLine("Turned implementation into passive commands within {0:F0} ms.", end.Subtract(start).TotalMilliseconds);
+        Console.Out.WriteLine("</trace caching>");
+      }
+
       currentTemporaryVariableForAssertions = null;
       currentImplementation = null;
 
@@ -1475,14 +1488,17 @@ namespace VC {
           }
         }
         Contract.Assert(copy != null);
-        var isAssumePre = false;
+        var dropCmd = false;
         if (pc is AssertCmd) {
           var ac = (AssertCmd)pc;
           ac.OrigExpr = ac.Expr;
           Contract.Assert(ac.IncarnationMap == null);
           ac.IncarnationMap = (Dictionary<Variable, Expr>)cce.NonNull(new Dictionary<Variable, Expr>(incarnationMap));
 
-          if (currentImplementation != null
+          var subsumption = Wlp.Subsumption(ac);
+          var alwaysUseSubsumption = subsumption == CommandLineOptions.SubsumptionOption.Always;
+          if (alwaysUseSubsumption
+              && currentImplementation != null
               && ((currentImplementation.NoErrorsInCachedSnapshot
                    && currentImplementation.InjectedAssumptionVariables != null
                    && 2 <= currentImplementation.InjectedAssumptionVariables.Count)
@@ -1510,9 +1526,13 @@ namespace VC {
                    && !currentImplementation.ErrorChecksumToCachedError.ContainsKey(ac.Checksum)
                    && (currentImplementation.InjectedAssumptionVariables == null || !currentImplementation.InjectedAssumptionVariables.Any(v => incarnationMap.ContainsKey(v))))
           {
-            // Turn it into an assume statement.
-            pc = new AssumeCmd(ac.tok, copy);
-            pc.Attributes = new QKeyValue(Token.NoToken, "verified_assertion", new List<object>(), pc.Attributes);
+            if (alwaysUseSubsumption)
+            {
+              // Turn it into an assume statement.
+              pc = new AssumeCmd(ac.tok, copy);
+              pc.Attributes = new QKeyValue(Token.NoToken, "verified_assertion", new List<object>(), pc.Attributes);
+            }
+            dropCmd = subsumption == CommandLineOptions.SubsumptionOption.Never;
           }
           else if (currentImplementation != null
                    && currentImplementation.AnyErrorsInCachedSnapshot
@@ -1521,10 +1541,17 @@ namespace VC {
                    && currentImplementation.ErrorChecksumToCachedError.ContainsKey(ac.Checksum)
                    && (currentImplementation.InjectedAssumptionVariables == null || !currentImplementation.InjectedAssumptionVariables.Any(v => incarnationMap.ContainsKey(v))))
           {
-            // Turn it into an assume statement.
-            pc = new AssumeCmd(ac.tok, copy);
-            pc.Attributes = new QKeyValue(Token.NoToken, "recycled_failing_assertion", new List<object>(), pc.Attributes);
-            currentImplementation.AddRecycledFailingAssertion(ac);
+            if (alwaysUseSubsumption)
+            {
+              // Turn it into an assume statement.
+              pc = new AssumeCmd(ac.tok, copy);
+              pc.Attributes = new QKeyValue(Token.NoToken, "recycled_failing_assertion", new List<object>(), pc.Attributes);
+            }
+            dropCmd = subsumption == CommandLineOptions.SubsumptionOption.Never;
+            if (dropCmd || alwaysUseSubsumption)
+            {
+              currentImplementation.AddRecycledFailingAssertion(ac);
+            }
           }
         }
         else if (pc is AssumeCmd
@@ -1533,10 +1560,10 @@ namespace VC {
                  && currentImplementation.InjectedAssumptionVariables.Any())
         {
           copy = LiteralExpr.Imp(currentImplementation.ConjunctionOfInjectedAssumptionVariables(incarnationMap), copy);
-          isAssumePre = true;
+          dropCmd = true;
         }
         pc.Expr = copy;
-        if (!isAssumePre
+        if (!dropCmd
             || currentImplementation.NoErrorsInCachedSnapshot
             || (currentImplementation.AnyErrorsInCachedSnapshot
                 && pc.Checksum != null

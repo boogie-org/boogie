@@ -364,7 +364,7 @@ namespace Microsoft.Boogie {
       Contract.Invariant(0 <= PrintUnstructured && PrintUnstructured < 3);  // 0 = print only structured,  1 = both structured and unstructured,  2 = only unstructured
     }
 
-    public int VerifySnapshots = 0;
+    public int VerifySnapshots = -1;
     public bool VerifySeparately = false;
     public string PrintFile = null;
     public int PrintUnstructured = 0;
@@ -389,6 +389,7 @@ namespace Microsoft.Boogie {
     public bool Trace = false;
     public bool TraceTimes = false;
     public bool TraceProofObligations = false;
+    public bool TraceCaching = false;
     public bool NoResolve = false;
     public bool NoTypecheck = false;
     public bool OverlookBoogieTypeErrors = false;
@@ -1392,6 +1393,7 @@ namespace Microsoft.Boogie {
               ps.CheckBooleanFlag("wait", ref Wait) ||
               ps.CheckBooleanFlag("trace", ref Trace) ||
               ps.CheckBooleanFlag("traceTimes", ref TraceTimes) ||
+              ps.CheckBooleanFlag("traceCaching", ref TraceCaching) ||
               ps.CheckBooleanFlag("tracePOs", ref TraceProofObligations) ||
               ps.CheckBooleanFlag("noResolve", ref NoResolve) ||
               ps.CheckBooleanFlag("noTypecheck", ref NoTypecheck) ||

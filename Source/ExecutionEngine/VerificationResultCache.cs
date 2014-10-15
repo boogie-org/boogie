@@ -37,25 +37,27 @@ namespace Microsoft.Boogie
     public string Output(bool printTime = false)
     {
       var wr = new StringWriter();
-      wr.WriteLine("");
-      wr.WriteLine("Cached verification result injector statistics as CSV:");
-      if (printTime)
+      if (runs.Any())
       {
-        wr.WriteLine("Request ID, Time (ms), Rewritten Implementations, Low Priority Implementations, Medium Priority Implementations, High Priority Implementations, Skipped Implementations, Implementations");
-      }
-      else
-      {
-        wr.WriteLine("Request ID, Rewritten Implementations, Low Priority Implementations, Medium Priority Implementations, High Priority Implementations, Skipped Implementations, Implementations");
-      }
-      foreach (var kv in runs)
-      {
+        wr.WriteLine("Cached verification result injector statistics as CSV:");
         if (printTime)
         {
-          wr.WriteLine("{0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}", kv.Key, kv.Value.End.Subtract(kv.Value.Start).TotalMilliseconds, kv.Value.RewrittenImplementationCount, kv.Value.LowPriorityImplementationCount, kv.Value.MediumPriorityImplementationCount, kv.Value.HighPriorityImplementationCount, kv.Value.SkippedImplementationCount, kv.Value.ImplementationCount);
+          wr.WriteLine("Request ID, Time (ms), Rewritten Implementations, Low Priority Implementations, Medium Priority Implementations, High Priority Implementations, Skipped Implementations, Implementations");
         }
         else
         {
-          wr.WriteLine("{0}, {1}, {2}, {3}, {4}, {5}, {6}", kv.Key, kv.Value.RewrittenImplementationCount, kv.Value.LowPriorityImplementationCount, kv.Value.MediumPriorityImplementationCount, kv.Value.HighPriorityImplementationCount, kv.Value.SkippedImplementationCount, kv.Value.ImplementationCount);
+          wr.WriteLine("Request ID, Rewritten Implementations, Low Priority Implementations, Medium Priority Implementations, High Priority Implementations, Skipped Implementations, Implementations");
+        }
+        foreach (var kv in runs.OrderBy(kv => ExecutionEngine.AutoRequestId(kv.Key)))
+        {
+          if (printTime)
+          {
+            wr.WriteLine("{0}, {1:F0}, {2}, {3}, {4}, {5}, {6}, {7}", kv.Key, kv.Value.End.Subtract(kv.Value.Start).TotalMilliseconds, kv.Value.RewrittenImplementationCount, kv.Value.LowPriorityImplementationCount, kv.Value.MediumPriorityImplementationCount, kv.Value.HighPriorityImplementationCount, kv.Value.SkippedImplementationCount, kv.Value.ImplementationCount);
+          }
+          else
+          {
+            wr.WriteLine("{0}, {1}, {2}, {3}, {4}, {5}, {6}", kv.Key, kv.Value.RewrittenImplementationCount, kv.Value.LowPriorityImplementationCount, kv.Value.MediumPriorityImplementationCount, kv.Value.HighPriorityImplementationCount, kv.Value.SkippedImplementationCount, kv.Value.ImplementationCount);
+          }
         }
       }
       return wr.ToString();
@@ -181,7 +183,7 @@ namespace Microsoft.Boogie
 
     private static void SetErrorChecksumsInCachedSnapshot(Implementation implementation, VerificationResult result)
     {
-      if (result.Errors != null && result.Errors.Count < CommandLineOptions.Clo.ProverCCLimit)
+      if (result.Outcome == ConditionGeneration.Outcome.Errors && result.Errors != null && result.Errors.Count < CommandLineOptions.Clo.ProverCCLimit)
       {
         implementation.SetErrorChecksumToCachedError(result.Errors.Select(cex => new Tuple<byte[], object>(cex.Checksum, cex)));
       }
@@ -270,12 +272,23 @@ namespace Microsoft.Boogie
 
     public static void Collect(IEnumerable<Axiom> axioms)
     {
+      var start = DateTime.UtcNow;
+
       var v = new OtherDefinitionAxiomsCollector();
       foreach (var a in axioms)
       {
         v.currentAxiom = a;
         v.VisitExpr(a.Expr);
         v.currentAxiom = null;
+      }
+
+      var end = DateTime.UtcNow;
+      if (CommandLineOptions.Clo.TraceCaching)
+      {
+        Console.Out.WriteLine("");
+        Console.Out.WriteLine("<trace caching>");
+        Console.Out.WriteLine("Collected other definition axioms within {0:F0} ms.", end.Subtract(start).TotalMilliseconds);
+        Console.Out.WriteLine("</trace caching>");
       }
     }
 
@@ -315,8 +328,19 @@ namespace Microsoft.Boogie
 
     public static void Collect(Program program)
     {
+      var start = DateTime.UtcNow;
+
       var dc = new DependencyCollector();
       dc.VisitProgram(program);
+
+      var end = DateTime.UtcNow;
+      if (CommandLineOptions.Clo.TraceCaching)
+      {
+        Console.Out.WriteLine("");
+        Console.Out.WriteLine("<trace caching>");
+        Console.Out.WriteLine("Collected dependencies within {0:F0} ms.", end.Subtract(start).TotalMilliseconds);
+        Console.Out.WriteLine("</trace caching>");
+      }
     }
 
     public static bool AllFunctionDependenciesAreDefinedAndUnchanged(Procedure oldProc, Program newProg)

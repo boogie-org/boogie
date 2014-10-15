@@ -398,10 +398,25 @@ namespace Microsoft.Boogie
 
     static int autoRequestIdCount;
 
+    static readonly string AutoRequestIdPrefix = "auto_request_id_";
+
     public static string FreshRequestId()
     {
       var id = Interlocked.Increment(ref autoRequestIdCount);
-      return string.Format("auto_request_id_{0}", id);
+      return AutoRequestIdPrefix + id;
+    }
+
+    public static int AutoRequestId(string id)
+    {
+      if (id.StartsWith(AutoRequestIdPrefix))
+      {
+        int result;
+        if (int.TryParse(id.Substring(AutoRequestIdPrefix.Length), out result))
+        {
+          return result;
+        }
+      }
+      return -1;
     }
 
     public readonly static VerificationResultCache Cache = new VerificationResultCache();
@@ -416,6 +431,11 @@ namespace Microsoft.Boogie
     }
     
     static List<Checker> Checkers = new List<Checker>();
+
+    static DateTime FirstRequestStart;
+
+    static readonly ConcurrentDictionary<string, TimeSpan> TimePerRequest = new ConcurrentDictionary<string, TimeSpan>();
+    static readonly ConcurrentDictionary<string, PipelineStatistics> StatisticsPerRequest = new ConcurrentDictionary<string, PipelineStatistics>();
 
     static readonly ConcurrentDictionary<string, CancellationTokenSource> ImplIdToCancellationTokenSource = new ConcurrentDictionary<string, CancellationTokenSource>();
 
@@ -439,7 +459,7 @@ namespace Microsoft.Boogie
         return;
       }
 
-      if (0 < CommandLineOptions.Clo.VerifySnapshots && lookForSnapshots)
+      if (0 <= CommandLineOptions.Clo.VerifySnapshots && lookForSnapshots)
       {
         var snapshotsByVersion = LookForSnapshots(fileNames);
         foreach (var s in snapshotsByVersion)
@@ -810,6 +830,8 @@ namespace Microsoft.Boogie
         requestId = FreshRequestId();
       }
 
+      var start = DateTime.UtcNow;
+
       #region Do some pre-abstract-interpretation preprocessing on the program
       // Doing lambda expansion before abstract interpretation means that the abstract interpreter
       // never needs to see any lambda expressions.  (On the other hand, if it were useful for it
@@ -993,6 +1015,35 @@ namespace Microsoft.Boogie
       {
         program.FreezeTopLevelDeclarations();
         programCache.Set(programId, program, policy);
+      }
+
+      if (0 <= CommandLineOptions.Clo.VerifySnapshots && CommandLineOptions.Clo.TraceCaching)
+      {
+        Console.Out.WriteLine("");
+        Console.Out.WriteLine("<trace caching>");
+
+        var end = DateTime.UtcNow;
+        if (TimePerRequest.Count == 0)
+        {
+          FirstRequestStart = start;
+        }
+        TimePerRequest[requestId] = end.Subtract(start);
+        StatisticsPerRequest[requestId] = stats;
+
+        Console.Out.WriteLine(CachedVerificationResultInjector.Statistics.Output(true));
+
+        Console.Out.WriteLine("Statistics per request as CSV:");
+        Console.Out.WriteLine("Request ID, Time (ms), Error, Inconclusive, Out of Memory, Timeout, Verified");
+        foreach (var kv in TimePerRequest.OrderBy(kv => ExecutionEngine.AutoRequestId(kv.Key)))
+        {
+          var s = StatisticsPerRequest[kv.Key];
+          Console.Out.WriteLine("{0}, {1:F0}, {2}, {3}, {4}, {5}, {6}", kv.Key, kv.Value.TotalMilliseconds, s.ErrorCount, s.InconclusiveCount, s.OutOfMemoryCount, s.TimeoutCount, s.VerifiedCount);
+        }
+
+        Console.Out.WriteLine("");
+        Console.Out.WriteLine("Total time (ms) since first request: {0:F0}", end.Subtract(FirstRequestStart).TotalMilliseconds);
+
+        Console.Out.WriteLine("</trace caching>");
       }
 
       #endregion
@@ -1393,11 +1444,6 @@ namespace Microsoft.Boogie
       UpdateStatistics(stats, outcome, errors);
 
       printer.Inform(timeIndication + OutcomeIndication(outcome, errors), tw);
-
-      if (1 < CommandLineOptions.Clo.VerifySnapshots && CommandLineOptions.Clo.Trace)
-      {
-        printer.Inform(CachedVerificationResultInjector.Statistics.Output(CommandLineOptions.Clo.TraceTimes), tw);
-      }
 
       ReportOutcome(outcome, er, implName, implTok, requestId, tw, timeLimit);
     }
