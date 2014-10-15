@@ -120,7 +120,7 @@ Boogie program verifier finished with 0 verified, 2 errors
 Snapshots19.v0.bpl(7,5): Error BP5001: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 1 error
-Snapshots19.v1.bpl(7,5): Error BP5001: This assertion might not hold.
+Snapshots19.v0.bpl(7,5): Error BP5001: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 1 error
 Snapshots20.v0.bpl(13,9): Error BP5001: This assertion might not hold.

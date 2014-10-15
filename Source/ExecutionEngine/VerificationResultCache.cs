@@ -223,9 +223,10 @@ namespace Microsoft.Boogie
         if (DependencyCollector.AllFunctionDependenciesAreDefinedAndUnchanged(oldProc, Program))
         {
           var before = new List<Cmd>();
-          if (oldProc.Requires.Any())
+          var pre = node.CheckedPrecondition(oldProc, Program);
+          if (pre != null)
           {
-            var pre = node.CheckedPrecondition(oldProc, Program);
+            
             var assume = new AssumeCmd(Token.NoToken, pre, new QKeyValue(Token.NoToken, "precondition_previous_snapshot", new List<object>(), null));
             before.Add(assume);
           }
@@ -241,7 +242,14 @@ namespace Microsoft.Boogie
                          new List<AssignLhs> { new SimpleAssignLhs(Token.NoToken, new IdentifierExpr(Token.NoToken, mPre)) },
                          new List<Expr> { new IdentifierExpr(Token.NoToken, m.Decl) }));
             var eq = LiteralExpr.Eq(new IdentifierExpr(Token.NoToken, mPre), new IdentifierExpr(Token.NoToken, m.Decl));
-            post = LiteralExpr.And(post, eq);
+            if (post == null)
+            {
+              post = eq;
+            }
+            else
+            {
+              post = LiteralExpr.And(post, eq);
+            }
           }
 
           if (post != null)

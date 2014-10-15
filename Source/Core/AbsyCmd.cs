@@ -2573,10 +2573,6 @@ namespace Microsoft.Boogie {
           result = c;
         }
       }
-      if (result == null)
-      {
-        result = new LiteralExpr(Token.NoToken, true);
-      }
       return result;
     }
 
