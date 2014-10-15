@@ -222,12 +222,6 @@ namespace Microsoft.Boogie
       {
         if (DependencyCollector.AllFunctionDependenciesAreDefinedAndUnchanged(oldProc, Program))
         {
-          var lv = new LocalVariable(Token.NoToken,
-            new TypedIdent(Token.NoToken, string.Format("a##post##{0}", FreshAssumptionVariableName), Type.Bool),
-            new QKeyValue(Token.NoToken, "assumption", new List<object>(), null));
-          node.AssignedAssumptionVariable = lv;
-          currentImplementation.InjectAssumptionVariable(lv);
-
           var before = new List<Cmd>();
           if (oldProc.Requires.Any())
           {
@@ -236,6 +230,7 @@ namespace Microsoft.Boogie
             before.Add(assume);
           }
 
+          var after = new List<Cmd>();
           var post = node.Postcondition(oldProc, Program);
           var mods = node.UnmodifiedBefore(oldProc);
           foreach (var m in mods)
@@ -248,11 +243,20 @@ namespace Microsoft.Boogie
             var eq = LiteralExpr.Eq(new IdentifierExpr(Token.NoToken, mPre), new IdentifierExpr(Token.NoToken, m.Decl));
             post = LiteralExpr.And(post, eq);
           }
-          var lhs = new SimpleAssignLhs(Token.NoToken, new IdentifierExpr(Token.NoToken, lv));
-          var rhs = LiteralExpr.And(new IdentifierExpr(Token.NoToken, lv), post);
-          var assumed = new AssignCmd(Token.NoToken, new List<AssignLhs> { lhs }, new List<Expr> { rhs });
 
-          node.ExtendDesugaring(before, new List<Cmd> { assumed });
+          if (post != null)
+          {
+            var lv = new LocalVariable(Token.NoToken,
+              new TypedIdent(Token.NoToken, string.Format("a##post##{0}", FreshAssumptionVariableName), Type.Bool),
+              new QKeyValue(Token.NoToken, "assumption", new List<object>(), null));
+            node.AssignedAssumptionVariable = lv;
+            currentImplementation.InjectAssumptionVariable(lv);
+            var lhs = new SimpleAssignLhs(Token.NoToken, new IdentifierExpr(Token.NoToken, lv));
+            var rhs = LiteralExpr.And(new IdentifierExpr(Token.NoToken, lv), post);
+            var assumed = new AssignCmd(Token.NoToken, new List<AssignLhs> { lhs }, new List<Expr> { rhs });
+            after.Add(assumed);
+          }
+          node.ExtendDesugaring(before, after);
           node.ProcDependencyChecksumInPreviousSnapshot = oldProc.DependencyChecksum;
         }
       }
