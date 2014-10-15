@@ -1652,7 +1652,7 @@ namespace VC {
           var identExpr = assign.Lhss[0].AsExpr as IdentifierExpr;
           if (identExpr != null && identExpr.Decl != null && QKeyValue.FindBoolAttribute(identExpr.Decl.Attributes, "assumption"))
           {
-            passiveCmds.Add(new AssumeCmd(c.tok, new IdentifierExpr(Token.NoToken, currentImplementation.InjectedAssumptionVariables.First())));
+            passiveCmds.Add(new AssumeCmd(c.tok, new IdentifierExpr(Token.NoToken, identExpr.Decl)));
           }
         }
       }
