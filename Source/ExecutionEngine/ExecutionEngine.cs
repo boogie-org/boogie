@@ -1037,7 +1037,7 @@ namespace Microsoft.Boogie
         foreach (var kv in TimePerRequest.OrderBy(kv => ExecutionEngine.AutoRequestId(kv.Key)))
         {
           var s = StatisticsPerRequest[kv.Key];
-          Console.Out.WriteLine("{0}, {1:F0}, {2}, {3}, {4}, {5}, {6}", kv.Key, kv.Value.TotalMilliseconds, s.ErrorCount, s.InconclusiveCount, s.OutOfMemoryCount, s.TimeoutCount, s.VerifiedCount);
+          Console.Out.WriteLine("{0,-19}, {1,8:F0}, {2,2}, {3,2}, {4,2}, {5,2}, {6,2}", kv.Key, kv.Value.TotalMilliseconds, s.ErrorCount, s.InconclusiveCount, s.OutOfMemoryCount, s.TimeoutCount, s.VerifiedCount);
         }
 
         Console.Out.WriteLine("");

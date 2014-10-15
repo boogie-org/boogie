@@ -52,11 +52,11 @@ namespace Microsoft.Boogie
         {
           if (printTime)
           {
-            wr.WriteLine("{0}, {1:F0}, {2}, {3}, {4}, {5}, {6}, {7}", kv.Key, kv.Value.End.Subtract(kv.Value.Start).TotalMilliseconds, kv.Value.RewrittenImplementationCount, kv.Value.LowPriorityImplementationCount, kv.Value.MediumPriorityImplementationCount, kv.Value.HighPriorityImplementationCount, kv.Value.SkippedImplementationCount, kv.Value.ImplementationCount);
+            wr.WriteLine("{0,-19}, {1,5:F0}, {2,3}, {3,3}, {4,3}, {5,3}, {6,3}, {7,3}", kv.Key, kv.Value.End.Subtract(kv.Value.Start).TotalMilliseconds, kv.Value.RewrittenImplementationCount, kv.Value.LowPriorityImplementationCount, kv.Value.MediumPriorityImplementationCount, kv.Value.HighPriorityImplementationCount, kv.Value.SkippedImplementationCount, kv.Value.ImplementationCount);
           }
           else
           {
-            wr.WriteLine("{0}, {1}, {2}, {3}, {4}, {5}, {6}", kv.Key, kv.Value.RewrittenImplementationCount, kv.Value.LowPriorityImplementationCount, kv.Value.MediumPriorityImplementationCount, kv.Value.HighPriorityImplementationCount, kv.Value.SkippedImplementationCount, kv.Value.ImplementationCount);
+            wr.WriteLine("{0,-19}, {1,3}, {2,3}, {3,3}, {4,3}, {5,3}, {6,3}", kv.Key, kv.Value.RewrittenImplementationCount, kv.Value.LowPriorityImplementationCount, kv.Value.MediumPriorityImplementationCount, kv.Value.HighPriorityImplementationCount, kv.Value.SkippedImplementationCount, kv.Value.ImplementationCount);
           }
         }
       }
