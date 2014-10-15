@@ -27,11 +27,11 @@ namespace Microsoft.Boogie
             }
 
             List<Declaration> decls = new List<Declaration>();
-            OwickiGries.AddCheckers(linearTypeChecker, moverTypeChecker, decls);
             if (!CommandLineOptions.Clo.TrustAtomicityTypes)
             {
                 MoverCheck.AddCheckers(linearTypeChecker, moverTypeChecker, decls);
-            }
+            } 
+            OwickiGries.AddCheckers(linearTypeChecker, moverTypeChecker, decls);
             foreach (Declaration decl in decls)
             {
                 decl.Attributes = OwickiGries.RemoveYieldsAttribute(decl.Attributes);
