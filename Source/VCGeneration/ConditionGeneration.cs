@@ -1516,7 +1516,16 @@ namespace VC {
             ac.IncarnationMap[incarnation] = identExpr;
             passiveCmds.Add(new AssumeCmd(Token.NoToken, LiteralExpr.Eq(identExpr, copy)));
             copy = identExpr;
-            var expr = LiteralExpr.Imp(currentImplementation.ConjunctionOfInjectedAssumptionVariables(incarnationMap), copy);
+            var assmVars = currentImplementation.ConjunctionOfInjectedAssumptionVariables(incarnationMap);
+            Expr expr = identExpr;
+            if (assmVars != Expr.True)
+            {
+              expr = LiteralExpr.Imp(assmVars, expr);
+            }
+            else
+            {
+              // TODO(wuestholz): Maybe we could drop the assertion in this case.
+            }
             passiveCmds.Add(new AssumeCmd(Token.NoToken, expr));
           }
           else if (currentImplementation != null
@@ -1559,7 +1568,11 @@ namespace VC {
                  && currentImplementation.InjectedAssumptionVariables != null
                  && currentImplementation.InjectedAssumptionVariables.Any())
         {
-          copy = LiteralExpr.Imp(currentImplementation.ConjunctionOfInjectedAssumptionVariables(incarnationMap), copy);
+          var assmVars = currentImplementation.ConjunctionOfInjectedAssumptionVariables(incarnationMap);
+          if (assmVars != Expr.True)
+          {
+            copy = LiteralExpr.Imp(assmVars, copy);
+          }
           dropCmd = true;
         }
         pc.Expr = copy;
