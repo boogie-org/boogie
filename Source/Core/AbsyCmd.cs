@@ -942,7 +942,7 @@ namespace Microsoft.Boogie {
 
   public static class ChecksumHelper
   {
-    public static void ComputeChecksums(Cmd cmd, Implementation impl, byte[] currentChecksum = null, bool unordered = false)
+    public static void ComputeChecksums(Cmd cmd, Implementation impl, byte[] currentChecksum = null)
     {
       if (CommandLineOptions.Clo.VerifySnapshots < 2)
       {
@@ -969,7 +969,7 @@ namespace Microsoft.Boogie {
         {
           var data = System.Text.Encoding.UTF8.GetBytes(str);
           var checksum = md5.ComputeHash(data);
-          currentChecksum = currentChecksum != null ? CombineChecksums(currentChecksum, checksum, unordered) : checksum;
+          currentChecksum = currentChecksum != null ? CombineChecksums(currentChecksum, checksum) : checksum;
         }
         cmd.Checksum = currentChecksum;
       }
@@ -1000,14 +1000,14 @@ namespace Microsoft.Boogie {
         {
           foreach (var c in stateCmd.Cmds)
           {
-            ComputeChecksums(c, impl, currentChecksum, unordered);
+            ComputeChecksums(c, impl, currentChecksum);
             currentChecksum = c.Checksum;
           }
           sugaredCmd.DesugaringChecksum = currentChecksum;
         }
         else
         {
-          ComputeChecksums(sugaredCmd.Desugaring, impl, currentChecksum, unordered);
+          ComputeChecksums(sugaredCmd.Desugaring, impl, currentChecksum);
           sugaredCmd.DesugaringChecksum = sugaredCmd.Desugaring.Checksum;
         }
       }
