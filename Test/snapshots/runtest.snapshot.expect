@@ -76,8 +76,8 @@ Snapshots11.v0.bpl(7,5): Error BP5002: A precondition for this call might not ho
 Snapshots11.v0.bpl(13,3): Related location: This is the precondition that might not hold.
 
 Boogie program verifier finished with 0 verified, 1 error
-Snapshots11.v1.bpl(7,5): Error BP5002: A precondition for this call might not hold.
-Snapshots11.v1.bpl(13,3): Related location: This is the precondition that might not hold.
+Snapshots11.v0.bpl(7,5): Error BP5002: A precondition for this call might not hold.
+Snapshots11.v0.bpl(13,3): Related location: This is the precondition that might not hold.
 
 Boogie program verifier finished with 0 verified, 1 error
 

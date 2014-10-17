@@ -1796,13 +1796,19 @@ namespace Microsoft.Boogie {
     }
     protected abstract Cmd/*!*/ ComputeDesugaring();
 
-    public void ExtendDesugaring(IEnumerable<Cmd> before, IEnumerable<Cmd> after)
+    public void ExtendDesugaring(IEnumerable<Cmd> before, IEnumerable<Cmd> beforePreconditionCheck, IEnumerable<Cmd> after)
     {
       var desug = Desugaring;
       var stCmd = desug as StateCmd;
       if (stCmd != null)
       {
         stCmd.Cmds.InsertRange(0, before);
+        var idx = stCmd.Cmds.FindIndex(c => c is AssertCmd || c is HavocCmd || c is AssumeCmd);
+        if (idx < 0)
+        {
+          idx = 0;
+        }
+        stCmd.Cmds.InsertRange(idx, beforePreconditionCheck);
         stCmd.Cmds.AddRange(after);
       }
       else if (desug != null)
@@ -2473,8 +2479,8 @@ namespace Microsoft.Boogie {
       #endregion
 
       #region assume Post[ins, outs, old(frame) := cins, couts, cframe]
-      calleeSubstitution = Substituter.SubstitutionFromHashtable(substMap);
-      calleeSubstitutionOld = Substituter.SubstitutionFromHashtable(substMapOld);
+      calleeSubstitution = Substituter.SubstitutionFromHashtable(substMap, true);
+      calleeSubstitutionOld = Substituter.SubstitutionFromHashtable(substMapOld, true);
       foreach (Ensures/*!*/ e in this.Proc.Ensures) {
         Contract.Assert(e != null);
         Expr copy = Substituter.ApplyReplacingOldExprs(calleeSubstitution, calleeSubstitutionOld, e.Condition);

@@ -479,28 +479,39 @@ namespace Microsoft.Boogie {
   public delegate Expr/*?*/ Substitution(Variable/*!*/ v);
 
   public static class Substituter {
-    public static Substitution SubstitutionFromHashtable(Dictionary<Variable, Expr> map) {
+    public static Substitution SubstitutionFromHashtable(Dictionary<Variable, Expr> map, bool fallBackOnName = false)
+    {
       Contract.Requires(map != null);
       Contract.Ensures(Contract.Result<Substitution>() != null);
       // TODO: With Whidbey, could use anonymous functions.
-      return new Substitution(new CreateSubstitutionClosure(map).Method);
+      return new Substitution(new CreateSubstitutionClosure(map, fallBackOnName).Method);
     }
     private sealed class CreateSubstitutionClosure {
       Dictionary<Variable /*!*/, Expr /*!*/>/*!*/ map;
+      Dictionary<string /*!*/, Expr /*!*/>/*!*/ nameMap;
       [ContractInvariantMethod]
       void ObjectInvariant() {
         Contract.Invariant(map != null);
       }
 
-      public CreateSubstitutionClosure(Dictionary<Variable, Expr> map)
+      public CreateSubstitutionClosure(Dictionary<Variable, Expr> map, bool fallBackOnName = false)
         : base() {
         Contract.Requires(map != null);
         this.map = map;
+        if (fallBackOnName)
+        {
+          this.nameMap = map.ToDictionary(kv => kv.Key.Name, kv => kv.Value);
+        }
       }
       public Expr/*?*/ Method(Variable v) {
         Contract.Requires(v != null);
         if(map.ContainsKey(v)) {
           return map[v];
+        }
+        Expr e;
+        if (nameMap != null && nameMap.TryGetValue(v.Name, out e))
+        {
+          return e;
         }
         return null;
       }

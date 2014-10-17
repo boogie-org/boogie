@@ -223,6 +223,7 @@ namespace Microsoft.Boogie
           && node.AssignedAssumptionVariable == null)
       {
         var before = new List<Cmd>();
+        var beforePrecondtionCheck = new List<Cmd>();
         var after = new List<Cmd>();
         Expr assumedExpr = new LiteralExpr(Token.NoToken, false);
         var canUseSpecs = DependencyCollector.AllFunctionDependenciesAreDefinedAndUnchanged(oldProc, Program);
@@ -232,7 +233,7 @@ namespace Microsoft.Boogie
           if (precond != null)
           {
             var assume = new AssumeCmd(Token.NoToken, precond, new QKeyValue(Token.NoToken, "precondition_previous_snapshot", new List<object>(), null));
-            before.Add(assume);
+            beforePrecondtionCheck.Add(assume);
           }
 
           assumedExpr = node.Postcondition(oldProc, Program);
@@ -268,7 +269,7 @@ namespace Microsoft.Boogie
           var assumed = new AssignCmd(Token.NoToken, new List<AssignLhs> { lhs }, new List<Expr> { rhs });
           after.Add(assumed);
         }
-        node.ExtendDesugaring(before, after);
+        node.ExtendDesugaring(before, beforePrecondtionCheck, after);
       }
 
       return result;
