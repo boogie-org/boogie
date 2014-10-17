@@ -1017,11 +1017,8 @@ namespace Microsoft.Boogie
         programCache.Set(programId, program, policy);
       }
 
-      if (0 <= CommandLineOptions.Clo.VerifySnapshots && CommandLineOptions.Clo.TraceCaching)
+      if (0 <= CommandLineOptions.Clo.VerifySnapshots && 2 <= CommandLineOptions.Clo.TraceCaching)
       {
-        Console.Out.WriteLine("");
-        Console.Out.WriteLine("<trace caching>");
-
         var end = DateTime.UtcNow;
         if (TimePerRequest.Count == 0)
         {
@@ -1030,20 +1027,37 @@ namespace Microsoft.Boogie
         TimePerRequest[requestId] = end.Subtract(start);
         StatisticsPerRequest[requestId] = stats;
 
-        Console.Out.WriteLine(CachedVerificationResultInjector.Statistics.Output(true));
+        var printTimes = 3 <= CommandLineOptions.Clo.TraceCaching;
+
+        Console.Out.WriteLine(CachedVerificationResultInjector.Statistics.Output(printTimes));
 
         Console.Out.WriteLine("Statistics per request as CSV:");
-        Console.Out.WriteLine("Request ID, Time (ms), Error, Inconclusive, Out of Memory, Timeout, Verified");
+        if (printTimes)
+        {
+          Console.Out.WriteLine("Request ID, Time (ms), Error, Inconclusive, Out of Memory, Timeout, Verified");
+        }
+        else
+        {
+          Console.Out.WriteLine("Request ID, Error, Inconclusive, Out of Memory, Timeout, Verified");
+        }
         foreach (var kv in TimePerRequest.OrderBy(kv => ExecutionEngine.AutoRequestId(kv.Key)))
         {
           var s = StatisticsPerRequest[kv.Key];
-          Console.Out.WriteLine("{0,-19}, {1,8:F0}, {2,2}, {3,2}, {4,2}, {5,2}, {6,2}", kv.Key, kv.Value.TotalMilliseconds, s.ErrorCount, s.InconclusiveCount, s.OutOfMemoryCount, s.TimeoutCount, s.VerifiedCount);
+          if (printTimes)
+          {
+            Console.Out.WriteLine("{0,-19}, {1,8:F0}, {2,2}, {3,2}, {4,2}, {5,2}, {6,2}", kv.Key, kv.Value.TotalMilliseconds, s.ErrorCount, s.InconclusiveCount, s.OutOfMemoryCount, s.TimeoutCount, s.VerifiedCount);
+          }
+          else
+          {
+            Console.Out.WriteLine("{0,-19}, {2,2}, {3,2}, {4,2}, {5,2}, {6,2}", kv.Key, kv.Value.TotalMilliseconds, s.ErrorCount, s.InconclusiveCount, s.OutOfMemoryCount, s.TimeoutCount, s.VerifiedCount);
+          }
         }
 
-        Console.Out.WriteLine("");
-        Console.Out.WriteLine("Total time (ms) since first request: {0:F0}", end.Subtract(FirstRequestStart).TotalMilliseconds);
-
-        Console.Out.WriteLine("</trace caching>");
+        if (printTimes)
+        {
+          Console.Out.WriteLine("");
+          Console.Out.WriteLine("Total time (ms) since first request: {0:F0}", end.Subtract(FirstRequestStart).TotalMilliseconds);
+        }
       }
 
       #endregion

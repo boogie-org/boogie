@@ -39,7 +39,7 @@ namespace Microsoft.Boogie
       var wr = new StringWriter();
       if (runs.Any())
       {
-        wr.WriteLine("Cached verification result injector statistics as CSV:");
+        wr.WriteLine("\nCached verification result injector statistics as CSV:");
         if (printTime)
         {
           wr.WriteLine("Request ID, Time (ms), Rewritten Implementations, Low Priority Implementations, Medium Priority Implementations, High Priority Implementations, Skipped Implementations, Implementations");
@@ -269,7 +269,30 @@ namespace Microsoft.Boogie
           var assumed = new AssignCmd(Token.NoToken, new List<AssignLhs> { lhs }, new List<Expr> { rhs });
           after.Add(assumed);
         }
+
         node.ExtendDesugaring(before, beforePrecondtionCheck, after);
+        if (1 <= CommandLineOptions.Clo.TraceCaching)
+        {
+          using (var tokTxtWr = new TokenTextWriter("<console>", Console.Out, false, false))
+          {
+            Console.Out.WriteLine("\nFor call to {0} in {1}:", node.Proc.Name, currentImplementation.Name);
+            foreach (var b in before)
+            {
+              Console.Out.Write("+ Added before: ");
+              b.Emit(tokTxtWr, 0);
+            }
+            foreach (var b in beforePrecondtionCheck)
+            {
+              Console.Out.Write("+ Added before precondition check: ");
+              b.Emit(tokTxtWr, 0);
+            }
+            foreach (var a in after)
+            {
+              Console.Out.Write("+ Added after: ");
+              a.Emit(tokTxtWr, 0);
+            }
+          }
+        }
       }
 
       return result;
@@ -295,12 +318,9 @@ namespace Microsoft.Boogie
       }
 
       var end = DateTime.UtcNow;
-      if (CommandLineOptions.Clo.TraceCaching)
+      if (3 <= CommandLineOptions.Clo.TraceCaching)
       {
-        Console.Out.WriteLine("");
-        Console.Out.WriteLine("<trace caching>");
-        Console.Out.WriteLine("Collected other definition axioms within {0:F0} ms.", end.Subtract(start).TotalMilliseconds);
-        Console.Out.WriteLine("</trace caching>");
+        Console.Out.WriteLine("\nCollected other definition axioms within {0:F0} ms.", end.Subtract(start).TotalMilliseconds);
       }
     }
 
@@ -346,12 +366,9 @@ namespace Microsoft.Boogie
       dc.VisitProgram(program);
 
       var end = DateTime.UtcNow;
-      if (CommandLineOptions.Clo.TraceCaching)
+      if (3 <= CommandLineOptions.Clo.TraceCaching)
       {
-        Console.Out.WriteLine("");
-        Console.Out.WriteLine("<trace caching>");
-        Console.Out.WriteLine("Collected dependencies within {0:F0} ms.", end.Subtract(start).TotalMilliseconds);
-        Console.Out.WriteLine("</trace caching>");
+        Console.Out.WriteLine("\nCollected dependencies within {0:F0} ms.", end.Subtract(start).TotalMilliseconds);
       }
     }
 
