@@ -3266,28 +3266,53 @@ namespace Microsoft.Boogie {
       }
     }
 
-    public List<LocalVariable> PossiblyFalseAssumptionVariables(Dictionary<Variable, Expr> incarnationMap)
+    IList<LocalVariable> doomedInjectedAssumptionVariables;
+    public IList<LocalVariable> DoomedInjectedAssumptionVariables
+    {
+      get
+      {
+        return doomedInjectedAssumptionVariables != null ? doomedInjectedAssumptionVariables : new List<LocalVariable>();
+      }
+    }
+
+    public List<LocalVariable> RelevantInjectedAssumptionVariables(Dictionary<Variable, Expr> incarnationMap)
     {
       return InjectedAssumptionVariables.Where(v => incarnationMap.ContainsKey(v)).ToList();
+    }
+
+    public List<LocalVariable> RelevantDoomedInjectedAssumptionVariables(Dictionary<Variable, Expr> incarnationMap)
+    {
+      return DoomedInjectedAssumptionVariables.Where(v => incarnationMap.ContainsKey(v)).ToList();
     }
 
     public Expr ConjunctionOfInjectedAssumptionVariables(Dictionary<Variable, Expr> incarnationMap, out bool isTrue)
     {
       Contract.Requires(incarnationMap != null);
 
-      var vars = PossiblyFalseAssumptionVariables(incarnationMap).Select(v => incarnationMap[v]).ToList();
+      var vars = RelevantInjectedAssumptionVariables(incarnationMap).Select(v => incarnationMap[v]).ToList();
       isTrue = vars.Count == 0;
       return LiteralExpr.BinaryTreeAnd(vars);
     }
 
-    public void InjectAssumptionVariable(LocalVariable variable)
+    public void InjectAssumptionVariable(LocalVariable variable, bool isDoomed = false)
     {
-      if (injectedAssumptionVariables == null)
-      {
-        injectedAssumptionVariables = new List<LocalVariable>();
-      }
-      injectedAssumptionVariables.Add(variable);
       LocVars.Add(variable);
+      if (isDoomed)
+      {
+        if (doomedInjectedAssumptionVariables == null)
+        {
+          doomedInjectedAssumptionVariables = new List<LocalVariable>();
+        }
+        doomedInjectedAssumptionVariables.Add(variable);
+      }
+      else
+      {
+        if (injectedAssumptionVariables == null)
+        {
+          injectedAssumptionVariables = new List<LocalVariable>();
+        }
+        injectedAssumptionVariables.Add(variable);
+      }
     }
 
     public Implementation(IToken tok, string name, List<TypeVariable> typeParams, List<Variable> inParams, List<Variable> outParams, List<Variable> localVariables, [Captured] StmtList structuredStmts, QKeyValue kv)

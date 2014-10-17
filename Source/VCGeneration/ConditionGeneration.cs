@@ -1489,7 +1489,8 @@ namespace VC {
         }
         Contract.Assert(copy != null);
         var dropCmd = false;
-        var possiblyFalseAssumpVars = currentImplementation != null ? currentImplementation.PossiblyFalseAssumptionVariables(incarnationMap) : null;
+        var relevantAssumpVars = currentImplementation != null ? currentImplementation.RelevantInjectedAssumptionVariables(incarnationMap) : new List<LocalVariable>();
+        var relevantDoomedAssumpVars = currentImplementation != null ? currentImplementation.RelevantDoomedInjectedAssumptionVariables(incarnationMap) : new List<LocalVariable>();
         if (pc is AssertCmd) {
           var ac = (AssertCmd)pc;
           ac.OrigExpr = ac.Expr;
@@ -1498,59 +1499,49 @@ namespace VC {
 
           var subsumption = Wlp.Subsumption(ac);
           var alwaysUseSubsumption = subsumption == CommandLineOptions.SubsumptionOption.Always;
-          if (alwaysUseSubsumption
-              && currentImplementation != null
+          if (currentImplementation != null
               && currentImplementation.HasCachedSnapshot
-              && ((!currentImplementation.AnyErrorsInCachedSnapshot
-                   && 2 <= possiblyFalseAssumpVars.Count)
-                   || (currentImplementation.AnyErrorsInCachedSnapshot
-                       && possiblyFalseAssumpVars.Any()
-                       && ac.Checksum != null
-                       && currentImplementation.IsAssertionChecksumInCachedSnapshot(ac.Checksum)
-                       && !currentImplementation.IsErrorChecksumInCachedSnapshot(ac.Checksum))))
+              && !currentImplementation.AnyErrorsInCachedSnapshot
+              && currentImplementation.InjectedAssumptionVariables.Count == 1)
+          { }
+          else if (relevantDoomedAssumpVars.Any())
+          { }
+          else if (currentImplementation != null
+                   && currentImplementation.HasCachedSnapshot
+                   && ac.Checksum != null
+                   && currentImplementation.IsAssertionChecksumInCachedSnapshot(ac.Checksum)
+                   && !currentImplementation.IsErrorChecksumInCachedSnapshot(ac.Checksum))
           {
-            // Bind the assertion expression to a local variable.
-            var incarnation = CreateIncarnation(CurrentTemporaryVariableForAssertions, containingBlock);
-            var identExpr = new IdentifierExpr(Token.NoToken, incarnation);
-            incarnationMap[incarnation] = identExpr;
-            ac.IncarnationMap[incarnation] = identExpr;
-            passiveCmds.Add(new AssumeCmd(Token.NoToken, LiteralExpr.Eq(identExpr, copy)));
-            copy = identExpr;
             bool isTrue;
             var assmVars = currentImplementation.ConjunctionOfInjectedAssumptionVariables(incarnationMap, out isTrue);
-            Expr expr = identExpr;
-            if (!isTrue)
+            if (!isTrue && alwaysUseSubsumption)
             {
-              expr = LiteralExpr.Imp(assmVars, expr);
+              // Bind the assertion expression to a local variable.
+              var incarnation = CreateIncarnation(CurrentTemporaryVariableForAssertions, containingBlock);
+              var identExpr = new IdentifierExpr(Token.NoToken, incarnation);
+              incarnationMap[incarnation] = identExpr;
+              ac.IncarnationMap[incarnation] = identExpr;
+              passiveCmds.Add(new AssumeCmd(Token.NoToken, LiteralExpr.Eq(identExpr, copy)));
+              copy = identExpr;
+              passiveCmds.Add(new AssumeCmd(Token.NoToken, LiteralExpr.Imp(assmVars, identExpr)));
             }
-            else
+            else if (isTrue)
             {
-              // TODO(wuestholz): Maybe we could drop the assertion in this case.
+              if (alwaysUseSubsumption)
+              {
+                // Turn it into an assume statement.
+                pc = new AssumeCmd(ac.tok, copy);
+                pc.Attributes = new QKeyValue(Token.NoToken, "verified_assertion", new List<object>(), pc.Attributes);
+              }
+              dropCmd = subsumption == CommandLineOptions.SubsumptionOption.Never;
             }
-            passiveCmds.Add(new AssumeCmd(Token.NoToken, expr));
-          }
-          else if (currentImplementation != null
-                   && ac.Checksum != null
-                   && currentImplementation.HasCachedSnapshot
-                   && currentImplementation.IsAssertionChecksumInCachedSnapshot(ac.Checksum)
-                   && !currentImplementation.IsErrorChecksumInCachedSnapshot(ac.Checksum)
-                   && possiblyFalseAssumpVars.Count == 0)
-          {
-            if (alwaysUseSubsumption)
-            {
-              // Turn it into an assume statement.
-              pc = new AssumeCmd(ac.tok, copy);
-              pc.Attributes = new QKeyValue(Token.NoToken, "verified_assertion", new List<object>(), pc.Attributes);
-            }
-            dropCmd = subsumption == CommandLineOptions.SubsumptionOption.Never;
           }
           else if (currentImplementation != null
                    && currentImplementation.HasCachedSnapshot
-                   && currentImplementation.AnyErrorsInCachedSnapshot
+                   && relevantAssumpVars.Count == 0
                    && ac.Checksum != null
                    && currentImplementation.IsAssertionChecksumInCachedSnapshot(ac.Checksum)
-                   && currentImplementation.IsErrorChecksumInCachedSnapshot(ac.Checksum)
-                   && possiblyFalseAssumpVars.Count == 0)
+                   && currentImplementation.IsErrorChecksumInCachedSnapshot(ac.Checksum))
           {
             if (alwaysUseSubsumption)
             {
@@ -1568,22 +1559,26 @@ namespace VC {
         else if (pc is AssumeCmd
                  && QKeyValue.FindBoolAttribute(pc.Attributes, "precondition_previous_snapshot"))
         {
-          bool isTrue;
-          var assmVars = currentImplementation.ConjunctionOfInjectedAssumptionVariables(incarnationMap, out isTrue);
-          if (!isTrue)
+          if (!relevantDoomedAssumpVars.Any()
+              && currentImplementation.HasCachedSnapshot
+              && pc.Checksum != null
+              && currentImplementation.IsAssertionChecksumInCachedSnapshot(pc.Checksum)
+              && !currentImplementation.IsErrorChecksumInCachedSnapshot(pc.Checksum))
           {
-            copy = LiteralExpr.Imp(assmVars, copy);
+            bool isTrue;
+            var assmVars = currentImplementation.ConjunctionOfInjectedAssumptionVariables(incarnationMap, out isTrue);
+            if (!isTrue)
+            {
+              copy = LiteralExpr.Imp(assmVars, copy);
+            }
           }
-          dropCmd = true;
+          else
+          {
+            dropCmd = true;
+          }
         }
         pc.Expr = copy;
-        if (!dropCmd
-            || !currentImplementation.HasCachedSnapshot
-            || !currentImplementation.AnyErrorsInCachedSnapshot
-            || (currentImplementation.AnyErrorsInCachedSnapshot
-                && pc.Checksum != null
-                && currentImplementation.IsAssertionChecksumInCachedSnapshot(pc.Checksum)
-                && !currentImplementation.IsErrorChecksumInCachedSnapshot(pc.Checksum)))
+        if (!dropCmd)
         {
           passiveCmds.Add(pc);
         }

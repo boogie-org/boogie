@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using Microsoft.Boogie.GraphUtil;
 using System.Diagnostics.Contracts;
 
@@ -423,7 +424,7 @@ namespace Microsoft.Boogie {
         HashSet<Variable/*!*/>/*!*/ liveVarsAfter = new HashSet<Variable/*!*/>();
 
         // The injected assumption variables should always be considered to be live.
-        foreach (var v in impl.InjectedAssumptionVariables)
+        foreach (var v in impl.InjectedAssumptionVariables.Concat(impl.DoomedInjectedAssumptionVariables))
         {
           liveVarsAfter.Add(v);
         }
