@@ -1489,6 +1489,7 @@ namespace VC {
         }
         Contract.Assert(copy != null);
         var dropCmd = false;
+        var possiblyFalseAssumpVars = currentImplementation != null ? currentImplementation.PossiblyFalseAssumptionVariables(incarnationMap) : null;
         if (pc is AssertCmd) {
           var ac = (AssertCmd)pc;
           ac.OrigExpr = ac.Expr;
@@ -1499,15 +1500,14 @@ namespace VC {
           var alwaysUseSubsumption = subsumption == CommandLineOptions.SubsumptionOption.Always;
           if (alwaysUseSubsumption
               && currentImplementation != null
-              && ((currentImplementation.NoErrorsInCachedSnapshot
-                   && currentImplementation.InjectedAssumptionVariables != null
-                   && 2 <= currentImplementation.InjectedAssumptionVariables.Count)
-                  || (currentImplementation.AnyErrorsInCachedSnapshot
-                      && currentImplementation.InjectedAssumptionVariables != null
-                      && currentImplementation.InjectedAssumptionVariables.Any()
-                      && ac.Checksum != null
-                      && (currentImplementation.AssertionChecksumsInPreviousSnapshot != null && currentImplementation.AssertionChecksumsInPreviousSnapshot.Contains(ac.Checksum))
-                      && !currentImplementation.ErrorChecksumToCachedError.ContainsKey(ac.Checksum))))
+              && currentImplementation.HasCachedSnapshot
+              && ((!currentImplementation.AnyErrorsInCachedSnapshot
+                   && 2 <= possiblyFalseAssumpVars.Count)
+                   || (currentImplementation.AnyErrorsInCachedSnapshot
+                       && possiblyFalseAssumpVars.Any()
+                       && ac.Checksum != null
+                       && currentImplementation.IsAssertionChecksumInCachedSnapshot(ac.Checksum)
+                       && !currentImplementation.IsErrorChecksumInCachedSnapshot(ac.Checksum))))
           {
             // Bind the assertion expression to a local variable.
             var incarnation = CreateIncarnation(CurrentTemporaryVariableForAssertions, containingBlock);
@@ -1516,9 +1516,10 @@ namespace VC {
             ac.IncarnationMap[incarnation] = identExpr;
             passiveCmds.Add(new AssumeCmd(Token.NoToken, LiteralExpr.Eq(identExpr, copy)));
             copy = identExpr;
-            var assmVars = currentImplementation.ConjunctionOfInjectedAssumptionVariables(incarnationMap);
+            bool isTrue;
+            var assmVars = currentImplementation.ConjunctionOfInjectedAssumptionVariables(incarnationMap, out isTrue);
             Expr expr = identExpr;
-            if (assmVars != Expr.True)
+            if (!isTrue)
             {
               expr = LiteralExpr.Imp(assmVars, expr);
             }
@@ -1530,10 +1531,10 @@ namespace VC {
           }
           else if (currentImplementation != null
                    && ac.Checksum != null
-                   && (currentImplementation.AssertionChecksumsInPreviousSnapshot != null && currentImplementation.AssertionChecksumsInPreviousSnapshot.Contains(ac.Checksum))
-                   && currentImplementation.ErrorChecksumToCachedError != null
-                   && !currentImplementation.ErrorChecksumToCachedError.ContainsKey(ac.Checksum)
-                   && (currentImplementation.InjectedAssumptionVariables == null || !currentImplementation.InjectedAssumptionVariables.Any(v => incarnationMap.ContainsKey(v))))
+                   && currentImplementation.HasCachedSnapshot
+                   && currentImplementation.IsAssertionChecksumInCachedSnapshot(ac.Checksum)
+                   && !currentImplementation.IsErrorChecksumInCachedSnapshot(ac.Checksum)
+                   && possiblyFalseAssumpVars.Count == 0)
           {
             if (alwaysUseSubsumption)
             {
@@ -1544,11 +1545,12 @@ namespace VC {
             dropCmd = subsumption == CommandLineOptions.SubsumptionOption.Never;
           }
           else if (currentImplementation != null
+                   && currentImplementation.HasCachedSnapshot
                    && currentImplementation.AnyErrorsInCachedSnapshot
                    && ac.Checksum != null
-                   && (currentImplementation.AssertionChecksumsInPreviousSnapshot != null && currentImplementation.AssertionChecksumsInPreviousSnapshot.Contains(ac.Checksum))
-                   && currentImplementation.ErrorChecksumToCachedError.ContainsKey(ac.Checksum)
-                   && (currentImplementation.InjectedAssumptionVariables == null || !currentImplementation.InjectedAssumptionVariables.Any(v => incarnationMap.ContainsKey(v))))
+                   && currentImplementation.IsAssertionChecksumInCachedSnapshot(ac.Checksum)
+                   && currentImplementation.IsErrorChecksumInCachedSnapshot(ac.Checksum)
+                   && possiblyFalseAssumpVars.Count == 0)
           {
             if (alwaysUseSubsumption)
             {
@@ -1564,12 +1566,11 @@ namespace VC {
           }
         }
         else if (pc is AssumeCmd
-                 && QKeyValue.FindBoolAttribute(pc.Attributes, "precondition_previous_snapshot")
-                 && currentImplementation.InjectedAssumptionVariables != null
-                 && currentImplementation.InjectedAssumptionVariables.Any())
+                 && QKeyValue.FindBoolAttribute(pc.Attributes, "precondition_previous_snapshot"))
         {
-          var assmVars = currentImplementation.ConjunctionOfInjectedAssumptionVariables(incarnationMap);
-          if (assmVars != Expr.True)
+          bool isTrue;
+          var assmVars = currentImplementation.ConjunctionOfInjectedAssumptionVariables(incarnationMap, out isTrue);
+          if (!isTrue)
           {
             copy = LiteralExpr.Imp(assmVars, copy);
           }
@@ -1577,11 +1578,12 @@ namespace VC {
         }
         pc.Expr = copy;
         if (!dropCmd
-            || currentImplementation.NoErrorsInCachedSnapshot
+            || !currentImplementation.HasCachedSnapshot
+            || !currentImplementation.AnyErrorsInCachedSnapshot
             || (currentImplementation.AnyErrorsInCachedSnapshot
                 && pc.Checksum != null
-                && (currentImplementation.AssertionChecksumsInPreviousSnapshot != null && currentImplementation.AssertionChecksumsInPreviousSnapshot.Contains(pc.Checksum))
-                && !currentImplementation.ErrorChecksumToCachedError.ContainsKey(pc.Checksum)))
+                && currentImplementation.IsAssertionChecksumInCachedSnapshot(pc.Checksum)
+                && !currentImplementation.IsErrorChecksumInCachedSnapshot(pc.Checksum)))
         {
           passiveCmds.Add(pc);
         }
@@ -1657,8 +1659,8 @@ namespace VC {
         }
 
         if (currentImplementation != null
-            && currentImplementation.NoErrorsInCachedSnapshot
-            && currentImplementation.InjectedAssumptionVariables != null
+            && currentImplementation.HasCachedSnapshot
+            && !currentImplementation.AnyErrorsInCachedSnapshot
             && currentImplementation.InjectedAssumptionVariables.Count == 1
             && assign.Lhss.Count == 1)
         {

@@ -136,7 +136,7 @@ namespace Microsoft.Boogie
                 var p = ExecutionEngine.CachedProgram(vr.ProgramId);
                 if (p != null)
                 {
-                  SetAssertionChecksumsInPreviousSnapshot(impl, p);
+                  SetAssertionChecksumsInCachedSnapshot(impl, p);
                   eai.Inject(impl, p);
                   run.RewrittenImplementationCount++;
                 }
@@ -154,7 +154,7 @@ namespace Microsoft.Boogie
                 var p = ExecutionEngine.CachedProgram(vr.ProgramId);
                 if (p != null)
                 {
-                  SetAssertionChecksumsInPreviousSnapshot(impl, p);
+                  SetAssertionChecksumsInCachedSnapshot(impl, p);
                 }
               }
             }
@@ -202,12 +202,12 @@ namespace Microsoft.Boogie
       }
     }
 
-    private static void SetAssertionChecksumsInPreviousSnapshot(Implementation implementation, Program program)
+    private static void SetAssertionChecksumsInCachedSnapshot(Implementation implementation, Program program)
     {
-      var implPrevSnap = program.FindImplementation(implementation.Id);
-      if (implPrevSnap != null)
+      var cachedImpl = program.FindImplementation(implementation.Id);
+      if (cachedImpl != null)
       {
-        implementation.AssertionChecksumsInPreviousSnapshot = implPrevSnap.AssertionChecksums;
+        implementation.AssertionChecksumsInCachedSnapshot = cachedImpl.AssertionChecksums;
       }
     }
 
