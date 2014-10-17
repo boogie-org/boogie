@@ -1880,7 +1880,7 @@ namespace Microsoft.Boogie {
     }
 
     // We have to give the type explicitly, because the type of the formal "likeThisOne" can contain type variables
-    protected Variable CreateTemporaryVariable(List<Variable> tempVars, Variable likeThisOne, Type ty, TempVarKind kind) {
+    protected Variable CreateTemporaryVariable(List<Variable> tempVars, Variable likeThisOne, Type ty, TempVarKind kind, ref int uniqueId) {
       Contract.Requires(ty != null);
       Contract.Requires(likeThisOne != null);
       Contract.Requires(tempVars != null);
@@ -1902,7 +1902,7 @@ namespace Microsoft.Boogie {
           }  // unexpected kind
       }
       TypedIdent ti = likeThisOne.TypedIdent;
-      TypedIdent newTi = new TypedIdent(ti.tok, "call" + UniqueId + tempNamePrefix + ti.Name, ty);
+      TypedIdent newTi = new TypedIdent(ti.tok, "call" + (uniqueId++) + tempNamePrefix + ti.Name, ty);
       Variable/*!*/ v;
       if (kind == TempVarKind.Bound) {
         v = new BoundVariable(likeThisOne.tok, newTi);
@@ -2289,6 +2289,8 @@ namespace Microsoft.Boogie {
 
     protected override Cmd ComputeDesugaring() {
       Contract.Ensures(Contract.Result<Cmd>() != null);
+
+      int uniqueId = 0;
       List<Cmd> newBlockBody = new List<Cmd>();
       Dictionary<Variable, Expr> substMap = new Dictionary<Variable, Expr>();
       Dictionary<Variable, Expr> substMapOld = new Dictionary<Variable, Expr>();
@@ -2329,13 +2331,13 @@ namespace Microsoft.Boogie {
           actualType = cce.NonNull(cce.NonNull(Ins[i]).Type);
 
         Variable cin = CreateTemporaryVariable(tempVars, param, actualType,
-                                               TempVarKind.Formal);
+                                               TempVarKind.Formal, ref uniqueId);
         cins.Add(cin);
         IdentifierExpr ie = new IdentifierExpr(cin.tok, cin);
         substMap.Add(param, ie);
         if (isWildcard) {
           cin = CreateTemporaryVariable(tempVars, param,
-                                        actualType, TempVarKind.Bound);
+                                        actualType, TempVarKind.Bound, ref uniqueId);
           wildcardVars.Add(cin);
           ie = new IdentifierExpr(cin.tok, cin);
         }
@@ -2426,7 +2428,7 @@ namespace Microsoft.Boogie {
         Contract.Assert(f != null);
         Contract.Assume(f.Decl != null);
         Contract.Assert(f.Type != null);
-        Variable v = CreateTemporaryVariable(tempVars, f.Decl, f.Type, TempVarKind.Old);
+        Variable v = CreateTemporaryVariable(tempVars, f.Decl, f.Type, TempVarKind.Old, ref uniqueId);
         IdentifierExpr v_exp = new IdentifierExpr(v.tok, v);
         substMapOld.Add(f.Decl, v_exp);  // this assumes no duplicates in this.Proc.Modifies
         AssignCmd assign = Cmd.SimpleAssign(f.tok, v_exp, f);
@@ -2452,7 +2454,7 @@ namespace Microsoft.Boogie {
           actualType = cce.NonNull(cce.NonNull(Outs[i]).Type);
 
         Variable cout = CreateTemporaryVariable(tempVars, param, actualType,
-                                                TempVarKind.Formal);
+                                                TempVarKind.Formal, ref uniqueId);
         couts.Add(cout);
         IdentifierExpr ie = new IdentifierExpr(cout.tok, cout);
         substMap.Add(param, ie);
