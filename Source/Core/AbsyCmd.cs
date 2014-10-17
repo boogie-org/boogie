@@ -984,6 +984,7 @@ namespace Microsoft.Boogie {
           // because a corresponding counterexample will also have the
           // checksum of the failing call.
           impl.AddAssertionChecksum(assertRequiresCmd.Call.Checksum);
+          assertRequiresCmd.SugaredCmdChecksum = assertRequiresCmd.Call.Checksum;
         }
         else
         {
@@ -1002,13 +1003,15 @@ namespace Microsoft.Boogie {
           {
             ComputeChecksums(c, impl, currentChecksum);
             currentChecksum = c.Checksum;
+            if (c.SugaredCmdChecksum == null)
+            {
+              c.SugaredCmdChecksum = cmd.Checksum;
+            }
           }
-          sugaredCmd.DesugaringChecksum = currentChecksum;
         }
         else
         {
           ComputeChecksums(sugaredCmd.Desugaring, impl, currentChecksum);
-          sugaredCmd.DesugaringChecksum = sugaredCmd.Desugaring.Checksum;
         }
       }
     }
@@ -1036,6 +1039,7 @@ namespace Microsoft.Boogie {
   [ContractClass(typeof(CmdContracts))]
   public abstract class Cmd : Absy {
     public byte[] Checksum { get; internal set; }
+    public byte[] SugaredCmdChecksum { get; internal set; }
 
     public Cmd(IToken/*!*/ tok)
       : base(tok) {
@@ -1760,9 +1764,7 @@ namespace Microsoft.Boogie {
   [ContractClass(typeof(SugaredCmdContracts))]
   abstract public class SugaredCmd : Cmd {
     private Cmd desugaring;  // null until desugared
-
-    public byte[] DesugaringChecksum { get; set; }
-
+    
     public SugaredCmd(IToken/*!*/ tok)
       : base(tok) {
       Contract.Requires(tok != null);

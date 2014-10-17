@@ -1491,6 +1491,7 @@ namespace VC {
         var dropCmd = false;
         var relevantAssumpVars = currentImplementation != null ? currentImplementation.RelevantInjectedAssumptionVariables(incarnationMap) : new List<LocalVariable>();
         var relevantDoomedAssumpVars = currentImplementation != null ? currentImplementation.RelevantDoomedInjectedAssumptionVariables(incarnationMap) : new List<LocalVariable>();
+        var checksum = pc.SugaredCmdChecksum != null ? pc.SugaredCmdChecksum : pc.Checksum;
         if (pc is AssertCmd) {
           var ac = (AssertCmd)pc;
           ac.OrigExpr = ac.Expr;
@@ -1508,9 +1509,9 @@ namespace VC {
           { }
           else if (currentImplementation != null
                    && currentImplementation.HasCachedSnapshot
-                   && ac.Checksum != null
-                   && currentImplementation.IsAssertionChecksumInCachedSnapshot(ac.Checksum)
-                   && !currentImplementation.IsErrorChecksumInCachedSnapshot(ac.Checksum))
+                   && checksum != null
+                   && currentImplementation.IsAssertionChecksumInCachedSnapshot(checksum)
+                   && !currentImplementation.IsErrorChecksumInCachedSnapshot(checksum))
           {
             bool isTrue;
             var assmVars = currentImplementation.ConjunctionOfInjectedAssumptionVariables(incarnationMap, out isTrue);
@@ -1539,9 +1540,9 @@ namespace VC {
           else if (currentImplementation != null
                    && currentImplementation.HasCachedSnapshot
                    && relevantAssumpVars.Count == 0
-                   && ac.Checksum != null
-                   && currentImplementation.IsAssertionChecksumInCachedSnapshot(ac.Checksum)
-                   && currentImplementation.IsErrorChecksumInCachedSnapshot(ac.Checksum))
+                   && checksum != null
+                   && currentImplementation.IsAssertionChecksumInCachedSnapshot(checksum)
+                   && currentImplementation.IsErrorChecksumInCachedSnapshot(checksum))
           {
             if (alwaysUseSubsumption)
             {
@@ -1557,13 +1558,13 @@ namespace VC {
           }
         }
         else if (pc is AssumeCmd
-                 && QKeyValue.FindBoolAttribute(pc.Attributes, "precondition_previous_snapshot"))
+                 && QKeyValue.FindBoolAttribute(pc.Attributes, "precondition_previous_snapshot")
+                 && pc.SugaredCmdChecksum != null)
         {
           if (!relevantDoomedAssumpVars.Any()
               && currentImplementation.HasCachedSnapshot
-              && pc.Checksum != null
-              && currentImplementation.IsAssertionChecksumInCachedSnapshot(pc.Checksum)
-              && !currentImplementation.IsErrorChecksumInCachedSnapshot(pc.Checksum))
+              && currentImplementation.IsAssertionChecksumInCachedSnapshot(pc.SugaredCmdChecksum)
+              && !currentImplementation.IsErrorChecksumInCachedSnapshot(pc.SugaredCmdChecksum))
           {
             bool isTrue;
             var assmVars = currentImplementation.ConjunctionOfInjectedAssumptionVariables(incarnationMap, out isTrue);
