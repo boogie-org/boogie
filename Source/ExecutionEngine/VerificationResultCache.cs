@@ -130,13 +130,12 @@ namespace Microsoft.Boogie
             run.LowPriorityImplementationCount++;
             if (TimeThreshold < vr.End.Subtract(vr.Start).TotalMilliseconds)
             {
-              SetErrorChecksumsInCachedSnapshot(impl, vr);
+              SetErrorAndAssertionChecksumsInCachedSnapshot(impl, vr);
               if (vr.ProgramId != null)
               {
                 var p = ExecutionEngine.CachedProgram(vr.ProgramId);
                 if (p != null)
                 {
-                  SetAssertionChecksumsInCachedSnapshot(impl, p);
                   eai.Inject(impl, p);
                   run.RewrittenImplementationCount++;
                 }
@@ -148,13 +147,12 @@ namespace Microsoft.Boogie
             run.MediumPriorityImplementationCount++;
             if (TimeThreshold < vr.End.Subtract(vr.Start).TotalMilliseconds)
             {
-              SetErrorChecksumsInCachedSnapshot(impl, vr);
+              SetErrorAndAssertionChecksumsInCachedSnapshot(impl, vr);
               if (vr.ProgramId != null)
               {
                 var p = ExecutionEngine.CachedProgram(vr.ProgramId);
                 if (p != null)
                 {
-                  SetAssertionChecksumsInCachedSnapshot(impl, p);
                   eai.Inject(impl, p);
                   run.RewrittenImplementationCount++;
                 }
@@ -168,14 +166,6 @@ namespace Microsoft.Boogie
           else if (priority == Priority.SKIP)
           {
             run.SkippedImplementationCount++;
-            if (vr.ProgramId != null)
-            {
-              var p = ExecutionEngine.CachedProgram(vr.ProgramId);
-              if (p != null)
-              {
-                SetAssertionChecksums(impl, p);
-              }
-            }
           }
         }
       }
@@ -183,33 +173,17 @@ namespace Microsoft.Boogie
       Statistics.AddRun(requestId, run);
     }
 
-    private static void SetErrorChecksumsInCachedSnapshot(Implementation implementation, VerificationResult result)
+    private static void SetErrorAndAssertionChecksumsInCachedSnapshot(Implementation implementation, VerificationResult result)
     {
       if (result.Outcome == ConditionGeneration.Outcome.Errors && result.Errors != null && result.Errors.Count < CommandLineOptions.Clo.ProverCCLimit)
       {
         implementation.SetErrorChecksumToCachedError(result.Errors.Select(cex => new Tuple<byte[], object>(cex.Checksum, cex)));
+        implementation.AssertionChecksumsInCachedSnapshot = result.AssertionChecksums;
       }
       else if (result.Outcome == ConditionGeneration.Outcome.Correct)
       {
         implementation.SetErrorChecksumToCachedError(new List<Tuple<byte[], object>>());
-      }
-    }
-
-    private static void SetAssertionChecksums(Implementation implementation, Program program)
-    {
-      var implPrevSnap = program.FindImplementation(implementation.Id);
-      if (implPrevSnap != null)
-      {
-        implementation.AssertionChecksums = implPrevSnap.AssertionChecksums;
-      }
-    }
-
-    private static void SetAssertionChecksumsInCachedSnapshot(Implementation implementation, Program program)
-    {
-      var cachedImpl = program.FindImplementation(implementation.Id);
-      if (cachedImpl != null)
-      {
-        implementation.AssertionChecksumsInCachedSnapshot = cachedImpl.AssertionChecksums;
+        implementation.AssertionChecksumsInCachedSnapshot = result.AssertionChecksums;
       }
     }
 

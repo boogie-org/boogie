@@ -3061,18 +3061,7 @@ namespace Microsoft.Boogie {
     public List<Block/*!*/> OriginalBlocks;
     public List<Variable> OriginalLocVars;
 
-    ISet<byte[]> assertionChecksums;
-    public ISet<byte[]> AssertionChecksums
-    {
-      get
-      {
-        return assertionChecksums;
-      }
-      set
-      {
-        assertionChecksums = value;
-      }
-    }
+    public readonly ISet<byte[]> AssertionChecksums = new HashSet<byte[]>(ChecksumComparer.Default);
 
     public sealed class ChecksumComparer : IEqualityComparer<byte[]>
     {
@@ -3121,11 +3110,12 @@ namespace Microsoft.Boogie {
 
     public void AddAssertionChecksum(byte[] checksum)
     {
-      if (assertionChecksums == null)
+      Contract.Requires(checksum != null);
+
+      if (AssertionChecksums != null)
       {
-        assertionChecksums = new HashSet<byte[]>(ChecksumComparer.Default);
+        AssertionChecksums.Add(checksum);
       }
-      assertionChecksums.Add(checksum);
     }
 
     public ISet<byte[]> AssertionChecksumsInCachedSnapshot { get; set; }

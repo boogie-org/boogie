@@ -337,14 +337,17 @@ namespace Microsoft.Boogie
     public ConditionGeneration.Outcome Outcome { get; set; }
     public List<Counterexample> Errors;
 
-    public VerificationResult(string requestId, string checksum, string depsChecksum, string implementationName, IToken implementationToken, string programId = null)
+    public ISet<byte[]> AssertionChecksums { get; private set; }
+
+    public VerificationResult(string requestId, Implementation implementation, string programId = null)
     {
-      Checksum = checksum;
-      DependeciesChecksum = depsChecksum;
+      Checksum = implementation.Checksum;
+      DependeciesChecksum = implementation.DependencyChecksum;
       RequestId = requestId;
-      ImplementationName = implementationName;
-      ImplementationToken = implementationToken;
+      ImplementationName = implementation.Name;
+      ImplementationToken = implementation.tok;
       ProgramId = programId;
+      AssertionChecksums = implementation.AssertionChecksums;
     }
   }
 
@@ -1131,7 +1134,7 @@ namespace Microsoft.Boogie
       {
         #region Verify the implementation
 
-        verificationResult = new VerificationResult(requestId, impl.Checksum, impl.DependencyChecksum, impl.Name, impl.tok, programId);
+        verificationResult = new VerificationResult(requestId, impl, programId);
 
         using (var vcgen = CreateVCGen(program, checkers))
         {
