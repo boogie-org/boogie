@@ -1058,7 +1058,7 @@ namespace Microsoft.Boogie
 
         if (printTimes)
         {
-          Console.Out.WriteLine("");
+          Console.Out.WriteLine();
           Console.Out.WriteLine("Total time (ms) since first request: {0:F0}", end.Subtract(FirstRequestStart).TotalMilliseconds);
         }
       }

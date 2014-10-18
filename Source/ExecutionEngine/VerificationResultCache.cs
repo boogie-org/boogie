@@ -200,6 +200,7 @@ namespace Microsoft.Boogie
         var beforePrecondtionCheck = new List<Cmd>();
         var after = new List<Cmd>();
         Expr assumedExpr = new LiteralExpr(Token.NoToken, false);
+        // TODO(wuestholz): Try out two alternatives: only do this for low priority implementations or not at all.
         var canUseSpecs = DependencyCollector.AllFunctionDependenciesAreDefinedAndUnchanged(oldProc, Program);
         if (canUseSpecs)
         {
