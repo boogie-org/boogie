@@ -39,7 +39,7 @@ namespace Microsoft.Boogie
       var wr = new StringWriter();
       if (runs.Any())
       {
-        wr.WriteLine("\nCached verification result injector statistics as CSV:");
+        wr.WriteLine("Cached verification result injector statistics as CSV:");
         if (printTime)
         {
           wr.WriteLine("Request ID, Time (ms), Rewritten Implementations, Low Priority Implementations, Medium Priority Implementations, High Priority Implementations, Skipped Implementations, Implementations");
@@ -206,7 +206,7 @@ namespace Microsoft.Boogie
           var precond = node.CheckedPrecondition(oldProc, Program);
           if (precond != null)
           {
-            var assume = new AssumeCmd(Token.NoToken, precond, new QKeyValue(Token.NoToken, "precondition_previous_snapshot", new List<object>(), null));
+            var assume = new AssumeCmd(node.tok, precond, new QKeyValue(Token.NoToken, "precondition_previous_snapshot", new List<object>(), null));
             beforePrecondtionCheck.Add(assume);
           }
 
@@ -240,7 +240,7 @@ namespace Microsoft.Boogie
           currentImplementation.InjectAssumptionVariable(lv, !canUseSpecs);
           var lhs = new SimpleAssignLhs(Token.NoToken, new IdentifierExpr(Token.NoToken, lv));
           var rhs = LiteralExpr.And(new IdentifierExpr(Token.NoToken, lv), assumedExpr);
-          var assumed = new AssignCmd(Token.NoToken, new List<AssignLhs> { lhs }, new List<Expr> { rhs });
+          var assumed = new AssignCmd(node.tok, new List<AssignLhs> { lhs }, new List<Expr> { rhs });
           after.Add(assumed);
         }
 
@@ -249,20 +249,21 @@ namespace Microsoft.Boogie
         {
           using (var tokTxtWr = new TokenTextWriter("<console>", Console.Out, false, false))
           {
-            Console.Out.WriteLine("\nFor call to {0} in {1}:", node.Proc.Name, currentImplementation.Name);
+            var loc = node.tok != null && node.tok != Token.NoToken ? string.Format("{0}({1},{2})", node.tok.filename, node.tok.line, node.tok.col) : "<unknown location>";
+            Console.Out.WriteLine("Processing call to procedure {0} in implementation {1} (at {2}):", node.Proc.Name, currentImplementation.Name, loc);
             foreach (var b in before)
             {
-              Console.Out.Write("+ Added before: ");
+              Console.Out.Write("  >>> added before: ");
               b.Emit(tokTxtWr, 0);
             }
             foreach (var b in beforePrecondtionCheck)
             {
-              Console.Out.Write("+ Added before precondition check: ");
+              Console.Out.Write("  >>> added before precondition check: ");
               b.Emit(tokTxtWr, 0);
             }
             foreach (var a in after)
             {
-              Console.Out.Write("+ Added after: ");
+              Console.Out.Write("  >>> added after: ");
               a.Emit(tokTxtWr, 0);
             }
           }
@@ -294,7 +295,7 @@ namespace Microsoft.Boogie
       var end = DateTime.UtcNow;
       if (3 <= CommandLineOptions.Clo.TraceCaching)
       {
-        Console.Out.WriteLine("\nCollected other definition axioms within {0:F0} ms.", end.Subtract(start).TotalMilliseconds);
+        Console.Out.WriteLine("Collected other definition axioms within {0:F0} ms.", end.Subtract(start).TotalMilliseconds);
       }
     }
 
@@ -342,7 +343,7 @@ namespace Microsoft.Boogie
       var end = DateTime.UtcNow;
       if (3 <= CommandLineOptions.Clo.TraceCaching)
       {
-        Console.Out.WriteLine("\nCollected dependencies within {0:F0} ms.", end.Subtract(start).TotalMilliseconds);
+        Console.Out.WriteLine("Collected dependencies within {0:F0} ms.", end.Subtract(start).TotalMilliseconds);
       }
     }
 
