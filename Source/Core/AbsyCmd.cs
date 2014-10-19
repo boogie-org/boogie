@@ -942,7 +942,7 @@ namespace Microsoft.Boogie {
 
   public static class ChecksumHelper
   {
-    public static void ComputeChecksums(Cmd cmd, Implementation impl, byte[] currentChecksum = null)
+    public static void ComputeChecksums(Cmd cmd, Implementation impl, Dictionary<Variable, Expr> incarnationMap, byte[] currentChecksum = null)
     {
       if (CommandLineOptions.Clo.VerifySnapshots < 2)
       {
@@ -962,7 +962,19 @@ namespace Microsoft.Boogie {
       using (var tokTxtWr = new TokenTextWriter("<no file>", strWr, false, false))
       {
         tokTxtWr.UseForComputingChecksums = true;
-        cmd.Emit(tokTxtWr, 0);
+        var havocCmd = cmd as HavocCmd;
+        if (havocCmd != null)
+        {
+          // TODO(wuestholz): Check with Rustan if this makes sense.
+          tokTxtWr.Write("havoc ");
+          var relevantVars = havocCmd.Vars.Where(v => incarnationMap.ContainsKey(v.Decl)).ToList();
+          relevantVars.Emit(tokTxtWr, true);
+          tokTxtWr.WriteLine(";");
+        }
+        else
+        {
+          cmd.Emit(tokTxtWr, 0);
+        }
         var md5 = System.Security.Cryptography.MD5.Create();
         var str = strWr.ToString();
         if (str.Any())
@@ -1001,7 +1013,7 @@ namespace Microsoft.Boogie {
         {
           foreach (var c in stateCmd.Cmds)
           {
-            ComputeChecksums(c, impl, currentChecksum);
+            ComputeChecksums(c, impl, incarnationMap, currentChecksum);
             currentChecksum = c.Checksum;
             if (c.SugaredCmdChecksum == null)
             {
@@ -1011,7 +1023,7 @@ namespace Microsoft.Boogie {
         }
         else
         {
-          ComputeChecksums(sugaredCmd.Desugaring, impl, currentChecksum);
+          ComputeChecksums(sugaredCmd.Desugaring, impl, incarnationMap, currentChecksum);
         }
       }
     }

@@ -1308,7 +1308,7 @@ namespace VC {
       List<Cmd> passiveCmds = new List<Cmd>();
       foreach (Cmd c in b.Cmds) {
         Contract.Assert(c != null); // walk forward over the commands because the map gets modified in a forward direction
-        ChecksumHelper.ComputeChecksums(c, currentImplementation, currentChecksum);
+        ChecksumHelper.ComputeChecksums(c, currentImplementation, incarnationMap, currentChecksum);
         currentChecksum = c.Checksum;
         TurnIntoPassiveCmd(c, incarnationMap, oldFrameSubst, passiveCmds, mvInfo, b);
       }
