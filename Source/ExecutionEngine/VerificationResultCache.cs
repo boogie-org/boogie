@@ -204,6 +204,8 @@ namespace Microsoft.Boogie
         var canUseSpecs = DependencyCollector.AllFunctionDependenciesAreDefinedAndUnchanged(oldProc, Program);
         if (canUseSpecs)
         {
+          var desugaring = node.Desugaring;
+          Contract.Assert(desugaring != null);
           var precond = node.CheckedPrecondition(oldProc, Program);
           if (precond != null)
           {
