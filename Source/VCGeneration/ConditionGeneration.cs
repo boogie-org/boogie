@@ -1298,7 +1298,7 @@ namespace VC {
 
     Dictionary<Variable, Expr> preHavocIncarnationMap = null;     // null = the previous command was not an HashCmd. Otherwise, a *copy* of the map before the havoc statement
 
-    protected void TurnIntoPassiveBlock(Block b, Dictionary<Variable, Expr> incarnationMap, ModelViewInfo mvInfo, Substitution oldFrameSubst, byte[] currentChecksum = null) {
+    protected void TurnIntoPassiveBlock(Block b, Dictionary<Variable, Expr> incarnationMap, ModelViewInfo mvInfo, Substitution oldFrameSubst, VariableCollector variableCollector, byte[] currentChecksum = null) {
       Contract.Requires(b != null);
       Contract.Requires(incarnationMap != null);
       Contract.Requires(mvInfo != null);
@@ -1308,7 +1308,8 @@ namespace VC {
       List<Cmd> passiveCmds = new List<Cmd>();
       foreach (Cmd c in b.Cmds) {
         Contract.Assert(c != null); // walk forward over the commands because the map gets modified in a forward direction
-        ChecksumHelper.ComputeChecksums(c, currentImplementation, incarnationMap, currentChecksum);
+        ChecksumHelper.ComputeChecksums(c, currentImplementation, variableCollector.usedVars, currentChecksum);
+        variableCollector.Visit(c);
         currentChecksum = c.Checksum;
         TurnIntoPassiveCmd(c, incarnationMap, oldFrameSubst, passiveCmds, mvInfo, b);
       }
@@ -1408,6 +1409,7 @@ namespace VC {
       Dictionary<Block, Dictionary<Variable, Expr>> block2Incarnation = new Dictionary<Block, Dictionary<Variable, Expr>>();
       Block exitBlock = null;
       Dictionary<Variable, Expr> exitIncarnationMap = null;
+      var variableCollector = new VariableCollector();
       foreach (Block b in sortedNodes) {
         Contract.Assert(b != null);
         Contract.Assert(!block2Incarnation.ContainsKey(b));
@@ -1442,7 +1444,7 @@ namespace VC {
         }
         #endregion Each block's map needs to be available to successor blocks
 
-        TurnIntoPassiveBlock(b, incarnationMap, mvInfo, oldFrameSubst, currentChecksum);
+        TurnIntoPassiveBlock(b, incarnationMap, mvInfo, oldFrameSubst, variableCollector, currentChecksum);
         exitBlock = b;
         exitIncarnationMap = incarnationMap;
       }

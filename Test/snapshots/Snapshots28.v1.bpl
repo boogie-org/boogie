@@ -12,5 +12,5 @@ implementation {:id "M"} {:checksum "2"} M()
     }
 
     assert 0 == 0;
-    assert x == 0;  // TODO(wuestholz): This should fail.
+    assert x == 0;
 }

@@ -507,9 +507,10 @@ Processing command (at Snapshots28.v0.bpl(14,5)) assert x == 0 /* checksum: 01-A
   >>> did nothing
 
 Boogie program verifier finished with 1 verified, 0 errors
-Processing command (at Snapshots28.v1.bpl(14,5)) assert 0 == 0 /* checksum: AB-78-39-B7-C9-1E-4B-24-B5-1A-52-BE-B2-1A-90-D9 */ ;
-  >>> turned assertion into assume statement
-Processing command (at Snapshots28.v1.bpl(15,5)) assert x == 0 /* checksum: 01-A7-D9-2B-A8-C4-4F-BB-44-22-BE-B6-E1-5F-6E-BF */ ;
-  >>> turned assertion into assume statement
+Processing command (at Snapshots28.v1.bpl(14,5)) assert 0 == 0 /* checksum: B7-69-FE-C9-83-D5-67-99-AA-4C-CE-F9-C4-21-A6-3E */ ;
+  >>> did nothing
+Processing command (at Snapshots28.v1.bpl(15,5)) assert x == 0 /* checksum: 9D-98-FC-55-22-AD-23-60-39-30-A2-93-D3-86-04-7A */ ;
+  >>> did nothing
+Snapshots28.v1.bpl(15,5): Error BP5001: This assertion might not hold.
 
-Boogie program verifier finished with 1 verified, 0 errors
+Boogie program verifier finished with 0 verified, 1 error
