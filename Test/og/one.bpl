@@ -8,12 +8,6 @@ ensures {:atomic}
   x := v; return true;
 }|;
 
-procedure A()
-modifies x;
-{
-  x := x;
-}
-
 procedure {:yields} {:phase 1} B()
 {
   yield;
