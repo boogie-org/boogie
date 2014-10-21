@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using Microsoft.Boogie.GraphUtil;
 using System.Diagnostics.Contracts;
 
@@ -421,14 +422,13 @@ namespace Microsoft.Boogie {
       foreach (Block/*!*/ block in sortedNodes) {
         Contract.Assert(block != null);
         HashSet<Variable/*!*/>/*!*/ liveVarsAfter = new HashSet<Variable/*!*/>();
-        if (impl.InjectedAssumptionVariables != null)
+
+        // The injected assumption variables should always be considered to be live.
+        foreach (var v in impl.InjectedAssumptionVariables.Concat(impl.DoomedInjectedAssumptionVariables))
         {
-          // The injected assumption variables should always be considered to be live.
-          foreach (var v in impl.InjectedAssumptionVariables)
-          {
-            liveVarsAfter.Add(v);
-          }
+          liveVarsAfter.Add(v);
         }
+
         if (block.TransferCmd is GotoCmd) {
           GotoCmd gotoCmd = (GotoCmd)block.TransferCmd;
           if (gotoCmd.labelTargets != null) {

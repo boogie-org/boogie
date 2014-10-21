@@ -3061,18 +3061,7 @@ namespace Microsoft.Boogie {
     public List<Block/*!*/> OriginalBlocks;
     public List<Variable> OriginalLocVars;
 
-    ISet<byte[]> assertionChecksums;
-    public ISet<byte[]> AssertionChecksums
-    {
-      get
-      {
-        return assertionChecksums;
-      }
-      set
-      {
-        assertionChecksums = value;
-      }
-    }
+    public readonly ISet<byte[]> AssertionChecksums = new HashSet<byte[]>(ChecksumComparer.Default);
 
     public sealed class ChecksumComparer : IEqualityComparer<byte[]>
     {
@@ -3121,14 +3110,22 @@ namespace Microsoft.Boogie {
 
     public void AddAssertionChecksum(byte[] checksum)
     {
-      if (assertionChecksums == null)
+      Contract.Requires(checksum != null);
+
+      if (AssertionChecksums != null)
       {
-        assertionChecksums = new HashSet<byte[]>(ChecksumComparer.Default);
+        AssertionChecksums.Add(checksum);
       }
-      assertionChecksums.Add(checksum);
     }
 
-    public ISet<byte[]> AssertionChecksumsInPreviousSnapshot { get; set; }
+    public ISet<byte[]> AssertionChecksumsInCachedSnapshot { get; set; }
+
+    public bool IsAssertionChecksumInCachedSnapshot(byte[] checksum)
+    {
+      Contract.Requires(AssertionChecksumsInCachedSnapshot != null);
+
+      return AssertionChecksumsInCachedSnapshot.Contains(checksum);
+    }
 
     public IList<AssertCmd> RecycledFailingAssertions { get; protected set; }
 
@@ -3214,6 +3211,13 @@ namespace Microsoft.Boogie {
 
     public IDictionary<byte[], object> ErrorChecksumToCachedError { get; private set; }
 
+    public bool IsErrorChecksumInCachedSnapshot(byte[] checksum)
+    {
+      Contract.Requires(ErrorChecksumToCachedError != null);
+
+      return ErrorChecksumToCachedError.ContainsKey(checksum);
+    }
+
     public void SetErrorChecksumToCachedError(IEnumerable<Tuple<byte[], object>> errors)
     {
       Contract.Requires(errors != null);
@@ -3225,11 +3229,11 @@ namespace Microsoft.Boogie {
       }
     }
 
-    public bool NoErrorsInCachedSnapshot
+    public bool HasCachedSnapshot
     {
       get
       {
-        return ErrorChecksumToCachedError != null && !ErrorChecksumToCachedError.Any();
+        return ErrorChecksumToCachedError != null && AssertionChecksumsInCachedSnapshot != null;
       }
     }
 
@@ -3237,7 +3241,9 @@ namespace Microsoft.Boogie {
     {
       get
       {
-        return ErrorChecksumToCachedError != null && ErrorChecksumToCachedError.Any();
+        Contract.Requires(ErrorChecksumToCachedError != null);
+
+        return ErrorChecksumToCachedError.Any();
       }
     }
 
@@ -3246,25 +3252,57 @@ namespace Microsoft.Boogie {
     {
       get
       {
-        return injectedAssumptionVariables;
+        return injectedAssumptionVariables != null ? injectedAssumptionVariables : new List<LocalVariable>();
       }
     }
 
-    public Expr ConjunctionOfInjectedAssumptionVariables(Dictionary<Variable, Expr> incarnationMap)
+    IList<LocalVariable> doomedInjectedAssumptionVariables;
+    public IList<LocalVariable> DoomedInjectedAssumptionVariables
     {
-      Contract.Requires(InjectedAssumptionVariables != null && InjectedAssumptionVariables.Any() && incarnationMap != null);
-
-      return LiteralExpr.BinaryTreeAnd(injectedAssumptionVariables.Where(v => incarnationMap.ContainsKey(v)).Select(v => incarnationMap[v]).ToList());
-    }
-
-    public void InjectAssumptionVariable(LocalVariable variable)
-    {
-      if (injectedAssumptionVariables == null)
+      get
       {
-        injectedAssumptionVariables = new List<LocalVariable>();
+        return doomedInjectedAssumptionVariables != null ? doomedInjectedAssumptionVariables : new List<LocalVariable>();
       }
-      injectedAssumptionVariables.Add(variable);
+    }
+
+    public List<LocalVariable> RelevantInjectedAssumptionVariables(Dictionary<Variable, Expr> incarnationMap)
+    {
+      return InjectedAssumptionVariables.Where(v => incarnationMap.ContainsKey(v)).ToList();
+    }
+
+    public List<LocalVariable> RelevantDoomedInjectedAssumptionVariables(Dictionary<Variable, Expr> incarnationMap)
+    {
+      return DoomedInjectedAssumptionVariables.Where(v => incarnationMap.ContainsKey(v)).ToList();
+    }
+
+    public Expr ConjunctionOfInjectedAssumptionVariables(Dictionary<Variable, Expr> incarnationMap, out bool isTrue)
+    {
+      Contract.Requires(incarnationMap != null);
+
+      var vars = RelevantInjectedAssumptionVariables(incarnationMap).Select(v => incarnationMap[v]).ToList();
+      isTrue = vars.Count == 0;
+      return LiteralExpr.BinaryTreeAnd(vars);
+    }
+
+    public void InjectAssumptionVariable(LocalVariable variable, bool isDoomed = false)
+    {
       LocVars.Add(variable);
+      if (isDoomed)
+      {
+        if (doomedInjectedAssumptionVariables == null)
+        {
+          doomedInjectedAssumptionVariables = new List<LocalVariable>();
+        }
+        doomedInjectedAssumptionVariables.Add(variable);
+      }
+      else
+      {
+        if (injectedAssumptionVariables == null)
+        {
+          injectedAssumptionVariables = new List<LocalVariable>();
+        }
+        injectedAssumptionVariables.Add(variable);
+      }
     }
 
     public Implementation(IToken tok, string name, List<TypeVariable> typeParams, List<Variable> inParams, List<Variable> outParams, List<Variable> localVariables, [Captured] StmtList structuredStmts, QKeyValue kv)

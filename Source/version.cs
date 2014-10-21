@@ -1,12 +1,4 @@
-// ==++==
-// 
-//   
-// 
-// ==--==
-// Warning: Automatically generated file. DO NOT EDIT
-// Generated at Dienstag, 5. Juli 2011 11:26:45
-
 using System.Reflection;
-[assembly: AssemblyVersion("2.2.30705.1126")]
-[assembly: AssemblyFileVersion("2.2.30705.1126")]
-
+// Version 2.3.0; year 2008+6, month 10, day 16
+[assembly: AssemblyVersion("2.3.0.61016")]
+[assembly: AssemblyFileVersion("2.3.0.61016")]

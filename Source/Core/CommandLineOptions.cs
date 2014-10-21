@@ -389,7 +389,7 @@ namespace Microsoft.Boogie {
     public bool Trace = false;
     public bool TraceTimes = false;
     public bool TraceProofObligations = false;
-    public bool TraceCaching = false;
+    public int TraceCaching = 0;
     public bool NoResolve = false;
     public bool NoTypecheck = false;
     public bool OverlookBoogieTypeErrors = false;
@@ -1325,6 +1325,10 @@ namespace Microsoft.Boogie {
         case "verifySnapshots":
           ps.GetNumericArgument(ref VerifySnapshots, 3);
           return true;
+
+        case "traceCaching":
+          ps.GetNumericArgument(ref TraceCaching, 4);
+          return true;
 		
 		case "useSmtOutputFormat": {
 		  if (ps.ConfirmArgumentCount(0)) {
@@ -1393,7 +1397,6 @@ namespace Microsoft.Boogie {
               ps.CheckBooleanFlag("wait", ref Wait) ||
               ps.CheckBooleanFlag("trace", ref Trace) ||
               ps.CheckBooleanFlag("traceTimes", ref TraceTimes) ||
-              ps.CheckBooleanFlag("traceCaching", ref TraceCaching) ||
               ps.CheckBooleanFlag("tracePOs", ref TraceProofObligations) ||
               ps.CheckBooleanFlag("noResolve", ref NoResolve) ||
               ps.CheckBooleanFlag("noTypecheck", ref NoTypecheck) ||

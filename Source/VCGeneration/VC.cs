@@ -1626,7 +1626,8 @@ namespace VC {
         outcome = Outcome.Errors;
         foreach (var a in impl.RecycledFailingAssertions)
         {
-          var oldCex = impl.ErrorChecksumToCachedError[a.Checksum] as Counterexample;
+          var checksum = a.SugaredCmdChecksum != null ? a.SugaredCmdChecksum : a.Checksum;
+          var oldCex = impl.ErrorChecksumToCachedError[checksum] as Counterexample;
           if (oldCex != null)
           {
             callback.OnCounterexample(oldCex, null);

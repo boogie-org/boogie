@@ -130,13 +130,12 @@ namespace Microsoft.Boogie
             run.LowPriorityImplementationCount++;
             if (TimeThreshold < vr.End.Subtract(vr.Start).TotalMilliseconds)
             {
-              SetErrorChecksumsInCachedSnapshot(impl, vr);
+              SetErrorAndAssertionChecksumsInCachedSnapshot(impl, vr);
               if (vr.ProgramId != null)
               {
                 var p = ExecutionEngine.CachedProgram(vr.ProgramId);
                 if (p != null)
                 {
-                  SetAssertionChecksumsInPreviousSnapshot(impl, p);
                   eai.Inject(impl, p);
                   run.RewrittenImplementationCount++;
                 }
@@ -148,13 +147,14 @@ namespace Microsoft.Boogie
             run.MediumPriorityImplementationCount++;
             if (TimeThreshold < vr.End.Subtract(vr.Start).TotalMilliseconds)
             {
-              SetErrorChecksumsInCachedSnapshot(impl, vr);
+              SetErrorAndAssertionChecksumsInCachedSnapshot(impl, vr);
               if (vr.ProgramId != null)
               {
                 var p = ExecutionEngine.CachedProgram(vr.ProgramId);
                 if (p != null)
                 {
-                  SetAssertionChecksumsInPreviousSnapshot(impl, p);
+                  eai.Inject(impl, p);
+                  run.RewrittenImplementationCount++;
                 }
               }
             }
@@ -166,14 +166,6 @@ namespace Microsoft.Boogie
           else if (priority == Priority.SKIP)
           {
             run.SkippedImplementationCount++;
-            if (vr.ProgramId != null)
-            {
-              var p = ExecutionEngine.CachedProgram(vr.ProgramId);
-              if (p != null)
-              {
-                SetAssertionChecksums(impl, p);
-              }
-            }
           }
         }
       }
@@ -181,33 +173,17 @@ namespace Microsoft.Boogie
       Statistics.AddRun(requestId, run);
     }
 
-    private static void SetErrorChecksumsInCachedSnapshot(Implementation implementation, VerificationResult result)
+    private static void SetErrorAndAssertionChecksumsInCachedSnapshot(Implementation implementation, VerificationResult result)
     {
       if (result.Outcome == ConditionGeneration.Outcome.Errors && result.Errors != null && result.Errors.Count < CommandLineOptions.Clo.ProverCCLimit)
       {
         implementation.SetErrorChecksumToCachedError(result.Errors.Select(cex => new Tuple<byte[], object>(cex.Checksum, cex)));
+        implementation.AssertionChecksumsInCachedSnapshot = result.AssertionChecksums;
       }
       else if (result.Outcome == ConditionGeneration.Outcome.Correct)
       {
         implementation.SetErrorChecksumToCachedError(new List<Tuple<byte[], object>>());
-      }
-    }
-
-    private static void SetAssertionChecksums(Implementation implementation, Program program)
-    {
-      var implPrevSnap = program.FindImplementation(implementation.Id);
-      if (implPrevSnap != null)
-      {
-        implementation.AssertionChecksums = implPrevSnap.AssertionChecksums;
-      }
-    }
-
-    private static void SetAssertionChecksumsInPreviousSnapshot(Implementation implementation, Program program)
-    {
-      var implPrevSnap = program.FindImplementation(implementation.Id);
-      if (implPrevSnap != null)
-      {
-        implementation.AssertionChecksumsInPreviousSnapshot = implPrevSnap.AssertionChecksums;
+        implementation.AssertionChecksumsInCachedSnapshot = result.AssertionChecksums;
       }
     }
 
@@ -220,40 +196,80 @@ namespace Microsoft.Boogie
           && oldProc.DependencyChecksum != node.Proc.DependencyChecksum
           && node.AssignedAssumptionVariable == null)
       {
-        if (DependencyCollector.AllFunctionDependenciesAreDefinedAndUnchanged(oldProc, Program))
+        var before = new List<Cmd>();
+        var beforePrecondtionCheck = new List<Cmd>();
+        var after = new List<Cmd>();
+        Expr assumedExpr = new LiteralExpr(Token.NoToken, false);
+        // TODO(wuestholz): Try out two alternatives: only do this for low priority implementations or not at all.
+        var canUseSpecs = DependencyCollector.AllFunctionDependenciesAreDefinedAndUnchanged(oldProc, Program);
+        if (canUseSpecs)
+        {
+          var desugaring = node.Desugaring;
+          Contract.Assert(desugaring != null);
+          var precond = node.CheckedPrecondition(oldProc, Program);
+          if (precond != null)
+          {
+            var assume = new AssumeCmd(node.tok, precond, new QKeyValue(Token.NoToken, "precondition_previous_snapshot", new List<object>(), null));
+            beforePrecondtionCheck.Add(assume);
+          }
+
+          assumedExpr = node.Postcondition(oldProc, Program);
+          var unmods = node.UnmodifiedBefore(oldProc);
+          foreach (var unmod in unmods)
+          {
+            var oldUnmod = new LocalVariable(Token.NoToken,
+              new TypedIdent(Token.NoToken, string.Format("{0}##old##{1}", unmod.Name, FreshTemporaryVariableName), unmod.Type));
+            before.Add(new AssignCmd(Token.NoToken,
+                         new List<AssignLhs> { new SimpleAssignLhs(Token.NoToken, new IdentifierExpr(Token.NoToken, oldUnmod)) },
+                         new List<Expr> { new IdentifierExpr(Token.NoToken, unmod.Decl) }));
+            var eq = LiteralExpr.Eq(new IdentifierExpr(Token.NoToken, oldUnmod), new IdentifierExpr(Token.NoToken, unmod.Decl));
+            if (assumedExpr == null)
+            {
+              assumedExpr = eq;
+            }
+            else
+            {
+              assumedExpr = LiteralExpr.And(assumedExpr, eq);
+            }
+          }
+        }
+
+        if (assumedExpr != null)
         {
           var lv = new LocalVariable(Token.NoToken,
             new TypedIdent(Token.NoToken, string.Format("a##post##{0}", FreshAssumptionVariableName), Type.Bool),
             new QKeyValue(Token.NoToken, "assumption", new List<object>(), null));
           node.AssignedAssumptionVariable = lv;
-          currentImplementation.InjectAssumptionVariable(lv);
-
-          var before = new List<Cmd>();
-          if (oldProc.Requires.Any())
-          {
-            var pre = node.CheckedPrecondition(oldProc, Program);
-            var assume = new AssumeCmd(Token.NoToken, pre, new QKeyValue(Token.NoToken, "precondition_previous_snapshot", new List<object>(), null));
-            before.Add(assume);
-          }
-
-          var post = node.Postcondition(oldProc, Program);
-          var mods = node.UnmodifiedBefore(oldProc);
-          foreach (var m in mods)
-          {
-            var mPre = new LocalVariable(Token.NoToken,
-              new TypedIdent(Token.NoToken, string.Format("{0}##pre##{1}", m.Name, FreshTemporaryVariableName), m.Type));
-            before.Add(new AssignCmd(Token.NoToken,
-                         new List<AssignLhs> { new SimpleAssignLhs(Token.NoToken, new IdentifierExpr(Token.NoToken, mPre)) },
-                         new List<Expr> { new IdentifierExpr(Token.NoToken, m.Decl) }));
-            var eq = LiteralExpr.Eq(new IdentifierExpr(Token.NoToken, mPre), new IdentifierExpr(Token.NoToken, m.Decl));
-            post = LiteralExpr.And(post, eq);
-          }
+          currentImplementation.InjectAssumptionVariable(lv, !canUseSpecs);
           var lhs = new SimpleAssignLhs(Token.NoToken, new IdentifierExpr(Token.NoToken, lv));
-          var rhs = LiteralExpr.And(new IdentifierExpr(Token.NoToken, lv), post);
-          var assumed = new AssignCmd(Token.NoToken, new List<AssignLhs> { lhs }, new List<Expr> { rhs });
+          var rhs = LiteralExpr.And(new IdentifierExpr(Token.NoToken, lv), assumedExpr);
+          var assumed = new AssignCmd(node.tok, new List<AssignLhs> { lhs }, new List<Expr> { rhs });
+          after.Add(assumed);
+        }
 
-          node.ExtendDesugaring(before, new List<Cmd> { assumed });
-          node.ProcDependencyChecksumInPreviousSnapshot = oldProc.DependencyChecksum;
+        node.ExtendDesugaring(before, beforePrecondtionCheck, after);
+        if (1 <= CommandLineOptions.Clo.TraceCaching)
+        {
+          using (var tokTxtWr = new TokenTextWriter("<console>", Console.Out, false, false))
+          {
+            var loc = node.tok != null && node.tok != Token.NoToken ? string.Format("{0}({1},{2})", node.tok.filename, node.tok.line, node.tok.col) : "<unknown location>";
+            Console.Out.WriteLine("Processing call to procedure {0} in implementation {1} (at {2}):", node.Proc.Name, currentImplementation.Name, loc);
+            foreach (var b in before)
+            {
+              Console.Out.Write("  >>> added before: ");
+              b.Emit(tokTxtWr, 0);
+            }
+            foreach (var b in beforePrecondtionCheck)
+            {
+              Console.Out.Write("  >>> added before precondition check: ");
+              b.Emit(tokTxtWr, 0);
+            }
+            foreach (var a in after)
+            {
+              Console.Out.Write("  >>> added after: ");
+              a.Emit(tokTxtWr, 0);
+            }
+          }
         }
       }
 
@@ -280,12 +296,9 @@ namespace Microsoft.Boogie
       }
 
       var end = DateTime.UtcNow;
-      if (CommandLineOptions.Clo.TraceCaching)
+      if (3 <= CommandLineOptions.Clo.TraceCaching)
       {
-        Console.Out.WriteLine("");
-        Console.Out.WriteLine("<trace caching>");
         Console.Out.WriteLine("Collected other definition axioms within {0:F0} ms.", end.Subtract(start).TotalMilliseconds);
-        Console.Out.WriteLine("</trace caching>");
       }
     }
 
@@ -331,12 +344,9 @@ namespace Microsoft.Boogie
       dc.VisitProgram(program);
 
       var end = DateTime.UtcNow;
-      if (CommandLineOptions.Clo.TraceCaching)
+      if (3 <= CommandLineOptions.Clo.TraceCaching)
       {
-        Console.Out.WriteLine("");
-        Console.Out.WriteLine("<trace caching>");
         Console.Out.WriteLine("Collected dependencies within {0:F0} ms.", end.Subtract(start).TotalMilliseconds);
-        Console.Out.WriteLine("</trace caching>");
       }
     }
 

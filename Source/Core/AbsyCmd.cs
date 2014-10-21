@@ -942,7 +942,7 @@ namespace Microsoft.Boogie {
 
   public static class ChecksumHelper
   {
-    public static void ComputeChecksums(Cmd cmd, Implementation impl, byte[] currentChecksum = null, bool unordered = false)
+    public static void ComputeChecksums(Cmd cmd, Implementation impl, ISet<Variable> usedVariables, byte[] currentChecksum = null)
     {
       if (CommandLineOptions.Clo.VerifySnapshots < 2)
       {
@@ -962,14 +962,26 @@ namespace Microsoft.Boogie {
       using (var tokTxtWr = new TokenTextWriter("<no file>", strWr, false, false))
       {
         tokTxtWr.UseForComputingChecksums = true;
-        cmd.Emit(tokTxtWr, 0);
+        var havocCmd = cmd as HavocCmd;
+        if (havocCmd != null)
+        {
+          // TODO(wuestholz): Check with Rustan if this makes sense.
+          tokTxtWr.Write("havoc ");
+          var relevantVars = havocCmd.Vars.Where(v => usedVariables.Contains(v.Decl) && !v.Decl.Name.StartsWith("a##post##")).ToList();
+          relevantVars.Emit(tokTxtWr, true);
+          tokTxtWr.WriteLine(";");
+        }
+        else
+        {
+          cmd.Emit(tokTxtWr, 0);
+        }
         var md5 = System.Security.Cryptography.MD5.Create();
         var str = strWr.ToString();
         if (str.Any())
         {
           var data = System.Text.Encoding.UTF8.GetBytes(str);
           var checksum = md5.ComputeHash(data);
-          currentChecksum = currentChecksum != null ? CombineChecksums(currentChecksum, checksum, unordered) : checksum;
+          currentChecksum = currentChecksum != null ? CombineChecksums(currentChecksum, checksum) : checksum;
         }
         cmd.Checksum = currentChecksum;
       }
@@ -984,6 +996,7 @@ namespace Microsoft.Boogie {
           // because a corresponding counterexample will also have the
           // checksum of the failing call.
           impl.AddAssertionChecksum(assertRequiresCmd.Call.Checksum);
+          assertRequiresCmd.SugaredCmdChecksum = assertRequiresCmd.Call.Checksum;
         }
         else
         {
@@ -1000,15 +1013,17 @@ namespace Microsoft.Boogie {
         {
           foreach (var c in stateCmd.Cmds)
           {
-            ComputeChecksums(c, impl, currentChecksum, unordered);
+            ComputeChecksums(c, impl, usedVariables, currentChecksum);
             currentChecksum = c.Checksum;
+            if (c.SugaredCmdChecksum == null)
+            {
+              c.SugaredCmdChecksum = cmd.Checksum;
+            }
           }
-          sugaredCmd.DesugaringChecksum = currentChecksum;
         }
         else
         {
-          ComputeChecksums(sugaredCmd.Desugaring, impl, currentChecksum, unordered);
-          sugaredCmd.DesugaringChecksum = sugaredCmd.Desugaring.Checksum;
+          ComputeChecksums(sugaredCmd.Desugaring, impl, usedVariables, currentChecksum);
         }
       }
     }
@@ -1036,6 +1051,7 @@ namespace Microsoft.Boogie {
   [ContractClass(typeof(CmdContracts))]
   public abstract class Cmd : Absy {
     public byte[] Checksum { get; internal set; }
+    public byte[] SugaredCmdChecksum { get; internal set; }
 
     public Cmd(IToken/*!*/ tok)
       : base(tok) {
@@ -1760,9 +1776,7 @@ namespace Microsoft.Boogie {
   [ContractClass(typeof(SugaredCmdContracts))]
   abstract public class SugaredCmd : Cmd {
     private Cmd desugaring;  // null until desugared
-
-    public byte[] DesugaringChecksum { get; set; }
-
+    
     public SugaredCmd(IToken/*!*/ tok)
       : base(tok) {
       Contract.Requires(tok != null);
@@ -1794,13 +1808,19 @@ namespace Microsoft.Boogie {
     }
     protected abstract Cmd/*!*/ ComputeDesugaring();
 
-    public void ExtendDesugaring(IEnumerable<Cmd> before, IEnumerable<Cmd> after)
+    public void ExtendDesugaring(IEnumerable<Cmd> before, IEnumerable<Cmd> beforePreconditionCheck, IEnumerable<Cmd> after)
     {
       var desug = Desugaring;
       var stCmd = desug as StateCmd;
       if (stCmd != null)
       {
         stCmd.Cmds.InsertRange(0, before);
+        var idx = stCmd.Cmds.FindIndex(c => c is AssertCmd || c is HavocCmd || c is AssumeCmd);
+        if (idx < 0)
+        {
+          idx = 0;
+        }
+        stCmd.Cmds.InsertRange(idx, beforePreconditionCheck);
         stCmd.Cmds.AddRange(after);
       }
       else if (desug != null)
@@ -1872,7 +1892,7 @@ namespace Microsoft.Boogie {
     }
 
     // We have to give the type explicitly, because the type of the formal "likeThisOne" can contain type variables
-    protected Variable CreateTemporaryVariable(List<Variable> tempVars, Variable likeThisOne, Type ty, TempVarKind kind) {
+    protected Variable CreateTemporaryVariable(List<Variable> tempVars, Variable likeThisOne, Type ty, TempVarKind kind, ref int uniqueId) {
       Contract.Requires(ty != null);
       Contract.Requires(likeThisOne != null);
       Contract.Requires(tempVars != null);
@@ -1894,7 +1914,7 @@ namespace Microsoft.Boogie {
           }  // unexpected kind
       }
       TypedIdent ti = likeThisOne.TypedIdent;
-      TypedIdent newTi = new TypedIdent(ti.tok, "call" + UniqueId + tempNamePrefix + ti.Name, ty);
+      TypedIdent newTi = new TypedIdent(ti.tok, "call" + (uniqueId++) + tempNamePrefix + ti.Name, ty);
       Variable/*!*/ v;
       if (kind == TempVarKind.Bound) {
         v = new BoundVariable(likeThisOne.tok, newTi);
@@ -1999,7 +2019,6 @@ namespace Microsoft.Boogie {
     public string/*!*/ callee { get; set; }
     public Procedure Proc;
     public LocalVariable AssignedAssumptionVariable;
-    public string ProcDependencyChecksumInPreviousSnapshot { get; set; }
 
     // Element of the following lists can be null, which means that
     // the call happens with * as these parameters
@@ -2087,14 +2106,6 @@ namespace Microsoft.Boogie {
         stream.Write(" := ");
       }
       stream.Write(TokenTextWriter.SanitizeIdentifier(callee));
-      if (stream.UseForComputingChecksums)
-      {
-        var c = ProcDependencyChecksumInPreviousSnapshot != null ? ProcDependencyChecksumInPreviousSnapshot : Proc.DependencyChecksum;
-        if (c != null)
-        {
-          stream.Write(string.Format("[dependency_checksum:{0}]", c));
-        }
-      }
       stream.Write("(");
       sep = "";
       foreach (Expr arg in Ins) {
@@ -2290,6 +2301,8 @@ namespace Microsoft.Boogie {
 
     protected override Cmd ComputeDesugaring() {
       Contract.Ensures(Contract.Result<Cmd>() != null);
+
+      int uniqueId = 0;
       List<Cmd> newBlockBody = new List<Cmd>();
       Dictionary<Variable, Expr> substMap = new Dictionary<Variable, Expr>();
       Dictionary<Variable, Expr> substMapOld = new Dictionary<Variable, Expr>();
@@ -2330,13 +2343,13 @@ namespace Microsoft.Boogie {
           actualType = cce.NonNull(cce.NonNull(Ins[i]).Type);
 
         Variable cin = CreateTemporaryVariable(tempVars, param, actualType,
-                                               TempVarKind.Formal);
+                                               TempVarKind.Formal, ref uniqueId);
         cins.Add(cin);
         IdentifierExpr ie = new IdentifierExpr(cin.tok, cin);
         substMap.Add(param, ie);
         if (isWildcard) {
           cin = CreateTemporaryVariable(tempVars, param,
-                                        actualType, TempVarKind.Bound);
+                                        actualType, TempVarKind.Bound, ref uniqueId);
           wildcardVars.Add(cin);
           ie = new IdentifierExpr(cin.tok, cin);
         }
@@ -2427,7 +2440,7 @@ namespace Microsoft.Boogie {
         Contract.Assert(f != null);
         Contract.Assume(f.Decl != null);
         Contract.Assert(f.Type != null);
-        Variable v = CreateTemporaryVariable(tempVars, f.Decl, f.Type, TempVarKind.Old);
+        Variable v = CreateTemporaryVariable(tempVars, f.Decl, f.Type, TempVarKind.Old, ref uniqueId);
         IdentifierExpr v_exp = new IdentifierExpr(v.tok, v);
         substMapOld.Add(f.Decl, v_exp);  // this assumes no duplicates in this.Proc.Modifies
         AssignCmd assign = Cmd.SimpleAssign(f.tok, v_exp, f);
@@ -2453,7 +2466,7 @@ namespace Microsoft.Boogie {
           actualType = cce.NonNull(cce.NonNull(Outs[i]).Type);
 
         Variable cout = CreateTemporaryVariable(tempVars, param, actualType,
-                                                TempVarKind.Formal);
+                                                TempVarKind.Formal, ref uniqueId);
         couts.Add(cout);
         IdentifierExpr ie = new IdentifierExpr(cout.tok, cout);
         substMap.Add(param, ie);
@@ -2480,8 +2493,8 @@ namespace Microsoft.Boogie {
       #endregion
 
       #region assume Post[ins, outs, old(frame) := cins, couts, cframe]
-      calleeSubstitution = Substituter.SubstitutionFromHashtable(substMap);
-      calleeSubstitutionOld = Substituter.SubstitutionFromHashtable(substMapOld);
+      calleeSubstitution = Substituter.SubstitutionFromHashtable(substMap, true);
+      calleeSubstitutionOld = Substituter.SubstitutionFromHashtable(substMapOld, true);
       foreach (Ensures/*!*/ e in this.Proc.Ensures) {
         Contract.Assert(e != null);
         Expr copy = Substituter.ApplyReplacingOldExprs(calleeSubstitution, calleeSubstitutionOld, e.Condition);
@@ -2572,10 +2585,6 @@ namespace Microsoft.Boogie {
         {
           result = c;
         }
-      }
-      if (result == null)
-      {
-        result = new LiteralExpr(Token.NoToken, true);
       }
       return result;
     }
