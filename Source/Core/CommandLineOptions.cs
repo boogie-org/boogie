@@ -147,12 +147,22 @@ namespace Microsoft.Boogie {
       /// </summary>
       public bool GetNumericArgument(ref int arg) {
         //modifies nextIndex, encounteredErrors, Console.Error.*;
+        return GetNumericArgument(ref arg, a => 0 <= a);
+      }
+
+      /// <summary>
+      /// If there is one argument and the filtering predicate holds, then set "arg" to that number and return "true".
+      /// Otherwise, emit error message, leave "arg" unchanged, and return "false".
+      /// </summary>
+      public bool GetNumericArgument(ref int arg, Predicate<int> filter) {
+        Contract.Requires(filter != null);
+
         if (this.ConfirmArgumentCount(1)) {
           try {
             Contract.Assume(args[i] != null);
             Contract.Assert(args[i] is string);  // needed to prove args[i].IsPeerConsistent
             int d = Convert.ToInt32(this.args[this.i]);
-            if (0 <= d) {
+            if (filter == null || filter(d)) {
               arg = d;
               return true;
             }
@@ -1291,7 +1301,7 @@ namespace Microsoft.Boogie {
           return true;
 
         case "vcsCores":
-          ps.GetNumericArgument(ref VcsCores);
+          ps.GetNumericArgument(ref VcsCores, a => 1 <= a);
           return true;
 
         case "vcsLoad":
