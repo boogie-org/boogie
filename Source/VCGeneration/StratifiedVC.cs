@@ -1084,8 +1084,6 @@ namespace VC {
       Debug.Assert(QKeyValue.FindBoolAttribute(impl.Attributes, "entrypoint"));
       Debug.Assert(this.program == program);
 
-      var computeUnderBound = true;
-
       // Record current time
       var startTime = DateTime.UtcNow;
 
@@ -1159,7 +1157,7 @@ namespace VC {
       }
       #endregion
 
-      if (CommandLineOptions.Clo.StratifiedInliningVerbose > 0) {
+      if (CommandLineOptions.Clo.StratifiedInliningVerbose > 1) {
         Console.WriteLine(">> SI: Size of VC after eager inlining: {0}", vState.vcSize);
       }
 
@@ -1233,6 +1231,9 @@ namespace VC {
           {
               if (block.Count == 0)
               {
+                  if (CommandLineOptions.Clo.StratifiedInliningVerbose > 0)
+                      Console.WriteLine(">> SI: Exhausted Bound {0}", bound);
+
                   // Increment bound
                   bound++;
 
@@ -1255,7 +1256,7 @@ namespace VC {
               Contract.Assert(reporter.candidatesToExpand.Count != 0);
 
               #region expand call tree
-              if (CommandLineOptions.Clo.StratifiedInliningVerbose > 0)
+              if (CommandLineOptions.Clo.StratifiedInliningVerbose > 1)
               {
                   Console.Write(">> SI Inlining: ");
                   reporter.candidatesToExpand
@@ -1285,7 +1286,7 @@ namespace VC {
       // this call to VerifyImplementation
       vState.checker.prover.Pop();
 
-      if (CommandLineOptions.Clo.StratifiedInliningVerbose > 0) {
+      if (CommandLineOptions.Clo.StratifiedInliningVerbose > 1) {
         Console.WriteLine(">> SI: Expansions performed: {0}", vState.expansionCount);
         Console.WriteLine(">> SI: Candidates left: {0}", calls.currCandidates.Count);
         Console.WriteLine(">> SI: Candidates skipped: {0}", calls.currCandidates.Where(i => isSkipped(i, calls)).Count());
