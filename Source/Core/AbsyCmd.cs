@@ -2493,8 +2493,8 @@ namespace Microsoft.Boogie {
       #endregion
 
       #region assume Post[ins, outs, old(frame) := cins, couts, cframe]
-      calleeSubstitution = Substituter.SubstitutionFromHashtable(substMap, true);
-      calleeSubstitutionOld = Substituter.SubstitutionFromHashtable(substMapOld, true);
+      calleeSubstitution = Substituter.SubstitutionFromHashtable(substMap, true, Proc);
+      calleeSubstitutionOld = Substituter.SubstitutionFromHashtable(substMapOld, true, Proc);
       foreach (Ensures/*!*/ e in this.Proc.Ensures) {
         Contract.Assert(e != null);
         Expr copy = Substituter.ApplyReplacingOldExprs(calleeSubstitution, calleeSubstitutionOld, e.Condition);

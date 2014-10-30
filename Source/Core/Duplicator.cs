@@ -479,28 +479,41 @@ namespace Microsoft.Boogie {
   public delegate Expr/*?*/ Substitution(Variable/*!*/ v);
 
   public static class Substituter {
-    public static Substitution SubstitutionFromHashtable(Dictionary<Variable, Expr> map, bool fallBackOnName = false)
+    public static Substitution SubstitutionFromHashtable(Dictionary<Variable, Expr> map, bool fallBackOnName = false, Procedure proc = null)
     {
       Contract.Requires(map != null);
       Contract.Ensures(Contract.Result<Substitution>() != null);
       // TODO: With Whidbey, could use anonymous functions.
-      return new Substitution(new CreateSubstitutionClosure(map, fallBackOnName).Method);
+      return new Substitution(new CreateSubstitutionClosure(map, fallBackOnName, proc).Method);
     }
     private sealed class CreateSubstitutionClosure {
       Dictionary<Variable /*!*/, Expr /*!*/>/*!*/ map;
       Dictionary<string /*!*/, Expr /*!*/>/*!*/ nameMap;
+      Procedure proc;
       [ContractInvariantMethod]
       void ObjectInvariant() {
         Contract.Invariant(map != null);
       }
 
-      public CreateSubstitutionClosure(Dictionary<Variable, Expr> map, bool fallBackOnName = false)
+      static string UniqueName(Variable variable, Procedure proc)
+      {
+        // TODO(wuestholz): Maybe we should define structural equality for variables instead.
+        var scope = "#global_scope#";
+        if (proc != null && !(variable is GlobalVariable || variable is Constant))
+        {
+          scope = proc.Name;
+        }
+        return string.Format("{0}.{1}", scope, variable.Name);
+      }
+
+      public CreateSubstitutionClosure(Dictionary<Variable, Expr> map, bool fallBackOnName = false, Procedure proc = null)
         : base() {
         Contract.Requires(map != null);
         this.map = map;
-        if (fallBackOnName)
+        this.proc = proc;
+        if (fallBackOnName && proc != null)
         {
-          this.nameMap = map.ToDictionary(kv => kv.Key.Name, kv => kv.Value);
+          this.nameMap = map.ToDictionary(kv => UniqueName(kv.Key, proc), kv => kv.Value);
         }
       }
       public Expr/*?*/ Method(Variable v) {
@@ -509,7 +522,7 @@ namespace Microsoft.Boogie {
           return map[v];
         }
         Expr e;
-        if (nameMap != null && nameMap.TryGetValue(v.Name, out e))
+        if (nameMap != null && proc != null && nameMap.TryGetValue(UniqueName(v, proc), out e))
         {
           return e;
         }
