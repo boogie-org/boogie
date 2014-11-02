@@ -1041,8 +1041,9 @@ namespace Microsoft.Boogie
         {
           var s = StatisticsPerRequest[kv.Key];
           var cacs = s.CachingActionCounts;
+          var c = cacs != null ? string.Format(", {0,3}, {1,3}, {2,3}, {3,3}, {4,3}, {5,3}", cacs[0], cacs[1], cacs[2], cacs[3], cacs[4], cacs[5]) : "";
           var t = printTimes ? string.Format(", {0,8:F0}", kv.Value.TotalMilliseconds) : "";
-          Console.Out.WriteLine("{0,-19}{1}, {2,2}, {3,2}, {4,2}, {5,2}, {6,2}, {7,3}, {8,3}, {9,3}, {10,3}, {11,3}, {12,3}", kv.Key, t, s.ErrorCount, s.InconclusiveCount, s.OutOfMemoryCount, s.TimeoutCount, s.VerifiedCount, cacs[0], cacs[1], cacs[2], cacs[3], cacs[4], cacs[5]);
+          Console.Out.WriteLine("{0,-19}{1}, {2,2}, {3,2}, {4,2}, {5,2}, {6,2}{7}", kv.Key, t, s.ErrorCount, s.InconclusiveCount, s.OutOfMemoryCount, s.TimeoutCount, s.VerifiedCount, c);
         }
 
         if (printTimes)

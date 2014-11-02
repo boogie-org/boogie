@@ -1496,7 +1496,10 @@ namespace VC {
           cmd.Emit(tokTxtWr, 0);
           Console.Out.WriteLine("  >>> {0}", action);
         }
-        Interlocked.Increment(ref CachingActionCounts[(int)action]);
+        if (CachingActionCounts != null)
+        {
+          Interlocked.Increment(ref CachingActionCounts[(int)action]);
+        }
       }
     }
 
