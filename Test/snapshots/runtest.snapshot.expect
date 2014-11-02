@@ -1,51 +1,51 @@
 Processing command (at Snapshots0.v0.bpl(41,5)) assert false /* checksum: 15-08-03-72-EB-A5-47-46-57-90-24-B0-70-9D-3D-31 */ ;
-  >>> did nothing
+  >>> DoNothing
 Snapshots0.v0.bpl(41,5): Error BP5001: This assertion might not hold.
 Processing command (at Snapshots0.v0.bpl(8,5)) assert false /* checksum: 15-08-03-72-EB-A5-47-46-57-90-24-B0-70-9D-3D-31 */ ;
-  >>> did nothing
+  >>> DoNothing
 Snapshots0.v0.bpl(8,5): Error BP5001: This assertion might not hold.
 Processing command (at Snapshots0.v0.bpl(19,5)) assert false /* checksum: 15-08-03-72-EB-A5-47-46-57-90-24-B0-70-9D-3D-31 */ ;
-  >>> did nothing
+  >>> DoNothing
 Snapshots0.v0.bpl(19,5): Error BP5001: This assertion might not hold.
 Processing command (at Snapshots0.v0.bpl(30,5)) assert false /* checksum: 15-08-03-72-EB-A5-47-46-57-90-24-B0-70-9D-3D-31 */ ;
-  >>> did nothing
+  >>> DoNothing
 Snapshots0.v0.bpl(30,5): Error BP5001: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 4 errors
 Snapshots0.v0.bpl(41,5): Error BP5001: This assertion might not hold.
 Processing command (at Snapshots0.v1.bpl(19,5)) assert true /* checksum: F7-FC-97-12-78-9F-88-2B-BF-B4-4F-35-55-71-AD-EA */ ;
-  >>> did nothing
+  >>> DoNothing
 Processing command (at Snapshots0.v1.bpl(30,5)) assert false /* checksum: 15-08-03-72-EB-A5-47-46-57-90-24-B0-70-9D-3D-31 */ ;
-  >>> did nothing
+  >>> DoNothing
 Snapshots0.v1.bpl(30,5): Error BP5001: This assertion might not hold.
 Processing command (at Snapshots0.v1.bpl(41,5)) assert true /* checksum: F7-FC-97-12-78-9F-88-2B-BF-B4-4F-35-55-71-AD-EA */ ;
-  >>> did nothing
+  >>> DoNothing
 
 Boogie program verifier finished with 2 verified, 2 errors
 Snapshots0.v0.bpl(41,5): Error BP5001: This assertion might not hold.
 Processing command (at Snapshots0.v2.bpl(19,5)) assert true /* checksum: F7-FC-97-12-78-9F-88-2B-BF-B4-4F-35-55-71-AD-EA */ ;
-  >>> did nothing
+  >>> DoNothing
 Processing command (at Snapshots0.v2.bpl(30,5)) assert true /* checksum: F7-FC-97-12-78-9F-88-2B-BF-B4-4F-35-55-71-AD-EA */ ;
-  >>> did nothing
+  >>> DoNothing
 
 Boogie program verifier finished with 2 verified, 1 error
 Processing command (at Snapshots1.v0.bpl(13,5)) assert 1 != 1 /* checksum: 2F-3D-C6-E0-2F-BD-0D-D9-99-D3-FD-D9-1B-AB-9C-F5 */ ;
-  >>> did nothing
+  >>> DoNothing
 Snapshots1.v0.bpl(13,5): Error BP5001: This assertion might not hold.
 
 Boogie program verifier finished with 1 verified, 1 error
 Processing command (at Snapshots1.v1.bpl(13,5)) assert 2 != 2 /* checksum: 14-C1-28-03-D4-A3-E8-E9-0D-DF-F5-4A-B5-E9-BC-3F */ ;
-  >>> did nothing
+  >>> DoNothing
 Snapshots1.v1.bpl(13,5): Error BP5001: This assertion might not hold.
 
 Boogie program verifier finished with 1 verified, 1 error
 Processing call to procedure P2 in implementation P1 (at Snapshots1.v2.bpl(5,5)):
 Processing command (at Snapshots1.v2.bpl(5,5)) assert false /* checksum: D1-72-9A-D5-02-D4-C2-1C-72-57-E0-9B-63-83-FD-61 */ ;
-  >>> did nothing
+  >>> DoNothing
 Snapshots1.v2.bpl(5,5): Error BP5002: A precondition for this call might not hold.
 Snapshots1.v2.bpl(10,3): Related location: This is the precondition that might not hold.
 Processing command (at Snapshots1.v2.bpl(14,5)) assert 2 != 2 /* checksum: 80-D8-1C-F2-22-89-4E-46-9E-B6-B4-8E-71-D8-E1-7B */ ;
-  >>> did nothing
+  >>> DoNothing
 
 Boogie program verifier finished with 1 verified, 1 error
 
@@ -54,13 +54,13 @@ Boogie program verifier finished with 1 verified, 0 errors
 Boogie program verifier finished with 1 verified, 0 errors
 Processing call to procedure P0 in implementation P0 (at Snapshots2.v2.bpl(6,5)):
 Processing command (at Snapshots2.v2.bpl(6,5)) assert F0() /* checksum: D1-9A-AF-2B-D9-3C-97-D6-E1-5C-E1-33-99-55-01-42 */ ;
-  >>> did nothing
+  >>> DoNothing
 
 Boogie program verifier finished with 1 verified, 0 errors
 Processing call to procedure P0 in implementation P0 (at Snapshots2.v3.bpl(6,5)):
   >>> added after: a##post##0 := a##post##0 && false;
 Processing command (at Snapshots2.v3.bpl(6,5)) assert F0() /* checksum: 2D-F2-46-3A-8D-8E-C1-D6-F9-7D-25-C4-21-E9-A0-28 */ ;
-  >>> did nothing
+  >>> DoNothing
 
 Boogie program verifier finished with 1 verified, 0 errors
 
@@ -68,19 +68,19 @@ Boogie program verifier finished with 1 verified, 0 errors
 Processing call to procedure P0 in implementation P0 (at Snapshots2.v5.bpl(7,5)):
   >>> added before precondition check: assume {:precondition_previous_snapshot} F0();
 Processing command (at Snapshots2.v5.bpl(7,5)) assume {:precondition_previous_snapshot} F0();
-  >>> marked as full verified
+  >>> MarkAsFullyVerified
 Processing command (at Snapshots2.v5.bpl(7,5)) assert F0() /* checksum: 2D-F2-46-3A-8D-8E-C1-D6-F9-7D-25-C4-21-E9-A0-28 */ ;
-  >>> turned assertion into assume statement
+  >>> MarkAsFullyVerified
 Processing command (at Snapshots2.v5.bpl(3,1)) assert F0() /* checksum: 2D-F2-46-3A-8D-8E-C1-D6-F9-7D-25-C4-21-E9-A0-28 */ ;
-  >>> did nothing
+  >>> DoNothing
 
 Boogie program verifier finished with 1 verified, 0 errors
 Processing command (at Snapshots3.v0.bpl(2,1)) assert G() /* checksum: 6F-4F-98-EE-0A-24-AE-77-E9-1F-47-90-5E-D1-AD-74 */ ;
-  >>> did nothing
+  >>> DoNothing
 
 Boogie program verifier finished with 1 verified, 0 errors
 Processing command (at Snapshots3.v1.bpl(2,1)) assert G() /* checksum: BF-E5-F1-9A-64-C1-5B-B7-45-00-F0-94-CA-6E-1E-AC */ ;
-  >>> did nothing
+  >>> DoNothing
 Snapshots3.v1.bpl(6,1): Error BP5003: A postcondition might not hold on this return path.
 Snapshots3.v1.bpl(2,1): Related location: This is the postcondition that might not hold.
 
@@ -90,112 +90,112 @@ Boogie program verifier finished with 3 verified, 0 errors
 Processing call to procedure P2 in implementation P1 (at Snapshots4.v1.bpl(14,5)):
   >>> added after: a##post##0 := a##post##0 && false;
 Processing command (at Snapshots4.v1.bpl(23,5)) assert false /* checksum: 15-08-03-72-EB-A5-47-46-57-90-24-B0-70-9D-3D-31 */ ;
-  >>> did nothing
+  >>> DoNothing
 Snapshots4.v1.bpl(23,5): Error BP5001: This assertion might not hold.
 Processing command (at Snapshots4.v1.bpl(28,3)) assert G() /* checksum: BF-E5-F1-9A-64-C1-5B-B7-45-00-F0-94-CA-6E-1E-AC */ ;
-  >>> did nothing
+  >>> DoNothing
 Snapshots4.v1.bpl(33,1): Error BP5003: A postcondition might not hold on this return path.
 Snapshots4.v1.bpl(28,3): Related location: This is the postcondition that might not hold.
 
 Boogie program verifier finished with 2 verified, 2 errors
 Processing command (at Snapshots5.v0.bpl(5,5)) assert false /* checksum: 68-D1-81-97-87-FF-C5-55-21-B4-19-6E-9E-3B-A4-09 */ ;
-  >>> did nothing
+  >>> DoNothing
 
 Boogie program verifier finished with 1 verified, 0 errors
 Processing command (at Snapshots5.v1.bpl(5,5)) assert false /* checksum: 25-A1-AD-4D-EB-E0-89-92-B9-2C-F2-8C-50-9E-13-F8 */ ;
-  >>> did nothing
+  >>> DoNothing
 Snapshots5.v1.bpl(5,5): Error BP5001: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 1 error
 Processing command (at Snapshots6.v0.bpl(13,5)) assert y == 0 /* checksum: 94-03-76-7A-91-FD-11-44-E2-49-32-50-5B-DB-56-A8 */ ;
-  >>> did nothing
+  >>> DoNothing
 
 Boogie program verifier finished with 1 verified, 0 errors
 Processing call to procedure N in implementation M (at Snapshots6.v1.bpl(11,5)):
   >>> added before: y##old##0 := y;
   >>> added after: a##post##0 := a##post##0 && y##old##0 == y;
 Processing command (at <unknown location>) a##post##0 := a##post##0 && y##old##0 == y;
-  >>> added assume statement for negation of single assumption variable "a##post##0"
+  >>> AssumeNegationOfAssumptionVariable
 Processing command (at Snapshots6.v1.bpl(13,5)) assert y == 0 /* checksum: 94-03-76-7A-91-FD-11-44-E2-49-32-50-5B-DB-56-A8 */ ;
-  >>> did nothing
+  >>> DoNothing
 Snapshots6.v1.bpl(13,5): Error BP5001: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 1 error
 Processing command (at Snapshots7.v0.bpl(14,5)) assert y < 0 /* checksum: 26-F9-F5-34-99-F6-84-ED-8A-39-A2-87-A0-91-55-98 */ ;
-  >>> did nothing
+  >>> DoNothing
 
 Boogie program verifier finished with 1 verified, 0 errors
 Processing call to procedure N in implementation M (at Snapshots7.v1.bpl(12,5)):
   >>> added after: a##post##0 := a##post##0 && y < z;
 Processing command (at <unknown location>) a##post##0 := a##post##0 && y < z;
-  >>> added assume statement for negation of single assumption variable "a##post##0"
+  >>> AssumeNegationOfAssumptionVariable
 Processing command (at Snapshots7.v1.bpl(14,5)) assert y < 0 /* checksum: 26-F9-F5-34-99-F6-84-ED-8A-39-A2-87-A0-91-55-98 */ ;
-  >>> did nothing
+  >>> DoNothing
 
 Boogie program verifier finished with 1 verified, 0 errors
 Processing command (at Snapshots8.v0.bpl(8,5)) assert 0 < call0formal#AT#n /* checksum: 84-77-4F-21-82-94-59-A9-66-C3-77-B2-13-B8-C9-2A */ ;
-  >>> did nothing
+  >>> DoNothing
 Processing command (at Snapshots8.v0.bpl(10,5)) assert 0 <= x /* checksum: 11-02-4B-47-F3-00-A3-7E-1B-2B-10-77-7F-BC-6F-98 */ ;
-  >>> did nothing
+  >>> DoNothing
 
 Boogie program verifier finished with 1 verified, 0 errors
 Processing call to procedure N in implementation M (at Snapshots8.v1.bpl(8,5)):
   >>> added before precondition check: assume {:precondition_previous_snapshot} 0 < call0formal#AT#n;
   >>> added after: a##post##0 := a##post##0 && 0 < call1formal#AT#r;
 Processing command (at Snapshots8.v1.bpl(8,5)) assume {:precondition_previous_snapshot} 0 < call0formal#AT#n;
-  >>> marked as full verified
+  >>> MarkAsFullyVerified
 Processing command (at Snapshots8.v1.bpl(8,5)) assert 0 < call0formal#AT#n /* checksum: 84-77-4F-21-82-94-59-A9-66-C3-77-B2-13-B8-C9-2A */ ;
-  >>> did nothing
+  >>> DoNothing
 Processing command (at <unknown location>) a##post##0 := a##post##0 && 0 < call1formal#AT#r;
-  >>> added assume statement for negation of single assumption variable "a##post##0"
+  >>> AssumeNegationOfAssumptionVariable
 Processing command (at Snapshots8.v1.bpl(10,5)) assert 0 <= x /* checksum: 11-02-4B-47-F3-00-A3-7E-1B-2B-10-77-7F-BC-6F-98 */ ;
-  >>> did nothing
+  >>> DoNothing
 
 Boogie program verifier finished with 1 verified, 0 errors
 Processing command (at Snapshots9.v0.bpl(8,5)) assert 0 < call0formal#AT#n /* checksum: 84-77-4F-21-82-94-59-A9-66-C3-77-B2-13-B8-C9-2A */ ;
-  >>> did nothing
+  >>> DoNothing
 Processing command (at Snapshots9.v0.bpl(8,5)) assert true /* checksum: 0B-95-06-ED-C6-73-4F-5C-E5-29-26-BB-18-39-FA-FC */ ;
-  >>> did nothing
+  >>> DoNothing
 Processing command (at Snapshots9.v0.bpl(10,5)) assert 0 <= x /* checksum: 11-02-4B-47-F3-00-A3-7E-1B-2B-10-77-7F-BC-6F-98 */ ;
-  >>> did nothing
+  >>> DoNothing
 
 Boogie program verifier finished with 1 verified, 0 errors
 Processing call to procedure N in implementation M (at Snapshots9.v1.bpl(8,5)):
   >>> added before precondition check: assume {:precondition_previous_snapshot} 0 < call0formal#AT#n && true;
   >>> added after: a##post##0 := a##post##0 && 0 < call1formal#AT#r && true;
 Processing command (at Snapshots9.v1.bpl(8,5)) assume {:precondition_previous_snapshot} 0 < call0formal#AT#n && true;
-  >>> marked as full verified
+  >>> MarkAsFullyVerified
 Processing command (at Snapshots9.v1.bpl(8,5)) assert 0 < call0formal#AT#n /* checksum: 84-77-4F-21-82-94-59-A9-66-C3-77-B2-13-B8-C9-2A */ ;
-  >>> did nothing
+  >>> DoNothing
 Processing command (at <unknown location>) a##post##0 := a##post##0 && 0 < call1formal#AT#r && true;
-  >>> added assume statement for negation of single assumption variable "a##post##0"
+  >>> AssumeNegationOfAssumptionVariable
 Processing command (at Snapshots9.v1.bpl(10,5)) assert 0 <= x /* checksum: 11-02-4B-47-F3-00-A3-7E-1B-2B-10-77-7F-BC-6F-98 */ ;
-  >>> did nothing
+  >>> DoNothing
 
 Boogie program verifier finished with 1 verified, 0 errors
 Processing command (at Snapshots10.v0.bpl(8,5)) assert 0 < call0formal#AT#n /* checksum: 84-77-4F-21-82-94-59-A9-66-C3-77-B2-13-B8-C9-2A */ ;
-  >>> did nothing
+  >>> DoNothing
 Processing command (at Snapshots10.v0.bpl(12,5)) assert 0 <= x /* checksum: B1-53-93-E6-12-D0-01-C5-D6-F4-E8-65-49-9E-3F-E6 */ ;
-  >>> did nothing
+  >>> DoNothing
 
 Boogie program verifier finished with 1 verified, 0 errors
 Processing call to procedure N in implementation M (at Snapshots10.v1.bpl(8,5)):
   >>> added before precondition check: assume {:precondition_previous_snapshot} 0 < call0formal#AT#n;
   >>> added after: a##post##0 := a##post##0 && 0 < call1formal#AT#r;
 Processing command (at Snapshots10.v1.bpl(8,5)) assume {:precondition_previous_snapshot} 0 < call0formal#AT#n;
-  >>> marked as full verified
+  >>> MarkAsFullyVerified
 Processing command (at Snapshots10.v1.bpl(8,5)) assert 0 < call0formal#AT#n /* checksum: 84-77-4F-21-82-94-59-A9-66-C3-77-B2-13-B8-C9-2A */ ;
-  >>> did nothing
+  >>> DoNothing
 Processing command (at <unknown location>) a##post##0 := a##post##0 && 0 < call1formal#AT#r;
-  >>> added assume statement for negation of single assumption variable "a##post##0"
+  >>> AssumeNegationOfAssumptionVariable
 Processing command (at Snapshots10.v1.bpl(12,5)) assert 0 <= x /* checksum: B1-53-93-E6-12-D0-01-C5-D6-F4-E8-65-49-9E-3F-E6 */ ;
-  >>> did nothing
+  >>> DoNothing
 
 Boogie program verifier finished with 1 verified, 0 errors
 Processing command (at Snapshots11.v0.bpl(7,5)) assert 0 < call0formal#AT#n /* checksum: 80-3B-4F-44-75-E4-2D-86-E4-8B-F6-2F-5D-52-1F-25 */ ;
-  >>> did nothing
+  >>> DoNothing
 Processing command (at Snapshots11.v0.bpl(9,5)) assert 0 <= x /* checksum: 95-4E-4B-40-26-30-D7-F3-DD-63-7F-04-F1-12-F9-E9 */ ;
-  >>> did nothing
+  >>> DoNothing
 Snapshots11.v0.bpl(7,5): Error BP5002: A precondition for this call might not hold.
 Snapshots11.v0.bpl(13,3): Related location: This is the precondition that might not hold.
 
@@ -204,56 +204,56 @@ Processing call to procedure N in implementation M (at Snapshots11.v1.bpl(7,5)):
   >>> added before precondition check: assume {:precondition_previous_snapshot} 0 < call0formal#AT#n;
   >>> added after: a##post##0 := a##post##0 && 0 < call1formal#AT#r;
 Processing command (at Snapshots11.v1.bpl(7,5)) assume {:precondition_previous_snapshot} 0 < n;
-  >>> dropped
+  >>> Drop
 Processing command (at Snapshots11.v1.bpl(7,5)) assert 0 < call0formal#AT#n /* checksum: 80-3B-4F-44-75-E4-2D-86-E4-8B-F6-2F-5D-52-1F-25 */ ;
-  >>> recycled error and turned assertion into assume statement
+  >>> RecycleError
 Processing command (at Snapshots11.v1.bpl(9,5)) assert 0 <= x /* checksum: 95-4E-4B-40-26-30-D7-F3-DD-63-7F-04-F1-12-F9-E9 */ ;
-  >>> added assume statement for assertion that has been partially verified under "a##post##0#AT#0"
+  >>> MarkAsPartiallyVerified
 Snapshots11.v0.bpl(7,5): Error BP5002: A precondition for this call might not hold.
 Snapshots11.v0.bpl(13,3): Related location: This is the precondition that might not hold.
 
 Boogie program verifier finished with 0 verified, 1 error
 Processing command (at Snapshots12.v0.bpl(7,5)) assert false /* checksum: 45-28-9E-B9-7D-00-88-8D-13-FA-31-27-A8-DA-FD-68 */ ;
-  >>> did nothing
+  >>> DoNothing
 
 Boogie program verifier finished with 1 verified, 0 errors
 Processing call to procedure N in implementation M (at Snapshots12.v1.bpl(5,5)):
   >>> added after: a##post##0 := a##post##0 && false;
 Processing command (at Snapshots12.v1.bpl(7,5)) assert false /* checksum: 45-28-9E-B9-7D-00-88-8D-13-FA-31-27-A8-DA-FD-68 */ ;
-  >>> did nothing
+  >>> DoNothing
 Snapshots12.v1.bpl(7,5): Error BP5001: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 1 error
 Processing command (at Snapshots13.v0.bpl(7,5)) assert false /* checksum: 45-28-9E-B9-7D-00-88-8D-13-FA-31-27-A8-DA-FD-68 */ ;
-  >>> did nothing
+  >>> DoNothing
 
 Boogie program verifier finished with 1 verified, 0 errors
 Processing call to procedure N in implementation M (at Snapshots13.v1.bpl(5,5)):
   >>> added after: a##post##0 := a##post##0 && false;
 Processing command (at Snapshots13.v1.bpl(7,5)) assert false /* checksum: 45-28-9E-B9-7D-00-88-8D-13-FA-31-27-A8-DA-FD-68 */ ;
-  >>> did nothing
+  >>> DoNothing
 Snapshots13.v1.bpl(7,5): Error BP5001: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 1 error
 Processing command (at Snapshots14.v0.bpl(7,5)) assert false /* checksum: 45-28-9E-B9-7D-00-88-8D-13-FA-31-27-A8-DA-FD-68 */ ;
-  >>> did nothing
+  >>> DoNothing
 
 Boogie program verifier finished with 1 verified, 0 errors
 Processing call to procedure N in implementation M (at Snapshots14.v1.bpl(5,5)):
   >>> added after: a##post##0 := a##post##0 && F() && G();
 Processing command (at <unknown location>) a##post##0 := a##post##0 && F() && G();
-  >>> added assume statement for negation of single assumption variable "a##post##0"
+  >>> AssumeNegationOfAssumptionVariable
 Processing command (at Snapshots14.v1.bpl(7,5)) assert false /* checksum: 45-28-9E-B9-7D-00-88-8D-13-FA-31-27-A8-DA-FD-68 */ ;
-  >>> did nothing
+  >>> DoNothing
 Snapshots14.v1.bpl(7,5): Error BP5001: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 1 error
 Processing command (at Snapshots15.v0.bpl(5,5)) assert true /* checksum: F7-FC-97-12-78-9F-88-2B-BF-B4-4F-35-55-71-AD-EA */ ;
-  >>> did nothing
+  >>> DoNothing
 Processing command (at Snapshots15.v0.bpl(9,5)) assert true /* checksum: 30-E0-21-77-66-D9-7F-0B-3C-12-29-6B-A8-3B-00-A5 */ ;
-  >>> did nothing
+  >>> DoNothing
 Processing command (at Snapshots15.v0.bpl(13,5)) assert false /* checksum: B5-48-47-B6-FB-21-97-C6-DF-18-E0-B4-E0-19-FD-35 */ ;
-  >>> did nothing
+  >>> DoNothing
 
 Boogie program verifier finished with 1 verified, 0 errors
 Processing call to procedure N in implementation M (at Snapshots15.v1.bpl(7,5)):
@@ -261,31 +261,31 @@ Processing call to procedure N in implementation M (at Snapshots15.v1.bpl(7,5)):
 Processing call to procedure N in implementation M (at Snapshots15.v1.bpl(11,5)):
   >>> added after: a##post##1 := a##post##1 && false;
 Processing command (at Snapshots15.v1.bpl(5,5)) assert true /* checksum: F7-FC-97-12-78-9F-88-2B-BF-B4-4F-35-55-71-AD-EA */ ;
-  >>> turned assertion into assume statement
+  >>> MarkAsFullyVerified
 Processing command (at Snapshots15.v1.bpl(9,5)) assert true /* checksum: 30-E0-21-77-66-D9-7F-0B-3C-12-29-6B-A8-3B-00-A5 */ ;
-  >>> added assume statement for assertion that has been partially verified under "a##post##0#AT#0"
+  >>> MarkAsPartiallyVerified
 Processing command (at Snapshots15.v1.bpl(13,5)) assert false /* checksum: B5-48-47-B6-FB-21-97-C6-DF-18-E0-B4-E0-19-FD-35 */ ;
-  >>> added assume statement for assertion that has been partially verified under "a##post##0#AT#0 && a##post##1#AT#0"
+  >>> MarkAsPartiallyVerified
 Snapshots15.v1.bpl(13,5): Error BP5001: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 1 error
 Processing command (at Snapshots16.v0.bpl(14,5)) assert F(0) == 1 /* checksum: 58-F6-BD-EA-70-FB-7A-78-A3-58-7A-11-49-BE-B1-D2 */ ;
-  >>> did nothing
+  >>> DoNothing
 
 Boogie program verifier finished with 1 verified, 0 errors
 Processing command (at Snapshots16.v1.bpl(14,5)) assert F(0) == 1 /* checksum: 32-BD-8D-95-77-41-39-3A-4C-8F-27-51-2F-F6-97-7A */ ;
-  >>> did nothing
+  >>> DoNothing
 Snapshots16.v1.bpl(14,5): Error BP5001: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 1 error
 Processing command (at Snapshots17.v0.bpl(28,5)) assert true /* checksum: 17-6D-05-FB-27-8E-09-CB-76-67-1B-D1-AC-28-1E-BC */ ;
-  >>> did nothing
+  >>> DoNothing
 Processing command (at Snapshots17.v0.bpl(25,9)) assert false /* checksum: EC-EF-B7-8D-C2-CE-CF-21-05-72-63-D5-B0-54-C2-52 */ ;
-  >>> did nothing
+  >>> DoNothing
 Processing command (at Snapshots17.v0.bpl(12,13)) assert true /* checksum: A0-25-98-E6-65-11-A1-47-ED-3C-DD-47-3D-BF-CC-50 */ ;
-  >>> did nothing
+  >>> DoNothing
 Processing command (at Snapshots17.v0.bpl(20,13)) assert x == 1 /* checksum: 48-21-D4-6B-67-A4-0A-BE-B6-30-6E-E5-01-A9-31-E6 */ ;
-  >>> did nothing
+  >>> DoNothing
 
 Boogie program verifier finished with 1 verified, 0 errors
 Processing call to procedure N in implementation M (at Snapshots17.v1.bpl(14,13)):
@@ -295,23 +295,23 @@ Processing call to procedure N in implementation M (at Snapshots17.v1.bpl(16,13)
 Processing call to procedure N in implementation M (at Snapshots17.v1.bpl(23,9)):
   >>> added after: a##post##2 := a##post##2 && false;
 Processing command (at Snapshots17.v1.bpl(28,5)) assert true /* checksum: 17-6D-05-FB-27-8E-09-CB-76-67-1B-D1-AC-28-1E-BC */ ;
-  >>> turned assertion into assume statement
+  >>> MarkAsFullyVerified
 Processing command (at Snapshots17.v1.bpl(25,9)) assert false /* checksum: EC-EF-B7-8D-C2-CE-CF-21-05-72-63-D5-B0-54-C2-52 */ ;
-  >>> added assume statement for assertion that has been partially verified under "a##post##2#AT#0"
+  >>> MarkAsPartiallyVerified
 Processing command (at Snapshots17.v1.bpl(12,13)) assert true /* checksum: A0-25-98-E6-65-11-A1-47-ED-3C-DD-47-3D-BF-CC-50 */ ;
-  >>> turned assertion into assume statement
+  >>> MarkAsFullyVerified
 Processing command (at Snapshots17.v1.bpl(20,13)) assert x == 1 /* checksum: 48-21-D4-6B-67-A4-0A-BE-B6-30-6E-E5-01-A9-31-E6 */ ;
-  >>> added assume statement for assertion that has been partially verified under "a##post##0#AT#0 && a##post##1#AT#0"
+  >>> MarkAsPartiallyVerified
 Snapshots17.v1.bpl(20,13): Error BP5001: This assertion might not hold.
 Snapshots17.v1.bpl(25,9): Error BP5001: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 2 errors
 Processing command (at Snapshots18.v0.bpl(7,9)) assert 0 == 0 /* checksum: 8E-3A-E8-C6-21-14-6B-23-57-EB-5C-6D-B1-C9-FF-55 */ ;
-  >>> did nothing
+  >>> DoNothing
 Processing command (at Snapshots18.v0.bpl(17,9)) assert 1 != 1 /* checksum: 9D-3B-BC-FC-10-33-1E-0A-90-26-FB-08-74-DE-3D-D8 */ ;
-  >>> did nothing
+  >>> DoNothing
 Processing command (at Snapshots18.v0.bpl(20,5)) assert 2 != 2 /* checksum: 40-A9-8B-52-39-8E-77-50-4D-48-DF-80-1D-47-41-84 */ ;
-  >>> did nothing
+  >>> DoNothing
 
 Boogie program verifier finished with 1 verified, 0 errors
 Processing call to procedure N in implementation M (at Snapshots18.v1.bpl(9,9)):
@@ -319,198 +319,198 @@ Processing call to procedure N in implementation M (at Snapshots18.v1.bpl(9,9)):
 Processing call to procedure N in implementation M (at Snapshots18.v1.bpl(10,9)):
   >>> added after: a##post##1 := a##post##1 && false;
 Processing command (at Snapshots18.v1.bpl(7,9)) assert 0 == 0 /* checksum: 8E-3A-E8-C6-21-14-6B-23-57-EB-5C-6D-B1-C9-FF-55 */ ;
-  >>> turned assertion into assume statement
+  >>> MarkAsFullyVerified
 Processing command (at Snapshots18.v1.bpl(17,9)) assert 1 != 1 /* checksum: 9D-3B-BC-FC-10-33-1E-0A-90-26-FB-08-74-DE-3D-D8 */ ;
-  >>> added assume statement for assertion that has been partially verified under "a##post##0#AT#0 && a##post##1#AT#0"
+  >>> MarkAsPartiallyVerified
 Processing command (at Snapshots18.v1.bpl(20,5)) assert 2 != 2 /* checksum: 40-A9-8B-52-39-8E-77-50-4D-48-DF-80-1D-47-41-84 */ ;
-  >>> added assume statement for assertion that has been partially verified under "a##post##0#AT#1 && a##post##1#AT#1"
+  >>> MarkAsPartiallyVerified
 Snapshots18.v1.bpl(17,9): Error BP5001: This assertion might not hold.
 Snapshots18.v1.bpl(20,5): Error BP5001: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 2 errors
 Processing command (at Snapshots19.v0.bpl(5,5)) assert 2 == 2 /* checksum: E6-C5-48-63-99-F9-9F-0D-6D-A5-19-3D-76-A5-BE-6E */ ;
-  >>> did nothing
+  >>> DoNothing
 Processing command (at Snapshots19.v0.bpl(7,5)) assert 1 != 1 /* checksum: 7F-1D-5B-2B-B9-18-C2-12-DD-B9-E8-4E-C3-EC-5C-AC */ ;
-  >>> did nothing
+  >>> DoNothing
 Snapshots19.v0.bpl(7,5): Error BP5001: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 1 error
 Processing call to procedure N in implementation M (at Snapshots19.v1.bpl(5,5)):
   >>> added before precondition check: assume {:precondition_previous_snapshot} 2 == 2;
 Processing command (at Snapshots19.v1.bpl(5,5)) assume {:precondition_previous_snapshot} 2 == 2;
-  >>> marked as full verified
+  >>> MarkAsFullyVerified
 Processing command (at Snapshots19.v1.bpl(5,5)) assert 2 == 2 /* checksum: E6-C5-48-63-99-F9-9F-0D-6D-A5-19-3D-76-A5-BE-6E */ ;
-  >>> turned assertion into assume statement
+  >>> MarkAsFullyVerified
 Processing command (at Snapshots19.v1.bpl(7,5)) assert 1 != 1 /* checksum: 7F-1D-5B-2B-B9-18-C2-12-DD-B9-E8-4E-C3-EC-5C-AC */ ;
-  >>> recycled error and turned assertion into assume statement
+  >>> RecycleError
 Snapshots19.v0.bpl(7,5): Error BP5001: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 1 error
 Processing command (at Snapshots20.v0.bpl(9,9)) assert 1 != 1 /* checksum: 7F-1D-5B-2B-B9-18-C2-12-DD-B9-E8-4E-C3-EC-5C-AC */ ;
-  >>> did nothing
+  >>> DoNothing
 Processing command (at Snapshots20.v0.bpl(13,9)) assert 2 != 2 /* checksum: 14-C1-28-03-D4-A3-E8-E9-0D-DF-F5-4A-B5-E9-BC-3F */ ;
-  >>> did nothing
+  >>> DoNothing
 Processing command (at Snapshots20.v0.bpl(16,5)) assert 3 != 3 /* checksum: 8E-F6-6B-B8-4C-24-97-50-0F-23-EA-73-D2-9E-3E-74 */ ;
-  >>> did nothing
+  >>> DoNothing
 Snapshots20.v0.bpl(13,9): Error BP5001: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 1 error
 Processing call to procedure N in implementation M (at Snapshots20.v1.bpl(7,9)):
   >>> added after: a##post##0 := a##post##0 && 0 != 0;
 Processing command (at Snapshots20.v1.bpl(9,9)) assert 1 != 1 /* checksum: 7F-1D-5B-2B-B9-18-C2-12-DD-B9-E8-4E-C3-EC-5C-AC */ ;
-  >>> added assume statement for assertion that has been partially verified under "a##post##0#AT#0"
+  >>> MarkAsPartiallyVerified
 Processing command (at Snapshots20.v1.bpl(13,9)) assert 2 != 2 /* checksum: 14-C1-28-03-D4-A3-E8-E9-0D-DF-F5-4A-B5-E9-BC-3F */ ;
-  >>> recycled error and turned assertion into assume statement
+  >>> RecycleError
 Processing command (at Snapshots20.v1.bpl(16,5)) assert 3 != 3 /* checksum: 8E-F6-6B-B8-4C-24-97-50-0F-23-EA-73-D2-9E-3E-74 */ ;
-  >>> added assume statement for assertion that has been partially verified under "a##post##0#AT#1"
+  >>> MarkAsPartiallyVerified
 Snapshots20.v1.bpl(9,9): Error BP5001: This assertion might not hold.
 Snapshots20.v0.bpl(13,9): Error BP5001: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 2 errors
 Processing command (at Snapshots21.v0.bpl(7,9)) assert 1 != 1 /* checksum: 2F-3D-C6-E0-2F-BD-0D-D9-99-D3-FD-D9-1B-AB-9C-F5 */ ;
-  >>> did nothing
+  >>> DoNothing
 Processing command (at Snapshots21.v0.bpl(11,9)) assert 2 != 2 /* checksum: 14-C1-28-03-D4-A3-E8-E9-0D-DF-F5-4A-B5-E9-BC-3F */ ;
-  >>> did nothing
+  >>> DoNothing
 Processing command (at Snapshots21.v0.bpl(14,5)) assert 3 != 3 /* checksum: 5E-D6-64-57-02-21-AA-4B-43-C5-67-26-6A-B9-7E-4D */ ;
-  >>> did nothing
+  >>> DoNothing
 Snapshots21.v0.bpl(7,9): Error BP5001: This assertion might not hold.
 Snapshots21.v0.bpl(11,9): Error BP5001: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 2 errors
 Processing command (at Snapshots21.v1.bpl(7,9)) assert 1 == 1 /* checksum: 5E-6F-67-D1-06-87-65-19-00-DF-01-C8-02-E6-9E-C4 */ ;
-  >>> did nothing
+  >>> DoNothing
 Processing command (at Snapshots21.v1.bpl(11,9)) assert 2 != 2 /* checksum: 14-C1-28-03-D4-A3-E8-E9-0D-DF-F5-4A-B5-E9-BC-3F */ ;
-  >>> recycled error and turned assertion into assume statement
+  >>> RecycleError
 Processing command (at Snapshots21.v1.bpl(14,5)) assert 3 != 3 /* checksum: 8D-C4-E7-86-39-97-52-0B-CA-49-E3-35-73-44-30-5C */ ;
-  >>> did nothing
+  >>> DoNothing
 Snapshots21.v0.bpl(11,9): Error BP5001: This assertion might not hold.
 Snapshots21.v1.bpl(14,5): Error BP5001: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 2 errors
 Processing command (at Snapshots22.v0.bpl(7,9)) assert 1 != 1 /* checksum: 2F-3D-C6-E0-2F-BD-0D-D9-99-D3-FD-D9-1B-AB-9C-F5 */ ;
-  >>> did nothing
+  >>> DoNothing
 Processing command (at Snapshots22.v0.bpl(11,9)) assert 2 == 2 /* checksum: B6-E5-D5-A8-0F-5C-50-C6-29-CF-0C-AA-AE-E2-7E-37 */ ;
-  >>> did nothing
+  >>> DoNothing
 Processing command (at Snapshots22.v0.bpl(14,5)) assert 3 == 3 /* checksum: 3E-01-56-38-C4-26-12-4C-34-A7-9F-21-B3-76-31-62 */ ;
-  >>> did nothing
+  >>> DoNothing
 Snapshots22.v0.bpl(7,9): Error BP5001: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 1 error
 Processing command (at Snapshots22.v1.bpl(7,9)) assert 1 == 1 /* checksum: 5E-6F-67-D1-06-87-65-19-00-DF-01-C8-02-E6-9E-C4 */ ;
-  >>> did nothing
+  >>> DoNothing
 Processing command (at Snapshots22.v1.bpl(11,9)) assert 2 == 2 /* checksum: B6-E5-D5-A8-0F-5C-50-C6-29-CF-0C-AA-AE-E2-7E-37 */ ;
-  >>> turned assertion into assume statement
+  >>> MarkAsFullyVerified
 Processing command (at Snapshots22.v1.bpl(14,5)) assert 3 == 3 /* checksum: E9-33-D7-E7-CD-5C-BA-0C-BD-2B-1B-32-B4-5D-73-53 */ ;
-  >>> did nothing
+  >>> DoNothing
 
 Boogie program verifier finished with 1 verified, 0 errors
 Processing command (at Snapshots23.v0.bpl(7,9)) assert 1 != 1 /* checksum: 2F-3D-C6-E0-2F-BD-0D-D9-99-D3-FD-D9-1B-AB-9C-F5 */ ;
-  >>> did nothing
+  >>> DoNothing
 Processing command (at Snapshots23.v0.bpl(11,9)) assert 2 == 2 /* checksum: B6-E5-D5-A8-0F-5C-50-C6-29-CF-0C-AA-AE-E2-7E-37 */ ;
-  >>> did nothing
+  >>> DoNothing
 Processing command (at Snapshots23.v0.bpl(14,5)) assert 3 == 3 /* checksum: 3E-01-56-38-C4-26-12-4C-34-A7-9F-21-B3-76-31-62 */ ;
-  >>> did nothing
+  >>> DoNothing
 Snapshots23.v0.bpl(7,9): Error BP5001: This assertion might not hold.
 
 Boogie program verifier finished with 1 verified, 1 error
 Snapshots23.v0.bpl(7,9): Error BP5001: This assertion might not hold.
 Processing command (at Snapshots23.v1.bpl(22,5)) assert 4 == 4 /* checksum: F7-52-1B-27-96-FE-B0-15-1C-FB-93-71-A1-CC-06-A5 */ ;
-  >>> did nothing
+  >>> DoNothing
 
 Boogie program verifier finished with 1 verified, 1 error
 Processing command (at Snapshots23.v2.bpl(8,9)) assert 1 != 1 /* checksum: 2F-3D-C6-E0-2F-BD-0D-D9-99-D3-FD-D9-1B-AB-9C-F5 */ ;
-  >>> recycled error and turned assertion into assume statement
+  >>> RecycleError
 Processing command (at Snapshots23.v2.bpl(12,9)) assert 2 == 2 /* checksum: B6-E5-D5-A8-0F-5C-50-C6-29-CF-0C-AA-AE-E2-7E-37 */ ;
-  >>> turned assertion into assume statement
+  >>> MarkAsFullyVerified
 Snapshots23.v0.bpl(7,9): Error BP5001: This assertion might not hold.
 
 Boogie program verifier finished with 1 verified, 1 error
 Processing command (at Snapshots24.v0.bpl(7,9)) assert {:subsumption 0} 1 != 1 /* checksum: 2F-3D-C6-E0-2F-BD-0D-D9-99-D3-FD-D9-1B-AB-9C-F5 */ ;
-  >>> did nothing
+  >>> DoNothing
 Processing command (at Snapshots24.v0.bpl(11,9)) assert {:subsumption 1} 5 != 5 /* checksum: F8-42-05-38-67-E2-63-71-35-11-CA-DC-EA-59-5C-3E */ ;
-  >>> did nothing
+  >>> DoNothing
 Processing command (at Snapshots24.v0.bpl(15,9)) assert {:subsumption 2} 6 != 6 /* checksum: 7B-ED-04-F8-9C-B4-D2-35-96-99-7D-18-C8-07-2D-73 */ ;
-  >>> did nothing
+  >>> DoNothing
 Processing command (at Snapshots24.v0.bpl(19,9)) assert {:subsumption 1} 2 == 2 /* checksum: B6-E5-D5-A8-0F-5C-50-C6-29-CF-0C-AA-AE-E2-7E-37 */ ;
-  >>> did nothing
+  >>> DoNothing
 Processing command (at Snapshots24.v0.bpl(20,9)) assert {:subsumption 2} 4 == 4 /* checksum: FD-E9-D0-7F-47-DA-00-EF-EB-EA-E7-E7-B3-92-44-0C */ ;
-  >>> did nothing
+  >>> DoNothing
 Processing command (at Snapshots24.v0.bpl(21,9)) assert 5 == 5 /* checksum: E6-65-AC-82-29-8D-B8-7B-B0-3F-CA-8B-23-C7-DD-6A */ ;
-  >>> did nothing
+  >>> DoNothing
 Processing command (at Snapshots24.v0.bpl(24,5)) assert {:subsumption 0} 3 == 3 /* checksum: FD-50-76-EE-43-01-17-4B-26-FD-3A-54-F4-0B-29-C6 */ ;
-  >>> did nothing
+  >>> DoNothing
 Snapshots24.v0.bpl(7,9): Error BP5001: This assertion might not hold.
 Snapshots24.v0.bpl(11,9): Error BP5001: This assertion might not hold.
 Snapshots24.v0.bpl(15,9): Error BP5001: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 3 errors
 Processing command (at Snapshots24.v1.bpl(7,9)) assert {:subsumption 0} 1 == 1 /* checksum: 5E-6F-67-D1-06-87-65-19-00-DF-01-C8-02-E6-9E-C4 */ ;
-  >>> did nothing
+  >>> DoNothing
 Processing command (at Snapshots24.v1.bpl(11,9)) assert {:subsumption 1} 5 == 5 /* checksum: 45-52-9C-E3-B0-EB-B8-8A-C5-69-33-72-8E-69-E1-1E */ ;
-  >>> did nothing
+  >>> DoNothing
 Processing command (at Snapshots24.v1.bpl(15,9)) assert {:subsumption 2} 6 != 6 /* checksum: 7B-ED-04-F8-9C-B4-D2-35-96-99-7D-18-C8-07-2D-73 */ ;
-  >>> recycled error and turned assertion into assume statement
+  >>> RecycleError
 Processing command (at Snapshots24.v1.bpl(20,9)) assert {:subsumption 2} 4 == 4 /* checksum: FD-E9-D0-7F-47-DA-00-EF-EB-EA-E7-E7-B3-92-44-0C */ ;
-  >>> turned assertion into assume statement
+  >>> MarkAsFullyVerified
 Processing command (at Snapshots24.v1.bpl(21,9)) assert 5 == 5 /* checksum: E6-65-AC-82-29-8D-B8-7B-B0-3F-CA-8B-23-C7-DD-6A */ ;
-  >>> turned assertion into assume statement
+  >>> MarkAsFullyVerified
 Processing command (at Snapshots24.v1.bpl(24,5)) assert {:subsumption 0} 3 == 3 /* checksum: F9-52-3E-D2-A3-8C-68-00-1F-D9-6D-3F-01-E6-80-17 */ ;
-  >>> did nothing
+  >>> DoNothing
 Snapshots24.v0.bpl(15,9): Error BP5001: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 1 error
 Processing command (at Snapshots25.v0.bpl(12,5)) assert 0 == 0 /* checksum: 53-43-22-D6-88-33-A6-55-1F-1E-BB-26-33-C2-18-44 */ ;
-  >>> did nothing
+  >>> DoNothing
 Processing command (at Snapshots25.v0.bpl(13,5)) assert x != x /* checksum: 4F-C4-09-77-BD-18-D6-2D-EB-01-5B-7B-B8-DF-5C-06 */ ;
-  >>> did nothing
+  >>> DoNothing
 Snapshots25.v0.bpl(13,5): Error BP5001: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 1 error
 Processing command (at Snapshots25.v1.bpl(12,5)) assert 0 == 0 /* checksum: 53-43-22-D6-88-33-A6-55-1F-1E-BB-26-33-C2-18-44 */ ;
-  >>> turned assertion into assume statement
+  >>> MarkAsFullyVerified
 Processing command (at Snapshots25.v1.bpl(13,5)) assert x != x /* checksum: 4F-C4-09-77-BD-18-D6-2D-EB-01-5B-7B-B8-DF-5C-06 */ ;
-  >>> recycled error and turned assertion into assume statement
+  >>> RecycleError
 Snapshots25.v0.bpl(13,5): Error BP5001: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 1 error
 Processing command (at Snapshots26.v0.bpl(12,5)) assert 0 == 0 /* checksum: 53-43-22-D6-88-33-A6-55-1F-1E-BB-26-33-C2-18-44 */ ;
-  >>> did nothing
+  >>> DoNothing
 Processing command (at Snapshots26.v0.bpl(13,5)) assert x != x /* checksum: 4F-C4-09-77-BD-18-D6-2D-EB-01-5B-7B-B8-DF-5C-06 */ ;
-  >>> did nothing
+  >>> DoNothing
 Snapshots26.v0.bpl(13,5): Error BP5001: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 1 error
 Processing command (at Snapshots26.v1.bpl(13,5)) assert 0 == 0 /* checksum: 53-43-22-D6-88-33-A6-55-1F-1E-BB-26-33-C2-18-44 */ ;
-  >>> turned assertion into assume statement
+  >>> MarkAsFullyVerified
 Processing command (at Snapshots26.v1.bpl(14,5)) assert x != x /* checksum: 4F-C4-09-77-BD-18-D6-2D-EB-01-5B-7B-B8-DF-5C-06 */ ;
-  >>> recycled error and turned assertion into assume statement
+  >>> RecycleError
 Snapshots26.v0.bpl(13,5): Error BP5001: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 1 error
 Processing command (at Snapshots27.v0.bpl(12,5)) assert 0 == 0 /* checksum: 53-43-22-D6-88-33-A6-55-1F-1E-BB-26-33-C2-18-44 */ ;
-  >>> did nothing
+  >>> DoNothing
 Processing command (at Snapshots27.v0.bpl(13,5)) assert x != x /* checksum: 4F-C4-09-77-BD-18-D6-2D-EB-01-5B-7B-B8-DF-5C-06 */ ;
-  >>> did nothing
+  >>> DoNothing
 Snapshots27.v0.bpl(13,5): Error BP5001: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 1 error
 Processing command (at Snapshots27.v1.bpl(14,5)) assert 0 == 0 /* checksum: 53-43-22-D6-88-33-A6-55-1F-1E-BB-26-33-C2-18-44 */ ;
-  >>> turned assertion into assume statement
+  >>> MarkAsFullyVerified
 Processing command (at Snapshots27.v1.bpl(15,5)) assert x != x /* checksum: 4F-C4-09-77-BD-18-D6-2D-EB-01-5B-7B-B8-DF-5C-06 */ ;
-  >>> recycled error and turned assertion into assume statement
+  >>> RecycleError
 Snapshots27.v0.bpl(13,5): Error BP5001: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 1 error
 Processing command (at Snapshots28.v0.bpl(13,5)) assert 0 == 0 /* checksum: AB-78-39-B7-C9-1E-4B-24-B5-1A-52-BE-B2-1A-90-D9 */ ;
-  >>> did nothing
+  >>> DoNothing
 Processing command (at Snapshots28.v0.bpl(14,5)) assert x == 0 /* checksum: 01-A7-D9-2B-A8-C4-4F-BB-44-22-BE-B6-E1-5F-6E-BF */ ;
-  >>> did nothing
+  >>> DoNothing
 
 Boogie program verifier finished with 1 verified, 0 errors
 Processing command (at Snapshots28.v1.bpl(14,5)) assert 0 == 0 /* checksum: B7-69-FE-C9-83-D5-67-99-AA-4C-CE-F9-C4-21-A6-3E */ ;
-  >>> did nothing
+  >>> DoNothing
 Processing command (at Snapshots28.v1.bpl(15,5)) assert x == 0 /* checksum: 9D-98-FC-55-22-AD-23-60-39-30-A2-93-D3-86-04-7A */ ;
-  >>> did nothing
+  >>> DoNothing
 Snapshots28.v1.bpl(15,5): Error BP5001: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 1 error

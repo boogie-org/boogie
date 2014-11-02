@@ -1472,24 +1472,26 @@ namespace VC {
       return Substituter.SubstitutionFromHashtable(oldFrameMap);
     }
 
-    void TraceCaching(Cmd from, string message, Cmd to = null)
+    enum CachingAction
+    {
+      DoNothing,
+      MarkAsPartiallyVerified,
+      MarkAsFullyVerified,
+      Drop,
+      RecycleError,
+      AssumeNegationOfAssumptionVariable
+    }
+
+    void TraceCaching(Cmd cmd, CachingAction action)
     {
       if (1 <= CommandLineOptions.Clo.TraceCaching)
       {
         using (var tokTxtWr = new TokenTextWriter("<console>", Console.Out, false, false))
         {
-          var loc = from.tok != null && from.tok != Token.NoToken ? string.Format("{0}({1},{2})", from.tok.filename, from.tok.line, from.tok.col) : "<unknown location>";
+          var loc = cmd.tok != null && cmd.tok != Token.NoToken ? string.Format("{0}({1},{2})", cmd.tok.filename, cmd.tok.line, cmd.tok.col) : "<unknown location>";
           Console.Write("Processing command (at {0}) ", loc);
-          from.Emit(tokTxtWr, 0);
-          Console.Out.Write("  {0}", message);
-          if (to != null)
-          {
-            to.Emit(tokTxtWr, 0);
-          }
-          else
-          {
-            Console.Out.WriteLine();
-          }
+          cmd.Emit(tokTxtWr, 0);
+          Console.Out.WriteLine("  >>> {0}", action);
         }
       }
     }
@@ -1541,11 +1543,11 @@ namespace VC {
               && !currentImplementation.AnyErrorsInCachedSnapshot
               && currentImplementation.InjectedAssumptionVariables.Count == 1)
           {
-            TraceCaching(pc, ">>> did nothing");
+            TraceCaching(pc, CachingAction.DoNothing);
           }
           else if (relevantDoomedAssumpVars.Any())
           {
-            TraceCaching(pc, ">>> did nothing");
+            TraceCaching(pc, CachingAction.DoNothing);
           }
           else if (currentImplementation != null
                    && currentImplementation.HasCachedSnapshot
@@ -1565,14 +1567,14 @@ namespace VC {
               passiveCmds.Add(new AssumeCmd(Token.NoToken, LiteralExpr.Eq(identExpr, copy)));
               copy = identExpr;
               passiveCmds.Add(new AssumeCmd(Token.NoToken, LiteralExpr.Imp(assmVars, identExpr)));
-              TraceCaching(pc, string.Format(">>> added assume statement for assertion that has been partially verified under \"{0}\"", assmVars));
+              TraceCaching(pc, CachingAction.MarkAsPartiallyVerified);
             }
             else if (isTrue)
             {
               if (alwaysUseSubsumption)
               {
                 // Turn it into an assume statement.
-                TraceCaching(pc, ">>> turned assertion into assume statement");
+                TraceCaching(pc, CachingAction.MarkAsFullyVerified);
                 pc = new AssumeCmd(ac.tok, copy);
                 pc.Attributes = new QKeyValue(Token.NoToken, "verified_assertion", new List<object>(), pc.Attributes);
               }
@@ -1589,7 +1591,7 @@ namespace VC {
             if (alwaysUseSubsumption)
             {
               // Turn it into an assume statement.
-              TraceCaching(pc, ">>> recycled error and turned assertion into assume statement");
+              TraceCaching(pc, CachingAction.RecycleError);
               pc = new AssumeCmd(ac.tok, copy);
               pc.Attributes = new QKeyValue(Token.NoToken, "recycled_failing_assertion", new List<object>(), pc.Attributes);
             }
@@ -1601,7 +1603,7 @@ namespace VC {
           }
           else
           {
-            TraceCaching(pc, ">>> did nothing");
+            TraceCaching(pc, CachingAction.DoNothing);
           }
         }
         else if (pc is AssumeCmd
@@ -1618,11 +1620,11 @@ namespace VC {
             if (!isTrue)
             {
               copy = LiteralExpr.Imp(assmVars, copy);
-              TraceCaching(pc, string.Format(">>> marked as partially verified under \"{0}\"", assmVars));
+              TraceCaching(pc, CachingAction.MarkAsPartiallyVerified);
             }
             else
             {
-              TraceCaching(pc, ">>> marked as full verified");
+              TraceCaching(pc, CachingAction.MarkAsFullyVerified);
             }
           }
           else
@@ -1637,7 +1639,7 @@ namespace VC {
         }
         else
         {
-          TraceCaching(pc, ">>> dropped");
+          TraceCaching(pc, CachingAction.Drop);
         }
       }
       #endregion
@@ -1720,7 +1722,7 @@ namespace VC {
           Expr incarnation;
           if (identExpr != null && identExpr.Decl != null && QKeyValue.FindBoolAttribute(identExpr.Decl.Attributes, "assumption") && incarnationMap.TryGetValue(identExpr.Decl, out incarnation))
           {
-            TraceCaching(assign, string.Format(">>> added assume statement for negation of single assumption variable \"{0}\"", identExpr.Decl.Name));
+            TraceCaching(assign, CachingAction.AssumeNegationOfAssumptionVariable);
             passiveCmds.Add(new AssumeCmd(c.tok, Expr.Not(incarnation)));
           }
         }
