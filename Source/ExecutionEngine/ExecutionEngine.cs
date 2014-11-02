@@ -196,6 +196,7 @@ namespace Microsoft.Boogie
     public int InconclusiveCount;
     public int TimeoutCount;
     public int OutOfMemoryCount;
+    public long[] CachingActionCounts;
   }
 
 
@@ -914,7 +915,7 @@ namespace Microsoft.Boogie
 
       if (1 < CommandLineOptions.Clo.VerifySnapshots)
       {
-        CachedVerificationResultInjector.Inject(program, stablePrioritizedImpls, requestId, programId);
+        CachedVerificationResultInjector.Inject(program, stablePrioritizedImpls, requestId, programId, out stats.CachingActionCounts);
       }
 
       #region Verify each implementation
@@ -1035,25 +1036,13 @@ namespace Microsoft.Boogie
         Console.Out.WriteLine(CachedVerificationResultInjector.Statistics.Output(printTimes));
 
         Console.Out.WriteLine("Statistics per request as CSV:");
-        if (printTimes)
-        {
-          Console.Out.WriteLine("Request ID, Time (ms), Error, Inconclusive, Out of Memory, Timeout, Verified");
-        }
-        else
-        {
-          Console.Out.WriteLine("Request ID, Error, Inconclusive, Out of Memory, Timeout, Verified");
-        }
+        Console.Out.WriteLine("Request ID{0}, Error, Inconclusive, Out of Memory, Timeout, Verified, DoNothing, MarkAsPartiallyVerified, MarkAsFullyVerified, RecycleError, AssumeNegationOfAssumptionVariable, Drop", printTimes ? ", Time (ms)" : "");
         foreach (var kv in TimePerRequest.OrderBy(kv => ExecutionEngine.AutoRequestId(kv.Key)))
         {
           var s = StatisticsPerRequest[kv.Key];
-          if (printTimes)
-          {
-            Console.Out.WriteLine("{0,-19}, {1,8:F0}, {2,2}, {3,2}, {4,2}, {5,2}, {6,2}", kv.Key, kv.Value.TotalMilliseconds, s.ErrorCount, s.InconclusiveCount, s.OutOfMemoryCount, s.TimeoutCount, s.VerifiedCount);
-          }
-          else
-          {
-            Console.Out.WriteLine("{0,-19}, {2,2}, {3,2}, {4,2}, {5,2}, {6,2}", kv.Key, kv.Value.TotalMilliseconds, s.ErrorCount, s.InconclusiveCount, s.OutOfMemoryCount, s.TimeoutCount, s.VerifiedCount);
-          }
+          var cacs = s.CachingActionCounts;
+          var t = printTimes ? string.Format(", {0,8:F0}", kv.Value.TotalMilliseconds) : "";
+          Console.Out.WriteLine("{0,-19}{1}, {2,2}, {3,2}, {4,2}, {5,2}, {6,2}, {7,3}, {8,3}, {9,3}, {10,3}, {11,3}, {12,3}", kv.Key, t, s.ErrorCount, s.InconclusiveCount, s.OutOfMemoryCount, s.TimeoutCount, s.VerifiedCount, cacs[0], cacs[1], cacs[2], cacs[3], cacs[4], cacs[5]);
         }
 
         if (printTimes)
@@ -1138,6 +1127,7 @@ namespace Microsoft.Boogie
 
         using (var vcgen = CreateVCGen(program, checkers))
         {
+          vcgen.CachingActionCounts = stats.CachingActionCounts;
           verificationResult.ProofObligationCountBefore = vcgen.CumulativeAssertionCount;
           verificationResult.Start = DateTime.UtcNow;
 

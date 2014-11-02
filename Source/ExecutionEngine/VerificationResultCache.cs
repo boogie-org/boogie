@@ -16,12 +16,13 @@ namespace Microsoft.Boogie
   {
     public DateTime Start { get; internal set; }
     public DateTime End { get; internal set; }
-    public int RewrittenImplementationCount { get; internal set; }
+    public int TransformedImplementationCount { get; internal set; }
     public int ImplementationCount { get; internal set; }
     public int SkippedImplementationCount { get; set; }
     public int LowPriorityImplementationCount { get; set; }
     public int MediumPriorityImplementationCount { get; set; }
     public int HighPriorityImplementationCount { get; set; }
+    public long[] CachingActionCounts { get; set; }
   }
 
 
@@ -40,24 +41,11 @@ namespace Microsoft.Boogie
       if (runs.Any())
       {
         wr.WriteLine("Cached verification result injector statistics as CSV:");
-        if (printTime)
-        {
-          wr.WriteLine("Request ID, Time (ms), Rewritten Implementations, Low Priority Implementations, Medium Priority Implementations, High Priority Implementations, Skipped Implementations, Implementations");
-        }
-        else
-        {
-          wr.WriteLine("Request ID, Rewritten Implementations, Low Priority Implementations, Medium Priority Implementations, High Priority Implementations, Skipped Implementations, Implementations");
-        }
+        wr.WriteLine("Request ID, Transformed, Low, Medium, High, Skipped{0}", printTime ? ", Time (ms)" : "");
         foreach (var kv in runs.OrderBy(kv => ExecutionEngine.AutoRequestId(kv.Key)))
         {
-          if (printTime)
-          {
-            wr.WriteLine("{0,-19}, {1,5:F0}, {2,3}, {3,3}, {4,3}, {5,3}, {6,3}, {7,3}", kv.Key, kv.Value.End.Subtract(kv.Value.Start).TotalMilliseconds, kv.Value.RewrittenImplementationCount, kv.Value.LowPriorityImplementationCount, kv.Value.MediumPriorityImplementationCount, kv.Value.HighPriorityImplementationCount, kv.Value.SkippedImplementationCount, kv.Value.ImplementationCount);
-          }
-          else
-          {
-            wr.WriteLine("{0,-19}, {1,3}, {2,3}, {3,3}, {4,3}, {5,3}, {6,3}", kv.Key, kv.Value.RewrittenImplementationCount, kv.Value.LowPriorityImplementationCount, kv.Value.MediumPriorityImplementationCount, kv.Value.HighPriorityImplementationCount, kv.Value.SkippedImplementationCount, kv.Value.ImplementationCount);
-          }
+          var t = printTime ? string.Format(", {0,8:F0}", kv.Value.End.Subtract(kv.Value.Start).TotalMilliseconds) : "";
+          wr.WriteLine("{0,-19}, {1,3}, {2,3}, {3,3}, {4,3}, {5,3}{6}", kv.Key, kv.Value.TransformedImplementationCount, kv.Value.LowPriorityImplementationCount, kv.Value.MediumPriorityImplementationCount, kv.Value.HighPriorityImplementationCount, kv.Value.SkippedImplementationCount, t);
         }
       }
       return wr.ToString();
@@ -114,11 +102,12 @@ namespace Microsoft.Boogie
       return result;
     }
 
-    public static void Inject(Program program, IEnumerable<Implementation> implementations, string requestId, string programId)
+    public static void Inject(Program program, IEnumerable<Implementation> implementations, string requestId, string programId, out long[] cachingActionCounts)
     {
       var eai = new CachedVerificationResultInjector(program, implementations);
 
-      var run = new CachedVerificationResultInjectorRun { Start = DateTime.UtcNow, ImplementationCount = implementations.Count() };
+      cachingActionCounts = new long[Enum.GetNames(typeof(VC.ConditionGeneration.CachingAction)).Length];
+      var run = new CachedVerificationResultInjectorRun { Start = DateTime.UtcNow, ImplementationCount = implementations.Count(), CachingActionCounts = cachingActionCounts };
       foreach (var impl in implementations)
       {
         int priority;
@@ -137,7 +126,7 @@ namespace Microsoft.Boogie
                 if (p != null)
                 {
                   eai.Inject(impl, p);
-                  run.RewrittenImplementationCount++;
+                  run.TransformedImplementationCount++;
                 }
               }
             }
@@ -154,7 +143,7 @@ namespace Microsoft.Boogie
                 if (p != null)
                 {
                   eai.Inject(impl, p);
-                  run.RewrittenImplementationCount++;
+                  run.TransformedImplementationCount++;
                 }
               }
             }

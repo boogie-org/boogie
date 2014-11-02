@@ -1308,6 +1308,7 @@ namespace VC {
       List<Cmd> passiveCmds = new List<Cmd>();
       foreach (Cmd c in b.Cmds) {
         Contract.Assert(c != null); // walk forward over the commands because the map gets modified in a forward direction
+        // TODO(wuestholz): Maybe we should use multiple variable collectors.
         ChecksumHelper.ComputeChecksums(c, currentImplementation, variableCollector.usedVars, currentChecksum);
         variableCollector.Visit(c);
         currentChecksum = c.Checksum;
@@ -1472,17 +1473,19 @@ namespace VC {
       return Substituter.SubstitutionFromHashtable(oldFrameMap);
     }
 
-    enum CachingAction
+    public enum CachingAction : byte
     {
       DoNothing,
       MarkAsPartiallyVerified,
       MarkAsFullyVerified,
-      Drop,
       RecycleError,
-      AssumeNegationOfAssumptionVariable
+      AssumeNegationOfAssumptionVariable,
+      Drop,
     }
 
-    void TraceCaching(Cmd cmd, CachingAction action)
+    public long[] CachingActionCounts;
+
+    void TraceCachingAction(Cmd cmd, CachingAction action)
     {
       if (1 <= CommandLineOptions.Clo.TraceCaching)
       {
@@ -1493,6 +1496,7 @@ namespace VC {
           cmd.Emit(tokTxtWr, 0);
           Console.Out.WriteLine("  >>> {0}", action);
         }
+        Interlocked.Increment(ref CachingActionCounts[(int)action]);
       }
     }
 
@@ -1543,11 +1547,11 @@ namespace VC {
               && !currentImplementation.AnyErrorsInCachedSnapshot
               && currentImplementation.InjectedAssumptionVariables.Count == 1)
           {
-            TraceCaching(pc, CachingAction.DoNothing);
+            TraceCachingAction(pc, CachingAction.DoNothing);
           }
           else if (relevantDoomedAssumpVars.Any())
           {
-            TraceCaching(pc, CachingAction.DoNothing);
+            TraceCachingAction(pc, CachingAction.DoNothing);
           }
           else if (currentImplementation != null
                    && currentImplementation.HasCachedSnapshot
@@ -1567,14 +1571,14 @@ namespace VC {
               passiveCmds.Add(new AssumeCmd(Token.NoToken, LiteralExpr.Eq(identExpr, copy)));
               copy = identExpr;
               passiveCmds.Add(new AssumeCmd(Token.NoToken, LiteralExpr.Imp(assmVars, identExpr)));
-              TraceCaching(pc, CachingAction.MarkAsPartiallyVerified);
+              TraceCachingAction(pc, CachingAction.MarkAsPartiallyVerified);
             }
             else if (isTrue)
             {
               if (alwaysUseSubsumption)
               {
                 // Turn it into an assume statement.
-                TraceCaching(pc, CachingAction.MarkAsFullyVerified);
+                TraceCachingAction(pc, CachingAction.MarkAsFullyVerified);
                 pc = new AssumeCmd(ac.tok, copy);
                 pc.Attributes = new QKeyValue(Token.NoToken, "verified_assertion", new List<object>(), pc.Attributes);
               }
@@ -1591,7 +1595,7 @@ namespace VC {
             if (alwaysUseSubsumption)
             {
               // Turn it into an assume statement.
-              TraceCaching(pc, CachingAction.RecycleError);
+              TraceCachingAction(pc, CachingAction.RecycleError);
               pc = new AssumeCmd(ac.tok, copy);
               pc.Attributes = new QKeyValue(Token.NoToken, "recycled_failing_assertion", new List<object>(), pc.Attributes);
             }
@@ -1603,7 +1607,7 @@ namespace VC {
           }
           else
           {
-            TraceCaching(pc, CachingAction.DoNothing);
+            TraceCachingAction(pc, CachingAction.DoNothing);
           }
         }
         else if (pc is AssumeCmd
@@ -1620,11 +1624,11 @@ namespace VC {
             if (!isTrue)
             {
               copy = LiteralExpr.Imp(assmVars, copy);
-              TraceCaching(pc, CachingAction.MarkAsPartiallyVerified);
+              TraceCachingAction(pc, CachingAction.MarkAsPartiallyVerified);
             }
             else
             {
-              TraceCaching(pc, CachingAction.MarkAsFullyVerified);
+              TraceCachingAction(pc, CachingAction.MarkAsFullyVerified);
             }
           }
           else
@@ -1639,7 +1643,7 @@ namespace VC {
         }
         else
         {
-          TraceCaching(pc, CachingAction.Drop);
+          TraceCachingAction(pc, CachingAction.Drop);
         }
       }
       #endregion
@@ -1722,7 +1726,7 @@ namespace VC {
           Expr incarnation;
           if (identExpr != null && identExpr.Decl != null && QKeyValue.FindBoolAttribute(identExpr.Decl.Attributes, "assumption") && incarnationMap.TryGetValue(identExpr.Decl, out incarnation))
           {
-            TraceCaching(assign, CachingAction.AssumeNegationOfAssumptionVariable);
+            TraceCachingAction(assign, CachingAction.AssumeNegationOfAssumptionVariable);
             passiveCmds.Add(new AssumeCmd(c.tok, Expr.Not(incarnation)));
           }
         }
