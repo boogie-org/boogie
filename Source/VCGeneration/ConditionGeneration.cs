@@ -1546,17 +1546,7 @@ namespace VC {
 
           var subsumption = Wlp.Subsumption(ac);
           var alwaysUseSubsumption = subsumption == CommandLineOptions.SubsumptionOption.Always;
-          if (currentImplementation != null
-              && currentImplementation.HasCachedSnapshot
-              && checksum != null
-              && currentImplementation.IsAssertionChecksumInCachedSnapshot(checksum)
-              && !currentImplementation.AnyErrorsInCachedSnapshot
-              && currentImplementation.InjectedAssumptionVariables.Count == 1
-              && relevantAssumpVars.Count == 1)
-          {
-            TraceCachingAction(pc, CachingAction.MarkAsPartiallyVerified);
-          }
-          else if (relevantDoomedAssumpVars.Any())
+          if (relevantDoomedAssumpVars.Any())
           {
             TraceCachingAction(pc, CachingAction.DoNothingToAssert);
           }
@@ -1566,30 +1556,39 @@ namespace VC {
                    && currentImplementation.IsAssertionChecksumInCachedSnapshot(checksum)
                    && !currentImplementation.IsErrorChecksumInCachedSnapshot(checksum))
           {
-            bool isTrue;
-            var assmVars = currentImplementation.ConjunctionOfInjectedAssumptionVariables(incarnationMap, out isTrue);
-            if (!isTrue && alwaysUseSubsumption)
+            if (!currentImplementation.AnyErrorsInCachedSnapshot
+                && currentImplementation.InjectedAssumptionVariables.Count == 1
+                && relevantAssumpVars.Count == 1)
             {
-              // Bind the assertion expression to a local variable.
-              var incarnation = CreateIncarnation(CurrentTemporaryVariableForAssertions, containingBlock);
-              var identExpr = new IdentifierExpr(Token.NoToken, incarnation);
-              incarnationMap[incarnation] = identExpr;
-              ac.IncarnationMap[incarnation] = identExpr;
-              passiveCmds.Add(new AssumeCmd(Token.NoToken, LiteralExpr.Eq(identExpr, copy)));
-              copy = identExpr;
-              passiveCmds.Add(new AssumeCmd(Token.NoToken, LiteralExpr.Imp(assmVars, identExpr)));
               TraceCachingAction(pc, CachingAction.MarkAsPartiallyVerified);
             }
-            else if (isTrue)
+            else
             {
-              if (alwaysUseSubsumption)
+              bool isTrue;
+              var assmVars = currentImplementation.ConjunctionOfInjectedAssumptionVariables(incarnationMap, out isTrue);
+              if (!isTrue && alwaysUseSubsumption)
               {
-                // Turn it into an assume statement.
-                TraceCachingAction(pc, CachingAction.MarkAsFullyVerified);
-                pc = new AssumeCmd(ac.tok, copy);
-                pc.Attributes = new QKeyValue(Token.NoToken, "verified_assertion", new List<object>(), pc.Attributes);
+                // Bind the assertion expression to a local variable.
+                var incarnation = CreateIncarnation(CurrentTemporaryVariableForAssertions, containingBlock);
+                var identExpr = new IdentifierExpr(Token.NoToken, incarnation);
+                incarnationMap[incarnation] = identExpr;
+                ac.IncarnationMap[incarnation] = identExpr;
+                passiveCmds.Add(new AssumeCmd(Token.NoToken, LiteralExpr.Eq(identExpr, copy)));
+                copy = identExpr;
+                passiveCmds.Add(new AssumeCmd(Token.NoToken, LiteralExpr.Imp(assmVars, identExpr)));
+                TraceCachingAction(pc, CachingAction.MarkAsPartiallyVerified);
               }
-              dropCmd = subsumption == CommandLineOptions.SubsumptionOption.Never;
+              else if (isTrue)
+              {
+                if (alwaysUseSubsumption)
+                {
+                  // Turn it into an assume statement.
+                  TraceCachingAction(pc, CachingAction.MarkAsFullyVerified);
+                  pc = new AssumeCmd(ac.tok, copy);
+                  pc.Attributes = new QKeyValue(Token.NoToken, "verified_assertion", new List<object>(), pc.Attributes);
+                }
+                dropCmd = subsumption == CommandLineOptions.SubsumptionOption.Never;
+              }
             }
           }
           else if (currentImplementation != null
