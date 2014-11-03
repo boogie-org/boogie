@@ -1475,12 +1475,13 @@ namespace VC {
 
     public enum CachingAction : byte
     {
-      DoNothing,
+      DoNothingToAssert,
       MarkAsPartiallyVerified,
       MarkAsFullyVerified,
       RecycleError,
       AssumeNegationOfAssumptionVariable,
-      Drop,
+      DropAssume,
+      DropAssert
     }
 
     public long[] CachingActionCounts;
@@ -1547,14 +1548,17 @@ namespace VC {
           var alwaysUseSubsumption = subsumption == CommandLineOptions.SubsumptionOption.Always;
           if (currentImplementation != null
               && currentImplementation.HasCachedSnapshot
+              && checksum != null
+              && currentImplementation.IsAssertionChecksumInCachedSnapshot(checksum)
               && !currentImplementation.AnyErrorsInCachedSnapshot
-              && currentImplementation.InjectedAssumptionVariables.Count == 1)
+              && currentImplementation.InjectedAssumptionVariables.Count == 1
+              && relevantAssumpVars.Count == 1)
           {
-            TraceCachingAction(pc, CachingAction.DoNothing);
+            TraceCachingAction(pc, CachingAction.MarkAsPartiallyVerified);
           }
           else if (relevantDoomedAssumpVars.Any())
           {
-            TraceCachingAction(pc, CachingAction.DoNothing);
+            TraceCachingAction(pc, CachingAction.DoNothingToAssert);
           }
           else if (currentImplementation != null
                    && currentImplementation.HasCachedSnapshot
@@ -1610,7 +1614,7 @@ namespace VC {
           }
           else
           {
-            TraceCachingAction(pc, CachingAction.DoNothing);
+            TraceCachingAction(pc, CachingAction.DoNothingToAssert);
           }
         }
         else if (pc is AssumeCmd
@@ -1646,7 +1650,7 @@ namespace VC {
         }
         else
         {
-          TraceCachingAction(pc, CachingAction.Drop);
+          TraceCachingAction(pc, pc is AssumeCmd ? CachingAction.DropAssume : CachingAction.DropAssert);
         }
       }
       #endregion

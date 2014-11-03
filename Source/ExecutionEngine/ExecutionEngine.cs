@@ -1036,12 +1036,13 @@ namespace Microsoft.Boogie
         Console.Out.WriteLine(CachedVerificationResultInjector.Statistics.Output(printTimes));
 
         Console.Out.WriteLine("Statistics per request as CSV:");
-        Console.Out.WriteLine("Request ID{0}, Error, Inconclusive, Out of Memory, Timeout, Verified, DoNothing, MarkAsPartiallyVerified, MarkAsFullyVerified, RecycleError, AssumeNegationOfAssumptionVariable, Drop", printTimes ? ", Time (ms)" : "");
+        var actions = string.Join(", ", Enum.GetNames(typeof(VC.ConditionGeneration.CachingAction)));
+        Console.Out.WriteLine("Request ID{0}, Error, Inconclusive, Out of Memory, Timeout, Verified, {1}", printTimes ? ", Time (ms)" : "", actions);
         foreach (var kv in TimePerRequest.OrderBy(kv => ExecutionEngine.AutoRequestId(kv.Key)))
         {
           var s = StatisticsPerRequest[kv.Key];
           var cacs = s.CachingActionCounts;
-          var c = cacs != null ? string.Format(", {0,3}, {1,3}, {2,3}, {3,3}, {4,3}, {5,3}", cacs[0], cacs[1], cacs[2], cacs[3], cacs[4], cacs[5]) : "";
+          var c = cacs != null ? ", " + cacs.Select(ac => string.Format("{0,3}", ac)).Concat(", ") : "";
           var t = printTimes ? string.Format(", {0,8:F0}", kv.Value.TotalMilliseconds) : "";
           Console.Out.WriteLine("{0,-19}{1}, {2,2}, {3,2}, {4,2}, {5,2}, {6,2}{7}", kv.Key, t, s.ErrorCount, s.InconclusiveCount, s.OutOfMemoryCount, s.TimeoutCount, s.VerifiedCount, c);
         }
