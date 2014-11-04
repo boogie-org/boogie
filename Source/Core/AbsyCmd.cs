@@ -966,7 +966,7 @@ namespace Microsoft.Boogie {
         if (havocCmd != null)
         {
           tokTxtWr.Write("havoc ");
-          var relevantVars = havocCmd.Vars.Where(v => usedVariables.Contains(v.Decl) && !v.Decl.Name.StartsWith("a##post##")).ToList();
+          var relevantVars = havocCmd.Vars.Where(e => usedVariables.Contains(e.Decl) && !e.Decl.Name.StartsWith("a##post##")).OrderBy(e => e.Name).ToList();
           relevantVars.Emit(tokTxtWr, true);
           tokTxtWr.WriteLine(";");
         }

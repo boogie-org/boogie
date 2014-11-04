@@ -1298,7 +1298,7 @@ namespace VC {
 
     Dictionary<Variable, Expr> preHavocIncarnationMap = null;     // null = the previous command was not an HashCmd. Otherwise, a *copy* of the map before the havoc statement
 
-    protected void TurnIntoPassiveBlock(Block b, Dictionary<Variable, Expr> incarnationMap, ModelViewInfo mvInfo, Substitution oldFrameSubst, VariableCollector variableCollector, byte[] currentChecksum = null) {
+    protected void TurnIntoPassiveBlock(Block b, Dictionary<Variable, Expr> incarnationMap, ModelViewInfo mvInfo, Substitution oldFrameSubst, MutableVariableCollector variableCollector, byte[] currentChecksum = null) {
       Contract.Requires(b != null);
       Contract.Requires(incarnationMap != null);
       Contract.Requires(mvInfo != null);
@@ -1308,8 +1308,7 @@ namespace VC {
       List<Cmd> passiveCmds = new List<Cmd>();
       foreach (Cmd c in b.Cmds) {
         Contract.Assert(c != null); // walk forward over the commands because the map gets modified in a forward direction
-        // TODO(wuestholz): Maybe we should use multiple variable collectors.
-        ChecksumHelper.ComputeChecksums(c, currentImplementation, variableCollector.usedVars, currentChecksum);
+        ChecksumHelper.ComputeChecksums(c, currentImplementation, variableCollector.UsedVariables, currentChecksum);
         variableCollector.Visit(c);
         currentChecksum = c.Checksum;
         TurnIntoPassiveCmd(c, incarnationMap, oldFrameSubst, passiveCmds, mvInfo, b);
@@ -1410,7 +1409,7 @@ namespace VC {
       Dictionary<Block, Dictionary<Variable, Expr>> block2Incarnation = new Dictionary<Block, Dictionary<Variable, Expr>>();
       Block exitBlock = null;
       Dictionary<Variable, Expr> exitIncarnationMap = null;
-      var variableCollector = new VariableCollector();
+      var variableCollectors = new Dictionary<Block, MutableVariableCollector>();
       foreach (Block b in sortedNodes) {
         Contract.Assert(b != null);
         Contract.Assert(!block2Incarnation.ContainsKey(b));
@@ -1422,6 +1421,8 @@ namespace VC {
         // Decrement the succCount field in each predecessor. Once the field reaches zero in any block, 
         // all its successors have been passified.  Consequently, its entry in block2Incarnation can be removed.
         byte[] currentChecksum = null;
+        var mvc = new MutableVariableCollector();
+        variableCollectors[b] = mvc;
         foreach (Block p in b.Predecessors) {
           p.succCount--;
           if (p.Checksum != null)
@@ -1429,6 +1430,7 @@ namespace VC {
             // Compute the checksum based on the checksums of the predecessor. The order should not matter.
             currentChecksum = ChecksumHelper.CombineChecksums(p.Checksum, currentChecksum, true);
           }
+          mvc.AddUsedVariables(variableCollectors[p].UsedVariables);
           if (p.succCount == 0)
             block2Incarnation.Remove(p);
         }
@@ -1445,10 +1447,12 @@ namespace VC {
         }
         #endregion Each block's map needs to be available to successor blocks
 
-        TurnIntoPassiveBlock(b, incarnationMap, mvInfo, oldFrameSubst, variableCollector, currentChecksum);
+        TurnIntoPassiveBlock(b, incarnationMap, mvInfo, oldFrameSubst, mvc, currentChecksum);
         exitBlock = b;
         exitIncarnationMap = incarnationMap;
       }
+
+      variableCollectors.Clear();
 
       // Verify that exitBlock is indeed the unique exit block
       Contract.Assert(exitBlock != null);
