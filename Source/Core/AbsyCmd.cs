@@ -234,6 +234,10 @@ namespace Microsoft.Boogie {
     List<Block/*!*/> blocks;
     string/*!*/ prefix = "anon";
     int anon = 0;
+    int FreshAnon()
+    {
+      return anon++;
+    }
     HashSet<string/*!*/> allLabels = new HashSet<string/*!*/>();
     Errors/*!*/ errorHandler;
     [ContractInvariantMethod]
@@ -409,8 +413,7 @@ namespace Microsoft.Boogie {
       Contract.Requires(stmtList != null);
       foreach (BigBlock b in stmtList.BigBlocks) {
         if (b.LabelName == null) {
-          b.LabelName = prefix + anon;
-          anon++;
+          b.LabelName = prefix + FreshAnon();
         }
         if (b.ec is WhileCmd) {
           WhileCmd wcmd = (WhileCmd)b.ec;
@@ -494,10 +497,10 @@ namespace Microsoft.Boogie {
 
         } else if (b.ec is WhileCmd) {
           WhileCmd wcmd = (WhileCmd)b.ec;
-          string loopHeadLabel = prefix + anon + "_LoopHead";
-          string/*!*/ loopBodyLabel = prefix + anon + "_LoopBody";
-          string loopDoneLabel = prefix + anon + "_LoopDone";
-          anon++;
+          var a = FreshAnon();
+          string loopHeadLabel = prefix + a + "_LoopHead";
+          string/*!*/ loopBodyLabel = prefix + a + "_LoopBody";
+          string loopDoneLabel = prefix + a + "_LoopDone";
 
           List<Cmd> ssBody = new List<Cmd>();
           List<Cmd> ssDone = new List<Cmd>();
@@ -552,11 +555,11 @@ namespace Microsoft.Boogie {
           List<Cmd> predCmds = theSimpleCmds;
 
           for (; ifcmd != null; ifcmd = ifcmd.elseIf) {
-            string thenLabel = prefix + anon + "_Then";
+            var a = FreshAnon();
+            string thenLabel = prefix + a + "_Then";
             Contract.Assert(thenLabel != null);
-            string elseLabel = prefix + anon + "_Else";
+            string elseLabel = prefix + a + "_Else";
             Contract.Assert(elseLabel != null);
-            anon++;
 
             List<Cmd> ssThen = new List<Cmd>();
             List<Cmd> ssElse = new List<Cmd>();

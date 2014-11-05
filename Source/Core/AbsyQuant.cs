@@ -604,7 +604,7 @@ namespace Microsoft.Boogie {
       Contract.Assert((this is ForallExpr) || (this is ExistsExpr));
 
       Triggers = triggers;
-      SkolemId = SkolemIds++;
+      SkolemId = GetNextSkolemId();
     }
 
     protected override void EmitTriggers(TokenTextWriter stream) {
