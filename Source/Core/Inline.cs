@@ -437,6 +437,7 @@ namespace Microsoft.Boogie {
       foreach (Variable/*!*/ locVar in cce.NonNull(impl.OriginalLocVars)) {
         Contract.Assert(locVar != null);
         LocalVariable localVar = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, GetProcVarName(proc.Name, locVar.Name), locVar.TypedIdent.Type, locVar.TypedIdent.WhereExpr));
+        localVar.Attributes = locVar.Attributes; // copy attributes
         newLocalVars.Add(localVar);
         IdentifierExpr ie = new IdentifierExpr(Token.NoToken, localVar);
         substMap.Add(locVar, ie);
@@ -446,6 +447,7 @@ namespace Microsoft.Boogie {
         Variable inVar = cce.NonNull(impl.InParams[i]);
         LocalVariable localVar = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, GetProcVarName(proc.Name, inVar.Name), inVar.TypedIdent.Type, inVar.TypedIdent.WhereExpr));
         newLocalVars.Add(localVar);
+        if (impl.Proc != null) localVar.Attributes = impl.Proc.InParams[i].Attributes; // copy attributes
         IdentifierExpr ie = new IdentifierExpr(Token.NoToken, localVar);
         substMap.Add(inVar, ie);
         // also add a substitution from the corresponding formal occurring in the PROCEDURE declaration
@@ -458,6 +460,7 @@ namespace Microsoft.Boogie {
       for (int i = 0; i < impl.OutParams.Count; i++) {
         Variable outVar = cce.NonNull(impl.OutParams[i]);
         LocalVariable localVar = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, GetProcVarName(proc.Name, outVar.Name), outVar.TypedIdent.Type, outVar.TypedIdent.WhereExpr));
+        if (impl.Proc != null) localVar.Attributes = impl.Proc.OutParams[i].Attributes; // copy attributes
         newLocalVars.Add(localVar);
         IdentifierExpr ie = new IdentifierExpr(Token.NoToken, localVar);
         substMap.Add(outVar, ie);
