@@ -182,6 +182,11 @@ namespace Microsoft.Boogie.SMTLib
       return msg;
     }
 
+    public override void LogComment(string comment)
+    {
+        SendCommon("; " + comment);
+    }
+
     private void SendCommon(string s)
     {
       Send(s, true);
