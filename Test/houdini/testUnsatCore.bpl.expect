@@ -1,0 +1,7 @@
+Assignment computed by Houdini:
+br0 = True
+br1 = False
+br2 = False
+be0 = True
+
+Boogie program verifier finished with 2 verified, 0 errors
