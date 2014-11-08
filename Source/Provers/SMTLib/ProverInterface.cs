@@ -81,7 +81,7 @@ namespace Microsoft.Boogie.SMTLib
           {
               currentLogFile = OpenOutputFile("");
           }
-          if (CommandLineOptions.Clo.ContractInfer && CommandLineOptions.Clo.ExplainHoudini)
+          if (CommandLineOptions.Clo.ContractInfer && (CommandLineOptions.Clo.UseUnsatCoreForContractInfer || CommandLineOptions.Clo.ExplainHoudini))
           {
               SendThisVC("(set-option :produce-unsat-cores true)");
               this.usingUnsatCore = true;
