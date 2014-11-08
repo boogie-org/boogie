@@ -1,4 +1,4 @@
-// RUN: %boogie -noinfer -contractInfer -printAssignment -useUnsatCoreForContractInfer -Trace "%s" > "%t"
+// RUN: %boogie -noinfer -contractInfer -printAssignment -useUnsatCoreForContractInfer "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 var g: bool;
 
