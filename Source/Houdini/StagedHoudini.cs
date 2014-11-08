@@ -108,7 +108,7 @@ namespace Microsoft.Boogie.Houdini
 
       if (h.Count() == 0)
       {
-        h.Add(new Houdini(ProgramFromFile(tempFilename), new HoudiniSession.HoudiniStatistics(), "houdiniCexTrace_" + s.GetId() + ".bpl"));
+        h.Add(new Houdini(ProgramFromFile(tempFilename), new HoudiniSession.HoudiniStatistics(), "houdiniCexTrace_" + s.GetId() + ".txt"));
       }
 
       System.Diagnostics.Debug.Assert(h.Count() == 1);

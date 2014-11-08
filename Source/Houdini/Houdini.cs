@@ -276,7 +276,7 @@ namespace Microsoft.Boogie.Houdini {
 
     protected Houdini() { }
 
-    public Houdini(Program program, HoudiniSession.HoudiniStatistics stats, string cexTraceFile = "houdiniCexTrace.bpl") {
+    public Houdini(Program program, HoudiniSession.HoudiniStatistics stats, string cexTraceFile = "houdiniCexTrace.txt") {
       this.program = program;
       this.cexTraceFile = cexTraceFile;
       Initialize(program, stats);

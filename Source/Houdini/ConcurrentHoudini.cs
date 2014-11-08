@@ -19,7 +19,7 @@ namespace Microsoft.Boogie.Houdini
 
     public static ConcurrentDictionary<string, RefutedAnnotation> RefutedSharedAnnotations { get { return refutedSharedAnnotations; } }
 
-    public ConcurrentHoudini(int taskId, Program program, HoudiniSession.HoudiniStatistics stats, string cexTraceFile = "houdiniCexTrace.bpl") {
+    public ConcurrentHoudini(int taskId, Program program, HoudiniSession.HoudiniStatistics stats, string cexTraceFile = "houdiniCexTrace.txt") {
       Contract.Assert(taskId >= 0);
       this.program = program;
       this.cexTraceFile = cexTraceFile;
