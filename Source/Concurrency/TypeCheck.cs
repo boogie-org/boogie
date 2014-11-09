@@ -466,13 +466,13 @@ namespace Microsoft.Boogie
                     numAtomicActions++;
                 }
             }
-            if (!isLeftMover && !isRightMover && node.CallCmds.Count > 1)
+            if (maxCalleePhaseNum < enclosingProcPhaseNum && !isLeftMover && !isRightMover && node.CallCmds.Count > 1)
             {
-                Error(node, "The procedures in the parallel call must be all right mover or all left mover");
+                Error(node, "The callees in the parallel call must be all right movers or all left movers");
             }
             if (maxCalleePhaseNum == enclosingProcPhaseNum && numAtomicActions > 0)
             {
-                Error(node, "At phase {0}, either no callee is an atomic action or no callee phase equals the phase of the enclosing procedure");
+                Error(node, "If some callee in the parallel call has the same phase as the enclosing procedure, then no callee can be an atomic action");
             }
             return base.VisitParCallCmd(node);
         }
