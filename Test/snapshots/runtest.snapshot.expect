@@ -203,7 +203,7 @@ Boogie program verifier finished with 0 verified, 1 error
 Processing call to procedure N in implementation M (at Snapshots11.v1.bpl(7,5)):
   >>> added before precondition check: assume {:precondition_previous_snapshot} 0 < call0formal#AT#n;
   >>> added after: a##post##0 := a##post##0 && 0 < call1formal#AT#r;
-Processing command (at Snapshots11.v1.bpl(7,5)) assume {:precondition_previous_snapshot} 0 < n;
+Processing command (at Snapshots11.v1.bpl(7,5)) assume {:precondition_previous_snapshot} 0 < call0formal#AT#n;
   >>> DropAssume
 Processing command (at Snapshots11.v1.bpl(7,5)) assert 0 < call0formal#AT#n;
   >>> RecycleError
@@ -450,6 +450,8 @@ Processing command (at Snapshots24.v1.bpl(11,9)) assert {:subsumption 1} 5 == 5;
   >>> DoNothingToAssert
 Processing command (at Snapshots24.v1.bpl(15,9)) assert {:subsumption 2} 6 != 6;
   >>> RecycleError
+Processing command (at Snapshots24.v1.bpl(19,9)) assert {:subsumption 1} 2 == 2;
+  >>> DoNothingToAssert
 Processing command (at Snapshots24.v1.bpl(20,9)) assert {:subsumption 2} 4 == 4;
   >>> MarkAsFullyVerified
 Processing command (at Snapshots24.v1.bpl(21,9)) assert 5 == 5;

@@ -1484,8 +1484,7 @@ namespace VC {
       MarkAsFullyVerified,
       RecycleError,
       AssumeNegationOfAssumptionVariable,
-      DropAssume,
-      DropAssert
+      DropAssume
     }
 
     public long[] CachingActionCounts;
@@ -1572,26 +1571,54 @@ namespace VC {
               var assmVars = currentImplementation.ConjunctionOfInjectedAssumptionVariables(incarnationMap, out isTrue);
               if (!isTrue && alwaysUseSubsumption)
               {
-                // Bind the assertion expression to a local variable.
-                var incarnation = CreateIncarnation(CurrentTemporaryVariableForAssertions, containingBlock);
-                var identExpr = new IdentifierExpr(Token.NoToken, incarnation);
-                incarnationMap[incarnation] = identExpr;
-                ac.IncarnationMap[incarnation] = identExpr;
-                passiveCmds.Add(new AssumeCmd(Token.NoToken, LiteralExpr.Eq(identExpr, copy)));
-                copy = identExpr;
-                passiveCmds.Add(new AssumeCmd(Token.NoToken, LiteralExpr.Imp(assmVars, identExpr)));
                 TraceCachingAction(pc, CachingAction.MarkAsPartiallyVerified);
+                var litExpr = ac.Expr as LiteralExpr;
+                if (litExpr == null || !litExpr.IsTrue)
+                {
+                  // Bind the assertion expression to a local variable.
+                  var incarnation = CreateIncarnation(CurrentTemporaryVariableForAssertions, containingBlock);
+                  var identExpr = new IdentifierExpr(Token.NoToken, incarnation);
+                  incarnationMap[incarnation] = identExpr;
+                  ac.IncarnationMap[incarnation] = identExpr;
+                  passiveCmds.Add(new AssumeCmd(Token.NoToken, LiteralExpr.Eq(identExpr, copy)));
+                  copy = identExpr;
+                  passiveCmds.Add(new AssumeCmd(Token.NoToken, LiteralExpr.Imp(assmVars, identExpr)));
+                }
+                else
+                {
+                  dropCmd = true;
+                }
               }
               else if (isTrue)
               {
                 if (alwaysUseSubsumption)
                 {
-                  // Turn it into an assume statement.
                   TraceCachingAction(pc, CachingAction.MarkAsFullyVerified);
-                  pc = new AssumeCmd(ac.tok, copy);
-                  pc.Attributes = new QKeyValue(Token.NoToken, "verified_assertion", new List<object>(), pc.Attributes);
+                  var litExpr = ac.Expr as LiteralExpr;
+                  if (litExpr == null || !litExpr.IsTrue)
+                  {
+                    // Turn it into an assume statement.
+                    pc = new AssumeCmd(ac.tok, copy);
+                    pc.Attributes = new QKeyValue(Token.NoToken, "verified_assertion", new List<object>(), pc.Attributes);
+                  }
+                  else
+                  {
+                    dropCmd = true;
+                  }
                 }
-                dropCmd = subsumption == CommandLineOptions.SubsumptionOption.Never;
+                else if (subsumption == CommandLineOptions.SubsumptionOption.Never)
+                {
+                  TraceCachingAction(pc, CachingAction.MarkAsFullyVerified);
+                  dropCmd = true;
+                }
+                else
+                {
+                  TraceCachingAction(pc, CachingAction.DoNothingToAssert);
+                }
+              }
+              else
+              {
+                TraceCachingAction(pc, CachingAction.DoNothingToAssert);
               }
             }
           }
@@ -1608,11 +1635,17 @@ namespace VC {
               TraceCachingAction(pc, CachingAction.RecycleError);
               pc = new AssumeCmd(ac.tok, copy);
               pc.Attributes = new QKeyValue(Token.NoToken, "recycled_failing_assertion", new List<object>(), pc.Attributes);
-            }
-            dropCmd = subsumption == CommandLineOptions.SubsumptionOption.Never;
-            if (dropCmd || alwaysUseSubsumption)
-            {
               currentImplementation.AddRecycledFailingAssertion(ac);
+            }
+            else if (subsumption == CommandLineOptions.SubsumptionOption.Never)
+            {
+              TraceCachingAction(pc, CachingAction.RecycleError);
+              dropCmd = true;
+              currentImplementation.AddRecycledFailingAssertion(ac);
+            }
+            else
+            {
+              TraceCachingAction(pc, CachingAction.DoNothingToAssert);
             }
           }
           else
@@ -1643,6 +1676,7 @@ namespace VC {
           }
           else
           {
+            TraceCachingAction(pc, CachingAction.DropAssume);
             dropCmd = true;
           }
         }
@@ -1650,10 +1684,6 @@ namespace VC {
         if (!dropCmd)
         {
           passiveCmds.Add(pc);
-        }
-        else
-        {
-          TraceCachingAction(pc, pc is AssumeCmd ? CachingAction.DropAssume : CachingAction.DropAssert);
         }
       }
       #endregion

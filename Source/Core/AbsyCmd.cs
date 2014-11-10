@@ -1293,7 +1293,10 @@ namespace Microsoft.Boogie {
       if (stream.UseForComputingChecksums)
       {
         var lhs = Lhss.FirstOrDefault() as SimpleAssignLhs;
-        if (lhs != null && lhs.AssignedVariable.Decl != null && QKeyValue.FindBoolAttribute(lhs.AssignedVariable.Decl.Attributes, "assumption"))
+        if (lhs != null
+            && lhs.AssignedVariable.Decl != null
+            && (QKeyValue.FindBoolAttribute(lhs.AssignedVariable.Decl.Attributes, "assumption")
+                || lhs.AssignedVariable.Decl.Name.Contains("##old##")))
         {
           return;
         }

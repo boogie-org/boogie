@@ -208,9 +208,9 @@ namespace Microsoft.Boogie
           {
             var oldUnmod = new LocalVariable(Token.NoToken,
               new TypedIdent(Token.NoToken, string.Format("{0}##old##{1}", unmod.Name, FreshTemporaryVariableName), unmod.Type));
-            before.Add(new AssignCmd(Token.NoToken,
-                         new List<AssignLhs> { new SimpleAssignLhs(Token.NoToken, new IdentifierExpr(Token.NoToken, oldUnmod)) },
-                         new List<Expr> { new IdentifierExpr(Token.NoToken, unmod.Decl) }));
+            var lhs = new SimpleAssignLhs(Token.NoToken, new IdentifierExpr(Token.NoToken, oldUnmod));
+            var rhs = new IdentifierExpr(Token.NoToken, unmod.Decl);
+            before.Add(new AssignCmd(Token.NoToken, new List<AssignLhs> { lhs }, new List<Expr> { rhs }));
             var eq = LiteralExpr.Eq(new IdentifierExpr(Token.NoToken, oldUnmod), new IdentifierExpr(Token.NoToken, unmod.Decl));
             if (assumedExpr == null)
             {
