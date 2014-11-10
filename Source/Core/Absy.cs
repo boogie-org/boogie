@@ -3218,14 +3218,18 @@ namespace Microsoft.Boogie {
       return ErrorChecksumToCachedError.ContainsKey(checksum);
     }
 
-    public void SetErrorChecksumToCachedError(IEnumerable<Tuple<byte[], object>> errors)
+    public void SetErrorChecksumToCachedError(IEnumerable<Tuple<byte[], byte[], object>> errors)
     {
       Contract.Requires(errors != null);
 
       ErrorChecksumToCachedError = new Dictionary<byte[], object>(ChecksumComparer.Default);
       foreach (var kv in errors)
       {
-        ErrorChecksumToCachedError[kv.Item1] = kv.Item2;
+        ErrorChecksumToCachedError[kv.Item1] = kv.Item3;
+        if (kv.Item2 != null)
+        {
+          ErrorChecksumToCachedError[kv.Item2] = null;
+        }
       }
     }
 

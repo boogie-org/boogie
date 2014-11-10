@@ -72,7 +72,7 @@ Processing command (at Snapshots2.v5.bpl(7,5)) assume {:precondition_previous_sn
 Processing command (at Snapshots2.v5.bpl(7,5)) assert F0();
   >>> MarkAsFullyVerified
 Processing command (at Snapshots2.v5.bpl(3,1)) assert F0();
-  >>> DoNothingToAssert
+  >>> MarkAsFullyVerified
 
 Boogie program verifier finished with 1 verified, 0 errors
 Processing command (at Snapshots3.v0.bpl(2,1)) assert G();
@@ -514,5 +514,35 @@ Processing command (at Snapshots28.v1.bpl(14,5)) assert 0 == 0;
 Processing command (at Snapshots28.v1.bpl(15,5)) assert x == 0;
   >>> DoNothingToAssert
 Snapshots28.v1.bpl(15,5): Error BP5001: This assertion might not hold.
+
+Boogie program verifier finished with 0 verified, 1 error
+Processing command (at Snapshots30.v0.bpl(5,5)) assert 0 == 0;
+  >>> DoNothingToAssert
+Processing command (at Snapshots30.v0.bpl(5,5)) assert 1 == 1;
+  >>> DoNothingToAssert
+Processing command (at Snapshots30.v0.bpl(5,5)) assert 2 != 2;
+  >>> DoNothingToAssert
+Processing command (at Snapshots30.v0.bpl(5,5)) assert 3 == 3;
+  >>> DoNothingToAssert
+Processing command (at Snapshots30.v0.bpl(5,5)) assert 4 == 4;
+  >>> DoNothingToAssert
+Snapshots30.v0.bpl(5,5): Error BP5002: A precondition for this call might not hold.
+Snapshots30.v0.bpl(11,3): Related location: This is the precondition that might not hold.
+
+Boogie program verifier finished with 0 verified, 1 error
+Processing command (at Snapshots30.v1.bpl(5,5)) assert 0 == 0;
+  >>> MarkAsFullyVerified
+Processing command (at Snapshots30.v1.bpl(5,5)) assert 1 == 1;
+  >>> MarkAsFullyVerified
+Processing command (at Snapshots30.v1.bpl(5,5)) assert 2 != 2;
+  >>> RecycleError
+Processing command (at Snapshots30.v1.bpl(5,5)) assert 3 == 3;
+  >>> MarkAsFullyVerified
+Processing command (at Snapshots30.v1.bpl(5,5)) assert 4 == 4;
+  >>> MarkAsFullyVerified
+Processing command (at Snapshots30.v1.bpl(6,5)) assert 5 == 5;
+  >>> DoNothingToAssert
+Snapshots30.v0.bpl(5,5): Error BP5002: A precondition for this call might not hold.
+Snapshots30.v0.bpl(11,3): Related location: This is the precondition that might not hold.
 
 Boogie program verifier finished with 0 verified, 1 error

@@ -84,6 +84,7 @@ namespace Microsoft.Boogie {
     public string OriginalRequestId;
     public string RequestId;
     public abstract byte[] Checksum { get; }
+    public byte[] SugaredCmdChecksum;
 
     public Dictionary<TraceLocation, CalleeCounterexampleInfo> calleeCounterexamples;
 
@@ -420,7 +421,7 @@ namespace Microsoft.Boogie {
     }
 
 
-    public CallCounterexample(List<Block> trace, CallCmd failingCall, Requires failingRequires, Model model, VC.ModelViewInfo mvInfo, ProverContext context)
+    public CallCounterexample(List<Block> trace, CallCmd failingCall, Requires failingRequires, Model model, VC.ModelViewInfo mvInfo, ProverContext context, byte[] checksum = null)
       : base(trace, model, mvInfo, context) {
       Contract.Requires(!failingRequires.Free);
       Contract.Requires(trace != null);
@@ -429,20 +430,23 @@ namespace Microsoft.Boogie {
       Contract.Requires(failingRequires != null);
       this.FailingCall = failingCall;
       this.FailingRequires = failingRequires;
+      this.checksum = checksum;
+      this.SugaredCmdChecksum = failingCall.Checksum;
     }
 
     public override int GetLocation() {
       return FailingCall.tok.line * 1000 + FailingCall.tok.col;
     }
 
+    byte[] checksum;
     public override byte[] Checksum
     {
-      get { return FailingCall.Checksum; }
+      get { return checksum; }
     }
 
     public override Counterexample Clone()
     {
-        var ret = new CallCounterexample(Trace, FailingCall, FailingRequires, Model, MvInfo, Context);
+        var ret = new CallCounterexample(Trace, FailingCall, FailingRequires, Model, MvInfo, Context, Checksum);
         ret.calleeCounterexamples = calleeCounterexamples;
         return ret;
     }
@@ -1540,7 +1544,7 @@ namespace VC {
         var dropCmd = false;
         var relevantAssumpVars = currentImplementation != null ? currentImplementation.RelevantInjectedAssumptionVariables(incarnationMap) : new List<LocalVariable>();
         var relevantDoomedAssumpVars = currentImplementation != null ? currentImplementation.RelevantDoomedInjectedAssumptionVariables(incarnationMap) : new List<LocalVariable>();
-        var checksum = pc.SugaredCmdChecksum != null ? pc.SugaredCmdChecksum : pc.Checksum;
+        var checksum = pc.Checksum;
         if (pc is AssertCmd) {
           var ac = (AssertCmd)pc;
           ac.OrigExpr = ac.Expr;

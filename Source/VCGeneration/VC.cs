@@ -1626,7 +1626,7 @@ namespace VC {
         outcome = Outcome.Errors;
         foreach (var a in impl.RecycledFailingAssertions)
         {
-          var checksum = a.SugaredCmdChecksum != null ? a.SugaredCmdChecksum : a.Checksum;
+          var checksum = a.Checksum;
           var oldCex = impl.ErrorChecksumToCachedError[checksum] as Counterexample;
           if (oldCex != null)
           {
@@ -2965,7 +2965,7 @@ namespace VC {
       {
         AssertRequiresCmd assertCmd = (AssertRequiresCmd)cmd;
         Contract.Assert(assertCmd != null);
-        CallCounterexample cc = new CallCounterexample(trace, assertCmd.Call, assertCmd.Requires, errModel, mvInfo, context);
+        CallCounterexample cc = new CallCounterexample(trace, assertCmd.Call, assertCmd.Requires, errModel, mvInfo, context, assertCmd.Checksum);
         cc.relatedInformation = relatedInformation;
         return cc;
       }

@@ -994,9 +994,7 @@ namespace Microsoft.Boogie {
         var assertRequiresCmd = assertCmd as AssertRequiresCmd;
         if (assertRequiresCmd != null)
         {
-          // Add the checksum of the call instead of the assertion itself
-          // because a corresponding counterexample will also have the
-          // checksum of the failing call.
+          impl.AddAssertionChecksum(assertRequiresCmd.Checksum);
           impl.AddAssertionChecksum(assertRequiresCmd.Call.Checksum);
           assertRequiresCmd.SugaredCmdChecksum = assertRequiresCmd.Call.Checksum;
         }

@@ -166,12 +166,12 @@ namespace Microsoft.Boogie
     {
       if (result.Outcome == ConditionGeneration.Outcome.Errors && result.Errors != null && result.Errors.Count < CommandLineOptions.Clo.ProverCCLimit)
       {
-        implementation.SetErrorChecksumToCachedError(result.Errors.Select(cex => new Tuple<byte[], object>(cex.Checksum, cex)));
+        implementation.SetErrorChecksumToCachedError(result.Errors.Select(cex => new Tuple<byte[], byte[], object>(cex.Checksum, cex.SugaredCmdChecksum, cex)));
         implementation.AssertionChecksumsInCachedSnapshot = result.AssertionChecksums;
       }
       else if (result.Outcome == ConditionGeneration.Outcome.Correct)
       {
-        implementation.SetErrorChecksumToCachedError(new List<Tuple<byte[], object>>());
+        implementation.SetErrorChecksumToCachedError(new List<Tuple<byte[], byte[], object>>());
         implementation.AssertionChecksumsInCachedSnapshot = result.AssertionChecksums;
       }
     }
