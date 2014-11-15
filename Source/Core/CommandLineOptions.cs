@@ -505,8 +505,8 @@ namespace Microsoft.Boogie {
     public string OwickiGriesDesugaredOutputFile = null;
     public bool TrustAtomicityTypes = false;
     public bool TrustNonInterference = false;
-    public int TrustPhasesUpto = -1;
-    public int TrustPhasesDownto = int.MaxValue;
+    public int TrustLayersUpto = -1;
+    public int TrustLayersDownto = int.MaxValue;
 
     public enum VCVariety {
       Structured,
@@ -766,17 +766,17 @@ namespace Microsoft.Boogie {
           }
           return true;
 
-        case "trustPhasesUpto":
+        case "trustLayersUpto":
           if (ps.ConfirmArgumentCount(1))
           {
-              ps.GetNumericArgument(ref TrustPhasesUpto);
+              ps.GetNumericArgument(ref TrustLayersUpto);
           }
           return true;
 
-        case "trustPhasesDownto":
+        case "trustLayersDownto":
           if (ps.ConfirmArgumentCount(1))
           {
-              ps.GetNumericArgument(ref TrustPhasesDownto);
+              ps.GetNumericArgument(ref TrustLayersDownto);
           }
           return true;
 

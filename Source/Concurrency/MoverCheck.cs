@@ -35,9 +35,9 @@ namespace Microsoft.Boogie
             {
                 AtomicActionInfo atomicAction = action as AtomicActionInfo;
                 if (atomicAction == null) continue;
-                foreach (int phaseNum in moverTypeChecker.AllPhaseNums)
+                foreach (int phaseNum in moverTypeChecker.AllLayerNums)
                 {
-                    if (action.phaseNum < phaseNum && phaseNum <= action.availableUptoPhaseNum)
+                    if (action.phaseNum < phaseNum && phaseNum <= action.availableUptoLayerNum)
                     {
                         if (!pools.ContainsKey(phaseNum))
                         {

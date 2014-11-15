@@ -1,6 +1,6 @@
 // RUN: %boogie -noinfer -typeEncoding:m -useArrayTheory "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
-var {:phase 1} a:int;
+var {:layer 1} a:int;
 
 procedure Allocate() returns ({:linear "tid"} xls: int);
 
@@ -10,7 +10,7 @@ function {:inline} {:linear "tid"} TidCollector(x: int) : [int]bool
   MapConstBool(false)[x := true]
 }
 
-procedure {:yields} {:phase 1} main() 
+procedure {:yields} {:layer 1} main() 
 {
   var {:linear "tid"} i: int;
   var {:linear "tid"} j: int;
@@ -19,19 +19,19 @@ procedure {:yields} {:phase 1} main()
   par i := t(i) | j := t(j);
 }
 
-procedure {:yields} {:phase 1} t({:linear_in "tid"} i': int) returns ({:linear "tid"} i: int)
+procedure {:yields} {:layer 1} t({:linear_in "tid"} i': int) returns ({:linear "tid"} i: int)
 {
   i := i';
   call Yield();
-  assert {:phase 1} a == old(a);
+  assert {:layer 1} a == old(a);
   call Incr();
   yield;
 }
 
-procedure {:yields} {:phase 0,1} Incr();
+procedure {:yields} {:layer 0,1} Incr();
 ensures {:atomic} |{A: a := a + 1; return true; }|;
 
-procedure {:yields} {:phase 1} Yield()
+procedure {:yields} {:layer 1} Yield()
 {
   yield;
 }

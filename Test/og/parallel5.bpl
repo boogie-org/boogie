@@ -1,6 +1,6 @@
 // RUN: %boogie -noinfer -typeEncoding:m -useArrayTheory "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
-var {:phase 1} a:[int]int;
+var {:layer 1} a:[int]int;
 
 procedure Allocate() returns ({:linear "tid"} xls: int);
 
@@ -10,10 +10,10 @@ function {:inline} {:linear "tid"} TidCollector(x: int) : [int]bool
   MapConstBool(false)[x := true]
 }
 
-procedure {:yields} {:phase 0,1} Write(idx: int, val: int);
+procedure {:yields} {:layer 0,1} Write(idx: int, val: int);
 ensures {:atomic} |{A: a[idx] := val; return true; }|;
 
-procedure {:yields} {:phase 1} main() 
+procedure {:yields} {:layer 1} main() 
 {
     var {:linear "tid"} i: int;
     var {:linear "tid"} j: int;
@@ -23,29 +23,29 @@ procedure {:yields} {:phase 1} main()
     par i := u(i) | j := u(j);
 }
 
-procedure {:yields} {:phase 1} t({:linear_in "tid"} i': int) returns ({:linear "tid"} i: int)
+procedure {:yields} {:layer 1} t({:linear_in "tid"} i': int) returns ({:linear "tid"} i: int)
 {
     i := i';
 
     yield;
     call Write(i, 42);
     call Yield(i);
-    assert {:phase 1} a[i] == 42;
+    assert {:layer 1} a[i] == 42;
 }
 
-procedure {:yields} {:phase 1} u({:linear_in "tid"} i': int) returns ({:linear "tid"} i: int) 
+procedure {:yields} {:layer 1} u({:linear_in "tid"} i': int) returns ({:linear "tid"} i: int) 
 {
     i := i';
 
     yield;
     call Write(i, 42);
     yield;
-    assert {:phase 1} a[i] == 42;
+    assert {:layer 1} a[i] == 42;
 }
 
-procedure {:yields} {:phase 1} Yield({:linear "tid"} i: int)
-ensures {:phase 1} old(a)[i] == a[i];
+procedure {:yields} {:layer 1} Yield({:linear "tid"} i: int)
+ensures {:layer 1} old(a)[i] == a[i];
 {
     yield;
-    assert {:phase 1} old(a)[i] == a[i];
+    assert {:layer 1} old(a)[i] == a[i];
 }

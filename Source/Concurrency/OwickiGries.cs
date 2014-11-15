@@ -38,12 +38,12 @@ namespace Microsoft.Boogie
 
         private void ProcessCallCmd(CallCmd originalCallCmd, CallCmd callCmd, List<Cmd> newCmds)
         {
-            int enclosingProcPhaseNum = moverTypeChecker.procToActionInfo[enclosingImpl.Proc].phaseNum;
+            int enclosingProcLayerNum = moverTypeChecker.procToActionInfo[enclosingImpl.Proc].phaseNum;
             Procedure originalProc = originalCallCmd.Proc;
             if (moverTypeChecker.procToActionInfo.ContainsKey(originalProc))
             {
                 AtomicActionInfo atomicActionInfo = moverTypeChecker.procToActionInfo[originalProc] as AtomicActionInfo;
-                if (atomicActionInfo != null && atomicActionInfo.thisGate.Count > 0 && phaseNum == enclosingProcPhaseNum)
+                if (atomicActionInfo != null && atomicActionInfo.thisGate.Count > 0 && phaseNum == enclosingProcLayerNum)
                 {
                     newCmds.Add(new HavocCmd(Token.NoToken, new List<IdentifierExpr>(new IdentifierExpr[] { Expr.Ident(dummyLocalVar) })));
                     Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
@@ -63,14 +63,14 @@ namespace Microsoft.Boogie
 
         private void ProcessParCallCmd(ParCallCmd originalParCallCmd, ParCallCmd parCallCmd, List<Cmd> newCmds)
         {
-            int maxCalleePhaseNum = 0;
+            int maxCalleeLayerNum = 0;
             foreach (CallCmd iter in originalParCallCmd.CallCmds)
             {
-                int calleePhaseNum = moverTypeChecker.procToActionInfo[iter.Proc].phaseNum;
-                if (calleePhaseNum > maxCalleePhaseNum)
-                    maxCalleePhaseNum = calleePhaseNum;
+                int calleeLayerNum = moverTypeChecker.procToActionInfo[iter.Proc].phaseNum;
+                if (calleeLayerNum > maxCalleeLayerNum)
+                    maxCalleeLayerNum = calleeLayerNum;
             }
-            if (phaseNum > maxCalleePhaseNum)
+            if (phaseNum > maxCalleeLayerNum)
             {
                 for (int i = 0; i < parCallCmd.CallCmds.Count; i++) 
                 {
@@ -220,7 +220,7 @@ namespace Microsoft.Boogie
             Requires requires = base.VisitRequires(node);
             if (node.Free)
                 return requires;
-            if (!moverTypeChecker.absyToPhaseNums[node].Contains(phaseNum))
+            if (!moverTypeChecker.absyToLayerNums[node].Contains(phaseNum))
                 requires.Condition = Expr.True;
             return requires;
         }
@@ -232,7 +232,7 @@ namespace Microsoft.Boogie
                 return ensures;
             AtomicActionInfo atomicActionInfo =  moverTypeChecker.procToActionInfo[enclosingProc] as AtomicActionInfo;
             bool isAtomicSpecification = atomicActionInfo != null && atomicActionInfo.ensures == node;
-            if (isAtomicSpecification || !moverTypeChecker.absyToPhaseNums[node].Contains(phaseNum))
+            if (isAtomicSpecification || !moverTypeChecker.absyToLayerNums[node].Contains(phaseNum))
             {
                 ensures.Condition = Expr.True;
                 ensures.Attributes = OwickiGries.RemoveMoverAttribute(ensures.Attributes);
@@ -243,7 +243,7 @@ namespace Microsoft.Boogie
         public override Cmd VisitAssertCmd(AssertCmd node)
         {
             AssertCmd assertCmd = (AssertCmd) base.VisitAssertCmd(node);
-            if (!moverTypeChecker.absyToPhaseNums[node].Contains(phaseNum))
+            if (!moverTypeChecker.absyToLayerNums[node].Contains(phaseNum))
                 assertCmd.Expr = Expr.True;
             return assertCmd;
         }
@@ -742,11 +742,11 @@ namespace Microsoft.Boogie
                 HashSet<Variable> introducedVars = new HashSet<Variable>();
                 foreach (Variable v in program.GlobalVariables)
                 {
-                    if (moverTypeChecker.hidePhaseNums[v] <= actionInfo.phaseNum || moverTypeChecker.introducePhaseNums[v] > actionInfo.phaseNum)
+                    if (moverTypeChecker.hideLayerNums[v] <= actionInfo.phaseNum || moverTypeChecker.introduceLayerNums[v] > actionInfo.phaseNum)
                     {
                         frame.Remove(v);
                     }
-                    if (moverTypeChecker.introducePhaseNums[v] == actionInfo.phaseNum)
+                    if (moverTypeChecker.introduceLayerNums[v] == actionInfo.phaseNum)
                     {
                         introducedVars.Add(v);
                     }
@@ -1159,9 +1159,9 @@ namespace Microsoft.Boogie
         public static void AddCheckers(LinearTypeChecker linearTypeChecker, MoverTypeChecker moverTypeChecker, List<Declaration> decls)
         {
             Program program = linearTypeChecker.program;
-            foreach (int phaseNum in moverTypeChecker.AllPhaseNums.Except(new int[] { 0 }))
+            foreach (int phaseNum in moverTypeChecker.AllLayerNums.Except(new int[] { 0 }))
             {
-                if (CommandLineOptions.Clo.TrustPhasesDownto <= phaseNum || phaseNum <= CommandLineOptions.Clo.TrustPhasesUpto) continue;
+                if (CommandLineOptions.Clo.TrustLayersDownto <= phaseNum || phaseNum <= CommandLineOptions.Clo.TrustLayersUpto) continue;
 
                 MyDuplicator duplicator = new MyDuplicator(moverTypeChecker, phaseNum);
                 foreach (var proc in program.Procedures)

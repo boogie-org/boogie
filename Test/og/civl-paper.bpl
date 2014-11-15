@@ -15,18 +15,18 @@ function map(lmap): [int]int;
 function cons([int]bool, [int]int) : lmap;
 axiom (forall x: [int]bool, y: [int]int :: {cons(x,y)} dom(cons(x, y)) == x && map(cons(x,y)) == y);
 
-var {:phase 3} {:linear "mem"} g: lmap;
-var {:phase 3} lock: X;
-var {:phase 1} b: bool;
+var {:layer 3} {:linear "mem"} g: lmap;
+var {:layer 3} lock: X;
+var {:layer 1} b: bool;
 
 const p: int;
 
-procedure {:yields} {:phase 1} Yield1()
-requires {:phase 1} InvLock(lock, b);
-ensures {:phase 1} InvLock(lock, b);
+procedure {:yields} {:layer 1} Yield1()
+requires {:layer 1} InvLock(lock, b);
+ensures {:layer 1} InvLock(lock, b);
 {
     yield;
-    assert {:phase 1} InvLock(lock, b);
+    assert {:layer 1} InvLock(lock, b);
 }
 
 function {:inline} InvLock(lock: X, b: bool) : bool
@@ -34,17 +34,17 @@ function {:inline} InvLock(lock: X, b: bool) : bool
     lock != nil <==> b
 }
 
-procedure {:yields} {:phase 2} Yield2()
+procedure {:yields} {:layer 2} Yield2()
 {
     yield;
 }
 
-procedure {:yields} {:phase 3} Yield3()
-requires {:phase 3} Inv(g);
-ensures {:phase 3} Inv(g);
+procedure {:yields} {:layer 3} Yield3()
+requires {:layer 3} Inv(g);
+ensures {:layer 3} Inv(g);
 {
     yield;
-    assert {:phase 3} Inv(g);
+    assert {:layer 3} Inv(g);
 }
 
 function {:inline} Inv(g: lmap) : bool
@@ -52,11 +52,11 @@ function {:inline} Inv(g: lmap) : bool
     dom(g)[p] && dom(g)[p+4] && map(g)[p] == map(g)[p+4]
 }
 
-procedure {:yields} {:phase 3} P({:linear "tid"} tid: X)
-requires {:phase 1} tid != nil && InvLock(lock, b);
-ensures {:phase 1} InvLock(lock, b);
-requires {:phase 3} tid != nil && Inv(g);
-ensures {:phase 3} Inv(g);
+procedure {:yields} {:layer 3} P({:linear "tid"} tid: X)
+requires {:layer 1} tid != nil && InvLock(lock, b);
+ensures {:layer 1} InvLock(lock, b);
+requires {:layer 3} tid != nil && Inv(g);
+ensures {:layer 3} Inv(g);
 {
     var t: int;
     var {:linear "mem"} l: lmap;
@@ -74,49 +74,49 @@ ensures {:phase 3} Inv(g);
 }
 
 
-procedure {:yields} {:phase 2,3} TransferToGlobalProtected({:linear "tid"} tid: X, {:linear_in "mem"} l: lmap)
+procedure {:yields} {:layer 2,3} TransferToGlobalProtected({:linear "tid"} tid: X, {:linear_in "mem"} l: lmap)
 ensures {:both} |{ A: assert tid != nil && lock == tid; g := l; return true; }|;
-requires {:phase 1} InvLock(lock, b);
-ensures {:phase 1} InvLock(lock, b);
+requires {:layer 1} InvLock(lock, b);
+ensures {:layer 1} InvLock(lock, b);
 {
   par Yield1() | Yield2();
   call TransferToGlobal(tid, l);
   par Yield1() | Yield2();
 }
 
-procedure {:yields} {:phase 2,3} TransferFromGlobalProtected({:linear "tid"} tid: X) returns ({:linear "mem"} l: lmap)
+procedure {:yields} {:layer 2,3} TransferFromGlobalProtected({:linear "tid"} tid: X) returns ({:linear "mem"} l: lmap)
 ensures {:both} |{ A: assert tid != nil && lock == tid; l := g; return true; }|;
-requires {:phase 1} InvLock(lock, b);
-ensures {:phase 1} InvLock(lock, b);
+requires {:layer 1} InvLock(lock, b);
+ensures {:layer 1} InvLock(lock, b);
 {
   par Yield1() | Yield2();
   call l := TransferFromGlobal(tid);
   par Yield1() | Yield2();
 }
 
-procedure {:yields} {:phase 2,3} AcquireProtected({:linear "tid"} tid: X)
+procedure {:yields} {:layer 2,3} AcquireProtected({:linear "tid"} tid: X)
 ensures {:right} |{ A: assert tid != nil; assume lock == nil; lock := tid; return true; }|;
-requires {:phase 1} tid != nil && InvLock(lock, b);
-ensures {:phase 1} InvLock(lock, b);
+requires {:layer 1} tid != nil && InvLock(lock, b);
+ensures {:layer 1} InvLock(lock, b);
 {
   par Yield1() | Yield2();
   call Acquire(tid);
   par Yield1() | Yield2();
 }
 
-procedure {:yields} {:phase 2,3} ReleaseProtected({:linear "tid"} tid: X)
+procedure {:yields} {:layer 2,3} ReleaseProtected({:linear "tid"} tid: X)
 ensures {:left} |{ A: assert tid != nil && lock == tid; lock := nil; return true; }|;
-requires {:phase 1} InvLock(lock, b);
-ensures {:phase 1} InvLock(lock, b);
+requires {:layer 1} InvLock(lock, b);
+ensures {:layer 1} InvLock(lock, b);
 {
   par Yield1() | Yield2();
   call Release(tid);
   par Yield1() | Yield2();
 }
 
-procedure {:yields} {:phase 1,2} Acquire({:linear "tid"} tid: X)
-requires {:phase 1} tid != nil && InvLock(lock, b);
-ensures {:phase 1} InvLock(lock, b);
+procedure {:yields} {:layer 1,2} Acquire({:linear "tid"} tid: X)
+requires {:layer 1} tid != nil && InvLock(lock, b);
+ensures {:layer 1} InvLock(lock, b);
 ensures {:atomic} |{ A: assume lock == nil; lock := tid; return true; }|;
 {
     var status: bool;
@@ -124,7 +124,7 @@ ensures {:atomic} |{ A: assume lock == nil; lock := tid; return true; }|;
 
     par Yield1();
     L: 
-	assert {:phase 1} InvLock(lock, b);
+	assert {:layer 1} InvLock(lock, b);
         call status := CAS(tid, false, true);
 	par Yield1();
         goto A, B;
@@ -139,36 +139,36 @@ ensures {:atomic} |{ A: assume lock == nil; lock := tid; return true; }|;
 	goto L;
 }
 
-procedure {:yields} {:phase 1,2} Release({:linear "tid"} tid: X)
+procedure {:yields} {:layer 1,2} Release({:linear "tid"} tid: X)
 ensures {:atomic} |{ A: lock := nil; return true; }|;
-requires {:phase 1} InvLock(lock, b);
-ensures {:phase 1} InvLock(lock, b);
+requires {:layer 1} InvLock(lock, b);
+ensures {:layer 1} InvLock(lock, b);
 {
     par Yield1();
     call CLEAR(tid, false);
     par Yield1();
 }
 
-procedure {:yields} {:phase 0,2} TransferToGlobal({:linear "tid"} tid: X, {:linear_in "mem"} l: lmap);
+procedure {:yields} {:layer 0,2} TransferToGlobal({:linear "tid"} tid: X, {:linear_in "mem"} l: lmap);
 ensures {:atomic} |{ A: g := l; return true; }|;
 
-procedure {:yields} {:phase 0,2} TransferFromGlobal({:linear "tid"} tid: X) returns ({:linear "mem"} l: lmap);
+procedure {:yields} {:layer 0,2} TransferFromGlobal({:linear "tid"} tid: X) returns ({:linear "mem"} l: lmap);
 ensures {:atomic} |{ A: l := g; return true; }|;
 
-procedure {:yields} {:phase 0,3} Load({:linear "mem"} l: lmap, a: int) returns (v: int);
+procedure {:yields} {:layer 0,3} Load({:linear "mem"} l: lmap, a: int) returns (v: int);
 ensures {:both} |{ A: v := map(l)[a]; return true; }|;
 
-procedure {:yields} {:phase 0,3} Store({:linear_in "mem"} l_in: lmap, a: int, v: int) returns ({:linear "mem"} l_out: lmap);
+procedure {:yields} {:layer 0,3} Store({:linear_in "mem"} l_in: lmap, a: int, v: int) returns ({:linear "mem"} l_out: lmap);
 ensures {:both} |{ A: assume l_out == cons(dom(l_in), map(l_in)[a := v]); return true; }|;
 
-procedure {:yields} {:phase 0,1} CAS(tid: X, prev: bool, next: bool) returns (status: bool);
+procedure {:yields} {:layer 0,1} CAS(tid: X, prev: bool, next: bool) returns (status: bool);
 ensures {:atomic} |{ 
 A: goto B, C; 
 B: assume b == prev; b := next; status := true; lock := tid; return true; 
 C: status := false; return true; 
 }|;
 
-procedure {:yields} {:phase 0,1} CLEAR(tid: X, next: bool);
+procedure {:yields} {:layer 0,1} CLEAR(tid: X, next: bool);
 ensures {:atomic} |{ 
 A: b := next; lock := nil; return true; 
 }|;

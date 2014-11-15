@@ -1,19 +1,19 @@
 // RUN: %boogie -noinfer -typeEncoding:m -useArrayTheory "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
-procedure {:yields} {:phase 0} X();
+procedure {:yields} {:layer 0} X();
 ensures {:atomic} |{ A: return true; }|;
 
-procedure {:yields} {:phase 0} Y();
+procedure {:yields} {:layer 0} Y();
 ensures {:left} |{ A: return true; }|;
 
-procedure {:yields} {:phase 1} main() {
+procedure {:yields} {:layer 1} main() {
   yield;
   call X();
   while (*)
-  invariant {:terminates} {:phase 1} true;
+  invariant {:terminates} {:layer 1} true;
   {
     call Y();
   }
   yield;
-  assert {:phase 1} true;
+  assert {:layer 1} true;
 }

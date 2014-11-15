@@ -20,7 +20,7 @@ function {:inline} {:linear "tid"} TidCollector(x: X) : [X]bool
 
 axiom (max > 0);
 
-procedure {:yields} {:phase 0} acquire(i : int, {:linear "tid"} tid: X);
+procedure {:yields} {:layer 0} acquire(i : int, {:linear "tid"} tid: X);
 ensures {:right} |{ A: 
                       assert 0 <= i && i < max;
                       assert tid != nil && tid != done;
@@ -30,7 +30,7 @@ ensures {:right} |{ A:
                     }|;
 
 
-procedure {:yields} {:phase 0} release(i : int, {:linear "tid"} tid: X);
+procedure {:yields} {:layer 0} release(i : int, {:linear "tid"} tid: X);
 ensures {:left} |{ A: 
                      assert 0 <= i && i < max;
                      assert lock[i] == tid;
@@ -40,7 +40,7 @@ ensures {:left} |{ A:
                     }|;
 
 
-procedure {:yields} {:phase 0,1} getElt(j : int, {:linear "tid"} tid: X) returns (elt_j:int);
+procedure {:yields} {:layer 0,1} getElt(j : int, {:linear "tid"} tid: X) returns (elt_j:int);
 ensures {:both} |{ A: 
                      assert 0 <= j && j < max;
                      assert lock[j] == tid;
@@ -50,7 +50,7 @@ ensures {:both} |{ A:
                     }|;
 
 
-procedure {:yields} {:phase 0,1} setElt(j : int, x : int, {:linear "tid"} tid: X);
+procedure {:yields} {:layer 0,1} setElt(j : int, x : int, {:linear "tid"} tid: X);
 ensures {:both} |{ A: 
                      assert x != null;
                      assert owner[j] == nil;
@@ -63,7 +63,7 @@ ensures {:both} |{ A:
                     }|;
 
 
-procedure {:yields} {:phase 0} setEltToNull(j : int, {:linear "tid"} tid: X);
+procedure {:yields} {:layer 0} setEltToNull(j : int, {:linear "tid"} tid: X);
 ensures {:left} |{ A: 
                      assert owner[j] == tid;
                      assert 0 <= j && j < max;
@@ -75,7 +75,7 @@ ensures {:left} |{ A:
                      return true;
                     }|;
 
-procedure {:yields} {:phase 0} setValid(j : int, {:linear "tid"} tid: X);
+procedure {:yields} {:layer 0} setValid(j : int, {:linear "tid"} tid: X);
 ensures {:both} |{ A: 
                      assert 0 <= j && j < max;
                      assert lock[j] == tid;
@@ -86,7 +86,7 @@ ensures {:both} |{ A:
                      return true;
                     }|;
 
-procedure {:yields} {:phase 0} isEltThereAndValid(j : int, x : int, {:linear "tid"} tid: X) returns (fnd:bool);
+procedure {:yields} {:layer 0} isEltThereAndValid(j : int, x : int, {:linear "tid"} tid: X) returns (fnd:bool);
 ensures {:both} |{ A: 
                        assert 0 <= j && j < max;
                        assert lock[j] == tid;
@@ -95,9 +95,9 @@ ensures {:both} |{ A:
                        return true;
                     }|;
 
-procedure {:yields} {:phase 1} FindSlot(x : int, {:linear "tid"} tid: X) returns (r : int)
-requires {:phase 1} Inv(valid, elt, owner) && x != null && tid != nil && tid != done; 
-ensures {:phase 1} Inv(valid, elt, owner);
+procedure {:yields} {:layer 1} FindSlot(x : int, {:linear "tid"} tid: X) returns (r : int)
+requires {:layer 1} Inv(valid, elt, owner) && x != null && tid != nil && tid != done; 
+ensures {:layer 1} Inv(valid, elt, owner);
 ensures {:right}  |{   A: assert tid != nil && tid != done; 
                           assert x != null; 
 			  goto B, C;
@@ -118,8 +118,8 @@ ensures {:right}  |{   A: assert tid != nil && tid != done;
 
 	j := 0;
 	while(j < max)
-        invariant {:phase 1} Inv(valid, elt, owner);
-	invariant {:phase 1} 0 <= j;
+        invariant {:layer 1} Inv(valid, elt, owner);
+	invariant {:layer 1} 0 <= j;
 	{
                 call acquire(j, tid);
                 call elt_j := getElt(j, tid);
@@ -144,11 +144,11 @@ ensures {:right}  |{   A: assert tid != nil && tid != done;
 	return;
 }
 
-procedure {:yields} {:phase 2} Insert(x : int, {:linear "tid"} tid: X) returns (result : bool) 
-requires {:phase 1} Inv(valid, elt, owner) && x != null && tid != nil && tid != done; 
-ensures {:phase 1} Inv(valid, elt, owner);
-requires {:phase 2} Inv(valid, elt, owner) && x != null && tid != nil && tid != done; 
-ensures {:phase 2} Inv(valid, elt, owner);
+procedure {:yields} {:layer 2} Insert(x : int, {:linear "tid"} tid: X) returns (result : bool) 
+requires {:layer 1} Inv(valid, elt, owner) && x != null && tid != nil && tid != done; 
+ensures {:layer 1} Inv(valid, elt, owner);
+requires {:layer 2} Inv(valid, elt, owner) && x != null && tid != nil && tid != done; 
+ensures {:layer 2} Inv(valid, elt, owner);
 ensures {:atomic}  |{ var r:int;
                         A: goto B, C;
                         B: assume (0 <= r && r < max); 
@@ -171,11 +171,11 @@ ensures {:atomic}  |{ var r:int;
 		return;
 	}
         par Yield1();
-        assert {:phase 1} i != -1;
-        assert {:phase 2} i != -1;
+        assert {:layer 1} i != -1;
+        assert {:layer 2} i != -1;
 	call acquire(i, tid);
-        assert {:phase 2} elt[i] == x;
-	assert {:phase 2}  valid[i] == false;
+        assert {:layer 2} elt[i] == x;
+	assert {:layer 2}  valid[i] == false;
         call setValid(i, tid);   
 	call release(i, tid);
 	result := true; 
@@ -183,11 +183,11 @@ ensures {:atomic}  |{ var r:int;
 	return;
 }
 
-procedure {:yields} {:phase 2} InsertPair(x : int, y : int, {:linear "tid"} tid: X) returns (result : bool)
-requires {:phase 1} Inv(valid, elt, owner) && x != null && y != null && tid != nil && tid != done; 
-ensures {:phase 1} Inv(valid, elt, owner);
-requires {:phase 2} Inv(valid, elt, owner) && x != null && y != null && tid != nil && tid != done; 
-ensures {:phase 2} Inv(valid, elt, owner);
+procedure {:yields} {:layer 2} InsertPair(x : int, y : int, {:linear "tid"} tid: X) returns (result : bool)
+requires {:layer 1} Inv(valid, elt, owner) && x != null && y != null && tid != nil && tid != done; 
+ensures {:layer 1} Inv(valid, elt, owner);
+requires {:layer 2} Inv(valid, elt, owner) && x != null && y != null && tid != nil && tid != done; 
+ensures {:layer 2} Inv(valid, elt, owner);
 ensures {:atomic}  |{ var rx:int;
                         var ry:int;
                         A: goto B, C;
@@ -234,13 +234,13 @@ ensures {:atomic}  |{ var rx:int;
 	}
 
         par Yield1();
-        assert {:phase 2} i != -1 && j != -1;
+        assert {:layer 2} i != -1 && j != -1;
 	call acquire(i, tid);
 	call acquire(j, tid);
-        assert {:phase 2} elt[i] == x;
-        assert {:phase 2} elt[j] == y;
-	assert {:phase 2}  valid[i] == false;
-	assert {:phase 2}  valid[j] == false;
+        assert {:layer 2} elt[i] == x;
+        assert {:layer 2} elt[j] == y;
+	assert {:layer 2}  valid[i] == false;
+	assert {:layer 2}  valid[j] == false;
         call setValid(i, tid);   
         call setValid(j, tid);   
 	call release(j, tid);
@@ -250,11 +250,11 @@ ensures {:atomic}  |{ var rx:int;
 	return;
 }
 
-procedure {:yields} {:phase 2} LookUp(x : int, {:linear "tid"} tid: X, old_valid:[int]bool, old_elt:[int]int) returns (found : bool)
-requires {:phase 1} {:phase 2} old_valid == valid && old_elt == elt;
-requires {:phase 1} {:phase 2} Inv(valid, elt, owner);
-requires {:phase 1} {:phase 2} (tid != nil && tid != done);
-ensures {:phase 1} {:phase 2} Inv(valid, elt, owner);
+procedure {:yields} {:layer 2} LookUp(x : int, {:linear "tid"} tid: X, old_valid:[int]bool, old_elt:[int]int) returns (found : bool)
+requires {:layer 1} {:layer 2} old_valid == valid && old_elt == elt;
+requires {:layer 1} {:layer 2} Inv(valid, elt, owner);
+requires {:layer 1} {:layer 2} (tid != nil && tid != done);
+ensures {:layer 1} {:layer 2} Inv(valid, elt, owner);
 ensures {:atomic}  |{ A: assert tid != nil && tid != done; 
                           assert x != null;
                           assume found ==> (exists ii:int :: 0 <= ii && ii < max && valid[ii] && elt[ii] == x);
@@ -270,10 +270,10 @@ ensures {:atomic}  |{ A: assert tid != nil && tid != done;
 	j := 0;
 
 	while(j < max)
-        invariant {:phase 1} {:phase 2} Inv(valid, elt, owner);
-        invariant {:phase 1} {:phase 2} (forall ii:int :: 0 <= ii && ii < j ==> !(old_valid[ii] && old_elt[ii] == x));
-	invariant {:phase 1} {:phase 2} (forall ii:int :: 0 <= ii && ii < max && old_valid[ii] ==> valid[ii] && old_elt[ii] == elt[ii]);
-	invariant {:phase 1} {:phase 2} 0 <= j;
+        invariant {:layer 1} {:layer 2} Inv(valid, elt, owner);
+        invariant {:layer 1} {:layer 2} (forall ii:int :: 0 <= ii && ii < j ==> !(old_valid[ii] && old_elt[ii] == x));
+	invariant {:layer 1} {:layer 2} (forall ii:int :: 0 <= ii && ii < max && old_valid[ii] ==> valid[ii] && old_elt[ii] == elt[ii]);
+	invariant {:layer 1} {:layer 2} 0 <= j;
 	{
                 call acquire(j, tid);
                 call isThere := isEltThereAndValid(j, x, tid);
@@ -294,20 +294,20 @@ ensures {:atomic}  |{ A: assert tid != nil && tid != done;
 	return;
 }
 
-procedure {:yields} {:phase 1} Yield1()
-requires {:phase 1} Inv(valid, elt, owner);
-ensures {:phase 1} Inv(valid, elt, owner);
+procedure {:yields} {:layer 1} Yield1()
+requires {:layer 1} Inv(valid, elt, owner);
+ensures {:layer 1} Inv(valid, elt, owner);
 {
 	yield;
-	assert {:phase 1} Inv(valid, elt, owner);
+	assert {:layer 1} Inv(valid, elt, owner);
 }
 
-procedure {:yields} {:phase 2} Yield12()
-requires {:phase 1} {:phase 2} Inv(valid, elt, owner);
-ensures {:phase 1} {:phase 2} Inv(valid, elt, owner);
+procedure {:yields} {:layer 2} Yield12()
+requires {:layer 1} {:layer 2} Inv(valid, elt, owner);
+ensures {:layer 1} {:layer 2} Inv(valid, elt, owner);
 {
         yield;
-        assert {:phase 1} {:phase 2} Inv(valid, elt, owner);
+        assert {:layer 1} {:layer 2} Inv(valid, elt, owner);
 }
 
 function {:inline} Inv(valid: [int]bool, elt: [int]int, owner: [int]X): (bool)
@@ -315,10 +315,10 @@ function {:inline} Inv(valid: [int]bool, elt: [int]int, owner: [int]X): (bool)
    (forall i:int :: 0 <= i && i < max ==> (elt[i] == null <==> (!valid[i] && owner[i] == nil)))
 }
 
-procedure {:yields} {:phase 2} YieldLookUp(old_valid: [int]bool, old_elt: [int]int)
-requires {:phase 1} {:phase 2} (forall ii:int :: 0 <= ii && ii < max && old_valid[ii] ==> valid[ii] && old_elt[ii] == elt[ii]);
-ensures {:phase 1} {:phase 2} (forall ii:int :: 0 <= ii && ii < max && old_valid[ii] ==> valid[ii] && old_elt[ii] == elt[ii]);
+procedure {:yields} {:layer 2} YieldLookUp(old_valid: [int]bool, old_elt: [int]int)
+requires {:layer 1} {:layer 2} (forall ii:int :: 0 <= ii && ii < max && old_valid[ii] ==> valid[ii] && old_elt[ii] == elt[ii]);
+ensures {:layer 1} {:layer 2} (forall ii:int :: 0 <= ii && ii < max && old_valid[ii] ==> valid[ii] && old_elt[ii] == elt[ii]);
 {
     yield;
-    assert {:phase 1} {:phase 2} (forall ii:int :: 0 <= ii && ii < max && old_valid[ii] ==> valid[ii] && old_elt[ii] == elt[ii]);
+    assert {:layer 1} {:layer 2} (forall ii:int :: 0 <= ii && ii < max && old_valid[ii] ==> valid[ii] && old_elt[ii] == elt[ii]);
 }

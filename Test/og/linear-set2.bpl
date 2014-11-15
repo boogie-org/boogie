@@ -20,8 +20,8 @@ function {:inline} {:linear "x"} XCollector(xs: [X]bool) : [X]bool
   xs
 }
 
-var {:phase 1} x: int;
-var {:phase 1} l: X;
+var {:layer 1} x: int;
+var {:layer 1} l: X;
 const nil: X;
 
 procedure Split({:linear_in "x"} xls: [X]bool) returns ({:linear "x"} xls1: [X]bool, {:linear "x"} xls2: [X]bool);
@@ -30,17 +30,17 @@ ensures xls == MapOr(xls1, xls2) && xls1 != None() && xls2 != None();
 procedure Allocate() returns ({:linear "tid"} xls: X);
 ensures xls != nil;
 
-procedure {:yields} {:phase 0,1} Set(v: int);
+procedure {:yields} {:layer 0,1} Set(v: int);
 ensures {:atomic} |{A: x := v; return true; }|;
 
-procedure {:yields} {:phase 0,1} Lock(tidls: X);
+procedure {:yields} {:layer 0,1} Lock(tidls: X);
 ensures {:atomic} |{A: assume l == nil; l := tidls; return true; }|;
 
-procedure {:yields} {:phase 0,1} Unlock();
+procedure {:yields} {:layer 0,1} Unlock();
 ensures {:atomic} |{A: l := nil; return true; }|;
 
-procedure {:yields} {:phase 1} main({:linear_in "tid"} tidls': X, {:linear_in "x"} xls': [X]bool) 
-requires {:phase 1} tidls' != nil && xls' == All();
+procedure {:yields} {:layer 1} main({:linear_in "tid"} tidls': X, {:linear_in "x"} xls': [X]bool) 
+requires {:layer 1} tidls' != nil && xls' == All();
 {
     var {:linear "tid"} tidls: X;
     var {:linear "x"} xls: [X]bool;
@@ -54,8 +54,8 @@ requires {:phase 1} tidls' != nil && xls' == All();
     yield;
     call Set(42);
     yield;
-    assert {:phase 1} xls == All();
-    assert {:phase 1} x == 42;
+    assert {:layer 1} xls == All();
+    assert {:layer 1} x == 42;
     call xls1, xls2 := Split(xls);
     call lsChild := Allocate();
     yield;
@@ -66,8 +66,8 @@ requires {:phase 1} tidls' != nil && xls' == All();
     yield;
 }
 
-procedure {:yields} {:phase 1} thread({:linear_in "tid"} tidls': X, {:linear_in "x"} xls': [X]bool)
-requires {:phase 1} tidls' != nil && xls' != None();
+procedure {:yields} {:layer 1} thread({:linear_in "tid"} tidls': X, {:linear_in "x"} xls': [X]bool)
+requires {:layer 1} tidls' != nil && xls' != None();
 {
     var {:linear "x"} xls: [X]bool;
     var {:linear "tid"} tidls: X;
@@ -78,13 +78,13 @@ requires {:phase 1} tidls' != nil && xls' != None();
     yield;
     call Lock(tidls);
     yield;
-    assert {:phase 1} tidls != nil && xls != None();
+    assert {:layer 1} tidls != nil && xls != None();
     call Set(0);
     yield;
-    assert {:phase 1} tidls != nil && xls != None();
-    assert {:phase 1} x == 0;
+    assert {:layer 1} tidls != nil && xls != None();
+    assert {:layer 1} x == 0;
     yield;
-    assert {:phase 1} tidls != nil && xls != None();
+    assert {:layer 1} tidls != nil && xls != None();
     call Unlock();
     yield;
 }

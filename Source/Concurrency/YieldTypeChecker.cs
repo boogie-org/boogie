@@ -81,7 +81,7 @@ namespace Microsoft.Boogie
             Dictionary<int, HashSet<int>> simulationRelation = x.ComputeSimulationRelation();
             if (simulationRelation[initialState].Count == 0)
             {
-                moverTypeChecker.Error(impl, string.Format("Implementation {0} fails simulation check A at phase {1}. An action must be preceded by a yield.\n", impl.Name, currPhaseNum));
+                moverTypeChecker.Error(impl, string.Format("Implementation {0} fails simulation check A at phase {1}. An action must be preceded by a yield.\n", impl.Name, currLayerNum));
             }
         }
 
@@ -97,7 +97,7 @@ namespace Microsoft.Boogie
             Dictionary<int, HashSet<int>> simulationRelation = x.ComputeSimulationRelation();
             if (simulationRelation[initialState].Count == 0)
             {
-                moverTypeChecker.Error(impl, string.Format("Implementation {0} fails simulation check B at phase {1}. An action must be succeeded by a yield.\n", impl.Name, currPhaseNum));
+                moverTypeChecker.Error(impl, string.Format("Implementation {0} fails simulation check B at phase {1}. An action must be succeeded by a yield.\n", impl.Name, currLayerNum));
             }
         }
 
@@ -115,7 +115,7 @@ namespace Microsoft.Boogie
             Dictionary<int, HashSet<int>> simulationRelation = x.ComputeSimulationRelation();
             if (simulationRelation[initialState].Count == 0)
             {
-                moverTypeChecker.Error(impl, string.Format("Implementation {0} fails simulation check C at phase {1}. Transactions must be separated by a yield.\n", impl.Name, currPhaseNum));
+                moverTypeChecker.Error(impl, string.Format("Implementation {0} fails simulation check C at phase {1}. Transactions must be separated by a yield.\n", impl.Name, currLayerNum));
             }
         }
 
@@ -124,7 +124,7 @@ namespace Microsoft.Boogie
             foreach (Cmd cmd in block.Cmds)
             {
                 AssertCmd assertCmd = cmd as AssertCmd;
-                if (assertCmd != null && QKeyValue.FindBoolAttribute(assertCmd.Attributes, "terminates") && moverTypeChecker.absyToPhaseNums[assertCmd].Contains(currPhaseNum))
+                if (assertCmd != null && QKeyValue.FindBoolAttribute(assertCmd.Attributes, "terminates") && moverTypeChecker.absyToLayerNums[assertCmd].Contains(currLayerNum))
                 {
                     return true;
                 }
@@ -140,10 +140,10 @@ namespace Microsoft.Boogie
                 impl.PruneUnreachableBlocks();
                 Graph<Block> implGraph = Program.GraphFromImpl(impl);
                 implGraph.ComputeLoops();
-                int specPhaseNum = moverTypeChecker.procToActionInfo[impl.Proc].phaseNum;
-                foreach (int phaseNum in moverTypeChecker.AllPhaseNums)
+                int specLayerNum = moverTypeChecker.procToActionInfo[impl.Proc].phaseNum;
+                foreach (int phaseNum in moverTypeChecker.AllLayerNums)
                 {
-                    if (phaseNum > specPhaseNum) continue;
+                    if (phaseNum > specLayerNum) continue;
                     YieldTypeChecker executor = new YieldTypeChecker(moverTypeChecker, impl, phaseNum, implGraph.Headers);
                 }
             }
@@ -152,7 +152,7 @@ namespace Microsoft.Boogie
         int stateCounter;
         MoverTypeChecker moverTypeChecker;
         Implementation impl;
-        int currPhaseNum;
+        int currLayerNum;
         Dictionary<Absy, int> absyToNode;
         Dictionary<int, Absy> nodeToAbsy;
         int initialState;
@@ -160,11 +160,11 @@ namespace Microsoft.Boogie
         Dictionary<Tuple<int, int>, int> edgeLabels;
         IEnumerable<Block> loopHeaders;
 
-        private YieldTypeChecker(MoverTypeChecker moverTypeChecker, Implementation impl, int currPhaseNum, IEnumerable<Block> loopHeaders)
+        private YieldTypeChecker(MoverTypeChecker moverTypeChecker, Implementation impl, int currLayerNum, IEnumerable<Block> loopHeaders)
         {
             this.moverTypeChecker = moverTypeChecker;
             this.impl = impl;
-            this.currPhaseNum = currPhaseNum;
+            this.currLayerNum = currLayerNum;
             this.loopHeaders = loopHeaders;
             this.stateCounter = 0;
             this.absyToNode = new Dictionary<Absy, int>();
@@ -227,7 +227,7 @@ namespace Microsoft.Boogie
                         if (callCmd.IsAsync)
                         {
                             ActionInfo actionInfo = moverTypeChecker.procToActionInfo[callCmd.Proc];
-                            if (currPhaseNum <= actionInfo.phaseNum)
+                            if (currLayerNum <= actionInfo.phaseNum)
                                 edgeLabels[edge] = 'L';
                             else
                                 edgeLabels[edge] = 'B';
@@ -240,7 +240,7 @@ namespace Microsoft.Boogie
                         {
                             MoverType moverType;
                             ActionInfo actionInfo = moverTypeChecker.procToActionInfo[callCmd.Proc];
-                            if (actionInfo.phaseNum >= currPhaseNum)
+                            if (actionInfo.phaseNum >= currLayerNum)
                             {
                                 moverType = MoverType.Top;
                             }
@@ -280,7 +280,7 @@ namespace Microsoft.Boogie
                         bool isLeftMover = true;
                         foreach (CallCmd callCmd in parCallCmd.CallCmds)
                         {
-                            if (moverTypeChecker.procToActionInfo[callCmd.Proc].phaseNum >= currPhaseNum)
+                            if (moverTypeChecker.procToActionInfo[callCmd.Proc].phaseNum >= currLayerNum)
                             {
                                 isYield = true;
                             }
