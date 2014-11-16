@@ -2715,11 +2715,6 @@ namespace Microsoft.Boogie {
       stream.Write(this, level, "assert ");
       EmitAttributes(stream, Attributes);
       this.Expr.Emit(stream);
-      if (1 < CommandLineOptions.Clo.VerifySnapshots && !stream.UseForComputingChecksums)
-      {
-        var cs = Checksum != null ? BitConverter.ToString(Checksum) : "<unknown>";
-        stream.Write(string.Format(" /* checksum: {0} */ ", cs));
-      }
       stream.WriteLine(";");
     }
     public override void Resolve(ResolutionContext rc) {
