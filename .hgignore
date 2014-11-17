@@ -3,6 +3,7 @@ syntax: regexp
 ^Source/_ReSharper\.Boogie$
 ^Source/.*\.(user|suo|cache|vs10x)$
 ^Source/Core/(Parser|Scanner).cs.old$
+^Source/packages/.*$
 ^Binaries/.*\.(dll|pdb|exe|manifest|config)$
 ^.*(bin|obj)/([^/]*/)?(Debug|Release|Checked|Debug All|DEBUG ALL)/.*$
 Test/.*/Output
@@ -16,3 +17,4 @@ backup.diff
 *.exe.mdb
 *.pidb
 *.userprefs
+TestResult.xml

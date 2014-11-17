@@ -10,6 +10,8 @@ Source/*/bin
 Source/*/obj
 Source/Provers/*/bin
 Source/Provers/*/obj
+Source/packages/*
+Source/UnitTests/TestResult.xml
 Binaries/ITaskManager.dll
 Binaries/ITaskManager.pdb
 Binaries/Microsoft.SpecSharp.Runtime.dll
