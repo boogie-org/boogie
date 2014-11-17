@@ -1352,9 +1352,33 @@ namespace Microsoft.Boogie.SMTLib
             return ErrorModel.ToString();
         }
 
+        bool isConstArray(SExpr element, SExpr type) {
+            if (type.Name != "Array")
+                return false;
+
+            if (element.Name == "__array_store_all__") // CVC4 1.4
+                return true;
+            else if (element.Name == "" && element[0].Name == "as" &&
+                     element[0][0].Name == "const") // CVC4 > 1.4
+                return true;
+
+            return false;
+        }
+
+        SExpr getConstArrayElement(SExpr element) {
+            if (element.Name == "__array_store_all__") // CVC4 1.4
+                return element[1];
+            else if (element.Name == "" && element[0].Name == "as" &&
+                     element[0][0].Name == "const") // CVC4 > 1.4
+                return element[1];
+
+            Parent.HandleProverError("Unexpected value: " + element);
+            throw new BadExprFromProver ();
+        }
+
         void ConstructComplexValue(SExpr element, SExpr type, StringBuilder m) {
             if (type.Name == "Array") {
-                if (element.Name == "store" || element.Name == "__array_store_all__") {
+                if (element.Name == "store" || isConstArray(element, type)) {
                     NumNewArrays++;
                     m.Append("as-array[k!" + NumNewArrays + ']');
                     SExpr[] args = {new SExpr("k!" + NumNewArrays), new SExpr(""), type, element};
@@ -1405,8 +1429,8 @@ namespace Microsoft.Boogie.SMTLib
                     element = element[0];
                 }
 
-                if (element.Name == "__array_store_all__") {
-                    ConstructComplexValue(element[1], type[1], m);
+                if (isConstArray(element, type)) {
+                    ConstructComplexValue(getConstArrayElement(element), type[1], m);
                     return;
                 } else if (element.Name == "_" && element.ArgCount == 2 &&
                            element[0].Name == "as-array") {
