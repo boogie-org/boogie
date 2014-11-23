@@ -324,6 +324,7 @@ namespace Microsoft.Boogie
   sealed class DependencyCollector : ReadOnlyVisitor
   {
     private DeclWithFormals currentDeclaration;
+    private Axiom currentAxiom;
 
     public static void Collect(Program program)
     {
@@ -389,6 +390,26 @@ namespace Microsoft.Boogie
       return result;
     }
 
+    public override Axiom VisitAxiom(Axiom node)
+    {
+      if (node.DependenciesCollected)
+      {
+        if (currentDeclaration != null && node.FunctionDependencies != null)
+        {
+          foreach (var f in node.FunctionDependencies)
+          {
+            currentDeclaration.AddFunctionDependency(f);
+          }
+        }
+        return node;
+      }
+      currentAxiom = node;
+      var result = base.VisitAxiom(node);
+      node.DependenciesCollected = true;
+      currentAxiom = null;
+      return result;
+    }
+
     public override Function VisitFunction(Function node)
     {
       currentDeclaration = node;
@@ -427,9 +448,16 @@ namespace Microsoft.Boogie
     public override Expr VisitNAryExpr(NAryExpr node)
     {
       var funCall = node.Fun as FunctionCall;
-      if (funCall != null && currentDeclaration != null)
+      if (funCall != null)
       {
-        currentDeclaration.AddFunctionDependency(funCall.Func);
+        if (currentDeclaration != null)
+        {
+          currentDeclaration.AddFunctionDependency(funCall.Func);
+        }
+        if (currentAxiom != null)
+        {
+          currentAxiom.AddFunctionDependency(funCall.Func);
+        }
       }
 
       return base.VisitNAryExpr(node);

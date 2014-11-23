@@ -1455,6 +1455,26 @@ namespace Microsoft.Boogie {
       this.Attributes = kv;
     }
 
+    public bool DependenciesCollected { get; set; }
+
+    ISet<Function> functionDependencies;
+
+    public ISet<Function> FunctionDependencies
+    {
+      get { return functionDependencies; }
+    }
+
+    public void AddFunctionDependency(Function function)
+    {
+      Contract.Requires(function != null);
+
+      if (functionDependencies == null)
+      {
+        functionDependencies = new HashSet<Function>();
+      }
+      functionDependencies.Add(function);
+    }
+
     public override void Emit(TokenTextWriter stream, int level) {
       //Contract.Requires(stream != null);
       if (Comment != null) {
