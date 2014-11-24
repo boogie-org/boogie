@@ -126,6 +126,7 @@ Processing command (at Snapshots7.v0.bpl(14,5)) assert y < 0;
 
 Boogie program verifier finished with 1 verified, 0 errors
 Processing call to procedure N in implementation M (at Snapshots7.v1.bpl(12,5)):
+  >>> added before: y##old##0 := y;
   >>> added after: a##post##0 := a##post##0 && y < z;
 Processing command (at <unknown location>) a##post##0 := a##post##0 && y < z;
   >>> AssumeNegationOfAssumptionVariable
@@ -546,3 +547,38 @@ Snapshots30.v0.bpl(5,5): Error BP5002: A precondition for this call might not ho
 Snapshots30.v0.bpl(11,3): Related location: This is the precondition that might not hold.
 
 Boogie program verifier finished with 0 verified, 1 error
+Processing command (at Snapshots31.v0.bpl(10,5)) assert 0 < g;
+  >>> DoNothingToAssert
+
+Boogie program verifier finished with 1 verified, 0 errors
+Processing call to procedure Q in implementation P (at Snapshots31.v1.bpl(9,5)):
+  >>> added after: a##post##0 := a##post##0 && call0old#AT#g < g;
+Processing command (at <unknown location>) a##post##0 := a##post##0 && call0old#AT#g < g;
+  >>> AssumeNegationOfAssumptionVariable
+Processing command (at Snapshots31.v1.bpl(10,5)) assert 0 < g;
+  >>> MarkAsPartiallyVerified
+Snapshots31.v1.bpl(10,5): Error BP5001: This assertion might not hold.
+
+Boogie program verifier finished with 0 verified, 1 error
+Processing command (at Snapshots32.v0.bpl(10,5)) assert 0 < g;
+  >>> DoNothingToAssert
+
+Boogie program verifier finished with 1 verified, 0 errors
+Processing call to procedure Q in implementation P (at Snapshots32.v1.bpl(8,5)):
+  >>> added before: g##old##0 := g;
+  >>> added after: a##post##0 := a##post##0 && g##old##0 < g;
+Processing command (at <unknown location>) a##post##0 := a##post##0 && g##old##0 < g;
+  >>> AssumeNegationOfAssumptionVariable
+Processing command (at Snapshots32.v1.bpl(9,5)) assert 0 < g;
+  >>> MarkAsPartiallyVerified
+Snapshots32.v1.bpl(9,5): Error BP5001: This assertion might not hold.
+
+Boogie program verifier finished with 0 verified, 1 error
+Processing command (at Snapshots33.v0.bpl(10,5)) assert 0 < g;
+  >>> DoNothingToAssert
+
+Boogie program verifier finished with 1 verified, 0 errors
+Processing call to procedure Q in implementation P (at Snapshots33.v1.bpl(5,5)):
+  >>> added after: a##post##0 := a##post##0 && false;
+
+Boogie program verifier finished with 1 verified, 0 errors

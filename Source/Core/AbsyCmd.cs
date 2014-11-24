@@ -2558,12 +2558,21 @@ namespace Microsoft.Boogie {
       return Proc.Modifies.Except(oldProcedure.Modifies, comparer).Select(e => new IdentifierExpr(Token.NoToken, e.Decl));
     }
 
-    public Expr Postcondition(Procedure procedure, Program program)
+    public IEnumerable<IdentifierExpr> ModifiedBefore(Procedure oldProcedure)
     {
-      Contract.Requires(calleeSubstitution != null && calleeSubstitutionOld != null && program != null);
+      Contract.Requires(oldProcedure != null);
 
-      var ensures = procedure.Ensures.Select(e => Substituter.FunctionCallReresolvingApplyReplacingOldExprs(calleeSubstitution, calleeSubstitutionOld, e.Condition, program));
-      return Conjunction(ensures);
+      return oldProcedure.Modifies.Except(Proc.Modifies, comparer).Select(e => new IdentifierExpr(Token.NoToken, e.Decl));
+    }
+
+    public Expr Postcondition(Procedure procedure, List<Expr> modifies, Dictionary<Variable, Expr> oldSubst, Program program)
+    {
+      Contract.Requires(calleeSubstitution != null && calleeSubstitutionOld != null && modifies != null && oldSubst != null && program != null);
+
+      Substitution substOldCombined = v => { Expr s; if (oldSubst.TryGetValue(v, out s)) { return s; } return calleeSubstitutionOld(v); };
+
+      var clauses = procedure.Ensures.Select(e => Substituter.FunctionCallReresolvingApplyReplacingOldExprs(calleeSubstitution, substOldCombined, e.Condition, program)).Concat(modifies);
+      return Conjunction(clauses);
     }
 
     public Expr CheckedPrecondition(Procedure procedure, Program program)

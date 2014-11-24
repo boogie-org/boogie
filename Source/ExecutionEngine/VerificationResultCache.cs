@@ -190,7 +190,7 @@ namespace Microsoft.Boogie
         var after = new List<Cmd>();
         Expr assumedExpr = new LiteralExpr(Token.NoToken, false);
         // TODO(wuestholz): Try out two alternatives: only do this for low priority implementations or not at all.
-        var canUseSpecs = DependencyCollector.AllFunctionDependenciesAreDefinedAndUnchanged(oldProc, Program);
+        var canUseSpecs = DependencyCollector.CanExpressOldSpecs(oldProc, Program);
         if (canUseSpecs)
         {
           var desugaring = node.Desugaring;
@@ -202,8 +202,8 @@ namespace Microsoft.Boogie
             beforePrecondtionCheck.Add(assume);
           }
 
-          assumedExpr = node.Postcondition(oldProc, Program);
           var unmods = node.UnmodifiedBefore(oldProc);
+          var eqs = new List<Expr>();
           foreach (var unmod in unmods)
           {
             var oldUnmod = new LocalVariable(Token.NoToken,
@@ -211,16 +211,22 @@ namespace Microsoft.Boogie
             var lhs = new SimpleAssignLhs(Token.NoToken, new IdentifierExpr(Token.NoToken, oldUnmod));
             var rhs = new IdentifierExpr(Token.NoToken, unmod.Decl);
             before.Add(new AssignCmd(Token.NoToken, new List<AssignLhs> { lhs }, new List<Expr> { rhs }));
-            var eq = LiteralExpr.Eq(new IdentifierExpr(Token.NoToken, oldUnmod), new IdentifierExpr(Token.NoToken, unmod.Decl));
-            if (assumedExpr == null)
-            {
-              assumedExpr = eq;
-            }
-            else
-            {
-              assumedExpr = LiteralExpr.And(assumedExpr, eq);
-            }
+            eqs.Add(LiteralExpr.Eq(new IdentifierExpr(Token.NoToken, oldUnmod), new IdentifierExpr(Token.NoToken, unmod.Decl)));
           }
+
+          var mods = node.ModifiedBefore(oldProc);
+          var oldSubst = new Dictionary<Variable, Expr>();
+          foreach (var mod in mods)
+          {
+            var oldMod = new LocalVariable(Token.NoToken,
+              new TypedIdent(Token.NoToken, string.Format("{0}##old##{1}", mod.Name, FreshTemporaryVariableName), mod.Type));
+            oldSubst[mod.Decl] = new IdentifierExpr(Token.NoToken, oldMod);
+            var lhs = new SimpleAssignLhs(Token.NoToken, new IdentifierExpr(Token.NoToken, oldMod));
+            var rhs = new IdentifierExpr(Token.NoToken, mod.Decl);
+            before.Add(new AssignCmd(Token.NoToken, new List<AssignLhs> { lhs }, new List<Expr> { rhs }));
+          }
+          
+          assumedExpr = node.Postcondition(oldProc, eqs, oldSubst, Program);
         }
 
         if (assumedExpr != null)
@@ -340,13 +346,15 @@ namespace Microsoft.Boogie
       }
     }
 
-    public static bool AllFunctionDependenciesAreDefinedAndUnchanged(Procedure oldProc, Program newProg)
+    public static bool CanExpressOldSpecs(Procedure oldProc, Program newProg)
     {
       Contract.Requires(oldProc != null && newProg != null);
 
       var funcs = newProg.Functions;
+      var globals = newProg.GlobalVariables;
       return oldProc.DependenciesCollected
-             && (oldProc.FunctionDependencies == null || oldProc.FunctionDependencies.All(dep => funcs.Any(f => f.Name == dep.Name && f.DependencyChecksum == dep.DependencyChecksum)));
+             && (oldProc.FunctionDependencies == null || oldProc.FunctionDependencies.All(dep => funcs.Any(f => f.Name == dep.Name && f.DependencyChecksum == dep.DependencyChecksum)))
+             && oldProc.Modifies.All(m => globals.Any(g => g.Name == m.Name));
     }
 
     public override Procedure VisitProcedure(Procedure node)
