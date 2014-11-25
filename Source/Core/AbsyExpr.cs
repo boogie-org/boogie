@@ -1836,6 +1836,12 @@ namespace Microsoft.Boogie {
       if (Func == null) {
         rc.Error(this.name, "use of undeclared function: {0}", name.Name);
       }
+      else {
+        // We need set the type of this IdentifierExpr so ShallowType() works
+        Debug.Assert(name.Type == null);
+        Debug.Assert(Func.OutParams.Count > 0);
+        name.Type = Func.OutParams[0].TypedIdent.Type;
+      }
     }
     public virtual int ArgumentCount {
       get {
