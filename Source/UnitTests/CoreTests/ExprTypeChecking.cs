@@ -3,6 +3,7 @@ using Microsoft.Basetypes;
 using NUnit.Framework;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace CoreTests
 {
@@ -30,6 +31,26 @@ namespace CoreTests
             nary.Typecheck(tc);
 
             Assert.AreEqual(BasicType.Bool, nary.Type);
+        }
+
+        [Test()]
+        public void FunctionCallTypeResolved()
+        {
+            // This test case requires that function calls have been resolved
+            // correctly and that the ShallowType is correct.
+            // It's simpler to let the parser and resolver do all the work here
+            // than try to build all the objects manually.
+            var program = TestUtil.ProgramLoader.LoadProgramFrom(@"
+                function {:bvbuiltin ""bvugt""} bv8ugt(bv8,bv8) returns(bool);
+
+                procedure main(a:bv8)
+                {
+                    assert bv8ugt(a, 2bv8);
+                }
+            ", "file.bpl");
+
+            var assertCmd = program.TopLevelDeclarations.OfType<Implementation>().First().Blocks.SelectMany(c => c.Cmds).OfType<AssertCmd>().First();
+            Assert.AreEqual(BasicType.Bool, assertCmd.Expr.ShallowType);
         }
 
         public FunctionCall CreateFunctionCall(string Name, Microsoft.Boogie.Type returnType, IList<Microsoft.Boogie.Type> argTypes)
