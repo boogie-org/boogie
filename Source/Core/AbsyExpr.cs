@@ -1770,6 +1770,10 @@ namespace Microsoft.Boogie {
       Contract.Requires(f != null);
       this.Func = f;
       this.name = new IdentifierExpr(Token.NoToken, f.Name);
+
+      // We need set the type of this IdentifierExpr so ShallowType() works
+      Debug.Assert(f.OutParams.Count > 0);
+      this.name.Type = f.OutParams[0].TypedIdent.Type;
     }
     public string/*!*/ FunctionName {
       get {
