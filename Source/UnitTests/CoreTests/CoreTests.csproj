@@ -46,25 +46,26 @@
     <Compile Include="Duplicator.cs" />
     <Compile Include="ExprEquality.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="ExprTypeChecking.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Basetypes\Basetypes.csproj">
-      <Project>{43dfad18-3e35-4558-9be2-caff6b5ba8a0}</Project>
+      <Project>{43DFAD18-3E35-4558-9BE2-CAFF6B5BA8A0}</Project>
       <Name>Basetypes</Name>
     </ProjectReference>
     <ProjectReference Include="..\..\Core\Core.csproj">
-      <Project>{b230a69c-c466-4065-b9c1-84d80e76d802}</Project>
+      <Project>{B230A69C-C466-4065-B9C1-84D80E76D802}</Project>
       <Name>Core</Name>
     </ProjectReference>
     <ProjectReference Include="..\..\ParserHelper\ParserHelper.csproj">
-      <Project>{fcd3ac7f-9dfd-46c8-ab1e-09f0b0f16dc5}</Project>
+      <Project>{FCD3AC7F-9DFD-46C8-AB1E-09F0B0F16DC5}</Project>
       <Name>ParserHelper</Name>
     </ProjectReference>
     <ProjectReference Include="..\TestUtil\TestUtil.csproj">
-      <Project>{59118e35-4236-495e-af6e-0d641302ed2c}</Project>
+      <Project>{59118E35-4236-495E-AF6E-0D641302ED2C}</Project>
       <Name>TestUtil</Name>
     </ProjectReference>
   </ItemGroup>
