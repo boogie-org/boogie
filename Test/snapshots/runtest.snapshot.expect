@@ -66,8 +66,9 @@ Boogie program verifier finished with 1 verified, 0 errors
 
 Boogie program verifier finished with 1 verified, 0 errors
 Processing call to procedure P0 in implementation P0 (at Snapshots2.v5.bpl(7,5)):
-  >>> added before precondition check: assume {:precondition_previous_snapshot} F0();
-Processing command (at Snapshots2.v5.bpl(7,5)) assume {:precondition_previous_snapshot} F0();
+  >>> added axiom: ##extracted_function##1() == F0()
+  >>> added before precondition check: assume {:precondition_previous_snapshot} ##extracted_function##1();
+Processing command (at Snapshots2.v5.bpl(7,5)) assume {:precondition_previous_snapshot} ##extracted_function##1();
   >>> MarkAsFullyVerified
 Processing command (at Snapshots2.v5.bpl(7,5)) assert F0();
   >>> MarkAsFullyVerified
@@ -112,9 +113,10 @@ Processing command (at Snapshots6.v0.bpl(13,5)) assert y == 0;
 
 Boogie program verifier finished with 1 verified, 0 errors
 Processing call to procedure N in implementation M (at Snapshots6.v1.bpl(11,5)):
+  >>> added axiom: (forall y##old##0: int :: { ##extracted_function##1(y##old##0) } ##extracted_function##1(y##old##0) == (y##old##0 == y))
   >>> added before: y##old##0 := y;
-  >>> added after: a##post##0 := a##post##0 && y##old##0 == y;
-Processing command (at <unknown location>) a##post##0 := a##post##0 && y##old##0 == y;
+  >>> added after: a##post##0 := a##post##0 && ##extracted_function##1(y##old##0);
+Processing command (at <unknown location>) a##post##0 := a##post##0 && ##extracted_function##1(y##old##0);
   >>> AssumeNegationOfAssumptionVariable
 Processing command (at Snapshots6.v1.bpl(13,5)) assert y == 0;
   >>> MarkAsPartiallyVerified
@@ -126,9 +128,10 @@ Processing command (at Snapshots7.v0.bpl(14,5)) assert y < 0;
 
 Boogie program verifier finished with 1 verified, 0 errors
 Processing call to procedure N in implementation M (at Snapshots7.v1.bpl(12,5)):
+  >>> added axiom: ##extracted_function##1() == (y < z)
   >>> added before: y##old##0 := y;
-  >>> added after: a##post##0 := a##post##0 && y < z;
-Processing command (at <unknown location>) a##post##0 := a##post##0 && y < z;
+  >>> added after: a##post##0 := a##post##0 && ##extracted_function##1();
+Processing command (at <unknown location>) a##post##0 := a##post##0 && ##extracted_function##1();
   >>> AssumeNegationOfAssumptionVariable
 Processing command (at Snapshots7.v1.bpl(14,5)) assert y < 0;
   >>> MarkAsPartiallyVerified
@@ -141,13 +144,15 @@ Processing command (at Snapshots8.v0.bpl(10,5)) assert 0 <= x;
 
 Boogie program verifier finished with 1 verified, 0 errors
 Processing call to procedure N in implementation M (at Snapshots8.v1.bpl(8,5)):
-  >>> added before precondition check: assume {:precondition_previous_snapshot} 0 < call0formal#AT#n;
-  >>> added after: a##post##0 := a##post##0 && 0 < call1formal#AT#r;
-Processing command (at Snapshots8.v1.bpl(8,5)) assume {:precondition_previous_snapshot} 0 < call0formal#AT#n;
+  >>> added axiom: (forall call0formal#AT#n: int :: { ##extracted_function##1(call0formal#AT#n) } ##extracted_function##1(call0formal#AT#n) == (0 < call0formal#AT#n))
+  >>> added axiom: (forall call1formal#AT#r: int :: { ##extracted_function##2(call1formal#AT#r) } ##extracted_function##2(call1formal#AT#r) == (0 < call1formal#AT#r))
+  >>> added before precondition check: assume {:precondition_previous_snapshot} ##extracted_function##1(call0formal#AT#n);
+  >>> added after: a##post##0 := a##post##0 && ##extracted_function##2(call1formal#AT#r);
+Processing command (at Snapshots8.v1.bpl(8,5)) assume {:precondition_previous_snapshot} ##extracted_function##1(call0formal#AT#n);
   >>> MarkAsFullyVerified
 Processing command (at Snapshots8.v1.bpl(8,5)) assert 0 < call0formal#AT#n;
   >>> MarkAsFullyVerified
-Processing command (at <unknown location>) a##post##0 := a##post##0 && 0 < call1formal#AT#r;
+Processing command (at <unknown location>) a##post##0 := a##post##0 && ##extracted_function##2(call1formal#AT#r);
   >>> AssumeNegationOfAssumptionVariable
 Processing command (at Snapshots8.v1.bpl(10,5)) assert 0 <= x;
   >>> MarkAsPartiallyVerified
@@ -162,13 +167,15 @@ Processing command (at Snapshots9.v0.bpl(10,5)) assert 0 <= x;
 
 Boogie program verifier finished with 1 verified, 0 errors
 Processing call to procedure N in implementation M (at Snapshots9.v1.bpl(8,5)):
-  >>> added before precondition check: assume {:precondition_previous_snapshot} 0 < call0formal#AT#n && true;
-  >>> added after: a##post##0 := a##post##0 && 0 < call1formal#AT#r && true;
-Processing command (at Snapshots9.v1.bpl(8,5)) assume {:precondition_previous_snapshot} 0 < call0formal#AT#n && true;
+  >>> added axiom: (forall call0formal#AT#n: int :: { ##extracted_function##1(call0formal#AT#n) } ##extracted_function##1(call0formal#AT#n) == (0 < call0formal#AT#n && true))
+  >>> added axiom: (forall call1formal#AT#r: int :: { ##extracted_function##2(call1formal#AT#r) } ##extracted_function##2(call1formal#AT#r) == (0 < call1formal#AT#r && true))
+  >>> added before precondition check: assume {:precondition_previous_snapshot} ##extracted_function##1(call0formal#AT#n);
+  >>> added after: a##post##0 := a##post##0 && ##extracted_function##2(call1formal#AT#r);
+Processing command (at Snapshots9.v1.bpl(8,5)) assume {:precondition_previous_snapshot} ##extracted_function##1(call0formal#AT#n);
   >>> MarkAsFullyVerified
 Processing command (at Snapshots9.v1.bpl(8,5)) assert 0 < call0formal#AT#n;
   >>> MarkAsFullyVerified
-Processing command (at <unknown location>) a##post##0 := a##post##0 && 0 < call1formal#AT#r && true;
+Processing command (at <unknown location>) a##post##0 := a##post##0 && ##extracted_function##2(call1formal#AT#r);
   >>> AssumeNegationOfAssumptionVariable
 Processing command (at Snapshots9.v1.bpl(10,5)) assert 0 <= x;
   >>> MarkAsPartiallyVerified
@@ -181,13 +188,15 @@ Processing command (at Snapshots10.v0.bpl(12,5)) assert 0 <= x;
 
 Boogie program verifier finished with 1 verified, 0 errors
 Processing call to procedure N in implementation M (at Snapshots10.v1.bpl(8,5)):
-  >>> added before precondition check: assume {:precondition_previous_snapshot} 0 < call0formal#AT#n;
-  >>> added after: a##post##0 := a##post##0 && 0 < call1formal#AT#r;
-Processing command (at Snapshots10.v1.bpl(8,5)) assume {:precondition_previous_snapshot} 0 < call0formal#AT#n;
+  >>> added axiom: (forall call0formal#AT#n: int :: { ##extracted_function##1(call0formal#AT#n) } ##extracted_function##1(call0formal#AT#n) == (0 < call0formal#AT#n))
+  >>> added axiom: (forall call1formal#AT#r: int :: { ##extracted_function##2(call1formal#AT#r) } ##extracted_function##2(call1formal#AT#r) == (0 < call1formal#AT#r))
+  >>> added before precondition check: assume {:precondition_previous_snapshot} ##extracted_function##1(call0formal#AT#n);
+  >>> added after: a##post##0 := a##post##0 && ##extracted_function##2(call1formal#AT#r);
+Processing command (at Snapshots10.v1.bpl(8,5)) assume {:precondition_previous_snapshot} ##extracted_function##1(call0formal#AT#n);
   >>> MarkAsFullyVerified
 Processing command (at Snapshots10.v1.bpl(8,5)) assert 0 < call0formal#AT#n;
   >>> MarkAsFullyVerified
-Processing command (at <unknown location>) a##post##0 := a##post##0 && 0 < call1formal#AT#r;
+Processing command (at <unknown location>) a##post##0 := a##post##0 && ##extracted_function##2(call1formal#AT#r);
   >>> AssumeNegationOfAssumptionVariable
 Processing command (at Snapshots10.v1.bpl(12,5)) assert 0 <= x;
   >>> MarkAsPartiallyVerified
@@ -202,9 +211,11 @@ Snapshots11.v0.bpl(13,3): Related location: This is the precondition that might 
 
 Boogie program verifier finished with 0 verified, 1 error
 Processing call to procedure N in implementation M (at Snapshots11.v1.bpl(7,5)):
-  >>> added before precondition check: assume {:precondition_previous_snapshot} 0 < call0formal#AT#n;
-  >>> added after: a##post##0 := a##post##0 && 0 < call1formal#AT#r;
-Processing command (at Snapshots11.v1.bpl(7,5)) assume {:precondition_previous_snapshot} 0 < call0formal#AT#n;
+  >>> added axiom: (forall call0formal#AT#n: int :: { ##extracted_function##1(call0formal#AT#n) } ##extracted_function##1(call0formal#AT#n) == (0 < call0formal#AT#n))
+  >>> added axiom: (forall call1formal#AT#r: int :: { ##extracted_function##2(call1formal#AT#r) } ##extracted_function##2(call1formal#AT#r) == (0 < call1formal#AT#r))
+  >>> added before precondition check: assume {:precondition_previous_snapshot} ##extracted_function##1(call0formal#AT#n);
+  >>> added after: a##post##0 := a##post##0 && ##extracted_function##2(call1formal#AT#r);
+Processing command (at Snapshots11.v1.bpl(7,5)) assume {:precondition_previous_snapshot} ##extracted_function##1(call0formal#AT#n);
   >>> DropAssume
 Processing command (at Snapshots11.v1.bpl(7,5)) assert 0 < call0formal#AT#n;
   >>> RecycleError
@@ -241,8 +252,9 @@ Processing command (at Snapshots14.v0.bpl(7,5)) assert false;
 
 Boogie program verifier finished with 1 verified, 0 errors
 Processing call to procedure N in implementation M (at Snapshots14.v1.bpl(5,5)):
-  >>> added after: a##post##0 := a##post##0 && F() && G();
-Processing command (at <unknown location>) a##post##0 := a##post##0 && F() && G();
+  >>> added axiom: ##extracted_function##1() == (F() && G())
+  >>> added after: a##post##0 := a##post##0 && ##extracted_function##1();
+Processing command (at <unknown location>) a##post##0 := a##post##0 && ##extracted_function##1();
   >>> AssumeNegationOfAssumptionVariable
 Processing command (at Snapshots14.v1.bpl(7,5)) assert false;
   >>> MarkAsPartiallyVerified
@@ -337,8 +349,9 @@ Snapshots19.v0.bpl(7,5): Error BP5001: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 1 error
 Processing call to procedure N in implementation M (at Snapshots19.v1.bpl(5,5)):
-  >>> added before precondition check: assume {:precondition_previous_snapshot} 2 == 2;
-Processing command (at Snapshots19.v1.bpl(5,5)) assume {:precondition_previous_snapshot} 2 == 2;
+  >>> added axiom: ##extracted_function##1() == (2 == 2)
+  >>> added before precondition check: assume {:precondition_previous_snapshot} ##extracted_function##1();
+Processing command (at Snapshots19.v1.bpl(5,5)) assume {:precondition_previous_snapshot} ##extracted_function##1();
   >>> MarkAsFullyVerified
 Processing command (at Snapshots19.v1.bpl(5,5)) assert 2 == 2;
   >>> MarkAsFullyVerified
@@ -357,7 +370,8 @@ Snapshots20.v0.bpl(13,9): Error BP5001: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 1 error
 Processing call to procedure N in implementation M (at Snapshots20.v1.bpl(7,9)):
-  >>> added after: a##post##0 := a##post##0 && 0 != 0;
+  >>> added axiom: ##extracted_function##1() == (0 != 0)
+  >>> added after: a##post##0 := a##post##0 && ##extracted_function##1();
 Processing command (at Snapshots20.v1.bpl(9,9)) assert 1 != 1;
   >>> MarkAsPartiallyVerified
 Processing command (at Snapshots20.v1.bpl(13,9)) assert 2 != 2;
@@ -552,8 +566,9 @@ Processing command (at Snapshots31.v0.bpl(10,5)) assert 0 < g;
 
 Boogie program verifier finished with 1 verified, 0 errors
 Processing call to procedure Q in implementation P (at Snapshots31.v1.bpl(9,5)):
-  >>> added after: a##post##0 := a##post##0 && call0old#AT#g < g;
-Processing command (at <unknown location>) a##post##0 := a##post##0 && call0old#AT#g < g;
+  >>> added axiom: (forall call0old#AT#g: int :: { ##extracted_function##1(call0old#AT#g) } ##extracted_function##1(call0old#AT#g) == (call0old#AT#g < g))
+  >>> added after: a##post##0 := a##post##0 && ##extracted_function##1(call0old#AT#g);
+Processing command (at <unknown location>) a##post##0 := a##post##0 && ##extracted_function##1(call0old#AT#g);
   >>> AssumeNegationOfAssumptionVariable
 Processing command (at Snapshots31.v1.bpl(10,5)) assert 0 < g;
   >>> MarkAsPartiallyVerified
@@ -565,9 +580,10 @@ Processing command (at Snapshots32.v0.bpl(10,5)) assert 0 < g;
 
 Boogie program verifier finished with 1 verified, 0 errors
 Processing call to procedure Q in implementation P (at Snapshots32.v1.bpl(8,5)):
+  >>> added axiom: (forall g##old##0: int :: { ##extracted_function##1(g##old##0) } ##extracted_function##1(g##old##0) == (g##old##0 < g))
   >>> added before: g##old##0 := g;
-  >>> added after: a##post##0 := a##post##0 && g##old##0 < g;
-Processing command (at <unknown location>) a##post##0 := a##post##0 && g##old##0 < g;
+  >>> added after: a##post##0 := a##post##0 && ##extracted_function##1(g##old##0);
+Processing command (at <unknown location>) a##post##0 := a##post##0 && ##extracted_function##1(g##old##0);
   >>> AssumeNegationOfAssumptionVariable
 Processing command (at Snapshots32.v1.bpl(9,5)) assert 0 < g;
   >>> MarkAsPartiallyVerified

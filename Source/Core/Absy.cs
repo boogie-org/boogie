@@ -1250,6 +1250,13 @@ namespace Microsoft.Boogie {
       return visitor.VisitProgram(this);
     }
 
+    int extractedFunctionCount;
+    public string FreshExtractedFunctionName()
+    {
+      var c = System.Threading.Interlocked.Increment(ref extractedFunctionCount);
+      return string.Format("##extracted_function##{0}", c);
+    }
+
     private int invariantGenerationCounter = 0;
 
     public Constant MakeExistentialBoolean(int StageId) {

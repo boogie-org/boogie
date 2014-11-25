@@ -188,6 +188,7 @@ namespace Microsoft.Boogie
         var before = new List<Cmd>();
         var beforePrecondtionCheck = new List<Cmd>();
         var after = new List<Cmd>();
+        var axioms = new List<Axiom>();
         Expr assumedExpr = new LiteralExpr(Token.NoToken, false);
         // TODO(wuestholz): Try out two alternatives: only do this for low priority implementations or not at all.
         var canUseSpecs = DependencyCollector.CanExpressOldSpecs(oldProc, Program);
@@ -198,7 +199,7 @@ namespace Microsoft.Boogie
           var precond = node.CheckedPrecondition(oldProc, Program);
           if (precond != null)
           {
-            var assume = new AssumeCmd(node.tok, precond, new QKeyValue(Token.NoToken, "precondition_previous_snapshot", new List<object>(), null));
+            var assume = new AssumeCmd(node.tok, FunctionExtractor.Extract(precond, Program, axioms), new QKeyValue(Token.NoToken, "precondition_previous_snapshot", new List<object>(), null));
             beforePrecondtionCheck.Add(assume);
           }
 
@@ -211,7 +212,10 @@ namespace Microsoft.Boogie
             var lhs = new SimpleAssignLhs(Token.NoToken, new IdentifierExpr(Token.NoToken, oldUnmod));
             var rhs = new IdentifierExpr(Token.NoToken, unmod.Decl);
             before.Add(new AssignCmd(Token.NoToken, new List<AssignLhs> { lhs }, new List<Expr> { rhs }));
-            eqs.Add(LiteralExpr.Eq(new IdentifierExpr(Token.NoToken, oldUnmod), new IdentifierExpr(Token.NoToken, unmod.Decl)));
+            var eq = LiteralExpr.Eq(new IdentifierExpr(Token.NoToken, oldUnmod), new IdentifierExpr(Token.NoToken, unmod.Decl));
+            eq.Type = Type.Bool;
+            eq.TypeParameters = SimpleTypeParamInstantiation.EMPTY;
+            eqs.Add(eq);
           }
 
           var mods = node.ModifiedBefore(oldProc);
@@ -237,7 +241,8 @@ namespace Microsoft.Boogie
           node.AssignedAssumptionVariable = lv;
           currentImplementation.InjectAssumptionVariable(lv, !canUseSpecs);
           var lhs = new SimpleAssignLhs(Token.NoToken, new IdentifierExpr(Token.NoToken, lv));
-          var rhs = LiteralExpr.And(new IdentifierExpr(Token.NoToken, lv), assumedExpr);
+          // TODO(wuestholz): Try to extract functions for each clause.
+          var rhs = LiteralExpr.And(new IdentifierExpr(Token.NoToken, lv), FunctionExtractor.Extract(assumedExpr, Program, axioms));
           var assumed = new AssignCmd(node.tok, new List<AssignLhs> { lhs }, new List<Expr> { rhs });
           after.Add(assumed);
         }
@@ -249,6 +254,12 @@ namespace Microsoft.Boogie
           {
             var loc = node.tok != null && node.tok != Token.NoToken ? string.Format("{0}({1},{2})", node.tok.filename, node.tok.line, node.tok.col) : "<unknown location>";
             Console.Out.WriteLine("Processing call to procedure {0} in implementation {1} (at {2}):", node.Proc.Name, currentImplementation.Name, loc);
+            foreach (var a in axioms)
+            {
+              Console.Out.Write("  >>> added axiom: ");
+              a.Expr.Emit(tokTxtWr);
+              Console.Out.WriteLine();
+            }
             foreach (var b in before)
             {
               Console.Out.Write("  >>> added before: ");
@@ -269,6 +280,79 @@ namespace Microsoft.Boogie
       }
 
       return result;
+    }
+  }
+
+
+  sealed class FunctionExtractor : StandardVisitor
+  {
+    readonly Dictionary<Variable, BoundVariable> Substitutions = new Dictionary<Variable, BoundVariable>();
+
+    public override Expr VisitIdentifierExpr(IdentifierExpr node)
+    {
+      if (node.Decl == null || !(node.Decl is LocalVariable || node.Decl is Formal))
+      {
+        return node;
+      }
+      else
+      {
+        BoundVariable boundVar;
+        if (!Substitutions.TryGetValue(node.Decl, out boundVar))
+        {
+          boundVar = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, node.Name, node.Type));
+          Substitutions[node.Decl] = boundVar;
+        }
+        return new IdentifierExpr(node.tok, boundVar);
+      }
+    }
+
+    public static Expr Extract(Expr expr, Program program, List<Axiom> axioms)
+    {
+      Contract.Requires(expr != null && program != null && !program.TopLevelDeclarationsAreFrozen && axioms != null);
+      
+      if (expr is LiteralExpr)
+      {
+        return expr;
+      }
+
+      var extractor = new FunctionExtractor();
+
+      var body = extractor.VisitExpr(expr);
+
+      var name = program.FreshExtractedFunctionName();
+      var originalVars = extractor.Substitutions.Keys.ToList();
+      var formalInArgs = originalVars.Select(v => new Formal(Token.NoToken, new TypedIdent(Token.NoToken, extractor.Substitutions[v].Name, extractor.Substitutions[v].TypedIdent.Type), true)).ToList<Variable>();
+      var formalOutArg = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, name + "$result$", expr.Type), false);
+      var func = new Function(Token.NoToken, name, formalInArgs, formalOutArg);
+      func.AddAttribute("never_pattern");
+
+      var boundVars = originalVars.Select(k => extractor.Substitutions[k]);
+      var axiomCall = new NAryExpr(Token.NoToken, new FunctionCall(func), boundVars.Select(b => new IdentifierExpr(Token.NoToken, b)).ToList<Expr>());
+      axiomCall.Type = expr.Type;
+      axiomCall.TypeParameters = SimpleTypeParamInstantiation.EMPTY;
+      var eq = LiteralExpr.Eq(axiomCall, body);
+      eq.Type = body.Type;
+      eq.TypeParameters = SimpleTypeParamInstantiation.EMPTY;
+      if (0 < formalInArgs.Count)
+      {
+        body = new ForallExpr(Token.NoToken, boundVars.ToList<Variable>(), new Trigger(Token.NoToken, true, new List<Expr> { axiomCall }), eq);
+        body.Type = Type.Bool;
+      }
+      else
+      {
+        body = eq;
+      }
+
+      var axiom = new Axiom(Token.NoToken, body);
+      func.DefinitionAxiom = axiom;
+      program.AddTopLevelDeclaration(func);
+      program.AddTopLevelDeclaration(axiom);
+      axioms.Add(axiom);
+
+      var call = new NAryExpr(Token.NoToken, new FunctionCall(func), originalVars.Select(v => new IdentifierExpr(Token.NoToken, v)).ToList<Expr>());
+      call.Type = expr.Type;
+      call.TypeParameters = SimpleTypeParamInstantiation.EMPTY;
+      return call;
     }
   }
 

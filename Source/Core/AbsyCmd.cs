@@ -2592,10 +2592,17 @@ namespace Microsoft.Boogie {
         if (result != null)
         {
           result = LiteralExpr.And(result, c);
+          result.Type = Type.Bool;
+          var nAryExpr = result as NAryExpr;
+          if (nAryExpr != null)
+          {
+            nAryExpr.TypeParameters = SimpleTypeParamInstantiation.EMPTY;
+          }
         }
         else
         {
           result = c;
+          result.Type = Type.Bool;
         }
       }
       return result;
