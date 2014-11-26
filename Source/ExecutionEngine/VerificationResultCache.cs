@@ -230,7 +230,7 @@ namespace Microsoft.Boogie
             before.Add(new AssignCmd(Token.NoToken, new List<AssignLhs> { lhs }, new List<Expr> { rhs }));
           }
           
-          assumedExpr = node.Postcondition(oldProc, eqs, oldSubst, Program);
+          assumedExpr = node.Postcondition(oldProc, eqs, oldSubst, Program, e => FunctionExtractor.Extract(e, Program, axioms));
         }
 
         if (assumedExpr != null)
@@ -242,7 +242,7 @@ namespace Microsoft.Boogie
           currentImplementation.InjectAssumptionVariable(lv, !canUseSpecs);
           var lhs = new SimpleAssignLhs(Token.NoToken, new IdentifierExpr(Token.NoToken, lv));
           // TODO(wuestholz): Try to extract functions for each clause.
-          var rhs = LiteralExpr.And(new IdentifierExpr(Token.NoToken, lv), FunctionExtractor.Extract(assumedExpr, Program, axioms));
+          var rhs = LiteralExpr.And(new IdentifierExpr(Token.NoToken, lv), assumedExpr);
           var assumed = new AssignCmd(node.tok, new List<AssignLhs> { lhs }, new List<Expr> { rhs });
           after.Add(assumed);
         }
@@ -335,7 +335,10 @@ namespace Microsoft.Boogie
       eq.TypeParameters = SimpleTypeParamInstantiation.EMPTY;
       if (0 < formalInArgs.Count)
       {
-        body = new ForallExpr(Token.NoToken, boundVars.ToList<Variable>(), new Trigger(Token.NoToken, true, new List<Expr> { axiomCall }), eq);
+        var forallExpr = new ForallExpr(Token.NoToken, boundVars.ToList<Variable>(), new Trigger(Token.NoToken, true, new List<Expr> { axiomCall }), eq);
+        body = forallExpr;
+        // TODO(wuestholz): Try assigning a higher weight to these quantifiers:
+        // forallExpr.Attributes = new QKeyValue(Token.NoToken, "weight", new List<object> { new LiteralExpr(Token.NoToken, Basetypes.BigNum.FromInt(20)) }, null);
         body.Type = Type.Bool;
       }
       else
