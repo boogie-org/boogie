@@ -20,7 +20,8 @@ namespace Microsoft.Boogie
 		internal System.IO.TextReader rd;
 		string lastLine = "";
 		protected static char[] seps = new char[] { ' ' };
-		protected static Regex bv = new Regex (@"\(_ BitVec (\d+)\)");
+		protected static Regex bitVec = new Regex (@"\(_ BitVec (\d+)\)");
+		protected static Regex bv = new Regex (@"\(_ bv(\d+) (\d+)\)");
 
 		protected void NewModel ()
 		{
@@ -98,7 +99,8 @@ namespace Microsoft.Boogie
 		{
 			if (newLine == null)
 				return null;
-			newLine = bv.Replace (newLine, "bv${1}");
+			newLine = bitVec.Replace (newLine, "bv${1}");
+			newLine = bv.Replace (newLine, "bv${1}[${2}]");
 			string line = newLine;
 			int openParenCounter = CountOpenParentheses (newLine, 0);
 			if (!newLine.Contains ("}")) {

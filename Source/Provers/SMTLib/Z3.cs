@@ -207,7 +207,12 @@ namespace Microsoft.Boogie.SMTLib
 
             // options.AddWeakSmtOption("MODEL_HIDE_UNUSED_PARTITIONS", "false"); TODO: what does this do?
 
-            options.AddWeakSmtOption("MODEL.V2", "true");
+            // Make sure we get something that is parsable as a bitvector
+            options.AddWeakSmtOption("pp.bv_literals", "false");
+            if (!CommandLineOptions.Clo.UseSmtOutputFormat)
+            {
+              options.AddWeakSmtOption("MODEL.V2", "true");
+            }
             //options.AddWeakSmtOption("ASYNC_COMMANDS", "false"); TODO: is this needed?
 
             if (!options.OptimizeForBv)
