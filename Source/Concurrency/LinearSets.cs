@@ -22,6 +22,12 @@ namespace Microsoft.Boogie
             node.Attributes = RemoveLinearAttribute(node.Attributes);
             return base.VisitVariable(node);
         }
+
+        public override Function VisitFunction(Function node)
+        {
+            node.Attributes = RemoveLinearAttribute(node.Attributes);
+            return base.VisitFunction(node);
+        }
     }
 
     public enum LinearKind {
