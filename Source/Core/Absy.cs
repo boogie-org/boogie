@@ -3298,12 +3298,12 @@ namespace Microsoft.Boogie {
 
     public List<LocalVariable> RelevantInjectedAssumptionVariables(Dictionary<Variable, Expr> incarnationMap)
     {
-      return InjectedAssumptionVariables.Where(v => incarnationMap.ContainsKey(v)).ToList();
+      return InjectedAssumptionVariables.Where(v => { Expr e; if (incarnationMap.TryGetValue(v, out e)) { var le = e as LiteralExpr; return le == null || !le.IsTrue; } else { return false; } }).ToList();
     }
 
     public List<LocalVariable> RelevantDoomedInjectedAssumptionVariables(Dictionary<Variable, Expr> incarnationMap)
     {
-      return DoomedInjectedAssumptionVariables.Where(v => incarnationMap.ContainsKey(v)).ToList();
+      return DoomedInjectedAssumptionVariables.Where(v => { Expr e; if (incarnationMap.TryGetValue(v, out e)) { var le = e as LiteralExpr; return le == null || !le.IsTrue; } else { return false; } }).ToList();
     }
 
     public Expr ConjunctionOfInjectedAssumptionVariables(Dictionary<Variable, Expr> incarnationMap, out bool isTrue)

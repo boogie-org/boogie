@@ -1684,6 +1684,15 @@ namespace VC {
             dropCmd = true;
           }
         }
+        else if (pc is AssumeCmd && QKeyValue.FindBoolAttribute(pc.Attributes, "assumption_variable_initialization"))
+        {
+          var identExpr = pc.Expr as IdentifierExpr;
+          if (identExpr != null && identExpr.Decl != null && !incarnationMap.ContainsKey(identExpr.Decl))
+          {
+            incarnationMap[identExpr.Decl] = LiteralExpr.True;
+            dropCmd = true;
+          }
+        }
         pc.Expr = copy;
         if (!dropCmd)
         {
@@ -1739,6 +1748,24 @@ namespace VC {
               newIncarnationMappings[lhs] = x_prime_exp;
             }
             #endregion
+
+            var nAryExpr = copies[i] as NAryExpr;
+            if (nAryExpr != null)
+            {
+              var binOp = nAryExpr.Fun as BinaryOperator;
+              if (binOp != null
+                  && binOp.Op == BinaryOperator.Opcode.And)
+              {
+                var arg0 = nAryExpr.Args[0] as LiteralExpr;
+                var arg1 = nAryExpr.Args[1] as LiteralExpr;
+                if ((arg0 != null && arg0.IsTrue) || (arg1 != null && arg1.IsFalse))
+                {
+                  // Replace the expressions "true && arg1" or "arg0 && false" by "arg1".
+                  copies[i] = nAryExpr.Args[1];
+                }
+              }
+            }
+          
             #region Create an assume command with the new variable
             assumptions.Add(TypedExprEq(x_prime_exp, copies[i]));
             #endregion
