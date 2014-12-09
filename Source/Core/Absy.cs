@@ -308,7 +308,7 @@ namespace Microsoft.Boogie {
 
     [ContractInvariantMethod]
     void ObjectInvariant() {
-      Contract.Invariant(cce.NonNullElements(TopLevelDeclarations));
+      Contract.Invariant(cce.NonNullElements(this.topLevelDeclarations));
       Contract.Invariant(globalVariablesCache == null || cce.NonNullElements(globalVariablesCache));
     }
     
@@ -466,17 +466,21 @@ namespace Microsoft.Boogie {
     {
         get
         {
-            return topLevelDeclarations;
+            Contract.Ensures(cce.NonNullElements(Contract.Result<IEnumerable<Declaration>>()));
+            return topLevelDeclarations.AsReadOnly();
         }
 
         set
         {
+            Contract.Requires(value != null);
             // materialize the decls, in case there is any dependency 
             // back on topLevelDeclarations
             var v = value.ToList();
+            // remove null elements
+            v.RemoveAll(d => (d == null));
             // now clear the decls
             ClearTopLevelDeclarations();
-            // and add the value
+            // and add the values
             AddTopLevelDeclarations(v);
         }
     }
@@ -484,6 +488,7 @@ namespace Microsoft.Boogie {
     public void AddTopLevelDeclaration(Declaration decl)
     {
       Contract.Requires(!TopLevelDeclarationsAreFrozen);
+      Contract.Requires(decl != null);
 
       topLevelDeclarations.Add(decl);
       this.globalVariablesCache = null;
@@ -492,6 +497,7 @@ namespace Microsoft.Boogie {
     public void AddTopLevelDeclarations(IEnumerable<Declaration> decls)
     {
       Contract.Requires(!TopLevelDeclarationsAreFrozen);
+      Contract.Requires(cce.NonNullElements(decls));
 
       topLevelDeclarations.AddRange(decls);
       this.globalVariablesCache = null;
