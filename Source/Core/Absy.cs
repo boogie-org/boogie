@@ -83,13 +83,23 @@ namespace Microsoft.Boogie {
 
   [ContractClass(typeof(AbsyContracts))]
   public abstract class Absy {
-    public IToken/*!*/ tok;
+    private IToken/*!*/ _tok;
     private int uniqueId;
     [ContractInvariantMethod]
     void ObjectInvariant() {
-      Contract.Invariant(tok != null);
+      Contract.Invariant(this._tok != null);
     }
 
+    public IToken tok { //Rename this property and "_tok" if possible
+      get {
+        Contract.Ensures(Contract.Result<IToken>() != null);
+        return this._tok;
+      }
+      set {
+        Contract.Requires(value != null);
+        this._tok = value;
+      }
+    }
 
     public int Line {
       get {
@@ -104,7 +114,7 @@ namespace Microsoft.Boogie {
 
     public Absy(IToken tok) {
       Contract.Requires(tok != null);
-      this.tok = tok;
+      this._tok = tok;
       this.uniqueId = AbsyNodeCount++;
     }
 

@@ -226,7 +226,14 @@ namespace Microsoft.Boogie {
 
     public void SetToken(Absy absy) {
       Contract.Requires(absy != null);
-      this.SetToken(ref absy.tok);
+      this.SetToken(t => absy.tok = t);
+    }
+
+    public void SetToken(Action<IToken> setter) {
+      Contract.Requires(setter != null);
+      if (this.setTokens) {
+        setter(this.CurrentToken);
+      }
     }
 
     public void SetToken(ref IToken tok) {
