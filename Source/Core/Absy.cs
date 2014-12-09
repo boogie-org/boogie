@@ -1825,24 +1825,36 @@ namespace Microsoft.Boogie {
   }
 
   public abstract class Variable : NamedDeclaration {
-    public TypedIdent/*!*/ TypedIdent;
+    private TypedIdent/*!*/ typedIdent;
+
+    public TypedIdent TypedIdent {
+      get {
+        Contract.Ensures(Contract.Result<TypedIdent>() != null);
+        return this.typedIdent;
+      }
+      set {
+        Contract.Requires(value != null);
+        this.typedIdent = value;
+      }
+    }
+
     [ContractInvariantMethod]
     void ObjectInvariant() {
-      Contract.Invariant(TypedIdent != null);
+      Contract.Invariant(this.typedIdent != null);
     }
 
     public Variable(IToken/*!*/ tok, TypedIdent/*!*/ typedIdent)
       : base(tok, typedIdent.Name) {
       Contract.Requires(tok != null);
       Contract.Requires(typedIdent != null);
-      this.TypedIdent = typedIdent;
+      this.typedIdent = typedIdent;
     }
 
     public Variable(IToken/*!*/ tok, TypedIdent/*!*/ typedIdent, QKeyValue kv)
       : base(tok, typedIdent.Name) {
       Contract.Requires(tok != null);
       Contract.Requires(typedIdent != null);
-      this.TypedIdent = typedIdent;
+      this.typedIdent = typedIdent;
       this.Attributes = kv;
     }
 
