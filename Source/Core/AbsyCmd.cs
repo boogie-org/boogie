@@ -1917,7 +1917,10 @@ namespace Microsoft.Boogie {
           }  // unexpected kind
       }
       TypedIdent ti = likeThisOne.TypedIdent;
-      TypedIdent newTi = new TypedIdent(ti.tok, "call" + (uniqueId++) + tempNamePrefix + ti.Name, ty);
+      // KLM: uniqueId was messing up FixedPointVC for unknown reason.
+      // I reverted this change for FixedPointVC only.
+      int id = CommandLineOptions.Clo.FixedPointEngine != null ? UniqueId : (uniqueId++);
+      TypedIdent newTi = new TypedIdent(ti.tok, "call" + id + tempNamePrefix + ti.Name, ty);
       Variable/*!*/ v;
       if (kind == TempVarKind.Bound) {
         v = new BoundVariable(likeThisOne.tok, newTi);
