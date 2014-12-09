@@ -1449,10 +1449,22 @@ namespace Microsoft.Boogie {
   }
 
   public class Axiom : Declaration {
-    public Expr/*!*/ Expr;
+    private Expr/*!*/ expression;
+
+    public Expr Expr {
+      get {
+        Contract.Ensures(Contract.Result<Expr>() != null);
+        return this.expression;
+      }
+      set {
+        Contract.Requires(value != null);
+        this.expression = value;
+      }
+    }
+
     [ContractInvariantMethod]
     void ExprInvariant() {
-      Contract.Invariant(Expr != null);
+      Contract.Invariant(this.expression != null);
     }
 
     public string Comment;
@@ -1467,7 +1479,7 @@ namespace Microsoft.Boogie {
       : base(tok) {
       Contract.Requires(tok != null);
       Contract.Requires(expr != null);
-      Expr = expr;
+      this.expression = expr;
       Comment = comment;
     }
 
