@@ -1636,14 +1636,37 @@ namespace Microsoft.Boogie {
   }
 
   public class TypeSynonymDecl : NamedDeclaration {
-    public List<TypeVariable>/*!*/ TypeParameters;
-    public Type/*!*/ Body;
-    [ContractInvariantMethod]
-    void ObjectInvariant() {
-      Contract.Invariant(TypeParameters != null);
-      Contract.Invariant(Body != null);
+    private List<TypeVariable>/*!*/ typeParameters;
+
+    public List<TypeVariable> TypeParameters {
+      get {
+        Contract.Ensures(Contract.Result<List<TypeVariable>>() != null);
+        return this.typeParameters;
+      }
+      set {
+        Contract.Requires(value != null);
+        this.typeParameters = value;
+      }
     }
 
+    private Type/*!*/ body;
+
+    public Type Body {
+      get {
+        Contract.Ensures(Contract.Result<Type>() != null);
+        return this.body;
+      }
+      set {
+        Contract.Requires(value != null);
+        this.body = value;
+      }
+    }
+    
+    [ContractInvariantMethod]
+    void ObjectInvariant() {
+      Contract.Invariant(this.body != null);
+      Contract.Invariant(this.typeParameters != null);
+    }
 
     public TypeSynonymDecl(IToken/*!*/ tok, string/*!*/ name,
                            List<TypeVariable>/*!*/ typeParams, Type/*!*/ body)
@@ -1652,8 +1675,8 @@ namespace Microsoft.Boogie {
       Contract.Requires(name != null);
       Contract.Requires(typeParams != null);
       Contract.Requires(body != null);
-      this.TypeParameters = typeParams;
-      this.Body = body;
+      this.typeParameters = typeParams;
+      this.body = body;
     }
     public TypeSynonymDecl(IToken/*!*/ tok, string/*!*/ name,
                            List<TypeVariable>/*!*/ typeParams, Type/*!*/ body, QKeyValue kv)
@@ -1662,8 +1685,8 @@ namespace Microsoft.Boogie {
       Contract.Requires(name != null);
       Contract.Requires(typeParams != null);
       Contract.Requires(body != null);
-      this.TypeParameters = typeParams;
-      this.Body = body;
+      this.typeParameters = typeParams;
+      this.body = body;
       this.Attributes = kv;
     }
     public override void Emit(TokenTextWriter stream, int level) {
