@@ -2743,11 +2743,24 @@ namespace Microsoft.Boogie {
 
   public class Requires : Absy, IPotentialErrorNode {
     public readonly bool Free;
-    public Expr/*!*/ Condition;
+    
+    private Expr/*!*/ _condition;
+    
+    public Expr/*!*/ Condition {
+      get {
+        Contract.Ensures(Contract.Result<Expr>() != null);
+        return this._condition;
+      }
+      set {
+        Contract.Requires(value != null);
+        this._condition = value;
+      }
+    }
+
     public string Comment;
     [ContractInvariantMethod]
     void ObjectInvariant() {
-      Contract.Invariant(Condition != null);
+      Contract.Invariant(this._condition != null);
       Contract.Invariant(errorData == null || errorData is string);
     }
 
@@ -2787,7 +2800,7 @@ namespace Microsoft.Boogie {
       Contract.Requires(condition != null);
       Contract.Requires(token != null);
       this.Free = free;
-      this.Condition = condition;
+      this._condition = condition;
       this.Comment = comment;
       this.Attributes = kv;
     }
