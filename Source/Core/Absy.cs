@@ -3959,12 +3959,37 @@ namespace Microsoft.Boogie {
 
   public class TypedIdent : Absy {
     public const string NoName = "";
-    public string/*!*/ Name;
-    public Type/*!*/ Type;
+    
+    private string/*!*/ _name;
+    
+    public string/*!*/ Name {
+      get {
+        Contract.Ensures(Contract.Result<string>() != null);
+        return this._name;
+      }
+      set {
+        Contract.Requires(value != null);
+        this._name = value;
+      }
+    }
+
+    private Type/*!*/ _type;
+
+    public Type/*!*/ Type {
+      get {
+        Contract.Ensures(Contract.Result<Type>() != null);
+        return this._type;
+      }
+      set {
+        Contract.Requires(value != null);
+        this._type = value;
+      }
+    }
+
     [ContractInvariantMethod]
     void ObjectInvariant() {
-      Contract.Invariant(Name != null);
-      Contract.Invariant(Type != null);
+      Contract.Invariant(this._name != null);
+      Contract.Invariant(this._type != null);
     }
 
     public Expr WhereExpr;
@@ -3984,8 +4009,8 @@ namespace Microsoft.Boogie {
       Contract.Requires(name != null);
       Contract.Requires(type != null);
       Contract.Ensures(this.WhereExpr == whereExpr);
-      this.Name = name;
-      this.Type = type;
+      this._name = name;
+      this._type = type;
       this.WhereExpr = whereExpr;
     }
     public bool HasName {
