@@ -4258,14 +4258,27 @@ namespace Microsoft.Boogie {
   public class Choice : CompoundRE {
     [ContractInvariantMethod]
     void ObjectInvariant() {
-      Contract.Invariant(rs != null);
+      Contract.Invariant(this._rs != null);
     }
 
-    public List<RE>/*!*/ rs;
+    private List<RE>/*!*/ _rs;
+    
+    public List<RE>/*!*/ rs { //Rename this (and _rs) if possible
+      get {
+        Contract.Ensures(Contract.Result<List<RE>>() != null);
+        return this._rs;
+      }
+      set {
+        Contract.Requires(value != null);
+        this._rs = value;
+      }
+    }
+
     public Choice(List<RE> operands) {
       Contract.Requires(operands != null);
-      rs = operands;
+      this._rs = operands;
     }
+
     public override void Emit(TokenTextWriter stream, int level) {
       //Contract.Requires(stream != null);
       stream.WriteLine();
