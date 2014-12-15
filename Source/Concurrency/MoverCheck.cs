@@ -35,34 +35,34 @@ namespace Microsoft.Boogie
             {
                 AtomicActionInfo atomicAction = action as AtomicActionInfo;
                 if (atomicAction == null) continue;
-                foreach (int phaseNum in moverTypeChecker.AllLayerNums)
+                foreach (int layerNum in moverTypeChecker.AllLayerNums)
                 {
-                    if (action.phaseNum < phaseNum && phaseNum <= action.availableUptoLayerNum)
+                    if (action.createdAtLayerNum < layerNum && layerNum <= action.availableUptoLayerNum)
                     {
-                        if (!pools.ContainsKey(phaseNum))
+                        if (!pools.ContainsKey(layerNum))
                         {
-                            pools[phaseNum] = new HashSet<AtomicActionInfo>();
+                            pools[layerNum] = new HashSet<AtomicActionInfo>();
                         }
-                        pools[phaseNum].Add(atomicAction);
+                        pools[layerNum].Add(atomicAction);
                     }
                 }
             }
 
             Program program = moverTypeChecker.program;
             MoverCheck moverChecking = new MoverCheck(linearTypeChecker, moverTypeChecker, decls);
-            foreach (int phaseNum1 in pools.Keys)
+            foreach (int layerNum1 in pools.Keys)
             {
-                foreach (AtomicActionInfo first in pools[phaseNum1])
+                foreach (AtomicActionInfo first in pools[layerNum1])
                 {
                     Debug.Assert(first.moverType != MoverType.Top);
                     if (first.moverType == MoverType.Atomic)
                         continue;
-                    foreach (int phaseNum2 in pools.Keys)
+                    foreach (int layerNum2 in pools.Keys)
                     {
-                        if (phaseNum2 < phaseNum1) continue;
-                        foreach (AtomicActionInfo second in pools[phaseNum2])
+                        if (layerNum2 < layerNum1) continue;
+                        foreach (AtomicActionInfo second in pools[layerNum2])
                         {
-                            if (second.phaseNum < phaseNum1)
+                            if (second.createdAtLayerNum < layerNum1)
                             {
                                 if (first.IsRightMover)
                                 {
