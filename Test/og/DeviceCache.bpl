@@ -3,10 +3,10 @@
 type X;
 function {:builtin "MapConst"} mapconstbool(bool): [X]bool;
 const nil: X;
-var {:layer 1} ghostLock: X;
-var {:layer 1} lock: X;
-var {:layer 1} currsize: int;
-var {:layer 1} newsize: int;
+var {:layer 0,1} ghostLock: X;
+var {:layer 0,1} lock: X;
+var {:layer 0,1} currsize: int;
+var {:layer 0,1} newsize: int;
 
 function {:builtin "MapConst"} MapConstBool(bool) : [X]bool;
 function {:inline} {:linear "tid"} TidCollector(x: X) : [X]bool

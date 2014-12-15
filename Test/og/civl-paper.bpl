@@ -15,9 +15,9 @@ function map(lmap): [int]int;
 function cons([int]bool, [int]int) : lmap;
 axiom (forall x: [int]bool, y: [int]int :: {cons(x,y)} dom(cons(x, y)) == x && map(cons(x,y)) == y);
 
-var {:layer 3} {:linear "mem"} g: lmap;
-var {:layer 3} lock: X;
-var {:layer 1} b: bool;
+var {:layer 0,3} {:linear "mem"} g: lmap;
+var {:layer 0,3} lock: X;
+var {:layer 0,1} b: bool;
 
 const p: int;
 

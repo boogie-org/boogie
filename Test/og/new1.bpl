@@ -2,7 +2,7 @@
 // RUN: %diff "%s.expect" "%t"
 function {:builtin "MapConst"} mapconstbool(x:bool): [int]bool;
 
-var {:layer 1} g:int;
+var {:layer 0,1} g:int;
 
 function {:inline} {:linear "Perm"} SetCollectorPerm(x: [int]bool) : [int]bool
 {

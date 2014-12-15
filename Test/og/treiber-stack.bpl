@@ -38,8 +38,8 @@ ensures {:atomic} |{ A: goto B,C;
                         B: assume oldVal == TopOfStack; TopOfStack := newVal; Used := Add(Used, oldVal, map(Stack)[oldVal]); Stack := Remove(Stack, oldVal); r := true; return true;
 		        C: assume oldVal != TopOfStack; r := false; return true; }|;
 
-var TopOfStack: Node;
-var {:linear "Node"} Stack: lmap;
+var {:layer 0} TopOfStack: Node;
+var {:linear "Node"} {:layer 0} Stack: lmap;
 
 
 function {:inline} Inv(TopOfStack: Node, Stack: lmap) : (bool)
@@ -48,7 +48,7 @@ function {:inline} Inv(TopOfStack: Node, Stack: lmap) : (bool)
   Subset(Difference(BetweenSet(map(Stack), TopOfStack, null), Singleton(null)), dom(Stack))
 }
 
-var {:linear "Node"} Used: lmap;
+var {:linear "Node"} {:layer 0} Used: lmap;
 
 procedure {:yields} {:layer 1} push(x: Node, {:linear_in "Node"} x_lmap: lmap)
 requires {:layer 1} dom(x_lmap)[x];

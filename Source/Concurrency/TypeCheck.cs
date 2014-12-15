@@ -272,16 +272,16 @@ namespace Microsoft.Boogie
             {
                 if (!QKeyValue.FindBoolAttribute(proc.Attributes, "yields")) continue;
 
-                int layerNum = int.MaxValue;
+                int createdAtLayerNum;  // must be initialized by the following code, otherwise it is an error
                 int availableUptoLayerNum = int.MaxValue;
                 List<int> attrs = FindLayers(proc.Attributes);
                 if (attrs.Count == 1)
                 {
-                    layerNum = attrs[0];
+                    createdAtLayerNum = attrs[0];
                 }
                 else if (attrs.Count == 2)
                 {
-                    layerNum = attrs[0];
+                    createdAtLayerNum = attrs[0];
                     availableUptoLayerNum = attrs[1];
                 }
                 else
@@ -312,7 +312,7 @@ namespace Microsoft.Boogie
                     enclosingImpl = null;
                     base.VisitEnsures(e);
                     canAccessSharedVars = false;
-                    if (maxLayerNum <= layerNum && availableUptoLayerNum <= minLayerNum)
+                    if (maxLayerNum <= createdAtLayerNum && availableUptoLayerNum <= minLayerNum)
                     {
                         // ok
                     }
@@ -321,11 +321,11 @@ namespace Microsoft.Boogie
                         Error(e, "A variable being accessed is hidden before this action becomes unavailable");
                     }
 
-                    procToActionInfo[proc] = new AtomicActionInfo(proc, e, moverType, layerNum, availableUptoLayerNum);
+                    procToActionInfo[proc] = new AtomicActionInfo(proc, e, moverType, createdAtLayerNum, availableUptoLayerNum);
                 }
                 if (!procToActionInfo.ContainsKey(proc))
                 {
-                    procToActionInfo[proc] = new ActionInfo(proc, layerNum, availableUptoLayerNum);
+                    procToActionInfo[proc] = new ActionInfo(proc, createdAtLayerNum, availableUptoLayerNum);
                 }
             }
             if (errorCount > 0) return;
@@ -357,11 +357,11 @@ namespace Microsoft.Boogie
                 this.hideLayerNums[g] = int.MaxValue;
                 if (layerNums.Count == 0)
                 {
-                    // ok
+                    Error(g, "Too few layer numbers");
                 }
                 else if (layerNums.Count == 1)
                 {
-                    this.hideLayerNums[g] = layerNums[0];
+                    this.introduceLayerNums[g] = layerNums[0];
                 }
                 else if (layerNums.Count == 2)
                 {

@@ -1,6 +1,6 @@
 // RUN: %boogie -noinfer "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
-var {:layer 1} x:int;
+var {:layer 0,1} x:int;
 
 procedure {:yields} {:layer 0,1} Set(v: int);
 ensures {:atomic}

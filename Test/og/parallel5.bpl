@@ -1,6 +1,6 @@
 // RUN: %boogie -noinfer -typeEncoding:m -useArrayTheory "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
-var {:layer 1} a:[int]int;
+var {:layer 0,1} a:[int]int;
 
 procedure Allocate() returns ({:linear "tid"} xls: int);
 
