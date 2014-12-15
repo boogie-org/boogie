@@ -353,15 +353,14 @@ namespace Microsoft.Boogie
             foreach (var g in program.GlobalVariables)
             {
                 List<int> layerNums = FindLayers(g.Attributes);
-                this.introduceLayerNums[g] = 0;
-                this.hideLayerNums[g] = int.MaxValue;
                 if (layerNums.Count == 0)
                 {
-                    Error(g, "Too few layer numbers");
+                    // Cannot access atomic actions
                 }
                 else if (layerNums.Count == 1)
                 {
                     this.introduceLayerNums[g] = layerNums[0];
+                    this.hideLayerNums[g] = int.MaxValue;
                 }
                 else if (layerNums.Count == 2)
                 {
