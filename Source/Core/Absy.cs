@@ -4227,20 +4227,45 @@ namespace Microsoft.Boogie {
     }
   }
   public class Sequential : CompoundRE {
-    public RE/*!*/ first;
-    public RE/*!*/ second;
-    [ContractInvariantMethod]
-    void ObjectInvariant() {
-      Contract.Invariant(first != null);
-      Contract.Invariant(second != null);
+    private RE/*!*/ _first;
+
+    public RE/*!*/ first {
+      get {
+        Contract.Ensures(Contract.Result<RE>() != null);
+        return this._first;
+      }
+      set {
+        Contract.Requires(value != null);
+        this._first = value;
+      }
     }
 
-    public Sequential(RE a, RE b) {
-      Contract.Requires(b != null);
-      Contract.Requires(a != null);
-      first = a;
-      second = b;
+    private RE/*!*/ _second;
+
+    public RE/*!*/ second {
+      get {
+        Contract.Ensures(Contract.Result<RE>() != null);
+        return this._second;
+      }
+      set {
+        Contract.Requires(value != null);
+        this._second = value;
+      }
     }
+
+    [ContractInvariantMethod]
+    void ObjectInvariant() {
+      Contract.Invariant(this._first != null);
+      Contract.Invariant(this._second != null);
+    }
+
+    public Sequential(RE first, RE second) {
+      Contract.Requires(first != null);
+      Contract.Requires(second != null);
+      this._first = first;
+      this._second = second;
+    }
+
     public override void Emit(TokenTextWriter stream, int level) {
       //Contract.Requires(stream != null);
       stream.WriteLine();
