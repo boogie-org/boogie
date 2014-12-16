@@ -27,8 +27,8 @@ ensures {:layer 1} xls == mapconstbool(true);
 procedure Allocate_2() returns ({:linear "2"} xls: [int]bool);
 ensures {:layer 1} xls == mapconstbool(true);
 
-var {:layer 1} g: int;
-var {:layer 1} h: int;
+var {:layer 0,1} g: int;
+var {:layer 0,1} h: int;
 
 procedure {:yields} {:layer 0,1} SetG(val:int);
 ensures {:atomic} |{A: g := val; return true; }|;

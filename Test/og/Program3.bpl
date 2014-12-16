@@ -1,6 +1,6 @@
 // RUN: %boogie -noinfer -typeEncoding:m -useArrayTheory "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
-var {:layer 1} x:int;
+var {:layer 0,1} x:int;
 
 procedure {:yields} {:layer 1} yield_x()
 ensures {:layer 1} x >= old(x); 

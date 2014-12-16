@@ -13,7 +13,7 @@ function {:inline} {:linear "tid"} TidSetCollector(x: [Tid]bool) : [Tid]bool
   x
 }
 
-var {:layer 1} a:[Tid]int;
+var {:layer 0,1} a:[Tid]int;
 
 procedure Allocate() returns ({:linear "tid"} tid:Tid); 
 

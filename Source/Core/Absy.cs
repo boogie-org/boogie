@@ -2271,7 +2271,7 @@ namespace Microsoft.Boogie {
     {
       get
       {
-        Contract.Requires(CommandLineOptions.Clo.VerifySnapshots == 0 || DependenciesCollected);
+        Contract.Requires(DependenciesCollected);
 
         if (MD5DependencyChecksum_ == null && MD5Checksum != null)
         {
@@ -2338,7 +2338,7 @@ namespace Microsoft.Boogie {
     {
       get
       {
-        if (dependencyChecksum == null && MD5DependencyChecksum != null)
+        if (dependencyChecksum == null && DependenciesCollected && MD5DependencyChecksum != null)
         {
           dependencyChecksum = BitConverter.ToString(MD5DependencyChecksum);
         }

@@ -20,8 +20,8 @@ function {:inline} {:linear "x"} XCollector(xs: [X]bool) : [X]bool
   xs
 }
 
-var {:layer 1} x: int;
-var {:layer 1} l: [X]bool;
+var {:layer 0,1} x: int;
+var {:layer 0,1} l: [X]bool;
 
 procedure Split({:linear_in "x"} xls: [X]bool) returns ({:linear "x"} xls1: [X]bool, {:linear "x"} xls2: [X]bool);
 ensures xls == MapOr(xls1, xls2) && xls1 != None() && xls2 != None();

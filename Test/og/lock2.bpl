@@ -1,6 +1,6 @@
 // RUN: %boogie -noinfer -typeEncoding:m -useArrayTheory "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
-var {:layer 2} b: int;
+var {:layer 0,2} b: int;
 
 procedure {:yields} {:layer 2} main()
 {

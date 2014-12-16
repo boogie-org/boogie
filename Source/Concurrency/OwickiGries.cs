@@ -14,7 +14,7 @@ namespace Microsoft.Boogie
     public class MyDuplicator : Duplicator
     {
         MoverTypeChecker moverTypeChecker;
-        public int phaseNum;
+        public int layerNum;
         Procedure enclosingProc;
         Implementation enclosingImpl;
         public Dictionary<Procedure, Procedure> procMap; /* Original -> Duplicate */
@@ -23,10 +23,10 @@ namespace Microsoft.Boogie
         public HashSet<Procedure> yieldingProcs;
         public List<Implementation> impls;
 
-        public MyDuplicator(MoverTypeChecker moverTypeChecker, int phaseNum)
+        public MyDuplicator(MoverTypeChecker moverTypeChecker, int layerNum)
         {
             this.moverTypeChecker = moverTypeChecker;
-            this.phaseNum = phaseNum;
+            this.layerNum = layerNum;
             this.enclosingProc = null;
             this.enclosingImpl = null;
             this.procMap = new Dictionary<Procedure, Procedure>();
@@ -38,12 +38,12 @@ namespace Microsoft.Boogie
 
         private void ProcessCallCmd(CallCmd originalCallCmd, CallCmd callCmd, List<Cmd> newCmds)
         {
-            int enclosingProcLayerNum = moverTypeChecker.procToActionInfo[enclosingImpl.Proc].phaseNum;
+            int enclosingProcLayerNum = moverTypeChecker.procToActionInfo[enclosingImpl.Proc].createdAtLayerNum;
             Procedure originalProc = originalCallCmd.Proc;
             if (moverTypeChecker.procToActionInfo.ContainsKey(originalProc))
             {
                 AtomicActionInfo atomicActionInfo = moverTypeChecker.procToActionInfo[originalProc] as AtomicActionInfo;
-                if (atomicActionInfo != null && atomicActionInfo.thisGate.Count > 0 && phaseNum == enclosingProcLayerNum)
+                if (atomicActionInfo != null && atomicActionInfo.thisGate.Count > 0 && layerNum == enclosingProcLayerNum)
                 {
                     newCmds.Add(new HavocCmd(Token.NoToken, new List<IdentifierExpr>(new IdentifierExpr[] { Expr.Ident(dummyLocalVar) })));
                     Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
@@ -66,11 +66,11 @@ namespace Microsoft.Boogie
             int maxCalleeLayerNum = 0;
             foreach (CallCmd iter in originalParCallCmd.CallCmds)
             {
-                int calleeLayerNum = moverTypeChecker.procToActionInfo[iter.Proc].phaseNum;
+                int calleeLayerNum = moverTypeChecker.procToActionInfo[iter.Proc].createdAtLayerNum;
                 if (calleeLayerNum > maxCalleeLayerNum)
                     maxCalleeLayerNum = calleeLayerNum;
             }
-            if (phaseNum > maxCalleeLayerNum)
+            if (layerNum > maxCalleeLayerNum)
             {
                 for (int i = 0; i < parCallCmd.CallCmds.Count; i++) 
                 {
@@ -150,13 +150,13 @@ namespace Microsoft.Boogie
             {
                 enclosingProc = node;
                 Procedure proc = (Procedure)node.Clone();
-                proc.Name = string.Format("{0}_{1}", node.Name, phaseNum);
+                proc.Name = string.Format("{0}_{1}", node.Name, layerNum);
                 proc.InParams = this.VisitVariableSeq(node.InParams);
                 proc.Modifies = this.VisitIdentifierExprSeq(node.Modifies);
                 proc.OutParams = this.VisitVariableSeq(node.OutParams);
 
                 ActionInfo actionInfo = moverTypeChecker.procToActionInfo[node];
-                if (actionInfo.phaseNum < phaseNum)
+                if (actionInfo.createdAtLayerNum < layerNum)
                 {
                     proc.Requires = new List<Requires>();
                     proc.Ensures = new List<Ensures>();
@@ -220,7 +220,7 @@ namespace Microsoft.Boogie
             Requires requires = base.VisitRequires(node);
             if (node.Free)
                 return requires;
-            if (!moverTypeChecker.absyToLayerNums[node].Contains(phaseNum))
+            if (!moverTypeChecker.absyToLayerNums[node].Contains(layerNum))
                 requires.Condition = Expr.True;
             return requires;
         }
@@ -232,7 +232,7 @@ namespace Microsoft.Boogie
                 return ensures;
             AtomicActionInfo atomicActionInfo =  moverTypeChecker.procToActionInfo[enclosingProc] as AtomicActionInfo;
             bool isAtomicSpecification = atomicActionInfo != null && atomicActionInfo.ensures == node;
-            if (isAtomicSpecification || !moverTypeChecker.absyToLayerNums[node].Contains(phaseNum))
+            if (isAtomicSpecification || !moverTypeChecker.absyToLayerNums[node].Contains(layerNum))
             {
                 ensures.Condition = Expr.True;
                 ensures.Attributes = OwickiGries.RemoveMoverAttribute(ensures.Attributes);
@@ -243,7 +243,7 @@ namespace Microsoft.Boogie
         public override Cmd VisitAssertCmd(AssertCmd node)
         {
             AssertCmd assertCmd = (AssertCmd) base.VisitAssertCmd(node);
-            if (!moverTypeChecker.absyToLayerNums[node].Contains(phaseNum))
+            if (!moverTypeChecker.absyToLayerNums[node].Contains(layerNum))
                 assertCmd.Expr = Expr.True;
             return assertCmd;
         }
@@ -256,7 +256,7 @@ namespace Microsoft.Boogie
         Dictionary<Absy, Absy> absyMap;
         Dictionary<Implementation, Implementation> implMap;
         HashSet<Procedure> yieldingProcs;
-        int phaseNum;
+        int layerNum;
         List<IdentifierExpr> globalMods;
         Dictionary<string, Procedure> asyncAndParallelCallDesugarings;
         List<Procedure> yieldCheckerProcs;
@@ -274,7 +274,7 @@ namespace Microsoft.Boogie
             this.linearTypeChecker = linearTypeChecker;
             this.moverTypeChecker = moverTypeChecker;
             this.absyMap = duplicator.absyMap;
-            this.phaseNum = duplicator.phaseNum;
+            this.layerNum = duplicator.layerNum;
             this.implMap = duplicator.implMap;
             this.yieldingProcs = duplicator.yieldingProcs;
             Program program = linearTypeChecker.program;
@@ -319,7 +319,7 @@ namespace Microsoft.Boogie
                     Formal f = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, string.Format("og_global_old_{0}", ie.Decl.Name), ie.Decl.TypedIdent.Type), true);
                     inputs.Add(f);
                 }
-                yieldProc = new Procedure(Token.NoToken, string.Format("og_yield_{0}", phaseNum), new List<TypeVariable>(), inputs, new List<Variable>(), new List<Requires>(), new List<IdentifierExpr>(), new List<Ensures>());
+                yieldProc = new Procedure(Token.NoToken, string.Format("og_yield_{0}", layerNum), new List<TypeVariable>(), inputs, new List<Variable>(), new List<Requires>(), new List<IdentifierExpr>(), new List<Ensures>());
                 yieldProc.AddAttribute("inline", new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1)));
             }
             CallCmd yieldCallCmd = new CallCmd(Token.NoToken, yieldProc.Name, exprSeq, new List<IdentifierExpr>());
@@ -716,7 +716,7 @@ namespace Microsoft.Boogie
 
             Procedure originalProc = implMap[impl].Proc;
             ActionInfo actionInfo = moverTypeChecker.procToActionInfo[originalProc];
-            if (actionInfo.phaseNum == this.phaseNum)
+            if (actionInfo.createdAtLayerNum == this.layerNum)
             {
                 pc = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "og_pc", Type.Bool));
                 newLocalVars.Add(pc);
@@ -742,11 +742,11 @@ namespace Microsoft.Boogie
                 HashSet<Variable> introducedVars = new HashSet<Variable>();
                 foreach (Variable v in program.GlobalVariables)
                 {
-                    if (moverTypeChecker.hideLayerNums[v] <= actionInfo.phaseNum || moverTypeChecker.introduceLayerNums[v] > actionInfo.phaseNum)
+                    if (moverTypeChecker.hideLayerNums[v] <= actionInfo.createdAtLayerNum || moverTypeChecker.introduceLayerNums[v] > actionInfo.createdAtLayerNum)
                     {
                         frame.Remove(v);
                     }
-                    if (moverTypeChecker.introduceLayerNums[v] == actionInfo.phaseNum)
+                    if (moverTypeChecker.introduceLayerNums[v] == actionInfo.createdAtLayerNum)
                     {
                         introducedVars.Add(v);
                     }
@@ -1159,11 +1159,11 @@ namespace Microsoft.Boogie
         public static void AddCheckers(LinearTypeChecker linearTypeChecker, MoverTypeChecker moverTypeChecker, List<Declaration> decls)
         {
             Program program = linearTypeChecker.program;
-            foreach (int phaseNum in moverTypeChecker.AllLayerNums.Except(new int[] { 0 }))
+            foreach (int layerNum in moverTypeChecker.AllLayerNums.Except(new int[] { 0 }))
             {
-                if (CommandLineOptions.Clo.TrustLayersDownto <= phaseNum || phaseNum <= CommandLineOptions.Clo.TrustLayersUpto) continue;
+                if (CommandLineOptions.Clo.TrustLayersDownto <= layerNum || layerNum <= CommandLineOptions.Clo.TrustLayersUpto) continue;
 
-                MyDuplicator duplicator = new MyDuplicator(moverTypeChecker, phaseNum);
+                MyDuplicator duplicator = new MyDuplicator(moverTypeChecker, layerNum);
                 foreach (var proc in program.Procedures)
                 {
                     if (!moverTypeChecker.procToActionInfo.ContainsKey(proc)) continue;
@@ -1174,7 +1174,7 @@ namespace Microsoft.Boogie
                 OwickiGries ogTransform = new OwickiGries(linearTypeChecker, moverTypeChecker, duplicator);
                 foreach (var impl in program.Implementations)
                 {
-                    if (!moverTypeChecker.procToActionInfo.ContainsKey(impl.Proc) || moverTypeChecker.procToActionInfo[impl.Proc].phaseNum < phaseNum)
+                    if (!moverTypeChecker.procToActionInfo.ContainsKey(impl.Proc) || moverTypeChecker.procToActionInfo[impl.Proc].createdAtLayerNum < layerNum)
                         continue;
                     Implementation duplicateImpl = duplicator.VisitImplementation(impl);
                     ogTransform.TransformImpl(duplicateImpl);

@@ -2,8 +2,8 @@
 // RUN: %diff "%s.expect" "%t"
 type X;
 const nil: X;
-var {:layer 1} l: X;
-var {:layer 1} x: int;
+var {:layer 0,1} l: X;
+var {:layer 0,1} x: int;
 
 function {:builtin "MapConst"} MapConstBool(bool) : [X]bool;
 function {:inline} {:linear "tid"} TidCollector(x: X) : [X]bool

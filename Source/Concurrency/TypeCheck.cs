@@ -20,13 +20,13 @@ namespace Microsoft.Boogie
     public class ActionInfo
     {
         public Procedure proc;
-        public int phaseNum;
+        public int createdAtLayerNum;
         public int availableUptoLayerNum;
 
-        public ActionInfo(Procedure proc, int phaseNum, int availableUptoLayerNum)
+        public ActionInfo(Procedure proc, int createdAtLayerNum, int availableUptoLayerNum)
         {
             this.proc = proc;
-            this.phaseNum = phaseNum;
+            this.createdAtLayerNum = createdAtLayerNum;
             this.availableUptoLayerNum = availableUptoLayerNum;
         }
 
@@ -77,8 +77,8 @@ namespace Microsoft.Boogie
             get { return moverType == MoverType.Left || moverType == MoverType.Both; }
         }
 
-        public AtomicActionInfo(Procedure proc, Ensures ensures, MoverType moverType, int phaseNum, int availableUptoLayerNum)
-            : base(proc, phaseNum, availableUptoLayerNum)
+        public AtomicActionInfo(Procedure proc, Ensures ensures, MoverType moverType, int layerNum, int availableUptoLayerNum)
+            : base(proc, layerNum, availableUptoLayerNum)
         {
             CodeExpr codeExpr = ensures.Condition as CodeExpr;
             this.ensures = ensures;
@@ -216,13 +216,12 @@ namespace Microsoft.Boogie
         public Dictionary<Absy, HashSet<int>> absyToLayerNums;
         HashSet<Variable> auxVars;
 
-        private static List<int> FindIntAttributes(QKeyValue kv, string name)
+        private static List<int> FindLayers(QKeyValue kv)
         {
-            Contract.Requires(name != null);
             HashSet<int> attrs = new HashSet<int>();
             for (; kv != null; kv = kv.Next)
             {
-                if (kv.Key != name) continue;
+                if (kv.Key != "layer") continue;
                 foreach (var o in kv.Params)
                 {
                     Expr e = o as Expr;
@@ -232,9 +231,9 @@ namespace Microsoft.Boogie
                         attrs.Add(l.asBigNum.ToIntSafe);
                 }
             }
-            List<int> phases = attrs.ToList();
-            phases.Sort();
-            return phases;
+            List<int> layers = attrs.ToList();
+            layers.Sort();
+            return layers;
         }
 
         private static MoverType GetMoverType(Ensures e)
@@ -260,7 +259,7 @@ namespace Microsoft.Boogie
                     allLayerNums = new HashSet<int>();
                     foreach (ActionInfo actionInfo in procToActionInfo.Values)
                     {
-                        allLayerNums.Add(actionInfo.phaseNum);
+                        allLayerNums.Add(actionInfo.createdAtLayerNum);
                     }
                 }
                 return allLayerNums;
@@ -273,21 +272,21 @@ namespace Microsoft.Boogie
             {
                 if (!QKeyValue.FindBoolAttribute(proc.Attributes, "yields")) continue;
 
-                int phaseNum = int.MaxValue;
+                int createdAtLayerNum;  // must be initialized by the following code, otherwise it is an error
                 int availableUptoLayerNum = int.MaxValue;
-                List<int> attrs = FindIntAttributes(proc.Attributes, "layer");
+                List<int> attrs = FindLayers(proc.Attributes);
                 if (attrs.Count == 1)
                 {
-                    phaseNum = attrs[0];
+                    createdAtLayerNum = attrs[0];
                 }
                 else if (attrs.Count == 2)
                 {
-                    phaseNum = attrs[0];
+                    createdAtLayerNum = attrs[0];
                     availableUptoLayerNum = attrs[1];
                 }
                 else
                 {
-                    Error(proc, "Incorrect number of phases");
+                    Error(proc, "Incorrect number of layers");
                     continue;
                 }
                 foreach (Ensures e in proc.Ensures)
@@ -313,7 +312,7 @@ namespace Microsoft.Boogie
                     enclosingImpl = null;
                     base.VisitEnsures(e);
                     canAccessSharedVars = false;
-                    if (maxLayerNum <= phaseNum && availableUptoLayerNum <= minLayerNum)
+                    if (maxLayerNum <= createdAtLayerNum && availableUptoLayerNum <= minLayerNum)
                     {
                         // ok
                     }
@@ -322,11 +321,11 @@ namespace Microsoft.Boogie
                         Error(e, "A variable being accessed is hidden before this action becomes unavailable");
                     }
 
-                    procToActionInfo[proc] = new AtomicActionInfo(proc, e, moverType, phaseNum, availableUptoLayerNum);
+                    procToActionInfo[proc] = new AtomicActionInfo(proc, e, moverType, createdAtLayerNum, availableUptoLayerNum);
                 }
                 if (!procToActionInfo.ContainsKey(proc))
                 {
-                    procToActionInfo[proc] = new ActionInfo(proc, phaseNum, availableUptoLayerNum);
+                    procToActionInfo[proc] = new ActionInfo(proc, createdAtLayerNum, availableUptoLayerNum);
                 }
             }
             if (errorCount > 0) return;
@@ -353,25 +352,24 @@ namespace Microsoft.Boogie
             this.maxLayerNum = -1;
             foreach (var g in program.GlobalVariables)
             {
-                List<int> phaseNums = FindIntAttributes(g.Attributes, "layer");
-                this.introduceLayerNums[g] = 0;
-                this.hideLayerNums[g] = int.MaxValue;
-                if (phaseNums.Count == 0)
+                List<int> layerNums = FindLayers(g.Attributes);
+                if (layerNums.Count == 0)
                 {
-                    // ok
+                    // Cannot access atomic actions
                 }
-                else if (phaseNums.Count == 1)
+                else if (layerNums.Count == 1)
                 {
-                    this.hideLayerNums[g] = phaseNums[0];
+                    this.introduceLayerNums[g] = layerNums[0];
+                    this.hideLayerNums[g] = int.MaxValue;
                 }
-                else if (phaseNums.Count == 2)
+                else if (layerNums.Count == 2)
                 {
-                    this.introduceLayerNums[g] = phaseNums[0];
-                    this.hideLayerNums[g] = phaseNums[1];
+                    this.introduceLayerNums[g] = layerNums[0];
+                    this.hideLayerNums[g] = layerNums[1];
                 }
                 else
                 {
-                    Error(g, "Too many phase numbers");
+                    Error(g, "Too many layer numbers");
                 }
             }
         }
@@ -408,7 +406,7 @@ namespace Microsoft.Boogie
 
         public override Cmd VisitCallCmd(CallCmd node)
         {
-            int enclosingProcLayerNum = procToActionInfo[enclosingImpl.Proc].phaseNum;
+            int enclosingProcLayerNum = procToActionInfo[enclosingImpl.Proc].createdAtLayerNum;
             if (procToActionInfo.ContainsKey(node.Proc))
             {
                 ActionInfo actionInfo = procToActionInfo[node.Proc];
@@ -416,11 +414,11 @@ namespace Microsoft.Boogie
                 {
                     Error(node, "Target of async call cannot be an atomic action");
                 }
-                int calleeLayerNum = procToActionInfo[node.Proc].phaseNum;
+                int calleeLayerNum = procToActionInfo[node.Proc].createdAtLayerNum;
                 if (enclosingProcLayerNum < calleeLayerNum ||
                     (enclosingProcLayerNum == calleeLayerNum && actionInfo is AtomicActionInfo))
                 {
-                    Error(node, "The phase of the caller procedure must be greater than the phase of the callee");
+                    Error(node, "The layer of the caller must be greater than the layer of the callee");
                 }
                 else if (enclosingProcLayerNum == calleeLayerNum && enclosingImpl.OutParams.Count > 0)
                 {
@@ -439,7 +437,7 @@ namespace Microsoft.Boogie
                 }
                 if (actionInfo.availableUptoLayerNum < enclosingProcLayerNum)
                 {
-                    Error(node, "The callee is not available in the phase of the caller procedure");
+                    Error(node, "The callee is not available in the caller procedure");
                 }
             }
             return base.VisitCallCmd(node);
@@ -447,7 +445,7 @@ namespace Microsoft.Boogie
 
         public override Cmd VisitParCallCmd(ParCallCmd node)
         {
-            int enclosingProcLayerNum = procToActionInfo[enclosingImpl.Proc].phaseNum;
+            int enclosingProcLayerNum = procToActionInfo[enclosingImpl.Proc].createdAtLayerNum;
             bool isLeftMover = true;
             bool isRightMover = true;
             int maxCalleeLayerNum = 0;
@@ -457,9 +455,9 @@ namespace Microsoft.Boogie
                 ActionInfo actionInfo = procToActionInfo[iter.Proc];
                 isLeftMover = isLeftMover && actionInfo.IsLeftMover;
                 isRightMover = isRightMover && actionInfo.IsRightMover;
-                if (actionInfo.phaseNum > maxCalleeLayerNum)
+                if (actionInfo.createdAtLayerNum > maxCalleeLayerNum)
                 { 
-                    maxCalleeLayerNum = actionInfo.phaseNum; 
+                    maxCalleeLayerNum = actionInfo.createdAtLayerNum; 
                 }
                 if (actionInfo is AtomicActionInfo)
                 {
@@ -472,7 +470,7 @@ namespace Microsoft.Boogie
             }
             if (maxCalleeLayerNum == enclosingProcLayerNum && numAtomicActions > 0)
             {
-                Error(node, "If some callee in the parallel call has the same phase as the enclosing procedure, then no callee can be an atomic action");
+                Error(node, "If some callee in the parallel call has the same layer as the enclosing procedure, then no callee can be an atomic action");
             }
             return base.VisitParCallCmd(node);
         }
@@ -541,7 +539,7 @@ namespace Microsoft.Boogie
             }
             else
             {
-                CheckAndAddLayers(ensures, ensures.Attributes, actionInfo.phaseNum);
+                CheckAndAddLayers(ensures, ensures.Attributes, actionInfo.createdAtLayerNum);
             }
             return ret;
         }
@@ -553,7 +551,7 @@ namespace Microsoft.Boogie
             canAccessSharedVars = true;
             Requires ret = base.VisitRequires(requires);
             canAccessSharedVars = false;
-            CheckAndAddLayers(requires, requires.Attributes, procToActionInfo[enclosingProc].phaseNum);
+            CheckAndAddLayers(requires, requires.Attributes, procToActionInfo[enclosingProc].createdAtLayerNum);
             return ret;
         }
 
@@ -568,32 +566,32 @@ namespace Microsoft.Boogie
             Cmd ret = base.VisitAssertCmd(node);
             canAccessAuxVars = false;
             canAccessSharedVars = false;
-            CheckAndAddLayers(node, node.Attributes, procToActionInfo[enclosingImpl.Proc].phaseNum);
+            CheckAndAddLayers(node, node.Attributes, procToActionInfo[enclosingImpl.Proc].createdAtLayerNum);
             return ret;
         }
 
         private void CheckAndAddLayers(Absy node, QKeyValue attributes, int enclosingProcLayerNum)
         {
-            List<int> attrs = FindIntAttributes(attributes, "layer");
+            List<int> attrs = FindLayers(attributes);
             if (attrs.Count == 0)
             {
-                Error(node, "phase not present");
+                Error(node, "layer not present");
                 return;
             }
             absyToLayerNums[node] = new HashSet<int>();
-            foreach (int phaseNum in attrs)
+            foreach (int layerNum in attrs)
             {
-                if (phaseNum > enclosingProcLayerNum)
+                if (layerNum > enclosingProcLayerNum)
                 {
-                    Error(node, "The phase cannot be greater than the phase of enclosing procedure");
+                    Error(node, "The layer cannot be greater than the layer of enclosing procedure");
                 }
-                else if (maxLayerNum < phaseNum && phaseNum <= minLayerNum)
+                else if (maxLayerNum < layerNum && layerNum <= minLayerNum)
                 {
-                    absyToLayerNums[node].Add(phaseNum);
+                    absyToLayerNums[node].Add(layerNum);
                 }
                 else
                 {
-                    Error(node, string.Format("A variable being accessed in this specification is unavailable at phase {0}", phaseNum));
+                    Error(node, string.Format("A variable being accessed in this specification is unavailable at layer {0}", layerNum));
                 }
             }
         }

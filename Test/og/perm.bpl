@@ -1,6 +1,6 @@
 // RUN: %boogie -noinfer -typeEncoding:m -useArrayTheory "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
-var {:layer 1} x: int;
+var {:layer 0,1} x: int;
 function {:builtin "MapConst"} ch_mapconstbool(x: bool) : [int]bool;
 
 function {:builtin "MapOr"} ch_mapunion(x: [int]bool, y: [int]bool) : [int]bool;

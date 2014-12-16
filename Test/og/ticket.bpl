@@ -8,10 +8,10 @@ axiom (forall x: int, y: int :: RightClosed(x)[y] <==> y <= x);
 type X;
 function {:builtin "MapConst"} mapconstbool(bool): [X]bool;
 const nil: X;
-var {:layer 2} t: int;
-var {:layer 2} s: int;
-var {:layer 2} cs: X;
-var {:layer 2} T: [int]bool;
+var {:layer 0,2} t: int;
+var {:layer 0,2} s: int;
+var {:layer 0,2} cs: X;
+var {:layer 0,2} T: [int]bool;
 
 function {:builtin "MapConst"} MapConstBool(bool) : [X]bool;
 function {:inline} {:linear "tid"} TidCollector(x: X) : [X]bool

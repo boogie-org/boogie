@@ -6,10 +6,10 @@ const unique null : int;
 const unique nil: X;
 const unique done: X;
 
-var elt : [int]int;
-var valid : [int]bool;
-var lock : [int]X;
-var owner : [int]X;
+var {:layer 0} elt : [int]int;
+var {:layer 0} valid : [int]bool;
+var {:layer 0} lock : [int]X;
+var {:layer 0} owner : [int]X;
 const max : int;
 
 function {:builtin "MapConst"} MapConstBool(bool) : [X]bool;

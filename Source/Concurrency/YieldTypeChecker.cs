@@ -81,7 +81,7 @@ namespace Microsoft.Boogie
             Dictionary<int, HashSet<int>> simulationRelation = x.ComputeSimulationRelation();
             if (simulationRelation[initialState].Count == 0)
             {
-                moverTypeChecker.Error(impl, string.Format("Implementation {0} fails simulation check A at phase {1}. An action must be preceded by a yield.\n", impl.Name, currLayerNum));
+                moverTypeChecker.Error(impl, string.Format("Implementation {0} fails simulation check A at layer {1}. An action must be preceded by a yield.\n", impl.Name, currLayerNum));
             }
         }
 
@@ -97,7 +97,7 @@ namespace Microsoft.Boogie
             Dictionary<int, HashSet<int>> simulationRelation = x.ComputeSimulationRelation();
             if (simulationRelation[initialState].Count == 0)
             {
-                moverTypeChecker.Error(impl, string.Format("Implementation {0} fails simulation check B at phase {1}. An action must be succeeded by a yield.\n", impl.Name, currLayerNum));
+                moverTypeChecker.Error(impl, string.Format("Implementation {0} fails simulation check B at layer {1}. An action must be succeeded by a yield.\n", impl.Name, currLayerNum));
             }
         }
 
@@ -115,7 +115,7 @@ namespace Microsoft.Boogie
             Dictionary<int, HashSet<int>> simulationRelation = x.ComputeSimulationRelation();
             if (simulationRelation[initialState].Count == 0)
             {
-                moverTypeChecker.Error(impl, string.Format("Implementation {0} fails simulation check C at phase {1}. Transactions must be separated by a yield.\n", impl.Name, currLayerNum));
+                moverTypeChecker.Error(impl, string.Format("Implementation {0} fails simulation check C at layer {1}. Transactions must be separated by a yield.\n", impl.Name, currLayerNum));
             }
         }
 
@@ -136,15 +136,15 @@ namespace Microsoft.Boogie
         {
             foreach (var impl in moverTypeChecker.program.Implementations)
             {
-                if (!moverTypeChecker.procToActionInfo.ContainsKey(impl.Proc) || moverTypeChecker.procToActionInfo[impl.Proc].phaseNum == 0) continue;
+                if (!moverTypeChecker.procToActionInfo.ContainsKey(impl.Proc) || moverTypeChecker.procToActionInfo[impl.Proc].createdAtLayerNum == 0) continue;
                 impl.PruneUnreachableBlocks();
                 Graph<Block> implGraph = Program.GraphFromImpl(impl);
                 implGraph.ComputeLoops();
-                int specLayerNum = moverTypeChecker.procToActionInfo[impl.Proc].phaseNum;
-                foreach (int phaseNum in moverTypeChecker.AllLayerNums)
+                int specLayerNum = moverTypeChecker.procToActionInfo[impl.Proc].createdAtLayerNum;
+                foreach (int layerNum in moverTypeChecker.AllLayerNums)
                 {
-                    if (phaseNum > specLayerNum) continue;
-                    YieldTypeChecker executor = new YieldTypeChecker(moverTypeChecker, impl, phaseNum, implGraph.Headers);
+                    if (layerNum > specLayerNum) continue;
+                    YieldTypeChecker executor = new YieldTypeChecker(moverTypeChecker, impl, layerNum, implGraph.Headers);
                 }
             }
         }
@@ -227,7 +227,7 @@ namespace Microsoft.Boogie
                         if (callCmd.IsAsync)
                         {
                             ActionInfo actionInfo = moverTypeChecker.procToActionInfo[callCmd.Proc];
-                            if (currLayerNum <= actionInfo.phaseNum)
+                            if (currLayerNum <= actionInfo.createdAtLayerNum)
                                 edgeLabels[edge] = 'L';
                             else
                                 edgeLabels[edge] = 'B';
@@ -240,7 +240,7 @@ namespace Microsoft.Boogie
                         {
                             MoverType moverType;
                             ActionInfo actionInfo = moverTypeChecker.procToActionInfo[callCmd.Proc];
-                            if (actionInfo.phaseNum >= currLayerNum)
+                            if (actionInfo.createdAtLayerNum >= currLayerNum)
                             {
                                 moverType = MoverType.Top;
                             }
@@ -280,7 +280,7 @@ namespace Microsoft.Boogie
                         bool isLeftMover = true;
                         foreach (CallCmd callCmd in parCallCmd.CallCmds)
                         {
-                            if (moverTypeChecker.procToActionInfo[callCmd.Proc].phaseNum >= currLayerNum)
+                            if (moverTypeChecker.procToActionInfo[callCmd.Proc].createdAtLayerNum >= currLayerNum)
                             {
                                 isYield = true;
                             }
