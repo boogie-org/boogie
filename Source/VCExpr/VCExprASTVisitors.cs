@@ -288,14 +288,15 @@ namespace Microsoft.Boogie.VCExprAST {
            node.Op == VCExpressionGenerator.ImpliesOp)) {
         Contract.Assert(node.Op != null);
         VCExprOp op = node.Op;
-
-        IEnumerator enumerator = new VCExprNAryUniformOpEnumerator(node);
-        enumerator.MoveNext();  // skip the node itself
-
+        HashSet<VCExprOp> ops = new HashSet<VCExprOp>();
+        ops.Add(VCExpressionGenerator.AndOp);
+        ops.Add(VCExpressionGenerator.OrOp);
+        ops.Add(VCExpressionGenerator.ImpliesOp);
+        IEnumerator enumerator = new VCExprNAryMultiUniformOpEnumerator(node, ops);
         while (enumerator.MoveNext()) {
-          VCExpr/*!*/ expr = cce.NonNull((VCExpr/*!*/)enumerator.Current);
+          VCExpr expr = cce.NonNull((VCExpr)enumerator.Current);
           VCExprNAry naryExpr = expr as VCExprNAry;
-          if (naryExpr == null || !naryExpr.Op.Equals(op)) {
+          if (naryExpr == null || !ops.Contains(naryExpr.Op)) {
             expr.Accept(this, arg);
           } else {
             StandardResult(expr, arg);
@@ -431,6 +432,28 @@ namespace Microsoft.Boogie.VCExprAST {
         // (those are too interesting ...)
              expr.TypeParamArity == 0;
     }
+  }
+
+  public class VCExprNAryMultiUniformOpEnumerator : VCExprNAryEnumerator
+  {
+      private readonly HashSet<VCExprOp> Ops;
+      [ContractInvariantMethod]
+      void ObjectInvariant()
+      {
+          Contract.Invariant(Ops != null);
+      }
+
+      public VCExprNAryMultiUniformOpEnumerator(VCExprNAry completeExpr, HashSet<VCExprOp> ops)
+          : base(completeExpr)
+      {
+          Contract.Requires(completeExpr != null);
+
+          this.Ops = ops;
+      }
+      protected override bool Descend(VCExprNAry expr)
+      {
+          return Ops.Contains(expr.Op) && expr.TypeParamArity == 0;
+      }
   }
 
   //////////////////////////////////////////////////////////////////////////////

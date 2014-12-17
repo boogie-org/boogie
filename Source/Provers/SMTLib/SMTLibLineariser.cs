@@ -211,24 +211,53 @@ namespace Microsoft.Boogie.SMTLib
 
     public bool Visit(VCExprNAry node, LineariserOptions options)
     {
-      //Contract.Requires(node != null);
-      //Contract.Requires(options != null);
-
       VCExprOp op = node.Op;
       Contract.Assert(op != null);
+      
+      if (op.Equals(VCExpressionGenerator.ImpliesOp))
+      {
+          // handle this operator without recursion
+          VCExprNAry iter = node;
+          List<VCExpr> conjuncts = new List<VCExpr>();
+          VCExpr next = null;
+          do
+          {
+              conjuncts.Add(iter[0]);
+              next = iter[1];
+              iter = next as VCExprNAry;
+              if (iter == null) break;
+          }
+          while (iter.Op.Equals(VCExpressionGenerator.ImpliesOp));
+
+          wr.Write("(=> ");
+          if (conjuncts.Count == 1)
+          {
+              Linearise(conjuncts[0], options);
+          }
+          else {
+            wr.Write("(and");
+            foreach (var e in conjuncts)
+            {
+                wr.Write(" ");
+                Linearise(e, options);
+            }
+            wr.Write(")");
+          }
+          wr.Write(" ");
+          Linearise(next, options);
+          wr.Write(")");
+          return true;
+      }
 
       if (op.Equals(VCExpressionGenerator.AndOp) ||
            op.Equals(VCExpressionGenerator.OrOp)) {
         // handle these operators without recursion
-
-        wr.Write("({0}",
-          op.Equals(VCExpressionGenerator.AndOp) ? "and" : "or");
+        wr.Write("({0}", op.Equals(VCExpressionGenerator.AndOp) ? "and" : "or");
         foreach (var ch in node.UniformArguments) {
           wr.Write("\n");
           Linearise(ch, options);
         }
         wr.Write(")");
-
         return true;
       }
 
