@@ -199,12 +199,23 @@ namespace Microsoft.Boogie
         }
     }
 
+    public class SharedVariableInfo
+    {
+        public int introLayerNum;
+        public int hideLayerNum;
+
+        public SharedVariableInfo(int introLayerNum, int hideLayerNum)
+        {
+            this.introLayerNum = introLayerNum;
+            this.hideLayerNum = hideLayerNum;
+        }
+    }
+
     public class MoverTypeChecker : ReadOnlyVisitor
     {
         CheckingContext checkingContext;
         public int errorCount;
-        public Dictionary<Variable, int> introduceLayerNums;
-        public Dictionary<Variable, int> hideLayerNums;
+        public Dictionary<Variable, SharedVariableInfo> globalVarToSharedVarInfo;
         Procedure enclosingProc;
         Implementation enclosingImpl;
         public Dictionary<Procedure, ActionInfo> procToActionInfo;
@@ -334,12 +345,16 @@ namespace Microsoft.Boogie
             YieldTypeChecker.PerformYieldSafeCheck(this);
         }
 
+        public IEnumerable<Variable> SharedVariables
+        {
+            get { return this.globalVarToSharedVarInfo.Keys;  }
+        }
+
         public MoverTypeChecker(Program program)
         {
             this.auxVars = new HashSet<Variable>();
             this.absyToLayerNums = new Dictionary<Absy, HashSet<int>>();
-            this.introduceLayerNums = new Dictionary<Variable, int>();
-            this.hideLayerNums = new Dictionary<Variable, int>();
+            this.globalVarToSharedVarInfo = new Dictionary<Variable, SharedVariableInfo>();
             this.procToActionInfo = new Dictionary<Procedure, ActionInfo>();
             this.errorCount = 0;
             this.checkingContext = new CheckingContext(null);
@@ -359,13 +374,11 @@ namespace Microsoft.Boogie
                 }
                 else if (layerNums.Count == 1)
                 {
-                    this.introduceLayerNums[g] = layerNums[0];
-                    this.hideLayerNums[g] = int.MaxValue;
+                    this.globalVarToSharedVarInfo[g] = new SharedVariableInfo(layerNums[0], int.MaxValue);
                 }
                 else if (layerNums.Count == 2)
                 {
-                    this.introduceLayerNums[g] = layerNums[0];
-                    this.hideLayerNums[g] = layerNums[1];
+                    this.globalVarToSharedVarInfo[g] = new SharedVariableInfo(layerNums[0], layerNums[1]);
                 }
                 else
                 {
@@ -506,13 +519,13 @@ namespace Microsoft.Boogie
                 }
                 else
                 {
-                    if (hideLayerNums[node.Decl] < minLayerNum)
+                    if (this.globalVarToSharedVarInfo[node.Decl].hideLayerNum < minLayerNum)
                     {
-                        minLayerNum = hideLayerNums[node.Decl];
+                        minLayerNum = this.globalVarToSharedVarInfo[node.Decl].hideLayerNum;
                     }
-                    if (introduceLayerNums[node.Decl] > maxLayerNum)
+                    if (this.globalVarToSharedVarInfo[node.Decl].introLayerNum > maxLayerNum)
                     {
-                        maxLayerNum = introduceLayerNums[node.Decl];
+                        maxLayerNum = this.globalVarToSharedVarInfo[node.Decl].introLayerNum;
                     }
                 }
             }
