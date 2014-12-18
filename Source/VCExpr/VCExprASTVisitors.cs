@@ -859,11 +859,14 @@ namespace Microsoft.Boogie.VCExprAST {
         NAryExprTodoStack.Push(exprTodo[i]);
     }
 
+    public virtual bool AvoidVisit(VCExprNAry node, Arg arg)
+    {
+        return true;
+    }
+
     public virtual VCExpr Visit(VCExprNAry node, Arg arg) {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
-      VCExprOp/*!*/ op = node.Op;
-      Contract.Assert(op != null);
       int initialStackSize = NAryExprTodoStack.Count;
       int initialResultStackSize = NAryExprResultStack.Count;
 
@@ -874,10 +877,10 @@ namespace Microsoft.Boogie.VCExprAST {
         Contract.Assert(subExpr != null);
 
         if (Object.ReferenceEquals(subExpr, CombineResultsMarker)) {
-          //
           // assemble a result
           VCExprNAry/*!*/ originalExpr = (VCExprNAry)NAryExprTodoStack.Pop();
           Contract.Assert(originalExpr != null);
+          VCExprOp/*!*/ op = originalExpr.Op;
           bool changed = false;
           List<VCExpr/*!*/>/*!*/ newSubExprs = new List<VCExpr/*!*/>();
 
@@ -893,8 +896,8 @@ namespace Microsoft.Boogie.VCExprAST {
           //
         } else {
           //
-          VCExprNAry narySubExpr = subExpr as VCExprNAry;
-          if (narySubExpr != null && narySubExpr.Op.Equals(op) &&
+            VCExprNAry narySubExpr = subExpr as VCExprNAry;
+          if (narySubExpr != null && this.AvoidVisit(narySubExpr, arg) &&
             // as in VCExprNAryUniformOpEnumerator, all expressions with
             // type parameters are allowed to be inspected more closely
               narySubExpr.TypeParamArity == 0) {

@@ -1087,6 +1087,12 @@ namespace Microsoft.Boogie.TypeErasure {
 
     ////////////////////////////////////////////////////////////////////////////
 
+    public override bool AvoidVisit(VCExprNAry node, VariableBindings arg)
+    {
+        return node.Op.Equals(VCExpressionGenerator.AndOp) ||
+               node.Op.Equals(VCExpressionGenerator.OrOp);
+    }
+
     public override VCExpr Visit(VCExprNAry node, VariableBindings bindings) {
       Contract.Requires(bindings != null);
       Contract.Requires(node != null);

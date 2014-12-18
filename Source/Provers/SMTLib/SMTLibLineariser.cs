@@ -211,57 +211,59 @@ namespace Microsoft.Boogie.SMTLib
 
     public bool Visit(VCExprNAry node, LineariserOptions options)
     {
-      VCExprOp op = node.Op;
-      Contract.Assert(op != null);
-      
-      if (op.Equals(VCExpressionGenerator.ImpliesOp))
-      {
-          // handle this operator without recursion
-          VCExprNAry iter = node;
-          List<VCExpr> conjuncts = new List<VCExpr>();
-          VCExpr next = null;
-          do
-          {
-              conjuncts.Add(iter[0]);
-              next = iter[1];
-              iter = next as VCExprNAry;
-              if (iter == null) break;
-          }
-          while (iter.Op.Equals(VCExpressionGenerator.ImpliesOp));
+        VCExprOp op = node.Op;
+        Contract.Assert(op != null);
 
-          wr.Write("(=> ");
-          if (conjuncts.Count == 1)
-          {
-              Linearise(conjuncts[0], options);
-          }
-          else {
-            wr.Write("(and");
-            foreach (var e in conjuncts)
+        var booleanOps = new HashSet<VCExprOp>();
+        booleanOps.Add(VCExpressionGenerator.NotOp);
+        booleanOps.Add(VCExpressionGenerator.ImpliesOp);
+        booleanOps.Add(VCExpressionGenerator.AndOp);
+        booleanOps.Add(VCExpressionGenerator.OrOp);
+        if (booleanOps.Contains(op))
+        {
+            Stack<VCExpr> exprs = new Stack<VCExpr>();
+            exprs.Push(node);
+            while (exprs.Count > 0)
             {
+                VCExpr expr = exprs.Pop();
+                if (expr == null)
+                {
+                    wr.Write(")");
+                    continue;
+                }
                 wr.Write(" ");
-                Linearise(e, options);
+                VCExprNAry naryExpr = expr as VCExprNAry;
+                if (naryExpr == null || !booleanOps.Contains(naryExpr.Op))
+                {
+                    Linearise(expr, options);
+                    continue;
+                }
+                else if (naryExpr.Op.Equals(VCExpressionGenerator.NotOp))
+                {
+                    wr.Write("(not");
+                }
+                else if (naryExpr.Op.Equals(VCExpressionGenerator.ImpliesOp))
+                {
+                    wr.Write("(=>");
+                }
+                else if (naryExpr.Op.Equals(VCExpressionGenerator.AndOp))
+                {
+                    wr.Write("(and");
+                }
+                else 
+                {
+                    System.Diagnostics.Debug.Assert(naryExpr.Op.Equals(VCExpressionGenerator.OrOp));
+                    wr.Write("(or");
+                }
+                exprs.Push(null);
+                for (int i = naryExpr.Arity - 1; i >= 0; i--)
+                {
+                    exprs.Push(naryExpr[i]);
+                }
             }
-            wr.Write(")");
-          }
-          wr.Write(" ");
-          Linearise(next, options);
-          wr.Write(")");
-          return true;
-      }
-
-      if (op.Equals(VCExpressionGenerator.AndOp) ||
-           op.Equals(VCExpressionGenerator.OrOp)) {
-        // handle these operators without recursion
-        wr.Write("({0}", op.Equals(VCExpressionGenerator.AndOp) ? "and" : "or");
-        foreach (var ch in node.UniformArguments) {
-          wr.Write("\n");
-          Linearise(ch, options);
+            return true;
         }
-        wr.Write(")");
-        return true;
-      }
-
-      return node.Accept<bool, LineariserOptions/*!*/>(OpLineariser, options);
+        return node.Accept<bool, LineariserOptions/*!*/>(OpLineariser, options);
     }
 
     /////////////////////////////////////////////////////////////////////////////////////
