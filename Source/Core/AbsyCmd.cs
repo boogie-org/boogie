@@ -1269,12 +1269,38 @@ namespace Microsoft.Boogie {
   // class for parallel assignments, which subsumes both the old
   // SimpleAssignCmd and the old MapAssignCmd
   public class AssignCmd : Cmd {
-    public List<AssignLhs/*!*/>/*!*/ Lhss;
-    public List<Expr/*!*/>/*!*/ Rhss;
+    private List<AssignLhs/*!*/>/*!*/ _lhss;
+
+    public IList<AssignLhs/*!*/>/*!*/ Lhss {
+      get {
+        Contract.Ensures(cce.NonNullElements(Contract.Result<IList<AssignLhs>>()));
+        Contract.Ensures(Contract.Result<IList<AssignLhs>>().IsReadOnly);
+        return this._lhss.AsReadOnly();
+      }
+      set {
+        Contract.Requires(cce.NonNullElements(value));
+        this._lhss = new List<AssignLhs>(value);
+      }
+    }
+
+    private List<Expr/*!*/>/*!*/ _rhss;
+
+    public IList<Expr/*!*/>/*!*/ Rhss {
+      get {
+        Contract.Ensures(cce.NonNullElements(Contract.Result<IList<Expr>>()));
+        Contract.Ensures(Contract.Result<IList<Expr>>().IsReadOnly);
+        return this._rhss.AsReadOnly();
+      }
+      set {
+        Contract.Requires(cce.NonNullElements(value));
+        this._rhss = new List<Expr>(value);
+      }
+    }
+
     [ContractInvariantMethod]
     void ObjectInvariant() {
-      Contract.Invariant(cce.NonNullElements(Lhss));
-      Contract.Invariant(cce.NonNullElements(Rhss));
+      Contract.Invariant(cce.NonNullElements(this._lhss));
+      Contract.Invariant(cce.NonNullElements(this._rhss));
     }
 
 
@@ -1283,8 +1309,8 @@ namespace Microsoft.Boogie {
       Contract.Requires(tok != null);
       Contract.Requires(cce.NonNullElements(rhss));
       Contract.Requires(cce.NonNullElements(lhss));
-      Lhss = lhss;
-      Rhss = rhss;
+      this._lhss = lhss;
+      this._rhss = rhss;
     }
 
     public override void Emit(TokenTextWriter stream, int level) {
