@@ -21,11 +21,23 @@ namespace Microsoft.Boogie {
     void ObjectInvariant() {
       Contract.Invariant(ToolName != null);
       Contract.Invariant(DescriptiveToolName != null);
-      Contract.Invariant(Environment != null);
+      Contract.Invariant(this._environment != null);
       Contract.Invariant(cce.NonNullElements(Files));
     }
 
-    public string/*!*/ Environment = "";
+    private string/*!*/ _environment = "";
+
+    public string Environment {
+      get {
+        Contract.Ensures(Contract.Result<string>() != null);
+        return this._environment;
+      }
+      set {
+        Contract.Requires(value != null);
+        this._environment = value;
+      }
+    }
+
     public List<string/*!*/>/*!*/ Files = new List<string/*!*/>();
     public bool HelpRequested = false;
     public bool AttrHelpRequested = false;
