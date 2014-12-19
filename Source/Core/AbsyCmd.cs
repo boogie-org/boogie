@@ -1724,20 +1724,43 @@ namespace Microsoft.Boogie {
   public class StateCmd : Cmd {
     [ContractInvariantMethod]
     void ObjectInvariant() {
-      Contract.Invariant(Locals != null);
-      Contract.Invariant(Cmds != null);
+      Contract.Invariant(this._locals != null);
+      Contract.Invariant(this._cmds != null);
     }
 
-    public /*readonly, except for the StandardVisitor*/ List<Variable>/*!*/ Locals;
-    public /*readonly, except for the StandardVisitor*/ List<Cmd>/*!*/ Cmds;
+    private List<Variable> _locals;
+
+    public /*readonly, except for the StandardVisitor*/ List<Variable>/*!*/ Locals {
+      get {
+        Contract.Ensures(Contract.Result<List<Variable>>() != null);
+        return this._locals;
+      }
+      internal set {
+        Contract.Requires(value != null);
+        this._locals = value;
+      }
+    }
+
+    private List<Cmd> _cmds;
+
+    public /*readonly, except for the StandardVisitor*/ List<Cmd>/*!*/ Cmds {
+      get {
+        Contract.Ensures(Contract.Result<List<Variable>>() != null);
+        return this._cmds;
+      }
+      internal set {
+        Contract.Requires(value != null);
+        this._cmds = value;
+      }
+    }
 
     public StateCmd(IToken tok, List<Variable>/*!*/ locals, List<Cmd>/*!*/ cmds)
       : base(tok) {
       Contract.Requires(locals != null);
       Contract.Requires(cmds != null);
       Contract.Requires(tok != null);
-      this.Locals = locals;
-      this.Cmds = cmds;
+      this._locals = locals;
+      this._cmds = cmds;
     }
 
     public override void Resolve(ResolutionContext rc) {
