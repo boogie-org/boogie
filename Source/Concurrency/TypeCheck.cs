@@ -453,6 +453,10 @@ namespace Microsoft.Boogie
                     Error(node, "The callee is not available in the caller procedure");
                 }
             }
+            else
+            {
+                Error(node, "Yielding procedure can call only a yielding procedure");
+            }
             return base.VisitCallCmd(node);
         }
 
@@ -517,7 +521,7 @@ namespace Microsoft.Boogie
                 {
                     Error(node, "Shared variable can be accessed only in atomic actions or specifications");
                 }
-                else
+                else if (this.globalVarToSharedVarInfo.ContainsKey(node.Decl))
                 {
                     if (this.globalVarToSharedVarInfo[node.Decl].hideLayerNum < minLayerNum)
                     {
@@ -527,6 +531,10 @@ namespace Microsoft.Boogie
                     {
                         maxLayerNum = this.globalVarToSharedVarInfo[node.Decl].introLayerNum;
                     }
+                }
+                else
+                {
+                    Error(node, "Accessed shared variable must have layer annotation");
                 }
             }
             else if (node.Decl is LocalVariable && auxVars.Contains(node.Decl) && !canAccessAuxVars)

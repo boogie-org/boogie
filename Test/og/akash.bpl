@@ -18,13 +18,13 @@ function {:inline} {:linear "2"} SetCollector2(x: [int]bool) : [int]bool
   x
 }
 
-procedure Allocate() returns ({:linear "tid"} xls: int);
+procedure {:yields} {:layer 1} Allocate() returns ({:linear "tid"} xls: int);
 ensures {:layer 1} xls != 0;
 
-procedure Allocate_1() returns ({:linear "1"} xls: [int]bool);
+procedure {:yields} {:layer 1} Allocate_1() returns ({:linear "1"} xls: [int]bool);
 ensures {:layer 1} xls == mapconstbool(true);
 
-procedure Allocate_2() returns ({:linear "2"} xls: [int]bool);
+procedure {:yields} {:layer 1} Allocate_2() returns ({:linear "2"} xls: [int]bool);
 ensures {:layer 1} xls == mapconstbool(true);
 
 var {:layer 0,1} g: int;

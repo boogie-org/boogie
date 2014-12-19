@@ -33,7 +33,7 @@ function {:inline} Inv2(tickets: [int]bool, ticket: int, lock: X): (bool)
     if (lock == nil) then tickets == RightOpen(ticket) else tickets == RightClosed(ticket)
 }
 
-procedure Allocate({:linear_in "tid"} xls':[X]bool) returns ({:linear "tid"} xls: [X]bool, {:linear "tid"} xl: X);
+procedure {:yields} {:layer 2} Allocate({:linear_in "tid"} xls':[X]bool) returns ({:linear "tid"} xls: [X]bool, {:linear "tid"} xl: X);
 ensures {:layer 1} {:layer 2} xl != nil;
 
 procedure {:yields} {:layer 2} main({:linear_in "tid"} xls':[X]bool)
@@ -53,7 +53,7 @@ requires {:layer 2} xls' == mapconstbool(true);
     invariant {:layer 1} Inv1(T, t);
     invariant {:layer 2} Inv2(T, s, cs);
     {
-        call xls, tid := Allocate(xls);
+        par xls, tid := Allocate(xls) | Yield1() | Yield2();
         async call Customer(tid);
     	par Yield1() | Yield2();
     }

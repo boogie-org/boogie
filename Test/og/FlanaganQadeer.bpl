@@ -11,7 +11,7 @@ function {:inline} {:linear "tid"} TidCollector(x: X) : [X]bool
   MapConstBool(false)[x := true]
 }
 
-procedure Allocate() returns ({:linear "tid"} xls: X);
+procedure {:yields} {:layer 1} Allocate() returns ({:linear "tid"} xls: X);
 ensures {:layer 1} xls != nil;
 
 procedure {:yields} {:layer 1} main()

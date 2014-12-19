@@ -24,6 +24,14 @@ function {:inline} Inv(ghostLock: X, currsize: int, newsize: int) : (bool)
     (ghostLock == nil <==> currsize == newsize)
 }
 
+procedure {:yields} {:layer 1} Yield()
+requires {:layer 1} Inv(ghostLock, currsize, newsize);
+ensures {:layer 1} Inv(ghostLock, currsize, newsize);
+{
+   yield;
+   assert {:layer 1} Inv(ghostLock, currsize, newsize);
+}
+
 procedure {:yields} {:layer 1} YieldToReadCache({:linear "tid"} tid: X)
 requires {:layer 1} Inv(ghostLock, currsize, newsize) && tid != nil;
 ensures {:layer 1} Inv(ghostLock, currsize, newsize) && old(currsize) <= currsize;
@@ -40,18 +48,16 @@ ensures {:layer 1} Inv(ghostLock, currsize, newsize) && ghostLock == tid && old(
     assert {:layer 1} Inv(ghostLock, currsize, newsize) && tid != nil && ghostLock == tid && old(currsize) == currsize && old(newsize) == newsize;
 }
 
-procedure Allocate({:linear_in "tid"} xls': [X]bool) returns ({:linear "tid"} xls: [X]bool, {:linear "tid"} xl: X);
+procedure {:yields} {:layer 1} Allocate() returns ({:linear "tid"} xl: X);
 ensures {:layer 1} xl != nil;
 
-procedure {:yields} {:layer 1} main({:linear_in "tid"} xls':[X]bool)
-requires {:layer 1} xls' == mapconstbool(true);
+procedure {:yields} {:layer 1} main({:linear_in "tid"} xls: [X]bool)
+requires {:layer 1} xls == mapconstbool(true);
 {
     var {:linear "tid"} tid: X;
-    var {:linear "tid"} xls: [X]bool;
 
     yield;
 
-    xls := xls';
     call Init(xls);
     
     yield;
@@ -60,7 +66,7 @@ requires {:layer 1} xls' == mapconstbool(true);
     while (*)
     invariant {:layer 1} Inv(ghostLock, currsize, newsize);
     {
-        call xls, tid := Allocate(xls);
+        par tid := Allocate() | Yield();
 	yield;
     	assert {:layer 1} Inv(ghostLock, currsize, newsize);
         async call Thread(tid);
@@ -168,7 +174,7 @@ ensures {:layer 1} Inv(ghostLock, currsize, newsize);
     par YieldToReadCache(tid);
 }
 
-procedure {:yields} {:layer 0,1} Init({:linear "tid"} xls:[X]bool);
+procedure {:yields} {:layer 0,1} Init({:linear_in "tid"} xls:[X]bool);
 ensures {:atomic} |{ A: assert xls == mapconstbool(true); currsize := 0; newsize := 0; lock := nil; ghostLock := nil; return true; }|;
 
 procedure {:yields} {:layer 0,1} ReadCurrsize({:linear "tid"} tid: X) returns (val: int);

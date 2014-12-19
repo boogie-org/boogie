@@ -24,11 +24,11 @@ var {:layer 0,1} x: int;
 var {:layer 0,1} l: X;
 const nil: X;
 
-procedure Split({:linear_in "x"} xls: [X]bool) returns ({:linear "x"} xls1: [X]bool, {:linear "x"} xls2: [X]bool);
-ensures xls == MapOr(xls1, xls2) && xls1 != None() && xls2 != None();
+procedure {:yields} {:layer 1} Split({:linear_in "x"} xls: [X]bool) returns ({:linear "x"} xls1: [X]bool, {:linear "x"} xls2: [X]bool);
+ensures {:layer 1} xls == MapOr(xls1, xls2) && xls1 != None() && xls2 != None();
 
-procedure Allocate() returns ({:linear "tid"} xls: X);
-ensures xls != nil;
+procedure {:yields} {:layer 1} Allocate() returns ({:linear "tid"} xls: X);
+ensures {:layer 1} xls != nil;
 
 procedure {:yields} {:layer 0,1} Set(v: int);
 ensures {:atomic} |{A: x := v; return true; }|;

@@ -1,10 +1,10 @@
-t1.bpl(60,5): Error: Non-interference check failed
+t1.bpl(65,5): Error: Non-interference check failed
 Execution trace:
     (0,0): og_init
-    t1.bpl(80,13): anon0
+    t1.bpl(84,13): anon0
     (0,0): anon05
     (0,0): inline$SetG_1$0$Entry
     t1.bpl(34,21): inline$SetG_1$0$this_A
-    (0,0): inline$Impl_YieldChecker_A_1$0$L2
+    (0,0): inline$Impl_YieldChecker_A_1$0$L1
 
-Boogie program verifier finished with 2 verified, 1 error
+Boogie program verifier finished with 3 verified, 1 error

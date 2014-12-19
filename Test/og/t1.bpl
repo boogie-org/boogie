@@ -18,13 +18,13 @@ function {:inline} {:linear "2"} SetCollector2(x: [int]bool) : [int]bool
   x
 }
 
-procedure Allocate() returns ({:linear "tid"} xls: int);
+procedure {:yields} {:layer 1} Allocate() returns ({:linear "tid"} xls: int);
 ensures {:layer 1} xls != 0;
 
-procedure Allocate_1() returns ({:linear "1"} xls: [int]bool);
+procedure {:yields} {:layer 1} Allocate_1() returns ({:linear "1"} xls: [int]bool);
 ensures {:layer 1} xls == mapconstbool(true);
 
-procedure Allocate_2() returns ({:linear "2"} xls: [int]bool);
+procedure {:yields} {:layer 1} Allocate_2() returns ({:linear "2"} xls: [int]bool);
 ensures {:layer 1} xls == mapconstbool(true);
 
 var {:layer 0,1} g: int;
@@ -35,6 +35,14 @@ ensures {:atomic} |{A: g := val; return true; }|;
 
 procedure {:yields} {:layer 0,1} SetH(val:int);
 ensures {:atomic} |{A: h := val; return true; }|;
+
+procedure {:yields} {:layer 1} Yield({:linear "1"} x: [int]bool)
+requires {:layer 1} x == mapconstbool(true) && g == 0;    
+ensures {:layer 1} x == mapconstbool(true) && g == 0;    
+{
+    yield;
+    assert {:layer 1} x == mapconstbool(true) && g == 0;    
+}
 
 procedure {:yields} {:layer 1} A({:linear_in "tid"} tid_in: int) returns ({:linear "tid"} tid_out: int) 
 {
@@ -47,19 +55,15 @@ procedure {:yields} {:layer 1} A({:linear_in "tid"} tid_in: int) returns ({:line
 
     yield;
     call SetG(0);
-    yield;
-    assert {:layer 1} x == mapconstbool(true);    
-    assert {:layer 1} g == 0;    
+    
+    par tid_child := Allocate() | Yield(x);
 
-    yield;
-    call tid_child := Allocate();
     async call B(tid_child, x);
 
     yield;
     assert {:layer 1} x == mapconstbool(true);    
     assert {:layer 1} g == 0;
 
-    yield;
     call SetH(0);
 
     yield;
