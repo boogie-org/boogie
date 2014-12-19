@@ -3008,18 +3008,31 @@ namespace Microsoft.Boogie {
   }
 
   public class HavocCmd : Cmd {
-    public List<IdentifierExpr>/*!*/ Vars;
+    private List<IdentifierExpr>/*!*/ _vars;
+
+    public List<IdentifierExpr>/*!*/ Vars {
+      get {
+        Contract.Ensures(Contract.Result<List<IdentifierExpr>>() != null);
+        return this._vars;
+      }
+      set {
+        Contract.Requires(value != null);
+        this._vars = value;
+      }
+    }
+
     [ContractInvariantMethod]
     void ObjectInvariant() {
-      Contract.Invariant(Vars != null);
+      Contract.Invariant(this._vars != null);
     }
 
     public HavocCmd(IToken/*!*/ tok, List<IdentifierExpr>/*!*/ vars)
       : base(tok) {
       Contract.Requires(tok != null);
       Contract.Requires(vars != null);
-      Vars = vars;
+      this._vars = vars;
     }
+
     public override void Emit(TokenTextWriter stream, int level) {
       //Contract.Requires(stream != null);
       stream.Write(this, level, "havoc ");
