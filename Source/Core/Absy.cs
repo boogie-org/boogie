@@ -38,15 +38,27 @@ namespace Microsoft.Boogie.AbstractInterpretation {
   }
 
   public class ProcedureSummaryEntry {
-    public HashSet<CallSite>/*!*/ ReturnPoints; // whenever OnExit changes, we start analysis again at all the ReturnPoints
-    [ContractInvariantMethod]
-    void ObjectInvariant() {
-      Contract.Invariant(ReturnPoints != null);
+
+    private HashSet<CallSite>/*!*/ _returnPoints; // whenever OnExit changes, we start analysis again at all the ReturnPoints
+
+    public HashSet<CallSite>/*!*/ ReturnPoints {
+      get {
+        Contract.Ensures(Contract.Result<HashSet<CallSite>>() != null);
+        return this._returnPoints;
+      }
+      set {
+        Contract.Requires(value != null);
+        this._returnPoints = value;
+      }
     }
 
+    [ContractInvariantMethod]
+    void ObjectInvariant() {
+      Contract.Invariant(this._returnPoints != null);
+    }
 
     public ProcedureSummaryEntry() {
-      this.ReturnPoints = new HashSet<CallSite>();
+      this._returnPoints = new HashSet<CallSite>();
     }
 
   } // class
