@@ -24,6 +24,7 @@ namespace Microsoft.Boogie {
       Contract.Invariant(DescriptiveToolName != null);
       Contract.Invariant(this._environment != null);
       Contract.Invariant(cce.NonNullElements(this._files));
+      Contract.Invariant(this._fileTimestamp != null);
     }
 
     private string/*!*/ _environment = "";
@@ -78,7 +79,19 @@ namespace Microsoft.Boogie {
       }
     }
 
-    public string/*!*/ FileTimestamp = cce.NonNull(DateTime.Now.ToString("o")).Replace(':', '.');
+    private string/*!*/ _fileTimestamp = cce.NonNull(DateTime.Now.ToString("o")).Replace(':', '.');
+
+    public string FileTimestamp {
+      get {
+        Contract.Ensures(Contract.Result<string>() != null);
+        return this._fileTimestamp;
+      }
+      set {
+        Contract.Requires(value != null);
+        this._fileTimestamp = value;
+      }
+    }
+
     public void ExpandFilename(ref string pattern, string logPrefix, string fileTimestamp) {
       if (pattern != null) {
         pattern = pattern.Replace("@PREFIX@", logPrefix).Replace("@TIME@", fileTimestamp);
@@ -358,10 +371,6 @@ namespace Microsoft.Boogie {
   /// superset of Boogie's options.
   /// </summary>
   public class CommandLineOptions : CommandLineOptionEngine {
-    [ContractInvariantMethod]
-    void ObjectInvariant() {
-      Contract.Invariant(FileTimestamp != null);
-    }
 
     public CommandLineOptions()
       : base("Boogie", "Boogie program verifier") {
