@@ -17,12 +17,13 @@ namespace Microsoft.Boogie {
   {
     public readonly string ToolName;
     public readonly string DescriptiveToolName;
+
     [ContractInvariantMethod]
     void ObjectInvariant() {
       Contract.Invariant(ToolName != null);
       Contract.Invariant(DescriptiveToolName != null);
       Contract.Invariant(this._environment != null);
-      Contract.Invariant(cce.NonNullElements(Files));
+      Contract.Invariant(cce.NonNullElements(this._files));
     }
 
     private string/*!*/ _environment = "";
@@ -38,7 +39,16 @@ namespace Microsoft.Boogie {
       }
     }
 
-    public List<string/*!*/>/*!*/ Files = new List<string/*!*/>();
+    private readonly List<string/*!*/>/*!*/ _files = new List<string/*!*/>();
+
+    public IList<string/*!*/>/*!*/ Files {
+      get {
+        Contract.Ensures(cce.NonNullElements(Contract.Result<IList<string>>()));
+        Contract.Ensures(Contract.Result<IList<string>>().IsReadOnly);
+        return this._files.AsReadOnly();
+      }
+    }
+
     public bool HelpRequested = false;
     public bool AttrHelpRequested = false;
 
@@ -314,12 +324,12 @@ namespace Microsoft.Boogie {
         if (isOption) {
           if (!ParseOption(ps.s.Substring(1), ps)) {
             if (Path.DirectorySeparatorChar == '/' && ps.s.StartsWith("/"))
-              Files.Add(arg);
+              this._files.Add(arg);
             else
               ps.Error("unknown switch: {0}", ps.s);
           }
         } else {
-          Files.Add(arg);
+          this._files.Add(arg);
         }
 
         ps.i = ps.nextIndex;
