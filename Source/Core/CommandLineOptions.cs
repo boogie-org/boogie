@@ -414,7 +414,6 @@ namespace Microsoft.Boogie {
     public bool DoomRestartTP = false;
     public bool PrintDesugarings = false;
     public string SimplifyLogFilePath = null;
-    public string/*!*/ LogPrefix = "";
     public bool PrintInstrumented = false;
     public bool InstrumentWithAsserts = false;
     public enum InstrumentationPlaces {
@@ -462,6 +461,19 @@ namespace Microsoft.Boogie {
     public string Z3ExecutablePath = null;
     public string CVC4ExecutablePath = null;
     public int KInductionDepth = -1;
+
+    private string/*!*/ _logPrefix = "";
+
+    public string LogPrefix {
+      get {
+        Contract.Ensures(Contract.Result<string>() != null);
+        return this._logPrefix;
+      }
+      set {
+        Contract.Requires(value != null);
+        this._logPrefix = value;
+      }
+    }
 
     public bool PrettyPrint = true;
 
