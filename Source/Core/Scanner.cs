@@ -229,16 +229,16 @@ public class Scanner {
 
 	private Buffer/*!*/ _buffer; // scanner buffer
 
-  public Buffer/*!*/ buffer {
-    get {
-      Contract.Ensures(Contract.Result<Buffer>() != null);
-      return this._buffer;
-    }
-    set {
-      Contract.Requires(value != null);
-      this._buffer = value;
-    }
-  }
+	public Buffer/*!*/ buffer {
+		get {
+			Contract.Ensures(Contract.Result<Buffer>() != null);
+			return this._buffer;
+		}
+		set {
+			Contract.Requires(value != null);
+			this._buffer = value;
+		}
+	}
 
 	Token/*!*/ t;          // current token
 	int ch;           // current input character
@@ -330,7 +330,7 @@ public class Scanner {
 	  Contract.Requires(fileName != null);
 		pt = tokens = new Token();  // first token is a dummy
 		t = new Token(); // dummy because t is a non-null field
-    this._buffer = new Buffer(s, true);
+		this._buffer = new Buffer(s, true);
 		this.errorHandler = errorHandler;
 		this.Filename = useBaseName? GetBaseName(fileName) : fileName;
 		Init();
