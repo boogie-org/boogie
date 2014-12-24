@@ -1283,6 +1283,16 @@ namespace Microsoft.Boogie {
       }
     }
 
+    internal IList<AssignLhs/*!*/>/*!*/ Lhss_NRO
+    {
+      get
+      {
+        Contract.Ensures(cce.NonNullElements(Contract.Result<IList<AssignLhs>>()));
+        Contract.Ensures(!Contract.Result<IList<AssignLhs>>().IsReadOnly);
+        return this._lhss;
+      }
+    }
+
     private List<Expr/*!*/>/*!*/ _rhss;
 
     public IList<Expr/*!*/>/*!*/ Rhss {
@@ -1297,6 +1307,16 @@ namespace Microsoft.Boogie {
       }
     }
 
+    internal IList<Expr/*!*/>/*!*/ Rhss_NRO
+    {
+      get
+      {
+        Contract.Ensures(cce.NonNullElements(Contract.Result<IList<Expr>>()));
+        Contract.Ensures(!Contract.Result<IList<Expr>>().IsReadOnly);
+        return this._rhss;
+      }
+    }
+
     [ContractInvariantMethod]
     void ObjectInvariant() {
       Contract.Invariant(cce.NonNullElements(this._lhss));
@@ -1304,13 +1324,13 @@ namespace Microsoft.Boogie {
     }
 
 
-    public AssignCmd(IToken tok, List<AssignLhs/*!*/>/*!*/ lhss, List<Expr/*!*/>/*!*/ rhss)
+    public AssignCmd(IToken tok, IList<AssignLhs/*!*/>/*!*/ lhss, IList<Expr/*!*/>/*!*/ rhss)
       : base(tok) {
       Contract.Requires(tok != null);
       Contract.Requires(cce.NonNullElements(rhss));
       Contract.Requires(cce.NonNullElements(lhss));
-      this._lhss = lhss;
-      this._rhss = rhss;
+      this._lhss = new List<AssignLhs>(lhss);
+      this._rhss = new List<Expr>(rhss);
     }
 
     public override void Emit(TokenTextWriter stream, int level) {
@@ -1748,7 +1768,7 @@ namespace Microsoft.Boogie {
         Contract.Ensures(Contract.Result<List<Variable>>() != null);
         return this._cmds;
       }
-      internal set {
+      set {
         Contract.Requires(value != null);
         this._cmds = value;
       }
