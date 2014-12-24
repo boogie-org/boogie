@@ -711,7 +711,7 @@ namespace Microsoft.Boogie {
       public bool J_Intervals = false;
       public bool DebugStatistics = false;
     }
-    public AiFlags/*!*/ Ai = new AiFlags();
+    public readonly AiFlags/*!*/ Ai = new AiFlags();
 
     public class ConcurrentHoudiniOptions
     {
