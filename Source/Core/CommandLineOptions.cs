@@ -703,9 +703,10 @@ namespace Microsoft.Boogie {
     [ContractInvariantMethod]
     void ObjectInvariant5() {
       Contract.Invariant(cce.NonNullElements(ProcsToCheck, true));
+      Contract.Invariant(Ai != null);
     }
 
-    public struct AiFlags {
+    public class AiFlags {
       public bool J_Trivial = false;
       public bool J_Intervals = false;
       public bool DebugStatistics = false;
