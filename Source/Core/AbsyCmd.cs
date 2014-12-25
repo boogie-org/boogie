@@ -1283,14 +1283,12 @@ namespace Microsoft.Boogie {
       }
     }
 
-    internal IList<AssignLhs/*!*/>/*!*/ Lhss_NRO
+    internal void SetLhs(int index, AssignLhs lhs)
     {
-      get
-      {
-        Contract.Ensures(cce.NonNullElements(Contract.Result<IList<AssignLhs>>()));
-        Contract.Ensures(!Contract.Result<IList<AssignLhs>>().IsReadOnly);
-        return this._lhss;
-      }
+      Contract.Requires(0 <= index && index < this.Lhss.Count);
+      Contract.Requires(lhs != null);
+      Contract.Ensures(this.Lhss[index] == lhs);
+      this._lhss[index] = lhs;
     }
 
     private List<Expr/*!*/>/*!*/ _rhss;
@@ -1307,14 +1305,12 @@ namespace Microsoft.Boogie {
       }
     }
 
-    internal IList<Expr/*!*/>/*!*/ Rhss_NRO
+    internal void SetRhs(int index, Expr rhs)
     {
-      get
-      {
-        Contract.Ensures(cce.NonNullElements(Contract.Result<IList<Expr>>()));
-        Contract.Ensures(!Contract.Result<IList<Expr>>().IsReadOnly);
-        return this._rhss;
-      }
+      Contract.Requires(0 <= index && index < this.Rhss.Count);
+      Contract.Requires(rhs != null);
+      Contract.Ensures(this.Rhss[index] == rhs);
+      this._rhss[index] = rhs;
     }
 
     [ContractInvariantMethod]

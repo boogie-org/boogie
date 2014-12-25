@@ -75,8 +75,8 @@ namespace Microsoft.Boogie {
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Cmd>() != null);
       for (int i = 0; i < node.Lhss.Count; ++i) {
-        node.Lhss_NRO[i] = cce.NonNull((AssignLhs)this.Visit(node.Lhss[i]));
-        node.Rhss_NRO[i] = cce.NonNull((Expr/*!*/)this.Visit(node.Rhss[i]));
+        node.SetLhs(i, cce.NonNull((AssignLhs)this.Visit(node.Lhss[i])));
+        node.SetRhs(i, cce.NonNull((Expr/*!*/)this.Visit(node.Rhss[i])));
       }
       return node;
     }
