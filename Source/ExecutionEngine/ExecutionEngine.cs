@@ -536,11 +536,11 @@ namespace Microsoft.Boogie
       }
     }
 
-    public static List<List<string>> LookForSnapshots(List<string> fileNames)
+    public static IList<IList<string>> LookForSnapshots(IList<string> fileNames)
     {
       Contract.Requires(fileNames != null);
 
-      var result = new List<List<string>>();
+      var result = new List<IList<string>>();
       for (int version = 0; true; version++)
       {
         var nextSnapshot = new List<string>();

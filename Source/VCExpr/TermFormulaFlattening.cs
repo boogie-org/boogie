@@ -155,6 +155,12 @@ Contract.Ensures(cce.NonNullElements(Contract.Result<List<VCExprLetBinding>>()))
 
     ////////////////////////////////////////////////////////////////////////////
 
+    public override bool AvoidVisit(VCExprNAry node, FlattenerState arg)
+    {
+        return node.Op.Equals(VCExpressionGenerator.AndOp) ||
+               node.Op.Equals(VCExpressionGenerator.OrOp);
+    }
+
     public override VCExpr Visit(VCExprNAry node, FlattenerState state){
 Contract.Requires(node != null);
 Contract.Ensures(Contract.Result<VCExpr>() != null);

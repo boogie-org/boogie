@@ -9,10 +9,6 @@ function {:inline} {:linear "Perm"} SetCollectorPerm(x: [int]bool) : [int]bool
   x
 }
 
-procedure Allocate_Perm({:linear_in "Perm"} Permissions: [int]bool) returns ({:linear "Perm"} xls: [int]bool);
-requires Permissions == mapconstbool(true);
-ensures xls == mapconstbool(true);
-
 procedure {:yields} {:layer 1} PB({:linear_in "Perm"} permVar_in:[int]bool)
 requires {:layer 1} permVar_in[0] && g == 0;
 {
@@ -31,14 +27,11 @@ requires {:layer 1} permVar_in[0] && g == 0;
 }
 
 procedure {:yields} {:layer 1} Main({:linear_in "Perm"} Permissions: [int]bool)
-requires {:layer 0,1} Permissions == mapconstbool(true);
+requires {:layer 1} Permissions == mapconstbool(true);
 {
-  var {:linear "Perm"} permVar_out: [int]bool;
-
-  call permVar_out := Allocate_Perm(Permissions);
   yield;
   call SetG(0);
-  async call PB(permVar_out);
+  async call PB(Permissions);
   yield;
 }
 

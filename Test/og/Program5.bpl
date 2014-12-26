@@ -5,8 +5,8 @@ const unique nil: Tid;
 function {:builtin "MapConst"} MapConstBool(bool): [Tid]bool;
 function {:builtin "MapOr"} MapOr([Tid]bool, [Tid]bool) : [Tid]bool;
 
-var {:layer 0,3} Color:int;
-var {:layer 0,3} lock:Tid;
+var {:layer 0} Color:int;
+var {:layer 0} lock:Tid;
 
 function {:inline} {:linear "tid"} TidCollector(x: Tid) : [Tid]bool
 {
@@ -72,6 +72,6 @@ procedure {:yields} {:layer 0,1} SetColorLocked({:linear "tid"} tid:Tid, newCol:
 procedure {:yields} {:layer 0,1} GetColorLocked({:linear "tid"} tid:Tid) returns (col:int);
   ensures {:both} |{A: assert tid != nil; assert lock == tid; col := Color; return true;}|;
 
-procedure {:yields} {:layer 1,2} GetColorNoLock() returns (col:int);
+procedure {:yields} {:layer 0,2} GetColorNoLock() returns (col:int);
   ensures {:atomic} |{A: col := Color; return true;}|;
 

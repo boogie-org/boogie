@@ -65,9 +65,11 @@ procedure {:yields} {:layer 1} D()
     yield;
 }
 
-procedure E({:linear_in "D"} a: X, {:linear_in "D"} b: X) returns ({:linear "D"} c: X, {:linear "D"} d: X)
+procedure {:yields} {:layer 1} E({:linear_in "D"} a: X, {:linear_in "D"} b: X) returns ({:linear "D"} c: X, {:linear "D"} d: X)
 {
+    yield;
     c := a;
+    yield;
 }
 
 procedure {:yields} {:layer 0} F({:linear_in "D"} a: X) returns ({:linear "D"} c: X);

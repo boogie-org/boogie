@@ -1656,6 +1656,11 @@ namespace Microsoft.Boogie {
      {:subsumption n}
        Overrides the /subsumption command-line setting for this assertion.
 
+     {:split_here}
+       Verifies code leading to this point and code leading from this point
+       to the next split_here as separate pieces.  May help with timeouts.
+       May also occasionally double-report errors.
+
   ---- The end ---------------------------------------------------------------
 ");
     }

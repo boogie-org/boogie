@@ -63,7 +63,7 @@ ensures {:both} |{ A:
                     }|;
 
 
-procedure {:yields} {:layer 0} setEltToNull(j : int, {:linear "tid"} tid: X);
+procedure {:yields} {:layer 0,2} setEltToNull(j : int, {:linear "tid"} tid: X);
 ensures {:left} |{ A: 
                      assert owner[j] == tid;
                      assert 0 <= j && j < max;
@@ -75,7 +75,7 @@ ensures {:left} |{ A:
                      return true;
                     }|;
 
-procedure {:yields} {:layer 0} setValid(j : int, {:linear "tid"} tid: X);
+procedure {:yields} {:layer 0,2} setValid(j : int, {:linear "tid"} tid: X);
 ensures {:both} |{ A: 
                      assert 0 <= j && j < max;
                      assert lock[j] == tid;
@@ -86,7 +86,7 @@ ensures {:both} |{ A:
                      return true;
                     }|;
 
-procedure {:yields} {:layer 0} isEltThereAndValid(j : int, x : int, {:linear "tid"} tid: X) returns (fnd:bool);
+procedure {:yields} {:layer 0,2} isEltThereAndValid(j : int, x : int, {:linear "tid"} tid: X) returns (fnd:bool);
 ensures {:both} |{ A: 
                        assert 0 <= j && j < max;
                        assert lock[j] == tid;
@@ -95,7 +95,7 @@ ensures {:both} |{ A:
                        return true;
                     }|;
 
-procedure {:yields} {:layer 1} FindSlot(x : int, {:linear "tid"} tid: X) returns (r : int)
+procedure {:yields} {:layer 1,2} FindSlot(x : int, {:linear "tid"} tid: X) returns (r : int)
 requires {:layer 1} Inv(valid, elt, owner) && x != null && tid != nil && tid != done; 
 ensures {:layer 1} Inv(valid, elt, owner);
 ensures {:right}  |{   A: assert tid != nil && tid != done; 

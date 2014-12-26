@@ -288,14 +288,15 @@ namespace Microsoft.Boogie.VCExprAST {
            node.Op == VCExpressionGenerator.ImpliesOp)) {
         Contract.Assert(node.Op != null);
         VCExprOp op = node.Op;
-
-        IEnumerator enumerator = new VCExprNAryUniformOpEnumerator(node);
-        enumerator.MoveNext();  // skip the node itself
-
+        HashSet<VCExprOp> ops = new HashSet<VCExprOp>();
+        ops.Add(VCExpressionGenerator.AndOp);
+        ops.Add(VCExpressionGenerator.OrOp);
+        ops.Add(VCExpressionGenerator.ImpliesOp);
+        IEnumerator enumerator = new VCExprNAryMultiUniformOpEnumerator(node, ops);
         while (enumerator.MoveNext()) {
-          VCExpr/*!*/ expr = cce.NonNull((VCExpr/*!*/)enumerator.Current);
+          VCExpr expr = cce.NonNull((VCExpr)enumerator.Current);
           VCExprNAry naryExpr = expr as VCExprNAry;
-          if (naryExpr == null || !naryExpr.Op.Equals(op)) {
+          if (naryExpr == null || !ops.Contains(naryExpr.Op)) {
             expr.Accept(this, arg);
           } else {
             StandardResult(expr, arg);
@@ -431,6 +432,28 @@ namespace Microsoft.Boogie.VCExprAST {
         // (those are too interesting ...)
              expr.TypeParamArity == 0;
     }
+  }
+
+  public class VCExprNAryMultiUniformOpEnumerator : VCExprNAryEnumerator
+  {
+      private readonly HashSet<VCExprOp> Ops;
+      [ContractInvariantMethod]
+      void ObjectInvariant()
+      {
+          Contract.Invariant(Ops != null);
+      }
+
+      public VCExprNAryMultiUniformOpEnumerator(VCExprNAry completeExpr, HashSet<VCExprOp> ops)
+          : base(completeExpr)
+      {
+          Contract.Requires(completeExpr != null);
+
+          this.Ops = ops;
+      }
+      protected override bool Descend(VCExprNAry expr)
+      {
+          return Ops.Contains(expr.Op) && expr.TypeParamArity == 0;
+      }
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -836,11 +859,14 @@ namespace Microsoft.Boogie.VCExprAST {
         NAryExprTodoStack.Push(exprTodo[i]);
     }
 
+    public virtual bool AvoidVisit(VCExprNAry node, Arg arg)
+    {
+        return true;
+    }
+
     public virtual VCExpr Visit(VCExprNAry node, Arg arg) {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
-      VCExprOp/*!*/ op = node.Op;
-      Contract.Assert(op != null);
       int initialStackSize = NAryExprTodoStack.Count;
       int initialResultStackSize = NAryExprResultStack.Count;
 
@@ -851,10 +877,10 @@ namespace Microsoft.Boogie.VCExprAST {
         Contract.Assert(subExpr != null);
 
         if (Object.ReferenceEquals(subExpr, CombineResultsMarker)) {
-          //
           // assemble a result
           VCExprNAry/*!*/ originalExpr = (VCExprNAry)NAryExprTodoStack.Pop();
           Contract.Assert(originalExpr != null);
+          VCExprOp/*!*/ op = originalExpr.Op;
           bool changed = false;
           List<VCExpr/*!*/>/*!*/ newSubExprs = new List<VCExpr/*!*/>();
 
@@ -870,8 +896,8 @@ namespace Microsoft.Boogie.VCExprAST {
           //
         } else {
           //
-          VCExprNAry narySubExpr = subExpr as VCExprNAry;
-          if (narySubExpr != null && narySubExpr.Op.Equals(op) &&
+            VCExprNAry narySubExpr = subExpr as VCExprNAry;
+          if (narySubExpr != null && this.AvoidVisit(narySubExpr, arg) &&
             // as in VCExprNAryUniformOpEnumerator, all expressions with
             // type parameters are allowed to be inspected more closely
               narySubExpr.TypeParamArity == 0) {

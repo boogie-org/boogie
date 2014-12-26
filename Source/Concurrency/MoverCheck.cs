@@ -30,52 +30,57 @@ namespace Microsoft.Boogie
             if (moverTypeChecker.procToActionInfo.Count == 0)
                 return;
 
+            List<ActionInfo> sortedByCreatedLayerNum = new List<ActionInfo>(moverTypeChecker.procToActionInfo.Values.Where(x => x is AtomicActionInfo));
+            sortedByCreatedLayerNum.Sort((x, y) => { return (x.createdAtLayerNum == y.createdAtLayerNum) ? 0 : (x.createdAtLayerNum < y.createdAtLayerNum) ? -1 : 1; });
+            List<ActionInfo> sortedByAvailableUptoLayerNum = new List<ActionInfo>(moverTypeChecker.procToActionInfo.Values.Where(x => x is AtomicActionInfo));
+            sortedByAvailableUptoLayerNum.Sort((x, y) => { return (x.availableUptoLayerNum == y.availableUptoLayerNum) ? 0 : (x.availableUptoLayerNum < y.availableUptoLayerNum) ? -1 : 1; });
+
             Dictionary<int, HashSet<AtomicActionInfo>> pools = new Dictionary<int, HashSet<AtomicActionInfo>>();
-            foreach (ActionInfo action in moverTypeChecker.procToActionInfo.Values)
+            int indexIntoSortedByCreatedLayerNum = 0;
+            int indexIntoSortedByAvailableUptoLayerNum = 0;
+            HashSet<AtomicActionInfo> currPool = new HashSet<AtomicActionInfo>();
+            while (indexIntoSortedByCreatedLayerNum < sortedByCreatedLayerNum.Count)
             {
-                AtomicActionInfo atomicAction = action as AtomicActionInfo;
-                if (atomicAction == null) continue;
-                foreach (int layerNum in moverTypeChecker.AllLayerNums)
+                var currLayerNum = sortedByCreatedLayerNum[indexIntoSortedByCreatedLayerNum].createdAtLayerNum;
+                pools[currLayerNum] = new HashSet<AtomicActionInfo>(currPool);
+                while (indexIntoSortedByCreatedLayerNum < sortedByCreatedLayerNum.Count)
                 {
-                    if (action.createdAtLayerNum < layerNum && layerNum <= action.availableUptoLayerNum)
-                    {
-                        if (!pools.ContainsKey(layerNum))
-                        {
-                            pools[layerNum] = new HashSet<AtomicActionInfo>();
-                        }
-                        pools[layerNum].Add(atomicAction);
-                    }
+                    var actionInfo = sortedByCreatedLayerNum[indexIntoSortedByCreatedLayerNum] as AtomicActionInfo;
+                    if (actionInfo.createdAtLayerNum > currLayerNum) break;
+                    pools[currLayerNum].Add(actionInfo);
+                    indexIntoSortedByCreatedLayerNum++;
                 }
+                while (indexIntoSortedByAvailableUptoLayerNum < sortedByAvailableUptoLayerNum.Count)
+                {
+                    var actionInfo = sortedByAvailableUptoLayerNum[indexIntoSortedByAvailableUptoLayerNum] as AtomicActionInfo;
+                    if (actionInfo.availableUptoLayerNum > currLayerNum) break;
+                    pools[currLayerNum].Remove(actionInfo);
+                    indexIntoSortedByAvailableUptoLayerNum++;
+                }
+                currPool = pools[currLayerNum];
             }
 
             Program program = moverTypeChecker.program;
             MoverCheck moverChecking = new MoverCheck(linearTypeChecker, moverTypeChecker, decls);
-            foreach (int layerNum1 in pools.Keys)
+            foreach (int layerNum in pools.Keys)
             {
-                foreach (AtomicActionInfo first in pools[layerNum1])
+                foreach (AtomicActionInfo first in pools[layerNum])
                 {
                     Debug.Assert(first.moverType != MoverType.Top);
                     if (first.moverType == MoverType.Atomic)
                         continue;
-                    foreach (int layerNum2 in pools.Keys)
+                    foreach (AtomicActionInfo second in pools[layerNum])
                     {
-                        if (layerNum2 < layerNum1) continue;
-                        foreach (AtomicActionInfo second in pools[layerNum2])
+                        if (first.IsRightMover)
                         {
-                            if (second.createdAtLayerNum < layerNum1)
-                            {
-                                if (first.IsRightMover)
-                                {
-                                    moverChecking.CreateCommutativityChecker(program, first, second);
-                                    moverChecking.CreateGatePreservationChecker(program, second, first);
-                                }
-                                if (first.IsLeftMover)
-                                {
-                                    moverChecking.CreateCommutativityChecker(program, second, first);
-                                    moverChecking.CreateGatePreservationChecker(program, first, second);
-                                    moverChecking.CreateFailurePreservationChecker(program, second, first);
-                                }
-                            }
+                            moverChecking.CreateCommutativityChecker(program, first, second);
+                            moverChecking.CreateGatePreservationChecker(program, second, first);
+                        }
+                        if (first.IsLeftMover)
+                        {
+                            moverChecking.CreateCommutativityChecker(program, second, first);
+                            moverChecking.CreateGatePreservationChecker(program, first, second);
+                            moverChecking.CreateFailurePreservationChecker(program, second, first);
                         }
                     }
                 }
@@ -508,7 +513,7 @@ namespace Microsoft.Boogie
             ensures.Add(ensureCheck);
             string checkerName = string.Format("CommutativityChecker_{0}_{1}", first.proc.Name, second.proc.Name);
             List<IdentifierExpr> globalVars = new List<IdentifierExpr>();
-            program.GlobalVariables.Iter(x => globalVars.Add(Expr.Ident(x)));
+            moverTypeChecker.SharedVariables.Iter(x => globalVars.Add(Expr.Ident(x)));
             Procedure proc = new Procedure(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, outputs, requires, globalVars, ensures);
             Implementation impl = new Implementation(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, outputs, locals, blocks);
             impl.Proc = proc;
@@ -551,7 +556,7 @@ namespace Microsoft.Boogie
                 requires.Add(new Requires(false, assertCmd.Expr));
             string checkerName = string.Format("GatePreservationChecker_{0}_{1}", first.proc.Name, second.proc.Name);
             List<IdentifierExpr> globalVars = new List<IdentifierExpr>();
-            program.GlobalVariables.Iter(x => globalVars.Add(Expr.Ident(x)));
+            moverTypeChecker.SharedVariables.Iter(x => globalVars.Add(Expr.Ident(x)));
             Procedure proc = new Procedure(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, outputs, requires, globalVars, ensures);
             Implementation impl = new Implementation(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, outputs, locals, secondBlocks);
             impl.Proc = proc;
@@ -599,7 +604,7 @@ namespace Microsoft.Boogie
                 requires.Add(new Requires(false, assertCmd.Expr));
             string checkerName = string.Format("FailurePreservationChecker_{0}_{1}", first.proc.Name, second.proc.Name);
             List<IdentifierExpr> globalVars = new List<IdentifierExpr>();
-            program.GlobalVariables.Iter(x => globalVars.Add(Expr.Ident(x)));
+            moverTypeChecker.SharedVariables.Iter(x => globalVars.Add(Expr.Ident(x)));
             Procedure proc = new Procedure(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, outputs, requires, globalVars, ensures);
             Implementation impl = new Implementation(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, outputs, locals, secondBlocks);
             impl.Proc = proc;
@@ -633,7 +638,7 @@ namespace Microsoft.Boogie
             blocks.Add(new Block(Token.NoToken, "L", new List<Cmd>(), new ReturnCmd(Token.NoToken)));
             string checkerName = string.Format("NonBlockingChecker_{0}", second.proc.Name);
             List<IdentifierExpr> globalVars = new List<IdentifierExpr>();
-            program.GlobalVariables.Iter(x => globalVars.Add(Expr.Ident(x)));
+            moverTypeChecker.SharedVariables.Iter(x => globalVars.Add(Expr.Ident(x)));
             Procedure proc = new Procedure(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, new List<Variable>(), requires, globalVars, ensures);
             Implementation impl = new Implementation(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, new List<Variable>(), new List<Variable>(), blocks);
             impl.Proc = proc;

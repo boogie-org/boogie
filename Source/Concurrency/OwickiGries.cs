@@ -198,7 +198,7 @@ namespace Microsoft.Boogie
                 }
                 procMap[node] = proc;
                 proc.Modifies = new List<IdentifierExpr>();
-                moverTypeChecker.program.GlobalVariables.Iter(x => proc.Modifies.Add(Expr.Ident(x)));
+                moverTypeChecker.SharedVariables.Iter(x => proc.Modifies.Add(Expr.Ident(x)));
             }
             return procMap[node];
         }
@@ -279,7 +279,7 @@ namespace Microsoft.Boogie
             this.yieldingProcs = duplicator.yieldingProcs;
             Program program = linearTypeChecker.program;
             globalMods = new List<IdentifierExpr>();
-            foreach (Variable g in program.GlobalVariables)
+            foreach (Variable g in moverTypeChecker.SharedVariables)
             {
                 globalMods.Add(Expr.Ident(g));
             }
@@ -738,15 +738,16 @@ namespace Microsoft.Boogie
                     foroldMap[ie.Decl] = Expr.Ident(ogOldGlobalMap[ie.Decl]);
                 }
                 Substitution forold = Substituter.SubstitutionFromHashtable(foroldMap);
-                frame = new HashSet<Variable>(program.GlobalVariables);
+                frame = new HashSet<Variable>(moverTypeChecker.SharedVariables);
                 HashSet<Variable> introducedVars = new HashSet<Variable>();
-                foreach (Variable v in program.GlobalVariables)
+                foreach (Variable v in moverTypeChecker.SharedVariables)
                 {
-                    if (moverTypeChecker.hideLayerNums[v] <= actionInfo.createdAtLayerNum || moverTypeChecker.introduceLayerNums[v] > actionInfo.createdAtLayerNum)
+                    if (moverTypeChecker.globalVarToSharedVarInfo[v].hideLayerNum <= actionInfo.createdAtLayerNum || 
+                        moverTypeChecker.globalVarToSharedVarInfo[v].introLayerNum > actionInfo.createdAtLayerNum)
                     {
                         frame.Remove(v);
                     }
-                    if (moverTypeChecker.introduceLayerNums[v] == actionInfo.createdAtLayerNum)
+                    if (moverTypeChecker.globalVarToSharedVarInfo[v].introLayerNum == actionInfo.createdAtLayerNum)
                     {
                         introducedVars.Add(v);
                     }
@@ -1159,7 +1160,7 @@ namespace Microsoft.Boogie
         public static void AddCheckers(LinearTypeChecker linearTypeChecker, MoverTypeChecker moverTypeChecker, List<Declaration> decls)
         {
             Program program = linearTypeChecker.program;
-            foreach (int layerNum in moverTypeChecker.AllLayerNums.Except(new int[] { 0 }))
+            foreach (int layerNum in moverTypeChecker.AllCreatedLayerNums.Except(new int[] { moverTypeChecker.leastUnimplementedLayerNum }))
             {
                 if (CommandLineOptions.Clo.TrustLayersDownto <= layerNum || layerNum <= CommandLineOptions.Clo.TrustLayersUpto) continue;
 

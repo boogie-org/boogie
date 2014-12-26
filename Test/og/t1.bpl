@@ -18,15 +18,6 @@ function {:inline} {:linear "2"} SetCollector2(x: [int]bool) : [int]bool
   x
 }
 
-procedure Allocate() returns ({:linear "tid"} xls: int);
-ensures {:layer 1} xls != 0;
-
-procedure Allocate_1() returns ({:linear "1"} xls: [int]bool);
-ensures {:layer 1} xls == mapconstbool(true);
-
-procedure Allocate_2() returns ({:linear "2"} xls: [int]bool);
-ensures {:layer 1} xls == mapconstbool(true);
-
 var {:layer 0,1} g: int;
 var {:layer 0,1} h: int;
 
@@ -36,30 +27,43 @@ ensures {:atomic} |{A: g := val; return true; }|;
 procedure {:yields} {:layer 0,1} SetH(val:int);
 ensures {:atomic} |{A: h := val; return true; }|;
 
-procedure {:yields} {:layer 1} A({:linear_in "tid"} tid_in: int) returns ({:linear "tid"} tid_out: int) 
+procedure {:yields} {:layer 1} Yield({:linear "1"} x: [int]bool)
+requires {:layer 1} x == mapconstbool(true) && g == 0;    
+ensures {:layer 1} x == mapconstbool(true) && g == 0;    
 {
-    var {:linear "1"} x: [int]bool;
-    var {:linear "2"} y: [int]bool;
+    yield;
+    assert {:layer 1} x == mapconstbool(true) && g == 0;    
+}
+
+procedure {:yields} {:layer 1} Allocate() returns ({:linear "tid"} xl: int)
+ensures {:layer 1} xl != 0;
+{
+    yield;
+    call xl := AllocateLow();
+    yield;
+}
+
+procedure {:yields} {:layer 0,1} AllocateLow() returns ({:linear "tid"} xls: int);
+ensures {:atomic} |{ A: assume xls != 0; return true; }|;
+
+procedure {:yields} {:layer 1} A({:linear_in "tid"} tid_in: int, {:linear_in "1"} x: [int]bool, {:linear_in "2"} y: [int]bool) returns ({:linear "tid"} tid_out: int) 
+requires {:layer 1} x == mapconstbool(true);
+requires {:layer 1} y == mapconstbool(true);
+{
     var {:linear "tid"} tid_child: int;
     tid_out := tid_in;
-    call x := Allocate_1();
-    call y := Allocate_2();
 
     yield;
     call SetG(0);
-    yield;
-    assert {:layer 1} x == mapconstbool(true);    
-    assert {:layer 1} g == 0;    
+    
+    par tid_child := Allocate() | Yield(x);
 
-    yield;
-    call tid_child := Allocate();
     async call B(tid_child, x);
 
     yield;
     assert {:layer 1} x == mapconstbool(true);    
     assert {:layer 1} g == 0;
 
-    yield;
     call SetH(0);
 
     yield;

@@ -9,8 +9,8 @@ typecheck.bpl(55,4): Error: The domains of formal and actual parameters must be 
 typecheck.bpl(57,4): Error: The domains of formal and actual parameters must be the same
 typecheck.bpl(59,4): Error: Only a linear argument can be passed to linear parameter a
 typecheck.bpl(64,4): Error: Linear variable a can occur only once as an input parameter of a parallel call
-typecheck.bpl(71,0): Error: Output variable d must be available at a return
-typecheck.bpl(80,0): Error: Global variable g must be available at a return
-typecheck.bpl(85,7): Error: unavailable source for a linear read
-typecheck.bpl(86,0): Error: Output variable r must be available at a return
+typecheck.bpl(73,0): Error: Output variable d must be available at a return
+typecheck.bpl(82,0): Error: Global variable g must be available at a return
+typecheck.bpl(87,7): Error: unavailable source for a linear read
+typecheck.bpl(88,0): Error: Output variable r must be available at a return
 15 type checking errors detected in typecheck.bpl
