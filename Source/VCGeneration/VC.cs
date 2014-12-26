@@ -1156,7 +1156,7 @@ namespace VC {
 
       public static List<Split/*!*/> FindManualSplits(Implementation/*!*/ impl, Dictionary<TransferCmd, ReturnCmd>/*!*/ gotoCmdOrigins, VCGen/*!*/ par) {
         Contract.Requires(impl != null);
-        Contract.Ensures(cce.NonNullElements(Contract.Result<List<Split>>()));
+        Contract.Ensures(Contract.Result<List<Split>>() == null || cce.NonNullElements(Contract.Result<List<Split>>()));
 
         var splitPoints = new Dictionary<Block,int>();
         foreach (var b in impl.Blocks) {
