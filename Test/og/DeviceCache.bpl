@@ -48,8 +48,13 @@ ensures {:layer 1} Inv(ghostLock, currsize, newsize) && ghostLock == tid && old(
     assert {:layer 1} Inv(ghostLock, currsize, newsize) && tid != nil && ghostLock == tid && old(currsize) == currsize && old(newsize) == newsize;
 }
 
-procedure {:yields} {:layer 1} Allocate() returns ({:linear "tid"} xl: X);
+procedure {:yields} {:layer 1} Allocate() returns ({:linear "tid"} xl: X)
 ensures {:layer 1} xl != nil;
+{
+    yield;
+    call xl := AllocateLow();
+    yield;
+}
 
 procedure {:yields} {:layer 1} main({:linear_in "tid"} xls: [X]bool)
 requires {:layer 1} xls == mapconstbool(true);
@@ -200,3 +205,6 @@ ensures {:right} |{ A: assert tid != nil; assume lock == nil; lock := tid; retur
 
 procedure {:yields} {:layer 0,1} release({:linear "tid"} tid: X);
 ensures {:left} |{ A: assert tid != nil; assert lock == tid; lock := nil; return true; }|;
+
+procedure {:yields} {:layer 0,1} AllocateLow() returns ({:linear "tid"} tid: X);
+ensures {:atomic} |{ A: assume tid != nil; return true; }|;

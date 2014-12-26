@@ -4,7 +4,7 @@ Execution trace:
     t1.bpl(84,13): anon0
     (0,0): anon05
     (0,0): inline$SetG_1$0$Entry
-    t1.bpl(34,21): inline$SetG_1$0$this_A
+    t1.bpl(25,21): inline$SetG_1$0$this_A
     (0,0): inline$Impl_YieldChecker_A_1$0$L1
 
-Boogie program verifier finished with 3 verified, 1 error
+Boogie program verifier finished with 4 verified, 1 error

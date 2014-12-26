@@ -15,7 +15,12 @@ function {:inline} {:linear "tid"} TidSetCollector(x: [Tid]bool) : [Tid]bool
 
 var {:layer 0,1} a:[Tid]int;
 
-procedure {:yields} {:layer 1} Allocate() returns ({:linear "tid"} tid:Tid); 
+procedure {:yields} {:layer 1} Allocate() returns ({:linear "tid"} tid: Tid)
+{
+    yield;
+    call tid := AllocateLow();
+    yield;
+}
 
 procedure {:yields} {:layer 1} main() { 
     var {:linear "tid"} tid:Tid;
@@ -55,3 +60,6 @@ ensures {:atomic}
 |{A:
   a[tid] := val; return true;
 }|;
+
+procedure {:yields} {:layer 0,1} AllocateLow() returns ({:linear "tid"} tid: Tid);
+ensures {:atomic} |{ A: return true; }|;

@@ -11,8 +11,13 @@ function {:inline} {:linear "tid"} TidCollector(x: X) : [X]bool
   MapConstBool(false)[x := true]
 }
 
-procedure {:yields} {:layer 1} Allocate() returns ({:linear "tid"} xls: X);
-ensures {:layer 1} xls != nil;
+procedure {:yields} {:layer 1} Allocate() returns ({:linear "tid"} xl: X)
+ensures {:layer 1} xl != nil;
+{
+    yield;
+    call xl := AllocateLow();
+    yield;
+}
 
 procedure {:yields} {:layer 1} main()
 {
@@ -37,6 +42,9 @@ ensures {:atomic} |{A: l := nil; return true; }|;
 
 procedure {:yields} {:layer 0,1} Set(val: int);
 ensures {:atomic} |{A: x := val; return true; }|;
+
+procedure {:yields} {:layer 0,1} AllocateLow() returns ({:linear "tid"} xl: X);
+ensures {:atomic} |{ A: assume xl != nil; return true; }|;
 
 procedure {:yields} {:layer 1} foo({:linear_in "tid"} tid': X, val: int)
 requires {:layer 1} tid' != nil;

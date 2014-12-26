@@ -136,12 +136,12 @@ namespace Microsoft.Boogie
         {
             foreach (var impl in moverTypeChecker.program.Implementations)
             {
-                if (!moverTypeChecker.procToActionInfo.ContainsKey(impl.Proc) || moverTypeChecker.procToActionInfo[impl.Proc].createdAtLayerNum == 0) continue;
+                if (!moverTypeChecker.procToActionInfo.ContainsKey(impl.Proc)) continue;
                 impl.PruneUnreachableBlocks();
                 Graph<Block> implGraph = Program.GraphFromImpl(impl);
                 implGraph.ComputeLoops();
                 int specLayerNum = moverTypeChecker.procToActionInfo[impl.Proc].createdAtLayerNum;
-                foreach (int layerNum in moverTypeChecker.AllLayerNums)
+                foreach (int layerNum in moverTypeChecker.AllCreatedLayerNums.Except(new int[] { moverTypeChecker.leastUnimplementedLayerNum }))
                 {
                     if (layerNum > specLayerNum) continue;
                     YieldTypeChecker executor = new YieldTypeChecker(moverTypeChecker, impl, layerNum, implGraph.Headers);

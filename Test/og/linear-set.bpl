@@ -23,10 +23,21 @@ function {:inline} {:linear "x"} XCollector(xs: [X]bool) : [X]bool
 var {:layer 0,1} x: int;
 var {:layer 0,1} l: [X]bool;
 
-procedure {:yields} {:layer 1} Split({:linear_in "x"} xls: [X]bool) returns ({:linear "x"} xls1: [X]bool, {:linear "x"} xls2: [X]bool);
-ensures {:layer 1} xls == MapOr(xls1, xls2) && xls1 != None() && xls2 != None();
 
-procedure {:yields} {:layer 1} Allocate() returns ({:linear "tid"} xls: [X]bool);
+procedure {:yields} {:layer 1} Split({:linear_in "x"} xls: [X]bool) returns ({:linear "x"} xls1: [X]bool, {:linear "x"} xls2: [X]bool)
+ensures {:layer 1} xls == MapOr(xls1, xls2) && xls1 != None() && xls2 != None();
+{
+  yield;
+  call xls1, xls2 := SplitLow(xls);
+  yield;
+}
+
+procedure {:yields} {:layer 1} Allocate() returns ({:linear "tid"} xls: [X]bool)
+{
+  yield;
+  call xls := AllocateLow();
+  yield;
+}
 
 procedure {:yields} {:layer 0,1} Set(v: int);
 ensures {:atomic} |{A: x := v; return true; }|;
@@ -37,6 +48,11 @@ ensures {:atomic} |{A: assume l == None(); l := tidls; return true; }|;
 procedure {:yields} {:layer 0,1} Unlock();
 ensures {:atomic} |{A: l := None(); return true; }|;
 
+procedure {:yields} {:layer 0,1} SplitLow({:linear_in "x"} xls: [X]bool) returns ({:linear "x"} xls1: [X]bool, {:linear "x"} xls2: [X]bool);
+ensures {:atomic} |{ A: assume xls == MapOr(xls1, xls2) && xls1 != None() && xls2 != None(); return true; }|;
+
+procedure {:yields} {:layer 0,1} AllocateLow() returns ({:linear "tid"} xls: [X]bool);
+ensures {:atomic} |{ A: return true; }|;
 
 procedure {:yields} {:layer 1} main({:linear_in "tid"} tidls': [X]bool, {:linear_in "x"} xls': [X]bool) 
 requires {:layer 1} tidls' != None() && xls' == All();
