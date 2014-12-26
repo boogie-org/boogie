@@ -1761,7 +1761,7 @@ namespace Microsoft.Boogie {
 
     public /*readonly, except for the StandardVisitor*/ List<Cmd>/*!*/ Cmds {
       get {
-        Contract.Ensures(Contract.Result<List<Variable>>() != null);
+        Contract.Ensures(Contract.Result<List<Cmd>>() != null);
         return this._cmds;
       }
       set {
