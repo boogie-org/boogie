@@ -22,12 +22,14 @@ namespace Microsoft.Boogie
         public Procedure proc;
         public int createdAtLayerNum;
         public int availableUptoLayerNum;
+        public bool hasImplementation;
 
         public ActionInfo(Procedure proc, int createdAtLayerNum, int availableUptoLayerNum)
         {
             this.proc = proc;
             this.createdAtLayerNum = createdAtLayerNum;
             this.availableUptoLayerNum = availableUptoLayerNum;
+            this.hasImplementation = false;
         }
 
         public virtual bool IsRightMover
@@ -226,6 +228,7 @@ namespace Microsoft.Boogie
         int maxLayerNum;
         public Dictionary<Absy, HashSet<int>> absyToLayerNums;
         HashSet<Variable> auxVars;
+        public int leastUnimplementedLayerNum;
 
         private static List<int> FindLayers(QKeyValue kv)
         {
@@ -260,20 +263,58 @@ namespace Microsoft.Boogie
             return MoverType.Top;
         }
 
-        private HashSet<int> allLayerNums;
-        public IEnumerable<int> AllLayerNums
+        public MoverTypeChecker(Program program)
+        {
+            this.auxVars = new HashSet<Variable>();
+            this.absyToLayerNums = new Dictionary<Absy, HashSet<int>>();
+            this.globalVarToSharedVarInfo = new Dictionary<Variable, SharedVariableInfo>();
+            this.procToActionInfo = new Dictionary<Procedure, ActionInfo>();
+            this.errorCount = 0;
+            this.checkingContext = new CheckingContext(null);
+            this.program = program;
+            this.enclosingProc = null;
+            this.enclosingImpl = null;
+            this.canAccessSharedVars = false;
+            this.canAccessAuxVars = false;
+            this.minLayerNum = int.MaxValue;
+            this.maxLayerNum = -1;
+            this.leastUnimplementedLayerNum = int.MaxValue;
+            foreach (var g in program.GlobalVariables)
+            {
+                List<int> layerNums = FindLayers(g.Attributes);
+                if (layerNums.Count == 0)
+                {
+                    // Cannot access atomic actions
+                }
+                else if (layerNums.Count == 1)
+                {
+                    this.globalVarToSharedVarInfo[g] = new SharedVariableInfo(layerNums[0], int.MaxValue);
+                }
+                else if (layerNums.Count == 2)
+                {
+                    this.globalVarToSharedVarInfo[g] = new SharedVariableInfo(layerNums[0], layerNums[1]);
+                }
+                else
+                {
+                    Error(g, "Too many layer numbers");
+                }
+            }
+        }
+        
+        private HashSet<int> allCreatedLayerNums;
+        public IEnumerable<int> AllCreatedLayerNums
         {
             get
             {
-                if (allLayerNums == null)
+                if (allCreatedLayerNums == null)
                 {
-                    allLayerNums = new HashSet<int>();
+                    allCreatedLayerNums = new HashSet<int>();
                     foreach (ActionInfo actionInfo in procToActionInfo.Values)
                     {
-                        allLayerNums.Add(actionInfo.createdAtLayerNum);
+                        allCreatedLayerNums.Add(actionInfo.createdAtLayerNum);
                     }
                 }
-                return allLayerNums;
+                return allCreatedLayerNums;
             }
         }
 
@@ -300,6 +341,11 @@ namespace Microsoft.Boogie
                     Error(proc, "Incorrect number of layers");
                     continue;
                 }
+                if (availableUptoLayerNum <= createdAtLayerNum)
+                {
+                    Error(proc, "Creation layer number must be less than the available upto layer number");
+                    continue;
+                }
                 foreach (Ensures e in proc.Ensures)
                 {
                     MoverType moverType = GetMoverType(e);
@@ -323,20 +369,58 @@ namespace Microsoft.Boogie
                     enclosingImpl = null;
                     base.VisitEnsures(e);
                     canAccessSharedVars = false;
-                    if (maxLayerNum <= createdAtLayerNum && availableUptoLayerNum <= minLayerNum)
+                    if (maxLayerNum > createdAtLayerNum)
                     {
-                        // ok
+                        Error(e, "A variable being accessed is introduced after this action is created");
                     }
-                    else
+                    else if (availableUptoLayerNum > minLayerNum)
                     {
                         Error(e, "A variable being accessed is hidden before this action becomes unavailable");
                     }
-
-                    procToActionInfo[proc] = new AtomicActionInfo(proc, e, moverType, createdAtLayerNum, availableUptoLayerNum);
+                    else
+                    {
+                        procToActionInfo[proc] = new AtomicActionInfo(proc, e, moverType, createdAtLayerNum, availableUptoLayerNum);
+                    }
                 }
+                if (errorCount > 0) continue;
                 if (!procToActionInfo.ContainsKey(proc))
                 {
                     procToActionInfo[proc] = new ActionInfo(proc, createdAtLayerNum, availableUptoLayerNum);
+                }
+            }
+            if (errorCount > 0) return;
+            foreach (var impl in program.Implementations)
+            {
+                if (!procToActionInfo.ContainsKey(impl.Proc)) continue;
+                procToActionInfo[impl.Proc].hasImplementation = true;
+            }
+            foreach (var proc in procToActionInfo.Keys)
+            {
+                ActionInfo actionInfo = procToActionInfo[proc];
+                if (actionInfo.hasImplementation) continue;
+                if (leastUnimplementedLayerNum == int.MaxValue)
+                {
+                    leastUnimplementedLayerNum = actionInfo.createdAtLayerNum;
+                }
+                else if (leastUnimplementedLayerNum == actionInfo.createdAtLayerNum)
+                {
+                    // do nothing
+                }
+                else
+                {
+                    Error(proc, "All unimplemented atomic actions must be created at the same layer");
+                }
+            }
+            foreach (var g in this.globalVarToSharedVarInfo.Keys)
+            {
+                var info = globalVarToSharedVarInfo[g];
+                if (!this.AllCreatedLayerNums.Contains(info.introLayerNum))
+                {
+                    Error(g, "Variable must be introduced with creation of some atomic action");
+                }
+                if (info.hideLayerNum != int.MaxValue && !this.AllCreatedLayerNums.Contains(info.hideLayerNum))
+                {
+                    Error(g, "Variable must be hidden with creation of some atomic action");
                 }
             }
             if (errorCount > 0) return;
@@ -348,43 +432,6 @@ namespace Microsoft.Boogie
         public IEnumerable<Variable> SharedVariables
         {
             get { return this.globalVarToSharedVarInfo.Keys;  }
-        }
-
-        public MoverTypeChecker(Program program)
-        {
-            this.auxVars = new HashSet<Variable>();
-            this.absyToLayerNums = new Dictionary<Absy, HashSet<int>>();
-            this.globalVarToSharedVarInfo = new Dictionary<Variable, SharedVariableInfo>();
-            this.procToActionInfo = new Dictionary<Procedure, ActionInfo>();
-            this.errorCount = 0;
-            this.checkingContext = new CheckingContext(null);
-            this.program = program;
-            this.enclosingProc = null;
-            this.enclosingImpl = null;
-            this.canAccessSharedVars = false;
-            this.canAccessAuxVars = false;
-            this.minLayerNum = int.MaxValue;
-            this.maxLayerNum = -1;
-            foreach (var g in program.GlobalVariables)
-            {
-                List<int> layerNums = FindLayers(g.Attributes);
-                if (layerNums.Count == 0)
-                {
-                    // Cannot access atomic actions
-                }
-                else if (layerNums.Count == 1)
-                {
-                    this.globalVarToSharedVarInfo[g] = new SharedVariableInfo(layerNums[0], int.MaxValue);
-                }
-                else if (layerNums.Count == 2)
-                {
-                    this.globalVarToSharedVarInfo[g] = new SharedVariableInfo(layerNums[0], layerNums[1]);
-                }
-                else
-                {
-                    Error(g, "Too many layer numbers");
-                }
-            }
         }
         
         public override Implementation VisitImplementation(Implementation node)
@@ -453,6 +500,10 @@ namespace Microsoft.Boogie
                     Error(node, "The callee is not available in the caller procedure");
                 }
             }
+            else
+            {
+                Error(node, "Yielding procedure can call only a yielding procedure");
+            }
             return base.VisitCallCmd(node);
         }
 
@@ -517,7 +568,7 @@ namespace Microsoft.Boogie
                 {
                     Error(node, "Shared variable can be accessed only in atomic actions or specifications");
                 }
-                else
+                else if (this.globalVarToSharedVarInfo.ContainsKey(node.Decl))
                 {
                     if (this.globalVarToSharedVarInfo[node.Decl].hideLayerNum < minLayerNum)
                     {
@@ -527,6 +578,10 @@ namespace Microsoft.Boogie
                     {
                         maxLayerNum = this.globalVarToSharedVarInfo[node.Decl].introLayerNum;
                     }
+                }
+                else
+                {
+                    Error(node, "Accessed shared variable must have layer annotation");
                 }
             }
             else if (node.Decl is LocalVariable && auxVars.Contains(node.Decl) && !canAccessAuxVars)
@@ -594,7 +649,11 @@ namespace Microsoft.Boogie
             absyToLayerNums[node] = new HashSet<int>();
             foreach (int layerNum in attrs)
             {
-                if (layerNum > enclosingProcLayerNum)
+                if (layerNum == leastUnimplementedLayerNum || !AllCreatedLayerNums.Contains(layerNum))
+                {
+                    Error(node, "Illegal layer number");
+                }
+                else if (layerNum > enclosingProcLayerNum)
                 {
                     Error(node, "The layer cannot be greater than the layer of enclosing procedure");
                 }

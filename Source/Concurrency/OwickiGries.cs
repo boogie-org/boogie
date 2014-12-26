@@ -1160,7 +1160,7 @@ namespace Microsoft.Boogie
         public static void AddCheckers(LinearTypeChecker linearTypeChecker, MoverTypeChecker moverTypeChecker, List<Declaration> decls)
         {
             Program program = linearTypeChecker.program;
-            foreach (int layerNum in moverTypeChecker.AllLayerNums.Except(new int[] { 0 }))
+            foreach (int layerNum in moverTypeChecker.AllCreatedLayerNums.Except(new int[] { moverTypeChecker.leastUnimplementedLayerNum }))
             {
                 if (CommandLineOptions.Clo.TrustLayersDownto <= layerNum || layerNum <= CommandLineOptions.Clo.TrustLayersUpto) continue;
 

@@ -2,7 +2,12 @@
 // RUN: %diff "%s.expect" "%t"
 var {:layer 0,1} a:[int]int;
 
-procedure Allocate() returns ({:linear "tid"} xls: int);
+procedure {:yields} {:layer 1} Allocate() returns ({:linear "tid"} tid: int)
+{
+    yield;
+    call tid := AllocateLow();
+    yield;
+}
 
 function {:builtin "MapConst"} MapConstBool(bool) : [int]bool;
 function {:inline} {:linear "tid"} TidCollector(x: int) : [int]bool
@@ -49,3 +54,6 @@ ensures {:layer 1} old(a)[i] == a[i];
     yield;
     assert {:layer 1} old(a)[i] == a[i];
 }
+
+procedure {:yields} {:layer 0,1} AllocateLow() returns ({:linear "tid"} tid: int);
+ensures {:atomic} |{ A: return true; }|;
