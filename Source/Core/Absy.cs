@@ -308,10 +308,18 @@ namespace Microsoft.Boogie {
     }
   }
 
-  // TODO: Ideally, this would use generics.
-  public interface IPotentialErrorNode {
-    object ErrorData {
+  public interface IPotentialErrorNode<out TGet>
+  {
+    TGet ErrorData
+    {
       get;
+    }
+  }
+
+  public interface IPotentialErrorNode<out TGet, in TSet> : IPotentialErrorNode<TGet>
+  {
+    new TSet ErrorData
+    {
       set;
     }
   }
@@ -2753,7 +2761,7 @@ namespace Microsoft.Boogie {
       : base(tok, name, args, result) { }
   }
 
-  public class Requires : Absy, IPotentialErrorNode {
+  public class Requires : Absy, IPotentialErrorNode<string, string> {
     public readonly bool Free;
     
     private Expr/*!*/ _condition;
@@ -2773,13 +2781,12 @@ namespace Microsoft.Boogie {
     [ContractInvariantMethod]
     void ObjectInvariant() {
       Contract.Invariant(this._condition != null);
-      Contract.Invariant(errorData == null || errorData is string);
     }
 
 
     // TODO: convert to use generics
-    private object errorData;
-    public object ErrorData {
+    private string errorData;
+    public string ErrorData {
       get {
         return errorData;
       }
@@ -2866,7 +2873,7 @@ namespace Microsoft.Boogie {
     }
   }
 
-  public class Ensures : Absy, IPotentialErrorNode {
+  public class Ensures : Absy, IPotentialErrorNode<string, string> {
     public readonly bool Free;
 
     private Expr/*!*/ _condition;
@@ -2885,14 +2892,13 @@ namespace Microsoft.Boogie {
     [ContractInvariantMethod]
     void ObjectInvariant() {
       Contract.Invariant(this._condition != null); 
-      Contract.Invariant(errorData == null || errorData is string);
     }
 
     public string Comment;
 
     // TODO: convert to use generics
-    private object errorData;
-    public object ErrorData {
+    private string errorData;
+    public string ErrorData {
       get {
         return errorData;
       }

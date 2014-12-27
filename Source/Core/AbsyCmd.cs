@@ -1997,7 +1997,7 @@ namespace Microsoft.Boogie {
     }
   }
 
-  public class ParCallCmd : CallCommonality, IPotentialErrorNode
+  public class ParCallCmd : CallCommonality, IPotentialErrorNode<object, object>
   {
       public List<CallCmd> CallCmds;
       public ParCallCmd(IToken tok, List<CallCmd> callCmds)
@@ -2086,7 +2086,8 @@ namespace Microsoft.Boogie {
       }
   }
 
-  public class CallCmd : CallCommonality, IPotentialErrorNode {
+  public class CallCmd : CallCommonality, IPotentialErrorNode<object, object>
+  {
     public string/*!*/ callee { get; set; }
     public Procedure Proc;
     public LocalVariable AssignedAssumptionVariable;
@@ -2751,7 +2752,8 @@ namespace Microsoft.Boogie {
     }
   }
 
-  public class AssertCmd : PredicateCmd, IPotentialErrorNode {
+  public class AssertCmd : PredicateCmd, IPotentialErrorNode<object, object>
+  {
     public Expr OrigExpr;
     public Dictionary<Variable, Expr> IncarnationMap;
 
