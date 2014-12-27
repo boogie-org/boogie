@@ -681,17 +681,17 @@ namespace Microsoft.Boogie {
       }
     }
 
-    private List<GlobalVariable/*!*/> globalVariablesCache = null;
-    public IEnumerable<GlobalVariable/*!*/>/*!*/ GlobalVariables
+    private System.Collections.ObjectModel.ReadOnlyCollection<GlobalVariable/*!*/> globalVariablesCache = null;
+    public IList<GlobalVariable/*!*/>/*!*/ GlobalVariables
     {
       get
       {
-        Contract.Ensures(cce.NonNullElements(Contract.Result<IEnumerable<GlobalVariable>>()));
+        Contract.Ensures(cce.NonNullElements(Contract.Result<IList<GlobalVariable>>()));
+        Contract.Ensures(Contract.Result<IList<GlobalVariable>>().IsReadOnly);
 
         if (globalVariablesCache == null)
-        {
-          globalVariablesCache = TopLevelDeclarations.OfType<GlobalVariable>().ToList();
-        }
+          globalVariablesCache = TopLevelDeclarations.OfType<GlobalVariable>().ToList().AsReadOnly();
+
         return globalVariablesCache;
       }
     }
