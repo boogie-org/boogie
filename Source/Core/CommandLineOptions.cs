@@ -17,16 +17,39 @@ namespace Microsoft.Boogie {
   {
     public readonly string ToolName;
     public readonly string DescriptiveToolName;
+
     [ContractInvariantMethod]
     void ObjectInvariant() {
       Contract.Invariant(ToolName != null);
       Contract.Invariant(DescriptiveToolName != null);
-      Contract.Invariant(Environment != null);
-      Contract.Invariant(cce.NonNullElements(Files));
+      Contract.Invariant(this._environment != null);
+      Contract.Invariant(cce.NonNullElements(this._files));
+      Contract.Invariant(this._fileTimestamp != null);
     }
 
-    public string/*!*/ Environment = "";
-    public List<string/*!*/>/*!*/ Files = new List<string/*!*/>();
+    private string/*!*/ _environment = "";
+
+    public string Environment {
+      get {
+        Contract.Ensures(Contract.Result<string>() != null);
+        return this._environment;
+      }
+      set {
+        Contract.Requires(value != null);
+        this._environment = value;
+      }
+    }
+
+    private readonly List<string/*!*/>/*!*/ _files = new List<string/*!*/>();
+
+    public IList<string/*!*/>/*!*/ Files {
+      get {
+        Contract.Ensures(cce.NonNullElements(Contract.Result<IList<string>>()));
+        Contract.Ensures(Contract.Result<IList<string>>().IsReadOnly);
+        return this._files.AsReadOnly();
+      }
+    }
+
     public bool HelpRequested = false;
     public bool AttrHelpRequested = false;
 
@@ -56,7 +79,19 @@ namespace Microsoft.Boogie {
       }
     }
 
-    public string/*!*/ FileTimestamp = cce.NonNull(DateTime.Now.ToString("o")).Replace(':', '.');
+    private string/*!*/ _fileTimestamp = cce.NonNull(DateTime.Now.ToString("o")).Replace(':', '.');
+
+    public string FileTimestamp {
+      get {
+        Contract.Ensures(Contract.Result<string>() != null);
+        return this._fileTimestamp;
+      }
+      set {
+        Contract.Requires(value != null);
+        this._fileTimestamp = value;
+      }
+    }
+
     public void ExpandFilename(ref string pattern, string logPrefix, string fileTimestamp) {
       if (pattern != null) {
         pattern = pattern.Replace("@PREFIX@", logPrefix).Replace("@TIME@", fileTimestamp);
@@ -302,12 +337,12 @@ namespace Microsoft.Boogie {
         if (isOption) {
           if (!ParseOption(ps.s.Substring(1), ps)) {
             if (Path.DirectorySeparatorChar == '/' && ps.s.StartsWith("/"))
-              Files.Add(arg);
+              this._files.Add(arg);
             else
               ps.Error("unknown switch: {0}", ps.s);
           }
         } else {
-          Files.Add(arg);
+          this._files.Add(arg);
         }
 
         ps.i = ps.nextIndex;
@@ -336,10 +371,6 @@ namespace Microsoft.Boogie {
   /// superset of Boogie's options.
   /// </summary>
   public class CommandLineOptions : CommandLineOptionEngine {
-    [ContractInvariantMethod]
-    void ObjectInvariant() {
-      Contract.Invariant(FileTimestamp != null);
-    }
 
     public CommandLineOptions()
       : base("Boogie", "Boogie program verifier") {
@@ -383,7 +414,6 @@ namespace Microsoft.Boogie {
     public bool DoomRestartTP = false;
     public bool PrintDesugarings = false;
     public string SimplifyLogFilePath = null;
-    public string/*!*/ LogPrefix = "";
     public bool PrintInstrumented = false;
     public bool InstrumentWithAsserts = false;
     public enum InstrumentationPlaces {
@@ -431,6 +461,19 @@ namespace Microsoft.Boogie {
     public string Z3ExecutablePath = null;
     public string CVC4ExecutablePath = null;
     public int KInductionDepth = -1;
+
+    private string/*!*/ _logPrefix = "";
+
+    public string LogPrefix {
+      get {
+        Contract.Ensures(Contract.Result<string>() != null);
+        return this._logPrefix;
+      }
+      set {
+        Contract.Requires(value != null);
+        this._logPrefix = value;
+      }
+    }
 
     public bool PrettyPrint = true;
 
@@ -668,7 +711,7 @@ namespace Microsoft.Boogie {
       public bool J_Intervals = false;
       public bool DebugStatistics = false;
     }
-    public AiFlags/*!*/ Ai = new AiFlags();
+    public readonly AiFlags/*!*/ Ai = new AiFlags();
 
     public class ConcurrentHoudiniOptions
     {

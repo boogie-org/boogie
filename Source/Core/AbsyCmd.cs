@@ -1269,22 +1269,64 @@ namespace Microsoft.Boogie {
   // class for parallel assignments, which subsumes both the old
   // SimpleAssignCmd and the old MapAssignCmd
   public class AssignCmd : Cmd {
-    public List<AssignLhs/*!*/>/*!*/ Lhss;
-    public List<Expr/*!*/>/*!*/ Rhss;
+    private List<AssignLhs/*!*/>/*!*/ _lhss;
+
+    public IList<AssignLhs/*!*/>/*!*/ Lhss {
+      get {
+        Contract.Ensures(cce.NonNullElements(Contract.Result<IList<AssignLhs>>()));
+        Contract.Ensures(Contract.Result<IList<AssignLhs>>().IsReadOnly);
+        return this._lhss.AsReadOnly();
+      }
+      set {
+        Contract.Requires(cce.NonNullElements(value));
+        this._lhss = new List<AssignLhs>(value);
+      }
+    }
+
+    internal void SetLhs(int index, AssignLhs lhs)
+    {
+      Contract.Requires(0 <= index && index < this.Lhss.Count);
+      Contract.Requires(lhs != null);
+      Contract.Ensures(this.Lhss[index] == lhs);
+      this._lhss[index] = lhs;
+    }
+
+    private List<Expr/*!*/>/*!*/ _rhss;
+
+    public IList<Expr/*!*/>/*!*/ Rhss {
+      get {
+        Contract.Ensures(cce.NonNullElements(Contract.Result<IList<Expr>>()));
+        Contract.Ensures(Contract.Result<IList<Expr>>().IsReadOnly);
+        return this._rhss.AsReadOnly();
+      }
+      set {
+        Contract.Requires(cce.NonNullElements(value));
+        this._rhss = new List<Expr>(value);
+      }
+    }
+
+    internal void SetRhs(int index, Expr rhs)
+    {
+      Contract.Requires(0 <= index && index < this.Rhss.Count);
+      Contract.Requires(rhs != null);
+      Contract.Ensures(this.Rhss[index] == rhs);
+      this._rhss[index] = rhs;
+    }
+
     [ContractInvariantMethod]
     void ObjectInvariant() {
-      Contract.Invariant(cce.NonNullElements(Lhss));
-      Contract.Invariant(cce.NonNullElements(Rhss));
+      Contract.Invariant(cce.NonNullElements(this._lhss));
+      Contract.Invariant(cce.NonNullElements(this._rhss));
     }
 
 
-    public AssignCmd(IToken tok, List<AssignLhs/*!*/>/*!*/ lhss, List<Expr/*!*/>/*!*/ rhss)
+    public AssignCmd(IToken tok, IList<AssignLhs/*!*/>/*!*/ lhss, IList<Expr/*!*/>/*!*/ rhss)
       : base(tok) {
       Contract.Requires(tok != null);
       Contract.Requires(cce.NonNullElements(rhss));
       Contract.Requires(cce.NonNullElements(lhss));
-      Lhss = lhss;
-      Rhss = rhss;
+      this._lhss = new List<AssignLhs>(lhss);
+      this._rhss = new List<Expr>(rhss);
     }
 
     public override void Emit(TokenTextWriter stream, int level) {
@@ -1698,20 +1740,43 @@ namespace Microsoft.Boogie {
   public class StateCmd : Cmd {
     [ContractInvariantMethod]
     void ObjectInvariant() {
-      Contract.Invariant(Locals != null);
-      Contract.Invariant(Cmds != null);
+      Contract.Invariant(this._locals != null);
+      Contract.Invariant(this._cmds != null);
     }
 
-    public /*readonly, except for the StandardVisitor*/ List<Variable>/*!*/ Locals;
-    public /*readonly, except for the StandardVisitor*/ List<Cmd>/*!*/ Cmds;
+    private List<Variable> _locals;
+
+    public /*readonly, except for the StandardVisitor*/ List<Variable>/*!*/ Locals {
+      get {
+        Contract.Ensures(Contract.Result<List<Variable>>() != null);
+        return this._locals;
+      }
+      internal set {
+        Contract.Requires(value != null);
+        this._locals = value;
+      }
+    }
+
+    private List<Cmd> _cmds;
+
+    public /*readonly, except for the StandardVisitor*/ List<Cmd>/*!*/ Cmds {
+      get {
+        Contract.Ensures(Contract.Result<List<Cmd>>() != null);
+        return this._cmds;
+      }
+      set {
+        Contract.Requires(value != null);
+        this._cmds = value;
+      }
+    }
 
     public StateCmd(IToken tok, List<Variable>/*!*/ locals, List<Cmd>/*!*/ cmds)
       : base(tok) {
       Contract.Requires(locals != null);
       Contract.Requires(cmds != null);
       Contract.Requires(tok != null);
-      this.Locals = locals;
-      this.Cmds = cmds;
+      this._locals = locals;
+      this._cmds = cmds;
     }
 
     public override void Resolve(ResolutionContext rc) {
@@ -2959,18 +3024,31 @@ namespace Microsoft.Boogie {
   }
 
   public class HavocCmd : Cmd {
-    public List<IdentifierExpr>/*!*/ Vars;
+    private List<IdentifierExpr>/*!*/ _vars;
+
+    public List<IdentifierExpr>/*!*/ Vars {
+      get {
+        Contract.Ensures(Contract.Result<List<IdentifierExpr>>() != null);
+        return this._vars;
+      }
+      set {
+        Contract.Requires(value != null);
+        this._vars = value;
+      }
+    }
+
     [ContractInvariantMethod]
     void ObjectInvariant() {
-      Contract.Invariant(Vars != null);
+      Contract.Invariant(this._vars != null);
     }
 
     public HavocCmd(IToken/*!*/ tok, List<IdentifierExpr>/*!*/ vars)
       : base(tok) {
       Contract.Requires(tok != null);
       Contract.Requires(vars != null);
-      Vars = vars;
+      this._vars = vars;
     }
+
     public override void Emit(TokenTextWriter stream, int level) {
       //Contract.Requires(stream != null);
       stream.Write(this, level, "havoc ");
