@@ -155,7 +155,10 @@ namespace Microsoft.Boogie {
       } else if (e1 == false_ || e2 == false_) {
         return false_;
       } else {
-        return Binary(BinaryOperator.Opcode.And, e1, e2);
+        var res = Binary(BinaryOperator.Opcode.And, e1, e2);
+        res.Type = Microsoft.Boogie.Type.Bool;
+        res.TypeParameters = SimpleTypeParamInstantiation.EMPTY;
+        return res;
       }
     }
     public static Expr Or(Expr e1, Expr e2) {

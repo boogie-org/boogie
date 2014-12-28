@@ -1587,6 +1587,9 @@ namespace VC {
                   passiveCmds.Add(new AssumeCmd(Token.NoToken, LiteralExpr.Eq(identExpr, copy)));
                   copy = identExpr;
                   passiveCmds.Add(new AssumeCmd(Token.NoToken, LiteralExpr.Imp(assmVars, identExpr)));
+
+                  // TODO(wuestholz): Try to use this instead:
+                  // ac.MarkAsVerifiedUnder(assmVars);
                 }
                 else
                 {

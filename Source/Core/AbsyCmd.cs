@@ -2664,11 +2664,6 @@ namespace Microsoft.Boogie {
         {
           result = LiteralExpr.And(result, c);
           result.Type = Type.Bool;
-          var nAryExpr = result as NAryExpr;
-          if (nAryExpr != null)
-          {
-            nAryExpr.TypeParameters = SimpleTypeParamInstantiation.EMPTY;
-          }
         }
         else
         {
@@ -2756,6 +2751,26 @@ namespace Microsoft.Boogie {
   public class AssertCmd : PredicateCmd, IPotentialErrorNode {
     public Expr OrigExpr;
     public Dictionary<Variable, Expr> IncarnationMap;
+
+    Expr verifiedUnder;
+    public Expr VerifiedUnder
+    {
+      get
+      {
+        if (verifiedUnder != null)
+        {
+          return verifiedUnder;
+        }
+        verifiedUnder = QKeyValue.FindExprAttribute(Attributes, "verified_under");
+        return verifiedUnder;
+      }
+    }
+
+    public void MarkAsVerifiedUnder(Expr expr)
+    {
+      Attributes = new QKeyValue(tok, "verified_under", new List<object> { expr }, Attributes);
+      verifiedUnder = expr;
+    }
 
     // TODO: convert to use generics
     private object errorData;
