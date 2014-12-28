@@ -113,10 +113,10 @@ Processing command (at Snapshots6.v0.bpl(13,5)) assert y == 0;
 
 Boogie program verifier finished with 1 verified, 0 errors
 Processing call to procedure N in implementation M (at Snapshots6.v1.bpl(11,5)):
-  >>> added axiom: (forall y##old##0: int :: { ##extracted_function##1(y##old##0) } ##extracted_function##1(y##old##0) == (y##old##0 == y))
+  >>> added axiom: (forall y##old##0: int, y: int :: { ##extracted_function##1(y##old##0, y) } ##extracted_function##1(y##old##0, y) == (y##old##0 == y))
   >>> added before: y##old##0 := y;
-  >>> added after: a##post##0 := a##post##0 && ##extracted_function##1(y##old##0);
-Processing command (at <unknown location>) a##post##0 := a##post##0 && ##extracted_function##1(y##old##0);
+  >>> added after: a##post##0 := a##post##0 && ##extracted_function##1(y##old##0, y);
+Processing command (at <unknown location>) a##post##0 := a##post##0 && ##extracted_function##1(y##old##0, y);
   >>> AssumeNegationOfAssumptionVariable
 Processing command (at Snapshots6.v1.bpl(13,5)) assert y == 0;
   >>> MarkAsPartiallyVerified
@@ -128,10 +128,10 @@ Processing command (at Snapshots7.v0.bpl(14,5)) assert y < 0;
 
 Boogie program verifier finished with 1 verified, 0 errors
 Processing call to procedure N in implementation M (at Snapshots7.v1.bpl(12,5)):
-  >>> added axiom: ##extracted_function##1() == (y < z)
+  >>> added axiom: (forall y: int, z: int :: { ##extracted_function##1(y, z) } ##extracted_function##1(y, z) == (y < z))
   >>> added before: y##old##0 := y;
-  >>> added after: a##post##0 := a##post##0 && ##extracted_function##1();
-Processing command (at <unknown location>) a##post##0 := a##post##0 && ##extracted_function##1();
+  >>> added after: a##post##0 := a##post##0 && ##extracted_function##1(y, z);
+Processing command (at <unknown location>) a##post##0 := a##post##0 && ##extracted_function##1(y, z);
   >>> AssumeNegationOfAssumptionVariable
 Processing command (at Snapshots7.v1.bpl(14,5)) assert y < 0;
   >>> MarkAsPartiallyVerified
@@ -566,9 +566,9 @@ Processing command (at Snapshots31.v0.bpl(10,5)) assert 0 < g;
 
 Boogie program verifier finished with 1 verified, 0 errors
 Processing call to procedure Q in implementation P (at Snapshots31.v1.bpl(9,5)):
-  >>> added axiom: (forall call0old#AT#g: int :: { ##extracted_function##1(call0old#AT#g) } ##extracted_function##1(call0old#AT#g) == (call0old#AT#g < g))
-  >>> added after: a##post##0 := a##post##0 && ##extracted_function##1(call0old#AT#g);
-Processing command (at <unknown location>) a##post##0 := a##post##0 && ##extracted_function##1(call0old#AT#g);
+  >>> added axiom: (forall call0old#AT#g: int, g: int :: { ##extracted_function##1(call0old#AT#g, g) } ##extracted_function##1(call0old#AT#g, g) == (call0old#AT#g < g))
+  >>> added after: a##post##0 := a##post##0 && ##extracted_function##1(call0old#AT#g, g);
+Processing command (at <unknown location>) a##post##0 := a##post##0 && ##extracted_function##1(call0old#AT#g, g);
   >>> AssumeNegationOfAssumptionVariable
 Processing command (at Snapshots31.v1.bpl(10,5)) assert 0 < g;
   >>> MarkAsPartiallyVerified
@@ -580,10 +580,10 @@ Processing command (at Snapshots32.v0.bpl(10,5)) assert 0 < g;
 
 Boogie program verifier finished with 1 verified, 0 errors
 Processing call to procedure Q in implementation P (at Snapshots32.v1.bpl(8,5)):
-  >>> added axiom: (forall g##old##0: int :: { ##extracted_function##1(g##old##0) } ##extracted_function##1(g##old##0) == (g##old##0 < g))
+  >>> added axiom: (forall g##old##0: int, g: int :: { ##extracted_function##1(g##old##0, g) } ##extracted_function##1(g##old##0, g) == (g##old##0 < g))
   >>> added before: g##old##0 := g;
-  >>> added after: a##post##0 := a##post##0 && ##extracted_function##1(g##old##0);
-Processing command (at <unknown location>) a##post##0 := a##post##0 && ##extracted_function##1(g##old##0);
+  >>> added after: a##post##0 := a##post##0 && ##extracted_function##1(g##old##0, g);
+Processing command (at <unknown location>) a##post##0 := a##post##0 && ##extracted_function##1(g##old##0, g);
   >>> AssumeNegationOfAssumptionVariable
 Processing command (at Snapshots32.v1.bpl(9,5)) assert 0 < g;
   >>> MarkAsPartiallyVerified

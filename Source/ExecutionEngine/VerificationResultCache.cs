@@ -290,7 +290,7 @@ namespace Microsoft.Boogie
 
     public override Expr VisitIdentifierExpr(IdentifierExpr node)
     {
-      if (node.Decl == null || !(node.Decl is LocalVariable || node.Decl is Formal))
+      if (node.Decl == null || !(node.Decl is LocalVariable || node.Decl is Formal || node.Decl is GlobalVariable))
       {
         return node;
       }
