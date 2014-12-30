@@ -545,7 +545,21 @@ namespace Microsoft.Boogie {
     public bool ExpandLambdas = true; // not useful from command line, only to be set to false programatically
     public bool DoModSetAnalysis = false;
     public bool UseAbstractInterpretation = true;          // true iff the user want to use abstract interpretation
-    public int  /*0..9*/StepsBeforeWidening = 0;           // The number of steps that must be done before applying a widen operator
+    private int  /*0..9*/stepsBeforeWidening = 0;           // The number of steps that must be done before applying a widen operator
+
+    public int StepsBeforeWidening
+    {
+      get
+      {
+        Contract.Ensures(0 <= Contract.Result<int>() && Contract.Result<int>() <= 9);
+        return this.stepsBeforeWidening;
+      }
+      set
+      {
+        Contract.Requires(0 <= value && value <= 9);
+        this.stepsBeforeWidening = value;
+      }
+    }
 
     public string OwickiGriesDesugaredOutputFile = null;
     public bool TrustAtomicityTypes = false;
