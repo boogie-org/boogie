@@ -2866,16 +2866,31 @@ namespace Microsoft.Boogie {
   }
 
   public class ListOfMiningStrategies : MiningStrategy {
-    public List<MiningStrategy>/*!*/ msList;
-    [ContractInvariantMethod]
-    void ObjectInvariant() {
-      Contract.Invariant(msList != null);
+
+    private List<MiningStrategy>/*!*/ _msList;
+
+    public List<MiningStrategy>/*!*/ msList
+    {
+      get
+      {
+        Contract.Ensures(Contract.Result<List<MiningStrategy>>() != null);
+        return this._msList;
+      }
+      set
+      {
+        Contract.Requires(value != null);
+        this._msList = value;
+      }
     }
 
+    [ContractInvariantMethod]
+    void ObjectInvariant() {
+      Contract.Invariant(this._msList != null);
+    }
 
     public ListOfMiningStrategies(List<MiningStrategy> l) {
       Contract.Requires(l != null);
-      this.msList = l;
+      this._msList = l;
     }
   }
 
