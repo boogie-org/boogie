@@ -2838,19 +2838,34 @@ namespace Microsoft.Boogie {
   }
 
   public class EEDTemplate : MiningStrategy {
-    public string/*!*/ reason;
-    public List<Expr/*!*/>/*!*/ exprList;
-    [ContractInvariantMethod]
-    void ObjectInvariant() {
-      Contract.Invariant(reason != null);
-      Contract.Invariant(cce.NonNullElements(exprList));
+    private string/*!*/ _reason;
+
+    public string/*!*/ reason
+    {
+      get
+      {
+        Contract.Ensures(Contract.Result<string>() != null);
+        return this._reason;
+      }
+      set
+      {
+        Contract.Requires(value != null);
+        this._reason = value;
+      }
     }
 
+    public List<Expr/*!*/>/*!*/ exprList;
+
+    [ContractInvariantMethod]
+    void ObjectInvariant() {
+      Contract.Invariant(this._reason != null);
+      Contract.Invariant(cce.NonNullElements(exprList));
+    }
 
     public EEDTemplate(string reason, List<Expr/*!*/>/*!*/ exprList) {
       Contract.Requires(reason != null);
       Contract.Requires(cce.NonNullElements(exprList));
-      this.reason = reason;
+      this._reason = reason;
       this.exprList = exprList;
     }
   }
