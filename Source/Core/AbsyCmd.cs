@@ -746,16 +746,58 @@ namespace Microsoft.Boogie {
 
   public class IfCmd : StructuredCmd {
     public Expr Guard;
-    public StmtList/*!*/ thn;
-    public IfCmd elseIf;
-    public StmtList elseBlock;
-    [ContractInvariantMethod]
-    void ObjectInvariant() {
-      Contract.Invariant(thn != null);
-      Contract.Invariant(elseIf == null || elseBlock == null);
+
+    private StmtList/*!*/ _thn;
+    
+    public StmtList/*!*/ thn
+    {
+      get
+      {
+        Contract.Ensures(Contract.Result<StmtList>() != null);
+        return this._thn;
+      }
+      set
+      {
+        Contract.Requires(value != null);
+        this._thn = value;
+      }
     }
 
+    private IfCmd _elseIf;
 
+    public IfCmd elseIf
+    {
+      get
+      {
+        return this._elseIf;
+      }
+      set
+      {
+        Contract.Requires(value == null || this.elseBlock == null);
+        this._elseIf = value;
+      }
+    }
+
+    private StmtList _elseBlock;
+
+    public StmtList elseBlock
+    {
+      get
+      {
+        return this._elseBlock;
+      }
+      set
+      {
+        Contract.Requires(value == null || this.elseIf == null);
+        this._elseBlock = value;
+      }
+    }
+
+    [ContractInvariantMethod]
+    void ObjectInvariant() {
+      Contract.Invariant(this._thn != null);
+      Contract.Invariant(this._elseIf == null || this._elseBlock == null);
+    }
 
     public IfCmd(IToken/*!*/ tok, Expr guard, StmtList/*!*/ thn, IfCmd elseIf, StmtList elseBlock)
       : base(tok) {
@@ -763,9 +805,9 @@ namespace Microsoft.Boogie {
       Contract.Requires(thn != null);
       Contract.Requires(elseIf == null || elseBlock == null);
       this.Guard = guard;
-      this.thn = thn;
-      this.elseIf = elseIf;
-      this.elseBlock = elseBlock;
+      this._thn = thn;
+      this._elseIf = elseIf;
+      this._elseBlock = elseBlock;
     }
 
     public override void Emit(TokenTextWriter stream, int level) {
