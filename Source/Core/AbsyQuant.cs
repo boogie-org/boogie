@@ -389,32 +389,43 @@ namespace Microsoft.Boogie {
   public class Trigger : Absy {
     public readonly bool Pos;
     [Rep]
-    public List<Expr>/*!*/ Tr;
+    public List<Expr>/*!*/ tr;
+
+    public IList<Expr>/*!*/ Tr
+    {
+      get
+      {
+        Contract.Ensures(Contract.Result<IList<Expr>>() != null);
+        Contract.Ensures(Contract.Result<IList<Expr>>().Count >= 1);
+        Contract.Ensures(this.Pos || Contract.Result<IList<Expr>>().Count == 1);
+        return this.tr.AsReadOnly();
+      }
+      set
+      {
+        Contract.Requires(value != null);
+        Contract.Requires(value.Count >= 1);
+        Contract.Requires(this.Pos || value.Count == 1);
+        this.tr = new List<Expr>(value);
+      }
+    }
+
     [ContractInvariantMethod]
     void ObjectInvariant() {
-      Contract.Invariant(Tr != null);
-      Contract.Invariant(1 <= Tr.Count);
-      Contract.Invariant(Pos || Tr.Count == 1);
+      Contract.Invariant(this.tr != null);
+      Contract.Invariant(this.tr.Count >= 1);
+      Contract.Invariant(Pos || this.tr.Count == 1);
     }
 
     public Trigger Next;
 
-    public Trigger(IToken tok, bool pos, List<Expr> tr)
-      : this(tok, pos, tr, null) {
-      Contract.Requires(tr != null);
-      Contract.Requires(tok != null);
-      Contract.Requires(1 <= tr.Count);
-      Contract.Requires(pos || tr.Count == 1);
-    }
-
-    public Trigger(IToken/*!*/ tok, bool pos, List<Expr>/*!*/ tr, Trigger next)
+    public Trigger(IToken/*!*/ tok, bool pos, IList<Expr>/*!*/ tr, Trigger next = null)
       : base(tok) {
       Contract.Requires(tok != null);
       Contract.Requires(tr != null);
-      Contract.Requires(1 <= tr.Count);
+      Contract.Requires(tr.Count >= 1);
       Contract.Requires(pos || tr.Count == 1);
       this.Pos = pos;
-      this.Tr = tr;
+      this.Tr = new List<Expr>(tr);
       this.Next = next;
     }
 
