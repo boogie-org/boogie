@@ -24,19 +24,77 @@ namespace Microsoft.Boogie {
     [ContractInvariantMethod]
     void ObjectInvariant() {
       Contract.Invariant(tok != null);
-      Contract.Invariant(Anonymous || LabelName != null);
-      Contract.Invariant(ec == null || tc == null);
-      Contract.Invariant(simpleCmds != null);
+      Contract.Invariant(Anonymous || this.labelName != null);
+      Contract.Invariant(this._ec == null || this._tc == null);
+      Contract.Invariant(this._simpleCmds != null);
     }
 
     public readonly IToken/*!*/ tok;
-    public string LabelName;
+
     public readonly bool Anonymous;
 
+    private string labelName;
+
+    public string LabelName
+    {
+      get
+      {
+        Contract.Ensures(Anonymous || Contract.Result<string>() != null);
+        return this.labelName;
+      }
+      set
+      {
+        Contract.Requires(Anonymous || value != null);
+        this.labelName = value;
+      }
+    }
+
     [Rep]
-    public List<Cmd>/*!*/ simpleCmds;
-    public StructuredCmd ec;
-    public TransferCmd tc;
+    private List<Cmd>/*!*/ _simpleCmds;
+
+    public List<Cmd>/*!*/ simpleCmds
+    {
+      get
+      {
+        Contract.Ensures(Contract.Result<List<Cmd>>() != null);
+        return this._simpleCmds;
+      }
+      set
+      {
+        Contract.Requires(value != null);
+        this._simpleCmds = value;
+      }
+    }
+
+    private StructuredCmd _ec;
+
+    public StructuredCmd ec
+    {
+      get
+      {
+        return this._ec;
+      }
+      set
+      {
+        Contract.Requires(value == null || this.tc == null);
+        this._ec = value;
+      }
+    }
+
+    private TransferCmd _tc;
+
+    public TransferCmd tc
+    {
+      get
+      {
+        return this._tc;
+      }
+      set
+      {
+        Contract.Requires(value == null || this.ec == null);
+        this._tc = value;
+      }
+    }
 
     public BigBlock successorBigBlock;  // semantic successor (may be a back-edge, pointing back to enclosing while statement); null if successor is end of procedure body (or if field has not yet been initialized)
 
@@ -45,11 +103,11 @@ namespace Microsoft.Boogie {
       Contract.Requires(tok != null);
       Contract.Requires(ec == null || tc == null);
       this.tok = tok;
-      this.LabelName = labelName;
       this.Anonymous = labelName == null;
-      this.simpleCmds = simpleCmds;
-      this.ec = ec;
-      this.tc = tc;
+      this.labelName = labelName;
+      this._simpleCmds = simpleCmds;
+      this._ec = ec;
+      this._tc = tc;
     }
 
     public void Emit(TokenTextWriter stream, int level) {
