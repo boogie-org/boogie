@@ -1247,9 +1247,10 @@ namespace Microsoft.Boogie
       {
         lock (outputs)
         {
-          for (; nextPrintableIndex < outputs.Count() && outputs[nextPrintableIndex] != null; nextPrintableIndex++)
+          for (; nextPrintableIndex < outputs.Length && outputs[nextPrintableIndex] != null; nextPrintableIndex++)
           {
             Console.Write(outputs[nextPrintableIndex].ToString());
+            outputs[nextPrintableIndex] = null;
             Console.Out.Flush();
           }
         }

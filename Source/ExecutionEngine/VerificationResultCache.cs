@@ -196,10 +196,10 @@ namespace Microsoft.Boogie
         {
           var desugaring = node.Desugaring;
           Contract.Assert(desugaring != null);
-          var precond = node.CheckedPrecondition(oldProc, Program);
+          var precond = node.CheckedPrecondition(oldProc, Program, e => FunctionExtractor.Extract(e, Program, axioms));
           if (precond != null)
           {
-            var assume = new AssumeCmd(node.tok, FunctionExtractor.Extract(precond, Program, axioms), new QKeyValue(Token.NoToken, "precondition_previous_snapshot", new List<object>(), null));
+            var assume = new AssumeCmd(node.tok, precond, new QKeyValue(Token.NoToken, "precondition_previous_snapshot", new List<object>(), null));
             beforePrecondtionCheck.Add(assume);
           }
 
@@ -241,7 +241,6 @@ namespace Microsoft.Boogie
           node.AssignedAssumptionVariable = lv;
           currentImplementation.InjectAssumptionVariable(lv, !canUseSpecs);
           var lhs = new SimpleAssignLhs(Token.NoToken, new IdentifierExpr(Token.NoToken, lv));
-          // TODO(wuestholz): Try to extract functions for each clause.
           var rhs = LiteralExpr.And(new IdentifierExpr(Token.NoToken, lv), assumedExpr);
           var assumed = new AssignCmd(node.tok, new List<AssignLhs> { lhs }, new List<Expr> { rhs });
           after.Add(assumed);

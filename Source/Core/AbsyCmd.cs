@@ -2640,18 +2640,21 @@ namespace Microsoft.Boogie {
       Substitution substOldCombined = v => { Expr s; if (oldSubst.TryGetValue(v, out s)) { return s; } return calleeSubstitutionOld(v); };
 
       var clauses = procedure.Ensures.Select(e => Substituter.FunctionCallReresolvingApplyReplacingOldExprs(calleeSubstitution, substOldCombined, e.Condition, program)).Concat(modifies);
-      var conj = Conjunction(clauses);
       // TODO(wuestholz): Try extracting a function for each clause:
-      // var conj = Conjunction(clauses.Select(c => extract(c)));
+      // return Conjunction(clauses.Select(c => extract(c)));
+      var conj = Conjunction(clauses);
       return conj != null ? extract(conj) : conj;
     }
 
-    public Expr CheckedPrecondition(Procedure procedure, Program program)
+    public Expr CheckedPrecondition(Procedure procedure, Program program, Func<Expr, Expr> extract)
     {
-      Contract.Requires(calleeSubstitution != null && calleeSubstitutionOld != null && program != null);
+      Contract.Requires(calleeSubstitution != null && calleeSubstitutionOld != null && program != null && extract != null);
 
-      var requires = procedure.Requires.Where(r => !r.Free).Select(r => Substituter.FunctionCallReresolvingApplyReplacingOldExprs(calleeSubstitution, calleeSubstitutionOld, r.Condition, program));
-      return Conjunction(requires);
+      var clauses = procedure.Requires.Where(r => !r.Free).Select(r => Substituter.FunctionCallReresolvingApplyReplacingOldExprs(calleeSubstitution, calleeSubstitutionOld, r.Condition, program));
+      // TODO(wuestholz): Try extracting a function for each clause:
+      // return Conjunction(clauses.Select(c => extract(c)));
+      var conj = Conjunction(clauses);
+      return conj != null ? extract(conj) : conj;
     }
 
     private static Expr Conjunction(IEnumerable<Expr> conjuncts)
