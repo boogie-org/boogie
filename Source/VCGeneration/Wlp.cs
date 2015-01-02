@@ -109,18 +109,18 @@ namespace VC {
         ctxt.Ctxt.BoogieExprTranslator.isPositiveContext = !ctxt.Ctxt.BoogieExprTranslator.isPositiveContext; 
 
         VCExprLetBinding LB = null;
-        VCExpr A = null;
+        VCExpr VU = null;
         if (ac.VerifiedUnder != null)
         {
           var V = gen.Variable(ctxt.FreshLetBindingName(), Microsoft.Boogie.Type.Bool);
           LB = gen.LetBinding(V, C);
           C = V;
-          A = gen.ImpliesSimp(ctxt.Ctxt.BoogieExprTranslator.Translate(ac.VerifiedUnder), V);
+          VU = ctxt.Ctxt.BoogieExprTranslator.Translate(ac.VerifiedUnder);
         }
 
+        VCExpr R = null;
         if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Doomed) {
-          var res = gen.Implies(C, N);
-          return A != null ? gen.Let(gen.ImpliesSimp(A, res), LB) : res;
+          R = gen.Implies(C, N);
         } else {
           int id = ac.UniqueId;
           if (ctxt.Label2absy != null) {
@@ -142,30 +142,39 @@ namespace VC {
               Contract.Assert(false); throw new cce.UnreachableException();  // unexpected case
           }
 
-          // (MSchaef) Hack: This line might be useless, but at least it is not harmful
-          // need to test it
-          if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Doomed)
-            return gen.Implies(C, N);
-
           ctxt.AssertionCount++;
+
+          // TODO(wuestholz): Try to weaken the assertion instead of assuming the property that has already been verified:
+          // if (VU != null)
+          // {
+          //   C = gen.OrSimp(VU, C);
+          // }
+
           if (ctxt.ControlFlowVariableExpr == null) {
             Contract.Assert(ctxt.Label2absy != null);
-            var res = gen.AndSimp(gen.LabelNeg(cce.NonNull(id.ToString()), C), N);
-            return A != null ? gen.Let(gen.ImpliesSimp(A, res), LB) : res;
+            R = gen.AndSimp(gen.LabelNeg(cce.NonNull(id.ToString()), C), N);
           } else {
             VCExpr controlFlowFunctionAppl = gen.ControlFlowFunctionApplication(ctxt.ControlFlowVariableExpr, gen.Integer(BigNum.FromInt(b.UniqueId)));
             Contract.Assert(controlFlowFunctionAppl != null);
             VCExpr assertFailure = gen.Eq(controlFlowFunctionAppl, gen.Integer(BigNum.FromInt(-ac.UniqueId)));
             if (ctxt.Label2absy == null) {
-              var res = gen.AndSimp(gen.Implies(assertFailure, C), N);
-              return A != null ? gen.Let(gen.ImpliesSimp(A, res), LB) : res;
+              R = gen.AndSimp(gen.Implies(assertFailure, C), N);
             } else {
-              var res = gen.AndSimp(gen.LabelNeg(cce.NonNull(id.ToString()), gen.Implies(assertFailure, C)), N);
-              return A != null ? gen.Let(gen.ImpliesSimp(A, res), LB) : res;
+              R = gen.AndSimp(gen.LabelNeg(cce.NonNull(id.ToString()), gen.Implies(assertFailure, C)), N);
             }
           }
         }
 
+        if (VU != null)
+        {
+          R = gen.ImpliesSimp(gen.ImpliesSimp(VU, C), R);
+        }
+
+        if (LB != null)
+        {
+          R = gen.Let(R, LB);
+        }
+        return R;
       } else if (cmd is AssumeCmd) {
         AssumeCmd ac = (AssumeCmd)cmd;
 

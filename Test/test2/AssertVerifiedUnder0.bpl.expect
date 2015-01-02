@@ -1,0 +1,11 @@
+AssertVerifiedUnder0.bpl(6,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    AssertVerifiedUnder0.bpl(6,5): anon0
+AssertVerifiedUnder0.bpl(18,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    AssertVerifiedUnder0.bpl(18,5): anon0
+AssertVerifiedUnder0.bpl(31,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    AssertVerifiedUnder0.bpl(31,5): anon0
+
+Boogie program verifier finished with 3 verified, 3 errors
