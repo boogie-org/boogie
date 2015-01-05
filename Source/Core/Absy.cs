@@ -4218,24 +4218,42 @@ namespace Microsoft.Boogie {
     }
   }
   public class AtomicRE : RE {
-    public Block/*!*/ b;
+    private Block/*!*/ _b;
+
+    public Block b
+    {
+      get
+      {
+        Contract.Ensures(Contract.Result<Block>() != null);
+        return this._b;
+      }
+      set
+      {
+        Contract.Requires(value != null);
+        this._b = value;
+      }
+    }
+
     [ContractInvariantMethod]
     void ObjectInvariant() {
-      Contract.Invariant(b != null);
+      Contract.Invariant(this._b != null);
     }
 
     public AtomicRE(Block block) {
       Contract.Requires(block != null);
-      b = block;
+      this._b = block;
     }
+
     public override void Resolve(ResolutionContext rc) {
       //Contract.Requires(rc != null);
       b.Resolve(rc);
     }
+
     public override void Typecheck(TypecheckingContext tc) {
       //Contract.Requires(tc != null);
       b.Typecheck(tc);
     }
+
     public override void Emit(TokenTextWriter stream, int level) {
       //Contract.Requires(stream != null);
       b.Emit(stream, level);
