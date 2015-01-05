@@ -88,6 +88,7 @@ namespace Microsoft.Boogie {
   using System.Collections;
   using System.Diagnostics;
   using System.Collections.Generic;
+  using System.Collections.ObjectModel;
   using System.Diagnostics.Contracts;
   using Microsoft.Boogie.AbstractInterpretation;
   using Microsoft.Boogie.GraphUtil;
@@ -681,7 +682,7 @@ namespace Microsoft.Boogie {
       }
     }
 
-    private System.Collections.ObjectModel.ReadOnlyCollection<GlobalVariable/*!*/> globalVariablesCache = null;
+    private ReadOnlyCollection<GlobalVariable/*!*/> globalVariablesCache = null;
     public IList<GlobalVariable/*!*/>/*!*/ GlobalVariables
     {
       get
@@ -1962,12 +1963,12 @@ namespace Microsoft.Boogie {
     // the <:-parents of the value of this constant. If the field is
     // null, no information about the parents is provided, which means
     // that the parental situation is unconstrained.
-    public readonly List<ConstantParent/*!*/> Parents;
+    public readonly ReadOnlyCollection<ConstantParent/*!*/> Parents;
+
     [ContractInvariantMethod]
     void ObjectInvariant() {
       Contract.Invariant(cce.NonNullElements(Parents, true));
     }
-
 
     // if true, it is assumed that the immediate <:-children of the
     // value of this constant are completely specified
@@ -2004,7 +2005,7 @@ namespace Microsoft.Boogie {
       Contract.Requires(typedIdent.Name != null && typedIdent.Name.Length > 0);
       Contract.Requires(typedIdent.WhereExpr == null);
       this.Unique = unique;
-      this.Parents = parents;
+      this.Parents = new List<ConstantParent>(parents).AsReadOnly();
       this.ChildrenComplete = childrenComplete;
     }
     public override bool IsMutable {
