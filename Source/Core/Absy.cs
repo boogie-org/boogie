@@ -2239,13 +2239,37 @@ namespace Microsoft.Boogie {
 
   public abstract class DeclWithFormals : NamedDeclaration {
     public List<TypeVariable>/*!*/ TypeParameters;
-    public /*readonly--except in StandardVisitor*/ List<Variable>/*!*/ InParams, OutParams;
+
+    private /*readonly--except in StandardVisitor*/ List<Variable>/*!*/ inParams, outParams;
+
+    public List<Variable>/*!*/ InParams {
+      get {
+        Contract.Ensures(Contract.Result<List<Variable>>() != null);
+        return this.inParams;
+      }
+      set {
+        Contract.Requires(value != null);
+        this.inParams = value;
+      }
+    }
+
+    public List<Variable>/*!*/ OutParams
+    {
+      get {
+        Contract.Ensures(Contract.Result<List<Variable>>() != null);
+        return this.outParams;
+      }
+      set {
+        Contract.Requires(value != null);
+        this.outParams = value;
+      }
+    }
 
     [ContractInvariantMethod]
     void ObjectInvariant() {
       Contract.Invariant(TypeParameters != null);
-      Contract.Invariant(InParams != null);
-      Contract.Invariant(OutParams != null);
+      Contract.Invariant(this.inParams != null);
+      Contract.Invariant(this.outParams != null);
     }
 
     public DeclWithFormals(IToken tok, string name, List<TypeVariable> typeParams,
@@ -2257,16 +2281,16 @@ namespace Microsoft.Boogie {
       Contract.Requires(name != null);
       Contract.Requires(tok != null);
       this.TypeParameters = typeParams;
-      this.InParams = inParams;
-      this.OutParams = outParams;
+      this.inParams = inParams;
+      this.outParams = outParams;
     }
 
     protected DeclWithFormals(DeclWithFormals that)
       : base(that.tok, cce.NonNull(that.Name)) {
       Contract.Requires(that != null);
       this.TypeParameters = that.TypeParameters;
-      this.InParams = that.InParams;
-      this.OutParams = that.OutParams;
+      this.inParams = cce.NonNull(that.InParams);
+      this.outParams = cce.NonNull(that.OutParams);
     }
 
     public byte[] MD5Checksum_;
