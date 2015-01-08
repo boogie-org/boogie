@@ -854,10 +854,40 @@ namespace Microsoft.Boogie {
   //---------------------------------------------------------------------
   // Block
   public sealed class Block : Absy {
-    public string/*!*/ Label;  // Note, Label is mostly readonly, but it can change to the name of a nearby block during block coalescing and empty-block removal
+    private string/*!*/ label; // Note, Label is mostly readonly, but it can change to the name of a nearby block during block coalescing and empty-block removal
+
+    public string/*!*/ Label
+    {
+      get
+      {
+        Contract.Ensures(Contract.Result<string>() != null);
+        return this.label;
+      }
+      set
+      {
+        Contract.Requires(value != null);
+        this.label = value;
+      }
+    }
+
     [Rep]
     [ElementsPeer]
-    public List<Cmd>/*!*/ Cmds;
+    public List<Cmd>/*!*/ cmds;
+
+    public List<Cmd>/*!*/ Cmds
+    {
+      get
+      {
+        Contract.Ensures(Contract.Result<List<Cmd>>() != null);
+        return this.cmds;
+      }
+      set
+      {
+        Contract.Requires(value != null);
+        this.cmds = value;
+      }
+    }
+
     [Rep]  //PM: needed to verify Traverse.Visit
     public TransferCmd TransferCmd; // maybe null only because we allow deferred initialization (necessary for cyclic structures)
 
@@ -887,8 +917,8 @@ namespace Microsoft.Boogie {
     public HashSet<Variable/*!*/> liveVarsBefore;
     [ContractInvariantMethod]
     void ObjectInvariant() {
-      Contract.Invariant(Label != null);
-      Contract.Invariant(Cmds != null);
+      Contract.Invariant(this.label != null);
+      Contract.Invariant(this.cmds != null);
       Contract.Invariant(cce.NonNullElements(liveVarsBefore, true));
     }
 
@@ -909,8 +939,8 @@ namespace Microsoft.Boogie {
       Contract.Requires(label != null);
       Contract.Requires(cmds != null);
       Contract.Requires(tok != null);
-      this.Label = label;
-      this.Cmds = cmds;
+      this.label = label;
+      this.cmds = cmds;
       this.TransferCmd = transferCmd;
       this.Predecessors = new List<Block>();
       this.liveVarsBefore = null;
