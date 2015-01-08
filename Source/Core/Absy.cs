@@ -1995,16 +1995,16 @@ namespace Microsoft.Boogie {
     }
     public Constant(IToken/*!*/ tok, TypedIdent/*!*/ typedIdent,
                     bool unique,
-                    List<ConstantParent/*!*/> parents, bool childrenComplete,
+                    IEnumerable<ConstantParent/*!*/> parents, bool childrenComplete,
                     QKeyValue kv)
       : base(tok, typedIdent, kv) {
       Contract.Requires(tok != null);
       Contract.Requires(typedIdent != null);
-      Contract.Requires(parents == null || cce.NonNullElements(parents));
+      Contract.Requires(cce.NonNullElements(parents, true));
       Contract.Requires(typedIdent.Name != null && typedIdent.Name.Length > 0);
       Contract.Requires(typedIdent.WhereExpr == null);
       this.Unique = unique;
-      this.Parents = new List<ConstantParent>(parents).AsReadOnly();
+      this.Parents = parents == null ? null : new ReadOnlyCollection<ConstantParent>(parents.ToList());
       this.ChildrenComplete = childrenComplete;
     }
     public override bool IsMutable {
