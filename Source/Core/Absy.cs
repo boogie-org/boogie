@@ -330,7 +330,7 @@ namespace Microsoft.Boogie {
     [ContractInvariantMethod]
     void ObjectInvariant() {
       Contract.Invariant(cce.NonNullElements(this.topLevelDeclarations));
-      Contract.Invariant(globalVariablesCache == null || cce.NonNullElements(globalVariablesCache));
+      Contract.Invariant(cce.NonNullElements(this.globalVariablesCache, true));
     }
     
     public Program()
@@ -682,18 +682,17 @@ namespace Microsoft.Boogie {
       }
     }
 
-    private ReadOnlyCollection<GlobalVariable/*!*/> globalVariablesCache = null;
-    public IList<GlobalVariable/*!*/>/*!*/ GlobalVariables
+    private IEnumerable<GlobalVariable/*!*/> globalVariablesCache = null;
+    public List<GlobalVariable/*!*/>/*!*/ GlobalVariables
     {
       get
       {
-        Contract.Ensures(cce.NonNullElements(Contract.Result<IList<GlobalVariable>>()));
-        Contract.Ensures(Contract.Result<IList<GlobalVariable>>().IsReadOnly);
+        Contract.Ensures(cce.NonNullElements(Contract.Result<List<GlobalVariable>>()));
 
         if (globalVariablesCache == null)
-          globalVariablesCache = TopLevelDeclarations.OfType<GlobalVariable>().ToList().AsReadOnly();
+          globalVariablesCache = TopLevelDeclarations.OfType<GlobalVariable>();
 
-        return globalVariablesCache;
+        return new List<GlobalVariable>(globalVariablesCache);
       }
     }
 
