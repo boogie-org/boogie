@@ -141,7 +141,7 @@ namespace Microsoft.Boogie {
         dependsOnNonTransitive.AddEdge(descriptor, descriptor);
       }
 
-      foreach (var Proc in NonInlinedProcedures()) {
+      foreach (var Proc in prog.NonInlinedProcedures()) {
 
         List<Variable> parameters = new List<Variable>();
         parameters.AddRange(Proc.InParams);
@@ -152,7 +152,7 @@ namespace Microsoft.Boogie {
         }
       }
 
-      foreach (var Impl in NonInlinedImplementations()) {
+      foreach (var Impl in prog.NonInlinedImplementations()) {
 
         List<Variable> locals = new List<Variable>();
         locals.AddRange(Impl.LocVars);
@@ -161,16 +161,6 @@ namespace Microsoft.Boogie {
           dependsOnNonTransitive.AddEdge(descriptor, descriptor);
         }
       }
-    }
-
-    private IEnumerable<Procedure> NonInlinedProcedures() {
-      return prog.Procedures.
-        Where(Item => QKeyValue.FindIntAttribute(Item.Attributes, "inline", -1) == -1);
-    }
-
-    private IEnumerable<Implementation> NonInlinedImplementations() {
-      return prog.Implementations.
-        Where(Item => QKeyValue.FindIntAttribute(Item.Proc.Attributes, "inline", -1) == -1);
     }
 
     private List<VariableDescriptor> ComputeDependencyChain(VariableDescriptor source, VariableDescriptor target, HashSet<VariableDescriptor> visited) {
@@ -259,7 +249,7 @@ namespace Microsoft.Boogie {
       }
 
       ControllingBlockToVariables = ComputeControllingVariables(BlockToControllingBlocks);
-      foreach (var Impl in NonInlinedImplementations()) {
+      foreach (var Impl in prog.NonInlinedImplementations()) {
 
         if (CommandLineOptions.Clo.Trace) {
           Console.WriteLine("Variable dependence analysis: Analysing " + Impl.Name);
@@ -345,7 +335,7 @@ namespace Microsoft.Boogie {
 
     private Dictionary<Block, HashSet<VariableDescriptor>> ComputeControllingVariables(Dictionary<Block, HashSet<Block>> GlobalCtrlDep) {
       Dictionary<Block, HashSet<VariableDescriptor>> result = new Dictionary<Block, HashSet<VariableDescriptor>>();
-      foreach (var Impl in NonInlinedImplementations()) {
+      foreach (var Impl in prog.NonInlinedImplementations()) {
         foreach (var b in Impl.Blocks) {
           result[b] = GetControlDependencyVariables(Impl.Name, b);
         }
@@ -635,6 +625,20 @@ namespace Microsoft.Boogie {
     private HashSet<string> Procedures() {
       return new HashSet<string>(dependsOnNonTransitive.Nodes.Where(Item =>
               Item is LocalDescriptor).Select(Item => ((LocalDescriptor)Item).Proc));
+    }
+
+  }
+
+  public static class Helper {
+
+    public static IEnumerable<Procedure> NonInlinedProcedures(this Program prog) {
+      return prog.Procedures.
+        Where(Item => QKeyValue.FindIntAttribute(Item.Attributes, "inline", -1) == -1);
+    }
+
+    public static IEnumerable<Implementation> NonInlinedImplementations(this Program prog) {
+      return prog.Implementations.
+        Where(Item => QKeyValue.FindIntAttribute(Item.Proc.Attributes, "inline", -1) == -1);
     }
 
   }

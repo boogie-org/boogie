@@ -31,12 +31,18 @@ namespace Microsoft.Boogie.Houdini
         houdiniInstances[i] = new List<Houdini>();
       }
 
-      var candidateDependenceAnalyser = new CandidateDependenceAnalyser(program);
-      candidateDependenceAnalyser.Analyse();
-      this.plan = candidateDependenceAnalyser.ApplyStages();
+      var annotationDependenceAnalyser = new AnnotationDependenceAnalyser(program);
+      annotationDependenceAnalyser.Analyse();
+      this.plan = annotationDependenceAnalyser.ApplyStages();
       if (CommandLineOptions.Clo.Trace)
       {
-        candidateDependenceAnalyser.dump();
+        annotationDependenceAnalyser.dump();
+
+        if(CommandLineOptions.Clo.DebugStagedHoudini) {
+          Console.WriteLine("Plan\n====\n");
+          Console.WriteLine(this.plan);
+        }
+        
         EmitProgram("staged.bpl");
       }
     }
@@ -68,7 +74,6 @@ namespace Microsoft.Boogie.Houdini
           h[0].Close();
         }
       }
-      Console.WriteLine("Used " + count + " houdini instances");
       #endregion
 
       return UnifyOutcomes();
@@ -228,11 +233,11 @@ namespace Microsoft.Boogie.Houdini
   public class StagedHoudiniPlan : IEnumerable<ScheduledStage> {
 
     private Graph<ScheduledStage> ScheduledStages;
-    private Dictionary<string, ScheduledStage> CandidateToStage;
+    private Dictionary<string, ScheduledStage> AnnotationToStage;
 
     internal StagedHoudiniPlan(Graph<ScheduledStage> ScheduledStages) {
       this.ScheduledStages = ScheduledStages;
-      this.CandidateToStage = new Dictionary<string, ScheduledStage>();
+      this.AnnotationToStage = new Dictionary<string, ScheduledStage>();
       foreach(var s in this) {
         Debug.Assert(!GetDependences(s).Contains(s));
       }
@@ -268,13 +273,13 @@ namespace Microsoft.Boogie.Houdini
         return this.GetEnumerator();
     }
 
-    internal ScheduledStage StageForCandidate(string c) {
-      if(CandidateToStage.ContainsKey(c)) {
-        return CandidateToStage[c];
+    internal ScheduledStage StageForAnnotation(string c) {
+      if(AnnotationToStage.ContainsKey(c)) {
+        return AnnotationToStage[c];
       }
       foreach(var s in ScheduledStages.Nodes) {
-        if(s.ContainsCandidate(c)) {
-          CandidateToStage[c] = s;
+        if(s.ContainsAnnotation(c)) {
+          AnnotationToStage[c] = s;
           return s;
         }
       }
@@ -299,19 +304,19 @@ namespace Microsoft.Boogie.Houdini
 
   public class ScheduledStage {
     private int Id;
-    private HashSet<string> Candidates;
+    private HashSet<string> Annotations;
 
-    public ScheduledStage(int Id, HashSet<string> Candidates) {
+    public ScheduledStage(int Id, HashSet<string> Annotations) {
       this.Id = Id;
-      this.Candidates = Candidates;
+      this.Annotations = Annotations;
     }
 
-    internal void AddCandidate(string c) {
-      Candidates.Add(c);
+    internal void AddAnnotation(string a) {
+      Annotations.Add(a);
     }
 
-    internal bool ContainsCandidate(string c) {
-      return Candidates.Contains(c);
+    internal bool ContainsAnnotation(string a) {
+      return Annotations.Contains(a);
     }
 
     public int GetId() {
@@ -319,13 +324,13 @@ namespace Microsoft.Boogie.Houdini
     }
 
     public int Count() {
-      return Candidates.Count();
+      return Annotations.Count();
     }
 
     public override string ToString()
     {
       string result = "ID: " + Id + "{ ";
-      foreach(var c in Candidates) {
+      foreach(var c in Annotations) {
         result += c + " ";
       }
       result += "}\n";

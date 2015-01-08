@@ -1348,7 +1348,7 @@ namespace Microsoft.Boogie
       return PipelineOutcome.Done;
     }
 
-    private static Program ProgramFromFile(string filename) {
+    public static Program ProgramFromFile(string filename) {
       Program p = ParseBoogieProgram(new List<string> { filename }, false);
       System.Diagnostics.Debug.Assert(p != null);
       LinearTypeChecker linearTypeChecker;

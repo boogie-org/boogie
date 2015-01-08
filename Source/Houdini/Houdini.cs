@@ -1164,7 +1164,7 @@ namespace Microsoft.Boogie.Houdini {
     }
 
     /// <summary>
-    /// Transforms given program based on Houdini assignment.  If a constant is assigned "true",
+    /// Transforms given program based on Houdini outcome.  If a constant is assigned "true",
     /// any preconditions or postconditions guarded by the constant are made free, and any assertions 
     /// guarded by the constant are replaced with assumptions.
     /// 
@@ -1172,9 +1172,12 @@ namespace Microsoft.Boogie.Houdini {
     /// guarded by the constant are replaced with "true", and assertions guarded by the constant
     /// are removed.
     /// 
-    /// In addition, all Houdini constants are removed.
+    /// In addition, all Houdini constants are removed from the program.
     /// </summary>
-    public void ApplyAssignment(Program prog) {
+    public static void ApplyAssignment(Program prog, HoudiniOutcome outcome) {
+
+      var Candidates = prog.TopLevelDeclarations.OfType<Constant>().Where
+            (Item => QKeyValue.FindBoolAttribute(Item.Attributes, "existential")).Select(Item => Item.Name);
 
       // Treat all assertions
       // TODO: do we need to also consider assumptions?
@@ -1183,9 +1186,9 @@ namespace Microsoft.Boogie.Houdini {
         foreach (Cmd cmd in block.Cmds) {
           string c;
           AssertCmd assertCmd = cmd as AssertCmd;
-          if (assertCmd != null && MatchCandidate(assertCmd.Expr, out c)) {
-            var cVar = currentHoudiniState.Assignment.Keys.Where(item => item.Name.Equals(c)).ToList()[0];
-            if (currentHoudiniState.Assignment[cVar]) {
+          if (assertCmd != null && MatchCandidate(assertCmd.Expr, Candidates, out c)) {
+            var cVar = outcome.assignment.Keys.Where(item => item.Equals(c)).ToList()[0];
+            if (outcome.assignment[cVar]) {
               Dictionary<Variable, Expr> cToTrue = new Dictionary<Variable, Expr>();
               Variable cVarProg = prog.Variables.Where(item => item.Name.Equals(c)).ToList()[0];
               cToTrue[cVarProg] = Expr.True;
@@ -1205,9 +1208,9 @@ namespace Microsoft.Boogie.Houdini {
         List<Requires> newRequires = new List<Requires>();
         foreach (Requires r in proc.Requires) {
           string c;
-          if (MatchCandidate(r.Condition, out c)) {
-            var cVar = currentHoudiniState.Assignment.Keys.Where(item => item.Name.Equals(c)).ToList()[0];
-            if (currentHoudiniState.Assignment[cVar]) {
+          if (MatchCandidate(r.Condition, Candidates, out c)) {
+            var cVar = outcome.assignment.Keys.Where(item => item.Equals(c)).ToList()[0];
+            if (outcome.assignment[cVar]) {
               Variable cVarProg = prog.Variables.Where(item => item.Name.Equals(c)).ToList()[0];
               Dictionary<Variable, Expr> subst = new Dictionary<Variable, Expr>();
               subst[cVarProg] = Expr.True;
@@ -1225,9 +1228,9 @@ namespace Microsoft.Boogie.Houdini {
         List<Ensures> newEnsures = new List<Ensures>();
         foreach (Ensures e in proc.Ensures) {
           string c;
-          if (MatchCandidate(e.Condition, out c)) {
-            var cVar = currentHoudiniState.Assignment.Keys.Where(item => item.Name.Equals(c)).ToList()[0];
-            if (currentHoudiniState.Assignment[cVar]) {
+          if (MatchCandidate(e.Condition, Candidates, out c)) {
+            var cVar = outcome.assignment.Keys.Where(item => item.Equals(c)).ToList()[0];
+            if (outcome.assignment[cVar]) {
               Variable cVarProg = prog.Variables.Where(item => item.Name.Equals(c)).ToList()[0];
               Dictionary<Variable, Expr> subst = new Dictionary<Variable, Expr>();
               subst[cVarProg] = Expr.True;
@@ -1244,8 +1247,8 @@ namespace Microsoft.Boogie.Houdini {
       }
 
       // Remove the existential constants
-      prog.RemoveTopLevelDeclarations(item => (item is Variable) && 
-           (houdiniConstants.Select(c => c.Name).Contains((item as Variable).Name)));
+      prog.RemoveTopLevelDeclarations(item => (item is Constant) && 
+               (Candidates.Any(item2 => item2.Equals((item as Constant).Name))));
     }
 
   }
