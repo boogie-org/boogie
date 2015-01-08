@@ -425,7 +425,7 @@ namespace Microsoft.Boogie {
       Contract.Requires(tr.Count >= 1);
       Contract.Requires(pos || tr.Count == 1);
       this.Pos = pos;
-      this.Tr = new List<Expr>(tr);
+      this.tr = new List<Expr>(tr);
       this.Next = next;
     }
 
