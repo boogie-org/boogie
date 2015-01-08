@@ -389,7 +389,7 @@ namespace Microsoft.Boogie {
   public class Trigger : Absy {
     public readonly bool Pos;
     [Rep]
-    public List<Expr>/*!*/ tr;
+    private List<Expr>/*!*/ tr;
 
     public IList<Expr>/*!*/ Tr
     {
