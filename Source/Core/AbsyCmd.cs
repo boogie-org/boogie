@@ -2599,7 +2599,7 @@ namespace Microsoft.Boogie {
         if (QKeyValue.FindBoolAttribute(e.Attributes, "candidate"))
         {
             assume.Attributes = new QKeyValue(Token.NoToken, "candidate", new List<object>(), assume.Attributes);
-            assume.Attributes.Params.Add(this.callee);
+            assume.Attributes.AddParam(this.callee);
         }
         #endregion
         newBlockBody.Add(assume);

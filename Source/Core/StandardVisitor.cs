@@ -438,12 +438,13 @@ namespace Microsoft.Boogie {
     public virtual QKeyValue VisitQKeyValue(QKeyValue node) {
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<QKeyValue>() != null);
+      var newParams = new List<object>();
       for (int i = 0, n = node.Params.Count; i < n; i++) {
         var e = node.Params[i] as Expr;
-        if (e != null) {
-          node.Params[i] = (Expr)this.Visit(e);
-        }
+        newParams.Add(e != null ? this.Visit(e) : node.Params[i]);
       }
+      node.ClearParams();
+      node.AddParams(newParams);
       if (node.Next != null) {
         node.Next = (QKeyValue)this.Visit(node.Next);
       }
