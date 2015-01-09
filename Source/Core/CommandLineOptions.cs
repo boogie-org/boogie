@@ -737,10 +737,18 @@ namespace Microsoft.Boogie {
       }
     }
 
-    public List<string/*!*/> ProcsToCheck = null;  // null means "no restriction"
+    public IEnumerable<string/*!*/> ProcsToCheck {
+      get {
+        Contract.Ensures(cce.NonNullElements(Contract.Result<IEnumerable<string/*!*/>>(), true));
+        return this.procsToCheck != null ? this.procsToCheck.AsEnumerable() : null;
+      }
+    }
+
+    private List<string/*!*/> procsToCheck = null;  // null means "no restriction"
+    
     [ContractInvariantMethod]
     void ObjectInvariant5() {
-      Contract.Invariant(cce.NonNullElements(ProcsToCheck, true));
+      Contract.Invariant(cce.NonNullElements(this.procsToCheck, true));
       Contract.Invariant(Ai != null);
     }
 
@@ -814,11 +822,11 @@ namespace Microsoft.Boogie {
           return true;
 
         case "proc":
-          if (ProcsToCheck == null) {
-            ProcsToCheck = new List<string/*!*/>();
+          if (this.procsToCheck == null) {
+            this.procsToCheck = new List<string/*!*/>();
           }
           if (ps.ConfirmArgumentCount(1)) {
-            ProcsToCheck.Add(cce.NonNull(args[ps.i]));
+            this.procsToCheck.Add(cce.NonNull(args[ps.i]));
           }
           return true;
 
