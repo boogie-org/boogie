@@ -826,12 +826,33 @@ namespace Microsoft.Boogie {
     // This field is used during passification to null-out entries in block2Incartion hashtable early
     public int succCount;
 
-    public HashSet<Variable/*!*/> liveVarsBefore;
+    private HashSet<Variable/*!*/> _liveVarsBefore;
+
+    public IEnumerable<Variable/*!*/> liveVarsBefore
+    {
+      get
+      {
+        Contract.Ensures(cce.NonNullElements(Contract.Result<IEnumerable<Variable/*!*/>>(), true));
+        if (this._liveVarsBefore == null)
+          return null;
+        else
+          return this._liveVarsBefore.AsEnumerable<Variable>();
+      }
+      set
+      {
+        Contract.Requires(cce.NonNullElements(value, true));
+        if (value == null)
+          this._liveVarsBefore = null;
+        else
+          this._liveVarsBefore = new HashSet<Variable>(value);
+      }
+    }
+
     [ContractInvariantMethod]
     void ObjectInvariant() {
       Contract.Invariant(Label != null);
       Contract.Invariant(Cmds != null);
-      Contract.Invariant(cce.NonNullElements(liveVarsBefore, true));
+      Contract.Invariant(cce.NonNullElements(this._liveVarsBefore, true));
     }
 
     public bool IsLive(Variable v) {
@@ -855,7 +876,7 @@ namespace Microsoft.Boogie {
       this.Cmds = cmds;
       this.TransferCmd = transferCmd;
       this.Predecessors = new List<Block>();
-      this.liveVarsBefore = null;
+      this._liveVarsBefore = null;
       this.TraversingStatus = VisitState.ToVisit;
       this.iterations = 0;
     }
