@@ -509,7 +509,7 @@ namespace Microsoft.Boogie {
       Contract.Invariant(0 <= EnhancedErrorMessages && EnhancedErrorMessages < 2);
       Contract.Invariant(0 <= StepsBeforeWidening && StepsBeforeWidening <= 9);
       Contract.Invariant(-1 <= BracketIdsInVC && BracketIdsInVC < 2);
-      Contract.Invariant(cce.NonNullElements(ProverOptions));
+      Contract.Invariant(cce.NonNullElements(this.proverOptions));
     }
 
     public int LoopUnrollCount = -1;  // -1 means don't unroll loops
@@ -573,7 +573,28 @@ namespace Microsoft.Boogie {
     public ProverFactory TheProverFactory;
     public string ProverName;
     [Peer]
-    public List<string/*!*/>/*!*/ ProverOptions = new List<string/*!*/>();
+    private List<string> proverOptions = new List<string>();
+
+    public IEnumerable<string> ProverOptions
+    {
+      get
+      {
+        Contract.Ensures(Contract.Result<IEnumerable<string>>() != null);
+        foreach (string s in this.proverOptions)
+          yield return s;
+      }
+    }
+
+    public void AddProverOption(string option)
+    {
+      Contract.Requires(option != null);
+      this.proverOptions.Add(option);
+    }
+
+    public void RemoveAllProverOptions(Predicate<string> match)
+    {
+      this.proverOptions.RemoveAll(match);
+    }
 
     public int BracketIdsInVC = -1;  // -1 - not specified, 0 - no, 1 - yes
     public bool CausalImplies = false;
@@ -609,12 +630,29 @@ namespace Microsoft.Boogie {
     }
     [ContractInvariantMethod]
     void ObjectInvariant4() {
-      Contract.Invariant(cce.NonNullElements(Z3Options));
+      Contract.Invariant(cce.NonNullElements(this.z3Options));
       Contract.Invariant(0 <= Z3lets && Z3lets < 4);
     }
 
     [Peer]
-    public List<string/*!*/>/*!*/ Z3Options = new List<string/*!*/>();
+    private List<string> z3Options = new List<string>();
+
+    public IEnumerable<string> Z3Options
+    {
+      get
+      {
+        Contract.Ensures(Contract.Result<IEnumerable<string>>() != null);
+        foreach (string s in z3Options)
+          yield return s;
+      }
+    }
+
+    public void AddZ3Option(string option)
+    {
+      Contract.Requires(option != null);
+      this.z3Options.Add(option);
+    }
+
     public bool Z3types = false;
     public int Z3lets = 3;  // 0 - none, 1 - only LET TERM, 2 - only LET FORMULA, 3 - (default) any
 
@@ -1099,7 +1137,7 @@ namespace Microsoft.Boogie {
         case "p":
         case "proverOpt":
           if (ps.ConfirmArgumentCount(1)) {
-            ProverOptions.Add(cce.NonNull(args[ps.i]));
+            AddProverOption(cce.NonNull(args[ps.i]));
           }
           return true;
 
@@ -1392,7 +1430,7 @@ namespace Microsoft.Boogie {
 		
         case "z3opt":
           if (ps.ConfirmArgumentCount(1)) {
-            Z3Options.Add(cce.NonNull(args[ps.i]));
+            AddZ3Option(cce.NonNull(args[ps.i]));
           }
           return true;
 
