@@ -90,12 +90,28 @@ namespace Microsoft.Boogie {
     public readonly IToken/*!*/ EndCurly;
     public StmtList ParentContext;
     public BigBlock ParentBigBlock;
-    public HashSet<string/*!*/>/*!*/ Labels = new HashSet<string/*!*/>();
+
+    private readonly HashSet<string/*!*/>/*!*/ labels = new HashSet<string/*!*/>();
+
+    public void AddLabel(string label)
+    {
+      labels.Add(label);
+    }
+
+    public IEnumerable<string/*!*/>/*!*/ Labels
+    {
+      get
+      {
+        Contract.Ensures(cce.NonNullElements(Contract.Result<IEnumerable<string/*!*/>/*!*/>()));
+        return this.labels.AsEnumerable<string>();
+      }
+    }
+
     [ContractInvariantMethod]
     void ObjectInvariant() {
       Contract.Invariant(EndCurly != null);
       Contract.Invariant(cce.NonNullElements(this.bigBlocks));
-      Contract.Invariant(cce.NonNullElements(Labels));
+      Contract.Invariant(cce.NonNullElements(this.labels));
     }
 
     public StmtList(IList<BigBlock/*!*/>/*!*/ bigblocks, IToken endCurly) {
@@ -337,7 +353,7 @@ namespace Microsoft.Boogie {
               prefix += "0";
             }
           }
-          stmtList.Labels.Add(b.LabelName);
+          stmtList.AddLabel(b.LabelName);
         }
       }
 
