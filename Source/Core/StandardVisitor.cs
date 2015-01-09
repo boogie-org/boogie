@@ -523,11 +523,11 @@ namespace Microsoft.Boogie {
       if (origNext != null) {
         Trigger newNext = this.VisitTrigger(origNext);
         if (newNext != origNext) {
-          node = new Trigger(node.tok, node.Pos, node.Tr);  // note: this creates sharing between the old and new Tr sequence
+          node = new Trigger(node.tok, node.Pos, node.Tr.ToList());
           node.Next = newNext;
         }
       }
-      node.Tr = this.VisitExprSeq(node.Tr);
+      node.Tr = this.VisitExprSeq(node.Tr.ToList());
       return node;
     }
     // called by default for all nullary type constructors and type variables
@@ -1073,7 +1073,7 @@ namespace Microsoft.Boogie {
           {
               this.VisitTrigger(origNext);
           }
-          this.VisitExprSeq(node.Tr);
+          this.VisitExprSeq(node.Tr.ToList());
           return node;
       }
       // called by default for all nullary type constructors and type variables
