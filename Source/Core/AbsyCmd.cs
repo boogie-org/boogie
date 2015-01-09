@@ -74,7 +74,18 @@ namespace Microsoft.Boogie {
 
   public class StmtList {
     [Rep]
-    public readonly List<BigBlock/*!*/>/*!*/ BigBlocks;
+    private readonly List<BigBlock/*!*/>/*!*/ bigBlocks;
+
+    public IList<BigBlock/*!*/>/*!*/ BigBlocks
+    {
+      get
+      {
+        Contract.Ensures(Contract.Result<IList<BigBlock>>() != null);
+        Contract.Ensures(Contract.Result<IList<BigBlock>>().IsReadOnly);
+        return this.bigBlocks.AsReadOnly();
+      }
+    }
+
     public List<Cmd> PrefixCommands;
     public readonly IToken/*!*/ EndCurly;
     public StmtList ParentContext;
@@ -83,16 +94,15 @@ namespace Microsoft.Boogie {
     [ContractInvariantMethod]
     void ObjectInvariant() {
       Contract.Invariant(EndCurly != null);
-      Contract.Invariant(cce.NonNullElements(BigBlocks));
+      Contract.Invariant(cce.NonNullElements(this.bigBlocks));
       Contract.Invariant(cce.NonNullElements(Labels));
     }
 
-
-    public StmtList([Captured] List<BigBlock/*!*/>/*!*/ bigblocks, IToken endCurly) {
+    public StmtList(IList<BigBlock/*!*/>/*!*/ bigblocks, IToken endCurly) {
       Contract.Requires(endCurly != null);
       Contract.Requires(cce.NonNullElements(bigblocks));
       Contract.Requires(bigblocks.Count > 0);
-      this.BigBlocks = bigblocks;
+      this.bigBlocks = new List<BigBlock>(bigblocks);
       this.EndCurly = endCurly;
     }
 
