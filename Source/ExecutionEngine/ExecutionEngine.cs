@@ -1361,10 +1361,8 @@ namespace Microsoft.Boogie
     private static PipelineOutcome RunStagedHoudini(Program program, PipelineStatistics stats, ErrorReporterDelegate er)
     {
       Houdini.HoudiniSession.HoudiniStatistics houdiniStats = new Houdini.HoudiniSession.HoudiniStatistics();
-      // TODO - pass this in somewhere
-
-      Houdini.StagedHoudini houdini = new Houdini.StagedHoudini(program, ProgramFromFile);
-      Houdini.HoudiniOutcome outcome = houdini.PerformStagedHoudiniInference();
+      Houdini.StagedHoudini stagedHoudini = new Houdini.StagedHoudini(program, houdiniStats, ProgramFromFile);
+      Houdini.HoudiniOutcome outcome = stagedHoudini.PerformStagedHoudiniInference();
 
       if (CommandLineOptions.Clo.PrintAssignment)
       {

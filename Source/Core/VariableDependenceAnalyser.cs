@@ -429,7 +429,7 @@ namespace Microsoft.Boogie {
       Dictionary<Implementation, Dictionary<Block, HashSet<Block>>> LocalCtrlDeps = new Dictionary<Implementation, Dictionary<Block, HashSet<Block>>>();
 
       // Work out and union together local control dependences
-      foreach (var Impl in prog.Implementations) {
+      foreach (var Impl in prog.NonInlinedImplementations()) {
         Graph<Block> blockGraph = prog.ProcessLoops(Impl);
         LocalCtrlDeps[Impl] = blockGraph.ControlDependence();
         foreach (var KeyValue in LocalCtrlDeps[Impl]) {
@@ -440,7 +440,7 @@ namespace Microsoft.Boogie {
       Graph<Implementation> callGraph = Program.BuildCallGraph(prog);
 
       // Add inter-procedural control dependence nodes based on calls
-      foreach (var Impl in prog.Implementations) {
+      foreach (var Impl in prog.NonInlinedImplementations()) {
         foreach (var b in Impl.Blocks) {
           foreach (var cmd in b.Cmds.OfType<CallCmd>()) {
             var DirectCallee = GetImplementation(cmd.callee);

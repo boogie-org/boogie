@@ -15,6 +15,7 @@ namespace Microsoft.Boogie.Houdini
   {
 
     private Program program;
+    private HoudiniSession.HoudiniStatistics houdiniStats;
     private Func<string, Program> ProgramFromFile;
     private StagedHoudiniPlan plan;
     private List<Houdini>[] houdiniInstances;
@@ -23,8 +24,9 @@ namespace Microsoft.Boogie.Houdini
 
     private const string tempFilename = "__stagedHoudiniTemp.bpl";
 
-    public StagedHoudini(Program program, Func<string, Program> ProgramFromFile) {
+    public StagedHoudini(Program program, HoudiniSession.HoudiniStatistics houdiniStats, Func<string, Program> ProgramFromFile) {
       this.program = program;
+      this.houdiniStats = houdiniStats;
       this.ProgramFromFile = ProgramFromFile;
       this.houdiniInstances = new List<Houdini>[CommandLineOptions.Clo.StagedHoudiniThreads];
       for (int i = 0; i < CommandLineOptions.Clo.StagedHoudiniThreads; i++) {
@@ -40,15 +42,28 @@ namespace Microsoft.Boogie.Houdini
 
         if(CommandLineOptions.Clo.DebugStagedHoudini) {
           Console.WriteLine("Plan\n====\n");
-          Console.WriteLine(this.plan);
+          if(plan == null) {
+            Console.WriteLine("No plan, as there were no stages");
+          } else {
+            Console.WriteLine(this.plan);
+          }
         }
         
         EmitProgram("staged.bpl");
       }
     }
 
+    private bool NoStages() {
+      return plan == null;
+    }
+
     public HoudiniOutcome PerformStagedHoudiniInference()
     {
+
+      if (NoStages()) {
+        Houdini houdini = new Houdini(program, houdiniStats);
+        return houdini.PerformHoudiniInference();
+      }
 
       EmitProgram(tempFilename);
 

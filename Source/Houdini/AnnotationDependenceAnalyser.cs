@@ -436,8 +436,9 @@ namespace Microsoft.Boogie.Houdini {
 
         if (NoStages())
         {
-          // TODO: need to figure out what to do here
-          throw new NotImplementedException();
+          var TrivialGraph = new Graph<ScheduledStage>();
+          TrivialGraph.AddSource(new ScheduledStage(0, new HashSet<string>()));
+          return new StagedHoudiniPlan(TrivialGraph);
         }
 
         #region Assign annotations to stages at a given level of granularity

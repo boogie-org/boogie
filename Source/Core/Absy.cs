@@ -1287,17 +1287,16 @@ namespace Microsoft.Boogie {
 
     private int invariantGenerationCounter = 0;
 
-    public Constant MakeExistentialBoolean(int StageId) {
+    public Constant MakeExistentialBoolean() {
       Constant ExistentialBooleanConstant = new Constant(Token.NoToken, new TypedIdent(tok, "_b" + invariantGenerationCounter, Microsoft.Boogie.Type.Bool), false);
       invariantGenerationCounter++;
       ExistentialBooleanConstant.AddAttribute("existential", new object[] { Expr.True });
-      ExistentialBooleanConstant.AddAttribute("stage_id", new object[] { new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(StageId)) });
       AddTopLevelDeclaration(ExistentialBooleanConstant);
       return ExistentialBooleanConstant;
     }
 
-    public PredicateCmd CreateCandidateInvariant(Expr e, string tag = null, int StageId = 0) {
-      Constant ExistentialBooleanConstant = MakeExistentialBoolean(StageId);
+    public PredicateCmd CreateCandidateInvariant(Expr e, string tag = null) {
+      Constant ExistentialBooleanConstant = MakeExistentialBoolean();
       IdentifierExpr ExistentialBoolean = new IdentifierExpr(Token.NoToken, ExistentialBooleanConstant);
       PredicateCmd invariant = new AssertCmd(Token.NoToken, Expr.Imp(ExistentialBoolean, e));
       if (tag != null)
