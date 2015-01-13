@@ -1,4 +1,4 @@
-//-----------------------------------------------------------------------------
+﻿//-----------------------------------------------------------------------------
 //
 // Copyright (C) Microsoft Corporation.  All Rights Reserved.
 //
@@ -132,25 +132,51 @@ namespace Microsoft.Boogie {
 
   public class StmtList {
     [Rep]
-    public readonly List<BigBlock/*!*/>/*!*/ BigBlocks;
+    private readonly List<BigBlock/*!*/>/*!*/ bigBlocks;
+
+    public IList<BigBlock/*!*/>/*!*/ BigBlocks
+    {
+      get
+      {
+        Contract.Ensures(Contract.Result<IList<BigBlock>>() != null);
+        Contract.Ensures(Contract.Result<IList<BigBlock>>().IsReadOnly);
+        return this.bigBlocks.AsReadOnly();
+      }
+    }
+
     public List<Cmd> PrefixCommands;
     public readonly IToken/*!*/ EndCurly;
     public StmtList ParentContext;
     public BigBlock ParentBigBlock;
-    public HashSet<string/*!*/>/*!*/ Labels = new HashSet<string/*!*/>();
+
+    private readonly HashSet<string/*!*/>/*!*/ labels = new HashSet<string/*!*/>();
+
+    public void AddLabel(string label)
+    {
+      labels.Add(label);
+    }
+
+    public IEnumerable<string/*!*/>/*!*/ Labels
+    {
+      get
+      {
+        Contract.Ensures(cce.NonNullElements(Contract.Result<IEnumerable<string/*!*/>/*!*/>()));
+        return this.labels.AsEnumerable<string>();
+      }
+    }
+
     [ContractInvariantMethod]
     void ObjectInvariant() {
       Contract.Invariant(EndCurly != null);
-      Contract.Invariant(cce.NonNullElements(BigBlocks));
-      Contract.Invariant(cce.NonNullElements(Labels));
+      Contract.Invariant(cce.NonNullElements(this.bigBlocks));
+      Contract.Invariant(cce.NonNullElements(this.labels));
     }
 
-
-    public StmtList([Captured] List<BigBlock/*!*/>/*!*/ bigblocks, IToken endCurly) {
+    public StmtList(IList<BigBlock/*!*/>/*!*/ bigblocks, IToken endCurly) {
       Contract.Requires(endCurly != null);
       Contract.Requires(cce.NonNullElements(bigblocks));
       Contract.Requires(bigblocks.Count > 0);
-      this.BigBlocks = bigblocks;
+      this.bigBlocks = new List<BigBlock>(bigblocks);
       this.EndCurly = endCurly;
     }
 
@@ -385,7 +411,7 @@ namespace Microsoft.Boogie {
               prefix += "0";
             }
           }
-          stmtList.Labels.Add(b.LabelName);
+          stmtList.AddLabel(b.LabelName);
         }
       }
 
@@ -971,12 +997,33 @@ namespace Microsoft.Boogie {
     // This field is used during passification to null-out entries in block2Incartion hashtable early
     public int succCount;
 
-    public HashSet<Variable/*!*/> liveVarsBefore;
+    private HashSet<Variable/*!*/> _liveVarsBefore;
+
+    public IEnumerable<Variable/*!*/> liveVarsBefore
+    {
+      get
+      {
+        Contract.Ensures(cce.NonNullElements(Contract.Result<IEnumerable<Variable/*!*/>>(), true));
+        if (this._liveVarsBefore == null)
+          return null;
+        else
+          return this._liveVarsBefore.AsEnumerable<Variable>();
+      }
+      set
+      {
+        Contract.Requires(cce.NonNullElements(value, true));
+        if (value == null)
+          this._liveVarsBefore = null;
+        else
+          this._liveVarsBefore = new HashSet<Variable>(value);
+      }
+    }
+
     [ContractInvariantMethod]
     void ObjectInvariant() {
       Contract.Invariant(this.label != null);
       Contract.Invariant(this.cmds != null);
-      Contract.Invariant(cce.NonNullElements(liveVarsBefore, true));
+      Contract.Invariant(cce.NonNullElements(this._liveVarsBefore, true));
     }
 
     public bool IsLive(Variable v) {
@@ -1000,7 +1047,7 @@ namespace Microsoft.Boogie {
       this.cmds = cmds;
       this.TransferCmd = transferCmd;
       this.Predecessors = new List<Block>();
-      this.liveVarsBefore = null;
+      this._liveVarsBefore = null;
       this.TraversingStatus = VisitState.ToVisit;
       this.iterations = 0;
     }
@@ -2724,7 +2771,7 @@ namespace Microsoft.Boogie {
         if (QKeyValue.FindBoolAttribute(e.Attributes, "candidate"))
         {
             assume.Attributes = new QKeyValue(Token.NoToken, "candidate", new List<object>(), assume.Attributes);
-            assume.Attributes.Params.Add(this.callee);
+            assume.Attributes.AddParam(this.callee);
         }
         #endregion
         newBlockBody.Add(assume);
@@ -2896,7 +2943,6 @@ namespace Microsoft.Boogie {
 
   public class EEDTemplate : MiningStrategy {
     private string/*!*/ _reason;
-
     public string/*!*/ reason
     {
       get
@@ -2910,13 +2956,27 @@ namespace Microsoft.Boogie {
         this._reason = value;
       }
     }
+    
+    private List<Expr/*!*/>/*!*/ exprList;
+    public IEnumerable<Expr> Expressions
+    {
+      get
+      {
+        Contract.Ensures(cce.NonNullElements(Contract.Result<IEnumerable<Expr>>()));
+        return this.exprList.AsReadOnly();
+      }
+      set
+      {
+        Contract.Requires(cce.NonNullElements(value));
+        this.exprList = new List<Expr>(value);
+      }
+    }
 
-    public List<Expr/*!*/>/*!*/ exprList;
 
     [ContractInvariantMethod]
     void ObjectInvariant() {
       Contract.Invariant(this._reason != null);
-      Contract.Invariant(cce.NonNullElements(exprList));
+      Contract.Invariant(cce.NonNullElements(this.exprList));
     }
 
     public EEDTemplate(string reason, List<Expr/*!*/>/*!*/ exprList) {

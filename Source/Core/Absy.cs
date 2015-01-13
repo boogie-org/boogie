@@ -1429,7 +1429,7 @@ namespace Microsoft.Boogie {
       QKeyValue kv;
       for (kv = this.Attributes; kv != null; kv = kv.Next) {
         if (kv.Key == name) {
-          kv.Params.AddRange(vals);
+          kv.AddParams(vals);
           break;
         }
       }
