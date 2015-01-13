@@ -88,6 +88,7 @@ namespace Microsoft.Boogie {
   using System.Collections;
   using System.Diagnostics;
   using System.Collections.Generic;
+  using System.Collections.ObjectModel;
   using System.Diagnostics.Contracts;
   using Microsoft.Boogie.AbstractInterpretation;
   using Microsoft.Boogie.GraphUtil;
@@ -308,10 +309,18 @@ namespace Microsoft.Boogie {
     }
   }
 
-  // TODO: Ideally, this would use generics.
-  public interface IPotentialErrorNode {
-    object ErrorData {
+  public interface IPotentialErrorNode<out TGet>
+  {
+    TGet ErrorData
+    {
       get;
+    }
+  }
+
+  public interface IPotentialErrorNode<out TGet, in TSet> : IPotentialErrorNode<TGet>
+  {
+    new TSet ErrorData
+    {
       set;
     }
   }
@@ -321,7 +330,7 @@ namespace Microsoft.Boogie {
     [ContractInvariantMethod]
     void ObjectInvariant() {
       Contract.Invariant(cce.NonNullElements(this.topLevelDeclarations));
-      Contract.Invariant(globalVariablesCache == null || cce.NonNullElements(globalVariablesCache));
+      Contract.Invariant(cce.NonNullElements(this.globalVariablesCache, true));
     }
     
     public Program()
@@ -673,18 +682,17 @@ namespace Microsoft.Boogie {
       }
     }
 
-    private List<GlobalVariable/*!*/> globalVariablesCache = null;
-    public IEnumerable<GlobalVariable/*!*/>/*!*/ GlobalVariables
+    private IEnumerable<GlobalVariable/*!*/> globalVariablesCache = null;
+    public List<GlobalVariable/*!*/>/*!*/ GlobalVariables
     {
       get
       {
-        Contract.Ensures(cce.NonNullElements(Contract.Result<IEnumerable<GlobalVariable>>()));
+        Contract.Ensures(cce.NonNullElements(Contract.Result<List<GlobalVariable>>()));
 
         if (globalVariablesCache == null)
-        {
-          globalVariablesCache = TopLevelDeclarations.OfType<GlobalVariable>().ToList();
-        }
-        return globalVariablesCache;
+          globalVariablesCache = TopLevelDeclarations.OfType<GlobalVariable>();
+
+        return new List<GlobalVariable>(globalVariablesCache);
       }
     }
 
@@ -1420,7 +1428,7 @@ namespace Microsoft.Boogie {
       QKeyValue kv;
       for (kv = this.Attributes; kv != null; kv = kv.Next) {
         if (kv.Key == name) {
-          kv.Params.AddRange(vals);
+          kv.AddParams(vals);
           break;
         }
       }
@@ -1953,12 +1961,12 @@ namespace Microsoft.Boogie {
     // the <:-parents of the value of this constant. If the field is
     // null, no information about the parents is provided, which means
     // that the parental situation is unconstrained.
-    public readonly List<ConstantParent/*!*/> Parents;
+    public readonly ReadOnlyCollection<ConstantParent/*!*/> Parents;
+
     [ContractInvariantMethod]
     void ObjectInvariant() {
       Contract.Invariant(cce.NonNullElements(Parents, true));
     }
-
 
     // if true, it is assumed that the immediate <:-children of the
     // value of this constant are completely specified
@@ -1986,16 +1994,16 @@ namespace Microsoft.Boogie {
     }
     public Constant(IToken/*!*/ tok, TypedIdent/*!*/ typedIdent,
                     bool unique,
-                    List<ConstantParent/*!*/> parents, bool childrenComplete,
+                    IEnumerable<ConstantParent/*!*/> parents, bool childrenComplete,
                     QKeyValue kv)
       : base(tok, typedIdent, kv) {
       Contract.Requires(tok != null);
       Contract.Requires(typedIdent != null);
-      Contract.Requires(parents == null || cce.NonNullElements(parents));
+      Contract.Requires(cce.NonNullElements(parents, true));
       Contract.Requires(typedIdent.Name != null && typedIdent.Name.Length > 0);
       Contract.Requires(typedIdent.WhereExpr == null);
       this.Unique = unique;
-      this.Parents = parents;
+      this.Parents = parents == null ? null : new ReadOnlyCollection<ConstantParent>(parents.ToList());
       this.ChildrenComplete = childrenComplete;
     }
     public override bool IsMutable {
@@ -2230,13 +2238,37 @@ namespace Microsoft.Boogie {
 
   public abstract class DeclWithFormals : NamedDeclaration {
     public List<TypeVariable>/*!*/ TypeParameters;
-    public /*readonly--except in StandardVisitor*/ List<Variable>/*!*/ InParams, OutParams;
+
+    private /*readonly--except in StandardVisitor*/ List<Variable>/*!*/ inParams, outParams;
+
+    public List<Variable>/*!*/ InParams {
+      get {
+        Contract.Ensures(Contract.Result<List<Variable>>() != null);
+        return this.inParams;
+      }
+      set {
+        Contract.Requires(value != null);
+        this.inParams = value;
+      }
+    }
+
+    public List<Variable>/*!*/ OutParams
+    {
+      get {
+        Contract.Ensures(Contract.Result<List<Variable>>() != null);
+        return this.outParams;
+      }
+      set {
+        Contract.Requires(value != null);
+        this.outParams = value;
+      }
+    }
 
     [ContractInvariantMethod]
     void ObjectInvariant() {
       Contract.Invariant(TypeParameters != null);
-      Contract.Invariant(InParams != null);
-      Contract.Invariant(OutParams != null);
+      Contract.Invariant(this.inParams != null);
+      Contract.Invariant(this.outParams != null);
     }
 
     public DeclWithFormals(IToken tok, string name, List<TypeVariable> typeParams,
@@ -2248,16 +2280,16 @@ namespace Microsoft.Boogie {
       Contract.Requires(name != null);
       Contract.Requires(tok != null);
       this.TypeParameters = typeParams;
-      this.InParams = inParams;
-      this.OutParams = outParams;
+      this.inParams = inParams;
+      this.outParams = outParams;
     }
 
     protected DeclWithFormals(DeclWithFormals that)
       : base(that.tok, cce.NonNull(that.Name)) {
       Contract.Requires(that != null);
       this.TypeParameters = that.TypeParameters;
-      this.InParams = that.InParams;
-      this.OutParams = that.OutParams;
+      this.inParams = cce.NonNull(that.InParams);
+      this.outParams = cce.NonNull(that.OutParams);
     }
 
     public byte[] MD5Checksum_;
@@ -2752,7 +2784,7 @@ namespace Microsoft.Boogie {
       : base(tok, name, args, result) { }
   }
 
-  public class Requires : Absy, IPotentialErrorNode {
+  public class Requires : Absy, IPotentialErrorNode<string, string> {
     public readonly bool Free;
     
     private Expr/*!*/ _condition;
@@ -2772,13 +2804,12 @@ namespace Microsoft.Boogie {
     [ContractInvariantMethod]
     void ObjectInvariant() {
       Contract.Invariant(this._condition != null);
-      Contract.Invariant(errorData == null || errorData is string);
     }
 
 
     // TODO: convert to use generics
-    private object errorData;
-    public object ErrorData {
+    private string errorData;
+    public string ErrorData {
       get {
         return errorData;
       }
@@ -2865,7 +2896,7 @@ namespace Microsoft.Boogie {
     }
   }
 
-  public class Ensures : Absy, IPotentialErrorNode {
+  public class Ensures : Absy, IPotentialErrorNode<string, string> {
     public readonly bool Free;
 
     private Expr/*!*/ _condition;
@@ -2884,14 +2915,13 @@ namespace Microsoft.Boogie {
     [ContractInvariantMethod]
     void ObjectInvariant() {
       Contract.Invariant(this._condition != null); 
-      Contract.Invariant(errorData == null || errorData is string);
     }
 
     public string Comment;
 
     // TODO: convert to use generics
-    private object errorData;
-    public object ErrorData {
+    private string errorData;
+    public string ErrorData {
       get {
         return errorData;
       }
@@ -4211,24 +4241,42 @@ namespace Microsoft.Boogie {
     }
   }
   public class AtomicRE : RE {
-    public Block/*!*/ b;
+    private Block/*!*/ _b;
+
+    public Block b
+    {
+      get
+      {
+        Contract.Ensures(Contract.Result<Block>() != null);
+        return this._b;
+      }
+      set
+      {
+        Contract.Requires(value != null);
+        this._b = value;
+      }
+    }
+
     [ContractInvariantMethod]
     void ObjectInvariant() {
-      Contract.Invariant(b != null);
+      Contract.Invariant(this._b != null);
     }
 
     public AtomicRE(Block block) {
       Contract.Requires(block != null);
-      b = block;
+      this._b = block;
     }
+
     public override void Resolve(ResolutionContext rc) {
       //Contract.Requires(rc != null);
       b.Resolve(rc);
     }
+
     public override void Typecheck(TypecheckingContext tc) {
       //Contract.Requires(tc != null);
       b.Typecheck(tc);
     }
+
     public override void Emit(TokenTextWriter stream, int level) {
       //Contract.Requires(stream != null);
       b.Emit(stream, level);

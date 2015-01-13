@@ -28,13 +28,13 @@ namespace Microsoft.Boogie {
       List<Variable>/*!*/ vars = new List<Variable>();
       foreach (Variable/*!*/ var in impl.LocVars) {
         Contract.Assert(var != null);
-        if (usedVars.Contains(var))
+        if (_usedVars.Contains(var))
           vars.Add(var);
       }
       impl.LocVars = vars;
       //Console.WriteLine("New number of local variables = {0}", impl.LocVars.Length);
       //Console.WriteLine("---------------------------------");
-      usedVars.Clear();
+      _usedVars.Clear();
       return impl;
     }
   }
@@ -274,19 +274,35 @@ namespace Microsoft.Boogie {
   }
 
   public class VariableCollector : ReadOnlyVisitor {
-    public HashSet<Variable/*!*/>/*!*/ usedVars;
-    public HashSet<Variable/*!*/>/*!*/ oldVarsUsed;
+    protected HashSet<Variable/*!*/>/*!*/ _usedVars;
+    public IEnumerable<Variable /*!*/>/*!*/ usedVars
+    {
+      get
+      {
+        return _usedVars.AsEnumerable();
+      }
+    }
+
+    protected HashSet<Variable/*!*/>/*!*/ _oldVarsUsed;
+    public IEnumerable<Variable /*!*/>/*!*/ oldVarsUsed
+    {
+      get
+      {
+        return _oldVarsUsed.AsEnumerable();
+      }
+    }
+
     [ContractInvariantMethod]
     void ObjectInvariant() {
-      Contract.Invariant(cce.NonNullElements(usedVars));
-      Contract.Invariant(cce.NonNullElements(oldVarsUsed));
+      Contract.Invariant(cce.NonNullElements(_usedVars));
+      Contract.Invariant(cce.NonNullElements(_oldVarsUsed));
     }
 
     int insideOldExpr;
 
     public VariableCollector() {
-      usedVars = new System.Collections.Generic.HashSet<Variable/*!*/>();
-      oldVarsUsed = new System.Collections.Generic.HashSet<Variable/*!*/>();
+      _usedVars = new System.Collections.Generic.HashSet<Variable/*!*/>();
+      _oldVarsUsed = new System.Collections.Generic.HashSet<Variable/*!*/>();
       insideOldExpr = 0;
     }
 
@@ -303,9 +319,9 @@ namespace Microsoft.Boogie {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Expr>() != null);
       if (node.Decl != null) {
-        usedVars.Add(node.Decl);
+        _usedVars.Add(node.Decl);
         if (insideOldExpr > 0) {
-          oldVarsUsed.Add(node.Decl);
+          _oldVarsUsed.Add(node.Decl);
         }
       }
       return node;

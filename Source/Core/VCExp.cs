@@ -81,7 +81,7 @@ The generic options may or may not be used by the prover plugin.
       }
     }
 
-    public virtual void Parse(List<string/*!*/>/*!*/ opts) {
+    public virtual void Parse(IEnumerable<string/*!*/>/*!*/ opts) {
       Contract.Requires(cce.NonNullElements(opts));
       StringBuilder sb = new StringBuilder(stringRepr);
       Contract.Assert(sb != null);

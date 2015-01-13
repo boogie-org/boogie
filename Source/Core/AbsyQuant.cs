@@ -1,4 +1,4 @@
-//-----------------------------------------------------------------------------
+﻿//-----------------------------------------------------------------------------
 //
 // Copyright (C) Microsoft Corporation.  All Rights Reserved.
 //
@@ -249,22 +249,49 @@ namespace Microsoft.Boogie {
 
   public class QKeyValue : Absy {
     public readonly string/*!*/ Key;
-    public readonly List<object/*!*/>/*!*/ Params;  // each element is either a string or an Expr
+    private readonly List<object/*!*/>/*!*/ _params;  // each element is either a string or an Expr
+
+    public void AddParam(object p)
+    {
+      Contract.Requires(p != null);
+      this._params.Add(p);
+    }
+
+    public void AddParams(IEnumerable<object> ps)
+    {
+      Contract.Requires(cce.NonNullElements(ps));
+      this._params.AddRange(ps);
+    }
+
+    public void ClearParams()
+    {
+      this._params.Clear();
+    }
+
+    public IList<object> Params
+    {
+      get
+      {
+        Contract.Ensures(cce.NonNullElements(Contract.Result<IList<object>>()));
+        Contract.Ensures(Contract.Result<IList<object>>().IsReadOnly);
+        return this._params.AsReadOnly();
+      }
+    }
+
     public QKeyValue Next;
     [ContractInvariantMethod]
     void ObjectInvariant() {
       Contract.Invariant(Key != null);
-      Contract.Invariant(cce.NonNullElements(Params));
+      Contract.Invariant(cce.NonNullElements(this._params));
     }
 
-
-    public QKeyValue(IToken tok, string key, [Captured] List<object/*!*/>/*!*/ parameters, QKeyValue next)
+    public QKeyValue(IToken tok, string key, IList<object/*!*/>/*!*/ parameters, QKeyValue next)
       : base(tok) {
       Contract.Requires(key != null);
       Contract.Requires(tok != null);
       Contract.Requires(cce.NonNullElements(parameters));
       Key = key;
-      Params = parameters;
+      this._params = new List<object>(parameters);
       Next = next;
     }
 
@@ -389,32 +416,43 @@ namespace Microsoft.Boogie {
   public class Trigger : Absy {
     public readonly bool Pos;
     [Rep]
-    public List<Expr>/*!*/ Tr;
+    private List<Expr>/*!*/ tr;
+
+    public IList<Expr>/*!*/ Tr
+    {
+      get
+      {
+        Contract.Ensures(Contract.Result<IList<Expr>>() != null);
+        Contract.Ensures(Contract.Result<IList<Expr>>().Count >= 1);
+        Contract.Ensures(this.Pos || Contract.Result<IList<Expr>>().Count == 1);
+        return this.tr.AsReadOnly();
+      }
+      set
+      {
+        Contract.Requires(value != null);
+        Contract.Requires(value.Count >= 1);
+        Contract.Requires(this.Pos || value.Count == 1);
+        this.tr = new List<Expr>(value);
+      }
+    }
+
     [ContractInvariantMethod]
     void ObjectInvariant() {
-      Contract.Invariant(Tr != null);
-      Contract.Invariant(1 <= Tr.Count);
-      Contract.Invariant(Pos || Tr.Count == 1);
+      Contract.Invariant(this.tr != null);
+      Contract.Invariant(this.tr.Count >= 1);
+      Contract.Invariant(Pos || this.tr.Count == 1);
     }
 
     public Trigger Next;
 
-    public Trigger(IToken tok, bool pos, List<Expr> tr)
-      : this(tok, pos, tr, null) {
-      Contract.Requires(tr != null);
-      Contract.Requires(tok != null);
-      Contract.Requires(1 <= tr.Count);
-      Contract.Requires(pos || tr.Count == 1);
-    }
-
-    public Trigger(IToken/*!*/ tok, bool pos, List<Expr>/*!*/ tr, Trigger next)
+    public Trigger(IToken/*!*/ tok, bool pos, IEnumerable<Expr>/*!*/ tr, Trigger next = null)
       : base(tok) {
       Contract.Requires(tok != null);
       Contract.Requires(tr != null);
-      Contract.Requires(1 <= tr.Count);
-      Contract.Requires(pos || tr.Count == 1);
+      Contract.Requires(tr.Count() >= 1);
+      Contract.Requires(pos || tr.Count() == 1);
       this.Pos = pos;
-      this.Tr = tr;
+      this.Tr = new List<Expr>(tr);
       this.Next = next;
     }
 

@@ -1,4 +1,4 @@
-//-----------------------------------------------------------------------------
+﻿//-----------------------------------------------------------------------------
 //
 // Copyright (C) Microsoft Corporation.  All Rights Reserved.
 //
@@ -438,12 +438,13 @@ namespace Microsoft.Boogie {
     public virtual QKeyValue VisitQKeyValue(QKeyValue node) {
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<QKeyValue>() != null);
+      var newParams = new List<object>();
       for (int i = 0, n = node.Params.Count; i < n; i++) {
         var e = node.Params[i] as Expr;
-        if (e != null) {
-          node.Params[i] = (Expr)this.Visit(e);
-        }
+        newParams.Add(e != null ? this.Visit(e) : node.Params[i]);
       }
+      node.ClearParams();
+      node.AddParams(newParams);
       if (node.Next != null) {
         node.Next = (QKeyValue)this.Visit(node.Next);
       }
@@ -522,11 +523,11 @@ namespace Microsoft.Boogie {
       if (origNext != null) {
         Trigger newNext = this.VisitTrigger(origNext);
         if (newNext != origNext) {
-          node = new Trigger(node.tok, node.Pos, node.Tr);  // note: this creates sharing between the old and new Tr sequence
+          node = new Trigger(node.tok, node.Pos, node.Tr.ToList());
           node.Next = newNext;
         }
       }
-      node.Tr = this.VisitExprSeq(node.Tr);
+      node.Tr = this.VisitExprSeq(node.Tr.ToList());
       return node;
     }
     // called by default for all nullary type constructors and type variables
@@ -1072,7 +1073,7 @@ namespace Microsoft.Boogie {
           {
               this.VisitTrigger(origNext);
           }
-          this.VisitExprSeq(node.Tr);
+          this.VisitExprSeq(node.Tr.ToList());
           return node;
       }
       // called by default for all nullary type constructors and type variables
