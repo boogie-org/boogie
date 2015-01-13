@@ -218,6 +218,7 @@ namespace Microsoft.Boogie {
       /// </summary>
       public bool GetNumericArgument(ref int arg, int limit) {
         Contract.Requires(this.i < args.Length);
+        Contract.Ensures(Math.Min(arg, 0) <= Contract.ValueAtReturn(out arg) && Contract.ValueAtReturn(out arg) < limit);
         //modifies nextIndex, encounteredErrors, Console.Error.*;
         int a = arg;
         if (!GetNumericArgument(ref a)) {
@@ -236,6 +237,7 @@ namespace Microsoft.Boogie {
       /// Otherwise, emit an error message, leave "arg" unchanged, and return "false".
       /// </summary>
       public bool GetNumericArgument(ref double arg) {
+        Contract.Ensures(Contract.ValueAtReturn(out arg) >= 0);
         //modifies nextIndex, encounteredErrors, Console.Error.*;
         if (this.ConfirmArgumentCount(1)) {
           try {
@@ -508,7 +510,7 @@ namespace Microsoft.Boogie {
       Contract.Invariant((0 <= PrintErrorModel && PrintErrorModel <= 2) || PrintErrorModel == 4);
       Contract.Invariant(0 <= EnhancedErrorMessages && EnhancedErrorMessages < 2);
       Contract.Invariant(0 <= StepsBeforeWidening && StepsBeforeWidening <= 9);
-      Contract.Invariant(-1 <= BracketIdsInVC && BracketIdsInVC < 2);
+      Contract.Invariant(-1 <= this.bracketIdsInVC && this.bracketIdsInVC <= 1);
       Contract.Invariant(cce.NonNullElements(ProverOptions));
     }
 
@@ -543,7 +545,21 @@ namespace Microsoft.Boogie {
     public bool ExpandLambdas = true; // not useful from command line, only to be set to false programatically
     public bool DoModSetAnalysis = false;
     public bool UseAbstractInterpretation = true;          // true iff the user want to use abstract interpretation
-    public int  /*0..9*/StepsBeforeWidening = 0;           // The number of steps that must be done before applying a widen operator
+    private int  /*0..9*/stepsBeforeWidening = 0;           // The number of steps that must be done before applying a widen operator
+
+    public int StepsBeforeWidening
+    {
+      get
+      {
+        Contract.Ensures(0 <= Contract.Result<int>() && Contract.Result<int>() <= 9);
+        return this.stepsBeforeWidening;
+      }
+      set
+      {
+        Contract.Requires(0 <= value && value <= 9);
+        this.stepsBeforeWidening = value;
+      }
+    }
 
     public string OwickiGriesDesugaredOutputFile = null;
     public bool TrustAtomicityTypes = false;
@@ -575,7 +591,19 @@ namespace Microsoft.Boogie {
     [Peer]
     public List<string/*!*/>/*!*/ ProverOptions = new List<string/*!*/>();
 
-    public int BracketIdsInVC = -1;  // -1 - not specified, 0 - no, 1 - yes
+    private int bracketIdsInVC = -1;  // -1 - not specified, 0 - no, 1 - yes
+
+    public int BracketIdsInVC {
+      get {
+        Contract.Ensures(-1 <= Contract.Result<int>() && Contract.Result<int>() <= 1);
+        return this.bracketIdsInVC;
+      }
+      set {
+        Contract.Requires(-1 <= value && value <= 1);
+        this.bracketIdsInVC = value;
+      }
+    }
+
     public bool CausalImplies = false;
 
     public int SimplifyProverMatchDepth = -1;  // -1 means not specified
@@ -1296,7 +1324,7 @@ namespace Microsoft.Boogie {
           return true;
 
         case "vcBrackets":
-          ps.GetNumericArgument(ref BracketIdsInVC, 2);
+          ps.GetNumericArgument(ref bracketIdsInVC, 2);
           return true;
 
         case "proverMemoryLimit": {

@@ -526,7 +526,7 @@ namespace Microsoft.Boogie {
           node.Next = newNext;
         }
       }
-      node.Tr = this.VisitExprSeq(node.Tr);
+      node.Tr = this.VisitExprSeq(new List<Expr>(node.Tr));
       return node;
     }
     // called by default for all nullary type constructors and type variables
@@ -1072,7 +1072,7 @@ namespace Microsoft.Boogie {
           {
               this.VisitTrigger(origNext);
           }
-          this.VisitExprSeq(node.Tr);
+          node.Tr = this.VisitExprSeq(new List<Expr>(node.Tr));
           return node;
       }
       // called by default for all nullary type constructors and type variables
