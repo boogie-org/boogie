@@ -241,7 +241,7 @@ namespace Microsoft.Boogie {
       ApplyRedirections(m); 
 
       var mvstates = m.TryGetFunc("$mv_state");
-      if (MvInfo == null || mvstates == null)
+      if (MvInfo == null || mvstates == null || (mvstates.Arity == 1 && mvstates.Apps.Count() == 0))
         return;
 
       Contract.Assert(mvstates.Arity == 2);
