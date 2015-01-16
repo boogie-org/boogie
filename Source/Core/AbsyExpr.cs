@@ -2530,16 +2530,30 @@ namespace Microsoft.Boogie {
 
   public class IfThenElse : IAppliable {
 
-    public IToken/*!*/ tok;
+    private IToken/*!*/ _tok;
+
+    public IToken/*!*/ tok
+    {
+      get
+      {
+        Contract.Ensures(Contract.Result<IToken>() != null);
+        return this._tok;
+      }
+      set
+      {
+        Contract.Requires(value != null);
+        this._tok = value;
+      }
+    }
+    
     [ContractInvariantMethod]
     void ObjectInvariant() {
-      Contract.Invariant(tok != null);
+      Contract.Invariant(this._tok != null);
     }
-
 
     public IfThenElse(IToken tok) {
       Contract.Requires(tok != null);
-      this.tok = tok;
+      this._tok = tok;
     }
 
     public string/*!*/ FunctionName {
@@ -2566,7 +2580,7 @@ namespace Microsoft.Boogie {
     public void Emit(List<Expr> args, TokenTextWriter stream, int contextBindingStrength, bool fragileContext) {
       //Contract.Requires(stream != null);
       //Contract.Requires(args != null);
-      stream.SetToken(ref this.tok);
+      stream.SetToken(this);
       Contract.Assert(args.Count == 3);
       stream.push();
       stream.Write("(if ");     

@@ -1,4 +1,4 @@
-//-----------------------------------------------------------------------------
+﻿//-----------------------------------------------------------------------------
 //
 // Copyright (C) Microsoft Corporation.  All Rights Reserved.
 //
@@ -218,6 +218,7 @@ namespace Microsoft.Boogie {
       /// </summary>
       public bool GetNumericArgument(ref int arg, int limit) {
         Contract.Requires(this.i < args.Length);
+        Contract.Ensures(Math.Min(arg, 0) <= Contract.ValueAtReturn(out arg) && Contract.ValueAtReturn(out arg) < limit);
         //modifies nextIndex, encounteredErrors, Console.Error.*;
         int a = arg;
         if (!GetNumericArgument(ref a)) {
@@ -236,6 +237,7 @@ namespace Microsoft.Boogie {
       /// Otherwise, emit an error message, leave "arg" unchanged, and return "false".
       /// </summary>
       public bool GetNumericArgument(ref double arg) {
+        Contract.Ensures(Contract.ValueAtReturn(out arg) >= 0);
         //modifies nextIndex, encounteredErrors, Console.Error.*;
         if (this.ConfirmArgumentCount(1)) {
           try {
@@ -508,8 +510,8 @@ namespace Microsoft.Boogie {
       Contract.Invariant((0 <= PrintErrorModel && PrintErrorModel <= 2) || PrintErrorModel == 4);
       Contract.Invariant(0 <= EnhancedErrorMessages && EnhancedErrorMessages < 2);
       Contract.Invariant(0 <= StepsBeforeWidening && StepsBeforeWidening <= 9);
-      Contract.Invariant(-1 <= BracketIdsInVC && BracketIdsInVC < 2);
-      Contract.Invariant(cce.NonNullElements(ProverOptions));
+      Contract.Invariant(-1 <= this.bracketIdsInVC && this.bracketIdsInVC <= 1);
+      Contract.Invariant(cce.NonNullElements(this.proverOptions));
     }
 
     public int LoopUnrollCount = -1;  // -1 means don't unroll loops
@@ -543,7 +545,21 @@ namespace Microsoft.Boogie {
     public bool ExpandLambdas = true; // not useful from command line, only to be set to false programatically
     public bool DoModSetAnalysis = false;
     public bool UseAbstractInterpretation = true;          // true iff the user want to use abstract interpretation
-    public int  /*0..9*/StepsBeforeWidening = 0;           // The number of steps that must be done before applying a widen operator
+    private int  /*0..9*/stepsBeforeWidening = 0;           // The number of steps that must be done before applying a widen operator
+
+    public int StepsBeforeWidening
+    {
+      get
+      {
+        Contract.Ensures(0 <= Contract.Result<int>() && Contract.Result<int>() <= 9);
+        return this.stepsBeforeWidening;
+      }
+      set
+      {
+        Contract.Requires(0 <= value && value <= 9);
+        this.stepsBeforeWidening = value;
+      }
+    }
 
     public string OwickiGriesDesugaredOutputFile = null;
     public bool TrustAtomicityTypes = false;
@@ -573,9 +589,42 @@ namespace Microsoft.Boogie {
     public ProverFactory TheProverFactory;
     public string ProverName;
     [Peer]
-    public List<string/*!*/>/*!*/ ProverOptions = new List<string/*!*/>();
+    private List<string> proverOptions = new List<string>();
 
-    public int BracketIdsInVC = -1;  // -1 - not specified, 0 - no, 1 - yes
+    public IEnumerable<string> ProverOptions
+    {
+      get
+      {
+        Contract.Ensures(Contract.Result<IEnumerable<string>>() != null);
+        foreach (string s in this.proverOptions)
+          yield return s;
+      }
+    }
+
+    public void AddProverOption(string option)
+    {
+      Contract.Requires(option != null);
+      this.proverOptions.Add(option);
+    }
+
+    public void RemoveAllProverOptions(Predicate<string> match)
+    {
+      this.proverOptions.RemoveAll(match);
+    }
+
+    private int bracketIdsInVC = -1;  // -1 - not specified, 0 - no, 1 - yes
+
+    public int BracketIdsInVC {
+      get {
+        Contract.Ensures(-1 <= Contract.Result<int>() && Contract.Result<int>() <= 1);
+        return this.bracketIdsInVC;
+      }
+      set {
+        Contract.Requires(-1 <= value && value <= 1);
+        this.bracketIdsInVC = value;
+      }
+    }
+
     public bool CausalImplies = false;
 
     public int SimplifyProverMatchDepth = -1;  // -1 means not specified
@@ -609,12 +658,29 @@ namespace Microsoft.Boogie {
     }
     [ContractInvariantMethod]
     void ObjectInvariant4() {
-      Contract.Invariant(cce.NonNullElements(Z3Options));
+      Contract.Invariant(cce.NonNullElements(this.z3Options));
       Contract.Invariant(0 <= Z3lets && Z3lets < 4);
     }
 
     [Peer]
-    public List<string/*!*/>/*!*/ Z3Options = new List<string/*!*/>();
+    private List<string> z3Options = new List<string>();
+
+    public IEnumerable<string> Z3Options
+    {
+      get
+      {
+        Contract.Ensures(Contract.Result<IEnumerable<string>>() != null);
+        foreach (string s in z3Options)
+          yield return s;
+      }
+    }
+
+    public void AddZ3Option(string option)
+    {
+      Contract.Requires(option != null);
+      this.z3Options.Add(option);
+    }
+
     public bool Z3types = false;
     public int Z3lets = 3;  // 0 - none, 1 - only LET TERM, 2 - only LET FORMULA, 3 - (default) any
 
@@ -699,10 +765,18 @@ namespace Microsoft.Boogie {
       }
     }
 
-    public List<string/*!*/> ProcsToCheck = null;  // null means "no restriction"
+    public IEnumerable<string/*!*/> ProcsToCheck {
+      get {
+        Contract.Ensures(cce.NonNullElements(Contract.Result<IEnumerable<string/*!*/>>(), true));
+        return this.procsToCheck != null ? this.procsToCheck.AsEnumerable() : null;
+      }
+    }
+
+    private List<string/*!*/> procsToCheck = null;  // null means "no restriction"
+    
     [ContractInvariantMethod]
     void ObjectInvariant5() {
-      Contract.Invariant(cce.NonNullElements(ProcsToCheck, true));
+      Contract.Invariant(cce.NonNullElements(this.procsToCheck, true));
       Contract.Invariant(Ai != null);
     }
 
@@ -776,11 +850,11 @@ namespace Microsoft.Boogie {
           return true;
 
         case "proc":
-          if (ProcsToCheck == null) {
-            ProcsToCheck = new List<string/*!*/>();
+          if (this.procsToCheck == null) {
+            this.procsToCheck = new List<string/*!*/>();
           }
           if (ps.ConfirmArgumentCount(1)) {
-            ProcsToCheck.Add(cce.NonNull(args[ps.i]));
+            this.procsToCheck.Add(cce.NonNull(args[ps.i]));
           }
           return true;
 
@@ -1099,7 +1173,7 @@ namespace Microsoft.Boogie {
         case "p":
         case "proverOpt":
           if (ps.ConfirmArgumentCount(1)) {
-            ProverOptions.Add(cce.NonNull(args[ps.i]));
+            AddProverOption(cce.NonNull(args[ps.i]));
           }
           return true;
 
@@ -1296,7 +1370,7 @@ namespace Microsoft.Boogie {
           return true;
 
         case "vcBrackets":
-          ps.GetNumericArgument(ref BracketIdsInVC, 2);
+          ps.GetNumericArgument(ref bracketIdsInVC, 2);
           return true;
 
         case "proverMemoryLimit": {
@@ -1392,7 +1466,7 @@ namespace Microsoft.Boogie {
 		
         case "z3opt":
           if (ps.ConfirmArgumentCount(1)) {
-            Z3Options.Add(cce.NonNull(args[ps.i]));
+            AddZ3Option(cce.NonNull(args[ps.i]));
           }
           return true;
 

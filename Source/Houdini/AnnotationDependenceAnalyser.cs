@@ -206,7 +206,10 @@ namespace Microsoft.Boogie.Houdini {
           if(Houdini.MatchCandidate(p.Expr, CandidateIdentifiers, out c)) {
             yield return new AnnotationInstance(c, impl.Name, p.Expr);
           } else if((p is AssertCmd) && QKeyValue.FindBoolAttribute(p.Attributes, "originated_from_invariant")) {
-            yield return new AnnotationInstance(GetTagFromNonCandidateAttributes(p.Attributes), impl.Name, p.Expr);
+            var tag = GetTagFromNonCandidateAttributes(p.Attributes);
+            if (tag != null) {
+              yield return new AnnotationInstance(tag, impl.Name, p.Expr);
+            }
           }
         }
       }
@@ -219,7 +222,10 @@ namespace Microsoft.Boogie.Houdini {
           if(Houdini.MatchCandidate(r.Condition, CandidateIdentifiers, out c)) {
             yield return new AnnotationInstance(c, proc.Name, r.Condition);
           } else {
-            //yield return new AnnotationInstance(GetTagFromNonCandidateAttributes(r.Attributes), proc.Name, r.Condition);
+            var tag = GetTagFromNonCandidateAttributes(r.Attributes);
+            if (tag != null) {
+              yield return new AnnotationInstance(tag, proc.Name, r.Condition);
+            }
           }
         }
         foreach (Ensures e in proc.Ensures)
@@ -228,7 +234,10 @@ namespace Microsoft.Boogie.Houdini {
           if(Houdini.MatchCandidate(e.Condition, CandidateIdentifiers, out c)) {
             yield return new AnnotationInstance(c, proc.Name, e.Condition);
           } else {
-            //yield return new AnnotationInstance(GetTagFromNonCandidateAttributes(e.Attributes), proc.Name, e.Condition);
+            var tag = GetTagFromNonCandidateAttributes(e.Attributes);
+            if (tag != null) {
+              yield return new AnnotationInstance(tag, proc.Name, e.Condition);
+            }
           }
         }
       }
@@ -237,7 +246,6 @@ namespace Microsoft.Boogie.Houdini {
     internal static string GetTagFromNonCandidateAttributes(QKeyValue Attributes)
     {
       string tag = QKeyValue.FindStringAttribute(Attributes, "staged_houdini_tag");
-      Debug.Assert(tag != null);
       return tag;
     }
 
@@ -369,6 +377,12 @@ namespace Microsoft.Boogie.Houdini {
       Console.Write(" }");
     }
 
+    private bool OnlyRefersToConstants(Expr e) {
+      VariableCollector vc = new VariableCollector();
+      vc.Visit(e);
+      return vc.usedVars.OfType<Constant>().Count() == vc.usedVars.Count();
+    }
+
     private IEnumerable<string> GetNonCandidateAnnotations() {
       var Result = new HashSet<string>();
       int Counter = 0;
@@ -384,18 +398,25 @@ namespace Microsoft.Boogie.Houdini {
           continue;
         }
 
+        if (OnlyRefersToConstants(Assertion.Expr)) {
+          continue;
+        }
+
         string Tag = "staged_houdini_tag_" + Counter;
         Result.Add(Tag);
         Assertion.Attributes = new QKeyValue(Token.NoToken, "staged_houdini_tag", 
           new List<object> { Tag }, Assertion.Attributes);
         Counter++;
       }
-
-      /*
+      
       foreach(var Req in prog.NonInlinedProcedures().SelectMany(Item => Item.Requires)) {
 
         string unused;
         if (Houdini.MatchCandidate(Req.Condition, CandidateIdentifiers, out unused)) {
+          continue;
+        }
+
+        if (OnlyRefersToConstants(Req.Condition)) {
           continue;
         }
 
@@ -414,6 +435,10 @@ namespace Microsoft.Boogie.Houdini {
           continue;
         }
 
+        if (OnlyRefersToConstants(Ens.Condition)) {
+          continue;
+        }
+
         string Tag = "staged_houdini_tag_" + Counter;
         Result.Add(Tag);
         Ens.Attributes = new QKeyValue(Token.NoToken, "staged_houdini_tag", 
@@ -421,7 +446,6 @@ namespace Microsoft.Boogie.Houdini {
         Counter++;
 
       }
-      */
 
       return Result;
     }
@@ -436,8 +460,9 @@ namespace Microsoft.Boogie.Houdini {
 
         if (NoStages())
         {
-          // TODO: need to figure out what to do here
-          throw new NotImplementedException();
+          var TrivialGraph = new Graph<ScheduledStage>();
+          TrivialGraph.AddSource(new ScheduledStage(0, new HashSet<string>()));
+          return new StagedHoudiniPlan(TrivialGraph);
         }
 
         #region Assign annotations to stages at a given level of granularity
@@ -502,12 +527,16 @@ namespace Microsoft.Boogie.Houdini {
                             Expr.Ident(stageToCompleteBoolean[Plan.StageForAnnotation(c).GetId()]), c), a.Attributes));
                     } else if (QKeyValue.FindBoolAttribute(a.Attributes, "originated_from_invariant")) {
                         string tag = GetTagFromNonCandidateAttributes(a.Attributes);
-                        newCmds.Add(new AssertCmd(a.tok, Expr.Imp(
-                            Expr.Ident(stageToActiveBoolean[Plan.StageForAnnotation(tag).GetId()]), a.Expr),
-                            a.Attributes));
-                        newCmds.Add(new AssumeCmd(a.tok, Expr.Imp(
-                            Expr.Ident(stageToCompleteBoolean[Plan.StageForAnnotation(tag).GetId()]), a.Expr),
-                            a.Attributes));
+                        if (tag == null) {
+                          newCmds.Add(a);
+                        } else {
+                          newCmds.Add(new AssertCmd(a.tok, Expr.Imp(
+                              Expr.Ident(stageToActiveBoolean[Plan.StageForAnnotation(tag).GetId()]), a.Expr),
+                              a.Attributes));
+                          newCmds.Add(new AssumeCmd(a.tok, Expr.Imp(
+                              Expr.Ident(stageToCompleteBoolean[Plan.StageForAnnotation(tag).GetId()]), a.Expr),
+                              a.Attributes));
+                        }
                     }
                 }
                 else
@@ -524,58 +553,68 @@ namespace Microsoft.Boogie.Houdini {
         {
 
           #region Handle the preconditions
-          List<Requires> newRequires = new List<Requires>();
-          foreach(Requires r in p.Requires) {
-            string c;
-            if (Houdini.MatchCandidate(r.Condition, CandidateIdentifiers, out c)) {
-              newRequires.Add(new Requires(r.tok, false, 
-                Houdini.AddConditionToCandidate(r.Condition,
-                Expr.Ident(stageToActiveBoolean[Plan.StageForAnnotation(c).GetId()]), c),
-                r.Comment, r.Attributes));
-              newRequires.Add(new Requires(r.tok, true, 
-                Houdini.AddConditionToCandidate(r.Condition,
-                Expr.Ident(stageToCompleteBoolean[Plan.StageForAnnotation(c).GetId()]), c),
-                r.Comment, r.Attributes));
-            } else {
-              newRequires.Add(r);
-              /*string tag = GetTagFromNonCandidateAttributes(r.Attributes);
-              newRequires.Add(new Requires(r.tok, false, 
-                Expr.Imp(Expr.Ident(stageToActiveBoolean[Plan.StageForAnnotation(tag).GetId()]), r.Condition),
-                r.Comment, r.Attributes));
-              newRequires.Add(new Requires(r.tok, true, 
-                Expr.Imp(Expr.Ident(stageToCompleteBoolean[Plan.StageForAnnotation(tag).GetId()]), r.Condition),
-                r.Comment, r.Attributes));*/
+          {
+            List<Requires> newRequires = new List<Requires>();
+            foreach(Requires r in p.Requires) {
+              string c;
+              if (Houdini.MatchCandidate(r.Condition, CandidateIdentifiers, out c)) {
+                newRequires.Add(new Requires(r.tok, false, 
+                  Houdini.AddConditionToCandidate(r.Condition,
+                  Expr.Ident(stageToActiveBoolean[Plan.StageForAnnotation(c).GetId()]), c),
+                  r.Comment, r.Attributes));
+                newRequires.Add(new Requires(r.tok, true, 
+                  Houdini.AddConditionToCandidate(r.Condition,
+                  Expr.Ident(stageToCompleteBoolean[Plan.StageForAnnotation(c).GetId()]), c),
+                  r.Comment, r.Attributes));
+              } else {
+                string tag = GetTagFromNonCandidateAttributes(r.Attributes);
+                if (tag == null) {
+                  newRequires.Add(r);
+                } else {
+                  newRequires.Add(new Requires(r.tok, false, 
+                    Expr.Imp(Expr.Ident(stageToActiveBoolean[Plan.StageForAnnotation(tag).GetId()]), r.Condition),
+                    r.Comment, r.Attributes));
+                  newRequires.Add(new Requires(r.tok, true, 
+                    Expr.Imp(Expr.Ident(stageToCompleteBoolean[Plan.StageForAnnotation(tag).GetId()]), r.Condition),
+                    r.Comment, r.Attributes));
+                }
+              }
             }
+            p.Requires = newRequires;
           }
-          p.Requires = newRequires;
           #endregion
 
           #region Handle the postconditions
-          List<Ensures> newEnsures = new List<Ensures>();
-          foreach(Ensures e in p.Ensures) {
-            string c;
-            if (Houdini.MatchCandidate(e.Condition, CandidateIdentifiers, out c)) {
-              int stage = Plan.StageForAnnotation(c).GetId();
-              newEnsures.Add(new Ensures(e.tok, false, 
-                Houdini.AddConditionToCandidate(e.Condition,
-                Expr.Ident(stageToActiveBoolean[stage]), c),
-                e.Comment, e.Attributes));
-              newEnsures.Add(new Ensures(e.tok, true, 
-                Houdini.AddConditionToCandidate(e.Condition,
-                Expr.Ident(stageToCompleteBoolean[stage]), c),
-                e.Comment, e.Attributes));
-            } else {
-              newEnsures.Add(e);
-              /*string tag = GetTagFromNonCandidateAttributes(e.Attributes);
-              newRequires.Add(new Requires(e.tok, false, 
-                Expr.Imp(Expr.Ident(stageToActiveBoolean[Plan.StageForAnnotation(tag).GetId()]), e.Condition),
-                e.Comment, e.Attributes));
-              newRequires.Add(new Requires(e.tok, true, 
-                Expr.Imp(Expr.Ident(stageToCompleteBoolean[Plan.StageForAnnotation(tag).GetId()]), e.Condition),
-                e.Comment, e.Attributes));*/
+          {
+            List<Ensures> newEnsures = new List<Ensures>();
+            foreach(Ensures e in p.Ensures) {
+              string c;
+              if (Houdini.MatchCandidate(e.Condition, CandidateIdentifiers, out c)) {
+                int stage = Plan.StageForAnnotation(c).GetId();
+                newEnsures.Add(new Ensures(e.tok, false, 
+                  Houdini.AddConditionToCandidate(e.Condition,
+                  Expr.Ident(stageToActiveBoolean[stage]), c),
+                  e.Comment, e.Attributes));
+                newEnsures.Add(new Ensures(e.tok, true, 
+                  Houdini.AddConditionToCandidate(e.Condition,
+                  Expr.Ident(stageToCompleteBoolean[stage]), c),
+                  e.Comment, e.Attributes));
+              } else {
+                string tag = GetTagFromNonCandidateAttributes(e.Attributes);
+                if (tag == null) {
+                  newEnsures.Add(e);
+                } else {
+                  newEnsures.Add(new Ensures(e.tok, false, 
+                    Expr.Imp(Expr.Ident(stageToActiveBoolean[Plan.StageForAnnotation(tag).GetId()]), e.Condition),
+                    e.Comment, e.Attributes));
+                  newEnsures.Add(new Ensures(e.tok, true, 
+                    Expr.Imp(Expr.Ident(stageToCompleteBoolean[Plan.StageForAnnotation(tag).GetId()]), e.Condition),
+                    e.Comment, e.Attributes));
+                }
+              }
             }
+            p.Ensures = newEnsures;
           }
-          p.Ensures = newEnsures;
           #endregion
 
         }
@@ -739,7 +778,10 @@ namespace Microsoft.Boogie.Houdini {
           if(Houdini.MatchCandidate(assertCmd.Expr, AnnotationIdentifiers, out c)) {
             AddAnnotationOccurrence(c, b);
           } else {
-            AddAnnotationOccurrence(AnnotationDependenceAnalyser.GetTagFromNonCandidateAttributes(assertCmd.Attributes), b);
+            var tag = AnnotationDependenceAnalyser.GetTagFromNonCandidateAttributes(assertCmd.Attributes);
+            if (tag != null) {
+              AddAnnotationOccurrence(tag, b);
+            }
           }
         }
       }
@@ -752,7 +794,9 @@ namespace Microsoft.Boogie.Houdini {
             AddAnnotationOccurrence(c, new Tuple<string, PrePost>(proc.Name, PrePost.PRE));
           } else {
             string tag = AnnotationDependenceAnalyser.GetTagFromNonCandidateAttributes(r.Attributes);
-            AddAnnotationOccurrence(tag, new Tuple<string, PrePost>(proc.Name, PrePost.PRE));
+            if(tag != null) {
+              AddAnnotationOccurrence(tag, new Tuple<string, PrePost>(proc.Name, PrePost.PRE));
+            }
           }
         }
         foreach(Ensures e in proc.Ensures) {
@@ -761,7 +805,9 @@ namespace Microsoft.Boogie.Houdini {
             AddAnnotationOccurrence(c, new Tuple<string, PrePost>(proc.Name, PrePost.POST));
           } else {
             string tag = AnnotationDependenceAnalyser.GetTagFromNonCandidateAttributes(e.Attributes);
-            AddAnnotationOccurrence(tag, new Tuple<string, PrePost>(proc.Name, PrePost.PRE));
+            if(tag != null) {
+              AddAnnotationOccurrence(tag, new Tuple<string, PrePost>(proc.Name, PrePost.PRE));
+            }
           }
         }
       }

@@ -1,4 +1,4 @@
-//-----------------------------------------------------------------------------
+﻿//-----------------------------------------------------------------------------
 //
 // Copyright (C) Microsoft Corporation.  All Rights Reserved.
 //
@@ -24,19 +24,77 @@ namespace Microsoft.Boogie {
     [ContractInvariantMethod]
     void ObjectInvariant() {
       Contract.Invariant(tok != null);
-      Contract.Invariant(Anonymous || LabelName != null);
-      Contract.Invariant(ec == null || tc == null);
-      Contract.Invariant(simpleCmds != null);
+      Contract.Invariant(Anonymous || this.labelName != null);
+      Contract.Invariant(this._ec == null || this._tc == null);
+      Contract.Invariant(this._simpleCmds != null);
     }
 
     public readonly IToken/*!*/ tok;
-    public string LabelName;
+
     public readonly bool Anonymous;
 
+    private string labelName;
+
+    public string LabelName
+    {
+      get
+      {
+        Contract.Ensures(Anonymous || Contract.Result<string>() != null);
+        return this.labelName;
+      }
+      set
+      {
+        Contract.Requires(Anonymous || value != null);
+        this.labelName = value;
+      }
+    }
+
     [Rep]
-    public List<Cmd>/*!*/ simpleCmds;
-    public StructuredCmd ec;
-    public TransferCmd tc;
+    private List<Cmd>/*!*/ _simpleCmds;
+
+    public List<Cmd>/*!*/ simpleCmds
+    {
+      get
+      {
+        Contract.Ensures(Contract.Result<List<Cmd>>() != null);
+        return this._simpleCmds;
+      }
+      set
+      {
+        Contract.Requires(value != null);
+        this._simpleCmds = value;
+      }
+    }
+
+    private StructuredCmd _ec;
+
+    public StructuredCmd ec
+    {
+      get
+      {
+        return this._ec;
+      }
+      set
+      {
+        Contract.Requires(value == null || this.tc == null);
+        this._ec = value;
+      }
+    }
+
+    private TransferCmd _tc;
+
+    public TransferCmd tc
+    {
+      get
+      {
+        return this._tc;
+      }
+      set
+      {
+        Contract.Requires(value == null || this.ec == null);
+        this._tc = value;
+      }
+    }
 
     public BigBlock successorBigBlock;  // semantic successor (may be a back-edge, pointing back to enclosing while statement); null if successor is end of procedure body (or if field has not yet been initialized)
 
@@ -45,11 +103,11 @@ namespace Microsoft.Boogie {
       Contract.Requires(tok != null);
       Contract.Requires(ec == null || tc == null);
       this.tok = tok;
-      this.LabelName = labelName;
       this.Anonymous = labelName == null;
-      this.simpleCmds = simpleCmds;
-      this.ec = ec;
-      this.tc = tc;
+      this.labelName = labelName;
+      this._simpleCmds = simpleCmds;
+      this._ec = ec;
+      this._tc = tc;
     }
 
     public void Emit(TokenTextWriter stream, int level) {
@@ -74,25 +132,51 @@ namespace Microsoft.Boogie {
 
   public class StmtList {
     [Rep]
-    public readonly List<BigBlock/*!*/>/*!*/ BigBlocks;
+    private readonly List<BigBlock/*!*/>/*!*/ bigBlocks;
+
+    public IList<BigBlock/*!*/>/*!*/ BigBlocks
+    {
+      get
+      {
+        Contract.Ensures(Contract.Result<IList<BigBlock>>() != null);
+        Contract.Ensures(Contract.Result<IList<BigBlock>>().IsReadOnly);
+        return this.bigBlocks.AsReadOnly();
+      }
+    }
+
     public List<Cmd> PrefixCommands;
     public readonly IToken/*!*/ EndCurly;
     public StmtList ParentContext;
     public BigBlock ParentBigBlock;
-    public HashSet<string/*!*/>/*!*/ Labels = new HashSet<string/*!*/>();
+
+    private readonly HashSet<string/*!*/>/*!*/ labels = new HashSet<string/*!*/>();
+
+    public void AddLabel(string label)
+    {
+      labels.Add(label);
+    }
+
+    public IEnumerable<string/*!*/>/*!*/ Labels
+    {
+      get
+      {
+        Contract.Ensures(cce.NonNullElements(Contract.Result<IEnumerable<string/*!*/>/*!*/>()));
+        return this.labels.AsEnumerable<string>();
+      }
+    }
+
     [ContractInvariantMethod]
     void ObjectInvariant() {
       Contract.Invariant(EndCurly != null);
-      Contract.Invariant(cce.NonNullElements(BigBlocks));
-      Contract.Invariant(cce.NonNullElements(Labels));
+      Contract.Invariant(cce.NonNullElements(this.bigBlocks));
+      Contract.Invariant(cce.NonNullElements(this.labels));
     }
 
-
-    public StmtList([Captured] List<BigBlock/*!*/>/*!*/ bigblocks, IToken endCurly) {
+    public StmtList(IList<BigBlock/*!*/>/*!*/ bigblocks, IToken endCurly) {
       Contract.Requires(endCurly != null);
       Contract.Requires(cce.NonNullElements(bigblocks));
       Contract.Requires(bigblocks.Count > 0);
-      this.BigBlocks = bigblocks;
+      this.bigBlocks = new List<BigBlock>(bigblocks);
       this.EndCurly = endCurly;
     }
 
@@ -327,7 +411,7 @@ namespace Microsoft.Boogie {
               prefix += "0";
             }
           }
-          stmtList.Labels.Add(b.LabelName);
+          stmtList.AddLabel(b.LabelName);
         }
       }
 
@@ -647,15 +731,30 @@ namespace Microsoft.Boogie {
 
   [ContractClass(typeof(StructuredCmdContracts))]
   public abstract class StructuredCmd {
-    public IToken/*!*/ tok;
+    private IToken/*!*/ _tok;
+
+    public IToken/*!*/ tok
+    {
+      get
+      {
+        Contract.Ensures(Contract.Result<IToken>() != null);
+        return this._tok;
+      }
+      set
+      {
+        Contract.Requires(value != null);
+        this._tok = value;
+      }
+    }
+
     [ContractInvariantMethod]
     void ObjectInvariant() {
-      Contract.Invariant(tok != null);
+      Contract.Invariant(this._tok != null);
     }
 
     public StructuredCmd(IToken tok) {
       Contract.Requires(tok != null);
-      this.tok = tok;
+      this._tok = tok;
     }
 
     public abstract void Emit(TokenTextWriter/*!*/ stream, int level);
@@ -673,16 +772,58 @@ namespace Microsoft.Boogie {
 
   public class IfCmd : StructuredCmd {
     public Expr Guard;
-    public StmtList/*!*/ thn;
-    public IfCmd elseIf;
-    public StmtList elseBlock;
-    [ContractInvariantMethod]
-    void ObjectInvariant() {
-      Contract.Invariant(thn != null);
-      Contract.Invariant(elseIf == null || elseBlock == null);
+
+    private StmtList/*!*/ _thn;
+    
+    public StmtList/*!*/ thn
+    {
+      get
+      {
+        Contract.Ensures(Contract.Result<StmtList>() != null);
+        return this._thn;
+      }
+      set
+      {
+        Contract.Requires(value != null);
+        this._thn = value;
+      }
     }
 
+    private IfCmd _elseIf;
 
+    public IfCmd elseIf
+    {
+      get
+      {
+        return this._elseIf;
+      }
+      set
+      {
+        Contract.Requires(value == null || this.elseBlock == null);
+        this._elseIf = value;
+      }
+    }
+
+    private StmtList _elseBlock;
+
+    public StmtList elseBlock
+    {
+      get
+      {
+        return this._elseBlock;
+      }
+      set
+      {
+        Contract.Requires(value == null || this.elseIf == null);
+        this._elseBlock = value;
+      }
+    }
+
+    [ContractInvariantMethod]
+    void ObjectInvariant() {
+      Contract.Invariant(this._thn != null);
+      Contract.Invariant(this._elseIf == null || this._elseBlock == null);
+    }
 
     public IfCmd(IToken/*!*/ tok, Expr guard, StmtList/*!*/ thn, IfCmd elseIf, StmtList elseBlock)
       : base(tok) {
@@ -690,9 +831,9 @@ namespace Microsoft.Boogie {
       Contract.Requires(thn != null);
       Contract.Requires(elseIf == null || elseBlock == null);
       this.Guard = guard;
-      this.thn = thn;
-      this.elseIf = elseIf;
-      this.elseBlock = elseBlock;
+      this._thn = thn;
+      this._elseIf = elseIf;
+      this._elseBlock = elseBlock;
     }
 
     public override void Emit(TokenTextWriter stream, int level) {
@@ -796,10 +937,40 @@ namespace Microsoft.Boogie {
   //---------------------------------------------------------------------
   // Block
   public sealed class Block : Absy {
-    public string/*!*/ Label;  // Note, Label is mostly readonly, but it can change to the name of a nearby block during block coalescing and empty-block removal
+    private string/*!*/ label; // Note, Label is mostly readonly, but it can change to the name of a nearby block during block coalescing and empty-block removal
+
+    public string/*!*/ Label
+    {
+      get
+      {
+        Contract.Ensures(Contract.Result<string>() != null);
+        return this.label;
+      }
+      set
+      {
+        Contract.Requires(value != null);
+        this.label = value;
+      }
+    }
+
     [Rep]
     [ElementsPeer]
-    public List<Cmd>/*!*/ Cmds;
+    public List<Cmd>/*!*/ cmds;
+
+    public List<Cmd>/*!*/ Cmds
+    {
+      get
+      {
+        Contract.Ensures(Contract.Result<List<Cmd>>() != null);
+        return this.cmds;
+      }
+      set
+      {
+        Contract.Requires(value != null);
+        this.cmds = value;
+      }
+    }
+
     [Rep]  //PM: needed to verify Traverse.Visit
     public TransferCmd TransferCmd; // maybe null only because we allow deferred initialization (necessary for cyclic structures)
 
@@ -826,12 +997,33 @@ namespace Microsoft.Boogie {
     // This field is used during passification to null-out entries in block2Incartion hashtable early
     public int succCount;
 
-    public HashSet<Variable/*!*/> liveVarsBefore;
+    private HashSet<Variable/*!*/> _liveVarsBefore;
+
+    public IEnumerable<Variable/*!*/> liveVarsBefore
+    {
+      get
+      {
+        Contract.Ensures(cce.NonNullElements(Contract.Result<IEnumerable<Variable/*!*/>>(), true));
+        if (this._liveVarsBefore == null)
+          return null;
+        else
+          return this._liveVarsBefore.AsEnumerable<Variable>();
+      }
+      set
+      {
+        Contract.Requires(cce.NonNullElements(value, true));
+        if (value == null)
+          this._liveVarsBefore = null;
+        else
+          this._liveVarsBefore = new HashSet<Variable>(value);
+      }
+    }
+
     [ContractInvariantMethod]
     void ObjectInvariant() {
-      Contract.Invariant(Label != null);
-      Contract.Invariant(Cmds != null);
-      Contract.Invariant(cce.NonNullElements(liveVarsBefore, true));
+      Contract.Invariant(this.label != null);
+      Contract.Invariant(this.cmds != null);
+      Contract.Invariant(cce.NonNullElements(this._liveVarsBefore, true));
     }
 
     public bool IsLive(Variable v) {
@@ -851,11 +1043,11 @@ namespace Microsoft.Boogie {
       Contract.Requires(label != null);
       Contract.Requires(cmds != null);
       Contract.Requires(tok != null);
-      this.Label = label;
-      this.Cmds = cmds;
+      this.label = label;
+      this.cmds = cmds;
       this.TransferCmd = transferCmd;
       this.Predecessors = new List<Block>();
-      this.liveVarsBefore = null;
+      this._liveVarsBefore = null;
       this.TraversingStatus = VisitState.ToVisit;
       this.iterations = 0;
     }
@@ -1997,7 +2189,7 @@ namespace Microsoft.Boogie {
     }
   }
 
-  public class ParCallCmd : CallCommonality, IPotentialErrorNode
+  public class ParCallCmd : CallCommonality, IPotentialErrorNode<object, object>
   {
       public List<CallCmd> CallCmds;
       public ParCallCmd(IToken tok, List<CallCmd> callCmds)
@@ -2086,7 +2278,8 @@ namespace Microsoft.Boogie {
       }
   }
 
-  public class CallCmd : CallCommonality, IPotentialErrorNode {
+  public class CallCmd : CallCommonality, IPotentialErrorNode<object, object>
+  {
     public string/*!*/ callee { get; set; }
     public Procedure Proc;
     public LocalVariable AssignedAssumptionVariable;
@@ -2578,7 +2771,7 @@ namespace Microsoft.Boogie {
         if (QKeyValue.FindBoolAttribute(e.Attributes, "candidate"))
         {
             assume.Attributes = new QKeyValue(Token.NoToken, "candidate", new List<object>(), assume.Attributes);
-            assume.Attributes.Params.Add(this.callee);
+            assume.Attributes.AddParam(this.callee);
         }
         #endregion
         newBlockBody.Add(assume);
@@ -2720,38 +2913,82 @@ namespace Microsoft.Boogie {
   }
 
   public class ListOfMiningStrategies : MiningStrategy {
-    public List<MiningStrategy>/*!*/ msList;
-    [ContractInvariantMethod]
-    void ObjectInvariant() {
-      Contract.Invariant(msList != null);
+
+    private List<MiningStrategy>/*!*/ _msList;
+
+    public List<MiningStrategy>/*!*/ msList
+    {
+      get
+      {
+        Contract.Ensures(Contract.Result<List<MiningStrategy>>() != null);
+        return this._msList;
+      }
+      set
+      {
+        Contract.Requires(value != null);
+        this._msList = value;
+      }
     }
 
+    [ContractInvariantMethod]
+    void ObjectInvariant() {
+      Contract.Invariant(this._msList != null);
+    }
 
     public ListOfMiningStrategies(List<MiningStrategy> l) {
       Contract.Requires(l != null);
-      this.msList = l;
+      this._msList = l;
     }
   }
 
   public class EEDTemplate : MiningStrategy {
-    public string/*!*/ reason;
-    public List<Expr/*!*/>/*!*/ exprList;
-    [ContractInvariantMethod]
-    void ObjectInvariant() {
-      Contract.Invariant(reason != null);
-      Contract.Invariant(cce.NonNullElements(exprList));
+    private string/*!*/ _reason;
+    public string/*!*/ reason
+    {
+      get
+      {
+        Contract.Ensures(Contract.Result<string>() != null);
+        return this._reason;
+      }
+      set
+      {
+        Contract.Requires(value != null);
+        this._reason = value;
+      }
+    }
+    
+    private List<Expr/*!*/>/*!*/ exprList;
+    public IEnumerable<Expr> Expressions
+    {
+      get
+      {
+        Contract.Ensures(cce.NonNullElements(Contract.Result<IEnumerable<Expr>>()));
+        return this.exprList.AsReadOnly();
+      }
+      set
+      {
+        Contract.Requires(cce.NonNullElements(value));
+        this.exprList = new List<Expr>(value);
+      }
     }
 
+
+    [ContractInvariantMethod]
+    void ObjectInvariant() {
+      Contract.Invariant(this._reason != null);
+      Contract.Invariant(cce.NonNullElements(this.exprList));
+    }
 
     public EEDTemplate(string reason, List<Expr/*!*/>/*!*/ exprList) {
       Contract.Requires(reason != null);
       Contract.Requires(cce.NonNullElements(exprList));
-      this.reason = reason;
+      this._reason = reason;
       this.exprList = exprList;
     }
   }
 
-  public class AssertCmd : PredicateCmd, IPotentialErrorNode {
+  public class AssertCmd : PredicateCmd, IPotentialErrorNode<object, object>
+  {
     public Expr OrigExpr;
     public Dictionary<Variable, Expr> IncarnationMap;
 
