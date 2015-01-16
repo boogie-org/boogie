@@ -106,17 +106,12 @@ namespace VC {
         AssertCmd ac = (AssertCmd)cmd;
         ctxt.Ctxt.BoogieExprTranslator.isPositiveContext = !ctxt.Ctxt.BoogieExprTranslator.isPositiveContext;
         VCExpr C = ctxt.Ctxt.BoogieExprTranslator.Translate(ac.Expr);
-        ctxt.Ctxt.BoogieExprTranslator.isPositiveContext = !ctxt.Ctxt.BoogieExprTranslator.isPositiveContext; 
-
-        VCExprLetBinding LB = null;
         VCExpr VU = null;
         if (ac.VerifiedUnder != null)
         {
-          var V = gen.Variable(ctxt.FreshLetBindingName(), Microsoft.Boogie.Type.Bool);
-          LB = gen.LetBinding(V, C);
-          C = V;
           VU = ctxt.Ctxt.BoogieExprTranslator.Translate(ac.VerifiedUnder);
         }
+        ctxt.Ctxt.BoogieExprTranslator.isPositiveContext = !ctxt.Ctxt.BoogieExprTranslator.isPositiveContext; 
 
         VCExpr R = null;
         if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Doomed) {
@@ -127,28 +122,24 @@ namespace VC {
             ctxt.Label2absy[id] = ac;
           }
 
-          switch (Subsumption(ac)) {
-            case CommandLineOptions.SubsumptionOption.Never:
-              break;
-            case CommandLineOptions.SubsumptionOption.Always:
-              N = gen.Implies(C, N);
-              break;
-            case CommandLineOptions.SubsumptionOption.NotForQuantifiers:
-              if (!(C is VCExprQuantifier)) {
-                N = gen.Implies(C, N);
-              }
-              break;
-            default:
-              Contract.Assert(false); throw new cce.UnreachableException();  // unexpected case
+          var subsumption = Subsumption(ac);
+          if (subsumption == CommandLineOptions.SubsumptionOption.Always
+              || (subsumption == CommandLineOptions.SubsumptionOption.NotForQuantifiers && !(C is VCExprQuantifier)))
+          {
+            N = gen.ImpliesSimp(C, N);
+          }
+
+          if (VU != null)
+          {
+            var litExpr = ac.VerifiedUnder as LiteralExpr;
+            if (litExpr != null && litExpr.IsTrue)
+            {
+              return N;
+            }
+            C = gen.OrSimp(VU, C);
           }
 
           ctxt.AssertionCount++;
-
-          // TODO(wuestholz): Try to weaken the assertion instead of assuming the property that has already been verified:
-          // if (VU != null)
-          // {
-          //   C = gen.OrSimp(VU, C);
-          // }
 
           if (ctxt.ControlFlowVariableExpr == null) {
             Contract.Assert(ctxt.Label2absy != null);
@@ -163,16 +154,6 @@ namespace VC {
               R = gen.AndSimp(gen.LabelNeg(cce.NonNull(id.ToString()), gen.Implies(assertFailure, C)), N);
             }
           }
-        }
-
-        if (VU != null)
-        {
-          R = gen.ImpliesSimp(gen.ImpliesSimp(VU, C), R);
-        }
-
-        if (LB != null)
-        {
-          R = gen.Let(R, LB);
         }
         return R;
       } else if (cmd is AssumeCmd) {

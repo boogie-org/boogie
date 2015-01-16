@@ -608,19 +608,6 @@ namespace VC {
 
     protected Implementation currentImplementation;
 
-    private LocalVariable currentTemporaryVariableForAssertions;
-    protected LocalVariable CurrentTemporaryVariableForAssertions
-    {
-      get
-      {
-        if (currentTemporaryVariableForAssertions == null)
-        {
-          currentTemporaryVariableForAssertions = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "##assertion", Microsoft.Boogie.Type.Bool));
-        }
-        return currentTemporaryVariableForAssertions;
-      }
-    }
-
     protected List<Variable> CurrentLocalVariables = null;
 
     // shared across each implementation; created anew for each implementation
@@ -1334,7 +1321,6 @@ namespace VC {
       Contract.Requires(mvInfo != null);
 
       currentImplementation = impl;
-      currentTemporaryVariableForAssertions = null;
 
       var start = DateTime.UtcNow;
 
@@ -1361,7 +1347,6 @@ namespace VC {
         }
       }
 
-      currentTemporaryVariableForAssertions = null;
       currentImplementation = null;
 
       RestoreParamWhereClauses(impl);
@@ -1552,7 +1537,6 @@ namespace VC {
           ac.IncarnationMap = (Dictionary<Variable, Expr>)cce.NonNull(new Dictionary<Variable, Expr>(incarnationMap));
 
           var subsumption = Wlp.Subsumption(ac);
-          var alwaysUseSubsumption = subsumption == CommandLineOptions.SubsumptionOption.Always;
           if (relevantDoomedAssumpVars.Any())
           {
             TraceCachingAction(pc, CachingAction.DoNothingToAssert);
@@ -1573,59 +1557,15 @@ namespace VC {
             {
               bool isTrue;
               var assmVars = currentImplementation.ConjunctionOfInjectedAssumptionVariables(incarnationMap, out isTrue);
-              if (!isTrue && alwaysUseSubsumption)
+              TraceCachingAction(pc, !isTrue ? CachingAction.MarkAsPartiallyVerified : CachingAction.MarkAsFullyVerified);
+              var litExpr = ac.Expr as LiteralExpr;
+              if (litExpr == null || !litExpr.IsTrue)
               {
-                TraceCachingAction(pc, CachingAction.MarkAsPartiallyVerified);
-                var litExpr = ac.Expr as LiteralExpr;
-                if (litExpr == null || !litExpr.IsTrue)
-                {
-                  // Bind the assertion expression to a local variable.
-                  var incarnation = CreateIncarnation(CurrentTemporaryVariableForAssertions, containingBlock);
-                  var identExpr = new IdentifierExpr(Token.NoToken, incarnation);
-                  incarnationMap[incarnation] = identExpr;
-                  ac.IncarnationMap[incarnation] = identExpr;
-                  passiveCmds.Add(new AssumeCmd(Token.NoToken, LiteralExpr.Eq(identExpr, copy)));
-                  copy = identExpr;
-                  passiveCmds.Add(new AssumeCmd(Token.NoToken, LiteralExpr.Imp(assmVars, identExpr)));
-
-                  // TODO(wuestholz): Try to use this instead:
-                  // ac.MarkAsVerifiedUnder(assmVars);
-                }
-                else
-                {
-                  dropCmd = true;
-                }
-              }
-              else if (isTrue)
-              {
-                if (alwaysUseSubsumption)
-                {
-                  TraceCachingAction(pc, CachingAction.MarkAsFullyVerified);
-                  var litExpr = ac.Expr as LiteralExpr;
-                  if (litExpr == null || !litExpr.IsTrue)
-                  {
-                    // Turn it into an assume statement.
-                    pc = new AssumeCmd(ac.tok, copy);
-                    pc.Attributes = new QKeyValue(Token.NoToken, "verified_assertion", new List<object>(), pc.Attributes);
-                  }
-                  else
-                  {
-                    dropCmd = true;
-                  }
-                }
-                else if (subsumption == CommandLineOptions.SubsumptionOption.Never)
-                {
-                  TraceCachingAction(pc, CachingAction.MarkAsFullyVerified);
-                  dropCmd = true;
-                }
-                else
-                {
-                  TraceCachingAction(pc, CachingAction.DoNothingToAssert);
-                }
+                ac.MarkAsVerifiedUnder(assmVars);
               }
               else
               {
-                TraceCachingAction(pc, CachingAction.DoNothingToAssert);
+                dropCmd = true;
               }
             }
           }
@@ -1636,24 +1576,10 @@ namespace VC {
                    && currentImplementation.IsAssertionChecksumInCachedSnapshot(checksum)
                    && currentImplementation.IsErrorChecksumInCachedSnapshot(checksum))
           {
-            if (alwaysUseSubsumption)
-            {
-              // Turn it into an assume statement.
-              TraceCachingAction(pc, CachingAction.RecycleError);
-              pc = new AssumeCmd(ac.tok, copy);
-              pc.Attributes = new QKeyValue(Token.NoToken, "recycled_failing_assertion", new List<object>(), pc.Attributes);
-              currentImplementation.AddRecycledFailingAssertion(ac);
-            }
-            else if (subsumption == CommandLineOptions.SubsumptionOption.Never)
-            {
-              TraceCachingAction(pc, CachingAction.RecycleError);
-              dropCmd = true;
-              currentImplementation.AddRecycledFailingAssertion(ac);
-            }
-            else
-            {
-              TraceCachingAction(pc, CachingAction.DoNothingToAssert);
-            }
+            TraceCachingAction(pc, CachingAction.RecycleError);
+            ac.MarkAsVerifiedUnder(Expr.True);
+            currentImplementation.AddRecycledFailingAssertion(ac);
+            pc.Attributes = new QKeyValue(Token.NoToken, "recycled_failing_assertion", new List<object>(), pc.Attributes);
           }
           else
           {

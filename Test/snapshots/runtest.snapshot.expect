@@ -466,7 +466,7 @@ Processing command (at Snapshots24.v1.bpl(11,9)) assert {:subsumption 1} 5 == 5;
 Processing command (at Snapshots24.v1.bpl(15,9)) assert {:subsumption 2} 6 != 6;
   >>> RecycleError
 Processing command (at Snapshots24.v1.bpl(19,9)) assert {:subsumption 1} 2 == 2;
-  >>> DoNothingToAssert
+  >>> MarkAsFullyVerified
 Processing command (at Snapshots24.v1.bpl(20,9)) assert {:subsumption 2} 4 == 4;
   >>> MarkAsFullyVerified
 Processing command (at Snapshots24.v1.bpl(21,9)) assert 5 == 5;
