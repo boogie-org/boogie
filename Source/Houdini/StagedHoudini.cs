@@ -33,6 +33,8 @@ namespace Microsoft.Boogie.Houdini
         houdiniInstances[i] = new List<Houdini>();
       }
 
+      BreakApartConjunctionsInAnnotations();
+
       var annotationDependenceAnalyser = new AnnotationDependenceAnalyser(program);
       annotationDependenceAnalyser.Analyse();
       this.plan = annotationDependenceAnalyser.ApplyStages();
@@ -51,6 +53,68 @@ namespace Microsoft.Boogie.Houdini
         
         EmitProgram("staged.bpl");
       }
+    }
+
+    private void BreakApartConjunctionsInAnnotations()
+    {
+      // StagedHoudini works on a syntactic basis, so that
+      // if x and y occur in the same annotation, any annotation
+      // referring to either x or y will be in the same stage
+      // as this annotation.  It is thus desirable to separate
+      // conjunctive annotations into multiple annotations,
+      // to reduce these syntactic dependencies.
+
+      foreach(var b in program.Blocks()) {
+        List<Cmd> newCmds = new List<Cmd>();
+        foreach(var c in b.Cmds) {
+          var assertion = c as AssertCmd;
+          if (assertion != null) {
+            foreach(var e in BreakIntoConjuncts(assertion.Expr)) {
+              newCmds.Add(new AssertCmd(assertion.tok, e, assertion.Attributes));
+            }
+          } else {
+            newCmds.Add(c);
+          }
+        }
+        b.Cmds = newCmds;
+      }
+
+      foreach(var proc in program.Procedures) {
+        {
+          var newRequires = new List<Requires>();
+          foreach(var r in proc.Requires) {
+            foreach(var c in BreakIntoConjuncts(r.Condition)) {
+              newRequires.Add(new Requires(r.tok, r.Free, c, r.Comment, r.Attributes));
+            }
+          }
+          proc.Requires = newRequires;
+        }
+        {
+          var newEnsures = new List<Ensures>();
+          foreach(var e in proc.Ensures) {
+            foreach(var c in BreakIntoConjuncts(e.Condition)) {
+              newEnsures.Add(new Ensures(e.tok, e.Free, c, e.Comment, e.Attributes));
+            }
+          }
+          proc.Ensures = newEnsures;
+        }
+      }
+    }
+
+    private List<Expr> BreakIntoConjuncts(Expr expr)
+    {
+      var nary = expr as NAryExpr;
+      if(nary == null) {
+        return new List<Expr> { expr };
+      }
+      var fun = nary.Fun as BinaryOperator;
+      if(fun == null || (fun.Op != BinaryOperator.Opcode.And)) {
+        return new List<Expr> { expr };
+      }
+      var result = new List<Expr>();
+      result.AddRange(BreakIntoConjuncts(nary.Args[0]));
+      result.AddRange(BreakIntoConjuncts(nary.Args[1]));
+      return result;
     }
 
     private bool NoStages() {

@@ -12,8 +12,8 @@ namespace Microsoft.Boogie
   public interface IInterproceduralReachabilityGraph {
 
     bool MayReach(Block src, Block dst);
-    void dump();
 
+    void dump();
 
     Block GetNewEntryBlock(string p);
 
@@ -58,7 +58,15 @@ namespace Microsoft.Boogie
           }
         }
       }
-      
+
+      foreach(var n in nodes) {
+        // If there are disconnected nodes, put them into the
+        // graph as self-loops so that every node is represented in
+        // the graph
+        if(!reachabilityGraph.Nodes.Contains(n)) {
+          reachabilityGraph.AddEdge(n, n);
+        }
+      }
     }
 
     private IEnumerable<Block> OriginalProgramBlocks()
@@ -142,10 +150,9 @@ namespace Microsoft.Boogie
         newProcedureExitNodes[impl.Name] = newExit;
         foreach (Block b in impl.Blocks)
         {
-          List<List<Cmd>> partition = PartitionCmdsAccordingToPredicate(b.Cmds, Item => Item is CallCmd);
           Block prev = null;
           int i = 0;
-          foreach (List<Cmd> cmds in partition)
+          foreach (List<Cmd> cmds in SeparateCallCmds(b.Cmds))
           {
             Block newBlock;
             if (prev == null)
@@ -190,16 +197,24 @@ namespace Microsoft.Boogie
       #endregion
     }
 
-    public static List<List<Cmd>> PartitionCmdsAccordingToPredicate(List<Cmd> Cmds, Func<Cmd, bool> Predicate) {
+    private static List<List<Cmd>> SeparateCallCmds(List<Cmd> Cmds) {
       List<List<Cmd>> result = new List<List<Cmd>>();
-      List<Cmd> current = new List<Cmd>();
-      result.Add(current);
-      foreach(Cmd cmd in Cmds) {
-        if(Predicate(cmd) && current.Count > 0) {
-           current = new List<Cmd>();
-           result.Add(current);
+      int currentIndex = 0;
+      while(currentIndex < Cmds.Count) {
+        if(Cmds[currentIndex] is CallCmd) {
+          result.Add(new List<Cmd> { Cmds[currentIndex] });
+          currentIndex++;
+        } else {
+          List<Cmd> nonCallCmds = new List<Cmd>();
+          while(currentIndex < Cmds.Count && !(Cmds[currentIndex] is CallCmd)) {
+            nonCallCmds.Add(Cmds[currentIndex]);
+            currentIndex++;
+          }
+          result.Add(nonCallCmds);
         }
-        current.Add(cmd);
+      }
+      if(result.Count == 0) {
+        result.Add(new List<Cmd>());
       }
       return result;
     }
