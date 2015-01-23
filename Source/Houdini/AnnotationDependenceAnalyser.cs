@@ -460,6 +460,7 @@ namespace Microsoft.Boogie.Houdini {
 
         if (NoStages())
         {
+          Debug.Assert(false);
           var TrivialGraph = new Graph<ScheduledStage>();
           TrivialGraph.AddSource(new ScheduledStage(0, new HashSet<string>()));
           return new StagedHoudiniPlan(TrivialGraph);

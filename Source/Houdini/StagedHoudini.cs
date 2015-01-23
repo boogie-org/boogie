@@ -188,6 +188,12 @@ namespace Microsoft.Boogie.Houdini
         Item => plan.GetDependences(s).Contains(Item.stage)).
           Select(Item => Item.parallelTask).ToArray());
 
+      if(s.Count() == 0) {
+        // This is the trivial first stage, so don't launch Houdini;
+        // give this a null outcome
+        return;
+      }
+
       List<Houdini> h = AcquireHoudiniInstance();
 
       if (h.Count() == 0)
