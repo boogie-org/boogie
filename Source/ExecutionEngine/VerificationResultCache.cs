@@ -336,8 +336,7 @@ namespace Microsoft.Boogie
       {
         var forallExpr = new ForallExpr(Token.NoToken, boundVars.ToList<Variable>(), new Trigger(Token.NoToken, true, new List<Expr> { axiomCall }), eq);
         body = forallExpr;
-        // TODO(wuestholz): Try assigning a higher weight to these quantifiers:
-        // forallExpr.Attributes = new QKeyValue(Token.NoToken, "weight", new List<object> { new LiteralExpr(Token.NoToken, Basetypes.BigNum.FromInt(20)) }, null);
+        forallExpr.Attributes = new QKeyValue(Token.NoToken, "weight", new List<object> { new LiteralExpr(Token.NoToken, Basetypes.BigNum.FromInt(30)) }, null);
         body.Type = Type.Bool;
       }
       else
