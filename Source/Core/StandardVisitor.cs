@@ -103,7 +103,7 @@ namespace Microsoft.Boogie {
       Contract.Ensures(Contract.Result<Type>() != null);
       return this.VisitType(node);
     }
-    public virtual BvConcatExpr VisitBvConcatExpr(BvConcatExpr node) {
+    public virtual Expr VisitBvConcatExpr(BvConcatExpr node) {
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<BvConcatExpr>() != null);
       node.E0 = this.VisitExpr(node.E0);
@@ -679,7 +679,7 @@ namespace Microsoft.Boogie {
           Contract.Ensures(Contract.Result<Type>() == node);
           return this.VisitType(node);
       }
-      public override BvConcatExpr VisitBvConcatExpr(BvConcatExpr node)
+      public override Expr VisitBvConcatExpr(BvConcatExpr node)
       {
           Contract.Ensures(Contract.Result<BvConcatExpr>() == node);
           this.VisitExpr(node.E0);

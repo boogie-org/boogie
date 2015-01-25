@@ -574,7 +574,7 @@ namespace Microsoft.Boogie.VCExprAST {
 
     ///////////////////////////////////////////////////////////////////////////////////
 
-    public override BvConcatExpr VisitBvConcatExpr(BvConcatExpr node) {
+    public override Expr VisitBvConcatExpr(BvConcatExpr node) {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<BvConcatExpr>() != null);
       Push(TranslateBvConcatExpr(node));
