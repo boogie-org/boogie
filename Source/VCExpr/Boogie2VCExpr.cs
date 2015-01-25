@@ -461,7 +461,7 @@ namespace Microsoft.Boogie.VCExprAST {
       return node;
     }
 
-    public override ForallExpr VisitForallExpr(ForallExpr node) {
+    public override Expr VisitForallExpr(ForallExpr node) {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<ForallExpr>() != null);
       node = (ForallExpr)this.VisitQuantifierExpr(node);

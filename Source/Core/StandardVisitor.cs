@@ -290,7 +290,7 @@ namespace Microsoft.Boogie {
         ensuresSeq[i] = this.VisitEnsures(ensuresSeq[i]);
       return ensuresSeq;
     }
-    public virtual ForallExpr VisitForallExpr(ForallExpr node) {
+    public virtual Expr VisitForallExpr(ForallExpr node) {
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<ForallExpr>() != null);
       node = (ForallExpr)this.VisitQuantifierExpr(node);
@@ -854,7 +854,7 @@ namespace Microsoft.Boogie {
               this.VisitEnsures(ensuresSeq[i]);
           return ensuresSeq;
       }
-      public override ForallExpr VisitForallExpr(ForallExpr node)
+      public override Expr VisitForallExpr(ForallExpr node)
       {
           Contract.Ensures(Contract.Result<ForallExpr>() == node);
           return (ForallExpr)this.VisitQuantifierExpr(node);
