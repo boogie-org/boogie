@@ -948,7 +948,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
         // don't recurse on subexpression
         return node;
       }
-      public override BvExtractExpr VisitBvExtractExpr(BvExtractExpr node) {
+      public override Expr VisitBvExtractExpr(BvExtractExpr node) {
         // don't recurse on subexpression
         return node;
       }

@@ -245,7 +245,7 @@ namespace Microsoft.Boogie {
       node = (ExistsExpr)this.VisitQuantifierExpr(node);
       return node;
     }
-    public virtual BvExtractExpr VisitBvExtractExpr(BvExtractExpr node) {
+    public virtual Expr VisitBvExtractExpr(BvExtractExpr node) {
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<BvExtractExpr>() != null);
       node.Bitvector = this.VisitExpr(node.Bitvector);
@@ -810,7 +810,7 @@ namespace Microsoft.Boogie {
           Contract.Ensures(Contract.Result<ExistsExpr>() == node);
           return (ExistsExpr)this.VisitQuantifierExpr(node);
       }
-      public override BvExtractExpr VisitBvExtractExpr(BvExtractExpr node)
+      public override Expr VisitBvExtractExpr(BvExtractExpr node)
       {
           Contract.Ensures(Contract.Result<BvExtractExpr>() == node);
           this.VisitExpr(node.Bitvector);
