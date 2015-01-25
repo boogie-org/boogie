@@ -204,7 +204,7 @@ namespace Microsoft.Boogie {
         Contract.Ensures(Contract.Result<List<Ensures>>() != null);
         return base.VisitEnsuresSeq(new List<Ensures>(ensuresSeq));
     }
-    public override ExistsExpr VisitExistsExpr(ExistsExpr node) {
+    public override Expr VisitExistsExpr(ExistsExpr node) {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<ExistsExpr>() != null);
       return base.VisitExistsExpr((ExistsExpr)node.Clone());

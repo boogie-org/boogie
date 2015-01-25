@@ -239,7 +239,7 @@ namespace Microsoft.Boogie {
       node.OutParams = this.VisitVariableSeq(node.OutParams);
       return node;
     }
-    public virtual ExistsExpr VisitExistsExpr(ExistsExpr node) {
+    public virtual Expr VisitExistsExpr(ExistsExpr node) {
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<ExistsExpr>() != null);
       node = (ExistsExpr)this.VisitQuantifierExpr(node);
@@ -805,7 +805,7 @@ namespace Microsoft.Boogie {
           this.VisitVariableSeq(node.OutParams);
           return node;
       }
-      public override ExistsExpr VisitExistsExpr(ExistsExpr node)
+      public override Expr VisitExistsExpr(ExistsExpr node)
       {
           Contract.Ensures(Contract.Result<ExistsExpr>() == node);
           return (ExistsExpr)this.VisitQuantifierExpr(node);

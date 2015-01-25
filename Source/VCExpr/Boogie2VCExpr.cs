@@ -454,7 +454,7 @@ namespace Microsoft.Boogie.VCExprAST {
       return node;
     }
 
-    public override ExistsExpr VisitExistsExpr(ExistsExpr node) {
+    public override Expr VisitExistsExpr(ExistsExpr node) {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<ExistsExpr>() != null);
       node = (ExistsExpr)this.VisitQuantifierExpr(node);
