@@ -290,7 +290,7 @@ namespace Microsoft.Boogie {
 
       return impl;
     }
-    public override LiteralExpr VisitLiteralExpr(LiteralExpr node) {
+    public override Expr VisitLiteralExpr(LiteralExpr node) {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<LiteralExpr>() != null);
       return base.VisitLiteralExpr((LiteralExpr)node.Clone());

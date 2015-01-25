@@ -359,7 +359,7 @@ namespace Microsoft.Boogie {
       node = (Implementation)this.VisitDeclWithFormals(node); // do this first or last?
       return node;
     }
-    public virtual LiteralExpr VisitLiteralExpr(LiteralExpr node) {
+    public virtual Expr VisitLiteralExpr(LiteralExpr node) {
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<LiteralExpr>() != null);
       return node;
@@ -915,7 +915,7 @@ namespace Microsoft.Boogie {
           this.VisitProcedure(cce.NonNull(node.Proc));
           return (Implementation)this.VisitDeclWithFormals(node); // do this first or last?
       }
-      public override LiteralExpr VisitLiteralExpr(LiteralExpr node)
+      public override Expr VisitLiteralExpr(LiteralExpr node)
       {
           Contract.Ensures(Contract.Result<LiteralExpr>() == node);
           return node;

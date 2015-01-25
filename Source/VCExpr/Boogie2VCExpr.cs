@@ -314,7 +314,7 @@ namespace Microsoft.Boogie.VCExprAST {
 
     ///////////////////////////////////////////////////////////////////////////////////
 
-    public override LiteralExpr VisitLiteralExpr(LiteralExpr node) {
+    public override Expr VisitLiteralExpr(LiteralExpr node) {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<LiteralExpr>() != null);
       Push(TranslateLiteralExpr(node));

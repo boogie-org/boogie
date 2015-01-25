@@ -659,7 +659,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
         Lo = Hi = null;
         return base.VisitExpr(node);
       }
-      public override LiteralExpr VisitLiteralExpr(LiteralExpr node) {
+      public override Expr VisitLiteralExpr(LiteralExpr node) {
         if (node.Val is BigNum) {
           var n = ((BigNum)node.Val).ToBigInteger;
           Lo = n;
