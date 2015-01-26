@@ -247,7 +247,7 @@ namespace Microsoft.Boogie
         }
 
         node.ExtendDesugaring(before, beforePrecondtionCheck, after);
-        if (1 <= CommandLineOptions.Clo.TraceCaching)
+        if (CommandLineOptions.Clo.TraceCachingForTesting || CommandLineOptions.Clo.TraceCachingForBenchmarking)
         {
           using (var tokTxtWr = new TokenTextWriter("<console>", Console.Out, false, false))
           {
@@ -376,7 +376,7 @@ namespace Microsoft.Boogie
       }
 
       var end = DateTime.UtcNow;
-      if (3 <= CommandLineOptions.Clo.TraceCaching)
+      if (CommandLineOptions.Clo.TraceCachingForDebugging)
       {
         Console.Out.WriteLine("Collected other definition axioms within {0:F0} ms.", end.Subtract(start).TotalMilliseconds);
       }
@@ -425,7 +425,7 @@ namespace Microsoft.Boogie
       dc.VisitProgram(program);
 
       var end = DateTime.UtcNow;
-      if (3 <= CommandLineOptions.Clo.TraceCaching)
+      if (CommandLineOptions.Clo.TraceCachingForDebugging)
       {
         Console.Out.WriteLine("Collected dependencies within {0:F0} ms.", end.Subtract(start).TotalMilliseconds);
       }

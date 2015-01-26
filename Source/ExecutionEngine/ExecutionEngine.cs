@@ -1020,7 +1020,7 @@ namespace Microsoft.Boogie
         programCache.Set(programId, program, policy);
       }
 
-      if (0 <= CommandLineOptions.Clo.VerifySnapshots && 2 <= CommandLineOptions.Clo.TraceCaching)
+      if (0 <= CommandLineOptions.Clo.VerifySnapshots && CommandLineOptions.Clo.TraceCachingForBenchmarking)
       {
         var end = DateTime.UtcNow;
         if (TimePerRequest.Count == 0)
@@ -1030,7 +1030,7 @@ namespace Microsoft.Boogie
         TimePerRequest[requestId] = end.Subtract(start);
         StatisticsPerRequest[requestId] = stats;
 
-        var printTimes = 3 <= CommandLineOptions.Clo.TraceCaching;
+        var printTimes = true;
 
         Console.Out.WriteLine(CachedVerificationResultInjector.Statistics.Output(printTimes));
 

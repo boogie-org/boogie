@@ -1328,12 +1328,12 @@ namespace VC {
       
       var end = DateTime.UtcNow;
 
-      if (3 <= CommandLineOptions.Clo.TraceCaching)
+      if (CommandLineOptions.Clo.TraceCachingForDebugging)
       {
         Console.Out.WriteLine("Turned implementation into passive commands within {0:F0} ms.\n", end.Subtract(start).TotalMilliseconds);
       }
 
-      if (2 <= CommandLineOptions.Clo.TraceCaching)
+      if (CommandLineOptions.Clo.TraceCachingForDebugging)
       {
         using (var tokTxtWr = new TokenTextWriter("<console>", Console.Out, false, false))
         {
@@ -1480,7 +1480,7 @@ namespace VC {
 
     void TraceCachingAction(Cmd cmd, CachingAction action)
     {
-      if (1 <= CommandLineOptions.Clo.TraceCaching)
+      if (CommandLineOptions.Clo.TraceCachingForTesting)
       {
         using (var tokTxtWr = new TokenTextWriter("<console>", Console.Out, false, false))
         {
@@ -1489,10 +1489,11 @@ namespace VC {
           cmd.Emit(tokTxtWr, 0);
           Console.Out.WriteLine("  >>> {0}", action);
         }
-        if (CachingActionCounts != null)
-        {
-          Interlocked.Increment(ref CachingActionCounts[(int)action]);
-        }
+      }
+      
+      if (CommandLineOptions.Clo.TraceCachingForBenchmarking && CachingActionCounts != null)
+      {
+        Interlocked.Increment(ref CachingActionCounts[(int)action]);
       }
     }
 

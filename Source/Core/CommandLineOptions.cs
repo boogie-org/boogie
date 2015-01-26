@@ -431,7 +431,28 @@ namespace Microsoft.Boogie {
     public bool Trace = false;
     public bool TraceTimes = false;
     public bool TraceProofObligations = false;
-    public int TraceCaching = 0;
+    public bool TraceCachingForTesting
+    {
+      get
+      {
+        return TraceCaching == 1 || TraceCaching == 3;
+      }
+    }
+    public bool TraceCachingForBenchmarking
+    {
+      get
+      {
+        return TraceCaching == 2 || TraceCaching == 3;
+      }
+    }
+    public bool TraceCachingForDebugging
+    {
+      get
+      {
+        return TraceCaching == 3;
+      }
+    }
+    internal int TraceCaching = 0;
     public bool NoResolve = false;
     public bool NoTypecheck = false;
     public bool OverlookBoogieTypeErrors = false;
