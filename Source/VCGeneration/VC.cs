@@ -521,7 +521,7 @@ namespace VC {
       readonly List<Block> big_blocks = new List<Block>();
       readonly Dictionary<Block/*!*/, BlockStats/*!*/>/*!*/ stats = new Dictionary<Block/*!*/, BlockStats/*!*/>();
       readonly int id;
-      static int current_id;
+      static int current_id = -1;
       Block split_block;
       bool assert_to_assume;
       List<Block/*!*/>/*!*/ assumized_branches = new List<Block/*!*/>();
