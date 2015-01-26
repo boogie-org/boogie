@@ -557,7 +557,7 @@ namespace VC {
         this.gotoCmdOrigins = gotoCmdOrigins;
         this.parent = par;
         this.impl = impl;
-        this.id = current_id++;
+        this.id = Interlocked.Increment(ref current_id);
       }
 
       public double Cost {

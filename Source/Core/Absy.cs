@@ -128,7 +128,7 @@ namespace Microsoft.Boogie {
     public Absy(IToken tok) {
       Contract.Requires(tok != null);
       this._tok = tok;
-      this.uniqueId = AbsyNodeCount++;
+      this.uniqueId = System.Threading.Interlocked.Increment(ref AbsyNodeCount);
     }
 
     private static int AbsyNodeCount = 0;
@@ -162,7 +162,7 @@ namespace Microsoft.Boogie {
     public virtual Absy Clone() {
       Contract.Ensures(Contract.Result<Absy>() != null);
       Absy/*!*/ result = cce.NonNull((Absy/*!*/)this.MemberwiseClone());
-      result.uniqueId = AbsyNodeCount++; // BUGBUG??
+      result.uniqueId = System.Threading.Interlocked.Increment(ref AbsyNodeCount); // BUGBUG??
 
       if (InternalNumberedMetadata != null) {
         // This should probably use the lock

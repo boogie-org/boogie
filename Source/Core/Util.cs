@@ -676,8 +676,7 @@ namespace Microsoft.Boogie {
       // any filename extension specified by the user.  We base our
       // calculations on that there is at most one occurrence of @PROC@.
       if (180 <= fileName.Length - 6 + pn.Length) {
-        pn = pn.Substring(0, Math.Max(180 - (fileName.Length - 6), 0)) + "-n" + sequenceNumber;
-        sequenceNumber++;
+        pn = pn.Substring(0, Math.Max(180 - (fileName.Length - 6), 0)) + "-n" + System.Threading.Interlocked.Increment(ref sequenceNumber);
       }
 
       return fileName.Replace("@PROC@", pn);

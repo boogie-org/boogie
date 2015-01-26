@@ -624,8 +624,7 @@ namespace Microsoft.Boogie {
 
     static int SkolemIds = 0;
     public static int GetNextSkolemId() {
-      SkolemIds++;
-      return SkolemIds;
+      return System.Threading.Interlocked.Increment(ref SkolemIds);
     }
 
     public readonly int SkolemId;
