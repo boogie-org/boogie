@@ -902,6 +902,17 @@ namespace VC {
       }
     }
 
+    class FindLeastOORException : Exception
+    {
+        public Outcome outcome;
+
+        public FindLeastOORException(string msg, Outcome outcome)
+            : base(msg)
+        {
+            this.outcome = outcome;
+        }
+    }
+
     public override Outcome FindLeastToVerify(Implementation impl, ref HashSet<string> allBoolVars) {
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
 
@@ -930,45 +941,58 @@ namespace VC {
       calls.setCurrProcAsMain();
       vcMain = calls.Mutate(vcMain, true);
 
-      // Put all of the necessary state into one object
-      var vState = new VerificationState(vcMain, calls, prover, new EmptyErrorHandler());
+      try
+      {
 
-      // We'll restore the original state of the theorem prover at the end
-      // of this procedure
-      vState.checker.prover.Push();
+          // Put all of the necessary state into one object
+          var vState = new VerificationState(vcMain, calls, prover, new EmptyErrorHandler());
 
-      // Do eager inlining
-      while (calls.currCandidates.Count > 0) {
-        List<int> toExpand = new List<int>();
+          // We'll restore the original state of the theorem prover at the end
+          // of this procedure
+          vState.checker.prover.Push();
 
-        foreach (int id in calls.currCandidates) {
-          Debug.Assert(calls.getRecursionBound(id) <= 1, "Recursion not supported");
-          toExpand.Add(id);
-        }
-        DoExpansion(toExpand, vState);
+          // Do eager inlining
+          while (calls.currCandidates.Count > 0)
+          {
+              List<int> toExpand = new List<int>();
+
+              foreach (int id in calls.currCandidates)
+              {
+                  Debug.Assert(calls.getRecursionBound(id) <= 1, "Recursion not supported");
+                  toExpand.Add(id);
+              }
+              DoExpansion(toExpand, vState);
+          }
+
+          // Find all the boolean constants
+          var allConsts = new HashSet<VCExprVar>();
+          foreach (var constant in program.Constants)
+          {
+              if (!allBoolVars.Contains(constant.Name)) continue;
+              var v = prover.Context.BoogieExprTranslator.LookupVariable(constant);
+              allConsts.Add(v);
+          }
+
+          // Now, lets start the algo
+          var min = refinementLoop(vState.checker, new HashSet<VCExprVar>(), allConsts, allConsts);
+
+          var ret = new HashSet<string>();
+          foreach (var v in min)
+          {
+              //Console.WriteLine(v.Name);
+              ret.Add(v.Name);
+          }
+          allBoolVars = ret;
+
+          vState.checker.prover.Pop();
+
+          return Outcome.Correct;
       }
-
-      // Find all the boolean constants
-      var allConsts = new HashSet<VCExprVar>();
-      foreach (var constant in program.Constants) {
-        if (!allBoolVars.Contains(constant.Name)) continue;
-        var v = prover.Context.BoogieExprTranslator.LookupVariable(constant);
-        allConsts.Add(v);
+      catch (FindLeastOORException e)
+      {
+          Console.WriteLine("Exception in FindLeastToVerify: {0}, {1}", e.Message, e.outcome);
+          return e.outcome;
       }
-
-      // Now, lets start the algo
-      var min = refinementLoop(vState.checker, new HashSet<VCExprVar>(), allConsts, allConsts);
-
-      var ret = new HashSet<string>();
-      foreach (var v in min) {
-        //Console.WriteLine(v.Name);
-        ret.Add(v.Name);
-      }
-      allBoolVars = ret;
-
-      vState.checker.prover.Pop();
-
-      return Outcome.Correct;
     }
 
     private HashSet<VCExprVar> refinementLoop(ApiChecker apiChecker, HashSet<VCExprVar> trackedVars, HashSet<VCExprVar> trackedVarsUpperBound, HashSet<VCExprVar> allVars) {
@@ -1038,7 +1062,10 @@ namespace VC {
       }
 
       var o = apiChecker.CheckAssumptions(assumptions);
-      Debug.Assert(o == Outcome.Correct || o == Outcome.Errors);
+      if (o != Outcome.Correct && o != Outcome.Errors)
+      {
+          throw new FindLeastOORException("OOR", o);
+      }
       //Console.WriteLine("Result = " + o.ToString());
       prover.LogComment("FindLeast: Query End");
 
