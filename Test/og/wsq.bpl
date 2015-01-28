@@ -1,3 +1,5 @@
+// RUN: %boogie -noinfer -typeEncoding:m -useArrayTheory "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
 type Tid;
 const nil: Tid;
 
@@ -9,15 +11,15 @@ function {:inline} {:linear "tid"} TidCollector(x: Tid) : [Tid]bool
 
 
 
-var {:layer 3} H: int;
-var {:layer 3} T: int;
-var {:layer 3} items: [int]int;
-var {:layer 3} status: [int]bool;
-var {:layer 3} take_in_cs: bool;
-var {:layer 3} put_in_cs: bool;
-var {:layer 3} steal_in_cs: [Tid]bool;
-var {:layer 3} h_ss: [Tid]int;
-var {:layer 3} t_ss: [Tid]int;
+var {:layer 0,3} H: int;
+var {:layer 0,3} T: int;
+var {:layer 0,3} items: [int]int;
+var {:layer 0,3} status: [int]bool;
+var {:layer 0,3} take_in_cs: bool;
+var {:layer 0,3} put_in_cs: bool;
+var {:layer 0,3} steal_in_cs: [Tid]bool;
+var {:layer 0,3} h_ss: [Tid]int;
+var {:layer 0,3} t_ss: [Tid]int;
 
 const IN_Q: bool;
 const NOT_IN_Q: bool;
@@ -30,24 +32,6 @@ const unique ptTid: Tid;
 axiom ptTid != NIL;
 
 function {:inline} stealerTid(tid: Tid):(bool) { tid != NIL && tid != ptTid  }
-
-// function {:inline} oldIdeasInv(items:[int]int,
-//                             status: [int]bool,
-// 			    H:int, T:int,
-// 			    take_in_cs:bool,
-// 			    put_in_cs:bool,
-// 			    steal_in_cs:[Tid]bool,
-// 			    h_ss:[Tid]int,
-// 		            t_ss:[Tid]int
-// 			    ):(bool)
-// { 
-//     ( ( (take_in_cs || put_in_cs) && h_ss[ptTid] < t_ss[ptTid] ==> (t_ss[ptTid] == T &&
-//                                                            items[T] != EMPTY && status[T] == IN_Q) ) &&
-//       (( (take_in_cs || put_in_cs) && H != h_ss[ptTid]) ==> H > h_ss[ptTid]) &&
-//       (forall td:Tid :: (stealerTid(td) && steal_in_cs[td] && H == h_ss[td] && H < t_ss[td]) ==> (items[H] != EMPTY && status[H] == IN_Q)) &&
-//       (forall td:Tid :: (stealerTid(td) && steal_in_cs[td] && H != h_ss[td]) ==> H > h_ss[td])
-//     )
-// }
 
 function {:inline} ideasInv(put_in_cs:bool,
                             items:[int]int,
@@ -66,10 +50,6 @@ function {:inline} ideasInv(put_in_cs:bool,
       (( (take_in_cs) && H != h_ss[ptTid]) ==> H > h_ss[ptTid]) &&
       (forall td:Tid :: (stealerTid(td) && steal_in_cs[td] && H == h_ss[td] && H < t_ss[td]) ==> (items[H] != EMPTY && status[H] == IN_Q)) &&
       (forall td:Tid :: (stealerTid(td) && steal_in_cs[td] && H != h_ss[td]) ==> H > h_ss[td])
-
-// If a stealer succeeds, at the moment he succeeds, the stolen one is not the newly put tail, need to think of
-// steal-put interference.
-// When to mark something as taken when it is taken
      )
 }
 
@@ -99,13 +79,6 @@ requires {:layer 3} {:expand} queueInv(steal_in_cs,put_in_cs,take_in_cs,items, s
 requires {:layer 3} {:expand} ideasInv(put_in_cs,items, status, H, T, take_in_cs, steal_in_cs, h_ss, t_ss);
 ensures {:layer 3} {:expand} queueInv(steal_in_cs,put_in_cs,take_in_cs,items, status, H, T-1) && tid == ptTid && !take_in_cs && !put_in_cs;
 ensures {:layer 3} {:expand} ideasInv(put_in_cs,items, status, H, T, take_in_cs, steal_in_cs, h_ss, t_ss);
-// ensures {:atomic} |{A: assert tid == ptTid;
-//                        assert task != EMPTY;
-//                        items[T] := task;
-//                        status[T] := IN_Q;
-//                        T := T+1; 
-//                        return true; 
-//                    }|;
 {
     var t: int;
     var {:aux} oldH:int;
@@ -139,10 +112,7 @@ ensures {:layer 3} {:expand} ideasInv(put_in_cs,items, status, H, T, take_in_cs,
     assert {:layer 3} {:expand} queueInv(steal_in_cs,put_in_cs,take_in_cs,items, status, H, T) && t == T && tid == ptTid && !take_in_cs && put_in_cs;
     assert {:layer 3} {:expand} ideasInv(put_in_cs,items, status, H, T, take_in_cs, steal_in_cs, h_ss, t_ss);
     assert {:layer 3} items[t] == task;
-    // assert {:layer 3} status[t] == IN_Q;
-    // assert {:layer 3} t == H ==> 
     assert {:layer 3} oldH <= H && oldT == T;
-    // assert {:layer 3} oldStatusT != status[T] ==> oldH == oldT && oldH < H;
     
     call writeT_put(tid, t+1);
 
@@ -160,16 +130,6 @@ requires {:layer 3} {:expand} queueInv(steal_in_cs,put_in_cs,take_in_cs,items, s
 requires {:layer 3} {:expand} ideasInv(put_in_cs,items, status, H, T, take_in_cs, steal_in_cs, h_ss, t_ss);
 ensures {:layer 3} queueInv(steal_in_cs,put_in_cs,take_in_cs,items, status, H, T-1) && tid == ptTid && !take_in_cs && !put_in_cs && (task != EMPTY ==> taskstatus == IN_Q);
 ensures {:layer 3} ideasInv(put_in_cs,items, status, H, T, take_in_cs, steal_in_cs, h_ss, t_ss);
-// ensures {:atomic} |{A: assert tid == ptTid;
-//                        goto B, C;
-//                     B: assume task == items[T-1];
-//                        assume status[T-1] == IN_Q;
-//                        status[T-1] := NOT_IN_Q;
-//                        T := T-1;
-//                        return true;
-//                     C: assume task == EMPTY;
-//                        // Don't know if can write assertion about status[T-1]
-//                        return true; }|;
 {
     var h, t: int;
     var chk: bool;
@@ -183,7 +143,6 @@ ensures {:layer 3} ideasInv(put_in_cs,items, status, H, T, take_in_cs, steal_in_
     assert {:layer 3} ideasInv(put_in_cs,items, status, H, T, take_in_cs, steal_in_cs, h_ss, t_ss);
     assert {:layer 3} oldH <= H && oldT == T;
     
-
     LOOP_ENTRY_1:
 
     while(true) 
@@ -305,8 +264,6 @@ ensures {:layer 3} ideasInv(put_in_cs,items, status, H, T, take_in_cs, steal_in_
         oldH := H;
         oldT := T;    
         yield;
-        // assert notDisturbed[tid];
-        // assert notDisturbed[tid] ==> (task == items[t]); 
         assert {:layer 3} queueInv(steal_in_cs,put_in_cs,take_in_cs,items, status, H, T) && tid == ptTid && h_ss[tid] == h && t_ss[tid] == t;  
 	assert {:layer 3} ideasInv(put_in_cs,items, status, H, T, take_in_cs, steal_in_cs, h_ss, t_ss);
 	assert {:layer 3} t == T && task == items[t] && !take_in_cs && !put_in_cs;
@@ -341,17 +298,6 @@ requires {:layer 3} ideasInv(put_in_cs,items, status, H, T, take_in_cs, steal_in
 ensures {:layer 3} queueInv(steal_in_cs,put_in_cs,take_in_cs,items, status, H, T-1) &&
                     !steal_in_cs[tid] && (task != EMPTY ==> taskstatus == IN_Q);
 ensures {:layer 3} ideasInv(put_in_cs,items, status, H, T, take_in_cs, steal_in_cs, h_ss, t_ss);
-
-// ensures {:atomic} |{A: assert stealerTid(tid);
-//                        goto B, C;
-//                     B: assume task == items[H];
-//                        assume status[H] == IN_Q;
-//                        status[H] := NOT_IN_Q; 
-//                        H := H+1;
-//                        return true;
-//                     C: assume task == EMPTY;
-//                        // assume status[H] == NOT_IN_Q;
-//                        return true; }|;
 {
     var h, t: int;
     var chk: bool;
@@ -437,8 +383,6 @@ ensures {:layer 3} ideasInv(put_in_cs,items, status, H, T, take_in_cs, steal_in_
         assert {:layer 3} oldH <= H;
 	assert {:layer 3} oldH == H && H == h && h_ss[tid] == h ==> task != EMPTY;
 	assert {:layer 3} (take_in_cs && (h_ss[ptTid] < t_ss[ptTid]) && h == H) ==> (H < T);
-	// assert {:layer 3} (put_in_cs && h_ss[tid] == H) ==> (H < T);
-        // assert {:layer 3} (h_ss[tid] == H) ==> (H < T);
 
         call chk := CAS_H_steal(tid, h,h+1);
 
@@ -460,7 +404,6 @@ ensures {:layer 3} ideasInv(put_in_cs,items, status, H, T, take_in_cs, steal_in_
         oldH := H;
         oldT := T;
         yield;
-	// assert {:layer 3} chk ==> task != EMPTY;
 	assert {:layer 3} stealerTid(tid) && !steal_in_cs[tid];
         assert {:layer 3} queueInv(steal_in_cs,put_in_cs,take_in_cs,items, status, H, T-1);
         assert {:layer 3} ideasInv(put_in_cs,items, status, H, T, take_in_cs, steal_in_cs, h_ss, t_ss);
