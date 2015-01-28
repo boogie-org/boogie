@@ -45,7 +45,7 @@ var {:linear "Node"} {:layer 0} Stack: lmap;
 function {:inline} Inv(TopOfStack: Node, Stack: lmap) : (bool)
 {
   BetweenSet(map(Stack), TopOfStack, null)[TopOfStack] &&
-  Subset(Difference(BetweenSet(map(Stack), TopOfStack, null), Singleton(null)), dom(Stack))
+  Subset(BetweenSet(map(Stack), TopOfStack, null), Union(Singleton(null), dom(Stack)))
 }
 
 var {:linear "Node"} {:layer 0} Used: lmap;
@@ -114,37 +114,22 @@ ensures {:atomic} |{ var t: Node;
 
 function Equal([int]bool, [int]bool) returns (bool);
 function Subset([int]bool, [int]bool) returns (bool);
-function Disjoint([int]bool, [int]bool) returns (bool);
 
 function Empty() returns ([int]bool);
-function SetTrue() returns ([int]bool);
 function Singleton(int) returns ([int]bool);
 function Reachable([int,int]bool, int) returns ([int]bool);
 function Union([int]bool, [int]bool) returns ([int]bool);
-function Intersection([int]bool, [int]bool) returns ([int]bool);
-function Difference([int]bool, [int]bool) returns ([int]bool);
-function Inverse(f:[int]int, x:int) returns ([int]bool);
 
 axiom(forall x:int :: !Empty()[x]);
-axiom(forall x:int :: SetTrue()[x]);
 
 axiom(forall x:int, y:int :: {Singleton(y)[x]} Singleton(y)[x] <==> x == y);
 axiom(forall y:int :: {Singleton(y)} Singleton(y)[y]);
 
 axiom(forall x:int, S:[int]bool, T:[int]bool :: {Union(S,T)[x]}{Union(S,T),S[x]}{Union(S,T),T[x]} Union(S,T)[x] <==> S[x] || T[x]);
-axiom(forall x:int, S:[int]bool, T:[int]bool :: {Intersection(S,T)[x]}{Intersection(S,T),S[x]}{Intersection(S,T),T[x]} Intersection(S,T)[x] <==>  S[x] && T[x]);
-axiom(forall x:int, S:[int]bool, T:[int]bool :: {Difference(S,T)[x]}{Difference(S,T),S[x]}{Difference(S,T),T[x]} Difference(S,T)[x] <==> S[x] && !T[x]);
 
 axiom(forall S:[int]bool, T:[int]bool :: {Equal(S,T)} Equal(S,T) <==> Subset(S,T) && Subset(T,S));
 axiom(forall x:int, S:[int]bool, T:[int]bool :: {S[x],Subset(S,T)}{T[x],Subset(S,T)} S[x] && Subset(S,T) ==> T[x]);
 axiom(forall S:[int]bool, T:[int]bool :: {Subset(S,T)} Subset(S,T) || (exists x:int :: S[x] && !T[x]));
-axiom(forall x:int, S:[int]bool, T:[int]bool :: {S[x],Disjoint(S,T)}{T[x],Disjoint(S,T)} !(S[x] && Disjoint(S,T) && T[x]));
-axiom(forall S:[int]bool, T:[int]bool :: {Disjoint(S,T)} Disjoint(S,T) || (exists x:int :: S[x] && T[x]));
-
-axiom(forall f:[int]int, x:int :: {Inverse(f,f[x])} Inverse(f,f[x])[x]);
-axiom(forall f:[int]int, x:int, y:int :: {Inverse(f,y), f[x]} Inverse(f,y)[x] ==> f[x] == y);
-axiom(forall f:[int]int, x:int, y:int :: {Inverse(f[x := y],y)} Equal(Inverse(f[x := y],y), Union(Inverse(f,y), Singleton(x))));
-axiom(forall f:[int]int, x:int, y:int, z:int :: {Inverse(f[x := y],z)} y == z || Equal(Inverse(f[x := y],z), Difference(Inverse(f,z), Singleton(x))));
 
 ////////////////////
 // Between predicate
@@ -175,7 +160,6 @@ axiom(forall f: [int]int, x: int, z: int :: {BetweenSet(f, x, z)} Between(f, z, 
 axiom(forall f: [int]int, x: int :: Between(f, x, x, x));
 
 // step
-//axiom(forall f: [int]int, x: int :: {f[x]} Between(f, x, f[x], f[x])); 
 axiom(forall f: [int]int, x: int, y: int, z: int, w:int :: {Between(f, y, z, w), f[x]} Between(f, x, f[x], f[x])); 
 
 // reach
