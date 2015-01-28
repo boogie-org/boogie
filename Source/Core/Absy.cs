@@ -128,10 +128,10 @@ namespace Microsoft.Boogie {
     public Absy(IToken tok) {
       Contract.Requires(tok != null);
       this._tok = tok;
-      this.uniqueId = AbsyNodeCount++;
+      this.uniqueId = System.Threading.Interlocked.Increment(ref CurrentAbsyNodeId);
     }
 
-    private static int AbsyNodeCount = 0;
+    private static int CurrentAbsyNodeId = -1;
 
     // We uniquely number every AST node to make them
     // suitable for our implementation of functional maps.
@@ -162,7 +162,7 @@ namespace Microsoft.Boogie {
     public virtual Absy Clone() {
       Contract.Ensures(Contract.Result<Absy>() != null);
       Absy/*!*/ result = cce.NonNull((Absy/*!*/)this.MemberwiseClone());
-      result.uniqueId = AbsyNodeCount++; // BUGBUG??
+      result.uniqueId = System.Threading.Interlocked.Increment(ref CurrentAbsyNodeId); // BUGBUG??
 
       if (InternalNumberedMetadata != null) {
         // This should probably use the lock

@@ -65,6 +65,12 @@ namespace Microsoft.Boogie {
 
       int lambdaid = 0;
 
+      string FreshLambdaFunctionName()
+      {
+        // TODO(wuestholz): Should we use a counter per top-level declaration?
+        return string.Format("lambda#{0}", lambdaid++);
+      }
+
       public override Expr VisitLambdaExpr(LambdaExpr lambda) {
         var baseResult = base.VisitLambdaExpr(lambda);
         lambda = baseResult as LambdaExpr;
@@ -168,7 +174,7 @@ namespace Microsoft.Boogie {
           if (CommandLineOptions.Clo.TraceVerify) {
             Console.WriteLine("New lambda: {0}", lam_str);
           }
-          Function fn = new Function(tok, "lambda#" + lambdaid++, freshTypeVars, formals, res, "auto-generated lambda function",
+          Function fn = new Function(tok, FreshLambdaFunctionName(), freshTypeVars, formals, res, "auto-generated lambda function",
             Substituter.Apply(Substituter.SubstitutionFromHashtable(substFnAttrs), lambdaAttrs));
 
           fcall = new FunctionCall(new IdentifierExpr(tok, fn.Name));

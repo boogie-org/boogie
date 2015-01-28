@@ -103,7 +103,7 @@ namespace Microsoft.Boogie {
       Contract.Ensures(Contract.Result<Type>() != null);
       return this.VisitType(node);
     }
-    public virtual BvConcatExpr VisitBvConcatExpr(BvConcatExpr node) {
+    public virtual Expr VisitBvConcatExpr(BvConcatExpr node) {
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<BvConcatExpr>() != null);
       node.E0 = this.VisitExpr(node.E0);
@@ -239,13 +239,13 @@ namespace Microsoft.Boogie {
       node.OutParams = this.VisitVariableSeq(node.OutParams);
       return node;
     }
-    public virtual ExistsExpr VisitExistsExpr(ExistsExpr node) {
+    public virtual Expr VisitExistsExpr(ExistsExpr node) {
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<ExistsExpr>() != null);
       node = (ExistsExpr)this.VisitQuantifierExpr(node);
       return node;
     }
-    public virtual BvExtractExpr VisitBvExtractExpr(BvExtractExpr node) {
+    public virtual Expr VisitBvExtractExpr(BvExtractExpr node) {
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<BvExtractExpr>() != null);
       node.Bitvector = this.VisitExpr(node.Bitvector);
@@ -290,7 +290,7 @@ namespace Microsoft.Boogie {
         ensuresSeq[i] = this.VisitEnsures(ensuresSeq[i]);
       return ensuresSeq;
     }
-    public virtual ForallExpr VisitForallExpr(ForallExpr node) {
+    public virtual Expr VisitForallExpr(ForallExpr node) {
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<ForallExpr>() != null);
       node = (ForallExpr)this.VisitQuantifierExpr(node);
@@ -359,7 +359,7 @@ namespace Microsoft.Boogie {
       node = (Implementation)this.VisitDeclWithFormals(node); // do this first or last?
       return node;
     }
-    public virtual LiteralExpr VisitLiteralExpr(LiteralExpr node) {
+    public virtual Expr VisitLiteralExpr(LiteralExpr node) {
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<LiteralExpr>() != null);
       return node;
@@ -679,7 +679,7 @@ namespace Microsoft.Boogie {
           Contract.Ensures(Contract.Result<Type>() == node);
           return this.VisitType(node);
       }
-      public override BvConcatExpr VisitBvConcatExpr(BvConcatExpr node)
+      public override Expr VisitBvConcatExpr(BvConcatExpr node)
       {
           Contract.Ensures(Contract.Result<BvConcatExpr>() == node);
           this.VisitExpr(node.E0);
@@ -805,12 +805,12 @@ namespace Microsoft.Boogie {
           this.VisitVariableSeq(node.OutParams);
           return node;
       }
-      public override ExistsExpr VisitExistsExpr(ExistsExpr node)
+      public override Expr VisitExistsExpr(ExistsExpr node)
       {
           Contract.Ensures(Contract.Result<ExistsExpr>() == node);
           return (ExistsExpr)this.VisitQuantifierExpr(node);
       }
-      public override BvExtractExpr VisitBvExtractExpr(BvExtractExpr node)
+      public override Expr VisitBvExtractExpr(BvExtractExpr node)
       {
           Contract.Ensures(Contract.Result<BvExtractExpr>() == node);
           this.VisitExpr(node.Bitvector);
@@ -854,7 +854,7 @@ namespace Microsoft.Boogie {
               this.VisitEnsures(ensuresSeq[i]);
           return ensuresSeq;
       }
-      public override ForallExpr VisitForallExpr(ForallExpr node)
+      public override Expr VisitForallExpr(ForallExpr node)
       {
           Contract.Ensures(Contract.Result<ForallExpr>() == node);
           return (ForallExpr)this.VisitQuantifierExpr(node);
@@ -915,7 +915,7 @@ namespace Microsoft.Boogie {
           this.VisitProcedure(cce.NonNull(node.Proc));
           return (Implementation)this.VisitDeclWithFormals(node); // do this first or last?
       }
-      public override LiteralExpr VisitLiteralExpr(LiteralExpr node)
+      public override Expr VisitLiteralExpr(LiteralExpr node)
       {
           Contract.Ensures(Contract.Result<LiteralExpr>() == node);
           return node;

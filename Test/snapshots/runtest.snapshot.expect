@@ -113,7 +113,7 @@ Processing command (at Snapshots6.v0.bpl(13,5)) assert y == 0;
 
 Boogie program verifier finished with 1 verified, 0 errors
 Processing call to procedure N in implementation M (at Snapshots6.v1.bpl(11,5)):
-  >>> added axiom: (forall y##old##0: int, y: int :: { ##extracted_function##1(y##old##0, y) } ##extracted_function##1(y##old##0, y) == (y##old##0 == y))
+  >>> added axiom: (forall y##old##0: int, y: int :: {:weight 30} { ##extracted_function##1(y##old##0, y) } ##extracted_function##1(y##old##0, y) == (y##old##0 == y))
   >>> added before: y##old##0 := y;
   >>> added after: a##post##0 := a##post##0 && ##extracted_function##1(y##old##0, y);
 Processing command (at <unknown location>) a##post##0 := a##post##0 && ##extracted_function##1(y##old##0, y);
@@ -128,7 +128,7 @@ Processing command (at Snapshots7.v0.bpl(14,5)) assert y < 0;
 
 Boogie program verifier finished with 1 verified, 0 errors
 Processing call to procedure N in implementation M (at Snapshots7.v1.bpl(12,5)):
-  >>> added axiom: (forall y: int, z: int :: { ##extracted_function##1(y, z) } ##extracted_function##1(y, z) == (y < z))
+  >>> added axiom: (forall y: int, z: int :: {:weight 30} { ##extracted_function##1(y, z) } ##extracted_function##1(y, z) == (y < z))
   >>> added before: y##old##0 := y;
   >>> added after: a##post##0 := a##post##0 && ##extracted_function##1(y, z);
 Processing command (at <unknown location>) a##post##0 := a##post##0 && ##extracted_function##1(y, z);
@@ -144,8 +144,8 @@ Processing command (at Snapshots8.v0.bpl(10,5)) assert 0 <= x;
 
 Boogie program verifier finished with 1 verified, 0 errors
 Processing call to procedure N in implementation M (at Snapshots8.v1.bpl(8,5)):
-  >>> added axiom: (forall call0formal#AT#n: int :: { ##extracted_function##1(call0formal#AT#n) } ##extracted_function##1(call0formal#AT#n) == (0 < call0formal#AT#n))
-  >>> added axiom: (forall call1formal#AT#r: int :: { ##extracted_function##2(call1formal#AT#r) } ##extracted_function##2(call1formal#AT#r) == (0 < call1formal#AT#r))
+  >>> added axiom: (forall call0formal#AT#n: int :: {:weight 30} { ##extracted_function##1(call0formal#AT#n) } ##extracted_function##1(call0formal#AT#n) == (0 < call0formal#AT#n))
+  >>> added axiom: (forall call1formal#AT#r: int :: {:weight 30} { ##extracted_function##2(call1formal#AT#r) } ##extracted_function##2(call1formal#AT#r) == (0 < call1formal#AT#r))
   >>> added before precondition check: assume {:precondition_previous_snapshot} ##extracted_function##1(call0formal#AT#n);
   >>> added after: a##post##0 := a##post##0 && ##extracted_function##2(call1formal#AT#r);
 Processing command (at Snapshots8.v1.bpl(8,5)) assume {:precondition_previous_snapshot} ##extracted_function##1(call0formal#AT#n);
@@ -167,8 +167,8 @@ Processing command (at Snapshots9.v0.bpl(10,5)) assert 0 <= x;
 
 Boogie program verifier finished with 1 verified, 0 errors
 Processing call to procedure N in implementation M (at Snapshots9.v1.bpl(8,5)):
-  >>> added axiom: (forall call0formal#AT#n: int :: { ##extracted_function##1(call0formal#AT#n) } ##extracted_function##1(call0formal#AT#n) == (0 < call0formal#AT#n && true))
-  >>> added axiom: (forall call1formal#AT#r: int :: { ##extracted_function##2(call1formal#AT#r) } ##extracted_function##2(call1formal#AT#r) == (0 < call1formal#AT#r && true))
+  >>> added axiom: (forall call0formal#AT#n: int :: {:weight 30} { ##extracted_function##1(call0formal#AT#n) } ##extracted_function##1(call0formal#AT#n) == (0 < call0formal#AT#n && true))
+  >>> added axiom: (forall call1formal#AT#r: int :: {:weight 30} { ##extracted_function##2(call1formal#AT#r) } ##extracted_function##2(call1formal#AT#r) == (0 < call1formal#AT#r && true))
   >>> added before precondition check: assume {:precondition_previous_snapshot} ##extracted_function##1(call0formal#AT#n);
   >>> added after: a##post##0 := a##post##0 && ##extracted_function##2(call1formal#AT#r);
 Processing command (at Snapshots9.v1.bpl(8,5)) assume {:precondition_previous_snapshot} ##extracted_function##1(call0formal#AT#n);
@@ -188,8 +188,8 @@ Processing command (at Snapshots10.v0.bpl(12,5)) assert 0 <= x;
 
 Boogie program verifier finished with 1 verified, 0 errors
 Processing call to procedure N in implementation M (at Snapshots10.v1.bpl(8,5)):
-  >>> added axiom: (forall call0formal#AT#n: int :: { ##extracted_function##1(call0formal#AT#n) } ##extracted_function##1(call0formal#AT#n) == (0 < call0formal#AT#n))
-  >>> added axiom: (forall call1formal#AT#r: int :: { ##extracted_function##2(call1formal#AT#r) } ##extracted_function##2(call1formal#AT#r) == (0 < call1formal#AT#r))
+  >>> added axiom: (forall call0formal#AT#n: int :: {:weight 30} { ##extracted_function##1(call0formal#AT#n) } ##extracted_function##1(call0formal#AT#n) == (0 < call0formal#AT#n))
+  >>> added axiom: (forall call1formal#AT#r: int :: {:weight 30} { ##extracted_function##2(call1formal#AT#r) } ##extracted_function##2(call1formal#AT#r) == (0 < call1formal#AT#r))
   >>> added before precondition check: assume {:precondition_previous_snapshot} ##extracted_function##1(call0formal#AT#n);
   >>> added after: a##post##0 := a##post##0 && ##extracted_function##2(call1formal#AT#r);
 Processing command (at Snapshots10.v1.bpl(8,5)) assume {:precondition_previous_snapshot} ##extracted_function##1(call0formal#AT#n);
@@ -211,8 +211,8 @@ Snapshots11.v0.bpl(13,3): Related location: This is the precondition that might 
 
 Boogie program verifier finished with 0 verified, 1 error
 Processing call to procedure N in implementation M (at Snapshots11.v1.bpl(7,5)):
-  >>> added axiom: (forall call0formal#AT#n: int :: { ##extracted_function##1(call0formal#AT#n) } ##extracted_function##1(call0formal#AT#n) == (0 < call0formal#AT#n))
-  >>> added axiom: (forall call1formal#AT#r: int :: { ##extracted_function##2(call1formal#AT#r) } ##extracted_function##2(call1formal#AT#r) == (0 < call1formal#AT#r))
+  >>> added axiom: (forall call0formal#AT#n: int :: {:weight 30} { ##extracted_function##1(call0formal#AT#n) } ##extracted_function##1(call0formal#AT#n) == (0 < call0formal#AT#n))
+  >>> added axiom: (forall call1formal#AT#r: int :: {:weight 30} { ##extracted_function##2(call1formal#AT#r) } ##extracted_function##2(call1formal#AT#r) == (0 < call1formal#AT#r))
   >>> added before precondition check: assume {:precondition_previous_snapshot} ##extracted_function##1(call0formal#AT#n);
   >>> added after: a##post##0 := a##post##0 && ##extracted_function##2(call1formal#AT#r);
 Processing command (at Snapshots11.v1.bpl(7,5)) assume {:precondition_previous_snapshot} ##extracted_function##1(call0formal#AT#n);
@@ -466,7 +466,7 @@ Processing command (at Snapshots24.v1.bpl(11,9)) assert {:subsumption 1} 5 == 5;
 Processing command (at Snapshots24.v1.bpl(15,9)) assert {:subsumption 2} 6 != 6;
   >>> RecycleError
 Processing command (at Snapshots24.v1.bpl(19,9)) assert {:subsumption 1} 2 == 2;
-  >>> DoNothingToAssert
+  >>> MarkAsFullyVerified
 Processing command (at Snapshots24.v1.bpl(20,9)) assert {:subsumption 2} 4 == 4;
   >>> MarkAsFullyVerified
 Processing command (at Snapshots24.v1.bpl(21,9)) assert 5 == 5;
@@ -566,7 +566,7 @@ Processing command (at Snapshots31.v0.bpl(10,5)) assert 0 < g;
 
 Boogie program verifier finished with 1 verified, 0 errors
 Processing call to procedure Q in implementation P (at Snapshots31.v1.bpl(9,5)):
-  >>> added axiom: (forall call0old#AT#g: int, g: int :: { ##extracted_function##1(call0old#AT#g, g) } ##extracted_function##1(call0old#AT#g, g) == (call0old#AT#g < g))
+  >>> added axiom: (forall call0old#AT#g: int, g: int :: {:weight 30} { ##extracted_function##1(call0old#AT#g, g) } ##extracted_function##1(call0old#AT#g, g) == (call0old#AT#g < g))
   >>> added after: a##post##0 := a##post##0 && ##extracted_function##1(call0old#AT#g, g);
 Processing command (at <unknown location>) a##post##0 := a##post##0 && ##extracted_function##1(call0old#AT#g, g);
   >>> AssumeNegationOfAssumptionVariable
@@ -580,7 +580,7 @@ Processing command (at Snapshots32.v0.bpl(10,5)) assert 0 < g;
 
 Boogie program verifier finished with 1 verified, 0 errors
 Processing call to procedure Q in implementation P (at Snapshots32.v1.bpl(8,5)):
-  >>> added axiom: (forall g##old##0: int, g: int :: { ##extracted_function##1(g##old##0, g) } ##extracted_function##1(g##old##0, g) == (g##old##0 < g))
+  >>> added axiom: (forall g##old##0: int, g: int :: {:weight 30} { ##extracted_function##1(g##old##0, g) } ##extracted_function##1(g##old##0, g) == (g##old##0 < g))
   >>> added before: g##old##0 := g;
   >>> added after: a##post##0 := a##post##0 && ##extracted_function##1(g##old##0, g);
 Processing command (at <unknown location>) a##post##0 := a##post##0 && ##extracted_function##1(g##old##0, g);

@@ -314,7 +314,7 @@ namespace Microsoft.Boogie.VCExprAST {
 
     ///////////////////////////////////////////////////////////////////////////////////
 
-    public override LiteralExpr VisitLiteralExpr(LiteralExpr node) {
+    public override Expr VisitLiteralExpr(LiteralExpr node) {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<LiteralExpr>() != null);
       Push(TranslateLiteralExpr(node));
@@ -454,14 +454,14 @@ namespace Microsoft.Boogie.VCExprAST {
       return node;
     }
 
-    public override ExistsExpr VisitExistsExpr(ExistsExpr node) {
+    public override Expr VisitExistsExpr(ExistsExpr node) {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<ExistsExpr>() != null);
       node = (ExistsExpr)this.VisitQuantifierExpr(node);
       return node;
     }
 
-    public override ForallExpr VisitForallExpr(ForallExpr node) {
+    public override Expr VisitForallExpr(ForallExpr node) {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<ForallExpr>() != null);
       node = (ForallExpr)this.VisitQuantifierExpr(node);
@@ -557,7 +557,7 @@ namespace Microsoft.Boogie.VCExprAST {
 
     ///////////////////////////////////////////////////////////////////////////////////
 
-    public override BvExtractExpr VisitBvExtractExpr(BvExtractExpr node) {
+    public override Expr VisitBvExtractExpr(BvExtractExpr node) {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<BvExtractExpr>() != null);
       Push(TranslateBvExtractExpr(node));
@@ -574,7 +574,7 @@ namespace Microsoft.Boogie.VCExprAST {
 
     ///////////////////////////////////////////////////////////////////////////////////
 
-    public override BvConcatExpr VisitBvConcatExpr(BvConcatExpr node) {
+    public override Expr VisitBvConcatExpr(BvConcatExpr node) {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<BvConcatExpr>() != null);
       Push(TranslateBvConcatExpr(node));

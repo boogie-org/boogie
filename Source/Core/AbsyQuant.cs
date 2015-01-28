@@ -622,10 +622,9 @@ namespace Microsoft.Boogie {
   public abstract class QuantifierExpr : BinderExpr {
     public Trigger Triggers;
 
-    static int SkolemIds = 0;
+    static int SkolemIds = -1;
     public static int GetNextSkolemId() {
-      SkolemIds++;
-      return SkolemIds;
+      return System.Threading.Interlocked.Increment(ref SkolemIds);
     }
 
     public readonly int SkolemId;

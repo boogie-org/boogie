@@ -247,7 +247,7 @@ namespace Microsoft.Boogie
         }
 
         node.ExtendDesugaring(before, beforePrecondtionCheck, after);
-        if (1 <= CommandLineOptions.Clo.TraceCaching)
+        if (CommandLineOptions.Clo.TraceCachingForTesting || CommandLineOptions.Clo.TraceCachingForBenchmarking)
         {
           using (var tokTxtWr = new TokenTextWriter("<console>", Console.Out, false, false))
           {
@@ -336,8 +336,7 @@ namespace Microsoft.Boogie
       {
         var forallExpr = new ForallExpr(Token.NoToken, boundVars.ToList<Variable>(), new Trigger(Token.NoToken, true, new List<Expr> { axiomCall }), eq);
         body = forallExpr;
-        // TODO(wuestholz): Try assigning a higher weight to these quantifiers:
-        // forallExpr.Attributes = new QKeyValue(Token.NoToken, "weight", new List<object> { new LiteralExpr(Token.NoToken, Basetypes.BigNum.FromInt(20)) }, null);
+        forallExpr.Attributes = new QKeyValue(Token.NoToken, "weight", new List<object> { new LiteralExpr(Token.NoToken, Basetypes.BigNum.FromInt(30)) }, null);
         body.Type = Type.Bool;
       }
       else
@@ -377,7 +376,7 @@ namespace Microsoft.Boogie
       }
 
       var end = DateTime.UtcNow;
-      if (3 <= CommandLineOptions.Clo.TraceCaching)
+      if (CommandLineOptions.Clo.TraceCachingForDebugging)
       {
         Console.Out.WriteLine("Collected other definition axioms within {0:F0} ms.", end.Subtract(start).TotalMilliseconds);
       }
@@ -426,7 +425,7 @@ namespace Microsoft.Boogie
       dc.VisitProgram(program);
 
       var end = DateTime.UtcNow;
-      if (3 <= CommandLineOptions.Clo.TraceCaching)
+      if (CommandLineOptions.Clo.TraceCachingForDebugging)
       {
         Console.Out.WriteLine("Collected dependencies within {0:F0} ms.", end.Subtract(start).TotalMilliseconds);
       }

@@ -521,7 +521,7 @@ namespace VC {
       readonly List<Block> big_blocks = new List<Block>();
       readonly Dictionary<Block/*!*/, BlockStats/*!*/>/*!*/ stats = new Dictionary<Block/*!*/, BlockStats/*!*/>();
       readonly int id;
-      static int current_id;
+      static int current_id = -1;
       Block split_block;
       bool assert_to_assume;
       List<Block/*!*/>/*!*/ assumized_branches = new List<Block/*!*/>();
@@ -557,7 +557,7 @@ namespace VC {
         this.gotoCmdOrigins = gotoCmdOrigins;
         this.parent = par;
         this.impl = impl;
-        this.id = current_id++;
+        this.id = Interlocked.Increment(ref current_id);
       }
 
       public double Cost {

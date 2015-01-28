@@ -77,11 +77,11 @@ namespace Microsoft.Boogie {
       Contract.Ensures(Contract.Result<Block>() != null);
       return base.VisitBlock((Block) node.Clone());
     }
-    public override BvConcatExpr VisitBvConcatExpr (BvConcatExpr node) {
+    public override Expr VisitBvConcatExpr (BvConcatExpr node) {
       Contract.Ensures(Contract.Result<BvConcatExpr>() != null);
       return base.VisitBvConcatExpr((BvConcatExpr) node.Clone());
     }
-    public override BvExtractExpr VisitBvExtractExpr(BvExtractExpr node) {
+    public override Expr VisitBvExtractExpr(BvExtractExpr node) {
       Contract.Ensures(Contract.Result<BvExtractExpr>() != null);
       return base.VisitBvExtractExpr((BvExtractExpr) node.Clone());
     }
@@ -204,7 +204,7 @@ namespace Microsoft.Boogie {
         Contract.Ensures(Contract.Result<List<Ensures>>() != null);
         return base.VisitEnsuresSeq(new List<Ensures>(ensuresSeq));
     }
-    public override ExistsExpr VisitExistsExpr(ExistsExpr node) {
+    public override Expr VisitExistsExpr(ExistsExpr node) {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<ExistsExpr>() != null);
       return base.VisitExistsExpr((ExistsExpr)node.Clone());
@@ -219,7 +219,7 @@ namespace Microsoft.Boogie {
       Contract.Ensures(Contract.Result<List<Expr>>() != null);
       return base.VisitExprSeq(new List<Expr>(list));
     }
-    public override ForallExpr VisitForallExpr(ForallExpr node) {
+    public override Expr VisitForallExpr(ForallExpr node) {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<ForallExpr>() != null);
       return base.VisitForallExpr((ForallExpr)node.Clone());
@@ -290,7 +290,7 @@ namespace Microsoft.Boogie {
 
       return impl;
     }
-    public override LiteralExpr VisitLiteralExpr(LiteralExpr node) {
+    public override Expr VisitLiteralExpr(LiteralExpr node) {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<LiteralExpr>() != null);
       return base.VisitLiteralExpr((LiteralExpr)node.Clone());

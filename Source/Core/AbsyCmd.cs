@@ -3216,10 +3216,7 @@ namespace Microsoft.Boogie {
       if (stream.UseForComputingChecksums && QKeyValue.FindBoolAttribute(Attributes, "precondition_previous_snapshot")) { return; }
 
       stream.Write(this, level, "assume ");
-      if (!stream.UseForComputingChecksums)
-      {
-        EmitAttributes(stream, Attributes);
-      }
+      EmitAttributes(stream, Attributes);
       this.Expr.Emit(stream);
       stream.WriteLine(";");
     }
