@@ -23,8 +23,12 @@ compilation issues. To fix this you must install NUnit via NuGet.
 Visual Studio
 -------------
 
-To obtain NUnit right click the Boogie Solution in the Solution Explorer
-and click ``Enable NuGet Package Restore``. You will get a prompt saying
+Visual Studio should automatically download the missing NuGet packages
+when the solution is built.
+
+If for some reason this does not work right click the Boogie Solution in the
+Solution Explorer and click ``Enable NuGet Package Restore``. You will get a
+prompt saying
 
 ```
 NuGet Package Manager
@@ -34,8 +38,7 @@ missing NuGet packages during build?
 ```
 
 Press the ``Yes`` button. Now build the solution and NuGet will fetch
-NUnit.
-
+the missing NuGet packages.
 
 Monodevelop
 -----------
