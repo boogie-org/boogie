@@ -24,21 +24,12 @@ Visual Studio
 -------------
 
 Visual Studio should automatically download the missing NuGet packages
-when the solution is built.
+when the solution is built. If this doesn't work make sure the
+``Allow NuGet to download missing packages`` checkbox is ticked in
+``TOOLS > NuGet Package Manager > Package Manager Settings``.
 
 If for some reason this does not work right click the Boogie Solution in the
-Solution Explorer and click ``Enable NuGet Package Restore``. You will get a
-prompt saying
-
-```
-NuGet Package Manager
-
-Do you want to configure this solution to download and restore
-missing NuGet packages during build?
-```
-
-Press the ``Yes`` button. Now build the solution and NuGet will fetch
-the missing NuGet packages.
+Solution Explorer and click ``Enable NuGet Package Restore``.
 
 Monodevelop
 -----------
