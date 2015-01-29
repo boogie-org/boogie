@@ -96,6 +96,13 @@ namespace CoreTests
             var e = new OldExpr(Token.NoToken, Expr.True, /*immutable=*/ true);
             e.Expr = Expr.False;
         }
+
+        [Test(), ExpectedException(typeof(InvalidOperationException))]
+        public void ProtectedNAryFunc()
+        {
+            var e = GetUnTypedImmutableNAry();
+            e.Fun = new BinaryOperator(Token.NoToken, BinaryOperator.Opcode.Sub);
+        }
     }
 }
 

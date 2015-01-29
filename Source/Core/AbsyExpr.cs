@@ -2230,8 +2230,19 @@ namespace Microsoft.Boogie {
   public class NAryExpr : Expr {
     [Additive]
     [Peer]
-    // FIXME: Protect these fields
-    public IAppliable/*!*/ Fun;
+    private IAppliable _Fun;
+    public IAppliable/*!*/ Fun {
+      get {
+        return _Fun;
+      }
+      set {
+        if (Immutable)
+          throw new InvalidOperationException("Cannot change Function used by Immutable NAryExpr");
+
+        _Fun = value;
+      }
+    }
+    // FIXME: Protect this field when immutable
     public List<Expr> Args;
 
     [ContractInvariantMethod]
@@ -2251,7 +2262,7 @@ namespace Microsoft.Boogie {
       Contract.Requires(tok != null);
       Contract.Requires(fun != null);
       Contract.Requires(args != null);
-      Fun = fun;
+      _Fun = fun;
       Args = args;
       Contract.Assert(Contract.ForAll(0, args.Count, index => args[index] != null));
       if (immutable)
