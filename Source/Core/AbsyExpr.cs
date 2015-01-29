@@ -731,9 +731,30 @@ namespace Microsoft.Boogie {
   }
 
   public class IdentifierExpr : Expr {
-    // FIXME: Protect these fields
-    public string/*!*/ Name;    // identifier symbol
-    public Variable Decl;   // identifier declaration
+    private string _Name;
+    public string Name { // identifier symbol
+      get {
+        return _Name;
+      }
+      set {
+        if (Immutable)
+          throw new InvalidOperationException("Cannot change Name on Immutable Expr");
+        
+        _Name = value;
+      }
+    }
+    private Variable _Decl;
+    public Variable Decl {   // identifier declaration
+      get {
+        return _Decl;
+      }
+      set {
+        if (Immutable)
+          throw new InvalidOperationException("Cannot change Decl on Immutable Expr");
+
+        _Decl = value;
+      }
+    }
     [ContractInvariantMethod]
     void ObjectInvariant() {
       Contract.Invariant(Name != null);
@@ -751,7 +772,7 @@ namespace Microsoft.Boogie {
       : base(tok, immutable) {
       Contract.Requires(tok != null);
       Contract.Requires(name != null);
-      Name = name;
+      _Name = name;
       if (immutable)
         CachedHashCode = ComputeHashCode();
     }
@@ -766,7 +787,7 @@ namespace Microsoft.Boogie {
       Contract.Requires(tok != null);
       Contract.Requires(name != null);
       Contract.Requires(type != null);
-      Name = name;
+      _Name = name;
       Type = type;
       if (immutable)
         CachedHashCode = ComputeHashCode();
@@ -781,8 +802,8 @@ namespace Microsoft.Boogie {
       : base(tok, immutable) {
       Contract.Requires(tok != null);
       Contract.Requires(d != null);
-      Name = cce.NonNull(d.Name);
-      Decl = d;
+      _Name = cce.NonNull(d.Name);
+      _Decl = d;
       Type = d.TypedIdent.Type;
       if (immutable)
         CachedHashCode = ComputeHashCode();
