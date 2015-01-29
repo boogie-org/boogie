@@ -91,7 +91,23 @@ namespace Microsoft.Boogie {
     /// been called or Typecheck encountered an error in the expression to be
     /// typechecked).
     /// </summary>
-    public Type Type;
+    private Type _Type = null;
+    public Type Type {
+      get {
+        return _Type;
+      }
+      set {
+        if (_Type == null) {
+          // Expr has never been type checked so always allow this
+          _Type = value;
+        } else  {
+          if (Immutable && !_Type.Equals(value))
+            throw new InvalidOperationException("Cannot change the Type of an Immutable Expr");
+
+          _Type = value;
+        }
+      }
+    }
 
     public override void Typecheck(TypecheckingContext tc) {
       //Contract.Requires(tc != null);
