@@ -20,6 +20,55 @@ The NuGet client is available as
 Note Mono ships with an old version of NUnit (2.4.8) which will cause
 compilation issues. To fix this you must install NUnit via NuGet.
 
+Visual Studio
+-------------
+
+To obtain NUnit right click the Boogie Solution in the Solution Explorer
+and click ``Enable NuGet Package Restore``. You will get a prompt saying
+
+```
+NuGet Package Manager
+
+Do you want to configure this solution to download and restore
+missing NuGet packages during build?
+```
+
+Press the ``Yes`` button. Now build the solution and NuGet will fetch
+NUnit.
+
+
+Monodevelop
+-----------
+
+To obtain NUnit Right click the Solution (Boogie) in the ``Solution Explorer``
+and click ``Restore NuGet packages``. This will download any NuGet packages that
+Boogie depends on (currently just NUnit).
+
+Command line utility
+--------------------
+
+NuGet is available as a standalone command line utility. Here is an example set
+of commands that will download the NUnit NuGet package when run from the root of
+the Boogie repository.
+
+```
+$ wget https://nuget.org/nuget.exe
+$ mono nuget.exe restore Source/Boogie.sln
+```
+
+Note if you see an error like this when running ``nuget.exe``
+
+```
+WARNING: Error: SendFailure (Error writing headers)
+```
+
+it will probably be because the trusted root certificates aren't setup for mono.
+To set this up run the following.
+
+```
+$ mozroots --import --sync
+```
+
 
 Running the tests
 =================
@@ -27,7 +76,20 @@ Running the tests
 Command line
 ------------
 
-The ``run-unittests.py`` python script in the root directory of the project can be used to run the unit tests on the command line. This script is a simple wrapper for ``nunit-console.exe``.
+Before you start you need to install the "NUnit.Runners" package to run
+``nunit-console.exe``. To do this run
+
+```
+$ cd Source/packages/
+$ mono ./nuget.exe install -Version 2.6.3 NUnit.Runners
+```
+
+Then make sure you have compiled the tests (the projects in the solution that
+have the ``Test`` suffix).
+
+You will then able to run the ``run-unitests.py`` script which is a convenient
+wrapper around ``nunit-console.exe`` to run the unittests. Here's an example
+invocation. The positional parameter indicates the build type you are using.
 
 ```
 $ python run-unittests.py Release
@@ -48,7 +110,9 @@ panel and click "Run All".
 Visual Studio
 -------------
 
-Visual studio needs the "NUnit Test Adapter for VS2012 and VS2013" add-in to be installed (Tools > Extensions and Updates). Once that is installed you can run unit tests by going 
+Visual studio needs the "NUnit Test Adapter for VS2012 and VS2013" add-in to be
+installed (Tools > Extensions and Updates).  Once that is installed you can run
+unit tests by
 
 1. Going to the Test Explorer (TEST > Windows > Test Explorer)
 2. Clicking on "Run All" in the Test Explorer.
