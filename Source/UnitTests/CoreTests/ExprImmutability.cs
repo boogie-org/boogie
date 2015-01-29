@@ -50,6 +50,30 @@ namespace CoreTests
         }
 
         [Test()]
+        public void CachedHashCodeBvExtractExpr()
+        {
+            var literalBv = new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(0), 4, /*immutable=*/true);
+            var bvExtract = new BvExtractExpr(Token.NoToken, literalBv, 3, 0, /*immutable=*/true);
+            Assert.AreEqual(bvExtract.ComputeHashCode(), bvExtract.GetHashCode());
+        }
+
+        [Test()]
+        public void CachedHashCodeBvConcatExpr()
+        {
+            var literalBv = new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(0), 4, /*immutable=*/true);
+            var bvConcat = new BvConcatExpr(Token.NoToken, literalBv, literalBv, /*immutable=*/true);
+            Assert.AreEqual(bvConcat.ComputeHashCode(), bvConcat.GetHashCode());
+        }
+
+        [Test()]
+        public void CachedHashCodeOldExpr()
+        {
+            var literalBv = new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(0), 4, /*immutable=*/true);
+            var oldExpr = new OldExpr(Token.NoToken, literalBv, /*immutable=*/true);
+            Assert.AreEqual(oldExpr.ComputeHashCode(), oldExpr.GetHashCode());
+        }
+
+        [Test()]
         public void CachedHashCodeForAllExpr()
         {
             var x = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, "x", BasicType.Int));
