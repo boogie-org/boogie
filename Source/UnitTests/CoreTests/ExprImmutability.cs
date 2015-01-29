@@ -89,6 +89,13 @@ namespace CoreTests
             // Trying to assign the same Type should succeed
             e.Type = BasicType.Bool;
         }
+
+        [Test(), ExpectedException(typeof(InvalidOperationException))]
+        public void ProtectedOldExpr()
+        {
+            var e = new OldExpr(Token.NoToken, Expr.True, /*immutable=*/ true);
+            e.Expr = Expr.False;
+        }
     }
 }
 

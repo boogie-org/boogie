@@ -947,8 +947,18 @@ namespace Microsoft.Boogie {
 
   public class OldExpr : Expr
   {
-    // FIXME: protect this field
-    public Expr/*!*/ Expr;
+    private Expr _Expr;
+    public Expr/*!*/ Expr {
+      get {
+        return _Expr;
+      }
+      set {
+        if (Immutable)
+          throw new InvalidOperationException("Cannot change Expr of an Immutable OldExpr");
+
+        _Expr = value;
+      }
+    }
     [ContractInvariantMethod]
     void ObjectInvariant() {
       Contract.Invariant(Expr != null);
@@ -958,7 +968,7 @@ namespace Microsoft.Boogie {
       : base(tok, immutable) {
       Contract.Requires(tok != null);
       Contract.Requires(expr != null);
-      Expr = expr;
+      _Expr = expr;
       if (immutable)
         CachedHashCode = ComputeHashCode();
     }
