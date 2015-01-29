@@ -197,6 +197,11 @@ namespace Microsoft.Boogie
     public int TimeoutCount;
     public int OutOfMemoryCount;
     public long[] CachingActionCounts;
+    public int CachedErrorCount;
+    public int CachedVerifiedCount;
+    public int CachedInconclusiveCount;
+    public int CachedTimeoutCount;
+    public int CachedOutOfMemoryCount;
   }
 
 
@@ -1036,14 +1041,14 @@ namespace Microsoft.Boogie
 
         Console.Out.WriteLine("Statistics per request as CSV:");
         var actions = string.Join(", ", Enum.GetNames(typeof(VC.ConditionGeneration.CachingAction)));
-        Console.Out.WriteLine("Request ID{0}, Error, Inconclusive, Out of Memory, Timeout, Verified, {1}", printTimes ? ", Time (ms)" : "", actions);
+        Console.Out.WriteLine("Request ID{0}, Error, E (C), Inconclusive, I (C), Out of Memory, OoM (C), Timeout, T (C), Verified, V (C), {1}", printTimes ? ", Time (ms)" : "", actions);
         foreach (var kv in TimePerRequest.OrderBy(kv => ExecutionEngine.AutoRequestId(kv.Key)))
         {
           var s = StatisticsPerRequest[kv.Key];
           var cacs = s.CachingActionCounts;
           var c = cacs != null ? ", " + cacs.Select(ac => string.Format("{0,3}", ac)).Concat(", ") : "";
           var t = printTimes ? string.Format(", {0,8:F0}", kv.Value.TotalMilliseconds) : "";
-          Console.Out.WriteLine("{0,-19}{1}, {2,2}, {3,2}, {4,2}, {5,2}, {6,2}{7}", kv.Key, t, s.ErrorCount, s.InconclusiveCount, s.OutOfMemoryCount, s.TimeoutCount, s.VerifiedCount, c);
+          Console.Out.WriteLine("{0,-19}{1}, {2,2}, {3,2}, {4,2}, {5,2}, {6,2}, {7,2}, {8,2}, {9,2}, {10,2}, {11,2}{12}", kv.Key, t, s.ErrorCount, s.CachedErrorCount, s.InconclusiveCount, s.CachedInconclusiveCount, s.OutOfMemoryCount, s.CachedOutOfMemoryCount, s.TimeoutCount, s.CachedTimeoutCount, s.VerifiedCount, s.CachedVerifiedCount, c);
         }
 
         if (printTimes)
@@ -1111,6 +1116,7 @@ namespace Microsoft.Boogie
         verificationResult = Cache.Lookup(impl, out priority);
       }
 
+      var wasCached = false;
       if (verificationResult != null && priority == Priority.SKIP)
       {
         if (CommandLineOptions.Clo.XmlSink != null)
@@ -1119,6 +1125,7 @@ namespace Microsoft.Boogie
         }
 
         printer.Inform(string.Format("Retrieving cached verification result for implementation {0}...", impl.Name), output);
+        wasCached = true;
       }
       else
       {
@@ -1209,7 +1216,7 @@ namespace Microsoft.Boogie
 
       #region Process the verification results and statistics
 
-      ProcessOutcome(verificationResult.Outcome, verificationResult.Errors, TimeIndication(verificationResult), stats, output, impl.TimeLimit, er, verificationResult.ImplementationName, verificationResult.ImplementationToken, verificationResult.RequestId);
+      ProcessOutcome(verificationResult.Outcome, verificationResult.Errors, TimeIndication(verificationResult), stats, output, impl.TimeLimit, er, verificationResult.ImplementationName, verificationResult.ImplementationToken, verificationResult.RequestId, wasCached);
 
       ProcessErrors(verificationResult.Errors, verificationResult.Outcome, output, er, impl);
 
@@ -1444,11 +1451,11 @@ namespace Microsoft.Boogie
 
 
     private static void ProcessOutcome(VC.VCGen.Outcome outcome, List<Counterexample> errors, string timeIndication,
-                                       PipelineStatistics stats, TextWriter tw, int timeLimit, ErrorReporterDelegate er = null, string implName = null, IToken implTok = null, string requestId = null)
+                                       PipelineStatistics stats, TextWriter tw, int timeLimit, ErrorReporterDelegate er = null, string implName = null, IToken implTok = null, string requestId = null, bool wasCached = false)
     {
       Contract.Requires(stats != null);
 
-      UpdateStatistics(stats, outcome, errors);
+      UpdateStatistics(stats, outcome, errors, wasCached);
 
       printer.Inform(timeIndication + OutcomeIndication(outcome, errors), tw);
 
@@ -1531,7 +1538,7 @@ namespace Microsoft.Boogie
     }
 
 
-    private static void UpdateStatistics(PipelineStatistics stats, VC.VCGen.Outcome outcome, List<Counterexample> errors)
+    private static void UpdateStatistics(PipelineStatistics stats, VC.VCGen.Outcome outcome, List<Counterexample> errors, bool wasCached)
     {
       Contract.Requires(stats != null);
 
@@ -1542,27 +1549,34 @@ namespace Microsoft.Boogie
           throw new cce.UnreachableException();
         case VCGen.Outcome.ReachedBound:
           Interlocked.Increment(ref stats.VerifiedCount);
+          if (wasCached) { Interlocked.Increment(ref stats.CachedVerifiedCount); }
           break;
         case VCGen.Outcome.Correct:
           Interlocked.Increment(ref stats.VerifiedCount);
+          if (wasCached) { Interlocked.Increment(ref stats.CachedVerifiedCount); }
           break;
         case VCGen.Outcome.TimedOut:
           Interlocked.Increment(ref stats.TimeoutCount);
+          if (wasCached) { Interlocked.Increment(ref stats.CachedTimeoutCount); }
           break;
         case VCGen.Outcome.OutOfMemory:
           Interlocked.Increment(ref stats.OutOfMemoryCount);
+          if (wasCached) { Interlocked.Increment(ref stats.CachedOutOfMemoryCount); }
           break;
         case VCGen.Outcome.Inconclusive:
           Interlocked.Increment(ref stats.InconclusiveCount);
+          if (wasCached) { Interlocked.Increment(ref stats.CachedInconclusiveCount); }
           break;
         case VCGen.Outcome.Errors:
           if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Doomed)
           {
             Interlocked.Increment(ref stats.ErrorCount);
+            if (wasCached) { Interlocked.Increment(ref stats.CachedErrorCount); }
           }
           else
           {
             Interlocked.Add(ref stats.ErrorCount, errors.Count);
+            if (wasCached) { Interlocked.Add(ref stats.CachedErrorCount, errors.Count); }
           }
           break;
       }
