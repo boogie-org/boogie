@@ -680,8 +680,8 @@ namespace Microsoft.Boogie {
   }
 
   public class BvConst {
-    public BigNum Value;
-    public int Bits;
+    public readonly BigNum Value;
+    public readonly int Bits;
 
     public BvConst(BigNum v, int b) {
       Contract.Assert(v.Signum >= 0);
