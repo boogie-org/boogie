@@ -16,6 +16,40 @@ namespace CoreTests
 
         // Cached hashcode checkers
         [Test()]
+        public void CachedHashCodeLiteralExpr()
+        {
+            var literal = new LiteralExpr(Token.NoToken, true, /*immutable=*/true);
+            Assert.AreEqual(literal.ComputeHashCode(), literal.GetHashCode());
+
+            var literal2 = new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(0), /*immutable=*/true);
+            Assert.AreEqual(literal2.ComputeHashCode(), literal2.GetHashCode());
+
+            var literal3 = new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigDec.FromInt(0), /*immutable=*/true);
+            Assert.AreEqual(literal3.ComputeHashCode(), literal3.GetHashCode());
+
+            var literal4 = new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(0), 8, /*immutable=*/true);
+            Assert.AreEqual(literal4.ComputeHashCode(), literal4.GetHashCode());
+        }
+
+        [Test()]
+        public void CachedHashCodeIdentifierExpr()
+        {
+            var id = new IdentifierExpr(Token.NoToken, "foo", BasicType.Bool, /*immutable=*/true);
+            Assert.AreEqual(id.ComputeHashCode(), id.GetHashCode());
+
+            var variable = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, "foo2", BasicType.Int));
+            var id2 = new IdentifierExpr(Token.NoToken, variable, /*immutable=*/true);
+            Assert.AreEqual(id2.ComputeHashCode(), id2.GetHashCode());
+        }
+
+        [Test()]
+        public void CachedHashCodeNAryExpr()
+        {
+            var nary = new NAryExpr(Token.NoToken, new UnaryOperator(Token.NoToken, UnaryOperator.Opcode.Not), new List<Expr>() { Expr.True }, /*immutable=*/true);
+            Assert.AreEqual(nary.ComputeHashCode(), nary.GetHashCode());
+        }
+
+        [Test()]
         public void CachedHashCodeForAllExpr()
         {
             var x = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, "x", BasicType.Int));
