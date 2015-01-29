@@ -11,8 +11,45 @@ namespace CoreTests
 
         public void Error(IToken tok, string msg)
         {
-            Assert.Fail (msg);
+            Assert.Fail(msg);
         }
+
+        // Cached hashcode checkers
+        [Test()]
+        public void CachedHashCodeForAllExpr()
+        {
+            var x = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, "x", BasicType.Int));
+            var y = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, "x", BasicType.Int));
+            var body = Expr.Gt (new IdentifierExpr (Token.NoToken, x, /*immutable=*/true),
+                new IdentifierExpr(Token.NoToken, y, /*immutable=*/true));
+            var forAll = new ForallExpr(Token.NoToken, new List<Variable> () {x, y }, body, /*immutable=*/ true);
+            Assert.AreEqual(forAll.ComputeHashCode(), forAll.GetHashCode());
+        }
+
+        [Test()]
+        public void CachedHashCodeExistsExpr()
+        {
+            var x = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, "x", BasicType.Int));
+            var y = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, "x", BasicType.Int));
+            var body = Expr.Gt (new IdentifierExpr (Token.NoToken, x, /*immutable=*/true),
+                new IdentifierExpr(Token.NoToken, y, /*immutable=*/true));
+            var exists = new ExistsExpr(Token.NoToken, new List<Variable> () {x, y }, body, /*immutable=*/ true);
+            Assert.AreEqual(exists.ComputeHashCode(), exists.GetHashCode());
+        }
+
+        [Test()]
+        public void CachedHashCodeLambdaExpr()
+        {
+            var x = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, "x", BasicType.Int));
+            var y = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, "x", BasicType.Int));
+            var body = Expr.Gt (new IdentifierExpr (Token.NoToken, x, /*immutable=*/true),
+                new IdentifierExpr(Token.NoToken, y, /*immutable=*/true));
+            var lambda = new LambdaExpr(Token.NoToken, new List<TypeVariable>(), new List<Variable>() { x, y},
+                null, body, /*immutable=*/true);
+            Assert.AreEqual(lambda.ComputeHashCode(), lambda.GetHashCode());
+        }
+
+        // Runtime immutability enforcement
 
         [Test(), ExpectedException(typeof(InvalidOperationException))]
         public void IdentifierExprName()
