@@ -140,6 +140,43 @@ namespace CoreTests
             var e = GetUnTypedImmutableNAry();
             e.Fun = new BinaryOperator(Token.NoToken, BinaryOperator.Opcode.Sub);
         }
+
+        [Test(), ExpectedException(typeof(InvalidOperationException))]
+        public void ProtectedForAllExprBody()
+        {
+            var x = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, "x", BasicType.Int));
+            var y = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, "x", BasicType.Int));
+            var xId = new IdentifierExpr(Token.NoToken, x, /*immutable=*/true);
+            var yId = new IdentifierExpr(Token.NoToken, y, /*immutable=*/true);
+            var body = Expr.Gt(xId, yId);
+            var forAll = new ForallExpr(Token.NoToken, new List<Variable> () { x, y }, body, /*immutable=*/true);
+            forAll.Body = Expr.Lt(xId, yId); // Changing the body of an immutable ForAllExpr should fail
+        }
+
+        [Test(), ExpectedException(typeof(InvalidOperationException))]
+        public void ProtectedExistsExprBody()
+        {
+            var x = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, "x", BasicType.Int));
+            var y = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, "x", BasicType.Int));
+            var xId = new IdentifierExpr(Token.NoToken, x, /*immutable=*/true);
+            var yId = new IdentifierExpr(Token.NoToken, y, /*immutable=*/true);
+            var body = Expr.Gt(xId, yId);
+            var exists = new ExistsExpr(Token.NoToken, new List<Variable> () { x, y }, body, /*immutable=*/true);
+            exists.Body = Expr.Lt(xId, yId); // Changing the body of an immutable ExistsExpr should fail
+        }
+
+        [Test(), ExpectedException(typeof(InvalidOperationException))]
+        public void ProtectedLambdaExprBody()
+        {
+            var x = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, "x", BasicType.Int));
+            var y = new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, "x", BasicType.Int));
+            var xId = new IdentifierExpr(Token.NoToken, x, /*immutable=*/true);
+            var yId = new IdentifierExpr(Token.NoToken, y, /*immutable=*/true);
+            var body = Expr.Gt(xId, yId);
+            var lambda = new LambdaExpr(Token.NoToken, new List<TypeVariable>(), new List<Variable>() { x, y},
+                null, body, /*immutable=*/true);
+            lambda.Body = Expr.Lt(xId, yId); // Changing the body of an immutable ExistsExpr should fail
+        }
     }
 }
 

@@ -49,7 +49,19 @@ namespace Microsoft.Boogie {
     public List<TypeVariable>/*!*/ TypeParameters;
     public List<Variable>/*!*/ Dummies;
     public QKeyValue Attributes;
-    public Expr/*!*/ Body;
+    // FIXME: Protect the above Fields
+    public Expr _Body;
+    public Expr/*!*/ Body {
+      get {
+        return _Body;
+      }
+      set {
+        if (Immutable)
+          throw new InvalidOperationException ("Cannot change the Body of an immutable BinderExpr");
+
+        _Body = value;
+      }
+    }
     [ContractInvariantMethod]
     void ObjectInvariant() {
       Contract.Invariant(TypeParameters != null);
@@ -68,7 +80,7 @@ namespace Microsoft.Boogie {
       TypeParameters = typeParameters;
       Dummies = dummies;
       Attributes = kv;
-      Body = body;
+      _Body = body;
       if (immutable)
         CachedHashCode = ComputeHashCode();
     }
