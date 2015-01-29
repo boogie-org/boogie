@@ -117,7 +117,7 @@ private class BvBounds : Expr {
   public BigNum Lower;
   public BigNum Upper;
   public BvBounds(IToken/*!*/ tok, BigNum lower, BigNum upper)
-    : base(tok) {
+    : base(tok, /*immutable=*/ false) {
     Contract.Requires(tok != null);
     this.Lower = lower;
     this.Upper = upper;
@@ -132,6 +132,9 @@ private class BvBounds : Expr {
     Contract.Assert(false);throw new cce.UnreachableException();
   }
   public override void ComputeFreeVariables(GSet<object>/*!*/ freeVars) { Contract.Assert(false);throw new cce.UnreachableException(); }
+  public override int ComputeHashCode() {
+    return base.GetHashCode();
+  }
 }
 
 /*--------------------------------------------------------------------------*/

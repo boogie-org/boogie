@@ -31,15 +31,42 @@ namespace Microsoft.Boogie {
 
   [ContractClass(typeof(ExprContracts))]
   public abstract class Expr : Absy {
-    public Expr(IToken/*!*/ tok)
+    public Expr(IToken/*!*/ tok, bool immutable)
       : base(tok) {
       Contract.Requires(tok != null);
+      this.Immutable = immutable;
     }
 
     public void Emit(TokenTextWriter stream) {
       Contract.Requires(stream != null);
       Emit(stream, 0, false);
     }
+
+    /// <summary>
+    /// If true the client is making a promise that this Expr will be
+    /// treated immutably (i.e. once constructed it is never changed).
+    /// This is currently not enforced but it should be!
+    ///
+    /// This allows the Expr's hash code to be cached making calls to
+    /// GetHashCode() very cheap.
+    /// </summary>
+    /// <value><c>true</c> if immutable; otherwise, <c>false</c>.</value>
+    public bool Immutable {
+      get;
+      private set;
+    }
+
+    /// <summary>
+    /// Computes the hash code of this Expr skipping any cache.
+    ///
+    /// Sub classes should place their implementation of computing their hashcode
+    /// here (making sure to call ComputeHashCode() and not GetHashCode() on Expr)
+    /// and have GetHashCode() use a cached result from ComputeHashCode() if the
+    /// Expr was constructed to be immutable.
+    /// </summary>
+    /// <returns>The hash code.</returns>
+    public abstract int ComputeHashCode();
+    protected int CachedHashCode = 0;
 
     public abstract void Emit(TokenTextWriter/*!*/ wr, int contextBindingStrength, bool fragileContext);
 
@@ -424,7 +451,7 @@ namespace Microsoft.Boogie {
   }
   [ContractClassFor(typeof(Expr))]
   public abstract class ExprContracts : Expr {
-    public ExprContracts() :base(null){
+    public ExprContracts() :base(null, /*immutable=*/ false){
 
     }
     public override void Emit(TokenTextWriter wr, int contextBindingStrength, bool fragileContext) {
@@ -456,11 +483,13 @@ namespace Microsoft.Boogie {
     /// </summary>
     /// <param name="tok"></param>
     /// <param name="b"></param>
-    public LiteralExpr(IToken/*!*/ tok, bool b)
-      : base(tok) {
+    public LiteralExpr(IToken/*!*/ tok, bool b, bool immutable=false)
+      : base(tok, immutable) {
       Contract.Requires(tok != null);
       Val = b;
       Type = Type.Bool;
+      if (immutable)
+        CachedHashCode = ComputeHashCode();
     }
 
     /// <summary>
@@ -468,11 +497,13 @@ namespace Microsoft.Boogie {
     /// </summary>
     /// <param name="tok"></param>
     /// <param name="v"></param>
-    public LiteralExpr(IToken/*!*/ tok, BigNum v)
-      : base(tok) {
+    public LiteralExpr(IToken/*!*/ tok, BigNum v, bool immutable=false)
+      : base(tok, immutable) {
       Contract.Requires(tok != null);
       Val = v;
       Type = Type.Int;
+      if (immutable)
+        CachedHashCode = ComputeHashCode();
     }
 
     /// <summary>
@@ -480,22 +511,26 @@ namespace Microsoft.Boogie {
     /// </summary>
     /// <param name="tok"></param>
     /// <param name="v"></param>
-    public LiteralExpr(IToken/*!*/ tok, BigDec v)
-      : base(tok) {
+    public LiteralExpr(IToken/*!*/ tok, BigDec v, bool immutable=false)
+      : base(tok, immutable) {
       Contract.Requires(tok != null);
       Val = v;
       Type = Type.Real;
+      if (immutable)
+        CachedHashCode = ComputeHashCode();
     }
 
     /// <summary>
     /// Creates a literal expression for the bitvector value "v".
     /// </summary>
-    public LiteralExpr(IToken/*!*/ tok, BigNum v, int b)
-      : base(tok) {
+    public LiteralExpr(IToken/*!*/ tok, BigNum v, int b, bool immutable=false)
+      : base(tok, immutable) {
       Contract.Requires(tok != null);
       Contract.Requires(0 <= b);
       Val = new BvConst(v, b);
       Type = Type.GetBvType(b);
+      if (immutable)
+        CachedHashCode = ComputeHashCode();
     }
 
     [Pure]
@@ -509,10 +544,20 @@ namespace Microsoft.Boogie {
       LiteralExpr other = (LiteralExpr)obj;
       return object.Equals(this.Val, other.Val);
     }
+
     [Pure]
     public override int GetHashCode() {
+      if (Immutable)
+        return this.CachedHashCode;
+      else
+        return ComputeHashCode();
+    }
+
+    [Pure]
+    public override int ComputeHashCode() {
       return this.Val.GetHashCode();
     }
+
     public override void Emit(TokenTextWriter stream, int contextBindingStrength, bool fragileContext) {
       //Contract.Requires(stream != null);
       stream.SetToken(this);
@@ -686,6 +731,7 @@ namespace Microsoft.Boogie {
   }
 
   public class IdentifierExpr : Expr {
+    // FIXME: Protect these fields
     public string/*!*/ Name;    // identifier symbol
     public Variable Decl;   // identifier declaration
     [ContractInvariantMethod]
@@ -701,11 +747,13 @@ namespace Microsoft.Boogie {
     /// </summary>
     /// <param name="tok"></param>
     /// <param name="name"></param>
-    internal IdentifierExpr(IToken/*!*/ tok, string/*!*/ name)
-      : base(tok) {
+    internal IdentifierExpr(IToken/*!*/ tok, string/*!*/ name, bool immutable=false)
+      : base(tok, immutable) {
       Contract.Requires(tok != null);
       Contract.Requires(name != null);
       Name = name;
+      if (immutable)
+        CachedHashCode = ComputeHashCode();
     }
     /// <summary>
     /// Creates an unresolved identifier expression.
@@ -713,13 +761,15 @@ namespace Microsoft.Boogie {
     /// <param name="tok"></param>
     /// <param name="name"></param>
     /// <param name="type"></param>
-    public IdentifierExpr(IToken/*!*/ tok, string/*!*/ name, Type/*!*/ type)
-      : base(tok) {
+    public IdentifierExpr(IToken/*!*/ tok, string/*!*/ name, Type/*!*/ type, bool immutable=false)
+      : base(tok, immutable) {
       Contract.Requires(tok != null);
       Contract.Requires(name != null);
       Contract.Requires(type != null);
       Name = name;
       Type = type;
+      if (immutable)
+        CachedHashCode = ComputeHashCode();
     }
 
     /// <summary>
@@ -727,13 +777,15 @@ namespace Microsoft.Boogie {
     /// </summary>
     /// <param name="tok"></param>
     /// <param name="d"></param>
-    public IdentifierExpr(IToken/*!*/ tok, Variable/*!*/ d)
-      : base(tok) {
+    public IdentifierExpr(IToken/*!*/ tok, Variable/*!*/ d, bool immutable=false)
+      : base(tok, immutable) {
       Contract.Requires(tok != null);
       Contract.Requires(d != null);
       Name = cce.NonNull(d.Name);
       Decl = d;
       Type = d.TypedIdent.Type;
+      if (immutable)
+        CachedHashCode = ComputeHashCode();
     }
     [Pure]
     [Reads(ReadsAttribute.Reads.Nothing)]
@@ -746,12 +798,22 @@ namespace Microsoft.Boogie {
       IdentifierExpr other = (IdentifierExpr)obj;
       return object.Equals(this.Name, other.Name) && object.Equals(this.Decl, other.Decl);
     }
+
     [Pure]
     public override int GetHashCode() {
+      if (Immutable)
+        return this.CachedHashCode;
+      else
+        return ComputeHashCode();
+    }
+
+    [Pure]
+    public override int ComputeHashCode() {
       int h = this.Name == null ? 0 : this.Name.GetHashCode();
       h ^= this.Decl == null ? 0 : this.Decl.GetHashCode();
       return h;
     }
+
     public override void Emit(TokenTextWriter stream, int contextBindingStrength, bool fragileContext) {
       //Contract.Requires(stream != null);
       if (CommandLineOptions.Clo.PrintWithUniqueASTIds && !stream.UseForComputingChecksums) {
@@ -848,17 +910,20 @@ namespace Microsoft.Boogie {
 
   public class OldExpr : Expr
   {
+    // FIXME: protect this field
     public Expr/*!*/ Expr;
     [ContractInvariantMethod]
     void ObjectInvariant() {
       Contract.Invariant(Expr != null);
     }
 
-    public OldExpr(IToken/*!*/ tok, Expr/*!*/ expr)
-      : base(tok) {
+    public OldExpr(IToken/*!*/ tok, Expr/*!*/ expr, bool immutable=false)
+      : base(tok, immutable) {
       Contract.Requires(tok != null);
       Contract.Requires(expr != null);
       Expr = expr;
+      if (immutable)
+        CachedHashCode = ComputeHashCode();
     }
     [Pure]
     [Reads(ReadsAttribute.Reads.Nothing)]
@@ -873,8 +938,16 @@ namespace Microsoft.Boogie {
     }
     [Pure]
     public override int GetHashCode() {
-      return this.Expr == null ? 0 : this.Expr.GetHashCode();
+      if (Immutable)
+        return this.CachedHashCode;
+      else
+        return ComputeHashCode ();
     }
+    public override int ComputeHashCode() {
+      // FIXME: This is wrong, it's as if the OldExpr node isn't there at all
+      return this.Expr == null ? 0 : this.Expr.ComputeHashCode();
+    }
+
     public override void Emit(TokenTextWriter stream, int contextBindingStrength, bool fragileContext) {
       //Contract.Requires(stream != null);
       stream.Write(this, "old(");
@@ -2110,8 +2183,10 @@ namespace Microsoft.Boogie {
   public class NAryExpr : Expr {
     [Additive]
     [Peer]
+    // FIXME: Protect these fields
     public IAppliable/*!*/ Fun;
-    public List<Expr>/*!*/ Args;
+    public List<Expr> Args;
+
     [ContractInvariantMethod]
     void ObjectInvariant() {
       Contract.Invariant(Fun != null);
@@ -2124,14 +2199,16 @@ namespace Microsoft.Boogie {
     public TypeParamInstantiation TypeParameters = null;
 
     [Captured]
-    public NAryExpr(IToken/*!*/ tok, IAppliable/*!*/ fun, List<Expr>/*!*/ args)
-      : base(tok) {
+    public NAryExpr(IToken/*!*/ tok, IAppliable/*!*/ fun, List<Expr>/*!*/ args, bool immutable=false)
+      : base(tok, immutable) {
       Contract.Requires(tok != null);
       Contract.Requires(fun != null);
       Contract.Requires(args != null);
       Fun = fun;
       Args = args;
       Contract.Assert(Contract.ForAll(0, args.Count, index => args[index] != null));
+      if (immutable)
+        CachedHashCode = ComputeHashCode();
     }
     [Pure]
     [Reads(ReadsAttribute.Reads.Nothing)]
@@ -2144,13 +2221,22 @@ namespace Microsoft.Boogie {
       NAryExpr other = (NAryExpr)obj;
       return object.Equals(this.Fun, other.Fun) && this.Args.SequenceEqual(other.Args);
     }
+    
     [Pure]
     public override int GetHashCode() {
+      if (Immutable)
+        return this.CachedHashCode;
+      else
+        return ComputeHashCode();
+    }
+
+    [Pure]
+    public override int ComputeHashCode() {
       int h = this.Fun.GetHashCode();
       // DO NOT USE Args.GetHashCode() because that uses Object.GetHashCode() which uses references
       // We want structural equality
       foreach (var arg in Args) {
-        h = (97*h) + arg.GetHashCode();
+        h = (97*h) + arg.ComputeHashCode();
       }
       return h;
     }
@@ -2658,14 +2744,38 @@ namespace Microsoft.Boogie {
       Contract.Invariant(cce.NonNullElements(Blocks));
     }
 
-    public CodeExpr(List<Variable>/*!*/ localVariables, List<Block/*!*/>/*!*/ blocks)
-      : base(Token.NoToken) {
+    public CodeExpr(List<Variable>/*!*/ localVariables, List<Block/*!*/>/*!*/ blocks, bool immutable=false)
+      : base(Token.NoToken, immutable) {
       Contract.Requires(localVariables != null);
       Contract.Requires(cce.NonNullElements(blocks));
       Contract.Requires(0 < blocks.Count);
       LocVars = localVariables;
       Blocks = blocks;
+      if (immutable)
+        CachedHashCode = ComputeHashCode();
     }
+
+    // FIXME: This seems wrong we don't want reference equality, we want structural equality
+    [Pure]
+    public override bool Equals(object obj)
+    {
+      return base.Equals(obj);
+    }
+
+    [Pure]
+    public override int GetHashCode()
+    {
+      if (Immutable)
+        return CachedHashCode;
+      else
+        return ComputeHashCode();
+    }
+
+    [Pure]
+    public override int ComputeHashCode() {
+      return base.GetHashCode();
+    }
+
 
     public override void ComputeFreeVariables(Set /*Variable*/ freeVars) {
       //Contract.Requires(freeVars != null);
@@ -2748,6 +2858,7 @@ namespace Microsoft.Boogie {
   }
 
   public class BvExtractExpr : Expr {
+    // FIXME: Protect these fields
     public /*readonly--except in StandardVisitor*/ Expr/*!*/ Bitvector;
     [ContractInvariantMethod]
     void ObjectInvariant() {
@@ -2756,13 +2867,15 @@ namespace Microsoft.Boogie {
 
     public readonly int Start, End;
 
-    public BvExtractExpr(IToken/*!*/ tok, Expr/*!*/ bv, int end, int start)
-      : base(tok) {
+    public BvExtractExpr(IToken/*!*/ tok, Expr/*!*/ bv, int end, int start, bool immutable=false)
+      : base(tok, immutable) {
       Contract.Requires(tok != null);
       Contract.Requires(bv != null);
       Bitvector = bv;
       Start = start;
       End = end;
+      if (immutable)
+        CachedHashCode = ComputeHashCode();
     }
 
     [Pure]
@@ -2777,9 +2890,18 @@ namespace Microsoft.Boogie {
       return object.Equals(this.Bitvector, other.Bitvector) &&
         this.Start.Equals(other.Start) && this.End.Equals(other.End);
     }
+
     [Pure]
     public override int GetHashCode() {
-      int h = this.Bitvector.GetHashCode();
+      if (Immutable)
+        return CachedHashCode;
+      else
+        return ComputeHashCode();
+    }
+    
+    [Pure]
+    public override int ComputeHashCode() {
+      int h = this.Bitvector.ComputeHashCode();
       h ^= Start * 17 ^ End * 13;
       return h;
     }
@@ -2847,6 +2969,7 @@ namespace Microsoft.Boogie {
   }
 
   public class BvConcatExpr : Expr {
+    // FIXME: Protect these fields
     public /*readonly--except in StandardVisitor*/ Expr/*!*/ E0, E1;
     [ContractInvariantMethod]
     void ObjectInvariant() {
@@ -2855,13 +2978,15 @@ namespace Microsoft.Boogie {
     }
 
 
-    public BvConcatExpr(IToken/*!*/ tok, Expr/*!*/ e0, Expr/*!*/ e1)
-      : base(tok) {
+    public BvConcatExpr(IToken/*!*/ tok, Expr/*!*/ e0, Expr/*!*/ e1, bool immutable=false)
+      : base(tok, immutable) {
       Contract.Requires(tok != null);
       Contract.Requires(e0 != null);
       Contract.Requires(e1 != null);
       E0 = e0;
       E1 = e1;
+      if (immutable)
+        CachedHashCode = ComputeHashCode();
     }
 
     [Pure]
@@ -2875,11 +3000,22 @@ namespace Microsoft.Boogie {
       BvConcatExpr other = (BvConcatExpr)obj;
       return object.Equals(this.E0, other.E0) && object.Equals(this.E1, other.E1);
     }
+
     [Pure]
-    public override int GetHashCode() {
-      int h = this.E0.GetHashCode() ^ this.E1.GetHashCode() * 17;
+    public override int GetHashCode()
+    {
+      if (Immutable)
+        return CachedHashCode;
+      else
+        return ComputeHashCode();
+    }
+
+    [Pure]
+    public override int ComputeHashCode() {
+      int h = this.E0.ComputeHashCode() ^ this.E1.ComputeHashCode() * 17;
       return h;
     }
+
     public override void Emit(TokenTextWriter stream, int contextBindingStrength, bool fragileContext) {
       //Contract.Requires(stream != null);
       stream.SetToken(this);

@@ -58,9 +58,8 @@ namespace Microsoft.Boogie {
     }
 
     public BinderExpr(IToken/*!*/ tok, List<TypeVariable>/*!*/ typeParameters,
-                      List<Variable>/*!*/ dummies, QKeyValue kv, Expr/*!*/ body)
-      : base(tok)
-      {
+                      List<Variable>/*!*/ dummies, QKeyValue kv, Expr/*!*/ body, bool immutable=false)
+      : base(tok, immutable) {
       Contract.Requires(tok != null);
       Contract.Requires(typeParameters != null);
       Contract.Requires(dummies != null);
@@ -70,6 +69,8 @@ namespace Microsoft.Boogie {
       Dummies = dummies;
       Attributes = kv;
       Body = body;
+      if (immutable)
+        CachedHashCode = ComputeHashCode();
     }
 
     abstract public BinderKind Kind {
@@ -110,9 +111,18 @@ namespace Microsoft.Boogie {
     }
 
     [Pure]
-    public override int GetHashCode() {
+    public override int GetHashCode()
+    {
+      if (Immutable)
+        return CachedHashCode;
+      else
+        return ComputeHashCode();
+    }
+
+    [Pure]
+    public override int ComputeHashCode() {
       // Note, we don't hash triggers and attributes
-   
+
       // DO NOT USE Dummies.GetHashCode() because we want structurally
       // identical Expr to have the same hash code **not** identical references
       // to have the same hash code.
@@ -121,7 +131,7 @@ namespace Microsoft.Boogie {
         h = ( 53 * h ) + dummyVar.GetHashCode();
       }
 
-      h ^= this.Body.GetHashCode();
+      h ^= this.Body.ComputeHashCode();
 
       // DO NOT USE TypeParameters.GetHashCode() because we want structural
       // identical Expr to have the same hash code **not** identical references
