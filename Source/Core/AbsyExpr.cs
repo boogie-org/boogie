@@ -1197,6 +1197,7 @@ namespace Microsoft.Boogie {
   [ContractClass(typeof(IOverloadedAppliableContracts))]
   public interface IOverloadedAppliable {
     void ResolveOverloading(NAryExpr/*!*/ expr);
+    bool DoNotResolveOverloading { get; set; }
   }
   [ContractClassFor(typeof(IOverloadedAppliable))]
   public abstract class IOverloadedAppliableContracts : IOverloadedAppliable {
@@ -1206,6 +1207,18 @@ namespace Microsoft.Boogie {
     void IOverloadedAppliable.ResolveOverloading(NAryExpr expr) {
       Contract.Requires(expr != null);
       throw new NotImplementedException();
+    }
+
+    public bool DoNotResolveOverloading
+    {
+      get
+      {
+        throw new NotImplementedException();
+      }
+      set
+      {
+        throw new NotImplementedException();
+      }
     }
 
     #endregion
@@ -1382,6 +1395,8 @@ namespace Microsoft.Boogie {
     void ObjectInvariant() {
       Contract.Invariant(tok != null);
     }
+
+    public bool DoNotResolveOverloading { get; set; }
 
     public enum Opcode {
       Add,
@@ -1740,6 +1755,12 @@ namespace Microsoft.Boogie {
 
     public void ResolveOverloading(NAryExpr expr) {
       //Contract.Requires(expr != null);
+
+      if (DoNotResolveOverloading)
+      {
+        return;
+      }
+
       Expr arg0 = cce.NonNull(expr.Args[0]);
       Expr arg1 = cce.NonNull(expr.Args[1]);
       switch (op) {

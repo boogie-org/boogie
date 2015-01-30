@@ -1275,7 +1275,7 @@ namespace VC {
           IdentifierExpr v_prime_exp = new IdentifierExpr(v_prime.tok, v_prime);
           #endregion
           #region Create the assume command itself
-          AssumeCmd ac = new AssumeCmd(v.tok, TypedExprEq(v_prime_exp, pred_incarnation_exp));
+          AssumeCmd ac = new AssumeCmd(v.tok, TypedExprEq(v_prime_exp, pred_incarnation_exp, v_prime.Name.Contains("a##post##")));
           pred.Cmds.Add(ac);
           #endregion
           #endregion
@@ -1697,7 +1697,7 @@ namespace VC {
             }
           
             #region Create an assume command with the new variable
-            assumptions.Add(TypedExprEq(x_prime_exp, copies[i]));
+            assumptions.Add(TypedExprEq(x_prime_exp, copies[i], x_prime_exp.Decl != null && x_prime_exp.Decl.Name.Contains("a##post##")));
             #endregion
           }
         }
@@ -1815,10 +1815,15 @@ namespace VC {
       #endregion
     }
 
-    NAryExpr TypedExprEq(Expr e0, Expr e1) {
+    NAryExpr TypedExprEq(Expr e0, Expr e1, bool doNotResolveOverloading = false) {
       Contract.Requires(e0 != null);
       Contract.Requires(e1 != null);
       NAryExpr e = Expr.Eq(e0, e1);
+      var fun = e.Fun as IOverloadedAppliable;
+      if (fun != null)
+      {
+        fun.DoNotResolveOverloading = doNotResolveOverloading;
+      }
       e.Type = Bpl.Type.Bool;
       e.TypeParameters = SimpleTypeParamInstantiation.EMPTY;
       return e;
