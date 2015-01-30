@@ -26,13 +26,6 @@ namespace VC {
     public int AssertionCount;  // counts the number of assertions for which Wlp has been computed
     public bool isPositiveContext;
 
-    int letBindingCount;
-    public string FreshLetBindingName()
-    {
-      var c = System.Threading.Interlocked.Increment(ref letBindingCount);
-      return string.Format("v##let##{0}", c);
-    }
-
     public VCContext(Dictionary<int, Absy> label2absy, ProverContext ctxt, bool isPositiveContext = true)
     {
       Contract.Requires(ctxt != null);
@@ -104,39 +97,55 @@ namespace VC {
       Contract.Assert(gen != null);
       if (cmd is AssertCmd) {
         AssertCmd ac = (AssertCmd)cmd;
-        ctxt.Ctxt.BoogieExprTranslator.isPositiveContext = !ctxt.Ctxt.BoogieExprTranslator.isPositiveContext;
-        VCExpr C = ctxt.Ctxt.BoogieExprTranslator.Translate(ac.Expr);
-        VCExpr VU = null;
+
+        var isFullyVerified = false;
         if (ac.VerifiedUnder != null)
         {
-          VU = ctxt.Ctxt.BoogieExprTranslator.Translate(ac.VerifiedUnder);
+          var litExpr = ac.VerifiedUnder as LiteralExpr;
+          isFullyVerified = litExpr != null && litExpr.IsTrue;
         }
-        ctxt.Ctxt.BoogieExprTranslator.isPositiveContext = !ctxt.Ctxt.BoogieExprTranslator.isPositiveContext; 
+
+        if (!isFullyVerified)
+        {
+          ctxt.Ctxt.BoogieExprTranslator.isPositiveContext = !ctxt.Ctxt.BoogieExprTranslator.isPositiveContext;
+        }
+
+        VCExpr C = ctxt.Ctxt.BoogieExprTranslator.Translate(ac.Expr);
+
+        VCExpr VU = null;
+        if (!isFullyVerified)
+        {
+          if (ac.VerifiedUnder != null)
+          {
+            VU = ctxt.Ctxt.BoogieExprTranslator.Translate(ac.VerifiedUnder);
+          }
+          ctxt.Ctxt.BoogieExprTranslator.isPositiveContext = !ctxt.Ctxt.BoogieExprTranslator.isPositiveContext;
+        }
 
         VCExpr R = null;
         if (CommandLineOptions.Clo.vcVariety == CommandLineOptions.VCVariety.Doomed) {
           R = gen.Implies(C, N);
         } else {
-          int id = ac.UniqueId;
-          if (ctxt.Label2absy != null) {
-            ctxt.Label2absy[id] = ac;
-          }
-
           var subsumption = Subsumption(ac);
           if (subsumption == CommandLineOptions.SubsumptionOption.Always
               || (subsumption == CommandLineOptions.SubsumptionOption.NotForQuantifiers && !(C is VCExprQuantifier)))
           {
-            N = gen.ImpliesSimp(C, N);
+            N = gen.ImpliesSimp(C, N, false);
           }
 
-          if (VU != null)
+          if (isFullyVerified)
           {
-            var litExpr = ac.VerifiedUnder as LiteralExpr;
-            if (litExpr != null && litExpr.IsTrue)
-            {
-              return N;
-            }
+            return N;
+          }
+          else if (VU != null)
+          {
             C = gen.OrSimp(VU, C);
+          }
+
+          int id = ac.UniqueId;
+          if (ctxt.Label2absy != null)
+          {
+            ctxt.Label2absy[id] = ac;
           }
 
           ctxt.AssertionCount++;

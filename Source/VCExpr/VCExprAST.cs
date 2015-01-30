@@ -267,7 +267,7 @@ namespace Microsoft.Boogie {
         return True;
       return Or(e0, e1);
     }
-    public VCExpr ImpliesSimp(VCExpr e0, VCExpr e1) {
+    public VCExpr ImpliesSimp(VCExpr e0, VCExpr e1, bool aggressive = true) {
       Contract.Requires(e1 != null);
       Contract.Requires(e0 != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
@@ -278,7 +278,7 @@ namespace Microsoft.Boogie {
       if (e0.Equals(False) || e1.Equals(True))
         return True;
       // attempt to save on the depth of expressions (to reduce chances of stack overflows)
-      while (e1 is VCExprBinary) {
+      while (aggressive && e1 is VCExprBinary) {
         VCExprBinary n = (VCExprBinary)e1;
         if (n.Op == ImpliesOp) {
           if (AndSize(n[0]) <= AndSize(e0)) {
