@@ -1756,7 +1756,8 @@ namespace Microsoft.Boogie {
     public void ResolveOverloading(NAryExpr expr) {
       //Contract.Requires(expr != null);
 
-      if (DoNotResolveOverloading)
+      // immutable Expr must not be modified
+      if (DoNotResolveOverloading || expr.Immutable)
       {
         return;
       }
