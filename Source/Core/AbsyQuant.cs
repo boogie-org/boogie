@@ -143,7 +143,7 @@ namespace Microsoft.Boogie {
         h = ( 53 * h ) + dummyVar.GetHashCode();
       }
 
-      h ^= this.Body.ComputeHashCode();
+      h ^= this.Body.GetHashCode();
 
       // DO NOT USE TypeParameters.GetHashCode() because we want structural
       // identical Expr to have the same hash code **not** identical references

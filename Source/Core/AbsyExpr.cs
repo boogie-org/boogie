@@ -60,7 +60,7 @@ namespace Microsoft.Boogie {
     /// Computes the hash code of this Expr skipping any cache.
     ///
     /// Sub classes should place their implementation of computing their hashcode
-    /// here (making sure to call ComputeHashCode() and not GetHashCode() on Expr)
+    /// here (making sure to call GetHashCode() not ComputeHashCode() on Expr for performance reasons)
     /// and have GetHashCode() use a cached result from ComputeHashCode() if the
     /// Expr was constructed to be immutable.
     /// </summary>
@@ -992,7 +992,7 @@ namespace Microsoft.Boogie {
     }
     public override int ComputeHashCode() {
       // FIXME: This is wrong, it's as if the OldExpr node isn't there at all
-      return this.Expr == null ? 0 : this.Expr.ComputeHashCode();
+      return this.Expr == null ? 0 : this.Expr.GetHashCode();
     }
 
     public override void Emit(TokenTextWriter stream, int contextBindingStrength, bool fragileContext) {
@@ -2316,7 +2316,7 @@ namespace Microsoft.Boogie {
       // DO NOT USE Args.GetHashCode() because that uses Object.GetHashCode() which uses references
       // We want structural equality
       foreach (var arg in Args) {
-        h = (97*h) + arg.ComputeHashCode();
+        h = (97*h) + arg.GetHashCode();
       }
       return h;
     }
@@ -2981,7 +2981,7 @@ namespace Microsoft.Boogie {
     
     [Pure]
     public override int ComputeHashCode() {
-      int h = this.Bitvector.ComputeHashCode();
+      int h = this.Bitvector.GetHashCode();
       h ^= Start * 17 ^ End * 13;
       return h;
     }
@@ -3092,7 +3092,7 @@ namespace Microsoft.Boogie {
 
     [Pure]
     public override int ComputeHashCode() {
-      int h = this.E0.ComputeHashCode() ^ this.E1.ComputeHashCode() * 17;
+      int h = this.E0.GetHashCode() ^ this.E1.GetHashCode() * 17;
       return h;
     }
 
