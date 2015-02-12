@@ -104,7 +104,10 @@ namespace Microsoft.Boogie {
           if (Immutable && !_Type.Equals(value))
             throw new InvalidOperationException("Cannot change the Type of an Immutable Expr");
 
-          _Type = value;
+          // Once the Type has been set (i.e. no longer null) we never change the reference 
+          // if this Expr is immutable, even if the Type is equivalent (i.e. _Type.Equals(newType))
+          if (!Immutable)
+            _Type = value;
         }
       }
     }
