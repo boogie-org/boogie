@@ -2969,11 +2969,21 @@ namespace Microsoft.Boogie {
   }
 
   public class BvExtractExpr : Expr {
-    // FIXME: Protect these fields
-    public /*readonly--except in StandardVisitor*/ Expr/*!*/ Bitvector;
+    private /*readonly--except in StandardVisitor*/ Expr/*!*/ _Bitvector;
+    public Expr Bitvector {
+      get { 
+        return _Bitvector;
+      }
+      set {
+        if (Immutable)
+          throw new InvalidOperationException("Cannot change BitVector field of an immutable BvExtractExpr");
+        
+        _Bitvector = value;
+      }
+    }
     [ContractInvariantMethod]
     void ObjectInvariant() {
-      Contract.Invariant(Bitvector != null);
+      Contract.Invariant(_Bitvector != null);
     }
 
     public readonly int Start, End;
@@ -2982,7 +2992,7 @@ namespace Microsoft.Boogie {
       : base(tok, immutable) {
       Contract.Requires(tok != null);
       Contract.Requires(bv != null);
-      Bitvector = bv;
+      _Bitvector = bv;
       Start = start;
       End = end;
       if (immutable)

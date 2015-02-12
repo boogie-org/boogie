@@ -269,6 +269,15 @@ namespace CoreTests
             Assert.IsTrue(concat.Immutable);
             concat.E1 = lhs; // Should throw
         }
+
+        [Test(), ExpectedException(typeof(InvalidOperationException))]
+        public void ProtectedBvExtract()
+        {
+            var bv = new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(0), 32, /*immutable=*/true);
+            var extract = new BvExtractExpr(Token.NoToken, bv, 32, 0, /*immutable=*/true);
+            Assert.IsTrue(extract.Immutable);
+            extract.Bitvector = bv; // Should throw
+        }
     }
 }
 
