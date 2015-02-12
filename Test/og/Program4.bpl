@@ -1,26 +1,7 @@
 // RUN: %boogie -noinfer -typeEncoding:m -useArrayTheory "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 type Tid; 
-function {:builtin "MapConst"} MapConstBool(bool): [Tid]bool;
-function {:builtin "MapOr"} MapOr([Tid]bool, [Tid]bool) : [Tid]bool;
-
-function {:inline} {:linear "tid"} TidCollector(x: Tid) : [Tid]bool
-{
-  MapConstBool(false)[x := true]
-}
-function {:inline} {:linear "tid"} TidSetCollector(x: [Tid]bool) : [Tid]bool
-{
-  x
-}
-
 var {:layer 0,1} a:[Tid]int;
-
-procedure {:yields} {:layer 1} Allocate() returns ({:linear "tid"} tid: Tid)
-{
-    yield;
-    call tid := AllocateLow();
-    yield;
-}
 
 procedure {:yields} {:layer 1} main() { 
     var {:linear "tid"} tid:Tid;
@@ -49,6 +30,13 @@ ensures {:layer 1} a[tid] == old(a)[tid] + 1;
     assert {:layer 1} a[tid] == t + 1; 
 }
 
+procedure {:yields} {:layer 1} Allocate() returns ({:linear "tid"} tid: Tid)
+{
+    yield;
+    call tid := AllocateLow();
+    yield;
+}
+
 procedure {:yields} {:layer 0,1} Read({:linear "tid"} tid: Tid) returns (val: int);
 ensures {:atomic}
 |{A:
@@ -63,3 +51,18 @@ ensures {:atomic}
 
 procedure {:yields} {:layer 0,1} AllocateLow() returns ({:linear "tid"} tid: Tid);
 ensures {:atomic} |{ A: return true; }|;
+
+
+
+function {:builtin "MapConst"} MapConstBool(bool): [Tid]bool;
+function {:builtin "MapOr"} MapOr([Tid]bool, [Tid]bool) : [Tid]bool;
+
+function {:inline} {:linear "tid"} TidCollector(x: Tid) : [Tid]bool
+{
+  MapConstBool(false)[x := true]
+}
+function {:inline} {:linear "tid"} TidSetCollector(x: [Tid]bool) : [Tid]bool
+{
+  x
+}
+

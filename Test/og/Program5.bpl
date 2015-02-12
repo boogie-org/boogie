@@ -2,20 +2,6 @@
 // RUN: %diff "%s.expect" "%t"
 type Tid;
 const unique nil: Tid;
-function {:builtin "MapConst"} MapConstBool(bool): [Tid]bool;
-function {:builtin "MapOr"} MapOr([Tid]bool, [Tid]bool) : [Tid]bool;
-
-var {:layer 0} Color:int;
-var {:layer 0} lock:Tid;
-
-function {:inline} {:linear "tid"} TidCollector(x: Tid) : [Tid]bool
-{
-  MapConstBool(false)[x := true]
-}
-function {:inline} {:linear "tid"} TidSetCollector(x: [Tid]bool) : [Tid]bool
-{
-  x
-}
 
 function {:inline} UNALLOC():int { 0 }
 function {:inline} WHITE():int { 1 }
@@ -33,7 +19,7 @@ ensures {:layer 2} Color >= old(Color);
   assert {:layer 2} Color >= old(Color);
 }
 
-procedure {:yields} {:layer 2,3} TopWriteBarrier({:linear "tid"} tid:Tid)
+procedure {:yields} {:layer 2,3} WriteBarrier({:linear "tid"} tid:Tid)
 ensures {:atomic} |{ A: assert tid != nil; goto B, C; 
                      B: assume White(Color); Color := GRAY(); return true; 
                      C: return true;}|;
@@ -42,11 +28,11 @@ ensures {:atomic} |{ A: assert tid != nil; goto B, C;
   yield;
   call colorLocal := GetColorNoLock();
   call YieldColorOnlyGetsDarker();
-  if (White(colorLocal)) { call MidWriteBarrier(tid); }
+  if (White(colorLocal)) { call WriteBarrierSlow(tid); }
   yield;
 }
 
-procedure {:yields} {:layer 1,2} MidWriteBarrier({:linear "tid"} tid:Tid)
+procedure {:yields} {:layer 1,2} WriteBarrierSlow({:linear "tid"} tid:Tid)
 ensures {:atomic} |{ A: assert tid != nil; goto B, C; 
                      B: assume White(Color); Color := GRAY(); return true; 
                      C: return true; }|;
@@ -75,3 +61,19 @@ procedure {:yields} {:layer 0,1} GetColorLocked({:linear "tid"} tid:Tid) returns
 procedure {:yields} {:layer 0,2} GetColorNoLock() returns (col:int);
   ensures {:atomic} |{A: col := Color; return true;}|;
 
+
+
+function {:builtin "MapConst"} MapConstBool(bool): [Tid]bool;
+function {:builtin "MapOr"} MapOr([Tid]bool, [Tid]bool) : [Tid]bool;
+
+var {:layer 0} Color:int;
+var {:layer 0} lock:Tid;
+
+function {:inline} {:linear "tid"} TidCollector(x: Tid) : [Tid]bool
+{
+  MapConstBool(false)[x := true]
+}
+function {:inline} {:linear "tid"} TidSetCollector(x: [Tid]bool) : [Tid]bool
+{
+  x
+}
