@@ -249,6 +249,26 @@ namespace CoreTests
                 null, body, /*immutable=*/true);
             lambda.Body = Expr.Lt(xId, yId); // Changing the body of an immutable ExistsExpr should fail
         }
+
+        [Test(), ExpectedException(typeof(InvalidOperationException))]
+        public void ProtectedBvConcatExprLhs()
+        {
+            var lhs = new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(0), 32, /*immutable=*/true);
+            var rhs = new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1), 32, /*immutable=*/true);
+            var concat = new BvConcatExpr(Token.NoToken, lhs, rhs,/* immutable=*/true);
+            Assert.IsTrue(concat.Immutable);
+            concat.E0 = rhs; // Should throw
+        }
+
+        [Test(), ExpectedException(typeof(InvalidOperationException))]
+        public void ProtectedBvConcatExprRhs()
+        {
+            var lhs = new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(0), 32, /*immutable=*/true);
+            var rhs = new LiteralExpr(Token.NoToken, Microsoft.Basetypes.BigNum.FromInt(1), 32, /*immutable=*/true);
+            var concat = new BvConcatExpr(Token.NoToken, lhs, rhs,/* immutable=*/true);
+            Assert.IsTrue(concat.Immutable);
+            concat.E1 = lhs; // Should throw
+        }
     }
 }
 

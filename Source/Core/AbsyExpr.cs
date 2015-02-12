@@ -3080,8 +3080,29 @@ namespace Microsoft.Boogie {
   }
 
   public class BvConcatExpr : Expr {
-    // FIXME: Protect these fields
-    public /*readonly--except in StandardVisitor*/ Expr/*!*/ E0, E1;
+    private /*readonly--except in StandardVisitor*/ Expr/*!*/ _E0, _E1;
+    public Expr E0 {
+      get {
+        return _E0;
+      }
+      set {
+        if (Immutable)
+           throw new InvalidOperationException("Can't change E0 reference on immutable Expr");
+
+        _E0 = value;
+      }
+    }
+    public Expr E1 {
+      get {
+        return _E1;
+      }
+      set {
+        if (Immutable)
+          throw new InvalidOperationException("Can't change E1 reference on immutable Expr");
+
+        _E1 = value;
+      }
+    }
     [ContractInvariantMethod]
     void ObjectInvariant() {
       Contract.Invariant(E0 != null);
@@ -3094,8 +3115,8 @@ namespace Microsoft.Boogie {
       Contract.Requires(tok != null);
       Contract.Requires(e0 != null);
       Contract.Requires(e1 != null);
-      E0 = e0;
-      E1 = e1;
+      _E0 = e0;
+      _E1 = e1;
       if (immutable)
         CachedHashCode = ComputeHashCode();
     }
