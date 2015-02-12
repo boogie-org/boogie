@@ -437,7 +437,7 @@ namespace Microsoft.Boogie {
     public static IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/
                   MatchArgumentTypes(List<TypeVariable>/*!*/ typeParams,
                                      List<Type>/*!*/ formalArgs,
-                                     List<Expr>/*!*/ actualArgs,
+                                     IList<Expr>/*!*/ actualArgs,
                                      List<Type> formalOuts,
                                      List<IdentifierExpr> actualOuts,
                                      string/*!*/ opName,
@@ -507,7 +507,7 @@ namespace Microsoft.Boogie {
     public static List<Type> CheckArgumentTypes(List<TypeVariable>/*!*/ typeParams,
                                              out List<Type/*!*/>/*!*/ actualTypeParams,
                                              List<Type>/*!*/ formalIns,
-                                             List<Expr>/*!*/ actualIns,
+                                             IList<Expr>/*!*/ actualIns,
                                              List<Type>/*!*/ formalOuts,
                                              List<IdentifierExpr> actualOuts,
                                              IToken/*!*/ typeCheckingSubject,

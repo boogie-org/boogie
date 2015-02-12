@@ -1131,7 +1131,7 @@ namespace Microsoft.Boogie {
     /// </summary>
     /// <param name="args"></param>
     /// <param name="tc"></param>
-    Type Typecheck(ref List<Expr>/*!*/ args, out TypeParamInstantiation/*!*/ tpInstantiation, TypecheckingContext/*!*/ tc);
+    Type Typecheck(IList<Expr>/*!*/ args, out TypeParamInstantiation/*!*/ tpInstantiation, TypecheckingContext/*!*/ tc);
 
     // Contract.Requires( Microsoft.SpecSharp.Collections.Reductions.Forall{Expr! arg in args; arg.Type != null});
 
@@ -1172,7 +1172,7 @@ namespace Microsoft.Boogie {
       }
     }
 
-    public Type Typecheck(ref List<Expr> args, out TypeParamInstantiation tpInstantiation, TypecheckingContext tc) {
+    public Type Typecheck(IList<Expr> args, out TypeParamInstantiation tpInstantiation, TypecheckingContext tc) {
       Contract.Requires(args != null);
       Contract.Requires(tc != null);
       Contract.Ensures(Contract.ValueAtReturn(out args) != null);
@@ -1315,7 +1315,7 @@ namespace Microsoft.Boogie {
       }
     }
 
-    public Type Typecheck(ref List<Expr> args, out TypeParamInstantiation tpInstantiation, TypecheckingContext tc) {
+    public Type Typecheck(IList<Expr> args, out TypeParamInstantiation tpInstantiation, TypecheckingContext tc) {
       //Contract.Requires(tc != null);
       //Contract.Requires(args != null);
       Contract.Ensures(Contract.ValueAtReturn(out tpInstantiation) != null);
@@ -1625,7 +1625,7 @@ namespace Microsoft.Boogie {
         return 2;
       }
     }
-    public Type Typecheck(ref List<Expr> args, out TypeParamInstantiation tpInstantiation, TypecheckingContext tc) {
+    public Type Typecheck(IList<Expr> args, out TypeParamInstantiation tpInstantiation, TypecheckingContext tc) {
       //Contract.Requires(tc != null);
       //Contract.Requires(args != null);
       Contract.Ensures(Contract.ValueAtReturn(out tpInstantiation) != null);
@@ -1997,7 +1997,7 @@ namespace Microsoft.Boogie {
         return Func.InParams.Count;
       }
     }
-    public virtual Type Typecheck(ref List<Expr> actuals, out TypeParamInstantiation tpInstantiation, TypecheckingContext tc) {
+    public virtual Type Typecheck(IList<Expr> actuals, out TypeParamInstantiation tpInstantiation, TypecheckingContext tc) {
       //Contract.Requires(tc != null);
       //Contract.Requires(actuals != null);
       Contract.Ensures(Contract.ValueAtReturn(out actuals) != null);
@@ -2112,7 +2112,7 @@ namespace Microsoft.Boogie {
       }
     }
 
-    public Type Typecheck(ref List<Expr>/*!*/ args,
+    public Type Typecheck(IList<Expr>/*!*/ args,
                           out TypeParamInstantiation/*!*/ tpInstantiation,
                           TypecheckingContext/*!*/ tc) {
       //Contract.Requires(args != null);
@@ -2223,7 +2223,7 @@ namespace Microsoft.Boogie {
       //Contract.Requires(rc != null);
     }
 
-    public virtual Type Typecheck(ref List<Expr> args, out TypeParamInstantiation tpInstantiation, TypecheckingContext tc) {
+    public virtual Type Typecheck(IList<Expr> args, out TypeParamInstantiation tpInstantiation, TypecheckingContext tc) {
       //Contract.Requires(tc != null);
       //Contract.Requires(args != null);
       Contract.Ensures(args != null);
@@ -2395,7 +2395,7 @@ namespace Microsoft.Boogie {
         // typechecked and does not need to be checked again
                TypeParameters == null) {
         TypeParamInstantiation tpInsts;
-        Type = Fun.Typecheck(ref _Args, out tpInsts, tc); // FIXME: Might break immutability
+        Type = Fun.Typecheck(Args, out tpInsts, tc); // Make sure we pass Args so if this Expr is immutable it is protected
         TypeParameters = tpInsts;
       }
       IOverloadedAppliable oa = Fun as IOverloadedAppliable;
@@ -2563,12 +2563,13 @@ namespace Microsoft.Boogie {
       }
     }
 
-    public Type Typecheck(ref List<Expr> args, out TypeParamInstantiation tpInstantiation, TypecheckingContext tc) {
+    public Type Typecheck(IList<Expr> args, out TypeParamInstantiation tpInstantiation, TypecheckingContext tc) {
       //Contract.Requires(tc != null);
       //Contract.Requires(args != null);
       Contract.Ensures(Contract.ValueAtReturn(out tpInstantiation) != null);
       Contract.Assume(args.Count == Arity + 1);
 
+      // FIXME: Wny are we passing a copy?
       List<Expr> actualArgs = new List<Expr>();
       for (int i = 1; i < args.Count; ++i)
         actualArgs.Add(args[i]);
@@ -2697,7 +2698,7 @@ namespace Microsoft.Boogie {
       return cce.NonNull(args[0]).Type;
     }
 
-    public Type Typecheck(ref List<Expr>/*!*/ args,
+    public Type Typecheck(IList<Expr>/*!*/ args,
                           out TypeParamInstantiation/*!*/ tpInstantiation,
                           TypecheckingContext/*!*/ tc) {
       //Contract.Requires(args != null);
@@ -2803,7 +2804,7 @@ namespace Microsoft.Boogie {
       }
     }
 
-    public Type Typecheck(ref List<Expr> args, out TypeParamInstantiation tpInstantiation, TypecheckingContext tc) {
+    public Type Typecheck(IList<Expr> args, out TypeParamInstantiation tpInstantiation, TypecheckingContext tc) {
       //Contract.Requires(tc != null);
       //Contract.Requires(args != null);
       Contract.Ensures(args != null);
