@@ -30,7 +30,7 @@ namespace Microsoft.Boogie {
     public virtual void TransferStateTo(Visitor targetVisitor) {
     }
 
-    public virtual List<Expr> VisitExprSeq(List<Expr> list) {
+    public virtual IList<Expr> VisitExprSeq(IList<Expr> list) {
       Contract.Requires(list != null);
       Contract.Ensures(Contract.Result<List<Expr>>() != null);
       lock (list)
@@ -257,7 +257,7 @@ namespace Microsoft.Boogie {
       Expr e = (Expr)this.Visit(node);
       return e;
     }
-    public override List<Expr> VisitExprSeq(List<Expr> exprSeq) {
+    public override IList<Expr> VisitExprSeq(IList<Expr> exprSeq) {
       //Contract.Requires(exprSeq != null);
       Contract.Ensures(Contract.Result<List<Expr>>() != null);
       for (int i = 0, n = exprSeq.Count; i < n; i++)
@@ -821,7 +821,7 @@ namespace Microsoft.Boogie {
           Contract.Ensures(Contract.Result<Expr>() == node);
           return (Expr)this.Visit(node);
       }
-      public override List<Expr> VisitExprSeq(List<Expr> exprSeq)
+      public override IList<Expr> VisitExprSeq(IList<Expr> exprSeq)
       {
           Contract.Ensures(Contract.Result<List<Expr>>() == exprSeq);
           for (int i = 0, n = exprSeq.Count; i < n; i++)

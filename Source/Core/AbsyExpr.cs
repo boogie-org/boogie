@@ -1105,7 +1105,7 @@ namespace Microsoft.Boogie {
     /// <param name="stream"></param>
     /// <param name="contextBindingStrength"></param>
     /// <param name="fragileContext"></param>
-    void Emit(List<Expr>/*!*/ args, TokenTextWriter/*!*/ stream, int contextBindingStrength, bool fragileContext);
+    void Emit(IList<Expr>/*!*/ args, TokenTextWriter/*!*/ stream, int contextBindingStrength, bool fragileContext);
 
     void Resolve(ResolutionContext/*!*/ rc, Expr/*!*/ subjectForErrorReporting);
 
@@ -1135,7 +1135,7 @@ namespace Microsoft.Boogie {
     /// <summary>
     /// Returns the result type of the IAppliable, supposing the argument are of the correct types.
     /// </summary>
-    Type/*!*/ ShallowType(List<Expr>/*!*/ args);
+    Type/*!*/ ShallowType(IList<Expr>/*!*/ args);
 
     T Dispatch<T>(IAppliableVisitor<T>/*!*/ visitor);
   }
@@ -1151,7 +1151,7 @@ namespace Microsoft.Boogie {
       }
     }
 
-    public void Emit(List<Expr> args, TokenTextWriter stream, int contextBindingStrength, bool fragileContext) {
+    public void Emit(IList<Expr> args, TokenTextWriter stream, int contextBindingStrength, bool fragileContext) {
       Contract.Requires(args != null);
       Contract.Requires(stream != null);
       throw new NotImplementedException();
@@ -1178,7 +1178,7 @@ namespace Microsoft.Boogie {
       throw new NotImplementedException();
     }
 
-    public Type ShallowType(List<Expr> args) {
+    public Type ShallowType(IList<Expr> args) {
       Contract.Requires(args != null);
       Contract.Ensures(Contract.Result<Type>() != null);
 
@@ -1278,7 +1278,7 @@ namespace Microsoft.Boogie {
       }
     }
 
-    public void Emit(List<Expr> args, TokenTextWriter stream, int contextBindingStrength, bool fragileContext) {
+    public void Emit(IList<Expr> args, TokenTextWriter stream, int contextBindingStrength, bool fragileContext) {
       //Contract.Requires(stream != null);
       //Contract.Requires(args != null);
       stream.SetToken(ref this.tok);
@@ -1346,7 +1346,7 @@ namespace Microsoft.Boogie {
         this.FunctionName, arg0type);
       return null;
     }
-    public Type ShallowType(List<Expr> args) {
+    public Type ShallowType(IList<Expr> args) {
       //Contract.Requires(args != null);
       Contract.Ensures(Contract.Result<Type>() != null);
       switch (this.op) {
@@ -1494,7 +1494,7 @@ namespace Microsoft.Boogie {
       }
     }
 
-    public void Emit(List<Expr> args, TokenTextWriter stream, int contextBindingStrength, bool fragileContext) {
+    public void Emit(IList<Expr> args, TokenTextWriter stream, int contextBindingStrength, bool fragileContext) {
       //Contract.Requires(stream != null);
       //Contract.Requires(args != null);
       stream.SetToken(ref this.tok);
@@ -1716,7 +1716,7 @@ namespace Microsoft.Boogie {
       return null;
     }
 
-    public Type ShallowType(List<Expr> args) {
+    public Type ShallowType(IList<Expr> args) {
       //Contract.Requires(args != null);
       Contract.Ensures(Contract.Result<Type>() != null);
       switch (this.op) {
@@ -1954,7 +1954,7 @@ namespace Microsoft.Boogie {
       return Func.GetHashCode();
     }
 
-    virtual public void Emit(List<Expr> args, TokenTextWriter stream, int contextBindingStrength, bool fragileContext) {
+    virtual public void Emit(IList<Expr> args, TokenTextWriter stream, int contextBindingStrength, bool fragileContext) {
       //Contract.Requires(stream != null);
       //Contract.Requires(args != null);
       this.name.Emit(stream, 0xF0, false);
@@ -2027,7 +2027,7 @@ namespace Microsoft.Boogie {
         return actualResultType[0];
       }
     }
-    public Type ShallowType(List<Expr> args) {
+    public Type ShallowType(IList<Expr> args) {
       //Contract.Requires(args != null);
       Contract.Ensures(Contract.Result<Type>() != null);
       Contract.Assume(name.Type != null);
@@ -2075,7 +2075,7 @@ namespace Microsoft.Boogie {
       }
     }
 
-    public void Emit(List<Expr>/*!*/ args, TokenTextWriter/*!*/ stream,
+    public void Emit(IList<Expr>/*!*/ args, TokenTextWriter/*!*/ stream,
                      int contextBindingStrength, bool fragileContext) {
       //Contract.Requires(args != null);
       //Contract.Requires(stream != null);
@@ -2127,7 +2127,7 @@ namespace Microsoft.Boogie {
       return this.Type;
     }
 
-    public Type ShallowType(List<Expr> args) {
+    public Type ShallowType(IList<Expr> args) {
       //Contract.Requires(args != null);
       Contract.Ensures(Contract.Result<Type>() != null);
       return this.Type;
@@ -2206,7 +2206,7 @@ namespace Microsoft.Boogie {
       }
     }
 
-    virtual public void Emit(List<Expr> args, TokenTextWriter stream, int contextBindingStrength, bool fragileContext) {
+    virtual public void Emit(IList<Expr> args, TokenTextWriter stream, int contextBindingStrength, bool fragileContext) {
       //Contract.Requires(stream != null);
       //Contract.Requires(args != null);
       stream.Write(this.name);
@@ -2237,7 +2237,7 @@ namespace Microsoft.Boogie {
       return this.type;
     }
 
-    public Type ShallowType(List<Expr> args) {
+    public Type ShallowType(IList<Expr> args) {
       //Contract.Requires(args != null);
       Contract.Ensures(Contract.Result<Type>() != null);
       return this.type;
@@ -2264,8 +2264,21 @@ namespace Microsoft.Boogie {
         _Fun = value;
       }
     }
-    // FIXME: Protect this field when immutable
-    public List<Expr> Args;
+    private List<Expr> _Args;
+    public IList<Expr> Args {
+      get {
+        if (Immutable)
+          return _Args.AsReadOnly();
+        else
+          return _Args;
+      }
+      set {
+        if (Immutable)
+          throw new InvalidOperationException("Cannot change Args of Immutable NAryExpr");
+
+        _Args = value as List<Expr>;
+    }
+  }
 
     [ContractInvariantMethod]
     void ObjectInvariant() {
@@ -2279,16 +2292,30 @@ namespace Microsoft.Boogie {
     public TypeParamInstantiation TypeParameters = null;
 
     [Captured]
-    public NAryExpr(IToken/*!*/ tok, IAppliable/*!*/ fun, List<Expr>/*!*/ args, bool immutable=false)
+    public NAryExpr(IToken/*!*/ tok, IAppliable/*!*/ fun, IList<Expr>/*!*/ args, bool immutable=false)
       : base(tok, immutable) {
       Contract.Requires(tok != null);
       Contract.Requires(fun != null);
       Contract.Requires(args != null);
       _Fun = fun;
-      Args = args;
       Contract.Assert(Contract.ForAll(0, args.Count, index => args[index] != null));
-      if (immutable)
-        CachedHashCode = ComputeHashCode();
+      if (immutable) {
+          // We need to make a new list because the client might be holding
+          // references to the list that they gave us which could be used to
+          // circumvent the immutability enforcement
+          _Args = new List<Expr>(args);
+          CachedHashCode = ComputeHashCode();
+      } else {
+        if (args is List<Expr>) {
+          // Preserve NAryExpr's old behaviour, we take ownership of the List<Expr>.
+          // We can only do this if the type matches
+          _Args = args as List<Expr>;
+        }
+        else {
+          // Otherwise we must make a copy
+          _Args = new List<Expr> (args);
+        }
+      }
     }
     [Pure]
     [Reads(ReadsAttribute.Reads.Nothing)]
@@ -2365,7 +2392,7 @@ namespace Microsoft.Boogie {
         // typechecked and does not need to be checked again
                TypeParameters == null) {
         TypeParamInstantiation tpInsts;
-        Type = Fun.Typecheck(ref Args, out tpInsts, tc);
+        Type = Fun.Typecheck(ref _Args, out tpInsts, tc); // FIXME: Might break immutability
         TypeParameters = tpInsts;
       }
       IOverloadedAppliable oa = Fun as IOverloadedAppliable;
@@ -2431,7 +2458,7 @@ namespace Microsoft.Boogie {
       return Arity.GetHashCode() * 2823;
     }
 
-    public void Emit(List<Expr>/*!*/ args, TokenTextWriter/*!*/ stream,
+    public void Emit(IList<Expr>/*!*/ args, TokenTextWriter/*!*/ stream,
                      int contextBindingStrength, bool fragileContext) {
       //Contract.Requires(args != null);
       //Contract.Requires(stream != null);
@@ -2439,7 +2466,7 @@ namespace Microsoft.Boogie {
       Emit(args, stream, contextBindingStrength, fragileContext, false);
     }
 
-    public static void Emit(List<Expr>/*!*/ args, TokenTextWriter/*!*/ stream,
+    public static void Emit(IList<Expr>/*!*/ args, TokenTextWriter/*!*/ stream,
                             int contextBindingStrength, bool fragileContext,
                             bool withRhs) {
       Contract.Requires(args != null);
@@ -2464,7 +2491,7 @@ namespace Microsoft.Boogie {
 
       if (withRhs) {
         stream.Write(" := ");
-        cce.NonNull(args.FindLast(Item => true)).Emit(stream);
+        cce.NonNull(args.Last()).Emit(stream);
       }
 
       stream.Write("]");
@@ -2550,7 +2577,7 @@ namespace Microsoft.Boogie {
     /// <summary>
     /// Returns the result type of the IAppliable, supposing the argument are of the correct types.
     /// </summary>
-    public Type ShallowType(List<Expr> args) {
+    public Type ShallowType(IList<Expr> args) {
       //Contract.Requires(args != null);
       Contract.Ensures(Contract.Result<Type>() != null);
       Expr a0 = cce.NonNull(args[0]);
@@ -2612,7 +2639,7 @@ namespace Microsoft.Boogie {
       return Arity.GetHashCode() * 28231;
     }
 
-    public void Emit(List<Expr>/*!*/ args, TokenTextWriter/*!*/ stream,
+    public void Emit(IList<Expr>/*!*/ args, TokenTextWriter/*!*/ stream,
                      int contextBindingStrength, bool fragileContext) {
       //Contract.Requires(args != null);
       //Contract.Requires(stream != null);
@@ -2633,7 +2660,7 @@ namespace Microsoft.Boogie {
     }
 
     // it is assumed that each of the arguments has already been typechecked
-    public static Type Typecheck(List<Expr>/*!*/ args, out TypeParamInstantiation/*!*/ tpInstantiation,
+    public static Type Typecheck(IList<Expr>/*!*/ args, out TypeParamInstantiation/*!*/ tpInstantiation,
                                  TypecheckingContext/*!*/ tc,
                                  IToken/*!*/ typeCheckingSubject,
                                  string/*!*/ opName) {
@@ -2656,9 +2683,9 @@ namespace Microsoft.Boogie {
         // error messages have already been created by MapSelect.Typecheck
         return null;
       }
-      Type rhsType = cce.NonNull(cce.NonNull(args.FindLast(Item => true)).Type);
+      Type rhsType = cce.NonNull(cce.NonNull(args.Last()).Type);
       if (!resultType.Unify(rhsType)) {
-        tc.Error(cce.NonNull(args.FindLast(Item => true)).tok,
+        tc.Error(cce.NonNull(args.Last()).tok,
                  "right-hand side in {0} with wrong type: {1} (expected: {2})",
                  opName, rhsType, resultType);
         return null;
@@ -2681,7 +2708,7 @@ namespace Microsoft.Boogie {
     /// <summary>
     /// Returns the result type of the IAppliable, supposing the argument are of the correct types.
     /// </summary>
-    public Type ShallowType(List<Expr> args) {
+    public Type ShallowType(IList<Expr> args) {
       //Contract.Requires(args != null);
       Contract.Ensures(Contract.Result<Type>() != null);
       return cce.NonNull(args[0]).ShallowType;
@@ -2743,7 +2770,7 @@ namespace Microsoft.Boogie {
       return 1;
     }
 
-    public void Emit(List<Expr> args, TokenTextWriter stream, int contextBindingStrength, bool fragileContext) {
+    public void Emit(IList<Expr> args, TokenTextWriter stream, int contextBindingStrength, bool fragileContext) {
       //Contract.Requires(stream != null);
       //Contract.Requires(args != null);
       stream.SetToken(this);
@@ -2800,7 +2827,7 @@ namespace Microsoft.Boogie {
     /// <summary>
     /// Returns the result type of the IAppliable, supposing the argument are of the correct types.
     /// </summary>
-    public Type ShallowType(List<Expr> args) {
+    public Type ShallowType(IList<Expr> args) {
       //Contract.Requires(args != null);
       Contract.Ensures(Contract.Result<Type>() != null);
       return cce.NonNull(args[1]).ShallowType;

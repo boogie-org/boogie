@@ -4129,6 +4129,7 @@ namespace Microsoft.Boogie {
   }
 
   public static class Emitter {
+
     public static void Emit(this List<Declaration/*!*/>/*!*/ decls, TokenTextWriter stream) {
       Contract.Requires(stream != null);
       Contract.Requires(cce.NonNullElements(decls));
@@ -4156,7 +4157,7 @@ namespace Microsoft.Boogie {
       }
     }
 
-    public static void Emit(this List<Expr> ts, TokenTextWriter stream) {
+    public static void Emit(this IList<Expr> ts, TokenTextWriter stream) {
       Contract.Requires(stream != null);
       string sep = "";
       stream.push();

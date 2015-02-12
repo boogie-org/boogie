@@ -199,6 +199,20 @@ namespace CoreTests
             e.Fun = new BinaryOperator(Token.NoToken, BinaryOperator.Opcode.Sub);
         }
 
+        [Test(), ExpectedException(typeof(NotSupportedException))]
+        public void ProtectedNAryArgsList()
+        {
+            var e = GetUnTypedImmutableNAry();
+            e.Args.Add(null);
+        }
+
+        [Test(), ExpectedException(typeof(InvalidOperationException))]
+        public void ProtectedNAryArgs()
+        {
+            var e = GetUnTypedImmutableNAry();
+            e.Args = new List<Expr>();
+        }
+
         [Test(), ExpectedException(typeof(InvalidOperationException))]
         public void ProtectedForAllExprBody()
         {
