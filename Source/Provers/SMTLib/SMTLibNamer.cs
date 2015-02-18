@@ -47,6 +47,7 @@ namespace Microsoft.Boogie.SMTLib
       // Z3 extensions
       "lblneg", "lblpos", "lbl-lit",
       "if", "&&", "||", "equals", "equiv", "bool",
+      "sin", "cos", "tan", "asin", "acos", "atan",
       // Boogie-defined
       "real_pow", "UOrdering2", "UOrdering3", 
     };
