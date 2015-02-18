@@ -1204,7 +1204,7 @@ namespace Microsoft.Boogie {
         case "p":
         case "proverOpt":
           if (ps.ConfirmArgumentCount(1)) {
-            AddProverOption(cce.NonNull(args[ps.i]));
+            ProverOptions = ProverOptions.Concat1(cce.NonNull(args[ps.i]));
           }
           return true;
 
