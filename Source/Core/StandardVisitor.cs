@@ -32,7 +32,7 @@ namespace Microsoft.Boogie {
 
     public virtual IList<Expr> VisitExprSeq(IList<Expr> list) {
       Contract.Requires(list != null);
-      Contract.Ensures(Contract.Result<List<Expr>>() != null);
+      Contract.Ensures(Contract.Result<IList<Expr>>() != null);
       lock (list)
       {
         for (int i = 0, n = list.Count; i < n; i++)
@@ -105,7 +105,7 @@ namespace Microsoft.Boogie {
     }
     public virtual Expr VisitBvConcatExpr(BvConcatExpr node) {
       Contract.Requires(node != null);
-      Contract.Ensures(Contract.Result<BvConcatExpr>() != null);
+      Contract.Ensures(Contract.Result<Expr>() != null);
       node.E0 = this.VisitExpr(node.E0);
       node.E1 = this.VisitExpr(node.E1);
       return node;
@@ -241,13 +241,13 @@ namespace Microsoft.Boogie {
     }
     public virtual Expr VisitExistsExpr(ExistsExpr node) {
       Contract.Requires(node != null);
-      Contract.Ensures(Contract.Result<ExistsExpr>() != null);
+      Contract.Ensures(Contract.Result<Expr>() != null);
       node = (ExistsExpr)this.VisitQuantifierExpr(node);
       return node;
     }
     public virtual Expr VisitBvExtractExpr(BvExtractExpr node) {
       Contract.Requires(node != null);
-      Contract.Ensures(Contract.Result<BvExtractExpr>() != null);
+      Contract.Ensures(Contract.Result<Expr>() != null);
       node.Bitvector = this.VisitExpr(node.Bitvector);
       return node;
     }
@@ -259,7 +259,7 @@ namespace Microsoft.Boogie {
     }
     public override IList<Expr> VisitExprSeq(IList<Expr> exprSeq) {
       //Contract.Requires(exprSeq != null);
-      Contract.Ensures(Contract.Result<List<Expr>>() != null);
+      Contract.Ensures(Contract.Result<IList<Expr>>() != null);
       for (int i = 0, n = exprSeq.Count; i < n; i++)
         exprSeq[i] = this.VisitExpr(cce.NonNull(exprSeq[i]));
       return exprSeq;
@@ -292,7 +292,7 @@ namespace Microsoft.Boogie {
     }
     public virtual Expr VisitForallExpr(ForallExpr node) {
       Contract.Requires(node != null);
-      Contract.Ensures(Contract.Result<ForallExpr>() != null);
+      Contract.Ensures(Contract.Result<Expr>() != null);
       node = (ForallExpr)this.VisitQuantifierExpr(node);
       return node;
     }
@@ -361,7 +361,7 @@ namespace Microsoft.Boogie {
     }
     public virtual Expr VisitLiteralExpr(LiteralExpr node) {
       Contract.Requires(node != null);
-      Contract.Ensures(Contract.Result<LiteralExpr>() != null);
+      Contract.Ensures(Contract.Result<Expr>() != null);
       return node;
     }
 
@@ -681,7 +681,7 @@ namespace Microsoft.Boogie {
       }
       public override Expr VisitBvConcatExpr(BvConcatExpr node)
       {
-          Contract.Ensures(Contract.Result<BvConcatExpr>() == node);
+          Contract.Ensures(Contract.Result<Expr>() == node);
           this.VisitExpr(node.E0);
           this.VisitExpr(node.E1);
           return node;
@@ -807,12 +807,12 @@ namespace Microsoft.Boogie {
       }
       public override Expr VisitExistsExpr(ExistsExpr node)
       {
-          Contract.Ensures(Contract.Result<ExistsExpr>() == node);
+          Contract.Ensures(Contract.Result<Expr>() == node);
           return (ExistsExpr)this.VisitQuantifierExpr(node);
       }
       public override Expr VisitBvExtractExpr(BvExtractExpr node)
       {
-          Contract.Ensures(Contract.Result<BvExtractExpr>() == node);
+          Contract.Ensures(Contract.Result<Expr>() == node);
           this.VisitExpr(node.Bitvector);
           return node;
       }
@@ -823,7 +823,7 @@ namespace Microsoft.Boogie {
       }
       public override IList<Expr> VisitExprSeq(IList<Expr> exprSeq)
       {
-          Contract.Ensures(Contract.Result<List<Expr>>() == exprSeq);
+          Contract.Ensures(Contract.Result<IList<Expr>>() == exprSeq);
           for (int i = 0, n = exprSeq.Count; i < n; i++)
               this.VisitExpr(cce.NonNull(exprSeq[i]));
           return exprSeq;
@@ -856,7 +856,7 @@ namespace Microsoft.Boogie {
       }
       public override Expr VisitForallExpr(ForallExpr node)
       {
-          Contract.Ensures(Contract.Result<ForallExpr>() == node);
+          Contract.Ensures(Contract.Result<Expr>() == node);
           return (ForallExpr)this.VisitQuantifierExpr(node);
       }
       public override Expr VisitLambdaExpr(LambdaExpr node) {
@@ -917,7 +917,7 @@ namespace Microsoft.Boogie {
       }
       public override Expr VisitLiteralExpr(LiteralExpr node)
       {
-          Contract.Ensures(Contract.Result<LiteralExpr>() == node);
+          Contract.Ensures(Contract.Result<Expr>() == node);
           return node;
       }
 

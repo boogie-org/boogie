@@ -78,11 +78,11 @@ namespace Microsoft.Boogie {
       return base.VisitBlock((Block) node.Clone());
     }
     public override Expr VisitBvConcatExpr (BvConcatExpr node) {
-      Contract.Ensures(Contract.Result<BvConcatExpr>() != null);
+      Contract.Ensures(Contract.Result<Expr>() != null);
       return base.VisitBvConcatExpr((BvConcatExpr) node.Clone());
     }
     public override Expr VisitBvExtractExpr(BvExtractExpr node) {
-      Contract.Ensures(Contract.Result<BvExtractExpr>() != null);
+      Contract.Ensures(Contract.Result<Expr>() != null);
       return base.VisitBvExtractExpr((BvExtractExpr) node.Clone());
     }
     public override Expr VisitCodeExpr(CodeExpr node) {
@@ -206,7 +206,7 @@ namespace Microsoft.Boogie {
     }
     public override Expr VisitExistsExpr(ExistsExpr node) {
       //Contract.Requires(node != null);
-      Contract.Ensures(Contract.Result<ExistsExpr>() != null);
+      Contract.Ensures(Contract.Result<Expr>() != null);
       return base.VisitExistsExpr((ExistsExpr)node.Clone());
     }
     public override Expr VisitExpr(Expr node) {
@@ -216,12 +216,12 @@ namespace Microsoft.Boogie {
     }
     public override IList<Expr> VisitExprSeq(IList<Expr> list) {
       //Contract.Requires(list != null);
-      Contract.Ensures(Contract.Result<List<Expr>>() != null);
+      Contract.Ensures(Contract.Result<IList<Expr>>() != null);
       return base.VisitExprSeq(new List<Expr>(list));
     }
     public override Expr VisitForallExpr(ForallExpr node) {
       //Contract.Requires(node != null);
-      Contract.Ensures(Contract.Result<ForallExpr>() != null);
+      Contract.Ensures(Contract.Result<Expr>() != null);
       return base.VisitForallExpr((ForallExpr)node.Clone());
     }
     public override Formal VisitFormal(Formal node) {
@@ -292,7 +292,7 @@ namespace Microsoft.Boogie {
     }
     public override Expr VisitLiteralExpr(LiteralExpr node) {
       //Contract.Requires(node != null);
-      Contract.Ensures(Contract.Result<LiteralExpr>() != null);
+      Contract.Ensures(Contract.Result<Expr>() != null);
       return base.VisitLiteralExpr((LiteralExpr)node.Clone());
     }
     public override LocalVariable VisitLocalVariable(LocalVariable node) {
