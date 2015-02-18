@@ -2199,7 +2199,7 @@ namespace Microsoft.Boogie.Houdini {
             this.name2Impl = SimpleUtil.nameImplMapping(program);
 
             if (CommandLineOptions.Clo.ProverKillTime > 0)
-                CommandLineOptions.Clo.AddProverOption(string.Format("TIME_LIMIT={0}", CommandLineOptions.Clo.ProverKillTime));
+                CommandLineOptions.Clo.ProverOptions = CommandLineOptions.Clo.ProverOptions.Concat1(string.Format("TIME_LIMIT={0}", CommandLineOptions.Clo.ProverKillTime));
 
             this.vcgen = new VCGen(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend, new List<Checker>());
             this.prover = ProverInterface.CreateProver(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend, -1);

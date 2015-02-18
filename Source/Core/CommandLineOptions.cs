@@ -614,23 +614,33 @@ namespace Microsoft.Boogie {
 
     public IEnumerable<string> ProverOptions
     {
+      set
+      {
+        Contract.Requires(cce.NonNullElements(value));
+
+        this.proverOptions = new List<string>(value);
+      }
       get
       {
-        Contract.Ensures(Contract.Result<IEnumerable<string>>() != null);
+        Contract.Ensures(cce.NonNullElements(Contract.Result<IEnumerable<string>>()));
+
         foreach (string s in this.proverOptions)
           yield return s;
       }
     }
 
+    [Obsolete("use the setter for 'ProverOptions' directly")]
     public void AddProverOption(string option)
     {
       Contract.Requires(option != null);
-      this.proverOptions.Add(option);
+
+      this.ProverOptions = this.ProverOptions.Concat1(option);
     }
 
+    [Obsolete("use the setter for 'ProverOptions' directly")]
     public void RemoveAllProverOptions(Predicate<string> match)
     {
-      this.proverOptions.RemoveAll(match);
+      this.ProverOptions = this.ProverOptions.Where(s => !match(s));
     }
 
     private int bracketIdsInVC = -1;  // -1 - not specified, 0 - no, 1 - yes
@@ -1194,7 +1204,7 @@ namespace Microsoft.Boogie {
         case "p":
         case "proverOpt":
           if (ps.ConfirmArgumentCount(1)) {
-            AddProverOption(cce.NonNull(args[ps.i]));
+            ProverOptions = ProverOptions.Concat1(cce.NonNull(args[ps.i]));
           }
           return true;
 
