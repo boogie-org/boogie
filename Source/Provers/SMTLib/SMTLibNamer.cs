@@ -36,13 +36,12 @@ namespace Microsoft.Boogie.SMTLib
       "bvsge", "bvslt", "bvugt", "bvsgt", "bvxor", "bvnand", "bvnor", "bvxnor", "sign_extend", "zero_extend", 
       "repeat", "bvredor", "bvredand", "bvcomp", "bvumul_noovfl", "bvsmul_noovfl", "bvsmul_noudfl", "bvashr",
       "rotate_left", "rotate_right", "ext_rotate_left", "ext_rotate_right", "int2bv", "bv2int",
-      // floating point
-      "plusInfinity", "minusInfinity", "NaN", 
-      "roundNearestTiesToEven", "roundNearestTiesToAway", "roundTowardPositive", "roundTowardNegative", "roundTowardZero", 
+      // floating point (FIXME: Legacy, remove this)
+      "plusInfinity", "minusInfinity",
       "+", "-", "/", "*", "==", "<", ">", "<=", ">=", 
       "abs", "remainder", "fusedMA", "squareRoot", "roundToIntegral", 
       "isZero", "isNZero", "isPZero", "isSignMinus", "min", "max", "asFloat", 
-      // SMT v1 stuff
+      // SMT v1 stuff (FIXME: Legacy, remove this)
       "flet", "implies", "!=", "if_then_else",
       // Z3 extensions
       "lblneg", "lblpos", "lbl-lit",
@@ -50,6 +49,14 @@ namespace Microsoft.Boogie.SMTLib
       "sin", "cos", "tan", "asin", "acos", "atan",
       // Boogie-defined
       "real_pow", "UOrdering2", "UOrdering3", 
+      // Floating point (final draft SMTLIB-v2.5)
+      "NaN",
+      "roundNearestTiesToEven", "roundNearestTiesToAway", "roundTowardPositive", "roundTowardNegative", "roundTowardZero", 
+      "RNE", "RNA", "RTP", "RTN", "RTZ",
+      "fp.abs", "fp.neg", "fp.add", "fp.sub", "fp.mul", "fp.div", "fp.fma", "fp.sqrt", "fp.rem", "fp.roundToIntegral",
+      "fp.min", "fp.max", "fp.leq", "fp.lt", "fp.geq", "fp.gt", "fp.eq",
+      "fp.isNormal", "fp.isSubnormal", "fp.isZero", "fp.isInfinite", "fp.isNaN", "fp.isNegative", "fp.isPositive",
+      "fp", "fp.to_ubv", "fp.to_sbv", "to_fp",
     };
 
     static HashSet<string> reservedSmtWords;
