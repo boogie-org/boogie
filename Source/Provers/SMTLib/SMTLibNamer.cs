@@ -23,7 +23,9 @@ namespace Microsoft.Boogie.SMTLib
       "and", "or", "not", "iff", "true", "false", "xor", "distinct", "ite", "=", "Bool",
       "=>", // implies (sic!)
       // Integers and reals
-      "Int", "Real", "*", "/", "-", "+", "<", "<=", ">", ">=", "div", "mod",
+      "Int", "Real", "*", "/", "-", "~", "+", "<", "<=", ">", ">=", "div", "mod", "rem",
+      "^", "sin", "cos", "tan", "asin", "acos", "atan", "sinh", "cosh", "tanh", "asinh", "acosh", "atanh", "pi", "euler",
+      "to_real", "to_int", "is_int",
       // Bitvectors
       "extract", "concat", 
       "bvnot", "bvneg", "bvand", "bvor", "bvadd", "bvmul", "bvudiv", "bvurem", "bvshl", "bvlshr", "bvult",
@@ -46,7 +48,6 @@ namespace Microsoft.Boogie.SMTLib
       // Z3 extensions
       "lblneg", "lblpos", "lbl-lit",
       "if", "&&", "||", "equals", "equiv", "bool",
-      "sin", "cos", "tan", "asin", "acos", "atan",
       // Boogie-defined
       "real_pow", "UOrdering2", "UOrdering3", 
       // Floating point (final draft SMTLIB-v2.5)
