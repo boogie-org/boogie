@@ -1996,8 +1996,11 @@ namespace Microsoft.Boogie.SMTLib
             else
                 throw new VCExprEvaluationException();
         }
-        if (resp.Name == "-" && resp.ArgCount == 1)
+        if (resp.Name == "-" && resp.ArgCount == 1) // negative int
             return Microsoft.Basetypes.BigNum.FromString("-" + resp.Arguments[0].Name);
+        if (resp.Name == "_" && resp.ArgCount == 2 && resp.Arguments[0].Name.StartsWith("bv")) // bitvector
+            return new BvConst(Microsoft.Basetypes.BigNum.FromString(resp.Arguments[0].Name.Substring("bv".Length)),
+                int.Parse(resp.Arguments[1].Name));
         if (resp.ArgCount != 0)
             throw new VCExprEvaluationException();
         if (expr.Type.Equals(Boogie.Type.Bool))
