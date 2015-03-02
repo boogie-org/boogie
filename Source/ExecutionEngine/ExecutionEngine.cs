@@ -505,12 +505,6 @@ namespace Microsoft.Boogie
           }
         }
 
-        EliminateDeadVariables(program);
-
-        CollectModSets(program);
-
-        CoalesceBlocks(program);
-
         if (CommandLineOptions.Clo.StratifiedInlining == 0)
         {
           Concurrency.Transform(linearTypeChecker, moverTypeChecker);
@@ -523,6 +517,10 @@ namespace Microsoft.Boogie
               CommandLineOptions.Clo.PrintUnstructured = oldPrintUnstructured;
           }
         }
+
+        EliminateDeadVariables(program);
+
+        CoalesceBlocks(program);
 
         Inline(program);
 
@@ -741,6 +739,8 @@ namespace Microsoft.Boogie
       {
           CommandLineOptions.Clo.TypeEncodingMethod = CommandLineOptions.TypeEncoding.Monomorphic;
       }
+
+      CollectModSets(program);
 
       moverTypeChecker = new MoverTypeChecker(program);
       moverTypeChecker.TypeCheck();
