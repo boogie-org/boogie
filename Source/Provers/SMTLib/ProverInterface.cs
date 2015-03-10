@@ -201,8 +201,10 @@ namespace Microsoft.Boogie.SMTLib
 
       if (Process != null)
         Process.Send(s);
-      if (currentLogFile != null)
+      if (currentLogFile != null) {
         currentLogFile.WriteLine(s);
+        currentLogFile.Flush();
+      }
     }
 
     private void FindDependentTypes(Type type, List<CtorType> dependentTypes)
