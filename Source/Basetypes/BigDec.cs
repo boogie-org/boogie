@@ -6,6 +6,7 @@
 using System;
 using System.Text;
 using System.Diagnostics.Contracts;
+using System.Diagnostics;
 
 
 namespace Microsoft.Basetypes {
@@ -141,6 +142,13 @@ namespace Microsoft.Basetypes {
     ////////////////////////////////////////////////////////////////////////////
     // Conversion operations
 
+    // ``floor`` rounds towards negative infinity (like SMT-LIBv2's to_int).
+    /// <summary>
+    /// Computes the floor and ceiling of this BigDec. Note the choice of rounding towards negative
+    /// infinity rather than zero for floor is because SMT-LIBv2's to_int function floors this way.
+    /// </summary>
+    /// <param name="floor">The Floor (rounded towards negative infinity)</param>
+    /// <param name="ceiling">Ceiling (rounded towards positive infinity)</param>
     public void FloorCeiling(out BIM floor, out BIM ceiling) {
       BIM n = this.mantissa;
       int e = this.exponent;
@@ -153,13 +161,20 @@ namespace Microsoft.Basetypes {
         }
         floor = ceiling = n;
       } else {
-        // it's a non-zero integer, so the ceiling is one more than the fllor
+        // it's a non-zero integer, so the ceiling is one more than the floor
         for (; e < 0 && !n.IsZero; e++) {
-          n = n / ten;  // since we're dividing by a positive number, this will round down
+          n = n / ten;  // Division rounds towards negative infinity
         }
-        floor = n;
-        ceiling = n + 1;
+
+        if (this.mantissa >= 0) {
+          floor = n;
+          ceiling = n + 1;
+        } else {
+          ceiling = n;
+          floor = n - 1;
+        }
       }
+      Debug.Assert(floor <= ceiling, "Invariant was not maintained");
     }
 
     [Pure]
