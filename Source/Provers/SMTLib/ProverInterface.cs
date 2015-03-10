@@ -81,11 +81,6 @@ namespace Microsoft.Boogie.SMTLib
           {
               currentLogFile = OpenOutputFile("");
           }
-          if (CommandLineOptions.Clo.ContractInfer && (CommandLineOptions.Clo.UseUnsatCoreForContractInfer || CommandLineOptions.Clo.ExplainHoudini))
-          {
-              SendThisVC("(set-option :produce-unsat-cores true)");
-              this.usingUnsatCore = true;
-          }
           PrepareCommon();
       }
     }
@@ -244,6 +239,14 @@ namespace Microsoft.Boogie.SMTLib
         if (!string.IsNullOrEmpty(options.Logic))
         {
           SendCommon("(set-logic " + options.Logic + ")");
+        }
+
+        // Set produce-unsat-cores last. It seems there's a bug in Z3 where if we set it earlier its value
+        // gets reset by other set-option commands ( https://z3.codeplex.com/workitem/188 )
+        if (CommandLineOptions.Clo.ContractInfer && (CommandLineOptions.Clo.UseUnsatCoreForContractInfer || CommandLineOptions.Clo.ExplainHoudini))
+        {
+          SendThisVC("(set-option :produce-unsat-cores true)");
+          this.usingUnsatCore = true;
         }
 
         SendCommon("; done setting options\n");
