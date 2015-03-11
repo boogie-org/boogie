@@ -29,10 +29,10 @@ namespace VC {
     public Dictionary<Block, List<StratifiedCallSite>> recordProcCallSites;
     public VCExpr vcexpr;
 
-    // the following three fields are not being used at the moment
-    public VCExprVar entryExprVar;
-    public Dictionary<Block, Macro> reachMacros;
-    public Dictionary<Block, VCExpr> reachMacroDefinitions;
+    // Must-Reach Information
+    public static bool ComputeMustReachInformation = false;
+    public Dictionary<Block, VCExprVar> mustReachVar;
+    public List<VCExprLetBinding> mustReachBindings;
 
     public StratifiedVC(StratifiedInliningInfo siInfo, HashSet<string> procCalls) {
       info = siInfo;
@@ -78,26 +78,43 @@ namespace VC {
       if(procCalls != null)
          vcexpr = RemoveProcedureCalls.Apply(vcexpr, info.vcgen.prover.VCExprGen, procCalls);
 
-      #if false
-      var impl = info.impl;
-      reachMacros = new Dictionary<Block, Macro>();
-      reachMacroDefinitions = new Dictionary<Block, VCExpr>();
-      foreach (Block b in impl.Blocks) {
-        reachMacros[b] = vcgen.CreateNewMacro();
-        reachMacroDefinitions[b] = VCExpressionGenerator.False;
+      if (ComputeMustReachInformation && !CommandLineOptions.Clo.UseLabels)
+      {
+          var impl = info.impl;
+          mustReachVar = new Dictionary<Block, VCExprVar>();
+          mustReachBindings = new List<VCExprLetBinding>();
+          foreach (Block b in impl.Blocks)
+              mustReachVar[b] = vcgen.CreateNewVar(Bpl.Type.Bool);
+
+          var dag = new Graph<Block>();
+          dag.AddSource(impl.Blocks[0]);
+          foreach (Block b in impl.Blocks)
+          {
+              var gtc = b.TransferCmd as GotoCmd;
+              if (gtc != null)
+                  foreach (Block dest in gtc.labelTargets)
+                      dag.AddEdge(dest, b);
+          }
+          IEnumerable sortedNodes = dag.TopologicalSort();
+
+          foreach (Block currBlock in dag.TopologicalSort())
+          {
+              if (currBlock == impl.Blocks[0])
+              {
+                  mustReachBindings.Add(gen.LetBinding(mustReachVar[currBlock], VCExpressionGenerator.True));
+                  continue;
+              }
+
+              VCExpr expr = VCExpressionGenerator.False;
+              foreach (var pred in dag.Successors(currBlock))
+              {
+                  VCExpr controlFlowFunctionAppl = gen.ControlFlowFunctionApplication(gen.Integer(BigNum.FromInt(id)), gen.Integer(BigNum.FromInt(pred.UniqueId)));
+                  VCExpr controlTransferExpr = gen.Eq(controlFlowFunctionAppl, gen.Integer(BigNum.FromInt(currBlock.UniqueId)));
+                  expr = gen.Or(expr, gen.And(mustReachVar[pred], controlTransferExpr));
+              }
+              mustReachBindings.Add(gen.LetBinding(mustReachVar[currBlock], expr));
+          }
       }
-      entryExprVar = vcgen.CreateNewVar(Microsoft.Boogie.Type.Bool);
-      reachMacroDefinitions[impl.Blocks[0]] = entryExprVar;
-      foreach (Block currBlock in impl.Blocks) {
-        GotoCmd gotoCmd = currBlock.TransferCmd as GotoCmd;
-        if (gotoCmd == null) continue;
-        foreach (Block successorBlock in gotoCmd.labelTargets) {
-          VCExpr controlFlowFunctionAppl = gen.ControlFlowFunctionApplication(gen.Integer(BigNum.FromInt(id)), gen.Integer(BigNum.FromInt(currBlock.UniqueId)));
-          VCExpr controlTransferExpr = gen.Eq(controlFlowFunctionAppl, gen.Integer(BigNum.FromInt(successorBlock.UniqueId)));
-          reachMacroDefinitions[successorBlock] = gen.Or(reachMacroDefinitions[successorBlock], gen.And(gen.Function(reachMacros[currBlock]), controlTransferExpr));
-        }
-      }
-      #endif
 
       callSites = new Dictionary<Block, List<StratifiedCallSite>>();
       foreach (Block b in info.callSites.Keys) {
@@ -114,6 +131,12 @@ namespace VC {
           recordProcCallSites[b].Add(new StratifiedCallSite(cs, substVisitor, subst));
         }
       }
+    }
+
+    public VCExpr MustReach(Block block)
+    {
+        Contract.Assert(ComputeMustReachInformation && mustReachVar.ContainsKey(block) && mustReachBindings != null);
+        return info.vcgen.prover.VCExprGen.Let(mustReachBindings, mustReachVar[block]);
     }
 
     public List<StratifiedCallSite> CallSites {
