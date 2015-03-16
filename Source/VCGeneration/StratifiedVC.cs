@@ -30,9 +30,8 @@ namespace VC {
     public VCExpr vcexpr;
 
     // Must-Reach Information
-    public static bool ComputeMustReachInformation = false;
-    public Dictionary<Block, VCExprVar> mustReachVar;
-    public List<VCExprLetBinding> mustReachBindings;
+    Dictionary<Block, VCExprVar> mustReachVar;
+    List<VCExprLetBinding> mustReachBindings;
 
     public StratifiedVC(StratifiedInliningInfo siInfo, HashSet<string> procCalls) {
       info = siInfo;
@@ -78,44 +77,6 @@ namespace VC {
       if(procCalls != null)
          vcexpr = RemoveProcedureCalls.Apply(vcexpr, info.vcgen.prover.VCExprGen, procCalls);
 
-      if (ComputeMustReachInformation && !CommandLineOptions.Clo.UseLabels)
-      {
-          var impl = info.impl;
-          mustReachVar = new Dictionary<Block, VCExprVar>();
-          mustReachBindings = new List<VCExprLetBinding>();
-          foreach (Block b in impl.Blocks)
-              mustReachVar[b] = vcgen.CreateNewVar(Bpl.Type.Bool);
-
-          var dag = new Graph<Block>();
-          dag.AddSource(impl.Blocks[0]);
-          foreach (Block b in impl.Blocks)
-          {
-              var gtc = b.TransferCmd as GotoCmd;
-              if (gtc != null)
-                  foreach (Block dest in gtc.labelTargets)
-                      dag.AddEdge(dest, b);
-          }
-          IEnumerable sortedNodes = dag.TopologicalSort();
-
-          foreach (Block currBlock in dag.TopologicalSort())
-          {
-              if (currBlock == impl.Blocks[0])
-              {
-                  mustReachBindings.Add(gen.LetBinding(mustReachVar[currBlock], VCExpressionGenerator.True));
-                  continue;
-              }
-
-              VCExpr expr = VCExpressionGenerator.False;
-              foreach (var pred in dag.Successors(currBlock))
-              {
-                  VCExpr controlFlowFunctionAppl = gen.ControlFlowFunctionApplication(gen.Integer(BigNum.FromInt(id)), gen.Integer(BigNum.FromInt(pred.UniqueId)));
-                  VCExpr controlTransferExpr = gen.Eq(controlFlowFunctionAppl, gen.Integer(BigNum.FromInt(currBlock.UniqueId)));
-                  expr = gen.Or(expr, gen.And(mustReachVar[pred], controlTransferExpr));
-              }
-              mustReachBindings.Add(gen.LetBinding(mustReachVar[currBlock], expr));
-          }
-      }
-
       callSites = new Dictionary<Block, List<StratifiedCallSite>>();
       foreach (Block b in info.callSites.Keys) {
         callSites[b] = new List<StratifiedCallSite>();
@@ -135,7 +96,50 @@ namespace VC {
 
     public VCExpr MustReach(Block block)
     {
-        Contract.Assert(ComputeMustReachInformation && mustReachVar.ContainsKey(block) && mustReachBindings != null);
+        Contract.Assert(!CommandLineOptions.Clo.UseLabels);
+
+        // This information is computed lazily
+        if (mustReachBindings == null)
+        {
+            var vcgen = info.vcgen;
+            var gen = vcgen.prover.VCExprGen;
+            var impl = info.impl;
+            mustReachVar = new Dictionary<Block, VCExprVar>();
+            mustReachBindings = new List<VCExprLetBinding>();
+            foreach (Block b in impl.Blocks)
+                mustReachVar[b] = vcgen.CreateNewVar(Bpl.Type.Bool);
+
+            var dag = new Graph<Block>();
+            dag.AddSource(impl.Blocks[0]);
+            foreach (Block b in impl.Blocks)
+            {
+                var gtc = b.TransferCmd as GotoCmd;
+                if (gtc != null)
+                    foreach (Block dest in gtc.labelTargets)
+                        dag.AddEdge(dest, b);
+            }
+            IEnumerable sortedNodes = dag.TopologicalSort();
+
+            foreach (Block currBlock in dag.TopologicalSort())
+            {
+                if (currBlock == impl.Blocks[0])
+                {
+                    mustReachBindings.Add(gen.LetBinding(mustReachVar[currBlock], VCExpressionGenerator.True));
+                    continue;
+                }
+
+                VCExpr expr = VCExpressionGenerator.False;
+                foreach (var pred in dag.Successors(currBlock))
+                {
+                    VCExpr controlFlowFunctionAppl = gen.ControlFlowFunctionApplication(gen.Integer(BigNum.FromInt(id)), gen.Integer(BigNum.FromInt(pred.UniqueId)));
+                    VCExpr controlTransferExpr = gen.Eq(controlFlowFunctionAppl, gen.Integer(BigNum.FromInt(currBlock.UniqueId)));
+                    expr = gen.Or(expr, gen.And(mustReachVar[pred], controlTransferExpr));
+                }
+                mustReachBindings.Add(gen.LetBinding(mustReachVar[currBlock], expr));
+            }
+        }
+
+        Contract.Assert(mustReachVar.ContainsKey(block));
         return info.vcgen.prover.VCExprGen.Let(mustReachBindings, mustReachVar[block]);
     }
 
