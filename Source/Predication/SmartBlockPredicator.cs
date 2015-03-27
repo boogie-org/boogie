@@ -36,7 +36,7 @@ public class SmartBlockPredicator {
     uni = u;
   }
 
-  void PredicateCmd(Expr p, List<Block> blocks, Block block, Cmd cmd, out Block nextBlock) {
+  void PredicateCmd(Expr p, Expr pDom, List<Block> blocks, Block block, Cmd cmd, out Block nextBlock) {
     var cCmd = cmd as CallCmd;
     if (cCmd != null && !useProcedurePredicates(cCmd.Proc)) {
       if (p == null) {
@@ -66,19 +66,19 @@ public class SmartBlockPredicator {
         new GotoCmd(Token.NoToken, new List<Block> { contBlock });
       nextBlock = contBlock;
     } else {
-      PredicateCmd(p, block.Cmds, cmd);
+      PredicateCmd(p, pDom, block.Cmds, cmd);
       nextBlock = block;
     }
   }
 
-  void PredicateCmd(Expr p, List<Cmd> cmdSeq, Cmd cmd) {
+  void PredicateCmd(Expr p, Expr pDom, List<Cmd> cmdSeq, Cmd cmd) {
     if (cmd is CallCmd) {
       var cCmd = (CallCmd)cmd;
       Debug.Assert(useProcedurePredicates(cCmd.Proc));
       cCmd.Ins.Insert(0, p != null ? p : Expr.True);
       cmdSeq.Add(cCmd);
     } else if (p == null) {
-      new EnabledReplacementVisitor(Expr.True).Visit(cmd);
+      new EnabledReplacementVisitor(Expr.True, pDom).Visit(cmd);
       cmdSeq.Add(cmd);
     } else if (cmd is AssignCmd) {
       var aCmd = (AssignCmd)cmd;
@@ -89,12 +89,12 @@ public class SmartBlockPredicator {
                        new List<Expr> { p, rhs, lhs.AsExpr })))));
     } else if (cmd is AssertCmd) {
       var aCmd = (AssertCmd)cmd;
-      Expr newExpr = new EnabledReplacementVisitor(p).VisitExpr(aCmd.Expr);
+      Expr newExpr = new EnabledReplacementVisitor(p, pDom).VisitExpr(aCmd.Expr);
       aCmd.Expr = QKeyValue.FindBoolAttribute(aCmd.Attributes, "do_not_predicate") ? newExpr : Expr.Imp(p, newExpr);
       cmdSeq.Add(aCmd);
     } else if (cmd is AssumeCmd) {
       var aCmd = (AssumeCmd)cmd;
-      Expr newExpr = new EnabledReplacementVisitor(p).VisitExpr(aCmd.Expr);
+      Expr newExpr = new EnabledReplacementVisitor(p, pDom).VisitExpr(aCmd.Expr);
       aCmd.Expr = QKeyValue.FindBoolAttribute(aCmd.Attributes, "do_not_predicate") ? newExpr : Expr.Imp(p, newExpr);
       cmdSeq.Add(aCmd);
     } else if (cmd is HavocCmd) {
@@ -127,7 +127,7 @@ public class SmartBlockPredicator {
       var sCmd = (StateCmd)cmd;
       var newCmdSeq = new List<Cmd>();
       foreach (Cmd c in sCmd.Cmds)
-        PredicateCmd(p, newCmdSeq, c);
+        PredicateCmd(p, pDom, newCmdSeq, c);
       sCmd.Cmds = newCmdSeq;
       cmdSeq.Add(sCmd);
     } else {
@@ -148,7 +148,7 @@ public class SmartBlockPredicator {
 
       if (gCmd.labelTargets.Count == 1) {
         if (defMap.ContainsKey(gCmd.labelTargets[0])) {
-          PredicateCmd(p, cmdSeq,
+          PredicateCmd(p, Expr.True, cmdSeq,
                        Cmd.SimpleAssign(Token.NoToken,
                                         Expr.Ident(predMap[gCmd.labelTargets[0]]), Expr.True));
         }
@@ -165,7 +165,7 @@ public class SmartBlockPredicator {
           // update a predicate twice when it occurs in both parts.
           var part = partInfo[target];
           if (defMap.ContainsKey(part.realDest)) {
-            PredicateCmd(p == null ? part.pred : Expr.And(p, part.pred), cmdSeq,
+            PredicateCmd(p == null ? part.pred : Expr.And(p, part.pred), Expr.True, cmdSeq,
                          Cmd.SimpleAssign(Token.NoToken,
                                           Expr.Ident(predMap[part.realDest]), part.pred));
           }
@@ -179,7 +179,7 @@ public class SmartBlockPredicator {
             predList.Add(part.pred);
           }
           foreach (var pred in predsExitingLoop) {
-            PredicateCmd(p == null ? part.pred : Expr.And(p, part.pred), cmdSeq,
+            PredicateCmd(p == null ? part.pred : Expr.And(p, part.pred), Expr.True, cmdSeq,
                          Cmd.SimpleAssign(Token.NoToken,
                                           Expr.Ident(predMap[pred.Key]),
                                           Expr.Not(pred.Value.Aggregate(Expr.Or))));
@@ -390,6 +390,19 @@ public class SmartBlockPredicator {
     return partInfo;
   }
 
+  Block FindImmediateDominator(Block block) {
+    Block predecessor = null;
+    foreach(var pred in blockGraph.Predecessors(block)) {
+      if (!blockGraph.DominatorMap.DominatedBy(pred, block)) {
+        if (predecessor == null)
+          predecessor = pred;
+        else
+          predecessor = blockGraph.DominatorMap.LeastCommonAncestor(pred, predecessor);
+      }
+    }
+    return predecessor;
+  }
+
   void PredicateImplementation() {
     blockGraph = prog.ProcessLoops(impl);
     sortedBlocks = blockGraph.LoopyTopSort();
@@ -408,6 +421,14 @@ public class SmartBlockPredicator {
         var pExpr = Expr.Ident(p);
 
         if (n.Item2) {
+          var dominator = FindImmediateDominator(n.Item1);
+          if (dominator != null && predMap.ContainsKey(dominator)) {
+            AssumeCmd aCmd = new AssumeCmd(Token.NoToken, Expr.True);
+            aCmd.Attributes = new QKeyValue(Token.NoToken, "dominator_predicate", new List<object>() { predMap[dominator].ToString() }, aCmd.Attributes);
+            aCmd.Attributes = new QKeyValue(Token.NoToken, "predicate", new List<object>() { predMap[n.Item1].ToString() }, aCmd.Attributes);
+            n.Item1.Cmds.Insert(0, aCmd);
+          }
+
           var backedgeBlock = new Block();
           newBlocks.Add(backedgeBlock);
 
@@ -477,9 +498,13 @@ public class SmartBlockPredicator {
       pCurrentExpr = pParentExpr;
     }
 
+    Block dominator = FindImmediateDominator(block);
+    Expr pDomExpr = Expr.True;
+    if (dominator != null && predMap.ContainsKey(dominator))
+      pDomExpr = new IdentifierExpr(Token.NoToken, predMap[dominator]);
     var transferCmd = block.TransferCmd;
     foreach (Cmd cmd in oldCmdSeq)
-      PredicateCmd(pExpr, newBlocks, block, cmd, out block);
+      PredicateCmd(pExpr, pDomExpr, newBlocks, block, cmd, out block);
 
     if (ownedMap.ContainsKey(firstBlock)) {
       var owned = ownedMap[firstBlock];
@@ -540,13 +565,13 @@ public class SmartBlockPredicator {
           if (impl == null) {
             var fpIdentifierExpr = new IdentifierExpr(Token.NoToken, fpVar);
             foreach (Requires r in proc.Requires) {
-              new EnabledReplacementVisitor(fpIdentifierExpr).VisitExpr(r.Condition);
+              new EnabledReplacementVisitor(fpIdentifierExpr, Expr.True).VisitExpr(r.Condition);
               if (!QKeyValue.FindBoolAttribute(r.Attributes, "do_not_predicate")) {
                 r.Condition = Expr.Imp(fpIdentifierExpr, r.Condition);
               }
             }
             foreach (Ensures e in proc.Ensures) {
-              new EnabledReplacementVisitor(new IdentifierExpr(Token.NoToken, fpVar)).VisitExpr(e.Condition);
+              new EnabledReplacementVisitor(new IdentifierExpr(Token.NoToken, fpVar), Expr.True).VisitExpr(e.Condition);
               if (!QKeyValue.FindBoolAttribute(e.Attributes, "do_not_predicate")) {
                 e.Condition = Expr.Imp(fpIdentifierExpr, e.Condition);
               }
@@ -555,10 +580,10 @@ public class SmartBlockPredicator {
         } else {
           if (impl == null) {
             foreach (Requires r in proc.Requires) {
-              new EnabledReplacementVisitor(Expr.True).VisitExpr(r.Condition);
+              new EnabledReplacementVisitor(Expr.True, Expr.True).VisitExpr(r.Condition);
             }
             foreach (Ensures e in proc.Ensures) {
-              new EnabledReplacementVisitor(Expr.True).VisitExpr(e.Condition);
+              new EnabledReplacementVisitor(Expr.True, Expr.True).VisitExpr(e.Condition);
             }
           }
         }

@@ -77,7 +77,7 @@ public class BlockPredicator {
         // the first statement in the block.
         var assign = cmdSeq.Last();
         cmdSeq.RemoveAt(cmdSeq.Count-1);
-        Expr newExpr = new EnabledReplacementVisitor(pExpr).VisitExpr(aCmd.Expr);
+        Expr newExpr = new EnabledReplacementVisitor(pExpr, null).VisitExpr(aCmd.Expr);
         aCmd.Expr = QKeyValue.FindBoolAttribute(aCmd.Attributes, "do_not_predicate") ? newExpr : Expr.Imp(pExpr, newExpr);
         cmdSeq.Add(aCmd);
         // cmdSeq.Add(new AssertCmd(aCmd.tok, Expr.Imp(pExpr, aCmd.Expr)));
@@ -316,13 +316,13 @@ public class BlockPredicator {
             foreach (Requires r in proc.Requires)
             {
                 newRequires.Add(new Requires(r.Free,
-                    new EnabledReplacementVisitor(new IdentifierExpr(Token.NoToken, fpVar)).VisitExpr(r.Condition)));
+                    new EnabledReplacementVisitor(new IdentifierExpr(Token.NoToken, fpVar), Expr.True).VisitExpr(r.Condition)));
             }
             var newEnsures = new List<Ensures>();
             foreach (Ensures e in proc.Ensures)
             {
                 newEnsures.Add(new Ensures(e.Free,
-                    new EnabledReplacementVisitor(new IdentifierExpr(Token.NoToken, fpVar)).VisitExpr(e.Condition)));
+                    new EnabledReplacementVisitor(new IdentifierExpr(Token.NoToken, fpVar), Expr.True).VisitExpr(e.Condition)));
             }
         }
 
@@ -350,10 +350,12 @@ public class BlockPredicator {
 class EnabledReplacementVisitor : StandardVisitor
 {
     private Expr pExpr;
+    private Expr pDomExpr;
 
-    internal EnabledReplacementVisitor(Expr pExpr)
+    internal EnabledReplacementVisitor(Expr pExpr, Expr pDomExpr)
     {
         this.pExpr = pExpr;
+        this.pDomExpr = pDomExpr;
     }
 
     public override Expr VisitExpr(Expr node)
@@ -364,6 +366,9 @@ class EnabledReplacementVisitor : StandardVisitor
             if (iExpr.Decl is Constant && QKeyValue.FindBoolAttribute(iExpr.Decl.Attributes, "__enabled"))
             {
                 return pExpr;
+            } else if (iExpr.Decl is Constant && QKeyValue.FindBoolAttribute(iExpr.Decl.Attributes, "__dominator_enabled"))
+            {
+                return pDomExpr;
             }
         }
         return base.VisitExpr(node);
