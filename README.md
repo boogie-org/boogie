@@ -1,5 +1,7 @@
 # Boogie
 
+[![Build Status](https://travis-ci.org/boogie-org/boogie.svg)](https://travis-ci.org/boogie-org/boogie)
+
 Boogie is an intermediate verification language (IVL), intended as a layer on which
 to build program verifiers for other languages. Several program verifiers have
 been built in this way, including the VCC and HAVOC verifiers for C and the
