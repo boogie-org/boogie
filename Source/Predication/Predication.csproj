@@ -135,7 +135,6 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="BlockPredicator.cs" />
     <Compile Include="SmartBlockPredicator.cs" />
     <Compile Include="UniformityAnalyser.cs" />
   </ItemGroup>

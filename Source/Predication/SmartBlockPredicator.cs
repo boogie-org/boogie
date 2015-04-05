@@ -606,4 +606,32 @@ public class SmartBlockPredicator {
 
 }
 
+class EnabledReplacementVisitor : StandardVisitor
+{
+    private Expr pExpr;
+    private Expr pDomExpr;
+
+    internal EnabledReplacementVisitor(Expr pExpr, Expr pDomExpr)
+    {
+        this.pExpr = pExpr;
+        this.pDomExpr = pDomExpr;
+    }
+
+    public override Expr VisitExpr(Expr node)
+    {
+        if (node is IdentifierExpr)
+        {
+            IdentifierExpr iExpr = node as IdentifierExpr;
+            if (iExpr.Decl is Constant && QKeyValue.FindBoolAttribute(iExpr.Decl.Attributes, "__enabled"))
+            {
+                return pExpr;
+            } else if (iExpr.Decl is Constant && QKeyValue.FindBoolAttribute(iExpr.Decl.Attributes, "__dominator_enabled"))
+            {
+                return pDomExpr;
+            }
+        }
+        return base.VisitExpr(node);
+    }
+}
+
 }
