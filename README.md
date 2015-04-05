@@ -37,7 +37,8 @@ You can also report issues on our [issue tracker](https://github.com/boogie-org/
 ### Requirements
 
 - [NuGet](https://www.nuget.org/)
-- [Z3](https://github.com/Z3Prover/z3) 4.3.2 or [CVC4](http://cvc4.cs.nyu.edu/web/) **FIXME_VERSION**
+- [Z3](https://github.com/Z3Prover/z3) 4.3.2 or [CVC4](http://cvc4.cs.nyu.edu/web/) **FIXME_VERSION** (note
+  CVC4 support is experimental)
 
 #### Windows specific
 
