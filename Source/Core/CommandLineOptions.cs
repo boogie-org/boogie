@@ -746,6 +746,7 @@ namespace Microsoft.Boogie {
     public bool PrintInlined = false;
     public bool ExtractLoops = false;
     public bool DeterministicExtractLoops = false;
+    public string SecureVcGen = null;
     public int StratifiedInlining = 0;
     public string FixedPointEngine = null;
     public int StratifiedInliningOption = 0;
@@ -1251,7 +1252,10 @@ namespace Microsoft.Boogie {
             }
           }
           return true;
-
+        case "secure":
+          if (ps.ConfirmArgumentCount(1))
+              SecureVcGen = args[ps.i];
+          return true;
         case "stratifiedInline":
           if (ps.ConfirmArgumentCount(1)) {
             switch (args[ps.i]) {

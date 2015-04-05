@@ -74,7 +74,8 @@ namespace Microsoft.Boogie.SMTLib
 
       SetupProcess();
 
-      if (CommandLineOptions.Clo.StratifiedInlining > 0 || CommandLineOptions.Clo.ContractInfer)
+      if (CommandLineOptions.Clo.StratifiedInlining > 0 || CommandLineOptions.Clo.ContractInfer
+          || CommandLineOptions.Clo.SecureVcGen != null)
       {
           // Prepare for ApiChecker usage
           if (options.LogFilename != null && currentLogFile == null)

@@ -1060,6 +1060,9 @@ namespace Microsoft.Boogie
 
       #endregion
 
+      if (SecureVCGen.outfile != null)
+          SecureVCGen.outfile.Close();
+
       return outcome;
     }
 
@@ -1290,9 +1293,13 @@ namespace Microsoft.Boogie
       {
         vcgen = new StratifiedVCGen(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend, checkers);
       }
+      else if (CommandLineOptions.Clo.SecureVcGen != null)
+      {
+          vcgen = new SecureVCGen(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend, checkers);
+      }
       else
       {
-        vcgen = new VCGen(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend, checkers);
+          vcgen = new VCGen(program, CommandLineOptions.Clo.SimplifyLogFilePath, CommandLineOptions.Clo.SimplifyLogFileAppend, checkers);
       }
       return vcgen;
     }
