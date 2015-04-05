@@ -86,7 +86,7 @@ $ xbuild Source/Boogie.sln
 ```
 
 Finally make sure there is a symlink to Z3 in the Binaries directory
-(replace with ``cvc`` if using CVC4 instead).
+(replace with ``cvc4`` if using CVC4 instead).
 
 ```
 $ ln -s /usr/bin/z3 Binaries/z3.exe
