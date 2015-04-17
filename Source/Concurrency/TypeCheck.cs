@@ -369,6 +369,7 @@ namespace Microsoft.Boogie
             foreach (var proc in program.Procedures)
             {
                 if (!QKeyValue.FindBoolAttribute(proc.Attributes, "yields")) continue;
+                if (QKeyValue.FindBoolAttribute(proc.Attributes, "extern")) continue;
 
                 int createdAtLayerNum;  // must be initialized by the following code, otherwise it is an error
                 int availableUptoLayerNum = int.MaxValue;
@@ -560,6 +561,7 @@ namespace Microsoft.Boogie
             bool isLeftMover = true;
             bool isRightMover = true;
             int maxCalleeLayerNum = 0;
+            int atomicActionCalleeLayerNum = 0;
             int numAtomicActions = 0;
             foreach (CallCmd iter in node.CallCmds)
             {
@@ -573,15 +575,23 @@ namespace Microsoft.Boogie
                 if (actionInfo is AtomicActionInfo)
                 {
                     numAtomicActions++;
+                    if (atomicActionCalleeLayerNum == 0)
+                    {
+                        atomicActionCalleeLayerNum = actionInfo.createdAtLayerNum;
+                    }
+                    else if (atomicActionCalleeLayerNum != actionInfo.createdAtLayerNum)
+                    {
+                        Error(node, "All atomic actions must be introduced at the same layer");
+                    }
                 }
             }
-            if (maxCalleeLayerNum < enclosingProcLayerNum && !isLeftMover && !isRightMover && node.CallCmds.Count > 1)
+            if (numAtomicActions > 1 && !isLeftMover && !isRightMover)
             {
-                Error(node, "The callees in the parallel call must be all right movers or all left movers");
+                Error(node, "The atomic actions in the parallel call must be all right movers or all left movers");
             }
-            if (maxCalleeLayerNum == enclosingProcLayerNum && numAtomicActions > 0)
+            if (0 < atomicActionCalleeLayerNum && atomicActionCalleeLayerNum < maxCalleeLayerNum)
             {
-                Error(node, "If some callee in the parallel call has the same layer as the enclosing procedure, then no callee can be an atomic action");
+                Error(node, "Atomic actions must be introduced at the highest layer");
             }
             return base.VisitParCallCmd(node);
         }
