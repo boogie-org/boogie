@@ -11,7 +11,7 @@ using System.Text;
 using System.Diagnostics.Contracts;
 using System.Diagnostics;
 
-namespace Basetypes
+namespace Microsoft.Basetypes
 {
   using BIM = System.Numerics.BigInteger;
     
@@ -19,7 +19,7 @@ namespace Basetypes
   /// A representation of a 32-bit floating point value
   /// Note that this value has a 1-bit sign, 8-bit exponent, and 23-bit mantissa
   /// </summary>
-  public struct fp32
+  public struct FP32
   {
     //Please note that this code outline is copy-pasted from BigDec.cs
 
@@ -43,7 +43,7 @@ namespace Basetypes
       }
     }
 
-    public static readonly fp32 ZERO = FromInt(0);
+    public static readonly FP32 ZERO = FromInt(0);
     private static readonly BIM two = new BIM(2);
     private static readonly BIM ten = new BIM(10);
 
@@ -55,17 +55,17 @@ namespace Basetypes
     //For a complete summary of where this class has been added, simply view constructor references
 
     [Pure]
-    public static fp32 FromInt(int v) {
-      return new fp32(v, 0, v < 0); //TODO: modify for correct fp representation
+    public static FP32 FromInt(int v) {
+      return new FP32(v, 0, v < 0); //TODO: modify for correct fp representation
     }
 
     [Pure]
-    public static fp32 FromBigInt(BIM v) {
-      return new fp32(v, 0, v < 0); //TODO: modify for correct fp representation
+    public static FP32 FromBigInt(BIM v) {
+      return new FP32(v, 0, v < 0); //TODO: modify for correct fp representation
     }
 
     [Pure]
-    public static fp32 FromString(string v) {
+    public static FP32 FromString(string v) {
       //TODO: completely copied from BigDec.cs at the moment
       if (v == null) throw new FormatException();
 
@@ -100,10 +100,10 @@ namespace Basetypes
           fractionLen = fractionLen - 1;
         }
       }
-      return new fp32(integral - fraction, exponent, integral.Sign == -1);
+      return new FP32(integral - fraction, exponent, integral.Sign == -1);
     }
 
-    internal fp32(BIM mantissa, int exponent, bool isNegative) {
+    internal FP32(BIM mantissa, int exponent, bool isNegative) {
       this.isNegative = isNegative;
       if (mantissa.IsZero) {
         this.mantissa = mantissa;
@@ -128,10 +128,10 @@ namespace Basetypes
     public override bool Equals(object obj) {
       if (obj == null)
         return false;
-      if (!(obj is fp32))
+      if (!(obj is FP32))
         return false;
 
-      return (this == (fp32)obj);
+      return (this == (FP32)obj);
     }
 
     [Pure]
@@ -152,7 +152,7 @@ namespace Basetypes
 
     // ``floor`` rounds towards negative infinity (like SMT-LIBv2's to_int).
     /// <summary>
-    /// Computes the floor and ceiling of this fp32. Note the choice of rounding towards negative
+    /// Computes the floor and ceiling of this FP32. Note the choice of rounding towards negative
     /// infinity rather than zero for floor is because SMT-LIBv2's to_int function floors this way.
     /// </summary>
     /// <param name="floor">The Floor (rounded towards negative infinity)</param>
@@ -277,28 +277,28 @@ namespace Basetypes
     // Basic arithmetic operations
 
     [Pure]
-    public fp32 Abs {
+    public FP32 Abs {
       //TODO: fix for fp functionality
       get {
-        return new fp32(BIM.Abs(this.mantissa), this.exponent, false);
+        return new FP32(BIM.Abs(this.mantissa), this.exponent, false);
       }
     }
 
     [Pure]
-    public fp32 Negate {
+    public FP32 Negate {
       //TODO: Modify for correct fp functionality
       get {
-        return new fp32(BIM.Negate(this.mantissa), this.exponent, this.Mantissa >= 0);
+        return new FP32(BIM.Negate(this.mantissa), this.exponent, this.Mantissa >= 0);
       }
     }
 
     [Pure]
-    public static fp32 operator -(fp32 x) {
+    public static FP32 operator -(FP32 x) {
       return x.Negate;
     }
 
     [Pure]
-    public static fp32 operator +(fp32 x, fp32 y) {
+    public static FP32 operator +(FP32 x, FP32 y) {
       //TODO: Modify for correct fp functionality
       BIM m1 = x.mantissa;
       int e1 = x.exponent;
@@ -316,18 +316,18 @@ namespace Basetypes
         e2 = e2 - 1;
       }
 
-      return new fp32(m1 + m2, e1, true);
+      return new FP32(m1 + m2, e1, true);
     }
 
     [Pure]
-    public static fp32 operator -(fp32 x, fp32 y) {
+    public static FP32 operator -(FP32 x, FP32 y) {
       return x + y.Negate;
     }
 
     [Pure]
-    public static fp32 operator *(fp32 x, fp32 y) {
+    public static FP32 operator *(FP32 x, FP32 y) {
       //TODO: modify for correct fp functionality
-      return new fp32(x.mantissa * y.mantissa, x.exponent + y.exponent, false);
+      return new FP32(x.mantissa * y.mantissa, x.exponent + y.exponent, false);
     }
 
 
@@ -353,44 +353,44 @@ namespace Basetypes
     }
 
     [Pure]
-    public int CompareTo(fp32 that) {
+    public int CompareTo(FP32 that) {
       //TODO: Modify for correct fp functionality
       if (this.mantissa == that.mantissa && this.exponent == that.exponent) {
         return 0;
       }
       else {
-        fp32 d = this - that;
+        FP32 d = this - that;
         return d.IsNegative ? -1 : 1;
       }
     }
 
     [Pure]
-    public static bool operator ==(fp32 x, fp32 y) {
+    public static bool operator ==(FP32 x, FP32 y) {
       return x.CompareTo(y) == 0;
     }
 
     [Pure]
-    public static bool operator !=(fp32 x, fp32 y) {
+    public static bool operator !=(FP32 x, FP32 y) {
       return x.CompareTo(y) != 0;
     }
 
     [Pure]
-    public static bool operator <(fp32 x, fp32 y) {
+    public static bool operator <(FP32 x, FP32 y) {
       return x.CompareTo(y) < 0;
     }
 
     [Pure]
-    public static bool operator >(fp32 x, fp32 y) {
+    public static bool operator >(FP32 x, FP32 y) {
       return x.CompareTo(y) > 0;
     }
 
     [Pure]
-    public static bool operator <=(fp32 x, fp32 y) {
+    public static bool operator <=(FP32 x, FP32 y) {
       return x.CompareTo(y) <= 0;
     }
 
     [Pure]
-    public static bool operator >=(fp32 x, fp32 y) {
+    public static bool operator >=(FP32 x, FP32 y) {
       return x.CompareTo(y) >= 0;
     }
   }

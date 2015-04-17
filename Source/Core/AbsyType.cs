@@ -336,6 +336,7 @@ namespace Microsoft.Boogie {
 
     public static readonly Type/*!*/ Int = new BasicType(SimpleType.Int);
     public static readonly Type/*!*/ Real = new BasicType(SimpleType.Real);
+    public static readonly Type/*!*/ Float = new BasicType(SimpleType.Float);
     public static readonly Type/*!*/ Bool = new BasicType(SimpleType.Bool);
     private static BvType[] bvtypeCache;
 
@@ -871,6 +872,8 @@ namespace Microsoft.Boogie {
           return "int";
         case SimpleType.Real:
           return "real";
+        case SimpleType.Float:
+          return "float";
         case SimpleType.Bool:
           return "bool";
       }
@@ -991,6 +994,13 @@ namespace Microsoft.Boogie {
     public override bool IsReal {
       get {
         return this.T == SimpleType.Real;
+      }
+    }
+    public override bool IsFloat
+    {
+      get
+      {
+        return this.T == SimpleType.Float;
       }
     }
     public override bool IsBool {
@@ -3526,6 +3536,7 @@ Contract.Ensures(Contract.ValueAtReturn(out tpInstantiation) != null);
   public enum SimpleType {
     Int,
     Real,
+    Float,
     Bool
   };
 

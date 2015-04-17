@@ -664,8 +664,11 @@ private class BvBounds : Expr {
 			ty = new BasicType(t, SimpleType.Int); 
 		} else if (la.kind == 15) {
 			Get();
-			ty = new BasicType(t, SimpleType.Real); 
-		} else if (la.kind == 16) {
+   ty = new BasicType(t, SimpleType.Real);
+  } else if (la.kind == 112837) {
+   Get();
+   ty = new BasicType(t, SimpleType.Float);
+  } else if (la.kind == 16) {
 			Get();
 			ty = new BasicType(t, SimpleType.Bool); 
 		} else if (la.kind == 9) {

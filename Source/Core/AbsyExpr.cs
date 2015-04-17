@@ -552,6 +552,21 @@ namespace Microsoft.Boogie {
         CachedHashCode = ComputeHashCode();
     }
 
+    /// <summary>
+    /// Creates a literal expression for the floating point value "v".
+    /// </summary>
+    /// <param name="tok"></param>
+    /// <param name="v"></param>
+    public LiteralExpr(IToken/*!*/ tok, FP32 v, bool immutable = false)
+      : base(tok, immutable)
+    {
+      Contract.Requires(tok != null);
+      Val = v;
+      Type = Type.Float;
+      if (immutable)
+        CachedHashCode = ComputeHashCode();
+    }
+
     [Pure]
     [Reads(ReadsAttribute.Reads.Nothing)]
     public override bool Equals(object obj) {
