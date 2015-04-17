@@ -23,6 +23,7 @@ namespace Microsoft.Boogie
         public int createdAtLayerNum;
         public int availableUptoLayerNum;
         public bool hasImplementation;
+        public bool isExtern;
 
         public ActionInfo(Procedure proc, int createdAtLayerNum, int availableUptoLayerNum)
         {
@@ -30,6 +31,7 @@ namespace Microsoft.Boogie
             this.createdAtLayerNum = createdAtLayerNum;
             this.availableUptoLayerNum = availableUptoLayerNum;
             this.hasImplementation = false;
+            this.isExtern = QKeyValue.FindBoolAttribute(proc.Attributes, "extern");
         }
 
         public virtual bool IsRightMover
@@ -369,7 +371,6 @@ namespace Microsoft.Boogie
             foreach (var proc in program.Procedures)
             {
                 if (!QKeyValue.FindBoolAttribute(proc.Attributes, "yields")) continue;
-                if (QKeyValue.FindBoolAttribute(proc.Attributes, "extern")) continue;
 
                 int createdAtLayerNum;  // must be initialized by the following code, otherwise it is an error
                 int availableUptoLayerNum = int.MaxValue;
@@ -444,16 +445,17 @@ namespace Microsoft.Boogie
             foreach (var proc in procToActionInfo.Keys)
             {
                 ActionInfo actionInfo = procToActionInfo[proc];
-                if (actionInfo.hasImplementation) continue;
+                if (actionInfo.isExtern && actionInfo.hasImplementation)
+                {
+                    Error(proc, "Extern procedure cannot have an implementation");
+                    continue;
+                }
+                if (actionInfo.isExtern || actionInfo.hasImplementation) continue;
                 if (leastUnimplementedLayerNum == int.MaxValue)
                 {
                     leastUnimplementedLayerNum = actionInfo.createdAtLayerNum;
                 }
-                else if (leastUnimplementedLayerNum == actionInfo.createdAtLayerNum)
-                {
-                    // do nothing
-                }
-                else
+                else if (leastUnimplementedLayerNum != actionInfo.createdAtLayerNum)
                 {
                     Error(proc, "All unimplemented atomic actions must be created at the same layer");
                 }

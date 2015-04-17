@@ -30,9 +30,9 @@ namespace Microsoft.Boogie
             if (moverTypeChecker.procToActionInfo.Count == 0)
                 return;
 
-            List<ActionInfo> sortedByCreatedLayerNum = new List<ActionInfo>(moverTypeChecker.procToActionInfo.Values.Where(x => x is AtomicActionInfo));
+            List<ActionInfo> sortedByCreatedLayerNum = new List<ActionInfo>(moverTypeChecker.procToActionInfo.Values.Where(x => x is AtomicActionInfo && !x.isExtern));
             sortedByCreatedLayerNum.Sort((x, y) => { return (x.createdAtLayerNum == y.createdAtLayerNum) ? 0 : (x.createdAtLayerNum < y.createdAtLayerNum) ? -1 : 1; });
-            List<ActionInfo> sortedByAvailableUptoLayerNum = new List<ActionInfo>(moverTypeChecker.procToActionInfo.Values.Where(x => x is AtomicActionInfo));
+            List<ActionInfo> sortedByAvailableUptoLayerNum = new List<ActionInfo>(moverTypeChecker.procToActionInfo.Values.Where(x => x is AtomicActionInfo && !x.isExtern));
             sortedByAvailableUptoLayerNum.Sort((x, y) => { return (x.availableUptoLayerNum == y.availableUptoLayerNum) ? 0 : (x.availableUptoLayerNum < y.availableUptoLayerNum) ? -1 : 1; });
 
             Dictionary<int, HashSet<AtomicActionInfo>> pools = new Dictionary<int, HashSet<AtomicActionInfo>>();
@@ -85,10 +85,9 @@ namespace Microsoft.Boogie
                     }
                 }
             }
-            foreach (ActionInfo actionInfo in moverTypeChecker.procToActionInfo.Values)
+            foreach (AtomicActionInfo atomicActionInfo in sortedByCreatedLayerNum)
             {
-                AtomicActionInfo atomicActionInfo = actionInfo as AtomicActionInfo;
-                if (atomicActionInfo != null && atomicActionInfo.IsLeftMover && atomicActionInfo.hasAssumeCmd)
+                if (atomicActionInfo.IsLeftMover && atomicActionInfo.hasAssumeCmd)
                 {
                     moverChecking.CreateNonBlockingChecker(program, atomicActionInfo);
                 }
