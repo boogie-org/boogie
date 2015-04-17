@@ -1,4 +1,4 @@
-var x: int;
+ var x: int;
 var y: int;
 
 procedure {:inline 1} bar()
