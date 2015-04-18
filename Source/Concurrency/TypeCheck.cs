@@ -271,11 +271,11 @@ namespace Microsoft.Boogie
         public Dictionary<Procedure, ActionInfo> procToActionInfo;
         public Program program;
         bool canAccessSharedVars;
-        bool canAccessAuxVars;
+        bool canAccessGhostVars;
         int minLayerNum;
         int maxLayerNum;
         public Dictionary<Absy, HashSet<int>> absyToLayerNums;
-        HashSet<Variable> auxVars;
+        HashSet<Variable> ghostVars;
         public int leastUnimplementedLayerNum;
 
         private static List<int> FindLayers(QKeyValue kv)
@@ -313,7 +313,7 @@ namespace Microsoft.Boogie
 
         public MoverTypeChecker(Program program)
         {
-            this.auxVars = new HashSet<Variable>();
+            this.ghostVars = new HashSet<Variable>();
             this.absyToLayerNums = new Dictionary<Absy, HashSet<int>>();
             this.globalVarToSharedVarInfo = new Dictionary<Variable, SharedVariableInfo>();
             this.procToActionInfo = new Dictionary<Procedure, ActionInfo>();
@@ -323,7 +323,7 @@ namespace Microsoft.Boogie
             this.enclosingProc = null;
             this.enclosingImpl = null;
             this.canAccessSharedVars = false;
-            this.canAccessAuxVars = false;
+            this.canAccessGhostVars = false;
             this.minLayerNum = int.MaxValue;
             this.maxLayerNum = -1;
             this.leastUnimplementedLayerNum = int.MaxValue;
@@ -492,12 +492,12 @@ namespace Microsoft.Boogie
             }
             this.enclosingImpl = node;
             this.enclosingProc = null;
-            auxVars = new HashSet<Variable>();
+            ghostVars = new HashSet<Variable>();
             foreach (Variable v in node.LocVars)
             {
-                if (QKeyValue.FindBoolAttribute(v.Attributes, "aux"))
+                if (QKeyValue.FindBoolAttribute(v.Attributes, "ghost"))
                 {
-                    auxVars.Add(v);
+                    ghostVars.Add(v);
                 }
             }
             return base.VisitImplementation(node);
@@ -604,17 +604,17 @@ namespace Microsoft.Boogie
             for (int i = 0; i < node.Lhss.Count; ++i)
             {
                 bool savedCanAccessSharedVars = canAccessSharedVars;
-                bool savedCanAccessAuxVars = canAccessAuxVars;
+                bool savedCanAccessAuxVars = canAccessGhostVars;
                 Variable v = node.Lhss[i].DeepAssignedVariable;
-                if (v is LocalVariable && auxVars.Contains(v))
+                if (v is LocalVariable && ghostVars.Contains(v))
                 {
                     canAccessSharedVars = true;
-                    canAccessAuxVars = true;
+                    canAccessGhostVars = true;
                 }
                 this.Visit(node.Lhss[i]);
                 this.Visit(node.Rhss[i]);
                 canAccessSharedVars = savedCanAccessSharedVars;
-                canAccessAuxVars = savedCanAccessAuxVars;
+                canAccessGhostVars = savedCanAccessAuxVars;
             }
             return node;
         }
@@ -643,9 +643,9 @@ namespace Microsoft.Boogie
                     Error(node, "Accessed shared variable must have layer annotation");
                 }
             }
-            else if (node.Decl is LocalVariable && auxVars.Contains(node.Decl) && !canAccessAuxVars)
+            else if (node.Decl is LocalVariable && ghostVars.Contains(node.Decl) && !canAccessGhostVars)
             {
-                Error(node, "Auxiliary variable can be accessed only in assertions");
+                Error(node, "Ghost variable can be accessed only in assertions");
             }
 
             return base.VisitIdentifierExpr(node);
@@ -689,9 +689,9 @@ namespace Microsoft.Boogie
             minLayerNum = int.MaxValue;
             maxLayerNum = -1;
             canAccessSharedVars = true;
-            canAccessAuxVars = true;
+            canAccessGhostVars = true;
             Cmd ret = base.VisitAssertCmd(node);
-            canAccessAuxVars = false;
+            canAccessGhostVars = false;
             canAccessSharedVars = false;
             CheckAndAddLayers(node, node.Attributes, procToActionInfo[enclosingImpl.Proc].createdAtLayerNum);
             return ret;

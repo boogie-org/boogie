@@ -89,9 +89,9 @@ ensures {:layer 3} {:expand} emptyInv(put_in_cs, take_in_cs, items,status,T);
 ensures {:atomic} |{ var i: int; A: assume status[i] == NOT_IN_Q; status[i] := IN_Q; return true; }|;
 {
    var t: int;
-   var {:aux} oldH:int;
-   var {:aux} oldT:int;
-   var {:aux} oldStatusT:bool;
+   var {:ghost} oldH:int;
+   var {:ghost} oldT:int;
+   var {:ghost} oldStatusT:bool;
    
 
    oldH := H;
@@ -147,8 +147,8 @@ ensures {:atomic} |{ var i: int; A: goto B,C; B: assume status[i] == IN_Q; statu
 {
    var h, t: int;
    var chk: bool;
-   var {:aux} oldH:int;
-   var {:aux} oldT:int;
+   var {:ghost} oldH:int;
+   var {:ghost} oldT:int;
 
    oldH := H;
    oldT := T;
@@ -322,8 +322,8 @@ ensures {:atomic} |{ var i: int; A: goto B,C; B: assume status[i] == IN_Q; statu
 {
    var h, t: int;
    var chk: bool;
-   var {:aux} oldH:int;
-   var {:aux} oldT:int;
+   var {:ghost} oldH:int;
+   var {:ghost} oldT:int;
 
    oldH := H;
    oldT := T;
