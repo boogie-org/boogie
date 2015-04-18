@@ -244,6 +244,11 @@ namespace Microsoft.Boogie {
         return false;
       }
     }
+    public virtual bool IsFloat {
+      get {
+        return false;
+      }
+    }
     public virtual bool IsBool {
       get {
         return false;
@@ -996,10 +1001,8 @@ namespace Microsoft.Boogie {
         return this.T == SimpleType.Real;
       }
     }
-    public override bool IsFloat
-    {
-      get
-      {
+    public override bool IsFloat {
+      get {
         return this.T == SimpleType.Float;
       }
     }
@@ -1909,6 +1912,12 @@ Contract.Requires(that != null);
         return p != null && p.IsReal;
       }
     }
+    public override bool IsFloat {
+      get {
+        Type p = ProxyFor;
+        return p != null && p.IsFloat;
+      }
+    }
     public override bool IsBool {
       get {
         Type p = ProxyFor;
@@ -2757,9 +2766,18 @@ Contract.Requires(that != null);
         return ExpandedType.IsInt;
       }
     }
-    public override bool IsReal {
-      get {
+    public override bool IsReal
+    {
+      get
+      {
         return ExpandedType.IsReal;
+      }
+    }
+    public override bool IsFloat
+    {
+      get
+      {
+        return ExpandedType.IsFloat;
       }
     }
     public override bool IsBool {

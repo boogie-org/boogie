@@ -2258,6 +2258,7 @@ public class Errors {
 			case 132: s = "invalid AttributeOrTrigger"; break;
 			case 133: s = "invalid AttributeParameter"; break;
 			case 134: s = "invalid QSep"; break;
+   case 135: s = "\"float\" expected"; break;
 
 			default: s = "error " + n; break;
 		}
