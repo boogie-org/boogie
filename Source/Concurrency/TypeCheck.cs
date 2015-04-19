@@ -474,6 +474,15 @@ namespace Microsoft.Boogie
             }
             if (errorCount > 0) return;
             this.VisitProgram(program);
+            foreach (Procedure proc in program.Procedures)
+            {
+                if (procToActionInfo.ContainsKey(proc)) continue;
+                foreach (var ie in proc.Modifies)
+                {
+                    if (!SharedVariables.Contains(ie.Decl)) continue;
+                    Error(proc, "A ghost procedure must not modify a global variable with layer annotation");
+                }
+            }
             if (errorCount > 0) return;
             YieldTypeChecker.PerformYieldSafeCheck(this);
             new LayerEraser().VisitProgram(program);
@@ -549,12 +558,24 @@ namespace Microsoft.Boogie
                 {
                     Error(node, "The callee is not available in the caller procedure");
                 }
+                return base.VisitCallCmd(node);
             }
             else
             {
-                Error(node, "Yielding procedure can call only a yielding procedure");
+                foreach (var ie in node.Outs)
+                {
+                    if (ghostVars.Contains(ie.Decl)) continue;
+                    Error(node, "The output of a ghost procedure must be assigned to a ghost variable");
+                }
+                bool savedCanAccessSharedVars = canAccessSharedVars;
+                bool savedCanAccessAuxVars = canAccessGhostVars;
+                canAccessSharedVars = true;
+                canAccessGhostVars = true;
+                var retVal = base.VisitCallCmd(node);
+                canAccessSharedVars = savedCanAccessSharedVars;
+                canAccessGhostVars = savedCanAccessAuxVars;
+                return retVal;
             }
-            return base.VisitCallCmd(node);
         }
 
         public override Cmd VisitParCallCmd(ParCallCmd node)
