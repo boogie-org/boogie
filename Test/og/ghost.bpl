@@ -25,3 +25,22 @@ ensures {:right} |{ A: x := x + 2; return true; }|;
   yield;
 }
 
+procedure ghost_0() returns (z: int)
+ensures z == x;
+{
+  z := x;
+}
+
+procedure {:yields} {:layer 1,2} Incr2_0() 
+ensures {:right} |{ A: x := x + 2; return true; }|;
+{
+  var {:ghost} a: int;
+  var {:ghost} b: int;
+
+  yield;
+  call a := ghost_0();
+  par Incr() | Incr();
+  call b := ghost_0();
+  assert {:layer 1} b == a + 2;
+  yield;
+}
