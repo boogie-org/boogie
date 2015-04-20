@@ -209,7 +209,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
       } else if (ty.IsReal) {
         return Expr.Literal(Basetypes.BigDec.FromBigInt(n));
       } else if (ty.IsFloat) {
-        return Expr.Literal(Basetypes.FP32.FromBigInt(n));
+        return Expr.Literal(Basetypes.BigFloat.FromBigInt(n));
       } else {
         Contract.Assume(ty.IsInt);
         return Expr.Literal(Basetypes.BigNum.FromBigInt(n));
@@ -671,7 +671,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
           ((BigDec)node.Val).FloorCeiling(out floor, out ceiling);
           Lo = floor;
           Hi = ceiling;
-        } else if (node.Val is FP32) {
+        } else if (node.Val is BigFloat) {
           BigInteger floor, ceiling;
           ((BigDec)node.Val).FloorCeiling(out floor, out ceiling);
           Lo = floor;

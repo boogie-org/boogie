@@ -356,7 +356,7 @@ namespace Microsoft.Boogie {
       Contract.Ensures(Contract.Result<LiteralExpr>() != null);
       return new LiteralExpr(Token.NoToken, value);
     }
-    public static LiteralExpr Literal(FP32 value)
+    public static LiteralExpr Literal(BigFloat value)
     {
       Contract.Ensures(Contract.Result<LiteralExpr>() != null);
       return new LiteralExpr(Token.NoToken, value);
@@ -562,7 +562,7 @@ namespace Microsoft.Boogie {
     /// </summary>
     /// <param name="tok"></param>
     /// <param name="v"></param>
-    public LiteralExpr(IToken/*!*/ tok, FP32 v, bool immutable = false)
+    public LiteralExpr(IToken/*!*/ tok, BigFloat v, bool immutable = false)
       : base(tok, immutable)
     {
       Contract.Requires(tok != null);
@@ -630,7 +630,7 @@ namespace Microsoft.Boogie {
           return Type.Int;
         } else if (Val is BigDec) {
           return Type.Real;
-        } else if (Val is FP32) {
+        } else if (Val is BigFloat) {
           return Type.Float;
         } else if (Val is BvConst) {
           return Type.GetBvType(((BvConst)Val).Bits);

@@ -1719,7 +1719,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 	}
 
 	void AtomExpression(out Expr/*!*/ e) {
-  Contract.Ensures(Contract.ValueAtReturn(out e) != null); IToken/*!*/ x; int n; BigNum bn; BigDec bd; FP32 fp;
+  Contract.Ensures(Contract.ValueAtReturn(out e) != null); IToken/*!*/ x; int n; BigNum bn; BigDec bd; BigFloat fp;
 		List<Expr>/*!*/ es;  List<Variable>/*!*/ ds;  Trigger trig;
 		List<TypeVariable>/*!*/ typeParams;
 		IdentifierExpr/*!*/ id;
@@ -1863,7 +1863,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		
 	}
 
- void Float(out FP32 n)
+ void Float(out BigFloat n)
  {
    string s = "";
    if (la.kind == 6) {
@@ -1871,10 +1871,10 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
      s = t.val; 
    } else SynErr(126);
    try {
-     n = FP32.FromString(s); 
+     n = BigFloat.FromString(s); 
    } catch (FormatException) {
      this.SemErr("incorrectly formatted number");
-     n = FP32.ZERO; 
+     n = BigFloat.ZERO; 
    }
  }
 
