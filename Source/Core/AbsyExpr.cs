@@ -356,6 +356,11 @@ namespace Microsoft.Boogie {
       Contract.Ensures(Contract.Result<LiteralExpr>() != null);
       return new LiteralExpr(Token.NoToken, value);
     }
+    public static LiteralExpr Literal(FP32 value)
+    {
+      Contract.Ensures(Contract.Result<LiteralExpr>() != null);
+      return new LiteralExpr(Token.NoToken, value);
+    }
 
     private static LiteralExpr/*!*/ true_ = Literal(true);
     public static LiteralExpr/*!*/ True {
