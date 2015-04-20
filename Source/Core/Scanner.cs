@@ -502,6 +502,7 @@ public class Scanner {
 
 
 	void CheckLiteral() {
+   Console.Write(t.val + " is a literal");
 		switch (t.val) {
 			case "var": t.kind = 7; break;
 			case "where": t.kind = 13; break;
@@ -548,6 +549,7 @@ public class Scanner {
 			case "lambda": t.kind = 92; break;
 			default: break;
 		}
+  Console.WriteLine(" and is kind " + t.kind);
 	}
 
 	Token/*!*/ NextToken() {
@@ -777,6 +779,7 @@ public class Scanner {
 
 		}
 		t.val = new String(tval, 0, tlen);
+  Console.WriteLine("Scanning a token with value " + t._val);
 		return t;
 	}
 

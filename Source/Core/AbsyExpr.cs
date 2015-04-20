@@ -630,6 +630,8 @@ namespace Microsoft.Boogie {
           return Type.Int;
         } else if (Val is BigDec) {
           return Type.Real;
+        } else if (Val is FP32) {
+          return Type.Float;
         } else if (Val is BvConst) {
           return Type.GetBvType(((BvConst)Val).Bits);
         } else {
