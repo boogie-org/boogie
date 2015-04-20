@@ -1717,7 +1717,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 	}
 
 	void AtomExpression(out Expr/*!*/ e) {
-		Contract.Ensures(Contract.ValueAtReturn(out e) != null); IToken/*!*/ x; int n; BigNum bn; BigDec bd;
+  Contract.Ensures(Contract.ValueAtReturn(out e) != null); IToken/*!*/ x; int n; BigNum bn; BigDec bd; FP32 fp;
 		List<Expr>/*!*/ es;  List<Variable>/*!*/ ds;  Trigger trig;
 		List<TypeVariable>/*!*/ typeParams;
 		IdentifierExpr/*!*/ id;
@@ -1742,11 +1742,16 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 			e = new LiteralExpr(t, bn); 
 			break;
 		}
-		case 5: case 6: {
+		case 5: {
 			Dec(out bd);
 			e = new LiteralExpr(t, bd); 
 			break;
 		}
+  case 6: {
+   Float(out fp);
+   e = new LiteralExpr(t, fp);
+   break;
+  }
 		case 2: {
 			BvLit(out bn, out n);
 			e = new LiteralExpr(t, bn, n); 
@@ -1855,6 +1860,21 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		}
 		
 	}
+
+ void Float(out FP32 n)
+ {
+   string s = "";
+   if (la.kind == 6) {
+     Get();
+     s = t.val; 
+   } else SynErr(126);
+   try {
+     n = FP32.FromString(s); 
+   } catch (FormatException) {
+     this.SemErr("incorrectly formatted number");
+     n = FP32.ZERO; 
+   }
+ }
 
 	void BvLit(out BigNum n, out int m) {
 		Expect(2);
