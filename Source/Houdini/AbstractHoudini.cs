@@ -450,7 +450,18 @@ namespace Microsoft.Boogie.Houdini {
                 }
             }
 
-            var val = prover.Evaluate(arg);
+            object val;
+
+            try
+            {
+                val = prover.Evaluate(arg);
+            }
+            catch (ProverInterface.VCExprEvaluationException)
+            {
+                Console.WriteLine("AbsHoudni: Error evaluating expression {0}", arg);
+                throw;
+            }
+
             if (val is int || val is bool || val is Microsoft.Basetypes.BigNum)
             {
                 return model.MkElement(val.ToString());
