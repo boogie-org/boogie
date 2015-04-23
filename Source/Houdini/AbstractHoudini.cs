@@ -601,18 +601,23 @@ namespace Microsoft.Boogie.Houdini {
             // Inline functions
             (new InlineFunctionCalls()).VisitBlockList(impl.Blocks);
 
-            ExtractQuantifiedExprs(impl);
+            
             StripOutermostForall(impl);
+            //ExtractQuantifiedExprs(impl);
+            ExtractBoolExprs(impl);
 
             //CommandLineOptions.Clo.PrintInstrumented = true;
-            //var tt = new TokenTextWriter(Console.Out);
-            //impl.Emit(tt, 0);
-            //tt.Close();
+            //using (var tt = new TokenTextWriter(Console.Out))
+            //    impl.Emit(tt, 0);
 
             // Intercept the FunctionCalls of the existential functions, and replace them with Boolean constants
             var existentialFunctionNames = new HashSet<string>(existentialFunctions.Keys);
             var fv = new ReplaceFunctionCalls(existentialFunctionNames);
             fv.VisitBlockList(impl.Blocks);
+
+            //using (var tt = new TokenTextWriter(Console.Out))
+            //    impl.Emit(tt, 0);
+
 
             impl2functionsAsserted.Add(impl.Name, fv.functionsAsserted);
             impl2functionsAssumed.Add(impl.Name, fv.functionsAssumed);
@@ -678,6 +683,24 @@ namespace Microsoft.Boogie.Houdini {
                 foreach (var acmd in blk.Cmds.OfType<AssertCmd>())
                 {
                     var ret = ExtractQuantifiers.Extract(acmd.Expr, funcs);
+                    acmd.Expr = ret.Item1;
+                    impl.LocVars.AddRange(ret.Item2);
+                }
+            }
+        }
+
+        // convert "foo(... e ...) to:
+        //    (p iff e) ==> foo(... p ...) 
+        // where p is a fresh boolean variable, foo is an existential constant
+        // and e is a Boolean-typed argument of foo
+        private void ExtractBoolExprs(Implementation impl)
+        {
+            var funcs = new HashSet<string>(existentialFunctions.Keys);
+            foreach (var blk in impl.Blocks)
+            {
+                foreach (var acmd in blk.Cmds.OfType<AssertCmd>())
+                {
+                    var ret = ExtractBoolArgs.Extract(acmd.Expr, funcs);
                     acmd.Expr = ret.Item1;
                     impl.LocVars.AddRange(ret.Item2);
                 }
@@ -966,6 +989,61 @@ namespace Microsoft.Boogie.Houdini {
         }
 
     }
+
+    // convert "foo(... e ...) to:
+    //    (p iff e) ==> foo(... p ...) 
+    // where p is a fresh boolean variable, foo is an existential constant
+    // and e is a Boolean-typed argument of foo
+    class ExtractBoolArgs : StandardVisitor
+    {
+        static int freshConstCounter = 0;
+        HashSet<string> existentialFunctions;
+        HashSet<Constant> newConstants;
+
+        private ExtractBoolArgs(HashSet<string> existentialFunctions)
+        {
+            this.existentialFunctions = existentialFunctions;
+            this.newConstants = new HashSet<Constant>();
+        }
+
+        public static Tuple<Expr, IEnumerable<Constant>> Extract(Expr expr, HashSet<string> existentialFunctions)
+        {
+            var eq = new ExtractBoolArgs(existentialFunctions);
+            expr = eq.VisitExpr(expr);
+            return Tuple.Create(expr, eq.newConstants.AsEnumerable());
+        }
+
+        public override Expr VisitNAryExpr(NAryExpr node)
+        {
+            if (node.Fun is FunctionCall && existentialFunctions.Contains((node.Fun as FunctionCall).FunctionName))
+            {
+                var constants = new Dictionary<Constant, Expr>();
+                for (int i = 0; i < node.Args.Count; i++)
+                {
+                    if (node.Args[i].Type == Type.Bool)
+                    {
+                        var constant = new Constant(Token.NoToken, new TypedIdent(Token.NoToken,
+                            "boolArg@const" + freshConstCounter, Microsoft.Boogie.Type.Bool), false);
+                        freshConstCounter++;
+                        constants.Add(constant, node.Args[i]);
+                        node.Args[i] = Expr.Ident(constant);
+                    }
+                }
+
+                newConstants.UnionWith(constants.Keys);
+
+                Expr ret = Expr.True;
+                foreach (var tup in constants)
+                {
+                    ret = Expr.And(ret, Expr.Eq(Expr.Ident(tup.Key), tup.Value));
+                }
+                return Expr.Imp(ret, node);
+            } 
+
+            return base.VisitNAryExpr(node);
+        }
+    }
+
 
     // convert "foo(... forall e ...) to:
     //    (p iff forall e) ==> foo(... p ...) 
