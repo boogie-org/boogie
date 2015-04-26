@@ -1,5 +1,5 @@
 procedure F() returns () {
-	var x : float;
-	var y : float;
+	var x : real;
+	var y : real;
 	assert x == y;
 }

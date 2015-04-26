@@ -366,7 +366,7 @@ private class BvBounds : Expr {
 			Get();
 			Type(out retTy);
 			retTyd = new TypedIdent(retTy.tok, TypedIdent.NoName, retTy); 
-		} else SynErr(99);
+		} else SynErr(97);
 		if (la.kind == 27) {
 			Get();
 			Expression(out tmp);
@@ -374,7 +374,7 @@ private class BvBounds : Expr {
 			Expect(28);
 		} else if (la.kind == 8) {
 			Get();
-		} else SynErr(100);
+		} else SynErr(98);
 		if (retTyd == null) {
 		 // construct a dummy type for the case of syntax error
 		 retTyd = new TypedIdent(t, TypedIdent.NoName, new BasicType(t, SimpleType.Int));
@@ -497,7 +497,7 @@ private class BvBounds : Expr {
 			impl = new Implementation(x, x.val, typeParams,
 			                         Formal.StripWhereClauses(ins), Formal.StripWhereClauses(outs), locals, stmtList, kv == null ? null : (QKeyValue)kv.Clone(), this.errors);
 			
-		} else SynErr(101);
+		} else SynErr(99);
 		proc = new Procedure(x, x.val, typeParams, ins, outs, pre, mods, post, kv); 
 	}
 
@@ -610,7 +610,7 @@ private class BvBounds : Expr {
 			ty = new UnresolvedTypeIdentifier (tok, tok.val, args); 
 		} else if (la.kind == 17 || la.kind == 19) {
 			MapType(out ty);
-		} else SynErr(102);
+		} else SynErr(100);
 	}
 
 	void AttributesIdsTypeWhere(bool allowAttributes, bool allowWhereClauses, string context, System.Action<TypedIdent, QKeyValue> action ) {
@@ -677,7 +677,7 @@ private class BvBounds : Expr {
 			Get();
 			Type(out ty);
 			Expect(10);
-		} else SynErr(103);
+		} else SynErr(101);
 	}
 
 	void Ident(out IToken/*!*/ x) {
@@ -707,7 +707,7 @@ private class BvBounds : Expr {
 		} else if (la.kind == 17 || la.kind == 19) {
 			MapType(out ty);
 			ts.Add(ty); 
-		} else SynErr(104);
+		} else SynErr(102);
 	}
 
 	void MapType(out Bpl.Type/*!*/ ty) {
@@ -892,7 +892,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 			SpecPrePost(true, pre, post);
 		} else if (la.kind == 36 || la.kind == 37) {
 			SpecPrePost(false, pre, post);
-		} else SynErr(105);
+		} else SynErr(103);
 	}
 
 	void ImplBody(out List<Variable>/*!*/ locals, out StmtList/*!*/ stmtList) {
@@ -924,7 +924,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 			Proposition(out e);
 			Expect(8);
 			post.Add(new Ensures(tok, free, e, null, kv)); 
-		} else SynErr(106);
+		} else SynErr(104);
 	}
 
 	void StmtList(out StmtList/*!*/ stmtList) {
@@ -1063,7 +1063,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 			c = new YieldCmd(x); 
 			break;
 		}
-		default: SynErr(107); break;
+		default: SynErr(105); break;
 		}
 	}
 
@@ -1080,7 +1080,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		} else if (la.kind == 45) {
 			BreakCmd(out bcmd);
 			ec = bcmd; 
-		} else SynErr(108);
+		} else SynErr(106);
 	}
 
 	void TransferCmd(out TransferCmd/*!*/ tc) {
@@ -1100,7 +1100,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		} else if (la.kind == 39) {
 			Get();
 			tc = new ReturnCmd(t); 
-		} else SynErr(109);
+		} else SynErr(107);
 		Expect(8);
 	}
 
@@ -1125,7 +1125,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 				Get();
 				StmtList(out els);
 				elseOption = els; 
-			} else SynErr(110);
+			} else SynErr(108);
 		}
 		ifcmd = new IfCmd(x, guard, thn, elseIfOption, elseOption); 
 	}
@@ -1189,7 +1189,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		} else if (StartOf(9)) {
 			Expression(out ee);
 			e = ee; 
-		} else SynErr(111);
+		} else SynErr(109);
 		Expect(10);
 	}
 
@@ -1236,7 +1236,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 			}
 			Expect(8);
 			c = new AssignCmd(x, lhss, rhss); 
-		} else SynErr(112);
+		} else SynErr(110);
 	}
 
 	void CallCmd(out Cmd c) {
@@ -1353,7 +1353,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 			}
 			Expect(10);
 			c = new CallCmd(x, first.val, es, ids, kv); ((CallCmd) c).IsFree = isFree; ((CallCmd) c).IsAsync = isAsync; 
-		} else SynErr(113);
+		} else SynErr(111);
 	}
 
 	void Expressions(out List<Expr>/*!*/ es) {
@@ -1398,7 +1398,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 			Get();
 		} else if (la.kind == 56) {
 			Get();
-		} else SynErr(114);
+		} else SynErr(112);
 	}
 
 	void LogicalExpression(out Expr/*!*/ e0) {
@@ -1436,7 +1436,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 			Get();
 		} else if (la.kind == 58) {
 			Get();
-		} else SynErr(115);
+		} else SynErr(113);
 	}
 
 	void ExpliesOp() {
@@ -1444,7 +1444,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 			Get();
 		} else if (la.kind == 60) {
 			Get();
-		} else SynErr(116);
+		} else SynErr(114);
 	}
 
 	void RelationalExpression(out Expr/*!*/ e0) {
@@ -1462,7 +1462,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 			Get();
 		} else if (la.kind == 62) {
 			Get();
-		} else SynErr(117);
+		} else SynErr(115);
 	}
 
 	void OrOp() {
@@ -1470,7 +1470,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 			Get();
 		} else if (la.kind == 64) {
 			Get();
-		} else SynErr(118);
+		} else SynErr(116);
 	}
 
 	void BvTerm(out Expr/*!*/ e0) {
@@ -1537,7 +1537,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 			x = t; op=BinaryOperator.Opcode.Ge; 
 			break;
 		}
-		default: SynErr(119); break;
+		default: SynErr(117); break;
 		}
 	}
 
@@ -1569,7 +1569,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		} else if (la.kind == 75) {
 			Get();
 			x = t; op=BinaryOperator.Opcode.Sub; 
-		} else SynErr(120);
+		} else SynErr(118);
 	}
 
 	void Power(out Expr/*!*/ e0) {
@@ -1597,7 +1597,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		} else if (la.kind == 78) {
 			Get();
 			x = t; op=BinaryOperator.Opcode.RealDiv; 
-		} else SynErr(121);
+		} else SynErr(119);
 	}
 
 	void UnaryExpression(out Expr/*!*/ e) {
@@ -1616,7 +1616,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 			e = Expr.Unary(x, UnaryOperator.Opcode.Not, e); 
 		} else if (StartOf(14)) {
 			CoercionExpression(out e);
-		} else SynErr(122);
+		} else SynErr(120);
 	}
 
 	void NegOp() {
