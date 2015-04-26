@@ -2168,7 +2168,8 @@ namespace Microsoft.Boogie {
   public class ArithmeticCoercion : IAppliable {
     public enum CoercionType {
       ToInt,
-      ToReal
+      ToReal,
+      ToFloat
     }
 
     private IToken/*!*/ tok;
@@ -2194,6 +2195,12 @@ namespace Microsoft.Boogie {
           this.type = Type.Real;
           this.argType = Type.Int;
           this.hashCode = 2;
+          break;
+        case CoercionType.ToFloat:
+          this.name = "float";
+          this.type = Type.Real;
+          this.argType = Type.Int;
+          this.hashCode = 3;
           break;
         default:
           Contract.Assert(false);

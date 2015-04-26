@@ -667,7 +667,7 @@ private class BvBounds : Expr {
 		} else if (la.kind == 15) {
 			Get();
    ty = new BasicType(t, SimpleType.Real);
-  } else if (la.kind == 135) {
+  } else if (la.kind == 136) {
    Get();
    ty = new BasicType(t, SimpleType.Float);
   } else if (la.kind == 16) {
@@ -1744,12 +1744,12 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 			e = new LiteralExpr(t, bn); 
 			break;
 		}
-		case 5: {
+  case 5: case 6: {
 			Dec(out bd);
 			e = new LiteralExpr(t, bd); 
 			break;
 		}
-  case 6: {
+  case 135: {
    Float(out fp);
    e = new LiteralExpr(t, fp);
    break;
@@ -1801,6 +1801,15 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 			e = new NAryExpr(x, new ArithmeticCoercion(x, ArithmeticCoercion.CoercionType.ToReal), new List<Expr>{ e }); 
 			break;
 		}
+  case 136: {
+      Get();
+      x = t;
+      Expect(9);
+      Expression(out e);
+      Expect(10);
+      e = new NAryExpr(x, new ArithmeticCoercion(x, ArithmeticCoercion.CoercionType.ToFloat), new List<Expr> { e });
+      break;
+    }
 		case 9: {
 			Get();
 			if (StartOf(9)) {
@@ -1863,17 +1872,22 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		
 	}
 
+  /// <summary>
+  /// Creates a floating point from the current token value
+  /// </summary>
+  /// <param name="n"></param>
  void Float(out BigFloat n)
  {
+   //To be modified
    string s = "";
-   if (la.kind == 6) {
+   if (la.kind == 135) {
      Get();
      s = t.val; 
    } else SynErr(126);
    try {
      n = BigFloat.FromString(s); 
    } catch (FormatException) {
-     this.SemErr("incorrectly formatted number");
+     this.SemErr("incorrectly formatted floating point");
      n = BigFloat.ZERO; 
    }
  }
@@ -2103,7 +2117,7 @@ out QKeyValue kv, out Trigger trig, out Expr/*!*/ body) {
 		Expect(0);
 	}
 
-	static readonly bool[,]/*!*/ set = { //17 x 98 grid of true-false values
+	static readonly bool[,]/*!*/ set = { //grid is 17 x 98
 		{T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x},
 		{x,x,x,x, x,x,x,T, x,x,x,x, x,x,x,x, x,x,x,x, x,T,x,x, x,T,x,x, x,T,T,x, T,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x},
 		{x,T,x,x, x,x,x,x, x,T,x,x, x,x,T,T, T,T,x,T, x,x,x,x, x,x,x,T, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x},
@@ -2142,6 +2156,12 @@ public class Errors {
 		count++;
 	}
 
+ /// <summary>
+ /// Returns a string corresponding to the syntax error of the given type
+ /// Note that many of these errors (0-96, 135, 136) correspond to token types (e.g. the la token)
+ /// </summary>
+ /// <param name="n"></param>
+ /// <returns></returns>
 	string GetSyntaxErrorString(int n) {
 		string s;
 		switch (n) {
@@ -2280,7 +2300,8 @@ public class Errors {
 			case 132: s = "invalid AttributeOrTrigger"; break;
 			case 133: s = "invalid AttributeParameter"; break;
 			case 134: s = "invalid QSep"; break;
-   case 135: s = "\"float\" expected"; break;
+   case 135: s = "fp expected"; break; 
+   case 136: s = "\"float\" expected"; break;
 
 			default: s = "error " + n; break;
 		}
