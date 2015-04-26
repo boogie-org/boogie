@@ -170,7 +170,6 @@ private class BvBounds : Expr {
 		for (;;) {
 			t = la;
 			la = scanner.Scan();
-   //Console.WriteLine("Just got the value " + la.kind + " with value " + la.val);
 			if (la.kind <= maxT) { ++errDist; break; } //TODO: should modify float to have value < maxT...
 
 			la = t;
@@ -598,7 +597,6 @@ private class BvBounds : Expr {
 
 	void Type(out Bpl.Type/*!*/ ty) {
 		Contract.Ensures(Contract.ValueAtReturn(out ty) != null); IToken/*!*/ tok; ty = dummyType; 
-  Console.WriteLine(la.kind + " from parser.Type");
 		if (StartOf(5)) {
 			TypeAtom(out ty);
 		} else if (la.kind == 1) {
