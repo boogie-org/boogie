@@ -24,6 +24,7 @@ public class Parser {
 	public const int _string = 4;
 	public const int _decimal = 5;
 	public const int _float = 6;
+ public const int _fp = 97;
 	public const int maxT = 98;
 
 	const bool T = true;
@@ -170,7 +171,7 @@ private class BvBounds : Expr {
 		for (;;) {
 			t = la;
 			la = scanner.Scan();
-			if (la.kind <= maxT) { ++errDist; break; } //TODO: should modify float to have value < maxT...
+			if (la.kind <= maxT) { ++errDist; break; }
 
 			la = t;
 		}
@@ -2115,7 +2116,7 @@ out QKeyValue kv, out Trigger trig, out Expr/*!*/ body) {
 		Expect(0);
 	}
 
-	static readonly bool[,]/*!*/ set = { //grid is 17 x 98
+	static readonly bool[,]/*!*/ set = { //grid is 17 x 100
 		{T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x},
 		{x,x,x,x, x,x,x,T, x,x,x,x, x,x,x,x, x,x,x,x, x,T,x,x, x,T,x,x, x,T,T,x, T,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x},
 		{x,T,x,x, x,x,x,x, x,T,x,x, x,x,T,T, T,T,x,T, x,x,x,x, x,x,x,T, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x},
