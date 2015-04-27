@@ -77,6 +77,7 @@ namespace Microsoft.Boogie.VCExprAST {
     Result VisitDivOp(VCExprNAry node, Arg arg);
     Result VisitModOp(VCExprNAry node, Arg arg);
     Result VisitRealDivOp(VCExprNAry node, Arg arg);
+    Result VisitFloatDivOp(VCExprNAry node, Arg arg); //TODO: Add this to references from above and below
     Result VisitPowOp(VCExprNAry node, Arg arg);
     Result VisitLtOp(VCExprNAry node, Arg arg);
     Result VisitLeOp(VCExprNAry node, Arg arg);
@@ -189,6 +190,12 @@ namespace Microsoft.Boogie.VCExprAST {
       throw new NotImplementedException();
     }
 
+    public Result VisitFloatDivOp(VCExprNAry node, Arg arg)
+    {
+      Contract.Requires(node != null);
+      throw new NotImplementedException();
+    }
+
     public Result VisitPowOp(VCExprNAry node, Arg arg) {
       Contract.Requires(node != null);
       throw new NotImplementedException();
@@ -230,6 +237,12 @@ namespace Microsoft.Boogie.VCExprAST {
     }
 
     public Result VisitToRealOp(VCExprNAry node, Arg arg) {
+      Contract.Requires(node != null);
+      throw new NotImplementedException();
+    }
+
+    public Result VisitToFloat(VCExprNAry node, Arg arg) //TODO: modify later
+    {
       Contract.Requires(node != null);
       throw new NotImplementedException();
     }
@@ -1482,6 +1495,11 @@ namespace Microsoft.Boogie.VCExprAST {
       //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
+    public virtual Result VisitFloatDivOp(VCExprNAry node, Arg arg)
+    {
+      //Contract.Requires(node != null);
+      return StandardResult(node, arg);
+    }
     public virtual Result VisitPowOp(VCExprNAry node, Arg arg) {
       //Contract.Requires(node != null);
       return StandardResult(node, arg);
@@ -1515,6 +1533,11 @@ namespace Microsoft.Boogie.VCExprAST {
       return StandardResult(node, arg);
     }
     public virtual Result VisitToRealOp(VCExprNAry node, Arg arg) {
+      //Contract.Requires(node != null);
+      return StandardResult(node, arg);
+    }
+    public virtual Result VisitToFloatOp(VCExprNAry node, Arg arg)
+    {
       //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }

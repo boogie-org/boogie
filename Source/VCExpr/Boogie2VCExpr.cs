@@ -334,7 +334,10 @@ namespace Microsoft.Boogie.VCExprAST {
         return Gen.Integer(node.asBigNum);
       } else if (node.Val is BigDec) {
         return Gen.Real(node.asBigDec);
-      } else if (node.Val is BvConst) {
+      } else if (node.Val is BigFloat) {
+        return Gen.Float(node.asBigFloat);
+      }
+      else if (node.Val is BvConst) {
         return Gen.Bitvector((BvConst)node.Val);
       } else {
         System.Diagnostics.Debug.Assert(false, "unknown kind of literal " + node.tok.ToString());
@@ -1002,9 +1005,12 @@ namespace Microsoft.Boogie.VCExprAST {
         if (cce.NonNull(e.Type).IsInt) {
           return Gen.Function(VCExpressionGenerator.SubIOp, Gen.Integer(BigNum.ZERO), e);
         }
-        else {
+        else if (cce.NonNull(e.Type).IsReal) {
           return Gen.Function(VCExpressionGenerator.SubROp, Gen.Real(BigDec.ZERO), e);
         }
+        else  {//is float
+          return Gen.Function(VCExpressionGenerator.SubFOp, Gen.Float(BigFloat.ZERO), e);
+        } 
       }
       else {
         return Gen.Not(this.args);

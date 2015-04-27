@@ -1706,6 +1706,10 @@ namespace Microsoft.Boogie {
           if (arg0type.Unify(Type.Real) && arg1type.Unify(Type.Real)) {
             return Type.Real;
           }
+          if (arg0type.Unify(Type.Float) && arg1type.Unify(Type.Float))
+          {
+            return Type.Float;
+          }
           goto BAD_TYPE;
         case Opcode.Div:
         case Opcode.Mod:
@@ -1755,6 +1759,10 @@ namespace Microsoft.Boogie {
             return Type.Bool;
           }
           if (arg0type.Unify(Type.Real) && arg1type.Unify(Type.Real)) {
+            return Type.Bool;
+          }
+          if (arg0type.Unify(Type.Float) && arg1type.Unify(Type.Float))
+          {
             return Type.Bool;
           }
           goto BAD_TYPE;

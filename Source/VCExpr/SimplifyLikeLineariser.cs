@@ -380,9 +380,14 @@ namespace Microsoft.Boogie.VCExprAST {
     internal const string realSubName = "realSub";
     internal const string realMulName = "realMul";
     internal const string realDivName = "realDiv";
+    internal const string floatAddName = "floatAdd";
+    internal const string floatSubName = "floatSub";
+    internal const string floatMulName = "floatMul";
+    internal const string floatDivName = "floatDiv";
     internal const string realPowName = "realPow";
     internal const string toIntName = "toIntCoercion";
     internal const string toRealName = "toRealCoercion";
+    internal const string toFloatName = "toFloatCoercion";
 
     internal void AssertAsTerm(string x, LineariserOptions options) {
       Contract.Requires(options != null);
@@ -943,8 +948,11 @@ namespace Microsoft.Boogie.VCExprAST {
             WriteTermApplication(intAddName, node, options);
           }
         }
-        else {
+        else if (node.Type.IsReal) {
           WriteTermApplication(realAddName, node, options);
+        }
+        else {
+          WriteTermApplication(floatAddName, node, options);
         }
         return true;
       }
@@ -955,8 +963,11 @@ namespace Microsoft.Boogie.VCExprAST {
         if (node.Type.IsInt) {
           WriteTermApplication(intSubName, node, options);
         }
-        else {
+        else if (node.Type.IsReal) {
           WriteTermApplication(realSubName, node, options);
+        }
+        else {
+          WriteTermApplication(floatSubName, node, options);
         }
         return true;
       }
@@ -967,8 +978,11 @@ namespace Microsoft.Boogie.VCExprAST {
         if (node.Type.IsInt) {
           WriteTermApplication(intMulName, node, options);
         }
-        else {
+        else if (node.Type.IsReal) {
           WriteTermApplication(realMulName, node, options);
+        }
+        else {
+          WriteTermApplication(floatMulName, node, options);
         }
         return true;
       }
@@ -991,6 +1005,14 @@ namespace Microsoft.Boogie.VCExprAST {
         //Contract.Requires(options != null);
         //Contract.Requires(node != null);
         WriteTermApplication(realDivName, node, options);
+        return true;
+      }
+
+      public bool VisitFloatDivOp(VCExprNAry node, LineariserOptions options)
+      {
+        //Contract.Requires(options != null);
+        //Contract.Requires(node != null);
+        WriteTermApplication(floatDivName, node, options);
         return true;
       }
 
@@ -1054,6 +1076,14 @@ namespace Microsoft.Boogie.VCExprAST {
         //Contract.Requires(options != null);
         //Contract.Requires(node != null);
         WriteApplication(toRealName, node, options);
+        return true;
+      }
+
+      public bool VisitToFloatOp(VCExprNAry node, LineariserOptions options)
+      {
+        //Contract.Requires(options != null);
+        //Contract.Requires(node != null);
+        WriteApplication(toFloatName, node, options);
         return true;
       }
 

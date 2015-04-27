@@ -678,6 +678,12 @@ namespace Microsoft.Boogie.SMTLib
         return true;
       }
 
+      public bool VisitFloatDivOp(VCExprNAry node, LineariserOptions options)
+      {
+        WriteApplication("/f", node, options);
+        return true;
+      }
+
       public bool VisitPowOp(VCExprNAry node, LineariserOptions options) {
         WriteApplication("real_pow", node, options);
         return true;
@@ -726,6 +732,12 @@ namespace Microsoft.Boogie.SMTLib
 
       public bool VisitToRealOp(VCExprNAry node, LineariserOptions options) {
         WriteApplication("to_real", node, options);
+        return true;
+      }
+
+      public bool VisitToFloatOp(VCExprNAry node, LineariserOptions options)
+      {
+        WriteApplication("to_float", node, options);
         return true;
       }
 

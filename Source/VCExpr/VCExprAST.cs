@@ -55,6 +55,13 @@ namespace Microsoft.Boogie {
       return new VCExprRealLit(x);
     }
 
+    public VCExpr/*!*/ Float(BigFloat x)
+    {
+      Contract.Ensures(Contract.Result<VCExpr>() != null);
+
+      return new VCExprFloatLit(x);
+    }
+
     public VCExpr/*!*/ Function(VCExprOp/*!*/ op,
                             List<VCExpr/*!*/>/*!*/ arguments,
                             List<Type/*!*/>/*!*/ typeArguments) {
@@ -317,12 +324,16 @@ namespace Microsoft.Boogie {
 
     public static readonly VCExprOp AddIOp = new VCExprNAryOp(2, Type.Int);
     public static readonly VCExprOp AddROp = new VCExprNAryOp(2, Type.Real);
+    public static readonly VCExprOp AddFOp = new VCExprNAryOp(2, Type.Float);
     public static readonly VCExprOp SubIOp = new VCExprNAryOp(2, Type.Int);
     public static readonly VCExprOp SubROp = new VCExprNAryOp(2, Type.Real);
+    public static readonly VCExprOp SubFOp = new VCExprNAryOp(2, Type.Float);
     public static readonly VCExprOp MulIOp = new VCExprNAryOp(2, Type.Int);
     public static readonly VCExprOp MulROp = new VCExprNAryOp(2, Type.Real);
+    public static readonly VCExprOp MulFOp = new VCExprNAryOp(2, Type.Float);
     public static readonly VCExprOp DivIOp = new VCExprNAryOp(2, Type.Int);
     public static readonly VCExprOp DivROp = new VCExprNAryOp(2, Type.Real);
+    public static readonly VCExprOp DivFOp = new VCExprNAryOp(2, Type.Float);
     public static readonly VCExprOp ModOp = new VCExprNAryOp(2, Type.Int);
     public static readonly VCExprOp PowOp = new VCExprNAryOp(2, Type.Real);
     public static readonly VCExprOp LtOp = new VCExprNAryOp(2, Type.Bool);
@@ -336,6 +347,7 @@ namespace Microsoft.Boogie {
     public static readonly VCExprOp IfThenElseOp = new VCExprIfThenElseOp();
     public static readonly VCExprOp ToIntOp = new VCExprNAryOp(1, Type.Int);
     public static readonly VCExprOp ToRealOp = new VCExprNAryOp(1, Type.Real);
+    public static readonly VCExprOp ToFloatOp = new VCExprNAryOp(1, Type.Float);
 
     public static readonly VCExprOp TickleBoolOp = new VCExprCustomOp("tickleBool", 1, Type.Bool);
 
@@ -391,6 +403,7 @@ namespace Microsoft.Boogie {
       DivOp,
       ModOp,
       RealDivOp,
+      FloatDivOp,
       PowOp,
       LtOp,
       LeOp,
@@ -400,7 +413,8 @@ namespace Microsoft.Boogie {
       Subtype3Op,
       BvConcatOp,
       ToIntOp,
-      ToRealOp
+      ToRealOp,
+      ToFloatOp
     };
     internal static Dictionary<VCExprOp/*!*/, SingletonOp>/*!*/ SingletonOpDict;
     [ContractInvariantMethod]
@@ -425,6 +439,7 @@ namespace Microsoft.Boogie {
       SingletonOpDict.Add(MulROp, SingletonOp.MulOp);
       SingletonOpDict.Add(DivIOp, SingletonOp.DivOp);
       SingletonOpDict.Add(DivROp, SingletonOp.RealDivOp);
+      SingletonOpDict.Add(DivFOp, SingletonOp.FloatDivOp);
       SingletonOpDict.Add(ModOp, SingletonOp.ModOp);
       SingletonOpDict.Add(PowOp, SingletonOp.PowOp);
       SingletonOpDict.Add(LtOp, SingletonOp.LtOp);
@@ -435,6 +450,7 @@ namespace Microsoft.Boogie {
       SingletonOpDict.Add(Subtype3Op, SingletonOp.Subtype3Op);
       SingletonOpDict.Add(ToIntOp, SingletonOp.ToIntOp);
       SingletonOpDict.Add(ToRealOp, SingletonOp.ToRealOp);
+      SingletonOpDict.Add(ToFloatOp, SingletonOp.ToFloatOp);
     }
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -856,6 +872,31 @@ namespace Microsoft.Boogie.VCExprAST {
     }
   }
 
+  public class VCExprFloatLit : VCExprLiteral
+  {
+    public readonly BigFloat Val;
+    internal VCExprFloatLit(BigFloat val)
+      : base(Type.Float)
+    {
+      this.Val = val;
+    }
+    [Pure]
+    [Reads(ReadsAttribute.Reads.Nothing)]
+    public override bool Equals(object that)
+    {
+      if (Object.ReferenceEquals(this, that))
+        return true;
+      if (that is VCExprFloatLit)
+        return Val == ((VCExprFloatLit)that).Val;
+      return false;
+    }
+    [Pure]
+    public override int GetHashCode()
+    {
+      return Val.GetHashCode() * 72321;
+    }
+  }
+
   /////////////////////////////////////////////////////////////////////////////////
   // Operator expressions with fixed arity
   [ContractClassFor(typeof(VCExprNAry))]
@@ -1265,6 +1306,8 @@ namespace Microsoft.Boogie.VCExprAST {
             return visitor.VisitModOp(expr, arg);
           case VCExpressionGenerator.SingletonOp.RealDivOp:
             return visitor.VisitRealDivOp(expr, arg);
+          case VCExpressionGenerator.SingletonOp.FloatDivOp:
+            return visitor.VisitFloatDivOp(expr, arg);
           case VCExpressionGenerator.SingletonOp.PowOp:
             return visitor.VisitPowOp(expr, arg);
           case VCExpressionGenerator.SingletonOp.LtOp:

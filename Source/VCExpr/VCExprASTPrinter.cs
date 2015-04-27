@@ -302,6 +302,12 @@ namespace Microsoft.Boogie.VCExprAST {
       //Contract.Requires(node != null);
       return PrintNAry("/", node, wr);
     }
+    public bool VisitFloatDivOp(VCExprNAry node, TextWriter wr)
+    {
+      //Contract.Requires(wr != null);
+      //Contract.Requires(node != null);
+      return PrintNAry("/f", node, wr);
+    }
     public bool VisitPowOp(VCExprNAry node, TextWriter wr) {
       //Contract.Requires(wr != null);
       //Contract.Requires(node != null);
@@ -346,6 +352,12 @@ namespace Microsoft.Boogie.VCExprAST {
       //Contract.Requires(wr != null);
       //Contract.Requires(node != null);
       return PrintNAry("real", node, wr);
+    }
+    public bool VisitToFloatOp(VCExprNAry node, TextWriter wr)
+    {
+      //Contract.Requires(wr != null);
+      //Contract.Requires(node != null);
+      return PrintNAry("float", node, wr);
     }
     public bool VisitBoogieFunctionOp(VCExprNAry node, TextWriter wr) {
       //Contract.Requires(wr != null);
