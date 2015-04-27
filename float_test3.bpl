@@ -2,5 +2,5 @@
 	var x : float;
 	var y : float;
 	y := x - x;
-	assert y != x;
+	assert y == x;
 }
