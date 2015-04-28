@@ -1,6 +1,17 @@
 # Boogie
 
-[![Build Status](https://travis-ci.org/boogie-org/boogie.svg)](https://travis-ci.org/boogie-org/boogie)
+## Build Status
+
+| Linux                         | Windows                         |
+|-------------------------------|---------------------------------|
+| [![linux build status][1]][2] | [![windows_build_status][3]][4] |
+
+[1]: https://travis-ci.org/boogie-org/boogie.svg
+[2]: https://travis-ci.org/boogie-org/boogie
+[3]: https://pmbuilds.inf.ethz.ch/buildStatus/icon?job=boogie
+[4]: #FIXME
+
+## About
 
 Boogie is an intermediate verification language (IVL), intended as a layer on which
 to build program verifiers for other languages. Several program verifiers have
