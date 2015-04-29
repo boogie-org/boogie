@@ -2656,6 +2656,13 @@ namespace Microsoft.Boogie {
             reqCopy.Condition = Substituter.Apply(s, req.Condition);
             AssertCmd/*!*/ a = new AssertRequiresCmd(this, reqCopy);
             Contract.Assert(a != null);
+            if (Attributes != null)
+            {
+              // Inherit attributes of call.
+              var attrCopy = (QKeyValue)cce.NonNull(Attributes.Clone());
+              attrCopy = Substituter.Apply(s, attrCopy);
+              a.Attributes = attrCopy;
+            }
             a.ErrorDataEnhanced = reqCopy.ErrorDataEnhanced;
             newBlockBody.Add(a);
           }
@@ -2676,6 +2683,13 @@ namespace Microsoft.Boogie {
         Contract.Assert(expr != null);
         AssertCmd/*!*/ a = new AssertCmd(tok, expr);
         Contract.Assert(a != null);
+        if (Attributes != null)
+        {
+          // Inherit attributes of call.
+          var attrCopy = (QKeyValue)cce.NonNull(Attributes.Clone());
+          attrCopy = Substituter.Apply(s, attrCopy);
+          a.Attributes = attrCopy;
+        }
         a.ErrorDataEnhanced = AssertCmd.GenerateBoundVarMiningStrategy(expr);
         newBlockBody.Add(a);
       }

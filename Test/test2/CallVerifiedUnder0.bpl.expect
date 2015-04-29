@@ -1,0 +1,14 @@
+CallVerifiedUnder0.bpl(9,5): Error BP5002: A precondition for this call might not hold.
+CallVerifiedUnder0.bpl(5,3): Related location: This is the precondition that might not hold.
+Execution trace:
+    CallVerifiedUnder0.bpl(9,5): anon0
+CallVerifiedUnder0.bpl(21,5): Error BP5002: A precondition for this call might not hold.
+CallVerifiedUnder0.bpl(5,3): Related location: This is the precondition that might not hold.
+Execution trace:
+    CallVerifiedUnder0.bpl(21,5): anon0
+CallVerifiedUnder0.bpl(34,5): Error BP5002: A precondition for this call might not hold.
+CallVerifiedUnder0.bpl(5,3): Related location: This is the precondition that might not hold.
+Execution trace:
+    CallVerifiedUnder0.bpl(34,5): anon0
+
+Boogie program verifier finished with 3 verified, 3 errors
