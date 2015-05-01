@@ -1378,7 +1378,6 @@ namespace Microsoft.Boogie.Houdini {
 
         class Disjunct
         {
-            public static int DisjunctBound = 3;
             HashSet<int> pos;
             HashSet<int> neg;
             bool isTrue;
@@ -1390,7 +1389,7 @@ namespace Microsoft.Boogie.Houdini {
                 neg = new HashSet<int>();
             }
 
-            public Disjunct(IEnumerable<int> pos, IEnumerable<int> neg)
+            public Disjunct(IEnumerable<int> pos, IEnumerable<int> neg, int bound)
             {
                 this.isTrue = false;
                 this.pos = new HashSet<int>(pos);
@@ -1401,7 +1400,7 @@ namespace Microsoft.Boogie.Houdini {
                     this.pos = new HashSet<int>();
                     this.neg = new HashSet<int>();
                 }
-                if (this.pos.Count + this.neg.Count > DisjunctBound)
+                if (this.pos.Count + this.neg.Count > bound)
                 {
                     // Set to true
                     this.isTrue = true;
@@ -1411,14 +1410,14 @@ namespace Microsoft.Boogie.Houdini {
 
             }
 
-            public Disjunct OR(Disjunct that)
+            public Disjunct OR(Disjunct that, int bound)
             {
                 if (isTrue)
                     return this;
                 if (that.isTrue)
                     return that;
 
-                return new Disjunct(this.pos.Concat(that.pos), this.neg.Concat(that.neg));
+                return new Disjunct(this.pos.Concat(that.pos), this.neg.Concat(that.neg), bound);
             }
 
             public bool Implies(Disjunct that)
@@ -1441,17 +1440,19 @@ namespace Microsoft.Boogie.Houdini {
 
         // Conjunction of Disjuncts
         List<Disjunct> conjuncts;
+        int DisjunctBound;
         bool isFalse;
 
-        public PredicateAbsElem()
+        public PredicateAbsElem(int bound)
         {
             this.conjuncts = new List<Disjunct>();
             this.isFalse = true;
+            this.DisjunctBound = bound;
         }
 
         public IAbstractDomain Bottom()
         {
-            return new PredicateAbsElem();
+            return new PredicateAbsElem(DisjunctBound);
         }
 
         public IAbstractDomain MakeTop(out bool changed)
@@ -1462,7 +1463,7 @@ namespace Microsoft.Boogie.Houdini {
                 return this;
             }
             changed = true;
-            var ret = new PredicateAbsElem();
+            var ret = new PredicateAbsElem(DisjunctBound);
             ret.isFalse = false;
             return ret;
         }
@@ -1476,21 +1477,21 @@ namespace Microsoft.Boogie.Houdini {
             if (!this.isFalse && conjuncts.Count == 0)
                 return this;
 
-            var ret = new PredicateAbsElem();
+            var ret = new PredicateAbsElem(DisjunctBound);
             ret.isFalse = false;
 
             for (int i = 0; i < state.Count; i++)
             {
                 var b = (state[i] as Model.Boolean).Value;
                 Disjunct d = null;
-                if (b) d = new Disjunct(new int[] { i }, new int[] { });
-                else d = new Disjunct(new int[] { }, new int[] { i });
+                if (b) d = new Disjunct(new int[] { i }, new int[] { }, DisjunctBound);
+                else d = new Disjunct(new int[] { }, new int[] { i }, DisjunctBound);
 
                 if (isFalse)
                     ret.AddDisjunct(d);
                 else
                 {
-                    conjuncts.Iter(c => ret.AddDisjunct(c.OR(d)));
+                    conjuncts.Iter(c => ret.AddDisjunct(c.OR(d, DisjunctBound)));
                 }
             }
 
@@ -2213,7 +2214,8 @@ namespace Microsoft.Boogie.Houdini {
                   System.Tuple.Create("HoudiniConst", HoudiniConst.GetBottom() as IAbstractDomain),
                   System.Tuple.Create("Intervals", new Intervals() as IAbstractDomain),
                   System.Tuple.Create("ConstantProp", ConstantProp.GetBottom() as IAbstractDomain),
-                  System.Tuple.Create("PredicateAbs", new PredicateAbsElem() as IAbstractDomain),
+                  System.Tuple.Create("PredicateAbs", new PredicateAbsElem(3) as IAbstractDomain),
+                  System.Tuple.Create("PredicateAbsFull", new PredicateAbsElem(1000) as IAbstractDomain),
                   System.Tuple.Create("ImplicationDomain", ImplicationDomain.GetBottom() as IAbstractDomain),
                   System.Tuple.Create("PowDomain", PowDomain.GetBottom() as IAbstractDomain),
                   System.Tuple.Create("EqualitiesDomain", EqualitiesDomain.GetBottom() as IAbstractDomain),
