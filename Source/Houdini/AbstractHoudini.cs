@@ -1355,6 +1355,13 @@ namespace Microsoft.Boogie.Houdini {
         }
     }
 
+    public class PredicateAbsFullElem : PredicateAbsElem
+    {
+        public PredicateAbsFullElem()
+            : base(1000)
+        { }
+    }
+
     public class PredicateAbsElem : IAbstractDomain
     {
         public static class ExprExt
@@ -1442,6 +1449,13 @@ namespace Microsoft.Boogie.Houdini {
         List<Disjunct> conjuncts;
         int DisjunctBound;
         bool isFalse;
+
+        public PredicateAbsElem()
+        {
+            this.conjuncts = new List<Disjunct>();
+            this.isFalse = true;
+            this.DisjunctBound = 3;
+        }
 
         public PredicateAbsElem(int bound)
         {
@@ -2214,8 +2228,8 @@ namespace Microsoft.Boogie.Houdini {
                   System.Tuple.Create("HoudiniConst", HoudiniConst.GetBottom() as IAbstractDomain),
                   System.Tuple.Create("Intervals", new Intervals() as IAbstractDomain),
                   System.Tuple.Create("ConstantProp", ConstantProp.GetBottom() as IAbstractDomain),
-                  System.Tuple.Create("PredicateAbs", new PredicateAbsElem(3) as IAbstractDomain),
-                  System.Tuple.Create("PredicateAbsFull", new PredicateAbsElem(1000) as IAbstractDomain),
+                  System.Tuple.Create("PredicateAbs", new PredicateAbsElem() as IAbstractDomain),
+                  System.Tuple.Create("PredicateAbsFull", new PredicateAbsFullElem() as IAbstractDomain),
                   System.Tuple.Create("ImplicationDomain", ImplicationDomain.GetBottom() as IAbstractDomain),
                   System.Tuple.Create("PowDomain", PowDomain.GetBottom() as IAbstractDomain),
                   System.Tuple.Create("EqualitiesDomain", EqualitiesDomain.GetBottom() as IAbstractDomain),
