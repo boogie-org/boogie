@@ -116,7 +116,7 @@ namespace Microsoft.Boogie.SMTLib
           }
           sb.Append(']');
           TypeToStringHelper(m.Result, sb);
-        } else if (t.IsBool || t.IsInt || t.IsReal || t.IsBv) {
+        } else if (t.IsBool || t.IsInt || t.IsReal || t.IsFloat || t.IsBv) {
           sb.Append(TypeToString(t));
         } else {
           System.IO.StringWriter buffer = new System.IO.StringWriter();
@@ -140,6 +140,8 @@ namespace Microsoft.Boogie.SMTLib
         return "Int";
       else if (t.IsReal)
         return "Real";
+      else if (t.IsFloat)
+        return "Real"; //TODO: Make to be a float
       else if (t.IsBv) {
         return "(_ BitVec " + t.BvBits + ")";
       } else {
@@ -193,6 +195,15 @@ namespace Microsoft.Boogie.SMTLib
       } 
       else if (node is VCExprRealLit) {
         BigDec lit = ((VCExprRealLit)node).Val;
+        if (lit.IsNegative)
+          // In SMT2 "-42" is an identifier (SMT2, Sect. 3.2 "Symbols")
+          wr.Write("(- 0.0 {0})", lit.Abs.ToDecimalString());
+        else
+          wr.Write(lit.ToDecimalString());
+      }
+      else if (node is VCExprFloatLit)
+      {
+        BigFloat lit = ((VCExprFloatLit)node).Val;
         if (lit.IsNegative)
           // In SMT2 "-42" is an identifier (SMT2, Sect. 3.2 "Symbols")
           wr.Write("(- 0.0 {0})", lit.Abs.ToDecimalString());

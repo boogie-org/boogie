@@ -1424,6 +1424,13 @@ namespace Microsoft.Boogie.TypeErasure {
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       return CastArguments(node, Type.Real, bindings, 0);
     }
+    public override VCExpr VisitFloatDivOp(VCExprNAry node, VariableBindings bindings)
+    {
+      Contract.Requires((bindings != null));
+      Contract.Requires((node != null));
+      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      return CastArguments(node, Type.Float, bindings, 0);
+    }
     public override VCExpr VisitPowOp(VCExprNAry node, VariableBindings bindings) {
       Contract.Requires((bindings != null));
       Contract.Requires((node != null));
