@@ -673,7 +673,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
           Hi = ceiling;
         } else if (node.Val is BigFloat) {
           BigInteger floor, ceiling;
-          ((BigDec)node.Val).FloorCeiling(out floor, out ceiling);
+          ((BigFloat)node.Val).FloorCeiling(out floor, out ceiling);
           Lo = floor;
           Hi = ceiling;
         } else if (node.Val is bool) {

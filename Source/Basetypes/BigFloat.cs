@@ -88,40 +88,27 @@ namespace Microsoft.Basetypes
 
     [Pure]
     public static BigFloat FromString(string v) {
-      if (v == null) throw new FormatException();
-
-      BIM integral = BIM.Zero;
-      BIM fraction = BIM.Zero;
-      int exponent = 0;
-
-      int len = v.Length;
-
-      int i = v.IndexOf('e');
-      if (i >= 0) {
-        if (i + 1 == v.Length) throw new FormatException();
-        exponent = Int32.Parse(v.Substring(i + 1, len - i - 1));
-        len = i;
-      }
-
-      int fractionLen = 0;
-      i = v.IndexOf('.');
-      if (i >= 0) {
-        if (i + 1 == v.Length) throw new FormatException();
-        fractionLen = len - i - 1;
-        fraction = BIM.Parse(v.Substring(i + 1, fractionLen));
-        len = i;
-      }
-
-      integral = BIM.Parse(v.Substring(0, len));
-
-      if (!fraction.IsZero) {
-        while (fractionLen > 0) {
-          integral = integral * two;
-          exponent = exponent - 1;
-          fractionLen = fractionLen - 1;
+      String[] vals = v.Split(' ');
+      if (vals.Length == 0 || vals.Length > 4)
+        throw new FormatException();
+      try
+      {
+        switch (vals.Length) {
+          case 1:
+            return Round(decimal.Parse(vals[0]), 23, 8);
+          case 2:
+            return new BigFloat(BIM.Parse(vals[0]), Int32.Parse(vals[1]), 23, 8);
+          case 3:
+            return Round(decimal.Parse(vals[0]), Int32.Parse(vals[1]), Int32.Parse(vals[2]));
+          case 4:
+            return new BigFloat(BIM.Parse(vals[0]), Int32.Parse(vals[1]), Int32.Parse(vals[2]), Int32.Parse(vals[3]));
+          default:
+            throw new FormatException(); //Unreachable
         }
       }
-      return new BigFloat(integral - fraction, exponent, 23, 8);
+      catch (Exception) { //Catch parsing errors
+        throw new FormatException();
+      }
     }
 
     internal BigFloat(BIM mantissa, int exponent, int mantissaSize, int exponentSize) {
@@ -165,6 +152,11 @@ namespace Microsoft.Basetypes
 
     ////////////////////////////////////////////////////////////////////////////
     // Conversion operations
+
+    public static BigFloat Round(decimal d, int mantissaSize, int exponentSize)
+    { //TODO: round the given decimal to the nearest fp value
+      return new BigFloat(0, 0, mantissaSize, exponentSize);
+    }
 
     // ``floor`` rounds towards negative infinity (like SMT-LIBv2's to_int).
     /// <summary>
