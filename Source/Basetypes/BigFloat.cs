@@ -25,11 +25,13 @@ namespace Microsoft.Basetypes
 
     // the internal representation
     [Rep]
-    internal readonly BIM mantissa; //TODO: restrict mantissa to be 23-bits wide
+    internal readonly BIM mantissa; //TODO: restrict mantissa.  Note that mantissa includes the sign
     [Rep]
     internal readonly int exponent; //TODO: restrict exponent to be 8-bits wide
     [Rep]
-    internal readonly Boolean isNegative; //represents the sign bit
+    internal readonly int mantissaSize; //Represents the maximum size of the mantissa
+    [Rep]
+    internal readonly int exponentSize; //Represents the maximum size of the exponent
 
     public BIM Mantissa {
       get {
@@ -43,9 +45,24 @@ namespace Microsoft.Basetypes
       }
     }
 
+    public int MantissaSize
+    {
+      get
+      {
+        return mantissaSize;
+      }
+    }
+
+    public int ExponentSize
+    {
+      get
+      {
+        return exponentSize;
+      }
+    }
+
     public static readonly BigFloat ZERO = FromInt(0);
     private static readonly BIM two = new BIM(2);
-    private static readonly BIM ten = new BIM(10);
 
 
     ////////////////////////////////////////////////////////////////////////////
@@ -56,17 +73,21 @@ namespace Microsoft.Basetypes
 
     [Pure]
     public static BigFloat FromInt(int v) {
-      return new BigFloat(v, 0, v < 0); //TODO: modify for correct fp representation
+      return new BigFloat(v, 0, 23, 8); //TODO: modify for correct fp representation
     }
 
     [Pure]
     public static BigFloat FromBigInt(BIM v) {
-      return new BigFloat(v, 0, v < 0); //TODO: modify for correct fp representation
+      return new BigFloat(v, 0, 23, 8); //TODO: modify for correct fp representation
+    }
+
+    public static BigFloat FromBigDec(BIM v)
+    {
+      return new BigFloat(v, 0, 23, 8); //TODO: modify for correct fp representation
     }
 
     [Pure]
     public static BigFloat FromString(string v) {
-      //TODO: completely copied from BigDec.cs at the moment
       if (v == null) throw new FormatException();
 
       BIM integral = BIM.Zero;
@@ -95,29 +116,24 @@ namespace Microsoft.Basetypes
 
       if (!fraction.IsZero) {
         while (fractionLen > 0) {
-          integral = integral * ten;
+          integral = integral * two;
           exponent = exponent - 1;
           fractionLen = fractionLen - 1;
         }
       }
-      return new BigFloat(integral - fraction, exponent, integral.Sign == -1);
+      return new BigFloat(integral - fraction, exponent, 23, 8);
     }
 
-    internal BigFloat(BIM mantissa, int exponent, bool isNegative) {
-      this.isNegative = isNegative;
-      if (mantissa.IsZero) {
-        this.mantissa = mantissa;
-        this.exponent = 0;
-      }
-      else {
-        while (mantissa % ten == BIM.Zero) { //TODO: get this to work as expected :P
-          mantissa = mantissa / ten;
-          exponent = exponent + 1;
-        }
-        this.mantissa = mantissa;
-        this.exponent = exponent;
-      }
+    internal BigFloat(BIM mantissa, int exponent, int mantissaSize, int exponentSize) {
+      this.mantissaSize = mantissaSize;
+      this.exponentSize = mantissaSize;
+      this.mantissa = mantissa;
+      this.exponent = exponent;
     }
+
+    private int maxMantissa() { return (int)Math.Pow(2, mantissaSize); }
+    private int maxExponent() { return (int)Math.Pow(2, exponentSize); }
+
 
 
     ////////////////////////////////////////////////////////////////////////////
@@ -166,13 +182,13 @@ namespace Microsoft.Basetypes
       } else if (0 <= e) {
         // it's an integer
         for (; 0 < e; e--) {
-          n = n * ten;
+          n = n * two;
         }
         floor = ceiling = n;
       } else {
         // it's a non-zero integer, so the ceiling is one more than the floor
         for (; e < 0 && !n.IsZero; e++) {
-          n = n / ten;  // Division rounds towards negative infinity
+          n = n / two;  // Division rounds towards negative infinity
         }
 
         if (this.mantissa >= 0) {
@@ -280,7 +296,7 @@ namespace Microsoft.Basetypes
     public BigFloat Abs {
       //TODO: fix for fp functionality
       get {
-        return new BigFloat(BIM.Abs(this.mantissa), this.exponent, false);
+        return new BigFloat(BIM.Abs(this.mantissa), this.exponent, this.mantissaSize, this.exponentSize);
       }
     }
 
@@ -288,7 +304,7 @@ namespace Microsoft.Basetypes
     public BigFloat Negate {
       //TODO: Modify for correct fp functionality
       get {
-        return new BigFloat(BIM.Negate(this.mantissa), this.exponent, this.Mantissa >= 0);
+        return new BigFloat(BIM.Negate(this.mantissa), this.exponent, this.mantissaSize, this.exponentSize);
       }
     }
 
@@ -312,11 +328,11 @@ namespace Microsoft.Basetypes
       }
 
       while (e2 > e1) {
-        m2 = m2 * ten;
+        m2 = m2 * two;
         e2 = e2 - 1;
       }
 
-      return new BigFloat(m1 + m2, e1, true);
+      return new BigFloat(m1 + m2, e1, Math.Max(x.MantissaSize, y.MantissaSize), Math.Max(x.ExponentSize, y.ExponentSize));
     }
 
     [Pure]
@@ -327,7 +343,7 @@ namespace Microsoft.Basetypes
     [Pure]
     public static BigFloat operator *(BigFloat x, BigFloat y) {
       //TODO: modify for correct fp functionality
-      return new BigFloat(x.mantissa * y.mantissa, x.exponent + y.exponent, false);
+      return new BigFloat(x.mantissa * y.mantissa, x.exponent + y.exponent, Math.Max(x.MantissaSize, y.MantissaSize), Math.Max(x.ExponentSize, y.ExponentSize));
     }
 
 
@@ -342,13 +358,13 @@ namespace Microsoft.Basetypes
 
     public bool IsNegative {
       get {
-        return (isNegative);
+        return (this.mantissa < BIM.Zero);
       }
     }
 
     public bool IsZero {
       get {
-        return this.mantissa.IsZero;
+        return this.mantissa.IsZero && this.exponent == 0;
       }
     }
 
