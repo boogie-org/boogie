@@ -1742,8 +1742,8 @@ namespace VC {
         Contract.Assert(c != null);
         // If an assumption variable for postconditions is included here, it must have been assigned within a loop.
         // We do not need to havoc it if we have performed a modular proof of the loop (i.e., using only the loop
-        // invariant) in the previous snapshot and are therefore not going refer to the assumption variable after
-        // the loop. We can achieve this by simply not updating/adding it in the incarnation map.
+        // invariant) in the previous snapshot and, consequently, the corresponding assumption did not affect the
+        // anything after the loop. We can achieve this by simply not updating/adding it in the incarnation map.
         List<IdentifierExpr> havocVars = hc.Vars.Where(v => !(QKeyValue.FindBoolAttribute(v.Decl.Attributes, "assumption") && v.Decl.Name.StartsWith("a##post##"))).ToList();
         // First, compute the new incarnations
         foreach (IdentifierExpr ie in havocVars) {
@@ -1765,6 +1765,18 @@ namespace VC {
               Expr copy = Substituter.ApplyReplacingOldExprs(updatedIncarnationSubst, oldFrameSubst, w);
               passiveCmds.Add(new AssumeCmd(c.tok, copy));
             }
+          }
+        }
+
+        // Add the following assume-statement for each assumption variable 'v', where 'v_post' is the new incarnation and 'v_pre' is the old one:
+        // assume v_post ==> v_pre;
+        foreach (IdentifierExpr ie in havocVars)
+        {
+          if (QKeyValue.FindBoolAttribute(ie.Decl.Attributes, "assumption"))
+          {
+            var preInc = (Expr)(preHavocIncarnationMap[ie.Decl].Clone());
+            var postInc = (Expr)(incarnationMap[ie.Decl].Clone());
+            passiveCmds.Add(new AssumeCmd(c.tok, Expr.Imp(postInc, preInc)));
           }
         }
       }
