@@ -2609,6 +2609,9 @@ namespace VC {
           if(impl.LocVars.Any(v => isVisible(v)))
               throw new InvalidProgramForSecureVc("SecureVc: Visible Local variables not allowed");
 
+          // Desugar procedure calls
+          DesugarCalls(impl);
+
           // Gather spec, remove existing ensures
           var secureAsserts = new List<AssertCmd>();
           var logicalAsserts = new List<AssertCmd>();
