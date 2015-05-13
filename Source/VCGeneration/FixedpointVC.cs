@@ -2189,7 +2189,13 @@ namespace Microsoft.Boogie
 					idx.Add(args[1]);
 					return Expr.Store(args[0],idx,args[2]);
 				}
-				
+
+                if (f.Op is VCExprBoogieFunctionOp)
+                {
+                    return new NAryExpr(Token.NoToken, 
+                        new FunctionCall((f.Op as VCExprBoogieFunctionOp).Func), args);
+                }
+
 				var op = VCOpToOp (f.Op);
 				return MakeBinary(op,args);
 			}

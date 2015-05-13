@@ -231,6 +231,7 @@ void ObjectInvariant()
             else
                 decl = "(declare-fun " + printedName + " (" + argTypes + ") " + TypeToStringReg(f.OutParams[0].TypedIdent.Type) + ")";
             AddDeclaration(decl);
+            if (declHandler != null) declHandler.FuncDecl(f);
           }
           KnownFunctions.Add(f);
         } else {
