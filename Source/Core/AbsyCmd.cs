@@ -1529,18 +1529,6 @@ namespace Microsoft.Boogie {
     }
 
     public override void Emit(TokenTextWriter stream, int level) {
-      if (stream.UseForComputingChecksums)
-      {
-        var lhs = Lhss.FirstOrDefault() as SimpleAssignLhs;
-        if (lhs != null
-            && lhs.AssignedVariable.Decl != null
-            && (QKeyValue.FindBoolAttribute(lhs.AssignedVariable.Decl.Attributes, "assumption")
-                || lhs.AssignedVariable.Decl.Name.Contains("##old##")))
-        {
-          return;
-        }
-      }
-      
       stream.Write(this, level, "");
 
       string/*!*/ sep = "";
@@ -3213,9 +3201,6 @@ namespace Microsoft.Boogie {
     }
     public override void Emit(TokenTextWriter stream, int level) {
       //Contract.Requires(stream != null);
-
-      if (stream.UseForComputingChecksums && QKeyValue.FindBoolAttribute(Attributes, "precondition_previous_snapshot")) { return; }
-
       stream.Write(this, level, "assume ");
       EmitAttributes(stream, Attributes);
       this.Expr.Emit(stream);

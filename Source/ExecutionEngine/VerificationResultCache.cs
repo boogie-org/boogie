@@ -126,6 +126,7 @@ namespace Microsoft.Boogie
           var lhs = new SimpleAssignLhs(Token.NoToken, new IdentifierExpr(Token.NoToken, lv));
           var rhs = LiteralExpr.And(new IdentifierExpr(Token.NoToken, lv), assumedExpr);
           var assumed = new AssignCmd(currentImplementation.tok, new List<AssignLhs> { lhs }, new List<Expr> { rhs });
+          assumed.IrrelevantForChecksumComputation = true;
           currentImplementation.ExplicitAssumptionAboutCachedPrecondition = assumed;
           after.Add(assumed);
         }
@@ -257,6 +258,7 @@ namespace Microsoft.Boogie
           if (precond != null)
           {
             var assume = new AssumeCmd(node.tok, precond, new QKeyValue(Token.NoToken, "precondition_previous_snapshot", new List<object>(), null));
+            assume.IrrelevantForChecksumComputation = true;
             beforePrecondtionCheck.Add(assume);
           }
 
@@ -268,7 +270,9 @@ namespace Microsoft.Boogie
               new TypedIdent(Token.NoToken, string.Format("{0}##old##{1}", unmod.Name, FreshTemporaryVariableName), unmod.Type));
             var lhs = new SimpleAssignLhs(Token.NoToken, new IdentifierExpr(Token.NoToken, oldUnmod));
             var rhs = new IdentifierExpr(Token.NoToken, unmod.Decl);
-            before.Add(new AssignCmd(Token.NoToken, new List<AssignLhs> { lhs }, new List<Expr> { rhs }));
+            var cmd = new AssignCmd(Token.NoToken, new List<AssignLhs> { lhs }, new List<Expr> { rhs });
+            cmd.IrrelevantForChecksumComputation = true;
+            before.Add(cmd);
             var eq = LiteralExpr.Eq(new IdentifierExpr(Token.NoToken, oldUnmod), new IdentifierExpr(Token.NoToken, unmod.Decl));
             eq.Type = Type.Bool;
             eq.TypeParameters = SimpleTypeParamInstantiation.EMPTY;
@@ -284,7 +288,9 @@ namespace Microsoft.Boogie
             oldSubst[mod.Decl] = new IdentifierExpr(Token.NoToken, oldMod);
             var lhs = new SimpleAssignLhs(Token.NoToken, new IdentifierExpr(Token.NoToken, oldMod));
             var rhs = new IdentifierExpr(Token.NoToken, mod.Decl);
-            before.Add(new AssignCmd(Token.NoToken, new List<AssignLhs> { lhs }, new List<Expr> { rhs }));
+            var cmd = new AssignCmd(Token.NoToken, new List<AssignLhs> { lhs }, new List<Expr> { rhs });
+            cmd.IrrelevantForChecksumComputation = true;
+            before.Add(cmd);
           }
           
           assumedExpr = node.Postcondition(oldProc, eqs, oldSubst, Program, e => FunctionExtractor.Extract(e, Program, axioms));
@@ -304,6 +310,7 @@ namespace Microsoft.Boogie
           var lhs = new SimpleAssignLhs(Token.NoToken, new IdentifierExpr(Token.NoToken, lv));
           var rhs = LiteralExpr.And(new IdentifierExpr(Token.NoToken, lv), assumedExpr);
           var assumed = new AssignCmd(node.tok, new List<AssignLhs> { lhs }, new List<Expr> { rhs });
+          assumed.IrrelevantForChecksumComputation = true;
           after.Add(assumed);
         }
 
