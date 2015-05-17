@@ -583,6 +583,15 @@ namespace Microsoft.Boogie {
       return (Expr)new FunctionCallReresolvingReplacingOldSubstituter(program, always, forOld).Visit(expr);
     }
 
+    public static Expr FunctionCallReresolvingApply(Substitution always, Substitution forOld, Expr expr, Program program)
+    {
+      Contract.Requires(always != null);
+      Contract.Requires(forOld != null);
+      Contract.Requires(expr != null);
+      Contract.Ensures(Contract.Result<Expr>() != null);
+      return (Expr)new FunctionCallReresolvingNormalSubstituter(program, always, forOld).Visit(expr);
+    }
+
     // ----------------------------- Substitutions for Cmd -------------------------------
 
     /// <summary>
@@ -660,7 +669,7 @@ namespace Microsoft.Boogie {
 
     // ------------------------------------------------------------
 
-    private sealed class NormalSubstituter : Duplicator
+    private class NormalSubstituter : Duplicator
     {
       private readonly Substitution/*!*/ always;
       private readonly Substitution/*!*/ forold;
@@ -723,6 +732,32 @@ namespace Microsoft.Boogie {
       readonly Program Program;
 
       public FunctionCallReresolvingReplacingOldSubstituter(Program program, Substitution always, Substitution forold)
+        : base(always, forold)
+      {
+        Program = program;
+      }
+
+      public override Expr VisitNAryExpr(NAryExpr node)
+      {
+        var result = base.VisitNAryExpr(node);
+        var nAryExpr = result as NAryExpr;
+        if (nAryExpr != null)
+        {
+          var funCall = nAryExpr.Fun as FunctionCall;
+          if (funCall != null)
+          {
+            funCall.Func = Program.FindFunction(funCall.FunctionName);
+          }
+        }
+        return result;
+      }
+    }
+
+    private sealed class FunctionCallReresolvingNormalSubstituter : NormalSubstituter
+    {
+      readonly Program Program;
+
+      public FunctionCallReresolvingNormalSubstituter(Program program, Substitution always, Substitution forold)
         : base(always, forold)
       {
         Program = program;

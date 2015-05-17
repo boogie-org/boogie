@@ -96,7 +96,64 @@ namespace Microsoft.Boogie
       assumptionVariableCount = 0;
       temporaryVariableCount = 0;
       currentImplementation = implementation;
-      var result = VisitImplementation(implementation);
+
+      #region Introduce explict assumption about the precondition.
+
+      var oldProc = programInCachedSnapshot.FindProcedure(currentImplementation.Proc.Name);
+      if (oldProc != null
+          && oldProc.DependencyChecksum != currentImplementation.Proc.DependencyChecksum
+          && currentImplementation.ExplicitAssumptionAboutCachedPrecondition == null)
+      {
+        var axioms = new List<Axiom>();
+        var after = new List<Cmd>();
+        Expr assumedExpr = new LiteralExpr(Token.NoToken, false);
+        var canUseSpecs = DependencyCollector.CanExpressOldSpecs(oldProc, Program, true);
+        if (canUseSpecs && oldProc.SignatureEquals(currentImplementation.Proc))
+        {
+          var always = Substituter.SubstitutionFromHashtable(currentImplementation.GetImplFormalMap(), true, currentImplementation.Proc);
+          var forOld = Substituter.SubstitutionFromHashtable(new Dictionary<Variable, Expr>());
+          var clauses = oldProc.Requires.Select(r => Substituter.FunctionCallReresolvingApply(always, forOld, r.Condition, Program));
+          var conj = Expr.And(clauses, true);
+          assumedExpr = conj != null ? FunctionExtractor.Extract(conj, Program, axioms) : new LiteralExpr(Token.NoToken, true);
+        }
+
+        if (assumedExpr != null)
+        {
+          var lv = new LocalVariable(Token.NoToken,
+            new TypedIdent(Token.NoToken, string.Format("a##cached##{0}", FreshAssumptionVariableName), Type.Bool),
+            new QKeyValue(Token.NoToken, "assumption", new List<object>(), null));
+          currentImplementation.InjectAssumptionVariable(lv, !canUseSpecs);
+          var lhs = new SimpleAssignLhs(Token.NoToken, new IdentifierExpr(Token.NoToken, lv));
+          var rhs = LiteralExpr.And(new IdentifierExpr(Token.NoToken, lv), assumedExpr);
+          var assumed = new AssignCmd(currentImplementation.tok, new List<AssignLhs> { lhs }, new List<Expr> { rhs });
+          currentImplementation.ExplicitAssumptionAboutCachedPrecondition = assumed;
+          after.Add(assumed);
+        }
+
+        if (CommandLineOptions.Clo.TraceCachingForTesting || CommandLineOptions.Clo.TraceCachingForBenchmarking)
+        {
+          using (var tokTxtWr = new TokenTextWriter("<console>", Console.Out, false, false))
+          {
+            var loc = currentImplementation.tok != null && currentImplementation.tok != Token.NoToken ? string.Format("{0}({1},{2})", currentImplementation.tok.filename, currentImplementation.tok.line, currentImplementation.tok.col) : "<unknown location>";
+            Console.Out.WriteLine("Processing implementation {0} (at {1}):", currentImplementation.Name, loc);
+            foreach (var a in axioms)
+            {
+              Console.Out.Write("  >>> added axiom: ");
+              a.Expr.Emit(tokTxtWr);
+              Console.Out.WriteLine();
+            }
+            foreach (var b in after)
+            {
+              Console.Out.Write("  >>> added after assuming the current precondition: ");
+              b.Emit(tokTxtWr, 0);
+            }
+          }
+        }
+      }
+
+      #endregion
+
+      var result = VisitImplementation(currentImplementation);
       currentImplementation = null;
       this.programInCachedSnapshot = null;
       return result;
@@ -192,7 +249,7 @@ namespace Microsoft.Boogie
         Expr assumedExpr = new LiteralExpr(Token.NoToken, false);
         // TODO(wuestholz): Try out two alternatives: only do this for low priority implementations or not at all.
         var canUseSpecs = DependencyCollector.CanExpressOldSpecs(oldProc, Program);
-        if (canUseSpecs)
+        if (canUseSpecs && oldProc.SignatureEquals(node.Proc))
         {
           var desugaring = node.Desugaring;
           Contract.Assert(desugaring != null);
@@ -231,12 +288,16 @@ namespace Microsoft.Boogie
           }
           
           assumedExpr = node.Postcondition(oldProc, eqs, oldSubst, Program, e => FunctionExtractor.Extract(e, Program, axioms));
+          if (assumedExpr == null)
+          {
+            assumedExpr = new LiteralExpr(Token.NoToken, true);
+          }
         }
 
         if (assumedExpr != null)
         {
           var lv = new LocalVariable(Token.NoToken,
-            new TypedIdent(Token.NoToken, string.Format("a##post##{0}", FreshAssumptionVariableName), Type.Bool),
+            new TypedIdent(Token.NoToken, string.Format("a##cached##{0}", FreshAssumptionVariableName), Type.Bool),
             new QKeyValue(Token.NoToken, "assumption", new List<object>(), null));
           node.AssignedAssumptionVariable = lv;
           currentImplementation.InjectAssumptionVariable(lv, !canUseSpecs);
@@ -431,7 +492,7 @@ namespace Microsoft.Boogie
       }
     }
 
-    public static bool CanExpressOldSpecs(Procedure oldProc, Program newProg)
+    public static bool CanExpressOldSpecs(Procedure oldProc, Program newProg, bool ignoreModifiesClauses = false)
     {
       Contract.Requires(oldProc != null && newProg != null);
 
@@ -439,7 +500,7 @@ namespace Microsoft.Boogie
       var globals = newProg.GlobalVariables;
       return oldProc.DependenciesCollected
              && (oldProc.FunctionDependencies == null || oldProc.FunctionDependencies.All(dep => funcs.Any(f => f.Name == dep.Name && f.DependencyChecksum == dep.DependencyChecksum)))
-             && oldProc.Modifies.All(m => globals.Any(g => g.Name == m.Name));
+             && (ignoreModifiesClauses || oldProc.Modifies.All(m => globals.Any(g => g.Name == m.Name)));
     }
 
     public override Procedure VisitProcedure(Procedure node)

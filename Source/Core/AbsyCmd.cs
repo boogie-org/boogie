@@ -1144,6 +1144,12 @@ namespace Microsoft.Boogie {
         return;
       }
 
+      if (cmd.IrrelevantForChecksumComputation)
+      {
+        cmd.Checksum = currentChecksum;
+        return;
+      }
+
       var assumeCmd = cmd as AssumeCmd;
       if (assumeCmd != null
           && QKeyValue.FindBoolAttribute(assumeCmd.Attributes, "assumption_variable_initialization"))
@@ -1161,7 +1167,7 @@ namespace Microsoft.Boogie {
         if (havocCmd != null)
         {
           tokTxtWr.Write("havoc ");
-          var relevantVars = havocCmd.Vars.Where(e => usedVariables.Contains(e.Decl) && !e.Decl.Name.StartsWith("a##post##")).OrderBy(e => e.Name).ToList();
+          var relevantVars = havocCmd.Vars.Where(e => usedVariables.Contains(e.Decl) && !e.Decl.Name.StartsWith("a##cached##")).OrderBy(e => e.Name).ToList();
           relevantVars.Emit(tokTxtWr, true);
           tokTxtWr.WriteLine(";");
         }
@@ -1244,6 +1250,7 @@ namespace Microsoft.Boogie {
   public abstract class Cmd : Absy {
     public byte[] Checksum { get; internal set; }
     public byte[] SugaredCmdChecksum { get; internal set; }
+    public bool IrrelevantForChecksumComputation { get; set; }
 
     public Cmd(IToken/*!*/ tok)
       : base(tok) {
@@ -2849,7 +2856,7 @@ namespace Microsoft.Boogie {
       var clauses = procedure.Ensures.Select(e => Substituter.FunctionCallReresolvingApplyReplacingOldExprs(calleeSubstitution, substOldCombined, e.Condition, program)).Concat(modifies);
       // TODO(wuestholz): Try extracting a function for each clause:
       // return Conjunction(clauses.Select(c => extract(c)));
-      var conj = Conjunction(clauses);
+      var conj = Expr.And(clauses, true);
       return conj != null ? extract(conj) : conj;
     }
 
@@ -2860,28 +2867,8 @@ namespace Microsoft.Boogie {
       var clauses = procedure.Requires.Where(r => !r.Free).Select(r => Substituter.FunctionCallReresolvingApplyReplacingOldExprs(calleeSubstitution, calleeSubstitutionOld, r.Condition, program));
       // TODO(wuestholz): Try extracting a function for each clause:
       // return Conjunction(clauses.Select(c => extract(c)));
-      var conj = Conjunction(clauses);
+      var conj = Expr.And(clauses, true);
       return conj != null ? extract(conj) : conj;
-    }
-
-    private static Expr Conjunction(IEnumerable<Expr> conjuncts)
-    {
-      // TODO(wuestholz): Maybe we should use 'LiteralExpr.BinaryTreeAnd' instead.
-      Expr result = null;
-      foreach (var c in conjuncts)
-      {
-        if (result != null)
-        {
-          result = LiteralExpr.And(result, c);
-          result.Type = Type.Bool;
-        }
-        else
-        {
-          result = c;
-          result.Type = Type.Bool;
-        }
-      }
-      return result;
     }
 
     public override Absy StdDispatch(StandardVisitor visitor) {
