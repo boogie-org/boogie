@@ -667,6 +667,10 @@ namespace Microsoft.Boogie
       {
         priority = Priority.LOW;
       }
+      else if (result.Outcome == ConditionGeneration.Outcome.TimedOut && CommandLineOptions.Clo.RunDiagnosticsOnTimeout)
+      {
+        priority = Priority.MEDIUM;
+      }
       else
       {
         priority = Priority.SKIP;
