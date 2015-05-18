@@ -2273,7 +2273,7 @@ namespace VC {
         return;
       }
 
-      public override void OnResourceExceeded(string message)
+      public override void OnResourceExceeded(string message, IEnumerable<Tuple<AssertCmd, TransferCmd>> assertCmds = null)
       {
           //Contract.Requires(message != null);
       }

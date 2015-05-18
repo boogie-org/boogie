@@ -2096,9 +2096,17 @@ namespace VC {
         return cce.NonNull((Absy)label2absy[id]);
       }
 
-      public override void OnResourceExceeded(string msg) {
+      public override void OnResourceExceeded(string msg, IEnumerable<Tuple<AssertCmd, TransferCmd>> assertCmds = null) {
         //Contract.Requires(msg != null);
         resourceExceededMessage = msg;
+        if (assertCmds != null)
+        {
+          foreach (var cmd in assertCmds)
+          {
+            Counterexample cex = AssertCmdToCounterexample(cmd.Item1, cmd.Item2 , new List<Block>(), null, null, context);
+            callback.OnCounterexample(cex, msg);
+          }
+        }
       }
 
       public override void OnProverWarning(string msg) {

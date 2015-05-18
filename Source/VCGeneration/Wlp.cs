@@ -118,6 +118,17 @@ namespace VC {
           if (ac.VerifiedUnder != null)
           {
             VU = ctxt.Ctxt.BoogieExprTranslator.Translate(ac.VerifiedUnder);
+
+            if (CommandLineOptions.Clo.RunDiagnosticsOnTimeout)
+            {
+              ctxt.Ctxt.TimeoutDiagnosticIDToAssertion[ctxt.Ctxt.TimoutDiagnosticsCount] = new Tuple<AssertCmd,TransferCmd>(ac, b.TransferCmd);
+              VU = gen.Or(VU, gen.Function(VCExpressionGenerator.TimeoutDiagnosticsOp, gen.Integer(BigNum.FromInt(ctxt.Ctxt.TimoutDiagnosticsCount++))));
+            }
+          }
+          else if (CommandLineOptions.Clo.RunDiagnosticsOnTimeout)
+          {
+            ctxt.Ctxt.TimeoutDiagnosticIDToAssertion[ctxt.Ctxt.TimoutDiagnosticsCount] = new Tuple<AssertCmd,TransferCmd>(ac, b.TransferCmd);
+            VU = gen.Function(VCExpressionGenerator.TimeoutDiagnosticsOp, gen.Integer(BigNum.FromInt(ctxt.Ctxt.TimoutDiagnosticsCount++)));
           }
           ctxt.Ctxt.BoogieExprTranslator.isPositiveContext = !ctxt.Ctxt.BoogieExprTranslator.isPositiveContext;
         }
