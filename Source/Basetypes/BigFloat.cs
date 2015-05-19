@@ -25,21 +25,19 @@ namespace Microsoft.Basetypes
 
     // the internal representation
     [Rep]
-    internal readonly Boolean[] mantissa; //Note that the first element of the mantissa array is the least significant bit for coding simplicity
+    internal readonly BIM mantissa; //Note that the mantissa arrangement matches standard fp arrangement (most significant bit is farthest left)
     [Rep]
     internal readonly Boolean isNegative; //The left-most (sign) bit in the float representation
     [Rep]
-    internal readonly int exponent;
+    internal readonly int mantissaSize;
     [Rep]
-    internal readonly int exponentSize; //The maximum bit size of the exponent
+    internal readonly int exponent; //The value of the exponent is always positive as per fp representation requirements
+    [Rep]
+    internal readonly int exponentSize; //The bit size of the exponent
 
     public BIM Mantissa {
       get {
-        BIM toReturn = 0;
-        for (int i = 0; i < mantissa.Length; i++)
-          if (mantissa[i])
-            toReturn += (int) Math.Pow(2, i);
-        return isNegative ? -toReturn : toReturn;
+        return isNegative ? -mantissa : mantissa;
       }
     }
 
@@ -53,7 +51,7 @@ namespace Microsoft.Basetypes
     {
       get
       {
-        return mantissa.Length;
+        return mantissaSize;
       }
     }
 
@@ -65,8 +63,18 @@ namespace Microsoft.Basetypes
       }
     }
 
-    public static readonly BigFloat ZERO = FromInt(0);
+    public static BigFloat ZERO(int mantissaSize, int exponentSize) { return new BigFloat(0, 0, mantissaSize, exponentSize); } //Does not include negative zero
+    public static BigFloat INF(int mantissaSize, int exponentSize) { return new BigFloat(0, 0, mantissaSize, exponentSize);   } //Modify for IEEE standard
+    public static BigFloat NEGINF(int mantissaSize, int exponentSize) { return new BigFloat(0, 0, mantissaSize, exponentSize); } //Modify for IEEE standard
+    public static BigFloat NAN(int mantissaSize, int exponentSize) { return new BigFloat(0, 0, mantissaSize, exponentSize); } //Modify for IEEE standard
+
     private static readonly BIM two = new BIM(2);
+    private static BIM two_n(int n) {
+      BIM toReturn = new BIM(1);
+      for (int i = 0; i < n; i++)
+        toReturn = toReturn * two;
+      return toReturn;
+    }
 
 
     ////////////////////////////////////////////////////////////////////////////
@@ -116,17 +124,39 @@ namespace Microsoft.Basetypes
     }
 
     internal BigFloat(BIM mantissa, int exponent, int mantissaSize, int exponentSize) {
-      this.mantissa = new Boolean[mantissaSize];
+      this.mantissa = mantissa;
+      this.mantissaSize = mantissaSize;
       this.exponentSize = exponentSize;
-      this.exponent = exponent;
-      //TODO: Add overflow check for exponent vs exponent size
+      this.exponent = exponent + (int)Math.Pow(2, exponentSize - 1);
+      if (exponent < 0) { //ZERO case since the exponent is less than the minimum
+        mantissa = 0;
+        exponent = 0;
+        this.isNegative = false;
+        return;
+      }
+      
       this.isNegative = mantissa < 0;
       if (this.isNegative)
-        mantissa = -mantissa;
+        mantissa = -mantissa; // ==> mantissa > 0
+
+      BIM max = maxMantissa();
+      while (this.mantissa > max) {
+        this.mantissa = this.mantissa / two;
+        this.exponent++;
+      }
+
+      //TODO: Add overflow check for exponent vs exponent size
+      //this.exponent = this.exponent % this.exponentSize; ??
     }
 
-    private int maxExponent() { return (int)Math.Pow(2, exponentSize - 1) - 1; }
-    private int minExponent() { return -(int)Math.Pow(2, exponentSize - 1); }
+    private BIM maxMantissa()
+    {
+      BIM result = new BIM(1);
+      for (int i = 0; i < mantissaSize; i++)
+        result = result * two;
+      return result - 1;
+    }
+    private int maxExponent() { return (int)Math.Pow(2, exponentSize) - 1; }
 
 
 
@@ -151,25 +181,32 @@ namespace Microsoft.Basetypes
 
     [Pure]
     public override string/*!*/ ToString() {
-      //TODO: modify to reflect floating points
       Contract.Ensures(Contract.Result<string>() != null);
-      return String.Format("{0}e{1}", Mantissa.ToString(), Exponent.ToString());
+      return String.Format("{0}x2^{1}", Mantissa.ToString(), Exponent.ToString());
     }
 
 
     ////////////////////////////////////////////////////////////////////////////
     // Conversion operations
 
+    /// <summary>
+    /// Converts the given decimal value (provided as a string) to the nearest floating point approximation
+    /// the returned fp assumes the given mantissa and exponent size
+    /// </summary>
+    /// <param name="value"></param>
+    /// <param name="mantissaSize"></param>
+    /// <param name="exponentSize"></param>
+    /// <returns></returns>
     public static BigFloat Round(String value, int mantissaSize, int exponentSize)
     {
       int i = value.IndexOf('.');
       if (i == -1)
         return Round(BIM.Parse(value), 0, mantissaSize, exponentSize);
-      return Round(BIM.Parse(value.Substring(0, i - 1)), BIM.Parse(value.Substring(i + 1, value.Length - i - 1)), mantissaSize, exponentSize);
+      return Round(i == 0 ? 0 : BIM.Parse(value.Substring(0, i)), BIM.Parse(value.Substring(i + 1, value.Length - i - 1)), mantissaSize, exponentSize);
     }
 
     /// <summary>
-    /// Converts value.dec_value to a float with mantissaSize, exponentSize
+    /// Converts value.dec_value to a the closest float approximation with the given mantissaSize, exponentSize
     /// Returns the result of this calculation
     /// </summary>
     /// <param name="value"></param>
@@ -178,8 +215,54 @@ namespace Microsoft.Basetypes
     /// <param name="exponentSize"></param>
     /// <returns></returns>
     public static BigFloat Round(BIM value, BIM dec_value, int mantissaSize, int exponentSize)
-    { //TODO: round the given decimal to the nearest fp value
-      return new BigFloat(0, 0, mantissaSize, exponentSize);
+    {
+      int exp = 0;
+      BIM one = new BIM(1);
+      BIM ten = new BIM(10);
+      BIM dec_max = new BIM(0); //represents the order of magnitude of dec_value for carrying during calculations
+
+      //First, determine the exponent
+      while (value > one) { //Divide by two, increment exponent by 1
+        if (!(value % two).IsZero) { //Add "1.0" to the decimal
+          dec_max = new BIM(10);
+          while (dec_max < dec_value)
+            dec_max = dec_max * ten;
+          dec_value = dec_value + dec_max;
+        }
+        value = value / two;
+        if (!(dec_value % ten).IsZero)
+          dec_value = dec_value * ten; //Creates excess zeroes to avoid losing data during division
+        dec_value = dec_value / two;
+        exp++;
+      }
+      if (value.IsZero && !dec_value.IsZero) {
+        dec_max = new BIM(10);
+        while (dec_max < dec_value)
+          dec_max = dec_max * ten;
+        while (value.IsZero) {//Multiply by two, decrement exponent by 1
+          dec_value = dec_value * two;
+          if (dec_value >= dec_max) {
+            dec_value = dec_value - dec_max;
+            value = value + one;
+          }
+          exp--;
+        }
+      }
+
+      //Second, calculate the mantissa
+      value = new BIM(0); //remove implicit bit
+      dec_max = new BIM(10);
+      while (dec_max < dec_value)
+        dec_max = dec_max * ten;
+      for (int i = mantissaSize; i > 0 && !dec_value.IsZero; i--) { //Multiply by two until the mantissa is fully calculated
+        dec_value = dec_value * two;
+        if (dec_value >= dec_max) {
+          dec_value = dec_value - dec_max;
+          value = value + two_n(i); //Note that i is decrementing so that the most significant bit is left-most in the representation
+        }
+      }
+
+      return new BigFloat(value, exp, mantissaSize, exponentSize);
     }
 
     // ``floor`` rounds towards negative infinity (like SMT-LIBv2's to_int).
@@ -336,16 +419,18 @@ namespace Microsoft.Basetypes
       int e1 = x.Exponent;
       BIM m2 = y.Mantissa;
       int e2 = y.Exponent;
-      if (e2 < e1) {
+      m1 = m1 + two_n(x.mantissaSize + 1); //Add implicit bit
+      m2 = m2 + two_n(y.mantissaSize + 1);
+      if (e2 > e1) {
         m1 = y.Mantissa;
         e1 = y.Exponent;
         m2 = x.Mantissa;
         e2 = x.Exponent;
       }
 
-      while (e2 > e1) {
-        m2 = m2 * two;
-        e2 = e2 - 1;
+      while (e2 < e1) {
+        m2 = m2 / two;
+        e2++;
       }
 
       return new BigFloat(m1 + m2, e1, Math.Max(x.MantissaSize, y.MantissaSize), Math.Max(x.ExponentSize, y.ExponentSize));
@@ -358,7 +443,6 @@ namespace Microsoft.Basetypes
 
     [Pure]
     public static BigFloat operator *(BigFloat x, BigFloat y) {
-      //TODO: modify for correct fp functionality
       return new BigFloat(x.Mantissa * y.Mantissa, x.Exponent + y.Exponent, Math.Max(x.MantissaSize, y.MantissaSize), Math.Max(x.ExponentSize, y.ExponentSize));
     }
 
@@ -368,13 +452,13 @@ namespace Microsoft.Basetypes
 
     public bool IsPositive {
       get {
-        return (Mantissa > BIM.Zero);
+        return (!isNegative);
       }
     }
 
     public bool IsNegative {
       get {
-        return (Mantissa < BIM.Zero);
+        return (isNegative);
       }
     }
 
@@ -386,14 +470,13 @@ namespace Microsoft.Basetypes
 
     [Pure]
     public int CompareTo(BigFloat that) {
-      //TODO: Modify for correct fp functionality
-      if (this.mantissa == that.mantissa && this.exponent == that.exponent) {
+      if (this.exponent > that.exponent)
+        return 1;
+      if (this.exponent < that.exponent)
+        return -1;
+      if (this.Mantissa == that.Mantissa)
         return 0;
-      }
-      else {
-        BigFloat d = this - that;
-        return d.IsNegative ? -1 : 1;
-      }
+      return this.Mantissa > that.Mantissa ? 1 : -1;
     }
 
     [Pure]

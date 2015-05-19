@@ -1887,9 +1887,12 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
        Get(); //Skip the fp token
        Get();
        if (t.val != "(") { throw new FormatException(); }
-       while (la.kind == 3 || la.kind == 6) { //Get values between the parens
+       while (la.kind == 1 || la.kind == 3 || la.kind == 6 || la.kind == 75) { //Get values between the parens
          Get();
-         s += t.val + " ";
+         if (t.val == "-") //special negative case (la.kind == 75)
+          s += t.val;
+         else
+          s += t.val + " ";
        }
        Get();
        if (t.val != ")") { throw new FormatException(); }
@@ -1901,7 +1904,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
    catch (FormatException)
    {
      this.SemErr("incorrectly formatted floating point");
-     n = BigFloat.ZERO;
+     n = BigFloat.ZERO(8, 23);
    }
  }
 

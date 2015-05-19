@@ -1009,7 +1009,7 @@ namespace Microsoft.Boogie.VCExprAST {
           return Gen.Function(VCExpressionGenerator.SubROp, Gen.Real(BigDec.ZERO), e);
         }
         else  {//is float
-          return Gen.Function(VCExpressionGenerator.SubFOp, Gen.Float(BigFloat.ZERO), e);
+          return Gen.Function(VCExpressionGenerator.SubFOp, Gen.Float(BigFloat.ZERO(8, 23)), e);
         } 
       }
       else {
