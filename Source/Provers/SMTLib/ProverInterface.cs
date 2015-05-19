@@ -1242,159 +1242,173 @@ namespace Microsoft.Boogie.SMTLib
         currentErrorHandler = handler;
         FlushProverWarnings();
 
-        int errorsLeft;
+        int errorLimit;
         if (CommandLineOptions.Clo.ConcurrentHoudini) {
           Contract.Assert(taskID >= 0);
-          errorsLeft = CommandLineOptions.Clo.Cho[taskID].ProverCCLimit;
+          errorLimit = CommandLineOptions.Clo.Cho[taskID].ProverCCLimit;
         } else {
-          errorsLeft = CommandLineOptions.Clo.ProverCCLimit;
+          errorLimit = CommandLineOptions.Clo.ProverCCLimit;
         }
 
-        if (errorsLeft < 1)
-          errorsLeft = 1;
+        if (errorLimit < 1)
+          errorLimit = 1;
+
+        int errorsLeft = errorLimit;
 
         var globalResult = Outcome.Undetermined;
 
         while (true) {
-          bool popLater = false;
-          errorsLeft--;
           string[] labels = null;
+          bool popLater = false;
 
-          result = GetResponse();
-          if (globalResult == Outcome.Undetermined)
-            globalResult = result;
-
-          if (result == Outcome.Invalid || result == Outcome.TimeOut || result == Outcome.OutOfMemory) {
-
-            if (CommandLineOptions.Clo.RunDiagnosticsOnTimeout && (result == Outcome.TimeOut || result == Outcome.OutOfMemory))
-            {
-              SendThisVC("; begin timeout diagnostics");
-
-              var verified = new bool[Context.TimoutDiagnosticsCount];
-              var lastCnt = verified.Length + 1;
-              var mod = 2;
-              while (true)
+          try {
+            errorsLeft--;
+            
+            result = GetResponse();
+            if (globalResult == Outcome.Undetermined)
+              globalResult = result;
+            
+            if (result == Outcome.Invalid || result == Outcome.TimeOut || result == Outcome.OutOfMemory) {
+            
+              if (CommandLineOptions.Clo.RunDiagnosticsOnTimeout && result == Outcome.TimeOut)
               {
-                var split0 = verified.ToArray();
-                var split1 = verified.ToArray();
-                int cnt0 = 0;
-                int cnt1 = 0;
-                for (int i = 0; i < split0.Length; i++)
+                #region Run timeout diagnostics
+
+                SendThisVC("; begin timeout diagnostics");
+            
+                var verified = new bool[Context.TimoutDiagnosticsCount];
+                var lastCnt = verified.Length + 1;
+                var mod = 2;
+                while (true)
                 {
-                  if (!split0[i])
+                  var split0 = verified.ToArray();
+                  var split1 = verified.ToArray();
+                  int cnt0 = 0;
+                  int cnt1 = 0;
+                  for (int i = 0; i < split0.Length; i++)
                   {
-                    // TODO(wuestholz): Try out different ways for splitting up the work.
-                    if ((cnt0 + cnt1) % mod == 0)
+                    if (!split0[i])
                     {
-                      split0[i] = true;
-                      cnt1++;
+                      // TODO(wuestholz): Try out different ways for splitting up the work.
+                      if ((cnt0 + cnt1) % mod == 0)
+                      {
+                        split0[i] = true;
+                        cnt1++;
+                      }
+                      else
+                      {
+                        split1[i] = true;
+                        cnt0++;
+                      }
+                    }
+                  }
+            
+                  bool doReset = false;
+                  var cnt = cnt0 + cnt1;
+                  if (cnt == 0)
+                  {
+                    return Outcome.Valid;
+                  }
+                  else if (lastCnt <= cnt)
+                  {
+                    doReset = (errorLimit == errorsLeft + 1);
+                    if (mod < cnt)
+                    {
+                      mod++;
                     }
                     else
                     {
-                      split1[i] = true;
-                      cnt0++;
+                      // Give up and report which assertions were not verified.
+                      var cmds = new List<Tuple<AssertCmd, TransferCmd>>();
+                      for (int i = 0; i < verified.Length; i++)
+                      {
+                        if (!verified[i])
+                        {
+                          cmds.Add(ctx.TimeoutDiagnosticIDToAssertion[i]);
+                        }
+                      }
+            
+                      if (cmds.Any())
+                      {
+                        handler.OnResourceExceeded("timeout after running diagnostics", cmds);
+                      }
+            
+                      break;
                     }
                   }
-                }
-
-                bool doReset = false;
-                var cnt = cnt0 + cnt1;
-                if (cnt == 0)
-                {
-                  return Outcome.Valid;
-                }
-                else if (lastCnt <= cnt)
-                {
-                  doReset = true;
-                  if (mod < cnt)
+                  lastCnt = cnt;
+            
+                  if (0 < cnt0)
                   {
-                    mod++;
-                  }
-                  else
-                  {
-                    // Give up and report which assertions were not verified.
-                    var cmds = new List<Tuple<AssertCmd, TransferCmd>>();
-                    for (int i = 0; i < verified.Length; i++)
+                    var result0 = CheckSplit(split0, cnt0, ref popLater, doReset);
+                    if (result0 == Outcome.Valid)
                     {
-                      if (!verified[i])
+                      for (int i = 0; i < split0.Length; i++)
                       {
-                        cmds.Add(ctx.TimeoutDiagnosticIDToAssertion[i]);
+                        verified[i] = verified[i] || !split0[i];
                       }
                     }
-
-                    if (cmds.Any())
+                    else if (result0 == Outcome.Invalid)
                     {
-                      handler.OnResourceExceeded("timeout after running diagnostics", cmds);
+                      result = result0;
+                      break;
                     }
-
-                    break;
+                  }
+            
+                  if (0 < cnt1)
+                  {
+                    var result1 = CheckSplit(split1, cnt1, ref popLater, doReset);
+                    if (result1 == Outcome.Valid)
+                    {
+                      for (int i = 0; i < split1.Length; i++)
+                      {
+                        verified[i] = verified[i] || !split1[i];
+                      }
+                    }
+                    else if (result1 == Outcome.Invalid)
+                    {
+                      result = result1;
+                      break;
+                    }
                   }
                 }
-                lastCnt = cnt;
+            
+                SendThisVC("; end timeout diagnostics");
 
-                if (0 < cnt0)
+                #endregion
+              }
+            
+              IList<string> xlabels;
+              if (CommandLineOptions.Clo.UseLabels) {
+                labels = GetLabelsInfo();
+                if (labels == null)
                 {
-                  var result0 = CheckSplit(split0, cnt0, ref popLater, doReset);
-                  if (result0 == Outcome.Valid)
-                  {
-                    for (int i = 0; i < split0.Length; i++)
-                    {
-                      verified[i] = verified[i] || !split0[i];
-                    }
-                  }
-                  else if (result0 == Outcome.Invalid)
-                  {
-                    result = result0;
-                    break;
-                  }
+                  xlabels = new string[] { };
                 }
-
-                if (0 < cnt1)
+                else
                 {
-                  var result1 = CheckSplit(split1, cnt1, ref popLater, doReset);
-                  if (result1 == Outcome.Valid)
-                  {
-                    for (int i = 0; i < split1.Length; i++)
-                    {
-                      verified[i] = verified[i] || !split1[i];
-                    }
-                  }
-                  else if (result1 == Outcome.Invalid)
-                  {
-                    result = result1;
-                    break;
-                  }
+                  xlabels = labels.Select(a => a.Replace("@", "").Replace("+", "")).ToList();
                 }
               }
-
-              SendThisVC("; end timeout diagnostics");
-            }
-
-            IList<string> xlabels;
-            if (CommandLineOptions.Clo.UseLabels) {
-              labels = GetLabelsInfo();
-              if (labels == null)
-              {
-                xlabels = new string[] { };
-              }
-              else
-              {
-                xlabels = labels.Select(a => a.Replace("@", "").Replace("+", "")).ToList();
-              }
-            }
-            else if(CommandLineOptions.Clo.SIBoolControlVC) {
-                labels = new string[0];
+              else if(CommandLineOptions.Clo.SIBoolControlVC) {
+                  labels = new string[0];
+                  xlabels = labels;
+              } else {
+                labels = CalculatePath(handler.StartingProcId());
                 xlabels = labels;
-            } else {
-              labels = CalculatePath(handler.StartingProcId());
-              xlabels = labels;
+              }
+                Model model = (result == Outcome.TimeOut || result == Outcome.OutOfMemory) ? null :
+                    GetErrorModel();
+              handler.OnModel(xlabels, model, result);
             }
-              Model model = (result == Outcome.TimeOut || result == Outcome.OutOfMemory) ? null :
-                  GetErrorModel();
-            handler.OnModel(xlabels, model, result);
+            
+            if (labels == null || !labels.Any() || errorsLeft == 0) break;
+          } finally {
+            if (popLater)
+            {
+              SendThisVC("(pop 1)");
+            }
           }
-
-          if (labels == null || !labels.Any() || errorsLeft == 0) break;
 
           if (CommandLineOptions.Clo.UseLabels) {
             var negLabels = labels.Where(l => l.StartsWith("@")).ToArray();
@@ -1417,11 +1431,6 @@ namespace Microsoft.Boogie.SMTLib
             SendThisVC("(assert (not (= (ControlFlow 0 " + source + ") (- " + target + "))))");
             SendThisVC("(check-sat)");
           }
-
-          if (popLater)
-          {
-            SendThisVC("(pop 1)");
-          }
         }
 
         FlushLogFile();
@@ -1438,7 +1447,7 @@ namespace Microsoft.Boogie.SMTLib
 
     private Outcome CheckSplit(bool[] split, int unverifiedCount, ref bool popLater, bool doReset = false)
     {
-      if (doReset)
+      if (doReset && currentVC != null && currentDescriptiveName != null)
       {
         Reset(gen);
         PossiblyRestart();
