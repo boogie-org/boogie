@@ -1268,42 +1268,25 @@ namespace Microsoft.Boogie.SMTLib
 
               SendThisVC("; begin timeout diagnostics");
 
-              var verified = new bool[Context.TimoutDiagnosticsCount];
-              var lastCnt = verified.Length + 1;
+              var unverified = new SortedSet<int>(ctx.TimeoutDiagnosticIDToAssertion.Keys);
+              var lastCnt = unverified.Count + 1;
               var mod = 2;
               var timeLimit = options.TimeLimit;
               var timeLimitFactor = 1;
               while (true)
               {
-                var split0 = verified.ToArray();
-                var split1 = verified.ToArray();
-                int cnt0 = 0;
-                int cnt1 = 0;
-                for (int i = 0; i < split0.Length; i++)
-                {
-                  if (!split0[i])
-                  {
-                    // TODO(wuestholz): Try out different ways for splitting up the work.
-                    if ((cnt0 + cnt1) % mod == 0)
-                    {
-                      split0[i] = true;
-                      cnt1++;
-                    }
-                    else
-                    {
-                      split1[i] = true;
-                      cnt0++;
-                    }
-                  }
-                }
+                // TODO(wuestholz): Try out different ways for splitting up the work.
+                var split0 = new SortedSet<int>(unverified.Where((val, idx) => idx % mod == 0));
+                var split1 = new SortedSet<int>(unverified.Except(split0));
 
-                var cnt = cnt0 + cnt1;
+                int cnt = unverified.Count;
+
                 if (cnt == 0)
                 {
                   result = Outcome.Valid;
                   break;
                 }
-                else if (lastCnt <= cnt)
+                else if (lastCnt == cnt)
                 {
                   if (mod < cnt)
                   {
@@ -1317,14 +1300,7 @@ namespace Microsoft.Boogie.SMTLib
                   else
                   {
                     // Give up and report which assertions were not verified.
-                    var cmds = new List<Tuple<AssertCmd, TransferCmd>>();
-                    for (int i = 0; i < verified.Length; i++)
-                    {
-                      if (!verified[i])
-                      {
-                        cmds.Add(ctx.TimeoutDiagnosticIDToAssertion[i]);
-                      }
-                    }
+                    var cmds = unverified.Select(id => ctx.TimeoutDiagnosticIDToAssertion[id]);
 
                     if (cmds.Any())
                     {
@@ -1336,15 +1312,12 @@ namespace Microsoft.Boogie.SMTLib
                 }
                 lastCnt = cnt;
 
-                if (0 < cnt0)
+                if (0 < split0.Count)
                 {
-                  var result0 = CheckSplit(split0, cnt0, ref popLater, timeLimitFactor * timeLimit);
+                  var result0 = CheckSplit(split0, ref popLater, timeLimitFactor * timeLimit);
                   if (result0 == Outcome.Valid)
                   {
-                    for (int i = 0; i < split0.Length; i++)
-                    {
-                      verified[i] = verified[i] || !split0[i];
-                    }
+                    unverified.ExceptWith(split0);
                   }
                   else if (result0 == Outcome.Invalid)
                   {
@@ -1353,15 +1326,12 @@ namespace Microsoft.Boogie.SMTLib
                   }
                 }
 
-                if (0 < cnt1)
+                if (0 < split1.Count)
                 {
-                  var result1 = CheckSplit(split1, cnt1, ref popLater, timeLimitFactor * timeLimit);
+                  var result1 = CheckSplit(split1, ref popLater, timeLimitFactor * timeLimit);
                   if (result1 == Outcome.Valid)
                   {
-                    for (int i = 0; i < split1.Length; i++)
-                    {
-                      verified[i] = verified[i] || !split1[i];
-                    }
+                    unverified.ExceptWith(split1);
                   }
                   else if (result1 == Outcome.Invalid)
                   {
@@ -1447,7 +1417,7 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
-    private Outcome CheckSplit(bool[] split, int unverifiedCount, ref bool popLater, int timeLimit)
+    private Outcome CheckSplit(SortedSet<int> split, ref bool popLater, int timeLimit)
     {
       if (popLater)
       {
@@ -1458,12 +1428,12 @@ namespace Microsoft.Boogie.SMTLib
       SendThisVC(string.Format("(set-option :{0} {1})", Z3.SetTimeoutOption(), timeLimit));
       popLater = true;
 
-      SendThisVC(string.Format("; checking split VC with {0} unverified assertions", unverifiedCount));
+      SendThisVC(string.Format("; checking split VC with {0} unverified assertions", split.Count));
       var expr = VCExpressionGenerator.True;
-      for (int i = 0; i < split.Length; i++)
+      foreach (var i in ctx.TimeoutDiagnosticIDToAssertion.Keys)
       {
         var lit = VCExprGen.Function(VCExpressionGenerator.TimeoutDiagnosticsOp, VCExprGen.Integer(Microsoft.Basetypes.BigNum.FromInt(i)));
-        if (!split[i]) {
+        if (split.Contains(i)) {
           lit = VCExprGen.Not(lit);
         }
         expr = VCExprGen.AndSimp(expr, lit);
