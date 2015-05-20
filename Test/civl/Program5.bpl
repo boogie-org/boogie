@@ -22,20 +22,24 @@ ensures {:layer 2} Color >= old(Color);
 procedure {:yields} {:layer 2,3} WriteBarrier({:linear "tid"} tid:Tid)
 ensures {:atomic} |{ A: assert tid != nil; goto B, C; 
                      B: assume White(Color); Color := GRAY(); return true; 
-                     C: return true;}|;
+                     C: assume !White(Color); return true;}|;
+requires {:layer 2} Color >= WHITE();
+ensures {:layer 2} Color >= GRAY();
 {
   var colorLocal:int;
   yield;
+  assert {:layer 2} Color >= WHITE();
   call colorLocal := GetColorNoLock();
   call YieldColorOnlyGetsDarker();
   if (White(colorLocal)) { call WriteBarrierSlow(tid); }
   yield;
+  assert {:layer 2} Color >= GRAY();
 }
 
 procedure {:yields} {:layer 1,2} WriteBarrierSlow({:linear "tid"} tid:Tid)
 ensures {:atomic} |{ A: assert tid != nil; goto B, C; 
                      B: assume White(Color); Color := GRAY(); return true; 
-                     C: return true; }|;
+                     C: assume !White(Color); return true; }|;
 {
        var colorLocal:int;
        yield;
