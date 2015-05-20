@@ -1310,6 +1310,10 @@ namespace Microsoft.Boogie.SMTLib
                     break;
                   }
                 }
+                else
+                {
+                  mod = 2;
+                }
                 lastCnt = cnt;
 
                 if (0 < split0.Count)
@@ -1439,6 +1443,10 @@ namespace Microsoft.Boogie.SMTLib
         expr = VCExprGen.AndSimp(expr, lit);
       }
       SendThisVC("(assert " + VCExpr2String(expr, 1) + ")");
+      if (options.Solver == SolverKind.Z3)
+      {
+        SendThisVC("(apply (then (using-params propagate-values :max_rounds 1) simplify) :print false)");
+      }
       FlushLogFile();
       SendThisVC("(check-sat)");
       return GetResponse();
