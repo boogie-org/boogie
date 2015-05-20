@@ -2273,7 +2273,7 @@ namespace VC {
         return;
       }
 
-      public override void OnResourceExceeded(string message)
+      public override void OnResourceExceeded(string message, IEnumerable<Tuple<AssertCmd, TransferCmd>> assertCmds = null)
       {
           //Contract.Requires(message != null);
       }
@@ -2608,6 +2608,9 @@ namespace VC {
               throw new InvalidProgramForSecureVc("SecureVc: Requires not supported");
           if(impl.LocVars.Any(v => isVisible(v)))
               throw new InvalidProgramForSecureVc("SecureVc: Visible Local variables not allowed");
+
+          // Desugar procedure calls
+          DesugarCalls(impl);
 
           // Gather spec, remove existing ensures
           var secureAsserts = new List<AssertCmd>();

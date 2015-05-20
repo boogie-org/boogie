@@ -2427,6 +2427,28 @@ namespace Microsoft.Boogie {
       functionDependencies.Add(function);
     }
 
+    public bool SignatureEquals(DeclWithFormals other)
+    {
+      Contract.Requires(other != null);
+
+      string sig = null;
+      string otherSig = null;
+      using (var strWr = new System.IO.StringWriter())
+      using (var tokTxtWr = new TokenTextWriter("<no file>", strWr, false, false))
+      {
+        EmitSignature(tokTxtWr, this is Function);
+        sig = strWr.ToString();
+      }
+
+      using (var otherStrWr = new System.IO.StringWriter())
+      using (var otherTokTxtWr = new TokenTextWriter("<no file>", otherStrWr, false, false))
+      {
+        EmitSignature(otherTokTxtWr, other is Function);
+        otherSig = otherStrWr.ToString();
+      }
+      return sig == otherSig;
+    }
+
     protected void EmitSignature(TokenTextWriter stream, bool shortRet) {
       Contract.Requires(stream != null);
       Type.EmitOptionalTypeParams(stream, TypeParameters);
@@ -3294,6 +3316,8 @@ namespace Microsoft.Boogie {
       }
       RecycledFailingAssertions.Add(assertion);
     }
+
+    public Cmd ExplicitAssumptionAboutCachedPrecondition { get; set; }
 
     // Strongly connected components
     private StronglyConnectedComponents<Block/*!*/> scc;

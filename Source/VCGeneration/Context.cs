@@ -22,6 +22,8 @@ namespace Microsoft.Boogie
   /// </summary>
   [ContractClass(typeof(ProverContextContracts))]
   public abstract class ProverContext : ICloneable {
+    public int TimoutDiagnosticsCount { get; set; }
+    public readonly Dictionary<int, Tuple<AssertCmd, TransferCmd>> TimeoutDiagnosticIDToAssertion = new Dictionary<int, Tuple<AssertCmd, TransferCmd>>();
     protected virtual void ProcessDeclaration(Declaration decl) {Contract.Requires(decl != null);}
     public virtual void DeclareType(TypeCtorDecl t, string attributes) {Contract.Requires(t != null); ProcessDeclaration(t); }
     public virtual void DeclareConstant(Constant c, bool uniq, string attributes) {Contract.Requires(c != null); ProcessDeclaration(c); }

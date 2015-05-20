@@ -461,7 +461,7 @@ namespace Microsoft.Boogie {
         Contract.Requires(cce.NonNullElements(labels));
       }
 
-      public virtual void OnResourceExceeded(string message) {
+      public virtual void OnResourceExceeded(string message, IEnumerable<Tuple<AssertCmd, TransferCmd>> assertCmds = null) {
         Contract.Requires(message != null);
       }
 

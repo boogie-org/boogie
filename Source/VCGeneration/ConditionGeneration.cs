@@ -768,12 +768,18 @@ namespace VC {
         Contract.Assert(req != null);
         Expr e = Substituter.Apply(formalProcImplSubst, req.Condition);
         Cmd c = new AssumeCmd(req.tok, e);
+        c.IrrelevantForChecksumComputation = true;
         insertionPoint.Cmds.Add(c);
         if (debugWriter != null) {
           c.Emit(debugWriter, 1);
         }
       }
       origStartBlock.Predecessors.Add(insertionPoint);
+
+      if (impl.ExplicitAssumptionAboutCachedPrecondition != null)
+      {
+        insertionPoint.Cmds.Add(impl.ExplicitAssumptionAboutCachedPrecondition);
+      }
 
       if (debugWriter != null) {
         debugWriter.WriteLine();
@@ -1275,7 +1281,7 @@ namespace VC {
           IdentifierExpr v_prime_exp = new IdentifierExpr(v_prime.tok, v_prime);
           #endregion
           #region Create the assume command itself
-          AssumeCmd ac = new AssumeCmd(v.tok, TypedExprEq(v_prime_exp, pred_incarnation_exp, v_prime.Name.Contains("a##post##")));
+          AssumeCmd ac = new AssumeCmd(v.tok, TypedExprEq(v_prime_exp, pred_incarnation_exp, v_prime.Name.Contains("a##cached##")));
           pred.Cmds.Add(ac);
           #endregion
           #endregion
@@ -1697,7 +1703,7 @@ namespace VC {
             }
           
             #region Create an assume command with the new variable
-            assumptions.Add(TypedExprEq(x_prime_exp, copies[i], x_prime_exp.Decl != null && x_prime_exp.Decl.Name.Contains("a##post##")));
+            assumptions.Add(TypedExprEq(x_prime_exp, copies[i], x_prime_exp.Decl != null && x_prime_exp.Decl.Name.Contains("a##cached##")));
             #endregion
           }
         }
@@ -1720,6 +1726,7 @@ namespace VC {
         if (currentImplementation != null
             && currentImplementation.HasCachedSnapshot
             && !currentImplementation.AnyErrorsInCachedSnapshot
+            && currentImplementation.DoomedInjectedAssumptionVariables.Count == 0
             && currentImplementation.InjectedAssumptionVariables.Count == 1
             && assign.Lhss.Count == 1)
         {
@@ -1742,9 +1749,9 @@ namespace VC {
         Contract.Assert(c != null);
         // If an assumption variable for postconditions is included here, it must have been assigned within a loop.
         // We do not need to havoc it if we have performed a modular proof of the loop (i.e., using only the loop
-        // invariant) in the previous snapshot and are therefore not going refer to the assumption variable after
-        // the loop. We can achieve this by simply not updating/adding it in the incarnation map.
-        List<IdentifierExpr> havocVars = hc.Vars.Where(v => !(QKeyValue.FindBoolAttribute(v.Decl.Attributes, "assumption") && v.Decl.Name.StartsWith("a##post##"))).ToList();
+        // invariant) in the previous snapshot and, consequently, the corresponding assumption did not affect the
+        // anything after the loop. We can achieve this by simply not updating/adding it in the incarnation map.
+        List<IdentifierExpr> havocVars = hc.Vars.Where(v => !(QKeyValue.FindBoolAttribute(v.Decl.Attributes, "assumption") && v.Decl.Name.StartsWith("a##cached##"))).ToList();
         // First, compute the new incarnations
         foreach (IdentifierExpr ie in havocVars) {
           Contract.Assert(ie != null);
@@ -1765,6 +1772,18 @@ namespace VC {
               Expr copy = Substituter.ApplyReplacingOldExprs(updatedIncarnationSubst, oldFrameSubst, w);
               passiveCmds.Add(new AssumeCmd(c.tok, copy));
             }
+          }
+        }
+
+        // Add the following assume-statement for each assumption variable 'v', where 'v_post' is the new incarnation and 'v_pre' is the old one:
+        // assume v_post ==> v_pre;
+        foreach (IdentifierExpr ie in havocVars)
+        {
+          if (QKeyValue.FindBoolAttribute(ie.Decl.Attributes, "assumption"))
+          {
+            var preInc = (Expr)(preHavocIncarnationMap[ie.Decl].Clone());
+            var postInc = (Expr)(incarnationMap[ie.Decl].Clone());
+            passiveCmds.Add(new AssumeCmd(c.tok, Expr.Imp(postInc, preInc)));
           }
         }
       }

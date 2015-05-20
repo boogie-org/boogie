@@ -261,6 +261,11 @@ namespace Microsoft.Boogie.SMTLib
           SendCommon("(assert (and (tickleBool true) (tickleBool false)))");
         }
 
+        if (CommandLineOptions.Clo.RunDiagnosticsOnTimeout)
+        {
+          SendCommon("(declare-fun timeoutDiagnostics (Int) Bool)");
+        }
+
         if (ctx.KnownDatatypeConstructors.Count > 0)
         {
           GraphUtil.Graph<CtorType> dependencyGraph = new GraphUtil.Graph<CtorType>();
@@ -393,6 +398,7 @@ namespace Microsoft.Boogie.SMTLib
       }
 
       PrepareCommon();
+
       string vcString = "(assert (not\n" + VCExpr2String(vc, 1) + "\n))";
       FlushAxioms();
 
@@ -1232,53 +1238,153 @@ namespace Microsoft.Boogie.SMTLib
         currentErrorHandler = handler;
         FlushProverWarnings();
 
-        int errorsLeft;
+        int errorLimit;
         if (CommandLineOptions.Clo.ConcurrentHoudini) {
           Contract.Assert(taskID >= 0);
-          errorsLeft = CommandLineOptions.Clo.Cho[taskID].ProverCCLimit;
+          errorLimit = CommandLineOptions.Clo.Cho[taskID].ProverCCLimit;
         } else {
-          errorsLeft = CommandLineOptions.Clo.ProverCCLimit;
+          errorLimit = CommandLineOptions.Clo.ProverCCLimit;
         }
 
-        if (errorsLeft < 1)
-          errorsLeft = 1;
+        if (errorLimit < 1)
+          errorLimit = 1;
+
+        int errorsLeft = errorLimit;
 
         var globalResult = Outcome.Undetermined;
 
         while (true) {
-          errorsLeft--;
           string[] labels = null;
+          bool popLater = false;
 
-          result = GetResponse();
-          if (globalResult == Outcome.Undetermined)
-            globalResult = result;
+          try {
+            errorsLeft--;
+            
+            result = GetResponse();
 
-          if (result == Outcome.Invalid || result == Outcome.TimeOut || result == Outcome.OutOfMemory) {
-            IList<string> xlabels;
-            if (CommandLineOptions.Clo.UseLabels) {
-              labels = GetLabelsInfo();
-              if (labels == null)
+            if (CommandLineOptions.Clo.RunDiagnosticsOnTimeout && result == Outcome.TimeOut)
+            {
+              #region Run timeout diagnostics
+
+              SendThisVC("; begin timeout diagnostics");
+
+              var unverified = new SortedSet<int>(ctx.TimeoutDiagnosticIDToAssertion.Keys);
+              var lastCnt = unverified.Count + 1;
+              var mod = 2;
+              var timeLimit = options.TimeLimit;
+              var timeLimitFactor = 1;
+              while (true)
               {
-                xlabels = new string[] { };
+                // TODO(wuestholz): Try out different ways for splitting up the work.
+                var split0 = new SortedSet<int>(unverified.Where((val, idx) => idx % mod == 0));
+                var split1 = new SortedSet<int>(unverified.Except(split0));
+
+                int cnt = unverified.Count;
+
+                if (cnt == 0)
+                {
+                  result = Outcome.Valid;
+                  break;
+                }
+                else if (lastCnt == cnt)
+                {
+                  if (mod < cnt)
+                  {
+                    mod++;
+                  }
+                  else if (timeLimitFactor <= 3 && 0 < timeLimit)
+                  {
+                    // TODO(wuestholz): Add a commandline option to control this.
+                    timeLimitFactor++;
+                  }
+                  else
+                  {
+                    // Give up and report which assertions were not verified.
+                    var cmds = unverified.Select(id => ctx.TimeoutDiagnosticIDToAssertion[id]);
+
+                    if (cmds.Any())
+                    {
+                      handler.OnResourceExceeded("timeout after running diagnostics", cmds);
+                    }
+
+                    break;
+                  }
+                }
+                else
+                {
+                  mod = 2;
+                }
+                lastCnt = cnt;
+
+                if (0 < split0.Count)
+                {
+                  var result0 = CheckSplit(split0, ref popLater, timeLimitFactor * timeLimit);
+                  if (result0 == Outcome.Valid)
+                  {
+                    unverified.ExceptWith(split0);
+                  }
+                  else if (result0 == Outcome.Invalid)
+                  {
+                    result = result0;
+                    break;
+                  }
+                }
+
+                if (0 < split1.Count)
+                {
+                  var result1 = CheckSplit(split1, ref popLater, timeLimitFactor * timeLimit);
+                  if (result1 == Outcome.Valid)
+                  {
+                    unverified.ExceptWith(split1);
+                  }
+                  else if (result1 == Outcome.Invalid)
+                  {
+                    result = result1;
+                    break;
+                  }
+                }
               }
-              else
-              {
-                xlabels = labels.Select(a => a.Replace("@", "").Replace("+", "")).ToList();
-              }
+
+              SendThisVC("; end timeout diagnostics");
+
+              #endregion
             }
-            else if(CommandLineOptions.Clo.SIBoolControlVC) {
-                labels = new string[0];
+
+            if (globalResult == Outcome.Undetermined)
+              globalResult = result;
+            
+            if (result == Outcome.Invalid || result == Outcome.TimeOut || result == Outcome.OutOfMemory) {
+              IList<string> xlabels;
+              if (CommandLineOptions.Clo.UseLabels) {
+                labels = GetLabelsInfo();
+                if (labels == null)
+                {
+                  xlabels = new string[] { };
+                }
+                else
+                {
+                  xlabels = labels.Select(a => a.Replace("@", "").Replace("+", "")).ToList();
+                }
+              }
+              else if(CommandLineOptions.Clo.SIBoolControlVC) {
+                  labels = new string[0];
+                  xlabels = labels;
+              } else {
+                labels = CalculatePath(handler.StartingProcId());
                 xlabels = labels;
-            } else {
-              labels = CalculatePath(handler.StartingProcId());
-              xlabels = labels;
+              }
+                Model model = (result == Outcome.TimeOut || result == Outcome.OutOfMemory) ? null :
+                    GetErrorModel();
+              handler.OnModel(xlabels, model, result);
             }
-              Model model = (result == Outcome.TimeOut || result == Outcome.OutOfMemory) ? null :
-                  GetErrorModel();
-            handler.OnModel(xlabels, model, result);
+            
+            if (labels == null || !labels.Any() || errorsLeft == 0) break;
+          } finally {
+            if (popLater)
+            {
+              SendThisVC("(pop 1)");
+            }
           }
-
-          if (labels == null || !labels.Any() || errorsLeft == 0) break;
 
           if (CommandLineOptions.Clo.UseLabels) {
             var negLabels = labels.Where(l => l.StartsWith("@")).ToArray();
@@ -1313,6 +1419,37 @@ namespace Microsoft.Boogie.SMTLib
       } finally {
         currentErrorHandler = null;
       }
+    }
+
+    private Outcome CheckSplit(SortedSet<int> split, ref bool popLater, int timeLimit)
+    {
+      if (popLater)
+      {
+        SendThisVC("(pop 1)");
+      }
+
+      SendThisVC("(push 1)");
+      SendThisVC(string.Format("(set-option :{0} {1})", Z3.SetTimeoutOption(), timeLimit));
+      popLater = true;
+
+      SendThisVC(string.Format("; checking split VC with {0} unverified assertions", split.Count));
+      var expr = VCExpressionGenerator.True;
+      foreach (var i in ctx.TimeoutDiagnosticIDToAssertion.Keys)
+      {
+        var lit = VCExprGen.Function(VCExpressionGenerator.TimeoutDiagnosticsOp, VCExprGen.Integer(Microsoft.Basetypes.BigNum.FromInt(i)));
+        if (split.Contains(i)) {
+          lit = VCExprGen.Not(lit);
+        }
+        expr = VCExprGen.AndSimp(expr, lit);
+      }
+      SendThisVC("(assert " + VCExpr2String(expr, 1) + ")");
+      if (options.Solver == SolverKind.Z3)
+      {
+        SendThisVC("(apply (then (using-params propagate-values :max_rounds 1) simplify) :print false)");
+      }
+      FlushLogFile();
+      SendThisVC("(check-sat)");
+      return GetResponse();
     }
 
     public override string[] CalculatePath(int controlFlowConstant) {
