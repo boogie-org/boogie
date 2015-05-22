@@ -1269,28 +1269,24 @@ namespace Microsoft.Boogie.SMTLib
               SendThisVC("; begin timeout diagnostics");
 
               var unverified = new SortedSet<int>(ctx.TimeoutDiagnosticIDToAssertion.Keys);
-              var lastCnt = unverified.Count + 1;
-              var mod = 2;
+              var lastCnt = 0;
               var timeLimit = options.TimeLimit;
               var timeLimitFactor = 1;
+              var frac = 2;
               while (true)
               {
-                // TODO(wuestholz): Try out different ways for splitting up the work.
-                var split0 = new SortedSet<int>(unverified.Where((val, idx) => idx % mod == 0));
-                var split1 = new SortedSet<int>(unverified.Except(split0));
-
                 int cnt = unverified.Count;
-
                 if (cnt == 0)
                 {
                   result = Outcome.Valid;
                   break;
                 }
-                else if (lastCnt == cnt)
+                
+                if (lastCnt == cnt)
                 {
-                  if (mod < cnt)
+                  if ((2 * frac) < cnt)
                   {
-                    mod++;
+                    frac *= 2;
                   }
                   else if (timeLimitFactor <= 3 && 0 < timeLimit)
                   {
@@ -1312,13 +1308,19 @@ namespace Microsoft.Boogie.SMTLib
                 }
                 else
                 {
-                  mod = 2;
+                  frac = 2;
                 }
                 lastCnt = cnt;
 
+                // TODO(wuestholz): Try out different ways for splitting up the work (e.g., randomly).
+                var cnt0 = cnt / frac;
+                var split0 = new SortedSet<int>(unverified.Where((val, idx) => idx < cnt0));
+                var split1 = new SortedSet<int>(unverified.Except(split0));
+
                 if (0 < split0.Count)
                 {
-                  var result0 = CheckSplit(split0, ref popLater, timeLimitFactor * timeLimit);
+                  var stl = 0 < timeLimit ? split0.Count * ((timeLimit / cnt) + 1) : timeLimit;
+                  var result0 = CheckSplit(split0, ref popLater, timeLimitFactor * stl);
                   if (result0 == Outcome.Valid)
                   {
                     unverified.ExceptWith(split0);
@@ -1332,7 +1334,8 @@ namespace Microsoft.Boogie.SMTLib
 
                 if (0 < split1.Count)
                 {
-                  var result1 = CheckSplit(split1, ref popLater, timeLimitFactor * timeLimit);
+                  var stl = 0 < timeLimit ? split1.Count * ((timeLimit / cnt) + 1) : timeLimit;
+                  var result1 = CheckSplit(split1, ref popLater, timeLimitFactor * stl);
                   if (result1 == Outcome.Valid)
                   {
                     unverified.ExceptWith(split1);
