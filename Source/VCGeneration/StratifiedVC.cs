@@ -365,13 +365,16 @@ namespace VC {
     public Dictionary<Block, List<CallSite>> callSites;
     public Dictionary<Block, List<CallSite>> recordProcCallSites;
     public bool initialized { get; private set; }
+    // Instrumentation to apply after PassiveImpl, but before VCGen
+    Action<Implementation> PassiveImplInstrumentation;
 
     // boolControlVC (block -> its Bool variable)
     public Dictionary<Block, VCExprVar> blockToControlVar; 
 
-    public StratifiedInliningInfo(Implementation implementation, StratifiedVCGenBase stratifiedVcGen) {
+    public StratifiedInliningInfo(Implementation implementation, StratifiedVCGenBase stratifiedVcGen, Action<Implementation> PassiveImplInstrumentation) {
       vcgen = stratifiedVcGen;
       impl = implementation;
+      this.PassiveImplInstrumentation = PassiveImplInstrumentation;
 
       List<Variable> functionInterfaceVars = new List<Variable>();
       foreach (Variable v in vcgen.program.GlobalVariables) {
@@ -581,6 +584,9 @@ namespace VC {
       vcgen.ConvertCFG2DAG(impl);
       vcgen.PassifyImpl(impl, out mvInfo);
 
+      if (PassiveImplInstrumentation != null)
+          PassiveImplInstrumentation(impl);
+                
       VCExpressionGenerator gen = proverInterface.VCExprGen;
       var exprGen = proverInterface.Context.ExprGen;
       var translator = proverInterface.Context.BoogieExprTranslator;
@@ -636,12 +642,12 @@ namespace VC {
     public Dictionary<string, StratifiedInliningInfo> implName2StratifiedInliningInfo;
     public ProverInterface prover;
 
-    public StratifiedVCGenBase(Program program, string/*?*/ logFilePath, bool appendLogFile, List<Checker> checkers)
+    public StratifiedVCGenBase(Program program, string/*?*/ logFilePath, bool appendLogFile, List<Checker> checkers, Action<Implementation> PassiveImplInstrumentation)
       : base(program, logFilePath, appendLogFile, checkers) {
       implName2StratifiedInliningInfo = new Dictionary<string, StratifiedInliningInfo>();
       prover = ProverInterface.CreateProver(program, logFilePath, appendLogFile, CommandLineOptions.Clo.ProverKillTime);
       foreach (var impl in program.Implementations) {
-        implName2StratifiedInliningInfo[impl.Name] = new StratifiedInliningInfo(impl, this);
+        implName2StratifiedInliningInfo[impl.Name] = new StratifiedInliningInfo(impl, this, PassiveImplInstrumentation);
       }
       GenerateRecordFunctions();
     }
@@ -847,7 +853,7 @@ namespace VC {
     }
 
     public StratifiedVCGen(Program program, string/*?*/ logFilePath, bool appendLogFile, List<Checker> checkers)
-      : base(program, logFilePath, appendLogFile, checkers) {
+      : base(program, logFilePath, appendLogFile, checkers, null) {
       PersistCallTree = false;
       procsThatReachedRecBound = new HashSet<string>();
       procsToSkip = new HashSet<string>();
