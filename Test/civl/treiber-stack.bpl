@@ -82,15 +82,13 @@ ensures {:atomic} |{ A: Stack := Add(Stack, x, TopOfStack); TopOfStack := x; ret
   assert {:expand} {:layer 1} Inv(TopOfStack, Stack);
 }
 
-procedure {:yields} {:layer 1} pop()
+procedure {:yields} {:layer 1} pop() returns (t: Node)
 requires {:layer 1} Inv(TopOfStack, Stack);
 ensures {:layer 1} Inv(TopOfStack, Stack);
-ensures {:atomic} |{ var t: Node; 
-                     A: assume TopOfStack != null; t := TopOfStack; Used := Add(Used, t, map(Stack)[t]); TopOfStack := map(Stack)[t]; Stack := Remove(Stack, t); return true; }|;
+ensures {:atomic} |{ A: assume TopOfStack != null; t := TopOfStack; Used := Add(Used, t, map(Stack)[t]); TopOfStack := map(Stack)[t]; Stack := Remove(Stack, t); return true; }|;
 {
   var g: bool;
   var x: Node;
-  var t: Node;
 
   yield;
   assert {:layer 1} Inv(TopOfStack, Stack);
