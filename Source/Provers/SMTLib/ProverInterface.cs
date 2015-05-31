@@ -1284,14 +1284,14 @@ namespace Microsoft.Boogie.SMTLib
                 
                 if (lastCnt == cnt)
                 {
-                  if ((2 * frac) < cnt)
+                  if (frac < (cnt / 2))
                   {
                     frac *= 2;
                   }
-                  else if (timeLimitFactor <= 3 && 0 < timeLimit)
+                  else if (0 < timeLimit && timeLimitFactor <= 4)
                   {
                     // TODO(wuestholz): Add a commandline option to control this.
-                    timeLimitFactor++;
+                    timeLimitFactor *= 2;
                   }
                   else
                   {
@@ -1309,6 +1309,7 @@ namespace Microsoft.Boogie.SMTLib
                 else
                 {
                   frac = 2;
+                  timeLimitFactor = 1;
                 }
                 lastCnt = cnt;
 
@@ -1319,8 +1320,7 @@ namespace Microsoft.Boogie.SMTLib
 
                 if (0 < split0.Count)
                 {
-                  var stl = 0 < timeLimit ? split0.Count * ((timeLimit / cnt) + 1) : timeLimit;
-                  var result0 = CheckSplit(split0, ref popLater, timeLimitFactor * stl);
+                  var result0 = CheckSplit(split0, ref popLater, timeLimitFactor * timeLimit);
                   if (result0 == Outcome.Valid)
                   {
                     unverified.ExceptWith(split0);
@@ -1334,7 +1334,7 @@ namespace Microsoft.Boogie.SMTLib
 
                 if (0 < split1.Count)
                 {
-                  var stl = 0 < timeLimit ? split1.Count * ((timeLimit / cnt) + 1) : timeLimit;
+                  var stl = 0 < timeLimit ? (frac - 1) * timeLimit : timeLimit;
                   var result1 = CheckSplit(split1, ref popLater, timeLimitFactor * stl);
                   if (result1 == Outcome.Valid)
                   {
