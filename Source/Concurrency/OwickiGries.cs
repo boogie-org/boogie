@@ -919,6 +919,15 @@ namespace Microsoft.Boogie
                         {
                             HashSet<Variable> availableLinearVars = new HashSet<Variable>(AvailableLinearVars(callCmd));
                             linearTypeChecker.AddAvailableVars(callCmd, availableLinearVars);
+
+                            if (!callCmd.IsAsync && globalMods.Count > 0 && pc != null)
+                            {
+                                // assume pc || alpha(i, g);
+                                Expr assumeExpr = Expr.Or(Expr.Ident(pc), alpha);
+                                assumeExpr.Type = Type.Bool;
+                                newCmds.Add(new AssumeCmd(Token.NoToken, assumeExpr));
+                            }
+
                             Dictionary<string, Expr> domainNameToExpr = ComputeAvailableExprs(availableLinearVars, domainNameToInputVar);
                             AddUpdatesToOldGlobalVars(newCmds, ogOldGlobalMap, domainNameToLocalVar, domainNameToExpr);
                         }
@@ -930,6 +939,15 @@ namespace Microsoft.Boogie
                         DesugarParallelCallCmd(newCmds, parCallCmd);
                         HashSet<Variable> availableLinearVars = new HashSet<Variable>(AvailableLinearVars(parCallCmd));
                         linearTypeChecker.AddAvailableVars(parCallCmd, availableLinearVars);
+
+                        if (globalMods.Count > 0 && pc != null)
+                        {
+                            // assume pc || alpha(i, g);
+                            Expr assumeExpr = Expr.Or(Expr.Ident(pc), alpha);
+                            assumeExpr.Type = Type.Bool;
+                            newCmds.Add(new AssumeCmd(Token.NoToken, assumeExpr));
+                        }
+
                         Dictionary<string, Expr> domainNameToExpr = ComputeAvailableExprs(availableLinearVars, domainNameToInputVar);
                         AddUpdatesToOldGlobalVars(newCmds, ogOldGlobalMap, domainNameToLocalVar, domainNameToExpr);
                     }
