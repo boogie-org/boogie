@@ -832,17 +832,20 @@ namespace VC {
     public int numInlined = 0;
     public int vcsize = 0;
     private HashSet<string> procsThatReachedRecBound;
-    public HashSet<string> procsToSkip;
-    public Dictionary<string, int> extraRecBound;
+    private Dictionary<string, int> extraRecBound;
 
     public StratifiedVCGen(bool usePrevCallTree, HashSet<string> prevCallTree, 
-                           HashSet<string> procsToSkip, Dictionary<string, int> extraRecBound,
                            Program program, string/*?*/ logFilePath, bool appendLogFile, List<Checker> checkers) 
     : this(program, logFilePath, appendLogFile, checkers)
     {
-      this.procsToSkip = new HashSet<string>(procsToSkip);
-      this.extraRecBound = new Dictionary<string, int>(extraRecBound);
-
+      this.extraRecBound = new Dictionary<string, int>();
+      program.TopLevelDeclarations.OfType<Implementation>()
+          .Iter(impl => 
+              {
+                  var b = QKeyValue.FindIntAttribute(impl.Attributes, "SIextraRecBound", -1);
+                  if(b != -1) extraRecBound.Add(impl.Name, b);
+              });
+          
       if (usePrevCallTree) {
         callTree = prevCallTree;
         PersistCallTree = true;
@@ -856,18 +859,8 @@ namespace VC {
       : base(program, logFilePath, appendLogFile, checkers, null) {
       PersistCallTree = false;
       procsThatReachedRecBound = new HashSet<string>();
-      procsToSkip = new HashSet<string>();
-      extraRecBound = new Dictionary<string, int>();
     }
 
-    // Is this procedure to be "skipped" 
-    // Currently this is experimental
-    public bool isSkipped(string procName) {
-      return procsToSkip.Contains(procName);
-    }
-    public bool isSkipped(int candidate, FCallHandler calls) {
-      return isSkipped(calls.getProc(candidate));
-    }
     // Extra rec bound for procedures
     public int GetExtraRecBound(string procName) {
       if (!extraRecBound.ContainsKey(procName))
@@ -1321,16 +1314,9 @@ namespace VC {
                   Console.Write(">> SI Inlining: ");
                   reporter.candidatesToExpand
                       .Select(c => calls.getProc(c))
-                      .Iter(c => { if (!isSkipped(c)) Console.Write("{0} ", c); });
+                      .Iter(c =>  Console.Write("{0} ", c));
 
                   Console.WriteLine();
-                  Console.Write(">> SI Skipping: ");
-                  reporter.candidatesToExpand
-                      .Select(c => calls.getProc(c))
-                      .Iter(c => { if (isSkipped(c)) Console.Write("{0} ", c); });
-
-                  Console.WriteLine();
-
               }
 
               // Expand and try again
@@ -1349,7 +1335,6 @@ namespace VC {
       if (CommandLineOptions.Clo.StratifiedInliningVerbose > 1) {
         Console.WriteLine(">> SI: Expansions performed: {0}", vState.expansionCount);
         Console.WriteLine(">> SI: Candidates left: {0}", calls.currCandidates.Count);
-        Console.WriteLine(">> SI: Candidates skipped: {0}", calls.currCandidates.Where(i => isSkipped(i, calls)).Count());
         Console.WriteLine(">> SI: VC Size: {0}", vState.vcSize);
       }
 
@@ -1390,7 +1375,6 @@ namespace VC {
       List<VCExpr> assumptions = new List<VCExpr>();
 
       foreach (int id in calls.currCandidates) {
-        if (!isSkipped(id, calls))
           assumptions.Add(calls.getFalseExpr(id));
       }
       Outcome ret = checker.CheckAssumptions(assumptions);
@@ -1424,7 +1408,6 @@ namespace VC {
       procsThatReachedRecBound.Clear();
 
       foreach (int id in calls.currCandidates) {
-        if (isSkipped(id, calls)) continue;
 
         int idBound = calls.getRecursionBound(id);
         int sd = calls.getStackDepth(id);
@@ -1490,9 +1473,6 @@ namespace VC {
       Contract.Requires(vState.calls != null);
       Contract.Requires(vState.checker.prover != null);
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
-
-      // Skipped calls don't get inlined
-      candidates = candidates.FindAll(id => !isSkipped(id, vState.calls));
 
       vState.expansionCount += candidates.Count;
 
