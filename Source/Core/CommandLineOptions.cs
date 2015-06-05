@@ -1593,7 +1593,7 @@ namespace Microsoft.Boogie {
               ps.CheckBooleanFlag("doModSetAnalysis", ref DoModSetAnalysis) ||
               ps.CheckBooleanFlag("doNotUseLabels", ref UseLabels, false) ||
               ps.CheckBooleanFlag("runDiagnosticsOnTimeout", ref RunDiagnosticsOnTimeout) ||
-              ps.CheckBooleanFlag("traceDiagnosticsOnTimeout", ref RunDiagnosticsOnTimeout) ||
+              ps.CheckBooleanFlag("traceDiagnosticsOnTimeout", ref TraceDiagnosticsOnTimeout) ||
               ps.CheckBooleanFlag("boolControlVC", ref SIBoolControlVC, true) ||
               ps.CheckBooleanFlag("contractInfer", ref ContractInfer) ||
               ps.CheckBooleanFlag("explainHoudini", ref ExplainHoudini) ||
