@@ -837,15 +837,7 @@ namespace VC {
     public StratifiedVCGen(bool usePrevCallTree, HashSet<string> prevCallTree, 
                            Program program, string/*?*/ logFilePath, bool appendLogFile, List<Checker> checkers) 
     : this(program, logFilePath, appendLogFile, checkers)
-    {
-      this.extraRecBound = new Dictionary<string, int>();
-      program.TopLevelDeclarations.OfType<Implementation>()
-          .Iter(impl => 
-              {
-                  var b = QKeyValue.FindIntAttribute(impl.Attributes, "SIextraRecBound", -1);
-                  if(b != -1) extraRecBound.Add(impl.Name, b);
-              });
-          
+    {          
       if (usePrevCallTree) {
         callTree = prevCallTree;
         PersistCallTree = true;
@@ -859,6 +851,14 @@ namespace VC {
       : base(program, logFilePath, appendLogFile, checkers, null) {
       PersistCallTree = false;
       procsThatReachedRecBound = new HashSet<string>();
+
+      extraRecBound = new Dictionary<string, int>();
+      program.TopLevelDeclarations.OfType<Implementation>()
+          .Iter(impl =>
+          {
+              var b = QKeyValue.FindIntAttribute(impl.Attributes, "SIextraRecBound", -1);
+              if (b != -1) extraRecBound.Add(impl.Name, b);
+          });
     }
 
     // Extra rec bound for procedures
