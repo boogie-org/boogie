@@ -558,6 +558,8 @@ namespace Microsoft.Boogie {
     public bool WeakArrayTheory = false;
     public bool UseLabels = true;
     public bool RunDiagnosticsOnTimeout = false;
+    public bool TraceDiagnosticsOnTimeout = false;
+    public int TimeLimitPerAssertionInMs = -1;
     public bool SIBoolControlVC = false;
     public bool MonomorphicArrays {
       get {
@@ -1477,6 +1479,10 @@ namespace Microsoft.Boogie {
           ps.GetNumericArgument(ref ProverKillTime);
           return true;
 
+        case "timeLimitPerAssertionInMs":
+          ps.GetNumericArgument(ref TimeLimitPerAssertionInMs);
+          return true;
+
         case "smokeTimeout":
           ps.GetNumericArgument(ref SmokeTimeout);
           return true;
@@ -1587,6 +1593,7 @@ namespace Microsoft.Boogie {
               ps.CheckBooleanFlag("doModSetAnalysis", ref DoModSetAnalysis) ||
               ps.CheckBooleanFlag("doNotUseLabels", ref UseLabels, false) ||
               ps.CheckBooleanFlag("runDiagnosticsOnTimeout", ref RunDiagnosticsOnTimeout) ||
+              ps.CheckBooleanFlag("traceDiagnosticsOnTimeout", ref RunDiagnosticsOnTimeout) ||
               ps.CheckBooleanFlag("boolControlVC", ref SIBoolControlVC, true) ||
               ps.CheckBooleanFlag("contractInfer", ref ContractInfer) ||
               ps.CheckBooleanFlag("explainHoudini", ref ExplainHoudini) ||

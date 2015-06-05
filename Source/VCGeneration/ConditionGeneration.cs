@@ -983,11 +983,11 @@ namespace VC {
     #endregion
 
 
-    protected Checker FindCheckerFor(int timeout, bool isBlocking = true)
+    protected Checker FindCheckerFor(int timeout, bool isBlocking = true, int waitTimeinMs = 50, int maxRetries = 3)
     {
+      Contract.Requires(0 <= waitTimeinMs && 0 <= maxRetries);
       Contract.Ensures(!isBlocking || Contract.Result<Checker>() != null);
 
-      var maxRetries = 3;
       lock (checkers)
       {
       retry:
@@ -1015,6 +1015,8 @@ namespace VC {
                 else
                 {
                   checkers.RemoveAt(i);
+                  i--;
+                  continue;
                 }
               }
             }
@@ -1029,7 +1031,10 @@ namespace VC {
         {
           if (isBlocking || 0 < maxRetries)
           {
-            Monitor.Wait(checkers, 50);
+            if (0 < waitTimeinMs)
+            {
+              Monitor.Wait(checkers, waitTimeinMs);
+            }
             maxRetries--;
             goto retry;
           }

@@ -968,7 +968,7 @@ namespace Microsoft.Boogie
                       {
                           semaphore.Release();
                       }
-                  }, cts.Token, TaskCreationOptions.LongRunning);
+                  }, cts.Token, TaskCreationOptions.None);
               tasks[taskIndex] = t;
           }
 

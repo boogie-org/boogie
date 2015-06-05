@@ -454,7 +454,7 @@ namespace Microsoft.Boogie.SMTLib
         ctx.KnownDatatypeConstructors.Clear();
         ctx.parent = this;
         DeclCollector.Reset();
-        SendThisVC("; doing a full reset...");
+        SendThisVC("; did a full reset");
       }
     }
 	
@@ -1266,11 +1266,19 @@ namespace Microsoft.Boogie.SMTLib
             {
               #region Run timeout diagnostics
 
+              if (CommandLineOptions.Clo.TraceDiagnosticsOnTimeout)
+              {
+                Console.Out.WriteLine("Starting timeout diagnostics with initial time limit {0}.", options.TimeLimit);
+              }
+
+              var start = DateTime.UtcNow;
+
               SendThisVC("; begin timeout diagnostics");
 
               var unverified = new SortedSet<int>(ctx.TimeoutDiagnosticIDToAssertion.Keys);
               var lastCnt = 0;
               var timeLimit = options.TimeLimit;
+              var timeLimitPerAssertion = CommandLineOptions.Clo.TimeLimitPerAssertionInMs;
               var timeLimitFactor = 1;
               var frac = 2;
               while (true)
@@ -1320,7 +1328,9 @@ namespace Microsoft.Boogie.SMTLib
 
                 if (0 < split0.Count)
                 {
-                  var result0 = CheckSplit(split0, ref popLater, timeLimitFactor * timeLimit);
+                  var tl = timeLimitFactor * timeLimit;
+                  var tla = timeLimitPerAssertion * split0.Count;
+                  var result0 = CheckSplit(split0, ref popLater, (0 < tla && tla < tl) ? tla : tl);
                   if (result0 == Outcome.Valid)
                   {
                     unverified.ExceptWith(split0);
@@ -1334,8 +1344,10 @@ namespace Microsoft.Boogie.SMTLib
 
                 if (0 < split1.Count)
                 {
-                  var stl = 0 < timeLimit ? (frac - 1) * timeLimit : timeLimit;
-                  var result1 = CheckSplit(split1, ref popLater, timeLimitFactor * stl);
+                  var tl = 0 < timeLimit ? (frac - 1) * timeLimit : timeLimit;
+                  tl = timeLimitFactor * tl;
+                  var tla = timeLimitPerAssertion * split1.Count;
+                  var result1 = CheckSplit(split1, ref popLater, (0 < tla && tla < tl) ? tla : tl);
                   if (result1 == Outcome.Valid)
                   {
                     unverified.ExceptWith(split1);
@@ -1349,6 +1361,23 @@ namespace Microsoft.Boogie.SMTLib
               }
 
               SendThisVC("; end timeout diagnostics");
+
+              var end = DateTime.UtcNow;
+
+              if (CommandLineOptions.Clo.TraceDiagnosticsOnTimeout)
+              {
+                Console.Out.WriteLine("Terminated timeout diagnostics after {0:F0} ms.", end.Subtract(start).TotalMilliseconds);
+                Console.Out.WriteLine("Outcome: {0}", result);
+                Console.Out.WriteLine("Unverified assertions: {0} (of {1})", unverified.Count, ctx.TimeoutDiagnosticIDToAssertion.Keys.Count);
+
+                string filename = "unknown";
+                var assertion = ctx.TimeoutDiagnosticIDToAssertion.Values.Select(t => t.Item1).FirstOrDefault(a => a.tok != null && a.tok != Token.NoToken && a.tok.filename != null);
+                if (assertion != null)
+                {
+                  filename = assertion.tok.filename;
+                }
+                File.AppendAllText("timeouts.csv", string.Format(";{0};{1};{2:F0};{3};{4};{5}\n", filename, options.TimeLimit, end.Subtract(start).TotalMilliseconds, result, unverified.Count, ctx.TimeoutDiagnosticIDToAssertion.Keys.Count));
+              }
 
               #endregion
             }

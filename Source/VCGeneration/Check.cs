@@ -217,6 +217,7 @@ namespace Microsoft.Boogie {
     private void Setup(Program prog, ProverContext ctx)
     {
       Program = prog;
+      // TODO(wuestholz): Is this lock necessary?
       lock (Program.TopLevelDeclarations)
       {
         foreach (Declaration decl in Program.TopLevelDeclarations)
@@ -362,7 +363,7 @@ namespace Microsoft.Boogie {
       thmProver.BeginCheck(descriptiveName, vc, handler);
       //  gen.ClearSharedFormulas();    PR: don't know yet what to do with this guy
 
-      ProverTask = Task.Factory.StartNew(() => { WaitForOutput(null); } , TaskCreationOptions.LongRunning);
+      ProverTask = Task.Factory.StartNew(() => { WaitForOutput(null); }, TaskCreationOptions.LongRunning);
     }
 
     public ProverInterface.Outcome ReadOutcome() {
