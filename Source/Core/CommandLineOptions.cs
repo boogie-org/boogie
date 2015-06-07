@@ -559,7 +559,7 @@ namespace Microsoft.Boogie {
     public bool UseLabels = true;
     public bool RunDiagnosticsOnTimeout = false;
     public bool TraceDiagnosticsOnTimeout = false;
-    public int TimeLimitPerAssertionInMs = -1;
+    public int TimeLimitPerAssertionInPercent = 20;
     public bool SIBoolControlVC = false;
     public bool MonomorphicArrays {
       get {
@@ -1479,8 +1479,8 @@ namespace Microsoft.Boogie {
           ps.GetNumericArgument(ref ProverKillTime);
           return true;
 
-        case "timeLimitPerAssertionInMs":
-          ps.GetNumericArgument(ref TimeLimitPerAssertionInMs);
+        case "timeLimitPerAssertionInPercent":
+          ps.GetNumericArgument(ref TimeLimitPerAssertionInPercent, a => 0 < a);
           return true;
 
         case "smokeTimeout":

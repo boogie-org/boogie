@@ -1271,102 +1271,90 @@ namespace Microsoft.Boogie.SMTLib
                 Console.Out.WriteLine("Starting timeout diagnostics with initial time limit {0}.", options.TimeLimit);
               }
 
-              var start = DateTime.UtcNow;
-
               SendThisVC("; begin timeout diagnostics");
 
+              var start = DateTime.UtcNow;
               var unverified = new SortedSet<int>(ctx.TimeoutDiagnosticIDToAssertion.Keys);
-              var lastCnt = 0;
-              var timeLimit = options.TimeLimit;
-              var timeLimitPerAssertion = CommandLineOptions.Clo.TimeLimitPerAssertionInMs;
-              var timeLimitFactor = 1;
-              var frac = 2;
+              var timedOut = new SortedSet<int>();
+              int frac = 2;
+              int queries = 0;
+              int timeLimitPerAssertion = 0 < options.TimeLimit ? (options.TimeLimit / 100) * CommandLineOptions.Clo.TimeLimitPerAssertionInPercent : 1000;
               while (true)
               {
-                int cnt = unverified.Count;
-                if (cnt == 0)
+                int rem = unverified.Count;
+                if (rem == 0)
                 {
-                  result = Outcome.Valid;
-                  break;
-                }
-                
-                if (lastCnt == cnt)
-                {
-                  if (frac < (cnt / 2))
+                  if (0 < timedOut.Count)
                   {
-                    frac *= 2;
-                  }
-                  else if (0 < timeLimit && timeLimitFactor <= 4)
-                  {
-                    // TODO(wuestholz): Add a commandline option to control this.
-                    timeLimitFactor *= 2;
+                    result = CheckSplit(timedOut, ref popLater, options.TimeLimit, timeLimitPerAssertion, ref queries);
+                    if (result == Outcome.Valid)
+                    {
+                      timedOut.Clear();
+                    }
+                    else if (result == Outcome.TimeOut)
+                    {
+                      // Give up and report which assertions were not verified.
+                      var cmds = timedOut.Select(id => ctx.TimeoutDiagnosticIDToAssertion[id]);
+
+                      if (cmds.Any())
+                      {
+                        handler.OnResourceExceeded("timeout after running diagnostics", cmds);
+                      }
+                    }
                   }
                   else
                   {
-                    // Give up and report which assertions were not verified.
-                    var cmds = unverified.Select(id => ctx.TimeoutDiagnosticIDToAssertion[id]);
+                    result = Outcome.Valid;
+                  }
+                  break;
+                }
 
-                    if (cmds.Any())
-                    {
-                      handler.OnResourceExceeded("timeout after running diagnostics", cmds);
-                    }
-
-                    break;
+                // TODO(wuestholz): Try out different ways for splitting up the work (e.g., randomly).
+                var split = new SortedSet<int>(unverified.Where((val, idx) => idx < ((rem - 1) / frac + 1)));
+                Contract.Assert(0 < split.Count);
+                var splitRes = CheckSplit(split, ref popLater, timeLimitPerAssertion, timeLimitPerAssertion, ref queries);
+                if (splitRes == Outcome.Valid)
+                {
+                  unverified.ExceptWith(split);
+                  frac = 1;
+                }
+                else if (splitRes == Outcome.Invalid)
+                {
+                  result = splitRes;
+                  break;
+                }
+                else if (splitRes == Outcome.TimeOut)
+                {
+                  if (1 < frac && frac <= (rem / 4))
+                  {
+                    frac *= 4;
+                  }
+                  else if (frac <= (rem / 2))
+                  {
+                    frac *= 2;
+                  }
+                  else
+                  {
+                    timedOut.UnionWith(split);
+                    unverified.ExceptWith(split);
+                    frac = 1;
                   }
                 }
                 else
                 {
-                  frac = 2;
-                  timeLimitFactor = 1;
-                }
-                lastCnt = cnt;
-
-                // TODO(wuestholz): Try out different ways for splitting up the work (e.g., randomly).
-                var cnt0 = cnt / frac;
-                var split0 = new SortedSet<int>(unverified.Where((val, idx) => idx < cnt0));
-                var split1 = new SortedSet<int>(unverified.Except(split0));
-
-                if (0 < split0.Count)
-                {
-                  var tl = timeLimitFactor * timeLimit;
-                  var tla = timeLimitPerAssertion * split0.Count;
-                  var result0 = CheckSplit(split0, ref popLater, (0 < tla && tla < tl) ? tla : tl);
-                  if (result0 == Outcome.Valid)
-                  {
-                    unverified.ExceptWith(split0);
-                  }
-                  else if (result0 == Outcome.Invalid)
-                  {
-                    result = result0;
-                    break;
-                  }
-                }
-
-                if (0 < split1.Count)
-                {
-                  var tl = 0 < timeLimit ? (frac - 1) * timeLimit : timeLimit;
-                  tl = timeLimitFactor * tl;
-                  var tla = timeLimitPerAssertion * split1.Count;
-                  var result1 = CheckSplit(split1, ref popLater, (0 < tla && tla < tl) ? tla : tl);
-                  if (result1 == Outcome.Valid)
-                  {
-                    unverified.ExceptWith(split1);
-                  }
-                  else if (result1 == Outcome.Invalid)
-                  {
-                    result = result1;
-                    break;
-                  }
+                  break;
                 }
               }
 
-              SendThisVC("; end timeout diagnostics");
+              unverified.UnionWith(timedOut);
 
               var end = DateTime.UtcNow;
 
+              SendThisVC("; end timeout diagnostics");
+
               if (CommandLineOptions.Clo.TraceDiagnosticsOnTimeout)
               {
-                Console.Out.WriteLine("Terminated timeout diagnostics after {0:F0} ms.", end.Subtract(start).TotalMilliseconds);
+                Console.Out.WriteLine("Terminated timeout diagnostics after {0:F0} ms and {1} prover queries.", end.Subtract(start).TotalMilliseconds, queries);
                 Console.Out.WriteLine("Outcome: {0}", result);
                 Console.Out.WriteLine("Unverified assertions: {0} (of {1})", unverified.Count, ctx.TimeoutDiagnosticIDToAssertion.Keys.Count);
 
@@ -1376,7 +1364,7 @@ namespace Microsoft.Boogie.SMTLib
                 {
                   filename = assertion.tok.filename;
                 }
-                File.AppendAllText("timeouts.csv", string.Format(";{0};{1};{2:F0};{3};{4};{5}\n", filename, options.TimeLimit, end.Subtract(start).TotalMilliseconds, result, unverified.Count, ctx.TimeoutDiagnosticIDToAssertion.Keys.Count));
+                File.AppendAllText("timeouts.csv", string.Format(";{0};{1};{2:F0};{3};{4};{5};{6}\n", filename, options.TimeLimit, end.Subtract(start).TotalMilliseconds, queries, result, unverified.Count, ctx.TimeoutDiagnosticIDToAssertion.Keys.Count));
               }
 
               #endregion
@@ -1453,15 +1441,17 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
-    private Outcome CheckSplit(SortedSet<int> split, ref bool popLater, int timeLimit)
+    private Outcome CheckSplit(SortedSet<int> split, ref bool popLater, int timeLimit, int timeLimitPerAssertion, ref int queries)
     {
+      var tla = timeLimitPerAssertion * split.Count;
+
       if (popLater)
       {
         SendThisVC("(pop 1)");
       }
 
       SendThisVC("(push 1)");
-      SendThisVC(string.Format("(set-option :{0} {1})", Z3.SetTimeoutOption(), timeLimit));
+      SendThisVC(string.Format("(set-option :{0} {1})", Z3.SetTimeoutOption(), (0 < tla && tla < timeLimit) ? tla : timeLimit));
       popLater = true;
 
       SendThisVC(string.Format("; checking split VC with {0} unverified assertions", split.Count));
@@ -1481,6 +1471,7 @@ namespace Microsoft.Boogie.SMTLib
       }
       FlushLogFile();
       SendThisVC("(check-sat)");
+      queries++;
       return GetResponse();
     }
 
