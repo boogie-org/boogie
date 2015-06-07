@@ -89,8 +89,14 @@ namespace Microsoft.Boogie {
           goto END;
         }
       }
-      ExecutionEngine.ProcessFiles(fileList);
-      return 0;
+      
+      int retv = ExecutionEngine.ProcessFiles(fileList);
+      if (CommandLineOptions.Clo.CountVerificationErrors == 0) {
+          return 0;
+      }
+      else {
+          return retv;
+      }
 
     END:
       if (CommandLineOptions.Clo.XmlSink != null) {
