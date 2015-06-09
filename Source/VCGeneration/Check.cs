@@ -449,7 +449,8 @@ namespace Microsoft.Boogie {
       Invalid,
       TimeOut,
       OutOfMemory,
-      Undetermined
+      Undetermined,
+      Bounded
     }
     public class ErrorHandler {
       // Used in CheckOutcomeCore

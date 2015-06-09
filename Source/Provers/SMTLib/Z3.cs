@@ -248,7 +248,8 @@ namespace Microsoft.Boogie.SMTLib
             // Complex proof attempts in VCC (and likely elsewhere) require matching depth of 20 or more.
 
             // the following will make the :weight option more usable
-            if (!fp) options.AddWeakSmtOption("smt.QI.COST", "|(+ weight generation)|"); // TODO: this doesn't seem to work
+              // KLM: this QI cost function is the default
+            // if (!fp) options.AddWeakSmtOption("smt.QI.COST", "|(+ weight generation)|"); // TODO: this doesn't seem to work
 
             //if (options.Inspector != null)
             //  options.WeakAddSmtOption("PROGRESS_SAMPLING_FREQ", "100");

@@ -321,6 +321,8 @@ namespace Microsoft.Boogie.SMTLib
             SendCommon("(declare-datatypes () (" + datatypeString + "))");
           }
         }
+        if (CommandLineOptions.Clo.ProverPreamble != null)
+            SendCommon("(include \"" + CommandLineOptions.Clo.ProverPreamble + "\")");
       }
 
       if (!AxiomsAreSetup)
@@ -1016,6 +1018,9 @@ namespace Microsoft.Boogie.SMTLib
                 case "unknown":
                     result = Outcome.Invalid;
                     break;
+                case "bounded":
+                    result = Outcome.Bounded;
+                    break;
                 case "error":
                     if (resp.ArgCount > 0 && resp.Arguments[0].Name.Contains("canceled"))
                     {
@@ -1053,7 +1058,8 @@ namespace Microsoft.Boogie.SMTLib
                             HandleProverError("Unexpected prover response: " + resp.ToString());
                         break;
                     }
-				case Outcome.Valid:
+                case Outcome.Valid:
+                case Outcome.Bounded:
 				    {
 						resp = Process.GetProverResponse();
                         if (resp.Name == "fixedpoint")
@@ -1170,6 +1176,7 @@ namespace Microsoft.Boogie.SMTLib
         usedLogNames.Add(curFilename);
       }
 
+      Console.WriteLine("opening log file {0}", curFilename);
       return new StreamWriter(curFilename, false);
     }
 

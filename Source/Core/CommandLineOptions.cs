@@ -418,6 +418,8 @@ namespace Microsoft.Boogie {
     public string SimplifyLogFilePath = null;
     public bool PrintInstrumented = false;
     public bool InstrumentWithAsserts = false;
+    public string ProverPreamble = null;
+
     public enum InstrumentationPlaces {
       LoopHeaders,
       Everywhere
@@ -938,7 +940,14 @@ namespace Microsoft.Boogie {
           }
           return true;
 
-        case "logPrefix":
+        case "proverPreamble": 
+          if (ps.ConfirmArgumentCount(1))
+          {
+            ProverPreamble = args[ps.i];
+          }
+           return true;
+          
+          case "logPrefix":
           if (ps.ConfirmArgumentCount(1)) {
             string s = cce.NonNull(args[ps.i]);
             LogPrefix += s.Replace('/', '-').Replace('\\', '-');
