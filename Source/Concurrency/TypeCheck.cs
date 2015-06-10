@@ -388,11 +388,6 @@ namespace Microsoft.Boogie
                     Error(proc, "Incorrect number of layers");
                     continue;
                 }
-                if (availableUptoLayerNum <= createdAtLayerNum)
-                {
-                    Error(proc, "Creation layer number must be less than the available upto layer number");
-                    continue;
-                }
                 foreach (Ensures e in proc.Ensures)
                 {
                     MoverType moverType = GetMoverType(e);
@@ -406,6 +401,11 @@ namespace Microsoft.Boogie
                     if (procToActionInfo.ContainsKey(proc))
                     {
                         Error(proc, "A procedure can have at most one atomic action");
+                        continue;
+                    }
+                    if (availableUptoLayerNum <= createdAtLayerNum)
+                    {
+                        Error(proc, "Creation layer number must be less than the available upto layer number");
                         continue;
                     }
 
@@ -432,7 +432,15 @@ namespace Microsoft.Boogie
                 if (errorCount > 0) continue;
                 if (!procToActionInfo.ContainsKey(proc))
                 {
-                    procToActionInfo[proc] = new ActionInfo(proc, createdAtLayerNum, availableUptoLayerNum);
+                    if (availableUptoLayerNum < createdAtLayerNum)
+                    {
+                        Error(proc, "Creation layer number must be no more than the available upto layer number");
+                        continue;
+                    }
+                    else
+                    {
+                        procToActionInfo[proc] = new ActionInfo(proc, createdAtLayerNum, availableUptoLayerNum);
+                    }
                 }
             }
             if (errorCount > 0) return;
