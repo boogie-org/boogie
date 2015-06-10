@@ -291,11 +291,16 @@ namespace Microsoft.Boogie
                         }
                         else
                         {
+                            int numAtomicActions = 0;
                             foreach (CallCmd callCmd in parCallCmd.CallCmds)
                             {
                                 ActionInfo actionInfo = moverTypeChecker.procToActionInfo[callCmd.Proc];
                                 isRightMover = isRightMover && actionInfo.IsRightMover;
                                 isLeftMover = isLeftMover && actionInfo.IsLeftMover;
+                                if (actionInfo is AtomicActionInfo)
+                                {
+                                    numAtomicActions++;
+                                }
                             }
                             if (isLeftMover && isRightMover)
                             {
@@ -311,7 +316,7 @@ namespace Microsoft.Boogie
                             }
                             else
                             {
-                                Debug.Assert(parCallCmd.CallCmds.Count == 1);
+                                Debug.Assert(numAtomicActions == 1);
                                 edgeLabels[edge] = 'A';
                             }
                         }

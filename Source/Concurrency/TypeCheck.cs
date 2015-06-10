@@ -280,21 +280,20 @@ namespace Microsoft.Boogie
 
         private static List<int> FindLayers(QKeyValue kv)
         {
-            HashSet<int> attrs = new HashSet<int>();
+            List<int> layers = new List<int>();
             for (; kv != null; kv = kv.Next)
             {
                 if (kv.Key != "layer") continue;
                 foreach (var o in kv.Params)
                 {
                     Expr e = o as Expr;
-                    if (e == null) continue;
+                    if (e == null) return null;
                     LiteralExpr l = e as LiteralExpr;
-                    if (l != null && l.isBigNum)
-                        attrs.Add(l.asBigNum.ToIntSafe);
+                    if (l == null) return null;
+                    if (!l.isBigNum) return null;
+                    layers.Add(l.asBigNum.ToIntSafe);
                 }
             }
-            List<int> layers = attrs.ToList();
-            layers.Sort();
             return layers;
         }
 
@@ -718,9 +717,17 @@ namespace Microsoft.Boogie
             return ret;
         }
 
+        private List<int> RemoveDuplicatesAndSort(List<int> attrs)
+        {
+            HashSet<int> layerSet = new HashSet<int>(attrs);
+            List<int> layers = new List<int>(layerSet);
+            layers.Sort();
+            return layers;
+        }
+
         private void CheckAndAddLayers(Absy node, QKeyValue attributes, int enclosingProcLayerNum)
         {
-            List<int> attrs = FindLayers(attributes);
+            List<int> attrs = RemoveDuplicatesAndSort(FindLayers(attributes));
             if (attrs.Count == 0)
             {
                 Error(node, "layer not present");

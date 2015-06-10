@@ -1,0 +1,3 @@
+chris3.bpl(3,33): Error: Creation layer number must be less than the available upto layer number
+chris3.bpl(14,33): Error: Creation layer number must be less than the available upto layer number
+2 type checking errors detected in chris3.bpl
