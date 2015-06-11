@@ -105,7 +105,7 @@ namespace Microsoft.Boogie {
         if (0 < CommandLineOptions.Clo.VerifySnapshots && QKeyValue.FindStringAttribute(lambdaAttrs, "checksum") == null)
         {
           // Attach a dummy checksum to avoid issues in the dependency analysis.
-          var checksumAttr = new QKeyValue(lambda.tok, "checksum", new List<object> { "stable" }, null);
+          var checksumAttr = new QKeyValue(lambda.tok, "checksum", new List<object> { "lambda expression" }, null);
           if (lambdaAttrs == null)
           {
             lambdaAttrs = checksumAttr;
