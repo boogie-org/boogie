@@ -1317,7 +1317,9 @@ namespace Microsoft.Boogie.SMTLib
                 }
 
                 // TODO(wuestholz): Try out different ways for splitting up the work (e.g., randomly).
-                var split = new SortedSet<int>(unverified.Where((val, idx) => idx < ((rem - 1) / frac + 1)));
+                var cnt = Math.Max(1, rem / frac);
+                // It seems like assertions later in the control flow have smaller indexes.
+                var split = new SortedSet<int>(unverified.Where((val, idx) => (rem - idx - 1) < cnt));
                 Contract.Assert(0 < split.Count);
                 var splitRes = CheckSplit(split, ref popLater, timeLimitPerAssertion, timeLimitPerAssertion, ref queries);
                 if (splitRes == Outcome.Valid)
@@ -1332,11 +1334,11 @@ namespace Microsoft.Boogie.SMTLib
                 }
                 else if (splitRes == Outcome.TimeOut)
                 {
-                  if (1 < frac && frac <= (rem / 4))
+                  if (2 <= frac && (4 <= (rem / frac)))
                   {
                     frac *= 4;
                   }
-                  else if (frac <= (rem / 2))
+                  else if (2 <= (rem / frac))
                   {
                     frac *= 2;
                   }
