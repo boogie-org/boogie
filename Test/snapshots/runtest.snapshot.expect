@@ -648,3 +648,12 @@ Processing command (at Snapshots35.v1.bpl(5,5)) assert p;
 Snapshots35.v1.bpl(5,5): Error BP5001: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 1 error
+Processing command (at Snapshots36.v0.bpl(13,5)) assert l[0];
+  >>> DoNothingToAssert
+
+Boogie program verifier finished with 1 verified, 0 errors
+Processing command (at Snapshots36.v1.bpl(13,5)) assert l[0];
+  >>> DoNothingToAssert
+Snapshots36.v1.bpl(13,5): Error BP5001: This assertion might not hold.
+
+Boogie program verifier finished with 0 verified, 1 error
