@@ -2630,6 +2630,8 @@ namespace Microsoft.Boogie {
     private bool neverTrigger;
     private bool neverTriggerComputed;
 
+    public string OriginalLambdaExprAsString;
+
     public Function(IToken tok, string name, List<Variable> args, Variable result)
       : this(tok, name, new List<TypeVariable>(), args, result, null) {
       Contract.Requires(result != null);

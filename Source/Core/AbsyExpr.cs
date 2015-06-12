@@ -1983,7 +1983,15 @@ namespace Microsoft.Boogie {
     virtual public void Emit(IList<Expr> args, TokenTextWriter stream, int contextBindingStrength, bool fragileContext) {
       //Contract.Requires(stream != null);
       //Contract.Requires(args != null);
-      this.name.Emit(stream, 0xF0, false);
+
+      if (stream.UseForComputingChecksums && Func.OriginalLambdaExprAsString != null)
+      {
+        stream.Write(Func.OriginalLambdaExprAsString);
+      }
+      else
+      {
+        this.name.Emit(stream, 0xF0, false);
+      }
       if (stream.UseForComputingChecksums)
       {
         var c = Func.DependencyChecksum;

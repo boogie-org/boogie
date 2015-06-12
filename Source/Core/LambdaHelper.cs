@@ -176,6 +176,7 @@ namespace Microsoft.Boogie {
           }
           Function fn = new Function(tok, FreshLambdaFunctionName(), freshTypeVars, formals, res, "auto-generated lambda function",
             Substituter.Apply(Substituter.SubstitutionFromHashtable(substFnAttrs), lambdaAttrs));
+          fn.OriginalLambdaExprAsString = lam_str;
 
           fcall = new FunctionCall(new IdentifierExpr(tok, fn.Name));
           fcall.Func = fn;  // resolve here
