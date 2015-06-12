@@ -561,7 +561,7 @@ namespace Microsoft.Boogie {
     public bool UseLabels = true;
     public bool RunDiagnosticsOnTimeout = false;
     public bool TraceDiagnosticsOnTimeout = false;
-    public int TimeLimitPerAssertionInPercent = 20;
+    public int TimeLimitPerAssertionInPercent = 10;
     public bool SIBoolControlVC = false;
     public bool MonomorphicArrays {
       get {

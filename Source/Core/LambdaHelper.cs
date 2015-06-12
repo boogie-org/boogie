@@ -67,7 +67,6 @@ namespace Microsoft.Boogie {
 
       string FreshLambdaFunctionName()
       {
-        // TODO(wuestholz): Should we use a counter per top-level declaration?
         return string.Format("lambda#{0}", lambdaid++);
       }
 
