@@ -52,7 +52,8 @@ namespace Microsoft.Boogie.SMTLib
                 return;
             }
 
-            var proverExe = "z3.exe";
+            var proverExe = CommandLineOptions.Clo.Z3ExecutableName; 
+            proverExe = proverExe == null ? "z3.exe" : proverExe;
 
             if (_proverPath == null)
             {
