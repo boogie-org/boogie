@@ -43,7 +43,7 @@ namespace Microsoft.Boogie
             if (moverTypeChecker.procToActionInfo.ContainsKey(originalProc))
             {
                 AtomicActionInfo atomicActionInfo = moverTypeChecker.procToActionInfo[originalProc] as AtomicActionInfo;
-                if (atomicActionInfo != null && atomicActionInfo.thisGate.Count > 0 && layerNum == enclosingProcLayerNum)
+                if (atomicActionInfo != null && atomicActionInfo.gate.Count > 0 && layerNum == enclosingProcLayerNum)
                 {
                     newCmds.Add(new HavocCmd(Token.NoToken, new List<IdentifierExpr>(new IdentifierExpr[] { Expr.Ident(dummyLocalVar) })));
                     Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
@@ -52,7 +52,7 @@ namespace Microsoft.Boogie
                         map[originalProc.InParams[i]] = callCmd.Ins[i];
                     }
                     Substitution subst = Substituter.SubstitutionFromHashtable(map);
-                    foreach (AssertCmd assertCmd in atomicActionInfo.thisGate)
+                    foreach (AssertCmd assertCmd in atomicActionInfo.gate)
                     {
                         newCmds.Add(Substituter.Apply(subst, assertCmd));
                     }
@@ -164,9 +164,9 @@ namespace Microsoft.Boogie
                     AtomicActionInfo atomicActionInfo = actionInfo as AtomicActionInfo;
                     if (atomicActionInfo != null)
                     {
-                        CodeExpr action = (CodeExpr)VisitCodeExpr(atomicActionInfo.thisAction);
+                        CodeExpr action = (CodeExpr)VisitCodeExpr(atomicActionInfo.action);
                         List<Cmd> cmds = new List<Cmd>();
-                        foreach (AssertCmd assertCmd in atomicActionInfo.thisGate)
+                        foreach (AssertCmd assertCmd in atomicActionInfo.gate)
                         {
                             cmds.Add(new AssumeCmd(Token.NoToken, (Expr)Visit(assertCmd.Expr)));
                         }
@@ -764,10 +764,10 @@ namespace Microsoft.Boogie
                 }
                 else
                 {
-                    Expr betaExpr = (new MoverCheck.TransitionRelationComputation(moverTypeChecker.program, atomicActionInfo, frame, introducedVars)).TransitionRelationCompute();
+                    Expr betaExpr = (new MoverCheck.TransitionRelationComputation(moverTypeChecker.program, atomicActionInfo, frame, introducedVars)).TransitionRelationCompute(true);
                     beta = Substituter.ApplyReplacingOldExprs(always, forold, betaExpr);
                     Expr alphaExpr = Expr.True;
-                    foreach (AssertCmd assertCmd in atomicActionInfo.thisGate)
+                    foreach (AssertCmd assertCmd in atomicActionInfo.gate)
                     {
                         alphaExpr = Expr.And(alphaExpr, assertCmd.Expr);
                         alphaExpr.Type = Type.Bool;

@@ -331,7 +331,7 @@ namespace Microsoft.Boogie
                 return false;
             }
 
-            public Expr TransitionRelationCompute()
+            public Expr TransitionRelationCompute(bool withOriginalInOutVariables = false)
             {
                 Expr transitionRelation = Expr.False;
                 foreach (PathInfo path in paths)
@@ -342,7 +342,32 @@ namespace Microsoft.Boogie
                 rc.StateMode = ResolutionContext.State.Two;
                 transitionRelation.Resolve(rc);
                 transitionRelation.Typecheck(new TypecheckingContext(null));
-                return transitionRelation;
+
+                if (withOriginalInOutVariables)
+                {
+                    Dictionary<Variable, Expr> invertedMap = new Dictionary<Variable, Expr>();
+                    if (first != null)
+                    {
+                        foreach (var x in first.thatMap)
+                        {
+                            invertedMap[((IdentifierExpr)x.Value).Decl] = Expr.Ident(x.Key);
+                        }
+                    }
+                    if (second != null)
+                    {
+                        foreach (var x in second.thisMap)
+                        {
+                            invertedMap[((IdentifierExpr)x.Value).Decl] = Expr.Ident(x.Key);
+                        }
+                    }
+                    Substitution subst = Substituter.SubstitutionFromHashtable(invertedMap);
+                    return Substituter.Apply(subst, transitionRelation);
+                }
+                else
+                {
+                    return transitionRelation;
+                }
+
             }
 
             private void Search(Block b, bool inFirst)
