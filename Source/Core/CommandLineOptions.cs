@@ -484,6 +484,7 @@ namespace Microsoft.Boogie {
     public bool SimplifyLogFileAppend = false;
     public bool SoundnessSmokeTest = false;
     public string Z3ExecutablePath = null;
+    public string Z3ExecutableName = null;
     public string CVC4ExecutablePath = null;
     public int KInductionDepth = -1;
 
@@ -1551,8 +1552,15 @@ namespace Microsoft.Boogie {
             Z3ExecutablePath = args[ps.i];
           }
           return true;
+         // This sets name of z3 binary boogie binary directory, not path
+        case "z3name":
+          if (ps.ConfirmArgumentCount(1))
+          {
+              Z3ExecutableName = args[ps.i];
+          }
+          return true;
 
-		case "cvc4exe":
+        case "cvc4exe":
 			if (ps.ConfirmArgumentCount(1)) {
 				CVC4ExecutablePath = args[ps.i];
 			}
