@@ -597,7 +597,10 @@ namespace Microsoft.Boogie.SMTLib
 				if(declHandler.var_map.ContainsKey(name))
 					return declHandler.var_map[name];
 				HandleProverError ("Prover error: unknown symbol:" + name);
-				throw new BadExprFromProver ();
+				//throw new BadExprFromProver ();
+                var v = gen.Variable(name, Type.Int);
+                bound.Add(name, v);
+                return v;
 			}
 			ArgGetter g = i => SExprToVCExpr (e [i], bound);
 			ArgsGetter ga = () => e.Arguments.Select (x => SExprToVCExpr (x, bound)).ToArray ();
@@ -612,10 +615,11 @@ namespace Microsoft.Boogie.SMTLib
                 {
                     var binds = e.Arguments[0];
                     var vcbinds = new List<VCExprVar>();
+                    var bound_copy = new Dictionary<string, VCExpr>(bound);
                     for (int i = 0; i < binds.Arguments.Count(); i++)
                     {
                         var bind = binds.Arguments[i];
-                        var symb = bind.Name;
+                        var symb = StripCruft(bind.Name);
                         var vcv = SExprToVar(bind);
                         vcbinds.Add(vcv);
                         bound[symb] = vcv;
@@ -625,12 +629,7 @@ namespace Microsoft.Boogie.SMTLib
                         body = gen.Forall(vcbinds, new List<VCTrigger>(), body);
                     else
                         body = gen.Exists(vcbinds, new List<VCTrigger>(), body);
-                    for (int i = 0; i < binds.Arguments.Count(); i++)
-                    {
-                        var bind = binds.Arguments[i];
-                        var symb = bind.Name;
-                        bound.Remove(symb);
-                    }
+                    bound = bound_copy;
                     return body;
                 }
 			case "-" : // have to deal with unary case
@@ -650,6 +649,7 @@ namespace Microsoft.Boogie.SMTLib
 				bool expand_lets = true;
 				var binds = e.Arguments[0];
 				var vcbinds = new List<VCExprLetBinding>();
+                var bound_copy = new Dictionary<string, VCExpr>(bound);
 				for(int i = 0; i < binds.Arguments.Count(); i++){
 					var bind = binds.Arguments[i];
 					var symb = bind.Name;
@@ -663,11 +663,7 @@ namespace Microsoft.Boogie.SMTLib
 				var body = g(1); 
 				if(!expand_lets)
 					body = gen.Let(vcbinds,body);
-				for(int i = 0; i < binds.Arguments.Count(); i++){
-					var bind = binds.Arguments[i];
-					var symb = bind.Name;
-					bound.Remove (symb);
-				}
+                bound = bound_copy;
                 return body;
 			}
 				
