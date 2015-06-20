@@ -519,8 +519,10 @@ namespace Microsoft.Boogie.Houdini {
         }
 
         if (GetCandidateWithoutConstant(consequent, candidates, out candidateConstant, out exprWithoutConstant))
-          exprWithoutConstant = Expr.Imp(antecedent, exprWithoutConstant);
-          return true;
+        {
+            exprWithoutConstant = Expr.Imp(antecedent, exprWithoutConstant);
+            return true;
+        }
       }
       return false;
     }
