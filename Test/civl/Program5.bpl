@@ -9,6 +9,7 @@ function {:inline} GRAY():int { 2 }
 function {:inline} BLACK():int { 3 }
 function {:inline} Unalloc(i:int) returns(bool) { i <= 0 }
 function {:inline} White(i:int) returns(bool) { i == 1 }
+function {:inline} WhiteOrLighter(i:int) returns(bool) { i <= 1 }
 function {:inline} Gray(i:int) returns(bool) { i == 2 }
 function {:inline} Black(i:int) returns(bool) { i >= 3 }
 
@@ -31,21 +32,21 @@ ensures {:layer 2} Color >= GRAY();
   assert {:layer 2} Color >= WHITE();
   call colorLocal := GetColorNoLock();
   call YieldColorOnlyGetsDarker();
-  if (White(colorLocal)) { call WriteBarrierSlow(tid); }
+  if (WhiteOrLighter(colorLocal)) { call WriteBarrierSlow(tid); }
   yield;
   assert {:layer 2} Color >= GRAY();
 }
 
 procedure {:yields} {:layer 1,2} WriteBarrierSlow({:linear "tid"} tid:Tid)
 ensures {:atomic} |{ A: assert tid != nil; goto B, C; 
-                     B: assume White(Color); Color := GRAY(); return true; 
-                     C: assume !White(Color); return true; }|;
+                     B: assume WhiteOrLighter(Color); Color := GRAY(); return true; 
+                     C: assume !WhiteOrLighter(Color); return true; }|;
 {
        var colorLocal:int;
        yield;
        call AcquireLock(tid);
        call colorLocal := GetColorLocked(tid);
-       if (White(colorLocal)) { call SetColorLocked(tid, GRAY()); } 
+       if (WhiteOrLighter(colorLocal)) { call SetColorLocked(tid, GRAY()); } 
        call ReleaseLock(tid);
        yield;
 }
