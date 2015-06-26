@@ -450,9 +450,10 @@ namespace Microsoft.Boogie
 
     static readonly ConcurrentDictionary<string, CancellationTokenSource> RequestIdToCancellationTokenSource = new ConcurrentDictionary<string, CancellationTokenSource>();
 
-    public static void ProcessFiles(List<string> fileNames, bool lookForSnapshots = true, string programId = null)
+    public static int ProcessFiles(List<string> fileNames, bool lookForSnapshots = true, string programId = null)
     {
       Contract.Requires(cce.NonNullElements(fileNames));
+      int nErrors = 0;
 
       if (programId == null)
       {
@@ -463,9 +464,9 @@ namespace Microsoft.Boogie
       {
         foreach (var f in fileNames)
         {
-          ProcessFiles(new List<string> { f }, lookForSnapshots, f);
+          nErrors += ProcessFiles(new List<string> { f }, lookForSnapshots, f);
         }
-        return;
+        return nErrors;
       }
 
       if (0 <= CommandLineOptions.Clo.VerifySnapshots && lookForSnapshots)
@@ -473,16 +474,17 @@ namespace Microsoft.Boogie
         var snapshotsByVersion = LookForSnapshots(fileNames);
         foreach (var s in snapshotsByVersion)
         {
-          ProcessFiles(new List<string>(s), false, programId);
+          nErrors += ProcessFiles(new List<string>(s), false, programId);
         }
-        return;
+        return nErrors;
       }
 
       using (XmlFileScope xf = new XmlFileScope(CommandLineOptions.Clo.XmlSink, fileNames[fileNames.Count - 1]))
       {
         Program program = ParseBoogieProgram(fileNames, false);
         if (program == null)
-          return;
+          return 1;
+
         if (CommandLineOptions.Clo.PrintFile != null)
         {
           PrintBplFile(CommandLineOptions.Clo.PrintFile, program, false, true, CommandLineOptions.Clo.PrettyPrint);
@@ -491,8 +493,9 @@ namespace Microsoft.Boogie
         LinearTypeChecker linearTypeChecker;
         MoverTypeChecker moverTypeChecker;
         PipelineOutcome oc = ResolveAndTypecheck(program, fileNames[fileNames.Count - 1], out linearTypeChecker, out moverTypeChecker);
+
         if (oc != PipelineOutcome.ResolvedAndTypeChecked)
-          return;
+          return 1;
 
         if (CommandLineOptions.Clo.PrintCFGPrefix != null)
         {
@@ -536,6 +539,8 @@ namespace Microsoft.Boogie
             break;
         }
       }
+
+      return nErrors;
     }
 
     public static IList<IList<string>> LookForSnapshots(IList<string> fileNames)

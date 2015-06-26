@@ -412,6 +412,7 @@ namespace Microsoft.Boogie {
     public string PrintFile = null;
     public int PrintUnstructured = 0;
     public bool UseBaseNameForFileName = false;
+    public int CountVerificationErrors = 1;
     public int DoomStrategy = -1;
     public bool DoomRestartTP = false;
     public bool PrintDesugarings = false;
@@ -533,6 +534,7 @@ namespace Microsoft.Boogie {
       Contract.Invariant(0 <= ModifiesDefault && ModifiesDefault < 7);
       Contract.Invariant((0 <= PrintErrorModel && PrintErrorModel <= 2) || PrintErrorModel == 4);
       Contract.Invariant(0 <= EnhancedErrorMessages && EnhancedErrorMessages < 2);
+      Contract.Invariant(0 <= CountVerificationErrors && CountVerificationErrors < 2);
       Contract.Invariant(0 <= StepsBeforeWidening && StepsBeforeWidening <= 9);
       Contract.Invariant(-1 <= this.bracketIdsInVC && this.bracketIdsInVC <= 1);
       Contract.Invariant(cce.NonNullElements(this.proverOptions));
@@ -1047,6 +1049,10 @@ namespace Microsoft.Boogie {
 
         case "enhancedErrorMessages":
           ps.GetNumericArgument(ref EnhancedErrorMessages, 2);
+          return true;
+
+        case "countVerificationErrors":
+          ps.GetNumericArgument(ref CountVerificationErrors, 2);
           return true;
 
         case "printCFG":
@@ -1896,6 +1902,11 @@ namespace Microsoft.Boogie {
 
   /useBaseNameForFileName : When parsing use basename of file for tokens instead
                             of the path supplied on the command line
+
+  /CountVerificationErrors:<n>
+                0 - Always set exit code to 0 after verification.
+                1 (default) - Set exit code to non-zero value if errors were
+                              encoutered during verification.
 
   ---- Inference options -----------------------------------------------------
 
