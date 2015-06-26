@@ -1172,7 +1172,6 @@ namespace Microsoft.Boogie.SMTLib
         usedLogNames.Add(curFilename);
       }
 
-      Console.WriteLine("opening log file {0}", curFilename);
       return new StreamWriter(curFilename, false);
     }
 
