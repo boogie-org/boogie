@@ -1700,7 +1700,7 @@ namespace Microsoft.Boogie {
         // no preference
         return true;
       }
-      return ProcsToCheck.Any(s => 0 <= methodFullname.IndexOf(s));
+      return ProcsToCheck.Contains(methodFullname);
     }
 
     public virtual StringCollection ParseNamedArgumentList(string argList) {
