@@ -325,6 +325,27 @@ namespace Microsoft.Boogie {
       }
     }
 
+    public virtual bool isFloat {
+      get {
+        return false;
+      }
+    }
+    public virtual int FloatMantissa {
+      get {
+        {
+          Contract.Assert(false);
+          throw new cce.UnreachableException();
+        } // Type.FloatMantissa should never be called
+      }
+    }
+    public virtual int FloatExponent {
+      get {
+        {
+          Contract.Assert(false);
+          throw new cce.UnreachableException();
+        } // Type.FloatExponent should never be called
+      }
+    }
     public virtual bool IsBv {
       get {
         return false;
@@ -341,7 +362,6 @@ namespace Microsoft.Boogie {
 
     public static readonly Type/*!*/ Int = new BasicType(SimpleType.Int);
     public static readonly Type/*!*/ Real = new BasicType(SimpleType.Real);
-    public static readonly Type/*!*/ Float = new BasicType(SimpleType.Float);
     public static readonly Type/*!*/ Bool = new BasicType(SimpleType.Bool);
     private static BvType[] bvtypeCache;
 
@@ -362,6 +382,14 @@ namespace Microsoft.Boogie {
       } else {
         return new BvType(sz);
       }
+    }
+
+    static public FloatType GetFloatType(int exp, int man) {
+      Contract.Requires(0 <= exp);
+      Contract.Requires(0 <= man);
+      Contract.Ensures(Contract.Result<FloatType>() != null);
+
+      return new FloatType(exp, man);
     }
 
     //------------ Match formal argument types on actual argument types
@@ -877,8 +905,6 @@ namespace Microsoft.Boogie {
           return "int";
         case SimpleType.Real:
           return "real";
-        case SimpleType.Float:
-          return "float";
         case SimpleType.Bool:
           return "bool";
       }
@@ -1001,11 +1027,6 @@ namespace Microsoft.Boogie {
         return this.T == SimpleType.Real;
       }
     }
-    public override bool IsFloat {
-      get {
-        return this.T == SimpleType.Float;
-      }
-    }
     public override bool IsBool {
       get {
         return this.T == SimpleType.Bool;
@@ -1017,6 +1038,165 @@ namespace Microsoft.Boogie {
       Contract.Ensures(Contract.Result<Absy>() != null);
       return visitor.VisitBasicType(this);
     }
+  }
+
+  //=====================================================================
+
+  //Note that the functions in this class were directly copied from the BV class just below
+  public class FloatType : Type { 
+    public readonly int Mantissa; //Size of mantissa in bits
+    public readonly int Exponent; //Size of exponent in bits
+
+    public FloatType(IToken token, int exponent, int mantissa)
+      : base(token) {
+      Contract.Requires(token != null);
+      Mantissa = mantissa;
+      Exponent = exponent;
+    }
+
+    public FloatType(int exponent, int mantissa)
+      : base(Token.NoToken) {
+      Mantissa = mantissa;
+      Exponent = exponent;
+    }
+
+    //-----------  Cloning  ----------------------------------
+    // We implement our own clone-method, because bound type variables
+    // have to be created in the right way. It is /not/ ok to just clone
+    // everything recursively.
+
+    public override Type Clone(IDictionary<TypeVariable/*!*/, TypeVariable/*!*/>/*!*/ varMap)
+    {
+      //Contract.Requires(cce.NonNullElements(varMap));
+      Contract.Ensures(Contract.Result<Type>() != null);
+      // FloatTypes are immutable anyway, we do not clone
+      return this;
+    }
+
+    public override Type CloneUnresolved()
+    {
+      Contract.Ensures(Contract.Result<Type>() != null);
+      return this;
+    }
+
+    //-----------  Linearisation  ----------------------------------
+
+    public override void Emit(TokenTextWriter stream, int contextBindingStrength)
+    {
+      //Contract.Requires(stream != null);
+      // no parentheses are necessary for bitvector-types
+      stream.SetToken(this);
+      stream.Write("{0}", this);
+    }
+
+    public override string ToString()
+    {
+      Contract.Ensures(Contract.Result<string>() != null);
+      return "(_ FP " + Exponent + " " + Mantissa + ")";
+    }
+
+    //-----------  Equality  ----------------------------------
+
+    [Pure]
+    public override bool Equals(Type/*!*/ that,
+                                List<TypeVariable>/*!*/ thisBoundVariables,
+                                List<TypeVariable>/*!*/ thatBoundVariables)
+    {
+      FloatType thatFloatType = TypeProxy.FollowProxy(that.Expanded) as FloatType;
+      return thatFloatType != null && this.Mantissa == thatFloatType.Mantissa && this.Exponent == thatFloatType.Exponent;
+    }
+
+    //-----------  Unification of types  -----------
+
+    public override bool Unify(Type/*!*/ that,
+                               List<TypeVariable>/*!*/ unifiableVariables,
+      // an idempotent substitution that describes the
+      // unification result up to a certain point
+                               IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ unifier)
+    {
+      //Contract.Requires(that != null);
+      //Contract.Requires(unifiableVariables != null);
+      //Contract.Requires(cce.NonNullElements(unifier));
+      that = that.Expanded;
+      if (that is TypeProxy || that is TypeVariable) {
+        return that.Unify(this, unifiableVariables, unifier);
+      }
+      else {
+        return this.Equals(that);
+      }
+    }
+
+    //-----------  Substitution of free variables with types not containing bound variables  -----------------
+
+    public override Type Substitute(IDictionary<TypeVariable/*!*/, Type/*!*/>/*!*/ subst)
+    {
+      Contract.Ensures(Contract.Result<Type>() != null);
+      return this;
+    }
+
+    //-----------  Hashcodes  ----------------------------------
+
+    [Pure]
+    public override int GetHashCode(List<TypeVariable> boundVariables)
+    {
+      return this.Mantissa.GetHashCode() + this.Exponent.GetHashCode();
+    }
+
+    //-----------  Resolution  ----------------------------------
+
+    public override Type ResolveType(ResolutionContext rc)
+    {
+      //Contract.Requires(rc != null);
+      Contract.Ensures(Contract.Result<Type>() != null);
+      // nothing to resolve
+      return this;
+    }
+
+    // determine the free variables in a type, in the order in which the variables occur
+    public override List<TypeVariable>/*!*/ FreeVariables
+    {
+      get
+      {
+        Contract.Ensures(Contract.Result<List<TypeVariable>>() != null);
+
+        return new List<TypeVariable>();  // bitvector-type are closed
+      }
+    }
+
+    public override List<TypeProxy/*!*/>/*!*/ FreeProxies
+    {
+      get
+      {
+        Contract.Ensures(cce.NonNullElements(Contract.Result<List<TypeProxy>>()));
+        return new List<TypeProxy/*!*/>();
+      }
+    }
+
+    //-----------  Getters/Issers  ----------------------------------
+
+    public override bool IsFloat {
+      get {
+        return true;
+      }
+    }
+    public override int FloatMantissa {
+      get {
+        return Mantissa;
+      }
+    }
+    public override int FloatExponent {
+      get {
+        return Exponent;
+      }
+    }
+
+    public override Absy StdDispatch(StandardVisitor visitor)
+    {
+      //Contract.Requires(visitor != null);
+      Contract.Ensures(Contract.Result<Absy>() != null);
+      return visitor.VisitFloatType(this);
+    }
+
   }
 
   //=====================================================================
@@ -3554,7 +3734,6 @@ Contract.Ensures(Contract.ValueAtReturn(out tpInstantiation) != null);
   public enum SimpleType {
     Int,
     Real,
-    Float,
     Bool
   };
 

@@ -668,7 +668,17 @@ private class BvBounds : Expr {
    ty = new BasicType(t, SimpleType.Real);
   } else if (la.kind == 98) {
    Get();
-   ty = new BasicType(t, SimpleType.Float);
+   if (la.kind == 9) {
+     Get();
+     Expect(3);
+     int exp = Int32.Parse(t.val);
+     Expect(3);
+     int man = Int32.Parse(t.val);
+     ty = new FloatType(t, exp, man);
+     Expect(10);
+   }
+   else
+    ty = new FloatType(t, 8, 23);
   } else if (la.kind == 16) {
 			Get();
 			ty = new BasicType(t, SimpleType.Bool); 

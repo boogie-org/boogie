@@ -561,7 +561,7 @@ namespace Microsoft.Boogie {
     {
       Contract.Requires(tok != null);
       Val = v;
-      Type = Type.Float;
+      Type = Type.GetFloatType(v.ExponentSize, v.MantissaSize);
       if (immutable)
         CachedHashCode = ComputeHashCode();
     }
@@ -638,7 +638,8 @@ namespace Microsoft.Boogie {
         } else if (Val is BigDec) {
           return Type.Real;
         } else if (Val is BigFloat) {
-          return Type.Float;
+          BigFloat temp = (BigFloat)Val;
+          return Type.GetFloatType(temp.ExponentSize, temp.MantissaSize);
         } else if (Val is BvConst) {
           return Type.GetBvType(((BvConst)Val).Bits);
         } else {
@@ -1376,9 +1377,9 @@ namespace Microsoft.Boogie {
           if (arg0type.Unify(Type.Real)) {
             return Type.Real;
           }
-          if (arg0type.Unify(Type.Float)) {
-            return Type.Float;
-          }
+          //if (arg0type.Unify(Type.Float)) {
+            //return Type.Float;
+          //}
           goto BAD_TYPE;
         case Opcode.Not:
           if (arg0type.Unify(Type.Bool)) {
@@ -1519,7 +1520,7 @@ namespace Microsoft.Boogie {
           case Opcode.RealDiv:
             return "/";
           case Opcode.FloatDiv:
-            return "/f";
+            return "/";
           case Opcode.Pow:
             return "**";
           case Opcode.Eq:
@@ -1706,10 +1707,10 @@ namespace Microsoft.Boogie {
           if (arg0type.Unify(Type.Real) && arg1type.Unify(Type.Real)) {
             return Type.Real;
           }
-          if (arg0type.Unify(Type.Float) && arg1type.Unify(Type.Float))
-          {
-            return Type.Float;
-          }
+          //if (arg0type.Unify(Type.Float) && arg1type.Unify(Type.Float))
+          //{
+            //return Type.Float;
+          //}
           goto BAD_TYPE;
         case Opcode.Div:
         case Opcode.Mod:
@@ -1721,13 +1722,6 @@ namespace Microsoft.Boogie {
           if ((arg0type.Unify(Type.Int) || arg0type.Unify(Type.Real)) &&
               (arg1type.Unify(Type.Int) || arg1type.Unify(Type.Real))) {
             return Type.Real;
-          }
-          goto BAD_TYPE;
-        case Opcode.FloatDiv: //TODO: Modify
-          if ((arg0type.Unify(Type.Int) || arg0type.Unify(Type.Real) || arg0type.Unify(Type.Float)) &&
-              (arg1type.Unify(Type.Int) || arg1type.Unify(Type.Real) || arg0type.Unify(Type.Float)))
-          {
-            return Type.Float;
           }
           goto BAD_TYPE;
         case Opcode.Pow:
@@ -1761,10 +1755,10 @@ namespace Microsoft.Boogie {
           if (arg0type.Unify(Type.Real) && arg1type.Unify(Type.Real)) {
             return Type.Bool;
           }
-          if (arg0type.Unify(Type.Float) && arg1type.Unify(Type.Float))
-          {
-            return Type.Bool;
-          }
+          //if (arg0type.Unify(Type.Float) && arg1type.Unify(Type.Float))
+          //{
+            //return Type.Bool;
+          //}
           goto BAD_TYPE;
         case Opcode.And:
         case Opcode.Or:
@@ -1809,8 +1803,8 @@ namespace Microsoft.Boogie {
         case Opcode.Pow:
           return Type.Real;
 
-        case Opcode.FloatDiv:
-          return Type.Float;
+        //case Opcode.FloatDiv:
+          //return Type.Float;
 
         case Opcode.Eq:
         case Opcode.Neq:
@@ -2267,22 +2261,13 @@ namespace Microsoft.Boogie {
           this.name = "int";
           this.type = Type.Int;
           this.argType = Type.Real;
-          this.argType2 = Type.Float;
           this.hashCode = 1;
           break;
         case CoercionType.ToReal:
           this.name = "real";
           this.type = Type.Real;
           this.argType = Type.Int;
-          this.argType2 = Type.Float;
           this.hashCode = 2;
-          break;
-        case CoercionType.ToFloat:
-          this.name = "float";
-          this.type = Type.Float;
-          this.argType = Type.Int;
-          this.argType2 = Type.Real;
-          this.hashCode = 3;
           break;
         default:
           Contract.Assert(false);

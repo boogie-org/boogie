@@ -141,7 +141,7 @@ namespace Microsoft.Boogie.SMTLib
       else if (t.IsReal)
         return "Real";
       else if (t.IsFloat)
-        return "Real"; //TODO: Make to be a float
+        return t.ToString(); //TODO: Match z3 syntax
       else if (t.IsBv) {
         return "(_ BitVec " + t.BvBits + ")";
       } else {
@@ -690,7 +690,7 @@ namespace Microsoft.Boogie.SMTLib
       }
 
       public bool VisitFloatDivOp(VCExprNAry node, LineariserOptions options)
-      {
+      { //TODO: match z3
         WriteApplication("/f", node, options);
         return true;
       }
