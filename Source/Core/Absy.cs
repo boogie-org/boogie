@@ -733,6 +733,32 @@ namespace Microsoft.Boogie {
       }
     }
 
+
+    /// <summary>
+    /// Finds blocks that break out of a loop in NaturalLoops(header, backEdgeNode)
+    /// </summary>
+    /// <param name="header"></param>
+    /// <param name="backEdgeNode"></param>
+    /// <returns></returns>
+    private HashSet<Block> GetBreakBlocksOfLoop(Block header, Block backEdgeNode, Graph<Block/*!*/>/*!*/ g)
+    {
+        Contract.Assert(CommandLineOptions.Clo.DeterministicExtractLoops, "Can only be called with /deterministicExtractLoops option");
+        var immSuccBlks = new HashSet<Block>();
+        var loopBlocks = g.NaturalLoops(header, backEdgeNode);
+        foreach (Block/*!*/ block in loopBlocks)
+        {
+            Contract.Assert(block != null);
+            var auxCmd = block.TransferCmd as GotoCmd;
+            if (auxCmd == null) continue;
+            foreach(var bl in auxCmd.labelTargets)
+            {
+                if (loopBlocks.Contains(bl)) continue;
+                immSuccBlks.Add(bl); 
+            }
+        }
+        return immSuccBlks;
+    }
+
     void CreateProceduresForLoops(Implementation impl, Graph<Block/*!*/>/*!*/ g,
                                   List<Implementation/*!*/>/*!*/ loopImpls,
                                   Dictionary<string, Dictionary<string, Block>> fullMap) {
@@ -788,7 +814,13 @@ namespace Microsoft.Boogie {
         foreach (Block/*!*/ b in g.BackEdgeNodes(header))
         {
             Contract.Assert(b != null);
-            foreach (Block/*!*/ block in g.NaturalLoops(header, b))
+            HashSet<Block> immSuccBlks = new HashSet<Block>();
+            if (detLoopExtract)
+            {
+                //Need to get the blocks that exit the loop, as we need to add them to targets and footprint
+                immSuccBlks = GetBreakBlocksOfLoop(header, b, g);
+            }
+            foreach (Block/*!*/ block in g.NaturalLoops(header, b).Union(immSuccBlks))
             {
                 Contract.Assert(block != null);
                 foreach (Cmd/*!*/ cmd in block.Cmds)
@@ -943,18 +975,15 @@ namespace Microsoft.Boogie {
                 GotoCmd auxGotoCmd = block.TransferCmd as GotoCmd;
                 Contract.Assert(auxGotoCmd != null && auxGotoCmd.labelNames != null && 
                     auxGotoCmd.labelTargets != null && auxGotoCmd.labelTargets.Count >= 1);
+                var blksThatBreakOut = GetBreakBlocksOfLoop(header, source, g);
+                var loopNodes = g.NaturalLoops(header, source);
                 foreach(var bl in auxGotoCmd.labelTargets) {
-                    bool found = false;
-                    foreach(var n in g.NaturalLoops(header, source)) { //very expensive, can we do a contains?
-                        if (bl == n) { //clarify: is this the right comparison?
-                            found = true;
-                            break;
-                        }
-                    }
-                    if (!found) {
+                    if (!loopNodes.Contains(bl)) {
                         Block auxNewBlock = new Block();
                         auxNewBlock.Label = ((Block)bl).Label;
-                        auxNewBlock.Cmds = codeCopier.CopyCmdSeq(((Block)bl).Cmds);
+                        //these blocks may have read/write locals that are not present in naturalLoops
+                        //we need to capture these variables 
+                        auxNewBlock.Cmds = codeCopier.CopyCmdSeq(((Block)bl).Cmds); 
                         //add restoration code for such blocks
                         if (loopHeaderToAssignCmd.ContainsKey(header))
                         {
