@@ -1,0 +1,14 @@
+procedure {:checksum "-1"} Foo(b: bool);
+
+implementation {:id "Foo"} {:checksum "0"} Foo(b: bool)
+{
+    var r: int;
+
+    assert b;
+    call r := Sum(42);
+    assert r != 0;
+}
+
+procedure {:checksum "1"} Sum(n: int) returns (r: int);
+  requires 0 <= n;
+  ensures n <= r;
