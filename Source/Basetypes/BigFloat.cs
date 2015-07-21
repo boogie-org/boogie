@@ -90,12 +90,12 @@ namespace Microsoft.Basetypes
 
     [Pure]
     public static BigFloat FromBigInt(BIM v) {
-      return new BigFloat(v, 0, 23, 8); //TODO: modify for correct fp representation
+      return new BigFloat(0, v, 8, 23); //TODO: modify for correct fp representation
     }
 
     public static BigFloat FromBigDec(BIM v)
     {
-      return new BigFloat(v, 0, 23, 8); //TODO: modify for correct fp representation
+      return new BigFloat(0, v, 8, 23); //TODO: modify for correct fp representation
     }
 
     [Pure]
@@ -107,13 +107,13 @@ namespace Microsoft.Basetypes
       {
         switch (vals.Length) {
           case 1:
-            return Round(vals[0], 23, 8); 
+            return Round(vals[0], 8, 23); 
           case 2:
-            return new BigFloat(BIM.Parse(vals[0]), Int32.Parse(vals[1]), 23, 8);
+            return new BigFloat(Int32.Parse(vals[0]), BIM.Parse(vals[1]), 8, 23);
           case 3:
             return Round(vals[0], Int32.Parse(vals[1]), Int32.Parse(vals[2]));
           case 4:
-            return new BigFloat(BIM.Parse(vals[0]), Int32.Parse(vals[1]), Int32.Parse(vals[2]), Int32.Parse(vals[3]));
+            return new BigFloat(Int32.Parse(vals[0]), BIM.Parse(vals[1]), Int32.Parse(vals[2]), Int32.Parse(vals[3]));
           default:
             throw new FormatException(); //Unreachable
         }
@@ -123,11 +123,11 @@ namespace Microsoft.Basetypes
       }
     }
 
-    internal BigFloat(BIM mantissa, int exponent, int mantissaSize, int exponentSize) {
-      this.mantissa = mantissa;
-      this.mantissaSize = mantissaSize;
+    internal BigFloat(int exponent, BIM mantissa, int exponentSize, int mantissaSize) {
       this.exponentSize = exponentSize;
       this.exponent = exponent + (int)Math.Pow(2, exponentSize - 1);
+      this.mantissa = mantissa;
+      this.mantissaSize = mantissaSize;
       if (exponent < 0) { //ZERO case since the exponent is less than the minimum
         mantissa = 0;
         exponent = 0;
@@ -197,12 +197,12 @@ namespace Microsoft.Basetypes
     /// <param name="mantissaSize"></param>
     /// <param name="exponentSize"></param>
     /// <returns></returns>
-    public static BigFloat Round(String value, int mantissaSize, int exponentSize)
+    public static BigFloat Round(String value, int exponentSize, int mantissaSize)
     {
       int i = value.IndexOf('.');
       if (i == -1)
-        return Round(BIM.Parse(value), 0, mantissaSize, exponentSize);
-      return Round(i == 0 ? 0 : BIM.Parse(value.Substring(0, i)), BIM.Parse(value.Substring(i + 1, value.Length - i - 1)), mantissaSize, exponentSize);
+        return Round(BIM.Parse(value), 0, exponentSize, mantissaSize);
+      return Round(i == 0 ? 0 : BIM.Parse(value.Substring(0, i)), BIM.Parse(value.Substring(i + 1, value.Length - i - 1)), exponentSize, mantissaSize);
     }
 
     /// <summary>
@@ -214,7 +214,7 @@ namespace Microsoft.Basetypes
     /// <param name="mantissaSize"></param>
     /// <param name="exponentSize"></param>
     /// <returns></returns>
-    public static BigFloat Round(BIM value, BIM dec_value, int mantissaSize, int exponentSize)
+    public static BigFloat Round(BIM value, BIM dec_value, int exponentSize, int mantissaSize)
     {
       int exp = 0;
       BIM one = new BIM(1);
@@ -262,7 +262,7 @@ namespace Microsoft.Basetypes
         }
       }
 
-      return new BigFloat(value, exp, mantissaSize, exponentSize);
+      return new BigFloat(exp, value, exponentSize, mantissaSize);
     }
 
     // ``floor`` rounds towards negative infinity (like SMT-LIBv2's to_int).
@@ -395,7 +395,7 @@ namespace Microsoft.Basetypes
     public BigFloat Abs {
       //TODO: fix for fp functionality
       get {
-        return new BigFloat(BIM.Abs(Mantissa), Exponent, MantissaSize, ExponentSize);
+        return new BigFloat(Exponent, BIM.Abs(Mantissa), ExponentSize, MantissaSize);
       }
     }
 
@@ -403,7 +403,7 @@ namespace Microsoft.Basetypes
     public BigFloat Negate {
       //TODO: Modify for correct fp functionality
       get {
-        return new BigFloat(BIM.Negate(Mantissa), Exponent, MantissaSize, ExponentSize);
+        return new BigFloat(Exponent, BIM.Negate(Mantissa), ExponentSize, MantissaSize);
       }
     }
 
@@ -415,6 +415,8 @@ namespace Microsoft.Basetypes
     [Pure]
     public static BigFloat operator +(BigFloat x, BigFloat y) {
       //TODO: Modify for correct fp functionality
+      Contract.Requires(x.ExponentSize == y.ExponentSize);
+      Contract.Requires(x.MantissaSize == y.MantissaSize);
       BIM m1 = x.Mantissa;
       int e1 = x.Exponent;
       BIM m2 = y.Mantissa;
@@ -433,7 +435,7 @@ namespace Microsoft.Basetypes
         e2++;
       }
 
-      return new BigFloat(m1 + m2, e1, Math.Max(x.MantissaSize, y.MantissaSize), Math.Max(x.ExponentSize, y.ExponentSize));
+      return new BigFloat(e1, m1 + m2, x.MantissaSize, x.ExponentSize);
     }
 
     [Pure]
@@ -443,7 +445,9 @@ namespace Microsoft.Basetypes
 
     [Pure]
     public static BigFloat operator *(BigFloat x, BigFloat y) {
-      return new BigFloat(x.Mantissa * y.Mantissa, x.Exponent + y.Exponent, Math.Max(x.MantissaSize, y.MantissaSize), Math.Max(x.ExponentSize, y.ExponentSize));
+      Contract.Requires(x.ExponentSize == y.ExponentSize);
+      Contract.Requires(x.MantissaSize == y.MantissaSize);
+      return new BigFloat(x.Exponent + y.Exponent, x.Mantissa * y.Mantissa, x.MantissaSize, x.ExponentSize);
     }
 
 

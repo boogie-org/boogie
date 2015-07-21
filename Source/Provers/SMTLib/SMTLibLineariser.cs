@@ -141,7 +141,7 @@ namespace Microsoft.Boogie.SMTLib
       else if (t.IsReal)
         return "Real";
       else if (t.IsFloat)
-        return t.ToString(); //TODO: Match z3 syntax
+        return "(_ FloatingPoint " + t.FloatExponent + " " + t.FloatMantissa + ")"; //TODO: Match z3 syntax
       else if (t.IsBv) {
         return "(_ BitVec " + t.BvBits + ")";
       } else {

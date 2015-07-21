@@ -366,7 +366,7 @@ private class BvBounds : Expr {
 			Get();
 			Type(out retTy);
 			retTyd = new TypedIdent(retTy.tok, TypedIdent.NoName, retTy); 
-		} else SynErr(97);
+		} else SynErr(99);
 		if (la.kind == 27) {
 			Get();
 			Expression(out tmp);
@@ -374,7 +374,7 @@ private class BvBounds : Expr {
 			Expect(28);
 		} else if (la.kind == 8) {
 			Get();
-		} else SynErr(98);
+		} else SynErr(100);
 		if (retTyd == null) {
 		 // construct a dummy type for the case of syntax error
 		 retTyd = new TypedIdent(t, TypedIdent.NoName, new BasicType(t, SimpleType.Int));

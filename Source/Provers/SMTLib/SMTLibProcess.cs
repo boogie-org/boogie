@@ -93,7 +93,6 @@ namespace Microsoft.Boogie.SMTLib
         log = log.Replace("\r", "").Replace("\n", " ");
         Console.WriteLine("[SMT-INP-{0}] {1}", smtProcessId, log);
       }
-      Console.WriteLine(cmd); //TODO: Remove This Line
       toProver.WriteLine(cmd);
     }
 

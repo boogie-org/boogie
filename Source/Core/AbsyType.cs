@@ -330,20 +330,22 @@ namespace Microsoft.Boogie {
         return false;
       }
     }
+    public virtual int FloatExponent
+    {
+      get
+      {
+        {
+          Contract.Assert(false);
+          throw new cce.UnreachableException();
+        } // Type.FloatExponent should never be called
+      }
+    }
     public virtual int FloatMantissa {
       get {
         {
           Contract.Assert(false);
           throw new cce.UnreachableException();
         } // Type.FloatMantissa should never be called
-      }
-    }
-    public virtual int FloatExponent {
-      get {
-        {
-          Contract.Assert(false);
-          throw new cce.UnreachableException();
-        } // Type.FloatExponent should never be called
       }
     }
     public virtual bool IsBv {
@@ -1050,14 +1052,14 @@ namespace Microsoft.Boogie {
     public FloatType(IToken token, int exponent, int mantissa)
       : base(token) {
       Contract.Requires(token != null);
-      Mantissa = mantissa;
       Exponent = exponent;
+      Mantissa = mantissa;
     }
 
     public FloatType(int exponent, int mantissa)
       : base(Token.NoToken) {
-      Mantissa = mantissa;
       Exponent = exponent;
+      Mantissa = mantissa;
     }
 
     //-----------  Cloning  ----------------------------------
@@ -1092,7 +1094,7 @@ namespace Microsoft.Boogie {
     public override string ToString()
     {
       Contract.Ensures(Contract.Result<string>() != null);
-      return "(_ FP " + Exponent + " " + Mantissa + ")";
+      return "float (" + Exponent + " " + Mantissa + ")";
     }
 
     //-----------  Equality  ----------------------------------
@@ -1119,10 +1121,10 @@ namespace Microsoft.Boogie {
       //Contract.Requires(cce.NonNullElements(unifier));
       that = that.Expanded;
       if (that is TypeProxy || that is TypeVariable) {
-        return that.Unify(this, unifiableVariables, unifier);
+        return that.Unify(this, unifiableVariables, unifier); 
       }
       else {
-        return this.Equals(that);
+        return this.Equals(that); 
       }
     }
 

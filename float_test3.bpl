@@ -1,6 +1,3 @@
  procedure F() returns () {
-	var x : float;
-	var y : float;
-	y := x - x;
-	assert y == x;
+	assert fp(5) == fp(5 8 23);
 }
