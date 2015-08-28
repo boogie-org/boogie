@@ -1763,9 +1763,18 @@ namespace VC {
         {
           var checksum = a.Checksum;
           var oldCex = impl.ErrorChecksumToCachedError[checksum] as Counterexample;
-          if (oldCex != null)
-          {
-            callback.OnCounterexample(oldCex, null);
+          if (oldCex != null) {
+            if (CommandLineOptions.Clo.VerifySnapshots < 3) {
+              callback.OnCounterexample(oldCex, null);
+            } else {
+              // If possible, we use the old counterexample, but with the location information of "a"
+              var cex = AssertCmdToCloneCounterexample(a, oldCex);
+              callback.OnCounterexample(cex, null);
+              // OnCounterexample may have had side effects on the RequestId and OriginalRequestId fields.  We make
+              // any such updates available in oldCex. (Is this really a good design? --KRML)
+              oldCex.RequestId = cex.RequestId;
+              oldCex.OriginalRequestId = cex.OriginalRequestId;
+            }
           }
         }
       }
@@ -3135,6 +3144,31 @@ namespace VC {
         ac.relatedInformation = relatedInformation;
         return ac;
       }
+    }
+
+    /// <summary>
+    /// Returns a clone of "cex", but with the location stored in "cex" replaced by those from "assrt".
+    /// </summary>
+    public static Counterexample AssertCmdToCloneCounterexample(AssertCmd assrt, Counterexample cex) {
+      Contract.Requires(assrt != null);
+      Contract.Requires(cex != null);
+      Contract.Ensures(Contract.Result<Counterexample>() != null);
+
+      List<string> relatedInformation = new List<string>();
+
+      Counterexample cc;
+      if (assrt is AssertRequiresCmd) {
+        var aa = (AssertRequiresCmd)assrt;
+        cc = new CallCounterexample(cex.Trace, aa.Call, aa.Requires, cex.Model, cex.MvInfo, cex.Context, aa.Checksum);
+      } else if (assrt is AssertEnsuresCmd && cex is ReturnCounterexample) {
+        var aa = (AssertEnsuresCmd)assrt;
+        var oldCex = (ReturnCounterexample)cex;
+        cc = new ReturnCounterexample(cex.Trace, oldCex.FailingReturn, aa.Ensures, cex.Model, cex.MvInfo, cex.Context, aa.Checksum);
+      } else {
+        cc = new AssertCounterexample(cex.Trace, assrt, cex.Model, cex.MvInfo, cex.Context);
+      }
+      cc.relatedInformation = relatedInformation;
+      return cc;
     }
 
     static VCExpr LetVC(Block startBlock,

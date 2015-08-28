@@ -172,47 +172,27 @@ namespace Microsoft.Boogie
         var vr = ExecutionEngine.Cache.Lookup(impl, out priority);
         if (vr != null && vr.ProgramId == programId)
         {
-          if (priority == Priority.LOW)
-          {
+          if (priority == Priority.LOW) {
             run.LowPriorityImplementationCount++;
-            if (TimeThreshold < vr.End.Subtract(vr.Start).TotalMilliseconds)
-            {
-              SetErrorAndAssertionChecksumsInCachedSnapshot(impl, vr);
-              if (vr.ProgramId != null)
-              {
-                var p = ExecutionEngine.CachedProgram(vr.ProgramId);
-                if (p != null)
-                {
-                  eai.Inject(impl, p);
-                  run.TransformedImplementationCount++;
-                }
-              }
-            }
-          }
-          else if (priority == Priority.MEDIUM)
-          {
+          } else if (priority == Priority.MEDIUM) {
             run.MediumPriorityImplementationCount++;
-            if (TimeThreshold < vr.End.Subtract(vr.Start).TotalMilliseconds)
-            {
+          } else if (priority == Priority.HIGH) {
+            run.HighPriorityImplementationCount++;
+          } else if (priority == Priority.SKIP) {
+            run.SkippedImplementationCount++;
+          }
+
+          if (priority == Priority.LOW || priority == Priority.MEDIUM || 3 <= CommandLineOptions.Clo.VerifySnapshots) {
+            if (TimeThreshold < vr.End.Subtract(vr.Start).TotalMilliseconds) {
               SetErrorAndAssertionChecksumsInCachedSnapshot(impl, vr);
-              if (vr.ProgramId != null)
-              {
+              if (vr.ProgramId != null) {
                 var p = ExecutionEngine.CachedProgram(vr.ProgramId);
-                if (p != null)
-                {
+                if (p != null) {
                   eai.Inject(impl, p);
                   run.TransformedImplementationCount++;
                 }
               }
             }
-          }
-          else if (priority == Priority.HIGH)
-          {
-            run.HighPriorityImplementationCount++;
-          }
-          else if (priority == Priority.SKIP)
-          {
-            run.SkippedImplementationCount++;
           }
         }
       }

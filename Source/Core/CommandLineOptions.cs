@@ -1492,7 +1492,7 @@ namespace Microsoft.Boogie {
           return true;
 
         case "verifySnapshots":
-          ps.GetNumericArgument(ref VerifySnapshots, 3);
+          ps.GetNumericArgument(ref VerifySnapshots, 4);
           return true;
 
         case "traceCaching":
@@ -1944,6 +1944,10 @@ namespace Microsoft.Boogie {
                 0 - do not use any verification result caching (default)
                 1 - use the basic verification result caching
                 2 - use the more advanced verification result caching
+                3 - use the more advanced caching and report errors according
+                    to the new source locations for errors and their
+                    related locations (but not /errorTrace and CaptureState
+                    locations) 
   /verifySeparately
                 verify each input program separately
   /removeEmptyBlocks:<c>

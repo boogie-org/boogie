@@ -648,3 +648,46 @@ Processing command (at Snapshots35.v1.bpl(5,5)) assert p;
 Snapshots35.v1.bpl(5,5): Error BP5001: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 1 error
+Processing command (at Snapshots41.v0.bpl(3,23)) assert x < 20 || 10 <= x;
+  >>> DoNothingToAssert
+Processing command (at Snapshots41.v0.bpl(4,3)) assert x < 10;
+  >>> DoNothingToAssert
+Processing command (at Snapshots41.v0.bpl(5,3)) assert 0 <= call0formal#AT#y;
+  >>> DoNothingToAssert
+Snapshots41.v0.bpl(4,3): Error BP5001: This assertion might not hold.
+Snapshots41.v0.bpl(5,3): Error BP5002: A precondition for this call might not hold.
+Snapshots41.v0.bpl(9,3): Related location: This is the precondition that might not hold.
+Processing command (at Snapshots41.v0.bpl(15,3)) assert 2 <= z;
+  >>> DoNothingToAssert
+Snapshots41.v0.bpl(22,3): Error BP5003: A postcondition might not hold on this return path.
+Snapshots41.v0.bpl(15,3): Related location: This is the postcondition that might not hold.
+Processing command (at Snapshots41.v0.bpl(28,3)) assert u != 53;
+  >>> DoNothingToAssert
+Snapshots41.v0.bpl(28,3): Error BP5001: This assertion might not hold.
+Processing command (at Snapshots41.v0.bpl(34,3)) assert true;
+  >>> DoNothingToAssert
+
+Boogie program verifier finished with 2 verified, 4 errors
+Processing command (at Snapshots41.v1.bpl(4,1)) assert x < 20 || 10 <= x;
+  >>> MarkAsFullyVerified
+Processing command (at Snapshots41.v1.bpl(6,8)) assert x < 10;
+  >>> RecycleError
+Processing command (at Snapshots41.v1.bpl(7,3)) assert 0 <= call0formal#AT#y;
+  >>> RecycleError
+Processing command (at Snapshots41.v1.bpl(8,3)) assert x == 7;
+  >>> DoNothingToAssert
+Snapshots41.v1.bpl(6,8): Error BP5001: This assertion might not hold.
+Snapshots41.v1.bpl(7,3): Error BP5002: A precondition for this call might not hold.
+Snapshots41.v1.bpl(13,10): Related location: This is the precondition that might not hold.
+Snapshots41.v1.bpl(8,3): Error BP5001: This assertion might not hold.
+Processing command (at Snapshots41.v1.bpl(27,5)) assert true;
+  >>> DoNothingToAssert
+Processing command (at Snapshots41.v1.bpl(21,3)) assert 2 <= z;
+  >>> DoNothingToAssert
+Snapshots41.v1.bpl(29,3): Error BP5003: A postcondition might not hold on this return path.
+Snapshots41.v1.bpl(21,3): Related location: This is the postcondition that might not hold.
+Processing command (at Snapshots41.v1.bpl(35,8)) assert u != 53;
+  >>> RecycleError
+Snapshots41.v1.bpl(35,8): Error BP5001: This assertion might not hold.
+
+Boogie program verifier finished with 2 verified, 5 errors

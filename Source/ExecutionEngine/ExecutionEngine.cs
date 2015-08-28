@@ -151,25 +151,18 @@ namespace Microsoft.Boogie
     {
       Contract.Requires(message != null);
 
-      if (category != null)
-      {
+      if (category != null) {
         message = string.Format("{0}: {1}", category, message);
       }
       string s;
-      if (tok != null)
-      {
+      if (tok != null) {
         s = string.Format("{0}({1},{2}): {3}", ExecutionEngine.GetFileNameForConsole(tok.filename), tok.line, tok.col, message);
-      }
-      else
-      {
+      } else {
         s = message;
       }
-      if (error)
-      {
+      if (error) {
         ErrorWriteLine(tw, s);
-      }
-      else
-      {
+      } else {
         tw.WriteLine(s);
       }
     }
@@ -1114,23 +1107,23 @@ namespace Microsoft.Boogie
       printer.Inform(string.Format("Verifying {0} ...", impl.Name), output);
 
       int priority = 0;
-      if (0 < CommandLineOptions.Clo.VerifySnapshots)
-      {
-        verificationResult = Cache.Lookup(impl, out priority);
-      }
-
       var wasCached = false;
-      if (verificationResult != null && priority == Priority.SKIP)
-      {
-        if (CommandLineOptions.Clo.XmlSink != null)
-        {
-          CommandLineOptions.Clo.XmlSink.WriteStartMethod(impl.Name, verificationResult.Start);
-        }
+      if (0 < CommandLineOptions.Clo.VerifySnapshots) {
+        var cachedResults = Cache.Lookup(impl, out priority);
+        if (cachedResults != null && priority == Priority.SKIP) {
+          if (CommandLineOptions.Clo.XmlSink != null) {
+            CommandLineOptions.Clo.XmlSink.WriteStartMethod(impl.Name, cachedResults.Start);
+          }
 
-        printer.Inform(string.Format("Retrieving cached verification result for implementation {0}...", impl.Name), output);
-        wasCached = true;
+          printer.Inform(string.Format("Retrieving cached verification result for implementation {0}...", impl.Name), output);
+          if (CommandLineOptions.Clo.VerifySnapshots < 3 || cachedResults.Outcome == ConditionGeneration.Outcome.Correct) {
+            verificationResult = cachedResults;
+            wasCached = true;
+          }
+        }
       }
-      else
+
+      if (!wasCached)
       {
         #region Verify the implementation
 
