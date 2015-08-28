@@ -424,7 +424,16 @@ namespace Microsoft.Boogie {
         }
       }
       impl.Blocks = newBlocks;
-
+      foreach (Block b in impl.Blocks)
+      {
+          if (b.TransferCmd is ReturnCmd) continue;
+          GotoCmd gotoCmd = b.TransferCmd as GotoCmd;
+          gotoCmd.labelNames = new List<string>();
+          foreach (Block succ in gotoCmd.labelTargets)
+          {
+              gotoCmd.labelNames.Add(succ.Label);
+          }
+      }
       // Console.WriteLine("Final number of blocks = {0}", impl.Blocks.Count);
       return impl;
     }

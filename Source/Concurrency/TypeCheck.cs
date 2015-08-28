@@ -49,6 +49,8 @@ namespace Microsoft.Boogie
     {
         public Ensures ensures;
         public MoverType moverType;
+        public List<AssertCmd> gate;
+        public CodeExpr action;
         public List<AssertCmd> thisGate;
         public CodeExpr thisAction;
         public List<Variable> thisInParams;
@@ -61,6 +63,8 @@ namespace Microsoft.Boogie
         public HashSet<Variable> modifiedGlobalVars;
         public HashSet<Variable> gateUsedGlobalVars;
         public bool hasAssumeCmd;
+        public Dictionary<Variable, Expr> thisMap;
+        public Dictionary<Variable, Expr> thatMap;
 
         public bool CommutesWith(AtomicActionInfo actionInfo)
         {
@@ -84,112 +88,90 @@ namespace Microsoft.Boogie
         public AtomicActionInfo(Procedure proc, Ensures ensures, MoverType moverType, int layerNum, int availableUptoLayerNum)
             : base(proc, layerNum, availableUptoLayerNum)
         {
-            CodeExpr codeExpr = ensures.Condition as CodeExpr;
             this.ensures = ensures;
             this.moverType = moverType;
+            this.gate = new List<AssertCmd>();
+            this.action = ensures.Condition as CodeExpr;
             this.thisGate = new List<AssertCmd>();
-            this.thisAction = codeExpr;
             this.thisInParams = new List<Variable>();
             this.thisOutParams = new List<Variable>();
             this.thatGate = new List<AssertCmd>();
             this.thatInParams = new List<Variable>();
             this.thatOutParams = new List<Variable>();
             this.hasAssumeCmd = false;
-            
-            foreach (Block block in codeExpr.Blocks)
+            this.thisMap = new Dictionary<Variable, Expr>();
+            this.thatMap = new Dictionary<Variable, Expr>();
+
+            foreach (Block block in this.action.Blocks)
             {
                 block.Cmds.ForEach(x => this.hasAssumeCmd = this.hasAssumeCmd || x is AssumeCmd);
             }
 
-            var cmds = thisAction.Blocks[0].Cmds;
-            for (int i = 0; i < cmds.Count; i++)
-            {
-                AssertCmd assertCmd = cmds[i] as AssertCmd;
-                if (assertCmd == null) break;
-                thisGate.Add(assertCmd);
-                cmds[i] = new AssumeCmd(assertCmd.tok, Expr.True);
-            }
-
-            Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
-            foreach (Variable x in proc.InParams)
-            {
-                this.thisInParams.Add(x);
-                Variable y = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "that_" + x.Name, x.TypedIdent.Type), true, x.Attributes);
-                this.thatInParams.Add(y);
-                map[x] = Expr.Ident(y);
-            }
-            foreach (Variable x in proc.OutParams)
-            {
-                this.thisOutParams.Add(x);
-                Variable y = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "that_" + x.Name, x.TypedIdent.Type), false, x.Attributes);
-                this.thatOutParams.Add(y);
-                map[x] = Expr.Ident(y);
-            }
-            List<Variable> thatLocVars = new List<Variable>();
-            foreach (Variable x in thisAction.LocVars)
-            {
-                Variable y = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "that_" + x.Name, x.TypedIdent.Type), false);
-                map[x] = Expr.Ident(y);
-                thatLocVars.Add(y);
-            }
-            Contract.Assume(proc.TypeParameters.Count == 0);
-            Substitution subst = Substituter.SubstitutionFromHashtable(map);
-            foreach (AssertCmd assertCmd in thisGate)
-            {
-                thatGate.Add((AssertCmd)Substituter.Apply(subst, assertCmd));
-            }
-            Dictionary<Block, Block> blockMap = new Dictionary<Block, Block>();
-            List<Block> thatBlocks = new List<Block>();
-            foreach (Block block in thisAction.Blocks)
-            {
-                List<Cmd> otherCmds = new List<Cmd>();
-                foreach (Cmd cmd in block.Cmds)
-                {
-                    otherCmds.Add(Substituter.Apply(subst, cmd));
-                }
-                Block thatBlock = new Block();
-                thatBlock.Cmds = otherCmds;
-                thatBlock.Label = "that_" + block.Label;
-                block.Label = "this_" + block.Label;
-                thatBlocks.Add(thatBlock);
-                blockMap[block] = thatBlock;
-                if (block.TransferCmd is GotoCmd)
-                {
-                    GotoCmd gotoCmd = block.TransferCmd as GotoCmd;
-                    for (int i = 0; i < gotoCmd.labelNames.Count; i++)
-                    {
-                        gotoCmd.labelNames[i] = "this_" + gotoCmd.labelNames[i];
-                    }
-                }
-            }
-            foreach (Block block in thisAction.Blocks)
+            foreach (Block block in this.action.Blocks)
             {
                 if (block.TransferCmd is ReturnExprCmd)
                 {
                     block.TransferCmd = new ReturnCmd(block.TransferCmd.tok);
-                    blockMap[block].TransferCmd = new ReturnCmd(block.TransferCmd.tok);
-                    continue;
                 }
-                List<Block> thatGotoCmdLabelTargets = new List<Block>();
-                List<string> thatGotoCmdLabelNames = new List<string>();
-                GotoCmd gotoCmd = block.TransferCmd as GotoCmd;
-                foreach (Block target in gotoCmd.labelTargets)
-                {
-                    thatGotoCmdLabelTargets.Add(blockMap[target]);
-                    thatGotoCmdLabelNames.Add(blockMap[target].Label);
-                }
-                blockMap[block].TransferCmd = new GotoCmd(block.TransferCmd.tok, thatGotoCmdLabelNames, thatGotoCmdLabelTargets);
             }
-            this.thatAction = new CodeExpr(thatLocVars, thatBlocks);
+
+            var cmds = this.action.Blocks[0].Cmds;
+            for (int i = 0; i < cmds.Count; i++)
+            {
+                AssertCmd assertCmd = cmds[i] as AssertCmd;
+                if (assertCmd == null) break;
+                this.gate.Add(assertCmd);
+                cmds[i] = new AssumeCmd(assertCmd.tok, Expr.True);
+            }
+
+            foreach (Variable x in proc.InParams)
+            {
+                Variable thisx = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "this_" + x.Name, x.TypedIdent.Type), true, x.Attributes);
+                this.thisInParams.Add(thisx);
+                this.thisMap[x] = Expr.Ident(thisx);
+                Variable thatx = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "that_" + x.Name, x.TypedIdent.Type), true, x.Attributes);
+                this.thatInParams.Add(thatx);
+                this.thatMap[x] = Expr.Ident(thatx);
+            }
+            foreach (Variable x in proc.OutParams)
+            {
+                Variable thisx = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "this_" + x.Name, x.TypedIdent.Type), false, x.Attributes);
+                this.thisOutParams.Add(thisx);
+                this.thisMap[x] = Expr.Ident(thisx);
+                Variable thatx = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "that_" + x.Name, x.TypedIdent.Type), false, x.Attributes);
+                this.thatOutParams.Add(thatx);
+                this.thatMap[x] = Expr.Ident(thatx);
+            }
+            List<Variable> thisLocVars = new List<Variable>();
+            List<Variable> thatLocVars = new List<Variable>();
+            foreach (Variable x in this.action.LocVars)
+            {
+                Variable thisx = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "this_" + x.Name, x.TypedIdent.Type), false);
+                thisMap[x] = Expr.Ident(thisx);
+                thisLocVars.Add(thisx);
+                Variable thatx = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "that_" + x.Name, x.TypedIdent.Type), false);
+                thatMap[x] = Expr.Ident(thatx);
+                thatLocVars.Add(thatx);
+            }
+            Contract.Assume(proc.TypeParameters.Count == 0);
+            Substitution thisSubst = Substituter.SubstitutionFromHashtable(this.thisMap);
+            Substitution thatSubst = Substituter.SubstitutionFromHashtable(this.thatMap);
+            foreach (AssertCmd assertCmd in this.gate)
+            {
+                this.thisGate.Add((AssertCmd)Substituter.Apply(thisSubst, assertCmd));
+                this.thatGate.Add((AssertCmd)Substituter.Apply(thatSubst, assertCmd));
+            }
+            this.thisAction = new CodeExpr(thisLocVars, SubstituteBlocks(this.action.Blocks, thisSubst, "this_"));
+            this.thatAction = new CodeExpr(thatLocVars, SubstituteBlocks(this.action.Blocks, thatSubst, "that_"));
 
             {
                 VariableCollector collector = new VariableCollector();
-                collector.Visit(codeExpr);
+                collector.Visit(this.action);
                 this.actionUsedGlobalVars = new HashSet<Variable>(collector.usedVars.Where(x => x is GlobalVariable));
             }
 
             List<Variable> modifiedVars = new List<Variable>();
-            foreach (Block block in codeExpr.Blocks)
+            foreach (Block block in this.action.Blocks)
             {
                 block.Cmds.ForEach(cmd => cmd.AddAssignedVariables(modifiedVars));
             }
@@ -197,9 +179,46 @@ namespace Microsoft.Boogie
 
             {
                 VariableCollector collector = new VariableCollector();
-                this.thisGate.ForEach(assertCmd => collector.Visit(assertCmd));
+                this.gate.ForEach(assertCmd => collector.Visit(assertCmd));
                 this.gateUsedGlobalVars = new HashSet<Variable>(collector.usedVars.Where(x => x is GlobalVariable));
             }
+        }
+
+        private List<Block> SubstituteBlocks(List<Block> blocks, Substitution subst, string blockLabelPrefix)
+        {
+            Dictionary<Block, Block> blockMap = new Dictionary<Block, Block>();
+            List<Block> otherBlocks = new List<Block>();
+            foreach (Block block in blocks)
+            {
+                List<Cmd> otherCmds = new List<Cmd>();
+                foreach (Cmd cmd in block.Cmds)
+                {
+                    otherCmds.Add(Substituter.Apply(subst, cmd));
+                }
+                Block otherBlock = new Block();
+                otherBlock.Cmds = otherCmds;
+                otherBlock.Label = blockLabelPrefix + block.Label;
+                otherBlocks.Add(otherBlock);
+                blockMap[block] = otherBlock;
+            }
+            foreach (Block block in blocks)
+            {
+                if (block.TransferCmd is ReturnCmd)
+                {
+                    blockMap[block].TransferCmd = new ReturnCmd(block.TransferCmd.tok);
+                    continue;
+                }
+                List<Block> otherGotoCmdLabelTargets = new List<Block>();
+                List<string> otherGotoCmdLabelNames = new List<string>();
+                GotoCmd gotoCmd = block.TransferCmd as GotoCmd;
+                foreach (Block target in gotoCmd.labelTargets)
+                {
+                    otherGotoCmdLabelTargets.Add(blockMap[target]);
+                    otherGotoCmdLabelNames.Add(blockMap[target].Label);
+                }
+                blockMap[block].TransferCmd = new GotoCmd(block.TransferCmd.tok, otherGotoCmdLabelNames, otherGotoCmdLabelTargets);
+            }
+            return otherBlocks;
         }
     }
 
@@ -280,21 +299,20 @@ namespace Microsoft.Boogie
 
         private static List<int> FindLayers(QKeyValue kv)
         {
-            HashSet<int> attrs = new HashSet<int>();
+            List<int> layers = new List<int>();
             for (; kv != null; kv = kv.Next)
             {
                 if (kv.Key != "layer") continue;
                 foreach (var o in kv.Params)
                 {
                     Expr e = o as Expr;
-                    if (e == null) continue;
+                    if (e == null) return null;
                     LiteralExpr l = e as LiteralExpr;
-                    if (l != null && l.isBigNum)
-                        attrs.Add(l.asBigNum.ToIntSafe);
+                    if (l == null) return null;
+                    if (!l.isBigNum) return null;
+                    layers.Add(l.asBigNum.ToIntSafe);
                 }
             }
-            List<int> layers = attrs.ToList();
-            layers.Sort();
             return layers;
         }
 
@@ -389,11 +407,6 @@ namespace Microsoft.Boogie
                     Error(proc, "Incorrect number of layers");
                     continue;
                 }
-                if (availableUptoLayerNum <= createdAtLayerNum)
-                {
-                    Error(proc, "Creation layer number must be less than the available upto layer number");
-                    continue;
-                }
                 foreach (Ensures e in proc.Ensures)
                 {
                     MoverType moverType = GetMoverType(e);
@@ -407,6 +420,11 @@ namespace Microsoft.Boogie
                     if (procToActionInfo.ContainsKey(proc))
                     {
                         Error(proc, "A procedure can have at most one atomic action");
+                        continue;
+                    }
+                    if (availableUptoLayerNum <= createdAtLayerNum)
+                    {
+                        Error(proc, "Creation layer number must be less than the available upto layer number");
                         continue;
                     }
 
@@ -433,7 +451,15 @@ namespace Microsoft.Boogie
                 if (errorCount > 0) continue;
                 if (!procToActionInfo.ContainsKey(proc))
                 {
-                    procToActionInfo[proc] = new ActionInfo(proc, createdAtLayerNum, availableUptoLayerNum);
+                    if (availableUptoLayerNum < createdAtLayerNum)
+                    {
+                        Error(proc, "Creation layer number must be no more than the available upto layer number");
+                        continue;
+                    }
+                    else
+                    {
+                        procToActionInfo[proc] = new ActionInfo(proc, createdAtLayerNum, availableUptoLayerNum);
+                    }
                 }
             }
             if (errorCount > 0) return;
@@ -718,9 +744,17 @@ namespace Microsoft.Boogie
             return ret;
         }
 
+        private List<int> RemoveDuplicatesAndSort(List<int> attrs)
+        {
+            HashSet<int> layerSet = new HashSet<int>(attrs);
+            List<int> layers = new List<int>(layerSet);
+            layers.Sort();
+            return layers;
+        }
+
         private void CheckAndAddLayers(Absy node, QKeyValue attributes, int enclosingProcLayerNum)
         {
-            List<int> attrs = FindLayers(attributes);
+            List<int> attrs = RemoveDuplicatesAndSort(FindLayers(attributes));
             if (attrs.Count == 0)
             {
                 Error(node, "layer not present");

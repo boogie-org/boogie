@@ -1,0 +1,42 @@
+# Autodetect text files and ensure that we normalise their
+# line endings to lf internally. When checked out they may
+# use different line endings.
+* text=auto
+
+# Check out with crlf (Windows) line endings
+*.sln text eol=crlf
+*.csproj text eol=crlf
+*.cs text diff=csharp eol=crlf
+*.fs text eol=crlf
+*.fsproj text eol=crlf
+*.fsy text eol=crlf
+*.fsl text eol=crlf
+*.resx text eol=crlf
+*.vsixmanifest text eol=crlf
+*.atg text eol=crlf
+version.ssc text eol=crlf
+packages.config text eol=crlf
+App.config text eol=crlf
+Build/updateVersionFile.xml text eol=crlf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.snippet text eol=crlf
+
+# Check out with lf (UNIX) line endings
+*.sh text eol=lf
+*.py text eol=lf
+Makefile text eol=lf
+.gitignore text eol=lf
+.gitattributes text eol=lf
+*.el text eol=lf
+*.sty text eol=lf
+*.vim text eol=lf
+lit.site.cfg text eol=lf
+lit.local.cfg text eol=lf
+*.expect text eol=lf
+*.md text eol=lf
+.travis.yml text eol=lf
+
+# For the remaining files the line endings of checked out
+# files is defined by the ``core.eol`` git config variable.
+# By default this is the native line ending for the platform.

@@ -418,6 +418,8 @@ namespace Microsoft.Boogie {
     public string SimplifyLogFilePath = null;
     public bool PrintInstrumented = false;
     public bool InstrumentWithAsserts = false;
+    public string ProverPreamble = null;
+
     public enum InstrumentationPlaces {
       LoopHeaders,
       Everywhere
@@ -482,6 +484,7 @@ namespace Microsoft.Boogie {
     public bool SimplifyLogFileAppend = false;
     public bool SoundnessSmokeTest = false;
     public string Z3ExecutablePath = null;
+    public string Z3ExecutableName = null;
     public string CVC4ExecutablePath = null;
     public int KInductionDepth = -1;
 
@@ -559,7 +562,7 @@ namespace Microsoft.Boogie {
     public bool UseLabels = true;
     public bool RunDiagnosticsOnTimeout = false;
     public bool TraceDiagnosticsOnTimeout = false;
-    public int TimeLimitPerAssertionInPercent = 20;
+    public int TimeLimitPerAssertionInPercent = 10;
     public bool SIBoolControlVC = false;
     public bool MonomorphicArrays {
       get {
@@ -938,7 +941,14 @@ namespace Microsoft.Boogie {
           }
           return true;
 
-        case "logPrefix":
+        case "proverPreamble": 
+          if (ps.ConfirmArgumentCount(1))
+          {
+            ProverPreamble = args[ps.i];
+          }
+           return true;
+          
+          case "logPrefix":
           if (ps.ConfirmArgumentCount(1)) {
             string s = cce.NonNull(args[ps.i]);
             LogPrefix += s.Replace('/', '-').Replace('\\', '-');
@@ -1542,8 +1552,15 @@ namespace Microsoft.Boogie {
             Z3ExecutablePath = args[ps.i];
           }
           return true;
+         // This sets name of z3 binary boogie binary directory, not path
+        case "z3name":
+          if (ps.ConfirmArgumentCount(1))
+          {
+              Z3ExecutableName = args[ps.i];
+          }
+          return true;
 
-		case "cvc4exe":
+        case "cvc4exe":
 			if (ps.ConfirmArgumentCount(1)) {
 				CVC4ExecutablePath = args[ps.i];
 			}
@@ -1683,7 +1700,7 @@ namespace Microsoft.Boogie {
         // no preference
         return true;
       }
-      return ProcsToCheck.Any(s => 0 <= methodFullname.IndexOf(s));
+      return ProcsToCheck.Contains(methodFullname);
     }
 
     public virtual StringCollection ParseNamedArgumentList(string argList) {

@@ -584,9 +584,6 @@ namespace VC {
       vcgen.ConvertCFG2DAG(impl);
       vcgen.PassifyImpl(impl, out mvInfo);
 
-      if (PassiveImplInstrumentation != null)
-          PassiveImplInstrumentation(impl);
-                
       VCExpressionGenerator gen = proverInterface.VCExprGen;
       var exprGen = proverInterface.Context.ExprGen;
       var translator = proverInterface.Context.BoogieExprTranslator;
@@ -598,6 +595,9 @@ namespace VC {
       }
 
       vcgen.InstrumentCallSites(impl);
+
+      if (PassiveImplInstrumentation != null)
+          PassiveImplInstrumentation(impl);
 
       label2absy = new Dictionary<int, Absy>();
       VCGen.CodeExprConversionClosure cc = new VCGen.CodeExprConversionClosure(label2absy, proverInterface.Context);
@@ -639,6 +639,7 @@ namespace VC {
 
   public abstract class StratifiedVCGenBase : VCGen {
     public readonly static string recordProcName = "boogie_si_record";
+    public readonly static string callSiteVarAttr = "callSiteVar";
     public Dictionary<string, StratifiedInliningInfo> implName2StratifiedInliningInfo;
     public ProverInterface prover;
 
@@ -699,7 +700,9 @@ namespace VC {
           if (!implName2StratifiedInliningInfo.ContainsKey(naryExpr.Fun.FunctionName)) continue;
           Variable callSiteVar = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "SICS" + callSiteId, Microsoft.Boogie.Type.Bool));
           implementation.LocVars.Add(callSiteVar);
-          newCmds.Add(new AssumeCmd(Token.NoToken, new IdentifierExpr(Token.NoToken, callSiteVar)));
+          var toInsert = new AssumeCmd(Token.NoToken, new IdentifierExpr(Token.NoToken, callSiteVar),
+              new QKeyValue(Token.NoToken, callSiteVarAttr, new List<object>(), null));
+          newCmds.Add(toInsert);
           callSiteId++;
         }
         block.Cmds = newCmds;

@@ -321,6 +321,8 @@ namespace Microsoft.Boogie.SMTLib
             SendCommon("(declare-datatypes () (" + datatypeString + "))");
           }
         }
+        if (CommandLineOptions.Clo.ProverPreamble != null)
+            SendCommon("(include \"" + CommandLineOptions.Clo.ProverPreamble + "\")");
       }
 
       if (!AxiomsAreSetup)
@@ -595,7 +597,10 @@ namespace Microsoft.Boogie.SMTLib
 				if(declHandler.var_map.ContainsKey(name))
 					return declHandler.var_map[name];
 				HandleProverError ("Prover error: unknown symbol:" + name);
-				throw new BadExprFromProver ();
+				//throw new BadExprFromProver ();
+                var v = gen.Variable(name, Type.Int);
+                bound.Add(name, v);
+                return v;
 			}
 			ArgGetter g = i => SExprToVCExpr (e [i], bound);
 			ArgsGetter ga = () => e.Arguments.Select (x => SExprToVCExpr (x, bound)).ToArray ();
@@ -610,10 +615,11 @@ namespace Microsoft.Boogie.SMTLib
                 {
                     var binds = e.Arguments[0];
                     var vcbinds = new List<VCExprVar>();
+                    var bound_copy = new Dictionary<string, VCExpr>(bound);
                     for (int i = 0; i < binds.Arguments.Count(); i++)
                     {
                         var bind = binds.Arguments[i];
-                        var symb = bind.Name;
+                        var symb = StripCruft(bind.Name);
                         var vcv = SExprToVar(bind);
                         vcbinds.Add(vcv);
                         bound[symb] = vcv;
@@ -623,12 +629,7 @@ namespace Microsoft.Boogie.SMTLib
                         body = gen.Forall(vcbinds, new List<VCTrigger>(), body);
                     else
                         body = gen.Exists(vcbinds, new List<VCTrigger>(), body);
-                    for (int i = 0; i < binds.Arguments.Count(); i++)
-                    {
-                        var bind = binds.Arguments[i];
-                        var symb = bind.Name;
-                        bound.Remove(symb);
-                    }
+                    bound = bound_copy;
                     return body;
                 }
 			case "-" : // have to deal with unary case
@@ -648,6 +649,7 @@ namespace Microsoft.Boogie.SMTLib
 				bool expand_lets = true;
 				var binds = e.Arguments[0];
 				var vcbinds = new List<VCExprLetBinding>();
+                var bound_copy = new Dictionary<string, VCExpr>(bound);
 				for(int i = 0; i < binds.Arguments.Count(); i++){
 					var bind = binds.Arguments[i];
 					var symb = bind.Name;
@@ -661,11 +663,7 @@ namespace Microsoft.Boogie.SMTLib
 				var body = g(1); 
 				if(!expand_lets)
 					body = gen.Let(vcbinds,body);
-				for(int i = 0; i < binds.Arguments.Count(); i++){
-					var bind = binds.Arguments[i];
-					var symb = bind.Name;
-					bound.Remove (symb);
-				}
+                bound = bound_copy;
                 return body;
 			}
 				
@@ -1016,6 +1014,9 @@ namespace Microsoft.Boogie.SMTLib
                 case "unknown":
                     result = Outcome.Invalid;
                     break;
+                case "bounded":
+                    result = Outcome.Bounded;
+                    break;
                 case "error":
                     if (resp.ArgCount > 0 && resp.Arguments[0].Name.Contains("canceled"))
                     {
@@ -1053,7 +1054,8 @@ namespace Microsoft.Boogie.SMTLib
                             HandleProverError("Unexpected prover response: " + resp.ToString());
                         break;
                     }
-				case Outcome.Valid:
+                case Outcome.Valid:
+                case Outcome.Bounded:
 				    {
 						resp = Process.GetProverResponse();
                         if (resp.Name == "fixedpoint")
@@ -1310,7 +1312,9 @@ namespace Microsoft.Boogie.SMTLib
                 }
 
                 // TODO(wuestholz): Try out different ways for splitting up the work (e.g., randomly).
-                var split = new SortedSet<int>(unverified.Where((val, idx) => idx < ((rem - 1) / frac + 1)));
+                var cnt = Math.Max(1, rem / frac);
+                // It seems like assertions later in the control flow have smaller indexes.
+                var split = new SortedSet<int>(unverified.Where((val, idx) => (rem - idx - 1) < cnt));
                 Contract.Assert(0 < split.Count);
                 var splitRes = CheckSplit(split, ref popLater, timeLimitPerAssertion, timeLimitPerAssertion, ref queries);
                 if (splitRes == Outcome.Valid)
@@ -1325,11 +1329,11 @@ namespace Microsoft.Boogie.SMTLib
                 }
                 else if (splitRes == Outcome.TimeOut)
                 {
-                  if (1 < frac && frac <= (rem / 4))
+                  if (2 <= frac && (4 <= (rem / frac)))
                   {
                     frac *= 4;
                   }
-                  else if (frac <= (rem / 2))
+                  else if (2 <= (rem / frac))
                   {
                     frac *= 2;
                   }

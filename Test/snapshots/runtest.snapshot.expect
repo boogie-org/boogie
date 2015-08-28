@@ -648,6 +648,123 @@ Processing command (at Snapshots35.v1.bpl(5,5)) assert p;
 Snapshots35.v1.bpl(5,5): Error BP5001: This assertion might not hold.
 
 Boogie program verifier finished with 0 verified, 1 error
+Processing command (at Snapshots36.v0.bpl(13,5)) assert l[0];
+  >>> DoNothingToAssert
+
+Boogie program verifier finished with 1 verified, 0 errors
+Processing command (at Snapshots36.v1.bpl(13,5)) assert l[0];
+  >>> DoNothingToAssert
+Snapshots36.v1.bpl(13,5): Error BP5001: This assertion might not hold.
+
+Boogie program verifier finished with 0 verified, 1 error
+Processing command (at Snapshots37.v0.bpl(8,5)) assert l[0];
+  >>> DoNothingToAssert
+
+Boogie program verifier finished with 1 verified, 0 errors
+Processing command (at Snapshots37.v1.bpl(8,5)) assert l[0];
+  >>> DoNothingToAssert
+Snapshots37.v1.bpl(8,5): Error BP5001: This assertion might not hold.
+
+Boogie program verifier finished with 0 verified, 1 error
+Processing command (at Snapshots38.v0.bpl(7,5)) assert 0 <= call0formal#AT#n;
+  >>> DoNothingToAssert
+Processing command (at Snapshots38.v0.bpl(8,5)) assert r != 0;
+  >>> DoNothingToAssert
+
+Boogie program verifier finished with 1 verified, 0 errors
+Processing command (at Snapshots38.v1.bpl(7,5)) assert 0 <= call0formal#AT#n;
+  >>> MarkAsFullyVerified
+Processing command (at Snapshots38.v1.bpl(8,5)) assert r != 0;
+  >>> MarkAsFullyVerified
+Processing command (at Snapshots38.v1.bpl(9,5)) assert 42 <= r;
+  >>> DoNothingToAssert
+Snapshots38.v1.bpl(9,5): Error BP5001: This assertion might not hold.
+
+Boogie program verifier finished with 0 verified, 1 error
+Processing call to procedure Sum in implementation Callee (at Snapshots38.v2.bpl(7,5)):
+  >>> added axiom: (forall call0formal#AT#n: int :: {:weight 30} { ##extracted_function##1(call0formal#AT#n) } ##extracted_function##1(call0formal#AT#n) == (0 <= call0formal#AT#n))
+  >>> added axiom: (forall call0formal#AT#n: int, call1formal#AT#r: int :: {:weight 30} { ##extracted_function##2(call0formal#AT#n, call1formal#AT#r) } ##extracted_function##2(call0formal#AT#n, call1formal#AT#r) == (call0formal#AT#n != 0 ==> 1 <= call1formal#AT#r))
+  >>> added before precondition check: assume {:precondition_previous_snapshot} ##extracted_function##1(call0formal#AT#n);
+  >>> added after: a##cached##0 := a##cached##0 && ##extracted_function##2(call0formal#AT#n, call1formal#AT#r);
+Processing command (at Snapshots38.v2.bpl(7,5)) assume {:precondition_previous_snapshot} ##extracted_function##1(call0formal#AT#n);
+  >>> MarkAsFullyVerified
+Processing command (at Snapshots38.v2.bpl(7,5)) assert 0 <= call0formal#AT#n;
+  >>> MarkAsFullyVerified
+Processing command (at Snapshots38.v2.bpl(8,5)) assert r != 0;
+  >>> MarkAsPartiallyVerified
+Processing command (at Snapshots38.v2.bpl(9,5)) assert 42 <= r;
+  >>> DoNothingToAssert
+
+Boogie program verifier finished with 1 verified, 0 errors
+Processing command (at Snapshots39.v0.bpl(7,5)) assert 0 <= call0formal#AT#n;
+  >>> DoNothingToAssert
+Processing command (at Snapshots39.v0.bpl(8,5)) assert r != 0;
+  >>> DoNothingToAssert
+
+Boogie program verifier finished with 1 verified, 0 errors
+Processing command (at Snapshots39.v1.bpl(7,5)) assert 0 <= call0formal#AT#n;
+  >>> MarkAsFullyVerified
+Processing command (at Snapshots39.v1.bpl(8,5)) assert r != 0;
+  >>> MarkAsFullyVerified
+Processing command (at Snapshots39.v1.bpl(9,5)) assert r == 42 * 43 div 2;
+  >>> DoNothingToAssert
+Snapshots39.v1.bpl(9,5): Error BP5001: This assertion might not hold.
+
+Boogie program verifier finished with 0 verified, 1 error
+Processing call to procedure Sum in implementation Callee (at Snapshots39.v2.bpl(7,5)):
+  >>> added axiom: (forall call0formal#AT#n: int :: {:weight 30} { ##extracted_function##1(call0formal#AT#n) } ##extracted_function##1(call0formal#AT#n) == (0 <= call0formal#AT#n))
+  >>> added axiom: (forall call0formal#AT#n: int, call1formal#AT#r: int :: {:weight 30} { ##extracted_function##2(call0formal#AT#n, call1formal#AT#r) } ##extracted_function##2(call0formal#AT#n, call1formal#AT#r) == (call0formal#AT#n <= call1formal#AT#r))
+  >>> added before precondition check: assume {:precondition_previous_snapshot} ##extracted_function##1(call0formal#AT#n);
+  >>> added after: a##cached##0 := a##cached##0 && ##extracted_function##2(call0formal#AT#n, call1formal#AT#r);
+Processing command (at Snapshots39.v2.bpl(7,5)) assume {:precondition_previous_snapshot} ##extracted_function##1(call0formal#AT#n);
+  >>> MarkAsFullyVerified
+Processing command (at Snapshots39.v2.bpl(7,5)) assert 0 <= call0formal#AT#n;
+  >>> MarkAsFullyVerified
+Processing command (at Snapshots39.v2.bpl(8,5)) assert r != 0;
+  >>> MarkAsPartiallyVerified
+Processing command (at Snapshots39.v2.bpl(9,5)) assert r == 42 * 43 div 2;
+  >>> DoNothingToAssert
+
+Boogie program verifier finished with 1 verified, 0 errors
+Processing command (at Snapshots40.v0.bpl(7,5)) assert b;
+  >>> DoNothingToAssert
+Processing command (at Snapshots40.v0.bpl(8,5)) assert 0 <= call0formal#AT#n;
+  >>> DoNothingToAssert
+Processing command (at Snapshots40.v0.bpl(9,5)) assert r != 0;
+  >>> DoNothingToAssert
+Snapshots40.v0.bpl(7,5): Error BP5001: This assertion might not hold.
+
+Boogie program verifier finished with 0 verified, 1 error
+Processing command (at Snapshots40.v1.bpl(7,5)) assert b;
+  >>> RecycleError
+Processing command (at Snapshots40.v1.bpl(8,5)) assert 0 <= call0formal#AT#n;
+  >>> MarkAsFullyVerified
+Processing command (at Snapshots40.v1.bpl(9,5)) assert r != 0;
+  >>> MarkAsFullyVerified
+Processing command (at Snapshots40.v1.bpl(10,5)) assert r == 42 * 43 div 2;
+  >>> DoNothingToAssert
+Snapshots40.v0.bpl(7,5): Error BP5001: This assertion might not hold.
+Snapshots40.v1.bpl(10,5): Error BP5001: This assertion might not hold.
+
+Boogie program verifier finished with 0 verified, 2 errors
+Processing call to procedure Sum in implementation Foo (at Snapshots40.v2.bpl(8,5)):
+  >>> added axiom: (forall call0formal#AT#n: int :: {:weight 30} { ##extracted_function##1(call0formal#AT#n) } ##extracted_function##1(call0formal#AT#n) == (0 <= call0formal#AT#n))
+  >>> added axiom: (forall call0formal#AT#n: int, call1formal#AT#r: int :: {:weight 30} { ##extracted_function##2(call0formal#AT#n, call1formal#AT#r) } ##extracted_function##2(call0formal#AT#n, call1formal#AT#r) == (call0formal#AT#n <= call1formal#AT#r))
+  >>> added before precondition check: assume {:precondition_previous_snapshot} ##extracted_function##1(call0formal#AT#n);
+  >>> added after: a##cached##0 := a##cached##0 && ##extracted_function##2(call0formal#AT#n, call1formal#AT#r);
+Processing command (at Snapshots40.v2.bpl(7,5)) assert b;
+  >>> RecycleError
+Processing command (at Snapshots40.v2.bpl(8,5)) assume {:precondition_previous_snapshot} ##extracted_function##1(call0formal#AT#n);
+  >>> MarkAsFullyVerified
+Processing command (at Snapshots40.v2.bpl(8,5)) assert 0 <= call0formal#AT#n;
+  >>> MarkAsFullyVerified
+Processing command (at Snapshots40.v2.bpl(9,5)) assert r != 0;
+  >>> MarkAsPartiallyVerified
+Processing command (at Snapshots40.v2.bpl(10,5)) assert r == 42 * 43 div 2;
+  >>> DoNothingToAssert
+Snapshots40.v0.bpl(7,5): Error BP5001: This assertion might not hold.
+
+Boogie program verifier finished with 0 verified, 1 error
 Processing command (at Snapshots41.v0.bpl(3,23)) assert x < 20 || 10 <= x;
   >>> DoNothingToAssert
 Processing command (at Snapshots41.v0.bpl(4,3)) assert x < 10;
