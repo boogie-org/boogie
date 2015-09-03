@@ -624,14 +624,11 @@ namespace Microsoft.Boogie
             foreach (Variable v in AvailableLinearVars(absy))
             {
                 var domainName = FindDomainName(v);
-                if (!linearDomains.ContainsKey(domainName)) continue;
                 domainNameToScope[domainName].Add(v);
             }
-            foreach (Variable v in program.GlobalVariables)
+            foreach (Variable v in globalVarToDomainName.Keys)
             {
                 var domainName = FindDomainName(v);
-                if (domainName == null) continue;
-                if (!linearDomains.ContainsKey(domainName)) continue; 
                 domainNameToScope[domainName].Add(v);
             }
             foreach (string domainName in linearDomains.Keys)
