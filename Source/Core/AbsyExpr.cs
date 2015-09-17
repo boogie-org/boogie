@@ -1519,8 +1519,6 @@ namespace Microsoft.Boogie {
             return "mod";
           case Opcode.RealDiv:
             return "/";
-          case Opcode.FloatDiv:
-            return "/";
           case Opcode.Pow:
             return "**";
           case Opcode.Eq:
@@ -1580,10 +1578,6 @@ namespace Microsoft.Boogie {
           fragileRightContext = true;
           break;
         case Opcode.RealDiv:
-          opBindingStrength = 0x50;
-          fragileRightContext = true;
-          break;
-        case Opcode.FloatDiv: //TODO: Modify (potentially)
           opBindingStrength = 0x50;
           fragileRightContext = true;
           break;
@@ -1707,10 +1701,12 @@ namespace Microsoft.Boogie {
           if (arg0type.Unify(Type.Real) && arg1type.Unify(Type.Real)) {
             return Type.Real;
           }
-          //if (arg0type.Unify(Type.Float) && arg1type.Unify(Type.Float))
-          //{
-            //return Type.Float;
-          //}
+          if (arg0type.IsFloat && arg0type.Unify(arg1type)) {
+            return new FloatType(arg0.Type.FloatExponent, arg0.Type.FloatMantissa);
+          }
+          if (arg1type.IsFloat && arg1type.Unify(arg0type)) {
+            return new FloatType(arg1.Type.FloatExponent, arg1.Type.FloatMantissa);
+          }
           goto BAD_TYPE;
         case Opcode.Div:
         case Opcode.Mod:

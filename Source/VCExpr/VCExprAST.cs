@@ -357,6 +357,15 @@ namespace Microsoft.Boogie {
       return new VCExprBoogieFunctionOp(func);
     }
 
+    // Float nodes
+
+    public VCExpr AddFOp(VCExpr f1, VCExpr f2)
+    {
+      Contract.Requires(f1 != null);
+      Contract.Requires(f2 != null);
+      return Function(new VCExprFloatOp(f1.Type.FloatExponent, f1.Type.FloatMantissa));
+    }
+
     // Bitvector nodes
 
     public VCExpr Bitvector(BvConst bv) {
@@ -403,7 +412,6 @@ namespace Microsoft.Boogie {
       DivOp,
       ModOp,
       RealDivOp,
-      FloatDivOp,
       PowOp,
       LtOp,
       LeOp,
@@ -1309,8 +1317,6 @@ namespace Microsoft.Boogie.VCExprAST {
             return visitor.VisitModOp(expr, arg);
           case VCExpressionGenerator.SingletonOp.RealDivOp:
             return visitor.VisitRealDivOp(expr, arg);
-          case VCExpressionGenerator.SingletonOp.FloatDivOp:
-            return visitor.VisitFloatDivOp(expr, arg);
           case VCExpressionGenerator.SingletonOp.PowOp:
             return visitor.VisitPowOp(expr, arg);
           case VCExpressionGenerator.SingletonOp.LtOp:
@@ -1665,6 +1671,56 @@ namespace Microsoft.Boogie.VCExprAST {
       //Contract.Requires(expr != null);
       //Contract.Requires(visitor != null);
       return visitor.VisitCustomOp(expr, arg);
+    }
+  }
+
+  /////////////////////////////////////////////////////////////////////////////////
+  // Float operators
+
+  public class VCExprFloatOp : VCExprOp {
+    public readonly int Mantissa;
+    public readonly int Exponent;
+
+    public override int Arity {
+      get {
+        return 1;
+      }
+    }
+    public override int TypeParamArity {
+      get {
+        return 0;
+      }
+    }
+    public override Type InferType(List<VCExpr> args, List<Type/*!*/>/*!*/ typeArgs) {
+      //Contract.Requires(cce.NonNullElements(typeArgs));
+      //Contract.Requires(cce.NonNullElements(args));
+      Contract.Ensures(Contract.Result<Type>() != null);
+      return Type.GetFloatType(Exponent, Mantissa);
+    }
+
+    [Pure]
+    [Reads(ReadsAttribute.Reads.Nothing)]
+    public override bool Equals(object that) {
+      if (Object.ReferenceEquals(this, that))
+        return true;
+      if (that is VCExprFloatOp)
+        return this.Exponent == ((VCExprFloatOp)that).Exponent && this.Mantissa == ((VCExprFloatOp)that).Mantissa;
+      return false;
+    }
+    [Pure]
+    public override int GetHashCode() {
+      return Exponent * 81748912 + Mantissa * 67867979;
+    }
+
+    internal VCExprFloatOp(int exp, int man) {
+      this.Exponent = exp;
+      this.Mantissa = man;
+    }
+    public override Result Accept<Result, Arg>
+           (VCExprNAry expr, IVCExprOpVisitor<Result, Arg> visitor, Arg arg) {
+      //Contract.Requires(visitor != null);
+      //Contract.Requires(expr != null);
+      return visitor.VisitBvOp(expr, arg);
     }
   }
 

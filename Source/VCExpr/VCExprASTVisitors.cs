@@ -77,7 +77,6 @@ namespace Microsoft.Boogie.VCExprAST {
     Result VisitDivOp(VCExprNAry node, Arg arg);
     Result VisitModOp(VCExprNAry node, Arg arg);
     Result VisitRealDivOp(VCExprNAry node, Arg arg);
-    Result VisitFloatDivOp(VCExprNAry node, Arg arg); //TODO: Add this to references from above and below
     Result VisitPowOp(VCExprNAry node, Arg arg);
     Result VisitLtOp(VCExprNAry node, Arg arg);
     Result VisitLeOp(VCExprNAry node, Arg arg);

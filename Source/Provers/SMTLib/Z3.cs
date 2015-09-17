@@ -253,7 +253,7 @@ namespace Microsoft.Boogie.SMTLib
             //if (options.Inspector != null)
             //  options.WeakAddSmtOption("PROGRESS_SAMPLING_FREQ", "100");
 
-            options.AddWeakSmtOption("TYPE_CHECK", "true");
+            options.AddWeakSmtOption("TYPE_CHECK", "false");
             options.AddWeakSmtOption("smt.BV.REFLECT", "true");
 
             if (options.TimeLimit > 0)
@@ -334,7 +334,7 @@ namespace Microsoft.Boogie.SMTLib
             //if (options.Inspector != null)
             //  options.WeakAddSmtOption("PROGRESS_SAMPLING_FREQ", "100");
 
-            options.AddWeakSmtOption("TYPE_CHECK", "true");
+            options.AddWeakSmtOption("TYPE_CHECK", "false");
             options.AddWeakSmtOption("BV_REFLECT", "true");
 
             if (options.TimeLimit > 0)

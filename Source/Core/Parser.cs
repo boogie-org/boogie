@@ -678,7 +678,7 @@ private class BvBounds : Expr {
      Expect(10);
    }
    else
-    ty = new FloatType(t, 8, 23);
+    ty = new FloatType(t, 8, 24);
   } else if (la.kind == 16) {
 			Get();
 			ty = new BasicType(t, SimpleType.Bool); 
@@ -1914,7 +1914,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
    catch (FormatException)
    {
      this.SemErr("incorrectly formatted floating point");
-     n = BigFloat.ZERO(8, 23);
+     n = BigFloat.ZERO(8, 24);
    }
  }
 

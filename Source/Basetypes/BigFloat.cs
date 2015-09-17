@@ -17,7 +17,7 @@ namespace Microsoft.Basetypes
     
   /// <summary>
   /// A representation of a 32-bit floating point value
-  /// Note that this value has a 1-bit sign, 8-bit exponent, and 23-bit mantissa
+  /// Note that this value has a 1-bit sign, 8-bit exponent, and 24-bit mantissa
   /// </summary>
   public struct BigFloat
   {
@@ -85,17 +85,17 @@ namespace Microsoft.Basetypes
 
     [Pure]
     public static BigFloat FromInt(int v) {
-      return new BigFloat(v, 0, 23, 8); //TODO: modify for correct fp representation
+      return new BigFloat(v, 0, 24, 8); //TODO: modify for correct fp representation
     }
 
     [Pure]
     public static BigFloat FromBigInt(BIM v) {
-      return new BigFloat(0, v, 8, 23); //TODO: modify for correct fp representation
+      return new BigFloat(0, v, 8, 24); //TODO: modify for correct fp representation
     }
 
     public static BigFloat FromBigDec(BIM v)
     {
-      return new BigFloat(0, v, 8, 23); //TODO: modify for correct fp representation
+      return new BigFloat(0, v, 8, 24); //TODO: modify for correct fp representation
     }
 
     [Pure]
@@ -107,9 +107,9 @@ namespace Microsoft.Basetypes
       {
         switch (vals.Length) {
           case 1:
-            return Round(vals[0], 8, 23); 
+            return Round(vals[0], 8, 24); 
           case 2:
-            return new BigFloat(Int32.Parse(vals[0]), BIM.Parse(vals[1]), 8, 23);
+            return new BigFloat(Int32.Parse(vals[0]), BIM.Parse(vals[1]), 8, 24);
           case 3:
             return Round(vals[0], Int32.Parse(vals[1]), Int32.Parse(vals[2]));
           case 4:
