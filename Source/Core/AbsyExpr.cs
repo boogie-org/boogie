@@ -1702,10 +1702,10 @@ namespace Microsoft.Boogie {
             return Type.Real;
           }
           if (arg0type.IsFloat && arg0type.Unify(arg1type)) {
-            return new FloatType(arg0.Type.FloatExponent, arg0.Type.FloatMantissa);
+            return Type.GetFloatType(arg0.Type.FloatExponent, arg0.Type.FloatMantissa);
           }
           if (arg1type.IsFloat && arg1type.Unify(arg0type)) {
-            return new FloatType(arg1.Type.FloatExponent, arg1.Type.FloatMantissa);
+            return Type.GetFloatType(arg1.Type.FloatExponent, arg1.Type.FloatMantissa);
           }
           goto BAD_TYPE;
         case Opcode.Div:
@@ -1718,6 +1718,12 @@ namespace Microsoft.Boogie {
           if ((arg0type.Unify(Type.Int) || arg0type.Unify(Type.Real)) &&
               (arg1type.Unify(Type.Int) || arg1type.Unify(Type.Real))) {
             return Type.Real;
+          }
+          if (arg0type.IsFloat && arg0type.Unify(arg1type)) {
+            return Type.GetFloatType(arg0.Type.FloatExponent, arg0.Type.FloatMantissa);
+          }
+          if (arg1type.IsFloat && arg1type.Unify(arg0type)) {
+            return Type.GetFloatType(arg1.Type.FloatExponent, arg1.Type.FloatMantissa);
           }
           goto BAD_TYPE;
         case Opcode.Pow:
@@ -1751,10 +1757,9 @@ namespace Microsoft.Boogie {
           if (arg0type.Unify(Type.Real) && arg1type.Unify(Type.Real)) {
             return Type.Bool;
           }
-          //if (arg0type.Unify(Type.Float) && arg1type.Unify(Type.Float))
-          //{
-            //return Type.Bool;
-          //}
+          if ((arg0type.IsFloat && arg0type.Unify(arg1type)) || (arg1type.IsFloat && arg1type.Unify(arg0type))) {
+            return Type.Bool;
+          }
           goto BAD_TYPE;
         case Opcode.And:
         case Opcode.Or:
@@ -1798,9 +1803,6 @@ namespace Microsoft.Boogie {
         case Opcode.RealDiv:
         case Opcode.Pow:
           return Type.Real;
-
-        //case Opcode.FloatDiv:
-          //return Type.Float;
 
         case Opcode.Eq:
         case Opcode.Neq:
