@@ -89,13 +89,11 @@ ensures {:layer 3} {:expand} emptyInv(put_in_cs, take_in_cs, items,status,T);
 ensures {:atomic} |{ var i: int; A: assume status[i] == NOT_IN_Q; status[i] := IN_Q; return true; }|;
 {
    var t: int;
-   var {:ghost} oldH:int;
-   var {:ghost} oldT:int;
-   var {:ghost} oldStatusT:bool;
+   var {:ghost} {:layer 3} oldH:int;
+   var {:ghost} {:layer 3} oldT:int;
+   var {:ghost} {:layer 3} oldStatusT:bool;
    
-
-   oldH := H;
-   oldT := T;
+   call oldH, oldT := GhostRead();
    yield;
    assert {:layer 3} {:expand} queueInv(steal_in_cs,put_in_cs,take_in_cs,items, status, H, T-1) && tid == ptTid && !take_in_cs && !put_in_cs;
    assert {:layer 3} {:expand} {:expand} ideasInv(put_in_cs,items, status, H, T, take_in_cs, steal_in_cs, h_ss, t_ss);
@@ -104,8 +102,7 @@ ensures {:atomic} |{ var i: int; A: assume status[i] == NOT_IN_Q; status[i] := I
 
    call t := readT_put(tid);
 
-   oldH := H;
-   oldT := T;
+   call oldH, oldT := GhostRead();
    yield;
    assert {:layer 3} {:expand} queueInv(steal_in_cs,put_in_cs,take_in_cs,items, status, H, T-1) && tid == ptTid && !take_in_cs && put_in_cs;
    assert {:layer 3} {:expand} ideasInv(put_in_cs,items, status, H, T, take_in_cs, steal_in_cs, h_ss, t_ss);
@@ -115,9 +112,8 @@ ensures {:atomic} |{ var i: int; A: assume status[i] == NOT_IN_Q; status[i] := I
    
    call writeItems_put(tid,t, task);
 
-   oldH := H;
-   oldT := T;
-   oldStatusT := status[T];
+   call oldH, oldT := GhostRead();
+   call oldStatusT := GhostReadStatus();
    yield;
    assert {:layer 3} {:expand} queueInv(steal_in_cs,put_in_cs,take_in_cs,items, status, H, T) && t == T && tid == ptTid && !take_in_cs && put_in_cs;
    assert {:layer 3} {:expand} ideasInv(put_in_cs,items, status, H, T, take_in_cs, steal_in_cs, h_ss, t_ss);
@@ -128,8 +124,7 @@ ensures {:atomic} |{ var i: int; A: assume status[i] == NOT_IN_Q; status[i] := I
    
    call writeT_put(tid, t+1);
 
-   oldH := H;
-   oldT := T;
+   call oldH, oldT := GhostRead();
    yield;
    assert {:layer 3} {:expand} queueInv(steal_in_cs,put_in_cs,take_in_cs,items, status, H, T-1) && tid == ptTid && !take_in_cs && !put_in_cs;
    assert {:layer 3} {:expand} ideasInv(put_in_cs,items, status, H, T, take_in_cs, steal_in_cs, h_ss, t_ss);
@@ -147,11 +142,10 @@ ensures {:atomic} |{ var i: int; A: goto B,C; B: assume status[i] == IN_Q; statu
 {
    var h, t: int;
    var chk: bool;
-   var {:ghost} oldH:int;
-   var {:ghost} oldT:int;
+   var {:ghost} {:layer 3} oldH:int;
+   var {:ghost} {:layer 3} oldT:int;
 
-   oldH := H;
-   oldT := T;
+   call oldH, oldT := GhostRead();
    yield;
    assert {:layer 3} queueInv(steal_in_cs,put_in_cs,take_in_cs,items, status, H, T-1) && tid == ptTid && !take_in_cs && !put_in_cs;
    assert {:layer 3} ideasInv(put_in_cs,items, status, H, T, take_in_cs, steal_in_cs, h_ss, t_ss);
@@ -164,8 +158,7 @@ ensures {:atomic} |{ var i: int; A: goto B,C; B: assume status[i] == IN_Q; statu
    invariant {:layer 3} ideasInv(put_in_cs,items, status, H, T, take_in_cs, steal_in_cs, h_ss, t_ss);    
    {
 
-       oldH := H;
-       oldT := T;
+       call oldH, oldT := GhostRead();
        yield;
        assert {:layer 3} queueInv(steal_in_cs,put_in_cs,take_in_cs,items, status, H, T-1) && tid == ptTid && !take_in_cs && !put_in_cs;
     assert {:layer 3} ideasInv(put_in_cs,items, status, H, T, take_in_cs, steal_in_cs, h_ss, t_ss);
@@ -173,8 +166,7 @@ ensures {:atomic} |{ var i: int; A: goto B,C; B: assume status[i] == IN_Q; statu
     
        call t := readT_take_init(tid);
 
-       oldH := H;
-       oldT := T;
+       call oldH, oldT := GhostRead();
        yield;
        assert {:layer 3} queueInv(steal_in_cs,put_in_cs,take_in_cs,items, status, H, T-1) && tid == ptTid && !take_in_cs && !put_in_cs;
        assert {:layer 3} ideasInv(put_in_cs,items, status, H, T, take_in_cs, steal_in_cs, h_ss, t_ss);    
@@ -185,8 +177,7 @@ ensures {:atomic} |{ var i: int; A: goto B,C; B: assume status[i] == IN_Q; statu
        t := t-1;
        call writeT_take(tid, t);
 
-       oldH := H;
-       oldT := T;
+       call oldH, oldT := GhostRead();
        yield;
        assert {:layer 3} queueInv(steal_in_cs,put_in_cs,take_in_cs,items, status, H, T) && tid == ptTid && !take_in_cs && !put_in_cs && t_ss[tid] == t;
        assert {:layer 3} ideasInv(put_in_cs,items, status, H, T, take_in_cs, steal_in_cs, h_ss, t_ss);    
@@ -196,8 +187,7 @@ ensures {:atomic} |{ var i: int; A: goto B,C; B: assume status[i] == IN_Q; statu
     
        call h := readH_take(tid);
 
-       oldH := H;
-       oldT := T;
+       call oldH, oldT := GhostRead();
        yield;
        assert {:layer 3} queueInv(steal_in_cs,put_in_cs,take_in_cs,items, status, H, T) && tid == ptTid && take_in_cs  && !put_in_cs && h_ss[tid] == h && t_ss[tid] == t;  
        assert {:layer 3} {:expand} ideasInv(put_in_cs,items, status, H, T, take_in_cs, steal_in_cs, h_ss, t_ss);    
@@ -214,8 +204,7 @@ ensures {:atomic} |{ var i: int; A: goto B,C; B: assume status[i] == IN_Q; statu
            call writeT_take_abort(tid, h);
            task := EMPTY;
  
-           oldH := H;
-           oldT := T;
+           call oldH, oldT := GhostRead();
            yield;
         assert {:layer 3} h <= H;
            assert {:layer 3} queueInv(steal_in_cs,put_in_cs,take_in_cs,items, status, H, T-1) && tid == ptTid && !take_in_cs && !put_in_cs; 
@@ -227,8 +216,7 @@ ensures {:atomic} |{ var i: int; A: goto B,C; B: assume status[i] == IN_Q; statu
 
        call task, taskstatus := readItems(tid, t);
 
-       oldH := H;
-       oldT := T;
+       call oldH, oldT := GhostRead();
        yield;
     assert {:layer 3} H >= h;
        assert {:layer 3} queueInv(steal_in_cs,put_in_cs,take_in_cs,items, status, H, T) && tid == ptTid && take_in_cs && h_ss[tid] == h && t_ss[tid] == t;  
@@ -240,8 +228,7 @@ ensures {:atomic} |{ var i: int; A: goto B,C; B: assume status[i] == IN_Q; statu
        if(t>h) {
         call takeExitCS(tid);
 
-           oldH := H;
-           oldT := T;    
+           call oldH, oldT := GhostRead();    
            yield;
            assert {:layer 3} queueInv(steal_in_cs,put_in_cs,take_in_cs,items, status, H, T-1) && tid == ptTid && !take_in_cs && h_ss[tid] == h && t_ss[tid] == t;  
         assert {:layer 3} ideasInv(put_in_cs,items, status, H, T, take_in_cs, steal_in_cs, h_ss, t_ss);
@@ -250,8 +237,7 @@ ensures {:atomic} |{ var i: int; A: goto B,C; B: assume status[i] == IN_Q; statu
            return;
        }
 	   call writeT_take_eq(tid, h+1);
-	   oldH := H;
-       oldT := T;
+	   call oldH, oldT := GhostRead();
 	   
 	   yield;
 	   assert {:layer 3} queueInv(steal_in_cs,put_in_cs,take_in_cs,items, status, H, T-1) && tid == ptTid && h_ss[tid] == h && t_ss[tid] == t;
@@ -265,8 +251,7 @@ ensures {:atomic} |{ var i: int; A: goto B,C; B: assume status[i] == IN_Q; statu
        call chk := CAS_H_take(tid, h,h+1);
 
 
-       oldH := H;
-       oldT := T;    
+       call oldH, oldT := GhostRead();    
        yield;
 	assert {:layer 3} chk ==> (h+1 == oldH && h_ss[tid] == oldH -1 && task != EMPTY);
        assert {:layer 3} queueInv(steal_in_cs,put_in_cs,take_in_cs,items, status, H, T-1) && tid == ptTid && h_ss[tid] == h && t_ss[tid] == t;  
@@ -279,8 +264,7 @@ ensures {:atomic} |{ var i: int; A: goto B,C; B: assume status[i] == IN_Q; statu
 
        if(!chk) {
     
-          oldH := H;
-          oldT := T;    
+          call oldH, oldT := GhostRead();    
           yield;
           assert {:layer 3} queueInv(steal_in_cs,put_in_cs,take_in_cs,items, status, H, T-1) && tid == ptTid && h_ss[tid] == h && t_ss[tid] == t;  
          assert {:layer 3} ideasInv(put_in_cs,items, status, H, T, take_in_cs, steal_in_cs, h_ss, t_ss);
@@ -290,8 +274,7 @@ ensures {:atomic} |{ var i: int; A: goto B,C; B: assume status[i] == IN_Q; statu
           goto LOOP_ENTRY_1;
        }
 
-       oldH := H;
-       oldT := T;    
+       call oldH, oldT := GhostRead();    
        yield;
        assert {:layer 3} queueInv(steal_in_cs,put_in_cs,take_in_cs,items, status, H, T-1) && tid == ptTid && h_ss[tid] == h && t_ss[tid] == t;  
     assert {:layer 3} ideasInv(put_in_cs,items, status, H, T, take_in_cs, steal_in_cs, h_ss, t_ss);
@@ -301,8 +284,7 @@ ensures {:atomic} |{ var i: int; A: goto B,C; B: assume status[i] == IN_Q; statu
        return;
    }
    
-   oldH := H;
-   oldT := T;
+   call oldH, oldT := GhostRead();
    yield;
    assert {:layer 3} queueInv(steal_in_cs,put_in_cs,take_in_cs,items, status, H, T) && tid == ptTid && !put_in_cs;
    assert {:layer 3} ideasInv(put_in_cs,items, status, H, T, take_in_cs, steal_in_cs, h_ss, t_ss);
@@ -322,11 +304,10 @@ ensures {:atomic} |{ var i: int; A: goto B,C; B: assume status[i] == IN_Q; statu
 {
    var h, t: int;
    var chk: bool;
-   var {:ghost} oldH:int;
-   var {:ghost} oldT:int;
+   var {:ghost} {:layer 3} oldH:int;
+   var {:ghost} {:layer 3} oldT:int;
 
-   oldH := H;
-   oldT := T;
+   call oldH, oldT := GhostRead();
    yield;
    assert {:layer 3} stealerTid(tid);
    assert {:layer 3} queueInv(steal_in_cs,put_in_cs,take_in_cs,items, status, H, T-1);
@@ -341,8 +322,7 @@ ensures {:atomic} |{ var i: int; A: goto B,C; B: assume status[i] == IN_Q; statu
    invariant {:layer 3} ideasInv(put_in_cs,items, status, H, T, take_in_cs, steal_in_cs, h_ss, t_ss);
    invariant {:layer 3} !steal_in_cs[tid];
    {
-       oldH := H;
-       oldT := T;
+       call oldH, oldT := GhostRead();
        yield;
     assert {:layer 3} stealerTid(tid);
        assert {:layer 3} queueInv(steal_in_cs,put_in_cs,take_in_cs,items, status, H, T-1);
@@ -352,8 +332,7 @@ ensures {:atomic} |{ var i: int; A: goto B,C; B: assume status[i] == IN_Q; statu
     
        call h := readH_steal(tid);
 
-       oldH := H;
-       oldT := T;
+       call oldH, oldT := GhostRead();
        yield;
     assert {:layer 3} H >= h;
     assert {:layer 3} !steal_in_cs[tid];
@@ -365,8 +344,7 @@ ensures {:atomic} |{ var i: int; A: goto B,C; B: assume status[i] == IN_Q; statu
        call t := readT_steal(tid);
 
 
-       oldH := H;
-       oldT := T;
+       call oldH, oldT := GhostRead();
        yield;
     assert {:layer 3} steal_in_cs[tid];
     assert {:layer 3} stealerTid(tid) && H >= h && steal_in_cs[tid] && h_ss[tid] == h;
@@ -381,8 +359,7 @@ ensures {:atomic} |{ var i: int; A: goto B,C; B: assume status[i] == IN_Q; statu
            task := EMPTY;
         call stealExitCS(tid);
 
-           oldH := H;
-           oldT := T;
+        call oldH, oldT := GhostRead();
            yield;
         assert {:layer 3} !steal_in_cs[tid];
         assert {:layer 3} stealerTid(tid) && !steal_in_cs[tid] && h_ss[tid] == h;
@@ -395,8 +372,7 @@ ensures {:atomic} |{ var i: int; A: goto B,C; B: assume status[i] == IN_Q; statu
        call task, taskstatus := readItems(tid, h);
 
 
-       oldH := H;
-       oldT := T;
+    call oldH, oldT := GhostRead();
        yield;
     assert {:layer 3} stealerTid(tid) && steal_in_cs[tid] && h_ss[tid] == h;
        assert {:layer 3} queueInv(steal_in_cs,put_in_cs,take_in_cs,items, status, H, T-1);
@@ -408,8 +384,7 @@ ensures {:atomic} |{ var i: int; A: goto B,C; B: assume status[i] == IN_Q; statu
 
        call chk := CAS_H_steal(tid, h,h+1);
 
-       oldH := H;
-       oldT := T;
+       call oldH, oldT := GhostRead();
        yield;
     assert {:layer 3} h_ss[tid] == h;
     assert {:layer 3} chk ==> (h+1 == oldH && h_ss[tid] == h && task != EMPTY && taskstatus == IN_Q);
@@ -423,8 +398,7 @@ ensures {:atomic} |{ var i: int; A: goto B,C; B: assume status[i] == IN_Q; statu
           goto LOOP_ENTRY_2;
        }
 
-       oldH := H;
-       oldT := T;
+       call oldH, oldT := GhostRead();
        yield;
     assert {:layer 3} stealerTid(tid) && !steal_in_cs[tid];
        assert {:layer 3} queueInv(steal_in_cs,put_in_cs,take_in_cs,items, status, H, T-1);
@@ -433,12 +407,22 @@ ensures {:atomic} |{ var i: int; A: goto B,C; B: assume status[i] == IN_Q; statu
        return;
    }
    
-   oldH := H;
-   oldT := T;
+   call oldH, oldT := GhostRead();
    yield;
    assert {:layer 3} chk && task != EMPTY;
    assert {:layer 3} stealerTid(tid) && !steal_in_cs[tid];
    assert {:layer 3} oldH <= H;
+}
+
+procedure {:layer 3} {:inline 1} GhostRead() returns (oldH: int, oldT: int)
+{
+   oldH := H;
+   oldT := T;
+}
+
+procedure {:layer 3} {:inline 1} GhostReadStatus() returns (oldStatus: bool)
+{
+   oldStatus := status[T];
 }
 
 procedure {:yields}{:layer 0,3} readH_take({:linear "tid"} tid:Tid) returns (y: int);

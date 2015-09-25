@@ -40,7 +40,15 @@ namespace Microsoft.Boogie
         {
             int enclosingProcLayerNum = moverTypeChecker.procToActionInfo[enclosingImpl.Proc].createdAtLayerNum;
             Procedure originalProc = originalCallCmd.Proc;
-            if (moverTypeChecker.procToActionInfo.ContainsKey(originalProc))
+            
+            if (moverTypeChecker.procToAtomicProcedureInfo.ContainsKey(originalProc))
+            {
+                if (moverTypeChecker.CallExists(originalCallCmd, enclosingProcLayerNum, layerNum))
+                {
+                    newCmds.Add(callCmd);
+                }
+            }
+            else if (moverTypeChecker.procToActionInfo.ContainsKey(originalProc))
             {
                 AtomicActionInfo atomicActionInfo = moverTypeChecker.procToActionInfo[originalProc] as AtomicActionInfo;
                 if (atomicActionInfo != null && atomicActionInfo.gate.Count > 0 && layerNum == enclosingProcLayerNum)
@@ -57,8 +65,12 @@ namespace Microsoft.Boogie
                         newCmds.Add(Substituter.Apply(subst, assertCmd));
                     }
                 }
+                newCmds.Add(callCmd);
             }
-            newCmds.Add(callCmd);
+            else
+            {
+                Debug.Assert(false);
+            }
         }
 
         private void ProcessParCallCmd(ParCallCmd originalParCallCmd, ParCallCmd parCallCmd, List<Cmd> newCmds)
@@ -291,7 +303,34 @@ namespace Microsoft.Boogie
 
         private IEnumerable<Variable> AvailableLinearVars(Absy absy)
         {
-            return linearTypeChecker.AvailableLinearVars(absyMap[absy]);
+            HashSet<Variable> availableVars = new HashSet<Variable>(linearTypeChecker.AvailableLinearVars(absyMap[absy]));
+            foreach (var g in moverTypeChecker.globalVarToSharedVarInfo.Keys)
+            {
+                SharedVariableInfo info = moverTypeChecker.globalVarToSharedVarInfo[g];
+                if (!(info.introLayerNum <= layerNum && layerNum <= info.hideLayerNum))
+                {
+                    availableVars.Remove(g);
+                }
+            }
+            foreach (var v in moverTypeChecker.localVarToLocalVariableInfo.Keys)
+            {
+                LocalVariableInfo info = moverTypeChecker.localVarToLocalVariableInfo[v];
+                if (info.isGhost)
+                {
+                    if (info.layer != layerNum)
+                    {
+                        availableVars.Remove(v);
+                    }
+                }
+                else
+                {
+                    if (layerNum < info.layer)
+                    {
+                        availableVars.Remove(v);
+                    }
+                }
+            }
+            return availableVars;
         }
 
         private CallCmd CallToYieldProc(IToken tok, Dictionary<Variable, Variable> ogOldGlobalMap, Dictionary<string, Variable> domainNameToLocalVar)
@@ -739,17 +778,12 @@ namespace Microsoft.Boogie
                 }
                 Substitution forold = Substituter.SubstitutionFromHashtable(foroldMap);
                 frame = new HashSet<Variable>(moverTypeChecker.SharedVariables);
-                HashSet<Variable> introducedVars = new HashSet<Variable>();
                 foreach (Variable v in moverTypeChecker.SharedVariables)
                 {
                     if (moverTypeChecker.globalVarToSharedVarInfo[v].hideLayerNum <= actionInfo.createdAtLayerNum || 
                         moverTypeChecker.globalVarToSharedVarInfo[v].introLayerNum > actionInfo.createdAtLayerNum)
                     {
                         frame.Remove(v);
-                    }
-                    if (moverTypeChecker.globalVarToSharedVarInfo[v].introLayerNum == actionInfo.createdAtLayerNum)
-                    {
-                        introducedVars.Add(v);
                     }
                 }
                 AtomicActionInfo atomicActionInfo = actionInfo as AtomicActionInfo;
@@ -764,7 +798,7 @@ namespace Microsoft.Boogie
                 }
                 else
                 {
-                    Expr betaExpr = (new MoverCheck.TransitionRelationComputation(moverTypeChecker.program, atomicActionInfo, frame, introducedVars)).TransitionRelationCompute(true);
+                    Expr betaExpr = (new MoverCheck.TransitionRelationComputation(moverTypeChecker.program, atomicActionInfo, frame, new HashSet<Variable>())).TransitionRelationCompute(true);
                     beta = Substituter.ApplyReplacingOldExprs(always, forold, betaExpr);
                     Expr alphaExpr = Expr.True;
                     foreach (AssertCmd assertCmd in atomicActionInfo.gate)
@@ -1178,7 +1212,7 @@ namespace Microsoft.Boogie
         public static void AddCheckers(LinearTypeChecker linearTypeChecker, MoverTypeChecker moverTypeChecker, List<Declaration> decls)
         {
             Program program = linearTypeChecker.program;
-            foreach (int layerNum in moverTypeChecker.AllCreatedLayerNums.Except(new int[] { moverTypeChecker.leastUnimplementedLayerNum }))
+            foreach (int layerNum in moverTypeChecker.AllImplementedLayerNums)
             {
                 if (CommandLineOptions.Clo.TrustLayersDownto <= layerNum || layerNum <= CommandLineOptions.Clo.TrustLayersUpto) continue;
 

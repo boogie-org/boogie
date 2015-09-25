@@ -67,6 +67,9 @@ ensures {:atomic} |{ A: assume !b; b := true; lock := tid; return true; }|;
     yield;
     L: 
         call status := CAS(false, true);
+        if (status) {
+	    call SetLock(tid);
+	}
 	yield;
         goto A, B;
 
@@ -85,7 +88,14 @@ ensures {:atomic} |{ A: b := false; lock := nil; return true; }|;
 {
     yield;
     call SET(false);
+    call SetLock(nil);
     yield;
+}
+
+procedure {:layer 1} {:inline 1} SetLock(v: X)
+modifies lock;
+{
+    lock := v;
 }
 
 procedure {:yields} {:layer 0,1} CAS(prev: bool, next: bool) returns (status: bool);

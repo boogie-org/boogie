@@ -5,7 +5,7 @@ var {:layer 0} x: int;
 procedure {:yields} {:layer 0,1} Incr();
 ensures {:right} |{ A: x := x + 1; return true; }|;
 
-procedure ghost(y: int) returns (z: int)
+procedure {:pure} ghost(y: int) returns (z: int)
 requires y == 1;
 ensures z == 2;
 {
@@ -15,8 +15,7 @@ ensures z == 2;
 procedure {:yields} {:layer 1,2} Incr2() 
 ensures {:right} |{ A: x := x + 2; return true; }|;
 {
-  var {:ghost} a: int;
-  var {:ghost} b: int;
+  var {:layer 1} a: int;
 
   yield;
   call a := ghost(1);
@@ -25,7 +24,7 @@ ensures {:right} |{ A: x := x + 2; return true; }|;
   yield;
 }
 
-procedure ghost_0() returns (z: int)
+procedure {:layer 1} ghost_0() returns (z: int)
 ensures z == x;
 {
   z := x;
@@ -34,8 +33,8 @@ ensures z == x;
 procedure {:yields} {:layer 1,2} Incr2_0() 
 ensures {:right} |{ A: x := x + 2; return true; }|;
 {
-  var {:ghost} a: int;
-  var {:ghost} b: int;
+  var {:layer 1} a: int;
+  var {:layer 1} b: int;
 
   yield;
   call a := ghost_0();
