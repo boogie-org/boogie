@@ -1083,11 +1083,7 @@ namespace Microsoft.Boogie
             absyToLayerNums[node] = new HashSet<int>();
             foreach (int layerNum in attrs)
             {
-                if (!AllImplementedLayerNums.Contains(layerNum))
-                {
-                    Error(node, "Illegal layer number");
-                }
-                else if (layerNum > enclosingProcLayerNum)
+                if (layerNum > enclosingProcLayerNum)
                 {
                     Error(node, "The layer cannot be greater than the layer of enclosing procedure");
                 }
