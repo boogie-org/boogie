@@ -386,7 +386,7 @@ namespace Microsoft.Boogie
             else if (callCmd.Proc.Modifies.Count == 0)
             {
                 if (callCmd.Outs.Count == 0)
-                    return false;
+                    return true;
                 var outputVar = callCmd.Outs[0].Decl;
                 Debug.Assert(localVarToLocalVariableInfo.ContainsKey(outputVar));
                 if (localVarToLocalVariableInfo[outputVar].isGhost)
