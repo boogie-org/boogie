@@ -588,7 +588,7 @@ namespace Microsoft.Boogie {
       }
     }
 
-    public string OwickiGriesDesugaredOutputFile = null;
+    public string CivlDesugaredFile = null;
     public bool TrustAtomicityTypes = false;
     public bool TrustNonInterference = false;
     public int TrustLayersUpto = -1;
@@ -915,9 +915,9 @@ namespace Microsoft.Boogie {
           } 
           return true;
 
-        case "OwickiGries":
+        case "CivlDesugaredFile":
           if (ps.ConfirmArgumentCount(1)) {
-              OwickiGriesDesugaredOutputFile = args[ps.i];
+              CivlDesugaredFile = args[ps.i];
           }
           return true;
 

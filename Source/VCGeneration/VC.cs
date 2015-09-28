@@ -1632,7 +1632,7 @@ namespace VC {
           //use Duplicator and Substituter rather than new
           //nested IToken?
           //document expand attribute (search for {:ignore}, for example)
-          //fix up new CallCmd, new Requires, new Ensures in OwickiGries.cs
+          //fix up new CallCmd, new Requires, new Ensures in CivlRefinement.cs
           Func<Expr,Expr,Expr> withType = (Expr from, Expr to) =>
           {
             NAryExpr nFrom = from as NAryExpr;

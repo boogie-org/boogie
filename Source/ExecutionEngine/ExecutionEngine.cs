@@ -502,11 +502,11 @@ namespace Microsoft.Boogie
         {
           Concurrency.Transform(linearTypeChecker, civlTypeChecker);
           (new LinearEraser()).VisitProgram(program);
-          if (CommandLineOptions.Clo.OwickiGriesDesugaredOutputFile != null)
+          if (CommandLineOptions.Clo.CivlDesugaredFile != null)
           {
               int oldPrintUnstructured = CommandLineOptions.Clo.PrintUnstructured;
               CommandLineOptions.Clo.PrintUnstructured = 1;
-              PrintBplFile(CommandLineOptions.Clo.OwickiGriesDesugaredOutputFile, program, false, false, CommandLineOptions.Clo.PrettyPrint);
+              PrintBplFile(CommandLineOptions.Clo.CivlDesugaredFile, program, false, false, CommandLineOptions.Clo.PrettyPrint);
               CommandLineOptions.Clo.PrintUnstructured = oldPrintUnstructured;
           }
         }
