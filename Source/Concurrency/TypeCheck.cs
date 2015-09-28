@@ -379,24 +379,23 @@ namespace Microsoft.Boogie
             if (!procToAtomicProcedureInfo.ContainsKey(callCmd.Proc))
                 return true;
             var atomicProcedureInfo = procToAtomicProcedureInfo[callCmd.Proc];
-            if (atomicProcedureInfo.isPure)
+            if (callCmd.Proc.Modifies.Count > 0)
+            {
+                return enclosingProcLayerNum == layerNum;
+            }
+            if (callCmd.Outs.Count == 0)
             {
                 return true;
             }
-            else if (callCmd.Proc.Modifies.Count == 0)
+            var outputVar = callCmd.Outs[0].Decl;
+            var localVariableInfo = localVarToLocalVariableInfo[outputVar];
+            if (localVariableInfo.isGhost)
             {
-                if (callCmd.Outs.Count == 0)
-                    return true;
-                var outputVar = callCmd.Outs[0].Decl;
-                Debug.Assert(localVarToLocalVariableInfo.ContainsKey(outputVar));
-                if (localVarToLocalVariableInfo[outputVar].isGhost)
-                {
-                    return localVarToLocalVariableInfo[outputVar].layer == layerNum;
-                }
-                else
-                {
-                    return enclosingProcLayerNum == layerNum;
-                }
+                return localVariableInfo.layer == layerNum;
+            }
+            if (atomicProcedureInfo.isPure)
+            {
+                return localVariableInfo.layer <= layerNum;
             }
             else
             {
