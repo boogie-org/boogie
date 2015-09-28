@@ -10,29 +10,29 @@ namespace Microsoft.Boogie
     public class MoverCheck
     {
         LinearTypeChecker linearTypeChecker;
-        MoverTypeChecker moverTypeChecker;
+        CivlTypeChecker civlTypeChecker;
         List<Declaration> decls;
         HashSet<Tuple<AtomicActionInfo, AtomicActionInfo>> commutativityCheckerCache;
         HashSet<Tuple<AtomicActionInfo, AtomicActionInfo>> gatePreservationCheckerCache;
         HashSet<Tuple<AtomicActionInfo, AtomicActionInfo>> failurePreservationCheckerCache;
-        private MoverCheck(LinearTypeChecker linearTypeChecker, MoverTypeChecker moverTypeChecker, List<Declaration> decls)
+        private MoverCheck(LinearTypeChecker linearTypeChecker, CivlTypeChecker civlTypeChecker, List<Declaration> decls)
         {
             this.linearTypeChecker = linearTypeChecker;
-            this.moverTypeChecker = moverTypeChecker;
+            this.civlTypeChecker = civlTypeChecker;
             this.decls = decls;
             this.commutativityCheckerCache = new HashSet<Tuple<AtomicActionInfo, AtomicActionInfo>>();
             this.gatePreservationCheckerCache = new HashSet<Tuple<AtomicActionInfo, AtomicActionInfo>>();
             this.failurePreservationCheckerCache = new HashSet<Tuple<AtomicActionInfo, AtomicActionInfo>>();
         }
 
-        public static void AddCheckers(LinearTypeChecker linearTypeChecker, MoverTypeChecker moverTypeChecker, List<Declaration> decls)
+        public static void AddCheckers(LinearTypeChecker linearTypeChecker, CivlTypeChecker civlTypeChecker, List<Declaration> decls)
         {
-            if (moverTypeChecker.procToActionInfo.Count == 0)
+            if (civlTypeChecker.procToActionInfo.Count == 0)
                 return;
 
-            List<ActionInfo> sortedByCreatedLayerNum = new List<ActionInfo>(moverTypeChecker.procToActionInfo.Values.Where(x => x is AtomicActionInfo && !x.isExtern));
+            List<ActionInfo> sortedByCreatedLayerNum = new List<ActionInfo>(civlTypeChecker.procToActionInfo.Values.Where(x => x is AtomicActionInfo && !x.isExtern));
             sortedByCreatedLayerNum.Sort((x, y) => { return (x.createdAtLayerNum == y.createdAtLayerNum) ? 0 : (x.createdAtLayerNum < y.createdAtLayerNum) ? -1 : 1; });
-            List<ActionInfo> sortedByAvailableUptoLayerNum = new List<ActionInfo>(moverTypeChecker.procToActionInfo.Values.Where(x => x is AtomicActionInfo && !x.isExtern));
+            List<ActionInfo> sortedByAvailableUptoLayerNum = new List<ActionInfo>(civlTypeChecker.procToActionInfo.Values.Where(x => x is AtomicActionInfo && !x.isExtern));
             sortedByAvailableUptoLayerNum.Sort((x, y) => { return (x.availableUptoLayerNum == y.availableUptoLayerNum) ? 0 : (x.availableUptoLayerNum < y.availableUptoLayerNum) ? -1 : 1; });
 
             Dictionary<int, HashSet<AtomicActionInfo>> pools = new Dictionary<int, HashSet<AtomicActionInfo>>();
@@ -60,8 +60,8 @@ namespace Microsoft.Boogie
                 currPool = pools[currLayerNum];
             }
 
-            Program program = moverTypeChecker.program;
-            MoverCheck moverChecking = new MoverCheck(linearTypeChecker, moverTypeChecker, decls);
+            Program program = civlTypeChecker.program;
+            MoverCheck moverChecking = new MoverCheck(linearTypeChecker, civlTypeChecker, decls);
             foreach (int layerNum in pools.Keys)
             {
                 foreach (AtomicActionInfo first in pools[layerNum])
@@ -537,7 +537,7 @@ namespace Microsoft.Boogie
             ensures.Add(ensureCheck);
             string checkerName = string.Format("CommutativityChecker_{0}_{1}", first.proc.Name, second.proc.Name);
             List<IdentifierExpr> globalVars = new List<IdentifierExpr>();
-            moverTypeChecker.SharedVariables.Iter(x => globalVars.Add(Expr.Ident(x)));
+            civlTypeChecker.SharedVariables.Iter(x => globalVars.Add(Expr.Ident(x)));
             Procedure proc = new Procedure(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, outputs, requires, globalVars, ensures);
             Implementation impl = new Implementation(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, outputs, locals, blocks);
             impl.Proc = proc;
@@ -580,7 +580,7 @@ namespace Microsoft.Boogie
                 requires.Add(new Requires(false, assertCmd.Expr));
             string checkerName = string.Format("GatePreservationChecker_{0}_{1}", first.proc.Name, second.proc.Name);
             List<IdentifierExpr> globalVars = new List<IdentifierExpr>();
-            moverTypeChecker.SharedVariables.Iter(x => globalVars.Add(Expr.Ident(x)));
+            civlTypeChecker.SharedVariables.Iter(x => globalVars.Add(Expr.Ident(x)));
             Procedure proc = new Procedure(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, outputs, requires, globalVars, ensures);
             Implementation impl = new Implementation(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, outputs, locals, secondBlocks);
             impl.Proc = proc;
@@ -628,7 +628,7 @@ namespace Microsoft.Boogie
                 requires.Add(new Requires(false, assertCmd.Expr));
             string checkerName = string.Format("FailurePreservationChecker_{0}_{1}", first.proc.Name, second.proc.Name);
             List<IdentifierExpr> globalVars = new List<IdentifierExpr>();
-            moverTypeChecker.SharedVariables.Iter(x => globalVars.Add(Expr.Ident(x)));
+            civlTypeChecker.SharedVariables.Iter(x => globalVars.Add(Expr.Ident(x)));
             Procedure proc = new Procedure(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, outputs, requires, globalVars, ensures);
             Implementation impl = new Implementation(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, outputs, locals, secondBlocks);
             impl.Proc = proc;
@@ -662,7 +662,7 @@ namespace Microsoft.Boogie
             blocks.Add(new Block(Token.NoToken, "L", new List<Cmd>(), new ReturnCmd(Token.NoToken)));
             string checkerName = string.Format("NonBlockingChecker_{0}", second.proc.Name);
             List<IdentifierExpr> globalVars = new List<IdentifierExpr>();
-            moverTypeChecker.SharedVariables.Iter(x => globalVars.Add(Expr.Ident(x)));
+            civlTypeChecker.SharedVariables.Iter(x => globalVars.Add(Expr.Ident(x)));
             Procedure proc = new Procedure(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, new List<Variable>(), requires, globalVars, ensures);
             Implementation impl = new Implementation(Token.NoToken, checkerName, new List<TypeVariable>(), inputs, new List<Variable>(), new List<Variable>(), blocks);
             impl.Proc = proc;

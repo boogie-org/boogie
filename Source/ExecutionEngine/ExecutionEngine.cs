@@ -482,8 +482,8 @@ namespace Microsoft.Boogie
         }
 
         LinearTypeChecker linearTypeChecker;
-        MoverTypeChecker moverTypeChecker;
-        PipelineOutcome oc = ResolveAndTypecheck(program, fileNames[fileNames.Count - 1], out linearTypeChecker, out moverTypeChecker);
+        CivlTypeChecker civlTypeChecker;
+        PipelineOutcome oc = ResolveAndTypecheck(program, fileNames[fileNames.Count - 1], out linearTypeChecker, out civlTypeChecker);
         if (oc != PipelineOutcome.ResolvedAndTypeChecked)
           return;
 
@@ -500,7 +500,7 @@ namespace Microsoft.Boogie
 
         if (CommandLineOptions.Clo.StratifiedInlining == 0)
         {
-          Concurrency.Transform(linearTypeChecker, moverTypeChecker);
+          Concurrency.Transform(linearTypeChecker, civlTypeChecker);
           (new LinearEraser()).VisitProgram(program);
           if (CommandLineOptions.Clo.OwickiGriesDesugaredOutputFile != null)
           {
@@ -692,13 +692,13 @@ namespace Microsoft.Boogie
     ///  - TypeCheckingError if a type checking error occurred
     ///  - ResolvedAndTypeChecked if both resolution and type checking succeeded
     /// </summary>
-    public static PipelineOutcome ResolveAndTypecheck(Program program, string bplFileName, out LinearTypeChecker linearTypeChecker, out MoverTypeChecker moverTypeChecker)
+    public static PipelineOutcome ResolveAndTypecheck(Program program, string bplFileName, out LinearTypeChecker linearTypeChecker, out CivlTypeChecker civlTypeChecker)
     {
       Contract.Requires(program != null);
       Contract.Requires(bplFileName != null);
 
       linearTypeChecker = null;
-      moverTypeChecker = null;
+      civlTypeChecker = null;
 
       // ---------- Resolve ------------------------------------------------------------
 
@@ -735,11 +735,11 @@ namespace Microsoft.Boogie
 
       CollectModSets(program);
 
-      moverTypeChecker = new MoverTypeChecker(program);
-      moverTypeChecker.TypeCheck();
-      if (moverTypeChecker.errorCount != 0)
+      civlTypeChecker = new CivlTypeChecker(program);
+      civlTypeChecker.TypeCheck();
+      if (civlTypeChecker.errorCount != 0)
       {
-          Console.WriteLine("{0} type checking errors detected in {1}", moverTypeChecker.errorCount, GetFileNameForConsole(bplFileName));
+          Console.WriteLine("{0} type checking errors detected in {1}", civlTypeChecker.errorCount, GetFileNameForConsole(bplFileName));
           return PipelineOutcome.TypeCheckingError;
       }
 
@@ -1358,8 +1358,8 @@ namespace Microsoft.Boogie
       Program p = ParseBoogieProgram(new List<string> { filename }, false);
       System.Diagnostics.Debug.Assert(p != null);
       LinearTypeChecker linearTypeChecker;
-      MoverTypeChecker moverTypeChecker;
-      PipelineOutcome oc = ExecutionEngine.ResolveAndTypecheck(p, filename, out linearTypeChecker, out moverTypeChecker);
+      CivlTypeChecker civlTypeChecker;
+      PipelineOutcome oc = ExecutionEngine.ResolveAndTypecheck(p, filename, out linearTypeChecker, out civlTypeChecker);
       System.Diagnostics.Debug.Assert(oc == PipelineOutcome.ResolvedAndTypeChecked);
       return p;
     }

@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
@@ -73,11 +73,11 @@
   <ItemGroup>
     <Compile Include="LinearSets.cs" />
     <Compile Include="MoverCheck.cs" />
-    <Compile Include="OwickiGries.cs" />
+    <Compile Include="CivlRefinement.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SimulationRelation.cs" />
-    <Compile Include="TypeCheck.cs" />
+    <Compile Include="CivlTypeChecker.cs" />
     <Compile Include="YieldTypeChecker.cs" />
   </ItemGroup>
   <ItemGroup>

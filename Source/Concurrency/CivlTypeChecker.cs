@@ -357,7 +357,7 @@ namespace Microsoft.Boogie
         }
     }
 
-    public class MoverTypeChecker : ReadOnlyVisitor
+    public class CivlTypeChecker : ReadOnlyVisitor
     {
         CheckingContext checkingContext;
         Procedure enclosingProc;
@@ -376,8 +376,7 @@ namespace Microsoft.Boogie
 
         public bool CallExists(CallCmd callCmd, int enclosingProcLayerNum, int layerNum)
         {
-            if (!procToAtomicProcedureInfo.ContainsKey(callCmd.Proc))
-                return true;
+            Debug.Assert(procToAtomicProcedureInfo.ContainsKey(callCmd.Proc));
             var atomicProcedureInfo = procToAtomicProcedureInfo[callCmd.Proc];
             if (callCmd.Proc.Modifies.Count > 0)
             {
@@ -448,7 +447,7 @@ namespace Microsoft.Boogie
             return MoverType.Top;
         }
 
-        public MoverTypeChecker(Program program)
+        public CivlTypeChecker(Program program)
         {
             this.errorCount = 0;
             this.checkingContext = new CheckingContext(null);
@@ -1105,60 +1104,60 @@ namespace Microsoft.Boogie
 
         private class PurityChecker : StandardVisitor
         {
-            private MoverTypeChecker moverTypeChecker;
+            private CivlTypeChecker civlTypeChecker;
 
-            public PurityChecker(MoverTypeChecker moverTypeChecker)
+            public PurityChecker(CivlTypeChecker civlTypeChecker)
             {
-                this.moverTypeChecker = moverTypeChecker;
+                this.civlTypeChecker = civlTypeChecker;
             }
             
             public override Cmd VisitCallCmd(CallCmd node)
             {
-                Procedure enclosingProc = moverTypeChecker.enclosingImpl.Proc;
-                if (!moverTypeChecker.procToAtomicProcedureInfo.ContainsKey(node.Proc))
+                Procedure enclosingProc = civlTypeChecker.enclosingImpl.Proc;
+                if (!civlTypeChecker.procToAtomicProcedureInfo.ContainsKey(node.Proc))
                 {
-                    moverTypeChecker.Error(node, "Atomic procedure can only call an atomic procedure");
+                    civlTypeChecker.Error(node, "Atomic procedure can only call an atomic procedure");
                     return base.VisitCallCmd(node);
                 }
-                var callerInfo = moverTypeChecker.procToAtomicProcedureInfo[enclosingProc];
-                var calleeInfo = moverTypeChecker.procToAtomicProcedureInfo[node.Proc];
+                var callerInfo = civlTypeChecker.procToAtomicProcedureInfo[enclosingProc];
+                var calleeInfo = civlTypeChecker.procToAtomicProcedureInfo[node.Proc];
                 if (calleeInfo.isPure)
                 {
                     // do nothing
                 }
                 else if (callerInfo.isPure)
                 {
-                    moverTypeChecker.Error(node, "Pure procedure can only call pure procedures");
+                    civlTypeChecker.Error(node, "Pure procedure can only call pure procedures");
                 }
                 else if (!callerInfo.layers.IsSubsetOf(calleeInfo.layers))
                 {
-                    moverTypeChecker.Error(node, "Caller layers must be subset of callee layers");
+                    civlTypeChecker.Error(node, "Caller layers must be subset of callee layers");
                 }
                 return base.VisitCallCmd(node);
             }
 
             public override Cmd VisitParCallCmd(ParCallCmd node)
             {
-                moverTypeChecker.Error(node, "Atomic procedures cannot make parallel calls");
+                civlTypeChecker.Error(node, "Atomic procedures cannot make parallel calls");
                 return node;
             }
 
             public override Expr VisitIdentifierExpr(IdentifierExpr node)
             {
-                Procedure enclosingProc = moverTypeChecker.enclosingImpl.Proc;
+                Procedure enclosingProc = civlTypeChecker.enclosingImpl.Proc;
                 if (node.Decl is GlobalVariable)
                 {
-                    if (moverTypeChecker.procToAtomicProcedureInfo[enclosingProc].isPure)
+                    if (civlTypeChecker.procToAtomicProcedureInfo[enclosingProc].isPure)
                     {
-                        moverTypeChecker.Error(node, "Pure procedure cannot access global variables");
+                        civlTypeChecker.Error(node, "Pure procedure cannot access global variables");
                     } 
-                    else if (!moverTypeChecker.globalVarToSharedVarInfo.ContainsKey(node.Decl))
+                    else if (!civlTypeChecker.globalVarToSharedVarInfo.ContainsKey(node.Decl))
                     {
-                        moverTypeChecker.Error(node, "Atomic procedure cannot access a global variable without layer numbers");
+                        civlTypeChecker.Error(node, "Atomic procedure cannot access a global variable without layer numbers");
                     } 
                     else 
                     {
-                        moverTypeChecker.sharedVarsAccessed.Add(node.Decl);
+                        civlTypeChecker.sharedVarsAccessed.Add(node.Decl);
                     }
                 }
                 return node;
