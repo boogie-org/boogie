@@ -85,6 +85,7 @@ namespace Microsoft.Boogie {
     public string RequestId;
     public abstract byte[] Checksum { get; }
     public byte[] SugaredCmdChecksum;
+    public bool IsAuxiliaryCexForDiagnosingTimeouts;
 
     public Dictionary<TraceLocation, CalleeCounterexampleInfo> calleeCounterexamples;
 
@@ -313,7 +314,7 @@ namespace Microsoft.Boogie {
     public abstract int GetLocation();
   }
 
-  public class CounterexampleComparer : IComparer<Counterexample> {
+  public class CounterexampleComparer : IComparer<Counterexample>, IEqualityComparer<Counterexample> {
 
     private int Compare(List<Block> bs1, List<Block> bs2)
     {
@@ -374,6 +375,16 @@ namespace Microsoft.Boogie {
         return 1;
       }
       return -1;
+    }
+
+    public bool Equals(Counterexample x, Counterexample y)
+    {
+      return Compare(x, y) == 0;
+    }
+
+    public int GetHashCode(Counterexample obj)
+    {
+      return 0;
     }
   }
 

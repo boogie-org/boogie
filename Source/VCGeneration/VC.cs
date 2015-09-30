@@ -2113,6 +2113,7 @@ namespace VC {
           foreach (var cmd in assertCmds)
           {
             Counterexample cex = AssertCmdToCounterexample(cmd.Item1, cmd.Item2 , new List<Block>(), null, null, context);
+            cex.IsAuxiliaryCexForDiagnosingTimeouts = true;
             callback.OnCounterexample(cex, msg);
           }
         }

@@ -1459,11 +1459,11 @@ namespace Microsoft.Boogie
 
       printer.Inform(timeIndication + OutcomeIndication(outcome, errors), tw);
 
-      ReportOutcome(outcome, er, implName, implTok, requestId, tw, timeLimit);
+      ReportOutcome(outcome, er, implName, implTok, requestId, tw, timeLimit, errors);
     }
 
 
-    private static void ReportOutcome(VC.VCGen.Outcome outcome, ErrorReporterDelegate er, string implName, IToken implTok, string requestId, TextWriter tw, int timeLimit)
+    private static void ReportOutcome(VC.VCGen.Outcome outcome, ErrorReporterDelegate er, string implName, IToken implTok, string requestId, TextWriter tw, int timeLimit, List<Counterexample> errors)
     {
       ErrorInformation errorInfo = null;
 
@@ -1476,6 +1476,35 @@ namespace Microsoft.Boogie
           if (implName != null && implTok != null)
           {
             errorInfo = errorInformationFactory.CreateErrorInformation(implTok, string.Format("Verification timed out after {0} seconds ({1})", timeLimit, implName), requestId);
+            
+            //  Report timed out assertions as auxiliary info.
+            if (errors != null)
+            {
+              var cmpr = new CounterexampleComparer();
+              var timedOutAssertions = errors.Where(e => e.IsAuxiliaryCexForDiagnosingTimeouts).Distinct(cmpr).ToList();
+              timedOutAssertions.Sort(cmpr);
+              int idx = 1;
+              foreach (Counterexample error in timedOutAssertions)
+              {
+                var callError = error as CallCounterexample;
+                var returnError = error as ReturnCounterexample;
+                var assertError = error as AssertCounterexample;
+                IToken tok = null;
+                if (callError != null)
+                {
+                  tok = callError.FailingCall.tok;
+                }
+                else if (returnError != null)
+                {
+                  tok = returnError.FailingReturn.tok;
+                }
+                else
+                {
+                  tok = assertError.FailingAssert.tok;
+                }
+                errorInfo.AddAuxInfo(tok, string.Format("unverified assertion due to timeout ({0} of {1})", idx++, timedOutAssertions.Count));
+              }
+            }
           }
           break;
         case VCGen.Outcome.OutOfMemory:
@@ -1592,6 +1621,10 @@ namespace Microsoft.Boogie
         errors.Sort(new CounterexampleComparer());
         foreach (Counterexample error in errors)
         {
+          if (error.IsAuxiliaryCexForDiagnosingTimeouts)
+          {
+            continue;
+          }
           var errorInfo = CreateErrorInformation(error, outcome);
           errorInfo.ImplementationName = implName;
 
