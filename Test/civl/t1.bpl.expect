@@ -6,4 +6,4 @@ Execution trace:
     t1.bpl(25,21): inline$SetG_1$0$A
     (0,0): inline$Impl_YieldChecker_A_1$0$L1
 
-Boogie program verifier finished with 4 verified, 1 error
+Boogie program verifier finished with 9 verified, 1 error

@@ -486,26 +486,6 @@ namespace Microsoft.Boogie
             }
         }
 
-        private HashSet<int> allImplementedLayerNums;
-        public IEnumerable<int> AllImplementedLayerNums
-        {
-            get
-            {
-                if (allImplementedLayerNums == null)
-                {
-                    allImplementedLayerNums = new HashSet<int>();
-                    foreach (ActionInfo actionInfo in procToActionInfo.Values)
-                    {
-                        if (actionInfo.hasImplementation)
-                        {
-                            allImplementedLayerNums.Add(actionInfo.createdAtLayerNum);
-                        }
-                    }
-                }
-                return allImplementedLayerNums;
-            }
-        }
-
         private HashSet<int> allCreatedLayerNums;
         public IEnumerable<int> AllCreatedLayerNums
         {

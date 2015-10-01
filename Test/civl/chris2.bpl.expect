@@ -15,4 +15,4 @@ Execution trace:
 Execution trace:
     (0,0): this_A
 
-Boogie program verifier finished with 1 verified, 4 errors
+Boogie program verifier finished with 2 verified, 4 errors

@@ -3,4 +3,4 @@ Execution trace:
     parallel4.bpl(29,5): anon0
     (0,0): anon01
 
-Boogie program verifier finished with 3 verified, 1 error
+Boogie program verifier finished with 7 verified, 1 error
