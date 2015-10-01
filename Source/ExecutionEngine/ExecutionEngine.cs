@@ -135,7 +135,7 @@ namespace Microsoft.Boogie
 
       foreach (var e in errorInfo.Aux)
       {
-        if (!(skipExecutionTrace && e.Category.Contains("Execution trace")))
+        if (!(skipExecutionTrace && e.Category != null && e.Category.Contains("Execution trace")))
         {
           ReportBplError(e.Tok, e.FullMsg, false, tw);
         }
@@ -1472,37 +1472,67 @@ namespace Microsoft.Boogie
         case VCGen.Outcome.ReachedBound:
           tw.WriteLine(string.Format("Stratified Inlining: Reached recursion bound of {0}", CommandLineOptions.Clo.RecursionBound));
           break;
+        case VCGen.Outcome.Errors:
         case VCGen.Outcome.TimedOut:
           if (implName != null && implTok != null)
           {
-            errorInfo = errorInformationFactory.CreateErrorInformation(implTok, string.Format("Verification timed out after {0} seconds ({1})", timeLimit, implName), requestId);
-            
+            if (outcome == ConditionGeneration.Outcome.TimedOut || (errors != null && errors.Any(e => e.IsAuxiliaryCexForDiagnosingTimeouts)))
+            {
+              errorInfo = errorInformationFactory.CreateErrorInformation(implTok, string.Format("Verification of '{1}' timed out after {0} seconds", timeLimit, implName), requestId);
+            }
+
             //  Report timed out assertions as auxiliary info.
             if (errors != null)
             {
               var cmpr = new CounterexampleComparer();
               var timedOutAssertions = errors.Where(e => e.IsAuxiliaryCexForDiagnosingTimeouts).Distinct(cmpr).ToList();
               timedOutAssertions.Sort(cmpr);
-              int idx = 1;
+              if (0 < timedOutAssertions.Count)
+              {
+                errorInfo.Msg += string.Format(" with {0} check(s) that timed out individually", timedOutAssertions.Count);
+              }
               foreach (Counterexample error in timedOutAssertions)
               {
                 var callError = error as CallCounterexample;
                 var returnError = error as ReturnCounterexample;
                 var assertError = error as AssertCounterexample;
                 IToken tok = null;
+                string msg = null;
                 if (callError != null)
                 {
                   tok = callError.FailingCall.tok;
+                  msg = callError.FailingCall.ErrorData as string ?? "A precondition for this call might not hold.";
                 }
                 else if (returnError != null)
                 {
                   tok = returnError.FailingReturn.tok;
+                  msg = "A postcondition might not hold on this return path.";
                 }
                 else
                 {
                   tok = assertError.FailingAssert.tok;
+                  if (assertError.FailingAssert is LoopInitAssertCmd)
+                  {
+                    msg = "This loop invariant might not hold on entry.";
+                  }
+                  else if (assertError.FailingAssert is LoopInvMaintainedAssertCmd)
+                  {
+                    msg = "This loop invariant might not be maintained by the loop.";
+                  }
+                  else
+                  {
+                    msg = assertError.FailingAssert.ErrorData as string;
+                    if (!CommandLineOptions.Clo.ForceBplErrors && assertError.FailingAssert.ErrorMessage != null)
+                    {
+                      msg = assertError.FailingAssert.ErrorMessage;
+                    }
+                    if (msg == null)
+                    {
+                      msg = "This assertion might not hold.";
+                    }
+                  }
                 }
-                errorInfo.AddAuxInfo(tok, string.Format("unverified assertion due to timeout ({0} of {1})", idx++, timedOutAssertions.Count));
+                errorInfo.AddAuxInfo(tok, msg, "Unverified check due to timeout");
               }
             }
           }
@@ -1530,6 +1560,10 @@ namespace Microsoft.Boogie
           {
             er(errorInfo);
           }
+        }
+        else
+        {
+          printer.WriteErrorInformation(errorInfo, tw);
         }
       }
     }
@@ -1604,8 +1638,9 @@ namespace Microsoft.Boogie
           }
           else
           {
-            Interlocked.Add(ref stats.ErrorCount, errors.Count);
-            if (wasCached) { Interlocked.Add(ref stats.CachedErrorCount, errors.Count); }
+            int cnt = errors.Where(e => !e.IsAuxiliaryCexForDiagnosingTimeouts).Count();
+            Interlocked.Add(ref stats.ErrorCount, cnt);
+            if (wasCached) { Interlocked.Add(ref stats.CachedErrorCount, cnt); }
           }
           break;
       }
