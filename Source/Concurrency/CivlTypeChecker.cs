@@ -486,20 +486,27 @@ namespace Microsoft.Boogie
             }
         }
 
-        private HashSet<int> allCreatedLayerNums;
-        public IEnumerable<int> AllCreatedLayerNums
+        private HashSet<int> allLayerNums;
+        public IEnumerable<int> AllLayerNums
         {
             get
             {
-                if (allCreatedLayerNums == null)
+                if (allLayerNums == null)
                 {
-                    allCreatedLayerNums = new HashSet<int>();
+                    allLayerNums = new HashSet<int>();
                     foreach (ActionInfo actionInfo in procToActionInfo.Values)
                     {
-                        allCreatedLayerNums.Add(actionInfo.createdAtLayerNum);
+                        allLayerNums.Add(actionInfo.createdAtLayerNum);
+                    }
+                    foreach (var layerNums in absyToLayerNums.Values)
+                    {
+                        foreach (var layer in layerNums)
+                        {
+                            allLayerNums.Add(layer);
+                        }
                     }
                 }
-                return allCreatedLayerNums;
+                return allLayerNums;
             }
         }
 
@@ -703,18 +710,6 @@ namespace Microsoft.Boogie
                 if (actionInfo.isExtern)
                 {
                     Error(impl.Proc, "Extern procedure cannot have an implementation");
-                }
-            }
-            foreach (var g in this.globalVarToSharedVarInfo.Keys)
-            {
-                var info = globalVarToSharedVarInfo[g];
-                if (!this.AllCreatedLayerNums.Contains(info.introLayerNum))
-                {
-                    Error(g, "Variable must be introduced with creation of some atomic action");
-                }
-                if (info.hideLayerNum != int.MaxValue && !this.AllCreatedLayerNums.Contains(info.hideLayerNum))
-                {
-                    Error(g, "Variable must be hidden with creation of some atomic action");
                 }
             }
             if (errorCount > 0) return;
