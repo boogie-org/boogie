@@ -675,6 +675,36 @@ namespace Microsoft.Boogie
                 }
             }
             if (errorCount > 0) return;
+            
+            foreach (var impl in program.Implementations)
+            {
+                if (!procToActionInfo.ContainsKey(impl.Proc)) continue;
+                ActionInfo actionInfo = procToActionInfo[impl.Proc];
+                procToActionInfo[impl.Proc].hasImplementation = true;
+                if (actionInfo.isExtern)
+                {
+                    Error(impl.Proc, "Extern procedure cannot have an implementation");
+                }
+            }
+            if (errorCount > 0) return;
+
+            foreach (Procedure proc in procToActionInfo.Keys)
+            {
+                for (int i = 0; i < proc.InParams.Count; i++)
+                {
+                    Variable v = proc.InParams[i];
+                    var layer = FindLocalVariableLayer(proc, v, procToActionInfo[proc].createdAtLayerNum);
+                    if (layer == int.MinValue) continue;
+                    localVarToLocalVariableInfo[v] = new LocalVariableInfo(false, layer);
+                }
+                for (int i = 0; i < proc.OutParams.Count; i++)
+                {
+                    Variable v = proc.OutParams[i];
+                    var layer = FindLocalVariableLayer(proc, v, procToActionInfo[proc].createdAtLayerNum);
+                    if (layer == int.MinValue) continue;
+                    localVarToLocalVariableInfo[v] = new LocalVariableInfo(false, layer);
+                }
+            }
             foreach (Implementation node in program.Implementations)
             {
                 if (!procToActionInfo.ContainsKey(node.Proc)) continue;
@@ -687,32 +717,20 @@ namespace Microsoft.Boogie
                 for (int i = 0; i < node.Proc.InParams.Count; i++)
                 {
                     Variable v = node.Proc.InParams[i];
-                    var layer = FindLocalVariableLayer(node.Proc, v, procToActionInfo[node.Proc].createdAtLayerNum);
-                    if (layer == int.MinValue) continue;
-                    localVarToLocalVariableInfo[v] = new LocalVariableInfo(false, layer);
+                    if (!localVarToLocalVariableInfo.ContainsKey(v)) continue;
+                    var layer = localVarToLocalVariableInfo[v].layer;
                     localVarToLocalVariableInfo[node.InParams[i]] = new LocalVariableInfo(false, layer);
                 }
                 for (int i = 0; i < node.Proc.OutParams.Count; i++)
                 {
                     Variable v = node.Proc.OutParams[i];
-                    var layer = FindLocalVariableLayer(node.Proc, v, procToActionInfo[node.Proc].createdAtLayerNum);
-                    if (layer == int.MinValue) continue;
-                    localVarToLocalVariableInfo[v] = new LocalVariableInfo(false, layer);
+                    if (!localVarToLocalVariableInfo.ContainsKey(v)) continue;
+                    var layer = localVarToLocalVariableInfo[v].layer;
                     localVarToLocalVariableInfo[node.OutParams[i]] = new LocalVariableInfo(false, layer);
                 }
             }
-            if (errorCount > 0) return;
-            foreach (var impl in program.Implementations)
-            {
-                if (!procToActionInfo.ContainsKey(impl.Proc)) continue;
-                ActionInfo actionInfo = procToActionInfo[impl.Proc];
-                procToActionInfo[impl.Proc].hasImplementation = true;
-                if (actionInfo.isExtern)
-                {
-                    Error(impl.Proc, "Extern procedure cannot have an implementation");
-                }
-            }
-            if (errorCount > 0) return;
+            if (errorCount > 0) return; 
+            
             this.VisitProgram(program);
             if (errorCount > 0) return;
             YieldTypeChecker.PerformYieldSafeCheck(this);
