@@ -874,16 +874,9 @@ namespace Microsoft.Boogie
                 if (node.Proc.Modifies.Count > 0)
                 {
                     var atomicProcedureInfo = procToAtomicProcedureInfo[node.Proc];
-                    if (procToActionInfo[enclosingImpl.Proc] is AtomicActionInfo)
+                    if (!atomicProcedureInfo.layers.Contains(enclosingProcLayerNum))
                     {
-                        if (!atomicProcedureInfo.layers.Contains(enclosingProcLayerNum))
-                        {
-                            Error(node, "The layer of called atomic procedure must be identical to the creation layer of callee");
-                        }
-                    }
-                    else
-                    {
-                        Error(node, "Enclosing implementation must refine an atomic action");
+                        Error(node, "The layer of called atomic procedure must be identical to the creation layer of callee");
                     }
                     introducedLocalVarsUpperBound = enclosingProcLayerNum;
                 }
