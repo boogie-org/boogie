@@ -141,7 +141,7 @@ namespace Microsoft.Boogie.SMTLib
       else if (t.IsReal)
         return "Real";
       else if (t.IsFloat)
-        return "(_ FloatingPoint " + t.FloatExponent + " " + t.FloatMantissa + ")"; //TODO: Match z3 syntax
+        return "(_ FloatingPoint " + t.FloatExponent + " " + t.FloatMantissa + ")";
       else if (t.IsBv) {
         return "(_ BitVec " + t.BvBits + ")";
       } else {
@@ -204,11 +204,13 @@ namespace Microsoft.Boogie.SMTLib
       else if (node is VCExprFloatLit)
       {
         BigFloat lit = ((VCExprFloatLit)node).Val;
+        wr.Write(("((_ to_fp 8 24) roundTowardZero "));
         if (lit.IsNegative)
           // In SMT2 "-42" is an identifier (SMT2, Sect. 3.2 "Symbols")
           wr.Write("(- 0.0 {0})", lit.Abs.ToDecimalString());
         else
           wr.Write(lit.ToDecimalString());
+        wr.Write(")");
       }
       else {
         Contract.Assert(false);
@@ -613,6 +615,78 @@ namespace Microsoft.Boogie.SMTLib
         if (CommandLineOptions.Clo.UseArrayTheory)
           name = "store";
         WriteApplication(name, node, options);
+        return true;
+      }
+
+      public bool VisitFloatAddOp(VCExprNAry node, LineariserOptions options)
+      {
+        WriteApplication("fp.add roundTowardZero", node, options);
+        return true;
+      }
+
+      public bool VisitFloatSubOp(VCExprNAry node, LineariserOptions options)
+      {
+        WriteApplication("fp.sub roundTowardZero", node, options);
+        return true;
+      }
+
+      public bool VisitFloatMulOp(VCExprNAry node, LineariserOptions options)
+      {
+        WriteApplication("fp.mul roundTowardZero", node, options);
+        return true;
+      }
+
+      public bool VisitFloatDivOp(VCExprNAry node, LineariserOptions options)
+      {
+        WriteApplication("fp.div roundTowardZero", node, options);
+        return true;
+      }
+
+      public bool VisitFloatRemOp(VCExprNAry node, LineariserOptions options)
+      {
+        WriteApplication("fp.rem roundTowardZero", node, options);
+        return true;
+      }
+
+      public bool VisitFloatMinOp(VCExprNAry node, LineariserOptions options)
+      {
+        WriteApplication("fp.min", node, options);
+        return true;
+      }
+
+      public bool VisitFloatMaxOp(VCExprNAry node, LineariserOptions options)
+      {
+        WriteApplication("fp.max", node, options);
+        return true;
+      }
+
+      public bool VisitFloatLeqOp(VCExprNAry node, LineariserOptions options)
+      {
+        WriteApplication("fp.leq", node, options);
+        return true;
+      }
+
+      public bool VisitFloatLtOp(VCExprNAry node, LineariserOptions options)
+      {
+        WriteApplication("fp.lt", node, options);
+        return true;
+      }
+
+      public bool VisitFloatGeqOp(VCExprNAry node, LineariserOptions options)
+      {
+        WriteApplication("fp.geq", node, options);
+        return true;
+      }
+
+      public bool VisitFloatGtOp(VCExprNAry node, LineariserOptions options)
+      {
+        WriteApplication("fp.gt", node, options);
+        return true;
+      }
+
+      public bool VisitFloatEqOp(VCExprNAry node, LineariserOptions options)
+      {
+        WriteApplication("fp.eq", node, options);
         return true;
       }
 

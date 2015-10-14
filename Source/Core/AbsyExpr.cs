@@ -1642,7 +1642,6 @@ namespace Microsoft.Boogie {
           case Opcode.Div:
           case Opcode.Mod:
           case Opcode.RealDiv:
-          case Opcode.FloatDiv:
           case Opcode.Pow:
           case Opcode.Neq:  // Neq is allowed, but not Eq
           case Opcode.Subtype:

@@ -1076,34 +1076,48 @@ namespace Microsoft.Boogie.VCExprAST {
       Contract.Requires(cce.NonNullElements(args));
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       Contract.Assert(args.Count == 2);
+      Type t = cce.NonNull(cce.NonNull(args[0]).Type);
 
       switch (app.Op) {
         case BinaryOperator.Opcode.Add:
-          if (cce.NonNull(cce.NonNull(args[0]).Type).IsInt) {
+          if (t.IsInt) {
             return Gen.Function(VCExpressionGenerator.AddIOp, args);
           }
-          else {
+          else if (t.IsReal) {
             return Gen.Function(VCExpressionGenerator.AddROp, args);
           }
+          else { //t is float
+            return Gen.Function(Gen.BinaryFloatOp(t.FloatExponent, t.FloatMantissa, "+"), args);
+          }
         case BinaryOperator.Opcode.Sub:
-          if (cce.NonNull(cce.NonNull(args[0]).Type).IsInt) {
+          if (t.IsInt) {
             return Gen.Function(VCExpressionGenerator.SubIOp, args);
           }
-          else {
+          else if (t.IsReal) {
             return Gen.Function(VCExpressionGenerator.SubROp, args);
           }
+          else { //t is float
+            return Gen.Function(Gen.BinaryFloatOp(t.FloatExponent, t.FloatMantissa, "-"), args);
+          }
         case BinaryOperator.Opcode.Mul:
-          if (cce.NonNull(cce.NonNull(args[0]).Type).IsInt) {
+          if (t.IsInt) {
             return Gen.Function(VCExpressionGenerator.MulIOp, args);
           }
-          else {
+          else if (t.IsReal) {
             return Gen.Function(VCExpressionGenerator.MulROp, args);
+          }
+          else
+          { //t is float
+            return Gen.Function(Gen.BinaryFloatOp(t.FloatExponent, t.FloatMantissa, "*"), args);
           }
         case BinaryOperator.Opcode.Div:
           return Gen.Function(VCExpressionGenerator.DivIOp, args);
         case BinaryOperator.Opcode.Mod:
           return Gen.Function(VCExpressionGenerator.ModOp, args);
         case BinaryOperator.Opcode.RealDiv:
+          if (t.IsFloat) {
+            return Gen.Function(Gen.BinaryFloatOp(t.FloatExponent, t.FloatMantissa, "/"), args);
+          }
           VCExpr arg0 = cce.NonNull(args[0]);
           VCExpr arg1 = cce.NonNull(args[1]);
           if (cce.NonNull(arg0.Type).IsInt) {
@@ -1118,16 +1132,26 @@ namespace Microsoft.Boogie.VCExprAST {
         case BinaryOperator.Opcode.Eq:
         case BinaryOperator.Opcode.Iff:
           // we don't distinguish between equality and equivalence at this point
+          if (t.IsFloat)
+            return Gen.Function(Gen.BinaryFloatOp(t.FloatExponent, t.FloatMantissa, "=="), args);
           return Gen.Function(VCExpressionGenerator.EqOp, args);
         case BinaryOperator.Opcode.Neq:
           return Gen.Function(VCExpressionGenerator.NeqOp, args);
         case BinaryOperator.Opcode.Lt:
+          if (t.IsFloat)
+            return Gen.Function(Gen.BinaryFloatOp(t.FloatExponent, t.FloatMantissa, "<"), args);
           return Gen.Function(VCExpressionGenerator.LtOp, args);
         case BinaryOperator.Opcode.Le:
+          if (t.IsFloat)
+            return Gen.Function(Gen.BinaryFloatOp(t.FloatExponent, t.FloatMantissa, "<="), args);
           return Gen.Function(VCExpressionGenerator.LeOp, args);
         case BinaryOperator.Opcode.Ge:
+          if (t.IsFloat)
+            return Gen.Function(Gen.BinaryFloatOp(t.FloatExponent, t.FloatMantissa, ">="), args);
           return Gen.Function(VCExpressionGenerator.GeOp, args);
         case BinaryOperator.Opcode.Gt:
+          if (t.IsFloat)
+            return Gen.Function(Gen.BinaryFloatOp(t.FloatExponent, t.FloatMantissa, ">"), args);
           return Gen.Function(VCExpressionGenerator.GtOp, args);
         case BinaryOperator.Opcode.Imp:
           return Gen.Function(VCExpressionGenerator.ImpliesOp, args);

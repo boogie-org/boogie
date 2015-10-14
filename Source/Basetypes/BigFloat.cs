@@ -33,7 +33,7 @@ namespace Microsoft.Basetypes
     [Rep]
     internal readonly int exponentSize; //The bit size of the exponent
     [Rep]
-    internal readonly BigDec dec_value;
+    internal readonly String dec_value;
     [Rep]
     internal readonly bool isDec;
 
@@ -61,7 +61,7 @@ namespace Microsoft.Basetypes
       }
     }
 
-    public BigDec Decimal {
+    public String Decimal {
       get {
         return dec_value;
       }
@@ -102,7 +102,7 @@ namespace Microsoft.Basetypes
 
     public static BigFloat FromBigDec(BigDec v)
     {
-      return new BigFloat(v, 8, 24);
+      return new BigFloat(v.ToDecimalString(), 8, 24);
     }
 
     [Pure]
@@ -114,11 +114,11 @@ namespace Microsoft.Basetypes
       {
         switch (vals.Length) {
           case 1:
-            return new BigFloat(BigDec.FromString(vals[0]), 8, 24); 
+            return new BigFloat(vals[0], 8, 24); 
           case 2:
             return new BigFloat(Int32.Parse(vals[0]), BIM.Parse(vals[1]), 8, 24);
           case 3:
-            return new BigFloat(BigDec.FromString(vals[0]), Int32.Parse(vals[1]), Int32.Parse(vals[2]));
+            return new BigFloat(vals[0], Int32.Parse(vals[1]), Int32.Parse(vals[2]));
           case 4:
             return new BigFloat(Int32.Parse(vals[0]), BIM.Parse(vals[1]), Int32.Parse(vals[2]), Int32.Parse(vals[3]));
           default:
@@ -136,10 +136,10 @@ namespace Microsoft.Basetypes
       this.mantissa = mantissa;
       this.mantissaSize = mantissaSize;
       this.isDec = false;
-      this.dec_value = BigDec.ZERO;
+      this.dec_value = "";
     }
 
-    internal BigFloat(BigDec dec_value, int exponentSize, int mantissaSize) {
+    internal BigFloat(String dec_value, int exponentSize, int mantissaSize) {
       this.exponentSize = exponentSize;
       this.mantissaSize = mantissaSize;
       this.exponent = 0;
@@ -181,7 +181,7 @@ namespace Microsoft.Basetypes
     [Pure]
     public override string/*!*/ ToString() {
       Contract.Ensures(Contract.Result<string>() != null);
-      return String.Format("{0}x2^{1}", Mantissa.ToString(), Exponent.ToString());
+      return isDec ? dec_value : String.Format("{0}x2^{1}", Mantissa.ToString(), Exponent.ToString());
     }
 
 
@@ -313,34 +313,8 @@ namespace Microsoft.Basetypes
 
     [Pure]
     public string ToDecimalString() {
-      //TODO: fix for fp functionality
-      string m = Mantissa.ToString();
-      var e = Exponent;
-      if (0 <= Exponent) {
-        return m + Zeros(e) + ".0";
-      } else {
-        e = -e;
-        // compute k to be the longest suffix of m consisting of all zeros (but no longer than e, and not the entire string)
-        var maxK = e < m.Length ? e : m.Length - 1;
-        var last = m.Length - 1;
-        var k = 0;
-        while (k < maxK && m[last - k] == '0') {
-          k++;
-        }
-        if (0 < k) {
-          // chop off the suffix of k zeros from m and adjust e accordingly
-          m = m.Substring(0, m.Length - k);
-          e -= k;
-        }
-        if (e == 0) {
-          return m;
-        } else if (e < m.Length) {
-          var n = m.Length - e;
-          return m.Substring(0, n) + "." + m.Substring(n);
-        } else {
-          return "0." + Zeros(e - m.Length) + m;
-        }
-      }
+      Contract.Ensures(Contract.Result<string>() != null);
+      return isDec ? dec_value : String.Format("{0}x2^{1}", Mantissa.ToString(), Exponent.ToString());
     }
 
     [Pure]
@@ -436,7 +410,7 @@ namespace Microsoft.Basetypes
 
     public bool IsNegative {
       get {
-        return (isDec && dec_value >= BigDec.ZERO) || mantissa >= 0;
+        return (isDec && dec_value[0] == '-') || mantissa < 0;
       }
     }
 

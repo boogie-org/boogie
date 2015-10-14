@@ -324,7 +324,6 @@ namespace Microsoft.Boogie {
 
     public static readonly VCExprOp AddIOp = new VCExprNAryOp(2, Type.Int);
     public static readonly VCExprOp AddROp = new VCExprNAryOp(2, Type.Real);
-    //public static readonly VCExprOp AddFOp = new VCExprNAryOp(2, Type.Float);
     public static readonly VCExprOp SubIOp = new VCExprNAryOp(2, Type.Int);
     public static readonly VCExprOp SubROp = new VCExprNAryOp(2, Type.Real);
    // public static readonly VCExprOp SubFOp = new VCExprNAryOp(2, Type.Float);
@@ -359,11 +358,13 @@ namespace Microsoft.Boogie {
 
     // Float nodes
 
-    public VCExpr AddFOp(VCExpr f1, VCExpr f2)
+    public VCExprOp BinaryFloatOp(int exp, int man, string op)
     {
-      Contract.Requires(f1 != null);
-      Contract.Requires(f2 != null);
-      return Function(new VCExprFloatOp(f1.Type.FloatExponent, f1.Type.FloatMantissa));
+      Contract.Requires(exp > 0);
+      Contract.Requires(man > 0);
+      Contract.Requires(op != null);
+      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      return new VCExprBinaryFloatOp(exp, man, op);
     }
 
     // Bitvector nodes
@@ -441,7 +442,6 @@ namespace Microsoft.Boogie {
       SingletonOpDict.Add(ImpliesOp, SingletonOp.ImpliesOp);
       SingletonOpDict.Add(AddIOp, SingletonOp.AddOp);
       SingletonOpDict.Add(AddROp, SingletonOp.AddOp);
-      //SingletonOpDict.Add(AddFOp, SingletonOp.AddOp);
       SingletonOpDict.Add(SubIOp, SingletonOp.SubOp);
       SingletonOpDict.Add(SubROp, SingletonOp.SubOp);
       //SingletonOpDict.Add(SubFOp, SingletonOp.SubOp);
@@ -1677,18 +1677,19 @@ namespace Microsoft.Boogie.VCExprAST {
   /////////////////////////////////////////////////////////////////////////////////
   // Float operators
 
-  public class VCExprFloatOp : VCExprOp {
+  public class VCExprBinaryFloatOp : VCExprOp {
     public readonly int Mantissa;
     public readonly int Exponent;
+    private string op;
 
     public override int Arity {
       get {
-        return 1;
+        return 2;
       }
     }
     public override int TypeParamArity {
       get {
-        return 0;
+        return 2;
       }
     }
     public override Type InferType(List<VCExpr> args, List<Type/*!*/>/*!*/ typeArgs) {
@@ -1703,8 +1704,8 @@ namespace Microsoft.Boogie.VCExprAST {
     public override bool Equals(object that) {
       if (Object.ReferenceEquals(this, that))
         return true;
-      if (that is VCExprFloatOp)
-        return this.Exponent == ((VCExprFloatOp)that).Exponent && this.Mantissa == ((VCExprFloatOp)that).Mantissa;
+      if (that is VCExprBinaryFloatOp)
+        return this.Exponent == ((VCExprBinaryFloatOp)that).Exponent && this.Mantissa == ((VCExprBinaryFloatOp)that).Mantissa;
       return false;
     }
     [Pure]
@@ -1712,15 +1713,44 @@ namespace Microsoft.Boogie.VCExprAST {
       return Exponent * 81748912 + Mantissa * 67867979;
     }
 
-    internal VCExprFloatOp(int exp, int man) {
+    internal VCExprBinaryFloatOp(int exp, int man, string op) {
       this.Exponent = exp;
       this.Mantissa = man;
+      this.op = op;
     }
     public override Result Accept<Result, Arg>
            (VCExprNAry expr, IVCExprOpVisitor<Result, Arg> visitor, Arg arg) {
       //Contract.Requires(visitor != null);
       //Contract.Requires(expr != null);
-      return visitor.VisitBvOp(expr, arg);
+      switch (op) { 
+      case ("+"):
+        return visitor.VisitFloatAddOp(expr, arg);
+      case ("-"):
+        return visitor.VisitFloatSubOp(expr, arg);
+      case ("*"):
+        return visitor.VisitFloatMulOp(expr, arg);
+      case ("/"):
+        return visitor.VisitFloatDivOp(expr, arg);
+      case ("rem"):
+        return visitor.VisitFloatRemOp(expr, arg);
+      case ("min"):
+        return visitor.VisitFloatMinOp(expr, arg);
+      case ("max"):
+        return visitor.VisitFloatMaxOp(expr, arg);
+      case ("<="):
+        return visitor.VisitFloatLeqOp(expr, arg);
+      case ("<"):
+        return visitor.VisitFloatLtOp(expr, arg);
+      case (">="):
+        return visitor.VisitFloatGeqOp(expr, arg);
+      case (">"):
+        return visitor.VisitFloatGtOp(expr, arg);
+      case ("=="):
+        return visitor.VisitFloatEqOp(expr, arg);
+      default:
+        Contract.Assert(false);
+        throw new cce.UnreachableException();
+      }
     }
   }
 
