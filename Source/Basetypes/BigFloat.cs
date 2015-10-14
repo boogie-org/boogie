@@ -146,6 +146,8 @@ namespace Microsoft.Basetypes
       this.mantissa = 0;
       this.isDec = true;
       this.dec_value = dec_value;
+      if (this.dec_value.IndexOf(".") == -1)
+        this.dec_value += ".0"; //Assures that the decimal value is a "real" number
     }
 
     private BIM maxMantissa()
