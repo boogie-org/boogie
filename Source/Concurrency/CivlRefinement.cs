@@ -315,19 +315,9 @@ namespace Microsoft.Boogie
             foreach (var v in civlTypeChecker.localVarToLocalVariableInfo.Keys)
             {
                 LocalVariableInfo info = civlTypeChecker.localVarToLocalVariableInfo[v];
-                if (info.isGhost)
+                if (layerNum < info.layer)
                 {
-                    if (info.layer != layerNum)
-                    {
-                        availableVars.Remove(v);
-                    }
-                }
-                else
-                {
-                    if (layerNum < info.layer)
-                    {
-                        availableVars.Remove(v);
-                    }
+                    availableVars.Remove(v);
                 }
             }
             return availableVars;

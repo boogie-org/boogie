@@ -89,9 +89,9 @@ ensures {:layer 3} {:expand} emptyInv(put_in_cs, take_in_cs, items,status,T);
 ensures {:atomic} |{ var i: int; A: assume status[i] == NOT_IN_Q; status[i] := IN_Q; return true; }|;
 {
    var t: int;
-   var {:ghost} {:layer 3} oldH:int;
-   var {:ghost} {:layer 3} oldT:int;
-   var {:ghost} {:layer 3} oldStatusT:bool;
+   var {:layer 3} oldH:int;
+   var {:layer 3} oldT:int;
+   var {:layer 3} oldStatusT:bool;
    
    call oldH, oldT := GhostRead();
    yield;
@@ -142,8 +142,8 @@ ensures {:atomic} |{ var i: int; A: goto B,C; B: assume status[i] == IN_Q; statu
 {
    var h, t: int;
    var chk: bool;
-   var {:ghost} {:layer 3} oldH:int;
-   var {:ghost} {:layer 3} oldT:int;
+   var {:layer 3} oldH:int;
+   var {:layer 3} oldT:int;
 
    call oldH, oldT := GhostRead();
    yield;
@@ -304,8 +304,8 @@ ensures {:atomic} |{ var i: int; A: goto B,C; B: assume status[i] == IN_Q; statu
 {
    var h, t: int;
    var chk: bool;
-   var {:ghost} {:layer 3} oldH:int;
-   var {:ghost} {:layer 3} oldT:int;
+   var {:layer 3} oldH:int;
+   var {:layer 3} oldT:int;
 
    call oldH, oldT := GhostRead();
    yield;
