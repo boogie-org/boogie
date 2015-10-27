@@ -89,11 +89,14 @@ modifies g;
 
 procedure {:yields} {:layer 0} I({:linear_in ""} x:int) returns({:linear ""} x':int)
 {
+  yield;
   x' := x;
+  yield;
 }
 
 procedure {:yields} {:layer 0} J()
 {
+  yield;
 }
 
 procedure {:yields} {:layer 1} P1({:linear_in ""} x:int) returns({:linear ""} x':int)
