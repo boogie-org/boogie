@@ -991,7 +991,8 @@ namespace Microsoft.Boogie {
                 //BUGFIX on 10/26/15: this contains nodes present in NaturalLoops for a different backedgenode
                 var loopNodes = GetBlocksInAllNaturalLoops(header, g); //var loopNodes = g.NaturalLoops(header, source); 
                 foreach(var bl in auxGotoCmd.labelTargets) {
-                    if (!loopNodes.Contains(bl)) {
+                    if (g.Nodes.Contains(bl) && //newly created blocks are not present in NaturalLoop(header, xx, g)
+                        !loopNodes.Contains(bl)) {
                         Block auxNewBlock = new Block();
                         auxNewBlock.Label = ((Block)bl).Label;
                         //these blocks may have read/write locals that are not present in naturalLoops
