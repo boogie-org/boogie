@@ -2229,10 +2229,11 @@ namespace VC {
       impl.Blocks.Insert(0, new Block(new Token(-17, -4), "0", new List<Cmd>(), new GotoCmd(Token.NoToken, new List<String> { impl.Blocks[0].Label }, new List<Block> { impl.Blocks[0] })));
       ResetPredecessors(impl.Blocks);
 
-      if(CommandLineOptions.Clo.KInductionDepth < 0) {
+      var k = Math.Max(CommandLineOptions.Clo.KInductionDepth, QKeyValue.FindIntAttribute(impl.Attributes, "kInductionDepth", -1));
+      if(k < 0) {
         ConvertCFG2DAGStandard(impl, edgesCut, taskID);
       } else {
-        ConvertCFG2DAGKInduction(impl, edgesCut, taskID);
+        ConvertCFG2DAGKInduction(impl, edgesCut, taskID, k);
       }
       
       #region Debug Tracing
@@ -2497,14 +2498,12 @@ namespace VC {
       return referencedVars;
     }
 
-    private void ConvertCFG2DAGKInduction(Implementation impl, Dictionary<Block, List<Block>> edgesCut, int taskID) {
+    private void ConvertCFG2DAGKInduction(Implementation impl, Dictionary<Block, List<Block>> edgesCut, int taskID, int inductionK) {
 
       // K-induction has not been adapted to be aware of these parameters which standard CFG to DAG transformation uses
       Contract.Requires(edgesCut == null);
       Contract.Requires(taskID == -1);
-
-      int inductionK = CommandLineOptions.Clo.KInductionDepth;
-      Contract.Assume(inductionK >= 0);
+      Contract.Requires(0 <= inductionK);
 
       bool contRuleApplication = true;
       while (contRuleApplication) {
