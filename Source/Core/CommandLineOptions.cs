@@ -11,6 +11,7 @@ using System.IO;
 using System.Linq;
 using System.Diagnostics;
 using System.Diagnostics.Contracts;
+using System.Text.RegularExpressions;
 
 namespace Microsoft.Boogie {
   public class CommandLineOptionEngine
@@ -1700,7 +1701,7 @@ namespace Microsoft.Boogie {
         // no preference
         return true;
       }
-      return ProcsToCheck.Contains(methodFullname);
+      return ProcsToCheck.Any(s => Regex.IsMatch(methodFullname, "^" + Regex.Escape(s).Replace(@"\*", ".*") + "$"));
     }
 
     public virtual StringCollection ParseNamedArgumentList(string argList) {
