@@ -1858,7 +1858,15 @@ namespace Microsoft.Boogie {
   Multiple .bpl files supplied on the command line are concatenated into one
   Boogie program.
 
-  /proc:<p>      : limits which procedures to check
+  /proc:<p>      : Only check procedures matched by pattern <p>. This option
+                   may be specified multiple times to match multiple patterns.
+                   The pattern <p> matches the whole procedure name (i.e.
+                   pattern ""foo"" will only match a procedure called foo and
+                   not fooBar). The pattern <p> may contain * wildcards which
+                   match any character zero or more times. For example the
+                   pattern ""ab*d"" would match abd, abcd and abccd but not
+                   Aabd nor abdD. The pattern ""*ab*d*"" would match abd,
+                   abcd, abccd, Abd and abdD.
   /noResolve     : parse only
   /noTypecheck   : parse and resolve only
 
