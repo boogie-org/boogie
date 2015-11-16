@@ -1,0 +1,3 @@
+StatementIds0.bpl(7,4): Error: more than one statement with same id: s0
+StatementIds0.bpl(12,4): Error: more than one statement with same id: s0
+2 name resolution errors detected in StatementIds0.bpl
