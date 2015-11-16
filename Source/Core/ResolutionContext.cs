@@ -339,6 +339,18 @@ namespace Microsoft.Boogie {
       varContext = varContext.ParentContext;
     }
 
+    public readonly ISet<string> StatementIds = new HashSet<string>();
+
+    public void AddStatementId(IToken tok, string name)
+    {
+      if (StatementIds.Contains(name))
+      {
+        Error(tok, "more than one statement with same id: " + name);
+        return;
+      }
+      StatementIds.Add(name);
+    }
+
     public void AddVariable(Variable var, bool global) {
       Contract.Requires(var != null);
       var previous = FindVariable(cce.NonNull(var.Name), !global);

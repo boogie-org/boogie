@@ -1386,7 +1386,8 @@ namespace VC {
         var exprGen = ctx.ExprGen;
         VCExpr controlFlowVariableExpr = CommandLineOptions.Clo.UseLabels ? null : exprGen.Integer(BigNum.ZERO);
 
-        VCExpr vc = parent.GenerateVCAux(impl, controlFlowVariableExpr, label2absy, checker.TheoremProver.Context);
+        var namedAssumeVars = new List<VCExprVar>();
+        VCExpr vc = parent.GenerateVCAux(impl, controlFlowVariableExpr, label2absy, checker.TheoremProver.Context, namedAssumeVars: namedAssumeVars);
         Contract.Assert(vc != null);
 
         if (!CommandLineOptions.Clo.UseLabels)
@@ -1414,7 +1415,7 @@ namespace VC {
         string desc = cce.NonNull(impl.Name);
         if (no >= 0)
           desc += "_split" + no;
-        checker.BeginCheck(desc, vc, reporter);
+        checker.BeginCheck(desc, vc, reporter, namedAssumeVars);
       }
 
       private void SoundnessCheck(HashSet<List<Block>/*!*/>/*!*/ cache, Block/*!*/ orig, List<Block/*!*/>/*!*/ copies) {
@@ -1519,7 +1520,7 @@ namespace VC {
         }
     }
 
-    public VCExpr GenerateVC(Implementation/*!*/ impl, VCExpr controlFlowVariableExpr, out Dictionary<int, Absy>/*!*/ label2absy, ProverContext proverContext)
+    public VCExpr GenerateVC(Implementation/*!*/ impl, VCExpr controlFlowVariableExpr, out Dictionary<int, Absy>/*!*/ label2absy, ProverContext proverContext, IList<VCExprVar> namedAssumeVars = null)
     {
       Contract.Requires(impl != null);
       Contract.Requires(proverContext != null);
@@ -1527,10 +1528,10 @@ namespace VC {
       Contract.Ensures(Contract.Result<VCExpr>() != null);
 
       label2absy = new Dictionary<int, Absy>();
-      return GenerateVCAux(impl, controlFlowVariableExpr, label2absy, proverContext);
+      return GenerateVCAux(impl, controlFlowVariableExpr, label2absy, proverContext, namedAssumeVars: namedAssumeVars);
     }
 
-    public VCExpr GenerateVCAux(Implementation/*!*/ impl, VCExpr controlFlowVariableExpr, Dictionary<int, Absy>/*!*/ label2absy, ProverContext proverContext) {
+    public VCExpr GenerateVCAux(Implementation/*!*/ impl, VCExpr controlFlowVariableExpr, Dictionary<int, Absy>/*!*/ label2absy, ProverContext proverContext, IList<VCExprVar> namedAssumeVars = null) {
       Contract.Requires(impl != null);
       Contract.Requires(proverContext != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
@@ -1567,7 +1568,8 @@ namespace VC {
           }
           break;
         case CommandLineOptions.VCVariety.DagIterative:
-          vc = LetVCIterative(impl.Blocks, controlFlowVariableExpr, label2absy, proverContext, out assertionCount);
+          // TODO(wuestholz): Support named assume statements not just for this encoding.
+          vc = LetVCIterative(impl.Blocks, controlFlowVariableExpr, label2absy, proverContext, out assertionCount, namedAssumeVars: namedAssumeVars);
           break;
         case CommandLineOptions.VCVariety.Doomed:
           vc = FlatBlockVC(impl, label2absy, false, false, true, proverContext, out assertionCount);
@@ -2020,6 +2022,16 @@ namespace VC {
 
       protected ProverContext/*!*/ context;
       Program/*!*/ program;
+
+      public IEnumerable<string> NecessaryAssumes
+      {
+        get { return program.NecessaryAssumes; }
+      }
+
+      public void AddNecessaryAssume(string id)
+      {
+        program.NecessaryAssumes.Add(id);
+      }
 
       public ErrorReporter(Dictionary<TransferCmd, ReturnCmd>/*!*/ gotoCmdOrigins,
           Dictionary<int, Absy>/*!*/ label2absy,
@@ -3192,7 +3204,7 @@ namespace VC {
                                  Dictionary<int, Absy> label2absy,
                                  ProverContext proverCtxt,
                                  out int assertionCount,
-                                 bool isPositiveContext = true)
+                                 bool isPositiveContext = true, IList<VCExprVar> namedAssumeVars = null)
     {
       Contract.Requires(blocks != null);
       Contract.Requires(proverCtxt != null);
@@ -3252,7 +3264,7 @@ namespace VC {
         }
 
         VCContext context = new VCContext(label2absy, proverCtxt, controlFlowVariableExpr, isPositiveContext);
-        VCExpr vc = Wlp.Block(block, SuccCorrect, context);
+        VCExpr vc = Wlp.Block(block, SuccCorrect, context, namedAssumeVars);
         assertionCount += context.AssertionCount;
 
         VCExprVar v = gen.Variable(block.Label + "_correct", Bpl.Type.Bool);

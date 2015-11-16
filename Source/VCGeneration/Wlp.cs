@@ -48,7 +48,7 @@ namespace VC {
   
   public class Wlp
   {
-    public static VCExpr Block(Block b, VCExpr N, VCContext ctxt)
+    public static VCExpr Block(Block b, VCExpr N, VCContext ctxt, IList<VCExprVar> namedAssumeVars = null)
       //modifies ctxt.*;
     {
       Contract.Requires(b != null);
@@ -63,7 +63,7 @@ namespace VC {
 
       for (int i = b.Cmds.Count; --i >= 0; )
       {
-        res = Cmd(b, cce.NonNull( b.Cmds[i]), res, ctxt);
+        res = Cmd(b, cce.NonNull( b.Cmds[i]), res, ctxt, namedAssumeVars);
       }
       
       int id = b.UniqueId;
@@ -87,7 +87,7 @@ namespace VC {
     /// <summary>
     /// Computes the wlp for an assert or assume command "cmd".
     /// </summary>
-    public static VCExpr Cmd(Block b, Cmd cmd, VCExpr N, VCContext ctxt) {
+    internal static VCExpr Cmd(Block b, Cmd cmd, VCExpr N, VCContext ctxt, IList<VCExprVar> namedAssumeVars = null) {
       Contract.Requires(cmd != null);
       Contract.Requires(N != null);
       Contract.Requires(ctxt != null);
@@ -190,7 +190,16 @@ namespace VC {
             }
           }
         }
-        return gen.ImpliesSimp(ctxt.Ctxt.BoogieExprTranslator.Translate(ac.Expr), N);
+        var expr = ctxt.Ctxt.BoogieExprTranslator.Translate(ac.Expr);
+        
+        var aid = QKeyValue.FindStringAttribute(ac.Attributes, "id");
+        if (aid != null && namedAssumeVars != null)
+        {
+          var v = gen.Variable("assume$$" + aid, Microsoft.Boogie.Type.Bool);
+          namedAssumeVars.Add(v);
+          expr = gen.ImpliesSimp(v, expr);
+        }
+        return gen.ImpliesSimp(expr, N);
       } else {
         Console.WriteLine(cmd.ToString());
         Contract.Assert(false); throw new cce.UnreachableException();  // unexpected command

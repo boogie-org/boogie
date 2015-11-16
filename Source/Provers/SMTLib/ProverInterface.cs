@@ -246,9 +246,9 @@ namespace Microsoft.Boogie.SMTLib
 
         // Set produce-unsat-cores last. It seems there's a bug in Z3 where if we set it earlier its value
         // gets reset by other set-option commands ( https://z3.codeplex.com/workitem/188 )
-        if (CommandLineOptions.Clo.ContractInfer && (CommandLineOptions.Clo.UseUnsatCoreForContractInfer || CommandLineOptions.Clo.ExplainHoudini))
+        if (CommandLineOptions.Clo.PrintNecessaryAssumes || (CommandLineOptions.Clo.ContractInfer && (CommandLineOptions.Clo.UseUnsatCoreForContractInfer || CommandLineOptions.Clo.ExplainHoudini)))
         {
-          SendThisVC("(set-option :produce-unsat-cores true)");
+          SendCommon("(set-option :produce-unsat-cores true)");
           this.usingUnsatCore = true;
         }
 
@@ -408,6 +408,15 @@ namespace Microsoft.Boogie.SMTLib
 
       SendThisVC("(push 1)");
       SendThisVC("(set-info :boogie-vc-id " + SMTLibNamer.QuoteId(descriptiveName) + ")");
+
+      if (NamedAssumeVars != null)
+      {
+        foreach (var v in NamedAssumeVars)
+        {
+          SendThisVC(string.Format("(assert (! {0} :named {1}))", v, "aux$$" + v.Name));
+        }
+      }
+
       SendThisVC(vcString);
       FlushLogFile();
 
@@ -446,6 +455,7 @@ namespace Microsoft.Boogie.SMTLib
       if (options.Solver == SolverKind.Z3)
       {
         this.gen = gen;
+        SendThisVC("(reset)");
         Namer.Reset();
         common.Clear();
         SetupAxiomBuilder(gen);
@@ -1263,6 +1273,22 @@ namespace Microsoft.Boogie.SMTLib
             errorsLeft--;
             
             result = GetResponse();
+
+            var reporter = handler as VC.VCGen.ErrorReporter;
+            // TODO(wuestholz): Is the reporter ever null?
+            if (NamedAssumeVars != null && NamedAssumeVars.Any() && result == Outcome.Valid && reporter != null)
+            {
+              SendThisVC("(get-unsat-core)");
+              var resp = Process.GetProverResponse();
+              if (resp.Name != "")
+              {
+                 reporter.AddNecessaryAssume(resp.Name.Substring("aux$$assume$$".Length));
+              }
+              foreach (var arg in resp.Arguments)
+              {
+                reporter.AddNecessaryAssume(arg.Name.Substring("aux$$assume$$".Length));
+              }
+            }
 
             if (CommandLineOptions.Clo.RunDiagnosticsOnTimeout && result == Outcome.TimeOut)
             {

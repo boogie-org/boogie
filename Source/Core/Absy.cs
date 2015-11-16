@@ -696,6 +696,8 @@ namespace Microsoft.Boogie {
       }
     }
 
+    public readonly ISet<string> NecessaryAssumes = new HashSet<string>();
+
     public IEnumerable<Block> Blocks()
     {
       return Implementations.Select(Item => Item.Blocks).SelectMany(Item => Item);
