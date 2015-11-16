@@ -3,13 +3,22 @@
 
 procedure test0(n: int)
 {
-    assume {:id "s0"} 0 < n;
-    assert {:id "s0"} 0 < n;
+    assume {:id "s0"} true;
+    assert {:id "s0"} true;
 }
 
-procedure test1(n: int)
+procedure test1()
 {
     call {:id "s0"} P();
+}
+
+procedure test2(n: int)
+{
+    while (*)
+      invariant {:id "s0"} true;
+      invariant {:id "s0"} true;
+    {
+    }
 }
 
 procedure P();
