@@ -698,9 +698,13 @@ namespace Microsoft.Boogie.AbstractInterpretation
             lo = Lo; hi = Hi;
             if (hi != null) {
               Lo = node.Type.IsReal ? -hi : 1 - hi;
+            } else {
+              Lo = null;
             }
             if (lo != null) {
               Hi = node.Type.IsReal ? -lo : 1 - lo;
+            } else {
+              Hi = null;
             }
           }
           else if (op.Op == UnaryOperator.Opcode.Not) {
