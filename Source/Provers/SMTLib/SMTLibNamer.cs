@@ -47,7 +47,7 @@ namespace Microsoft.Boogie.SMTLib
       "flet", "implies", "!=", "if_then_else",
       // Z3 extensions
       "lblneg", "lblpos", "lbl-lit",
-      "if", "&&", "||", "equals", "equiv", "bool",
+      "if", "&&", "||", "equals", "equiv", "bool", "minimize", "maximize",
       // Boogie-defined
       "real_pow", "UOrdering2", "UOrdering3", 
       // Floating point (final draft SMTLIB-v2.5)

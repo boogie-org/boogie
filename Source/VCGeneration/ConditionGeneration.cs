@@ -1539,6 +1539,18 @@ namespace VC {
         PredicateCmd pc = (PredicateCmd)c.Clone();
         Contract.Assert(pc != null);
 
+        QKeyValue current = pc.Attributes;
+        while (current != null)
+        {
+          if (current.Key == "minimize" || current.Key == "maximize") {
+            Contract.Assume(current.Params.Count == 1);
+            var param = current.Params[0] as Expr;
+            Contract.Assume(param != null && (param.Type.IsInt || param.Type.IsReal || param.Type.IsBv));
+            current.ClearParams();
+            current.AddParam(Substituter.ApplyReplacingOldExprs(incarnationSubst, oldFrameSubst, param));
+          }
+          current = current.Next;
+        }
         Expr copy = Substituter.ApplyReplacingOldExprs(incarnationSubst, oldFrameSubst, pc.Expr);
         if (CommandLineOptions.Clo.ModelViewFile != null && pc is AssumeCmd) {
           string description = QKeyValue.FindStringAttribute(pc.Attributes, "captureState");

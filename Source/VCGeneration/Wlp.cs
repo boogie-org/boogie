@@ -186,7 +186,7 @@ namespace VC {
             if (naryExpr.Fun is FunctionCall) {
               int id = ac.UniqueId;
               ctxt.Label2absy[id] = ac;
-              return gen.ImpliesSimp(gen.LabelPos(cce.NonNull("si_fcall_" + id.ToString()), ctxt.Ctxt.BoogieExprTranslator.Translate(ac.Expr)), N);
+              return MaybeWrapWithOptimization(ctxt, gen, ac.Attributes, gen.ImpliesSimp(gen.LabelPos(cce.NonNull("si_fcall_" + id.ToString()), ctxt.Ctxt.BoogieExprTranslator.Translate(ac.Expr)), N));
             }
           }
         }
@@ -199,13 +199,28 @@ namespace VC {
           namedAssumeVars.Add(v);
           expr = gen.ImpliesSimp(v, expr);
         }
-        return gen.ImpliesSimp(expr, N);
+        return MaybeWrapWithOptimization(ctxt, gen, ac.Attributes, gen.ImpliesSimp(expr, N));
       } else {
         Console.WriteLine(cmd.ToString());
         Contract.Assert(false); throw new cce.UnreachableException();  // unexpected command
       }
     }
-    
+
+    private static VCExpr MaybeWrapWithOptimization(VCContext ctxt, VCExpressionGenerator gen, QKeyValue attrs, VCExpr expr)
+    {
+      var min = QKeyValue.FindExprAttribute(attrs, "minimize");
+      if (min != null)
+      {
+        expr = gen.Function(VCExpressionGenerator.MinimizeOp, ctxt.Ctxt.BoogieExprTranslator.Translate(min), expr);
+      }
+      var max = QKeyValue.FindExprAttribute(attrs, "maximize");
+      if (max != null)
+      {
+        expr = gen.Function(VCExpressionGenerator.MaximizeOp, ctxt.Ctxt.BoogieExprTranslator.Translate(max), expr);
+      }
+      return expr;
+    }
+
     public static CommandLineOptions.SubsumptionOption Subsumption(AssertCmd ac) {
       Contract.Requires(ac != null);
       int n = QKeyValue.FindIntAttribute(ac.Attributes, "subsumption", -1);

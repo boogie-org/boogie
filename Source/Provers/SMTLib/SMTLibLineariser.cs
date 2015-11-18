@@ -34,14 +34,14 @@ namespace Microsoft.Boogie.SMTLib
   public class SMTLibExprLineariser : IVCExprVisitor<bool, LineariserOptions/*!*/>
   {
 
-    public static string ToString(VCExpr e, UniqueNamer namer, SMTLibProverOptions opts)
+    public static string ToString(VCExpr e, UniqueNamer namer, SMTLibProverOptions opts, IList<string> optReqs = null)
     {
       Contract.Requires(e != null);
       Contract.Requires(namer != null);
       Contract.Ensures(Contract.Result<string>() != null);
 
       StringWriter sw = new StringWriter();
-      SMTLibExprLineariser lin = new SMTLibExprLineariser(sw, namer, opts);
+      SMTLibExprLineariser lin = new SMTLibExprLineariser(sw, namer, opts, optReqs);
       Contract.Assert(lin != null);
       lin.Linearise(e, LineariserOptions.Default);
       return cce.NonNull(sw.ToString());
@@ -74,12 +74,15 @@ namespace Microsoft.Boogie.SMTLib
     internal int UnderQuantifier = 0;
     internal readonly SMTLibProverOptions ProverOptions;
 
-    public SMTLibExprLineariser(TextWriter wr, UniqueNamer namer, SMTLibProverOptions opts)
+    readonly IList<string> OptimizationRequests;
+
+    public SMTLibExprLineariser(TextWriter wr, UniqueNamer namer, SMTLibProverOptions opts, IList<string> optReqs = null)
     {
       Contract.Requires(wr != null); Contract.Requires(namer != null);
       this.wr = wr;
       this.Namer = namer;
       this.ProverOptions = opts;
+      this.OptimizationRequests = optReqs;
     }
 
     public void Linearise(VCExpr expr, LineariserOptions options)
@@ -262,6 +265,14 @@ namespace Microsoft.Boogie.SMTLib
                 }
             }
             return true;
+        }
+        if (OptimizationRequests != null
+            && (node.Op.Equals(VCExpressionGenerator.MinimizeOp) || node.Op.Equals(VCExpressionGenerator.MaximizeOp)))
+        {
+          string optOp = node.Op.Equals(VCExpressionGenerator.MinimizeOp) ? "minimize" : "maximize";
+          OptimizationRequests.Add(string.Format("({0} {1})", optOp, ToString(node[0], Namer, ProverOptions)));
+          Linearise(node[1], options);
+          return true;
         }
         return node.Accept<bool, LineariserOptions/*!*/>(OpLineariser, options);
     }

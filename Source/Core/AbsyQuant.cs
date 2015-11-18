@@ -338,6 +338,12 @@ namespace Microsoft.Boogie {
 
     public override void Resolve(ResolutionContext rc) {
       //Contract.Requires(rc != null);
+
+      if ((Key == "minimize" || Key == "maximize") && Params.Count != 1)
+      {
+        rc.Error(this, "attributes :minimize and :maximize accept only one argument");
+      }
+
       foreach (object p in Params) {
         if (p is Expr) {
           ((Expr)p).Resolve(rc);
@@ -348,8 +354,15 @@ namespace Microsoft.Boogie {
     public override void Typecheck(TypecheckingContext tc) {
       //Contract.Requires(tc != null);
       foreach (object p in Params) {
-        if (p is Expr) {
-          ((Expr)p).Typecheck(tc);
+        var expr = p as Expr;
+        if (expr != null) {
+          expr.Typecheck(tc);
+        }
+        if ((Key == "minimize" || Key == "maximize")
+            && (expr == null || !(expr.Type.IsInt || expr.Type.IsReal || expr.Type.IsBv)))
+        {
+          tc.Error(this, "attributes :minimize and :maximize accept only one argument of type int, real or bv");
+          break;
         }
       }
     }

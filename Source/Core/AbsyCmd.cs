@@ -3218,8 +3218,14 @@ namespace Microsoft.Boogie {
       this.Expr.Emit(stream);
       stream.WriteLine(";");
     }
+    public override void Resolve(ResolutionContext rc) {
+      //Contract.Requires(rc != null);
+      ResolveAttributes(Attributes, rc);
+      base.Resolve(rc);
+    }
     public override void Typecheck(TypecheckingContext tc) {
       //Contract.Requires(tc != null);
+      TypecheckAttributes(Attributes, tc);
       Expr.Typecheck(tc);
       Contract.Assert(Expr.Type != null);  // follows from Expr.Typecheck postcondition
       if (!Expr.Type.Unify(Type.Bool)) {

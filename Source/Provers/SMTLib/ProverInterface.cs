@@ -401,6 +401,8 @@ namespace Microsoft.Boogie.SMTLib
 
       PrepareCommon();
 
+      OptimizationRequests.Clear();
+
       string vcString = "(assert (not\n" + VCExpr2String(vc, 1) + "\n))";
       FlushAxioms();
 
@@ -418,6 +420,15 @@ namespace Microsoft.Boogie.SMTLib
       }
 
       SendThisVC(vcString);
+
+      if (options.Solver == SolverKind.Z3 && 0 < OptimizationRequests.Count)
+      {
+        foreach (var r in OptimizationRequests)
+        {
+          SendThisVC(r);
+        }
+      }
+
       FlushLogFile();
 
       if (Process != null) {
@@ -1838,6 +1849,7 @@ namespace Microsoft.Boogie.SMTLib
     private Model GetErrorModel() {
       if (!options.ExpectingModel())
         return null;
+
       SendThisVC("(get-model)");
       Process.Ping();
       Model theModel = null;
@@ -1932,6 +1944,9 @@ namespace Microsoft.Boogie.SMTLib
             result = Outcome.Invalid;
             wasUnknown = true;
             break;
+          case "objectives":
+            // We ignore this.
+            break;
           default:
             HandleProverError("Unexpected prover response: " + resp.ToString());
             break;
@@ -1969,6 +1984,8 @@ namespace Microsoft.Boogie.SMTLib
 
       return result;
     }
+
+    readonly IList<string> OptimizationRequests = new List<string>();
 
     protected string VCExpr2String(VCExpr expr, int polarity)
     {
@@ -2009,10 +2026,8 @@ namespace Microsoft.Boogie.SMTLib
         DeclCollector.Collect(sortedExpr);
         FeedTypeDeclsToProver();
 
-
-
         AddAxiom(SMTLibExprLineariser.ToString(sortedAxioms, Namer, options));
-        string res = SMTLibExprLineariser.ToString(sortedExpr, Namer, options);
+        string res = SMTLibExprLineariser.ToString(sortedExpr, Namer, options, OptimizationRequests);
         Contract.Assert(res != null);
 
         if (CommandLineOptions.Clo.Trace)
