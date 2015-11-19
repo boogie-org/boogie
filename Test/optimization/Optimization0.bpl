@@ -82,5 +82,3 @@ procedure test6()
     assume {:maximize x} true;
     assert may_fail(x);
 }
-
-// TODO(wuestholz): Make this work without the /doNotUseLabels flag.

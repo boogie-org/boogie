@@ -341,8 +341,8 @@ namespace Microsoft.Boogie {
 
     public static readonly VCExprOp TimeoutDiagnosticsOp = new VCExprCustomOp("timeoutDiagnostics", 1, Type.Bool);
 
-    public static readonly VCExprOp MinimizeOp = new VCExprNAryOp(2, Type.Bool);
-    public static readonly VCExprOp MaximizeOp = new VCExprNAryOp(2, Type.Bool);
+    public static readonly VCExprOp MinimizeOp = new VCExprCustomOp("minimize##dummy", 2, Type.Bool);
+    public static readonly VCExprOp MaximizeOp = new VCExprCustomOp("maximize##dummy", 2, Type.Bool);
 
     public VCExprOp BoogieFunctionOp(Function func) {
       Contract.Requires(func != null);
