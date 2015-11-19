@@ -1549,8 +1549,16 @@ namespace VC {
             current.ClearParams();
             current.AddParam(Substituter.ApplyReplacingOldExprs(incarnationSubst, oldFrameSubst, param));
           }
+          if (current.Key == "verified_under") {
+            Contract.Assume(current.Params.Count == 1);
+            var param = current.Params[0] as Expr;
+            Contract.Assume(param != null && param.Type.IsBool);
+            current.ClearParams();
+            current.AddParam(Substituter.ApplyReplacingOldExprs(incarnationSubst, oldFrameSubst, param));
+          }
           current = current.Next;
         }
+
         Expr copy = Substituter.ApplyReplacingOldExprs(incarnationSubst, oldFrameSubst, pc.Expr);
         if (CommandLineOptions.Clo.ModelViewFile != null && pc is AssumeCmd) {
           string description = QKeyValue.FindStringAttribute(pc.Attributes, "captureState");

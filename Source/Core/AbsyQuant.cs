@@ -344,6 +344,11 @@ namespace Microsoft.Boogie {
         rc.Error(this, "attributes :minimize and :maximize accept only one argument");
       }
 
+      if (Key == "verified_under" && Params.Count != 1)
+      {
+        rc.Error(this, "attribute :verified_under accepts only one argument");
+      }
+
       foreach (object p in Params) {
         if (p is Expr) {
           ((Expr)p).Resolve(rc);
@@ -362,6 +367,11 @@ namespace Microsoft.Boogie {
             && (expr == null || !(expr.Type.IsInt || expr.Type.IsReal || expr.Type.IsBv)))
         {
           tc.Error(this, "attributes :minimize and :maximize accept only one argument of type int, real or bv");
+          break;
+        }
+        if (Key == "verified_under" && (expr == null || !expr.Type.IsBool))
+        {
+          tc.Error(this, "attribute :verified_under accepts only one argument of type bool");
           break;
         }
       }
