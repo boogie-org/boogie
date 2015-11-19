@@ -3,12 +3,6 @@
 %lbl%+260 -> true
 %lbl%+39 -> true
 x@0 -> 43
-ControlFlow -> {
-  0 0 -> 260
-  0 260 -> 39
-  0 39 -> (- 280)
-  else -> 260
-}
 tickleBool -> {
   true -> true
   false -> true
@@ -23,18 +17,11 @@ Optimization0.bpl(13,5): Error BP5001: This assertion might not hold.
 Execution trace:
     Optimization0.bpl(10,5): anon0
 *** MODEL
-%lbl%@328 -> false
-%lbl%+306 -> true
+%lbl%@321 -> false
+%lbl%+299 -> true
 %lbl%+66 -> true
 %lbl%+68 -> true
 x@0@@0 -> 24
-ControlFlow -> {
-  0 0 -> 306
-  0 306 -> 66
-  0 68 -> (- 328)
-  0 66 -> 68
-  else -> 306
-}
 tickleBool -> {
   true -> true
   false -> true
@@ -51,18 +38,11 @@ Execution trace:
     Optimization0.bpl(21,5): anon3_Else
     Optimization0.bpl(24,5): anon2
 *** MODEL
-%lbl%@360 -> false
-%lbl%+342 -> true
+%lbl%@353 -> false
+%lbl%+335 -> true
 %lbl%+95 -> true
 %lbl%+99 -> true
 x@0@@1 -> 10
-ControlFlow -> {
-  0 0 -> 342
-  0 342 -> 95
-  0 95 -> 99
-  0 99 -> (- 360)
-  else -> 342
-}
 tickleBool -> {
   true -> true
   false -> true
@@ -75,16 +55,10 @@ Execution trace:
     Optimization0.bpl(33,5): anon3_LoopHead
     Optimization0.bpl(33,5): anon3_LoopDone
 *** MODEL
-%lbl%@393 -> false
+%lbl%@386 -> false
 %lbl%+122 -> true
-%lbl%+382 -> true
+%lbl%+375 -> true
 x@0@@2 -> 41
-ControlFlow -> {
-  0 0 -> 382
-  0 382 -> 122
-  0 122 -> (- 393)
-  else -> 382
-}
 tickleBool -> {
   true -> true
   false -> true
@@ -99,18 +73,11 @@ Optimization0.bpl(47,5): Error BP5001: This assertion might not hold.
 Execution trace:
     Optimization0.bpl(44,5): anon0
 *** MODEL
-%lbl%@421 -> false
+%lbl%@414 -> false
 %lbl%+147 -> true
 %lbl%+151 -> true
-%lbl%+399 -> true
+%lbl%+392 -> true
 x@0@@3 -> 42
-ControlFlow -> {
-  0 0 -> 399
-  0 399 -> 147
-  0 147 -> 151
-  0 151 -> (- 421)
-  else -> 399
-}
 tickleBool -> {
   true -> true
   false -> true
@@ -127,18 +94,11 @@ Execution trace:
     Optimization0.bpl(56,11): anon3_Then
     Optimization0.bpl(58,5): anon2
 *** MODEL
-%lbl%@453 -> false
+%lbl%@446 -> false
 %lbl%+178 -> true
 %lbl%+182 -> true
-%lbl%+435 -> true
+%lbl%+428 -> true
 x@0@@4 -> 1
-ControlFlow -> {
-  0 0 -> 435
-  0 435 -> 178
-  0 178 -> 182
-  0 182 -> (- 453)
-  else -> 435
-}
 tickleBool -> {
   true -> true
   false -> true
@@ -151,18 +111,11 @@ Execution trace:
     Optimization0.bpl(67,5): anon3_LoopHead
     Optimization0.bpl(67,5): anon3_LoopDone
 *** MODEL
-%lbl%@497 -> false
+%lbl%@490 -> false
 %lbl%+209 -> true
 %lbl%+213 -> true
-%lbl%+475 -> true
+%lbl%+468 -> true
 x@0@@5 -> 2
-ControlFlow -> {
-  0 0 -> 475
-  0 475 -> 209
-  0 209 -> 213
-  0 213 -> (- 497)
-  else -> 475
-}
 tickleBool -> {
   true -> true
   false -> true
