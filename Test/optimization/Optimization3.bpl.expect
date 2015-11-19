@@ -2,7 +2,7 @@
 %lbl%@80 -> false
 %lbl%+33 -> true
 %lbl%+61 -> true
-x -> (- 962)
+x -> 41
 tickleBool -> {
   true -> true
   false -> true
