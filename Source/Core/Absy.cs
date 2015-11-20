@@ -2241,6 +2241,7 @@ namespace Microsoft.Boogie {
   }
   public class Incarnation : LocalVariable {
     public int incarnationNumber;
+    public readonly Variable OriginalVariable;
     public Incarnation(Variable/*!*/ var, int i) :
       base(
       var.tok,
@@ -2248,6 +2249,7 @@ namespace Microsoft.Boogie {
       ) {
       Contract.Requires(var != null);
       incarnationNumber = i;
+      OriginalVariable = var;
     }
 
   }

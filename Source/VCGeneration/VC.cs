@@ -2830,6 +2830,11 @@ namespace VC {
       mvInfo = new ModelViewInfo(program, impl);
       Convert2PassiveCmd(impl, mvInfo);
 
+      if (QKeyValue.FindBoolAttribute(impl.Attributes, "may_unverified_instrumentation"))
+      {
+        InstrumentWithMayUnverifiedConditions(impl, exitBlock);
+      }
+
       #region Peep-hole optimizations
       if (CommandLineOptions.Clo.RemoveEmptyBlocks){
         #region Get rid of empty blocks
@@ -2864,6 +2869,190 @@ namespace VC {
 
       return gotoCmdOrigins;
     }
+
+    #region Simplified May-Unverified Analysis and Instrumentation
+
+    static void InstrumentWithMayUnverifiedConditions(Implementation impl, Block unifiedExitBlock)
+    {
+      var q = new Queue<Block>();
+      q.Enqueue(unifiedExitBlock);
+      var conditionOnBlockEntry = new Dictionary<Block, HashSet<Variable>>();
+      while (q.Any())
+      {
+        var block = q.Dequeue();
+
+        if (conditionOnBlockEntry.ContainsKey(block))
+        {
+          continue;
+        }
+
+        var gotoCmd = block.TransferCmd as GotoCmd;
+        if (gotoCmd != null && gotoCmd.labelTargets.Any(b => !conditionOnBlockEntry.ContainsKey(b)))
+        {
+          q.Enqueue(block);
+          continue;
+        }
+
+        HashSet<Variable> cond = new HashSet<Variable>();
+        if (gotoCmd != null)
+        {
+          var mayInstrs = new List<Block>();
+          bool noInstr = true;
+          foreach (var succ in gotoCmd.labelTargets)
+          {
+            var c = conditionOnBlockEntry[succ];
+            if (c != null)
+            {
+              mayInstrs.Add(succ);
+            }
+            else
+            {
+              noInstr = false;
+            }
+            cond = JoinVariableSets(cond, c);
+          }
+          if (!noInstr)
+          {
+            foreach (var instr in mayInstrs)
+            {
+              InstrumentWithCondition(instr, 0, conditionOnBlockEntry[instr]);
+            }
+          }
+        }
+        
+        for (int i = block.Cmds.Count - 1; 0 <= i; i--)
+        {
+          var cmd = block.Cmds[i];
+          if (cond == null) { break; }
+
+          var assertCmd = cmd as AssertCmd;
+          if (assertCmd != null)
+          {
+            var litExpr = assertCmd.Expr as LiteralExpr;
+            if (litExpr != null && litExpr.IsTrue)
+            {
+              continue;
+            }
+
+            HashSet<Variable> vu = null;
+            if (assertCmd.VerifiedUnder == null)
+            {
+              vu = null;
+            }
+            else
+            {
+              HashSet<Variable> vars;
+              if (IsConjunctionOfAssumptionVariables(assertCmd.VerifiedUnder, out vars))
+              {
+                vu = vars;
+                // TODO(wuestholz): Maybe drop the :verified_under attribute.
+              }
+              else
+              {
+                vu = null;
+              }
+            }
+
+            if (vu == null)
+            {
+              InstrumentWithCondition(block, i + 1, cond);
+            }
+
+            cond = JoinVariableSets(cond, vu);
+          }
+        }
+
+        if (cond != null && block.Predecessors.Count == 0)
+        {
+          // TODO(wuestholz): Should we rather instrument each block?
+          InstrumentWithCondition(block, 0, cond);
+        }
+
+        foreach (var pred in block.Predecessors)
+        {
+          q.Enqueue(pred);
+        }
+
+        conditionOnBlockEntry[block] = cond;
+      }
+    }
+
+    private static void InstrumentWithCondition(Block block, int idx, HashSet<Variable> condition)
+    {
+      var conj = Expr.BinaryTreeAnd(condition.Select(v => (Expr)new IdentifierExpr(Token.NoToken, v)).ToList());
+      block.Cmds.Insert(idx, new AssumeCmd(Token.NoToken, Expr.Not(conj)));
+    }
+
+    static HashSet<Variable> JoinVariableSets(HashSet<Variable> c0, HashSet<Variable> c1)
+    {
+      // We use the following lattice:
+      // - Top: null (i.e., true)
+      // - Bottom: new HashSet<Variable>() (i.e., false)
+      // - Other Elements: new HashSet<Variable>(...) (i.e., conjunctions of assumption variables)
+
+      if (c0 == null || c1 == null)
+      {
+        return null;
+      }
+      var result = new HashSet<Variable>(c0);
+      result.UnionWith(c1);
+      return result;
+    }
+
+    static bool IsAssumptionVariableOrIncarnation(Variable v)
+    {
+      if (QKeyValue.FindBoolAttribute(v.Attributes, "assumption")) { return true; }
+      var incar = v as Incarnation;
+      return incar == null || QKeyValue.FindBoolAttribute(incar.OriginalVariable.Attributes, "assumption");
+    }
+
+    static bool IsConjunctionOfAssumptionVariables(Expr expr, out HashSet<Variable> variables)
+    {
+      Contract.Requires(expr != null);
+
+      variables = null;
+      var litExpr = expr as LiteralExpr;
+      if (litExpr != null && (litExpr.IsFalse || litExpr.IsTrue))
+      {
+        if (litExpr.IsTrue)
+        {
+          variables = new HashSet<Variable>();
+        }
+        return true;
+      }
+
+      var idExpr = expr as IdentifierExpr;
+      if (idExpr != null && IsAssumptionVariableOrIncarnation(idExpr.Decl))
+      {
+        variables = new HashSet<Variable>();
+        variables.Add(idExpr.Decl);
+        return true;
+      }
+
+      var andExpr = expr as NAryExpr;
+      if (andExpr != null)
+      {
+        var fun = andExpr.Fun as BinaryOperator;
+        if (fun != null && fun.Op == BinaryOperator.Opcode.And && andExpr.Args != null)
+        {
+          bool res = true;
+          variables = new HashSet<Variable>();
+          foreach (var op in andExpr.Args)
+          {
+            HashSet<Variable> vars;
+            var r = IsConjunctionOfAssumptionVariables(op, out vars);
+            res &= r;
+            variables = JoinVariableSets(variables, vars);
+            if (!res) { break; }
+          }
+          return res;
+        }
+      }
+
+      return false;
+    }
+
+    #endregion
 
     private static void HandleSelectiveChecking(Implementation impl)
     {
