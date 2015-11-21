@@ -10,12 +10,13 @@ install:
   # FIXME: We should not be using GPUVerify's repo for Z3
   - sudo sh -c 'echo "deb http://ppa.launchpad.net/delcypher/gpuverify-smt/ubuntu precise main" > /etc/apt/sources.list.d/smt.list'
   - sudo apt-get update
-  - nuget restore ${TRAVIS_SOLUTION}
+  # NuGet is a little flakey in legacy TravisCI, use travis_retry command to retry the command if it fails
+  - travis_retry nuget restore ${TRAVIS_SOLUTION}
   # Install Z3
   - sudo apt-get -y install z3=4.3.2-0~precise2
   # Install needed python tools
   - sudo pip install lit OutputCheck pyyaml
-  - mkdir -p Source/packages && cd Source/packages && nuget install NUnit.Runners -Version 2.6.3
+  - mkdir -p Source/packages && cd Source/packages && travis_retry nuget install NUnit.Runners -Version 2.6.3
   - cd ../../
 script:
   - xbuild /p:Configuration=${BOOGIE_CONFIG} ${TRAVIS_SOLUTION}
