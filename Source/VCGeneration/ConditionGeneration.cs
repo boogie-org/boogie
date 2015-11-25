@@ -1133,7 +1133,12 @@ namespace VC {
         }
         if (returnBlocks > 1) {
           string unifiedExitLabel = "GeneratedUnifiedExit";
-          Block unifiedExit = new Block(new Token(-17, -4), unifiedExitLabel, new List<Cmd>(), new ReturnCmd(Token.NoToken));
+          Block unifiedExit;
+          if (impl.StructuredStmts != null) {
+            unifiedExit = new Block(new Token(-17, -4), unifiedExitLabel, new List<Cmd>(), new ReturnCmd(impl.StructuredStmts.EndCurly));
+          } else {
+            unifiedExit = new Block(new Token(-17, -4), unifiedExitLabel, new List<Cmd>(), new ReturnCmd(Token.NoToken));
+          }
           Contract.Assert(unifiedExit != null);
           foreach (Block b in impl.Blocks) {
             if (b.TransferCmd is ReturnCmd) {
