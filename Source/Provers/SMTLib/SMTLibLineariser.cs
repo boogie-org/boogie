@@ -204,7 +204,11 @@ namespace Microsoft.Boogie.SMTLib
       else if (node is VCExprFloatLit)
       {
         BigFloat lit = ((VCExprFloatLit)node).Val;
-        wr.Write(("((_ to_fp 8 24) roundTowardZero "));
+        if (lit.IsSpecialType) {
+          wr.Write("(_ " + lit.Decimal + " " + lit.ExponentSize.ToString() + " " + lit.MantissaSize.ToString() + ")");
+          return true;
+        }
+        wr.Write("((_ to_fp " + lit.ExponentSize.ToString() + " " + lit.MantissaSize.ToString() + ") RNE ");
         if (lit.IsNegative)
           // In SMT2 "-42" is an identifier (SMT2, Sect. 3.2 "Symbols")
           wr.Write("(- 0.0 {0})", lit.Abs.ToDecimalString());
@@ -620,31 +624,31 @@ namespace Microsoft.Boogie.SMTLib
 
       public bool VisitFloatAddOp(VCExprNAry node, LineariserOptions options)
       {
-        WriteApplication("fp.add roundTowardZero", node, options);
+        WriteApplication("fp.add RNE", node, options);
         return true;
       }
 
       public bool VisitFloatSubOp(VCExprNAry node, LineariserOptions options)
       {
-        WriteApplication("fp.sub roundTowardZero", node, options);
+        WriteApplication("fp.sub RNE", node, options);
         return true;
       }
 
       public bool VisitFloatMulOp(VCExprNAry node, LineariserOptions options)
       {
-        WriteApplication("fp.mul roundTowardZero", node, options);
+        WriteApplication("fp.mul RNE", node, options);
         return true;
       }
 
       public bool VisitFloatDivOp(VCExprNAry node, LineariserOptions options)
       {
-        WriteApplication("fp.div roundTowardZero", node, options);
+        WriteApplication("fp.div RNE", node, options);
         return true;
       }
 
       public bool VisitFloatRemOp(VCExprNAry node, LineariserOptions options)
       {
-        WriteApplication("fp.rem roundTowardZero", node, options);
+        WriteApplication("fp.rem RNE", node, options);
         return true;
       }
 

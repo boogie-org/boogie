@@ -25,7 +25,7 @@ namespace Microsoft.Basetypes
 
     // the internal representation
     [Rep]
-    internal readonly BIM mantissa; //Note that the mantissa arrangement matches standard fp arrangement (most significant bit is farthest left)
+    internal readonly long mantissa; //Note that the mantissa arrangement matches standard fp arrangement (most significant bit is farthest left)
     [Rep]
     internal readonly int mantissaSize;
     [Rep]
@@ -37,7 +37,7 @@ namespace Microsoft.Basetypes
     [Rep]
     internal readonly bool isDec;
 
-    public BIM Mantissa {
+    public long Mantissa {
       get {
         return mantissa;
       }
@@ -69,17 +69,17 @@ namespace Microsoft.Basetypes
 
     public bool IsDec {
       get {
-        return IsDec;
+        return isDec;
       }
     }
 
     public static BigFloat ZERO(int mantissaSize, int exponentSize) { return new BigFloat(0, 0, mantissaSize, exponentSize); } //Does not include negative zero
 
     private static readonly BIM two = new BIM(2);
-    private static BIM two_n(int n) {
-      BIM toReturn = new BIM(1);
+    private static long two_n(int n) {
+      long toReturn = 1;
       for (int i = 0; i < n; i++)
-        toReturn = toReturn * two;
+        toReturn = toReturn * 2;
       return toReturn;
     }
 
@@ -96,8 +96,12 @@ namespace Microsoft.Basetypes
     }
 
     [Pure]
-    public static BigFloat FromBigInt(BIM v) {
+    public static BigFloat FromLong(long v) {
       return new BigFloat(0, v, 8, 24);
+    }
+
+    public static BigFloat FromBigInt(BIM v) {
+      return FromLong(Int64.Parse(v.ToString())); //Sketchy.  Hope this doesn't cause problems
     }
 
     public static BigFloat FromBigDec(BigDec v)
@@ -116,11 +120,11 @@ namespace Microsoft.Basetypes
           case 1:
             return new BigFloat(vals[0], 8, 24); 
           case 2:
-            return new BigFloat(Int32.Parse(vals[0]), BIM.Parse(vals[1]), 8, 24);
+            return new BigFloat(Int32.Parse(vals[0]), Int64.Parse(vals[1]), 8, 24);
           case 3:
             return new BigFloat(vals[0], Int32.Parse(vals[1]), Int32.Parse(vals[2]));
           case 4:
-            return new BigFloat(Int32.Parse(vals[0]), BIM.Parse(vals[1]), Int32.Parse(vals[2]), Int32.Parse(vals[3]));
+            return new BigFloat(Int32.Parse(vals[0]), Int64.Parse(vals[1]), Int32.Parse(vals[2]), Int32.Parse(vals[3]));
           default:
             throw new FormatException(); //Unreachable
         }
@@ -130,7 +134,7 @@ namespace Microsoft.Basetypes
       }
     }
 
-    internal BigFloat(int exponent, BIM mantissa, int exponentSize, int mantissaSize) {
+    internal BigFloat(int exponent, long mantissa, int exponentSize, int mantissaSize) {
       this.exponentSize = exponentSize;
       this.exponent = exponent;
       this.mantissa = mantissa;
@@ -146,8 +150,30 @@ namespace Microsoft.Basetypes
       this.mantissa = 0;
       this.isDec = true;
       this.dec_value = dec_value;
+      //Special cases:
+      if (this.dec_value.Equals("+oo") || this.dec_value.Equals("-oo") || this.dec_value.Equals("-zero"))
+        return;
+      if (this.dec_value.ToLower().Equals("nan")) {
+        this.dec_value = "NaN";
+        return;
+      }
+      if (this.dec_value.Equals("INF") || this.dec_value.Equals("+INF")) {
+        this.dec_value = "+oo";
+        return;
+      }
+      if (this.dec_value.Equals("-INF")) {
+        this.dec_value = "-oo";
+        return;
+      }
+      if (this.dec_value.Equals("+zero")) {
+        this.dec_value = "0.0";
+        return;
+      }
+      //End special cases
       if (this.dec_value.IndexOf(".") == -1)
         this.dec_value += ".0"; //Assures that the decimal value is a "real" number
+      if (this.dec_value.IndexOf(".") == 0)
+        this.dec_value = "0" + this.dec_value; //Assures that decimals always have a 0 in front
     }
 
     private BIM maxMantissa()
@@ -265,7 +291,7 @@ namespace Microsoft.Basetypes
         }
       }
 
-      return new BigFloat(exp, value, exponentSize, mantissaSize);
+      return new BigFloat(exp, Int64.Parse(value.ToString()), exponentSize, mantissaSize);
     }
 
     // ``floor`` rounds towards negative infinity (like SMT-LIBv2's to_int).
@@ -345,7 +371,7 @@ namespace Microsoft.Basetypes
     public BigFloat Abs {
       //TODO: fix for fp functionality
       get {
-        return new BigFloat(Exponent, BIM.Abs(Mantissa), ExponentSize, MantissaSize);
+        return new BigFloat(Exponent, Math.Abs(Mantissa), ExponentSize, MantissaSize);
       }
     }
 
@@ -353,7 +379,7 @@ namespace Microsoft.Basetypes
     public BigFloat Negate {
       //TODO: Modify for correct fp functionality
       get {
-        return new BigFloat(Exponent, BIM.Negate(Mantissa), ExponentSize, MantissaSize);
+        return new BigFloat(Exponent, -Mantissa, ExponentSize, MantissaSize);
       }
     }
 
@@ -367,9 +393,9 @@ namespace Microsoft.Basetypes
       //TODO: Modify for correct fp functionality
       Contract.Requires(x.ExponentSize == y.ExponentSize);
       Contract.Requires(x.MantissaSize == y.MantissaSize);
-      BIM m1 = x.Mantissa;
+      long m1 = x.Mantissa;
       int e1 = x.Exponent;
-      BIM m2 = y.Mantissa;
+      long m2 = y.Mantissa;
       int e2 = y.Exponent;
       m1 = m1 + two_n(x.mantissaSize + 1); //Add implicit bit
       m2 = m2 + two_n(y.mantissaSize + 1);
@@ -381,7 +407,7 @@ namespace Microsoft.Basetypes
       }
 
       while (e2 < e1) {
-        m2 = m2 / two;
+        m2 = m2 / 2;
         e2++;
       }
 
@@ -404,6 +430,14 @@ namespace Microsoft.Basetypes
     ////////////////////////////////////////////////////////////////////////////
     // Some basic comparison operations
 
+    public bool IsSpecialType {
+      get {
+        if (!IsDec)
+          return false;
+        return (dec_value.Equals("NaN") || dec_value.Equals("+oo") || dec_value.Equals("-oo") || dec_value.Equals("-zero"));
+      }
+    }
+
     public bool IsPositive {
       get {
         return !IsNegative;
@@ -418,7 +452,7 @@ namespace Microsoft.Basetypes
 
     public bool IsZero {
       get {
-        return Mantissa.IsZero && Exponent == 0;
+        return Mantissa == 0 && Exponent == 0;
       }
     }
 

@@ -1897,9 +1897,9 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
        Get(); //Skip the fp token
        Get();
        if (t.val != "(") { throw new FormatException(); }
-       while (la.kind == 1 || la.kind == 3 || la.kind == 6 || la.kind == 75) { //Get values between the parens
+       while (la.kind == 1 || la.kind == 3 || la.kind == 6 || la.kind == 4 || la.kind == 74 || la.kind == 75) { //Get values between the parens
          Get();
-         if (t.val == "-") //special negative case (la.kind == 75)
+         if (t.val == "-" || t.val == "+") //special sign case (la.kind == 74 or 75)
           s += t.val;
          else
           s += t.val + " ";
