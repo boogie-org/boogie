@@ -356,16 +356,8 @@ namespace Microsoft.Boogie {
       hasOutput = false;
       outputExn = null;
       this.handler = handler;
-
-      if (namedAssumeVars != null && namedAssumeVars.Any())
-      {
-        // TODO(wuestholz): Avoid doing a full reset. This is currently necessary for old versions of Z3 due to a bug.
-        thmProver.FullReset(gen);
-      }
-      else
-      {
-        thmProver.Reset(gen);
-      }
+      
+      thmProver.Reset(gen);
       SetTimeout();
       proverStart = DateTime.UtcNow;
       thmProver.NamedAssumeVars = namedAssumeVars;

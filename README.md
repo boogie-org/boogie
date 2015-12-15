@@ -6,7 +6,7 @@
 |-------------------------------|---------------------------------|
 | [![linux build status][1]][2] | [![windows_build_status][3]][4] |
 
-[1]: https://travis-ci.org/boogie-org/boogie.svg
+[1]: https://travis-ci.org/boogie-org/boogie.svg?branch=master
 [2]: https://travis-ci.org/boogie-org/boogie
 [3]: https://pmbuilds.inf.ethz.ch/buildStatus/icon?job=boogie
 [4]: #FIXME
@@ -48,7 +48,7 @@ You can also report issues on our [issue tracker](https://github.com/boogie-org/
 ### Requirements
 
 - [NuGet](https://www.nuget.org/)
-- [Z3](https://github.com/Z3Prover/z3) 4.3.2 or [CVC4](http://cvc4.cs.nyu.edu/web/) **FIXME_VERSION** (note
+- [Z3](https://github.com/Z3Prover/z3) 4.4.1 or [CVC4](http://cvc4.cs.nyu.edu/web/) **FIXME_VERSION** (note
   CVC4 support is experimental)
 
 #### Windows specific
