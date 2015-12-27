@@ -421,13 +421,7 @@ namespace Microsoft.Boogie.SMTLib
 
       SendThisVC(vcString);
 
-      if (options.Solver == SolverKind.Z3 && 0 < OptimizationRequests.Count)
-      {
-        foreach (var r in OptimizationRequests)
-        {
-          SendThisVC(r);
-        }
-      }
+      SendOptimizationRequests();
 
       FlushLogFile();
 
@@ -440,6 +434,17 @@ namespace Microsoft.Boogie.SMTLib
 
       SendThisVC("(check-sat)");
       FlushLogFile();
+    }
+
+    private void SendOptimizationRequests()
+    {
+      if (options.Solver == SolverKind.Z3 && 0 < OptimizationRequests.Count)
+      {
+        foreach (var r in OptimizationRequests)
+        {
+          SendThisVC(r);
+        }
+      }
     }
 
     public override void Reset(VCExpressionGenerator gen)
@@ -2137,6 +2142,7 @@ namespace Microsoft.Boogie.SMTLib
 
     public override void Assert(VCExpr vc, bool polarity)
     {
+        OptimizationRequests.Clear();
         string a = "";
         if (polarity)
         {
@@ -2148,6 +2154,7 @@ namespace Microsoft.Boogie.SMTLib
         }
         AssertAxioms();
         SendThisVC(a);
+        SendOptimizationRequests();
     }
 
     public override void DefineMacro(Macro f, VCExpr vc) {
