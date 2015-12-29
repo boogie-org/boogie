@@ -193,7 +193,7 @@ namespace VC {
         var expr = ctxt.Ctxt.BoogieExprTranslator.Translate(ac.Expr);
         
         var aid = QKeyValue.FindStringAttribute(ac.Attributes, "id");
-        if (aid != null && namedAssumeVars != null)
+        if (CommandLineOptions.Clo.PrintNecessaryAssumes && aid != null && namedAssumeVars != null)
         {
           var v = gen.Variable("assume$$" + aid, Microsoft.Boogie.Type.Bool);
           namedAssumeVars.Add(v);
