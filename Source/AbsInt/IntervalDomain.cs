@@ -884,6 +884,10 @@ namespace Microsoft.Boogie.AbstractInterpretation
               if (lo0 != null && lo1 != null && 0 <= (BigInteger)lo0 && 0 <= (BigInteger)lo1) {
                 Lo = BigInteger.Zero;
                 Hi = hi1;
+                if (lo0 < lo1 && hi0 != null && hi0 < lo1) {
+                  Lo = lo0;
+                  Hi = hi0;
+                }
               }
               break;
             case BinaryOperator.Opcode.RealDiv:

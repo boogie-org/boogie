@@ -332,3 +332,18 @@ procedure W0(N: real)
     assert N - i <= bf0 - 1.0;
   }
 }
+
+// mod
+
+procedure Mod0(n: int)
+  requires 10 < n;
+{
+    var i: int;
+
+    i := 0;
+    while (i < 10)
+    {
+        i := (i mod n) + 1;
+    }
+    assert i == 10;
+}
