@@ -411,10 +411,11 @@ namespace Microsoft.Boogie.SMTLib
       SendThisVC("(push 1)");
       SendThisVC("(set-info :boogie-vc-id " + SMTLibNamer.QuoteId(descriptiveName) + ")");
 
-      if (NamedAssumeVars != null)
+      if (CommandLineOptions.Clo.PrintNecessaryAssumes && NamedAssumeVars != null)
       {
         foreach (var v in NamedAssumeVars)
         {
+          SendThisVC(string.Format("(declare-fun {0} () Bool)", v));
           SendThisVC(string.Format("(assert (! {0} :named {1}))", v, "aux$$" + v.Name));
         }
       }
@@ -1292,7 +1293,7 @@ namespace Microsoft.Boogie.SMTLib
 
             var reporter = handler as VC.VCGen.ErrorReporter;
             // TODO(wuestholz): Is the reporter ever null?
-            if (NamedAssumeVars != null && NamedAssumeVars.Any() && result == Outcome.Valid && reporter != null)
+            if (CommandLineOptions.Clo.PrintNecessaryAssumes && NamedAssumeVars != null && NamedAssumeVars.Any() && result == Outcome.Valid && reporter != null)
             {
               SendThisVC("(get-unsat-core)");
               var resp = Process.GetProverResponse();

@@ -255,7 +255,10 @@ void ObjectInvariant()
         RegisterType(node.Type);
         string decl =
           "(declare-fun " + printedName + " () " + TypeToString(node.Type) + ")";
-        AddDeclaration(decl);
+        if (!printedName.StartsWith("assume$$"))
+        {
+          AddDeclaration(decl);
+        }
         KnownVariables.Add(node);
 		if(declHandler != null)
 			declHandler.VarDecl(node);
