@@ -180,8 +180,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
             }
           }
           return e;
-        } else {
-          Contract.Assert(V.TypedIdent.Type.IsReal);
+        } else if (V.TypedIdent.Type.IsReal){
           Expr e = Expr.True;
           if (Lo != null && Hi != null && Lo == Hi) {
             // produce an equality
@@ -199,6 +198,30 @@ namespace Microsoft.Boogie.AbstractInterpretation
             }
           }
           return e;
+        } else {
+          Contract.Assert(V.TypedIdent.Type.IsFloat);
+          Expr e = Expr.True;
+          if (Lo != null && Hi != null && Lo == Hi)
+          {
+            // produce an equality
+            var ide = new IdentifierExpr(Token.NoToken, V);
+            e = Expr.And(e, BplEq(ide, NumberToExpr((BigInteger)Lo, V.TypedIdent.Type)));
+          }
+          else
+          {
+            // produce a (possibly empty) conjunction of inequalities
+            if (Lo != null)
+            {
+              var ide = new IdentifierExpr(Token.NoToken, V);
+              e = Expr.And(e, BplLe(NumberToExpr((BigInteger)Lo, V.TypedIdent.Type), ide));
+            }
+            if (Hi != null)
+            {
+              var ide = new IdentifierExpr(Token.NoToken, V);
+              e = Expr.And(e, BplLe(ide, NumberToExpr((BigInteger)Hi, V.TypedIdent.Type)));
+            }
+          }
+          return e;
         }
       }
     }
@@ -209,7 +232,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
       } else if (ty.IsReal) {
         return Expr.Literal(Basetypes.BigDec.FromBigInt(n));
       } else if (ty.IsFloat) {
-        return Expr.Literal(Basetypes.BigFloat.FromBigInt(n));
+        return Expr.Literal(Basetypes.BigFloat.FromBigInt(n, ty.FloatExponent, ty.FloatMantissa));
       } else {
         Contract.Assume(ty.IsInt);
         return Expr.Literal(Basetypes.BigNum.FromBigInt(n));

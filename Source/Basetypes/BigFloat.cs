@@ -92,21 +92,31 @@ namespace Microsoft.Basetypes
 
     [Pure]
     public static BigFloat FromInt(int v) {
-      return new BigFloat(v, 0, 24, 8);
+      return new BigFloat(v.ToString(), 8, 24);
     }
 
-    [Pure]
-    public static BigFloat FromLong(long v) {
-      return new BigFloat(0, v, 8, 24);
+    public static BigFloat FromInt(int v, int exponentSize, int mantissaSize)
+    {
+      return new BigFloat(v.ToString(), exponentSize, mantissaSize);
     }
 
     public static BigFloat FromBigInt(BIM v) {
-      return FromLong(Int64.Parse(v.ToString())); //Sketchy.  Hope this doesn't cause problems
+      return new BigFloat(v.ToString(), 8, 24);
+    }
+
+    public static BigFloat FromBigInt(BIM v, int exponentSize, int mantissaSize)
+    {
+      return new BigFloat(v.ToString(), exponentSize, mantissaSize);
     }
 
     public static BigFloat FromBigDec(BigDec v)
     {
       return new BigFloat(v.ToDecimalString(), 8, 24);
+    }
+
+    public static BigFloat FromBigDec(BigDec v, int exponentSize, int mantissaSize)
+    {
+      return new BigFloat(v.ToDecimalString(), exponentSize, mantissaSize);
     }
 
     [Pure]
@@ -170,9 +180,9 @@ namespace Microsoft.Basetypes
         return;
       }
       //End special cases
-      if (this.dec_value.IndexOf(".") == -1)
+      if (this.dec_value.IndexOf('.') == -1 && this.dec_value.IndexOf('e') == -1)
         this.dec_value += ".0"; //Assures that the decimal value is a "real" number
-      if (this.dec_value.IndexOf(".") == 0)
+      if (this.dec_value.IndexOf('.') == 0)
         this.dec_value = "0" + this.dec_value; //Assures that decimals always have a 0 in front
     }
 
@@ -369,16 +379,18 @@ namespace Microsoft.Basetypes
 
     [Pure]
     public BigFloat Abs {
-      //TODO: fix for fp functionality
       get {
+        if (IsDec)
+          return dec_value[0] == '-' ? new BigFloat(dec_value.Remove(0, 1), ExponentSize, MantissaSize) : this;
         return new BigFloat(Exponent, Math.Abs(Mantissa), ExponentSize, MantissaSize);
       }
     }
 
     [Pure]
     public BigFloat Negate {
-      //TODO: Modify for correct fp functionality
       get {
+        if (IsDec)
+          return dec_value[0] == '-' ? new BigFloat(dec_value.Remove(0, 1), ExponentSize, MantissaSize) : new BigFloat("-" + dec_value, ExponentSize, MantissaSize);
         return new BigFloat(Exponent, -Mantissa, ExponentSize, MantissaSize);
       }
     }
