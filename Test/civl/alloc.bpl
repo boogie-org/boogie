@@ -127,7 +127,7 @@ ensures pool == Remove(old(pool), i) && dom(l)[i] && map(l)[i] == mem[i];
 
 procedure {:layer 1} FreeLinear({:linear_in "mem"} l: lmap, i: int);
 modifies pool;
-requires !dom(pool)[i];
+requires dom(l)[i];
 ensures pool == Add(old(pool), i);
 
 procedure {:layer 1} WriteLinear({:layer 1} {:linear_in "mem"} l: lmap, i: int, o: int) returns ({:layer 1} {:linear "mem"} l': lmap);
