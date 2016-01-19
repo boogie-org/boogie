@@ -1115,7 +1115,7 @@ namespace Microsoft.Boogie.TypeErasure
       if (typeVarBindings.Count < node.TypeParameters.Count) {
         foreach (TypeVariable/*!*/ var in node.TypeParameters) {
           Contract.Assert(var != null);
-          if (typeVarBindings.All(b => !b.V.Equals(var)))
+          if (typeVarBindings.All(b => !b.V.Equals(bindings.TypeVariableBindings[var])))
             newBoundVars.Add((VCExprVar)bindings.TypeVariableBindings[var]);
         }
       }
