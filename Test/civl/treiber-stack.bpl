@@ -1,7 +1,7 @@
 // RUN: %boogie -noinfer -typeEncoding:m -useArrayTheory "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-const unique null: int;
+const null: int;
 type lmap;
 function {:linear "Node"} dom(lmap): [int]bool;
 function map(lmap): [int]int;
@@ -17,7 +17,7 @@ function Remove(x: lmap, i: int): (lmap);
 axiom (forall x: lmap, i: int :: dom(Remove(x, i)) == dom(x)[i:=false] && map(Remove(x, i)) == map(x));
 
 procedure {:yields} {:layer 0,1} ReadTopOfStack() returns (v:int);
-ensures {:right} |{ A: assume dom(Stack)[v] || Used[v]; return true; }|;
+ensures {:right} |{ A: assume v == null || dom(Stack)[v] || Used[v]; return true; }|;
 
 procedure {:yields} {:layer 0,1} Load(i:int) returns (v:int);
 ensures {:right} |{ A: assert dom(Stack)[i] || Used[i]; goto B,C;
