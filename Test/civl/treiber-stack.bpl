@@ -80,7 +80,6 @@ ensures {:atomic} |{ A: Stack := Add(Stack, x, TopOfStack); TopOfStack := x; ret
     call t_lmap := Store(t_lmap, x, t);
     call g, t_lmap := TransferToStack(t, x, t_lmap); 
     if (g) {
-      assert {:layer 1} map(Stack)[x] == t;
       break;
     }
     yield; 
@@ -124,7 +123,6 @@ function Subset([int]bool, [int]bool) returns (bool);
 
 function Empty() returns ([int]bool);
 function Singleton(int) returns ([int]bool);
-function Reachable([int,int]bool, int) returns ([int]bool);
 function Union([int]bool, [int]bool) returns ([int]bool);
 
 axiom(forall x:int :: !Empty()[x]);
