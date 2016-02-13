@@ -246,9 +246,9 @@ namespace Microsoft.Boogie.SMTLib
 
         // Set produce-unsat-cores last. It seems there's a bug in Z3 where if we set it earlier its value
         // gets reset by other set-option commands ( https://z3.codeplex.com/workitem/188 )
-        if (CommandLineOptions.Clo.ContractInfer && (CommandLineOptions.Clo.UseUnsatCoreForContractInfer || CommandLineOptions.Clo.ExplainHoudini))
+        if (CommandLineOptions.Clo.PrintNecessaryAssumes || (CommandLineOptions.Clo.ContractInfer && (CommandLineOptions.Clo.UseUnsatCoreForContractInfer || CommandLineOptions.Clo.ExplainHoudini)))
         {
-          SendThisVC("(set-option :produce-unsat-cores true)");
+          SendCommon("(set-option :produce-unsat-cores true)");
           this.usingUnsatCore = true;
         }
 
@@ -401,6 +401,8 @@ namespace Microsoft.Boogie.SMTLib
 
       PrepareCommon();
 
+      OptimizationRequests.Clear();
+
       string vcString = "(assert (not\n" + VCExpr2String(vc, 1) + "\n))";
       FlushAxioms();
 
@@ -408,7 +410,20 @@ namespace Microsoft.Boogie.SMTLib
 
       SendThisVC("(push 1)");
       SendThisVC("(set-info :boogie-vc-id " + SMTLibNamer.QuoteId(descriptiveName) + ")");
+
+      if (CommandLineOptions.Clo.PrintNecessaryAssumes && NamedAssumeVars != null)
+      {
+        foreach (var v in NamedAssumeVars)
+        {
+          SendThisVC(string.Format("(declare-fun {0} () Bool)", v));
+          SendThisVC(string.Format("(assert (! {0} :named {1}))", v, "aux$$" + v.Name));
+        }
+      }
+
       SendThisVC(vcString);
+
+      SendOptimizationRequests();
+
       FlushLogFile();
 
       if (Process != null) {
@@ -420,6 +435,17 @@ namespace Microsoft.Boogie.SMTLib
 
       SendThisVC("(check-sat)");
       FlushLogFile();
+    }
+
+    private void SendOptimizationRequests()
+    {
+      if (options.Solver == SolverKind.Z3 && 0 < OptimizationRequests.Count)
+      {
+        foreach (var r in OptimizationRequests)
+        {
+          SendThisVC(r);
+        }
+      }
     }
 
     public override void Reset(VCExpressionGenerator gen)
@@ -446,6 +472,7 @@ namespace Microsoft.Boogie.SMTLib
       if (options.Solver == SolverKind.Z3)
       {
         this.gen = gen;
+        SendThisVC("(reset)");
         Namer.Reset();
         common.Clear();
         SetupAxiomBuilder(gen);
@@ -1264,6 +1291,22 @@ namespace Microsoft.Boogie.SMTLib
             
             result = GetResponse();
 
+            var reporter = handler as VC.VCGen.ErrorReporter;
+            // TODO(wuestholz): Is the reporter ever null?
+            if (CommandLineOptions.Clo.PrintNecessaryAssumes && NamedAssumeVars != null && NamedAssumeVars.Any() && result == Outcome.Valid && reporter != null)
+            {
+              SendThisVC("(get-unsat-core)");
+              var resp = Process.GetProverResponse();
+              if (resp.Name != "")
+              {
+                 reporter.AddNecessaryAssume(resp.Name.Substring("aux$$assume$$".Length));
+              }
+              foreach (var arg in resp.Arguments)
+              {
+                reporter.AddNecessaryAssume(arg.Name.Substring("aux$$assume$$".Length));
+              }
+            }
+
             if (CommandLineOptions.Clo.RunDiagnosticsOnTimeout && result == Outcome.TimeOut)
             {
               #region Run timeout diagnostics
@@ -1812,6 +1855,7 @@ namespace Microsoft.Boogie.SMTLib
     private Model GetErrorModel() {
       if (!options.ExpectingModel())
         return null;
+
       SendThisVC("(get-model)");
       Process.Ping();
       Model theModel = null;
@@ -1906,6 +1950,9 @@ namespace Microsoft.Boogie.SMTLib
             result = Outcome.Invalid;
             wasUnknown = true;
             break;
+          case "objectives":
+            // We ignore this.
+            break;
           default:
             HandleProverError("Unexpected prover response: " + resp.ToString());
             break;
@@ -1943,6 +1990,8 @@ namespace Microsoft.Boogie.SMTLib
 
       return result;
     }
+
+    readonly IList<string> OptimizationRequests = new List<string>();
 
     protected string VCExpr2String(VCExpr expr, int polarity)
     {
@@ -1983,10 +2032,8 @@ namespace Microsoft.Boogie.SMTLib
         DeclCollector.Collect(sortedExpr);
         FeedTypeDeclsToProver();
 
-
-
         AddAxiom(SMTLibExprLineariser.ToString(sortedAxioms, Namer, options));
-        string res = SMTLibExprLineariser.ToString(sortedExpr, Namer, options);
+        string res = SMTLibExprLineariser.ToString(sortedExpr, Namer, options, OptimizationRequests);
         Contract.Assert(res != null);
 
         if (CommandLineOptions.Clo.Trace)
@@ -2096,6 +2143,7 @@ namespace Microsoft.Boogie.SMTLib
 
     public override void Assert(VCExpr vc, bool polarity)
     {
+        OptimizationRequests.Clear();
         string a = "";
         if (polarity)
         {
@@ -2107,6 +2155,7 @@ namespace Microsoft.Boogie.SMTLib
         }
         AssertAxioms();
         SendThisVC(a);
+        SendOptimizationRequests();
     }
 
     public override void DefineMacro(Macro f, VCExpr vc) {

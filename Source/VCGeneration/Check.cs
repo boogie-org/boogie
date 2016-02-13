@@ -346,7 +346,7 @@ namespace Microsoft.Boogie {
       }
     }
 
-    public void BeginCheck(string descriptiveName, VCExpr vc, ProverInterface.ErrorHandler handler) {
+    public void BeginCheck(string descriptiveName, VCExpr vc, ProverInterface.ErrorHandler handler, IList<VCExprVar> namedAssumeVars = null) {
       Contract.Requires(descriptiveName != null);
       Contract.Requires(vc != null);
       Contract.Requires(handler != null);
@@ -356,10 +356,11 @@ namespace Microsoft.Boogie {
       hasOutput = false;
       outputExn = null;
       this.handler = handler;
-
+      
       thmProver.Reset(gen);
       SetTimeout();
       proverStart = DateTime.UtcNow;
+      thmProver.NamedAssumeVars = namedAssumeVars;
       thmProver.BeginCheck(descriptiveName, vc, handler);
       //  gen.ClearSharedFormulas();    PR: don't know yet what to do with this guy
 
@@ -386,6 +387,9 @@ namespace Microsoft.Boogie {
   // -----------------------------------------------------------------------------------------------
 
   public abstract class ProverInterface {
+
+    public IList<VCExprVar> NamedAssumeVars;
+
     public static ProverInterface CreateProver(Program prog, string/*?*/ logFilePath, bool appendLogFile, int timeout, int taskID = -1) {
       Contract.Requires(prog != null);
 

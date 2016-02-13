@@ -11,6 +11,7 @@ using System.IO;
 using System.Linq;
 using System.Diagnostics;
 using System.Diagnostics.Contracts;
+using System.Text.RegularExpressions;
 
 namespace Microsoft.Boogie {
   public class CommandLineOptionEngine
@@ -478,6 +479,8 @@ namespace Microsoft.Boogie {
     public string AbstractHoudini = null;
     public bool UseUnsatCoreForContractInfer = false;
     public bool PrintAssignment = false;
+    // TODO(wuestholz): Add documentation for this flag.
+    public bool PrintNecessaryAssumes = false;
     public int InlineDepth = -1;
     public bool UseProverEvaluate = false; // Use ProverInterface's Evaluate method, instead of model to get variable values
     public bool UseUncheckedContracts = false;
@@ -1618,6 +1621,7 @@ namespace Microsoft.Boogie {
               ps.CheckBooleanFlag("crossDependencies", ref HoudiniUseCrossDependencies) ||
               ps.CheckBooleanFlag("useUnsatCoreForContractInfer", ref UseUnsatCoreForContractInfer) ||
               ps.CheckBooleanFlag("printAssignment", ref PrintAssignment) ||
+              ps.CheckBooleanFlag("printNecessaryAssumes", ref PrintNecessaryAssumes) ||
               ps.CheckBooleanFlag("useProverEvaluate", ref UseProverEvaluate) ||
               ps.CheckBooleanFlag("nonUniformUnfolding", ref NonUniformUnfolding) ||
               ps.CheckBooleanFlag("deterministicExtractLoops", ref DeterministicExtractLoops) ||
@@ -1700,7 +1704,7 @@ namespace Microsoft.Boogie {
         // no preference
         return true;
       }
-      return ProcsToCheck.Contains(methodFullname);
+      return ProcsToCheck.Any(s => Regex.IsMatch(methodFullname, "^" + Regex.Escape(s).Replace(@"\*", ".*") + "$"));
     }
 
     public virtual StringCollection ParseNamedArgumentList(string argList) {
@@ -1857,7 +1861,15 @@ namespace Microsoft.Boogie {
   Multiple .bpl files supplied on the command line are concatenated into one
   Boogie program.
 
-  /proc:<p>      : limits which procedures to check
+  /proc:<p>      : Only check procedures matched by pattern <p>. This option
+                   may be specified multiple times to match multiple patterns.
+                   The pattern <p> matches the whole procedure name (i.e.
+                   pattern ""foo"" will only match a procedure called foo and
+                   not fooBar). The pattern <p> may contain * wildcards which
+                   match any character zero or more times. For example the
+                   pattern ""ab*d"" would match abd, abcd and abccd but not
+                   Aabd nor abdD. The pattern ""*ab*d*"" would match abd,
+                   abcd, abccd, Abd and abdD.
   /noResolve     : parse only
   /noTypecheck   : parse and resolve only
 

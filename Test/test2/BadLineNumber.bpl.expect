@@ -1,0 +1,7 @@
+BadLineNumber.bpl(15,1): Error BP5003: A postcondition might not hold on this return path.
+BadLineNumber.bpl(5,3): Related location: This is the postcondition that might not hold.
+Execution trace:
+    BadLineNumber.bpl(9,5): anon0
+    BadLineNumber.bpl(14,5): anon3_Else
+
+Boogie program verifier finished with 0 verified, 1 error

@@ -1,0 +1,8 @@
+Issue25.bpl(12,1): Error BP5003: A postcondition might not hold on this return path.
+Issue25.bpl(8,1): Related location: This is the postcondition that might not hold.
+Execution trace:
+    Issue25.bpl(11,3): anon0
+    Issue25.bpl(12,1): anon2_LoopHead
+    Issue25.bpl(12,1): anon2_LoopDone
+
+Boogie program verifier finished with 0 verified, 1 error

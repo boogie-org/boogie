@@ -48,7 +48,7 @@ namespace VC {
   
   public class Wlp
   {
-    public static VCExpr Block(Block b, VCExpr N, VCContext ctxt)
+    public static VCExpr Block(Block b, VCExpr N, VCContext ctxt, IList<VCExprVar> namedAssumeVars = null)
       //modifies ctxt.*;
     {
       Contract.Requires(b != null);
@@ -63,7 +63,7 @@ namespace VC {
 
       for (int i = b.Cmds.Count; --i >= 0; )
       {
-        res = Cmd(b, cce.NonNull( b.Cmds[i]), res, ctxt);
+        res = Cmd(b, cce.NonNull( b.Cmds[i]), res, ctxt, namedAssumeVars);
       }
       
       int id = b.UniqueId;
@@ -87,7 +87,7 @@ namespace VC {
     /// <summary>
     /// Computes the wlp for an assert or assume command "cmd".
     /// </summary>
-    public static VCExpr Cmd(Block b, Cmd cmd, VCExpr N, VCContext ctxt) {
+    internal static VCExpr Cmd(Block b, Cmd cmd, VCExpr N, VCContext ctxt, IList<VCExprVar> namedAssumeVars = null) {
       Contract.Requires(cmd != null);
       Contract.Requires(N != null);
       Contract.Requires(ctxt != null);
@@ -186,17 +186,41 @@ namespace VC {
             if (naryExpr.Fun is FunctionCall) {
               int id = ac.UniqueId;
               ctxt.Label2absy[id] = ac;
-              return gen.ImpliesSimp(gen.LabelPos(cce.NonNull("si_fcall_" + id.ToString()), ctxt.Ctxt.BoogieExprTranslator.Translate(ac.Expr)), N);
+              return MaybeWrapWithOptimization(ctxt, gen, ac.Attributes, gen.ImpliesSimp(gen.LabelPos(cce.NonNull("si_fcall_" + id.ToString()), ctxt.Ctxt.BoogieExprTranslator.Translate(ac.Expr)), N));
             }
           }
         }
-        return gen.ImpliesSimp(ctxt.Ctxt.BoogieExprTranslator.Translate(ac.Expr), N);
+        var expr = ctxt.Ctxt.BoogieExprTranslator.Translate(ac.Expr);
+        
+        var aid = QKeyValue.FindStringAttribute(ac.Attributes, "id");
+        if (CommandLineOptions.Clo.PrintNecessaryAssumes && aid != null && namedAssumeVars != null)
+        {
+          var v = gen.Variable("assume$$" + aid, Microsoft.Boogie.Type.Bool);
+          namedAssumeVars.Add(v);
+          expr = gen.ImpliesSimp(v, expr);
+        }
+        return MaybeWrapWithOptimization(ctxt, gen, ac.Attributes, gen.ImpliesSimp(expr, N));
       } else {
         Console.WriteLine(cmd.ToString());
         Contract.Assert(false); throw new cce.UnreachableException();  // unexpected command
       }
     }
-    
+
+    private static VCExpr MaybeWrapWithOptimization(VCContext ctxt, VCExpressionGenerator gen, QKeyValue attrs, VCExpr expr)
+    {
+      var min = QKeyValue.FindExprAttribute(attrs, "minimize");
+      if (min != null)
+      {
+        expr = gen.Function(VCExpressionGenerator.MinimizeOp, ctxt.Ctxt.BoogieExprTranslator.Translate(min), expr);
+      }
+      var max = QKeyValue.FindExprAttribute(attrs, "maximize");
+      if (max != null)
+      {
+        expr = gen.Function(VCExpressionGenerator.MaximizeOp, ctxt.Ctxt.BoogieExprTranslator.Translate(max), expr);
+      }
+      return expr;
+    }
+
     public static CommandLineOptions.SubsumptionOption Subsumption(AssertCmd ac) {
       Contract.Requires(ac != null);
       int n = QKeyValue.FindIntAttribute(ac.Attributes, "subsumption", -1);

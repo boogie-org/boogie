@@ -696,6 +696,8 @@ namespace Microsoft.Boogie {
       }
     }
 
+    public readonly ISet<string> NecessaryAssumes = new HashSet<string>();
+
     public IEnumerable<Block> Blocks()
     {
       return Implementations.Select(Item => Item.Blocks).SelectMany(Item => Item);
@@ -750,14 +752,27 @@ namespace Microsoft.Boogie {
             Contract.Assert(block != null);
             var auxCmd = block.TransferCmd as GotoCmd;
             if (auxCmd == null) continue;
-            foreach(var bl in auxCmd.labelTargets)
+            foreach (var bl in auxCmd.labelTargets)
             {
                 if (loopBlocks.Contains(bl)) continue;
-                immSuccBlks.Add(bl); 
+                immSuccBlks.Add(bl);
             }
         }
         return immSuccBlks;
     }
+
+    private HashSet<Block> GetBlocksInAllNaturalLoops(Block header, Graph<Block/*!*/>/*!*/ g)
+    {
+        Contract.Assert(CommandLineOptions.Clo.DeterministicExtractLoops, "Can only be called with /deterministicExtractLoops option");
+        var allBlocksInNaturalLoops = new HashSet<Block>();
+        foreach (Block/*!*/ source in g.BackEdgeNodes(header))
+        {
+            Contract.Assert(source != null);
+            g.NaturalLoops(header, source).Iter(b => allBlocksInNaturalLoops.Add(b));
+        }
+        return allBlocksInNaturalLoops;
+    }
+
 
     void CreateProceduresForLoops(Implementation impl, Graph<Block/*!*/>/*!*/ g,
                                   List<Implementation/*!*/>/*!*/ loopImpls,
@@ -975,10 +990,11 @@ namespace Microsoft.Boogie {
                 GotoCmd auxGotoCmd = block.TransferCmd as GotoCmd;
                 Contract.Assert(auxGotoCmd != null && auxGotoCmd.labelNames != null && 
                     auxGotoCmd.labelTargets != null && auxGotoCmd.labelTargets.Count >= 1);
-                var blksThatBreakOut = GetBreakBlocksOfLoop(header, source, g);
-                var loopNodes = g.NaturalLoops(header, source);
+                //BUGFIX on 10/26/15: this contains nodes present in NaturalLoops for a different backedgenode
+                var loopNodes = GetBlocksInAllNaturalLoops(header, g); //var loopNodes = g.NaturalLoops(header, source); 
                 foreach(var bl in auxGotoCmd.labelTargets) {
-                    if (!loopNodes.Contains(bl)) {
+                    if (g.Nodes.Contains(bl) && //newly created blocks are not present in NaturalLoop(header, xx, g)
+                        !loopNodes.Contains(bl)) {
                         Block auxNewBlock = new Block();
                         auxNewBlock.Label = ((Block)bl).Label;
                         //these blocks may have read/write locals that are not present in naturalLoops
@@ -2225,6 +2241,7 @@ namespace Microsoft.Boogie {
   }
   public class Incarnation : LocalVariable {
     public int incarnationNumber;
+    public readonly Variable OriginalVariable;
     public Incarnation(Variable/*!*/ var, int i) :
       base(
       var.tok,
@@ -2232,6 +2249,7 @@ namespace Microsoft.Boogie {
       ) {
       Contract.Requires(var != null);
       incarnationNumber = i;
+      OriginalVariable = var;
     }
 
   }

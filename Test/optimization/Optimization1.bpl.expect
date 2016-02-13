@@ -1,0 +1,5 @@
+Optimization1.bpl(6,11): Error: attributes :minimize and :maximize accept only one argument
+Optimization1.bpl(11,11): Error: attributes :minimize and :maximize accept only one argument
+Optimization1.bpl(16,11): Error: attributes :minimize and :maximize accept only one argument
+Optimization1.bpl(21,11): Error: attributes :minimize and :maximize accept only one argument
+4 name resolution errors detected in Optimization1.bpl

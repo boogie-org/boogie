@@ -14,17 +14,17 @@ $mv_state_const -> 3
 F -> T@FieldName!val!0
 Heap -> |T@[Ref,FieldName]Int!val!0|
 m -> **m
-m@0 -> (- 276)
-m@1 -> (- 275)
-m@3 -> (- 275)
+m@0 -> (- 2)
+m@1 -> (- 1)
+m@3 -> (- 1)
 r -> **r
-r@0 -> (- 550)
+r@0 -> (- 2)
 this -> T@Ref!val!0
 x -> 719
 y -> **y
 Select_[Ref,FieldName]$int -> {
-  |T@[Ref,FieldName]Int!val!0| T@Ref!val!0 T@FieldName!val!0 -> (- 276)
-  else -> (- 276)
+  |T@[Ref,FieldName]Int!val!0| T@Ref!val!0 T@FieldName!val!0 -> (- 2)
+  else -> (- 2)
 }
 $mv_state -> {
   3 0 -> true
@@ -49,13 +49,13 @@ tickleBool -> {
 *** STATE top
 *** END_STATE
 *** STATE then
-  m -> (- 276)
+  m -> (- 2)
 *** END_STATE
 *** STATE postUpdate0
-  m -> (- 275)
+  m -> (- 1)
 *** END_STATE
 *** STATE end
-  r -> (- 550)
+  r -> (- 2)
   m -> 7
 *** END_STATE
 *** END_MODEL

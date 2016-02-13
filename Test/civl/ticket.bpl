@@ -6,7 +6,6 @@ axiom (forall x: int, y: int :: RightOpen(x)[y] <==> y < x);
 axiom (forall x: int, y: int :: RightClosed(x)[y] <==> y <= x);
 
 type X;
-function {:builtin "MapConst"} mapconstbool(bool): [X]bool;
 const nil: X;
 var {:layer 0,2} t: int;
 var {:layer 0,2} s: int;
@@ -42,7 +41,7 @@ ensures {:layer 1} {:layer 2} xl != nil;
 }
 
 procedure {:yields} {:layer 2} main({:linear_in "tid"} xls':[X]bool)
-requires {:layer 2} xls' == mapconstbool(true);
+requires {:layer 2} xls' == MapConstBool(true);
 {
     var {:linear "tid"} tid: X;
     var {:linear "tid"} xls: [X]bool;
@@ -132,7 +131,7 @@ ensures {:layer 1} Inv1(T,t);
 }
 
 procedure {:yields} {:layer 0,2} Init({:linear "tid"} xls:[X]bool);
-ensures {:atomic} |{ A: assert xls == mapconstbool(true); cs := nil; t := 0; s := 0; T := RightOpen(0); return true; }|;
+ensures {:atomic} |{ A: assert xls == MapConstBool(true); cs := nil; t := 0; s := 0; T := RightOpen(0); return true; }|;
 
 procedure {:yields} {:layer 0,1} GetTicket({:linear "tid"} tid: X) returns (m: int);
 ensures {:atomic} |{ A: m := t; t := t + 1; T[m] := true; return true; }|;

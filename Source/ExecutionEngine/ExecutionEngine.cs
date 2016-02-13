@@ -1008,6 +1008,11 @@ namespace Microsoft.Boogie
         CleanupCheckers(requestId);
       }
 
+      if (CommandLineOptions.Clo.PrintNecessaryAssumes && program.NecessaryAssumes.Any())
+      {
+        Console.WriteLine("Necessary assume command(s): {0}", string.Join(", ", program.NecessaryAssumes));
+      }
+
       cce.NonNull(CommandLineOptions.Clo.TheProverFactory).Close();
 
       outputCollector.WriteMoreOutput();

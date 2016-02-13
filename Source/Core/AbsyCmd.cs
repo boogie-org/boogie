@@ -2463,6 +2463,12 @@ namespace Microsoft.Boogie {
       } finally {
         rc.TypeBinderState = previousTypeBinderState;
       }
+
+      var id = QKeyValue.FindStringAttribute(Attributes, "id");
+      if (id != null)
+      {
+        rc.AddStatementId(tok, id);
+      }
     }
 
     public override void AddAssignedVariables(List<Variable> vars) {
@@ -2890,6 +2896,12 @@ namespace Microsoft.Boogie {
     public override void Resolve(ResolutionContext rc) {
       //Contract.Requires(rc != null);
       Expr.Resolve(rc);
+
+      var id = QKeyValue.FindStringAttribute(Attributes, "id");
+      if (id != null)
+      {
+        rc.AddStatementId(tok, id);
+      }
     }
     public override void AddAssignedVariables(List<Variable> vars) {
       //Contract.Requires(vars != null);
@@ -3206,8 +3218,14 @@ namespace Microsoft.Boogie {
       this.Expr.Emit(stream);
       stream.WriteLine(";");
     }
+    public override void Resolve(ResolutionContext rc) {
+      //Contract.Requires(rc != null);
+      ResolveAttributes(Attributes, rc);
+      base.Resolve(rc);
+    }
     public override void Typecheck(TypecheckingContext tc) {
       //Contract.Requires(tc != null);
+      TypecheckAttributes(Attributes, tc);
       Expr.Typecheck(tc);
       Contract.Assert(Expr.Type != null);  // follows from Expr.Typecheck postcondition
       if (!Expr.Type.Unify(Type.Bool)) {

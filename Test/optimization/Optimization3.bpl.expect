@@ -1,0 +1,31 @@
+*** MODEL
+%lbl%@80 -> false
+%lbl%+33 -> true
+%lbl%+61 -> true
+x -> 41
+tickleBool -> {
+  true -> true
+  false -> true
+  else -> true
+}
+*** END_MODEL
+Optimization3.bpl(10,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    Optimization3.bpl(8,5): anon0
+*** MODEL
+%lbl%@115 -> false
+%lbl%+105 -> true
+%lbl%+56 -> true
+x@@0 -> 41
+y@@0!1!1 -> 719
+tickleBool -> {
+  true -> true
+  false -> true
+  else -> true
+}
+*** END_MODEL
+Optimization3.bpl(19,5): Error BP5001: This assertion might not hold.
+Execution trace:
+    Optimization3.bpl(17,5): anon0
+
+Boogie program verifier finished with 0 verified, 2 errors
