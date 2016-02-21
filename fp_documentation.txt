@@ -10,7 +10,9 @@ Declaring Variables:
 The syntax for declaring a floating point variable is as follows:
 var name: float(exp man);
 Where exp is the size of the float exponent and man is the size of the float mantissa
+Please note that 
 
+**REMOVE THIS SYNTAX**
 It is also acceptable to use the following syntax:
 var name: float();
 This syntax assumes the float exponent to be size 8 and the mantissa to be size 24
@@ -23,10 +25,11 @@ Declares a variable called x with a exponent sized 11 and mantissa sized 53
 Declaring Constants:
 
 All of the following syntax are viable for declaring a floating point constant:
-float(dec)
-float(exp_val man_val)
-float(dec exp man)
-float(exp_val man_val exp man)
+**REMOVE THE FIRST OF THESE TWO SYNTAXES**
+fp(dec)
+fp(exp_val man_val)
+fp(dec exp man)
+fp(exp_val man_val exp man)
 
 Where dec is the decimal value of the constant,
 exp_val/man_value are the integer values of their respective fields,
@@ -68,6 +71,8 @@ Where exp and man are the sizes of the exponent and mantissa respectively
 --------------------------------------------------------------------------------
 Known Issues:
 
+float16, float32, float64, and float128 still need to be added
+
 There is currently no way to convert from a floating point to any other data type
 
 There is currently no way to convert the value of a variable to a floating point type
@@ -77,3 +82,7 @@ fp(x);
 
 Statements of the following form cause a parser error (parenthesis followed by fp constant)
 ... (fp(1) + fp(1));
+
+Attempts by Boogie to infer the behavior of loops fail when floating points are involved
+
+Describing loop behavior manually is untested (using loop unroll appears to work)

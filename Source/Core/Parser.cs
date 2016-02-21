@@ -668,17 +668,35 @@ private class BvBounds : Expr {
    ty = new BasicType(t, SimpleType.Real);
   } else if (la.kind == 98) {
    Get();
-   if (la.kind == 9) {
-     Get();
-     Expect(3);
-     int exp = Int32.Parse(t.val);
-     Expect(3);
-     int man = Int32.Parse(t.val);
-     ty = new FloatType(t, exp, man);
-     Expect(10);
+   if (la.kind == 3) {
+    Expect(3);
+    switch (Int32.Parse(t.val)) {
+    case 16:
+        ty = new FloatType(t, 5, 11);
+        break;
+    case 32:
+        ty = new FloatType(t, 8, 24);
+        break;
+    case 64:
+        ty = new FloatType(t, 11, 53);
+        break;
+    case 128:
+        ty = new FloatType(t, 15, 113);
+        break;
+    default:
+        SynErr(3);
+        break;
+    }
    }
-   else
-    ty = new FloatType(t, 8, 24);
+   else {
+    Expect(19);
+    Expect(3);
+    int exp = Int32.Parse(t.val);
+    Expect(3);
+    int man = Int32.Parse(t.val);
+    ty = new FloatType(t, exp, man);
+    Expect(20);
+   }
   } else if (la.kind == 16) {
 			Get();
 			ty = new BasicType(t, SimpleType.Bool); 
@@ -1813,9 +1831,9 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
   case 98: {
       Get();
       x = t;
-      Expect(9);
+      Expect(19);
       Expression(out e);
-      Expect(10);
+      Expect(20);
       e = new NAryExpr(x, new ArithmeticCoercion(x, ArithmeticCoercion.CoercionType.ToFloat), new List<Expr> { e });
       break;
     }
@@ -1887,29 +1905,45 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
   /// <param name="n"></param>
  void Float(out BigFloat n)
  {
-   //To be modified
-   string s = "";
    try
    {
-     if (la.kind == 97)
-     {
-       //Expected format = fp (a b) || fp (a b c d)
+     if (la.kind == 97) {
+       bool negative = false;
+       int exp, sig;
+       BigNum exp_val, sig_val, value;
+       //Expected format = fp(sign exp_val sig_val) || fp<exp sig>(value)
        Get(); //Skip the fp token
        Get();
-       if (t.val != "(") { throw new FormatException(); }
-       while (la.kind == 1 || la.kind == 3 || la.kind == 6 || la.kind == 4 || la.kind == 74 || la.kind == 75) { //Get values between the parens
+       if (t.val == "(") {
          Get();
-         if (t.val == "-" || t.val == "+") //special sign case (la.kind == 74 or 75)
-          s += t.val;
-         else
-          s += t.val + " ";
+         negative = Boolean.Parse(t.val);
+         BvLit(out exp_val, out exp);
+         BvLit(out sig_val, out sig);
+         n = new BigFloat(negative, exp_val, sig_val, exp, sig);
        }
-       Get();
-       if (t.val != ")") { throw new FormatException(); }
+       else if (t.val == "<") {
+         Expect(14);
+         exp = Int32.Parse(t.val);
+         Expect(14);
+         sig = Int32.Parse(t.val);
+         int size;
+         BvLit(out value, out size);
+         if (size != exp + sig)
+         {
+           this.SemErr("The given bitvector size of " + size + "does not match the provided floating-point size of " + (exp + sig));
+           n = BigFloat.ZERO(8, 24);
+           return;
+         }
+         n = new BigFloat(t.val, exp, sig);
+       }
+       else {
+         throw new FormatException();
+       }
      }
-     else SynErr(137);
-
-     n = BigFloat.FromString(s.Trim());
+     else {
+       n = BigFloat.ZERO(8, 24);
+       SynErr(137);
+     }
    }
    catch (FormatException)
    {
