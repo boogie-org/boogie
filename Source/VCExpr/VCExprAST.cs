@@ -343,6 +343,8 @@ namespace Microsoft.Boogie {
 
     public static readonly VCExprOp MinimizeOp = new VCExprCustomOp("minimize##dummy", 2, Type.Bool);
     public static readonly VCExprOp MaximizeOp = new VCExprCustomOp("maximize##dummy", 2, Type.Bool);
+    public static readonly VCExprOp NamedAssumeOp = new VCExprCustomOp("named_assume##dummy", 2, Type.Bool);
+    public static readonly VCExprOp SoftOp = new VCExprCustomOp("soft##dummy", 2, Type.Bool);
 
     public VCExprOp BoogieFunctionOp(Function func) {
       Contract.Requires(func != null);

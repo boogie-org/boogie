@@ -210,7 +210,15 @@ void ObjectInvariant()
 
       if (node.Op is VCExprStoreOp) RegisterStore(node);
       else if (node.Op is VCExprSelectOp) RegisterSelect(node);
-      else {
+      else if (node.Op.Equals(VCExpressionGenerator.SoftOp)) {
+        var exprVar = node[0] as VCExprVar;
+        AddDeclaration(string.Format("(declare-fun {0} () Bool)", exprVar.Name));
+        AddDeclaration(string.Format("(assert-soft {0} :weight 1)", exprVar.Name));
+      } else if (node.Op.Equals(VCExpressionGenerator.NamedAssumeOp)) {
+        var exprVar = node[0] as VCExprVar;
+        AddDeclaration(string.Format("(declare-fun {0} () Bool)", exprVar.Name));
+        AddDeclaration(string.Format("(assert (! {0} :named {1}))", exprVar.Name, "aux$$" + exprVar.Name));
+      } else {
         VCExprBoogieFunctionOp op = node.Op as VCExprBoogieFunctionOp;
         if (op != null && 
           !(op.Func is DatatypeConstructor) && !(op.Func is DatatypeMembership) && !(op.Func is DatatypeSelector) && 
@@ -255,7 +263,7 @@ void ObjectInvariant()
         RegisterType(node.Type);
         string decl =
           "(declare-fun " + printedName + " () " + TypeToString(node.Type) + ")";
-        if (!printedName.StartsWith("assume$$"))
+        if (!(printedName.StartsWith("assume$$") || printedName.StartsWith("soft$$")))
         {
           AddDeclaration(decl);
         }

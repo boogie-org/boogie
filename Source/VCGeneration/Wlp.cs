@@ -48,7 +48,7 @@ namespace VC {
   
   public class Wlp
   {
-    public static VCExpr Block(Block b, VCExpr N, VCContext ctxt, IList<VCExprVar> namedAssumeVars = null)
+    public static VCExpr Block(Block b, VCExpr N, VCContext ctxt)
       //modifies ctxt.*;
     {
       Contract.Requires(b != null);
@@ -63,7 +63,7 @@ namespace VC {
 
       for (int i = b.Cmds.Count; --i >= 0; )
       {
-        res = Cmd(b, cce.NonNull( b.Cmds[i]), res, ctxt, namedAssumeVars);
+        res = Cmd(b, cce.NonNull( b.Cmds[i]), res, ctxt);
       }
       
       int id = b.UniqueId;
@@ -87,7 +87,7 @@ namespace VC {
     /// <summary>
     /// Computes the wlp for an assert or assume command "cmd".
     /// </summary>
-    internal static VCExpr Cmd(Block b, Cmd cmd, VCExpr N, VCContext ctxt, IList<VCExprVar> namedAssumeVars = null) {
+    internal static VCExpr Cmd(Block b, Cmd cmd, VCExpr N, VCContext ctxt) {
       Contract.Requires(cmd != null);
       Contract.Requires(N != null);
       Contract.Requires(ctxt != null);
@@ -193,11 +193,16 @@ namespace VC {
         var expr = ctxt.Ctxt.BoogieExprTranslator.Translate(ac.Expr);
         
         var aid = QKeyValue.FindStringAttribute(ac.Attributes, "id");
-        if (CommandLineOptions.Clo.PrintNecessaryAssumes && aid != null && namedAssumeVars != null)
+        if (CommandLineOptions.Clo.PrintNecessaryAssumes && aid != null)
         {
           var v = gen.Variable("assume$$" + aid, Microsoft.Boogie.Type.Bool);
-          namedAssumeVars.Add(v);
-          expr = gen.ImpliesSimp(v, expr);
+          expr = gen.Function(VCExpressionGenerator.NamedAssumeOp, v, gen.ImpliesSimp(v, expr));
+        }
+        var soft = QKeyValue.FindBoolAttribute(ac.Attributes, "soft");
+        if (soft && aid != null)
+        {
+          var v = gen.Variable("soft$$" + aid, Microsoft.Boogie.Type.Bool);
+          expr = gen.Function(VCExpressionGenerator.SoftOp, v, gen.ImpliesSimp(v, expr));
         }
         return MaybeWrapWithOptimization(ctxt, gen, ac.Attributes, gen.ImpliesSimp(expr, N));
       } else {

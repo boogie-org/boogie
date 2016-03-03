@@ -411,15 +411,6 @@ namespace Microsoft.Boogie.SMTLib
       SendThisVC("(push 1)");
       SendThisVC("(set-info :boogie-vc-id " + SMTLibNamer.QuoteId(descriptiveName) + ")");
 
-      if (CommandLineOptions.Clo.PrintNecessaryAssumes && NamedAssumeVars != null)
-      {
-        foreach (var v in NamedAssumeVars)
-        {
-          SendThisVC(string.Format("(declare-fun {0} () Bool)", v));
-          SendThisVC(string.Format("(assert (! {0} :named {1}))", v, "aux$$" + v.Name));
-        }
-      }
-
       SendThisVC(vcString);
 
       SendOptimizationRequests();
@@ -1293,7 +1284,7 @@ namespace Microsoft.Boogie.SMTLib
 
             var reporter = handler as VC.VCGen.ErrorReporter;
             // TODO(wuestholz): Is the reporter ever null?
-            if (CommandLineOptions.Clo.PrintNecessaryAssumes && NamedAssumeVars != null && NamedAssumeVars.Any() && result == Outcome.Valid && reporter != null)
+            if (CommandLineOptions.Clo.PrintNecessaryAssumes && ContainsNamedAssumes && result == Outcome.Valid && reporter != null)
             {
               SendThisVC("(get-unsat-core)");
               var resp = Process.GetProverResponse();
@@ -1993,6 +1984,8 @@ namespace Microsoft.Boogie.SMTLib
 
     readonly IList<string> OptimizationRequests = new List<string>();
 
+    bool ContainsNamedAssumes;
+
     protected string VCExpr2String(VCExpr expr, int polarity)
     {
       Contract.Requires(expr != null);
@@ -2032,8 +2025,8 @@ namespace Microsoft.Boogie.SMTLib
         DeclCollector.Collect(sortedExpr);
         FeedTypeDeclsToProver();
 
-        AddAxiom(SMTLibExprLineariser.ToString(sortedAxioms, Namer, options));
-        string res = SMTLibExprLineariser.ToString(sortedExpr, Namer, options, OptimizationRequests);
+        AddAxiom(SMTLibExprLineariser.ToString(sortedAxioms, Namer, options, ref ContainsNamedAssumes));
+        string res = SMTLibExprLineariser.ToString(sortedExpr, Namer, options, ref ContainsNamedAssumes, OptimizationRequests);
         Contract.Assert(res != null);
 
         if (CommandLineOptions.Clo.Trace)
@@ -2141,20 +2134,19 @@ namespace Microsoft.Boogie.SMTLib
         throw new NotImplementedException();
     }
 
-    public override void Assert(VCExpr vc, bool polarity)
+    public override void Assert(VCExpr vc, bool polarity, bool isSoft = false, int weight = 1)
     {
         OptimizationRequests.Clear();
-        string a = "";
-        if (polarity)
-        {
-            a = "(assert " + VCExpr2String(vc, 1) + ")";
+        string assert = "assert";
+        if (options.Solver == SolverKind.Z3 && isSoft) {
+            assert += "-soft";
         }
-        else
-        {
-            a = "(assert (not\n" + VCExpr2String(vc, 1) + "\n))";
+        var expr = polarity ? VCExpr2String(vc, 1) : "(not\n" + VCExpr2String(vc, 1) + "\n)";
+        if (options.Solver == SolverKind.Z3 && isSoft) {
+            expr += " :weight " + weight;
         }
         AssertAxioms();
-        SendThisVC(a);
+        SendThisVC("(" + assert + " " + expr + ")");
         SendOptimizationRequests();
     }
 

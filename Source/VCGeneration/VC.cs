@@ -1386,8 +1386,7 @@ namespace VC {
         var exprGen = ctx.ExprGen;
         VCExpr controlFlowVariableExpr = CommandLineOptions.Clo.UseLabels ? null : exprGen.Integer(BigNum.ZERO);
 
-        var namedAssumeVars = new List<VCExprVar>();
-        VCExpr vc = parent.GenerateVCAux(impl, controlFlowVariableExpr, label2absy, checker.TheoremProver.Context, namedAssumeVars: namedAssumeVars);
+        VCExpr vc = parent.GenerateVCAux(impl, controlFlowVariableExpr, label2absy, checker.TheoremProver.Context);
         Contract.Assert(vc != null);
 
         if (!CommandLineOptions.Clo.UseLabels)
@@ -1415,7 +1414,7 @@ namespace VC {
         string desc = cce.NonNull(impl.Name);
         if (no >= 0)
           desc += "_split" + no;
-        checker.BeginCheck(desc, vc, reporter, namedAssumeVars);
+        checker.BeginCheck(desc, vc, reporter);
       }
 
       private void SoundnessCheck(HashSet<List<Block>/*!*/>/*!*/ cache, Block/*!*/ orig, List<Block/*!*/>/*!*/ copies) {
@@ -1568,8 +1567,7 @@ namespace VC {
           }
           break;
         case CommandLineOptions.VCVariety.DagIterative:
-          // TODO(wuestholz): Support named assume statements not just for this encoding.
-          vc = LetVCIterative(impl.Blocks, controlFlowVariableExpr, label2absy, proverContext, out assertionCount, namedAssumeVars: namedAssumeVars);
+          vc = LetVCIterative(impl.Blocks, controlFlowVariableExpr, label2absy, proverContext, out assertionCount);
           break;
         case CommandLineOptions.VCVariety.Doomed:
           vc = FlatBlockVC(impl, label2absy, false, false, true, proverContext, out assertionCount);
@@ -3393,7 +3391,7 @@ namespace VC {
                                  Dictionary<int, Absy> label2absy,
                                  ProverContext proverCtxt,
                                  out int assertionCount,
-                                 bool isPositiveContext = true, IList<VCExprVar> namedAssumeVars = null)
+                                 bool isPositiveContext = true)
     {
       Contract.Requires(blocks != null);
       Contract.Requires(proverCtxt != null);
@@ -3453,7 +3451,7 @@ namespace VC {
         }
 
         VCContext context = new VCContext(label2absy, proverCtxt, controlFlowVariableExpr, isPositiveContext);
-        VCExpr vc = Wlp.Block(block, SuccCorrect, context, namedAssumeVars);
+        VCExpr vc = Wlp.Block(block, SuccCorrect, context);
         assertionCount += context.AssertionCount;
 
         VCExprVar v = gen.Variable(block.Label + "_correct", Bpl.Type.Bool);

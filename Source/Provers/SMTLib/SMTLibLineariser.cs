@@ -34,7 +34,7 @@ namespace Microsoft.Boogie.SMTLib
   public class SMTLibExprLineariser : IVCExprVisitor<bool, LineariserOptions/*!*/>
   {
 
-    public static string ToString(VCExpr e, UniqueNamer namer, SMTLibProverOptions opts, IList<string> optReqs = null)
+    public static string ToString(VCExpr e, UniqueNamer namer, SMTLibProverOptions opts, ref bool containsNamedAssumes, IList<string> optReqs = null)
     {
       Contract.Requires(e != null);
       Contract.Requires(namer != null);
@@ -44,6 +44,7 @@ namespace Microsoft.Boogie.SMTLib
       SMTLibExprLineariser lin = new SMTLibExprLineariser(sw, namer, opts, optReqs);
       Contract.Assert(lin != null);
       lin.Linearise(e, LineariserOptions.Default);
+      containsNamedAssumes |= lin.ContainsNamedAssumes;
       return cce.NonNull(sw.ToString());
     }
 
@@ -75,6 +76,12 @@ namespace Microsoft.Boogie.SMTLib
     internal readonly SMTLibProverOptions ProverOptions;
 
     readonly IList<string> OptimizationRequests;
+
+    bool containsNamedAssumes;
+    public bool ContainsNamedAssumes
+    {
+      get { return containsNamedAssumes; }
+    }
 
     public SMTLibExprLineariser(TextWriter wr, UniqueNamer namer, SMTLibProverOptions opts, IList<string> optReqs = null)
     {
@@ -270,7 +277,18 @@ namespace Microsoft.Boogie.SMTLib
             && (node.Op.Equals(VCExpressionGenerator.MinimizeOp) || node.Op.Equals(VCExpressionGenerator.MaximizeOp)))
         {
           string optOp = node.Op.Equals(VCExpressionGenerator.MinimizeOp) ? "minimize" : "maximize";
-          OptimizationRequests.Add(string.Format("({0} {1})", optOp, ToString(node[0], Namer, ProverOptions)));
+          OptimizationRequests.Add(string.Format("({0} {1})", optOp, ToString(node[0], Namer, ProverOptions, ref containsNamedAssumes)));
+          Linearise(node[1], options);
+          return true;
+        }
+        if (node.Op.Equals(VCExpressionGenerator.SoftOp))
+        {
+          Linearise(node[1], options);
+          return true;
+        }
+        if (node.Op.Equals(VCExpressionGenerator.NamedAssumeOp))
+        {
+          containsNamedAssumes = true;
           Linearise(node[1], options);
           return true;
         }
