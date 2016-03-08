@@ -344,7 +344,6 @@ namespace Microsoft.Boogie {
     public static readonly VCExprOp MinimizeOp = new VCExprCustomOp("minimize##dummy", 2, Type.Bool);
     public static readonly VCExprOp MaximizeOp = new VCExprCustomOp("maximize##dummy", 2, Type.Bool);
     public static readonly VCExprOp NamedAssumeOp = new VCExprCustomOp("named_assume##dummy", 2, Type.Bool);
-    public static readonly VCExprOp SoftOp = new VCExprCustomOp("soft##dummy", 2, Type.Bool);
 
     public VCExprOp BoogieFunctionOp(Function func) {
       Contract.Requires(func != null);
@@ -1567,6 +1566,16 @@ namespace Microsoft.Boogie.VCExprAST {
       //Contract.Requires(visitor != null);
       //Contract.Requires(expr != null);
       return visitor.VisitIfThenElseOp(expr, arg);
+    }
+  }
+
+  public class VCExprSoftOp : VCExprCustomOp
+  {
+    public readonly int Weight;
+
+    public VCExprSoftOp(int weight) : base("soft##dummy", 2, Microsoft.Boogie.Type.Bool)
+    {
+      Weight = weight;
     }
   }
 

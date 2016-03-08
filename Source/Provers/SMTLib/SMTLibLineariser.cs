@@ -281,7 +281,7 @@ namespace Microsoft.Boogie.SMTLib
           Linearise(node[1], options);
           return true;
         }
-        if (node.Op.Equals(VCExpressionGenerator.SoftOp))
+        if (node.Op is VCExprSoftOp)
         {
           Linearise(node[1], options);
           return true;

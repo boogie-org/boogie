@@ -199,10 +199,11 @@ namespace VC {
           expr = gen.Function(VCExpressionGenerator.NamedAssumeOp, v, gen.ImpliesSimp(v, expr));
         }
         var soft = QKeyValue.FindBoolAttribute(ac.Attributes, "soft");
-        if (soft && aid != null)
+        var softWeight = QKeyValue.FindIntAttribute(ac.Attributes, "soft", 0);
+        if ((soft || 0 < softWeight) && aid != null)
         {
           var v = gen.Variable("soft$$" + aid, Microsoft.Boogie.Type.Bool);
-          expr = gen.Function(VCExpressionGenerator.SoftOp, v, gen.ImpliesSimp(v, expr));
+          expr = gen.Function(new VCExprSoftOp(Math.Max(softWeight, 1)), v, gen.ImpliesSimp(v, expr));
         }
         return MaybeWrapWithOptimization(ctxt, gen, ac.Attributes, gen.ImpliesSimp(expr, N));
       } else {

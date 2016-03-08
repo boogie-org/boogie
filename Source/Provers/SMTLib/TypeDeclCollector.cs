@@ -210,10 +210,10 @@ void ObjectInvariant()
 
       if (node.Op is VCExprStoreOp) RegisterStore(node);
       else if (node.Op is VCExprSelectOp) RegisterSelect(node);
-      else if (node.Op.Equals(VCExpressionGenerator.SoftOp)) {
+      else if (node.Op is VCExprSoftOp) {
         var exprVar = node[0] as VCExprVar;
         AddDeclaration(string.Format("(declare-fun {0} () Bool)", exprVar.Name));
-        AddDeclaration(string.Format("(assert-soft {0} :weight 1)", exprVar.Name));
+        AddDeclaration(string.Format("(assert-soft {0} :weight {1})", exprVar.Name, ((VCExprSoftOp)node.Op).Weight));
       } else if (node.Op.Equals(VCExpressionGenerator.NamedAssumeOp)) {
         var exprVar = node[0] as VCExprVar;
         AddDeclaration(string.Format("(declare-fun {0} () Bool)", exprVar.Name));
