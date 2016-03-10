@@ -217,7 +217,10 @@ void ObjectInvariant()
       } else if (node.Op.Equals(VCExpressionGenerator.NamedAssumeOp)) {
         var exprVar = node[0] as VCExprVar;
         AddDeclaration(string.Format("(declare-fun {0} () Bool)", exprVar.Name));
-        AddDeclaration(string.Format("(assert (! {0} :named {1}))", exprVar.Name, "aux$$" + exprVar.Name));
+        if (CommandLineOptions.Clo.PrintNecessaryAssumes)
+        {
+          AddDeclaration(string.Format("(assert (! {0} :named {1}))", exprVar.Name, "aux$$" + exprVar.Name));
+        }
       } else {
         VCExprBoogieFunctionOp op = node.Op as VCExprBoogieFunctionOp;
         if (op != null && 
@@ -263,7 +266,7 @@ void ObjectInvariant()
         RegisterType(node.Type);
         string decl =
           "(declare-fun " + printedName + " () " + TypeToString(node.Type) + ")";
-        if (!(printedName.StartsWith("assume$$") || printedName.StartsWith("soft$$")))
+        if (!(printedName.StartsWith("assume$$") || printedName.StartsWith("soft$$") || printedName.StartsWith("try$$")))
         {
           AddDeclaration(decl);
         }

@@ -453,6 +453,10 @@ namespace Microsoft.Boogie {
       Undetermined,
       Bounded
     }
+
+    public readonly ISet<VCExprVar> NamedAssumes = new HashSet<VCExprVar>();
+    public ISet<string> UsedNamedAssumes { get; protected set; }
+
     public class ErrorHandler {
       // Used in CheckOutcomeCore
       public virtual int StartingProcId()

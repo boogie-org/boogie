@@ -34,17 +34,16 @@ namespace Microsoft.Boogie.SMTLib
   public class SMTLibExprLineariser : IVCExprVisitor<bool, LineariserOptions/*!*/>
   {
 
-    public static string ToString(VCExpr e, UniqueNamer namer, SMTLibProverOptions opts, ref bool containsNamedAssumes, IList<string> optReqs = null)
+    public static string ToString(VCExpr e, UniqueNamer namer, SMTLibProverOptions opts, ISet<VCExprVar> namedAssumes = null, IList<string> optReqs = null, ISet<VCExprVar> tryAssumes = null)
     {
       Contract.Requires(e != null);
       Contract.Requires(namer != null);
       Contract.Ensures(Contract.Result<string>() != null);
 
       StringWriter sw = new StringWriter();
-      SMTLibExprLineariser lin = new SMTLibExprLineariser(sw, namer, opts, optReqs);
+      SMTLibExprLineariser lin = new SMTLibExprLineariser(sw, namer, opts, namedAssumes, optReqs);
       Contract.Assert(lin != null);
       lin.Linearise(e, LineariserOptions.Default);
-      containsNamedAssumes |= lin.ContainsNamedAssumes;
       return cce.NonNull(sw.ToString());
     }
 
@@ -76,20 +75,16 @@ namespace Microsoft.Boogie.SMTLib
     internal readonly SMTLibProverOptions ProverOptions;
 
     readonly IList<string> OptimizationRequests;
+    readonly ISet<VCExprVar> NamedAssumes;
 
-    bool containsNamedAssumes;
-    public bool ContainsNamedAssumes
-    {
-      get { return containsNamedAssumes; }
-    }
-
-    public SMTLibExprLineariser(TextWriter wr, UniqueNamer namer, SMTLibProverOptions opts, IList<string> optReqs = null)
+    public SMTLibExprLineariser(TextWriter wr, UniqueNamer namer, SMTLibProverOptions opts, ISet<VCExprVar> namedAssumes = null, IList<string> optReqs = null)
     {
       Contract.Requires(wr != null); Contract.Requires(namer != null);
       this.wr = wr;
       this.Namer = namer;
       this.ProverOptions = opts;
       this.OptimizationRequests = optReqs;
+      this.NamedAssumes = namedAssumes;
     }
 
     public void Linearise(VCExpr expr, LineariserOptions options)
@@ -277,7 +272,7 @@ namespace Microsoft.Boogie.SMTLib
             && (node.Op.Equals(VCExpressionGenerator.MinimizeOp) || node.Op.Equals(VCExpressionGenerator.MaximizeOp)))
         {
           string optOp = node.Op.Equals(VCExpressionGenerator.MinimizeOp) ? "minimize" : "maximize";
-          OptimizationRequests.Add(string.Format("({0} {1})", optOp, ToString(node[0], Namer, ProverOptions, ref containsNamedAssumes)));
+          OptimizationRequests.Add(string.Format("({0} {1})", optOp, ToString(node[0], Namer, ProverOptions, NamedAssumes)));
           Linearise(node[1], options);
           return true;
         }
@@ -288,7 +283,8 @@ namespace Microsoft.Boogie.SMTLib
         }
         if (node.Op.Equals(VCExpressionGenerator.NamedAssumeOp))
         {
-          containsNamedAssumes = true;
+          var exprVar = node[0] as VCExprVar;
+          NamedAssumes.Add(exprVar);
           Linearise(node[1], options);
           return true;
         }

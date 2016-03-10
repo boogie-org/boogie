@@ -193,9 +193,10 @@ namespace VC {
         var expr = ctxt.Ctxt.BoogieExprTranslator.Translate(ac.Expr);
         
         var aid = QKeyValue.FindStringAttribute(ac.Attributes, "id");
-        if (CommandLineOptions.Clo.PrintNecessaryAssumes && aid != null)
+        if (aid != null)
         {
-          var v = gen.Variable("assume$$" + aid, Microsoft.Boogie.Type.Bool);
+          var isTry = QKeyValue.FindBoolAttribute(ac.Attributes, "try");
+          var v = gen.Variable((isTry ? "try$$" : "assume$$") + aid, Microsoft.Boogie.Type.Bool);
           expr = gen.Function(VCExpressionGenerator.NamedAssumeOp, v, gen.ImpliesSimp(v, expr));
         }
         var soft = QKeyValue.FindBoolAttribute(ac.Attributes, "soft");
