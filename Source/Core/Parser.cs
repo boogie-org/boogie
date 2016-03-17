@@ -669,7 +669,7 @@ private class BvBounds : Expr {
   } else if (la.kind == 98) {
    Get();
    if (la.kind == 3) {
-    Expect(3);
+     Get();
     switch (Int32.Parse(t.val)) {
     case 16:
         ty = new FloatType(t, 5, 11);
@@ -689,13 +689,14 @@ private class BvBounds : Expr {
     }
    }
    else {
-    Expect(19);
+    Expect(19); //<
     Expect(3);
     int exp = Int32.Parse(t.val);
+    Expect(12); //,
     Expect(3);
     int man = Int32.Parse(t.val);
     ty = new FloatType(t, exp, man);
-    Expect(20);
+    Expect(20); //>
    }
   } else if (la.kind == 16) {
 			Get();
@@ -1909,32 +1910,39 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
    {
      if (la.kind == 97) {
        bool negative = false;
-       int exp, sig;
+       int exp, sig, size;
        BigNum exp_val, sig_val, value;
-       //Expected format = fp(sign exp_val sig_val) || fp<exp sig>(value)
-       Get(); //Skip the fp token
-       Get();
-       if (t.val == "(") {
+       //Expected format = float(sign exp_val sig_val) || float<exp sig>(value)
+       Get(); //Skip the float token
+       if (la.val == "(") {
          Get();
+         Expect(16); //bool
          negative = Boolean.Parse(t.val);
+         Expect(12); //,
          BvLit(out exp_val, out exp);
+         Expect(12);
          BvLit(out sig_val, out sig);
          n = new BigFloat(negative, exp_val, sig_val, exp, sig);
+         Expect(10); //)
        }
-       else if (t.val == "<") {
-         Expect(14);
+       else if (la.val == "<") {
+         Get();
+         Expect(3);
          exp = Int32.Parse(t.val);
-         Expect(14);
+         Expect(12);
+         Expect(3);
          sig = Int32.Parse(t.val);
-         int size;
-         BvLit(out value, out size);
-         if (size != exp + sig)
-         {
-           this.SemErr("The given bitvector size of " + size + "does not match the provided floating-point size of " + (exp + sig));
-           n = BigFloat.ZERO(8, 24);
-           return;
+         Expect(20); //>
+         Expect(9); //(
+         if (la.kind == 4) {
+           Get();
+           n = new BigFloat(t.val, exp, sig);
          }
-         n = new BigFloat(t.val, exp, sig);
+         else {
+           BvLit(out value, out size);
+           n = new BigFloat(value.ToString(), exp, sig);
+         }
+         Expect(10); //)
        }
        else {
          throw new FormatException();

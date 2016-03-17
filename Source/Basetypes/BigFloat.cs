@@ -129,7 +129,7 @@ namespace Microsoft.Basetypes
       this.exponentSize = exponentSize;
       this.exponent = exponent;
       this.significand = significand;
-      this.significandSize = significandSize;
+      this.significandSize = significandSize+1;
       this.isNeg = sign;
       this.value = "";
     }
@@ -141,33 +141,6 @@ namespace Microsoft.Basetypes
       this.significand = BigNum.ZERO;
       this.value = value;
       this.isNeg = value[0] == '-';
-      //Special cases:
-      if (this.value.Equals("+oo") || this.value.Equals("-oo") || this.value.Equals("-zero"))
-        return;
-      if (this.value.ToLower().Equals("nan")) {
-        this.value = "NaN";
-        return;
-      }
-      if (this.value.Equals("INF") || this.value.Equals("+INF"))
-      {
-        this.value = "+oo";
-        return;
-      }
-      if (this.value.Equals("-INF"))
-      {
-        this.value = "-oo";
-        return;
-      }
-      if (this.value.Equals("+zero"))
-      {
-        this.value = "0.0";
-        return;
-      }
-      //End special cases
-      if (this.value.IndexOf('.') == -1 && this.value.IndexOf('e') == -1)
-        this.value += ".0"; //Assures that the decimal value is a "real" number
-      if (this.value.IndexOf('.') == 0)
-        this.value = "0" + this.value; //Assures that decimals always have a 0 in front
     }
 
     private BigNum maxsignificand()
@@ -335,6 +308,18 @@ namespace Microsoft.Basetypes
       }
     }
 
+    public String ToBVString(){
+      if (this.IsSpecialType) {
+        return "_ " + this.value + " " + this.exponentSize + " " + this.significandSize;
+      }
+      else if (this.Value == "") {
+        return "fp (_ bv" + (this.isNeg ? "1" : "0") + " 1) (_ bv" + this.exponent + " " + this.exponentSize + ") (_ bv" + this.significand + " " + this.significandSize + ")";
+      }
+      else {
+        return "(_ to_fp " + this.exponentSize + " " + this.significandSize + ") (_ bv" + this.value + " " + (this.exponentSize + this.significandSize).ToString() + ")";
+      }
+    }
+
     [Pure]
     public string ToDecimalString() {
       Contract.Ensures(Contract.Result<string>() != null);
@@ -430,7 +415,7 @@ namespace Microsoft.Basetypes
       get {
         if (value == "")
           return false;
-        return (value.Equals("NaN") || value.Equals("+oo") || value.Equals("-oo") || value.Equals("-zero"));
+        return (value.Equals("NaN") || value.Equals("+oo") || value.Equals("-oo") || value.Equals("zero") || value.Equals("-zero"));
       }
     }
 

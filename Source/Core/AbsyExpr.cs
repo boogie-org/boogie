@@ -561,7 +561,7 @@ namespace Microsoft.Boogie {
     {
       Contract.Requires(tok != null);
       Val = v;
-      Type = Type.GetFloatType(v.ExponentSize, v.MantissaSize);
+      Type = Type.GetFloatType(v.ExponentSize, v.SignificandSize);
       if (immutable)
         CachedHashCode = ComputeHashCode();
     }
@@ -639,7 +639,7 @@ namespace Microsoft.Boogie {
           return Type.Real;
         } else if (Val is BigFloat) {
           BigFloat temp = (BigFloat)Val;
-          return Type.GetFloatType(temp.ExponentSize, temp.MantissaSize);
+          return Type.GetFloatType(temp.ExponentSize, temp.SignificandSize);
         } else if (Val is BvConst) {
           return Type.GetBvType(((BvConst)Val).Bits);
         } else {

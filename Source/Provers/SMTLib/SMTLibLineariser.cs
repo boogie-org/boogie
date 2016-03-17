@@ -204,17 +204,7 @@ namespace Microsoft.Boogie.SMTLib
       else if (node is VCExprFloatLit)
       {
         BigFloat lit = ((VCExprFloatLit)node).Val;
-        if (lit.IsSpecialType) {
-          wr.Write("(_ " + lit.Decimal + " " + lit.ExponentSize.ToString() + " " + lit.SignificandSize.ToString() + ")");
-          return true;
-        }
-        wr.Write("((_ to_fp " + lit.ExponentSize.ToString() + " " + lit.SignificandSize.ToString() + ") RNE ");
-        if (lit.IsNegative)
-          // In SMT2 "-42" is an identifier (SMT2, Sect. 3.2 "Symbols")
-          wr.Write("(- 0.0 {0})", lit.Abs.ToDecimalString());
-        else
-          wr.Write(lit.ToDecimalString());
-        wr.Write(")");
+        wr.Write("(" + lit.ToBVString() + ")");
       }
       else {
         Contract.Assert(false);

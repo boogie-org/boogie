@@ -695,10 +695,10 @@ namespace Microsoft.Boogie.AbstractInterpretation
           Lo = floor;
           Hi = ceiling;
         } else if (node.Val is BigFloat) {
-          BigInteger floor, ceiling;
+          BigNum floor, ceiling;
           ((BigFloat)node.Val).FloorCeiling(out floor, out ceiling);
-          Lo = floor;
-          Hi = ceiling;
+          Lo = floor.ToBigInteger;
+          Hi = ceiling.ToBigInteger;
         } else if (node.Val is bool) {
           if ((bool)node.Val) {
             // true

@@ -887,7 +887,7 @@ namespace Microsoft.Boogie.VCExprAST {
   {
     public readonly BigFloat Val;
     internal VCExprFloatLit(BigFloat val)
-      : base(Type.GetFloatType(val.ExponentSize, val.MantissaSize))
+      : base(Type.GetFloatType(val.ExponentSize, val.SignificandSize))
     {
       this.Val = val;
     }
