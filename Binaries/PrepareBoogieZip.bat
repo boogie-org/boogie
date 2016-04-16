@@ -7,22 +7,22 @@ if exist %DEST_DIR% del /q %DEST_DIR%\*
 if not exist %DEST_DIR% mkdir %DEST_DIR%
 
 for %%f in (
-  AbsInt.dll                          AbsInt.pdb
-  Basetypes.dll                       Basetypes.pdb
-  Boogie.exe                          Boogie.pdb
-  BVD.exe                             BVD.pdb
-  CodeContractsExtender.dll           CodeContractsExtender.pdb
-  Core.dll                            Core.pdb
-  Doomed.dll                          Doomed.pdb
-  Graph.dll                           Graph.pdb
-  Houdini.dll                         Houdini.pdb
-  Model.dll                           Model.pdb
-  ParserHelper.dll                    ParserHelper.pdb
-  Predication.dll                     Predication.pdb
-  Provers.SMTLib.dll                  Provers.SMTLib.pdb
-  UnivBackPred2.smt                   UnivBackPred2.smt2
-  VCExpr.dll                          VCExpr.pdb
-  VCGeneration.dll                    VCGeneration.pdb
+  BoogieAbsInt.dll                          BoogieAbsInt.pdb
+  BoogieBasetypes.dll                       BoogieBasetypes.pdb
+  Boogie.exe                                Boogie.pdb
+  BVD.exe                                   BVD.pdb
+  BoogieCodeContractsExtender.dll           BoogieCodeContractsExtender.pdb
+  BoogieCore.dll                            BoogieCore.pdb
+  BoogieDoomed.dll                          BoogieDoomed.pdb
+  BoogieGraph.dll                           BoogieGraph.pdb
+  BoogieHoudini.dll                         BoogieHoudini.pdb
+  BoogieModel.dll                           BoogieModel.pdb
+  BoogieParserHelper.dll                    BoogieParserHelper.pdb
+  BoogiePredication.dll                     BoogiePredication.pdb
+  Provers.SMTLib.dll                        Provers.SMTLib.pdb
+  UnivBackPred2.smt                         UnivBackPred2.smt2
+  BoogieVCExpr.dll                          BoogieVCExpr.pdb
+  BoogieVCGeneration.dll                    BoogieVCGeneration.pdb
 ) do (
   copy %%f %DEST_DIR%
 )

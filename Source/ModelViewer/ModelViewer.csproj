@@ -9,9 +9,9 @@
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>Microsoft.Boogie.ModelViewer</RootNamespace>
-    <AssemblyName>ModelViewer</AssemblyName>
+    <AssemblyName>BoogieModelViewer</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
-    <TargetFrameworkProfile Condition=" '$(OS)' == 'Windows_NT'" >Client</TargetFrameworkProfile>
+    <TargetFrameworkProfile Condition=" '$(OS)' == 'Windows_NT'">Client</TargetFrameworkProfile>
     <FileAlignment>512</FileAlignment>
     <PublishUrl>publish\</PublishUrl>
     <Install>true</Install>

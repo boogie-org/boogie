@@ -8,7 +8,7 @@
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>Doomed</RootNamespace>
-    <AssemblyName>Doomed</AssemblyName>
+    <AssemblyName>BoogieDoomed</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <TargetFrameworkProfile Condition=" '$(OS)' == 'Windows_NT'">Client</TargetFrameworkProfile>
