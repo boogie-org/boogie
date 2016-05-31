@@ -509,7 +509,7 @@ public class Scanner {
 			case "real": t.kind = 15; break;
 			case "bool": t.kind = 16; break;
    case "fp": t.kind = 97; break;
-   case "float": t.kind = 98; break;
+   case "float": case "float16": case "float32": case "float64": case "float128": t.kind = 98; break;
 			case "const": t.kind = 21; break;
 			case "unique": t.kind = 22; break;
 			case "extends": t.kind = 23; break;
