@@ -1,0 +1,7 @@
+float2.bpl(7,1): Error: mismatched types in assignment command (cannot assign float (5 11) to float (8 24))
+float2.bpl(8,1): Error: mismatched types in assignment command (cannot assign float (11 53) to float (8 24))
+float2.bpl(9,1): Error: mismatched types in assignment command (cannot assign float (15 113) to float (8 24))
+float2.bpl(10,1): Error: mismatched types in assignment command (cannot assign float (5 11) to float (11 53))
+float2.bpl(11,1): Error: mismatched types in assignment command (cannot assign float (15 113) to float (11 53))
+float2.bpl(12,1): Error: mismatched types in assignment command (cannot assign float (5 11) to float (15 113))
+6 type checking errors detected in float2.bpl

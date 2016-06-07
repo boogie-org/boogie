@@ -668,35 +668,7 @@ private class BvBounds : Expr {
    ty = new BasicType(t, SimpleType.Real);
   } else if (la.kind == 98) {
    Get();
-   if (t.val.Length > 5) {
-    switch (Int32.Parse(t.val.Substring(5))) {
-    case 16:
-        ty = new FloatType(t, 5, 11);
-        break;
-    case 32:
-        ty = new FloatType(t, 8, 24);
-        break;
-    case 64:
-        ty = new FloatType(t, 11, 53);
-        break;
-    case 128:
-        ty = new FloatType(t, 15, 113);
-        break;
-    default:
-        SynErr(3);
-        break;
-    }
-   }
-   else {
-    Expect(19); //<
-    Expect(3); //int
-    int exp = Int32.Parse(t.val);
-    Expect(12); //,
-    Expect(3); //int
-    int man = Int32.Parse(t.val);
-    ty = new FloatType(t, exp, man);
-    Expect(20); //>
-   }
+   ty = FType();
   } else if (la.kind == 16) {
 			Get();
 			ty = new BasicType(t, SimpleType.Bool); 
@@ -706,6 +678,39 @@ private class BvBounds : Expr {
 			Expect(10);
 		} else SynErr(101);
 	}
+
+ FloatType FType() {
+   if (t.val.Length > 5) {
+    switch (Int32.Parse(t.val.Substring(5))) {
+     case 16:
+      return new FloatType(t, 5, 11);
+     case 32:
+      return new FloatType(t, 8, 24);
+     case 64:
+      return new FloatType(t, 11, 53);
+     case 128:
+      return new FloatType(t, 15, 113);
+     default:
+      SynErr(3);
+      return new FloatType(t, 0, 0);
+     }
+   }
+   else {
+    try {
+     Expect(19); //<
+     Expect(3); //int
+     int exp = Int32.Parse(t.val);
+     Expect(12); //,
+     Expect(3); //int
+     int man = Int32.Parse(t.val);
+     Expect(20); //>
+     return new FloatType(t, exp, man);
+    }
+    catch (Exception) {
+     return new FloatType(t, 0, 0);
+    }
+   }
+ }
 
 	void Ident(out IToken/*!*/ x) {
 		Contract.Ensures(Contract.ValueAtReturn(out x) != null);
@@ -1915,8 +1920,13 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
        Get(); //Skip the float token
        if (la.val == "(") {
          Get();
-         Expect(16); //bool
-         negative = Boolean.Parse(t.val);
+         if (la.val == "false")
+           negative = false;
+         else if (la.val == "true")
+           negative = true;
+         else
+           throw new FormatException();
+         Get();
          Expect(12); //,
          BvLit(out exp_val, out exp);
          Expect(12);
@@ -1933,9 +1943,15 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
          sig = Int32.Parse(t.val);
          Expect(20); //>
          Expect(9); //(
-         if (la.kind == 4) {
+         if (la.kind == 1) { //NaN
            Get();
            n = new BigFloat(t.val, exp, sig);
+         }
+         else if (la.kind == 74 || la.kind == 75) { //+ or -
+           Get();
+           String s = t.val;
+           Get();
+           n = new BigFloat(s + t.val, exp, sig);
          }
          else {
            BvLit(out value, out size);
@@ -2194,7 +2210,7 @@ out QKeyValue kv, out Trigger trig, out Expr/*!*/ body) {
 		{x,T,x,x, x,x,x,x, x,T,x,x, x,x,T,T, T,T,x,T, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,T,x},
 		{x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,T, x,x,T,T, T,x,T,x, x,T,T,T, T,T,x,T, T,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x},
 		{x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,T, x,x,x,x, x,x,x,x, x,x,T,T, T,T,x,T, T,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x},
-		{x,T,T,T, x,T,T,x, x,T,x,x, x,x,T,T, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,T, x,x,x,x, T,T,T,T, T,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x},
+		{x,T,T,T, x,T,T,x, x,T,x,x, x,x,T,T, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,T, x,x,x,x, T,T,T,T, T,T,x,x, x,x,x,x, x,x,x,x, x,T,x,x},
 		{x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,T,T,T, T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x},
 		{x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,T,T,T, T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x},
 		{x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,T, T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,T,T,T, T,T,T,T, T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x},

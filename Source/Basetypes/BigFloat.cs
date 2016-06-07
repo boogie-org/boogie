@@ -313,7 +313,7 @@ namespace Microsoft.Basetypes
         return "_ " + this.value + " " + this.exponentSize + " " + this.significandSize;
       }
       else if (this.Value == "") {
-        return "fp (_ bv" + (this.isNeg ? "1" : "0") + " 1) (_ bv" + this.exponent + " " + this.exponentSize + ") (_ bv" + this.significand + " " + this.significandSize + ")";
+        return "fp (_ bv" + (this.isNeg ? "1" : "0") + " 1) (_ bv" + this.exponent + " " + this.exponentSize + ") (_ bv" + this.significand + " " + (this.significandSize-1) + ")";
       }
       else {
         return "(_ to_fp " + this.exponentSize + " " + this.significandSize + ") (_ bv" + this.value + " " + (this.exponentSize + this.significandSize).ToString() + ")";
