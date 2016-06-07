@@ -2277,7 +2277,6 @@ namespace Microsoft.Boogie {
     private readonly string name;
     private readonly Type type;
     private readonly Type argType;
-    private readonly Type argType2;
     private readonly int hashCode;
 
     public ArithmeticCoercion(IToken tok, CoercionType coercion) {
@@ -2357,9 +2356,9 @@ namespace Microsoft.Boogie {
 
       tpInstantiation = SimpleTypeParamInstantiation.EMPTY;
 
-      if (!(cce.NonNull(cce.NonNull(args[0]).Type).Unify(argType) || cce.NonNull(cce.NonNull(args[0]).Type).Unify(argType2)))
+      if (!cce.NonNull(cce.NonNull(args[0]).Type).Unify(argType))
       {
-        tc.Error(this.tok, "argument type {0} does not match expected type {1} or type {2}", cce.NonNull(args[0]).Type, this.argType, this.argType2);
+        tc.Error(this.tok, "argument type {0} does not match expected type {1}", cce.NonNull(args[0]).Type, this.argType);
       }
 
       return this.type;
