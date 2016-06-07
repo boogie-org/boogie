@@ -2356,8 +2356,7 @@ namespace Microsoft.Boogie {
 
       tpInstantiation = SimpleTypeParamInstantiation.EMPTY;
 
-      if (!cce.NonNull(cce.NonNull(args[0]).Type).Unify(argType))
-      {
+      if (!cce.NonNull(cce.NonNull(args[0]).Type).Unify(argType)) {
         tc.Error(this.tok, "argument type {0} does not match expected type {1}", cce.NonNull(args[0]).Type, this.argType);
       }
 
