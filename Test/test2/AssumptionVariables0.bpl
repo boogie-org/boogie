@@ -28,13 +28,46 @@ procedure Test2()
 }
 
 
-var {:assumption} a0: bool;
+var {:assumption} ga0: bool;
 
 
 procedure Test3()
-  modifies a0;
+  modifies ga0;
 {
-    a0 := a0 && true;
+    ga0 := ga0 && true;
 
-    assert a0;  // error
+    assert ga0;  // error
+}
+
+
+procedure Test4()
+{
+    var {:assumption} a0: bool;
+    var tmp: bool;
+
+    tmp := a0;
+
+    havoc a0;
+
+    assert a0 ==> tmp;
+}
+
+
+procedure Test5(A: bool)
+{
+    var {:assumption} a0: bool;
+    var tmp0, tmp1: bool;
+
+    a0 := a0 && A;
+    tmp0 := a0;
+
+    havoc a0;
+
+    assert a0 ==> tmp0;
+
+    tmp1 := a0;
+
+    havoc a0;
+
+    assert a0 ==> tmp1;
 }

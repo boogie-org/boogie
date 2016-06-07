@@ -11,6 +11,7 @@ using System.IO;
 using System.Linq;
 using System.Diagnostics;
 using System.Diagnostics.Contracts;
+using System.Text.RegularExpressions;
 
 namespace Microsoft.Boogie {
   public class CommandLineOptionEngine
@@ -418,6 +419,8 @@ namespace Microsoft.Boogie {
     public string SimplifyLogFilePath = null;
     public bool PrintInstrumented = false;
     public bool InstrumentWithAsserts = false;
+    public string ProverPreamble = null;
+
     public enum InstrumentationPlaces {
       LoopHeaders,
       Everywhere
@@ -476,12 +479,15 @@ namespace Microsoft.Boogie {
     public string AbstractHoudini = null;
     public bool UseUnsatCoreForContractInfer = false;
     public bool PrintAssignment = false;
+    // TODO(wuestholz): Add documentation for this flag.
+    public bool PrintNecessaryAssumes = false;
     public int InlineDepth = -1;
     public bool UseProverEvaluate = false; // Use ProverInterface's Evaluate method, instead of model to get variable values
     public bool UseUncheckedContracts = false;
     public bool SimplifyLogFileAppend = false;
     public bool SoundnessSmokeTest = false;
     public string Z3ExecutablePath = null;
+    public string Z3ExecutableName = null;
     public string CVC4ExecutablePath = null;
     public int KInductionDepth = -1;
 
@@ -557,6 +563,9 @@ namespace Microsoft.Boogie {
     public bool UseSmtOutputFormat = false;
     public bool WeakArrayTheory = false;
     public bool UseLabels = true;
+    public bool RunDiagnosticsOnTimeout = false;
+    public bool TraceDiagnosticsOnTimeout = false;
+    public int TimeLimitPerAssertionInPercent = 10;
     public bool SIBoolControlVC = false;
     public bool MonomorphicArrays {
       get {
@@ -582,7 +591,7 @@ namespace Microsoft.Boogie {
       }
     }
 
-    public string OwickiGriesDesugaredOutputFile = null;
+    public string CivlDesugaredFile = null;
     public bool TrustAtomicityTypes = false;
     public bool TrustNonInterference = false;
     public int TrustLayersUpto = -1;
@@ -909,9 +918,9 @@ namespace Microsoft.Boogie {
           } 
           return true;
 
-        case "OwickiGries":
+        case "CivlDesugaredFile":
           if (ps.ConfirmArgumentCount(1)) {
-              OwickiGriesDesugaredOutputFile = args[ps.i];
+              CivlDesugaredFile = args[ps.i];
           }
           return true;
 
@@ -935,7 +944,14 @@ namespace Microsoft.Boogie {
           }
           return true;
 
-        case "logPrefix":
+        case "proverPreamble": 
+          if (ps.ConfirmArgumentCount(1))
+          {
+            ProverPreamble = args[ps.i];
+          }
+           return true;
+          
+          case "logPrefix":
           if (ps.ConfirmArgumentCount(1)) {
             string s = cce.NonNull(args[ps.i]);
             LogPrefix += s.Replace('/', '-').Replace('\\', '-');
@@ -1476,6 +1492,10 @@ namespace Microsoft.Boogie {
           ps.GetNumericArgument(ref ProverKillTime);
           return true;
 
+        case "timeLimitPerAssertionInPercent":
+          ps.GetNumericArgument(ref TimeLimitPerAssertionInPercent, a => 0 < a);
+          return true;
+
         case "smokeTimeout":
           ps.GetNumericArgument(ref SmokeTimeout);
           return true;
@@ -1485,7 +1505,7 @@ namespace Microsoft.Boogie {
           return true;
 
         case "verifySnapshots":
-          ps.GetNumericArgument(ref VerifySnapshots, 3);
+          ps.GetNumericArgument(ref VerifySnapshots, 4);
           return true;
 
         case "traceCaching":
@@ -1535,8 +1555,15 @@ namespace Microsoft.Boogie {
             Z3ExecutablePath = args[ps.i];
           }
           return true;
+         // This sets name of z3 binary boogie binary directory, not path
+        case "z3name":
+          if (ps.ConfirmArgumentCount(1))
+          {
+              Z3ExecutableName = args[ps.i];
+          }
+          return true;
 
-		case "cvc4exe":
+        case "cvc4exe":
 			if (ps.ConfirmArgumentCount(1)) {
 				CVC4ExecutablePath = args[ps.i];
 			}
@@ -1585,6 +1612,8 @@ namespace Microsoft.Boogie {
               ps.CheckBooleanFlag("weakArrayTheory", ref WeakArrayTheory) || 
               ps.CheckBooleanFlag("doModSetAnalysis", ref DoModSetAnalysis) ||
               ps.CheckBooleanFlag("doNotUseLabels", ref UseLabels, false) ||
+              ps.CheckBooleanFlag("runDiagnosticsOnTimeout", ref RunDiagnosticsOnTimeout) ||
+              ps.CheckBooleanFlag("traceDiagnosticsOnTimeout", ref TraceDiagnosticsOnTimeout) ||
               ps.CheckBooleanFlag("boolControlVC", ref SIBoolControlVC, true) ||
               ps.CheckBooleanFlag("contractInfer", ref ContractInfer) ||
               ps.CheckBooleanFlag("explainHoudini", ref ExplainHoudini) ||
@@ -1592,6 +1621,7 @@ namespace Microsoft.Boogie {
               ps.CheckBooleanFlag("crossDependencies", ref HoudiniUseCrossDependencies) ||
               ps.CheckBooleanFlag("useUnsatCoreForContractInfer", ref UseUnsatCoreForContractInfer) ||
               ps.CheckBooleanFlag("printAssignment", ref PrintAssignment) ||
+              ps.CheckBooleanFlag("printNecessaryAssumes", ref PrintNecessaryAssumes) ||
               ps.CheckBooleanFlag("useProverEvaluate", ref UseProverEvaluate) ||
               ps.CheckBooleanFlag("nonUniformUnfolding", ref NonUniformUnfolding) ||
               ps.CheckBooleanFlag("deterministicExtractLoops", ref DeterministicExtractLoops) ||
@@ -1674,7 +1704,7 @@ namespace Microsoft.Boogie {
         // no preference
         return true;
       }
-      return ProcsToCheck.Any(s => 0 <= methodFullname.IndexOf(s));
+      return ProcsToCheck.Any(s => Regex.IsMatch(methodFullname, "^" + Regex.Escape(s).Replace(@"\*", ".*") + "$"));
     }
 
     public virtual StringCollection ParseNamedArgumentList(string argList) {
@@ -1831,7 +1861,15 @@ namespace Microsoft.Boogie {
   Multiple .bpl files supplied on the command line are concatenated into one
   Boogie program.
 
-  /proc:<p>      : limits which procedures to check
+  /proc:<p>      : Only check procedures matched by pattern <p>. This option
+                   may be specified multiple times to match multiple patterns.
+                   The pattern <p> matches the whole procedure name (i.e.
+                   pattern ""foo"" will only match a procedure called foo and
+                   not fooBar). The pattern <p> may contain * wildcards which
+                   match any character zero or more times. For example the
+                   pattern ""ab*d"" would match abd, abcd and abccd but not
+                   Aabd nor abdD. The pattern ""*ab*d*"" would match abd,
+                   abcd, abccd, Abd and abdD.
   /noResolve     : parse only
   /noTypecheck   : parse and resolve only
 
@@ -1935,6 +1973,10 @@ namespace Microsoft.Boogie {
                 0 - do not use any verification result caching (default)
                 1 - use the basic verification result caching
                 2 - use the more advanced verification result caching
+                3 - use the more advanced caching and report errors according
+                    to the new source locations for errors and their
+                    related locations (but not /errorTrace and CaptureState
+                    locations) 
   /verifySeparately
                 verify each input program separately
   /removeEmptyBlocks:<c>

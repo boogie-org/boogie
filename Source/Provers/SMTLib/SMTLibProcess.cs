@@ -80,8 +80,20 @@ namespace Microsoft.Boogie.SMTLib
     void ControlCHandler(object o, ConsoleCancelEventArgs a)
     {
       if (prover != null) {
+        TerminateProver();
+      }
+    }
+
+    private void TerminateProver(Int32 timeout = 2000) {
+      try {
+        // Let the prover know that we're done sending input.
+        prover.StandardInput.Close();
+
+         // Give it a chance to exit cleanly (e.g. to flush buffers)
+        if (!prover.WaitForExit(timeout)) {
         prover.Kill();
       }
+      } catch { /* Swallow errors */ }
     }
 
     public void Send(string cmd)
@@ -181,10 +193,7 @@ namespace Microsoft.Boogie.SMTLib
     public void Close()
     {
       TotalUserTime += prover.UserProcessorTime;
-      try {
-        prover.Kill();
-      } catch {
-      }
+      TerminateProver();
       DisposeProver();
     }
 

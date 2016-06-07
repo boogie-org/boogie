@@ -1,0 +1,5 @@
+StatementIds0.bpl(7,4): Error: more than one statement with same id: s0
+StatementIds0.bpl(12,4): Error: more than one statement with same id: s0
+StatementIds0.bpl(18,6): Error: more than one statement with same id: s0
+StatementIds0.bpl(19,6): Error: more than one statement with same id: s0
+4 name resolution errors detected in StatementIds0.bpl

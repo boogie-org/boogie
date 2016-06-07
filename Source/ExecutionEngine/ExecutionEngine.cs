@@ -135,7 +135,7 @@ namespace Microsoft.Boogie
 
       foreach (var e in errorInfo.Aux)
       {
-        if (!(skipExecutionTrace && e.Category.Contains("Execution trace")))
+        if (!(skipExecutionTrace && e.Category != null && e.Category.Contains("Execution trace")))
         {
           ReportBplError(e.Tok, e.FullMsg, false, tw);
         }
@@ -151,25 +151,18 @@ namespace Microsoft.Boogie
     {
       Contract.Requires(message != null);
 
-      if (category != null)
-      {
+      if (category != null) {
         message = string.Format("{0}: {1}", category, message);
       }
       string s;
-      if (tok != null)
-      {
+      if (tok != null) {
         s = string.Format("{0}({1},{2}): {3}", ExecutionEngine.GetFileNameForConsole(tok.filename), tok.line, tok.col, message);
-      }
-      else
-      {
+      } else {
         s = message;
       }
-      if (error)
-      {
+      if (error) {
         ErrorWriteLine(tw, s);
-      }
-      else
-      {
+      } else {
         tw.WriteLine(s);
       }
     }
@@ -489,8 +482,8 @@ namespace Microsoft.Boogie
         }
 
         LinearTypeChecker linearTypeChecker;
-        MoverTypeChecker moverTypeChecker;
-        PipelineOutcome oc = ResolveAndTypecheck(program, fileNames[fileNames.Count - 1], out linearTypeChecker, out moverTypeChecker);
+        CivlTypeChecker civlTypeChecker;
+        PipelineOutcome oc = ResolveAndTypecheck(program, fileNames[fileNames.Count - 1], out linearTypeChecker, out civlTypeChecker);
         if (oc != PipelineOutcome.ResolvedAndTypeChecked)
           return;
 
@@ -507,13 +500,13 @@ namespace Microsoft.Boogie
 
         if (CommandLineOptions.Clo.StratifiedInlining == 0)
         {
-          Concurrency.Transform(linearTypeChecker, moverTypeChecker);
+          Concurrency.Transform(linearTypeChecker, civlTypeChecker);
           (new LinearEraser()).VisitProgram(program);
-          if (CommandLineOptions.Clo.OwickiGriesDesugaredOutputFile != null)
+          if (CommandLineOptions.Clo.CivlDesugaredFile != null)
           {
               int oldPrintUnstructured = CommandLineOptions.Clo.PrintUnstructured;
               CommandLineOptions.Clo.PrintUnstructured = 1;
-              PrintBplFile(CommandLineOptions.Clo.OwickiGriesDesugaredOutputFile, program, false, false, CommandLineOptions.Clo.PrettyPrint);
+              PrintBplFile(CommandLineOptions.Clo.CivlDesugaredFile, program, false, false, CommandLineOptions.Clo.PrettyPrint);
               CommandLineOptions.Clo.PrintUnstructured = oldPrintUnstructured;
           }
         }
@@ -699,13 +692,13 @@ namespace Microsoft.Boogie
     ///  - TypeCheckingError if a type checking error occurred
     ///  - ResolvedAndTypeChecked if both resolution and type checking succeeded
     /// </summary>
-    public static PipelineOutcome ResolveAndTypecheck(Program program, string bplFileName, out LinearTypeChecker linearTypeChecker, out MoverTypeChecker moverTypeChecker)
+    public static PipelineOutcome ResolveAndTypecheck(Program program, string bplFileName, out LinearTypeChecker linearTypeChecker, out CivlTypeChecker civlTypeChecker)
     {
       Contract.Requires(program != null);
       Contract.Requires(bplFileName != null);
 
       linearTypeChecker = null;
-      moverTypeChecker = null;
+      civlTypeChecker = null;
 
       // ---------- Resolve ------------------------------------------------------------
 
@@ -742,11 +735,11 @@ namespace Microsoft.Boogie
 
       CollectModSets(program);
 
-      moverTypeChecker = new MoverTypeChecker(program);
-      moverTypeChecker.TypeCheck();
-      if (moverTypeChecker.errorCount != 0)
+      civlTypeChecker = new CivlTypeChecker(program);
+      civlTypeChecker.TypeCheck();
+      if (civlTypeChecker.errorCount != 0)
       {
-          Console.WriteLine("{0} type checking errors detected in {1}", moverTypeChecker.errorCount, GetFileNameForConsole(bplFileName));
+          Console.WriteLine("{0} type checking errors detected in {1}", civlTypeChecker.errorCount, GetFileNameForConsole(bplFileName));
           return PipelineOutcome.TypeCheckingError;
       }
 
@@ -968,7 +961,7 @@ namespace Microsoft.Boogie
                       {
                           semaphore.Release();
                       }
-                  }, cts.Token, TaskCreationOptions.LongRunning);
+                  }, cts.Token, TaskCreationOptions.None);
               tasks[taskIndex] = t;
           }
 
@@ -1013,6 +1006,11 @@ namespace Microsoft.Boogie
       finally
       {
         CleanupCheckers(requestId);
+      }
+
+      if (CommandLineOptions.Clo.PrintNecessaryAssumes && program.NecessaryAssumes.Any())
+      {
+        Console.WriteLine("Necessary assume command(s): {0}", string.Join(", ", program.NecessaryAssumes));
       }
 
       cce.NonNull(CommandLineOptions.Clo.TheProverFactory).Close();
@@ -1114,23 +1112,23 @@ namespace Microsoft.Boogie
       printer.Inform(string.Format("Verifying {0} ...", impl.Name), output);
 
       int priority = 0;
-      if (0 < CommandLineOptions.Clo.VerifySnapshots)
-      {
-        verificationResult = Cache.Lookup(impl, out priority);
-      }
-
       var wasCached = false;
-      if (verificationResult != null && priority == Priority.SKIP)
-      {
-        if (CommandLineOptions.Clo.XmlSink != null)
-        {
-          CommandLineOptions.Clo.XmlSink.WriteStartMethod(impl.Name, verificationResult.Start);
-        }
+      if (0 < CommandLineOptions.Clo.VerifySnapshots) {
+        var cachedResults = Cache.Lookup(impl, out priority);
+        if (cachedResults != null && priority == Priority.SKIP) {
+          if (CommandLineOptions.Clo.XmlSink != null) {
+            CommandLineOptions.Clo.XmlSink.WriteStartMethod(impl.Name, cachedResults.Start);
+          }
 
-        printer.Inform(string.Format("Retrieving cached verification result for implementation {0}...", impl.Name), output);
-        wasCached = true;
+          printer.Inform(string.Format("Retrieving cached verification result for implementation {0}...", impl.Name), output);
+          if (CommandLineOptions.Clo.VerifySnapshots < 3 || cachedResults.Outcome == ConditionGeneration.Outcome.Correct) {
+            verificationResult = cachedResults;
+            wasCached = true;
+          }
+        }
       }
-      else
+
+      if (!wasCached)
       {
         #region Verify the implementation
 
@@ -1365,8 +1363,8 @@ namespace Microsoft.Boogie
       Program p = ParseBoogieProgram(new List<string> { filename }, false);
       System.Diagnostics.Debug.Assert(p != null);
       LinearTypeChecker linearTypeChecker;
-      MoverTypeChecker moverTypeChecker;
-      PipelineOutcome oc = ExecutionEngine.ResolveAndTypecheck(p, filename, out linearTypeChecker, out moverTypeChecker);
+      CivlTypeChecker civlTypeChecker;
+      PipelineOutcome oc = ExecutionEngine.ResolveAndTypecheck(p, filename, out linearTypeChecker, out civlTypeChecker);
       System.Diagnostics.Debug.Assert(oc == PipelineOutcome.ResolvedAndTypeChecked);
       return p;
     }
@@ -1466,11 +1464,11 @@ namespace Microsoft.Boogie
 
       printer.Inform(timeIndication + OutcomeIndication(outcome, errors), tw);
 
-      ReportOutcome(outcome, er, implName, implTok, requestId, tw, timeLimit);
+      ReportOutcome(outcome, er, implName, implTok, requestId, tw, timeLimit, errors);
     }
 
 
-    private static void ReportOutcome(VC.VCGen.Outcome outcome, ErrorReporterDelegate er, string implName, IToken implTok, string requestId, TextWriter tw, int timeLimit)
+    private static void ReportOutcome(VC.VCGen.Outcome outcome, ErrorReporterDelegate er, string implName, IToken implTok, string requestId, TextWriter tw, int timeLimit, List<Counterexample> errors)
     {
       ErrorInformation errorInfo = null;
 
@@ -1479,10 +1477,69 @@ namespace Microsoft.Boogie
         case VCGen.Outcome.ReachedBound:
           tw.WriteLine(string.Format("Stratified Inlining: Reached recursion bound of {0}", CommandLineOptions.Clo.RecursionBound));
           break;
+        case VCGen.Outcome.Errors:
         case VCGen.Outcome.TimedOut:
           if (implName != null && implTok != null)
           {
-            errorInfo = errorInformationFactory.CreateErrorInformation(implTok, string.Format("Verification timed out after {0} seconds ({1})", timeLimit, implName), requestId);
+            if (outcome == ConditionGeneration.Outcome.TimedOut || (errors != null && errors.Any(e => e.IsAuxiliaryCexForDiagnosingTimeouts)))
+            {
+              errorInfo = errorInformationFactory.CreateErrorInformation(implTok, string.Format("Verification of '{1}' timed out after {0} seconds", timeLimit, implName), requestId);
+            }
+
+            //  Report timed out assertions as auxiliary info.
+            if (errors != null)
+            {
+              var cmpr = new CounterexampleComparer();
+              var timedOutAssertions = errors.Where(e => e.IsAuxiliaryCexForDiagnosingTimeouts).Distinct(cmpr).ToList();
+              timedOutAssertions.Sort(cmpr);
+              if (0 < timedOutAssertions.Count)
+              {
+                errorInfo.Msg += string.Format(" with {0} check(s) that timed out individually", timedOutAssertions.Count);
+              }
+              foreach (Counterexample error in timedOutAssertions)
+              {
+                var callError = error as CallCounterexample;
+                var returnError = error as ReturnCounterexample;
+                var assertError = error as AssertCounterexample;
+                IToken tok = null;
+                string msg = null;
+                if (callError != null)
+                {
+                  tok = callError.FailingCall.tok;
+                  msg = callError.FailingCall.ErrorData as string ?? "A precondition for this call might not hold.";
+                }
+                else if (returnError != null)
+                {
+                  tok = returnError.FailingReturn.tok;
+                  msg = "A postcondition might not hold on this return path.";
+                }
+                else
+                {
+                  tok = assertError.FailingAssert.tok;
+                  if (assertError.FailingAssert is LoopInitAssertCmd)
+                  {
+                    msg = "This loop invariant might not hold on entry.";
+                  }
+                  else if (assertError.FailingAssert is LoopInvMaintainedAssertCmd)
+                  {
+                    msg = "This loop invariant might not be maintained by the loop.";
+                  }
+                  else
+                  {
+                    msg = assertError.FailingAssert.ErrorData as string;
+                    if (!CommandLineOptions.Clo.ForceBplErrors && assertError.FailingAssert.ErrorMessage != null)
+                    {
+                      msg = assertError.FailingAssert.ErrorMessage;
+                    }
+                    if (msg == null)
+                    {
+                      msg = "This assertion might not hold.";
+                    }
+                  }
+                }
+                errorInfo.AddAuxInfo(tok, msg, "Unverified check due to timeout");
+              }
+            }
           }
           break;
         case VCGen.Outcome.OutOfMemory:
@@ -1508,6 +1565,10 @@ namespace Microsoft.Boogie
           {
             er(errorInfo);
           }
+        }
+        else
+        {
+          printer.WriteErrorInformation(errorInfo, tw);
         }
       }
     }
@@ -1582,8 +1643,9 @@ namespace Microsoft.Boogie
           }
           else
           {
-            Interlocked.Add(ref stats.ErrorCount, errors.Count);
-            if (wasCached) { Interlocked.Add(ref stats.CachedErrorCount, errors.Count); }
+            int cnt = errors.Where(e => !e.IsAuxiliaryCexForDiagnosingTimeouts).Count();
+            Interlocked.Add(ref stats.ErrorCount, cnt);
+            if (wasCached) { Interlocked.Add(ref stats.CachedErrorCount, cnt); }
           }
           break;
       }
@@ -1599,6 +1661,10 @@ namespace Microsoft.Boogie
         errors.Sort(new CounterexampleComparer());
         foreach (Counterexample error in errors)
         {
+          if (error.IsAuxiliaryCexForDiagnosingTimeouts)
+          {
+            continue;
+          }
           var errorInfo = CreateErrorInformation(error, outcome);
           errorInfo.ImplementationName = implName;
 

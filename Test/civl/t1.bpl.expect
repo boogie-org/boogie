@@ -1,0 +1,9 @@
+t1.bpl(65,5): Error: Non-interference check failed
+Execution trace:
+    t1.bpl(84,13): anon0
+    (0,0): anon05
+    (0,0): inline$SetG_1$0$Entry
+    t1.bpl(25,21): inline$SetG_1$0$A
+    (0,0): inline$Impl_YieldChecker_A_1$0$L1
+
+Boogie program verifier finished with 9 verified, 1 error

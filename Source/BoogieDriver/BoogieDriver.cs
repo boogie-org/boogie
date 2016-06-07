@@ -90,7 +90,7 @@ namespace Microsoft.Boogie {
         }
       }
       ExecutionEngine.ProcessFiles(fileList);
-          return 0;
+      return 0;
 
     END:
       if (CommandLineOptions.Clo.XmlSink != null) {

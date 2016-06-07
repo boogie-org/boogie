@@ -1,0 +1,3 @@
+Optimization2.bpl(6,11): Error: attributes :minimize and :maximize accept only one argument of type int, real or bv
+Optimization2.bpl(11,11): Error: attributes :minimize and :maximize accept only one argument of type int, real or bv
+2 type checking errors detected in Optimization2.bpl

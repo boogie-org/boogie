@@ -696,6 +696,8 @@ namespace Microsoft.Boogie {
       }
     }
 
+    public readonly ISet<string> NecessaryAssumes = new HashSet<string>();
+
     public IEnumerable<Block> Blocks()
     {
       return Implementations.Select(Item => Item.Blocks).SelectMany(Item => Item);
@@ -732,6 +734,45 @@ namespace Microsoft.Boogie {
         }
       }
     }
+
+
+    /// <summary>
+    /// Finds blocks that break out of a loop in NaturalLoops(header, backEdgeNode)
+    /// </summary>
+    /// <param name="header"></param>
+    /// <param name="backEdgeNode"></param>
+    /// <returns></returns>
+    private HashSet<Block> GetBreakBlocksOfLoop(Block header, Block backEdgeNode, Graph<Block/*!*/>/*!*/ g)
+    {
+        Contract.Assert(CommandLineOptions.Clo.DeterministicExtractLoops, "Can only be called with /deterministicExtractLoops option");
+        var immSuccBlks = new HashSet<Block>();
+        var loopBlocks = g.NaturalLoops(header, backEdgeNode);
+        foreach (Block/*!*/ block in loopBlocks)
+        {
+            Contract.Assert(block != null);
+            var auxCmd = block.TransferCmd as GotoCmd;
+            if (auxCmd == null) continue;
+            foreach (var bl in auxCmd.labelTargets)
+            {
+                if (loopBlocks.Contains(bl)) continue;
+                immSuccBlks.Add(bl);
+            }
+        }
+        return immSuccBlks;
+    }
+
+    private HashSet<Block> GetBlocksInAllNaturalLoops(Block header, Graph<Block/*!*/>/*!*/ g)
+    {
+        Contract.Assert(CommandLineOptions.Clo.DeterministicExtractLoops, "Can only be called with /deterministicExtractLoops option");
+        var allBlocksInNaturalLoops = new HashSet<Block>();
+        foreach (Block/*!*/ source in g.BackEdgeNodes(header))
+        {
+            Contract.Assert(source != null);
+            g.NaturalLoops(header, source).Iter(b => allBlocksInNaturalLoops.Add(b));
+        }
+        return allBlocksInNaturalLoops;
+    }
+
 
     void CreateProceduresForLoops(Implementation impl, Graph<Block/*!*/>/*!*/ g,
                                   List<Implementation/*!*/>/*!*/ loopImpls,
@@ -788,7 +829,13 @@ namespace Microsoft.Boogie {
         foreach (Block/*!*/ b in g.BackEdgeNodes(header))
         {
             Contract.Assert(b != null);
-            foreach (Block/*!*/ block in g.NaturalLoops(header, b))
+            HashSet<Block> immSuccBlks = new HashSet<Block>();
+            if (detLoopExtract)
+            {
+                //Need to get the blocks that exit the loop, as we need to add them to targets and footprint
+                immSuccBlks = GetBreakBlocksOfLoop(header, b, g);
+            }
+            foreach (Block/*!*/ block in g.NaturalLoops(header, b).Union(immSuccBlks))
             {
                 Contract.Assert(block != null);
                 foreach (Cmd/*!*/ cmd in block.Cmds)
@@ -943,18 +990,16 @@ namespace Microsoft.Boogie {
                 GotoCmd auxGotoCmd = block.TransferCmd as GotoCmd;
                 Contract.Assert(auxGotoCmd != null && auxGotoCmd.labelNames != null && 
                     auxGotoCmd.labelTargets != null && auxGotoCmd.labelTargets.Count >= 1);
+                //BUGFIX on 10/26/15: this contains nodes present in NaturalLoops for a different backedgenode
+                var loopNodes = GetBlocksInAllNaturalLoops(header, g); //var loopNodes = g.NaturalLoops(header, source); 
                 foreach(var bl in auxGotoCmd.labelTargets) {
-                    bool found = false;
-                    foreach(var n in g.NaturalLoops(header, source)) { //very expensive, can we do a contains?
-                        if (bl == n) { //clarify: is this the right comparison?
-                            found = true;
-                            break;
-                        }
-                    }
-                    if (!found) {
+                    if (g.Nodes.Contains(bl) && //newly created blocks are not present in NaturalLoop(header, xx, g)
+                        !loopNodes.Contains(bl)) {
                         Block auxNewBlock = new Block();
                         auxNewBlock.Label = ((Block)bl).Label;
-                        auxNewBlock.Cmds = codeCopier.CopyCmdSeq(((Block)bl).Cmds);
+                        //these blocks may have read/write locals that are not present in naturalLoops
+                        //we need to capture these variables 
+                        auxNewBlock.Cmds = codeCopier.CopyCmdSeq(((Block)bl).Cmds); 
                         //add restoration code for such blocks
                         if (loopHeaderToAssignCmd.ContainsKey(header))
                         {
@@ -2196,6 +2241,7 @@ namespace Microsoft.Boogie {
   }
   public class Incarnation : LocalVariable {
     public int incarnationNumber;
+    public readonly Variable OriginalVariable;
     public Incarnation(Variable/*!*/ var, int i) :
       base(
       var.tok,
@@ -2203,6 +2249,7 @@ namespace Microsoft.Boogie {
       ) {
       Contract.Requires(var != null);
       incarnationNumber = i;
+      OriginalVariable = var;
     }
 
   }
@@ -2427,6 +2474,28 @@ namespace Microsoft.Boogie {
       functionDependencies.Add(function);
     }
 
+    public bool SignatureEquals(DeclWithFormals other)
+    {
+      Contract.Requires(other != null);
+
+      string sig = null;
+      string otherSig = null;
+      using (var strWr = new System.IO.StringWriter())
+      using (var tokTxtWr = new TokenTextWriter("<no file>", strWr, false, false))
+      {
+        EmitSignature(tokTxtWr, this is Function);
+        sig = strWr.ToString();
+      }
+
+      using (var otherStrWr = new System.IO.StringWriter())
+      using (var otherTokTxtWr = new TokenTextWriter("<no file>", otherStrWr, false, false))
+      {
+        EmitSignature(otherTokTxtWr, other is Function);
+        otherSig = otherStrWr.ToString();
+      }
+      return sig == otherSig;
+    }
+
     protected void EmitSignature(TokenTextWriter stream, bool shortRet) {
       Contract.Requires(stream != null);
       Type.EmitOptionalTypeParams(stream, TypeParameters);
@@ -2607,6 +2676,8 @@ namespace Microsoft.Boogie {
 
     private bool neverTrigger;
     private bool neverTriggerComputed;
+
+    public string OriginalLambdaExprAsString;
 
     public Function(IToken tok, string name, List<Variable> args, Variable result)
       : this(tok, name, new List<TypeVariable>(), args, result, null) {
@@ -3294,6 +3365,8 @@ namespace Microsoft.Boogie {
       }
       RecycledFailingAssertions.Add(assertion);
     }
+
+    public Cmd ExplicitAssumptionAboutCachedPrecondition { get; set; }
 
     // Strongly connected components
     private StronglyConnectedComponents<Block/*!*/> scc;

@@ -1,0 +1,5 @@
+chris6.bpl(10,3): Error BP5001: This assertion might not hold.
+Execution trace:
+    chris6.bpl(10,3): anon0
+
+Boogie program verifier finished with 1 verified, 1 error

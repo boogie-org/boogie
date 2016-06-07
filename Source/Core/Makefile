@@ -2,7 +2,7 @@ COCO = Coco.exe
 
 # ###############################################################################
 # The frame files are no longer in this directory. They must be downloaded
-# from http://boogiepartners.codeplex.com/. Update the FRAME_DIR variable to
+# from https://github.com/boogie-org/boogie-partners . Update the FRAME_DIR variable to
 # point to whatever directory you install that into.
 # ###############################################################################
 FRAME_DIR = ..\..\..\boogiepartners\CocoR\Modified

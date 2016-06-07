@@ -365,13 +365,16 @@ namespace VC {
     public Dictionary<Block, List<CallSite>> callSites;
     public Dictionary<Block, List<CallSite>> recordProcCallSites;
     public bool initialized { get; private set; }
+    // Instrumentation to apply after PassiveImpl, but before VCGen
+    Action<Implementation> PassiveImplInstrumentation;
 
     // boolControlVC (block -> its Bool variable)
     public Dictionary<Block, VCExprVar> blockToControlVar; 
 
-    public StratifiedInliningInfo(Implementation implementation, StratifiedVCGenBase stratifiedVcGen) {
+    public StratifiedInliningInfo(Implementation implementation, StratifiedVCGenBase stratifiedVcGen, Action<Implementation> PassiveImplInstrumentation) {
       vcgen = stratifiedVcGen;
       impl = implementation;
+      this.PassiveImplInstrumentation = PassiveImplInstrumentation;
 
       List<Variable> functionInterfaceVars = new List<Variable>();
       foreach (Variable v in vcgen.program.GlobalVariables) {
@@ -593,6 +596,9 @@ namespace VC {
 
       vcgen.InstrumentCallSites(impl);
 
+      if (PassiveImplInstrumentation != null)
+          PassiveImplInstrumentation(impl);
+
       label2absy = new Dictionary<int, Absy>();
       VCGen.CodeExprConversionClosure cc = new VCGen.CodeExprConversionClosure(label2absy, proverInterface.Context);
       translator.SetCodeExprConverter(cc.CodeExprToVerificationCondition); 
@@ -633,15 +639,16 @@ namespace VC {
 
   public abstract class StratifiedVCGenBase : VCGen {
     public readonly static string recordProcName = "boogie_si_record";
+    public readonly static string callSiteVarAttr = "callSiteVar";
     public Dictionary<string, StratifiedInliningInfo> implName2StratifiedInliningInfo;
     public ProverInterface prover;
 
-    public StratifiedVCGenBase(Program program, string/*?*/ logFilePath, bool appendLogFile, List<Checker> checkers)
+    public StratifiedVCGenBase(Program program, string/*?*/ logFilePath, bool appendLogFile, List<Checker> checkers, Action<Implementation> PassiveImplInstrumentation)
       : base(program, logFilePath, appendLogFile, checkers) {
       implName2StratifiedInliningInfo = new Dictionary<string, StratifiedInliningInfo>();
       prover = ProverInterface.CreateProver(program, logFilePath, appendLogFile, CommandLineOptions.Clo.ProverKillTime);
       foreach (var impl in program.Implementations) {
-        implName2StratifiedInliningInfo[impl.Name] = new StratifiedInliningInfo(impl, this);
+        implName2StratifiedInliningInfo[impl.Name] = new StratifiedInliningInfo(impl, this, PassiveImplInstrumentation);
       }
       GenerateRecordFunctions();
     }
@@ -693,7 +700,9 @@ namespace VC {
           if (!implName2StratifiedInliningInfo.ContainsKey(naryExpr.Fun.FunctionName)) continue;
           Variable callSiteVar = new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, "SICS" + callSiteId, Microsoft.Boogie.Type.Bool));
           implementation.LocVars.Add(callSiteVar);
-          newCmds.Add(new AssumeCmd(Token.NoToken, new IdentifierExpr(Token.NoToken, callSiteVar)));
+          var toInsert = new AssumeCmd(Token.NoToken, new IdentifierExpr(Token.NoToken, callSiteVar),
+              new QKeyValue(Token.NoToken, callSiteVarAttr, new List<object>(), null));
+          newCmds.Add(toInsert);
           callSiteId++;
         }
         block.Cmds = newCmds;
@@ -826,17 +835,12 @@ namespace VC {
     public int numInlined = 0;
     public int vcsize = 0;
     private HashSet<string> procsThatReachedRecBound;
-    public HashSet<string> procsToSkip;
-    public Dictionary<string, int> extraRecBound;
+    private Dictionary<string, int> extraRecBound;
 
     public StratifiedVCGen(bool usePrevCallTree, HashSet<string> prevCallTree, 
-                           HashSet<string> procsToSkip, Dictionary<string, int> extraRecBound,
                            Program program, string/*?*/ logFilePath, bool appendLogFile, List<Checker> checkers) 
     : this(program, logFilePath, appendLogFile, checkers)
-    {
-      this.procsToSkip = new HashSet<string>(procsToSkip);
-      this.extraRecBound = new Dictionary<string, int>(extraRecBound);
-
+    {          
       if (usePrevCallTree) {
         callTree = prevCallTree;
         PersistCallTree = true;
@@ -847,21 +851,19 @@ namespace VC {
     }
 
     public StratifiedVCGen(Program program, string/*?*/ logFilePath, bool appendLogFile, List<Checker> checkers)
-      : base(program, logFilePath, appendLogFile, checkers) {
+      : base(program, logFilePath, appendLogFile, checkers, null) {
       PersistCallTree = false;
       procsThatReachedRecBound = new HashSet<string>();
-      procsToSkip = new HashSet<string>();
+
       extraRecBound = new Dictionary<string, int>();
+      program.TopLevelDeclarations.OfType<Implementation>()
+          .Iter(impl =>
+          {
+              var b = QKeyValue.FindIntAttribute(impl.Attributes, "SIextraRecBound", -1);
+              if (b != -1) extraRecBound.Add(impl.Name, b);
+          });
     }
 
-    // Is this procedure to be "skipped" 
-    // Currently this is experimental
-    public bool isSkipped(string procName) {
-      return procsToSkip.Contains(procName);
-    }
-    public bool isSkipped(int candidate, FCallHandler calls) {
-      return isSkipped(calls.getProc(candidate));
-    }
     // Extra rec bound for procedures
     public int GetExtraRecBound(string procName) {
       if (!extraRecBound.ContainsKey(procName))
@@ -1315,16 +1317,9 @@ namespace VC {
                   Console.Write(">> SI Inlining: ");
                   reporter.candidatesToExpand
                       .Select(c => calls.getProc(c))
-                      .Iter(c => { if (!isSkipped(c)) Console.Write("{0} ", c); });
+                      .Iter(c =>  Console.Write("{0} ", c));
 
                   Console.WriteLine();
-                  Console.Write(">> SI Skipping: ");
-                  reporter.candidatesToExpand
-                      .Select(c => calls.getProc(c))
-                      .Iter(c => { if (isSkipped(c)) Console.Write("{0} ", c); });
-
-                  Console.WriteLine();
-
               }
 
               // Expand and try again
@@ -1343,7 +1338,6 @@ namespace VC {
       if (CommandLineOptions.Clo.StratifiedInliningVerbose > 1) {
         Console.WriteLine(">> SI: Expansions performed: {0}", vState.expansionCount);
         Console.WriteLine(">> SI: Candidates left: {0}", calls.currCandidates.Count);
-        Console.WriteLine(">> SI: Candidates skipped: {0}", calls.currCandidates.Where(i => isSkipped(i, calls)).Count());
         Console.WriteLine(">> SI: VC Size: {0}", vState.vcSize);
       }
 
@@ -1384,7 +1378,6 @@ namespace VC {
       List<VCExpr> assumptions = new List<VCExpr>();
 
       foreach (int id in calls.currCandidates) {
-        if (!isSkipped(id, calls))
           assumptions.Add(calls.getFalseExpr(id));
       }
       Outcome ret = checker.CheckAssumptions(assumptions);
@@ -1418,7 +1411,6 @@ namespace VC {
       procsThatReachedRecBound.Clear();
 
       foreach (int id in calls.currCandidates) {
-        if (isSkipped(id, calls)) continue;
 
         int idBound = calls.getRecursionBound(id);
         int sd = calls.getStackDepth(id);
@@ -1484,9 +1476,6 @@ namespace VC {
       Contract.Requires(vState.calls != null);
       Contract.Requires(vState.checker.prover != null);
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
-
-      // Skipped calls don't get inlined
-      candidates = candidates.FindAll(id => !isSkipped(id, vState.calls));
 
       vState.expansionCount += candidates.Count;
 
@@ -2273,7 +2262,7 @@ namespace VC {
         return;
       }
 
-      public override void OnResourceExceeded(string message)
+      public override void OnResourceExceeded(string message, IEnumerable<Tuple<AssertCmd, TransferCmd>> assertCmds = null)
       {
           //Contract.Requires(message != null);
       }
@@ -2608,6 +2597,9 @@ namespace VC {
               throw new InvalidProgramForSecureVc("SecureVc: Requires not supported");
           if(impl.LocVars.Any(v => isVisible(v)))
               throw new InvalidProgramForSecureVc("SecureVc: Visible Local variables not allowed");
+
+          // Desugar procedure calls
+          DesugarCalls(impl);
 
           // Gather spec, remove existing ensures
           var secureAsserts = new List<AssertCmd>();

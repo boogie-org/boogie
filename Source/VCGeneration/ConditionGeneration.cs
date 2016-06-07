@@ -85,6 +85,7 @@ namespace Microsoft.Boogie {
     public string RequestId;
     public abstract byte[] Checksum { get; }
     public byte[] SugaredCmdChecksum;
+    public bool IsAuxiliaryCexForDiagnosingTimeouts;
 
     public Dictionary<TraceLocation, CalleeCounterexampleInfo> calleeCounterexamples;
 
@@ -313,7 +314,7 @@ namespace Microsoft.Boogie {
     public abstract int GetLocation();
   }
 
-  public class CounterexampleComparer : IComparer<Counterexample> {
+  public class CounterexampleComparer : IComparer<Counterexample>, IEqualityComparer<Counterexample> {
 
     private int Compare(List<Block> bs1, List<Block> bs2)
     {
@@ -374,6 +375,16 @@ namespace Microsoft.Boogie {
         return 1;
       }
       return -1;
+    }
+
+    public bool Equals(Counterexample x, Counterexample y)
+    {
+      return Compare(x, y) == 0;
+    }
+
+    public int GetHashCode(Counterexample obj)
+    {
+      return 0;
     }
   }
 
@@ -768,12 +779,18 @@ namespace VC {
         Contract.Assert(req != null);
         Expr e = Substituter.Apply(formalProcImplSubst, req.Condition);
         Cmd c = new AssumeCmd(req.tok, e);
+        c.IrrelevantForChecksumComputation = true;
         insertionPoint.Cmds.Add(c);
         if (debugWriter != null) {
           c.Emit(debugWriter, 1);
         }
       }
       origStartBlock.Predecessors.Add(insertionPoint);
+
+      if (impl.ExplicitAssumptionAboutCachedPrecondition != null)
+      {
+        insertionPoint.Cmds.Add(impl.ExplicitAssumptionAboutCachedPrecondition);
+      }
 
       if (debugWriter != null) {
         debugWriter.WriteLine();
@@ -977,11 +994,11 @@ namespace VC {
     #endregion
 
 
-    protected Checker FindCheckerFor(int timeout, bool isBlocking = true)
+    protected Checker FindCheckerFor(int timeout, bool isBlocking = true, int waitTimeinMs = 50, int maxRetries = 3)
     {
+      Contract.Requires(0 <= waitTimeinMs && 0 <= maxRetries);
       Contract.Ensures(!isBlocking || Contract.Result<Checker>() != null);
 
-      var maxRetries = 3;
       lock (checkers)
       {
       retry:
@@ -1009,6 +1026,8 @@ namespace VC {
                 else
                 {
                   checkers.RemoveAt(i);
+                  i--;
+                  continue;
                 }
               }
             }
@@ -1023,7 +1042,10 @@ namespace VC {
         {
           if (isBlocking || 0 < maxRetries)
           {
-            Monitor.Wait(checkers, 50);
+            if (0 < waitTimeinMs)
+            {
+              Monitor.Wait(checkers, waitTimeinMs);
+            }
             maxRetries--;
             goto retry;
           }
@@ -1111,7 +1133,8 @@ namespace VC {
         }
         if (returnBlocks > 1) {
           string unifiedExitLabel = "GeneratedUnifiedExit";
-          Block unifiedExit = new Block(new Token(-17, -4), unifiedExitLabel, new List<Cmd>(), new ReturnCmd(Token.NoToken));
+          Block unifiedExit;
+          unifiedExit = new Block(new Token(-17, -4), unifiedExitLabel, new List<Cmd>(), new ReturnCmd(impl.StructuredStmts != null ? impl.StructuredStmts.EndCurly : Token.NoToken));         
           Contract.Assert(unifiedExit != null);
           foreach (Block b in impl.Blocks) {
             if (b.TransferCmd is ReturnCmd) {
@@ -1275,7 +1298,7 @@ namespace VC {
           IdentifierExpr v_prime_exp = new IdentifierExpr(v_prime.tok, v_prime);
           #endregion
           #region Create the assume command itself
-          AssumeCmd ac = new AssumeCmd(v.tok, TypedExprEq(v_prime_exp, pred_incarnation_exp, v_prime.Name.Contains("a##post##")));
+          AssumeCmd ac = new AssumeCmd(v.tok, TypedExprEq(v_prime_exp, pred_incarnation_exp, v_prime.Name.Contains("a##cached##")));
           pred.Cmds.Add(ac);
           #endregion
           #endregion
@@ -1517,6 +1540,26 @@ namespace VC {
         PredicateCmd pc = (PredicateCmd)c.Clone();
         Contract.Assert(pc != null);
 
+        QKeyValue current = pc.Attributes;
+        while (current != null)
+        {
+          if (current.Key == "minimize" || current.Key == "maximize") {
+            Contract.Assume(current.Params.Count == 1);
+            var param = current.Params[0] as Expr;
+            Contract.Assume(param != null && (param.Type.IsInt || param.Type.IsReal || param.Type.IsBv));
+            current.ClearParams();
+            current.AddParam(Substituter.ApplyReplacingOldExprs(incarnationSubst, oldFrameSubst, param));
+          }
+          if (current.Key == "verified_under") {
+            Contract.Assume(current.Params.Count == 1);
+            var param = current.Params[0] as Expr;
+            Contract.Assume(param != null && param.Type.IsBool);
+            current.ClearParams();
+            current.AddParam(Substituter.ApplyReplacingOldExprs(incarnationSubst, oldFrameSubst, param));
+          }
+          current = current.Next;
+        }
+
         Expr copy = Substituter.ApplyReplacingOldExprs(incarnationSubst, oldFrameSubst, pc.Expr);
         if (CommandLineOptions.Clo.ModelViewFile != null && pc is AssumeCmd) {
           string description = QKeyValue.FindStringAttribute(pc.Attributes, "captureState");
@@ -1697,7 +1740,7 @@ namespace VC {
             }
           
             #region Create an assume command with the new variable
-            assumptions.Add(TypedExprEq(x_prime_exp, copies[i], x_prime_exp.Decl != null && x_prime_exp.Decl.Name.Contains("a##post##")));
+            assumptions.Add(TypedExprEq(x_prime_exp, copies[i], x_prime_exp.Decl != null && x_prime_exp.Decl.Name.Contains("a##cached##")));
             #endregion
           }
         }
@@ -1720,6 +1763,7 @@ namespace VC {
         if (currentImplementation != null
             && currentImplementation.HasCachedSnapshot
             && !currentImplementation.AnyErrorsInCachedSnapshot
+            && currentImplementation.DoomedInjectedAssumptionVariables.Count == 0
             && currentImplementation.InjectedAssumptionVariables.Count == 1
             && assign.Lhss.Count == 1)
         {
@@ -1742,9 +1786,9 @@ namespace VC {
         Contract.Assert(c != null);
         // If an assumption variable for postconditions is included here, it must have been assigned within a loop.
         // We do not need to havoc it if we have performed a modular proof of the loop (i.e., using only the loop
-        // invariant) in the previous snapshot and are therefore not going refer to the assumption variable after
-        // the loop. We can achieve this by simply not updating/adding it in the incarnation map.
-        List<IdentifierExpr> havocVars = hc.Vars.Where(v => !(QKeyValue.FindBoolAttribute(v.Decl.Attributes, "assumption") && v.Decl.Name.StartsWith("a##post##"))).ToList();
+        // invariant) in the previous snapshot and, consequently, the corresponding assumption did not affect the
+        // anything after the loop. We can achieve this by simply not updating/adding it in the incarnation map.
+        List<IdentifierExpr> havocVars = hc.Vars.Where(v => !(QKeyValue.FindBoolAttribute(v.Decl.Attributes, "assumption") && v.Decl.Name.StartsWith("a##cached##"))).ToList();
         // First, compute the new incarnations
         foreach (IdentifierExpr ie in havocVars) {
           Contract.Assert(ie != null);
@@ -1765,6 +1809,18 @@ namespace VC {
               Expr copy = Substituter.ApplyReplacingOldExprs(updatedIncarnationSubst, oldFrameSubst, w);
               passiveCmds.Add(new AssumeCmd(c.tok, copy));
             }
+          }
+        }
+
+        // Add the following assume-statement for each assumption variable 'v', where 'v_post' is the new incarnation and 'v_pre' is the old one:
+        // assume v_post ==> v_pre;
+        foreach (IdentifierExpr ie in havocVars)
+        {
+          if (QKeyValue.FindBoolAttribute(ie.Decl.Attributes, "assumption"))
+          {
+            var preInc = (Expr)(preHavocIncarnationMap[ie.Decl].Clone());
+            var postInc = (Expr)(incarnationMap[ie.Decl].Clone());
+            passiveCmds.Add(new AssumeCmd(c.tok, Expr.Imp(postInc, preInc)));
           }
         }
       }

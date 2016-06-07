@@ -6,16 +6,18 @@ env:
   - BOOGIE_CONFIG=Debug
   - BOOGIE_CONFIG=Release
 install:
-  - sudo apt-key adv --recv-keys --keyserver keyserver.ubuntu.com C504E590
-  # FIXME: We should not be using GPUVerify's repo for Z3
-  - sudo sh -c 'echo "deb http://ppa.launchpad.net/delcypher/gpuverify-smt/ubuntu precise main" > /etc/apt/sources.list.d/smt.list'
+  - wget http://download.opensuse.org/repositories/home:delcypher:z3/xUbuntu_12.04/Release.key
+  - sudo apt-key add - < Release.key
+  # Use Z3 package built by the OpenSUSE build service https://build.opensuse.org/package/show/home:delcypher:z3/z3
+  - sudo sh -c "echo 'deb http://download.opensuse.org/repositories/home:/delcypher:/z3/xUbuntu_12.04/ /' >> /etc/apt/sources.list.d/z3.list"
   - sudo apt-get update
-  - nuget restore ${TRAVIS_SOLUTION}
-  # Install Z3
-  - sudo apt-get -y install z3=4.3.2-0~precise2
+  # NuGet is a little flakey in legacy TravisCI, use travis_retry command to retry the command if it fails
+  - travis_retry nuget restore ${TRAVIS_SOLUTION}
+  # Install Z3 executable
+  - sudo apt-get -y install 'z3=4.4.1-*'
   # Install needed python tools
   - sudo pip install lit OutputCheck pyyaml
-  - mkdir -p Source/packages && cd Source/packages && nuget install NUnit.Runners -Version 2.6.3
+  - mkdir -p Source/packages && cd Source/packages && travis_retry nuget install NUnit.Runners -Version 2.6.3
   - cd ../../
 script:
   - xbuild /p:Configuration=${BOOGIE_CONFIG} ${TRAVIS_SOLUTION}

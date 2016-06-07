@@ -67,7 +67,6 @@ namespace Microsoft.Boogie {
 
       string FreshLambdaFunctionName()
       {
-        // TODO(wuestholz): Should we use a counter per top-level declaration?
         return string.Format("lambda#{0}", lambdaid++);
       }
 
@@ -105,7 +104,7 @@ namespace Microsoft.Boogie {
         if (0 < CommandLineOptions.Clo.VerifySnapshots && QKeyValue.FindStringAttribute(lambdaAttrs, "checksum") == null)
         {
           // Attach a dummy checksum to avoid issues in the dependency analysis.
-          var checksumAttr = new QKeyValue(lambda.tok, "checksum", new List<object> { "stable" }, null);
+          var checksumAttr = new QKeyValue(lambda.tok, "checksum", new List<object> { "lambda expression" }, null);
           if (lambdaAttrs == null)
           {
             lambdaAttrs = checksumAttr;
@@ -176,6 +175,7 @@ namespace Microsoft.Boogie {
           }
           Function fn = new Function(tok, FreshLambdaFunctionName(), freshTypeVars, formals, res, "auto-generated lambda function",
             Substituter.Apply(Substituter.SubstitutionFromHashtable(substFnAttrs), lambdaAttrs));
+          fn.OriginalLambdaExprAsString = lam_str;
 
           fcall = new FunctionCall(new IdentifierExpr(tok, fn.Name));
           fcall.Func = fn;  // resolve here

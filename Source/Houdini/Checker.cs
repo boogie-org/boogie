@@ -238,6 +238,7 @@ namespace Microsoft.Boogie.Houdini {
       stats.proverTime += queryTime;
       stats.numProverQueries++;
       if (CommandLineOptions.Clo.Trace) {
+        Console.WriteLine("Outcome = " + proverOutcome);
         Console.WriteLine("Time taken = " + queryTime);
       }
 

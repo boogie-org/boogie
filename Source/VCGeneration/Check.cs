@@ -217,6 +217,7 @@ namespace Microsoft.Boogie {
     private void Setup(Program prog, ProverContext ctx)
     {
       Program = prog;
+      // TODO(wuestholz): Is this lock necessary?
       lock (Program.TopLevelDeclarations)
       {
         foreach (Declaration decl in Program.TopLevelDeclarations)
@@ -355,14 +356,14 @@ namespace Microsoft.Boogie {
       hasOutput = false;
       outputExn = null;
       this.handler = handler;
-
+      
       thmProver.Reset(gen);
       SetTimeout();
       proverStart = DateTime.UtcNow;
       thmProver.BeginCheck(descriptiveName, vc, handler);
       //  gen.ClearSharedFormulas();    PR: don't know yet what to do with this guy
 
-      ProverTask = Task.Factory.StartNew(() => { WaitForOutput(null); } , TaskCreationOptions.LongRunning);
+      ProverTask = Task.Factory.StartNew(() => { WaitForOutput(null); }, TaskCreationOptions.LongRunning);
     }
 
     public ProverInterface.Outcome ReadOutcome() {
@@ -385,6 +386,7 @@ namespace Microsoft.Boogie {
   // -----------------------------------------------------------------------------------------------
 
   public abstract class ProverInterface {
+
     public static ProverInterface CreateProver(Program prog, string/*?*/ logFilePath, bool appendLogFile, int timeout, int taskID = -1) {
       Contract.Requires(prog != null);
 
@@ -448,8 +450,13 @@ namespace Microsoft.Boogie {
       Invalid,
       TimeOut,
       OutOfMemory,
-      Undetermined
+      Undetermined,
+      Bounded
     }
+
+    public readonly ISet<VCExprVar> NamedAssumes = new HashSet<VCExprVar>();
+    public ISet<string> UsedNamedAssumes { get; protected set; }
+
     public class ErrorHandler {
       // Used in CheckOutcomeCore
       public virtual int StartingProcId()
@@ -461,7 +468,7 @@ namespace Microsoft.Boogie {
         Contract.Requires(cce.NonNullElements(labels));
       }
 
-      public virtual void OnResourceExceeded(string message) {
+      public virtual void OnResourceExceeded(string message, IEnumerable<Tuple<AssertCmd, TransferCmd>> assertCmds = null) {
         Contract.Requires(message != null);
       }
 
@@ -540,7 +547,7 @@ namespace Microsoft.Boogie {
     }
 
     // (assert vc)
-    public virtual void Assert(VCExpr vc, bool polarity)
+    public virtual void Assert(VCExpr vc, bool polarity, bool isSoft = false, int weight = 1)
     {
         throw new NotImplementedException();
     }

@@ -1,6 +1,17 @@
 # Boogie
 
-[![Build Status](https://travis-ci.org/boogie-org/boogie.svg)](https://travis-ci.org/boogie-org/boogie)
+## Build Status
+
+| Linux                         | Windows                         |
+|-------------------------------|---------------------------------|
+| [![linux build status][1]][2] | [![windows_build_status][3]][4] |
+
+[1]: https://travis-ci.org/boogie-org/boogie.svg?branch=master
+[2]: https://travis-ci.org/boogie-org/boogie
+[3]: https://pmbuilds.inf.ethz.ch/buildStatus/icon?job=boogie
+[4]: #FIXME
+
+## About
 
 Boogie is an intermediate verification language (IVL), intended as a layer on which
 to build program verifiers for other languages. Several program verifiers have
@@ -22,9 +33,13 @@ several other institutions make the open-source Boogie tool what it is.
 
 ![boogie architecture](http://research.microsoft.com/en-us/projects/boogie/boogie.png)
 
+More documentation can be found at http://boogie-docs.readthedocs.org/en/latest/ .
+
 ## Language Reference
 
-[This is Boogie2](http://research.microsoft.com/en-us/um/people/leino/papers/krml178.pdf) details
+See [Language reference](http://boogie-docs.readthedocs.org/en/latest/LangRef.html).
+
+Note: [This is Boogie2](http://research.microsoft.com/en-us/um/people/leino/papers/krml178.pdf) details
 many aspects of the Boogie IVL but is slightly out of date.
 
 ## Getting help
@@ -37,7 +52,7 @@ You can also report issues on our [issue tracker](https://github.com/boogie-org/
 ### Requirements
 
 - [NuGet](https://www.nuget.org/)
-- [Z3](https://github.com/Z3Prover/z3) 4.3.2 or [CVC4](http://cvc4.cs.nyu.edu/web/) **FIXME_VERSION** (note
+- [Z3](https://github.com/Z3Prover/z3) 4.4.1 or [CVC4](http://cvc4.cs.nyu.edu/web/) **FIXME_VERSION** (note
   CVC4 support is experimental)
 
 #### Windows specific

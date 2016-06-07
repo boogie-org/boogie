@@ -1,0 +1,18 @@
+(0,0): Error BP5003: A postcondition might not hold on this return path.
+chris2.bpl(30,5): Related location: Gate not preserved by p_gt1_lower
+Execution trace:
+    (0,0): this_A
+(0,0): Error BP5003: A postcondition might not hold on this return path.
+(0,0): Related location: Gate failure of p_gt2 not preserved by p_gt1_lower
+Execution trace:
+    (0,0): this_A
+(0,0): Error BP5003: A postcondition might not hold on this return path.
+chris2.bpl(30,5): Related location: Gate not preserved by p_gt1
+Execution trace:
+    (0,0): this_A
+(0,0): Error BP5003: A postcondition might not hold on this return path.
+(0,0): Related location: Gate failure of p_gt2 not preserved by p_gt1
+Execution trace:
+    (0,0): this_A
+
+Boogie program verifier finished with 2 verified, 4 errors

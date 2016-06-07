@@ -480,13 +480,6 @@ namespace Microsoft.Boogie
                 List<Variable> interfaceVars = new List<Variable>();
                 Expr assertExpr = new LiteralExpr(Token.NoToken, true);
                 Contract.Assert(assertExpr != null);
-                foreach (Variable v in program.GlobalVariables)
-                {
-                    Contract.Assert(v != null);
-                    interfaceVars.Add(v);
-                    if (v.Name == "error")
-                        inputErrorVariable = v;
-                }
                 // InParams must be obtained from impl and not proc
                 foreach (Variable v in impl.InParams)
                 {
@@ -502,6 +495,13 @@ namespace Microsoft.Boogie
                     interfaceVars.Add(c);
                     Expr eqExpr = Expr.Eq(new IdentifierExpr(Token.NoToken, c), new IdentifierExpr(Token.NoToken, v));
                     assertExpr = Expr.And(assertExpr, eqExpr);
+                }
+                foreach (Variable v in program.GlobalVariables)
+                {
+                    Contract.Assert(v != null);
+                    interfaceVars.Add(v);
+                    if (v.Name == "error")
+                        inputErrorVariable = v;
                 }
                 if (errorVariable != null)
                 {
@@ -657,11 +657,6 @@ namespace Microsoft.Boogie
                     }
                     else if (mode == Mode.Corral || proc.FindExprAttribute("inline") != null || proc is LoopProcedure)
                     {
-                        foreach (Variable v in program.GlobalVariables)
-                        {
-                            Contract.Assert(v != null);
-                            exprs.Add(new OldExpr(Token.NoToken, new IdentifierExpr(Token.NoToken, v)));
-                        }
                         foreach (Variable v in proc.InParams)
                         {
                             Contract.Assert(v != null);
@@ -671,6 +666,11 @@ namespace Microsoft.Boogie
                         {
                             Contract.Assert(v != null);
                             exprs.Add(new IdentifierExpr(Token.NoToken, v));
+                        }
+                        foreach (Variable v in program.GlobalVariables)
+                        {
+                            Contract.Assert(v != null);
+                            exprs.Add(new OldExpr(Token.NoToken, new IdentifierExpr(Token.NoToken, v)));
                         }
                         foreach (IdentifierExpr ie in proc.Modifies)
                         {
@@ -1513,7 +1513,7 @@ namespace Microsoft.Boogie
 
         /** Check the RPFP, and return a counterexample if there is one. */
 
-        public RPFP.LBool Check(ref RPFP.Node cexroot)
+        public VC.ConditionGeneration.Outcome Check(ref RPFP.Node cexroot)
         {
             var start = DateTime.Now;
 
@@ -1548,11 +1548,15 @@ namespace Microsoft.Boogie
             switch(outcome)
             {
                 case ProverInterface.Outcome.Valid:
-                   return RPFP.LBool.False;
+                    return VC.ConditionGeneration.Outcome.Correct;
+                case ProverInterface.Outcome.Bounded:
+                    return VC.ConditionGeneration.Outcome.ReachedBound;
                 case ProverInterface.Outcome.Invalid:
-                   return RPFP.LBool.True;
+                    return VC.ConditionGeneration.Outcome.Errors;
+                case ProverInterface.Outcome.TimeOut:
+                    return VC.ConditionGeneration.Outcome.TimedOut;
                 default:
-                   return RPFP.LBool.Undef;
+                   return VC.ConditionGeneration.Outcome.Inconclusive;
             }
         }
 
@@ -1598,7 +1602,7 @@ namespace Microsoft.Boogie
                     Console.WriteLine("check: {0}s", (DateTime.Now - start).TotalSeconds);
                     switch (checkres)
                     {
-                        case RPFP.LBool.True:
+                        case Outcome.Errors:
                             Console.WriteLine("Counterexample found.\n");
                             // start = DateTime.Now;
                             Counterexample cex = CreateBoogieCounterExample(cexroot.owner, cexroot, impl);
@@ -1607,17 +1611,23 @@ namespace Microsoft.Boogie
                             collector.OnCounterexample(cex, "assertion failure");
                             Console.WriteLine("cex: {0}s", (DateTime.Now - start).TotalSeconds);
                             ConjecturesToSpecs();
-                            return VC.ConditionGeneration.Outcome.Errors;
-                        case RPFP.LBool.False:
-                            Console.WriteLine("Procedure is correct.");
+                            break;
+                        case Outcome.Correct:
+                            Console.WriteLine("Procedure is correct. (fixed point reached)");
 							FixedPointToSpecs();
                             ConjecturesToSpecs();
-                            return Outcome.Correct;
-                        case RPFP.LBool.Undef:
+                            break;
+                        case Outcome.ReachedBound:
+                            Console.WriteLine("Procedure is correct. (recursion bound reached)");
+                            FixedPointToSpecs();
+                            ConjecturesToSpecs();
+                            break;
+                        default:
                             Console.WriteLine("Inconclusive result.");
                             ConjecturesToSpecs();
-                            return Outcome.ReachedBound;
+                            break;
                     }
+                    return checkres;
                     
                 }
 
@@ -2189,7 +2199,13 @@ namespace Microsoft.Boogie
 					idx.Add(args[1]);
 					return Expr.Store(args[0],idx,args[2]);
 				}
-				
+
+                if (f.Op is VCExprBoogieFunctionOp)
+                {
+                    return new NAryExpr(Token.NoToken, 
+                        new FunctionCall((f.Op as VCExprBoogieFunctionOp).Func), args);
+                }
+
 				var op = VCOpToOp (f.Op);
 				return MakeBinary(op,args);
 			}

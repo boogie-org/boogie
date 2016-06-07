@@ -6,6 +6,6 @@ Execution trace:
     AssumptionVariables0.bpl(25,5): anon0
 AssumptionVariables0.bpl(39,5): Error BP5001: This assertion might not hold.
 Execution trace:
-    AssumptionVariables0.bpl(37,8): anon0
+    AssumptionVariables0.bpl(37,9): anon0
 
-Boogie program verifier finished with 1 verified, 3 errors
+Boogie program verifier finished with 3 verified, 3 errors

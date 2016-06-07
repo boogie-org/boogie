@@ -47,7 +47,7 @@ namespace Microsoft.Boogie.SMTLib
       "flet", "implies", "!=", "if_then_else",
       // Z3 extensions
       "lblneg", "lblpos", "lbl-lit",
-      "if", "&&", "||", "equals", "equiv", "bool",
+      "if", "&&", "||", "equals", "equiv", "bool", "minimize", "maximize",
       // Boogie-defined
       "real_pow", "UOrdering2", "UOrdering3", 
       // Floating point (final draft SMTLIB-v2.5)
@@ -98,9 +98,14 @@ namespace Microsoft.Boogie.SMTLib
       return "|" + s + "|";
     }
 
-    static string NonKeyword(string s)
+    static string FilterReserved(string s)
     {
-      if (reservedSmtWords.Contains(s) || char.IsDigit(s[0]))
+      // Note symbols starting with ``.`` and ``@`` are reserved for internal
+      // solver use in SMT-LIBv2 however if we check for the first character
+      // being ``@`` then Boogie's tests fail spectacularly because they are
+      // used for labels so we don't check for it here. It hopefully won't matter
+      // in practice because ``@`` cannot be legally used in Boogie identifiers.
+      if (reservedSmtWords.Contains(s) || char.IsDigit(s[0]) || s[0] == '.')
         s = "q@" + s;
 
       // | and \ are illegal even in quoted identifiers
@@ -120,17 +125,17 @@ namespace Microsoft.Boogie.SMTLib
 
     public static string QuoteId(string s)
     {
-      return AddQuotes(NonKeyword(s));
+      return AddQuotes(FilterReserved(s));
     }
 
     public override string GetQuotedLocalName(object thingie, string inherentName)
     {
-      return AddQuotes(base.GetLocalName(thingie, NonKeyword(inherentName)));
+      return AddQuotes(base.GetLocalName(thingie, FilterReserved(inherentName)));
     }
 
     public override string GetQuotedName(object thingie, string inherentName)
     {
-      return AddQuotes(base.GetName(thingie, NonKeyword(inherentName)));
+      return AddQuotes(base.GetName(thingie, FilterReserved(inherentName)));
     }
 
     public SMTLibNamer()

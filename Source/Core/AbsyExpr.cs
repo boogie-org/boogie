@@ -479,6 +479,29 @@ namespace Microsoft.Boogie {
         var mid = (start + end) / 2;
         return Expr.And(BinaryTreeAnd(terms, start, mid), BinaryTreeAnd(terms, mid + 1, end));
     }
+
+    public static Expr And(IEnumerable<Expr> conjuncts, bool returnNullIfEmpty = false)
+    {
+      Expr result = null;
+      foreach (var c in conjuncts)
+      {
+        if (result != null)
+        {
+          result = LiteralExpr.And(result, c);
+          result.Type = Type.Bool;
+        }
+        else
+        {
+          result = c;
+          result.Type = Type.Bool;
+        }
+      }
+      if (result == null && !returnNullIfEmpty)
+      {
+        result = Expr.True;
+      }
+      return result;
+    }
   }
   [ContractClassFor(typeof(Expr))]
   public abstract class ExprContracts : Expr {
@@ -2051,7 +2074,15 @@ namespace Microsoft.Boogie {
     virtual public void Emit(IList<Expr> args, TokenTextWriter stream, int contextBindingStrength, bool fragileContext) {
       //Contract.Requires(stream != null);
       //Contract.Requires(args != null);
+
+      if (stream.UseForComputingChecksums && Func.OriginalLambdaExprAsString != null)
+      {
+        stream.Write(Func.OriginalLambdaExprAsString);
+      }
+      else
+      {
       this.name.Emit(stream, 0xF0, false);
+      }
       if (stream.UseForComputingChecksums)
       {
         var c = Func.DependencyChecksum;

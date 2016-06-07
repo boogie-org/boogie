@@ -1,0 +1,19 @@
+(0,0): Error BP5001: This assertion might not hold.
+Execution trace:
+    detLoopExtractNested.bpl(12,12): anon0
+    detLoopExtractNested.bpl(14,8): anon5_LoopBody
+    detLoopExtractNested.bpl(16,10): anon6_LoopBody
+    detLoopExtractNested.bpl(16,10): anon6_LoopBody
+    detLoopExtractNested.bpl(16,10): anon6_LoopBody
+    detLoopExtractNested.bpl(15,6): anon6_LoopDone
+    detLoopExtractNested.bpl(15,6): anon6_LoopDone
+    detLoopExtractNested.bpl(14,8): anon5_LoopBody
+    detLoopExtractNested.bpl(16,10): anon6_LoopBody
+    detLoopExtractNested.bpl(16,10): anon6_LoopBody
+    detLoopExtractNested.bpl(16,10): anon6_LoopBody
+    detLoopExtractNested.bpl(15,6): anon6_LoopDone
+    detLoopExtractNested.bpl(15,6): anon6_LoopDone
+    detLoopExtractNested.bpl(13,4): anon5_LoopDone
+    detLoopExtractNested.bpl(13,4): anon5_LoopDone
+
+Boogie program verifier finished with 0 verified, 1 error

@@ -1,0 +1,3 @@
+termination.bpl(9,31): Error: Implementation main fails simulation check C at layer 1. Transactions must be separated by a yield.
+
+1 type checking errors detected in termination.bpl

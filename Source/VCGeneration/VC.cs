@@ -1519,7 +1519,7 @@ namespace VC {
         }
     }
 
-    public VCExpr GenerateVC(Implementation/*!*/ impl, VCExpr controlFlowVariableExpr, out Dictionary<int, Absy>/*!*/ label2absy, ProverContext proverContext)
+    public VCExpr GenerateVC(Implementation/*!*/ impl, VCExpr controlFlowVariableExpr, out Dictionary<int, Absy>/*!*/ label2absy, ProverContext proverContext, IList<VCExprVar> namedAssumeVars = null)
     {
       Contract.Requires(impl != null);
       Contract.Requires(proverContext != null);
@@ -1527,10 +1527,10 @@ namespace VC {
       Contract.Ensures(Contract.Result<VCExpr>() != null);
 
       label2absy = new Dictionary<int, Absy>();
-      return GenerateVCAux(impl, controlFlowVariableExpr, label2absy, proverContext);
+      return GenerateVCAux(impl, controlFlowVariableExpr, label2absy, proverContext, namedAssumeVars: namedAssumeVars);
     }
 
-    public VCExpr GenerateVCAux(Implementation/*!*/ impl, VCExpr controlFlowVariableExpr, Dictionary<int, Absy>/*!*/ label2absy, ProverContext proverContext) {
+    public VCExpr GenerateVCAux(Implementation/*!*/ impl, VCExpr controlFlowVariableExpr, Dictionary<int, Absy>/*!*/ label2absy, ProverContext proverContext, IList<VCExprVar> namedAssumeVars = null) {
       Contract.Requires(impl != null);
       Contract.Requires(proverContext != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
@@ -1632,7 +1632,7 @@ namespace VC {
           //use Duplicator and Substituter rather than new
           //nested IToken?
           //document expand attribute (search for {:ignore}, for example)
-          //fix up new CallCmd, new Requires, new Ensures in OwickiGries.cs
+          //fix up new CallCmd, new Requires, new Ensures in CivlRefinement.cs
           Func<Expr,Expr,Expr> withType = (Expr from, Expr to) =>
           {
             NAryExpr nFrom = from as NAryExpr;
@@ -1763,9 +1763,18 @@ namespace VC {
         {
           var checksum = a.Checksum;
           var oldCex = impl.ErrorChecksumToCachedError[checksum] as Counterexample;
-          if (oldCex != null)
-          {
-            callback.OnCounterexample(oldCex, null);
+          if (oldCex != null) {
+            if (CommandLineOptions.Clo.VerifySnapshots < 3) {
+              callback.OnCounterexample(oldCex, null);
+            } else {
+              // If possible, we use the old counterexample, but with the location information of "a"
+              var cex = AssertCmdToCloneCounterexample(a, oldCex);
+              callback.OnCounterexample(cex, null);
+              // OnCounterexample may have had side effects on the RequestId and OriginalRequestId fields.  We make
+              // any such updates available in oldCex. (Is this really a good design? --KRML)
+              oldCex.RequestId = cex.RequestId;
+              oldCex.OriginalRequestId = cex.OriginalRequestId;
+            }
           }
         }
       }
@@ -2012,6 +2021,16 @@ namespace VC {
       protected ProverContext/*!*/ context;
       Program/*!*/ program;
 
+      public IEnumerable<string> NecessaryAssumes
+      {
+        get { return program.NecessaryAssumes; }
+      }
+
+      public void AddNecessaryAssume(string id)
+      {
+        program.NecessaryAssumes.Add(id);
+      }
+
       public ErrorReporter(Dictionary<TransferCmd, ReturnCmd>/*!*/ gotoCmdOrigins,
           Dictionary<int, Absy>/*!*/ label2absy,
           List<Block/*!*/>/*!*/ blocks,
@@ -2096,9 +2115,18 @@ namespace VC {
         return cce.NonNull((Absy)label2absy[id]);
       }
 
-      public override void OnResourceExceeded(string msg) {
+      public override void OnResourceExceeded(string msg, IEnumerable<Tuple<AssertCmd, TransferCmd>> assertCmds = null) {
         //Contract.Requires(msg != null);
         resourceExceededMessage = msg;
+        if (assertCmds != null)
+        {
+          foreach (var cmd in assertCmds)
+          {
+            Counterexample cex = AssertCmdToCounterexample(cmd.Item1, cmd.Item2 , new List<Block>(), null, null, context);
+            cex.IsAuxiliaryCexForDiagnosingTimeouts = true;
+            callback.OnCounterexample(cex, msg);
+          }
+        }
       }
 
       public override void OnProverWarning(string msg) {
@@ -2211,10 +2239,11 @@ namespace VC {
       impl.Blocks.Insert(0, new Block(new Token(-17, -4), "0", new List<Cmd>(), new GotoCmd(Token.NoToken, new List<String> { impl.Blocks[0].Label }, new List<Block> { impl.Blocks[0] })));
       ResetPredecessors(impl.Blocks);
 
-      if(CommandLineOptions.Clo.KInductionDepth < 0) {
+      var k = Math.Max(CommandLineOptions.Clo.KInductionDepth, QKeyValue.FindIntAttribute(impl.Attributes, "kInductionDepth", -1));
+      if(k < 0) {
         ConvertCFG2DAGStandard(impl, edgesCut, taskID);
       } else {
-        ConvertCFG2DAGKInduction(impl, edgesCut, taskID);
+        ConvertCFG2DAGKInduction(impl, edgesCut, taskID, k);
       }
       
       #region Debug Tracing
@@ -2479,14 +2508,12 @@ namespace VC {
       return referencedVars;
     }
 
-    private void ConvertCFG2DAGKInduction(Implementation impl, Dictionary<Block, List<Block>> edgesCut, int taskID) {
+    private void ConvertCFG2DAGKInduction(Implementation impl, Dictionary<Block, List<Block>> edgesCut, int taskID, int inductionK) {
 
       // K-induction has not been adapted to be aware of these parameters which standard CFG to DAG transformation uses
       Contract.Requires(edgesCut == null);
       Contract.Requires(taskID == -1);
-
-      int inductionK = CommandLineOptions.Clo.KInductionDepth;
-      Contract.Assume(inductionK >= 0);
+      Contract.Requires(0 <= inductionK);
 
       bool contRuleApplication = true;
       while (contRuleApplication) {
@@ -2801,6 +2828,11 @@ namespace VC {
       mvInfo = new ModelViewInfo(program, impl);
       Convert2PassiveCmd(impl, mvInfo);
 
+      if (QKeyValue.FindBoolAttribute(impl.Attributes, "may_unverified_instrumentation"))
+      {
+        InstrumentWithMayUnverifiedConditions(impl, exitBlock);
+      }
+
       #region Peep-hole optimizations
       if (CommandLineOptions.Clo.RemoveEmptyBlocks){
         #region Get rid of empty blocks
@@ -2835,6 +2867,190 @@ namespace VC {
 
       return gotoCmdOrigins;
     }
+
+    #region Simplified May-Unverified Analysis and Instrumentation
+
+    static void InstrumentWithMayUnverifiedConditions(Implementation impl, Block unifiedExitBlock)
+    {
+      var q = new Queue<Block>();
+      q.Enqueue(unifiedExitBlock);
+      var conditionOnBlockEntry = new Dictionary<Block, HashSet<Variable>>();
+      while (q.Any())
+      {
+        var block = q.Dequeue();
+
+        if (conditionOnBlockEntry.ContainsKey(block))
+        {
+          continue;
+        }
+
+        var gotoCmd = block.TransferCmd as GotoCmd;
+        if (gotoCmd != null && gotoCmd.labelTargets.Any(b => !conditionOnBlockEntry.ContainsKey(b)))
+        {
+          q.Enqueue(block);
+          continue;
+        }
+
+        HashSet<Variable> cond = new HashSet<Variable>();
+        if (gotoCmd != null)
+        {
+          var mayInstrs = new List<Block>();
+          bool noInstr = true;
+          foreach (var succ in gotoCmd.labelTargets)
+          {
+            var c = conditionOnBlockEntry[succ];
+            if (c != null)
+            {
+              mayInstrs.Add(succ);
+            }
+            else
+            {
+              noInstr = false;
+            }
+            cond = JoinVariableSets(cond, c);
+          }
+          if (!noInstr)
+          {
+            foreach (var instr in mayInstrs)
+            {
+              InstrumentWithCondition(instr, 0, conditionOnBlockEntry[instr]);
+            }
+          }
+        }
+        
+        for (int i = block.Cmds.Count - 1; 0 <= i; i--)
+        {
+          var cmd = block.Cmds[i];
+          if (cond == null) { break; }
+
+          var assertCmd = cmd as AssertCmd;
+          if (assertCmd != null)
+          {
+            var litExpr = assertCmd.Expr as LiteralExpr;
+            if (litExpr != null && litExpr.IsTrue)
+            {
+              continue;
+            }
+
+            HashSet<Variable> vu = null;
+            if (assertCmd.VerifiedUnder == null)
+            {
+              vu = null;
+            }
+            else
+            {
+              HashSet<Variable> vars;
+              if (IsConjunctionOfAssumptionVariables(assertCmd.VerifiedUnder, out vars))
+              {
+                vu = vars;
+                // TODO(wuestholz): Maybe drop the :verified_under attribute.
+              }
+              else
+              {
+                vu = null;
+              }
+            }
+
+            if (vu == null)
+            {
+              InstrumentWithCondition(block, i + 1, cond);
+            }
+
+            cond = JoinVariableSets(cond, vu);
+          }
+        }
+
+        if (cond != null && block.Predecessors.Count == 0)
+        {
+          // TODO(wuestholz): Should we rather instrument each block?
+          InstrumentWithCondition(block, 0, cond);
+        }
+
+        foreach (var pred in block.Predecessors)
+        {
+          q.Enqueue(pred);
+        }
+
+        conditionOnBlockEntry[block] = cond;
+      }
+    }
+
+    private static void InstrumentWithCondition(Block block, int idx, HashSet<Variable> condition)
+    {
+      var conj = Expr.BinaryTreeAnd(condition.Select(v => (Expr)new IdentifierExpr(Token.NoToken, v)).ToList());
+      block.Cmds.Insert(idx, new AssumeCmd(Token.NoToken, Expr.Not(conj)));
+    }
+
+    static HashSet<Variable> JoinVariableSets(HashSet<Variable> c0, HashSet<Variable> c1)
+    {
+      // We use the following lattice:
+      // - Top: null (i.e., true)
+      // - Bottom: new HashSet<Variable>() (i.e., false)
+      // - Other Elements: new HashSet<Variable>(...) (i.e., conjunctions of assumption variables)
+
+      if (c0 == null || c1 == null)
+      {
+        return null;
+      }
+      var result = new HashSet<Variable>(c0);
+      result.UnionWith(c1);
+      return result;
+    }
+
+    static bool IsAssumptionVariableOrIncarnation(Variable v)
+    {
+      if (QKeyValue.FindBoolAttribute(v.Attributes, "assumption")) { return true; }
+      var incar = v as Incarnation;
+      return incar == null || QKeyValue.FindBoolAttribute(incar.OriginalVariable.Attributes, "assumption");
+    }
+
+    static bool IsConjunctionOfAssumptionVariables(Expr expr, out HashSet<Variable> variables)
+    {
+      Contract.Requires(expr != null);
+
+      variables = null;
+      var litExpr = expr as LiteralExpr;
+      if (litExpr != null && (litExpr.IsFalse || litExpr.IsTrue))
+      {
+        if (litExpr.IsTrue)
+        {
+          variables = new HashSet<Variable>();
+        }
+        return true;
+      }
+
+      var idExpr = expr as IdentifierExpr;
+      if (idExpr != null && IsAssumptionVariableOrIncarnation(idExpr.Decl))
+      {
+        variables = new HashSet<Variable>();
+        variables.Add(idExpr.Decl);
+        return true;
+      }
+
+      var andExpr = expr as NAryExpr;
+      if (andExpr != null)
+      {
+        var fun = andExpr.Fun as BinaryOperator;
+        if (fun != null && fun.Op == BinaryOperator.Opcode.And && andExpr.Args != null)
+        {
+          bool res = true;
+          variables = new HashSet<Variable>();
+          foreach (var op in andExpr.Args)
+          {
+            HashSet<Variable> vars;
+            var r = IsConjunctionOfAssumptionVariables(op, out vars);
+            res &= r;
+            variables = JoinVariableSets(variables, vars);
+            if (!res) { break; }
+          }
+          return res;
+        }
+      }
+
+      return false;
+    }
+
+    #endregion
 
     private static void HandleSelectiveChecking(Implementation impl)
     {
@@ -3127,6 +3343,31 @@ namespace VC {
         ac.relatedInformation = relatedInformation;
         return ac;
       }
+    }
+
+    /// <summary>
+    /// Returns a clone of "cex", but with the location stored in "cex" replaced by those from "assrt".
+    /// </summary>
+    public static Counterexample AssertCmdToCloneCounterexample(AssertCmd assrt, Counterexample cex) {
+      Contract.Requires(assrt != null);
+      Contract.Requires(cex != null);
+      Contract.Ensures(Contract.Result<Counterexample>() != null);
+
+      List<string> relatedInformation = new List<string>();
+
+      Counterexample cc;
+      if (assrt is AssertRequiresCmd) {
+        var aa = (AssertRequiresCmd)assrt;
+        cc = new CallCounterexample(cex.Trace, aa.Call, aa.Requires, cex.Model, cex.MvInfo, cex.Context, aa.Checksum);
+      } else if (assrt is AssertEnsuresCmd && cex is ReturnCounterexample) {
+        var aa = (AssertEnsuresCmd)assrt;
+        var oldCex = (ReturnCounterexample)cex;
+        cc = new ReturnCounterexample(cex.Trace, oldCex.FailingReturn, aa.Ensures, cex.Model, cex.MvInfo, cex.Context, aa.Checksum);
+      } else {
+        cc = new AssertCounterexample(cex.Trace, assrt, cex.Model, cex.MvInfo, cex.Context);
+      }
+      cc.relatedInformation = relatedInformation;
+      return cc;
     }
 
     static VCExpr LetVC(Block startBlock,

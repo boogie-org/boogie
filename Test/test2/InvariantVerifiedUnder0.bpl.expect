@@ -1,0 +1,23 @@
+InvariantVerifiedUnder0.bpl(7,7): Error BP5001: This assertion might not hold.
+Execution trace:
+    InvariantVerifiedUnder0.bpl(6,5): anon0
+InvariantVerifiedUnder0.bpl(23,7): Error BP5004: This loop invariant might not hold on entry.
+Execution trace:
+    InvariantVerifiedUnder0.bpl(22,5): anon0
+InvariantVerifiedUnder0.bpl(24,7): Error BP5004: This loop invariant might not hold on entry.
+Execution trace:
+    InvariantVerifiedUnder0.bpl(22,5): anon0
+InvariantVerifiedUnder0.bpl(34,7): Error BP5004: This loop invariant might not hold on entry.
+Execution trace:
+    InvariantVerifiedUnder0.bpl(32,5): anon0
+InvariantVerifiedUnder0.bpl(41,7): Error BP5004: This loop invariant might not hold on entry.
+Execution trace:
+    InvariantVerifiedUnder0.bpl(40,5): anon0
+InvariantVerifiedUnder0.bpl(42,7): Error BP5004: This loop invariant might not hold on entry.
+Execution trace:
+    InvariantVerifiedUnder0.bpl(40,5): anon0
+InvariantVerifiedUnder0.bpl(51,7): Error BP5004: This loop invariant might not hold on entry.
+Execution trace:
+    InvariantVerifiedUnder0.bpl(50,5): anon0
+
+Boogie program verifier finished with 1 verified, 7 errors

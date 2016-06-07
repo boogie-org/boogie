@@ -1,0 +1,3 @@
+AssertVerifiedUnder0.bpl(6,11): Error: attribute :verified_under accepts only one argument
+AssertVerifiedUnder0.bpl(7,11): Error: attribute :verified_under accepts only one argument
+2 name resolution errors detected in AssertVerifiedUnder0.bpl

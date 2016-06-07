@@ -450,7 +450,18 @@ namespace Microsoft.Boogie.Houdini {
                 }
             }
 
-            var val = prover.Evaluate(arg);
+            object val;
+
+            try
+            {
+                val = prover.Evaluate(arg);
+            }
+            catch (ProverInterface.VCExprEvaluationException)
+            {
+                Console.WriteLine("AbsHoudni: Error evaluating expression {0}", arg);
+                throw;
+            }
+
             if (val is int || val is bool || val is Microsoft.Basetypes.BigNum)
             {
                 return model.MkElement(val.ToString());
@@ -590,18 +601,23 @@ namespace Microsoft.Boogie.Houdini {
             // Inline functions
             (new InlineFunctionCalls()).VisitBlockList(impl.Blocks);
 
-            ExtractQuantifiedExprs(impl);
+            
             StripOutermostForall(impl);
+            //ExtractQuantifiedExprs(impl);
+            ExtractBoolExprs(impl);
 
             //CommandLineOptions.Clo.PrintInstrumented = true;
-            //var tt = new TokenTextWriter(Console.Out);
-            //impl.Emit(tt, 0);
-            //tt.Close();
+            //using (var tt = new TokenTextWriter(Console.Out))
+            //    impl.Emit(tt, 0);
 
             // Intercept the FunctionCalls of the existential functions, and replace them with Boolean constants
             var existentialFunctionNames = new HashSet<string>(existentialFunctions.Keys);
             var fv = new ReplaceFunctionCalls(existentialFunctionNames);
             fv.VisitBlockList(impl.Blocks);
+
+            //using (var tt = new TokenTextWriter(Console.Out))
+            //    impl.Emit(tt, 0);
+
 
             impl2functionsAsserted.Add(impl.Name, fv.functionsAsserted);
             impl2functionsAssumed.Add(impl.Name, fv.functionsAssumed);
@@ -667,6 +683,24 @@ namespace Microsoft.Boogie.Houdini {
                 foreach (var acmd in blk.Cmds.OfType<AssertCmd>())
                 {
                     var ret = ExtractQuantifiers.Extract(acmd.Expr, funcs);
+                    acmd.Expr = ret.Item1;
+                    impl.LocVars.AddRange(ret.Item2);
+                }
+            }
+        }
+
+        // convert "foo(... e ...) to:
+        //    (p iff e) ==> foo(... p ...) 
+        // where p is a fresh boolean variable, foo is an existential constant
+        // and e is a Boolean-typed argument of foo
+        private void ExtractBoolExprs(Implementation impl)
+        {
+            var funcs = new HashSet<string>(existentialFunctions.Keys);
+            foreach (var blk in impl.Blocks)
+            {
+                foreach (var acmd in blk.Cmds.OfType<AssertCmd>())
+                {
+                    var ret = ExtractBoolArgs.Extract(acmd.Expr, funcs);
                     acmd.Expr = ret.Item1;
                     impl.LocVars.AddRange(ret.Item2);
                 }
@@ -955,6 +989,61 @@ namespace Microsoft.Boogie.Houdini {
         }
 
     }
+
+    // convert "foo(... e ...) to:
+    //    (p iff e) ==> foo(... p ...) 
+    // where p is a fresh boolean variable, foo is an existential constant
+    // and e is a Boolean-typed argument of foo
+    class ExtractBoolArgs : StandardVisitor
+    {
+        static int freshConstCounter = 0;
+        HashSet<string> existentialFunctions;
+        HashSet<Constant> newConstants;
+
+        private ExtractBoolArgs(HashSet<string> existentialFunctions)
+        {
+            this.existentialFunctions = existentialFunctions;
+            this.newConstants = new HashSet<Constant>();
+        }
+
+        public static Tuple<Expr, IEnumerable<Constant>> Extract(Expr expr, HashSet<string> existentialFunctions)
+        {
+            var eq = new ExtractBoolArgs(existentialFunctions);
+            expr = eq.VisitExpr(expr);
+            return Tuple.Create(expr, eq.newConstants.AsEnumerable());
+        }
+
+        public override Expr VisitNAryExpr(NAryExpr node)
+        {
+            if (node.Fun is FunctionCall && existentialFunctions.Contains((node.Fun as FunctionCall).FunctionName))
+            {
+                var constants = new Dictionary<Constant, Expr>();
+                for (int i = 0; i < node.Args.Count; i++)
+                {
+                    if (node.Args[i].Type == Type.Bool)
+                    {
+                        var constant = new Constant(Token.NoToken, new TypedIdent(Token.NoToken,
+                            "boolArg@const" + freshConstCounter, Microsoft.Boogie.Type.Bool), false);
+                        freshConstCounter++;
+                        constants.Add(constant, node.Args[i]);
+                        node.Args[i] = Expr.Ident(constant);
+                    }
+                }
+
+                newConstants.UnionWith(constants.Keys);
+
+                Expr ret = Expr.True;
+                foreach (var tup in constants)
+                {
+                    ret = Expr.And(ret, Expr.Eq(Expr.Ident(tup.Key), tup.Value));
+                }
+                return Expr.Imp(ret, node);
+            } 
+
+            return base.VisitNAryExpr(node);
+        }
+    }
+
 
     // convert "foo(... forall e ...) to:
     //    (p iff forall e) ==> foo(... p ...) 
@@ -1266,6 +1355,13 @@ namespace Microsoft.Boogie.Houdini {
         }
     }
 
+    public class PredicateAbsFullElem : PredicateAbsElem
+    {
+        public PredicateAbsFullElem()
+            : base(1000)
+        { }
+    }
+
     public class PredicateAbsElem : IAbstractDomain
     {
         public static class ExprExt
@@ -1289,7 +1385,6 @@ namespace Microsoft.Boogie.Houdini {
 
         class Disjunct
         {
-            public static int DisjunctBound = 3;
             HashSet<int> pos;
             HashSet<int> neg;
             bool isTrue;
@@ -1301,7 +1396,7 @@ namespace Microsoft.Boogie.Houdini {
                 neg = new HashSet<int>();
             }
 
-            public Disjunct(IEnumerable<int> pos, IEnumerable<int> neg)
+            public Disjunct(IEnumerable<int> pos, IEnumerable<int> neg, int bound)
             {
                 this.isTrue = false;
                 this.pos = new HashSet<int>(pos);
@@ -1312,7 +1407,7 @@ namespace Microsoft.Boogie.Houdini {
                     this.pos = new HashSet<int>();
                     this.neg = new HashSet<int>();
                 }
-                if (this.pos.Count + this.neg.Count > DisjunctBound)
+                if (this.pos.Count + this.neg.Count > bound)
                 {
                     // Set to true
                     this.isTrue = true;
@@ -1322,14 +1417,14 @@ namespace Microsoft.Boogie.Houdini {
 
             }
 
-            public Disjunct OR(Disjunct that)
+            public Disjunct OR(Disjunct that, int bound)
             {
                 if (isTrue)
                     return this;
                 if (that.isTrue)
                     return that;
 
-                return new Disjunct(this.pos.Concat(that.pos), this.neg.Concat(that.neg));
+                return new Disjunct(this.pos.Concat(that.pos), this.neg.Concat(that.neg), bound);
             }
 
             public bool Implies(Disjunct that)
@@ -1352,17 +1447,26 @@ namespace Microsoft.Boogie.Houdini {
 
         // Conjunction of Disjuncts
         List<Disjunct> conjuncts;
+        int DisjunctBound;
         bool isFalse;
 
         public PredicateAbsElem()
         {
             this.conjuncts = new List<Disjunct>();
             this.isFalse = true;
+            this.DisjunctBound = 3;
+        }
+
+        public PredicateAbsElem(int bound)
+        {
+            this.conjuncts = new List<Disjunct>();
+            this.isFalse = true;
+            this.DisjunctBound = bound;
         }
 
         public IAbstractDomain Bottom()
         {
-            return new PredicateAbsElem();
+            return new PredicateAbsElem(DisjunctBound);
         }
 
         public IAbstractDomain MakeTop(out bool changed)
@@ -1373,7 +1477,7 @@ namespace Microsoft.Boogie.Houdini {
                 return this;
             }
             changed = true;
-            var ret = new PredicateAbsElem();
+            var ret = new PredicateAbsElem(DisjunctBound);
             ret.isFalse = false;
             return ret;
         }
@@ -1387,21 +1491,21 @@ namespace Microsoft.Boogie.Houdini {
             if (!this.isFalse && conjuncts.Count == 0)
                 return this;
 
-            var ret = new PredicateAbsElem();
+            var ret = new PredicateAbsElem(DisjunctBound);
             ret.isFalse = false;
 
             for (int i = 0; i < state.Count; i++)
             {
                 var b = (state[i] as Model.Boolean).Value;
                 Disjunct d = null;
-                if (b) d = new Disjunct(new int[] { i }, new int[] { });
-                else d = new Disjunct(new int[] { }, new int[] { i });
+                if (b) d = new Disjunct(new int[] { i }, new int[] { }, DisjunctBound);
+                else d = new Disjunct(new int[] { }, new int[] { i }, DisjunctBound);
 
                 if (isFalse)
                     ret.AddDisjunct(d);
                 else
                 {
-                    conjuncts.Iter(c => ret.AddDisjunct(c.OR(d)));
+                    conjuncts.Iter(c => ret.AddDisjunct(c.OR(d, DisjunctBound)));
                 }
             }
 
@@ -2125,6 +2229,7 @@ namespace Microsoft.Boogie.Houdini {
                   System.Tuple.Create("Intervals", new Intervals() as IAbstractDomain),
                   System.Tuple.Create("ConstantProp", ConstantProp.GetBottom() as IAbstractDomain),
                   System.Tuple.Create("PredicateAbs", new PredicateAbsElem() as IAbstractDomain),
+                  System.Tuple.Create("PredicateAbsFull", new PredicateAbsFullElem() as IAbstractDomain),
                   System.Tuple.Create("ImplicationDomain", ImplicationDomain.GetBottom() as IAbstractDomain),
                   System.Tuple.Create("PowDomain", PowDomain.GetBottom() as IAbstractDomain),
                   System.Tuple.Create("EqualitiesDomain", EqualitiesDomain.GetBottom() as IAbstractDomain),

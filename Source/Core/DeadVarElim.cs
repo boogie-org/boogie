@@ -424,7 +424,16 @@ namespace Microsoft.Boogie {
         }
       }
       impl.Blocks = newBlocks;
-
+      foreach (Block b in impl.Blocks)
+      {
+          if (b.TransferCmd is ReturnCmd) continue;
+          GotoCmd gotoCmd = b.TransferCmd as GotoCmd;
+          gotoCmd.labelNames = new List<string>();
+          foreach (Block succ in gotoCmd.labelTargets)
+          {
+              gotoCmd.labelNames.Add(succ.Label);
+          }
+      }
       // Console.WriteLine("Final number of blocks = {0}", impl.Blocks.Count);
       return impl;
     }
@@ -539,7 +548,7 @@ namespace Microsoft.Boogie {
         HavocCmd/*!*/ havocCmd = (HavocCmd)cmd;
         foreach (IdentifierExpr/*!*/ expr in havocCmd.Vars) {
           Contract.Assert(expr != null);
-          if (expr.Decl != null && !(QKeyValue.FindBoolAttribute(expr.Decl.Attributes, "assumption") && expr.Decl.Name.StartsWith("a##post##"))) {
+          if (expr.Decl != null && !(QKeyValue.FindBoolAttribute(expr.Decl.Attributes, "assumption") && expr.Decl.Name.StartsWith("a##cached##"))) {
             liveSet.Remove(expr.Decl);
           }
         }

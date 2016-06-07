@@ -728,9 +728,13 @@ namespace Microsoft.Boogie.AbstractInterpretation
             lo = Lo; hi = Hi;
             if (hi != null) {
               Lo = node.Type.IsReal ? -hi : 1 - hi;
+            } else {
+              Lo = null;
             }
             if (lo != null) {
               Hi = node.Type.IsReal ? -lo : 1 - lo;
+            } else {
+              Hi = null;
             }
           }
           else if (op.Op == UnaryOperator.Opcode.Not) {
@@ -910,6 +914,10 @@ namespace Microsoft.Boogie.AbstractInterpretation
               if (lo0 != null && lo1 != null && 0 <= (BigInteger)lo0 && 0 <= (BigInteger)lo1) {
                 Lo = BigInteger.Zero;
                 Hi = hi1;
+                if (lo0 < lo1 && hi0 != null && hi0 < lo1) {
+                  Lo = lo0;
+                  Hi = hi0;
+                }
               }
               break;
             case BinaryOperator.Opcode.RealDiv:
