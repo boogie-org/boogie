@@ -91,8 +91,8 @@ namespace Microsoft.Boogie.SMTLib
 
          // Give it a chance to exit cleanly (e.g. to flush buffers)
         if (!prover.WaitForExit(timeout)) {
-        prover.Kill();
-      }
+          prover.Kill();
+        }
       } catch { /* Swallow errors */ }
     }
 
@@ -105,7 +105,6 @@ namespace Microsoft.Boogie.SMTLib
         log = log.Replace("\r", "").Replace("\n", " ");
         Console.WriteLine("[SMT-INP-{0}] {1}", smtProcessId, log);
       }
-      //Console.WriteLine(cmd);
       toProver.WriteLine(cmd);
     }
 

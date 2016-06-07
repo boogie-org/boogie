@@ -313,13 +313,6 @@ namespace Microsoft.Boogie {
       Contract.Ensures(Contract.Result<NAryExpr>() != null);
       return Binary(BinaryOperator.Opcode.RealDiv, e1, e2);
     }
-    public static NAryExpr FloatDiv(Expr e1, Expr e2)
-    {
-      Contract.Requires(e2 != null);
-      Contract.Requires(e1 != null);
-      Contract.Ensures(Contract.Result<NAryExpr>() != null);
-      return Binary(BinaryOperator.Opcode.FloatDiv, e1, e2);
-    }
     public static NAryExpr Pow(Expr e1, Expr e2) {
       Contract.Requires(e2 != null);
       Contract.Requires(e1 != null);
@@ -360,11 +353,6 @@ namespace Microsoft.Boogie {
       return new LiteralExpr(Token.NoToken, value);
     }
     public static LiteralExpr Literal(BigDec value) {
-      Contract.Ensures(Contract.Result<LiteralExpr>() != null);
-      return new LiteralExpr(Token.NoToken, value);
-    }
-    public static LiteralExpr Literal(BigFloat value)
-    {
       Contract.Ensures(Contract.Result<LiteralExpr>() != null);
       return new LiteralExpr(Token.NoToken, value);
     }
@@ -526,7 +514,7 @@ namespace Microsoft.Boogie {
   }
 
   public class LiteralExpr : Expr {
-    public readonly object/*!*/ Val;  // false, true, a BigNum, a BigDec, a BigFloat, or a BvConst
+    public readonly object/*!*/ Val;  // false, true, a BigNum, a BigDec, or a BvConst
     [ContractInvariantMethod]
     void ObjectInvariant() {
       Contract.Invariant(Val != null);
@@ -570,21 +558,6 @@ namespace Microsoft.Boogie {
       Contract.Requires(tok != null);
       Val = v;
       Type = Type.Real;
-      if (immutable)
-        CachedHashCode = ComputeHashCode();
-    }
-
-    /// <summary>
-    /// Creates a literal expression for the floating point value "v".
-    /// </summary>
-    /// <param name="tok"></param>
-    /// <param name="v"></param>
-    public LiteralExpr(IToken/*!*/ tok, BigFloat v, bool immutable = false)
-      : base(tok, immutable)
-    {
-      Contract.Requires(tok != null);
-      Val = v;
-      Type = Type.GetFloatType(v.ExponentSize, v.SignificandSize);
       if (immutable)
         CachedHashCode = ComputeHashCode();
     }
@@ -660,9 +633,6 @@ namespace Microsoft.Boogie {
           return Type.Int;
         } else if (Val is BigDec) {
           return Type.Real;
-        } else if (Val is BigFloat) {
-          BigFloat temp = (BigFloat)Val;
-          return Type.GetFloatType(temp.ExponentSize, temp.SignificandSize);
         } else if (Val is BvConst) {
           return Type.GetBvType(((BvConst)Val).Bits);
         } else {
@@ -711,25 +681,10 @@ namespace Microsoft.Boogie {
       }
     }
 
-    public bool isBigFloat
-    {
-      get
-      {
-        return Val is BigFloat;
-      }
-    }
-
     public BigDec asBigDec {
       get {
         Contract.Assert(isBigDec);
         return (BigDec)cce.NonNull(Val);
-      }
-    }
-
-    public BigFloat asBigFloat {
-      get {
-        Contract.Assert(isBigFloat);
-        return (BigFloat)cce.NonNull(Val);
       }
     }
 
@@ -1400,9 +1355,6 @@ namespace Microsoft.Boogie {
           if (arg0type.Unify(Type.Real)) {
             return Type.Real;
           }
-          //if (arg0type.Unify(Type.Float)) {
-            //return Type.Float;
-          //}
           goto BAD_TYPE;
         case Opcode.Not:
           if (arg0type.Unify(Type.Bool)) {
@@ -1447,9 +1399,6 @@ namespace Microsoft.Boogie {
           if (argument is BigDec) {
             return -((BigDec)argument);
           }
-          if (argument is BigFloat) {
-            return -((BigFloat)argument);
-          }
           break;
         case Opcode.Not:
           if (argument is bool) {
@@ -1482,7 +1431,6 @@ namespace Microsoft.Boogie {
       Div,
       Mod,
       RealDiv,
-      FloatDiv,
       Pow,
       Eq,
       Neq,
@@ -1723,12 +1671,6 @@ namespace Microsoft.Boogie {
           if (arg0type.Unify(Type.Real) && arg1type.Unify(Type.Real)) {
             return Type.Real;
           }
-          if (arg0type.IsFloat && arg0type.Unify(arg1type)) {
-            return Type.GetFloatType(arg0.Type.FloatExponent, arg0.Type.FloatMantissa);
-          }
-          if (arg1type.IsFloat && arg1type.Unify(arg0type)) {
-            return Type.GetFloatType(arg1.Type.FloatExponent, arg1.Type.FloatMantissa);
-          }
           goto BAD_TYPE;
         case Opcode.Div:
         case Opcode.Mod:
@@ -1740,12 +1682,6 @@ namespace Microsoft.Boogie {
           if ((arg0type.Unify(Type.Int) || arg0type.Unify(Type.Real)) &&
               (arg1type.Unify(Type.Int) || arg1type.Unify(Type.Real))) {
             return Type.Real;
-          }
-          if (arg0type.IsFloat && arg0type.Unify(arg1type)) {
-            return Type.GetFloatType(arg0.Type.FloatExponent, arg0.Type.FloatMantissa);
-          }
-          if (arg1type.IsFloat && arg1type.Unify(arg0type)) {
-            return Type.GetFloatType(arg1.Type.FloatExponent, arg1.Type.FloatMantissa);
           }
           goto BAD_TYPE;
         case Opcode.Pow:
@@ -1777,9 +1713,6 @@ namespace Microsoft.Boogie {
             return Type.Bool;
           }
           if (arg0type.Unify(Type.Real) && arg1type.Unify(Type.Real)) {
-            return Type.Bool;
-          }
-          if ((arg0type.IsFloat && arg0type.Unify(arg1type)) || (arg1type.IsFloat && arg1type.Unify(arg0type))) {
             return Type.Bool;
           }
           goto BAD_TYPE;
@@ -1892,9 +1825,6 @@ namespace Microsoft.Boogie {
           if (e1 is BigDec && e2 is BigDec) {
             return ((BigDec)e1) + ((BigDec)e2);
           }
-          if (e1 is BigFloat && e2 is BigFloat) {
-            return ((BigFloat)e1) + ((BigFloat)e2);
-          }
           break;
         case Opcode.Sub:
           if (e1 is BigNum && e2 is BigNum) {
@@ -1903,9 +1833,6 @@ namespace Microsoft.Boogie {
           if (e1 is BigDec && e2 is BigDec) {
             return ((BigDec)e1) - ((BigDec)e2);
           }
-          if (e1 is BigFloat && e2 is BigFloat) {
-            return ((BigFloat)e1) - ((BigFloat)e2);
-          }
           break;
         case Opcode.Mul:
           if (e1 is BigNum && e2 is BigNum) {
@@ -1913,9 +1840,6 @@ namespace Microsoft.Boogie {
           }
           if (e1 is BigDec && e2 is BigDec) {
             return ((BigDec)e1) * ((BigDec)e2);
-          }
-          if (e1 is BigFloat && e2 is BigFloat) {
-            return ((BigFloat)e1) * ((BigFloat)e2);
           }
           break;
         case Opcode.Div:
@@ -1931,9 +1855,6 @@ namespace Microsoft.Boogie {
         case Opcode.RealDiv:
           // TODO: add partial evaluation fro real division
           break;
-        case Opcode.FloatDiv:
-          //TODO: add float division
-          break;
         case Opcode.Pow:
           // TODO: add partial evaluation fro real exponentiation
           break;
@@ -1944,9 +1865,6 @@ namespace Microsoft.Boogie {
           if (e1 is BigDec && e2 is BigDec) {
             return ((BigDec)e1) < ((BigDec)e2);
           }
-          if (e1 is BigFloat && e2 is BigFloat) {
-            return ((BigFloat)e1) < ((BigFloat)e2);
-          }
           break;
         case Opcode.Le:
           if (e1 is BigNum && e2 is BigNum) {
@@ -1954,9 +1872,6 @@ namespace Microsoft.Boogie {
           }
           if (e1 is BigDec && e2 is BigDec) {
             return ((BigDec)e1) <= ((BigDec)e2);
-          }
-          if (e1 is BigFloat && e2 is BigFloat) {
-            return ((BigFloat)e1) <= ((BigFloat)e2);
           }
           break;
         case Opcode.Gt:
@@ -1966,9 +1881,6 @@ namespace Microsoft.Boogie {
           if (e1 is BigDec && e2 is BigDec) {
             return ((BigDec)e1) > ((BigDec)e2);
           }
-          if (e1 is BigFloat && e2 is BigFloat) {
-            return ((BigFloat)e1) > ((BigFloat)e2);
-          }
           break;
         case Opcode.Ge:
           if (e1 is BigNum && e2 is BigNum) {
@@ -1976,9 +1888,6 @@ namespace Microsoft.Boogie {
           }
           if (e1 is BigDec && e2 is BigDec) {
             return ((BigDec)e1) >= ((BigDec)e2);
-          }
-          if (e1 is BigFloat && e2 is BigFloat) {
-            return ((BigFloat)e1) >= ((BigFloat)e2);
           }
           break;
 
@@ -2081,7 +1990,7 @@ namespace Microsoft.Boogie {
       }
       else
       {
-      this.name.Emit(stream, 0xF0, false);
+        this.name.Emit(stream, 0xF0, false);
       }
       if (stream.UseForComputingChecksums)
       {
@@ -2268,8 +2177,7 @@ namespace Microsoft.Boogie {
   public class ArithmeticCoercion : IAppliable {
     public enum CoercionType {
       ToInt,
-      ToReal,
-      ToFloat
+      ToReal
     }
 
     private IToken/*!*/ tok;
@@ -2277,7 +2185,6 @@ namespace Microsoft.Boogie {
     private readonly string name;
     private readonly Type type;
     private readonly Type argType;
-    private readonly Type argType2;
     private readonly int hashCode;
 
     public ArithmeticCoercion(IToken tok, CoercionType coercion) {
@@ -2357,9 +2264,8 @@ namespace Microsoft.Boogie {
 
       tpInstantiation = SimpleTypeParamInstantiation.EMPTY;
 
-      if (!(cce.NonNull(cce.NonNull(args[0]).Type).Unify(argType) || cce.NonNull(cce.NonNull(args[0]).Type).Unify(argType2)))
-      {
-        tc.Error(this.tok, "argument type {0} does not match expected type {1} or type {2}", cce.NonNull(args[0]).Type, this.argType, this.argType2);
+      if (!cce.NonNull(cce.NonNull(args[0]).Type).Unify(argType)) {
+        tc.Error(this.tok, "argument type {0} does not match expected type {1}", cce.NonNull(args[0]).Type, this.argType);
       }
 
       return this.type;

@@ -268,7 +268,7 @@ void ObjectInvariant()
           "(declare-fun " + printedName + " () " + TypeToString(node.Type) + ")";
         if (!(printedName.StartsWith("assume$$") || printedName.StartsWith("soft$$") || printedName.StartsWith("try$$")))
         {
-        AddDeclaration(decl);
+          AddDeclaration(decl);
         }
         KnownVariables.Add(node);
 		if(declHandler != null)
@@ -311,7 +311,7 @@ void ObjectInvariant()
         return;
       }
 
-      if (type.IsBool || type.IsInt || type.IsReal || type.IsFloat || type.IsBv)
+      if (type.IsBool || type.IsInt || type.IsReal || type.IsBv)
         return;
 
       CtorType ctorType = type as CtorType;
