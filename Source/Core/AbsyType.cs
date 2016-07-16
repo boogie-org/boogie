@@ -340,12 +340,12 @@ namespace Microsoft.Boogie {
         } // Type.FloatExponent should never be called
       }
     }
-    public virtual int FloatMantissa {
+    public virtual int FloatSignificand {
       get {
         {
           Contract.Assert(false);
           throw new cce.UnreachableException();
-        } // Type.FloatMantissa should never be called
+        } // Type.FloatSignificand should never be called
       }
     }
     public virtual bool IsBv {
@@ -1046,20 +1046,20 @@ namespace Microsoft.Boogie {
 
   //Note that the functions in this class were directly copied from the BV class just below
   public class FloatType : Type { 
-    public readonly int Mantissa; //Size of mantissa in bits
+    public readonly int Significand; //Size of Significand in bits
     public readonly int Exponent; //Size of exponent in bits
 
-    public FloatType(IToken token, int exponent, int mantissa)
+    public FloatType(IToken token, int significand, int exponent)
       : base(token) {
       Contract.Requires(token != null);
+      Significand = significand;
       Exponent = exponent;
-      Mantissa = mantissa;
     }
 
-    public FloatType(int exponent, int mantissa)
+    public FloatType(int significand, int exponent)
       : base(Token.NoToken) {
+      Significand = significand;
       Exponent = exponent;
-      Mantissa = mantissa;
     }
 
     //-----------  Cloning  ----------------------------------
@@ -1094,7 +1094,7 @@ namespace Microsoft.Boogie {
     public override string ToString()
     {
       Contract.Ensures(Contract.Result<string>() != null);
-      return "float (" + Exponent + " " + Mantissa + ")";
+      return "float (" + Exponent + " " + Significand + ")";
     }
 
     //-----------  Equality  ----------------------------------
@@ -1105,7 +1105,7 @@ namespace Microsoft.Boogie {
                                 List<TypeVariable>/*!*/ thatBoundVariables)
     {
       FloatType thatFloatType = TypeProxy.FollowProxy(that.Expanded) as FloatType;
-      return thatFloatType != null && this.Mantissa == thatFloatType.Mantissa && this.Exponent == thatFloatType.Exponent;
+      return thatFloatType != null && this.Significand == thatFloatType.Significand && this.Exponent == thatFloatType.Exponent;
     }
 
     //-----------  Unification of types  -----------
@@ -1141,7 +1141,7 @@ namespace Microsoft.Boogie {
     [Pure]
     public override int GetHashCode(List<TypeVariable> boundVariables)
     {
-      return this.Mantissa.GetHashCode() + this.Exponent.GetHashCode();
+      return this.Significand.GetHashCode() + this.Exponent.GetHashCode();
     }
 
     //-----------  Resolution  ----------------------------------
@@ -1181,9 +1181,9 @@ namespace Microsoft.Boogie {
         return true;
       }
     }
-    public override int FloatMantissa {
+    public override int FloatSignificand {
       get {
-        return Mantissa;
+        return Significand;
       }
     }
     public override int FloatExponent {
@@ -1481,7 +1481,7 @@ Contract.Requires(that != null);
     public override Type ResolveType(ResolutionContext rc) {
       //Contract.Requires(rc != null);
       Contract.Ensures(Contract.Result<Type>() != null);
-      // first case: the type name denotes a bitvector-type
+      // first case: the type name denotes a bitvector-type or float-type
       if (Name.StartsWith("bv") && Name.Length > 2) {
         bool is_bv = true;
         for (int i = 2; i < Name.Length; ++i) {
@@ -1497,6 +1497,28 @@ Contract.Requires(that != null);
                      Name);
           }
           return new BvType(tok, int.Parse(Name.Substring(2)));
+        }
+      }
+
+      if (Name.StartsWith("float") && Name.Length > 5)
+      {
+        bool is_float = true;
+        int i = 5;
+        for (; is_float && Name[i] != 'e'; i++)
+          if (i >= Name.Length-1 || !char.IsDigit(Name[i])) //There must be an e
+            is_float = false;
+        int mid = i;
+        i++;
+        for (; i < Name.Length && is_float; i++)
+          if (!char.IsDigit(Name[i]))
+            is_float = false;
+        if (is_float) {
+          if (Arguments.Count > 0) {
+            rc.Error(this,
+                     "float types must not be applied to arguments: {0}",
+                     Name);
+          }
+          return new FloatType(tok, int.Parse(Name.Substring(5, mid-5)), int.Parse(Name.Substring(mid+1)));
         }
       }
 

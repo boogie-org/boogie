@@ -146,7 +146,7 @@ namespace Microsoft.Boogie.SMTLib
       else if (t.IsReal)
         return "Real";
       else if (t.IsFloat)
-        return "(_ FloatingPoint " + t.FloatExponent + " " + t.FloatMantissa + ")";
+        return "(_ FloatingPoint " + t.FloatExponent + " " + t.FloatSignificand + ")";
       else if (t.IsBv) {
         return "(_ BitVec " + t.BvBits + ")";
       } else {

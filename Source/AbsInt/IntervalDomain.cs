@@ -232,7 +232,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
       } else if (ty.IsReal) {
         return Expr.Literal(Basetypes.BigDec.FromBigInt(n));
       } else if (ty.IsFloat) {
-        return Expr.Literal(Basetypes.BigFloat.FromBigInt(n, ty.FloatExponent, ty.FloatMantissa));
+        return Expr.Literal(Basetypes.BigFloat.FromBigInt(n, ty.FloatExponent, ty.FloatSignificand));
       } else {
         Contract.Assume(ty.IsInt);
         return Expr.Literal(Basetypes.BigNum.FromBigInt(n));

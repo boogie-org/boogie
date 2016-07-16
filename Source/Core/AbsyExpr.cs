@@ -1724,10 +1724,10 @@ namespace Microsoft.Boogie {
             return Type.Real;
           }
           if (arg0type.IsFloat && arg0type.Unify(arg1type)) {
-            return Type.GetFloatType(arg0.Type.FloatExponent, arg0.Type.FloatMantissa);
+            return Type.GetFloatType(arg0.Type.FloatExponent, arg0.Type.FloatSignificand);
           }
           if (arg1type.IsFloat && arg1type.Unify(arg0type)) {
-            return Type.GetFloatType(arg1.Type.FloatExponent, arg1.Type.FloatMantissa);
+            return Type.GetFloatType(arg1.Type.FloatExponent, arg1.Type.FloatSignificand);
           }
           goto BAD_TYPE;
         case Opcode.Div:
@@ -1742,10 +1742,10 @@ namespace Microsoft.Boogie {
             return Type.Real;
           }
           if (arg0type.IsFloat && arg0type.Unify(arg1type)) {
-            return Type.GetFloatType(arg0.Type.FloatExponent, arg0.Type.FloatMantissa);
+            return Type.GetFloatType(arg0.Type.FloatExponent, arg0.Type.FloatSignificand);
           }
           if (arg1type.IsFloat && arg1type.Unify(arg0type)) {
-            return Type.GetFloatType(arg1.Type.FloatExponent, arg1.Type.FloatMantissa);
+            return Type.GetFloatType(arg1.Type.FloatExponent, arg1.Type.FloatSignificand);
           }
           goto BAD_TYPE;
         case Opcode.Pow:

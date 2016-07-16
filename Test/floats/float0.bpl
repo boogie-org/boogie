@@ -1,6 +1,6 @@
 // RUN: %boogie -proverWarnings:1 "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
-procedure foo(x : real) returns (r : float<8, 24>)
+procedure foo(x : real) returns (r : float8e24)
 {
 	r := 15;  // Error
 	r := 15.0;  // Error
