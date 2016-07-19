@@ -151,7 +151,7 @@ procedure {:yields} {:layer 0,2} WaitAndEnter({:linear "tid"} tid: X, m:int);
 ensures {:atomic} |{ A: assume m <= s; cs := tid; return true; }|;
 
 procedure {:yields} {:layer 0,2} Leave({:linear "tid"} tid: X);
-ensures {:atomic} |{ A: s := s + 1; cs := nil; return true; }|;
+ensures {:atomic} |{ A: assert cs == tid; s := s + 1; cs := nil; return true; }|;
 
 procedure {:yields} {:layer 0,2} AllocateLow({:linear_in "tid"} xls':[X]bool) returns ({:linear "tid"} xls: [X]bool, {:linear "tid"} xl: X);
 ensures {:atomic} |{ A: assume xl != nil; return true; }|;
