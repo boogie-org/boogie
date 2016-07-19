@@ -1,13 +1,13 @@
 // RUN: %boogie -proverWarnings:1 "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 procedure main() returns () {
-	var x : float<11, 53>;
-	var y : float<11, 53>;
-	var z : float<11, 53>;
-	var r : float<11, 53>;
-	x := fp<11, 53> (10000000bv64);
-	y := x + fp<11, 53>(1bv64);
-	z := x - fp<11, 53>(1bv64);
+	var x : float53e11;
+	var y : float53e11;
+	var z : float53e11;
+	var r : float53e11;
+	x := 0e40f53e11;
+	y := x + 0e0f53e11;
+	z := x - 0e0f53e11;
 	r := y - z;
-	assert r == fp<11, 53> (2bv64);
+	assert r == 0e1f53e11;
 }

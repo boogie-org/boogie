@@ -1,8 +1,8 @@
 // RUN: %boogie -proverWarnings:1 "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
-procedure foo(x : float16) returns(r : float32) {
-	var y : float64;
-	var z : float128;
+procedure foo(x : float11e5) returns(r : float24e8) {
+	var y : float53e11;
+	var z : float113e15;
 	
 	r := x; // Error
 	r := y; // Error
