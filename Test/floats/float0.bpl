@@ -4,11 +4,11 @@ procedure foo(x : real) returns (r : float8e24)
 {
 	r := 15;  // Error
 	r := 15.0;  // Error
-	r := fp(false, 1bv8, 0bv22); // Error
-	r := fp<8, 23>(1bv31); // Error
+	r := 0e1f22e8; // Error
+	r := 1e0f23e8; // Error
 	r := x; // Error
-	r := fp<8, 23>(1bv31) + fp<8, 23>(1bv31); // Error
-	r := fp<8, 24>(1bv32) + fp<8, 23>(1bv31); // Error
+	r := 1e0f23e8 + 1e0f23e8; // Error
+	r := 1e0f24e8 + 1e0f23e8; // Error
 	
 	return;
 }

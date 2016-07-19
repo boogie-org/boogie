@@ -1,13 +1,13 @@
 // RUN: %boogie -proverWarnings:1 "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
-procedure foo(x : float<8, 24>) returns (r : float<8, 24>)
+procedure foo(x : float24e8) returns (r : float24e8)
 {
-	r := fp(false, 1bv8, 0bv23);
-	r := fp<8, 24>(1bv32);
+	r := 0e1f24e8;
+	r := 1e0f24e8;
 	r := x;
-	r := x + fp<8, 24>(1bv32);
-	r := fp<8, 24>(1bv32) + fp<8, 24>(1bv32);
-	assert(r == fp<8, 24>(2bv32));
+	r := x + 1e0f24e8;
+	r := 0e0f24e8 + 0e0f24e8;
+	assert(r == 0e1f24e8);
 	
 	return;
 }

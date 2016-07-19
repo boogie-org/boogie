@@ -386,12 +386,12 @@ namespace Microsoft.Boogie {
       }
     }
 
-    static public FloatType GetFloatType(int exp, int man) {
+    static public FloatType GetFloatType(int sig, int exp) {
       Contract.Requires(0 <= exp);
-      Contract.Requires(0 <= man);
+      Contract.Requires(0 <= sig);
       Contract.Ensures(Contract.Result<FloatType>() != null);
 
-      return new FloatType(exp, man);
+      return new FloatType(sig, exp);
     }
 
     //------------ Match formal argument types on actual argument types
@@ -1094,7 +1094,7 @@ namespace Microsoft.Boogie {
     public override string ToString()
     {
       Contract.Ensures(Contract.Result<string>() != null);
-      return "float (" + Exponent + " " + Significand + ")";
+      return "float" + Significand + "e" + Exponent;
     }
 
     //-----------  Equality  ----------------------------------

@@ -25,11 +25,11 @@ namespace Microsoft.Basetypes
 
     // the internal representation
     [Rep]
-    internal readonly BigNum significand; //Note that the significand arrangement matches standard fp arrangement (most significant bit is farthest left)
+    internal readonly BIM significand; //Note that the significand arrangement matches standard fp arrangement (most significant bit is farthest left)
     [Rep]
     internal readonly int significandSize;
     [Rep]
-    internal readonly BigNum exponent; //The value of the exponent is always positive as per fp representation requirements
+    internal readonly BIM exponent; //The value of the exponent is always positive as per fp representation requirements
     [Rep]
     internal readonly int exponentSize; //The bit size of the exponent
     [Rep]
@@ -37,13 +37,13 @@ namespace Microsoft.Basetypes
     [Rep]
     internal readonly bool isNeg;
 
-    public BigNum Significand {
+    public BIM Significand {
       get {
         return significand;
       }
     }
 
-    public BigNum Exponent {
+    public BIM Exponent {
       get {
         return exponent;
       }
@@ -73,12 +73,12 @@ namespace Microsoft.Basetypes
       }
     }
 
-    public static BigFloat ZERO(int exponentSize, int significandSize) { return new BigFloat(false, BigNum.ZERO, BigNum.ZERO, exponentSize, significandSize); } //Does not include negative zero
+    public static BigFloat ZERO = new BigFloat(false, BIM.Zero, BIM.Zero, 24, 8); //Does not include negative zero
 
-    private static readonly BigNum two = new BigNum(2);
-    private static readonly BigNum one = new BigNum(1);
-    private static BigNum two_n(int n) {
-      BigNum toReturn = one;
+    private static readonly BIM two = new BIM(2);
+    private static readonly BIM one = new BIM(1);
+    private static BIM two_n(int n) {
+      BIM toReturn = one;
       for (int i = 0; i < n; i++)
         toReturn = toReturn * two;
       return toReturn;
@@ -93,59 +93,98 @@ namespace Microsoft.Basetypes
 
     [Pure]
     public static BigFloat FromInt(int v) {
-      return new BigFloat(v.ToString(), 8, 24);
+      return new BigFloat(v.ToString(), 24, 8);
     }
 
-    public static BigFloat FromInt(int v, int exponentSize, int significandSize)
+    public static BigFloat FromInt(int v, int significandSize, int exponentSize)
     {
-      return new BigFloat(v.ToString(), exponentSize, significandSize);
+      return new BigFloat(v.ToString(), significandSize, exponentSize);
     }
 
     public static BigFloat FromBigInt(BIM v) {
-      return new BigFloat(v.ToString(), 8, 24);
+      return new BigFloat(v.ToString(), 24, 8);
     }
 
-    public static BigFloat FromBigInt(BIM v, int exponentSize, int significandSize)
+    public static BigFloat FromBigInt(BIM v, int significandSize, int exponentSize)
     {
-      return new BigFloat(v.ToString(), exponentSize, significandSize);
+      return new BigFloat(v.ToString(), significandSize, exponentSize);
     }
 
     public static BigFloat FromBigDec(BigDec v)
     {
-      return new BigFloat(v.ToDecimalString(), 8, 24);
+      return new BigFloat(v.ToDecimalString(), 24, 8);
     }
 
-    public static BigFloat FromBigDec(BigDec v, int exponentSize, int significandSize)
+    public static BigFloat FromBigDec(BigDec v, int significandSize, int exponentSize)
     {
-      return new BigFloat(v.ToDecimalString(), exponentSize, significandSize);
+      return new BigFloat(v.ToDecimalString(), significandSize, exponentSize);
     }
 
     [Pure]
-    public static BigFloat FromString(String v, int exp, int sig) { //String must be
-      return new BigFloat(v, exp, sig);
+    public static BigFloat FromString(String s) {
+      /*
+       * String must be either of the format *e*f*e*
+       * or of the special value formats: 0NaN*e* 0nan*e* 0+oo*e* 0-oo*e*
+       * Where * indicates an integer value (digit)
+       */
+      BIM sig, exp;
+      int sigSize, expSize;
+      bool isNeg;
+
+      if (s.IndexOf('f') == -1) {
+        String val = s;
+        sigSize = int.Parse(s.Substring(4, s.IndexOf('e')-4));
+        expSize = int.Parse(s.Substring(s.IndexOf('e') + 1));
+        if (sigSize <= 0 || expSize <= 0)
+          throw new FormatException("Significand and Exponent sizes must be greater than 0");
+        return new BigFloat(val, sigSize, expSize);
+      }
+
+      sig = BIM.Parse(s.Substring(0, s.IndexOf('e')));
+      exp = BIM.Parse(s.Substring(s.IndexOf('e') + 1, s.IndexOf('f') - s.IndexOf('e') - 1));
+      sigSize = int.Parse(s.Substring(s.IndexOf('f') + 1, s.IndexOf('e', s.IndexOf('e') + 1) - s.IndexOf('f') - 1));
+      expSize = int.Parse(s.Substring(s.IndexOf('e', s.IndexOf('e') + 1) + 1));
+      
+      if (sigSize <= 0 || expSize <= 0)
+        throw new FormatException("Significand and Exponent sizes must be greater than 0");
+
+      sigSize = sigSize - 1; //Get rid of sign bit
+      isNeg = sig < 0;
+      sig = BIM.Abs(sig);
+      exp = exp + BIM.Pow(new BIM(2), expSize-1) - BIM.One;
+
+      if (exp < 0 || exp >= BIM.Pow(new BIM(2), expSize))
+        throw new FormatException("The given exponent " + exp + " cannot fit in the bit size " + expSize);
+
+      if (sig >= BIM.Pow(new BIM(2), sigSize))
+        throw new FormatException("The given significand " + sig + " cannot fit in the bit size " + (sigSize+1));
+
+      return new BigFloat(isNeg, sig, exp, sigSize, expSize);
     }
 
-    public BigFloat(bool sign, BigNum exponent, BigNum significand, int exponentSize, int significandSize) {
+    public BigFloat(bool isNeg, BIM significand, BIM exponent, int significandSize, int exponentSize) {
       this.exponentSize = exponentSize;
       this.exponent = exponent;
       this.significand = significand;
       this.significandSize = significandSize+1;
-      this.isNeg = sign;
+      this.isNeg = isNeg;
       this.value = "";
     }
 
-    public BigFloat(String value, int exponentSize, int significandSize) {
+    public BigFloat(String value, int significandSize, int exponentSize) {
       this.exponentSize = exponentSize;
       this.significandSize = significandSize;
-      this.exponent = BigNum.ZERO;
-      this.significand = BigNum.ZERO;
+      this.exponent = BIM.Zero;
+      this.significand = BIM.Zero;
       this.value = value;
+      if (value.Equals("nan"))
+        this.value = "NaN";
       this.isNeg = value[0] == '-';
     }
 
-    private BigNum maxsignificand()
+    private BIM maxsignificand()
     {
-      BigNum result = one;
+      BIM result = one;
       for (int i = 0; i < significandSize; i++)
         result = result * two;
       return result - one;
@@ -196,8 +235,8 @@ namespace Microsoft.Basetypes
     {
       int i = value.IndexOf('.');
       if (i == -1)
-        return Round(BigNum.FromString(value), BigNum.ZERO, exponentSize, significandSize);
-      return Round(i == 0 ? BigNum.ZERO : BigNum.FromString(value.Substring(0, i)), BigNum.FromString(value.Substring(i + 1, value.Length - i - 1)), exponentSize, significandSize);
+        return Round(BIM.Parse(value), BIM.Zero, exponentSize, significandSize);
+      return Round(i == 0 ? BIM.Zero : BIM.Parse(value.Substring(0, i)), BIM.Parse(value.Substring(i + 1, value.Length - i - 1)), exponentSize, significandSize);
     }
 
     /// <summary>
@@ -210,17 +249,17 @@ namespace Microsoft.Basetypes
     /// <param name="significandSize"></param>
     /// <param name="exponentSize"></param>
     /// <returns></returns>
-    public static BigFloat Round(BigNum value, BigNum dec_value, int exponentSize, int significandSize)
+    public static BigFloat Round(BIM value, BIM dec_value, int exponentSize, int significandSize)
     {
       int exp = 0;
-      BigNum one = new BigNum(1);
-      BigNum ten = new BigNum(10);
-      BigNum dec_max = new BigNum(0); //represents the order of magnitude of dec_value for carrying during calculations
+      BIM one = new BIM(1);
+      BIM ten = new BIM(10);
+      BIM dec_max = new BIM(0); //represents the order of magnitude of dec_value for carrying during calculations
 
       //First, determine the exponent
       while (value > one) { //Divide by two, increment exponent by 1
         if (!(value % two).IsZero) { //Add "1.0" to the decimal
-          dec_max = new BigNum(10);
+          dec_max = new BIM(10);
           while (dec_max < dec_value)
             dec_max = dec_max * ten;
           dec_value = dec_value + dec_max;
@@ -232,7 +271,7 @@ namespace Microsoft.Basetypes
         exp++;
       }
       if (value.IsZero && !dec_value.IsZero) {
-        dec_max = new BigNum(10);
+        dec_max = new BIM(10);
         while (dec_max < dec_value)
           dec_max = dec_max * ten;
         while (value.IsZero) {//Multiply by two, decrement exponent by 1
@@ -246,8 +285,8 @@ namespace Microsoft.Basetypes
       }
 
       //Second, calculate the significand
-      value = new BigNum(0); //remove implicit bit
-      dec_max = new BigNum(10);
+      value = new BIM(0); //remove implicit bit
+      dec_max = new BIM(10);
       while (dec_max < dec_value)
         dec_max = dec_max * ten;
       for (int i = significandSize; i > 0 && !dec_value.IsZero; i--) { //Multiply by two until the significand is fully calculated
@@ -258,46 +297,39 @@ namespace Microsoft.Basetypes
         }
       }
 
-      return new BigFloat(false, BigNum.ZERO, BigNum.FromString(value.ToString()), exponentSize, significandSize); //Sign not actually checked...
+      return new BigFloat(false, BIM.Zero, BIM.Parse(value.ToString()), exponentSize, significandSize); //Sign not actually checked...
     }
 
     // ``floor`` rounds towards negative infinity (like SMT-LIBv2's to_int).
     /// <summary>
-    /// NOTE:  THIS PROBABLY WON'T GIVE USEFUL OUTPUT!!!
+    /// NOTE:  This may give wrong results, it hasn't been tested extensively
+    /// If you're getting weird bugs, you may want to check this function out...
     /// Computes the floor and ceiling of this BigFloat. Note the choice of rounding towards negative
     /// infinity rather than zero for floor is because SMT-LIBv2's to_int function floors this way.
     /// </summary>
     /// <param name="floor">The Floor (rounded towards negative infinity)</param>
     /// <param name="ceiling">Ceiling (rounded towards positive infinity)</param>
-    public void FloorCeiling(out BigNum floor, out BigNum ceiling) {
-      //TODO: fix for fp functionality
-      BigNum n = Significand;
-      BigNum e = Exponent;
-      if (n.IsZero) {
-        floor = ceiling = n;
-      } else if (BigNum.ZERO <= e) {
-        // it's an integer
-        for (; BigNum.ZERO < e; e = e - one)
-        {
-          n = n * two;
-        }
-        floor = ceiling = n;
-      } else {
-        // it's a non-zero integer, so the ceiling is one more than the floor
-        for (; BigNum.ZERO < e && !n.IsZero; e = e + one)
-        {
-          n = n / two;  // Division rounds towards negative infinity
-        }
+    public void FloorCeiling(out BIM floor, out BIM ceiling)
+    {
+      BIM two = new BIM(2);
 
-        if (!IsNegative) {
-          floor = n;
-          ceiling = n + one;
-        } else {
-          ceiling = n;
-          floor = n - one;
-        }
+      BIM sig = Significand + BIM.Pow(two, SignificandSize); //Add hidden bit
+      BIM exp = Exponent - BIM.Pow(two, ExponentSize);
+      sig = sig >> ExponentSize;
+
+      while (exp > BIM.Zero) {
+        exp--;
+        sig = sig >> 1;
       }
-      Debug.Assert(floor <= ceiling, "Invariant was not maintained");
+
+      if (isNeg) {
+        ceiling = -sig + 1;
+        floor = -sig;
+      }
+      else {
+        ceiling = sig + 1;
+        floor = sig;
+      }
     }
 
     [Pure]
@@ -374,10 +406,10 @@ namespace Microsoft.Basetypes
       //TODO: Modify for correct fp functionality
       Contract.Requires(x.ExponentSize == y.ExponentSize);
       Contract.Requires(x.significandSize == y.significandSize);
-      BigNum m1 = x.significand;
-      BigNum e1 = x.Exponent;
-      BigNum m2 = y.significand;
-      BigNum e2 = y.Exponent;
+      BIM m1 = x.significand;
+      BIM e1 = x.Exponent;
+      BIM m2 = y.significand;
+      BIM e2 = y.Exponent;
       m1 = m1 + two_n(x.significandSize + 1); //Add implicit bit
       m2 = m2 + two_n(y.significandSize + 1);
       if (e2 > e1) {
@@ -427,7 +459,7 @@ namespace Microsoft.Basetypes
 
     public bool IsZero {
       get {
-        return significand.Equals(BigNum.ZERO) && Exponent == BigNum.ZERO;
+        return significand.Equals(BigNum.ZERO) && Exponent == BIM.Zero;
       }
     }
 

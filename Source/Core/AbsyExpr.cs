@@ -584,7 +584,7 @@ namespace Microsoft.Boogie {
     {
       Contract.Requires(tok != null);
       Val = v;
-      Type = Type.GetFloatType(v.ExponentSize, v.SignificandSize);
+      Type = Type.GetFloatType(v.SignificandSize, v.ExponentSize);
       if (immutable)
         CachedHashCode = ComputeHashCode();
     }
@@ -662,7 +662,7 @@ namespace Microsoft.Boogie {
           return Type.Real;
         } else if (Val is BigFloat) {
           BigFloat temp = (BigFloat)Val;
-          return Type.GetFloatType(temp.ExponentSize, temp.SignificandSize);
+          return Type.GetFloatType(temp.SignificandSize, temp.ExponentSize);
         } else if (Val is BvConst) {
           return Type.GetBvType(((BvConst)Val).Bits);
         } else {
@@ -1724,10 +1724,10 @@ namespace Microsoft.Boogie {
             return Type.Real;
           }
           if (arg0type.IsFloat && arg0type.Unify(arg1type)) {
-            return Type.GetFloatType(arg0.Type.FloatExponent, arg0.Type.FloatSignificand);
+            return Type.GetFloatType(arg0.Type.FloatSignificand, arg0.Type.FloatExponent);
           }
           if (arg1type.IsFloat && arg1type.Unify(arg0type)) {
-            return Type.GetFloatType(arg1.Type.FloatExponent, arg1.Type.FloatSignificand);
+            return Type.GetFloatType(arg1.Type.FloatSignificand, arg1.Type.FloatExponent);
           }
           goto BAD_TYPE;
         case Opcode.Div:
@@ -1742,10 +1742,10 @@ namespace Microsoft.Boogie {
             return Type.Real;
           }
           if (arg0type.IsFloat && arg0type.Unify(arg1type)) {
-            return Type.GetFloatType(arg0.Type.FloatExponent, arg0.Type.FloatSignificand);
+            return Type.GetFloatType(arg0.Type.FloatSignificand, arg0.Type.FloatExponent);
           }
           if (arg1type.IsFloat && arg1type.Unify(arg0type)) {
-            return Type.GetFloatType(arg1.Type.FloatExponent, arg1.Type.FloatSignificand);
+            return Type.GetFloatType(arg1.Type.FloatSignificand, arg1.Type.FloatExponent);
           }
           goto BAD_TYPE;
         case Opcode.Pow:
