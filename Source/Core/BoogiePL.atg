@@ -145,7 +145,11 @@ TOKENS
 
   decimal = digit {digit} 'e' [ '-' ] digit {digit} .
   dec_float = digit {digit} '.' digit {digit} [ 'e' [ '-' ] digit {digit} ] .
-		float = digit {digit} 'e' digit {digit} 'f' digit {digit} 'e' digit {digit} .
+		float = [ '-' ] digit {digit} 'e' [ '-' ] digit {digit} 'f' digit {digit} 'e' digit {digit} 
+										| '0' 'N' 'a' 'N' digit {digit} 'e' digit {digit}
+										| '0' 'n' 'a' 'n' digit {digit} 'e' digit {digit}
+										| '0' '+' 'o' 'o' digit {digit} 'e' digit {digit}
+										| '0' '-' 'o' 'o' digit {digit} 'e' digit {digit} .
 
 COMMENTS FROM "/*" TO "*/" NESTED
 COMMENTS FROM "//" TO lf
@@ -1292,7 +1296,7 @@ AtomExpression<out Expr/*!*/ e>
     Expression<out e>
     ")"                     (. e = new NAryExpr(x, new ArithmeticCoercion(x, ArithmeticCoercion.CoercionType.ToReal), new List<Expr>{ e }); .)
 
-  | "(" ( Expression<out e>                 (. if (e is BvBounds)
+		| "(" ( Expression<out e>                 (. if (e is BvBounds)
                                                  this.SemErr("parentheses around bitvector bounds " +
                                                         "are not allowed"); .)
         | Forall                            (. x = t; .)
@@ -1518,8 +1522,8 @@ Float<out BigFloat n>
   )
   (. try {
        n = BigFloat.FromString(s);
-     } catch (FormatException) {
-       this.SemErr("incorrectly formatted number");
+     } catch (FormatException e) {
+       this.SemErr("incorrectly formatted floating point, " + e.Message);
        n = BigFloat.ZERO;
      }
   .)

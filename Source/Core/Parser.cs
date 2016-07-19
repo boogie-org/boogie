@@ -133,7 +133,8 @@ private class BvBounds : Expr {
     Contract.Assert(false);throw new cce.UnreachableException();
   }
   public override void ComputeFreeVariables(GSet<object>/*!*/ freeVars) { Contract.Assert(false);throw new cce.UnreachableException(); }
-  public override int ComputeHashCode() {
+  public override int ComputeHashCode()
+  {
     return base.GetHashCode();
   }
 }
@@ -1866,7 +1867,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		try {
 		 n = BigFloat.FromString(s);
 		} catch (FormatException e) {
-		 this.SemErr("incorrectly formatted floating point: " + e.Message);
+		 this.SemErr("incorrectly formatted floating point, " + e.Message);
 		 n = BigFloat.ZERO;
 		}
 		
