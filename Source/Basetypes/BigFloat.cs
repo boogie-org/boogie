@@ -314,13 +314,14 @@ namespace Microsoft.Basetypes
       BIM two = new BIM(2);
 
       BIM sig = Significand + BIM.Pow(two, SignificandSize); //Add hidden bit
-      BIM exp = Exponent - BIM.Pow(two, ExponentSize);
-      sig = sig >> ExponentSize;
+      BIM exp = Exponent - BIM.Pow(two, ExponentSize-1) + 1;
 
       while (exp > BIM.Zero) {
         exp--;
-        sig = sig >> 1;
+        sig = sig << 1;
       }
+
+      sig = sig >> SignificandSize;
 
       if (isNeg) {
         ceiling = -sig + 1;
