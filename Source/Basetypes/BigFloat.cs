@@ -151,7 +151,8 @@ namespace Microsoft.Basetypes
       sigSize = sigSize - 1; //Get rid of sign bit
       isNeg = sig < 0;
       sig = BIM.Abs(sig);
-      exp = exp + BIM.Pow(new BIM(2), expSize-1) - BIM.One;
+      //Uncomment if you want to shift the exponent for the user (i.e. 0e-1f24e8 --> 0e126f24e8)
+      //exp = exp + BIM.Pow(new BIM(2), expSize-1) - BIM.One;
 
       if (exp < 0 || exp >= BIM.Pow(new BIM(2), expSize))
         throw new FormatException("The given exponent " + exp + " cannot fit in the bit size " + expSize);
