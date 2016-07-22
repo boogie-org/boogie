@@ -16,6 +16,10 @@ procedure main() returns () {
 	fc := TO_FLOAT32_INT(5);
 	assert(f == fc);
 	
+	f := -0e126f24e8;
+	fc := TO_FLOAT32_REAL(0.5);
+	assert(f == fc);
+	
 	f := 1048576e128f24e8;
 	fc := TO_FLOAT32_REAL(2.25);
 	assert(f == fc);
@@ -26,5 +30,5 @@ procedure main() returns () {
 	
 	d := 562949953421312e1024f53e11;
 	dc := TO_FLOAT64_REAL(2.25);
-	//assert(d == dc);
+	assert(d == dc);
 }
