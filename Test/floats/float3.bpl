@@ -8,20 +8,20 @@ procedure main() returns () {
 	z := x + y;
 	z := x - y;
 	z := x * y;
-	assume(y != 0e-127f24e8);
+	assume(y != 0e0f24e8);
 	z := x / y;
 	
-	z := (0e0f24e8 + 0e0f24e8 + 0e-127f24e8);
-	assert(z == 0e1f24e8);
+	z := (0e127f24e8 + 0e127f24e8 + 0e0f24e8);
+	assert(z == 0e128f24e8);
 	
-	z := 0e1f24e8 - 0e0f24e8;
-	assert(z == 0e0f24e8);
+	z := 0e128f24e8 - 0e127f24e8;
+	assert(z == 0e127f24e8);
 	
-	z := 0e0f24e8 * 0e0f24e8;
-	assert(z == 0e0f24e8);
+	z := 0e127f24e8 * 0e127f24e8;
+	assert(z == 0e127f24e8);
 	
-	z := 0e0f24e8 / 0e0f24e8;
-	assert(z == 0e0f24e8);
+	z := 0e127f24e8 / 0e127f24e8;
+	assert(z == 0e127f24e8);
 	
 	return;
 }

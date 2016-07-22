@@ -1,0 +1,9 @@
+float14.bpl(7,7): error: incorrectly formatted floating point, The given exponent -1 cannot fit in the bit size 8
+float14.bpl(8,7): error: incorrectly formatted floating point, The given exponent 256 cannot fit in the bit size 8
+float14.bpl(11,7): error: incorrectly formatted floating point, The given significand 8388608 cannot fit in the bit size 24
+float14.bpl(12,7): error: incorrectly formatted floating point, The given significand 8388608 cannot fit in the bit size 24
+float14.bpl(15,7): error: incorrectly formatted floating point, The given exponent -1 cannot fit in the bit size 11
+float14.bpl(16,7): error: incorrectly formatted floating point, The given exponent 2048 cannot fit in the bit size 11
+float14.bpl(19,7): error: incorrectly formatted floating point, The given significand 4503599627370496 cannot fit in the bit size 53
+float14.bpl(20,7): error: incorrectly formatted floating point, The given significand 4503599627370496 cannot fit in the bit size 53
+8 parse errors detected in float14.bpl

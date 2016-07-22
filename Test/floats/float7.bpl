@@ -5,9 +5,9 @@ procedure main() returns () {
 	var y : float53e11;
 	var z : float53e11;
 	var r : float53e11;
-	x := 0e40f53e11;
-	y := x + 0e0f53e11;
-	z := x - 0e0f53e11;
+	x := 0e1063f53e11;
+	y := x + 0e1023f53e11;
+	z := x - 0e1023f53e11;
 	r := y - z;
-	assert r == 0e1f53e11;
+	assert r == 0e1024f53e11;
 }
