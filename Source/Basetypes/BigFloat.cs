@@ -144,13 +144,13 @@ namespace Microsoft.Basetypes
       exp = BIM.Parse(s.Substring(s.IndexOf('e') + 1, s.IndexOf('f') - s.IndexOf('e') - 1));
       sigSize = int.Parse(s.Substring(s.IndexOf('f') + 1, s.IndexOf('e', s.IndexOf('e') + 1) - s.IndexOf('f') - 1));
       expSize = int.Parse(s.Substring(s.IndexOf('e', s.IndexOf('e') + 1) + 1));
+      isNeg = s[0] == '-'; //We do this so that -0 is parsed correctly
       
       if (sigSize <= 0 || expSize <= 0)
         throw new FormatException("Significand and Exponent sizes must be greater than 0");
 
       sigSize = sigSize - 1; //Get rid of sign bit
-      isNeg = sig < 0;
-      sig = BIM.Abs(sig);
+      sig = BIM.Abs(sig); //sig must be positive
       //Uncomment if you want to shift the exponent for the user (i.e. 0e-1f24e8 --> 0e126f24e8)
       //exp = exp + BIM.Pow(new BIM(2), expSize-1) - BIM.One;
 

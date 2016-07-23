@@ -17,7 +17,7 @@ procedure main() returns () {
 	assert(f == fc);
 	
 	f := -0e126f24e8;
-	fc := TO_FLOAT32_REAL(0.5);
+	fc := TO_FLOAT32_REAL(-0.5);
 	assert(f == fc);
 	
 	f := 1048576e128f24e8;
