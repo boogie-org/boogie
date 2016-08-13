@@ -14,94 +14,39 @@ namespace Microsoft.Boogie
   // scheduler uses the .NET threadpool, which in turn inherits stack size from the EXE.
   public class ThreadTaskScheduler : TaskScheduler
   {
-    private object tasklock; // Guards acess to the "tasks" queue
-    private Queue<Task> tasks;
-
-    private Thread[] dispatchers;
-    private ManualResetEvent eventsWaiting;
     private int stackSize;
 
     public ThreadTaskScheduler(int StackReserveSize)
     {
-      int MaxThreads = System.Environment.ProcessorCount;
-      Initialize(StackReserveSize, MaxThreads);
-    }
-
-    public ThreadTaskScheduler(int StackReserveSize, int MaxThreads) 
-    {
-      Initialize(StackReserveSize, MaxThreads);
-    }
-
-    void Initialize(int StackReserveSize, int MaxThreads) 
-    {
       Contract.Requires(StackReserveSize >= 0);
-      Contract.Requires(MaxThreads > 0);
 
-      tasklock = new object();
-      tasks = new Queue<Task>();
-      eventsWaiting = new ManualResetEvent(false);
       stackSize = StackReserveSize;
-      dispatchers = new Thread[MaxThreads];
-      for (int i = 0; i < MaxThreads; ++i) 
-      {
-        dispatchers[i] = new Thread(new ThreadStart(DispatcherMain));
-        dispatchers[i].IsBackground = true;
-        dispatchers[i].Start();
-      }
     }
 
     protected override IEnumerable<Task> GetScheduledTasks() 
     {
-      IEnumerable<Task> r;
-      lock(tasklock)
-      {
-        r=tasks.ToArray<Task>();
-      }
-      return r;
+      // There is never a queue of scheduled, but not running, tasks.  
+      // So return an empty list.
+      return new List<Task>();
     }
 
     protected override void QueueTask(Task task) 
     {
-      lock (tasklock) 
-      {
-        tasks.Enqueue(task);
-        eventsWaiting.Set();
-      }
+      // Each queued task runs on a newly-created thread with the required 
+      // stack size.  The default .NET task scheduler is built on the .NET 
+      // ThreadPool.  Its policy allows it to create thousands of threads 
+      // if it chooses.
+      //
+      // Boogie creates tasks which in turn create tasks and wait on them.
+      // So throttling tasks via a queue risks deadlock.
+
+      Thread th = new Thread(TaskMain, stackSize);
+      th.Start(task);
     }
 
     protected override bool TryExecuteTaskInline(Task task, bool taskWasPreviouslyQueued) 
     {
       return false;
-    }
-
-    private void DispatcherMain() 
-    {
-      while (true) 
-      {
-        Task t = null;
-        lock (tasklock) 
-        {
-          if (tasks.Count > 0) 
-          {
-            t = tasks.Dequeue();
-            if (tasks.Count == 0) 
-            {
-              eventsWaiting.Reset();
-            }
-          }
-        }
-
-        if (t != null) 
-        {
-          Thread th = new Thread(TaskMain, stackSize);
-          th.Start(t);
-          th.Join();
-        }
-        else 
-        {
-          eventsWaiting.WaitOne();
-        }
-      }
     }
 
     private void TaskMain(object data) 
