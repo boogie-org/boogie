@@ -1,0 +1,7 @@
+float11.bpl(21,2): Error BP5001: This assertion might not hold.
+Execution trace:
+    float11.bpl(12,7): anon0
+    float11.bpl(16,2): anon3_LoopHead
+    float11.bpl(16,2): anon3_LoopDone
+
+Boogie program verifier finished with 0 verified, 1 error

@@ -1,0 +1,8 @@
+float0.bpl(5,1): Error: mismatched types in assignment command (cannot assign int to float8e24)
+float0.bpl(6,1): Error: mismatched types in assignment command (cannot assign real to float8e24)
+float0.bpl(7,1): Error: mismatched types in assignment command (cannot assign float22e8 to float8e24)
+float0.bpl(8,1): Error: mismatched types in assignment command (cannot assign float23e8 to float8e24)
+float0.bpl(9,1): Error: mismatched types in assignment command (cannot assign real to float8e24)
+float0.bpl(10,1): Error: mismatched types in assignment command (cannot assign float23e8 to float8e24)
+float0.bpl(11,15): Error: invalid argument types (float24e8 and float23e8) to binary operator +
+7 type checking errors detected in float0.bpl

@@ -163,6 +163,7 @@
     </Compile>
     <Compile Include="BigDec.cs" />
     <Compile Include="BigNum.cs" />
+    <Compile Include="BigFloat.cs" />
     <Compile Include="Rational.cs" />
     <Compile Include="Set.cs" />
   </ItemGroup>

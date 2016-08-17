@@ -121,7 +121,7 @@ namespace Microsoft.Boogie.SMTLib
           }
           sb.Append(']');
           TypeToStringHelper(m.Result, sb);
-        } else if (t.IsBool || t.IsInt || t.IsReal || t.IsBv) {
+        } else if (t.IsBool || t.IsInt || t.IsReal || t.IsFloat || t.IsBv) {
           sb.Append(TypeToString(t));
         } else {
           System.IO.StringWriter buffer = new System.IO.StringWriter();
@@ -145,6 +145,8 @@ namespace Microsoft.Boogie.SMTLib
         return "Int";
       else if (t.IsReal)
         return "Real";
+      else if (t.IsFloat)
+        return "(_ FloatingPoint " + t.FloatExponent + " " + t.FloatSignificand + ")";
       else if (t.IsBv) {
         return "(_ BitVec " + t.BvBits + ")";
       } else {
@@ -203,6 +205,11 @@ namespace Microsoft.Boogie.SMTLib
           wr.Write("(- 0.0 {0})", lit.Abs.ToDecimalString());
         else
           wr.Write(lit.ToDecimalString());
+      }
+      else if (node is VCExprFloatLit)
+      {
+        BigFloat lit = ((VCExprFloatLit)node).Val;
+        wr.Write("(" + lit.ToBVString() + ")");
       }
       else {
         Contract.Assert(false);
@@ -627,6 +634,78 @@ namespace Microsoft.Boogie.SMTLib
         if (CommandLineOptions.Clo.UseArrayTheory)
           name = "store";
         WriteApplication(name, node, options);
+        return true;
+      }
+
+      public bool VisitFloatAddOp(VCExprNAry node, LineariserOptions options)
+      {
+        WriteApplication("fp.add RNE", node, options);
+        return true;
+      }
+
+      public bool VisitFloatSubOp(VCExprNAry node, LineariserOptions options)
+      {
+        WriteApplication("fp.sub RNE", node, options);
+        return true;
+      }
+
+      public bool VisitFloatMulOp(VCExprNAry node, LineariserOptions options)
+      {
+        WriteApplication("fp.mul RNE", node, options);
+        return true;
+      }
+
+      public bool VisitFloatDivOp(VCExprNAry node, LineariserOptions options)
+      {
+        WriteApplication("fp.div RNE", node, options);
+        return true;
+      }
+
+      public bool VisitFloatRemOp(VCExprNAry node, LineariserOptions options)
+      {
+        WriteApplication("fp.rem RNE", node, options);
+        return true;
+      }
+
+      public bool VisitFloatMinOp(VCExprNAry node, LineariserOptions options)
+      {
+        WriteApplication("fp.min", node, options);
+        return true;
+      }
+
+      public bool VisitFloatMaxOp(VCExprNAry node, LineariserOptions options)
+      {
+        WriteApplication("fp.max", node, options);
+        return true;
+      }
+
+      public bool VisitFloatLeqOp(VCExprNAry node, LineariserOptions options)
+      {
+        WriteApplication("fp.leq", node, options);
+        return true;
+      }
+
+      public bool VisitFloatLtOp(VCExprNAry node, LineariserOptions options)
+      {
+        WriteApplication("fp.lt", node, options);
+        return true;
+      }
+
+      public bool VisitFloatGeqOp(VCExprNAry node, LineariserOptions options)
+      {
+        WriteApplication("fp.geq", node, options);
+        return true;
+      }
+
+      public bool VisitFloatGtOp(VCExprNAry node, LineariserOptions options)
+      {
+        WriteApplication("fp.gt", node, options);
+        return true;
+      }
+
+      public bool VisitFloatEqOp(VCExprNAry node, LineariserOptions options)
+      {
+        WriteApplication("fp.eq", node, options);
         return true;
       }
 
