@@ -785,7 +785,11 @@ namespace Microsoft.Boogie
                 ActionInfo actionInfo = procToActionInfo[node.Proc];
                 if (node.IsAsync && actionInfo is AtomicActionInfo)
                 {
-                    Error(node, "Target of async call cannot be an atomic action");
+                    AtomicActionInfo atomicActionInfo = actionInfo as AtomicActionInfo;
+                    if (!atomicActionInfo.IsLeftMover)
+                    {
+                        Error(node, "Target of async call must be a left mover");
+                    }
                 }
                 int calleeLayerNum = procToActionInfo[node.Proc].createdAtLayerNum;
                 if (enclosingProcLayerNum < calleeLayerNum ||

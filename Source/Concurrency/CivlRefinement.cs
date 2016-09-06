@@ -141,6 +141,15 @@ namespace Microsoft.Boogie
         public override Cmd VisitCallCmd(CallCmd node)
         {
             CallCmd callCmd = (CallCmd) base.VisitCallCmd(node);
+            if (callCmd.IsAsync && civlTypeChecker.procToActionInfo.ContainsKey(node.Proc))
+            {
+                ActionInfo actionInfo = civlTypeChecker.procToActionInfo[node.Proc];
+                Debug.Assert(actionInfo.IsLeftMover);
+                if (actionInfo.createdAtLayerNum < layerNum)
+                {
+                    callCmd.IsAsync = false;
+                }
+            }
             callCmd.Proc = VisitProcedure(callCmd.Proc);
             callCmd.callee = callCmd.Proc.Name;
             absyMap[callCmd] = node;
