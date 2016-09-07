@@ -31,7 +31,7 @@ namespace Microsoft.Boogie
             this.createdAtLayerNum = createdAtLayerNum;
             this.availableUptoLayerNum = availableUptoLayerNum;
             this.hasImplementation = false;
-            this.isExtern = QKeyValue.FindBoolAttribute(proc.Attributes, "extern");
+            this.isExtern = proc.IsExtern();
         }
 
         public virtual bool IsRightMover
@@ -43,6 +43,22 @@ namespace Microsoft.Boogie
         {
             get { return true; }
         }
+    }
+
+    public static class AttributeQueryExtensionMethods
+    {
+        public static bool HasAttribute(this ICarriesAttributes obj, string attribute)
+        { return QKeyValue.FindBoolAttribute(obj.Attributes, attribute); }
+
+        public static bool IsPure (this Declaration decl) { return decl.HasAttribute("pure"); }
+        public static bool IsYield(this Declaration decl) { return decl.HasAttribute("yields"); }
+
+        public static bool IsAtomic(this Ensures decl) { return decl.HasAttribute("atomic"); }
+        public static bool IsLeft(this Ensures decl) { return decl.HasAttribute("left"); }
+        public static bool IsRight(this Ensures decl) { return decl.HasAttribute("right"); }
+        public static bool IsBoth(this Ensures decl) { return decl.HasAttribute("both"); }
+
+        public static bool IsExtern(this Declaration decl) { return decl.HasAttribute("extern"); }
     }
 
     public class AtomicActionInfo : ActionInfo
@@ -420,13 +436,13 @@ namespace Microsoft.Boogie
 
         private static MoverType GetMoverType(Ensures e)
         {
-            if (QKeyValue.FindBoolAttribute(e.Attributes, "atomic"))
+            if (e.IsAtomic())
                 return MoverType.Atomic;
-            if (QKeyValue.FindBoolAttribute(e.Attributes, "right"))
+            if (e.IsRight())
                 return MoverType.Right;
-            if (QKeyValue.FindBoolAttribute(e.Attributes, "left"))
+            if (e.IsLeft())
                 return MoverType.Left;
-            if (QKeyValue.FindBoolAttribute(e.Attributes, "both"))
+            if (e.IsBoth())
                 return MoverType.Both;
             return MoverType.Top;
         }
@@ -448,6 +464,7 @@ namespace Microsoft.Boogie
             this.procToAtomicProcedureInfo = new Dictionary<Procedure, AtomicProcedureInfo>();
             this.pureCallLayer = new Dictionary<CallCmd, int>();
             
+            // Global variables
             foreach (var g in program.GlobalVariables)
             {
                 List<int> layerNums = FindLayers(g.Attributes);
@@ -494,6 +511,8 @@ namespace Microsoft.Boogie
             }
         }
 
+        // Caller has to make sure sharedVarsAccessed is set correctly for the
+        // currently checked procedure.
         private LayerRange FindLayerRange()
         {
             int maxIntroLayerNum = int.MinValue;
@@ -514,15 +533,15 @@ namespace Microsoft.Boogie
 
         public void TypeCheck()
         {
-            foreach (var proc in program.Procedures)
+            // Pure procedures
+            foreach (var proc in program.Procedures.Where(proc => proc.IsPure()))
             {
-                if (!QKeyValue.FindBoolAttribute(proc.Attributes, "pure")) continue;
-                if (QKeyValue.FindBoolAttribute(proc.Attributes, "yields"))
+                if (proc.IsYield())
                 {
                     Error(proc, "Pure procedure must not yield");
                     continue;
                 }
-                if (QKeyValue.FindBoolAttribute(proc.Attributes, "layer"))
+                if (FindLayers(proc.Attributes).Count != 0)
                 {
                     Error(proc, "Pure procedure must not have layers");
                     continue;
@@ -534,9 +553,10 @@ namespace Microsoft.Boogie
                 }
                 procToAtomicProcedureInfo[proc] = new AtomicProcedureInfo();
             }
-            foreach (var proc in program.Procedures)
+
+            // Atomic procedures (not yielding)
+            foreach (var proc in program.Procedures.Where(proc => !proc.IsYield()))
             {
-                if (QKeyValue.FindBoolAttribute(proc.Attributes, "yields")) continue;
                 var procLayerNums = FindLayers(proc.Attributes);
                 if (procLayerNums.Count == 0) continue;
                 foreach (IdentifierExpr ie in proc.Modifies)
@@ -573,10 +593,12 @@ namespace Microsoft.Boogie
             }
             if (errorCount > 0) return;
 
+            // Implementations of atomic procedures
             foreach (Implementation impl in program.Implementations)
             {
-                if (!procToAtomicProcedureInfo.ContainsKey(impl.Proc)) continue;
-                var atomicProcedureInfo = procToAtomicProcedureInfo[impl.Proc];
+                AtomicProcedureInfo atomicProcedureInfo;
+                if (!procToAtomicProcedureInfo.TryGetValue(impl.Proc, out atomicProcedureInfo)) continue;
+
                 if (atomicProcedureInfo.isPure)
                 {
                     this.enclosingImpl = impl;
@@ -598,10 +620,9 @@ namespace Microsoft.Boogie
             }
             if (errorCount > 0) return; 
             
-            foreach (var proc in program.Procedures)
+            // Yielding procedures
+            foreach (var proc in program.Procedures.Where(proc => proc.IsYield()))
             {
-                if (!QKeyValue.FindBoolAttribute(proc.Attributes, "yields")) continue;
-
                 int createdAtLayerNum;  // must be initialized by the following code, otherwise it is an error
                 int availableUptoLayerNum = int.MaxValue;
                 List<int> attrs = FindLayers(proc.Attributes);
