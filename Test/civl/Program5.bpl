@@ -4,14 +4,14 @@ type Tid;
 const unique nil: Tid;
 
 function {:inline} UNALLOC():int { 0 }
-function {:inline} WHITE():int { 1 }
-function {:inline} GRAY():int { 2 }
-function {:inline} BLACK():int { 3 }
+function {:inline} WHITE():int   { 1 }
+function {:inline} GRAY():int    { 2 }
+function {:inline} BLACK():int   { 3 }
 function {:inline} Unalloc(i:int) returns(bool) { i <= 0 }
-function {:inline} White(i:int) returns(bool) { i == 1 }
+function {:inline} White(i:int)   returns(bool) { i == 1 }
+function {:inline} Gray(i:int)    returns(bool) { i == 2 }
+function {:inline} Black(i:int)   returns(bool) { i >= 3 }
 function {:inline} WhiteOrLighter(i:int) returns(bool) { i <= 1 }
-function {:inline} Gray(i:int) returns(bool) { i == 2 }
-function {:inline} Black(i:int) returns(bool) { i >= 3 }
 
 procedure {:yields} {:layer 2} YieldColorOnlyGetsDarker()
 ensures {:layer 2} Color >= old(Color);
@@ -25,7 +25,7 @@ ensures {:atomic} |{ A: assert tid != nil; goto B, C;
                      B: assume White(Color); Color := GRAY(); return true; 
                      C: assume !White(Color); return true;}|;
 requires {:layer 2} Color >= WHITE();
-ensures {:layer 2} Color >= GRAY();
+ensures  {:layer 2} Color >= GRAY();
 {
   var colorLocal:int;
   yield;
@@ -71,8 +71,8 @@ procedure {:yields} {:layer 0,2} GetColorNoLock() returns (col:int);
 function {:builtin "MapConst"} MapConstBool(bool): [Tid]bool;
 function {:builtin "MapOr"} MapOr([Tid]bool, [Tid]bool) : [Tid]bool;
 
-var {:layer 0} Color:int;
-var {:layer 0} lock:Tid;
+var {:layer 0,3} Color:int;
+var {:layer 0,1} lock:Tid;
 
 function {:inline} {:linear "tid"} TidCollector(x: Tid) : [Tid]bool
 {

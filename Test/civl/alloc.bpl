@@ -24,7 +24,7 @@ function {:inline} PoolInv(unallocated:[int]bool, pool: lmap) : (bool)
 
 procedure {:yields} {:layer 2} Main()
 requires {:layer 1} PoolInv(unallocated, pool);
-ensures {:layer 1} PoolInv(unallocated, pool);
+ensures  {:layer 1} PoolInv(unallocated, pool);
 {
    var {:layer 1} {:linear "mem"} l: lmap;
    var i: int;
@@ -41,7 +41,7 @@ ensures {:layer 1} PoolInv(unallocated, pool);
 
 procedure {:yields} {:layer 2} Thread({:layer 1} {:linear_in "mem"} local_in: lmap, i: int)
 requires {:layer 1} PoolInv(unallocated, pool);
-ensures {:layer 1} PoolInv(unallocated, pool);
+ensures  {:layer 1} PoolInv(unallocated, pool);
 requires {:layer 1} dom(local_in)[i] && map(local_in)[i] == mem[i];
 requires {:layer 2} dom(local_in)[i];
 {
@@ -74,8 +74,8 @@ procedure {:pure} {:inline 1} Copy({:linear_in "mem"} l: lmap) returns ({:linear
 
 procedure {:yields} {:layer 1,2} Alloc() returns ({:layer 1} {:linear "mem"} l: lmap, i: int)
 requires {:layer 1} PoolInv(unallocated, pool);
-ensures {:layer 1} PoolInv(unallocated, pool);
-ensures {:layer 1} dom(l)[i] && map(l)[i] == mem[i];
+ensures  {:layer 1} PoolInv(unallocated, pool);
+ensures  {:layer 1} dom(l)[i] && map(l)[i] == mem[i];
 ensures {:right} |{ A: assume dom(l)[i]; return true; }|;
 {
     call Yield();
@@ -86,7 +86,7 @@ ensures {:right} |{ A: assume dom(l)[i]; return true; }|;
 
 procedure {:yields} {:layer 1,2} Free({:layer 1} {:linear_in "mem"} l: lmap, i: int)
 requires {:layer 1} PoolInv(unallocated, pool);
-ensures {:layer 1} PoolInv(unallocated, pool);
+ensures  {:layer 1} PoolInv(unallocated, pool);
 requires {:layer 1} dom(l)[i];
 ensures {:both} |{ A: return true; }|;
 {
@@ -98,7 +98,7 @@ ensures {:both} |{ A: return true; }|;
 
 procedure {:yields} {:layer 1,2} Read({:layer 1} {:linear "mem"} l: lmap, i: int) returns (o: int)
 requires {:layer 1} PoolInv(unallocated, pool);
-ensures {:layer 1} PoolInv(unallocated, pool);
+ensures  {:layer 1} PoolInv(unallocated, pool);
 requires {:layer 1} dom(l)[i] && map(l)[i] == mem[i];
 ensures {:both} |{ A: assert dom(l)[i]; o := map(l)[i]; return true; }|;
 {
@@ -109,9 +109,9 @@ ensures {:both} |{ A: assert dom(l)[i]; o := map(l)[i]; return true; }|;
 
 procedure {:yields} {:layer 1,2} Write({:layer 1} {:linear_in "mem"} l: lmap, i: int, o: int) returns ({:layer 1} {:linear "mem"} l': lmap)
 requires {:layer 1} PoolInv(unallocated, pool);
-ensures {:layer 1} PoolInv(unallocated, pool);
+ensures  {:layer 1} PoolInv(unallocated, pool);
 requires {:layer 1} dom(l)[i] && map(l)[i] == mem[i];
-ensures {:layer 1} dom(l')[i] && map(l')[i] == mem[i];
+ensures  {:layer 1} dom(l')[i] && map(l')[i] == mem[i];
 ensures {:both} |{ A: assert dom(l)[i]; l' := cons(dom(l), map(l)[i := o]); return true; }|;
 {
     call YieldMem(l, i);
@@ -144,7 +144,7 @@ ensures {:layer 1} PoolInv(unallocated, pool);
 
 procedure {:yields} {:layer 1} YieldMem({:layer 1} {:linear "mem"} l: lmap, i: int)
 requires {:layer 1} PoolInv(unallocated, pool);
-ensures {:layer 1} PoolInv(unallocated, pool);
+ensures  {:layer 1} PoolInv(unallocated, pool);
 requires {:layer 1} dom(l)[i] && map(l)[i] == mem[i];
 ensures {:layer 1} dom(l)[i] && map(l)[i] == mem[i];
 {
